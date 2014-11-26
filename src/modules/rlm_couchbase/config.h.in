@@ -18,9 +18,6 @@
 /* Define to 1 if you have the `json_tokener_get_error' function. */
 #undef HAVE_JSON_TOKENER_GET_ERROR
 
-/* Define to 1 if you have the `json_tokener_parse_verbose' function. */
-#undef HAVE_JSON_TOKENER_PARSE_VERBOSE
-
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 

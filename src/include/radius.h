@@ -20,7 +20,7 @@ typedef enum {
 	PW_TYPE_SHORT,				//!< 16 Bit unsigned integer.
 	PW_TYPE_ETHERNET,			//!< 48 Bit Mac-Address.
 	PW_TYPE_SIGNED,				//!< 32 Bit signed integer.
-	PW_TYPE_IP_ADDR,			//!< WiMAX IPv4 or IPv6 address depending on length.
+	PW_TYPE_COMBO_IP_ADDR,			//!< WiMAX IPv4 or IPv6 address depending on length.
 	PW_TYPE_TLV,				//!< Contains nested attributes.
 	PW_TYPE_EXTENDED,			//!< Extended attribute space attribute.
 	PW_TYPE_LONG_EXTENDED,			//!< Long extended attribute space attribute.
@@ -30,7 +30,7 @@ typedef enum {
 	PW_TYPE_VSA,				//!< Vendor-Specific, for RADIUS attribute 26.
 	PW_TYPE_TIMEVAL,			//!< Time value (struct timeval), only for config items.
 	PW_TYPE_BOOLEAN,			//!< A truth value.
-	PW_TYPE_IP_PREFIX,			//!< WiMAX IPv4 or IPv6 address prefix depending on length.
+	PW_TYPE_COMBO_IP_PREFIX,		//!< WiMAX IPv4 or IPv6 address prefix depending on length.
 	PW_TYPE_MAX				//!< Number of defined data types.
 } PW_TYPE;
 

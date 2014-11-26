@@ -207,12 +207,12 @@ char const *ip_ntoa(char *buffer, uint32_t ipaddr)
  *
  * @param out Where to write the ip address value.
  * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY).
- * @param inlen Length of value, if value is \0 terminated inlen may be 0.
+ * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv4 resolution if no A records can be found.
  * @return 0 if ip address was parsed successfully, else -1 on error.
  */
-int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bool fallback)
+int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
 {
 	char *p;
 	unsigned int prefix;
@@ -224,8 +224,8 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 	/*
 	 *	Copy to intermediary buffer if we were given a length
 	 */
-	if (inlen > 0) {
-		if (inlen >= sizeof(buffer)) {
+	if (inlen >= 0) {
+		if (inlen >= (ssize_t)sizeof(buffer)) {
 			fr_strerror_printf("Invalid IPv4 address string \"%s\"", value);
 			return -1;
 		}
@@ -275,7 +275,7 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 	/*
 	 *	Copy the IP portion into a temporary buffer if we haven't already.
 	 */
-	if (inlen == 0) memcpy(buffer, value, p - value);
+	if (inlen < 0) memcpy(buffer, value, p - value);
 	buffer[p - value] = '\0';
 
 	if (!resolve) {
@@ -310,12 +310,12 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
  *
  * @param out Where to write the ip address value.
  * @param value to parse.
- * @param inlen Length of value, if value is \0 terminated inlen may be 0.
+ * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv4 resolution if no AAAA records can be found.
  * @return 0 if ip address was parsed successfully, else -1 on error.
  */
-int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bool fallback)
+int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
 {
 	char const *p;
 	unsigned int prefix;
@@ -327,8 +327,8 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 	/*
 	 *	Copy to intermediary buffer if we were given a length
 	 */
-	if (inlen > 0) {
-		if (inlen >= sizeof(buffer)) {
+	if (inlen >= 0) {
+		if (inlen >= (ssize_t)sizeof(buffer)) {
 			fr_strerror_printf("Invalid IPv6 address string \"%s\"", value);
 			return -1;
 		}
@@ -364,7 +364,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
 	/*
 	 *	Copy string to temporary buffer if we didn't do it earlier
 	 */
-	if (inlen == 0) memcpy(buffer, value, p - value);
+	if (inlen < 0) memcpy(buffer, value, p - value);
 	buffer[p - value] = '\0';
 
 	if (!resolve) {
@@ -402,15 +402,15 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve, bo
  *
  * @param out Where to write the ip address value.
  * @param value to parse.
- * @param inlen Length of value, if value is \0 terminated inlen may be 0.
+ * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @return 0 if ip address was parsed successfully, else -1 on error.
  */
-int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
+int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
 {
 	size_t len, i;
 
-	len = (inlen == 0) ? strlen(value) : inlen;
+	len = (inlen >= 0) ? (size_t)inlen : strlen(value);
 	for (i = 0; i < len; i++) switch (value[i]) {
 	/*
 	 *	Chars illegal in domain names and IPv4 addresses.
@@ -445,28 +445,6 @@ int fr_pton(fr_ipaddr_t *out, char const *value, size_t inlen, bool resolve)
  	 *	address.
  	 */
 	return fr_pton4(out, value, inlen, false, false);
-}
-
-/** Check if the IP address is equivalent to INADDR_ANY
- *
- * @param addr to chec.
- * @return true if IP address matches INADDR_ANY or INADDR6_ANY (assumed to be 0), else false.
- */
-bool is_wildcard(fr_ipaddr_t *addr)
-{
-	static struct in6_addr in6_addr;
-
-	switch (addr->af) {
-	case AF_INET:
-		return (addr->ipaddr.ip4addr.s_addr == htons(INADDR_ANY));
-
-	case AF_INET6:
-		return (memcmp(addr->ipaddr.ip6addr.s6_addr, in6_addr.s6_addr, sizeof(in6_addr.s6_addr)) == 0) ? true :false;
-
-	default:
-		fr_assert(0);
-		return false;
-	}
 }
 
 int fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr)
@@ -1223,6 +1201,8 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 int fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 		       struct sockaddr_storage *sa, socklen_t *salen)
 {
+	memset(sa, 0, sizeof(*sa));
+
 	if (ipaddr->af == AF_INET) {
 		struct sockaddr_in s4;
 
@@ -1260,6 +1240,8 @@ int fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		       fr_ipaddr_t *ipaddr, uint16_t *port)
 {
+	memset(ipaddr, 0, sizeof(*ipaddr));
+
 	if (sa->ss_family == AF_INET) {
 		struct sockaddr_in	s4;
 
@@ -1369,6 +1351,13 @@ size_t fr_prints_uint128(char *out, size_t outlen, uint128_t const num)
 	uint64_t n[2];
 	char *p = buff;
 	int i;
+#ifdef RADIUS_LITTLE_ENDIAN
+	const size_t l = 0;
+	const size_t h = 1;
+#else
+	const size_t l = 1;
+	const size_t h = 0;
+#endif
 
 	memset(buff, '0', sizeof(buff) - 1);
 	buff[sizeof(buff) - 1] = '\0';
@@ -1379,11 +1368,11 @@ size_t fr_prints_uint128(char *out, size_t outlen, uint128_t const num)
 		ssize_t j;
 		int carry;
 
-		carry = (n[1] >= 0x8000000000000000);
+		carry = (n[h] >= 0x8000000000000000);
 
 		// Shift n[] left, doubling it
-		n[1] = ((n[1] << 1) & 0xffffffffffffffff) + (n[0] >= 0x8000000000000000);
-		n[0] = ((n[0] << 1) & 0xffffffffffffffff);
+		n[h] = ((n[h] << 1) & 0xffffffffffffffff) + (n[l] >= 0x8000000000000000);
+		n[l] = ((n[l] << 1) & 0xffffffffffffffff);
 
 		// Add s[] to itself in decimal, doubling it
 		for (j = sizeof(buff) - 2; j >= 0; j--) {
@@ -1400,90 +1389,6 @@ size_t fr_prints_uint128(char *out, size_t outlen, uint128_t const num)
 	}
 
 	return strlcpy(out, p, outlen);
-}
-
-/** Calculate powers
- *
- * @author Orson Peters
- * @note Borrowed from the gist here: https://gist.github.com/nightcracker/3551590.
- *
- * @param base a 32bit signed integer.
- * @param exp amount to raise base by.
- * @return base ^ pow, or 0 on underflow/overflow.
- */
-int64_t fr_pow(int32_t base, uint8_t exp) {
-	static const uint8_t highest_bit_set[] = {
-		0, 1, 2, 2, 3, 3, 3, 3,
-		4, 4, 4, 4, 4, 4, 4, 4,
-		5, 5, 5, 5, 5, 5, 5, 5,
-		5, 5, 5, 5, 5, 5, 5, 5,
-		6, 6, 6, 6, 6, 6, 6, 6,
-		6, 6, 6, 6, 6, 6, 6, 6,
-		6, 6, 6, 6, 6, 6, 6, 6,
-		6, 6, 6, 6, 6, 6, 6, 255, // anything past 63 is a guaranteed overflow with base > 1
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-		255, 255, 255, 255, 255, 255, 255, 255,
-	};
-
-	uint64_t result = 1;
-
-	switch (highest_bit_set[exp]) {
-	case 255: // we use 255 as an overflow marker and return 0 on overflow/underflow
-		if (base == 1) {
-			return 1;
-		}
-
-		if (base == -1) {
-			return 1 - 2 * (exp & 1);
-		}
-		return 0;
-	case 6:
-		if (exp & 1) result *= base;
-		exp >>= 1;
-		base *= base;
-	case 5:
-		if (exp & 1) result *= base;
-		exp >>= 1;
-		base *= base;
-	case 4:
-		if (exp & 1) result *= base;
-		exp >>= 1;
-		base *= base;
-	case 3:
-		if (exp & 1) result *= base;
-		exp >>= 1;
-		base *= base;
-	case 2:
-		if (exp & 1) result *= base;
-		exp >>= 1;
-		base *= base;
-	case 1:
-		if (exp & 1) result *= base;
-	default:
-		return result;
-	}
 }
 
 /*

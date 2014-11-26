@@ -31,11 +31,11 @@
  */
 VALUE_PAIR *_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *node)
 {
-	memset(cursor, 0, sizeof(*cursor));
-
 	if (!node || !cursor) {
 		return NULL;
 	}
+
+	memset(cursor, 0, sizeof(*cursor));
 
 	/*
 	 *  Useful check to see if uninitialised memory is pointed
@@ -62,6 +62,8 @@ void fr_cursor_copy(vp_cursor_t *out, vp_cursor_t *in)
 
 VALUE_PAIR *fr_cursor_first(vp_cursor_t *cursor)
 {
+	if (!cursor->first) return NULL;
+
 	cursor->current = *cursor->first;
 
 	if (cursor->current) {
@@ -79,17 +81,13 @@ VALUE_PAIR *fr_cursor_first(vp_cursor_t *cursor)
  */
 VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
 {
-	if (!*cursor->first) return NULL;
+	if (!cursor->first || !*cursor->first) return NULL;
 
 	/* Need to start at the start */
-	if (!cursor->current) {
-		fr_cursor_first(cursor);
-	}
+	if (!cursor->current) fr_cursor_first(cursor);
 
 	/* Wind to the end */
-	while (cursor->next) {
-		fr_cursor_next(cursor);
-	}
+	while (cursor->next) fr_cursor_next(cursor);
 
 	return fr_cursor_current(cursor);
 }
@@ -101,6 +99,8 @@ VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
 VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	VALUE_PAIR *i;
+
+	if (!cursor->first) return NULL;
 
 	i = pairfind(!cursor->found ? cursor->current : cursor->found->next, attr, vendor, tag);
 	if (!i) {
@@ -125,7 +125,9 @@ VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_
 {
 	VALUE_PAIR *i;
 
-	i = pairfind_da(!cursor->found ? cursor->current : cursor->found->next, da, tag);
+	if (!cursor->first) return NULL;
+
+	i = pair_find_by_da(!cursor->found ? cursor->current : cursor->found->next, da, tag);
 	if (!i) {
 		cursor->next = NULL;
 		cursor->current = NULL;
@@ -146,6 +148,8 @@ VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_
  */
 VALUE_PAIR *fr_cursor_next(vp_cursor_t *cursor)
 {
+	if (!cursor->first) return NULL;
+
 	cursor->current = cursor->next;
 	if (cursor->current) {
 		VERIFY_VP(cursor->current);
@@ -176,9 +180,7 @@ VALUE_PAIR *fr_cursor_next_peek(vp_cursor_t *cursor)
 
 VALUE_PAIR *fr_cursor_current(vp_cursor_t *cursor)
 {
-	if (cursor->current) {
-		VERIFY_VP(cursor->current);
-	}
+	if (cursor->current) VERIFY_VP(cursor->current);
 
 	return cursor->current;
 }
@@ -191,9 +193,9 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *add)
 {
 	VALUE_PAIR *i;
 
-	if (!add) {
-		return;
-	}
+	if (!fr_assert(cursor->first)) return;	/* cursor must have been initialised */
+
+	if (!add) return;
 
 	VERIFY_VP(add);
 
@@ -205,6 +207,7 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *add)
 	/*
 	 *	Cursor was initialised with a pointer to a NULL value_pair
 	 */
+
 	if (!*cursor->first) {
 		*cursor->first = add;
 		cursor->current = add;
@@ -265,6 +268,8 @@ void fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
 	vp_cursor_t from;
 	VALUE_PAIR *vp;
 
+	if (!fr_assert(cursor->first)) return;	/* cursor must have been initialised */
+
 	for (vp = fr_cursor_init(&from, &add);
 	     vp;
 	     vp = fr_cursor_next(&from)) {
@@ -282,6 +287,8 @@ void fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
 VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 {
 	VALUE_PAIR *vp, **last;
+
+	if (!fr_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
 	vp = fr_cursor_current(cursor);
 	if (!vp) {
@@ -315,6 +322,8 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 {
 	VALUE_PAIR *vp, **last;
+
+	if (!fr_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
 	vp = fr_cursor_current(cursor);
 	if (!vp) {

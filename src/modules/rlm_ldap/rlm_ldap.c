@@ -106,7 +106,7 @@ static CONF_PARSER profile_config[] = {
 												//!< when the DN is
 												//!< known.
 	{ "attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, profile_attr), NULL },
-	{ "default", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, default_profile), NULL },
+	{ "default", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, ldap_instance_t, default_profile), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -143,25 +143,10 @@ static CONF_PARSER group_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-/*
- *	Client configuration
- */
-static CONF_PARSER client_attribute[] = {
-	{ "identifier", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_identifier), "host" },
-	{ "shortname", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_shortname), "cn" },
-	{ "nas_type", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_type), NULL },
-	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_secret), NULL },
-	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_server), NULL },
-	{ "require_message_authenticator", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_require_ma), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
-};
-
 static CONF_PARSER client_config[] = {
-	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_filter), NULL },
+	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, ldap_instance_t, clientobj_filter), NULL },
 	{ "scope", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_scope_str), "sub" },
-	{ "base_dn", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, clientobj_base_dn), "" },
-	{ "attribute", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) client_attribute },
+	{ "base_dn", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, ldap_instance_t, clientobj_base_dn), "" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -170,7 +155,7 @@ static CONF_PARSER client_config[] = {
  *	Reference for accounting updates
  */
 static const CONF_PARSER acct_section_config[] = {
-	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_acct_section_t, reference), "." },
+	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, ldap_acct_section_t, reference), "." },
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -303,7 +288,7 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 		goto free_urldesc;
 	}
 
-	conn = rlm_ldap_get_socket(inst, request);
+	conn = mod_conn_get(inst, request);
 	if (!conn) goto free_urldesc;
 
 	memcpy(&attrs, &ldap_url->lud_attrs, sizeof(attrs));
@@ -350,7 +335,7 @@ free_vals:
 free_result:
 	ldap_msgfree(result);
 free_socket:
-	rlm_ldap_release_socket(inst, conn);
+	mod_conn_release(inst, conn);
 free_urldesc:
 	ldap_free_urldesc(ldap_url);
 
@@ -394,6 +379,13 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 *	Check if we can do cached membership verification
 	 */
 	check_is_dn = rlm_ldap_is_dn(check->vp_strvalue);
+	if (check_is_dn) {
+		char *norm;
+
+		MEM(norm = talloc_memdup(check, check->vp_strvalue, talloc_array_length(check->vp_strvalue)));
+		rlm_ldap_normalise_dn(norm, check->vp_strvalue);
+		pairstrsteal(check, norm);
+	}
 	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
 		switch (rlm_ldap_check_cached(inst, request, check)) {
 		case RLM_MODULE_NOTFOUND:
@@ -413,7 +405,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		}
 	}
 
-	conn = rlm_ldap_get_socket(inst, request);
+	conn = mod_conn_get(inst, request);
 	if (!conn) return 1;
 
 	/*
@@ -421,7 +413,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 */
 	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!user_dn) {
-		rlm_ldap_release_socket(inst, conn);
+		mod_conn_release(inst, conn);
 		return 1;
 	}
 
@@ -464,7 +456,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	rad_assert(conn);
 
 finish:
-	if (conn) rlm_ldap_release_socket(inst, conn);
+	if (conn) mod_conn_release(inst, conn);
 
 	if (!found) {
 		RDEBUG("User is not a member of specified group");
@@ -568,23 +560,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (ldap_errno == LDAP_OPT_SUCCESS) {
 			if (strcmp(info.ldapai_vendor_name, LDAP_VENDOR_NAME) != 0) {
 				WARN("rlm_ldap: libldap vendor changed since the server was built");
-				WARN("rlm_ldap: linked: %s built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
+				WARN("rlm_ldap: linked: %s, built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
 			}
 
 			if (info.ldapai_vendor_version != LDAP_VENDOR_VERSION) {
 				WARN("rlm_ldap: libldap version changed since the server was built");
-				WARN("rlm_ldap: linked: %i built: %i",
+				WARN("rlm_ldap: linked: %i, built: %i",
 				     info.ldapai_vendor_version, LDAP_VENDOR_VERSION);
 			}
 
-			INFO("rlm_ldap: libldap vendor: %s version: %i", info.ldapai_vendor_name,
+			INFO("rlm_ldap: libldap vendor: %s, version: %i", info.ldapai_vendor_name,
 			     info.ldapai_vendor_version);
+
 			ldap_memfree(info.ldapai_vendor_name);
 			ldap_memfree(info.ldapai_extensions);
 		} else {
 			DEBUG("rlm_ldap: Falling back to build time libldap version info.  Query for LDAP_OPT_API_INFO "
 			      "returned: %i", ldap_errno);
-			INFO("rlm_ldap: libldap vendor: %s version: %i", LDAP_VENDOR_NAME, LDAP_VENDOR_VERSION);
+			INFO("rlm_ldap: libldap vendor: %s, version: %i.%i.%i", LDAP_VENDOR_NAME,
+			     LDAP_VENDOR_VERSION_MAJOR, LDAP_VENDOR_VERSION_MINOR, LDAP_VENDOR_VERSION_PATCH);
 		}
 	}
 
@@ -719,8 +713,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Build the attribute map
 	 */
-	if (rlm_ldap_map_verify(inst, &(inst->user_map)) < 0) {
-		goto error;
+	if (map_afrom_cs(&inst->user_map, cf_section_sub_find(inst->cs, "update"),
+			 PAIR_LIST_REPLY, PAIR_LIST_REQUEST, rlm_ldap_map_verify, inst,
+			 LDAP_MAX_ATTRMAP) < 0) {
+		return -1;
 	}
 
 	/*
@@ -764,7 +760,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (dict_addattr(inst->cache_attribute, -1, 0, PW_TYPE_STRING, flags) < 0) {
 			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
 
-			return -1;
+			goto error;
 		}
 		inst->cache_da = dict_attrbyname(inst->cache_attribute);
 	} else {
@@ -775,13 +771,27 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Initialize the socket pool.
 	 */
 	inst->pool = fr_connection_pool_module_init(inst->cs, inst, mod_conn_create, NULL, NULL);
-	if (!inst->pool) return -1;
+	if (!inst->pool) goto error;
 
 	/*
 	 *	Bulk load dynamic clients.
 	 */
 	if (inst->do_clients) {
-		if (rlm_ldap_load_clients(inst) < 0) {
+		CONF_SECTION *cs;
+
+		cs = cf_section_sub_find(inst->cs, "client");
+		if (!cs) {
+			LDAP_ERR("Told to load clients but no client section found");
+			goto error;
+		}
+
+		cs = cf_section_sub_find(cs, "attribute");
+		if (!cs) {
+			LDAP_ERR("Told to load clients but no attribute section found");
+			goto error;
+		}
+
+		if (rlm_ldap_client_load(inst, cs) < 0) {
 			LDAP_ERR("Error loading clients");
 
 			return -1;
@@ -834,7 +844,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	RDEBUG("Login attempt by \"%s\"", request->username->vp_strvalue);
 
-	conn = rlm_ldap_get_socket(inst, request);
+	conn = mod_conn_get(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
 
 	/*
@@ -842,7 +852,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 */
 	dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!dn) {
-		rlm_ldap_release_socket(inst, conn);
+		mod_conn_release(inst, conn);
 
 		return rcode;
 	}
@@ -879,7 +889,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		break;
 	};
 
-	rlm_ldap_release_socket(inst, conn);
+	mod_conn_release(inst, conn);
 
 	return rcode;
 }
@@ -917,7 +927,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		return RLM_MODULE_FAIL;
 	}
 
-	conn = rlm_ldap_get_socket(inst, request);
+	conn = mod_conn_get(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
 
 	/*
@@ -1092,7 +1102,9 @@ skip_edir:
 
 	if (inst->user_map || inst->valuepair_attr) {
 		RDEBUG("Processing user attributes");
+		RINDENT();
 		rlm_ldap_map_do(inst, request, conn->handle, &expanded, entry);
+		REXDENT();
 		rlm_ldap_check_reply(inst, request);
 	}
 
@@ -1101,7 +1113,7 @@ finish:
 	if (result) {
 		ldap_msgfree(result);
 	}
-	rlm_ldap_release_socket(inst, conn);
+	mod_conn_release(inst, conn);
 
 	return rcode;
 }
@@ -1300,7 +1312,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 
 	mod_p[total] = NULL;
 
-	conn = rlm_ldap_get_socket(inst, request);
+	conn = mod_conn_get(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
 
 
@@ -1333,7 +1345,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		talloc_free(expanded[i]);
 	}
 
-	rlm_ldap_release_socket(inst, conn);
+	mod_conn_release(inst, conn);
 
 	return rcode;
 }

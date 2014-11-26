@@ -459,7 +459,7 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 #endif
 }
 
-static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *p, size_t alen);
+static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *p, size_t alen);
 
 /** Returns the number of array members for arrays with fixed element sizes
  *
@@ -536,7 +536,7 @@ static int fr_dhcp_array_members(size_t *len, DICT_ATTR const *da)
  * @param[in] data to parse.
  * @param[in] len length of data to parse.
  */
-static int fr_dhcp_decode_vsa(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
+static int fr_dhcp_decode_vsa(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t const *data, size_t len)
 {
 	uint8_t const *p, *q;
 	vp_cursor_t cursor;
@@ -579,7 +579,7 @@ static int fr_dhcp_decode_vsa(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *
 		 */
 		da = dict_attrbyvalue(0, vendor);
 		if (!da) {
-			da = dict_attrunknown(0, vendor, true);
+			da = dict_unknown_afrom_fields(ctx, 0, vendor);
 			if (!da) {
 				pairfree(&head);
 				goto malformed;
@@ -591,13 +591,16 @@ static int fr_dhcp_decode_vsa(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *
 			return -1;
 		}
 		vp->op = T_OP_ADD;
+		pairsteal(ctx, vp); /* for unknown attributes hack */
 
-		if (fr_dhcp_attr2vp(&vp, ctx, p + 5, p[4]) < 0) {
+		if (fr_dhcp_attr2vp(ctx, &vp, p + 5, p[4]) < 0) {
+			dict_attr_free(&da);
 			pairfree(&head);
 			return -1;
 		}
 
 		fr_cursor_merge(&cursor, vp);
+		dict_attr_free(&da); /* for unknown attributes hack */
 
 		p += 4 + 1 + p[4];	/* vendor id (4) + len (1) + vsa len (n) */
 	}
@@ -644,7 +647,7 @@ malformed:
  * @param[in] data to parse.
  * @param[in] len length of data to parse.
  */
-static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
+static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t const *data, size_t len)
 {
 	uint8_t const *p, *q;
 	VALUE_PAIR *head, *vp;
@@ -728,7 +731,7 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 		 */
 		da = dict_attrbyvalue(attr, (*tlv)->da->vendor);
 		if (!da) {
-			da = dict_attrunknown(attr, (*tlv)->da->vendor, true);
+			da = dict_unknown_afrom_fields(ctx, attr, (*tlv)->da->vendor);
 			if (!da) {
 				pairfree(&head);
 				return -1;
@@ -745,8 +748,10 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 				return -1;
 			}
 			vp->op = T_OP_ADD;
+			pairsteal(ctx, vp); /* for unknown attributes hack */
 
-			if (fr_dhcp_attr2vp(&vp, ctx, a_p, a_len) < 0) {
+			if (fr_dhcp_attr2vp(ctx, &vp, a_p, a_len) < 0) {
+				dict_attr_free(&da);
 				pairfree(&head);
 				goto malformed;
 			}
@@ -754,6 +759,9 @@ static int fr_dhcp_decode_suboption(VALUE_PAIR **tlv, TALLOC_CTX *ctx, uint8_t c
 
 			a_p += a_len;
 		}
+
+		dict_attr_free(&da); /* for unknown attributes hack */
+
 		p += 2 + p[1];	/* code (1) + len (1) + suboption len (n)*/
 	}
 
@@ -795,7 +803,7 @@ malformed:
 /*
  *	Decode ONE value into a VP
  */
-static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
+static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *data, size_t len)
 {
 	VALUE_PAIR *vp = *vp_p;
 	VERIFY_VP(vp);
@@ -894,13 +902,13 @@ static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *da
 	 *	For option 82 et al...
 	 */
 	case PW_TYPE_TLV:
-		return fr_dhcp_decode_suboption(vp_p, ctx, data, len);
+		return fr_dhcp_decode_suboption(ctx, vp_p, data, len);
 
 	/*
 	 *	For option 82.9
 	 */
 	case PW_TYPE_VSA:
-		return fr_dhcp_decode_vsa(vp_p, ctx, data, len);
+		return fr_dhcp_decode_vsa(ctx, vp_p, data, len);
 
 	default:
 		fr_strerror_printf("Internal sanity check %d %d", vp->da->type, __LINE__);
@@ -918,7 +926,7 @@ static int fr_dhcp_attr2vp(VALUE_PAIR **vp_p, TALLOC_CTX *ctx, uint8_t const *da
  * @param[in] data to parse.
  * @param[in] len of data to parse.
  */
-ssize_t fr_dhcp_decode_options(VALUE_PAIR **out, TALLOC_CTX *ctx, uint8_t const *data, size_t len)
+ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const *data, size_t len)
 {
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
@@ -960,7 +968,7 @@ ssize_t fr_dhcp_decode_options(VALUE_PAIR **out, TALLOC_CTX *ctx, uint8_t const 
 		 */
 		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
 		if (!da) {
-			da = dict_attrunknown(p[0], DHCP_MAGIC_VENDOR, true);
+			da = dict_unknown_afrom_fields(ctx, p[0], DHCP_MAGIC_VENDOR);
 			if (!da) {
 				pairfree(out);
 				return -1;
@@ -989,12 +997,12 @@ ssize_t fr_dhcp_decode_options(VALUE_PAIR **out, TALLOC_CTX *ctx, uint8_t const 
 			}
 			vp->op = T_OP_ADD;
 
-			if (fr_dhcp_attr2vp(&vp, ctx, a_p, a_len) < 0) {
+			if (fr_dhcp_attr2vp(ctx, &vp, a_p, a_len) < 0) {
 				pairfree(&vp);
 				pairfree(out);
 				return -1;
 			}
-			fr_cursor_insert(&cursor, vp);
+			fr_cursor_merge(&cursor, vp);
 
 			for (vp = fr_cursor_current(&cursor);
 			     vp;
@@ -1057,7 +1065,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		 *	it as an opaque type (octets).
 		 */
 		if ((i == 11) && (packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
-			DICT_ATTR const *da = dict_attrunknown(vp->da->attr, vp->da->vendor, true);
+			DICT_ATTR const *da = dict_unknown_afrom_fields(packet, vp->da->attr, vp->da->vendor);
 			if (!da) {
 				return -1;
 			}
@@ -1130,7 +1138,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	{
 		VALUE_PAIR *options = NULL;
 
-		if (fr_dhcp_decode_options(&options, packet, packet->data + 240, packet->data_len - 240) < 0) {
+		if (fr_dhcp_decode_options(packet, &options, packet->data + 240, packet->data_len - 240) < 0) {
 			return -1;
 		}
 
@@ -1382,7 +1390,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
  * @param cursor with current VP set to the option to be encoded. Will be advanced to the next option to encode.
  * @return > 0 length of data written, < 0 error, 0 not valid option (skipping).
  */
-ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, TALLOC_CTX *ctx, vp_cursor_t *cursor)
+ssize_t fr_dhcp_encode_option(TALLOC_CTX *ctx, uint8_t *out, size_t outlen, vp_cursor_t *cursor)
 {
 	VALUE_PAIR *vp;
 	DICT_ATTR const *previous;
@@ -1610,9 +1618,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Server-IP-Address */
 	vp = pairfind(packet->vps, 265, DHCP_MAGIC_VENDOR, TAG_ANY);
-
-	/* DHCP-DHCP-Server-Identifier */
-	if (!vp && (vp = pairfind(packet->vps, 54, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if (vp) {
 		lvalue = vp->vp_ipaddr;
 	} else {
 		lvalue = htonl(INADDR_ANY);
@@ -1765,7 +1771,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 *  and sub options.
 	 */
 	while ((vp = fr_cursor_current(&cursor))) {
-		len = fr_dhcp_encode_option(p, packet->data_len - (p - packet->data), packet, &cursor);
+		len = fr_dhcp_encode_option(packet, p, packet->data_len - (p - packet->data), &cursor);
 		if (len < 0) break;
 		if (len > 0) debug_pair(vp);
 		p += len;
@@ -1800,7 +1806,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	if ((fr_debug_flag > 2) && fr_log_fp) {
 		fprintf(fr_log_fp, "DHCP Sending %zu bytes\n", packet->data_len);
 		for (i = 0; i < packet->data_len; i++) {
-			if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "%d: ", i);
+			if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "%d: ", (int) i);
 			fprintf(fr_log_fp, "%02x ", packet->data[i]);
 			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 		}

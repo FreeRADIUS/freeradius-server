@@ -463,7 +463,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		fr_bin2hex(out, buffer, NT_DIGEST_LENGTH);
 		out[32] = '\0';
-		RDEBUG("NT-Hash of %s = %s", p, out);
+		RDEBUG("NT-Hash of \"known-good\" password: %s", out);
 		return 32;
 
 		/*
@@ -518,10 +518,10 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 
 static const CONF_PARSER passchange_config[] = {
-	{ "ntlm_auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_cpw), NULL },
-	{ "ntlm_auth_username", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_cpw_username), NULL },
-	{ "ntlm_auth_domain", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_cpw_domain), NULL },
-	{ "local_cpw", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, local_cpw), NULL },
+	{ "ntlm_auth", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, ntlm_cpw), NULL },
+	{ "ntlm_auth_username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_username), NULL },
+	{ "ntlm_auth_domain", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_domain), NULL },
+	{ "local_cpw", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, local_cpw), NULL },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 static const CONF_PARSER module_config[] = {
@@ -794,7 +794,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 		/*
 		 *  Read from the child
 		 */
-		len = radius_readfrom_program(request, from_child, pid, 10, buf, sizeof(buf));
+		len = radius_readfrom_program(from_child, pid, 10, buf, sizeof(buf));
 		if (len < 0) {
 			/* radius_readfrom_program will have closed from_child for us */
 			REDEBUG("Failure reading from child");
@@ -923,20 +923,14 @@ ntlm_auth_err:
 		/*
 		 *  The new cleartext password, which is utf-16 do some unpleasant vileness
 		 *  to turn it into utf8 without pulling in libraries like iconv.
+		 *
+		 *  First pass: get the length of the converted string.
 		 */
 		new_pass = pairmake_packet("MS-CHAP-New-Cleartext-Password", NULL, T_OP_EQ);
 		new_pass->length = 0;
-		new_pass->vp_strvalue = x = talloc_array(new_pass, char, 254);
+
 		i = 0;
-		while (i<passlen) {
-			/*
-			 *  The client-supplied password is utf-16.
-			 *  We really must perform a proper conversion to utf8 here,
-			 *  and the same in the other direction when we calculate
-			 *  NT-Password below, else non-ascii characters will fail -
-			 *  I know from experience that UK pound and Euro symbols
-			 *  are common in users passwords (money obsessed!)
-			 */
+		while (i < passlen) {
 			int c;
 
 			c = p[i++];
@@ -946,34 +940,44 @@ ntlm_auth_err:
 			 *  Gah. nasty. maybe we should just pull in iconv?
 			 */
 			if (c < 0x7f) {
-				/* ascii char */
-				if (new_pass->length >= 253) {
-					RWDEBUG("Ran out of room turning new password into utf8 at %zu, "
-						"cleartext will be truncated!", i);
-					break;
-				}
-				x[new_pass->length++] = c;
+				new_pass->length++;
 			} else if (c < 0x7ff) {
-				/* 2-byte */
-				if (new_pass->length >= 252) {
-					RWDEBUG("Ran out of room turning new password into utf8 at %zu, "
-						"cleartext will be truncated!", i);
-					break;
-				}
-				x[new_pass->length++] = 0xc0 + (c >> 6);
-				x[new_pass->length++] = 0x80 + (c & 0x3f);
+				new_pass->length += 2;
 			} else {
-				/* 3-byte */
-				if (new_pass->length >= 251) {
-					RWDEBUG("Ran out of room turning new password into utf8 at %zu, "
-						"cleartext will be truncated!", i);
-					break;
-				}
-				x[new_pass->length++] = 0xe0 + (c >> 12);
-				x[new_pass->length++] = 0x80 + ((c>>6) & 0x3f);
-				x[new_pass->length++] = 0x80 + (c & 0x3f);
+				new_pass->length += 3;
 			}
 		}
+
+		new_pass->vp_strvalue = x = talloc_array(new_pass, char, new_pass->length + 1);
+
+		/*
+		 *	Second pass: convert the characters from UTF-16 to UTF-8.
+		 */
+		i = 0;
+		while (i < passlen) {
+			int c;
+
+			c = p[i++];
+			c += p[i++] << 8;
+
+			/*
+			 *  Gah. nasty. maybe we should just pull in iconv?
+			 */
+			if (c < 0x7f) {
+				*x++ = c;
+
+			} else if (c < 0x7ff) {
+				*x++ = 0xc0 + (c >> 6);
+				*x++ = 0x80 + (c & 0x3f);
+
+			} else {
+				*x++ = 0xe0 + (c >> 12);
+				*x++ = 0x80 + ((c>>6) & 0x3f);
+				*x++ = 0x80 + (c & 0x3f);
+			}
+		}
+
+		*x = '\0';
 
 		/* Perform the xlat */
 		result_len = radius_xlat(result, sizeof(result), request, inst->local_cpw, NULL, NULL);
@@ -1044,7 +1048,7 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		 *	then calculate the hash of the NT hash.  Doing this
 		 *	here minimizes work for later.
 		 */
-		if (password && !password->da->vendor &&
+		if (!password->da->vendor &&
 		    (password->da->attr == PW_NT_PASSWORD)) {
 			fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
 		}
@@ -1056,9 +1060,8 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		/*
 		 *	Run the program, and expect that we get 16
 		 */
-		result = radius_exec_program(request, inst->ntlm_auth, true, true,
-					     buffer, sizeof(buffer), inst->ntlm_auth_timeout,
-					     NULL, NULL);
+		result = radius_exec_program(buffer, sizeof(buffer), NULL, request, inst->ntlm_auth, NULL,
+					     true, true, inst->ntlm_auth_timeout);
 		if (result != 0) {
 			char *p;
 

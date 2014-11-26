@@ -340,7 +340,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		 *	Use the retrieved length of dname to allocate an output buffer, and then define the output
 		 *	variable (but only for char/string type columns).
 		 */
-		switch(dtype) {
+		switch (dtype) {
 #ifdef SQLT_AFC
 		case SQLT_AFC:	/* ansii fixed char */
 #endif
@@ -450,11 +450,13 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if database is down.
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 
 	int status;
 	rlm_sql_oracle_conn_t *conn = handle->conn;
+
+	*out = NULL;
 
 	if (!conn->ctx) {
 		ERROR("rlm_sql_oracle: Socket not connected");
@@ -466,7 +468,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 
 	status = OCIStmtFetch(conn->query, conn->error, 1, OCI_FETCH_NEXT, OCI_DEFAULT);
 	if (status == OCI_SUCCESS) {
-		handle->row = conn->row;
+		*out = handle->row = conn->row;
 
 		return 0;
 	}
@@ -546,25 +548,25 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
  *	       or insert)
  *
  *************************************************************************/
-static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	return sql_num_rows(handle, config);
 }
 
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_oracle = {
-	"rlm_sql_oracle",
-	NULL,
-	sql_socket_init,
-	sql_query,
-	sql_select_query,
-	sql_store_result,
-	sql_num_fields,
-	sql_num_rows,
-	sql_fetch_row,
-	sql_free_result,
-	sql_error,
-	sql_finish_query,
-	sql_finish_select_query,
-	sql_affected_rows
+	.name				= "rlm_sql_oracle",
+	.sql_socket_init		= sql_socket_init,
+	.sql_query			= sql_query,
+	.sql_select_query		= sql_select_query,
+	.sql_store_result		= sql_store_result,
+	.sql_num_fields			= sql_num_fields,
+	.sql_num_rows			= sql_num_rows,
+	.sql_affected_rows		= sql_affected_rows,
+	.sql_fetch_row			= sql_fetch_row,
+	.sql_free_result		= sql_free_result,
+	.sql_error			= sql_error,
+	.sql_finish_query		= sql_finish_query,
+	.sql_finish_select_query	= sql_finish_select_query
 };

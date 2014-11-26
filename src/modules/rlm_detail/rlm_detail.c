@@ -67,8 +67,8 @@ typedef struct detail_instance {
 
 static const CONF_PARSER module_config[] = {
 	{ "detailfile", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, detail_instance_t, filename), NULL },
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, detail_instance_t, filename), "%A/%{Client-IP-Address}/detail" },
-	{ "header", FR_CONF_OFFSET(PW_TYPE_STRING, detail_instance_t, header), "%t" },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, detail_instance_t, filename), "%A/%{Client-IP-Address}/detail" },
+	{ "header", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, detail_instance_t, header), "%t" },
 	{ "detailperm", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, detail_instance_t, perm), NULL },
 	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, detail_instance_t, perm), "0600" },
 	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, detail_instance_t, group), NULL },
@@ -233,7 +233,7 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 		if (is_radius_code(packet->code)) {
 			WRITE("\tPacket-Type = %s\n", fr_packet_codes[packet->code]);
 		} else {
-			WRITE("\tPacket-Type = %d\n", packet->code);
+			WRITE("\tPacket-Type = %u\n", packet->code);
 		}
 	}
 
@@ -315,9 +315,8 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 			WRITE("\tFreeradius-Proxied-To = %s\n", proxy_buffer);
 		}
 #endif
-
-		WRITE("\tTimestamp = %ld\n", (unsigned long) request->timestamp);
 	}
+	WRITE("\tTimestamp = %ld\n", (unsigned long) request->timestamp);
 
 	WRITE("\n");
 

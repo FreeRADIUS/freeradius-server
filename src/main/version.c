@@ -38,7 +38,7 @@ static long ssl_built = OPENSSL_VERSION_NUMBER;
 /** Check built and linked versions of OpenSSL match
  *
  * OpenSSL version number consists of:
- * MMNNFFPPS: major minor fix patch status
+ * MNNFFPPS: major minor fix patch status
  *
  * Where status >= 0 && < 10 means beta, and status 10 means release.
  *
@@ -56,11 +56,11 @@ int ssl_check_consistency(void)
 	/*
 	 *	Status mismatch always triggers error.
 	 */
-	if ((ssl_linked & 0x00000000f) != (ssl_built & 0x00000000f)) {
+	if ((ssl_linked & 0x0000000f) != (ssl_built & 0x0000000f)) {
 	mismatch:
 		ERROR("libssl version mismatch.  built: %lx linked: %lx",
-		       (unsigned long) ssl_built,
-		       (unsigned long) ssl_linked);
+		      (unsigned long) ssl_built,
+		      (unsigned long) ssl_linked);
 
 		return -1;
 	}
@@ -70,14 +70,14 @@ int ssl_check_consistency(void)
 	 *	1.0.0 and only allow moving backwards within a patch
 	 *	series.
 	 */
-	if (ssl_built & 0xff) {
-		if ((ssl_built & 0xffff) != (ssl_linked & 0xffff) ||
-		    (ssl_built & 0x0000ff) > (ssl_linked & 0x0000ff)) goto mismatch;
+	if (ssl_built & 0xf00000000) {
+		if ((ssl_built & 0xfffff000) != (ssl_linked & 0xfffff000) ||
+		    (ssl_built & 0x00000ff0) > (ssl_linked & 0x00000ff0)) goto mismatch;
 	/*
 	 *	Before 1.0.0 we require the same major minor and fix version
 	 *	and ignore the patch number.
 	 */
-	} else if ((ssl_built & 0xffffff) != (ssl_linked & 0xffffff)) goto mismatch;
+	} else if ((ssl_built & 0xfffff000) != (ssl_linked & 0xfffff000)) goto mismatch;
 
 	return 0;
 }
@@ -89,22 +89,36 @@ int ssl_check_consistency(void)
  * @param v version to convert.
  * @return pointer to a static buffer containing the version string.
  */
-char const *ssl_version_by_num(uint64_t v)
+char const *ssl_version_by_num(uint32_t v)
 {
-	/* 2 (%s) + 1 (.) + 2 (%i) + 1 (.) + 2 (%i) + 1 (c) + 1 (-) + 2 (%i) + \0 */
-	static char buffer[13];
+	/* 2 (%s) + 1 (.) + 2 (%i) + 1 (.) + 2 (%i) + 1 (c) + 8 (%s) + \0 */
+	static char buffer[18];
 	char *p = buffer;
 
-	p += sprintf(p, "%i.%i.%i",
-		     (int) ((0xff0000000 & v) >> 28),
-		     (int) ((0x00ff00000 & v) >> 20),
-		     (int) ((0x0000ff000 & v) >> 12));
+	p += sprintf(p, "%u.%u.%u",
+		     (0xf0000000 & v) >> 28,
+		     (0x0ff00000 & v) >> 20,
+		     (0x000ff000 & v) >> 12);
 
-	if ((0x000000ff0 & v) >> 4) {
-		*p++ =  (char) (0x60 + ((0x000000ff0 & v) >> 4));
+	if ((0x00000ff0 & v) >> 4) {
+		*p++ =  (char) (0x60 + ((0x00000ff0 & v) >> 4));
 	}
 
-	sprintf(p, "-%i", (int) (0x00000000f & v));
+	*p++ = ' ';
+
+	/*
+	 *	Development (0)
+	 */
+	if ((0x0000000f & v) == 0) {
+		strcpy(p, "dev");
+	/*
+	 *	Beta (1-14)
+	 */
+	} else if ((0x0000000f & v) <= 14) {
+		sprintf(p, "beta %u", 0x0000000f & v);
+	} else {
+		strcpy(p, "release");
+	}
 
 	return buffer;
 }
@@ -117,7 +131,7 @@ char const *ssl_version_by_num(uint64_t v)
  * @param high version to convert.
  * @return pointer to a static buffer containing the version range string.
  */
-char const *ssl_version_range(uint64_t low, uint64_t high)
+char const *ssl_version_range(uint32_t low, uint32_t high)
 {
 	/* 12 (version) + 3 ( - ) + 12 (version) */
 	static char buffer[28];
@@ -141,12 +155,12 @@ char const *ssl_version(void)
 {
 	static char buffer[256];
 
-	uint64_t v = (uint64_t) SSLeay();
+	uint32_t v = SSLeay();
 
-	snprintf(buffer, sizeof(buffer), "%s 0x%.9" PRIx64 " (%s)",
+	snprintf(buffer, sizeof(buffer), "%s 0x%.8x (%s)",
 		 SSLeay_version(SSLEAY_VERSION),		/* Not all builds include a useful version number */
 		 v,
-		 ssl_version_by_num((uint64_t) v));
+		 ssl_version_by_num(v));
 
 	return buffer;
 }
@@ -276,14 +290,27 @@ void version(void)
 	DEBUG3("  0x%llx", (unsigned long long) libmagic);
 
 	DEBUG3("Endianess:");
-#if defined(LITTLE_ENDIAN)
+#if defined(RADIUS_LITTLE_ENDIAN)
 	DEBUG3("  little");
-#elif defined(BIG_ENDIAN)
+#elif defined(RADIUS_BIG_ENDIAN)
 	DEBUG3("  big");
 #else
 	DEBUG3("  unknown");
 #endif
 
+	DEBUG3("Compilation flags:");
+#ifdef BUILT_WITH_CPPFLAGS
+	DEBUG3("  cppflags : " BUILT_WITH_CPPFLAGS);
+#endif
+#ifdef BUILT_WITH_CFLAGS
+	DEBUG3("  cflags   : " BUILT_WITH_CFLAGS);
+#endif
+#ifdef BUILT_WITH_LDFLAGS
+	DEBUG3("  ldflags  : " BUILT_WITH_LDFLAGS);
+#endif
+#ifdef BUILT_WITH_LIBS
+	DEBUG3("  libs     : " BUILT_WITH_LIBS);
+#endif
 	INFO("Copyright (C) 1999-2014 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");

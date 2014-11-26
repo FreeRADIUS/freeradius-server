@@ -154,13 +154,6 @@ typedef struct ldap_instance {
 	char const	*clientobj_scope_str;		//!< Scope (sub, one, base).
 	int		clientobj_scope;		//!< Search scope.
 
-	char const	*clientobj_identifier;		//!< IP/FQDN/IP Prefix for the NAS.
-	char const	*clientobj_shortname;		//!< Short/Friendly name to assign.
-	char const	*clientobj_type;		//!< Type of NAS (not usually used).
-	char const	*clientobj_secret;		//!< RADIUS secret.
-	char const	*clientobj_server;		//!< Virtual server to associate the client with.
-	char const	*clientobj_require_ma;		//!< Require message-authenticator.
-
 	bool		do_clients;			//!< If true, attempt to load clients on instantiation.
 
 	/*
@@ -321,6 +314,8 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
 
 int rlm_ldap_is_dn(char const *str);
 
+size_t rlm_ldap_normalise_dn(char *out, char const *in);
+
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
 ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
@@ -348,9 +343,9 @@ void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request);
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
 
-ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, REQUEST *request);
+ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, REQUEST *request);
 
-void rlm_ldap_release_socket(ldap_instance_t const *inst, ldap_handle_t *conn);
+void mod_conn_release(ldap_instance_t const *inst, ldap_handle_t *conn);
 
 /*
  *	groups.c - Group membership functions.
@@ -372,7 +367,7 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 /*
  *	attrmap.c - Attribute mapping code.
  */
-int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head);
+int rlm_ldap_map_verify(value_pair_map_t *map, void *instance);
 
 void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded);
 
@@ -387,7 +382,7 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 /*
  *	clients.c - Dynamic clients (bulk load).
  */
-int  rlm_ldap_load_clients(ldap_instance_t const *inst);
+int  rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs);
 
 /*
  *	edir.c - Magic extensions for Novell

@@ -4,14 +4,16 @@ rlm_couchbase
 General
 -------
 
-This module allows you to write accounting data directly to Couchbase as JSON documents and authorize users from JSON documents stored within Couchbase.  It was tested to handle thousands of radius requests per second from several thousand Aerohive access points using a FreeRADIUS installation with this module for accounting and authorization.  You should list the ```couchbase``` module in both the ```accounting``` and ```authorization``` sections of your site configuration if you are planning to use it for both purposes.  You should also have ```pap``` enabled for authenticating users based on cleartext or hashed password attributes.  As always YMMV.
+This module supports accounting, authorization, dynamic clients and simultaneous use checking.  Accounting data is written directly to Couchbase as JSON documents and user authorization information is read from JSON documents stored within Couchbase.    You should list the ```couchbase``` module in both the ```accounting``` and ```authorization``` sections of your site configuration if you are planning to use it for both purposes.  You should also have ```pap``` enabled for authenticating users based on cleartext or hashed password attributes.  To enable simultanous use checking you will need to modify the configuration parameters described below and list the ```couchbase``` module in the ```session`` and ```accounting``` sections of your site configuration.
+
+It was tested to handle thousands of RADIUS requests per second from several thousand Aerohive access points using a FreeRADIUS installation with this module for accounting and authorization.
 
 Accounting
 ----------
 
-You can use any radius attribute available in the accounting request to build the key for storing the accounting documents. The default configuration will try to use 'Acct-Unique-Session-Id' and fallback to 'Acct-Session-Id' if 'Acct-Unique-Session-Id' is not present.  You will need to have the ```acct_unique``` policy in the ```preacct``` section of your configuration to generate the unique id attribute.   Different status types (start/stop/update) are merged into a single document to facilitate querying and reporting via views.  When everything is configured correctly you will see accounting requests recorded as JSON documents in your Couchbaase cluster.  You have full control over what attributes are recorded and how those attributes are mapped to JSON element names via the configuration descibed later in this document.
+You can use any RADIUS attribute available in the accounting request to build the key for storing the accounting documents. The default configuration will try to use 'Acct-Unique-Session-Id' and fallback to 'Acct-Session-Id' if 'Acct-Unique-Session-Id' is not present.  You will need to have the ```acct_unique``` policy in the ```preacct``` section of your configuration to generate the unique id attribute.   Different status types (start/stop/update) are merged into a single document to facilitate querying and reporting via views.  When everything is configured correctly you will see accounting requests recorded as JSON documents in your Couchbaase cluster.  You have full control over what attributes are recorded and how those attributes are mapped to JSON element names via the configuration descibed later in this document.
 
-This exmaple is from an Aerohive wireless access point.
+This example is from an Aerohive wireless access point.
 
 ```
 {
@@ -49,7 +51,7 @@ To generate the 'calledStationSSID' fields you will need to use the ```rewrite_c
 
 ```
 ## simple nt domain regex
-simple_nt_regexp = "^([^\\\\\\\\]*)(\\\\\\\\(.*))$"
+simple_nt_regexp = "^([^\\]*)(\\(.*))$"
 
 ## simple nai regex
 simple_nai_regexp = "^([^@]*)(@(.*))$"
@@ -58,14 +60,14 @@ simple_nai_regexp = "^([^@]*)(@(.*))$"
 strip_user_domain {
 	if(User-Name && (User-Name =~ /${policy.simple_nt_regexp}/)){
 		update request {
-			Stripped-User-Domain = "%{1}"
-			Stripped-User-Name = "%{3}"
+			&Stripped-User-Domain = "%{1}"
+			&Stripped-User-Name = "%{3}"
 		}
 	}
 	elsif(User-Name && (User-Name =~ /${policy.simple_nai_regexp}/)){
 		update request {
-			Stripped-User-Name = "%{1}"
-			Stripped-User-Domain = "%{3}"
+			&Stripped-User-Name = "%{1}"
+			&Stripped-User-Domain = "%{3}"
 		}
 	}
 	else {
@@ -79,11 +81,11 @@ You can then reference this policy in both the ```preacct``` and ```authorizatio
 Authorization
 -------------
 
-The authorization funcionality relies on the user documents being stored with deterministic keys based on information available in the authorization request.  The format of those keys may be specified in unlang like the example below:
+The authorization functionality relies on the user documents being stored with deterministic keys based on information available in the authorization request.  The format of those keys may be specified in unlang like the example below:
 
 ```user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"```
 
-This will create an md5 hash of the lowercase 'Stripped-User-Name' attribute or the 'User-Name' attribute if 'Stripped-User-Name' doesn't exist.  The module will then attempt to fetch the resulting key from the configured couchbase bucket.
+This will create an md5 hash of the lowercase 'Stripped-User-Name' attribute or the 'User-Name' attribute if 'Stripped-User-Name' doesn't exist.  The module will then attempt to fetch the resulting key from the configured Couchbase bucket.
 
 The document structure is straight forward and flexible:
 
@@ -106,7 +108,63 @@ The document structure is straight forward and flexible:
 }
 ```
 
-You may specify any valid combination of attributes and operations in the JSON document.
+You may specify any valid combination of attributes and operators in the JSON document ```config``` and ```reply``` sections.  All other elements present in the user document will not be parsed and are ignored by the module.
+
+Clients
+-------
+
+The client functionality depends on a combination of client documents and a simple view that returns those document keys.  Client documents are only loaded ONCE on server startup so there should be no performance penalty using a view for this purpose.
+
+To enable the client loading functionality you will need to set the ```read_clients``` config option to 'yes' and specify a fully qualified view path in the ```client_view``` option.
+
+Example client document:
+
+```json
+{
+	"docType": "radclient",
+	"clientIdentifier": "13.0.0.0/8",
+	"clientSecret": "testing123"
+}
+```
+
+The element names and the client attributes to which they map are completely configurable. Elements present in the document that are not enumerated in the module configuration will be ignored.  In addition to this document you will also need a view that returns the keys of all client documents you wish to load.
+
+Example client view:
+
+```js
+function (doc, meta) {
+  if (doc.docType && doc.docType == "radclient") {
+    emit(meta.id, null);
+  }
+}
+```
+
+This is the simplest possible view that would return all documents in the specified bucket having a ```docType``` element withmeta.id ```radclient``` value.  The module only reads the ```id``` element in the returned view thus no additional output is needed and any additional output would be ignored.
+
+To have the module load only a subset of the client documents contained within the bucket you could add additional elements to the client documents and then filter based on those elements within your view
+
+Simultaneous Use
+----------------
+
+The simultaneous use function relies on data stored in the accounting documents.  When a user attempts to authenticate a view request is made to return all accounting type documents for the current user that do not contain a populates ```stopTimestamp``` value.
+
+Example check view:
+
+```js
+function (doc, meta) {
+  if (doc.docType && doc.docType == "radacct" && doc.userName && !doc.stopTimestamp) {
+    if (doc.strippedUserName) {
+      emit(doc.strippedUserName.toLowerCase(), null);
+    } else {
+      emit(doc.userName.toLowerCase(), null);
+    }
+  }
+}
+```
+
+The key (first emitted field) will need to match *EXACTLY* what you set for ```simul_vkey``` in the module configuration described below.  The default xlat value will attempt to return the lower case 'Stripped-User-Name' attribute or 'User-Name' if the stripped version is not available.
+
+When the total number of keys (sessions) returned is greater than or equal to the ```Simultaneous-Use``` config section value of the current user, the user will be denied access.  When verification is also enabled, each returned key will be fetched and the appropriate information will be passed on to the ```checkrad``` utillity to verify the session status.  If ```checkrad``` determines the session is no longer valid (stale) the session will be updated and closed in Couchbase (if configured) and that session will not be counted against the users login limit.  Further information is available in the configuration file shown below.
 
 To Use
 ------
@@ -169,6 +227,7 @@ couchbase {
 		calledStationId     = 'Called-Station-Id'
 		calledStationSSID   = 'Called-Station-SSID'
 		callingStationId    = 'Calling-Station-Id'
+		framedProtocol      = 'Framed-Protocol'
 		framedIpAddress     = 'Framed-IP-Address'
 		nasPortType         = 'NAS-Port-Type'
 		connectInfo         = 'Connect-Info'
@@ -184,6 +243,69 @@ couchbase {
 
 	# Couchbase document key for user documents (unlang supported)
 	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+
+	# Set to 'yes' to read radius clients from the Couchbase view specified below.
+	# NOTE: Clients will ONLY be read on server startup.
+	#read_clients = no
+
+	#
+	#  Map attribute names to json element names when loading clients.
+	#
+	#  Configuration follows the same rules as the accounting map above.
+	#
+	client {
+		# Couchbase view that should return all available client documents.
+		view = "_design/client/_view/by_id"
+
+		#
+		# Client mappings are in the format:
+		#  <client attribute> = '<element name>'
+		#
+		# Element names should be single quoted.
+		#
+		# The following attributes are required:
+		#  * ipaddr | ipv4addr | ipv6addr - Client IP Address.
+		#  * secret - RADIUS shared secret.
+		#
+		# All attributes usually supported in a client
+		# definition are also supported here.
+		#
+		attribute {
+			ipaddr                          = 'clientIdentifier'
+			secret                          = 'clientSecret'
+			shortname                       = 'clientShortname'
+			nas_type                        = 'nasType'
+			virtual_server                  = 'virtualServer'
+			require_message_authenticator   = 'requireMessageAuthenticator'
+			limit {
+				max_connections             = 'maxConnections'
+				lifetime                    = 'clientLifetime'
+				idle_timeout                = 'idleTimeout'
+			}
+		}
+	}
+
+	# Set to 'yes' to enable simultaneous use checking (multiple logins).
+	# NOTE: This will cause the execution of a view request on every check
+	# and may be a performance penalty.
+	#check_simul = no
+
+	# Couchbase view that should return all account documents keyed by username.
+	#simul_view = "_design/acct/_view/by_user"
+
+	# The key to the above view.
+	# NOTE: This will need to match EXACTLY what you emit from your view.
+	#simul_vkey = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}"
+
+	# Set to 'yes' to enable verification of the results returned from the above view.
+	# NOTE: This may be an additional performance penalty to the actual check and
+	# should be avoided unless absolutely neccessary.
+	#verify_simul = no
+
+	# Remove stale session if checkrad does not see a double login.
+	# NOTE: This will only be executed if both check_simul and verify_simul
+	# are set to 'yes' above.
+	#delete_stale_sessions = yes
 
 	#
 	#  The connection pool is new for 3.0, and will be used in many

@@ -232,7 +232,7 @@ ldap {
 		#
 		#  Filter to match client objects
 		#
-		filter = '(objectClass=frClient)'
+		filter = '(objectClass=radiusClient)'
 
 		# Search scope, may be 'base', 'one', 'sub' or 'children'
 #		scope = 'sub'
@@ -241,23 +241,17 @@ ldap {
 		#  Client attribute mappings are in the format:
 		#      <client attribute> = <ldap attribute>
 		#
-		#  Arbitrary attributes (accessible by %{client:<attr>}) are not yet supported.
-		#
 		#  The following attributes are required:
-		#    * identifier - IPv4 address, or IPv4 address with prefix, or hostname.
+		#    * ipaddr | ipv4addr | ipv6addr - Client IP Address.
 		#    * secret - RADIUS shared secret.
 		#
-		#  The following attributes are optional:
-		#    * shortname - Friendly name associated with the client
-		#    * nas_type - NAS Type
-		#    * virtual_server - Virtual server to associate the client with
-		#    * require_message_authenticator - Whether we require the Message-Authenticator
-		#      attribute to be present in requests from the client.
+		#  All other attributes usually supported in a client
+		#  definition are also supported here.
 		#
 		#  Schemas are available in doc/schemas/ldap for openldap and eDirectory
 		#
 		attribute {
-			identifier			= 'radiusClientIdentifier'
+			ipaddr				= 'radiusClientIdentifier'
 			secret				= 'radiusClientSecret'
 #			shortname			= 'radiusClientShortname'
 #			nas_type			= 'radiusClientType'
@@ -462,6 +456,12 @@ ldap {
 		#  Idle timeout (in seconds).  A connection which is
 		#  unused for this length of time will be closed.
 		idle_timeout = 60
+
+		# The number of seconds to wait after the server tries
+		# to open a connection, and fails.  During this time,
+		# no new connections will be opened.
+		#
+		retry_delay = 1
 
 		#  NOTE: All configuration settings are enforced.  If a
 		#  connection is closed because of "idle_timeout",

@@ -4,9 +4,10 @@
 update {
 	# Some encoders replace ~ with %7E RFC3986 Section 2.4 says this should not be done.
 	request:Tmp-String-0 := '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_.~'
-	request:Tmp-String-1 := '±§!@#$%^&*()+={[}]:;"'|\<,>?/`'
+	request:Tmp-String-1 := '±§!@#$%^&*()+={[}]:;"\'|\<,>?/`'
 	request:Tmp-String-2 := '™œ¥¤'
-	request:Tmp-String-3 := '%C2%B1%C2%A7%21%40%23%24%25%5E%26%2A%28%29%2B%3D%7B%5B%7D%5D%3A%3B%5C%22'
+	request:Tmp-String-3 := '%C2%B1%C2%A7%21%40%23%24%25%5E%26%2A%28%29%2B%3D%7B%5B%7D%5D%3A%3B%22%27%7C%5C%3C%2C%3E%3F%2F%60'
+
 	request:Tmp-String-4 := '%E2%84%A2%C5%93%C2%A5%C2%A4'
 	reply:Filter-ID := 'filter'
 }

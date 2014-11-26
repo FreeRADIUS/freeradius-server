@@ -12,14 +12,14 @@ if test x$with_[]modname != xno; then
     dnl # Check for command line options
     dnl ############################################################
 
-    dnl extra argument: --with-securid-include-dir=DIR
+    dnl extra argument: --with-rlm-securid-include-dir=DIR
     securid_include_dir=
-    AC_ARG_WITH(securid-include-dir,
-	[AS_HELP_STRING([--with-securid-include-dir=DIR],
+    AC_ARG_WITH(rlm-securid-include-dir,
+	[AS_HELP_STRING([--with-rlm-securid-include-dir=DIR],
 		[Directory where the securid includes may be found])],
 	[case "$withval" in
 	    no)
-		AC_MSG_ERROR(Need securid-include-dir)
+		AC_MSG_ERROR(Need rlm-securid-include-dir)
 		;;
 	    yes)
 		;;
@@ -28,14 +28,14 @@ if test x$with_[]modname != xno; then
 		;;
 	esac])
 
-    dnl extra argument: --with-securid-lib-dir=DIR
+    dnl extra argument: --with-rlm-securid-lib-dir=DIR
     securid_lib_dir=
-    AC_ARG_WITH(securid-lib-dir,
-	[AS_HELP_STRING([--with-securid-lib-dir=DIR],
+    AC_ARG_WITH(rlm-securid-lib-dir,
+	[AS_HELP_STRING([--with-rlm-securid-lib-dir=DIR],
 		[Directory where the securid libraries may be found])],
 	[case "$withval" in
 	    no)
-		AC_MSG_ERROR(Need securid-lib-dir)
+		AC_MSG_ERROR(Need rlm-securid-lib-dir)
 		;;
 	    yes)
 		;;
@@ -44,19 +44,19 @@ if test x$with_[]modname != xno; then
 		;;
 	esac])
 
-    dnl extra argument: --with-securid-dir=DIR
-    AC_ARG_WITH(securid-dir,
-	[AS_HELP_STRING([--with-securid-dir=DIR],
+    dnl extra argument: --with-rlm-securid-dir=DIR
+    AC_ARG_WITH(rlm-securid-dir,
+	[AS_HELP_STRING([--with-rlm-securid-dir=DIR],
 		[Base directory where securid is installed])],
 	[case "$withval" in
 	    no)
-		AC_MSG_ERROR(Need securid-dir)
+		AC_MSG_ERROR(Need rlm-securid-dir)
 		;;
 	    yes)
 		;;
 	    *)
 		securid_lib_dir="$withval/lib"
-		securid_include_dir="$withval/include"
+		securid_include_dir="$withval/inc"
 		;;
 	esac])
 
@@ -64,6 +64,7 @@ if test x$with_[]modname != xno; then
     dnl # Check for header files
     dnl ############################################################
     
+    smart_try_dir="$securid_include_dir"
     FR_SMART_CHECK_INCLUDE(acexport.h)
     if test "x$ac_cv_header_acexport_h" != "xyes"; then
       AC_MSG_WARN([securid headers not found. Use --with-securid-include-dir=<path>.])

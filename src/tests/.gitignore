@@ -2,6 +2,7 @@
 .foo
 .bar
 .request
+*.ok
 dictionary
 test.conf
 radius.log

@@ -96,8 +96,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 				    password, SQL_NTS);
 	}
 
-
-	if(retval != SQL_SUCCESS) {
+	if (retval != SQL_SUCCESS) {
 		ERROR("could not connect to DB2 server %s", config->sql_server);
 
 		return RLM_SQL_ERROR;
@@ -181,12 +180,14 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	int c, i;
 	SQLINTEGER len, slen;
 	rlm_sql_row_t retval;
 	rlm_sql_db2_conn_t *conn;
+
+	*out = NULL;
 
 	conn = handle->conn;
 
@@ -195,7 +196,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	memset(retval, 0, c*sizeof(char*)+1);
 
 	/* advance cursor */
-	if(SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) {
+	if (SQLFetch(conn->stmt) == SQL_NO_DATA_FOUND) {
 		handle->row = NULL;
 		goto error;
 	}
@@ -213,7 +214,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 		}
 	}
 
-	handle->row = retval;
+	*out = handle->row = retval;
 	return RLM_SQL_OK;
 
 error:
@@ -315,18 +316,15 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_db2 = {
-	"rlm_sql_db2",
-	NULL,
-	sql_socket_init,
-	sql_query,
-	sql_select_query,
-	NULL, /* sql_store_result */
-	sql_num_fields,
-	NULL, /* sql_num_rows */
-	sql_fetch_row,
-	sql_free_result,
-	sql_error,
-	sql_finish_query,
-	sql_finish_select_query,
-	sql_affected_rows,
+	.name				= "rlm_sql_db2",
+	.sql_socket_init		= sql_socket_init,
+	.sql_query			= sql_query,
+	.sql_select_query		= sql_select_query,
+	.sql_num_fields			= sql_num_fields,
+	.sql_affected_rows		= sql_affected_rows,
+	.sql_fetch_row			= sql_fetch_row,
+	.sql_free_result		= sql_free_result,
+	.sql_error			= sql_error,
+	.sql_finish_query		= sql_finish_query,
+	.sql_finish_select_query	= sql_finish_select_query
 };

@@ -56,16 +56,16 @@ static CONF_PARSER tls_config[] = {
  *	buffer over-flows.
  */
 static const CONF_PARSER section_config[] = {
-	{ "uri", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, uri), ""   },
+	{ "uri", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, uri), ""   },
 	{ "method", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, method_str), "GET" },
 	{ "body", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, body_str), "none" },
-	{ "data", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, data), NULL },
+	{ "data", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data), NULL },
 	{ "force_to", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, force_to_str), NULL },
 
 	/* User authentication */
 	{ "auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, auth_str), "none" },
-	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, username), NULL },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, password), NULL },
+	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, username), NULL },
+	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, password), NULL },
 	{ "require_auth", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, require_auth), "no" },
 
 	/* Transfer configuration */
@@ -650,6 +650,11 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 				      "markup format", config->body_str);
 			return -1;
 
+		case HTTP_BODY_UNAVAILABLE:
+			cf_log_err_cs(cs, "Unavailable HTTP body type.  \"%s\" is not available in this "
+				      "build", config->body_str);
+			return -1;
+
 		default:
 			break;
 		}
@@ -765,8 +770,6 @@ static int mod_detach(void *instance)
 	rlm_rest_t *inst = instance;
 
 	fr_connection_pool_delete(inst->conn_pool);
-
-	xlat_unregister(inst->xlat_name, rest_xlat, instance);
 
 	/* Free any memory used by libcurl */
 	rest_cleanup();

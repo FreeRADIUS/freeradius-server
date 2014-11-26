@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "15 April 2014" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "24 November 2014" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -183,7 +183,7 @@ the current block.
 .DS
 	update <list> {
 .br
-		Attribute-Reference = value
+		&Attribute-Reference = value
 .br
 		...
 .br
@@ -191,8 +191,9 @@ the current block.
 .DE
 
 The <list> can be one of "request", "reply", "proxy-request",
-"proxy-reply", "coa", "disconnect", or "control".  As of Version 3,
-the <list> can be omitted, in which case "request" is assumed.
+"proxy-reply", "coa", "disconnect", "session-state", or "control".  As
+of Version 3, the <list> can be omitted, in which case "request" is
+assumed.
 
 The "control" list is the list of attributes maintainted internally by
 the server that controls how the server processes the request.  Any
@@ -214,6 +215,11 @@ list causes server to originate a CoA-Request or Disconnect-Request
 packet.  That packet is sent when the current Access-Request or
 Accounting-Request has been finished, and a reply sent to the NAS.
 See raddb/sites-available/originate-coa for additional information.
+
+The "session-state" list is primarily used for EAP.  Attributes put
+into the "session-state" list are saved for the next packet in the
+session.  They are automatically retreived when the next packet is
+received.
 
 The only contents permitted in an "update" section are attributes and
 values.  The contents of the "update" section are described in the
@@ -293,22 +299,40 @@ or update an attribute list.
 .br
 	}
 .DE
+
+.IP return
+.br
+Returns from the current top-level section, e.g. "authorize" or
+"authenticate".  This keyword is mainly used to avoid layers of nested
+"if" and "else" statements.
+
+.DS
+	authorize {
+.br
+		if (...) {
+.br
+			...
+.br
+			return
+.br
+		}
+.br
+		...  # this is never reached when the "if"
+.br
+		...  # statement is executed
+.br
+	}
+.DE
 .SH ATTRIBUTE REFERENCES
 
 Attributes may be referenced via the following syntax:
-
 .DS
-	Attribute-Name
-.br
-	Attribute-Name:TAG
-.br
-	Attribute-Name[NUM]
-.br
-	<list>:Attribute-Name
-.br
-	<list>:Attribute-Name:TAG[NUM]
+	&Attribute-Name
+	&Attribute-Name:TAG
+	&Attribute-Name[NUM]
+	&<list>:Attribute-Name
+	&<list>:Attribute-Name:TAG[NUM]
 .DE
-
 Where <list> is one of "request", "reply", "control", "proxy-request",
 "proxy-reply", or "outer.request", "outer.reply", "outer.control",
 "outer.proxy-request", or "outer.proxy-reply". just as with the
@@ -324,9 +348,14 @@ name in a list.  The "Attribute-Name" reference will return the first
 attribute.  Using an array offset allows the policy to refer to the
 second and subsequent attributes.
 
+If '#' is used in the NUM portion, it evaluates to the number of times
+the attribute appears in the request.
+
+If '*' is used in the NUM portion, it evaluates to all instances of
+the attribute in the request.
+
 When an attribute name is encountered, the given list is examined for
 an attribute of the given name.  Some examples are:
-
 .DS
 	User-Name
 .br
@@ -340,7 +369,6 @@ an attribute of the given name.  Some examples are:
 .br
 	outer.request:User-Name # from inside of a TTLS/PEAP tunnel
 .DE
-
 Note that unlike C, there is no way to define new attributes at
 run-time.  They MUST be declared in a dictionary file, and loaded when
 the server starts.
@@ -418,7 +446,7 @@ comparison operators are ":=" and "=".
 .RE
 .IP Attribute Comparisons
 .DS
-	(User-Name == "foo")
+	(&User-Name == "foo")
 .DE
 
 Compares the value of the User-Name attribute to the string 'foo', and
@@ -428,7 +456,7 @@ comparison of the two sides of the condition.
 .RE
 .IP Inter-Attribute Comparisons
 .DS
-	(User-Name == &Filter-Id)
+	(&User-Name == &Filter-Id)
 .DE
 
 Compares the value of the User-Name attribute to the contents of the
@@ -443,8 +471,25 @@ to the Filter-Id attribute.  If left off, it means that the User-Name
 attribute is compared to the literal string "Filter-Id".
 
 Where the left-hand side is an attribute, the "&" can be omitted.
-However, it is allowed for completeness.  e.g. The comparison
+However, it is allowed for backwards compatibility.  e.g. The comparison
 "(&User-Name == &Filter-Id)" is equivalent to the example above.
+
+We recommend using attribute references instead of printing
+attributes to a string, e.g. (User-Name == "%{Filter-Id}").
+Attribute references will be faster and more efficient.
+
+The conditions will check only the first occurance of an attribute.
+If there is more than one instance of an attribute, the following
+syntax should be used:
+
+.DS
+	(&Attribute-Name[*] == "foo")
+.DE
+
+Using the "[*]" syntax means that it checks all of the instances of
+the named attribute.  If one attribute matches, the condition
+succeeds.  If none match, the condition fails.
+
 .RE
 .IP Casts
 .DS
@@ -496,15 +541,15 @@ Using attribute references permits limited type-specific comparisons,
 as seen in the examples below.
 
 .DS
-	if (User-Name == "bob") {
+	if (&User-Name == "bob") {
 .br
 		...
 .br
-	if (Framed-IP-Address > 127.0.0.1) {
+	if (&Framed-IP-Address > 127.0.0.1) {
 .br
 		...
 .br
-	if (Service-Type == Login-User) { 
+	if (&Service-Type == Login-User) {
 .DE
 .RE
 .IP """strings"""
@@ -656,13 +701,15 @@ the following, with the given meaning.
 .IP =
 Add the attribute to the list, if and only if an attribute of the same
 name is not already present in that list.
-.IP := 
+.IP :=
 Add the attribute to the list.  If any attribute of the same name is
 already present in that list, its value is replaced with the value of
 the current attribute.
 .IP +=
 Add the attribute to the tail of the list, even if attributes of the
-same name are already present in the list.
+same name are already present in the list. When the right hand side
+of the expression resolves to multiple values, it means add all values
+to the tail of the list.
 .RE
 .PP
 Enforcement and Filtering Operators
@@ -710,6 +757,13 @@ reference.  The "Attribute-Name" is an attribute name, such as
 used, both attributes must have the same data type.  For example,
 "User-Name := &NAS-Port" is invalid, because "User-Name" is a string,
 and "NAS-Port" is an integer.
+
+We recommend using the form "Attribute-1 = &Attribute-2" for updates,
+instead of "Attribute-1 = "%{Attribute-2}".  The first version will
+copy the attribute data, no matter what its form.  The second
+version will print the Attribute-2 to a string, and then parse it to
+create the value for Attribute-1.  This second version is slower
+and more fragile than the first one.
 
 When the value is an attribute-specific string, it can be a string,
 integer, IP address, etc.  The value may be expanded as described

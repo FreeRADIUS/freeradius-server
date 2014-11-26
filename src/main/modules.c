@@ -336,8 +336,7 @@ static int module_instance_cmp(void const *one, void const *two)
 }
 
 
-static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t *node,
-				     time_t when)
+static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t *node, time_t when)
 {
 	fr_module_hup_t *mh, **last;
 
@@ -369,33 +368,33 @@ static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t 
  */
 static void module_instance_free(void *data)
 {
-	module_instance_t *this = data;
+	module_instance_t *module = talloc_get_type_abort(data, module_instance_t);
 
-	module_instance_free_old(this->cs, this, time(NULL) + 100);
+	module_instance_free_old(module->cs, module, time(NULL) + 100);
 
 #ifdef HAVE_PTHREAD_H
-	if (this->mutex) {
+	if (module->mutex) {
 		/*
 		 *	FIXME
 		 *	The mutex MIGHT be locked...
 		 *	we'll check for that later, I guess.
 		 */
-		pthread_mutex_destroy(this->mutex);
-		talloc_free(this->mutex);
+		pthread_mutex_destroy(module->mutex);
+		talloc_free(module->mutex);
 	}
 #endif
 
 	/*
 	 *	Remove any registered paircompares.
 	 */
-	paircompare_unregister_instance(this->insthandle);
+	paircompare_unregister_instance(module->insthandle);
 
-	xlat_unregister(this->name, NULL, this->insthandle);
-
-#ifndef NDEBUG
-	memset(this, 0, sizeof(*this));
-#endif
-	talloc_free(this);
+	xlat_unregister(module->name, NULL, module->insthandle);
+	/*
+	 *	Remove all xlat's registered to module instance.
+	 */
+	if (module->insthandle) xlat_unregister_module(module->insthandle);
+	talloc_free(module);
 }
 
 
@@ -445,8 +444,7 @@ int modules_free(void)
 /*
  *	Find a module on disk or in memory, and link to it.
  */
-static module_entry_t *linkto_module(char const *module_name,
-				     CONF_SECTION *cs)
+static module_entry_t *linkto_module(char const *module_name, CONF_SECTION *cs)
 {
 	module_entry_t myentry;
 	module_entry_t *node;
@@ -472,23 +470,15 @@ static module_entry_t *linkto_module(char const *module_name,
 	 */
 	handle = lt_dlopenext(module_name);
 	if (!handle) {
-		cf_log_err_cs(cs,
-			   "Failed to link to module '%s': %s\n",
-			   module_name, dlerror());
+		cf_log_err_cs(cs, "Failed to link to module '%s': %s", module_name, dlerror());
 		return NULL;
 	}
 
-	DEBUG3("    (Loaded %s, checking if it's valid)", module_name);
+	DEBUG3("Loaded %s, checking if it's valid", module_name);
 
-	/*
-	 *	libltld MAY core here, if the handle it gives us contains
-	 *	garbage data.
-	 */
 	module = dlsym(handle, module_name);
 	if (!module) {
-		cf_log_err_cs(cs,
-			   "Failed linking to %s structure: %s\n",
-			   module_name, dlerror());
+		cf_log_err_cs(cs, "Failed linking to %s structure: %s", module_name, dlerror());
 		dlclose(handle);
 		return NULL;
 	}
@@ -913,7 +903,7 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
  *	Load a sub-module list, as found inside an Auth-Type foo {}
  *	block
  */
-static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
+static int load_subcomponent_section(CONF_SECTION *cs,
 				     rbtree_t *components,
 				     DICT_ATTR const *da, rlm_components_t comp)
 {
@@ -932,7 +922,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	/*
 	 *	Compile the group.
 	 */
-	ml = compile_modgroup(parent, comp, cs);
+	ml = compile_modgroup(NULL, comp, cs);
 	if (!ml) {
 		return 0;
 	}
@@ -945,8 +935,10 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 */
 	dval = dict_valbyname(da->attr, da->vendor, name2);
 	if (!dval) {
-		cf_log_err_cs(cs, "%s %s Not previously configured", section_type_value[comp].typename, name2);
 		talloc_free(ml);
+		cf_log_err_cs(cs,
+			   "%s %s Not previously configured",
+			   section_type_value[comp].typename, name2);
 		return 0;
 	}
 
@@ -1038,7 +1030,7 @@ static int load_component_section(CONF_SECTION *cs,
 
 			if (strcmp(name1,
 				   section_type_value[comp].typename) == 0) {
-				if (!load_subcomponent_section(NULL, scs,
+				if (!load_subcomponent_section(scs,
 							       components,
 							       da,
 							       comp)) {
@@ -1334,7 +1326,6 @@ static int load_byserver(CONF_SECTION *cs)
 			c = lookup_by_index(components,
 					    RLM_COMPONENT_POST_AUTH, 0);
 			if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
-			found = 1;
 			break;
 		}
 #endif
@@ -1359,7 +1350,7 @@ static int load_byserver(CONF_SECTION *cs)
 			} else {
 				cf_log_module(cs, "Loading dhcp {...}");
 			}
-			if (!load_subcomponent_section(NULL, subcs,
+			if (!load_subcomponent_section(subcs,
 						       components,
 						       da,
 						       RLM_COMPONENT_POST_AUTH)) {
@@ -1368,7 +1359,6 @@ static int load_byserver(CONF_SECTION *cs)
 			c = lookup_by_index(components,
 					    RLM_COMPONENT_POST_AUTH, 0);
 			if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
-			found = 1;
 
 			subcs = cf_subsection_find_next(cs, subcs, "dhcp");
 		}
@@ -1418,6 +1408,20 @@ static int pass2_cb(UNUSED void *ctx, void *data)
 	indexed_modcallable *this = data;
 
 	if (!modcall_pass2(this->modulelist)) return -1;
+
+	return 0;
+}
+
+static int pass2_instance_cb(UNUSED void *ctx, void *data)
+{
+	module_instance_t *node = data;
+
+	if (!node->entry->module->config || !node->cs) return 0;
+
+	if (cf_section_parse_pass2(node->cs, node->insthandle,
+				   node->entry->module->config) < 0) {
+		return -1;
+	}
 
 	return 0;
 }
@@ -1486,6 +1490,14 @@ int virtual_servers_load(CONF_SECTION *config)
 			if (!first_time) continue;
 			return -1;
 		}
+	}
+
+	/*
+	 *	Check all of the module config items which are xlat expanded.
+	 */
+	if (rbtree_walk(instance_tree, RBTREE_IN_ORDER,
+			pass2_instance_cb, NULL) != 0) {
+		return -1;
 	}
 
 	/*
@@ -1764,7 +1776,7 @@ int modules_init(CONF_SECTION *config)
 	 *  sections.
 	 */
 	cs = cf_section_sub_find(config, "instantiate");
-	if (cs != NULL) {
+	if (cs) {
 		CONF_PAIR *cp;
 		module_instance_t *module;
 		char const *name;
@@ -1783,17 +1795,92 @@ int modules_init(CONF_SECTION *config)
 			 *	Sections will be handled later, if
 			 *	they're referenced at all...
 			 */
-			if (!cf_item_is_pair(ci)) {
-				continue;
+			if (cf_item_is_pair(ci)) {
+				cp = cf_itemtopair(ci);
+				name = cf_pair_attr(cp);
+
+				module = find_module_instance(modules, name, true);
+				if (!module && (name[0] != '-')) {
+					return -1;
+				}
 			}
 
-			cp = cf_itemtopair(ci);
-			name = cf_pair_attr(cp);
-			module = find_module_instance(modules, name, true);
-			if (!module && (name[0] != '-')) {
-				return -1;
-			}
-		} /* loop over items in the subsection */
+			/*
+			 *	Can only be "redundant" or
+			 *	"load-balance" or
+			 *	"redundant-load-balance"
+			 */
+			if (cf_item_is_section(ci)) {
+				bool all_same = true;
+				module_t const *last = NULL;
+				CONF_SECTION *subcs;
+				CONF_ITEM *subci;
+
+				subcs = cf_itemtosection(ci);
+				name = cf_section_name1(subcs);
+
+				/*
+				 *	Groups, etc. must have a name.
+				 */
+				if (((strcmp(name, "group") == 0) ||
+				     (strcmp(name, "redundant") == 0) ||
+				     (strcmp(name, "redundant-load-balance") == 0) ||
+				     strcmp(name, "load-balance") == 0)) {
+					name = cf_section_name2(subcs);
+					if (!name) {
+						cf_log_err_cs(subcs, "Subsection must have a name");
+						return -1;
+					}
+				}
+
+				/*
+				 *	Ensure that the modules we reference here exist.
+				 */
+				for (subci=cf_item_find_next(subcs, NULL);
+				     subci != NULL;
+				     subci=cf_item_find_next(subcs, subci)) {
+					if (cf_item_is_pair(subci)) {
+						cp = cf_itemtopair(subci);
+						if (cf_pair_value(cp)) {
+							cf_log_err(subci, "Cannot set return codes in a %s block",
+								   cf_section_name1(subcs));
+							return -1;
+						}
+
+						module = find_module_instance(modules, cf_pair_attr(cp), true);
+						if (!module) {
+							return -1;
+						}
+
+						if (all_same) {
+							if (!last) {
+								last = module->entry->module;
+							} else if (last != module->entry->module) {
+								last = NULL;
+								all_same = false;
+							}
+						}
+					} else {
+						all_same = false;
+					}
+
+					/*
+					 *	Don't check subsections for now.
+					 */
+				} /* loop over modules in a "redundant foo" section */
+
+				/*
+				 *	Register a redundant xlat
+				 */
+				if (all_same) {
+					if (!xlat_register_redundant(cf_itemtosection(ci))) {
+						WARN("%s[%d] Not registering expansions for %s",
+						     cf_section_filename(subcs), cf_section_lineno(subcs),
+						     cf_section_name2(subcs));
+					}
+				}
+			}  /* handle subsections */
+		} /* loop over the "instantiate" section */
 
 		cf_log_info(cs, " }");
 	} /* if there's an 'instantiate' section. */

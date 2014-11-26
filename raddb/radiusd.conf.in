@@ -118,6 +118,27 @@ libdir = @libdir@
 #
 pidfile = ${run_dir}/${name}.pid
 
+#
+#  correct_escapes: use correct backslash escaping
+#
+#  Prior to version 3.0.5, the handling of backslashes was a little
+#  awkward, i.e. "wrong".  In some cases, to get one backslash into
+#  a regex, you had to put 4 in the config files.
+#
+#  Version 3.0.5 fixes that.  However, for backwards compatibility,
+#  the new method of escaping is DISABLED BY DEFAULT.  This means
+#  that upgrading to 3.0.5 won't break your configuration.
+#
+#  If you don't have double backslashes (i.e. \\) in your configuration,
+#  this won't matter to you.  If you do have them, fix that to use only
+#  one backslash, and then set "correct_escapes = true".
+#
+#  You can check for this by doing:
+#
+#	$ grep '\\\\' $(find raddb -type f -print)
+#
+correct_escapes = true
+
 #  panic_action: Command to execute if the server dies unexpectedly.
 #
 #  FOR PRODUCTION SYSTEMS, ACTIONS SHOULD ALWAYS EXIT.
@@ -452,6 +473,9 @@ security {
 	#  rejects will be sent at 'cleanup_delay' time, when the request
 	#  is deleted from the internal cache of requests.
 	#
+	#  As of Version 3.0.5, "reject_delay" has sub-second resolution.
+	#  e.g. "reject_delay =  1.4" seconds is possible.
+	#
 	#  Useful ranges: 1 to 5
 	reject_delay = 1
 
@@ -475,15 +499,7 @@ security {
 	#
 	status_server = yes
 
-	#
-	#  allow_vulnerable_openssl: Allow the server to start with
-	#  versions of OpenSSL known to have critical vulnerabilities.
-	#
-	#  This check is based on the version number reported by libssl
-	#  and may not reflect patches applied to libssl by
-	#  distribution maintainers.
-	#
-	allow_vulnerable_openssl = no
+@openssl_version_check_config@
 }
 
 # PROXY CONFIGURATION
@@ -707,6 +723,36 @@ instantiate {
 	# exact same text.  Or, you could uncomment the following
 	# lines, and list "redundant_sql" in the authorize and
 	# accounting sections.
+	#
+	#  The "virtual" module defined here can also be used with
+	#  dynamic expansions, under a few conditions:
+	#
+	#  * The section is "redundant", or "load-balance", or
+	#    "redundant-load-balance"
+	#  * The section contains modules ONLY, and no sub-sections
+	#  * all modules in the section are using the same rlm_
+	#    driver, e.g. They are all sql, or all ldap, etc.
+	#
+	#  When those conditions are satisfied, the server will
+	#  automatically register a dynamic expansion, using the
+	#  name of the "virtual" module.  In the example below,
+	#  it will be "redundant_sql".  You can then use this expansion
+	#  just like any other:
+	#
+	#	update reply {
+	#		Filter-Id := "%{redundant_sql: ... }"
+	#	}
+	#
+	#  In this example, the expansion is done via module "sql1",
+	#  and if that expansion fails, using module "sql2".
+	#
+	#  For best results, configure the "pool" subsection of the
+	#  module so that "retry_delay" is non-zero.  That will allow
+	#  the redundant block to quickly ignore all "down" SQL
+	#  databases.  If instead we have "retry_delay = 0", then
+	#  every time the redundant block is used, the server will try
+	#  to open a connection to every "down" database, causing
+	#  problems.
 	#
 	#redundant redundant_sql {
 	#	sql1

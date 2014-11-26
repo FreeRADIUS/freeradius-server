@@ -31,7 +31,7 @@ listen {
 		verify {
 		}
 
-		psk_query = "%{psksql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Udentity}'}"
+		psk_query = "%{psksql:select hex(key) from psk_keys where keyid = '%{TLS-PSK-Identity}'}"
 	}
 
 	virtual_server = abfab-idp

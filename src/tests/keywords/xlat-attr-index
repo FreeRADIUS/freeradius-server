@@ -15,19 +15,19 @@ update request {
 
 if ("%{Tmp-IP-Address-0[#]}" != 2) {
 	update {
-		reply:Filter-Id := 'fail'
+		reply:Filter-Id += 'fail 0'
 	}
 }
 
 if (("%{Tmp-IP-Address-0[0]}" != 192.0.2.1) || ("%{Tmp-IP-Address-0[1]}" != 192.0.2.2)) {
 	update {
-		reply:Filter-Id := 'fail'
+		reply:Filter-Id += 'fail 1'
 	}
 }
 
 if ("%{Tmp-IP-Address-0[*]}" != '192.0.2.1,192.0.2.2') {
 	update {
-		reply:Filter-Id := 'fail'
+		reply:Filter-Id += 'fail 2'
 	}
 }
 
@@ -61,6 +61,12 @@ if (Tmp-String-0 != '192.0.2.1,192.0.2.2') {
 if (Tmp-Integer-0 != 2) {
 	update {
 		reply:Filter-Id += 'fail 6'
+	}
+}
+
+if (&Tmp-IP-Address-0[#] != 2) {
+	update {
+		reply:Filter-Id += 'fail 7'
 	}
 }
 

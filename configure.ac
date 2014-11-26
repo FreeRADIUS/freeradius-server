@@ -167,8 +167,8 @@ dnl #  check for system bytesex
 dnl #  AC_DEFINES WORDS_BIGENDIAN
 dnl #
 AC_C_BIGENDIAN(
-  [AC_DEFINE(BIG_ENDIAN, 1, [Define if your processor stores words with the most significant byte first])],
-  [AC_DEFINE(LITTLE_ENDIAN, 1, [Define if your processor stores words with the least significant byte first])]
+  [AC_DEFINE(RADIUS_BIG_ENDIAN, 1, [Define if your processor stores words with the most significant byte first])],
+  [AC_DEFINE(RADIUS_LITTLE_ENDIAN, 1, [Define if your processor stores words with the least significant byte first])]
 )
 
 dnl #
@@ -576,6 +576,32 @@ AC_ARG_WITH(openssl-include-dir,
   esac ]
 )
 
+dnl #
+dnl #  extra argument: --disable-openssl-version-check
+dnl #
+AC_ARG_ENABLE(openssl-version-check,
+[AS_HELP_STRING([--disable-openssl-version-check],
+                [disable vulnerable OpenSSL version check])]
+)
+if test "x$enable_openssl_version_check" != "xno"; then
+  AC_DEFINE(ENABLE_OPENSSL_VERSION_CHECK, [1],
+            [Define to 1 to have OpenSSL version check enabled])
+  openssl_version_check_config="\
+	#
+	#  allow_vulnerable_openssl: Allow the server to start with
+	#  versions of OpenSSL known to have critical vulnerabilities.
+	#
+	#  This check is based on the version number reported by libssl
+	#  and may not reflect patches applied to libssl by
+	#  distribution maintainers.
+	#
+	allow_vulnerable_openssl = no"
+else
+  openssl_version_check_config=
+fi
+AC_SUBST([openssl_version_check_config])
+
+
 dnl #############################################################
 dnl #
 dnl #  1. Checks for programs
@@ -861,6 +887,50 @@ fi
 dnl Set by FR_SMART_CHECKLIB
 LIBS="${old_LIBS}"
 
+dnl Check for cap
+dnl extra argument: --with-cap-lib-dir=DIR
+cap_lib_dir=
+AC_ARG_WITH(cap-lib-dir,
+  [AS_HELP_STRING([--with-cap-lib-dir=DIR],
+  [directory in which to look for cap library files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need cap-lib-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      cap_lib_dir="$withval"
+      ;;
+  esac])
+
+dnl extra argument: --with-cap-include-dir=DIR
+cap_include_dir=
+AC_ARG_WITH(cap-include-dir,
+  [AS_HELP_STRING([--with-cap-include-dir=DIR],
+  [directory in which to look for cap include files])],
+  [case "$withval" in
+    no)
+      AC_MSG_ERROR([Need cap-include-dir])
+      ;;
+    yes)
+      ;;
+    *)
+      cap_include_dir="$withval"
+      ;;
+  esac])
+
+smart_try_dir="$cap_lib_dir"
+FR_SMART_CHECK_LIB(cap, cap_get_proc)
+if test "x$ac_cv_lib_cap_cap_get_proc" != "xyes"; then
+  AC_MSG_WARN([cap library not found, debugger checks will not be enabled. Use --with-cap-lib-dir=<path>.])
+else
+  AC_DEFINE(HAVE_LIBCAP, 1,
+    [Define to 1 if you have the `cap' library (-lcap).]
+  )
+  HAVE_LIBCAP=1
+fi
+
 VL_LIB_READLINE
 
 dnl #############################################################
@@ -942,7 +1012,8 @@ AC_CHECK_HEADERS( \
   sia.h \
   siad.h \
   features.h \
-  limits.h
+  limits.h \
+  sys/event.h
 )
 
 dnl #
@@ -1019,7 +1090,7 @@ if test "x$WITH_OPENSSL" = xyes; then
       openssl/sha.h \
       openssl/ocsp.h \
       openssl/engine.h,
-      [],
+      [ OPENSSL_CPPFLAGS="$smart_include" ],
       [
         AC_MSG_FAILURE([failed locating OpenSSL headers. Use --with-openssl-include-dir=<path>, or --with-openssl=no (builds without OpenSSL)])
       ]
@@ -1047,7 +1118,7 @@ if test "x$WITH_OPENSSL" = xyes; then
     dnl #  library location we discovered previously.
     dnl #
     old_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$OPENSSL_LDFLAGS $CPPFLAGS"
+    CPPFLAGS="$OPENSSL_CPPFLAGS $CPPFLAGS"
 
     dnl #
     dnl #  Now check that the header versions match the library
@@ -1083,7 +1154,8 @@ if test "x$WITH_OPENSSL" = xyes; then
   LIBS="$OLD_LIBS"
   AC_SUBST(OPENSSL_LIBS)
   AC_SUBST(OPENSSL_LDFLAGS)
-  export OPENSSL_LIBS OPENSSL_LDFLAGS
+  AC_SUBST(OPENSSL_CPPFLAGS)
+  export OPENSSL_LIBS OPENSSL_LDFLAGS OPENSSL_CPPFLAGS
 fi
 
 dnl #
@@ -1121,6 +1193,24 @@ else
     AC_SUBST(COLLECTDC_LDFLAGS)
   else
     AC_MSG_WARN([collectdclient headers not found. Use --with-collectdclient-include-dir=<path>.])
+  fi
+fi
+
+dnl #
+dnl #  Check the CAP includes for debugger checks
+dnl #
+if test "x$HAVE_LIBCAP" = x; then
+  AC_MSG_NOTICE([skipping test for cap.h.])
+else
+  dnl #
+  dnl # Check for CAP header files
+  dnl #
+  smart_try_dir="$cap_include_dir"
+  FR_SMART_CHECK_INCLUDE([sys/capability.h])
+  if test "x$ac_cv_header_sys_capability_h" == "xyes"; then
+    AC_DEFINE(HAVE_CAPABILITY_H, 1, [Define to 1 if you have the <sys/capability.h> header file.])
+  else
+    AC_MSG_WARN([cap headers not found, will not perform debugger checks. Use --with-cap-include-dir=<path>.])
   fi
 fi
 
@@ -1345,7 +1435,8 @@ AC_CHECK_FUNCS( \
   setresuid \
   getresuid \
   strlcat \
-  strlcpy
+  strlcpy \
+  kqueue
 )
 
 AC_TYPE_SIGNAL

@@ -14,13 +14,14 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
+/**
  * $Id$
  *
  * @brief Couchbase wrapper function prototypes and datatypes.
  * @file couchbase.h
  *
- * @copyright 2013-2014 Aaron Hurt <ahurt@anbcs.com>
+ * @author Aaron Hurt <ahurt@anbcs.com>
+ * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 
 #ifndef _couchbase_h_
@@ -31,17 +32,25 @@ RCSIDH(couchbase_h, "$Id$");
 #include <libcouchbase/couchbase.h>
 #include <json.h>
 
-/* struct to hold cookie data for couchbase callbacks */
+/** Information relating to the parsing of Couchbase document payloads
+ *
+ * This structure holds various references to json-c objects used when parsing
+ * Couchbase document payloads.
+ */
 typedef struct cookie_t {
-	json_object *jobj;              /* json object */
-	json_tokener *jtok;             /* json tokener */
-	enum json_tokener_error jerr;   /* tokener error */
+	json_object *jobj;              //!< JSON objects handled by the json-c library.
+	json_tokener *jtok;             //!< JSON tokener objects handled by the json-c library.
+	enum json_tokener_error jerr;   //!< Error values produced by the json-c library.
 } cookie_t;
 
-/* union of const and non const pointers */
+/** Union of constant and non-constant pointers
+ *
+ * This is used to squelch compiler warnings about casting when passing data
+ * between functions expecting different data types.
+ */
 typedef union cookie_u {
-	const void *cdata;
-	void *data;
+	const void *cdata;    //!< Constant pointer to cookie payload (@p cookie_t).
+	void *data;           //!< Non-constant pointer to data payload (@p cookie_t).
 } cookie_u;
 
 /* couchbase statistics callback */
@@ -56,6 +65,10 @@ void couchbase_store_callback(lcb_t instance, const void *cookie, lcb_storage_t 
 void couchbase_get_callback(lcb_t instance, const void *cookie, lcb_error_t error,
 	const lcb_get_resp_t *item);
 
+/* couchbase http callback for data chunks */
+void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance,
+	const void *cookie, lcb_error_t error, const lcb_http_resp_t *resp);
+
 /* create a couchbase instance and connect to the cluster */
 lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass);
 
@@ -67,5 +80,8 @@ lcb_error_t couchbase_set_key(lcb_t instance, const char *key, const char *docum
 
 /* pull document from couchbase by key */
 lcb_error_t couchbase_get_key(lcb_t instance, const void *cookie, const char *key);
+
+/* query a couchbase view via http */
+lcb_error_t couchbase_query_view(lcb_t instance, const void *cookie, const char *path, const char *post);
 
 #endif /* _couchbase_h_ */

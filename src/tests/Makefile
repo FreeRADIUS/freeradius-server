@@ -27,10 +27,9 @@ ACCTPORT = $(shell expr $(PORT) + 1)
 
 #	example.com stripped.example.com
 
-EAPOL_TEST = eapol_test
+EAPOL_TEST = $(shell which eapol_test)
 
-EAP_TLS_TESTS = eap-ttls-pap.conf eap-mschapv2.conf \
-	      eap-ttls-mschapv2.conf peap-mschapv2.conf
+EAP_TLS_TESTS = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
 
 SECRET	= testing123
 
@@ -42,7 +41,7 @@ SECRET	= testing123
 all: parse tests
 
 clean:
-	@rm -f test.conf dictionary
+	@rm -f test.conf dictionary *.ok *.log
 
 dictionary:
 	@echo "# test dictionary not install.  Delete at any time." > dictionary
@@ -67,8 +66,8 @@ test.conf: dictionary
 	@echo 'modconfdir = $${maindir}mods-config' >> $@
 	@echo 'certdir = $${maindir}/certs' >> $@
 	@echo 'cadir   = $${maindir}/certs' >> $@
-	@echo '$$INCLUDE $${maindir}/radiusd.conf' >> test.conf
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
+	@echo '$$INCLUDE $${maindir}/radiusd.conf' >> test.conf
 
 radiusd.pid: test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
@@ -102,6 +101,19 @@ radiusd.kill:
 	fi
 	@rm -f radiusd.pid
 
+#
+#  Run eapol_test if it exists.  Otherwise do nothing
+#
+ifneq "$(EAPOL_TEST)" ""
+%.ok: %.conf
+	@echo EAPOL_TEST $(patsubst %.conf,%,$<)
+	@$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$<) 2>&1
+	@touch $@
+
+tests.eap: $(patsubst %.conf,%.ok, $(EAP_TLS_TESTS))
+
+endif
+
 # kill the server (if it's running)
 # start the server
 # run the tests (ignoring any failures)
@@ -110,31 +122,7 @@ radiusd.kill:
 tests: test.conf | radiusd.kill radiusd.pid
 	@chmod a+x runtests.sh
 	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
+ifneq "$(EAPOL_TEST)" ""
+	@$(MAKE) tests.eap
+endif
 	@$(MAKE) radiusd.kill
-
-tests.eap: test.conf radiusd.kill
-	@chmod a+x runtests.sh
-	@rm -f $(TEST_PATH)/radius.log $(TEST_PATH)/gdb.log
-	@$(MAKE) radiusd.pid
-	@$(MAKE) eap
-	@$(MAKE) radiusd.kill
-
-eap: $(EAP_TLS_TESTS)
-	for x in $(EAP_TLS_TESTS); do \
-		$(EAPOL_TEST) -c $$x -p $(PORT) -s $(SECRET); \
-	done
-
-md5:
-	$(EAPOL_TEST) -c eap-md5.conf -s $(SECRET)
-
-tls:
-	$(EAPOL_TEST) -c eap-ttls-tls.conf -s $(SECRET)
-
-ttls:
-	$(EAPOL_TEST) -c eap-ttls-pap.conf -s $(SECRET)
-
-peap:
-	$(EAPOL_TEST) -c peap-mschapv2.conf -s $(SECRET)
-
-leap:
-	$(EAPOL_TEST) -c leap.conf -s $(SECRET)

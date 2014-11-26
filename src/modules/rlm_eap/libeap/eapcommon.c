@@ -223,7 +223,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 
 	/* Set request reply code, but only if it's not already set. */
 	rcode = RLM_MODULE_OK;
-	if (!packet->code) switch(reply->code) {
+	if (!packet->code) switch (reply->code) {
 	case PW_EAP_RESPONSE:
 	case PW_EAP_SUCCESS:
 		packet->code = PW_CODE_ACCESS_ACCEPT;
@@ -308,7 +308,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 */
 	first = pairfind(vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	if (!first) {
-		DEBUG("rlm_eap: EAP-Message not found");
+		fr_strerror_printf("EAP-Message not found");
 		return NULL;
 	}
 
@@ -316,7 +316,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Sanity check the length before doing anything.
 	 */
 	if (first->length < 4) {
-		DEBUG("rlm_eap: EAP packet is too short");
+		fr_strerror_printf("EAP packet is too short");
 		return NULL;
 	}
 
@@ -331,7 +331,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Take out even more weird things.
 	 */
 	if (len < 4) {
-		DEBUG("rlm_eap: EAP packet has invalid length");
+		fr_strerror_printf("EAP packet has invalid length (less than 4 bytes)");
 		return NULL;
 	}
 
@@ -344,7 +344,8 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 		total_len += i->length;
 
 		if (total_len > len) {
-			DEBUG("rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
+			fr_strerror_printf("Malformed EAP packet.  Length in packet header %i, "
+					   "does not match actual length %i", len, total_len);
 			return NULL;
 		}
 	}
@@ -353,7 +354,8 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	If the length is SMALLER, die, too.
 	 */
 	if (total_len < len) {
-		DEBUG("rlm_eap: Malformed EAP packet.  Length in packet header does not match actual length");
+		fr_strerror_printf("Malformed EAP packet.  Length in packet header does not "
+				   "match actual length");
 		return NULL;
 	}
 

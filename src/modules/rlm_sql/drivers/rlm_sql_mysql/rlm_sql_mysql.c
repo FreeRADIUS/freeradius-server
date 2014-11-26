@@ -216,7 +216,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  *************************************************************************/
 static sql_rcode_t sql_check_error(int error)
 {
-	switch(error) {
+	switch (error) {
 	case 0:
 		return RLM_SQL_OK;
 
@@ -399,21 +399,21 @@ static int sql_num_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *conf
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if database is down.
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 	sql_rcode_t rcode;
 	int ret;
 
+	*out = NULL;
+
 	/*
 	 *  Check pointer before de-referencing it.
 	 */
-	if (!conn->result) {
-		return RLM_SQL_RECONNECT;
-	}
+	if (!conn->result) return RLM_SQL_RECONNECT;
 
 retry_fetch_row:
-	handle->row = mysql_fetch_row(conn->result);
+	*out = handle->row = mysql_fetch_row(conn->result);
 	if (!handle->row) {
 		rcode = sql_check_error(mysql_errno(conn->sock));
 		if (rcode != RLM_SQL_OK) {
@@ -573,18 +573,18 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_mysql = {
-	"rlm_sql_mysql",
-	mod_instantiate,
-	sql_socket_init,
-	sql_query,
-	sql_select_query,
-	sql_store_result,
-	sql_num_fields,
-	sql_num_rows,
-	sql_fetch_row,
-	sql_free_result,
-	sql_error,
-	sql_finish_query,
-	sql_finish_select_query,
-	sql_affected_rows
+	.name				= "rlm_sql_mysql",
+	.mod_instantiate		= mod_instantiate,
+	.sql_socket_init		= sql_socket_init,
+	.sql_query			= sql_query,
+	.sql_select_query		= sql_select_query,
+	.sql_store_result		= sql_store_result,
+	.sql_num_fields			= sql_num_fields,
+	.sql_num_rows			= sql_num_rows,
+	.sql_affected_rows		= sql_affected_rows,
+	.sql_fetch_row			= sql_fetch_row,
+	.sql_free_result		= sql_free_result,
+	.sql_error			= sql_error,
+	.sql_finish_query		= sql_finish_query,
+	.sql_finish_select_query	= sql_finish_select_query
 };

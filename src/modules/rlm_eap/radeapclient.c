@@ -685,9 +685,9 @@ static int respond_eap_sim(RADIUS_PACKET *req, RADIUS_PACKET *resp)
 	/*
 	 * look for the appropriate state, and process incoming message
 	 */
-	switch(state) {
+	switch (state) {
 	case EAPSIM_CLIENT_INIT:
-		switch(subtype) {
+		switch (subtype) {
 		case EAPSIM_START:
 			newstate = process_eap_start(req, resp);
 			break;
@@ -705,7 +705,7 @@ static int respond_eap_sim(RADIUS_PACKET *req, RADIUS_PACKET *resp)
 		break;
 
 	case EAPSIM_CLIENT_START:
-		switch(subtype) {
+		switch (subtype) {
 		case EAPSIM_START:
 			/* NOT SURE ABOUT THIS ONE, retransmit, I guess */
 			newstate = process_eap_start(req, resp);
@@ -1026,7 +1026,7 @@ int main(int argc, char **argv)
 
 	while ((c = getopt(argc, argv, "46c:d:D:f:hi:qst:r:S:xXv")) != EOF)
 	{
-		switch(c) {
+		switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
@@ -1269,7 +1269,7 @@ int main(int argc, char **argv)
 
 	while (!filedone) {
 		if (req->vps) pairfree(&req->vps);
-		if (readvp2(&req->vps, NULL, fp, &filedone) < 0) {
+		if (readvp2(NULL, &req->vps, fp, &filedone) < 0) {
 			ERROR("%s", fr_strerror());
 			break;
 		}
@@ -1337,7 +1337,7 @@ static void map_eap_methods(RADIUS_PACKET *req)
 
 	eap_method = vp->da->attr - PW_EAP_TYPE_BASE;
 
-	switch(eap_method) {
+	switch (eap_method) {
 	case PW_EAP_IDENTITY:
 	case PW_EAP_NOTIFICATION:
 	case PW_EAP_NAK:
@@ -1384,10 +1384,10 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 
 	/* find eap message */
 	e = eap_vp2packet(NULL, rep->vps);
-
-	/* nothing to do! */
-	if(!e) return;
-
+	if (!e) {
+		ERROR("%s", fr_strerror());
+		return;
+	}
 	/* create EAP-ID and EAP-CODE attributes to start */
 	eap1 = paircreate(rep, PW_EAP_ID, 0);
 	eap1->vp_integer = e->id;
@@ -1397,7 +1397,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 	eap1->vp_integer = e->code;
 	pairadd(&(rep->vps), eap1);
 
-	switch(e->code) {
+	switch (e->code) {
 	default:
 	case PW_EAP_SUCCESS:
 	case PW_EAP_FAILURE:
@@ -1522,7 +1522,7 @@ main(int argc, char *argv[])
 		if (req->vps) pairfree(&req->vps);
 		if (req2->vps) pairfree(&req2->vps);
 
-		if (readvp2(&req->vps, NULL, stdin, &filedone) < 0) {
+		if (readvp2(NULL, &req->vps, stdin, &filedone) < 0) {
 			ERROR("%s", fr_strerror());
 			break;
 		}

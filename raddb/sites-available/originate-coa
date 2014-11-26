@@ -80,7 +80,7 @@
 #  Disconnect packets), an IP address (or IPv6 address), a
 #  destination port, and a shared secret.
 #
-home_server localhost-coa {
+home_server example-coa {
 	type = coa
 
 	#
@@ -88,7 +88,9 @@ home_server localhost-coa {
 	#  with an ipaddr or ipv6addr.  It CANNOT point to a virtual
 	#  server.
 	#
-	ipaddr = 127.0.0.1
+	#  Change this IP address to the IP address of the NAS.
+	#
+	ipaddr = 192.0.2.42
 	port = 3799
 
 	#  This secret SHOULD NOT be the same as the shared
@@ -111,7 +113,7 @@ home_server_pool coa {
 	type = fail-over
 
 	# Point to the CoA server above.
-	home_server = localhost-coa
+	home_server = example-coa
 
 	#  CoA requests are run through the pre-proxy section.
 	#  CoA responses are run through the post-proxy section.
@@ -135,7 +137,7 @@ home_server_pool coa {
 server originate-coa.example.com {
   pre-proxy {
 	update proxy-request {
-		&NAS-IP-Address = 127.0.0.1
+		NAS-IP-Address = 192.0.2.42
 	}
   }
 

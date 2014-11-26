@@ -35,8 +35,7 @@ if ("%{sha256:&request:Tmp-String-0}" != 'b3716a1ab53042bb392034f29071e13b0c38aa
 	}
 }
 
-# This differs than hashing the attribute directly, as the \n is escaped and becomes chars \ and n
-if ("%{sha256:%{Tmp-String-0}}" != 'd1a16b1ef3a074dcd82cbce40590838e4627f5da371618e4d7f9de3786600bb9') {
+if ("%{sha256:%{Tmp-String-0}}" != 'b3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124') {
 	update reply {
 		Filter-Id += 'fail'
 	}

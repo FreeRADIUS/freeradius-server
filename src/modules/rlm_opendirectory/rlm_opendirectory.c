@@ -306,7 +306,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 
 	odResult = od_check_passwd(request, request->username->vp_strvalue,
 				   request->password->vp_strvalue);
-	switch(odResult) {
+	switch (odResult) {
 		case eDSNoErr:
 			ret = RLM_MODULE_OK;
 			break;

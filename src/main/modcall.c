@@ -48,20 +48,20 @@ struct modcallable {
 	modcallable *parent;
 	struct modcallable *next;
 	char const *name;
+	char const *debug_name;
 	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE,
 #ifdef WITH_UNLANG
 	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
-	       MOD_FOREACH, MOD_BREAK,
+	       MOD_FOREACH, MOD_BREAK, MOD_RETURN,
 #endif
 	       MOD_POLICY, MOD_REFERENCE, MOD_XLAT } type;
 	rlm_components_t method;
 	int actions[RLM_MODULE_NUMCODES];
 };
 
-#define MOD_LOG_OPEN_BRACE(_name) RDEBUG2("%.*s%s %s {", depth + 1, modcall_spaces, _name ? _name : "", c->name)
-#define MOD_LOG_CLOSE_BRACE() RDEBUG2("%.*s} # %s %s = %s", depth + 1, modcall_spaces, \
-				      cf_section_name1(g->cs) ? cf_section_name1(g->cs) : "", c->name ? c->name : "", \
-				      fr_int2str(mod_rcode_table, result, "<invalid>"))
+#define MOD_LOG_OPEN_BRACE RDEBUG2("%s {", c->debug_name)
+
+#define MOD_LOG_CLOSE_BRACE RDEBUG2("} # %s = %s", c->debug_name, fr_int2str(mod_rcode_table, result, "<invalid>"))
 
 typedef struct {
 	modcallable		mc;		/* self */
@@ -96,15 +96,6 @@ typedef struct {
 	int exec;
 	char *xlat_name;
 } modxlat;
-
-/*
-static const FR_NAME_NUMBER grouptype_table[] = {
-	{ "", GROUPTYPE_SIMPLE },
-	{ "redundant ", GROUPTYPE_REDUNDANT },
-	{ "append ", GROUPTYPE_APPEND },
-	{ NULL, -1 }
-};
-*/
 
 /* Simple conversions: modsingle and modgroup are subclasses of modcallable,
  * so we often want to go back and forth between them. */
@@ -293,6 +284,7 @@ static void safe_unlock(module_instance_t *instance)
 static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, modsingle *sp, REQUEST *request)
 {
 	int blocked;
+	int indent = request->log.indent;
 
 	/*
 	 *	If the request should stop, refuse to do anything.
@@ -300,27 +292,26 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) return RLM_MODULE_NOOP;
 
-	RINDENT();
 	RDEBUG3("modsingle[%s]: calling %s (%s) for request %d",
-	       comp2str[component], sp->modinst->name,
-	       sp->modinst->entry->name, request->number);
+		comp2str[component], sp->modinst->name,
+		sp->modinst->entry->name, request->number);
+	request->log.indent = 0;
 
 	if (sp->modinst->force) {
 		request->rcode = sp->modinst->code;
 		goto fail;
 	}
 
-	safe_lock(sp->modinst);
-
 	/*
 	 *	For logging unresponsive children.
 	 */
 	request->module = sp->modinst->name;
 
+	safe_lock(sp->modinst);
 	request->rcode = sp->modinst->entry->module->methods[component](sp->modinst->insthandle, request);
+	safe_unlock(sp->modinst);
 
 	request->module = "";
-	safe_unlock(sp->modinst);
 
 	/*
 	 *	Wasn't blocked, and now is.  Complain!
@@ -331,7 +322,7 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	}
 
  fail:
-	REXDENT();
+	request->log.indent = indent;
 	RDEBUG3("modsingle[%s]: returned from %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
 	       sp->modinst->entry->name, request->number);
@@ -371,6 +362,7 @@ static char const *group_name[] = {
 	"case",
 	"foreach",
 	"break",
+	"return",
 #endif
 	"policy",
 	"reference",
@@ -451,6 +443,7 @@ static bool modcall_recurse(REQUEST *request, rlm_components_t component, int de
 
 	was_if = if_taken = false;
 	result = RLM_MODULE_UNKNOWN;
+	RINDENT();
 
 redo:
 	priority = -1;
@@ -460,7 +453,7 @@ redo:
 	 *	Nothing more to do.  Return the code and priority
 	 *	which was set by the caller.
 	 */
-	if (!c) return true;
+	if (!c) goto finish;
 
 	/*
 	 *	We've been asked to stop.  Do so.
@@ -470,7 +463,7 @@ redo:
 	     (request->parent->master_state == REQUEST_STOP_PROCESSING))) {
 		entry->result = RLM_MODULE_FAIL;
 		entry->priority = 9999;
-		return true;
+		goto finish;
 	}
 
 #ifdef WITH_UNLANG
@@ -485,8 +478,7 @@ redo:
 		g = mod_callabletogroup(c);
 		rad_assert(g->cond != NULL);
 
-		RDEBUG2("%.*s %s %s", depth + 1, modcall_spaces,
-			group_name[c->type], c->name);
+		RDEBUG2("%s %s{", group_name[c->type], c->name);
 
 		condition = radius_evaluate_cond(request, result, 0, g->cond);
 		if (condition < 0) {
@@ -503,7 +495,7 @@ redo:
 			}
 			condition = 0;
 		} else {
-			RDEBUG2("%.*s %s %s -> %s", depth + 1, modcall_spaces,
+			RDEBUG2("%s %s -> %s",
 				group_name[c->type],
 				c->name, condition ? "TRUE" : "FALSE");
 		}
@@ -536,8 +528,7 @@ redo:
 		 *	Like MOD_ELSE, but allow for a later "else"
 		 */
 		if (if_taken) {
-			RDEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
-				depth + 1, modcall_spaces,
+			RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
 				group_name[c->type], request->number);
 			was_if = true;
 			if_taken = true;
@@ -556,15 +547,13 @@ redo:
 	if (c->type == MOD_ELSE) {
 		if (!was_if) { /* error */
 		elsif_error:
-			RDEBUG2("%.*s ... skipping %s for request %d: No preceding \"if\"",
-				depth + 1, modcall_spaces,
+			RDEBUG2("... skipping %s for request %d: No preceding \"if\"",
 				group_name[c->type], request->number);
 			goto next_sibling;
 		}
 
 		if (if_taken) {
-			RDEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
-				depth + 1, modcall_spaces,
+			RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
 				group_name[c->type], request->number);
 			was_if = false;
 			if_taken = false;
@@ -597,7 +586,7 @@ redo:
 		sp = mod_callabletosingle(c);
 
 		result = call_modsingle(c->method, sp, request);
-		RDEBUG2("%.*s[%s] = %s", depth + 1, modcall_spaces, c->name ? c->name : "",
+		RDEBUG2("[%s] = %s", c->name ? c->name : "",
 			fr_int2str(mod_rcode_table, result, "<invalid>"));
 		goto calculate_result;
 	} /* MOD_SINGLE */
@@ -611,19 +600,20 @@ redo:
 		modgroup *g = mod_callabletogroup(c);
 		value_pair_map_t *map;
 
-
-		MOD_LOG_OPEN_BRACE("update");
+		MOD_LOG_OPEN_BRACE;
+		RINDENT();
 		for (map = g->map; map != NULL; map = map->next) {
 			rcode = map_to_request(request, map, map_to_vp, NULL);
 			if (rcode < 0) {
 				result = (rcode == -2) ? RLM_MODULE_INVALID : RLM_MODULE_FAIL;
-				MOD_LOG_CLOSE_BRACE();
+				REXDENT();
+				MOD_LOG_CLOSE_BRACE;
 				goto calculate_result;
 			}
 		}
-
+		REXDENT();
 		result = RLM_MODULE_NOOP;
-		MOD_LOG_CLOSE_BRACE();
+		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_IF */
 
@@ -666,16 +656,16 @@ redo:
 		 *	iterating over.
 		 */
 		if (tmpl_copy_vps(request, &vps, request, g->vpt) < 0) {	/* nothing to loop over */
-			MOD_LOG_OPEN_BRACE("foreach");
+			MOD_LOG_OPEN_BRACE;
 			result = RLM_MODULE_NOOP;
-			MOD_LOG_CLOSE_BRACE();
+			MOD_LOG_CLOSE_BRACE;
 			goto calculate_result;
 		}
 
 		rad_assert(vps != NULL);
 		fr_cursor_init(&copy, &vps);
 
-		RDEBUG2("%.*sforeach %s ", depth + 1, modcall_spaces, c->name);
+		RDEBUG2("foreach %s ", c->name);
 
 		/*
 		 *	This is the actual body of the foreach loop
@@ -688,8 +678,7 @@ redo:
 				char buffer[1024];
 
 				vp_prints_value(buffer, sizeof(buffer), vp, '"');
-				RDEBUG2("%.*s #  Foreach-Variable-%d = %s", depth + 1,
-					modcall_spaces, foreach_depth, buffer);
+				RDEBUG2("# Foreach-Variable-%d = %s", foreach_depth, buffer);
 			}
 #endif
 
@@ -713,11 +702,18 @@ redo:
 			}
 
 			/*
-			 *	If we've been told to stop processing
-			 *	it, do so.
+			 *	We've unwound to the enclosing
+			 *	"foreach".  Stop the unwinding.
 			 */
-			if (entry->unwind == MOD_FOREACH) {
-				entry->unwind = 0;
+			if (next->unwind == MOD_FOREACH) {
+				break;
+			}
+
+			/*
+			 *	Unwind all the way.
+			 */
+			if (next->unwind == MOD_RETURN) {
+				entry->unwind = MOD_RETURN;
 				break;
 			}
 		} /* loop over VPs */
@@ -733,33 +729,38 @@ redo:
 		rad_assert(next != NULL);
 		result = next->result;
 		priority = next->priority;
-		MOD_LOG_CLOSE_BRACE();
+		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_FOREACH */
 
 	/*
-	 *	Break out of a "foreach" loop.
+	 *	Break out of a "foreach" loop, or return from a nested
+	 *	group.
 	 */
-	if (c->type == MOD_BREAK) {
+	if ((c->type == MOD_BREAK) || (c->type == MOD_RETURN)) {
 		int i;
 		VALUE_PAIR **copy_p;
 
+		RDEBUG2("%s", group_name[c->type]);
+
 		for (i = 8; i >= 0; i--) {
-			copy_p = request_data_get(request,
-						  radius_get_vp, i);
+			copy_p = request_data_get(request, radius_get_vp, i);
 			if (copy_p) {
-				RDEBUG2("%.*s # break Foreach-Variable-%d", depth + 1, modcall_spaces, i);
-				break;
+				if (c->type == MOD_BREAK) {
+					RDEBUG2("# break Foreach-Variable-%d", i);
+					break;
+				}
 			}
 		}
 
 		/*
 		 *	Leave result / priority on the stack, and stop processing the section.
 		 */
-		entry->unwind = MOD_FOREACH;
-		return true;
+		entry->unwind = c->type;
+		goto finish;
 	} /* MOD_BREAK */
-#endif	  /* WITH_PROXY */
+
+#endif	  /* WITH_UNLANG */
 
 	/*
 	 *	Child is a group that has children of it's own.
@@ -784,20 +785,15 @@ redo:
 		 *	MOD_GROUP.
 		 */
 		if (!g->children) {
-			RDEBUG2("%.*s%s { ... } # empty sub-section is ignored",
-				depth + 1, modcall_spaces, c->name);
+			RDEBUG2("%s { ... } # empty sub-section is ignored", c->name);
 			goto next_sibling;
 		}
 
-		if (c->name) {
-			MOD_LOG_OPEN_BRACE(cf_section_name1(g->cs));
-		} else {
-			RDEBUG2("%.*s%s {", depth + 1, modcall_spaces, cf_section_name1(g->cs));
-		}
+		MOD_LOG_OPEN_BRACE;
 		modcall_child(request, component,
 			      depth + 1, entry, g->children,
 			      &result);
-		MOD_LOG_CLOSE_BRACE();
+		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_GROUP */
 
@@ -808,8 +804,10 @@ redo:
 		fr_cond_t cond;
 		value_pair_map_t map;
 		value_pair_tmpl_t vpt;
+		char *expanded = NULL;
 
-		MOD_LOG_OPEN_BRACE("switch");
+
+		MOD_LOG_OPEN_BRACE;
 
 		g = mod_callabletogroup(c);
 
@@ -853,13 +851,8 @@ redo:
 		if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
 		    (g->vpt->type == TMPL_TYPE_XLAT) ||
 		    (g->vpt->type == TMPL_TYPE_EXEC)) {
-			char *buffer;
-
-			vpt.type = TMPL_TYPE_LITERAL;
-			if (radius_expand_tmpl(&buffer, request, g->vpt) < 0) {
-				goto find_null_case;
-			}
-			vpt.name = buffer;
+			if (radius_expand_tmpl(&expanded, request, g->vpt) < 0) goto find_null_case;
+			tmpl_init(&vpt, TMPL_TYPE_LITERAL, expanded, talloc_array_length(expanded) - 1);
 		}
 
 		/*
@@ -887,8 +880,8 @@ redo:
 			 */
 			if ((g->vpt->type == TMPL_TYPE_ATTR) &&
 			    (h->vpt->type != TMPL_TYPE_DATA)) {
-				map.src = g->vpt;
-				map.dst = h->vpt;
+				map.rhs = g->vpt;
+				map.lhs = h->vpt;
 				cond.cast = g->vpt->tmpl_da;
 
 				/*
@@ -905,16 +898,16 @@ redo:
 			} else if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
 				   (g->vpt->type == TMPL_TYPE_XLAT) ||
 				   (g->vpt->type == TMPL_TYPE_EXEC)) {
-				map.src = h->vpt;
-				map.dst = &vpt;
+				map.rhs = h->vpt;
+				map.lhs = &vpt;
 				cond.cast = NULL;
 
 				/*
 				 *	Else evaluate the 'switch' statement.
 				 */
 			} else {
-				map.src = h->vpt;
-				map.dst = g->vpt;
+				map.rhs = h->vpt;
+				map.lhs = g->vpt;
 				cond.cast = NULL;
 			}
 
@@ -924,14 +917,13 @@ redo:
 				break;
 			}
 		}
+		talloc_free(expanded);
 
 		if (!found) found = null_case;
 
-		do_null_case:
-		modcall_child(request, component,
-			      depth + 1, entry, found,
-			      &result);
-		MOD_LOG_CLOSE_BRACE();
+	do_null_case:
+		modcall_child(request, component, depth + 1, entry, found, &result);
+		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_SWITCH */
 #endif
@@ -942,7 +934,7 @@ redo:
 		modcallable *this, *found;
 		modgroup *g;
 
-		MOD_LOG_OPEN_BRACE("load-balance");
+		MOD_LOG_OPEN_BRACE;
 
 		g = mod_callabletogroup(c);
 		found = g->children;
@@ -959,12 +951,13 @@ redo:
 			}
 		}
 
-		MOD_LOG_OPEN_BRACE(group_name[c->type]);
+		MOD_LOG_OPEN_BRACE;
 
 		if (c->type == MOD_LOAD_BALANCE) {
 			modcall_child(request, component,
 				      depth + 1, entry, found,
 				      &result);
+
 		} else {
 			this = found;
 
@@ -981,7 +974,7 @@ redo:
 				if (!this) this = g->children;
 			} while (this != found);
 		}
-		MOD_LOG_CLOSE_BRACE();
+		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_LOAD_BALANCE */
 
@@ -1022,8 +1015,8 @@ redo:
 			radius_xlat(buffer, sizeof(buffer), request, mx->xlat_name, NULL, NULL);
 		} else {
 			RDEBUG("`%s`", mx->xlat_name);
-			radius_exec_program(request, mx->xlat_name, false, true, NULL, 0,
-					    EXEC_TIMEOUT, request->packet->vps, NULL);
+			radius_exec_program(NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
+					    false, true, EXEC_TIMEOUT);
 		}
 
 		goto next_sibling;
@@ -1051,7 +1044,7 @@ calculate_result:
 	if ((c->actions[result] == MOD_ACTION_RETURN) &&
 	    (priority <= 0)) {
 		entry->result = result;
-		return true;
+		goto finish;
 	}
 
 	/*
@@ -1060,7 +1053,7 @@ calculate_result:
 	 */
 	if (c->actions[result] == MOD_ACTION_REJECT) {
 		entry->result = RLM_MODULE_REJECT;
-		return true;
+		goto finish;
 	}
 
 	/*
@@ -1085,18 +1078,21 @@ calculate_result:
 	 *	If we're processing a "case" statement, we return once
 	 *	it's done, rather than going to the next "case" statement.
 	 */
-	if (c->type == MOD_CASE) return true;
+	if (c->type == MOD_CASE) goto finish;
 #endif
 
 	/*
 	 *	If we've been told to stop processing
 	 *	it, do so.
 	 */
-	if (entry->unwind != 0) {
-		RDEBUG2("%.*s # unwind to enclosing %s", depth + 1, modcall_spaces,
-			group_name[entry->unwind]);
+	if (entry->unwind == MOD_BREAK) {
+		RDEBUG2("# unwind to enclosing foreach");
 		entry->unwind = 0;
-		return true;
+		goto finish;
+	}
+
+	if (entry->unwind == MOD_RETURN) {
+		goto finish;
 	}
 
 next_sibling:
@@ -1104,16 +1100,18 @@ next_sibling:
 
 	if (entry->c) goto redo;
 
+finish:
 	/*
 	 *	And we're done!
 	 */
+	REXDENT();
 	return true;
 }
 
 
-/**
- * @brief Call a module, iteratively, with a local stack, rather than
- *	recursively.  What did Paul Graham say about Lisp...?
+/** Call a module, iteratively, with a local stack, rather than recursively
+ *
+ * What did Paul Graham say about Lisp...?
  */
 int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 {
@@ -1595,31 +1593,130 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 #endif
 };
 
-
-#ifdef WITH_UNLANG
-static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_components_t component,
-					 CONF_SECTION *cs, char const *name2)
+/** Validate and fixup a map that's part of an update section.
+ *
+ * @param map to validate.
+ * @param ctx data to pass to fixup function (currently unused).
+ * @return 0 if valid else -1.
+ */
+int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 {
-	int rcode;
-	modgroup *g;
-	modcallable *csingle;
-	value_pair_map_t *map, *head;
-	CONF_ITEM *ci;
+	CONF_PAIR *cp = cf_itemtopair(map->ci);
 
 	/*
-	 *	This looks at cs->name2 to determine which list to update
+	 *	Anal-retentive checks.
 	 */
-	rcode = map_from_cs(cs, &head, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, 128);
-	if (rcode < 0) return NULL; /* message already printed */
+	if (DEBUG_ENABLED2) {
+		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     map->lhs->name, fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		}
 
-	if (!head) {
-		cf_log_err_cs(cs, "'update' sections cannot be empty");
-		return NULL;
+		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     fr_int2str(fr_tokens, map->op, "<INVALID>"), map->rhs->name);
+		}
 	}
 
-	for (map = head, ci = cf_item_find_next(cs, NULL);
-	     map != NULL;
-	     map = map->next, ci = cf_item_find_next(cs, ci)) {
+	/*
+	 *	Values used by unary operators should be literal ANY
+	 *
+	 *	We then free the template and alloc a NULL one instead.
+	 */
+	if (map->op == T_OP_CMP_FALSE) {
+	 	if ((map->rhs->type != TMPL_TYPE_LITERAL) || (strcmp(map->rhs->name, "ANY") != 0)) {
+			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp));
+		}
+
+		tmpl_free(&map->rhs);
+
+		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, NULL, 0);
+	}
+
+	/*
+	 *	Lots of sanity checks for insane people...
+	 */
+
+	/*
+	 *	We don't support implicit type conversion,
+	 *	except for "octets"
+	 */
+	if (((map->lhs->type == TMPL_TYPE_ATTR) || (map->lhs->type == TMPL_TYPE_DATA)) &&
+	    ((map->rhs->type == TMPL_TYPE_ATTR) || (map->rhs->type == TMPL_TYPE_DATA))) {
+		PW_TYPE rhs_type;
+		PW_TYPE lhs_type;
+
+		switch (map->lhs->type) {
+		case TMPL_TYPE_ATTR:
+			lhs_type = map->lhs->tmpl_da->type;
+			break;
+
+		case TMPL_TYPE_DATA:
+			lhs_type = map->lhs->tmpl_data_type;
+			break;
+
+		default:
+			rad_assert(0);
+			return -1;
+		}
+
+		switch (map->rhs->type) {
+		case TMPL_TYPE_ATTR:
+			rhs_type = map->rhs->tmpl_da->type;
+			break;
+
+		case TMPL_TYPE_DATA:
+			rhs_type = map->rhs->tmpl_data_type;
+			break;
+
+		default:
+			rad_assert(0);
+			return -1;
+		}
+
+
+		if ((lhs_type != rhs_type) &&
+		    (lhs_type != PW_TYPE_OCTETS) &&
+		    (rhs_type != PW_TYPE_OCTETS)) {
+			cf_log_err(map->ci, "Attribute type mismatch");
+			return -1;
+		}
+	}
+
+	/*
+	 *	What exactly where you expecting to happen here?
+	 */
+	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+	    (map->rhs->type == TMPL_TYPE_LIST)) {
+		cf_log_err(map->ci, "Can't copy list into an attribute");
+		return -1;
+	}
+
+	/*
+	 *	Depending on the attribute type, some operators are disallowed.
+	 */
+	if (map->lhs->type == TMPL_TYPE_ATTR) {
+		switch (map->op) {
+		default:
+			cf_log_err(map->ci, "Invalid operator for attribute");
+			return -1;
+
+		case T_OP_EQ:
+		case T_OP_CMP_EQ:
+		case T_OP_ADD:
+		case T_OP_SUB:
+		case T_OP_LE:
+		case T_OP_GE:
+		case T_OP_CMP_FALSE:
+		case T_OP_SET:
+			break;
+		}
+	}
+
+	if (map->lhs->type == TMPL_TYPE_LIST) {
 		/*
 		 *	Can't copy an xlat expansion or literal into a list,
 		 *	we don't know what type of attribute we'd need
@@ -1628,54 +1725,129 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 		 *	The only exception is where were using a unary
 		 *	operator like !*.
 		 */
-		if ((map->dst->type == TMPL_TYPE_LIST) &&
-		    (map->op != T_OP_CMP_FALSE) &&
-		    ((map->src->type == TMPL_TYPE_XLAT) || (map->src->type == TMPL_TYPE_LITERAL))) {
+	    	if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
+	    	case TMPL_TYPE_XLAT:
+	    	case TMPL_TYPE_LITERAL:
 			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
-			talloc_free(head);
-			return NULL;
+			return -1;
+
+		default:
+			break;
 		}
 
 		/*
-		 *	If LHS is an attribute, and RHS is a literal, we can
-		 *	preparse the information into a TMPL_TYPE_DATA.
-		 *
-		 *	Unless it's a unary operator in which case we
-		 *	ignore map->src.
+		 *	Only += and :=, and !* operators are supported
+		 *	for lists.
 		 */
-		if ((map->dst->type == TMPL_TYPE_ATTR) && (map->op != T_OP_CMP_FALSE) &&
-		    (map->src->type == TMPL_TYPE_LITERAL)) {
-			CONF_PAIR *cp;
+		switch (map->op) {
+		case T_OP_CMP_FALSE:
+			break;
 
-			cp = cf_itemtopair(ci);
-			rad_assert(cp != NULL);
+		case T_OP_ADD:
+			if ((map->rhs->type != TMPL_TYPE_LIST) &&
+			    (map->rhs->type != TMPL_TYPE_EXEC)) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s += ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		case T_OP_SET:
+			if (map->rhs->type == TMPL_TYPE_EXEC) {
+				WARN("%s[%d] Please change ':=' to '=' for list assignment",
+				     cf_pair_filename(cp), cf_pair_lineno(cp));
+			}
+
+			if (map->rhs->type != TMPL_TYPE_LIST) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s := ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		case T_OP_EQ:
+			if (map->rhs->type != TMPL_TYPE_EXEC) {
+				cf_log_err(map->ci, "Invalid source for list assignment '%s = ...'", map->lhs->name);
+				return -1;
+			}
+			break;
+
+		default:
+			cf_log_err(map->ci, "Operator \"%s\" not allowed for list assignment",
+				   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+			return -1;
+		}
+	}
+
+	/*
+	 *	If the map has a unary operator there's no further
+	 *	processing we need to, as RHS is unused.
+	 */
+	if (map->op == T_OP_CMP_FALSE) return 0;
+
+	/*
+	 *	If LHS is an attribute, and RHS is a literal, we can
+	 *	preparse the information into a TMPL_TYPE_DATA.
+	 *
+	 *	Unless it's a unary operator in which case we
+	 *	ignore map->rhs.
+	 */
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_LITERAL)) {
+		/*
+		 *	It's a literal string, just copy it.
+		 *	Don't escape anything.
+		 */
+		if (!cf_new_escape &&
+		    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
+		    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
+			tmpl_cast_in_place_str(map->rhs);
+		} else {
+			if (!tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da)) {
+				cf_log_err(map->ci, "%s", fr_strerror());
+				return -1;
+			}
 
 			/*
-			 *	It's a literal string, just copy it.
-			 *	Don't escape anything.
+			 *	Fixup LHS da if it doesn't match the type
+			 *	of the RHS.
 			 */
-			if ((map->dst->tmpl_da->type == PW_TYPE_STRING) &&
-			    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
-				value_data_t *vpd;
+			if (map->lhs->tmpl_da->type != map->rhs->tmpl_data_type) {
+				DICT_ATTR const *da;
 
-				map->src->tmpl_value = vpd = talloc_zero(map->src, value_data_t);
-				rad_assert(vpd != NULL);
-
-				vpd->strvalue = talloc_typed_strdup(vpd, map->src->name);
-				rad_assert(vpd->strvalue != NULL);
-
-				map->src->type = TMPL_TYPE_DATA;
-				map->src->tmpl_da = map->dst->tmpl_da;
-				map->src->tmpl_length = talloc_array_length(vpd->strvalue) - 1;
-			} else {
-				if (!tmpl_cast_in_place(map->src, map->dst->tmpl_da)) {
-					cf_log_err(map->ci, "%s", fr_strerror());
-					talloc_free(head);
-					return NULL;
+				da = dict_attrbytype(map->lhs->tmpl_da->attr, map->lhs->tmpl_da->vendor,
+						     map->rhs->tmpl_data_type);
+				if (!da) {
+					fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
+							   fr_int2str(dict_attr_types, map->rhs->tmpl_data_type,
+							   "<INVALID>"), map->lhs->tmpl_da->name);
+					return -1;
 				}
+				map->lhs->tmpl_da = da;
 			}
-		} /* else we can't precompile the data */
-	} /* loop over the conf_pairs in the update section */
+		}
+	} /* else we can't precompile the data */
+
+	return 0;
+}
+
+
+#ifdef WITH_UNLANG
+static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_components_t component,
+					 CONF_SECTION *cs, char const *name2)
+{
+	int rcode;
+	modgroup *g;
+	modcallable *csingle;
+
+	value_pair_map_t *head;
+
+	/*
+	 *	This looks at cs->name2 to determine which list to update
+	 */
+	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_update, NULL, 128);
+	if (rcode < 0) return NULL; /* message already printed */
+	if (!head) {
+		cf_log_err_cs(cs, "'update' sections cannot be empty");
+		return NULL;
+	}
 
 	g = talloc_zero(parent, modgroup);
 	csingle = mod_grouptocallable(g);
@@ -1703,7 +1875,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_compone
 }
 
 
-static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t component, CONF_SECTION *cs)
+static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t component, CONF_SECTION *cs)
 {
 	CONF_ITEM *ci;
 	FR_TOKEN type;
@@ -1711,12 +1883,12 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 	bool had_seen_default = false;
 	modcallable *csingle;
 	modgroup *g;
+	ssize_t slen;
 	value_pair_tmpl_t *vpt;
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err_cs(cs,
-			   "You must specify a variable to switch over for 'switch'");
+		cf_log_err_cs(cs, "You must specify a variable to switch over for 'switch'");
 		return NULL;
 	}
 
@@ -1732,9 +1904,19 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_type(cs);
-	vpt = tmpl_afrom_str(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-	if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
-		cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
+	slen = tmpl_afrom_str(cs, &vpt, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+		cf_log_err_cs(cs, "Syntax error");
+		cf_log_err_cs(cs, "%s", name2);
+		cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+		talloc_free(spaces);
+		talloc_free(text);
+
 		return NULL;
 	}
 
@@ -1747,9 +1929,9 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 	 *	Walk through the children of the switch section,
 	 *	ensuring that they're all 'case' statements
 	 */
-	for (ci=cf_item_find_next(cs, NULL);
+	for (ci = cf_item_find_next(cs, NULL);
 	     ci != NULL;
-	     ci=cf_item_find_next(cs, ci)) {
+	     ci = cf_item_find_next(cs, ci)) {
 		CONF_SECTION *subcs;
 		char const *name1;
 
@@ -1771,13 +1953,13 @@ static modcallable *do_compile_modswitch(modcallable *parent, rlm_components_t c
 		}
 
 		name2 = cf_section_name2(subcs);
-		if (!name2 && !had_seen_default) {
-			had_seen_default = true;
-			continue;
-		}
+		if (!name2) {
+			if (!had_seen_default) {
+				had_seen_default = true;
+				continue;
+			}
 
-		if (!name2 || (name2[0] == '\0')) {
-			cf_log_err(ci, "\"case\" sections must have a name");
+			cf_log_err(ci, "Cannot have two 'default' case statements");
 			talloc_free(vpt);
 			return NULL;
 		}
@@ -1817,13 +1999,24 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 	 */
 	name2 = cf_section_name2(cs);
 	if (name2) {
+		ssize_t slen;
 		FR_TOKEN type;
 
 		type = cf_section_name2_type(cs);
 
-		vpt = tmpl_afrom_str(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-		if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
-			cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
+		slen = tmpl_afrom_str(cs, &vpt, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+			cf_log_err_cs(cs, "Syntax error");
+			cf_log_err_cs(cs, "%s", name2);
+			cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+			talloc_free(spaces);
+			talloc_free(text);
+
 			return NULL;
 		}
 
@@ -1836,10 +2029,10 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 		vpt = NULL;
 	}
 
-	csingle= do_compile_modgroup(parent, component, cs,
-				     GROUPTYPE_SIMPLE,
-				     GROUPTYPE_SIMPLE,
-				     MOD_CASE);
+	csingle = do_compile_modgroup(parent, component, cs,
+				      GROUPTYPE_SIMPLE,
+				      GROUPTYPE_SIMPLE,
+				      MOD_CASE);
 	if (!csingle) {
 		talloc_free(vpt);
 		return NULL;
@@ -1874,6 +2067,7 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	char const *name2;
 	modcallable *csingle;
 	modgroup *g;
+	ssize_t slen;
 	value_pair_tmpl_t *vpt;
 
 	name2 = cf_section_name2(cs);
@@ -1895,9 +2089,19 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_type(cs);
-	vpt = tmpl_afrom_str(cs, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-	if (!vpt && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
-		cf_log_err_cs(cs, "Syntax error in '%s': %s", name2, fr_strerror());
+	slen = tmpl_afrom_str(cs, &vpt, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
+		char *spaces, *text;
+
+		fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+		cf_log_err_cs(cs, "Syntax error");
+		cf_log_err_cs(cs, "%s", name2);
+		cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+		talloc_free(spaces);
+		talloc_free(text);
+
 		return NULL;
 	}
 
@@ -2203,7 +2407,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		} else 	if (strcmp(modrefname, "switch") == 0) {
 			*modname = name2;
 
-			return do_compile_modswitch(parent, component, cs);
+			return do_compile_modswitch (parent, component, cs);
 
 		} else 	if (strcmp(modrefname, "case") == 0) {
 			*modname = name2;
@@ -2231,7 +2435,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		modrefname = cf_pair_attr(cp);
 
 		/*
-		 *	Actions (ok = 1), etc. are orthoganal to just
+		 *	Actions (ok = 1), etc. are orthogonal to just
 		 *	about everything else.
 		 */
 		if (cf_pair_value(cp) != NULL) {
@@ -2310,6 +2514,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 #ifdef WITH_UNLANG
 	if (strcmp(modrefname, "break") == 0) {
 		return do_compile_modbreak(parent, component, ci);
+	}
+
+	if (strcmp(modrefname, "return") == 0) {
+		return do_compile_modgroup(parent, component, NULL,
+					   GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
+					   MOD_RETURN);
 	}
 #endif
 
@@ -2403,6 +2613,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 		*modname = NULL;
 		cf_log_err(ci, "Failed to find \"%s\" in the \"modules\" section.", modrefname);
+		cf_log_err(ci, "Please verify that the configuration exists in the file %s/mods-enabled/%s.", get_radius_dir(), modrefname);
 		return NULL;
 	} while (0);
 
@@ -2536,7 +2747,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 	c->next = NULL;
 	memset(c->actions, 0, sizeof(c->actions));
 
-	if (!cs) {		/* only for "break" */
+	if (!cs) {		/* only for "break" and "return" */
 		c->name = "";
 		goto set_codes;
 	}
@@ -2778,8 +2989,6 @@ void add_to_modcallable(modcallable *parent, modcallable *this)
 
 
 #ifdef WITH_UNLANG
-static char const spaces[] = "                                                                                                                        ";
-
 static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bool convert,
 			       DICT_ATTR const *da)
 {
@@ -2797,22 +3006,16 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 	slen = xlat_tokenize(vpt, fmt, &head, &error);
 
 	if (slen < 0) {
-		char const *prefix = "";
-		char const *p = vpt->name;
-		size_t indent = -slen;
+		char *spaces, *text;
 
-		if (indent >= sizeof(spaces)) {
-			size_t offset = (indent - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
-			indent -= offset;
-			p += offset;
-
-			prefix = "...";
-		}
+		fr_canonicalize_error(vpt, &spaces, &text, slen, vpt->name);
 
 		cf_log_err(ci, "Failed parsing expanded string:");
-		cf_log_err(ci, "%s%s", prefix, p);
-		cf_log_err(ci, "%s%.*s^ %s", prefix, (int) indent, spaces, error);
+		cf_log_err(ci, "%s", text);
+		cf_log_err(ci, "%s^ %s", spaces, error);
 
+		talloc_free(spaces);
+		talloc_free(text);
 		return false;
 	}
 
@@ -2822,8 +3025,17 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 	if (convert) {
 		value_pair_tmpl_t *attr;
 
-		attr = radius_xlat2tmpl(talloc_parent(vpt), head);
+		attr = xlat_to_tmpl_attr(talloc_parent(vpt), head);
 		if (attr) {
+			/*
+			 *	If it's a virtual attribute, leave it
+			 *	alone.
+			 */
+			if (attr->tmpl_da->flags.virtual) {
+				talloc_free(attr);
+				return true;
+			}
+
 			/*
 			 *	If the attribute is of incompatible
 			 *	type, leave it alone.
@@ -2877,9 +3089,20 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	rad_assert(vpt->type == TMPL_TYPE_REGEX);
 
 	/*
-	 *	Expanded at run-time.  We can't precompile it.
+	 *	It's a dynamic expansion.  We can't expand the string,
+	 *	but we can pre-parse it as an xlat struct.  In that
+	 *	case, we convert it to a pre-compiled XLAT.
+	 *
+	 *	This is a little more complicated than it needs to be
+	 *	because radius_evaluate_map() keys off of the src
+	 *	template type, instead of the operators.  And, the
+	 *	pass2_xlat_compile() function expects to get passed an
+	 *	XLAT instead of a REGEX.
 	 */
-	if (strchr(vpt->name, '%')) return true;
+	if (strchr(vpt->name, '%')) {
+		vpt->type = TMPL_TYPE_XLAT;
+		return pass2_xlat_compile(ci, &vpt, false, NULL);
+	}
 
 	preg = talloc_zero(vpt, regex_t);
 	talloc_set_destructor(preg, _free_compiled_regex);
@@ -2902,12 +3125,50 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 }
 #endif
 
+static bool pass2_fixup_undefined(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
+{
+	DICT_ATTR const *da;
+
+	rad_assert(vpt->type == TMPL_TYPE_ATTR_UNDEFINED);
+
+	da = dict_attrbyname(vpt->tmpl_unknown_name);
+	if (!da) {
+		cf_log_err(ci, "Unknown attribute '%s'", vpt->tmpl_unknown_name);
+		return false;
+	}
+
+	vpt->tmpl_da = da;
+	vpt->type = TMPL_TYPE_ATTR;
+	return true;
+}
+
+/** Convert an &attr[*] reference to an XLAT
+ *
+ * @param vpt to convert
+ * @return true if conversion was successful, else false.
+ */
+static bool pass2_fixup_attr_count(value_pair_tmpl_t *vpt)
+{
+	xlat_exp_t *node;
+
+	rad_assert(vpt->type == TMPL_TYPE_ATTR);
+	rad_assert(vpt->tmpl_num == NUM_COUNT);
+
+	node = xlat_from_tmpl_attr(vpt, vpt);
+	if (!node) return false;
+
+	memset(&vpt->data, 0, sizeof(vpt->data));
+	vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	vpt->data.xlat = node;
+
+	return true;
+}
+
 static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
 	value_pair_map_t *map;
 
 	if (c->type == COND_TYPE_EXISTS) {
-
 		if (c->data.vpt->type == TMPL_TYPE_XLAT) {
 			return pass2_xlat_compile(c->ci, &c->data.vpt, true, NULL);
 		}
@@ -2919,16 +3180,12 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 		 *	where Foo-Bar is defined by a module.
 		 */
 		if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
-			value_pair_tmpl_t *vpt;
-			vpt = tmpl_afrom_str(c, c->data.vpt->name, T_BARE_WORD, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-			if (!vpt) {
-				cf_log_err(c->ci, "Unknown attribute '%s'", c->data.vpt->name + 1);
-				return false;
-			}
-
-			talloc_free(c->data.vpt);
-			c->data.vpt = vpt;
+			if (!pass2_fixup_undefined(c->ci, c->data.vpt)) return false;
 			c->pass2_fixup = PASS2_FIXUP_NONE;
+		}
+
+		if ((c->data.vpt->type == TMPL_TYPE_ATTR) && (c->data.vpt->tmpl_num == NUM_COUNT)) {
+			return pass2_fixup_attr_count(c->data.vpt);
 		}
 		return true;
 	}
@@ -2954,12 +3211,12 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 	 *	Where "foo" is dynamically defined.
 	 */
 	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
-		if (!dict_valbyname(map->dst->tmpl_da->attr,
-				    map->dst->tmpl_da->vendor,
-				    map->src->name)) {
+		if (!dict_valbyname(map->lhs->tmpl_da->attr,
+				    map->lhs->tmpl_da->vendor,
+				    map->rhs->name)) {
 			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",
-				   map->dst->tmpl_da->name,
-				   map->src->name);
+				   map->lhs->tmpl_da->name,
+				   map->rhs->name);
 			return false;
 		}
 
@@ -2971,34 +3228,14 @@ static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 	}
 
 	if (c->pass2_fixup == PASS2_FIXUP_ATTR) {
-		value_pair_map_t *old;
-		value_pair_tmpl_t vpt;
-
-		old = c->data.map;
-
-		/*
-		 *	It's still not an attribute.  Ignore it.
-		 */
-		if (tmpl_from_attr_str(&vpt, map->dst->name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-			cf_log_err(old->ci, "Failed parsing condition: %s", fr_strerror());
-			c->pass2_fixup = PASS2_FIXUP_NONE;
-			return true;
+		if (map->lhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
+			if (!pass2_fixup_undefined(map->ci, map->lhs)) return false;
 		}
 
-		/*
-		 *	Re-parse the LHS as an attribute.
-		 */
-		map = map_from_fields(c, old->dst->name, T_BARE_WORD, old->op,
-				      old->src->name, T_BARE_WORD,
-				      REQUEST_CURRENT, PAIR_LIST_REQUEST,
-				      REQUEST_CURRENT, PAIR_LIST_REQUEST);
-		if (!map) {
-			cf_log_err(old->ci, "Failed parsing condition");
-			return false;
+		if (map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
+			if (!pass2_fixup_undefined(map->ci, map->rhs)) return false;
 		}
-		map->ci = old->ci;
-		talloc_free(old);
-		c->data.map = map;
+
 		c->pass2_fixup = PASS2_FIXUP_NONE;
 	}
 
@@ -3009,22 +3246,29 @@ check_paircmp:
 	rad_assert((c->pass2_fixup == PASS2_FIXUP_NONE) ||
 		   (c->pass2_fixup == PASS2_PAIRCOMPARE));
 
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->tmpl_num == NUM_COUNT)) {
+		if (!pass2_fixup_attr_count(map->lhs)) return false;
+	}
+	if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->tmpl_num == NUM_COUNT)) {
+		if (!pass2_fixup_attr_count(map->rhs)) return false;
+	}
+
 	/*
 	 *	Precompile xlat's
 	 */
-	if (map->dst->type == TMPL_TYPE_XLAT) {
+	if (map->lhs->type == TMPL_TYPE_XLAT) {
 		/*
 		 *	Don't compile the LHS to an attribute
 		 *	reference for now.  When we do that, we've got
 		 *	to check the RHS for type-specific data, and
 		 *	parse it to a TMPL_TYPE_DATA.
 		 */
-		if (!pass2_xlat_compile(map->ci, &map->dst, false, NULL)) {
+		if (!pass2_xlat_compile(map->ci, &map->lhs, false, NULL)) {
 			return false;
 		}
 	}
 
-	if (map->src->type == TMPL_TYPE_XLAT) {
+	if (map->rhs->type == TMPL_TYPE_XLAT) {
 		/*
 		 *	Convert the RHS to an attribute reference only
 		 *	if the LHS is an attribute reference, AND is
@@ -3035,17 +3279,17 @@ check_paircmp:
 		 *	on the RHS.  For now, the code in parser.c
 		 *	forbids this.
 		 */
-		if (map->dst->type == TMPL_TYPE_ATTR) {
+		if (map->lhs->type == TMPL_TYPE_ATTR) {
 			DICT_ATTR const *da = c->cast;
 
-			if (!c->cast) da = map->dst->tmpl_da;
+			if (!c->cast) da = map->lhs->tmpl_da;
 
-			if (!pass2_xlat_compile(map->ci, &map->src, true, da)) {
+			if (!pass2_xlat_compile(map->ci, &map->rhs, true, da)) {
 				return false;
 			}
 
 		} else {
-			if (!pass2_xlat_compile(map->ci, &map->src, false, NULL)) {
+			if (!pass2_xlat_compile(map->ci, &map->rhs, false, NULL)) {
 				return false;
 			}
 		}
@@ -3054,29 +3298,40 @@ check_paircmp:
 	/*
 	 *	Convert bare refs to %{Foreach-Variable-N}
 	 */
-	if ((map->dst->type == TMPL_TYPE_LITERAL) &&
-	    (strncmp(map->dst->name, "Foreach-Variable-", 17) == 0)) {
+	if ((map->lhs->type == TMPL_TYPE_LITERAL) &&
+	    (strncmp(map->lhs->name, "Foreach-Variable-", 17) == 0)) {
 		char *fmt;
+		ssize_t slen;
 		value_pair_tmpl_t *vpt;
 
-		fmt = talloc_asprintf(map->dst, "%%{%s}", map->dst->name);
-		vpt = tmpl_afrom_str(map, fmt, T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-		if (!vpt) {
-			cf_log_err(map->ci, "Failed compiling %s", map->dst->name);
+		fmt = talloc_asprintf(map->lhs, "%%{%s}", map->lhs->name);
+		slen = tmpl_afrom_str(map, &vpt, fmt, T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		if (slen < 0) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(map->ci, &spaces, &text, slen, fr_strerror());
+
+			cf_log_err(map->ci, "Failed converting %s to xlat", map->lhs->name);
+			cf_log_err(map->ci, "%s", fmt);
+			cf_log_err(map->ci, "%s^ %s", spaces, text);
+
+			talloc_free(spaces);
+			talloc_free(text);
 			talloc_free(fmt);
+
 			return false;
 		}
-		talloc_free(map->dst);
-		map->dst = vpt;
+		talloc_free(map->lhs);
+		map->lhs = vpt;
 	}
 
 #ifdef HAVE_REGEX
-	if (map->src->type == TMPL_TYPE_REGEX) {
-		if (!pass2_regex_compile(map->ci, map->src)) {
+	if (map->rhs->type == TMPL_TYPE_REGEX) {
+		if (!pass2_regex_compile(map->ci, map->rhs)) {
 			return false;
 		}
 	}
-	rad_assert(map->dst->type != TMPL_TYPE_REGEX);
+	rad_assert(map->lhs->type != TMPL_TYPE_REGEX);
 #endif
 
 	/*
@@ -3084,35 +3339,35 @@ check_paircmp:
 	 *	they can only be with the current REQUEST, and only
 	 *	with the request pairs.
 	 */
-	if ((map->dst->type != TMPL_TYPE_ATTR) ||
-	    (map->dst->tmpl_request != REQUEST_CURRENT) ||
-	    (map->dst->tmpl_list != PAIR_LIST_REQUEST)) {
+	if ((map->lhs->type != TMPL_TYPE_ATTR) ||
+	    (map->lhs->tmpl_request != REQUEST_CURRENT) ||
+	    (map->lhs->tmpl_list != PAIR_LIST_REQUEST)) {
 		return true;
 	}
 
-	if (!radius_find_compare(map->dst->tmpl_da)) return true;
+	if (!radius_find_compare(map->lhs->tmpl_da)) return true;
 
-	if (map->src->type == TMPL_TYPE_ATTR) {
+	if (map->rhs->type == TMPL_TYPE_ATTR) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s to another attribute",
-			   map->dst->name);
+			   map->lhs->name);
 		return false;
 	}
 
-	if (map->src->type == TMPL_TYPE_REGEX) {
+	if (map->rhs->type == TMPL_TYPE_REGEX) {
 		cf_log_err(map->ci, "Cannot compare virtual attribute %s via a regex",
-			   map->dst->name);
+			   map->lhs->name);
 		return false;
 	}
 
 	if (c->cast) {
 		cf_log_err(map->ci, "Cannot cast virtual attribute %s",
-			   map->dst->name);
+			   map->lhs->name);
 		return false;
 	}
 
 	if (map->op != T_OP_CMP_EQ) {
 		cf_log_err(map->ci, "Must use '==' for comparisons with virtual attribute %s",
-			   map->dst->name);
+			   map->lhs->name);
 		return false;
 	}
 
@@ -3134,19 +3389,19 @@ static bool modcall_pass2_update(modgroup *g)
 	value_pair_map_t *map;
 
 	for (map = g->map; map != NULL; map = map->next) {
-		if (map->src->type == TMPL_TYPE_XLAT) {
-			rad_assert(map->src->tmpl_xlat == NULL);
+		if (map->rhs->type == TMPL_TYPE_XLAT) {
+			rad_assert(map->rhs->tmpl_xlat == NULL);
 
 			/*
 			 *	FIXME: compile to attribute && handle
 			 *	the conversion in map_to_vp().
 			 */
-			if (!pass2_xlat_compile(map->ci, &map->src, false, NULL)) {
+			if (!pass2_xlat_compile(map->ci, &map->rhs, false, NULL)) {
 				return false;
 			}
 		}
 
-		rad_assert(map->src->type != TMPL_TYPE_REGEX);
+		rad_assert(map->rhs->type != TMPL_TYPE_REGEX);
 	}
 
 	return true;
@@ -3158,19 +3413,28 @@ static bool modcall_pass2_update(modgroup *g)
  */
 bool modcall_pass2(modcallable *mc)
 {
-	modcallable *this;
+	ssize_t slen;
+	char const *name2;
+	modcallable *c;
 	modgroup *g;
 
-	for (this = mc; this != NULL; this = this->next) {
-		switch (this->type) {
+	for (c = mc; c != NULL; c = c->next) {
+		switch (c->type) {
 		default:
 			rad_assert(0 == 1);
 			break;
 
 #ifdef WITH_UNLANG
 		case MOD_UPDATE:
-			g = mod_callabletogroup(this);
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
+
+			name2 = cf_section_name2(g->cs);
+			if (!name2) {
+				c->debug_name = group_name[c->type];
+			} else {
+				c->debug_name = talloc_asprintf(c, "update %s", name2);
+			}
 
 			if (!modcall_pass2_update(g)) {
 				return false;
@@ -3179,18 +3443,23 @@ bool modcall_pass2(modcallable *mc)
 			break;
 
 		case MOD_XLAT:   /* @todo: pre-parse xlat's */
-		case MOD_BREAK:
 		case MOD_REFERENCE:
+		case MOD_BREAK:
+		case MOD_RETURN:
 #endif
 
 		case MOD_SINGLE:
+			c->debug_name = c->name;
 			break;	/* do nothing */
 
 #ifdef WITH_UNLANG
 		case MOD_IF:
 		case MOD_ELSIF:
-			g = mod_callabletogroup(this);
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
+
+			name2 = cf_section_name2(g->cs);
+			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
 
 			/*
 			 *	Don't walk over these.
@@ -3217,24 +3486,37 @@ bool modcall_pass2(modcallable *mc)
 
 #ifdef WITH_UNLANG
 		case MOD_SWITCH:
-			g = mod_callabletogroup(this);
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
+
+			name2 = cf_section_name2(g->cs);
+			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
 
 			/*
 			 *	We had &Foo-Bar, where Foo-Bar is
 			 *	defined by a module.
 			 */
 			if (!g->vpt) {
-				rad_assert(this->name != NULL);
-				rad_assert(this->name[0] == '&');
+				rad_assert(c->name != NULL);
+				rad_assert(c->name[0] == '&');
 				rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
 
-				g->vpt = tmpl_afrom_str(g->cs, this->name,
-							cf_section_name2_type(g->cs),
-							 REQUEST_CURRENT, PAIR_LIST_REQUEST);
-				if (!g->vpt) {
-					cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
-						      this->name, fr_strerror());
+				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name,
+						      cf_section_name2_type(g->cs),
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (slen < 0) {
+					char *spaces, *text;
+
+				parse_error:
+					fr_canonicalize_error(g->cs, &spaces, &text, slen, fr_strerror());
+
+					cf_log_err_cs(g->cs, "Syntax error");
+					cf_log_err_cs(g->cs, "%s", c->name);
+					cf_log_err_cs(g->cs, "%s^ %s", spaces, text);
+
+					talloc_free(spaces);
+					talloc_free(text);
+
 					return false;
 				}
 
@@ -3265,9 +3547,9 @@ bool modcall_pass2(modcallable *mc)
 			if (g->vpt->type == TMPL_TYPE_LITERAL) {
 				value_pair_tmpl_t *vpt;
 
-				vpt = tmpl_afrom_str(g->cs, this->name,
-						      cf_section_name2_type(g->cs),
+				slen = tmpl_afrom_str(g->cs, &vpt, c->name, cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (slen < 0) goto parse_error;
 				if (vpt->type == TMPL_TYPE_ATTR) {
 					talloc_free(g->vpt);
 					g->vpt = vpt;
@@ -3283,11 +3565,11 @@ bool modcall_pass2(modcallable *mc)
 			 *	ALLOWED   : switch &User-Name { ...
 			 */
 			if ((g->vpt->type == TMPL_TYPE_ATTR) &&
-			    (this->name[0] != '&')) {
+			    (c->name[0] != '&')) {
 				WARN("%s[%d]: Please change %s to &%s",
 				       cf_section_filename(g->cs),
 				       cf_section_lineno(g->cs),
-				       this->name, this->name);
+				       c->name, c->name);
 			}
 
 		do_children:
@@ -3296,11 +3578,18 @@ bool modcall_pass2(modcallable *mc)
 			break;
 
 		case MOD_CASE:
-			g = mod_callabletogroup(this);
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
 
-			rad_assert(this->parent != NULL);
-			rad_assert(this->parent->type == MOD_SWITCH);
+			name2 = cf_section_name2(g->cs);
+			if (!name2) {
+				c->debug_name = group_name[c->type];
+			} else {
+				c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
+			}
+
+			rad_assert(c->parent != NULL);
+			rad_assert(c->parent->type == MOD_SWITCH);
 
 			/*
 			 *	The statement may refer to an
@@ -3308,17 +3597,13 @@ bool modcall_pass2(modcallable *mc)
 			 *	all of the modules have been loaded.
 			 *	Check for that now.
 			 */
-			if (!g->vpt && this->name &&
-			    (this->name[0] == '&') &&
+			if (!g->vpt && c->name &&
+			    (c->name[0] == '&') &&
 			    (cf_section_name2_type(g->cs) == T_BARE_WORD)) {
-				g->vpt = tmpl_afrom_str(g->cs, this->name,
-							 cf_section_name2_type(g->cs),
-							 REQUEST_CURRENT, PAIR_LIST_REQUEST);
-				if (!g->vpt) {
-					cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
-						      this->name, fr_strerror());
-					return false;
-				}
+				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name,
+						      cf_section_name2_type(g->cs),
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (slen < 0) goto parse_error;
 			}
 
 			/*
@@ -3387,8 +3672,11 @@ bool modcall_pass2(modcallable *mc)
 			break;
 
 		case MOD_FOREACH:
-			g = mod_callabletogroup(this);
+			g = mod_callabletogroup(c);
 			if (g->done_pass2) return true;
+
+			name2 = cf_section_name2(g->cs);
+			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
 
 			/*
 			 *	Already parsed, handle the children.
@@ -3399,8 +3687,8 @@ bool modcall_pass2(modcallable *mc)
 			 *	We had &Foo-Bar, where Foo-Bar is
 			 *	defined by a module.
 			 */
-			rad_assert(this->name != NULL);
-			rad_assert(this->name[0] == '&');
+			rad_assert(c->name != NULL);
+			rad_assert(c->name[0] == '&');
 			rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
 
 			/*
@@ -3409,14 +3697,9 @@ bool modcall_pass2(modcallable *mc)
 			 *	all of the modules have been loaded.
 			 *	Check for that now.
 			 */
-			g->vpt = tmpl_afrom_str(g->cs, this->name,
-						 cf_section_name2_type(g->cs),
-						 REQUEST_CURRENT, PAIR_LIST_REQUEST);
-			if (!g->vpt) {
-				cf_log_err_cs(g->cs, "Syntax error in '%s': %s",
-					      this->name, fr_strerror());
-				return false;
-			}
+			slen = tmpl_afrom_str(g->cs, &g->vpt, c->name, cf_section_name2_type(g->cs),
+					      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			if (slen < 0) goto parse_error;
 
 		check_children:
 			rad_assert(g->vpt->type == TMPL_TYPE_ATTR);
@@ -3429,14 +3712,35 @@ bool modcall_pass2(modcallable *mc)
 			break;
 
 		case MOD_ELSE:
+			c->debug_name = group_name[c->type];
+			goto do_recurse;
+
 		case MOD_POLICY:
-			/* FALL-THROUGH */
+			g = mod_callabletogroup(c);
+			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], cf_section_name1(g->cs));
+			goto do_recurse;
 #endif
 
 		case MOD_GROUP:
 		case MOD_LOAD_BALANCE:
 		case MOD_REDUNDANT_LOAD_BALANCE:
-			g = mod_callabletogroup(this);
+			c->debug_name = group_name[c->type];
+
+#ifdef WITH_UNLANG
+		do_recurse:
+#endif
+			g = mod_callabletogroup(c);
+			if (!g->cs) {
+				c->debug_name = mc->name; /* for authorize, etc. */
+
+			} else if (c->type == MOD_GROUP) { /* for Auth-Type, etc. */
+				char const *name1 = cf_section_name1(g->cs);
+
+				if (strcmp(name1, group_name[c->type]) != 0) {
+					c->debug_name = talloc_asprintf(c, "%s %s", name1, cf_section_name2(g->cs));
+				}
+			}
+
 			if (g->done_pass2) return true;
 			if (!modcall_pass2(g->children)) return false;
 			g->done_pass2 = true;
@@ -3502,7 +3806,7 @@ void modcall_debug(modcallable *mc, int depth)
 		case MOD_SWITCH:
 		case MOD_CASE:
 			g = mod_callabletogroup(this);
-			tmpl_prints(buffer, sizeof(buffer), g->vpt);
+			tmpl_prints(buffer, sizeof(buffer), g->vpt, NULL);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				group_name[this->type], buffer);
 			modcall_debug(g->children, depth + 1);

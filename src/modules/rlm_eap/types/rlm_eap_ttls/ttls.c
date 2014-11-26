@@ -283,7 +283,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				 */
 		raw:
 				if (vp) pairfree(&vp);
-				da = dict_attrunknown(attr, vendor, true);
+				da = dict_unknown_afrom_fields(packet, attr, vendor);
 				if (!da) return NULL;
 				vp = pairalloc(packet, da);
 				if (!vp) return NULL;
@@ -717,9 +717,9 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_handler_t *handler,
 		 *	VP's back to the client.
 		 */
 		if (vp) {
-			RDEBUG("sending tunneled reply attributes");
-			debug_pair_list(vp);
-			RDEBUG("end tunneled reply attributes");
+			RDEBUG("Sending tunneled reply attributes");
+			rdebug_pair_list(L_DBG_LVL_1, request, vp, NULL);
+
 			vp2diameter(request, tls_session, vp);
 			pairfree(&vp);
 		}
@@ -851,7 +851,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 		 *	Perform a post-auth stage for the tunneled
 		 *	session.
 		 */
-		fake->log.lvl &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		rcode = rad_postauth(fake);
 		RDEBUG2("post-auth returns %d", rcode);
 
@@ -859,9 +859,8 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 			fprintf(fr_log_fp, "} # server %s\n",
 				(!fake->server) ? "" : fake->server);
 
-			RDEBUG("Final reply from tunneled session code %d",
-			       fake->reply->code);
-			debug_pair_list(fake->reply->vps);
+			RDEBUG("Final reply from tunneled session code %d", fake->reply->code);
+			rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 		}
 
 		/*
@@ -1015,11 +1014,8 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 */
 	pairmake_packet("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 
-	if ((debug_flag > 0) && fr_log_fp) {
-		RDEBUG("Got tunneled request");
-
-		debug_pair_list(fake->packet->vps);
-	}
+	RDEBUG("Got tunneled request");
+	rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
 
 	/*
 	 *	Update other items in the REQUEST data structure.
@@ -1126,7 +1122,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	AND attributes which are copied there
 			 *	from below.
 			 */
-			if (pairfind(fake->packet->vps, vp->da->attr, vp->da->vendor, TAG_ANY)) {
+			if (pair_find_by_da(fake->packet->vps, vp->da, TAG_ANY)) {
 				continue;
 			}
 

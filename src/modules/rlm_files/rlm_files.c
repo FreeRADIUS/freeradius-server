@@ -88,7 +88,7 @@ static const CONF_PARSER module_config[] = {
 	{ "auth_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile), NULL },
 	{ "postauth_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile), NULL },
 	{ "compat", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_files_t, compat_mode), "cistron" },
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_files_t, key), NULL },
+	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_files_t, key), NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -204,9 +204,9 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 					 *	become ==
 					 */
 					if ((vp->da->attr >= 0x100) &&
-							(vp->da->attr <= 0xffff) &&
-							(vp->da->attr != PW_HINT) &&
-							(vp->da->attr != PW_HUNTGROUP_NAME)) {
+					    (vp->da->attr <= 0xffff) &&
+					    (vp->da->attr != PW_HINT) &&
+					    (vp->da->attr != PW_HUNTGROUP_NAME)) {
 						DEBUG("\tChanging '%s =' to '%s +='", vp->da->name, vp->da->name);
 
 						vp->op = T_OP_ADD;
@@ -216,7 +216,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 						vp->op = T_OP_CMP_EQ;
 					}
 				}
-
 			} /* end of loop over check items */
 
 			/*
@@ -430,7 +429,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			}
 		}
 
-		if (paircompare(request, request_packet->vps, pl->check, &reply_packet->vps) == 0) {
+		if (paircompare(request, request_packet->vps, check_tmp, &reply_packet->vps) == 0) {
 			RDEBUG2("%s: Matched entry %s at line %d", filename, match, pl->lineno);
 			found = true;
 

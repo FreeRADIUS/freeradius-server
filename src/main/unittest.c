@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_GETOPT_H
@@ -140,7 +141,7 @@ static REQUEST *request_setup(FILE *fp)
 	/*
 	 *	Read packet from fp
 	 */
-	if (readvp2(&request->packet->vps, request->packet, fp, &filedone) < 0) {
+	if (readvp2(request->packet, &request->packet->vps, fp, &filedone) < 0) {
 		fr_perror("unittest");
 		talloc_free(request);
 		return NULL;
@@ -458,7 +459,7 @@ int main(int argc, char *argv[])
 	/*  Process the options.  */
 	while ((argval = getopt(argc, argv, "d:D:f:hi:mMn:o:xX")) != EOF) {
 
-		switch(argval) {
+		switch (argval) {
 			case 'd':
 				set_radius_dir(NULL, optarg);
 				break;
@@ -540,6 +541,8 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
+	fr_state_init();
+
 	/* Set the panic action (if required) */
 	if (main_config.panic_action &&
 #ifndef NDEBUG
@@ -604,7 +607,7 @@ int main(int argc, char *argv[])
 		}
 
 
-		if (readvp2(&filter_vps, request, fp, &filedone) < 0) {
+		if (readvp2(request, &filter_vps, fp, &filedone) < 0) {
 			fprintf(stderr, "Failed reading attributes from %s: %s\n",
 				filter_file, fr_strerror());
 			rcode = EXIT_FAILURE;
@@ -664,6 +667,8 @@ finish:
 	modules_free();
 
 	xlat_free();		/* modules may have xlat's */
+
+	fr_state_delete();
 
 	/*
 	 *	Free the configuration items.

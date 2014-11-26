@@ -268,7 +268,7 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 			continue;
 		}
 		if (*++p == '\0') break;
-		if (c == '%') switch(*p) {
+		if (c == '%') switch (*p) {
 			case 'b': /* last_reset */
 				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->last_reset);
 				strlcpy(q, tmpdt, freespace);
@@ -469,10 +469,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	if ((inst->key_attr->vendor == 0) && (inst->key_attr->attr == PW_USER_NAME)) {
 		key_vp = request->username;
 	} else {
-		key_vp = pairfind(request->packet->vps, inst->key_attr->attr, inst->key_attr->vendor, TAG_ANY);
+		key_vp = pair_find_by_da(request->packet->vps, inst->key_attr, TAG_ANY);
 	}
 	if (!key_vp) {
-		RWDEBUG2("Couldn't find key attribute 'request:%s'", inst->key_attr->name);
+		RWDEBUG2("Couldn't find key attribute, request:%s, doing nothing...", inst->key_attr->name);
 		return rcode;
 	}
 
@@ -483,9 +483,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		return rcode;
 	}
 
-	limit = pairfind(request->config_items, da->attr, da->vendor, TAG_ANY);
+	limit = pair_find_by_da(request->config_items, da, TAG_ANY);
 	if (limit == NULL) {
-		RWDEBUG2("Couldn't find control attribute 'control:%s'", inst->limit_name);
+		/* Yes this really is 'check' as distinct from control */
+		RWDEBUG2("Couldn't find check attribute, control:%s, doing nothing...", inst->limit_name);
 		return rcode;
 	}
 
@@ -555,7 +556,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *	Limit the reply attribute to the minimum of the existing value, or this new one.
 	 */
-	reply_item = pairfind(request->reply->vps, inst->reply_attr->attr, inst->reply_attr->vendor, TAG_ANY);
+	reply_item = pair_find_by_da(request->reply->vps, inst->reply_attr, TAG_ANY);
 	if (reply_item) {
 		if (reply_item->vp_integer64 <= res) {
 			RDEBUG2("Leaving existing reply:%s value of %" PRIu64, inst->reply_attr->name,

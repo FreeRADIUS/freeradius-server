@@ -73,6 +73,7 @@ typedef struct rlm_perl_t {
 	char const	*xlat_name;
 	char const	*perl_flags;
 	PerlInterpreter	*perl;
+	bool             perl_parsed;
 	pthread_key_t	*thread_key;
 
 #ifdef USE_ITHREADS
@@ -481,6 +482,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	char const *xlat_name;
 	int exitstatus = 0, argc=0;
 
+	CONF_SECTION *cs;
+
 	MEM(embed_c = talloc_zero_array(inst, char const *, 4));
 	memcpy(&embed, &embed_c, sizeof(embed));
 	/*
@@ -532,20 +535,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
 #endif
 
-	exitstatus = perl_parse(inst->perl, xs_init, argc, embed, NULL);
-
-	end_AV = PL_endav;
-	PL_endav = (AV *)NULL;
-
-	if(!exitstatus) {
-		perl_run(inst->perl);
-	} else {
-		ERROR("rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
-		return (-1);
-	}
-
-	PL_endav = end_AV;
-
 	xlat_name = cf_section_name2(conf);
 	if (!xlat_name)
 		xlat_name = cf_section_name1(conf);
@@ -553,8 +542,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		xlat_register(xlat_name, perl_xlat, NULL, inst);
 	}
 
+	exitstatus = perl_parse(inst->perl, xs_init, argc, embed, NULL);
+
+	end_AV = PL_endav;
+	PL_endav = (AV *)NULL;
+
+	if (exitstatus) {
+		ERROR("rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
+		return -1;
+	}
+
 	/* parse perl configuration sub-section */
-	CONF_SECTION *cs;
 	cs = cf_section_sub_find(conf, "config");
 	if (cs) {
 		DEBUG("rlm_perl (%s): parsing 'config' section...", xlat_name);
@@ -564,6 +562,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		DEBUG("rlm_perl (%s): done parsing 'config'.", xlat_name);
 	}
+
+	inst->perl_parsed = true;
+	perl_run(inst->perl);
+
+	PL_endav = end_AV;
 
 	return 0;
 }
@@ -1037,7 +1040,7 @@ static int mod_detach(void *instance)
 	}
 #endif
 
-	if (inst->func_detach) {
+	if (inst->perl_parsed && inst->func_detach) {
 		dTHXa(inst->perl);
 		PERL_SET_CONTEXT(inst->perl);
 		{

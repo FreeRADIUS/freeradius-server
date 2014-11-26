@@ -35,8 +35,7 @@ if ("%{md5:&request:Tmp-String-0}" != '9ac4dbbc3c0ad2429e61d0df5dc28add') {
 	}
 }
 
-# This differs than hashing the attribute directly, as the \n is escaped and becomes chars \ and n
-if ("%{md5:%{request:Tmp-String-0}}" != 'b41832e1bd19528e1a09495922182579') {
+if ("%{md5:%{request:Tmp-String-0}}" != '9ac4dbbc3c0ad2429e61d0df5dc28add') {
 	update reply {
 		Filter-Id += 'fail 4'
 	}

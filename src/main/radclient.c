@@ -333,7 +333,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Read the request VP's.
 		 */
-		if (readvp2(&request->packet->vps, request->packet, packets, &packets_done) < 0) {
+		if (readvp2(request->packet, &request->packet->vps, packets, &packets_done) < 0) {
 			REDEBUG("Error parsing \"%s\"", files->packets);
 			goto error;
 		}
@@ -352,7 +352,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		if (filters) {
 			bool filters_done;
 
-			if (readvp2(&request->filter, request, filters, &filters_done) < 0) {
+			if (readvp2(request, &request->filter, filters, &filters_done) < 0) {
 				REDEBUG("Error parsing \"%s\"", files->filters);
 				goto error;
 			}
@@ -1149,7 +1149,7 @@ int main(int argc, char **argv)
 #ifdef WITH_TCP
 		"P:"
 #endif
-			   )) != EOF) switch(c) {
+			   )) != EOF) switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;

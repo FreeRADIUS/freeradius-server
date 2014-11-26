@@ -277,11 +277,11 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 *
 	 *	and create the RADCLIENT structure from that.
 	 */
-	DEBUG("server %s {", request->server);
+	RDEBUG("server %s {", request->server);
 
 	rcode = process_authorize(0, request);
 
-	DEBUG("} # server %s", request->server);
+	RDEBUG("} # server %s", request->server);
 
 	if (rcode != RLM_MODULE_OK) {
 		talloc_free(request);
@@ -293,14 +293,14 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 *	don't create the client from attribute-value pairs.
 	 */
 	if (request->client == client) {
-		created = client_from_request(clients, request);
+		created = client_afrom_request(clients, request);
 	} else {
 		created = request->client;
 
 		/*
 		 *	This frees the client if it isn't valid.
 		 */
-		if (!client_validate(clients, client, created)) goto unknown;
+		if (!client_add_dynamic(clients, client, created)) goto unknown;
 	}
 
 	request->server = client->server;
@@ -496,7 +496,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
-	switch(packet->code) {
+	switch (packet->code) {
 	case PW_CODE_ACCESS_REQUEST:
 		if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
 		FR_STATS_INC(auth, total_requests);
@@ -860,7 +860,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 
 	if (this->server) {
 		ADDSTRING(" as server ");
-		ADDSTRING(this->server);
+		strlcpy(buffer, this->server, bufsize);
 	}
 
 #undef ADDSTRING
@@ -916,7 +916,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 
-	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_IP_ADDR, &ipaddr), NULL);
+	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_COMBO_IP_ADDR, &ipaddr), NULL);
 	if (rcode < 0) return -1;
 	if (rcode != 0) rcode = cf_item_parse(cs, "ipv4addr", FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, &ipaddr), NULL);
 	if (rcode < 0) return -1;
@@ -1446,7 +1446,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
-	switch(code) {
+	switch (code) {
 	case PW_CODE_ACCESS_REQUEST:
 		fun = rad_authenticate;
 		break;
@@ -1553,7 +1553,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
-	switch(code) {
+	switch (code) {
 	case PW_CODE_ACCOUNTING_REQUEST:
 		fun = rad_accounting;
 		break;
@@ -1628,7 +1628,7 @@ static int do_proxy(REQUEST *request)
 /*
  *	Receive a CoA packet.
  */
-static int rad_coa_recv(REQUEST *request)
+int rad_coa_recv(REQUEST *request)
 {
 	int rcode = RLM_MODULE_OK;
 	int ack, nak;
@@ -1801,7 +1801,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
-	switch(code) {
+	switch (code) {
 	case PW_CODE_COA_REQUEST:
 		FR_STATS_INC(coa, total_requests);
 		fun = rad_coa_recv;
@@ -1859,7 +1859,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	/*
 	 *	FIXME: Client MIB updates?
 	 */
-	switch(packet->code) {
+	switch (packet->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_ACCESS_REJECT:
@@ -1921,7 +1921,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 	/*
 	 *	FIXME: Client MIB updates?
 	 */
-	switch(packet->code) {
+	switch (packet->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_ACCESS_REJECT:
@@ -2385,9 +2385,12 @@ static int listen_bind(rad_listen_t *this)
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 
 	if (sock->my_ipaddr.af == AF_INET) {
-		UNUSED int flag;
+#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
+		int flag;
+#endif
 
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
+
 		/*
 		 *	Disable PMTU discovery.  On Linux, this
 		 *	also makes sure that the "don't fragment"
@@ -2909,7 +2912,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 
 
 	server_cs = cf_section_sub_find_name2(main_config.config, "server",
-					      this->server);	
+					      this->server);
 	if (!server_cs && this->server) {
 		cf_log_err_cs(cs, "No such server \"%s\"", this->server);
 		listen_free(&this);

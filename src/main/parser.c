@@ -68,7 +68,7 @@ next:
 			p += len;
 		}
 
-		len = tmpl_prints(p, end - p, c->data.vpt);
+		len = tmpl_prints(p, end - p, c->data.vpt, NULL);
 		p += len;
 		break;
 
@@ -134,8 +134,8 @@ next:
 }
 
 
-static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char const *start, char **out,
-					 FR_TOKEN *op, char const **error)
+static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out, char const **error, char const *start,
+					 FR_TOKEN *op)
 {
 	char const *p = start;
 	char *q;
@@ -175,30 +175,42 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char const *start, cha
 		}
 
 		if (*p == '\\') {
-			p++;
-			if (!*p) {
+			if (!p[1]) {
+				p++;
 				*error = "End of string after escape";
 				return -(p - start);
 			}
 
-			switch (*p) {
-			case 'r':
-				*q++ = '\r';
-				break;
-			case 'n':
-				*q++ = '\n';
-				break;
-			case 't':
-				*q++ = '\t';
-				break;
-			default:
-				*q++ = *p;
-				break;
-			}
-			p++;
-			continue;
-		}
+			/*
+			 *	Hacks for backwards compatibility
+			 */
+			if (cf_new_escape) {
+				if (p[1] == start[0]) { /* Convert '\'' --> ' */
+					p++;
+				} else {
+					*(q++) = *(p++);
+				}
 
+			} else {
+				switch (*p) {
+				case 'r':
+					*q++ = '\r';
+					break;
+				case 'n':
+					*q++ = '\n';
+					break;
+				case 't':
+					*q++ = '\t';
+					break;
+				default:
+					*q++ = *p;
+					break;
+				}
+				p++;
+				continue;
+			}
+
+		}
 		*(q++) = *(p++);
 	}
 
@@ -213,7 +225,7 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 	char const *p = start;
 
 	if ((*p == '"') || (*p == '\'') || (*p == '`') || (*p == '/')) {
-		return condition_tokenize_string(ctx, start, out, op, error);
+		return condition_tokenize_string(ctx, out, error, start, op);
 	}
 
 	*op = T_BARE_WORD;
@@ -293,7 +305,7 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 #ifdef WITH_ASCEND_BINARY
 	case PW_TYPE_ABINARY:
 #endif
-	case PW_TYPE_IP_ADDR:
+	case PW_TYPE_COMBO_IP_ADDR:
 	case PW_TYPE_TLV:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
@@ -335,15 +347,15 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
  *  @param[in] ci for CONF_ITEM
  *  @param[in] start the start of the string to process.  Should be "(..."
  *  @param[in] brace look for a closing brace
- *  @param[in] flags do one/two pass
  *  @param[out] pcond pointer to the returned condition structure
  *  @param[out] error the parse error (if any)
+ *  @param[in] flags do one/two pass
  *  @return length of the string skipped, or when negative, the offset to the offending error
  */
-static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, int brace,
+static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, bool brace,
 				  fr_cond_t **pcond, char const **error, int flags)
 {
-	ssize_t slen;
+	ssize_t slen, tlen;
 	char const *p = start;
 	char const *lhs_p, *rhs_p;
 	fr_cond_t *c;
@@ -470,38 +482,28 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			c->type = COND_TYPE_EXISTS;
 			c->ci = ci;
 
-			c->data.vpt = tmpl_afrom_str(c, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-			if (!c->data.vpt) {
-				/*
-				 *	If strings are T_BARE_WORD and they start with '&',
-				 *	then they refer to attributes which have not yet been
-				 *	defined.  Create the template(s) as literals, and
-				 *	fix them up in pass2.
-				 */
-				if ((*lhs != '&') ||
-				    (lhs_type != T_BARE_WORD)) {
-					return_P("Failed creating exists");
-				}
-				c->data.vpt = tmpl_afrom_str(c, lhs + 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
-				if (!c->data.vpt) {
-					return_P("Failed creating exists");
-				}
-				rad_const_free(c->data.vpt->name);
-				c->data.vpt->name = talloc_strdup(c->data.vpt, lhs);
-				c->pass2_fixup = PASS2_FIXUP_ATTR;
+			tlen = tmpl_afrom_str(c, &c->data.vpt, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			if (tlen < 0) {
+				p = lhs_p - tlen;
+				return_P(fr_strerror());
 			}
 
 			rad_assert(c->data.vpt->type != TMPL_TYPE_REGEX);
 
+			if (c->data.vpt->type == TMPL_TYPE_ATTR_UNDEFINED) {
+				c->pass2_fixup = PASS2_FIXUP_ATTR;
+			}
+
 		} else { /* it's an operator */
-			bool regex;
 #ifdef HAVE_REGEX
+			bool regex = false;
 			bool i_flag = false;
 #endif
+			value_pair_map_t *map;
+
 			/*
 			 *	The next thing should now be a comparison operator.
 			 */
-			regex = false;
 			c->type = COND_TYPE_MAP;
 			c->ci = ci;
 
@@ -514,11 +516,13 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					op = T_OP_NE;
 					p += 2;
 
+#ifdef HAVE_REGEX
 				} else if (p[1] == '~') {
-				regex = true;
+					regex = true;
 
-				op = T_OP_REG_NE;
-				p += 2;
+					op = T_OP_REG_NE;
+					p += 2;
+#endif
 
 				} else if (p[1] == '*') {
 					if (lhs_type != T_BARE_WORD) {
@@ -538,11 +542,13 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					op = T_OP_CMP_EQ;
 					p += 2;
 
+#ifdef HAVE_REGEX
 				} else if (p[1] == '~') {
 					regex = true;
 
 					op = T_OP_REG_EQ;
 					p += 2;
+#endif
 
 				} else if (p[1] == '*') {
 					if (lhs_type != T_BARE_WORD) {
@@ -620,6 +626,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_SLEN;
 			}
 
+#ifdef HAVE_REGEX
 			/*
 			 *	Sanity checks for regexes.
 			 */
@@ -640,47 +647,61 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_P("Unexpected regular expression");
 			}
 
-			c->data.map = map_from_fields(c, lhs, lhs_type, op, rhs, rhs_type,
-						      REQUEST_CURRENT, PAIR_LIST_REQUEST,
-						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
-			if (!c->data.map) {
-				/*
-				 *	If strings are T_BARE_WORD and they start with '&',
-				 *	then they refer to attributes which have not yet been
-				 *	defined.  Create the template(s) as literals, and
-				 *	fix them up in pass2.
-				 */
-				if ((*lhs != '&') ||
-				    (lhs_type != T_BARE_WORD)) {
-					return_0("Syntax error");
-				}
-				c->data.map = map_from_fields(c, lhs, lhs_type + 1, op, rhs, rhs_type,
-							      REQUEST_CURRENT, PAIR_LIST_REQUEST,
-							      REQUEST_CURRENT, PAIR_LIST_REQUEST);
-				if (!c->data.map) {
-					return_0("Unknown attribute");
-				}
-				rad_const_free(c->data.map->dst->name);
-				c->data.map->dst->name = talloc_strdup(c->data.map->dst, lhs);
-				c->pass2_fixup = PASS2_FIXUP_ATTR;
+#endif
+			/*
+			 *	Duplicate map_from_fields here, as we
+			 *	want to separate parse errors in the
+			 *	LHS from ones in the RHS.
+			 */
+			c->data.map = map = talloc_zero(c, value_pair_map_t);
+
+			tlen = tmpl_afrom_str(map, &map->lhs, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			if (tlen < 0) {
+				p = lhs_p - tlen;
+				return_P(fr_strerror());
 			}
 
-			if (c->data.map->src->type == TMPL_TYPE_REGEX) {
-#ifdef HAVE_REGEX
-				c->data.map->src->tmpl_iflag = i_flag;
-#else
-				return_0("Server was built without support for regular expressions");
-#endif
+			if (!tmpl_define_unknown_attr(map->lhs)) {
+				return_lhs("Failed defining attribute");
+			return_lhs:
+				if (lhs) talloc_free(lhs);
+				if (rhs) talloc_free(rhs);
+				talloc_free(c);
+				return -(lhs_p - start);
+			}
+
+			map->op = op;
+
+			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+			    map->lhs->tmpl_da->flags.is_unknown &&
+			    map_cast_from_hex(map, rhs_type, rhs)) {
+				/* do nothing */
+			} else {
+				tlen = tmpl_afrom_str(map, &map->rhs, rhs, rhs_type,
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+				if (tlen < 0) {
+					p = rhs_p - tlen;
+					return_P(fr_strerror());
+				}
+
+				if (!tmpl_define_unknown_attr(map->rhs)) {
+					return_rhs("Failed defining attribute");
+				}
 			}
 
 			/*
-			 *	Could have been a reference to an attribute which is registered later.
-			 *	Mark it as being checked in pass2.
+			 *	Unknown attributes get marked up for pass2.
 			 */
-			if ((lhs_type == T_BARE_WORD) &&
-			    (c->data.map->dst->type == TMPL_TYPE_LITERAL)) {
+			if ((c->data.map->lhs->type == TMPL_TYPE_ATTR_UNDEFINED) ||
+			    (c->data.map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED)) {
 				c->pass2_fixup = PASS2_FIXUP_ATTR;
 			}
+
+#ifdef HAVE_REGEX
+			if (c->data.map->rhs->type == TMPL_TYPE_REGEX) {
+				c->data.map->rhs->tmpl_iflag = i_flag;
+			}
+#endif
 
 			/*
 			 *	Save the CONF_ITEM for later.
@@ -691,8 +712,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 *	@todo: check LHS and RHS separately, to
 			 *	get better errors
 			 */
-			if ((c->data.map->src->type == TMPL_TYPE_LIST) ||
-			    (c->data.map->dst->type == TMPL_TYPE_LIST)) {
+			if ((c->data.map->rhs->type == TMPL_TYPE_LIST) ||
+			    (c->data.map->lhs->type == TMPL_TYPE_LIST)) {
 				return_0("Cannot use list references in condition");
 			}
 
@@ -703,21 +724,23 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 *	same type as the LHS.
 			 */
 			if (c->cast) {
-				if ((c->data.map->src->type == TMPL_TYPE_ATTR) &&
-				    (c->cast->type != c->data.map->src->tmpl_da->type)) {
+				if ((c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
+				    (c->cast->type != c->data.map->rhs->tmpl_da->type)) {
 					goto same_type;
 				}
 
-				if (c->data.map->src->type == TMPL_TYPE_REGEX) {
+#ifdef HAVE_REGEX
+				if (c->data.map->rhs->type == TMPL_TYPE_REGEX) {
 					return_0("Cannot use cast with regex comparison");
 				}
+#endif
 
 				/*
 				 *	The LHS is a literal which has been cast to a data type.
 				 *	Cast it to the appropriate data type.
 				 */
-				if ((c->data.map->dst->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->dst, c->cast)) {
+				if ((c->data.map->lhs->type == TMPL_TYPE_LITERAL) &&
+				    !tmpl_cast_in_place(c->data.map->lhs, c->cast)) {
 					*error = "Failed to parse field";
 					if (lhs) talloc_free(lhs);
 					if (rhs) talloc_free(rhs);
@@ -729,9 +752,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	The RHS is a literal, and the LHS has been cast to a data
 				 *	type.
 				 */
-				if ((c->data.map->dst->type == TMPL_TYPE_DATA) &&
-				    (c->data.map->src->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->src, c->data.map->dst->tmpl_da)) {
+				if ((c->data.map->lhs->type == TMPL_TYPE_DATA) &&
+				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
+				    !tmpl_cast_in_place(c->data.map->rhs, c->cast)) {
 					return_rhs("Failed to parse field");
 				}
 
@@ -740,13 +763,13 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	types.  We check this based on
 				 *	their size.
 				 */
-				if (c->data.map->dst->type == TMPL_TYPE_ATTR) {
+				if (c->data.map->lhs->type == TMPL_TYPE_ATTR) {
 					/*
 					 *      dst.min == src.min
 					 *	dst.max == src.max
 					 */
-					if ((dict_attr_sizes[c->cast->type][0] == dict_attr_sizes[c->data.map->dst->tmpl_da->type][0]) &&
-					    (dict_attr_sizes[c->cast->type][1] == dict_attr_sizes[c->data.map->dst->tmpl_da->type][1])) {
+					if ((dict_attr_sizes[c->cast->type][0] == dict_attr_sizes[c->data.map->lhs->tmpl_da->type][0]) &&
+					    (dict_attr_sizes[c->cast->type][1] == dict_attr_sizes[c->data.map->lhs->tmpl_da->type][1])) {
 						goto cast_ok;
 					}
 
@@ -754,15 +777,23 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					 *	Run-time parsing of strings.
 					 *	Run-time copying of octets.
 					 */
-					if ((c->data.map->dst->tmpl_da->type == PW_TYPE_STRING) ||
-					    (c->data.map->dst->tmpl_da->type == PW_TYPE_OCTETS)) {
+					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_STRING) ||
+					    (c->data.map->lhs->tmpl_da->type == PW_TYPE_OCTETS)) {
+						goto cast_ok;
+					}
+
+					/*
+					 *	ifid to integer64 is OK
+					 */
+					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_IFID) &&
+					    (c->cast->type == PW_TYPE_INTEGER64)) {
 						goto cast_ok;
 					}
 
 					/*
 					 *	ipaddr to ipv4prefix is OK
 					 */
-					if ((c->data.map->dst->tmpl_da->type == PW_TYPE_IPV4_ADDR) &&
+					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_IPV4_ADDR) &&
 					    (c->cast->type == PW_TYPE_IPV4_PREFIX)) {
 						goto cast_ok;
 					}
@@ -770,7 +801,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					/*
 					 *	ipv6addr to ipv6prefix is OK
 					 */
-					if ((c->data.map->dst->tmpl_da->type == PW_TYPE_IPV6_ADDR) &&
+					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_IPV6_ADDR) &&
 					    (c->cast->type == PW_TYPE_IPV6_PREFIX)) {
 						goto cast_ok;
 					}
@@ -778,7 +809,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					/*
 					 *	integer64 to ethernet is OK.
 					 */
-					if ((c->data.map->dst->tmpl_da->type == PW_TYPE_INTEGER64) &&
+					if ((c->data.map->lhs->tmpl_da->type == PW_TYPE_INTEGER64) &&
 					    (c->cast->type == PW_TYPE_ETHERNET)) {
 						goto cast_ok;
 					}
@@ -787,8 +818,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					 *	dst.max < src.min
 					 *	dst.min > src.max
 					 */
-					if ((dict_attr_sizes[c->cast->type][1] < dict_attr_sizes[c->data.map->dst->tmpl_da->type][0]) ||
-					    (dict_attr_sizes[c->cast->type][0] > dict_attr_sizes[c->data.map->dst->tmpl_da->type][1])) {
+					if ((dict_attr_sizes[c->cast->type][1] < dict_attr_sizes[c->data.map->lhs->tmpl_da->type][0]) ||
+					    (dict_attr_sizes[c->cast->type][0] > dict_attr_sizes[c->data.map->lhs->tmpl_da->type][1])) {
 						return_0("Cannot cast to attribute of incompatible size");
 					}
 				}
@@ -800,8 +831,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	Do this LAST, as the rest of the code above assumes c->cast
 				 *	is not NULL.
 				 */
-				if ((c->data.map->dst->type == TMPL_TYPE_ATTR) &&
-				    (c->cast->type == c->data.map->dst->tmpl_da->type)) {
+				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
+				    (c->cast->type == c->data.map->lhs->tmpl_da->type)) {
 					c->cast = NULL;
 				}
 
@@ -809,9 +840,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				/*
 				 *	Two attributes?  They must be of the same type
 				 */
-				if ((c->data.map->src->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->dst->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->dst->tmpl_da->type != c->data.map->src->tmpl_da->type)) {
+				if ((c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
+				    (c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
+				    (c->data.map->lhs->tmpl_da->type != c->data.map->rhs->tmpl_da->type)) {
 
 					/*
 					 *	SOME integer mismatch is OK.  If the LHS has a large type,
@@ -820,43 +851,43 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					 *	If the LHS has a small type, and the RHS has a large type,
 					 *	then add a cast to the LHS.
 					 */
-					if (c->data.map->dst->tmpl_da->type == PW_TYPE_INTEGER64) {
-						if ((c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER) ||
-						    (c->data.map->src->tmpl_da->type == PW_TYPE_SHORT) ||
-						    (c->data.map->src->tmpl_da->type == PW_TYPE_BYTE)) {
+					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_INTEGER64) {
+						if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER) ||
+						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
+						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE)) {
 							goto keep_going;
 						}
 					}
 
-					if (c->data.map->dst->tmpl_da->type == PW_TYPE_INTEGER) {
-						if ((c->data.map->src->tmpl_da->type == PW_TYPE_SHORT) ||
-						    (c->data.map->src->tmpl_da->type == PW_TYPE_BYTE)) {
+					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_INTEGER) {
+						if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
+						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE)) {
 							goto keep_going;
 						}
 
-						if (c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER64) {
-							c->cast = c->data.map->src->tmpl_da;
-							goto keep_going;
-						}
-					}
-
-					if (c->data.map->dst->tmpl_da->type == PW_TYPE_SHORT) {
-						if (c->data.map->src->tmpl_da->type == PW_TYPE_BYTE) {
-							goto keep_going;
-						}
-
-						if ((c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER64) ||
-						    (c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER)) {
-							c->cast = c->data.map->src->tmpl_da;
+						if (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) {
+							c->cast = c->data.map->rhs->tmpl_da;
 							goto keep_going;
 						}
 					}
 
-					if (c->data.map->dst->tmpl_da->type == PW_TYPE_BYTE) {
-						if ((c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER64) ||
-						    (c->data.map->src->tmpl_da->type == PW_TYPE_INTEGER) ||
-						    (c->data.map->src->tmpl_da->type == PW_TYPE_SHORT)) {
-							c->cast = c->data.map->src->tmpl_da;
+					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_SHORT) {
+						if (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE) {
+							goto keep_going;
+						}
+
+						if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) ||
+						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER)) {
+							c->cast = c->data.map->rhs->tmpl_da;
+							goto keep_going;
+						}
+					}
+
+					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_BYTE) {
+						if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) ||
+						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER) ||
+						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT)) {
+							c->cast = c->data.map->rhs->tmpl_da;
 							goto keep_going;
 						}
 					}
@@ -869,8 +900,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	Without a cast, we can't compare "foo" to User-Name,
 				 *	it has to be done the other way around.
 				 */
-				if ((c->data.map->src->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->dst->type != TMPL_TYPE_ATTR)) {
+				if ((c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
+				    (c->data.map->lhs->type != TMPL_TYPE_ATTR)) {
 					*error = "Cannot use attribute reference on right side of condition";
 				return_0:
 					if (lhs) talloc_free(lhs);
@@ -886,9 +917,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	There's no real reason for
 				 *	this, other than consistency.
 				 */
-				if ((c->data.map->dst->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->src->type != TMPL_TYPE_ATTR) &&
-				    (c->data.map->dst->tmpl_da->type == PW_TYPE_STRING) &&
+				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
+				    (c->data.map->rhs->type != TMPL_TYPE_ATTR) &&
+				    (c->data.map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
 				    (c->data.map->op != T_OP_CMP_TRUE) &&
 				    (c->data.map->op != T_OP_CMP_FALSE) &&
 				    (rhs_type == T_BARE_WORD)) {
@@ -900,11 +931,11 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	attributes mean that it's
 				 *	either xlat, or an exec.
 				 */
-				if ((c->data.map->dst->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->src->type != TMPL_TYPE_ATTR) &&
-				    (c->data.map->dst->tmpl_da->type != PW_TYPE_STRING) &&
-				    (c->data.map->dst->tmpl_da->type != PW_TYPE_OCTETS) &&
-				    (c->data.map->dst->tmpl_da->type != PW_TYPE_DATE) &&
+				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
+				    (c->data.map->rhs->type != TMPL_TYPE_ATTR) &&
+				    (c->data.map->lhs->tmpl_da->type != PW_TYPE_STRING) &&
+				    (c->data.map->lhs->tmpl_da->type != PW_TYPE_OCTETS) &&
+				    (c->data.map->lhs->tmpl_da->type != PW_TYPE_DATE) &&
 				    (rhs_type == T_SINGLE_QUOTED_STRING)) {
 					*error = "Value must be an unquoted string";
 				return_rhs:
@@ -918,8 +949,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	The LHS has been cast to a data type, and the RHS is a
 				 *	literal.  Cast the RHS to the type of the cast.
 				 */
-				if (c->cast && (c->data.map->src->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->src, c->cast)) {
+				if (c->cast && (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
+				    !tmpl_cast_in_place(c->data.map->rhs, c->cast)) {
 					return_rhs("Failed to parse field");
 				}
 
@@ -927,10 +958,10 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	The LHS is an attribute, and the RHS is a literal.  Cast the
 				 *	RHS to the data type of the LHS.
 				 */
-				if ((c->data.map->dst->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->src->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->src, c->data.map->dst->tmpl_da)) {
-					DICT_ATTR const *da = c->data.map->dst->tmpl_da;
+				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
+				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
+				    !tmpl_cast_in_place(c->data.map->rhs, c->data.map->lhs->tmpl_da)) {
+					DICT_ATTR const *da = c->data.map->lhs->tmpl_da;
 
 					if ((da->vendor == 0) &&
 					    ((da->attr == PW_AUTH_TYPE) ||
@@ -1131,8 +1162,8 @@ done:
 		    (c->data.map->op == T_OP_CMP_FALSE)) {
 			value_pair_tmpl_t *vpt;
 
-			vpt = talloc_steal(c, c->data.map->dst);
-			c->data.map->dst = NULL;
+			vpt = talloc_steal(c, c->data.map->lhs);
+			c->data.map->lhs = NULL;
 
 			/*
 			 *	Invert the negation bit.
@@ -1154,8 +1185,8 @@ done:
 		 *	We can do the evaluation here, so that it
 		 *	doesn't need to be done at run time
 		 */
-		if ((c->data.map->dst->type == TMPL_TYPE_DATA) &&
-		    (c->data.map->src->type == TMPL_TYPE_DATA)) {
+		if ((c->data.map->lhs->type == TMPL_TYPE_DATA) &&
+		    (c->data.map->rhs->type == TMPL_TYPE_DATA)) {
 			int rcode;
 
 			rad_assert(c->cast != NULL);
@@ -1180,8 +1211,8 @@ done:
 		 *	We can do the evaluation here, so that it
 		 *	doesn't need to be done at run time
 		 */
-		if ((c->data.map->src->type == TMPL_TYPE_LITERAL) &&
-		    (c->data.map->dst->type == TMPL_TYPE_LITERAL) &&
+		if ((c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
+		    (c->data.map->lhs->type == TMPL_TYPE_LITERAL) &&
 		    !c->pass2_fixup) {
 			int rcode;
 
@@ -1192,9 +1223,9 @@ done:
 				c->type = COND_TYPE_TRUE;
 			} else {
 				DEBUG3("OPTIMIZING (%s %s %s) --> FALSE",
-				       c->data.map->dst->name,
+				       c->data.map->lhs->name,
 				       fr_int2str(fr_tokens, c->data.map->op, "??"),
-				       c->data.map->src->name);
+				       c->data.map->rhs->name);
 				c->type = COND_TYPE_FALSE;
 			}
 
@@ -1211,13 +1242,13 @@ done:
 		 *	the attribute reference is on the LHS.
 		 */
 		if (c->cast &&
-		    (c->data.map->src->type == TMPL_TYPE_ATTR) &&
-		    (c->data.map->dst->type != TMPL_TYPE_ATTR)) {
+		    (c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
+		    (c->data.map->lhs->type != TMPL_TYPE_ATTR)) {
 			value_pair_tmpl_t *tmp;
 
-			tmp = c->data.map->src;
-			c->data.map->src = c->data.map->dst;
-			c->data.map->dst = tmp;
+			tmp = c->data.map->rhs;
+			c->data.map->rhs = c->data.map->lhs;
+			c->data.map->lhs = tmp;
 
 			c->cast = NULL;
 
@@ -1243,13 +1274,13 @@ done:
 				break;
 
 			default:
-				return_0("Internal sanity check failed");
+				return_0("Internal sanity check failed 1");
 			}
 
 			/*
 			 *	This must have been parsed into TMPL_TYPE_DATA.
 			 */
-			rad_assert(c->data.map->src->type != TMPL_TYPE_LITERAL);
+			rad_assert(c->data.map->rhs->type != TMPL_TYPE_LITERAL);
 		}
 
 	} while (0);
@@ -1267,6 +1298,7 @@ done:
 		switch (c->data.vpt->type) {
 		case TMPL_TYPE_XLAT:
 		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_ATTR_UNDEFINED:
 		case TMPL_TYPE_LIST:
 		case TMPL_TYPE_EXEC:
 			break;
@@ -1365,7 +1397,7 @@ done:
 			return_0("Cannot use data here");
 
 		default:
-			return_0("Internal sanity check failed");
+			return_0("Internal sanity check failed 2");
 		}
 	}
 

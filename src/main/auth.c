@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
@@ -102,7 +103,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 	} else {
 		fr_print_string(username->vp_strvalue,
 				username->length,
-				clean_username, sizeof(clean_username));
+				clean_username, sizeof(clean_username), '\0');
 	}
 
 	/*
@@ -126,7 +127,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 		} else {
 			fr_print_string(request->password->vp_strvalue,
 					 request->password->length,
-					 clean_password, sizeof(clean_password));
+					clean_password, sizeof(clean_password), '\0');
 		}
 	}
 
@@ -313,6 +314,7 @@ int rad_postauth(REQUEST *request)
 	case RLM_MODULE_USERLOCK:
 	default:
 		request->reply->code = PW_CODE_ACCESS_REJECT;
+		fr_state_discard(request, request->packet);
 		result = RLM_MODULE_REJECT;
 		break;
 	/*
@@ -329,6 +331,13 @@ int rad_postauth(REQUEST *request)
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
 		result = RLM_MODULE_OK;
+
+		if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+			fr_state_put_vps(request, request->packet, request->reply);
+
+		} else {
+			fr_state_discard(request, request->packet);
+		}
 		break;
 	}
 	return result;
@@ -416,11 +425,16 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	/*
+	 *	Grab the VPS associated with the State attribute.
+	 */
+	fr_state_get_vps(request, request->packet);
+
+	/*
 	 *	Get the user's authorization information from the database
 	 */
 autz_redo:
 	result = process_authorize(autz_type, request);
-switch (result) {
+	switch (result) {
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_NOTFOUND:
 	case RLM_MODULE_OK:
@@ -502,9 +516,18 @@ switch (result) {
 	do {
 		result = rad_check_password(request);
 		if (result > 0) {
-			/* don't reply! */
+			/*
+			 *	We presume that the reply has been set by someone.
+			 */
+			if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+				fr_state_put_vps(request, request->packet, request->reply);
+
+			} else {
+				fr_state_discard(request, request->packet);
+			}
 			return RLM_MODULE_HANDLED;
 		}
+
 	} while(0);
 
 	/*
@@ -652,9 +675,11 @@ int rad_virtual_server(REQUEST *request)
 	VALUE_PAIR *vp;
 	int result;
 
+	RDEBUG("Virtual server received request");
+	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
+
 	RDEBUG("server %s {", request->server);
-	RDEBUG("  Request:");
-	debug_pair_list(request->packet->vps);
+	RINDENT();
 
 	/*
 	 *	We currently only handle AUTH packets here.
@@ -674,9 +699,11 @@ int rad_virtual_server(REQUEST *request)
 		rad_postauth(request);
 	}
 
-	RDEBUG("  Reply:");
-	debug_pair_list(request->reply->vps);
+	REXDENT();
 	RDEBUG("} # server %s", request->server);
+
+	RDEBUG("Virtual server sending reply");
+	rdebug_pair_list(L_DBG_LVL_1, request, request->reply->vps, NULL);
 
 	return result;
 }

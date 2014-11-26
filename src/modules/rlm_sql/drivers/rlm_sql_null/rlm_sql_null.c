@@ -123,7 +123,8 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if database is down.
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(UNUSED rlm_sql_row_t *out, UNUSED rlm_sql_handle_t *handle,
+				 UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
@@ -201,18 +202,17 @@ static int sql_affected_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_co
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_null = {
-	"rlm_sql_null",
-	NULL,
-	sql_socket_init,
-	sql_query,
-	sql_select_query,
-	sql_store_result,
-	sql_num_fields,
-	sql_num_rows,
-	sql_fetch_row,
-	sql_free_result,
-	sql_error,
-	sql_finish_query,
-	sql_finish_select_query,
-	sql_affected_rows
+	.name				= "rlm_sql_null",
+	.sql_socket_init		= sql_socket_init,
+	.sql_query			= sql_query,
+	.sql_select_query		= sql_select_query,
+	.sql_store_result		= sql_store_result,
+	.sql_num_fields			= sql_num_fields,
+	.sql_num_rows			= sql_num_rows,
+	.sql_fetch_row			= sql_fetch_row,
+	.sql_free_result		= sql_free_result,
+	.sql_error			= sql_error,
+	.sql_finish_query		= sql_finish_query,
+	.sql_finish_select_query	= sql_finish_select_query,
+	.sql_affected_rows		= sql_affected_rows
 };

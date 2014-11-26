@@ -284,7 +284,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 */
 	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (!eap_packet) {
-		RERROR("Malformed EAP Message");
+		RERROR("Malformed EAP Message: %s", fr_strerror());
 		return RLM_MODULE_FAIL;
 	}
 
@@ -319,7 +319,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/*
 	 *	If we're doing horrible tunneling work, remember it.
 	 */
-	if ((request->log.lvl & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
+	if ((request->options & RAD_REQUEST_OPTION_PROXY_EAP) != 0) {
 		RDEBUG2("No EAP proxy set.  Not composing EAP");
 		/*
 		 *	Add the handle to the proxied list, so that we
@@ -501,7 +501,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	We therefore send an EAP Identity request.
 	 */
 	status = eap_start(inst, request);
-	switch(status) {
+	switch (status) {
 	case EAP_NOOP:
 		return RLM_MODULE_NOOP;
 	case EAP_FAIL:
@@ -689,7 +689,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 	 *	zero byte.
 	 */
 	i = 34;
-	p = talloc_memdup(vp, vp->vp_strvalue, vp->length + 1);	
+	p = talloc_memdup(vp, vp->vp_strvalue, vp->length + 1);
 	talloc_set_type(p, uint8_t);
 	len = rad_tunnel_pwdecode((uint8_t *)p + 17, &i, request->home_server->secret, request->proxy->vector);
 
@@ -735,7 +735,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (!eap_packet) {
-		RERROR("Malformed EAP Message");
+		RERROR("Malformed EAP Message: %s", fr_strerror());
 		return RLM_MODULE_FAIL;
 	}
 

@@ -1,0 +1,52 @@
+# PRE: foreach foreach-break
+#
+
+update control {
+	Cleartext-Password := 'hello'
+}
+
+#
+# Adding attribute during request and immediately returning should still work
+#
+update request {
+	Filter-Id := "1"
+	Filter-Id += "2"
+	Filter-Id += "3"
+	Filter-Id += "4"
+	Filter-Id += "5"
+}
+
+foreach &Filter-Id {
+	if ("%{Foreach-Variable-0}" == "3") {
+		update reply {
+			Filter-Id := "filter"
+		}
+
+		#
+		#  We need this because the "return" below
+		#  will prevent the "pap" module from being run
+		#  in the "authorize" section.
+		#
+		update control {
+			Auth-Type := PAP
+		}
+		
+		#
+		#  Stop processing "authorize", and go to the next section.
+		#
+		return
+		
+		#
+		#  Shouldn't reach this
+		#
+		update reply {
+			Filter-Id := "fail"
+		}
+	}
+
+	if ("%{Foreach-Variable-0}" == "4") {
+		update reply {
+			Filter-Id := "fail-4"
+		}
+	}
+}

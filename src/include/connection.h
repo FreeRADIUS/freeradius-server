@@ -15,7 +15,7 @@
  */
 #ifndef FR_CONNECTION_H
 #define FR_CONNECTION_H
-/*
+/**
  * $Id$
  *
  * @file connection.h
@@ -81,7 +81,8 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					      void *opaque,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
-					      char const *prefix);
+					      char const *log_prefix,
+					      char const *trigger_prefix);
 void fr_connection_pool_delete(fr_connection_pool_t *pool);
 
 void *fr_connection_get(fr_connection_pool_t *pool);

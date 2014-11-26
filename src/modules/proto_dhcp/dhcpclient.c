@@ -72,6 +72,7 @@ static void NEVER_RETURNS usage(void)
 
 	fprintf(stderr, "  <command>              One of discover, request, offer, decline, release, inform.\n");
 	fprintf(stderr, "  -d <directory>         Set the directory where the dictionaries are stored (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -f <file>              Read packets from file, not stdin.\n");
 	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds for a reply (may be a floating point number).\n");
 	fprintf(stderr, "  -v                     Show program version information.\n");
@@ -110,7 +111,7 @@ static int request_init(char const *filename)
 	/*
 	 *	Read the VP's.
 	 */
-	if (readvp2(&request->vps, NULL, fp, &filedone) < 0) {
+	if (readvp2(NULL, &request->vps, fp, &filedone) < 0) {
 		fr_perror("dhcpclient");
 		rad_free(&request);
 		if (fp != stdin) fclose(fp);
@@ -263,12 +264,17 @@ int main(int argc, char **argv)
 	char *p;
 	int c;
 	char const *radius_dir = RADDBDIR;
+	char const *dict_dir = DICTDIR;
 	char const *filename = NULL;
 	DICT_ATTR const *da;
 
 	fr_debug_flag = 0;
 
-	while ((c = getopt(argc, argv, "d:f:hr:t:vx")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:D:f:hr:t:vx")) != EOF) switch (c) {
+		case 'D':
+			dict_dir = optarg;
+			break;
+
 		case 'd':
 			radius_dir = optarg;
 			break;
@@ -314,8 +320,14 @@ int main(int argc, char **argv)
 	 */
 	da = dict_attrbyname("DHCP-Message-Type");
 	if (!da) {
-		if (dict_read(radius_dir, "dictionary.dhcp") < 0) {
+		if (dict_read(dict_dir, "dictionary.dhcp") < 0) {
 			fprintf(stderr, "Failed reading dictionary.dhcp: %s",
+				fr_strerror());
+			return -1;
+		}
+
+		if (dict_read(dict_dir, "dictionary.freeradius.internal") < 0) {
+			fprintf(stderr, "Failed reading dictionary.freeradius.internal: %s",
 				fr_strerror());
 			return -1;
 		}
@@ -438,7 +450,7 @@ int main(int argc, char **argv)
 			fr_syserror(errno));
 		exit(1);
 	}
-	
+
 	request->sockfd = sockfd;
 	if (request->src_ipaddr.af == AF_UNSPEC) {
 		request->src_ipaddr = client_ipaddr;

@@ -82,8 +82,8 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 		data->signal = 1;
 		data->state = STATE_NO_REPLY;
 
-		RDEBUG("Detail - No response configured for request %d.  Will retry in %d seconds",
-		       request->number, data->retry_interval);
+		RDEBUG("Detail - No response to request.  Will retry in %d seconds",
+		       data->retry_interval);
 	} else {
 		int rtt;
 		struct timeval now;
@@ -269,9 +269,10 @@ static int detail_open(rad_listen_t *this)
 
 	data->client_ip.af = AF_UNSPEC;
 	data->timestamp = 0;
-	data->offset = 0;
+	data->offset = data->last_offset = data->timestamp_offset = 0;
 	data->packets = 0;
 	data->tries = 0;
+	data->done_entry = false;
 
 	return 1;
 }
@@ -299,6 +300,7 @@ int detail_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET *packet;
 	listen_detail_t *data = listener->data;
+	RAD_REQUEST_FUNP fun = NULL;
 
 	/*
 	 *	We may be in the main thread.  It needs to update the
@@ -309,11 +311,27 @@ int detail_recv(rad_listen_t *listener)
 	packet = detail_poll(listener);
 	if (!packet) return -1;
 
+	switch (packet->code) {
+	case PW_CODE_ACCOUNTING_REQUEST:
+		fun = rad_accounting;
+		break;
+
+	case PW_CODE_COA_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+		fun = rad_coa_recv;
+		break;
+
+	default:
+		rad_free(&packet);
+		data->state = STATE_REPLIED;
+		return 0;
+	}
+
 	/*
 	 *	Don't bother doing limit checks, etc.
 	 */
 	if (!request_receive(listener, packet, &data->detail_client,
-			     rad_accounting)) {
+			     fun)) {
 		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
 		return 0;
@@ -422,6 +440,9 @@ open_file:
 
 	case STATE_HEADER:
 	do_header:
+		data->done_entry = false;
+		data->timestamp_offset = 0;
+
 		data->tries = 0;
 		if (!data->fp) {
 			data->state = STATE_UNOPENED;
@@ -513,6 +534,14 @@ open_file:
 		 *	request, and go read another one.
 		 */
 	case STATE_REPLIED:
+		if (data->track) {
+			rad_assert(data->fp != NULL);
+			fseek(data->fp, data->timestamp_offset, SEEK_SET);
+			fwrite("\tDone", 1, 5, data->fp);
+			fflush(data->fp);
+			fseek(data->fp, data->offset, SEEK_SET);
+		}
+
 		pairfree(&data->vps);
 		data->state = STATE_HEADER;
 		goto do_header;
@@ -524,6 +553,7 @@ open_file:
 	 *	Read a header, OR a value-pair.
 	 */
 	while (fgets(buffer, sizeof(buffer), data->fp)) {
+		data->last_offset = data->offset;
 		data->offset = ftell(data->fp); /* for statistics */
 
 		/*
@@ -607,6 +637,7 @@ open_file:
 		 */
 		if (!strcasecmp(key, "Timestamp")) {
 			data->timestamp = atoi(value);
+			data->timestamp_offset = data->last_offset;
 
 			vp = paircreate(data, PW_PACKET_ORIGINAL_TIMESTAMP, 0);
 			if (vp) {
@@ -614,6 +645,12 @@ open_file:
 				vp->type = VT_DATA;
 				fr_cursor_insert(&cursor, vp);
 			}
+			continue;
+		}
+
+		if (!strcasecmp(key, "Donestamp")) {
+			data->timestamp = atoi(value);
+			data->done_entry = true;
 			continue;
 		}
 
@@ -645,6 +682,13 @@ open_file:
 	 *	Process the packet.
 	 */
  alloc_packet:
+	if (data->done_entry) {
+		DEBUG2("Skipping record for timestamp %lu", data->timestamp);
+		pairfree(&data->vps);
+		data->state = STATE_HEADER;
+		goto do_header;
+	}
+
 	data->tries++;
 
 	/*
@@ -682,7 +726,11 @@ open_file:
 	packet->sockfd = -1;
 	packet->src_ipaddr.af = AF_INET;
 	packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+
 	packet->code = PW_CODE_ACCOUNTING_REQUEST;
+	vp = pairfind(packet->vps, PW_PACKET_TYPE, 0, TAG_ANY);
+	if (vp) packet->code = vp->vp_integer;
+
 	gettimeofday(&packet->timestamp, NULL);
 
 	/*
@@ -954,6 +1002,9 @@ static void *detail_handler_thread(void *arg)
 			}
 
 			if (data->delay_time > 0) usleep(data->delay_time);
+
+			packet = detail_poll(this);
+			if (!packet) break;
 		} while (data->state != STATE_REPLIED);
 	}
 
@@ -969,6 +1020,7 @@ static const CONF_PARSER detail_config[] = {
 	{ "poll_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, poll_interval), STRINGIFY(1) },
 	{ "retry_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, retry_interval), STRINGIFY(30) },
 	{ "one_shot", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, one_shot), NULL },
+	{ "track", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, track), NULL },
 	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, load_factor), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
@@ -1016,6 +1068,9 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (check_config) return 0;
 
 	if (data->max_outstanding == 0) data->max_outstanding = 1;
+
+	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, >=, 4);
+	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, <=, 3600);
 
 	/*
 	 *	If the filename is a glob, use "detail.work" as the

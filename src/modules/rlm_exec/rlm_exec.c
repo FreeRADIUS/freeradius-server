@@ -181,9 +181,8 @@ static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 */
-	result = radius_exec_program(request, fmt, inst->wait, inst->shell_escape,
-				     out, outlen, inst->timeout,
-				     input_pairs ? *input_pairs : NULL, NULL);
+	result = radius_exec_program(out, outlen, NULL, request, fmt,  input_pairs ? *input_pairs : NULL,
+				     inst->wait, inst->shell_escape, inst->timeout);
 	if (result != 0) {
 		out[0] = '\0';
 		return -1;
@@ -221,7 +220,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (inst->input) {
 		p = inst->input;
-		inst->input_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
+		p += radius_list_name(&inst->input_list, p, PAIR_LIST_UNKNOWN);
 		if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
 			cf_log_err_cs(conf, "Invalid input list '%s'", inst->input);
 			return -1;
@@ -230,7 +229,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (inst->output) {
 		p = inst->output;
-		inst->output_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
+		p += radius_list_name(&inst->output_list, p, PAIR_LIST_UNKNOWN);
 		if ((inst->output_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
 			cf_log_err_cs(conf, "Invalid output list '%s'", inst->output);
 			return -1;
@@ -241,8 +240,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Sanity check the config.  If we're told to NOT wait,
 	 *	then the output pairs must not be defined.
 	 */
-	if (!inst->wait &&
-	    (inst->output != NULL)) {
+	if (!inst->wait && (inst->output != NULL)) {
 		cf_log_err_cs(conf, "Cannot read output pairs if wait = no");
 		return -1;
 	}
@@ -343,10 +341,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 */
-	status = radius_exec_program(request, inst->program, inst->wait, inst->shell_escape,
-				     out, sizeof(out), inst->timeout,
-				     inst->input ? *input_pairs : NULL,
-				     inst->output ? &answer : NULL);
+	status = radius_exec_program(out, sizeof(out), inst->output ? &answer : NULL, request,
+				     inst->program, inst->input ? *input_pairs : NULL,
+				     inst->wait, inst->shell_escape, inst->timeout);
 	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
 
 	/*
@@ -394,9 +391,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	}
 
 	tmp = NULL;
-	status = radius_exec_program(request, vp->vp_strvalue, we_wait, inst->shell_escape,
-				     out, sizeof(out), inst->timeout,
-				     request->packet->vps, &tmp);
+	status = radius_exec_program(out, sizeof(out), &tmp, request, vp->vp_strvalue, request->packet->vps,
+				     we_wait, inst->shell_escape, inst->timeout);
 	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
 
 	/*
@@ -452,9 +448,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		return RLM_MODULE_NOOP;
 	}
 
-	status = radius_exec_program(request, vp->vp_strvalue, we_wait, inst->shell_escape,
-				     out, sizeof(out), inst->timeout,
-				     request->packet->vps, NULL);
+	status = radius_exec_program(out, sizeof(out), NULL, request, vp->vp_strvalue, request->packet->vps,
+				     we_wait, inst->shell_escape, inst->timeout);
 	return rlm_exec_status2rcode(request, out, strlen(out), status);
 }
 

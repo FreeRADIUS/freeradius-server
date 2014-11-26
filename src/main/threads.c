@@ -1255,6 +1255,7 @@ pid_t rad_fork(void)
 	/*
 	 *	Fork & save the PID for later reaping.
 	 */
+	pthread_mutex_lock(&thread_pool.wait_mutex);
 	child_pid = fork();
 	if (child_pid > 0) {
 		int rcode;
@@ -1265,15 +1266,19 @@ pid_t rad_fork(void)
 
 		tf->pid = child_pid;
 
-		pthread_mutex_lock(&thread_pool.wait_mutex);
 		rcode = fr_hash_table_insert(thread_pool.waiters, tf);
-		pthread_mutex_unlock(&thread_pool.wait_mutex);
 
 		if (!rcode) {
 			ERROR("Failed to store PID, creating what will be a zombie process %d",
 			       (int) child_pid);
 			free(tf);
 		}
+	}
+	/*
+	 *	Do not unlock in child process
+	 */
+	if(child_pid != 0 ) {
+		pthread_mutex_unlock(&thread_pool.wait_mutex);
 	}
 
 	/*
@@ -1467,5 +1472,5 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 	}
 
 	DEBUG("Trigger %s -> %s", name, value);
-	radius_exec_program(request, value, false, true, NULL, 0, EXEC_TIMEOUT, vp, NULL);
+	radius_exec_program(NULL, 0, NULL, request, value, vp, false, true, EXEC_TIMEOUT);
 }

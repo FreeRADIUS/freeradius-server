@@ -817,6 +817,7 @@ static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char
 {
 	int i;
 	char const *error;
+	ssize_t slen = 0;
 	fr_cond_t *new_condition = NULL;
 	char *p, buffer[1024];
 
@@ -856,14 +857,20 @@ static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char
 
 		while (true) {
 			if (!*p) {
-				ERROR("Failed parsing condition '%s': Unexpected end of string", argv[0]);
-				return 0;
+				error = "Unexpected end of string";
+				slen = -strlen(argv[0]);
+				p = argv[0];
+
+				goto parse_error;
 			}
 
 			if (*p == quote) {
 				if (p[1]) {
-					ERROR("Failed parsing condition '%s': Unexpected text after end of string", argv[0]);
-					return 0;
+					error = "Unexpected text after end of string";
+					slen = -(p - argv[0]);
+					p = argv[0];
+
+					goto parse_error;
 				}
 				*q = '\0';
 				break;
@@ -879,8 +886,23 @@ static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char
 		}
 	}
 
-	if (fr_condition_tokenize(NULL, NULL, buffer, &new_condition, &error, FR_COND_ONE_PASS) < 0) {
-		ERROR("Failed parsing condition '%s': %s", buffer, error);
+	p = buffer;
+
+	slen = fr_condition_tokenize(NULL, NULL, p, &new_condition, &error, FR_COND_ONE_PASS);
+	if (slen <= 0) {
+		char *spaces, *text;
+
+	parse_error:
+		fr_canonicalize_error(NULL, &spaces, &text, slen, p);
+
+		ERROR("Parse error in condition");
+		ERROR("%s", p);
+		ERROR("%s^ %s", spaces, error);
+
+		cprintf(listener, "Parse error in condition \"%s\": %s\n", p, error);
+
+		talloc_free(spaces);
+		talloc_free(text);
 		return 0;
 	}
 
@@ -1127,15 +1149,15 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 					 request->reply->code, request->reply->id);
 		}
 
+		RINDENT();
 		for (vp = fr_cursor_init(&cursor, &request->reply->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			vp_prints(buffer, sizeof(buffer), vp);
 			fprintf(fp, "%s\n", buffer);
-			if (debug_flag) {
-				RDEBUG("\t%s", buffer);
-			}
+			RDEBUG("%s", buffer);
 		}
+		REXDENT();
 	}
 	fclose(fp);
 
@@ -1279,7 +1301,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
-	ret = readvp2(&vp, NULL, fp, &filedone);
+	ret = readvp2(NULL, &vp, fp, &filedone);
 	fclose(fp);
 	if (ret < 0) {
 		cprintf(listener, "ERROR: Failed reading attributes from %s: %s\n",

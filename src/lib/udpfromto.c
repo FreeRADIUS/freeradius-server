@@ -480,7 +480,7 @@ int main(int argc, char **argv)
 	memset(&from, 0, sizeof(from));
 	memset(&to,   0, sizeof(to));
 
-	switch(pid = fork()) {
+	switch (pid = fork()) {
 		case -1:
 			perror("fork");
 			return 0;

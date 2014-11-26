@@ -1,4 +1,4 @@
-/*
+/**
  * $Id$
  *
  * @brief Source control functions
@@ -35,6 +35,11 @@ extern "C" {
 #  define XHEXIFY(b1)		(0x ## b1)
 #  define HEXIFY(b1)		XHEXIFY(b1)
 #endif
+
+/*
+ *	struct field size
+ */
+#define SIZEOF_MEMBER(_t, _m) sizeof(((_t *)0)->_m)
 
 /*
  *	Only use GCC __attribute__ if were building with a GCClike
@@ -105,13 +110,13 @@ extern "C" {
  *	Here at least the endianess can be set explicitly with
  *	-DLITTLE_ENDIAN or -DBIG_ENDIAN.
  */
-#if !defined(LITTLE_ENDIAN) && !defined(BIG_ENDIAN)
+#if !defined(RADIUS_LITTLE_ENDIAN) && !defined(RADIUS_BIG_ENDIAN)
 #  if defined(__LITTLE_ENDIAN__) || \
       (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__))
-#    define LITTLE_ENDIAN 1
+#    define RADIUS_LITTLE_ENDIAN 1
 #  elif defined(__BIG_ENDIAN__) || \
       (defined(__BYTE_ORDER__) && (__BYTE_ORDER__ == __ORDER_BIG_ENDIAN__))
-#    define BIG_ENDIAN 1
+#    define RADIUS_BIG_ENDIAN 1
 #  else
 #    error Failed determining endianness of system
 #  endif

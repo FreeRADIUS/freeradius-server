@@ -15,7 +15,7 @@
  */
 #ifndef RADIUSD_H
 #define RADIUSD_H
-/*
+/**
  * $Id$
  *
  * @file radiusd.h
@@ -59,6 +59,7 @@ typedef struct rad_request REQUEST;
 
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
+#include <freeradius-devel/tmpl.h>
 #include <freeradius-devel/map.h>
 
 #ifdef HAVE_GRP_H
@@ -86,16 +87,16 @@ typedef struct radclient {
 	char const		*password;
 	char const 		*server;
 	int			number;	/* internal use only */
-	CONF_SECTION const 	*cs;
+	CONF_SECTION	 	*cs;
 #ifdef WITH_STATS
 	fr_stats_t		auth;
-#ifdef WITH_ACCOUNTING
+#  ifdef WITH_ACCOUNTING
 	fr_stats_t		acct;
-#endif
-#ifdef WITH_COA
+#  endif
+#  ifdef WITH_COA
 	fr_stats_t		coa;
 	fr_stats_t		dsc;
-#endif
+#  endif
 #endif
 
 	struct timeval		response_window;
@@ -220,6 +221,8 @@ struct rad_request {
 #endif
 	VALUE_PAIR		*config_items;	//!< VALUE_PAIRs used to set per request parameters
 						//!< for modules and the server core at runtime.
+	VALUE_PAIR		*state;		//!< VALUE_PAIRs used to set session parameters
+						//!< for multiple packets, e.g. EAP.
 	VALUE_PAIR		*username;	//!< Cached username VALUE_PAIR.
 	VALUE_PAIR		*password;	//!< Cached password VALUE_PAIR.
 
@@ -262,7 +265,7 @@ struct rad_request {
 	rad_child_state_t	child_state;
 	RAD_LISTEN_TYPE		priority;
 
-	int			response_delay;
+	struct timeval		response_delay;
 	int			timer_action;
 	fr_event_t		*ev;
 
@@ -292,6 +295,8 @@ struct rad_request {
 		uint8_t		indent;		//!< By how much to indent log messages. uin8_t so it's obvious
 						//!< when a request has been exdented too much.
 	} log;
+
+	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.
 
 #ifdef WITH_COA
 	REQUEST			*coa;		//!< CoA request originated by this request.
@@ -420,9 +425,11 @@ typedef struct main_config_t {
 #ifdef WITH_PROXY
 	bool		proxy_requests;
 #endif
-	uint32_t	reject_delay;
+	struct timeval	reject_delay;
 	bool		status_server;
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;
+#endif
 
 	uint32_t	max_request_time;
 	uint32_t	cleanup_delay;
@@ -500,6 +507,8 @@ typedef enum {
 /* acct.c */
 int		rad_accounting(REQUEST *);
 
+int		rad_coa_recv(REQUEST *request);
+
 /* session.c */
 int		rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user, char const *sessionid);
 int		session_zap(REQUEST *request, uint32_t nasaddr,
@@ -510,8 +519,9 @@ int		session_zap(REQUEST *request, uint32_t nasaddr,
 /* radiusd.c */
 #undef debug_pair
 void		debug_pair(VALUE_PAIR *);
-void		debug_pair_list(VALUE_PAIR *);
-void 		rdebug_pair_list(int, REQUEST *, VALUE_PAIR *);
+void		rdebug_pair(int level, REQUEST *, VALUE_PAIR *);
+void 		rdebug_pair_list(int level, REQUEST *, VALUE_PAIR *, char const *);
+void		rdebug_proto_pair_list(int level, REQUEST *, VALUE_PAIR *);
 int		log_err (char *);
 
 /* util.c */
@@ -563,9 +573,11 @@ void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 #ifdef WITH_DYNAMIC_CLIENTS
 void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
-RADCLIENT	*client_from_request(RADCLIENT_LIST *clients, REQUEST *request);
+RADCLIENT	*client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request);
 #endif
-RADCLIENT	*client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
+
+RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server);
+RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
 				   char const *type, char const *server, bool require_ma) CC_HINT(nonnull(2, 3));
 
 RADCLIENT	*client_find(RADCLIENT_LIST const *clients,
@@ -574,7 +586,7 @@ RADCLIENT	*client_find(RADCLIENT_LIST const *clients,
 RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients,
 				     int number);
 RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
-bool		client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
+bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
 RADCLIENT	*client_read(char const *filename, int in_server, int flag);
 
 
@@ -585,8 +597,8 @@ void		pairlist_free(PAIR_LIST **);
 /* version.c */
 int		rad_check_lib_magic(uint64_t magic);
 int 		ssl_check_consistency(void);
-char const	*ssl_version_by_num(uint64_t version);
-char const	*ssl_version_range(uint64_t low, uint64_t high);
+char const	*ssl_version_by_num(uint32_t version);
+char const	*ssl_version_range(uint32_t low, uint32_t high);
 char const	*ssl_version(void);
 void		version(void);
 
@@ -600,11 +612,11 @@ int		rad_virtual_server(REQUEST *);
 pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   int *input_fd, int *output_fd,
 			   VALUE_PAIR *input_pairs, bool shell_escape);
-int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
+int radius_readfrom_program(int fd, pid_t pid, int timeout,
 			    char *answer, int left);
-int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool shell_escape,
-			char *user_msg, size_t msg_len, int timeout,
-			VALUE_PAIR *input_pairs, VALUE_PAIR **output_pairs);
+int radius_exec_program(char *out, size_t outlen, VALUE_PAIR **output_pairs,
+			REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
+			bool exec_wait, bool shell_escape, int timeout) CC_HINT(nonnull (4, 5));
 void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench)
      CC_HINT(nonnull (3));
 
@@ -615,7 +627,8 @@ void		paircompare_unregister(DICT_ATTR const *attr, RAD_COMPARE_FUNC func);
 void		paircompare_unregister_instance(void *instance);
 int		paircompare(REQUEST *request, VALUE_PAIR *req_list,
 			    VALUE_PAIR *check, VALUE_PAIR **rep_list);
-value_pair_tmpl_t *radius_xlat2tmpl(TALLOC_CTX *ctx, xlat_exp_t *xlat);
+value_pair_tmpl_t	*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
+xlat_exp_t		*xlat_from_tmpl_attr(TALLOC_CTX *ctx, value_pair_tmpl_t *vpt);
 int		radius_xlat_do(REQUEST *request, VALUE_PAIR *vp);
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
 int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
@@ -661,6 +674,8 @@ typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *
 int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
 			      void *instance);
 void		xlat_unregister(char const *module, RAD_XLAT_FUNC func, void *instance);
+void		xlat_unregister_module(void *instance);
+bool		xlat_register_redundant(CONF_SECTION *cs);
 ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt);
 void		xlat_free(void);
 
@@ -723,7 +738,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when);
 
 /* evaluate.c */
 typedef struct fr_cond_t fr_cond_t;
-int radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vpt);
+ssize_t radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vpt);
 int radius_evaluate_tmpl(REQUEST *request, int modreturn, int depth,
 			 value_pair_tmpl_t const *vpt);
 int radius_evaluate_map(REQUEST *request, int modreturn, int depth,

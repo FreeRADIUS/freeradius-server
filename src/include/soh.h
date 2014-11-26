@@ -15,7 +15,7 @@
  */
 #ifndef FR_SOH_H
 #define FR_SOH_H
-/*
+/**
  * $Id$
  *
  * @file soh.h

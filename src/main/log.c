@@ -433,7 +433,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 
 #ifdef HAVE_SYSLOG_H
 	case L_DST_SYSLOG:
-		switch(type) {
+		switch (type) {
 		case L_DBG:
 		case L_WARN:
 		case L_DBG_WARN:
@@ -504,21 +504,6 @@ static int CC_HINT(format (printf, 2, 3)) radlog_always(log_type_t type, char co
 	return r;
 }
 
-/*
- *      Dump a whole list of attributes to DEBUG2
- */
-void vp_listdebug(VALUE_PAIR *vp)
-{
-	vp_cursor_t cursor;
-	char tmpPair[70];
-	for (vp = fr_cursor_init(&cursor, &vp);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		vp_prints(tmpPair, sizeof(tmpPair), vp);
-		DEBUG2("     %s", tmpPair);
-	}
-}
-
 inline bool debug_enabled(log_type_t type, log_debug_t lvl)
 {
 	if ((type & L_DBG) && (debug_flag != 0) && (lvl > debug_flag)) return true;
@@ -536,7 +521,7 @@ inline bool rate_limit_enabled(void)
 inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
 {
 	/*
-	 *	It's a debug class message, not this doesn't mean it's a debug type message.
+	 *	It's a debug class message, note this doesn't mean it's a debug type message.
 	 *
 	 *	For example it could be a RIDEBUG message, which would be an informational message,
 	 *	instead of an RDEBUG message which would be a debug debug message.
@@ -559,9 +544,12 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	size_t len = 0;
 	char const *filename = default_log.file;
 	FILE *fp = NULL;
+
 	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
+
 	char *p;
 	char const *extra = "";
+	uint8_t indent;
 	va_list aq;
 
 	rad_assert(request);
@@ -587,7 +575,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 		filename = default_log.file;
 	}
 
-	if (request && filename) {
+	if (filename) {
 		radlog_func_t rl = request->log.func;
 
 		request->log.func = NULL;
@@ -617,40 +605,6 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	}
 
 	/*
-	 *	Print timestamps to the file.
-	 */
-	if (fp) {
-		time_t timeval;
-		timeval = time(NULL);
-
-#ifdef HAVE_GMTIME_R
-		if (log_dates_utc) {
-			struct tm utc;
-			gmtime_r(&timeval, &utc);
-			ASCTIME_R(&utc, buffer, sizeof(buffer) - 1);
-		} else
-#endif
-		{
-			CTIME_R(&timeval, buffer, sizeof(buffer) - 1);
-		}
-
-		len = strlen(buffer);
-		p = strrchr(buffer, '\n');
-		if (p) {
-			p[0] = ' ';
-			p[1] = '\0';
-		}
-
-		len += strlcpy(buffer + len, fr_int2str(levels, type, ": "), sizeof(buffer) - len);
-		if (len >= sizeof(buffer)) goto finish;
-	}
-
-	if (request && request->module[0]) {
-		len = snprintf(buffer + len, sizeof(buffer) - len, "%s : ", request->module);
-		if (len >= sizeof(buffer)) goto finish;
-	}
-
-	/*
 	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
 	 *  due to ap sometimes being implemented with a stack offset which is invalidated if
 	 *  ap is passed into another function. See here:
@@ -663,8 +617,53 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 	vsnprintf(buffer + len, sizeof(buffer) - len, msg, aq);
 	va_end(aq);
 
-	finish:
-	switch (type) {
+	indent = request->log.indent > sizeof(spaces) ?
+		 sizeof(spaces) :
+		 request->log.indent;
+
+	/*
+	 *	Logging to a file descriptor
+	 */
+	if (fp) {
+		char time_buff[64];	/* The current timestamp */
+
+		time_t timeval;
+		timeval = time(NULL);
+
+#ifdef HAVE_GMTIME_R
+		if (log_dates_utc) {
+			struct tm utc;
+			gmtime_r(&timeval, &utc);
+			ASCTIME_R(&utc, time_buff, sizeof(time_buff));
+		} else
+#endif
+		{
+			CTIME_R(&timeval, time_buff, sizeof(time_buff));
+		}
+
+		/*
+		 *	Strip trailing new lines
+		 */
+		p = strrchr(time_buff, '\n');
+		if (p) p[0] = '\0';
+
+		if (request->module && (request->module[0] != '\0')) {
+			fprintf(fp, "(%u) %s%s%s: %.*s%s\n",
+				request->number, time_buff, fr_int2str(levels, type, ""),
+				request->module, indent, spaces, buffer);
+		} else {
+			fprintf(fp, "(%u) %s%s%.*s%s\n",
+				request->number, time_buff, fr_int2str(levels, type, ""),
+				indent, spaces, buffer);
+		}
+		fclose(fp);
+		return;
+	}
+
+	/*
+	 *	Logging everywhere else
+	 */
+	if (!DEBUG_ENABLED3) switch (type) {
 	case L_DBG_WARN:
 		extra = "WARNING: ";
 		type = L_DBG_WARN_REQ;
@@ -678,27 +677,12 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
 		break;
 	}
 
-	if (!fp) {
-
-		if (debug_flag > 2) extra = "";
-
-		if (request) {
-			uint8_t indent;
-
-			indent = request->log.indent > sizeof(spaces) ?
-				 sizeof(spaces) :
-				 request->log.indent;
-			radlog_always(type, "(%u) %.*s%s%s", request->number, indent, spaces, extra, buffer);
-		} else {
-			radlog_always(type, "%s%s", extra, buffer);
-		}
+	if (request->module && (request->module[0] != '\0')) {
+		radlog_always(type, "(%u) %s: %.*s%s%s", request->number,
+			      request->module, indent, spaces, extra, buffer);
 	} else {
-		if (request) {
-			fprintf(fp, "(%u) %s", request->number, extra);
-		}
-		fputs(buffer, fp);
-		fputc('\n', fp);
-		fclose(fp);
+		radlog_always(type, "(%u) %.*s%s%s", request->number,
+			      indent, spaces, extra, buffer);
 	}
 }
 
@@ -789,6 +773,77 @@ void radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
 
 	request->log.indent = indent;
 }
+
+
+/** Canonicalize error strings, removing tabs, and generate spaces for error marker
+ *
+ * @note talloc_free must be called on the buffer returned in spaces and text
+ *
+ * Used to produce error messages such as this:
+@verbatim
+I'm a string with a parser # error
+                           ^ Unexpected character in string
+@endverbatim
+ *
+ * With code resembling this:
+@verbatim
+ERROR("%s", parsed_str);
+ERROR("%s^ %s", space, text);
+@endverbatim
+ *
+ * @todo merge with above function (radlog_request_marker)
+ *
+ * @param sp Where to write a dynamically allocated buffer of spaces used to indent the error text.
+ * @param text Where to write the canonicalized version of msg (the error text).
+ * @param ctx to allocate the spaces and text buffers in.
+ * @param slen of error marker. Expects negative integer value, as returned by parse functions.
+ * @param msg to canonicalize.
+ */
+void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen, char const *msg)
+{
+	size_t offset, skip = 0;
+	char *spbuf, *p;
+	char *value;
+
+	offset = -slen;
+
+	/*
+	 *	Ensure that the error isn't indented
+	 *	too far.
+	 */
+	if (offset > 45) {
+		skip = offset - 40;
+		offset -= skip;
+		value = talloc_strdup(ctx, msg + skip);
+		memcpy(value, "...", 3);
+
+	} else {
+		value = talloc_strdup(ctx, msg);
+	}
+
+	spbuf = talloc_array(ctx, char, offset + 1);
+	memset(spbuf, ' ', offset);
+	spbuf[offset] = '\0';
+
+	/*
+	 *	Smash tabs to spaces for the input string.
+	 */
+	for (p = value; *p != '\0'; p++) {
+		if (*p == '\t') *p = ' ';
+	}
+
+
+	/*
+	 *	Ensure that there isn't too much text after the error.
+	 */
+	if (strlen(value) > 100) {
+		memcpy(value + 95, "... ", 5);
+	}
+
+	*sp = spbuf;
+	*text = value;
+}
+
 
 typedef struct fr_logfile_entry_t {
 	int		fd;

@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 /*
  *	Define a structure for our module configuration.
@@ -52,6 +53,16 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
+static int rlm_example_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
+			   UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+{
+	rad_assert(check->da->type == PW_TYPE_STRING);
+
+	RINFO("Example-Paircmp called with \"%s\"", check->vp_strvalue);
+
+	if (strcmp(check->vp_strvalue, "yes") == 0) return 0;
+	return 1;
+}
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -66,7 +77,9 @@ static const CONF_PARSER module_config[] = {
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_example_t *inst = instance;
+	ATTR_FLAGS flags;
 
+	memset(&flags, 0, sizeof(flags));
 	/*
 	 *	Do more work here
 	 */
@@ -74,6 +87,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		cf_log_err_cs(conf, "Boolean is false: forcing error!");
 		return -1;
 	}
+
+	if (dict_addattr("Example-Paircmp", -1, 0, PW_TYPE_STRING, flags) < 0) {
+		ERROR("Failed creating paircmp attribute: %s", fr_strerror());
+
+		return -1;
+	}
+
+	paircompare_register(dict_attrbyname("Example-Paircmp"), dict_attrbyvalue(PW_USER_NAME, 0), false,
+			     rlm_example_cmp, inst);
 
 	return 0;
 }
@@ -91,7 +113,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	/*
 	 *  Look for the 'state' attribute.
 	 */
-	state =  pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (state != NULL) {
 		RDEBUG("Found reply to access challenge");
 		return RLM_MODULE_OK;

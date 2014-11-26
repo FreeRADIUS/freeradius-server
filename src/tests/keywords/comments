@@ -1,0 +1,48 @@
+#
+#  PRE: update if
+#
+
+# One comment
+#{ Two comment
+#} Three comment
+#'Four'
+#"Five comment"
+##Six Comment#
+	#Seven comment (yes i'm meant to be tabbed in)
+  #Eight comment (yes i'm meant to have spaces before me)
+ 	#Nine comment (tabs and spaces, are you crazy?!)
+
+update {					#}'{ Opening block with extra special chars {} '"
+       control:Cleartext-Password := 'hello'	# This should update the password so the test passes
+       reply:Filter-Id := 'filter'# Eek! Too close
+}						#{'} Closing block with extra special chars {} '"
+
+update { request:Tmp-String-0 := 'candy' }	# Comment after unicorn block
+
+update request {
+	request:Reply-Message += 'I am #literally a comment #'
+	request:Reply-Message += "I am #literally a comment #"
+}
+
+if (&request:Tmp-String-0 != 'candy') {
+	update reply {
+		reply:Filter-Id += 'fail 0'
+	}
+}
+
+if (&request:Reply-Message[0] != 'I am #literally a comment #') {
+	update reply {
+		reply:Filter-Id += 'fail 1'
+	}
+}
+
+if (&request:Reply-Message[1] != "I am #literally a comment #") {
+	update reply {
+		reply:Filter-Id += 'fail 2'
+	}
+}
+
+ok # I'm a comment after a module call
+ok # I'm a comment # after a module {} call
+
+ok, ok, ok, ok, ok

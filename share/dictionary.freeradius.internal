@@ -60,7 +60,7 @@ ATTRIBUTE	EAP-Id					1020	integer
 ATTRIBUTE	EAP-Code				1021	integer
 ATTRIBUTE	EAP-MD5-Password			1022	string
 ATTRIBUTE	PEAP-Version				1023	integer
-ATTRIBUTE	Client-Shortname			1024	string
+ATTRIBUTE	Client-Shortname			1024	string virtual
 ATTRIBUTE	Load-Balance-Key			1025	string
 ATTRIBUTE	Raw-Attribute				1026	octets
 ATTRIBUTE	TNC-VLAN-Access				1027	string
@@ -77,12 +77,12 @@ ATTRIBUTE	Stripped-User-Name			1043	string
 ATTRIBUTE	Current-Time				1044	string
 ATTRIBUTE	Realm					1045	string
 ATTRIBUTE	No-Such-Attribute			1046	string
-ATTRIBUTE	Packet-Type				1047	integer
+ATTRIBUTE	Packet-Type				1047	integer virtual
 ATTRIBUTE	Proxy-To-Realm				1048	string
 ATTRIBUTE	Replicate-To-Realm			1049	string
 ATTRIBUTE	Acct-Session-Start-Time			1050	date
 ATTRIBUTE	Acct-Unique-Session-Id			1051	string
-ATTRIBUTE	Client-IP-Address			1052	ipaddr
+ATTRIBUTE	Client-IP-Address			1052	ipaddr virtual
 ATTRIBUTE	Ldap-UserDn				1053	string
 ATTRIBUTE	NS-MTA-MD5-Password			1054	string
 ATTRIBUTE	SQL-User-Name				1055	string
@@ -108,18 +108,18 @@ ATTRIBUTE	Module-Failure-Message			1076	string
 #		X99-Fast		1077	integer
 ATTRIBUTE	Rewrite-Rule				1078	string
 ATTRIBUTE	Sql-Group				1079	string
-ATTRIBUTE	Response-Packet-Type			1080	integer
+ATTRIBUTE	Response-Packet-Type			1080	integer virtual
 ATTRIBUTE	Digest-HA1				1081	string
 ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1082	integer
 ATTRIBUTE	NTLM-User-Name				1083	string
 ATTRIBUTE	MS-CHAP-User-Name			1083	string
-ATTRIBUTE	Packet-Src-IP-Address			1084	ipaddr
-ATTRIBUTE	Packet-Dst-IP-Address			1085	ipaddr
-ATTRIBUTE	Packet-Src-Port				1086	integer
-ATTRIBUTE	Packet-Dst-Port				1087	integer
-ATTRIBUTE	Packet-Authentication-Vector		1088	octets
+ATTRIBUTE	Packet-Src-IP-Address			1084	ipaddr virtual
+ATTRIBUTE	Packet-Dst-IP-Address			1085	ipaddr virtual
+ATTRIBUTE	Packet-Src-Port				1086	integer virtual
+ATTRIBUTE	Packet-Dst-Port				1087	integer virtual
+ATTRIBUTE	Packet-Authentication-Vector		1088	octets virtual
 ATTRIBUTE	Time-Of-Day				1089	string
-ATTRIBUTE	Request-Processing-Stage		1090	string
+ATTRIBUTE	Request-Processing-Stage		1090	string virtual
 ATTRIBUTE	SHA2-Password				1092	octets
 ATTRIBUTE	SHA-Password				1093	octets
 ATTRIBUTE	SSHA-Password				1094	octets
@@ -127,9 +127,9 @@ ATTRIBUTE	SHA1-Password				1093	octets
 ATTRIBUTE	SSHA1-Password				1094	octets
 ATTRIBUTE	MD5-Password				1095	octets
 ATTRIBUTE	SMD5-Password				1096	octets
-ATTRIBUTE	Packet-Src-IPv6-Address			1097	ipv6addr
-ATTRIBUTE	Packet-Dst-IPv6-Address			1098	ipv6addr
-ATTRIBUTE	Virtual-Server				1099	string
+ATTRIBUTE	Packet-Src-IPv6-Address			1097	ipv6addr virtual
+ATTRIBUTE	Packet-Dst-IPv6-Address			1098	ipv6addr virtual
+ATTRIBUTE	Virtual-Server				1099	string virtual
 ATTRIBUTE	Cleartext-Password			1100	string
 ATTRIBUTE	Password-With-Header			1101	string
 ATTRIBUTE	Inner-Tunnel-User-Name			1102	string
@@ -161,7 +161,7 @@ ATTRIBUTE	Send-CoA-Request			1107	integer
 VALUE	Send-CoA-Request		No			0
 VALUE	Send-CoA-Request		Yes			1
 
-ATTRIBUTE	Module-Return-Code			1108	integer
+ATTRIBUTE	Module-Return-Code			1108	integer virtual
 
 VALUE	Module-Return-Code		reject			0
 VALUE	Module-Return-Code		fail			1
@@ -224,11 +224,6 @@ ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets
 
 ATTRIBUTE	Stripped-User-Domain			1138	string
 ATTRIBUTE	Called-Station-SSID			1139	string
-ATTRIBUTE	Cache-TTL				1140	signed
-ATTRIBUTE	Cache-Status-Only			1141	integer
-ATTRIBUTE	Cache-Merge				1142	integer
-ATTRIBUTE	Cache-Entry-Hits			1143	integer
-ATTRIBUTE	Cache-Read-Only				1144	integer
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
@@ -273,9 +268,18 @@ ATTRIBUTE	FreeRADIUS-Client-IPv6-Prefix		1151	ipv6prefix
 ATTRIBUTE	FreeRADIUS-Response-Delay		1152	integer
 ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1153	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1154	ipv6addr
+ATTRIBUTE	FreeRADIUS-Response-Delay-USec		1155	integer
 
 ATTRIBUTE	REST-HTTP-Header			1160	string
 ATTRIBUTE	REST-HTTP-Body				1161	string
+
+ATTRIBUTE	Cache-Expires				1170	date
+ATTRIBUTE	Cache-Created				1171	date
+ATTRIBUTE	Cache-TTL				1172	signed
+ATTRIBUTE	Cache-Status-Only			1173	integer
+ATTRIBUTE	Cache-Merge				1174	integer
+ATTRIBUTE	Cache-Entry-Hits			1175	integer
+ATTRIBUTE	Cache-Read-Only				1176	integer
 
 #
 #	Range:	1200-1279

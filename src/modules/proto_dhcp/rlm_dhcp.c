@@ -61,7 +61,7 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 		 return 0;
 	}
 
-	if ((fr_dhcp_decode_options(&head, request->packet, vp->vp_octets, vp->length) < 0) || (!head)) {
+	if ((fr_dhcp_decode_options(request->packet, &head, vp->vp_octets, vp->length) < 0) || (!head)) {
 		RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
 		*out = '\0';
 		return -1;
@@ -99,7 +99,7 @@ static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 	}
 	fr_cursor_init(&cursor, &vp);
 
-	len = fr_dhcp_encode_option(binbuf, sizeof(binbuf), request, &cursor);
+	len = fr_dhcp_encode_option(request, binbuf, sizeof(binbuf), &cursor);
 	talloc_free(vp);
 	if (len <= 0) {
 		REDEBUG("DHCP option encoding failed: %s", fr_strerror());
@@ -115,17 +115,6 @@ static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 	}
 
 	return fr_bin2hex(out, binbuf, len);
-}
-
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
- */
-static int mod_detach(void *instance)
-{
-	xlat_unregister("dhcp_options", dhcp_options_xlat, instance);
-	xlat_unregister("dhcp", dhcp_xlat, instance);
-	return 0;
 }
 
 
@@ -184,7 +173,7 @@ module_t rlm_dhcp = {
 	sizeof(rlm_dhcp_t),
 	NULL,				/* CONF_PARSER */
 	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */

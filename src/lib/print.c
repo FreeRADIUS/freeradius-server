@@ -121,15 +121,48 @@ int fr_utf8_char(uint8_t const *str)
 	return 0;
 }
 
+/** Return a pointer to the first UTF8 char in a string.
+ *
+ * @param[out] chr_len Where to write the length of the multibyte char passed in chr (may be NULL).
+ * @param[in] str Haystack.
+ * @param[in] chr Multibyte needle.
+ * @return The position of chr in str or NULL if not found.
+ */
+char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
+{
+	int cchr;
+
+	cchr = fr_utf8_char((uint8_t const *)chr);
+	if (cchr == 0) cchr = 1;
+	if (chr_len) *chr_len = cchr;
+
+	while (*str) {
+		int schr;
+
+		schr = fr_utf8_char((uint8_t const *) str);
+		if (schr == 0) schr = 1;
+		if (schr != cchr) goto next;
+
+		if (memcmp(str, chr, schr) == 0) {
+			return (char const *) str;
+		}
+	next:
+		str += schr;
+	}
+
+	return NULL;
+}
+
 /** Escape any non printable or non-UTF8 characters in the input string
  *
  * @param[in] in string to escape.
  * @param[in] inlen length of string to escape (lets us deal with embedded NULLs)
  * @param[out] out where to write the escaped string.
  * @param[out] outlen the length of the buffer pointed to by out.
+ * @param[in] quote the quotation character
  * @return the number of bytes written to the out buffer, or a number > outlen if truncation has occurred.
  */
-size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
+size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	int		sp = 0;
@@ -172,6 +205,11 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 			inlen--;
 			break;
 		}
+
+		if (quote && (*p == quote)) {
+			sp = quote;
+		} else		/* do the switch statement */
+
 		switch (*p) {
 		case '\\':
 			sp = '\\';
@@ -187,10 +225,6 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 
 		case '\t':
 			sp = 't';
-			break;
-
-		case '"':
-			sp = '"';
 			break;
 
 		default:
@@ -244,9 +278,10 @@ finish:
  *
  * @param in string to calculate the escaped length for.
  * @param inlen length of the input string, if 0 strlen will be used to check the length.
+ * @param[in] quote the quotation character
  * @return the size of buffer required to hold the escaped string excluding the NULL byte.
  */
-size_t fr_print_string_len(char const *in, size_t inlen)
+size_t fr_print_string_len(char const *in, size_t inlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	size_t		outlen = 0;
@@ -270,12 +305,18 @@ size_t fr_print_string_len(char const *in, size_t inlen)
 			break;
 		}
 
+		if (quote && (*p == quote)) {
+			outlen += 2;
+			p++;
+			inlen--;
+			continue;
+		} else
+
 		switch (*p) {
 		case '\\':
 		case '\r':
 		case '\n':
 		case '\t':
-		case '"':
 			outlen += 2;
 			p++;
 			inlen--;
@@ -307,33 +348,40 @@ size_t fr_print_string_len(char const *in, size_t inlen)
  *
  */
 size_t vp_data_prints_value(char *out, size_t outlen,
-			    DICT_ATTR const *da, value_data_t const *data, size_t data_len, int8_t quote)
+			    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
+			    size_t inlen, char quote)
 {
 	DICT_VALUE	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 	char const	*a = NULL;
 	time_t		t;
 	struct tm	s_tm;
+	unsigned int	i;
 
 	size_t		len = 0, freespace = outlen;
 
+	fr_assert(!enumv || (enumv->type == type));
+
 	if (!data) return 0;
-	if (outlen == 0) return data_len;
+	if (outlen == 0) return inlen;
 
 	*out = '\0';
 
-	switch (da->type) {
+	switch (type) {
 	case PW_TYPE_STRING:
-		/* need to copy the escaped value, but quoted */
-		if (quote > 0) {
+
+		/*
+		 *	Ensure that WE add the quotation marks around the string.
+		 */
+		if (quote) {
 			if (freespace < 3) {
-				return data_len + 2;
+				return inlen + 2;
 			}
 
-			*out++ = (char) quote;
+			*out++ = quote;
 			freespace--;
 
-			len = fr_print_string(data->strvalue, data_len, out, freespace);
+			len = fr_print_string(data->strvalue, inlen, out, freespace, quote);
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
 				out[outlen - 2] = (char) quote;
@@ -350,30 +398,27 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 			return len + 2;
 		}
 
-		/* xlat.c - need to copy raw value verbatim */
-		else if (quote < 0) {
-			if (outlen > data_len) {
-				memcpy(out, data->strvalue, data_len + 1);
-				return data_len;
-			}
-
-			memcpy(out, data->strvalue, outlen);
-			out[outlen - 1] = '\0';
-			return data_len;	/* not a typo */
-		}
-
-		return fr_print_string(data->strvalue, data_len, out, outlen);
+		return fr_print_string(data->strvalue, inlen, out, outlen, quote);
 
 	case PW_TYPE_INTEGER:
-	case PW_TYPE_BYTE:
+		i = data->integer;
+		goto print_int;
+
 	case PW_TYPE_SHORT:
+		i = data->ushort;
+		goto print_int;
+
+	case PW_TYPE_BYTE:
+		i = data->byte;
+
+print_int:
 		/* Normal, non-tagged attribute */
-		if ((v = dict_valbyattr(da->attr, da->vendor, data->integer)) != NULL) {
+		if (enumv && (v = dict_valbyattr(enumv->attr, enumv->vendor, i)) != NULL) {
 			a = v->name;
 			len = strlen(a);
 		} else {
 			/* should never be truncated */
-			len = snprintf(buf, sizeof(buf), "%u", data->integer);
+			len = snprintf(buf, sizeof(buf), "%u", i);
 			a = buf;
 		}
 		break;
@@ -419,7 +464,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 		size_t max;
 
 		/* Return the number of bytes we would have written */
-		len = (data_len * 2) + 2;
+		len = (inlen * 2) + 2;
 		if (freespace <= 1) {
 			return len;
 		}
@@ -441,7 +486,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 
 		/* Get maximum number of bytes we can encode given freespace */
 		max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
-		fr_bin2hex(out, data->octets, (data_len > max) ? max : data_len);
+		fr_bin2hex(out, data->octets, (inlen > max) ? max : inlen);
 	}
 		return len;
 
@@ -501,10 +546,22 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 				data->ether[2], data->ether[3],
 				data->ether[4], data->ether[5]);
 
-	default:
-		a = "UNKNOWN-TYPE";
-		len = strlen(a);
-		break;
+	/*
+	 *	Don't add default here
+	 */
+	case PW_TYPE_INVALID:
+	case PW_TYPE_COMBO_IP_ADDR:
+	case PW_TYPE_COMBO_IP_PREFIX:
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_EVS:
+	case PW_TYPE_VSA:
+	case PW_TYPE_TIMEVAL:
+	case PW_TYPE_BOOLEAN:
+	case PW_TYPE_MAX:
+		fr_assert(0);
+		*out = '\0';
+		return 0;
 	}
 
 	if (a) strlcpy(out, a, outlen);
@@ -521,14 +578,197 @@ size_t vp_data_prints_value(char *out, size_t outlen,
  *	added.
  * @return the length of data written to out, or a value >= outlen on truncation.
  */
-size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, int8_t quote)
+size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote)
 {
 	VERIFY_VP(vp);
 
-	return vp_data_prints_value(out, outlen, vp->da, &vp->data, vp->length, quote);
+	return vp_data_prints_value(out, outlen, vp->da->type, vp->da, &vp->data, vp->length, quote);
 }
 
-char *vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type)
+
+/** Print one attribute value to a string
+ *
+ */
+char *vp_data_aprints_value(TALLOC_CTX *ctx,
+			    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
+			    size_t inlen, char quote)
+{
+	char *p = NULL;
+	unsigned int i;
+
+	switch (type) {
+	case PW_TYPE_STRING:
+	{
+		size_t len, ret;
+
+		if (!quote) {
+			p = talloc_memdup(ctx, data->strvalue, inlen + 1);
+			if (!p) return NULL;
+			talloc_set_type(p, char);
+			return p;
+		}
+
+		/* Gets us the size of the buffer we need to alloc */
+		len = fr_print_string_len(data->strvalue, inlen, quote);
+		p = talloc_array(ctx, char, len + 1); 	/* +1 for '\0' */
+		if (!p) return NULL;
+
+		ret = fr_print_string(data->strvalue, inlen, p, len + 1, quote);
+		if (!fr_assert(ret == len)) {
+			talloc_free(p);
+			return NULL;
+		}
+		break;
+	}
+
+	case PW_TYPE_INTEGER:
+		i = data->integer;
+		goto print_int;
+
+	case PW_TYPE_SHORT:
+		i = data->ushort;
+		goto print_int;
+
+	case PW_TYPE_BYTE:
+		i = data->byte;
+
+	print_int:
+	{
+		DICT_VALUE const *dv;
+
+		if (enumv && (dv = dict_valbyattr(enumv->attr, enumv->vendor, i))) {
+			p = talloc_typed_strdup(ctx, dv->name);
+		} else {
+			p = talloc_typed_asprintf(ctx, "%u", i);
+		}
+	}
+		break;
+
+	case PW_TYPE_SIGNED:
+		p = talloc_typed_asprintf(ctx, "%d", data->sinteger);
+		break;
+
+	case PW_TYPE_INTEGER64:
+		p = talloc_typed_asprintf(ctx, "%" PRIu64 , data->integer64);
+		break;
+
+	case PW_TYPE_ETHERNET:
+		p = talloc_typed_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
+					  data->ether[0], data->ether[1],
+					  data->ether[2], data->ether[3],
+					  data->ether[4], data->ether[5]);
+		break;
+
+	case PW_TYPE_ABINARY:
+#ifdef WITH_ASCEND_BINARY
+		p = talloc_array(ctx, char, 128);
+		if (!p) return NULL;
+		print_abinary(p, 128, (uint8_t *) &data->filter, inlen, 0);
+		break;
+#else
+		  /* FALL THROUGH */
+#endif
+
+	case PW_TYPE_OCTETS:
+		p = talloc_array(ctx, char, 2 + 1 + inlen * 2);
+		if (!p) return NULL;
+		p[0] = '0';
+		p[1] = 'x';
+
+		fr_bin2hex(p + 2, data->octets, inlen);
+		break;
+
+	case PW_TYPE_DATE:
+	{
+		time_t t;
+		struct tm s_tm;
+
+		t = data->date;
+
+		p = talloc_array(ctx, char, 64);
+		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
+			 localtime_r(&t, &s_tm));
+		break;
+	}
+
+	/*
+	 *	We need to use the proper inet_ntop functions for IP
+	 *	addresses, else the output might not match output of
+	 *	other functions, which makes testing difficult.
+	 *
+	 *	An example is tunnelled ipv4 in ipv6 addresses.
+	 */
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_IPV4_PREFIX:
+	{
+		char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
+
+		buff[0] = '\0';
+		vp_data_prints_value(buff, sizeof(buff), type, enumv, data, inlen, '\0');
+
+		p = talloc_typed_strdup(ctx, buff);
+	}
+	break;
+
+	case PW_TYPE_IPV6_ADDR:
+	case PW_TYPE_IPV6_PREFIX:
+	{
+		char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
+
+		buff[0] = '\0';
+		vp_data_prints_value(buff, sizeof(buff), type, enumv, data, inlen, '\0');
+
+		p = talloc_typed_strdup(ctx, buff);
+	}
+	break;
+
+	case PW_TYPE_IFID:
+		p = talloc_typed_asprintf(ctx, "%x:%x:%x:%x",
+					  (data->ifid[0] << 8) | data->ifid[1],
+					  (data->ifid[2] << 8) | data->ifid[3],
+					  (data->ifid[4] << 8) | data->ifid[5],
+					  (data->ifid[6] << 8) | data->ifid[7]);
+		break;
+
+	case PW_TYPE_BOOLEAN:
+		p = talloc_typed_strdup(ctx, data->byte ? "yes" : "no");
+		break;
+
+	/*
+	 *	Don't add default here
+	 */
+	case PW_TYPE_INVALID:
+	case PW_TYPE_COMBO_IP_ADDR:
+	case PW_TYPE_COMBO_IP_PREFIX:
+	case PW_TYPE_TLV:
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_EVS:
+	case PW_TYPE_VSA:
+	case PW_TYPE_TIMEVAL:
+	case PW_TYPE_MAX:
+		fr_assert(0);
+		return NULL;
+	}
+
+	return p;
+}
+
+/** Print one attribute value to a string
+ *
+ * @param ctx to allocate string in.
+ * @param vp to print.
+ * @param[in] quote the quotation character
+ * @return a talloced buffer with the attribute operator and value.
+ */
+char *vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
+{
+	VERIFY_VP(vp);
+
+	return vp_data_aprints_value(ctx, vp->da->type, vp->da, &vp->data, vp->length, quote);
+}
+
+char *vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type)
 {
 	switch (type) {
 	case PW_TYPE_STRING :
@@ -572,7 +812,7 @@ char *vp_aprint_type(TALLOC_CTX *ctx, PW_TYPE type)
 	return talloc_typed_strdup(ctx, "<UNKNOWN-TYPE>");
 }
 
-/**  Prints attribute values escaped suitably for use as JSON values
+/**  Prints attribute enumv escaped suitably for use as JSON enumv
  *
  *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
  *  JSON value to.
@@ -590,11 +830,19 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 	if (!vp->da->flags.has_tag) {
 		switch (vp->da->type) {
 		case PW_TYPE_INTEGER:
-		case PW_TYPE_BYTE:
-		case PW_TYPE_SHORT:
 			if (vp->da->flags.has_value) break;
 
 			return snprintf(out, freespace, "%u", vp->vp_integer);
+
+		case PW_TYPE_SHORT:
+			if (vp->da->flags.has_value) break;
+
+			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_short);
+
+		case PW_TYPE_BYTE:
+			if (vp->da->flags.has_value) break;
+
+			return snprintf(out, freespace, "%u", (unsigned int) vp->vp_byte);
 
 		case PW_TYPE_SIGNED:
 			return snprintf(out, freespace, "%d", vp->vp_signed);
@@ -690,34 +938,34 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
  *  This is a hack, and has to be kept in sync with tokens.h
  */
 static char const *vp_tokens[] = {
-  "?",				/* T_INVALID */
-  "EOL",			/* T_EOL */
-  "{",
-  "}",
-  "(",
-  ")",
-  ",",
-  ";",
-  "++",
-  "+=",
-  "-=",
-  ":=",
-  "=",
-  "!=",
-  ">=",
-  ">",
-  "<=",
-  "<",
-  "=~",
-  "!~",
-  "=*",
-  "!*",
-  "==",
-  "#",
-  "<BARE-WORD>",
-  "<\"STRING\">",
-  "<'STRING'>",
-  "<`STRING`>"
+	"?",			/* T_INVALID */
+	"EOL",			/* T_EOL */
+	"{",
+	"}",
+	"(",
+	")",
+	",",
+	";",
+	"++",
+	"+=",
+	"-=",
+	":=",
+	"=",
+	"!=",
+	">=",
+	">",
+	"<=",
+	"<",
+	"=~",
+	"!~",
+	"=*",
+	"!*",
+	"==",
+	"#",
+	"<BARE-WORD>",
+	"<\"STRING\">",
+	"<'STRING'>",
+	"<`STRING`>"
 };
 
 extern int const fr_attr_max_tlv;
@@ -810,7 +1058,7 @@ void vp_print(FILE *fp, VALUE_PAIR const *vp)
 }
 
 
-/** Print a list of attributes and values
+/** Print a list of attributes and enumv
  *
  * @param fp to output to.
  * @param vp to print.
@@ -823,150 +1071,6 @@ void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
 	}
 }
 
-
-/** Print one attribute value to a string
- *
- * @param ctx to allocate string in.
- * @param vp to print.
- * @param escape PW_TYPE_STRING attribute values.
- * @return a talloced buffer with the attribute operator and value.
- */
-char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
-{
-	char *p;
-
-	switch (vp->da->type) {
-	case PW_TYPE_STRING:
-	{
-		size_t len, ret;
-
-		if (!escape) {
-			p = talloc_memdup(ctx, vp->vp_strvalue, vp->length + 1);
-			if (!p) return NULL;
-			talloc_set_type(p, char);
-			return p;
-		}
-
-		/* Gets us the size of the buffer we need to alloc */
-		len = fr_print_string_len(vp->vp_strvalue, vp->length);
-		p = talloc_array(ctx, char, len + 1); 	/* +1 for '\0' */
-		if (!p) return NULL;
-
-		ret = fr_print_string(vp->vp_strvalue, vp->length, p, len + 1);
-		if (!fr_assert(ret == len)) {
-			talloc_free(p);
-			return NULL;
-		}
-		break;
-	}
-
-	case PW_TYPE_BYTE:
-	case PW_TYPE_SHORT:
-	case PW_TYPE_INTEGER:
-		{
-			DICT_VALUE *dv;
-
-			dv = dict_valbyattr(vp->da->attr, vp->da->vendor,
-					    vp->vp_integer);
-			if (dv) {
-				p = talloc_typed_strdup(ctx, dv->name);
-			} else {
-				p = talloc_typed_asprintf(ctx, "%u", vp->vp_integer);
-			}
-		}
-		break;
-
-	case PW_TYPE_SIGNED:
-		p = talloc_typed_asprintf(ctx, "%d", vp->vp_signed);
-		break;
-
-	case PW_TYPE_INTEGER64:
-		p = talloc_typed_asprintf(ctx, "%" PRIu64 , vp->vp_integer64);
-		break;
-
-	case PW_TYPE_ETHERNET:
-		p = talloc_typed_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
-				    vp->vp_ether[0], vp->vp_ether[1],
-				    vp->vp_ether[2], vp->vp_ether[3],
-				    vp->vp_ether[4], vp->vp_ether[5]);
-		break;
-
-	case PW_TYPE_ABINARY:
-#ifdef WITH_ASCEND_BINARY
-		p = talloc_array(ctx, char, 128);
-		if (!p) return NULL;
-		print_abinary(p, 128, (uint8_t *) &vp->vp_filter, vp->length, 0);
-		break;
-#else
-		  /* FALL THROUGH */
-#endif
-
-	case PW_TYPE_OCTETS:
-		p = talloc_array(ctx, char, 1 + vp->length * 2);
-		if (!p) return NULL;
-		fr_bin2hex(p, vp->vp_octets, vp->length);
-		break;
-
-	case PW_TYPE_DATE:
-	{
-		time_t t;
-		struct tm s_tm;
-
-		t = vp->vp_date;
-
-		p = talloc_array(ctx, char, 64);
-		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
-			 localtime_r(&t, &s_tm));
-		break;
-	}
-
-	/*
-	 *	We need to use the proper inet_ntop functions for IP
-	 *	addresses, else the output might not match output of
-	 *	other functions, which makes testing difficult.
-	 *
-	 *	An example is tunnelled ipv4 in ipv6 addresses.
-	 */
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_IPV4_PREFIX:
-		{
-			char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
-
-			buff[0] = '\0';
-			vp_prints_value(buff, sizeof(buff), vp, 0);
-
-			p = talloc_typed_strdup(ctx, buff);
-		}
-		break;
-
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IPV6_PREFIX:
-		{
-			char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
-
-			buff[0] = '\0';
-			vp_prints_value(buff, sizeof(buff), vp, 0);
-
-			p = talloc_typed_strdup(ctx, buff);
-		}
-		break;
-
-	case PW_TYPE_IFID:
-		p = talloc_typed_asprintf(ctx, "%x:%x:%x:%x",
-				    (vp->vp_ifid[0] << 8) | vp->vp_ifid[1],
-				    (vp->vp_ifid[2] << 8) | vp->vp_ifid[3],
-				    (vp->vp_ifid[4] << 8) | vp->vp_ifid[5],
-				    (vp->vp_ifid[6] << 8) | vp->vp_ifid[7]);
-		break;
-
-	default:
-		p = NULL;
-		break;
-	}
-
-	return p;
-}
-
 /** Print one attribute and value to a string
  *
  * Print a VALUE_PAIR in the format:
@@ -977,13 +1081,13 @@ char *vp_aprint_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
  *
  * @param ctx to allocate string in.
  * @param vp to print.
- * @param escape PW_TYPE_STRING attribute values.
+ * @param[in] quote the quotation character
  * @return a talloced buffer with the attribute operator and value.
  */
-char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
+char *vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	char const	*token = NULL;
-	char 		*pair, *value;
+	char 		*str, *value;
 
 	if (!vp || !vp->da) return 0;
 
@@ -995,13 +1099,25 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, bool escape)
 		token = "<INVALID-TOKEN>";
 	}
 
-	value = vp_aprint_value(ctx, vp, escape);
-	pair = vp->da->flags.has_tag ?
-	       talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value) :
-	       talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
+	value = vp_aprints_value(ctx, vp, quote);
+
+	if (vp->da->flags.has_tag) {
+		if (quote && (vp->da->type == PW_TYPE_STRING)) {
+			str = talloc_asprintf(ctx, "%s:%d %s %c%s%c", vp->da->name, vp->tag, token, quote, value, quote);
+		} else {
+			str = talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value);
+		}
+	} else {
+		if (quote && (vp->da->type == PW_TYPE_STRING)) {
+			str = talloc_asprintf(ctx, "%s %s %c%s%c", vp->da->name, token, quote, value, quote);
+		} else {
+			str = talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
+		}
+	}
+
 	talloc_free(value);
 
-	return pair;
+	return str;
 }
 
 

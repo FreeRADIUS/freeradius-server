@@ -972,43 +972,7 @@ server, the radius server will perform authorization and authentication based
 on a series of modules that are defined in radiusd.conf.  For example, the
 module defined as ldap, will be used to make connections to the LDAP directory.
 
-An example is listed below::
-
-    ldap {
-    server = localhost
-    identity = cn=freeradius,ou=admins,ou=radius,dc=mydomain,dc=com
-    password = example
-    #this is the basedn to do searches on a user
-    basedn = ou=users,ou=radius,dc=mydomain,dc=com
-    #notice the username is the stripped user-name or user-name
-    filter = (uid=%{%{Stripped-User-Name}:-%{User-Name}})
-    start_tls = no
-    tls_mode = no
-    #this maps ldap attributetypes to radius attributes
-    dictionary_mapping = ${raddbdir}/ldap.attrmap
-    ldap_cache_timeout = 120
-    ldap_cache_size = 0
-    ldap_connections_number = 10
-    #password_header = {clear}
-    #While integrating FreeRADIUS with Novell eDirectory, set
-    #'password_attribute = nspmpassword' in order to use the universal password
-    #of the eDirectory users for RADIUS authentication. This will work only if
-    #FreeRADIUS is configured to build with --with-edir option.
-    password_attribute = userPassword
-    #Comment out the following to disable the eDirectory account policy check and
-    #intruder detection. This will work only if FreeRADIUS is configured to build
-    #with --with-edir option.
-    #edir_account_policy_check=no
-    groupname_attribute = radiusGroupName
-    groupmembership_filter = (&(uid=%{%{Stripped-User-Name}:-%{User-Name}})
-    (objectclass=radiusprofile))
-    groupmembership_attribute = radiusGroupName
-    timeout = 3
-    timelimit = 5
-    net_timeout = 1
-    compare_check_items = no
-    #access_attr_used_for_allow = yes
-    }
+An example is seen in raddb/mods-config/ldap::
 
 The first thing that is done is authorization of the user.  The radius server
 will process the modules in the order specified in the authorization section of

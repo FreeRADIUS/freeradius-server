@@ -101,6 +101,77 @@ int rlm_ldap_is_dn(char const *str)
 	return strrchr(str, ',') == NULL ? false : true;
 }
 
+/** Normalise escape sequences in a DN
+ *
+ * Characters in a DN can either be escaped as
+ * @verbatim \<hex><hex> @endverbatim or @verbatim \<special> @endverbatim
+ *
+ * The LDAP directory chooses how characters are escaped, which can make
+ * local comparisons of DNs difficult.
+ *
+ * Here we search for hex sequences that match special chars, and convert
+ * them to the @verbatim \<special> @endverbatim form.
+ *
+ * @note the resulting output string will only ever be shorter than the
+ *       input, so it's fine to use the same buffer for both out and in.
+ *
+ * @param out Where to write the normalised DN.
+ * @param in The input DN.
+ * @return The number of bytes written to out.
+ */
+size_t rlm_ldap_normalise_dn(char *out, char const *in)
+{
+	char const *p;
+	char *o = out;
+
+	for (p = in; *p != '\0'; p++) {
+		if (p[0] == '\\') {
+			char c;
+
+			/*
+			 *	Double backslashes get processed specially
+			 */
+			if (p[1] == '\\') {
+				p += 1;
+				*o++ = p[0];
+				*o++ = p[1];
+				continue;
+			}
+
+			/*
+			 *	Hex encodings that have an alternative
+			 *	special encoding, get rewritten to the
+			 *	special encoding.
+			 */
+			if (fr_hex2bin((uint8_t *) &c, 1, p + 1, 2) == 1) {
+				switch (c) {
+				case ' ':
+				case '#':
+				case '=':
+				case '"':
+				case '+':
+				case ',':
+				case ';':
+				case '<':
+				case '>':
+				case '\'':
+					*o++ = '\\';
+					*o++ = c;
+					p += 2;
+					continue;
+
+				default:
+					break;
+				}
+			}
+		}
+		*o++ = *p;
+	}
+	*o = '\0';
+
+	return o - out;
+}
+
 /** Find the place at which the two DN strings diverge
  *
  * Returns the length of the non matching string in full.
@@ -380,24 +451,20 @@ process_error:
 		status = LDAP_PROC_NOT_PERMITTED;
 		break;
 
-	case LDAP_TIMEOUT:
-		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", true);
-
-		*error = "Timed out while waiting for server to respond";
-
-		status = LDAP_PROC_ERROR;
-		break;
-
 	case LDAP_FILTER_ERROR:
 		*error = "Bad search filter";
 
 		status = LDAP_PROC_ERROR;
 		break;
 
-	case LDAP_TIMELIMIT_EXCEEDED:
-		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", true);
+	case LDAP_TIMEOUT:
+		*error = "Timed out while waiting for server to respond";
+		goto timeout;
 
+	case LDAP_TIMELIMIT_EXCEEDED:
 		*error = "Time limit exceeded";
+	timeout:
+		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", true);
 		/* FALL-THROUGH */
 
 	case LDAP_BUSY:
@@ -966,20 +1033,28 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	dn = ldap_get_dn((*pconn)->handle, entry);
 	if (!dn) {
 		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-
-		REDEBUG("Retrieving object DN from entry failed: %s",
-			ldap_err2string(ldap_errno));
+		REDEBUG("Retrieving object DN from entry failed: %s", ldap_err2string(ldap_errno));
 
 		goto finish;
 	}
+	rlm_ldap_normalise_dn(dn, dn);
 
+	/*
+	 *	We can't use pairmake here to copy the value into the
+	 *	attribute, as the dn must be copied into the attribute
+	 *	verbatim (without de-escaping).
+	 *
+	 *	Special chars are pre-escaped by libldap, and because
+	 *	we pass the string back to libldap we must not alter it.
+	 */
 	RDEBUG("User object found at DN \"%s\"", dn);
-	vp = pairmake(request, &request->config_items, "LDAP-UserDN", dn, T_OP_EQ);
+	vp = pairmake(request, &request->config_items, "LDAP-UserDN", NULL, T_OP_EQ);
 	if (vp) {
+		pairstrcpy(vp, dn);
 		*rcode = RLM_MODULE_OK;
 	}
 
-	finish:
+finish:
 	ldap_memfree(dn);
 
 	if ((freeit || (*rcode != RLM_MODULE_OK)) && *result) {
@@ -1309,7 +1384,7 @@ error:
  * @param inst rlm_ldap configuration.
  * @param request Current request (may be NULL).
  */
-ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, UNUSED REQUEST *request)
+ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, UNUSED REQUEST *request)
 {
 	return fr_connection_get(inst->pool);
 }
@@ -1322,7 +1397,7 @@ ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, UNUSED REQUEST *
  * @param inst rlm_ldap configuration.
  * @param conn to release.
  */
-void rlm_ldap_release_socket(ldap_instance_t const *inst, ldap_handle_t *conn)
+void mod_conn_release(ldap_instance_t const *inst, ldap_handle_t *conn)
 {
 	/*
 	 *	Could have already been free'd due to a previous error.

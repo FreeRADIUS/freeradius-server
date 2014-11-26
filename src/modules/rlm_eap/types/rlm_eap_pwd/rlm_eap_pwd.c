@@ -421,32 +421,35 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 			fake->server = inst->conf->virtual_server;
 		} /* else fake->server == request->server */
 
-		if ((debug_flag > 0) && fr_log_fp) {
-			RDEBUG("Sending tunneled request");
+		RDEBUG("Sending tunneled request");
+		rdebug_pair_list(L_DBG_LVL_1, request, fake->packet->vps, NULL);
 
-			debug_pair_list(fake->packet->vps);
-
-			fprintf(fr_log_fp, "server %s {\n", (!fake->server) ? "" : fake->server);
+		if (fake->server) {
+			RDEBUG("server %s {", fake->server);
+		} else {
+			RDEBUG("server {");
 		}
 
 		/*
 		 *	Call authorization recursively, which will
 		 *	get the password.
 		 */
+		RINDENT();
 		process_authorize(0, fake);
+		REXDENT();
 
 		/*
 		 *	Note that we don't do *anything* with the reply
 		 *	attributes.
 		 */
-		if ((debug_flag > 0) && fr_log_fp) {
-			fprintf(fr_log_fp, "} # server %s\n",
-			(!fake->server) ? "" : fake->server);
-
-			RDEBUG("Got tunneled reply code %d", fake->reply->code);
-
-			debug_pair_list(fake->reply->vps);
+		if (fake->server) {
+			RDEBUG("} # server %s", fake->server);
+		} else {
+			RDEBUG("}");
 		}
+
+		RDEBUG("Got tunneled reply code %d", fake->reply->code);
+		rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 
 		if ((pw = pairfind(fake->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
 			DEBUG2("failed to find password for %s to do pwd authentication",

@@ -14,14 +14,14 @@ extern "C" {
 #endif
 
 typedef enum detail_state_t {
-  STATE_UNOPENED = 0,
-  STATE_UNLOCKED,
-  STATE_HEADER,
-  STATE_READING,
-  STATE_QUEUED,
-  STATE_RUNNING,
-  STATE_NO_REPLY,
-  STATE_REPLIED
+	STATE_UNOPENED = 0,
+	STATE_UNLOCKED,
+	STATE_HEADER,
+	STATE_READING,
+	STATE_QUEUED,
+	STATE_RUNNING,
+	STATE_NO_REPLY,
+	STATE_REPLIED
 } detail_state_t;
 
 /*
@@ -31,9 +31,9 @@ typedef enum detail_state_t {
  *	code to work without threads.  One thing at a time...
  */
 #ifndef WITHOUT_DETAIL_THREAD
-#ifdef HAVE_PTHREAD_H
-#define WITH_DETAIL_THREAD (1)
-#endif
+#  ifdef HAVE_PTHREAD_H
+#    define WITH_DETAIL_THREAD (1)
+#  endif
 #endif
 
 typedef struct listen_detail_t {
@@ -54,6 +54,11 @@ typedef struct listen_detail_t {
 	time_t		timestamp;
 	time_t		running;
 	fr_ipaddr_t	client_ip;
+
+	off_t		last_offset;
+	off_t		timestamp_offset;
+	bool		done_entry;	/* are we done reading this entry? */
+	bool		track;	/* do we track progress through the file? */
 
 	uint32_t	load_factor; /* 1..100 */
 	uint32_t	poll_interval;

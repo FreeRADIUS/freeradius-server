@@ -42,6 +42,7 @@ server read-detail.example.com {
 		type = detail
 		filename = "${radacctdir}/detail.example.com/detail-*:*"
 		load_factor = 10
+		track = yes
 	}
 
 	#  All packets read from the detail file are processed through

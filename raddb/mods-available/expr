@@ -3,18 +3,58 @@
 #  $Id$
 
 #
-#  This module is useful only for 'xlat'.  To use it,
-#  put 'expr' into the 'instantiate' section.  You can then
-#  do dynamic translation of attributes like:
+#  This module performs mathematical calculations:
 #
-#  Attribute-Name = `%{expr:2 + 3 + %{exec: uid -u}}`
+#	Attribute-Name = "%{expr:2 + 3 + &NAS-Port}"
 #
-#  The value of the attribute will be replaced with the output
-#  of the program which is executed.  Due to RADIUS protocol
-#  limitations, any output over 253 bytes will be ignored.
+#  It supports the following operators (in order of precedence)
+#
+#	&	binary AND
+#	|	binary OR
+#	<<	left shift
+#	>>	right shift
+#	+	addition
+#	-	subtraction
+#	*	multiply
+#	/	divide
+#	%%	remainder
+#	^	exponentiation
+#	(...)	sub-expression
+#
+#  Operator precedence follows the normal rules.
+#  Division by zero means that the entire expression is invalid.
+#
+#  Note that in versions before 3.0.5, the expression
+#  was parsed strictly left to right, and ignored operator
+#  precedence.
+#
+#  It also allows unary negation:	-1
+#  And twos complement:			~1
+#
+#  All calculations are done on signed 63-bit integers.
+#  e.g. int64_t.  This should be sufficient for all normal
+#  purposes.
+#
+#  Hex numbers are supported:		0xabcdef
+#
+#  As with all string expansions, you can nest the expansions:
+#
+#	%{expr: %{NAS-Port} + 1}
+#	%{expr: %{sql:SELECT ... } + 1}
+#
+#  Attribute references are supported for integer attributes.
+#  e.g. &NAS-Port.  The benefit of using attribute references
+#  is that the expression is calculated directly on the
+#  attribute.  It skips the step of "print to string, and then
+#  parse to number".  This means it's a little faster.
+#
+#  Otherwise, all numbers are decimal.
+#
+
 #
 #  The module also registers a few paircompare functions, and
-#  many string manipulation functions.
+#  many string manipulation functions, which should really be
+#  documented here.
 #
 
 expr {
@@ -22,5 +62,5 @@ expr {
 	# Characters that will not be encoded by the %{encode}
 	# xlat function.
 	#
-	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"
+	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /äéöüàâæçèéêëîïôœùûüaÿÄÉÖÜßÀÂÆÇÈÉÊËÎÏÔŒÙÛÜŸ"
 }

@@ -160,7 +160,7 @@ static int counter_cmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
 	/*
 	 *	Find the key attribute.
 	 */
-	key_vp = pairfind_da(request, inst->key_attr, TAG_ANY);
+	key_vp = pair_find_by_da(request, inst->key_attr, TAG_ANY);
 	if (!key_vp) {
 		return RLM_MODULE_NOOP;
 	}
@@ -591,7 +591,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 *	The REAL username, after stripping.
 	 */
 	key_vp = (inst->key_attr->attr == PW_USER_NAME) ? request->username :
-					pairfind_da(request->packet->vps, inst->key_attr, TAG_ANY);
+					pair_find_by_da(request->packet->vps, inst->key_attr, TAG_ANY);
 	if (!key_vp) {
 		DEBUG("rlm_counter: Could not find the key-attribute in the request. Returning NOOP");
 		return RLM_MODULE_NOOP;
@@ -600,7 +600,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	/*
 	 *	Look for the attribute to use as a counter.
 	 */
-	count_vp = pairfind_da(request->packet->vps, inst->count_attr, TAG_ANY);
+	count_vp = pair_find_by_da(request->packet->vps, inst->count_attr, TAG_ANY);
 	if (!count_vp) {
 		DEBUG("rlm_counter: Could not find the count_attribute in the request");
 		return RLM_MODULE_NOOP;
@@ -721,7 +721,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	 */
 	DEBUG2("rlm_counter: Entering module authorize code");
 	key_vp = (inst->key_attr->attr == PW_USER_NAME) ? request->username :
-		 pairfind_da(request->packet->vps, inst->key_attr, TAG_ANY);
+		 pair_find_by_da(request->packet->vps, inst->key_attr, TAG_ANY);
 	if (!key_vp) {
 		DEBUG2("rlm_counter: Could not find Key value pair");
 		return rcode;
@@ -730,7 +730,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	/*
 	 *      Look for the check item
 	 */
-	if ((check_vp = pairfind_da(request->config_items, inst->check_attr, TAG_ANY)) == NULL) {
+	if ((check_vp = pair_find_by_da(request->config_items, inst->check_attr, TAG_ANY)) == NULL) {
 		DEBUG2("rlm_counter: Could not find Check item value pair");
 		return rcode;
 	}
@@ -807,7 +807,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 				reply_item->vp_integer = res;
 			}
 		} else if (inst->reply_attr) {
-			reply_item = pairfind_da(request->reply->vps, inst->reply_attr, TAG_ANY);
+			reply_item = pair_find_by_da(request->reply->vps, inst->reply_attr, TAG_ANY);
 			if (reply_item) {
 				if (reply_item->vp_integer > res) {
 					reply_item->vp_integer = res;

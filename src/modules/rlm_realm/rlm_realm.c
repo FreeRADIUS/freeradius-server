@@ -360,6 +360,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+	if (cf_new_escape && (strcmp(inst->delim, "\\\\") == 0)) {
+		/* it's OK */
+	} else
+
 	if (strlen(inst->delim) != 1) {
 		cf_log_err_cs(conf, "Invalid value \"%s\" for delimiter",
 			      inst->delim);

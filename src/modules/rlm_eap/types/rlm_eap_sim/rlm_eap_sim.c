@@ -173,23 +173,25 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 
 			RDEBUG2("Generated following triplets for round %i:", idx);
 
+			RINDENT();
 			p = buffer;
 			for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
 				p += sprintf(p, "%02x", ess->keys.rand[idx][i]);
 			}
-			RDEBUG2("\tRAND : 0x%s", buffer);
+			RDEBUG2("RAND : 0x%s", buffer);
 
 			p = buffer;
 			for (i = 0; i < EAPSIM_SRES_SIZE; i++) {
 				p += sprintf(p, "%02x", ess->keys.sres[idx][i]);
 			}
-			RDEBUG2("\tSRES : 0x%s", buffer);
+			RDEBUG2("SRES : 0x%s", buffer);
 
 			p = buffer;
 			for (i = 0; i < EAPSIM_KC_SIZE; i++) {
 				p += sprintf(p, "%02x", ess->keys.Kc[idx][i]);
 			}
-			RDEBUG2("\tKc   : 0x%s", buffer);
+			RDEBUG2("Kc   : 0x%s", buffer);
+			REXDENT();
 		}
 		return 1;
 	}
@@ -287,8 +289,8 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	outvps = &packet->vps;
 
 	if (RDEBUG_ENABLED2) {
-		RDEBUG2("EAP-SIM decoded packet:");
-		debug_pair_list(*invps);
+		RDEBUG2("EAP-SIM decoded packet");
+		rdebug_pair_list(L_DBG_LVL_2, request, *invps, NULL);
 	}
 
 	/*
@@ -409,7 +411,7 @@ static void eap_sim_stateenter(eap_handler_t *handler,
 			       eap_sim_state_t *ess,
 			       enum eapsim_serverstates newstate)
 {
-	switch(newstate) {
+	switch (newstate) {
 	/*
 	 * 	Send the EAP-SIM Start message, listing the versions that we support.
 	 */
@@ -658,7 +660,7 @@ static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
 		break;
 
 	case EAPSIM_SERVER_CHALLENGE:
-		switch(subtype) {
+		switch (subtype) {
 		/*
 		 *	Pretty much anything else here is illegal, so we will retransmit the request.
 		 */

@@ -260,7 +260,6 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 	struct mypasswd * passwd;
 	struct mypasswd * hashentry;
 	char buffer[1024];
-	int len;
 	char *list, *nextlist;
 
 	if (ht->tablesize > 0) {
@@ -281,7 +280,7 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 	passwd = (struct mypasswd *) ht->buffer;
 
 	while (fgets(buffer, 1024,ht->fp)) {
-		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, ht->delimiter, passwd, sizeof(ht->buffer)-1)) &&
+		if(*buffer && *buffer!='\n' && string_to_entry(buffer, ht->nfields, ht->delimiter, passwd, sizeof(ht->buffer)-1) &&
 		   (!ht->ignorenis || (*buffer !='-' && *buffer != '+') ) ){
 			if(!ht->islist) {
 				if(!strcmp(passwd->field[ht->keyfield], name))
@@ -517,7 +516,8 @@ static int mod_detach (void *instance) {
 #undef inst
 }
 
-static void addresult (struct passwd_instance * inst, REQUEST *request, TALLOC_CTX *ctx, VALUE_PAIR **vps, struct mypasswd * pw, char when, char const *listname)
+static void addresult (TALLOC_CTX *ctx, struct passwd_instance *inst, REQUEST *request,
+		       VALUE_PAIR **vps, struct mypasswd * pw, char when, char const *listname)
 {
 	uint32_t i;
 	VALUE_PAIR *vp;
@@ -543,7 +543,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 	struct mypasswd * pw, *last_found;
 	vp_cursor_t cursor;
 
-	key = pairfind(request->packet->vps, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY);
+	key = pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
 	if (!key) {
 		return RLM_MODULE_NOTFOUND;
 	}
@@ -559,9 +559,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 			continue;
 		}
 		do {
-			addresult(inst, request, request, &request->config_items, pw, 0, "config_items");
-			addresult(inst, request, request->reply, &request->reply->vps, pw, 1, "reply_items");
-			addresult(inst, request, request->packet, &request->packet->vps, pw, 2, "request_items");
+			addresult(request, inst, request, &request->config_items, pw, 0, "config_items");
+			addresult(request->reply, inst, request, &request->reply->vps, pw, 1, "reply_items");
+			addresult(request->packet, inst, request, &request->packet->vps, pw, 2, "request_items");
 		} while ((pw = get_next(buffer, inst->ht, &last_found)));
 
 		if (!inst->allow_multiple) {

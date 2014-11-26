@@ -77,7 +77,8 @@ static int _sql_socket_destructor(rlm_sql_unixodbc_conn_t *conn)
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn;
 	long err_handle;
 
@@ -140,7 +141,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  *	       the database.
  *
  *************************************************************************/
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	int state;
@@ -169,7 +171,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	SQLINTEGER i;
 	SQLLEN len;
@@ -207,7 +210,8 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
  *	       set for the query.
  *
  *************************************************************************/
-static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	/* Not used */
 	return 0;
 }
@@ -221,7 +225,8 @@ static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_
  *	       of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	SQLSMALLINT num_fields = 0;
@@ -243,7 +248,8 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       query
  *
  *************************************************************************/
-static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	return sql_affected_rows(handle, config);
 }
 
@@ -257,7 +263,8 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'.
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	int state;
@@ -265,19 +272,16 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	handle->row = NULL;
 
 	err_handle = SQLFetch(conn->statement);
-	if(err_handle == SQL_NO_DATA_FOUND) {
-		return 0;
-	}
+	if (err_handle == SQL_NO_DATA_FOUND) return 0;
 
 	if ((state = sql_state(err_handle, handle, config))) {
-		if(state == RLM_SQL_RECONNECT) {
-			DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
-		}
+		if (state == RLM_SQL_RECONNECT) DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
 
 		return state;
 	}
 
-	handle->row = conn->row;
+	*out = handle->row = conn->row;
+
 	return 0;
 }
 
@@ -289,7 +293,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 
 	sql_free_result(handle, config);
@@ -318,7 +323,8 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_co
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 
 	SQLFreeStmt(conn->statement, SQL_CLOSE);
@@ -334,7 +340,8 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
  *	       for a result set
  *
  *************************************************************************/
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 
 	TALLOC_FREE(conn->row);
@@ -350,7 +357,8 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *	       connection
  *
  *************************************************************************/
-static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	SQLCHAR state[256];
 	SQLCHAR error[256];
 	SQLINTEGER errornum = 0;
@@ -377,7 +385,8 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
  *	       connection related or -1 for other errors
  *
  *************************************************************************/
-static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	SQLCHAR state[256];
 	SQLCHAR error[256];
 	SQLINTEGER errornum = 0;
@@ -396,7 +405,7 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
 		 error, 256, &length);
 
 	if(state[0] == '0') {
-		switch(state[1]) {
+		switch (state[1]) {
 		/* SQLSTATE 01 class contains info and warning messages */
 		case '1':
 			INFO("rlm_sql_unixodbc: %s %s", state, error);
@@ -430,7 +439,8 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
  *	       or insert)
  *
  *************************************************************************/
-static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	SQLLEN affected_rows;
@@ -446,18 +456,17 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_unixodbc = {
-	"rlm_sql_unixodbc",
-	NULL,
-	sql_socket_init,
-	sql_query,
-	sql_select_query,
-	sql_store_result,
-	sql_num_fields,
-	sql_num_rows,
-	sql_fetch_row,
-	sql_free_result,
-	sql_error,
-	sql_finish_query,
-	sql_finish_select_query,
-	sql_affected_rows
+	.name				= "rlm_sql_unixodbc",
+	.sql_socket_init		= sql_socket_init,
+	.sql_query			= sql_query,
+	.sql_select_query		= sql_select_query,
+	.sql_store_result		= sql_store_result,
+	.sql_num_fields			= sql_num_fields,
+	.sql_num_rows			= sql_num_rows,
+	.sql_affected_rows		= sql_affected_rows,
+	.sql_fetch_row			= sql_fetch_row,
+	.sql_free_result		= sql_free_result,
+	.sql_error			= sql_error,
+	.sql_finish_query		= sql_finish_query,
+	.sql_finish_select_query	= sql_finish_select_query
 };

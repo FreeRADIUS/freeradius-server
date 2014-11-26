@@ -50,7 +50,7 @@ if ("%{Response-Packet-Type}" != '') {
 	}
 }
 
-if ("%{Packet-Authentication-Vector}" != '00000000000000000000000000000000') {
+if ("%{Packet-Authentication-Vector}" != '0x00000000000000000000000000000000') {
 	update reply {
 		Filter-Id += "fail 6"
 	}

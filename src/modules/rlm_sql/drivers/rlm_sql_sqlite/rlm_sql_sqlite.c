@@ -66,7 +66,7 @@ static const CONF_PARSER driver_config[] = {
 static int sql_check_error(sqlite3 *db)
 {
 	int error = sqlite3_errcode(db);
-	switch(error) {
+	switch (error) {
 	/*
 	 *	Not errors
 	 */
@@ -499,7 +499,7 @@ static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *confi
 	return 0;
 }
 
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	int status;
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
@@ -507,6 +507,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	int i = 0;
 
 	char **row;
+
+	*out = NULL;
 
 	/*
 	 *	Executes the SQLite query and interates over the results
@@ -516,16 +518,12 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	/*
 	 *	Error getting next row
 	 */
-	if (sql_check_error(conn->db)) {
-		return -1;
-	}
+	if (sql_check_error(conn->db)) return -1;
 
 	/*
 	 *	No more rows to process (were done)
 	 */
-	if (status == SQLITE_DONE) {
-		return 1;
-	}
+	if (status == SQLITE_DONE) return 1;
 
 	/*
 	 *	We only need to do this once per result set, because
@@ -533,16 +531,13 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	 */
 	if (conn->col_count == 0) {
 		conn->col_count = sql_num_fields(handle, config);
-		if (conn->col_count == 0) {
-			return -1;
-		}
+		if (conn->col_count == 0) return -1;
 	}
 
 	/*
 	 *	Free the previous result (also gets called on finish_query)
 	 */
 	talloc_free(handle->row);
-
 	MEM(row = handle->row = talloc_zero_array(handle->conn, char *, conn->col_count + 1));
 
 	for (i = 0; i < conn->col_count; i++) {
@@ -585,6 +580,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 			break;
 		}
 	}
+
+	*out = row;
 
 	return 0;
 }
@@ -645,18 +642,18 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_sqlite = {
-	"rlm_sql_sqlite",
-	mod_instantiate,
-	sql_socket_init,
-	sql_query,
-	sql_select_query,
-	sql_store_result,
-	sql_num_fields,
-	sql_num_rows,
-	sql_fetch_row,
-	sql_free_result,
-	sql_error,
-	sql_finish_query,
-	sql_finish_query,
-	sql_affected_rows
+	.name				= "rlm_sql_sqlite",
+	.mod_instantiate		= mod_instantiate,
+	.sql_socket_init		= sql_socket_init,
+	.sql_query			= sql_query,
+	.sql_select_query		= sql_select_query,
+	.sql_store_result		= sql_store_result,
+	.sql_num_fields			= sql_num_fields,
+	.sql_num_rows			= sql_num_rows,
+	.sql_affected_rows		= sql_affected_rows,
+	.sql_fetch_row			= sql_fetch_row,
+	.sql_free_result		= sql_free_result,
+	.sql_error			= sql_error,
+	.sql_finish_query		= sql_finish_query,
+	.sql_finish_select_query	= sql_finish_query
 };

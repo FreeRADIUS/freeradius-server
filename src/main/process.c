@@ -14,7 +14,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
+/**
  * $Id$
  *
  * @file process.c
@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/state.h>
 
 #include <freeradius-devel/rad_assert.h>
 
@@ -50,7 +51,7 @@ extern fr_cond_t *debug_condition;
 static bool spawn_flag = false;
 static bool just_started = true;
 time_t fr_start_time = (time_t)-1;
-static fr_packet_list_t *pl = NULL;
+static rbtree_t *pl = NULL;
 static fr_event_list_t *el = NULL;
 
 fr_event_list_t *radius_event_list_corral(UNUSED event_corral_t hint) {
@@ -353,33 +354,13 @@ static void tv_add(struct timeval *tv, int usec_delay)
 /*
  *	In daemon mode, AND this request has debug flags set.
  */
-#define DEBUG_PACKET if (debug_flag && request->log.lvl && request->log.func) debug_packet
-
-static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
+static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 {
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
-	char buffer[1024];
-	char const *received, *from;
-	fr_ipaddr_t const *ip;
-	uint16_t port;
+	char src_ipaddr[128];
+	char dst_ipaddr[128];
 
 	if (!packet) return;
-
-	rad_assert(request->log.func != NULL);
-
-	if (direction == 0) {
-		received = "Received";
-		from = "from";	/* what else? */
-		ip = &packet->src_ipaddr;
-		port = packet->src_port;
-
-	} else {
-		received = "Sending";
-		from = "to";	/* hah! */
-		ip = &packet->dst_ipaddr;
-		port = packet->dst_port;
-	}
+	if (!RDEBUG_ENABLED) return;
 
 	/*
 	 *	Client-specific debugging re-prints the input
@@ -388,23 +369,39 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		RDEBUG("%s %s packet %s host %s port %i, id=%i, length=%zu",
-		       received, fr_packet_codes[packet->code], from,
-		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
-		       port, packet->id, packet->data_len);
+		RDEBUG("%s %s Id %i from %s:%i to %s:%i length %zu",
+		       received ? "Received" : "Sent",
+		       fr_packet_codes[packet->code],
+		       packet->id,
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 src_ipaddr, sizeof(src_ipaddr)),
+		       packet->src_port,
+		       inet_ntop(packet->dst_ipaddr.af,
+				 &packet->dst_ipaddr.ipaddr,
+				 dst_ipaddr, sizeof(dst_ipaddr)),
+		       packet->dst_port,
+		       packet->data_len);
 	} else {
-		RDEBUG("%s packet %s host %s port %d code=%d, id=%d, length=%zu",
-		       received, from,
-		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
-		       port,
-		       packet->code, packet->id, packet->data_len);
+		RDEBUG("%s code %i Id %i from %s:%i to %s:%i length %zu",
+		       received ? "Received" : "Sent",
+		       packet->code,
+		       packet->id,
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 src_ipaddr, sizeof(src_ipaddr)),
+		       packet->src_port,
+		       inet_ntop(packet->dst_ipaddr.af,
+				 &packet->dst_ipaddr.ipaddr,
+				 dst_ipaddr, sizeof(dst_ipaddr)),
+		       packet->dst_port,
+		       packet->data_len);
 	}
 
-	for (vp = fr_cursor_init(&cursor, &packet->vps);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		vp_prints(buffer, sizeof(buffer), vp);
-		RDEBUG("\t%s", buffer);
+	if (received) {
+		rdebug_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+	} else {
+		rdebug_proto_pair_list(L_DBG_LVL_1, request, packet->vps);
 	}
 }
 
@@ -501,6 +498,19 @@ STATE_MACHINE_DECL(request_done)
 		rad_assert(!request->in_proxy_hash);
 		rad_assert(action == FR_ACTION_DONE);
 		rad_assert(request->ev == NULL);
+	}
+#endif
+
+#ifdef WITH_DETAIL
+	/*
+	 *	Tell the detail listener that we're done.
+	 */
+	if (request->listener &&
+	    (request->listener->type == RAD_LISTEN_DETAIL) &&
+	    (request->simul_max != 1)) {
+		request->simul_max = 1;
+		request->listener->send(request->listener,
+					request);
 	}
 #endif
 
@@ -635,7 +645,7 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	if (request->in_request_hash) {
 		ASSERT_MASTER;
-		if (!fr_packet_list_yank(pl, request->packet)) {
+		if (!rbtree_deletebydata(pl, &request->packet)) {
 			rad_assert(0 == 1);
 		}
 		request->in_request_hash = false;
@@ -722,7 +732,18 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	request_stats_final(request);
 #ifdef WITH_TCP
-	if (request->listener) request->listener->count--;
+	if (request->listener) {
+		request->listener->count--;
+
+		/*
+		 *	If we're the last one, remove the listener now.
+		 */
+		if ((request->listener->count == 0) &&
+		    (request->listener->status == RAD_LISTEN_STATUS_EOL)) {
+			request->listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+			event_new_fd(request->listener);
+		}
+	}
 #endif
 
 	if (request->packet) {
@@ -947,7 +968,7 @@ static void request_process_timer(REQUEST *request)
 #endif	/* WITH_PROXY */
 
 	case REQUEST_RESPONSE_DELAY:
-		rad_assert(request->response_delay > 0);
+		rad_assert(request->response_delay.tv_sec > 0);
 #ifdef WITH_COA
 		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
 #endif
@@ -956,7 +977,8 @@ static void request_process_timer(REQUEST *request)
 
 		when = request->reply->timestamp;
 
-		tv_add(&when, request->response_delay * USEC);
+		tv_add(&when, request->response_delay.tv_sec * USEC);
+		tv_add(&when, request->response_delay.tv_usec);
 
 		if (timercmp(&when, &now, >)) {
 #ifdef DEBUG_STATE_MACHINE
@@ -967,8 +989,8 @@ static void request_process_timer(REQUEST *request)
 		} /* else it's time to send the reject */
 
 		RDEBUG2("Sending delayed response");
-		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener, request);
+		debug_packet(request, request->reply, false);
 		request->child_state = REQUEST_CLEANUP_DELAY;
 		/* FALL-THROUGH */
 
@@ -1250,7 +1272,7 @@ static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int act
 		}
 #endif
 
-		DEBUG_PACKET(request, request->packet, 0);
+		debug_packet(request, request->packet, true);
 	} else {
 		rcode = 0;
 	}
@@ -1279,33 +1301,16 @@ STATE_MACHINE_DECL(request_finish)
 	(void) action;	/* -Wunused */
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		NO_CHILD_THREAD;
-		return;
-	}
-
-	/*
-	 *	Don't send replies if there are none to send.
-	 */
-	if (!request->in_request_hash) {
-#ifdef WITH_TCP
-		if ((request->listener->type == RAD_LISTEN_AUTH)
-#ifdef WITH_ACCOUNTING
-		    || (request->listener->type == RAD_LISTEN_ACCT)
-#endif
-			) {
-			listen_socket_t *sock = request->listener->data;
-
-			if (sock->proto == IPPROTO_UDP) return;
-
-			/*
-			 *	TCP packets aren't in the request
-			 *	hash.
-			 */
+#ifdef WITH_DETAIL
+		/*
+		 *	Always send a reply to the detail listener.
+		 */
+		if (request->listener->type == RAD_LISTEN_DETAIL) {
+			goto do_detail;
 		}
-#else
+#endif
 		NO_CHILD_THREAD;
 		return;
-#endif
 	}
 
 	/*
@@ -1392,10 +1397,65 @@ STATE_MACHINE_DECL(request_finish)
 	gettimeofday(&request->reply->timestamp, NULL);
 
 	/*
+	 *	Fake packets get marked as "done", and have the
+	 *	proxy-reply section deal with the reply attributes.
+	 *	We therefore don't free the reply attributes.
+	 */
+	if (request->packet->dst_port == 0) {
+		RDEBUG("Finished internally proxied request.");
+		NO_CHILD_THREAD;
+		request->child_state = REQUEST_DONE;
+		return;
+	}
+
+#ifdef WITH_DETAIL
+	/*
+	 *	Always send the reply to the detail listener.
+	 */
+	if (request->listener->type == RAD_LISTEN_DETAIL) {
+	do_detail:
+		request->simul_max = 1;
+		request->listener->send(request->listener, request);
+		/*
+		 *	But only print the reply if there is one.
+		 */
+		if (request->reply->code != 0) {
+			debug_packet(request, request->reply, false);
+		}
+		goto done;
+	}
+#endif
+
+	/*
 	 *	Ignore all "do not respond" packets.
+	 *	Except for the detail ones, which need to ping
+	 *	the detail file reader so that it will retransmit.
 	 */
 	if (!request->reply->code) {
-		RDEBUG("Not sending reply");
+		RDEBUG("Not sending reply to client.");
+		goto done;
+	}
+
+	/*
+	 *	If it's not in the request hash, we MIGHT not want to
+	 *	send a reply.
+	 *
+	 *	If duplicate packets are allowed, then then only
+	 *	reason to NOT be in the request hash is because we
+	 *	don't want to send a reply.
+	 *
+	 *	FIXME: this is crap.  The rest of the state handling
+	 *	should use a different field so that we don't have two
+	 *	meanings for it.
+	 *
+	 *	Otherwise duplicates are forbidden, and the request is
+	 *	SUPPOSED to avoid the request hash.
+	 *
+	 *	In that case, we need to send a reply.
+	 */
+	if (!request->in_request_hash &&
+	    !request->listener->nodup) {
+		RDEBUG("Suppressing reply to client.");
 		goto done;
 	}
 
@@ -1403,7 +1463,7 @@ STATE_MACHINE_DECL(request_finish)
 	 *	See if we need to delay an Access-Reject packet.
 	 */
 	if ((request->reply->code == PW_CODE_ACCESS_REJECT) &&
-	    (request->root->reject_delay > 0)) {
+	    (request->root->reject_delay.tv_sec > 0)) {
 		request->response_delay = request->root->reject_delay;
 
 #ifdef WITH_PROXY
@@ -1412,26 +1472,48 @@ STATE_MACHINE_DECL(request_finish)
 		 *	the reject any more.
 		 */
 		if (request->proxy && !request->proxy_reply) {
-			request->response_delay = 0;
+			request->response_delay.tv_sec = 0;
+			request->response_delay.tv_usec = 0;
 		}
 #endif
-
 	}
 
 	/*
 	 *	Send the reply.
 	 */
-	if (!request->response_delay) {
-		DEBUG_PACKET(request, request->reply, 1);
-		request->listener->send(request->listener,
-					request);
+	if (request->response_delay.tv_sec == 0) {
+		rad_assert(request->response_delay.tv_usec == 0);
 
+		/*
+		 *	Don't print a reply if there's none to send.
+		 */
+		if (request->reply->code != 0) {
+			request->listener->send(request->listener, request);
+			debug_packet(request, request->reply, false);
+		}
 	done:
 		pairfree(&request->reply->vps);
 
 		RDEBUG2("Finished request");
+		request->component = "<core>";
+		request->module = "<done>";
+
 #ifdef WITH_ACCOUNTING
 		if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+			NO_CHILD_THREAD;
+			request->child_state = REQUEST_DONE;
+		} else
+#endif
+
+#ifdef WITH_COA
+		/*
+		 *	If we've originated this CoA request, it gets
+		 *	cleaned up now.
+		 */
+	        if (request->proxy &&
+		    ((request->proxy->code == PW_CODE_COA_REQUEST) ||
+		     (request->proxy->code == PW_CODE_DISCONNECT_REQUEST)) &&
+		    (request->packet->code != request->proxy->code)) {
 			NO_CHILD_THREAD;
 			request->child_state = REQUEST_DONE;
 		} else
@@ -1445,8 +1527,8 @@ STATE_MACHINE_DECL(request_finish)
 			request->child_state = REQUEST_CLEANUP_DELAY;
 		}
 	} else {
-		RDEBUG2("Delaying response for %d seconds",
-			request->response_delay);
+		RDEBUG2("Delaying response for %d.%06d seconds",
+			(int) request->response_delay.tv_sec, (int) request->response_delay.tv_usec);
 		NO_CHILD_THREAD;
 		request->child_state = REQUEST_RESPONSE_DELAY;
 	}
@@ -1560,6 +1642,8 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 */
 	gettimeofday(&now, NULL);
 
+	packet->timestamp = now;
+
 #ifdef WITH_ACCOUNTING
 	if (listener->type != RAD_LISTEN_DETAIL)
 #endif
@@ -1567,14 +1651,13 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		sock = listener->data;
 		sock->last_packet = now.tv_sec;
 	}
-	packet->timestamp = now;
 
 	/*
 	 *	Skip everything if required.
 	 */
 	if (listener->nodup) goto skip_dup;
 
-	packet_p = fr_packet_list_find(pl, packet);
+	packet_p = rbtree_finddata(pl, &packet);
 	if (packet_p) {
 		request = fr_packet2myptr(REQUEST, packet, packet_p);
 		rad_assert(request->in_request_hash);
@@ -1588,9 +1671,12 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 			    sizeof(packet->vector)) == 0)) {
 
 			/*
-			 *	If the request is running, it'
+			 *	If the request is running, don't muck
+			 *	with it.
 			 */
-			if (request->child_state != REQUEST_DONE) {
+			if ((request->child_state != REQUEST_DONE) &&
+			    (request->child_state != REQUEST_RESPONSE_DELAY) &&
+			    (request->child_state != REQUEST_CLEANUP_DELAY)) {
 				request->process(request, FR_ACTION_DUP);
 
 #ifdef WITH_STATS
@@ -1649,7 +1735,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 *	Quench maximum number of outstanding requests.
 	 */
 	if (main_config.max_requests &&
-	    ((count = fr_packet_list_num_elements(pl)) > main_config.max_requests)) {
+	    ((count = rbtree_num_elements(pl)) > main_config.max_requests)) {
 		RATE_LIMIT(ERROR("Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 				 client->shortname,
 				 packet->src_port, packet->id);
@@ -1682,7 +1768,7 @@ skip_dup:
 	 *	Remember the request in the list.
 	 */
 	if (!listener->nodup) {
-		if (!fr_packet_list_insert(pl, &request->packet)) {
+		if (!rbtree_insert(pl, &request->packet)) {
 			RERROR("Failed to insert request in the list of live requests: discarding it");
 			request_done(request, FR_ACTION_DONE);
 			return 1;
@@ -1695,6 +1781,10 @@ skip_dup:
 	 *	Process it.  Send a response, and free it.
 	 */
 	if (listener->synchronous) {
+#ifdef WITH_DETAIL
+		rad_assert(listener->type != RAD_LISTEN_DETAIL);
+#endif
+
 		request->listener->decode(request->listener, request);
 		request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
@@ -2236,7 +2326,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		 */
 		if (request->proxy_listener) {
 			rcode = request->proxy_listener->decode(request->proxy_listener, request);
-			DEBUG_PACKET(request, reply, 0);
+			debug_packet(request, reply, true);
 
 			/*
 			 *	Pro-actively remove it from the proxy hash.
@@ -2251,7 +2341,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		} else {
 			rad_assert(!request->in_proxy_hash);
 		}
-	} else {
+	} else if (request->in_proxy_hash) {
 		remove_from_proxy_hash(request);
 	}
 
@@ -2584,11 +2674,8 @@ static int request_will_proxy(REQUEST *request)
 			return 0;
 		}
 
-	} else {
+	} else if ((vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		int pool_type;
-
-		vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0, TAG_ANY);
-		if (!vp) return 0;
 
 		switch (request->packet->code) {
 		case PW_CODE_ACCESS_REQUEST:
@@ -2613,6 +2700,50 @@ static int request_will_proxy(REQUEST *request)
 		}
 
 		pool = home_pool_byname(vp->vp_strvalue, pool_type);
+
+		/*
+		 *	Send it directly to a home server (i.e. NAS)
+		 */
+	} else if (((vp = pairfind(request->config_items, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
+		   ((vp = pairfind(request->config_items, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
+		VALUE_PAIR *port;
+		uint16_t dst_port;
+		fr_ipaddr_t dst_ipaddr;
+
+		memset(&dst_ipaddr, 0, sizeof(dst_ipaddr));
+
+		if (vp->da->attr == PW_PACKET_DST_IP_ADDRESS) {
+			dst_ipaddr.af = AF_INET;
+			dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		} else {
+			dst_ipaddr.af = AF_INET6;
+			memcpy(&dst_ipaddr.ipaddr.ip6addr, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+		}
+
+		port = pairfind(request->config_items, PW_PACKET_DST_PORT, 0, TAG_ANY);
+		if (!port) {
+		dst_port = PW_COA_UDP_PORT;
+		} else {
+			dst_port = vp->vp_integer;
+		}
+
+		/*
+		 *	Nothing does CoA over TCP.
+		 */
+		home = home_server_find(&dst_ipaddr, dst_port, IPPROTO_UDP);
+		if (!home) {
+			char buffer[256];
+
+			WARN("No such CoA home server %s port %u",
+			     inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			     (unsigned int) dst_port);
+			return 0;
+		}
+
+		goto do_home;
+
+	} else {
+		return 0;
 	}
 
 	if (!pool) {
@@ -2628,10 +2759,13 @@ static int request_will_proxy(REQUEST *request)
 	request->home_pool = pool;
 
 	home = home_server_ldb(realmname, pool, request);
+
 	if (!home) {
 		REDEBUG2("Failed to find live home server: Cancelling proxy");
 		return 0;
 	}
+
+do_home:
 	home_server_update_request(home, request);
 
 #ifdef WITH_COA
@@ -2838,12 +2972,26 @@ static int request_proxy(REQUEST *request, int retransmit)
 		talloc_free(fake);
 
 		/*
+		 *	No reply code, toss the reply we have,
+		 *	and do post-proxy-type Fail.
+		 */
+		if (!request->proxy_reply->code) {
+			TALLOC_FREE(request->proxy_reply);
+			setup_post_proxy_fail(request);
+		}
+
+		/*
 		 *	Just do the work here, rather than trying to
 		 *	run the "decode proxy reply" stuff...
 		 */
 		process_proxy_reply(request, request->proxy_reply);
 
-		request->handle(request); /* to do more post-proxy stuff */
+		/*
+		 *	If we have a reply, run it through the handler.
+		 */
+		if (request->proxy_reply) {
+			request->handle(request); /* to do more post-proxy stuff */
+		}
 
 		return -1;	/* so we call request_finish */
 	}
@@ -2880,7 +3028,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 				request->proxy->dst_port,
 				(int) response_window->tv_sec, (int) response_window->tv_usec);
 
-		DEBUG_PACKET(request, request->proxy, 1);
+
 	}
 
 	gettimeofday(&request->proxy_retransmit, NULL);
@@ -2892,8 +3040,8 @@ static int request_proxy(REQUEST *request, int retransmit)
 	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 	NO_CHILD_THREAD;
 	request->child_state = REQUEST_PROXIED;
-	request->proxy_listener->send(request->proxy_listener,
-				      request);
+	request->proxy_listener->send(request->proxy_listener, request);
+	debug_packet(request, request->proxy, false);
 	return 1;
 }
 
@@ -3217,16 +3365,17 @@ static void ping_home_server(void *ctx)
 
 static void home_trigger(home_server_t *home, char const *trigger)
 {
-	REQUEST my_request;
-	RADIUS_PACKET my_packet;
+	REQUEST *my_request;
+	RADIUS_PACKET *my_packet;
 
-	memset(&my_request, 0, sizeof(my_request));
-	memset(&my_packet, 0, sizeof(my_packet));
-	my_request.proxy = &my_packet;
-	my_packet.dst_ipaddr = home->ipaddr;
-	my_packet.src_ipaddr = home->src_ipaddr;
+	my_request = talloc_zero(NULL, REQUEST);
+	my_packet = talloc_zero(my_request, RADIUS_PACKET);
+	my_request->proxy = my_packet;
+	my_packet->dst_ipaddr = home->ipaddr;
+	my_packet->src_ipaddr = home->src_ipaddr;
 
-	exec_trigger(&my_request, home->cs, trigger, false);
+	exec_trigger(my_request, home->cs, trigger, false);
+	talloc_free(my_request);
 }
 
 static void mark_home_server_zombie(home_server_t *home, struct timeval *now, struct timeval *response_window)
@@ -3449,12 +3598,11 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		request->num_proxied_requests++;
 
 		rad_assert(request->proxy_listener != NULL);;
-		DEBUG_PACKET(request, request->proxy, 1);
 		FR_STATS_TYPE_INC(home->stats.total_requests);
 		home->last_packet_sent = now.tv_sec;
 		request->proxy_retransmit = now;
-		request->proxy_listener->send(request->proxy_listener,
-					      request);
+		request->proxy_listener->send(request->proxy_listener, request);
+		debug_packet(request, request->proxy, false);
 		break;
 
 	case FR_ACTION_TIMER:
@@ -3544,12 +3692,27 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		 *	the request.  If the client retransmitted, it
 		 *	may have failed over to another home server.
 		 *	But that one may be dead, too.
+		 *
+		 * 	The extra verbose message if we have a username,
+		 *	is extremely useful if the proxy is part of a chain
+		 *	and the final home server, is not the one we're
+		 *	proxying to.
 		 */
-		RERROR("Failing proxied request, due to lack of any response from home server %s port %d",
+		if (request->username) {
+			RERROR("Failing proxied request for user \"%s\", due to lack of any response from home "
+			       "server %s port %d",
+			       request->username->vp_strvalue,
 			       inet_ntop(request->proxy->dst_ipaddr.af,
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
 			       request->proxy->dst_port);
+		} else {
+			RERROR("Failing proxied request, due to lack of any response from home server %s port %d",
+			       inet_ntop(request->proxy->dst_ipaddr.af,
+					 &request->proxy->dst_ipaddr.ipaddr,
+					 buffer, sizeof(buffer)),
+			       request->proxy->dst_port);
+		}
 
 		if (!setup_post_proxy_fail(request)) {
 			gettimeofday(&request->reply->timestamp, NULL);
@@ -3638,11 +3801,11 @@ static void request_coa_originate(REQUEST *request)
 	if (vp) {
 		ipaddr.af = AF_INET;
 		ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-
+		ipaddr.prefix = 32;
 	} else if ((vp = pairfind(coa->proxy->vps, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL) {
 		ipaddr.af = AF_INET6;
 		ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
-
+		ipaddr.prefix = 128;
 	} else if ((vp = pairfind(coa->proxy->vps, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		coa->home_pool = home_pool_byname(vp->vp_strvalue,
 						  HOME_TYPE_COA);
@@ -3791,7 +3954,11 @@ static void request_coa_originate(REQUEST *request)
 	coa->packet->timestamp = coa->proxy->timestamp; /* for max_request_time */
 	coa->delay = 0;		/* need to calculate a new delay */
 
-	DEBUG_PACKET(coa, coa->proxy, 1);
+	/*
+	 *	If requested, put a State attribute into the packet,
+	 *	and cache the VPS.
+	 */
+	fr_state_put_vps(coa, NULL, coa->packet);
 
 	coa->process = coa_wait_for_reply;
 #ifdef DEBUG_STATE_MACHINE
@@ -3807,6 +3974,7 @@ static void request_coa_originate(REQUEST *request)
 	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
 	coa->home_server->last_packet_sent = coa->proxy->timestamp.tv_sec;
 	coa->proxy_listener->send(coa->proxy_listener, coa);
+	debug_packet(coa, coa->proxy, false);
 }
 
 
@@ -3952,6 +4120,16 @@ STATE_MACHINE_DECL(coa_wait_for_reply)
 
 	case FR_ACTION_PROXY_REPLY:
 		rad_assert(request->parent == NULL);
+
+		/*
+		 *	Do NOT get the session-state VPs.  The request
+		 *	already contains the packet and the reply, so
+		 *	there's no more state we need to maintain.
+		 *
+		 *	The state for "originate CoA" is for the next
+		 *	Access-Request, not for the CoA ACK/BAK
+		 */
+
 		request_queue_or_run(request, coa_running);
 		break;
 
@@ -3977,7 +4155,7 @@ static void request_coa_separate(REQUEST *request)
 	rad_assert(!request->in_request_hash);
 	rad_assert(request->coa == NULL);
 
-	rad_assert(request->proxy_listener != NULL);
+	rad_assert(request->proxy_reply || request->proxy_listener);
 
 	(void) talloc_steal(NULL, request);
 	request->parent->coa = NULL;
@@ -4072,11 +4250,13 @@ static void event_socket_handler(UNUSED fr_event_list_t *xel, UNUSED int fd, voi
 
 	rad_assert(xel == el);
 
-	if (
+	if ((listener->fd < 0)
 #ifdef WITH_DETAIL
-	    (listener->type != RAD_LISTEN_DETAIL) &&
+#ifndef WITH_DETAIL_THREAD
+	    && (listener->type != RAD_LISTEN_DETAIL)
 #endif
-	    (listener->fd < 0)) {
+#endif
+		) {
 		char buffer[256];
 
 		listener->print(listener, buffer, sizeof(buffer));
@@ -4307,7 +4487,7 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		case RAD_LISTEN_PROXY:
 #ifdef WITH_TCP
-			rad_assert(sock->home != NULL);
+			rad_assert((sock->proto == IPPROTO_UDP) || (sock->home != NULL));
 
 			/*
 			 *	Add timers to outgoing child sockets, if necessary.
@@ -4346,7 +4526,8 @@ static int event_new_fd(rad_listen_t *this)
 
 				if (!fr_event_insert(el, tcp_socket_timer, this, &when,
 						     &(sock->ev))) {
-					rad_panic("Failed to insert event");
+					ERROR("Failed adding timer for socket: %s", fr_strerror());
+					fr_exit(1);
 				}
 			}
 #endif
@@ -4358,7 +4539,7 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		if (!fr_event_fd_insert(el, 0, this->fd,
 					event_socket_handler, this)) {
-			ERROR("Failed adding event handler for socket!");
+			ERROR("Failed adding event handler for socket: %s", fr_strerror());
 			fr_exit(1);
 		}
 
@@ -4503,7 +4684,7 @@ static int event_new_fd(rad_listen_t *this)
 			/*
 			 *	EOL all requests using this socket.
 			 */
-			fr_packet_list_walk(pl, this, eol_listener);
+			rbtree_walk(pl, RBTREE_DELETE_ORDER, eol_listener, this);
 		}
 
 		/*
@@ -4547,7 +4728,6 @@ static void handle_signal_self(int flag)
 			fr_event_loop_exit(el, 1);
 		} else {
 			INFO("Signalled to terminate");
-			exec_trigger(NULL, NULL, "server.signal.term", true);
 			fr_event_loop_exit(el, 2);
 		}
 
@@ -4707,6 +4887,15 @@ int radius_event_init(TALLOC_CTX *ctx) {
 	return 1;
 }
 
+static int packet_entry_cmp(void const *one, void const *two)
+{
+	RADIUS_PACKET const * const *a = one;
+	RADIUS_PACKET const * const *b = two;
+
+	return fr_packet_cmp(*a, *b);
+}
+
+
 int radius_event_start(CONF_SECTION *cs, bool have_children)
 {
 	rad_listen_t *head = NULL;
@@ -4721,7 +4910,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 		 */
 		rad_assert(el);
 
-		pl = fr_packet_list_create(0);
+		pl = rbtree_create(NULL, packet_entry_cmp, NULL, 0);
 		if (!pl) return 0;	/* leak el */
 	}
 
@@ -4793,32 +4982,28 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	 *	signal handlers.
 	 */
 	if (pipe(self_pipe) < 0) {
-		ERROR("radiusd: Error opening internal pipe: %s",
-		       fr_syserror(errno));
+		ERROR("Error opening internal pipe: %s", fr_syserror(errno));
 		fr_exit(1);
 	}
 	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
-		ERROR("radiusd: Error setting internal flags: %s",
-		       fr_syserror(errno));
+		ERROR("Error setting internal flags: %s", fr_syserror(errno));
 		fr_exit(1);
 	}
 	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
-		ERROR("radiusd: Error setting internal flags: %s",
-		       fr_syserror(errno));
+		ERROR("Error setting internal flags: %s", fr_syserror(errno));
 		fr_exit(1);
 	}
+	DEBUG4("Created signal pipe.  Read end FD %i, write end FD %i", self_pipe[0], self_pipe[1]);
 
-	if (!fr_event_fd_insert(el, 0, self_pipe[0],
-				  event_signal_handler, el)) {
-		ERROR("Failed creating handler for signals");
+	if (!fr_event_fd_insert(el, 0, self_pipe[0], event_signal_handler, el)) {
+		ERROR("Failed creating signal pipe handler: %s", fr_strerror());
 		fr_exit(1);
 	}
 #endif
 
-       DEBUG("%s: #### Opening IP addresses and Ports ####",
-	       main_config.name);
+       DEBUG("%s: #### Opening IP addresses and Ports ####", main_config.name);
 
        /*
 	*	The server temporarily switches to an unprivileged
@@ -4939,7 +5124,7 @@ void radius_event_free(void)
 	}
 #endif
 
-	fr_packet_list_walk(pl, NULL, request_delete_cb);
+	rbtree_walk(pl, RBTREE_DELETE_ORDER,  request_delete_cb, NULL);
 
 	if (spawn_flag) {
 		/*
@@ -4967,15 +5152,15 @@ void radius_event_free(void)
 			}
 #endif
 
-			fr_packet_list_walk(pl, NULL, request_delete_cb);
-			num = fr_packet_list_num_elements(pl);
+			rbtree_walk(pl, RBTREE_DELETE_ORDER, NULL, request_delete_cb);
+			num = rbtree_num_elements(pl);
 			if (num > 0) {
 				ERROR("Request list has %d requests still in it.", num);
 			}
 		}
 	}
 
-	fr_packet_list_free(pl);
+	rbtree_free(pl);
 	pl = NULL;
 
 #ifdef WITH_PROXY

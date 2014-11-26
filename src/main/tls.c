@@ -51,6 +51,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/ocsp.h>
 #endif
 
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct libssl_defect {
 	uint64_t	high;
 	uint64_t	low;
@@ -71,6 +72,7 @@ static libssl_defect_t libssl_defects[] =
 		.comment	= "For more information see http://heartbleed.com"
 	}
 };
+#endif
 
 /* record */
 static void 		record_init(record_t *buf);
@@ -158,6 +160,11 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 		 *	back to hex.
 		 */
 		return fr_hex2bin(psk, max_psk_len, buffer, hex_len);
+	}
+
+	if (!conf->psk_identity) {
+		DEBUG("No static PSK identity set.  Rejecting the user");
+		return 0;
 	}
 
 	/*
@@ -400,7 +407,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 	}
 	e = SSL_get_error(s, ret);
 
-	switch(e) {
+	switch (e) {
 		/*
 		 *	These seem to be harmless and already "dealt
 		 *	with" by our non-blocking environment. NB:
@@ -908,7 +915,7 @@ static CONF_PARSER ocsp_config[] = {
 	{ "url", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, ocsp_url), NULL },
 	{ "use_nonce", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_use_nonce), "yes" },
 	{ "timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, ocsp_timeout), "yes" },
-	{ "softfail", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_softfail), "yes" },
+	{ "softfail", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_softfail), "no" },
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 #endif
@@ -949,6 +956,9 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 #endif
 
+	{ "disable_tlsv1_1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_1), NULL },
+	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
+
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
 	{ "verify", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) verify_config },
@@ -986,6 +996,13 @@ static CONF_PARSER tls_client_config[] = {
 #ifndef OPENSSL_NO_ECDH
 	{ "ecdh_curve", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, ecdh_curve), "prime256v1" },
 #endif
+#endif
+
+#ifdef SSL_OP_NO_TLSv1_1
+	{ "disable_tlsv1_1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_1), NULL },
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
+	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 #endif
 
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
@@ -1335,6 +1352,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	char *host = NULL;
 	char *port = NULL;
 	char *path = NULL;
+	char hostheader[1024];
 	int use_ssl = -1;
 	long nsec = MAX_VALIDITY_PERIOD, maxage = -1;
 	BIO *cbio, *bio_out;
@@ -1383,6 +1401,13 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 
 	DEBUG2("[ocsp] --> Responder URL = http://%s:%s%s", host, port, path);
 
+	/* Check host and port length are sane, then create Host: HTTP header */
+	if ((strlen(host) + strlen(port) + 2) > sizeof(hostheader)) {
+		ERROR("OCSP Host and port too long");
+		goto ocsp_skip;
+	}
+	snprintf(hostheader, sizeof(hostheader), "%s:%s", host, port);
+
 	/* Setup BIO socket to OCSP responder */
 	cbio = BIO_new_connect(host);
 
@@ -1417,9 +1442,21 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		goto ocsp_end;
 	}
 
-	ctx = OCSP_sendreq_new(cbio, path, req, -1);
+	ctx = OCSP_sendreq_new(cbio, path, NULL, -1);
 	if (!ctx) {
-		ERROR("Couldn't send OCSP request");
+		ERROR("Couldn't create OCSP request");
+		ocsp_ok = 2;
+		goto ocsp_end;
+	}
+
+	if (!OCSP_REQ_CTX_add1_header(ctx, "Host", hostheader)) {
+		ERROR("Couldn't set Host header");
+		ocsp_ok = 2;
+		goto ocsp_end;
+	}
+
+	if (!OCSP_REQ_CTX_set1_req(ctx, req)) {
+		ERROR("Couldn't add data to OCSP request");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1758,7 +1795,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 							 (char *) ASN1_STRING_data(name->d.otherName->value->value.utf8string), T_OP_SET);
 						break;
 					    } else {
-						RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)\n");
+						RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)");
 						break;
 					    }
 					}
@@ -1786,8 +1823,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	if (!my_ok) {
 		char const *p = X509_verify_cert_error_string(err);
-		ERROR("--> verify error:num=%d:%s\n",err, p);
-		REDEBUG("SSL says error %d : %s", err, p);
+		RERROR("SSL says error %d : %s", err, p);
 		return my_ok;
 	}
 
@@ -1839,7 +1875,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 
 			vp = pairmake(talloc_ctx, certs, attribute, value, T_OP_ADD);
-			if (vp) debug_pair_list(vp);
+			if (vp) rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 		}
 
 		BIO_free_all(out);
@@ -1847,12 +1883,12 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	switch (ctx->error) {
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
-		ERROR("issuer= %s\n", issuer);
+		RERROR("issuer=%s", issuer);
 		break;
 
 	case X509_V_ERR_CERT_NOT_YET_VALID:
 	case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
-		ERROR("notBefore=");
+		RERROR("notBefore=");
 #if 0
 		ASN1_TIME_print(bio_err, X509_get_notBefore(ctx->current_cert));
 #endif
@@ -1860,7 +1896,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	case X509_V_ERR_CERT_HAS_EXPIRED:
 	case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
-		ERROR("notAfter=");
+		RERROR("notAfter=");
 #if 0
 		ASN1_TIME_print(bio_err, X509_get_notAfter(ctx->current_cert));
 #endif
@@ -1904,10 +1940,11 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #ifdef HAVE_OPENSSL_OCSP_H
 		if (my_ok && conf->ocsp_enable){
 			RDEBUG2("--> Starting OCSP Request");
-			if(X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert)!=1) {
-				ERROR("Couldn't get issuer_cert for %s", common_name);
+			if (X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) {
+				RERROR("Couldn't get issuer_cert for %s", common_name);
+			} else {
+				my_ok = ocsp_check(ocsp_store, issuer_cert, client_cert, conf);
 			}
-			my_ok = ocsp_check(ocsp_store, issuer_cert, client_cert, conf);
 		}
 #endif
 
@@ -1948,8 +1985,9 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 
 			RDEBUG("Verifying client certificate: %s", conf->verify_client_cert_cmd);
-			if (radius_exec_program(request, conf->verify_client_cert_cmd, true, true, NULL, 0,
-						EXEC_TIMEOUT, request->packet->vps, NULL) != 0) {
+			if (radius_exec_program(NULL, 0, NULL, request, conf->verify_client_cert_cmd,
+						request->packet->vps,
+						true, true, EXEC_TIMEOUT) != 0) {
 				AUTH("tls: Certificate CN (%s) fails external verification!", common_name);
 				my_ok = 0;
 			} else {
@@ -2085,6 +2123,7 @@ void tls_global_init(void)
 	OPENSSL_config(NULL);
 }
 
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
 /** Check for vulnerable versions of libssl
  *
  * @param acknowledged The highest CVE number a user has confirmed is not present in the system's libssl.
@@ -2123,6 +2162,7 @@ int tls_global_version_check(char const *acknowledged)
 
 	return 0;
 }
+#endif
 
 /** Free any memory alloced by libssl
  *
@@ -2161,7 +2201,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 	EVP_add_digest(EVP_sha256());
 #endif
 
-	ctx = SSL_CTX_new(TLSv1_method());
+	ctx = SSL_CTX_new(SSLv23_method()); /* which is really "all known SSL / TLS methods".  Idiots. */
 	if (!ctx) {
 		int err;
 		while ((err = ERR_get_error())) {
@@ -2253,7 +2293,12 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 			return NULL;
 		}
 
-		SSL_CTX_set_psk_server_callback(ctx, psk_server_callback);
+		/*
+		 *	Set the callback only if we can check things.
+		 */
+		if (conf->psk_identity || conf->psk_query) {
+			SSL_CTX_set_psk_server_callback(ctx, psk_server_callback);
+		}
 
 	} else if (conf->psk_query) {
 		ERROR("Invalid PSK Configuration: psk_query cannot be used for outgoing connections");
@@ -2369,10 +2414,22 @@ post_ca:
 #endif
 
 	/*
-	 *	Set ctx_options
+	 *	We never want SSLv2 or SSLv3.
 	 */
 	ctx_options |= SSL_OP_NO_SSLv2;
 	ctx_options |= SSL_OP_NO_SSLv3;
+
+	/*
+	 *	As of 3.0.5, we always allow TLSv1.1 and TLSv1.2.
+	 *	Though they can be *globally* disabled if necessary.x
+	 */
+#ifdef SSL_OP_NO_TLSv1_1
+	if (conf->disable_tlsv1_1) ctx_options |= SSL_OP_NO_TLSv1_1;
+#endif
+#ifdef SSL_OP_NO_TLSv1_2
+	if (conf->disable_tlsv1_2) ctx_options |= SSL_OP_NO_TLSv1_2;
+#endif
+
 #ifdef SSL_OP_NO_TICKET
 	ctx_options |= SSL_OP_NO_TICKET ;
 #endif
@@ -2840,8 +2897,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			vp_cursor_t cursor;
 
 			RDEBUG("Adding cached attributes for session %s:", buffer);
-			debug_pair_list(vps);
-
+			rdebug_pair_list(L_DBG_LVL_1, request, vps, NULL);
 			for (vp = fr_cursor_init(&cursor, &vps);
 			     vp;
 			     vp = fr_cursor_next(&cursor)) {

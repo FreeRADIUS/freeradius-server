@@ -1,0 +1,31 @@
+update control {
+       Cleartext-Password := 'hello'
+}
+
+update request {
+	WiMAX-PFDv2-Src-Port = 6809
+}
+
+if (WiMAX-PFDv2-Src-Port != 6809) {
+	update reply {
+		Filter-Id := "fail-1"
+	}
+}
+
+#
+#  This is known, and should be renamed
+update request {
+	Attr-26.24757.84.9.5.7 = 0x01
+}
+
+if (WiMAX-PFDv2-Src-Assigned != 1) {
+	update reply {
+		Filter-Id := "fail-2"
+	}
+}
+
+if (!reply:Filter-Id) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}

@@ -230,7 +230,7 @@ static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int CC_HINT(nonnull) sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_postgres_config_t *driver = config->driver;
 	rlm_sql_postgres_conn_t *conn;
@@ -364,7 +364,8 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char const *query)
+{
 	return sql_query(handle, config, query);
 }
 
@@ -377,11 +378,13 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t 
  *	0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'.
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 
 	int records, i, len;
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
+	*out = NULL;
 	handle->row = NULL;
 
 	if (conn->cur_row >= PQntuples(conn->result))
@@ -397,10 +400,10 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_confi
 		for (i = 0; i < records; i++) {
 			len = PQgetlength(conn->result, conn->cur_row, i);
 			conn->row[i] = talloc_array(conn->row, char, len + 1);
-			strlcpy(conn->row[i], PQgetvalue(conn->result, conn->cur_row, i),len + 1);
+			strlcpy(conn->row[i], PQgetvalue(conn->result, conn->cur_row, i), len + 1);
 		}
 		conn->cur_row++;
-		handle->row = conn->row;
+		*out = handle->row = conn->row;
 	}
 
 	return 0;
@@ -481,18 +484,15 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_postgresql = {
-	"rlm_sql_postgresql",
-	mod_instantiate,
-	sql_init_socket,
-	sql_query,
-	sql_select_query,
-	NULL, /* sql_store_result */
-	sql_num_fields,
-	NULL, /* sql_num_rows */
-	sql_fetch_row,
-	NULL, /* sql_free_result */
-	sql_error,
-	sql_free_result,
-	sql_free_result,
-	sql_affected_rows,
+	.name				= "rlm_sql_postgresql",
+	.mod_instantiate		= mod_instantiate,
+	.sql_socket_init		= sql_socket_init,
+	.sql_query			= sql_query,
+	.sql_select_query		= sql_select_query,
+	.sql_num_fields			= sql_num_fields,
+	.sql_fetch_row			= sql_fetch_row,
+	.sql_error			= sql_error,
+	.sql_finish_query		= sql_free_result,
+	.sql_finish_select_query	= sql_free_result,
+	.sql_affected_rows		= sql_affected_rows
 };

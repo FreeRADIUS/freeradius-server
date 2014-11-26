@@ -366,8 +366,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		memcpy(&a1[a1_len], vp->vp_octets, vp->length);
 		a1_len += vp->length;
 
-	} else if ((algo != NULL) &&
-		   (strcasecmp(algo->vp_strvalue, "MD5") != 0)) {
+	} else if (strcasecmp(algo->vp_strvalue, "MD5") != 0) {
 		/*
 		 *	We check for "MD5-sess" and "MD5".
 		 *	Anything else is an error.

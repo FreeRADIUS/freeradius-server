@@ -1,0 +1,38 @@
+#
+#  PRE: wimax
+#
+update control {
+       Cleartext-Password := 'hello'
+}
+
+#
+#  Check that a known but malformed attr is malformed
+#
+update request {
+	Attr-26.24757.84.9.5.7 = 0xab
+}
+
+if (&Attr-26.24757.84.9.5.7 != 0xab) {
+	update reply {
+		Filter-Id += "fail-1"
+	}
+}
+
+#
+#  Check that an unknown attr is OK
+#
+update request {
+       Attr-26.24757.84.9.5.15 = 0xabcdef
+}
+
+if (&Attr-26.24757.84.9.5.15 != 0xabcdef) {
+	update reply {
+		Filter-Id += "fail-2"
+	}
+}
+
+if (!reply:Filter-Id) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}

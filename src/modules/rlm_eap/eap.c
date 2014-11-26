@@ -180,11 +180,11 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 
 	char const *caller = request->module;
 
+	rad_assert(module != NULL);
+
 	RDEBUG2("Calling %s to process EAP data", module->type->name);
 
 	request->module = module->type->name;
-
-	rad_assert(module != NULL);
 
 	switch (handler->stage) {
 	case INITIATE:
@@ -379,7 +379,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	/*
 	 *	Figure out what to do.
 	 */
-	switch(type->num) {
+	switch (type->num) {
 	case PW_EAP_IDENTITY:
 		/*
 		 *	Allow per-user configuration of EAP types.
@@ -604,7 +604,7 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 
 	/* Set request reply code, but only if it's not already set. */
 	rcode = RLM_MODULE_OK;
-	if (!request->reply->code) switch(reply->code) {
+	if (!request->reply->code) switch (reply->code) {
 	case PW_EAP_RESPONSE:
 		request->reply->code = PW_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED; /* leap weirdness */
@@ -627,7 +627,7 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 		 *	we do so WITHOUT setting a reply code, as the
 		 *	request is being proxied.
 		 */
-		if (request->log.lvl & RAD_REQUEST_OPTION_PROXY_EAP) {
+		if (request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
 			return RLM_MODULE_HANDLED;
 		}
 
@@ -953,7 +953,12 @@ static char *eap_identity(REQUEST *request, eap_handler_t *handler, eap_packet_r
 	len = ntohs(len);
 
 	if ((len <= 5) || (eap_packet->data[1] == 0x00)) {
-		RDEBUG("UserIdentity Unknown ");
+		RDEBUG("EAP-Identity Unknown");
+		return NULL;
+	}
+
+	if (len > 1024) {
+		RDEBUG("EAP-Identity too long");
 		return NULL;
 	}
 

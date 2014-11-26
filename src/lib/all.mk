@@ -20,6 +20,7 @@ SOURCES		:= cbuff.c \
 		   md4.c \
 		   md5.c \
 		   net.c \
+		   pair.c \
 		   pcap.c \
 		   print.c \
 		   radius.c \
@@ -30,7 +31,7 @@ SOURCES		:= cbuff.c \
 		   strlcpy.c \
 		   token.c \
 		   udpfromto.c \
-		   valuepair.c \
+		   value.c \
 		   fifo.c \
 		   packet.c \
 		   event.c \

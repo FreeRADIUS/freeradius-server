@@ -1,10 +1,10 @@
-/*
+/**
  * $Id$
+ *
+ * @note license is LGPL, but largely derived from a public domain source.
  *
  * @file md5.h
  * @brief Structures and prototypes for md5.
- *
- * @license LGPL, but largely derived from a public domain source.
  */
 
 #ifndef _FR_MD5_H

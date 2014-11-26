@@ -378,9 +378,7 @@ int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAPSIM_AUTH_S
 	 * to have a valid length, which we depend upon.
 	 */
 	e = eap_vp2packet(ctx, rvps);
-	if (!e) {
-		return 0;
-	}
+	if (!e) return 0;
 
 	/* make copy big enough for everything */
 	elen = (e->length[0] * 256) + e->length[1];

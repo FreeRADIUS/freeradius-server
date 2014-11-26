@@ -14,12 +14,12 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/*
+/**
  * $Id$
  *
  * @brief Valuepair functions that are radiusd-specific and as such do not
  * 	  belong in the library.
- * @file main/valuepair.c
+ * @file main/pair.c
  *
  * @ingroup AVP
  *
@@ -33,16 +33,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
-
-const FR_NAME_NUMBER vpt_types[] = {
-	{"unknown",		TMPL_TYPE_UNKNOWN },
-	{"literal",		TMPL_TYPE_LITERAL },
-	{"expanded",		TMPL_TYPE_XLAT },
-	{"attribute ref",	TMPL_TYPE_ATTR },
-	{"list",		TMPL_TYPE_LIST },
-	{"exec",		TMPL_TYPE_EXEC },
-	{"value-pair-data",	TMPL_TYPE_DATA }
-};
 
 struct cmp {
 	DICT_ATTR const *attribute;
@@ -80,58 +70,61 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	if (check->op == T_OP_CMP_FALSE) return 1;
 
 #ifdef HAVE_REGEX
-	if (check->op == T_OP_REG_EQ) {
+	if ((check->op == T_OP_REG_EQ) || (check->op == T_OP_REG_NE)) {
 		int compare;
 		regex_t reg;
-		char value[1024];
 		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
-		vp_prints_value(value, sizeof(value), vp, -1);
+		char *expr = NULL, *value = NULL;
+		char const *expr_p, *value_p;
+
+		if (check->da->type == PW_TYPE_STRING) {
+			expr_p = check->vp_strvalue;
+		} else {
+			expr_p = expr = vp_aprints_value(check, check, '\0');
+		}
+
+		if (vp->da->type == PW_TYPE_STRING) {
+			value_p = vp->vp_strvalue;
+		} else {
+			value_p = value = vp_aprints_value(vp, vp, '\0');
+		}
+
+		if (!expr_p || !value_p) {
+			REDEBUG("Error stringifying operand for regular expression");
+
+		regex_error:
+			talloc_free(expr);
+			talloc_free(value);
+			return -2;
+		}
 
 		/*
 		 *	Include substring matches.
 		 */
-		compare = regcomp(&reg, check->vp_strvalue, REG_EXTENDED);
+		compare = regcomp(&reg, expr_p, REG_EXTENDED);
 		if (compare != 0) {
 			char buffer[256];
 			regerror(compare, &reg, buffer, sizeof(buffer));
 
-			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
-			return -2;
+			REDEBUG("Invalid regular expression %s: %s", expr_p, buffer);
+			goto regex_error;
 		}
 
 		memset(&rxmatch, 0, sizeof(rxmatch));	/* regexec does not seem to initialise unused elements */
 		compare = regexec(&reg, value, REQUEST_MAX_REGEX + 1, rxmatch, 0);
 		regfree(&reg);
-		rad_regcapture(request, compare, value, rxmatch);
 
-		ret = (compare == 0) ? 0 : -1;
-		goto finish;
-	}
-
-	if (check->op == T_OP_REG_NE) {
-		int compare;
-		regex_t reg;
-		char value[1024];
-		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-
-		vp_prints_value(value, sizeof(value), vp, -1);
-
-		/*
-		 *	Include substring matches.
-		 */
-		compare = regcomp(&reg, check->vp_strvalue, REG_EXTENDED);
-		if (compare != 0) {
-			char buffer[256];
-			regerror(compare, &reg, buffer, sizeof(buffer));
-
-			RDEBUG("Invalid regular expression %s: %s", check->vp_strvalue, buffer);
-			return -2;
+		if (check->op == T_OP_REG_EQ) {
+			rad_regcapture(request, compare, value, rxmatch);
+			ret = (compare == 0) ? 0 : -1;
+		} else {
+			ret = (compare != 0) ? 0 : -1;
 		}
-		compare = regexec(&reg, value,  REQUEST_MAX_REGEX + 1, rxmatch, 0);
-		regfree(&reg);
 
-		ret = (compare != 0) ? 0 : -1;
+		talloc_free(expr);
+		talloc_free(value);
+		goto finish;
 	}
 #endif
 
@@ -157,7 +150,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	/*
 	 *	Not a regular expression, compare the types.
 	 */
-	switch(check->da->type) {
+	switch (check->da->type) {
 #ifdef WITH_ASCEND_BINARY
 		/*
 		 *	Ascend binary attributes can be treated
@@ -180,7 +173,11 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			break;
 
 		case PW_TYPE_BYTE:
+			ret = vp->vp_byte - check->vp_byte;
+			break;
 		case PW_TYPE_SHORT:
+			ret = vp->vp_short - check->vp_short;
+			break;
 		case PW_TYPE_INTEGER:
 			ret = vp->vp_integer - check->vp_integer;
 			break;
@@ -235,13 +232,9 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			break;
 	}
 
-	finish:
-	if (ret > 0) {
-		return 1;
-	}
-	if (ret < 0) {
-		return -1;
-	}
+finish:
+	if (ret > 0) return 1;
+	if (ret < 0) return -1;
 	return 0;
 }
 
@@ -602,28 +595,37 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
  */
 int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 {
-	ssize_t len;
+	ssize_t slen;
 
-	char buffer[1024];
-
+	char *expanded = NULL;
 	if (vp->type != VT_XLAT) return 0;
 
 	vp->type = VT_DATA;
 
-	len = radius_xlat(buffer, sizeof(buffer), request, vp->value.xlat, NULL, NULL);
-
+	slen = radius_axlat(&expanded, request, vp->value.xlat, NULL, NULL);
 	rad_const_free(vp->value.xlat);
 	vp->value.xlat = NULL;
-	if (len < 0) {
+	if (slen < 0) {
 		return -1;
 	}
 
 	/*
 	 *	Parse the string into a new value.
+	 *
+	 *	If the VALUE_PAIR is being used in a regular expression
+	 *	then we just want to copy the new value in unmolested.
 	 */
-	if (pairparsevalue(vp, buffer, 0) < 0){
+	if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
+		pairstrsteal(vp, expanded);
+		return 0;
+	}
+
+	if (pairparsevalue(vp, expanded, -1) < 0){
+		talloc_free(expanded);
 		return -2;
 	}
+
+	talloc_free(expanded);
 
 	return 0;
 }
@@ -668,30 +670,31 @@ void debug_pair(VALUE_PAIR *vp)
 	vp_print(fr_log_fp, vp);
 }
 
-/** Print a list of valuepairs to stderr or error log.
- *
- * @param[in] vp to print.
- */
-void debug_pair_list(VALUE_PAIR *vp)
-{
-	vp_cursor_t cursor;
-	if (!vp || !debug_flag || !fr_log_fp) return;
-
-	for (vp = fr_cursor_init(&cursor, &vp);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		vp_print(fr_log_fp, vp);
-	}
-	fflush(fr_log_fp);
-}
-
-/** Print a list of valuepairs to the request list.
+/** Print a single valuepair to stderr or error log.
  *
  * @param[in] level Debug level (1-4).
  * @param[in] request to read logging params from.
  * @param[in] vp to print.
  */
-void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
+void rdebug_pair(int level, REQUEST *request, VALUE_PAIR *vp)
+{
+	char buffer[256];
+	if (!vp || !request || !request->log.func) return;
+
+	if (!radlog_debug_enabled(L_DBG, level, request)) return;
+
+	vp_prints(buffer, sizeof(buffer), vp);
+	RDEBUGX(level, "%s", buffer);
+}
+
+/** Print a list of VALUE_PAIRs.
+ *
+ * @param[in] level Debug level (1-4).
+ * @param[in] request to read logging params from.
+ * @param[in] vp to print.
+ * @param[in] prefix (optional).
+ */
+void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	vp_cursor_t cursor;
 	char buffer[256];
@@ -699,22 +702,43 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
+	RINDENT();
 	for (vp = fr_cursor_init(&cursor, &vp);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
-		/*
-		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
-		 */
-		if (!talloc_get_type(vp, VALUE_PAIR)) {
-			REDEBUG("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
-
-			fr_log_talloc_report(vp);
-			rad_assert(0);
-		}
+		VERIFY_VP(vp);
 
 		vp_prints(buffer, sizeof(buffer), vp);
-		RDEBUGX(level, "\t%s", buffer);
+		RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 	}
+	REXDENT();
+}
+
+/** Print a list of protocol VALUE_PAIRs.
+ *
+ * @param[in] level Debug level (1-4).
+ * @param[in] request to read logging params from.
+ * @param[in] vp to print.
+ */
+void rdebug_proto_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
+{
+	vp_cursor_t cursor;
+	char buffer[256];
+	if (!vp || !request || !request->log.func) return;
+
+	if (!radlog_debug_enabled(L_DBG, level, request)) return;
+
+	RINDENT();
+	for (vp = fr_cursor_init(&cursor, &vp);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		VERIFY_VP(vp);
+		if ((vp->da->vendor == 0) &&
+		    ((vp->da->attr & 0xFFFF) > 0xff)) continue;
+		vp_prints(buffer, sizeof(buffer), vp);
+		RDEBUGX(level, "%s", buffer);
+	}
+	REXDENT();
 }
 
 /** Return a VP from the specified request.
@@ -728,15 +752,18 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
  */
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 {
+	int rcode;
 	value_pair_tmpl_t vpt;
 
 	*out = NULL;
 
-	if (tmpl_from_attr_str(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	if (tmpl_from_attr_str(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST, false) <= 0) {
 		return -4;
 	}
 
-	return tmpl_find_vp(out, request, &vpt);
+	rcode = tmpl_find_vp(out, request, &vpt);
+
+	return rcode;
 }
 
 /** Copy VP(s) from the specified request.
@@ -751,15 +778,18 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
  */
 int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name)
 {
+	int rcode;
 	value_pair_tmpl_t vpt;
 
 	*out = NULL;
 
-	if (tmpl_from_attr_str(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	if (tmpl_from_attr_str(&vpt, name, REQUEST_CURRENT, PAIR_LIST_REQUEST, false) <= 0) {
 		return -4;
 	}
 
-	return tmpl_copy_vps(ctx, out, request, &vpt);
+	rcode = tmpl_copy_vps(ctx, out, request, &vpt);
+
+	return rcode;
 }
 
 void module_failure_msg(REQUEST *request, char const *fmt, ...)

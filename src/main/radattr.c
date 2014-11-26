@@ -26,6 +26,9 @@ RCSID("$Id$")
 
 typedef struct REQUEST REQUEST;
 
+#include <freeradius-devel/tmpl.h>
+#include <freeradius-devel/map.h>
+
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/conf.h>
 
@@ -657,7 +660,7 @@ static void process_file(const char *root_dir, char const *filename)
 
 		if (strncmp(p, "data ", 5) == 0) {
 			if (strcmp(p + 5, output) != 0) {
-				fprintf(stderr, "Mismatch in line %d of %s, got: %s expected: %s\n",
+				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
 					lineno, directory, output, p + 5);
 				exit(1);
 			}
@@ -827,7 +830,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	while ((c = getopt(argc, argv, "d:D:xM")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:D:xM")) != EOF) switch (c) {
 		case 'd':
 			radius_dir = optarg;
 			break;

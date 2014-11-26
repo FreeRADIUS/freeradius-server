@@ -366,7 +366,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 		VALUE_PAIR *vp;
 
 		for (i = 0; i < conf->list_da_num; i++) {
-			vp = pairfind_da(packet->vps, conf->list_da[i], TAG_ANY);
+			vp = pair_find_by_da(packet->vps, conf->list_da[i], TAG_ANY);
 			if (vp && (vp->length > 0)) {
 				if (conf->list_da[i]->type == PW_TYPE_STRING) {
 					*p++ = '"';
@@ -1424,7 +1424,15 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original->expect = talloc_steal(original, search.expect);
 
 			if (search.link_vps) {
-				original->link_vps = pairsteal(original, search.link_vps);
+				vp_cursor_t cursor;
+				VALUE_PAIR *vp;
+
+				for (vp = fr_cursor_init(&cursor, &search.link_vps);
+				     vp;
+				     vp = fr_cursor_next(&cursor)) {
+					pairsteal(original, search.link_vps);
+				}				
+				original->link_vps = search.link_vps;
 
 				/* We should never have conflicts */
 				assert(rbtree_insert(link_tree, original));

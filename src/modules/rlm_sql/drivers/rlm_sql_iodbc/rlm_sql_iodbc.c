@@ -80,7 +80,8 @@ static int _sql_socket_destructor(rlm_sql_iodbc_conn_t *conn)
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 
 	rlm_sql_iodbc_conn_t *conn;
 	SQLRETURN rcode;
@@ -90,16 +91,14 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 	rcode = SQLAllocEnv(&conn->env_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("sql_create_socket: SQLAllocEnv failed:  %s",
-				sql_error(handle, config));
+		ERROR("rlm_sql_iodbc: SQLAllocEnv failed: %s", sql_error(handle, config));
 		return -1;
 	}
 
 	rcode = SQLAllocConnect(conn->env_handle,
 				&conn->dbc_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("sql_create_socket: SQLAllocConnect failed:  %s",
-				sql_error(handle, config));
+		ERROR("rlm_sql_iodbc: SQLAllocConnect failed: %s", sql_error(handle, config));
 		return -1;
 	}
 
@@ -116,8 +115,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		rcode = SQLConnect(conn->dbc_handle, server, SQL_NTS, login, SQL_NTS, password, SQL_NTS);
 	}
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("sql_create_socket: SQLConnectfailed:  %s",
-				sql_error(handle, config));
+		ERROR("rlm_sql_iodbc: SQLConnectfailed: %s", sql_error(handle, config));
 		return -1;
 	}
 
@@ -132,21 +130,19 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  *	       the database.
  *
  *************************************************************************/
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
-
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+{
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 	SQLRETURN rcode;
 
-	rcode = SQLAllocStmt(conn->dbc_handle,
-			     &conn->stmt_handle);
+	rcode = SQLAllocStmt(conn->dbc_handle, &conn->stmt_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("sql_create_socket: SQLAllocStmt failed:  %s",
-				sql_error(handle, config));
+		ERROR("rlm_sql_iodbc: SQLAllocStmt failed: %s", sql_error(handle, config));
 		return -1;
 	}
 
 	if (!conn->dbc_handle) {
-		ERROR("sql_query:  Socket not connected");
+		ERROR("rlm_sql_iodbc: Socket not connected");
 		return -1;
 	}
 
@@ -158,8 +154,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	}
 
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("sql_query: failed:  %s",
-				sql_error(handle, config));
+		ERROR("rlm_sql_iodbc: Query failed %s", sql_error(handle, config));
 		return -1;
 	}
 
@@ -174,8 +169,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
-
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+{
 	int numfields = 0;
 	int i = 0;
 	char **row = NULL;
@@ -225,8 +220,8 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
  *	       set for the query.
  *
  *************************************************************************/
-static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
-
+static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	return 0;
 }
 
@@ -239,7 +234,8 @@ static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_
  *	       of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 
 	SQLSMALLINT count=0;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
@@ -257,7 +253,8 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
  *	       query
  *
  *************************************************************************/
-static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	/*
 	 * I presume this function is used to determine the number of
 	 * rows in a result set *before* fetching them.  I don't think
@@ -277,19 +274,17 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
-
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	SQLRETURN rc;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
-	handle->row = NULL;
+	*out = handle->row = NULL;
 
-	if((rc = SQLFetch(conn->stmt_handle)) == SQL_NO_DATA_FOUND) {
-		return 0;
-	}
+	if ((rc = SQLFetch(conn->stmt_handle)) == SQL_NO_DATA_FOUND) return 0;
 	/* XXX Check rc for database down, if so, return RLM_SQL_RECONNECT */
 
-	handle->row = conn->row;
+	*out = handle->row = conn->row;
 	return 0;
 }
 
@@ -303,18 +298,16 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
  *	       for a result set
  *
  *************************************************************************/
-static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-
-	int i=0;
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
+	int i = 0;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
-	for(i=0; i<sql_num_fields(handle, config); i++) {
-		free(conn->row[i]);
-	}
+	for (i = 0; i < sql_num_fields(handle, config); i++) free(conn->row[i]);
 	free(conn->row);
-	conn->row=NULL;
+	conn->row = NULL;
 
-	SQLFreeStmt( conn->stmt_handle, SQL_DROP );
+	SQLFreeStmt(conn->stmt_handle, SQL_DROP);
 
 	return 0;
 }
@@ -328,8 +321,8 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  *	       connection
  *
  *************************************************************************/
-static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
-
+static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	SQLINTEGER errornum = 0;
 	SQLSMALLINT length = 0;
 	SQLCHAR state[256] = "";
@@ -349,8 +342,8 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	return sql_free_result(handle, config);
 }
 
@@ -361,7 +354,8 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
 	return sql_free_result(handle, config);
 }
 
@@ -373,8 +367,8 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_con
  *	       or insert)
  *
  *************************************************************************/
-static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
-
+static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	long count;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
@@ -384,18 +378,17 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_iodbc = {
-	"rlm_sql_iodbc",
-	NULL,
-	sql_socket_init,
-	sql_query,
-	sql_select_query,
-	sql_store_result,
-	sql_num_fields,
-	sql_num_rows,
-	sql_fetch_row,
-	sql_free_result,
-	sql_error,
-	sql_finish_query,
-	sql_finish_select_query,
-	sql_affected_rows
+	.name				= "rlm_sql_iodbc",
+	.sql_socket_init		= sql_socket_init,
+	.sql_query			= sql_query,
+	.sql_select_query		= sql_select_query,
+	.sql_store_result		= sql_store_result,
+	.sql_num_fields			= sql_num_fields,
+	.sql_num_rows			= sql_num_rows,
+	.sql_affected_rows		= sql_affected_rows,
+	.sql_fetch_row			= sql_fetch_row,
+	.sql_free_result		= sql_free_result,
+	.sql_error			= sql_error,
+	.sql_finish_query		= sql_finish_query,
+	.sql_finish_select_query	= sql_finish_select_query
 };

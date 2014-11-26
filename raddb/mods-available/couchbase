@@ -25,7 +25,7 @@ couchbase {
 	# Map attribute names to json element names for accounting.
 	#
 	# Configuration items are in the format:
-	# <element name> = '<radius attribute>'
+	#  <element name> = '<radius attribute>'
 	#
 	# Attribute names should be single quoted.
 	#
@@ -46,6 +46,7 @@ couchbase {
 		calledStationId     = 'Called-Station-Id'
 		calledStationSSID   = 'Called-Station-SSID'
 		callingStationId    = 'Calling-Station-Id'
+		framedProtocol      = 'Framed-Protocol'
 		framedIpAddress     = 'Framed-IP-Address'
 		nasPortType         = 'NAS-Port-Type'
 		connectInfo         = 'Connect-Info'
@@ -61,6 +62,69 @@ couchbase {
 
 	# Couchbase document key for user documents (unlang supported)
 	user_key = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}"
+
+	# Set to 'yes' to read radius clients from the Couchbase view specified below.
+	# NOTE: Clients will ONLY be read on server startup.
+	#read_clients = no
+
+	#
+	#  Map attribute names to json element names when loading clients.
+	#
+	#  Configuration follows the same rules as the accounting map above.
+	#
+	client {
+		# Couchbase view that should return all available client documents.
+		view = "_design/client/_view/by_id"
+
+		#
+		# Client mappings are in the format:
+		#  <client attribute> = '<element name>'
+		#
+		# Element names should be single quoted.
+		#
+		# The following attributes are required:
+		#  * ipaddr | ipv4addr | ipv6addr - Client IP Address.
+		#  * secret - RADIUS shared secret.
+		#
+		# All attributes usually supported in a client
+		# definition are also supported here.
+		#
+		attribute {
+			ipaddr                          = 'clientIdentifier'
+			secret                          = 'clientSecret'
+			shortname                       = 'clientShortname'
+			nas_type                        = 'nasType'
+			virtual_server                  = 'virtualServer'
+			require_message_authenticator   = 'requireMessageAuthenticator'
+			limit {
+				max_connections             = 'maxConnections'
+				lifetime                    = 'clientLifetime'
+				idle_timeout                = 'idleTimeout'
+			}
+		}
+	}
+
+	# Set to 'yes' to enable simultaneous use checking (multiple logins).
+	# NOTE: This will cause the execution of a view request on every check
+	# and may be a performance penalty.
+	#check_simul = no
+
+	# Couchbase view that should return all account documents keyed by username.
+	#simul_view = "_design/acct/_view/by_user"
+
+	# The key to the above view.
+	# NOTE: This will need to match EXACTLY what you emit from your view.
+	#simul_vkey = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}"
+
+	# Set to 'yes' to enable verification of the results returned from the above view.
+	# NOTE: This may be an additional performance penalty to the actual check and
+	# should be avoided unless absolutely neccessary.
+	#verify_simul = no
+
+	# Remove stale session if checkrad does not see a double login.
+	# NOTE: This will only be executed if both check_simul and verify_simul
+	# are set to 'yes' above.
+	#delete_stale_sessions = yes
 
 	#
 	#  The connection pool is new for 3.0, and will be used in many

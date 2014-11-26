@@ -352,7 +352,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		goto user_password;
 	}
 
-	vp = pairfind_da(request->packet->vps, da, TAG_ANY);
+	vp = pair_find_by_da(request->packet->vps, da, TAG_ANY);
 	if (vp) {
 		passcode = vp->vp_strvalue;
 		len = vp->length;
