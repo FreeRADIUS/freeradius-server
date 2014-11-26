@@ -206,7 +206,7 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out, char const
 					*q++ = p[1];
 					break;
 				}
-				p++;
+				p += 2;
 				continue;
 			}
 
