@@ -1359,53 +1359,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 
 	/*
-	 *	We need an LM-Password.
-	 */
-	lm_password = pairfind(request->config_items, PW_LM_PASSWORD, 0, TAG_ANY);
-	if (lm_password) {
-		VERIFY_VP(lm_password);
-
-		switch (lm_password->length) {
-		case LM_DIGEST_LENGTH:
-			RDEBUG2("Found LM-Password");
-			break;
-
-		/* 0x */
-		case 34:
-		case 32:
-			RWDEBUG("LM-Password has not been normalized by the 'pap' module (likely still in hex format).  "
-				"Authentication may fail");
-			lm_password = NULL;
-			break;
-
-		default:
-			RWDEBUG("LM-Password found but incorrect length, expected " STRINGIFY(LM_DIGEST_LENGTH)
-				" bytes got %zu bytes.  Authentication may fail", lm_password->length);
-			lm_password = NULL;
-			break;
-		}
-	}
-	/*
-	 *	... or a Cleartext-Password, which we now transform into an LM-Password
-	 */
-	if (!lm_password) {
-		if (password) {
-			RDEBUG2("Found Cleartext-Password, hashing to create LM-Password");
-			lm_password = pairmake_config("LM-Password", NULL, T_OP_EQ);
-			if (!lm_password) {
-				RERROR("No memory");
-			} else {
-				lm_password->length = LM_DIGEST_LENGTH;
-				lm_password->vp_octets = p = talloc_array(lm_password, uint8_t, lm_password->length);
-				smbdes_lmpwdhash(password->vp_strvalue, p);
-			}
-		} else if (!do_ntlm_auth) {
-			RWDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password");
-		}
-	}
-
-	/*
-	 *	or we need an NT-Password.
+	 *	We need an NT-Password.
 	 */
 	nt_password = pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY);
 	if (nt_password) {
@@ -1452,6 +1406,55 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			}
 		} else if (!do_ntlm_auth) {
 			RWDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password");
+		}
+	}
+
+	/*
+	 *	Or an LM-Password.
+	 */
+	lm_password = pairfind(request->config_items, PW_LM_PASSWORD, 0, TAG_ANY);
+	if (lm_password) {
+		VERIFY_VP(lm_password);
+
+		switch (lm_password->length) {
+		case LM_DIGEST_LENGTH:
+			RDEBUG2("Found LM-Password");
+			break;
+
+		/* 0x */
+		case 34:
+		case 32:
+			RWDEBUG("LM-Password has not been normalized by the 'pap' module (likely still in hex format).  "
+				"Authentication may fail");
+			lm_password = NULL;
+			break;
+
+		default:
+			RWDEBUG("LM-Password found but incorrect length, expected " STRINGIFY(LM_DIGEST_LENGTH)
+				" bytes got %zu bytes.  Authentication may fail", lm_password->length);
+			lm_password = NULL;
+			break;
+		}
+	}
+	/*
+	 *	... or a Cleartext-Password, which we now transform into an LM-Password
+	 */
+	if (!lm_password) {
+		if (password) {
+			RDEBUG2("Found Cleartext-Password, hashing to create LM-Password");
+			lm_password = pairmake_config("LM-Password", NULL, T_OP_EQ);
+			if (!lm_password) {
+				RERROR("No memory");
+			} else {
+				lm_password->length = LM_DIGEST_LENGTH;
+				lm_password->vp_octets = p = talloc_array(lm_password, uint8_t, lm_password->length);
+				smbdes_lmpwdhash(password->vp_strvalue, p);
+			}
+		/*
+		 *	Only complain if we don't have NT-Password
+		 */
+		} else if (!do_ntlm_auth && !nt_password) {
+			RWDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password");
 		}
 	}
 
