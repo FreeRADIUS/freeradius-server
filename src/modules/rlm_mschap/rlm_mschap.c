@@ -1388,18 +1388,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	/*
 	 *	... or a Cleartext-Password, which we now transform into an LM-Password
 	 */
-	if (!lm_password && password) {
-		RDEBUG2("Found Cleartext-Password, hashing to create LM-Password");
-		lm_password = pairmake_config("LM-Password", NULL, T_OP_EQ);
-		if (!lm_password) {
-			RERROR("No memory");
-		} else {
-			lm_password->length = LM_DIGEST_LENGTH;
-			lm_password->vp_octets = p = talloc_array(lm_password, uint8_t, lm_password->length);
-			smbdes_lmpwdhash(password->vp_strvalue, p);
+	if (!lm_password) {
+		if (password) {
+			RDEBUG2("Found Cleartext-Password, hashing to create LM-Password");
+			lm_password = pairmake_config("LM-Password", NULL, T_OP_EQ);
+			if (!lm_password) {
+				RERROR("No memory");
+			} else {
+				lm_password->length = LM_DIGEST_LENGTH;
+				lm_password->vp_octets = p = talloc_array(lm_password, uint8_t, lm_password->length);
+				smbdes_lmpwdhash(password->vp_strvalue, p);
+			}
+		} else if (!do_ntlm_auth) {
+			RWDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password");
 		}
-	} else if (!do_ntlm_auth) {
-		RWDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password");
 	}
 
 	/*
@@ -1433,22 +1435,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	/*
 	 *	... or a Cleartext-Password, which we now transform into an NT-Password
 	 */
-	if (!nt_password && password) {
-		RDEBUG2("Found Cleartext-Password, hashing to create NT-Password");
-		nt_password = pairmake_config("NT-Password", NULL, T_OP_EQ);
-		if (!nt_password) {
-			RERROR("No memory");
-			return RLM_MODULE_FAIL;
-		}
-		nt_password->length = NT_DIGEST_LENGTH;
-		nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->length);
+	if (!nt_password) {
+		if (password) {
+			RDEBUG2("Found Cleartext-Password, hashing to create NT-Password");
+			nt_password = pairmake_config("NT-Password", NULL, T_OP_EQ);
+			if (!nt_password) {
+				RERROR("No memory");
+				return RLM_MODULE_FAIL;
+			}
+			nt_password->length = NT_DIGEST_LENGTH;
+			nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->length);
 
-		if (mschap_ntpwdhash(p, password->vp_strvalue) < 0) {
-			RERROR("Failed generating NT-Password");
-			return RLM_MODULE_FAIL;
+			if (mschap_ntpwdhash(p, password->vp_strvalue) < 0) {
+				RERROR("Failed generating NT-Password");
+				return RLM_MODULE_FAIL;
+			}
+		} else if (!do_ntlm_auth) {
+			RWDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password");
 		}
-	} else if (!do_ntlm_auth) {
-		RWDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password");
 	}
 
 	cpw = pairfind(request->packet->vps, PW_MSCHAP2_CPW, VENDORPEC_MICROSOFT, TAG_ANY);
