@@ -688,27 +688,33 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	uint8_t digest[16];
-	char charbuf[32 + 1];
 	ssize_t len;
+	uint8_t digest[16];
+	uint8_t ucs2_password[512];
 
 	RDEBUG("Comparing with \"known-good\" NT-Password");
+
+	rad_assert(request->password != NULL);
+	rad_assert(request->password->da->attr == PW_USER_PASSWORD);
 
 	if (inst->normify) {
 		normify(request, vp, 16);
 	}
+
 	if (vp->length != 16) {
 		REDEBUG("\"known good\" NT-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
-	len = radius_xlat(charbuf, sizeof(charbuf), request, "%{mschap:NT-Hash %{User-Password}}", NULL, NULL);
+	len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password), request->password->vp_strvalue, request->password->length);
 	if (len < 0) {
-		return RLM_MODULE_REJECT;
+		REDEBUG("User-Password is not in UCS2 format");
+		return RLM_MODULE_INVALID;
 	}
 
-	if ((fr_hex2bin(digest, sizeof(digest), charbuf, len) != vp->length) ||
-	    (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0)) {
+	fr_md4_calc(digest, (uint8_t *) ucs2_password, len);
+
+	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
 		REDEBUG("NT digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -820,6 +826,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	rlm_rcode_t (*auth_func)(rlm_pap_t *, REQUEST *, VALUE_PAIR *) = NULL;
 
 	if (!request->password ||
+	    (request->password->da->vendor != 0) ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
 		REDEBUG("You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
