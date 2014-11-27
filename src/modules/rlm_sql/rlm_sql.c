@@ -668,18 +668,20 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 
 	RDEBUG2("User found in the group table");
 
+	/*
+	 *	Add the Sql-Group attribute to the request list so we know
+	 *	which group we're retrieving attributes for
+	 */
+	sql_group = pairmake_packet("Sql-Group", NULL, T_OP_EQ);
+	if (!sql_group) {
+		REDEBUG("Error creating Sql-Group attribute");
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
 	entry = head;
 	do {
-		/*
-		 *	Add the Sql-Group attribute to the request list so we know
-		 *	which group we're retrieving attributes for
-		 */
-		sql_group = pairmake_packet("Sql-Group", entry->name, T_OP_EQ);
-		if (!sql_group) {
-			REDEBUG("Error creating Sql-Group attribute");
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-		}
+		pairstrcpy(sql_group, entry->name);
 
 		if (inst->config->authorize_group_check_query) {
 			vp_cursor_t cursor;
@@ -704,14 +706,14 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			}
 
 			/*
-			 *	If we got check rows we need to process them before we decide to process the reply rows
+			 *	If we got check rows we need to process them before we decide to
+			 *	process the reply rows
 			 */
 			if ((rows > 0) &&
 			    (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
 				pairfree(&check_tmp);
-				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 
-				continue;
+				goto next;
 			}
 
 			RDEBUG2("Group \"%s\": Conditional check items matched", entry->name);
@@ -724,7 +726,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			     vp = fr_cursor_next(&cursor)) {
 			 	if (!fr_assignment_op[vp->op]) continue;
 
-			 	rdebug_pair(2, request, vp);
+			 	rdebug_pair(L_DBG_LVL_2, request, vp);
 			}
 			REXDENT();
 			radius_pairmove(request, &request->config_items, check_tmp, true);
@@ -758,9 +760,16 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 
 			radius_pairmove(request, &request->reply->vps, reply_tmp, true);
 			reply_tmp = NULL;
+		/*
+		 *	If there's no reply query configured, then we assume
+		 *	FALL_THROUGH_NO, which is the same as the users file if you
+		 *	had no reply attributes.
+		 */
+		} else {
+			*do_fall_through = FALL_THROUGH_DEFAULT;
 		}
 
-		pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
+	next:
 		entry = entry->next;
 	} while (entry != NULL && (*do_fall_through == FALL_THROUGH_YES));
 
