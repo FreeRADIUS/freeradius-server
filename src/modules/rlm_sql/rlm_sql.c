@@ -718,8 +718,9 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			if ((rows > 0) &&
 			    (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
 				pairfree(&check_tmp);
+				entry = entry->next;
 
-				goto next;
+				continue;
 			}
 
 			RDEBUG2("Group \"%s\": Conditional check items matched", entry->name);
@@ -775,7 +776,6 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			*do_fall_through = FALL_THROUGH_DEFAULT;
 		}
 
-	next:
 		entry = entry->next;
 	} while (entry != NULL && (*do_fall_through == FALL_THROUGH_YES));
 
