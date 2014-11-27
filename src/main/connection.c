@@ -385,6 +385,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 
 	this->number = pool->count++;
 	gettimeofday(&this->last_reserved, NULL);
+	this->last_released = this->last_reserved;
 
 	/*
 	 *	The connection pool is starting up.  Insert the
