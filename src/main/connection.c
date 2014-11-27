@@ -54,8 +54,10 @@ struct fr_connection {
 	fr_connection_t	*next;		//!< Next connection in list.
 
 	time_t		created;	//!< Time connection was created.
-	struct timeval 	last_used;	//!< Last time the connection was
+	struct timeval 	last_reserved;	//!< Last time the connection was
 					//!< reserved.
+
+	struct timeval	last_released;  //!< Time the connection was released.
 
 	uint32_t	num_uses;	//!< Number of times the connection
 					//!< has been reserved.
@@ -68,7 +70,7 @@ struct fr_connection {
 	bool		in_use;		//!< Whether the connection is currently
 					//!< reserved.
 
-	int		heap;		//! For the "most recently started" heap
+	int		heap;		//! For the next connection heap
 #ifdef PTHREAD_DEBUG
 	pthread_t	pthread_id;	//!< When 'in_use == true'
 #endif
@@ -114,6 +116,10 @@ struct fr_connection_pool_t {
 	uint32_t       	idle_timeout;	//!< How long a connection can be idle
 					//!< before being closed.
 
+	bool		spread;		//!< If true we spread requests over
+					//!< the connections, using the connection
+					//!< released longest ago, first.
+
 	time_t		last_checked;	//!< Last time we pruned the connection
 					//!< pool.
 	time_t		last_spawned;	//!< Last time we spawned a connection.
@@ -131,7 +137,7 @@ struct fr_connection_pool_t {
 	uint32_t       	num;		//!< Number of connections in the pool.
 	uint32_t	active;	 	//!< Number of currently reserved connections.
 
-	fr_heap_t	*heap;		//!< For the "most recently started" heap
+	fr_heap_t	*heap;		//!< For the next connection heap
 
 	fr_connection_t	*head;		//!< Start of the connection list.
 	fr_connection_t *tail;		//!< End of the connection list.
@@ -179,6 +185,7 @@ static const CONF_PARSER connection_config[] = {
 	{ "cleanup_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), "30" },
 	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, idle_timeout), "60" },
 	{ "retry_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, retry_delay), "1" },
+	{ "spread", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -377,7 +384,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	this->in_use = in_use;
 
 	this->number = pool->count++;
-	gettimeofday(&this->last_used, NULL);
+	gettimeofday(&this->last_reserved, NULL);
 
 	/*
 	 *	The connection pool is starting up.  Insert the
@@ -673,21 +680,39 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 }
 
 /*
- *	Order events by most recent.
+ *	Order connections by reserved most recently
  */
-static int connection_time_cmp(void const *one, void const *two)
+static int last_reserved_cmp(void const *one, void const *two)
 {
 	fr_connection_t const *a = one;
 	fr_connection_t const *b = two;
 
-	if (a->last_used.tv_sec < b->last_used.tv_sec) return -1;
-	if (a->last_used.tv_sec > b->last_used.tv_sec) return +1;
+	if (a->last_reserved.tv_sec < b->last_reserved.tv_sec) return -1;
+	if (a->last_reserved.tv_sec > b->last_reserved.tv_sec) return +1;
 
-	if (a->last_used.tv_usec < b->last_used.tv_usec) return -1;
-	if (a->last_used.tv_usec > b->last_used.tv_usec) return +1;
+	if (a->last_reserved.tv_usec < b->last_reserved.tv_usec) return -1;
+	if (a->last_reserved.tv_usec > b->last_reserved.tv_usec) return +1;
 
 	return 0;
 }
+
+/*
+ *	Order connections by released least recently
+ */
+static int last_released_cmp(void const *one, void const *two)
+{
+	fr_connection_t const *a = one;
+	fr_connection_t const *b = two;
+
+	if (b->last_released.tv_sec < a->last_released.tv_sec) return -1;
+	if (b->last_released.tv_sec > a->last_released.tv_sec) return +1;
+
+	if (b->last_released.tv_usec < a->last_released.tv_usec) return -1;
+	if (b->last_released.tv_usec > a->last_released.tv_usec) return +1;
+
+	return 0;
+}
+
 
 /** Create a new connection pool
  *
@@ -768,7 +793,29 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	 *
 	 *	https://code.facebook.com/posts/1499322996995183/solving-the-mystery-of-link-imbalance-a-metastable-failure-state-at-scale/
 	 */
-	pool->heap = fr_heap_create(connection_time_cmp, offsetof(fr_connection_t, heap));
+	if (!pool->spread) {
+		pool->heap = fr_heap_create(last_reserved_cmp, offsetof(fr_connection_t, heap));
+	/*
+	 *	For some types of connections we need to used a different
+	 *	algorithm, because load balancing benefits are secondary
+	 *	to maintaining a cache of open connections.
+	 *
+	 *	With libcurl's multihandle, connections can only be reused
+	 *	if all handles that make up the multhandle are done processing
+	 *	their requests.
+	 *
+	 *	We can't tell when that's happened using libcurl, and even
+	 *	if we could, blocking until all servers had responded
+	 *	would have huge cost.
+	 *
+	 *	The solution is to order the heap so that the connection that
+	 *	was released longest ago is at the top.
+	 *
+	 *	That way we maximise time between connection use.
+	 */
+	} else {
+		pool->heap = fr_heap_create(last_released_cmp, offsetof(fr_connection_t, heap));
+	}
 	if (!pool->heap) {
 		talloc_free(pool);
 		return NULL;
@@ -885,9 +932,9 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 	}
 
 	if ((pool->idle_timeout > 0) &&
-	    ((this->last_used.tv_sec + pool->idle_timeout) < now)) {
+	    ((this->last_released.tv_sec + pool->idle_timeout) < now)) {
 		INFO("%s: Closing connection (%" PRIu64 "): Hit idle_timeout, was idle for %u seconds",
-		     pool->log_prefix, this->number, (int) (now - this->last_used.tv_sec));
+		     pool->log_prefix, this->number, (int) (now - this->last_released.tv_sec));
 		goto do_delete;
 	}
 
@@ -1025,7 +1072,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 			if (this->in_use) continue;
 
 			if (!found ||
-			    timercmp(&this->last_used, &found->last_used, <)) {
+			    timercmp(&this->last_reserved, &found->last_reserved, <)) {
 				found = this;
 			}
 		}
@@ -1135,7 +1182,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, int spawn)
 do_return:
 	pool->active++;
 	this->num_uses++;
-	gettimeofday(&this->last_used, NULL);
+	gettimeofday(&this->last_reserved, NULL);
 	this->in_use = true;
 
 #ifdef PTHREAD_DEBUG
@@ -1200,9 +1247,17 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 	this->in_use = false;
 
 	/*
-	 *	Insert the connection in the heap, based on when we
-	 *	*started* using it.  This allows fast links to be
-	 *	re-used, and slow links to be gradually expired.
+	 *	Record when the connection was last released
+	 */
+	gettimeofday(&this->last_released, NULL);
+
+	/*
+	 *	Insert the connection in the heap.
+	 *
+	 *	This will either be based on when we *started* using it
+	 *	(allowing fast links to be re-used, and slow links to be
+	 *	gradually expired), or when we released it (allowing
+	 *	the maximum amount of time between connection use).
 	 */
 	fr_heap_insert(pool->heap, this);
 

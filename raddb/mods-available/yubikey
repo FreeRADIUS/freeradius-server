@@ -138,6 +138,17 @@ yubikey {
 			#
 			# The solution is to either lower the "min" connections,
 			# or increase lifetime/idle_timeout.
+
+			# Enable LRU (Least Recently Used)
+			#
+			# The yubico library uses curl multihandles. If the
+			# multihandle is reused before all requests are completed
+			# the connections are re-established.
+			#
+			# The cost of re-establishing the connections is greater
+			# than the benefit of maintaining a small pool of
+			# connections or optimising for link latency.
+			spread = yes
 		}
 	}
 }
