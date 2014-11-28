@@ -864,8 +864,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Complain if the strings exist, but are empty.
 	 */
-#define CHECK_STRING(_x) if (inst->config->_x && !inst->config->_x) WARN("rlm_sql (%s): " STRINGIFY(_x) " is empty.  Please delete it from the configuration", inst->config->xlat_name)
+#define CHECK_STRING(_x) if (inst->config->_x && !inst->config->_x[0]) \
+do { \
+	WARN("rlm_sql (%s): " STRINGIFY(_x) " is empty.  Please delete it from the configuration", inst->config->xlat_name);\
+	inst->config->_x = NULL;\
+} while (0)
 
+	CHECK_STRING(groupmemb_query);
 	CHECK_STRING(authorize_check_query);
 	CHECK_STRING(authorize_reply_query);
 	CHECK_STRING(authorize_group_check_query);
