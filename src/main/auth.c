@@ -313,7 +313,6 @@ int rad_postauth(REQUEST *request)
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_USERLOCK:
 	default:
-		request->reply->code = PW_CODE_ACCESS_REJECT;
 		fr_state_discard(request, request->packet);
 		result = RLM_MODULE_REJECT;
 		break;
@@ -340,6 +339,33 @@ int rad_postauth(REQUEST *request)
 		}
 		break;
 	}
+
+	/*
+	 *	Rejects during authorize, etc. are handled by the
+	 *	earlier code, which logs a reason for the rejection.
+	 *	If the packet is rejected in post-auth, we need to log
+	 *	that as a separate reason.
+	 */
+	if ((request == RLM_MODULE_REJECT) && (request->reply->code != RLM_MODULE_REJECT)) {
+		request->reply->code = PW_CODE_ACCESS_REJECT;
+		rad_authlog("Rejected in post-auth", request, 0);
+	}
+
+	/*
+	 *	If we're still accepting the user, say so.
+	 */
+	if (request->reply->code == PW_CODE_ACCESS_ACCEPT) {
+		if ((vp = pairfind(request->packet->vps, PW_MODULE_SUCCESS_MESSAGE, 0, TAG_ANY)) != NULL) {
+			char msg[MAX_STRING_LEN+12];
+
+			snprintf(msg, sizeof(msg), "Login OK (%s)",
+				 vp->vp_strvalue);
+			rad_authlog(msg, request, 1);
+		} else {
+			rad_authlog("Login OK", request, 1);
+		}
+	}
+
 	return result;
 }
 
@@ -650,17 +676,8 @@ autz_redo:
 	 *	Set the reply to Access-Accept, if it hasn't already
 	 *	been set to something.  (i.e. Access-Challenge)
 	 */
-	if (request->reply->code == 0)
-	  request->reply->code = PW_CODE_ACCESS_ACCEPT;
-
-	if ((module_msg = pairfind(request->packet->vps, PW_MODULE_SUCCESS_MESSAGE, 0, TAG_ANY)) != NULL){
-		char msg[MAX_STRING_LEN+12];
-
-		snprintf(msg, sizeof(msg), "Login OK (%s)",
-			 module_msg->vp_strvalue);
-		rad_authlog(msg, request, 1);
-	} else {
-		rad_authlog("Login OK", request, 1);
+	if (request->reply->code == 0) {
+		request->reply->code = PW_CODE_ACCESS_ACCEPT;
 	}
 
 	return result;
