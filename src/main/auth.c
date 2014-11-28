@@ -294,15 +294,29 @@ int rad_postauth(REQUEST *request)
 	int	postauth_type = 0;
 	VALUE_PAIR *vp;
 
+	if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
+		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
+		vp = pairmake_config("Post-Auth-Type", "Challenge", T_OP_SET);
+		if (!vp) return RLM_MODULE_OK;
+
+	} else if (request->reply->code == PW_CODE_ACCESS_REJECT) {
+		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
+		vp = pairmake_config("Post-Auth-Type", "Reject", T_OP_SET);
+		if (!vp) return RLM_MODULE_OK;
+
+	} else {
+		vp = pairfind(request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
+	}
+
 	/*
-	 *	Do post-authentication calls. ignoring the return code.
+	 *	If a method was chosen, use that.
 	 */
-	vp = pairfind(request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
 	if (vp) {
 		postauth_type = vp->vp_integer;
 		RDEBUG2("Using Post-Auth-Type %s",
 			dict_valnamebyattr(PW_POST_AUTH_TYPE, 0, postauth_type));
 	}
+
 	result = process_post_auth(postauth_type, request);
 	switch (result) {
 	/*
@@ -313,6 +327,18 @@ int rad_postauth(REQUEST *request)
 	case RLM_MODULE_REJECT:
 	case RLM_MODULE_USERLOCK:
 	default:
+		/*
+		 *	We WERE going to have a nice reply, but
+		 *	something went wrong.  So we've got to run
+		 *	Post-Auth-Type Reject, which is defined in the
+		 *	dictionaries as having value "1".
+		 */
+		if (request->reply->code != PW_CODE_ACCESS_REJECT) {
+			RDEBUG("Using Post-Auth-Type Reject");
+
+			process_post_auth(1, request);
+		}
+
 		fr_state_discard(request, request->packet);
 		result = RLM_MODULE_REJECT;
 		break;
@@ -346,9 +372,11 @@ int rad_postauth(REQUEST *request)
 	 *	If the packet is rejected in post-auth, we need to log
 	 *	that as a separate reason.
 	 */
-	if ((request == RLM_MODULE_REJECT) && (request->reply->code != RLM_MODULE_REJECT)) {
+	if (result == RLM_MODULE_REJECT) {
+		if (request->reply->code != RLM_MODULE_REJECT) {
+			rad_authlog("Rejected in post-auth", request, 0);
+		}
 		request->reply->code = PW_CODE_ACCESS_REJECT;
-		rad_authlog("Rejected in post-auth", request, 0);
 	}
 
 	/*

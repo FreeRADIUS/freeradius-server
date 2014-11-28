@@ -1308,6 +1308,7 @@ STATE_MACHINE_DECL(request_finish)
 		}
 #endif
 		NO_CHILD_THREAD;
+		request->child_state = REQUEST_DONE;
 		return;
 	}
 
@@ -1346,32 +1347,11 @@ STATE_MACHINE_DECL(request_finish)
 		       PW_PROXY_STATE, 0, TAG_ANY);
 	if (vp) pairadd(&request->reply->vps, vp);
 
-	switch (request->reply->code) {
-	case PW_CODE_ACCESS_ACCEPT:
-		rad_postauth(request);
-		break;
-	case PW_CODE_ACCESS_CHALLENGE:
-		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0,
-			   TAG_ANY);
-		vp = pairmake_config("Post-Auth-Type", "Challenge", T_OP_SET);
-		if (vp) rad_postauth(request);
-		break;
-	default:
-		break;
-	}
-
 	/*
-	 *	Run rejected packets through
-	 *
-	 *	Post-Auth-Type = Reject
-	 *
-	 *	We do this separately so ACK and challenge can change the code
-	 *	to reject if a module returns reject.
+	 *	Call Post-Auth for Access-Request packets.
 	 */
-	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
-		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
-		vp = pairmake_config("Post-Auth-Type", "Reject", T_OP_SET);
-		if (vp) rad_postauth(request);
+	if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+		rad_postauth(request);
 	}
 
 	/*
