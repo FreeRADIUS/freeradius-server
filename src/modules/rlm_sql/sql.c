@@ -449,7 +449,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_ha
 	sql_rcode_t	rcode;
 
 	rcode = rlm_sql_select_query(handle, inst, query);
-	if (!rcode) return -1; /* error handled by rlm_sql_select_query */
+	if (rcode != RLM_SQL_OK) return -1; /* error handled by rlm_sql_select_query */
 
 	while (rlm_sql_fetch_row(&row, handle, inst) == 0) {
 		if (!row) break;
