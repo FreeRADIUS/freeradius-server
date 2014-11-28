@@ -663,6 +663,8 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	if (rows == 0) {
 		RDEBUG2("User not found in any groups");
 		rcode = RLM_MODULE_NOTFOUND;
+		*do_fall_through = FALL_THROUGH_DEFAULT;
+
 		goto finish;
 	}
 	rad_assert(head);
