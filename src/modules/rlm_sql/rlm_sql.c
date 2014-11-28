@@ -537,13 +537,8 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 
 	entry = *phead = NULL;
 
-	if (!inst->config->groupmemb_query || (inst->config->groupmemb_query[0] == 0)) {
-		return 0;
-	}
-
-	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, sql_escape_func, inst) < 0) {
-		return -1;
-	}
+	if (!inst->config->groupmemb_query) return 0;
+	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, sql_escape_func, inst) < 0) return -1;
 
 	ret = rlm_sql_select_query(handle, inst, expanded);
 	talloc_free(expanded);
@@ -687,6 +682,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 
 	entry = head;
 	do {
+	next:
 		pairstrcpy(sql_group, entry->name);
 
 		if (inst->config->authorize_group_check_query && *inst->config->authorize_group_check_query) {
@@ -720,7 +716,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				pairfree(&check_tmp);
 				entry = entry->next;
 
-				continue;
+				goto next;	/* != continue */
 			}
 
 			RDEBUG2("Group \"%s\": Conditional check items matched", entry->name);
