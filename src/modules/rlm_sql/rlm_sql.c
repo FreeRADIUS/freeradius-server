@@ -860,6 +860,39 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->config->xlat_name);
 
 	/*
+	 *	Sanity check for crazy people.
+	 */
+	if (strncmp(inst->config->sql_driver_name, "rlm_sql_", 8) != 0) {
+		ERROR("rlm_sql (%s): \"%s\" is NOT an SQL driver!", inst->config->xlat_name, inst->config->sql_driver_name);
+		return -1;
+	}
+
+	/*
+	 *	We need authorize_group_check_query or authorize_group_reply_query
+	 *	if group_membership_query is set.
+	 *
+	 *	Or we need group_membership_query if authorize_group_check_query or
+	 *	authorize_group_reply_query is set.
+	 */
+	if (!inst->config->groupmemb_query) {
+		if (inst->config->authorize_group_check_query) {
+			ERROR("rlm_sql (%s): group_membership_query must be set if authorize_group_check_query is set",
+			      inst->config->xlat_name);
+			return -1;
+		} else if (inst->config->authorize_group_reply_query) {
+			ERROR("rlm_sql (%s): group_membership_query must be set if authorize_group_reply_query is set",
+			      inst->config->xlat_name);
+			return -1;
+		}
+	} else {
+		if (!inst->config->authorize_group_check_query && !inst->config->authorize_group_reply_query) {
+			ERROR("rlm_sql (%s): authorize_group_check_query or authorize_group_reply_query "
+		      	      "must be set if group_membership_query is set", inst->config->xlat_name);
+			return -1;
+		}
+	}
+
+	/*
 	 *	This will always exist, as cf_section_parse_init()
 	 *	will create it if it doesn't exist.  However, the
 	 *	"reference" config item won't exist in an auto-created
@@ -894,14 +927,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Register the SQL xlat function
 	 */
 	xlat_register(inst->config->xlat_name, sql_xlat, sql_escape_func, inst);
-
-	/*
-	 *	Sanity check for crazy people.
-	 */
-	if (strncmp(inst->config->sql_driver_name, "rlm_sql_", 8) != 0) {
-		ERROR("rlm_sql (%s): \"%s\" is NOT an SQL driver!", inst->config->xlat_name, inst->config->sql_driver_name);
-		return -1;
-	}
 
 	/*
 	 *	Load the appropriate driver for our database
