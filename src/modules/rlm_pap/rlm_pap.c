@@ -116,10 +116,23 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-/*
- *	Hex or base64 or bin auto-discovery.
+/** Hex or base64 or bin auto-discovery
+ *
+ * Here we try and autodiscover what encoding was used for the password/hash, and
+ * convert it back to binary or plaintext.
+ *
+ * @note Earlier versions used a 0x prefix as a hard indicator that the string was
+ *       hex encoded, and would fail if the 0x was present but the string didn't
+ *       consist of hexits. The base64 char set is a superset of hex, and it was
+ *       observed in the wild, that occasionally base64 encoded data really could
+ *       start with 0x. That's why min_length (and decodability) are used as the
+ *       only heuristics now.
+ *
+ * @param[in] request Current request.
+ * @param[in,out] vp to normify.
+ * @param[in] min_length we expect the decoded version to be.
  */
-static void CC_HINT(nonnull) normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
+static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 {
 	uint8_t buffer[256];
 
