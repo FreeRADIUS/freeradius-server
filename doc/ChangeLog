@@ -25,6 +25,14 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	  they would silently fail or produce undefined behaviour.
 	* Fix parsing of old regular expressions.  Closes #842
 	* Fix off by one error in ascend filters.  Closes #843.
+	* Handle NT-Hash in rlm_pap.  This allows passwords to
+	  have backslashes in them.
+	* Fix infinite loop on "Fall-Through = yes" when
+	  processing SQL groups.
+	* Correct the check of SQL query return code.
+	* Run "Post-Auth-Type Reject" if the request was rejected
+	  in post-auth
+	* Write "Login OK" only if the post-auth section passed.
 
 FreeRADIUS 3.0.5 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	Feature improvements
