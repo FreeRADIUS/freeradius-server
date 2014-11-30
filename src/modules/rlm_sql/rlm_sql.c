@@ -688,7 +688,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	next:
 		pairstrcpy(sql_group, entry->name);
 
-		if (inst->config->authorize_group_check_query && *inst->config->authorize_group_check_query) {
+		if (inst->config->authorize_group_check_query) {
 			vp_cursor_t cursor;
 			VALUE_PAIR *vp;
 
@@ -739,7 +739,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			check_tmp = NULL;
 		}
 
-		if (inst->config->authorize_group_reply_query && *inst->config->authorize_group_reply_query) {
+		if (inst->config->authorize_group_reply_query) {
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
@@ -851,8 +851,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 
-		if (inst->config->groupmemb_query &&
-		    inst->config->groupmemb_query[0]) {
+		if (inst->config->groupmemb_query) {
 			DEBUG("rlm_sql (%s): Registering sql_groupcmp for %s",
 			      inst->config->xlat_name, group_name);
 			paircompare_register(da, dict_attrbyvalue(PW_USER_NAME, 0),
@@ -876,6 +875,10 @@ do { \
 	CHECK_STRING(authorize_reply_query);
 	CHECK_STRING(authorize_group_check_query);
 	CHECK_STRING(authorize_group_reply_query);
+	CHECK_STRING(simul_count_query);
+	CHECK_STRING(simul_verify_query);
+	CHECK_STRING(open_query);
+	CHECK_STRING(client_query);
 
 	/*
 	 *	Sanity check for crazy people.
@@ -1015,8 +1018,7 @@ do { \
 	inst->pool = fr_connection_pool_module_init(inst->cs, inst, mod_conn_create, NULL, NULL);
 	if (!inst->pool) return -1;
 
-	if (inst->config->groupmemb_query &&
-	    inst->config->groupmemb_query[0]) {
+	if (inst->config->groupmemb_query) {
 		paircompare_register(dict_attrbyvalue(PW_SQL_GROUP, 0),
 				dict_attrbyvalue(PW_USER_NAME, 0), false, sql_groupcmp, inst);
 	}
@@ -1083,7 +1085,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *	Query the check table to find any conditions associated with this user/realm/whatever...
 	 */
-	if (inst->config->authorize_check_query && *inst->config->authorize_check_query) {
+	if (inst->config->authorize_check_query) {
 		vp_cursor_t cursor;
 		VALUE_PAIR *vp;
 
@@ -1131,7 +1133,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		check_tmp = NULL;
 	}
 
-	if (inst->config->authorize_reply_query && *inst->config->authorize_reply_query) {
+	if (inst->config->authorize_reply_query) {
 		/*
 		 *	Now get the reply pairs since the paircompare matched
 		 */
@@ -1472,7 +1474,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	char 			*expanded = NULL;
 
 	/* If simul_count_query is not defined, we don't do any checking */
-	if (!inst->config->simul_count_query || (inst->config->simul_count_query[0] == '\0')) {
+	if (!inst->config->simul_count_query) {
 		return RLM_MODULE_NOOP;
 	}
 
@@ -1531,7 +1533,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	 *	Looks like too many sessions, so let's start verifying
 	 *	them, unless told to rely on count query only.
 	 */
-	if (!inst->config->simul_verify_query || (inst->config->simul_verify_query[0] == '\0')) {
+	if (!inst->config->simul_verify_query) {
 		rcode = RLM_MODULE_OK;
 
 		goto finish;
