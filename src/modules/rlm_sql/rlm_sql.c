@@ -860,6 +860,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->config->xlat_name);
 
 	/*
+	 *	Complain if the strings exist, but are empty.
+	 */
+#define CHECK_STRING(_x) if (inst->config->_x && !inst->config->_x[0]) \
+do { \
+	WARN("rlm_sql (%s): " STRINGIFY(_x) " is empty.  Please delete it from the configuration", inst->config->xlat_name);\
+	inst->config->_x = NULL;\
+} while (0)
+
+	CHECK_STRING(groupmemb_query);
+	CHECK_STRING(authorize_check_query);
+	CHECK_STRING(authorize_reply_query);
+	CHECK_STRING(authorize_group_check_query);
+	CHECK_STRING(authorize_group_reply_query);
+	CHECK_STRING(simul_count_query);
+	CHECK_STRING(simul_verify_query);
+	CHECK_STRING(open_query);
+	CHECK_STRING(client_query);
+
+	/*
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->config->sql_driver_name, "rlm_sql_", 8) != 0) {
@@ -1457,7 +1476,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	char 			*expanded = NULL;
 
 	/* If simul_count_query is not defined, we don't do any checking */
-	if (!inst->config->simul_count_query) return RLM_MODULE_NOOP;
+	if (!inst->config->simul_count_query) {
+		return RLM_MODULE_NOOP;
+	}
 
 	if ((!request->username) || (request->username->length == '\0')) {
 		REDEBUG("Zero Length username not permitted");
