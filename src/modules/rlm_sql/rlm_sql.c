@@ -538,6 +538,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 	entry = *phead = NULL;
 
 	if (!inst->config->groupmemb_query) return 0;
+
 	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, sql_escape_func, inst) < 0) return -1;
 
 	ret = rlm_sql_select_query(handle, inst, expanded);
@@ -893,18 +894,26 @@ do { \
 	 */
 	if (!inst->config->groupmemb_query) {
 		if (inst->config->authorize_group_check_query) {
-			ERROR("rlm_sql (%s): group_membership_query must be set if authorize_group_check_query is set",
-			      inst->config->xlat_name);
+			WARN("rlm_sql (%s): Ignoring authorize_group_check_query as group_membership_query is not configured",
+			     inst->config->xlat_name);
 			return -1;
-		} else if (inst->config->authorize_group_reply_query) {
-			ERROR("rlm_sql (%s): group_membership_query must be set if authorize_group_reply_query is set",
-			      inst->config->xlat_name);
+		}
+
+		if (inst->config->authorize_group_reply_query) {
+			WARN("rlm_sql (%s): Ignoring authorize_group_reply_query as group_membership_query is not configured",
+			     inst->config->xlat_name);
 			return -1;
 		}
 	} else {
-		if (!inst->config->authorize_group_check_query && !inst->config->authorize_group_reply_query) {
-			ERROR("rlm_sql (%s): authorize_group_check_query or authorize_group_reply_query "
-		      	      "must be set if group_membership_query is set", inst->config->xlat_name);
+		if (!inst->config->authorize_group_check_query) {
+			ERROR("rlm_sql (%s): authorize_group_check_query is required because group_membership_query is configured",
+			     inst->config->xlat_name);
+			return -1;
+		}
+
+		if (inst->config->authorize_group_reply_query) {
+			ERROR("rlm_sql (%s): authorize_group_reply_query is required because group_membership_query is configured",
+			     inst->config->xlat_name);
 			return -1;
 		}
 	}
