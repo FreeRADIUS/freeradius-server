@@ -823,7 +823,15 @@ int ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 	int rcode;
 	struct addrinfo hints, *ai = NULL, *alt = NULL, *res = NULL;
 
+	/*
+	 *	Avoid malloc for IP addresses.  This helps us debug
+	 *	memory errors when using talloc.
+	 */
+#ifdef TALLOC_DEBUG
+	if (true) {
+#else
 	if (!fr_hostname_lookups) {
+#endif
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 		if (af == AF_UNSPEC) {
 			char const *p;
@@ -850,22 +858,15 @@ int ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 	}
 
 	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = af;
 
-#ifdef TALLOC_DEBUG
 	/*
-	 *	Avoid malloc for IP addresses.  This helps us debug
-	 *	memory errors when using talloc.
+	 *	If we're falling back we need both IPv4 and IPv6 records
 	 */
-	if (af == AF_INET) {
-		/*
-		 *	If it's all numeric, avoid getaddrinfo()
-		 */
-		if (inet_pton(af, hostname, &out->ipaddr.ip4addr) == 1) {
-			return 0;
-		}
+	if (fallback) {
+		hints.ai_family = AF_UNSPEC;
+	} else {
+		hints.ai_family = af;
 	}
-#endif
 
 	if ((rcode = getaddrinfo(hostname, NULL, &hints, &res)) != 0) {
 		fr_strerror_printf("ip_hton: %s", gai_strerror(rcode));
