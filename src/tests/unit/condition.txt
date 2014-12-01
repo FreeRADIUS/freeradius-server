@@ -8,6 +8,9 @@
 #  A bunch of errors, in the order that the error strings
 #  appear in parser.c
 #
+
+
+# All IP address literals should be parsed as prefixes
 condition ("foo\
 data ERROR offset 6 End of string after escape
 
@@ -195,8 +198,12 @@ data &User-Name
 condition <ipaddr>Framed-IP-Address == 127.0.0.1
 data &Framed-IP-Address == 127.0.0.1
 
-condition <cidr>Framed-IP-Address <= 192.168/16
-data <ipv4prefix>&Framed-IP-Address <= 192.168/16
+condition <cidr>Framed-IP-Address <= 192.168.0.0/16
+data <ipv4prefix>&Framed-IP-Address <= 192.168.0.0/16
+
+# All IP address literals should be parsed as prefixes
+condition Framed-IP-Address <= 192.168.0.0/16
+data &Framed-IP-Address <= 192.168.0.0/16
 
 # string attributes must be string
 condition User-Name == "bob"
