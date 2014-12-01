@@ -897,26 +897,24 @@ do { \
 	 */
 	if (!inst->config->groupmemb_query) {
 		if (inst->config->authorize_group_check_query) {
-			WARN("rlm_sql (%s): Ignoring authorize_group_check_query as group_membership_query is not configured",
-			     inst->config->xlat_name);
-			return -1;
+			WARN("rlm_sql (%s): Ignoring authorize_group_reply_query as group_membership_query "
+			     "is not configured", inst->config->xlat_name);
 		}
 
 		if (inst->config->authorize_group_reply_query) {
-			WARN("rlm_sql (%s): Ignoring authorize_group_reply_query as group_membership_query is not configured",
-			     inst->config->xlat_name);
-			return -1;
+			WARN("rlm_sql (%s): Ignoring authorize_group_check_query as group_membership_query "
+			     "is not configured", inst->config->xlat_name);
 		}
 	} else {
 		if (!inst->config->authorize_group_check_query) {
-			ERROR("rlm_sql (%s): authorize_group_check_query is required because group_membership_query is configured",
-			     inst->config->xlat_name);
+			ERROR("rlm_sql (%s): authorize_group_check_query must be configured as group_membership_query "
+			      "is configured", inst->config->xlat_name);
 			return -1;
 		}
 
 		if (inst->config->authorize_group_reply_query) {
-			ERROR("rlm_sql (%s): authorize_group_reply_query is required because group_membership_query is configured",
-			     inst->config->xlat_name);
+			ERROR("rlm_sql (%s): authorize_group_reply_query must be configured as group_membership_query "
+			      "is configured", inst->config->xlat_name);
 			return -1;
 		}
 	}
@@ -1166,6 +1164,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		rcode = RLM_MODULE_OK;
 		reply_tmp = NULL;
 	}
+
+	/*
+	 *	Neither group checks or profiles will work without
+	 *	a group membership query.
+	 */
+	if (!inst->config->groupmemb_query) goto release;
 
 skipreply:
 	if ((do_fall_through == FALL_THROUGH_YES) ||
