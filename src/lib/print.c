@@ -360,8 +360,6 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 
 	size_t		len = 0, freespace = outlen;
 
-	fr_assert(!enumv || (enumv->type == type));
-
 	if (!data) return 0;
 	if (outlen == 0) return inlen;
 

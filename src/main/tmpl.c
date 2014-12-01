@@ -1315,25 +1315,25 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 /** Convert a tmpl containing literal data, to the type specified by da.
  *
  * @param[in,out] vpt the template to modify
- * @param[in] da the dictionary attribute to cast it to
+ * @param[in] type to case to.
+ * @param[in] enumv Enumerated dictionary values.
  * @return true for success, false for failure.
  */
-bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
+bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 {
 	ssize_t ret;
 
 	VERIFY_TMPL(vpt);
 
 	rad_assert(vpt != NULL);
-	rad_assert(da != NULL);
 	rad_assert(vpt->type == TMPL_TYPE_LITERAL);
 
-	vpt->tmpl_data_type = da->type;
+	vpt->tmpl_data_type = type;
 
 	/*
 	 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 	 */
-	ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type, da, vpt->name, vpt->len);
+	ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type, enumv, vpt->name, vpt->len);
 	if (ret < 0) return false;
 
 	vpt->type = TMPL_TYPE_DATA;

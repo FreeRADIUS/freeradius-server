@@ -740,7 +740,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	Cast it to the appropriate data type.
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->lhs, c->cast)) {
+				    !tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast)) {
 					*error = "Failed to parse field";
 					if (lhs) talloc_free(lhs);
 					if (rhs) talloc_free(rhs);
@@ -754,7 +754,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_DATA) &&
 				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->rhs, c->cast)) {
+				    !tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast)) {
 					return_rhs("Failed to parse field");
 				}
 
@@ -950,17 +950,38 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	literal.  Cast the RHS to the type of the cast.
 				 */
 				if (c->cast && (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->rhs, c->cast)) {
+				    !tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast)) {
 					return_rhs("Failed to parse field");
 				}
 
 				/*
 				 *	The LHS is an attribute, and the RHS is a literal.  Cast the
 				 *	RHS to the data type of the LHS.
+				 *
+				 *	Note: There's a hack in here to always parse RHS as the
+				 *	equivalent prefix type if the LHS is an IP address.
+				 *
+				 *	This allows Framed-IP-Address < 192.168.0.0./24
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
 				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL)) {
-					if (!tmpl_cast_in_place(c->data.map->rhs, c->data.map->lhs->tmpl_da)) {
+					PW_TYPE type;
+
+					switch (c->data.map->lhs->tmpl_da->type) {
+					case PW_TYPE_IPV4_ADDR:
+						type = PW_TYPE_IPV4_PREFIX;
+						break;
+
+					case PW_TYPE_IPV6_ADDR:
+						type = PW_TYPE_IPV6_PREFIX;
+						break;
+
+					default:
+						type = c->data.map->lhs->tmpl_da->type;
+						break;
+					}
+
+					if (!tmpl_cast_in_place(c->data.map->rhs, type, c->data.map->lhs->tmpl_da)) {
 						DICT_ATTR const *da = c->data.map->lhs->tmpl_da;
 
 						if ((da->vendor == 0) &&

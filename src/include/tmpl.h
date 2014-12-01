@@ -231,7 +231,7 @@ ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *n
 
 void			tmpl_free(value_pair_tmpl_t **tmpl);
 
-bool			tmpl_cast_in_place(value_pair_tmpl_t *vpt, DICT_ATTR const *da);
+bool			tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv);
 
 void			tmpl_cast_in_place_str(value_pair_tmpl_t *vpt);
 
