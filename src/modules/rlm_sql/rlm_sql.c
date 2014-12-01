@@ -912,7 +912,7 @@ do { \
 			return -1;
 		}
 
-		if (inst->config->authorize_group_reply_query) {
+		if (!inst->config->authorize_group_reply_query) {
 			ERROR("rlm_sql (%s): authorize_group_reply_query must be configured as group_membership_query "
 			      "is configured", inst->config->xlat_name);
 			return -1;
