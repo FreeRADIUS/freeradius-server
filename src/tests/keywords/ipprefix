@@ -16,24 +16,30 @@ update control {
 
 if ("%{control:Tmp-Cast-IPv6Prefix}" != '::198.51.0.0/112') {
 	update reply {
-		Filter-Id += "wrong"
+		Filter-Id += "Fail 0"
 	}
 }
 
 if ("%{control:Tmp-Cast-IPv4Prefix}" != '198.51.0.0/16') {
 	update reply {
-		Filter-Id += "wrong"
+		Filter-Id += "Fail 1"
 	}
 }
 
 if (control:Tmp-Cast-IPv6Prefix != ::198.51.0.0/112) {
 	update reply {
-		Filter-Id += "wrong"
+		Filter-Id += "Fail 2"
 	}
 }
 
 if (control:Tmp-Cast-IPv4Prefix != 198.51.0.0/16) {
 	update reply {
-		Filter-Id += "wrong"
+		Filter-Id += "Fail 3"
+	}
+}
+
+if (!(&control:Tmp-Cast-IPv4Prefix < 198.0.0.0/8)) {
+	update reply {
+		Filter-Id += "Fail 4"
 	}
 }
