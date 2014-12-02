@@ -452,7 +452,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 		return 0;
 	}
 
-	RDEBUG("New EAP session, adding 'State' attribute to reply 0x%02x%02x%02x%02x%02x%02x%02x%02x",
+	RDEBUG("EAP session adding &reply:State = 0x%02x%02x%02x%02x%02x%02x%02x%02x",
 	       state->vp_octets[0], state->vp_octets[1], state->vp_octets[2], state->vp_octets[3],
 	       state->vp_octets[4], state->vp_octets[5], state->vp_octets[6], state->vp_octets[7]);
 
