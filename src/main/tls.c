@@ -1660,6 +1660,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_STORE *ocsp_store = NULL;
 	X509 *issuer_cert;
 #endif
+	VALUE_PAIR *vp;
 	TALLOC_CTX *talloc_ctx;
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
@@ -1699,6 +1700,9 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	sn = X509_get_serialNumber(client_cert);
 
+	RDEBUG2("TLS Verify adding attributes");
+	RINDENT();
+
 	/*
 	 *	For this next bit, we create the attributes *only* if
 	 *	we're at the client or issuing certificate, AND we
@@ -1714,7 +1718,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			sprintf(p, "%02x", (unsigned int)sn->data[i]);
 			p += 2;
 		}
-		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
+		vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
+		rdebug_pair(L_DBG_LVL_2, request, vp);
 	}
 
 
@@ -1727,7 +1732,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	    (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
-		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
+		vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
+		rdebug_pair(L_DBG_LVL_2, request, vp);
 	}
 
 	/*
@@ -1738,14 +1744,16 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			  sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
 	if (certs && identity && (lookup <= 1) && subject[0]) {
-		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
+		vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
+		rdebug_pair(L_DBG_LVL_2, request, vp);
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
 	if (certs && identity && (lookup <= 1) && issuer[0]) {
-		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
+		vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
+		rdebug_pair(L_DBG_LVL_2, request, vp);
 	}
 
 	/*
@@ -1755,7 +1763,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
 	if (certs && identity && (lookup <= 1) && common_name[0] && subject[0]) {
-		pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
+		vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
+		rdebug_pair(L_DBG_LVL_2, request, vp);
 	}
 
 	/*
@@ -1775,14 +1784,16 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				switch (name->type) {
 #ifdef GEN_EMAIL
 				case GEN_EMAIL:
-					pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
-						 (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
+					vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
+						      (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
+					rdebug_pair(L_DBG_LVL_2, request, vp);
 					break;
 #endif	/* GEN_EMAIL */
 #ifdef GEN_DNS
 				case GEN_DNS:
-					pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_DNS][lookup],
-						 (char *) ASN1_STRING_data(name->d.dNSName), T_OP_SET);
+					vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_DNS][lookup],
+						      (char *) ASN1_STRING_data(name->d.dNSName), T_OP_SET);
+					rdebug_pair(L_DBG_LVL_2, request, vp);
 					break;
 #endif	/* GEN_DNS */
 #ifdef GEN_OTHERNAME
@@ -1791,8 +1802,9 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 					if (NID_ms_upn == OBJ_obj2nid(name->d.otherName->type_id)) {
 					    /* we've got a UPN - Must be ASN1-encoded UTF8 string */
 					    if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
-						pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_UPN][lookup],
-							 (char *) ASN1_STRING_data(name->d.otherName->value->value.utf8string), T_OP_SET);
+						    vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_UPN][lookup],
+								  (char *) ASN1_STRING_data(name->d.otherName->value->value.utf8string), T_OP_SET);
+						    rdebug_pair(L_DBG_LVL_2, request, vp);
 						break;
 					    } else {
 						RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)");
@@ -1824,6 +1836,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	if (!my_ok) {
 		char const *p = X509_verify_cert_error_string(err);
 		RERROR("SSL says error %d : %s", err, p);
+		REXDENT();
 		return my_ok;
 	}
 
@@ -1849,7 +1862,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		for (i = 0; i < sk_X509_EXTENSION_num(ext_list); i++) {
 			ASN1_OBJECT *obj;
 			X509_EXTENSION *ext;
-			VALUE_PAIR *vp;
 
 			ext = sk_X509_EXTENSION_value(ext_list, i);
 
@@ -1875,11 +1887,13 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 
 			vp = pairmake(talloc_ctx, certs, attribute, value, T_OP_ADD);
-			if (vp) rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
+			rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 		}
 
 		BIO_free_all(out);
 	}
+
+	REXDENT();
 
 	switch (ctx->error) {
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
