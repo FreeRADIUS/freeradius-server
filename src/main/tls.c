@@ -2135,6 +2135,11 @@ void tls_global_init(void)
 	SSL_library_init();		/* initialize library */
 	OpenSSL_add_all_algorithms();	/* required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
 	OPENSSL_config(NULL);
+
+	/*
+	 *	Initialize the index for the certificates.
+	 */
+	fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_certs);
 }
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
@@ -2508,8 +2513,6 @@ post_ca:
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
 		if (fr_tls_ex_index_vps < 0)
 			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_vps);
-		if (fr_tls_ex_index_certs < 0)
-			fr_tls_ex_index_certs = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_certs);
 	}
 
 	/*
