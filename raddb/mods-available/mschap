@@ -29,21 +29,28 @@ mschap {
 #	require_strong = yes
 
 	# The module can perform authentication itself, OR
-	# use a Windows Domain Controller.  This configuration
-	# directive tells the module to call the ntlm_auth
-	# program, which will do the authentication, and return
-	# the NT-Key.  Note that you MUST have "winbindd" and
-	# "nmbd" running on the local machine for ntlm_auth
-	# to work.  See the ntlm_auth program documentation
-	# for details.
+	# use a Windows Domain Controller. This configuration
+	# directive tells the module which authentication method
+	# to use.
 	#
-	# If ntlm_auth is configured below, then the mschap
-	# module will call ntlm_auth for every MS-CHAP
-	# authentication request.  If there is a cleartext
-	# or NT hashed password available, you can set
-	# "MS-CHAP-Use-NTLM-Auth := No" in the control items,
-	# and the mschap module will do the authentication itself,
-	# without calling ntlm_auth.
+	# Valid options are 'internal' or 'ntlm_auth'.
+	#
+#	auth_method = internal
+
+	# This configuration directive gives the ntlm_auth command
+	# to use when the auth method is 'ntlm_auth'. This will do
+	# the authentication against a Windows Domain Controller
+	# and return the NT-Key. Note that you MUST have
+	# "winbindd" and "nmbd" running on the local machine for
+	# ntlm_auth to work. See the ntlm_auth program
+	# documentation for details.
+	#
+	# When using this method the mschap module will call
+	# ntlm_auth for every MS-CHAP authentication request. If
+	# there is a cleartext or NT hashed password available,
+	# you can set "MS-CHAP-Use-NTLM-Auth := No" in the control
+	# items, and the mschap module will do the authentication
+	# itself, without calling ntlm_auth.
 	#
 	# Be VERY careful when editing the following line!
 	#
