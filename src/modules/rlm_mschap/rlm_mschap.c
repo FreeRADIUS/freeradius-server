@@ -45,6 +45,12 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair);
 #endif
 
+/* Method of authentication we are going to use */
+typedef enum {
+        AUTH_INTERNAL = 0,
+        AUTH_NTLMAUTH_EXEC = 1
+} MSCHAP_AUTH_METHOD;
+
 /* Allowable account control bits */
 #define ACB_DISABLED	0x00010000	//!< User account disabled.
 #define ACB_HOMDIRREQ	0x00020000	//!< Home directory required.
@@ -139,20 +145,21 @@ static int pdb_decode_acct_ctrl(char const *p)
 
 
 typedef struct rlm_mschap_t {
-	bool		use_mppe;
-	bool		require_encryption;
-	bool		require_strong;
-	bool		with_ntdomain_hack;	/* this should be in another module */
-	char const	*xlat_name;
-	char const	*ntlm_auth;
-	uint32_t	ntlm_auth_timeout;
-	char const	*ntlm_cpw;
-	char const	*ntlm_cpw_username;
-	char const	*ntlm_cpw_domain;
-	char const	*local_cpw;
-	char const	*auth_type;
-	bool		allow_retry;
-	char const	*retry_msg;
+	bool			use_mppe;
+	bool			require_encryption;
+	bool			require_strong;
+	bool			with_ntdomain_hack;	/* this should be in another module */
+	char const		*xlat_name;
+	char const		*ntlm_auth;
+	uint32_t		ntlm_auth_timeout;
+	char const		*ntlm_cpw;
+	char const		*ntlm_cpw_username;
+	char const		*ntlm_cpw_domain;
+	char const		*local_cpw;
+	char const		*auth_type;
+	bool			allow_retry;
+	char const		*retry_msg;
+	MSCHAP_AUTH_METHOD	method;
 #ifdef WITH_OPEN_DIRECTORY
 	bool		open_directory;
 #endif
@@ -575,6 +582,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
+	 *	Set auth method
+	 */
+	if (inst->ntlm_auth) {
+		DEBUG("rlm_mschap (%s): authenticating by calling 'ntlm_auth'", name);
+		inst->method = AUTH_NTLMAUTH_EXEC;
+	} else {
+		DEBUG("rlm_mschap (%s): using internal authentication", name);
+		inst->method = AUTH_INTERNAL;
+	}
+
+	/*
 	 *	Check ntlm_auth_timeout is sane
 	 */
 	if (!inst->ntlm_auth_timeout) {
@@ -668,9 +686,9 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 #endif
 						       uint8_t *new_nt_password,
 						       uint8_t *old_nt_hash,
-						       bool do_ntlm_auth)
+						       MSCHAP_AUTH_METHOD method)
 {
-	if (inst->ntlm_cpw && do_ntlm_auth) {
+	if (inst->ntlm_cpw && method != AUTH_INTERNAL) {
 		/*
 		 * we're going to run ntlm_auth in helper-mode
 		 * we're expecting to use the ntlm-change-password-1 protocol
@@ -1024,15 +1042,18 @@ ntlm_auth_err:
  */
 static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUEST *request, VALUE_PAIR *password,
 						      uint8_t const *challenge, uint8_t const *response,
-						      uint8_t nthashhash[NT_DIGEST_LENGTH], bool do_ntlm_auth)
+						      uint8_t nthashhash[NT_DIGEST_LENGTH], MSCHAP_AUTH_METHOD method)
 {
 	uint8_t	calculated[24];
 
 	memset(nthashhash, 0, NT_DIGEST_LENGTH);
+
+	switch (method) {
+	case AUTH_INTERNAL:
 	/*
 	 *	Do normal authentication.
 	 */
-	if (!do_ntlm_auth) {
+		{
 		/*
 		 *	No password: can't do authentication.
 		 */
@@ -1055,7 +1076,14 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		    (password->da->attr == PW_NT_PASSWORD)) {
 			fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
 		}
-	} else {		/* run ntlm_auth */
+
+		break;
+		}
+	case AUTH_NTLMAUTH_EXEC:
+	/*
+	 *	Run ntlm_auth
+	 */
+		{
 		int	result;
 		char	buffer[256];
 		size_t	len;
@@ -1114,6 +1142,13 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 			REDEBUG("Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}
+
+		break;
+		}
+	default:
+		/* We should never reach this line */
+		RERROR("Internal error: Unknown mschap auth method (%d)", method);
+		return -1;
 	}
 
 	return 0;
@@ -1310,21 +1345,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	uint8_t *p;
 	char const *username_string;
 	int chap = 0;
-	bool do_ntlm_auth;
+	MSCHAP_AUTH_METHOD auth_method;
 
 	/*
 	 *	If we have ntlm_auth configured, use it unless told
 	 *	otherwise
 	 */
-	do_ntlm_auth = (inst->ntlm_auth != NULL);
+	auth_method = inst->method;
 
 	/*
 	 *	If we have an ntlm_auth configuration, then we may
 	 *	want to suppress it.
 	 */
-	if (do_ntlm_auth) {
+	if (auth_method != AUTH_INTERNAL) {
 		VALUE_PAIR *vp = pairfind(request->config, PW_MS_CHAP_USE_NTLM_AUTH, 0, TAG_ANY);
-		if (vp) do_ntlm_auth = (vp->vp_integer > 0);
+		if (vp && vp->vp_integer == 0) auth_method = AUTH_INTERNAL;
 	}
 
 	/*
@@ -1407,7 +1442,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 				RERROR("Failed generating NT-Password");
 				return RLM_MODULE_FAIL;
 			}
-		} else if (!do_ntlm_auth) {
+		} else if (auth_method == AUTH_INTERNAL) {
 			RWDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password");
 		}
 	}
@@ -1456,7 +1491,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		/*
 		 *	Only complain if we don't have NT-Password
 		 */
-		} else if (!do_ntlm_auth && !nt_password) {
+		} else if ((auth_method == AUTH_INTERNAL) && !nt_password) {
 			RWDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password");
 		}
 	}
@@ -1556,7 +1591,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 
 		/* perform the actual password change */
 		rad_assert(nt_password);
-		if (do_mschap_cpw(inst, request, nt_password, new_nt_encrypted, old_nt_encrypted, do_ntlm_auth) < 0) {
+		if (do_mschap_cpw(inst, request, nt_password, new_nt_encrypted, old_nt_encrypted, auth_method) < 0) {
 			char buffer[128];
 
 			REDEBUG("Password change failed");
@@ -1648,7 +1683,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		 *	Do the MS-CHAP authentication.
 		 */
 		if (do_mschap(inst, request, password, challenge->vp_octets, response->vp_octets + offset, nthashhash,
-			      do_ntlm_auth) < 0) {
+			      auth_method) < 0) {
 			REDEBUG("MS-CHAP-Response is incorrect");
 			goto do_error;
 		}
@@ -1754,7 +1789,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		RDEBUG2("Client is using MS-CHAPv2");
 
 		mschap_result = do_mschap(inst, request, nt_password, mschapv1_challenge,
-					  response->vp_octets + 26, nthashhash, do_ntlm_auth);
+					  response->vp_octets + 26, nthashhash, auth_method);
 		if (mschap_result == -648)
 			goto password_expired;
 
