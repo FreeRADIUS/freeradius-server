@@ -436,7 +436,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	PTHREAD_MUTEX_UNLOCK(&(inst->session_mutex));
 
 	if (status <= 0) {
-		pairfree(&state);
+		pairdelete(&request->reply->vps, PW_STATE, 0, TAG_ANY);
 
 		if (status < 0) {
 			static time_t last_logged = 0;
