@@ -238,7 +238,7 @@ typedef struct dict_vendor {
  *
  * PW_TYPE should be an enumeration of the values in this union.
  */
-typedef union value_data {
+typedef struct value_data {
 	union {
 		char const	        *strvalue;			//!< Pointer to UTF-8 string.
 		uint8_t const		*octets;			//!< Pointer to binary string.
