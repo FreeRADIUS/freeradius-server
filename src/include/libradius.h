@@ -357,6 +357,7 @@ typedef struct value_pair_raw {
 #define vp_integer64	data.integer64
 #define vp_ipv4prefix	data.ipv4prefix
 #define vp_tlv		data.tlv
+#define vp_length	length
 
 typedef struct fr_ipaddr_t {
 	int		af;	/* address family */
