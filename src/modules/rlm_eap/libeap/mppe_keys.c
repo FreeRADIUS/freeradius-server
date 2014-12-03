@@ -190,8 +190,8 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	vp = paircreate(packet, PW_EAP_SESSION_ID, 0);
 	if (!vp) return;
 
-	vp->length = 1 + 2 * SSL3_RANDOM_SIZE;
-	p = talloc_array(vp, uint8_t, vp->length);
+	vp->vp_length = 1 + 2 * SSL3_RANDOM_SIZE;
+	p = talloc_array(vp, uint8_t, vp->vp_length);
 
 	p[0] = header & 0xff;
 	memcpy(p + 1, s->s3->client_random, SSL3_RANDOM_SIZE);

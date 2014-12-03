@@ -580,7 +580,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quot
 {
 	VERIFY_VP(vp);
 
-	return vp_data_prints_value(out, outlen, vp->da->type, vp->da, &vp->data, vp->length, quote);
+	return vp_data_prints_value(out, outlen, vp->da->type, vp->da, &vp->data, vp->vp_length, quote);
 }
 
 
@@ -763,7 +763,7 @@ char *vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	VERIFY_VP(vp);
 
-	return vp_data_aprints_value(ctx, vp->da->type, vp->da, &vp->data, vp->length, quote);
+	return vp_data_aprints_value(ctx, vp->da->type, vp->da, &vp->data, vp->vp_length, quote);
 }
 
 char *vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type)
@@ -857,7 +857,7 @@ size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
-		for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->length; q++) {
+		for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->vp_length; q++) {
 			/* Indicate truncation */
 			if (freespace < 3) return outlen + 1;
 

@@ -251,12 +251,11 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	unsigned int t;
 #endif
 
-	username_string = talloc_array(request, char, usernamepair->length + 1);
+	username_string = talloc_array(request, char, usernamepair->vp_length + 1);
 	if (!username_string)
 		return RLM_MODULE_FAIL;
 
-	strlcpy(username_string, usernamepair->vp_strvalue,
-		usernamepair->length + 1);
+	strlcpy(username_string, usernamepair->vp_strvalue, usernamepair->vp_length + 1);
 
 	status = dsOpenDirService(&dsRef);
 	if (status != eDSNoErr) {
@@ -315,7 +314,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 #ifndef NDEBUG
 	RINDENT();
 	RDEBUG2("Stepbuf server challenge : ");
-	for (t = 0; t < challenge->length; t++) {
+	for (t = 0; t < challenge->vp_length; t++) {
 		fprintf(stderr, "%02x", challenge->vp_strvalue[t]);
 	}
 	fprintf(stderr, "\n");

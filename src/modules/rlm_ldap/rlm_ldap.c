@@ -370,7 +370,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
 
-	if (check->length == 0) {
+	if (check->vp_length == 0) {
 		REDEBUG("Cannot do comparison (group name is empty)");
 		return 1;
 	}
@@ -836,7 +836,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		return RLM_MODULE_INVALID;
 	}
 
-	if (request->password->length == 0) {
+	if (request->password->vp_length == 0) {
 		REDEBUG("Empty password supplied");
 
 		return RLM_MODULE_INVALID;
@@ -917,7 +917,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *	Check for valid input, zero length names not permitted
 	 */
-	if (request->username->length == 0) {
+	if (request->username->vp_length == 0) {
 		RDEBUG2("Zero length username not permitted");
 
 		return RLM_MODULE_INVALID;
@@ -1023,7 +1023,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 */
 		vp = radius_paircreate(request, &request->config_items, PW_CLEARTEXT_PASSWORD, 0);
 		pairstrcpy(vp, password);
-		vp->length = pass_size;
+		vp->vp_length = pass_size;
 
 		if (RDEBUG_ENABLED3) {
 			RDEBUG3("Added eDirectory password.  control:%s += '%s'", vp->da->name, vp->vp_strvalue);

@@ -109,9 +109,9 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 	if (!map->rhs) goto free_vp;
 
 	map->rhs->tmpl_data_type = da->type;
-	map->rhs->tmpl_data_length = vp->length;
+	map->rhs->tmpl_data_length = vp->vp_length;
 	if (vp->da->flags.is_pointer) {
-		map->rhs->tmpl_data_value.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->length);
+		map->rhs->tmpl_data_value.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->vp_length);
 	} else {
 		memcpy(&map->rhs->tmpl_data_value, &vp->data, sizeof(map->rhs->tmpl_data_value));
 	}
@@ -721,7 +721,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 			for (; vp; vp = fr_cursor_next(&from)) {
 				new = pairalloc(request, map->lhs->tmpl_da);
 				if (!new) return -1;
-				if (pairdatacpy(new, vp->da->type, &vp->data, vp->length) < 0) {
+				if (pairdatacpy(new, vp->da->type, &vp->data, vp->vp_length) < 0) {
 					REDEBUG("Attribute conversion failed: %s", fr_strerror());
 					pairfree(&found);
 					pairfree(&new);

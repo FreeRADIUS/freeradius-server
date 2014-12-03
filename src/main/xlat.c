@@ -120,7 +120,7 @@ static ssize_t xlat_length(UNUSED void *instance, UNUSED REQUEST *request,
 		return 0;
 	}
 
-	snprintf(out, outlen, "%zu", vp->length);
+	snprintf(out, outlen, "%zu", vp->vp_length);
 	return strlen(out);
 }
 
@@ -145,16 +145,16 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_STRING:
-		if (vp->length > 8) {
+		if (vp->vp_length > 8) {
 			break;
 		}
 
-		if (vp->length > 4) {
-			memcpy(&int64, vp->vp_octets, vp->length);
+		if (vp->vp_length > 4) {
+			memcpy(&int64, vp->vp_octets, vp->vp_length);
 			return snprintf(out, outlen, "%" PRIu64, htonll(int64));
 		}
 
-		memcpy(&int32, vp->vp_octets, vp->length);
+		memcpy(&int32, vp->vp_octets, vp->vp_length);
 		return snprintf(out, outlen, "%i", htonl(int32));
 
 	case PW_TYPE_INTEGER64:
@@ -183,7 +183,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	 *	bigendian.
 	 */
 	case PW_TYPE_ETHERNET:
-		memcpy(&int64, &vp->vp_ether, vp->length);
+		memcpy(&int64, &vp->vp_ether, vp->vp_length);
 		return snprintf(out, outlen, "%" PRIu64, htonll(int64));
 
 	case PW_TYPE_SIGNED:
@@ -200,7 +200,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	}
 
 	REDEBUG("Type '%s' of length %zu cannot be converted to integer",
-		fr_int2str(dict_attr_types, vp->da->type, "???"), vp->length);
+		fr_int2str(dict_attr_types, vp->da->type, "???"), vp->vp_length);
 	*out = '\0';
 
 	return -1;
@@ -233,14 +233,14 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	 */
 	if (vp->da->type == PW_TYPE_OCTETS) {
 		p = vp->vp_octets;
-		len = vp->length;
+		len = vp->vp_length;
 	/*
 	 *	Cast the value_data_t of the VP to an octets string and
 	 *	print that as hex.
 	 */
 	} else {
 		ret = value_data_cast(request, &dst, PW_TYPE_OCTETS, NULL, vp->da->type,
-				      NULL, &vp->data, vp->length);
+				      NULL, &vp->data, vp->vp_length);
 		if (ret < 0) {
 			REDEBUG("%s", fr_strerror());
 			goto error;
@@ -358,7 +358,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			RIDEBUG2("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
 		}
 		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
-		RIDEBUG2("Length : %zu", vp->length);
+		RIDEBUG2("Length : %zu", vp->vp_length);
 
 		if (!RDEBUG_ENABLED4) continue;
 
@@ -394,7 +394,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 			dst = talloc_zero(vp, value_data_t);
 			ret = value_data_cast(dst, dst, type->number, NULL, vp->da->type, vp->da,
-					      &vp->data, vp->length);
+					      &vp->data, vp->vp_length);
 			if (ret < 0) goto next_type;	/* We expect some to fail */
 
 			value = vp_data_aprints_value(dst, type->number, NULL, dst, (size_t)ret, '\'');
@@ -490,7 +490,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-		len = fr_print_string((char const *) p, vp->length, out, outlen, '\0');
+		len = fr_print_string((char const *) p, vp->vp_length, out, outlen, '\0');
 		break;
 
 	case PW_TYPE_STRING:

@@ -99,7 +99,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
 	newvp = paircreate(packet, PW_EAP_SIM_FULLAUTH_ID_REQ, 0);
-	newvp->length = 2;
+	newvp->vp_length = 2;
 	newvp->vp_octets = p = talloc_array(newvp, uint8_t, 2);
 
 	p[0] = 0;
@@ -210,9 +210,9 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 		REDEBUG("EAP-SIM-RAND%i not found", idx + 1);
 		return 0;
 	}
-	if (vp->length != EAPSIM_RAND_SIZE) {
+	if (vp->vp_length != EAPSIM_RAND_SIZE) {
 		REDEBUG("EAP-SIM-RAND%i is not " STRINGIFY(EAPSIM_RAND_SIZE) " bytes, got %zu bytes",
-			idx + 1, vp->length);
+			idx + 1, vp->vp_length);
 		return 0;
 	}
 	memcpy(ess->keys.rand[idx], vp->vp_strvalue, EAPSIM_RAND_SIZE);
@@ -227,9 +227,10 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 		REDEBUG("EAP-SIM-SRES%i not found", idx + 1);
 		return 0;
 	}
-	if (vp->length != EAPSIM_SRES_SIZE) {
+
+	if (vp->vp_length != EAPSIM_SRES_SIZE) {
 		REDEBUG("EAP-SIM-SRES%i is not " STRINGIFY(EAPSIM_SRES_SIZE) " bytes, got %zu bytes",
-			idx + 1, vp->length);
+			idx + 1, vp->vp_length);
 		return 0;
 	}
 	memcpy(ess->keys.sres[idx], vp->vp_strvalue, EAPSIM_SRES_SIZE);
@@ -239,14 +240,15 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
 	if (!vp) {
 		vp = pairfind(request->reply->vps, PW_EAP_SIM_KC1 + idx, 0, TAG_ANY);
 	}
+
 	if (!vp) {
 		/* bad, we can't find stuff! */
 		REDEBUG("EAP-SIM-Kc%i not found", idx + 1);
 		return 0;
 	}
-	if (vp->length != EAPSIM_KC_SIZE) {
+	if (vp->vp_length != EAPSIM_KC_SIZE) {
 		REDEBUG("EAP-SIM-Kc%i is not " STRINGIFY(EAPSIM_KC_SIZE) " bytes, got %zu bytes",
-			idx + 1, vp->length);
+			idx + 1, vp->vp_length);
 		return 0;
 	}
 	memcpy(ess->keys.Kc[idx], vp->vp_strvalue, EAPSIM_KC_SIZE);
@@ -304,8 +306,8 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	 *	Okay, we got the challenges! Put them into an attribute.
 	 */
 	newvp = paircreate(packet, PW_EAP_SIM_RAND, 0);
-	newvp->length = 2 + (EAPSIM_RAND_SIZE * 3);
-	newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->length);
+	newvp->vp_length = 2 + (EAPSIM_RAND_SIZE * 3);
+	newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->vp_length);
 
 	memset(p, 0, 2); /* clear reserved bytes */
 	p += 2;
@@ -333,12 +335,12 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	 *	Use the SIM identity, if available
 	 */
 	newvp = pairfind(*invps, PW_EAP_SIM_IDENTITY, 0, TAG_ANY);
-	if (newvp && newvp->length > 2) {
+	if (newvp && newvp->vp_length > 2) {
 		uint16_t len;
 
 		memcpy(&len, newvp->vp_octets, sizeof(uint16_t));
 		len = ntohs(len);
-		if (len <= newvp->length - 2 && len <= MAX_STRING_LEN) {
+		if (len <= newvp->vp_length - 2 && len <= MAX_STRING_LEN) {
 			ess->keys.identitylen = len;
 			memcpy(ess->keys.identity, newvp->vp_octets + 2, ess->keys.identitylen);
 		}
@@ -519,7 +521,7 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	/*
 	 *	Okay, good got stuff that we need. Check the version we found.
 	 */
-	if(selectedversion_vp->length < 2) {
+	if (selectedversion_vp->vp_length < 2) {
 		REDEBUG("EAP-SIM version field is too short");
 
 		return 0;
@@ -539,8 +541,8 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	/*
 	 *	Double check the nonce size.
 	 */
-	if(nonce_vp->length != 18) {
-		REDEBUG("EAP-SIM nonce_mt must be 16 bytes (+2 bytes padding), not %zu", nonce_vp->length);
+	if(nonce_vp->vp_length != 18) {
+		REDEBUG("EAP-SIM nonce_mt must be 16 bytes (+2 bytes padding), not %zu", nonce_vp->vp_length);
 		return 0;
 	}
 	memcpy(ess->keys.nonce_mt, nonce_vp->vp_strvalue + 2, 16);

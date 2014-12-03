@@ -269,7 +269,7 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	 */
 	request_pairs = request->packet->vps;
 	namepair = pairfind(request_pairs, PW_USER_NAME, 0, TAG_ANY);
-	if (!namepair || (namepair->length == 0)) {
+	if (!namepair || (namepair->vp_length == 0)) {
 		return;
 	}
 

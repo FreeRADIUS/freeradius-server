@@ -469,7 +469,7 @@ static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, REQUEST *request)
 	/*
 	 *	The string is too short.
 	 */
-	if (vp->length == 1) return RLM_MODULE_NOOP;
+	if (vp->vp_length == 1) return RLM_MODULE_NOOP;
 
 	/*
 	 *	'1' means "the rest of the string is a realm"

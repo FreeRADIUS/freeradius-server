@@ -98,7 +98,7 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 	vp->tag = TAG_ANY;
 	vp->type = VT_NONE;
 
-	vp->length = da->flags.length;
+	vp->vp_length = da->flags.length;
 
 	talloc_set_destructor(vp, _pairfree);
 
@@ -694,12 +694,12 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	case PW_TYPE_TLV:
 	case PW_TYPE_OCTETS:
 		n->vp_octets = NULL;	/* else pairmemcpy will free vp's value */
-		pairmemcpy(n, vp->vp_octets, n->length);
+		pairmemcpy(n, vp->vp_octets, n->vp_length);
 		break;
 
 	case PW_TYPE_STRING:
 		n->vp_strvalue = NULL;	/* else pairstrnpy will free vp's value */
-		pairstrncpy(n, vp->vp_strvalue, n->length);
+		pairstrncpy(n, vp->vp_strvalue, n->vp_length);
 		break;
 
 	default:
@@ -1130,7 +1130,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		vp->da = da;
 	}
 
-	vp->length = ret;
+	vp->vp_length = ret;
 	vp->type = VT_DATA;
 
 	VERIFY_VP(vp);
@@ -1204,7 +1204,7 @@ static VALUE_PAIR *pair_unknown2known(VALUE_PAIR *vp, DICT_ATTR const *da)
 	VALUE_PAIR *vp2;
 
 	len = data2vp(NULL, NULL, NULL, NULL, da,
-		      vp->vp_octets, vp->length, vp->length,
+		      vp->vp_octets, vp->vp_length, vp->vp_length,
 		      &vp2);
 	if (len < 0) return vp; /* it's really unknown */
 
@@ -1220,7 +1220,7 @@ static VALUE_PAIR *pair_unknown2known(VALUE_PAIR *vp, DICT_ATTR const *da)
 	 *	then not the third, so returning 2 "knowns"
 	 *	and 1 "unknown" is likely preferable.
 	 */
-	if ((size_t) len < vp->length) {
+	if ((size_t) len < vp->vp_length) {
 		pairfree(&vp2);
 		return vp;
 	}
@@ -1284,10 +1284,10 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	if (!value) return vp;
 
 	size = strlen(value + 2);
-	vp->length = size >> 1;
-	data = talloc_array(vp, uint8_t, vp->length);
+	vp->vp_length = size >> 1;
+	data = talloc_array(vp, uint8_t, vp->vp_length);
 
-	if (fr_hex2bin(data, vp->length, value + 2, size) != vp->length) {
+	if (fr_hex2bin(data, vp->vp_length, value + 2, size) != vp->vp_length) {
 		fr_strerror_printf("Invalid hex string");
 		talloc_free(vp);
 		return NULL;
@@ -1417,7 +1417,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	case T_OP_CMP_TRUE:
 	case T_OP_CMP_FALSE:
 		vp->vp_strvalue = NULL;
-		vp->length = 0;
+		vp->vp_length = 0;
 		value = NULL;	/* ignore it! */
 		break;
 
@@ -1512,7 +1512,7 @@ int pairmark_xlat(VALUE_PAIR *vp, char const *value)
 
 	vp->type = VT_XLAT;
 	vp->value.xlat = raw;
-	vp->length = 0;
+	vp->vp_length = 0;
 
 	return 0;
 }
@@ -1938,8 +1938,8 @@ int pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
 			return 1;
 		}
 
-		ret = value_data_cmp(a_p->da->type, &a_p->data, a_p->length,
-				     b_p->da->type, &b_p->data, b_p->length);
+		ret = value_data_cmp(a_p->da->type, &a_p->data, a_p->vp_length,
+				     b_p->da->type, &b_p->data, b_p->vp_length);
 		if (ret != 0) {
 			fr_assert(ret >= -1); 	/* Comparison error */
 			return ret;
@@ -2003,7 +2003,7 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 	TALLOC_FREE(q);
 
 	vp->vp_octets = p;
-	vp->length = size;
+	vp->vp_length = size;
 
 	if (size > 0) pairtypeset(vp);
 }
@@ -2024,7 +2024,7 @@ void pairmemsteal(VALUE_PAIR *vp, uint8_t const *src)
 
 	vp->vp_octets = talloc_steal(vp, src);
 	vp->type = VT_DATA;
-	vp->length = talloc_array_length(vp->vp_strvalue);
+	vp->vp_length = talloc_array_length(vp->vp_strvalue);
 	pairtypeset(vp);
 }
 
@@ -2044,7 +2044,7 @@ void pairstrsteal(VALUE_PAIR *vp, char const *src)
 
 	vp->vp_strvalue = talloc_steal(vp, src);
 	vp->type = VT_DATA;
-	vp->length = talloc_array_length(vp->vp_strvalue) - 1;
+	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 	pairtypeset(vp);
 }
 
@@ -2068,7 +2068,7 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
 
 	vp->vp_strvalue = p;
 	vp->type = VT_DATA;
-	vp->length = talloc_array_length(vp->vp_strvalue) - 1;
+	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 	pairtypeset(vp);
 }
 
@@ -2095,7 +2095,7 @@ void pairstrncpy(VALUE_PAIR *vp, char const *src, size_t len)
 
 	vp->vp_strvalue = p;
 	vp->type = VT_DATA;
-	vp->length = len;
+	vp->vp_length = len;
 	pairtypeset(vp);
 }
 
@@ -2176,7 +2176,7 @@ int pairdatacpy(VALUE_PAIR *vp, PW_TYPE type, value_data_t const *data, size_t l
 		memcpy(&vp->data, data, sizeof(vp->data));
 		break;
 	}
-	vp->length = len;
+	vp->vp_length = len;
 
 	return 0;
 }
@@ -2205,7 +2205,7 @@ void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
 	vp->vp_strvalue = p;
 	vp->type = VT_DATA;
 
-	vp->length = talloc_array_length(vp->vp_strvalue) - 1;
+	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 	pairtypeset(vp);
 }
 

@@ -635,7 +635,7 @@ malformed:
 		return -1;
 	}
 	memcpy((*tlv)->vp_tlv, data, len);
-	(*tlv)->length = len;
+	(*tlv)->vp_length = len;
 
 	return 0;
 }
@@ -795,7 +795,7 @@ malformed:
 		return -1;
 	}
 	memcpy((*tlv)->vp_tlv, data, len);
-	(*tlv)->length = len;
+	(*tlv)->vp_length = len;
 
 	return 0;
 }
@@ -832,7 +832,7 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *da
 		 *	Keep value in Network Order!
 		 */
 		memcpy(&vp->vp_ipaddr, data, 4);
-		vp->length = 4;
+		vp->vp_length = 4;
 		break;
 
 	/*
@@ -883,7 +883,7 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *da
 
 	case PW_TYPE_ETHERNET:
 		memcpy(vp->vp_ether, data, sizeof(vp->vp_ether));
-		vp->length = sizeof(vp->vp_ether);
+		vp->vp_length = sizeof(vp->vp_ether);
 		break;
 
 	/*
@@ -915,7 +915,7 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *da
 		return -1;
 	} /* switch over type */
 
-	vp->length = len;
+	vp->vp_length = len;
 	return 0;
 }
 
@@ -1075,23 +1075,23 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		switch (vp->da->type) {
 		case PW_TYPE_BYTE:
 			vp->vp_byte = p[0];
-			vp->length = 1;
+			vp->vp_length = 1;
 			break;
 
 		case PW_TYPE_SHORT:
 			vp->vp_short = (p[0] << 8) | p[1];
-			vp->length = 2;
+			vp->vp_length = 2;
 			break;
 
 		case PW_TYPE_INTEGER:
 			memcpy(&vp->vp_integer, p, 4);
 			vp->vp_integer = ntohl(vp->vp_integer);
-			vp->length = 4;
+			vp->vp_length = 4;
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
 			memcpy(&vp->vp_ipaddr, p, 4);
-			vp->length = 4;
+			vp->vp_length = 4;
 			break;
 
 		case PW_TYPE_STRING:
@@ -1099,8 +1099,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			vp->type = VT_DATA;
 			memcpy(q, p, dhcp_header_sizes[i]);
 			q[dhcp_header_sizes[i]] = '\0';
-			vp->length = strlen(vp->vp_strvalue);
-			if (vp->length == 0) {
+			vp->vp_length = strlen(vp->vp_strvalue);
+			if (vp->vp_length == 0) {
 				pairfree(&vp);
 			}
 			break;
@@ -1111,7 +1111,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 		case PW_TYPE_ETHERNET:
 			memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
-			vp->length = sizeof(vp->vp_ether);
+			vp->vp_length = sizeof(vp->vp_ether);
 			break;
 
 		default:
@@ -1248,7 +1248,7 @@ static ssize_t fr_dhcp_vp2attr(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
 	uint32_t lvalue;
 	uint8_t *p = out;
 
-	if (outlen < vp->length) {
+	if (outlen < vp->vp_length) {
 		return -1;
 	}
 
@@ -1276,15 +1276,15 @@ static ssize_t fr_dhcp_vp2attr(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
 		break;
 
 	case PW_TYPE_STRING:
-		memcpy(p, vp->vp_strvalue, vp->length);
+		memcpy(p, vp->vp_strvalue, vp->vp_length);
 		break;
 
 	case PW_TYPE_TLV:	/* FIXME: split it on 255? */
-		memcpy(p, vp->vp_tlv, vp->length);
+		memcpy(p, vp->vp_tlv, vp->vp_length);
 		break;
 
 	case PW_TYPE_OCTETS:
-		memcpy(p, vp->vp_octets, vp->length);
+		memcpy(p, vp->vp_octets, vp->vp_length);
 		break;
 
 	default:
@@ -1292,7 +1292,7 @@ static ssize_t fr_dhcp_vp2attr(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
 		return -2;
 	}
 
-	return vp->length;
+	return vp->vp_length;
 }
 
 /** Create a new TLV attribute from multiple sub options
@@ -1340,12 +1340,12 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
 		 */
 		if (!vp->da->flags.array || (SUBOPTION_ATTR(vp->da->attr) != attr)) {
 			attr = SUBOPTION_ATTR(vp->da->attr);
-			tlv->length += 2;
+			tlv->vp_length += 2;
 		}
-		tlv->length += vp->length;
+		tlv->vp_length += vp->vp_length;
 	}
 
-	tlv->vp_tlv = talloc_zero_array(tlv, uint8_t, tlv->length);
+	tlv->vp_tlv = talloc_zero_array(tlv, uint8_t, tlv->vp_length);
 	if (!tlv->vp_tlv) {
 		talloc_free(tlv);
 		return NULL;
@@ -1368,7 +1368,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
 			opt_len = p++;
 		}
 
-		length = fr_dhcp_vp2attr(p, (tlv->vp_tlv + tlv->length) - p, vp);
+		length = fr_dhcp_vp2attr(p, (tlv->vp_tlv + tlv->vp_length) - p, vp);
 		if ((length < 0) || (length > 255)) {
 			talloc_free(tlv);
 			return NULL;
@@ -1449,7 +1449,7 @@ ssize_t fr_dhcp_encode_option(TALLOC_CTX *ctx, uint8_t *out, size_t outlen, vp_c
 			fr_cursor_next(cursor);
 		}
 
-		if ((*opt_len + vp->length) > 255) {
+		if ((*opt_len + vp->vp_length) > 255) {
 			fr_strerror_printf("Skipping \"%s\": Option splitting not supported "
 					   "(option > 255 bytes)", vp->da->name);
 			talloc_free(tlv);
@@ -1639,18 +1639,18 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Client-Hardware-Address */
 	if ((vp = pairfind(packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		if (vp->length == sizeof(vp->vp_ether)) {
-			memcpy(p, vp->vp_ether, vp->length);
+		if (vp->vp_length == sizeof(vp->vp_ether)) {
+			memcpy(p, vp->vp_ether, vp->vp_length);
 		} /* else ignore it */
 	}
 	p += DHCP_CHADDR_LEN;
 
 	/* DHCP-Server-Host-Name */
 	if ((vp = pairfind(packet->vps, 268, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		if (vp->length > DHCP_SNAME_LEN) {
+		if (vp->vp_length > DHCP_SNAME_LEN) {
 			memcpy(p, vp->vp_strvalue, DHCP_SNAME_LEN);
 		} else {
-			memcpy(p, vp->vp_strvalue, vp->length);
+			memcpy(p, vp->vp_strvalue, vp->vp_length);
 		}
 	}
 	p += DHCP_SNAME_LEN;
@@ -1668,10 +1668,10 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	/* DHCP-Boot-Filename */
 	vp = pairfind(packet->vps, 269, DHCP_MAGIC_VENDOR, TAG_ANY);
 	if (vp) {
-		if (vp->length > DHCP_FILE_LEN) {
+		if (vp->vp_length > DHCP_FILE_LEN) {
 			memcpy(p, vp->vp_strvalue, DHCP_FILE_LEN);
 		} else {
-			memcpy(p, vp->vp_strvalue, vp->length);
+			memcpy(p, vp->vp_strvalue, vp->vp_length);
 		}
 	}
 	p += DHCP_FILE_LEN;
@@ -1724,7 +1724,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 				vp->type = VT_DATA;
 				memcpy(q, p, dhcp_header_sizes[i]);
 				q[dhcp_header_sizes[i]] = '\0';
-				vp->length = strlen(vp->vp_strvalue);
+				vp->vp_length = strlen(vp->vp_strvalue);
 				break;
 
 			case PW_TYPE_OCTETS: /* only for Client HW Address */
@@ -1835,9 +1835,9 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 		return -1;
 	}
 
-	if (macaddr->length > sizeof(req.arp_ha.sa_data)) {
+	if (macaddr->vp_length > sizeof(req.arp_ha.sa_data)) {
 		fr_strerror_printf("arp sa_data field too small (%zu octets) to contain chaddr (%zu octets)",
-				   sizeof(req.arp_ha.sa_data), macaddr->length);
+				   sizeof(req.arp_ha.sa_data), macaddr->vp_length);
 		return -1;
 	}
 
@@ -1851,7 +1851,7 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	if (macaddr->da->type == PW_TYPE_ETHERNET) {
 		memcpy(&req.arp_ha.sa_data, &macaddr->vp_ether, sizeof(macaddr->vp_ether));
 	} else {
-		memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->length);
+		memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->vp_length);
 	}
 
 	req.arp_flags = ATF_COM;

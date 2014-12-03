@@ -274,7 +274,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		switch (vp->da->type) {
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
-			if (size != vp->length) {
+			if (size != vp->vp_length) {
 				DICT_ATTR const *da;
 
 				/*
@@ -290,7 +290,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				pairmemcpy(vp, data, size);
 				break;
 			}
-			memcpy(&vp->vp_integer, data, vp->length);
+			memcpy(&vp->vp_integer, data, vp->vp_length);
 
 			/*
 			 *	Stored in host byte order: change it.
@@ -299,8 +299,8 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			break;
 
 		case PW_TYPE_INTEGER64:
-			if (size != vp->length) goto raw;
-			memcpy(&vp->vp_integer64, data, vp->length);
+			if (size != vp->vp_length) goto raw;
+			memcpy(&vp->vp_integer64, data, vp->vp_length);
 
 			/*
 			 *	Stored in host byte order: change it.
@@ -309,14 +309,14 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
-			if (size != vp->length) {
+			if (size != vp->vp_length) {
 				RDEBUG2("Invalid length attribute %d",
 				       attr);
 				pairfree(&first);
 				pairfree(&vp);
 				return NULL;
 			}
-			memcpy(&vp->vp_ipaddr, data, vp->length);
+			memcpy(&vp->vp_ipaddr, data, vp->vp_length);
 
 			/*
 			 *	Stored in network byte order: don't change it.
@@ -324,29 +324,29 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			break;
 
 		case PW_TYPE_BYTE:
-			if (size != vp->length) goto raw;
+			if (size != vp->vp_length) goto raw;
 			vp->vp_byte = data[0];
 			break;
 
 		case PW_TYPE_SHORT:
-			if (size != vp->length) goto raw;
+			if (size != vp->vp_length) goto raw;
 			vp->vp_short = (data[0] * 256) + data[1];
 			break;
 
 		case PW_TYPE_SIGNED:
-			if (size != vp->length) goto raw;
-			memcpy(&vp->vp_signed, data, vp->length);
+			if (size != vp->vp_length) goto raw;
+			memcpy(&vp->vp_signed, data, vp->vp_length);
 			vp->vp_signed = ntohl(vp->vp_signed);
 			break;
 
 		case PW_TYPE_IPV6_ADDR:
-			if (size != vp->length) goto raw;
-			memcpy(&vp->vp_ipv6addr, data, vp->length);
+			if (size != vp->vp_length) goto raw;
+			memcpy(&vp->vp_ipv6addr, data, vp->vp_length);
 			break;
 
 		case PW_TYPE_IPV6_PREFIX:
-			if (size != vp->length) goto raw;
-			memcpy(&vp->vp_ipv6prefix, data, vp->length);
+			if (size != vp->vp_length) goto raw;
+			memcpy(&vp->vp_ipv6prefix, data, vp->vp_length);
 			break;
 
 			/*
@@ -357,7 +357,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			vp->type = VT_DATA;
 			memcpy(p, data, size);
 			p[size] = '\0';
-			vp->length = strlen(p);
+			vp->vp_length = strlen(p);
 			break;
 
 			/*
@@ -395,8 +395,8 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		    ((vp->da->vendor == VENDORPEC_MICROSOFT) && (vp->da->attr == PW_MSCHAP_CHALLENGE))) {
 			uint8_t	challenge[16];
 
-			if ((vp->length < 8) ||
-			    (vp->length > 16)) {
+			if ((vp->vp_length < 8) ||
+			    (vp->vp_length > 16)) {
 				RDEBUG("Tunneled challenge has invalid length");
 				pairfree(&first);
 				pairfree(&vp);
@@ -407,7 +407,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 					      sizeof(challenge));
 
 			if (memcmp(challenge, vp->vp_octets,
-				   vp->length) != 0) {
+				   vp->vp_length) != 0) {
 				RDEBUG("Tunneled challenge is incorrect");
 				pairfree(&first);
 				pairfree(&vp);
@@ -477,7 +477,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		/*
 		 *	Too much data: die.
 		 */
-		if ((total + vp->length + 12) >= sizeof(buffer)) {
+		if ((total + vp->vp_length + 12) >= sizeof(buffer)) {
 			RDEBUG2("output buffer is full!");
 			return 0;
 		}
@@ -487,7 +487,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		 *	together.  Maybe we should...
 		 */
 
-		length = vp->length;
+		length = vp->vp_length;
 		vendor = vp->da->vendor;
 		if (vendor != 0) {
 			attr = vp->da->attr & 0xffff;
@@ -550,8 +550,8 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		case PW_TYPE_STRING:
 		case PW_TYPE_OCTETS:
 		default:
-			memcpy(p, vp->vp_strvalue, vp->length);
-			length = vp->length;
+			memcpy(p, vp->vp_strvalue, vp->vp_length);
+			length = vp->vp_length;
 			break;
 		}
 
@@ -1034,7 +1034,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		if (!t->username) {
 			vp = pairfind(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 			if (vp &&
-			    (vp->length >= EAP_HEADER_LEN + 2) &&
+			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
@@ -1045,12 +1045,12 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 				 */
 				t->username = pairmake(t, NULL, "User-Name", NULL, T_OP_EQ);
 				rad_assert(t->username != NULL);
-				t->username->length = vp->length - 5;
+				t->username->vp_length = vp->vp_length - 5;
 
 				t->username->vp_strvalue = p = talloc_array(t->username, char,
-									    t->username->length + 1);
-				memcpy(p, vp->vp_octets + 5, t->username->length);
-				p[t->username->length] = 0;
+									    t->username->vp_length + 1);
+				memcpy(p, vp->vp_octets + 5, t->username->vp_length);
+				p[t->username->vp_length] = 0;
 
 				RDEBUG("Got tunneled identity of %s",
 				       t->username->vp_strvalue);

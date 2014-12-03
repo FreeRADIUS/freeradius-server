@@ -159,12 +159,12 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		case PW_TYPE_ABINARY:
 #endif
 		case PW_TYPE_OCTETS:
-			if (vp->length != check->length) {
+			if (vp->vp_length != check->vp_length) {
 				ret = 1; /* NOT equal */
 				break;
 			}
 			ret = memcmp(vp->vp_strvalue, check->vp_strvalue,
-				     vp->length);
+				     vp->vp_length);
 			break;
 
 		case PW_TYPE_STRING:

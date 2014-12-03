@@ -144,13 +144,13 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	Hex encoding. Length is even, and it's greater than
 	 *	twice the minimum length.
 	 */
-	if (!(vp->length & 0x01) && vp->length >= (2 * min_length)) {
+	if (!(vp->vp_length & 0x01) && vp->vp_length >= (2 * min_length)) {
 		size_t decoded;
 
-		decoded = fr_hex2bin(buffer, sizeof(buffer), vp->vp_strvalue, vp->length);
-		if (decoded == (vp->length >> 1)) {
+		decoded = fr_hex2bin(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
+		if (decoded == (vp->vp_length >> 1)) {
 			RDEBUG2("Normalizing %s from hex encoding, %zu bytes -> %zu bytes",
-				vp->da->name, vp->length, decoded);
+				vp->da->name, vp->vp_length, decoded);
 			pairmemcpy(vp, buffer, decoded);
 			return;
 		}
@@ -160,13 +160,13 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	Base 64 encoding.  It's at least 4/3 the original size,
 	 *	and we want to avoid division...
 	 */
-	if ((vp->length * 3) >= ((min_length * 4))) {
+	if ((vp->vp_length * 3) >= ((min_length * 4))) {
 		ssize_t decoded;
-		decoded = fr_base64_decode(buffer, sizeof(buffer), vp->vp_strvalue, vp->length);
+		decoded = fr_base64_decode(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
 		if (decoded < 0) return;
 		if (decoded >= (ssize_t) min_length) {
 			RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes",
-				vp->da->name, vp->length, decoded);
+				vp->da->name, vp->vp_length, decoded);
 			pairmemcpy(vp, buffer, decoded);
 			return;
 		}
@@ -206,7 +206,7 @@ static VALUE_PAIR *normify_with_header(REQUEST *request, VALUE_PAIR *vp)
 
 redo:
 	p = vp->vp_strvalue;
-	len = vp->length;
+	len = vp->vp_length;
 
 	/*
 	 *	Has a header {...} prefix
@@ -245,7 +245,7 @@ redo:
 		new = paircreate(request, attr, 0);
 		if (new->da->type == PW_TYPE_OCTETS) {
 			pairmemcpy(new, (uint8_t const *) q + 1, (len - hlen) + 1);
-			new->length = (len - hlen);	/* lie about the length */
+			new->vp_length = (len - hlen);	/* lie about the length */
 		} else {
 			pairstrcpy(new, q + 1);
 		}
@@ -273,7 +273,7 @@ redo:
 	decoded = fr_base64_decode(digest, sizeof(digest) - 1, vp->vp_strvalue, len);
 	if ((decoded > 0) && (digest[0] == '{') && (memchr(digest, '}', decoded) != NULL)) {
 		RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes",
-			vp->da->name, vp->length, decoded);
+			vp->da->name, vp->vp_length, decoded);
 		/*
 		 *	Password-With-Header is a string attribute.
 		 *	Even though we're handling binary data, the buffer
@@ -281,7 +281,7 @@ redo:
 		 */
 		digest[decoded] = '\0';
 		pairmemcpy(vp, digest, decoded + 1);
-		vp->length = decoded;		/* lie about the length */
+		vp->vp_length = decoded;		/* lie about the length */
 
 		goto redo;
 	}
@@ -488,10 +488,10 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t *inst, REQUE
 		RDEBUG3("Comparing with \"known good\" Cleartext-Password");
 	}
 
-	if ((vp->length != request->password->length) ||
+	if ((vp->vp_length != request->password->vp_length) ||
 	    (rad_digest_cmp(vp->vp_octets,
 			    request->password->vp_octets,
-			    vp->length) != 0)) {
+			    vp->vp_length) != 0)) {
 		REDEBUG("Cleartext password does not match \"known good\" password");
 		return RLM_MODULE_REJECT;
 	}
@@ -524,17 +524,17 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_md5(rlm_pap_t *inst, REQUEST *reque
 	if (inst->normify) {
 		normify(request, vp, 16);
 	}
-	if (vp->length != 16) {
+	if (vp->vp_length != 16) {
 		REDEBUG("\"known-good\" MD5 password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
 	fr_md5_init(&md5_context);
 	fr_md5_update(&md5_context, request->password->vp_octets,
-		     request->password->length);
+		     request->password->vp_length);
 	fr_md5_final(digest, &md5_context);
 
-	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
+	if (rad_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("MD5 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -553,15 +553,15 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t *inst, REQUEST *requ
 	if (inst->normify) {
 		normify(request, vp, 16);
 	}
-	if (vp->length <= 16) {
+	if (vp->vp_length <= 16) {
 		REDEBUG("\"known-good\" SMD5-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
 	fr_md5_init(&md5_context);
 	fr_md5_update(&md5_context, request->password->vp_octets,
-		     request->password->length);
-	fr_md5_update(&md5_context, &vp->vp_octets[16], vp->length - 16);
+		     request->password->vp_length);
+	fr_md5_update(&md5_context, &vp->vp_octets[16], vp->vp_length - 16);
 	fr_md5_final(digest, &md5_context);
 
 	/*
@@ -585,17 +585,17 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t *inst, REQUEST *reque
 	if (inst->normify) {
 		normify(request, vp, 20);
 	}
-	if (vp->length != 20) {
+	if (vp->vp_length != 20) {
 		REDEBUG("\"known-good\" SHA1-password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
 	fr_sha1_init(&sha1_context);
 	fr_sha1_update(&sha1_context, request->password->vp_octets,
-		      request->password->length);
+		      request->password->vp_length);
 	fr_sha1_final(digest,&sha1_context);
 
-	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
+	if (rad_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("SHA1 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -613,15 +613,15 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t *inst, REQUEST *requ
 	if (inst->normify) {
 		normify(request, vp, 20);
 	}
-	if (vp->length <= 20) {
+	if (vp->vp_length <= 20) {
 		REDEBUG("\"known-good\" SSHA-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
 	fr_sha1_init(&sha1_context);
-	fr_sha1_update(&sha1_context, request->password->vp_octets, request->password->length);
+	fr_sha1_update(&sha1_context, request->password->vp_octets, request->password->vp_length);
 
-	fr_sha1_update(&sha1_context, &vp->vp_octets[20], vp->length - 20);
+	fr_sha1_update(&sha1_context, &vp->vp_octets[20], vp->vp_length - 20);
 	fr_sha1_final(digest, &sha1_context);
 
 	if (rad_digest_cmp(digest, vp->vp_octets, 20) != 0) {
@@ -651,7 +651,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 	 *	All the SHA-2 algorithms produce digests of different lengths,
 	 *	so it's trivial to determine which EVP_MD to use.
 	 */
-	switch (vp->length) {
+	switch (vp->vp_length) {
 	/* SHA-224 */
 	case 28:
 		name = "SHA-224";
@@ -678,19 +678,19 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 
 	default:
 		REDEBUG("\"known good\" digest length (%zu) does not match output length of any SHA-2 digests",
-			vp->length);
+			vp->vp_length);
 		return RLM_MODULE_INVALID;
 	}
 
 	ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(ctx, md, NULL);
-	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->length);
+	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->vp_length);
 	EVP_DigestFinal_ex(ctx, digest, &digestlen);
 	EVP_MD_CTX_destroy(ctx);
 
-	fr_assert((size_t) digestlen == vp->length);	/* This would be an OpenSSL bug... */
+	fr_assert((size_t) digestlen == vp->vp_length);	/* This would be an OpenSSL bug... */
 
-	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
+	if (rad_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
 		return RLM_MODULE_REJECT;
 	}
@@ -714,12 +714,12 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t *inst, REQUEST *reques
 		normify(request, vp, 16);
 	}
 
-	if (vp->length != 16) {
+	if (vp->vp_length != 16) {
 		REDEBUG("\"known good\" NT-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
 
-	len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password), request->password->vp_strvalue, request->password->length);
+	len = fr_utf8_to_ucs2(ucs2_password, sizeof(ucs2_password), request->password->vp_strvalue, request->password->vp_length);
 	if (len < 0) {
 		REDEBUG("User-Password is not in UCS2 format");
 		return RLM_MODULE_INVALID;
@@ -727,7 +727,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t *inst, REQUEST *reques
 
 	fr_md4_calc(digest, (uint8_t *) ucs2_password, len);
 
-	if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
+	if (rad_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("NT digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -747,7 +747,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t *inst, REQUEST *reques
 	if (inst->normify) {
 		normify(request, vp, 16);
 	}
-	if (vp->length != 16) {
+	if (vp->vp_length != 16) {
 		REDEBUG("\"known good\" LM-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
@@ -757,8 +757,8 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_lm(rlm_pap_t *inst, REQUEST *reques
 		return RLM_MODULE_FAIL;
 	}
 
-	if ((fr_hex2bin(digest, sizeof(digest), charbuf, len) != vp->length) ||
-	    (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0)) {
+	if ((fr_hex2bin(digest, sizeof(digest), charbuf, len) != vp->vp_length) ||
+	    (rad_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0)) {
 		REDEBUG("LM digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
@@ -775,7 +775,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, 
 
 	RDEBUG("Using NT-MTA-MD5-Password");
 
-	if (vp->length != 64) {
+	if (vp->vp_length != 64) {
 		REDEBUG("\"known good\" NS-MTA-MD5-Password has incorrect length");
 		return RLM_MODULE_INVALID;
 	}
@@ -783,7 +783,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, 
 	/*
 	 *	Sanity check the value of NS-MTA-MD5-Password
 	 */
-	if (fr_hex2bin(digest, sizeof(digest), vp->vp_strvalue, vp->length) != 16) {
+	if (fr_hex2bin(digest, sizeof(digest), vp->vp_strvalue, vp->vp_length) != 16) {
 		REDEBUG("\"known good\" NS-MTA-MD5-Password has invalid value");
 		return RLM_MODULE_INVALID;
 	}
@@ -793,7 +793,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ns_mta_md5(UNUSED rlm_pap_t *inst, 
 	 *
 	 *	This really: sizeof(buff) - 2 - 2*32 - strlen(passwd)
 	 */
-	if (request->password->length >= (sizeof(buff) - 2 - 2 * 32)) {
+	if (request->password->vp_length >= (sizeof(buff) - 2 - 2 * 32)) {
 		REDEBUG("\"known good\" NS-MTA-MD5-Password is too long");
 		return RLM_MODULE_INVALID;
 	}
@@ -848,7 +848,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/*
 	 *	The user MUST supply a non-zero-length password.
 	 */
-	if (request->password->length == 0) {
+	if (request->password->vp_length == 0) {
 		REDEBUG("Password must not be empty");
 		return RLM_MODULE_INVALID;
 	}

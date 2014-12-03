@@ -129,8 +129,8 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		/*
 		 *	Copy the Challenge, success, or error over.
 		 */
-		memcpy(ptr, reply->vp_octets, reply->length);
-		memcpy((ptr + reply->length), handler->identity, strlen(handler->identity));
+		memcpy(ptr, reply->vp_octets, reply->vp_length);
+		memcpy((ptr + reply->vp_length), handler->identity, strlen(handler->identity));
 		break;
 
 	case PW_MSCHAP2_SUCCESS:
@@ -167,7 +167,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 
 	case PW_MSCHAP_ERROR:
 		DEBUG2("MSCHAP Failure\n");
-		length = 4 + reply->length - 1;
+		length = 4 + reply->vp_length - 1;
 		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
 
 		/*
@@ -187,7 +187,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *	Copy the entire failure message.
 		 */
 		memcpy((eap_ds->request->type.data + 4),
-		       reply->vp_strvalue + 1, reply->length - 1);
+		       reply->vp_strvalue + 1, reply->vp_length - 1);
 		break;
 
 	default:
@@ -217,8 +217,8 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
 	/*
 	 *	Get a random challenge.
 	 */
-	challenge->length = MSCHAPV2_CHALLENGE_LEN;
-	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->length);
+	challenge->vp_length = MSCHAPV2_CHALLENGE_LEN;
+	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->vp_length);
 	for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) {
 		p[i] = fr_rand();
 	}
@@ -403,9 +403,9 @@ static int CC_HINT(nonnull) mschapv2_authenticate(void *arg, eap_handler_t *hand
 			pairmemcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
 			cpw = pairmake_packet("MS-CHAP2-CPW", NULL, T_OP_EQ);
-			cpw->length = 68;
+			cpw->vp_length = 68;
 
-			cpw->vp_octets = p = talloc_array(cpw, uint8_t, cpw->length);
+			cpw->vp_octets = p = talloc_array(cpw, uint8_t, cpw->vp_length);
 			p[0] = 7;
 			p[1] = mschap_id;
 			memcpy(p + 2, eap_ds->response->type.data + 520, 66);
@@ -421,9 +421,9 @@ static int CC_HINT(nonnull) mschapv2_authenticate(void *arg, eap_handler_t *hand
 					to_copy = 243;
 
 				nt_enc = pairmake_packet("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
-				nt_enc->length = 4 + to_copy;
+				nt_enc->vp_length = 4 + to_copy;
 
-				nt_enc->vp_octets = p = talloc_array(nt_enc, uint8_t, nt_enc->length);
+				nt_enc->vp_octets = p = talloc_array(nt_enc, uint8_t, nt_enc->vp_length);
 
 				p[0] = 6;
 				p[1] = mschap_id;
@@ -560,8 +560,8 @@ failure:
 	if (!response) {
 		return 0;
 	}
-	response->length = MSCHAPV2_RESPONSE_LEN;
-	response->vp_octets = p = talloc_array(response, uint8_t, response->length);
+	response->vp_length = MSCHAPV2_RESPONSE_LEN;
+	response->vp_octets = p = talloc_array(response, uint8_t, response->vp_length);
 
 	p[0] = eap_ds->response->type.data[1];
 	p[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
@@ -575,12 +575,12 @@ failure:
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */
-	name->length = length - 49 - 5;
-	name->vp_strvalue = q = talloc_array(name, char, name->length + 1);
+	name->vp_length = length - 49 - 5;
+	name->vp_strvalue = q = talloc_array(name, char, name->vp_length + 1);
 	memcpy(q,
 	       &eap_ds->response->type.data[4 + MSCHAPV2_RESPONSE_LEN],
-	       name->length);
-	q[name->length] = '\0';
+	       name->vp_length);
+	q[name->vp_length] = '\0';
 
 packet_ready:
 

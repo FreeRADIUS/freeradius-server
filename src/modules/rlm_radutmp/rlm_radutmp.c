@@ -200,7 +200,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		     == NULL || vp->vp_date == 0)
 			check1 = 1;
 		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_ID, 0, TAG_ANY))
-		     != NULL && vp->length == 8 &&
+		     != NULL && vp->vp_length == 8 &&
 		     memcmp(vp->vp_strvalue, "00000000", 8) == 0)
 			check2 = 1;
 		if (check1 == 0 || check2 == 0) {
@@ -252,14 +252,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 			 *	If length > 8, only store the
 			 *	last 8 bytes.
 			 */
-			off = vp->length - sizeof(ut.session_id);
+			off = vp->vp_length - sizeof(ut.session_id);
 			/*
 			 * 	Ascend is br0ken - it adds a \0
 			 * 	to the end of any string.
 			 * 	Compensate.
 			 */
-			if (vp->length > 0 &&
-			    vp->vp_strvalue[vp->length - 1] == 0)
+			if (vp->vp_length > 0 &&
+			    vp->vp_strvalue[vp->vp_length - 1] == 0)
 				off--;
 			if (off < 0) off = 0;
 			memcpy(ut.session_id, vp->vp_strvalue + off,

@@ -367,13 +367,13 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 
 		for (i = 0; i < conf->list_da_num; i++) {
 			vp = pair_find_by_da(packet->vps, conf->list_da[i], TAG_ANY);
-			if (vp && (vp->length > 0)) {
+			if (vp && (vp->vp_length > 0)) {
 				if (conf->list_da[i]->type == PW_TYPE_STRING) {
 					*p++ = '"';
 					s--;
 					if (s <= 0) return;
 
-					len = rs_prints_csv(p, s, vp->vp_strvalue, vp->length);
+					len = rs_prints_csv(p, s, vp->vp_strvalue, vp->vp_length);
 					p += len;
 					s -= len;
 					if (s <= 0) return;
@@ -1715,7 +1715,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 		if (vp->type == VT_XLAT) {
 			vp->type = VT_DATA;
 			vp->vp_strvalue = vp->value.xlat;
-			vp->length = talloc_array_length(vp->vp_strvalue) - 1;
+			vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 		}
 	}
 

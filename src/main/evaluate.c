@@ -525,7 +525,7 @@ do {\
 			rhs_type = vp->da->type;
 			rhs_enumv = vp->da;
 			rhs = &vp->data;
-			rhs_len = vp->length;
+			rhs_len = vp->vp_length;
 
 			CHECK_INT_CAST(lhs, rhs);
 			CAST(lhs);
@@ -662,7 +662,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			 *	if we get at least one set of operands that
 			 *	evaluates to true.
 			 */
-	     		rcode = cond_normalise_values(request, c, vp->da->type, vp->da, &vp->data, vp->length);
+	     		rcode = cond_normalise_values(request, c, vp->da->type, vp->da, &vp->data, vp->vp_length);
 	     		if (rcode != 0) break;
 		}
 	}

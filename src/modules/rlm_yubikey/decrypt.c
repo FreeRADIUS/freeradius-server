@@ -38,8 +38,8 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 		return RLM_MODULE_INVALID;
 	}
 
-	if (key->length != YUBIKEY_KEY_SIZE) {
-		REDEBUG("Yubikey-Key length incorrect, expected %u got %zu", YUBIKEY_KEY_SIZE, key->length);
+	if (key->vp_length != YUBIKEY_KEY_SIZE) {
+		REDEBUG("Yubikey-Key length incorrect, expected %u got %zu", YUBIKEY_KEY_SIZE, key->vp_length);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -87,7 +87,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 		return RLM_MODULE_FAIL;
 	}
 	vp->vp_integer = (token.tstph << 16) | token.tstpl;
-	vp->length = 4;
+	vp->vp_length = 4;
 
 	/*
 	 *	Token random
@@ -99,7 +99,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 		return RLM_MODULE_FAIL;
 	}
 	vp->vp_integer = token.rnd;
-	vp->length = 4;
+	vp->vp_length = 4;
 
 	/*
 	 *	Combine the two counter fields together so we can do
@@ -114,7 +114,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 		return RLM_MODULE_FAIL;
 	}
 	vp->vp_integer = counter;
-	vp->length = 4;
+	vp->vp_length = 4;
 
 	/*
 	 *	Now we check for replay attacks

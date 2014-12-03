@@ -46,7 +46,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) continue;
 		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) continue;
 
-		total += 2 + vp->length;
+		total += 2 + vp->vp_length;
 	}
 
 	/*
@@ -252,7 +252,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	for (vp =fr_cursor_init(&cursor, &first);
 	     vp != NULL;
 	     vp = fr_cursor_next_by_num(&cursor, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY)) {
-		length += vp->length;
+		length += vp->vp_length;
 	}
 
 	if (length < 4) {
@@ -273,8 +273,8 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	for (vp = fr_cursor_init(&cursor, &first);
 	     vp != NULL;
 	     vp = fr_cursor_next_by_num(&cursor, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY)) {
-		memcpy(ptr, vp->vp_octets, vp->length);
-		ptr += vp->length;
+		memcpy(ptr, vp->vp_octets, vp->vp_length);
+		ptr += vp->vp_length;
 	}
 
 	return packet;

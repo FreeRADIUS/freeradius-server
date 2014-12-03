@@ -134,7 +134,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 	 */
 	state = pairmake_reply("State", session->state, T_OP_EQ);
 	if (!state) return -1;
-	state->length = SECURID_STATE_LEN;
+	state->vp_length = SECURID_STATE_LEN;
 
 	status = rbtree_insert(inst->session_tree, session);
 	if (status) {
@@ -197,8 +197,8 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 		return NULL;
 	}
 
-	if (state->length != SECURID_STATE_LEN) {
-	  ERROR("rlm_securid: Invalid State variable. length=%d", (int) state->length);
+	if (state->vp_length != SECURID_STATE_LEN) {
+	  ERROR("rlm_securid: Invalid State variable. length=%d", (int) state->vp_length);
 		return NULL;
 	}
 

@@ -100,7 +100,7 @@ static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet, RADIU
 	vp = pair_find_by_da(packet->vps, inst->da, TAG_ANY);
 	if (!vp) return RLM_MODULE_NOOP;
 
-	hash = fr_hash(&vp->data, vp->length);
+	hash = fr_hash(&vp->data, vp->vp_length);
 	hash &= 0xff;		/* ensure it's 0..255 */
 	value = hash;
 
