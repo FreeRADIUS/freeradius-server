@@ -206,6 +206,9 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, c
 			break;
 		}
 
+		/*
+		 *	Escape the quotation character, if we have one.
+		 */
 		if (quote && (*p == quote)) {
 			sp = quote;
 		} else		/* do the switch statement */
@@ -213,25 +216,31 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, c
 		switch (*p) {
 		case '\\':
 			/*
-			 *	If the NEXT character is something a
-			 *	parser would get excited about, we
+			 *	If the next character is a quote, we
 			 *	need to escape the backslash.
-			 *	Otherwise, it's just a backslash.
 			 */
-			switch (p[1]) {
-			default:
-				if (p[1] != quote) {
-					sp = '\0';
-					break;
-				}
-				/* FALL-THROUGH */
+			if (quote && (p[1] == quote)) {
+				sp = '\\';
+			} else
 
+
+				/*
+				 *	Ensure that "\r" isn't
+				 *	interpreted as '\r', but
+				 *	instead as "\\r"
+				 */
+			switch (p[1]) {
 			case 'r':
 			case 't':
 			case 'n':
 			case '\\':
 				sp = '\\';
 				break;
+
+			default:
+				sp = '\0';
+				break;
+
 			}
 			break;
 
