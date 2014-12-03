@@ -1023,7 +1023,6 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 	char c;
 	char const *p;
 	char *q = buffer;
-	char *end;
 
 	if (!vpt) {
 		*buffer = '\0';
@@ -1169,57 +1168,18 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 	}
 
 	if (bufsize <= 3) {
-	no_room:
 		*buffer = '\0';
 		return 0;
 	}
 
-	p = vpt->name;
 	*(q++) = c;
-	end = buffer + bufsize - 3; /* quotes + EOS */
 
-	while (*p && (q < end)) {
-		if (*p == c) {
-			if ((end - q) < 4) goto no_room; /* escape, char, quote, EOS */
-			*(q++) = '\\';
-			*(q++) = *(p++);
-			continue;
-		}
+	/*
+	 *	Print it with appropriate escaping
+	 */
+	len = fr_print_string(vpt->name, 0, q, bufsize - 3, c);
 
-		switch (*p) {
-		case '\\':
-			if ((end - q) < 4) goto no_room;
-			*(q++) = '\\';
-			*(q++) = *(p++);
-			break;
-
-		case '\r':
-			if ((end - q) < 4) goto no_room;
-			*(q++) = '\\';
-			*(q++) = 'r';
-			p++;
-			break;
-
-		case '\n':
-			if ((end - q) < 4) goto no_room;
-			*(q++) = '\\';
-			*(q++) = 'r';
-			p++;
-			break;
-
-		case '\t':
-			if ((end - q) < 4) goto no_room;
-			*(q++) = '\\';
-			*(q++) = 't';
-			p++;
-			break;
-
-		default:
-			*(q++) = *(p++);
-			break;
-		}
-	}
-
+	q += len;
 	*(q++) = c;
 	*q = '\0';
 
