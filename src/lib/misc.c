@@ -849,9 +849,7 @@ int ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 
 		if (af == AF_UNSPEC) af = AF_INET;
 
-		if (!inet_pton(af, hostname, &(out->ipaddr))) {
-			return -1;
-		}
+		if (!inet_pton(af, hostname, &(out->ipaddr))) return -1;
 
 		out->af = af;
 		return 0;
@@ -869,8 +867,23 @@ int ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 	}
 
 	if ((rcode = getaddrinfo(hostname, NULL, &hints, &res)) != 0) {
-		fr_strerror_printf("ip_hton: %s", gai_strerror(rcode));
-		return -1;
+		switch (af) {
+		default:
+		case AF_UNSPEC:
+			fr_strerror_printf("Failed resolving \"%s\" to IP address: %s",
+					   hostname, gai_strerror(rcode));
+			return -1;
+
+		case AF_INET:
+			fr_strerror_printf("Failed resolving \"%s\" to IPv4 address: %s",
+					   hostname, gai_strerror(rcode));
+			return -1;
+
+		case AF_INET6:
+			fr_strerror_printf("Failed resolving \"%s\" to IPv6 address: %s",
+					   hostname, gai_strerror(rcode));
+			return -1;
+		}
 	}
 
 	for (ai = res; ai; ai = ai->ai_next) {
