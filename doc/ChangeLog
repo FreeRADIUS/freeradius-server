@@ -13,6 +13,8 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	  See "man unlang" for details.
 	* Allow for redundant string expansions.  See the
 	  "instantiate" section of radiusd.conf.
+	* When checking IP addresses in conditions, make the
+	  right side be parsed as an IP prefix.
 
 	Bug fixes
 	* PEAP works again.  As does proxying EAP-MSCHAPv2
@@ -33,6 +35,8 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	* Run "Post-Auth-Type Reject" if the request was rejected
 	  in post-auth
 	* Write "Login OK" only if the post-auth section passed.
+	* Create TLS-Cert-* certificates, even when EAP session
+	  caching is disabled.
 
 FreeRADIUS 3.0.5 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	Feature improvements
