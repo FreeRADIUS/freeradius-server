@@ -730,7 +730,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			     vp = fr_cursor_next(&cursor)) {
 			 	if (!fr_assignment_op[vp->op]) continue;
 
-			 	rdebug_pair(L_DBG_LVL_2, request, vp);
+			 	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 			}
 			REXDENT();
 			radius_pairmove(request, &request->config_items, check_tmp, true);
@@ -1101,7 +1101,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		     vp = fr_cursor_next(&cursor)) {
 			if (!fr_assignment_op[vp->op]) continue;
 
-			rdebug_pair(2, request, vp);
+			rdebug_pair(2, request, vp, NULL);
 		}
 		REXDENT();
 		radius_pairmove(request, &request->config_items, check_tmp, true);

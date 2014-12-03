@@ -80,7 +80,7 @@ char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
  *	they're running inside of the server.  And we don't (yet)
  *	have a "libfreeradius-server", or "libfreeradius-util".
  */
-log_debug_t debug_flag = 0;
+log_lvl_t debug_flag = 0;
 struct main_config_t main_config;
 
 bool check_config = false;

@@ -504,7 +504,7 @@ static int CC_HINT(format (printf, 2, 3)) radlog_always(log_type_t type, char co
 	return r;
 }
 
-inline bool debug_enabled(log_type_t type, log_debug_t lvl)
+inline bool debug_enabled(log_type_t type, log_lvl_t lvl)
 {
 	if ((type & L_DBG) && (debug_flag != 0) && (lvl > debug_flag)) return true;
 
@@ -518,7 +518,7 @@ inline bool rate_limit_enabled(void)
 	return false;
 }
 
-inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
+inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *request)
 {
 	/*
 	 *	It's a debug class message, note this doesn't mean it's a debug type message.
@@ -539,7 +539,7 @@ inline bool radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *requ
 	return true;
 }
 
-void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, va_list ap)
+void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap)
 {
 	size_t len = 0;
 	char const *filename = default_log.file;
@@ -695,7 +695,7 @@ void vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char co
  * @param request The current request.
  * @param msg format string.
  */
-void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+void radlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
 
@@ -723,7 +723,7 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
  * @param request The current request.
  * @param msg format string.
  */
-void radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+void radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
 
@@ -746,7 +746,7 @@ void radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, ch
  * @param idx The position of the marker relative to the string.
  * @param error What the parse error was.
  */
-void radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
+void radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 			   char const *fmt, size_t idx, char const *error)
 {
 	char const *prefix = "";

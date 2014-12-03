@@ -51,7 +51,7 @@ typedef enum log_debug {
 	L_DBG_LVL_2,		//!< 2nd highest priority debug messages (-xx | -X).
 	L_DBG_LVL_3,		//!< 3rd highest priority debug messages (-xxx | -Xx).
 	L_DBG_LVL_MAX		//!< Lowest priority debug messages (-xxxx | -Xxx).
-} log_debug_t;
+} log_lvl_t;
 
 typedef enum log_dst {
 	L_DST_STDOUT = 0,	//!< Log to stdout.
@@ -71,7 +71,7 @@ typedef struct fr_log_t {
 	char const	*debug_file;	//!< Path to debug log file.
 } fr_log_t;
 
-typedef		void (*radlog_func_t)(log_type_t lvl, log_debug_t priority, REQUEST *, char const *, va_list ap);
+typedef		void (*radlog_func_t)(log_type_t lvl, log_lvl_t priority, REQUEST *, char const *, va_list ap);
 
 extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
@@ -84,23 +84,23 @@ int	vradlog(log_type_t lvl, char const *fmt, va_list ap)
 int	radlog(log_type_t lvl, char const *fmt, ...)
 	CC_HINT(format (printf, 2, 3)) CC_HINT(nonnull (2));
 
-bool	debug_enabled(log_type_t type, log_debug_t lvl);
+bool	debug_enabled(log_type_t type, log_lvl_t lvl);
 
 bool	rate_limit_enabled(void);
 
-bool	radlog_debug_enabled(log_type_t type, log_debug_t lvl, REQUEST *request)
+bool	radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *request)
 	CC_HINT(nonnull);
 
-void	vradlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, va_list ap)
+void	vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap)
 	CC_HINT(format (printf, 4, 0)) CC_HINT(nonnull (3, 4));
 
-void	radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+void	radlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
 
-void	radlog_request_error(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
+void	radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 	CC_HINT(format (printf, 4, 5)) CC_HINT(nonnull (3, 4));
 
-void	radlog_request_marker(log_type_t type, log_debug_t lvl, REQUEST *request,
+void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 			      char const *fmt, size_t indent, char const *error)
 	CC_HINT(nonnull);
 

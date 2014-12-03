@@ -289,7 +289,7 @@ struct rad_request {
 		radlog_func_t	func;		//!< Function to call to output log messages about this
 						//!< request.
 
-		log_debug_t	lvl;		//!< Request options, currently just holds the debug level or
+		log_lvl_t	lvl;		//!< Request options, currently just holds the debug level or
 						//!< the request.
 
 		uint8_t		indent;		//!< By how much to indent log messages. uin8_t so it's obvious
@@ -483,7 +483,7 @@ typedef enum request_fail {
  *	We really shouldn't have this many.
  */
 extern char const	*progname;
-extern log_debug_t	debug_flag;
+extern log_lvl_t	debug_flag;
 extern char const	*radacct_dir;
 extern char const	*radlog_dir;
 extern char const	*radlib_dir;
@@ -519,9 +519,9 @@ int		session_zap(REQUEST *request, uint32_t nasaddr,
 /* radiusd.c */
 #undef debug_pair
 void		debug_pair(VALUE_PAIR *);
-void		rdebug_pair(int level, REQUEST *, VALUE_PAIR *);
-void 		rdebug_pair_list(int level, REQUEST *, VALUE_PAIR *, char const *);
-void		rdebug_proto_pair_list(int level, REQUEST *, VALUE_PAIR *);
+void		rdebug_pair(log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
+void 		rdebug_pair_list(log_lvl_t level, REQUEST *, VALUE_PAIR *, char const *);
+void		rdebug_proto_pair_list(log_lvl_t level, REQUEST *, VALUE_PAIR *);
 int		log_err (char *);
 
 /* util.c */

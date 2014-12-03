@@ -1435,7 +1435,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
 							dst.tmpl_da, &flags, element);
 				if (!vp) continue;
 			}
-			rdebug_pair(2, request, vp);
+			rdebug_pair(2, request, vp, NULL);
 			radius_pairmove(current, vps, vp, false);
 		/*
 		 *  If we call json_object_array_get_idx on something that's not an array
