@@ -675,8 +675,9 @@ void debug_pair(VALUE_PAIR *vp)
  * @param[in] level Debug level (1-4).
  * @param[in] request to read logging params from.
  * @param[in] vp to print.
+ * @param[in] prefix (optional).
  */
-void rdebug_pair(int level, REQUEST *request, VALUE_PAIR *vp)
+void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	char buffer[256];
 	if (!vp || !request || !request->log.func) return;
@@ -684,7 +685,7 @@ void rdebug_pair(int level, REQUEST *request, VALUE_PAIR *vp)
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
 	vp_prints(buffer, sizeof(buffer), vp);
-	RDEBUGX(level, "%s", buffer);
+	RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 }
 
 /** Print a list of VALUE_PAIRs.
@@ -694,7 +695,7 @@ void rdebug_pair(int level, REQUEST *request, VALUE_PAIR *vp)
  * @param[in] vp to print.
  * @param[in] prefix (optional).
  */
-void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
+void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	vp_cursor_t cursor;
 	char buffer[256];
@@ -720,7 +721,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp, char const *p
  * @param[in] request to read logging params from.
  * @param[in] vp to print.
  */
-void rdebug_proto_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
+void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp)
 {
 	vp_cursor_t cursor;
 	char buffer[256];

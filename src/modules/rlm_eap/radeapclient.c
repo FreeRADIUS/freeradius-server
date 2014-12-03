@@ -62,7 +62,7 @@ char const *radiusd_version = "";
 #include <freeradius-devel/tls.h>
 #endif
 
-log_debug_t debug_flag = 0;
+log_lvl_t debug_flag = 0;
 char password[256];
 
 struct eapsim_keys eapsim_mk;

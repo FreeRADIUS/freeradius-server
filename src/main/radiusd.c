@@ -60,7 +60,7 @@ char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 char const *radlib_dir = NULL;
 bool log_stripped_names;
-log_debug_t debug_flag = 0;
+log_lvl_t debug_flag = 0;
 bool check_config = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
