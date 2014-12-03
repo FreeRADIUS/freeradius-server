@@ -445,7 +445,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	     vp = fr_cursor_next(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
 		case PW_USER_NAME:
-			if (vp->length >= sizeof(ut.ut_name)) {
+			if (vp->vp_length >= sizeof(ut.ut_name)) {
 				memcpy(ut.ut_name, vp->vp_strvalue, sizeof(ut.ut_name));
 			} else {
 				strlcpy(ut.ut_name, vp->vp_strvalue, sizeof(ut.ut_name));

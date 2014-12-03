@@ -127,14 +127,14 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 		break;
 
 	case PWE_CHAP:
-		if (cvp->length > 16) {
+		if (cvp->vp_length > 16) {
 			AUTH("rlm_otp: CHAP challenge for [%s] "
 			       "too long", username);
 
 			return RLM_MODULE_INVALID;
 		}
 
-		if (rvp->length != 17) {
+		if (rvp->vp_length != 17) {
 			AUTH("rlm_otp: CHAP response for [%s] "
 			      "wrong size", username);
 
@@ -142,49 +142,49 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 		}
 
 		(void) memcpy(otp_request.pwe.u.chap.challenge, cvp->vp_octets,
-			      cvp->length);
+			      cvp->vp_length);
 
-		otp_request.pwe.u.chap.clen = cvp->length;
+		otp_request.pwe.u.chap.clen = cvp->vp_length;
 		(void) memcpy(otp_request.pwe.u.chap.response, rvp->vp_octets,
-			      rvp->length);
+			      rvp->vp_length);
 
-		otp_request.pwe.u.chap.rlen = rvp->length;
+		otp_request.pwe.u.chap.rlen = rvp->vp_length;
 		break;
 
 	case PWE_MSCHAP:
-		if (cvp->length != 8) {
+		if (cvp->vp_length != 8) {
 			AUTH("rlm_otp: MS-CHAP challenge for "
 			       "[%s] wrong size", username);
 
 			return RLM_MODULE_INVALID;
 		}
 
-		if (rvp->length != 50) {
+		if (rvp->vp_length != 50) {
 			AUTH("rlm_otp: MS-CHAP response for [%s] "
 			       "wrong size", username);
 
 			return RLM_MODULE_INVALID;
 		}
 		(void) memcpy(otp_request.pwe.u.chap.challenge,
-			      cvp->vp_octets, cvp->length);
+			      cvp->vp_octets, cvp->vp_length);
 
-		otp_request.pwe.u.chap.clen = cvp->length;
+		otp_request.pwe.u.chap.clen = cvp->vp_length;
 
 		(void) memcpy(otp_request.pwe.u.chap.response,
-			      rvp->vp_octets, rvp->length);
+			      rvp->vp_octets, rvp->vp_length);
 
-		otp_request.pwe.u.chap.rlen = rvp->length;
+		otp_request.pwe.u.chap.rlen = rvp->vp_length;
 		break;
 
 	case PWE_MSCHAP2:
-		if (cvp->length != 16) {
+		if (cvp->vp_length != 16) {
 			AUTH("rlm_otp: MS-CHAP2 challenge for "
 				      "[%s] wrong size", username);
 
 			return RLM_MODULE_INVALID;
 		}
 
-		if (rvp->length != 50) {
+		if (rvp->vp_length != 50) {
 			AUTH("rlm_otp: MS-CHAP2 response for [%s] "
 			       "wrong size", username);
 
@@ -192,13 +192,13 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 		}
 
 		(void) memcpy(otp_request.pwe.u.chap.challenge, cvp->vp_octets,
-			      cvp->length);
+			      cvp->vp_length);
 
-		otp_request.pwe.u.chap.clen = cvp->length;
+		otp_request.pwe.u.chap.clen = cvp->vp_length;
 
 		(void) memcpy(otp_request.pwe.u.chap.response, rvp->vp_octets,
-			      rvp->length);
-		otp_request.pwe.u.chap.rlen = rvp->length;
+			      rvp->vp_length);
+		otp_request.pwe.u.chap.rlen = rvp->vp_length;
 		break;
 	} /* switch (otp_request.pwe.pwe) */
 

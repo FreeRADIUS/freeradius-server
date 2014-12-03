@@ -263,7 +263,7 @@ static state_entry_t *fr_state_create(RADIUS_PACKET *packet, state_entry_t *old)
 	 *	one we created above.
 	 */
 	if (vp) {
-		rad_assert(vp->length == sizeof(entry->state));
+		rad_assert(vp->vp_length == sizeof(entry->state));
 		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
 
 	} else {
@@ -309,7 +309,7 @@ static state_entry_t *fr_state_find(RADIUS_PACKET *packet)
 	vp = pairfind(packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!vp) return NULL;
 
-	if (vp->length != sizeof(my_entry.state)) return NULL;
+	if (vp->vp_length != sizeof(my_entry.state)) return NULL;
 
 	memcpy(my_entry.state, vp->vp_octets, sizeof(my_entry.state));
 

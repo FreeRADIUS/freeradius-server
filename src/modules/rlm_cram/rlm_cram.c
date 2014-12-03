@@ -147,35 +147,35 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void * instance, REQ
 	}
 	switch (authtype->vp_integer){
 		case 2:				/*	CRAM-MD5	*/
-			if(challenge->length < 5 || response->length != 16) {
+			if(challenge->vp_length < 5 || response->vp_length != 16) {
 				AUTH("rlm_cram: invalid MD5 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_md5_digest(buffer, challenge->vp_octets, challenge->length, password->vp_strvalue);
+			calc_md5_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
 			if(!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
 			break;
 		case 3:				/*	APOP	*/
-			if(challenge->length < 5 || response->length != 16) {
+			if(challenge->vp_length < 5 || response->vp_length != 16) {
 				AUTH("rlm_cram: invalid APOP challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_apop_digest(buffer, challenge->vp_octets, challenge->length, password->vp_strvalue);
+			calc_apop_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
 			if(!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
 			break;
 		case 8:				/*	CRAM-MD4	*/
-			if(challenge->length < 5 || response->length != 16) {
+			if(challenge->vp_length < 5 || response->vp_length != 16) {
 				AUTH("rlm_cram: invalid MD4 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_md4_digest(buffer, challenge->vp_octets, challenge->length, password->vp_strvalue);
+			calc_md4_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
 			if(!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
 			break;
 		case 9:				/*	CRAM-SHA1	*/
-			if(challenge->length < 5 || response->length != 20) {
+			if(challenge->vp_length < 5 || response->vp_length != 20) {
 				AUTH("rlm_cram: invalid MD4 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_sha1_digest(buffer, challenge->vp_octets, challenge->length, password->vp_strvalue);
+			calc_sha1_digest(buffer, challenge->vp_octets, challenge->vp_length, password->vp_strvalue);
 			if(!memcmp(buffer, response->vp_octets, 20)) return RLM_MODULE_OK;
 			break;
 		default:

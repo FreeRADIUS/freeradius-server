@@ -191,7 +191,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		 *	MS-CHAP-Challenges are 8 octets,
 		 *	for MS-CHAPv1
 		 */
-		if (chap_challenge->length == 8) {
+		if (chap_challenge->vp_length == 8) {
 			RDEBUG2("mschap1: %02x", chap_challenge->vp_octets[0]);
 			data = chap_challenge->vp_octets;
 			data_len = 8;
@@ -200,7 +200,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			 *	MS-CHAP-Challenges are 16 octets,
 			 *	for MS-CHAPv2.
 			 */
-		} else if (chap_challenge->length == 16) {
+		} else if (chap_challenge->vp_length == 16) {
 			VALUE_PAIR *name_attr, *response_name;
 			char const *username_string;
 
@@ -219,7 +219,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			/*
 			 *	Responses are 50 octets.
 			 */
-			if (response->length < 50) {
+			if (response->vp_length < 50) {
 				REDEBUG("MS-CHAP-Response has the wrong format");
 				return -1;
 			}
@@ -261,8 +261,9 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			}
 
 			if (response_name &&
-			    ((user_name->length != response_name->length) ||
-			     (strncasecmp(user_name->vp_strvalue, response_name->vp_strvalue, user_name->length) != 0))) {
+			    ((user_name->vp_length != response_name->vp_length) ||
+			     (strncasecmp(user_name->vp_strvalue, response_name->vp_strvalue,
+			     		  user_name->vp_length) != 0))) {
 				RWDEBUG2("User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2",
 					 user_name->vp_strvalue, response_name->vp_strvalue);
 			}
@@ -607,18 +608,18 @@ void mschap_add_reply(REQUEST *request, unsigned char ident,
 	}
 
 	/* Account for the ident byte */
-	vp->length = len + 1;
+	vp->vp_length = len + 1;
 	if (vp->da->type == PW_TYPE_STRING) {
 		char *p;
 
-		vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
-		p[vp->length] = '\0';	/* Always \0 terminate */
+		vp->vp_strvalue = p = talloc_array(vp, char, vp->vp_length + 1);
+		p[vp->vp_length] = '\0';	/* Always \0 terminate */
 		p[0] = ident;
 		memcpy(p + 1, value, len);
 	} else {
 		uint8_t *p;
 
-		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
 		p[0] = ident;
 		memcpy(p + 1, value, len);
 	}
@@ -871,7 +872,7 @@ ntlm_auth_err:
 		/*
 		 *  Decrypt the blob
 		 */
-		RC4_set_key(&key, nt_password->length, nt_password->vp_octets);
+		RC4_set_key(&key, nt_password->vp_length, nt_password->vp_octets);
 		RC4(&key, 516, new_nt_password, nt_pass_decrypted);
 
 		/*
@@ -905,8 +906,8 @@ ntlm_auth_err:
 		 *  cleartext password as it avoids unicode hassles.
 		 */
 		new_hash = pairmake_packet("MS-CHAP-New-NT-Password", NULL, T_OP_EQ);
-		new_hash->length = NT_DIGEST_LENGTH;
-		new_hash->vp_octets = q = talloc_array(new_hash, uint8_t, new_hash->length);
+		new_hash->vp_length = NT_DIGEST_LENGTH;
+		new_hash->vp_octets = q = talloc_array(new_hash, uint8_t, new_hash->vp_length);
 		fr_md4_calc(q, p, passlen);
 
 		/*
@@ -927,7 +928,7 @@ ntlm_auth_err:
 		 *  First pass: get the length of the converted string.
 		 */
 		new_pass = pairmake_packet("MS-CHAP-New-Cleartext-Password", NULL, T_OP_EQ);
-		new_pass->length = 0;
+		new_pass->vp_length = 0;
 
 		i = 0;
 		while (i < passlen) {
@@ -940,15 +941,15 @@ ntlm_auth_err:
 			 *  Gah. nasty. maybe we should just pull in iconv?
 			 */
 			if (c < 0x7f) {
-				new_pass->length++;
+				new_pass->vp_length++;
 			} else if (c < 0x7ff) {
-				new_pass->length += 2;
+				new_pass->vp_length += 2;
 			} else {
-				new_pass->length += 3;
+				new_pass->vp_length += 3;
 			}
 		}
 
-		new_pass->vp_strvalue = x = talloc_array(new_pass, char, new_pass->length + 1);
+		new_pass->vp_strvalue = x = talloc_array(new_pass, char, new_pass->vp_length + 1);
 
 		/*
 		 *	Second pass: convert the characters from UTF-16 to UTF-8.
@@ -995,7 +996,7 @@ ntlm_auth_err:
 		 *  fall through to the authentication code using the new hash,
 		 *  not the old one.
 		 */
-		pairmemcpy(nt_password, new_hash->vp_octets, new_hash->length);
+		pairmemcpy(nt_password, new_hash->vp_octets, new_hash->vp_length);
 
 		/*
 		 *  Rock on! password change succeeded.
@@ -1365,7 +1366,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	if (nt_password) {
 		VERIFY_VP(nt_password);
 
-		switch (nt_password->length) {
+		switch (nt_password->vp_length) {
 		case NT_DIGEST_LENGTH:
 			RDEBUG2("Found NT-Password");
 			break;
@@ -1380,7 +1381,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 
 		default:
 			RWDEBUG("NT-Password found but incorrect length, expected " STRINGIFY(NT_DIGEST_LENGTH)
-				" bytes got %zu bytes.  Authentication may fail", nt_password->length);
+				" bytes got %zu bytes.  Authentication may fail", nt_password->vp_length);
 			nt_password = NULL;
 			break;
 		}
@@ -1397,8 +1398,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 				RERROR("No memory");
 				return RLM_MODULE_FAIL;
 			}
-			nt_password->length = NT_DIGEST_LENGTH;
-			nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->length);
+			nt_password->vp_length = NT_DIGEST_LENGTH;
+			nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->vp_length);
 
 			if (mschap_ntpwdhash(p, password->vp_strvalue) < 0) {
 				RERROR("Failed generating NT-Password");
@@ -1416,7 +1417,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	if (lm_password) {
 		VERIFY_VP(lm_password);
 
-		switch (lm_password->length) {
+		switch (lm_password->vp_length) {
 		case LM_DIGEST_LENGTH:
 			RDEBUG2("Found LM-Password");
 			break;
@@ -1431,7 +1432,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 
 		default:
 			RWDEBUG("LM-Password found but incorrect length, expected " STRINGIFY(LM_DIGEST_LENGTH)
-				" bytes got %zu bytes.  Authentication may fail", lm_password->length);
+				" bytes got %zu bytes.  Authentication may fail", lm_password->vp_length);
 			lm_password = NULL;
 			break;
 		}
@@ -1446,8 +1447,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			if (!lm_password) {
 				RERROR("No memory");
 			} else {
-				lm_password->length = LM_DIGEST_LENGTH;
-				lm_password->vp_octets = p = talloc_array(lm_password, uint8_t, lm_password->length);
+				lm_password->vp_length = LM_DIGEST_LENGTH;
+				lm_password->vp_octets = p = talloc_array(lm_password, uint8_t, lm_password->vp_length);
 				smbdes_lmpwdhash(password->vp_strvalue, p);
 			}
 		/*
@@ -1477,8 +1478,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			return RLM_MODULE_INVALID;
 		}
 
-		if (cpw->length != 68) {
-			REDEBUG("MS-CHAP2-CPW has the wrong format: length %zu != 68", cpw->length);
+		if (cpw->vp_length != 68) {
+			REDEBUG("MS-CHAP2-CPW has the wrong format: length %zu != 68", cpw->vp_length);
 			return RLM_MODULE_INVALID;
 		} else if (cpw->vp_octets[0]!=7) {
 			REDEBUG("MS-CHAP2-CPW has the wrong format: code %d != 7", cpw->vp_octets[0]);
@@ -1524,8 +1525,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			/*
 			 * copy the data into the buffer
 			 */
-			memcpy(new_nt_encrypted + new_nt_enc_len, nt_enc->vp_octets + 4, nt_enc->length - 4);
-			new_nt_enc_len += nt_enc->length - 4;
+			memcpy(new_nt_encrypted + new_nt_enc_len, nt_enc->vp_octets + 4, nt_enc->vp_length - 4);
+			new_nt_enc_len += nt_enc->vp_length - 4;
 		}
 		if (new_nt_enc_len != 516) {
 			REDEBUG("Unpacked MS-CHAP-NT-Enc-PW length != 516");
@@ -1584,8 +1585,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		response = radius_paircreate(request->packet, &request->packet->vps,
 					     PW_MSCHAP2_RESPONSE,
 					     VENDORPEC_MICROSOFT);
-		response->length = 50;
-		response->vp_octets = p = talloc_array(response, uint8_t, response->length);
+		response->vp_length = 50;
+		response->vp_octets = p = talloc_array(response, uint8_t, response->vp_length);
 
 		/* ident & flags */
 		p[0] = cpw->vp_octets[1];
@@ -1614,7 +1615,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		/*
 		 *	MS-CHAPv1 challenges are 8 octets.
 		 */
-		if (challenge->length < 8) {
+		if (challenge->vp_length < 8) {
 			REDEBUG("MS-CHAP-Challenge has the wrong format");
 			return RLM_MODULE_INVALID;
 		}
@@ -1622,7 +1623,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		/*
 		 *	Responses are 50 octets.
 		 */
-		if (response->length < 50) {
+		if (response->vp_length < 50) {
 			REDEBUG("MS-CHAP-Response has the wrong format");
 			return RLM_MODULE_INVALID;
 		}
@@ -1660,7 +1661,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		/*
 		 *	MS-CHAPv2 challenges are 16 octets.
 		 */
-		if (challenge->length < 16) {
+		if (challenge->vp_length < 16) {
 			REDEBUG("MS-CHAP-Challenge has the wrong format");
 			return RLM_MODULE_INVALID;
 		}
@@ -1668,7 +1669,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		/*
 		 *	Responses are 50 octets.
 		 */
-		if (response->length < 50) {
+		if (response->vp_length < 50) {
 			REDEBUG("MS-CHAP-Response has the wrong format");
 			return RLM_MODULE_INVALID;
 		}
@@ -1712,8 +1713,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			username_string = name_attr->vp_strvalue;
 		}
 
-		if (response_name && ((username->length != response_name->length) ||
-		    (strncasecmp(username->vp_strvalue, response_name->vp_strvalue, username->length) != 0))) {
+		if (response_name && ((username->vp_length != response_name->vp_length) ||
+		    (strncasecmp(username->vp_strvalue, response_name->vp_strvalue, username->vp_length) != 0))) {
 			RWDEBUG("User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2",
 				username->vp_strvalue, response_name->vp_strvalue);
 		}

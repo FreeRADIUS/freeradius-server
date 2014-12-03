@@ -285,8 +285,8 @@ static VALUE_PAIR *eap2vp(UNUSED REQUEST *request, RADIUS_PACKET *packet,
 	/*
 	 *	Hand-build an EAP packet from the crap in PEAP version 0.
 	 */
-	vp->length = EAP_HEADER_LEN + total;
-	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+	vp->vp_length = EAP_HEADER_LEN + total;
+	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
 
 	p[0] = PW_EAP_RESPONSE;
 	p[1] = eap_ds->response->id;
@@ -306,7 +306,7 @@ static VALUE_PAIR *eap2vp(UNUSED REQUEST *request, RADIUS_PACKET *packet,
 
 		pairmemcpy(vp, data + total, (data_len - total));
 
-		total += vp->length;
+		total += vp->vp_length;
 
 		fr_cursor_insert(&cursor, vp);
 	}
@@ -335,7 +335,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 		total = 0;
 
 		for (this = fr_cursor_init(&cursor, &vp); this; this = fr_cursor_next(&cursor)) {
-			for (i = start; i < vp->length; i++) {
+			for (i = start; i < vp->vp_length; i++) {
 				if ((total & 0x0f) == 0) {
 					fprintf(fr_log_fp, "  PEAP tunnel data out %04x: ", (int) total);
 				}
@@ -361,7 +361,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	 *	Send the EAP data in the first attribute, WITHOUT the
 	 *	header.
 	 */
-	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_octets + EAP_HEADER_LEN, vp->length - EAP_HEADER_LEN);
+	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_octets + EAP_HEADER_LEN, vp->vp_length - EAP_HEADER_LEN);
 
 	/*
 	 *	Send the rest of the EAP data, but skipping the first VP.
@@ -370,7 +370,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	for (this = fr_cursor_next(&cursor);
 	     this;
 	     this = fr_cursor_next(&cursor)) {
-		(tls_session->record_plus)(&tls_session->clean_in, this->vp_octets, this->length);
+		(tls_session->record_plus)(&tls_session->clean_in, this->vp_octets, this->vp_length);
 	}
 
 	tls_handshake_send(request, tls_session);
@@ -793,8 +793,8 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 		t->username->vp_strvalue = p = talloc_array(t->username, char, data_len);
 		memcpy(p, data + 1, data_len - 1);
-		t->username->length = data_len - 1;
-		p[t->username->length] = 0;
+		t->username->vp_length = data_len - 1;
+		p[t->username->vp_length] = 0;
 		RDEBUG("Got inner identity '%s'", t->username->vp_strvalue);
 		if (t->soh) {
 			t->status = PEAP_STATUS_WAIT_FOR_SOH_RESPONSE;
@@ -913,14 +913,14 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		 */
 
 	case PEAP_STATUS_PHASE2_INIT: {
-		size_t len = t->username->length + EAP_HEADER_LEN + 1;
+		size_t len = t->username->vp_length + EAP_HEADER_LEN + 1;
 		uint8_t *q;
 
 		t->status = PEAP_STATUS_PHASE2;
 
 		vp = paircreate(fake->packet, PW_EAP_MESSAGE, 0);
-		vp->length = len;
-		vp->vp_octets = q = talloc_array(vp, uint8_t, vp->length);
+		vp->vp_length = len;
+		vp->vp_octets = q = talloc_array(vp, uint8_t, vp->vp_length);
 
 		q[0] = PW_EAP_RESPONSE;
 		q[1] = eap_ds->response->id;
@@ -929,7 +929,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		q[4] = PW_EAP_IDENTITY;
 
 		memcpy(q + EAP_HEADER_LEN + 1,
-		       t->username->vp_strvalue, t->username->length);
+		       t->username->vp_strvalue, t->username->vp_length);
 
 		pairadd(&fake->packet->vps, vp);
 
@@ -973,8 +973,8 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 			t->username->vp_strvalue = p = talloc_array(t->username, char, data_len);
 			memcpy(p, data + 1, data_len - 1);
-			t->username->length = data_len - 1;
-			p[t->username->length] = 0;
+			t->username->vp_length = data_len - 1;
+			p[t->username->vp_length] = 0;
 			RDEBUG2("Got tunneled identity of %s", t->username->vp_strvalue);
 
 			/*

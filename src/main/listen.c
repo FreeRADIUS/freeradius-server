@@ -1668,7 +1668,7 @@ int rad_coa_recv(REQUEST *request)
 		if (request->packet->code == PW_CODE_COA_REQUEST) {
 			if (vp && (vp->vp_integer == 17)) {
 				vp = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
-				if (!vp || (vp->length == 0)) {
+				if (!vp || (vp->vp_length == 0)) {
 					REDEBUG("CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
 					request->reply->code = PW_CODE_COA_NAK;
 					return RLM_MODULE_FAIL;

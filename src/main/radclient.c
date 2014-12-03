@@ -168,9 +168,9 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 	}
 
 	pairadd(request, challenge);
-	challenge->length = 8;
-	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->length);
-	for (i = 0; i < challenge->length; i++) {
+	challenge->vp_length = 8;
+	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->vp_length);
+	for (i = 0; i < challenge->vp_length; i++) {
 		p[i] = fr_rand();
 	}
 
@@ -180,9 +180,9 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 	}
 
 	pairadd(request, reply);
-	reply->length = 50;
-	reply->vp_octets = p = talloc_array(reply, uint8_t, reply->length);
-	memset(p, 0, reply->length);
+	reply->vp_length = 50;
+	reply->vp_octets = p = talloc_array(reply, uint8_t, reply->vp_length);
+	memset(p, 0, reply->vp_length);
 
 	p[1] = 0x01; /* NT hash */
 
@@ -385,8 +385,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			     vp = fr_cursor_next(&cursor)) {
 				if (vp->type == VT_XLAT) {
 					vp->type = VT_DATA;
-					vp->vp_strvalue = vp->value.xlat;
-					vp->length = talloc_array_length(vp->vp_strvalue) - 1;
+					vp->vp_strvalue = vp->xlat;
+					vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 				}
 
 				if (vp->da->vendor == 0 ) switch (vp->da->attr) {
@@ -420,8 +420,8 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			 */
 			if (vp->type == VT_XLAT) {
 				vp->type = VT_DATA;
-				vp->vp_strvalue = vp->value.xlat;
-				vp->length = talloc_array_length(vp->vp_strvalue) - 1;
+				vp->vp_strvalue = vp->xlat;
+				vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 			}
 
 			if (!vp->da->vendor) switch (vp->da->attr) {
@@ -483,12 +483,12 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				DICT_ATTR const *da;
 				uint8_t *p, *q;
 
-				p = talloc_array(vp, uint8_t, vp->length + 2);
+				p = talloc_array(vp, uint8_t, vp->vp_length + 2);
 
-				memcpy(p + 2, vp->vp_octets, vp->length);
+				memcpy(p + 2, vp->vp_octets, vp->vp_length);
 				p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
-				vp->length += 2;
-				p[1] = vp->length;
+				vp->vp_length += 2;
+				p[1] = vp->vp_length;
 
 				da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 				if (!da) {
@@ -839,7 +839,7 @@ static int send_one_packet(rc_request_t *request)
 				 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
 				 *	or 1/(2^51), which is pretty much zero.
 				 */
-				if (vp->length == 17) {
+				if (vp->vp_length == 17) {
 					for (i = 0; i < 17; i++) {
 						if (vp->vp_octets[i] < 32) {
 							already_hex = true;
@@ -866,7 +866,7 @@ static int send_one_packet(rc_request_t *request)
 							p,
 							fr_rand() & 0xff, vp);
 					vp->vp_octets = p;
-					vp->length = 17;
+					vp->vp_length = 17;
 				}
 			} else if (pairfind(request->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY) != NULL) {
 				mschapv1_encode(request->packet, &request->packet->vps, request->password);

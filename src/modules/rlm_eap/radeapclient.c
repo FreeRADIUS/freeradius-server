@@ -311,9 +311,9 @@ static int process_eap_start(RADIUS_PACKET *req,
 	versions = (uint16_t const *) vp->vp_strvalue;
 
 	/* verify that the attribute length is big enough for a length field */
-	if(vp->length < 4)
+	if(vp->vp_length < 4)
 	{
-		ERROR("start message has illegal VERSION_LIST. Too short: %u", (unsigned int) vp->length);
+		ERROR("start message has illegal VERSION_LIST. Too short: %u", (unsigned int) vp->vp_length);
 		return 0;
 	}
 
@@ -321,9 +321,9 @@ static int process_eap_start(RADIUS_PACKET *req,
 	/* verify that the attribute length is big enough for the given number
 	 * of versions present.
 	 */
-	if((unsigned)vp->length <= (versioncount*2 + 2))
+	if((unsigned)vp->vp_length <= (versioncount*2 + 2))
 	{
-		ERROR("start message is too short. Claimed %d versions does not fit in %u bytes", versioncount, (unsigned int) vp->length);
+		ERROR("start message is too short. Claimed %d versions does not fit in %u bytes", versioncount, (unsigned int) vp->vp_length);
 		return 0;
 	}
 
@@ -780,10 +780,10 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	value = &vp->vp_octets[1];
 
 	/* sanitize items */
-	if(valuesize > vp->length)
+	if(valuesize > vp->vp_length)
 	{
 		ERROR("md5 valuesize if too big (%u > %u)",
-			(unsigned int) valuesize, (unsigned int) vp->length);
+			(unsigned int) valuesize, (unsigned int) vp->vp_length);
 		return 0;
 	}
 
@@ -802,7 +802,7 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 		uint8_t lg_response;
 
 		vp = paircreate(rep, PW_EAP_TYPE_BASE+PW_EAP_MD5, 0);
-		vp->length = 17;
+		vp->vp_length = 17;
 
 		p = talloc_zero_array(vp, uint8_t, 17);
 		lg_response = 16;
@@ -879,12 +879,12 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 			DICT_ATTR const *da;
 			uint8_t *p, *q;
 
-			p = talloc_array(vp, uint8_t, vp->length + 2);
+			p = talloc_array(vp, uint8_t, vp->vp_length + 2);
 
-			memcpy(p + 2, vp->vp_octets, vp->length);
+			memcpy(p + 2, vp->vp_octets, vp->vp_length);
 			p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
-			vp->length += 2;
-			p[1] = vp->length;
+			vp->vp_length += 2;
+			p[1] = vp->vp_length;
 
 			da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 			vp->da = da;
@@ -1360,9 +1360,9 @@ static void map_eap_methods(RADIUS_PACKET *req)
 		pt_ep->code = eapcode;
 		pt_ep->id = id;
 		pt_ep->type.num = eap_method;
-		pt_ep->type.length = vp->length;
+		pt_ep->type.length = vp->vp_length;
 
-		pt_ep->type.data = talloc_memdup(vp, vp->vp_octets, vp->length);
+		pt_ep->type.data = talloc_memdup(vp, vp->vp_octets, vp->vp_length);
 		talloc_set_type(pt_ep->type.data, uint8_t);
 
 		eap_basic_compose(req, pt_ep);
@@ -1471,10 +1471,10 @@ static int unmap_eapsim_types(RADIUS_PACKET *r)
 		return 0;
 	}
 
-	eap_data = talloc_memdup(esvp, esvp->vp_octets, esvp->length);
+	eap_data = talloc_memdup(esvp, esvp->vp_octets, esvp->vp_length);
 	talloc_set_type(eap_data, uint8_t);
 
-	rcode_unmap = unmap_eapsim_basictypes(r, eap_data, esvp->length);
+	rcode_unmap = unmap_eapsim_basictypes(r, eap_data, esvp->vp_length);
 
 	talloc_free(eap_data);
 	return rcode_unmap;
@@ -1567,9 +1567,9 @@ main(int argc, char *argv[])
 
 			memset(calcmac, 0, sizeof(calcmac));
 			DEBUG("Confirming MAC...");
-			if(eapsim_checkmac(req2->vps, vpkey->vp_strvalue,
-					   vpextra->vp_strvalue, vpextra->length,
-					   calcmac)) {
+			if (eapsim_checkmac(req2->vps, vpkey->vp_strvalue,
+					    vpextra->vp_strvalue, vpextra->length,
+					    calcmac)) {
 				DEBUG("succeed");
 			} else {
 				int i, j;

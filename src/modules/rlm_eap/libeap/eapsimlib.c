@@ -105,7 +105,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 			continue;
 		}
 
-		vplen = vp->length;
+		vplen = vp->vp_length;
 
 		/*
 		 * the AT_MAC attribute is a bit different, when we get to this
@@ -200,11 +200,11 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 			memset(&attr[2], 0, 18);
 			macspace = &attr[4];
 			append = vp->vp_octets;
-			appendlen = vp->length;
+			appendlen = vp->vp_length;
 		} else {
-			roundedlen = (vp->length + 2 + 3) & ~3;
+			roundedlen = (vp->vp_length + 2 + 3) & ~3;
 			memset(attr, 0, roundedlen);
-			memcpy(&attr[2], vp->vp_strvalue, vp->length);
+			memcpy(&attr[2], vp->vp_strvalue, vp->vp_length);
 		}
 		attr[0] = vp->da->attr - PW_EAP_SIM_BASE;
 		attr[1] = roundedlen >> 2;
@@ -252,7 +252,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		memcpy(&hdr->data[encoded_size+1], append, appendlen);
 
 		/* HMAC it! */
-		fr_hmac_sha1(sha1digest, buffer, hmaclen, vp->vp_octets, vp->length);
+		fr_hmac_sha1(sha1digest, buffer, hmaclen, vp->vp_octets, vp->vp_length);
 
 		/* done with the buffer, free it */
 		talloc_free(buffer);
@@ -303,7 +303,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 	}
 
 	newvp->vp_integer = attr[0];
-	newvp->length = 1;
+	newvp->vp_length = 1;
 	pairadd(&(r->vps), newvp);
 
 	attr     += 3;
@@ -338,8 +338,8 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		}
 
 		newvp = paircreate(r, eapsim_attribute+PW_EAP_SIM_BASE, 0);
-		newvp->length = eapsim_len-2;
-		newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->length);
+		newvp->vp_length = eapsim_len-2;
+		newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->vp_length);
 		memcpy(p, &attr[2], eapsim_len-2);
 		pairadd(&(r->vps), newvp);
 		newvp = NULL;
@@ -369,7 +369,7 @@ int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAPSIM_AUTH_S
 
 	mac = pairfind(rvps, PW_EAP_SIM_MAC, 0, TAG_ANY);
 
-	if(!mac || mac->length != 18) {
+	if(!mac || mac->vp_length != 18) {
 		/* can't check a packet with no AT_MAC attribute */
 		return 0;
 	}

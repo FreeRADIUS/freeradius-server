@@ -582,19 +582,19 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 	case PW_TYPE_STRING:
 		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, vp->vp_strvalue);
-		av_push(av, newSVpvn(vp->vp_strvalue, vp->length));
+		av_push(av, newSVpvn(vp->vp_strvalue, vp->vp_length));
 		break;
 
 	case PW_TYPE_OCTETS:
 		if (RDEBUG_ENABLED) {
 			char *hex;
 
-			hex = fr_abin2hex(request, vp->vp_octets, vp->length);
+			hex = fr_abin2hex(request, vp->vp_octets, vp->vp_length);
 			RDEBUG("$%s{'%s'}[%i] = &%s:%s -> 0x%s", hash_name, vp->da->name, *i,
 			       list_name, vp->da->name, hex);
 			talloc_free(hex);
 		}
-		av_push(av, newSVpvn((char const *)vp->vp_octets, vp->length));
+		av_push(av, newSVpvn((char const *)vp->vp_octets, vp->vp_length));
 		break;
 
 	default:
@@ -673,20 +673,20 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 		case PW_TYPE_STRING:
 			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name, list_name,
 			       vp->da->name, vp->vp_strvalue);
-			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->length), 0);
+			(void)hv_store(rad_hv, name, strlen(name), newSVpvn(vp->vp_strvalue, vp->vp_length), 0);
 			break;
 
 		case PW_TYPE_OCTETS:
 			if (RDEBUG_ENABLED) {
 				char *hex;
 
-				hex = fr_abin2hex(request, vp->vp_octets, vp->length);
+				hex = fr_abin2hex(request, vp->vp_octets, vp->vp_length);
 				RDEBUG("$%s{'%s'} = &%s:%s -> 0x%s", hash_name, vp->da->name,
 				       list_name, vp->da->name, hex);
 				talloc_free(hex);
 			}
 			(void)hv_store(rad_hv, name, strlen(name),
-				       newSVpvn((char const *)vp->vp_octets, vp->length), 0);
+				       newSVpvn((char const *)vp->vp_octets, vp->vp_length), 0);
 			break;
 
 		default:

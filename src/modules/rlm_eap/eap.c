@@ -583,7 +583,7 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	vp = radius_paircreate(request->reply, &request->reply->vps, PW_EAP_MESSAGE, 0);
 	if (!vp) return RLM_MODULE_INVALID;
 
-	vp->length = eap_packet->length[0] * 256 + eap_packet->length[1];
+	vp->vp_length = eap_packet->length[0] * 256 + eap_packet->length[1];
 	vp->vp_octets = talloc_steal(vp, reply->packet);
 	reply->packet = NULL;
 
@@ -597,8 +597,8 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
 		vp = paircreate(request->reply, PW_MESSAGE_AUTHENTICATOR, 0);
-		vp->length = AUTH_VECTOR_LEN;
-		vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->length);
+		vp->vp_length = AUTH_VECTOR_LEN;
+		vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->vp_length);
 		pairadd(&(request->reply->vps), vp);
 	}
 
@@ -700,7 +700,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Lengths of two are what we see in practice as
 	 *	EAP-Starts.
 	 */
-	if ((eap_msg->length == 0) || (eap_msg->length == 2)) {
+	if ((eap_msg->vp_length == 0) || (eap_msg->vp_length == 2)) {
 		uint8_t *p;
 
 		/*
@@ -723,8 +723,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		/*
 		 *	Manually create an EAP Identity request
 		 */
-		vp->length = 5;
-		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+		vp->vp_length = 5;
+		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
 
 		p[0] = PW_EAP_REQUEST;
 		p[1] = 0; /* ID */
@@ -740,7 +740,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	EAP sub-type.  Short packets are discarded, unless
 	 *	we're proxying.
 	 */
-	if (eap_msg->length < (EAP_HEADER_LEN + 1)) {
+	if (eap_msg->vp_length < (EAP_HEADER_LEN + 1)) {
 		if (proxy) goto do_proxy;
 
 		RDEBUG2("Ignoring EAP-Message which is too short to be meaningful");
@@ -783,7 +783,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		        eap_codes[eap_msg->vp_octets[0]],
 		        eap_msg->vp_octets[0],
 		        eap_msg->vp_octets[1],
-		        eap_msg->length);
+		        eap_msg->vp_length);
 	}
 
 	/*
@@ -831,7 +831,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	the request.
 	 */
 	if ((eap_msg->vp_octets[4] == PW_EAP_NAK) &&
-	    (eap_msg->length >= (EAP_HEADER_LEN + 2)) &&
+	    (eap_msg->vp_length >= (EAP_HEADER_LEN + 2)) &&
 	    inst->ignore_unknown_types &&
 	    ((eap_msg->vp_octets[5] == 0) ||
 	     (eap_msg->vp_octets[5] >= PW_EAP_MAX_TYPES) ||

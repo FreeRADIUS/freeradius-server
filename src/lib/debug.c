@@ -1079,9 +1079,9 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 		}
 
 		len = talloc_array_length(vp->vp_octets);
-		if (vp->length > len) {
+		if (vp->vp_length > len) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
-				     "uint8_t data buffer length %zu\n", file, line, vp->da->name, vp->length, len);
+				     "uint8_t data buffer length %zu\n", file, line, vp->da->name, vp->vp_length, len);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
@@ -1110,14 +1110,14 @@ inline void fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 		}
 
 		len = (talloc_array_length(vp->vp_strvalue) - 1);
-		if (vp->length > len) {
+		if (vp->vp_length > len) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" length %zu is greater than "
-				     "char buffer length %zu\n", file, line, vp->da->name, vp->length, len);
+				     "char buffer length %zu\n", file, line, vp->da->name, vp->vp_length, len);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
 
-		if (vp->vp_strvalue[vp->length] != '\0') {
+		if (vp->vp_strvalue[vp->vp_length] != '\0') {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR \"%s\" char buffer not \\0 "
 				     "terminated\n", file, line, vp->da->name);
 			fr_assert(0);

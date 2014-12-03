@@ -591,7 +591,7 @@ static int CC_HINT(nonnull (1, 2, 4)) sql_groupcmp(void *instance, REQUEST *requ
 
 	RDEBUG("sql_groupcmp");
 
-	if (check->length == 0){
+	if (check->vp_length == 0){
 		RDEBUG("sql_groupcmp: Illegal group name");
 		return 1;
 	}
@@ -1459,7 +1459,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 	/* If simul_count_query is not defined, we don't do any checking */
 	if (!inst->config->simul_count_query) return RLM_MODULE_NOOP;
 
-	if ((!request->username) || (request->username->length == '\0')) {
+	if ((!request->username) || (request->username->vp_length == '\0')) {
 		REDEBUG("Zero Length username not permitted");
 
 		return RLM_MODULE_INVALID;

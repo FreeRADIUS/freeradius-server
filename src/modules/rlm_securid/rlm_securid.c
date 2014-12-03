@@ -483,7 +483,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/*
 	 *	The user MUST supply a non-zero-length password.
 	 */
-	if (request->password->length == 0) {
+	if (request->password->vp_length == 0) {
 		REDEBUG("Password should not be empty");
 		return RLM_MODULE_INVALID;
 	}

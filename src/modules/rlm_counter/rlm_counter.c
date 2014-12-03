@@ -166,7 +166,7 @@ static int counter_cmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
 	}
 
 	ASSIGN(key_datum.dptr,key_vp->vp_strvalue);
-	key_datum.dsize = key_vp->length;
+	key_datum.dsize = key_vp->vp_length;
 
 	count_datum = gdbm_fetch(inst->gdbm, key_datum);
 
@@ -607,7 +607,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	}
 
 	ASSIGN(key_datum.dptr, key_vp->vp_strvalue);
-	key_datum.dsize = key_vp->length;
+	key_datum.dsize = key_vp->vp_length;
 
 	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->vp_strvalue);
 	pthread_mutex_lock(&inst->mutex);
@@ -736,7 +736,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
 	}
 
 	ASSIGN(key_datum.dptr, key_vp->vp_strvalue);
-	key_datum.dsize = key_vp->length;
+	key_datum.dsize = key_vp->vp_length;
 
 
 	/*

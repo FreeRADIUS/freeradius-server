@@ -102,7 +102,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 		strcpy(clean_username, "<no User-Name attribute>");
 	} else {
 		fr_print_string(username->vp_strvalue,
-				username->length,
+				username->vp_length,
 				clean_username, sizeof(clean_username), '\0');
 	}
 
@@ -126,7 +126,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 			strcpy(clean_password, "<CHAP-Password>");
 		} else {
 			fr_print_string(request->password->vp_strvalue,
-					 request->password->length,
+					 request->password->vp_length,
 					clean_password, sizeof(clean_password), '\0');
 		}
 	}

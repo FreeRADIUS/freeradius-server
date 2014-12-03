@@ -491,7 +491,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		case PW_TYPE_IPV4_ADDR:
 			if (length == 4) {
 				memcpy(&vp->vp_ipaddr, ptr, 4);
-				vp->length = 4;
+				vp->vp_length = 4;
 				break;
 			}
 
@@ -514,17 +514,17 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 		case PW_TYPE_STRING:
 			if (length < 1024) {
-				vp->length = length;
-				vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
+				vp->vp_length = length;
+				vp->vp_strvalue = p = talloc_array(vp, char, vp->vp_length + 1);
 				vp->type = VT_DATA;
-				memcpy(p, ptr, vp->length);
-				p[vp->length] = '\0';
+				memcpy(p, ptr, vp->vp_length);
+				p[vp->vp_length] = '\0';
 			} else {
-				vp->length = 1024;
+				vp->vp_length = 1024;
 				vp->vp_strvalue = p = talloc_array(vp, char, 1025);
 				vp->type = VT_DATA;
-				memcpy(p, ptr, vp->length);
-				p[vp->length] = '\0';
+				memcpy(p, ptr, vp->vp_length);
+				p[vp->vp_length] = '\0';
 			}
 			break;
 		}
@@ -613,7 +613,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		}
 
 		length += 6;
-		length += vps[i]->length;
+		length += vps[i]->vp_length;
 	}
 
 	packet->data = talloc_array(packet, uint8_t, length);
@@ -684,7 +684,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 		/* Length */
 		ptr[4] = 0;
-		ptr[5] = vp->length & 0xff;
+		ptr[5] = vp->vp_length & 0xff;
 
 		ptr += 6;
 
@@ -697,10 +697,10 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		default:
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
-			memcpy(ptr, vp->vp_octets, vp->length);
+			memcpy(ptr, vp->vp_octets, vp->vp_length);
 			break;
 		}
-		ptr += vp->length;
+		ptr += vp->vp_length;
 	}
 
 	return 0;

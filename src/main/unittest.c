@@ -175,8 +175,8 @@ static REQUEST *request_setup(FILE *fp)
 		 *	but we don't support that here.
 		 */
 		if (vp->type == VT_XLAT) {
-			vp->vp_strvalue = vp->value.xlat;
-			vp->value.xlat = NULL;
+			vp->vp_strvalue = vp->xlat;
+			vp->xlat = NULL;
 			vp->type = VT_DATA;
 		}
 
@@ -230,7 +230,7 @@ static REQUEST *request_setup(FILE *fp)
 			 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
 			 *	or 1/(2^51), which is pretty much zero.
 			 */
-			if (vp->length == 17) {
+			if (vp->vp_length == 17) {
 				for (i = 0; i < 17; i++) {
 					if (vp->vp_octets[i] < 32) {
 						already_hex = 1;
@@ -246,7 +246,7 @@ static REQUEST *request_setup(FILE *fp)
 				uint8_t *p;
 				size_t len, len2;
 
-				len = len2 = vp->length;
+				len = len2 = vp->vp_length;
 				if (len2 < 17) len2 = 17;
 
 				p = talloc_zero_array(vp, uint8_t, len2);
@@ -257,7 +257,7 @@ static REQUEST *request_setup(FILE *fp)
 						p,
 						fr_rand() & 0xff, vp);
 				vp->vp_octets = p;
-				vp->length = 17;
+				vp->vp_length = 17;
 			}
 		}
 			break;
@@ -277,12 +277,12 @@ static REQUEST *request_setup(FILE *fp)
 			DICT_ATTR const *da;
 			uint8_t *p, *q;
 
-			p = talloc_array(vp, uint8_t, vp->length + 2);
+			p = talloc_array(vp, uint8_t, vp->vp_length + 2);
 
-			memcpy(p + 2, vp->vp_octets, vp->length);
+			memcpy(p + 2, vp->vp_octets, vp->vp_length);
 			p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
-			vp->length += 2;
-			p[1] = vp->length;
+			vp->vp_length += 2;
+			p[1] = vp->vp_length;
 
 			da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 			rad_assert(da != NULL);

@@ -484,7 +484,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	}
 
 	/* ensure valid username in request */
-	if ((!request->username) || (request->username->length == '\0')) {
+	if ((!request->username) || (request->username->vp_length == '\0')) {
 		RDEBUG3("mod_checksimul - invalid username");
 		return RLM_MODULE_INVALID;
 	}

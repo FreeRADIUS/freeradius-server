@@ -68,12 +68,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 		return RLM_MODULE_INVALID;
 	}
 
-	if (chap->length == 0) {
+	if (chap->vp_length == 0) {
 		REDEBUG("CHAP-Password is empty");
 		return RLM_MODULE_INVALID;
 	}
 
-	if (chap->length != CHAP_VALUE_LENGTH + 1) {
+	if (chap->vp_length != CHAP_VALUE_LENGTH + 1) {
 		REDEBUG("CHAP-Password has invalid length");
 		return RLM_MODULE_INVALID;
 	}
@@ -113,7 +113,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 		vp = pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
 		if (vp) {
 			p = vp->vp_octets;
-			length = vp->length;
+			length = vp->vp_length;
 		} else {
 			p = request->packet->vector;
 			length = sizeof(request->packet->vector);

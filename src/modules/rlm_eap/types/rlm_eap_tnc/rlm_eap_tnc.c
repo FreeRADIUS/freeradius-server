@@ -201,7 +201,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	 */
 	MEM(eap_tnc_user = (TNC_BufferReference) strdup(username->vp_strvalue));
 
-	result = storeUsername(conn_id, eap_tnc_user, username->length);
+	result = storeUsername(conn_id, eap_tnc_user, username->vp_length);
 	if (result != TNC_RESULT_SUCCESS) {
 		ERROR("rlm_eap_tnc: NAA-EAP storeUsername returned an "
 		      "error code");

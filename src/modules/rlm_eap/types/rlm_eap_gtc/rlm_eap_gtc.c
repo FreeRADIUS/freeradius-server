@@ -179,14 +179,14 @@ static int CC_HINT(nonnull) mod_authenticate(void *instance, eap_handler_t *hand
 			return 0;
 		}
 
-		if (eap_ds->response->type.length != vp->length) {
-			REDEBUG2("Passwords are of different length. %u %u", (unsigned) eap_ds->response->type.length, (unsigned) vp->length);
+		if (eap_ds->response->type.length != vp->vp_length) {
+			REDEBUG2("Passwords are of different length. %u %u", (unsigned) eap_ds->response->type.length, (unsigned) vp->vp_length);
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
 
 		if (memcmp(eap_ds->response->type.data,
-			   vp->vp_strvalue, vp->length) != 0) {
+			   vp->vp_strvalue, vp->vp_length) != 0) {
 			REDEBUG2("Passwords are different");
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
@@ -210,11 +210,11 @@ static int CC_HINT(nonnull) mod_authenticate(void *instance, eap_handler_t *hand
 		if (!vp) {
 			return 0;
 		}
-		vp->length = eap_ds->response->type.length;
-		vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
+		vp->vp_length = eap_ds->response->type.length;
+		vp->vp_strvalue = p = talloc_array(vp, char, vp->vp_length + 1);
 		vp->type = VT_DATA;
-		memcpy(p, eap_ds->response->type.data, vp->length);
-		p[vp->length] = 0;
+		memcpy(p, eap_ds->response->type.data, vp->vp_length);
+		p[vp->vp_length] = 0;
 
 		/*
 		 *	Add the password to the request, and allow

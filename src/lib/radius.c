@@ -827,7 +827,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	/*
 	 *	Set up the default sources for the data.
 	 */
-	len = vp->length;
+	len = vp->vp_length;
 
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
@@ -1261,7 +1261,7 @@ static ssize_t vp2attr_concat(UNUSED RADIUS_PACKET const *packet,
 	VERIFY_VP(vp);
 
 	p = vp->vp_octets;
-	len = vp->length;
+	len = vp->vp_length;
 
 	while (len > 0) {
 		if (room <= 2) break;
@@ -1550,7 +1550,7 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 	 *	Only CUI is allowed to have zero length.
 	 *	Thank you, WiMAX!
 	 */
-	if ((vp->length == 0) &&
+	if ((vp->vp_length == 0) &&
 	    (vp->da->attr == PW_CHARGEABLE_USER_IDENTITY)) {
 		ptr[0] = PW_CHARGEABLE_USER_IDENTITY;
 		ptr[1] = 2;
@@ -1581,7 +1581,7 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 	/*
 	 *	EAP-Message is special.
 	 */
-	if (vp->da->flags.concat && (vp->length > 253)) {
+	if (vp->da->flags.concat && (vp->vp_length > 253)) {
 		return vp2attr_concat(packet, original, secret, pvp, vp->da->attr,
 				      ptr, room);
 	}
@@ -1780,8 +1780,8 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			 *	attributes with a debug build.
 			 */
 			if (reply->da->attr == PW_RAW_ATTRIBUTE) {
-				memcpy(ptr, reply->vp_octets, reply->length);
-				len = reply->length;
+				memcpy(ptr, reply->vp_octets, reply->vp_length);
+				len = reply->vp_length;
 				reply = reply->next;
 				goto next;
 			}
@@ -1802,7 +1802,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			packet->offset = total_length;
 			last_len = 16;
 		} else {
-			last_len = reply->length;
+			last_len = reply->vp_length;
 		}
 		last_name = reply->da->name;
 
@@ -2851,8 +2851,8 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 	vp = pairalloc(ctx, da);
 	if (!vp) return -1;
 
-	vp->length = total;
-	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+	vp->vp_length = total;
+	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
 	if (!p) {
 		pairfree(&vp);
 		return -1;
@@ -2860,7 +2860,7 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 
 	total = 0;
 	ptr = start;
-	while (total < vp->length) {
+	while (total < vp->vp_length) {
 		memcpy(p, ptr + 2, ptr[1] - 2);
 		p += ptr[1] - 2;
 		total += ptr[1] - 2;
@@ -3698,26 +3698,26 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	vp = pairalloc(ctx, da);
 	if (!vp) return -1;
 
-	vp->length = datalen;
+	vp->vp_length = datalen;
 	vp->tag = tag;
 
 	switch (da->type) {
 	case PW_TYPE_STRING:
-		p = talloc_array(vp, char, vp->length + 1);
-		memcpy(p, data, vp->length);
-		p[vp->length] = '\0';
+		p = talloc_array(vp, char, vp->vp_length + 1);
+		memcpy(p, data, vp->vp_length);
+		p[vp->vp_length] = '\0';
 		vp->vp_strvalue = p;
 		break;
 
 	case PW_TYPE_OCTETS:
-		pairmemcpy(vp, data, vp->length);
+		pairmemcpy(vp, data, vp->vp_length);
 		break;
 
 	case PW_TYPE_ABINARY:
-		if (vp->length > sizeof(vp->vp_filter)) {
-			vp->length = sizeof(vp->vp_filter);
+		if (vp->vp_length > sizeof(vp->vp_filter)) {
+			vp->vp_length = sizeof(vp->vp_filter);
 		}
-		memcpy(vp->vp_filter, data, vp->length);
+		memcpy(vp->vp_filter, data, vp->vp_length);
 		break;
 
 	case PW_TYPE_BYTE:
@@ -3762,18 +3762,18 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	case PW_TYPE_IPV6_PREFIX:
 		/*
 		 *	FIXME: double-check that
-		 *	(vp->vp_octets[1] >> 3) matches vp->length + 2
+		 *	(vp->vp_octets[1] >> 3) matches vp->vp_length + 2
 		 */
-		memcpy(&vp->vp_ipv6prefix, data, vp->length);
-		if (vp->length < 18) {
-			memset(((uint8_t *)vp->vp_ipv6prefix) + vp->length, 0,
-			       18 - vp->length);
+		memcpy(&vp->vp_ipv6prefix, data, vp->vp_length);
+		if (vp->vp_length < 18) {
+			memset(((uint8_t *)vp->vp_ipv6prefix) + vp->vp_length, 0,
+			       18 - vp->vp_length);
 		}
 		break;
 
 	case PW_TYPE_IPV4_PREFIX:
 		/* FIXME: do the same double-check as for IPv6Prefix */
-		memcpy(&vp->vp_ipv4prefix, data, vp->length);
+		memcpy(&vp->vp_ipv4prefix, data, vp->vp_length);
 
 		/*
 		 *	/32 means "keep all bits".  Otherwise, mask
@@ -3978,7 +3978,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	/* Don't add default */
 	}
 
-	return vp->length;
+	return vp->vp_length;
 }
 
 /** Calculate/check digest, and decode radius attributes
@@ -4401,7 +4401,7 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret,
 /** Encode a CHAP password
  *
  * @bug FIXME: might not work with Ascend because
- * we use vp->length, and Ascend gear likes
+ * we use vp->vp_length, and Ascend gear likes
  * to send an extra '\0' in the string!
  */
 int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
@@ -4431,9 +4431,9 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 	*ptr++ = id;
 
 	i++;
-	memcpy(ptr, password->vp_strvalue, password->length);
-	ptr += password->length;
-	i += password->length;
+	memcpy(ptr, password->vp_strvalue, password->vp_length);
+	ptr += password->vp_length;
+	i += password->vp_length;
 
 	/*
 	 *	Use Chap-Challenge pair if present,
@@ -4441,8 +4441,8 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 	 */
 	challenge = pairfind(packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
 	if (challenge) {
-		memcpy(ptr, challenge->vp_strvalue, challenge->length);
-		i += challenge->length;
+		memcpy(ptr, challenge->vp_strvalue, challenge->vp_length);
+		i += challenge->vp_length;
 	} else {
 		memcpy(ptr, packet->vector, AUTH_VECTOR_LEN);
 		i += AUTH_VECTOR_LEN;

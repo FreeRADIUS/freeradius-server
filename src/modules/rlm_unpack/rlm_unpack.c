@@ -99,7 +99,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 			goto nothing;
 		}
 		input = vp->vp_octets;
-		input_len = vp->length;
+		input_len = vp->vp_length;
 
 	} else if ((data_name[0] == '0') && (data_name[1] == 'x')) {
 		/*
@@ -153,7 +153,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 	if (!cast) goto nothing;
 
 	memcpy(&(cast->data), input + offset, dict_attr_sizes[type][0]);
-	cast->length = dict_attr_sizes[type][0];
+	cast->vp_length = dict_attr_sizes[type][0];
 
 	/*
 	 *	Hacks

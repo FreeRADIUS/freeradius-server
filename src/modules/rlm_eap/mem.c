@@ -481,7 +481,7 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	 */
 	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!state ||
-	    (state->length != EAP_STATE_LEN)) {
+	    (state->vp_length != EAP_STATE_LEN)) {
 		return NULL;
 	}
 
