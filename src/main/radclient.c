@@ -335,7 +335,15 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		 *	Read the request VP's.
 		 */
 		if (readvp2(request->packet, &request->packet->vps, packets, &packets_done) < 0) {
-			REDEBUG("Error parsing \"%s\"", files->packets);
+			char const *input;
+
+			if ((files->packets[0] == '-') && (files->packets[1] == '\0')) {
+				input = "stdin";
+			} else {
+				input = files->packets;
+			}
+
+			REDEBUG("Error parsing \"%s\"", input);
 			goto error;
 		}
 
