@@ -334,6 +334,30 @@ size_t fr_print_string_len(char const *in, size_t inlen, char quote)
 
 		switch (*p) {
 		case '\\':
+			/*
+			 *	If the NEXT character is something a
+			 *	parser would get excited about, we
+			 *	need to escape the backslash.
+			 *	Otherwise, it's just a backslash.
+			 */
+			switch (p[1]) {
+			default:
+				if (p[1] != quote) {
+					outlen++;
+					p++;
+					inlen--;
+					continue;
+				}
+				/* FALL-THROUGH */
+
+			case 'r':
+			case 't':
+			case 'n':
+			case '\\':
+				break;
+			}
+			/* FALL-THROUGH */
+
 		case '\r':
 		case '\n':
 		case '\t':
