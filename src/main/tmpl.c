@@ -1453,7 +1453,6 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, va
 			break;
 		}
 
-		(void) fr_cursor_init(cursor, vps);
 		num = vpt->tmpl_num;
 		while ((vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
 			VERIFY_VP(vp);
