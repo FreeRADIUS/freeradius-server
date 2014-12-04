@@ -392,9 +392,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 		 *	Ensure that WE add the quotation marks around the string.
 		 */
 		if (quote) {
-			if (freespace < 3) {
-				return inlen + 2;
-			}
+			if (freespace < 3) return inlen + 2;
 
 			*out++ = quote;
 			freespace--;

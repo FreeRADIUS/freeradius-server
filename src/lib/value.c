@@ -716,7 +716,8 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
 			if ((dval = dict_valbyname(src_enumv->attr, src_enumv->vendor, src)) == NULL) {
-				fr_strerror_printf("Unknown value \"%s\" for attribute '%s'", src, src_enumv->name);
+				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute '%s'",
+						   src, src_enumv->name);
 				return -1;
 			}
 
@@ -748,7 +749,8 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
 			if ((dval = dict_valbyname(src_enumv->attr, src_enumv->vendor, src)) == NULL) {
-				fr_strerror_printf("Unknown value \"%s\" for attribute '%s'", src, src_enumv->name);
+				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute '%s'",
+						   src, src_enumv->name);
 				return -1;
 			}
 
@@ -780,7 +782,8 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
 			if ((dval = dict_valbyname(src_enumv->attr, src_enumv->vendor, src)) == NULL) {
-				fr_strerror_printf("Unknown value \"%s\" for attribute \"%s\"", src, src_enumv->name);
+				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute \"%s\"",
+						   src, src_enumv->name);
 				return -1;
 			}
 
