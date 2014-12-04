@@ -385,9 +385,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 		state->offset = vp->vp_integer;
 	}
 
-	if (conf->session_cache_enable) {
-		state->allow_session_resumption = 1; /* otherwise it's zero */
-	}
+	if (conf->session_cache_enable) state->allow_session_resumption = true; /* otherwise it's false */
 
 	RDEBUG2("Initiate");
 
@@ -2622,7 +2620,6 @@ static fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx)
 	return conf;
 }
 
-
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 {
 	fr_tls_server_conf_t *conf;
@@ -2780,11 +2777,11 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	user.
 	 */
 	if ((!ssn->allow_session_resumption) ||
-	    (((vp = pairfind(request->config_items, 1127, 0, TAG_ANY)) != NULL) &&
+	    (((vp = pairfind(request->config_items, PW_ALLOW_SESSION_RESUMPTION, 0, TAG_ANY)) != NULL) &&
 	     (vp->vp_integer == 0))) {
 		SSL_CTX_remove_session(ssn->ctx,
 				       ssn->ssl->session);
-		ssn->allow_session_resumption = 0;
+		ssn->allow_session_resumption = false;
 
 		/*
 		 *	If we're in a resumed session and it's
@@ -2794,11 +2791,10 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			RDEBUG("FAIL: Forcibly stopping session resumption as it is not allowed");
 			return -1;
 		}
-
-		/*
-		 *	Else resumption IS allowed, so we store the
-		 *	user data in the cache.
-		 */
+	/*
+	 *	Else resumption IS allowed, so we store the
+	 *	user data in the cache.
+	 */
 	} else if (!SSL_session_reused(ssn->ssl)) {
 		size_t size;
 		VALUE_PAIR **certs;
@@ -2836,19 +2832,18 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		if (vps) {
 			RDEBUG2("Saving session %s vps %p in the cache", buffer, vps);
-			SSL_SESSION_set_ex_data(ssn->ssl->session,
-						fr_tls_ex_index_vps, vps);
+			SSL_SESSION_set_ex_data(ssn->ssl->session, fr_tls_ex_index_vps, vps);
 			if (conf->session_cache_path) {
 				/* write the VPs to the cache file */
 				char filename[256], buf[1024];
 				FILE *vp_file;
 
-				snprintf(filename, sizeof(filename), "%s%c%s.vps",
-					conf->session_cache_path, FR_DIR_SEP, buffer
-					);
+				snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path,
+					 FR_DIR_SEP, buffer);
 				vp_file = fopen(filename, "w");
 				if (vp_file == NULL) {
-					RDEBUG2("Could not write session VPs to persistent cache: %s", fr_syserror(errno));
+					RDEBUG2("Could not write session VPs to persistent cache: %s",
+						fr_syserror(errno));
 				} else {
 					vp_cursor_t cursor;
 					/* generate a dummy user-style entry which is easy to read back */
@@ -2865,14 +2860,12 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			}
 		} else {
 			RDEBUG2("No information to cache: session caching will be disabled for session %s", buffer);
-			SSL_CTX_remove_session(ssn->ctx,
-					       ssn->ssl->session);
+			SSL_CTX_remove_session(ssn->ctx, ssn->ssl->session);
 		}
 
-		/*
-		 *	Else the session WAS allowed.  Copy the cached
-		 *	reply.
-		 */
+	/*
+	 *	Else the session WAS allowed.  Copy the cached reply.
+	 */
 	} else {
 		size_t size;
 		char buffer[2 * MAX_SESSION_SIZE + 1];
@@ -2882,12 +2875,10 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		fr_bin2hex(buffer, ssn->ssl->session->session_id, size);
 
-		vps = SSL_SESSION_get_ex_data(ssn->ssl->session,
-					     fr_tls_ex_index_vps);
+		vps = SSL_SESSION_get_ex_data(ssn->ssl->session, fr_tls_ex_index_vps);
 		if (!vps) {
 			RWDEBUG("No information in cached session %s", buffer);
 			return -1;
-
 		} else {
 			vp_cursor_t cursor;
 
@@ -2916,12 +2907,10 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				char filename[256];
 
 				snprintf(filename, sizeof(filename), "%s%c%s.asn1",
-					conf->session_cache_path, FR_DIR_SEP, buffer
-					);
+					conf->session_cache_path, FR_DIR_SEP, buffer);
 				utime(filename, NULL);
 				snprintf(filename, sizeof(filename), "%s%c%s.vps",
-					conf->session_cache_path, FR_DIR_SEP, buffer
-					);
+					conf->session_cache_path, FR_DIR_SEP, buffer);
 				utime(filename, NULL);
 			}
 
@@ -2957,8 +2946,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 			ssn->dirty_in.used);
 	if (err != (int) ssn->dirty_in.used) {
 		record_init(&ssn->dirty_in);
-		RDEBUG("Failed writing %d to SSL BIO: %d",
-		       ssn->dirty_in.used, err);
+		RDEBUG("Failed writing %d to SSL BIO: %d", ssn->dirty_in.used, err);
 		return FR_TLS_FAIL;
 	}
 
@@ -2974,9 +2962,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 	 *      SSL session, and put it into the decrypted
 	 *      data buffer.
 	 */
-	err = SSL_read(ssn->ssl, ssn->clean_out.data,
-		       sizeof(ssn->clean_out.data));
-
+	err = SSL_read(ssn->ssl, ssn->clean_out.data, sizeof(ssn->clean_out.data));
 	if (err < 0) {
 		int code;
 
@@ -2993,8 +2979,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 			break;
 
 		default:
-			DEBUG("Error in fragmentation logic: %s",
-			      ERR_error_string(code, NULL));
+			DEBUG("Error in fragmentation logic: %s", ERR_error_string(code, NULL));
 
 			/*
 			 *	FIXME: Call int_ssl_check?
@@ -3004,9 +2989,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 		return FR_TLS_FAIL;
 	}
 
-	if (err == 0) {
-		RWDEBUG("No data inside of the tunnel");
-	}
+	if (err == 0) RWDEBUG("No data inside of the tunnel");
 
 	/*
 	 *	Passed all checks, successfully decrypted data
@@ -3035,8 +3018,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		RDEBUG("No SSL info available. Waiting for more SSL data");
 		return FR_TLS_REQUEST;
 	}
-	if ((ssn->info.content_type == handshake) &&
-	    (ssn->info.origin == 0)) {
+	if ((ssn->info.content_type == handshake) && (ssn->info.origin == 0)) {
 		RERROR("FAIL: ACK without earlier message");
 		return FR_TLS_INVALID;
 	}
@@ -3047,8 +3029,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		return FR_TLS_FAIL;
 
 	case handshake:
-		if ((ssn->info.handshake_type == handshake_finished) &&
-		    (ssn->dirty_out.used == 0)) {
+		if ((ssn->info.handshake_type == handshake_finished) && (ssn->dirty_out.used == 0)) {
 			RDEBUG2("ACK handshake is finished");
 
 			/*
@@ -3073,9 +3054,8 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		 *	to the default section below.
 		 */
 	default:
-		RDEBUG2("ACK default");
-		RERROR("Invalid ACK received: %d",
-		       ssn->info.content_type);
+		RERROR("Invalid ACK received: %d", ssn->info.content_type);
+
 		return FR_TLS_INVALID;
 	}
 }
