@@ -151,7 +151,9 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	hold mutexes.  They might be locked when we fork,
 		 *	and will remain locked in the child.
 		 */
-		for (vp = fr_cursor_init(&cursor, &input_pairs); vp; vp = fr_cursor_next(&cursor)) {
+		for (vp = fr_cursor_init(&cursor, &input_pairs);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
 			 *	user's password in an environment
@@ -262,7 +264,12 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		closefrom(3);
 
 		/*
-		 *	I swear the signature for execve is wrong and should take 'char const * const argv[]'.
+		 *	I swear the signature for execve is wrong and should
+		 *	take 'char const * const argv[]'.
+		 *
+		 *	Note: execve(), unlike system(), treats all the space
+		 *	delimited arguments as literals, so there's no need
+		 *	to perform additional escaping.
 		 */
 		execve(argv[0], argv, envp);
 		printf("Failed to execute \"%s\": %s", argv[0], fr_syserror(errno)); /* fork output will be captured */
