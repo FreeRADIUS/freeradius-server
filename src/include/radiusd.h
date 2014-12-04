@@ -528,6 +528,8 @@ int		log_err (char *);
 #define MEM(x) if (!(x)) { ERROR("Out of memory"); exit(1); }
 void (*reset_signal(int signo, void (*func)(int)))(int);
 int		rad_mkdir(char *directory, mode_t mode);
+size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,
+				    char const *in, UNUSED void *arg);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 void		rad_const_free(void const *ptr);
 char		*rad_ajoin(TALLOC_CTX *ctx, char const **array, char c);

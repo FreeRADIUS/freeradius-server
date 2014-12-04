@@ -345,7 +345,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	 *	format, but truncate at the last /.  Then feed it
 	 *	through radius_xlat() to expand the variables.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), request, inst->filename, NULL, NULL) < 0) {
+	if (radius_xlat(buffer, sizeof(buffer), request, inst->filename, rad_filename_escape, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 	RDEBUG2("%s expands to %s", inst->filename, buffer);
