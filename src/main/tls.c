@@ -2833,6 +2833,9 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		vp = paircopy_by_num(talloc_ctx, request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
+		vp = paircopy_by_num(talloc_ctx, request->packet->vps, PW_STRIPPED_USER_DOMAIN, 0, TAG_ANY);
+		if (vp) pairadd(&vps, vp);
+
 		vp = paircopy_by_num(talloc_ctx, request->reply->vps, PW_CHARGEABLE_USER_IDENTITY, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
