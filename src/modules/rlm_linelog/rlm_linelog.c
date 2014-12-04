@@ -256,7 +256,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 	if (strcmp(inst->filename, "syslog") != 0) {
 		char path[2048];
 
-		if (radius_xlat(path, sizeof(path), request, inst->filename, NULL, NULL) < 0) {
+		if (radius_xlat(path, sizeof(path), request, inst->filename, rad_filename_escape, NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
 
