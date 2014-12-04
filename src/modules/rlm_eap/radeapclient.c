@@ -102,10 +102,8 @@ static uint16_t getport(char const *name)
 {
 	struct	servent		*svp;
 
-	svp = getservbyname (name, "udp");
-	if (!svp) {
-		return 0;
-	}
+	svp = getservbyname(name, "udp");
+	if (!svp) return 0;
 
 	return ntohs(svp->s_port);
 }

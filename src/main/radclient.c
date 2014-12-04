@@ -197,12 +197,10 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 
 static int getport(char const *name)
 {
-	struct	servent *svp;
+	struct servent *svp;
 
 	svp = getservbyname(name, "udp");
-	if (!svp) {
-		return 0;
-	}
+	if (!svp) return 0;
 
 	return ntohs(svp->s_port);
 }
@@ -245,6 +243,13 @@ static void radclient_get_port(PW_CODE type, uint16_t *port)
  */
 static PW_CODE radclient_get_code(uint16_t port)
 {
+	/*
+	 *	getport returns 0 if the service doesn't exist
+	 *	so we need to return early, to avoid incorrect
+	 *	codes.
+	 */
+	if (port == 0) return PW_CODE_UNDEFINED;
+
 	if ((port == getport("radius")) || (port == PW_AUTH_UDP_PORT) || (port == PW_AUTH_UDP_PORT_ALT)) {
 		return PW_CODE_ACCESS_REQUEST;
 	}
@@ -1399,7 +1404,6 @@ int main(int argc, char **argv)
 		 */
 		if (packet_code == PW_CODE_UNDEFINED) packet_code = radclient_get_code(server_port);
 	}
-
 	radclient_get_port(packet_code, &server_port);
 
 	/*
