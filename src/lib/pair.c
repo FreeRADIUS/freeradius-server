@@ -498,10 +498,11 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 		return;
 	}
 
-	str = vp_aprints(ctx, filter, '"');
-	value = vp_aprints_value(ctx, list, '"');
 
-	fr_strerror_printf("Attribute value \"%s\" didn't match filter \"%s\"", value, str);
+	value = vp_aprints_value(ctx, list, '"');
+	str = vp_aprints(ctx, filter, '"');
+
+	fr_strerror_printf("Attribute value \"%s\" didn't match filter: %s", value, str);
 
 	talloc_free(str);
 	talloc_free(value);
