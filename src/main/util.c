@@ -336,6 +336,105 @@ int rad_mkdir(char *directory, int mode)
 	return mkdir(directory, mode);
 }
 
+/** Escapes the raw string such that it should be safe to use as part of a file path
+ *
+ * This function is designed to produce a string that's still readable but portable
+ * across the majority of file systems.
+ *
+ * For security reasons it cannot remove characters from the name, and must not allow
+ * collisions to occur between different strings.
+ *
+ * With that in mind '-' has been chosen as the escape character, and will be double
+ * escaped '-' -> '--' to avoid collisions.
+ *
+ * Escaping should be reversible if the original string needs to be extracted.
+ *
+ * @note function takes additional arguments so that it may be used as an xlat escape
+ *	function but it's fine to call it directly.
+ *
+ * @note OSX/Unix/NTFS/VFAT/vfat have a max filename size of 255 bytes.
+ *
+ * @param request Current request (may be NULL).
+ * @param out Output buffer.
+ * @param outlen Size of the output buffer.
+ * @param in string to escape.
+ * @param arg Context arguments (unused, should be NULL).
+ */
+size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+{
+	size_t freespace = outlen;
+
+	while (in[0]) {
+		size_t utf8_len;
+
+		/*
+		 *	Encode multibyte UTF8 chars
+		 */
+		utf8_len = fr_utf8_char((uint8_t const *) in);
+		if (utf8_len > 1) {
+			if (freespace <= (utf8_len * 3)) break;
+
+			switch (utf8_len) {
+			case 2:
+				snprintf(out, freespace, "-%x-%x", in[0], in[1]);
+				break;
+
+			case 3:
+				snprintf(out, freespace, "-%x-%x-%x", in[0], in[1], in[2]);
+				break;
+
+			case 4:
+				snprintf(out, freespace, "-%x-%x-%x-%x", in[0], in[1], in[2], in[3]);
+				break;
+			}
+
+			freespace -= (utf8_len * 3);
+			out += (utf8_len * 3);
+			in += utf8_len;
+
+			continue;
+		}
+
+		/*
+		 *	Safe chars
+		 */
+		if (((in[0] >= 'A') && (in[0] <= 'Z')) ||
+		    ((in[0] >= 'a') && (in[0] <= 'z')) ||
+		    ((in[0] >= '0') && (in[0] <= '9')) ||
+		    (in[0] == '_') || (in[0] == '.')) {
+		    	if (freespace <= 1) break;
+
+		 	*out++ = *in;
+		 	in++;
+		 	freespace--;
+		 	continue;
+		}
+
+		if (freespace <= 2) break;
+
+		/*
+		 *	Double escape '-' (like \\)
+		 */
+		if (in[0] == '-') {
+			*out++ = '-';
+			*out++ = '-';
+
+			freespace -= 2;
+			in++;
+			continue;
+		}
+
+		/*
+		 *	Unsafe chars
+		 */
+		*out++ = '-';
+		fr_bin2hex((uint8_t *)in++, out, 1);
+		out += 2;
+		freespace -= 3;
+	}
+	*out = '\0';
+	return outlen - freespace;
+}
 
 /*
  *	Module malloc() call, which does stuff if the malloc fails.
@@ -461,7 +560,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
   fake->packet->id = fake->number & 0xff;
   fake->packet->code = request->packet->code;
   fake->timestamp = request->timestamp;
- 
+
   /*
    *	Required for new identity support
    */

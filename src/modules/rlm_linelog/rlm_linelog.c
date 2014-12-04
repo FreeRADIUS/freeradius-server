@@ -280,9 +280,8 @@ static int do_linelog(void *instance, REQUEST *request)
 	 *	FIXME: Check length.
 	 */
 	if (strcmp(inst->filename, "syslog") != 0) {
-		radius_xlat(buffer, sizeof(buffer), inst->filename, request,
-			    NULL);
-		
+		radius_xlat(buffer, sizeof(buffer), inst->filename, request, rad_filename_escape);
+
 		/* check path and eventually create subdirs */
 		p = strrchr(buffer,'/');
 		if (p) {
@@ -330,7 +329,7 @@ static int do_linelog(void *instance, REQUEST *request)
 
 	if (fd >= 0) {
 		strcat(line, "\n");
-		
+
 		write(fd, line, strlen(line));
 		close(fd);
 

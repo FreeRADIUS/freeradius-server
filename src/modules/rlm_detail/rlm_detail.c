@@ -223,7 +223,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	feed it through radius_xlat() to expand the
 	 *	variables.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, NULL) == 0) {
+	if (radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, rad_filename_escape) == 0) {
 		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to expand detail file %s",
 		    inst->detailfile);
 	    return RLM_MODULE_FAIL;
@@ -271,7 +271,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			radlog_request(L_ERR, 0, request, "rlm_detail: Failed to create directory %s: %s", buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
-		
+
 		*p = '/';
 	} /* else there was no directory delimiter. */
 
