@@ -2914,13 +2914,11 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				 *	the request list.
 				 */
 				if ((vp->da->vendor == 0) &&
-				    (vp->da->attr >= 1910) &&
-				    (vp->da->attr < 1929)) {
-					pairadd(&request->packet->vps,
-						paircopyvp(request->packet, vp));
+				    (vp->da->attr >= PW_TLS_CERT_SERIAL) &&
+				    (vp->da->attr <= PW_TLS_CLIENT_CERT_SUBJECT_ALT_NAME_UPN)) {
+					pairadd(&request->packet->vps, paircopyvp(request->packet, vp));
 				} else {
-					pairadd(&request->reply->vps,
-						paircopyvp(request->reply, vp));
+					pairadd(&request->reply->vps, paircopyvp(request->reply, vp));
 				}
 			}
 
