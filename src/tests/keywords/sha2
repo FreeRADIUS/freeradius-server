@@ -19,25 +19,25 @@ update reply {
 #
 if ("%{sha256:This is a string\n}" != 'b3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 1'
 	}
 }
 
 if ("%{sha256:&Tmp-String-0}" != 'b3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 2'
 	}
 }
 
 if ("%{sha256:&request:Tmp-String-0}" != 'b3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 3'
 	}
 }
 
 if ("%{sha256:%{Tmp-String-0}}" != 'b3716a1ab53042bb392034f29071e13b0c38aa19b4edd75d9a76022f91189124') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 4'
 	}
 }
 
@@ -46,7 +46,7 @@ if ("%{sha256:%{Tmp-String-0}}" != 'b3716a1ab53042bb392034f29071e13b0c38aa19b4ed
 #
 if ("%{sha256:&request:Tmp-Octets-0}" != 'f307e202b881fded70e58017aa0c4d7b29c76ab25d02bf078301a5f6635187eb') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 5'
 	}
 }
 
@@ -56,19 +56,19 @@ if ("%{sha256:&request:Tmp-Octets-0}" != 'f307e202b881fded70e58017aa0c4d7b29c76a
 #
 if ("%{sha512:This is a string\n}" != '56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 6'
 	}
 }
 
 if ("%{sha512:&Tmp-String-0}" != '56b57df5cce42d4e35c644649798ea23ec16f4f4626e78faf4d2d8f430ea349bcc28cd5532457c82f0aa66bf68988346039fe75b900a92ff94fd53993d45990f') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 7'
 	}
 }
 
 if ("%{sha512:&request:Tmp-Octets-0}" != 'de80271eb5e03a1c24dd0cd823a22305a743ee3a54f1de5bf97adbf56984561154bfb6928b1da4ccc3f5dde9f4032ad461937b60b9ace4ad3898cf45c90596d7') {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 8'
 	}
 }
 
