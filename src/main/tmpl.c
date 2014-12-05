@@ -728,6 +728,7 @@ value_pair_tmpl_t *tmpl_init(value_pair_tmpl_t *vpt, tmpl_type_t type, char cons
  */
 value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize_t len)
 {
+	char *p;
 	value_pair_tmpl_t *vpt;
 
 	rad_assert(type != TMPL_TYPE_UNKNOWN);
@@ -737,10 +738,11 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
 	if (!vpt) return NULL;
 	vpt->type = type;
 	if (name) {
-		vpt->name = len < 0 ? talloc_strdup(vpt, name) :
-				      talloc_strndup(vpt, name, len);
+		vpt->name = p = len < 0 ? talloc_strdup(vpt, name) :
+				          talloc_memdup(vpt, name, len + 1);
 		talloc_set_type(vpt->name, char);
 		vpt->len = talloc_array_length(vpt->name) - 1;
+		p[vpt->len] = '\0';
 	}
 
 	return vpt;
