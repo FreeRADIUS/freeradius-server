@@ -32,7 +32,7 @@ update request {
 
 if (Tmp-Integer-0 != 260) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 1'
 	}
 }
 
@@ -52,70 +52,70 @@ update request {
 # String - bin 0x39383730
 if (Tmp-Integer-0 != 4) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 2'
 	}
 }
 
 # Octets - bin 0x39383731
 if (Tmp-Integer-1 != 4) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 3'
 	}
 }
 
 # IP Address - bin 0x39383732
 if (Tmp-Integer-2 != 4) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 4'
 	}
 }
 
 # Date - bin 0x39383733
 if (Tmp-Integer-3 != 4) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 5'
 	}
 }
 
 # Integer - bin 0x39383734
 if (Tmp-Integer-4 != 4) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 6'
 	}
 }
 
 # Abinary - bin 0x0101000039383735000000002000110000000714000200000000000000000000
 if (Tmp-Integer-5 != 32) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 7'
 	}
 }
 
 # ifid - bin 0x0000000039383737
 if (Tmp-Integer-6 != 8) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 8'
 	}
 }
 
 # ipv6addr - bin 0x00000000000000000000000039383738
 if (Tmp-Integer-7 != 16) {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 9'
 	}
 }
 
 # ipv6addrprefix - bin 0x008000000000000000000000000039383739
 if (Tmp-Integer-8 != 18) {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 10'
 	}
 }
 
 # byte - bin 0x3a
 if (Tmp-Integer-9 != 1) {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 11'
 	}
 }
 
@@ -129,27 +129,27 @@ update request {
 # short - bin 0x373b
 if (Tmp-Integer-0 != 2) {
 	update reply {
-		Filter-ID += 'fail'
+		Filter-ID += 'fail 12'
 	}
 }
 
 # ethernet - bin 0x00003938373c
 if (Tmp-Integer-1 != 6) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 13'
 	}
 }
 
 # integer64 - bin 0x100000003938373d
 if (Tmp-Integer-2 != 8) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 14'
 	}
 }
 
 # ipv4prefix - bin 0x00203938373e
 if (Tmp-Integer-3 != 6) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'fail 15'
 	}
 }
