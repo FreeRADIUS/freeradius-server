@@ -78,7 +78,7 @@ static bool all_digits(char const *string)
 ssize_t radius_expand_tmpl(value_data_t *vd, REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	VALUE_PAIR *vp;
-	ssize_t slen;
+	ssize_t slen = -1;	/* quiet compiler */
 	char *out = NULL;
 
 	rad_assert(vpt->type != TMPL_TYPE_LIST);
