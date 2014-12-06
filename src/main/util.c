@@ -337,7 +337,7 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		 *	Unsafe chars
 		 */
 		*out++ = '-';
-		fr_bin2hex(out, (uint8_t *)in++, 1);
+		fr_bin2hex(out, (uint8_t const *)in++, 1);
 		out += 2;
 		freespace -= 3;
 	}
