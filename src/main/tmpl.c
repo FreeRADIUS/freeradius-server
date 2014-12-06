@@ -1195,6 +1195,7 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
  * @param[in] ctx for talloc.
  * @param[out] out Where to write the pointer to the new value_pait_tmpl_t.
  * @param[in] name string to convert.
+ * @param[in] inlen length of string to convert
  * @param[in] type Type of quoting around value.
  * @param[in] request_def The default request to insert unqualified
  *	attributes into.

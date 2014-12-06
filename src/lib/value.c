@@ -419,6 +419,7 @@ static char const hextab[] = "0123456789abcdef";
  * @param[in] src String to convert. Binary safe for variable length values if len is provided.
  * @param[in] src_len may be < 0 in which case strlen(len) is used to determine length, else src_len
  *	  should be the length of the string or sub string to parse.
+ * @param[in] quote quotation character used to drive de-escaping
  * @return length of data written to out or -1 on parse error.
  */
 ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
