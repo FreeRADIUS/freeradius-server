@@ -261,7 +261,7 @@ int rad_mkdir(char *directory, mode_t mode)
  * @note function takes additional arguments so that it may be used as an xlat escape
  *	function but it's fine to call it directly.
  *
- * @note OSX/Unix/NTFS/VFAT/vfat have a max filename size of 255 bytes.
+ * @note OSX/Unix/NTFS/VFAT have a max filename size of 255 bytes.
  *
  * @param request Current request (may be NULL).
  * @param out Output buffer.
@@ -273,7 +273,7 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 {
 	size_t freespace = outlen;
 
-	while (in[0]) {
+	while (*in != '\0') {
 		size_t utf8_len;
 
 		/*
@@ -307,14 +307,13 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		/*
 		 *	Safe chars
 		 */
-		if (((in[0] >= 'A') && (in[0] <= 'Z')) ||
-		    ((in[0] >= 'a') && (in[0] <= 'z')) ||
-		    ((in[0] >= '0') && (in[0] <= '9')) ||
-		    (in[0] == '_') || (in[0] == '.')) {
+		if (((*in >= 'A') && (*in <= 'Z')) ||
+		    ((*in >= 'a') && (*in <= 'z')) ||
+		    ((*in >= '0') && (*in <= '9')) ||
+		    (*in == '_') || (*in == '.')) {
 		    	if (freespace <= 1) break;
 
-		 	*out++ = *in;
-		 	in++;
+		 	*out++ = *in++;
 		 	freespace--;
 		 	continue;
 		}
@@ -324,7 +323,7 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		/*
 		 *	Double escape '-' (like \\)
 		 */
-		if (in[0] == '-') {
+		if (*in == '-') {
 			*out++ = '-';
 			*out++ = '-';
 
@@ -344,6 +343,67 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 	*out = '\0';
 
 	return outlen - freespace;
+}
+
+/** Converts data stored in a file name back to its original form
+ *
+ * @param out Where to write the unescaped string (may be the same as in).
+ * @param outlen Length of the output buffer.
+ * @param in Input filename.
+ * @param inlen Length of input.
+ * @return number of bytes written to output buffer, or offset where parse error
+ *	occurred on failure.
+ */
+ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen)
+{
+	char const *p, *end = in + inlen;
+	size_t freespace = outlen;
+
+	for (p = in; p < end; p++) {
+		if (freespace <= 1) break;
+
+		if (((*p >= 'A') && (*p <= 'Z')) ||
+		    ((*p >= 'a') && (*p <= 'z')) ||
+		    ((*p >= '0') && (*p <= '9')) ||
+		    (*p == '_') || (*p == '.')) {
+		 	*out++ = *p;
+		 	freespace--;
+		 	continue;
+		}
+
+		if (p[0] == '-') {
+			/*
+			 *	End of input, '-' needs at least one extra char after
+			 *	it to be valid.
+			 */
+			if ((end - p) < 2) return in - p;
+			if (p[1] == '-') {
+				p++;
+				*out++ = '-';
+				freespace--;
+				continue;
+			}
+
+			/*
+			 *	End of input, '-' must be followed by <hex><hex>
+			 *	but there aren't enough chars left
+			 */
+			if ((end - p) < 3) return in - p;
+
+			/*
+			 *	If hex2bin returns 0 the next two chars weren't hexits.
+			 */
+			if (fr_hex2bin((uint8_t *) out, 1, in, 1) == 0) return in - (p + 1);
+			in += 2;
+			out++;
+			freespace--;
+		}
+
+		return in - p; /* offset we found the bad char at */
+	}
+	*out = '\0';
+
+	return outlen - freespace;	/* how many bytes were written */
 }
 
 /*
