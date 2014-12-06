@@ -792,6 +792,7 @@ redo:
 		modcallable *this, *found, *null_case;
 		modgroup *g, *h;
 		fr_cond_t cond;
+		value_data_t data;
 		value_pair_map_t map;
 		value_pair_tmpl_t vpt;
 
@@ -839,11 +840,10 @@ redo:
 		if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
 		    (g->vpt->type == TMPL_TYPE_XLAT) ||
 		    (g->vpt->type == TMPL_TYPE_EXEC)) {
-			value_data_t data;
-
 			if (radius_expand_tmpl(&data, request, g->vpt) < 0) goto find_null_case;
 			tmpl_init(&vpt, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
-			talloc_free(data.ptr);
+		} else {
+			data.ptr = NULL;
 		}
 
 		/*
@@ -912,6 +912,7 @@ redo:
 		if (!found) found = null_case;
 
 	do_null_case:
+		talloc_free(data.ptr);
 		modcall_child(request, component, depth + 1, entry, found, &result);
 		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
