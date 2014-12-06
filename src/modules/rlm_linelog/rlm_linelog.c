@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/exfile.h>
 
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
@@ -59,7 +60,7 @@ typedef struct rlm_linelog_t {
 	char const	*group;
 	char const	*line;
 	char const	*reference;
-	fr_logfile_t	*lf;
+	exfile_t	*ef;
 } rlm_linelog_t;
 
 /*
@@ -119,8 +120,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	inst->lf = fr_logfile_init(inst);
-	if (!inst->lf) {
+	inst->ef = exfile_init(inst, 64, 30);
+	if (!inst->ef) {
 		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;
 	}
@@ -271,7 +272,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 			*p = '/';
 		}
 
-		fd = fr_logfile_open(inst->lf, path, inst->permissions);
+		fd = exfile_open(inst->ef, path, inst->permissions);
 		if (fd == -1) {
 			ERROR("rlm_linelog: Failed to open %s: %s",
 			       path, fr_syserror(errno));
@@ -302,7 +303,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 	 */
 	if (value && (radius_xlat(line, sizeof(line) - 1, request, value, linelog_escape_func, NULL) < 0)) {
 		if (fd > -1) {
-			fr_logfile_close(inst->lf, fd);
+			exfile_close(inst->ef, fd);
 		}
 
 		return RLM_MODULE_FAIL;
@@ -313,11 +314,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 
 		if (write(fd, line, strlen(line)) < 0) {
 			ERROR("rlm_linelog: Failed writing: %s", fr_syserror(errno));
-			fr_logfile_close(inst->lf, fd);
+			exfile_close(inst->ef, fd);
 			return RLM_MODULE_FAIL;
 		}
 
-		fr_logfile_close(inst->lf, fd);
+		exfile_close(inst->ef, fd);
 
 #ifdef HAVE_SYSLOG_H
 	} else {

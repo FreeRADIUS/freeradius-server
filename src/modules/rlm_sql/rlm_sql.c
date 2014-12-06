@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/token.h>
 #include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/exfile.h>
 
 #include <sys/stat.h>
 
@@ -978,8 +979,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 	}
 
-	inst->lf = fr_logfile_init(inst);
-	if (!inst->lf) {
+	inst->ef = exfile_init(inst, 64, 30);
+	if (!inst->ef) {
 		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;
 	}
