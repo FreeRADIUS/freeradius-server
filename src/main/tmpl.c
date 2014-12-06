@@ -1206,7 +1206,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 	char const *p;
 	ssize_t slen;
 	PW_TYPE data_type = PW_TYPE_STRING;
-	value_pair_tmpl_t *vpt;
+	value_pair_tmpl_t *vpt = NULL;
 	value_data_t data;
 
 	switch (type) {
@@ -1303,6 +1303,8 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		rad_assert(0);
 		return 0;	/* 0 is an error here too */
 	}
+
+	rad_assert((slen >= 0) && (vpt != NULL));
 
 	VERIFY_TMPL(vpt);
 
