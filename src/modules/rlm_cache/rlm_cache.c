@@ -62,7 +62,7 @@ static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *r
 static void cache_release(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
 {
 	if (!inst->module->release) return;
-	if (!*handle) return;
+	if (!handle || !*handle) return;
 
 	inst->module->release(inst, request, handle);
 }
@@ -105,7 +105,7 @@ static rlm_cache_entry_t *cache_alloc(rlm_cache_t *inst, REQUEST *request)
  */
 static void cache_free(rlm_cache_t *inst, rlm_cache_entry_t **c)
 {
-	if (!*c || !inst->module->free) return;
+	if (!c || !*c || !inst->module->free) return;
 
 	inst->module->free(*c);
 	*c = NULL;
@@ -528,15 +528,18 @@ finish:
 	return rcode;
 }
 
+static ssize_t CC_HINT(nonnull) cache_xlat(void *instance, REQUEST *request,
+					   char const *fmt, char *out, size_t freespace);
+
 /*
  *	Allow single attribute values to be retrieved from the cache.
  */
 static ssize_t cache_xlat(void *instance, REQUEST *request,
 			  char const *fmt, char *out, size_t freespace)
 {
-	rlm_cache_entry_t 	*c;
+	rlm_cache_entry_t 	*c = NULL;
 	rlm_cache_t		*inst = instance;
-	rlm_cache_handle_t	*handle;
+	rlm_cache_handle_t	*handle = NULL;
 
 	VALUE_PAIR		*vp, *vps;
 	pair_lists_t		list;
