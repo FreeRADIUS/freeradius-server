@@ -1112,7 +1112,11 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 
 	type = vp->da->type;
 
-	ret = value_data_from_str(vp, &vp->data, &type, vp->da, value, inlen);
+	/*
+	 *	We presume that the input data is from a double quoted
+	 *	string, and needs escaping
+	 */
+	ret = value_data_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"');
 	if (ret < 0) return -1;
 
 	/*

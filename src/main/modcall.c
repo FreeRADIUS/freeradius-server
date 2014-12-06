@@ -804,8 +804,6 @@ redo:
 		fr_cond_t cond;
 		value_pair_map_t map;
 		value_pair_tmpl_t vpt;
-		char *expanded = NULL;
-
 
 		MOD_LOG_OPEN_BRACE;
 
@@ -851,8 +849,11 @@ redo:
 		if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
 		    (g->vpt->type == TMPL_TYPE_XLAT) ||
 		    (g->vpt->type == TMPL_TYPE_EXEC)) {
-			if (radius_expand_tmpl(&expanded, request, g->vpt) < 0) goto find_null_case;
-			tmpl_init(&vpt, TMPL_TYPE_LITERAL, expanded, talloc_array_length(expanded) - 1);
+			value_data_t data;
+
+			if (radius_expand_tmpl(&data, request, g->vpt) < 0) goto find_null_case;
+			tmpl_init(&vpt, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
+			talloc_free(data.ptr);
 		}
 
 		/*
@@ -917,7 +918,6 @@ redo:
 				break;
 			}
 		}
-		talloc_free(expanded);
 
 		if (!found) found = null_case;
 
@@ -1904,7 +1904,7 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_type(cs);
-	slen = tmpl_afrom_str(cs, &vpt, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 		char *spaces, *text;
 
@@ -2004,7 +2004,7 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 
 		type = cf_section_name2_type(cs);
 
-		slen = tmpl_afrom_str(cs, &vpt, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 		if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 			char *spaces, *text;
 
@@ -2089,7 +2089,7 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	 *	will fix it up.
 	 */
 	type = cf_section_name2_type(cs);
-	slen = tmpl_afrom_str(cs, &vpt, name2, type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+	slen = tmpl_afrom_str(cs, &vpt, name2, strlen(name2), type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 	if ((slen < 0) && ((type != T_BARE_WORD) || (name2[0] != '&'))) {
 		char *spaces, *text;
 
@@ -3305,7 +3305,8 @@ check_paircmp:
 		value_pair_tmpl_t *vpt;
 
 		fmt = talloc_asprintf(map->lhs, "%%{%s}", map->lhs->name);
-		slen = tmpl_afrom_str(map, &vpt, fmt, T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		slen = tmpl_afrom_str(map, &vpt, fmt, talloc_array_length(fmt) - 1,
+				      T_DOUBLE_QUOTED_STRING, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 		if (slen < 0) {
 			char *spaces, *text;
 
@@ -3501,7 +3502,7 @@ bool modcall_pass2(modcallable *mc)
 				rad_assert(c->name[0] == '&');
 				rad_assert(cf_section_name2_type(g->cs) == T_BARE_WORD);
 
-				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name,
+				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name, strlen(c->name),
 						      cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (slen < 0) {
@@ -3547,7 +3548,7 @@ bool modcall_pass2(modcallable *mc)
 			if (g->vpt->type == TMPL_TYPE_LITERAL) {
 				value_pair_tmpl_t *vpt;
 
-				slen = tmpl_afrom_str(g->cs, &vpt, c->name, cf_section_name2_type(g->cs),
+				slen = tmpl_afrom_str(g->cs, &vpt, c->name, strlen(c->name), cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (slen < 0) goto parse_error;
 				if (vpt->type == TMPL_TYPE_ATTR) {
@@ -3600,7 +3601,7 @@ bool modcall_pass2(modcallable *mc)
 			if (!g->vpt && c->name &&
 			    (c->name[0] == '&') &&
 			    (cf_section_name2_type(g->cs) == T_BARE_WORD)) {
-				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name,
+				slen = tmpl_afrom_str(g->cs, &g->vpt, c->name, strlen(c->name),
 						      cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (slen < 0) goto parse_error;
@@ -3697,7 +3698,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	all of the modules have been loaded.
 			 *	Check for that now.
 			 */
-			slen = tmpl_afrom_str(g->cs, &g->vpt, c->name, cf_section_name2_type(g->cs),
+			slen = tmpl_afrom_str(g->cs, &g->vpt, c->name, strlen(c->name), cf_section_name2_type(g->cs),
 					      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (slen < 0) goto parse_error;
 

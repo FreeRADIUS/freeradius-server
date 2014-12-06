@@ -14,12 +14,25 @@ update request {
 	Tmp-String-1 += '0x01\0010x07\0070x0A\n0x0D\r""0xb0\260°'
 
 	Tmp-String-2 := 'i have scary embedded things\000 inside me'
-	Tmp-String-2 += '0x01\0010x07\0070x0A\n0x0D\r\'\'0xb0\260°'
+	Tmp-String-2 += "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°"
 
 	reply:Filter-Id := "filter"
 }
 
-if ("%{string:Tmp-Octets-0}" != 'i have scary embedded things\000 inside me') {
+
+if ("%{length:&Tmp-String-0}" != 39) {
+	update reply {
+		Filter-Id += 'fail l-0'
+	}
+}
+
+if ("%{length:&Tmp-String-1}" != 42) {
+	update reply {
+		Filter-Id += 'fail l-1'
+	}
+}
+
+if ("%{string:Tmp-Octets-0}" != "i have scary embedded things\000 inside me") {
 	update reply {
 		Filter-Id += 'fail 1'
 	}
@@ -31,26 +44,26 @@ if (&Tmp-String-0 != "i have scary embedded things\000 inside me") {
 	}
 }
 
-if ("%{string:Tmp-Octets-1}" != '0x01\0010x07\0070x0A\n0x0D\r""0xb0\260°') {
+if ("%{string:Tmp-Octets-1}" != "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°") {
 	update reply {
 		Filter-Id += 'fail 3'
 	}
 }
 
-if ("%{Tmp-String-0[0]}" != 'i have scary embedded things\000 inside me') {
+if ("%{Tmp-String-0[0]}" != "i have scary embedded things\000 inside me") {
 	update reply {
 		Filter-Id += 'fail 4'
 	}
 }
 
-if ("%{Tmp-String-0[1]}" != '0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°') {
+if ("%{Tmp-String-0[1]}" != "0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°") {
 	update reply {
 		Filter-Id += 'fail 5'
 	}
 }
 
 # And another slightly different codepath...
-if ("%{Tmp-String-0[*]}" != 'i have scary embedded things\000 inside me,0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°') {
+if ("%{Tmp-String-0[*]}" != "i have scary embedded things\000 inside me,0x01\0010x07\0070x0A\n0x0D\r\"\"0xb0\260°") {
 	update reply {
 		Filter-Id += 'fail 6'
 	}
@@ -66,7 +79,7 @@ if (&Tmp-String-0[0] != &Tmp-String-0[0]) {
 #  This seems weird... double escapes for most things, but single escapes
 #  for the quotation marks.
 #
-if ("%{Tmp-String-2[1]}" != '0x01\0010x07\0070x0A\n0x0D\r\'\'0xb0\260°') {
+if ("%{Tmp-String-2[1]}" != "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°") {
 	update reply {
 		Filter-Id += 'fail 8'
 	}
@@ -75,7 +88,7 @@ if ("%{Tmp-String-2[1]}" != '0x01\0010x07\0070x0A\n0x0D\r\'\'0xb0\260°') {
 #
 # And again as an attribute reference
 #
-if (&Tmp-String-2[1] != '0x01\0010x07\0070x0A\n0x0D\r\'\'0xb0\260°') {
+if (&Tmp-String-2[1] != "0x01\0010x07\0070x0A\n0x0D\r''0xb0\260°") {
 	update reply {
 		Filter-Id += 'fail 9'
 	}
