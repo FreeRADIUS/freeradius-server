@@ -748,7 +748,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when);
 
 /* evaluate.c */
 typedef struct fr_cond_t fr_cond_t;
-ssize_t radius_expand_tmpl(char **out, REQUEST *request, value_pair_tmpl_t const *vpt);
+ssize_t radius_expand_tmpl(value_data_t *vd, REQUEST *request, value_pair_tmpl_t const *vpt);
 int radius_evaluate_tmpl(REQUEST *request, int modreturn, int depth,
 			 value_pair_tmpl_t const *vpt);
 int radius_evaluate_map(REQUEST *request, int modreturn, int depth,

@@ -598,3 +598,9 @@ data ERROR offset 1 Invalid list qualifier
 # . is a valid dictionary name attribute, so we can't error out in pass1
 condition &not-a-packet.User-Name == &not-a-packet.User-Name
 data &not-a-packet.User-Name == &not-a-packet.User-Name
+
+#
+#  The LHS is a string with ASCII 5C 30 30 30 inside of it.
+#
+condition ('i have scary embedded things\000 inside me' == "i have scary embedded things\000 inside me")
+data false

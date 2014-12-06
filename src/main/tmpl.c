@@ -935,8 +935,8 @@ finish:
  *	attributes, and instead set type to TMPL_TYPE_ATTR_UNDEFINED.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
-ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name, request_refs_t request_def,
-			   pair_lists_t list_def, bool allow_undefined)
+ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
+			   request_refs_t request_def, pair_lists_t list_def, bool allow_undefined)
 {
 	ssize_t slen;
 
@@ -1201,12 +1201,14 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
  * @param[in] list_def The default list to insert unqualified attributes into.
  * @return < 0 on error (offset as negative integer), >= 0 on success (number of bytes parsed)
  */
-ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name, FR_TOKEN type,
+ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name, size_t inlen, FR_TOKEN type,
 		       request_refs_t request_def, pair_lists_t list_def)
 {
 	char const *p;
 	ssize_t slen;
+	PW_TYPE data_type = PW_TYPE_STRING;
 	value_pair_tmpl_t *vpt;
+	value_data_t data;
 
 	switch (type) {
 	case T_BARE_WORD:
@@ -1220,7 +1222,15 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		/* FALL-THROUGH */
 
 	case T_SINGLE_QUOTED_STRING:
-		vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, -1);
+		if (cf_new_escape) {
+			slen = value_data_from_str(ctx, &data, &data_type, NULL, name, inlen, '\'');
+			rad_assert(slen >= 0);
+
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
+			talloc_free(data.ptr);
+		} else {
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, -1);
+		}
 		slen = vpt->len;
 		break;
 
@@ -1244,21 +1254,49 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		 *	expansion.  Otherwise, convert it to be a
 		 *	literal.
 		 */
-		if (*p) {
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, name, -1);
+		if (cf_new_escape) {
+			slen = value_data_from_str(ctx, &data, &data_type, NULL, name, inlen, '"');
+			rad_assert(slen >= 0);
+
+			if (*p) {
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.strvalue, talloc_array_length(data.strvalue) - 1);
+			} else {
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
+			}
+			talloc_free(data.ptr);
 		} else {
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, -1);
+			if (*p) {
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, name, -1);
+			} else {
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, -1);
+			}
 		}
 		slen = vpt->len;
 		break;
 
 	case T_BACK_QUOTED_STRING:
-		vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, name, -1);
+		if (cf_new_escape) {
+			slen = value_data_from_str(ctx, &data, &data_type, NULL, name, inlen, '`');
+			rad_assert(slen >= 0);
+
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, data.strvalue, talloc_array_length(data.strvalue) - 1);
+			talloc_free(data.ptr);
+		} else {
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, name, -1);
+		}
 		slen = vpt->len;
 		break;
 
 	case T_OP_REG_EQ: /* hack */
-		vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, name, -1);
+		if (cf_new_escape) {
+			slen = value_data_from_str(ctx, &data, &data_type, NULL, name, inlen, '\0'); /* no unescaping */
+			rad_assert(slen >= 0);
+
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, data.strvalue, talloc_array_length(data.strvalue) - 1);
+			talloc_free(data.ptr);
+		} else {
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, name, -1);
+		}
 		slen = vpt->len;
 		break;
 
@@ -1277,7 +1315,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 /** Convert a tmpl containing literal data, to the type specified by da.
  *
  * @param[in,out] vpt the template to modify
- * @param[in] type to case to.
+ * @param[in] type to cast to.
  * @param[in] enumv Enumerated dictionary values.
  * @return true for success, false for failure.
  */
@@ -1295,7 +1333,7 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *e
 	/*
 	 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 	 */
-	ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type, enumv, vpt->name, vpt->len);
+	ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type, enumv, vpt->name, vpt->len, '\0');
 	if (ret < 0) return false;
 
 	vpt->type = TMPL_TYPE_DATA;
@@ -1329,7 +1367,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 {
 	int rcode;
 	VALUE_PAIR *vp;
-	char *str;
+	value_data_t data;
 
 	VERIFY_TMPL(vpt);
 
@@ -1346,16 +1384,23 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		return 0;
 	}
 
-	rcode = radius_expand_tmpl(&str, request, vpt);
+	rcode = radius_expand_tmpl(&data, request, vpt);
 	if (rcode < 0) {
 		pairfree(&vp);
 		return rcode;
 	}
 
-	if (pairparsevalue(vp, str, -1) < 0) {
-		talloc_free(str);
-		pairfree(&vp);
-		return rcode;
+	/*
+	 *	New escapes: strings are in binary form.
+	 */
+	if (cf_new_escape && (vp->da->type == PW_TYPE_STRING)) {
+		vp->data.ptr = talloc_steal(vp, data.ptr);
+		vp->vp_length = rcode;
+
+	} else if (pairparsevalue(vp, data.strvalue, rcode) < 0) {
+			talloc_free(data.ptr);
+			pairfree(&vp);
+			return -1;
 	}
 
 	*out = vp;

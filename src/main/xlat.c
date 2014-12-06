@@ -490,7 +490,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-		len = fr_print_string((char const *) p, vp->vp_length, out, outlen, '\0');
+		len = fr_print_string((char const *) p, vp->vp_length, out, outlen, '"');
 		break;
 
 	case PW_TYPE_STRING:
@@ -1922,7 +1922,6 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 {
 	ssize_t rcode;
 	char *str = NULL, *child;
-	char *q;
 	char const *p;
 
 	XLAT_DEBUG("%.*sxlat aprint %d", lvl, xlat_spaces, node->type);
@@ -2077,28 +2076,44 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *
 		 *	This is really the reverse of fr_print_string().
 		 */
-		p = q = child;
-		while (*p) {
-			if (*p == '\\') switch (p[1]) {
-				default:
-					*(q++) = p[1];
-					p += 2;
-					continue;
+		if (cf_new_escape && *child) {
+			ssize_t slen;
+			PW_TYPE type;
+			value_data_t data;
 
-				case 'n':
-					*(q++) = '\n';
-					p += 2;
-					continue;
+			type = PW_TYPE_STRING;
+			slen = value_data_from_str(request, &data, &type, NULL, child, talloc_array_length(child) - 1, '"');
+			rad_assert(slen > 0);
 
-				case 't':
-					*(q++) = '\t';
-					p += 2;
-					continue;
+			talloc_free(child);
+			child = data.ptr;
+
+		} else {
+			char *q;
+
+			p = q = child;
+			while (*p) {
+				if (*p == '\\') switch (p[1]) {
+					default:
+						*(q++) = p[1];
+						p += 2;
+						continue;
+
+					case 'n':
+						*(q++) = '\n';
+						p += 2;
+						continue;
+
+					case 't':
+						*(q++) = '\t';
+						p += 2;
+						continue;
+					}
+
+				*(q++) = *(p++);
 			}
-
-			*(q++) = *(p++);
+			*q = '\0';
 		}
-		*q = '\0';
 
 		str = talloc_array(ctx, char, 2048); /* FIXME: have the module call talloc_typed_asprintf */
 		*str = '\0';	/* Be sure the string is NULL terminated, we now only free on error */

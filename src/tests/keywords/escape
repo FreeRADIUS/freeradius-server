@@ -41,7 +41,7 @@ if (<string>"%{unescape:%{request:Tmp-String-0}}" != &Tmp-String-0) {
 	}
 }
 
-if (<string>"%{unescape:%{request:Tmp-String-3}}" != &Tmp-String-1) {
+if (<string>"%{unescape:%{request:Tmp-String-3}}" != "%{Tmp-String-1}") {
 	update reply {
 		Filter-Id += 'Fail 5'
 	}

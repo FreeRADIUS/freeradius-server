@@ -134,7 +134,7 @@ next:
 }
 
 
-static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out, char const **error, char const *start,
+static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char const **error, char const *start,
 					 FR_TOKEN *op)
 {
 	char const *p = start;
@@ -169,7 +169,28 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out, char const
 
 	while (*p) {
 		if (*p == *start) {
-			*q = '\0';
+			/*
+			 *	Call the STANDARD parse function to figure out what the string is.
+			 */
+			if (cf_new_escape) {
+				ssize_t slen;
+				value_data_t data;
+				PW_TYPE src_type = PW_TYPE_STRING;
+
+				slen = value_data_from_str(ctx, &data, &src_type, NULL, start + 1, p - (start + 1), *start);
+				if (slen < 0) {
+					*error = "error parsing string";
+					return slen - 1;
+				}
+
+				talloc_free(*out);
+				*out = talloc_steal(ctx, data.ptr);
+				data.strvalue = NULL;
+
+			} else {
+				*q = '\0'; /* terminate the output string */
+			}
+
 			p++;
 			return (p - start);
 		}
@@ -482,7 +503,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			c->type = COND_TYPE_EXISTS;
 			c->ci = ci;
 
-			tlen = tmpl_afrom_str(c, &c->data.vpt, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			tlen = tmpl_afrom_str(c, &c->data.vpt, lhs, talloc_array_length(lhs) - 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (tlen < 0) {
 				p = lhs_p - tlen;
 				return_P(fr_strerror());
@@ -655,7 +676,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 */
 			c->data.map = map = talloc_zero(c, value_pair_map_t);
 
-			tlen = tmpl_afrom_str(map, &map->lhs, lhs, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			tlen = tmpl_afrom_str(map, &map->lhs, lhs, talloc_array_length(lhs) - 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (tlen < 0) {
 				p = lhs_p - tlen;
 				return_P(fr_strerror());
@@ -677,7 +698,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			    map_cast_from_hex(map, rhs_type, rhs)) {
 				/* do nothing */
 			} else {
-				tlen = tmpl_afrom_str(map, &map->rhs, rhs, rhs_type,
+				tlen = tmpl_afrom_str(map, &map->rhs, rhs, talloc_array_length(rhs) - 1, rhs_type,
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
 				if (tlen < 0) {
 					p = rhs_p - tlen;

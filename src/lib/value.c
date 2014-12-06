@@ -423,7 +423,7 @@ static char const hextab[] = "0123456789abcdef";
  */
 ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 			    PW_TYPE *src_type, DICT_ATTR const *src_enumv,
-			    char const *src, ssize_t src_len)
+			    char const *src, ssize_t src_len, char quote)
 {
 	DICT_VALUE	*dval;
 	size_t		len;
@@ -446,86 +446,131 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	switch (*src_type) {
 	case PW_TYPE_STRING:
 	{
-		size_t		p_len;
-		char const	*cp;
 		char		*p;
+		char const	*q;
 		int		x;
 
-		/*
-		 *	Do escaping here
-		 */
 		dst->strvalue = p = talloc_memdup(ctx, src, len + 1);
 		p[len] = '\0';
 		talloc_set_type(p, char);
 
-		cp = src;
-		p_len = 0;
-		while (*cp) {
-			char c = *cp++;
+		/*
+		 *	No de-quoting.  Just copy the string.
+		 */
+		if (!quote) {
+			ret = len;
+			goto finish;
+		}
 
-			if (c == '\\') switch (*cp) {
-			case 'r':
-				c = '\r';
-				cp++;
-				break;
+		/*
+		 *	Do escaping for single quoted strings.  Only
+		 *	single quotes get escaped.  Everything else is
+		 *	left as-is.
+		 */
+		if (quote == '\'') {
+			q = p;
 
-			case 'n':
-				c = '\n';
-				cp++;
-				break;
-
-			case 't':
-				c = '\t';
-				cp++;
-				break;
-
-			case '"':
-				c = '"';
-				cp++;
-				break;
-
-			case '\'':
-				c = '\'';
-				cp++;
-				break;
-
-			case '\\':
-				c = '\\';
-				cp++;
-				break;
-
-			case '`':
-				c = '`';
-				cp++;
-				break;
-
-			case '\0':
-				c = '\\'; /* no cp++ */
-				break;
-			default:
-				if ((cp[0] >= '0') &&
-				    (cp[0] <= '9') &&
-				    (cp[1] >= '0') &&
-				    (cp[1] <= '9') &&
-				    (cp[2] >= '0') &&
-				    (cp[2] <= '9') &&
-				    (sscanf(cp, "%3o", &x) == 1)) {
-					c = x;
-					cp += 3;
+			/*
+			 *	Escape ONLY the quotation character.
+			 *	Everything else is left as-is.
+			 */
+			while (q < (dst->strvalue + len)) {
+				if ((q[0] == '\\') &&
+				    (q[1] == '\'')) {
+					*(p++) = '\'';
+					q += 2;
+					continue;
 				}
 
 				/*
-				 *	Else It's not a recognised escape sequence DON'T
-				 *	consume the backslash. This is identical
-				 *	behaviour to bash and most other things that
-				 *	use backslash escaping.
+				 *	Not escaped, just copy it over.
 				 */
+				*(p++) = *(q++);
 			}
-			*p++ = c;
-			p_len++;
+
+			*p = '\0';
+			ret = p - dst->strvalue;
+			dst->ptr = talloc_realloc(ctx, dst->ptr, char, ret + 1);
+			goto finish;
 		}
+
+		/*
+		 *	It's "string" or `string`, do all standard
+		 *	escaping.
+		 */
+		q = p;
+		while (q < (dst->strvalue + len)) {
+			char c = *q++;
+
+			if ((c == '\\') && (q >= (dst->strvalue + len))) {
+				fr_strerror_printf("Invalid escape at end of string");
+				return -1;
+			}
+
+			/*
+			 *	Fix up \X -> ... the binary form of it.
+			 */
+			if (c == '\\') {
+				switch (*q) {
+				case 'r':
+					c = '\r';
+					q++;
+					break;
+
+				case 'n':
+					c = '\n';
+					q++;
+					break;
+
+				case 't':
+					c = '\t';
+					q++;
+					break;
+
+				case '\\':
+					c = '\\';
+					q++;
+					break;
+
+				default:
+					/*
+					 *	\" --> ", but only inside of double quoted strings, etc.
+					 */
+					if (*q == quote) {
+						c = quote;
+						q++;
+						break;
+					}
+
+					/*
+					 *	\000 --> binary zero character
+					 */
+					if ((q[0] >= '0') &&
+					    (q[0] <= '9') &&
+					    (q[1] >= '0') &&
+					    (q[1] <= '9') &&
+					    (q[2] >= '0') &&
+					    (q[2] <= '9') &&
+					    (sscanf(q, "%3o", &x) == 1)) {
+						c = x;
+						q += 3;
+					}
+
+					/*
+					 *	Else It's not a recognised escape sequence DON'T
+					 *	consume the backslash. This is identical
+					 *	behaviour to bash and most other things that
+					 *	use backslash escaping.
+					 */
+				}
+			}
+
+			*p++ = c;
+		}
+
 		*p = '\0';
-		ret = p_len;
+		ret = p - dst->strvalue;
+		dst->ptr = talloc_realloc(ctx, dst->ptr, char, ret + 1);
 	}
 		goto finish;
 
@@ -982,7 +1027,7 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	Deserialise a value_data_t
 	 */
 	if (src_type == PW_TYPE_STRING) {
-		return value_data_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src_len);
+		return value_data_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src_len, '\0');
 	}
 
 	/*
