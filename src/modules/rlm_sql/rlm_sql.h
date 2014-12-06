@@ -10,9 +10,10 @@
 
 RCSIDH(rlm_sql_h, "$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/connection.h>
-#include	<freeradius-devel/modpriv.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/connection.h>
+#include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/exfile.h>
 
 #define PW_ITEM_CHECK		0
 #define PW_ITEM_REPLY		1
@@ -139,7 +140,7 @@ struct sql_inst {
 
 	DICT_ATTR const		*sql_user;	//!< Cached pointer to SQL-User-Name
 						//!< dictionary attribute.
-	fr_logfile_t		*lf;
+	exfile_t		*ef;
 
 	void *handle;
 	rlm_sql_module_t *module;

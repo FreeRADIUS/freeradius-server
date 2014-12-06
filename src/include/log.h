@@ -107,16 +107,6 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *msg);
 
 /*
- *	Multiple threads logging to one or more files.
- */
-typedef struct fr_logfile_t fr_logfile_t;
-
-fr_logfile_t *fr_logfile_init(TALLOC_CTX *ctx);
-int fr_logfile_open(fr_logfile_t *lf, char const *filename, mode_t permissions);
-int fr_logfile_close(fr_logfile_t *lf, int fd);
-int fr_logfile_unlock(fr_logfile_t *lf, int fd);
-
-/*
  *	Logging macros.
  *
  *	For server code, do not call radlog, vradlog et al directly, use one of the logging macros instead.

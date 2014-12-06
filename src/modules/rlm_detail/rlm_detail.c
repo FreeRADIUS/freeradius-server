@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/detail.h>
+#include <freeradius-devel/exfile.h>
 
 #include <ctype.h>
 #include <fcntl.h>
@@ -60,7 +61,7 @@ typedef struct detail_instance {
 
 	bool		log_srcdst;	//!< Add IP src/dst attributes to entries.
 
-	fr_logfile_t    *lf;		//!< Log file handler
+	exfile_t    	*ef;		//!< Log file handler
 
 	fr_hash_table_t *ht;		//!< Holds suppressed attributes.
 } detail_instance_t;
@@ -117,8 +118,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->name = cf_section_name1(conf);
 	}
 
-	inst->lf= fr_logfile_init(inst);
-	if (!inst->lf) {
+	inst->ef = exfile_init(inst, 64, 30);
+	if (!inst->ef) {
 		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;
 	}
@@ -367,7 +368,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 #endif
 #endif
 
-	outfd = fr_logfile_open(inst->lf, buffer, inst->perm);
+	outfd = exfile_open(inst->ef, buffer, inst->perm);
 	if (outfd < 0) {
 		RERROR("Couldn't open file %s: %s", buffer, fr_strerror());
 		return RLM_MODULE_FAIL;
@@ -398,7 +399,7 @@ skip_group:
 		RERROR("Couldn't open file %s: %s", buffer, fr_syserror(errno));
 	fail:
 		if (outfp) fclose(outfp);
-		fr_logfile_unlock(inst->lf, outfd);
+		exfile_unlock(inst->ef, outfd);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -408,7 +409,7 @@ skip_group:
 	 *	Flush everything
 	 */
 	fclose(outfp);
-	fr_logfile_unlock(inst->lf, outfd); /* do NOT close outfp */
+	exfile_unlock(inst->ef, outfd); /* do NOT close outfp */
 
 	/*
 	 *	And everything is fine.
