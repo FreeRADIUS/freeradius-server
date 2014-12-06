@@ -822,6 +822,7 @@ redo:
 		rad_assert(g->vpt != NULL);
 
 		null_case = found = NULL;
+		data.ptr = NULL;
 
 		/*
 		 *	The attribute doesn't exist.  We can skip
@@ -852,8 +853,6 @@ redo:
 		    (g->vpt->type == TMPL_TYPE_EXEC)) {
 			if (radius_expand_tmpl(&data, request, g->vpt) < 0) goto find_null_case;
 			tmpl_init(&vpt, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
-		} else {
-			data.ptr = NULL;
 		}
 
 		/*
