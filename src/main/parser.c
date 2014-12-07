@@ -708,7 +708,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 			/*
 			 *	If the RHS is 0xabcdef... automatically cast it to octets
-			 *	unless the LHS is an attribute of type octets.
+			 *	unless the LHS is an attribute of type octets, or an
+			 *	integer type.
 			 */
 			if (!c->cast && (rhs_type == T_BARE_WORD) &&
 			    (rhs[0] == '0') && (rhs[1] == 'x') &&
@@ -718,7 +719,11 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				}
 
 				if ((map->lhs->type != TMPL_TYPE_ATTR) ||
-				    (map->lhs->tmpl_da->type != PW_TYPE_OCTETS)) {
+				    !((map->lhs->tmpl_da->type == PW_TYPE_OCTETS) ||
+				      (map->lhs->tmpl_da->type == PW_TYPE_BYTE) ||
+				      (map->lhs->tmpl_da->type == PW_TYPE_SHORT) ||
+				      (map->lhs->tmpl_da->type == PW_TYPE_INTEGER) ||
+				      (map->lhs->tmpl_da->type == PW_TYPE_INTEGER64))) {
 					c->cast = dict_attrbyvalue(PW_CAST_BASE + PW_TYPE_OCTETS, 0);
 				}
 			}
