@@ -587,7 +587,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if ((parse_sub_section(inst, conf, &inst->accounting, RLM_COMPONENT_ACCT) < 0) ||
 	    (parse_sub_section(inst, conf, &inst->postauth, RLM_COMPONENT_POST_AUTH) < 0)) {
-		LDAP_ERR("Failed parsing configuration");
+		cf_log_err_cs(conf, "Failed parsing configuration");
 
 		goto error;
 	}
@@ -597,7 +597,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if (inst->cacheable_group_name && inst->groupobj_membership_filter) {
 		if (!inst->groupobj_name_attr) {
-			LDAP_ERR("Directive 'group.name_attribute' must be set if cacheable group names are enabled");
+			cf_log_err_cs(conf, "Directive 'group.name_attribute' must be set if cacheable "
+				      "group names are enabled");
 
 			goto error;
 		}
@@ -634,8 +635,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->dereference_str) {
 		inst->dereference = fr_str2int(ldap_dereference, inst->dereference_str, -1);
 		if (inst->dereference < 0) {
-			LDAP_ERR("Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
-				 "'finding' or 'always'", inst->dereference_str);
+			cf_log_err_cs(conf, "Invalid 'dereference' value \"%s\", expected 'never', 'searching', "
+				      "'finding' or 'always'", inst->dereference_str);
 			goto error;
 		}
 	}
@@ -646,8 +647,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	variable for the username, password, etc.
 	 */
 	if (inst->rebind == true) {
-		LDAP_ERR("Cannot use 'rebind' directive as this version of libldap does not support the API "
-			 "that we need");
+		cf_log_err_cs(conf, "Cannot use 'rebind' directive as this version of libldap "
+			      "does not support the API that we need");
 
 		goto error;
 	}
@@ -658,11 +659,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->userobj_scope = fr_str2int(ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
-		LDAP_ERR("Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
+		cf_log_err_cs(conf, "Invalid 'user.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
-			 ", 'base' or 'children'"
+			      ", 'base' or 'children'"
 #else
-			 " or 'base'"
+			      " or 'base'"
 #endif
 			 , inst->userobj_scope_str);
 		goto error;
@@ -670,11 +671,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->groupobj_scope = fr_str2int(ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
-		LDAP_ERR("Invalid 'group.scope' value \"%s\", expected 'sub', 'one'"
+		cf_log_err_cs(conf, "Invalid 'group.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
-			 ", 'base' or 'children'"
+			      ", 'base' or 'children'"
 #else
-			 " or 'base'"
+			      " or 'base'"
 #endif
 			 , inst->groupobj_scope_str);
 		goto error;
@@ -682,11 +683,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->clientobj_scope = fr_str2int(ldap_scope, inst->clientobj_scope_str, -1);
 	if (inst->clientobj_scope < 0) {
-		LDAP_ERR("Invalid 'client.scope' value \"%s\", expected 'sub', 'one'"
+		cf_log_err_cs(conf, "Invalid 'client.scope' value \"%s\", expected 'sub', 'one'"
 #ifdef LDAP_SCOPE_CHILDREN
-			 ", 'base' or 'children'"
+			      ", 'base' or 'children'"
 #else
-			 " or 'base'"
+			      " or 'base'"
 #endif
 			 , inst->clientobj_scope_str);
 		goto error;
@@ -699,13 +700,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 */
 		inst->tls_require_cert = fr_str2int(ldap_tls_require_cert, inst->tls_require_cert_str, -1);
 		if (inst->tls_require_cert < 0) {
-			LDAP_ERR("Invalid 'tls.require_cert' value \"%s\", expected 'never', 'demand', 'allow', "
-				 "'try' or 'hard'", inst->tls_require_cert_str);
+			cf_log_err_cs(conf, "Invalid 'tls.require_cert' value \"%s\", expected 'never', "
+				      "'demand', 'allow', 'try' or 'hard'", inst->tls_require_cert_str);
 			goto error;
 		}
 #else
-		LDAP_ERR("Modifying 'tls.require_cert' is not supported by current version of libldap. "
-			 "Please upgrade or substitute current libldap and rebuild this module");
+		cf_log_err_cs(conf, "Modifying 'tls.require_cert' is not supported by current "
+			      "version of libldap. Please upgrade or substitute current libldap and "
+			      "rebuild this module");
 
 		goto error;
 #endif
@@ -781,18 +783,18 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		cs = cf_section_sub_find(inst->cs, "client");
 		if (!cs) {
-			LDAP_ERR("Told to load clients but no client section found");
+			cf_log_err_cs(conf, "Told to load clients but no client section found");
 			goto error;
 		}
 
 		cs = cf_section_sub_find(cs, "attribute");
 		if (!cs) {
-			LDAP_ERR("Told to load clients but no attribute section found");
+			cf_log_err_cs(conf, "Told to load clients but no attribute section found");
 			goto error;
 		}
 
 		if (rlm_ldap_client_load(inst, cs) < 0) {
-			LDAP_ERR("Error loading clients");
+			cf_log_err_cs(conf, "Error loading clients");
 
 			return -1;
 		}
