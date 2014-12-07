@@ -428,15 +428,16 @@ int		fr_check_lib_magic(uint64_t magic);
  */
 int		fr_utf8_char(uint8_t const *str);
 char const     	*fr_utf8_strchr(int *chr_len, char const *str, char const *chr);
-size_t		fr_print_string(char const *in, size_t inlen,
+size_t		fr_print_string(char const *in, ssize_t inlen,
 				char *out, size_t outlen, char quote);
-	size_t		fr_print_string_len(char const *in, size_t inlen, char quote);
+size_t		fr_print_string_len(char const *in, ssize_t inlen, char quote);
+char		*fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
 
 #define		is_truncated(_ret, _max) ((_ret) >= (_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? ((_max) - 1) : _ret)
 size_t		vp_data_prints_value(char *out, size_t outlen,
 				     PW_TYPE type, DICT_ATTR const *enumv,
-				     value_data_t const *data, size_t inlen, char quote);
+				     value_data_t const *data, ssize_t inlen, char quote);
 size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
 
 char		*vp_data_aprints_value(TALLOC_CTX *ctx,
