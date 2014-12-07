@@ -101,9 +101,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 	if (username == NULL) {
 		strcpy(clean_username, "<no User-Name attribute>");
 	} else {
-		fr_print_string(username->vp_strvalue,
-				username->vp_length,
-				clean_username, sizeof(clean_username), '\0');
+		fr_prints(username->vp_strvalue, username->vp_length, clean_username, sizeof(clean_username), '\0');
 	}
 
 	/*
@@ -125,9 +123,8 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 		} else if (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) {
 			strcpy(clean_password, "<CHAP-Password>");
 		} else {
-			fr_print_string(request->password->vp_strvalue,
-					 request->password->vp_length,
-					clean_password, sizeof(clean_password), '\0');
+			fr_prints(request->password->vp_strvalue, request->password->vp_length,
+				  clean_password, sizeof(clean_password), '\0');
 		}
 	}
 
