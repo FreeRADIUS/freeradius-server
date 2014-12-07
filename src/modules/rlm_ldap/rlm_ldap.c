@@ -281,9 +281,9 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 	}
 
 	if (ldap_url->lud_host &&
-	    ((strncmp(inst->server, ldap_url->lud_host, strlen(inst->server)) != 0) ||
+	    ((strcmp(inst->server, ldap_url->lud_host) != 0) ||
 	     ((uint32_t) ldap_url->lud_port != inst->port))) {
-		RDEBUG("Requested server/port is \"%s:%i\"", ldap_url->lud_host, inst->port);
+		REDEBUG("LDAP expansions must specify the same host and port as the their module instance");
 
 		goto free_urldesc;
 	}
