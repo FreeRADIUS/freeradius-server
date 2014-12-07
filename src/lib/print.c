@@ -165,7 +165,7 @@ char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
  * @param[in] quote the quotation character
  * @return the number of bytes written to the out buffer, or a number >= outlen if truncation has occurred.
  */
-size_t fr_print_string(char const *in, ssize_t inlen, char *out, size_t outlen, char quote)
+size_t fr_prints(char const *in, ssize_t inlen, char *out, size_t outlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	int		utf8 = 0;
@@ -173,7 +173,7 @@ size_t fr_print_string(char const *in, ssize_t inlen, char *out, size_t outlen, 
 
 	/*
 	 *	IF YOU MODIFY THIS FUNCTION, YOU MUST MAKE
-	 *	EQUIVALENT MODIFICATIONS TO fr_print_string_len
+	 *	EQUIVALENT MODIFICATIONS TO fr_prints_len
 	 */
 
 	/* Can't '\0' terminate */
@@ -302,7 +302,7 @@ finish:
 	return outlen - freespace;
 }
 
-/** Find the length of the buffer required to fully escape a string with fr_print_string
+/** Find the length of the buffer required to fully escape a string with fr_prints
  *
  * Were assuming here that's it's cheaper to figure out the length and do one
  * alloc than repeatedly expand the buffer when we find extra chars which need
@@ -313,7 +313,7 @@ finish:
  * @param[in] quote the quotation character.
  * @return the size of buffer required to hold the escaped string including the NULL byte.
  */
-size_t fr_print_string_len(char const *in, ssize_t inlen, char quote)
+size_t fr_prints_len(char const *in, ssize_t inlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	size_t		outlen = 1;	/* Need one byte for \0 */
@@ -424,15 +424,15 @@ char *fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
 	size_t len, ret;
 	char *out;
 
-	len = fr_print_string_len(in, inlen, quote);
+	len = fr_prints_len(in, inlen, quote);
 
 	out = talloc_array(ctx, char, len);
-	ret = fr_print_string(in, inlen, out, len, quote);
+	ret = fr_prints(in, inlen, out, len, quote);
 	/*
 	 *	This is a fatal error, but fr_assert is the strongest
 	 *	assert we're allowed to use in library functions.
 	 */
-	if (!fr_assert(ret == len)) {
+	if (!fr_assert(ret == (len - 1))) {
 		talloc_free(out);
 		return NULL;
 	}
@@ -482,7 +482,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 			*out++ = quote;
 			freespace--;
 
-			len = fr_print_string(data->strvalue, inlen, out, freespace, quote);
+			len = fr_prints(data->strvalue, inlen, out, freespace, quote);
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
 				out[outlen - 2] = (char) quote;
@@ -499,7 +499,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 			return len + 2;
 		}
 
-		return fr_print_string(data->strvalue, inlen, out, outlen, quote);
+		return fr_prints(data->strvalue, inlen, out, outlen, quote);
 
 	case PW_TYPE_INTEGER:
 		i = data->integer;
@@ -710,12 +710,12 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
 		}
 
 		/* Gets us the size of the buffer we need to alloc */
-		len = fr_print_string_len(data->strvalue, inlen, quote);
+		len = fr_prints_len(data->strvalue, inlen, quote);
 		p = talloc_array(ctx, char, len);
 		if (!p) return NULL;
 
-		ret = fr_print_string(data->strvalue, inlen, p, len, quote);
-		if (!fr_assert(ret == len)) {
+		ret = fr_prints(data->strvalue, inlen, p, len, quote);
+		if (!fr_assert(ret == (len - 1))) {
 			talloc_free(p);
 			return NULL;
 		}

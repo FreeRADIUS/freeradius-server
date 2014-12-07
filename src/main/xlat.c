@@ -490,7 +490,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-		len = fr_print_string((char const *) p, vp->vp_length, out, outlen, '"');
+		len = fr_prints((char const *) p, vp->vp_length, out, outlen, '"');
 		break;
 
 	case PW_TYPE_STRING:
@@ -498,7 +498,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 		break;
 
 	default:
-		len = fr_print_string((char const *) p, ret, out, outlen, '\0');
+		len = fr_prints((char const *) p, ret, out, outlen, '\0');
 		break;
 	}
 
@@ -2074,7 +2074,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *
 		 *	The OUTPUT of xlat is a printable string.  The INPUT might not be...
 		 *
-		 *	This is really the reverse of fr_print_string().
+		 *	This is really the reverse of fr_prints().
 		 */
 		if (cf_new_escape && *child) {
 			ssize_t slen;

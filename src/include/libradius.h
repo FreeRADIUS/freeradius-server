@@ -428,9 +428,8 @@ int		fr_check_lib_magic(uint64_t magic);
  */
 int		fr_utf8_char(uint8_t const *str);
 char const     	*fr_utf8_strchr(int *chr_len, char const *str, char const *chr);
-size_t		fr_print_string(char const *in, ssize_t inlen,
-				char *out, size_t outlen, char quote);
-size_t		fr_print_string_len(char const *in, ssize_t inlen, char quote);
+size_t		fr_prints(char const *in, ssize_t inlen, char *out, size_t outlen, char quote);
+size_t		fr_prints_len(char const *in, ssize_t inlen, char quote);
 char		*fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
 
 #define		is_truncated(_ret, _max) ((_ret) >= (_max))
