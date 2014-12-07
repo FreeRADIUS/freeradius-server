@@ -272,6 +272,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
 	rad_assert(lhs_type == PW_TYPE_STRING);
+	rad_assert(lhs != NULL);
 
 	EVAL_DEBUG("CMP WITH REGEX %s", map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE");
 
