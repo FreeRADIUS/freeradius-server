@@ -126,9 +126,10 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle)
  * @param ef The logfile context returned from exfile_init().
  * @param filename the file to open.
  * @param permissions to use.
+ * @param append If true seek to the end of the file.
  * @return an FD used to write to the file, or -1 on error.
  */
-int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
+int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool append)
 {
 	uint32_t i;
 	uint32_t hash;
@@ -202,7 +203,7 @@ int exfile_open(exfile_t *ef, char const *filename, mode_t permissions)
 	ef->entries[i].filename = talloc_strdup(ef->entries, filename);
 	ef->entries[i].fd = -1;
 
-	ef->entries[i].fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, permissions);
+	ef->entries[i].fd = open(filename, O_RDWR | O_APPEND | O_CREAT, permissions);
 	if (ef->entries[i].fd < 0) {
 		mode_t dirperm;
 		char *p, *dir;
@@ -290,7 +291,7 @@ do_return:
 	 *	Seek to the end of the file before returning the FD to
 	 *	the caller.
 	 */
-	lseek(ef->entries[i].fd, 0, SEEK_END);
+	if (append) lseek(ef->entries[i].fd, 0, SEEK_END);
 
 	/*
 	 *	Return holding the mutex for the entry.
@@ -298,8 +299,7 @@ do_return:
 	ef->entries[i].last_used = now;
 	ef->entries[i].dup = dup(ef->entries[i].fd);
 	if (ef->entries[i].dup < 0) {
-		fr_strerror_printf("Failed calling dup(): %s",
-				   strerror(errno));
+		fr_strerror_printf("Failed calling dup(): %s", strerror(errno));
 		goto error;
 	}
 

@@ -368,7 +368,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 #endif
 #endif
 
-	outfd = exfile_open(inst->ef, buffer, inst->perm);
+	outfd = exfile_open(inst->ef, buffer, inst->perm, true);
 	if (outfd < 0) {
 		RERROR("Couldn't open file %s: %s", buffer, fr_strerror());
 		return RLM_MODULE_FAIL;
