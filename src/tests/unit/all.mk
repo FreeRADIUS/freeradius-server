@@ -7,7 +7,7 @@
 #  functionality from earlier tests.
 #
 FILES  := rfc.txt errors.txt extended.txt lucent.txt wimax.txt \
-	condition.txt xlat.txt vendor.txt
+	escape.txt condition.txt xlat.txt vendor.txt
 
 #
 #  Create the output directory
@@ -21,7 +21,7 @@ $(BUILD_DIR)/tests/unit:
 #
 $(BUILD_DIR)/tests/unit/%: $(DIR)/% $(TESTBINDIR)/radattr | $(BUILD_DIR)/tests/unit
 	@echo UNIT-TEST $(notdir $@)
-	@if ! $(TESTBIN)/radattr -D $(top_srcdir)/share $<; then \
+	@if ! $(TESTBIN)/radattr -xxx -D $(top_srcdir)/share $<; then \
 		echo "$(TESTBIN)/radattr -D $(top_srcdir)/share $<"; \
 		exit 1; \
 	fi
