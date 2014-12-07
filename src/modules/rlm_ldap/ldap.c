@@ -648,15 +648,7 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 			 */
 			/* FALL-THROUGH */
 		default:
-#ifdef HAVE_LDAP_INITIALIZE
-			if (inst->is_url) {
-				LDAP_ERR_REQ("Bind with %s to %s failed: %s", dn, inst->server, error);
-			} else
-#endif
-			{
-				LDAP_ERR_REQ("Bind with %s to %s:%d failed: %s", dn, inst->server,
-					     inst->port, error);
-			}
+			LDAP_ERR_REQ("Bind with %s to %s:%d failed: %s", dn, inst->server, inst->port, error);
 			LDAP_EXT_REQ();
 
 			break;
@@ -1211,27 +1203,21 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	conn->rebound = false;
 	conn->referred = false;
 
+	DEBUG("rlm_ldap (%s): Connecting to %s:%d", inst->xlat_name, inst->server, inst->port);
 #ifdef HAVE_LDAP_INITIALIZE
-	if (inst->is_url) {
-		DEBUG("rlm_ldap (%s): Connecting to %s", inst->xlat_name, inst->server);
-
-		ldap_errno = ldap_initialize(&conn->handle, inst->server);
-		if (ldap_errno != LDAP_SUCCESS) {
-			LDAP_ERR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
-			goto error;
-		}
-	} else
-#endif
-	{
-		DEBUG("rlm_ldap (%s): Connecting to %s:%d", inst->xlat_name, inst->server, inst->port);
-
-		conn->handle = ldap_init(inst->server, inst->port);
-		if (!conn->handle) {
-			LDAP_ERR("ldap_init() failed");
-			goto error;
-		}
+	ldap_errno = ldap_initialize(&conn->handle, inst->uri);
+	if (ldap_errno != LDAP_SUCCESS) {
+		LDAP_ERR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
+		goto error;
 	}
-	DEBUG3("rlm_ldap: New libldap handle %p", conn->handle);
+#else
+	conn->handle = ldap_init(inst->server, inst->port);
+	if (!conn->handle) {
+		LDAP_ERR("ldap_init failed");
+		goto error;
+	}
+#endif
+	DEBUG3("rlm_ldap (%s): New libldap handle %p", inst->xlat_name, conn->handle);
 
 	/*
 	 *	We now have a connection structure, but no actual TCP connection.
@@ -1352,7 +1338,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	if (inst->start_tls) {
 		if (inst->port == 636) {
 			WARN("Told to Start TLS on LDAPS port this will probably fail, please correct the "
-			       "configuration");
+			     "configuration");
 		}
 
 		if (ldap_start_tls_s(conn->handle, NULL, NULL) != LDAP_SUCCESS) {

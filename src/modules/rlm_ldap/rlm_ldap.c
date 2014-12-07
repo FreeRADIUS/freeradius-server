@@ -605,17 +605,67 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
-	 *	Check for URLs.  If they're used and the library doesn't support them, then complain.
+	 *	Split original server value out into URI, server and port
+	 *	so whatever initialization function we use later will have
+	 *	the server information in the format it needs.
 	 */
-	inst->is_url = 0;
 	if (ldap_is_ldap_url(inst->server)) {
-#ifdef HAVE_LDAP_INITIALIZE
-		inst->is_url = 1;
-		inst->port = 0;
-#else
-		LDAP_ERR("Directive 'server' is in URL form but ldap_initialize() is not available");
-		goto error;
-#endif
+		LDAPURLDesc *ldap_url;
+		int port;
+
+		if (ldap_url_parse(inst->server, &ldap_url)){
+			cf_log_err_cs(conf, "Parsing LDAP URL \"%s\" failed", inst->server);
+			return -1;
+		}
+
+		/*
+		 *	Figure out the port from the URL
+		 */
+		if (ldap_url->lud_port == 0) {
+			if (strcmp(ldap_url->lud_scheme, "ldaps://") == 0) {
+				if (inst->start_tls == true) {
+				start_tls_error:
+					cf_log_err_cs(conf, "ldaps:// scheme is not compatible with 'start_tls'");
+					return -1;
+				}
+				port = 636;
+			} else {
+				port = 384;
+			}
+		} else {
+			port = ldap_url->lud_port;
+		}
+
+		inst->uri = inst->server;
+		inst->server = talloc_strdup(inst, ldap_url->lud_host);
+
+		if ((inst->port != 384) && (port != inst->port)) {
+			WARN("Non-default 'port' directive %i set to %i by LDAP URI", inst->port, port);
+		}
+		inst->port = port;
+
+		/*
+		 *	@todo We could set a few other top level
+		 *	directives using the URL, like base_dn
+		 *	and scope.
+		 */
+
+		ldap_free_urldesc(ldap_url);
+	/*
+	 *	We need to construct an LDAP URI
+	 */
+	} else {
+		switch (inst->port) {
+		default:
+		case 384:
+			inst->uri = talloc_asprintf(inst, "ldap://%s:%i/", inst->server, inst->port);
+			break;
+
+		case 636:
+			if (inst->start_tls == true) goto start_tls_error;
+			inst->uri = talloc_asprintf(inst, "ldaps://%s:%i/", inst->server, inst->port);
+			break;
+		}
 	}
 
 #ifdef LDAP_OPT_X_TLS_NEVER
