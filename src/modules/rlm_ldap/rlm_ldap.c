@@ -250,7 +250,7 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 	LDAPURLDesc *ldap_url;
 	LDAPMessage *result = NULL;
 	LDAPMessage *entry = NULL;
-	char **vals;
+	struct berval **values;
 	ldap_handle_t *conn;
 	int ldap_errno;
 	char const *url;
@@ -317,21 +317,19 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 		goto free_result;
 	}
 
-	vals = ldap_get_values(conn->handle, entry, ldap_url->lud_attrs[0]);
-	if (!vals) {
+	values = ldap_get_values_len(conn->handle, entry, ldap_url->lud_attrs[0]);
+	if (!values) {
 		RDEBUG("No \"%s\" attributes found in specified object", ldap_url->lud_attrs[0]);
 		goto free_result;
 	}
 
-	len = strlen(vals[0]);
-	if (len >= freespace){
-		goto free_vals;
-	}
+	if (values[0]->bv_len >= freespace) goto free_values;
 
-	strlcpy(out, vals[0], freespace);
+	memcpy(out, values[0]->bv_val, values[0]->bv_len + 1);	/* +1 as strlcpy expects buffer size */
+	len = values[0]->bv_len;
 
-free_vals:
-	ldap_value_free(vals);
+free_values:
+	ldap_value_free_len(values);
 free_result:
 	ldap_msgfree(result);
 free_socket:
@@ -378,7 +376,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	/*
 	 *	Check if we can do cached membership verification
 	 */
-	check_is_dn = rlm_ldap_is_dn(check->vp_strvalue);
+	check_is_dn = rlm_ldap_is_dn(check->vp_strvalue, check->vp_length);
 	if (check_is_dn) {
 		char *norm;
 
@@ -953,7 +951,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	int		ldap_errno;
 	int		i;
 	ldap_instance_t	*inst = instance;
-	char		**vals;
+	struct berval	**values;
 	VALUE_PAIR	*vp;
 	ldap_handle_t	*conn;
 	LDAPMessage	*result, *entry;
@@ -1142,13 +1140,16 @@ skip_edir:
 	 *	Apply a SET of user profiles.
 	 */
 	if (inst->profile_attr) {
-		vals = ldap_get_values(conn->handle, entry, inst->profile_attr);
-		if (vals != NULL) {
-			for (i = 0; vals[i] != NULL; i++) {
-				rlm_ldap_map_profile(inst, request, &conn, vals[i], &expanded);
-			}
+		values = ldap_get_values_len(conn->handle, entry, inst->profile_attr);
+		if (values != NULL) {
+			for (i = 0; values[i] != NULL; i++) {
+				char *value;
 
-			ldap_value_free(vals);
+				value = rlm_ldap_berval_to_string(request, values[i]);
+				rlm_ldap_map_profile(inst, request, &conn, value, &expanded);
+				talloc_free(value);
+			}
+			ldap_value_free_len(values);
 		}
 	}
 
@@ -1162,9 +1163,7 @@ skip_edir:
 
 finish:
 	rlm_ldap_map_xlat_free(&expanded);
-	if (result) {
-		ldap_msgfree(result);
-	}
+	if (result) ldap_msgfree(result);
 	mod_conn_release(inst, conn);
 
 	return rcode;

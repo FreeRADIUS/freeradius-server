@@ -85,7 +85,8 @@ static int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION
 	     ci != NULL;
 	     ci = cf_item_find_next(map, ci)) {
 	     	CONF_PAIR const *cp;
-	     	char **value;
+	     	struct berval **values;
+	     	char *value;
 		char const *attr;
 
 		/*
@@ -107,14 +108,18 @@ static int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION
 		cp = cf_itemtopair(ci);
 		attr = cf_pair_attr(cp);
 
-		value = ldap_get_values(conn->handle, entry, cf_pair_value(cp));
-		if (!value) continue;
+		values = ldap_get_values_len(conn->handle, entry, cf_pair_value(cp));
+		if (!values) continue;
 
-		cp = cf_pair_alloc(client, attr, value[0], T_OP_SET, T_SINGLE_QUOTED_STRING);
+		value = rlm_ldap_berval_to_string(NULL, values[0]);
+		cp = cf_pair_alloc(client, attr, value, T_OP_SET, T_SINGLE_QUOTED_STRING);
 		if (!cp) {
-			LDAP_ERR("Failed allocing pair \"%s\" = \"%s\"", attr, value[0]);
+			LDAP_ERR("Failed allocing pair \"%s\" = \"%s\"", attr, value);
+			talloc_free(value);
 			return -1;
 		}
+		talloc_free(value);
+		ldap_value_free_len(values);
 		cf_item_add(client, cf_pairtoitem(cp));
 	}
 
@@ -213,7 +218,8 @@ int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
 		CONF_SECTION *cc;
 		char *id;
 
-		char **value;
+		struct berval **values;
+		char *value = NULL;
 
 		id = dn = ldap_get_dn(conn->handle, entry);
 		if (!dn) {
@@ -228,14 +234,17 @@ int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
 
 		cp = cf_pair_find(cs, "identifier");
 		if (cp) {
-			value = ldap_get_values(conn->handle, entry, cf_pair_value(cp));
-			if (value) id = value[0];
+			values = ldap_get_values_len(conn->handle, entry, cf_pair_value(cp));
+			if (value) id = rlm_ldap_berval_to_string(NULL, values[0]);
+			ldap_value_free_len(values);
 		}
 
 		/*
 		 *	Iterate over mapping sections
 		 */
 		cc = cf_section_alloc(NULL, "client", id);
+		talloc_free(value);
+
 		if (rlm_ldap_client_map_section(inst, cc, cs, conn, entry) < 0) {
 			talloc_free(cc);
 			ret = -1;

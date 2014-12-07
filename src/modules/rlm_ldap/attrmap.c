@@ -383,31 +383,43 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 	 *	a radius list, operator and value.
 	 */
 	if (inst->valuepair_attr) {
-		char 		**values;
+		struct berval	**values;
+		size_t		value_len = 0;
+		TALLOC_CTX	*value_pool;
 		int		count, i;
 
-		values = ldap_get_values(handle, entry, inst->valuepair_attr);
-		count = ldap_count_values(values);
+		values = ldap_get_values_len(handle, entry, inst->valuepair_attr);
+		count = ldap_count_values_len(values);
+
+		/*
+		 *	Find the largest value, and use that as the pool size.
+		 */
+		for (i = 0; i < count; i++) if ((values[i]->bv_len + 1) > value_len) value_len = values[i]->bv_len + 1;
+		value_pool = talloc_pool(request, value_len);
 
 		RINDENT();
 		for (i = 0; i < count; i++) {
 			value_pair_map_t *attr;
+			char *value;
 
-			RDEBUG3("Parsing attribute string '%s'", values[i]);
-			if (map_afrom_attr_str(request, &attr, values[i],
-					     REQUEST_CURRENT, PAIR_LIST_REPLY,
-					     REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+			value = rlm_ldap_berval_to_string(request, values[i]);
+			RDEBUG3("Parsing attribute string '%s'", value);
+			if (map_afrom_attr_str(request, &attr, value,
+					       REQUEST_CURRENT, PAIR_LIST_REPLY,
+					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 				RWDEBUG("Failed parsing '%s' value \"%s\" as valuepair (%s), skipping...",
-					fr_strerror(), inst->valuepair_attr, values[i]);
+					fr_strerror(), inst->valuepair_attr, value);
+				talloc_free(value);
 				continue;
 			}
 			if (map_to_request(request, attr, map_to_vp, NULL) < 0) {
-				RWDEBUG("Failed adding \"%s\" to request, skipping...", values[i]);
+				RWDEBUG("Failed adding \"%s\" to request, skipping...", value);
 			}
+			talloc_free(value);
 			talloc_free(attr);
 		}
 		REXDENT();
-		ldap_value_free(values);
+		ldap_value_free_len(values);
 	}
 }
 
@@ -435,9 +447,7 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 
 	rad_assert(inst->profile_filter); 	/* We always have a default filter set */
 
-	if (!dn || !*dn) {
-		return RLM_MODULE_OK;
-	}
+	if (!dn || !*dn) return RLM_MODULE_OK;
 
 	if (radius_xlat(filter, sizeof(filter), request, inst->profile_filter, rlm_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Failed creating profile filter");
