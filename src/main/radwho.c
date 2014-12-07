@@ -429,12 +429,10 @@ int main(int argc, char **argv)
 			memcpy(nasname, rt.login, sizeof(rt.login));
 			nasname[sizeof(rt.login)] = '\0';
 
-			fr_print_string(nasname, 0, buffer,
-					 sizeof(buffer), '"');
+			fr_print_string(nasname, -1, buffer, sizeof(buffer), '"');
 			printf("User-Name = \"%s\"\n", buffer);
 
-			fr_print_string(session_id, 0, buffer,
-					sizeof(buffer), '"');
+			fr_print_string(session_id, -1, buffer, sizeof(buffer), '"');
 			printf("Acct-Session-Id = \"%s\"\n", buffer);
 
 			if (zap) printf("Acct-Status-Type = Stop\n");
@@ -478,8 +476,7 @@ int main(int argc, char **argv)
 				       sizeof(rt.caller_id));
 				nasname[sizeof(rt.caller_id)] = '\0';
 
-				fr_print_string(nasname, 0, buffer,
-						 sizeof(buffer), '"');
+				fr_print_string(nasname, -1, buffer, sizeof(buffer), '"');
 				printf("Calling-Station-Id = \"%s\"\n", buffer);
 			}
 

@@ -155,24 +155,29 @@ char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
 
 /** Escape any non printable or non-UTF8 characters in the input string
  *
+ * @note Return value should be checked with is_truncated
+ * @note Will always \0 terminate unless outlen == 0.
+ *
  * @param[in] in string to escape.
  * @param[in] inlen length of string to escape (lets us deal with embedded NULLs)
  * @param[out] out where to write the escaped string.
  * @param[out] outlen the length of the buffer pointed to by out.
  * @param[in] quote the quotation character
- * @return the number of bytes written to the out buffer, or a number > outlen if truncation has occurred.
+ * @return the number of bytes written to the out buffer, or a number >= outlen if truncation has occurred.
  */
-size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, char quote)
+size_t fr_print_string(char const *in, ssize_t inlen, char *out, size_t outlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
-	int		sp = 0;
 	int		utf8 = 0;
 	size_t		freespace = outlen;
 
+	/*
+	 *	IF YOU MODIFY THIS FUNCTION, YOU MUST MAKE
+	 *	EQUIVALENT MODIFICATIONS TO fr_print_string_len
+	 */
+
 	/* Can't '\0' terminate */
-	if (freespace == 0) {
-		return inlen;
-	}
+	if (freespace == 0) return inlen;
 
 	/* No input, so no output... */
 	if (!in) {
@@ -182,7 +187,7 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, c
 	}
 
 	/* Figure out the length of the input string */
-	if (inlen == 0) inlen = strlen(in);
+	if (inlen < 0) inlen = strlen(in);
 
 	/* Not enough space to hold one char */
 	if (freespace < 2) {
@@ -196,6 +201,8 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, c
 	}
 
 	while (inlen > 0) {
+		int sp = 0;
+
 		/*
 		 *	Hack: never print trailing zero.
 		 *	Some clients send pings with an off-by-one
@@ -211,9 +218,7 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, c
 		 */
 		if (quote && (*p == quote)) {
 			sp = quote;
-		} else		/* do the switch statement */
-
-		switch (*p) {
+		} else switch (*p) {
 		case '\\':
 			/*
 			 *	If the next character is a quote, we
@@ -221,15 +226,13 @@ size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen, c
 			 */
 			if (quote && (p[1] == quote)) {
 				sp = '\\';
-			} else
 
-
-				/*
-				 *	Ensure that "\r" isn't
-				 *	interpreted as '\r', but
-				 *	instead as "\\r"
-				 */
-			switch (p[1]) {
+			/*
+			 *	Ensure that "\r" isn't
+			 *	interpreted as '\r', but
+			 *	instead as "\\r"
+			 */
+			} else switch (p[1]) {
 			case 'r':
 			case 't':
 			case 'n':
@@ -306,25 +309,23 @@ finish:
  * to be added.
  *
  * @param in string to calculate the escaped length for.
- * @param inlen length of the input string, if 0 strlen will be used to check the length.
- * @param[in] quote the quotation character
- * @return the size of buffer required to hold the escaped string excluding the NULL byte.
+ * @param inlen length of the input string, if < 0 strlen will be used to check the length.
+ * @param[in] quote the quotation character.
+ * @return the size of buffer required to hold the escaped string including the NULL byte.
  */
-size_t fr_print_string_len(char const *in, size_t inlen, char quote)
+size_t fr_print_string_len(char const *in, ssize_t inlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
-	size_t		outlen = 0;
+	size_t		outlen = 1;	/* Need one byte for \0 */
 	int		utf8 = 0;
 
-	if (!in) {
-		return 0;
-	}
+	if (!in) return outlen;
 
-	if (inlen == 0) {
-		inlen = strlen(in);
-	}
+	if (inlen < 0) inlen = strlen(in);
 
 	while (inlen > 0) {
+		int sp = 0;
+
 		/*
 		 *	Hack: never print trailing zero. Some clients send pings
 		 *	with an off-by-one length (confused with strings in C).
@@ -335,48 +336,57 @@ size_t fr_print_string_len(char const *in, size_t inlen, char quote)
 		}
 
 		if (quote && (*p == quote)) {
-			outlen += 2;
-			p++;
-			inlen--;
-			continue;
-		} else
-
-		switch (*p) {
+			sp = quote;
+		} else switch (*p) {
 		case '\\':
 			/*
-			 *	If the NEXT character is something a
-			 *	parser would get excited about, we
+			 *	If the next character is a quote, we
 			 *	need to escape the backslash.
-			 *	Otherwise, it's just a backslash.
 			 */
-			switch (p[1]) {
-			default:
-				if (p[1] != quote) {
-					outlen++;
-					p++;
-					inlen--;
-					continue;
-				}
-				/* FALL-THROUGH */
-
+			if (quote && (p[1] == quote)) {
+				sp = '\\';
+			/*
+			 *	Ensure that "\r" isn't
+			 *	interpreted as '\r', but
+			 *	instead as "\\r"
+			 */
+			} else switch (p[1]) {
 			case 'r':
 			case 't':
 			case 'n':
 			case '\\':
+				sp = '\\';
 				break;
+
+			default:
+				sp = '\0';
+				break;
+
 			}
-			/* FALL-THROUGH */
+			break;
 
 		case '\r':
+			sp = 'r';
+			break;
+
 		case '\n':
+			sp = 'n';
+			break;
+
 		case '\t':
+			sp = 't';
+			break;
+
+		default:
+			sp = '\0';
+			break;
+		}
+
+		if (sp) {
 			outlen += 2;
 			p++;
 			inlen--;
 			continue;
-
-		default:
-			break;
 		}
 
 		utf8 = fr_utf8_char(p);
@@ -387,22 +397,64 @@ size_t fr_print_string_len(char const *in, size_t inlen, char quote)
 			continue;
 		}
 
-		do {
-			outlen++;
-			p++;
-			inlen--;
-		} while (--utf8 > 0);
+		outlen += utf8;
+		p += utf8;
+		inlen -= utf8;
 	}
 
 	return outlen;
 }
 
+/** Escape string that may contain binary data, and write it to a new buffer
+ *
+ * This is useful in situations where we expect printable strings as input,
+ * but under some conditions may get binary data. A good example is libldap
+ * and the arrays of struct berval ldap_get_values_len returns.
+ *
+ * @param[in] ctx To allocate new buffer in.
+ * @param[in] in String to escape.
+ * @param[in] inlen Length of string. Should be >= 0 if the data may contain
+ *	embedded \0s. Must be >= 0 if data may not be \0 terminated.
+ *	If < 0 inlen will be calculated using strlen.
+ * @param[in] quote the quotation character.
+ * @return new buffer holding the escaped string.
+ */
+char *fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
+{
+	size_t len, ret;
+	char *out;
+
+	len = fr_print_string_len(in, inlen, quote);
+
+	out = talloc_array(ctx, char, len);
+	ret = fr_print_string(in, inlen, out, len, quote);
+	/*
+	 *	This is a fatal error, but fr_assert is the strongest
+	 *	assert we're allowed to use in library functions.
+	 */
+	if (!fr_assert(ret == len)) {
+		talloc_free(out);
+		return NULL;
+	}
+
+	return out;
+}
+
 /** Print the value of an attribute to a string
  *
+ * @note return value should be checked with is_truncated.
+ * @note Will always \0 terminate unless outlen == 0.
+ *
+ * @param out Where to write the printed version of the attribute value.
+ * @param outlen Length of the output buffer.
+ * @param data to print.
+ * @param inlen Length of data.
+ * @param quote char to escape in string output.
+ * @return  the number of bytes written to the out buffer, or a number >= outlen if truncation has occurred.
  */
 size_t vp_data_prints_value(char *out, size_t outlen,
 			    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
-			    size_t inlen, char quote)
+			    ssize_t inlen, char quote)
 {
 	DICT_VALUE	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
@@ -535,7 +587,7 @@ print_int:
 
 		/* Get maximum number of bytes we can encode given freespace */
 		max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
-		fr_bin2hex(out, data->octets, (inlen > max) ? max : inlen);
+		fr_bin2hex(out, data->octets, ((size_t)inlen > max) ? max : inlen);
 	}
 		return len;
 
@@ -659,10 +711,10 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
 
 		/* Gets us the size of the buffer we need to alloc */
 		len = fr_print_string_len(data->strvalue, inlen, quote);
-		p = talloc_array(ctx, char, len + 1); 	/* +1 for '\0' */
+		p = talloc_array(ctx, char, len);
 		if (!p) return NULL;
 
-		ret = fr_print_string(data->strvalue, inlen, p, len + 1, quote);
+		ret = fr_print_string(data->strvalue, inlen, p, len, quote);
 		if (!fr_assert(ret == len)) {
 			talloc_free(p);
 			return NULL;
