@@ -91,14 +91,136 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
 	return outlen - left;
 }
 
-/** Check whether a string is a DN
+/** Check whether a string looks like a DN
  *
- * @param str to check.
- * @return true if string is a DN, else false.
+ * @param[in] in Str to check.
+ * @param[in] inlen Length of string to check.
+ * @return true if string looks like a DN, else false.
  */
-int rlm_ldap_is_dn(char const *str)
+bool rlm_ldap_is_dn(char const *in, size_t inlen)
 {
-	return strrchr(str, ',') == NULL ? false : true;
+	char const *p;
+
+	char want = '=';
+	bool too_soon = true;
+	int comp = 1;
+
+	for (p = in; inlen > 0; p++, inlen--) {
+		if (p[0] == '\\') {
+			char c;
+
+			too_soon = false;
+
+			/*
+			 *	Invalid escape sequence, not a DN
+			 */
+			if (inlen < 2) return false;
+
+			/*
+			 *	Double backslash, consume two chars
+			 */
+			if (p[1] == '\\') {
+				inlen--;
+				p++;
+				continue;
+			}
+
+			/*
+			 *	Special, consume two chars
+			 */
+			switch (p[1]) {
+			case ' ':
+			case '#':
+			case '=':
+			case '"':
+			case '+':
+			case ',':
+			case ';':
+			case '<':
+			case '>':
+			case '\'':
+				inlen -= 1;
+				p += 1;
+				continue;
+
+			default:
+				break;
+			}
+
+			/*
+			 *	Invalid escape sequence, not a DN
+			 */
+			if (inlen < 3) return false;
+
+			/*
+			 *	Hex encoding, consume three chars
+			 */
+			if (fr_hex2bin((uint8_t *) &c, 1, p + 1, 2) == 1) {
+				inlen -= 2;
+				p += 2;
+				continue;
+			}
+
+			/*
+			 *	Invalid escape sequence, not a DN
+			 */
+			return false;
+		}
+
+		switch (*p) {
+		case '=':
+			if (too_soon || (*p != want)) return false;	/* Too soon after last , or = */
+			want = ',';
+			too_soon = true;
+			break;
+
+		case ',':
+			if (too_soon || (*p != want)) return false;	/* Too soon after last , or = */
+			want = '=';
+			too_soon = true;
+			comp++;
+			break;
+
+		default:
+			too_soon = false;
+			break;
+		}
+	}
+
+	/*
+	 *	If the string ended with , or =, or the number
+	 *	of components was less than 2
+	 *
+	 *	i.e. we don't have <attr>=<val>,<attr>=<val>
+	 */
+	if (too_soon || (comp < 2)) return false;
+
+	return true;
+}
+
+/** Convert a berval to a talloced string
+ *
+ * The ldap_get_values function is deprecated, and ldap_get_values_len
+ * does not guarantee the berval buffers it returns are \0 terminated.
+ *
+ * For some cases this is fine, for others we require a \0 terminated
+ * buffer (feeding DNs back into libldap for example).
+ *
+ * @param ctx to allocate in.
+ * @param in Berval to copy.
+ * @return \0 terminated buffer containing in->bv_val.
+ */
+char *rlm_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in)
+{
+	char *out;
+
+	out = talloc_array(ctx, char, in->bv_len + 1);
+	if (!out) return NULL;
+
+	memcpy(out, in->bv_val, in->bv_len);
+	out[in->bv_len] = '\0';
+
+	return out;
 }
 
 /** Normalise escape sequences in a DN
@@ -1069,23 +1191,22 @@ rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request,
 				  ldap_handle_t const *conn, LDAPMessage *entry)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
-	char **vals = NULL;
+	struct berval **values = NULL;
 
-	vals = ldap_get_values(conn->handle, entry, inst->userobj_access_attr);
-	if (vals) {
+	values = ldap_get_values_len(conn->handle, entry, inst->userobj_access_attr);
+	if (values) {
 		if (inst->access_positive) {
-			if (strncasecmp(vals[0], "false", 5) == 0) {
+			if ((values[0]->bv_len >= 5) && (strncasecmp(values[0]->bv_val, "false", 5) == 0)) {
 				RDEBUG("\"%s\" attribute exists but is set to 'false' - user locked out",
 				       inst->userobj_access_attr);
 				rcode = RLM_MODULE_USERLOCK;
 			}
 			/* RLM_MODULE_OK set above... */
-		} else if (strncasecmp(vals[0], "false", 5) != 0) {
+		} else if ((values[0]->bv_len < 5) || (strncasecmp(values[0]->bv_val, "false", 5) != 0)) {
 			RDEBUG("\"%s\" attribute exists - user locked out", inst->userobj_access_attr);
 			rcode = RLM_MODULE_USERLOCK;
 		}
-
-		ldap_value_free(vals);
+		ldap_value_free_len(values);
 	} else if (inst->access_positive) {
 		RDEBUG("No \"%s\" attribute - user locked out", inst->userobj_access_attr);
 		rcode = RLM_MODULE_USERLOCK;
@@ -1172,7 +1293,11 @@ static int _mod_conn_free(ldap_handle_t *conn)
 {
 	if (conn->handle) {
 		DEBUG3("rlm_ldap: Closing libldap handle %p", conn->handle);
+#ifdef HAVE_LDAP_UNBIND_EXT_S
+		ldap_unbind_ext_s(conn->handle, NULL, NULL);
+#else
 		ldap_unbind_s(conn->handle);
+#endif
 	}
 
 	return 0;

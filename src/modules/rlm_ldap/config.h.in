@@ -1,0 +1,43 @@
+/* config.h.in.  Generated from configure.ac by autoheader.  */
+
+/* Define to 1 if you have the `ldap_initialize' function. */
+#undef HAVE_LDAP_INITIALIZE
+
+/* Define to 1 if you have the `ldap_sasl_bind' function. */
+#undef HAVE_LDAP_SASL_BIND
+
+/* Define to 1 if you have the `ldap_set_rebind_proc' function. */
+#undef HAVE_LDAP_SET_REBIND_PROC
+
+/* Define to 1 if you have the `ldap_start_tls_s' function. */
+#undef HAVE_LDAP_START_TLS_S
+
+/* Define to 1 if you have the `ldap_unbind_ext_s' function. */
+#undef HAVE_LDAP_UNBIND_EXT_S
+
+/* Expose deprecated libldap functions */
+#undef LDAP_DEPRECATED
+
+/* Number of arguments the rebind procedure takes */
+#undef LDAP_SET_REBIND_PROC_ARGS
+
+/* Define to the address where bug reports for this package should be sent. */
+#undef PACKAGE_BUGREPORT
+
+/* Define to the full name of this package. */
+#undef PACKAGE_NAME
+
+/* Define to the full name and version of this package. */
+#undef PACKAGE_STRING
+
+/* Define to the one symbol short name of this package. */
+#undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
+
+/* Define to the version of this package. */
+#undef PACKAGE_VERSION
+
+/* Build the server with support for Novell eDir Universal Password */
+#undef WITH_EDIR

@@ -10,9 +10,10 @@
 #ifndef _RLM_LDAP_H
 #define _RLM_LDAP_H
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<ldap.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <ldap.h>
+#include "config.h"
 
 /*
  *      For compatibility with other LDAP libraries
@@ -311,7 +312,7 @@ extern FR_NAME_NUMBER const ldap_tls_require_cert[];
  */
 size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
 
-int rlm_ldap_is_dn(char const *str);
+bool rlm_ldap_is_dn(char const *in, size_t inlen);
 
 size_t rlm_ldap_normalise_dn(char *out, char const *in);
 
@@ -340,6 +341,8 @@ void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request);
 /*
  *	ldap.c - Callbacks for the connection pool API.
  */
+char *rlm_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
+
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
 
 ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, REQUEST *request);
@@ -349,7 +352,6 @@ void mod_conn_release(ldap_instance_t const *inst, ldap_handle_t *conn);
 /*
  *	groups.c - Group membership functions.
  */
-
 rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 				       LDAPMessage *entry, char const *attr);
 
