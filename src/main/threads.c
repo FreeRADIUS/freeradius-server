@@ -1385,6 +1385,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 	char const *attr;
 	char const *value;
 	VALUE_PAIR *vp;
+	bool alloc = false;
 
 	/*
 	 *	Use global "trigger" section if no local config is given.
@@ -1471,6 +1472,16 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 		}
 	}
 
+	/*
+	 *	radius_exec_program always needs a request.
+	 */
+	if (!request) {
+		request = request_alloc(NULL);
+	}
+
 	DEBUG("Trigger %s -> %s", name, value);
+
 	radius_exec_program(NULL, 0, NULL, request, value, vp, false, true, EXEC_TIMEOUT);
+
+	if (alloc) talloc_free(request);
 }
