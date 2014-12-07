@@ -463,6 +463,19 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 		}
 		p += slen;
 
+		/*
+		 *	If the LHS is 0xabcdef... automatically cast it to octets
+		 */
+		if (!c->cast && (lhs_type == T_BARE_WORD) &&
+		    (lhs[0] == '0') && (lhs[1] == 'x') &&
+		    ((slen & 0x01) == 0)) {
+			if (slen == 2) {
+				return_P("Empty octet string is invalid");
+			}
+
+			c->cast = dict_attrbyvalue(PW_CAST_BASE + PW_TYPE_OCTETS, 0);
+		}
+
 		while (isspace((int)*p)) p++; /* skip spaces after LHS */
 
 		/*
@@ -692,6 +705,23 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			}
 
 			map->op = op;
+
+			/*
+			 *	If the RHS is 0xabcdef... automatically cast it to octets
+			 *	unless the LHS is an attribute of type octets.
+			 */
+			if (!c->cast && (rhs_type == T_BARE_WORD) &&
+			    (rhs[0] == '0') && (rhs[1] == 'x') &&
+			    ((slen & 0x01) == 0)) {
+				if (slen == 2) {
+					return_P("Empty octet string is invalid");
+				}
+
+				if ((map->lhs->type != TMPL_TYPE_ATTR) ||
+				    (map->lhs->tmpl_da->type != PW_TYPE_OCTETS)) {
+					c->cast = dict_attrbyvalue(PW_CAST_BASE + PW_TYPE_OCTETS, 0);
+				}
+			}
 
 			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
 			    map->lhs->tmpl_da->flags.is_unknown &&
