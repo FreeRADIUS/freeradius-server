@@ -129,7 +129,6 @@ if test x"$fail" != x""; then
 fi
 
 AC_DEFINE(WITH_EDIR, 1, [Build the server with support for Novell eDir Universal Password])
-AC_DEFINE(LDAP_DEPRECATED, 1, [Expose deprecated libldap functions])
 AC_DEFINE_UNQUOTED(LDAP_SET_REBIND_PROC_ARGS, ${ac_cv_ldap_set_rebind_proc}, [Number of arguments the rebind procedure takes])
 
 mod_ldflags=$SMART_LIBS
