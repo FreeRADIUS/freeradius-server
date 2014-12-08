@@ -447,6 +447,8 @@ char *fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
  *
  * @param out Where to write the printed version of the attribute value.
  * @param outlen Length of the output buffer.
+ * @param type of data being printed.
+ * @param enumv Enumerated string values for integer types.
  * @param data to print.
  * @param inlen Length of data.
  * @param quote char to escape in string output.
