@@ -402,7 +402,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 			value_pair_map_t *attr;
 			char *value;
 
-			value = rlm_ldap_berval_to_string(request, values[i]);
+			value = rlm_ldap_berval_to_string(value_pool, values[i]);
 			RDEBUG3("Parsing attribute string '%s'", value);
 			if (map_afrom_attr_str(request, &attr, value,
 					       REQUEST_CURRENT, PAIR_LIST_REPLY,
@@ -419,6 +419,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 			talloc_free(attr);
 		}
 		REXDENT();
+		talloc_free(value_pool);
 		ldap_value_free_len(values);
 	}
 }
