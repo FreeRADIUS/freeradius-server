@@ -13,13 +13,18 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
+/*
  * $Id$
  * @file rlm_cache.h
  * @brief Cache values and merge them back into future requests.
  *
- * @copyright 2014 The FreeRADIUS server project
+ * @copyright 2014  The FreeRADIUS server project
+ * @copyright 2014  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
+RCSIDH(cache_h, "$Id$")
+
+#include <freeradius-devel/radiusd.h>
+
 typedef struct cache_module cache_module_t;
 
 typedef void rlm_cache_handle_t;
