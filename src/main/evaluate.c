@@ -326,11 +326,17 @@ static void cond_print_operands(REQUEST *request,
 	if (lhs) {
 		if (lhs_type == PW_TYPE_STRING) {
 			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->strvalue, lhs_len);
+
 		} else {
 			char *lhs_hex;
 
 			lhs_hex = talloc_array(request, char, (lhs_len * 2) + 1);
-			fr_bin2hex(lhs_hex, (uint8_t const *)lhs, lhs_len);
+
+			if (lhs_type == PW_TYPE_OCTETS) {
+				fr_bin2hex(lhs_hex, lhs->octets, lhs_len);
+			} else {
+				fr_bin2hex(lhs_hex, (uint8_t const *)lhs, lhs_len);
+			}
 
 			EVAL_DEBUG("LHS: 0x%s (%zu)", lhs_hex, lhs_len);
 
@@ -347,7 +353,12 @@ static void cond_print_operands(REQUEST *request,
 			char *rhs_hex;
 
 			rhs_hex = talloc_array(request, char, (rhs_len * 2) + 1);
-			fr_bin2hex(rhs_hex, (uint8_t const *)rhs, rhs_len);
+
+			if (rhs_type == PW_TYPE_OCTETS) {
+				fr_bin2hex(rhs_hex, rhs->octets, rhs_len);
+			} else {
+				fr_bin2hex(rhs_hex, (uint8_t const *)rhs, rhs_len);
+			}
 
 			EVAL_DEBUG("RHS: 0x%s (%zu)", rhs_hex, rhs_len);
 
