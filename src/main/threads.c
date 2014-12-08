@@ -1480,6 +1480,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 	 */
 	if (!request) {
 		request = request_alloc(NULL);
+		alloc = true;
 	}
 
 	DEBUG("Trigger %s -> %s", name, value);
