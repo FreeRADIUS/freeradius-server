@@ -37,6 +37,12 @@ data true
 condition "aa\000" == 0x616100
 data true
 
+condition 'aa\000' == 0x61615c303030
+data true
+
+condition 'aa\000' == "aa\000"
+data false
+
 condition 'a\n' == "a\n"
 data false
 
