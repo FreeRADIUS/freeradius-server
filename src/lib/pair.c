@@ -2079,6 +2079,9 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
 
 /** Copy data into an "string" data type.
  *
+ * @note unlike the original strncpy, this function does not stop
+ *	if it finds \0 bytes embedded in the string.
+ *
  * @param[in,out] vp to update.
  * @param[in] src data to copy.
  * @param[in] len of data to copy.
