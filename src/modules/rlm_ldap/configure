@@ -3367,9 +3367,6 @@ fi
 $as_echo "#define WITH_EDIR 1" >>confdefs.h
 
 
-$as_echo "#define LDAP_DEPRECATED 1" >>confdefs.h
-
-
 cat >>confdefs.h <<_ACEOF
 #define LDAP_SET_REBIND_PROC_ARGS ${ac_cv_ldap_set_rebind_proc}
 _ACEOF

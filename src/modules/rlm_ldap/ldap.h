@@ -12,6 +12,13 @@
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+
+/*
+ *	We're mostly using the new API now, but ldap_bind
+ *	is in the list of deprecated functions, at we may
+ *	always need to support that.
+ */
+#define LDAP_DEPRECATED 1
 #include <ldap.h>
 #include "config.h"
 
