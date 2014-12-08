@@ -589,7 +589,7 @@ print_int:
 
 		/* Get maximum number of bytes we can encode given freespace */
 		max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
-		fr_bin2hex(out, data->octets, ((size_t)inlen > max) ? max : inlen);
+		fr_bin2hex(out, data->octets, ((size_t)inlen > max) ? max : (size_t)inlen);
 	}
 		return len;
 
