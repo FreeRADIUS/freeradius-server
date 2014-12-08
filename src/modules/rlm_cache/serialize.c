@@ -166,7 +166,8 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		}
 
 		/*
-		 *	Convert literal to a type appropriate to the VP
+		 *	Convert literal to a type appropriate for
+		 *	the VP.
 		 */
 		if (!tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da)) goto error;
 
