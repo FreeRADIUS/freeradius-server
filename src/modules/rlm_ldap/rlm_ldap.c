@@ -299,9 +299,6 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 	case LDAP_PROC_SUCCESS:
 		break;
 
-	case LDAP_PROC_NO_RESULT:
-		RDEBUG("Search returned not found");
-
 	default:
 		goto free_socket;
 	}
@@ -457,7 +454,7 @@ finish:
 	if (conn) mod_conn_release(inst, conn);
 
 	if (!found) {
-		RDEBUG("User is not a member of specified group");
+		RDEBUG("User is not a member of \"%s\"", check->vp_strvalue);
 
 		return 1;
 	}
