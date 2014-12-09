@@ -38,6 +38,12 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	* Create TLS-Cert-* certificates, even when EAP session
 	  caching is disabled.
 	* Finalize the "correct_escapes" with many more tests.
+	* Move to the new OpenLDAP libldap API, fixes more issues
+	  with binary values.
+	* Fix potential memory corruption in rlm_ldap if start
+	  connections were set to 0, and the server was running
+	  in threaded mode. The fix is a workaround for an issue
+	  in libldap and was suggested by Howard Chu.
 
 FreeRADIUS 3.0.5 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	Feature improvements
