@@ -490,7 +490,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-		len = fr_prints((char const *) p, vp->vp_length, out, outlen, '"');
+		len = fr_prints(out, outlen, (char const *) p, vp->vp_length, '"');
 		break;
 
 	case PW_TYPE_STRING:
@@ -498,7 +498,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 		break;
 
 	default:
-		len = fr_prints((char const *) p, ret, out, outlen, '\0');
+		len = fr_prints(out, outlen, (char const *) p, ret, '\0');
 		break;
 	}
 

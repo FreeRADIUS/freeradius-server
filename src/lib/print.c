@@ -165,7 +165,7 @@ char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
  * @param[in] quote the quotation character
  * @return the number of bytes written to the out buffer, or a number >= outlen if truncation has occurred.
  */
-size_t fr_prints(char const *in, ssize_t inlen, char *out, size_t outlen, char quote)
+size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	int		utf8 = 0;
@@ -427,7 +427,7 @@ char *fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
 	len = fr_prints_len(in, inlen, quote);
 
 	out = talloc_array(ctx, char, len);
-	ret = fr_prints(in, inlen, out, len, quote);
+	ret = fr_prints(out, len, in, inlen, quote);
 	/*
 	 *	This is a fatal error, but fr_assert is the strongest
 	 *	assert we're allowed to use in library functions.
@@ -484,7 +484,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 			*out++ = quote;
 			freespace--;
 
-			len = fr_prints(data->strvalue, inlen, out, freespace, quote);
+			len = fr_prints(out, freespace, data->strvalue, inlen, quote);
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
 				out[outlen - 2] = (char) quote;
@@ -501,7 +501,7 @@ size_t vp_data_prints_value(char *out, size_t outlen,
 			return len + 2;
 		}
 
-		return fr_prints(data->strvalue, inlen, out, outlen, quote);
+		return fr_prints(out, outlen, data->strvalue, inlen, quote);
 
 	case PW_TYPE_INTEGER:
 		i = data->integer;
@@ -716,7 +716,7 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
 		p = talloc_array(ctx, char, len);
 		if (!p) return NULL;
 
-		ret = fr_prints(data->strvalue, inlen, p, len, quote);
+		ret = fr_prints(p, len, data->strvalue, inlen, quote);
 		if (!fr_assert(ret == (len - 1))) {
 			talloc_free(p);
 			return NULL;
