@@ -1179,7 +1179,7 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 	/*
 	 *	Print it with appropriate escaping
 	 */
-	len = fr_prints(vpt->name, -1, q, bufsize - 3, c);
+	len = fr_prints(q, bufsize - 3, vpt->name, -1, c);
 
 	q += len;
 	*(q++) = c;
