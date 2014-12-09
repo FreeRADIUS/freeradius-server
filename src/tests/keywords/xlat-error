@@ -1,0 +1,12 @@
+#
+#  PRE: if xlat-attr-tag
+#
+
+#
+#  missing a closing } for the expansion in the string.
+#
+if ("%{expr:1 + 2" == 3) { # ERROR
+	update reply {
+		Filter-Id := "fail"
+	}
+}

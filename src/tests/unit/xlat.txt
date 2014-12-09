@@ -128,3 +128,6 @@ data "%{reply:3GPP-IMSI[2]}"
 
 xlat /([A-Z0-9\-]*)_%{Calling-Station-Id}/
 data /([A-Z0-9\-]*)_%{Calling-Station-Id}/
+
+xlat %{length:1 + 2
+data ERROR offset 14 'Missing closing brace at end of string'
