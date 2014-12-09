@@ -475,6 +475,19 @@ static int mod_detach(void *instance)
 		talloc_free(inst->user_map);
 	}
 
+	/*
+	 *	Keeping the dummy ld around for the lifetime
+	 *	of the module should always work,
+	 *	irrespective of what changes happen in libldap.
+	 */
+	if (inst->handle) {
+#ifdef HAVE_LDAP_UNBIND_EXT_S
+		ldap_unbind_ext_s(inst->handle, NULL, NULL);
+#else
+		ldap_unbind_s(inst->handle);
+#endif
+	}
+
 	return 0;
 }
 
@@ -541,6 +554,19 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
 	}
+
+
+	/*
+	 *	Only needs to be done once, prevents races in environment
+	 *	initialisation within libldap.
+	 *
+	 *	See: https://github.com/arr2036/ldapperf/issues/2
+	 */
+#ifdef HAVE_LDAP_INITIALIZE
+	ldap_initialize(&inst->handle, "");
+#else
+	inst->handle = ldap_init("", 0);
+#endif
 
 	/*
 	 *	Get version info from the LDAP API.
