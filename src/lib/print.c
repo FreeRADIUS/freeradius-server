@@ -200,6 +200,18 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 		goto no_input;
 	}
 
+	/*
+	 *	No quotation character, just use memcpy, ensuring we
+	 *	don't overflow the output buffer.
+	 */
+	if (!quote) {
+		if ((size_t) inlen >= outlen) inlen = outlen;
+
+		memcpy(out, in, inlen);
+		out[inlen] = '\0';
+		return inlen;
+	}
+
 	while (inlen > 0) {
 		int sp = 0;
 
@@ -216,15 +228,16 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 		/*
 		 *	Escape the quotation character, if we have one.
 		 */
-		if (quote && (*p == quote)) {
+		if (*p == quote) {
 			sp = quote;
+
 		} else switch (*p) {
 		case '\\':
 			/*
 			 *	If the next character is a quote, we
 			 *	need to escape the backslash.
 			 */
-			if (quote && (p[1] == quote)) {
+			if (p[1] == quote) {
 				sp = '\\';
 
 			/*
