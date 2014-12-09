@@ -19,6 +19,7 @@
  *	always need to support that.
  */
 #define LDAP_DEPRECATED 1
+#include <lber.h>
 #include <ldap.h>
 #include "config.h"
 

@@ -29,8 +29,6 @@
 #include <stdarg.h>
 #include <ctype.h>
 
-#include <lber.h>
-#include <ldap.h>
 #include "ldap.h"
 
 /** Converts "bad" strings into ones which are safe for LDAP
