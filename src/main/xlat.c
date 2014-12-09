@@ -982,7 +982,6 @@ void xlat_free(void)
 	rbtree_free(xlat_root);
 }
 
-
 #ifdef DEBUG_XLAT
 #  define XLAT_DEBUG DEBUG3
 #else
@@ -1217,6 +1216,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 	node->type = XLAT_ATTRIBUTE;
 	p += slen;
+
 	if (*p != '}') {
 		talloc_free(node);
 		*error = "No matching closing brace";
@@ -1264,7 +1264,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 		if ((p[0] == '%') && (p[1] == '{')) {
 			ssize_t slen;
 
-			XLAT_DEBUG("LITERAL <-- %s", node->fmt);
+			XLAT_DEBUG("EXPANSION-2 <-- %s", node->fmt);
 
 			slen = xlat_tokenize_expansion(node, p, &node->next, error);
 			if (slen <= 0) {
@@ -1296,6 +1296,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 				return slen - (p - fmt);
 			}
 
+			brace = false; /* it was found above, or else the above code errored out */
 			p += slen;
 			break;	/* stop processing the string */
 		}
@@ -1320,7 +1321,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			if (p[1] == '%') {
 				next->fmt = talloc_typed_strdup(next, "%");
 
-				XLAT_DEBUG("LITERAL <-- %s", next->fmt);
+				XLAT_DEBUG("LITERAL-PERCENT <-- %s", next->fmt);
 				next->type = XLAT_LITERAL;
 
 			} else {
@@ -1346,6 +1347,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 				return slen - (p - fmt);
 			}
 
+			brace = false; /* it was found above, or else the above code errored out */
 			p += slen;
 			break;	/* stop processing the string */
 		}
@@ -1354,6 +1356,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 		 *	If required, eat the brace.
 		 */
 		if (brace && (*p == '}')) {
+			brace = false;
 			*p = '\0';
 			p++;
 			break;
@@ -1361,6 +1364,15 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 
 		p++;
 		node->len++;
+	}
+
+	/*
+	 *	We were told to look for a brace, but we ran off of
+	 *	the end of the string before we found one.
+	 */
+	if (brace) {
+		*error = "Missing closing brace at end of string";
+		return -(p - fmt);
 	}
 
 	/*
