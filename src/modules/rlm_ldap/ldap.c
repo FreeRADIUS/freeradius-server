@@ -488,11 +488,8 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 	/*
 	 *	Check if there was an error sending the request
 	 */
-	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
-			&lib_errno);
-	if (lib_errno != LDAP_SUCCESS) {
-		goto process_error;
-	}
+	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
+	if (lib_errno != LDAP_SUCCESS) goto process_error;
 
 	memset(&tv, 0, sizeof(tv));
 	tv.tv_sec = inst->res_timeout;
@@ -509,8 +506,8 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 	}
 
 	if (lib_errno == -1) {
-		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
-				&lib_errno);
+		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
+
 		goto process_error;
 	}
 
@@ -522,13 +519,10 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 				      extra ? &part_dn : NULL,
 				      extra ? &srv_err : NULL,
 				      NULL, NULL, freeit);
-	if (freeit) {
-		*result = NULL;
-	}
+	if (freeit) *result = NULL;
 
 	if (lib_errno != LDAP_SUCCESS) {
-		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
-				&lib_errno);
+		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
 		goto process_error;
 	}
 
@@ -546,7 +540,6 @@ process_error:
 
 	case LDAP_NO_SUCH_OBJECT:
 		*error = "The specified DN wasn't found, check base_dn and identity";
-
 		status = LDAP_PROC_BAD_DN;
 
 		if (!extra) break;
@@ -558,24 +551,20 @@ process_error:
 		if (len < 0) break;
 
 		our_err = talloc_typed_asprintf(conn, "Match stopped here: [%.*s]%s", len, dn, part_dn ? part_dn : "");
-
 		goto error_string;
 
 	case LDAP_INSUFFICIENT_ACCESS:
 		*error = "Insufficient access. Check the identity and password configuration directives";
-
 		status = LDAP_PROC_NOT_PERMITTED;
 		break;
 
 	case LDAP_UNWILLING_TO_PERFORM:
 		*error = "Server was unwilling to perform";
-
 		status = LDAP_PROC_NOT_PERMITTED;
 		break;
 
 	case LDAP_FILTER_ERROR:
 		*error = "Bad search filter";
-
 		status = LDAP_PROC_ERROR;
 		break;
 
@@ -593,13 +582,11 @@ process_error:
 	case LDAP_UNAVAILABLE:
 	case LDAP_SERVER_DOWN:
 		status = LDAP_PROC_RETRY;
-
 		goto error_string;
 
 	case LDAP_INVALID_CREDENTIALS:
 	case LDAP_CONSTRAINT_VIOLATION:
 		status = LDAP_PROC_REJECT;
-
 		goto error_string;
 
 	case LDAP_OPERATIONS_ERROR:
@@ -610,15 +597,10 @@ process_error:
 	default:
 		status = LDAP_PROC_ERROR;
 
-		error_string:
+	error_string:
+		if (!*error) *error = ldap_err2string(lib_errno);
 
-		if (!*error) {
-			*error = ldap_err2string(lib_errno);
-		}
-
-		if (!extra || ((lib_errno == srv_errno) && !our_err && !srv_err)) {
-			break;
-		}
+		if (!extra || ((lib_errno == srv_errno) && !our_err && !srv_err)) break;
 
 		/*
 		 *	Output the error codes from the library and server
@@ -666,13 +648,8 @@ process_error:
 	/*
 	 *	Cleanup memory
 	 */
-	if (srv_err) {
-		ldap_memfree(srv_err);
-	}
-
-	if (part_dn) {
-		ldap_memfree(part_dn);
-	}
+	if (srv_err) ldap_memfree(srv_err);
+	if (part_dn) ldap_memfree(part_dn);
 
 	talloc_free(our_err);
 
