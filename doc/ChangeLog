@@ -44,6 +44,9 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	  connections were set to 0, and the server was running
 	  in threaded mode. The fix is a workaround for an issue
 	  in libldap and was suggested by Howard Chu.
+	* Give parse errors on "%{...", without the closing brace.
+	* Allow spaces in certificate passwords for build rules
+	  in raddb/certs/
 
 FreeRADIUS 3.0.5 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	Feature improvements
