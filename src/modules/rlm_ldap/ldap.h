@@ -211,7 +211,6 @@ typedef struct ldap_instance {
 	/*
 	 *	Options
 	 */
-
 	uint32_t  	net_timeout;			//!< How long we wait for new connections to the LDAP server
 							//!< to be established.
 	uint32_t	res_timeout;			//!< How long we wait for a result from the server.
@@ -242,6 +241,7 @@ typedef struct ldap_instance {
 	uint32_t	keepalive_interval;		//!< Interval between keepalive probes.
 #endif
 
+	LDAP		*handle;			//!< Hack for OpenLDAP libldap global initialisation.
 } ldap_instance_t;
 
 typedef struct ldap_handle {
