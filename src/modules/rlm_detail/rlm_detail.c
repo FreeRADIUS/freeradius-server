@@ -61,6 +61,10 @@ typedef struct detail_instance {
 
 	bool		log_srcdst;	//!< Add IP src/dst attributes to entries.
 
+	bool		escape;		//!< do filename escaping, yes / no
+
+	RADIUS_ESCAPE_STRING escape_func; //!< escape function
+
 	exfile_t    	*ef;		//!< Log file handler
 
 	fr_hash_table_t *ht;		//!< Holds suppressed attributes.
@@ -74,6 +78,7 @@ static const CONF_PARSER module_config[] = {
 	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, detail_instance_t, perm), "0600" },
 	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, detail_instance_t, group), NULL },
 	{ "locking", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, locking), "no" },
+	{ "escape_filenames", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, escape), "no" },
 	{ "log_packet_header", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, log_srcdst), "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -117,6 +122,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->name) {
 		inst->name = cf_section_name1(conf);
 	}
+
+	/*
+	 *	Escape filenames only if asked.
+	 */
+	if (inst->escape) inst->escape_func = rad_filename_escape;
 
 	inst->ef = exfile_init(inst, 64, 30);
 	if (!inst->ef) {
@@ -346,7 +356,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	 *	format, but truncate at the last /.  Then feed it
 	 *	through radius_xlat() to expand the variables.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), request, inst->filename, rad_filename_escape, NULL) < 0) {
+	if (radius_xlat(buffer, sizeof(buffer), request, inst->filename, inst->escape_func, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 	RDEBUG2("%s expands to %s", inst->filename, buffer);
