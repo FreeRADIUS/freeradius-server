@@ -40,6 +40,13 @@ detail {
 #	detailfile = ${radacctdir}/detail
 
 	#
+	#  Most file systems can handly nearly the full range of UTF-8
+	#  characters.  Ones that can deal with a limited range should
+	#  set this to "yes".
+	#
+	escape_filenames = no
+
+	#
 	#  The Unix-style permissions on the 'detail' file.
 	#
 	#  The detail file often contains secret or private

@@ -65,6 +65,10 @@ struct detail_instance {
 	/* if we want file locking */
 	int locking;
 
+	int		escape;		//!< do filename escaping, yes / no
+
+	RADIUS_ESCAPE_STRING escape_func; //!< escape function
+
 	/* log src/dst information */
 	int log_srcdst;
 
@@ -86,6 +90,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(struct detail_instance,locking),    NULL, "no" },
 	{ "log_packet_header",       PW_TYPE_BOOLEAN,
 	  offsetof(struct detail_instance,log_srcdst),    NULL, "no" },
+	{ "escape_filenames", PW_TYPE_BOOLEAN,
+	  offsetof(struct detail_instance,escape), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -116,6 +122,81 @@ static int detail_cmp(const void *a, const void *b)
 
 
 /*
+ *	Ensure that the filename doesn't walk back up the tree.
+ */
+static size_t fix_directories(char *out, size_t outlen,
+			      char const *in)
+{
+	char const *q = in;
+	char *p = out;
+	size_t left = outlen;
+
+	while (*q) {
+		if (*q != '/') {
+			if (left < 2) break;
+
+			/*
+			 *	Smash control characters and spaces to
+			 *	something simpler.
+			 */
+			if (*q < ' ') {
+				*(p++) = '_';
+				continue;
+			}
+
+			*(p++) = *(q++);
+			left--;
+			continue;
+		}
+
+		/*
+		 *	For now, allow slashes in the expanded
+		 *	filename.  This allows the admin to set
+		 *	attributes which create sub-directories.
+		 *	Unfortunately, it also allows users to send
+		 *	attributes which *may* end up creating
+		 *	sub-directories.
+		 */
+		if (left < 2) break;
+		*(p++) = *(q++);
+
+		/*
+		 *	Get rid of ////../.././///.///..//
+		 */
+	redo:
+		/*
+		 *	Get rid of ////
+		 */
+		if (*q == '/') {
+			q++;
+			goto redo;
+		}
+
+		/*
+		 *	Get rid of /./././
+		 */
+		if ((q[0] == '.') &&
+		    (q[1] == '/')) {
+			q += 2;
+			goto redo;
+		}
+
+		/*
+		 *	Get rid of /../../../
+		 */
+		if ((q[0] == '.') && (q[1] == '.') &&
+		    (q[2] == '/')) {
+			q += 3;
+			goto redo;
+		}
+	}
+	*p = '\0';
+
+	return (p - out);
+}
+
+
+/*
  *	(Re-)read radiusd.conf into memory.
  */
 static int detail_instantiate(CONF_SECTION *conf, void **instance)
@@ -132,6 +213,15 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		detail_detach(inst);
 		return -1;
+	}
+
+	/*
+	 *	Escape filenames only if asked.
+	 */
+	if (inst->escape) {
+		inst->escape_func = rad_filename_escape;
+	} else {
+		inst->escape_func = fix_directories;
 	}
 
 	/*
@@ -223,7 +313,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	feed it through radius_xlat() to expand the
 	 *	variables.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, rad_filename_escape) == 0) {
+	if (radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, inst->escape_func) == 0) {
 		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to expand detail file %s",
 		    inst->detailfile);
 	    return RLM_MODULE_FAIL;
