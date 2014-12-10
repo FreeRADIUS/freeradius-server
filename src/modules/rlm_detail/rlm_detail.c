@@ -420,7 +420,6 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	int		outfd;
 	char		buffer[DIRLEN];
 
-	char		*p, *q;
 	FILE		*outfp;
 
 #ifdef HAVE_GRP_H
