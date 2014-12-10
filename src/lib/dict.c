@@ -660,6 +660,13 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		return -1;
 	}
 
+	/*
+	 *	Disallow attributes of type zero.
+	 */
+	if (!attr && !vendor) {
+		fr_strerror_printf("dict_addattr: Attribute 0 is invalid and cannot be used");
+		return -1;
+	}
 
 	/*
 	 *	If the attr is '-1', that means use a pre-existing
@@ -797,6 +804,12 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		if (!dv) {
 			fr_strerror_printf("dict_addattr: Unknown vendor %u",
 					   vendor & (FR_MAX_VENDOR - 1));
+			return -1;
+		}
+
+		if (!attr && dv->type != 1) {
+			fr_strerror_printf("dict_addattr: Attribute %s cannot have value zero",
+					   name);
 			return -1;
 		}
 
