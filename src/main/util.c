@@ -360,7 +360,7 @@ int rad_mkdir(char *directory, int mode)
  * @param in string to escape.
  * @param arg Context arguments (unused, should be NULL).
  */
-size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+size_t rad_filename_escape(char *out, size_t outlen, char const *in)
 {
 	size_t freespace = outlen;
 

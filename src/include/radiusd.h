@@ -488,8 +488,8 @@ int		log_err (char *);
 void (*reset_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST **request);
 int		rad_mkdir(char *directory, int mode);
-size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,
-				    char const *in, UNUSED void *arg);
+size_t		rad_filename_escape(char *out, size_t outlen,
+				    char const *in);
 int		rad_checkfilename(const char *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 REQUEST		*request_alloc(void);
