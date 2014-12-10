@@ -2181,7 +2181,10 @@ int rad_tlv_ok(uint8_t const *data, size_t length,
 			break;
 
 		case 1:
-			if (data[0] == 0) goto zero;
+			/*
+			 *	Zero is allowed, because the Colubris
+			 *	people are dumb and use it.
+			 */
 			break;
 
 		default:
