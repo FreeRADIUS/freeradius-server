@@ -342,6 +342,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	int		outfd;
 	char		buffer[DIRLEN];
 
+	char		*p, *q;
 	FILE		*outfp;
 
 #ifdef HAVE_GRP_H
@@ -359,6 +360,51 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	if (radius_xlat(buffer, sizeof(buffer), request, inst->filename, inst->escape_func, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
+
+	/*
+	 *	Ensure that the filename doesn't walk back up the tree.
+	 */
+	p = q = buffer;
+	while (*q) {
+		if (*q != '/') {
+			*(p++) = *(q++);
+			continue;
+		}
+
+		*(p++) = *(q++);
+
+		/*
+		 *	Get if of ////../.././///.///..//
+		 */
+	redo:
+		/*
+		 *	Get rid of ////
+		 */
+		if (*q == '/') {
+			q++;
+			goto redo;
+		}
+
+		/*
+		 *	Get rid of /./././
+		 */
+		if ((q[0] == '.') &&
+		       (q[1] == '/')) {
+			q += 2;
+			goto redo;
+		}
+
+		/*
+		 *	Get rid of /../../../
+		 */
+		if ((q[0] == '.') && (q[1] == '.') &&
+		    (q[2] == '/')) {
+			q += 3;
+			goto redo;
+		}
+	}
+	*p = '\0';
+
 	RDEBUG2("%s expands to %s", inst->filename, buffer);
 
 #ifdef WITH_ACCOUNTING
