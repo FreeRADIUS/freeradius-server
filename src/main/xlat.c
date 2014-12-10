@@ -881,6 +881,8 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 	name1 = cf_section_name1(cs);
 	name2 = cf_section_name2(cs);
 
+	if (!name2) return false;
+
 	if (xlat_find(name2)) {
 		cf_log_err_cs(cs, "An expansion is already registered for this name");
 		return false;
