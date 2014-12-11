@@ -1193,4 +1193,26 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	return src_len;
 }
 
+ssize_t value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type,
+			value_data_t *src, size_t src_len)
+{
+	switch (type) {
+	default:
+		memcpy(dst, src, sizeof(*src));
+		break;
 
+	case PW_TYPE_STRING:
+		dst->strvalue = talloc_memdup(ctx, src->strvalue, src_len + 1);
+		if (!dst->strvalue) return -1;
+		talloc_set_type(dst->strvalue, char);
+		break;
+
+	case PW_TYPE_OCTETS:
+		dst->octets = talloc_memdup(ctx, src->octets, src_len);
+		talloc_set_type(dst->strvalue, uint8_t);
+		if (!dst->octets) return -1;
+		break;
+	}
+
+	return src_len;
+}

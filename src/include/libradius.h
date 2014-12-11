@@ -663,6 +663,9 @@ ssize_t		value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 				PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
 				PW_TYPE src_type, DICT_ATTR const *src_enumv,
 				value_data_t const *src, size_t src_len);
+ssize_t		value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type,
+				value_data_t *src, size_t src_len);
+
 
 /*
  *	Error functions.
