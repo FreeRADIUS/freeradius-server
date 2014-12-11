@@ -601,7 +601,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
  *  	Example for this is Cisco-AVPair that holds multiple values.
  *  	Which will be available as array_ref in $RAD_REQUEST{'Cisco-AVPair'}
  */
-static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR *vps, HV *rad_hv,
+static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, HV *rad_hv,
 			   const char *hash_name, const char *list_name)
 {
 	VALUE_PAIR *vp;
@@ -611,8 +611,8 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 	vp_cursor_t cursor;
 
 	RINDENT();
-	pairsort(&vps, attrtagcmp);
-	for (vp = fr_cursor_init(&cursor, &vps);
+	pairsort(vps, attrtagcmp);
+	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 	     	VALUE_PAIR *next;
@@ -799,24 +799,24 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		rad_config_hv = get_hv("RAD_CONFIG", 1);
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
 
-		perl_store_vps(request->packet, request, request->packet->vps, rad_request_hv, "RAD_REQUEST", "request");
-		perl_store_vps(request->reply, request, request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
-		perl_store_vps(request, request, request->config_items, rad_check_hv, "RAD_CHECK", "control");
-		perl_store_vps(request, request, request->config_items, rad_config_hv, "RAD_CONFIG", "control");
+		perl_store_vps(request->packet, request, &request->packet->vps, rad_request_hv, "RAD_REQUEST", "request");
+		perl_store_vps(request->reply, request, &request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
+		perl_store_vps(request, request, &request->config_items, rad_check_hv, "RAD_CHECK", "control");
+		perl_store_vps(request, request, &request->config_items, rad_config_hv, "RAD_CONFIG", "control");
 
 #ifdef WITH_PROXY
 		rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
 		rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
 
 		if (request->proxy != NULL) {
-			perl_store_vps(request->proxy, request, request->proxy->vps, rad_request_proxy_hv,
+			perl_store_vps(request->proxy, request, &request->proxy->vps, rad_request_proxy_hv,
 				       "RAD_REQUEST_PROXY", "proxy-request");
 		} else {
 			hv_undef(rad_request_proxy_hv);
 		}
 
 		if (request->proxy_reply != NULL) {
-			perl_store_vps(request->proxy_reply, request, request->proxy_reply->vps,
+			perl_store_vps(request->proxy_reply, request, &request->proxy_reply->vps,
 				       rad_request_proxy_reply_hv, "RAD_REQUEST_PROXY_REPLY", "proxy-reply");
 		} else {
 			hv_undef(rad_request_proxy_reply_hv);
