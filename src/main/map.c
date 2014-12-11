@@ -559,6 +559,7 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t c
 int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, UNUSED void *ctx)
 {
 	int rcode = 0;
+	ssize_t len;
 	VALUE_PAIR *vp = NULL, *new, *found = NULL;
 	REQUEST *context = request;
 	vp_cursor_t cursor;
@@ -719,8 +720,6 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 
 			(void) fr_cursor_init(&to, out);
 			for (; vp; vp = fr_cursor_next(&from)) {
-				ssize_t len;
-
 				new = pairalloc(request, map->lhs->tmpl_da);
 				if (!new) return -1;
 
@@ -767,10 +766,14 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		new = pairalloc(request, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		if (pairdatacpy(new, map->rhs->tmpl_data_type, &map->rhs->tmpl_data_value,
-				map->rhs->tmpl_data_length) < 0) goto error;
+		len = value_data_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value,
+				      map->rhs->tmpl_data_length);
+		if (len < 0) goto error;
+
+		new->vp_length = len;
 		new->op = map->op;
 		*out = new;
+
 		VERIFY_MAP(map);
 		break;
 
