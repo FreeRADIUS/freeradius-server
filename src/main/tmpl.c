@@ -1382,7 +1382,8 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	if (vpt->type == TMPL_TYPE_DATA) {
 		VERIFY_VP(vp);
 		rad_assert(vp->da->type == vpt->tmpl_data_type);
-		pairdatacpy(vp, vpt->tmpl_data_type, &vpt->tmpl_data_value, vpt->tmpl_data_length);
+
+		value_data_copy(vp, &vp->data, vpt->tmpl_data_type, &vpt->tmpl_data_value, vpt->tmpl_data_length);
 		*out = vp;
 		return 0;
 	}
