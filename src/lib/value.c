@@ -1193,10 +1193,18 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	return src_len;
 }
 
-ssize_t value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type,
+/** Copy value data verbatim duplicating any buffers
+ *
+ * @param ctx To allocate buffers in.
+ * @param dst Where to copy value_data to.
+ * @param src_type Type of src.
+ * @param src Where to copy value_data from.
+ * @param src_len Where
+ */
+ssize_t value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type,
 			const value_data_t *src, size_t src_len)
 {
-	switch (type) {
+	switch (src_type) {
 	default:
 		memcpy(dst, src, sizeof(*src));
 		break;

@@ -139,6 +139,7 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 	while (((size_t)(p - in)) < (size_t)inlen) {
 		value_pair_map_t *map = NULL;
 		VALUE_PAIR *vp = NULL;
+		ssize_t len;
 
 		q = strchr(p, '\n');
 		if (!q) break;	/* List should also be terminated with a \n */
@@ -172,10 +173,9 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		if (!tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da)) goto error;
 
 		vp = pairalloc(c, map->lhs->tmpl_da);
-		if (pairdatacpy(vp, map->rhs->tmpl_data_type, &map->rhs->tmpl_data_value,
-				map->rhs->tmpl_data_length) < 0) {
-			goto error;
-		}
+		len = value_data_copy(vp, &vp->data, map->rhs->tmpl_data_type,
+				      &map->rhs->tmpl_data_value, map->rhs->tmpl_data_length);
+		if (len < 0) goto error;
 
 		/*
 		 *	Pull out the special attributes, and set the
