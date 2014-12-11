@@ -1194,7 +1194,7 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 }
 
 ssize_t value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type,
-			value_data_t *src, size_t src_len)
+			const value_data_t *src, size_t src_len)
 {
 	switch (type) {
 	default:
