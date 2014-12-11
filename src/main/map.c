@@ -719,16 +719,27 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 
 			(void) fr_cursor_init(&to, out);
 			for (; vp; vp = fr_cursor_next(&from)) {
+				ssize_t len;
+
 				new = pairalloc(request, map->lhs->tmpl_da);
 				if (!new) return -1;
-				if (pairdatacpy(new, vp->da->type, &vp->data, vp->vp_length) < 0) {
+
+				len = value_data_cast(new, &new->data, new->da->type, new->da,
+						      vp->da->type, vp->da, &vp->data, vp->vp_length);
+				if (len < 0) {
 					REDEBUG("Attribute conversion failed: %s", fr_strerror());
 					pairfree(&found);
 					pairfree(&new);
 					return -1;
 				}
+
+				new->vp_length = len;
 				vp = fr_cursor_remove(&from);
 				talloc_free(vp);
+
+				if (new->da->type == PW_TYPE_STRING) {
+					rad_assert(new->vp_strvalue != NULL);
+				}
 
 				new->op = map->op;
 				fr_cursor_insert(&to, new);
