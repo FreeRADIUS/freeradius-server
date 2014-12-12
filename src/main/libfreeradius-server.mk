@@ -7,6 +7,7 @@ SOURCES	:=	conffile.c \
 		log.c \
 		parser.c \
 		map.c \
+		regex.c \
 		tmpl.c \
 		util.c \
 		pair.c \

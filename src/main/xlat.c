@@ -2146,7 +2146,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	case XLAT_REGEX:
 		XLAT_DEBUG("xlat_aprint REGEX");
 		child = request_data_reference(request, request,
-					       REQUEST_DATA_REGEX | node->attr.tmpl_num);
+					       REQUEST_DATA_REGEX | (node->attr.tmpl_num + 1));
 		if (!child) return NULL;
 
 		str = talloc_typed_strdup(ctx, child);

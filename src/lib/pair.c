@@ -23,31 +23,9 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
+#include <freeradius-devel/regex.h>
 
 #include <ctype.h>
-
-#ifdef HAVE_PCRE
-#  define WITH_REGEX
-#  include <pcreposix.h>
-#elif defined(HAVE_REGEX)
-#  include <regex.h>
-#  define WITH_REGEX
-
-/*
- *  For POSIX Regular expressions.
- *  (0) Means no extended regular expressions.
- *  REG_EXTENDED means use extended regular expressions.
- */
-#  ifndef REG_EXTENDED
-#    define REG_EXTENDED (0)
-#  endif
-
-#  ifndef REG_NOSUB
-#    define REG_NOSUB (0)
-#  endif
-#endif
-
-
 
 /** Free a VALUE_PAIR
  *
@@ -1438,8 +1416,8 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		fr_strerror_printf("Regular expressions are not supported");
 		return NULL;
 #else
-		int compare;
-		regex_t reg;
+		ssize_t slen;
+		regex_t *preg;
 
 		/*
 		 *	Someone else will fill in the value.
@@ -1448,14 +1426,13 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 
 		talloc_free(vp);
 
-		compare = regcomp(&reg, value, REG_EXTENDED);
-		if (compare != 0) {
-			regerror(compare, &reg, buffer, sizeof(buffer));
-			fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
-					   attribute, buffer);
+		slen = regex_compile(ctx, &preg, value, strlen(value), false, true);
+		if (slen <= 0) {
+			fr_strerror_printf("Error at offset %zu compiling regex for %s: %s", -slen,
+					   attribute, fr_strerror());
 			return NULL;
 		}
-		regfree(&reg);
+		talloc_free(preg);
 
 		vp = pairmake(ctx, NULL, attribute, NULL, op);
 		if (!vp) return NULL;
@@ -1865,37 +1842,34 @@ int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 		if (!b) return false;
 
 		{
-			int compare;
-			regex_t reg;
-			char buffer[MAX_STRING_LEN * 4 + 1];
+			ssize_t	slen;
+			regex_t	*preg;
+			char	*value;
 
-			compare = regcomp(&reg, a->vp_strvalue, REG_EXTENDED);
-			if (compare != 0) {
-				regerror(compare, &reg, buffer, sizeof(buffer));
-				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
-						   a->da->name, buffer);
+			if (!fr_assert(a->vp->da->type == PW_TYPE_STRING)) return -1;
+
+			slen = regex_compile(ctx, &preg, value, a->vp_strvalue, a->vp_length, false, true);
+			if (slen <= 0) {
+				fr_strerror_printf("Error at offset %zu compiling regex for %s: %s",
+						   -slen, a->da->name, fr_strerror());
 				return -1;
 			}
-
-			if (!b) {
-				regfree(&reg);
+			value = vp_aprints_value(ctx, b, '\0');
+			if (!value) {
+				talloc_free(preg);
 				return -1;
 			}
-
-			vp_prints_value(buffer, sizeof(buffer), b, 0);
 
 			/*
-			 *	Don't care about substring matches,
-			 *	oh well...
+			 *	Don't care about substring matches, oh well...
 			 */
-			compare = regexec(&reg, buffer, 0, NULL, 0);
+			slen = regex_exec(preg, value, talloc_array_length(value) - 1, NULL, NULL);
+			talloc_free(preg);
+			talloc_free(value);
 
-			regfree(&reg);
-			if (a->op == T_OP_REG_EQ) {
-				return (compare == 0);
-			}
-
-			return (compare != 0);
+			if (slen < 0) return -1;
+			if (a->op == T_OP_REG_EQ) return (int)slen;
+			return !slen;
 		}
 #endif
 

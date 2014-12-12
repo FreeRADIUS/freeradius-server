@@ -3065,15 +3065,9 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 
 
 #ifdef HAVE_REGEX
-static int _free_compiled_regex(regex_t *preg)
-{
-	regfree(preg);
-	return 0;
-}
-
 static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 {
-	int rcode;
+	ssize_t slen;
 	regex_t *preg;
 
 	rad_assert(vpt->type == TMPL_TYPE_REGEX);
@@ -3094,17 +3088,19 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 		return pass2_xlat_compile(ci, &vpt, false, NULL);
 	}
 
-	preg = talloc_zero(vpt, regex_t);
-	talloc_set_destructor(preg, _free_compiled_regex);
-	if (!preg) return false;
+	slen = regex_compile(vpt, &preg, vpt->name, vpt->len, vpt->tmpl_iflag, false);
+	if (slen <= 0) {
+		char *spaces, *text;
 
-	rcode = regcomp(preg, vpt->name, REG_EXTENDED | (vpt->tmpl_iflag ? REG_ICASE : 0));
-	if (rcode != 0) {
-		char buffer[256];
-		regerror(rcode, preg, buffer, sizeof(buffer));
+		fr_canonicalize_error(vpt, &spaces, &text, slen, vpt->name);
 
-		cf_log_err(ci, "Invalid regular expression %s: %s",
-			   vpt->name, buffer);
+		cf_log_err(ci, "Invalid regular expression:");
+		cf_log_err(ci, "%s", text);
+		cf_log_err(ci, "%s^ %s", spaces, fr_strerror());
+
+		talloc_free(spaces);
+		talloc_free(text);
+
 		return false;
 	}
 

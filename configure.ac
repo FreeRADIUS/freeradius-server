@@ -1763,21 +1763,14 @@ dnl #  First look for PCRE
 dnl #
 if test "x$REGEX" = "x"; then
   smart_try_dir=$pcre_include_dir
-  FR_SMART_CHECK_INCLUDE(pcreposix.h)
-  if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
+  FR_SMART_CHECK_INCLUDE(pcre.h)
+  if test "x$ac_cv_header_pcre_h" = "xyes"; then
     smart_try_dir=$pcre_lib_dir
     FR_SMART_CHECK_LIB(pcre, pcre_compile)
     if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
       REGEX=yes
-
-      smart_try_dir=$pcre_lib_dir
       AC_DEFINE(HAVE_PCRE, [1], [define this if we have libpcre])
-
-      dnl #
-      dnl #  Hack to get -L<path> and -lpcreposix at the start
-      dnl #  of the linker arguments.
-      dnl #
-      LIBS=$(echo "$LIBS" | sed -e 's/-lpcre/-lpcre -lpcreposix/')
+      AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])
     fi
   fi
 fi
@@ -1815,6 +1808,18 @@ if test "x$REGEX" = "x"; then
         LIBS="-lregex $LIBS"
       ]
     )
+
+    dnl #
+    dnl #  Check for some BSD extensions which allow normal regexes to be
+    dnl #  binary safe.
+    dnl #
+    AC_CHECK_FUNCS(\
+      regncomp \
+      regnexec
+    )
+    if test x"$ac_cv_func_regncomp" = x"yes" && test  x"$ac_cv_func_regnexec" = x"yes"; then
+      AC_DEFINE(HAVE_BINSAFE_REGEX, 1, [Define if we have a binary safe regular expression library])
+    fi
   fi
 fi
 

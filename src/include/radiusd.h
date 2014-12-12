@@ -190,9 +190,6 @@ typedef		void (*fr_request_process_t)(REQUEST *, int);
  */
 typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 
-#define REQUEST_DATA_REGEX (0xadbeef00)
-#define REQUEST_MAX_REGEX (8)
-
 #if defined(WITH_VERIFY_PTR)
 #  define VERIFY_REQUEST(_x) verify_request(__FILE__, __LINE__, _x)
 #else
@@ -540,7 +537,7 @@ void		rdebug_proto_pair_list(log_lvl_t level, REQUEST *, VALUE_PAIR *);
 int		log_err (char *);
 
 /* util.c */
-#define MEM(x) if (!(x)) { ERROR("Out of memory"); exit(1); }
+#define MEM(x) if (!(x)) { ERROR("Out of memory"); _fr_exit_now(__FILE__, __LINE__, 1); }
 void (*reset_signal(int signo, void (*func)(int)))(int);
 int		rad_mkdir(char *directory, mode_t mode);
 size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,
@@ -565,15 +562,17 @@ uint32_t	rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval
 int		rad_expand_xlat(REQUEST *request, char const *cmd,
 				int max_argc, char *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
-#ifdef HAVE_REGEX
-void		rad_regcapture(REQUEST *request, int compare, char const *value,
-			       regmatch_t rxmatch[]);
-#endif
 
 void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */
 #ifdef HAVE_GRP_H
 bool		fr_getgid(char const *name, gid_t *gid);
 #endif
+
+/* regex.c */
+#define REQUEST_DATA_REGEX (0xadbeef00)
+#define REQUEST_MAX_REGEX (8)
+
+void regex_sub_to_request(REQUEST *request, char const *value, regmatch_t rxmatch[], size_t nmatch);
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);

@@ -71,9 +71,10 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 
 #ifdef HAVE_REGEX
 	if ((check->op == T_OP_REG_EQ) || (check->op == T_OP_REG_NE)) {
-		int compare;
-		regex_t reg;
-		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
+		ssize_t		slen;
+		regex_t		*preg;
+		regmatch_t	rxmatch[REQUEST_MAX_REGEX];
+		size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
 
 		char *expr = NULL, *value = NULL;
 		char const *expr_p, *value_p;
@@ -102,26 +103,28 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		/*
 		 *	Include substring matches.
 		 */
-		compare = regcomp(&reg, expr_p, REG_EXTENDED);
-		if (compare != 0) {
-			char buffer[256];
-			regerror(compare, &reg, buffer, sizeof(buffer));
+		slen = regex_compile(request, &preg, expr_p, talloc_array_length(expr_p) - 1, false, true);
+		if (slen <= 0) {
+			REMARKER(expr_p, -slen, fr_strerror());
 
-			REDEBUG("Invalid regular expression %s: %s", expr_p, buffer);
 			goto regex_error;
 		}
 
-		memset(&rxmatch, 0, sizeof(rxmatch));	/* regexec does not seem to initialise unused elements */
-		compare = regexec(&reg, value, REQUEST_MAX_REGEX + 1, rxmatch, 0);
-		regfree(&reg);
+		ret = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, rxmatch, &nmatch);
+		if (ret < 0) {
+			RERROR("%s", fr_strerror());
 
-		if (check->op == T_OP_REG_EQ) {
-			rad_regcapture(request, compare, value, rxmatch);
-			ret = (compare == 0) ? 0 : -1;
-		} else {
-			ret = (compare != 0) ? 0 : -1;
+			return -2;
 		}
 
+		if (check->op == T_OP_REG_EQ) {
+			regex_sub_to_request(request, value_p, rxmatch, nmatch);
+			ret = (slen == 1) ? 0 : -1;
+		} else {
+			ret = (slen != 1) ? 0 : -1;
+		}
+
+		talloc_free(preg);
 		talloc_free(expr);
 		talloc_free(value);
 		goto finish;
