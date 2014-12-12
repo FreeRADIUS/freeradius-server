@@ -2070,6 +2070,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			talloc_free(str);
 			return NULL;
 		}
+		RDEBUG2("EXPAND %s", node->xlat->name);
+		RDEBUG2("   --> %s", str);
 		break;
 
 	case XLAT_MODULE:
