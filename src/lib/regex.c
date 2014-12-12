@@ -62,9 +62,6 @@ static void _pcre_free(void *to_free) {
 	talloc_free(to_free);
 }
 
-extern
-
-
 /** Wrapper around pcre_compile
  *
  * Allows the rest of the code to do compilations using one function signature.
