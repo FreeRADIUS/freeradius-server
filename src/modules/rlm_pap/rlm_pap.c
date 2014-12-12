@@ -463,7 +463,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 */
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
-		RDEBUG2("No cleartext password in the request.  Not performing PAP");
+		RDEBUG2("No User-Password attribute in the request.  Cannot do PAP");
 		return RLM_MODULE_NOOP;
 	}
 
