@@ -302,8 +302,10 @@ char const *fr_debug_state_to_msg(fr_debug_state_t state)
  *
  * If the server is not running under debugger then this will do nothing.
  */
-void fr_debug_break(void)
+void fr_debug_break(bool always)
 {
+	if (always) raise(SIGTRAP);
+
 	if (fr_debug_state < 0) fr_debug_state = fr_get_debug_state();
 	if (fr_debug_state == DEBUG_STATE_ATTACHED) {
 		fprintf(stderr, "Debugger detected, raising SIGTRAP\n");
@@ -1250,7 +1252,7 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 		FR_FAULT_LOG("EXIT(%i) CALLED %s[%u]", status, file, line);
 	}
 #endif
-	fr_debug_break();	/* If running under GDB we'll break here */
+	fr_debug_break(false);	/* If running under GDB we'll break here */
 
 	exit(status);
 }
@@ -1275,7 +1277,7 @@ void NEVER_RETURNS _fr_exit_now(char const *file, int line, int status)
 		FR_FAULT_LOG("_EXIT(%i) CALLED %s[%u]", status, file, line);
 	}
 #endif
-	fr_debug_break();	/* If running under GDB we'll break here */
+	fr_debug_break(false);	/* If running under GDB we'll break here */
 
 	_exit(status);
 }
