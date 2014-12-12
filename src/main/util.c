@@ -975,69 +975,6 @@ int rad_expand_xlat(REQUEST *request, char const *cmd,
 	return argc;
 }
 
-#ifdef HAVE_REGEX
-/** Adds subcapture values to request data
- *
- * Allows use of %{n} expansions.
- *
- * @param request Current request.
- * @param compare Result returned by regexec.
- * @param value The original value.
- * @param rxmatch Pointers into value.
- */
-void rad_regcapture(REQUEST *request, int compare, char const *value, regmatch_t rxmatch[])
-{
-	int i;
-	char *p;
-	size_t len;
-
-	if (compare == REG_NOMATCH) {
-		return;
-	}
-
-	/*
-	 *	Add new %{0}, %{1}, etc.
-	 */
-	for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
-		/*
-		 *	Didn't match: delete old match, if it existed.
-		 */
-		if (rxmatch[i].rm_so == -1) {
-			p = request_data_get(request, request, REQUEST_DATA_REGEX | i);
-			if (p) {
-				RDEBUG4("%%{%i}: Clearing old value \"%s\"", i, p);
-				talloc_free(p);
-			} else {
-				RDEBUG4("%%{%i}: Was empty", i);
-			}
-
-			continue;
-		}
-
-		len = rxmatch[i].rm_eo - rxmatch[i].rm_so;
-		p = talloc_array(request, char, len + 1);
-		if (!p) {
-			ERROR("Out of memory");
-			return;
-		}
-
-		memcpy(p, value + rxmatch[i].rm_so, len);
-		p[len] = '\0';
-
-		RDEBUG4("%%{%i}: Inserting new value \"%s\"", i, p);
-		/*
-		 *	Copy substring, and add it to
-		 *	the request.
-		 *
-		 *	Note that we don't check
-		 *	for out of memory, which is
-		 *	the only error we can get...
-		 */
-		request_data_add(request, request, REQUEST_DATA_REGEX | i, p, true);
-	}
-}
-#endif
-
 /** Return the default log dir
  *
  * This is set at build time from --prefix

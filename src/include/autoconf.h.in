@@ -24,6 +24,9 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
+/* Define if we have a binary safe regular expression library */
+#undef HAVE_BINSAFE_REGEX
+
 /* Define if the compiler supports __builtin_types_compatible_p */
 #undef HAVE_BUILTIN_BSWAP_64
 
@@ -280,6 +283,12 @@
 
 /* Define if we have any regular expression library */
 #undef HAVE_REGEX
+
+/* Define to 1 if you have the `regncomp' function. */
+#undef HAVE_REGNCOMP
+
+/* Define to 1 if you have the `regnexec' function. */
+#undef HAVE_REGNEXEC
 
 /* define this if we have REG_EXTENDED (from <regex.h>) */
 #undef HAVE_REG_EXTENDED

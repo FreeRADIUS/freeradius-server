@@ -44,7 +44,7 @@ typedef struct realm_regex realm_regex_t;
  */
 struct realm_regex {
 	REALM		*realm;		//!< The realm this regex matches.
-	regex_t		reg;		//!< The pre-compiled regular expression.
+	regex_t		*preg;		//!< The pre-compiled regular expression.
 	realm_regex_t	*next;		//!< The next realm in the list of regular expressions.
 };
 static realm_regex_t *realms_regex = NULL;
@@ -1770,11 +1770,6 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 }
 
 #ifdef HAVE_REGEX
-static int _realm_regex_free(realm_regex_t *rr)
-{
-	regfree(&(rr->reg));
-	return 0;
-}
 int realm_realm_add(REALM *r, CONF_SECTION *cs)
 #else
 int realm_realm_add(REALM *r, UNUSED CONF_SECTION *cs)
@@ -1795,21 +1790,27 @@ int realm_realm_add(REALM *r, UNUSED CONF_SECTION *cs)
 	 *	separate list.
 	 */
 	if (r->name[0] == '~') {
-		int rcode;
+		ssize_t slen;
 		realm_regex_t *rr, **last;
 
 		rr = talloc(r, realm_regex_t);
-		talloc_set_destructor(rr, _realm_regex_free);
 
 		/*
 		 *	Include substring matches.
 		 */
-		rcode = regcomp(&(rr->reg), r->name + 1, REG_EXTENDED | REG_NOSUB | REG_ICASE);
-		if (rcode != 0) {
-			char buffer[256];
+		slen = regex_compile(r, &rr->preg, r->name + 1, strlen(r->name) - 1, true, false);
+		if (slen <= 0) {
+			char *spaces, *text;
 
-			regerror(rcode, &(rr->reg), buffer, sizeof(buffer));
-			cf_log_err_cs(cs, "Invalid regex \"%s\": %s", r->name + 1, buffer);
+			fr_canonicalize_error(r, &spaces, &text, slen, r->name + 1);
+
+			cf_log_err_cs(cs, "Invalid regular expression:");
+			cf_log_err_cs(cs, "%s", text);
+			cf_log_err_cs(cs, "%s^ %s", spaces, fr_strerror());
+
+			talloc_free(spaces);
+			talloc_free(text);
+			talloc_free(rr);
 
 			return 0;
 		}
@@ -2067,8 +2068,8 @@ REALM *realm_find(char const *name)
 		     this = this->next) {
 			int compare;
 
-			compare = regexec(&(this->reg), name, 0, NULL, 0);
-			if (compare == 0) return this->realm;
+			compare = regex_exec(this->preg, name, strlen(name), NULL, 0);
+			if (compare == 1) return this->realm;
 		}
 	}
 #endif

@@ -262,14 +262,17 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, valu
  * @return -1 on error, 0 for "no match", 1 for "match".
  */
 static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
-		         PW_TYPE lhs_type, value_data_t const *lhs, UNUSED size_t lhs_len,
-		         PW_TYPE rhs_type, value_data_t const *rhs, UNUSED size_t rhs_len)
+		         PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
+		         PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
 {
 	value_pair_map_t const *map = c->data.map;
 
-	int compare, ret;
-	regex_t reg, *preg = NULL;
-	regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
+	ssize_t		slen;
+	int		ret;
+
+	regex_t		*preg, *rreg = NULL;
+	regmatch_t	rxmatch[REQUEST_MAX_REGEX];
+	size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
 
 	rad_assert(lhs_type == PW_TYPE_STRING);
 	rad_assert(lhs != NULL);
@@ -283,36 +286,40 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	default:
 		rad_assert(rhs_type == PW_TYPE_STRING);
-		ret = regcomp(&reg, rhs->strvalue, REG_EXTENDED | (map->rhs->tmpl_iflag ? REG_ICASE : 0));
-		if (ret != 0) {
-			if (debug_flag) {
-				char errbuf[128];
-
-				regerror(ret, &reg, errbuf, sizeof(errbuf));
-				ERROR("Failed compiling regular expression: %s", errbuf);
-			}
+		rad_assert(rhs->strvalue);
+		slen = regex_compile(request, &rreg, rhs->strvalue, rhs_len, map->rhs->tmpl_iflag, true);
+		if (slen <= 0) {
+			REMARKER(rhs->strvalue, -slen, fr_strerror());
 			EVAL_DEBUG("FAIL %d", __LINE__);
-			ret = -1;
-			goto finish;
+
+			return -1;
 		}
-		preg = &reg;
+		preg = rreg;
 		break;
 	}
 
-	/*
-	 *  regexec doesn't initialise unused elements
-	 */
-	memset(&rxmatch, 0, sizeof(rxmatch));
-	compare = regexec(preg, lhs->strvalue, REQUEST_MAX_REGEX + 1, rxmatch, 0);
-	rad_regcapture(request, compare, lhs->strvalue, rxmatch);
-	ret = (compare == 0);
+	ret = regex_exec(preg, lhs->strvalue, lhs_len, rxmatch, &nmatch);
+	switch (ret) {
+	case 0:
+		EVAL_DEBUG("CLEARING SUBCAPTURES");
+		regex_sub_to_request(request, NULL, NULL, 0);	/* clear out old entries */
+		break;
 
-finish:
-	/*
-	 *  regcomp allocs extra memory for the expression, so if the
-	 *  result wasn't cached we need to free it here.
-	 */
-	if (preg && (preg == &reg)) regfree(&reg);
+	case 1:
+		EVAL_DEBUG("SETTING SUBCAPTURES");
+		regex_sub_to_request(request, lhs->strvalue, rxmatch, nmatch);
+		break;
+
+	case -1:
+		EVAL_DEBUG("REGEX ERROR");
+		REDEBUG("regex failed: %s", fr_strerror());
+		break;
+
+	default:
+		break;
+	}
+
+	talloc_free(rreg);
 
 	return ret;
 }

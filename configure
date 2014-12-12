@@ -11188,10 +11188,10 @@ fi
 
 
 if test "x$REGEX" = "x"; then
-  smart_try_dir=$pcre_include_dir
+  smart_try_dir="$pcre_include_dir /usr/local/include"
 
 
-ac_safe=`echo "pcreposix.h" | sed 'y%./+-%__pm%'`
+ac_safe=`echo "pcre.h" | sed 'y%./+-%__pm%'`
 old_CPPFLAGS="$CPPFLAGS"
 smart_include=
 smart_include_dir="/usr/local/include /opt/include"
@@ -11211,13 +11211,13 @@ done
 
 if test "x$_smart_try_dir" != "x"; then
   for try in $_smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcreposix.h in $try" >&5
-$as_echo_n "checking for pcreposix.h in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcre.h in $try" >&5
+$as_echo_n "checking for pcre.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcreposix.h>
+		    #include <pcre.h>
 int
 main ()
 {
@@ -11247,13 +11247,13 @@ fi
 
 if test "x$smart_include" = "x"; then
   for _prefix in $smart_prefix; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/pcreposix.h" >&5
-$as_echo_n "checking for ${_prefix}/pcreposix.h... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/pcre.h" >&5
+$as_echo_n "checking for ${_prefix}/pcre.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcreposix.h>
+		    #include <pcre.h>
 int
 main ()
 {
@@ -11281,13 +11281,13 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcreposix.h" >&5
-$as_echo_n "checking for pcreposix.h... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcre.h" >&5
+$as_echo_n "checking for pcre.h... " >&6; }
 
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcreposix.h>
+		    #include <pcre.h>
 int
 main ()
 {
@@ -11348,7 +11348,7 @@ eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=pcreposix.h
+  file=pcre.h
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -11373,13 +11373,13 @@ eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
 
 
   for try in $_smart_include_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcreposix.h in $try" >&5
-$as_echo_n "checking for pcreposix.h in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcre.h in $try" >&5
+$as_echo_n "checking for pcre.h in $try... " >&6; }
     CPPFLAGS="-isystem $try $old_CPPFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <pcreposix.h>
+		    #include <pcre.h>
 int
 main ()
 {
@@ -11415,8 +11415,8 @@ fi
 
 smart_prefix=
 
-  if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
-    smart_try_dir=$pcre_lib_dir
+  if test "x$ac_cv_header_pcre_h" = "xyes"; then
+    smart_try_dir="$pcre_lib_dir /usr/local/lib"
 
 
 sm_lib_safe=`echo "pcre" | sed 'y%./+-%__p_%'`
@@ -11594,12 +11594,11 @@ fi
     if test "x$ac_cv_lib_pcre_pcre_compile" = "xyes"; then
       REGEX=yes
 
-      smart_try_dir=$pcre_lib_dir
-
 $as_echo "#define HAVE_PCRE 1" >>confdefs.h
 
 
-                              LIBS=$(echo "$LIBS" | sed -e 's/-lpcre/-lpcre -lpcreposix/')
+$as_echo "#define HAVE_BINSAFE_REGEX 1" >>confdefs.h
+
     fi
   fi
 fi
@@ -11907,6 +11906,27 @@ if test "x$ac_cv_lib_regex_regcomp" = xyes; then :
 
 fi
 
+
+                    for ac_func in \
+      regncomp \
+      regnexec
+
+do :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+    if test x"$ac_cv_func_regncomp" = x"yes" && test  x"$ac_cv_func_regnexec" = x"yes"; then
+
+$as_echo "#define HAVE_BINSAFE_REGEX 1" >>confdefs.h
+
+    fi
   fi
 fi
 
