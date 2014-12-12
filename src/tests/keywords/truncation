@@ -85,21 +85,24 @@ update request {
 
 if (Tmp-Integer-0 != 4084) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'Fail 0'
 	}
 }
 
 # Octets are expanded to 8168 hexits
-if ("%{Tmp-Octets-0}" !~ /^0x[0-9a-f]{8168}$/) {
+if ("%{Tmp-Octets-0}" !~ /^0x([0-9a-f]+)$/) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'Fail 1'
 	}
 }
 
-# Octets are expanded to 8168 hexits
-if (Tmp-Octets-0 !~ /^0x[0-9a-f]{8168}$/) {
+update request {
+	Tmp-String-0 := "%{1}"
+}
+
+if ("%{length:Tmp-String-0}" != 8168) {
 	update reply {
-		Filter-Id += 'fail'
+		Filter-Id += 'Fail 2'
 	}
 }
 
