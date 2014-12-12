@@ -286,6 +286,9 @@ void version(void)
 	DEBUG3("  talloc : %i.%i.*", talloc_version_major(), talloc_version_minor());
 	DEBUG3("  ssl    : %s", ssl_version());
 
+#if defined(HAVE_REGEX) && defined(HAVE_PCRE)
+	DEBUG3("  pcre   : %s", pcre_version());
+#endif
 	DEBUG3("Library magic number:");
 	DEBUG3("  0x%llx", (unsigned long long) libmagic);
 
