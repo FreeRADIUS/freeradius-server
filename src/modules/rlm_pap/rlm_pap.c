@@ -508,7 +508,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RDEBUG2("No clear-text password in the request.  Not performing PAP.");
+		RDEBUG2("No User-Password attribute in the request.   Cannot do PAP.");
 		return RLM_MODULE_NOOP;
 	}
 
