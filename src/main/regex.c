@@ -29,7 +29,16 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_REGEX
-#  ifdef HAVE_PCRE
+
+#define REQUEST_DATA_REGEX (0xadbeef00)
+
+typedef struct regcapture {
+	regex_t		*preg;		//!< Compiled pattern.
+	char const	*value;		//!< Original string.
+	regmatch_t	*rxmatch;	//!< Match vectors.
+	size_t		nmatch;		//!< Number of match vectors.
+} regcapture_t;
+
 /** Adds subcapture values to request data
  *
  * Allows use of %{n} expansions.
@@ -39,129 +48,153 @@ RCSID("$Id$")
  * @param rxmatch Pointers into value.
  * @param nmatch Sizeof rxmatch.
  */
-void regex_sub_to_request(REQUEST *request, char const *value, regmatch_t rxmatch[], size_t nmatch)
+void regex_sub_to_request(REQUEST *request, char const *value, size_t len, regmatch_t rxmatch[], size_t nmatch)
 {
-	int i, old;
+	regcapture_t *old, *new;
 	char *p;
-	int *ovector = (int *)rxmatch;
 
 	/*
 	 *	Clear out old matches
 	 */
-	old = (int)request_data_get(request, request, REQUEST_DATA_REGEX);
-	RDEBUG4("Clearing %i previous subcapture values", old);
-	for (i = 0; i < old; i++) {
-		p = request_data_get(request, request, REQUEST_DATA_REGEX | (i + 1));
-		if (!p) {
-			RDEBUG4("%%{%i}: Empty", i);
-			continue;
-		}
-
-		RDEBUG4("%%{%i}: Clearing old value \"%s\"", i, p);
-		talloc_free(p);
+	old = request_data_get(request, request, REQUEST_DATA_REGEX);
+	if (old) {
+		RDEBUG4("Clearing %zu old matches", old->nmatch);
+		talloc_free(old);
+	} else {
+		RDEBUG4("No old matches");
 	}
 
+	if (nmatch == 0) return;
+
+	rad_assert(rxmatch);
+
+	RDEBUG4("Adding %zu new matches", nmatch);
 	/*
-	 *	Add new %{0}, %{1}, etc.
+	 *	Add new matches
 	 */
-	RDEBUG4("Storing %zu new subcapture values", nmatch);
-	for (i = 0; i < (int)nmatch; i++) {
-		char 	const *start;
-		size_t	len;
+	MEM(new = talloc(request, regcapture_t));
 
-		len = ovector[(2 * i) + 1] - ovector[2 * i];
-		start = value + ovector[i * 2];
+	MEM(new->rxmatch = talloc_memdup(new, rxmatch, sizeof(rxmatch[0]) * nmatch));
+	talloc_set_type(new->rxmatch, regmatch_t *);
 
-		/*
-		 *	Using talloc for the buffers gives
-		 *	consumers the length too.
-		 */
-		MEM(p = talloc_array(request, char, len + 1));
-		memcpy(p, start, len);
-		p[len] = '\0';
+	MEM(p = talloc_array(new, char, len + 1));
+	memcpy(p, value, len);
+	p[len] = '\0';
+	new->value = p;
 
-		RDEBUG4("%%{%i}: Inserting new value \"%s\"", i, p);
-		/*
-		 *	Copy substring, and add it to the request.
-		 */
-		request_data_add(request, request, REQUEST_DATA_REGEX | (i + 1), p, true);
-	}
+	new->nmatch = nmatch;
 
-	if (nmatch > 0) request_data_add(request, request, REQUEST_DATA_REGEX, (void *)nmatch, false);
+	request_data_add(request, request, REQUEST_DATA_REGEX, new, true);
 }
-/*
- *	Wrapper functions for POSIX like, and extended regular
- *	expressions.  These use the system regex library.
- */
-#  else
-/** Adds subcapture values to request data
+
+#  ifdef HAVE_PCRE
+/** Extract a subcapture value from the request
  *
- * Allows use of %{n} expansions.
+ * @note This is the PCRE variant of the function.
  *
- * @param request Current request.
- * @param value The original value.
- * @param rxmatch Pointers into value.
- * @param nmatch Sizeof rxmatch.
+ * @param ctx To allocate subcapture buffer in.
+ * @param out Where to write the subcapture string.
+ * @param request to extract.
+ * @param num Subcapture index (0 for entire match).
+ * @return 0 on success, -1 on notfound.
  */
-void regex_sub_to_request(REQUEST *request, char const *value, regmatch_t rxmatch[], size_t nmatch)
+int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
 {
-	int	i, old;
-	char	*p;
-	size_t	len;
+	regcapture_t *cap;
+	char const *p;
+	int ret;
+
+	cap = request_data_reference(request, request, REQUEST_DATA_REGEX);
+	if (!cap) {
+		RDEBUG4("No subcapture data found");
+		*out = NULL;
+		return 1;
+	}
+
+	ret = pcre_get_substring(cap->value, (int *)cap->rxmatch, (int)cap->nmatch, num, &p);
+	switch (ret) {
+	case PCRE_ERROR_NOMEMORY:
+		MEM(NULL);
 
 	/*
-	 *	Clear out old matches
+	 *	Not finding a substring is fine
 	 */
-	old = (int)request_data_get(request, request, REQUEST_DATA_REGEX);
-	RDEBUG4("Clearing %i previous subcapture values", old);
-	for (i = 0; i < old; i++) {
-		p = request_data_get(request, request, REQUEST_DATA_REGEX | (i + 1));
-		if (!p) {
-			RDEBUG4("%%{%i}: Empty", i);
-			continue;
+	case PCRE_ERROR_NOSUBSTRING:
+		RDEBUG4("%i/%zu Not found", num, cap->nmatch);
+		*out = NULL;
+		return -1;
+
+	default:
+		if (ret < 0) {
+			*out = NULL;
+			return -1;
 		}
 
-		RDEBUG4("%%{%i}: Clearing old value \"%s\"", i, p);
-		talloc_free(p);
+		/*
+		 *	Check libpcre really is using our overloaded
+		 *	malloc/free talloc wrappers.
+		 */
+		p = (char *)talloc_get_type_abort(p, uint8_t);
+		talloc_set_type(p, char *);
+		talloc_steal(ctx, p);
+		memcpy(out, &p, sizeof(*out));
+
+		RDEBUG4("%i/%zu Found: %s (%zu)", num, cap->nmatch, p, talloc_array_length(p));
+
+		return 0;
+	}
+}
+#  else
+/** Extract a subcapture value from the request
+ *
+ * @note This is the POSIX variant of the function.
+ *
+ * @param ctx To allocate subcapture buffer in.
+ * @param out Where to write the subcapture string.
+ * @param request to extract.
+ * @param num Subcapture index (0 for entire match).
+ * @return 0 on success, -1 on notfound.
+ */
+int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
+{
+	regcapture_t	*cap;
+	char 		*p;
+	char const	*start;
+	size_t		len;
+
+	cap = request_data_reference(request, request, REQUEST_DATA_REGEX);
+	if (!cap) {
+		RDEBUG4("No subcapture data found", num);
+		*out = NULL;
+		return -1;
 	}
 
 	/*
-	 *	Add new %{0}, %{1}, etc.
+	 *	Greater than our capture array
 	 */
-	RDEBUG4("Storing %zu new subcapture values", nmatch);
-	for (i = 0; i < (int)nmatch; i++) {
-		/*
-		 *	Empty capture
-		 */
-		if (rxmatch[i].rm_eo == -1) continue;
-
-		/*
-		 *	Using talloc for the buffers gives
-		 *	consumers the length too.
-		 */
-		len = rxmatch[i].rm_eo - rxmatch[i].rm_so;
-		p = talloc_array(request, char, len + 1);
-		if (!p) {
-			ERROR("Out of memory");
-			return;
-		}
-
-		memcpy(p, value + rxmatch[i].rm_so, len);
-		p[len] = '\0';
-
-		RDEBUG4("%%{%i}: Inserting new value \"%s\"", i, p);
-		/*
-		 *	Copy substring, and add it to
-		 *	the request.
-		 *
-		 *	Note that we don't check
-		 *	for out of memory, which is
-		 *	the only error we can get...
-		 */
-		request_data_add(request, request, REQUEST_DATA_REGEX | (i + 1), p, true);
+	if ((num >= cap->nmatch) || (cap->rxmatch[num].rm_eo == -1) || (cap->rxmatch[num].rm_so == -1)) {
+		RDEBUG4("%i/%zu Not found", num, cap->nmatch);
+		*out = NULL;
+		return -1;
 	}
 
-	if (nmatch > 0) request_data_add(request, request, REQUEST_DATA_REGEX, (void *)nmatch, false);
+	/*
+	 *	Sanity checks on the offsets
+	 */
+	rad_assert(cap->rxmatch[num].rm_eo <= (regoff_t)talloc_array_length(cap->value));
+	rad_assert(cap->rxmatch[num].rm_so <= (regoff_t)talloc_array_length(cap->value));
+
+	start = cap->value + cap->rxmatch[num].rm_so;
+	len = cap->rxmatch[num].rm_eo - cap->rxmatch[num].rm_so;
+
+	RDEBUG4("%i/%zu Found: %.*s (%zu)", num, cap->nmatch, (int)len, start, len);
+	MEM(p = talloc_array(ctx, char, len + 1));
+	memcpy(p, start, len);
+	p[len] = '\0';
+
+	*out = p;
+
+	return 0;
 }
 #  endif
 #endif

@@ -29,7 +29,6 @@ RCSIDH(regex_h, "$Id$")
 #  ifdef __cplusplus
 extern "C" {
 #  endif
-#undef HAVE_PCRE
 #  ifdef HAVE_PCRE
 #    include <pcre.h>
 /*

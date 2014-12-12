@@ -49,6 +49,22 @@ static int _regex_free(regex_t *preg)
 	return 0;
 }
 
+/*
+ *	Replace the libpcre malloc and free functions with
+ *	talloc wrappers. This allows us to use the subcapture copy
+ *	functions and just reparent the memory allocated.
+ */
+static void *_pcre_malloc(size_t to_alloc) {
+	return talloc_array(NULL, uint8_t, to_alloc);
+}
+
+static void _pcre_free(void *to_free) {
+	talloc_free(to_free);
+}
+
+extern
+
+
 /** Wrapper around pcre_compile
  *
  * Allows the rest of the code to do compilations using one function signature.
@@ -69,6 +85,16 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	int offset;
 	int cflags = 0;
 	regex_t *preg;
+
+	static bool setup;
+
+	/*
+	 *	Lets us use subcapture copy
+	 */
+	if (!setup) {
+		pcre_malloc = _pcre_malloc;
+		pcre_free = _pcre_free;
+	}
 
 	*out = NULL;
 
@@ -107,13 +133,13 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 /** Wrapper around pcre_exec
  *
  * @param preg The compiled expression.
- * @param string to match.
- * @param len Length of string.
+ * @param subject to match.
+ * @param len Length of subject.
  * @param pmatch Array of match pointers.
  * @param nmatch How big the match array is. Updated to number of matches.
  * @return -1 on error, 0 on no match, 1 on match.
  */
-int regex_exec(regex_t *preg, char const *string, size_t len, regmatch_t pmatch[], size_t *nmatch)
+int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch[], size_t *nmatch)
 {
 	int	ret;
 	size_t	matches;
@@ -131,7 +157,7 @@ int regex_exec(regex_t *preg, char const *string, size_t len, regmatch_t pmatch[
 		matches = *nmatch;
 	}
 
-	ret = pcre_exec(preg->compiled, preg->extra, string, len, 0, eflags, (int *)pmatch, matches * 3);
+	ret = pcre_exec(preg->compiled, preg->extra, subject, len, 0, eflags, (int *)pmatch, matches * 3);
 	if (ret < 0) {
 		if (ret == PCRE_ERROR_NOMATCH) return 0;
 
@@ -205,15 +231,17 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	{
 		char const *p;
 
-		p = strlen(pattern);
-		if ((p - pattern) != len) {
+		p = pattern;
+		p += strlen(pattern);
+
+		if ((size_t)(p - pattern) != len) {
 			fr_strerror_printf("Found null in pattern at offset %zu.  Pattern unsafe for compilation",
 					   (p - pattern));
 			return -(p - pattern);
 		}
 
 		preg = talloc_zero(ctx, regex_t);
-		if (!reg) return 0;
+		if (!preg) return 0;
 
 		ret = regcomp(preg, pattern, cflags);
 	}
@@ -248,12 +276,12 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
  *  If it does, we fail and print the appropriate error message.
  *
  * @param preg The compiled expression.
- * @param string to match.
+ * @param subject to match.
  * @param pmatch Array of match pointers.
  * @param nmatch How big the match array is. Updated to number of matches.
  * @return -1 on error, 0 on no match, 1 on match.
  */
-int regex_exec(regex_t *preg, char const *string, size_t len, regmatch_t pmatch[], size_t *nmatch)
+int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch[], size_t *nmatch)
 {
 	int	ret;
 	int	eflags = 0;
@@ -274,19 +302,21 @@ int regex_exec(regex_t *preg, char const *string, size_t len, regmatch_t pmatch[
 
 #ifndef HAVE_REGNEXEC
 	{
-		char const *p
+		char const *p;
 
-		p = strlen(string);
-		if ((p - pattern) != len) {
-			fr_strerror_printf("Found null in string at offset %zu.  String unsafe for evaluation",
-					   (p - pattern));
+		p = subject;
+		p += strlen(subject);
+
+		if ((size_t)(p - subject) != len) {
+			fr_strerror_printf("Found null in subject at offset %zu.  String unsafe for evaluation",
+					   (p - subject));
 			return -1;
 		}
 		/* regexec does not seem to initialise unused elements */
-		ret = regexec(preg, string, matches, pmatch, eflags);
+		ret = regexec(preg, subject, matches, pmatch, eflags);
 	}
 #else
-	ret = regnexec(preg, string, len, matches, pmatch, eflags);
+	ret = regnexec(preg, subject, len, matches, pmatch, eflags);
 #endif
 	if (ret != 0) {
 		if (ret != REG_NOMATCH) {
