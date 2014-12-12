@@ -29,11 +29,11 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 
-static void cleanup(RADIUS_PACKET *packet)
+static void cleanup(RADIUS_PACKET **packet)
 {
-	if (!packet) return;
-	if (packet->sockfd >= 0) close(packet->sockfd);
-	rad_free(&packet);
+	if (!packet || !*packet) return;
+	if ((*packet)->sockfd >= 0) close((*packet)->sockfd);
+	rad_free(packet);
 }
 
 /*
@@ -77,7 +77,7 @@ static int replicate_packet(void *instance, REQUEST *request)
 			pool = NULL;
 			RDEBUG2("ERROR: Cannot replicate unknown packet code %d",
 				request->packet->code);
-			cleanup(packet);
+			cleanup(&packet);
 			rcode = RLM_MODULE_FAIL;
 			break;
 		
@@ -125,7 +125,7 @@ static int replicate_packet(void *instance, REQUEST *request)
 			packet->sockfd = fr_socket(&home->src_ipaddr, 0);
 			if (packet->sockfd < 0) {
 				RDEBUG("ERROR: Failed opening socket: %s", fr_strerror());
-				cleanup(packet);
+				cleanup(&packet);
 				rcode = RLM_MODULE_FAIL;
 				break;
 			}
@@ -133,7 +133,7 @@ static int replicate_packet(void *instance, REQUEST *request)
 			packet->vps = paircopy(request->packet->vps);
 			if (!packet->vps) {
 				RDEBUG("ERROR: Out of memory!");
-				cleanup(packet);
+				cleanup(&packet);
 				rcode = RLM_MODULE_FAIL;
 				break;
 			}
@@ -180,7 +180,7 @@ static int replicate_packet(void *instance, REQUEST *request)
 		if (rad_send(packet, NULL, home->secret) < 0) {
 			RDEBUG("ERROR: Failed replicating packet: %s",
 			       fr_strerror());
-			cleanup(packet);
+			cleanup(&packet);
 			rcode = RLM_MODULE_FAIL;
 			break;
 		}
@@ -191,7 +191,7 @@ static int replicate_packet(void *instance, REQUEST *request)
 		rcode = RLM_MODULE_OK;
 	}
 
-	cleanup(packet);
+	cleanup(&packet);
 	rad_free(&request->proxy);
 
 	return rcode;
