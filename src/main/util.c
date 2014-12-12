@@ -125,6 +125,7 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	 *	an existing entry.
 	 */
 	if (!this) this = talloc_zero(request, request_data_t);
+	if (!this) return -1;
 
 	this->next = next;
 	this->unique_ptr = unique_ptr;
