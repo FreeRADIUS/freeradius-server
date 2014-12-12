@@ -537,7 +537,7 @@ void		rdebug_proto_pair_list(log_lvl_t level, REQUEST *, VALUE_PAIR *);
 int		log_err (char *);
 
 /* util.c */
-#define MEM(x) if (!(x)) { ERROR("Out of memory"); _fr_exit_now(__FILE__, __LINE__, 1); }
+#define MEM(x) if (!(x)) { ERROR("%s[%u] OUT OF MEMORY", __FILE__, __LINE__); _fr_exit_now(__FILE__, __LINE__, 1); }
 void (*reset_signal(int signo, void (*func)(int)))(int);
 int		rad_mkdir(char *directory, mode_t mode);
 size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,
@@ -569,10 +569,25 @@ bool		fr_getgid(char const *name, gid_t *gid);
 #endif
 
 /* regex.c */
-#define REQUEST_DATA_REGEX (0xadbeef00)
-#define REQUEST_MAX_REGEX (8)
 
-void regex_sub_to_request(REQUEST *request, char const *value, regmatch_t rxmatch[], size_t nmatch);
+#ifdef HAVE_REGEX
+/*
+ *	Increasing this is essentially free
+ *	It just increases memory usage. 12 bytes for each additional subcapture.
+ */
+#  define REQUEST_MAX_REGEX (32)
+
+void	regex_sub_to_request(REQUEST *request, char const *value, size_t len, regmatch_t rxmatch[], size_t nmatch);
+
+int	regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num);
+
+/*
+ *	Named capture groups only supported by PCRE.
+ */
+#  ifdef HAVE_PCRE
+int	regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name);
+#  endif
+#endif
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);

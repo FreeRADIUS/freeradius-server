@@ -89,10 +89,10 @@ static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 						  NULL};
 #endif
 
-#if REQUEST_MAX_REGEX > 8
+#if REQUEST_MAX_REGEX > 32
 #  error Please fix the following line
 #endif
-static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
+static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28 ,29, 30, 31, 32 };	/* up to 32 for regex */
 
 char const *radiusd_short_version = RADIUSD_VERSION_STRING;
 
@@ -2145,11 +2145,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 #ifdef HAVE_REGEX
 	case XLAT_REGEX:
 		XLAT_DEBUG("xlat_aprint REGEX");
-		child = request_data_reference(request, request,
-					       REQUEST_DATA_REGEX | (node->attr.tmpl_num + 1));
-		if (!child) return NULL;
+		if (regex_request_to_sub(ctx, &str, request, node->attr.tmpl_num) < 0) return NULL;
 
-		str = talloc_typed_strdup(ctx, child);
 		break;
 #endif
 

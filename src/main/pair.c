@@ -118,7 +118,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		}
 
 		if (check->op == T_OP_REG_EQ) {
-			regex_sub_to_request(request, value_p, rxmatch, nmatch);
+			regex_sub_to_request(request, value_p, talloc_array_length(value_p) - 1, rxmatch, nmatch);
 			ret = (slen == 1) ? 0 : -1;
 		} else {
 			ret = (slen != 1) ? 0 : -1;
