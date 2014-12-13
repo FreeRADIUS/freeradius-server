@@ -15,7 +15,7 @@
  */
 
 /**
- * @file regex.c
+ * @file lib/regex.c
  * @brief regex abstraction functions
  *
  * @copyright 2014  The FreeRADIUS server project
