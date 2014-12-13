@@ -441,12 +441,16 @@ static void fr_connection_close(fr_connection_pool_t *pool,
 		rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
 #endif
 
-		fr_heap_extract(pool->heap, this);
-
 		this->in_use = false;
 
 		rad_assert(pool->active != 0);
 		pool->active--;
+
+	} else {
+		/*
+		 *	Connection isn't used, remove it from the heap.
+		 */
+		fr_heap_extract(pool->heap, this);
 	}
 
 	fr_connection_exec_trigger(pool, "close");
