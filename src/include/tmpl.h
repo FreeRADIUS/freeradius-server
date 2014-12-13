@@ -131,7 +131,11 @@ typedef struct value_pair_tmpl_t {
 					//!< attribute, just the string id for
 					//!< the attribute.
 	size_t		len;		//!< Name length.
-	bool		iflag;		//!< Case insensitive (if operand is used in regex comparison)
+
+#ifdef HAVE_REGEX
+	bool		iflag;		//!< regex - case insensitive (if operand is used in regex comparison)
+	bool		mflag;		//!< regex - multiline flags (controls $ matching)
+#endif
 
 	union {
 		/*
@@ -175,6 +179,7 @@ typedef struct value_pair_tmpl_t {
 #ifdef HAVE_REGEX
 #  define tmpl_preg		data.preg
 #  define tmpl_iflag		iflag
+#  define tmpl_mflag		mflag
 #endif
 
 #ifndef WITH_VERIFY_PTR

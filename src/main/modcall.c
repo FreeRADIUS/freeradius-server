@@ -3098,7 +3098,8 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 		return pass2_xlat_compile(ci, &vpt, false, NULL);
 	}
 
-	slen = regex_compile(vpt, &preg, vpt->name, vpt->len, vpt->tmpl_iflag, false);
+	slen = regex_compile(vpt, &preg, vpt->name, vpt->len,
+			     vpt->tmpl_iflag, vpt->tmpl_mflag, false);
 	if (slen <= 0) {
 		char *spaces, *text;
 

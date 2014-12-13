@@ -531,7 +531,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 		} else { /* it's an operator */
 #ifdef HAVE_REGEX
 			bool regex = false;
-			bool i_flag = false;
+			bool iflag = false;
+			bool mflag = false;
 #endif
 			value_pair_map_t *map;
 
@@ -668,15 +669,29 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				if (*p != '/') {
 					return_P("Expected regular expression");
 				}
+				for (;;) {
+					switch (p[slen]) {
+					/*
+					 *	/foo/i
+					 */
+					case 'i':
+						iflag = true;
+						slen++;
+						continue;
 
-				/*
-				 *	Allow /foo/i
-				 */
-				if (p[slen] == 'i') {
-					i_flag = true;
-					slen++;
+					/*
+					 *	/foo/m
+					 */
+					case 'm':
+						mflag = true;
+						slen++;
+						continue;
+
+					default:
+						break;
+					}
+					break;
 				}
-
 			} else if (!regex && (*p == '/')) {
 				return_P("Unexpected regular expression");
 			}
@@ -755,7 +770,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 
 #ifdef HAVE_REGEX
 			if (c->data.map->rhs->type == TMPL_TYPE_REGEX) {
-				c->data.map->rhs->tmpl_iflag = i_flag;
+				c->data.map->rhs->tmpl_iflag = iflag;
+				c->data.map->rhs->tmpl_mflag = mflag;
 			}
 #endif
 

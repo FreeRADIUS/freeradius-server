@@ -1426,7 +1426,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 
 		talloc_free(vp);
 
-		slen = regex_compile(ctx, &preg, value, strlen(value), false, true);
+		slen = regex_compile(ctx, &preg, value, strlen(value), false, false, true);
 		if (slen <= 0) {
 			fr_strerror_printf("Error at offset %zu compiling regex for %s: %s", -slen,
 					   attribute, fr_strerror());
@@ -1848,7 +1848,7 @@ int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 
 			if (!fr_assert(a->da->type == PW_TYPE_STRING)) return -1;
 
-			slen = regex_compile(NULL, &preg, a->vp_strvalue, a->vp_length, false, true);
+			slen = regex_compile(NULL, &preg, a->vp_strvalue, a->vp_length, false, false, true);
 			if (slen <= 0) {
 				fr_strerror_printf("Error at offset %zu compiling regex for %s: %s",
 						   -slen, a->da->name, fr_strerror());

@@ -277,7 +277,9 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	rad_assert(lhs_type == PW_TYPE_STRING);
 	rad_assert(lhs != NULL);
 
-	EVAL_DEBUG("CMP WITH REGEX %s", map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE");
+	EVAL_DEBUG("CMP WITH REGEX %s %s",
+		   map->rhs->tmpl_iflag ? "CASE INSENSITIVE" : "CASE SENSITIVE",
+		   map->rhs->tmpl_mflag ? "MULTILINE" : "SINGLELINE");
 
 	switch (map->rhs->type) {
 	case TMPL_TYPE_REGEX_STRUCT: /* pre-compiled to a regex */
@@ -287,7 +289,8 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	default:
 		rad_assert(rhs_type == PW_TYPE_STRING);
 		rad_assert(rhs->strvalue);
-		slen = regex_compile(request, &rreg, rhs->strvalue, rhs_len, map->rhs->tmpl_iflag, true);
+		slen = regex_compile(request, &rreg, rhs->strvalue, rhs_len,
+				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true);
 		if (slen <= 0) {
 			REMARKER(rhs->strvalue, -slen, fr_strerror());
 			EVAL_DEBUG("FAIL %d", __LINE__);

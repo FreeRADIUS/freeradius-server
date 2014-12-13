@@ -244,6 +244,8 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 
 	/*
 	 *	Greater than our capture array
+	 *
+	 *	-1 means no value in this capture group.
 	 */
 	if ((num >= cap->nmatch) || (cap->rxmatch[num].rm_eo == -1) || (cap->rxmatch[num].rm_so == -1)) {
 		RDEBUG4("%i/%zu Not found", num, cap->nmatch);

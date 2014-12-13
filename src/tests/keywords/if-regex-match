@@ -90,43 +90,94 @@ else {
 # uncompiled - ref - insensitive
 if (Calling-Station-Id !~ /:roamyroam%{Tmp-String-0}$/i) {
 	update reply {
-		Filter-Id += 'Fail 6'
+		Filter-Id += 'Fail 8'
 	}
 }
 
 # uncompiled - expansion - insensitive
 if ("%{Calling-Station-Id}" !~ /:roamyroam%{Tmp-String-0}$/i) {
 	update reply {
-		Filter-Id += 'Fail 7'
+		Filter-Id += 'Fail 9'
 	}
 }
 
 # uncompiled - enum - ref - insensitive
 if (Service-Type !~ /^framed-user%{Tmp-String-0}$/i) {
 	update reply {
-		Filter-Id += 'Fail 8'
+		Filter-Id += 'Fail 10'
 	}
 }
 
 # uncompiled - enum - expansion - insensitive
 if ("%{Service-Type}" !~ /^framed-user%{Tmp-String-0}$/i) {
 	update reply {
-		Filter-Id += 'Fail 9'
+		Filter-Id += 'Fail 11'
 	}
 }
 
 # uncompiled - enum - ref
 if (Service-Type =~ /^framed-user%{Tmp-String-0}$/) {
 	update reply {
-		Filter-Id += 'Fail 10'
+		Filter-Id += 'Fail 12'
 	}
 }
 
 # uncompiled - integer - ref
 if (Tmp-Integer-0 !~ /%{Tmp-Integer-0}/) {
 	update reply {
-		Filter-Id += 'Fail 11'
+		Filter-Id += 'Fail 13'
 	}
 }
 
+update request {
+	Tmp-String-0 := "foo\nbar"
+}
 
+# uncompiled - ref - multiline
+if (&Tmp-String-0 !~ /^foo$%{Tmp-String-8}/m) {
+	update reply {
+		Filter-Id += 'Fail 14'
+	}
+}
+
+# uncompiled - ref - non-multiline
+if (&Tmp-String-0 =~ /^foo$%{Tmp-String-8}/) {
+	update reply {
+		Filter-Id += 'Fail 15'
+	}
+}
+
+# uncompiled - ref - non-multiline
+if (&Tmp-String-0 !~ /^foo\nbar%{Tmp-String-8}$/) {
+	update reply {
+		Filter-Id += 'Fail 16'
+	}
+}
+
+# uncompiled - ref - multiline
+if (&Tmp-String-0 !~ /^bar%{Tmp-String-8}$/m) {
+	update reply {
+		Filter-Id += 'Fail 17'
+	}
+}
+
+# uncompiled - ref - multiline - sensitive
+if (&Tmp-String-0 =~ /^BAR%{Tmp-String-8}$/m) {
+	update reply {
+		Filter-Id += 'Fail 18'
+	}
+}
+
+# uncompiled - ref - multiline - insensitive
+if (&Tmp-String-0 !~ /^BAR%{Tmp-String-8}$/mi) {
+	update reply {
+		Filter-Id += 'Fail 19'
+	}
+}
+
+# uncompiled - ref - multiline - insensitive (flag order reversed)
+if (&Tmp-String-0 !~ /^BAR%{Tmp-String-8}$/im) {
+	update reply {
+		Filter-Id += 'Fail 20'
+	}
+}
