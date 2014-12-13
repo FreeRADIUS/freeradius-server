@@ -575,9 +575,10 @@ bool		fr_getgid(char const *name, gid_t *gid);
  *	Increasing this is essentially free
  *	It just increases memory usage. 12 bytes for each additional subcapture.
  */
-#  define REQUEST_MAX_REGEX (32)
+#  define REQUEST_MAX_REGEX 32
 
-void	regex_sub_to_request(REQUEST *request, char const *value, size_t len, regmatch_t rxmatch[], size_t nmatch);
+void	regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value,
+			     size_t len, regmatch_t rxmatch[], size_t nmatch);
 
 int	regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num);
 

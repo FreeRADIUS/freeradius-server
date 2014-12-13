@@ -427,6 +427,31 @@ static ssize_t xlat_module(UNUSED void *instance, REQUEST *request,
 	return strlen(out);
 }
 
+#if defined(HAVE_REGEX) && defined(HAVE_PCRE)
+static ssize_t xlat_regex(UNUSED void *instance, REQUEST *request,
+			  UNUSED char const *fmt, char *out, size_t outlen)
+{
+	char *p;
+	size_t len;
+
+	if (regex_request_to_sub_named(request, &p, request, fmt) < 0) {
+		RDEBUG("Named capture group \"%s\" not found", fmt);
+		*out = '\0';
+		return 0;
+	}
+
+	len = talloc_array_length(p);
+	if (len > outlen) {
+		RDEBUG("Insufficient buffer space to write subcapture value, needed %zu bytes, have %zu bytes",
+		       len, outlen);
+		return -1;
+	}
+	strlcpy(out, p, outlen);
+
+	return len - 1; /* - \0 */
+}
+#endif
+
 #ifdef WITH_UNLANG
 /** Implements the Foreach-Variable-X
  *
@@ -649,6 +674,9 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		XLAT_REGISTER(xlat);
 		XLAT_REGISTER(module);
 		XLAT_REGISTER(debug_attr);
+#if defined(HAVE_REGEX) && defined(HAVE_PCRE)
+		XLAT_REGISTER(regex);
+#endif
 
 		xlat_register("debug", xlat_debug, NULL, &xlat_inst[0]);
 		c = xlat_find("debug");

@@ -113,6 +113,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 		return -(ssize_t)offset;
 	}
 	if (!runtime) {
+		preg->precompiled = true;
 		preg->extra = pcre_study(preg->compiled, PCRE_STUDY_JIT_COMPILE, &error);
 		if (error) {
 			talloc_free(preg);

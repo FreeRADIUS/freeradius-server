@@ -49,6 +49,7 @@ typedef struct regmatch {
 } regmatch_t;
 
 typedef struct regex {
+	bool		precompiled;	//!< Whether this regex was precompiled, or compiled for one of evaluation.
 	pcre		*compiled;	//!< Compiled regular expression.
 	pcre_extra	*extra;		//!< Result of studying a regular expression.
 } regex_t;
