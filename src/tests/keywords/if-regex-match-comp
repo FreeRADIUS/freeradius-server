@@ -91,4 +91,56 @@ if (Service-Type =~ /^framed-user$/) {
 	}
 }
 
+update request {
+	Tmp-String-0 := "foo\nbar"
+}
+
+# compiled - ref - multiline
+if (&Tmp-String-0 !~ /^foo$/m) {
+	update reply {
+		Filter-Id += 'Fail 14'
+	}
+}
+
+# compiled - ref - non-multiline
+if (&Tmp-String-0 =~ /^foo$/) {
+	update reply {
+		Filter-Id += 'Fail 15'
+	}
+}
+
+# compiled - ref - non-multiline
+if (&Tmp-String-0 !~ /^foo\nbar$/) {
+	update reply {
+		Filter-Id += 'Fail 16'
+	}
+}
+
+# compiled - ref - multiline
+if (&Tmp-String-0 !~ /^bar$/m) {
+	update reply {
+		Filter-Id += 'Fail 17'
+	}
+}
+
+# compiled - ref - multiline - sensitive
+if (&Tmp-String-0 =~ /^BAR$/m) {
+	update reply {
+		Filter-Id += 'Fail 17'
+	}
+}
+
+# compiled - ref - multiline - insensitive
+if (&Tmp-String-0 !~ /^BAR$/mi) {
+	update reply {
+		Filter-Id += 'Fail 17'
+	}
+}
+
+# compiled - ref - multiline - insensitive (flag order reversed)
+if (&Tmp-String-0 !~ /^BAR$/im) {
+	update reply {
+		Filter-Id += 'Fail 18'
+	}
+}
 

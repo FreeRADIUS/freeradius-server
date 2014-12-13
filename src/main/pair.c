@@ -103,7 +103,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		/*
 		 *	Include substring matches.
 		 */
-		slen = regex_compile(request, &preg, expr_p, talloc_array_length(expr_p) - 1, false, true);
+		slen = regex_compile(request, &preg, expr_p, talloc_array_length(expr_p) - 1, false, false, true);
 		if (slen <= 0) {
 			REMARKER(expr_p, -slen, fr_strerror());
 

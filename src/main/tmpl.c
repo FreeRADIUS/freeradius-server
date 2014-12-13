@@ -672,6 +672,13 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 			fr_exit_now(1);
 		}
 
+		if ((vpt->tmpl_mflag != true) && (vpt->tmpl_mflag != false)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
+				     "mflag field was neither true or false", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
 		break;
 
 	case TMPL_TYPE_REGEX_STRUCT:
@@ -692,6 +699,13 @@ void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 		if ((vpt->tmpl_iflag != true) && (vpt->tmpl_iflag != false)) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX_STRUCT "
 				     "iflag field was neither true or false", file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+		}
+
+		if ((vpt->tmpl_mflag != true) && (vpt->tmpl_mflag != false)) {
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
+				     "mflag field was neither true or false", file, line);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
