@@ -163,11 +163,10 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 	}
 
 	/*
-	 *	Signifies more offsets than we provided space for.
-	 *	Use number of offsets we passed in.
+	 *	0 signifies more offsets than we provided space for,
+	 *	so don't touch nmatches.
 	 */
-	if (ret == 0) return 0;
-	if (nmatch) *nmatch = ret;
+	if (nmatch && (ret > 0)) *nmatch = ret;
 
 	return 1;
 }
