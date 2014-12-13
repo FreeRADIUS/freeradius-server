@@ -566,7 +566,7 @@ bool		fr_getgid(char const *name, gid_t *gid);
 #ifdef HAVE_REGEX
 /*
  *	Increasing this is essentially free
- *	It just increases memory usage. 12 bytes for each additional subcapture.
+ *	It just increases memory usage. 12-16 bytes for each additional subcapture.
  */
 #  define REQUEST_MAX_REGEX 32
 
