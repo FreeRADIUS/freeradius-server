@@ -17,7 +17,7 @@
 /*
  * $Id$
  *
- * @file regex.c
+ * @file main/regex.c
  * @brief Regular expression functions used by the server library.
  *
  * @copyright 2014  The FreeRADIUS server project
