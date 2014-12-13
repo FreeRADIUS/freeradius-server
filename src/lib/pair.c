@@ -1846,15 +1846,15 @@ int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 			regex_t	*preg;
 			char	*value;
 
-			if (!fr_assert(a->vp->da->type == PW_TYPE_STRING)) return -1;
+			if (!fr_assert(a->da->type == PW_TYPE_STRING)) return -1;
 
-			slen = regex_compile(ctx, &preg, value, a->vp_strvalue, a->vp_length, false, true);
+			slen = regex_compile(NULL, &preg, a->vp_strvalue, a->vp_length, false, true);
 			if (slen <= 0) {
 				fr_strerror_printf("Error at offset %zu compiling regex for %s: %s",
 						   -slen, a->da->name, fr_strerror());
 				return -1;
 			}
-			value = vp_aprints_value(ctx, b, '\0');
+			value = vp_aprints_value(NULL, b, '\0');
 			if (!value) {
 				talloc_free(preg);
 				return -1;
