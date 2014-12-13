@@ -1412,7 +1412,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	case T_OP_REG_EQ:	/* =~ */
 	case T_OP_REG_NE:	/* !~ */
 	{
-#ifndef WITH_REGEX
+#ifndef HAVE_REGEX
 		fr_strerror_printf("Regular expressions are not supported");
 		return NULL;
 #else
@@ -1836,7 +1836,7 @@ int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 		 */
 	case T_OP_REG_EQ:
 	case T_OP_REG_NE:
-#ifndef WITH_REGEX
+#ifndef HAVE_REGEX
 		return -1;
 #else
 		if (!b) return false;
