@@ -435,7 +435,6 @@ static ssize_t xlat_regex(UNUSED void *instance, REQUEST *request,
 	size_t len;
 
 	if (regex_request_to_sub_named(request, &p, request, fmt) < 0) {
-		RDEBUG("Named capture group \"%s\" not found", fmt);
 		*out = '\0';
 		return 0;
 	}
