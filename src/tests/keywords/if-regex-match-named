@@ -1,0 +1,89 @@
+# PRE: if
+#
+update request {
+	Tmp-Integer-0 := '123456789'
+}
+
+# uncompiled - ref - named capture groups
+if (User-Name =~ /^(?<one>[0-9])_(?<two>[0-9])?_(?<three>[0-9]*)_(?<four>[0-9]+)_(?<five>[^_])_(?<six>6)_(?<seven>[7-8])%{Tmp-String-0}/) {
+	if ("%{regex:seven}_%{regex:six}_%{regex:five}_%{regex:four}_%{regex:three}_%{regex:two}_%{regex:one}_%{0}" != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
+		update reply {
+			Filter-Id += 'Fail 1'
+		}
+	}
+}
+else {
+	update reply {
+		Filter-Id += 'Fail 1.5'
+	}
+}
+
+# Checking capture groups are cleared out correctly
+if (User-Name =~ /^(?<one>[0-9])_%{Tmp-String-0}/) {
+	if ("%{0}%{regex:one}%{regex:two}%{regex:three}%{regex:four}%{regex:five}%{regex:six}%{regex:seven}" != '1_1') {
+		update reply {
+			Filter-Id += 'Fail 2'
+		}
+	}
+}
+else {
+	update reply {
+		Filter-Id += 'Fail 2.5'
+	}
+}
+
+# Checking capture groups are cleared out correctly when there are no matches
+if (User-Name =~ /^.%{Tmp-String-0}/) {
+	if ("%{0}%{regex:one}%{regex:two}%{regex:three}%{regex:four}%{regex:five}%{regex:six}%{regex:seven}" != '1') {
+		update reply {
+			Filter-Id += 'Fail 3'
+		}
+	}
+}
+else {
+	update reply {
+		Filter-Id += 'Fail 3.5'
+	}
+}
+
+# compiled - ref - named capture groups
+if (User-Name =~ /^(?<one>[0-9])_(?<two>[0-9])?_(?<three>[0-9]*)_(?<four>[0-9]+)_(?<five>[^_])_(?<six>6)_(?<seven>[7-8])/) {
+	if ("%{regex:seven}_%{regex:six}_%{regex:five}_%{regex:four}_%{regex:three}_%{regex:two}_%{regex:one}_%{0}" != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
+		update reply {
+			Filter-Id += 'Fail 4'
+		}
+	}
+}
+else {
+	update reply {
+		Filter-Id += 'Fail 4.5'
+	}
+}
+
+# compiled - xlat - named capture groups
+if ('1_2_3_4_5_6_7' =~ /^(?<one>[0-9])_(?<two>[0-9])?_(?<three>[0-9]*)_(?<four>[0-9]+)_(?<five>[^_])_(?<six>6)_(?<seven>[7-8])/) {
+	if ("%{regex:seven}_%{regex:six}_%{regex:five}_%{regex:four}_%{regex:three}_%{regex:two}_%{regex:one}_%{0}" != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
+		update reply {
+			Filter-Id += 'Fail 5'
+		}
+	}
+}
+else {
+	update reply {
+		Filter-Id += 'Fail 5.5'
+	}
+}
+
+# compiled - ref - named capture groups (numeric indexes)
+if (User-Name =~ /^(?<one>[0-9])_(?<two>[0-9])?_(?<three>[0-9]*)_(?<four>[0-9]+)_(?<five>[^_])_(?<six>6)_(?<seven>[7-8])/) {
+	if ("%{7}_%{6}_%{5}_%{4}_%{3}_%{2}_%{1}_%{0}" != '7_6_5_4_3_2_1_1_2_3_4_5_6_7') {
+		update reply {
+			Filter-Id += 'Fail 4'
+		}
+	}
+}
+else {
+	update reply {
+		Filter-Id += 'Fail 4.5'
+	}
+}

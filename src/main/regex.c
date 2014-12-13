@@ -43,48 +43,63 @@ typedef struct regcapture {
  *
  * Allows use of %{n} expansions.
  *
+ * @note After calling regex_sub_to_request *preg may no longer be valid and
+ *	should be passed to talloc_free.
+ *
  * @param request Current request.
+ * @param preg Compiled pattern. May be set to NULL if reparented to the regcapture struct.
  * @param value The original value.
  * @param rxmatch Pointers into value.
  * @param nmatch Sizeof rxmatch.
  */
-void regex_sub_to_request(REQUEST *request, char const *value, size_t len, regmatch_t rxmatch[], size_t nmatch)
+void regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value, size_t len,
+			  regmatch_t rxmatch[], size_t nmatch)
 {
-	regcapture_t *old, *new;
+	regcapture_t *old_sc, *new_sc;	/* lldb doesn't like new *sigh* */
 	char *p;
 
 	/*
-	 *	Clear out old matches
+	 *	Clear out old_sc matches
 	 */
-	old = request_data_get(request, request, REQUEST_DATA_REGEX);
-	if (old) {
-		RDEBUG4("Clearing %zu old matches", old->nmatch);
-		talloc_free(old);
+	old_sc = request_data_get(request, request, REQUEST_DATA_REGEX);
+	if (old_sc) {
+		RDEBUG4("Clearing %zu matches", old_sc->nmatch);
+		talloc_free(old_sc);
 	} else {
-		RDEBUG4("No old matches");
+		RDEBUG4("No matches");
 	}
 
 	if (nmatch == 0) return;
 
+	rad_assert(preg && *preg);
 	rad_assert(rxmatch);
 
-	RDEBUG4("Adding %zu new matches", nmatch);
+	RDEBUG4("Adding %zu matches", nmatch);
 	/*
-	 *	Add new matches
+	 *	Add new_sc matches
 	 */
-	MEM(new = talloc(request, regcapture_t));
+	MEM(new_sc = talloc(request, regcapture_t));
 
-	MEM(new->rxmatch = talloc_memdup(new, rxmatch, sizeof(rxmatch[0]) * nmatch));
-	talloc_set_type(new->rxmatch, regmatch_t *);
+	MEM(new_sc->rxmatch = talloc_memdup(new_sc, rxmatch, sizeof(rxmatch[0]) * nmatch));
+	talloc_set_type(new_sc->rxmatch, regmatch_t[]);
 
-	MEM(p = talloc_array(new, char, len + 1));
+	MEM(p = talloc_array(new_sc, char, len + 1));
 	memcpy(p, value, len);
 	p[len] = '\0';
-	new->value = p;
+	new_sc->value = p;
+	new_sc->nmatch = nmatch;
 
-	new->nmatch = nmatch;
+#ifdef HAVE_PCRE
+	if (!(*preg)->precompiled) {
+		new_sc->preg = talloc_steal(new_sc, *preg);
+		*preg = NULL;
+	} else
+#endif
+	{
+		new_sc->preg = *preg;
+	}
 
-	request_data_add(request, request, REQUEST_DATA_REGEX, new, true);
+	request_data_add(request, request, REQUEST_DATA_REGEX, new_sc, true);
 }
 
 #  ifdef HAVE_PCRE
@@ -140,6 +155,64 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 		memcpy(out, &p, sizeof(*out));
 
 		RDEBUG4("%i/%zu Found: %s (%zu)", num, cap->nmatch, p, talloc_array_length(p));
+
+		return 0;
+	}
+}
+
+/** Extract a named subcapture value from the request
+ *
+ * @note This is the PCRE variant of the function.
+ *
+ * @param ctx To allocate subcapture buffer in.
+ * @param out Where to write the subcapture string.
+ * @param request to extract.
+ * @param name of subcapture.
+ * @return 0 on success, -1 on notfound.
+ */
+int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name)
+{
+	regcapture_t *cap;
+	char const *p;
+	int ret;
+
+	cap = request_data_reference(request, request, REQUEST_DATA_REGEX);
+	if (!cap) {
+		RDEBUG4("No subcapture data found");
+		*out = NULL;
+		return 1;
+	}
+
+	ret = pcre_get_named_substring(cap->preg->compiled, cap->value,
+				       (int *)cap->rxmatch, (int)cap->nmatch, name, &p);
+	switch (ret) {
+	case PCRE_ERROR_NOMEMORY:
+		MEM(NULL);
+
+	/*
+	 *	Not finding a substring is fine
+	 */
+	case PCRE_ERROR_NOSUBSTRING:
+		RDEBUG4("No named capture group \"%s\"", name);
+		*out = NULL;
+		return -1;
+
+	default:
+		if (ret < 0) {
+			*out = NULL;
+			return -1;
+		}
+
+		/*
+		 *	Check libpcre really is using our overloaded
+		 *	malloc/free talloc wrappers.
+		 */
+		p = (char *)talloc_get_type_abort(p, uint8_t);
+		talloc_set_type(p, char *);
+		talloc_steal(ctx, p);
+		memcpy(out, &p, sizeof(*out));
+
+		RDEBUG4("Found \"%s\": %s (%zu)", name, p, talloc_array_length(p));
 
 		return 0;
 	}

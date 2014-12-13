@@ -302,12 +302,12 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	switch (ret) {
 	case 0:
 		EVAL_DEBUG("CLEARING SUBCAPTURES");
-		regex_sub_to_request(request, NULL, 0, NULL, 0);	/* clear out old entries */
+		regex_sub_to_request(request, NULL, NULL, 0, NULL, 0);	/* clear out old entries */
 		break;
 
 	case 1:
 		EVAL_DEBUG("SETTING SUBCAPTURES");
-		regex_sub_to_request(request, lhs->strvalue, lhs_len, rxmatch, nmatch);
+		regex_sub_to_request(request, &preg, lhs->strvalue, lhs_len, rxmatch, nmatch);
 		break;
 
 	case -1:
@@ -319,7 +319,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 	}
 
-	talloc_free(rreg);
+	if (preg) talloc_free(rreg);
 
 	return ret;
 }
