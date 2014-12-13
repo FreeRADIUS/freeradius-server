@@ -73,7 +73,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 	if ((check->op == T_OP_REG_EQ) || (check->op == T_OP_REG_NE)) {
 		ssize_t		slen;
 		regex_t		*preg;
-		regmatch_t	rxmatch[REQUEST_MAX_REGEX];
+		regmatch_t	rxmatch[REQUEST_MAX_REGEX + 1];	/* +1 for %{0} (whole match) capture group */
 		size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
 
 		char *expr = NULL, *value = NULL;
