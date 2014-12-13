@@ -1071,6 +1071,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	ssize_t slen;
 	char *p, *q;
 	xlat_exp_t *node;
+	long num;
 
 	rad_assert(fmt[0] == '%');
 	rad_assert(fmt[1] == '{');
@@ -1089,20 +1090,23 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	/*
 	 *	Handle regex's specially.
 	 */
-	if (isdigit((int) fmt[2]) && (fmt[3] == '}')) {
-		if (fmt[2] == '9') {
+	p = fmt + 2;
+	num = strtol(p, &q, 10);
+	if (p != q && (*q == '}')) {
+		XLAT_DEBUG("REGEX <-- %s", fmt);
+		*q = '\0';
+
+		if ((num > REQUEST_MAX_REGEX) || (num < 0)) {
 			talloc_free(node);
-			*error = "Invalid regex reference";
+			*error = "Invalid regex reference.  Must be in range 0-" STRINGIFY(REQUEST_MAX_REGEX);
 			return -2;
 		}
-
-		XLAT_DEBUG("REGEX <-- %s", fmt);
-		fmt[3] = '\0';
-		node->attr.tmpl_num = fmt[2] - '0'; /* ASCII */
+		node->attr.tmpl_num = num;
 
 		node->type = XLAT_REGEX;
 		*head = node;
-		return 4;
+
+		return (q - fmt) + 1;
 	}
 #endif /* HAVE_REGEX */
 

@@ -11,11 +11,8 @@ data %{test:bar}
 xlat %{1}
 data %{1}
 
-xlat %{9}
-data ERROR offset 2 'Invalid regex reference'
-
-xlat %{10}
-data ERROR offset 2 'Unknown attribute'
+xlat %{33}
+data ERROR offset 2 'Invalid regex reference.  Must be in range 0-32'
 
 xlat %{%{foo}:-%{bar}}
 data ERROR offset 4 'Unknown attribute'
