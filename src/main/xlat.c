@@ -429,7 +429,7 @@ static ssize_t xlat_module(UNUSED void *instance, REQUEST *request,
 
 #if defined(HAVE_REGEX) && defined(HAVE_PCRE)
 static ssize_t xlat_regex(UNUSED void *instance, REQUEST *request,
-			  UNUSED char const *fmt, char *out, size_t outlen)
+			  char const *fmt, char *out, size_t outlen)
 {
 	char *p;
 	size_t len;
