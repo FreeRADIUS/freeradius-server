@@ -89,10 +89,8 @@ static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 						  NULL};
 #endif
 
-#if REQUEST_MAX_REGEX > 32
-#  error Please fix the following line
-#endif
-static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28 ,29, 30, 31, 32 };	/* up to 32 for regex */
+
+static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
 
 char const *radiusd_short_version = RADIUSD_VERSION_STRING;
 
