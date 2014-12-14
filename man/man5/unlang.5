@@ -583,7 +583,8 @@ every request can quickly use all of the CPU time in a server.  If you
 believe that you need to execute many programs, we suggest finding
 alternative ways to achieve the same result.  In some cases, using a
 real language may be sufficient.
-.IP /regex/i
+
+.IP /regex/im
 These strings are valid only on the right-hand side of a comparison,
 and then only when the comparison operator is "=~" or "!~".  They are
 regular expressions, as implemented by the local regular expression
@@ -591,6 +592,10 @@ library on the system.  This is usually Posix regular expressions.
 
 The trailing 'i' is optional, and indicates that the regular
 expression match should be done in a case-insensitive fashion.
+
+The trailing 'm' is also optional, and indicates that carrot '^'
+and dollar '$' anchors should match on new lines as well as at the
+start and end of the subject string.
 
 If the comparison operator is "=~", then parantheses in the regular
 expression will define variables containing the matching text, as
@@ -610,11 +615,16 @@ not exist, the result will be an empty string.
 Results of regular expression matches
 .RS
 If a regular expression match has previously been performed, then the
-special variable %{0} will contain a copy of the input string.  The
-variables %{1} through %{8} will contain the substring matches,
-starting from the left-most parantheses, and onwards.  If there are
-more than 8 parantheses, the additional results will not be placed
-into any variables.
+special variable %{0} will contain a copy of the matched portion of
+the input string.  The variables %{1} through %{32} will contain the
+substring matches, starting from the left-most capture group, onwards.
+If there are more than 32 capture groups, the additional results will
+not be accessible.
+If the server is built with libpcre, the results of named capture groups
+are available using the "%{regex:capture group}" expansion.  They will
+also be accessible using the variables described above.
+Every time a regular expression is evaluated, whether it matches or not,
+the capture group values will be cleared.
 .RE
 .PP
 Obtaining results from databases
