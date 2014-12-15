@@ -1036,12 +1036,8 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		if (src_type == PW_TYPE_STRING) {
-			dst->octets = talloc_memdup(ctx, src->strvalue, src_len);
-		} else {
-			value_data_hton(dst, src_type, src, src_len);
-			dst->octets = talloc_memdup(ctx, dst, src_len);
-		}
+		value_data_hton(dst, src_type, src, src_len);
+		dst->octets = talloc_memdup(ctx, dst, src_len);
 		talloc_set_type(dst->octets, uint8_t);
 		return talloc_array_length(dst->strvalue);
 	}
