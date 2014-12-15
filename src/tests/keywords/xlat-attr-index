@@ -40,34 +40,14 @@ update request {
 	Tmp-Integer-0 = "%{Tmp-IP-Address-0[#]}"
 }
 
-if (Tmp-IP-Address-1[0] != 192.0.2.2) {
+if (Tmp-String-0 != '192.0.2.1,192.0.2.2') {
 	update {
 		reply:Filter-Id += 'fail 3'
 	}
 }
 
-if (Tmp-IP-Address-1[1] != 192.0.2.1) {
+if (Tmp-Integer-0 != 2) {
 	update {
 		reply:Filter-Id += 'fail 4'
 	}
 }
-
-if (Tmp-String-0 != '192.0.2.1,192.0.2.2') {
-	update {
-		reply:Filter-Id += 'fail 5'
-	}
-}
-
-if (Tmp-Integer-0 != 2) {
-	update {
-		reply:Filter-Id += 'fail 6'
-	}
-}
-
-if (&Tmp-IP-Address-0[#] != 2) {
-	update {
-		reply:Filter-Id += 'fail 7'
-	}
-}
-
-
