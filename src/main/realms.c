@@ -880,6 +880,9 @@ void realm_pool_free(home_pool_t *pool)
 		pool_free_init = true;
 	}
 
+	/*
+	 *	Ensure only one caller at a time is freeing a pool.
+	 */
 	pthread_mutex_lock(&pool_free_mutex);
 
 	/*
@@ -927,6 +930,7 @@ void realm_pool_free(home_pool_t *pool)
 	this->next = NULL;
 	this->when = now + 60;
 	this->pool = pool;
+	pthread_mutex_unlock(&pool_free_mutex);
 }
 #endif	/* HAVE_PTHREAD_H */
 
