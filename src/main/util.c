@@ -595,6 +595,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	 *	Copy debug information.
 	 */
 	memcpy(&(fake->log), &(request->log), sizeof(fake->log));
+	fake->log.indent = 0;	/* Apart from the indent which we reset */
 
 	return fake;
 }
