@@ -695,15 +695,6 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 			   ((map->lhs->type == TMPL_TYPE_LIST) && !map->lhs->tmpl_da));
 
 		/*
-		 *	Matching type, OR src/dst is octets.
-		 */
-		if (map->lhs->type == TMPL_TYPE_ATTR) {
-			rad_assert((map->rhs->tmpl_da->type == map->lhs->tmpl_da->type) ||
-				   (map->rhs->tmpl_da->type == PW_TYPE_OCTETS) ||
-				   (map->lhs->tmpl_da->type == PW_TYPE_OCTETS));
-		}
-
-		/*
 		 * @todo should log error, and return -1 for v3.1 (causes update to fail)
 		 */
 		if (tmpl_copy_vps(request, &found, request, map->rhs) < 0) return 0;
@@ -843,14 +834,16 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	 */
 	if ((map->lhs->type != TMPL_TYPE_LIST) &&
 	    (map->lhs->type != TMPL_TYPE_ATTR)) {
-		REDEBUG("Mapping LHS should be an attr or list but is an %s",
+		REDEBUG("Left side \"%.*s\" of map should be an attr or list but is an %s",
+			(int)map->lhs->len, map->lhs->name,
 			fr_int2str(tmpl_names, map->lhs->type, "<INVALID>"));
 		return -2;
 	}
 
 	context = request;
 	if (radius_request(&context, map->lhs->tmpl_request) < 0) {
-		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->rhs->name, map->lhs->name);
+		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
+			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
 		return -2;
 	}
 
