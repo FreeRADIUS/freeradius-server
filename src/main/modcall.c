@@ -3322,14 +3322,15 @@ static bool modcall_pass2_update(modgroup *g)
 
 		rad_assert(map->rhs->type != TMPL_TYPE_REGEX);
 
+		/*
+		 *	Deal with undefined attributes now.
+		 */
 		if (map->lhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
-			cf_log_err(map->ci, "Attribute '%s' is unknown", map->lhs->name);
-			return false;
+			if (!pass2_fixup_undefined(map->ci, map->lhs)) return false;
 		}
 
 		if (map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
-			cf_log_err(map->ci, "Attribute '%s' is unknown", map->rhs->name);
-			return false;
+			if (!pass2_fixup_undefined(map->ci, map->rhs)) return false;
 		}
 	}
 
