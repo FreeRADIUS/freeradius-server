@@ -17,7 +17,7 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	  "instantiate" section of radiusd.conf.
 	* When checking IP addresses in conditions, make the
 	  right side be parsed as an IP prefix.
-	* Support JIT compilation of compiled regular expressions 
+	* Support JIT compilation of compiled regular expressions
 	  when built with libpcre.
 	* Support named capture groups with "%{regex:<name>}"
 	  when built with libpcre.
@@ -65,6 +65,8 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	  Where that's not possible, emit an error if the pattern
 	  or subject contains an embedded null byte.
 	* Fix various issues around masking IPv6 addresses.
+	* Give descriptive error if unknown attributes are used
+	  in "update" sections.
 
 FreeRADIUS 3.0.5 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	Feature improvements
