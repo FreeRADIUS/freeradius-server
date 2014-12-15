@@ -273,7 +273,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 		}
 
 		fd = exfile_open(inst->ef, path, inst->permissions, true);
-		if (fd == -1) {
+		if (fd < 0) {
 			ERROR("rlm_linelog: Failed to open %s: %s", path, fr_syserror(errno));
 			return RLM_MODULE_FAIL;
 		}
@@ -301,9 +301,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 	 *	FIXME: Check length.
 	 */
 	if (value && (radius_xlat(line, sizeof(line) - 1, request, value, linelog_escape_func, NULL) < 0)) {
-		if (fd > -1) {
-			exfile_close(inst->ef, fd);
-		}
+		if (fd >= 0) exfile_close(inst->ef, fd);
 
 		return RLM_MODULE_FAIL;
 	}
