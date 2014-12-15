@@ -936,3 +936,51 @@ uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl)
 
 	return pl->num_outgoing;
 }
+
+/*
+ *	Debug the packet if requested.
+ */
+void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
+{
+	char src_ipaddr[128];
+	char dst_ipaddr[128];
+
+	if (!fp) return;
+
+	/*
+	 *	Client-specific debugging re-prints the input
+	 *	packet into the client log.
+	 *
+	 *	This really belongs in a utility library
+	 */
+	if (is_radius_code(packet->code)) {
+		fprintf(fp, "%s %s Id %i from %s:%i to %s:%i length %zu\n",
+		        received ? "Received" : "Sent",
+		        fr_packet_codes[packet->code],
+		        packet->id,
+		        inet_ntop(packet->src_ipaddr.af,
+				  &packet->src_ipaddr.ipaddr,
+				  src_ipaddr, sizeof(src_ipaddr)),
+		        packet->src_port,
+		        inet_ntop(packet->dst_ipaddr.af,
+				  &packet->dst_ipaddr.ipaddr,
+				  dst_ipaddr, sizeof(dst_ipaddr)),
+		        packet->dst_port,
+		        packet->data_len);
+	} else {
+		fprintf(fp, "%s code %i Id %i from %s:%i to %s:%i length %zu\n",
+		        received ? "Received" : "Sent",
+		        packet->code,
+		        packet->id,
+		        inet_ntop(packet->src_ipaddr.af,
+				  &packet->src_ipaddr.ipaddr,
+				  src_ipaddr, sizeof(src_ipaddr)),
+		        packet->src_port,
+		        inet_ntop(packet->dst_ipaddr.af,
+				  &packet->dst_ipaddr.ipaddr,
+				  dst_ipaddr, sizeof(dst_ipaddr)),
+		        packet->dst_port,
+		        packet->data_len);
+	}
+}
+
