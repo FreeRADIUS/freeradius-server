@@ -548,6 +548,9 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	switch (action) {
 	case FR_ACTION_DUP:
+#ifdef WITH_DETAIL
+		rad_assert(request->listener != NULL);
+#endif
 		if (request->reply->code != 0) {
 			request->listener->send(request->listener, request);
 			return;
