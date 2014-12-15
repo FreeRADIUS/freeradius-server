@@ -651,6 +651,7 @@ static int mod_detach(void *instance)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_cache_t *inst = instance;
+	CONF_SECTION *update;
 
 	inst->cs = conf;
 
@@ -736,10 +737,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+	update = cf_section_sub_find(inst->cs, "update");
+	if (!update) {
+		cf_log_err_cs(conf, "Must have an 'update' section in order to cache anything.");
+		return -1;
+	}
+
 	/*
 	 *	Make sure the users don't screw up too badly.
 	 */
-	if (map_afrom_cs(&inst->maps, cf_section_sub_find(inst->cs, "update"),
+	if (map_afrom_cs(&inst->maps, update;
 			 PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, cache_verify, NULL, MAX_ATTRMAP) < 0) {
 		return -1;
 	}
