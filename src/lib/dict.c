@@ -635,8 +635,9 @@ int dict_valid_name(char const *name)
 	return 0;
 }
 
-/*
- *	Add an attribute to the dictionary.
+/** Add an attribute to the dictionary
+ *
+ * @return 0 on success -1 on failure.
  */
 int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 ATTR_FLAGS flags)
