@@ -648,6 +648,14 @@ thread pool {
 	auto_limit_acct = no
 }
 
+######################################################################
+#
+#  SNMP notifications.  Uncomment the following line to enable
+#  snmptraps.  Note that you MUST also configure the full path
+#  to the "snmptrap" command in the "trigger.conf" file.
+#
+#$INCLUDE trigger.conf
+
 # MODULE CONFIGURATION
 #
 #  The names and configuration of each module is located in this section.
@@ -777,14 +785,6 @@ instantiate {
 policy {
 	$INCLUDE policy.d/
 }
-
-######################################################################
-#
-#  SNMP notifications.  Uncomment the following line to enable
-#  snmptraps.  Note that you MUST also configure the full path
-#  to the "snmptrap" command in the "trigger.conf" file.
-#
-#$INCLUDE trigger.conf
 
 ######################################################################
 #
