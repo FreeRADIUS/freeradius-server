@@ -746,7 +746,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Make sure the users don't screw up too badly.
 	 */
-	if (map_afrom_cs(&inst->maps, update;
+	if (map_afrom_cs(&inst->maps, update,
 			 PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, cache_verify, NULL, MAX_ATTRMAP) < 0) {
 		return -1;
 	}
