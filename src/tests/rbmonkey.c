@@ -180,7 +180,7 @@ again:
 	mask = 0xff >> (fr_rand() & 7);
 	thresh &= mask;
 	n = (fr_rand() % MAXSIZE) + 1;
-	while (n < 0 || n > MAXSIZE) n >>= 1;
+
 	fprintf(stderr, "filter = %x mask = %x n= %i\n",
 		thresh, mask, n);
 
