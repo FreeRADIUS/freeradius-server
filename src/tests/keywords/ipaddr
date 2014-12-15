@@ -40,12 +40,12 @@ if (Tmp-IP-Address-1 != 127.0.0.2) {
 
 if (Tmp-IP-Address-2 != 127.0.0.3) {
 	update reply {
-		Filter-Id += "fail 3"
+		Filter-Id += "fail 4"
 	}
 }
 
 if (Tmp-IP-Address-3 != 127.0.0.4) {
 	update reply {
-		Filter-Id += "fail 4"
+		Filter-Id += "fail 5"
 	}
 }
