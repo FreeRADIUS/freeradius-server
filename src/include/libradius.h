@@ -158,6 +158,7 @@ typedef void (*sig_t)(int);
 #define NUM_ANY			INT_MIN
 #define NUM_ALL			(INT_MIN + 1)
 #define NUM_COUNT		(INT_MIN + 2)
+#define NUM_LAST		(INT_MIN + 3)
 
 #define PAD(_x, _y)		(_y - ((_x) % _y))
 

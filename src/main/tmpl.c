@@ -889,6 +889,11 @@ skip_tag:
 			p++;
 			break;
 
+		case 'n':
+			attr.num = NUM_LAST;
+			p++;
+			break;
+
 		default:
 			num = strtol(p, &q, 10);
 			if (p == q) {
@@ -1129,6 +1134,12 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 
 		case NUM_COUNT:
 			snprintf(q, bufsize, "[#]");
+			len = strlen(q);
+			q += len;
+			break;
+
+		case NUM_LAST:
+			snprintf(q, bufsize, "[n]");
 			len = strlen(q);
 			q += len;
 			break;
@@ -1468,20 +1479,49 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, va
 	{
 		int num;
 
-		if (vpt->tmpl_num == NUM_ANY) {
+		switch (vpt->tmpl_num) {
+		case NUM_ANY:
 			vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
 			if (!vp) {
 				if (err) *err = -1;
 				return NULL;
 			}
 			VERIFY_VP(vp);
-			break;
+			return vp;
+
+		/*
+		 *	Get the last instance of a VALUE_PAIR.
+		 */
+		case NUM_LAST:
+
+		{
+			VALUE_PAIR *last = NULL;
+
+			while ((vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
+				VERIFY_VP(vp);
+				last = vp;
+			}
+
+			if (!last) break;
+			return last;
 		}
 
-		num = vpt->tmpl_num;
-		while ((vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
-			VERIFY_VP(vp);
-			if (num-- <= 0) goto finish;
+		/*
+		 *	Callers expect NUM_COUNT to setup the cursor to point
+		 *	to the first attribute in the list we're meant to be
+		 *	counting.
+		 *
+		 *	It does not produce a virtual attribute containing the
+		 *	total number of attributes.
+		 */
+		case NUM_COUNT:
+		default:
+			num = vpt->tmpl_num;
+			while ((vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
+				VERIFY_VP(vp);
+				if (num-- <= 0) return vp;
+			}
+			break;
 		}
 
 		if (err) *err = -1;
@@ -1496,7 +1536,6 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, va
 		rad_assert(0);
 	}
 
-finish:
 	return vp;
 }
 

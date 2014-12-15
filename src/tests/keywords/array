@@ -3,6 +3,10 @@
 #
 #  Tests for dereferencing the Nth attribute
 #
+update reply {
+	Filter-Id := "filter"
+}
+
 update request {
        Class := 0x01020304
        Class += 0x05060708
@@ -41,12 +45,9 @@ if (&Class[3]) {
 	}
 }
 
-#
-#  The test passes only if no test above
-#  added a Filter-Id
-#
-if (!reply:Filter-Id) {
+# Last element of the array
+if (&Class[n] != 0x090a0b0c) {
 	update reply {
-		Filter-Id := "filter"
+		Filter-Id += "fail 4"
 	}
 }

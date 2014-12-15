@@ -479,6 +479,9 @@ data &User-Name[0] == 'bob'
 condition &User-Name[1] == "bob"
 data &User-Name[1] == 'bob'
 
+condition &User-Name[n] == "bob"
+data &User-Name[n] == 'bob'
+
 condition &Tunnel-Password:1[0] == "Hello"
 data &Tunnel-Password:1[0] == 'Hello'
 
