@@ -336,7 +336,6 @@ static void cond_print_operands(REQUEST *request,
 	if (lhs) {
 		if (lhs_type == PW_TYPE_STRING) {
 			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->strvalue, lhs_len);
-
 		} else {
 			char *lhs_hex;
 
@@ -543,20 +542,38 @@ do {\
 #endif
 		cast = map->lhs->tmpl_da;
 		cast_type = cast->type;
+
+		EVAL_DEBUG("NORMALISATION TYPE %s (PAIRCMP TYPE)",
+			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
 	/*
 	 *	Otherwise we use the explicit cast, or implicit
 	 *	cast (from an attribute reference).
 	 *	We already have the data for the lhs, so we convert
 	 *	it here.
 	 */
-	} else if (c->cast) cast = c->cast;
-	else if (map->lhs->type == TMPL_TYPE_ATTR) cast = map->lhs->tmpl_da;
-	else if (map->rhs->type == TMPL_TYPE_ATTR) cast = map->rhs->tmpl_da;
-	else if (map->lhs->type == TMPL_TYPE_DATA) cast_type = map->lhs->tmpl_data_type;
-	else if (map->rhs->type == TMPL_TYPE_DATA) cast_type = map->rhs->tmpl_data_type;
-	if (cast) cast_type = cast->type;
+	} else if (c->cast) {
+		cast = c->cast;
+		EVAL_DEBUG("NORMALISATION TYPE %s (EXPLICIT CAST)",
+			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
+	} else if (map->lhs->type == TMPL_TYPE_ATTR) {
+		cast = map->lhs->tmpl_da;
+		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS REF)",
+			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
+	} else if (map->rhs->type == TMPL_TYPE_ATTR) {
+		cast = map->rhs->tmpl_da;
+		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS REF)",
+			   fr_int2str(dict_attr_types, cast->type, "<INVALID>"));
+	} else if (map->lhs->type == TMPL_TYPE_DATA) {
+		cast_type = map->lhs->tmpl_data_type;
+		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM LHS DATA)",
+			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));
+	} else if (map->rhs->type == TMPL_TYPE_DATA) {
+		cast_type = map->rhs->tmpl_data_type;
+		EVAL_DEBUG("NORMALISATION TYPE %s (IMPLICIT FROM RHS DATA)",
+			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));
+	}
 
-	EVAL_DEBUG("NORMALISATION TYPE %s", fr_int2str(dict_attr_types, cast_type, "none"));
+	if (cast) cast_type = cast->type;
 
 	switch (map->rhs->type) {
 	case TMPL_TYPE_ATTR:
