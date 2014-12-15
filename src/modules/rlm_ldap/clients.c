@@ -235,7 +235,7 @@ int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
 		cp = cf_pair_find(cs, "identifier");
 		if (cp) {
 			values = ldap_get_values_len(conn->handle, entry, cf_pair_value(cp));
-			if (value) id = rlm_ldap_berval_to_string(NULL, values[0]);
+			if (values) id = rlm_ldap_berval_to_string(NULL, values[0]);
 			ldap_value_free_len(values);
 		}
 
