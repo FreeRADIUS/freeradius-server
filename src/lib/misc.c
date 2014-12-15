@@ -973,12 +973,17 @@ struct in6_addr fr_in6addr_mask(struct in6_addr const *ipaddr, uint8_t prefix)
 
 	if (prefix >= 64) {
 		prefix -= 64;
-		*o++ = 0xffffffffffffffffULL & *p++;
+		*o++ = 0xffffffffffffffffULL & *p++;	/* lhs portion masked */
 	} else {
-		ret[1] = 0;
+		ret[1] = 0;				/* rhs portion zeroed */
 	}
 
-	*o = htonll(~((0x0000000000000001ULL << (64 - prefix)) - 1)) & *p;
+	/* Max left shift is 63 else we get overflow */
+	if (prefix > 0) {
+		*o = htonll(~((uint64_t)(0x0000000000000001ULL << (64 - prefix)) - 1)) & *p;
+	} else {
+		*o = 0;
+	}
 
 	return *(struct in6_addr *) &ret;
 }
