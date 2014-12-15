@@ -2497,21 +2497,6 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	}
 #endif	/* WITH_STATS */
 
-#ifdef WITH_COA
-	/*
-	 *	When we originate CoA requests, we patch them in here
-	 *	so that they don't affect the rest of the state
-	 *	machine.
-	 */
-	if (request->parent) {
-		rad_assert(request->parent->coa == request);
-		rad_assert((request->proxy->code == PW_CODE_COA_REQUEST) ||
-			   (request->proxy->code == PW_CODE_DISCONNECT_REQUEST));
-		rad_assert(request->process != NULL);
-		coa_separate(request, FR_ACTION_PROXY_REPLY);
-	}
-#endif
-
 	request->process(request, FR_ACTION_PROXY_REPLY);
 
 	return 1;
@@ -4098,8 +4083,6 @@ static void coa_timer(REQUEST *request)
 
 STATE_MACHINE_DECL(coa_wait_for_reply)
 {
-	rad_assert(request->parent == NULL);
-
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
@@ -4113,6 +4096,14 @@ STATE_MACHINE_DECL(coa_wait_for_reply)
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
+		rad_assert(request->parent != NULL);
+		rad_assert(request->parent->coa == request);
+		rad_assert((request->proxy->code == PW_CODE_COA_REQUEST) ||
+			   (request->proxy->code == PW_CODE_DISCONNECT_REQUEST));
+		rad_assert(request->process != NULL);
+
+		coa_separate(request, FR_ACTION_PROXY_REPLY);
+
 		rad_assert(request->parent == NULL);
 
 		/*
@@ -4152,7 +4143,7 @@ STATE_MACHINE_DECL(coa_separate)
 	request->parent = NULL;
 
 	/*
-	 *	Should be coa_wait_for_reply()
+	 *	Most of the time we're called for timers.
 	 */
 	switch (action) {
 	case FR_ACTION_TIMER:
@@ -4163,6 +4154,7 @@ STATE_MACHINE_DECL(coa_separate)
 		 *	Set up the main timers.
 		 */
 	case FR_ACTION_PROXY_REPLY:
+		request->child_state = REQUEST_QUEUED;
 		request_process_timer(request);
 		break;
 
