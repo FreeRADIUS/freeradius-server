@@ -70,6 +70,7 @@ char const *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_STRING
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: dhcpclient [options] server[:port] <command>\n");
+	fprintf(stderr, "Send a DHCP request with provided RADIUS attrs and output response.\n");
 
 	fprintf(stderr, "  <command>              One of discover, request, offer, decline, release, inform.\n");
 	fprintf(stderr, "  -d <directory>         Set the directory where the dictionaries are stored (defaults to " RADDBDIR ").\n");

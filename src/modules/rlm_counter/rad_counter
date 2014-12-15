@@ -6,6 +6,7 @@ use warnings ;
 use GDBM_File ;
 use Fcntl ;
 use Getopt::Long;
+use File::Basename;
 
 my $user = '';
 my $divisor = 1;
@@ -19,15 +20,23 @@ my $help = 0;
 $filename = '';
 
 sub show_help {
-    print "Usage: $0 --file=<counter filename> [--reset=<seconds>] [--match=<regexp>]\n";
-    print "[--user=<username>] [--help] [--hours|--minutes|--seconds]\n\n";
-    print "--user=<username>", "\t\t", "Information for specific user\n";
-    print "--file=<filename>", "\t\t", "Counter db filename\n";
-    print "--match=<regexp>", "\t\t", "Information for matching users\n";
-    print "--reset=<number>", "\t\t", "Reset counter to <number>.\n";
-    print "\t\t\t\t", "If divisor is set use it, else <number> means seconds\n";
-    print "--help", "\t\t\t\t", "Show this help screen\n";
-    print "--(hours|minutes|seconds)", "\t", "Specify information divisor\n";
+    my $progname = basename($0);
+    print <<EOF;
+Usage: $progname --file=<counter filename> [OPTION...]
+Query and maintain FreeRADIUS rlm_counter DB file.
+
+Arguments:
+--file=<filename>               Counter DB filename.
+
+Options:
+--user=<username>               Information for specific user.
+--match=<regexp>                Information for matching users.
+--reset=<number>                Reset counter to <number>.
+                                If divisor is set use it,
+                                else <number> means seconds.
+--help                          Show this help screen.
+--(hours|minutes|seconds)       Specify information divisor.
+EOF
     exit 0;
 }
 
