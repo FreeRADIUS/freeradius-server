@@ -1034,10 +1034,6 @@ static int recv_one_packet(int wait_time)
 	}
 	request = fr_packet2myptr(rc_request_t, packet, packet_p);
 
-
-	fr_packet_header_print(fr_log_fp, request->packet, true);
-	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, request->reply->vps);
-
 	/*
 	 *	Fails the signature validation: not a real reply.
 	 *	FIXME: Silently drop it and listen for another packet.
@@ -1064,6 +1060,9 @@ static int recv_one_packet(int wait_time)
 		stats.lost++;
 		goto packet_done;
 	}
+
+	fr_packet_header_print(fr_log_fp, request->reply, true);
+	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, request->reply->vps);
 
 	/*
 	 *	Increment counters...

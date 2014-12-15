@@ -961,6 +961,7 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 	char dst_ipaddr[128];
 
 	if (!fp) return;
+	if (!packet) return;
 
 	/*
 	 *	Client-specific debugging re-prints the input
