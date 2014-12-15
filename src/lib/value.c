@@ -1149,6 +1149,182 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	}
 
 	/*
+	 *	Conversions between IPv4 addresses, IPv6 addresses, IPv4 prefixes and IPv6 prefixes
+	 *
+	 *	For prefix to ipaddress conversions, we assume that the host portion has already
+	 *	been zeroed out.
+	 *
+	 *	We allow casts from v6 to v4 if the v6 address has the correct mapping prefix.
+	 *
+	 *	We only allow casts from prefixes to addresses if the prefix is the the length of
+	 *	the address, e.g. 32 for ipv4 128 for ipv6.
+	 */
+	{
+		/*
+		 *	10 bytes of 0x00 2 bytes of 0xff
+		 */
+		static uint8_t const v4_v6_map[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+						     0x00, 0x00, 0x00, 0x00, 0xff, 0xff };
+
+		switch (dst_type) {
+		case PW_TYPE_IPV4_ADDR:
+			switch (src_type) {
+			case PW_TYPE_IPV6_ADDR:
+				if (memcmp(src->ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
+				bad_v6_prefix_map:
+					fr_strerror_printf("Invalid cast from %s to %s.  No IPv4-IPv6 mapping prefix",
+							   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+							   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+					return -1;
+				}
+
+				memcpy(&dst->ipaddr, &src->ipv6addr.s6_addr[sizeof(v4_v6_map)],
+				       sizeof(dst->ipaddr));
+				goto fixed_length;
+
+			case PW_TYPE_IPV4_PREFIX:
+				if (src->ipv4prefix[1] != 32) {
+				bad_v4_prefix_len:
+					fr_strerror_printf("Invalid cast from %s to %s.  Only /32 prefixes may be "
+							   "cast to IP address types",
+							   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+							   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+					return -1;
+				}
+
+				memcpy(&dst->ipaddr, &src->ipv4prefix[2], sizeof(dst->ipaddr));
+				goto fixed_length;
+
+			case PW_TYPE_IPV6_PREFIX:
+				if (src->ipv6prefix[1] != 128) {
+				bad_v6_prefix_len:
+					fr_strerror_printf("Invalid cast from %s to %s.  Only /128 prefixes may be "
+							   "cast to IP address types",
+							   fr_int2str(dict_attr_types, src_type, "<INVALID>"),
+							   fr_int2str(dict_attr_types, dst_type, "<INVALID>"));
+					return -1;
+				}
+				if (memcmp(&src->ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map)) != 0) {
+					goto bad_v6_prefix_map;
+				}
+				memcpy(&dst->ipaddr, &src->ipv6prefix[2 + sizeof(v4_v6_map)],
+				       sizeof(dst->ipaddr));
+				goto fixed_length;
+
+			default:
+				break;
+			}
+			break;
+
+		case PW_TYPE_IPV6_ADDR:
+			switch (src_type) {
+			case PW_TYPE_IPV4_ADDR:
+				/* Add the v4/v6 mapping prefix */
+				memcpy(dst->ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map));
+				memcpy(&dst->ipv6addr.s6_addr[sizeof(v4_v6_map)], &src->ipaddr,
+				       sizeof(dst->ipv6addr.s6_addr) - sizeof(v4_v6_map));
+
+				goto fixed_length;
+
+			case PW_TYPE_IPV4_PREFIX:
+				if (src->ipv4prefix[1] != 32) goto bad_v4_prefix_len;
+
+				/* Add the v4/v6 mapping prefix */
+				memcpy(dst->ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map));
+				memcpy(&dst->ipv6addr.s6_addr[sizeof(v4_v6_map)], &src->ipv4prefix[2],
+				       sizeof(dst->ipv6addr.s6_addr) - sizeof(v4_v6_map));
+				goto fixed_length;
+
+			case PW_TYPE_IPV6_PREFIX:
+				if (src->ipv4prefix[1] != 128) goto bad_v6_prefix_len;
+
+				memcpy(dst->ipv6addr.s6_addr, &src->ipv6prefix[2], sizeof(dst->ipv6addr.s6_addr));
+				goto fixed_length;
+
+			default:
+				break;
+			}
+			break;
+
+		case PW_TYPE_IPV4_PREFIX:
+			switch (src_type) {
+			case PW_TYPE_IPV4_ADDR:
+				memcpy(&dst->ipv4prefix[2], &src->ipaddr, sizeof(dst->ipv4prefix) - 2);
+				dst->ipv4prefix[0] = 0;
+				dst->ipv4prefix[1] = 32;
+				goto fixed_length;
+
+			case PW_TYPE_IPV6_ADDR:
+				if (memcmp(src->ipv6addr.s6_addr, v4_v6_map, sizeof(v4_v6_map)) != 0) {
+					goto bad_v6_prefix_map;
+				}
+				memcpy(&dst->ipv4prefix[2], &src->ipv6addr.s6_addr[sizeof(v4_v6_map)],
+				       sizeof(dst->ipv4prefix) - 2);
+				dst->ipv4prefix[0] = 0;
+				dst->ipv4prefix[1] = 32;
+				goto fixed_length;
+
+			case PW_TYPE_IPV6_PREFIX:
+				if (memcmp(&src->ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map)) != 0) {
+					goto bad_v6_prefix_map;
+				}
+
+				/*
+				 *	Prefix must be >= 96 bits. If it's < 96 bytes and the
+				 *	above check passed, the v6 address wasn't masked
+				 *	correctly when it was packet into a value_data_t.
+				 */
+				if (!fr_assert(src->ipv6prefix[1] >= (sizeof(v4_v6_map) * 8))) return -1;
+
+				memcpy(&dst->ipv4prefix[2], &src->ipv6prefix[2 + sizeof(v4_v6_map)],
+				       sizeof(dst->ipv4prefix) - 2);
+				dst->ipv4prefix[0] = 0;
+				dst->ipv4prefix[1] = src->ipv6prefix[1] - (sizeof(v4_v6_map) * 8);
+				goto fixed_length;
+
+			default:
+				break;
+			}
+			break;
+
+		case PW_TYPE_IPV6_PREFIX:
+			switch (src_type) {
+			case PW_TYPE_IPV4_ADDR:
+				/* Add the v4/v6 mapping prefix */
+				memcpy(&dst->ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map));
+				memcpy(&dst->ipv6prefix[2 + sizeof(v4_v6_map)], &src->ipaddr,
+				       (sizeof(dst->ipv6prefix) - 2) - sizeof(v4_v6_map));
+				dst->ipv6prefix[0] = 0;
+				dst->ipv6prefix[1] = 128;
+				goto fixed_length;
+
+			case PW_TYPE_IPV4_PREFIX:
+				/* Add the v4/v6 mapping prefix */
+				memcpy(&dst->ipv6prefix[2], v4_v6_map, sizeof(v4_v6_map));
+				memcpy(&dst->ipv6prefix[2 + sizeof(v4_v6_map)], &src->ipv4prefix[2],
+				       (sizeof(dst->ipv6prefix) - 2) - sizeof(v4_v6_map));
+				dst->ipv6prefix[0] = 0;
+				dst->ipv6prefix[1] = (sizeof(v4_v6_map) * 8) + src->ipv4prefix[1];
+				goto fixed_length;
+
+			case PW_TYPE_IPV6_ADDR:
+				memcpy(&dst->ipv6prefix[2], &src->ipv6addr, sizeof(dst->ipv6prefix) - 2);
+				dst->ipv6prefix[0] = 0;
+				dst->ipv6prefix[1] = 128;
+				goto fixed_length;
+
+			default:
+				break;
+			}
+
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	/*
 	 *	The attribute we've found has to have a size which is
 	 *	compatible with the type of the destination cast.
 	 */
