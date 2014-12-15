@@ -252,7 +252,7 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 		} else if (is_integer(value) || ((value[0] == '0') && (value[1] == 'x'))) {
 			out->ipaddr.ip4addr.s_addr = htonl(strtoul(value, NULL, 0));
 		} else if (!resolve) {
-			if (inet_pton(AF_INET, value, &(out->ipaddr.ip4addr.s_addr)) <= 0) {
+			if (inet_pton(AF_INET, value, &out->ipaddr.ip4addr.s_addr) <= 0) {
 				fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
 				return -1;
 			}
@@ -279,7 +279,7 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	buffer[p - value] = '\0';
 
 	if (!resolve) {
-		if (inet_pton(AF_INET, buffer, &(out->ipaddr.ip4addr.s_addr)) <= 0) {
+		if (inet_pton(AF_INET, buffer, &out->ipaddr.ip4addr.s_addr) <= 0) {
 			fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
 			return -1;
 		}
@@ -297,7 +297,7 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	}
 
 	if (prefix < 32) {
-		out->ipaddr.ip4addr = fr_inaddr_mask(&(out->ipaddr.ip4addr), prefix);
+		out->ipaddr.ip4addr = fr_inaddr_mask(&out->ipaddr.ip4addr, prefix);
 	}
 
 	out->prefix = (uint8_t) prefix;
@@ -342,9 +342,9 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 		 *	Allow '*' as the wildcard address
 		 */
 		if ((value[0] == '*') && (value[1] == '\0')) {
-			memset(&out->ipaddr.ip6addr.s6_addr, 0, sizeof(out->ipaddr.ip6addr.s6_addr));
+			memset(out->ipaddr.ip6addr.s6_addr, 0, sizeof(out->ipaddr.ip6addr.s6_addr));
 		} else if (!resolve) {
-			if (inet_pton(AF_INET6, value, &(out->ipaddr.ip6addr.s6_addr)) <= 0) {
+			if (inet_pton(AF_INET6, value, out->ipaddr.ip6addr.s6_addr) <= 0) {
 				fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
 				return -1;
 			}
@@ -368,7 +368,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	buffer[p - value] = '\0';
 
 	if (!resolve) {
-		if (inet_pton(AF_INET6, buffer, &(out->ipaddr.ip6addr.s6_addr)) <= 0) {
+		if (inet_pton(AF_INET6, buffer, out->ipaddr.ip6addr.s6_addr) <= 0) {
 			fr_strerror_printf("Failed to parse IPv6 address string \"%s\"", value);
 			return -1;
 		}
@@ -388,8 +388,8 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	if (prefix < 128) {
 		struct in6_addr addr;
 
-		addr = fr_in6addr_mask(&(out->ipaddr.ip6addr), prefix);
-		memcpy(&(out->ipaddr.ip6addr.s6_addr), &addr, sizeof(addr));
+		addr = fr_in6addr_mask(&out->ipaddr.ip6addr, prefix);
+		memcpy(out->ipaddr.ip6addr.s6_addr, addr.s6_addr, sizeof(out->ipaddr.ip6addr.s6_addr));
 	}
 
 	out->prefix = (uint8_t) prefix;

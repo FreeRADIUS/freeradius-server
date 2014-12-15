@@ -181,7 +181,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	 *	bigendian.
 	 */
 	case PW_TYPE_ETHERNET:
-		memcpy(&int64, &vp->vp_ether, vp->vp_length);
+		memcpy(&int64, vp->vp_ether, vp->vp_length);
 		return snprintf(out, outlen, "%" PRIu64, htonll(int64));
 
 	case PW_TYPE_SIGNED:
@@ -191,7 +191,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
 
 	case PW_TYPE_IPV6_PREFIX:
-		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &(vp->vp_ipv6prefix[2])));
+		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6prefix[2]));
 
 	default:
 		break;

@@ -1129,11 +1129,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		current->dst_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_dst.s_addr;
 	} else {
 		current->src_ipaddr.af = AF_INET6;
-		memcpy(&current->src_ipaddr.ipaddr.ip6addr.s6_addr, &ip6->ip_src.s6_addr,
+		memcpy(current->src_ipaddr.ipaddr.ip6addr.s6_addr, ip6->ip_src.s6_addr,
 		       sizeof(current->src_ipaddr.ipaddr.ip6addr.s6_addr));
 
 		current->dst_ipaddr.af = AF_INET6;
-		memcpy(&current->dst_ipaddr.ipaddr.ip6addr.s6_addr, &ip6->ip_dst.s6_addr,
+		memcpy(current->dst_ipaddr.ipaddr.ip6addr.s6_addr, ip6->ip_dst.s6_addr,
 		       sizeof(current->dst_ipaddr.ipaddr.ip6addr.s6_addr));
 	}
 
@@ -1354,7 +1354,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		} else {
 			original = rbtree_finddata(request_tree, &search);
 			if (original && (memcmp(original->expect->vector, current->vector,
-			    sizeof(original->expect->vector)) != 0)) {
+			    			sizeof(original->expect->vector)) != 0)) {
 				/*
 				 *	ID reused before the request timed out (which may be an issue)...
 				 */
@@ -1431,7 +1431,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				     vp;
 				     vp = fr_cursor_next(&cursor)) {
 					pairsteal(original, search.link_vps);
-				}				
+				}
 				original->link_vps = search.link_vps;
 
 				/* We should never have conflicts */

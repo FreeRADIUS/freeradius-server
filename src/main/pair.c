@@ -218,18 +218,15 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			break;
 
 		case PW_TYPE_IPV6_ADDR:
-			ret = memcmp(&vp->vp_ipv6addr, &check->vp_ipv6addr,
-				     sizeof(vp->vp_ipv6addr));
+			ret = memcmp(&vp->vp_ipv6addr, &check->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
 			break;
 
 		case PW_TYPE_IPV6_PREFIX:
-			ret = memcmp(&vp->vp_ipv6prefix, &check->vp_ipv6prefix,
-				     sizeof(vp->vp_ipv6prefix));
+			ret = memcmp(vp->vp_ipv6prefix, check->vp_ipv6prefix, sizeof(vp->vp_ipv6prefix));
 			break;
 
 		case PW_TYPE_IFID:
-			ret = memcmp(&vp->vp_ifid, &check->vp_ifid,
-				     sizeof(vp->vp_ifid));
+			ret = memcmp(vp->vp_ifid, check->vp_ifid, sizeof(vp->vp_ifid));
 			break;
 
 		default:
