@@ -540,7 +540,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	static bool version_done;
 
-	CONF_SECTION *options;
+	CONF_SECTION *options, *update;
 	ldap_instance_t *inst = instance;
 
 	inst->cs = conf;
@@ -783,12 +783,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		goto error;
 #endif
 	}
+
 	/*
 	 *	Build the attribute map
 	 */
-	if (map_afrom_cs(&inst->user_map, cf_section_sub_find(inst->cs, "update"),
-			 PAIR_LIST_REPLY, PAIR_LIST_REQUEST, rlm_ldap_map_verify, inst,
-			 LDAP_MAX_ATTRMAP) < 0) {
+	update = cf_section_sub_find(inst->cs, "update");
+	if (update && (map_afrom_cs(&inst->user_map, update,
+				    PAIR_LIST_REPLY, PAIR_LIST_REQUEST, rlm_ldap_map_verify, inst,
+				    LDAP_MAX_ATTRMAP) < 0)) {
 		return -1;
 	}
 
