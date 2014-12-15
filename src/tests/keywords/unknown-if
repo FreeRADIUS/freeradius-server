@@ -1,0 +1,8 @@
+#
+#  PRE: unknown-update
+#
+if (&This-Does-Not-Exist == 1) {	# ERROR
+	update reply {
+		Filter-Id := "fail"
+	}
+}
