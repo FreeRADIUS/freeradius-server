@@ -7,7 +7,8 @@ RCSIDH(rlm_mschap_h, "$Id$")
 
 typedef enum {
 	AUTH_INTERNAL		= 0,
-	AUTH_NTLMAUTH_EXEC	= 1
+	AUTH_NTLMAUTH_EXEC	= 1,
+	AUTH_NTLMAUTH_HELPER	= 2
 } MSCHAP_AUTH_METHOD;
 
 typedef struct rlm_mschap_t {
@@ -18,6 +19,9 @@ typedef struct rlm_mschap_t {
 	char const		*xlat_name;
 	char const		*ntlm_auth;
 	uint32_t		ntlm_auth_timeout;
+	char const		*ntlm_helper;
+	char const		*ntlm_username;
+	char const		*ntlm_domain;
 	char const		*ntlm_cpw;
 	char const		*ntlm_cpw_username;
 	char const		*ntlm_cpw_domain;
@@ -32,6 +36,12 @@ typedef struct rlm_mschap_t {
 	bool		open_directory;
 #endif
 } rlm_mschap_t;
+
+typedef struct ntlmauth_child_t {
+	pid_t			pid;
+	int			outfd;
+	int			infd;
+} ntlmauth_child_t;
 
 #endif
 
