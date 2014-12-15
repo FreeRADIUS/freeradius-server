@@ -401,6 +401,7 @@ static int do_connect(int *out, char const *file, char const *server)
 		if (len < 0) {
 			fprintf(stderr, "%s: Error reading initial data from socket: %s\n",
 				progname, fr_syserror(errno));
+			close(sockfd);
 			return -1;
 		}
 	}
@@ -409,6 +410,7 @@ static int do_connect(int *out, char const *file, char const *server)
 	magic = ntohl(magic);
 	if (magic != 0xf7eead15) {
 		fprintf(stderr, "%s: Socket %s is not FreeRADIUS administration socket\n", progname, file);
+		close(sockfd);
 		return -1;
 	}
 
@@ -424,6 +426,7 @@ static int do_connect(int *out, char const *file, char const *server)
 	if (magic != needed) {
 		fprintf(stderr, "%s: Socket version mismatch: Need %d, got %d\n",
 			progname, needed, magic);
+		close(sockfd);
 		return -1;
 	}
 
