@@ -306,8 +306,8 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 		}
 		pwd_session->in_buf_len = ntohs(buf[0] * 256 | buf[1]);
 		if ((pwd_session->in_buf = talloc_zero_array(pwd_session, uint8_t, pwd_session->in_buf_len)) == NULL) {
-			RDEBUG2("pwd cannot allocate %d buffer to hold fragments",
-			pwd_session->in_buf_len);
+			RDEBUG2("pwd cannot allocate %zd buffer to hold fragments",
+				pwd_session->in_buf_len);
 			return 0;
 		}
 		memset(pwd_session->in_buf, 0, pwd_session->in_buf_len);
