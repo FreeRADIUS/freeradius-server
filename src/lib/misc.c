@@ -938,7 +938,7 @@ char const *ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt)
  *
  * @param ipaddr to mask.
  * @param prefix Number of contiguous bits to mask.
- * @return an ipv6 address with the host portion zeroed out.
+ * @return an ipv4 address with the host portion zeroed out.
  */
 struct in_addr fr_inaddr_mask(struct in_addr const *ipaddr, uint8_t prefix)
 {
