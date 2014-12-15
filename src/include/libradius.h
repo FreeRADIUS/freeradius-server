@@ -131,16 +131,17 @@ typedef void (*sig_t)(int);
 #define FR_MAX_VENDOR		(1 << 24) /* RFC limitations */
 
 #ifdef _LIBRADIUS
-#  define RADIUS_HDR_LEN		20
+#  define RADIUS_HDR_LEN	20
 #  define VENDORPEC_USR		429
-#define VENDORPEC_LUCENT	4846
-#define VENDORPEC_STARENT	8164
+#  define VENDORPEC_LUCENT	4846
+#  define VENDORPEC_STARENT	8164
 #  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
+#endif
+
 #  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
 					vp_print(fr_log_fp, vp); \
 				     } \
 				} while(0)
-#endif
 
 #define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
 #define TAG_VALID_ZERO(x)	((x) < 0x20)

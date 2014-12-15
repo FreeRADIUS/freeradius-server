@@ -73,8 +73,6 @@ static int sleep_time = -1;
 static rc_request_t *request_head = NULL;
 static rc_request_t *rc_request_tail = NULL;
 
-static int rc_debug_flag;
-
 char const *radclient_version = "radclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
@@ -962,6 +960,9 @@ static int send_one_packet(rc_request_t *request)
 		REDEBUG("Failed to send packet for ID %d", request->packet->id);
 	}
 
+	fr_packet_header_print(fr_log_fp, request->packet, false);
+	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, request->packet->vps);
+
 	return 0;
 }
 
@@ -1032,6 +1033,10 @@ static int recv_one_packet(int wait_time)
 		return -1;	/* got reply to packet we didn't send */
 	}
 	request = fr_packet2myptr(rc_request_t, packet, packet_p);
+
+
+	fr_packet_header_print(fr_log_fp, request->packet, true);
+	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, request->reply->vps);
 
 	/*
 	 *	Fails the signature validation: not a real reply.
@@ -1139,7 +1144,6 @@ int main(int argc, char **argv)
 	 *	verbosity of library calls and the verbosity of
 	 *	radclient.
 	 */
-	rc_debug_flag = 1;
 	fr_debug_flag = 0;
 	fr_log_fp = stdout;
 
@@ -1311,7 +1315,6 @@ int main(int argc, char **argv)
 
 		case 'x':
 			fr_debug_flag++;
-			rc_debug_flag++;
 			break;
 
 		case 'h':
