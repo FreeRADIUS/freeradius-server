@@ -237,7 +237,7 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 
 	cap = request_data_reference(request, request, REQUEST_DATA_REGEX);
 	if (!cap) {
-		RDEBUG4("No subcapture data found", num);
+		RDEBUG4("No subcapture data found");
 		*out = NULL;
 		return -1;
 	}
