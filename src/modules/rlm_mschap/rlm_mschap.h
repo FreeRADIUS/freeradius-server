@@ -5,10 +5,19 @@
 
 RCSIDH(rlm_mschap_h, "$Id$")
 
+#include "config.h"
+
+#ifdef HAVE_WBCLIENT_H
+#define WITH_AUTH_WINBIND
+#endif
+
 typedef enum {
 	AUTH_INTERNAL		= 0,
 	AUTH_NTLMAUTH_EXEC	= 1,
 	AUTH_NTLMAUTH_HELPER	= 2
+#ifdef WITH_AUTH_WINBIND
+	,AUTH_WBCLIENT       	= 3
+#endif
 } MSCHAP_AUTH_METHOD;
 
 typedef struct rlm_mschap_t {

@@ -41,6 +41,9 @@ mschap {
 	#   'ntlm_auth_helper' start a pool of ntlm_auth
 	#                      processes and pass authentication
 	#                      data to them
+	#   'winbind' make a direct connection to winbind to
+	#             authenticate users. This option is
+	#             experimental.
 	#
 	# The default method is "internal", unless the ntlm_auth
 	# option below is uncommented, in which case "ntlm_auth"

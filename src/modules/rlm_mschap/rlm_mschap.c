@@ -38,6 +38,7 @@ RCSID("$Id$")
 #include	"rlm_mschap.h"
 #include	"mschap.h"
 #include	"smbdes.h"
+#include	"auth_wbclient.h"
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
@@ -637,6 +638,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			}
 
 			inst->method = AUTH_NTLMAUTH_HELPER;
+		} else if (strcasecmp(inst->method_s, "winbind") == 0) {
+#ifdef WITH_AUTH_WINBIND
+			inst->method = AUTH_WBCLIENT;
+#else
+			cf_log_err_cs(conf, "auth_method 'winbind' not enabled at compiled time");
+			return -1;
+#endif
 		} else {
 			cf_log_err_cs(conf, "invalid auth_method '%s'",
 				      inst->method_s);
@@ -1470,6 +1478,13 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 	 *	Connect to ntlm_auth server socket
 	 */
 		return do_ntlmauth_helper(inst, request, nthashhash);
+#ifdef WITH_AUTH_WINBIND
+	case AUTH_WBCLIENT:
+	/*
+	 *	Process auth via the wbclient library
+	 */
+		return do_auth_wbclient(inst, request, challenge, response, nthashhash);
+#endif
 	default:
 		/* We should never reach this line */
 		RERROR("Internal error: Unknown mschap auth method (%d)", method);
