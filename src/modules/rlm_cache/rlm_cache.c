@@ -588,7 +588,6 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 		vps = c->control;
 		break;
 
-	case PAIR_LIST_UNKNOWN:
 	default:
 		REDEBUG("Unsupported list \"%s\"", fr_int2str(pair_lists, list, "<UNKNOWN>"));
 		ret = -1;
