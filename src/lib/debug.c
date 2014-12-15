@@ -922,6 +922,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 			FR_FAULT_LOG("Debugger check failed: %s", fr_strerror());
 			FR_FAULT_LOG("Signal processing in debuggers may not work as expected");
 #endif
+			/* FALL-THROUGH */
 
 		case DEBUG_STATE_NOT_ATTACHED:
 #ifdef SIGABRT
