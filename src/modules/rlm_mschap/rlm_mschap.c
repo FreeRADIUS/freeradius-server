@@ -33,6 +33,7 @@ RCSID("$Id$")
 
 #include 	<ctype.h>
 
+#include	"rlm_mschap.h"
 #include	"mschap.h"
 #include	"smbdes.h"
 
@@ -44,12 +45,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #ifdef WITH_OPEN_DIRECTORY
 int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair);
 #endif
-
-/* Method of authentication we are going to use */
-typedef enum {
-        AUTH_INTERNAL = 0,
-        AUTH_NTLMAUTH_EXEC = 1
-} MSCHAP_AUTH_METHOD;
 
 /* Allowable account control bits */
 #define ACB_DISABLED	0x00010000	//!< User account disabled.
@@ -142,28 +137,6 @@ static int pdb_decode_acct_ctrl(char const *p)
 
 	return acct_ctrl;
 }
-
-
-typedef struct rlm_mschap_t {
-	bool			use_mppe;
-	bool			require_encryption;
-	bool			require_strong;
-	bool			with_ntdomain_hack;	/* this should be in another module */
-	char const		*xlat_name;
-	char const		*ntlm_auth;
-	uint32_t		ntlm_auth_timeout;
-	char const		*ntlm_cpw;
-	char const		*ntlm_cpw_username;
-	char const		*ntlm_cpw_domain;
-	char const		*local_cpw;
-	char const		*auth_type;
-	bool			allow_retry;
-	char const		*retry_msg;
-	MSCHAP_AUTH_METHOD	method;
-#ifdef WITH_OPEN_DIRECTORY
-	bool		open_directory;
-#endif
-} rlm_mschap_t;
 
 
 /*
