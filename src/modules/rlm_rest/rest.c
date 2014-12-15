@@ -742,6 +742,8 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 			for (;;) {
 				size_t attr_space;
 
+				rad_assert(vp);	/* coverity */
+
 				/*
 				 *  We need at least a single byte to write out the
 				 *  shortest attribute value.
