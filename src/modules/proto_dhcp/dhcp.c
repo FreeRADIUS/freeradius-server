@@ -1272,7 +1272,7 @@ static ssize_t fr_dhcp_vp2attr(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
 		break;
 
 	case PW_TYPE_ETHERNET:
-		memcpy(p, &vp->vp_ether, 6);
+		memcpy(p, vp->vp_ether, 6);
 		break;
 
 	case PW_TYPE_STRING:
@@ -1849,7 +1849,7 @@ int fr_dhcp_add_arp_entry(int fd, char const *interface,
 	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
 
 	if (macaddr->da->type == PW_TYPE_ETHERNET) {
-		memcpy(&req.arp_ha.sa_data, &macaddr->vp_ether, sizeof(macaddr->vp_ether));
+		memcpy(&req.arp_ha.sa_data, macaddr->vp_ether, sizeof(macaddr->vp_ether));
 	} else {
 		memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->vp_length);
 	}

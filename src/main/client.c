@@ -1140,7 +1140,8 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			if (da->attr == PW_FREERADIUS_CLIENT_IP_PREFIX) {
 				RDEBUG2("ipaddr = %s", strvalue);
 				c->ipaddr.af = AF_INET;
-				memcpy(&c->ipaddr.ipaddr.ip4addr.s_addr, &(vp->vp_ipv4prefix[2]), sizeof(c->ipaddr.ipaddr.ip4addr.s_addr));
+				memcpy(&c->ipaddr.ipaddr.ip4addr, &vp->vp_ipv4prefix[2],
+				       sizeof(c->ipaddr.ipaddr.ip4addr.s_addr));
 				fr_ipaddr_mask(&c->ipaddr, (vp->vp_ipv4prefix[1] & 0x3f));
 			}
 
@@ -1150,7 +1151,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_PREFIX) {
 				RDEBUG2("ipaddr = %s", strvalue);
 				c->ipaddr.af = AF_INET6;
-				memcpy(&c->ipaddr.ipaddr.ip6addr, &(vp->vp_ipv6prefix[2]), sizeof(c->ipaddr.ipaddr.ip6addr));
+				memcpy(&c->ipaddr.ipaddr.ip6addr, &vp->vp_ipv6prefix[2], sizeof(c->ipaddr.ipaddr.ip6addr));
 				fr_ipaddr_mask(&c->ipaddr, vp->vp_ipv6prefix[1]);
 			}
 

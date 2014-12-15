@@ -346,7 +346,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 
 		case PW_TYPE_IPV6_PREFIX:
 			if (size != vp->vp_length) goto raw;
-			memcpy(&vp->vp_ipv6prefix, data, vp->vp_length);
+			memcpy(vp->vp_ipv6prefix, data, vp->vp_length);
 			break;
 
 			/*

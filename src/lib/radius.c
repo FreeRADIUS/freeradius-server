@@ -3747,7 +3747,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		break;
 
 	case PW_TYPE_ETHERNET:
-		memcpy(&vp->vp_ether, data, 6);
+		memcpy(vp->vp_ether, data, 6);
 		break;
 
 	case PW_TYPE_IPV4_ADDR:
@@ -3755,7 +3755,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		break;
 
 	case PW_TYPE_IFID:
-		memcpy(&vp->vp_ifid, data, 8);
+		memcpy(vp->vp_ifid, data, 8);
 		break;
 
 	case PW_TYPE_IPV6_ADDR:
@@ -3767,7 +3767,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	FIXME: double-check that
 		 *	(vp->vp_octets[1] >> 3) matches vp->vp_length + 2
 		 */
-		memcpy(&vp->vp_ipv6prefix, data, vp->vp_length);
+		memcpy(vp->vp_ipv6prefix, data, vp->vp_length);
 		if (vp->vp_length < 18) {
 			memset(((uint8_t *)vp->vp_ipv6prefix) + vp->vp_length, 0,
 			       18 - vp->vp_length);
@@ -3776,7 +3776,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 
 	case PW_TYPE_IPV4_PREFIX:
 		/* FIXME: do the same double-check as for IPv6Prefix */
-		memcpy(&vp->vp_ipv4prefix, data, vp->vp_length);
+		memcpy(vp->vp_ipv4prefix, data, vp->vp_length);
 
 		/*
 		 *	/32 means "keep all bits".  Otherwise, mask

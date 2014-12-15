@@ -110,7 +110,7 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a, size_t a_len,
 		break;
 
 	case PW_TYPE_ETHERNET:
-		compare = memcmp(&a->ether, &b->ether, sizeof(a->ether));
+		compare = memcmp(a->ether, b->ether, sizeof(a->ether));
 		break;
 
 	case PW_TYPE_IPV4_ADDR: {
@@ -131,15 +131,15 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a, size_t a_len,
 		break;
 
 	case PW_TYPE_IPV6_PREFIX:
-		compare = memcmp(&a->ipv6prefix, &b->ipv6prefix, sizeof(a->ipv6prefix));
+		compare = memcmp(a->ipv6prefix, b->ipv6prefix, sizeof(a->ipv6prefix));
 		break;
 
 	case PW_TYPE_IPV4_PREFIX:
-		compare = memcmp(&a->ipv4prefix, &b->ipv4prefix, sizeof(a->ipv4prefix));
+		compare = memcmp(a->ipv4prefix, b->ipv4prefix, sizeof(a->ipv4prefix));
 		break;
 
 	case PW_TYPE_IFID:
-		compare = memcmp(&a->ifid, &b->ifid, sizeof(a->ifid));
+		compare = memcmp(a->ifid, b->ifid, sizeof(a->ifid));
 		break;
 
 	/*
@@ -312,7 +312,7 @@ int value_data_cmp_op(FR_TOKEN op,
 
 		case PW_TYPE_IPV4_PREFIX:	/* IPv4 and IPv4 Prefix */
 			return value_data_cidr_cmp_op(op, 4, 32, (uint8_t const *) &a->ipaddr,
-						    b->ipv4prefix[1], (uint8_t const *) &b->ipv4prefix + 2);
+						      b->ipv4prefix[1], (uint8_t const *) &b->ipv4prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -324,13 +324,13 @@ int value_data_cmp_op(FR_TOKEN op,
 		switch (b_type) {
 		case PW_TYPE_IPV4_ADDR:
 			return value_data_cidr_cmp_op(op, 4, a->ipv4prefix[1],
-						    (uint8_t const *) &a->ipv4prefix + 2,
+						    (uint8_t const *) &a->ipv4prefix[2],
 						    32, (uint8_t const *) &b->ipaddr);
 
 		case PW_TYPE_IPV4_PREFIX:	/* IPv4 Prefix and IPv4 Prefix */
 			return value_data_cidr_cmp_op(op, 4, a->ipv4prefix[1],
-						    (uint8_t const *) &a->ipv4prefix + 2,
-						    b->ipv4prefix[1], (uint8_t const *) &b->ipv4prefix + 2);
+						    (uint8_t const *) &a->ipv4prefix[2],
+						    b->ipv4prefix[1], (uint8_t const *) &b->ipv4prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
@@ -345,7 +345,7 @@ int value_data_cmp_op(FR_TOKEN op,
 
 		case PW_TYPE_IPV6_PREFIX:	/* IPv6 and IPv6 Preifx */
 			return value_data_cidr_cmp_op(op, 16, 128, (uint8_t const *) &a->ipv6addr,
-						    b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix + 2);
+						    b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix[2]);
 			break;
 
 		default:
@@ -358,13 +358,13 @@ int value_data_cmp_op(FR_TOKEN op,
 		switch (b_type) {
 		case PW_TYPE_IPV6_ADDR:		/* IPv6 Prefix and IPv6 */
 			return value_data_cidr_cmp_op(op, 16, a->ipv6prefix[1],
-						    (uint8_t const *) &a->ipv6prefix + 2,
+						    (uint8_t const *) &a->ipv6prefix[2],
 						    128, (uint8_t const *) &b->ipv6addr);
 
 		case PW_TYPE_IPV6_PREFIX:	/* IPv6 Prefix and IPv6 */
 			return value_data_cidr_cmp_op(op, 16, a->ipv6prefix[1],
-						    (uint8_t const *) &a->ipv6prefix + 2,
-						    b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix + 2);
+						    (uint8_t const *) &a->ipv6prefix[2],
+						    b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
@@ -691,7 +691,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		if (fr_pton4(&addr, src, src_len, fr_hostname_lookups, false) < 0) return -1;
 
 		dst->ipv4prefix[1] = addr.prefix;
-		memcpy(dst->ipv4prefix + 2, &addr.ipaddr.ip4addr.s_addr, sizeof(dst->ipv4prefix) - 2);
+		memcpy(&dst->ipv4prefix[2], &addr.ipaddr.ip4addr.s_addr, sizeof(dst->ipv4prefix) - 2);
 	}
 		goto finish;
 
@@ -711,7 +711,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 			return -1;
 		}
 
-		memcpy(&dst->ipv6addr, &addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6addr));
+		memcpy(&dst->ipv6addr, addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6addr));
 	}
 		goto finish;
 
@@ -722,7 +722,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		if (fr_pton6(&addr, src, src_len, fr_hostname_lookups, false) < 0) return -1;
 
 		dst->ipv6prefix[1] = addr.prefix;
-		memcpy(dst->ipv6prefix + 2, &addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6prefix) - 2);
+		memcpy(&dst->ipv6prefix[2], addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6prefix) - 2);
 	}
 		goto finish;
 
@@ -877,7 +877,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		break;
 
 	case PW_TYPE_IFID:
-		if (ifid_aton(src, (void *) &dst->ifid) == NULL) {
+		if (ifid_aton(src, (void *) dst->ifid) == NULL) {
 			fr_strerror_printf("Failed to parse interface-id string \"%s\"", src);
 			return -1;
 		}
@@ -897,7 +897,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		if (is_integer(src)) {
 			uint64_t integer = htonll(atoll(src));
 
-			memcpy(&dst->ether, &integer, sizeof(dst->ether));
+			memcpy(dst->ether, &integer, sizeof(dst->ether));
 			break;
 		}
 
@@ -1015,7 +1015,7 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
  * @param src_enumv Enumerated values used to convert integers to strings.
  * @param src Input data.
  * @param src_len Input data len.
- * @return the length of data in the dst.
+ * @return the length of data in the dst or -1 on error.
  */
 ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 			PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
@@ -1055,7 +1055,7 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 
 	if ((src_type == PW_TYPE_IFID) &&
 	    (dst_type == PW_TYPE_INTEGER64)) {
-		memcpy(&dst->integer64, &src->ifid, sizeof(src->ifid));
+		memcpy(&dst->integer64, src->ifid, sizeof(src->ifid));
 		dst->integer64 = htonll(dst->integer64);
 	fixed_length:
 		return dict_attr_sizes[dst_type][0];
@@ -1074,7 +1074,7 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		 */
 		if ((array[0] != 0) || (array[1] != 0)) return -1;
 
-		memcpy(&dst->ether, &array[2], 6);
+		memcpy(dst->ether, &array[2], 6);
 		goto fixed_length;
 	}
 
