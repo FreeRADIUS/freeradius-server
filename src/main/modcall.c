@@ -1667,13 +1667,10 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 			return -1;
 		}
 
-
-		if ((lhs_type != rhs_type) &&
-		    (lhs_type != PW_TYPE_OCTETS) &&
-		    (rhs_type != PW_TYPE_OCTETS)) {
-			cf_log_err(map->ci, "Attribute type mismatch");
-			return -1;
-		}
+		/*
+		 *	@todo We should check a cast matrix here
+		 *	to produce startup errors.
+		 */
 	}
 
 	/*
