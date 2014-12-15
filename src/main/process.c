@@ -321,7 +321,7 @@ static void request_coa_originate(REQUEST *request);
 STATE_MACHINE_DECL(coa_running);
 STATE_MACHINE_DECL(coa_wait_for_reply);
 STATE_MACHINE_DECL(coa_no_reply);
-static void request_coa_separate(REQUEST *coa);
+STATE_MACHINE_DECL(coa_separate);
 #endif
 
 #undef USEC
@@ -530,17 +530,11 @@ STATE_MACHINE_DECL(request_done)
 	/*
 	 *	Move the CoA request to its own handler.
 	 */
-	if (request->coa) request_coa_separate(request->coa);
-
-	/*
-	 *	If we're the CoA request, make the parent forget about
-	 *	us.
-	 */
-	if (request->parent && (request->parent->coa == request)) {
-		request->parent->coa = NULL;
-		(void) talloc_steal(NULL, request);
-	}
-
+	if (request->coa) {
+		coa_separate(request->coa, FR_ACTION_TIMER);
+	} else if (request->parent && (request->parent->coa == request)) {
+		coa_separate(request, FR_ACTION_TIMER);
+	}	
 #endif
 
 	/*
@@ -823,7 +817,7 @@ static void request_process_timer(REQUEST *request)
 	 *	parent.  Then, set up the timers so that we can clean
 	 *	it up as appropriate.
 	 */
-	if (request->coa) request_coa_separate(request->coa);
+	if (request->coa) coa_separate(request->coa, FR_ACTION_TIMER);
 
 	/*
 	 *	If we're the request, OR it isn't originating a CoA
@@ -2514,7 +2508,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		rad_assert((request->proxy->code == PW_CODE_COA_REQUEST) ||
 			   (request->proxy->code == PW_CODE_DISCONNECT_REQUEST));
 		rad_assert(request->process != NULL);
-		request_coa_separate(request);
+		coa_separate(request, FR_ACTION_PROXY_REPLY);
 	}
 #endif
 
@@ -4139,12 +4133,8 @@ STATE_MACHINE_DECL(coa_wait_for_reply)
 	}
 }
 
-static void request_coa_separate(REQUEST *request)
+STATE_MACHINE_DECL(coa_separate)
 {
-#ifdef DEBUG_STATE_MACHINE
-	int action = FR_ACTION_TIMER;
-#endif
-
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
@@ -4164,7 +4154,22 @@ static void request_coa_separate(REQUEST *request)
 	/*
 	 *	Should be coa_wait_for_reply()
 	 */
-	request->process(request, FR_ACTION_TIMER);
+	switch (action) {
+	case FR_ACTION_TIMER:
+		request->process(request, FR_ACTION_TIMER);
+		break;
+
+		/*
+		 *	Set up the main timers.
+		 */
+	case FR_ACTION_PROXY_REPLY:
+		request_process_timer(request);
+		break;
+
+	default:
+		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
+		break;
+	}
 }
 
 STATE_MACHINE_DECL(coa_no_reply)
