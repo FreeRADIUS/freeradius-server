@@ -944,18 +944,14 @@ struct in_addr fr_inaddr_mask(struct in_addr const *ipaddr, uint8_t prefix)
 {
 	uint32_t ret;
 
-	if (prefix > 32) {
-		prefix = 32;
-	}
+	if (prefix > 32) prefix = 32;
 
 	/* Short circuit */
-	if (prefix == 32) {
-		return *ipaddr;
-	}
+	if (prefix == 32) return *ipaddr;
 
-	if (prefix == 0)
-		ret = 0;
+	if (prefix == 0) ret = 0;
 	else ret = htonl(~((0x00000001UL << (32 - prefix)) - 1)) & ipaddr->s_addr;
+
 	return (*(struct in_addr *)&ret);
 }
 
@@ -970,14 +966,10 @@ struct in6_addr fr_in6addr_mask(struct in6_addr const *ipaddr, uint8_t prefix)
 	uint64_t const *p = (uint64_t const *) ipaddr;
 	uint64_t ret[2], *o = ret;
 
-	if (prefix > 128) {
-		prefix = 128;
-	}
+	if (prefix > 128) prefix = 128;
 
 	/* Short circuit */
-	if (prefix == 128) {
-		return *ipaddr;
-	}
+	if (prefix == 128) return *ipaddr;
 
 	if (prefix >= 64) {
 		prefix -= 64;
