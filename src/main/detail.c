@@ -536,10 +536,15 @@ open_file:
 	case STATE_REPLIED:
 		if (data->track) {
 			rad_assert(data->fp != NULL);
-			fseek(data->fp, data->timestamp_offset, SEEK_SET);
-			fwrite("\tDone", 1, 5, data->fp);
+
+			if ((fseek(data->fp, data->timestamp_offset, SEEK_SET) < 0) ||
+			    (fwrite("\tDone", 1, 5, data->fp) < 5)) {
+				WARN("Failed marking detail request as done: %s", fr_syserror(errno));
+			}
 			fflush(data->fp);
-			fseek(data->fp, data->offset, SEEK_SET);
+			if (fseek(data->fp, data->offset, SEEK_SET) < 0) {
+				WARN("Failed seeking to next detail request: %s", fr_syserror(errno));
+			}
 		}
 
 		pairfree(&data->vps);
