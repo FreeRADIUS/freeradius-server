@@ -1641,49 +1641,6 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 	 */
 
 	/*
-	 *	We don't support implicit type conversion,
-	 *	except for "octets"
-	 */
-	if (((map->lhs->type == TMPL_TYPE_ATTR) || (map->lhs->type == TMPL_TYPE_DATA)) &&
-	    ((map->rhs->type == TMPL_TYPE_ATTR) || (map->rhs->type == TMPL_TYPE_DATA))) {
-		PW_TYPE rhs_type;
-		PW_TYPE lhs_type;
-
-		switch (map->lhs->type) {
-		case TMPL_TYPE_ATTR:
-			lhs_type = map->lhs->tmpl_da->type;
-			break;
-
-		case TMPL_TYPE_DATA:
-			lhs_type = map->lhs->tmpl_data_type;
-			break;
-
-		default:
-			rad_assert(0);
-			return -1;
-		}
-
-		switch (map->rhs->type) {
-		case TMPL_TYPE_ATTR:
-			rhs_type = map->rhs->tmpl_da->type;
-			break;
-
-		case TMPL_TYPE_DATA:
-			rhs_type = map->rhs->tmpl_data_type;
-			break;
-
-		default:
-			rad_assert(0);
-			return -1;
-		}
-
-		/*
-		 *	@todo We should check a cast matrix here
-		 *	to produce startup errors.
-		 */
-	}
-
-	/*
 	 *	What exactly where you expecting to happen here?
 	 */
 	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
