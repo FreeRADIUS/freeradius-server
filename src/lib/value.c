@@ -997,6 +997,7 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_STRING:
 		fr_assert(0);
+		return;		/* shouldn't happen */
 
 	default:
 		memcpy(dst, src, src_len);
