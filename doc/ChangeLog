@@ -11,6 +11,8 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	  raddb/mods-available/cache
 	* Add support for &Attribute-Name[*] in conditions.
 	  See "man unlang" for details.
+	* Add &Attribute-Name[n] which gets the last instance
+	  of an attribute e.g. Module-Failure-Message[n].
 	* Allow for redundant string expansions.  See the
 	  "instantiate" section of radiusd.conf.
 	* When checking IP addresses in conditions, make the
