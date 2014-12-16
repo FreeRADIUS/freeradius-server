@@ -273,10 +273,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 	/*
-	 *	Blocking a request longer than 30 seconds isn't going to help anyone.
+	 *	Blocking a request longer than max_request_time isn't going to help anyone.
 	 */
-	if (inst->timeout > 30) {
-		cf_log_err_cs(conf, "Timeout '%d' is too large (maximum: 30)", inst->timeout);
+	if (inst->timeout > main_config.max_request_time) {
+		cf_log_err_cs(conf, "Timeout '%d' is too large (maximum: %d)", inst->timeout, main_config.max_request_time);
 		return -1;
 	}
 
