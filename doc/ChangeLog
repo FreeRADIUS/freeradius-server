@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
+FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
 	* radmin / raddebug conditional errors are printed
 	  to the output, instead of being discarded.
