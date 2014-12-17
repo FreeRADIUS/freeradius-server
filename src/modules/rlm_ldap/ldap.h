@@ -72,8 +72,8 @@ typedef struct ldap_instance {
 	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
 	fr_connection_pool_t *pool;			//!< Connection pool instance.
 
-	char const	*uri;				//!< Server URI (alternative to server and port).
-	char const	*server;			//!< Initial server to bind to.
+	char		*uri;				//!< Server URI (alternative to server and port).
+	char		*server;			//!< Initial server to bind to.
 	uint16_t	port;				//!< Port to use when binding to the server.
 
 	char const	*admin_dn;			//!< DN we bind as when we need to query the LDAP

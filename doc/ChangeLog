@@ -67,6 +67,8 @@ FreeRADIUS 3.0.6 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	* Fix various issues around masking IPv6 addresses.
 	* Give descriptive error if unknown attributes are used
 	  in "update" sections.
+	* Deal with cases where ldap_initialize isn't available
+	  gracefully, and use it exclusively when it's available.
 
 FreeRADIUS 3.0.5 Fri 21 Nov 2014 15:30:00 EDT urgency=medium
 	Feature improvements

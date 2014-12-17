@@ -203,8 +203,7 @@ static CONF_PARSER option_config[] = {
 
 
 static const CONF_PARSER module_config[] = {
-	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, ldap_instance_t, server), "localhost" },
-	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, ldap_instance_t, port), "389" },
+	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, ldap_instance_t, port), "0" },
 
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, ldap_instance_t, password), "" },
 	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, admin_dn), "" },
@@ -276,14 +275,6 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) ||
 	    ldap_url->lud_attrs[1]) {
 		REDEBUG("Bad attributes list in LDAP URL. URL must specify exactly one attribute to retrieve");
-
-		goto free_urldesc;
-	}
-
-	if (ldap_url->lud_host &&
-	    ((strcmp(inst->server, ldap_url->lud_host) != 0) ||
-	     ((uint32_t) ldap_url->lud_port != inst->port))) {
-		REDEBUG("LDAP expansions must specify the same host and port as the their module instance");
 
 		goto free_urldesc;
 	}
@@ -538,7 +529,10 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	static bool version_done;
+	static bool	version_done;
+
+	CONF_PAIR	*cp;
+	CONF_ITEM	*ci;
 
 	CONF_SECTION *options, *update;
 	ldap_instance_t *inst = instance;
@@ -626,68 +620,197 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
-	 *	Split original server value out into URI, server and port
-	 *	so whatever initialization function we use later will have
-	 *	the server information in the format it needs.
+	 *	For backwards compatibility hack up the first 'server'
+	 *	CONF_ITEM into chunks, and add them back into the config.
+	 *
+	 *	@fixme this should be removed at some point.
 	 */
-	if (ldap_is_ldap_url(inst->server)) {
-		LDAPURLDesc *ldap_url;
-		int port;
+	{
+		char const	*value;
+		char const	*p;
+		char const	*q;
+		char		*buff;
 
-		if (ldap_url_parse(inst->server, &ldap_url)){
-			cf_log_err_cs(conf, "Parsing LDAP URL \"%s\" failed", inst->server);
+		bool		done = false;
+		bool		first = true;
+
+		cp = cf_pair_find(conf, "server");
+		if (!cp) {
+			cf_log_err_cs(conf, "Configuration item 'server' must have a value");
 			return -1;
 		}
 
-		/*
-		 *	Figure out the port from the URL
-		 */
-		if (ldap_url->lud_port == 0) {
-			if (strcmp(ldap_url->lud_scheme, "ldaps://") == 0) {
-				if (inst->start_tls == true) {
-				start_tls_error:
-					cf_log_err_cs(conf, "ldaps:// scheme is not compatible with 'start_tls'");
-					return -1;
+		value = cf_pair_value(cp);
+
+		p = value;
+		q = p;
+		while (!done) {
+			switch (*q) {
+			case '\0':
+				done = true;
+				if (p == value) break;	/* string contained no separators */
+
+				/* FALL-THROUGH */
+
+			case ',':
+			case ';':
+			case ' ':
+				while (isspace((int) *p)) p++;
+				if (p == q) continue;
+
+				buff = talloc_array(inst, char, (q - p) + 1);
+				strlcpy(buff, p, talloc_array_length(buff));
+				p = ++q;
+
+				if (first) {
+					WARN("Listing multiple LDAP servers in the 'server' directive "
+					     "is deprecated and will be removed in a future release.  "
+					     "Use multiple 'server' directives instead");
+					WARN("- server = '%s'", value);
 				}
-				port = 636;
-			} else {
-				port = 384;
+				WARN("+ server = '%s'", buff);
+
+				/*
+				 *	For the first instance of server we find, just replace
+				 *	the existing "server" config item.
+				 */
+				if (first) {
+					cf_pair_replace(conf, cp, buff);
+					first = false;
+					continue;
+				}
+
+				/*
+				 *	For subsequent instances we need to add new conf pairs.
+				 */
+				cp = cf_pair_alloc(conf, "server", buff, T_OP_EQ, T_SINGLE_QUOTED_STRING);
+				if (!cp) return -1;
+
+				ci = cf_pairtoitem(cp);
+				cf_item_add(conf, ci);
+
+				break;
+
+			default:
+				q++;
+				continue;
 			}
-		} else {
-			port = ldap_url->lud_port;
-		}
-
-		inst->uri = inst->server;
-		inst->server = talloc_strdup(inst, ldap_url->lud_host);
-
-		if ((inst->port != 384) && (port != inst->port)) {
-			WARN("Non-default 'port' directive %i set to %i by LDAP URI", inst->port, port);
-		}
-		inst->port = port;
-
-		/*
-		 *	@todo We could set a few other top level
-		 *	directives using the URL, like base_dn
-		 *	and scope.
-		 */
-
-		ldap_free_urldesc(ldap_url);
-	/*
-	 *	We need to construct an LDAP URI
-	 */
-	} else {
-		switch (inst->port) {
-		default:
-		case 384:
-			inst->uri = talloc_asprintf(inst, "ldap://%s:%i/", inst->server, inst->port);
-			break;
-
-		case 636:
-			if (inst->start_tls == true) goto start_tls_error;
-			inst->uri = talloc_asprintf(inst, "ldaps://%s:%i/", inst->server, inst->port);
-			break;
 		}
 	}
+
+	/*
+	 *	Now iterate over all the 'server' config items
+	 */
+	for (cp = cf_pair_find(conf, "server");
+	     cp;
+	     cp = cf_pair_find_next(conf, cp, "server")) {
+	     	char const *value;
+
+		value = cf_pair_value(cp);
+
+		/*
+		 *	Split original server value out into URI, server and port
+		 *	so whatever initialization function we use later will have
+		 *	the server information in the format it needs.
+		 */
+		if (ldap_is_ldap_url(value)) {
+			LDAPURLDesc	*ldap_url;
+			int		port;
+
+			if (ldap_url_parse(value, &ldap_url)){
+				cf_log_err_cs(conf, "Parsing LDAP URL \"%s\" failed", value);
+				return -1;
+			}
+
+			/*
+			 *	Figure out the port from the URL
+			 */
+			if (ldap_url->lud_scheme && strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
+#ifndef HAVE_LDAP_INITIALIZE
+				cf_log_err_cs(conf, "ldaps is not supported by linked libldap");
+				return -1;
+#endif
+				if (inst->start_tls == true) {
+					cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
+						      "with 'start_tls'");
+					return -1;
+				}
+				port = inst->port ? inst->port : LDAPS_PORT;
+			} else if (ldap_url->lud_scheme && strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
+#ifndef HAVE_LDAP_INITIALIZE
+				cf_log_err_cs(conf, "ldapi is not supported by linked libldap");
+				return -1;
+#endif
+				port = 0;
+
+			} else if (ldap_url->lud_scheme && strcmp(ldap_url->lud_scheme, "cldap") == 0) {
+#ifndef HAVE_LDAP_INITIALIZE
+				cf_log_err_cs(conf, "cldap is not supported by linked libldap");
+				return -1;
+#endif
+				port = inst->port ? inst->port : LDAP_PORT;
+			} else {
+				port = inst->port ? inst->port : LDAP_PORT;
+			}
+
+			if (ldap_url->lud_port > 0) port = ldap_url->lud_port;
+
+#ifdef HAVE_LDAP_INITIALIZE
+			inst->server = talloc_asprintf_append(inst->server, "%s://%s",
+							      ldap_url->lud_scheme ? ldap_url->lud_scheme : "ldap",
+							      ldap_url->lud_host ? ldap_url->lud_host : "");
+			if (port) inst->server = talloc_asprintf_append(inst->server, ":%i", port);
+			inst->server = talloc_strdup_append(inst->server, " ");
+#else
+			inst->server = talloc_asprintf_append(inst->server, "%s",
+							      ldap_url->lud_host ? ldap_url->lud_host : "localhost");
+			if (port) inst->server = talloc_asprintf_append(inst->server, ":%i", port);
+			inst->server = talloc_strdup_append(inst->server, " ");
+#endif
+			/*
+			 *	@todo We could set a few other top level
+			 *	directives using the URL, like base_dn
+			 *	and scope.
+			 */
+			ldap_free_urldesc(ldap_url);
+		/*
+		 *	We need to construct an LDAP URI
+		 */
+		} else {
+#ifdef HAVE_LDAP_INITIALIZE
+			char	const *p;
+			char	*q;
+			int	port = 0;
+			size_t	len;
+
+			p = strrchr(value, ':');
+			if (p) {
+				port = (int)strtol(p, &q, 10);
+				if ((p == q) || (*q == '\0')) {
+					cf_log_err_cp(cp, "Invalid server, must be in <server>[:<port>] format");
+					return -1;
+				}
+				len = q - p;
+			} else {
+				len = strlen(value);
+			}
+
+			if (port == 0) port = LDAP_PORT;
+
+			inst->server = talloc_asprintf_append(inst->server, "ldap://%.*s:%i ",
+							      (int) len, value, port);
+#else
+			/*
+			 *	ldap_init takes port, which can be overridden by :port so
+			 *	we don't need to do any parsing here.
+			 */
+			inst->server = talloc_asprintf_append(inst->server, "%s ", value);
+#endif
+		}
+	}
+	if (inst->server) inst->server[talloc_array_length(inst->server) - 2] = '\0';
+
+	DEBUG4("LDAP server string: %s", inst->server);
 
 #ifdef LDAP_OPT_X_TLS_NEVER
 	/*
