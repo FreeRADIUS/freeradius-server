@@ -517,6 +517,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	REQUEST *request;
 
 	request = talloc_zero(ctx, REQUEST);
+	if (!request) return NULL;
 	talloc_set_destructor(request, _request_free);
 #ifndef NDEBUG
 	request->magic = REQUEST_MAGIC;
@@ -553,6 +554,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
 	REQUEST *fake;
 
 	fake = request_alloc(request);
+	if (!fake) return NULL;
 
 	fake->number = request->number;
 #ifdef HAVE_PTHREAD_H

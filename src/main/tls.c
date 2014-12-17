@@ -308,7 +308,10 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	/* We use the SSL's "app_data" to indicate a call-back */
 	SSL_set_app_data(new_tls, NULL);
 
-	state = talloc_zero(ctx, tls_session_t);
+	if ((state = talloc_zero(ctx, tls_session_t)) == NULL) {
+		ERROR("SSL: Error allocating memory for SSL state");
+		return NULL;
+	}
 	session_init(state);
 	talloc_set_destructor(state, _tls_session_free);
 
