@@ -729,8 +729,8 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 			if (retry) {
 				*pconn = fr_connection_reconnect(inst->pool, *pconn);
 				if (*pconn) {
-					LDAP_DBGW_REQ("Bind with %s to %s:%d failed: %s. Got new socket, retrying...",
-						      dn, inst->server, inst->port, error);
+					LDAP_DBGW_REQ("Bind with %s to %s failed: %s. Got new socket, retrying...",
+						      *dn ? dn : "(anonymous)", inst->server, error);
 
 					talloc_free(extra); /* don't leak debug info */
 
@@ -745,7 +745,8 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 			 */
 			/* FALL-THROUGH */
 		default:
-			LDAP_ERR_REQ("Bind with %s to %s:%d failed: %s", dn, inst->server, inst->port, error);
+			LDAP_ERR_REQ("Bind with %s to %s failed: %s", *dn ? dn : "(anonymous)",
+				     inst->server, error);
 			LDAP_EXT_REQ();
 
 			break;
@@ -1303,7 +1304,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	conn->rebound = false;
 	conn->referred = false;
 
-	DEBUG("rlm_ldap (%s): Connecting to %s:%d", inst->xlat_name, inst->server, inst->port);
+	DEBUG("rlm_ldap (%s): Connecting to %s", inst->xlat_name, inst->server);
 #ifdef HAVE_LDAP_INITIALIZE
 	ldap_errno = ldap_initialize(&conn->handle, inst->uri);
 	if (ldap_errno != LDAP_SUCCESS) {
