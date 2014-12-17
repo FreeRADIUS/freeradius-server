@@ -1306,7 +1306,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 
 	DEBUG("rlm_ldap (%s): Connecting to %s", inst->xlat_name, inst->server);
 #ifdef HAVE_LDAP_INITIALIZE
-	ldap_errno = ldap_initialize(&conn->handle, inst->uri);
+	ldap_errno = ldap_initialize(&conn->handle, inst->server);
 	if (ldap_errno != LDAP_SUCCESS) {
 		LDAP_ERR("ldap_initialize failed: %s", ldap_err2string(ldap_errno));
 		goto error;
