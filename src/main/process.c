@@ -1824,6 +1824,10 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 *	Create and initialize the new request.
 	 */
 	request = request_alloc(NULL);
+	if (!request) {
+		ERROR("No memory");
+		return NULL;
+	}
 	request->reply = rad_alloc(request, false);
 	if (!request->reply) {
 		ERROR("No memory");
@@ -3243,6 +3247,7 @@ static void ping_home_server(void *ctx)
 
 
 	request = request_alloc(NULL);
+	if (!request) return;
 	request->number = request_num_counter++;
 	NO_CHILD_THREAD;
 

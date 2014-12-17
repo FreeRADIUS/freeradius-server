@@ -115,7 +115,10 @@ eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
 	eap_handler_t	*handler;
 
 	PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
-	handler = talloc_zero(NULL, eap_handler_t);
+	if ((handler = talloc_zero(NULL, eap_handler_t)) == NULL) {
+		ERROR("Failed allocating handler");
+		return NULL;
+	}
 	if (inst->handler_tree) {
 		if (!rbtree_insert(inst->handler_tree, handler)) {
 			ERROR("Failed inserting EAP handler into handler tree");
