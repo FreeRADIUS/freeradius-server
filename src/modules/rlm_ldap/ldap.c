@@ -1392,7 +1392,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive interval", &(inst->keepalive_interval));
 #endif
 
-#ifdef HAVE_LDAP_START_TLS
+#ifdef HAVE_LDAP_START_TLS_S
 	/*
 	 *	Set all of the TLS options
 	 */
@@ -1449,7 +1449,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 			goto error;
 		}
 	}
-#endif /* HAVE_LDAP_START_TLS */
+#endif /* HAVE_LDAP_START_TLS_S */
 
 	status = rlm_ldap_bind(inst, NULL, &conn, inst->admin_dn, inst->password, false);
 	if (status != LDAP_PROC_SUCCESS) {
