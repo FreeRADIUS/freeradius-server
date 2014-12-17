@@ -9,19 +9,27 @@ ldap {
 	#  Note that this needs to match the name(s) in the LDAP server
 	#  certificate, if you're using ldaps.  See OpenLDAP documentation
 	#  for the behavioral semantics of specifying more than one host.
-	server = "ldap.rrdns.example.org ldap.rrdns.example.org ldap.example.org"
+	#
+	#  Depending on the libldap in use, server may be an LDAP URI.
+	#  In the case of OpenLDAP this allows additional the following
+	#  additional schemes:
+	#  - ldaps:// (LDAP over SSL)
+	#  - ldapi:// (LDAP over Unix socket)
+	#  - ldapc:// (Connectionless LDAP)
+	server = 'localhost'
+#	server = 'ldap.rrdns.example.org'
+#	server = 'ldap.rrdns.example.org'
 
-	#  Port to connect on, defaults to 389. Setting this to 636 will enable
-	#  LDAPS if start_tls (see below) is not able to be used.
+	#  Port to connect on, defaults to 389, will be ignored for LDAP URIs.
 #	port = 389
 
 	#  Administrator account for searching and possibly modifying.
-#	identity = "cn=admin,dc=example,dc=org"
+#	identity = 'cn=admin,dc=example,dc=org'
 #	password = mypass
 
 	#  Unless overridden in another section, the dn from which all
 	#  searches will start from.
-	base_dn = "dc=example,dc=org"
+	base_dn = 'dc=example,dc=org'
 
 	#
 	#  Generic valuepair attribute
@@ -36,11 +44,11 @@ ldap {
 	#  Where:
 	#  	<radius attr>:	Is the attribute you wish to create
 	# 			with any valid list and request qualifiers.
-	#  	<op>: 		Is any assignment attribute (=, :=, +=, -=).
+	#  	<op>: 		Is any assignment operator (=, :=, +=, -=).
 	#  	<value>:	Is the value to parse into the new valuepair.
-	# 			If the attribute name is wrapped in double
-	# 			quotes it will be xlat expanded.
-#	valuepair_attribute = "radiusAttribute"
+	# 			If the value is wrapped in double quotes it
+	#			will be xlat expanded.
+#	valuepair_attribute = 'radiusAttribute'
 
 	#
 	#  Mapping of LDAP directory attributes to RADIUS dictionary attributes.
@@ -77,7 +85,6 @@ ldap {
 #		reply:Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
 #		reply:Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
 
-		#  These are provided for backwards compatibility.
 		#  Where only a list is specified as the RADIUS attribute,
 		#  the value of the LDAP attribute is parsed as a valuepair
 		#  in the same format as the 'valuepair_attribute' (above).
@@ -110,7 +117,7 @@ ldap {
 	#
 	user {
 		#  Where to start searching in the tree for users
-		base_dn = "${..base_dn}"
+		base_dn = '${..base_dn}'
 
 		#  Filter for user objects, should be specific enough
 		#  to identify a single user object.
@@ -122,20 +129,20 @@ ldap {
 		#  If this is undefined, anyone is authorised.
 		#  If it is defined, the contents of this attribute
 		#  determine whether or not the user is authorised
-#		access_attribute = "dialupAccess"
+#		access_attribute = 'dialupAccess'
 
-		#  Control whether the presence of "access_attribute"
+		#  Control whether the presence of 'access_attribute'
 		#  allows access, or denys access.
 		#
-		#  If "yes", and the access_attribute is present, or
-		#  "no" and the access_attribute is absent then access
+		#  If 'yes', and the access_attribute is present, or
+		#  'no' and the access_attribute is absent then access
 		#  will be allowed.
 		#
-		#  If "yes", and the access_attribute is absent, or
-		#  "no" and the access_attribute is present, then
+		#  If 'yes', and the access_attribute is absent, or
+		#  'no' and the access_attribute is present, then
 		#  access will not be allowed.
 		#
-		#  If the value of the access_attribute is "false", it
+		#  If the value of the access_attribute is 'false', it
 		#  will negate the result.
 		#
 		#  e.g.
@@ -153,11 +160,11 @@ ldap {
 	#
 	group {
 		#  Where to start searching in the tree for groups
-		base_dn = "${..base_dn}"
+		base_dn = '${..base_dn}'
 
 		#  Filter for group objects, should match all available
 		#  group objects a user might be a member of.
-		filter = "(objectClass=posixGroup)"
+		filter = '(objectClass=posixGroup)'
 
 		# Search scope, may be 'base', 'one', sub' or 'children'
 #		scope = 'sub'
@@ -178,7 +185,7 @@ ldap {
 		#  Unless a conversion between group name and group DN is
 		#  needed, there's no requirement for the group objects
 		#  referenced to actually exist.
-		membership_attribute = "memberOf"
+		membership_attribute = 'memberOf'
 
 		#  If cacheable_name or cacheable_dn are enabled,
 		#  all group information for the user will be
@@ -194,13 +201,13 @@ ldap {
 		#  the type that matches the format of your check items
 		#  i.e. if your groups are specified as DNs then enable
 		#  cacheable_dn else enable cacheable_name.
-#		cacheable_name = "no"
-#		cacheable_dn = "no"
+#		cacheable_name = 'no'
+#		cacheable_dn = 'no'
 
 		#  Override the normal cache attribute (<inst>-LDAP-Group)
 		#  and create a custom attribute.  This can help if multiple
 		#  module instances are used in fail-over.
-#		cache_attribute = "LDAP-Cached-Membership"
+#		cache_attribute = 'LDAP-Cached-Membership'
 	}
 
 	#
@@ -210,16 +217,16 @@ ldap {
 	#
 	profile {
 		#  Filter for RADIUS profile objects
-#		filter = "(objectclass=radiusprofile)"
+#		filter = '(objectclass=radiusprofile)'
 
 		#  The default profile applied to all users.
-#		default = "cn=radprofile,dc=example,dc=org"
+#		default = 'cn=radprofile,dc=example,dc=org'
 
 		#  The list of profiles which are applied (after the default)
 		#  to all users.
-		#  The "User-Profile" attribute in the control list
+		#  The 'User-Profile' attribute in the control list
 		#  will override this setting at run-time.
-#		attribute = "radiusProfileDn"
+#		attribute = 'radiusProfileDn'
 	}
 
 	#
@@ -227,7 +234,7 @@ ldap {
 	#
 	client {
 		#   Where to start searching in the tree for clients
-		base_dn = "${..base_dn}"
+		base_dn = '${..base_dn}'
 
 		#
 		#  Filter to match client objects
@@ -333,8 +340,8 @@ ldap {
 		#  The following two configuration items control whether the
 		#  server follows references returned by LDAP directory.
 		#  They are  mostly for Active Directory compatibility.
-		#  If you set these to "no", then searches will likely return
-		#  "operations error", instead of a useful result.
+		#  If you set these to 'no', then searches will likely return
+		#  'operations error', instead of a useful result.
 		#
 		chase_referrals = yes
 		rebind = yes
@@ -376,7 +383,7 @@ ldap {
 	#
 	#  This subsection configures the tls related items
 	#  that control how FreeRADIUS connects to an LDAP
-	#  server.  It contains all of the "tls_*" configuration
+	#  server.  It contains all of the 'tls_*' configuration
 	#  entries used in older versions of FreeRADIUS.  Those
 	#  configuration entries can still be used, but we recommend
 	#  using these.
@@ -399,17 +406,17 @@ ldap {
 #		random_file = ${certdir}/random
 
 		#  Certificate Verification requirements.  Can be:
-		#    "never" (don't even bother trying)
-		#    "allow" (try, but don't fail if the certificate
+		#    'never' (don't even bother trying)
+		#    'allow' (try, but don't fail if the certificate
 		#		can't be verified)
-		#    "demand" (fail if the certificate doesn't verify.)
+		#    'demand' (fail if the certificate doesn't verify.)
 		#
-		#  The default is "allow"
-#		require_cert	= "demand"
+		#  The default is 'allow'
+#		require_cert	= 'demand'
 	}
 
 
-	#  As of version 3.0, the "pool" section has replaced the
+	#  As of version 3.0, the 'pool' section has replaced the
 	#  following configuration items:
 	#
 	#  ldap_connections_number
@@ -433,7 +440,7 @@ ldap {
 		#
 		#  Setting 'max' to LESS than the number of threads means
 		#  that some threads may starve, and you will see errors
-		#  like "No connections available and at max connection limit"
+		#  like 'No connections available and at max connection limit'
 		#
 		#  Setting 'max' to MORE than the number of threads means
 		#  that there are more connections than necessary.
@@ -441,13 +448,13 @@ ldap {
 
 		#  Spare connections to be left idle
 		#
-		#  NOTE: Idle connections WILL be closed if "idle_timeout"
+		#  NOTE: Idle connections WILL be closed if 'idle_timeout'
 		#  is set.
 		spare = 3
 
 		#  Number of uses before the connection is closed
 		#
-		#  0 means "infinite"
+		#  0 means 'infinite'
 		uses = 0
 
 		#  The lifetime (in seconds) of the connection
@@ -464,13 +471,13 @@ ldap {
 		retry_delay = 1
 
 		#  NOTE: All configuration settings are enforced.  If a
-		#  connection is closed because of "idle_timeout",
-		#  "uses", or "lifetime", then the total number of
-		#  connections MAY fall below "min".  When that
+		#  connection is closed because of 'idle_timeout',
+		#  'uses', or 'lifetime', then the total number of
+		#  connections MAY fall below 'min'.  When that
 		#  happens, it will open a new connection.  It will
 		#  also log a WARNING message.
 		#
-		#  The solution is to either lower the "min" connections,
+		#  The solution is to either lower the 'min' connections,
 		#  or increase lifetime/idle_timeout.
 	}
 }
