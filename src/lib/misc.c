@@ -238,6 +238,9 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	 *	192.0.2.2 is parsed as if it was /32
 	 */
 	if (!p) {
+		out->prefix = 32;
+		out->af = AF_INET;
+
 		/*
 		 *	Allow '*' as the wildcard address usually 0.0.0.0
 		 */
@@ -257,9 +260,6 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 				return -1;
 			}
 		} else if (ip_hton(out, AF_INET, value, fallback) < 0) return -1;
-
-		out->prefix = 32;
-		out->af = AF_INET;
 
 		return 0;
 	}
