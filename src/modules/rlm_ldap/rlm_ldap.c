@@ -203,6 +203,7 @@ static CONF_PARSER option_config[] = {
 
 
 static const CONF_PARSER module_config[] = {
+	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, ldap_instance_t, config_server), NULL },
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, ldap_instance_t, port), "0" },
 
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, ldap_instance_t, password), "" },
@@ -635,10 +636,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		bool		first = true;
 
 		cp = cf_pair_find(conf, "server");
-		if (!cp) {
-			cf_log_err_cs(conf, "Configuration item 'server' must have a value");
-			return -1;
-		}
+		rad_assert(cp != NULL);
 
 		value = cf_pair_value(cp);
 

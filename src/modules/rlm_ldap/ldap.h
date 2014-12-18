@@ -72,6 +72,7 @@ typedef struct ldap_instance {
 	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
 	fr_connection_pool_t *pool;			//!< Connection pool instance.
 
+	char const     	*config_server;			//!< server from the config files
 	char		*server;			//!< Initial server to bind to.
 	uint16_t	port;				//!< Port to use when binding to the server.
 
