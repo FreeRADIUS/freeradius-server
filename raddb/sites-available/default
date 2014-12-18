@@ -84,16 +84,21 @@ listen {
 	#  source IP address for packets sent to a home server, the
 	#  proxy listeners are automatically created.
 
-	#  IP address on which to listen.
+	#  ipaddr/ipv4addr/ipv6addr - IP address on which to listen.
+	#  Out of several options the first one will be used.
+	#
 	#  Allowed values are:
-	#	dotted quad (1.2.3.4)
-	#       hostname    (radius.example.com)
-	#       wildcard    (*)
+	#	IPv4 address (e.g. 1.2.3.4, for ipv4addr/ipaddr)
+	#	IPv6 address (e.g. 2001:db8::1, for ipv6addr/ipaddr)
+	#	hostname     (radius.example.com,
+	#			A record for ipv4addr,
+	#       		AAAA record for ipv6addr,
+	#			A or AAAA record for ipaddr)
+	#       wildcard     (*)
+	#
+	# ipv4addr = *
+	# ipv6addr = *
 	ipaddr = *
-
-	#  OR, you can use an IPv6 address, but not both
-	#  at the same time.
-#	ipv6addr = ::	# any.  ::1 == localhost
 
 	#  Port on which to listen.
 	#  Allowed values are:
