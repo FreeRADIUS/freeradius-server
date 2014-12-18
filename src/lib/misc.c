@@ -209,7 +209,7 @@ char const *ip_ntoa(char *buffer, uint32_t ipaddr)
  * @param value to parse, may be dotted quad [+ prefix], or integer, or octal number, or '*' (INADDR_ANY).
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
- * @param fallback to IPv4 resolution if no A records can be found.
+ * @param fallback to IPv6 resolution if no A records can be found.
  * @return 0 if ip address was parsed successfully, else -1 on error.
  */
 int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
