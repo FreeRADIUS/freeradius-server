@@ -338,6 +338,9 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 
 	p = strchr(value, '/');
 	if (!p) {
+		out->prefix = 128;
+		out->af = AF_INET6;
+
 		/*
 		 *	Allow '*' as the wildcard address
 		 */
@@ -349,9 +352,6 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 				return -1;
 			}
 		} else if (ip_hton(out, AF_INET6, value, fallback) < 0) return -1;
-
-		out->prefix = 128;
-		out->af = AF_INET6;
 
 		return 0;
 	}
