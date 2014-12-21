@@ -785,13 +785,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 			p = strrchr(value, ':');
 			if (p) {
-				p++;
-				port = (int)strtol(p, &q, 10);
-				if ((p == q) || (*q != '\0')) {
+				port = (int)strtol((p + 1), &q, 10);
+				if ((p == value) || ((p + 1) == q) || (*q != '\0')) {
 					cf_log_err_cp(cp, "Invalid server, must be in <server>[:<port>] format");
 					return -1;
 				}
-				len = q - p;
+				len = p - value;
 			} else {
 				len = strlen(value);
 			}
