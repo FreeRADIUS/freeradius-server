@@ -51,14 +51,36 @@ static realm_regex_t *realms_regex = NULL;
 #endif /* HAVE_REGEX */
 
 struct realm_config {
-	CONF_SECTION	*cs;
-	uint32_t	dead_time;
-	uint32_t	retry_count;
-	uint32_t	retry_delay;
-	bool		dynamic;
-	bool		fallback;
-	bool		wake_all_if_all_dead;
+	CONF_SECTION		*cs;
+	uint32_t		dead_time;
+	uint32_t		retry_count;
+	uint32_t		retry_delay;
+	bool			dynamic;
+	bool			fallback;
+	bool			wake_all_if_all_dead;
 };
+
+static const FR_NAME_NUMBER home_server_types[] = {
+	{ "auth",		HOME_TYPE_AUTH },
+	{ "acct",		HOME_TYPE_ACCT },
+	{ "auth+acct",		HOME_TYPE_AUTH_ACCT },
+	{ "coa",		HOME_TYPE_COA },
+	{ NULL, 0 }
+};
+
+static const FR_NAME_NUMBER home_ping_check[] = {
+	{ "none",		HOME_PING_CHECK_NONE },
+	{ "status-server",	HOME_PING_CHECK_STATUS_SERVER },
+	{ "request",		HOME_PING_CHECK_REQUEST },
+	{ NULL, 0 }
+};
+
+static const FR_NAME_NUMBER home_proto[] = {
+	{ "udp",		IPPROTO_UDP },
+	{ "tcp",		IPPROTO_TCP },
+	{ NULL, 0 }
+};
+
 
 static realm_config_t *realm_config = NULL;
 static bool realms_initialized = false;
@@ -272,15 +294,6 @@ static CONF_PARSER limit_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static fr_ipaddr_t hs_ipaddr;
-static char const *hs_srcipaddr = NULL;
-static char const *hs_type = NULL;
-static char const *hs_check = NULL;
-static char const *hs_virtual_server = NULL;
-#ifdef WITH_TCP
-static char const *hs_proto = NULL;
-#endif
-
 #ifdef WITH_COA
 static CONF_PARSER home_server_coa[] = {
 	{ "irt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_irt), STRINGIFY(2) },
@@ -293,33 +306,34 @@ static CONF_PARSER home_server_coa[] = {
 #endif
 
 static CONF_PARSER home_server_config[] = {
-	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_COMBO_IP_ADDR, &hs_ipaddr), NULL },
-	{ "ipv4addr", FR_CONF_POINTER(PW_TYPE_IPV4_ADDR, &hs_ipaddr), NULL },
-	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6_ADDR, &hs_ipaddr), NULL },
-	{ "virtual_server", FR_CONF_POINTER(PW_TYPE_STRING, &hs_virtual_server), NULL },
+	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr), NULL },
+	{ "ipv4addr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, home_server_t, ipaddr), NULL },
+	{ "ipv6addr", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, home_server_t, ipaddr), NULL },
+	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, server), NULL },
 
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, home_server_t, port), "0" },
 
-	{ "type", FR_CONF_POINTER(PW_TYPE_STRING, &hs_type), NULL },
+	{ "type", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, type_str), NULL },
 
 #ifdef WITH_TCP
-	{ "proto", FR_CONF_POINTER(PW_TYPE_STRING, &hs_proto), NULL },
+	{ "proto", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, proto_str), NULL },
 #endif
 
 	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, home_server_t, secret), NULL },
 
-	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &hs_srcipaddr), NULL },
+	{ "src_ipaddr", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, src_ipaddr_str), NULL },
 
 	{ "response_window", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, home_server_t, response_window), "30" },
 	{ "response_timeouts", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_response_timeouts), "1" },
 	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_outstanding), "65536" },
 
 	{ "zombie_period", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, zombie_period), "40" },
-	{ "status_check", FR_CONF_POINTER(PW_TYPE_STRING, &hs_check), "none" },
-	{ "ping_check", FR_CONF_POINTER(PW_TYPE_STRING, &hs_check), NULL },
+
+	{ "status_check",  FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_check_str), "none" },
+	{ "ping_check", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_check_str), NULL },
 
 	{ "ping_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), "30" },
-	{ "check_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), "30" },
+	{ "check_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), NULL },
 
 	{ "check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), "4" },
 	{ "status_check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), NULL },
@@ -327,18 +341,18 @@ static CONF_PARSER home_server_config[] = {
 	{ "num_answers_to_alive", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, num_pings_to_alive), "3" },
 	{ "revive_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, revive_interval), "300" },
 
-	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_user_name), NULL },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_user_password), NULL },
+	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name), NULL },
+	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password), NULL },
 
 #ifdef WITH_STATS
 	{ "historic_average_window", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ema.window), NULL },
 #endif
 
+	{ "limit", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) limit_config },
+
 #ifdef WITH_COA
 	{ "coa", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) home_server_coa },
 #endif
-
-	{ "limit", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) limit_config },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -467,191 +481,192 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 	return true;
 }
 
-static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
+/** Add a new home server defined by a CONF_SECTION
+ *
+ * @param rc Realm config to add home server to.
+ * @param cs Configuration section containing home server parameters.
+ * @return true of home server was added, false on error.
+ */
+bool home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 {
-	char const *name2;
-	home_server_t *home;
-	bool dual = false;
-	CONF_PAIR *cp;
-	CONF_SECTION *tls;
+	char const	*name2;
+	bool		dual = false;
+	home_server_t	*home;
 
-	hs_virtual_server = NULL;
+	CONF_SECTION	*tls;
+
+	/*
+	 *	The structs aren't mutex protected.  Refuse to destroy
+	 *	the server.
+	 */
+	if (realms_initialized && !realm_config->dynamic) {
+		ERROR("Failed to add dynamic home server, \"dynamic = true\" must be set in proxy.conf");
+		return false;
+	}
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
 		cf_log_err_cs(cs, "Home server section is missing a name");
-		return 0;
+		return false;
 	}
 
 	home = talloc_zero(rc, home_server_t);
-
 	home->name = name2;
 	home->cs = cs;
 	home->state = HOME_STATE_UNKNOWN;
 
 	/*
-	 *	Last packet sent / received are zero.
+	 *	Parse the configuration into the home server
+	 *	struct.
 	 */
-
-	memset(&hs_ipaddr, 0, sizeof(hs_ipaddr));
-	if (cf_section_parse(cs, home, home_server_config) < 0) {
-		goto error;
-	}
+	if (cf_section_parse(cs, home, home_server_config) < 0) goto error;
 
 	/*
-	 *	Figure out which one to use.
+	 *	It has an IP address, it must be a remote server.
 	 */
 	if (cf_pair_find(cs, "ipaddr") || cf_pair_find(cs, "ipv4addr") || cf_pair_find(cs, "ipv6addr")) {
-		if (fr_inaddr_any(&hs_ipaddr) == 1) {
+		if (fr_inaddr_any(&home->ipaddr) == 1) {
 			cf_log_err_cs(cs, "Wildcard '*' addresses are not permitted for home servers");
 			goto error;
 		}
-		home->ipaddr = hs_ipaddr;
-	} else if ((cp = cf_pair_find(cs, "virtual_server")) != NULL) {
-		home->ipaddr.af = AF_UNSPEC;
-		home->server = cf_pair_value(cp);
+	/*
+	 *	If it has a 'virtual_Server' config item, it's
+	 *	a loopback into a virtual server.
+	 */
+	} else if (cf_pair_find(cs, "virtual_server") != NULL) {
+		home->ipaddr.af = AF_UNSPEC;	/* mark ipaddr as unused */
+
 		if (!home->server) {
-			cf_log_err_cs(cs,
-				   "Invalid value for virtual_server");
-			goto error;
-		}
-
-		if (!cf_section_sub_find_name2(rc->cs, "server", home->server)) {
-
-			cf_log_err_cs(cs,
-				   "No such server %s", home->server);
+			cf_log_err_cs(cs, "Invalid value for virtual_server");
 			goto error;
 		}
 
 		/*
-		 *	When CoA is used, the user has to specify the type
-		 *	of the home server, even when they point to
-		 *	virtual servers.
+		 *	Try and find a 'server' section off the root of
+		 *	the config with a name2 that matches the
+		 *	virtual_server.
 		 */
-		home->secret = strdup("");
-		goto skip_port;
+		if (!cf_section_sub_find_name2(rc->cs, "server", home->server)) {
+			cf_log_err_cs(cs, "No such server %s", home->server);
+			goto error;
+		}
 
+		home->secret = "";
+		goto skip_port;
+	/*
+	 *	Otherwise it's an invalid config section and we
+	 *	raise an error.
+	 */
 	} else {
-		cf_log_err_cs(cs, "No ipaddr, ipv4addr, ipv6addr, or virtual_server defined for home server \"%s\"", name2);
+		cf_log_err_cs(cs, "No ipaddr, ipv4addr, ipv6addr, or virtual_server defined "
+			      "for home server \"%s\"", home->name);
 	error:
 		talloc_free(home);
-		hs_type = NULL;
-		hs_check = NULL;
-		hs_srcipaddr = NULL;
-#ifdef WITH_TCP
-		hs_proto = NULL;
-#endif
-		return 0;
+		return false;
 	}
 
 	if (home->port == 0) {
-		cf_log_err_cs(cs, "No port, or invalid port defined for home server %s", name2);
+		cf_log_err_cs(cs, "No port, or invalid port defined for home server %s", home->name);
 		goto error;
 	}
 
-	/*
-	 *	Use a reasonable default.
-	 */
- skip_port:
-	if (!hs_type || (strcasecmp(hs_type, "auth+acct") == 0)) {
-		home->type = HOME_TYPE_AUTH;
-		dual = true;
-	} else if (strcasecmp(hs_type, "auth") == 0) {
-		home->type = HOME_TYPE_AUTH;
+skip_port:
+ 	{
+ 		home_type_t type = HOME_TYPE_AUTH_ACCT;
 
-	} else if (strcasecmp(hs_type, "acct") == 0) {
-		home->type = HOME_TYPE_ACCT;
+ 		if (home->type_str) type = fr_str2int(home_server_types, home->type_str, HOME_TYPE_INVALID);
+
+ 		switch (type) {
+ 		case HOME_TYPE_AUTH_ACCT:
+			dual = true;
+			home->type = HOME_TYPE_AUTH;
+			break;
+
+		case HOME_TYPE_AUTH:
+		case HOME_TYPE_ACCT:
+			home->type = type;
+			break;
+
 #ifdef WITH_COA
-	} else if (strcasecmp(hs_type, "coa") == 0) {
-		home->type = HOME_TYPE_COA;
-		dual = false;
-
-		if (home->server != NULL) {
-			cf_log_err_cs(cs, "Home servers of type \"coa\" cannot point to a virtual server");
-			goto error;
-		}
+ 		case HOME_TYPE_COA:
+			if (home->server != NULL) {
+				cf_log_err_cs(cs, "Home servers of type \"coa\" cannot point to a virtual server");
+				goto error;
+			}
+			home->type = type;
+			break;
 #endif
 
-	} else {
-		cf_log_err_cs(cs, "Invalid type \"%s\" for home server %s.", hs_type, name2);
-		goto error;
-	}
-	hs_type = NULL;
+  		case HOME_TYPE_INVALID:
+ 			cf_log_err_cs(cs, "Invalid type \"%s\" for home server %s", home->type_str, home->name);
+ 			goto error;
+ 		}
+ 	}
 
-	if (!hs_check || (strcasecmp(hs_check, "none") == 0)) {
-		home->ping_check = HOME_PING_CHECK_NONE;
+ 	{
+ 		home_ping_check_t type = HOME_PING_CHECK_NONE;
 
-	} else if (strcasecmp(hs_check, "status-server") == 0) {
-		home->ping_check = HOME_PING_CHECK_STATUS_SERVER;
+ 		if (home->ping_check_str) type = fr_str2int(home_ping_check, home->ping_check_str,
+ 							    HOME_PING_CHECK_INVALID);
 
-	} else if (strcasecmp(hs_check, "request") == 0) {
-		home->ping_check = HOME_PING_CHECK_REQUEST;
+ 		switch (type) {
+ 		case HOME_PING_CHECK_STATUS_SERVER:
+ 		case HOME_PING_CHECK_NONE:
+ 			break;
 
-		if (!home->ping_user_name ||
-		    !*home->ping_user_name) {
-			cf_log_err_cs(cs, "You must supply a 'username' to enable status_check=request");
-			goto error;
-		}
-
-		if ((home->type == HOME_TYPE_AUTH) &&
-		    (!home->ping_user_password ||
-		     !*home->ping_user_password)) {
-			cf_log_err_cs(cs, "You must supply a password to enable status_check=request");
-			goto error;
-		}
-
-	} else {
-		cf_log_err_cs(cs,
-			   "Invalid status_check \"%s\" for home server %s.",
-			   hs_check, name2);
-		goto error;
-	}
-	hs_check = NULL;
-
-	if ((home->ping_check != HOME_PING_CHECK_NONE) &&
-	    (home->ping_check != HOME_PING_CHECK_STATUS_SERVER)) {
-		if (!home->ping_user_name) {
-			cf_log_err_cs(cs, "You must supply a user name to enable status_check=request");
-			goto error;
-		}
-
-		if ((home->type == HOME_TYPE_AUTH) &&
-		    !home->ping_user_password) {
-			cf_log_err_cs(cs, "You must supply a password to enable status_check=request");
-			goto error;
-		}
-	}
-
-	home->proto = IPPROTO_UDP;
-#ifdef WITH_TCP
-	if (!hs_proto) {
-		home_servers_udp = true;
-
-	} else {
-		if (strcmp(hs_proto, "udp") == 0) {
-			hs_proto = NULL;
-			home_servers_udp = true;
-
-		} else if (strcmp(hs_proto, "tcp") == 0) {
-			hs_proto = NULL;
-			home->proto = IPPROTO_TCP;
-
-			if (home->ping_check != HOME_PING_CHECK_NONE) {
-				cf_log_err_cs(cs,
-					   "Only 'status_check = none' is allowed for home servers with 'proto = tcp'");
+ 		case HOME_PING_CHECK_REQUEST:
+			if (!home->ping_user_name) {
+				cf_log_err_cs(cs, "You must supply a 'username' to enable status_check=request");
 				goto error;
 			}
 
-		} else {
-			cf_log_err_cs(cs,
-				   "Unknown proto \"%s\".", hs_proto);
+			if ((home->type == HOME_TYPE_AUTH) && !home->ping_user_password) {
+				cf_log_err_cs(cs, "You must supply a 'password' to enable status_check=request");
+				goto error;
+			}
+
+ 			break;
+
+ 		case HOME_PING_CHECK_INVALID:
+ 			cf_log_err_cs(cs, "Invalid status_check \"%s\" for home server %s",
+ 				      home->ping_check_str, home->name);
+ 			goto error;
+ 		}
+
+		home->ping_check = type;
+ 	}
+
+	{
+		int type = IPPROTO_UDP;
+
+		if (home->proto_str) type = fr_str2int(home_proto, home->proto_str, -1);
+
+		switch (type) {
+		case IPPROTO_UDP:
+			home_servers_udp = true;
+			break;
+
+		case IPPROTO_TCP:
+#ifndef WITH_TCP
+			cf_log_err_cs(cs, "Server not built with support for RADIUS over TCP");
+			goto error;
+#endif
+			if (home->ping_check != HOME_PING_CHECK_NONE) {
+				cf_log_err_cs(cs, "Only 'status_check = none' is allowed for home "
+					      "servers with 'proto = tcp'");
+				goto error;
+			}
+			break;
+
+		default:
+			cf_log_err_cs(cs, "Unknown proto \"%s\"", home->proto_str);
 			goto error;
 		}
-	}
-#endif
 
-	if (!home->server &&
-	    rbtree_finddata(home_servers_byaddr, home)) {
+		home->proto = type;
+	}
+
+	if (!home->server && rbtree_finddata(home_servers_byaddr, home)) {
 		cf_log_err_cs(cs, "Duplicate home server");
 		goto error;
 	}
@@ -678,27 +693,26 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	}
 
 	/*
-	 *	If the home is a virtual server, don't look up source IP.
+	 *	If the home is not a virtual server, look up source IP.
 	 */
 	if (!home->server) {
 		rad_assert(home->ipaddr.af != AF_UNSPEC);
-
 		/*
-		 *	Otherwise look up the source IP using the same
-		 *	address family as the destination IP.
+		 *	If we have a src_ipaddr_str resolve it to
+		 *	the same address family as the destination
+		 *	IP.
 		 */
-		if (hs_srcipaddr) {
-			if (ip_hton(&home->src_ipaddr, home->ipaddr.af, hs_srcipaddr, false) < 0) {
+		if (home->src_ipaddr_str) {
+			if (ip_hton(&home->src_ipaddr, home->ipaddr.af, home->src_ipaddr_str, false) < 0) {
 				cf_log_err_cs(cs, "Failed parsing src_ipaddr");
 				goto error;
 			}
-
+		/*
+		 *	Source isn't specified, set it to the
+		 *	correct address family, but leave it as
+		 *	zeroes.
+		 */
 		} else {
-			/*
-			 *	Source isn't specified: Source is
-			 *	the correct address family, but all zeros.
-			 */
-			memset(&home->src_ipaddr, 0, sizeof(home->src_ipaddr));
 			home->src_ipaddr.af = home->ipaddr.af;
 		}
 
@@ -708,7 +722,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		}
 
 #ifndef WITH_TLS
-
 		if (tls) {
 			cf_log_err_cs(cs, "TLS transport is not available in this executable");
 			goto error;
@@ -730,20 +743,15 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto error;
 	}
 
-	hs_srcipaddr = NULL;
-
 	realm_home_server_sanitize(home, cs);
 
 	if (rbtree_finddata(home_servers_byname, home) != NULL) {
-		cf_log_err_cs(cs,
-			   "Duplicate home server name %s.", name2);
+		cf_log_err_cs(cs, "Duplicate home server name %s.", name2);
 		goto error;
 	}
 
-	if (!home->server &&
-	    (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
-		cf_log_err_cs(cs,
-			   "Duplicate home server IP %s.", name2);
+	if (!home->server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
+		cf_log_err_cs(cs, "Duplicate home server IP %s.", name2);
 		goto error;
 	}
 
@@ -771,16 +779,8 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 */
 	cf_data_add(cs, "home_server", null_free, null_free);
 
-	hs_type = NULL;
-	hs_check = NULL;
-	hs_srcipaddr = NULL;
-#ifdef WITH_TCP
-	hs_proto = NULL;
-#endif
-
-	return 1;
+	return true;
 }
-
 
 static home_pool_t *server_pool_alloc(realm_config_t *rc, char const *name, home_pool_type_t type,
 				      int server_type, int num_home_servers)
@@ -1250,7 +1250,6 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		home = talloc_zero(rc, home_server_t);
 
 		home->name = name;
-		home->hostname = name;
 		home->type = type;
 		home->secret = secret;
 		home->cs = cs;
@@ -1839,13 +1838,6 @@ int realm_realm_add(REALM *r, UNUSED CONF_SECTION *cs)
 }
 
 #ifdef WITH_COA
-static const FR_NAME_NUMBER home_server_types[] = {
-	{ "auth", HOME_TYPE_AUTH },
-	{ "auth+acct", HOME_TYPE_AUTH },
-	{ "acct", HOME_TYPE_ACCT },
-	{ "coa", HOME_TYPE_COA },
-	{ NULL, 0 }
-};
 
 static int pool_peek_type(CONF_SECTION *config, CONF_SECTION *cs)
 {
@@ -1945,7 +1937,7 @@ int realms_init(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "home_server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "home_server")) {
-		if (!home_server_add(rc, cs)) goto error;
+		if (!home_server_afrom_cs(rc, cs)) goto error;
 	}
 
 	/*
@@ -1958,7 +1950,7 @@ int realms_init(CONF_SECTION *config)
 		for (cs = cf_subsection_find_next(server_cs, NULL, "home_server");
 		     cs != NULL;
 		     cs = cf_subsection_find_next(server_cs, cs, "home_server")) {
-			if (!home_server_add(rc, cs)) goto error;
+			if (!home_server_afrom_cs(rc, cs)) goto error;
 		}
 	}
 #endif
