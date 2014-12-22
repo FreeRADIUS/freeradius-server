@@ -1279,7 +1279,7 @@ static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int act
 	}
 
 	if (rcode < 0) {
-		RDEBUG("Dropping packet without response because of error: %s", fr_strerror());
+		RATE_LIMIT(INFO("Dropping packet without response because of error: %s", fr_strerror()));
 		request->reply->offset = -2; /* bad authenticator */
 		return 0;
 	}
