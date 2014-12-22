@@ -953,6 +953,25 @@ int realm_pool_add(home_pool_t *pool, UNUSED CONF_SECTION *cs)
 	return 1;
 }
 
+int realm_home_server_add(home_server_t *home, CONF_SECTION *cs)
+{
+	/*
+	 *	The structs aren't mutex protected.  Refuse to destroy
+	 *	the server.
+	 */
+	if (realms_initialized && !realm_config->dynamic) {
+		DEBUG("Must set \"dynamic = true\" in proxy.conf");
+		return 0;
+	}
+
+	if (!home_server_insert(home, cs)) {
+		rad_assert("Internal sanity check failed" == NULL);
+		return 0;
+	}
+
+	return 1;
+}
+
 static int server_pool_add(realm_config_t *rc,
 			   CONF_SECTION *cs, int server_type, int do_print)
 {
