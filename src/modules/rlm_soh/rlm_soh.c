@@ -121,7 +121,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(UNUSED void * instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 #ifdef WITH_DHCP
 	int rcode;
@@ -210,6 +210,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void * instance, REQUES
 	return RLM_MODULE_OK;
 }
 
+extern module_t rlm_soh;
 module_t rlm_soh = {
 	RLM_MODULE_INIT,
 	"SoH",

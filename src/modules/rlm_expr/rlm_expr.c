@@ -709,7 +709,7 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  * Example: "%{urlunquote:http%%3A%%47%%47example.org%%47}" == "http://example.org/"
  * Mind the double % in the quoted string, otherwise unlang would start parsing it
  */
-static ssize_t urlunquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t urlunquote_xlat(UNUSED void *instance, REQUEST *request,
 			       char const *fmt, char *out, size_t outlen)
 {
 	char const *p;
@@ -897,7 +897,7 @@ static ssize_t uc_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
-static ssize_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t md5_xlat(UNUSED void *instance, REQUEST *request,
 			char const *fmt, char *out, size_t outlen)
 {
 	uint8_t digest[16];
@@ -940,7 +940,7 @@ static ssize_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
-static ssize_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t sha1_xlat(UNUSED void *instance, REQUEST *request,
 			 char const *fmt, char *out, size_t outlen)
 {
 	uint8_t digest[20];
@@ -984,7 +984,7 @@ static ssize_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  * Example: "%{sha256:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
 #ifdef HAVE_OPENSSL_EVP_H
-static ssize_t evp_md_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t evp_md_xlat(UNUSED void *instance, REQUEST *request,
 			   char const *fmt, char *out, size_t outlen, EVP_MD const *md)
 {
 	uint8_t digest[EVP_MAX_MD_SIZE];
@@ -1027,20 +1027,20 @@ static ssize_t evp_md_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 }
 
 #  define EVP_MD_XLAT(_md) \
-static ssize_t _md##_xlat(UNUSED void *instance, UNUSED REQUEST *request, char const *fmt, char *out, size_t outlen)\
+static ssize_t _md##_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)\
 {\
 	return evp_md_xlat(instance, request, fmt, out, outlen, EVP_##_md());\
 }
 
-EVP_MD_XLAT(sha256);
-EVP_MD_XLAT(sha512);
+EVP_MD_XLAT(sha256)
+EVP_MD_XLAT(sha512)
 #endif
 
 /** Generate the HMAC-MD5 of a string or attribute
  *
  * Example: "%{hmacmd5:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t hmac_md5_xlat(UNUSED void *instance, REQUEST *request,
 			     char const *fmt, char *out, size_t outlen)
 {
 	uint8_t const *data, *key;
@@ -1086,7 +1086,7 @@ static ssize_t hmac_md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * Example: "%{hmacsha1:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t hmac_sha1_xlat(UNUSED void *instance, REQUEST *request,
 			      char const *fmt, char *out, size_t outlen)
 {
 	uint8_t const *data, *key;
@@ -1135,7 +1135,7 @@ static ssize_t hmac_sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * Example: "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar'"
  */
-static ssize_t pairs_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t pairs_xlat(UNUSED void *instance, REQUEST *request,
 			  char const *fmt, char *out, size_t outlen)
 {
 	value_pair_tmpl_t vpt;
@@ -1190,7 +1190,7 @@ static ssize_t pairs_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * Example: "%{base64:foo}" == "Zm9v"
  */
-static ssize_t base64_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t base64_xlat(UNUSED void *instance, REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
 	ssize_t inlen;
@@ -1218,7 +1218,7 @@ static ssize_t base64_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * Example: "%{base64tohex:Zm9v}" == "666f6f"
  */
-static ssize_t base64_to_hex_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 				  char const *fmt, char *out, size_t outlen)
 {
 	uint8_t decbuf[1024];
@@ -1305,6 +1305,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_expr;
 module_t rlm_expr = {
 	RLM_MODULE_INIT,
 	"expr",				/* Name */

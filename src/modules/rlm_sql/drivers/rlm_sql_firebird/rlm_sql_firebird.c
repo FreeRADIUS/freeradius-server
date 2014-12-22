@@ -280,6 +280,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 }
 
 /* Exported to rlm_sql */
+extern rlm_sql_module_t rlm_sql_firebird;
 rlm_sql_module_t rlm_sql_firebird = {
 	.name				= "rlm_sql_firebird",
 	.sql_socket_init		= sql_socket_init,

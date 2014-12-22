@@ -331,6 +331,7 @@ static int mod_conn_reconnect(rlm_cache_t *inst, UNUSED REQUEST *request, rlm_ca
 	return 0;
 }
 
+extern cache_module_t rlm_cache_memcached;
 cache_module_t rlm_cache_memcached = {
 	"rlm_cache_memcached",
 	mod_instantiate,

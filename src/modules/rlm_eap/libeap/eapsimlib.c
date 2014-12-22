@@ -436,7 +436,7 @@ int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAPSIM_AUTH_S
  * definitions changed to take a buffer for unknowns
  * as this is more thread safe.
  */
-char const *simstates[]={ "init", "start", NULL };
+static char const *simstates[] = { "init", "start", NULL };
 
 char const *sim_state2name(enum eapsim_clientstates state,
 			   char *statenamebuf,
@@ -450,15 +450,15 @@ char const *sim_state2name(enum eapsim_clientstates state,
 	return simstates[state];
 }
 
-char const *subtypes[]={ "subtype0", "subtype1", "subtype2", "subtype3",
-			 "subtype4", "subtype5", "subtype6", "subtype7",
-			 "subtype8", "subtype9",
-			 "start",
-			 "challenge",
-			 "notification",
-			 "reauth",
-			 "client-error",
-			 NULL };
+static char const *subtypes[] = { "subtype0", "subtype1", "subtype2", "subtype3",
+				  "subtype4", "subtype5", "subtype6", "subtype7",
+				  "subtype8", "subtype9",
+				  "start",
+				  "challenge",
+				  "notification",
+				  "reauth",
+				  "client-error",
+				  NULL };
 
 char const *sim_subtype2name(enum eapsim_subtype subtype, char *subtypenamebuf, int subtypenamebuflen)
 {

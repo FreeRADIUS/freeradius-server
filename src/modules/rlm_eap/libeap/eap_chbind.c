@@ -26,8 +26,6 @@ RCSID("$Id$")
 
 #include "eap_chbind.h"
 
-#define MAX_PACKET_LEN		4096
-
 static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 {
 	int length;

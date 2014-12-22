@@ -602,6 +602,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 #endif
 
 /* globally exported name */
+extern module_t rlm_detail;
 module_t rlm_detail = {
 	RLM_MODULE_INIT,
 	"detail",

@@ -308,6 +308,7 @@ static int arp_socket_print(const rad_listen_t *this, char *buffer, size_t bufsi
 	return 1;
 }
 
+extern fr_protocol_t proto_arp;
 fr_protocol_t proto_arp = {
 	RLM_MODULE_INIT,
 	"arp",

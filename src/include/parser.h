@@ -22,7 +22,7 @@
  * Copyright 2013 Alan DeKok <aland@freeradius.org>
  */
 
-RCSIDH(parser_h, "$Id$");
+RCSIDH(parser_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {

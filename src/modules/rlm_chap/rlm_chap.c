@@ -26,8 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance,
-				  UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	if (!pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) {
 		return RLM_MODULE_NOOP;
@@ -185,6 +184,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance,
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_chap;
 module_t rlm_chap = {
 	 RLM_MODULE_INIT,
 	"CHAP",

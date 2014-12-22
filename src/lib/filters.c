@@ -598,7 +598,6 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 				str += strspn(str, "0123456789");
 				netmask = masklen;
 				goto finalize;
-				break;
 
 			default:
 				fr_strerror_printf("Invalid character in IP address");
@@ -1004,7 +1003,6 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 		fr_strerror_printf("Unknown Ascend filter type \"%s\"", argv[0]);
 		talloc_free(p);
 		return -1;
-		break;
 	}
 
 	/*
@@ -1043,7 +1041,6 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 		fr_strerror_printf("Unknown Ascend filter action \"%s\"", argv[2]);
 		talloc_free(p);
 		return -1;
-		break;
 	}
 
 

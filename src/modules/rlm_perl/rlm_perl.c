@@ -233,7 +233,7 @@ static void rlm_destroy_perl(PerlInterpreter *perl)
 /* Create Key */
 static void rlm_perl_make_key(pthread_key_t *key)
 {
-	pthread_key_create(key, (void*)rlm_destroy_perl);
+	pthread_key_create(key, (void (*)(void *))rlm_destroy_perl);
 }
 
 static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key)
@@ -970,7 +970,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 
 	switch (acctstatustype) {
 	case PW_STATUS_START:
-
 		if (((rlm_perl_t *)instance)->func_start_accounting) {
 			return do_perl(instance, request,
 				       ((rlm_perl_t *)instance)->func_start_accounting);
@@ -978,10 +977,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 			return do_perl(instance, request,
 				       ((rlm_perl_t *)instance)->func_accounting);
 		}
-		break;
 
 	case PW_STATUS_STOP:
-
 		if (((rlm_perl_t *)instance)->func_stop_accounting) {
 			return do_perl(instance, request,
 				       ((rlm_perl_t *)instance)->func_stop_accounting);
@@ -989,7 +986,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 			return do_perl(instance, request,
 				       ((rlm_perl_t *)instance)->func_accounting);
 		}
-		break;
 
 	default:
 		return do_perl(instance, request,
@@ -1084,6 +1080,7 @@ DIAG_ON(nested-externs)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_perl;
 module_t rlm_perl = {
 	RLM_MODULE_INIT,
 	"perl",				/* Name */

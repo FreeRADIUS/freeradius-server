@@ -756,6 +756,7 @@ static int dhcp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	return fr_dhcp_decode(request->packet);
 }
 
+extern fr_protocol_t proto_dhcp;
 fr_protocol_t proto_dhcp = {
 	RLM_MODULE_INIT,
 	"dhcp",

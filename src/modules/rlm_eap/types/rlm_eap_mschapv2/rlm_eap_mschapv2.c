@@ -193,7 +193,6 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 	default:
 		ERROR("rlm_eap_mschapv2: Internal sanity check failed");
 		return 0;
-		break;
 	}
 
 	return 1;
@@ -728,6 +727,7 @@ packet_ready:
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
+extern rlm_eap_module_t rlm_eap_mschapv2;
 rlm_eap_module_t rlm_eap_mschapv2 = {
 	"eap_mschapv2",
 	mschapv2_attach,		/* attach */

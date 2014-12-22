@@ -201,6 +201,9 @@ typedef struct attr_flags {
 
 extern const FR_NAME_NUMBER dict_attr_types[];
 extern const size_t dict_attr_sizes[PW_TYPE_MAX][2];
+extern const int fr_attr_max_tlv;
+extern const int fr_attr_shift[];
+extern const int fr_attr_mask[];
 
 /** dictionary attribute
  *

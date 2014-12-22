@@ -1650,7 +1650,7 @@ static void bfd_socket_free(rad_listen_t *this)
 	this->data = NULL;
 }
 
-const FR_NAME_NUMBER auth_types[] = {
+static const FR_NAME_NUMBER auth_types[] = {
 	{ "none", BFD_AUTH_RESERVED },
 	{ "simple", BFD_AUTH_SIMPLE },
 	{ "keyed-md5", BFD_AUTH_KEYED_MD5 },
@@ -1904,6 +1904,7 @@ static int bfd_socket_print(const rad_listen_t *this, char *buffer, size_t bufsi
 	return 1;
 }
 
+extern fr_protocol_t proto_bfd;
 fr_protocol_t proto_bfd = {
 	RLM_MODULE_INIT,
 	"bfd",

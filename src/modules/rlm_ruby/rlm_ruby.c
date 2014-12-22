@@ -41,6 +41,7 @@ RCSID("$Id$")
  */
 #undef HAVE_CRYPT
 
+DIAG_OFF(disabled-macro-expansion)
 #include <ruby.h>
 
 /*
@@ -451,6 +452,7 @@ static int mod_detach(UNUSED void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_ruby;
 module_t rlm_ruby = {
 	RLM_MODULE_INIT,
 	"ruby",

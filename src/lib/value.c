@@ -318,7 +318,6 @@ int value_data_cmp_op(FR_TOKEN op,
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
 			return -1;
 		}
-		break;
 
 	case PW_TYPE_IPV4_PREFIX:		/* IPv4 and IPv4 Prefix */
 		switch (b_type) {
@@ -336,7 +335,6 @@ int value_data_cmp_op(FR_TOKEN op,
 			fr_strerror_printf("Cannot compare IPv4 with IPv6 address");
 			return -1;
 		}
-		break;
 
 	case PW_TYPE_IPV6_ADDR:
 		switch (b_type) {
@@ -345,32 +343,29 @@ int value_data_cmp_op(FR_TOKEN op,
 
 		case PW_TYPE_IPV6_PREFIX:	/* IPv6 and IPv6 Preifx */
 			return value_data_cidr_cmp_op(op, 16, 128, (uint8_t const *) &a->ipv6addr,
-						    b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix[2]);
-			break;
+						      b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
 			return -1;
 		}
-		break;
 
 	case PW_TYPE_IPV6_PREFIX:
 		switch (b_type) {
 		case PW_TYPE_IPV6_ADDR:		/* IPv6 Prefix and IPv6 */
 			return value_data_cidr_cmp_op(op, 16, a->ipv6prefix[1],
-						    (uint8_t const *) &a->ipv6prefix[2],
-						    128, (uint8_t const *) &b->ipv6addr);
+						      (uint8_t const *) &a->ipv6prefix[2],
+						      128, (uint8_t const *) &b->ipv6addr);
 
 		case PW_TYPE_IPV6_PREFIX:	/* IPv6 Prefix and IPv6 */
 			return value_data_cidr_cmp_op(op, 16, a->ipv6prefix[1],
-						    (uint8_t const *) &a->ipv6prefix[2],
-						    b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix[2]);
+						      (uint8_t const *) &a->ipv6prefix[2],
+						      b->ipv6prefix[1], (uint8_t const *) &b->ipv6prefix[2]);
 
 		default:
 			fr_strerror_printf("Cannot compare IPv6 with IPv4 address");
 			return -1;
 		}
-		break;
 
 	default:
 	cmp:

@@ -136,7 +136,7 @@ static struct {
 /*
  *	This allows us to initialise PyThreadState on a per thread basis
  */
-fr_thread_local_setup(PyThreadState *, local_thread_state);	/* macro */
+fr_thread_local_setup(PyThreadState *, local_thread_state)	/* macro */
 
 
 /*
@@ -744,6 +744,7 @@ A(send_coa)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_python;
 module_t rlm_python = {
 	RLM_MODULE_INIT,
 	"python",

@@ -56,8 +56,8 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 	char entry[256];
 	char buffer[8192];
 	char const *ptr;
-	VALUE_PAIR *check_tmp;
-	VALUE_PAIR *reply_tmp;
+	VALUE_PAIR *check_tmp = NULL;
+	VALUE_PAIR *reply_tmp = NULL;
 	PAIR_LIST *pl = NULL, *t;
 	PAIR_LIST **last = &pl;
 	int lineno = 0;
@@ -244,7 +244,6 @@ parse_again:
 				 *	Done with this entry...
 				 */
 				MEM(t = talloc_zero(ctx, PAIR_LIST));
-
 				t->check = check_tmp;
 				t->reply = reply_tmp;
 				t->lineno = old_lineno;

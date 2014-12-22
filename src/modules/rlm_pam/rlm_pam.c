@@ -243,6 +243,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	return RLM_MODULE_REJECT;
 }
 
+extern module_t rlm_pam;
 module_t rlm_pam = {
 	RLM_MODULE_INIT,
 	"pam",

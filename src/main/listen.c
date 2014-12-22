@@ -165,7 +165,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 		listener->print(listener, name, sizeof(name));
 
-		ERROR("Ignoring request to %s from unknown client %s port %d"
+		radlog(L_ERR, "Ignoring request to %s from unknown client %s port %d"
 #ifdef WITH_TCP
 		       " proto %s"
 #endif
@@ -1468,7 +1468,6 @@ static int auth_socket_recv(rad_listen_t *listener)
 		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
 		return 0;
-		break;
 	} /* switch over packet types */
 
 	/*

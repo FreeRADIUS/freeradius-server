@@ -124,8 +124,6 @@ static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t 
 		REDEBUG("Program returned invalid code (greater than max rcode) (%i > %i): %s",
 			status, RLM_MODULE_NUMCODES, answer);
 		goto fail;
-
-		return RLM_MODULE_FAIL;
 	}
 
 	status--;	/* Lets hope no one ever re-enumerates RLM_MODULE_* */
@@ -462,6 +460,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_exec;
 module_t rlm_exec = {
 	RLM_MODULE_INIT,
 	"exec",				/* Name */

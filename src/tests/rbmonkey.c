@@ -37,9 +37,9 @@ struct rbtree_t {
 	pthread_mutex_t		mutex;
 #endif
 };
-#define RBTREE_MAGIC (0x5ad09c42)
+
 /* Storage for the NIL pointer. */
-rbnode_t *NIL;
+static rbnode_t *NIL;
 
 static int comp(void const *a, void const *b)
 {
@@ -74,7 +74,7 @@ static int store_cb(UNUSED void *ctx, void  *i)
 
 static uint32_t mask;
 
-static int filter_cb(UNUSED void *ctx, void *i)
+static int filter_cb(void *ctx, void *i)
 {
 	if ((*(uint32_t *)i & mask) == (*(uint32_t *)ctx & mask)) {
 		return 2;

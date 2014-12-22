@@ -36,16 +36,15 @@ RCSID("$Id$")
  *  Global variables.
  */
 char const *progname = NULL;
-char const *radius_dir = NULL;
 char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 char const *radlib_dir = NULL;
 log_lvl_t debug_flag = 0;
-bool memory_report = false;
 bool check_config = false;
 bool log_stripped_names = false;
 
-bool filedone = false;
+static bool memory_report = false;
+static bool filedone = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT

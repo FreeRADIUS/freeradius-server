@@ -483,6 +483,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 }
 
 /* Exported to rlm_sql */
+extern rlm_sql_module_t rlm_sql_postgresql;
 rlm_sql_module_t rlm_sql_postgresql = {
 	.name				= "rlm_sql_postgresql",
 	.mod_instantiate		= mod_instantiate,

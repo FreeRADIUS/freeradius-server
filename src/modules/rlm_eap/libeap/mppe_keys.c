@@ -99,8 +99,6 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 
 #define EAPTLS_MPPE_KEY_LEN     32
 
-#define FR_TLS_PRF_LABEL "ttls keying material"
-
 /*
  *	Generate keys according to RFC 2716 and add to reply
  */

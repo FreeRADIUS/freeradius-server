@@ -485,6 +485,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 
 
 /* globally exported name */
+extern module_t rlm_opendirectory;
 module_t rlm_opendirectory = {
 	RLM_MODULE_INIT,
 	"opendirectory",

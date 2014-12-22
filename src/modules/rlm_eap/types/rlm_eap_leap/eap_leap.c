@@ -101,7 +101,6 @@ leap_packet_t *eapleap_extract(REQUEST *request, EAP_DS *eap_ds)
 	default:
 		REDEBUG("Invalid EAP code %d", eap_ds->response->code);
 		return NULL;
-		break;
 	}
 
 	packet = talloc(eap_ds, leap_packet_t);
@@ -435,7 +434,6 @@ int eapleap_compose(REQUEST *request, EAP_DS *eap_ds, leap_packet_t *reply)
 	default:
 		REDEBUG("Internal sanity check failed");
 		return 0;
-		break;
 	}
 
 	/*

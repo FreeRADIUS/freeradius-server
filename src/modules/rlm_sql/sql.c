@@ -228,9 +228,7 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t **handle, rlm
 {
 	sql_rcode_t ret;
 
-	if (!*handle || !(*handle)->conn) {
-		return -1;
-	}
+	if (!*handle || !(*handle)->conn) return RLM_SQL_ERROR;
 
 	/*
 	 * We can't implement reconnect logic here, because the caller may require

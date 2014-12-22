@@ -637,8 +637,7 @@ redo:
 		 *	stored previously.
 		 */
 		for (i = 0; i < 8; i++) {
-			if (!request_data_reference(request,
-						    radius_get_vp, i)) {
+			if (!request_data_reference(request, (void *)radius_get_vp, i)) {
 				foreach_depth = i;
 				break;
 			}
@@ -686,7 +685,7 @@ redo:
 			 *	Add the vp to the request, so that
 			 *	xlat.c, xlat_foreach() can find it.
 			 */
-			request_data_add(request, radius_get_vp, foreach_depth, &vp, false);
+			request_data_add(request, (void *)radius_get_vp, foreach_depth, &vp, false);
 
 			/*
 			 *	Initialize the childs stack frame.
@@ -724,7 +723,7 @@ redo:
 		 *	the xlat outside of a foreach loop and trigger a segv.
 		 */
 		pairfree(&vps);
-		request_data_get(request, radius_get_vp, foreach_depth);
+		request_data_get(request, (void *)radius_get_vp, foreach_depth);
 
 		rad_assert(next != NULL);
 		result = next->result;
@@ -744,7 +743,7 @@ redo:
 		RDEBUG2("%s", group_name[c->type]);
 
 		for (i = 8; i >= 0; i--) {
-			copy_p = request_data_get(request, radius_get_vp, i);
+			copy_p = request_data_get(request, (void *)radius_get_vp, i);
 			if (copy_p) {
 				if (c->type == MOD_BREAK) {
 					RDEBUG2("# break Foreach-Variable-%d", i);
@@ -1784,7 +1783,7 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 
 
 #ifdef WITH_UNLANG
-static modcallable *do_compile_modupdate(modcallable *parent, UNUSED rlm_components_t component,
+static modcallable *do_compile_modupdate(modcallable *parent, rlm_components_t component,
 					 CONF_SECTION *cs, char const *name2)
 {
 	int rcode;
@@ -2015,7 +2014,7 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 }
 
 static modcallable *do_compile_modforeach(modcallable *parent,
-					  UNUSED rlm_components_t component, CONF_SECTION *cs)
+					  rlm_components_t component, CONF_SECTION *cs)
 {
 	FR_TOKEN type;
 	char const *name2;

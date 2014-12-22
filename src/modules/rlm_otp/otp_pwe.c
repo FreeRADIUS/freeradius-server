@@ -138,5 +138,5 @@ otp_pwe_t otp_pwe_present(REQUEST const *request)
 	}
 
 	DEBUG("rlm_otp: %s: no password attributes present", __func__);
-	return 0;
+	return PWE_NONE;
 }

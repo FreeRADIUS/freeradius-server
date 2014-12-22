@@ -60,7 +60,7 @@ static int sockfd;
 static int last_used_id = -1;
 
 #ifdef WITH_TCP
-char const *proto = NULL;
+static char const *proto = NULL;
 #endif
 static int ipproto = IPPROTO_UDP;
 
@@ -72,7 +72,7 @@ static int sleep_time = -1;
 static rc_request_t *request_head = NULL;
 static rc_request_t *rc_request_tail = NULL;
 
-char const *radclient_version = "radclient version " RADIUSD_VERSION_STRING
+static char const *radclient_version = "radclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
@@ -1309,7 +1309,6 @@ int main(int argc, char **argv)
 		case 'v':
 			DEBUG("%s", radclient_version);
 			exit(0);
-			break;
 
 		case 'x':
 			fr_debug_flag++;
@@ -1318,7 +1317,6 @@ int main(int argc, char **argv)
 		case 'h':
 		default:
 			usage();
-			break;
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);

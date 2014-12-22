@@ -49,7 +49,7 @@ typedef struct _pwd_hdr {
 #define EAP_PWD_EXCH_COMMIT	     2
 #define EAP_PWD_EXCH_CONFIRM	    3
 //    uint16_t total_length;      /* there if the L-bit is set */
-    uint8_t data[0];
+    uint8_t data[];
 } CC_HINT(packed) pwd_hdr;
 
 #define EAP_PWD_GET_LENGTH_BIT(x)       ((x)->lm_exchange & 0x80)
@@ -62,15 +62,15 @@ typedef struct _pwd_hdr {
 typedef struct _pwd_id_packet {
     uint16_t group_num;
     uint8_t random_function;
-#define EAP_PWD_DEF_RAND_FUN	    1
+#define EAP_PWD_DEF_RAND_FUN	1
     uint8_t prf;
-#define EAP_PWD_DEF_PRF		 1
+#define EAP_PWD_DEF_PRF		1
     uint8_t token[4];
     uint8_t prep;
-#define EAP_PWD_PREP_NONE	       0
-#define EAP_PWD_PREP_MS		 1
-#define EAP_PWD_PREP_SASL	       2
-    char identity[0];
+#define EAP_PWD_PREP_NONE	0
+#define EAP_PWD_PREP_MS		1
+#define EAP_PWD_PREP_SASL	2
+    char identity[];
 } CC_HINT(packed) pwd_id_packet;
 
 typedef struct _pwd_session_t {

@@ -20,7 +20,7 @@
  * Copyright 2007 Alan DeKok <aland@deployingradius.com>
  */
 
-RCSID("$Id$");
+RCSID("$Id$")
 
 #include	<freeradius-devel/libradius.h>
 #include	<freeradius-devel/udpfromto.h>
@@ -30,7 +30,6 @@ RCSID("$Id$");
 #define MAX_VMPS_LEN (MAX_STRING_LEN - 1)
 
 /* @todo: this is a hack */
-#  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
 #  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
 					vp_print(fr_log_fp, vp); \
 				     } \
@@ -311,16 +310,6 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	}
 
 	ptr = packet->data;
-
-	if (0) {
-		size_t i;
-		for (i = 0; i < packet->data_len; i++) {
-		  if ((i & 0x0f) == 0) fprintf(stderr, "%02x: ", (int) i);
-			fprintf(stderr, "%02x ", ptr[i]);
-			if ((i & 0x0f) == 0x0f) fprintf(stderr, "\n");
-		}
-
-	}
 
 	if (ptr[3] > VQP_MAX_ATTRIBUTES) {
 		fr_strerror_printf("Too many VQP attributes");

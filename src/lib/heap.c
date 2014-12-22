@@ -28,7 +28,7 @@ struct fr_heap_t {
  */
 #define HEAP_PARENT(x) ( ( (x) - 1 ) / 2 )
 #define HEAP_LEFT(x) ( 2*(x) + 1 )
-#define HEAP_RIGHT(x) ( 2*(x) + 2 )
+/* #define HEAP_RIGHT(x) ( 2*(x) + 2 ) */
 #define	HEAP_SWAP(a, b) { void *_tmp = a; a = b; b = _tmp; }
 
 static int fr_heap_bubble(fr_heap_t *hp, int child);

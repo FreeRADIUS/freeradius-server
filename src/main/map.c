@@ -563,6 +563,8 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 	VALUE_PAIR *vp = NULL, *new, *found = NULL;
 	REQUEST *context = request;
 	vp_cursor_t cursor;
+	ssize_t slen;
+	char *str;
 
 	*out = NULL;
 
@@ -612,9 +614,6 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 	 *	And parse the RHS
 	 */
 	switch (map->rhs->type) {
-		ssize_t slen;
-		char *str;
-
 	case TMPL_TYPE_XLAT_STRUCT:
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */

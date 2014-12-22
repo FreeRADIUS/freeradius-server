@@ -598,7 +598,7 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 	return ret;
 }
 
-
+extern rlm_eap_module_t rlm_eap_pwd;
 rlm_eap_module_t rlm_eap_pwd = {
 	"eap_pwd",
 	eap_pwd_attach,		/* attach */

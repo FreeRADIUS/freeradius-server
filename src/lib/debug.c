@@ -1015,7 +1015,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 void fr_fault_set_cb(fr_fault_cb_t func)
 {
 	panic_cb = func;
-};
+}
 
 /** Default logger, logs output to stderr
  *

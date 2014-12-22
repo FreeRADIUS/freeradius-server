@@ -1652,6 +1652,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST * requ
 
 
 /* globally exported name */
+extern module_t rlm_sql;
 module_t rlm_sql = {
 	RLM_MODULE_INIT,
 	"SQL",

@@ -345,6 +345,7 @@ RLM_AF_FUNC(send_coa, reply)
 #endif
 
 /* globally exported name */
+extern module_t rlm_attr_filter;
 module_t rlm_attr_filter = {
 	RLM_MODULE_INIT,
 	"attr_filter",

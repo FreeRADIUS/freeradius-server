@@ -421,6 +421,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_yubikey;
 module_t rlm_yubikey = {
 	RLM_MODULE_INIT,
 	"yubikey",

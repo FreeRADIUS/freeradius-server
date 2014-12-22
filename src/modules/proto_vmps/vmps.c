@@ -109,7 +109,7 @@ static int vqp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	return vqp_decode(request->packet);
 }
 
-
+extern fr_protocol_t proto_vmps;
 fr_protocol_t proto_vmps = {
 	RLM_MODULE_INIT,
 	"vmps",

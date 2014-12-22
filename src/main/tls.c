@@ -74,6 +74,12 @@ static libssl_defect_t libssl_defects[] =
 };
 #endif
 
+/* index we use to store cached session VPs
+ * needs to be dynamic so we can supply a "free" function
+ */
+static int fr_tls_ex_index_vps = -1;
+int fr_tls_ex_index_certs = -1;
+
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
@@ -1061,12 +1067,6 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 	RSA_free(rsa);
 	return 0;
 }
-
-/* index we use to store cached session VPs
- * needs to be dynamic so we can supply a "free" function
- */
-int fr_tls_ex_index_vps = -1;
-int fr_tls_ex_index_certs = -1;
 
 /*
  *	Print debugging messages, and free data.

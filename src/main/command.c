@@ -813,7 +813,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 }
 
 extern fr_cond_t *debug_condition;
-static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char *argv[])
+static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[])
 {
 	int i;
 	char const *error;
@@ -1118,7 +1118,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 	char *output_file;
 	FILE *fp;
 
-	output_file = request_data_reference(request, null_socket_send, 0);
+	output_file = request_data_reference(request, (void *)null_socket_send, 0);
 	if (!output_file) {
 		ERROR("No output file for injected packet %d", request->number);
 		return 0;

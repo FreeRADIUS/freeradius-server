@@ -147,6 +147,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
+extern module_t rlm_idn;
 module_t rlm_idn = {
 	RLM_MODULE_INIT,
 	"idn",

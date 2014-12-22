@@ -57,10 +57,8 @@ static RADIUS_PACKET *reply = NULL;
 #define DHCP_CHADDR_LEN	(16)
 #define DHCP_SNAME_LEN	(64)
 #define DHCP_FILE_LEN	(128)
-#define DHCP_VEND_LEN	(308)
-#define DHCP_OPTION_MAGIC_NUMBER (0x63825363)
 
-char const *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_STRING
+static char const *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
 #endif
@@ -296,7 +294,7 @@ int main(int argc, char **argv)
 		case 'v':
 			printf("%s\n", dhcpclient_version);
 			exit(0);
-			break;
+
 		case 'x':
 			fr_debug_flag++;
 			fr_log_fp = stdout;
@@ -304,7 +302,6 @@ int main(int argc, char **argv)
 		case 'h':
 		default:
 			usage();
-			break;
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);

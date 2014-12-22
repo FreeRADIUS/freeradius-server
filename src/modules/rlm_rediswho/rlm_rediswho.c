@@ -204,7 +204,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void * instance, REQUEST * re
 	return rcode;
 }
 
-
+extern module_t rlm_rediswho;
 module_t rlm_rediswho = {
 	RLM_MODULE_INIT,
 	"rediswho",

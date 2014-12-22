@@ -287,6 +287,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
+extern module_t rlm_redis;
 module_t rlm_redis = {
 	RLM_MODULE_INIT,
 	"redis",

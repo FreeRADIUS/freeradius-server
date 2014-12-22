@@ -533,6 +533,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 
 /* globally exported name */
+extern module_t rlm_files;
 module_t rlm_files = {
 	RLM_MODULE_INIT,
 	"files",

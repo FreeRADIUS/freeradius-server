@@ -42,6 +42,8 @@ typedef enum fr_saction_t {	/* server action */
 #endif
 } fr_saction_t;
 
+extern time_t fr_start_time;
+
 #ifdef HAVE_PTHREAD_H
 /*
  *	In threads.c

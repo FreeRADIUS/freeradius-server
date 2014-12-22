@@ -1886,6 +1886,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 #undef inst
 }
 
+extern module_t rlm_mschap;
 module_t rlm_mschap = {
 	RLM_MODULE_INIT,
 	"MS-CHAP",

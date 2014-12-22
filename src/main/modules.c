@@ -93,13 +93,11 @@ const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 #endif
 
 #ifdef __APPLE__
-#define LT_SHREXT ".dylib"
-#define LD_LIBRARY_PATH "DYLD_FALLBACK_LIBRARY_PATH"
+#  define LT_SHREXT ".dylib"
 #elif defined (WIN32)
-#define LT_SHREXT ".dll"
+#  define LT_SHREXT ".dll"
 #else
-#define LT_SHREXT ".so"
-#define LD_LIBRARY_PATH "LD_LIBRARY_PATH"
+#  define LT_SHREXT ".so"
 #endif
 
 /** Check if the magic number in the module matches the one in the library
@@ -225,7 +223,7 @@ lt_dlhandle lt_dlopenext(char const *name)
 	return dlopen(buffer, flags);
 }
 
-void *lt_dlsym(lt_dlhandle handle, UNUSED char const *symbol)
+void *lt_dlsym(lt_dlhandle handle, char const *symbol)
 {
 	return dlsym(handle, symbol);
 }
