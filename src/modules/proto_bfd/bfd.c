@@ -31,8 +31,6 @@
 #define USEC (1000000)
 #define BFD_MAX_SECRET_LENGTH 20
 
-extern bool check_config;
-
 typedef enum bfd_session_state_t {
 	BFD_STATE_ADMIN_DOWN = 0,
 	BFD_STATE_DOWN,

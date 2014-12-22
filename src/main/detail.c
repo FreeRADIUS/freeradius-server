@@ -41,8 +41,6 @@ RCSID("$Id$")
 
 #ifdef WITH_DETAIL
 
-extern bool check_config;
-
 #define USEC (1000000)
 
 static FR_NAME_NUMBER state_names[] = {

@@ -28,8 +28,6 @@
 #include <freeradius-devel/pcap.h>
 #include <net/if_arp.h>
 
-extern bool check_config;
-
 typedef struct arp_socket_t {
 	char const     	*interface;
 	fr_pcap_t	*pcap;

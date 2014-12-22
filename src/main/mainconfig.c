@@ -52,7 +52,6 @@ RCSID("$Id$")
 struct main_config_t main_config;
 extern fr_cond_t *debug_condition;
 fr_cond_t *debug_condition;
-extern bool log_dates_utc;
 
 typedef struct cached_config_t {
 	struct cached_config_t *next;

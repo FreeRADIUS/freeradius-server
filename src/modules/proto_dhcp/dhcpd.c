@@ -56,8 +56,6 @@
 #include <sys/ioctl.h>
 #endif
 
-extern bool check_config;	/* @todo globals are bad, m'kay? */
-
 /*
  *	Same contents as listen_socket_t.
  */

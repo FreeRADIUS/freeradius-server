@@ -76,14 +76,6 @@ static int last_listener = RAD_LISTEN_MAX;
 #define MAX_LISTENER (256)
 static fr_protocol_t master_listen[MAX_LISTENER];
 
-#ifdef WITH_TCP
-/*
- *	We want to avoid opening a UDP proxy listener
- *	when all of the home servers are TCP.
- */
-extern bool home_servers_udp;
-#endif
-
 /*
  *	Xlat for %{listen:foo}
  */
@@ -868,8 +860,6 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 
 	return 1;
 }
-
-extern bool check_config;	/* radiusd.c */
 
 static CONF_PARSER performance_config[] = {
 	{ "skip_duplicate_checks", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rad_listen_t, nodup), NULL },
