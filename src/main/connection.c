@@ -33,8 +33,6 @@ typedef struct fr_connection fr_connection_t;
 
 static int fr_connection_pool_check(fr_connection_pool_t *pool);
 
-extern bool check_config;
-
 #ifndef NDEBUG
 #ifdef HAVE_PTHREAD_H
 /* #define PTHREAD_DEBUG (1) */

@@ -663,10 +663,6 @@ static void make_tunnel_passwd(uint8_t *output, ssize_t *outlen,
 	memcpy(output, passwd, len + 2);
 }
 
-extern int const fr_attr_max_tlv;
-extern int const fr_attr_shift[];
-extern int const fr_attr_mask[];
-
 static int do_next_tlv(VALUE_PAIR const *vp, VALUE_PAIR const *next, int nest)
 {
 	unsigned int tlv1, tlv2;

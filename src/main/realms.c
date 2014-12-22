@@ -24,6 +24,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/realms.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
@@ -1202,8 +1203,12 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			cf_log_err_cs(cs, "Inconsistent ldflag for server pool \"%s\"", name);
 			return 0;
 		}
-
-		if (pool->server_type != type) {
+		
+		/*
+ 		 *  GCC throws signed comparison warning here without the cast
+		 *  very strange...
+		 */
+		if ((home_type_t) pool->server_type != type) {
 			cf_log_err_cs(cs, "Inconsistent home server type for server pool \"%s\"", name);
 			return 0;
 		}

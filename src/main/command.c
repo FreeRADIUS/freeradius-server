@@ -348,8 +348,6 @@ static int command_terminate(UNUSED rad_listen_t *listener,
 	return 1;		/* success */
 }
 
-extern time_t fr_start_time;
-
 static int command_uptime(rad_listen_t *listener,
 			  UNUSED int argc, UNUSED char *argv[])
 {

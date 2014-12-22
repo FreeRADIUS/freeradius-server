@@ -30,8 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/rad_assert.h>
 
-extern bool check_config;
-
 typedef struct indexed_modcallable {
 	rlm_components_t	comp;
 	int			idx;
