@@ -482,16 +482,61 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 	return true;
 }
 
-/** Add a new home server defined by a CONF_SECTION
+/** Add an already allocate home_server_t to the various trees
+ *
+ * @param rc Realm config to add home server to.
+ * @param home server to add.
+ * @return true on success, else false on error.
+ */
+static bool home_server_add(realm_config_t *rc, home_server_t *home)
+{
+	if (rbtree_finddata(home_servers_byname, home) != NULL) {
+		cf_log_err_cs(home->cs, "Duplicate home server name %s", home->name);
+		return false;
+	}
+
+	if (!home->server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
+		cf_log_err_cs(home->cs, "Duplicate home server IP %s", home->name);
+		return false;
+	}
+
+	if (!home_server_insert(home, home->cs)) return false;
+
+	if (home->dual) {
+		home_server_t *home2 = talloc(rc, home_server_t);
+
+		memcpy(home2, home, sizeof(*home2));
+
+		home2->type = HOME_TYPE_ACCT;
+		home2->dual = true;
+		home2->port++;
+		home2->ping_user_password = NULL;
+		home2->cs = home->cs;
+		home2->parent_server = home->parent_server;
+
+		if (!home_server_insert(home2, home->cs)) {
+			talloc_free(home2);
+			return false;
+		}
+	}
+
+	/*
+	 *	Mark it as already processed
+	 */
+	cf_data_add(home->cs, "home_server", (void *)null_free, null_free);
+
+	return true;
+}
+
+/** Alloc a new home server defined by a CONF_SECTION
  *
  * @param rc Realm config to add home server to.
  * @param cs Configuration section containing home server parameters.
- * @return true of home server was added, false on error.
+ * @return a new home_server_t alloced in the context of the realm_config, or NULL on error.
  */
-bool home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
+home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 {
 	char const	*name2;
-	bool		dual = false;
 	home_server_t	*home;
 
 	CONF_SECTION	*tls;
@@ -579,7 +624,7 @@ skip_port:
 
  		switch (type) {
  		case HOME_TYPE_AUTH_ACCT:
-			dual = true;
+			home->dual = true;
 			home->type = HOME_TYPE_AUTH;
 			break;
 
@@ -746,41 +791,7 @@ skip_port:
 
 	realm_home_server_sanitize(home, cs);
 
-	if (rbtree_finddata(home_servers_byname, home) != NULL) {
-		cf_log_err_cs(cs, "Duplicate home server name %s.", name2);
-		goto error;
-	}
-
-	if (!home->server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
-		cf_log_err_cs(cs, "Duplicate home server IP %s.", name2);
-		goto error;
-	}
-
-	if (!home_server_insert(home, cs)) goto error;
-
-	if (dual) {
-		home_server_t *home2 = talloc(rc, home_server_t);
-
-		memcpy(home2, home, sizeof(*home2));
-
-		home2->type = HOME_TYPE_ACCT;
-		home2->port++;
-		home2->ping_user_password = NULL;
-		home2->cs = cs;
-		home2->parent_server = home->parent_server;
-
-		if (!home_server_insert(home2, cs)) {
-			talloc_free(home2);
-			goto error;
-		}
-	}
-
-	/*
-	 *	Mark it as already processed
-	 */
-	cf_data_add(cs, "home_server", (void *)null_free, null_free);
-
-	return true;
+	return home;
 }
 
 static home_pool_t *server_pool_alloc(realm_config_t *rc, char const *name, home_pool_type_t type,
@@ -1184,7 +1195,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			cf_log_err_cs(cs, "Inconsistent ldflag for server pool \"%s\"", name);
 			return 0;
 		}
-		
+
 		/*
  		 *  GCC throws signed comparison warning here without the cast
 		 *  very strange...
@@ -1942,7 +1953,11 @@ int realms_init(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "home_server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "home_server")) {
-		if (!home_server_afrom_cs(rc, cs)) goto error;
+	     	home_server_t *home;
+
+	     	home = home_server_afrom_cs(rc, cs);
+	     	if (!home) goto error;
+		if (!home_server_add(rc, home)) goto error;
 	}
 
 	/*
@@ -1955,7 +1970,11 @@ int realms_init(CONF_SECTION *config)
 		for (cs = cf_subsection_find_next(server_cs, NULL, "home_server");
 		     cs != NULL;
 		     cs = cf_subsection_find_next(server_cs, cs, "home_server")) {
-			if (!home_server_afrom_cs(rc, cs)) goto error;
+			home_server_t *home;
+
+			home = home_server_afrom_cs(rc, cs);
+			if (!home) goto error;
+			if (!home_server_add(rc, home)) goto error;
 		}
 	}
 #endif

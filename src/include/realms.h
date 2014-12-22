@@ -54,6 +54,7 @@ typedef struct fr_socket_limit_t {
 typedef struct home_server {
 	char const		*name;
 
+	bool			dual;			//!< One of a pair of homeservers on consecutive ports.
 	char const		*server;		//!< For internal proxying
 	char const		*parent_server;
 
@@ -184,7 +185,8 @@ int		realm_realm_add( REALM *r, CONF_SECTION *cs);
 void		home_server_update_request(home_server_t *home, REQUEST *request);
 home_server_t	*home_server_ldb(char const *realmname, home_pool_t *pool, REQUEST *request);
 home_server_t	*home_server_find(fr_ipaddr_t *ipaddr, uint16_t port, int proto);
-bool		home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs);
+
+home_server_t	*home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs);
 #ifdef WITH_COA
 home_server_t	*home_server_byname(char const *name, int type);
 #endif
