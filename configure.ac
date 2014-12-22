@@ -1547,9 +1547,18 @@ if test "x$developer" = "xyes"; then
     devflags="-Wdocumentation"
   fi
 
-  if test "x$GCC" = "xyes"; then
-    devflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
-    INSTALLSTRIP=""
+  dnl #
+  dnl #  If we have -Weverything, it really means *everything* unlike -Wall
+  dnl #  It's so verbose we need to turn off warnings which aren't useful.
+  dnl #
+  AX_CC_WEVERYTHING_FLAG
+  if test "x$ax_cv_cc_weverything_flag" = "xyes"; then
+    devflags="$devflags -Weverything -Wformat=2 -Wno-padded -Wno-gnu-zero-variadic-macro-arguments -Wno-shorten-64-to-32 -Wno-sign-conversion -Wno-conversion -Wno-switch-enum -Wno-gnu-statement-expression -Wno-extended-offsetof -Wno-cast-align -Wno-documentation-unknown-command -Wno-covered-switch-default -Wno-packed -DWITH_VERIFY_PTR=1"
+  else
+    if test "x$GCC" = "xyes"; then
+      devflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
+      INSTALLSTRIP=""
+    fi
   fi
 
   AC_MSG_NOTICE([Developer CFLAGS are "$devflags"])

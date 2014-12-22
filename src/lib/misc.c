@@ -34,14 +34,6 @@ RCSID("$Id$")
 		a[0] = ((uint16_t) (val)) & 0xff;\
 	} while (0)
 
-#ifdef HAVE_PTHREAD_H
-#  define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#  define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-#else
-#  define PTHREAD_MUTEX_LOCK(_x)
-#  define PTHREAD_MUTEX_UNLOCK(_x)
-#endif
-
 bool	fr_dns_lookups = false;	    /* IP -> hostname lookups? */
 bool    fr_hostname_lookups = true; /* hostname -> IP lookups? */
 int	fr_debug_flag = 0;
@@ -50,7 +42,7 @@ static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",
 	"jul", "aug", "sep", "oct", "nov", "dec" };
 
-fr_thread_local_setup(char *, fr_inet_ntop_buffer);	/* macro */
+fr_thread_local_setup(char *, fr_inet_ntop_buffer)	/* macro */
 
 typedef struct fr_talloc_link {
 	bool armed;
@@ -1189,7 +1181,6 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 		return memcmp(&a->ipaddr.ip4addr,
 			      &b->ipaddr.ip4addr,
 			      sizeof(a->ipaddr.ip4addr));
-		break;
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6:
@@ -1199,7 +1190,6 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 		return memcmp(&a->ipaddr.ip6addr,
 			      &b->ipaddr.ip6addr,
 			      sizeof(a->ipaddr.ip6addr));
-		break;
 #endif
 
 	default:

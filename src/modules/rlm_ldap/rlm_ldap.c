@@ -60,7 +60,7 @@ FR_NAME_NUMBER const ldap_tls_require_cert[] = {
 };
 #endif
 
-FR_NAME_NUMBER const ldap_dereference[] = {
+static FR_NAME_NUMBER const ldap_dereference[] = {
 	{ "never",	LDAP_DEREF_NEVER	},
 	{ "searching",	LDAP_DEREF_SEARCHING	},
 	{ "finding",	LDAP_DEREF_FINDING	},
@@ -1572,6 +1572,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST * requ
 
 
 /* globally exported name */
+extern module_t rlm_ldap;
 module_t rlm_ldap = {
 	RLM_MODULE_INIT,
 	"ldap",

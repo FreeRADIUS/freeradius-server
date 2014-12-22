@@ -355,7 +355,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 /** Verify that a map in the cache section makes sense
  *
  */
-static int cache_verify(value_pair_map_t *map, UNUSED void *ctx)
+static int cache_verify(value_pair_map_t *map, void *ctx)
 {
 	if (modcall_fixup_update(map, ctx) < 0) return -1;
 
@@ -768,6 +768,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_cache;
 module_t rlm_cache = {
 	RLM_MODULE_INIT,
 	"cache",

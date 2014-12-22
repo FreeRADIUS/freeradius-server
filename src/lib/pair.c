@@ -834,6 +834,8 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	 */
 	tail_from = from;
 	while ((i = *tail_from) != NULL) {
+		VALUE_PAIR *j;
+
 		VERIFY_VP(i);
 
 		/*
@@ -891,8 +893,6 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			 *	vp that it's pointing to.
 			 */
 			switch (found->da->type) {
-				VALUE_PAIR *j;
-
 			default:
 				j = found->next;
 				memcpy(found, i, sizeof(*found));

@@ -455,7 +455,6 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		case PW_SESSION_TYPE:
 		case PW_STRIP_USER_NAME:
 			continue;
-			break;
 
 		/*
 		 *	IF the password attribute exists, THEN

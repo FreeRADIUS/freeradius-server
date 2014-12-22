@@ -49,7 +49,7 @@
 
 #define MAX_QUERY_LEN 4096
 
-RCSID("$Id$");
+RCSID("$Id$")
 
 typedef struct rlm_sqlhpwippool_t {
 	char const *myname;	 		//!< Name of this instance
@@ -764,6 +764,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
+extern module_t rlm_sqlhpwippool;
 module_t rlm_sqlhpwippool = {
 	RLM_MODULE_INIT,
 	"sqlhpwippool",			/* name */

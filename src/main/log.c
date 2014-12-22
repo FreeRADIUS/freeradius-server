@@ -44,7 +44,7 @@ RCSID("$Id$")
 #include <pthread.h>
 #endif
 
-bool rate_limit = true;
+static bool rate_limit = true;
 
 /*
  * Logging facility names
@@ -511,7 +511,7 @@ inline bool debug_enabled(log_type_t type, log_lvl_t lvl)
 	return false;
 }
 
-inline bool rate_limit_enabled(void)
+bool rate_limit_enabled(void)
 {
 	if (rate_limit || (debug_flag < 1)) return true;
 

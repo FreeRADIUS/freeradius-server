@@ -746,6 +746,7 @@ static int mod_detach(UNUSED void *instance)
 	return 0;
 }
 
+extern module_t rlm_unbound;
 module_t rlm_unbound = {
 	RLM_MODULE_INIT,
 	"unbound",

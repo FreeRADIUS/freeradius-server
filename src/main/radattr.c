@@ -39,7 +39,7 @@ typedef struct REQUEST REQUEST;
 #include <assert.h>
 
 #include <freeradius-devel/log.h>
-log_lvl_t debug_flag = 0;
+static log_lvl_t debug_flag = 0;
 
 /**********************************************************************
  *	Hacks for xlat

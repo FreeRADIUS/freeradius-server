@@ -765,6 +765,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
+extern module_t rlm_eap;
 module_t rlm_eap = {
 	RLM_MODULE_INIT,
 	"eap",

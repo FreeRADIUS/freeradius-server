@@ -63,7 +63,7 @@ static const CONF_PARSER driver_config[] = {
 	{NULL, -1, 0, NULL, NULL}
 };
 
-static int sql_check_error(sqlite3 *db)
+static sql_rcode_t sql_check_error(sqlite3 *db)
 {
 	int error = sqlite3_errcode(db);
 	switch (error) {
@@ -73,7 +73,7 @@ static int sql_check_error(sqlite3 *db)
 	case SQLITE_OK:
 	case SQLITE_DONE:
 	case SQLITE_ROW:
-		return 0;
+		return RLM_SQL_OK;
 	/*
 	 *	User/transient errors
 	 */
@@ -81,8 +81,7 @@ static int sql_check_error(sqlite3 *db)
 	case SQLITE_FULL:
 	case SQLITE_CONSTRAINT:
 	case SQLITE_MISMATCH:
-		return -1;
-		break;
+		return RLM_SQL_ERROR;
 
 	/*
 	 *	Errors with the handle, that probably require reinitialisation
@@ -90,7 +89,6 @@ static int sql_check_error(sqlite3 *db)
 	default:
 		ERROR("rlm_sql_sqlite: Handle is unusable, error (%d): %s", error, sqlite3_errmsg(db));
 		return RLM_SQL_RECONNECT;
-		break;
 	}
 }
 
@@ -201,7 +199,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 #else
 		(void) sqlite3_prepare(db, s, len, &>statement, &z_tail);
 #endif
-		if (sql_check_error(db)) {
+		if (sql_check_error(db) != RLM_SQL_OK) {
 			talloc_free(buffer);
 			return -1;
 		}
@@ -210,7 +208,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 		status = sql_check_error(db);
 
 		(void) sqlite3_finalize(statement);
-		if (status || sql_check_error(db)) {
+		if ((status != RLM_SQL_OK) || sql_check_error(db)) {
 			talloc_free(buffer);
 			return -1;
 		}
@@ -300,7 +298,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			goto unlink;
 		}
 
-		if (sql_check_error(db)) {
+		if (sql_check_error(db) != RLM_SQL_OK) {
 			(void) sqlite3_close(db);
 
 			goto unlink;
@@ -405,12 +403,10 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		      status);
 #endif
 
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
-	if (sql_check_error(conn->db)) {
-		return -1;
-	}
+	if (sql_check_error(conn->db) != RLM_SQL_OK) return RLM_SQL_ERROR;
 
 	/*
 	 *	Enable extended return codes for extra debugging info.
@@ -418,9 +414,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 #ifdef HAVE_SQLITE3_EXTENDED_RESULT_CODES
 	(void) sqlite3_extended_result_codes(conn->db, 1);
 #endif
-	if (sql_check_error(conn->db)) {
-		return -1;
-	}
+	if (sql_check_error(conn->db) != RLM_SQL_OK) return RLM_SQL_ERROR;
 
 #ifdef HAVE_SQLITE3_CREATE_FUNCTION_V2
 	status = sqlite3_create_function_v2(conn->db, "GREATEST", -1, SQLITE_ANY, NULL,
@@ -433,7 +427,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		ERROR("rlm_sql_sqlite: Failed registering 'GREATEST' sql function: %s", sqlite3_errmsg(conn->db));
 	}
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
@@ -464,9 +458,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 #else
 	status = sqlite3_prepare(conn->db, query, strlen(query), &conn->statement, &z_tail);
 #endif
-	if (status != SQLITE_OK) {
-		return sql_check_error(conn->db);
-	}
+	if (status != SQLITE_OK) return sql_check_error(conn->db);
 
 	(void) sqlite3_step(conn->statement);
 
@@ -517,9 +509,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	/*
 	 *	Error getting next row
 	 */
-	if (sql_check_error(conn->db)) {
-		return -1;
-	}
+	if (sql_check_error(conn->db) != RLM_SQL_OK) return RLM_SQL_ERROR;
 
 	/*
 	 *	No more rows to process (were done)
@@ -534,9 +524,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	 */
 	if (conn->col_count == 0) {
 		conn->col_count = sql_num_fields(handle, config);
-		if (conn->col_count == 0) {
-			return -1;
-		}
+		if (conn->col_count == 0) return RLM_SQL_ERROR;
 	}
 
 	/*
@@ -613,8 +601,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle,
 	return 0;
 }
 
-static char const *sql_error(rlm_sql_handle_t *handle,
-			     UNUSED rlm_sql_config_t *config)
+static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 
@@ -625,8 +612,7 @@ static char const *sql_error(rlm_sql_handle_t *handle,
 	return "Invalid handle";
 }
 
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle,
-			    UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	return sql_free_result(handle, config);
 }
@@ -645,6 +631,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 
 
 /* Exported to rlm_sql */
+extern rlm_sql_module_t rlm_sql_sqlite;
 rlm_sql_module_t rlm_sql_sqlite = {
 	.name				= "rlm_sql_sqlite",
 	.mod_instantiate		= mod_instantiate,

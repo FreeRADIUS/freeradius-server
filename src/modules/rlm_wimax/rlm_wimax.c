@@ -55,7 +55,7 @@ static const CONF_PARSER module_config[] = {
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 
@@ -462,6 +462,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_wimax;
 module_t rlm_wimax = {
 	RLM_MODULE_INIT,
 	"wimax",

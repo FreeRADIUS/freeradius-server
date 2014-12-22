@@ -166,6 +166,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_dhcp;
 module_t rlm_dhcp = {
 	RLM_MODULE_INIT,
 	"dhcp",

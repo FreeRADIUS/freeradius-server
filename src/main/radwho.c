@@ -52,13 +52,13 @@ static int showcid = 0;
 log_lvl_t debug_flag = 0;
 char const *progname = "radwho";
 char const *radlog_dir = NULL;
-char const *radutmp_file = NULL;
-bool check_config = false;
 
-char const *raddb_dir = NULL;
+static char const *radutmp_file = NULL;
+static char const *raddb_dir = NULL;
+
 char const *radacct_dir = NULL;
 char const *radlib_dir = NULL;
-uint32_t myip = INADDR_ANY;
+
 bool log_stripped_names;
 
 /*
@@ -79,8 +79,8 @@ pid_t rad_waitpid(pid_t pid, int *status)
 }
 #endif
 
-struct radutmp_config_t {
-  char const *radutmp_fn;
+static struct radutmp_config_t {
+	char const *radutmp_fn;
 } radutmpconfig;
 
 static const CONF_PARSER module_config[] = {
@@ -237,8 +237,8 @@ int main(int argc, char **argv)
 			radutmp_file = optarg;
 			break;
 		case 'h':
-			usage(0);
-			break;
+			usage(0);	/* never returns */
+
 		case 'S':
 			hideshell = 1;
 			break;
@@ -284,9 +284,9 @@ int main(int argc, char **argv)
 		case 'Z':
 			zap = 1;
 			break;
+
 		default:
-			usage(1);
-			break;
+			usage(1);	/* never returns */
 	}
 
 	/*

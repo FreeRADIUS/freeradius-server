@@ -13,8 +13,6 @@ RCSID("$Id$")
 #include "../include/sha1.h"
 
 #ifndef WITH_OPENSSL_SHA1
-#  define blk0(i) (block->l[i] = htonl(block->l[i]))
-
 #  define rol(value, bits) (((value) << (bits)) | ((value) >> (32 - (bits))))
 
 /* blk0() and blk() perform the initial expand. */

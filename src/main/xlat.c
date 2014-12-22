@@ -92,7 +92,7 @@ static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 
 static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
 
-char const *radiusd_short_version = RADIUSD_VERSION_STRING;
+static char const *radiusd_short_version = RADIUSD_VERSION_STRING;
 
 /** Print length of its RHS.
  *
@@ -107,7 +107,7 @@ static ssize_t xlat_strlen(UNUSED void *instance, UNUSED REQUEST *request,
 /** Print the size of the attribute in bytes.
  *
  */
-static ssize_t xlat_length(UNUSED void *instance, UNUSED REQUEST *request,
+static ssize_t xlat_length(UNUSED void *instance, REQUEST *request,
 			   char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
@@ -465,7 +465,7 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 	/*
 	 *	See modcall, "FOREACH" for how this works.
 	 */
-	pvp = (VALUE_PAIR **) request_data_reference(request, radius_get_vp, *(int*) instance);
+	pvp = (VALUE_PAIR **) request_data_reference(request, (void *)radius_get_vp, *(int*) instance);
 	if (!pvp || !*pvp) {
 		*out = '\0';
 		return 0;

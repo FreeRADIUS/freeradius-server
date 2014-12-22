@@ -2647,12 +2647,13 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 /** Verify the Request/Response Authenticator (and Message-Authenticator if present) of a packet
  *
  */
-int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
-	       char const *secret)
+int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
 {
-	uint8_t			*ptr;
-	int			length;
-	int			attrlen;
+	uint8_t		*ptr;
+	int		length;
+	int		attrlen;
+	int		rcode;
+	char		buffer[32];
 
 	if (!packet || !packet->data) return -1;
 
@@ -2716,7 +2717,6 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 				    (uint8_t const *) secret, strlen(secret));
 			if (rad_digest_cmp(calc_auth_vector, msg_auth_vector,
 				   sizeof(calc_auth_vector)) != 0) {
-				char buffer[32];
 				fr_strerror_printf("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
@@ -2742,7 +2742,6 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	so can't validate the authenticators.
 	 */
 	if ((packet->code == 0) || (packet->code >= FR_MAX_PACKET_CODE)) {
-		char buffer[32];
 		fr_strerror_printf("Received Unknown packet code %d "
 			   "from client %s port %d: Cannot validate Request/Response Authenticator.",
 			   packet->code,
@@ -2757,9 +2756,6 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 *	Calculate and/or verify Request or Response Authenticator.
 	 */
 	switch (packet->code) {
-	int rcode;
-	char buffer[32];
-
 	case PW_CODE_ACCESS_REQUEST:
 	case PW_CODE_STATUS_SERVER:
 		/*
@@ -3859,7 +3855,7 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 	return 2 + rcode;
 }
 
-fr_thread_local_setup(uint8_t *, rad_vp2data_buff);
+fr_thread_local_setup(uint8_t *, rad_vp2data_buff)
 
 /** Converts vp_data to network byte order
  *

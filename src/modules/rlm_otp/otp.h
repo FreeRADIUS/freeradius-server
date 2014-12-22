@@ -54,6 +54,7 @@ RCSIDH(otp_h, "$Id$")
 #define OTP_MAX_CHAP_RESPONSE_LEN	50
 
 typedef enum otp_pwe {
+	PWE_NONE	= 0,
 	PWE_PAP 	= 1,
 	PWE_CHAP 	= 3,
 	PWE_MSCHAP 	= 5,

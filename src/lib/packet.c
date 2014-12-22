@@ -278,8 +278,6 @@ typedef struct fr_packet_socket_t {
 #define SOCKOFFSET_MASK (MAX_SOCKETS - 1)
 #define SOCK2OFFSET(sockfd) ((sockfd * FNV_MAGIC_PRIME) & SOCKOFFSET_MASK)
 
-#define MAX_QUEUES (8)
-
 /*
  *	Structure defining a list of packets (incoming or outgoing)
  *	that should be managed.
@@ -616,7 +614,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 {
 	int i, j, k, fd, id, start_i, start_j, start_k;
 	int src_any = 0;
-	fr_packet_socket_t *ps;
+	fr_packet_socket_t *ps= NULL;
 	RADIUS_PACKET *request = *request_p;
 
 	VERIFY_PACKET(request);

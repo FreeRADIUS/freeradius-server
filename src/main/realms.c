@@ -777,7 +777,7 @@ skip_port:
 	/*
 	 *	Mark it as already processed
 	 */
-	cf_data_add(cs, "home_server", null_free, null_free);
+	cf_data_add(cs, "home_server", (void *)null_free, null_free);
 
 	return true;
 }
@@ -2133,7 +2133,6 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 		if (!request->proxy) {
 			ERROR("no memory");
 			fr_exit(1);
-			_exit(1);
 		}
 
 		/*
@@ -2182,12 +2181,13 @@ home_server_t *home_server_ldb(char const *realmname,
 	home_server_t	*found = NULL;
 	home_server_t	*zombie = NULL;
 	VALUE_PAIR	*vp;
+	uint32_t	hash;
 
 	/*
 	 *	Determine how to pick choose the home server.
 	 */
 	switch (pool->type) {
-		uint32_t hash;
+
 
 		/*
 		 *	For load-balancing by client IP address, we

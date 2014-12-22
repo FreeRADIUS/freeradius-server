@@ -20,13 +20,31 @@ AC_DEFUN([AX_CC_QUNUSED_ARGUMENTS_FLAG],[
 
     CFLAGS_SAVED=$CFLAGS
     CFLAGS="$CFLAGS -Werror -Qunused-arguments -foobar"
-    
+
     AC_LANG_PUSH(C)
     AC_TRY_COMPILE(
       [],
       [return 0;],
       [ax_cv_cc_qunused_arguments_flag="yes"],
       [ax_cv_cc_qunused_arguments_flag="no"])
+    AC_LANG_POP
+
+    CFLAGS="$CFLAGS_SAVED"
+  ])
+])
+
+AC_DEFUN([AX_CC_WEVERYTHING_FLAG],[
+  AC_CACHE_CHECK([for the compiler flag "-Weverything"], [ax_cv_cc_weverything_flag],[
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Weverything -Wno-unused-macros -Wno-unreachable-code-return"
+
+    AC_LANG_PUSH(C)
+    AC_TRY_COMPILE(
+      [],
+      [return 0;],
+      [ax_cv_cc_weverything_flag="yes"],
+      [ax_cv_cc_weverything_flag="no"])
     AC_LANG_POP
 
     CFLAGS="$CFLAGS_SAVED"
@@ -70,25 +88,25 @@ AC_DEFUN([AX_SYSTEM_CORES],[
           #else
           #  include <unistd.h>
           #endif
-          
+
           int main (int argc, char *argv[])
           {
             uint32_t count;
-            
+
             #ifdef WIN32
             SYSTEM_INFO sysinfo;
             GetSystemInfo(&sysinfo);
-      
+
             count = sysinfo.dwNumberOfProcessors;
-            
+
             #elif MACOS
             int nm[2];
             size_t len = 4;
-      
+
             nm[0] = CTL_HW;
             nm[1] = HW_AVAILCPU;
             sysctl(nm, 2, &count, &len, NULL, 0);
-      
+
             if(count < 1) {
               nm[1] = HW_NCPU;
               sysctl(nm, 2, &count, &len, NULL, 0);
@@ -96,7 +114,7 @@ AC_DEFUN([AX_SYSTEM_CORES],[
                 count = 1;
               }
             }
-            
+
             #else
       	    count = sysconf(_SC_NPROCESSORS_ONLN);
             #endif

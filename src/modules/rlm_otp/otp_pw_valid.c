@@ -115,6 +115,9 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 	 *	Unfortunately (?) otpd must do this also.
 	 */
 	switch (otp_request.pwe.pwe) {
+	case PWE_NONE:
+		return RLM_MODULE_NOOP;
+
 	case PWE_PAP:
 		if (strlcpy(otp_request.pwe.u.pap.passcode, rvp->vp_strvalue,
 				sizeof(otp_request.pwe.u.pap.passcode)) >=

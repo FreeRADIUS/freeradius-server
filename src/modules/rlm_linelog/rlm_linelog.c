@@ -330,6 +330,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 /*
  *	Externally visible module definition.
  */
+extern module_t rlm_linelog;
 module_t rlm_linelog = {
 	RLM_MODULE_INIT,
 	"linelog",

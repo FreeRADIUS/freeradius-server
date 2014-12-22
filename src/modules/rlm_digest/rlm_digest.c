@@ -592,6 +592,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_digest;
 module_t rlm_digest = {
 	RLM_MODULE_INIT,
 	"digest",

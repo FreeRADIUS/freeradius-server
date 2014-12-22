@@ -166,7 +166,7 @@ static int responsecmp(UNUSED void *instance,
  */
 static int genericcmp(UNUSED void *instance,
 		      REQUEST *request,
-		      UNUSED VALUE_PAIR *req,
+		      VALUE_PAIR *req,
 		      VALUE_PAIR *check,
 		      UNUSED VALUE_PAIR *check_pairs,
 		      UNUSED VALUE_PAIR **reply_pairs)

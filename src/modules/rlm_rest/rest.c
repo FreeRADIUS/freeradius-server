@@ -88,6 +88,12 @@ const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
 #  define CURLAUTH_NTLM_WB	0
 #endif
 
+/*
+ *  CURL headers do:
+ *
+ *  #define curl_easy_setopt(handle,opt,param) curl_easy_setopt(handle,opt,param)
+ */
+DIAG_OFF(disabled-macro-expansion)
 #define SET_OPTION(_x, _y)\
 do {\
 	if ((ret = curl_easy_setopt(candle, _x, _y)) != CURLE_OK) {\
@@ -984,7 +990,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_sectio
  * @return the number of VALUE_PAIRs processed or -1 on unrecoverable error.
  */
 static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
-			    REQUEST *request, void *handle, char *raw, UNUSED size_t rawlen)
+			    REQUEST *request, void *handle, char *raw, size_t rawlen)
 {
 	rlm_rest_handle_t	*randle = handle;
 	CURL			*candle = randle->handle;
@@ -1268,18 +1274,19 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
  * 	      when 0 no more attributes will be processed.
  * @return number of attributes created or < 0 on error.
  */
-static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
+static int json_pairmake(rlm_rest_t *instance, rlm_rest_section_t *section,
 			 REQUEST *request, json_object *object, UNUSED int level, int max)
 {
 	struct lh_entry *entry;
 	int max_attrs = max;
 
 	if (!json_object_is_type(object, json_type_object)) {
-		REDEBUG("Can't process VP container, expected JSON object"
 #ifdef HAVE_JSON_TYPE_TO_NAME
+		REDEBUG("Can't process VP container, expected JSON object"
 			"got \"%s\", skipping...",
 			json_type_to_name(json_object_get_type(object)));
 #else
+		REDEBUG("Can't process VP container, expected JSON object"
 			", skipping...");
 #endif
 		return -1;
@@ -1467,7 +1474,7 @@ static int json_pairmake(rlm_rest_t *instance, UNUSED rlm_rest_section_t *sectio
  * @param[in] rawlen Length of data in raw buffer.
  * @return the number of VALUE_PAIRs processed or -1 on unrecoverable error.
  */
-static int rest_decode_json(rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
+static int rest_decode_json(rlm_rest_t *instance, rlm_rest_section_t *section,
 			    REQUEST *request, UNUSED void *handle, char *raw, UNUSED size_t rawlen)
 {
 	char const *p = raw;
@@ -2301,8 +2308,7 @@ int rest_request_perform(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t 
  * @param[in] handle to use.
  * @return 0 on success or -1 on error.
  */
-int rest_response_decode(rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
-			 REQUEST *request, void *handle)
+int rest_response_decode(rlm_rest_t *instance, rlm_rest_section_t *section, REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t	*randle = handle;
 	rlm_rest_curl_context_t	*ctx = randle->ctx;

@@ -719,6 +719,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *r
 }
 
 /* globally exported name */
+extern module_t rlm_preprocess;
 module_t rlm_preprocess = {
 	RLM_MODULE_INIT,
 	"preprocess",

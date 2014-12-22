@@ -39,7 +39,7 @@ static const CONF_PARSER module_config[] = {
 };
 
 DIAG_OFF(format-nonliteral)
-static ssize_t xlat_date_convert(void *instance, UNUSED REQUEST *request, char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
 {
 	rlm_date_t *inst = instance;
 	time_t date = 0;
@@ -114,6 +114,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
+extern module_t rlm_date;
 module_t rlm_date = {
 	RLM_MODULE_INIT,
 	"date",				/* Name */

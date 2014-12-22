@@ -30,8 +30,6 @@ RCSID("$Id$")
 
 #define USEC (1000000)
 #define EMA_SCALE (100)
-#define PREC (USEC * EMA_SCALE)
-
 #define F_EMA_SCALE (1000000)
 
 static struct timeval	start_time;

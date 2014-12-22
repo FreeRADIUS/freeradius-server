@@ -125,7 +125,7 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 static void rlm_rest_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section, void *handle)
 {
 	rest_request_cleanup(instance, section, handle);
-};
+}
 
 /*
  *	Simple xlat to read text data from a URL
@@ -359,7 +359,7 @@ finish:
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_rest_t *inst = instance;
 	rlm_rest_section_t *section = &inst->authenticate;
@@ -464,7 +464,7 @@ finish:
 /*
  *	Send accounting info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
 	rlm_rest_t *inst = instance;
 	rlm_rest_section_t *section = &inst->accounting;
@@ -520,7 +520,7 @@ finish:
 /*
  *	Send post-auth info to a REST API endpoint
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_rest_t *inst = instance;
 	rlm_rest_section_t *section = &inst->post_auth;
@@ -786,6 +786,7 @@ static int mod_detach(void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_rest;
 module_t rlm_rest = {
 	RLM_MODULE_INIT,
 	"rlm_rest",

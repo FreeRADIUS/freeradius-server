@@ -667,7 +667,6 @@ static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
 		case EAPSIM_START:
 			return process_eap_sim_start(handler, vps);
 		}
-		break;
 
 	case EAPSIM_SERVER_CHALLENGE:
 		switch (subtype) {
@@ -683,7 +682,6 @@ static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
 		case EAPSIM_CHALLENGE:
 			return process_eap_sim_challenge(handler, vps);
 		}
-		break;
 
 	default:
 		rad_assert(0 == 1);
@@ -696,6 +694,7 @@ static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
+extern rlm_eap_module_t rlm_eap_sim;
 rlm_eap_module_t rlm_eap_sim = {
 	"eap_sim",
 	NULL,				/* XXX attach */

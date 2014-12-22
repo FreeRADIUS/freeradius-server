@@ -442,7 +442,6 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		}
 
 		goto do_initiate;
-		break;
 
 		/*
 		 *	Key off of the configured sub-modules.

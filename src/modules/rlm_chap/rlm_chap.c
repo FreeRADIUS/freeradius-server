@@ -26,8 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance,
-				  UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	if (!pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) {
 		return RLM_MODULE_NOOP;
@@ -51,8 +50,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance,
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
-				     UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR *passwd_item, *chap;
 	uint8_t pass_str[MAX_STRING_LEN];
@@ -154,6 +152,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_chap;
 module_t rlm_chap = {
 	 RLM_MODULE_INIT,
 	"CHAP",

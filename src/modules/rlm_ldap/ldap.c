@@ -784,7 +784,7 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 			     char const *dn, int scope, char const *filter, char const * const *attrs,
 			     LDAPMessage **result)
 {
-	ldap_rcode_t	status;
+	ldap_rcode_t	status = LDAP_PROC_ERROR;
 	LDAPMessage	*our_result = NULL;
 
 	int		msgid;		// Message id returned by
@@ -930,7 +930,7 @@ finish:
 ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			     char const *dn, LDAPMod *mods[])
 {
-	ldap_rcode_t	status;
+	ldap_rcode_t	status = LDAP_PROC_ERROR;
 
 	int		msgid;		// Message id returned by ldap_search_ext.
 

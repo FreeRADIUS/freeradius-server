@@ -196,6 +196,7 @@ static int CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, eap_handler_
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
+extern rlm_eap_module_t rlm_eap_leap;
 rlm_eap_module_t rlm_eap_leap = {
 	"eap_leap",
 	NULL,			/* attach */

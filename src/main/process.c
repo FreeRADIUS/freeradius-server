@@ -329,7 +329,7 @@ STATE_MACHINE_DECL(coa_separate);
 
 #define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
 
-static void _rad_panic(char const *file, unsigned int line, char const *msg)
+static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char const *msg)
 {
 	ERROR("[%s:%d] %s", file, line, msg);
 #ifndef NDEBUG
@@ -538,7 +538,6 @@ STATE_MACHINE_DECL(request_done)
 	} else if (request->parent && (request->parent->coa == request)) {
 		coa_separate(request, FR_ACTION_TIMER);
 	}
-
 #endif
 
 	/*
@@ -1022,7 +1021,7 @@ static void request_process_timer(REQUEST *request)
 
 }
 
-static void request_queue_or_run(UNUSED REQUEST *request,
+static void request_queue_or_run(REQUEST *request,
 				 fr_request_process_t process)
 {
 #ifdef DEBUG_STATE_MACHINE
@@ -2165,7 +2164,7 @@ static void remove_from_proxy_hash(REQUEST *request)
 static int insert_into_proxy_hash(REQUEST *request)
 {
 	char buf[128];
-	int rcode, tries;
+	int rcode = 0, tries;
 	void *proxy_listener;
 
 	VERIFY_REQUEST(request);
@@ -3975,8 +3974,10 @@ static void coa_timer(REQUEST *request)
 
 	rad_assert(request->parent == NULL);
 
-	if (request->proxy_reply) return request_process_timer(request);
-
+	if (request->proxy_reply) {
+		request_process_timer(request);
+		return;
+	}
 	gettimeofday(&now, NULL);
 
 	if (request->delay == 0) {
@@ -4250,7 +4251,7 @@ STATE_MACHINE_DECL(coa_running)
  *	Event handlers.
  *
  ***********************************************************************/
-static void event_socket_handler(UNUSED fr_event_list_t *xel, UNUSED int fd, void *ctx)
+static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx)
 {
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 
@@ -5158,7 +5159,7 @@ void radius_event_free(void)
 			}
 #endif
 
-			rbtree_walk(pl, RBTREE_DELETE_ORDER, NULL, request_delete_cb);
+			rbtree_walk(pl, RBTREE_DELETE_ORDER, request_delete_cb, NULL);
 			num = rbtree_num_elements(pl);
 			if (num > 0) {
 				ERROR("Request list has %d requests still in it.", num);

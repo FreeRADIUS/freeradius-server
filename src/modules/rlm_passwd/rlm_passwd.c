@@ -574,6 +574,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 #undef inst
 }
 
+extern module_t rlm_passwd;
 module_t rlm_passwd = {
 	RLM_MODULE_INIT,
 	"passwd",

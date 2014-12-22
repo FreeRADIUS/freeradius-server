@@ -738,6 +738,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *requ
 #endif
 
 /* globally exported name */
+extern module_t rlm_radutmp;
 module_t rlm_radutmp = {
 	RLM_MODULE_INIT,
 	"radutmp",

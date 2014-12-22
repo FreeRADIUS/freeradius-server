@@ -334,6 +334,7 @@ static void cache_release(UNUSED rlm_cache_t *inst, REQUEST *request, rlm_cache_
 	*handle = NULL;
 }
 
+extern cache_module_t rlm_cache_rbtree;
 cache_module_t rlm_cache_rbtree = {
 	"rlm_cache_rbtree",
 	mod_instantiate,

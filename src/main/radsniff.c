@@ -42,7 +42,7 @@ RCSID("$Id$")
 #endif
 
 static rs_t *conf;
-struct timeval start_pcap = {0, 0};
+static struct timeval start_pcap = {0, 0};
 static char timestr[50];
 
 static rbtree_t *request_tree = NULL;
@@ -77,7 +77,7 @@ static int rs_useful_codes[] = {
 	PW_CODE_COA_NAK,			//!< RFC3575/RFC5176 - CoA-Nak (not willing to perform)
 };
 
-const FR_NAME_NUMBER rs_events[] = {
+static const FR_NAME_NUMBER rs_events[] = {
 	{ "received",	RS_NORMAL	},
 	{ "norsp",	RS_LOST		},
 	{ "rtx",	RS_RTX		},
@@ -1549,7 +1549,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	}
 }
 
-static void rs_got_packet(UNUSED fr_event_list_t *el, int fd, void *ctx)
+static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 {
 	static uint64_t	count = 0;	/* Packets seen */
 	rs_event_t	*event = ctx;
@@ -1813,7 +1813,7 @@ static void rs_signal_self(int sig)
 /** Read the last signal from the signal pipe
  *
  */
-static void rs_signal_action(UNUSED fr_event_list_t *list, int fd, UNUSED void *ctx)
+static void rs_signal_action(fr_event_list_t *list, int fd, UNUSED void *ctx)
 {
 	int sig;
 	ssize_t ret;
@@ -2028,8 +2028,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'h':
-			usage(0);
-			break;
+			usage(0);	/* never returns */
 
 		case 'i':
 			*in_head = fr_pcap_init(conf, optarg, PCAP_INTERFACE_IN);
@@ -2100,7 +2099,6 @@ int main(int argc, char *argv[])
 			INFO("%s %s", radsniff_version, pcap_lib_version());
 #endif
 			exit(EXIT_SUCCESS);
-			break;
 
 		case 'w':
 			out = fr_pcap_init(conf, optarg, PCAP_FILE_OUT);

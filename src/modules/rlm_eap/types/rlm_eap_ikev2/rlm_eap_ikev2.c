@@ -517,6 +517,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
+extern rlm_eap_module_t rlm_eap_ikev2;
 rlm_eap_module_t rlm_eap_ikev2 = {
 	"eap_ikev2",
 	ikev2_attach,			/* attach */

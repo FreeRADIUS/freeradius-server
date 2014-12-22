@@ -50,8 +50,7 @@ static bool filedone = false;
 static int totalapp = 0;
 static int totaldeny = 0;
 static char filesecret[256];
-char const *radius_dir = NULL;
-char const *dict_dir = NULL;
+static char const *radius_dir = NULL;
 char const *progname = "radeapclient";
 /* fr_randctx randctx; */
 
@@ -63,9 +62,9 @@ char const *radiusd_version = "";
 #endif
 
 log_lvl_t debug_flag = 0;
-char password[256];
+static char password[256];
 
-struct eapsim_keys eapsim_mk;
+static struct eapsim_keys eapsim_mk;
 
 static void map_eap_methods(RADIUS_PACKET *req);
 static void unmap_eap_methods(RADIUS_PACKET *rep);
@@ -1081,7 +1080,7 @@ int main(int argc, char **argv)
 		case 'v':
 			printf("$Id$ built on "__DATE__ "at "__TIME__ "");
 			exit(0);
-			break;
+
 	       case 'S':
 		       fp = fopen(optarg, "r");
 		       if (!fp) {
@@ -1113,7 +1112,6 @@ int main(int argc, char **argv)
 		case 'h':
 		default:
 			usage();
-			break;
 		}
 	}
 	argc -= (optind - 1);

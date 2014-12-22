@@ -50,6 +50,7 @@ RCSID("$Id$")
 #endif
 
 struct main_config_t main_config;
+extern fr_cond_t *debug_condition;
 fr_cond_t *debug_condition;
 extern bool log_dates_utc;
 
@@ -222,11 +223,6 @@ static const CONF_PARSER bootstrap_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }
 };
-
-
-
-#define MAX_ARGV (256)
-
 
 static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
@@ -725,8 +721,8 @@ int main_config_init(void)
 	}
 #endif
 
-#ifdef S_IROTH
-	if (0 && (statbuf.st_mode & S_IROTH) != 0) {
+#if 0 && defined(S_IROTH)
+	if (statbuf.st_mode & S_IROTH != 0) {
 		ERROR("Configuration directory %s is globally readable.  Refusing to start due to insecure configuration.",
 		       radius_dir);
 		return -1;

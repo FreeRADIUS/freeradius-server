@@ -168,6 +168,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 }
 #endif
 
+extern module_t rlm_sometimes;
 module_t rlm_sometimes = {
 	RLM_MODULE_INIT,
 	"sometimes",

@@ -254,7 +254,6 @@ static int eapmessage_verify(REQUEST *request,
 		RDEBUG2("EAP type %s (%d)", eap_type2name(eap_method),
 			eap_method);
 		return 1;
-		break;
 	}
 
 	return 0;

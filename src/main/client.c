@@ -69,8 +69,7 @@ void client_free(RADCLIENT *client)
 		time_t now;
 
 		if (!deleted_clients) {
-			deleted_clients = fr_fifo_create(1024,
-							 (void *) client_free);
+			deleted_clients = fr_fifo_create(1024, (void (*)(void *))client_free);
 			if (!deleted_clients) return; /* MEMLEAK */
 		}
 
@@ -243,7 +242,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 					return 0;
 				}
 
-				if (cf_data_add(cs, "clients", clients, (void *) clients_free) < 0) {
+				if (cf_data_add(cs, "clients", clients, (void (*)(void *)) clients_free) < 0) {
 					radlog(L_ERR, "Failed to associate clients with virtual server %s",
 					       client->server);
 					clients_free(clients);

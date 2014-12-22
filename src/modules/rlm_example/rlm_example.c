@@ -106,7 +106,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR *state;
 
@@ -171,11 +171,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(UNUSED void *instance, UNUSED
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(UNUSED void *instance, REQUEST *request)
 {
-  request->simul_count=0;
+	request->simul_count=0;
 
-  return RLM_MODULE_OK;
+	return RLM_MODULE_OK;
 }
 #endif
 
@@ -199,6 +199,7 @@ static int mod_detach(UNUSED void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_example;
 module_t rlm_example = {
 	RLM_MODULE_INIT,
 	"example",
@@ -209,11 +210,11 @@ module_t rlm_example = {
 	mod_detach,			/* detach */
 	{
 		mod_authenticate,	/* authentication */
-		mod_authorize,	/* authorization */
+		mod_authorize,		/* authorization */
 #ifdef WITH_ACCOUNTING
-		mod_preacct,	/* preaccounting */
-		mod_accounting,	/* accounting */
-		mod_checksimul,	/* checksimul */
+		mod_preacct,		/* preaccounting */
+		mod_accounting,		/* accounting */
+		mod_checksimul,		/* checksimul */
 #else
 		NULL, NULL, NULL,
 #endif

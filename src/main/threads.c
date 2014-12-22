@@ -71,7 +71,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifndef WITH_GCD
 #define SEMAPHORE_LOCKED	(0)
-#define SEMAPHORE_UNLOCKED	(1)
 
 #define THREAD_RUNNING		(1)
 #define THREAD_CANCELLED	(2)
@@ -221,7 +220,16 @@ static pthread_mutex_t *ssl_mutexes = NULL;
 
 static unsigned long ssl_id_function(void)
 {
-	return (unsigned long) pthread_self();
+	unsigned long ret;
+	pthread_t thread = pthread_self();
+
+	if (sizeof(ret) >= sizeof(thread)) {
+		memcpy(&ret, &thread, sizeof(thread));
+	} else {
+		memcpy(&ret, &thread, sizeof(ret));
+	}
+
+	return ret;
 }
 
 static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSED int line)
@@ -454,9 +462,9 @@ static int request_dequeue(REQUEST **prequest)
 	time_t blocked;
 	static time_t last_complained = 0;
 	static time_t total_blocked = 0;
-	int num_blocked;
+	int num_blocked = 0;
 	RAD_LISTEN_TYPE i, start;
-	REQUEST *request;
+	REQUEST *request = NULL;
 	reap_children();
 
 	rad_assert(pool_initialized == true);
@@ -876,7 +884,7 @@ static int pid_cmp(void const *one, void const *two)
  *
  *	FIXME: What to do on a SIGHUP???
  */
-int thread_pool_init(UNUSED CONF_SECTION *cs, bool *spawn_flag)
+int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 {
 #ifndef WITH_GCD
 	uint32_t	i;

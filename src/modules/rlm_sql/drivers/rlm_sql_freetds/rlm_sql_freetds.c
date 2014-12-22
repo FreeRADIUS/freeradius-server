@@ -814,6 +814,7 @@ error:
 }
 
 /* Exported to rlm_sql */
+extern rlm_sql_module_t rlm_sql_freetds;
 rlm_sql_module_t rlm_sql_freetds = {
 	.name				= "rlm_sql_freetds",
 	.sql_socket_init		= sql_socket_init,

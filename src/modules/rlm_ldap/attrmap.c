@@ -334,7 +334,7 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
  *
  * This is *NOT* atomic, but there's no condition for which we should error out...
  */
-void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
+void rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
 		     rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry)
 {
 	value_pair_map_t const 	*map;

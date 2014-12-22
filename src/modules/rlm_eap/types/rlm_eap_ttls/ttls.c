@@ -168,7 +168,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		 *	is equivalent to no vendor.  This is stupid.
 		 */
 		offset = 8;
-		if ((length & (1 << 31)) != 0) {
+		if ((length & ((uint32_t)1 << 31)) != 0) {
 			memcpy(&vendor, data, sizeof(vendor));
 			vendor = ntohl(vendor);
 
@@ -491,7 +491,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		vendor = vp->da->vendor;
 		if (vendor != 0) {
 			attr = vp->da->attr & 0xffff;
-			length |= (1 << 31);
+			length |= ((uint32_t)1 << 31);
 		} else {
 			attr = vp->da->attr;
 		}
@@ -612,7 +612,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 /*
  *	Use a reply packet to determine what to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) process_reply(UNUSED eap_handler_t *handler, tls_session_t *tls_session,
+static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;

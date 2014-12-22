@@ -160,6 +160,7 @@ static int md5_authenticate(UNUSED void *arg, eap_handler_t *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
+extern rlm_eap_module_t rlm_eap_md5;
 rlm_eap_module_t rlm_eap_md5 = {
 	"eap_md5",
 	NULL,				/* attach */

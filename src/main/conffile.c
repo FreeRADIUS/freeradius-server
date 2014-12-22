@@ -48,7 +48,7 @@ typedef enum conf_property {
 	CONF_PROPERTY_INSTANCE,
 } CONF_PROPERTY;
 
-const FR_NAME_NUMBER conf_property_name[] = {
+static const FR_NAME_NUMBER conf_property_name[] = {
 	{ "name",	CONF_PROPERTY_NAME},
 	{ "instance",	CONF_PROPERTY_INSTANCE},
 
@@ -1416,8 +1416,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 /*
  *	Check XLAT things in pass 2.  But don't cache the xlat stuff anywhere.
  */
-int cf_section_parse_pass2(CONF_SECTION *cs, UNUSED void *base,
-			   CONF_PARSER const *variables)
+int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 {
 	int i;
 	ssize_t slen;
@@ -2388,8 +2387,8 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 		}
 #endif
 
-#ifdef S_IROTH
-		if (0 && (statbuf.st_mode & S_IROTH) != 0) {
+#if 0 && defined(S_IROTH)
+		if (statbuf.st_mode & S_IROTH) != 0) {
 			fclose(fp);
 			ERROR("Configuration file %s is globally readable.  "
 			      "Refusing to start due to insecure configuration", filename);

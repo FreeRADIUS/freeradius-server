@@ -295,7 +295,7 @@ done:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *state;
 	rlm_smsotp_t *inst = instance;
@@ -324,6 +324,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, UNUSED 
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_smsotp;
 module_t rlm_smsotp = {
 	RLM_MODULE_INIT,
 	"smsotp",

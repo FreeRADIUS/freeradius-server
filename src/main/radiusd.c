@@ -55,7 +55,6 @@ RCSID("$Id$")
  *  Global variables.
  */
 char const *progname = NULL;
-char const *radius_dir = NULL;
 char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 char const *radlib_dir = NULL;
@@ -69,7 +68,7 @@ char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #endif
 ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
-pid_t radius_pid;
+static pid_t radius_pid;
 
 /*
  *  Configuration items.

@@ -99,7 +99,7 @@ static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *req
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED void *instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	/*
 	 *	Register the expiration comparison operation.
@@ -117,6 +117,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED void *instance)
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_expiration;
 module_t rlm_expiration = {
 	RLM_MODULE_INIT,
 	"expiration",

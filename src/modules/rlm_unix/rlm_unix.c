@@ -156,7 +156,7 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 /*
  *	Read the config
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	struct unix_instance *inst = instance;
 
@@ -556,6 +556,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 }
 
 /* globally exported name */
+extern module_t rlm_unix;
 module_t rlm_unix = {
 	RLM_MODULE_INIT,
 	"System",

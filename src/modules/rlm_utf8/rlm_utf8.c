@@ -57,6 +57,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED void *instance, REQUES
  *	The server will then take care of ensuring that the module
  *	is single-threaded.
  */
+extern module_t rlm_utf8;
 module_t rlm_utf8 = {
 	RLM_MODULE_INIT,
 	"utf8",

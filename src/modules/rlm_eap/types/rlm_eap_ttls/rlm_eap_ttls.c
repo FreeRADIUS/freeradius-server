@@ -334,7 +334,6 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 		rad_assert(handler->request->proxy != NULL);
 #endif
 		return 1;
-		break;
 
 	default:
 		break;
@@ -351,6 +350,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
+extern rlm_eap_module_t rlm_eap_ttls;
 rlm_eap_module_t rlm_eap_ttls = {
 	"eap_ttls",
 	eapttls_attach,			/* attach */
