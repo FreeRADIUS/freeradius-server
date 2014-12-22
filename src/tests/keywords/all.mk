@@ -25,9 +25,6 @@ BOOTSTRAP_EXISTS := $(addprefix $(DIR)/,$(addsuffix .attrs,$(KEYWORD_FILES)))
 BOOTSTRAP_NEEDS	 := $(filter-out $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
 BOOTSTRAP	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
 
-BOOTSTRAP_HAS	 := $(filter $(wildcard $(BOOTSTRAP_EXISTS)),$(BOOTSTRAP_EXISTS))
-BOOTSTRAP_COPY	 := $(subst $(DIR),$(BUILD_DIR)/tests/keywords,$(BOOTSTRAP_NEEDS))
-
 #
 #  For each file, look for precursor test.
 #  Ensure that each test depends on its precursors.
