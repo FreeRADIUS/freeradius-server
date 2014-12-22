@@ -72,9 +72,7 @@ static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
 static int command_write_magic(int newfd, listen_socket_t *sock);
 #endif
 
-static int last_listener = RAD_LISTEN_MAX;
-#define MAX_LISTENER (256)
-static fr_protocol_t master_listen[MAX_LISTENER];
+static fr_protocol_t master_listen[];
 
 /*
  *	Xlat for %{listen:foo}
