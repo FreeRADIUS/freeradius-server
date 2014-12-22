@@ -78,6 +78,15 @@ extern "C" {
 #endif
 
 /*
+ *	GCC and clang use different macros
+ */
+#ifdef __clang__
+# define DIAG_OPTIONAL DIAG_OFF(unknown-pragmas)
+#else
+# define DIAG_OPTIONAL DIAG_OFF(pragmas)
+#endif
+
+/*
  *	For dealing with APIs which are only deprecated in OSX (like the OpenSSL API)
  */
 #ifdef __APPLE__
