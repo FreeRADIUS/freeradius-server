@@ -1144,7 +1144,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			  char const *realm,
 			  char const *name, char const *secret,
 			  home_pool_type_t ldflag, home_pool_t **pool_p,
-			  int type, char const *server)
+			  home_type_t type, char const *server)
 {
 #ifdef WITH_PROXY
 	int i, insert_point, num_home_servers;
