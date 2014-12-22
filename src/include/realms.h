@@ -180,6 +180,7 @@ REALM		*realm_find2(char const *name); /* ... with name taken from realm_find */
 void		realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs);
 int		realm_pool_add(home_pool_t *pool, CONF_SECTION *cs);
 void		realm_pool_free(home_pool_t *pool);
+int		realm_home_server_add(home_server_t *home, CONF_SECTION *cs);
 int		realm_realm_add( REALM *r, CONF_SECTION *cs);
 
 void		home_server_update_request(home_server_t *home, REQUEST *request);
