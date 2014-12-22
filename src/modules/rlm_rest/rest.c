@@ -93,7 +93,7 @@ const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
  *
  *  #define curl_easy_setopt(handle,opt,param) curl_easy_setopt(handle,opt,param)
  */
-DIAG_OFF(pragmas)
+DIAG_OPTIONAL
 DIAG_OFF(disabled-macro-expansion)
 #define SET_OPTION(_x, _y)\
 do {\
