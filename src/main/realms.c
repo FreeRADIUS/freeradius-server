@@ -1215,11 +1215,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 			return 0;
 		}
 
-		/*
- 		 *  GCC throws signed comparison warning here without the cast
-		 *  very strange...
-		 */
-		if ((home_type_t) pool->server_type != type) {
+		if (pool->server_type != type) {
 			cf_log_err_cs(cs, "Inconsistent home server type for server pool \"%s\"", name);
 			return 0;
 		}
