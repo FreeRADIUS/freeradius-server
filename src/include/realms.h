@@ -141,7 +141,7 @@ typedef struct home_pool_t {
 	char const		*name;
 	home_pool_type_t	type;
 
-	int			server_type;
+	home_type_t    		server_type;
 	CONF_SECTION		*cs;
 
 	char const		*virtual_server; /* for pre/post-proxy */
