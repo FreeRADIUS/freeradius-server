@@ -948,8 +948,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server)
 #endif
 
 		{
-			cf_log_err_cs(cs,
-				      "secret must be at least 1 character long");
+			cf_log_err_cs(cs, "secret must be at least 1 character long");
 			goto error;
 		}
 	}
@@ -963,8 +962,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server)
 	if (c->coa_name) {
 		c->coa_pool = home_pool_byname(c->coa_name, HOME_TYPE_COA);
 		if (!c->coa_pool) {
-			c->coa_server = home_server_byname(c->coa_name,
-							   HOME_TYPE_COA);
+			c->coa_server = home_server_byname(c->coa_name, HOME_TYPE_COA);
 		}
 		if (!c->coa_pool && !c->coa_server) {
 			cf_log_err_cs(cs, "No such home_server or home_server_pool \"%s\"", c->coa_name);
