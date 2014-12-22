@@ -1084,11 +1084,6 @@ static char const *vp_tokens[] = {
 	"<`STRING`>"
 };
 
-extern int const fr_attr_max_tlv;
-extern int const fr_attr_shift[];
-extern int const fr_attr_mask[];
-
-
 /** Print one attribute and value to a string
  *
  * Print a VALUE_PAIR in the format:
