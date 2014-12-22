@@ -1,0 +1,5 @@
+#
+#  Test if the "users" file works
+#
+bob	Cleartext-Password := "hello"
+	Filter-Id := "success"
