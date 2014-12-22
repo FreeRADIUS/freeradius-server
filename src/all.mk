@@ -12,4 +12,4 @@ ifeq "$(shell [ -e src/freeradius-devel ] || ln -s include src/freeradius-devel)
 # do nothing
 endif
 
-SUBMAKEFILES := include/all.mk lib/all.mk tests/all.mk modules/all.mk main/all.mk
+SUBMAKEFILES := include/all.mk lib/all.mk modules/all.mk main/all.mk tests/all.mk
