@@ -85,7 +85,7 @@ $(TEST_DIR)/%.attrs: src/tests/$(MODULE_DIR)/%.attrs | $(TEST_DIR)
 #  ERROR line in the input.
 #
 $(TEST_DIR)/%: src/tests/$(MODULE_DIR)/%.unlang $(TEST_DIR)/%.attrs $(TESTBINDIR)/unittest | $(TEST_DIR) build.raddb
-	@echo UNIT-TEST $(notdir $@)
+	@echo MODULE-TEST $(MODULE_TEST) $(notdir $@)
 	@if ! MODULE_TEST_DIR=src/tests/$(MODULE_DIR) MODULE_TEST_UNLANG=src/tests/$(MODULE_DIR)/$(notdir $@).unlang $(TESTBIN)/unittest -D share -d src/tests/modules/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
 			cat $@.log; \
@@ -110,6 +110,16 @@ $(TEST_DIR)/%: src/tests/$(MODULE_DIR)/%.unlang $(TEST_DIR)/%.attrs $(TESTBINDIR
 #
 $(MODULE_TEST).test: $(addprefix $(TEST_DIR)/,$(patsubst %.unlang,%,$(MODULE_FILES)))
 
+#
+#  Clean rules
+#
 .PHONY: clean.$(MODULE_TEST).test
 clean.$(MODULE_TEST).test:
 	@rm -rf $(TEST_DIR)/
+
+#
+#  We COULD make all of the module tests depend on 'tests.unit tests.keywords tests.auth'
+#  But that is annoying when we just want to run tests for one module.
+#  Instead, we have the "all.mk" file in this directory depend omn the "tests.*" targets,
+#  which is good enough for most purposes.
+#
