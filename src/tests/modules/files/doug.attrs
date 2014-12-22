@@ -1,0 +1,11 @@
+#
+#  Input packet
+#
+User-Name = "doug"
+User-Password = "goodbye"
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
+Filter-Id == 'success'
