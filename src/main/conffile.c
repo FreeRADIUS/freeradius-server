@@ -295,8 +295,14 @@ static int _cf_section_free(CONF_SECTION *cs)
 	return 0;
 }
 
-/*
- *	Create a new CONF_PAIR
+/** Allocate a CONF_PAIR
+ *
+ * @param parent CONF_SECTION to hang this CONF_PAIR off of.
+ * @param attr name.
+ * @param value of CONF_PAIR.
+ * @param op T_OP_EQ, T_OP_SET etc.
+ * @param value_type T_BARE_WORD, T_DOUBLE_QUOTED_STRING, T_BACK_QUOTED_STRING
+ * @return NULL on error, else a new CONF_SECTION parented by parent.
  */
 CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
 			 FR_TOKEN op, FR_TOKEN value_type)
@@ -328,11 +334,39 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	return cp;
 }
 
-/*
- *	Allocate a CONF_SECTION
+/** Duplicate a CONF_PAIR
+ *
+ * @param parent to allocate new pair in.
+ * @param cp to duplicate.
+ * @return NULL on error, else a duplicate of the input pair.
  */
-CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1,
-			       char const *name2)
+CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
+{
+	rad_assert(parent);
+	rad_assert(cp);
+
+	return cf_pair_alloc(parent, cf_pair_attr(cp), cf_pair_value(cp),
+			     cf_pair_operator(cp), cf_pair_value_type(cp));
+}
+
+/** Add a configuration pair to a section
+ *
+ * @param parent section to add pair to.
+ * @param cp to add.
+ */
+void cf_pair_add(CONF_SECTION *parent, CONF_PAIR *cp)
+{
+	cf_item_add(parent, cf_pairtoitem(cp));
+}
+
+/** Allocate a CONF_SECTION
+ *
+ * @param parent CONF_SECTION to hang this CONF_SECTION off of.
+ * @param name1 Primary name.
+ * @param name2 Secondary name.
+ * @return NULL on error, else a new CONF_SECTION parented by parent.
+ */
+CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char const *name2)
 {
 	CONF_SECTION *cs;
 	char buffer[1024];
