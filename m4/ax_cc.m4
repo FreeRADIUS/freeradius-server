@@ -15,6 +15,51 @@ AC_DEFUN([AX_CC_IS_CLANG],[
   ])
 ])
 
+dnl #
+dnl # clang and gcc originally used different flags to specify c11 support
+dnl #
+AC_DEFUN([AX_CC_STD_C11],[
+  AC_CACHE_CHECK([for the compiler flag to enable C11 support], [ax_cv_cc_std_c11_flag],[
+    ax_cv_cc_std_c11_flag=
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -std=c11"
+
+    AC_LANG_PUSH(C)
+    AC_TRY_COMPILE(
+      [],
+      [
+        struct foo {
+          union {
+            int a;
+            int b;
+          };
+        } bar;
+        return 0;
+      ],
+      [ax_cv_cc_std_c11_flag="-std=c11"])
+
+    if test "x$ax_cv_cc_std_c11_flag" = x; then
+      CFLAGS="$CFLAGS_SAVED -std=c1x"
+      AC_TRY_COMPILE(
+        [],
+        [
+          struct foo {
+            union {
+              int a;
+              int b;
+            };
+          } bar;
+          return 0;
+        ],
+        [ax_cv_cc_std_c11_flag="-std=c1x"])
+    fi
+
+    AC_LANG_POP
+    CFLAGS="$CFLAGS_SAVED"
+  ])
+])
+
 AC_DEFUN([AX_CC_QUNUSED_ARGUMENTS_FLAG],[
   AC_CACHE_CHECK([for the compiler flag "-Qunused-arguments"], [ax_cv_cc_qunused_arguments_flag],[
 

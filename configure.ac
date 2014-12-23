@@ -140,12 +140,18 @@ else
   AC_SUBST(clang_path, "")
 fi
 
+AX_CC_STD_C11
+if test "x$ax_cv_cc_std_c11_flag" != x; then
+  CFLAGS="$CFLAGS $ax_cv_cc_std_c11_flag"
+else
+  AC_MSG_ERROR([FreeRADIUS requires a C11 compiler])
+fi
 
 dnl #
 dnl #  Set Default CFLAGS for GCC compatible compilers
 dnl #
 if test "x$GCC" = "xyes"; then
-  CFLAGS="$CFLAGS -Wall -std=c1x -D_GNU_SOURCE"
+  CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
 fi
 
 dnl #
