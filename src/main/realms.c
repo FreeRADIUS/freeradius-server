@@ -795,7 +795,7 @@ skip_port:
 }
 
 static home_pool_t *server_pool_alloc(realm_config_t *rc, char const *name, home_pool_type_t type,
-				      int server_type, int num_home_servers)
+				      home_type_t server_type, int num_home_servers)
 {
 	home_pool_t *pool;
 
@@ -823,7 +823,7 @@ static home_pool_t *server_pool_alloc(realm_config_t *rc, char const *name, home
  * of where they appear in the configuration.
  */
 static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
-				  char const *name, int server_type,
+				  char const *name, home_type_t server_type,
 				  home_server_t **phome)
 {
 	home_server_t myhome, *home;
@@ -988,7 +988,7 @@ int realm_home_server_add(home_server_t *home, CONF_SECTION *cs)
 }
 
 static int server_pool_add(realm_config_t *rc,
-			   CONF_SECTION *cs, int server_type, int do_print)
+			   CONF_SECTION *cs, home_type_t server_type, bool do_print)
 {
 	char const *name2;
 	home_pool_t *pool = NULL;
@@ -1560,7 +1560,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 #ifdef WITH_PROXY
 static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 			     char const *name, home_pool_t **dest,
-			     int server_type, int do_print)
+			     home_type_t server_type, bool do_print)
 {
 	home_pool_t mypool, *pool;
 
