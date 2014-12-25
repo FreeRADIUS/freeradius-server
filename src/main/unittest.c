@@ -401,6 +401,121 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 	fflush(fp);
 }
 
+
+#include <freeradius-devel/modpriv.h>
+
+
+/*
+ *	%{poke:sql.foo=bar}
+ */
+static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
+			 char const *fmt, char *out, size_t outlen)
+{
+	int i;
+	void *data, *base;
+	char *p, *q;
+	module_instance_t *mi;
+	char *buffer;
+	CONF_SECTION *modules;
+	CONF_PAIR *cp;
+	CONF_SECTION *cs;
+	CONF_PARSER const *variables;
+
+	rad_assert(request != NULL);
+	rad_assert(fmt != NULL);
+	rad_assert(out != NULL);
+
+	if (outlen < 1) return 0;
+
+	modules = cf_section_sub_find(request->root->config, "modules");
+	if (!modules) return 0;
+
+	buffer = talloc_strdup(request, fmt);
+	if (!buffer) return 0;
+
+	p = strchr(buffer, '.');
+	if (!p) return 0;
+
+	*(p++) = '\0';
+
+	mi = find_module_instance(modules, buffer, false);
+	if (!mi) {
+		RDEBUG("Failed finding module '%s'", buffer);
+	fail:
+		talloc_free(buffer);
+		return 0;
+	}
+
+	q = strchr(p, '=');
+	if (!q) {
+		RDEBUG("Failed finding '=' in string '%s'", fmt);
+		goto fail;
+	}
+
+	*(q++) = '\0';
+
+	if (strchr(p, '.') != NULL) {
+		RDEBUG("Can't do sub-sections right now");
+		goto fail;
+	}
+
+	cp = cf_pair_find(mi->cs, p);
+	if (!cp) {
+		RDEBUG("No such item '%s'", p);
+		goto fail;
+	}
+
+	if (!cf_pair_replace(mi->cs, cp, q)) {
+		RDEBUG("Failed replacing pair");
+		goto fail;
+	}
+
+	cs = mi->cs;
+	base = mi->insthandle;
+	variables = mi->entry->module->config;
+
+	/*
+	 *	Handle the known configuration parameters.
+	 */
+	for (i = 0; variables[i].name != NULL; i++) {
+		int ret;
+
+		if (variables[i].type == PW_TYPE_SUBSECTION) {
+			continue;
+		} /* else it's a CONF_PAIR */
+
+		/*
+		 *	Not the pair we want.  Skip it.
+		 */
+		if (strcmp(variables[i].name, p) != 0) continue;
+
+		if (variables[i].data) {
+			data = variables[i].data; /* prefer this. */
+		} else if (base) {
+			data = ((char *)base) + variables[i].offset;
+		} else {
+			DEBUG2("Internal sanity check 2 failed in cf_section_parse");
+			goto fail;
+		}
+
+		/*
+		 *	Parse the pair we found, or a default value.
+		 */
+		ret = cf_item_parse(cs, variables[i].name, variables[i].type, data, variables[i].dflt);
+		if (ret < 0) {
+			goto fail;
+		}
+
+		break;		/* we found it, don't do any more */
+	}
+
+	talloc_free(buffer);
+
+	*out = '\0';
+	return 0;
+}
+
+
 /*
  *	The main guy.
  */
@@ -540,6 +655,11 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
+	if (xlat_register("poke", xlat_poke, NULL, NULL) < 0) {
+		rcode = EXIT_FAILURE;
+		goto finish;
+	}
+
 	fr_state_init();
 
 	/* Set the panic action (if required) */
@@ -664,6 +784,8 @@ finish:
 	 *	Detach any modules.
 	 */
 	modules_free();
+
+	xlat_unregister("poke", xlat_poke, NULL);
 
 	xlat_free();		/* modules may have xlat's */
 
