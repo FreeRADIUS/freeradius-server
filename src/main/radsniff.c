@@ -1813,7 +1813,11 @@ static void rs_signal_self(int sig)
 /** Read the last signal from the signal pipe
  *
  */
-static void rs_signal_action(fr_event_list_t *list, int fd, UNUSED void *ctx)
+static void rs_signal_action(
+#ifndef HAVE_COLLECTDC_H
+UNUSED
+#endif
+fr_event_list_t *list, int fd, UNUSED void *ctx)
 {
 	int sig;
 	ssize_t ret;
