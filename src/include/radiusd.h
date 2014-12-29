@@ -123,6 +123,7 @@ typedef struct radclient {
 	char const		*coa_name;
 	home_server_t		*coa_server;
 	home_pool_t		*coa_pool;
+	bool			defines_coa_server;	//!< Client also defines a home_server.
 #endif
 } RADCLIENT;
 

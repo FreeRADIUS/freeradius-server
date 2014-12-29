@@ -189,8 +189,8 @@ int		realm_realm_add( REALM *r, CONF_SECTION *cs);
 void		home_server_update_request(home_server_t *home, REQUEST *request);
 home_server_t	*home_server_ldb(char const *realmname, home_pool_t *pool, REQUEST *request);
 home_server_t	*home_server_find(fr_ipaddr_t *ipaddr, uint16_t port, int proto);
-home_server_t	*home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs);
-
+home_server_t	*home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs);
+CONF_SECTION	*home_server_cs_afrom_client(CONF_SECTION *client);
 #ifdef WITH_COA
 home_server_t	*home_server_byname(char const *name, int type);
 #endif

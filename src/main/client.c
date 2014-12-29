@@ -218,6 +218,11 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	DEBUG3("Adding client %s (%s) to prefix tree %i", buffer, client->longname, client->ipaddr.prefix);
 
 	/*
+	 *	If the client also defines a server, do that now.
+	 */
+	if (client->defines_coa_server) if (!realm_home_server_add(client->coa_server)) return false;
+
+	/*
 	 *	If "clients" is NULL, it means add to the global list,
 	 *	unless we're trying to add it to a virtual server...
 	 */
@@ -506,10 +511,6 @@ static const CONF_PARSER client_config[] = {
 	{ "rate_limit", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, rate_limit), NULL },
 #endif
 
-#ifdef WITH_COA
-	{ "coa_server", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, coa_name), NULL },
-#endif
-
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -768,9 +769,11 @@ error:
  * @param ctx to allocate new clients in.
  * @param cs to process as a client.
  * @param in_server Whether the client should belong to a specific virtual server.
+ * @param with_coa If true and coa_server or coa_pool aren't specified automatically
+ *	create a coa home_server section and add it to the client CONF_SECTION.
  * @return new RADCLIENT struct.
  */
-RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server)
+RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bool with_coa)
 {
 	RADCLIENT	*c;
 	char const	*name2;
@@ -953,19 +956,54 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server)
 	}
 
 #ifdef WITH_COA
-	/*
-	 *	Point the client to the home server pool, OR to the
-	 *	home server.  This gets around the problem of figuring
-	 *	out which port to use.
-	 */
-	if (c->coa_name) {
-		c->coa_pool = home_pool_byname(c->coa_name, HOME_TYPE_COA);
-		if (!c->coa_pool) {
-			c->coa_server = home_server_byname(c->coa_name, HOME_TYPE_COA);
-		}
-		if (!c->coa_pool && !c->coa_server) {
-			cf_log_err_cs(cs, "No such home_server or home_server_pool \"%s\"", c->coa_name);
-			goto error;
+	{
+		CONF_PAIR *cp;
+
+		/*
+		 *	Point the client to the home server pool, OR to the
+		 *	home server.  This gets around the problem of figuring
+		 *	out which port to use.
+		 */
+		cp = cf_pair_find(cs, "coa_server");
+		if (cp) {
+			c->coa_name = cf_pair_value(cp);
+			c->coa_pool = home_pool_byname(c->coa_name, HOME_TYPE_COA);
+			if (!c->coa_pool) {
+				c->coa_server = home_server_byname(c->coa_name, HOME_TYPE_COA);
+			}
+			if (!c->coa_pool && !c->coa_server) {
+				cf_log_err_cs(cs, "No such home_server or home_server_pool \"%s\"", c->coa_name);
+				goto error;
+			}
+		/*
+		 *	If we're implicitly adding a CoA home server for
+		 *	every client, or there's a server subsection,
+		 *	create a home server CONF_SECTION and then parse
+		 *	it into a home_server_t.
+		 */
+		} else if (with_coa || cf_section_sub_find(cs, "coa_server")) {
+			CONF_SECTION *server;
+			home_server_t *home;
+
+			server = home_server_cs_afrom_client(cs);
+			if (!server) goto error;
+
+			/*
+			 *	Must be allocated in the context of the client,
+			 *	as allocating using the context of the
+			 *	realm_config_t without a mutex, by one of the
+			 *	workers, would be bad.
+			 */
+			home = home_server_afrom_cs(c, NULL, server);
+			if (!home) {
+				talloc_free(server);
+				goto error;
+			}
+
+			rad_assert(home->type == HOME_TYPE_COA);
+
+			c->coa_server = home;
+			c->defines_coa_server = true;
 		}
 	}
 #endif
