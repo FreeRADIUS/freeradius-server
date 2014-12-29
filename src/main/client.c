@@ -180,15 +180,18 @@ RADCLIENT_LIST *clients_init(CONF_SECTION *cs)
 	return clients;
 }
 
-/*
- *	Add a client to the tree.
+/** Add a client to a RADCLIENT_LIST
+ *
+ * @param clients list to add client to, may be NULL if global client list is being used.
+ * @param client to add.
+ * @return true on success, false on failure.
  */
-int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
+bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
 	RADCLIENT *old;
 	char buffer[INET6_ADDRSTRLEN + 3];
 
-	if (!client) return 0;
+	if (!client) return false;
 
 	/*
 	 *	Hack to fixup wildcard clients
@@ -222,12 +225,10 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		if (client->server != NULL) {
 			CONF_SECTION *cs;
 
-			cs = cf_section_sub_find_name2(main_config.config,
-						   "server", client->server);
+			cs = cf_section_sub_find_name2(main_config.config, "server", client->server);
 			if (!cs) {
-				radlog(L_ERR, "Failed to find virtual server %s",
-				       client->server);
-				return 0;
+				ERROR("Failed to find virtual server %s", client->server);
+				return false;
 			}
 
 			/*
@@ -238,15 +239,14 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			if (!clients) {
 				clients = clients_init(cs);
 				if (!clients) {
-					radlog(L_ERR, "Out of memory");
-					return 0;
+					ERROR("Out of memory");
+					return false;
 				}
 
 				if (cf_data_add(cs, "clients", clients, (void (*)(void *)) clients_free) < 0) {
-					radlog(L_ERR, "Failed to associate clients with virtual server %s",
-					       client->server);
+					ERROR("Failed to associate clients with virtual server %s", client->server);
 					clients_free(clients);
-					return 0;
+					return false;
 				}
 			}
 
@@ -256,7 +256,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			 */
 			if (!root_clients) {
 				root_clients = clients_init(NULL);
-				if (!root_clients) return 0;
+				if (!root_clients) return false;
 			}
 			clients = root_clients;
 		}
@@ -268,7 +268,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	if (!clients->trees[client->ipaddr.prefix]) {
 		clients->trees[client->ipaddr.prefix] = rbtree_create(clients, client_ipaddr_cmp, NULL, 0);
 		if (!clients->trees[client->ipaddr.prefix]) {
-			return 0;
+			return false;
 		}
 	}
 
@@ -300,12 +300,11 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		    (old->message_authenticator == client->message_authenticator)) {
 			WARN("Ignoring duplicate client %s", client->longname);
 			client_free(client);
-			return 1;
+			return true;
 		}
 
-		ERROR("Failed to add duplicate client %s",
-		       client->shortname);
-		return 0;
+		ERROR("Failed to add duplicate client %s", client->shortname);
+		return false;
 	}
 #undef namecmp
 
@@ -313,7 +312,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	 *	Other error adding client: likely is fatal.
 	 */
 	if (!rbtree_insert(clients->trees[client->ipaddr.prefix], client)) {
-		return 0;
+		return false;
 	}
 
 #ifdef WITH_STATS
@@ -354,7 +353,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	(void) talloc_steal(clients, client); /* reparent it */
 
-	return 1;
+	return true;
 }
 
 

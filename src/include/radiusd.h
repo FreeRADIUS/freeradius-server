@@ -595,7 +595,7 @@ RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);
 void		clients_free(RADCLIENT_LIST *clients);
 RADCLIENT_LIST	*clients_parse_section(CONF_SECTION *section, bool tls_required);
 void		client_free(RADCLIENT *client);
-int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
+bool		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 #ifdef WITH_DYNAMIC_CLIENTS
 void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
 RADCLIENT	*client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request);
