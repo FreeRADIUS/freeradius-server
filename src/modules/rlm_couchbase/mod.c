@@ -746,7 +746,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 		/*
 		 * @todo These should be parented from something.
 		 */
-		c = client_afrom_cs(NULL, client, false);
+		c = client_afrom_cs(NULL, client, false, false);
 		if (!c) {
 			ERROR("rlm_couchbase: failed to allocate client");
 			/* free config setion */

@@ -835,6 +835,77 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	return home;
 }
 
+/** Fixup a client configuration section to specify a home server
+ *
+ * This is used to create the equivalent CoA home server entry for a client,
+ * so that the server can originate CoA messages.
+ *
+ * The server section automatically inherits the following fields from the client:
+ *  - ipaddr/ipv4addr/ipv6addr
+ *  - secret
+ *  - src_ipaddr
+ *
+ * @note new CONF_SECTION will be allocated in the context of the client, but the client
+ *	CONF_SECTION will not be modified.
+ *
+ * @param client CONF_SECTION to inherit values from.
+ * @return a new server CONF_SCTION, or a pointer to the existing CONF_SECTION in the client.
+ */
+CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
+{
+	CONF_SECTION *server, *cs;
+	CONF_PAIR *cp;
+
+	/*
+	 *	Alloc a plain home server for both cases
+	 *
+	 *	There's no way these can be referenced by a pool,
+	 *	and they may conflict with home servers in proxy.conf
+	 *	so it's easier to not set a name.
+	 */
+
+	/*
+	 *
+	 *	Duplicate the server section, so we don't mangle
+	 *	the client CONF_SECTION we were passed.
+	 */
+	cs = cf_section_sub_find(client, "coa_server");
+	if (cs) {
+		server = cf_section_dup(client, cs, "home_server", NULL);
+	} else {
+		server = cf_section_alloc(client, "home_server", NULL);
+	}
+
+	if (!cs || (!cf_pair_find(cs, "ipaddr") && !cf_pair_find(cs, "ipv4addr") && !cf_pair_find(cs, "ipv6addr"))) {
+		cp = cf_pair_find(client, "ipaddr");
+		if (!cp) cp = cf_pair_find(client, "ipv4addr");
+		if (!cp) cp = cf_pair_find(client, "ipv6addr");
+
+		cf_pair_add(server, cf_pair_dup(server, cp));
+	}
+
+	if (!cs || !cf_pair_find(cs, "secret")) {
+		cp = cf_pair_find(client, "secret");
+		if (cp) cf_pair_add(server, cp);
+	}
+
+	if (!cs || !cf_pair_find(cs, "src_ipaddr")) {
+		cp = cf_pair_find(client, "src_ipaddr");
+		if (cp) cf_pair_add(server, cf_pair_dup(server, cp));
+	}
+
+	if (!cs || !(cp = cf_pair_find(cs, "type"))) {
+		cp = cf_pair_alloc(server, "type", "coa", T_OP_EQ, T_SINGLE_QUOTED_STRING);
+		if (cp) cf_pair_add(server, cf_pair_dup(server, cp));
+	} else if (strcmp(cf_pair_value(cp), "coa") != 0) {
+		talloc_free(server);
+		cf_log_err_cs(server, "server.type must be \"coa\"");
+		return NULL;
+	}
+
+	return server;
+}
+
 static home_pool_t *server_pool_alloc(realm_config_t *rc, char const *name, home_pool_type_t type,
 				      home_type_t server_type, int num_home_servers)
 {
