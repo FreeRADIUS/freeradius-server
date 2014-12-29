@@ -2730,12 +2730,13 @@ CONF_SECTION *cf_section_find_name2(CONF_SECTION const *cs,
 	return NULL;
 }
 
-/*
- * Return the next pair after a CONF_PAIR
- * with a certain name (char *attr) If the requested
- * attr is NULL, any attr matches.
+/** Find a pair with a name matching attr, after specified pair.
+ *
+ * @param cs to search in.
+ * @param pair to search from (may be NULL).
+ * @param attr to find (may be NULL in which case any attribute matches).
+ * @return the next matching CONF_PAIR or NULL if none matched.
  */
-
 CONF_PAIR *cf_pair_find_next(CONF_SECTION const *cs,
 			     CONF_PAIR const *pair, char const *attr)
 {
@@ -2744,18 +2745,23 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION const *cs,
 	if (!cs) return NULL;
 
 	/*
-	 *	If pair is NULL this must be a first time run
-	 *	Find the pair with correct name
+	 *	If pair is NULL and we're trying to find a specific
+	 *	attribute this must be a first time run.
+	 *
+	 *	Find the pair with correct name.
 	 */
+	if (!pair && attr) return cf_pair_find(cs, attr);
 
-	if (!pair) return cf_pair_find(cs, attr);
+	/*
+	 *	Start searching from the next child, or from the head
+	 *	of the list of children (if no pair was provided).
+	 */
+	for (ci = pair ? pair->item.next : cs->children;
+	     ci;
+	     ci = ci->next) {
+		if (ci->type != CONF_ITEM_PAIR) continue;
 
-	for (ci = pair->item.next; ci; ci = ci->next) {
-		if (ci->type != CONF_ITEM_PAIR)
-			continue;
-
-		if (!attr || strcmp(cf_itemtopair(ci)->attr, attr) == 0)
-			break;
+		if (!attr || strcmp(cf_itemtopair(ci)->attr, attr) == 0) break;
 	}
 
 	return cf_itemtopair(ci);
