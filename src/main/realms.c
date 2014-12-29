@@ -128,7 +128,7 @@ static int realm_name_cmp(void const *one, void const *two)
 #ifdef WITH_PROXY
 static void home_server_free(void *data)
 {
-	home_server_t *home = data;
+	home_server_t *home = talloc_get_type_abort(data, home_server_t);
 
 	talloc_free(home);
 }
