@@ -2932,10 +2932,9 @@ CONF_ITEM *cf_item_find_next(CONF_SECTION const *section, CONF_ITEM const *item)
 	if (!section) return NULL;
 
 	/*
-	 * If item is NULL this must be a first time run
-	 * Return the first item
+	 *	If item is NULL this must be a first time run
+	 * 	Return the first item
 	 */
-
 	if (item == NULL) {
 		return section->children;
 	} else {
@@ -3038,9 +3037,7 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 	return cd;
 }
 
-
-static void *cf_data_find_internal(CONF_SECTION const *cs, char const *name,
-				   int flag)
+static void *cf_data_find_internal(CONF_SECTION const *cs, char const *name, int flag)
 {
 	if (!cs || !name) return NULL;
 

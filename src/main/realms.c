@@ -853,12 +853,10 @@ static home_pool_t *server_pool_alloc(realm_config_t *rc, char const *name, home
 	 *	FIXME: Move to two separate structs, which allows
 	 *	for re-alloc.
 	 */
-	pool = talloc_size(rc, sizeof(*pool) + (sizeof(pool->servers[0]) *
-						      num_home_servers));
+	pool = talloc_size(rc, sizeof(*pool) + (sizeof(pool->servers[0]) * num_home_servers));
 	if (!pool) return NULL;	/* just for pairanoia */
 
-	memset(pool, 0, sizeof(*pool) + (sizeof(pool->servers[0]) *
-					 num_home_servers));
+	memset(pool, 0, sizeof(*pool) + (sizeof(pool->servers[0]) * num_home_servers));
 	pool->name = name;
 	pool->type = type;
 	pool->server_type = server_type;
@@ -1143,10 +1141,8 @@ static int server_pool_add(realm_config_t *rc,
 			cf_log_info(cs, "\tvirtual_server = %s", pool->virtual_server);
 		}
 
-		if (!cf_section_sub_find_name2(rc->cs, "server",
-					       pool->virtual_server)) {
-			cf_log_err_cp(cp, "No such server %s",
-				   pool->virtual_server);
+		if (!cf_section_sub_find_name2(rc->cs, "server", pool->virtual_server)) {
+			cf_log_err_cp(cp, "No such server %s", pool->virtual_server);
 			goto error;
 		}
 
