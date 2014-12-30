@@ -342,11 +342,16 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
  */
 CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 {
+	CONF_PAIR *new;
+
 	rad_assert(parent);
 	rad_assert(cp);
 
-	return cf_pair_alloc(parent, cf_pair_attr(cp), cf_pair_value(cp),
-			     cf_pair_operator(cp), cf_pair_value_type(cp));
+	new = cf_pair_alloc(parent, cf_pair_attr(cp), cf_pair_value(cp), cf_pair_operator(cp), cf_pair_value_type(cp));
+	new->item.lineno = cp->item.lineno;
+	new->item.filename = talloc_strdup(cp, cp->item.filename);
+
+	return new;
 }
 
 /** Add a configuration pair to a section
