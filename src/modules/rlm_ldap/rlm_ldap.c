@@ -967,6 +967,52 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}
 
+#ifdef HAVE_LDAP_START_TLS_S
+
+	/*
+	 *	Initialize the TLS context as required. These options must be set globally
+	 *	so the TLS module in OpenLDAP doesn't get unloaded after connection releases.
+	 */
+
+	{
+		int ldap_errno;
+#define do_ldap_global_option(_option, _name, _value) \
+		if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
+			ldap_get_option(NULL, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
+			LDAP_ERR("Could not set %s: %s", _name, ldap_err2string(ldap_errno)); \
+		}
+
+		/*
+		 *	Set all of the TLS options
+		 */
+		if (inst->tls_mode) {
+			do_ldap_global_option(LDAP_OPT_X_TLS, "tls_mode", &(inst->tls_mode));
+		}
+
+#  define maybe_ldap_global_option(_option, _name, _value) \
+		if (_value) do_ldap_global_option(_option, _name, _value)
+
+		maybe_ldap_global_option(LDAP_OPT_X_TLS_CACERTFILE, "ca_file", inst->tls_ca_file);
+		maybe_ldap_global_option(LDAP_OPT_X_TLS_CACERTDIR, "ca_path", inst->tls_ca_path);
+
+
+		/*
+		 *	Set certificate options
+		 */
+		maybe_ldap_global_option(LDAP_OPT_X_TLS_CERTFILE, "certificate_file", inst->tls_certificate_file);
+		maybe_ldap_global_option(LDAP_OPT_X_TLS_KEYFILE, "private_key_file", inst->tls_private_key_file);
+		maybe_ldap_global_option(LDAP_OPT_X_TLS_RANDOM_FILE, "random_file", inst->tls_random_file);
+
+#  ifdef LDAP_OPT_X_TLS_NEVER
+		if (inst->tls_require_cert_str) {
+			do_ldap_global_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "require_cert", &inst->tls_require_cert);
+		}
+#  endif
+
+	}
+
+#endif /* HAVE_LDAP_START_TLS_S */
+
 	/*
 	 *	Initialize the socket pool.
 	 */

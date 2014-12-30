@@ -1394,47 +1394,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 
 #ifdef HAVE_LDAP_START_TLS_S
 	/*
-	 *	Set all of the TLS options
-	 */
-	if (inst->tls_mode) {
-		do_ldap_option(LDAP_OPT_X_TLS, "tls_mode", &(inst->tls_mode));
-	}
-
-#  define maybe_ldap_option(_option, _name, _value) \
-	if (_value) do_ldap_option(_option, _name, _value)
-
-	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTFILE, "ca_file", inst->tls_ca_file);
-	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "ca_path", inst->tls_ca_path);
-
-
-	/*
-	 *	Set certificate options
-	 */
-	maybe_ldap_option(LDAP_OPT_X_TLS_CERTFILE, "certificate_file", inst->tls_certificate_file);
-	maybe_ldap_option(LDAP_OPT_X_TLS_KEYFILE, "private_key_file", inst->tls_private_key_file);
-	maybe_ldap_option(LDAP_OPT_X_TLS_RANDOM_FILE, "random_file", inst->tls_random_file);
-
-#  ifdef LDAP_OPT_X_TLS_NEVER
-	if (inst->tls_require_cert_str) {
-		do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "require_cert", &inst->tls_require_cert);
-	}
-#  endif
-
-	/*
-	 *	Counter intuitively the TLS context appears to need to be initialised
-	 *	after all the TLS options are set on the handle.
-	 */
-#  ifdef LDAP_OPT_X_TLS_NEWCTX
-	{
-		/* Always use the new TLS configuration context */
-		int is_server = 0;
-		do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
-
-	}
-#  endif
-
-	/*
-	 *	And finally start the TLS code.
+	 *	Start the TLS code.
 	 */
 	if (inst->start_tls) {
 		if (inst->port == 636) {
