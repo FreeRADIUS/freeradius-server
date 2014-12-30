@@ -557,7 +557,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_req
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(section, cs, "client")) {
-		c = client_afrom_cs(cs, cs, in_server);
+		c = client_afrom_cs(cs, cs, in_server, false);
 		if (!c) {
 			return NULL;
 		}
@@ -1284,7 +1284,7 @@ RADCLIENT *client_read(char const *filename, int in_server, int flag)
 		return NULL;
 	}
 
-	c = client_afrom_cs(cs, cs, in_server);
+	c = client_afrom_cs(cs, cs, in_server, false);
 	if (!c) return NULL;
 
 	p = strrchr(filename, FR_DIR_SEP);
