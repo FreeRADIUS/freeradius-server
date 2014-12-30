@@ -594,7 +594,7 @@ void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
 RADCLIENT	*client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request);
 #endif
 
-RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server);
+RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bool with_coa);
 RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
 				   char const *type, char const *server, bool require_ma) CC_HINT(nonnull(2, 3));
 

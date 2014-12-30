@@ -15,7 +15,7 @@ RCSIDH(realms_h, "$Id$")
 extern "C" {
 #endif
 
-extern bool home_servers_udp;
+extern bool home_servers_udp;	//!< Whether there are any UDP home servers
 
 typedef enum {
 	HOME_TYPE_INVALID = 0,
@@ -52,7 +52,10 @@ typedef struct fr_socket_limit_t {
 } fr_socket_limit_t;
 
 typedef struct home_server {
-	char const		*name;
+	char const		*log_name;		//!< The name used for log messages.
+
+	char const		*name;			//!< Name the server may be referenced by for querying
+							//!< stats or when specifying home servers for a pool.
 
 	bool			dual;			//!< One of a pair of homeservers on consecutive ports.
 	char const		*server;		//!< For internal proxying
@@ -180,14 +183,14 @@ REALM		*realm_find2(char const *name); /* ... with name taken from realm_find */
 void		realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs);
 int		realm_pool_add(home_pool_t *pool, CONF_SECTION *cs);
 void		realm_pool_free(home_pool_t *pool);
-int		realm_home_server_add(home_server_t *home, CONF_SECTION *cs);
+bool		realm_home_server_add(home_server_t *home);
 int		realm_realm_add( REALM *r, CONF_SECTION *cs);
 
 void		home_server_update_request(home_server_t *home, REQUEST *request);
 home_server_t	*home_server_ldb(char const *realmname, home_pool_t *pool, REQUEST *request);
 home_server_t	*home_server_find(fr_ipaddr_t *ipaddr, uint16_t port, int proto);
 
-home_server_t	*home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs);
+home_server_t	*home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs);
 #ifdef WITH_COA
 home_server_t	*home_server_byname(char const *name, int type);
 #endif

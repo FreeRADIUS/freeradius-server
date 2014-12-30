@@ -77,8 +77,8 @@ static const FR_NAME_NUMBER home_ping_check[] = {
 };
 
 static const FR_NAME_NUMBER home_proto[] = {
-	{ "udp",		IPPROTO_UDP },
-	{ "tcp",		IPPROTO_TCP },
+	{ "UDP",		IPPROTO_UDP },
+	{ "TCP",		IPPROTO_TCP },
 	{ NULL, 0 }
 };
 
@@ -446,23 +446,23 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 	}
 }
 
-
+/** Insert a new home server into the various internal lookup trees
+ *
+ * @param home server to add.
+ * @param cs That defined the home server.
+ * @return true on success else false.
+ */
 static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 {
-	if (!rbtree_insert(home_servers_byname, home)) {
-		cf_log_err_cs(cs,
-			   "Internal error %d adding home server %s.",
-			   __LINE__, home->name);
+	if (home->name && !rbtree_insert(home_servers_byname, home)) {
+		cf_log_err_cs(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
 		return false;
 	}
 
-	if (!home->server &&
-	    !rbtree_insert(home_servers_byaddr, home)) {
+	if (!home->server && !rbtree_insert(home_servers_byaddr, home)) {
 		rbtree_deletebydata(home_servers_byname, home);
-		cf_log_err_cs(cs,
-			   "Internal error %d adding home server %s.",
-			   __LINE__, home->name);
-		return false;;
+		cf_log_err_cs(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
+		return false;
 	}
 
 #ifdef WITH_STATS
@@ -472,9 +472,7 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 		if (home->ipaddr.af != AF_UNSPEC) {
 			rbtree_deletebydata(home_servers_byname, home);
 		}
-		cf_log_err_cs(cs,
-			   "Internal error %d adding home server %s.",
-			   __LINE__, home->name);
+		cf_log_err_cs(cs, "Internal error %d adding home server %s", __LINE__, home->log_name);
 		return false;
 	}
 #endif
@@ -484,26 +482,46 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 
 /** Add an already allocate home_server_t to the various trees
  *
- * @param rc Realm config to add home server to.
  * @param home server to add.
  * @return true on success, else false on error.
  */
-static bool home_server_add(realm_config_t *rc, home_server_t *home)
+bool realm_home_server_add(home_server_t *home)
 {
-	if (rbtree_finddata(home_servers_byname, home) != NULL) {
+	/*
+	 *	The structs aren't mutex protected.  Refuse to destroy
+	 *	the server.
+	 */
+	if (event_loop_started && !realm_config->dynamic) {
+		ERROR("Failed to add dynamic home server, \"dynamic = true\" must be set in proxy.conf");
+		return false;
+	}
+
+	if (home->name && (rbtree_finddata(home_servers_byname, home) != NULL)) {
 		cf_log_err_cs(home->cs, "Duplicate home server name %s", home->name);
 		return false;
 	}
 
 	if (!home->server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
-		cf_log_err_cs(home->cs, "Duplicate home server IP %s", home->name);
+		char buffer[INET6_ADDRSTRLEN + 3];
+
+		inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer));
+
+		cf_log_err_cs(home->cs, "Duplicate home server address%s%s%s: %s:%s%s/%i",
+			      home->name ? " (already in use by" : "",
+			      home->name ? home->name : "",
+			      home->name ? ")" : "",
+			      buffer,
+			      fr_int2str(home_proto, home->proto, "<INVALID>"),
+			      home->tls ? "+tls" : "",
+			      home->port);
+
 		return false;
 	}
 
 	if (!home_server_insert(home, home->cs)) return false;
 
 	if (home->dual) {
-		home_server_t *home2 = talloc(rc, home_server_t);
+		home_server_t *home2 = talloc(talloc_parent(home), home_server_t);
 
 		memcpy(home2, home, sizeof(*home2));
 
@@ -530,13 +548,13 @@ static bool home_server_add(realm_config_t *rc, home_server_t *home)
 
 /** Alloc a new home server defined by a CONF_SECTION
  *
- * @param rc Realm config to add home server to.
+ * @param ctx to allocate home_server_t in.
+ * @param rc Realm config, may be NULL in which case the global realm_config will be used.
  * @param cs Configuration section containing home server parameters.
  * @return a new home_server_t alloced in the context of the realm_config, or NULL on error.
  */
-home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
+home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs)
 {
-	char const	*name2;
 	home_server_t	*home;
 
 	CONF_SECTION	*tls;
@@ -549,15 +567,11 @@ home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 		ERROR("Failed to add dynamic home server, \"dynamic = true\" must be set in proxy.conf");
 		return false;
 	}
+	if (!rc) rc = realm_config; /* Use the global config */
 
-	name2 = cf_section_name2(cs);
-	if (!name2) {
-		cf_log_err_cs(cs, "Home server section is missing a name");
-		return false;
-	}
-
-	home = talloc_zero(rc, home_server_t);
-	home->name = name2;
+	home = talloc_zero(ctx, home_server_t);
+	home->name = cf_section_name2(cs);
+	home->log_name = home->name;
 	home->cs = cs;
 	home->state = HOME_STATE_UNKNOWN;
 
@@ -575,6 +589,14 @@ home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 			cf_log_err_cs(cs, "Wildcard '*' addresses are not permitted for home servers");
 			goto error;
 		}
+
+		if (!home->log_name) {
+			char buffer[INET6_ADDRSTRLEN + 3];
+
+			fr_ntop(buffer, sizeof(buffer), &home->ipaddr);
+
+			home->log_name = talloc_asprintf(home, "%s:%i", buffer, home->port);
+		}
 	/*
 	 *	If it has a 'virtual_Server' config item, it's
 	 *	a loopback into a virtual server.
@@ -589,7 +611,7 @@ home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 
 		/*
 		 *	Try and find a 'server' section off the root of
-		 *	the config with a name2 that matches the
+		 *	the config with a name that matches the
 		 *	virtual_server.
 		 */
 		if (!cf_section_sub_find_name2(rc->cs, "server", home->server)) {
@@ -598,13 +620,14 @@ home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 		}
 
 		home->secret = "";
+		home->log_name = home->server;
 	/*
 	 *	Otherwise it's an invalid config section and we
 	 *	raise an error.
 	 */
 	} else {
 		cf_log_err_cs(cs, "No ipaddr, ipv4addr, ipv6addr, or virtual_server defined "
-			      "for home server \"%s\"", home->name);
+			      "for home server");
 	error:
 		talloc_free(home);
 		return false;
@@ -637,7 +660,7 @@ home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 #endif
 
   		case HOME_TYPE_INVALID:
- 			cf_log_err_cs(cs, "Invalid type \"%s\" for home server %s", home->type_str, home->name);
+ 			cf_log_err_cs(cs, "Invalid type \"%s\" for home server %s", home->type_str, home->log_name);
  			goto error;
  		}
  	}
@@ -668,7 +691,7 @@ home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 
  		case HOME_PING_CHECK_INVALID:
  			cf_log_err_cs(cs, "Invalid status_check \"%s\" for home server %s",
- 				      home->ping_check_str, home->name);
+ 				      home->ping_check_str, home->log_name);
  			goto error;
  		}
 
@@ -726,7 +749,7 @@ home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 		} else
 #endif
 		{
-			cf_log_err_cs(cs, "No shared secret defined for home server %s", name2);
+			cf_log_err_cs(cs, "No shared secret defined for home server %s", home->log_name);
 			goto error;
 		}
 	}
@@ -995,25 +1018,6 @@ int realm_pool_add(home_pool_t *pool, UNUSED CONF_SECTION *cs)
 	return 1;
 }
 
-int realm_home_server_add(home_server_t *home, CONF_SECTION *cs)
-{
-	/*
-	 *	The structs aren't mutex protected.  Refuse to destroy
-	 *	the server.
-	 */
-	if (realms_initialized && !realm_config->dynamic) {
-		DEBUG("Must set \"dynamic = true\" in proxy.conf");
-		return 0;
-	}
-
-	if (!home_server_insert(home, cs)) {
-		rad_assert("Internal sanity check failed" == NULL);
-		return 0;
-	}
-
-	return 1;
-}
-
 static int server_pool_add(realm_config_t *rc,
 			   CONF_SECTION *cs, home_type_t server_type, bool do_print)
 {
@@ -1079,14 +1083,13 @@ static int server_pool_add(realm_config_t *rc,
 		}
 #endif
 
-		if (!pool_check_home_server(rc, cp, cf_pair_value(cp),
-					    server_type, &pool->fallback)) {
-
+		if (!pool_check_home_server(rc, cp, cf_pair_value(cp), server_type, &pool->fallback)) {
 			goto error;
 		}
 
 		if (!pool->fallback->server) {
-			cf_log_err_cs(cs, "Fallback home_server %s does NOT contain a virtual_server directive.", pool->fallback->name);
+			cf_log_err_cs(cs, "Fallback home_server %s does NOT contain a virtual_server directive",
+				      pool->fallback->log_name);
 			goto error;
 		}
 	}
@@ -1997,9 +2000,9 @@ int realms_init(CONF_SECTION *config)
 	     cs = cf_subsection_find_next(config, cs, "home_server")) {
 	     	home_server_t *home;
 
-	     	home = home_server_afrom_cs(rc, cs);
+	     	home = home_server_afrom_cs(rc, rc, cs);
 	     	if (!home) goto error;
-		if (!home_server_add(rc, home)) goto error;
+		if (!realm_home_server_add(home)) goto error;
 	}
 
 	/*
@@ -2014,9 +2017,9 @@ int realms_init(CONF_SECTION *config)
 		     cs = cf_subsection_find_next(server_cs, cs, "home_server")) {
 			home_server_t *home;
 
-			home = home_server_afrom_cs(rc, cs);
+			home = home_server_afrom_cs(rc, rc, cs);
 			if (!home) goto error;
-			if (!home_server_add(rc, home)) goto error;
+			if (!realm_home_server_add(home)) goto error;
 		}
 	}
 #endif
@@ -2400,8 +2403,8 @@ home_server_t *home_server_ldb(char const *realmname,
 		}
 
 		RDEBUG3("PROXY %s %d\t%s %d",
-		       found->name, found->currently_outstanding,
-		       home->name, home->currently_outstanding);
+		       found->log_name, found->currently_outstanding,
+		       home->log_name, home->currently_outstanding);
 
 		/*
 		 *	Prefer this server if it's less busy than the
@@ -2409,7 +2412,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		 */
 		if (home->currently_outstanding < found->currently_outstanding) {
 			RDEBUG3("PROXY Choosing %s: It's less busy than %s",
-			       home->name, found->name);
+			       home->log_name, found->log_name);
 			found = home;
 			continue;
 		}
@@ -2420,7 +2423,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		 */
 		if (home->currently_outstanding > found->currently_outstanding) {
 			RDEBUG3("PROXY Skipping %s: It's busier than %s",
-			       home->name, found->name);
+			       home->log_name, found->log_name);
 			continue;
 		}
 
