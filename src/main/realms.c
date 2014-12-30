@@ -598,7 +598,6 @@ home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 		}
 
 		home->secret = "";
-		goto skip_port;
 	/*
 	 *	Otherwise it's an invalid config section and we
 	 *	raise an error.
@@ -611,12 +610,6 @@ home_server_t *home_server_afrom_cs(realm_config_t *rc, CONF_SECTION *cs)
 		return false;
 	}
 
-	if (home->port == 0) {
-		cf_log_err_cs(cs, "No port, or invalid port defined for home server %s", home->name);
-		goto error;
-	}
-
-skip_port:
  	{
  		home_type_t type = HOME_TYPE_AUTH_ACCT;
 
@@ -739,10 +732,44 @@ skip_port:
 	}
 
 	/*
-	 *	If the home is not a virtual server, look up source IP.
+	 *	If the home is not a virtual server, guess the port
+	 *	and look up the source ip address.
 	 */
 	if (!home->server) {
 		rad_assert(home->ipaddr.af != AF_UNSPEC);
+
+		/*
+		 *	Guess the port if we need to.
+		 */
+		if (home->port == 0) {
+			/*
+			 *	For RADSEC we use the special RADIUS over TCP/TLS port
+			 *	for both accounting and authentication, but for some
+			 *	bizarre reason for RADIUS over plain TCP we use separate
+			 *	ports 1812 and 1813.
+			 *
+			 *	Blame whoever wrote RFC 6613.
+			 */
+			if (tls) {
+				home->port = PW_RADIUS_TLS_PORT;
+			} else switch (home->type) {
+			case HOME_TYPE_AUTH:
+				home->port = PW_AUTH_UDP_PORT;
+				break;
+
+			case HOME_TYPE_ACCT:
+				home->port = PW_ACCT_UDP_PORT;
+				break;
+
+			case HOME_TYPE_COA:
+				home->port = PW_COA_UDP_PORT;
+				break;
+
+			default:
+				rad_assert(0);
+			}
+		}
+
 		/*
 		 *	If we have a src_ipaddr_str resolve it to
 		 *	the same address family as the destination
