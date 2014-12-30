@@ -435,6 +435,8 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
  *
  * @param parent section.
  * @param cs to duplicate.
+ * @param name1 of new section.
+ * @param name2 of new section.
  * @return a duplicate of the existing section, or NULL on error.
  */
 CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs, char const *name1, char const *name2)
