@@ -511,7 +511,11 @@ bool realm_home_server_add(home_server_t *home)
 			      home->name ? ")" : "",
 			      buffer,
 			      fr_int2str(home_proto, home->proto, "<INVALID>"),
+#ifdef WITH_TLS
 			      home->tls ? "+tls" : "",
+#else
+			      "",
+#endif
 			      home->port);
 
 		return false;
