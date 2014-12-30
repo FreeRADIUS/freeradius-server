@@ -84,7 +84,6 @@ static const FR_NAME_NUMBER home_proto[] = {
 
 
 static realm_config_t *realm_config = NULL;
-static bool realms_initialized = false;
 
 #ifdef WITH_PROXY
 static rbtree_t	*home_servers_byaddr = NULL;
@@ -559,14 +558,6 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
 	CONF_SECTION	*tls;
 
-	/*
-	 *	The structs aren't mutex protected.  Refuse to destroy
-	 *	the server.
-	 */
-	if (realms_initialized && !realm_config->dynamic) {
-		ERROR("Failed to add dynamic home server, \"dynamic = true\" must be set in proxy.conf");
-		return false;
-	}
 	if (!rc) rc = realm_config; /* Use the global config */
 
 	home = talloc_zero(ctx, home_server_t);
@@ -895,7 +886,7 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 #ifndef HAVE_PTHREAD_H
 void realm_pool_free(home_pool_t *pool)
 {
-	if (!realms_initialized) return;
+	if (!event_loop_started) return;
 	if (!realm_config->dynamic) return;
 
 	talloc_free(pool);
@@ -919,7 +910,7 @@ void realm_pool_free(home_pool_t *pool)
 	time_t now;
 	pool_list_t *this, **last;
 
-	if (!realms_initialized) return;
+	if (!event_loop_started) return;
 	if (!realm_config->dynamic) return;
 
 	if (pool) {
@@ -1000,7 +991,7 @@ int realm_pool_add(home_pool_t *pool, UNUSED CONF_SECTION *cs)
 	 *	The structs aren't mutex protected.  Refuse to destroy
 	 *	the server.
 	 */
-	if (realms_initialized && !realm_config->dynamic) {
+	if (event_loop_started && !realm_config->dynamic) {
 		DEBUG("Must set \"dynamic = true\" in proxy.conf");
 		return 0;
 	}
@@ -1836,7 +1827,7 @@ int realm_realm_add(REALM *r, UNUSED CONF_SECTION *cs)
 	 *	The structs aren't mutex protected.  Refuse to destroy
 	 *	the server.
 	 */
-	if (realms_initialized && !realm_config->dynamic) {
+	if (event_loop_started && !realm_config->dynamic) {
 		DEBUG("Must set \"dynamic = true\" in proxy.conf");
 		return 0;
 	}
@@ -1949,7 +1940,7 @@ int realms_init(CONF_SECTION *config)
 #endif
 	realm_config_t *rc;
 
-	if (realms_initialized) return 1;
+	if (event_loop_started) return 1;
 
 	rc = talloc_zero(NULL, realm_config_t);
 	rc->cs = config;
@@ -2065,7 +2056,6 @@ int realms_init(CONF_SECTION *config)
 #endif
 
 	realm_config = rc;
-	realms_initialized = true;
 	return 1;
 }
 

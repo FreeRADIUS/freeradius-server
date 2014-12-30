@@ -722,9 +722,10 @@ void	thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 
 /* main_config.c */
 /* Define a global config structure */
-extern bool log_dates_utc;
-extern bool check_config;
-extern struct main_config_t main_config;
+extern bool			log_dates_utc;
+extern bool 			check_config;
+extern struct main_config_t	main_config;
+extern bool			event_loop_started;
 
 void set_radius_dir(TALLOC_CTX *ctx, char const *path);
 char const *get_radius_dir(void);

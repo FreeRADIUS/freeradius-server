@@ -464,6 +464,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	event_loop_started = true;
+
 	/*
 	 *  Start the event loop(s) and threads.
 	 */
