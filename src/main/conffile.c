@@ -423,6 +423,56 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
 	return cs;
 }
 
+/** Duplicate a configuration section
+ *
+ * @note recursively duplicates any child sections.
+ * @note does not duplicate any data associated with a section, or its child sections.
+ *
+ * @param parent section.
+ * @param cs to duplicate.
+ * @return a duplicate of the existing section, or NULL on error.
+ */
+CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs, char const *name1, char const *name2)
+{
+	CONF_SECTION *new, *child;
+	CONF_PAIR *cp;
+	CONF_ITEM *ci;
+
+	new = cf_section_alloc(parent, name1, name2);
+	new->template = cs->template;
+	new->base = cs->base;
+	new->depth = cs->depth;
+	new->variables = cs->variables;
+	new->item.lineno = cs->item.lineno;
+	new->item.filename = talloc_strdup(new, cs->item.filename);
+
+	for (ci = cf_item_find_next(cs, NULL);
+	     ci;
+	     ci = cf_item_find_next(cs, ci)) {
+		if (cf_item_is_section(ci)) {
+			child = cf_itemtosection(ci);
+			child = cf_section_dup(new, child, cf_section_name1(child), cf_section_name2(child));
+			if (!child) {
+				talloc_free(new);
+				return NULL;
+			}
+			cf_section_add(new, child);
+			continue;
+		}
+
+		if (cf_item_is_pair(ci)) {
+			cp = cf_pair_dup(new, cf_itemtopair(ci));
+			if (!cp) {
+				talloc_free(new);
+				return NULL;
+			}
+			cf_pair_add(new, cp);
+		}
+	}
+
+	return new;
+}
+
 void cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs)
 {
 	cf_item_add(parent, &(cs->item));
