@@ -849,12 +849,10 @@ static home_pool_t *server_pool_alloc(char const *name, home_pool_type_t type,
 {
 	home_pool_t *pool;
 
-	pool = rad_malloc(sizeof(*pool) + (sizeof(pool->servers[0]) *
-					   num_home_servers));
+	pool = rad_malloc(sizeof(*pool) + (sizeof(pool->servers[0]) * num_home_servers));
 	if (!pool) return NULL;	/* just for pairanoia */
 
-	memset(pool, 0, sizeof(*pool) + (sizeof(pool->servers[0]) *
-					 num_home_servers));
+	memset(pool, 0, sizeof(*pool) + (sizeof(pool->servers[0]) * num_home_servers));
 
 	pool->name = name;
 	pool->type = type;
@@ -1144,10 +1142,8 @@ static int server_pool_add(realm_config_t *rc,
 			cf_log_info(cs, "\tvirtual_server = %s", pool->virtual_server);
 		}
 
-		if (!cf_section_sub_find_name2(rc->cs, "server",
-					       pool->virtual_server)) {
-			cf_log_err_cp(cp, "No such server %s",
-				   pool->virtual_server);
+		if (!cf_section_sub_find_name2(rc->cs, "server", pool->virtual_server)) {
+			cf_log_err_cp(cp, "No such server %s", pool->virtual_server);
 			goto error;
 		}
 
