@@ -875,7 +875,7 @@ CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
 	 */
 	cs = cf_section_sub_find(client, "coa_server");
 	if (cs) {
-		server = cf_section_dup(client, cs, "home_server", NULL);
+		server = cf_section_dup(client, cs, "home_server", NULL, true);
 	} else {
 		server = cf_section_alloc(client, "home_server", NULL);
 	}

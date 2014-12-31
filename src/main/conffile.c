@@ -127,8 +127,6 @@ static char const 	*cf_expand_variables(char const *cf, int *lineno,
 					     char *output, size_t outsize,
 					     char const *input);
 
-static CONF_SECTION	*cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *template);
-
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
  */
@@ -439,43 +437,56 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
  * @param cs to duplicate.
  * @param name1 of new section.
  * @param name2 of new section.
+ * @param copy_meta Copy additional meta data for a section (like template, base, depth and variables).
  * @return a duplicate of the existing section, or NULL on error.
  */
-CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs, char const *name1, char const *name2)
+CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
+			     char const *name1, char const *name2, bool copy_meta)
 {
-	CONF_SECTION *new, *child;
+	CONF_SECTION *new, *subcs;
 	CONF_PAIR *cp;
 	CONF_ITEM *ci;
 
 	new = cf_section_alloc(parent, name1, name2);
-	new->template = cs->template;
-	new->base = cs->base;
-	new->depth = cs->depth;
-	new->variables = cs->variables;
+
+	if (copy_meta) {
+		new->template = cs->template;
+		new->base = cs->base;
+		new->depth = cs->depth;
+		new->variables = cs->variables;
+	}
+
 	new->item.lineno = cs->item.lineno;
 	new->item.filename = talloc_strdup(new, cs->item.filename);
 
-	for (ci = cf_item_find_next(cs, NULL);
-	     ci;
-	     ci = cf_item_find_next(cs, ci)) {
-		if (cf_item_is_section(ci)) {
-			child = cf_item_to_section(ci);
-			child = cf_section_dup(new, child, cf_section_name1(child), cf_section_name2(child));
-			if (!child) {
+	for (ci = cs->children; ci; ci = ci->next) {
+		switch (ci->type) {
+		case CONF_ITEM_SECTION:
+			subcs = cf_item_to_section(ci);
+			subcs = cf_section_dup(new, subcs,
+					       cf_section_name1(subcs), cf_section_name2(subcs),
+					       copy_meta);
+			if (!subcs) {
 				talloc_free(new);
 				return NULL;
 			}
-			cf_section_add(new, child);
-			continue;
-		}
+			cf_section_add(new, subcs);
+			break;
 
-		if (cf_item_is_pair(ci)) {
+		case CONF_ITEM_PAIR:
 			cp = cf_pair_dup(new, cf_item_to_pair(ci));
 			if (!cp) {
 				talloc_free(new);
 				return NULL;
 			}
 			cf_pair_add(new, cp);
+			break;
+
+		case CONF_ITEM_DATA: /* Skip data */
+			break;
+
+		case CONF_ITEM_INVALID:
+			rad_assert(0);
 		}
 	}
 
@@ -911,7 +922,10 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				 *	Copy the section instead of
 				 *	referencing it.
 				 */
-				subcs = cf_template_copy(outercs, cf_item_to_section(ci));
+				subcs = cf_item_to_section(ci);
+				subcs = cf_section_dup(outercs, subcs,
+						       cf_section_name1(subcs), cf_section_name2(subcs),
+						       false);
 				if (!subcs) {
 					ERROR("%s[%d]: Failed copying reference %s", cf, *lineno, name);
 					return NULL;
@@ -1569,49 +1583,6 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 	return 0;
 }
 
-static CONF_SECTION *cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *template)
-{
-	CONF_ITEM *ci;
-	CONF_SECTION *cs;
-
-	cs = cf_section_alloc(parent, template->name1, template->name2);
-	if (!cs) return NULL;
-
-	for (ci = template->children; ci; ci = ci->next) {
-		if (ci->type == CONF_ITEM_PAIR) {
-			CONF_PAIR *cp1, *cp2;
-
-			cp1 = cf_item_to_pair(ci);
-			cp2 = cf_pair_alloc(cs, cp1->attr, cp1->value, cp1->op, cp1->value_type);
-			if (!cp2) return false;
-
-			cp2->item.filename = cp1->item.filename;
-			cp2->item.lineno = cp1->item.lineno;
-
-			cf_item_add(cs, &(cp1->item));
-			continue;
-		}
-
-		if (ci->type == CONF_ITEM_SECTION) {
-			CONF_SECTION *subcs1, *subcs2;
-
-			subcs1 = cf_item_to_section(ci);
-			subcs2 = cf_template_copy(cs, subcs1);
-
-			subcs2->item.filename = subcs1->item.filename;
-			subcs2->item.lineno = subcs1->item.lineno;
-
-			cf_item_add(cs, &(subcs2->item));
-			continue;
-		}
-
-		/* ignore everything else */
-	}
-
-	return cs;
-}
-
-
 /*
  *	Merge the template so everyting else "just works".
  */
@@ -1676,7 +1647,9 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			 *	sub-section.  Copy it verbatim from
 			 *	the template.
 			 */
-			subcs2 = cf_template_copy(cs, subcs1);
+			subcs2 = cf_section_dup(cs, subcs1,
+						cf_section_name1(subcs1), cf_section_name2(subcs1),
+						false);
 			if (!subcs2) return false;
 
 			subcs2->item.filename = subcs1->item.filename;
