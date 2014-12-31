@@ -348,8 +348,10 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 	rad_assert(cp);
 
 	new = cf_pair_alloc(parent, cf_pair_attr(cp), cf_pair_value(cp), cf_pair_operator(cp), cf_pair_value_type(cp));
-	new->item.lineno = cp->item.lineno;
-	new->item.filename = talloc_strdup(cp, cp->item.filename);
+	if (new) {
+		new->item.lineno = cp->item.lineno;
+		new->item.filename = talloc_strdup(cp, cp->item.filename);
+	}
 
 	return new;
 }
