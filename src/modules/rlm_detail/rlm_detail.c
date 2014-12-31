@@ -229,7 +229,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 			if (!cf_item_is_pair(ci)) continue;
 
-			attr = cf_pair_attr(cf_itemtopair(ci));
+			attr = cf_pair_attr(cf_item_to_pair(ci));
 			if (!attr) continue; /* pair-anoia */
 
 			da = dict_attrbyname(attr);

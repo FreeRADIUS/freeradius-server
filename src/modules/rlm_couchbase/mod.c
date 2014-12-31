@@ -175,7 +175,7 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 		}
 
 		/* get value pair from item */
-		cp = cf_itemtopair(ci);
+		cp = cf_item_to_pair(ci);
 
 		/* get pair name (element name) */
 		element = cf_pair_attr(cp);
@@ -543,7 +543,7 @@ int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
 		if (cf_item_is_section(ci)) {
 			CONF_SECTION *cs, *cc;    /* local scoped for new section */
 
-			cs = cf_itemtosection(ci);
+			cs = cf_item_to_section(ci);
 			cc = cf_section_alloc(client, cf_section_name1(cs), cf_section_name2(cs));
 			if (!cc) return -1;
 
@@ -557,7 +557,7 @@ int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
 		}
 
 		/* create pair from item and get attribute name and value */
-		cp = cf_itemtopair(ci);
+		cp = cf_item_to_pair(ci);
 		attribute = cf_pair_attr(cp);
 		element = cf_pair_value(cp);
 
@@ -578,7 +578,7 @@ int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
 		}
 
 		/* add pair to section */
-		cf_item_add(client, cf_pairtoitem(cp));
+		cf_item_add(client, cf_pair_to_item(cp));
 	}
 
 	/* return success */

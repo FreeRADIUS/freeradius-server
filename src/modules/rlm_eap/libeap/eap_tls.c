@@ -937,7 +937,7 @@ fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *attr)
 
 	rad_assert(attr != NULL);
 
-	parent = cf_item_parent(cf_sectiontoitem(cs));
+	parent = cf_item_parent(cf_section_to_item(cs));
 
 	cp = cf_pair_find(cs, attr);
 	if (cp) {

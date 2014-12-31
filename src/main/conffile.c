@@ -136,7 +136,7 @@ static CONF_SECTION	*cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *
 /** Cast a CONF_ITEM to a CONF_PAIR
  *
  */
-CONF_PAIR *cf_itemtopair(CONF_ITEM const *ci)
+CONF_PAIR *cf_item_to_pair(CONF_ITEM const *ci)
 {
 	CONF_PAIR *out;
 
@@ -151,7 +151,7 @@ CONF_PAIR *cf_itemtopair(CONF_ITEM const *ci)
 /** Cast a CONF_ITEM to a CONF_SECTION
  *
  */
-CONF_SECTION *cf_itemtosection(CONF_ITEM const *ci)
+CONF_SECTION *cf_item_to_section(CONF_ITEM const *ci)
 {
 	CONF_SECTION *out;
 
@@ -166,7 +166,7 @@ CONF_SECTION *cf_itemtosection(CONF_ITEM const *ci)
 /** Cast a CONF_PAIR to a CONF_ITEM
  *
  */
-CONF_ITEM *cf_pairtoitem(CONF_PAIR const *cp)
+CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp)
 {
 	CONF_ITEM *out;
 
@@ -179,7 +179,7 @@ CONF_ITEM *cf_pairtoitem(CONF_PAIR const *cp)
 /** Cast a CONF_SECTION to a CONF_ITEM
  *
  */
-CONF_ITEM *cf_sectiontoitem(CONF_SECTION const *cs)
+CONF_ITEM *cf_section_to_item(CONF_SECTION const *cs)
 {
 	CONF_ITEM *out;
 
@@ -192,7 +192,7 @@ CONF_ITEM *cf_sectiontoitem(CONF_SECTION const *cs)
 /** Cast CONF_DATA to a CONF_ITEM
  *
  */
-static CONF_ITEM *cf_datatoitem(CONF_DATA const *cd)
+static CONF_ITEM *cf_data_to_item(CONF_DATA const *cd)
 {
 	CONF_ITEM *out;
 
@@ -363,7 +363,7 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
  */
 void cf_pair_add(CONF_SECTION *parent, CONF_PAIR *cp)
 {
-	cf_item_add(parent, cf_pairtoitem(cp));
+	cf_item_add(parent, cf_pair_to_item(cp));
 }
 
 /** Allocate a CONF_SECTION
@@ -459,7 +459,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs, char 
 	     ci;
 	     ci = cf_item_find_next(cs, ci)) {
 		if (cf_item_is_section(ci)) {
-			child = cf_itemtosection(ci);
+			child = cf_item_to_section(ci);
 			child = cf_section_dup(new, child, cf_section_name1(child), cf_section_name2(child));
 			if (!child) {
 				talloc_free(new);
@@ -470,7 +470,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs, char 
 		}
 
 		if (cf_item_is_pair(ci)) {
-			cp = cf_pair_dup(new, cf_itemtopair(ci));
+			cp = cf_pair_dup(new, cf_item_to_pair(ci));
 			if (!cp) {
 				talloc_free(new);
 				return NULL;
@@ -551,7 +551,7 @@ void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 		switch (ci->type) {
 		case CONF_ITEM_PAIR:
 			if (!rbtree_insert(cs->pair_tree, ci)) {
-				CONF_PAIR *cp = cf_itemtopair(ci);
+				CONF_PAIR *cp = cf_item_to_pair(ci);
 
 				if (strcmp(cp->attr, "confdir") == 0) break;
 				if (!cp->value) break; /* module name, "ok", etc. */
@@ -559,7 +559,7 @@ void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 			break;
 
 		case CONF_ITEM_SECTION: {
-			CONF_SECTION *cs_new = cf_itemtosection(ci);
+			CONF_SECTION *cs_new = cf_item_to_section(ci);
 			CONF_SECTION *name1_cs;
 
 			if (!cs->section_tree) {
@@ -666,7 +666,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 		 *	Just '.' means the current section
 		 */
 		if (*p == '\0') {
-			return cf_sectiontoitem(cs);
+			return cf_section_to_item(cs);
 		}
 
 		/*
@@ -683,7 +683,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 			 *	enclosing this section
 			 */
 			if (!*++p) {
-				return cf_sectiontoitem(cs);
+				return cf_section_to_item(cs);
 			}
 		}
 
@@ -866,7 +866,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			 *	it's the property of a section.
 			 */
 			if (q) {
-				CONF_SECTION *mycs = cf_itemtosection(ci);
+				CONF_SECTION *mycs = cf_item_to_section(ci);
 
 				if (ci->type != CONF_ITEM_SECTION) {
 					ERROR("%s[%d]: Can only reference properties of sections", cf, *lineno);
@@ -893,7 +893,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				/*
 				 *  Substitute the value of the variable.
 				 */
-				cp = cf_itemtopair(ci);
+				cp = cf_item_to_pair(ci);
 				if (!cp->value) {
 					ERROR("%s[%d]: Reference \"%s\" has no value",
 					       cf, *lineno, input);
@@ -927,7 +927,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				 *	Copy the section instead of
 				 *	referencing it.
 				 */
-				subcs = cf_template_copy(outercs, cf_itemtosection(ci));
+				subcs = cf_template_copy(outercs, cf_item_to_section(ci));
 				if (!subcs) {
 					ERROR("%s[%d]: Failed copying reference %s", cf, *lineno, name);
 					return NULL;
@@ -1597,7 +1597,7 @@ static CONF_SECTION *cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *
 		if (ci->type == CONF_ITEM_PAIR) {
 			CONF_PAIR *cp1, *cp2;
 
-			cp1 = cf_itemtopair(ci);
+			cp1 = cf_item_to_pair(ci);
 			cp2 = cf_pair_alloc(cs, cp1->attr, cp1->value, cp1->op, cp1->value_type);
 			if (!cp2) return false;
 
@@ -1611,7 +1611,7 @@ static CONF_SECTION *cf_template_copy(CONF_SECTION *parent, CONF_SECTION const *
 		if (ci->type == CONF_ITEM_SECTION) {
 			CONF_SECTION *subcs1, *subcs2;
 
-			subcs1 = cf_itemtosection(ci);
+			subcs1 = cf_item_to_section(ci);
 			subcs2 = cf_template_copy(cs, subcs1);
 
 			subcs2->item.filename = subcs1->item.filename;
@@ -1651,7 +1651,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			/*
 			 *	It exists, don't over-write it.
 			 */
-			cp1 = cf_itemtopair(ci);
+			cp1 = cf_item_to_pair(ci);
 			if (cf_pair_find(cs, cp1->attr)) {
 				continue;
 			}
@@ -1673,7 +1673,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 		if (ci->type == CONF_ITEM_SECTION) {
 			CONF_SECTION *subcs1, *subcs2;
 
-			subcs1 = cf_itemtosection(ci);
+			subcs1 = cf_item_to_section(ci);
 			rad_assert(subcs1 != NULL);
 
 			subcs2 = cf_section_sub_find_name2(cs, subcs1->name1, subcs1->name2);
@@ -2064,7 +2064,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				return -1;
 		       }
 
-		       this->template = cf_itemtosection(ci);
+		       this->template = cf_item_to_section(ci);
 		       continue;
 	       }
 
@@ -2101,7 +2101,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Skip (...) to find the {
 			 */
-			slen = fr_condition_tokenize(nextcs, cf_sectiontoitem(nextcs), ptr, &cond,
+			slen = fr_condition_tokenize(nextcs, cf_section_to_item(nextcs), ptr, &cond,
 						     &error, FR_COND_TWO_PASS);
 			memcpy(&p, &ptr, sizeof(p));
 
@@ -2160,7 +2160,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			nextcs->item.filename = talloc_strdup(nextcs, filename);
 			nextcs->item.lineno = *lineno;
 
-			slen = fr_condition_tokenize(nextcs, cf_sectiontoitem(nextcs), ptr, &cond,
+			slen = fr_condition_tokenize(nextcs, cf_section_to_item(nextcs), ptr, &cond,
 						     &error, FR_COND_TWO_PASS);
 			*p = '{'; /* put it back */
 
@@ -2719,15 +2719,15 @@ CONF_SECTION *cf_section_find_name2(CONF_SECTION const *cs,
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
 
-		if (strcmp(cf_itemtosection(ci)->name1, name1) != 0) {
+		if (strcmp(cf_item_to_section(ci)->name1, name1) != 0) {
 			continue;
 		}
 
-		their2 = cf_itemtosection(ci)->name2;
+		their2 = cf_item_to_section(ci)->name2;
 
 		if ((!name2 && !their2) ||
 		    (name2 && their2 && (strcmp(name2, their2) == 0))) {
-			return cf_itemtosection(ci);
+			return cf_item_to_section(ci);
 		}
 	}
 
@@ -2765,10 +2765,10 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION const *cs,
 	     ci = ci->next) {
 		if (ci->type != CONF_ITEM_PAIR) continue;
 
-		if (!attr || strcmp(cf_itemtopair(ci)->attr, attr) == 0) break;
+		if (!attr || strcmp(cf_item_to_pair(ci)->attr, attr) == 0) break;
 	}
 
-	return cf_itemtopair(ci);
+	return cf_item_to_pair(ci);
 }
 
 /*
@@ -2863,7 +2863,7 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
 
-		subcs = cf_itemtosection(ci);
+		subcs = cf_item_to_section(ci);
 		if (!subcs->name2) {
 			if (strcmp(subcs->name1, name2) == 0) break;
 		} else {
@@ -2871,7 +2871,7 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 		}
 	}
 
-	return cf_itemtosection(ci);
+	return cf_item_to_section(ci);
 }
 
 /*
@@ -2903,11 +2903,11 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION const *section,
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
 		if ((name1 == NULL) ||
-		    (strcmp(cf_itemtosection(ci)->name1, name1) == 0))
+		    (strcmp(cf_item_to_section(ci)->name1, name1) == 0))
 			break;
 	}
 
-	return cf_itemtosection(ci);
+	return cf_item_to_section(ci);
 }
 
 
@@ -2955,7 +2955,7 @@ static void _pair_count(int *count, CONF_SECTION const *cs)
 	     ci = cf_item_find_next(cs, ci)) {
 
 		if (cf_item_is_section(ci)) {
-			_pair_count(count, cf_itemtosection(ci));
+			_pair_count(count, cf_item_to_section(ci));
 			continue;
 		}
 
@@ -3091,7 +3091,7 @@ static int cf_data_add_internal(CONF_SECTION *cs, char const *name,
 	if (!cd) return -1;
 	cd->flag = flag;
 
-	cf_item_add(cs, cf_datatoitem(cd));
+	cf_item_add(cs, cf_data_to_item(cd));
 
 	return 0;
 }

@@ -764,7 +764,7 @@ int find_module_sibling_section(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	inst = find_module_instance(cf_item_parent(cf_sectiontoitem(module)), inst_name, true);
+	inst = find_module_instance(cf_item_parent(cf_section_to_item(module)), inst_name, true);
 
 	/*
 	 *	Remove the config data we added for loop
@@ -1019,7 +1019,7 @@ static int load_component_section(CONF_SECTION *cs,
 		CONF_SECTION *scs = NULL;
 
 		if (cf_item_is_section(modref)) {
-			scs = cf_itemtosection(modref);
+			scs = cf_item_to_section(modref);
 
 			name1 = cf_section_name1(scs);
 
@@ -1038,7 +1038,7 @@ static int load_component_section(CONF_SECTION *cs,
 			cp = NULL;
 
 		} else if (cf_item_is_pair(modref)) {
-			cp = cf_itemtopair(modref);
+			cp = cf_item_to_pair(modref);
 
 		} else {
 			continue; /* ignore it */
@@ -1212,7 +1212,7 @@ static int load_byserver(CONF_SECTION *cs)
 			 */
 			if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
 			    cf_item_is_pair(modref)) {
-				CONF_PAIR *cp = cf_itemtopair(modref);
+				CONF_PAIR *cp = cf_item_to_pair(modref);
 				if (!define_type(cs, da, cf_pair_attr(cp))) {
 					goto error;
 				}
@@ -1222,7 +1222,7 @@ static int load_byserver(CONF_SECTION *cs)
 
 			if (!cf_item_is_section(modref)) continue;
 
-			subsubcs = cf_itemtosection(modref);
+			subsubcs = cf_item_to_section(modref);
 			name1 = cf_section_name1(subsubcs);
 
 			if (strcmp(name1, section_type_value[comp].typename) == 0) {
@@ -1612,7 +1612,7 @@ int modules_hup(CONF_SECTION *modules)
 		 */
 		if (!cf_item_is_section(ci)) continue;
 
-		cs = cf_itemtosection(ci);
+		cs = cf_item_to_section(ci);
 		instname = cf_section_name2(cs);
 		if (!instname) instname = cf_section_name1(cs);
 
@@ -1745,11 +1745,11 @@ int modules_init(CONF_SECTION *config)
 
 		if (!next || !cf_item_is_section(next)) continue;
 
-		subcs = cf_itemtosection(ci);
+		subcs = cf_item_to_section(ci);
 		name1 = cf_section_name1(subcs);
 		name2 = cf_section_name2(subcs);
 
-		duplicate = cf_section_find_name2(cf_itemtosection(next),
+		duplicate = cf_section_find_name2(cf_item_to_section(next),
 						  name1, name2);
 		if (!duplicate) continue;
 
@@ -1791,7 +1791,7 @@ int modules_init(CONF_SECTION *config)
 			 *	they're referenced at all...
 			 */
 			if (cf_item_is_pair(ci)) {
-				cp = cf_itemtopair(ci);
+				cp = cf_item_to_pair(ci);
 				name = cf_pair_attr(cp);
 
 				module = find_module_instance(modules, name, true);
@@ -1811,7 +1811,7 @@ int modules_init(CONF_SECTION *config)
 				CONF_SECTION *subcs;
 				CONF_ITEM *subci;
 
-				subcs = cf_itemtosection(ci);
+				subcs = cf_item_to_section(ci);
 				name = cf_section_name1(subcs);
 
 				/*
@@ -1835,7 +1835,7 @@ int modules_init(CONF_SECTION *config)
 				     subci != NULL;
 				     subci=cf_item_find_next(subcs, subci)) {
 					if (cf_item_is_pair(subci)) {
-						cp = cf_itemtopair(subci);
+						cp = cf_item_to_pair(subci);
 						if (cf_pair_value(cp)) {
 							cf_log_err(subci, "Cannot set return codes in a %s block",
 								   cf_section_name1(subcs));
@@ -1868,7 +1868,7 @@ int modules_init(CONF_SECTION *config)
 				 *	Register a redundant xlat
 				 */
 				if (all_same) {
-					if (!xlat_register_redundant(cf_itemtosection(ci))) {
+					if (!xlat_register_redundant(cf_item_to_section(ci))) {
 						WARN("%s[%d] Not registering expansions for %s",
 						     cf_section_filename(subcs), cf_section_lineno(subcs),
 						     cf_section_name2(subcs));
@@ -1898,7 +1898,7 @@ int modules_init(CONF_SECTION *config)
 
 		if (!cf_item_is_section(ci)) continue;
 
-		subcs = cf_itemtosection(ci);
+		subcs = cf_item_to_section(ci);
 		name = cf_section_name2(subcs);
 		if (!name) name = cf_section_name1(subcs);
 

@@ -1435,7 +1435,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 		return;
 	}
 
-	cp = cf_itemtopair(ci);
+	cp = cf_item_to_pair(ci);
 	if (!cp) return;
 
 	value = cf_pair_value(cp);

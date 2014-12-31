@@ -806,7 +806,7 @@ redo:
 		cond.data.map = &map;
 
 		map.op = T_OP_CMP_EQ;
-		map.ci = cf_sectiontoitem(g->cs);
+		map.ci = cf_section_to_item(g->cs);
 
 		rad_assert(g->vpt != NULL);
 
@@ -1590,7 +1590,7 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
  */
 int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 {
-	CONF_PAIR *cp = cf_itemtopair(map->ci);
+	CONF_PAIR *cp = cf_item_to_pair(map->ci);
 
 	/*
 	 *	Anal-retentive checks.
@@ -1886,7 +1886,7 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 			return NULL;
 		}
 
-		subcs = cf_itemtosection(ci);	/* can't return NULL */
+		subcs = cf_item_to_section(ci);	/* can't return NULL */
 		name1 = cf_section_name1(subcs);
 
 		if (strcmp(name1, "case") != 0) {
@@ -2084,7 +2084,7 @@ static modcallable *do_compile_modbreak(modcallable *parent,
 
 	for (cs = cf_item_parent(ci);
 	     cs != NULL;
-	     cs = cf_item_parent(cf_sectiontoitem(cs))) {
+	     cs = cf_item_parent(cf_section_to_item(cs))) {
 		if (strcmp(cf_section_name1(cs), "foreach") == 0) {
 			break;
 		}
@@ -2185,7 +2185,7 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 		 *	from doing crazy things.
 		 */
 		if (cf_item_is_section(ci)) {
-			CONF_SECTION *subcs = cf_itemtosection(ci);
+			CONF_SECTION *subcs = cf_item_to_section(ci);
 			char const *name1 = cf_section_name1(subcs);
 
 			if ((strcmp(name1, "if") == 0) ||
@@ -2202,7 +2202,7 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 		}
 
 		if (cf_item_is_pair(ci)) {
-			CONF_PAIR *cp = cf_itemtopair(ci);
+			CONF_PAIR *cp = cf_item_to_pair(ci);
 			if (cf_pair_value(cp) != NULL) {
 				cf_log_err(ci,
 					   "Entry with no value is invalid");
@@ -2233,7 +2233,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (cf_item_is_section(ci)) {
 		char const *name2;
 
-		cs = cf_itemtosection(ci);
+		cs = cf_item_to_section(ci);
 		modrefname = cf_section_name1(cs);
 		name2 = cf_section_name2(cs);
 		if (!name2) name2 = "";
@@ -2374,7 +2374,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 */
 	} else {
 		CONF_SECTION *loop;
-		CONF_PAIR *cp = cf_itemtopair(ci);
+		CONF_PAIR *cp = cf_item_to_pair(ci);
 		modrefname = cf_pair_attr(cp);
 
 		/*
@@ -2425,7 +2425,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 */
 		for (loop = cf_item_parent(ci);
 		     loop && subcs;
-		     loop = cf_item_parent(cf_sectiontoitem(loop))) {
+		     loop = cf_item_parent(cf_section_to_item(loop))) {
 			if (loop == subcs) {
 				subcs = NULL;
 			}
@@ -2438,7 +2438,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (cf_section_name2(subcs)) {
 				return do_compile_modsingle(parent,
 							    component,
-							    cf_sectiontoitem(subcs),
+							    cf_section_to_item(subcs),
 							    grouptype,
 							    modname);
 			} else {
@@ -2589,7 +2589,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (cf_item_is_section(ci)) {
 		CONF_ITEM *csi;
 
-		cs = cf_itemtosection(ci);
+		cs = cf_item_to_section(ci);
 		for (csi=cf_item_find_next(cs, NULL);
 		     csi != NULL;
 		     csi=cf_item_find_next(cs, csi)) {
@@ -2602,7 +2602,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			if (!cf_item_is_pair(csi)) continue;
 
-			if (!compile_action(csingle, cf_itemtopair(csi))) {
+			if (!compile_action(csingle, cf_item_to_pair(csi))) {
 				talloc_free(csingle);
 				return NULL;
 			}
@@ -2805,7 +2805,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 		if (cf_item_is_section(ci)) {
 			char const *junk = NULL;
 			modcallable *single;
-			CONF_SECTION *subcs = cf_itemtosection(ci);
+			CONF_SECTION *subcs = cf_item_to_section(ci);
 
 			single = do_compile_modsingle(c, component, ci,
 						      grouptype, &junk);
@@ -2822,7 +2822,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 
 		} else {
 			char const *attr, *value;
-			CONF_PAIR *cp = cf_itemtopair(ci);
+			CONF_PAIR *cp = cf_item_to_pair(ci);
 
 			attr = cf_pair_attr(cp);
 			value = cf_pair_value(cp);
@@ -2843,7 +2843,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 							      &junk);
 				if (!single) {
 					if (cf_item_is_pair(ci) &&
-					    cf_pair_attr(cf_itemtopair(ci))[0] == '-') {
+					    cf_pair_attr(cf_item_to_pair(ci))[0] == '-') {
 						continue;
 					}
 
@@ -2989,13 +2989,13 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 			}
 
 			if (cf_item_is_pair(ci)) {
-				CONF_PAIR *cp = cf_itemtopair(ci);
+				CONF_PAIR *cp = cf_item_to_pair(ci);
 
 				WARN("%s[%d] Please change %%{%s} to &%s",
 				       cf_pair_filename(cp), cf_pair_lineno(cp),
 				       attr->name, attr->name);
 			} else {
-				CONF_SECTION *cs = cf_itemtosection(ci);
+				CONF_SECTION *cs = cf_item_to_section(ci);
 
 				WARN("%s[%d] Please change %%{%s} to &%s",
 				       cf_section_filename(cs), cf_section_lineno(cs),
@@ -3446,7 +3446,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	Statically compile xlats
 			 */
 			if (g->vpt->type == TMPL_TYPE_XLAT) {
-				if (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
+				if (!pass2_xlat_compile(cf_section_to_item(g->cs),
 							&g->vpt, true, NULL)) {
 					return false;
 				}
@@ -3574,12 +3574,12 @@ bool modcall_pass2(modcallable *mc)
 				 *	attribute of a different type.
 				 */
 				if (f->vpt->type == TMPL_TYPE_ATTR) {
-					if (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
+					if (!pass2_xlat_compile(cf_section_to_item(g->cs),
 								&g->vpt, true, f->vpt->tmpl_da)) {
 						return false;
 					}
 				} else {
-					if (!pass2_xlat_compile(cf_sectiontoitem(g->cs),
+					if (!pass2_xlat_compile(cf_section_to_item(g->cs),
 								&g->vpt, true, NULL)) {
 						return false;
 					}

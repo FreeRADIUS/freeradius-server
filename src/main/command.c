@@ -375,7 +375,7 @@ static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
 
 	if (!cf_item_is_pair(ci)) return 0;
 
-	cp = cf_itemtopair(ci);
+	cp = cf_item_to_pair(ci);
 	value = cf_pair_value(cp);
 	if (!value) return 0;
 

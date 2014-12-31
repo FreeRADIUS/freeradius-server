@@ -237,7 +237,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 			goto do_log;
 		}
 
-		cp = cf_itemtopair(ci);
+		cp = cf_item_to_pair(ci);
 		value = cf_pair_value(cp);
 		if (!value) {
 			RDEBUG2("Entry \"%s\" has no value", line);

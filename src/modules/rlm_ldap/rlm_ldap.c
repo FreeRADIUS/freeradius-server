@@ -684,7 +684,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				cp = cf_pair_alloc(conf, "server", buff, T_OP_EQ, T_SINGLE_QUOTED_STRING);
 				if (!cp) return -1;
 
-				ci = cf_pairtoitem(cp);
+				ci = cf_pair_to_item(cp);
 				cf_item_add(conf, ci);
 
 				break;
@@ -1382,7 +1382,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		goto error;
 	}
 
-	cs = cf_section_sub_find(cf_itemtosection(ci), "update");
+	cs = cf_section_sub_find(cf_item_to_section(ci), "update");
 	if (!cs) {
 		REDEBUG("Section must contain 'update' subsection");
 
@@ -1410,7 +1410,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		/*
 		 *	Retrieve all the information we need about the pair
 		 */
-		cp = cf_itemtopair(ci);
+		cp = cf_item_to_pair(ci);
 		value = cf_pair_value(cp);
 		attr = cf_pair_attr(cp);
 		op = cf_pair_operator(cp);

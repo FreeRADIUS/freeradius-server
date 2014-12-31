@@ -414,7 +414,7 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 		 *  Then recursively call perl_parse_config with this section and the new HV.
 		 */
 		if (cf_item_is_section(ci)) {
-			CONF_SECTION	*sub_cs = cf_itemtosection(ci);
+			CONF_SECTION	*sub_cs = cf_item_to_section(ci);
 			char const	*key = cf_section_name1(sub_cs); /* hash key */
 			HV		*sub_hv;
 			SV		*ref;
@@ -433,7 +433,7 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 
 			perl_parse_config(sub_cs, lvl + 1, sub_hv);
 		} else if (cf_item_is_pair(ci)){
-			CONF_PAIR	*cp = cf_itemtopair(ci);
+			CONF_PAIR	*cp = cf_item_to_pair(ci);
 			char const	*key = cf_pair_attr(cp);	/* hash key */
 			char const	*value = cf_pair_value(cp);	/* hash value */
 
