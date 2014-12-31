@@ -775,12 +775,15 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
  * @param[in] name of attribute including qualifiers.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @param[in] allow_undefined If true, we don't generate a parse error on attributes
- *	that are not in the global dictionary, and are not in unknown attribute format.
+ * @param[in] allow_unknown If true attributes in the format accepted by dict_unknown_from_substr
+ *	will be allowed, even if they're not in the main dictionaries.
+ * @param[in] allow_undefined If true, we don't generate a parse error on unknown
+ *	attributes, and instead set type to TMPL_TYPE_ATTR_UNDEFINED.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
-			      request_refs_t request_def, pair_lists_t list_def, bool allow_undefined)
+			      request_refs_t request_def, pair_lists_t list_def,
+			      bool allow_unknown, bool allow_undefined)
 {
 	char const *p;
 	long num;
@@ -821,10 +824,34 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 
 	attr.da = dict_attrbyname_substr(&p);
 	if (!attr.da) {
+		char const *a;
+
+		/*
+		 *	Record start of attribute in case we need to error out.
+		 */
+		a = p;
+
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
 		if (dict_unknown_from_substr((DICT_ATTR *)&attr.unknown.da, &p) == 0) {
+			/*
+			 *	Check what we just parsed really hasn't been defined
+			 *	in the main dictionaries.
+			 */
+			attr.da = dict_attrbyvalue(((DICT_ATTR *)&attr.unknown.da)->attr,
+						   ((DICT_ATTR *)&attr.unknown.da)->vendor);
+			if (attr.da) goto do_tag;
+
+
+			fprintf(stderr, "\n%i:%i\n", ((DICT_ATTR *)&attr.unknown.da)->attr,
+				((DICT_ATTR *)&attr.unknown.da)->vendor);
+
+			if (!allow_unknown) {
+				fr_strerror_printf("Unknown attribute");
+				return -(a - name);
+			}
+
 			attr.da = (DICT_ATTR *)&attr.unknown.da;
 			goto skip_tag; /* unknown attributes can't have tags */
 		}
@@ -834,8 +861,8 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 		 *	let the caller decide.
 		 */
 		if (!allow_undefined) {
-			fr_strerror_printf("Unknown attribute");
-			return -(p - name);
+			fr_strerror_printf("Undefined attribute");
+			return -(a - name);
 		}
 
 		/*
@@ -852,6 +879,8 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 
 		goto skip_tag;
 	}
+
+do_tag:
 	type = TMPL_TYPE_ATTR;
 
 	/*
@@ -955,11 +984,12 @@ finish:
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
-			   request_refs_t request_def, pair_lists_t list_def, bool allow_undefined)
+			   request_refs_t request_def, pair_lists_t list_def,
+			   bool allow_unknown, bool allow_undefined)
 {
 	ssize_t slen;
 
-	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_undefined);
+	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown, allow_undefined);
 	if (slen <= 0) return slen;
 	if (name[slen] != '\0') {
 		fr_strerror_printf("Unexpected text after attribute name");
@@ -982,19 +1012,22 @@ ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
  * @param[in] request_def The default request to insert unqualified
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
+ * @param[in] allow_unknown If true attributes in the format accepted by dict_unknown_from_substr
+ *	will be allowed, even if they're not in the main dictionaries.
  * @param[in] allow_undefined If true, we don't generate a parse error on unknown
  *	attributes, and instead set type to TMPL_TYPE_ATTR_UNDEFINED.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name,
-			    request_refs_t request_def, pair_lists_t list_def, bool allow_undefined)
+			    request_refs_t request_def, pair_lists_t list_def,
+			    bool allow_unknown, bool allow_undefined)
 {
 	ssize_t slen;
 	value_pair_tmpl_t *vpt;
 
 	MEM(vpt = talloc(ctx, value_pair_tmpl_t)); /* tmpl_from_attr_substr zeros it */
 
-	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_undefined);
+	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown, allow_undefined);
 	if (slen <= 0) {
 		tmpl_free(&vpt);
 		return slen;
@@ -1242,7 +1275,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		 *	If we can parse it as an attribute, it's an attribute.
 		 *	Otherwise, treat it as a literal.
 		 */
-		slen = tmpl_afrom_attr_str(ctx, &vpt, name, request_def, list_def, (name[0] == '&'));
+		slen = tmpl_afrom_attr_str(ctx, &vpt, name, request_def, list_def, true, (name[0] == '&'));
 		if ((name[0] == '&') && (slen <= 0)) return slen;
 		if (slen > 0) break;
 		/* FALL-THROUGH */
