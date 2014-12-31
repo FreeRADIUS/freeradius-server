@@ -689,7 +689,7 @@ int main(int argc, char **argv)
 
 	if (!quiet) {
 		printf("%s - FreeRADIUS Server administration tool.\n", radmin_version);
-		printf("Copyright (C) 2008-2014 The FreeRADIUS server project and contributors.\n");
+		printf("Copyright (C) 2008-2015 The FreeRADIUS server project and contributors.\n");
 		printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		printf("PARTICULAR PURPOSE.\n");
 		printf("You may redistribute copies of FreeRADIUS under the terms of the\n");

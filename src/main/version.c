@@ -314,7 +314,7 @@ void version(void)
 #ifdef BUILT_WITH_LIBS
 	DEBUG3("  libs     : " BUILT_WITH_LIBS);
 #endif
-	INFO("Copyright (C) 1999-2014 The FreeRADIUS server project and contributors");
+	INFO("Copyright (C) 1999-2015 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");
 	INFO("You may redistribute copies of FreeRADIUS under the terms of the");
