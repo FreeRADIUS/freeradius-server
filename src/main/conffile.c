@@ -579,28 +579,6 @@ void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 				break;
 			}
 
-#if 0
-			/*
-			 *	We'll ignore these checks for
-			 *	now.  Various sections can be
-			 *	duplicated, such as "listen",
-			 *	"update", "if", "else", etc.
-			 */
-			if (!name1_cs->name2 && !cs_new->name2) {
-				WARN("%s[%d] Duplicate configuration section \"%s { ...}\" %s %d",
-				     ci->filename, ci->lineno, cs_new->name1,
-				     name1_cs->item.filename, name1_cs->item.lineno);
-				break;
-			}
-
-			if ((name1_cs->name2 && cs_new->name2) &&
-			    (strcmp(name1_cs->name2, cs_new->name2) == 0)) {
-				WARN("%s[%d] Duplicate configuration section \"%s %s { ...}\"",
-				     ci->filename, ci->lineno, cs_new->name1, cs_new->name2);
-				break;
-			}
-#endif
-
 			/*
 			 *	We already have a section of
 			 *	this "name1".  Add a new
