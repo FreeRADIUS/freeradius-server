@@ -978,6 +978,8 @@ finish:
  * @param[in] name attribute name including qualifiers.
  * @param[in] request_def The default request to insert unqualified attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
+ * @param[in] allow_unknown If true attributes in the format accepted by dict_unknown_from_substr
+ *	will be allowed, even if they're not in the main dictionaries.
  * @param[in] allow_undefined If true, we don't generate a parse error on unknown
  *	attributes, and instead set type to TMPL_TYPE_ATTR_UNDEFINED.
  * @return <= 0 on error (offset as negative integer), > 0 on success (number of bytes parsed)
