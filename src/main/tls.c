@@ -1059,6 +1059,8 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 {
 	RSA *rsa;
 
+	if (!SSL_CTX_need_tmp_RSA(ctx)) return 0;
+
 	rsa = RSA_generate_key(512, RSA_F4, NULL, NULL);
 
 	if (!SSL_CTX_set_tmp_rsa(ctx, rsa)) {
