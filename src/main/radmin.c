@@ -123,7 +123,7 @@ static int fr_domain_socket(const char *path)
 
         saremote.sun_family = AF_UNIX;
 	memcpy(saremote.sun_path, path, len + 1); /* SUN_LEN does strlen */
-	
+
 	socklen = SUN_LEN(&saremote);
 
         if (connect(sockfd, (struct sockaddr *)&saremote, socklen) < 0) {
@@ -148,14 +148,14 @@ static int fr_domain_socket(const char *path)
 #ifdef O_NONBLOCK
 	{
 		int flags;
-		
+
 		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
 			fprintf(stderr, "%s: Failure getting socket flags: %s",
 				progname, strerror(errno));
 			close(sockfd);
 			return -1;
 		}
-		
+
 		flags |= O_NONBLOCK;
 		if( fcntl(sockfd, F_SETFL, flags) < 0) {
 			fprintf(stderr, "%s: Failure setting socket flags: %s",
@@ -262,7 +262,7 @@ static ssize_t run_command(int sockfd, const char *command,
 		 */
 		p = strstr(buffer, "radmin> ");
 		if (p &&
-		    ((p == buffer) || 
+		    ((p == buffer) ||
 		     (p[-1] == '\n') ||
 		     (p[-1] == '\r'))) {
 			*p = '\0';
@@ -298,7 +298,7 @@ int main(int argc, char **argv)
 	const char *input_file = NULL;
 	FILE *inputfp = stdin;
 	const char *output_file = NULL;
-	
+
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
 
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
 		while ((subcs = cf_subsection_find_next(cs, subcs, "listen")) != NULL) {
 			const char *value;
 			CONF_PAIR *cp = cf_pair_find(subcs, "type");
-			
+
 			if (!cp) continue;
 
 			value = cf_pair_value(cp);
@@ -480,14 +480,14 @@ int main(int argc, char **argv)
 		fprintf(stderr, "%s: Socket %s is not FreeRADIUS administration socket\n", progname, file);
 		exit(1);
 	}
-	
+
 	memcpy(&magic, buffer + 4, 4);
 	magic = ntohl(magic);
 	if (magic != 1) {
 		fprintf(stderr, "%s: Socket version mismatch: Need 1, got %d\n",
 			progname, magic);
 		exit(1);
-	}	
+	}
 
 	/*
 	 *	Run one command.
@@ -499,7 +499,7 @@ int main(int argc, char **argv)
 			size = run_command(sockfd, commands[i],
 					   buffer, sizeof(buffer));
 			if (size < 0) exit(1);
-			
+
 			if (buffer[0]) {
 				fputs(buffer, outputfp);
 				fprintf(outputfp, "\n");
@@ -511,7 +511,7 @@ int main(int argc, char **argv)
 
 	if (!done_license && !quiet) {
 		printf("%s - FreeRADIUS Server administration tool.\n", radmin_version);
-		printf("Copyright (C) 2008-2012 The FreeRADIUS server project and contributors.\n");
+		printf("Copyright (C) 2008-2015 The FreeRADIUS server project and contributors.\n");
 		printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		printf("PARTICULAR PURPOSE.\n");
 		printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
@@ -533,14 +533,14 @@ int main(int argc, char **argv)
 #else
 		if (!quiet) {
 			line = readline("radmin> ");
-			
+
 			if (!line) break;
-			
+
 			if (!*line) {
 				free(line);
 				continue;
 			}
-			
+
 #ifdef USE_READLINE_HISTORY
 			add_history(line);
 #endif
@@ -556,7 +556,7 @@ int main(int argc, char **argv)
 					progname);
 				exit(1);
 			}
-			
+
 			*p = '\0';
 
 			/*

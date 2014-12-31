@@ -172,7 +172,7 @@ void version(void)
 	DEBUG3("Server core libs:");
 	DEBUG3("  ssl: %s", ssl_version());
 
-	radlog(L_INFO, "Copyright (C) 1999-2013 The FreeRADIUS server project and contributors.");
+	radlog(L_INFO, "Copyright (C) 1999-2015 The FreeRADIUS server project and contributors.");
 	radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	radlog(L_INFO, "PARTICULAR PURPOSE.");
 	radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the");
