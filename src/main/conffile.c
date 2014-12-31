@@ -528,6 +528,10 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
  */
 void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 {
+	CONF_ITEM *first = ci;
+
+	rad_assert((void *)cs != (void *)ci);
+
 	if (!cs || !ci) return;
 
 	if (!cs->children) {
@@ -542,6 +546,8 @@ void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 	 *	Update the trees (and tail) for each item added.
 	 */
 	for (/* nothing */; ci != NULL; ci = ci->next) {
+		rad_assert(ci->next != first);	/* simple cycle detection */
+
 		cs->tail = ci;
 
 		/*
