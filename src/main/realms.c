@@ -439,7 +439,7 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
 		home->src_ipaddr.af = home->ipaddr.af;
 	}
 
-	parent = cf_item_parent(cf_sectiontoitem(cs));
+	parent = cf_item_parent(cf_section_to_item(cs));
 	if (parent && strcmp(cf_section_name1(parent), "server") == 0) {
 		home->parent_server = cf_section_name2(parent);
 	}

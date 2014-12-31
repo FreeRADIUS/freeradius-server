@@ -49,11 +49,11 @@ static int rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION
 	     	char const *value;
 
 		if (cf_item_is_section(ci)) {
-			if (rlm_ldap_client_get_attrs(values, idx, cf_itemtosection(ci)) < 0) return -1;
+			if (rlm_ldap_client_get_attrs(values, idx, cf_item_to_section(ci)) < 0) return -1;
 			continue;
 		}
 
-		value = cf_pair_value(cf_itemtopair(ci));
+		value = cf_pair_value(cf_item_to_pair(ci));
 		if (!value) return -1;
 
 		values[(*idx)++] = value;
@@ -95,7 +95,7 @@ static int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION
 		if (cf_item_is_section(ci)) {
 			CONF_SECTION *cs, *cc;
 
-			cs = cf_itemtosection(ci);
+			cs = cf_item_to_section(ci);
 			cc = cf_section_alloc(client, cf_section_name1(cs), cf_section_name2(cs));
 			if (!cc) return -1;
 
@@ -105,7 +105,7 @@ static int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION
 			continue;
 		}
 
-		cp = cf_itemtopair(ci);
+		cp = cf_item_to_pair(ci);
 		attr = cf_pair_attr(cp);
 
 		values = ldap_get_values_len(conn->handle, entry, cf_pair_value(cp));
@@ -120,7 +120,7 @@ static int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION
 		}
 		talloc_free(value);
 		ldap_value_free_len(values);
-		cf_item_add(client, cf_pairtoitem(cp));
+		cf_item_add(client, cf_pair_to_item(cp));
 	}
 
 	return 0;

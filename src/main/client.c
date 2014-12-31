@@ -1246,7 +1246,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			RDEBUG2("%s = '%s'", vp->da->name, value);
 
 			cp = cf_pair_alloc(c->cs, vp->da->name, value, T_OP_SET, T_SINGLE_QUOTED_STRING);
-			ci = cf_pairtoitem(cp);
+			ci = cf_pair_to_item(cp);
 			cf_item_add(c->cs, ci);
 
 			talloc_free(vp);

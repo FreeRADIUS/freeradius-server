@@ -173,7 +173,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 
 	map = talloc_zero(ctx, value_pair_map_t);
 	map->op = cf_pair_operator(cp);
-	map->ci = cf_pairtoitem(cp);
+	map->ci = cf_pair_to_item(cp);
 
 	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
@@ -293,7 +293,7 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 	 */
 	parent = cs;
 
-	ci = cf_sectiontoitem(cs);
+	ci = cf_section_to_item(cs);
 
 	cs_list = p = cf_section_name2(cs);
 	if (cs_list) {
@@ -324,7 +324,7 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 			goto error;
 		}
 
-		cp = cf_itemtopair(ci);
+		cp = cf_item_to_pair(ci);
 		if (map_afrom_cp(parent, &map, cp, request_def, dst_list_def, REQUEST_CURRENT, src_list_def) < 0) {
 			goto error;
 		}
@@ -922,6 +922,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 			if (map->rhs->type == TMPL_TYPE_LIST) {
 				pairfree(list);
 				*list = head;
+				head = NULL;
 			} else {
 		case T_OP_EQ:
 				rad_assert(map->rhs->type == TMPL_TYPE_EXEC);

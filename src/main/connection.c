@@ -596,7 +596,7 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	int ret;
 
 #define CONNECTION_POOL_CF_KEY "connection_pool"
-#define parent_name(_x) cf_section_name(cf_item_parent(cf_sectiontoitem(_x)))
+#define parent_name(_x) cf_section_name(cf_item_parent(cf_section_to_item(_x)))
 
 	cs_name1 = cf_section_name1(module);
 	cs_name2 = cf_section_name2(module);

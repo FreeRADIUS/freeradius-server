@@ -808,7 +808,7 @@ static ssize_t xlat_redundant(void *instance, REQUEST *request,
 
 		if (!cf_item_is_pair(ci)) continue;
 
-		name = cf_pair_attr(cf_itemtopair(ci));
+		name = cf_pair_attr(cf_item_to_pair(ci));
 		rad_assert(name != NULL);
 
 		xlat = xlat_find(name);
@@ -859,7 +859,7 @@ static ssize_t xlat_load_balance(void *instance, REQUEST *request,
 	 *	Plain load balancing: do one child, and only one child.
 	 */
 	if (xr->type == XLAT_LOAD_BALANCE) {
-		name = cf_pair_attr(cf_itemtopair(found));
+		name = cf_pair_attr(cf_item_to_pair(found));
 		rad_assert(name != NULL);
 
 		xlat = xlat_find(name);
@@ -876,7 +876,7 @@ static ssize_t xlat_load_balance(void *instance, REQUEST *request,
 	 */
 	ci = found;
 	do {
-		name = cf_pair_attr(cf_itemtopair(ci));
+		name = cf_pair_attr(cf_item_to_pair(ci));
 		rad_assert(name != NULL);
 
 		xlat = xlat_find(name);
@@ -946,7 +946,7 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 		     ci = cf_item_find_next(cs, ci)) {
 			if (!cf_item_is_pair(ci)) continue;
 
-			if (!xlat_find(cf_pair_attr(cf_itemtopair(ci)))) {
+			if (!xlat_find(cf_pair_attr(cf_item_to_pair(ci)))) {
 				talloc_free(xr);
 				return false;
 			}

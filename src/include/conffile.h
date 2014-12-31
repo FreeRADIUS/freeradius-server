@@ -209,10 +209,10 @@ int cf_pair_count(CONF_SECTION const *cs);
 CONF_SECTION *cf_item_parent(CONF_ITEM const *ci);
 bool cf_item_is_section(CONF_ITEM const *item);
 bool cf_item_is_pair(CONF_ITEM const *item);
-CONF_PAIR *cf_itemtopair(CONF_ITEM const *item);
-CONF_SECTION *cf_itemtosection(CONF_ITEM const *item);
-CONF_ITEM *cf_pairtoitem(CONF_PAIR const *cp);
-CONF_ITEM *cf_sectiontoitem(CONF_SECTION const *cs);
+CONF_PAIR *cf_item_to_pair(CONF_ITEM const *item);
+CONF_SECTION *cf_item_to_section(CONF_ITEM const *item);
+CONF_ITEM *cf_pair_to_item(CONF_PAIR const *cp);
+CONF_ITEM *cf_section_to_item(CONF_SECTION const *cs);
 
 void cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)		CC_HINT(format (printf, 2, 3));
 void cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)	CC_HINT(format (printf, 2, 3));

@@ -301,7 +301,7 @@ static ssize_t xlat_config(UNUSED void *instance, REQUEST *request, char const *
 		return -1;
 	}
 
-	cp = cf_itemtopair(ci);
+	cp = cf_item_to_pair(ci);
 
 	/*
 	 *  Ensure that we only copy what's necessary.

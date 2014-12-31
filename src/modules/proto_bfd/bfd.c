@@ -434,12 +434,12 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[BFD_MAX_SECRET_
 
 	if ((value[0] == '0') && (value[1] == 'x')) {
 		if (len > 42) {
-			cf_log_err(cf_sectiontoitem(cs), "Secret is too long");
+			cf_log_err(cf_section_to_item(cs), "Secret is too long");
 			return -1;
 		}
 
 		if ((len & 0x01) != 0) {
-			cf_log_err(cf_sectiontoitem(cs), "Invalid hex length");
+			cf_log_err(cf_section_to_item(cs), "Invalid hex length");
 			return -1;
 		}
 
@@ -447,7 +447,7 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[BFD_MAX_SECRET_
 	}
 
 	if (len >= 20) {
-		cf_log_err(cf_sectiontoitem(cs), "Secret is too long");
+		cf_log_err(cf_section_to_item(cs), "Secret is too long");
 		return -1;
 	}
 
@@ -532,7 +532,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	if ((session->secret_len == 0) &&
 	    (session->auth_type != BFD_AUTH_RESERVED)) {
 		if (sock->secret_len == 0) {
-			cf_log_err(cf_sectiontoitem(cs), "auth_type requires a secret");
+			cf_log_err(cf_section_to_item(cs), "auth_type requires a secret");
 			talloc_free(session);
 			return NULL;
 		}
@@ -1560,7 +1560,7 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, uint16_t *po
 		if (rcode < 0) return -1;
 
 		if (rcode == 1) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err(cf_section_to_item(cs),
 				   "No address specified in section");
 			return -1;
 		}
@@ -1585,7 +1585,7 @@ static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
 
 	       if (!cf_item_is_section(ci)) continue;
 
-	       peer = cf_itemtosection(ci);
+	       peer = cf_item_to_section(ci);
 
 	       if (strcmp(cf_section_name1(peer), "peer") != 0) continue;
 

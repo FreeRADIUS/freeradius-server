@@ -1316,7 +1316,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		goto finish;
 	}
 
-	pair = cf_itemtopair(item);
+	pair = cf_item_to_pair(item);
 	attr = cf_pair_attr(pair);
 
 	RDEBUG2("Using query template '%s'", attr);
