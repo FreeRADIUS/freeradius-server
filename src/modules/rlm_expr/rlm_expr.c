@@ -223,7 +223,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 
 		p += 1;
 
-		slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false);
+		slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 		if (slen < 0) {
 			RDEBUG("Failed parsing attribute name '%s': %s", p, fr_strerror());
 			return false;
@@ -1145,7 +1145,7 @@ static ssize_t pairs_xlat(UNUSED void *instance, REQUEST *request,
 
 	VALUE_PAIR *vp;
 
-	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false) <= 0) {
+	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
 		REDEBUG("%s", fr_strerror());
 		return -1;
 	}

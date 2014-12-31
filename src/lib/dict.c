@@ -2742,8 +2742,6 @@ DICT_ATTR const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int attr, u
  *  - Vendor-%d-Attr-%d
  *  - VendorName-Attr-%d
  *
- * @todo should check attr/vendor against dictionary and return the real da.
- *
  * @param[in] da to initialise.
  * @param[in] name of attribute.
  * @return 0 on success -1 on failure.
@@ -2956,8 +2954,6 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
  *  - Attr-%d.%d.%d...
  *  - Vendor-%d-Attr-%d
  *  - VendorName-Attr-%d
- *
- * @todo should check attr/vendor against dictionary and return the real da.
  *
  * @param[in] ctx to alloc new attribute in.
  * @param[in] name of attribute.

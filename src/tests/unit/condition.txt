@@ -607,3 +607,12 @@ data &not-a-packet.User-Name == &not-a-packet.User-Name
 #
 condition ('i have scary embedded things\000 inside me' == "i have scary embedded things\000 inside me")
 data false
+
+#
+#  'Unknown' attributes which are defined in the main dictionary
+#  should be resolved to their real names.
+condition &Attr-1 == 'bar'
+data &User-Name == 'bar'
+
+condition &Vendor-11344-Attr-1 == 127.0.0.1
+data &FreeRADIUS-Proxied-To == 127.0.0.1/32

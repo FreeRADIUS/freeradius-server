@@ -218,15 +218,18 @@ value_pair_tmpl_t	*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
  *
  */
 ssize_t			tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
-					      request_refs_t request_def, pair_lists_t list_def, bool allow_undefined);
+					      request_refs_t request_def, pair_lists_t list_def,
+					      bool allow_unknown, bool allow_undefined);
 
 ssize_t			tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
 					   request_refs_t request_def,
-					   pair_lists_t list_def, bool allow_undefined);
+					   pair_lists_t list_def,
+					   bool allow_unknown, bool allow_undefined);
 
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name,
 					    request_refs_t request_def,
-					    pair_lists_t list_def, bool allow_undefined);
+					    pair_lists_t list_def,
+					    bool allow_unknown, bool allow_undefined);
 
 /*
  *	Parses any type of string into a template

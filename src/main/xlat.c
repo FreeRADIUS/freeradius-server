@@ -316,7 +316,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false) <= 0) {
+	if (tmpl_from_attr_str(&vpt, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) <= 0) {
 		RDEBUG("%s", fr_strerror());
 		return -1;
 	}
@@ -1206,7 +1206,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	- '[' - Which is an attribute index, so it must be an attribute.
 	 *      - '}' - The end of the expansion, which means it was a bareword.
 	 */
-	slen = tmpl_from_attr_substr(&node->attr, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	slen = tmpl_from_attr_substr(&node->attr, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, true, true);
 	if (slen <= 0) {
 		/*
 		 *	If the parse error occurred before the ':'

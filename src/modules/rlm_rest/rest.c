@@ -1325,7 +1325,7 @@ static int json_pairmake(rlm_rest_t *instance, rlm_rest_section_t *section,
 		 */
 		RDEBUG2("Parsing attribute \"%s\"", name);
 
-		if (tmpl_from_attr_str(&dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY, false) <= 0) {
+		if (tmpl_from_attr_str(&dst, name, REQUEST_CURRENT, PAIR_LIST_REPLY, false, false) <= 0) {
 			RWDEBUG("Failed parsing attribute: %s, skipping...", fr_strerror());
 			continue;
 		}
