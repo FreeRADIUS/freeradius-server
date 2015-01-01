@@ -183,27 +183,43 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	}
 
 	/*
-	 *	LHS must always be an attribute reference.
+	 *	LHS may be an expansion (that expands to an attribute reference)
+	 *	or an attribute reference. Quoting determines which it is.
 	 */
-	slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, dst_request_def, dst_list_def, true, true);
-	if (slen <= 0) {
-		char *spaces, *text;
+	type = cf_pair_attr_type(cp);
+	switch (type) {
+	case T_DOUBLE_QUOTED_STRING:
+	case T_BACK_QUOTED_STRING:
+		slen = tmpl_afrom_str(ctx, &map->lhs, attr, talloc_array_length(attr) - 1,
+				      type, dst_request_def, dst_list_def);
+		if (slen <= 0) {
+			char *spaces, *text;
 
-		fr_canonicalize_error(ctx, &spaces, &text, slen, attr);
+		marker:
+			fr_canonicalize_error(ctx, &spaces, &text, slen, attr);
+			cf_log_err_cp(cp, "%s", text);
+			cf_log_err_cp(cp, "%s^ %s", spaces, fr_strerror());
 
-		cf_log_err_cp(cp, "Failed parsing attribute reference");
-		cf_log_err_cp(cp, "%s", text);
-		cf_log_err_cp(cp, "%s^ %s", spaces, fr_strerror());
+			talloc_free(spaces);
+			talloc_free(text);
+			goto error;
+		}
+		break;
 
-		talloc_free(spaces);
-		talloc_free(text);
-		goto error;
-	}
+	default:
+		slen = tmpl_afrom_attr_str(ctx, &map->lhs, attr, dst_request_def, dst_list_def, true, true);
+		if (slen <= 0) {
+			cf_log_err_cp(cp, "Failed parsing attribute reference");
 
-	if (!tmpl_define_unknown_attr(map->lhs)) {
-		cf_log_err_cp(cp, "Failed creating attribute %s: %s",
-			      map->lhs->name, fr_strerror());
-		goto error;
+			goto marker;
+		}
+
+		if (!tmpl_define_unknown_attr(map->lhs)) {
+			cf_log_err_cp(cp, "Failed creating attribute %s: %s",
+				      map->lhs->name, fr_strerror());
+			goto error;
+		}
+		break;
 	}
 
 	/*
@@ -212,24 +228,11 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	type = cf_pair_value_type(cp);
 
 	if ((type == T_BARE_WORD) && (value[0] == '0') && (tolower((int)value[1] == 'x')) &&
-	    map_cast_from_hex(map, type, value)) {
+		map_cast_from_hex(map, type, value)) {
 		/* do nothing */
-
 	} else {
 		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, src_request_def, src_list_def);
-		if (slen < 0) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(ctx, &spaces, &text, slen, value);
-
-			cf_log_err_cp(cp, "%s", text);
-			cf_log_err_cp(cp, "%s^ %s", spaces, fr_strerror());
-
-			talloc_free(spaces);
-			talloc_free(text);
-
-			goto error;
-		}
+		if (slen < 0) goto marker;
 		if (!tmpl_define_unknown_attr(map->rhs)) {
 			cf_log_err_cp(cp, "Failed creating attribute %s: %s", map->rhs->name, fr_strerror());
 			goto error;
