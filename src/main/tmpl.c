@@ -843,10 +843,6 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 						   ((DICT_ATTR *)&attr.unknown.da)->vendor);
 			if (attr.da) goto do_tag;
 
-
-			fprintf(stderr, "\n%i:%i\n", ((DICT_ATTR *)&attr.unknown.da)->attr,
-				((DICT_ATTR *)&attr.unknown.da)->vendor);
-
 			if (!allow_unknown) {
 				fr_strerror_printf("Unknown attribute");
 				return -(a - name);
