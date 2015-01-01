@@ -66,121 +66,6 @@ static bool all_digits(char const *string)
 	return (*p == '\0');
 }
 
-/** Expand the RHS of a template
- *
- * @note Length of expanded string can be found with talloc_array_length(*out) - 1
- *
- * @param vd the output string
- * @param request Current request.
- * @param vpt to evaluate.
- * @return -1 on error, else 0.
- */
-ssize_t radius_expand_tmpl(value_data_t *vd, REQUEST *request, value_pair_tmpl_t const *vpt)
-{
-	VALUE_PAIR *vp;
-	ssize_t slen = -1;	/* quiet compiler */
-	char *out = NULL;
-
-	rad_assert(vpt->type != TMPL_TYPE_LIST);
-
-	VERIFY_TMPL(vpt);
-
-	switch (vpt->type) {
-	case TMPL_TYPE_LITERAL:
-		EVAL_DEBUG("EXPAND TMPL LITERAL");
-		vd->strvalue = talloc_memdup(request, vpt->name, vpt->len);
-		return vpt->len;
-
-	case TMPL_TYPE_EXEC:
-		EVAL_DEBUG("EXPAND TMPL EXEC");
-		out = talloc_array(request, char, 1024);
-		if (radius_exec_program(out, 1024, NULL, request, vpt->name, NULL, true, false, EXEC_TIMEOUT) != 0) {
-			TALLOC_FREE(out);
-			return -1;
-		}
-		slen = strlen(out);
-		break;
-
-	case TMPL_TYPE_XLAT:
-		EVAL_DEBUG("EXPAND TMPL XLAT");
-		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_axlat(&out, request, vpt->name, NULL, NULL);
-		if (slen < 0) {
-			rad_assert(!out);
-			return slen;
-		}
-		slen = strlen(out);
-		break;
-
-	case TMPL_TYPE_XLAT_STRUCT:
-		EVAL_DEBUG("EXPAND TMPL XLAT STRUCT");
-		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_axlat_struct(&out, request, vpt->tmpl_xlat, NULL, NULL);
-		if (slen < 0) {
-			rad_assert(!out);
-			return slen;
-		}
-		slen = strlen(out);
-		break;
-
-	case TMPL_TYPE_ATTR:
-	{
-		int ret;
-
-		EVAL_DEBUG("EXPAND TMPL ATTR");
-		ret = tmpl_find_vp(&vp, request, vpt);
-		if (ret < 0) return -2;
-
-		out = vp_aprints_value(request, vp, '"');
-		if (!out) return -1;
-		slen = talloc_array_length(out) - 1;
-	}
-		break;
-
-	/*
-	 *	We should never be expanding these.
-	 */
-	case TMPL_TYPE_UNKNOWN:
-	case TMPL_TYPE_NULL:
-	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_DATA:
-	case TMPL_TYPE_REGEX:
-	case TMPL_TYPE_ATTR_UNDEFINED:
-	case TMPL_TYPE_REGEX_STRUCT:
-		rad_assert(0 == 1);
-		slen = -1;
-		break;
-	}
-
-	if (slen < 0) return slen;
-
-	vd->strvalue = out;
-
-	/*
-	 *	If we're doing correct escapes, we may have to re-parse the string.
-	 *	If the string is from another expansion, it needs re-parsing.
-	 *	Or, if it's from a "string" attribute, it needs re-parsing.
-	 *	Integers, IP addresses, etc. don't need re-parsing.
-	 */
-	if (cf_new_escape &&
-	    ((vpt->type != TMPL_TYPE_ATTR) ||
-	     (vpt->tmpl_da->type == PW_TYPE_STRING))) {
-		PW_TYPE type = PW_TYPE_STRING;
-
-		slen = value_data_from_str(request, vd, &type, NULL, out, slen, '"');
-		out = vd->ptr;
-	}
-
-	if (vpt->type == TMPL_TYPE_XLAT_STRUCT) {
-		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
-		RDEBUG2("   --> %s", out);
-	} else {
-		EVAL_DEBUG("   --> %s", out);
-	}
-
-	return slen;
-}
-
 /** Evaluate a template
  *
  * Converts a value_pair_tmpl_t to a boolean value.
@@ -229,19 +114,24 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, valu
 	case TMPL_TYPE_XLAT_STRUCT:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_EXEC:
+	{
+		char *p;
+
 		if (!*vpt->name) return false;
-		rcode = radius_expand_tmpl(&data, request, vpt);
+		rcode = tmpl_expand(request, &p, request, vpt);
 		if (rcode < 0) {
 			EVAL_DEBUG("FAIL %d", __LINE__);
 			return -1;
 		}
+		data.strvalue = p;
 		rcode = (data.strvalue && (*data.strvalue != '\0'));
 		talloc_free(data.ptr);
+	}
 		break;
 
-		/*
-		 *	Can't have a bare ... (/foo/) ...
-		 */
+	/*
+	 *	Can't have a bare ... (/foo/) ...
+	 */
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_STRUCT:
 		rad_assert(0 == 1);
@@ -626,18 +516,23 @@ do {\
 		value_data_t data;
 
 		if (map->rhs->type != TMPL_TYPE_LITERAL) {
-			ret = radius_expand_tmpl(&data, request, map->rhs);
+			char *p;
+
+			ret = tmpl_expand(request, &p, request, map->rhs);
 			if (ret < 0) {
 				EVAL_DEBUG("FAIL [%i]", __LINE__);
 				rcode = -1;
 				goto finish;
 			}
+			data.strvalue = p;
 			rhs_len = ret;
 
 		} else {
 			data.strvalue = map->rhs->name;
 			rhs_len = map->rhs->len;
 		}
+		rad_assert(data.strvalue);
+
 		rhs_type = PW_TYPE_STRING;
 		rhs = &data;
 
@@ -745,15 +640,19 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		value_data_t data;
 
 		if (map->lhs->type != TMPL_TYPE_LITERAL) {
-			ret = radius_expand_tmpl(&data, request, map->lhs);
+			char *p;
+
+			ret = tmpl_expand(request, &p, request, map->lhs);
 			if (ret < 0) {
 				EVAL_DEBUG("FAIL [%i]", __LINE__);
 				return ret;
 			}
+			data.strvalue = p;
 		} else {
 			data.strvalue = map->lhs->name;
 			ret = map->lhs->len;
 		}
+		rad_assert(data.strvalue);
 
 		rcode = cond_normalise_values(request, c, PW_TYPE_STRING, NULL, &data, ret);
 		if (map->lhs->type != TMPL_TYPE_LITERAL) talloc_free(data.ptr);

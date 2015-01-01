@@ -1427,6 +1427,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	int rcode;
 	VALUE_PAIR *vp;
 	value_data_t data;
+	char *p;
 
 	VERIFY_TMPL(vpt);
 
@@ -1444,11 +1445,12 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		return 0;
 	}
 
-	rcode = radius_expand_tmpl(&data, request, vpt);
+	rcode = tmpl_expand(vp, &p, request, vpt);
 	if (rcode < 0) {
 		pairfree(&vp);
 		return rcode;
 	}
+	data.strvalue = p;
 
 	/*
 	 *	New escapes: strings are in binary form.
@@ -1458,13 +1460,133 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		vp->vp_length = rcode;
 
 	} else if (pairparsevalue(vp, data.strvalue, rcode) < 0) {
-			talloc_free(data.ptr);
-			pairfree(&vp);
-			return -1;
+		talloc_free(data.ptr);
+		pairfree(&vp);
+		return -1;
 	}
 
 	*out = vp;
 	return 0;
+}
+
+
+/** Expand a template to a string, writing the result
+ *
+ * @param ctx to alloc output string in.
+ * @param out Result of expanding the tmpl.
+ * @param request Current request.
+ * @param vpt to evaluate.
+ * @return -1 on error, else 0.
+ */
+ssize_t tmpl_expand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+{
+	VALUE_PAIR *vp;
+	ssize_t slen = -1;	/* quiet compiler */
+
+	rad_assert(vpt->type != TMPL_TYPE_LIST);
+
+	VERIFY_TMPL(vpt);
+
+	*out = NULL;
+
+	switch (vpt->type) {
+	case TMPL_TYPE_LITERAL:
+		RDEBUG4("EXPAND TMPL LITERAL");
+		*out = talloc_memdup(ctx, vpt->name, vpt->len);
+		return vpt->len;
+
+	case TMPL_TYPE_EXEC:
+	{
+		char *buff = NULL;
+
+		RDEBUG4("EXPAND TMPL EXEC");
+		buff = talloc_array(ctx, char, 1024);
+		if (radius_exec_program(buff, 1024, NULL, request, vpt->name, NULL, true, false, EXEC_TIMEOUT) != 0) {
+			TALLOC_FREE(buff);
+			return -1;
+		}
+		slen = strlen(buff);
+		*out = buff;
+	}
+		break;
+
+	case TMPL_TYPE_XLAT:
+		RDEBUG4("EXPAND TMPL XLAT");
+		/* Error in expansion, this is distinct from zero length expansion */
+		slen = radius_axlat(out, request, vpt->name, NULL, NULL);
+		if (slen < 0) {
+			rad_assert(!*out);
+			return slen;
+		}
+		slen = strlen(*out);
+		break;
+
+	case TMPL_TYPE_XLAT_STRUCT:
+		RDEBUG4("EXPAND TMPL XLAT STRUCT");
+		/* Error in expansion, this is distinct from zero length expansion */
+		slen = radius_axlat_struct(out, request, vpt->tmpl_xlat, NULL, NULL);
+		if (slen < 0) {
+			rad_assert(!*out);
+			return slen;
+		}
+		slen = strlen(*out);
+		break;
+
+	case TMPL_TYPE_ATTR:
+	{
+		int ret;
+
+		RDEBUG4("EXPAND TMPL ATTR");
+		ret = tmpl_find_vp(&vp, request, vpt);
+		if (ret < 0) return -2;
+
+		*out = vp_aprints_value(ctx, vp, '"');
+		if (!*out) return -1;
+		slen = talloc_array_length(*out) - 1;
+	}
+		break;
+
+	/*
+	 *	We should never be expanding these.
+	 */
+	case TMPL_TYPE_UNKNOWN:
+	case TMPL_TYPE_NULL:
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_DATA:
+	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_REGEX_STRUCT:
+		rad_assert(0 == 1);
+		slen = -1;
+		break;
+	}
+
+	if (slen < 0) return slen;
+
+	/*
+	 *	If we're doing correct escapes, we may have to re-parse the string.
+	 *	If the string is from another expansion, it needs re-parsing.
+	 *	Or, if it's from a "string" attribute, it needs re-parsing.
+	 *	Integers, IP addresses, etc. don't need re-parsing.
+	 */
+	if (cf_new_escape &&
+	    ((vpt->type != TMPL_TYPE_ATTR) ||
+	     (vpt->tmpl_da->type == PW_TYPE_STRING))) {
+	     	value_data_t vd;
+
+		PW_TYPE type = PW_TYPE_STRING;
+
+		slen = value_data_from_str(ctx, &vd, &type, NULL, *out, slen, '"');
+		talloc_free(*out);	/* free the old value */
+		*out = vd.ptr;
+	}
+
+	if (vpt->type == TMPL_TYPE_XLAT_STRUCT) {
+		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
+		RDEBUG2("   --> %s", *out);
+	}
+
+	return slen;
 }
 
 /** Initialise a vp_cursor_t to the VALUE_PAIR specified by a value_pair_tmpl_t
