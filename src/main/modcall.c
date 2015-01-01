@@ -850,7 +850,10 @@ redo:
 		if ((g->vpt->type == TMPL_TYPE_XLAT_STRUCT) ||
 		    (g->vpt->type == TMPL_TYPE_XLAT) ||
 		    (g->vpt->type == TMPL_TYPE_EXEC)) {
-			if (radius_expand_tmpl(&data, request, g->vpt) < 0) goto find_null_case;
+			char *p;
+
+			if (tmpl_expand(request, &p, request, g->vpt) < 0) goto find_null_case;
+			data.strvalue = p;
 			tmpl_init(&vpt, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
 		}
 
