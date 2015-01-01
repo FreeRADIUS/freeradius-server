@@ -681,7 +681,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				/*
 				 *	For subsequent instances we need to add new conf pairs.
 				 */
-				cp = cf_pair_alloc(conf, "server", buff, T_OP_EQ, T_SINGLE_QUOTED_STRING);
+				cp = cf_pair_alloc(conf, "server", buff, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 				if (!cp) return -1;
 
 				ci = cf_pair_to_item(cp);

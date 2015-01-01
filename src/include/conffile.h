@@ -154,7 +154,7 @@ typedef struct CONF_PARSER {
 } CONF_PARSER;
 
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
-			       FR_TOKEN op, FR_TOKEN value_type);
+			       FR_TOKEN op, FR_TOKEN lhs_type, FR_TOKEN rhs_type);
 CONF_PAIR	*cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp);
 void		cf_pair_add(CONF_SECTION *parent, CONF_PAIR *cp);
 
@@ -188,6 +188,7 @@ void *cf_data_remove(CONF_SECTION *cs, char const *name);
 char const *cf_pair_attr(CONF_PAIR const *pair);
 char const *cf_pair_value(CONF_PAIR const *pair);
 FR_TOKEN cf_pair_operator(CONF_PAIR const *pair);
+FR_TOKEN cf_pair_attr_type(CONF_PAIR const *pair);
 FR_TOKEN cf_pair_value_type(CONF_PAIR const *pair);
 VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 char const *cf_section_name1(CONF_SECTION const *cs);
