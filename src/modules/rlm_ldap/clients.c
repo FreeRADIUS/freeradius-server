@@ -112,7 +112,7 @@ static int rlm_ldap_client_map_section(ldap_instance_t const *inst, CONF_SECTION
 		if (!values) continue;
 
 		value = rlm_ldap_berval_to_string(NULL, values[0]);
-		cp = cf_pair_alloc(client, attr, value, T_OP_SET, T_SINGLE_QUOTED_STRING);
+		cp = cf_pair_alloc(client, attr, value, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 		if (!cp) {
 			LDAP_ERR("Failed allocing pair \"%s\" = \"%s\"", attr, value);
 			talloc_free(value);

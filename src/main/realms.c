@@ -899,7 +899,7 @@ CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
 	}
 
 	if (!cs || !(cp = cf_pair_find(cs, "type"))) {
-		cp = cf_pair_alloc(server, "type", "coa", T_OP_EQ, T_SINGLE_QUOTED_STRING);
+		cp = cf_pair_alloc(server, "type", "coa", T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 		if (cp) cf_pair_add(server, cf_pair_dup(server, cp));
 	} else if (strcmp(cf_pair_value(cp), "coa") != 0) {
 		talloc_free(server);

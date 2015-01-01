@@ -568,7 +568,8 @@ int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
 		}
 
 		/* allocate config pair */
-		cp = cf_pair_alloc(client, attribute, json_object_get_string(jval), T_OP_SET, T_SINGLE_QUOTED_STRING);
+		cp = cf_pair_alloc(client, attribute, json_object_get_string(jval),
+				   T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 
 		/* check pair */
 		if (!cp) {

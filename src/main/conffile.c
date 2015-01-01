@@ -78,7 +78,8 @@ struct conf_pair {
 	char const *attr;		//!< Attribute name
 	char const *value;		//!< Attribute value
 	FR_TOKEN op;			//!< Operator e.g. =, :=
-	FR_TOKEN value_type;		//!< Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	FR_TOKEN lhs_type;		//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	FR_TOKEN rhs_type;		//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 };
 
 /** Internal data that is associated with a configuration section
@@ -299,14 +300,16 @@ static int _cf_section_free(CONF_SECTION *cs)
  * @param attr name.
  * @param value of CONF_PAIR.
  * @param op T_OP_EQ, T_OP_SET etc.
- * @param value_type T_BARE_WORD, T_DOUBLE_QUOTED_STRING, T_BACK_QUOTED_STRING
+ * @param lhs_type T_BARE_WORD, T_DOUBLE_QUOTED_STRING, T_BACK_QUOTED_STRING
+ * @param rhs_type T_BARE_WORD, T_DOUBLE_QUOTED_STRING, T_BACK_QUOTED_STRING
  * @return NULL on error, else a new CONF_SECTION parented by parent.
  */
 CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
-			 FR_TOKEN op, FR_TOKEN value_type)
+			 FR_TOKEN op, FR_TOKEN lhs_type, FR_TOKEN rhs_type)
 {
 	CONF_PAIR *cp;
 
+	rad_assert(fr_equality_op[op] || fr_assignment_op[op]);
 	if (!attr) return NULL;
 
 	cp = talloc_zero(parent, CONF_PAIR);
@@ -314,7 +317,8 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 
 	cp->item.type = CONF_ITEM_PAIR;
 	cp->item.parent = parent;
-	cp->value_type = value_type;
+	cp->lhs_type = lhs_type;
+	cp->rhs_type = rhs_type;
 	cp->op = op;
 
 	cp->attr = talloc_typed_strdup(cp, attr);
@@ -345,7 +349,8 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 	rad_assert(parent);
 	rad_assert(cp);
 
-	new = cf_pair_alloc(parent, cf_pair_attr(cp), cf_pair_value(cp), cf_pair_operator(cp), cf_pair_value_type(cp));
+	new = cf_pair_alloc(parent, cp->attr, cf_pair_value(cp),
+			    cp->op, cp->lhs_type, cp->rhs_type);
 	if (new) {
 		new->item.lineno = cp->item.lineno;
 		new->item.filename = talloc_strdup(new, cp->item.filename);
@@ -507,7 +512,7 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 	CONF_PAIR *newp;
 	CONF_ITEM *ci, *cn, **last;
 
-	newp = cf_pair_alloc(cs, cp->attr, value, cp->op, cp->value_type);
+	newp = cf_pair_alloc(cs, cp->attr, value, cp->op, cp->lhs_type, cp->rhs_type);
 	if (!newp) return -1;
 
 	ci = &(cp->item);
@@ -1349,7 +1354,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	if (!cp) {
 		CONF_PAIR *cpn;
 
-		cpn = cf_pair_alloc(cs, name, value, T_OP_SET, T_BARE_WORD);
+		cpn = cf_pair_alloc(cs, name, value, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 		if (!cpn) return -1;
 		cpn->item.filename = "<internal>";
 		cpn->item.lineno = 0;
@@ -1545,8 +1550,8 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 	redo:
 		if (!cp || !cp->value) continue;
 
-		if ((cp->value_type != T_DOUBLE_QUOTED_STRING) &&
-		    (cp->value_type != T_BARE_WORD)) continue;
+		if ((cp->rhs_type != T_DOUBLE_QUOTED_STRING) &&
+		    (cp->rhs_type != T_BARE_WORD)) continue;
 
 		value = talloc_strdup(cs, cp->value); /* modified by xlat_tokenize */
 		xlat = NULL;
@@ -1615,7 +1620,7 @@ static bool cf_template_merge(CONF_SECTION *cs, CONF_SECTION const *template)
 			 *	Create a new pair with all of the data
 			 *	of the old one.
 			 */
-			cp2 = cf_pair_alloc(cs, cp1->attr, cp1->value, cp1->op, cp1->value_type);
+			cp2 = cf_pair_dup(cs, cp1);
 			if (!cp2) return false;
 
 			cp2->item.filename = cp1->item.filename;
@@ -1707,7 +1712,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char buf2[8192];
 	char buf3[8192];
 	char buf4[8192];
-	FR_TOKEN t1, t2, t3;
+	FR_TOKEN t1 = T_INVALID, t2, t3;
 	bool has_spaces = false;
 	char *cbuf = buf;
 	size_t len;
@@ -2281,7 +2286,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Add this CONF_PAIR to our CONF_SECTION
 			 */
 		do_set:
-			cpn = cf_pair_alloc(this, buf1, value, t2, t3);
+			cpn = cf_pair_alloc(this, buf1, value, t2, t1, t3);
 			if (!cpn) return -1;
 			cpn->item.filename = talloc_strdup(cpn, filename);
 			cpn->item.lineno = *lineno;
@@ -2502,7 +2507,7 @@ CONF_SECTION *cf_file_read(char const *filename)
 	cs = cf_section_alloc(NULL, "main", NULL);
 	if (!cs) return NULL;
 
-	cp = cf_pair_alloc(cs, "confdir", filename, T_OP_SET, T_BARE_WORD);
+	cp = cf_pair_alloc(cs, "confdir", filename, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 	if (!cp) return NULL;
 
 	p = strrchr(cp->value, FR_DIR_SEP);
@@ -2568,14 +2573,26 @@ FR_TOKEN cf_pair_operator(CONF_PAIR const *pair)
 	return (pair ? pair->op : T_INVALID);
 }
 
-/*
- * Return the value type, should be one of the following:
- * T_BARE_WORD, T_SINGLE_QUOTED_STRING, T_BACK_QUOTED_STRING
- * T_DOUBLE_QUOTED_STRING or T_INVALID if the pair is NULL.
+/** Return the value (lhs) type
+ *
+ * @param pair to extract value type from.
+ * @return one of T_BARE_WORD, T_SINGLE_QUOTED_STRING, T_BACK_QUOTED_STRING
+ *	T_DOUBLE_QUOTED_STRING or T_INVALID if the pair is NULL.
+ */
+FR_TOKEN cf_pair_attr_type(CONF_PAIR const *pair)
+{
+	return (pair ? pair->lhs_type : T_INVALID);
+}
+
+/** Return the value (rhs) type
+ *
+ * @param pair to extract value type from.
+ * @return one of T_BARE_WORD, T_SINGLE_QUOTED_STRING, T_BACK_QUOTED_STRING
+ *	T_DOUBLE_QUOTED_STRING or T_INVALID if the pair is NULL.
  */
 FR_TOKEN cf_pair_value_type(CONF_PAIR const *pair)
 {
-	return (pair ? pair->value_type : T_INVALID);
+	return (pair ? pair->rhs_type : T_INVALID);
 }
 
 /*
@@ -2599,8 +2616,8 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	 *	or `string`, then remember to expand it later.
 	 */
 	if ((pair->op != T_OP_CMP_FALSE) &&
-	    ((pair->value_type == T_DOUBLE_QUOTED_STRING) ||
-	     (pair->value_type == T_BACK_QUOTED_STRING))) {
+	    ((pair->rhs_type == T_DOUBLE_QUOTED_STRING) ||
+	     (pair->rhs_type == T_BACK_QUOTED_STRING))) {
 		VALUE_PAIR *vp;
 
 		vp = pairmake(pair, NULL, pair->attr, NULL, pair->op);
