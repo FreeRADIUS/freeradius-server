@@ -288,6 +288,87 @@ static ssize_t xlat_tag(UNUSED void *instance, REQUEST *request,
 	return snprintf(out, outlen, "%u", vp->tag);
 }
 
+/** Return the vendor of an attribute reference
+ *
+ */
+static ssize_t xlat_vendor(UNUSED void *instance, REQUEST *request,
+		           char const *fmt, char *out, size_t outlen)
+{
+	VALUE_PAIR *vp;
+	DICT_VENDOR *vendor;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
+		*out = '\0';
+		return 0;
+	}
+
+	vendor = dict_vendorbyvalue(vp->da->vendor);
+	if (!vendor) {
+		*out = '\0';
+		return 0;
+	}
+	strlcpy(out, vendor->name, outlen);
+
+	return vendor->length;
+}
+
+/** Return the vendor number of an attribute reference
+ *
+ */
+static ssize_t xlat_vendor_num(UNUSED void *instance, REQUEST *request,
+		               char const *fmt, char *out, size_t outlen)
+{
+	VALUE_PAIR *vp;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
+		*out = '\0';
+		return 0;
+	}
+
+	return snprintf(out, outlen, "%i", vp->da->vendor);
+}
+
+/** Return the attribute name of an attribute reference
+ *
+ */
+static ssize_t xlat_attr(UNUSED void *instance, REQUEST *request,
+			 char const *fmt, char *out, size_t outlen)
+{
+	VALUE_PAIR *vp;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
+		*out = '\0';
+		return 0;
+	}
+	strlcpy(out, vp->da->name, outlen);
+
+	return strlen(vp->da->name);
+}
+
+/** Return the attribute number of an attribute reference
+ *
+ */
+static ssize_t xlat_attr_num(UNUSED void *instance, REQUEST *request,
+		             char const *fmt, char *out, size_t outlen)
+{
+	VALUE_PAIR *vp;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
+		*out = '\0';
+		return 0;
+	}
+
+	return snprintf(out, outlen, "%i", vp->da->attr);
+}
+
 /** Print out attribute info
  *
  * Prints out all instances of a current attribute, or all attributes in a list.
@@ -295,9 +376,6 @@ static ssize_t xlat_tag(UNUSED void *instance, REQUEST *request,
  * At higher debugging levels, also prints out alternative decodings of the same
  * value. This is helpful to determine types for unknown attributes of long
  * passed vendors, or just crazy/broken NAS.
- *
- * It's also useful for exposing issues in the packet decoding functions, as in
- * some cases they get fed random garbage data.
  *
  * This expands to a zero length string.
  */
@@ -383,7 +461,6 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			case PW_TYPE_COMBO_IP_ADDR:	/* Covered by IPv4 address IPv6 address */
 			case PW_TYPE_COMBO_IP_PREFIX:	/* Covered by IPv4 address IPv6 address */
 			case PW_TYPE_TIMEVAL:		/* Not a VALUE_PAIR type */
-
 				goto next_type;
 
 			default:
@@ -669,6 +746,10 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		XLAT_REGISTER(length);
 		XLAT_REGISTER(hex);
 		XLAT_REGISTER(tag);
+		XLAT_REGISTER(vendor);
+		XLAT_REGISTER(vendor_num);
+		XLAT_REGISTER(attr);
+		XLAT_REGISTER(attr_num);
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(xlat);
 		XLAT_REGISTER(module);
