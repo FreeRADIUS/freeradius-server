@@ -1474,8 +1474,7 @@ int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 	 *	Double-check for WiMAX format.
 	 */
 	if (vp->da->flags.wimax) {
-		return rad_vp2wimax(packet, original, secret, pvp,
-				    ptr, room);
+		return rad_vp2wimax(packet, original, secret, pvp, ptr, room);
 	}
 
 	if (vp->da->vendor > FR_MAX_VENDOR) {
@@ -1674,8 +1673,7 @@ int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 				    start, room);
 	}
 
-	return rad_vp2vsa(packet, original, secret, pvp,
-			  start, room);
+	return rad_vp2vsa(packet, original, secret, pvp, start, room);
 }
 
 
@@ -2702,7 +2700,8 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 			case PW_CODE_COA_ACK:
 			case PW_CODE_COA_NAK:
 				if (!original) {
-					fr_strerror_printf("ERROR: Cannot validate Message-Authenticator in response packet without a request packet");
+					fr_strerror_printf("Cannot validate Message-Authenticator in response "
+							   "packet without a request packet");
 					return -1;
 				}
 				memcpy(packet->data + 4, original->vector, AUTH_VECTOR_LEN);
@@ -2713,10 +2712,11 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 				    (uint8_t const *) secret, strlen(secret));
 			if (rad_digest_cmp(calc_auth_vector, msg_auth_vector,
 				   sizeof(calc_auth_vector)) != 0) {
-				fr_strerror_printf("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
-					   inet_ntop(packet->src_ipaddr.af,
-						     &packet->src_ipaddr.ipaddr,
-						     buffer, sizeof(buffer)));
+				fr_strerror_printf("Received packet from %s with invalid Message-Authenticator!  "
+						   "(Shared secret is incorrect.)",
+						   inet_ntop(packet->src_ipaddr.af,
+							     &packet->src_ipaddr.ipaddr,
+							     buffer, sizeof(buffer)));
 				/* Silently drop packet, according to RFC 3579 */
 				return -1;
 			} /* else the message authenticator was good */
@@ -2739,12 +2739,12 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 	 */
 	if ((packet->code == 0) || (packet->code >= FR_MAX_PACKET_CODE)) {
 		fr_strerror_printf("Received Unknown packet code %d "
-			   "from client %s port %d: Cannot validate Request/Response Authenticator.",
-			   packet->code,
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     buffer, sizeof(buffer)),
-			   packet->src_port);
+				   "from client %s port %d: Cannot validate Request/Response Authenticator.",
+				   packet->code,
+				   inet_ntop(packet->src_ipaddr.af,
+				             &packet->src_ipaddr.ipaddr,
+				             buffer, sizeof(buffer)),
+				   packet->src_port);
 		return -1;
 	}
 
@@ -2765,11 +2765,12 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 	case PW_CODE_ACCOUNTING_REQUEST:
 		if (calc_acctdigest(packet, secret) > 1) {
 			fr_strerror_printf("Received %s packet "
-				   "from client %s with invalid Request Authenticator!  (Shared secret is incorrect.)",
-				   fr_packet_codes[packet->code],
-				   inet_ntop(packet->src_ipaddr.af,
-					     &packet->src_ipaddr.ipaddr,
-					     buffer, sizeof(buffer)));
+					   "from client %s with invalid Request Authenticator!  "
+					   "(Shared secret is incorrect.)",
+					   fr_packet_codes[packet->code],
+					   inet_ntop(packet->src_ipaddr.af,
+						     &packet->src_ipaddr.ipaddr,
+						     buffer, sizeof(buffer)));
 			return -1;
 		}
 		break;
@@ -2786,24 +2787,25 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 		rcode = calc_replydigest(packet, original, secret);
 		if (rcode > 1) {
 			fr_strerror_printf("Received %s packet "
-				   "from home server %s port %d with invalid Response Authenticator!  (Shared secret is incorrect.)",
-				   fr_packet_codes[packet->code],
-				   inet_ntop(packet->src_ipaddr.af,
-					     &packet->src_ipaddr.ipaddr,
-					     buffer, sizeof(buffer)),
-				   packet->src_port);
+					   "from home server %s port %d with invalid Response Authenticator!  "
+					   "(Shared secret is incorrect.)",
+					   fr_packet_codes[packet->code],
+					   inet_ntop(packet->src_ipaddr.af,
+						     &packet->src_ipaddr.ipaddr,
+						     buffer, sizeof(buffer)),
+					   packet->src_port);
 			return -1;
 		}
 		break;
 
 	default:
 		fr_strerror_printf("Received Unknown packet code %d "
-			   "from client %s port %d: Cannot validate Request/Response Authenticator",
-			   packet->code,
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-					     buffer, sizeof(buffer)),
-			   packet->src_port);
+				   "from client %s port %d: Cannot validate Request/Response Authenticator",
+				   packet->code,
+				   inet_ntop(packet->src_ipaddr.af,
+				             &packet->src_ipaddr.ipaddr,
+				             buffer, sizeof(buffer)),
+				   packet->src_port);
 		return -1;
 	}
 
