@@ -2051,8 +2051,8 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 		return NULL;
 	}
 
-	if (vpt && (vpt->type != TMPL_TYPE_ATTR)) {
-		cf_log_err_cs(cs, "MUST use attribute reference in 'foreach'");
+	if (vpt && (vpt->type != TMPL_TYPE_ATTR) && (vpt->type != TMPL_TYPE_LIST)) {
+		cf_log_err_cs(cs, "MUST use attribute or list reference in 'foreach'");
 		return NULL;
 	}
 
@@ -2061,9 +2061,7 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	 *	the attribute. In a perfect consistent world, users would do
 	 *	foreach &attr[*], but that's taking the consistency thing a bit far.
 	 */
-	if (vpt && (vpt->type == TMPL_TYPE_ATTR)) {
-		vpt->tmpl_num = NUM_ALL;
-	}
+	vpt->tmpl_num = NUM_ALL;
 
 	csingle = do_compile_modgroup(parent, component, cs,
 				      GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
@@ -3624,7 +3622,7 @@ bool modcall_pass2(modcallable *mc)
 			if (slen < 0) goto parse_error;
 
 		check_children:
-			rad_assert(g->vpt->type == TMPL_TYPE_ATTR);
+			rad_assert((g->vpt->type == TMPL_TYPE_ATTR) || (g->vpt->type == TMPL_TYPE_LIST));
 			if (g->vpt->tmpl_num != NUM_ALL) {
 				cf_log_err_cs(g->cs, "MUST NOT use instance selectors in 'foreach'");
 				return false;

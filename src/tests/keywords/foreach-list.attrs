@@ -1,0 +1,21 @@
+#
+#  Input packet
+#
+User-Name = "bob"
+User-Password = "hello"
+Filter-Id = "1"
+Filter-Id += "2"
+Filter-Id += "3"
+Filter-Id += "4"
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept
+Called-Station-Id == 'bob'
+Called-Station-Id == 'hello'
+Called-Station-Id == '1'
+Called-Station-Id == '2'
+Called-Station-Id == '3'
+Called-Station-Id == '4'
+
