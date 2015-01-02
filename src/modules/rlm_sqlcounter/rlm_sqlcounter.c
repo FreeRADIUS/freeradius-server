@@ -525,14 +525,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		pairmake_reply("Reply-Message", msg, T_OP_EQ);
 
 		REDEBUG2("Maximum %s usage time reached", inst->reset);
-		REDEBUG2("Rejecting user, control:%s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
+		REDEBUG2("Rejecting user, &control:%s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
 			 inst->limit_name, limit->vp_integer64, counter);
 
 		return RLM_MODULE_REJECT;
 	}
 
 	res = limit->vp_integer64 - counter;
-	RDEBUG2("Allowing user, control:%s value (%" PRIu64 ") is greater than counter value (%" PRIu64 ")",
+	RDEBUG2("Allowing user, &control:%s value (%" PRIu64 ") is greater than counter value (%" PRIu64 ")",
 		inst->limit_name, limit->vp_integer64, counter);
 	/*
 	 *	We are assuming that simultaneous-use=1. But
@@ -547,9 +547,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	again.  Do this only for Session-Timeout.
 	 */
 	if (((inst->reply_attr->vendor == 0) && (inst->reply_attr->attr == PW_SESSION_TIMEOUT)) &&
-	    inst->reset_time && ((int) res >= (inst->reset_time - request->timestamp))) {
-		res = (inst->reset_time - request->timestamp);
-		res += limit->vp_integer;
+	    inst->reset_time && (res >= (uint64_t)(inst->reset_time - request->timestamp))) {
+	    	uint64_t to_reset = inst->reset_time - request->timestamp;
+
+		RDEBUG2("Time remaining (%" PRIu64 "s) is greater than time to reset (%" PRIu64 "s).  "
+			"Adding %" PRIu64 "s to reply value", to_reset, res, to_reset);
+		res = to_reset + limit->vp_integer;
 	}
 
 	/*
@@ -558,7 +561,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	reply_item = pair_find_by_da(request->reply->vps, inst->reply_attr, TAG_ANY);
 	if (reply_item) {
 		if (reply_item->vp_integer64 <= res) {
-			RDEBUG2("Leaving existing reply:%s value of %" PRIu64, inst->reply_attr->name,
+			RDEBUG2("Leaving existing &reply:%s value of %" PRIu64, inst->reply_attr->name,
 				reply_item->vp_integer64);
 
 			return RLM_MODULE_OK;
@@ -569,7 +572,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 	reply_item->vp_integer64 = res;
 
-	RDEBUG2("Setting reply:%s value to %" PRIu64, inst->reply_name, reply_item->vp_integer64);
+	RDEBUG2("Setting &reply:%s value to %" PRIu64, inst->reply_name, reply_item->vp_integer64);
 
 	return RLM_MODULE_OK;
 }
