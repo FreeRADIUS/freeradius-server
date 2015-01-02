@@ -1,0 +1,61 @@
+#
+# PRE: update
+#
+#  Form attribute references with xlats
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
+
+
+update request {
+	Tmp-String-0 := 'Tmp-String-1'
+}
+
+#
+#  Shouldn't update Tmp-String-0, should instead update Tmp-String-1
+#  ... maybe this is what Alan meant when he was talking about people
+#  doing stupid things with this feature.
+#
+update request {
+	"%{Tmp-String-0}" := 'hello'
+}
+
+if (&Tmp-String-1 != 'hello') {
+	update reply {
+		Filter-Id += 'Fail 0'
+	}
+}
+
+if (&Tmp-String-0 == 'hello') {
+	update reply {
+		Filter-Id += 'Fail 1'
+	}
+}
+
+#
+#  Try updating an attribute specified by an OID string
+#
+update {
+	Tmp-Integer-0 := 11344
+}
+update {
+	"Vendor-%{Tmp-Integer-0}-Attr-1" := 127.0.0.1
+}
+
+if (&FreeRADIUS-Proxied-To != 127.0.0.1) {
+	update reply {
+		Filter-Id += 'Fail 2'
+	}
+}
+
+update {
+	"Attr-%{attr_num:Tmp-String-1}" := 'hello2'
+}
+
+if (&Tmp-String-1 != 'hello2') {
+	update reply {
+		Filter-Id += 'Fail 3'
+	}
+}

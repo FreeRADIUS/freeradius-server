@@ -826,9 +826,62 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	TALLOC_CTX *parent;
 	vp_cursor_t dst_list, src_list;
 
+	value_pair_map_t	exp_map;
+	value_pair_tmpl_t	exp_lhs;
+
 	VERIFY_MAP(map);
 	rad_assert(map->lhs != NULL);
 	rad_assert(map->rhs != NULL);
+
+	/*
+	 *	Preprocessing of the LHS of the map.
+	 */
+	switch (map->lhs->type) {
+	/*
+	 *	Already in the correct form.
+	 */
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_ATTR:
+		break;
+
+	/*
+	 *	Everything else gets expanded, then re-parsed as an
+	 *	attribute reference.
+	 */
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_EXEC:
+	{
+		char *attr;
+		ssize_t slen;
+
+		slen = tmpl_expand(request, &attr, request, map->lhs);
+		if (slen <= 0) {
+			REDEBUG("Left side \"%.*s\" of map failed expansion", (int)map->lhs->len, map->lhs->name);
+			rad_assert(!attr);
+			return -1;
+		}
+
+		slen = tmpl_from_attr_str(&exp_lhs, attr, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false) ;
+		if (slen <= 0) {
+			REDEBUG("Left side \"%.*s\" expansion not an attribute reference: %s",
+				(int)map->lhs->len, map->lhs->name, fr_strerror());
+			talloc_free(attr);
+			return -1;
+		}
+		rad_assert((exp_lhs.type == TMPL_TYPE_ATTR) || (exp_lhs.type == TMPL_TYPE_LIST));
+
+		memcpy(&exp_map, map, sizeof(exp_map));
+		exp_map.lhs = &exp_lhs;
+		map = &exp_map;
+	}
+		break;
+
+	default:
+		rad_assert(0);
+		break;
+	}
+
 
 	/*
 	 *	Sanity check inputs.  We can have a list or attribute
