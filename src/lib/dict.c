@@ -815,15 +815,6 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		}
 
 		/*
-		 *	FIXME: Switch over dv->type, and limit things
-		 *	properly.
-		 */
-		if ((dv->type == 1) && (attr >= 256) && !flags.is_tlv) {
-			fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (larger than 255)");
-			return -1;
-		} /* else 256..65535 are allowed */
-
-		/*
 		 *	If the attribute is in the standard space, AND
 		 *	has a sub-type (e.g. 241.1 or 255.3), then its
 		 *	number is placed into the upper 8 bits of the
@@ -2923,11 +2914,6 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 
 		p = q;
 	}
-
-	/*
-	 *	Enforce a maximum value on the attribute number.
-	 */
-	if (attr >= (unsigned) (1 << (dv_type << 3))) goto invalid;
 
 	if (*p == '.') {
 		if (dict_str2oid(p + 1, &attr, &vendor, 1) < 0) {

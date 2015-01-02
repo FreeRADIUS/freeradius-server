@@ -1771,8 +1771,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	Ignore non-wire attributes, but allow extended
 		 *	attributes.
 		 */
-		if ((reply->da->vendor == 0) &&
-		    ((reply->da->attr & 0xFFFF) >= 256) &&
+		if (((reply->da->attr & 0xFFFF) >= 256) &&
 		    !reply->da->flags.extended && !reply->da->flags.long_extended) {
 #ifndef NDEBUG
 			/*
