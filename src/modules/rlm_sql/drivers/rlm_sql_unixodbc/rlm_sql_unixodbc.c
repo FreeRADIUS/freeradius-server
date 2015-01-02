@@ -426,6 +426,8 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
 			res = -1;
 			break;
 		}
+	} else {
+		ERROR("rlm_sql_unixodbc: %s %s", state, error);
 	}
 
 	return res;
