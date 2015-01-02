@@ -831,6 +831,8 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 		 */
 		a = p;
 
+		fr_strerror();	/* Clear out any existing errors */
+
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
@@ -853,12 +855,13 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 		}
 
 		/*
-		 *	Can't parse it as an attribute, it must be a literal string.
+		 *	Can't parse it as an attribute, might be a literal string
+		 *	let the caller decide.
+		 *
+		 *	Don't alter the fr_strerror buffer, should contain the parse
+		 *	error from dict_unknown_from_substr.
 		 */
-		if (!allow_undefined) {
-			fr_strerror_printf("Undefined attribute");
-			return -(a - name);
-		}
+		if (!allow_undefined) return -(a - name);
 
 		/*
 		 *	Copy the name to a field for later resolution
