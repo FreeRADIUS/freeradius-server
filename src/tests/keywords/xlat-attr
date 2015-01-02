@@ -1,0 +1,62 @@
+#
+# PRE: update
+#
+#  Check attribute info xlats work correctly
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
+
+update request {
+	Reply-Message := 'foo'
+	FreeRADIUS-Proxied-To := 127.0.0.1
+}
+
+if ("%{attr:&FreeRADIUS-Proxied-To}" != 'FreeRADIUS-Proxied-To') {
+	update reply {
+		Filter-Id += 'Fail 0'
+	}
+}
+
+if ("%{attr_num:&FreeRADIUS-Proxied-To}" != 1) {
+	update reply {
+		Filter-Id += 'Fail 2'
+	}
+}
+
+if ("%{vendor:&FreeRADIUS-Proxied-To}" != 'FreeRADIUS') {
+	update reply {
+		Filter-Id += 'Fail 3'
+	}
+}
+
+if ("%{vendor_num:&FreeRADIUS-Proxied-To}" != 11344) {
+	update reply {
+		Filter-Id += 'Fail 4'
+	}
+}
+
+if ("%{attr:&Reply-Message}" != 'Reply-Message') {
+	update reply {
+		Filter-Id += 'Fail 5'
+	}
+}
+
+if ("%{attr_num:&Reply-Message}" != 18) {
+	update reply {
+		Filter-Id += 'Fail 6'
+	}
+}
+
+if ("%{vendor:&Reply-Message}" != '') {
+	update reply {
+		Filter-Id += 'Fail 7'
+	}
+}
+
+if ("%{vendor_num:&Reply-Message}" != 0) {
+	update reply {
+		Filter-Id += 'Fail 8'
+	}
+}
