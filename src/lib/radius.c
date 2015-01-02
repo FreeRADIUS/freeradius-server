@@ -1470,6 +1470,12 @@ int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 	VALUE_PAIR const *vp = *pvp;
 
 	VERIFY_VP(vp);
+
+	if (vp->da->vendor == 0) {
+		fr_strerror_printf("rad_vp2vsa called with rfc attribute");
+		return -1;
+	}
+
 	/*
 	 *	Double-check for WiMAX format.
 	 */
