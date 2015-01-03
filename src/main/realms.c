@@ -1924,7 +1924,7 @@ int realm_realm_add(REALM *r, UNUSED CONF_SECTION *cs)
 		/*
 		 *	Include substring matches.
 		 */
-		slen = regex_compile(r, &rr->preg, r->name + 1, strlen(r->name) - 1, true, true, false);
+		slen = regex_compile(rr, &rr->preg, r->name + 1, strlen(r->name) - 1, true, false, false);
 		if (slen <= 0) {
 			char *spaces, *text;
 
@@ -2195,6 +2195,10 @@ REALM *realm_find(char const *name)
 			int compare;
 
 			compare = regex_exec(this->preg, name, strlen(name), NULL, NULL);
+			if (compare < 0) {
+				ERROR("Failed performing realm comparison: %s", fr_strerror());
+				return NULL;
+			}
 			if (compare == 1) return this->realm;
 		}
 	}
