@@ -2191,7 +2191,7 @@ REALM *realm_find(char const *name)
 		     this = this->next) {
 			int compare;
 
-			compare = regex_exec(this->preg, name, strlen(name), NULL, 0);
+			compare = regex_exec(this->preg, name, strlen(name), NULL, NULL);
 			if (compare == 1) return this->realm;
 		}
 	}
