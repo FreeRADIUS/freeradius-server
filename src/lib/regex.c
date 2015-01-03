@@ -152,10 +152,17 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 	if (!pmatch || !nmatch) {
 		pmatch = NULL;
 		if (nmatch) *nmatch = 0;
+		nmatch = NULL;
 		matches = 0;
 		eflags |= PCRE_NO_AUTO_CAPTURE;
-	} else {
+
+	} else if (nmatch) {
 		matches = *nmatch;
+
+	} else {
+		eflags |= PCRE_NO_AUTO_CAPTURE;
+		pmatch = NULL;
+		matches = 0;
 	}
 
 	ret = pcre_exec(preg->compiled, preg->extra, subject, len, 0, eflags, (int *)pmatch, matches * 3);
