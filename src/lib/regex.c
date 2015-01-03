@@ -131,6 +131,33 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 	return len;
 }
 
+static const FR_NAME_NUMBER regex_pcre_error_str[] = {
+	{ "PCRE_ERROR_NOMATCH",		PCRE_ERROR_NOMATCH },
+	{ "PCRE_ERROR_NULL",		PCRE_ERROR_NULL },
+	{ "PCRE_ERROR_BADOPTION",	PCRE_ERROR_BADOPTION },
+	{ "PCRE_ERROR_BADMAGIC",	PCRE_ERROR_BADMAGIC },
+	{ "PCRE_ERROR_UNKNOWN_OPCODE",	PCRE_ERROR_UNKNOWN_OPCODE },
+	{ "PCRE_ERROR_NOMEMORY",	PCRE_ERROR_NOMEMORY },
+	{ "PCRE_ERROR_NOSUBSTRING",	PCRE_ERROR_NOSUBSTRING },
+	{ "PCRE_ERROR_MATCHLIMIT",	PCRE_ERROR_MATCHLIMIT },
+	{ "PCRE_ERROR_CALLOUT",		PCRE_ERROR_CALLOUT },
+	{ "PCRE_ERROR_BADUTF8",		PCRE_ERROR_BADUTF8 },
+	{ "PCRE_ERROR_BADUTF8_OFFSET",	PCRE_ERROR_BADUTF8_OFFSET },
+	{ "PCRE_ERROR_PARTIAL",		PCRE_ERROR_PARTIAL },
+	{ "PCRE_ERROR_BADPARTIAL",	PCRE_ERROR_BADPARTIAL },
+	{ "PCRE_ERROR_INTERNAL",	PCRE_ERROR_INTERNAL },
+	{ "PCRE_ERROR_BADCOUNT",	PCRE_ERROR_BADCOUNT },
+	{ "PCRE_ERROR_DFA_UITEM",	PCRE_ERROR_DFA_UITEM },
+	{ "PCRE_ERROR_DFA_UCOND",	PCRE_ERROR_DFA_UCOND },
+	{ "PCRE_ERROR_DFA_UMLIMIT",	PCRE_ERROR_DFA_UMLIMIT },
+	{ "PCRE_ERROR_DFA_WSSIZE",	PCRE_ERROR_DFA_WSSIZE },
+	{ "PCRE_ERROR_DFA_RECURSE",	PCRE_ERROR_DFA_RECURSE },
+	{ "PCRE_ERROR_RECURSIONLIMIT",	PCRE_ERROR_RECURSIONLIMIT },
+	{ "PCRE_ERROR_NULLWSLIMIT",	PCRE_ERROR_NULLWSLIMIT },
+	{ "PCRE_ERROR_BADNEWLINE",	PCRE_ERROR_BADNEWLINE },
+	{ NULL, 0 }
+};
+
 /** Wrapper around pcre_exec
  *
  * @param preg The compiled expression.
@@ -144,32 +171,28 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 {
 	int	ret;
 	size_t	matches;
-	int	eflags = 0;
 
 	/*
-	 *	Disable capturing
+	 *	PCRE_NO_AUTO_CAPTURE is a compile time only flag,
+	 *	and can't be passed here.
+	 *	We rely on the fact that matches has been set to
+	 *	0 as a hint that no subcapture data should be
+	 *	generated.
 	 */
 	if (!pmatch || !nmatch) {
 		pmatch = NULL;
 		if (nmatch) *nmatch = 0;
-		nmatch = NULL;
 		matches = 0;
-		eflags |= PCRE_NO_AUTO_CAPTURE;
-
-	} else if (nmatch) {
-		matches = *nmatch;
-
 	} else {
-		eflags |= PCRE_NO_AUTO_CAPTURE;
-		pmatch = NULL;
-		matches = 0;
+		matches = *nmatch;
 	}
 
-	ret = pcre_exec(preg->compiled, preg->extra, subject, len, 0, eflags, (int *)pmatch, matches * 3);
+	ret = pcre_exec(preg->compiled, preg->extra, subject, len, 0, 0, (int *)pmatch, matches * 3);
 	if (ret < 0) {
 		if (ret == PCRE_ERROR_NOMATCH) return 0;
 
-		fr_strerror_printf("regex evaluation failed with code (%i)", ret);
+		fr_strerror_printf("regex evaluation failed with code (%i): %s", ret,
+				   fr_int2str(regex_pcre_error_str, ret, "<INVALID>"));
 		return -1;
 	}
 
