@@ -316,7 +316,6 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch[], size_t *nmatch)
 {
 	int	ret;
-	int	eflags = 0;
 	size_t	matches;
 
 	/*
@@ -326,8 +325,8 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 		pmatch = NULL;
 		if (nmatch) *nmatch = 0;
 		matches = 0;
-		eflags |= REG_NOSUB;
 	} else {
+		/* regexec does not seem to initialise unused elements */
 		matches = *nmatch;
 		memset(pmatch, 0, sizeof(pmatch[0]) * matches);
 	}
@@ -344,11 +343,10 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 					   (p - subject));
 			return -1;
 		}
-		/* regexec does not seem to initialise unused elements */
-		ret = regexec(preg, subject, matches, pmatch, eflags);
+		ret = regexec(preg, subject, matches, pmatch, 0);
 	}
 #else
-	ret = regnexec(preg, subject, len, matches, pmatch, eflags);
+	ret = regnexec(preg, subject, len, matches, pmatch, 0);
 #endif
 	if (ret != 0) {
 		if (ret != REG_NOMATCH) {
