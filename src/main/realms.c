@@ -1924,7 +1924,7 @@ int realm_realm_add(REALM *r, UNUSED CONF_SECTION *cs)
 		/*
 		 *	Include substring matches.
 		 */
-		slen = regex_compile(rr, &rr->preg, r->name + 1, strlen(r->name) - 1, true, false, false);
+		slen = regex_compile(rr, &rr->preg, r->name + 1, strlen(r->name) - 1, true, false, false, false);
 		if (slen <= 0) {
 			char *spaces, *text;
 

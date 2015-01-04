@@ -73,12 +73,14 @@ static void _pcre_free(void *to_free) {
  * @param len of pattern.
  * @param ignore_case whether to do case insensitive matching.
  * @param multiline If true $ matches newlines.
+ * @param subcaptures Whether to compile the regular expression to store subcapture
+ *	data.
  * @param runtime If false run the pattern through the PCRE JIT to convert it to machine code.
  *	This trades startup time (longer) for runtime performance (better).
  * @return >= 1 on success, <= 0 on error. Negative value is offset of parse error.
  */
 ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
-		      bool ignore_case, bool multiline, bool runtime)
+		      bool ignore_case, bool multiline, bool subcaptures, bool runtime)
 {
 	char const *error;
 	int offset;
@@ -104,6 +106,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 
 	if (ignore_case) cflags |= PCRE_CASELESS;
 	if (multiline) cflags |= PCRE_MULTILINE;
+	if (!subcaptures) cflags |= PCRE_NO_AUTO_CAPTURE;
 
 	preg = talloc_zero(ctx, regex_t);
 	talloc_set_destructor(preg, _regex_free);
@@ -240,12 +243,14 @@ static int _regex_free(regex_t *preg)
  * @param len of pattern.
  * @param ignore_case Whether the match should be case ignore_case.
  * @param multiline If true $ matches newlines.
+ * @param subcaptures Whether to compile the regular expression to store subcapture
+ *	data.
  * @param runtime Whether the compilation is being done at runtime.
  * @return >= 1 on success, <= 0 on error. Negative value is offset of parse error.
  *	With POSIX regex we only give the correct offset for embedded \0 errors.
  */
 ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
-		      bool ignore_case, bool multiline, UNUSED bool runtime)
+		      bool ignore_case, bool multiline, bool subcaptures, UNUSED bool runtime)
 {
 	int ret;
 	int cflags = REG_EXTENDED;
@@ -258,6 +263,7 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
 
 	if (ignore_case) cflags |= REG_ICASE;
 	if (multiline) cflags |= REG_NEWLINE;
+	if (!subcaptures) cflags |= REG_NOSUB;
 
 #ifndef HAVE_REGNCOMP
 	{

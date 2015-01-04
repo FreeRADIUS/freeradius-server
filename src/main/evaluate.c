@@ -180,7 +180,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		rad_assert(rhs_type == PW_TYPE_STRING);
 		rad_assert(rhs->strvalue);
 		slen = regex_compile(request, &rreg, rhs->strvalue, rhs_len,
-				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true);
+				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
 		if (slen <= 0) {
 			REMARKER(rhs->strvalue, -slen, fr_strerror());
 			EVAL_DEBUG("FAIL %d", __LINE__);
