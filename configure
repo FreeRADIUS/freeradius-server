@@ -767,6 +767,7 @@ with_cap_lib_dir
 with_cap_include_dir
 with_execinfo_lib_dir
 with_execinfo_include_dir
+with_pcre
 with_pcre_lib_dir
 with_pcre_include_dir
 with_regex
@@ -1459,6 +1460,7 @@ Optional Packages:
   --with-execinfo-include-dir=DIR
                           directory in which to look for execinfo include
                           files
+  --with-pcre             use libpcre (if available). (default=yes)
   --with-pcre-lib-dir=DIR directory in which to look for pcre library files
   --with-pcre-include-dir=DIR
                           directory in which to look for pcre include files
@@ -4318,8 +4320,8 @@ else
 fi
 
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-std=c11\"" >&5
-$as_echo_n "checking for the compiler flag \"-std=c11\"... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag to enable C11 support" >&5
+$as_echo_n "checking for the compiler flag to enable C11 support... " >&6; }
 if ${ax_cv_cc_std_c11_flag+:} false; then :
   $as_echo_n "(cached) " >&6
 else
@@ -11277,6 +11279,22 @@ $as_echo "#define HAVE_EXECINFO 1" >>confdefs.h
   fi
 fi
 
+PCRE=yes
+
+# Check whether --with-pcre was given.
+if test "${with_pcre+set}" = set; then :
+  withval=$with_pcre;  case "$withval" in
+    no)
+    PCRE=no
+	;;
+    yes)
+    PCRE=yes
+	;;
+  esac
+
+fi
+
+
 pcre_lib_dir=
 
 # Check whether --with-pcre-lib-dir was given.
@@ -11328,7 +11346,7 @@ if test "${with_regex+set}" = set; then :
 fi
 
 
-if test "x$REGEX" = "x"; then
+if test "x$REGEX" != "xno" && test "x$PCRE" != "xno"; then
   smart_try_dir=$pcre_include_dir
 
 
