@@ -83,3 +83,19 @@ if ("%{expr: 1 << 2 | 1}" != 5) {
 		Filter-Id := "fail-10"
 	}
 }
+
+#
+#  Unary negation
+#
+if ("%{expr: 6 + -(1 + 3)}" != 2) {
+	update reply {
+		Filter-Id := "fail-11"
+	}
+}
+
+if ("%{expr: 6 * -&Tmp-Integer-2}" != -24) {
+	update reply {
+		Filter-Id := "fail-11"
+	}
+}
+
