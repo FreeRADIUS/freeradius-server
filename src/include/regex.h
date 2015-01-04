@@ -68,7 +68,7 @@ typedef struct regex {
 #    endif
 #  endif
 ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
-		      bool ignore_case, bool multiline, bool runtime);
+		      bool ignore_case, bool multiline, bool subcaptures, bool runtime);
 int	regex_exec(regex_t *preg, char const *string, size_t len, regmatch_t pmatch[], size_t *nmatch);
 #  ifdef __cplusplus
 }

@@ -3049,7 +3049,7 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 	}
 
 	slen = regex_compile(vpt, &preg, vpt->name, vpt->len,
-			     vpt->tmpl_iflag, vpt->tmpl_mflag, false);
+			     vpt->tmpl_iflag, vpt->tmpl_mflag, true, false);
 	if (slen <= 0) {
 		char *spaces, *text;
 
