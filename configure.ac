@@ -1714,11 +1714,23 @@ if test "x$ac_cv_header_execinfo_h" = "xyes"; then
 fi
 
 dnl #
-dnl #  Check for regular expression support, if were using PCRE it MUST be included
-dnl #  before all others, else we seem to still pickup the posix symbols for regcomp
-dnl #  and regexec, which results in crashes as soon as we call any posix regex
-dnl #  functions.
+dnl #  Check for regular expression support.
 dnl #
+dnl extra argument: --with-pcre
+PCRE=yes
+AC_ARG_WITH(pcre,
+[AS_HELP_STRING([--with-pcre],
+[use libpcre (if available). (default=yes)])],
+[ case "$withval" in
+    no)
+    PCRE=no
+	;;
+    yes)
+    PCRE=yes
+	;;
+  esac ]
+)
+
 dnl extra argument: --with-pcre-lib-dir
 pcre_lib_dir=
 AC_ARG_WITH(pcre-lib-dir,
@@ -1770,7 +1782,7 @@ AC_ARG_WITH(regex,
 dnl #
 dnl #  First look for PCRE
 dnl #
-if test "x$REGEX" = "x"; then
+if test "x$REGEX" != "xno" && test "x$PCRE" != "xno"; then
   smart_try_dir=$pcre_include_dir
   FR_SMART_CHECK_INCLUDE(pcre.h)
   if test "x$ac_cv_header_pcre_h" = "xyes"; then
