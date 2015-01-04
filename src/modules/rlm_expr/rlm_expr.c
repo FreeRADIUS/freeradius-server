@@ -213,6 +213,11 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		goto done;
 	}
 
+	if (*p == '-') {
+		negative = true;
+		p++;
+	}
+
 	/*
 	 *	Look for an attribute.
 	 */
@@ -285,11 +290,6 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		goto done;
 	}
 
-	if (*p == '-') {
-		negative = true;
-		p++;
-	}
-
 	if ((*p < '0') || (*p > '9')) {
 		RDEBUG2("Not a number at \"%s\"", p);
 		return false;
@@ -306,11 +306,11 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		p++;
 	}
 
-	if (negative) x = -x;
-
+done:
 	if (invert) x = ~x;
 
-done:
+	if (negative) x = -x;
+
 	*string = p;
 	*answer = x;
 	return true;
