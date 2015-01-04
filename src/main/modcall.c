@@ -2051,7 +2051,13 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 		return NULL;
 	}
 
-	if (vpt && (vpt->type != TMPL_TYPE_ATTR) && (vpt->type != TMPL_TYPE_LIST)) {
+	/*
+	 *	If we don't have a negative return code, we must have a vpt
+	 *	(mostly to quiet coverity).
+	 */
+	rad_assert(vpt);
+
+	if ((vpt->type != TMPL_TYPE_ATTR) && (vpt->type != TMPL_TYPE_LIST)) {
 		cf_log_err_cs(cs, "MUST use attribute or list reference in 'foreach'");
 		return NULL;
 	}
