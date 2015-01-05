@@ -480,8 +480,6 @@ redo:
 
 		RDEBUG2("%s %s{", group_name[c->type], c->name);
 
-		RDEBUG("PASS2? %s", g->done_pass2 ? "yes" : "NO");
-
 		condition = radius_evaluate_cond(request, result, 0, g->cond);
 		if (condition < 0) {
 			condition = false;
