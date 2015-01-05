@@ -480,6 +480,8 @@ redo:
 
 		RDEBUG2("%s %s{", group_name[c->type], c->name);
 
+		RDEBUG("PASS2? %s", g->done_pass2 ? "yes" : "NO");
+
 		condition = radius_evaluate_cond(request, result, 0, g->cond);
 		if (condition < 0) {
 			condition = false;
@@ -3388,21 +3390,17 @@ bool modcall_pass2(modcallable *mc)
 			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
 
 			/*
-			 *	Don't walk over these.
-			 */
-			if ((g->cond->type == COND_TYPE_TRUE) ||
-			    (g->cond->type == COND_TYPE_FALSE)) {
-				break;
-			}
-
-			/*
 			 *	The compilation code takes care of
 			 *	simplifying 'true' and 'false'
 			 *	conditions.  For others, we have to do
-			 *	a second pass to parse && compile xlats.
+			 *	a second pass to parse && compile
+			 *	xlats.
 			 */
-			if (!fr_condition_walk(g->cond, pass2_callback, NULL)) {
-				return false;
+			if (!((g->cond->type == COND_TYPE_TRUE) ||
+			      (g->cond->type == COND_TYPE_FALSE))) {
+				if (!fr_condition_walk(g->cond, pass2_callback, NULL)) {
+					return false;
+				}
 			}
 
 			if (!modcall_pass2(g->children)) return false;
