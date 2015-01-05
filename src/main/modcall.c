@@ -1608,7 +1608,7 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 	/*
 	 *	Anal-retentive checks.
 	 */
-	if (DEBUG_ENABLED2) {
+	if (DEBUG_ENABLED3) {
 		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
 			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
 			     cf_pair_filename(cp), cf_pair_lineno(cp),

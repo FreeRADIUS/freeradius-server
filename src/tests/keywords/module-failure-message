@@ -1,0 +1,40 @@
+#
+# PRE: update
+#
+#  Remove all attributes in a list
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
+
+test
+if ("%{request:Module-Failure-Message[0]}" != 'test: RERROR error message') {
+	update reply {
+		Filter-Id += 'Fail 0'
+	}
+}
+
+if ("%{request:Module-Failure-Message[1]}" != 'test: RDEBUG error message') {
+	update reply {
+		Filter-Id += 'Fail 1'
+	}
+}
+
+if ("%{request:Module-Failure-Message[2]}" != 'test: RDEBUG2 error message') {
+	update reply {
+		Filter-Id += 'Fail 2'
+	}
+}
+
+if ("%{request:Module-Failure-Message[3]}" != 'test: RDEBUG3 error message') {
+	update reply {
+		Filter-Id += 'Fail 3'
+	}
+}
+
+if ("%{request:Module-Failure-Message[4]}" != 'test: RDEBUG4 error message') {
+	update reply {
+		Filter-Id += 'Fail 4'
+	}
+}
