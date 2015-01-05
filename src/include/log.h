@@ -152,8 +152,6 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
  */
 #define RDEBUG_ENABLED		radlog_debug_enabled(L_DBG, L_DBG_LVL_1, request)
 #define RDEBUG_ENABLED2		radlog_debug_enabled(L_DBG, L_DBG_LVL_2, request)
-#define _RMKR(_l, _p, _m, _i, _e)	radlog_request_marker(_l, _p, request, _m, _i, _e)
-
 #define RDEBUG_ENABLED3		radlog_debug_enabled(L_DBG, L_DBG_LVL_3, request)
 #define RDEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, request)
 
@@ -196,8 +194,9 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
  * @param _i index e.g. 3 (starts from 0).
  * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts".
  */
-#define REMARKER(_m, _i, _e)	_RMKR(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e)
-#define RDMARKER(_m, _i, _e)	_RMKR(L_DBG, L_DBG_LVL_1, _m, _i, _e)
+#define _RMKR(_l, _p, _m, _i, _e)	radlog_request_marker(_l, _p, request, _m, _i, _e)
+#define REMARKER(_m, _i, _e)		_RMKR(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e)
+#define RDMARKER(_m, _i, _e)		_RMKR(L_DBG, L_DBG_LVL_1, _m, _i, _e)
 
 /*
  *	Rate limit messages.

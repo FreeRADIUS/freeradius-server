@@ -11,16 +11,16 @@ update {
 #
 
 #
-#  Passing 'yes' causes the example paircmp to return match
-#  Passing 'no' causes the example paircmp to return a non-match
+#  Passing 'yes' causes the test paircmp to return match
+#  Passing 'no' causes the test paircmp to return a non-match
 #
-if (&Example-Paircmp != 'yes') {
+if (&Test-Paircmp != 'yes') {
 	update reply {
 		Filter-Id += 'fail 1'
 	}
 }
 
-if (&Example-Paircmp == 'no') {
+if (&Test-Paircmp == 'no') {
 	update reply {
 		Filter-Id += 'fail 2'
 	}
