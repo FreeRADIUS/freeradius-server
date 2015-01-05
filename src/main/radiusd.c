@@ -311,11 +311,12 @@ int main(int argc, char *argv[])
 		default_log.dst = L_DST_STDOUT;
 		default_log.fd = STDOUT_FILENO;
 
-		version();
+		INFO("%s: %s", progname, radiusd_version);
+		version_print();
 		exit(EXIT_SUCCESS);
 	}
 
-	if (debug_flag) version();
+	if (debug_flag) version_print();
 
 	/*
 	 *  Under linux CAP_SYS_PTRACE is usually only available before setuid/setguid,

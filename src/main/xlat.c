@@ -92,8 +92,6 @@ static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 
 static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
 
-static char const *radiusd_short_version = RADIUSD_VERSION_STRING;
-
 /** Print length of its RHS.
  *
  */
@@ -2149,7 +2147,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			break;
 
 		case 'v': /* Version of code */
-			snprintf(str, freespace, "%s", radiusd_short_version);
+			RWDEBUG("%%v is deprecated and will be removed.  Use ${version.freeradius-server}");
+			snprintf(str, freespace, "%s", radiusd_version_short);
 			break;
 
 		default:

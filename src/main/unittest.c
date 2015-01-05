@@ -628,9 +628,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (debug_flag) {
-		version();
-	}
+	if (debug_flag) version_print();
 	fr_debug_flag = debug_flag;
 
 	/*
