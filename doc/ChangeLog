@@ -5,11 +5,14 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
         * Automatically determine the correct port if no port is
           provided for a home server.
         * Allow foreach to operate over lists.
+        * Add compile time features to ${feature.*} and versions
+          of core libraries to ${version.*}.  Feature and version
+          names match output of radiud -xv. %v is now deprecated.
 
 	Bug fixes
-	* Fix issues parsing LDAP hostnames with non-standard ports.
-        * Fix issues with realms containing regular expressions.
-	* Allow unary negation before parantheses in rlm_expr
+        * Fix issues parsing LDAP hostnames with non-standard ports.
+	* Fix issues with realms containing regular expressions.
+	* Allow unary negation before parantheses in rlm_expr.
 
 FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
