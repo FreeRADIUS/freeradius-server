@@ -823,7 +823,7 @@ void xlat_unregister(char const *name, UNUSED RAD_XLAT_FUNC func, void *instance
 	xlat_t	*c;
 	xlat_t		my_xlat;
 
-	if (!name) return;
+	if (!name || !xlat_root) return;
 
 	strlcpy(my_xlat.name, name, sizeof(my_xlat.name));
 	my_xlat.length = strlen(my_xlat.name);
