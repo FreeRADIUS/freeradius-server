@@ -225,15 +225,6 @@ ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets
 ATTRIBUTE	Stripped-User-Domain			1138	string
 ATTRIBUTE	Called-Station-SSID			1139	string
 
-VALUE	Cache-Status-Only		no			0
-VALUE	Cache-Status-Only		yes			1
-
-VALUE	Cache-Merge			no			0
-VALUE	Cache-Merge			yes			1
-
-VALUE	Cache-Read-Only			no			0
-VALUE	Cache-Read-Only			yes			1
-
 ATTRIBUTE	OTP-Challenge				1145	string
 ATTRIBUTE	EAP-Session-Id				1146	octets
 ATTRIBUTE	Chbind-Response-Code			1147	integer
@@ -280,6 +271,15 @@ ATTRIBUTE	Cache-Status-Only			1173	integer
 ATTRIBUTE	Cache-Merge				1174	integer
 ATTRIBUTE	Cache-Entry-Hits			1175	integer
 ATTRIBUTE	Cache-Read-Only				1176	integer
+
+VALUE	Cache-Status-Only		no			0
+VALUE	Cache-Status-Only		yes			1
+
+VALUE	Cache-Merge			no			0
+VALUE	Cache-Merge			yes			1
+
+VALUE	Cache-Read-Only			no			0
+VALUE	Cache-Read-Only			yes			1
 
 #
 #	Range:	1200-1279
