@@ -1,5 +1,6 @@
 # PRE: if
 #
+if ('${feature.regex-pcre}' == 'yes') {
 update request {
 	Tmp-Integer-0 := '123456789'
 }
@@ -86,4 +87,5 @@ else {
 	update reply {
 		Filter-Id += 'Fail 4.5'
 	}
+}
 }
