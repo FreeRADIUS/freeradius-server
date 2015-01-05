@@ -702,7 +702,7 @@ char const *get_radius_dir(void)
 int main_config_init(void)
 {
 	char const *p = NULL;
-	CONF_SECTION *cs;
+	CONF_SECTION *cs, *subcs;
 	struct stat statbuf;
 	cached_config_t *cc;
 	char buffer[1024];
@@ -781,6 +781,38 @@ do {\
 	 *	It's OK if this one doesn't exist.
 	 */
 	DICT_READ_OPTIONAL(radius_dir, RADIUS_DICTIONARY);
+
+	cs = cf_section_alloc(NULL, "main", NULL);
+	if (!cs) return -1;
+
+	/*
+	 *	Add a 'feature' subsection off the main config
+	 *	We check if it's defined first, as the user may
+	 *	have defined their own feature flags, or want
+	 *	to manually override the ones set by modules
+	 *	or the server.
+	 */
+	subcs = cf_section_sub_find(cs, "feature");
+	if (!subcs) {
+		subcs = cf_section_alloc(cs, "feature", NULL);
+		if (!subcs) return -1;
+
+		cf_section_add(cs, subcs);
+	}
+	version_init_features(subcs);
+
+	/*
+	 *	Add a 'version' subsection off the main config
+	 *	We check if it's defined first, this is for
+	 *	backwards compatibility.
+	 */
+	subcs = cf_section_sub_find(cs, "version");
+	if (!subcs) {
+		subcs = cf_section_alloc(cs, "version", NULL);
+		if (!subcs) return -1;
+		cf_section_add(cs, subcs);
+	}
+	version_init_numbers(subcs);
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",

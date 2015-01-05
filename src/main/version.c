@@ -27,7 +27,8 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-static uint64_t libmagic = RADIUSD_MAGIC_NUMBER;
+static uint64_t	libmagic = RADIUSD_MAGIC_NUMBER;
+char const	*radiusd_version_short = RADIUSD_VERSION_STRING;
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 #  include <openssl/crypto.h>
@@ -123,6 +124,18 @@ char const *ssl_version_by_num(uint32_t v)
 	return buffer;
 }
 
+/** Return the linked SSL version number as a string
+ *
+ * @return pointer to a static buffer containing the version string.
+ */
+char const *ssl_version_num(void)
+{
+	long ssl_linked;
+
+	ssl_linked = SSLeay();
+	return ssl_version_by_num((uint32_t)ssl_linked);
+}
+
 /** Convert two openssl version numbers into a range string
  *
  * @note Not thread safe.
@@ -169,12 +182,16 @@ int ssl_check_consistency(void) {
 	return 0;
 }
 
+char const *ssl_version_num(void)
+{
+	return "not linked";
+}
+
 char const *ssl_version()
 {
 	return "not linked";
 }
 #endif /* ifdef HAVE_OPENSSL_CRYPTO_H */
-
 
 /** Check if the application linking to the library has the correct magic number
  *
@@ -207,113 +224,357 @@ int rad_check_lib_magic(uint64_t magic)
 	return 0;
 }
 
+/** Add a feature flag to the main configuration
+ *
+ * Add a feature flag (yes/no) to the 'feature' subsection
+ * off the main config.
+ *
+ * This allows the user to create configurations that work with
+ * across multiple environments.
+ *
+ * @param cs to add feature pair to.
+ * @param name of feature.
+ * @param enabled Whether the feature is present/enabled.
+ * @return 0 on success else -1.
+ */
+int version_add_feature(CONF_SECTION *cs, char const *name, bool enabled)
+{
+	if (!cs) return -1;
+
+	if (!cf_pair_find(cs, name)) {
+		CONF_PAIR *cp;
+
+		cp = cf_pair_alloc(cs, name, enabled ? "yes" : "no",
+				   T_OP_SET, T_BARE_WORD, T_BARE_WORD);
+		if (!cp) return -1;
+		cf_pair_add(cs, cp);
+	}
+
+	return 0;
+}
+
+/** Add a library/server version pair to the main configuration
+ *
+ * Add a version number to the 'version' subsection off the main
+ * config.
+ *
+ * Because of the optimisations in the configuration parser, these
+ * may be checked using regular expressions without a performance
+ * penalty.
+ *
+ * The version pairs are there primarily to work around defects
+ * in libraries or the server.
+ *
+ * @param cs to add feature pair to.
+ * @param name of library or feature.
+ * @param version Humanly readable version text.
+ * @return 0 on success else -1.
+ */
+int version_add_number(CONF_SECTION *cs, char const *name, char const *version)
+{
+	CONF_PAIR *old;
+
+	if (!cs) return -1;
+
+	old = cf_pair_find(cs, name);
+	if (!old) {
+		CONF_PAIR *cp;
+
+		cp = cf_pair_alloc(cs, name, version, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+		if (!cp) return -1;
+
+		cf_pair_add(cs, cp);
+	} else {
+		WARN("Replacing user version.%s (%s) with %s", name, cf_pair_value(old), version);
+
+		cf_pair_replace(cs, old, version);
+	}
+
+	return 0;
+}
+
+
+/** Initialise core feature flags
+ *
+ * @param cs Where to add the CONF_PAIRS, if null pairs will be added
+ *	to the 'feature' section of the main config.
+ */
+void version_init_features(CONF_SECTION *cs)
+{
+	version_add_feature(cs, "accounting",
+#ifdef WITH_ACCOUNTING
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "authentication", true);
+
+	version_add_feature(cs, "ascend-binary-attributes",
+#ifdef WITH_ASCEND_BINARY
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "coa",
+#ifdef WITH_COA
+				true
+#else
+				false
+#endif
+				);
+
+
+	version_add_feature(cs, "control-socket",
+#ifdef WITH_COMMAND_SOCKET
+				true
+#else
+				false
+#endif
+				);
+
+
+	version_add_feature(cs, "detail",
+#ifdef WITH_DETAIL
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "dhcp",
+#ifdef WITH_DHCP
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "dynamic-clients",
+#ifdef WITH_DYNAMIC_CLIENTS
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "osfc2",
+#ifdef OSFC2
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "proxy",
+#ifdef WITH_PROXY
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "regex-pcre",
+#ifdef HAVE_PCRE
+				true
+#else
+				false
+#endif
+				);
+
+#if !defined(HAVE_PCRE) && defined(HAVE_REGEX)
+	version_add_feature(cs, "regex-posix", true);
+	version_add_feature(cs, "regex-posix-extended",
+#  ifdef HAVE_REG_EXTENDED
+				true
+#  else
+				false
+#  endif
+				);
+#else
+	version_add_feature(cs, "regex-posix", false);
+	version_add_feature(cs, "regex-posix-extended", false);
+#endif
+
+	version_add_feature(cs, "session-management",
+#ifdef WITH_SESSION_MGMT
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "stats",
+#ifdef WITH_STATS
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "tcp",
+#ifdef WITH_TCP
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "threads",
+#ifdef WITH_THREADS
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "tls",
+#ifdef WITH_TLS
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "unlang",
+#ifdef WITH_UNLANG
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "vmps",
+#ifdef WITH_VMPS
+				true
+#else
+				false
+#endif
+				);
+
+	version_add_feature(cs, "developer",
+#ifndef NDEBUG
+				true
+#else
+				false
+#endif
+				);
+}
+
+/** Initialise core version flags
+ *
+ * @param cs Where to add the CONF_PAIRS, if null pairs will be added
+ *	to the 'version' section of the main config.
+ */
+void version_init_numbers(CONF_SECTION *cs)
+{
+	char buffer[128];
+
+	version_add_number(cs, "freeradius-server", radiusd_version_short);
+
+	snprintf(buffer, sizeof(buffer), "%i.%i.*", talloc_version_major(), talloc_version_minor());
+	version_add_number(cs, "talloc", buffer);
+
+	version_add_number(cs, "ssl", ssl_version_num());
+
+#if defined(HAVE_REGEX) && defined(HAVE_PCRE)
+	version_add_number(cs, "pcre", pcre_version());
+#endif
+}
+
+static char const *spaces = "                                    ";	/* 40 */
+
 /*
  *	Display the revision number for this program
  */
-void version(void)
+void version_print(void)
 {
-	INFO("%s: %s", progname, radiusd_version);
+	CONF_SECTION *features, *versions;
+	CONF_ITEM *ci;
+	CONF_PAIR *cp;
 
-	DEBUG3("Server was built with: ");
+	if (DEBUG_ENABLED2) {
+		int max = 0, len;
 
-#ifdef WITH_ACCOUNTING
-	DEBUG3("  accounting");
-#endif
-	DEBUG3("  authentication"); /* always enabled */
+		MEM(features = cf_section_alloc(NULL, "feature", NULL));
+		version_init_features(features);
 
-#ifdef WITH_ASCEND_BINARY
-	DEBUG3("  ascend binary attributes");
-#endif
-#ifdef WITH_COA
-	DEBUG3("  coa");
-#endif
-#ifdef WITH_COMMAND_SOCKET
-	DEBUG3("  control-socket");
-#endif
-#ifdef WITH_DETAIL
-	DEBUG3("  detail");
-#endif
-#ifdef WITH_DHCP
-	DEBUG3("  dhcp");
-#endif
-#ifdef WITH_DYNAMIC_CLIENTS
-	DEBUG3("  dynamic clients");
-#endif
-#ifdef OSFC2
-	DEBUG3("  OSFC2");
-#endif
-#ifdef WITH_PROXY
-	DEBUG3("  proxy");
-#endif
-#ifdef HAVE_PCRE
-	DEBUG3("  regex-pcre");
-#else
-#  ifdef HAVE_REGEX
-#    ifdef HAVE_REG_EXTENDED
-	DEBUG3("  regex-posix-extended");
-#    else
-	DEBUG3("  regex-posix");
-#    endif
-#  endif
-#endif
+		MEM(versions = cf_section_alloc(NULL, "version", NULL));
+		version_init_numbers(versions);
 
-#ifdef WITH_SESSION_MGMT
-	DEBUG3("  session-management");
-#endif
-#ifdef WITH_STATS
-	DEBUG3("  stats");
-#endif
-#ifdef WITH_TCP
-	DEBUG3("  tcp");
-#endif
-#ifdef WITH_THREADS
-	DEBUG3("  threads");
-#endif
-#ifdef WITH_TLS
-	DEBUG3("  tls");
-#endif
-#ifdef WITH_UNLANG
-	DEBUG3("  unlang");
-#endif
-#ifdef WITH_VMPS
-	DEBUG3("  vmps");
-#endif
-#ifndef NDEBUG
-	DEBUG3("  developer");
-#endif
+		DEBUG3("Server was built with: ");
 
-	DEBUG3("Server core libs:");
-	DEBUG3("  talloc : %i.%i.*", talloc_version_major(), talloc_version_minor());
-	DEBUG3("  ssl    : %s", ssl_version());
+		for (ci = cf_item_find_next(features, NULL);
+		     ci;
+		     ci = cf_item_find_next(features, ci)) {
+			len = talloc_array_length(cf_pair_attr(cf_item_to_pair(ci)));
+			if (max < len) max = len;
+		}
 
-#if defined(HAVE_REGEX) && defined(HAVE_PCRE)
-	DEBUG3("  pcre   : %s", pcre_version());
-#endif
-	DEBUG3("Library magic number:");
-	DEBUG3("  0x%llx", (unsigned long long) libmagic);
+		for (ci = cf_item_find_next(versions, NULL);
+		     ci;
+		     ci = cf_item_find_next(versions, ci)) {
+			len = talloc_array_length(cf_pair_attr(cf_item_to_pair(ci)));
+			if (max < len) max = len;
+		}
 
-	DEBUG3("Endianess:");
+
+		for (ci = cf_item_find_next(features, NULL);
+		     ci;
+		     ci = cf_item_find_next(features, ci)) {
+		     	char const *attr;
+
+			cp = cf_item_to_pair(ci);
+			attr = cf_pair_attr(cp);
+
+			DEBUG3("  %s%.*s : %s", attr,
+			       (int)(max - talloc_array_length(attr)), spaces,  cf_pair_value(cp));
+		}
+
+		talloc_free(features);
+
+		DEBUG3("Server core libs:");
+
+		for (ci = cf_item_find_next(versions, NULL);
+		     ci;
+		     ci = cf_item_find_next(versions, ci)) {
+		     	char const *attr;
+
+			cp = cf_item_to_pair(ci);
+			attr = cf_pair_attr(cp);
+
+			DEBUG3("  %s%.*s : %s", attr,
+			       (int)(max - talloc_array_length(attr)), spaces,  cf_pair_value(cp));
+		}
+
+		talloc_free(versions);
+
+		DEBUG3("Endianess:");
 #if defined(RADIUS_LITTLE_ENDIAN)
-	DEBUG3("  little");
+		DEBUG3("  little");
 #elif defined(RADIUS_BIG_ENDIAN)
-	DEBUG3("  big");
+		DEBUG3("  big");
 #else
-	DEBUG3("  unknown");
+		DEBUG3("  unknown");
 #endif
 
-	DEBUG3("Compilation flags:");
+		DEBUG3("Compilation flags:");
 #ifdef BUILT_WITH_CPPFLAGS
-	DEBUG3("  cppflags : " BUILT_WITH_CPPFLAGS);
+		DEBUG3("  cppflags : " BUILT_WITH_CPPFLAGS);
 #endif
 #ifdef BUILT_WITH_CFLAGS
-	DEBUG3("  cflags   : " BUILT_WITH_CFLAGS);
+		DEBUG3("  cflags   : " BUILT_WITH_CFLAGS);
 #endif
 #ifdef BUILT_WITH_LDFLAGS
-	DEBUG3("  ldflags  : " BUILT_WITH_LDFLAGS);
+		DEBUG3("  ldflags  : " BUILT_WITH_LDFLAGS);
 #endif
 #ifdef BUILT_WITH_LIBS
-	DEBUG3("  libs     : " BUILT_WITH_LIBS);
+		DEBUG3("  libs     : " BUILT_WITH_LIBS);
 #endif
+	}
 	INFO("Copyright (C) 1999-2015 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	INFO("PARTICULAR PURPOSE");

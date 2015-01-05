@@ -10,5 +10,6 @@ SOURCES	:=	conffile.c \
 		regex.c \
 		tmpl.c \
 		util.c \
+		version.c \
 		pair.c \
 		xlat.c

@@ -502,6 +502,7 @@ extern char const	*radlog_dir;
 extern char const	*radlib_dir;
 extern bool		log_stripped_names;
 extern char const	*radiusd_version;
+extern char const	*radiusd_version_short;
 void			radius_signal_self(int flag);
 
 typedef enum {
@@ -624,9 +625,14 @@ void		pairlist_free(PAIR_LIST **);
 int		rad_check_lib_magic(uint64_t magic);
 int 		ssl_check_consistency(void);
 char const	*ssl_version_by_num(uint32_t version);
+char const	*ssl_version_num(void);
 char const	*ssl_version_range(uint32_t low, uint32_t high);
 char const	*ssl_version(void);
-void		version(void);
+int		version_add_feature(CONF_SECTION *cs, char const *name, bool enabled);
+int		version_add_number(CONF_SECTION *cs, char const *name, char const *version);
+void		version_init_features(CONF_SECTION *cs);
+void		version_init_numbers(CONF_SECTION *cs);
+void		version_print(void);
 
 /* auth.c */
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, bool do_cli);
