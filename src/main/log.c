@@ -506,7 +506,7 @@ static int CC_HINT(format (printf, 2, 3)) radlog_always(log_type_t type, char co
 
 inline bool debug_enabled(log_type_t type, log_lvl_t lvl)
 {
-	if ((type & L_DBG) && (debug_flag != 0) && (lvl < debug_flag)) return true;
+	if ((type & L_DBG) && (debug_flag != 0) && (lvl <= debug_flag)) return true;
 
 	return false;
 }
@@ -531,8 +531,8 @@ inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *reques
 	 *	then don't log the message.
 	 */
 	if ((type & L_DBG) &&
-	    ((request && request->log.func && (lvl < request->log.lvl)) ||
-	     ((debug_flag != 0) && (lvl < debug_flag)))) {
+	    ((request && request->log.func && (lvl <= request->log.lvl)) ||
+	     ((debug_flag != 0) && (lvl <= debug_flag)))) {
 		return true;
 	}
 
