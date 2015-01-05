@@ -878,9 +878,7 @@ do {\
 	 *	This allows us to figure out where, relative to
 	 *	radiusd.conf, the other configuration files exist.
 	 */
-	if (cf_section_parse(cs, NULL, server_config) < 0) {
-		return -1;
-	}
+	if (cf_section_parse(cs, NULL, server_config) < 0) return -1;
 
 	/*
 	 *	We ignore colourization of output until after the
@@ -1008,25 +1006,25 @@ int main_config_free(void)
 
 void hup_logfile(void)
 {
-		int fd, old_fd;
+	int fd, old_fd;
 
-		if (default_log.dst != L_DST_FILES) return;
+	if (default_log.dst != L_DST_FILES) return;
 
-		fd = open(main_config.log_file,
-			  O_WRONLY | O_APPEND | O_CREAT, 0640);
-		if (fd >= 0) {
-			/*
-			 *	Atomic swap. We'd like to keep the old
-			 *	FD around so that callers don't
-			 *	suddenly find the FD closed, and the
-			 *	writes go nowhere.  But that's hard to
-			 *	do.  So... we have the case where a
-			 *	log message *might* be lost on HUP.
-			 */
-			old_fd = default_log.fd;
-			default_log.fd = fd;
-			close(old_fd);
-		}
+	fd = open(main_config.log_file,
+		  O_WRONLY | O_APPEND | O_CREAT, 0640);
+	if (fd >= 0) {
+		/*
+		 *	Atomic swap. We'd like to keep the old
+		 *	FD around so that callers don't
+		 *	suddenly find the FD closed, and the
+		 *	writes go nowhere.  But that's hard to
+		 *	do.  So... we have the case where a
+		 *	log message *might* be lost on HUP.
+		 */
+		old_fd = default_log.fd;
+		default_log.fd = fd;
+		close(old_fd);
+	}
 }
 
 void main_config_hup(void)
@@ -1086,5 +1084,5 @@ void main_config_hup(void)
 	 */
 	virtual_servers_load(cs);
 
-	virtual_servers_free(cc->created - main_config.max_request_time * 4);
+	virtual_servers_free(cc->created - (main_config.max_request_time * 4));
 }
