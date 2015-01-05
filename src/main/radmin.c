@@ -585,8 +585,10 @@ int main(int argc, char **argv)
 			exit(64);
 		}
 
-		cs = cf_file_read(buffer);
-		if (!cs) {
+		cs = cf_section_alloc(NULL, "main", NULL);
+		if (!cs) exit(1);
+
+		if (cf_file_read(cs, buffer) < 0) {
 			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, buffer);
 			usage(1);
 		}

@@ -1313,8 +1313,13 @@ RADCLIENT *client_read(char const *filename, int in_server, int flag)
 
 	if (!filename) return NULL;
 
-	cs = cf_file_read(filename);
+	cs = cf_section_alloc(NULL, "main", NULL);
 	if (!cs) return NULL;
+
+	if (cf_file_read(cs, filename) < 0) {
+		talloc_free(cs);
+		return NULL;
+	}
 
 	cs = cf_section_sub_find(cs, "client");
 	if (!cs) {

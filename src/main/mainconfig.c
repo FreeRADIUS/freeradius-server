@@ -785,8 +785,10 @@ do {\
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
 		 radius_dir, main_config.name);
-	if ((cs = cf_file_read(buffer)) == NULL) {
+	if (cf_file_read(cs, buffer) < 0) {
 		ERROR("Errors reading or parsing %s", buffer);
+		talloc_free(cs);
+
 		return -1;
 	}
 
@@ -1035,11 +1037,15 @@ void main_config_hup(void)
 
 	INFO("HUP - Re-reading configuration files");
 
+	cs = cf_section_alloc(NULL, "main", NULL);
+	if (!cs) return;
+
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
 		 radius_dir, main_config.name);
-	if ((cs = cf_file_read(buffer)) == NULL) {
+	if (cf_file_read(cs, buffer) < 0) {
 		ERROR("Failed to re-read or parse %s", buffer);
+		talloc_free(cs);
 		return;
 	}
 

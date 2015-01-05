@@ -2498,17 +2498,13 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 /*
  *	Bootstrap a config file.
  */
-CONF_SECTION *cf_file_read(char const *filename)
+int cf_file_read(CONF_SECTION *cs, char const *filename)
 {
 	char *p;
 	CONF_PAIR *cp;
-	CONF_SECTION *cs;
-
-	cs = cf_section_alloc(NULL, "main", NULL);
-	if (!cs) return NULL;
 
 	cp = cf_pair_alloc(cs, "confdir", filename, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
-	if (!cp) return NULL;
+	if (!cp) return -1;
 
 	p = strrchr(cp->value, FR_DIR_SEP);
 	if (p) *p = '\0';
@@ -2517,12 +2513,9 @@ CONF_SECTION *cf_file_read(char const *filename)
 	cp->item.lineno = -1;
 	cf_item_add(cs, &(cp->item));
 
-	if (cf_file_include(cs, filename) < 0) {
-		talloc_free(cs);
-		return NULL;
-	}
+	if (cf_file_include(cs, filename) < 0) return -1;
 
-	return cs;
+	return 0;
 }
 
 
