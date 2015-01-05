@@ -326,9 +326,11 @@ int main(int argc, char **argv)
 	memset(&main_config, 0, sizeof(main_config));
 
 	/* Read radiusd.conf */
+	maincs = cf_section_alloc(NULL, "main", NULL);
+	if (!maincs) exit(1);
+
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", raddb_dir);
-	maincs = cf_file_read(buffer);
-	if (!maincs) {
+	if (cf_file_read(maincs, buffer) < 0) {
 		fprintf(stderr, "%s: Error reading or parsing radiusd.conf\n", argv[0]);
 		exit(1);
 	}

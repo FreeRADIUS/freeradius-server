@@ -167,7 +167,7 @@ int		cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, cha
 int		cf_section_parse(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 int		cf_section_parse_pass2(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);
-CONF_SECTION	*cf_file_read(char const *file);
+int		cf_file_read(CONF_SECTION *cs, char const *file);
 void		cf_file_free(CONF_SECTION *cs);
 int		cf_file_include(CONF_SECTION *cs, char const *file);
 
