@@ -404,7 +404,6 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 
 #include <freeradius-devel/modpriv.h>
 
-
 /*
  *	%{poke:sql.foo=bar}
  */
@@ -639,6 +638,11 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	if (xlat_register("poke", xlat_poke, NULL, NULL) < 0) {
+		rcode = EXIT_FAILURE;
+		goto finish;
+	}
+
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (main_config_init() < 0) {
 		rcode = EXIT_FAILURE;
@@ -649,11 +653,6 @@ int main(int argc, char *argv[])
 	 *  Load the modules
 	 */
 	if (modules_init(main_config.config) < 0) {
-		rcode = EXIT_FAILURE;
-		goto finish;
-	}
-
-	if (xlat_register("poke", xlat_poke, NULL, NULL) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
