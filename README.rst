@@ -10,10 +10,11 @@ Introduction
 ------------
 
 The FreeRADIUS Server Project is a high performance and highly
-configurable RADIUS server that is available under the terms of the
-GNU GPLv2.  Using RADIUS allows authentication and authorization for a
-network to be centralized, and minimizes the number of changes that
-have to be done when adding or deleting new users to a network.
+configurable multi-protocol policy server, supporting RADIUS, DHCPv4 
+and VMPS. It is available under the terms of the GNU GPLv2.  
+Using RADIUS allows authentication and authorization for a network 
+to be centralized, and minimizes the number of changes that have to 
+be done when adding or deleting new users to a network.
 
 FreeRADIUS can authenticate users on systems such as 802.1x (WiFi),
 dialup, PPPoE, VPN's, VoIP, and many others.  It supports back-end
@@ -78,7 +79,7 @@ Additional Information
 See ``doc/README`` for more information about FreeRADIUS.
 
 There is an O'Reilly book available.  It serves as a good
-introduction for anyone new to RADIUS.  However, it is almost 11 years
+introduction for anyone new to RADIUS.  However, it is almost 12 years
 old, and is not much more than a basic introduction to the subject.
 
 http://www.amazon.com/exec/obidos/ASIN/0596003226/freeradiusorg-20/
@@ -156,5 +157,5 @@ If you like the server, feel free to mail the list and say so.
 .. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
 .. _CoverityStatus: https://scan.coverity.com/projects/58
 
-.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png
+.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=master
 .. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
