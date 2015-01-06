@@ -157,5 +157,5 @@ If you like the server, feel free to mail the list and say so.
 .. |CoverityStatus| image:: https://scan.coverity.com/projects/58/badge.svg?
 .. _CoverityStatus: https://scan.coverity.com/projects/58
 
-.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=master
+.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=v3.0.x
 .. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
