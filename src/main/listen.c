@@ -2812,7 +2812,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		talloc_set_destructor(marker, _free_proto_handle);
 
 		if (master_listen[type].magic !=  RLM_MODULE_INIT) {
-			ERROR("Failed to load protocol '%s' due to internal sanity check problem",
+			ERROR("Failed to load protocol '%s', it has the wrong version.",
 			       master_listen[type].name);
 			return NULL;
 		}
@@ -2834,6 +2834,15 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		cf_log_err_cs(cs,
 			   "Invalid type \"%s\" in listen section.",
 			   listen_type);
+		return NULL;
+	}
+
+	/*
+	 *	DHCP and VMPS *must* be loaded dynamically.
+	 */
+	if (master_listen[type].magic !=  RLM_MODULE_INIT) {
+		ERROR("Cannot load protocol '%s', as the required library does not exist",
+		      master_listen[type].name);
 		return NULL;
 	}
 
@@ -2881,7 +2890,6 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		listen_free(&this);
 		return NULL;
 	}
-
 
 	server_cs = cf_section_sub_find_name2(main_config.config, "server",
 					      this->server);
