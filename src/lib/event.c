@@ -630,9 +630,9 @@ int fr_event_loop(fr_event_list_t *el)
 		 *	Loop over all of the events, servicing them.
 		 */
 		for (i = 0; i < rcode; i++) {
-			if (el->events[i].flags & EV_EOF) {
-				fr_event_fd_t *ef = el->events[i].udata;
+			fr_event_fd_t *ef = el->events[i].udata;
 
+			if (el->events[i].flags & EV_EOF) {
 				/*
 				 *	FIXME: delete the handler
 				 *	here, and fix process.c to not
@@ -646,14 +646,12 @@ int fr_event_loop(fr_event_list_t *el)
 				continue;
 			}
 
-			if (el->events[i].flags & EVFILT_READ) {
-				fr_event_fd_t *ef = el->events[i].udata;
-
-				ef->handler(el, ef->fd, ef->ctx);
-				continue;
-			}
-
-			/* else it's an unhandled event, which shouldn't happen */
+			/*
+			 *	Else it's our event.  We only set
+			 *	EVFILT_READ, so it must be a read
+			 *	event.
+			 */
+			ef->handler(el, ef->fd, ef->ctx);
 		}
 #endif	/* HAVE_KQUEUE */
 	}
