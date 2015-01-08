@@ -1465,7 +1465,8 @@ static int process_attribute(char const* fn, int const line,
 
 		case PW_TYPE_EXTENDED:
 			if ((vendor != 0) || (value < 241)) {
-				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"extended\" MUST be RFC attributes with value >= 241.", fn, line);
+				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"extended\" MUST be "
+						   "RFC attributes with value >= 241.", fn, line);
 				return -1;
 			}
 			flags.extended = 1;
@@ -1473,7 +1474,8 @@ static int process_attribute(char const* fn, int const line,
 
 		case PW_TYPE_LONG_EXTENDED:
 			if ((vendor != 0) || (value < 241)) {
-				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"long-extended\" MUST be RFC attributes with value >= 241.", fn, line);
+				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"long-extended\" MUST "
+						   "be RFC attributes with value >= 241.", fn, line);
 				return -1;
 			}
 			flags.extended = 1;
@@ -1484,7 +1486,8 @@ static int process_attribute(char const* fn, int const line,
 			flags.extended = 1;
 			flags.evs = 1;
 			if (value != PW_VENDOR_SPECIFIC) {
-				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"evs\" MUST have attribute code 26.", fn, line);
+				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"evs\" MUST have
+						   "attribute code 26.", fn, line);
 				return -1;
 			}
 			break;
@@ -1516,28 +1519,31 @@ static int process_attribute(char const* fn, int const line,
 			next = strchr(key, ',');
 			if (next) *(next++) = '\0';
 
-			if (strcmp(key, "has_tag") == 0 ||
-			    strcmp(key, "has_tag=1") == 0) {
-				/* Boolean flag, means this is a
-				   tagged attribute */
+			/*
+			 *	Boolean flag, means this is a tagged
+			 *	attribute.
+			 */
+			if ((strcmp(key, "has_tag") == 0) || (strcmp(key, "has_tag=1") == 0)) {
 				flags.has_tag = 1;
 
+			/*
+			 *	Encryption method, defaults to 0 (none).
+			 *	Currently valid is just type 2,
+			 *	Tunnel-Password style, which can only
+			 *	be applied to strings.
+			 */
 			} else if (strncmp(key, "encrypt=", 8) == 0) {
-				/* Encryption method, defaults to 0 (none).
-				   Currently valid is just type 2,
-				   Tunnel-Password style, which can only
-				   be applied to strings. */
 				flags.encrypt = strtol(key + 8, &last, 0);
 				if (*last) {
-					fr_strerror_printf( "dict_init: %s[%d] invalid option %s",
-						    fn, line, key);
+					fr_strerror_printf("dict_init: %s[%d] invalid option %s",
+							   fn, line, key);
 					return -1;
 				}
 
 				if ((flags.encrypt == FLAG_ENCRYPT_ASCEND_SECRET) &&
 				    (type != PW_TYPE_STRING)) {
-					fr_strerror_printf( "dict_init: %s[%d] Only \"string\" types can have the \"encrypt=3\" flag set.",
-							    fn, line);
+					fr_strerror_printf("dict_init: %s[%d] Only \"string\" types can have the "
+							   "\"encrypt=3\" flag set", fn, line);
 					return -1;
 				}
 
@@ -1555,7 +1561,7 @@ static int process_attribute(char const* fn, int const line,
 					break;
 
 				default:
-					fr_strerror_printf( "dict_init: %s[%d] \"%s\" type cannot have the "
+					fr_strerror_printf("dict_init: %s[%d] \"%s\" type cannot have the "
 							   "\"array\" flag set",
 							   fn, line,
 							   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
@@ -1566,8 +1572,8 @@ static int process_attribute(char const* fn, int const line,
 				flags.concat = 1;
 
 				if (type != PW_TYPE_OCTETS) {
-					fr_strerror_printf( "dict_init: %s[%d] Only \"octets\" type can have the \"concat\" flag set.",
-							    fn, line);
+					fr_strerror_printf("dict_init: %s[%d] Only \"octets\" type can have the "
+							   "\"concat\" flag set", fn, line);
 					return -1;
 				}
 
@@ -1575,31 +1581,31 @@ static int process_attribute(char const* fn, int const line,
 				flags.virtual = 1;
 
 				if (vendor != 0) {
-					fr_strerror_printf( "dict_init: %s[%d] VSAs cannot have the \"virtual\" flag set.",
-							    fn, line);
+					fr_strerror_printf("dict_init: %s[%d] VSAs cannot have the \"virtual\" "
+							   "flag set", fn, line);
 					return -1;
 				}
 
 				if (value < 256) {
-					fr_strerror_printf( "dict_init: %s[%d] Standard attributes cannot have the \"virtual\" flag set.",
-							    fn, line);
+					fr_strerror_printf("dict_init: %s[%d] Standard attributes cannot "
+							   "have the \"virtual\" flag set", fn, line);
 					return -1;
 				}
 
-				/*
-				 *	The only thing is the vendor name,
-				 *	and it's a known name: allow it.
-				 */
+			/*
+			 *	The only thing is the vendor name,
+			 *	and it's a known name: allow it.
+			 */
 			} else if ((key == argv[3]) && !next) {
 				if (oid) {
-					fr_strerror_printf( "dict_init: %s[%d] New-style attributes cannot use a vendor flag.",
-							    fn, line);
+					fr_strerror_printf("dict_init: %s[%d] New-style attributes cannot use "
+							   "a vendor flag", fn, line);
 					return -1;
 				}
 
 				if (block_vendor) {
-					fr_strerror_printf( "dict_init: %s[%d] Vendor flag inside of \"BEGIN-VENDOR\" is not allowed.",
-							    fn, line);
+					fr_strerror_printf("dict_init: %s[%d] Vendor flag inside of \"BEGIN-VENDOR\" "
+							   "is not allowed", fn, line);
 					return -1;
 				}
 
@@ -1609,8 +1615,7 @@ static int process_attribute(char const* fn, int const line,
 
 			} else {
 			unknown:
-				fr_strerror_printf( "dict_init: %s[%d]: unknown option \"%s\"",
-					    fn, line, key);
+				fr_strerror_printf("dict_init: %s[%d]: unknown option \"%s\"", fn, line, key);
 				return -1;
 			}
 
