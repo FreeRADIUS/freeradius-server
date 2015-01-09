@@ -14,7 +14,7 @@ securid {
 	max_sessions = 2048
 
 	#  How many round trips are allowed before the authentication
-	#  is forced to fail/
+	#  is forced to fail.
 	#
 	max_round_trips = 6
 }

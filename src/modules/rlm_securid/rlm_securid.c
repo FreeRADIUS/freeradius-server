@@ -135,7 +135,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			return RC_SECURID_AUTH_INVALID_SERVER_FAILURE;
 
 		case ACM_NEW_PIN_REQUIRED:
-			RDEBUG2("SeecurID new pin required for %s",
+			RDEBUG2("SecurID new pin required for %s",
 				username);
 
 			/* create a new session */
