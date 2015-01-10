@@ -637,7 +637,7 @@ int dict_valid_name(char const *name)
 
 /** Add an attribute to the dictionary
  *
- * @fixme we need to check length of none vendor attributes.
+ * @todo we need to check length of none vendor attributes.
  *
  * @return 0 on success -1 on failure.
  */
