@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH rlm_pap 5 "17 April 2014" "" "FreeRADIUS Module"
+.TH rlm_pap 5 "10 January 2015" "" "FreeRADIUS Module"
 .SH NAME
 rlm_pap \- FreeRADIUS Module
 .SH DESCRIPTION
@@ -28,41 +28,63 @@ good" password must be supplied by another module
 from a database.
 .SH CONFIGURATION
 .PP
-The only relevant configuration item is:
-.IP normify
-The default is "yes".  This means that the module will try to convert
-hex passwords and base64-encoded passwords to "normalized" form.
-However, some clear text passwords may be erroneously converted.
-Setting this to "no" prevents that conversion.
+The only configuration item is:
+.IP normalise
+The default is "yes".  This means that the module will try to
+automatically detect passwords that are hex- or base64-encoded and
+decode them back to their binary representation.  However, some clear
+text passwords may be erroneously converted.  Setting this to "no"
+prevents that conversion.
+.SH USAGE
 .PP
-The module looks for the Password-With-Header attribute to find the
-"known good password.  The header is given by the following table.
+The module looks for the Password-With-Header control attribute to find
+the "known good" password. The attribute value comprises the header
+followed immediately by the password data. The header is given by the
+following table.
 .PP
 .DS
 .br
-Header       Attribute          Description
+Header       Attribute           Description
 .br
-------       ---------          -----------
+------       ---------           -----------
 .br
-{clear}      Cleartext-Password clear-text passwords
+{clear}      Cleartext-Password  clear-text passwords
 .br
-{cleartext}  Cleartext-Password clear-text passwords
+{cleartext}  Cleartext-Password  clear-text passwords
 .br
-{crypt}      Crypt-Password     Unix-style "crypt"ed passwords
+{crypt}      Crypt-Password      Unix-style "crypt"ed passwords
 .br
-{md5}        MD5-Password       MD5 hashed passwords
+{md5}        MD5-Password        MD5 hashed passwords
 .br
-{smd5}       SMD5-Password      MD5 hashed passwords, with a salt
+{base64_md5} MD5-Password        MD5 hashed passwords
 .br
-{sha}        SHA-Password       SHA1 hashed passwords
+{smd5}       SMD5-Password       MD5 hashed passwords, with a salt
 .br
-{ssha}       SSHA-Password      SHA1 hashed passwords, with a salt
+{sha}        SHA-Password        SHA1 hashed passwords
 .br
-{nt}         NT-Password        Windows NT hashed passwords
+             SHA1-Password       SHA1 hashed passwords
 .br
-{x-nthash}   NT-Password        Windows NT hashed passwords
+{ssha}       SSHA-Password       SHA1 hashed passwords, with a salt
 .br
-{lm}         LM-Password        Windows Lan Manager (LM) passwords.
+             SSHA1-Password      SHA1 hashed passwords, with a salt
+.br
+{ssh2}       SHA2-Password       SHA2 hashed passwords
+.br
+{ssh256}     SHA2-Password       SHA2 hashed passwords
+.br
+{ssh512}     SHA2-Password       SHA2 hashed passwords
+.br
+{nt}         NT-Password         Windows NT hashed passwords
+.br
+{nthash}     NT-Password         Windows NT hashed passwords
+.br
+{x-nthash}   NT-Password         Windows NT hashed passwords
+.br
+{ns-mta-md5} NS-MTA-MD5-Password Netscape MTA MD5 hashed passwords
+.br
+{x- orcllmv} LM-Password         Windows LANMAN hashed passwords
+.br
+{X- orclntv} LM-Password         Windows LANMAN hashed passwords
 .DE
 
 The module tries to be flexible when handling the various password
@@ -70,8 +92,14 @@ formats.  It will automatically handle Base-64 encoded data, hex
 strings, and binary data, and convert them to a format that the server
 can use.
 .PP
-If there is no Password-With-Header attribute, the module looks for
-Cleartext-Password, NT-Password, Crypt-Password, etc.
+If there is no Password-With-Header attribute, the module looks for one
+of the Cleartext-Password, NT-Password, Crypt-Password, etc. attributes
+as listed in the above table. These attributes should contain the
+relevant format password directly, without the header prefix.
+.PP
+Only one control attribute should be set, otherwise behaviour is
+undefined as to which one is used for authentication.
+.SH NOTES
 .PP
 It is important to understand the difference between the User-Password
 and Cleartext-Password attributes.  The Cleartext-Password attribute
@@ -82,15 +110,12 @@ in by the user on their private machine.  The two are not the same,
 and should be treated very differently.  That is, you should generally
 not use the User-Password attribute anywhere in the RADIUS
 configuration.
-.PP
-For backwards compatibility, there are old configuration parameters
-which may be work, although we do not recommend using them.
 .SH SECTIONS
 .BR authorize
 .BR authenticate
 .PP
 .SH FILES
-.I /etc/raddb/radiusd.conf
+.I /etc/raddb/mods-available/pap
 .PP
 .SH "SEE ALSO"
 .BR radiusd (8),
