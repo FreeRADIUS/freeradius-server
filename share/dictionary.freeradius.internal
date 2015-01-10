@@ -12,10 +12,10 @@
 #		server-side attributes which can go in a reply list
 
 # 	These attributes CAN go in the reply item list.
-ATTRIBUTE	Fall-Through				500	integer
-ATTRIBUTE	Relax-Filter				501	integer
-ATTRIBUTE	Exec-Program				502	string
-ATTRIBUTE	Exec-Program-Wait			503	string
+ATTRIBUTE	Fall-Through				500	integer internal
+ATTRIBUTE	Relax-Filter				501	integer internal
+ATTRIBUTE	Exec-Program				502	string internal
+ATTRIBUTE	Exec-Program-Wait			503	string internal
 
 #	These attributes CANNOT go in the reply item list.
 
@@ -31,112 +31,112 @@ ATTRIBUTE	Exec-Program-Wait			503	string
 #	Non-Protocol Attributes
 #	These attributes are used internally by the server
 #
-ATTRIBUTE	Auth-Type				1000	integer
-ATTRIBUTE	Menu					1001	string
-ATTRIBUTE	Termination-Menu			1002	string
-ATTRIBUTE	Prefix					1003	string
-ATTRIBUTE	Suffix					1004	string
-ATTRIBUTE	Group					1005	string
-ATTRIBUTE	Crypt-Password				1006	string
-ATTRIBUTE	Connect-Rate				1007	integer
-ATTRIBUTE	Add-Prefix				1008	string
-ATTRIBUTE	Add-Suffix				1009	string
-ATTRIBUTE	Expiration				1010	date
-ATTRIBUTE	Autz-Type				1011	integer
-ATTRIBUTE	Acct-Type				1012	integer
-ATTRIBUTE	Session-Type				1013	integer
-ATTRIBUTE	Post-Auth-Type				1014	integer
-ATTRIBUTE	Pre-Proxy-Type				1015	integer
-ATTRIBUTE	Post-Proxy-Type				1016	integer
-ATTRIBUTE	Pre-Acct-Type				1017	integer
+ATTRIBUTE	Auth-Type				1000	integer internal
+ATTRIBUTE	Menu					1001	string internal
+ATTRIBUTE	Termination-Menu			1002	string internal
+ATTRIBUTE	Prefix					1003	string internal
+ATTRIBUTE	Suffix					1004	string internal
+ATTRIBUTE	Group					1005	string internal
+ATTRIBUTE	Crypt-Password				1006	string internal
+ATTRIBUTE	Connect-Rate				1007	integer internal
+ATTRIBUTE	Add-Prefix				1008	string internal
+ATTRIBUTE	Add-Suffix				1009	string internal
+ATTRIBUTE	Expiration				1010	date internal
+ATTRIBUTE	Autz-Type				1011	integer internal
+ATTRIBUTE	Acct-Type				1012	integer internal
+ATTRIBUTE	Session-Type				1013	integer internal
+ATTRIBUTE	Post-Auth-Type				1014	integer internal
+ATTRIBUTE	Pre-Proxy-Type				1015	integer internal
+ATTRIBUTE	Post-Proxy-Type				1016	integer internal
+ATTRIBUTE	Pre-Acct-Type				1017	integer internal
 
 #
 #	This is the EAP type of authentication, which is set
 #	by the EAP module, for informational purposes only.
 #
-ATTRIBUTE	EAP-Type				1018	integer
-ATTRIBUTE	EAP-TLS-Require-Client-Cert		1019	integer
-ATTRIBUTE	EAP-Id					1020	integer
-ATTRIBUTE	EAP-Code				1021	integer
-ATTRIBUTE	EAP-MD5-Password			1022	string
-ATTRIBUTE	PEAP-Version				1023	integer
-ATTRIBUTE	Client-Shortname			1024	string virtual
-ATTRIBUTE	Load-Balance-Key			1025	string
-ATTRIBUTE	Raw-Attribute				1026	octets
-ATTRIBUTE	TNC-VLAN-Access				1027	string
-ATTRIBUTE	TNC-VLAN-Isolate			1028	string
-ATTRIBUTE	User-Category				1029	string
-ATTRIBUTE	Group-Name				1030	string
-ATTRIBUTE	Huntgroup-Name				1031	string
-ATTRIBUTE	Simultaneous-Use			1034	integer
-ATTRIBUTE	Strip-User-Name				1035	integer
-ATTRIBUTE	Hint					1040	string
-ATTRIBUTE	Pam-Auth				1041	string
-ATTRIBUTE	Login-Time				1042	string
-ATTRIBUTE	Stripped-User-Name			1043	string
-ATTRIBUTE	Current-Time				1044	string
-ATTRIBUTE	Realm					1045	string
-ATTRIBUTE	No-Such-Attribute			1046	string
-ATTRIBUTE	Packet-Type				1047	integer virtual
-ATTRIBUTE	Proxy-To-Realm				1048	string
-ATTRIBUTE	Replicate-To-Realm			1049	string
-ATTRIBUTE	Acct-Session-Start-Time			1050	date
-ATTRIBUTE	Acct-Unique-Session-Id			1051	string
-ATTRIBUTE	Client-IP-Address			1052	ipaddr virtual
-ATTRIBUTE	Ldap-UserDn				1053	string
-ATTRIBUTE	NS-MTA-MD5-Password			1054	string
-ATTRIBUTE	SQL-User-Name				1055	string
-ATTRIBUTE	LM-Password				1057	octets
-ATTRIBUTE	NT-Password				1058	octets
-ATTRIBUTE	SMB-Account-CTRL			1059	integer
-ATTRIBUTE	SMB-Account-CTRL-TEXT			1061	string
-ATTRIBUTE	User-Profile				1062	string
-ATTRIBUTE	Digest-Realm				1063	string
-ATTRIBUTE	Digest-Nonce				1064	string
-ATTRIBUTE	Digest-Method				1065	string
-ATTRIBUTE	Digest-URI				1066	string
-ATTRIBUTE	Digest-QOP				1067	string
-ATTRIBUTE	Digest-Algorithm			1068	string
-ATTRIBUTE	Digest-Body-Digest			1069	string
-ATTRIBUTE	Digest-CNonce				1070	string
-ATTRIBUTE	Digest-Nonce-Count			1071	string
-ATTRIBUTE	Digest-User-Name			1072	string
-ATTRIBUTE	Pool-Name				1073	string
-ATTRIBUTE	Ldap-Group				1074	string
-ATTRIBUTE	Module-Success-Message			1075	string
-ATTRIBUTE	Module-Failure-Message			1076	string
-#		X99-Fast		1077	integer
-ATTRIBUTE	Rewrite-Rule				1078	string
-ATTRIBUTE	Sql-Group				1079	string
-ATTRIBUTE	Response-Packet-Type			1080	integer virtual
-ATTRIBUTE	Digest-HA1				1081	string
-ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1082	integer
-ATTRIBUTE	NTLM-User-Name				1083	string
-ATTRIBUTE	MS-CHAP-User-Name			1083	string
-ATTRIBUTE	Packet-Src-IP-Address			1084	ipaddr virtual
-ATTRIBUTE	Packet-Dst-IP-Address			1085	ipaddr virtual
-ATTRIBUTE	Packet-Src-Port				1086	integer virtual
-ATTRIBUTE	Packet-Dst-Port				1087	integer virtual
-ATTRIBUTE	Packet-Authentication-Vector		1088	octets virtual
-ATTRIBUTE	Time-Of-Day				1089	string
-ATTRIBUTE	Request-Processing-Stage		1090	string virtual
-ATTRIBUTE	SHA2-Password				1092	octets
-ATTRIBUTE	SHA-Password				1093	octets
-ATTRIBUTE	SSHA-Password				1094	octets
-ATTRIBUTE	SHA1-Password				1093	octets
-ATTRIBUTE	SSHA1-Password				1094	octets
-ATTRIBUTE	MD5-Password				1095	octets
-ATTRIBUTE	SMD5-Password				1096	octets
-ATTRIBUTE	Packet-Src-IPv6-Address			1097	ipv6addr virtual
-ATTRIBUTE	Packet-Dst-IPv6-Address			1098	ipv6addr virtual
-ATTRIBUTE	Virtual-Server				1099	string virtual
-ATTRIBUTE	Cleartext-Password			1100	string
-ATTRIBUTE	Password-With-Header			1101	string
-ATTRIBUTE	Inner-Tunnel-User-Name			1102	string
+ATTRIBUTE	EAP-Type				1018	integer internal
+ATTRIBUTE	EAP-TLS-Require-Client-Cert		1019	integer internal
+ATTRIBUTE	EAP-Id					1020	integer internal
+ATTRIBUTE	EAP-Code				1021	integer internal
+ATTRIBUTE	EAP-MD5-Password			1022	string internal
+ATTRIBUTE	PEAP-Version				1023	integer internal
+ATTRIBUTE	Client-Shortname			1024	string internal,virtual
+ATTRIBUTE	Load-Balance-Key			1025	string internal
+ATTRIBUTE	Raw-Attribute				1026	octets internal
+ATTRIBUTE	TNC-VLAN-Access				1027	string internal
+ATTRIBUTE	TNC-VLAN-Isolate			1028	string internal
+ATTRIBUTE	User-Category				1029	string internal
+ATTRIBUTE	Group-Name				1030	string internal
+ATTRIBUTE	Huntgroup-Name				1031	string internal
+ATTRIBUTE	Simultaneous-Use			1034	integer internal
+ATTRIBUTE	Strip-User-Name				1035	integer internal
+ATTRIBUTE	Hint					1040	string internal
+ATTRIBUTE	Pam-Auth				1041	string internal
+ATTRIBUTE	Login-Time				1042	string internal
+ATTRIBUTE	Stripped-User-Name			1043	string internal
+ATTRIBUTE	Current-Time				1044	string internal
+ATTRIBUTE	Realm					1045	string internal
+ATTRIBUTE	No-Such-Attribute			1046	string internal
+ATTRIBUTE	Packet-Type				1047	integer internal,virtual
+ATTRIBUTE	Proxy-To-Realm				1048	string internal
+ATTRIBUTE	Replicate-To-Realm			1049	string internal
+ATTRIBUTE	Acct-Session-Start-Time			1050	date internal
+ATTRIBUTE	Acct-Unique-Session-Id			1051	string internal
+ATTRIBUTE	Client-IP-Address			1052	ipaddr internal,virtual
+ATTRIBUTE	Ldap-UserDn				1053	string internal
+ATTRIBUTE	NS-MTA-MD5-Password			1054	string internal
+ATTRIBUTE	SQL-User-Name				1055	string internal
+ATTRIBUTE	LM-Password				1057	octets internal
+ATTRIBUTE	NT-Password				1058	octets internal
+ATTRIBUTE	SMB-Account-CTRL			1059	integer internal
+ATTRIBUTE	SMB-Account-CTRL-TEXT			1061	string internal
+ATTRIBUTE	User-Profile				1062	string internal
+ATTRIBUTE	Digest-Realm				1063	string internal
+ATTRIBUTE	Digest-Nonce				1064	string internal
+ATTRIBUTE	Digest-Method				1065	string internal
+ATTRIBUTE	Digest-URI				1066	string internal
+ATTRIBUTE	Digest-QOP				1067	string internal
+ATTRIBUTE	Digest-Algorithm			1068	string internal
+ATTRIBUTE	Digest-Body-Digest			1069	string internal
+ATTRIBUTE	Digest-CNonce				1070	string internal
+ATTRIBUTE	Digest-Nonce-Count			1071	string internal
+ATTRIBUTE	Digest-User-Name			1072	string internal
+ATTRIBUTE	Pool-Name				1073	string internal
+ATTRIBUTE	Ldap-Group				1074	string internal
+ATTRIBUTE	Module-Success-Message			1075	string internal
+ATTRIBUTE	Module-Failure-Message			1076	string internal
+#		X99-Fast		1077	integer internal
+ATTRIBUTE	Rewrite-Rule				1078	string internal
+ATTRIBUTE	Sql-Group				1079	string internal
+ATTRIBUTE	Response-Packet-Type			1080	integer internal,virtual
+ATTRIBUTE	Digest-HA1				1081	string internal
+ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1082	integer internal
+ATTRIBUTE	NTLM-User-Name				1083	string internal
+ATTRIBUTE	MS-CHAP-User-Name			1083	string internal
+ATTRIBUTE	Packet-Src-IP-Address			1084	ipaddr internal,virtual
+ATTRIBUTE	Packet-Dst-IP-Address			1085	ipaddr internal,virtual
+ATTRIBUTE	Packet-Src-Port				1086	integer internal,virtual
+ATTRIBUTE	Packet-Dst-Port				1087	integer internal,virtual
+ATTRIBUTE	Packet-Authentication-Vector		1088	octets internal,virtual
+ATTRIBUTE	Time-Of-Day				1089	string internal
+ATTRIBUTE	Request-Processing-Stage		1090	string internal,virtual
+ATTRIBUTE	SHA2-Password				1092	octets internal
+ATTRIBUTE	SHA-Password				1093	octets internal
+ATTRIBUTE	SSHA-Password				1094	octets internal
+ATTRIBUTE	SHA1-Password				1093	octets internal
+ATTRIBUTE	SSHA1-Password				1094	octets internal
+ATTRIBUTE	MD5-Password				1095	octets internal
+ATTRIBUTE	SMD5-Password				1096	octets internal
+ATTRIBUTE	Packet-Src-IPv6-Address			1097	ipv6addr internal,virtual
+ATTRIBUTE	Packet-Dst-IPv6-Address			1098	ipv6addr internal,virtual
+ATTRIBUTE	Virtual-Server				1099	string internal,virtual
+ATTRIBUTE	Cleartext-Password			1100	string internal
+ATTRIBUTE	Password-With-Header			1101	string internal
+ATTRIBUTE	Inner-Tunnel-User-Name			1102	string internal
 #
 #	EAP-IKEv2 is experimental.
 #
-ATTRIBUTE	EAP-IKEv2-IDType			1103	integer
+ATTRIBUTE	EAP-IKEv2-IDType			1103	integer internal
 
 VALUE	EAP-IKEv2-IDType		IPV4_ADDR		1
 VALUE	EAP-IKEv2-IDType		FQDN			2
@@ -146,22 +146,22 @@ VALUE	EAP-IKEv2-IDType		DER_ASN1_DN		9
 VALUE	EAP-IKEv2-IDType		DER_ASN1_GN		10
 VALUE	EAP-IKEv2-IDType		KEY_ID			11
 
-ATTRIBUTE	EAP-IKEv2-ID				1104	string
-ATTRIBUTE	EAP-IKEv2-Secret			1105	string
-ATTRIBUTE	EAP-IKEv2-AuthType			1106	integer
+ATTRIBUTE	EAP-IKEv2-ID				1104	string internal
+ATTRIBUTE	EAP-IKEv2-Secret			1105	string internal
+ATTRIBUTE	EAP-IKEv2-AuthType			1106	integer internal
 
 VALUE	EAP-IKEv2-AuthType		none			0
 VALUE	EAP-IKEv2-AuthType		secret			1
 VALUE	EAP-IKEv2-AuthType		cert			2
 VALUE	EAP-IKEv2-AuthType		both			3
 
-ATTRIBUTE	Send-Disconnect-Request			1107	integer
-ATTRIBUTE	Send-CoA-Request			1107	integer
+ATTRIBUTE	Send-Disconnect-Request			1107	integer internal
+ATTRIBUTE	Send-CoA-Request			1107	integer internal
 
 VALUE	Send-CoA-Request		No			0
 VALUE	Send-CoA-Request		Yes			1
 
-ATTRIBUTE	Module-Return-Code			1108	integer virtual
+ATTRIBUTE	Module-Return-Code			1108	integer internal,virtual
 
 VALUE	Module-Return-Code		reject			0
 VALUE	Module-Return-Code		fail			1
@@ -173,31 +173,31 @@ VALUE	Module-Return-Code		notfound		6
 VALUE	Module-Return-Code		noop			7
 VALUE	Module-Return-Code		updated			8
 
-ATTRIBUTE	Packet-Original-Timestamp		1109	date
-ATTRIBUTE	SQL-Table-Name				1110	string
-ATTRIBUTE	Home-Server-Pool			1111	string
+ATTRIBUTE	Packet-Original-Timestamp		1109	date internal
+ATTRIBUTE	SQL-Table-Name				1110	string internal
+ATTRIBUTE	Home-Server-Pool			1111	string internal
 
-ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr
-ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr
+ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr internal
+ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr internal
 # The rest of the FreeRADIUS-Client-* attributes are at 1150...
 
-ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer
+ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer internal
 
 VALUE	FreeRADIUS-Client-Require-MA	no			0
 VALUE	FreeRADIUS-Client-Require-MA	yes			1
 
-ATTRIBUTE	FreeRADIUS-Client-Secret		1123	string
-ATTRIBUTE	FreeRADIUS-Client-Shortname		1124	string
-ATTRIBUTE	FreeRADIUS-Client-NAS-Type		1125	string
-ATTRIBUTE	FreeRADIUS-Client-Virtual-Server	1126	string
+ATTRIBUTE	FreeRADIUS-Client-Secret		1123	string internal
+ATTRIBUTE	FreeRADIUS-Client-Shortname		1124	string internal
+ATTRIBUTE	FreeRADIUS-Client-NAS-Type		1125	string internal
+ATTRIBUTE	FreeRADIUS-Client-Virtual-Server	1126	string internal
 
 # For session resumption
-ATTRIBUTE	Allow-Session-Resumption		1127	integer
+ATTRIBUTE	Allow-Session-Resumption		1127	integer internal
 
 VALUE	Allow-Session-Resumption	no			0
 VALUE	Allow-Session-Resumption	yes			1
 
-ATTRIBUTE	EAP-Session-Resumed			1128	integer
+ATTRIBUTE	EAP-Session-Resumed			1128	integer internal
 
 VALUE	EAP-Session-Resumed		no			0
 VALUE	EAP-Session-Resumed		yes			1
@@ -205,31 +205,31 @@ VALUE	EAP-Session-Resumed		yes			1
 #
 #	Expose EAP keys in the reply.
 #
-ATTRIBUTE	EAP-MSK					1129	octets
-ATTRIBUTE	EAP-EMSK				1130	octets
+ATTRIBUTE	EAP-MSK					1129	octets internal
+ATTRIBUTE	EAP-EMSK				1130	octets internal
 
 #
 #	For send/recv CoA packets (like Auth-Type, Acct-Type, etc.)
 #
-ATTRIBUTE	Recv-CoA-Type				1131	integer
-ATTRIBUTE	Send-CoA-Type				1132	integer
+ATTRIBUTE	Recv-CoA-Type				1131	integer internal
+ATTRIBUTE	Send-CoA-Type				1132	integer internal
 
-ATTRIBUTE	MS-CHAP-Password			1133	string
-ATTRIBUTE	Packet-Transmit-Counter			1134	integer
-ATTRIBUTE	Cached-Session-Policy			1135	string
-ATTRIBUTE	MS-CHAP-New-Cleartext-Password		1136	string
-ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets
+ATTRIBUTE	MS-CHAP-Password			1133	string internal
+ATTRIBUTE	Packet-Transmit-Counter			1134	integer internal
+ATTRIBUTE	Cached-Session-Policy			1135	string internal
+ATTRIBUTE	MS-CHAP-New-Cleartext-Password		1136	string internal
+ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets internal
 
 #	For default policies
 
-ATTRIBUTE	Stripped-User-Domain			1138	string
-ATTRIBUTE	Called-Station-SSID			1139	string
+ATTRIBUTE	Stripped-User-Domain			1138	string internal
+ATTRIBUTE	Called-Station-SSID			1139	string internal
 
-ATTRIBUTE	OTP-Challenge				1145	string
-ATTRIBUTE	EAP-Session-Id				1146	octets
-ATTRIBUTE	Chbind-Response-Code			1147	integer
+ATTRIBUTE	OTP-Challenge				1145	string internal
+ATTRIBUTE	EAP-Session-Id				1146	octets internal
+ATTRIBUTE	Chbind-Response-Code			1147	integer internal
 
-ATTRIBUTE	Chbind-Response-Code			1147	integer
+ATTRIBUTE	Chbind-Response-Code			1147	integer internal
 
 VALUE	Chbind-Response-Code		success			2
 VALUE	Chbind-Response-Code		failure			3
@@ -237,7 +237,7 @@ VALUE	Chbind-Response-Code		failure			3
 #
 #  Server-side "listen type = foo"
 #
-ATTRIBUTE	Listen-Socket-Type			1147	integer
+ATTRIBUTE	Listen-Socket-Type			1147	integer internal
 
 VALUE	Listen-Socket-Type		none			0
 VALUE	Listen-Socket-Type		status			0
@@ -251,26 +251,26 @@ VALUE	Listen-Socket-Type		dhcp			6
 VALUE	Listen-Socket-Type		control			7
 VALUE	Listen-Socket-Type		coa			8
 
-ATTRIBUTE	Acct-Input-Octets64			1148	integer64
-ATTRIBUTE	Acct-Output-Octets64			1149	integer64
+ATTRIBUTE	Acct-Input-Octets64			1148	integer64 internal
+ATTRIBUTE	Acct-Output-Octets64			1149	integer64 internal
 
-ATTRIBUTE	FreeRADIUS-Client-IP-Prefix		1150	ipv4prefix
-ATTRIBUTE	FreeRADIUS-Client-IPv6-Prefix		1151	ipv6prefix
-ATTRIBUTE	FreeRADIUS-Response-Delay		1152	integer
-ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1153	ipaddr
-ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1154	ipv6addr
-ATTRIBUTE	FreeRADIUS-Response-Delay-USec		1155	integer
+ATTRIBUTE	FreeRADIUS-Client-IP-Prefix		1150	ipv4prefix internal
+ATTRIBUTE	FreeRADIUS-Client-IPv6-Prefix		1151	ipv6prefix internal
+ATTRIBUTE	FreeRADIUS-Response-Delay		1152	integer internal
+ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1153	ipaddr internal
+ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1154	ipv6addr internal
+ATTRIBUTE	FreeRADIUS-Response-Delay-USec		1155	integer internal
 
-ATTRIBUTE	REST-HTTP-Header			1160	string
-ATTRIBUTE	REST-HTTP-Body				1161	string
+ATTRIBUTE	REST-HTTP-Header			1160	string internal
+ATTRIBUTE	REST-HTTP-Body				1161	string internal
 
-ATTRIBUTE	Cache-Expires				1170	date
-ATTRIBUTE	Cache-Created				1171	date
-ATTRIBUTE	Cache-TTL				1172	signed
-ATTRIBUTE	Cache-Status-Only			1173	integer
-ATTRIBUTE	Cache-Merge				1174	integer
-ATTRIBUTE	Cache-Entry-Hits			1175	integer
-ATTRIBUTE	Cache-Read-Only				1176	integer
+ATTRIBUTE	Cache-Expires				1170	date internal
+ATTRIBUTE	Cache-Created				1171	date internal
+ATTRIBUTE	Cache-TTL				1172	signed internal
+ATTRIBUTE	Cache-Status-Only			1173	integer internal
+ATTRIBUTE	Cache-Merge				1174	integer internal
+ATTRIBUTE	Cache-Entry-Hits			1175	integer internal
+ATTRIBUTE	Cache-Read-Only				1176	integer internal
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
@@ -287,15 +287,15 @@ VALUE	Cache-Read-Only			yes			1
 #
 #	For EAP-SIM, some attribute definitions for database interface
 #
-ATTRIBUTE	EAP-Sim-Subtype				1200	integer
+ATTRIBUTE	EAP-Sim-Subtype				1200	integer internal
 
-ATTRIBUTE	EAP-Sim-Rand1				1201	octets
-ATTRIBUTE	EAP-Sim-Rand2				1202	octets
-ATTRIBUTE	EAP-Sim-Rand3				1203	octets
+ATTRIBUTE	EAP-Sim-Rand1				1201	octets internal
+ATTRIBUTE	EAP-Sim-Rand2				1202	octets internal
+ATTRIBUTE	EAP-Sim-Rand3				1203	octets internal
 
-ATTRIBUTE	EAP-Sim-SRES1				1204	octets
-ATTRIBUTE	EAP-Sim-SRES2				1205	octets
-ATTRIBUTE	EAP-Sim-SRES3				1206	octets
+ATTRIBUTE	EAP-Sim-SRES1				1204	octets internal
+ATTRIBUTE	EAP-Sim-SRES2				1205	octets internal
+ATTRIBUTE	EAP-Sim-SRES3				1206	octets internal
 
 VALUE	EAP-Sim-Subtype			Start			10
 VALUE	EAP-Sim-Subtype			Challenge		11
@@ -303,19 +303,19 @@ VALUE	EAP-Sim-Subtype			Notification		12
 VALUE	EAP-Sim-Subtype			Re-authentication	13
 
 # this attribute is used internally by the client code.
-ATTRIBUTE	EAP-Sim-State				1207	integer
+ATTRIBUTE	EAP-Sim-State				1207	integer internal
 
-ATTRIBUTE	EAP-Sim-IMSI				1208	string
-ATTRIBUTE	EAP-Sim-HMAC				1209	string
-ATTRIBUTE	EAP-Sim-KEY				1210	octets
-ATTRIBUTE	EAP-Sim-EXTRA				1211	octets
+ATTRIBUTE	EAP-Sim-IMSI				1208	string internal
+ATTRIBUTE	EAP-Sim-HMAC				1209	string internal
+ATTRIBUTE	EAP-Sim-KEY				1210	octets internal
+ATTRIBUTE	EAP-Sim-EXTRA				1211	octets internal
 
-ATTRIBUTE	EAP-Sim-Kc1				1212	octets
-ATTRIBUTE	EAP-Sim-Kc2				1213	octets
-ATTRIBUTE	EAP-Sim-Kc3				1214	octets
+ATTRIBUTE	EAP-Sim-Kc1				1212	octets internal
+ATTRIBUTE	EAP-Sim-Kc2				1213	octets internal
+ATTRIBUTE	EAP-Sim-Kc3				1214	octets internal
 
-ATTRIBUTE	EAP-Sim-Ki				1215	octets
-ATTRIBUTE	EAP-Sim-Algo-Version			1216	integer
+ATTRIBUTE	EAP-Sim-Ki				1215	octets internal
+ATTRIBUTE	EAP-Sim-Algo-Version			1216	integer internal
 
 #
 #	Range:	1280 - 1535
@@ -324,66 +324,66 @@ ATTRIBUTE	EAP-Sim-Algo-Version			1216	integer
 #		These are used mostly for radeapclient, and aren't
 #		that useful for anyone else.
 #
-#  egrep VALUE dictionary.freeradius.internal  | grep EAP-Type | awk '{print "ATTRIBUTE EAP-Type-" $3 " " 1280+$4 " octets"}' > foo;./format.pl foo
+#  egrep VALUE dictionary.freeradius. | grep EAP-Type | awk '{print "ATTRIBUTE EAP-Type-" $3 " " 1280+$4 " internal octets"}' > foo;./format.pl foo internal
 #
-ATTRIBUTE	EAP-Type-Base				1280	octets
-ATTRIBUTE	EAP-Type-VALUE				1280	octets
-ATTRIBUTE	EAP-Type-None				1280	octets
-ATTRIBUTE	EAP-Type-Identity			1281	octets
-ATTRIBUTE	EAP-Type-Notification			1282	octets
-ATTRIBUTE	EAP-Type-NAK				1283	octets
-ATTRIBUTE	EAP-Type-MD5-Challenge			1284	octets
-ATTRIBUTE	EAP-Type-One-Time-Password		1285	octets
-ATTRIBUTE	EAP-Type-Generic-Token-Card		1286	octets
-ATTRIBUTE	EAP-Type-RSA-Public-Key			1289	octets
-ATTRIBUTE	EAP-Type-DSS-Unilateral			1290	octets
-ATTRIBUTE	EAP-Type-KEA				1291	octets
-ATTRIBUTE	EAP-Type-KEA-Validate			1292	octets
-ATTRIBUTE	EAP-Type-EAP-TLS			1293	octets
-ATTRIBUTE	EAP-Type-Defender-Token			1294	octets
-ATTRIBUTE	EAP-Type-RSA-SecurID-EAP		1295	octets
-ATTRIBUTE	EAP-Type-Arcot-Systems-EAP		1296	octets
-ATTRIBUTE	EAP-Type-Cisco-LEAP			1297	octets
-ATTRIBUTE	EAP-Type-Nokia-IP-Smart-Card		1298	octets
-ATTRIBUTE	EAP-Type-SIM				1298	octets
-ATTRIBUTE	EAP-Type-SRP-SHA1			1299	octets
-ATTRIBUTE	EAP-Type-EAP-TTLS			1301	octets
-ATTRIBUTE	EAP-Type-Remote-Access-Service		1302	octets
-ATTRIBUTE	EAP-Type-AKA				1303	octets
-ATTRIBUTE	EAP-Type-EAP-3Com-Wireless		1304	octets
-ATTRIBUTE	EAP-Type-PEAP				1305	octets
-ATTRIBUTE	EAP-Type-MS-EAP-Authentication		1306	octets
-ATTRIBUTE	EAP-Type-MAKE				1307	octets
-ATTRIBUTE	EAP-Type-CRYPTOCard			1308	octets
-ATTRIBUTE	EAP-Type-EAP-MSCHAP-V2			1309	octets
-ATTRIBUTE	EAP-Type-DynamID			1310	octets
-ATTRIBUTE	EAP-Type-Rob-EAP			1311	octets
-ATTRIBUTE	EAP-Type-SecurID-EAP			1312	octets
-ATTRIBUTE	EAP-Type-MS-Authentication-TLV		1313	octets
-ATTRIBUTE	EAP-Type-SentriNET			1314	octets
-ATTRIBUTE	EAP-Type-EAP-Actiontec-Wireless		1315	octets
-ATTRIBUTE	EAP-Type-Cogent-Biomentric-EAP		1316	octets
-ATTRIBUTE	EAP-Type-AirFortress-EAP		1317	octets
-ATTRIBUTE	EAP-Type-EAP-HTTP-Digest		1318	octets
-ATTRIBUTE	EAP-Type-SecuriSuite-EAP		1319	octets
-ATTRIBUTE	EAP-Type-DeviceConnect-EAP		1320	octets
-ATTRIBUTE	EAP-Type-EAP-SPEKE			1321	octets
-ATTRIBUTE	EAP-Type-EAP-MOBAC			1322	octets
-ATTRIBUTE	EAP-Type-EAP-FAST			1323	octets
-ATTRIBUTE	EAP-Type-Zonelabs			1324	octets
-ATTRIBUTE	EAP-Type-EAP-Link			1325	octets
-ATTRIBUTE	EAP-Type-EAP-PAX			1326	octets
-ATTRIBUTE	EAP-Type-EAP-PSK			1327	octets
-ATTRIBUTE	EAP-Type-EAP-SAKE			1328	octets
-ATTRIBUTE	EAP-Type-EAP-IKEv2			1329	octets
-ATTRIBUTE	EAP-Type-EAP-AKA2			1330	octets
-ATTRIBUTE	EAP-Type-EAP-GPSK			1331	octets
-ATTRIBUTE	EAP-Type-EAP-PWD			1332	octets
-ATTRIBUTE	EAP-Type-EAP-EVEv1			1333	octets
+ATTRIBUTE	EAP-Type-Base				1280	octets internal
+ATTRIBUTE	EAP-Type-VALUE				1280	octets internal
+ATTRIBUTE	EAP-Type-None				1280	octets internal
+ATTRIBUTE	EAP-Type-Identity			1281	octets internal
+ATTRIBUTE	EAP-Type-Notification			1282	octets internal
+ATTRIBUTE	EAP-Type-NAK				1283	octets internal
+ATTRIBUTE	EAP-Type-MD5-Challenge			1284	octets internal
+ATTRIBUTE	EAP-Type-One-Time-Password		1285	octets internal
+ATTRIBUTE	EAP-Type-Generic-Token-Card		1286	octets internal
+ATTRIBUTE	EAP-Type-RSA-Public-Key			1289	octets internal
+ATTRIBUTE	EAP-Type-DSS-Unilateral			1290	octets internal
+ATTRIBUTE	EAP-Type-KEA				1291	octets internal
+ATTRIBUTE	EAP-Type-KEA-Validate			1292	octets internal
+ATTRIBUTE	EAP-Type-EAP-TLS			1293	octets internal
+ATTRIBUTE	EAP-Type-Defender-Token			1294	octets internal
+ATTRIBUTE	EAP-Type-RSA-SecurID-EAP		1295	octets internal
+ATTRIBUTE	EAP-Type-Arcot-Systems-EAP		1296	octets internal
+ATTRIBUTE	EAP-Type-Cisco-LEAP			1297	octets internal
+ATTRIBUTE	EAP-Type-Nokia-IP-Smart-Card		1298	octets internal
+ATTRIBUTE	EAP-Type-SIM				1298	octets internal
+ATTRIBUTE	EAP-Type-SRP-SHA1			1299	octets internal
+ATTRIBUTE	EAP-Type-EAP-TTLS			1301	octets internal
+ATTRIBUTE	EAP-Type-Remote-Access-Service		1302	octets internal
+ATTRIBUTE	EAP-Type-AKA				1303	octets internal
+ATTRIBUTE	EAP-Type-EAP-3Com-Wireless		1304	octets internal
+ATTRIBUTE	EAP-Type-PEAP				1305	octets internal
+ATTRIBUTE	EAP-Type-MS-EAP-Authentication		1306	octets internal
+ATTRIBUTE	EAP-Type-MAKE				1307	octets internal
+ATTRIBUTE	EAP-Type-CRYPTOCard			1308	octets internal
+ATTRIBUTE	EAP-Type-EAP-MSCHAP-V2			1309	octets internal
+ATTRIBUTE	EAP-Type-DynamID			1310	octets internal
+ATTRIBUTE	EAP-Type-Rob-EAP			1311	octets internal
+ATTRIBUTE	EAP-Type-SecurID-EAP			1312	octets internal
+ATTRIBUTE	EAP-Type-MS-Authentication-TLV		1313	octets internal
+ATTRIBUTE	EAP-Type-SentriNET			1314	octets internal
+ATTRIBUTE	EAP-Type-EAP-Actiontec-Wireless		1315	octets internal
+ATTRIBUTE	EAP-Type-Cogent-Biomentric-EAP		1316	octets internal
+ATTRIBUTE	EAP-Type-AirFortress-EAP		1317	octets internal
+ATTRIBUTE	EAP-Type-EAP-HTTP-Digest		1318	octets internal
+ATTRIBUTE	EAP-Type-SecuriSuite-EAP		1319	octets internal
+ATTRIBUTE	EAP-Type-DeviceConnect-EAP		1320	octets internal
+ATTRIBUTE	EAP-Type-EAP-SPEKE			1321	octets internal
+ATTRIBUTE	EAP-Type-EAP-MOBAC			1322	octets internal
+ATTRIBUTE	EAP-Type-EAP-FAST			1323	octets internal
+ATTRIBUTE	EAP-Type-Zonelabs			1324	octets internal
+ATTRIBUTE	EAP-Type-EAP-Link			1325	octets internal
+ATTRIBUTE	EAP-Type-EAP-PAX			1326	octets internal
+ATTRIBUTE	EAP-Type-EAP-PSK			1327	octets internal
+ATTRIBUTE	EAP-Type-EAP-SAKE			1328	octets internal
+ATTRIBUTE	EAP-Type-EAP-IKEv2			1329	octets internal
+ATTRIBUTE	EAP-Type-EAP-AKA2			1330	octets internal
+ATTRIBUTE	EAP-Type-EAP-GPSK			1331	octets internal
+ATTRIBUTE	EAP-Type-EAP-PWD			1332	octets internal
+ATTRIBUTE	EAP-Type-EAP-EVEv1			1333	octets internal
 
-ATTRIBUTE	EAP-Type-Microsoft-MS-CHAPv2		1306	octets
-ATTRIBUTE	EAP-Type-Cisco-MS-CHAPv2		1309	octets
-ATTRIBUTE	EAP-Type-MS-CHAP-V2			1306	octets
+ATTRIBUTE	EAP-Type-Microsoft-MS-CHAPv2		1306	octets internal
+ATTRIBUTE	EAP-Type-Cisco-MS-CHAPv2		1309	octets internal
+ATTRIBUTE	EAP-Type-MS-CHAP-V2			1306	octets internal
 
 #
 #	Range:	1536 - 1791
@@ -391,96 +391,96 @@ ATTRIBUTE	EAP-Type-MS-CHAP-V2			1306	octets
 #
 
 # these are PW_EAP_SIM_X + 1536
-ATTRIBUTE	EAP_Sim-Base				1536	octets
-ATTRIBUTE	EAP-Sim-RAND				1537	octets
-ATTRIBUTE	EAP-Sim-PADDING				1542	octets
-ATTRIBUTE	EAP-Sim-NONCE_MT			1543	octets
-ATTRIBUTE	EAP-Sim-PERMANENT_ID_REQ		1546	octets
-ATTRIBUTE	EAP-Sim-MAC				1547	octets
-ATTRIBUTE	EAP-Sim-NOTIFICATION			1548	octets
-ATTRIBUTE	EAP-Sim-ANY_ID_REQ			1549	octets
-ATTRIBUTE	EAP-Sim-IDENTITY			1550	octets
-ATTRIBUTE	EAP-Sim-VERSION_LIST			1551	octets
-ATTRIBUTE	EAP-Sim-SELECTED_VERSION		1552	octets
-ATTRIBUTE	EAP-Sim-FULLAUTH_ID_REQ			1553	octets
-ATTRIBUTE	EAP-Sim-COUNTER				1555	octets
-ATTRIBUTE	EAP-Sim-COUNTER_TOO_SMALL		1556	octets
-ATTRIBUTE	EAP-Sim-NONCE_S				1557	octets
-ATTRIBUTE	EAP-Sim-IV				1665	octets
-ATTRIBUTE	EAP-Sim-ENCR_DATA			1666	octets
-ATTRIBUTE	EAP-Sim-NEXT_PSEUDONUM			1668	octets
-ATTRIBUTE	EAP-Sim-NEXT_REAUTH_ID			1669	octets
-ATTRIBUTE	EAP-Sim-CHECKCODE			1670	octets
+ATTRIBUTE	EAP_Sim-Base				1536	octets internal
+ATTRIBUTE	EAP-Sim-RAND				1537	octets internal
+ATTRIBUTE	EAP-Sim-PADDING				1542	octets internal
+ATTRIBUTE	EAP-Sim-NONCE_MT			1543	octets internal
+ATTRIBUTE	EAP-Sim-PERMANENT_ID_REQ		1546	octets internal
+ATTRIBUTE	EAP-Sim-MAC				1547	octets internal
+ATTRIBUTE	EAP-Sim-NOTIFICATION			1548	octets internal
+ATTRIBUTE	EAP-Sim-ANY_ID_REQ			1549	octets internal
+ATTRIBUTE	EAP-Sim-IDENTITY			1550	octets internal
+ATTRIBUTE	EAP-Sim-VERSION_LIST			1551	octets internal
+ATTRIBUTE	EAP-Sim-SELECTED_VERSION		1552	octets internal
+ATTRIBUTE	EAP-Sim-FULLAUTH_ID_REQ			1553	octets internal
+ATTRIBUTE	EAP-Sim-COUNTER				1555	octets internal
+ATTRIBUTE	EAP-Sim-COUNTER_TOO_SMALL		1556	octets internal
+ATTRIBUTE	EAP-Sim-NONCE_S				1557	octets internal
+ATTRIBUTE	EAP-Sim-IV				1665	octets internal
+ATTRIBUTE	EAP-Sim-ENCR_DATA			1666	octets internal
+ATTRIBUTE	EAP-Sim-NEXT_PSEUDONUM			1668	octets internal
+ATTRIBUTE	EAP-Sim-NEXT_REAUTH_ID			1669	octets internal
+ATTRIBUTE	EAP-Sim-CHECKCODE			1670	octets internal
 
 #
 #	Range: 1800-1899
 #	       Temporary attributes, for local storage.
 #
-ATTRIBUTE	Tmp-String-0				1800	string
-ATTRIBUTE	Tmp-String-1				1801	string
-ATTRIBUTE	Tmp-String-2				1802	string
-ATTRIBUTE	Tmp-String-3				1803	string
-ATTRIBUTE	Tmp-String-4				1804	string
-ATTRIBUTE	Tmp-String-5				1805	string
-ATTRIBUTE	Tmp-String-6				1806	string
-ATTRIBUTE	Tmp-String-7				1807	string
-ATTRIBUTE	Tmp-String-8				1808	string
-ATTRIBUTE	Tmp-String-9				1809	string
+ATTRIBUTE	Tmp-String-0				1800	string internal
+ATTRIBUTE	Tmp-String-1				1801	string internal
+ATTRIBUTE	Tmp-String-2				1802	string internal
+ATTRIBUTE	Tmp-String-3				1803	string internal
+ATTRIBUTE	Tmp-String-4				1804	string internal
+ATTRIBUTE	Tmp-String-5				1805	string internal
+ATTRIBUTE	Tmp-String-6				1806	string internal
+ATTRIBUTE	Tmp-String-7				1807	string internal
+ATTRIBUTE	Tmp-String-8				1808	string internal
+ATTRIBUTE	Tmp-String-9				1809	string internal
 
-ATTRIBUTE	Tmp-Integer-0				1810	integer
-ATTRIBUTE	Tmp-Integer-1				1811	integer
-ATTRIBUTE	Tmp-Integer-2				1812	integer
-ATTRIBUTE	Tmp-Integer-3				1813	integer
-ATTRIBUTE	Tmp-Integer-4				1814	integer
-ATTRIBUTE	Tmp-Integer-5				1815	integer
-ATTRIBUTE	Tmp-Integer-6				1816	integer
-ATTRIBUTE	Tmp-Integer-7				1817	integer
-ATTRIBUTE	Tmp-Integer-8				1818	integer
-ATTRIBUTE	Tmp-Integer-9				1819	integer
+ATTRIBUTE	Tmp-Integer-0				1810	integer internal
+ATTRIBUTE	Tmp-Integer-1				1811	integer internal
+ATTRIBUTE	Tmp-Integer-2				1812	integer internal
+ATTRIBUTE	Tmp-Integer-3				1813	integer internal
+ATTRIBUTE	Tmp-Integer-4				1814	integer internal
+ATTRIBUTE	Tmp-Integer-5				1815	integer internal
+ATTRIBUTE	Tmp-Integer-6				1816	integer internal
+ATTRIBUTE	Tmp-Integer-7				1817	integer internal
+ATTRIBUTE	Tmp-Integer-8				1818	integer internal
+ATTRIBUTE	Tmp-Integer-9				1819	integer internal
 
-ATTRIBUTE	Tmp-IP-Address-0			1820	ipaddr
-ATTRIBUTE	Tmp-IP-Address-1			1821	ipaddr
-ATTRIBUTE	Tmp-IP-Address-2			1822	ipaddr
-ATTRIBUTE	Tmp-IP-Address-3			1823	ipaddr
-ATTRIBUTE	Tmp-IP-Address-4			1824	ipaddr
-ATTRIBUTE	Tmp-IP-Address-5			1825	ipaddr
-ATTRIBUTE	Tmp-IP-Address-6			1826	ipaddr
-ATTRIBUTE	Tmp-IP-Address-7			1827	ipaddr
-ATTRIBUTE	Tmp-IP-Address-8			1828	ipaddr
-ATTRIBUTE	Tmp-IP-Address-9			1829	ipaddr
+ATTRIBUTE	Tmp-IP-Address-0			1820	ipaddr internal
+ATTRIBUTE	Tmp-IP-Address-1			1821	ipaddr internal
+ATTRIBUTE	Tmp-IP-Address-2			1822	ipaddr internal
+ATTRIBUTE	Tmp-IP-Address-3			1823	ipaddr internal
+ATTRIBUTE	Tmp-IP-Address-4			1824	ipaddr internal
+ATTRIBUTE	Tmp-IP-Address-5			1825	ipaddr internal
+ATTRIBUTE	Tmp-IP-Address-6			1826	ipaddr internal
+ATTRIBUTE	Tmp-IP-Address-7			1827	ipaddr internal
+ATTRIBUTE	Tmp-IP-Address-8			1828	ipaddr internal
+ATTRIBUTE	Tmp-IP-Address-9			1829	ipaddr internal
 
-ATTRIBUTE	Tmp-Octets-0				1830	octets
-ATTRIBUTE	Tmp-Octets-1				1831	octets
-ATTRIBUTE	Tmp-Octets-2				1832	octets
-ATTRIBUTE	Tmp-Octets-3				1833	octets
-ATTRIBUTE	Tmp-Octets-4				1834	octets
-ATTRIBUTE	Tmp-Octets-5				1835	octets
-ATTRIBUTE	Tmp-Octets-6				1836	octets
-ATTRIBUTE	Tmp-Octets-7				1837	octets
-ATTRIBUTE	Tmp-Octets-8				1838	octets
-ATTRIBUTE	Tmp-Octets-9				1839	octets
+ATTRIBUTE	Tmp-Octets-0				1830	octets internal
+ATTRIBUTE	Tmp-Octets-1				1831	octets internal
+ATTRIBUTE	Tmp-Octets-2				1832	octets internal
+ATTRIBUTE	Tmp-Octets-3				1833	octets internal
+ATTRIBUTE	Tmp-Octets-4				1834	octets internal
+ATTRIBUTE	Tmp-Octets-5				1835	octets internal
+ATTRIBUTE	Tmp-Octets-6				1836	octets internal
+ATTRIBUTE	Tmp-Octets-7				1837	octets internal
+ATTRIBUTE	Tmp-Octets-8				1838	octets internal
+ATTRIBUTE	Tmp-Octets-9				1839	octets internal
 
-ATTRIBUTE	Tmp-Date-0				1840	date
-ATTRIBUTE	Tmp-Date-1				1841	date
-ATTRIBUTE	Tmp-Date-2				1842	date
-ATTRIBUTE	Tmp-Date-3				1843	date
-ATTRIBUTE	Tmp-Date-4				1844	date
-ATTRIBUTE	Tmp-Date-5				1845	date
-ATTRIBUTE	Tmp-Date-6				1846	date
-ATTRIBUTE	Tmp-Date-7				1847	date
-ATTRIBUTE	Tmp-Date-8				1848	date
-ATTRIBUTE	Tmp-Date-9				1849	date
+ATTRIBUTE	Tmp-Date-0				1840	date internal
+ATTRIBUTE	Tmp-Date-1				1841	date internal
+ATTRIBUTE	Tmp-Date-2				1842	date internal
+ATTRIBUTE	Tmp-Date-3				1843	date internal
+ATTRIBUTE	Tmp-Date-4				1844	date internal
+ATTRIBUTE	Tmp-Date-5				1845	date internal
+ATTRIBUTE	Tmp-Date-6				1846	date internal
+ATTRIBUTE	Tmp-Date-7				1847	date internal
+ATTRIBUTE	Tmp-Date-8				1848	date internal
+ATTRIBUTE	Tmp-Date-9				1849	date internal
 
-ATTRIBUTE	Tmp-Integer64-0				1871	integer64
-ATTRIBUTE	Tmp-Integer64-1				1872	integer64
-ATTRIBUTE	Tmp-Integer64-2				1873	integer64
-ATTRIBUTE	Tmp-Integer64-3				1874	integer64
-ATTRIBUTE	Tmp-Integer64-4				1875	integer64
-ATTRIBUTE	Tmp-Integer64-5				1876	integer64
-ATTRIBUTE	Tmp-Integer64-6				1877	integer64
-ATTRIBUTE	Tmp-Integer64-7				1878	integer64
-ATTRIBUTE	Tmp-Integer64-8				1879	integer64
-ATTRIBUTE	Tmp-Integer64-9				1880	integer64
+ATTRIBUTE	Tmp-Integer64-0				1871	integer64 internal
+ATTRIBUTE	Tmp-Integer64-1				1872	integer64 internal
+ATTRIBUTE	Tmp-Integer64-2				1873	integer64 internal
+ATTRIBUTE	Tmp-Integer64-3				1874	integer64 internal
+ATTRIBUTE	Tmp-Integer64-4				1875	integer64 internal
+ATTRIBUTE	Tmp-Integer64-5				1876	integer64 internal
+ATTRIBUTE	Tmp-Integer64-6				1877	integer64 internal
+ATTRIBUTE	Tmp-Integer64-7				1878	integer64 internal
+ATTRIBUTE	Tmp-Integer64-8				1879	integer64 internal
+ATTRIBUTE	Tmp-Integer64-9				1880	integer64 internal
 #
 #  These attributes shouldn't be used anywhere.  They are defined here
 #  only for casting of values in conditional expressions.
@@ -488,22 +488,22 @@ ATTRIBUTE	Tmp-Integer64-9				1880	integer64
 #  The order and number need to be consistent with the typedefs used
 #  in the server source.
 #
-ATTRIBUTE	Tmp-Cast-String				1851	string
-ATTRIBUTE	Tmp-Cast-Integer			1852	integer
-ATTRIBUTE	Tmp-Cast-Ipaddr				1853	ipaddr
-ATTRIBUTE	Tmp-Cast-Date				1854	date
-ATTRIBUTE	Tmp-Cast-Abinary			1855	abinary
-ATTRIBUTE	Tmp-Cast-Octets				1856	octets
-ATTRIBUTE	Tmp-Cast-Ifid				1857	ifid
-ATTRIBUTE	Tmp-Cast-IPv6Addr			1858	ipv6addr
-ATTRIBUTE	Tmp-Cast-IPv6Prefix			1859	ipv6prefix
-ATTRIBUTE	Tmp-Cast-Byte				1860	byte
-ATTRIBUTE	Tmp-Cast-Short				1861	short
-ATTRIBUTE	Tmp-Cast-Ethernet			1862	ether
-ATTRIBUTE	Tmp-Cast-Signed				1863	signed
+ATTRIBUTE	Tmp-Cast-String				1851	string internal
+ATTRIBUTE	Tmp-Cast-Integer			1852	integer internal
+ATTRIBUTE	Tmp-Cast-Ipaddr				1853	ipaddr internal
+ATTRIBUTE	Tmp-Cast-Date				1854	date internal
+ATTRIBUTE	Tmp-Cast-Abinary			1855	abinary internal
+ATTRIBUTE	Tmp-Cast-Octets				1856	octets internal
+ATTRIBUTE	Tmp-Cast-Ifid				1857	ifid internal
+ATTRIBUTE	Tmp-Cast-IPv6Addr			1858	ipv6addr internal
+ATTRIBUTE	Tmp-Cast-IPv6Prefix			1859	ipv6prefix internal
+ATTRIBUTE	Tmp-Cast-Byte				1860	byte internal
+ATTRIBUTE	Tmp-Cast-Short				1861	short internal
+ATTRIBUTE	Tmp-Cast-Ethernet			1862	ether internal
+ATTRIBUTE	Tmp-Cast-Signed				1863	signed internal
 # don't use or define these
-ATTRIBUTE	Tmp-Cast-Integer64			1869	integer64
-ATTRIBUTE	Tmp-Cast-IPv4Prefix			1870	ipv4prefix
+ATTRIBUTE	Tmp-Cast-Integer64			1869	integer64 internal
+ATTRIBUTE	Tmp-Cast-IPv4Prefix			1870	ipv4prefix internal
 # don't use or define VSA or MAX
 
 #	Range:	1900-1909
@@ -514,31 +514,31 @@ ATTRIBUTE	Tmp-Cast-IPv4Prefix			1870	ipv4prefix
 #	things that *are* sent in a packet are derived from
 #	these attributes.
 #
-ATTRIBUTE	WiMAX-MN-NAI				1900	string
+ATTRIBUTE	WiMAX-MN-NAI				1900	string internal
 
-ATTRIBUTE	TLS-Cert-Serial				1910	string
-ATTRIBUTE	TLS-Cert-Expiration			1911	string
-ATTRIBUTE	TLS-Cert-Issuer				1912	string
-ATTRIBUTE	TLS-Cert-Subject			1913	string
-ATTRIBUTE	TLS-Cert-Common-Name			1914	string
-ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Email		1915	string
-ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Dns		1916	string
-ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Upn		1917	string
+ATTRIBUTE	TLS-Cert-Serial				1910	string internal
+ATTRIBUTE	TLS-Cert-Expiration			1911	string internal
+ATTRIBUTE	TLS-Cert-Issuer				1912	string internal
+ATTRIBUTE	TLS-Cert-Subject			1913	string internal
+ATTRIBUTE	TLS-Cert-Common-Name			1914	string internal
+ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Email		1915	string internal
+ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Dns		1916	string internal
+ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Upn		1917	string internal
 # 1918 - 1919: reserved for future cert attributes
-ATTRIBUTE	TLS-Client-Cert-Serial			1920	string
-ATTRIBUTE	TLS-Client-Cert-Expiration		1921	string
-ATTRIBUTE	TLS-Client-Cert-Issuer			1922	string
-ATTRIBUTE	TLS-Client-Cert-Subject			1923	string
-ATTRIBUTE	TLS-Client-Cert-Common-Name		1924	string
-ATTRIBUTE	TLS-Client-Cert-Filename		1925	string
-ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Email	1926	string
-ATTRIBUTE	TLS-Client-Cert-X509v3-Extended-Key-Usage 1927	string
-ATTRIBUTE	TLS-Client-Cert-X509v3-Subject-Key-Identifier 1928	string
-ATTRIBUTE	TLS-Client-Cert-X509v3-Authority-Key-Identifier 1929	string
-ATTRIBUTE	TLS-Client-Cert-X509v3-Basic-Constraints 1930	string
-ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Dns	1931	string
-ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string
-ATTRIBUTE	TLS-PSK-Identity			1933	string
+ATTRIBUTE	TLS-Client-Cert-Serial			1920	string internal
+ATTRIBUTE	TLS-Client-Cert-Expiration		1921	string internal
+ATTRIBUTE	TLS-Client-Cert-Issuer			1922	string internal
+ATTRIBUTE	TLS-Client-Cert-Subject			1923	string internal
+ATTRIBUTE	TLS-Client-Cert-Common-Name		1924	string internal
+ATTRIBUTE	TLS-Client-Cert-Filename		1925	string internal
+ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Email	1926	string internal
+ATTRIBUTE	TLS-Client-Cert-X509v3-Extended-Key-Usage 1927	string internal
+ATTRIBUTE	TLS-Client-Cert-X509v3-Subject-Key-Identifier 1928	string internal
+ATTRIBUTE	TLS-Client-Cert-X509v3-Authority-Key-Identifier 1929	string internal
+ATTRIBUTE	TLS-Client-Cert-X509v3-Basic-Constraints 1930	string internal
+ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Dns	1931	string internal
+ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string internal
+ATTRIBUTE	TLS-PSK-Identity			1933	string internal
 
 # 1934 - 1939: reserved for future cert attributes
 
@@ -551,39 +551,39 @@ ATTRIBUTE	TLS-PSK-Identity			1933	string
 #	so that the SoH radius request can be proxied, but from which
 #	vendor? Sigh...
 #
-ATTRIBUTE	SoH-MS-Machine-OS-vendor		2100	integer
+ATTRIBUTE	SoH-MS-Machine-OS-vendor		2100	integer internal
 VALUE	SoH-MS-Machine-OS-vendor	Microsoft		311
 
-ATTRIBUTE	SoH-MS-Machine-OS-version		2101	integer
-ATTRIBUTE	SoH-MS-Machine-OS-release		2102	integer
-ATTRIBUTE	SoH-MS-Machine-OS-build			2103	integer
-ATTRIBUTE	SoH-MS-Machine-SP-version		2104	integer
-ATTRIBUTE	SoH-MS-Machine-SP-release		2105	integer
+ATTRIBUTE	SoH-MS-Machine-OS-version		2101	integer internal
+ATTRIBUTE	SoH-MS-Machine-OS-release		2102	integer internal
+ATTRIBUTE	SoH-MS-Machine-OS-build			2103	integer internal
+ATTRIBUTE	SoH-MS-Machine-SP-version		2104	integer internal
+ATTRIBUTE	SoH-MS-Machine-SP-release		2105	integer internal
 
-ATTRIBUTE	SoH-MS-Machine-Processor		2106	integer
+ATTRIBUTE	SoH-MS-Machine-Processor		2106	integer internal
 VALUE	SoH-MS-Machine-Processor	x86			0
 VALUE	SoH-MS-Machine-Processor	i64			6
 VALUE	SoH-MS-Machine-Processor	x86_64			9
 
-ATTRIBUTE	SoH-MS-Machine-Name			2107	string
-ATTRIBUTE	SoH-MS-Correlation-Id			2108	octets
-ATTRIBUTE	SoH-MS-Machine-Role			2109	integer
+ATTRIBUTE	SoH-MS-Machine-Name			2107	string internal
+ATTRIBUTE	SoH-MS-Correlation-Id			2108	octets internal
+ATTRIBUTE	SoH-MS-Machine-Role			2109	integer internal
 VALUE	SoH-MS-Machine-Role		client			1
 VALUE	SoH-MS-Machine-Role		dc			2
 VALUE	SoH-MS-Machine-Role		server			3
 
-ATTRIBUTE	SoH-Supported				2119	integer
+ATTRIBUTE	SoH-Supported				2119	integer internal
 VALUE	SoH-Supported			no			0
 VALUE	SoH-Supported			yes			1
 
-ATTRIBUTE	SoH-MS-Windows-Health-Status		2120	string
-ATTRIBUTE	SoH-MS-Health-Other			2129	string
+ATTRIBUTE	SoH-MS-Windows-Health-Status		2120	string internal
+ATTRIBUTE	SoH-MS-Health-Other			2129	string internal
 
 #
 #	Range:	2200-2219
 #		Utilities bundled with the server
 #
-ATTRIBUTE	Radclient-Test-Name			2200	string
+ATTRIBUTE	Radclient-Test-Name			2200	string internal
 
 #
 #	Range:	2220-2999
@@ -601,7 +601,7 @@ ATTRIBUTE	Radclient-Test-Name			2200	string
 #
 
 #
-#	Non-Protocol Integer Translations
+#	Non-Protocol Integer Translations internal
 #
 
 VALUE	Auth-Type			Local			0
@@ -653,7 +653,7 @@ VALUE	Post-Auth-Type			Local			0
 VALUE	Post-Auth-Type			Reject			1
 
 #
-#	Experimental Non-Protocol Integer Translations for FreeRADIUS
+#	Experimental Non-Protocol Integer Translations for FreeRADIUS internal
 #
 VALUE	Fall-Through			No			0
 VALUE	Fall-Through			Yes			1

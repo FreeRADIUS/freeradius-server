@@ -637,13 +637,15 @@ int dict_valid_name(char const *name)
 
 /** Add an attribute to the dictionary
  *
+ * @fixme we need to check length of none vendor attributes.
+ *
  * @return 0 on success -1 on failure.
  */
 int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 ATTR_FLAGS flags)
 {
 	size_t namelen;
-	static int      max_attr = 0;
+	static int max_attr = 0;
 	DICT_ATTR const	*da;
 	DICT_ATTR *n;
 
@@ -766,6 +768,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	if ((vendor & (FR_MAX_VENDOR -1)) != 0) {
 		DICT_VENDOR *dv;
 		static DICT_VENDOR *last_vendor = NULL;
+		unsigned int vendor_max;
 
 		if (flags.has_tlv && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("TLV's cannot be encrypted");
@@ -815,11 +818,15 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		}
 
 		/*
-		 *	FIXME: Switch over dv->type, and limit things
-		 *	properly.
+		 *	Maximum allow attribute based on
+		 *	the length of the vendor's type
+		 *	field.
 		 */
-		if ((dv->type == 1) && (attr >= 256) && !flags.is_tlv) {
-			fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (larger than 255)");
+		vendor_max = ((uint64_t)1 << (dv->type << 3)) - 1;
+		if (((unsigned int)attr > vendor_max) && !flags.is_tlv && !flags.internal) {
+			fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number %i "
+					   "(larger than vendor max %u)",
+					   attr, vendor_max);
 			return -1;
 		} /* else 256..65535 are allowed */
 
@@ -917,7 +924,6 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 			 *	over-ride the old one.
 			 */
 		}
-
 
 		fr_hash_table_delete(attributes_byvalue, a);
 
@@ -1546,6 +1552,14 @@ static int process_attribute(char const* fn, int const line,
 							   "\"encrypt=3\" flag set", fn, line);
 					return -1;
 				}
+			/*
+			 *	Marks the attribute up as internal.
+			 *	This means it can use numbers outside of the allowed
+			 *	protocol range, and also means it will not be included
+			 *	in replies or proxy requests.
+			 */
+			} else if (strncmp(key, "internal", 9) == 0) {
+				flags.internal = 1;
 
 			} else if (strncmp(key, "array", 6) == 0) {
 				flags.array = 1;
@@ -2638,7 +2652,6 @@ void dict_attr_free(DICT_ATTR const **da)
 	*tmp = NULL;
 }
 
-
 /** Initialises a dictionary attr for unknown attributes
  *
  * Initialises a dict attr for an unknown attribute/vendor/type without adding
@@ -2746,6 +2759,13 @@ DICT_ATTR const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int attr, u
  *  - Attr-%d.%d.%d...
  *  - Vendor-%d-Attr-%d
  *  - VendorName-Attr-%d
+ *
+ * @note We can't validate attribute numbers here as a dictionary
+ *	 lookup is required to determine if the attribute
+ *	 has been marked as internal.
+ *	 Even validating numbers based on dv_type which is the
+ *	 length of the vendor field is wrong. Attribute number
+ *	 checks must be done by the caller.
  *
  * @param[in] da to initialise.
  * @param[in] name of attribute.
@@ -2928,11 +2948,6 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 
 		p = q;
 	}
-
-	/*
-	 *	Enforce a maximum value on the attribute number.
-	 */
-	if ((vendor > 0) && (attr >= (unsigned) (1 << (dv_type << 3)))) goto invalid;
 
 	if (*p == '.') {
 		if (dict_str2oid(p + 1, &attr, &vendor, 1) < 0) {

@@ -850,7 +850,13 @@ ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 				return -(a - name);
 			}
 
+			/*
+			 *	Unknown attributes can't be encoded, as we don't
+			 *	know how to encode them!
+			 */
+			((DICT_ATTR *)attr.unknown.da)->flags.internal = 1;
 			attr.da = (DICT_ATTR *)&attr.unknown.da;
+
 			goto skip_tag; /* unknown attributes can't have tags */
 		}
 

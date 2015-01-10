@@ -1770,10 +1770,14 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		/*
 		 *	Ignore non-wire attributes, but allow extended
 		 *	attributes.
+		 *
+		 *	@fixme We should be able to get rid of this check
+		 *	and just look at da->flags.internal
 		 */
-		if ((reply->da->vendor == 0) &&
+		if (reply->da->flags.internal ||
+		    ((reply->da->vendor == 0) &&
 		    ((reply->da->attr & 0xFFFF) >= 256) &&
-		    !reply->da->flags.extended && !reply->da->flags.long_extended) {
+		    !reply->da->flags.extended && !reply->da->flags.long_extended)) {
 #ifndef NDEBUG
 			/*
 			 *	Permit the admin to send BADLY formatted

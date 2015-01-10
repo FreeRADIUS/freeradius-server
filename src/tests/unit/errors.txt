@@ -7,9 +7,6 @@ data rad_attr2vp: Insufficient data
 decode 01 01 00
 data rad_attr2vp: Insufficient data
 
-encode Attr-26.1.256 = 0x00000001
-data Invalid OID
-
 encode Attr-240.1 = 0x01
 data Standard attributes cannot use OIDs
 

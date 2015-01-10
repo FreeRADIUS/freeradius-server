@@ -8,7 +8,7 @@ VENDOR		BroadSoft			6431
 #
 BEGIN-VENDOR	BroadSoft
 
-#ATTRIBUTE	BWAS-Call-Detail-Record-Version		0	string
+ATTRIBUTE	BWAS-Call-Detail-Record-Version		0	string
 ATTRIBUTE	BWAS-Record-id				1	string
 ATTRIBUTE	BWAS-Service-provider			2	string
 ATTRIBUTE	BWAS-Type				3	string
@@ -275,99 +275,99 @@ ATTRIBUTE	BroadSoft-Attr-255			255	string
 #	No other vendor does this, for the simple reason that it's
 #	ridiculous.
 #
-#ATTRIBUTE	BWAS-Intercept-Group-Routing-Number	256	string
-#ATTRIBUTE	BWAS-CB-Activation-Invoke-Time		257	string
-#ATTRIBUTE	BWAS-CB-Activation-Fac-Result		258	string
-#ATTRIBUTE	BWAS-CB-Deactivation-Invoke-Time	259	string
-#ATTRIBUTE	BWAS-CB-Deactivation-Fac-Result		260	string
-#ATTRIBUTE	BWAS-CB-Query-Invoke-Time		261	string
-#ATTRIBUTE	BWAS-CB-Query-Fac-Result		262	string
-#ATTRIBUTE	BWAS-Cfnrc-Inter-Invoke-Time		263	string
-#ATTRIBUTE	BWAS-Cfnrc-Inter-Fac-Result		264	string
-#ATTRIBUTE	BWAS-VMR-Dialing-Invoke-Time		265	string
-#ATTRIBUTE	BWAS-VMR-Dialing-Fac-result		266	string
-#ATTRIBUTE	BWAS-VP-Dialing-Invoke-Time		267	string
-#ATTRIBUTE	BWAS-VP-Dialing-Fac-result		268	string
-#ATTRIBUTE	BWAS-Camel-Loc-Info			269	string
-#ATTRIBUTE	BWAS-Camel-Msc-Address			270	string
-#ATTRIBUTE	BWAS-Camel-CellId-Or-LAI		271	string
-#ATTRIBUTE	BWAS-NAME-Permitted			272	string
-#ATTRIBUTE	BWAS-Call-Center-User-Id		273	string
-#ATTRIBUTE	BWAS-Call-Center-Outgoing-Group-Phone-Number 274	string
-#ATTRIBUTE	BWAS-VON-Type				275	string
-#ATTRIBUTE	BWAS-PreAlertingAnncmtDuration		276	string
-#ATTRIBUTE	BWAS-CC-Disp-Code-Tagging-Invoke-Time	277	string
-#ATTRIBUTE	BWAS-CC-Disp-Code-Tagging-Result	278	string
-#ATTRIBUTE	BWAS-CC-Escalated-Call-Invoke-Time	279	string
-#ATTRIBUTE	BWAS-CC-Escalated-Call-FAC-Result	280	string
-#ATTRIBUTE	BWAS-CC-Monitoring-BI-Invoke-Time	281	string
-#ATTRIBUTE	BWAS-CC-Monitoring-BI-FAC-Result	282	string
-#ATTRIBUTE	BWAS-Mid-Call-Cot-Invoke-Time		283	string
-#ATTRIBUTE	BWAS-Office-Zone			284	string
-#ATTRIBUTE	BWAS-Primary-Zone			285	string
-#ATTRIBUTE	BWAS-Roaming-MSC-Address		286	string
-#ATTRIBUTE	BWAS-CC-Emergency-Call-Invoke-Time	287	string
-#ATTRIBUTE	BWAS-Monitoring-Next-Call-Invoke-Time	288	string
-#ATTRIBUTE	BWAS-Monitoring-Next-Call-FAC-Result	289	string
-#ATTRIBUTE	BWAS-Legacy-Acb-Act-Invoke-Time		290	string
-#ATTRIBUTE	BWAS-Legacy-Acb-Act-Fac-Result		291	string
-#ATTRIBUTE	BWAS-Legacy-Acb-Deact-Invoke-Time	292	string
-#ATTRIBUTE	BWAS-Legacy-Acb-Deact-Fac-Result	293	string
-#ATTRIBUTE	BWAS-Custom-Schema-Version		294	string
-#ATTRIBUTE	BWAS-Group-Paging-Invoke-Time		295	string
-#ATTRIBUTE	BWAS-Group-Paging-Related-CallId	296	string
-#ATTRIBUTE	BWAS-DCLID				297	string
-#ATTRIBUTE	BWAS-MeetMeConferencing-InvokeTime	298	string
-#ATTRIBUTE	BWAS-Call-Me-Now-Type			299	string
-#ATTRIBUTE	BWAS-Call-Me-Now-Transaction-Id		300	string
-#ATTRIBUTE	BWAS-Call-Me-Now-Related-Call-Id	301	string
-#ATTRIBUTE	BWAS-MeetMeConferencing-ConferenceId	302	string
-#ATTRIBUTE	BWAS-MeetMeConferencing-Role		303	string
-#ATTRIBUTE	BWAS-MeetMeConferencing-Bridge		304	string
-#ATTRIBUTE	BWAS-MeetMeConferencing-Owner		305	string
-#ATTRIBUTE	BWAS-MeetMeConferencing-OwnerDn		306	string
-#ATTRIBUTE	BWAS-MeetMeConferencing-Title		307	string
-#ATTRIBUTE	BWAS-MeetMeConferencing-ProjectCode	308	string
-#ATTRIBUTE	BWAS-MeetMeConferencing-RecordDuration	309	string
-#ATTRIBUTE	BWAS-MobilityNumber			310	string
-#ATTRIBUTE	BWAS-MobilityRoutingNumber		311	string
-#ATTRIBUTE	BWAS-Location				312	string
-#ATTRIBUTE	BWAS-Location-Type			313	string
-#ATTRIBUTE	BWAS-Location-Usage			314	string
-#ATTRIBUTE	BWAS-Call-Recording-Invocation-Time	315	string
-#ATTRIBUTE	BWAS-Call-Recording-FAC-Result		316	string
-#ATTRIBUTE	BWAS-Call-Recording-Trigger		317	string
-#ATTRIBUTE	BWAS-Call-Recording-Destination		318	string
-#ATTRIBUTE	BWAS-Call-Recording-Result		319	string
-#ATTRIBUTE	BWAS-Calling-Pres-Number		320	string
-#ATTRIBUTE	BWAS-Calling-Pres-Number-Context	321	string
-#ATTRIBUTE	BWAS-Calling-Asserted-Number		322	string
-#ATTRIBUTE	BWAS-Calling-Asserted-Number-Context	323	string
-#ATTRIBUTE	BWAS-SCC-Invocation-Time		324	string
-#ATTRIBUTE	BWAS-SCC-Call-Id			325	string
-#ATTRIBUTE	BWAS-SCC-Number				326	string
-#ATTRIBUTE	BWAS-Acr-Inter-Invoke-Time		327	string
-#ATTRIBUTE	BWAS-Acr-Inter-Fac-Result		328	string
-#ATTRIBUTE	BWAS-CW-Inter-Invoke-Time		329	string
-#ATTRIBUTE	BWAS-CW-Inter-Fac-Result		330	string
-#ATTRIBUTE	BWAS-Clid-Blocking-Inter-Invoke-Time	331	string
-#ATTRIBUTE	BWAS-Clid-Blocking-Inter-Fac-Result	332	string
-#ATTRIBUTE	BWAS-Colr-Inter-Invoke-Time		333	string
-#ATTRIBUTE	BWAS-Colr-Inter-Fac-Result		334	string
-#ATTRIBUTE	BWAS-Scr-Inter-Invoke-Time		335	string
-#ATTRIBUTE	BWAS-Scr-Inter-Fac-Result		336	string
-#ATTRIBUTE	BWAS-HuntGroupBusy-Activation-Invocation-Time 337	string
-#ATTRIBUTE	BWAS-HuntGroupBusy-Activation-FAC-Result 338	string
-#ATTRIBUTE	BWAS-HuntGroupBusy-Activation-Target-HuntGroupId 339	string
-#ATTRIBUTE	BWAS-HuntGroupBusy-Deactivation-Invocation-Time 340	string
-#ATTRIBUTE	BWAS-HuntGroupBusy-Deactivation-FAC-Result 341	string
-#ATTRIBUTE	BWAS-HuntGroupBusy-Deactivation-Target-HuntGroupId 342	string
-#ATTRIBUTE	BWAS-HuntGroupBusy-Interrogation-Invocation-Time 343	string
-#ATTRIBUTE	BWAS-HuntGroupBusy-Interrogation-FAC-Result 344	string
-#ATTRIBUTE	BWAS-HuntGroupBusy-Interrogation-Target-HuntGroupId 345	string
-#ATTRIBUTE	BWAS-User-Agent				346	string
-#ATTRIBUTE	BWAS-FMFM-Call-Push-Invocation-Time	347	string
-#ATTRIBUTE	BWAS-FMFM-Call-Push-FAC-Result		348	string
-#ATTRIBUTE	BWAS-SCC-Cause				349	string
+ATTRIBUTE	BWAS-Intercept-Group-Routing-Number	256	string internal
+ATTRIBUTE	BWAS-CB-Activation-Invoke-Time		257	string internal
+ATTRIBUTE	BWAS-CB-Activation-Fac-Result		258	string internal
+ATTRIBUTE	BWAS-CB-Deactivation-Invoke-Time	259	string internal
+ATTRIBUTE	BWAS-CB-Deactivation-Fac-Result		260	string internal
+ATTRIBUTE	BWAS-CB-Query-Invoke-Time		261	string internal
+ATTRIBUTE	BWAS-CB-Query-Fac-Result		262	string internal
+ATTRIBUTE	BWAS-Cfnrc-Inter-Invoke-Time		263	string internal
+ATTRIBUTE	BWAS-Cfnrc-Inter-Fac-Result		264	string internal
+ATTRIBUTE	BWAS-VMR-Dialing-Invoke-Time		265	string internal
+ATTRIBUTE	BWAS-VMR-Dialing-Fac-result		266	string internal
+ATTRIBUTE	BWAS-VP-Dialing-Invoke-Time		267	string internal
+ATTRIBUTE	BWAS-VP-Dialing-Fac-result		268	string internal
+ATTRIBUTE	BWAS-Camel-Loc-Info			269	string internal
+ATTRIBUTE	BWAS-Camel-Msc-Address			270	string internal
+ATTRIBUTE	BWAS-Camel-CellId-Or-LAI		271	string internal
+ATTRIBUTE	BWAS-NAME-Permitted			272	string internal
+ATTRIBUTE	BWAS-Call-Center-User-Id		273	string internal
+ATTRIBUTE	BWAS-Call-Center-Outgoing-Group-Phone-Number 274	string internal
+ATTRIBUTE	BWAS-VON-Type				275	string internal
+ATTRIBUTE	BWAS-PreAlertingAnncmtDuration		276	string internal
+ATTRIBUTE	BWAS-CC-Disp-Code-Tagging-Invoke-Time	277	string internal
+ATTRIBUTE	BWAS-CC-Disp-Code-Tagging-Result	278	string internal
+ATTRIBUTE	BWAS-CC-Escalated-Call-Invoke-Time	279	string internal
+ATTRIBUTE	BWAS-CC-Escalated-Call-FAC-Result	280	string internal
+ATTRIBUTE	BWAS-CC-Monitoring-BI-Invoke-Time	281	string internal
+ATTRIBUTE	BWAS-CC-Monitoring-BI-FAC-Result	282	string internal
+ATTRIBUTE	BWAS-Mid-Call-Cot-Invoke-Time		283	string internal
+ATTRIBUTE	BWAS-Office-Zone			284	string internal
+ATTRIBUTE	BWAS-Primary-Zone			285	string internal
+ATTRIBUTE	BWAS-Roaming-MSC-Address		286	string internal
+ATTRIBUTE	BWAS-CC-Emergency-Call-Invoke-Time	287	string internal
+ATTRIBUTE	BWAS-Monitoring-Next-Call-Invoke-Time	288	string internal
+ATTRIBUTE	BWAS-Monitoring-Next-Call-FAC-Result	289	string internal
+ATTRIBUTE	BWAS-Legacy-Acb-Act-Invoke-Time		290	string internal
+ATTRIBUTE	BWAS-Legacy-Acb-Act-Fac-Result		291	string internal
+ATTRIBUTE	BWAS-Legacy-Acb-Deact-Invoke-Time	292	string internal
+ATTRIBUTE	BWAS-Legacy-Acb-Deact-Fac-Result	293	string internal
+ATTRIBUTE	BWAS-Custom-Schema-Version		294	string internal
+ATTRIBUTE	BWAS-Group-Paging-Invoke-Time		295	string internal
+ATTRIBUTE	BWAS-Group-Paging-Related-CallId	296	string internal
+ATTRIBUTE	BWAS-DCLID				297	string internal
+ATTRIBUTE	BWAS-MeetMeConferencing-InvokeTime	298	string internal
+ATTRIBUTE	BWAS-Call-Me-Now-Type			299	string internal
+ATTRIBUTE	BWAS-Call-Me-Now-Transaction-Id		300	string internal
+ATTRIBUTE	BWAS-Call-Me-Now-Related-Call-Id	301	string internal
+ATTRIBUTE	BWAS-MeetMeConferencing-ConferenceId	302	string internal
+ATTRIBUTE	BWAS-MeetMeConferencing-Role		303	string internal
+ATTRIBUTE	BWAS-MeetMeConferencing-Bridge		304	string internal
+ATTRIBUTE	BWAS-MeetMeConferencing-Owner		305	string internal
+ATTRIBUTE	BWAS-MeetMeConferencing-OwnerDn		306	string internal
+ATTRIBUTE	BWAS-MeetMeConferencing-Title		307	string internal
+ATTRIBUTE	BWAS-MeetMeConferencing-ProjectCode	308	string internal
+ATTRIBUTE	BWAS-MeetMeConferencing-RecordDuration	309	string internal
+ATTRIBUTE	BWAS-MobilityNumber			310	string internal
+ATTRIBUTE	BWAS-MobilityRoutingNumber		311	string internal
+ATTRIBUTE	BWAS-Location				312	string internal
+ATTRIBUTE	BWAS-Location-Type			313	string internal
+ATTRIBUTE	BWAS-Location-Usage			314	string internal
+ATTRIBUTE	BWAS-Call-Recording-Invocation-Time	315	string internal
+ATTRIBUTE	BWAS-Call-Recording-FAC-Result		316	string internal
+ATTRIBUTE	BWAS-Call-Recording-Trigger		317	string internal
+ATTRIBUTE	BWAS-Call-Recording-Destination		318	string internal
+ATTRIBUTE	BWAS-Call-Recording-Result		319	string internal
+ATTRIBUTE	BWAS-Calling-Pres-Number		320	string internal
+ATTRIBUTE	BWAS-Calling-Pres-Number-Context	321	string internal
+ATTRIBUTE	BWAS-Calling-Asserted-Number		322	string internal
+ATTRIBUTE	BWAS-Calling-Asserted-Number-Context	323	string internal
+ATTRIBUTE	BWAS-SCC-Invocation-Time		324	string internal
+ATTRIBUTE	BWAS-SCC-Call-Id			325	string internal
+ATTRIBUTE	BWAS-SCC-Number				326	string internal
+ATTRIBUTE	BWAS-Acr-Inter-Invoke-Time		327	string internal
+ATTRIBUTE	BWAS-Acr-Inter-Fac-Result		328	string internal
+ATTRIBUTE	BWAS-CW-Inter-Invoke-Time		329	string internal
+ATTRIBUTE	BWAS-CW-Inter-Fac-Result		330	string internal
+ATTRIBUTE	BWAS-Clid-Blocking-Inter-Invoke-Time	331	string internal
+ATTRIBUTE	BWAS-Clid-Blocking-Inter-Fac-Result	332	string internal
+ATTRIBUTE	BWAS-Colr-Inter-Invoke-Time		333	string internal
+ATTRIBUTE	BWAS-Colr-Inter-Fac-Result		334	string internal
+ATTRIBUTE	BWAS-Scr-Inter-Invoke-Time		335	string internal
+ATTRIBUTE	BWAS-Scr-Inter-Fac-Result		336	string internal
+ATTRIBUTE	BWAS-HuntGroupBusy-Activation-Invocation-Time 337	string internal
+ATTRIBUTE	BWAS-HuntGroupBusy-Activation-FAC-Result 338	string internal
+ATTRIBUTE	BWAS-HuntGroupBusy-Activation-Target-HuntGroupId 339	string internal
+ATTRIBUTE	BWAS-HuntGroupBusy-Deactivation-Invocation-Time 340	string internal
+ATTRIBUTE	BWAS-HuntGroupBusy-Deactivation-FAC-Result 341	string internal
+ATTRIBUTE	BWAS-HuntGroupBusy-Deactivation-Target-HuntGroupId 342	string internal
+ATTRIBUTE	BWAS-HuntGroupBusy-Interrogation-Invocation-Time 343	string internal
+ATTRIBUTE	BWAS-HuntGroupBusy-Interrogation-FAC-Result 344	string internal
+ATTRIBUTE	BWAS-HuntGroupBusy-Interrogation-Target-HuntGroupId 345	string internal
+ATTRIBUTE	BWAS-User-Agent				346	string internal
+ATTRIBUTE	BWAS-FMFM-Call-Push-Invocation-Time	347	string internal
+ATTRIBUTE	BWAS-FMFM-Call-Push-FAC-Result		348	string internal
+ATTRIBUTE	BWAS-SCC-Cause				349	string internal
 
 END-VENDOR	BroadSoft

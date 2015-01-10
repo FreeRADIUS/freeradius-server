@@ -171,6 +171,8 @@ typedef struct attr_flags {
 	unsigned int 	is_unknown : 1;				//!< Attribute number or vendor is unknown.
 	unsigned int	is_tlv : 1;				//!< Is a sub attribute.
 
+	unsigned int	internal : 1;				//!< Internal attribute, should not be received
+								//!< in protocol packets, should not be encoded.
 	unsigned int	has_tag : 1;				//!< Tagged attribute.
 	unsigned int	array : 1; 				//!< Pack multiples into 1 attr.
 	unsigned int	has_value : 1;				//!< Has a value.

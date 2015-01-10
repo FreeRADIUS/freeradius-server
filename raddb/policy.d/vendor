@@ -1,0 +1,16 @@
+#
+#  Convert broadsoft 255 attributes in the form <attr number>=value
+#  to internal broadsoft attributes with numbers > 256.
+#  There is currently no way to automatically re-encode those
+#  attributes, but it can be done with unlang for specific ones.
+#
+broadsoft-decode {
+	foreach &BroadSoft-Attr-255 {
+		if ("%{Foreach-Variable-0}" =~ /^([0-9]+)=(.*)$/) {
+			update request {
+#				Broadsoft-Attr-255 -= "%{Foreach-Variable-0}"
+				"%{vendor:Broadsoft-Attr-255}-Attr-%{1}" += "%{2}"
+			}
+		}
+	}
+}
