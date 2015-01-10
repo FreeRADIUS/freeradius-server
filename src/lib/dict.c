@@ -1486,7 +1486,7 @@ static int process_attribute(char const* fn, int const line,
 			flags.extended = 1;
 			flags.evs = 1;
 			if (value != PW_VENDOR_SPECIFIC) {
-				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"evs\" MUST have
+				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"evs\" MUST have "
 						   "attribute code 26.", fn, line);
 				return -1;
 			}
