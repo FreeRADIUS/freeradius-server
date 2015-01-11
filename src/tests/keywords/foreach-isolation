@@ -1,0 +1,38 @@
+#
+#  PRE: foreach if-multivalue
+#
+
+update {
+	&reply:Filter-Id := 'filter'
+	&control:Tmp-String-0 := '0'
+	&control:Tmp-String-0 += '1'
+	&control:Tmp-String-0 += '2'
+	&control:Tmp-String-0 += '3'
+}
+
+foreach control:Tmp-String-0 {
+	update control {
+		Tmp-String-0 -= "%{expr:%{Foreach-Variable-0} + 1}"
+	}
+	update request {
+		Tmp-String-0 += "%{Foreach-Variable-0}"
+	}
+}
+
+if (!&Tmp-String-0[0] || !&Tmp-String-0[1] || !&Tmp-String-0[2] || !&Tmp-String-0[3]) {
+	update reply {
+		Filter-Id += 'Fail 0'
+	}
+}
+
+if ((&Tmp-String-0[0] != '0') || (&Tmp-String-0[1] != '1') || (&Tmp-String-0[2] != '2') || (&Tmp-String-0[3] != '3')) {
+	update reply {
+		Filter-Id += 'Fail 1'
+	}
+}
+
+if (!&control:Tmp-String-0[0] || &control:Tmp-String-0[1] || &control:Tmp-String-0[2] || &control:Tmp-String-0[3]) {
+	update reply {
+		Filter-Id += 'Fail 2'
+	}
+}
