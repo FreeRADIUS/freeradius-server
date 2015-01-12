@@ -13,3 +13,6 @@ SOURCES	:=	conffile.c \
 		version.c \
 		pair.c \
 		xlat.c
+
+# This lets the linker determine which version of the SSLeay functions to use.
+TGT_LDLIBS      := $(OPENSSL_LIBS)
