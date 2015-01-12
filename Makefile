@@ -117,6 +117,11 @@ $(R)$(mandir)/%: man/%
 	@echo INSTALL $(notdir $<)
 	@$(INSTALL) -m 644 $< $@
 
+#
+#  Don't install rlm_test
+#
+ALL_INSTALL := $(patsubst %rlm_test.la,,$(ALL_INSTALL))
+
 install: install.dirs install.share install.man
 
 ifneq ($(RADMIN),)
