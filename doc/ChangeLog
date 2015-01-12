@@ -13,6 +13,8 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
         * Fix issues parsing LDAP hostnames with non-standard ports.
 	* Fix issues with realms containing regular expressions.
 	* Allow unary negation before parantheses in rlm_expr.
+	* Fix infinite loop in kevent event loop code. Issue only
+	  presented on FreeBSD.
 
 FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
