@@ -1540,11 +1540,6 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 			continue;
 		} /* else it's a CONF_PAIR */
 
-		/*
-		 *	Ignore everything but xlat expansions.
-		 */
-		if ((variables[i].type & PW_TYPE_XLAT) == 0) continue;
-
 		cp = cf_pair_find(cs, variables[i].name);
 
 	redo:
@@ -1553,6 +1548,26 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 		if ((cp->rhs_type != T_DOUBLE_QUOTED_STRING) &&
 		    (cp->rhs_type != T_BARE_WORD)) continue;
 
+		/*
+		 *	Non-xlat expansions shouldn't have xlat!
+		 */
+		if ((variables[i].type & PW_TYPE_XLAT) == 0) {
+			/*
+			 *	Ignore %{... in shared secrets.
+			 *	They're never dynamically expanded.
+			 */
+			if ((variables[i].type & PW_TYPE_SECRET) != 0) continue;
+
+			if (strstr(cp->value, "%{") != NULL) {
+				cf_log_err(&cp->item, "Found dynamic expansion in string which will not be dynamically expanded");
+				return -1;
+			}
+			continue;
+		}
+
+		/*
+		 *	xlat expansions should be parseable.
+		 */
 		value = talloc_strdup(cs, cp->value); /* modified by xlat_tokenize */
 		xlat = NULL;
 
