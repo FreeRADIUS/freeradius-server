@@ -2703,9 +2703,11 @@ static int request_will_proxy(REQUEST *request)
 		if (vp->da->attr == PW_PACKET_DST_IP_ADDRESS) {
 			dst_ipaddr.af = AF_INET;
 			dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			dst_ipaddr.prefix = 32;
 		} else {
 			dst_ipaddr.af = AF_INET6;
 			memcpy(&dst_ipaddr.ipaddr.ip6addr, &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+			dst_ipaddr.prefix = 128;
 		}
 
 		port = pairfind(request->config_items, PW_PACKET_DST_PORT, 0, TAG_ANY);
