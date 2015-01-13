@@ -730,6 +730,13 @@ open_file:
 	packet->src_ipaddr.af = AF_INET;
 	packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 
+	/*
+	 *	If everything's OK, this is a waste of memory.
+	 *	Otherwise, it lets us re-send the original packet
+	 *	contents, unmolested.
+	 */
+	packet->vps = paircopy(packet, data->vps);
+
 	packet->code = PW_CODE_ACCOUNTING_REQUEST;
 	vp = pairfind(packet->vps, PW_PACKET_TYPE, 0, TAG_ANY);
 	if (vp) packet->code = vp->vp_integer;
@@ -779,13 +786,6 @@ open_file:
 
 	packet->dst_ipaddr.af = AF_INET;
 	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | ((data->counter >> 24) & 0xff));
-
-	/*
-	 *	If everything's OK, this is a waste of memory.
-	 *	Otherwise, it lets us re-send the original packet
-	 *	contents, unmolested.
-	 */
-	packet->vps = paircopy(packet, data->vps);
 
 	/*
 	 *	Prefer the Event-Timestamp in the packet, if it
