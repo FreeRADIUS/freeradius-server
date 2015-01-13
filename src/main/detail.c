@@ -340,6 +340,7 @@ int detail_recv(rad_listen_t *listener)
 #else
 int detail_recv(rad_listen_t *listener)
 {
+	char c = 0;
 	ssize_t rcode;
 	RADIUS_PACKET *packet;
 	listen_detail_t *data = listener->data;
@@ -364,16 +365,16 @@ int detail_recv(rad_listen_t *listener)
 		break;
 
 	default:
-		rad_free(&packet);
 		data->state = STATE_REPLIED;
-		return 0;
+		goto signal_thread;
 	}
 
 	if (!request_receive(listener, packet, &data->detail_client,
 			     fun)) {
-		char c = 0;
-		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
+
+	signal_thread:
+		rad_free(&packet);
 		if (write(data->child_pipe[1], &c, 1) < 0) {
 			ERROR("Failed writing ack to reader thread: %s", fr_syserror(errno));
 		}
