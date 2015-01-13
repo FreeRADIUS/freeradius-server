@@ -947,38 +947,6 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 	return 1;		/* OK */
 }
 
-static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
-{
-	uint32_t value;
-	DICT_VALUE *dval;
-
-	/*
-	 *	If the value already exists, don't
-	 *	create it again.
-	 */
-	dval = dict_valbyname(da->attr, da->vendor, name);
-	if (dval) return 1;
-
-	/*
-	 *	Create a new unique value with a
-	 *	meaningless number.  You can't look at
-	 *	it from outside of this code, so it
-	 *	doesn't matter.  The only requirement
-	 *	is that it's unique.
-	 */
-	do {
-		value = fr_rand() & 0x00ffffff;
-	} while (dict_valbyattr(da->attr, da->vendor, value));
-
-	cf_log_module(cs, "Creating %s = %s", da->name, name);
-	if (dict_addvalue(name, da->name, value) < 0) {
-		ERROR("%s", fr_strerror());
-		return 0;
-	}
-
-	return 1;
-}
-
 /*
  *	Don't complain too often.
  */
@@ -1160,79 +1128,15 @@ static int load_byserver(CONF_SECTION *cs)
 	server->components = components = rbtree_create(server, indexed_modcallable_cmp, NULL, 0);
 	if (!components) {
 		ERROR("Failed to initialize components");
-		goto error;
+
+	error:
+		if (debug_flag == 0) {
+			ERROR("Failed to load virtual server %s",
+			      (name != NULL) ? name : "<default>");
+		}
+		return -1;
 	}
 	talloc_set_destructor(server, _virtual_server_free);
-
-	/*
-	 *	Define types first.
-	 */
-	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
-		CONF_SECTION *subcs;
-		CONF_ITEM *modref;
-		DICT_ATTR const *da;
-
-		subcs = cf_section_sub_find(cs,
-					    section_type_value[comp].section);
-		if (!subcs) continue;
-
-		if (cf_item_find_next(subcs, NULL) == NULL) continue;
-
-		/*
-		 *	Find the attribute used to store VALUEs for this section.
-		 */
-		da = dict_attrbyvalue(section_type_value[comp].attr, 0);
-		if (!da) {
-			cf_log_err_cs(subcs,
-				   "No such attribute %s",
-				   section_type_value[comp].typename);
-		error:
-			if (debug_flag == 0) {
-				ERROR("Failed to load virtual server %s",
-				       (name != NULL) ? name : "<default>");
-			}
-			talloc_free(server);
-			return -1;
-		}
-
-		/*
-		 *	Define dynamic types, so that others can reference
-		 *	them.
-		 */
-		for (modref = cf_item_find_next(subcs, NULL);
-		     modref != NULL;
-		     modref = cf_item_find_next(subcs, modref)) {
-			char const *name1;
-			CONF_SECTION *subsubcs;
-
-			/*
-			 *	Create types for simple references
-			 *	only when parsing the authenticate
-			 *	section.
-			 */
-			if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
-			    cf_item_is_pair(modref)) {
-				CONF_PAIR *cp = cf_item_to_pair(modref);
-				if (!define_type(cs, da, cf_pair_attr(cp))) {
-					goto error;
-				}
-
-				continue;
-			}
-
-			if (!cf_item_is_section(modref)) continue;
-
-			subsubcs = cf_item_to_section(modref);
-			name1 = cf_section_name1(subsubcs);
-
-			if (strcmp(name1, section_type_value[comp].typename) == 0) {
-			  if (!define_type(cs, da,
-					   cf_section_name2(subsubcs))) {
-					goto error;
-				}
-			}
-		}
-	} /* loop over components */
 
 	/*
 	 *	Loop over all of the known components, finding their
@@ -1626,6 +1530,113 @@ int modules_hup(CONF_SECTION *modules)
 }
 
 
+static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
+{
+	uint32_t value;
+	DICT_VALUE *dval;
+
+	/*
+	 *	If the value already exists, don't
+	 *	create it again.
+	 */
+	dval = dict_valbyname(da->attr, da->vendor, name);
+	if (dval) return 1;
+
+	/*
+	 *	Create a new unique value with a
+	 *	meaningless number.  You can't look at
+	 *	it from outside of this code, so it
+	 *	doesn't matter.  The only requirement
+	 *	is that it's unique.
+	 */
+	do {
+		value = fr_rand() & 0x00ffffff;
+	} while (dict_valbyattr(da->attr, da->vendor, value));
+
+	cf_log_module(cs, "Creating %s = %s", da->name, name);
+	if (dict_addvalue(name, da->name, value) < 0) {
+		ERROR("%s", fr_strerror());
+		return 0;
+	}
+
+	return 1;
+}
+
+/*
+ *	Define Auth-Type, etc. in a server.
+ */
+static bool server_define_types(CONF_SECTION *cs)
+{
+	rlm_components_t	comp;
+
+	/*
+	 *	Loop over all of the components
+	 */
+	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
+		CONF_SECTION *subcs;
+		CONF_ITEM *modref;
+		DICT_ATTR const *da;
+
+		subcs = cf_section_sub_find(cs,
+					    section_type_value[comp].section);
+		if (!subcs) continue;
+
+		if (cf_item_find_next(subcs, NULL) == NULL) continue;
+
+		/*
+		 *	Find the attribute used to store VALUEs for this section.
+		 */
+		da = dict_attrbyvalue(section_type_value[comp].attr, 0);
+		if (!da) {
+			cf_log_err_cs(subcs,
+				   "No such attribute %s",
+				   section_type_value[comp].typename);
+			return false;
+		}
+
+		/*
+		 *	Define dynamic types, so that others can reference
+		 *	them.
+		 */
+		for (modref = cf_item_find_next(subcs, NULL);
+		     modref != NULL;
+		     modref = cf_item_find_next(subcs, modref)) {
+			char const *name1;
+			CONF_SECTION *subsubcs;
+
+			/*
+			 *	Create types for simple references
+			 *	only when parsing the authenticate
+			 *	section.
+			 */
+			if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
+			    cf_item_is_pair(modref)) {
+				CONF_PAIR *cp = cf_item_to_pair(modref);
+				if (!define_type(cs, da, cf_pair_attr(cp))) {
+					return false;
+				}
+
+				continue;
+			}
+
+			if (!cf_item_is_section(modref)) continue;
+
+			subsubcs = cf_item_to_section(modref);
+			name1 = cf_section_name1(subsubcs);
+
+			if (strcmp(name1, section_type_value[comp].typename) == 0) {
+			  if (!define_type(cs, da,
+					   cf_section_name2(subsubcs))) {
+				  return false;
+			  }
+			}
+		}
+	} /* loop over components */
+
+	return true;
+}
+
+
 /*
  *	Parse the module config sections, and load
  *	and call each module's init() function.
@@ -1661,7 +1672,6 @@ int modules_init(CONF_SECTION *config)
 		WARN("Cannot find a \"modules\" section in the configuration file!");
 	}
 
-#if defined(WITH_VMPS) || defined(WITH_DHCP)
 	/*
 	 *	Load dictionaries.
 	 */
@@ -1722,8 +1732,14 @@ int modules_init(CONF_SECTION *config)
 		 *	Else it's a RADIUS virtual server, and the
 		 *	dictionaries are already loaded.
 		 */
+
+		/*
+		 *	Root through each virtual server, defining
+		 *	Autz-Type and Auth-Type.  This is so that the
+		 *	modules can reference a particular type.
+		 */
+		if (!server_define_types(cs)) return -1;
 	}
-#endif
 
 	DEBUG2("%s: #### Instantiating modules ####", main_config.name);
 
