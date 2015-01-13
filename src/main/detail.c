@@ -343,6 +343,7 @@ int detail_recv(rad_listen_t *listener)
 	ssize_t rcode;
 	RADIUS_PACKET *packet;
 	listen_detail_t *data = listener->data;
+	RAD_REQUEST_FUNP fun = NULL;
 
 	/*
 	 *	Block until there's a packet ready.
@@ -352,8 +353,24 @@ int detail_recv(rad_listen_t *listener)
 
 	rad_assert(packet != NULL);
 
+	switch (packet->code) {
+	case PW_CODE_ACCOUNTING_REQUEST:
+		fun = rad_accounting;
+		break;
+
+	case PW_CODE_COA_REQUEST:
+	case PW_CODE_DISCONNECT_REQUEST:
+		fun = rad_coa_recv;
+		break;
+
+	default:
+		rad_free(&packet);
+		data->state = STATE_REPLIED;
+		return 0;
+	}
+
 	if (!request_receive(listener, packet, &data->detail_client,
-				     rad_accounting)) {
+			     fun)) {
 		char c = 0;
 		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
