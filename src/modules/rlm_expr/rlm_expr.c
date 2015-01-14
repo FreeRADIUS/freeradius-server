@@ -1247,7 +1247,7 @@ static ssize_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 
 /** Split an attribute into multiple new attributes based on a delimiter
  *
- * @fixme should support multibyte delimiter for string types.
+ * @todo should support multibyte delimiter for string types.
  *
  * Example: "%{explode:&ref <delim>}"
  */
