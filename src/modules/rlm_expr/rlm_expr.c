@@ -30,6 +30,7 @@ USES_APPLE_DEPRECATED_API
 #include <freeradius-devel/sha1.h>
 #include <freeradius-devel/base64.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_OPENSSL_EVP_H
 #  include <openssl/evp.h>
@@ -1244,6 +1245,133 @@ static ssize_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 	return fr_bin2hex(out, decbuf, declen);
 }
 
+/** Split an attribute into multiple new attributes based on a delimiter
+ *
+ * @fixme should support multibyte delimiter for string types.
+ *
+ * Example: "%{explode:&ref <delim>}"
+ */
+static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
+			    char const *fmt, char *out, size_t outlen)
+{
+	value_pair_tmpl_t vpt;
+	vp_cursor_t cursor, to_merge;
+	VALUE_PAIR *vp, *head = NULL;
+	size_t slen;
+	int count = 0;
+	char const *p = fmt;
+	char delim;
+
+	slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	if (slen <= 0) {
+		REDEBUG("%s", fr_strerror());
+		return -1;
+	}
+
+	p += slen;
+
+	if (*p++ != ' ') {
+	arg_error:
+		REDEBUG("explode needs exactly two arguments: &ref <delim>");
+		return -1;
+	}
+
+	if (*p == '\0') goto arg_error;
+
+	delim = *p;
+
+	fr_cursor_init(&to_merge, &head);
+
+	for (vp = tmpl_cursor_init(NULL, &cursor, request, &vpt);
+	     vp;
+	     vp = tmpl_cursor_next(&cursor, &vpt)) {
+	     	VALUE_PAIR *new;
+	     	char const *end;
+		char const *q;
+
+		/*
+		 *	This can theoretically operate on lists too
+		 *	so we need to check the type of each attribute.
+		 */
+		switch (vp->da->type) {
+		case PW_TYPE_OCTETS:
+		case PW_TYPE_STRING:
+			break;
+
+		default:
+			continue;
+		}
+
+		p = vp->data.ptr;
+		end = p + vp->vp_length;
+		while (p < end) {
+			q = memchr(p, delim, end - p);
+			if (!q) {
+				/* Delimiter not present in attribute */
+				if (p == vp->data.ptr) goto next;
+				q = end;
+			}
+
+			/* Skip zero length */
+			if (q == p) {
+				p = q + 1;
+				continue;
+			}
+
+			new = pairalloc(talloc_parent(vp), vp->da);
+			if (!new) {
+				pairfree(&head);
+				return -1;
+			}
+			new->tag = vp->tag;
+
+			switch (vp->da->type) {
+			case PW_TYPE_OCTETS:
+			{
+				uint8_t *buff;
+
+				buff = talloc_array(new, uint8_t, q - p);
+				memcpy(buff, p, q - p);
+				pairmemsteal(new, buff);
+			}
+				break;
+
+			case PW_TYPE_STRING:
+			{
+				char *buff;
+
+				buff = talloc_array(new, char, (q - p) + 1);
+				memcpy(buff, p, q - p);
+				buff[q - p] = '\0';
+				pairstrsteal(new, (char *)buff);
+			}
+				break;
+
+			default:
+				rad_assert(0);
+			}
+
+			fr_cursor_insert(&to_merge, new);
+
+			p = q + 1;	/* next */
+
+			count++;
+		}
+
+		/*
+		 *	Remove the unexploded version
+		 */
+		vp = fr_cursor_remove(&cursor);
+		talloc_free(vp);
+
+	next:
+		continue;	/* Apparently goto labels aren't allowed at the end of loops? */
+	}
+
+	fr_cursor_merge(&cursor, head);
+
+	return snprintf(out, outlen, "%i", count);
+}
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -1289,6 +1417,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	xlat_register("base64", base64_xlat, NULL, inst);
 	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);
+
+	xlat_register("explode", explode_xlat, NULL, inst);
 
 	/*
 	 *	Initialize various paircompare functions
