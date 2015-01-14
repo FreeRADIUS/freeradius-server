@@ -2846,9 +2846,7 @@ do_home:
 		pre_proxy_type = vp->vp_integer;
 	}
 
-	rad_assert(request->home_pool != NULL);
-
-	if (request->home_pool->virtual_server) {
+	if (request->home_pool && request->home_pool->virtual_server) {
 		char const *old_server = request->server;
 
 		request->server = request->home_pool->virtual_server;
