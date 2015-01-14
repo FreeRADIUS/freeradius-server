@@ -1602,7 +1602,7 @@ static int do_proxy(REQUEST *request)
 		return 0;
 	}
 
-	if (vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0, TAG_ANY)) {
+	if ((vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
 			REDEBUG2("Cannot proxy to unknown pool %s",
 				vp->vp_strvalue);
