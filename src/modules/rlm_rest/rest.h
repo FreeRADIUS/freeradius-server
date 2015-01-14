@@ -49,6 +49,7 @@ typedef enum {
 	HTTP_METHOD_GET,
 	HTTP_METHOD_POST,
 	HTTP_METHOD_PUT,
+	HTTP_METHOD_PATCH,
 	HTTP_METHOD_DELETE,
 	HTTP_METHOD_CUSTOM		//!< Must always come last, should not be in method table
 } http_method_t;
