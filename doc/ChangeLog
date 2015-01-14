@@ -10,8 +10,10 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
           names match output of radiud -xv. %v is now deprecated.
         * Add support for PATCH method in rlm_rest.
         * Validate more module xlats on startup, and warn if an
-          xlat expansion is found in a double quoted conf item
+          xlat expansion is found in a double quoted config item
           which will not be expanded.
+        * Add support for sub-second timeouts in rlm_rest.
+        * Add support for connection timeouts in rlm_rest.
 
 	Bug fixes
         * Fix issues parsing LDAP hostnames with non-standard ports.
