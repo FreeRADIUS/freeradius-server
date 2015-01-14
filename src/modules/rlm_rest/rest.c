@@ -344,6 +344,8 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 		return NULL;
 	}
 
+	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, inst->connect_timeout);
+
 	if (inst->connect_uri) {
 		/*
 		 *  re-establish TCP connection to webserver. This would usually be
@@ -1982,7 +1984,8 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	if (section->timeout) SET_OPTION(CURLOPT_TIMEOUT_MS, section->timeout);
+	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, instance->connect_timeout);
+	SET_OPTION(CURLOPT_TIMEOUT_MS, section->timeout);
 	SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
 
 	/*

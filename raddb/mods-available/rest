@@ -39,6 +39,11 @@ rest {
 	connect_uri = "http://127.0.0.1/"
 
 	#
+	#  How long before new connection attempts timeout, defaults to 4.0 seconds.
+	#
+#	connect_timeout = 4.0
+
+	#
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#  For example if you list rest in the authorize section of a virtual server,
@@ -64,7 +69,7 @@ rest {
 	#    username     - User to authenticate as, will be expanded.
 	#    password     - Password to use for authentication, will be expanded.
 	#    require_auth - Require HTTP authentication.
-	#    timeout      - HTTP request timeout in seconds, defaults to 4.
+	#    timeout      - HTTP request timeout in seconds, defaults to 4.0.
 	#
 	#  Additional HTTP headers may be specified with control:REST-HTTP-Header.
 	#  The values of those attributes should be in the format:
