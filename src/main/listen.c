@@ -1603,13 +1603,24 @@ static int do_proxy(REQUEST *request)
 	}
 
 	vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0, TAG_ANY);
-	if (!vp) return 0;
 
-	if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
-		REDEBUG2("Cannot proxy to unknown pool %s",
-			vp->vp_strvalue);
-		return 0;
+	if (vp) {
+		if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
+			REDEBUG2("Cannot proxy to unknown pool %s",
+				 vp->vp_strvalue);
+			return 0;
+		}
+
+		return 1;
 	}
+
+	/*
+	 *	We have a destination IP address.  It will (later) proxied.
+	 */
+	vp = pairfind(request->config_items, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY);
+	if (!vp) vp = pairfind(request->config_items, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY);
+
+	if (!vp) return 0;
 
 	return 1;
 }
