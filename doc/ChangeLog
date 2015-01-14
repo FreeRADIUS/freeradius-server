@@ -15,6 +15,9 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	* Allow unary negation before parantheses in rlm_expr.
 	* Fix infinite loop in kevent event loop code. Issue only
 	  presented on FreeBSD.
+	* Be more careful to define Auth-Types before loading modules.
+	* Link libfreeradius-radius against OpenSSL too, to avoid
+	  multi-version symbols in SSL libraries.
 
 FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
