@@ -8,6 +8,10 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
         * Add compile time features to ${feature.*} and versions
           of core libraries to ${version.*}.  Feature and version
           names match output of radiud -xv. %v is now deprecated.
+        * Add support for PATCH method in rlm_rest.
+        * Validate more module xlats on startup, and warn if an
+          xlat expansion is found in a double quoted conf item
+          which will not be expanded.
 
 	Bug fixes
         * Fix issues parsing LDAP hostnames with non-standard ports.
