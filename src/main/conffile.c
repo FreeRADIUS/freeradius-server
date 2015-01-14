@@ -1559,9 +1559,8 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 			if ((variables[i].type & PW_TYPE_SECRET) != 0) continue;
 
 			if (strstr(cp->value, "%{") != NULL) {
-				WARN("%s[%d]: Found dynamic expansion in string which will not be dynamically expanded",
-				     cp->item.filename ? cp->item.filename : "unknown",
-				     cp->item.lineno ? cp->item.lineno : 0);
+				cf_log_err(&cp->item, "Found dynamic expansion in string which will not be dynamically expanded");
+				return -1;
 			}
 			continue;
 		}
