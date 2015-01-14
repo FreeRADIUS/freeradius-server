@@ -1,0 +1,91 @@
+#
+# PRE: update
+#
+#  Check explode works correctly
+#
+update {
+	request:Class := '1=1|my_attr=2|my_attr=hello|'
+	request:Calling-Station-ID += '|'
+	control:User-Name += '|hello|goodbye'
+	control:User-Name += '|morning|night|1|'
+	control:Reply-Message := 'Can\'t touch this'
+	reply:Filter-Id = 'filter'
+}
+
+if ("%{explode:&Class |}" != 3) {
+	update reply {
+		Filter-Id += 'Fail 0'
+	}
+}
+
+if ("%{Class[#]}" != 3) {
+	update reply {
+		Filter-Id += 'Fail 1'
+	}
+}
+
+if ((&Class[0] != '1=1') || (&Class[1] != 'my_attr=2') || (&Class[2] != 'my_attr=hello')) {
+	update reply {
+		Filter-Id += 'Fail 2'
+	}
+}
+
+if (&Class[3]) {
+	update reply {
+		Filter-Id += 'Fail 3'
+	}
+}
+
+if ("%{explode:&control:Calling-Station-Id |}" != 0) {
+	update reply {
+		filter-Id += 'Fail 4'
+	}
+}
+
+if ("%{explode:&control:User-Name[*] |}" != 5) {
+	update reply {
+		Filter-Id += 'Fail 5'
+	}
+}
+
+if ("%{control:User-Name[#]}" != 5) {
+	update reply {
+		Filter-Id += 'Fail 6'
+	}
+}
+
+if ((&control:User-Name[0] != 'hello') || \
+    (&control:User-Name[1] != 'goodbye') || \
+    (&control:User-Name[2] != 'morning') || \
+    (&control:User-Name[3] != 'night') || \
+    (&control:User-Name[4] != '1')) {
+	update reply {
+		Filter-Id += 'Fail 7'
+	}
+}
+
+if (&control:User-Name[5]) {
+	update reply {
+		Filter-Id += 'Fail 8'
+	}
+}
+
+if ("%{explode:&control:Reply-Message |}" != 0) {
+	update reply {
+		Filter-Id += 'Fail 9'
+	}
+}
+
+if ("%{control:Reply-Message[#]}" != 1) {
+	update reply {
+		Filter-Id += 'Fail 10'
+	}
+}
+
+if (&control:Reply-Message != 'Can\'t touch this') {
+	update reply {
+		Filter-Id += 'Fail 11'
+	}
+}
+
+debug_all
