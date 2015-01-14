@@ -70,7 +70,7 @@ static const CONF_PARSER section_config[] = {
 	{ "require_auth", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, require_auth), "no" },
 
 	/* Transfer configuration */
-	{ "timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_rest_section_t, timeout), "4" },
+	{ "timeout", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_rest_section_t, timeout_tv), "4.0" },
 	{ "chunk", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_rest_section_t, chunk), "0" },
 
 	/* TLS Parameters */
@@ -151,7 +151,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 		.body = HTTP_BODY_NONE,
 		.body_str = "application/x-www-form-urlencoded",
 		.require_auth = false,
-		.timeout = 4,
+		.timeout = 4000,
 		.force_to = HTTP_BODY_PLAIN
 	};
 	*out = '\0';
@@ -621,7 +621,7 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 	}
 
 	config->method = fr_str2int(http_method_table, config->method_str, HTTP_METHOD_CUSTOM);
-
+	config->timeout = ((config->timeout_tv.tv_usec * 1000) + (config->timeout_tv.tv_sec / 1000));
 	/*
 	 *  We don't have any custom user data, so we need to select the right encoder based
 	 *  on the body type.

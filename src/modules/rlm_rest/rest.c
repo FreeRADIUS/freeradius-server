@@ -1982,10 +1982,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	if (section->timeout) {
-		SET_OPTION(CURLOPT_TIMEOUT, section->timeout);
-	}
-
+	if (section->timeout) SET_OPTION(CURLOPT_TIMEOUT_MS, section->timeout);
 	SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
 
 	/*

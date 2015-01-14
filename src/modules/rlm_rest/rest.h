@@ -136,7 +136,8 @@ typedef struct rlm_rest_section_t {
 	bool			tls_check_cert;
 	bool			tls_check_cert_cn;
 
-	uint32_t		timeout;	//!< Timeout passed to CURL.
+	struct timeval		timeout_tv;	//!< Timeout timeval.
+	long			timeout;	//!< Timeout in ms.
 	uint32_t		chunk;		//!< Max chunk-size (mainly for testing the encoders)
 } rlm_rest_section_t;
 
