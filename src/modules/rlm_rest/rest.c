@@ -135,6 +135,7 @@ const FR_NAME_NUMBER http_method_table[] = {
 	{ "GET",				HTTP_METHOD_GET		},
 	{ "POST",				HTTP_METHOD_POST	},
 	{ "PUT",				HTTP_METHOD_PUT		},
+	{ "PATCH",				HTTP_METHOD_PATCH	},
 	{ "DELETE",				HTTP_METHOD_DELETE	},
 
 	{  NULL , -1 }
@@ -1958,7 +1959,6 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	CURLcode	ret = CURLE_OK;
 	char const	*option = "unknown";
 	char const	*content_type;
-	long		val = 1;
 
 	VALUE_PAIR 	*header;
 	vp_cursor_t	headers;
@@ -2019,28 +2019,30 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	REXDENT();
 
 	/*
-	 *	Configure HTTP verb (GET, POST, PUT, DELETE, other...)
+	 *	Configure HTTP verb (GET, POST, PUT, PATCH, DELETE, other...)
 	 */
 	switch (method) {
-	case HTTP_METHOD_GET :
-		SET_OPTION(CURLOPT_HTTPGET, val);
+	case HTTP_METHOD_GET:
+		SET_OPTION(CURLOPT_HTTPGET, 1L);
 		break;
 
-	case HTTP_METHOD_POST :
-		SET_OPTION(CURLOPT_POST, val);
+	case HTTP_METHOD_POST:
+		SET_OPTION(CURLOPT_POST, 1L);
 		break;
 
-	case HTTP_METHOD_PUT :
-		SET_OPTION(CURLOPT_PUT, val);
+	case HTTP_METHOD_PUT:
+		SET_OPTION(CURLOPT_PUT, 1L);
 		break;
 
-	case HTTP_METHOD_DELETE :
-		SET_OPTION(CURLOPT_HTTPGET, val);
+	case HTTP_METHOD_PATCH:
+		SET_OPTION(CURLOPT_CUSTOMREQUEST, "PATCH");
+		break;
+
+	case HTTP_METHOD_DELETE:
 		SET_OPTION(CURLOPT_CUSTOMREQUEST, "DELETE");
 		break;
 
-	case HTTP_METHOD_CUSTOM :
-		SET_OPTION(CURLOPT_HTTPGET, val);
+	case HTTP_METHOD_CUSTOM:
 		SET_OPTION(CURLOPT_CUSTOMREQUEST, section->method_str);
 		break;
 
@@ -2149,14 +2151,15 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	ctx->response.force_to = section->force_to;
 
 	switch (method) {
-	case HTTP_METHOD_GET :
-	case HTTP_METHOD_DELETE :
+	case HTTP_METHOD_GET:
+	case HTTP_METHOD_DELETE:
 		RDEBUG3("Using a HTTP method which does not require a body.  Forcing request body type to \"none\"");
 		goto finish;
 
-	case HTTP_METHOD_POST :
-	case HTTP_METHOD_PUT :
-	case HTTP_METHOD_CUSTOM :
+	case HTTP_METHOD_POST:
+	case HTTP_METHOD_PUT:
+	case HTTP_METHOD_PATCH:
+	case HTTP_METHOD_CUSTOM:
 		if (section->chunk > 0) {
 			ctx->request.chunk = section->chunk;
 
