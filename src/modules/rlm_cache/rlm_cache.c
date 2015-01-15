@@ -688,7 +688,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	INFO("rlm_cahe (%s): Driver %s (module %s) loaded and linked", inst->xlat_name,
+	INFO("rlm_cache (%s): Driver %s (module %s) loaded and linked", inst->xlat_name,
 	     inst->driver_name, inst->module->name);
 
 	/*
