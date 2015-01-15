@@ -5,7 +5,7 @@
 TARGET      = @targetname@
 SRCS        = rlm_ippool.c
 HEADERS     =
-RLM_UTILS   = @ippool_utils@
+RLM_UTILS   = $(addsuffix $(EXEEXT),@ippool_utils@)
 RLM_CFLAGS  = @ippool_cflags@
 RLM_LIBS    = @ippool_ldflags@
 RLM_INSTALL = @ippool_install@
