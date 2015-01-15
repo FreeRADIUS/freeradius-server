@@ -399,7 +399,7 @@ static int sql_num_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *conf
  *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if database is down.
  *
  *************************************************************************/
-static sql_rcode_t sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 	sql_rcode_t rcode;
@@ -494,7 +494,7 @@ static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
  *	whether more results exist and process them in turn if so.
  *
  *************************************************************************/
-static sql_rcode_t sql_finish_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
 {
 #if (MYSQL_VERSION_ID >= 40100)
 	rlm_sql_mysql_conn_t *conn = handle->conn;
