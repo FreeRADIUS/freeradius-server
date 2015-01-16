@@ -26,6 +26,17 @@ dnl #
 			security/pam_appl.h \
 			pam/pam_appl.h \
 			)
+
+	AC_CHECK_HEADERS(security/pam_modules.h pam/pam_modules.h, [], [],
+	[
+	    #ifdef HAVE_SECURITY_PAM_APPL_H
+	    #  include <security/pam_appl.h>
+	    #endif
+	    #ifdef HAVE_PAM_PAM_APPL_H
+	    #  include <pam/pam_appl.h>
+	    #endif
+	]
+	)
 	mod_cflags="-I."
 
 	targetname=modname

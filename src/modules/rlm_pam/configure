@@ -3306,6 +3306,29 @@ fi
 
 done
 
+
+	for ac_header in security/pam_modules.h pam/pam_modules.h
+do :
+  as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
+ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "
+	    #ifdef HAVE_SECURITY_PAM_APPL_H
+	    #  include <security/pam_appl.h>
+	    #endif
+	    #ifdef HAVE_PAM_PAM_APPL_H
+	    #  include <pam/pam_appl.h>
+	    #endif
+
+
+"
+if eval test \"x\$"$as_ac_Header"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_header" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+
+done
+
 	mod_cflags="-I."
 
 	targetname=rlm_pam
