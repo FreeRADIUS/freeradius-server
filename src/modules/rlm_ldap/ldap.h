@@ -147,10 +147,10 @@ typedef struct ldap_instance {
 	char const	*cache_attribute;		//!< Sets the attribute we use when creating and retrieving
 							//!< cached group memberships.
 
-	DICT_ATTR const	*cache_da;			//!< The DA associated with this specific version of the
+	DICT_ATTR const	*cache_da;			//!< The DA associated with this specific instance of the
 							//!< rlm_ldap module.
 
-	DICT_ATTR const	*group_da;			//!< The DA associated with this specific version of the
+	DICT_ATTR const	*group_da;			//!< The DA associated with this specific instance of the
 							//!< rlm_ldap module.
 
 	/*
@@ -381,8 +381,8 @@ void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded);
 
 int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_map_xlat_t *expanded);
 
-void rlm_ldap_map_do(ldap_instance_t const *inst, REQUEST *request, LDAP *handle,
-		     rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry);
+int rlm_ldap_map_do(ldap_instance_t const *inst, REQUEST *request, LDAP *handle,
+		    rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry);
 
 rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 				 char const *profile, rlm_ldap_map_xlat_t const *expanded);

@@ -334,12 +334,20 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
  * list they need to go into.
  *
  * This is *NOT* atomic, but there's no condition for which we should error out...
+ *
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] request Current request.
+ * @param[in] handle associated with entry.
+ * @param[in] expanded attributes (rhs of map).
+ * @param[in] entry to retrieve attributes from.
+ * @return number of maps successfully applied, or -1 on error.
  */
-void rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
-		     rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry)
+int rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
+		    rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry)
 {
 	value_pair_map_t const 	*map;
 	unsigned int		total = 0;
+	int			applied = 0;	/* How many maps have been applied to the current request */
 
 	rlm_ldap_result_t	result;
 	char const		*name;
@@ -372,7 +380,12 @@ void rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle
 		 *	request context
 		 */
 		ret = map_to_request(request, map, rlm_ldap_map_getvalue, &result);
-		if (ret == -1) return;	/* Fail */
+		if (ret == -1) return -1;	/* Fail */
+
+		/*
+		 *	How many maps we've processed
+		 */
+		applied++;
 
 	next:
 		ldap_value_free_len(result.values);
@@ -415,6 +428,8 @@ void rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle
 			}
 			if (map_to_request(request, attr, map_to_vp, NULL) < 0) {
 				RWDEBUG("Failed adding \"%s\" to request, skipping...", value);
+			} else {
+				applied++;
 			}
 			talloc_free(value);
 			talloc_free(attr);
@@ -423,6 +438,8 @@ void rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle
 		talloc_free(value_pool);
 		ldap_value_free_len(values);
 	}
+
+	return applied;
 }
 
 /** Search for and apply an LDAP profile
@@ -462,6 +479,7 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 	case LDAP_PROC_SUCCESS:
 		break;
 
+	case LDAP_PROC_BAD_DN:
 	case LDAP_PROC_NO_RESULT:
 		RDEBUG("Profile object \"%s\" not found", dn);
 		return RLM_MODULE_NOTFOUND;
@@ -485,7 +503,7 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 
 	RDEBUG("Processing profile attributes");
 	RINDENT();
-	rlm_ldap_map_do(inst, request, handle, expanded, entry);
+	if (rlm_ldap_map_do(inst, request, handle, expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 	REXDENT();
 
 free_result:
