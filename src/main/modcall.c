@@ -2476,8 +2476,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *	first or second name of the sub-section of "modules".
 	 *
 	 *	Or, the name can refer to a policy, in the "policy"
-	 *	section.  In that case, the name will be first of the
-	 *	sub-section of "policy".
+	 *	section.  In that case, the name will be first name of
+	 *	the sub-section of "policy".  Unless it's a "redudant"
+	 *	block...
 	 *
 	 *	Or, the name can refer to a "module.method", in which
 	 *	case we're calling a different method than normal for
@@ -2485,7 +2486,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *
 	 *	Or, the name can refer to a virtual module, in the
 	 *	"instantiate" section.  In that case, the name will be
-	 *	the first of the sub-section of "instantiate".
+	 *	the first of the sub-section of "instantiate".  Unless
+	 *	it's a "redudant" block...
 	 *
 	 *	We try these in sequence, from the bottom up.  This is
 	 *	so that things in "instantiate" and "policy" can
@@ -2497,8 +2499,14 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *	Try:
 	 *
 	 *	instantiate { ... name { ...} ... }
+	 *	instantiate { ... name.method { ...} ... }
 	 *	policy { ... name { .. } .. }
 	 *	policy { ... name.method { .. } .. }
+	 *
+	 *	The "instantiate" virtual modules are identical to the
+	 *	policies at this point.  We should probably get rid of
+	 *	the "instantiate" ones, as they're duplicate and
+	 *	confusing.
 	 */
 	subcs = NULL;
 	cs = cf_section_find("instantiate");
@@ -2540,7 +2548,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *	We've found the relevant entry.  It MUST be a
 	 *	sub-section.
 	 *
-	 *	However, it can be a "redundant" block, or just
+	 *	However, it can be a "redundant" block, or just a
+	 *	section name.
 	 */
 	if (subcs) {
 		/*
