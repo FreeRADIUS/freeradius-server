@@ -2423,6 +2423,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (strcmp(modrefname, "break") == 0) {
 		if (!cf_item_is_pair(ci)) {
 			cf_log_err(ci, "Invalid use of 'break' as section name.");
+			return NULL;
 		}
 
 		return do_compile_modbreak(parent, component, ci);
@@ -2431,6 +2432,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (strcmp(modrefname, "return") == 0) {
 		if (!cf_item_is_pair(ci)) {
 			cf_log_err(ci, "Invalid use of 'return' as section name.");
+			return NULL;
 		}
 
 		return do_compile_modgroup(parent, component, NULL,
