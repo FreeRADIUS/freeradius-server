@@ -1280,7 +1280,22 @@ skip_edir:
 			goto finish;
 		}
 
-		rlm_ldap_map_profile(inst, request, &conn, profile, &expanded);
+		switch (rlm_ldap_map_profile(inst, request, &conn, profile, &expanded)) {
+		case RLM_MODULE_INVALID:
+			rcode = RLM_MODULE_INVALID;
+			goto finish;
+
+		case RLM_MODULE_FAIL:
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case RLM_MODULE_UPDATED:
+			rcode = RLM_MODULE_UPDATED;
+			goto finish;
+
+		default:
+			break;
+		}
 	}
 
 	/*
@@ -1303,7 +1318,7 @@ skip_edir:
 	if (inst->user_map || inst->valuepair_attr) {
 		RDEBUG("Processing user attributes");
 		RINDENT();
-		rlm_ldap_map_do(inst, request, conn->handle, &expanded, entry);
+		if (rlm_ldap_map_do(inst, request, conn->handle, &expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
 		REXDENT();
 		rlm_ldap_check_reply(inst, request);
 	}
