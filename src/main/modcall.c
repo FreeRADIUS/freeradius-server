@@ -2240,12 +2240,14 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 					 int grouptype,
 					 char const **modname)
 {
-	char const *modrefname;
+	char const *modrefname, *p;
 	modsingle *single;
 	modcallable *csingle;
 	module_instance_t *this;
 	CONF_SECTION *cs, *subcs, *modules;
+	CONF_SECTION *loop;
 	char const *realname;
+	rlm_components_t method = component;
 
 	if (cf_item_is_section(ci)) {
 		char const *name2;
@@ -2390,7 +2392,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 *	codes.
 		 */
 	} else {
-		CONF_SECTION *loop;
 		CONF_PAIR *cp = cf_item_to_pair(ci);
 		modrefname = cf_pair_attr(cp);
 
@@ -2403,85 +2404,199 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			return NULL;
 		}
 
+		/*
+		 *	In-place xlat's via %{...}.
+		 *
+		 *	This should really be removed from the server.
+		 */
 		if (((modrefname[0] == '%') && (modrefname[1] == '{')) ||
 		    (modrefname[0] == '`')) {
 			return do_compile_modxlat(parent, component,
 						  modrefname);
 		}
-
-		/*
-		 *	See if the module is a virtual one.  If so,
-		 *	return that, rather than doing anything here.
-		 */
-		subcs = NULL;
-		cs = cf_section_find("instantiate");
-		if (cs) subcs = cf_section_sub_find_name2(cs, NULL,
-							  modrefname);
-		if (!subcs &&
-		    (cs = cf_section_find("policy")) != NULL) {
-			char buffer[256];
-
-			snprintf(buffer, sizeof(buffer), "%s.%s",
-				 modrefname, comp2str[component]);
-
-			/*
-			 *	Prefer name.section, then name.
-			 */
-			subcs = cf_section_sub_find_name2(cs, NULL,
-							  buffer);
-			if (!subcs) {
-				subcs = cf_section_sub_find_name2(cs, NULL,
-								  modrefname);
-			}
-		}
-
-		/*
-		 *	Allow policies to over-ride module names.
-		 *	i.e. the "sql" policy can do some extra things,
-		 *	and then call the "sql" module.
-		 */
-		for (loop = cf_item_parent(ci);
-		     loop && subcs;
-		     loop = cf_item_parent(cf_section_to_item(loop))) {
-			if (loop == subcs) {
-				subcs = NULL;
-			}
-		}
-
-		if (subcs) {
-			/*
-			 *	redundant foo {} is a single.
-			 */
-			if (cf_section_name2(subcs)) {
-				return do_compile_modsingle(parent,
-							    component,
-							    cf_section_to_item(subcs),
-							    grouptype,
-							    modname);
-			} else {
-				/*
-				 *	foo {} is a group.
-				 */
-				return do_compile_modgroup(parent,
-							   component,
-							   subcs,
-							   GROUPTYPE_SIMPLE,
-							   grouptype, MOD_GROUP);
-			}
-		}
 	}
 
 #ifdef WITH_UNLANG
+	/*
+	 *	These can't be over-ridden.
+	 */
 	if (strcmp(modrefname, "break") == 0) {
+		if (!cf_item_is_pair(ci)) {
+			cf_log_err(ci, "Invalid use of 'break' as section name.");
+		}
+
 		return do_compile_modbreak(parent, component, ci);
 	}
 
 	if (strcmp(modrefname, "return") == 0) {
+		if (!cf_item_is_pair(ci)) {
+			cf_log_err(ci, "Invalid use of 'return' as section name.");
+		}
+
 		return do_compile_modgroup(parent, component, NULL,
 					   GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE,
 					   MOD_RETURN);
 	}
 #endif
+
+	/*
+	 *	Run a virtual server.  This is really terrible and
+	 *	should be deleted.
+	 */
+	if (strncmp(modrefname, "server[", 7) == 0) {
+		char buffer[256];
+
+		if (!cf_item_is_pair(ci)) {
+			cf_log_err(ci, "Invalid syntax");
+			return NULL;
+		}
+
+		strlcpy(buffer, modrefname + 7, sizeof(buffer));
+		p = strrchr(buffer, ']');
+		if (!p || p[1] != '\0' || (p == buffer)) {
+			cf_log_err(ci, "Invalid server reference in \"%s\".", modrefname);
+			return NULL;
+		}
+
+		buffer[p - buffer] = '\0';
+
+		cs = cf_section_sub_find_name2(NULL, "server", buffer);
+		if (!cs) {
+			cf_log_err(ci, "No such server \"%s\".", buffer);
+			return NULL;
+		}
+
+		/*
+		 *	Ignore stupid attempts to over-ride the return
+		 *	code.
+		 */
+		return do_compile_modserver(parent, component, ci,
+					    modrefname, cs, buffer);
+	}
+
+	/*
+	 *	We now have a name.  It can be one of two forms.  A
+	 *	bare module name, or a section named for the module,
+	 *	with over-rides for the return codes.
+	 *
+	 *	The name can refer to a real module, in the "modules"
+	 *	section.  In that case, the name will be either the
+	 *	first or second name of the sub-section of "modules".
+	 *
+	 *	Or, the name can refer to a policy, in the "policy"
+	 *	section.  In that case, the name will be first of the
+	 *	sub-section of "policy".
+	 *
+	 *	Or, the name can refer to a "module.method", in which
+	 *	case we're calling a different method than normal for
+	 *	this section.
+	 *
+	 *	Or, the name can refer to a virtual module, in the
+	 *	"instantiate" section.  In that case, the name will be
+	 *	the first of the sub-section of "instantiate".
+	 *
+	 *	We try these in sequence, from the bottom up.  This is
+	 *	so that things in "instantiate" and "policy" can
+	 *	over-ride calls to real modules.
+	 */
+
+
+	/*
+	 *	Try:
+	 *
+	 *	instantiate { ... name { ...} ... }
+	 *	policy { ... name { .. } .. }
+	 *	policy { ... name.method { .. } .. }
+	 */
+	subcs = NULL;
+	cs = cf_section_find("instantiate");
+	if (cs) subcs = cf_section_sub_find_name2(cs, NULL,
+						  modrefname);
+	if (!subcs &&
+	    (cs = cf_section_find("policy")) != NULL) {
+		char buffer[256];
+
+		snprintf(buffer, sizeof(buffer), "%s.%s",
+			 modrefname, comp2str[component]);
+
+		/*
+		 *	Prefer name.section, then name.
+		 */
+		subcs = cf_section_sub_find_name2(cs, NULL,
+							  buffer);
+		if (!subcs) {
+			subcs = cf_section_sub_find_name2(cs, NULL,
+							  modrefname);
+		}
+	}
+
+	/*
+	 *	Check that we're not creating a loop.  We may
+	 *	be compiling an "sql" module reference inside
+	 *	of an "sql" policy.  If so, we allow the
+	 *	second "sql" to refer to the module.
+	 */
+	for (loop = cf_item_parent(ci);
+	     loop && subcs;
+	     loop = cf_item_parent(cf_section_to_item(loop))) {
+		if (loop == subcs) {
+			subcs = NULL;
+		}
+	}
+
+	/*
+	 *	We've found the relevant entry.  It MUST be a
+	 *	sub-section.
+	 *
+	 *	However, it can be a "redundant" block, or just
+	 */
+	if (subcs) {
+		/*
+		 *	modules.c takes care of ensuring that this is:
+		 *
+		 *	group foo { ...
+		 *	load-balance foo { ...
+		 *	redundant foo { ...
+		 *	redundant-load-balance foo { ...
+		 *
+		 *	We can just recurs to compile the section as
+		 *	if it was found here.
+		 */
+		if (cf_section_name2(subcs)) {
+			csingle = do_compile_modsingle(parent,
+						       component,
+						       cf_section_to_item(subcs),
+						       grouptype,
+						       modname);
+		} else {
+			/*
+			 *	We have:
+			 *
+			 *	foo { ...
+			 *
+			 *	So we compile it like it was:
+			 *
+			 *	group foo { ...
+			 */
+			csingle = do_compile_modgroup(parent,
+						      component,
+						      subcs,
+						      GROUPTYPE_SIMPLE,
+						      grouptype, MOD_GROUP);
+		}
+
+		/*
+		 *	Return the compiled thing if we can.
+		 */
+		if (!csingle) return NULL;
+		if (cf_item_is_pair(ci)) return csingle;
+
+		/*
+		 *	Else we have a reference to a policy, and that reference
+		 *	over-rides the return codes for the policy!
+		 */
+		goto action_override;
+	}
 
 	/*
 	 *	Not a virtual module.  It must be a real module.
@@ -2497,12 +2612,19 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		if (realname[0] == '-') realname++;
 
 		/*
-		 *	As of v3, only known modules are in the
-		 *	"modules" section.
+		 *	As of v3, the "modules" section contains
+		 *	modules we use.  Configuration for other
+		 *	modules belongs in raddb/mods-available/,
+		 *	which isn't loaded into the "modules" section.
 		 */
 		if (cf_section_sub_find_name2(modules, NULL, realname)) {
 			this = find_module_instance(modules, realname, true);
-			if (!this && (realname != modrefname)) {
+			if (this) goto allocate_csingle;
+
+			/*
+			 *
+			 */
+			if (realname != modrefname) {
 				return NULL;
 			}
 
@@ -2518,70 +2640,69 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		}
 	}
 
-	if (!this) do {
-		int i;
-		char *p;
+	/*
+	 *	No module found by that name.  Maybe we're calling
+	 *	module.method
+	 */
+	p = strrchr(modrefname, '.');
+	if (p) {
+		rlm_components_t i;
+		p++;
 
 		/*
-		 *	Maybe it's module.method
+		 *	Find the component.
 		 */
-		p = strrchr(modrefname, '.');
-		if (p) for (i = RLM_COMPONENT_AUTH;
-			    i < RLM_COMPONENT_COUNT;
-			    i++) {
-			if (strcmp(p + 1, comp2str[i]) == 0) {
+		for (i = RLM_COMPONENT_AUTH;
+		     i < RLM_COMPONENT_COUNT;
+		     i++) {
+			if (strcmp(p, comp2str[i]) == 0) {
 				char buffer[256];
 
 				strlcpy(buffer, modrefname, sizeof(buffer));
-				buffer[p - modrefname] = '\0';
+				buffer[p - modrefname - 1] = '\0';
 				component = i;
 
 				this = find_module_instance(modules, buffer, true);
-				if (this && !this->entry->module->methods[i]) {
-					*modname = NULL;
-					cf_log_err(ci, "Module %s has no such method %s", buffer, comp2str[i]);
-					return NULL;
+				if (this) {
+					method = i;
+					goto allocate_csingle;
 				}
-				break;
 			}
 		}
-		if (this) break;
 
 		/*
-		 *	Call a server.  This should really be deleted...
+		 *	FIXME: check for "module", and give error "no
+		 *	such component" when we don't find the method.
 		 */
-		if (strncmp(modrefname, "server[", 7) == 0) {
-			char buffer[256];
+	}
 
-			strlcpy(buffer, modrefname + 7, sizeof(buffer));
-			p = strrchr(buffer, ']');
-			if (!p || p[1] != '\0' || (p == buffer)) {
-				cf_log_err(ci, "Invalid server reference in \"%s\".", modrefname);
-				return NULL;
-			}
-			*p = '\0';
-
-			cs = cf_section_sub_find_name2(NULL, "server", buffer);
-			if (!cs) {
-				cf_log_err(ci, "No such server \"%s\".", buffer);
-				return NULL;
-			}
-
-			return do_compile_modserver(parent, component, ci,
-						    modrefname, cs, buffer);
-		}
-
-		*modname = NULL;
-		cf_log_err(ci, "Failed to find \"%s\" in the \"modules\" section.", modrefname);
-		cf_log_err(ci, "Please verify that the configuration exists in the file %s/mods-enabled/%s.", get_radius_dir(), modrefname);
-		return NULL;
-	} while (0);
+	/*
+	 *	Can't de-reference it to anything.  Ugh.
+	 */
+	*modname = NULL;
+	cf_log_err(ci, "Failed to find \"%s\" as a module or policy.", modrefname);
+	cf_log_err(ci, "Please verify that the configuration exists in %s/mods-enabled/%s.", get_radius_dir(), modrefname);
+	return NULL;
 
 	/*
 	 *	We know it's all OK, allocate the structures, and fill
 	 *	them in.
 	 */
+allocate_csingle:
+	/*
+	 *	Check if the module in question has the necessary
+	 *	component.
+	 */
+	if (!this->entry->module->methods[method]) {
+		cf_log_err(ci, "\"%s\" modules aren't allowed in '%s' sections -- they have no such method.", this->entry->module->name,
+			   comp2str[method]);
+		return NULL;
+	}
+
 	single = talloc_zero(parent, modsingle);
+	single->modinst = this;
+	*modname = this->entry->module->name;
+
 	csingle = mod_singletocallable(single);
 	csingle->parent = parent;
 	csingle->next = NULL;
@@ -2595,13 +2716,11 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	rad_assert(modrefname != NULL);
 	csingle->name = realname;
 	csingle->type = MOD_SINGLE;
-	csingle->method = component;
+	csingle->method = method;
 
+action_override:
 	/*
-	 *	Singles can override the actions, virtual modules cannot.
-	 *
-	 *	FIXME: We may want to re-visit how to do this...
-	 *	maybe a csingle as a ref?
+	 *	Over-ride the default return codes of the module.
 	 */
 	if (cf_item_is_section(ci)) {
 		CONF_ITEM *csi;
@@ -2626,19 +2745,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		}
 	}
 
-	/*
-	 *	Bail out if the module in question does not supply the
-	 *	wanted component
-	 */
-	if (!this->entry->module->methods[component]) {
-		cf_log_err(ci, "\"%s\" modules aren't allowed in '%s' sections -- they have no such method.", this->entry->module->name,
-		       comp2str[component]);
-		talloc_free(csingle);
-		return NULL;
-	}
-
-	single->modinst = this;
-	*modname = this->entry->module->name;
 	return csingle;
 }
 
