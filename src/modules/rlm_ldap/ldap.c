@@ -538,7 +538,7 @@ process_error:
 		break;
 
 	case LDAP_NO_SUCH_OBJECT:
-		*error = "The specified DN wasn't found, check base_dn and identity";
+		*error = "The specified DN wasn't found";
 		status = LDAP_PROC_BAD_DN;
 
 		if (!extra) break;
@@ -853,6 +853,17 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 		case LDAP_PROC_SUCCESS:
 			break;
 
+		/*
+		 *	Invalid DN isn't a failure when searching.
+		 *	The DN may be xlat expanded so may point directly
+		 *	to an LDAP object. If that can't be located, it's
+		 *	the same as notfound.
+		 */
+		case LDAP_PROC_BAD_DN:
+			LDAP_DBG_REQ("%s", error);
+			if (extra) LDAP_DBG_REQ("%s", extra);
+			break;
+
 		case LDAP_PROC_RETRY:
 			*pconn = fr_connection_reconnect(inst->pool, *pconn);
 			if (*pconn) {
@@ -1101,6 +1112,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	case LDAP_PROC_SUCCESS:
 		break;
 
+	case LDAP_PROC_BAD_DN:
 	case LDAP_PROC_NO_RESULT:
 		*rcode = RLM_MODULE_NOTFOUND;
 		return NULL;
