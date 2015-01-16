@@ -108,6 +108,14 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_config_t *driver;
 
+	static bool version_done = false;
+
+	if (!version_done) {
+		version_done = true;
+
+		INFO("rlm_sql_mysql: libmysql version: %s", mysql_get_client_info());
+	}
+
 	if (mysql_instance_count == 0) {
 		if (mysql_library_init(0, NULL, NULL)) {
 			ERROR("Could not initialise MySQL library");
@@ -203,6 +211,10 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		conn->sock = NULL;
 		return RLM_SQL_ERROR;
 	}
+
+	DEBUG2("rlm_sql_mysql: Connected to database '%s' on %s, server version %s, protocol version %i",
+	       config->sql_db, mysql_get_host_info(conn->sock),
+	       mysql_get_server_info(conn->sock), mysql_get_proto_info(conn->sock));
 
 	return RLM_SQL_OK;
 }
