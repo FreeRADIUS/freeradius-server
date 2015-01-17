@@ -18,17 +18,17 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
           into json documents.
         * Add %{ldapquote:<str>} xlat to escape strings for insertion
           into json documents.
-        * Add %{explode:&ref <char>}, splits value of &ref on 
+        * Add %{explode:&ref <char>}, splits value of &ref on
           <char> and creates new &ref type attributes with the
           fragments.
         * Allow rlm_ldap to use attribute references for base_dn and
           filter config items. The attribute references are not
           escaped, allowing DNs and filters to be created dynamically.
         * Add %{nexttime:[<int>]h|d|w|y} to calculate the number of
-          seconds before the next <int> hour(s), day(s), week(s), 
+          seconds before the next <int> hour(s), day(s), week(s),
           or year(s).
         * Allow the left side of update sections to be xlat expansions.
-          The result of the expansion is then used to reference the 
+          The result of the expansion is then used to reference the
           attribute to be modified.
 
 	Bug fixes
@@ -50,7 +50,7 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	  inform the user that permissions need to be changed on
 	  parent directory. Unix socket permissions are a Linux
           extension.
-         
+
 FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
 	* radmin / raddebug conditional errors are printed
