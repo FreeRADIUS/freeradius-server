@@ -1078,7 +1078,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute, secret, input, cant_be_empty;
+	bool deprecated, required, attribute, secret, input, cant_be_empty, tmpl, xlat;
 	char **q;
 	char const *value;
 	CONF_PAIR const *cp = NULL;
@@ -1093,6 +1093,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 	secret = (type & PW_TYPE_SECRET);
 	input = (type == PW_TYPE_FILE_INPUT);	/* check, not and */
 	cant_be_empty = (type & PW_TYPE_NOT_EMPTY);
+	tmpl = (type & PW_TYPE_TMPL);
+	xlat = (type & PW_TYPE_XLAT);
 
 	if (attribute) required = true;
 	if (required) cant_be_empty = true;	/* May want to review this in the future... */
@@ -1137,6 +1139,95 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 		cf_log_err(&(cs->item), "Configuration item \"%s\" is deprecated", name);
 
 		return -2;
+	}
+
+	/*
+	 *
+	 */
+	if (tmpl) {
+		ssize_t slen;
+		value_pair_tmpl_t *vpt;
+
+		if (!value || (cf_pair_value_type(cp) == T_INVALID)) {
+			*(value_pair_tmpl_t **)data = NULL;
+			return 0;
+		}
+
+		slen = tmpl_afrom_str(cs, &vpt, value, strlen(value),
+				      cf_pair_value_type(cp), REQUEST_CURRENT, PAIR_LIST_REQUEST);
+		if (slen < 0) {
+			char *spaces, *text;
+
+			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
+
+			cf_log_err_cs(cs, "Failed parsing configuration item '%s'", name);
+			cf_log_err_cs(cs, "%s", value);
+			cf_log_err_cs(cs, "%s^ %s", spaces, text);
+
+			talloc_free(spaces);
+			talloc_free(text);
+
+			return -1;
+		}
+
+		/*
+		 *	Sanity check
+		 *
+		 *	Don't add default - update with new types.
+		 */
+		switch (vpt->type) {
+		case TMPL_TYPE_LITERAL:
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_ATTR_UNDEFINED:
+		case TMPL_TYPE_LIST:
+		case TMPL_TYPE_DATA:
+		case TMPL_TYPE_EXEC:
+		case TMPL_TYPE_XLAT:
+		case TMPL_TYPE_XLAT_STRUCT:
+			break;
+
+		case TMPL_TYPE_UNKNOWN:
+		case TMPL_TYPE_REGEX:
+		case TMPL_TYPE_REGEX_STRUCT:
+		case TMPL_TYPE_NULL:
+			rad_assert(0);
+		}
+
+		/*
+		 *	If the attribute flag is set, the template must be an
+		 *	attribute reference.
+		 */
+		if (attribute && (vpt->type != TMPL_TYPE_ATTR)) {
+			cf_log_err(&(cs->item), "Configuration item '%s' must be an attr "
+				   "but is an %s", name, fr_int2str(tmpl_names, vpt->type, "<INVALID>"));
+			talloc_free(vpt);
+			return -1;
+		}
+
+		/*
+		 *	If the xlat flag is set, the template must be an xlat
+		 */
+		if (xlat && (vpt->type != TMPL_TYPE_XLAT_STRUCT)) {
+			cf_log_err(&(cs->item), "Configuration item '%s' must be an xlat expansion but is an %s",
+				   name, fr_int2str(tmpl_names, vpt->type, "<INVALID>"));
+			talloc_free(vpt);
+			return -1;
+		}
+
+		/*
+		 *	If we have a type, and the template is an attribute reference
+		 *	check that the attribute reference matches the type.
+		 */
+		if ((type > 0) && (vpt->type == TMPL_TYPE_ATTR) && (vpt->tmpl_da->type != type)) {
+			cf_log_err(&(cs->item), "Configuration item '%s' attr must be an %s, but is an %s",
+				   name, fr_int2str(dict_attr_types, type, "<INVALID>"),
+				   fr_int2str(dict_attr_types, vpt->tmpl_da->type, "<INVALID>"));
+			talloc_free(vpt);
+			return -1;
+		}
+		*(value_pair_tmpl_t **)data = vpt;
+
+		return 0;
 	}
 
 	switch (type) {
@@ -1551,7 +1642,8 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 		/*
 		 *	Non-xlat expansions shouldn't have xlat!
 		 */
-		if ((variables[i].type & PW_TYPE_XLAT) == 0) {
+		if (((variables[i].type & PW_TYPE_XLAT) == 0) &&
+		    ((variables[i].type & PW_TYPE_TMPL) == 0)) {
 			/*
 			 *	Ignore %{... in shared secrets.
 			 *	They're never dynamically expanded.
