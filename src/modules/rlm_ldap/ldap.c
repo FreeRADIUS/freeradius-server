@@ -825,10 +825,10 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 	}
 
 	if (filter) {
-		LDAP_DBG_REQ("Performing search in '%s' with filter '%s', scope '%s'", dn, filter,
+		LDAP_DBG_REQ("Performing search in \"%s\" with filter \"%s\", scope \"%s\"", dn, filter,
 			     fr_int2str(ldap_scope, scope, "<INVALID>"));
 	} else {
-		LDAP_DBG_REQ("Performing unfiltered search in '%s', scope '%s'", dn,
+		LDAP_DBG_REQ("Performing unfiltered search in \"%s\", scope \"%s\"", dn,
 			     fr_int2str(ldap_scope, scope, "<INVALID>"));
 	}
 	/*
@@ -1089,7 +1089,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	}
 
 	if (inst->userobj_filter) {
-		if (radius_xlat(filter, sizeof(filter), request, inst->userobj_filter,
+		if (tmpl_expand(filter, sizeof(filter), request, inst->userobj_filter,
 				rlm_ldap_escape_func, NULL) < 0) {
 			REDEBUG("Unable to create filter");
 			*rcode = RLM_MODULE_INVALID;
@@ -1100,7 +1100,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 		filter_p = filter;
 	}
 
-	if (radius_xlat(base_dn, sizeof(base_dn), request, inst->userobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
+	if (tmpl_expand(base_dn, sizeof(base_dn), request, inst->userobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Unable to create base_dn");
 		*rcode = RLM_MODULE_INVALID;
 
