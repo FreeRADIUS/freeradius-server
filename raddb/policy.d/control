@@ -6,17 +6,35 @@ do_not_respond {
 	update control {
 		&Response-Packet-Type := Do-Not-Respond
 	}
-
 	handled
 }
 
 #
-#  Have the server accept the current request.
-#  Can only be called from authorize.
-#  Unlike calling the always module instance 'reject' the request will continue to be processed.
+#  Send Access-Accept immediately
 #
-accept.authorize {
+accept {
 	update control {
-		&Auth-Type := accept
+		&Response-Packet-Type = Access-Accept
 	}
+	handled
+}
+
+#
+#  Send Access-Challenge immediately
+#
+challenge {
+	update control {
+		&Response-Packet-Type = Access-Challenge
+	}
+	handled
+}
+
+#
+#  Send an Accounting-Response immediately
+#
+acct_response {
+	update control {
+		&Response-Packet-Type = Accounting-Response
+	}
+	handled
 }
