@@ -42,52 +42,54 @@ typedef struct timeval _timeval_t;
  * matches the type of the configuration item.
  */
 #  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
-	__builtin_choose_expr((_t == PW_TYPE_STRING),\
+	__builtin_choose_expr((_t & PW_TYPE_TMPL),\
+		__builtin_choose_expr(__builtin_types_compatible_p(value_pair_tmpl_t **, _ct), _p, (conf_type_mismatch) 0),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_STRING),\
 		__builtin_choose_expr(__builtin_types_compatible_p(char const **, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_BOOLEAN),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_BOOLEAN),\
 		__builtin_choose_expr(__builtin_types_compatible_p(bool *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_SUBSECTION),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_SUBSECTION),\
 		NULL,\
-	__builtin_choose_expr((_t == PW_TYPE_INTEGER),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_INTEGER),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IPV4_ADDR),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_IPV4_ADDR),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_DATE),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_DATE),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_ABINARY),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_ABINARY),\
 		__builtin_choose_expr(__builtin_types_compatible_p(size_t[32/sizeof(size_t)], _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_OCTETS),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_OCTETS),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IFID),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_IFID),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[8], _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IPV6_ADDR),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_IPV6_ADDR),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IPV6_PREFIX),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_IPV6_PREFIX),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_BYTE),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_BYTE),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_SHORT),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_SHORT),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint16_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_ETHERNET),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_ETHERNET),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint8_t[6], _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_SIGNED),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_SIGNED),\
 		__builtin_choose_expr(__builtin_types_compatible_p(int32_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_COMBO_IP_ADDR),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_COMBO_IP_ADDR),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_INTEGER64),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_INTEGER64),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint64_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_IPV4_PREFIX),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_IPV4_PREFIX),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_TIMEVAL),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_TIMEVAL),\
 		__builtin_choose_expr(__builtin_types_compatible_p(_timeval_t *, _ct), _p, (conf_type_mismatch) 0),\
-	__builtin_choose_expr((_t == PW_TYPE_COMBO_IP_PREFIX),\
+	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_COMBO_IP_PREFIX),\
 		__builtin_choose_expr(__builtin_types_compatible_p(fr_ipaddr_t *, _ct), _p, (conf_type_mismatch) 0),\
 		(conf_type_invalid) 0\
-	))))))))))))))))))))
+	)))))))))))))))))))))
 
-#  define FR_CONF_OFFSET(_t, _s, _f)	_t, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f)), NULL
-#  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(_p), _p)
-#  define FR_ITEM_POINTER(_t, _p)	_t, FR_CONF_TYPE_CHECK(((_t) & 0xff), __typeof__(_p), _p)
+#  define FR_CONF_OFFSET(_t, _s, _f)	_t, FR_CONF_TYPE_CHECK((_t), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f)), NULL
+#  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
+#  define FR_ITEM_POINTER(_t, _p)	_t, FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
 #else
 #  define FR_CONF_OFFSET(_t, _s, _f)	_t, offsetof(_s, _f), NULL
 #  define FR_CONF_POINTER(_t, _p)	_t, 0, _p
@@ -120,9 +122,10 @@ typedef struct timeval _timeval_t;
 #define PW_TYPE_FILE_OUTPUT	((1 << 15) | PW_TYPE_STRING)
 
 #define PW_TYPE_XLAT		(1 << 16)	//!< string will be dynamically expanded.
-#define PW_TYPE_MULTI		(1 << 17)	//!< CONF_PAIR can have multiple copies.
+#define PW_TYPE_TMPL		(1 << 17)	//!< CONF_PAIR should be parsed as a template.
 
-#define PW_TYPE_NOT_EMPTY	(1 << 18)	//!< CONF_PAIR is required to have a non zero length value.
+#define PW_TYPE_MULTI		(1 << 18)	//!< CONF_PAIR can have multiple copies.
+#define PW_TYPE_NOT_EMPTY	(1 << 19)	//!< CONF_PAIR is required to have a non zero length value.
 
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
 do {\

@@ -1471,6 +1471,120 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	return 0;
 }
 
+/** Expand a template to a string, writing the result
+ *
+ * @param out Expansion buffer.
+ * @param outlen Length of expansion buffer.
+ * @param request Current request.
+ * @param vpt to evaluate.
+ * @param escape xlat escape function (only used for xlat types).
+ * @param escape_ctx xlat escape function data.
+ * @return -1 on error, else 0.
+ */
+ssize_t tmpl_expand(char *out, size_t outlen, REQUEST *request, value_pair_tmpl_t const *vpt,
+		    RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+{
+	VALUE_PAIR *vp;
+	ssize_t slen = -1;	/* quiet compiler */
+
+	rad_assert(vpt->type != TMPL_TYPE_LIST);
+
+	VERIFY_TMPL(vpt);
+
+	*out = '\0';
+
+	switch (vpt->type) {
+	case TMPL_TYPE_LITERAL:
+		RDEBUG4("EXPAND TMPL LITERAL");
+
+		memcpy(out, vpt->name, vpt->len >= outlen ? outlen : vpt->len + 1);
+		return vpt->len;
+
+	case TMPL_TYPE_EXEC:
+	{
+		RDEBUG4("EXPAND TMPL EXEC");
+		if (radius_exec_program(out, outlen, NULL, request, vpt->name, NULL, true, false, EXEC_TIMEOUT) != 0) {
+			return -1;
+		}
+		slen = strlen(out);
+	}
+		break;
+
+	case TMPL_TYPE_XLAT:
+		RDEBUG4("EXPAND TMPL XLAT");
+		/* Error in expansion, this is distinct from zero length expansion */
+		slen = radius_xlat(out, outlen, request, vpt->name, escape, escape_ctx);
+		if (slen < 0) return slen;
+		break;
+
+	case TMPL_TYPE_XLAT_STRUCT:
+		RDEBUG4("EXPAND TMPL XLAT STRUCT");
+		/* Error in expansion, this is distinct from zero length expansion */
+		slen = radius_xlat_struct(out, outlen, request, vpt->tmpl_xlat, escape, escape_ctx);
+		if (slen < 0) {
+			rad_assert(!*out);
+			return slen;
+		}
+		slen = strlen(out);
+		break;
+
+	case TMPL_TYPE_ATTR:
+	{
+		int ret;
+
+		RDEBUG4("EXPAND TMPL ATTR");
+		ret = tmpl_find_vp(&vp, request, vpt);
+		if (ret < 0) return -2;
+
+		slen = vp_prints_value(out, outlen, vp, '\0');
+	}
+		break;
+
+	/*
+	 *	We should never be expanding these.
+	 */
+	case TMPL_TYPE_UNKNOWN:
+	case TMPL_TYPE_NULL:
+	case TMPL_TYPE_LIST:
+	case TMPL_TYPE_DATA:
+	case TMPL_TYPE_REGEX:
+	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_REGEX_STRUCT:
+		rad_assert(0 == 1);
+		slen = -1;
+		break;
+	}
+
+	if (slen < 0) return slen;
+
+
+#if 0
+	/*
+	 *	If we're doing correct escapes, we may have to re-parse the string.
+	 *	If the string is from another expansion, it needs re-parsing.
+	 *	Or, if it's from a "string" attribute, it needs re-parsing.
+	 *	Integers, IP addresses, etc. don't need re-parsing.
+	 */
+	if (cf_new_escape &&
+	    ((vpt->type != TMPL_TYPE_ATTR) ||
+	     (vpt->tmpl_da->type == PW_TYPE_STRING))) {
+	     	value_data_t vd;
+
+		PW_TYPE type = PW_TYPE_STRING;
+
+		slen = value_data_from_str(ctx, &vd, &type, NULL, *out, slen, '"');
+		talloc_free(*out);	/* free the old value */
+		*out = vd.ptr;
+	}
+#endif
+
+	if (vpt->type == TMPL_TYPE_XLAT_STRUCT) {
+		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
+		RDEBUG2("   --> %s", out);
+	}
+
+	return slen;
+}
 
 /** Expand a template to a string, writing the result
  *
