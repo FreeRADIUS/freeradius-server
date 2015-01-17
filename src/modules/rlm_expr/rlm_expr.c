@@ -709,7 +709,8 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 /** URLdecode special characters
  *
  * Example: "%{urlunquote:http%%3A%%47%%47example.org%%47}" == "http://example.org/"
- * Mind the double % in the quoted string, otherwise unlang would start parsing it
+ *
+ * Remember to escape % with %% in strings, else xlat will try to parse it.
  */
 static ssize_t urlunquote_xlat(UNUSED void *instance, REQUEST *request,
 			       char const *fmt, char *out, size_t outlen)
@@ -1373,6 +1374,81 @@ static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
 	return snprintf(out, outlen, "%i", count);
 }
 
+/** Calculate number of seconds until the next n hour(s), day(s), week(s), year(s).
+ *
+ * For example, if it were 16:18 %{nexttime:1h} would expand to 2520.
+ *
+ * The envisaged usage for this function is to limit sessions so that they don't
+ * cross billing periods. The output of the xlat should be combined with %{rand:} to create
+ * some jitter, unless the desired effect is every subscriber on the network
+ * re-authenticating at the same time.
+ */
+static ssize_t next_time_xlat(UNUSED void *instance, REQUEST *request,
+		    	      char const *fmt, char *out, size_t outlen)
+{
+	long		num;
+
+	char const 	*p;
+	char 		*q;
+	time_t		now;
+	struct tm	*local, local_buff;
+
+	now = time(NULL);
+	local = localtime_r(&now, &local_buff);
+
+	p = fmt;
+
+	num = strtoul(p, &q, 10);
+	if (!q || *q == '\0') {
+		REDEBUG("nexttime: <int> must be followed by period specifier (h|d|w|m|y)");
+		return -1;
+	}
+
+	if (p == q) {
+		num = 1;
+	} else {
+		p += q - p;
+	}
+
+	local->tm_sec = 0;
+	local->tm_min = 0;
+
+	switch (*p) {
+	case 'h':
+		local->tm_hour += num;
+		break;
+
+	case 'd':
+		local->tm_hour = 0;
+		local->tm_mday += num;
+		break;
+
+	case 'w':
+		local->tm_hour = 0;
+		local->tm_mday += (7 - local->tm_wday) + (7 * (num-1));
+		break;
+
+	case 'm':
+		local->tm_hour = 0;
+		local->tm_mday = 1;
+		local->tm_mon += num;
+		break;
+
+	case 'y':
+		local->tm_hour = 0;
+		local->tm_mday = 1;
+		local->tm_mon = 0;
+		local->tm_year += num;
+		break;
+
+	default:
+		REDEBUG("nexttime: Invalid period specifier '%c', must be h|d|w|m|y", *p);
+		return -1;
+	}
+
+	return snprintf(out, outlen, "%" PRIu64, (uint64_t)(mktime(local) - now));
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -1419,6 +1495,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);
 
 	xlat_register("explode", explode_xlat, NULL, inst);
+
+	xlat_register("nexttime", next_time_xlat, NULL, inst);
 
 	/*
 	 *	Initialize various paircompare functions
