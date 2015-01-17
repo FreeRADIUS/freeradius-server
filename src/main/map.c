@@ -855,7 +855,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 		char *attr;
 		ssize_t slen;
 
-		slen = tmpl_expand(request, &attr, request, map->lhs);
+		slen = tmpl_aexpand(request, &attr, request, map->lhs, NULL, NULL);
 		if (slen <= 0) {
 			REDEBUG("Left side \"%.*s\" of map failed expansion", (int)map->lhs->len, map->lhs->name);
 			rad_assert(!attr);

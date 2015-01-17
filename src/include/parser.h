@@ -102,13 +102,6 @@ size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c);
 
 bool fr_condition_walk(fr_cond_t *head, bool (*callback)(void *, fr_cond_t *), void *ctx);
 
-/*
- *	In xlat.c for now
- */
-ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-		      char const **error);
-size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
-
 #ifdef __cplusplus
 }
 #endif

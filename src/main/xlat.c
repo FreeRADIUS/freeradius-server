@@ -2505,6 +2505,11 @@ ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt,
 	return xlat_expand(&out, outlen, request, fmt, escape, ctx);
 }
 
+ssize_t radius_xlat_struct(char *out, size_t outlen, REQUEST *request, xlat_exp_t const *xlat, RADIUS_ESCAPE_STRING escape, void *ctx)
+{
+	return xlat_expand_struct(&out, outlen, request, xlat, escape, ctx);
+}
+
 ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)
 {
 	return xlat_expand(out, 0, request, fmt, escape, ctx);

@@ -26,6 +26,8 @@
 
 RCSIDH(tmpl_h, "$Id$")
 
+#include <freeradius-devel/xlat.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -85,8 +87,6 @@ typedef enum tmpl_type {
 } tmpl_type_t;
 
 extern const FR_NAME_NUMBER tmpl_names[];
-
-typedef struct xlat_exp xlat_exp_t;
 
 typedef struct {
 	request_refs_t		request;		//!< Request to search or insert in.
@@ -249,8 +249,11 @@ size_t			tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt,
 int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 					value_pair_tmpl_t const *vpt, DICT_ATTR const *cast);
 
-ssize_t			tmpl_expand(TALLOC_CTX *ctx, char **out, REQUEST *request,
-				    value_pair_tmpl_t const *vpt);
+ssize_t			tmpl_expand(char *out, size_t outlen, REQUEST *request, value_pair_tmpl_t const *vpt,
+				    RADIUS_ESCAPE_STRING escape, void *escape_ctx);
+
+ssize_t			tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_tmpl_t const *vpt,
+				     RADIUS_ESCAPE_STRING escape, void *escape_ctx);
 
 VALUE_PAIR		*tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request,
 					  value_pair_tmpl_t const *vpt);
@@ -264,4 +267,7 @@ int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *
 
 bool			tmpl_define_unknown_attr(value_pair_tmpl_t *vpt);
 
+#ifdef __cplusplus
+}
+#endif
 #endif	/* TMPL_H */

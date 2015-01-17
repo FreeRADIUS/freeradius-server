@@ -118,7 +118,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, valu
 		char *p;
 
 		if (!*vpt->name) return false;
-		rcode = tmpl_expand(request, &p, request, vpt);
+		rcode = tmpl_aexpand(request, &p, request, vpt, NULL, NULL);
 		if (rcode < 0) {
 			EVAL_DEBUG("FAIL %d", __LINE__);
 			return -1;
@@ -518,7 +518,7 @@ do {\
 		if (map->rhs->type != TMPL_TYPE_LITERAL) {
 			char *p;
 
-			ret = tmpl_expand(request, &p, request, map->rhs);
+			ret = tmpl_aexpand(request, &p, request, map->rhs, NULL, NULL);
 			if (ret < 0) {
 				EVAL_DEBUG("FAIL [%i]", __LINE__);
 				rcode = -1;
@@ -642,7 +642,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		if (map->lhs->type != TMPL_TYPE_LITERAL) {
 			char *p;
 
-			ret = tmpl_expand(request, &p, request, map->lhs);
+			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
 			if (ret < 0) {
 				EVAL_DEBUG("FAIL [%i]", __LINE__);
 				return ret;
