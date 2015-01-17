@@ -206,10 +206,13 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 	 *	don't overflow the output buffer.
 	 */
 	if (!quote) {
-		if ((size_t) inlen >= outlen) inlen = outlen - 1;
-
-		memcpy(out, in, inlen);
-		out[inlen] = '\0';
+		if ((size_t)inlen >= outlen) {
+			memcpy(out, in, outlen - 1);
+			out[outlen - 1] = '\0';
+		} else {
+			memcpy(out, in, inlen);
+			out[inlen] = '\0';
+		}
 		return inlen;
 	}
 
@@ -336,6 +339,8 @@ size_t fr_prints_len(char const *in, ssize_t inlen, char quote)
 	if (!in) return outlen;
 
 	if (inlen < 0) inlen = strlen(in);
+
+	if (!quote) return inlen + 1;
 
 	while (inlen > 0) {
 		int sp = 0;
