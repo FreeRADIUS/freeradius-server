@@ -17,7 +17,11 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
         * Add %{tojson:<str>} xlat to escape strings for insertion 
           into json documents.
         * Add %{explode:&ref <char>}, splits value of &ref on 
-          <char> and creates new &ref type attributes with the bits.
+          <char> and creates new &ref type attributes with the 
+          fragments.
+        * Add %{nexttime:[<int>]h|d|w|y} to calculate the number of
+          seconds before the next <int> hour(s), day(s), week(s), 
+          or year(s).
 
 	Bug fixes
         * Fix issues parsing LDAP hostnames with non-standard ports.
