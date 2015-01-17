@@ -60,6 +60,7 @@ typedef struct rad_request REQUEST;
 
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
+#include <freeradius-devel/xlat.h>
 #include <freeradius-devel/tmpl.h>
 #include <freeradius-devel/map.h>
 
@@ -686,30 +687,6 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
 #define pairmake_packet(_a, _b, _c) pairmake(request->packet, &request->packet->vps, _a, _b, _c)
 #define pairmake_reply(_a, _b, _c) pairmake(request->reply, &request->reply->vps, _a, _b, _c)
 #define pairmake_config(_a, _b, _c) pairmake(request, &request->config_items, _a, _b, _c)
-
-
-/* xlat.c */
-typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
-
-ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape,
-		    void *escape_ctx)
-	CC_HINT(nonnull (1 ,3 ,4));
-
-ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *escape_ctx)
-	CC_HINT(nonnull (1, 2, 3));
-
-ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, RADIUS_ESCAPE_STRING escape,
-			    void *ctx)
-	CC_HINT(nonnull (1, 2, 3));
-
-typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
-int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
-			      void *instance);
-void		xlat_unregister(char const *module, RAD_XLAT_FUNC func, void *instance);
-void		xlat_unregister_module(void *instance);
-bool		xlat_register_redundant(CONF_SECTION *cs);
-ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt);
-void		xlat_free(void);
 
 /* threads.c */
 int	thread_pool_init(CONF_SECTION *cs, bool *spawn_flag);

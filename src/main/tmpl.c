@@ -1447,7 +1447,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		return 0;
 	}
 
-	rcode = tmpl_expand(vp, &p, request, vpt);
+	rcode = tmpl_aexpand(vp, &p, request, vpt, NULL, NULL);
 	if (rcode < 0) {
 		pairfree(&vp);
 		return rcode;
@@ -1478,9 +1478,12 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
  * @param out Result of expanding the tmpl.
  * @param request Current request.
  * @param vpt to evaluate.
+ * @param escape xlat escape function (only used for xlat types).
+ * @param escape_ctx xlat escape function data.
  * @return -1 on error, else 0.
  */
-ssize_t tmpl_expand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_tmpl_t const *vpt,
+		     RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
 	VALUE_PAIR *vp;
 	ssize_t slen = -1;	/* quiet compiler */
@@ -1515,7 +1518,7 @@ ssize_t tmpl_expand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_tm
 	case TMPL_TYPE_XLAT:
 		RDEBUG4("EXPAND TMPL XLAT");
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_axlat(out, request, vpt->name, NULL, NULL);
+		slen = radius_axlat(out, request, vpt->name, escape, escape_ctx);
 		if (slen < 0) {
 			rad_assert(!*out);
 			return slen;
@@ -1526,7 +1529,7 @@ ssize_t tmpl_expand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_tm
 	case TMPL_TYPE_XLAT_STRUCT:
 		RDEBUG4("EXPAND TMPL XLAT STRUCT");
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_axlat_struct(out, request, vpt->tmpl_xlat, NULL, NULL);
+		slen = radius_axlat_struct(out, request, vpt->tmpl_xlat, escape, escape_ctx);
 		if (slen < 0) {
 			rad_assert(!*out);
 			return slen;
