@@ -56,6 +56,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 
 	char **name = names;
 	char **dn = out;
+	char base_dn[LDAP_MAX_DN_STR_LEN];
 	char buffer[LDAP_MAX_GROUP_NAME_LEN + 1];
 
 	char *filter;
@@ -92,7 +93,13 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 					       inst->groupobj_filter ? ")" : "",
 					       names[0] && names[1] ? ")" : "");
 
-	status = rlm_ldap_search(inst, request, pconn, inst->groupobj_base_dn, inst->groupobj_scope,
+	if (tmpl_expand(base_dn, sizeof(base_dn), request, inst->groupobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
+		REDEBUG("Failed creating base_dn");
+
+		return RLM_MODULE_INVALID;
+	}
+
+	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->groupobj_scope,
 				 filter, attrs, &result);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
@@ -431,7 +438,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *re
 		return RLM_MODULE_INVALID;
 	}
 
-	if (radius_xlat(base_dn, sizeof(base_dn), request, inst->groupobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
+	if (tmpl_expand(base_dn, sizeof(base_dn), request, inst->groupobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Failed creating base_dn");
 
 		return RLM_MODULE_INVALID;
@@ -571,7 +578,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST
 		 *	rlm_ldap_find_user does this, too.  Oh well.
 		 */
 		RINDENT();
-		ret = radius_xlat(base_dn, sizeof(base_dn), request, inst->groupobj_base_dn,
+		ret = tmpl_expand(base_dn, sizeof(base_dn), request, inst->groupobj_base_dn,
 				  rlm_ldap_escape_func, NULL);
 		REXDENT();
 		if (ret < 0) {

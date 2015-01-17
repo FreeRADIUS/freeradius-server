@@ -468,7 +468,7 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 
 	if (!dn || !*dn) return RLM_MODULE_OK;
 
-	if (radius_xlat(filter, sizeof(filter), request, inst->profile_filter, rlm_ldap_escape_func, NULL) < 0) {
+	if (tmpl_expand(filter, sizeof(filter), request, inst->profile_filter, rlm_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Failed creating profile filter");
 
 		return RLM_MODULE_INVALID;
