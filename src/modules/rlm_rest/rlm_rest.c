@@ -129,8 +129,8 @@ static void rlm_rest_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section, 
 	rest_request_cleanup(instance, section, handle);
 }
 
-static ssize_t json_escape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
-			 	char const *fmt, char *out, size_t outlen)
+static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+			      char const *fmt, char *out, size_t outlen)
 {
 	char const *p;
 	size_t freespace = outlen;
@@ -801,7 +801,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Register the rest xlat function
 	 */
 	xlat_register(inst->xlat_name, rest_xlat, rest_uri_escape, inst);
-	xlat_register("tojson", json_escape_xlat, NULL, inst);
+	xlat_register("jsonquote", jsonquote_xlat, NULL, inst);
 
 	/*
 	 *	Parse sub-section configs.
