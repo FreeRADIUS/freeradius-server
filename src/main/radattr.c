@@ -30,6 +30,7 @@ typedef struct REQUEST REQUEST;
 #include <freeradius-devel/map.h>
 
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/xlat.h>
 #include <freeradius-devel/conf.h>
 
 #include <ctype.h>
@@ -44,11 +45,6 @@ typedef struct REQUEST REQUEST;
 extern log_lvl_t debug_flag;
 log_lvl_t debug_flag = 0;
 
-/**********************************************************************
- *	Hacks for xlat
- */
-int            xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
-			     void *instance);
 #include <sys/wait.h>
 pid_t rad_fork(void);
 pid_t rad_waitpid(pid_t pid, int *status);
