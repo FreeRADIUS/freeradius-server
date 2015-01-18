@@ -31,6 +31,8 @@ RCSIDH(xlat_h, "$Id$")
 extern "C" {
 #endif
 
+#include <freeradius-devel/conffile.h>
+
 typedef struct xlat_exp xlat_exp_t;
 
 typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
