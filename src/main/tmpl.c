@@ -1497,7 +1497,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 
 	VERIFY_TMPL(vpt);
 
-	*out = '\0';
+	*out = NULL;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_LITERAL:
