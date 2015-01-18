@@ -70,41 +70,10 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-
-#ifndef HAVE_GETGRNAM_R
-#define fr_getgrnam(_a, _b) getgrnam(_b)
-#else
-static struct group *fr_getgrnam(TALLOC_CTX *ctx, char const *name)
-{
-	struct group	*grp, *result;
-	char		*group_buffer;
-	size_t		group_size = 1024;
-
-	grp = talloc(ctx, struct group);
-	group_buffer = talloc_array(grp, char, group_size);
-	while (group_buffer) {
-		int err;
-
-		err = getgrnam_r(name, grp, group_buffer, group_size, &result);
-		if (err == ERANGE) {
-			group_size *= 2;
-			talloc_free(group_buffer);
-			group_buffer = talloc_array(grp, char, group_size);
-			continue;
-		}
-
-		if (err) errno = err; /* so the caller knows what went wrong */
-		break;
-	}
-
-	return grp;
-}
-#endif	/* HAVE_GETGRNAM_R */
-
 /*
  *	The Group = handler.
  */
-static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request,
+static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *req_vp,
 		    VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
 		    UNUSED VALUE_PAIR **reply_pairs)
 {
@@ -112,43 +81,32 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 	struct group	*grp;
 	char		**member;
 	int		retval;
-#ifdef HAVE_GETPWNAM_R
-	struct passwd	my_pwd;
-	char		pwd_buffer[1024];
-#endif
 
 	/*
-	 *	No user name, doesn't compare.
+	 *	No user name, can't compare.
 	 */
-	if (!req->username) {
+	if (!request->username) return -1;
+
+	if (rad_getpwnam(request, &pwd, request->username->vp_strvalue) < 0) {
+		RERROR("%s", fr_strerror());
 		return -1;
 	}
-
-#ifdef HAVE_GETPWNAM_R
-	if (getpwnam_r(req->username->vp_strvalue, &my_pwd, pwd_buffer, sizeof(pwd_buffer), &pwd) != 0) {
-		pwd = NULL;
+	if (rad_getgrnam(request, &grp, check->vp_strvalue) < 0) {
+		RERROR("%s", fr_strerror());
+		talloc_free(pwd);
+		return -1;
 	}
-#else
-	pwd = getpwnam(req->username->vp_strvalue);
-#endif
-	if (!pwd)
-		return -1;
-
-	grp = fr_getgrnam(req, check->vp_strvalue);
-	if (!grp)
-		return -1;
 
 	retval = (pwd->pw_gid == grp->gr_gid) ? 0 : -1;
 	if (retval < 0) {
 		for (member = grp->gr_mem; *member && retval; member++) {
-			if (strcmp(*member, pwd->pw_name) == 0)
-				retval = 0;
+			if (strcmp(*member, pwd->pw_name) == 0) retval = 0;
 		}
 	}
 
-#ifdef HAVE_GETGRNAM_R
+	/* lifo */
 	talloc_free(grp);
-#endif
+	talloc_free(pwd);
 
 	return retval;
 }

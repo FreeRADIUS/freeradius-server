@@ -278,11 +278,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 			return RLM_MODULE_FAIL;
 		}
 
-#ifdef HAVE_GRP_H
 		if (inst->group != NULL) {
 			gid = strtol(inst->group, &endptr, 10);
 			if (*endptr != '\0') {
-				if (!fr_getgid(inst->group, &gid)) {
+				if (rad_getgid(request, &gid, inst->group) < 0) {
 					RDEBUG2("Unable to find system group \"%s\"", inst->group);
 					goto skip_group;
 				}
@@ -292,7 +291,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 				RDEBUG2("Unable to change system group of \"%s\"", path);
 			}
 		}
-#endif
 	}
 
  skip_group:

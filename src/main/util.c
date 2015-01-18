@@ -1023,50 +1023,270 @@ void verify_request(char const *file, int line, REQUEST *request)
 }
 #endif
 
-#ifdef HAVE_GRP_H
-#ifndef HAVE_GETGRNAM_R
-bool fr_getgid(char const *name, gid_t *gid)
+/** Resolve a uid to a passwd entry
+ *
+ * Resolves a uid to a passwd entry. The memory to hold the
+ * passwd entry is talloced under ctx, and must be freed when no
+ * longer required.
+ *
+ * @param ctx to allocate passwd entry in.
+ * @param out Where to write pointer to entry.
+ * @param uid to resolve.
+ * @return 0 on success, -1 on error.
+ */
+int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 {
-	struct group *grp;
+	static size_t len;
+	uint8_t *buff;
+	int ret;
 
-	grp =  getgrnam(name);
-	if (!grp) return false;
+	*out = NULL;
 
-	*gid = grp->gr_gid;
+	/*
+	 *	We assume this won't change between calls,
+	 *	and that the value is the same, so races don't
+	 *	matter.
+	 */
+	if (len == 0) {
+		long int sc_len;
 
-	return true;
-}
-#else  /* getgrnam_r() exists */
-
-bool fr_getgid(char const *name, gid_t *gid)
-{
-	struct group	*grp, my_group;
-	char		*group_buffer;
-	size_t		group_size = 1024;
-
-	grp = NULL;
-	group_buffer = talloc_array(NULL, char, group_size);
-	while (group_buffer) {
-		int err;
-
-		err = getgrnam_r(name, &my_group, group_buffer, group_size, &grp);
-		if (err == ERANGE) {
-			group_size *= 2;
-			group_buffer = talloc_realloc(NULL, group_buffer, char, group_size);
-			continue;
-		}
-
-		if (err) errno = err; /* so the caller knows what went wrong */
-
-		break;
+#ifdef _SC_GETPW_R_SIZE_MAX
+		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
+#endif
+		if (sc_len <= 0) sc_len = 1024;
+		len = (size_t)sc_len;
 	}
 
-	talloc_free(group_buffer);
+	buff = talloc_array(ctx, uint8_t, sizeof(struct passwd) + len);
+	if (!buff) return -1;
 
-	if (!grp) return false;
+	/*
+	 *	In some cases we may need to dynamically
+	 *	grow the string buffer.
+	 */
+	while ((ret = getpwuid_r(uid, (struct passwd *)buff, (char *)(buff + sizeof(struct passwd)),
+				 talloc_array_length(buff) - sizeof(struct passwd), out)) == ERANGE) {
+		buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2);
+		if (!buff) {
+			talloc_free(buff);
+			return -1;
+		}
+	}
 
-	*gid = grp->gr_gid;
-	return true;
+	if (ret != 0) {
+		fr_strerror_printf("Failed resolving UID: %s", fr_syserror(ret));
+		talloc_free(buff);
+		errno = ret;
+		return -1;
+	}
+
+	talloc_set_type(buff, struct group);
+
+	return 0;
 }
-#endif	/* HAVE_GETGRNAM_R */
-#endif	/* HAVE_GRP_H */
+
+/** Resolve a username to a passwd entry
+ *
+ * Resolves a username to a passwd entry. The memory to hold the
+ * passwd entry is talloced under ctx, and must be freed when no
+ * longer required.
+ *
+ * @param ctx to allocate passwd entry in.
+ * @param out Where to write pointer to entry.
+ * @param name to resolve.
+ * @return 0 on success, -1 on error.
+ */
+int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
+{
+	static size_t len;
+	uint8_t *buff;
+	int ret;
+
+	*out = NULL;
+
+	/*
+	 *	We assume this won't change between calls,
+	 *	and that the value is the same, so races don't
+	 *	matter.
+	 */
+	if (len == 0) {
+		long int sc_len;
+
+#ifdef _SC_GETPW_R_SIZE_MAX
+		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
+#endif
+		if (sc_len <= 0) sc_len = 1024;
+		len = (size_t)sc_len;
+	}
+
+	buff = talloc_array(ctx, uint8_t, sizeof(struct passwd) + len);
+	if (!buff) return -1;
+
+	/*
+	 *	In some cases we may need to dynamically
+	 *	grow the string buffer.
+	 */
+	while ((ret = getpwnam_r(name, (struct passwd *)buff, (char *)(buff + sizeof(struct passwd)),
+				 talloc_array_length(buff) - sizeof(struct passwd), out)) == ERANGE) {
+		buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2);
+		if (!buff) {
+			talloc_free(buff);
+			return -1;
+		}
+	}
+
+	if (ret != 0) {
+		fr_strerror_printf("Failed resolving UID: %s", fr_syserror(ret));
+		talloc_free(buff);
+		errno = ret;
+		return -1;
+	}
+
+	talloc_set_type(buff, struct group);
+
+	return 0;
+}
+
+/** Resolve a gid to a group database entry
+ *
+ * Resolves a gid to a group database entry. The memory to hold the
+ * group entry is talloced under ctx, and must be freed when no
+ * longer required.
+ *
+ * @param ctx to allocate passwd entry in.
+ * @param out Where to write pointer to entry.
+ * @param gid to resolve.
+ * @return 0 on success, -1 on error.
+ */
+int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
+{
+	static size_t len;
+	uint8_t *buff;
+	int ret;
+
+	*out = NULL;
+
+	/*
+	 *	We assume this won't change between calls,
+	 *	and that the value is the same, so races don't
+	 *	matter.
+	 */
+	if (len == 0) {
+		long int sc_len;
+
+#ifdef _SC_GETGR_R_SIZE_MAX
+		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
+#endif
+		if (sc_len <= 0) sc_len = 1024;
+		len = (size_t)sc_len;
+	}
+
+	buff = talloc_array(ctx, uint8_t, sizeof(struct group) + len);
+	if (!buff) return -1;
+
+	/*
+	 *	In some cases we may need to dynamically
+	 *	grow the string buffer.
+	 */
+	while ((ret = getgrgid_r(gid, (struct group *)buff, (char *)(buff + sizeof(struct group)),
+				 talloc_array_length(buff) - sizeof(struct group), out)) == ERANGE) {
+		buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2);
+		if (!buff) {
+			talloc_free(buff);
+			return -1;
+		}
+	}
+
+	if (ret != 0) {
+		fr_strerror_printf("Failed resolving GID: %s", fr_syserror(ret));
+		talloc_free(buff);
+		errno = ret;
+		return -1;
+	}
+
+	talloc_set_type(buff, struct group);
+
+	return 0;
+}
+
+/** Resolve a group name to a group database entry
+ *
+ * Resolves a group name to a group database entry.
+ * The memory to hold the group entry is talloced under ctx,
+ * and must be freed when no longer required.
+ *
+ * @param ctx to allocate passwd entry in.
+ * @param out Where to write pointer to entry.
+ * @param name to resolve.
+ * @return 0 on success, -1 on error.
+ */
+int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
+{
+	static size_t len;
+	uint8_t *buff;
+	int ret;
+
+	*out = NULL;
+
+	/*
+	 *	We assume this won't change between calls,
+	 *	and that the value is the same, so races don't
+	 *	matter.
+	 */
+	if (len == 0) {
+		long int sc_len;
+
+#ifdef _SC_GETGR_R_SIZE_MAX
+		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
+#endif
+		if (sc_len <= 0) sc_len = 1024;
+		len = (size_t)sc_len;
+	}
+
+	buff = talloc_array(ctx, uint8_t, sizeof(struct group) + len);
+	if (!buff) return -1;
+
+	/*
+	 *	In some cases we may need to dynamically
+	 *	grow the string buffer.
+	 */
+	while ((ret = getgrnam_r(name, (struct group *)buff, (char *)(buff + sizeof(struct group)),
+				 talloc_array_length(buff) - sizeof(struct group), out)) == ERANGE) {
+		buff = talloc_realloc_size(ctx, buff, talloc_array_length(buff) * 2);
+		if (!buff) {
+			talloc_free(buff);
+			return -1;
+		}
+	}
+
+	if (ret != 0) {
+		fr_strerror_printf("Failed resolving GID: %s", fr_syserror(ret));
+		talloc_free(buff);
+		errno = ret;
+		return -1;
+	}
+
+	talloc_set_type(buff, struct group);
+
+	return 0;
+}
+
+/** Resolve a group name to a GID
+ *
+ * @param ctx to allocate temporary buffers in. Useful if using talloc pools.
+ * @param name of group.
+ * @param out where to write gid.
+ * @return 0 on success, -1 on error;
+ */
+int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
+{
+	int ret;
+	struct group *result;
+
+	ret = rad_getgrnam(ctx, &result, name);
+	if (ret < 0) return -1;
+
+	*out = result->gr_gid;
+	talloc_free(result);
+	return 0;
+}

@@ -23,11 +23,13 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
+#include <freeradius-devel/libradius.h>
 
-#include	<ctype.h>
-#include	<sys/file.h>
-#include	<fcntl.h>
+#include <ctype.h>
+#include <sys/file.h>
+#include <fcntl.h>
+#include <grp.h>
+#include <pwd.h>
 
 #define FR_PUT_LE16(a, val)\
 	do {\

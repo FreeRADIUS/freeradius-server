@@ -350,13 +350,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	uuid_t guid_nasgroup;
 	int err;
 	char host_ipaddr[128] = {0};
-#ifdef HAVE_GRP_H
 	gid_t gid;
-#endif
-#ifdef HAVE_GETPWNAM_R
-	struct passwd my_pwd;
-	char pwd_buffer[1024];
-#endif
 
 	if (!request->username) {
 		RDEBUG("OpenDirectory requires a User-Name attribute");
@@ -366,8 +360,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	/* resolve SACL */
 	uuid_clear(guid_sacl);
 
-#ifdef HAVE_GRP_H
-	if (fr_getgid(kRadiusSACLName, &gid)) {
+	if (rad_getgid(request, &gid, kRadiusSACLName) < 0) {
 		err = mbr_gid_to_uuid(gid, guid_sacl);
 		if (err != 0) {
 			ERROR("rlm_opendirectory: The group \"%s\" does not have a GUID.", kRadiusSACLName);
@@ -377,7 +370,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	else {
 		RDEBUG("The SACL group \"%s\" does not exist on this system.", kRadiusSACLName);
 	}
-#endif	/* HAVE_GRP_H */
 
 	/* resolve client access list */
 	uuid_clear(guid_nasgroup);
@@ -431,18 +423,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	/* resolve user */
 	uuid_clear(uuid);
 
-#ifdef HAVE_GETPWNAM_R
-	if (getpwnam_r(request->username->vp_strvalue, &my_pwd, pwd_buffer, sizeof(pwd_buffer), &userdata) != 0) {
-		userdata = NULL;
-	}
-#else
-	userdata = getpwnam(request->username->vp_strvalue);
-#endif
+	rad_getpwnam(request, &userdata, request->username->vp_strvalue);
 	if (userdata != NULL) {
 		err = mbr_uid_to_uuid(userdata->pw_uid, uuid);
 		if (err != 0)
 			uuid_clear(uuid);
 	}
+	talloc_free(userdata);
 
 	if (uuid_is_null(uuid)) {
 		REDEBUG("Could not get the user's uuid");

@@ -28,21 +28,11 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
-
-#ifdef HAVE_PWD_H
-#  include <pwd.h>
-#endif
-
-#ifdef HAVE_GRP_H
-#  include <grp.h>
-#endif
+#include <pwd.h>
+#include <grp.h>
 
 #ifdef HAVE_SYSLOG_H
 #  include <syslog.h>
-#endif
-
-#ifdef HAVE_SYS_STAT_H
-#  include <sys/stat.h>
 #endif
 
 #ifdef HAVE_FCNTL_H
@@ -556,35 +546,34 @@ static int switch_users(CONF_SECTION *cs)
 	}
 #endif
 
-#ifdef HAVE_PWD_H
 	/*  Set UID.  */
 	if (uid_name) {
-		struct passwd *pw;
+		struct passwd *user;
 
-		pw = getpwnam(uid_name);
-		if (pw == NULL) {
+		if (rad_getpwnam(cs, &user, uid_name) < 0) {
 			fprintf(stderr, "%s: Cannot get passwd entry for user %s: %s\n",
-				progname, uid_name, fr_syserror(errno));
+				progname, uid_name, fr_strerror());
 			return 0;
 		}
 
-		if (getuid() == pw->pw_uid) {
+		if (getuid() == user->pw_uid) {
 			uid_name = NULL;
 		} else {
 
-			server_uid = pw->pw_uid;
+			server_uid = user->pw_uid;
 #ifdef HAVE_INITGROUPS
 			if (initgroups(uid_name, server_gid) < 0) {
 				fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
 					progname, uid_name, fr_syserror(errno));
+				talloc_free(user);
 				return 0;
 			}
 #endif
 		}
+		talloc_free(user);
 	} else {
 		server_uid = getuid();
 	}
-#endif
 
 	if (chroot_dir) {
 		if (chroot(chroot_dir) < 0) {

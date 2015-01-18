@@ -464,11 +464,10 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 		return RLM_MODULE_FAIL;
 	}
 
-#ifdef HAVE_GRP_H
 	if (inst->group != NULL) {
 		gid = strtol(inst->group, &endptr, 10);
 		if (*endptr != '\0') {
-			if (!fr_getgid(inst->group, &gid)) {
+			if (rad_getgid(request, &gid, inst->group) < 0) {
 				RDEBUG2("Unable to find system group '%s'", inst->group);
 				goto skip_group;
 			}
@@ -480,8 +479,6 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	}
 
 skip_group:
-#endif
-
 	/*
 	 *	Open the output fp for buffering.
 	 */
