@@ -14,14 +14,22 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
           which will not be expanded.
         * Add support for sub-second timeouts in rlm_rest.
         * Add support for connection timeouts in rlm_rest.
-        * Add %{tojson:<str>} xlat to escape strings for insertion 
-          into json documents.
+        * Add %{jsonquote:<str>} xlat to escape strings for 
+          insertion into json documents.
+        * Add %{ldapquote:<str>} xlat to escape strings for 
+          insertion into json documents.
         * Add %{explode:&ref <char>}, splits value of &ref on 
           <char> and creates new &ref type attributes with the 
           fragments.
+        * Allow rlm_ldap to use attribute references for base_dn and
+          filter config items. The attribute references are not
+          escaped, allowing DNs and filters to be created dynamically.
         * Add %{nexttime:[<int>]h|d|w|y} to calculate the number of
           seconds before the next <int> hour(s), day(s), week(s), 
           or year(s).
+        * Allow the left hand side of update sections to be xlat
+          expansions. The result of the expansion is then used to
+          reference the attribute to be modified.
 
 	Bug fixes
         * Fix issues parsing LDAP hostnames with non-standard ports.
@@ -32,6 +40,11 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	* Be more careful to define Auth-Types before loading modules.
 	* Link libfreeradius-radius against OpenSSL too, to avoid
 	  multi-version symbols in SSL libraries.
+	* When rlm_ldap rebinds a connection, it should use bind
+	  credentials from the module that created the connection
+	  pool, not credentials from the module referencing it.
+	* empty server config pairs should be allowed in rlm_ldap 
+	  instances that reference another module's connection pool.
 
 FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
