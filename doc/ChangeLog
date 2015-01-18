@@ -27,9 +27,9 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
         * Add %{nexttime:[<int>]h|d|w|y} to calculate the number of
           seconds before the next <int> hour(s), day(s), week(s), 
           or year(s).
-        * Allow the left hand side of update sections to be xlat
-          expansions. The result of the expansion is then used to
-          reference the attribute to be modified.
+        * Allow the left side of update sections to be xlat expansions.
+          The result of the expansion is then used to reference the 
+          attribute to be modified.
 
 	Bug fixes
         * Fix issues parsing LDAP hostnames with non-standard ports.
