@@ -238,6 +238,11 @@ static const CONF_PARSER module_config[] = {
 	{NULL, -1, 0, NULL, NULL}
 };
 
+static ssize_t ldapquote_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+{
+	return rlm_ldap_escape_func(request, out, freespace, fmt, NULL);
+}
+
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  */
@@ -947,6 +952,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	xlat_register(inst->xlat_name, ldap_xlat, rlm_ldap_escape_func, inst);
+	xlat_register("ldapquote", ldapquote_xlat, NULL, inst);
 
 	/*
 	 *	Setup the cache attribute
