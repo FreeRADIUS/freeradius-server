@@ -41,6 +41,7 @@
 #include <sys/stat.h>
 #endif
 
+#include <libgen.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -2193,16 +2194,73 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 
+		/*
+		 *	Only linux supports changing permissions on a socket
+		 *	on BSDs you can only set permissions on the directory
+		 *	containing the socket, which are then inherited by
+		 *	the socket.
+		 */
+#  ifdef __linux__
 		if ((buf.st_uid != sock->uid) || (buf.st_gid != sock->gid)) {
+
 			fr_suid_up();
 			if (fchown(this->fd, sock->uid, sock->gid) < 0) {
-				ERROR("Failed setting ownership of %s to (%d, %d): %s",
+				ERROR("Failed setting ownership of \"%s\" to (%d, %d): %s",
 				      sock->path, sock->uid, sock->gid, fr_syserror(errno));
 				fr_suid_down();
 				return -1;
 			}
 			fr_suid_down();
 		}
+#  else
+		/*
+		 *	We don't want to arbitrarily change directory
+		 *	permissions, especially if we don't know we created
+		 *	the directory, so just error out and get the admin
+		 *	to change the permissions.
+		 */
+		{
+			char *dir, *buff;
+
+			buff = talloc_strdup(cs, sock->path);
+			if (!buff) return -1;
+
+			dir = dirname(buff);
+			if (stat(dir, &buf) < 0) {
+				ERROR("Failed reading \"%s\": %s", dir, fr_syserror(errno));
+
+			perm_error:
+				talloc_free(buff);
+				return -1;
+			}
+
+			if (sock->uid_name && (buf.st_uid != sock->uid)) {
+				struct passwd *user;
+
+				if (rad_getpwuid(buff, &user, buf.st_uid) < 0) {
+					ERROR("%s", fr_strerror());
+					goto perm_error;
+				}
+
+				ERROR("Control socket directory \"%s\" must be owned by user %s, "
+				      "currently owned by %s", dir, sock->uid_name, user->pw_name);
+				goto perm_error;
+			}
+
+			if (sock->gid_name && (buf.st_gid != sock->gid)) {
+				struct group *group;
+
+				if (rad_getgrgid(buff, &group, buf.st_gid) < 0) {
+					ERROR("%s", fr_strerror());
+					goto perm_error;
+				}
+
+				ERROR("Control socket directory \"%s\" must be owned by group %s, "
+				      "currently owned by %s", dir, sock->gid_name, group->gr_name);
+				goto perm_error;
+			}
+		}
+#  endif
 	}
 #endif
 
