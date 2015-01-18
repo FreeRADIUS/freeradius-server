@@ -51,8 +51,6 @@ RCSID("$Id$")
 #define GDBM_IPPOOL_OPTS (GDBM_SYNCOPT)
 #endif
 
-#define MAX_NAS_NAME_SIZE 64
-
 /*
  *	Define a structure for our module configuration.
  *
@@ -427,7 +425,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_ippool_t *inst = instance;
 
