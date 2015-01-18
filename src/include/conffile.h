@@ -166,7 +166,7 @@ CONF_SECTION	*cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
-int		cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt);
+int		cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt);
 int		cf_section_parse(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 int		cf_section_parse_pass2(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);

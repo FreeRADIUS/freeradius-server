@@ -1075,7 +1075,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  *	and 1 if the default value was used.  Note that the default
  *	value will be used ONLY if the CONF_PAIR is NULL.
  */
-int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt)
+int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt)
 {
 	int rcode;
 	bool deprecated, required, attribute, secret, input, cant_be_empty, tmpl, xlat;
