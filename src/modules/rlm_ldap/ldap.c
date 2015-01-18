@@ -1042,9 +1042,10 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	LDAPMessage	*tmp_msg = NULL, *entry = NULL;
 	int		ldap_errno;
 	char		*dn = NULL;
-	char	    	filter[LDAP_MAX_FILTER_STR_LEN];
-	char		*filter_p = NULL;
-	char	    	base_dn[LDAP_MAX_DN_STR_LEN];
+	char const	*filter = NULL;
+	char	    	filter_buff[LDAP_MAX_FILTER_STR_LEN];
+	char const	*base_dn;
+	char	    	base_dn_buff[LDAP_MAX_DN_STR_LEN];
 
 	bool freeit = false;					//!< Whether the message should
 								//!< be freed after being processed.
@@ -1089,25 +1090,24 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	}
 
 	if (inst->userobj_filter) {
-		if (tmpl_expand(filter, sizeof(filter), request, inst->userobj_filter,
+		if (tmpl_expand(&filter, filter_buff, sizeof(filter_buff), request, inst->userobj_filter,
 				rlm_ldap_escape_func, NULL) < 0) {
 			REDEBUG("Unable to create filter");
 			*rcode = RLM_MODULE_INVALID;
 
 			return NULL;
 		}
-
-		filter_p = filter;
 	}
 
-	if (tmpl_expand(base_dn, sizeof(base_dn), request, inst->userobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
+	if (tmpl_expand(&base_dn, base_dn_buff, sizeof(base_dn_buff), request,
+			inst->userobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Unable to create base_dn");
 		*rcode = RLM_MODULE_INVALID;
 
 		return NULL;
 	}
 
-	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->userobj_scope, filter_p, attrs, result);
+	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->userobj_scope, filter, attrs, result);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;

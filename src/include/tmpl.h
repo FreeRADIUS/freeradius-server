@@ -249,8 +249,8 @@ size_t			tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt,
 int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 					value_pair_tmpl_t const *vpt, DICT_ATTR const *cast);
 
-ssize_t			tmpl_expand(char *out, size_t outlen, REQUEST *request, value_pair_tmpl_t const *vpt,
-				    RADIUS_ESCAPE_STRING escape, void *escape_ctx);
+ssize_t			tmpl_expand(char const **out, char *buff, size_t outlen, REQUEST *request,
+				    value_pair_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx);
 
 ssize_t			tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_tmpl_t const *vpt,
 				     RADIUS_ESCAPE_STRING escape, void *escape_ctx);

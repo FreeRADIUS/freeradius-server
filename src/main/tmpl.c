@@ -1479,16 +1479,22 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 
 /** Expand a template to a string, writing the result
  *
- * @param out Expansion buffer.
- * @param outlen Length of expansion buffer.
+ * @param out Where to write a pointer to the string buffer.
+ *	On return may point to buff if buff was used to store the value.
+ *	Otherwise will point to a value_data_t buffer, or the name of
+ *	the template. To force copying the value to the buffer, out
+ *	should be NULL.
+ * @param buff Expansion buffer, may be NULL if out is not NULL, and
+ *	processing TMPL_TYPE_LITERAL or string types.
+ * @param bufflen Length of expansion buffer.
  * @param request Current request.
  * @param vpt to evaluate.
  * @param escape xlat escape function (only used for xlat types).
  * @param escape_ctx xlat escape function data.
  * @return -1 on error, else 0.
  */
-ssize_t tmpl_expand(char *out, size_t outlen, REQUEST *request, value_pair_tmpl_t const *vpt,
-		    RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *request,
+		    value_pair_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
 	VALUE_PAIR *vp;
 	ssize_t slen = -1;	/* quiet compiler */
@@ -1503,35 +1509,47 @@ ssize_t tmpl_expand(char *out, size_t outlen, REQUEST *request, value_pair_tmpl_
 	case TMPL_TYPE_LITERAL:
 		RDEBUG4("EXPAND TMPL LITERAL");
 
-		memcpy(out, vpt->name, vpt->len >= outlen ? outlen : vpt->len + 1);
+		if (!out) {
+			rad_assert(buff);
+			memcpy(buff, vpt->name, vpt->len >= bufflen ? bufflen : vpt->len + 1);
+		} else {
+			*out = vpt->name;
+		}
 		return vpt->len;
 
 	case TMPL_TYPE_EXEC:
 	{
 		RDEBUG4("EXPAND TMPL EXEC");
-		if (radius_exec_program(out, outlen, NULL, request, vpt->name, NULL, true, false, EXEC_TIMEOUT) != 0) {
+		rad_assert(buff);
+		if (radius_exec_program(buff, bufflen, NULL, request, vpt->name, NULL,
+					true, false, EXEC_TIMEOUT) != 0) {
 			return -1;
 		}
-		slen = strlen(out);
+		slen = strlen(buff);
+		if (out) *out = buff;
 	}
 		break;
 
 	case TMPL_TYPE_XLAT:
 		RDEBUG4("EXPAND TMPL XLAT");
+		rad_assert(buff);
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_xlat(out, outlen, request, vpt->name, escape, escape_ctx);
+		slen = radius_xlat(buff, bufflen, request, vpt->name, escape, escape_ctx);
 		if (slen < 0) return slen;
+		if (out) *out = buff;
 		break;
 
 	case TMPL_TYPE_XLAT_STRUCT:
 		RDEBUG4("EXPAND TMPL XLAT STRUCT");
+		rad_assert(buff);
 		/* Error in expansion, this is distinct from zero length expansion */
-		slen = radius_xlat_struct(out, outlen, request, vpt->tmpl_xlat, escape, escape_ctx);
+		slen = radius_xlat_struct(buff, bufflen, request, vpt->tmpl_xlat, escape, escape_ctx);
 		if (slen < 0) {
 			rad_assert(!*out);
 			return slen;
 		}
-		slen = strlen(out);
+		slen = strlen(buff);
+		if (out) *out = buff;
 		break;
 
 	case TMPL_TYPE_ATTR:
@@ -1539,10 +1557,17 @@ ssize_t tmpl_expand(char *out, size_t outlen, REQUEST *request, value_pair_tmpl_
 		int ret;
 
 		RDEBUG4("EXPAND TMPL ATTR");
+		rad_assert(buff);
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
-		slen = vp_prints_value(out, outlen, vp, '\0');
+		if (out && (vp->da->type == PW_TYPE_STRING)) {
+			*out = vp->vp_strvalue;
+			slen = vp->vp_length;
+		} else {
+			rad_assert(out);
+			slen = vp_prints_value(buff, bufflen, vp, '\0');
+		}
 	}
 		break;
 
@@ -1586,7 +1611,7 @@ ssize_t tmpl_expand(char *out, size_t outlen, REQUEST *request, value_pair_tmpl_
 
 	if (vpt->type == TMPL_TYPE_XLAT_STRUCT) {
 		RDEBUG2("EXPAND %s", vpt->name); /* xlat_struct doesn't do this */
-		RDEBUG2("   --> %s", out);
+		RDEBUG2("   --> %s", buff);
 	}
 
 	return slen;

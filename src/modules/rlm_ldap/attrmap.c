@@ -462,13 +462,15 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 	LDAPMessage	*result = NULL, *entry = NULL;
 	int		ldap_errno;
 	LDAP		*handle = (*pconn)->handle;
-	char		filter[LDAP_MAX_FILTER_STR_LEN];
+	char const	*filter;
+	char		filter_buff[LDAP_MAX_FILTER_STR_LEN];
 
 	rad_assert(inst->profile_filter); 	/* We always have a default filter set */
 
 	if (!dn || !*dn) return RLM_MODULE_OK;
 
-	if (tmpl_expand(filter, sizeof(filter), request, inst->profile_filter, rlm_ldap_escape_func, NULL) < 0) {
+	if (tmpl_expand(&filter, filter_buff, sizeof(filter_buff), request,
+			inst->profile_filter, rlm_ldap_escape_func, NULL) < 0) {
 		REDEBUG("Failed creating profile filter");
 
 		return RLM_MODULE_INVALID;
