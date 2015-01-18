@@ -594,7 +594,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		p = strrchr(buffer, FR_DIR_SEP);
 		if (p) {
 			*p = '\0';
-			if (rad_mkdir(buffer, S_IRWXU) < 0) {
+			if (rad_mkdir(buffer, S_IRWXU, -1, -1) < 0) {
 				ERROR("Failed creating %s: %s", buffer, fr_syserror(errno));
 				return;
 			}
