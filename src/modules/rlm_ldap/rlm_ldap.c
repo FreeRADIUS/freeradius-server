@@ -1271,9 +1271,11 @@ skip_edir:
 	 *	Apply ONE user profile, or a default user profile.
 	 */
 	if (inst->default_profile) {
-		char profile[1024];
+		char const *profile;
+		char profile_buff[1024];
 
-		if (tmpl_expand(profile, sizeof(profile), request, inst->default_profile, NULL, NULL) < 0) {
+		if (tmpl_expand(&profile, profile_buff, sizeof(profile_buff),
+				request, inst->default_profile, NULL, NULL) < 0) {
 			REDEBUG("Failed creating default profile string");
 
 			rcode = RLM_MODULE_INVALID;
