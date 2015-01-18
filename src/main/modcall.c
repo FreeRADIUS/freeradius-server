@@ -187,12 +187,6 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 	value = cf_pair_value(cp);
 	if (!value) return 0;
 
-	if (c->type != MOD_SINGLE) {
-		ERROR("%s[%d] Invalid return code assigment inside of a %s section",
-		      cf_pair_filename(cp), cf_pair_lineno(cp), group_name[c->type]);
-		return 0;
-	}
-
 	if (!strcasecmp(value, "return"))
 		action = MOD_ACTION_RETURN;
 
