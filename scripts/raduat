@@ -110,7 +110,7 @@ else
     role_types=$(echo $role_types | sed 's/\s/ /g')     # Change \n back to spaces
 fi
 
-while getopts "h?vc:r:p:" opt; do
+while getopts "h?H:vc:r:p:" opt; do
     case "$opt" in
     h|\?)
         show_help
