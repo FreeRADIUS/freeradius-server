@@ -197,7 +197,7 @@ void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
  *	This is so that IF an error is returned, the 'directory' ptr
  *	points to the name of the file which caused the error.
  */
-int rad_mkdir(char *directory, mode_t mode)
+int rad_mkdir(char *directory, mode_t mode, uid_t uid, gid_t gid)
 {
 	int rcode;
 	char *p;
@@ -228,7 +228,7 @@ int rad_mkdir(char *directory, mode_t mode)
 		if (!p || (p == directory)) return -1;
 
 		*p = '\0';
-		rcode = rad_mkdir(directory, mode);
+		rcode = rad_mkdir(directory, mode, uid, gid);
 		if (rcode < 0) return rcode;
 
 		/*
@@ -243,7 +243,10 @@ int rad_mkdir(char *directory, mode_t mode)
 	/*
 	 *	Set the permissions on the created directory.
 	 */
-	return chmod(directory, mode);
+	rcode = chmod(directory, mode);
+	if (rcode < 0) return rcode;
+	if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) rcode = chown(directory, uid, gid);
+	return rcode;
 }
 
 /** Escapes the raw string such that it should be safe to use as part of a file path

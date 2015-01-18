@@ -265,7 +265,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 		p = strrchr(path, '/');
 		if (p) {
 			*p = '\0';
-			if (rad_mkdir(path, 0700) < 0) {
+			if (rad_mkdir(path, 0700, -1, -1) < 0) {
 				RERROR("rlm_linelog: Failed to create directory %s: %s", path, fr_syserror(errno));
 				return RLM_MODULE_FAIL;
 			}

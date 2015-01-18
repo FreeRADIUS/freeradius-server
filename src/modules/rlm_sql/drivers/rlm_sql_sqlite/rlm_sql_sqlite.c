@@ -278,7 +278,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			MEM(buff = talloc_typed_strdup(conf, driver->filename));
 		}
 
-		ret = rad_mkdir(buff, 0700);
+		ret = rad_mkdir(buff, 0700, -1, -1);
 		talloc_free(buff);
 		if (ret < 0) {
 			ERROR("rlm_sql_sqlite: Failed creating directory for SQLite database: %s", fr_syserror(errno));
