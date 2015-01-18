@@ -63,9 +63,11 @@ typedef struct rad_request REQUEST;
 #include <freeradius-devel/tmpl.h>
 #include <freeradius-devel/map.h>
 
-#ifdef HAVE_GRP_H
+/*
+ *	All POSIX systems should have these headers
+ */
+#include <pwd.h>
 #include <grp.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -560,9 +562,11 @@ char const	*rad_default_sbin_dir(void);
 char const	*rad_radacct_dir(void);
 
 void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */
-#ifdef HAVE_GRP_H
-bool		fr_getgid(char const *name, gid_t *gid);
-#endif
+int		rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid);
+int		rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name);
+int		rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid);
+int		rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name);
+int		rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name);
 
 /* regex.c */
 

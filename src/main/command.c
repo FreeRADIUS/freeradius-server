@@ -41,13 +41,8 @@
 #include <sys/stat.h>
 #endif
 
-#ifdef HAVE_PWD_H
 #include <pwd.h>
-#endif
-
-#ifdef HAVE_GRP_H
 #include <grp.h>
-#endif
 
 typedef struct fr_command_table_t fr_command_table_t;
 
@@ -2131,31 +2126,20 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 #if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	if (sock->uid_name) {
 		struct passwd *pwd;
-#ifdef HAVE_GETPWNAM_R
-		struct passwd my_pwd;
-		char pwd_buffer[1024];
 
-		if (getpwnam_r(sock->uid_name, &my_pwd, pwd_buffer, sizeof(pwd_buffer), &pwd) != 0) {
-			pwd = NULL;
-		}
-#else
-		pwd = getpwnam(sock->uid_name);
-#endif
-		if (!pwd) {
-			ERROR("Failed getting uid for %s: %s",
-			       sock->uid_name, fr_syserror(errno));
+		if (rad_getpwnam(cs, &pwd, sock->uid_name) < 0) {
+			ERROR("Failed getting uid for %s: %s", sock->uid_name, fr_strerror());
 			return -1;
 		}
-
 		sock->uid = pwd->pw_uid;
+		talloc_free(pwd);
 	} else {
 		sock->uid = -1;
 	}
 
 	if (sock->gid_name) {
-		if (!fr_getgid(sock->gid_name, &sock->gid)) {
-			ERROR("Failed getting gid for %s: %s",
-			      sock->gid_name, fr_syserror(errno));
+		if (rad_getgid(cs, &sock->gid, sock->gid_name) < 0) {
+			ERROR("Failed getting gid for %s: %s", sock->gid_name, fr_strerror());
 			return -1;
 		}
 	} else {

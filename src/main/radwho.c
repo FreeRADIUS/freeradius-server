@@ -28,12 +28,8 @@ RCSID("$Id$")
 #include <freeradius-devel/sysutmp.h>
 #include <freeradius-devel/radutmp.h>
 
-#ifdef HAVE_PWD_H
 #include <pwd.h>
-#endif
-
 #include <sys/stat.h>
-
 #include <ctype.h>
 
 /*
