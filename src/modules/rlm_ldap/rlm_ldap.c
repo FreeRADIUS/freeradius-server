@@ -202,11 +202,11 @@ static CONF_PARSER option_config[] = {
 
 
 static const CONF_PARSER module_config[] = {
-	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, ldap_instance_t, config_server), NULL },
-	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, ldap_instance_t, port), "0" },
+	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, config_server), NULL },	/* Do not set to required */
+	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, ldap_instance_t, port), NULL },
 
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, ldap_instance_t, password), "" },
-	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, admin_dn), "" },
+	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, ldap_instance_t, password), NULL },
+	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, admin_dn), NULL },
 
 	{ "valuepair_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, valuepair_attr), NULL },
 
@@ -617,7 +617,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if (inst->cacheable_group_name && inst->groupobj_membership_filter) {
 		if (!inst->groupobj_name_attr) {
-			cf_log_err_cs(conf, "Directive 'group.name_attribute' must be set if cacheable "
+			cf_log_err_cs(conf, "Configuration item 'group.name_attribute' must be set if cacheable "
 				      "group names are enabled");
 
 			goto error;
@@ -625,12 +625,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
+	 *	If we have a *pair* as opposed to a *section*
+	 *	then the module is referencing another ldap module's
+	 *	connection pool.
+	 */
+	if (!cf_pair_find(conf, "pool")) {
+		if (!inst->config_server) {
+			cf_log_err_cs(conf, "Configuration item 'server' must have a value");
+			goto error;
+		}
+	}
+
+
+	/*
 	 *	For backwards compatibility hack up the first 'server'
 	 *	CONF_ITEM into chunks, and add them back into the config.
 	 *
 	 *	@fixme this should be removed at some point.
 	 */
-	{
+	if (inst->config_server) {
 		char const	*value;
 		char const	*p;
 		char const	*q;
@@ -665,9 +678,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				p = ++q;
 
 				if (first) {
-					WARN("Listing multiple LDAP servers in the 'server' directive "
+					WARN("Listing multiple LDAP servers in the 'server' configuration item "
 					     "is deprecated and will be removed in a future release.  "
-					     "Use multiple 'server' directives instead");
+					     "Use multiple 'server' configuration items instead");
 					WARN("- server = '%s'", value);
 				}
 				WARN("+ server = '%s'", buff);
@@ -845,7 +858,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	variable for the username, password, etc.
 	 */
 	if (inst->rebind == true) {
-		cf_log_err_cs(conf, "Cannot use 'rebind' directive as this version of libldap "
+		cf_log_err_cs(conf, "Cannot use 'rebind' configuration item as this version of libldap "
 			      "does not support the API that we need");
 
 		goto error;
