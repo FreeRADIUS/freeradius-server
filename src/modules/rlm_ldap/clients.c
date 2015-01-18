@@ -176,7 +176,7 @@ int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs)
 	 *	Perform all searches as the admin user.
 	 */
 	if (conn->rebound) {
-		status = rlm_ldap_bind(inst, NULL, &conn, inst->admin_dn, inst->password, true);
+		status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_dn, conn->inst->password, true);
 		if (status != LDAP_PROC_SUCCESS) {
 			ret = -1;
 			goto finish;

@@ -814,7 +814,7 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 	 *	Do all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, true);
+		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_dn, (*pconn)->inst->password, true);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -957,7 +957,7 @@ ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap
 	 *	Perform all modifications as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, true);
+		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_dn, (*pconn)->inst->password, true);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -1078,7 +1078,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	 *	Perform all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, true);
+		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_dn, (*pconn)->inst->password, true);
 		if (status != LDAP_PROC_SUCCESS) {
 			*rcode = RLM_MODULE_FAIL;
 			return NULL;
@@ -1464,7 +1464,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	}
 #endif /* HAVE_LDAP_START_TLS_S */
 
-	status = rlm_ldap_bind(inst, NULL, &conn, inst->admin_dn, inst->password, false);
+	status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_dn, conn->inst->password, false);
 	if (status != LDAP_PROC_SUCCESS) {
 		goto error;
 	}
