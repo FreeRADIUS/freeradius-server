@@ -130,6 +130,8 @@ struct fr_connection_pool_t {
 	time_t		last_at_max;	//!< Last time we hit the maximum number
 					//!< of allowed connections.
 
+	int		max_pending;	//!< Max number of connections to open
+
 	uint64_t	count;		//!< Number of connections spawned over
 					//!< the lifetime of the pool.
 	uint32_t       	num;		//!< Number of connections in the pool.
@@ -327,6 +329,16 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		return NULL;
 	}
 
+	/*
+	 *	We limit the rate of new connections after a failed attempt.
+	 */
+	if (pool->pending > pool->max_pending) {
+		pthread_mutex_unlock(&pool->mutex);
+		RATE_LIMIT(WARN("%s: Cannot open a new connection due to rate limit after failure",
+				pool->log_prefix));
+		return NULL;
+	}
+
 	pool->pending++;
 
 	/*
@@ -359,6 +371,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 
 		pool->last_failed = now;
 		pthread_mutex_lock(&pool->mutex);
+		pool->max_pending = 1;
 		pool->pending--;
 		pthread_mutex_unlock(&pool->mutex);
 		return NULL;
@@ -404,6 +417,13 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 
 	rad_assert(pool->pending > 0);
 	pool->pending--;
+
+	/*
+	 *	We've successfully opened one more connection.  Allow
+	 *	more connections to open in parallel.
+	 */
+	if (pool->max_pending < pool->max) pool->max_pending++;
+
 	pool->last_spawned = time(NULL);
 	pool->delay_interval = pool->cleanup_interval;
 	pool->next_delay = pool->cleanup_interval;
@@ -843,6 +863,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 		cf_log_err_cs(cs, "Cannot set 'max' to zero");
 		goto error;
 	}
+	pool->max_pending = pool->max; /* can open all connections now */
 
 	if (pool->min > pool->max) {
 		cf_log_err_cs(cs, "Cannot set 'min' to more than 'max'");
