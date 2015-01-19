@@ -2171,6 +2171,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	{
 		char *dir, *buff;
 		int perm = 0;
+		int ret;
 
 		buff = talloc_strdup(cs, sock->path);
 		if (!buff) return -1;
@@ -2188,10 +2189,12 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		}
 
 		fr_suid_up();
-		rad_mkdir(dir, perm, sock->uid, sock->gid);
+		ret = rad_mkdir(dir, perm, sock->uid, sock->gid);
+		ERROR("Failed creating directory: %s", fr_syserror(errno));
 		fr_suid_down();
-
 		talloc_free(buff);
+
+		if (ret < 0) return -1;
 	}
 
 	/*
