@@ -2169,13 +2169,13 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		dir = dirname(buff);
 
 		if ((sock->uid == (uid_t) -1) && (sock->gid == (gid_t) -1)) {
-			perm = 0770;	/* World readable/writable probably dangerous */
+			perm = S_IREAD | S_IWRITE | S_IEXEC | S_IRGRP | S_IWGRP | S_IXGRP;	/* World readable/writable probably dangerous */
 		} else {
 			if (sock->uid != (uid_t) -1) {
-				perm |= 0700;
+				perm |= S_IREAD | S_IWRITE | S_IEXEC;
 			}
 			if (sock->gid != (gid_t) -1) {
-				perm |= 0070;
+				perm |= S_IRGRP | S_IWGRP | S_IXGRP;
 			}
 		}
 
