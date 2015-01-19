@@ -929,10 +929,10 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		spawn = pool->min - (pool->num + pool->pending);
 		extra = 0;
 
-		/*
-		 *	If we're about to create more than "max",
-		 *	don't create more.
-		 */
+	/*
+	 *	If we're about to create more than "max",
+	 *	don't create more.
+	 */
 	} else if ((pool->num + pool->pending) >= pool->max) {
 		/*
 		 *	Ensure we don't spawn more connections.  If
@@ -942,12 +942,12 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 		spawn = 0;
 		/* leave extra alone from above */
 
-		/*
-		 *	min < num < max
-		 *
-		 *	AND we don't have enough idle connections.
-		 *	Open some more.
-		 */
+	/*
+	 *	min < num < max
+	 *
+	 *	AND we don't have enough idle connections.
+	 *	Open some more.
+	 */
 	} else if (idle <= pool->spare) {
 		/*
 		 *	Not enough spare connections.  Spawn a few.
@@ -960,21 +960,21 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 			spawn = pool->max - (pool->num + pool->pending);
 		}
 
-		/*
-		 *	min < num < max
-		 *
-		 *	We have more than enough idle connections, AND
-		 *	some are pending.  Don't open or close any.
-		 */
+	/*
+	 *	min < num < max
+	 *
+	 *	We have more than enough idle connections, AND
+	 *	some are pending.  Don't open or close any.
+	 */
 	} else if (pool->pending) {
 		spawn = 0;
 		extra = 0;
 
-		/*
-		 *	We have too many idle connections, but closing
-		 *	some would take us below "min", so we only
-		 *	close enough to take us to "min".
-		 */
+	/*
+	 *	We have too many idle connections, but closing
+	 *	some would take us below "min", so we only
+	 *	close enough to take us to "min".
+	 */
 	} else if ((pool->min + extra) >= pool->num) {
 		spawn = 0;
 		extra = pool->num - pool->min;
