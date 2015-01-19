@@ -2395,14 +2395,22 @@ static ssize_t xlat_expand_struct(char **out, size_t outlen, REQUEST *request, x
 		return len;
 	}
 
+	len = strlen(buff);
+	/*
+	 *	If out doesn't point to an existing buffer
+	 *	copy the pointer to our buffer over.
+	 */
 	if (!*out) {
 		*out = buff;
-	} else {
-		strlcpy(*out, buff, outlen);
-		talloc_free(buff);
+		return len;
 	}
 
-	return strlen(*out);
+	/*
+	 *	Otherwise copy the malloced buffer to the fixed one.
+	 */
+	strlcpy(*out, buff, outlen);
+	talloc_free(buff);
+	return len;
 }
 
 static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char const *fmt,

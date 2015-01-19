@@ -1503,7 +1503,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 
 	VERIFY_TMPL(vpt);
 
-	*out = NULL;
+	if (out) *out = NULL;
 
 	switch (vpt->type) {
 	case TMPL_TYPE_LITERAL:
@@ -1668,6 +1668,7 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_t
 			rad_assert(!*out);
 			return slen;
 		}
+		rad_assert(*out);
 		slen = strlen(*out);
 		break;
 
