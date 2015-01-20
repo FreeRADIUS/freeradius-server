@@ -1636,6 +1636,21 @@ static bool server_define_types(CONF_SECTION *cs)
 	return true;
 }
 
+extern char const *unlang_keyword[];
+
+static bool is_reserved_word(const char *name)
+{
+	int i;
+
+	if (!name || !*name) return false;
+
+	for (i = 1; unlang_keyword[i] != NULL; i++) {
+		if (strcmp(name, unlang_keyword[i]) == 0) return true;
+	}
+
+	return false;
+}
+
 
 /*
  *	Parse the module config sections, and load
@@ -1765,6 +1780,11 @@ int modules_init(CONF_SECTION *config)
 		name1 = cf_section_name1(subcs);
 		name2 = cf_section_name2(subcs);
 
+		if (is_reserved_word(name1)) {
+			cf_log_err_cs(subcs, "Module cannot be named for an 'unlang' keyword");
+			return -1;
+		}
+
 		duplicate = cf_section_find_name2(cf_item_to_section(next),
 						  name1, name2);
 		if (!duplicate) continue;
@@ -1840,6 +1860,16 @@ int modules_init(CONF_SECTION *config)
 					name = cf_section_name2(subcs);
 					if (!name) {
 						cf_log_err_cs(subcs, "Subsection must have a name");
+						return -1;
+					}
+
+					if (is_reserved_word(name)) {
+						cf_log_err_cs(subcs, "Instantiate sections cannot be named for an 'unlang' keyword");
+						return -1;
+					}
+				} else {
+					if (is_reserved_word(name)) {
+						cf_log_err_cs(subcs, "Instantiate sections cannot be named for an 'unlang' keyword");
 						return -1;
 					}
 				}

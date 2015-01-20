@@ -173,8 +173,6 @@ const FR_NAME_NUMBER mod_rcode_table[] = {
 };
 
 
-static char const *group_name[];
-
 /*
  *	Compile action && rcode for later use.
  */
@@ -341,7 +339,9 @@ static int default_component_results[RLM_COMPONENT_COUNT] = {
 };
 
 
-static char const *group_name[] = {
+extern char const *unlang_keyword[];
+
+char const *unlang_keyword[] = {
 	"",
 	"single",
 	"group",
@@ -360,7 +360,8 @@ static char const *group_name[] = {
 #endif
 	"policy",
 	"reference",
-	"xlat"
+	"xlat",
+	NULL
 };
 
 static char const modcall_spaces[] = "                                                                ";
@@ -472,7 +473,7 @@ redo:
 		g = mod_callabletogroup(c);
 		rad_assert(g->cond != NULL);
 
-		RDEBUG2("%s %s{", group_name[c->type], c->name);
+		RDEBUG2("%s %s{", unlang_keyword[c->type], c->name);
 
 		condition = radius_evaluate_cond(request, result, 0, g->cond);
 		if (condition < 0) {
@@ -480,7 +481,7 @@ redo:
 			REDEBUG("Failed retrieving values required to evaluate condition");
 		} else {
 			RDEBUG2("%s %s -> %s",
-				group_name[c->type],
+				unlang_keyword[c->type],
 				c->name, condition ? "TRUE" : "FALSE");
 		}
 
@@ -513,7 +514,7 @@ redo:
 		 */
 		if (if_taken) {
 			RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
-				group_name[c->type], request->number);
+				unlang_keyword[c->type], request->number);
 			was_if = true;
 			if_taken = true;
 			goto next_sibling;
@@ -532,13 +533,13 @@ redo:
 		if (!was_if) { /* error */
 		elsif_error:
 			RDEBUG2("... skipping %s for request %d: No preceding \"if\"",
-				group_name[c->type], request->number);
+				unlang_keyword[c->type], request->number);
 			goto next_sibling;
 		}
 
 		if (if_taken) {
 			RDEBUG2("... skipping %s for request %d: Preceding \"if\" was taken",
-				group_name[c->type], request->number);
+				unlang_keyword[c->type], request->number);
 			was_if = false;
 			if_taken = false;
 			goto next_sibling;
@@ -724,7 +725,7 @@ redo:
 		int i;
 		VALUE_PAIR **copy_p;
 
-		RDEBUG2("%s", group_name[c->type]);
+		RDEBUG2("%s", unlang_keyword[c->type]);
 
 		for (i = 8; i >= 0; i--) {
 			copy_p = request_data_get(request, (void *)radius_get_vp, i);
@@ -1155,7 +1156,7 @@ static void dump_mc(modcallable *c, int indent)
 		modgroup *g = mod_callabletogroup(c);
 		modcallable *p;
 		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
-		      group_name[c->type]);
+		      unlang_keyword[c->type]);
 		for(p = g->children;p;p = p->next)
 			dump_mc(p, indent+1);
 	} /* else ignore it for now */
@@ -2846,7 +2847,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 		check_if:
 			if (g->cond->type == COND_TYPE_FALSE) {
 				INFO(" # Skipping contents of '%s' as it is always 'false' -- %s:%d",
-				     group_name[g->mc.type],
+				     unlang_keyword[g->mc.type],
 				     cf_section_filename(g->cs), cf_section_lineno(g->cs));
 				goto set_codes;
 			}
@@ -2876,8 +2877,8 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 			if (f->cond->type == COND_TYPE_TRUE) {
 			skip_true:
 				INFO(" # Skipping contents of '%s' as previous '%s' is always  'true' -- %s:%d",
-				     group_name[g->mc.type],
-				     group_name[f->mc.type],
+				     unlang_keyword[g->mc.type],
+				     unlang_keyword[f->mc.type],
 				     cf_section_filename(g->cs), cf_section_lineno(g->cs));
 				g->cond = f->cond;
 				goto set_codes;
@@ -3468,7 +3469,7 @@ bool modcall_pass2(modcallable *mc)
 
 			name2 = cf_section_name2(g->cs);
 			if (!name2) {
-				c->debug_name = group_name[c->type];
+				c->debug_name = unlang_keyword[c->type];
 			} else {
 				c->debug_name = talloc_asprintf(c, "update %s", name2);
 			}
@@ -3496,7 +3497,7 @@ bool modcall_pass2(modcallable *mc)
 			if (g->done_pass2) return true;
 
 			name2 = cf_section_name2(g->cs);
-			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
+			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
 
 			/*
 			 *	The compilation code takes care of
@@ -3523,7 +3524,7 @@ bool modcall_pass2(modcallable *mc)
 			if (g->done_pass2) return true;
 
 			name2 = cf_section_name2(g->cs);
-			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
+			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
 
 			/*
 			 *	We had &Foo-Bar, where Foo-Bar is
@@ -3616,9 +3617,9 @@ bool modcall_pass2(modcallable *mc)
 
 			name2 = cf_section_name2(g->cs);
 			if (!name2) {
-				c->debug_name = group_name[c->type];
+				c->debug_name = unlang_keyword[c->type];
 			} else {
-				c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
+				c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
 			}
 
 			rad_assert(c->parent != NULL);
@@ -3709,7 +3710,7 @@ bool modcall_pass2(modcallable *mc)
 			if (g->done_pass2) return true;
 
 			name2 = cf_section_name2(g->cs);
-			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], name2);
+			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
 
 			/*
 			 *	Already parsed, handle the children.
@@ -3745,19 +3746,19 @@ bool modcall_pass2(modcallable *mc)
 			break;
 
 		case MOD_ELSE:
-			c->debug_name = group_name[c->type];
+			c->debug_name = unlang_keyword[c->type];
 			goto do_recurse;
 
 		case MOD_POLICY:
 			g = mod_callabletogroup(c);
-			c->debug_name = talloc_asprintf(c, "%s %s", group_name[c->type], cf_section_name1(g->cs));
+			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], cf_section_name1(g->cs));
 			goto do_recurse;
 #endif
 
 		case MOD_GROUP:
 		case MOD_LOAD_BALANCE:
 		case MOD_REDUNDANT_LOAD_BALANCE:
-			c->debug_name = group_name[c->type];
+			c->debug_name = unlang_keyword[c->type];
 
 #ifdef WITH_UNLANG
 		do_recurse:
@@ -3769,7 +3770,7 @@ bool modcall_pass2(modcallable *mc)
 			} else if (c->type == MOD_GROUP) { /* for Auth-Type, etc. */
 				char const *name1 = cf_section_name1(g->cs);
 
-				if (strcmp(name1, group_name[c->type]) != 0) {
+				if (strcmp(name1, unlang_keyword[c->type]) != 0) {
 					c->debug_name = talloc_asprintf(c, "%s %s", name1, cf_section_name2(g->cs));
 				}
 			}
@@ -3808,7 +3809,7 @@ void modcall_debug(modcallable *mc, int depth)
 		case MOD_UPDATE:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				group_name[this->type]);
+				unlang_keyword[this->type]);
 
 			for (map = g->map; map != NULL; map = map->next) {
 				map_prints(buffer, sizeof(buffer), map);
@@ -3821,7 +3822,7 @@ void modcall_debug(modcallable *mc, int depth)
 		case MOD_ELSE:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				group_name[this->type]);
+				unlang_keyword[this->type]);
 			modcall_debug(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -3831,7 +3832,7 @@ void modcall_debug(modcallable *mc, int depth)
 			g = mod_callabletogroup(this);
 			fr_cond_sprint(buffer, sizeof(buffer), g->cond);
 			DEBUG("%.*s%s (%s) {", depth, modcall_spaces,
-				group_name[this->type], buffer);
+				unlang_keyword[this->type], buffer);
 			modcall_debug(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -3841,7 +3842,7 @@ void modcall_debug(modcallable *mc, int depth)
 			g = mod_callabletogroup(this);
 			tmpl_prints(buffer, sizeof(buffer), g->vpt, NULL);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				group_name[this->type], buffer);
+				unlang_keyword[this->type], buffer);
 			modcall_debug(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -3850,7 +3851,7 @@ void modcall_debug(modcallable *mc, int depth)
 		case MOD_FOREACH:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
-				group_name[this->type], this->name);
+				unlang_keyword[this->type], this->name);
 			modcall_debug(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -3863,7 +3864,7 @@ void modcall_debug(modcallable *mc, int depth)
 		case MOD_GROUP:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-			      group_name[this->type]);
+			      unlang_keyword[this->type]);
 			modcall_debug(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
@@ -3873,7 +3874,7 @@ void modcall_debug(modcallable *mc, int depth)
 		case MOD_REDUNDANT_LOAD_BALANCE:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
-				group_name[this->type]);
+				unlang_keyword[this->type]);
 			modcall_debug(g->children, depth + 1);
 			DEBUG("%.*s}", depth, modcall_spaces);
 			break;
