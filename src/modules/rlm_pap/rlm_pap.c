@@ -84,6 +84,11 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{sha2}",		PW_SHA2_PASSWORD },
 	{ "{sha256}",		PW_SHA2_PASSWORD },
 	{ "{sha512}",		PW_SHA2_PASSWORD },
+	{ "{ssha224}",		PW_SSHA224_PASSWORD },
+	{ "{ssha256}",		PW_SSHA256_PASSWORD },
+	{ "{ssha384}",		PW_SSHA384_PASSWORD },
+	{ "{ssha512}",		PW_SSHA512_PASSWORD },
+	{ "{pbkdf2}",		PW_PBKDF2_PASSWORD },
 #endif
 	{ "{sha}",		PW_SHA_PASSWORD },
 	{ "{ssha}",		PW_SSHA_PASSWORD },
@@ -95,6 +100,27 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{X- orclntv}",	PW_NT_PASSWORD },
 	{ NULL, 0 }
 };
+
+#ifdef HAVE_OPENSSL_EVP_H
+typedef struct rlm_pap_pbkdf2 {
+	char const *name;
+	EVP_MD const *(*hash_algo)(void);
+	int keylen;
+} rlm_pap_pbkdf2;
+
+static const rlm_pap_pbkdf2 pbkdf2_names[] = {
+	{ "HMACSHA1", EVP_sha1, 20 },
+	{ "HMACSHA2+224", EVP_sha224, 28 },
+	{ "HMACSHA2+256", EVP_sha256, 32 },
+	{ "HMACSHA2+384", EVP_sha384, 48 },
+	{ "HMACSHA2+512", EVP_sha512, 64 },
+//	{ "HMACSHA3+224", EVP_sha3_224, 28 },
+//	{ "HMACSHA3+256", EVP_sha3_256, 32 },
+//	{ "HMACSHA3+384", EVP_sha3_384, 48 },
+//	{ "HMACSHA3+512", EVP_sha3_512, 64 },
+	{ NULL, NULL }
+};
+#endif
 
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
@@ -375,10 +401,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 #ifdef HAVE_OPENSSL_EVP_H
 		case PW_SHA2_PASSWORD:
+		case PW_SSHA224_PASSWORD:
+		case PW_SSHA256_PASSWORD:
+		case PW_SSHA384_PASSWORD:
+		case PW_SSHA512_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 28); /* ensure it's in the right format */
 			}
 			found_pw = true;
+			break;
+
+		case PW_PBKDF2_PASSWORD:
+			found_pw = true; /* Already base64 standardized */
 			break;
 #endif
 
@@ -655,25 +689,25 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 	switch (vp->vp_length) {
 	/* SHA-224 */
 	case 28:
-		name = "SHA-224";
+		name = "224";
 		md = EVP_sha224();
 		break;
 
 	/* SHA-256 */
 	case 32:
-		name = "SHA-256";
+		name = "256";
 		md = EVP_sha256();
 		break;
 
 	/* SHA-384 */
 	case 48:
-		name = "SHA-384";
+		name = "384";
 		md = EVP_sha384();
 		break;
 
 	/* SHA-512 */
 	case 64:
-		name = "SHA-512";
+		name = "512";
 		md = EVP_sha512();
 		break;
 
@@ -692,7 +726,174 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 	fr_assert((size_t) digestlen == vp->vp_length);	/* This would be an OpenSSL bug... */
 
 	if (rad_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
-		REDEBUG("%s digest does not match \"known good\" digest", name);
+		REDEBUG("SHA-%s digest does not match \"known good\" digest", name);
+		return RLM_MODULE_REJECT;
+	}
+
+	return RLM_MODULE_OK;
+}
+
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+{
+	EVP_MD_CTX *ctx;
+	EVP_MD const *md;
+	char const *name;
+	uint8_t digest[EVP_MAX_MD_SIZE];
+	unsigned int digestlen;
+
+	RDEBUG("Comparing with \"known-good\" SSHA2-Password");
+
+	if (inst->normify) {
+		normify(request, vp, 28);
+	}
+
+	switch (vp->da->attr) {
+	case PW_SSHA224_PASSWORD:
+		name = "224";
+		md = EVP_sha224();
+		digestlen = 28;
+		break;
+
+	case PW_SSHA256_PASSWORD:
+		name = "256";
+		md = EVP_sha256();
+		digestlen = 32;
+		break;
+
+	case PW_SSHA384_PASSWORD:
+		name = "384";
+		md = EVP_sha384();
+		digestlen = 48;
+		break;
+
+	case PW_SSHA512_PASSWORD:
+		name = "512";
+		digestlen = 64;
+		md = EVP_sha512();
+		break;
+
+	default:
+		/* Should never get here */
+		return RLM_MODULE_INVALID;
+	}
+
+	if (vp->vp_length <= digestlen) {
+		REDEBUG("\"known-good\" SSHA%s-Password has incorrect length", name);
+		return RLM_MODULE_INVALID;
+	}
+
+	ctx = EVP_MD_CTX_create();
+	EVP_DigestInit_ex(ctx, md, NULL);
+	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->vp_length);
+	EVP_DigestUpdate(ctx, &vp->vp_octets[digestlen], vp->vp_length - digestlen);
+	EVP_DigestFinal_ex(ctx, digest, &digestlen);
+	EVP_MD_CTX_destroy(ctx);
+
+	if (rad_digest_cmp(digest, vp->vp_octets, (size_t) digestlen) != 0) {
+		REDEBUG("SSHA-%s digest does not match \"known good\" digest", name);
+		return RLM_MODULE_REJECT;
+	}
+
+	return RLM_MODULE_OK;
+}
+
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+{
+	static char iterbuf[8] = { 0, 0, 0, 0, 0, 0, '=', '=' };
+	char const *str = vp->vp_strvalue;
+	rlm_pap_pbkdf2 const *pbkdf2;
+	size_t len;
+	uint32_t iter;
+	ssize_t saltlen, hashlen;
+	uint8_t salt[EVP_MAX_MD_SIZE], hash[EVP_MAX_MD_SIZE], digest[EVP_MAX_MD_SIZE];
+	char *end;
+
+	RDEBUG("Comparing with \"known-good\" PBKDF2-Password");
+
+	/*
+	 * Parse PBKDF string = hash_algorithm:interations:salt:hash
+	 */
+	pbkdf2 = pbkdf2_names;
+	while (!0) {
+		len = strlen(pbkdf2->name);
+		if (strncasecmp(str, pbkdf2->name, len) == 0)
+			break;
+
+		pbkdf2++;
+		if (pbkdf2->name == NULL) {
+			REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
+			return RLM_MODULE_INVALID;
+		}
+	}
+
+	str += len;
+	if (*str == ':')
+		str++;
+	else {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
+		return RLM_MODULE_INVALID;
+	}
+
+	memcpy(iterbuf, str, 6);
+	if (fr_base64_decode(hash, 8, (char const *) iterbuf, 8) != sizeof(uint32_t)) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect iterations");
+		return RLM_MODULE_INVALID;
+	}
+	iter = (((uint32_t) hash[0]) << 24) | (((uint32_t) hash[1]) << 16) | (((uint32_t) hash[2]) << 8) | ((uint32_t) hash[3]);
+
+	str += 6;
+	if (*str == ':')
+		str++;
+	else {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
+		return RLM_MODULE_INVALID;
+	}
+
+	end = strchr(str, ':');
+	if (end == NULL) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
+		return RLM_MODULE_INVALID;
+	}
+	len = (size_t)(end - str);
+	if (len == 0)
+		saltlen = 0;
+	else {
+		saltlen = fr_base64_decode(salt, len, str, len);
+		if (saltlen <= 0) {
+			REDEBUG("\"known-good\" PBKDF2-Password has incorrect salt");
+			return RLM_MODULE_INVALID;
+		}
+	}
+
+	str += len + 1;
+
+	len = vp->vp_length - (str - vp->vp_strvalue);
+	hashlen = fr_base64_decode( hash, len, str, len);
+	if (hashlen <= 0) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
+		return RLM_MODULE_INVALID;
+	} else if (hashlen != pbkdf2->keylen) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect length");
+		return RLM_MODULE_INVALID;
+	}
+
+	if (str[len]) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
+		return RLM_MODULE_INVALID;
+	}
+
+	RDEBUG2("PBKDF2 %s iter=%u saltlen=%zd hashlen=%zd", pbkdf2->name, iter, saltlen, hashlen);
+
+	/*
+	 * Hash and compare
+	 */
+	if (PKCS5_PBKDF2_HMAC((const char *) request->password->vp_octets, (int) request->password->vp_length, (const unsigned char *) salt, (int) saltlen, (int) iter, pbkdf2->hash_algo(), hashlen, (unsigned char *) digest) == 0) {
+		REDEBUG("PBKDF2 digest failure");
+		return RLM_MODULE_INVALID;
+	}
+
+	if (rad_digest_cmp(digest, hash, (size_t) hashlen) != 0) {
+		REDEBUG("PBKDF2 digest does not match \"known good\" digest");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -888,6 +1089,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 #ifdef HAVE_OPENSSL_EVP_H
 		case PW_SHA2_PASSWORD:
 			auth_func = &pap_auth_sha2;
+			break;
+
+		case PW_SSHA224_PASSWORD:
+		case PW_SSHA256_PASSWORD:
+		case PW_SSHA384_PASSWORD:
+		case PW_SSHA512_PASSWORD:
+			auth_func = &pap_auth_ssha2;
+			break;
+
+		case PW_PBKDF2_PASSWORD:
+			auth_func = &pap_auth_pbkdf2;
 			break;
 #endif
 
