@@ -508,7 +508,7 @@ static void wait_for_child_to_die(void *ctx)
 	 *	up) OR there's still a child thread handling it, THEN
 	 *	delay some more.
 	 */
-	if ((request->child_state = REQUEST_QUEUED) ||
+	if ((request->child_state == REQUEST_QUEUED) ||
 	    (request->thread_id != NO_CHILD_THREAD)) {
 		/*
 		 *	Cap delay at max_request_time
