@@ -12,7 +12,7 @@ yubikey {
 
 	#
 	#  If true, the authorize method of rlm_yubikey will attempt to split the
-	#  value of User-Password, into the user's password, and the OTP token.
+	#  value of User-Password, into the user's password and the OTP token.
 	#
 	#  If enabled and successful, the value of User-Password will be truncated
 	#  and request:Yubikey-OTP will be added.
@@ -22,32 +22,60 @@ yubikey {
 	#
 	#  Decrypt mode - Tokens will be decrypted and processed locally
 	#
+	#  This module should be placed before the sql for the authorize section and
+	#  the yubikey_authorize_otpkey policy directly after the sql.
+	#  The authenticate section should have the following added 
+	#    Auth-Type yubikey {
+	#   #	pap
+	#    	yubikey
+	#    }
+	#  If two factor authentication (password concatenated with OTP) is to be
+	#  implemented, split should be yes and pap should be uncommented. Each
+	#  account will need a password added (using attribute Cleartext-Password
+	#  or preferably SSHA-Password).
+	#
 	#  The module itself does not provide persistent storage as this
-	#  would be duplicative of functionality already in the server.
+	#  would be duplicative of functionality already in the server (see sql
+	#  module and radcheck table). Updates to the persistant storage after
+	#  authentication is provided by the sqlyubikey module.
 	#
-	#  Yubikey authentication needs two control attributes
-	#  retrieved from persistent storage:
-	#    * Yubikey-Key     - The AES key used to decrypt the OTP data.
-	#                        The Yubikey-Public-Id and/or User-Name
-	#                        attributes may be used to retrieve the key.
-	#    * Yubikey-Counter - This is compared with the counter in the OTP
-	#                        data and used to prevent replay attacks.
-	#                        This attribute will also be available in
-	#                        the request list after successful
-	#                        decryption.
-	#
-	#  Yubikey-Counter isn't strictly required, but the server will
-	#  generate warnings if it's not present when yubikey.authenticate
-	#  is called.
+	#  Yubikey authorization uses the following control attributes.
+	#  If enabled and the Yubikey-Key attribute exists for the user, then
+	#  any password >= 32 + id_length is assumed to incorporate the OTP
+	#  Yubikey authentication uses the following control attributes
+	#  retrieved from persistent storage.
+	#    * Yubikey-Key        - (required, 16-byte binary {or modhex/hex/base64})
+	#                           The AES key used to decrypt the OTP data.
+	#    * Yubikey-Private-ID - (optional, 6-byte binary {or modhex/hex/base64})
+	#                           The hidden ID included in OTP data. Compared
+	#                           with ID in the decoded OTP to validate token.
+	#    * Yubikey-Counter    - (optional, 16-bit session count & 8-bit use
+	#                           count as 24-bit monotonically strictly increasing
+	#                           integer until the invidual count ceiling is hit)
+	#                           This is compared with the counters in the OTP
+	#                           data and used to prevent replay attacks.
+	#    * Yubikey-Timestamp  - (optional, 24-bit increasing integer @ 8 Hz with
+	#                           rollover which is randomly initialized each session)
+	#                           This is not currently used in the authenticate
+	#                           module, but may be incorporated in scripting for a
+	#                           successive relative time estimation between single
+	#                           session OTPs (if under 24 days).
 	#
 	#  These attributes are available after authorization:
-	#    * Yubikey-Public-ID  - The public portion of the OTP string
+	#    * Yubikey-Public-ID  - (if OTP found, usually 6-byte binary {see id_length})
+	#                           The public ID included in the OTP string.
+	#  The Yubikey-Public-Id and/or User-Name attributes may be used to retrieve
+	#  the Yubikey-Key, Yubikey-Private-ID, etc. by modifying the sql module main
+	#  queries like:
+	#   sql_user_name = "%{Yubikey-Public-ID}"
+	#  or
+	#   sql_user_name = "%{%{Yubikey-Public-ID}:-%{User-Name}}"
+	#  If Yubikey-Public-ID is used, place the yubikey_authorize_username policy
+	#  directly after the authorize section sql module and add a User-Name attribute
+	#  for each token.
 	#
 	#  These attributes are available after authentication (if successful):
-	#    * Yubikey-Private-ID - The encrypted ID included in OTP data,
-	#                           must be verified if tokens share keys.
-	#    * Yubikey-Counter    - The last counter value (should be recorded).
-	#    * Yubikey-Timestamp  - Token's internal clock (mainly useful for debugging).
+	#    * Yubikey-Private-ID, Yubikey-Counter, & Yubikey-Timestamp
 	#    * Yubikey-Random     - Randomly generated value from the token.
 	#
 	decrypt = no
