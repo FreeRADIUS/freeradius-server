@@ -1,0 +1,20 @@
+#
+#  This module updates Yubikey OTP token values in SQL database.
+#  Used in combination with Yubikey module when using decrypt.
+#
+#  This module should be placed in the post-auth section after the logging modules.
+#
+sqlyubikey {
+	sql_module_instance = sql
+
+	#  These attributes available after authentication (if successful):
+	#    * Yubikey-Counter   - The lastest counter value.
+	#    * Yubikey-Timestamp - The lastest timestamp value.
+	#  If these attributes do not exist for the account, they will not be updated
+
+	# These must match SQL module
+	dialect = "sqlite"
+	authcheck_table = "radcheck"
+
+	$INCLUDE ${modconfdir}/sql/yubikey/${dialect}/queries.conf
+}
