@@ -97,6 +97,8 @@ more.  Using RADIUS allows authentication and authorization for a network to
 be centralized, and minimizes the amount of re-configuration which has to be
 done when adding or deleting new users.
 
+%debug_package
+
 %package config
 Group: System Environment/Daemons
 Summary: FreeRADIUS config files
