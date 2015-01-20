@@ -37,6 +37,10 @@ foreach &request:Reply-Message {
 			request:Filter-Id += "3"
 		}
 		break
+
+		update reply {
+			Filter-Id := "fail-break-1"
+		}
 	}
 }
 
@@ -61,5 +65,9 @@ foreach &request:Reply-Message {
 
 	if ("%{Foreach-Variable-0}" == "3") {
 		break
+
+		update reply {
+			Filter-Id := "fail-break-2"
+		}
 	}
 }
