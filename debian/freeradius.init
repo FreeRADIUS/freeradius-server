@@ -63,14 +63,14 @@ case "$1" in
         ;;
 
     restart|force-reload)
-        test_freeradius_config || exit $?
+        configtest || exit 150
 
         $0 stop
         $0 start
         ;;
 
     reload)
-        test_freeradius_config || exit $?
+        configtest || exit 150
 
         if status_of_proc -p "$PIDFILE" "$PROG" "$DESCR"; then
             log_daemon_msg "Reloading $DESCR" "$PROG"
@@ -81,7 +81,7 @@ case "$1" in
         ;;
 
     configtest|testconfig)
-        test_freeradius_config || exit $?
+        configtest || exit 150
         ;;
 
     debug)
