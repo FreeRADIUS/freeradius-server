@@ -21,7 +21,7 @@ set -e
 
 . /lib/lsb/init-functions
 
-test_freeradius_config() {
+configtest() {
     log_action_begin_msg "Checking $DESCR configuration"
 
     out=`$PROGRAM -Cxl stdout $FREERADIUS_OPTIONS`; ret=$?
