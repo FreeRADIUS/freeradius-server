@@ -114,10 +114,6 @@ static const rlm_pap_pbkdf2 pbkdf2_names[] = {
 	{ "HMACSHA2+256", EVP_sha256, 32 },
 	{ "HMACSHA2+384", EVP_sha384, 48 },
 	{ "HMACSHA2+512", EVP_sha512, 64 },
-//	{ "HMACSHA3+224", EVP_sha3_224, 28 },
-//	{ "HMACSHA3+256", EVP_sha3_256, 32 },
-//	{ "HMACSHA3+384", EVP_sha3_384, 48 },
-//	{ "HMACSHA3+512", EVP_sha3_512, 64 },
 	{ NULL, NULL }
 };
 #endif
@@ -401,12 +397,36 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 #ifdef HAVE_OPENSSL_EVP_H
 		case PW_SHA2_PASSWORD:
-		case PW_SSHA224_PASSWORD:
-		case PW_SSHA256_PASSWORD:
-		case PW_SSHA384_PASSWORD:
-		case PW_SSHA512_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 28); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA224_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 28); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA256_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 32); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA384_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 48); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA512_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 64); /* ensure it's in the right format */
 			}
 			found_pw = true;
 			break;
