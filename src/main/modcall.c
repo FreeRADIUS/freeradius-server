@@ -1866,6 +1866,12 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 	 *	by a module.  That is checked in pass 2.
 	 */
 
+	if (vpt->type == TMPL_TYPE_LIST) {
+		cf_log_err_cs(cs, "Syntax error: Cannot switch over list '%s'", name2);
+		return NULL;
+	}
+
+
 	/*
 	 *	Walk through the children of the switch section,
 	 *	ensuring that they're all 'case' statements
@@ -1961,19 +1967,8 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 			return NULL;
 		}
 
-		/*
-		 *	Only certain things are allowed...
-		 */
-		switch (vpt->type) {
-		case TMPL_TYPE_LITERAL:
-		case TMPL_TYPE_XLAT:
-		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_REGEX:
-		case TMPL_TYPE_EXEC:
-			break;
-
-		default:
-			cf_log_err_cs(cs, "Syntax error: Cannot match '%s'", name2);
+		if (vpt->type == TMPL_TYPE_LIST) {
+			cf_log_err_cs(cs, "Syntax error: Cannot match list '%s'", name2);
 			return NULL;
 		}
 
