@@ -1962,6 +1962,22 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 		}
 
 		/*
+		 *	Only certain things are allowed...
+		 */
+		switch (vpt->type) {
+		case TMPL_TYPE_LITERAL:
+		case TMPL_TYPE_XLAT:
+		case TMPL_TYPE_ATTR:
+		case TMPL_TYPE_REGEX:
+		case TMPL_TYPE_EXEC:
+			break;
+
+		default:
+			cf_log_err_cs(cs, "Syntax error: Cannot match '%s'", name2);
+			return NULL;
+		}
+
+		/*
 		 *	Otherwise a NULL vpt may refer to an attribute defined
 		 *	by a module.  That is checked in pass 2.
 		 */

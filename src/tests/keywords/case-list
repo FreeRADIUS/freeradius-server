@@ -1,0 +1,19 @@
+switch &User-Name {
+	case "bob" {
+		update reply {
+			Filter-Id := "filter"
+		}
+	}
+
+	case &reply: {	# ERROR
+		update reply {
+			Filter-Id := "doug"
+		}
+	}
+
+	case {
+		update reply {
+			Filter-Id := "default"
+		}
+	}
+}
