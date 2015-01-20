@@ -18,7 +18,12 @@
 ### END INIT INFO
 
 # Source function library.
-. /etc/rc.d/init.d/functions
+
+# Get the wrappers for the standard ldb init functions
+. /lib/lsb/init-functions
+
+# and the RHEL specific ones
+. /etc/init.d/functions
 
 prog=radiusd
 
@@ -30,14 +35,46 @@ config=${config:=$config_dir/radiusd.conf}
 pidfile=${pidfile:=/var/run/$prog/$prog.pid}
 lockfile=${lockfile:=/var/lock/subsys/radiusd}
 
+configtest() {
+    echo -n $"Checking $prog configuration: "
+    out=`$exec -Cxl stdout -d $config_dir`; retval=$?
+    out=`echo "${out}" | tail -n 1 | sed 's/^\s*ERROR:\s*\(.*\)\s*$/\1/'`
+
+    # Seems some LSB function implementations *really* need
+    # a log message < 60 chars long, else output gets mangled.
+    if [ $retval -eq 0 ]; then
+        log_success_msg
+    else
+        if [ $(expr length "$out") -gt 60 ]; then
+            log_failure_msg
+            echo "$out" 1>&2
+        else
+            log_failure_msg "$out"
+        fi
+    fi
+    return $retval
+}
+
 start() {
-    [ -x $exec ] || exit 5
-    [ -f $config ] || exit 6
     echo -n $"Starting $prog: "
-    daemon --pidfile $pidfile $exec -d $config_dir
+
+    if [ ! -x $exec ]; then
+        log_failure_msg "$exec not found or not executable"
+        exit 5
+    fi
+
+    if [ ! -f $config ]; then
+        log_failure_msg "Can't find radiusd.conf"
+        exit 6
+    fi
+
+    start_daemon -p $pidfile $exec -d $config_dir
     retval=$?
-    echo
-    [ $retval -eq 0 ] && touch $lockfile
+    if [ $retval -eq 0 ]; then
+        log_success_msg
+    else
+        log_failure_msg
+    fi
     return $retval
 }
 
@@ -45,8 +82,12 @@ stop() {
     echo -n $"Stopping $prog: "
     killproc -p $pidfile $prog
     retval=$?
-    echo
-    [ $retval -eq 0 ] && rm -f $lockfile
+    if [ $retval -eq 0 ]; then
+        log_success_msg
+        rm -f $lockfile
+    else
+        log_failure_msg
+    fi
     return $retval
 }
 
@@ -60,7 +101,7 @@ reload() {
     # on which loadable modules are in use, if sending the server a
     # HUP is not sufficient then use restart here instead. However, we
     # prefer by default to use HUP since it's what is usually desired.
-    #    
+    #
     # restart
 
     kill -HUP `pidofproc -p $pidfile $prog`
@@ -79,35 +120,72 @@ rh_status_q() {
     rh_status >/dev/null 2>&1
 }
 
-
 case "$1" in
     start)
         rh_status_q && exit 0
+        configtest || exit 150
         $1
         ;;
+
     stop)
         rh_status_q || exit 0
         $1
         ;;
+
     restart)
+        configtest || exit 150
         $1
         ;;
+
     reload)
         rh_status_q || exit 7
+        configtest || exit 150
         $1
         ;;
+
     force-reload)
+        configtest || exit 150
         force_reload
         ;;
-    status)
-        rh_status
-        ;;
+
     condrestart|try-restart)
+        configtest || exit 150
         rh_status_q || exit 0
         restart
         ;;
+
+    configtest|testconfig)
+        configtest || exit 150
+        ;;
+
+    debug)
+        echo -n $"Debugging $prog: "
+        if rh_status_q; then
+            log_failure_msg "$prog already running as daemon"
+            exit 151
+        else
+            log_success_msg
+        fi
+        $exec -X -d $config_dir
+        ;;
+
+    debug-threaded)
+        echo -n $"Debugging $prog: "
+        if rh_status_q; then
+            log_failure_msg "$prog already running as daemon"
+            exit 151
+        else
+            log_success_msg
+        fi
+        $exec -f -xx -l stdout -d $config_dir
+        ;;
+
+    status)
+        rh_status
+        ;;
+
     *)
-        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload|configtest|debug|debug-threaded}"
         exit 2
 esac
 exit $?
