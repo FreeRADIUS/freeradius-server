@@ -1,0 +1,29 @@
+#
+#  The following policies are for the Yubikey OTP token configuration.
+#
+
+# Mitigate default PAP authentication by password alone in two factor auth
+yubikey_authorize_otpkey {
+	if (!&request:Yubikey-OTP && &control:Yubikey-Key) {
+		update reply {
+			&Reply-Message += 'Rejected: Require Yubikey OTP'
+		}
+		reject
+	}
+	if (&request:Yubikey-OTP && !&control:Yubikey-Key) {
+		update reply {
+			&Reply-Message += 'Rejected: Missing Yubikey Key'
+		}
+		reject
+	}
+}
+
+# Mitigate valid token use for incorrect account
+yubikey_authorize_username {
+	if (&control:User-Name && !(&control:User-Name == &request:User-Name)) {
+		update reply {
+			&Reply-Message += 'Rejected: Mismatch Yubikey User-Name'
+		}
+		reject
+	}
+}
