@@ -2,6 +2,20 @@
 #  The following policies are for the Yubikey OTP token configuration.
 #
 
+### Mitigate private ID mismatch
+yubikey_authenticate_id {
+	if (!&control:Yubikey-Private-ID) {
+		update reply {
+			&Reply-Message += 'Missing Yubikey-Private-ID'
+		}
+	} elsif (&control:Yubikey-Private-ID != &request:Yubikey-Private-ID) {
+		update reply {
+			&Reply-Message += 'Rejected: Mismatch Yubikey Private ID'
+		}
+		reject
+	}
+}
+
 ### Mitigate replay attack
 yubikey_authenticate_counter {
 	if (!&control:Yubikey-Counter) {
