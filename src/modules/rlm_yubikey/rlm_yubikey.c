@@ -242,25 +242,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	<public_id (6-16 bytes)> + <aes-block (32 bytes)>
 	 *
 	 */
-	if (len > (inst->id_len + YUBIKEY_TOKEN_LEN)) {
+	if (len >= (inst->id_len + YUBIKEY_TOKEN_LEN)) {
+		char const *otp;
+		size_t password_len;
+		int ret;
+
+		password_len = (len - (inst->id_len + YUBIKEY_TOKEN_LEN));
+		otp = passcode + password_len;
+		ret = otp_string_valid(inst, otp, (inst->id_len + YUBIKEY_TOKEN_LEN));
+		if (ret <= 0) {
+			if (RDEBUG_ENABLED3) {
+				RDMARKER(otp, -ret, "User-Password (aes-block) value contains non modhex chars");
+			} else {
+				RDEBUG("User-Password (aes-block) value contains non modhex chars");
+			}
+			return RLM_MODULE_NOOP;
+		}
+
 		/* May be a concatenation, check the last 32 bytes are modhex */
 		if (inst->split) {
-			char const *otp;
 			char *password;
-			size_t password_len;
-			int ret;
-
-			password_len = (len - (inst->id_len + YUBIKEY_TOKEN_LEN));
-			otp = passcode + password_len;
-			ret = otp_string_valid(inst, otp, (inst->id_len + YUBIKEY_TOKEN_LEN));
-			if (ret <= 0) {
-				if (RDEBUG_ENABLED3) {
-					RDMARKER(otp, -ret, "User-Password (aes-block) value contains non modhex chars");
-				} else {
-					RDEBUG("User-Password (aes-block) value contains non modhex chars");
-				}
-				return RLM_MODULE_NOOP;
-			}
 
 			/*
 			 *	Insert a new request attribute just containing the OTP
@@ -294,22 +295,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			 */
 			passcode = vp->vp_strvalue;
 		}
-	} else if (len < (inst->id_len + YUBIKEY_TOKEN_LEN)) {
+	} else {
 		RDEBUG2("User-Password value is not the correct length, expected at least %u bytes, got %zu bytes",
 			inst->id_len + YUBIKEY_TOKEN_LEN, len);
 		return RLM_MODULE_NOOP;
-	} else {
-		int ret;
-
-		ret = otp_string_valid(inst, passcode, (inst->id_len + YUBIKEY_TOKEN_LEN));
-		if (ret <= 0) {
-			if (RDEBUG_ENABLED3) {
-				RDMARKER(passcode, -ret, "User-Password (aes-block) value contains non modhex chars");
-			} else {
-				RDEBUG("User-Password (aes-block) value contains non modhex chars");
-			}
-			return RLM_MODULE_NOOP;
-		}
 	}
 
 	/*
