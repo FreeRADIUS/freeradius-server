@@ -39,11 +39,12 @@ yubikey {
 	#  The module itself does not provide persistent storage as this
 	#  would be duplicative of functionality already in the server.
 	#
-	#  Yubikey authentication needs two attributes retrieved from 
+	#  Yubikey authentication needs two attributes retrieved from
 	#  persistent storage:
 	#    * &control:Yubikey-Key        - The AES key used to decrypt the OTP data.
 	#                                    The Yubikey-Public-Id and/or User-Name
 	#                                    attributes may be used to retrieve the key.
+	#                                    The value is a 16-byte binary blob.
 	#    * &control:Yubikey-Counter    - This is compared with the counter in the OTP
 	#                                    data and used to prevent replay attacks.
 	#                                    This attribute will also be available in
@@ -56,16 +57,27 @@ yubikey {
 	#
 	#  These attributes are available after authorization:
 	#    * &request:Yubikey-Public-ID  - The public portion of the OTP string.
+	#                                    The value is a id_len modhex string.
 	#  and additionally if 'split' is set:
 	#    * &request:Yubikey-OTP        - The OTP portion of User-Password.
 	#
+	#
 	#  These attributes are available after authentication (if successful):
 	#    * &request:Yubikey-Private-ID - The encrypted ID included in OTP data,
-	#                                    must be verified if tokens share keys.
+	#                                    should be verified for increased security.
+	#                                    The value is a 6-byte binary blob.
 	#    * &request:Yubikey-Counter    - The last counter value (should be recorded).
-	#    * &request:Yubikey-Timestamp  - Token's internal clock (mainly useful for
-	#                                    debugging).
+	#                                    The value is a concatenation of the 16-bit
+	#                                    session count & 8-bit use count which form a
+	#                                    24-bit monotonically strictly increasing
+	#                                    integer (until the invidual count ceilings
+	#                                    are hit)
+	#    * &request:Yubikey-Timestamp  - Token's internal clock (mainly useful for debugging).
+	#                                    The value is a 24-bit increasing integer @ 8 Hz
+	#                                    with rollover which is randomly initialized
+	#                                    each session.
 	#    * &request:Yubikey-Random     - Randomly generated value from the token.
+	#                                    The value is a 16-bit integer.
 	#
 	decrypt = no
 
