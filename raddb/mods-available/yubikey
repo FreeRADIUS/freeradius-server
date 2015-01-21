@@ -52,11 +52,18 @@ yubikey {
 	#  Yubikey authentication requires the following control attribute
 	#  retrieved from persistent storage:
 	#    * Yubikey-Key     - The AES key used to decrypt the OTP data.
-	#                        The Yubikey-Public-Id and/or User-Name
-	#                        attributes may be used to retrieve the key.
 	#
 	#  These attributes are available after authorization:
 	#    * Yubikey-Public-ID  - The public portion of the OTP string
+	#
+	#  The Yubikey-Public-Id and/or User-Name attributes may be used to
+	#  retrieve  the Yubikey-Key, Yubikey-Private-ID, etc. from persistant
+	#  st rage. For the sql module, modify the main queries from:
+	#	sql_user_name = "%{User-Name}"
+	#  to
+	#	sql_user_name = "%{Yubikey-Public-ID}"
+	#  or
+	#	sql_user_name = "%{%{Yubikey-Public-ID}:-%{User-Name}}"
 	#
 	#  These attributes are available after authentication (if successful):
 	#    * Yubikey-Private-ID - The encrypted ID included in OTP data,
