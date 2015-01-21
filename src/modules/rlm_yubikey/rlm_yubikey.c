@@ -210,7 +210,6 @@ static int CC_HINT(nonnull) otp_string_valid(rlm_yubikey_t *inst, char const *ot
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_yubikey_t *inst = instance;
-
 	DICT_VALUE *dval;
 	char const *passcode;
 	size_t len;
@@ -224,11 +223,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 *	Don't print out debugging messages if we know
 		 *	they're useless.
 		 */
-		if (request->packet->code == PW_CODE_ACCESS_CHALLENGE) {
-			return RLM_MODULE_NOOP;
-		}
-
-		RDEBUG2("No cleartext password in the request. Can't do Yubikey authentication");
+		if (request->packet->code != PW_CODE_ACCESS_CHALLENGE)
+			RDEBUG2("No cleartext password in the request. Can't do Yubikey authentication");
 
 		return RLM_MODULE_NOOP;
 	}
@@ -241,27 +237,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	modhex encoded form).
 	 *
 	 *	<public_id (6-16 bytes)> + <aes-block (32 bytes)>
-	 *
 	 */
-	if (len > (inst->id_len + YUBIKEY_TOKEN_LEN)) {
+	if (len >= (inst->id_len + YUBIKEY_TOKEN_LEN)) {
+		char const *otp;
+		size_t password_len;
+		int ret;
+
+		password_len = (len - (inst->id_len + YUBIKEY_TOKEN_LEN));
+		otp = passcode + password_len;
+		ret = otp_string_valid(inst, otp, (inst->id_len + YUBIKEY_TOKEN_LEN));
+		if (ret <= 0) {
+			RDEBUG("User-Password (aes-block) value contains non modhex chars");
+			return RLM_MODULE_NOOP;
+		}
+
 		/* May be a concatenation, check the last 32 bytes are modhex */
 		if (inst->split) {
-			char const *otp;
 			char *password;
-			size_t password_len;
-			int ret;
-
-			password_len = (len - (inst->id_len + YUBIKEY_TOKEN_LEN));
-			otp = passcode + password_len;
-			ret = otp_string_valid(inst, otp, (inst->id_len + YUBIKEY_TOKEN_LEN));
-			if (ret <= 0) {
-				if (RDEBUG_ENABLED3) {
-					RDMARKER(otp, -ret, "User-Password (aes-block) value contains non modhex chars");
-				} else {
-					RDEBUG("User-Password (aes-block) value contains non modhex chars");
-				}
-				return RLM_MODULE_NOOP;
-			}
 
 			/*
 			 *	Insert a new request attribute just containing the OTP
@@ -288,29 +280,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			 *	So the ID split code works on the non password portion.
 			 */
 			passcode = vp->vp_strvalue;
-		}
-	} else if (len < (inst->id_len + YUBIKEY_TOKEN_LEN)) {
+		} else
+			passcode = otp;
+	} else {
 		RDEBUG2("User-Password value is not the correct length, expected at least %u bytes, got %zu bytes",
 			inst->id_len + YUBIKEY_TOKEN_LEN, len);
 		return RLM_MODULE_NOOP;
-	} else {
-		int ret;
-
-		ret = otp_string_valid(inst, passcode, (inst->id_len + YUBIKEY_TOKEN_LEN));
-		if (ret <= 0) {
-			if (RDEBUG_ENABLED3) {
-				RDMARKER(passcode, -ret, "User-Password (aes-block) value contains non modhex chars");
-			} else {
-				RDEBUG("User-Password (aes-block) value contains non modhex chars");
-			}
-			return RLM_MODULE_NOOP;
-		}
-	}
-
-	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->name);
-	if (dval) {
-		vp = radius_paircreate(request, &request->config_items, PW_AUTH_TYPE, 0);
-		vp->vp_integer = dval->value;
 	}
 
 	/*
@@ -328,6 +303,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		}
 
 		pairstrncpy(vp, passcode, inst->id_len);
+	}
+
+	/*
+	 * Set Auth-Type (moved until after Yubikey-Public-ID creation in case that fails)
+	 */
+	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->name);
+	if (dval) {
+		vp = radius_paircreate(request, &request->config_items, PW_AUTH_TYPE, 0);
+		vp->vp_integer = dval->value;
 	}
 
 	return RLM_MODULE_OK;
@@ -354,10 +338,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 	vp = pair_find_by_da(request->packet->vps, da, TAG_ANY);
-	if (vp) {
-		passcode = vp->vp_strvalue;
-		len = vp->vp_length;
-	} else {
+	if (!vp) {
 		RDEBUG2("No Yubikey-OTP attribute found, falling back to User-Password");
 	user_password:
 		/*
@@ -369,9 +350,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		}
 
 		vp = request->password;
-		passcode = request->password->vp_strvalue;
-		len = request->password->vp_length;
 	}
+
+	passcode = vp->vp_strvalue;
+	len = vp->vp_length;
 
 	/*
 	 *	Verify the passcode is the correct length (in its raw
@@ -387,11 +369,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	ret = otp_string_valid(inst, passcode, (inst->id_len + YUBIKEY_TOKEN_LEN));
 	if (ret <= 0) {
-		if (RDEBUG_ENABLED3) {
-			REMARKER(passcode, -ret, "Passcode (aes-block) value contains non modhex chars");
-		} else {
-			RERROR("Passcode (aes-block) value contains non modhex chars");
-		}
+		RERROR("Passcode (aes-block) value contains non modhex chars");
 		return RLM_MODULE_INVALID;
 	}
 
