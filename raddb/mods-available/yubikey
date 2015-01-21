@@ -25,6 +25,10 @@ yubikey {
 	#  In the authorize section, this module should be placed before the
 	#  persistent storage module.
 	#
+	#  If the account's use of the OTP is required, then the
+	#  yubikey_authorize_otpkey policy should be placed directly after the
+	#  authorize section's persistent storage module.
+	#
 	#  The authenticate section should have the following added:
 	#	 Auth-Type yubikey {
 	#	#	pap
