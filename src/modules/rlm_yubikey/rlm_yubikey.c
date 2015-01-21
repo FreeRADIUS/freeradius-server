@@ -326,6 +326,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->name);
 	if (dval) {
 		vp = radius_paircreate(request, &request->config_items, PW_AUTH_TYPE, 0);
+		if (!vp) {
+			REDEBUG("Failed creating Auth-Type");
+			return RLM_MODULE_FAIL;
+		}
+
 		vp->vp_integer = dval->value;
 	}
 
