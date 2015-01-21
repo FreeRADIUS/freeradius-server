@@ -215,6 +215,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	char const *passcode;
 	size_t len;
 	VALUE_PAIR *vp;
+	char const *otp;
+	size_t password_len;
+	int ret;
 
 	/*
 	 *	Can't do yubikey auth if there's no password.
@@ -242,10 +245,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	<public_id (6-16 bytes)> + <aes-block (32 bytes)>
 	 *
 	 */
-	if (len >= (inst->id_len + YUBIKEY_TOKEN_LEN)) {
-		char const *otp;
-		size_t password_len;
-		int ret;
+	if (len < (inst->id_len + YUBIKEY_TOKEN_LEN)) {
+		RDEBUG2("User-Password value is not the correct length, expected at least %u bytes, got %zu bytes",
+			inst->id_len + YUBIKEY_TOKEN_LEN, len);
+		return RLM_MODULE_NOOP;
+	}
 
 		password_len = (len - (inst->id_len + YUBIKEY_TOKEN_LEN));
 		otp = passcode + password_len;
@@ -295,11 +299,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			 */
 			passcode = vp->vp_strvalue;
 		}
-	} else {
-		RDEBUG2("User-Password value is not the correct length, expected at least %u bytes, got %zu bytes",
-			inst->id_len + YUBIKEY_TOKEN_LEN, len);
-		return RLM_MODULE_NOOP;
-	}
 
 	/*
 	 *	Split out the Public ID in case another module in authorize
