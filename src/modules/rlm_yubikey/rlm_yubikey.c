@@ -359,10 +359,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 	vp = pair_find_by_da(request->packet->vps, da, TAG_ANY);
-	if (vp) {
-		passcode = vp->vp_strvalue;
-		len = vp->vp_length;
-	} else {
+	if (!vp) {
 		RDEBUG2("No Yubikey-OTP attribute found, falling back to User-Password");
 	user_password:
 		/*
@@ -374,9 +371,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		}
 
 		vp = request->password;
-		passcode = request->password->vp_strvalue;
-		len = request->password->vp_length;
 	}
+
+	passcode = vp->vp_strvalue;
+	len = vp->vp_length;
 
 	/*
 	 *	Verify the passcode is the correct length (in its raw
