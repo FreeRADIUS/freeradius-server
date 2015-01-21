@@ -224,11 +224,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 *	Don't print out debugging messages if we know
 		 *	they're useless.
 		 */
-		if (request->packet->code == PW_CODE_ACCESS_CHALLENGE) {
-			return RLM_MODULE_NOOP;
+		if (request->packet->code != PW_CODE_ACCESS_CHALLENGE) {
+			RDEBUG2("No cleartext password in the request. Can't do Yubikey authentication");
 		}
 
-		RDEBUG2("No cleartext password in the request. Can't do Yubikey authentication");
 
 		return RLM_MODULE_NOOP;
 	}
