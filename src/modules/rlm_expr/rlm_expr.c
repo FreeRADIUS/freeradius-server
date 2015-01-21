@@ -1457,7 +1457,6 @@ static bool parse_pad(REQUEST *request, char const *fmt,
 		       value_pair_tmpl_t **pvpt, size_t *plength,
 		       char *fill)
 {
-	int rcode;
 	ssize_t slen;
 	unsigned long length;
 	char const *p;
@@ -1496,8 +1495,6 @@ static bool parse_pad(REQUEST *request, char const *fmt,
 	}
 
 	p += (end - p);
-
-	rcode = 2;
 
 	/*
 	 *	The fill character is optional.
