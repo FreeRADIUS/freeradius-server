@@ -312,12 +312,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		}
 	}
 
-	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->name);
-	if (dval) {
-		vp = radius_paircreate(request, &request->config_items, PW_AUTH_TYPE, 0);
-		vp->vp_integer = dval->value;
-	}
-
 	/*
 	 *	Split out the Public ID in case another module in authorize
 	 *	needs to verify it's associated with the user.
@@ -333,6 +327,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		}
 
 		pairstrncpy(vp, passcode, inst->id_len);
+	}
+
+	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->name);
+	if (dval) {
+		vp = radius_paircreate(request, &request->config_items, PW_AUTH_TYPE, 0);
+		vp->vp_integer = dval->value;
 	}
 
 	return RLM_MODULE_OK;
