@@ -18,7 +18,7 @@
  */
 rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char const *passcode)
 {
-	uint32_t counter;
+	uint32_t counter, timer;
 	yubikey_token_st token;
 
 	DICT_ATTR const *da;
@@ -55,13 +55,16 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 
 	RDEBUG("Token data decrypted successfully");
 
+	counter = (yubikey_counter(token.ctr) << 8) | token.use;
+	timestamp = (token.tstph << 16) | token.tstpl;
+
 	if (RDEBUG_ENABLED2) {
 		(void) fr_bin2hex((char *) &private_id, (uint8_t*) &token.uid, YUBIKEY_UID_SIZE);
-		RDEBUG2("Private ID	: 0x%s", private_id);
-		RDEBUG2("Session counter   : %u", yubikey_counter(token.ctr));
-		RDEBUG2("# used in session : %u", token.use);
-		RDEBUG2("Token timestamp    : %u",
-			(token.tstph << 16) | token.tstpl);
+		RDEBUG2("Private ID        : 0x%s", private_id);
+		RDEBUG2("Session counter   : %u", counter);
+
+		RDEBUG2("Token timestamp   : %u", timestamp);
+
 		RDEBUG2("Random data       : %u", token.rnd);
 		RDEBUG2("CRC data          : 0x%x", token.crc);
 	}
@@ -86,7 +89,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 
 		return RLM_MODULE_FAIL;
 	}
-	vp->vp_integer = (token.tstph << 16) | token.tstpl;
+	vp->vp_integer = timestamp;
 	vp->vp_length = 4;
 
 	/*
@@ -105,8 +108,6 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	 *	Combine the two counter fields together so we can do
 	 *	replay attack checks.
 	 */
-	counter = (yubikey_counter(token.ctr) << 16) | token.use;
-
 	vp = pairmake(request, &request->packet->vps, "Yubikey-Counter", NULL, T_OP_SET);
 	if (!vp) {
 		REDEBUG("Failed creating Yubikey-Counter");
