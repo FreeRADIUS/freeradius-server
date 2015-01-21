@@ -30,6 +30,9 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
         * Allow the left side of update sections to be xlat expansions.
           The result of the expansion is then used to reference the
           attribute to be modified.
+	* Added %{lpad:&Attribute-Name 7 x} and rpad.  These produce
+	  fixed-width output strings, with padding to the left (lpad)
+	  or the right (rpad).
 
 	Bug fixes
         * Fix issues parsing LDAP hostnames with non-standard ports.
