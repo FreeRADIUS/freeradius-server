@@ -29,6 +29,7 @@ yubikey {
 	#	 Auth-Type yubikey {
 	#	#	pap
 	#		yubikey
+	#	#	yubikey_authenticate_id
 	#	#	yubikey_authenticate_counter
 	#	 }
 	#
@@ -36,6 +37,10 @@ yubikey {
 	#  required, split configuration should be set to yes and the pap module
 	#  should be uncommented. Each account will need a password added (either
 	#  using attribute Cleartext-Password, SSHA-Password, etc.).
+	#
+	#  If the suggested check of the Yubikey-Private-ID for validation is
+	#  required, uncomment the yubikey_authenticate_id policy. Each account
+	#  will need the Yubikey-Private-ID attribute added.
 	#
 	#  If the suggested check of the Yubikey-Counter for replay attack is
 	#  required, uncomment the yubikey_authenticate_counter policy. Each
@@ -55,7 +60,7 @@ yubikey {
 	#
 	#  These attributes are available after authentication (if successful):
 	#    * Yubikey-Private-ID - The encrypted ID included in OTP data,
-	#                           must be verified if tokens share keys.
+	#                           should be verified for increased security.
 	#    * Yubikey-Counter    - The last counter value (should be recorded).
 	#    * Yubikey-Timestamp  - Token's internal clock (mainly useful for debugging).
 	#    * Yubikey-Random     - Randomly generated value from the token.
