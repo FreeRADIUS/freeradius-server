@@ -251,54 +251,55 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		return RLM_MODULE_NOOP;
 	}
 
-		password_len = (len - (inst->id_len + YUBIKEY_TOKEN_LEN));
-		otp = passcode + password_len;
-		ret = otp_string_valid(inst, otp, (inst->id_len + YUBIKEY_TOKEN_LEN));
-		if (ret <= 0) {
-			if (RDEBUG_ENABLED3) {
-				RDMARKER(otp, -ret, "User-Password (aes-block) value contains non modhex chars");
-			} else {
-				RDEBUG("User-Password (aes-block) value contains non modhex chars");
-			}
-			return RLM_MODULE_NOOP;
+	password_len = (len - (inst->id_len + YUBIKEY_TOKEN_LEN));
+	otp = passcode + password_len;
+	ret = otp_string_valid(inst, otp, (inst->id_len + YUBIKEY_TOKEN_LEN));
+	if (ret <= 0) {
+		if (RDEBUG_ENABLED3) {
+			RDMARKER(otp, -ret, "User-Password (aes-block) value contains non modhex chars");
+		} else {
+			RDEBUG("User-Password (aes-block) value contains non modhex chars");
+		}
+		return RLM_MODULE_NOOP;
+	}
+
+	/* May be a concatenation, check the last 32 bytes are modhex */
+	if (inst->split) {
+		char *password;
+
+		/*
+		 *	Insert a new request attribute just containing the OTP
+		 *	portion.
+		 */
+		vp = pairmake_packet("Yubikey-OTP", otp, T_OP_SET);
+		if (!vp) {
+			REDEBUG("Failed creating 'Yubikey-OTP' attribute");
+			return RLM_MODULE_FAIL;
 		}
 
-		/* May be a concatenation, check the last 32 bytes are modhex */
-		if (inst->split) {
-			char *password;
+		/*
+		 *	Replace the existing string buffer for the password
+		 *	attribute with one just containing the password portion.
+		 */
+		MEM(password = talloc_array(request->password, char, password_len + 1));
+		strlcpy(password, passcode, password_len + 1);
+		pairstrsteal(request->password, password);
 
-			/*
-			 *	Insert a new request attribute just containing the OTP
-			 *	portion.
-			 */
-			vp = pairmake_packet("Yubikey-OTP", otp, T_OP_SET);
-			if (!vp) {
-				REDEBUG("Failed creating 'Yubikey-OTP' attribute");
-				return RLM_MODULE_FAIL;
-			}
-
-			/*
-			 *	Replace the existing string buffer for the password
-			 *	attribute with one just containing the password portion.
-			 */
-			MEM(password = talloc_array(request->password, char, password_len + 1));
-			strlcpy(password, passcode, password_len + 1);
-			pairstrsteal(request->password, password);
-
-			RINDENT();
-			if (RDEBUG_ENABLED3) {
-				RDEBUG3("&request:Yubikey-OTP := '%s'", vp->vp_strvalue);
-				RDEBUG3("&request:User-Password := '%s'", request->password->vp_strvalue);
-			} else {
-				RDEBUG2("&request:Yubikey-OTP := <<< secret >>>");
-				RDEBUG2("&request:User-Password := <<< secret >>>");
-			}
-			REXDENT();
-			/*
-			 *	So the ID split code works on the non password portion.
-			 */
-			passcode = vp->vp_strvalue;
+		RINDENT();
+		if (RDEBUG_ENABLED3) {
+			RDEBUG3("&request:Yubikey-OTP := '%s'", vp->vp_strvalue);
+			RDEBUG3("&request:User-Password := '%s'", request->password->vp_strvalue);
+		} else {
+			RDEBUG2("&request:Yubikey-OTP := <<< secret >>>");
+			RDEBUG2("&request:User-Password := <<< secret >>>");
 		}
+		REXDENT();
+
+		/*
+		 *	So the ID split code works on the non password portion.
+		 */
+		passcode = vp->vp_strvalue;
+	}
 
 	/*
 	 *	Split out the Public ID in case another module in authorize
