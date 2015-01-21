@@ -12,7 +12,7 @@ yubikey {
 
 	#
 	#  If true, the authorize method of rlm_yubikey will attempt to split the
-	#  value of User-Password, into the user's password, and the OTP token.
+	#  value of User-Password, into the user's password and the OTP token.
 	#
 	#  If enabled and successful, the value of User-Password will be truncated
 	#  and request:Yubikey-OTP will be added.
@@ -22,33 +22,82 @@ yubikey {
 	#
 	#  Decrypt mode - Tokens will be decrypted and processed locally
 	#
+	#  This module should be placed before the persistent storage module for
+	#  the authorize section and the yubikey_authorize_otpkey policy should be
+	#  placed directly after the persistent storage module.
+	#
+	#  The authenticate section should have the following added:
+	#	 Auth-Type yubikey {
+	#	#	pap
+	#		yubikey
+	#	#	yubikey_authenticate_id
+	#	#	yubikey_authenticate_counter
+	#	 }
+	#  If two factor authentication (password concatenated with OTP) is required,
+	#   split should be set to yes and the pap module should be uncommented. Each
+	#   account will need a password added (using attribute Cleartext-Password or
+	#   preferably SSHA-Password, PBKDF2-Password, etc.).
+	#  If the suggested check of the Yubikey-Private-ID for validation is required,
+	#   uncomment the yubikey_authenticate_id policy. Each account will need
+	#   the Yubikey-Private-ID attribute added.
+	#  If the suggested check of the Yubikey-Counter for replay check is required,
+	#   uncomment the yubikey_authenticate_counter policy. Each account will need
+	#   the Yubikey-Counter attribute added.
+	#
 	#  The module itself does not provide persistent storage as this
 	#  would be duplicative of functionality already in the server.
 	#
-	#  Yubikey authentication needs two control attributes
-	#  retrieved from persistent storage:
-	#    * Yubikey-Key     - The AES key used to decrypt the OTP data.
-	#                        The Yubikey-Public-Id and/or User-Name
-	#                        attributes may be used to retrieve the key.
-	#    * Yubikey-Counter - This is compared with the counter in the OTP
-	#                        data and used to prevent replay attacks.
-	#                        This attribute will also be available in
-	#                        the request list after successful
-	#                        decryption.
+	#  Yubikey authentication requires the following control attribute retrieved
+	#  from persistent storage:
+	#    * Yubikey-Key        - (16-byte binary)
+	#                           The AES-128 key used to decrypt the OTP data.
+	#  If the Yubikey-Key attribute exists in persistent storage for an account,
+	#  the mandatory requirement for OTP incorporation in the password may be
+	#  checked using the yubikey_authorize_otpkey policy.
 	#
-	#  Yubikey-Counter isn't strictly required, but the server will
-	#  generate warnings if it's not present when yubikey.authenticate
-	#  is called.
+	#  These attributes are available after authentication (if successfully decoded):
+	#    * Yubikey-Private-ID - (6-byte binary)
+	#                           The hidden ID included in OTP data. This may be
+	#                           compared with the persistent storage attribute of the
+	#                           same name to validate the token by using the
+	#                           yubikey_authenticate_id policy.
+	#    * Yubikey-Counter    - (16-bit session count & 8-bit use count concatenated
+	#                           as a 24-bit monotonically strictly increasing integer
+	#                           until the invidual count ceiling is hit)
+	#                           This may be compared with the persistent storage
+	#                           attribute of the same name to prevent replay attacks
+	#                           by using the yubikey_authenticate_counter policy.
+	#    * Yubikey-Timestamp  - (24-bit increasing integer @ 8 Hz with rollover which
+	#                           is randomly initialized each session)
+	#                           This is not currently used in the authenticate
+	#                           policies, but may be incorporated for a successive
+	#                           relative time estimation between single session OTPs
+	#                           (if the session is under 24 days).
+	#    * Yubikey-Random     - (16-bit integer)
+	#                           Randomly generated value from the token. In the
+	#                           current lterature publically available, the
+	#                           randomness of the token has not been extensively
+	#                           tested to cryptographic standards.
+	#                           Use at your discretion.
 	#
 	#  These attributes are available after authorization:
-	#    * Yubikey-Public-ID  - The public portion of the OTP string
+	#    * Yubikey-Public-ID  - (if OTP found, id_length modhex string)
+	#                           The public ID included in the OTP string.
+	#  Any password >= 32 + id_length is assumed to incorporate the OTP and will noop
+	#  if the OTP is not found to match a modhex string.
 	#
-	#  These attributes are available after authentication (if successful):
-	#    * Yubikey-Private-ID - The encrypted ID included in OTP data,
-	#                           must be verified if tokens share keys.
-	#    * Yubikey-Counter    - The last counter value (should be recorded).
-	#    * Yubikey-Timestamp  - Token's internal clock (mainly useful for debugging).
-	#    * Yubikey-Random     - Randomly generated value from the token.
+	#  The Yubikey-Public-Id and/or User-Name attributes may be used to retrieve
+	#  the Yubikey-Key, Yubikey-Private-ID, etc. by modifying the sql module main
+	#  queries from
+	#	sql_user_name = "%{User-Name}"
+	#  to
+	#	sql_user_name = "%{Yubikey-Public-ID}"
+	#  or
+	#	sql_user_name = "%{%{Yubikey-Public-ID}:-%{User-Name}}"
+	#  If Yubikey-Public-ID is used, place the yubikey_authorize_username policy
+	#   directly after the authorize section persistent storage module and add a
+	#   User-Name attribute for each token. This policy may be used to test for
+	#   a mismatch of token and user, if the account has the mandatory Yubikey-Key.
 	#
 	decrypt = no
 
