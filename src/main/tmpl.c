@@ -1559,7 +1559,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 			*out = vp->vp_strvalue;
 			slen = vp->vp_length;
 		} else {
-			rad_assert(out);
+			if (out) *out = buff;
 			slen = vp_prints_value(buff, bufflen, vp, '\0');
 		}
 	}
