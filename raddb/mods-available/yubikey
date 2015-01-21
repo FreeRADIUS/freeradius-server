@@ -65,6 +65,12 @@ yubikey {
 	#  or
 	#	sql_user_name = "%{%{Yubikey-Public-ID}:-%{User-Name}}"
 	#
+	#  If Yubikey-Public-ID is used for attribute retrieval and detection
+	#  of token misappropriation is required, the yubikey_authorize_username
+	#  policy ishould be placed directly after the authorize section's
+	#  persistent storage module. Each token will need the User-Name
+	#  attribute added.
+	#
 	#  These attributes are available after authentication (if successful):
 	#    * Yubikey-Private-ID - The encrypted ID included in OTP data,
 	#                           should be verified for increased security.
