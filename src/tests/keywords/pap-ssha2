@@ -1,6 +1,17 @@
 #
 # PRE: update if pap
 #
+
+#
+#  Skip if the server wasn't built with openssl
+#
+if ('${feature.tls}' != 'yes') {
+	update control {
+		Response-Packet-Type := Access-Accept
+	}
+	handled
+}
+
 update {
 	reply:Filter-Id := 'filter'
 	control: !* ANY
