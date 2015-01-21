@@ -82,7 +82,9 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{crypt}",		PW_CRYPT_PASSWORD },
 #ifdef HAVE_OPENSSL_EVP_H
 	{ "{sha2}",		PW_SHA2_PASSWORD },
+	{ "{sha224}",		PW_SHA2_PASSWORD },
 	{ "{sha256}",		PW_SHA2_PASSWORD },
+	{ "{sha384}",		PW_SHA2_PASSWORD },
 	{ "{sha512}",		PW_SHA2_PASSWORD },
 #endif
 	{ "{sha}",		PW_SHA_PASSWORD },
@@ -95,7 +97,6 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{X- orclntv}",	PW_NT_PASSWORD },
 	{ NULL, 0 }
 };
-
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
@@ -126,18 +127,18 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *       hex encoded, and would fail if the 0x was present but the string didn't
  *       consist of hexits. The base64 char set is a superset of hex, and it was
  *       observed in the wild, that occasionally base64 encoded data really could
- *       start with 0x. That's why min_length (and decodability) are used as the
+ *       start with 0x. That's why min_len (and decodability) are used as the
  *       only heuristics now.
  *
  * @param[in] request Current request.
  * @param[in,out] vp to normify.
- * @param[in] min_length we expect the decoded version to be.
+ * @param[in] min_len we expect the decoded version to be.
  */
-static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
+static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_len)
 {
 	uint8_t buffer[256];
 
-	if (min_length >= sizeof(buffer)) return; /* paranoia */
+	if (min_len >= sizeof(buffer)) return; /* paranoia */
 
 	rad_assert((vp->da->type == PW_TYPE_OCTETS) || (vp->da->type == PW_TYPE_STRING));
 
@@ -145,7 +146,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	Hex encoding. Length is even, and it's greater than
 	 *	twice the minimum length.
 	 */
-	if (!(vp->vp_length & 0x01) && vp->vp_length >= (2 * min_length)) {
+	if (!(vp->vp_length & 0x01) && vp->vp_length >= (2 * min_len)) {
 		size_t decoded;
 
 		decoded = fr_hex2bin(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
@@ -161,11 +162,11 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	Base 64 encoding.  It's at least 4/3 the original size,
 	 *	and we want to avoid division...
 	 */
-	if ((vp->vp_length * 3) >= ((min_length * 4))) {
+	if ((vp->vp_length * 3) >= ((min_len * 4))) {
 		ssize_t decoded;
 		decoded = fr_base64_decode(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
 		if (decoded < 0) return;
-		if (decoded >= (ssize_t) min_length) {
+		if (decoded >= (ssize_t) min_len) {
 			RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes",
 				vp->da->name, vp->vp_length, decoded);
 			pairmemcpy(vp, buffer, decoded);
@@ -640,13 +641,11 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 	EVP_MD const *md;
 	char const *name;
 	uint8_t digest[EVP_MAX_MD_SIZE];
-	unsigned int digestlen;
+	unsigned int digest_len;
 
 	RDEBUG("Comparing with \"known-good\" SHA2-Password");
 
-	if (inst->normify) {
-		normify(request, vp, 28);
-	}
+	if (inst->normify) normify(request, vp, 28);
 
 	/*
 	 *	All the SHA-2 algorithms produce digests of different lengths,
@@ -655,25 +654,25 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 	switch (vp->vp_length) {
 	/* SHA-224 */
 	case 28:
-		name = "SHA-224";
+		name = "SHA2-224";
 		md = EVP_sha224();
 		break;
 
 	/* SHA-256 */
 	case 32:
-		name = "SHA-256";
+		name = "SHA2-256";
 		md = EVP_sha256();
 		break;
 
 	/* SHA-384 */
 	case 48:
-		name = "SHA-384";
+		name = "SHA2-384";
 		md = EVP_sha384();
 		break;
 
 	/* SHA-512 */
 	case 64:
-		name = "SHA-512";
+		name = "SHA2-512";
 		md = EVP_sha512();
 		break;
 
@@ -686,10 +685,10 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 	ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(ctx, md, NULL);
 	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->vp_length);
-	EVP_DigestFinal_ex(ctx, digest, &digestlen);
+	EVP_DigestFinal_ex(ctx, digest, &digest_len);
 	EVP_MD_CTX_destroy(ctx);
 
-	fr_assert((size_t) digestlen == vp->vp_length);	/* This would be an OpenSSL bug... */
+	rad_assert((size_t) digest_len == vp->vp_length);	/* This would be an OpenSSL bug... */
 
 	if (rad_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
