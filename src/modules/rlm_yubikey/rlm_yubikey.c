@@ -364,28 +364,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	passcode = vp->vp_strvalue;
 	len = vp->vp_length;
 
-	/*
-	 *	Verify the passcode is the correct length (in its raw
-	 *	modhex encoded form).
-	 *
-	 *	<public_id (6-16 bytes)> + <aes-block (32 bytes)>
-	 */
-	if (len != (inst->id_len + YUBIKEY_TOKEN_LEN)) {
-		REDEBUG("%s value is not the correct length, expected bytes %u, got bytes %zu",
-			vp->da->name, inst->id_len + YUBIKEY_TOKEN_LEN, len);
-		return RLM_MODULE_INVALID;
-	}
-
-	ret = otp_string_valid(inst, passcode, (inst->id_len + YUBIKEY_TOKEN_LEN));
-	if (ret <= 0) {
-		if (RDEBUG_ENABLED3) {
-			REMARKER(passcode, -ret, "Passcode (aes-block) value contains non modhex chars");
-		} else {
-			RERROR("Passcode (aes-block) value contains non modhex chars");
-		}
-		return RLM_MODULE_INVALID;
-	}
-
 #ifdef HAVE_YUBIKEY
 	if (inst->decrypt) {
 		rcode = rlm_yubikey_decrypt(inst, request, passcode);
