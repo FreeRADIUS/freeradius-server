@@ -67,7 +67,7 @@ yubikey {
 	#
 	#  If Yubikey-Public-ID is used for attribute retrieval and detection
 	#  of token misappropriation is required, the yubikey_authorize_username
-	#  policy ishould be placed directly after the authorize section's
+	#  policy should be placed directly after the authorize section's
 	#  persistent storage module. Each token will need the User-Name
 	#  attribute added.
 	#
