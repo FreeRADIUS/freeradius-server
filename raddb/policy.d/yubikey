@@ -18,6 +18,22 @@ yubikey_authorize_otpkey {
 	}
 }
 
+### Mitigate valid token use for incorrect account
+yubikey_authorize_username {
+	if (!&control:Yubikey-Key) {
+		# Do nothing
+	} elsif (!&control:User-Name) {
+		update reply {
+			&Reply-Message += 'Missing User-Name'
+		}
+	} elsif (&control:User-Name != &request:User-Name) {
+		update reply {
+			&Reply-Message += 'Rejected: Mismatch Yubikey User-Name'
+		}
+		reject
+	}
+}
+
 ### Mitigate private ID mismatch
 yubikey_authenticate_id {
 	if (!&control:Yubikey-Private-ID) {
