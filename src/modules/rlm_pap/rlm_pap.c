@@ -114,7 +114,7 @@ static const rlm_pap_pbkdf2 pbkdf2_names[] = {
 	{ "HMACSHA2+256", EVP_sha256, 32 },
 	{ "HMACSHA2+384", EVP_sha384, 48 },
 	{ "HMACSHA2+512", EVP_sha512, 64 },
-	{ NULL, NULL }
+	{ NULL, NULL, 0 }
 };
 #endif
 
@@ -817,15 +817,16 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *req
 	return RLM_MODULE_OK;
 }
 
+#define B64_DIM(siz) FR_BASE64_DEC_LENGTH(FR_BASE64_ENC_LENGTH(siz))
+
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	static char iterbuf[8] = { 0, 0, 0, 0, 0, 0, '=', '=' };
-	char const *str = vp->vp_strvalue;
+	uint8_t const *str;
 	rlm_pap_pbkdf2 const *pbkdf2;
-	size_t len;
+	size_t len, siz;
 	uint32_t iter;
 	ssize_t saltlen, hashlen;
-	uint8_t salt[EVP_MAX_MD_SIZE], hash[EVP_MAX_MD_SIZE], digest[EVP_MAX_MD_SIZE];
+	uint8_t salt[B64_DIM(EVP_MAX_MD_SIZE)], hash[B64_DIM(EVP_MAX_MD_SIZE)], digest[EVP_MAX_MD_SIZE], iterbuf[8];
 	char *end;
 
 	RDEBUG("Comparing with \"known-good\" PBKDF2-Password");
@@ -833,10 +834,12 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 	/*
 	 * Parse PBKDF string = hash_algorithm:interations:salt:hash
 	 */
+	str = vp->vp_octets;
+	len = vp->vp_length;
 	pbkdf2 = pbkdf2_names;
 	while (!0) {
-		len = strlen(pbkdf2->name);
-		if (strncasecmp(str, pbkdf2->name, len) == 0)
+		siz = strlen(pbkdf2->name);
+		if (len >= siz && strncasecmp((char const *) str, pbkdf2->name, siz) == 0)
 			break;
 
 		pbkdf2++;
@@ -846,59 +849,70 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 		}
 	}
 
-	str += len;
-	if (*str == ':')
+	str += siz;
+	len -= siz;
+	if (len >= 1 && *str == ':') {
 		str++;
-	else {
+		len--;
+	} else {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
 		return RLM_MODULE_INVALID;
 	}
 
+	if (len < 6) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect iterations");
+		return RLM_MODULE_INVALID;
+	}
 	memcpy(iterbuf, str, 6);
-	if (fr_base64_decode(hash, 8, (char const *) iterbuf, 8) != sizeof(uint32_t)) {
+	iterbuf[7] = iterbuf[6] = '=';
+	if (fr_base64_decode(hash, sizeof(hash), (char const *) iterbuf, sizeof(iterbuf)) != sizeof(uint32_t)) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect iterations");
 		return RLM_MODULE_INVALID;
 	}
 	iter = (((uint32_t) hash[0]) << 24) | (((uint32_t) hash[1]) << 16) | (((uint32_t) hash[2]) << 8) | ((uint32_t) hash[3]);
 
 	str += 6;
-	if (*str == ':')
+	len -= 6;
+	if (len >= 1 && *str == ':') {
 		str++;
-	else {
+		len--;
+	} else {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
 		return RLM_MODULE_INVALID;
 	}
 
-	end = strchr(str, ':');
+	if (len == 0) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect salt");
+		return RLM_MODULE_INVALID;
+	}
+	end = memchr(str, ':', len);
 	if (end == NULL) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
 		return RLM_MODULE_INVALID;
 	}
-	len = (size_t)(end - str);
-	if (len == 0)
+	siz = (size_t)(end - (char *) str);
+	if (siz == 0)
 		saltlen = 0;
 	else {
-		saltlen = fr_base64_decode(salt, len, str, len);
+		saltlen = fr_base64_decode(salt, sizeof(salt), (char const *) str, siz);
 		if (saltlen <= 0) {
 			REDEBUG("\"known-good\" PBKDF2-Password has incorrect salt");
 			return RLM_MODULE_INVALID;
 		}
 	}
 
-	str += len + 1;
-
-	len = vp->vp_length - (str - vp->vp_strvalue);
-	hashlen = fr_base64_decode( hash, len, str, len);
+	str += siz + 1;
+	len -= siz + 1;
+	if (len == 0) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
+		return RLM_MODULE_INVALID;
+	}
+	hashlen = fr_base64_decode(hash, sizeof(hash), (char const *) str, len);
 	if (hashlen <= 0) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
 		return RLM_MODULE_INVALID;
 	} else if (hashlen != pbkdf2->keylen) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect length");
-		return RLM_MODULE_INVALID;
-	}
-
-	if (str[len]) {
-		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
 		return RLM_MODULE_INVALID;
 	}
 
