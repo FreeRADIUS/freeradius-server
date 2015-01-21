@@ -215,6 +215,12 @@ static VALUE_PAIR *normify_with_header(REQUEST *request, VALUE_PAIR *vp)
 
 	VERIFY_VP(vp);
 
+	/*
+	 *	Ensure this is only ever called with a
+	 *	string type attribute.
+	 */
+	rad_assert(vp->da->type == PW_TYPE_STRING);
+
 redo:
 	p = vp->vp_strvalue;
 	len = vp->vp_length;
