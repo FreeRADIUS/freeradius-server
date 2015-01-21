@@ -81,11 +81,20 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{smd5}",		PW_SMD5_PASSWORD },
 	{ "{crypt}",		PW_CRYPT_PASSWORD },
 #ifdef HAVE_OPENSSL_EVP_H
+	/*
+	 *	It'd make more sense for the headers to be
+	 *	ssha2-* with SHA3 coming soon but we're at
+	 *	the mercy of directory implementors.
+	 */
 	{ "{sha2}",		PW_SHA2_PASSWORD },
 	{ "{sha224}",		PW_SHA2_PASSWORD },
 	{ "{sha256}",		PW_SHA2_PASSWORD },
 	{ "{sha384}",		PW_SHA2_PASSWORD },
 	{ "{sha512}",		PW_SHA2_PASSWORD },
+	{ "{ssha224}",		PW_SSHA2_224_PASSWORD },
+	{ "{ssha256}",		PW_SSHA2_256_PASSWORD },
+	{ "{ssha384}",		PW_SSHA2_384_PASSWORD },
+	{ "{ssha512}",		PW_SSHA2_512_PASSWORD },
 #endif
 	{ "{sha}",		PW_SHA_PASSWORD },
 	{ "{ssha}",		PW_SSHA_PASSWORD },
@@ -197,10 +206,10 @@ static VALUE_PAIR *normify_with_header(REQUEST *request, VALUE_PAIR *vp)
 	char const	*p, *q;
 	size_t		len;
 
-	uint8_t		digest[129];	/* +1 for \0 */
+	uint8_t		digest[257];	/* +1 for \0 */
 	ssize_t		decoded;
 
-	char		buffer[128];
+	char		buffer[256];
 
 	VALUE_PAIR	*new;
 
@@ -378,6 +387,34 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		case PW_SHA2_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 28); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA2_224_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 28); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA2_256_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 32); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA2_384_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 48); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA2_512_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 64); /* ensure it's in the right format */
 			}
 			found_pw = true;
 			break;
@@ -697,6 +734,78 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 
 	return RLM_MODULE_OK;
 }
+
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+{
+	EVP_MD_CTX *ctx;
+	EVP_MD const *md;
+	char const *name;
+	uint8_t digest[EVP_MAX_MD_SIZE];
+	unsigned int digest_len, min_len;
+
+	switch (vp->da->attr) {
+	case PW_SSHA2_224_PASSWORD:
+		name = "SSHA2-224";
+		md = EVP_sha224();
+		min_len = 28;
+		break;
+
+	case PW_SSHA2_256_PASSWORD:
+		name = "SSHA2-256";
+		md = EVP_sha256();
+		min_len = 32;
+		break;
+
+	case PW_SSHA2_384_PASSWORD:
+		name = "SSHA2-384";
+		md = EVP_sha384();
+		min_len = 48;
+		break;
+
+	case PW_SSHA2_512_PASSWORD:
+		name = "SSHA2-512";
+		min_len = 64;
+		md = EVP_sha512();
+		break;
+
+	default:
+		rad_assert(0);
+	}
+
+	RDEBUG("Comparing with \"known-good\" %s-Password", name);
+
+	/*
+	 *	Unlike plain SHA2 we already know what length
+	 *	to expect, so can be more specific with the
+	 *	minimum digest length.
+	 */
+	if (inst->normify) normify(request, vp, min_len + 1);
+
+	if (vp->vp_length <= min_len) {
+		REDEBUG("\"known-good\" %s-Password has incorrect length, got %zu bytes, need at least %u bytes",
+			name, vp->vp_length, min_len + 1);
+		return RLM_MODULE_INVALID;
+	}
+
+	ctx = EVP_MD_CTX_create();
+	EVP_DigestInit_ex(ctx, md, NULL);
+	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->vp_length);
+	EVP_DigestUpdate(ctx, &vp->vp_octets[min_len], vp->vp_length - min_len);
+	EVP_DigestFinal_ex(ctx, digest, &digest_len);
+	EVP_MD_CTX_destroy(ctx);
+
+	rad_assert((size_t) digest_len == min_len);	/* This would be an OpenSSL bug... */
+
+	/*
+	 *	Only compare digest_len bytes, the rest is salt.
+	 */
+	if (rad_digest_cmp(digest, vp->vp_octets, (size_t)digest_len) != 0) {
+		REDEBUG("%s digest does not match \"known good\" digest", name);
+		return RLM_MODULE_REJECT;
+	}
+
+	return RLM_MODULE_OK;
+}
 #endif
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_nt(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
@@ -887,6 +996,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 #ifdef HAVE_OPENSSL_EVP_H
 		case PW_SHA2_PASSWORD:
 			auth_func = &pap_auth_sha2;
+			break;
+
+		case PW_SSHA2_224_PASSWORD:
+		case PW_SSHA2_256_PASSWORD:
+		case PW_SSHA2_384_PASSWORD:
+		case PW_SSHA2_512_PASSWORD:
+			auth_func = &pap_auth_ssha2;
 			break;
 #endif
 
