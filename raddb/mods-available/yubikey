@@ -22,6 +22,20 @@ yubikey {
 	#
 	#  Decrypt mode - Tokens will be decrypted and processed locally
 	#
+	#  In the authorize section, this module should be placed before the
+	#  persistent storage module.
+	#
+	#  The authenticate section should have the following added:
+	#	 Auth-Type yubikey {
+	#	#	pap
+	#		yubikey
+	#	 }
+	#
+	#  If two factor authentication (password concatenated with OTP) is
+	#  required, split configuration should be set to yes and the pap module
+	#  should be uncommented. Each account will need a password added (either
+	#  using attribute Cleartext-Password, SSHA-Password, etc.).
+	#
 	#  The module itself does not provide persistent storage as this
 	#  would be duplicative of functionality already in the server.
 	#
