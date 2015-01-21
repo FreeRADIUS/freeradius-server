@@ -1,0 +1,17 @@
+#
+#  The following policies are for the Yubikey OTP token configuration.
+#
+
+### Mitigate replay attack
+yubikey_authenticate_counter {
+	if (!&control:Yubikey-Counter) {
+		update reply {
+			&Reply-Message += 'Missing Yubikey-Counter'
+		}
+	} elsif (&control:Yubikey-Counter >= &request:Yubikey-Counter) {
+		update reply {
+			&Reply-Message += 'Rejected: Mismatch Yubikey Counter'
+		}
+		reject
+	}
+}

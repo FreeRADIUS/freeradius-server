@@ -117,21 +117,6 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	vp->vp_integer = counter;
 	vp->vp_length = 4;
 
-	/*
-	 *	Now we check for replay attacks
-	 */
-	vp = pair_find_by_da(request->config_items, da, TAG_ANY);
-	if (!vp) {
-		RWDEBUG("Yubikey-Counter not found in control list, skipping replay attack checks");
-		return RLM_MODULE_OK;
-	}
-
-	if (counter <= vp->vp_integer) {
-		REDEBUG("Replay attack detected! Counter value %u, is lt or eq to last known counter value %u",
-			counter, vp->vp_integer);
-		return RLM_MODULE_REJECT;
-	}
-
 	return RLM_MODULE_OK;
 }
 #endif
