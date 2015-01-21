@@ -24,7 +24,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	DICT_ATTR const *da;
 
 	char private_id[(YUBIKEY_UID_SIZE * 2) + 1];
-	VALUE_PAIR *key, *vp;
+	VALUE_PAIR *vp;
 
 	da = dict_attrbyname("Yubikey-Key");
 	if (!da) {
@@ -32,18 +32,18 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 		return RLM_MODULE_FAIL;
 	}
 
-	key = pair_find_by_da(request->config_items, da, TAG_ANY);
-	if (!key) {
+	vp = pair_find_by_da(request->config_items, da, TAG_ANY);
+	if (!vp) {
 		REDEBUG("Yubikey-Key attribute not found in control list, can't decrypt OTP data");
 		return RLM_MODULE_INVALID;
 	}
 
-	if (key->vp_length != YUBIKEY_KEY_SIZE) {
-		REDEBUG("Yubikey-Key length incorrect, expected %u got %zu", YUBIKEY_KEY_SIZE, key->vp_length);
+	if (vp->vp_length != YUBIKEY_KEY_SIZE) {
+		REDEBUG("Yubikey-Key length incorrect, expected %u got %zu", YUBIKEY_KEY_SIZE, vp->vp_length);
 		return RLM_MODULE_INVALID;
 	}
 
-	yubikey_parse((uint8_t const *) passcode + inst->id_len, key->vp_octets, &token);
+	yubikey_parse((uint8_t const *) passcode + inst->id_len, vp->vp_octets, &token);
 
 	/*
 	 *	Apparently this just uses byte offsets...
