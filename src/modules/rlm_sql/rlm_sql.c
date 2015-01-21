@@ -19,7 +19,7 @@
  * @file rlm_sql.c
  * @brief Implements SQL 'users' file, and SQL accounting.
  *
- * @copyright 2012  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2012-2014  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2000,2006  The FreeRADIUS server project
  * @copyright 2000  Mike Machado <mike@innercite.com>
  * @copyright 2000  Alan DeKok <aland@ox.org>
@@ -92,14 +92,14 @@ static const CONF_PARSER module_config[] = {
 	{ "read_profiles", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, read_profiles), "yes" },
 	{ "readclients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, do_clients), NULL },
 	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, do_clients), "no" },
-	{ "deletestalesessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, deletestalesessions), NULL },
-	{ "delete_stale_sessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, deletestalesessions), "yes" },
+	{ "delete_stale_sessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, delete_stale_sessions), NULL },
+	{ "delete_stale_sessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, delete_stale_sessions), "yes" },
 	{ "sql_user_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, query_user), "" },
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, logfile), NULL },
 	{ "default_user_profile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, default_profile), "" },
 	{ "nas_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sql_config_t, client_query), NULL },
 	{ "client_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_query), "SELECT id,nasname,shortname,type,secret FROM nas" },
-	{ "open_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, open_query), NULL },
+	{ "open_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, connect_query), NULL },
 
 	{ "authorize_check_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, authorize_check_query), NULL },
 	{ "authorize_reply_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, authorize_reply_query), NULL },
@@ -878,7 +878,7 @@ do { \
 	CHECK_STRING(authorize_group_reply_query);
 	CHECK_STRING(simul_count_query);
 	CHECK_STRING(simul_verify_query);
-	CHECK_STRING(open_query);
+	CHECK_STRING(connect_query);
 	CHECK_STRING(client_query);
 
 	/*
@@ -1598,7 +1598,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 			/*
 			 *	Stale record - zap it.
 			 */
-			if (inst->config->deletestalesessions == true) {
+			if (inst->config->delete_stale_sessions == true) {
 				uint32_t framed_addr = 0;
 				char proto = 0;
 				int sess_time = 0;

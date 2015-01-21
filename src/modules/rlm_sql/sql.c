@@ -89,8 +89,8 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 		return NULL;
 	}
 
-	if (inst->config->open_query) {
-		if (rlm_sql_select_query(&handle, inst, inst->config->open_query)) {
+	if (inst->config->connect_query) {
+		if (rlm_sql_select_query(&handle, inst, inst->config->connect_query)) {
 			goto fail;
 		}
 		(inst->module->sql_finish_select_query)(handle, inst->config);
