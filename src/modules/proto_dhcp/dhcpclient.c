@@ -140,11 +140,13 @@ static int request_init(char const *filename)
 		case PW_PACKET_DST_IP_ADDRESS:
 			request->dst_ipaddr.af = AF_INET;
 			request->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			request->dst_ipaddr.prefix = 32;
 			break;
 
 		case PW_PACKET_DST_IPV6_ADDRESS:
 			request->dst_ipaddr.af = AF_INET6;
 			request->dst_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+			request->dst_ipaddr.prefix = 128;
 			break;
 
 		case PW_PACKET_SRC_PORT:
@@ -154,11 +156,13 @@ static int request_init(char const *filename)
 		case PW_PACKET_SRC_IP_ADDRESS:
 			request->src_ipaddr.af = AF_INET;
 			request->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			request->src_ipaddr.prefix = 32;
 			break;
 
 		case PW_PACKET_SRC_IPV6_ADDRESS:
 			request->src_ipaddr.af = AF_INET6;
 			request->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+			request->src_ipaddr.prefix = 128;
 			break;
 		} /* switch over the attribute */
 
