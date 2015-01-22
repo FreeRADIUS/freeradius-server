@@ -152,7 +152,7 @@ if test x"$fail" != x""; then
 fi
 
 mod_ldflags="$LIBCURL $SMART_LIBS"
-mod_cflags="$SMART_CPPFLAGS"
+mod_cflags="$LIBCURL_CPPFLAGS $SMART_CPPFLAGS"
 
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)

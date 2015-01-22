@@ -3967,7 +3967,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_rest requires: $fail." >&2;};
 fi
 
 mod_ldflags="$LIBCURL $SMART_LIBS"
-mod_cflags="$SMART_CPPFLAGS"
+mod_cflags="$LIBCURL_CPPFLAGS $SMART_CPPFLAGS"
 
 
 
