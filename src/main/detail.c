@@ -773,12 +773,14 @@ open_file:
 	if (vp) {
 		packet->src_ipaddr.af = AF_INET;
 		packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		packet->src_ipaddr.prefix = 32;
 	} else {
 		vp = pairfind(packet->vps, PW_PACKET_SRC_IPV6_ADDRESS, 0, TAG_ANY);
 		if (vp) {
 			packet->src_ipaddr.af = AF_INET6;
 			memcpy(&packet->src_ipaddr.ipaddr.ip6addr,
 			       &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+			packet->src_ipaddr.prefix = 128;
 		}
 	}
 
@@ -786,12 +788,14 @@ open_file:
 	if (vp) {
 		packet->dst_ipaddr.af = AF_INET;
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		packet->dst_ipaddr.prefix = 32;
 	} else {
 		vp = pairfind(packet->vps, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY);
 		if (vp) {
 			packet->dst_ipaddr.af = AF_INET6;
 			memcpy(&packet->dst_ipaddr.ipaddr.ip6addr,
 			       &vp->vp_ipv6addr, sizeof(vp->vp_ipv6addr));
+			packet->dst_ipaddr.prefix = 128;
 		}
 	}
 
