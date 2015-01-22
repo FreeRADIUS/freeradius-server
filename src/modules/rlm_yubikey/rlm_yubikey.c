@@ -27,6 +27,9 @@ RCSID("$Id$")
 
 #include "rlm_yubikey.h"
 
+#include <freeradius-devel/base64.h>
+#include <freeradius-devel/rad_assert.h>
+
 /*
  *	A mapping of configuration file names to internal variables.
  *
@@ -97,6 +100,58 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
 	}
 
 	return i;
+}
+
+/**
+ * @brief Modhex / hex / base64 / bin auto-discovery
+ *
+ * Based on rlm_pap version.
+ */
+
+void rlm_yubikey_normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
+{
+	uint8_t buffer[256];
+	size_t decoded;
+
+	if (min_length >= sizeof(buffer))
+		return;
+
+	rad_assert((vp->da->type == PW_TYPE_OCTETS) || (vp->da->type == PW_TYPE_STRING));
+
+	/*
+	 * Modhex encoding (possibly hex).
+	 */
+	if (!(vp->vp_length & 0x01) && vp->vp_length >= (2 * min_length)) {
+		decoded = modhex2bin(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
+		if (decoded == (vp->vp_length >> 1)) {
+			RDEBUG2("Normalizing %s from modhex encoding, %zu bytes -> %zu bytes", vp->da->name, vp->vp_length, decoded);
+			pairmemcpy(vp, buffer, decoded);
+			return;
+		}
+
+		decoded = fr_hex2bin(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
+		if (decoded == (vp->vp_length >> 1)) {
+			RDEBUG2("Normalizing %s from hex encoding, %zu bytes -> %zu bytes", vp->da->name, vp->vp_length, decoded);
+			pairmemcpy(vp, buffer, decoded);
+			return;
+		}
+	}
+
+	/*
+	 * Base 64 encoding.
+	 */
+	if ((vp->vp_length * 3) >= ((min_length * 4))) {
+		decoded = fr_base64_decode(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
+		if (decoded >= (ssize_t) min_length) {
+			RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes", vp->da->name, vp->vp_length, decoded);
+			pairmemcpy(vp, buffer, decoded);
+			return;
+		}
+	}
+
+	/*
+	 * Else unknown encoding (or already binary).
+	 */
 }
 
 /**
