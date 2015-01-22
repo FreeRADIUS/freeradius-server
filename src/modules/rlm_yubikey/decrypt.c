@@ -120,6 +120,23 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	vp->vp_integer = counter;
 	vp->vp_length = 4;
 
+	da = dict_attrbyname("Yubikey-Private-ID");
+	if (!da) {
+		REDEBUG("Dictionary missing entry for 'Yubikey-Private-ID'");
+		return RLM_MODULE_FAIL;
+	}
+
+	vp = pair_find_by_da(request->config_items, da, TAG_ANY);
+	if (vp) {
+		if (inst->normify)
+			rlm_yubikey_normify(request, vp, YUBIKEY_UID_SIZE);
+
+		if (vp->vp_length != YUBIKEY_UID_SIZE) {
+			REDEBUG("Yubikey-Private-ID length incorrect, expected %u got %zu", YUBIKEY_UID_SIZE, vp->vp_length);
+			return RLM_MODULE_INVALID;
+		}
+	}
+
 	return RLM_MODULE_OK;
 }
 #endif
