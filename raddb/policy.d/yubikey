@@ -61,3 +61,21 @@ yubikey_authenticate_counter {
 		reject
 	}
 }
+
+### Update stored data
+yubikey.post-auth {
+	if (&control:Yubikey-Counter) {
+		update {
+			Tmp-String-0 := 'Yubikey-Counter'
+			Tmp-String-1 := "%{request:Yubikey-Counter}"
+		}
+		yubisql
+	}
+	if (&control:Yubikey-Timestamp) {
+		update {
+			Tmp-String-0 := 'Yubikey-Timestamp'
+			Tmp-String-1 := "%{request:Yubikey-Timestamp}"
+		}
+		yubisql
+	}
+}
