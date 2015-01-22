@@ -40,6 +40,8 @@ typedef struct rlm_yubikey_t {
 } rlm_yubikey_t;
 
 
+void rlm_yubikey_normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length);
+
 /*
  *	decrypt.c - Decryption functions
  */
