@@ -51,6 +51,7 @@ static const CONF_PARSER validation_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ "id_length", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_yubikey_t, id_len), "12" },
 	{ "split", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_yubikey_t, split), "yes" },
+	{ "normalise", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_yubikey_t, normify), "yes" },
 	{ "decrypt", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_yubikey_t, decrypt), "no" },
 	{ "validate", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_yubikey_t, validate), "no" },
 #ifdef HAVE_YKCLIENT
