@@ -127,6 +127,32 @@ static ssize_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char 
 	return len;
 }
 
+/**
+ * @brief Convert yubikey modhex to binary
+ *
+ * Based on fr_hex2bin.
+ */
+
+static ssize_t modhex2bin(uint8_t *bin, size_t outlen, char const *modhex, size_t inlen)
+{
+	size_t i, len;
+	char *c1, *c2;
+
+	len = inlen >> 1;
+	if (len > outlen)
+		len = outlen;
+
+	for (i = 0; i < len; i++) {
+		if (!(c1 = memchr(modhextab, tolower((int) modhex[i << 1]), sizeof(modhextab))) ||
+		    !(c2 = memchr(modhextab, tolower((int) modhex[(i << 1) + 1]), sizeof(modhextab))))
+			return -1;
+
+		bin[i] = ((c1-modhextab)<<4) + (c2-modhextab);
+	}
+
+	return i;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
