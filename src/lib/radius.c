@@ -2933,7 +2933,7 @@ static ssize_t data2vp_tlvs(TALLOC_CTX *ctx,
 			pairfree(&head);
 			return -1;
 		}
-		tail = &((*tail)->next);
+		if (*tail) tail = &((*tail)->next);
 		data += data[1];
 	}
 
@@ -3004,13 +3004,6 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		fr_strerror_printf("data2vp_vsa: Internal sanity check failed");
 		return -1;
 	}
-
-#ifndef NDEBUG
-	if (attrlen <= (ssize_t) (dv->type + dv->length)) {
-		fr_strerror_printf("data2vp_vsa: Failure to call rad_tlv_ok");
-		return -1;
-	}
-#endif
 
 	/*
 	 *	See if the VSA is known.
@@ -3307,7 +3300,12 @@ create_attrs:
 			fr_strerror_printf("Internal sanity check %d", __LINE__);
 			return -1;
 		}
-		tail = &((*tail)->next);
+
+		/*
+		 *	Vendors can send zero-length VSAs.
+		 */
+		if (*tail) tail = &((*tail)->next);
+
 		data += vsa_len;
 		attrlen -= vsa_len;
 		packetlen -= vsa_len;
