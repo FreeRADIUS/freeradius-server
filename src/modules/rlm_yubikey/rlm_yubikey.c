@@ -336,8 +336,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	char const *passcode = NULL;
 	DICT_ATTR const *da;
 	VALUE_PAIR const *vp;
-	size_t len;
-	int ret;
 
 	da = dict_attrbyname("Yubikey-OTP");
 	if (!da) {
@@ -361,7 +359,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 	passcode = vp->vp_strvalue;
-	len = vp->vp_length;
 
 #ifdef HAVE_YUBIKEY
 	if (inst->decrypt) {
