@@ -196,3 +196,24 @@ yubikey {
 		}
 	}
 }
+
+#sql yubisql {
+#	#
+#	#  Settings if sql persistent storage is required.
+#	#
+#
+#	# These must match sql module configuration.
+#	dialect = "sqlite"
+#	authcheck_table = "radcheck"
+#
+#	sql_user_name = "%{User-Name}"
+#	sql_user_name = "%{Yubikey-Public-ID}"
+#	sql_user_name = "%{%{Yubikey-Public-ID}:-%{User-Name}}"
+#
+#	sqlite {
+#		filename = "/var/lib/radiusd/freeradius.db"
+#	}
+#
+#	driver = "rlm_sql_${dialect}"
+#	$INCLUDE ${modconfdir}/${.:name}/yubikey/${dialect}/queries.conf
+#}
