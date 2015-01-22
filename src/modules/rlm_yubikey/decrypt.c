@@ -38,6 +38,9 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 		return RLM_MODULE_INVALID;
 	}
 
+	if (inst->normify)
+		rlm_yubikey_normify(request, vp, YUBIKEY_KEY_SIZE);
+
 	if (vp->vp_length != YUBIKEY_KEY_SIZE) {
 		REDEBUG("Yubikey-Key length incorrect, expected %u got %zu", YUBIKEY_KEY_SIZE, vp->vp_length);
 		return RLM_MODULE_INVALID;
