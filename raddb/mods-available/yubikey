@@ -52,6 +52,7 @@ yubikey {
 	#
 	#  The module itself does not provide persistent storage as this
 	#  would be duplicative of functionality already in the server.
+	#  See the post-auth section below.
 	#
 	#  Yubikey authentication requires the following control attribute
 	#  retrieved from persistent storage:
@@ -93,6 +94,12 @@ yubikey {
 	#                           each session.
 	#    * Yubikey-Random     - Randomly generated value from the token.
 	#                           The value is a 16-bit integer.
+	#
+	#  If storage of the updated attributes in a SQL database is required,
+	#  the post-auth section should have the yubikey policy placed near the
+	#  oher persistent storage modules. The yubisql configuration at the end
+	#  of this file will also need to be uncommented appropriately and the
+	#  dialect set.
 	#
 	decrypt = no
 
