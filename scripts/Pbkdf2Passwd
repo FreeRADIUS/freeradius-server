@@ -1,0 +1,168 @@
+#!/usr/bin/perl -w
+use strict;
+use Getopt::Long qw(:config no_ignore_case);
+use Pod::Usage;
+use Crypt::PBKDF2;
+use Time::HiRes;
+use Math::Random::Secure qw(irand);
+
+my %opts;
+GetOptions(\%opts,
+	qw[ help|?! man! a|algorithm=s i|iterations=i l|len=i s|salt=s S|Salt=s t|time! z|saltlen=i ]
+) or pod2usage(2);
+pod2usage(1) if $opts{help};
+pod2usage(-verbose => 2) if $opts{man};
+
+my $algo = 'HMACSHA2';
+if (exists $opts{a}) {
+	my %algorithm = ('1' => 'HMACSHA1', 'sha1' => 'HMACSHA1', 
+		'2' => 'HMACSHA2', 'sha2' => 'HMACSHA2',
+		'3' => 'HMACSHA3', 'sha3' => 'HMACSHA3');
+	$algo = $algorithm{$opts{a}};
+	if (!defined $algo) {
+		print "Bad algorithm\n";
+		exit(1);
+	}
+}
+
+my $iter;
+my %hargs;
+my $ssiz;
+if ($algo eq 'HMACSHA1') {
+	$iter = 1000;
+	%hargs = ( output_len => 20 );
+	$ssiz = 8;
+} elsif ($algo eq 'HMACSHA2' or $algo eq 'HMACSHA3') {
+	$iter = 10000;
+	my $len = 256;
+	if (exists $opts{l}) {
+		my @length = (224, 256, 384, 512);
+		if (grep {$_ eq $opts{l}} @length) {
+			$len = $opts{l};
+		} else {
+			print "Bad length\n";
+			exit(1);
+		}
+	}
+	%hargs = ( hash_args => {
+		sha_size => $len,
+	} );
+	$ssiz = 16;
+}
+
+if (exists $opts{i}) {
+	$iter = $opts{i};
+	if ($iter < 1 || $iter > 0xffffffff) {
+		print "Bad iterations\n";
+		exit(1);
+	}
+}
+
+my $password = $ARGV[0];
+if (!defined $password) {
+	print "Missing password\n";
+	exit(1);
+}
+
+my $salt = $opts{s};
+if (exists $opts{S}) {
+	if (defined $salt) {
+		print "Redundant salt\n";
+		exit(1);
+	}
+	$salt = pack('H*', $opts{S});
+}
+if (!defined $salt) {
+	$ssiz = $opts{z} if (exists $opts{z});
+	if ($ssiz < 0) {
+		print "Bad salt length\n";
+		exit(1);
+	}
+	while ($ssiz >= 4) {
+		$salt .= pack('N', irand());
+		$ssiz -= 4;
+	}
+	$salt .= substr(pack('N', irand()), 1, $ssiz) if ($ssiz > 0);
+}
+
+my $pbkdf2;
+$pbkdf2 = Crypt::PBKDF2->new(
+	hash_class => $algo,
+	%hargs,
+	iterations => $iter,
+	salt_len => $ssiz, # Seems to use non-cryptographic rand
+);
+
+my $t0 = [Time::HiRes::gettimeofday];
+my $hash = $pbkdf2->generate($password, $salt);
+my $t1 = Time::HiRes::tv_interval($t0);
+print substr($hash, 10)."\n";
+print "Time:".$t1."\n" if (exists $opts{t});
+
+__END__
+
+=head1 NAME
+
+Pbkdf2Passwd - Generate a PBKDF2 hashed password
+
+=head1 DESCRIPTION
+
+Generate a Password Based Key Derivation Functiong version 2 using given
+password, a hashing algorithm, the number of iterations, and optional salt.
+
+=head1 SYNOPSIS
+
+   Pbkdf2Passwd [options] <password>
+
+=head1 OPTIONS
+
+=over
+
+=item B<-a> or B<-algorithm> <algorithm>
+
+Format options:
+
+=over 
+
+=item B<1> or B<sha1> : SHA-1
+
+=item B<2> or B<sha2> : SHA-2 (default)
+
+=item B<3> or B<sha3> : SHA-3
+
+=back
+
+=item B<-i> or B<-iterations> <count>
+
+Count of algorithm iterations (1 to 4294967295 | SHA-1 default: 1000,
+SHA-2 / SHA-3 default: 10000).
+
+=item B<-l> or B<-length> <length>
+
+For SHA-2 / SHA-3 algorithm bit length (224, 256, 384, or 512 | default: 256).
+
+=item B<-s> or B<-salt> <string>
+
+=item B<-S> or B<-Salt> <hexadecimal string>
+
+Salt string appended to password and hashed.
+
+=item B<-z> or B<-saltlen> <length>
+
+Byte length of random salt appended to password and hashed, if no salt string
+is explicitly given (SHA-1 default:8, SHA-2 / SHA-3 default: 16).
+
+=item B<-t> or B<-time>
+
+Approximate time to generate password (in seconds).
+
+=item B<-?> or B<-help>
+
+Print a brief help message.
+
+=item B<-man>
+
+Print the manual page.
+
+=back
+=cut

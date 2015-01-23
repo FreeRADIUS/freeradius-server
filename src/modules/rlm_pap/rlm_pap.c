@@ -107,6 +107,24 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ NULL, 0 }
 };
 
+#ifdef HAVE_OPENSSL_EVP_H
+typedef struct rlm_pap_pbkdf2 {
+	char const *name;
+	EVP_MD const *(*hash_algo)(void);
+	int keylen;
+} rlm_pap_pbkdf2;
+
+static const rlm_pap_pbkdf2 pbkdf2_names[] = {
+	{ "HMACSHA1", EVP_sha1, 20 },
+	{ "HMACSHA2+224", EVP_sha224, 28 },
+	{ "HMACSHA2+256", EVP_sha256, 32 },
+	{ "HMACSHA2+384", EVP_sha384, 48 },
+	{ "HMACSHA2+512", EVP_sha512, 64 },
+	{ NULL, NULL, 0 }
+};
+#endif
+
+
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_pap_t *inst = instance;
@@ -423,6 +441,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 				normify(request, vp, 64); /* ensure it's in the right format */
 			}
 			found_pw = true;
+			break;
+
+		case PW_PBKDF2_PASSWORD:
+			found_pw = true; /* Already base64 standardized */
 			break;
 #endif
 
@@ -747,6 +769,187 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *req
 	EVP_MD const *md;
 	char const *name;
 	uint8_t digest[EVP_MAX_MD_SIZE];
+	unsigned int digestlen;
+
+	RDEBUG("Comparing with \"known-good\" SSHA2-Password");
+
+	if (inst->normify) {
+		normify(request, vp, 28);
+	}
+
+	switch (vp->da->attr) {
+	case PW_SSHA2_224_PASSWORD:
+		name = "224";
+		md = EVP_sha224();
+		digestlen = 28;
+		break;
+
+	case PW_SSHA2_256_PASSWORD:
+		name = "256";
+		md = EVP_sha256();
+		digestlen = 32;
+		break;
+
+	case PW_SSHA2_384_PASSWORD:
+		name = "384";
+		md = EVP_sha384();
+		digestlen = 48;
+		break;
+
+	case PW_SSHA2_512_PASSWORD:
+		name = "512";
+		digestlen = 64;
+		md = EVP_sha512();
+		break;
+
+	default:
+		/* Should never get here */
+		return RLM_MODULE_INVALID;
+	}
+
+	if (vp->vp_length <= digestlen) {
+		REDEBUG("\"known-good\" SSHA%s-Password has incorrect length", name);
+		return RLM_MODULE_INVALID;
+	}
+
+	ctx = EVP_MD_CTX_create();
+	EVP_DigestInit_ex(ctx, md, NULL);
+	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->vp_length);
+	EVP_DigestUpdate(ctx, &vp->vp_octets[digestlen], vp->vp_length - digestlen);
+	EVP_DigestFinal_ex(ctx, digest, &digestlen);
+	EVP_MD_CTX_destroy(ctx);
+
+	if (rad_digest_cmp(digest, vp->vp_octets, (size_t) digestlen) != 0) {
+		REDEBUG("SSHA-%s digest does not match \"known good\" digest", name);
+		return RLM_MODULE_REJECT;
+	}
+
+	return RLM_MODULE_OK;
+}
+
+#define B64_DIM(siz) FR_BASE64_DEC_LENGTH(FR_BASE64_ENC_LENGTH(siz))
+
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+{
+	uint8_t const *str;
+	rlm_pap_pbkdf2 const *pbkdf2;
+	size_t len, siz;
+	uint32_t iter;
+	ssize_t saltlen, hashlen;
+	uint8_t salt[B64_DIM(EVP_MAX_MD_SIZE)], hash[B64_DIM(EVP_MAX_MD_SIZE)], digest[EVP_MAX_MD_SIZE], iterbuf[8];
+	char *end;
+
+	RDEBUG("Comparing with \"known-good\" PBKDF2-Password");
+
+	/*
+	 * Parse PBKDF string = hash_algorithm:interations:salt:hash
+	 */
+	str = vp->vp_octets;
+	len = vp->vp_length;
+	pbkdf2 = pbkdf2_names;
+	while (!0) {
+		siz = strlen(pbkdf2->name);
+		if (len >= siz && strncasecmp((char const *) str, pbkdf2->name, siz) == 0)
+			break;
+
+		pbkdf2++;
+		if (pbkdf2->name == NULL) {
+			REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
+			return RLM_MODULE_INVALID;
+		}
+	}
+
+	str += siz;
+	len -= siz;
+	if (len >= 1 && *str == ':') {
+		str++;
+		len--;
+	} else {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
+		return RLM_MODULE_INVALID;
+	}
+
+	if (len < 6) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect iterations");
+		return RLM_MODULE_INVALID;
+	}
+	memcpy(iterbuf, str, 6);
+	iterbuf[7] = iterbuf[6] = '=';
+	if (fr_base64_decode(hash, sizeof(hash), (char const *) iterbuf, sizeof(iterbuf)) != sizeof(uint32_t)) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect iterations");
+		return RLM_MODULE_INVALID;
+	}
+	iter = (((uint32_t) hash[0]) << 24) | (((uint32_t) hash[1]) << 16) | (((uint32_t) hash[2]) << 8) | ((uint32_t) hash[3]);
+
+	str += 6;
+	len -= 6;
+	if (len >= 1 && *str == ':') {
+		str++;
+		len--;
+	} else {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
+		return RLM_MODULE_INVALID;
+	}
+
+	if (len == 0) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect salt");
+		return RLM_MODULE_INVALID;
+	}
+	end = memchr(str, ':', len);
+	if (end == NULL) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
+		return RLM_MODULE_INVALID;
+	}
+	siz = (size_t)(end - (char *) str);
+	if (siz == 0)
+		saltlen = 0;
+	else {
+		saltlen = fr_base64_decode(salt, sizeof(salt), (char const *) str, siz);
+		if (saltlen <= 0) {
+			REDEBUG("\"known-good\" PBKDF2-Password has incorrect salt");
+			return RLM_MODULE_INVALID;
+		}
+	}
+
+	str += siz + 1;
+	len -= siz + 1;
+	if (len == 0) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
+		return RLM_MODULE_INVALID;
+	}
+	hashlen = fr_base64_decode(hash, sizeof(hash), (char const *) str, len);
+	if (hashlen <= 0) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
+		return RLM_MODULE_INVALID;
+	} else if (hashlen != pbkdf2->keylen) {
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect length");
+		return RLM_MODULE_INVALID;
+	}
+
+	RDEBUG2("PBKDF2 %s iter=%u saltlen=%zd hashlen=%zd", pbkdf2->name, iter, saltlen, hashlen);
+
+	/*
+	 * Hash and compare
+	 */
+	if (PKCS5_PBKDF2_HMAC((const char *) request->password->vp_octets, (int) request->password->vp_length, (const unsigned char *) salt, (int) saltlen, (int) iter, pbkdf2->hash_algo(), hashlen, (unsigned char *) digest) == 0) {
+		REDEBUG("PBKDF2 digest failure");
+		return RLM_MODULE_INVALID;
+	}
+
+	if (rad_digest_cmp(digest, hash, (size_t) hashlen) != 0) {
+		REDEBUG("PBKDF2 digest does not match \"known good\" digest");
+		return RLM_MODULE_REJECT;
+	}
+
+	return RLM_MODULE_OK;
+}
+
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+{
+	EVP_MD_CTX *ctx;
+	EVP_MD const *md;
+	char const *name;
+	uint8_t digest[EVP_MAX_MD_SIZE];
 	unsigned int digest_len, min_len;
 
 	switch (vp->da->attr) {
@@ -1009,6 +1212,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		case PW_SSHA2_384_PASSWORD:
 		case PW_SSHA2_512_PASSWORD:
 			auth_func = &pap_auth_ssha2;
+			break;
+
+		case PW_PBKDF2_PASSWORD:
+			auth_func = &pap_auth_pbkdf2;
 			break;
 #endif
 
