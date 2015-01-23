@@ -938,7 +938,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
 		goto pap_auth_pbkdf2_err;
 	} else if (hashlen != pbkdf2->keylen) {
-		REDEBUG("\"known-good\" PBKDF2-Password has incorrect length");
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash length");
 		goto pap_auth_pbkdf2_err;
 	}
 
