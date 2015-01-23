@@ -769,58 +769,66 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *req
 	EVP_MD const *md;
 	char const *name;
 	uint8_t digest[EVP_MAX_MD_SIZE];
-	unsigned int digestlen;
-
-	RDEBUG("Comparing with \"known-good\" SSHA2-Password");
-
-	if (inst->normify) {
-		normify(request, vp, 28);
-	}
+	unsigned int digest_len, min_len;
 
 	switch (vp->da->attr) {
 	case PW_SSHA2_224_PASSWORD:
-		name = "224";
+		name = "SSHA2-224";
 		md = EVP_sha224();
-		digestlen = 28;
+		min_len = 28;
 		break;
 
 	case PW_SSHA2_256_PASSWORD:
-		name = "256";
+		name = "SSHA2-256";
 		md = EVP_sha256();
-		digestlen = 32;
+		min_len = 32;
 		break;
 
 	case PW_SSHA2_384_PASSWORD:
-		name = "384";
+		name = "SSHA2-384";
 		md = EVP_sha384();
-		digestlen = 48;
+		min_len = 48;
 		break;
 
 	case PW_SSHA2_512_PASSWORD:
-		name = "512";
-		digestlen = 64;
+		name = "SSHA2-512";
+		min_len = 64;
 		md = EVP_sha512();
 		break;
 
 	default:
-		/* Should never get here */
-		return RLM_MODULE_INVALID;
+		rad_assert(0);
 	}
 
-	if (vp->vp_length <= digestlen) {
-		REDEBUG("\"known-good\" SSHA%s-Password has incorrect length", name);
+	RDEBUG("Comparing with \"known-good\" %s-Password", name);
+
+	/*
+	 *	Unlike plain SHA2 we already know what length
+	 *	to expect, so can be more specific with the
+	 *	minimum digest length.
+	 */
+	if (inst->normify) normify(request, vp, min_len + 1);
+
+	if (vp->vp_length <= min_len) {
+		REDEBUG("\"known-good\" %s-Password has incorrect length, got %zu bytes, need at least %u bytes",
+			name, vp->vp_length, min_len + 1);
 		return RLM_MODULE_INVALID;
 	}
 
 	ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(ctx, md, NULL);
 	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->vp_length);
-	EVP_DigestUpdate(ctx, &vp->vp_octets[digestlen], vp->vp_length - digestlen);
-	EVP_DigestFinal_ex(ctx, digest, &digestlen);
+	EVP_DigestUpdate(ctx, &vp->vp_octets[min_len], vp->vp_length - min_len);
+	EVP_DigestFinal_ex(ctx, digest, &digest_len);
 	EVP_MD_CTX_destroy(ctx);
 
-	if (rad_digest_cmp(digest, vp->vp_octets, (size_t) digestlen) != 0) {
-		REDEBUG("SSHA-%s digest does not match \"known good\" digest", name);
+	rad_assert((size_t) digest_len == min_len);	/* This would be an OpenSSL bug... */
+
+	/*
+	 *	Only compare digest_len bytes, the rest is salt.
+	 */
+	if (rad_digest_cmp(digest, vp->vp_octets, (size_t)digest_len) != 0) {
+		REDEBUG("%s digest does not match \"known good\" digest", name);
 		return RLM_MODULE_REJECT;
 	}
 
@@ -938,78 +946,6 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 
 	if (rad_digest_cmp(digest, hash, (size_t) hashlen) != 0) {
 		REDEBUG("PBKDF2 digest does not match \"known good\" digest");
-		return RLM_MODULE_REJECT;
-	}
-
-	return RLM_MODULE_OK;
-}
-
-static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
-{
-	EVP_MD_CTX *ctx;
-	EVP_MD const *md;
-	char const *name;
-	uint8_t digest[EVP_MAX_MD_SIZE];
-	unsigned int digest_len, min_len;
-
-	switch (vp->da->attr) {
-	case PW_SSHA2_224_PASSWORD:
-		name = "SSHA2-224";
-		md = EVP_sha224();
-		min_len = 28;
-		break;
-
-	case PW_SSHA2_256_PASSWORD:
-		name = "SSHA2-256";
-		md = EVP_sha256();
-		min_len = 32;
-		break;
-
-	case PW_SSHA2_384_PASSWORD:
-		name = "SSHA2-384";
-		md = EVP_sha384();
-		min_len = 48;
-		break;
-
-	case PW_SSHA2_512_PASSWORD:
-		name = "SSHA2-512";
-		min_len = 64;
-		md = EVP_sha512();
-		break;
-
-	default:
-		rad_assert(0);
-	}
-
-	RDEBUG("Comparing with \"known-good\" %s-Password", name);
-
-	/*
-	 *	Unlike plain SHA2 we already know what length
-	 *	to expect, so can be more specific with the
-	 *	minimum digest length.
-	 */
-	if (inst->normify) normify(request, vp, min_len + 1);
-
-	if (vp->vp_length <= min_len) {
-		REDEBUG("\"known-good\" %s-Password has incorrect length, got %zu bytes, need at least %u bytes",
-			name, vp->vp_length, min_len + 1);
-		return RLM_MODULE_INVALID;
-	}
-
-	ctx = EVP_MD_CTX_create();
-	EVP_DigestInit_ex(ctx, md, NULL);
-	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->vp_length);
-	EVP_DigestUpdate(ctx, &vp->vp_octets[min_len], vp->vp_length - min_len);
-	EVP_DigestFinal_ex(ctx, digest, &digest_len);
-	EVP_MD_CTX_destroy(ctx);
-
-	rad_assert((size_t) digest_len == min_len);	/* This would be an OpenSSL bug... */
-
-	/*
-	 *	Only compare digest_len bytes, the rest is salt.
-	 */
-	if (rad_digest_cmp(digest, vp->vp_octets, (size_t)digest_len) != 0) {
-		REDEBUG("%s digest does not match \"known good\" digest", name);
 		return RLM_MODULE_REJECT;
 	}
 
