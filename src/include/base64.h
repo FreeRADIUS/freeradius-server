@@ -27,7 +27,7 @@ RCSIDH(base64_h, "$Id$")
 /* This uses that the expression (n+(k-1))/k means the smallest
    integer >= n/k, i.e., the ceiling of n/k.  */
 #define FR_BASE64_ENC_LENGTH(inlen) ((((inlen) + 2) / 3) * 4)
-#define FR_BASE64_DEC_LENGTH(inlen) ((3 * (inlen / 4)) + 2)
+#define FR_BASE64_DEC_LENGTH(inlen) ((((inlen) + 3) / 4) * 3)
 
 int fr_isbase64(char c);
 
