@@ -81,9 +81,20 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{smd5}",		PW_SMD5_PASSWORD },
 	{ "{crypt}",		PW_CRYPT_PASSWORD },
 #ifdef HAVE_OPENSSL_EVP_H
+	/*
+	 *	It'd make more sense for the headers to be
+	 *	ssha2-* with SHA3 coming soon but we're at
+	 *	the mercy of directory implementors.
+	 */
 	{ "{sha2}",		PW_SHA2_PASSWORD },
+	{ "{sha224}",		PW_SHA2_PASSWORD },
 	{ "{sha256}",		PW_SHA2_PASSWORD },
+	{ "{sha384}",		PW_SHA2_PASSWORD },
 	{ "{sha512}",		PW_SHA2_PASSWORD },
+	{ "{ssha224}",		PW_SSHA2_224_PASSWORD },
+	{ "{ssha256}",		PW_SSHA2_256_PASSWORD },
+	{ "{ssha384}",		PW_SSHA2_384_PASSWORD },
+	{ "{ssha512}",		PW_SSHA2_512_PASSWORD },
 #endif
 	{ "{sha}",		PW_SHA_PASSWORD },
 	{ "{ssha}",		PW_SSHA_PASSWORD },
@@ -95,7 +106,6 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{X- orclntv}",	PW_NT_PASSWORD },
 	{ NULL, 0 }
 };
-
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
@@ -126,18 +136,18 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *       hex encoded, and would fail if the 0x was present but the string didn't
  *       consist of hexits. The base64 char set is a superset of hex, and it was
  *       observed in the wild, that occasionally base64 encoded data really could
- *       start with 0x. That's why min_length (and decodability) are used as the
+ *       start with 0x. That's why min_len (and decodability) are used as the
  *       only heuristics now.
  *
  * @param[in] request Current request.
  * @param[in,out] vp to normify.
- * @param[in] min_length we expect the decoded version to be.
+ * @param[in] min_len we expect the decoded version to be.
  */
-static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
+static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_len)
 {
 	uint8_t buffer[256];
 
-	if (min_length >= sizeof(buffer)) return; /* paranoia */
+	if (min_len >= sizeof(buffer)) return; /* paranoia */
 
 	rad_assert((vp->da->type == PW_TYPE_OCTETS) || (vp->da->type == PW_TYPE_STRING));
 
@@ -145,7 +155,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	Hex encoding. Length is even, and it's greater than
 	 *	twice the minimum length.
 	 */
-	if (!(vp->vp_length & 0x01) && vp->vp_length >= (2 * min_length)) {
+	if (!(vp->vp_length & 0x01) && vp->vp_length >= (2 * min_len)) {
 		size_t decoded;
 
 		decoded = fr_hex2bin(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
@@ -161,11 +171,11 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	Base 64 encoding.  It's at least 4/3 the original size,
 	 *	and we want to avoid division...
 	 */
-	if ((vp->vp_length * 3) >= ((min_length * 4))) {
+	if ((vp->vp_length * 3) >= ((min_len * 4))) {
 		ssize_t decoded;
 		decoded = fr_base64_decode(buffer, sizeof(buffer), vp->vp_strvalue, vp->vp_length);
 		if (decoded < 0) return;
-		if (decoded >= (ssize_t) min_length) {
+		if (decoded >= (ssize_t) min_len) {
 			RDEBUG2("Normalizing %s from base64 encoding, %zu bytes -> %zu bytes",
 				vp->da->name, vp->vp_length, decoded);
 			pairmemcpy(vp, buffer, decoded);
@@ -196,14 +206,20 @@ static VALUE_PAIR *normify_with_header(REQUEST *request, VALUE_PAIR *vp)
 	char const	*p, *q;
 	size_t		len;
 
-	uint8_t		digest[129];	/* +1 for \0 */
+	uint8_t		digest[257];	/* +1 for \0 */
 	ssize_t		decoded;
 
-	char		buffer[128];
+	char		buffer[256];
 
 	VALUE_PAIR	*new;
 
 	VERIFY_VP(vp);
+
+	/*
+	 *	Ensure this is only ever called with a
+	 *	string type attribute.
+	 */
+	rad_assert(vp->da->type == PW_TYPE_STRING);
 
 redo:
 	p = vp->vp_strvalue;
@@ -377,6 +393,34 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		case PW_SHA2_PASSWORD:
 			if (inst->normify) {
 				normify(request, vp, 28); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA2_224_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 28); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA2_256_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 32); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA2_384_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 48); /* ensure it's in the right format */
+			}
+			found_pw = true;
+			break;
+
+		case PW_SSHA2_512_PASSWORD:
+			if (inst->normify) {
+				normify(request, vp, 64); /* ensure it's in the right format */
 			}
 			found_pw = true;
 			break;
@@ -640,13 +684,11 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 	EVP_MD const *md;
 	char const *name;
 	uint8_t digest[EVP_MAX_MD_SIZE];
-	unsigned int digestlen;
+	unsigned int digest_len;
 
 	RDEBUG("Comparing with \"known-good\" SHA2-Password");
 
-	if (inst->normify) {
-		normify(request, vp, 28);
-	}
+	if (inst->normify) normify(request, vp, 28);
 
 	/*
 	 *	All the SHA-2 algorithms produce digests of different lengths,
@@ -655,25 +697,25 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 	switch (vp->vp_length) {
 	/* SHA-224 */
 	case 28:
-		name = "SHA-224";
+		name = "SHA2-224";
 		md = EVP_sha224();
 		break;
 
 	/* SHA-256 */
 	case 32:
-		name = "SHA-256";
+		name = "SHA2-256";
 		md = EVP_sha256();
 		break;
 
 	/* SHA-384 */
 	case 48:
-		name = "SHA-384";
+		name = "SHA2-384";
 		md = EVP_sha384();
 		break;
 
 	/* SHA-512 */
 	case 64:
-		name = "SHA-512";
+		name = "SHA2-512";
 		md = EVP_sha512();
 		break;
 
@@ -686,12 +728,84 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 	ctx = EVP_MD_CTX_create();
 	EVP_DigestInit_ex(ctx, md, NULL);
 	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->vp_length);
-	EVP_DigestFinal_ex(ctx, digest, &digestlen);
+	EVP_DigestFinal_ex(ctx, digest, &digest_len);
 	EVP_MD_CTX_destroy(ctx);
 
-	fr_assert((size_t) digestlen == vp->vp_length);	/* This would be an OpenSSL bug... */
+	rad_assert((size_t) digest_len == vp->vp_length);	/* This would be an OpenSSL bug... */
 
 	if (rad_digest_cmp(digest, vp->vp_octets, vp->vp_length) != 0) {
+		REDEBUG("%s digest does not match \"known good\" digest", name);
+		return RLM_MODULE_REJECT;
+	}
+
+	return RLM_MODULE_OK;
+}
+
+static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
+{
+	EVP_MD_CTX *ctx;
+	EVP_MD const *md;
+	char const *name;
+	uint8_t digest[EVP_MAX_MD_SIZE];
+	unsigned int digest_len, min_len;
+
+	switch (vp->da->attr) {
+	case PW_SSHA2_224_PASSWORD:
+		name = "SSHA2-224";
+		md = EVP_sha224();
+		min_len = 28;
+		break;
+
+	case PW_SSHA2_256_PASSWORD:
+		name = "SSHA2-256";
+		md = EVP_sha256();
+		min_len = 32;
+		break;
+
+	case PW_SSHA2_384_PASSWORD:
+		name = "SSHA2-384";
+		md = EVP_sha384();
+		min_len = 48;
+		break;
+
+	case PW_SSHA2_512_PASSWORD:
+		name = "SSHA2-512";
+		min_len = 64;
+		md = EVP_sha512();
+		break;
+
+	default:
+		rad_assert(0);
+	}
+
+	RDEBUG("Comparing with \"known-good\" %s-Password", name);
+
+	/*
+	 *	Unlike plain SHA2 we already know what length
+	 *	to expect, so can be more specific with the
+	 *	minimum digest length.
+	 */
+	if (inst->normify) normify(request, vp, min_len + 1);
+
+	if (vp->vp_length <= min_len) {
+		REDEBUG("\"known-good\" %s-Password has incorrect length, got %zu bytes, need at least %u bytes",
+			name, vp->vp_length, min_len + 1);
+		return RLM_MODULE_INVALID;
+	}
+
+	ctx = EVP_MD_CTX_create();
+	EVP_DigestInit_ex(ctx, md, NULL);
+	EVP_DigestUpdate(ctx, request->password->vp_octets, request->password->vp_length);
+	EVP_DigestUpdate(ctx, &vp->vp_octets[min_len], vp->vp_length - min_len);
+	EVP_DigestFinal_ex(ctx, digest, &digest_len);
+	EVP_MD_CTX_destroy(ctx);
+
+	rad_assert((size_t) digest_len == min_len);	/* This would be an OpenSSL bug... */
+
+	/*
+	 *	Only compare digest_len bytes, the rest is salt.
+	 */
+	if (rad_digest_cmp(digest, vp->vp_octets, (size_t)digest_len) != 0) {
 		REDEBUG("%s digest does not match \"known good\" digest", name);
 		return RLM_MODULE_REJECT;
 	}
@@ -888,6 +1002,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 #ifdef HAVE_OPENSSL_EVP_H
 		case PW_SHA2_PASSWORD:
 			auth_func = &pap_auth_sha2;
+			break;
+
+		case PW_SSHA2_224_PASSWORD:
+		case PW_SSHA2_256_PASSWORD:
+		case PW_SSHA2_384_PASSWORD:
+		case PW_SSHA2_512_PASSWORD:
+			auth_func = &pap_auth_ssha2;
 			break;
 #endif
 

@@ -1,0 +1,144 @@
+#!/usr/bin/perl -w
+use strict;
+use Getopt::Long qw(:config no_ignore_case);
+use Pod::Usage;
+use Digest::SHA;
+use MIME::Base64;
+use Math::Random::Secure qw(irand);
+
+my %opts;
+GetOptions(\%opts,
+	qw[ help|?! man! f|format=s l|len=i s|salt=s S|Salt=s z|saltlen:i ]
+) or pod2usage(2);
+pod2usage(1) if $opts{help};
+pod2usage(-verbose => 2) if $opts{man};
+
+my $len = 256;
+if (exists $opts{l}) {
+	my @length = (224, 256, 384, 512);
+	if (grep {$_ eq $opts{l}} @length) {
+		$len = $opts{l};
+	} else {
+		print "Bad length\n";
+		exit(1);
+	}
+}
+
+sub fmt_base64 {
+	return encode_base64(shift, '')."\n";
+}
+
+sub fmt_hex {
+	return unpack('H*', shift)."\n";
+}
+
+sub fmt_bin {
+	return shift;
+}
+
+my $fmt = \&{'fmt_base64'};
+if (exists $opts{f}) {
+	my %format = ('m' => \&{'fmt_base64'}, 'base64' => \&{'fmt_base64'},
+		'x' => \&{'fmt_hex'}, 'hex' => \&{'fmt_hex'},
+		'b' => \&{'fmt_bin'}, 'bin' => \&{'fmt_bin'});
+	$fmt = $format{$opts{f}};
+	if (!defined $fmt) {
+		print "Bad format\n";
+		exit(1);
+	}
+}
+
+my $password = $ARGV[0];
+if (!defined $password) {
+	print "Missing password\n";
+	exit(1);
+}
+
+my $salt = $opts{s};
+if (exists $opts{S}) {
+	if (defined $salt) {
+		print "Redundant salt\n";
+		exit(1);
+	}
+	$salt = pack('H*', $opts{S});
+} elsif (!defined $salt and exists $opts{z}) {
+	my $ssiz = $opts{z};
+	if ($ssiz == 0) {
+		$ssiz = 8;
+	} elsif ($ssiz < 0) {
+		print "Bad salt length\n";
+		exit(1);
+	}
+	while ($ssiz >= 4) {
+		$salt .= pack('N', irand());
+		$ssiz -= 4;
+	}
+	$salt .= substr(pack('N', irand()), 1, $ssiz) if ($ssiz > 0);
+}
+
+my $ctx = Digest::SHA->new($len);
+$ctx->add($password);
+$ctx->add($salt) if (defined $salt);
+my $dig = $ctx->digest;
+$dig .= $salt if (defined $salt);
+
+print &$fmt($dig);
+
+__END__
+
+=head1 NAME
+
+Sha2Passwd - Generate a SHA2 hashed password
+
+=head1 DESCRIPTION
+
+Hash the given password into a SHA2 digest with optional salt.
+
+=head1 SYNOPSIS
+
+   Sha2Passwd [options] <password>
+
+=head1 OPTIONS
+
+=over
+
+=item B<-f> or B<-format> <format>
+
+Format options:
+
+=over 
+
+=item B<m> or B<base64> : base64 encoded (default)
+
+=item B<x> or B<hex> : hexadecimal string
+
+=item B<b> or B<bin> : binary string
+
+=back
+
+=item B<-l> or B<-length> <length>
+
+Hash algorithm bit length (224, 256, 384, or 512 | default: 256).
+
+=item B<-s> or B<-salt> <string>
+
+=item B<-S> or B<-Salt> <hexadecimal string>
+
+Salt string appended to password and hashed. The resultant digest then
+has the salt string appended.
+
+=item B<-z> or B<-saltlen> [<length>]
+
+Byte length of random salt appended to password and hashed, if no salt
+string is explicitly given (0 is default, default: 8).
+
+=item B<-?> or B<-help>
+
+Print a brief help message.
+
+=item B<-man>
+
+Print the manual page.
+
+=back
+=cut

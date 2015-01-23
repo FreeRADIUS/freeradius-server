@@ -1,0 +1,62 @@
+#
+#  PRE: if update return
+#
+
+update request {
+	Tmp-String-0 = "test"
+}
+
+#
+#	rpad tests
+#
+
+if ("%{rpad:&Tmp-String-0 7}" != "test   ") {
+	update reply {
+		Filter-Id := "fail 1"
+	}
+	return
+}
+
+if ("%{rpad:&Tmp-String-0 2}" != "te") {
+	update reply {
+		Filter-Id := "fail 2"
+	}
+	return
+}
+
+if ("%{rpad:&Tmp-String-0 7 x}" != "testxxx") {
+	update reply {
+		Filter-Id := "fail 1"
+	}
+	return
+}
+
+#
+#	lpad tests
+#
+
+if ("%{lpad:&Tmp-String-0 7}" != "   test") {
+	update reply {
+		Filter-Id := "fail 1"
+	}
+	return
+}
+
+if ("%{lpad:&Tmp-String-0 2}" != "te") {
+	update reply {
+		Filter-Id := "fail 2"
+	}
+	return
+}
+
+if ("%{lpad:&Tmp-String-0 7 x}" != "xxxtest") {
+	update reply {
+		Filter-Id := "fail 1"
+	}
+	return
+}
+
+update reply {
+	Filter-Id := "filter"
+}
+

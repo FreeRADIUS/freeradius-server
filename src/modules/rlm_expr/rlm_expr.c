@@ -1449,6 +1449,166 @@ static ssize_t next_time_xlat(UNUSED void *instance, REQUEST *request,
 	return snprintf(out, outlen, "%" PRIu64, (uint64_t)(mktime(local) - now));
 }
 
+
+/*
+ *	Parse the 3 arguments to lpad / rpad.
+ */
+static bool parse_pad(REQUEST *request, char const *fmt,
+		       value_pair_tmpl_t **pvpt, size_t *plength,
+		       char *fill)
+{
+	ssize_t slen;
+	unsigned long length;
+	char const *p;
+	char *end;
+	value_pair_tmpl_t *vpt;
+
+	*fill = ' ';		/* the default */
+
+	p = fmt;
+	while (isspace((int) *p)) p++;
+
+	if (*p != '&') {
+		RDEBUG("First argument must be an attribute reference");
+		return false;
+	}
+
+	vpt = talloc(request, value_pair_tmpl_t);
+	if (!vpt) return false;
+
+	slen = tmpl_from_attr_substr(vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	if (slen < 0) {
+		talloc_free(vpt);
+		RDEBUG("Failed expanding string: %s", fr_strerror());
+		return false;
+	}
+
+	p = fmt + slen;
+
+	while (isspace((int) *p)) p++;
+
+	length = strtoul(p, &end, 10);
+	if ((length <= 0) || (length == ULONG_MAX) || (length > 8192)) {
+		talloc_free(vpt);
+		RDEBUG("Invalid length found at: %s", p);
+		return false;
+	}
+
+	p += (end - p);
+
+	/*
+	 *	The fill character is optional.
+	 *
+	 *	But we must have a space after the previous number,
+	 *	and we must have only ONE fill character.
+	 */
+	if (*p) {
+		if (!isspace(*p)) {
+			talloc_free(vpt);
+			RDEBUG("Invalid text found at: %s", p);
+			return false;
+		}
+
+		while (isspace((int) *p)) p++;
+
+		if (p[1] != '\0') {
+			talloc_free(vpt);
+			RDEBUG("Invalid text found at: %s", p);
+			return false;
+		}
+
+		*fill = *p;
+	}
+       
+	*pvpt = vpt;
+	*plength = length;
+
+	return true;
+}
+		      
+
+/** left pad a string
+ *
+ *  %{lpad:&Attribute-Name length 'x'}
+ */
+static ssize_t lpad_xlat(UNUSED void *instance, REQUEST *request,
+			 char const *fmt, char *out, size_t outlen)
+{
+	char fill;
+	size_t pad, len;
+	value_pair_tmpl_t *vpt;
+
+	*out = '\0';
+	if (!parse_pad(request, fmt, &vpt, &pad, &fill)) {
+		return 0;
+	}
+
+	if (outlen <= pad) {
+		RWARN("Output is too short!  Result will be truncated");
+		pad = outlen - 1;
+	}
+
+	/*
+	 *	Print the attribute (left justified).  If it's too
+	 *	big, we're done.
+	 */
+	len = tmpl_expand(NULL, out, pad + 1, request, vpt, NULL, NULL);
+	if (len <= 0) return 0;
+
+	if (len >= pad) return pad;
+
+	/*
+	 *	We have to shift the string to the right, and pad with
+	 *	"fill" characters.
+	 */
+	memmove(out + (pad - len), out, len + 1);
+	memset(out, fill, pad - len);
+
+	return pad;
+}
+
+
+/** right pad a string
+ *
+ *  %{rpad:&Attribute-Name length 'x'}
+ */
+static ssize_t rpad_xlat(UNUSED void *instance, REQUEST *request,
+			 char const *fmt, char *out, size_t outlen)
+{
+	char fill;
+	size_t pad, len;
+	value_pair_tmpl_t *vpt;
+
+	*out = '\0';
+
+	if (!parse_pad(request, fmt, &vpt, &pad, &fill)) {
+		return 0;
+	}
+
+	if (outlen <= pad) {
+		RWARN("Output is too short!  Result will be truncated");
+		pad = outlen - 1;
+	}
+
+	/*
+	 *	Print the attribute (left justified).  If it's too
+	 *	big, we're done.
+	 */
+	len = tmpl_expand(NULL, out, pad + 1, request, vpt, NULL, NULL);
+	if (len <= 0) return 0;
+
+	if (len >= pad) return pad;
+
+	/*
+	 *	We have to pad with "fill" characters.
+	 */
+	memset(out + len, fill, pad - len);
+	out[pad] = '\0';
+
+	return pad;
+}
+
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -1497,6 +1657,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	xlat_register("explode", explode_xlat, NULL, inst);
 
 	xlat_register("nexttime", next_time_xlat, NULL, inst);
+	xlat_register("lpad", lpad_xlat, NULL, inst);
+	xlat_register("rpad", rpad_xlat, NULL, inst);
 
 	/*
 	 *	Initialize various paircompare functions

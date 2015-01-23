@@ -3270,6 +3270,12 @@ _ACEOF
 		if test x$libcurl_protocol_HTTPS != xyes || test x$libcurl_feature_SSL != xyes; then
 			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without HTTPS support. requires: libcurl_protocol_https." >&5
 $as_echo "$as_me: WARNING: silently building without HTTPS support. requires: libcurl_protocol_https." >&2;}
+		else
+            { $as_echo "$as_me:${as_lineno-$LINENO}: curl-config's cflags were \"${LIBCURL_CPPFLAGS}\"" >&5
+$as_echo "$as_me: curl-config's cflags were \"${LIBCURL_CPPFLAGS}\"" >&6;}
+		    LIBCURL_CPPFLAGS=$(echo "$LIBCURL_CPPFLAGS" | sed 's/-I */-isystem /g')
+		    { $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags are \"$(echo "${LIBCURL_CPPFLAGS}" | sed 's/-I */-isystem /g')\"" >&5
+$as_echo "$as_me: Sanitized cflags are \"$(echo "${LIBCURL_CPPFLAGS}" | sed 's/-I */-isystem /g')\"" >&6;}
 		fi
 	fi
 
@@ -3967,7 +3973,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_rest requires: $fail." >&2;};
 fi
 
 mod_ldflags="$LIBCURL $SMART_LIBS"
-mod_cflags="$SMART_CPPFLAGS"
+mod_cflags="$LIBCURL_CPPFLAGS $SMART_CPPFLAGS"
 
 
 

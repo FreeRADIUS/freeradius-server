@@ -31,6 +31,10 @@ if test x$with_[]modname != xno; then
 
 		if test x$libcurl_protocol_HTTPS != xyes || test x$libcurl_feature_SSL != xyes; then
 			AC_MSG_WARN([silently building without HTTPS support. requires: libcurl_protocol_https.])
+		else
+            AC_MSG_NOTICE([curl-config's cflags were \"${LIBCURL_CPPFLAGS}\"])
+		    LIBCURL_CPPFLAGS=$(echo "$LIBCURL_CPPFLAGS" | sed 's/-I[ ]*/-isystem /g')
+		    AC_MSG_NOTICE([Sanitized cflags are \"$(echo "${LIBCURL_CPPFLAGS}" | sed 's/-I[ ]*/-isystem /g')\"])
 		fi
 	fi
 
@@ -152,7 +156,7 @@ if test x"$fail" != x""; then
 fi
 
 mod_ldflags="$LIBCURL $SMART_LIBS"
-mod_cflags="$SMART_CPPFLAGS"
+mod_cflags="$LIBCURL_CPPFLAGS $SMART_CPPFLAGS"
 
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)

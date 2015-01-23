@@ -1,0 +1,114 @@
+#
+# PRE: update if pap
+#
+
+#
+#  Skip if the server wasn't built with openssl
+#
+if ('${feature.tls}' != 'yes') {
+	update control {
+		Response-Packet-Type := Access-Accept
+	}
+	handled
+}
+
+update {
+	reply:Filter-Id := 'filter'
+	control: !* ANY
+	request:Tmp-String-0 := "5RNqNl8iYLbkCc7JhR8as4TtDDCX6otuuWtcja8rITUyx9zrnHSe9tTHGmKK"	# 60 byte salt
+}
+
+#
+#  Hex encoded SSHA2-512 password
+#
+update {
+	control:Password-With-Header += "{ssha512}%{sha512:%{request:User-Password}%{&request:Tmp-String-0}}%{hex:&request:Tmp-String-0}"
+}
+
+pap.authorize
+pap.authenticate {
+	reject = 1
+}
+if (reject) {
+	update reply {
+		Filter-Id += 'fail 1'
+	}
+}
+
+update {
+	control: !* ANY
+}
+
+#
+#  Base64 encoded SSHA2-512 password
+#
+update {
+	control:Tmp-String-1 := "%{sha512:%{request:User-Password}%{&request:Tmp-String-0}}%{hex:&request:Tmp-String-0}"
+}
+
+# To Binary
+update {
+	control:Tmp-Octets-0 := "0x%{control:Tmp-String-1}"
+}
+
+# To Base64
+update {
+	control:Tmp-String-1 := "%{base64:&control:Tmp-Octets-0}"
+}
+
+update {
+	control:Password-With-Header += "{ssha512}%{control:Tmp-String-1}"
+}
+
+pap.authorize
+pap.authenticate {
+	reject = 1
+}
+if (reject) {
+	update reply {
+		Filter-Id += 'fail 2'
+	}
+}
+
+update {
+	control: !* ANY
+}
+
+#
+#  Base64 of Base64 encoded SSHA2-512 password
+#
+update {
+	control:Tmp-String-1 := "%{sha512:%{request:User-Password}%{&request:Tmp-String-0}}%{hex:&request:Tmp-String-0}"
+}
+
+# To Binary
+update {
+	control:Tmp-Octets-0 := "0x%{control:Tmp-String-1}"
+}
+
+# To Base64
+update {
+	control:Tmp-String-1 := "{ssha512}%{base64:&control:Tmp-Octets-0}"
+}
+
+update {
+	control:Password-With-Header += "%{base64:&control:Tmp-String-1}"
+}
+
+pap.authorize
+pap.authenticate {
+	reject = 1
+}
+if (reject) {
+	update reply {
+		Filter-Id += 'fail 3'
+	}
+}
+
+update {
+	control: !* ANY
+}
+
+update control {
+	Auth-Type := Accept
+}

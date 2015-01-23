@@ -450,6 +450,7 @@ static int dhcp_process(REQUEST *request)
 	request->reply->dst_ipaddr.af = AF_INET;
 	request->reply->src_ipaddr.af = AF_INET;
 	request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->src_ipaddr.ipaddr.ip4addr.s_addr;
+	request->reply->src_ipaddr.prefix = 32;
 
 	/*
 	 *	They didn't set a proper src_ipaddr, but we want to
