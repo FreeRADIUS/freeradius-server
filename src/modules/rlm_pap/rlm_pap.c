@@ -844,10 +844,12 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 	size_t len, siz;
 	uint32_t iter;
 	ssize_t saltlen, hashlen;
-	uint8_t salt[B64_DIM(EVP_MAX_MD_SIZE)], hash[B64_DIM(EVP_MAX_MD_SIZE)], digest[EVP_MAX_MD_SIZE], iterbuf[8];
+	uint8_t salt[B64_DIM(EVP_MAX_MD_SIZE)], hash[B64_DIM(EVP_MAX_MD_SIZE)], digest[EVP_MAX_MD_SIZE], iterbuf[FR_BASE64_ENC_LENGTH(sizeof(uint32_t))];
 	char *end;
 
 	RDEBUG("Comparing with \"known-good\" PBKDF2-Password");
+
+	rad_assert(sizeof(iter) == sizeof(uint32_t)); // Per RFC2898 5.2 step 1
 
 	/*
 	 * Parse PBKDF string = hash_algorithm:interations:salt:hash
@@ -877,20 +879,20 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 		return RLM_MODULE_INVALID;
 	}
 
-	if (len < 6) {
+	if (len < B64_DIM(sizeof(uint32_t))) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect iterations");
 		return RLM_MODULE_INVALID;
 	}
-	memcpy(iterbuf, str, 6);
-	iterbuf[7] = iterbuf[6] = '=';
+	memcpy(iterbuf, str, B64_DIM(sizeof(uint32_t))); // Ensure RFC4648 compliance
+	memset(&iterbuf[B64_DIM(sizeof(uint32_t))], '=', FR_BASE64_ENC_LENGTH(sizeof(uint32_t)) - B64_DIM(sizeof(uint32_t)));
 	if (fr_base64_decode(hash, sizeof(hash), (char const *) iterbuf, sizeof(iterbuf)) != sizeof(uint32_t)) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect iterations");
 		return RLM_MODULE_INVALID;
 	}
 	iter = (((uint32_t) hash[0]) << 24) | (((uint32_t) hash[1]) << 16) | (((uint32_t) hash[2]) << 8) | ((uint32_t) hash[3]);
 
-	str += 6;
-	len -= 6;
+	str += B64_DIM(sizeof(uint32_t));
+	len -= B64_DIM(sizeof(uint32_t));
 	if (len >= 1 && *str == ':') {
 		str++;
 		len--;
