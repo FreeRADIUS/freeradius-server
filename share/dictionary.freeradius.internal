@@ -281,18 +281,11 @@ VALUE	Cache-Merge			yes			1
 VALUE	Cache-Read-Only			no			0
 VALUE	Cache-Read-Only			yes			1
 
-<<<<<<< HEAD
 ATTRIBUTE	SSHA2-224-Password			1177	octets
 ATTRIBUTE	SSHA2-256-Password			1178	octets
 ATTRIBUTE	SSHA2-384-Password			1179	octets
 ATTRIBUTE	SSHA2-512-Password			1180	octets
-=======
-ATTRIBUTE	SSHA224-Password			1177	octets
-ATTRIBUTE	SSHA256-Password			1178	octets
-ATTRIBUTE	SSHA384-Password			1179	octets
-ATTRIBUTE	SSHA512-Password			1180	octets
 ATTRIBUTE	PBKDF2-Password				1181	octets
->>>>>>> 534e2d406bc063842a4af8a82dc8ce358b91438a
 
 #
 #	Range:	1200-1279
