@@ -213,6 +213,7 @@ yubikey {
 #	dialect = "sqlite"
 #	authcheck_table = "radcheck"
 #
+#	# See the Yubikey-Public-Id notes above to match usage.
 #	sql_user_name = "%{User-Name}"
 #	sql_user_name = "%{Yubikey-Public-ID}"
 #	sql_user_name = "%{%{Yubikey-Public-ID}:-%{User-Name}}"
