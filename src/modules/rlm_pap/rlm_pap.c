@@ -890,6 +890,10 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 		return RLM_MODULE_INVALID;
 	}
 	iter = (((uint32_t) hash[0]) << 24) | (((uint32_t) hash[1]) << 16) | (((uint32_t) hash[2]) << 8) | ((uint32_t) hash[3]);
+	if (iter == 0) { // Per RFC2898 5.1: a positive integer
+		REDEBUG("\"known-good\" PBKDF2-Password has incorrect iterations");
+		goto pap_auth_pbkdf2_err;
+	}
 
 	str += B64_DIM(sizeof(uint32_t));
 	len -= B64_DIM(sizeof(uint32_t));
