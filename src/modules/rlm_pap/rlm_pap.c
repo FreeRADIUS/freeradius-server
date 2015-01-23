@@ -839,12 +839,13 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *req
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
+	rlm_rcode_t rcode = RLM_MODULE_INVALID;
 	uint8_t const *str;
 	rlm_pap_pbkdf2 const *pbkdf2;
 	size_t len, siz;
 	uint32_t iter;
 	ssize_t saltlen, hashlen;
-	uint8_t salt[B64_DIM(EVP_MAX_MD_SIZE)], hash[B64_DIM(EVP_MAX_MD_SIZE)], digest[EVP_MAX_MD_SIZE], iterbuf[FR_BASE64_ENC_LENGTH(sizeof(uint32_t))];
+	uint8_t *salt = NULL, hash[B64_DIM(EVP_MAX_MD_SIZE)], digest[EVP_MAX_MD_SIZE], iterbuf[FR_BASE64_ENC_LENGTH(sizeof(uint32_t))];
 	char *end;
 
 	RDEBUG("Comparing with \"known-good\" PBKDF2-Password");
@@ -865,7 +866,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 		pbkdf2++;
 		if (pbkdf2->name == NULL) {
 			REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
-			return RLM_MODULE_INVALID;
+			goto pap_auth_pbkdf2_err;
 		}
 	}
 
@@ -876,18 +877,18 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 		len--;
 	} else {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
-		return RLM_MODULE_INVALID;
+		goto pap_auth_pbkdf2_err;
 	}
 
 	if (len < B64_DIM(sizeof(uint32_t))) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect iterations");
-		return RLM_MODULE_INVALID;
+		goto pap_auth_pbkdf2_err;
 	}
 	memcpy(iterbuf, str, B64_DIM(sizeof(uint32_t))); // Ensure RFC4648 compliance
 	memset(&iterbuf[B64_DIM(sizeof(uint32_t))], '=', FR_BASE64_ENC_LENGTH(sizeof(uint32_t)) - B64_DIM(sizeof(uint32_t)));
 	if (fr_base64_decode(hash, sizeof(hash), (char const *) iterbuf, sizeof(iterbuf)) != sizeof(uint32_t)) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect iterations");
-		return RLM_MODULE_INVALID;
+		goto pap_auth_pbkdf2_err;
 	}
 	iter = (((uint32_t) hash[0]) << 24) | (((uint32_t) hash[1]) << 16) | (((uint32_t) hash[2]) << 8) | ((uint32_t) hash[3]);
 	if (iter == 0) { // Per RFC2898 5.1: a positive integer
@@ -902,26 +903,27 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 		len--;
 	} else {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
-		return RLM_MODULE_INVALID;
+		goto pap_auth_pbkdf2_err;
 	}
 
 	if (len == 0) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect salt");
-		return RLM_MODULE_INVALID;
+		goto pap_auth_pbkdf2_err;
 	}
 	end = memchr(str, ':', len);
 	if (end == NULL) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect format");
-		return RLM_MODULE_INVALID;
+		goto pap_auth_pbkdf2_err;
 	}
 	siz = (size_t)(end - (char *) str);
 	if (siz == 0)
 		saltlen = 0;
 	else {
-		saltlen = fr_base64_decode(salt, sizeof(salt), (char const *) str, siz);
+		salt = talloc_array(request, uint8_t, FR_BASE64_DEC_LENGTH(siz));
+		saltlen = fr_base64_decode(salt, sizeof(uint8_t) * FR_BASE64_DEC_LENGTH(siz), (char const *) str, siz);
 		if (saltlen <= 0) {
 			REDEBUG("\"known-good\" PBKDF2-Password has incorrect salt");
-			return RLM_MODULE_INVALID;
+			goto pap_auth_pbkdf2_err;
 		}
 	}
 
@@ -929,15 +931,15 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 	len -= siz + 1;
 	if (len == 0) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
-		return RLM_MODULE_INVALID;
+		goto pap_auth_pbkdf2_err;
 	}
 	hashlen = fr_base64_decode(hash, sizeof(hash), (char const *) str, len);
 	if (hashlen <= 0) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect hash");
-		return RLM_MODULE_INVALID;
+		goto pap_auth_pbkdf2_err;
 	} else if (hashlen != pbkdf2->keylen) {
 		REDEBUG("\"known-good\" PBKDF2-Password has incorrect length");
-		return RLM_MODULE_INVALID;
+		goto pap_auth_pbkdf2_err;
 	}
 
 	RDEBUG2("PBKDF2 %s iter=%u saltlen=%zd hashlen=%zd", pbkdf2->name, iter, saltlen, hashlen);
@@ -947,15 +949,20 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_pbkdf2(rlm_pap_t *inst, REQUEST *re
 	 */
 	if (PKCS5_PBKDF2_HMAC((const char *) request->password->vp_octets, (int) request->password->vp_length, (const unsigned char *) salt, (int) saltlen, (int) iter, pbkdf2->hash_algo(), hashlen, (unsigned char *) digest) == 0) {
 		REDEBUG("PBKDF2 digest failure");
-		return RLM_MODULE_INVALID;
+		goto pap_auth_pbkdf2_err;
 	}
 
 	if (rad_digest_cmp(digest, hash, (size_t) hashlen) != 0) {
 		REDEBUG("PBKDF2 digest does not match \"known good\" digest");
-		return RLM_MODULE_REJECT;
-	}
+		rcode = RLM_MODULE_REJECT;
+	} else
+		rcode = RLM_MODULE_OK;
 
-	return RLM_MODULE_OK;
+pap_auth_pbkdf2_err:
+	if (salt != NULL)
+		talloc_free(salt);
+
+	return rcode;
 }
 #endif
 
