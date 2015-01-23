@@ -1,0 +1,147 @@
+Sent Access-Request Id 223 from 0.0.0.0:37945 to 127.0.0.1:1812 length 81
+	User-Name = 'pbkdf2_sha1'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 223 from 127.0.0.1:1812 to 0.0.0.0:37945 length 20
+Sent Access-Request Id 222 from 0.0.0.0:51783 to 127.0.0.1:1812 length 85
+	User-Name = 'pbkdf2_sha2_224'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 222 from 127.0.0.1:1812 to 0.0.0.0:51783 length 20
+Sent Access-Request Id 56 from 0.0.0.0:39252 to 127.0.0.1:1812 length 85
+	User-Name = 'pbkdf2_sha2_256'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 56 from 127.0.0.1:1812 to 0.0.0.0:39252 length 20
+Sent Access-Request Id 208 from 0.0.0.0:51162 to 127.0.0.1:1812 length 85
+	User-Name = 'pbkdf2_sha2_384'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 208 from 127.0.0.1:1812 to 0.0.0.0:51162 length 20
+Sent Access-Request Id 100 from 0.0.0.0:37872 to 127.0.0.1:1812 length 85
+	User-Name = 'pbkdf2_sha2_512'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 100 from 127.0.0.1:1812 to 0.0.0.0:37872 length 20
+Sent Access-Request Id 96 from 0.0.0.0:40734 to 127.0.0.1:1812 length 81
+	User-Name = 'pbkdf2_sha0'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Reject Id 96 from 127.0.0.1:1812 to 0.0.0.0:40734 length 20
+Sent Access-Request Id 6 from 0.0.0.0:36098 to 127.0.0.1:1812 length 82
+	User-Name = 'pbkdf2_iter1'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 6 from 127.0.0.1:1812 to 0.0.0.0:36098 length 20
+Sent Access-Request Id 110 from 0.0.0.0:44393 to 127.0.0.1:1812 length 85
+	User-Name = 'pbkdf2_iter1000'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 110 from 127.0.0.1:1812 to 0.0.0.0:44393 length 20
+Sent Access-Request Id 80 from 0.0.0.0:43561 to 127.0.0.1:1812 length 88
+	User-Name = 'pbkdf2_iter1000000'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 80 from 127.0.0.1:1812 to 0.0.0.0:43561 length 20
+Sent Access-Request Id 204 from 0.0.0.0:35960 to 127.0.0.1:1812 length 82
+	User-Name = 'pbkdf2_iter0'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Reject Id 204 from 127.0.0.1:1812 to 0.0.0.0:35960 length 20
+Sent Access-Request Id 195 from 0.0.0.0:48894 to 127.0.0.1:1812 length 82
+	User-Name = 'pbkdf2_salt0'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 195 from 127.0.0.1:1812 to 0.0.0.0:48894 length 20
+Sent Access-Request Id 112 from 0.0.0.0:57611 to 127.0.0.1:1812 length 82
+	User-Name = 'pbkdf2_salt1'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 112 from 127.0.0.1:1812 to 0.0.0.0:57611 length 20
+Sent Access-Request Id 77 from 0.0.0.0:53503 to 127.0.0.1:1812 length 83
+	User-Name = 'pbkdf2_salt64'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 77 from 127.0.0.1:1812 to 0.0.0.0:53503 length 20
+Sent Access-Request Id 7 from 0.0.0.0:43338 to 127.0.0.1:1812 length 85
+	User-Name = 'pbkdf2_salt1024'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Accept Id 7 from 127.0.0.1:1812 to 0.0.0.0:43338 length 20
+Sent Access-Request Id 3 from 0.0.0.0:37556 to 127.0.0.1:1812 length 86
+	User-Name = 'pbkdf2_iter_miss'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Reject Id 3 from 127.0.0.1:1812 to 0.0.0.0:37556 length 20
+Sent Access-Request Id 27 from 0.0.0.0:53445 to 127.0.0.1:1812 length 87
+	User-Name = 'pbkdf2_iter_small'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Reject Id 27 from 127.0.0.1:1812 to 0.0.0.0:53445 length 20
+Sent Access-Request Id 90 from 0.0.0.0:36491 to 127.0.0.1:1812 length 85
+	User-Name = 'pbkdf2_iter_big'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Reject Id 90 from 127.0.0.1:1812 to 0.0.0.0:36491 length 20
+Sent Access-Request Id 103 from 0.0.0.0:60087 to 127.0.0.1:1812 length 87
+	User-Name = 'pbkdf2_salt_small'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Reject Id 103 from 127.0.0.1:1812 to 0.0.0.0:60087 length 20
+Sent Access-Request Id 111 from 0.0.0.0:35677 to 127.0.0.1:1812 length 85
+	User-Name = 'pbkdf2_salt_big'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Reject Id 111 from 127.0.0.1:1812 to 0.0.0.0:35677 length 20
+Sent Access-Request Id 117 from 0.0.0.0:34831 to 127.0.0.1:1812 length 86
+	User-Name = 'pbkdf2_dig_small'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Reject Id 117 from 127.0.0.1:1812 to 0.0.0.0:34831 length 20
+Sent Access-Request Id 180 from 0.0.0.0:49202 to 127.0.0.1:1812 length 84
+	User-Name = 'pbkdf2_dig_big'
+	User-Password = 'password'
+	NAS-IP-Address = 192.168.0.1
+	NAS-Port = 1
+	Message-Authenticator = 0x00
+Received Access-Reject Id 180 from 127.0.0.1:1812 to 0.0.0.0:49202 length 20
