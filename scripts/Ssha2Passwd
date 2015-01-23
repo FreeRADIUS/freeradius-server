@@ -88,7 +88,7 @@ __END__
 
 =head1 NAME
 
-Sha2Passwd - Generate a SHA2 hashed password
+ssha2passwd - Generate a SHA2 hashed password
 
 =head1 DESCRIPTION
 
@@ -96,7 +96,7 @@ Hash the given password into a SHA2 digest with optional salt.
 
 =head1 SYNOPSIS
 
-   Sha2Passwd [options] <password>
+   ssha2passwd [options] <password>
 
 =head1 OPTIONS
 
@@ -106,7 +106,7 @@ Hash the given password into a SHA2 digest with optional salt.
 
 Format options:
 
-=over 
+=over
 
 =item B<m> or B<base64> : base64 encoded (default)
 
