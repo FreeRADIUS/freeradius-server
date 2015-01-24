@@ -22,82 +22,119 @@
 # Description:       Remote Authentication Dialin User Server
 ### END INIT INFO
 
+. /etc/init.d/functions
 
-RADIUSD_BIN=/usr/sbin/radiusd
-test -x $RADIUSD_BIN || { echo "$RADIUSD_BIN not installed"; \
+prog=radiusd
+
+[ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+
+exec=${exec:=/usr/sbin/$prog}
+config_dir=${config_dir:=/etc/raddb}
+
+test -x "$exec" || { echo "$exec not installed"; \
 	if [ "$1" = "stop" ]; then exit 0;
 	else exit 5; fi; }
 
-. /etc/rc.status
+configtest() {
+    echo -n "Checking $prog configuration "
+    out=`$exec -Cxl stdout -d $config_dir`; retval=$?
+    out=`echo "${out}" | tail -n 1 | sed 's/^\s*ERROR:\s*\(.*\)\s*$/\1/'`
+
+    [ $retval -ne 0 ] &&  echo "$out" 1>&2
+
+    return $retval
+}
 
 rc_reset
 case "$1" in
     start)
-	echo -n "Starting RADIUS daemon "
-	startproc $RADIUSD_BIN >/dev/null
-	rc_status -v	
-	;;
-    stop)
-	echo -n "Shutting down RADIUS daemon "
-	killproc -TERM $RADIUSD_BIN 
-	rc_status -v	
-	;;
-    try-restart|condrestart)
-	## If first returns OK call the second, if first or
-	## second command fails, set echo return value.
-	if test "$1" = "condrestart"; then
-		echo "${attn} Use try-restart ${done}(LSB)${attn} rather than condrestart ${warn}(RH)${norm}"
-	fi
-	$0 status
-	if test $? = 0; then
-	        $0 restart
-	else
-	        rc_reset        # Not running is not a failure.
-	fi
-	rc_status
-	;;
-    restart)
-        ## Stop the service and regardless of whether it was
-        ## running or not, start it again.
-        $0 configtest "$@" || { rc_failed $?; rc_exit; }
-	$0 stop
-	$0 start
-	rc_status
-	;;
-    force-reload)
-        ## Signal the daemon to reload its config. Most daemons
-        ## do this on signal 1 (SIGHUP).
-        ## If it does not support it, restart.
-        $0 configtest "$@" || { rc_failed $?; rc_exit; }
-	echo -n "Reload RADIUS daemon "
-        killproc -HUP $RADIUSD_BIN
+        configtest || { rc_failed 150; rc_exit; }
+        echo -n "Starting RADIUS daemon "
+        startproc $exec >/dev/null
         rc_status -v
-	;;
+        ;;
+
+    stop)
+        echo -n "Shutting down RADIUS daemon "
+        killproc -TERM $exec
+        rc_status -v
+        ;;
+
+    try-restart|condrestart)
+        # If first returns OK call the second, if first or second command fails, set echo return value.
+        if test "$1" = "condrestart"; then
+            echo "${attn} Use try-restart ${done}(LSB)${attn} rather than condrestart ${warn}(RH)${norm}"
+        fi
+        $0 status
+        if [ $? = 0 ] ; then
+                $0 restart
+        else
+                rc_reset        # Not running is not a failure.
+        fi
+        rc_status
+        ;;
+
+    restart)
+        # Stop the service and regardless of whether it was running or not, start it again.
+        configtest || { rc_failed 150; rc_exit; }
+        $0 stop
+        $0 start
+        rc_status
+        ;;
+
+    force-reload)
+        # Signal the daemon to reload its config. Most daemons o this on signal 1 (SIGHUP).
+        # If it does not support it, restart.
+        configtest || { rc_failed 150; rc_exit; }
+        echo -n "Reload RADIUS daemon "
+        killproc -HUP $exec
+        rc_status -v
+        ;;
+
     reload)
-        ## Like force-reload, but if daemon does not support
-        ## signalling, do nothing (!)
-        $0 configtest "$@" || { rc_failed $?; rc_exit; }
-	echo -n "Reload RADIUS daemon "
-	killproc -HUP $RADIUSD_BIN 
-	rc_status -v
-	;;
+        # Like force-reload, but if daemon does not support signalling, do nothing (!)
+        configtest || { rc_failed 150; rc_exit; }
+        echo -n "Reload RADIUS daemon "
+        killproc -HUP $exec
+        rc_status -v
+        ;;
+
     status)
-	echo -n "Checking for service radiusd "
-	checkproc $RADIUSD_BIN
-	rc_status -v
-	;;
-   configtest|testconfig)
-   	echo -n "Checking config for radiusd "
-   	$RADIUSD_BIN -C
-   	rc_status -v
-   	;;
-   debug)
-   	$RADIUSD_BIN -X
-   	rc_status -v
-   	;;
+        echo -n "Checking for service radiusd "
+        checkproc $exec
+        rc_status -v
+        ;;
+
+    configtest|testconfig)
+        configtest
+        rc_status -v
+        ;;
+
+    debug)
+        $0 status
+        if [ $? -eq 0 ]; then
+            echo -n "$prog already running; for live debugging see raddebug(8)"
+            rc_failed 151
+            rc_exit
+        fi
+        $exec -X -d "$config_dir"
+        rc_status -v
+        ;;
+
+    debug-threaded)
+        $0 status
+        if [ $? -eq 0 ]; then
+            echo -n "$prog already running; for live debugging see raddebug(8)"
+            rc_failed 151
+            rc_exit
+        fi
+        $exec -f -xx -l stdout -d "$config_dir"
+        rc_status -v
+        ;;
+
     *)
-	echo "Usage: $0 {start|stop|status|try-restart|restart|force-reload|reload|configtest|debug}"
-	exit 1
-	;;
+        echo "Usage: $0 {start|stop|status|try-restart|restart|force-reload|reload|configtest|debug|debug-threaded}"
+        exit 1
+        ;;
 esac
 rc_exit
