@@ -90,7 +90,7 @@ case "$1" in
             echo "$PROGRAM already running; for live debugging see raddebug(8)"
             exit 151
         fi
-        $PROGRAM -X $FREERADIUS_OPTIONS
+        $PROGRAM -X $FREERADIUS_OPTIONS || exit $?
         ;;
 
     debug-threaded)
@@ -99,7 +99,7 @@ case "$1" in
             echo "$PROGRAM already running; for live debugging see raddebug(8)"
             exit 151
         fi
-        $PROGRAM -f -xx -l stdout $FREERADIUS_OPTIONS
+        $PROGRAM -f -xx -l stdout $FREERADIUS_OPTIONS || exit $?
         ;;
 
     status)

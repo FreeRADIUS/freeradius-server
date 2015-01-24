@@ -114,22 +114,20 @@ case "$1" in
         $0 status
         if [ $? -eq 0 ]; then
             echo -n "$prog already running; for live debugging see raddebug(8)"
-            rc_failed 151
-            rc_exit
+            exit 151
         fi
-        $exec -X -d "$config_dir"
-        rc_status -v
+        $exec -X -d "$config_dir" || exit $?
+        exit 0
         ;;
 
     debug-threaded)
         $0 status
         if [ $? -eq 0 ]; then
             echo -n "$prog already running; for live debugging see raddebug(8)"
-            rc_failed 151
-            rc_exit
+            exit 151
         fi
-        $exec -f -xx -l stdout -d "$config_dir"
-        rc_status -v
+        $exec -f -xx -l stdout -d "$config_dir" || exit $?
+        exit 0
         ;;
 
     *)
