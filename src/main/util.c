@@ -204,15 +204,21 @@ void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
  */
 int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
 {
-	int rcode;
+	int rcode, fd;
 	char *p;
 
 	/*
 	 *	Try to make the dir.  If it exists, chmod it.
 	 *	If a path doesn't exist, that's OK.  Otherwise
 	 *	return with an error.
+	 *
+	 *	Directories permissions are initially set so
+	 *	that only we should have access. This prevents
+	 *	an attacker removing them and swapping them
+	 *	out for a link to somewhere else.
+	 *	We change them to the correct permissions later.
 	 */
-	rcode = mkdir(dir, mode & 0777);
+	rcode = mkdir(dir, 0700);
 	if (rcode < 0) {
 		switch (errno) {
 		case EEXIST:
@@ -244,16 +250,30 @@ int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
 		 *	make the dir.
 		 */
 		*p = FR_DIR_SEP;
-		rcode = mkdir(dir, mode & 0777);
+		rcode = mkdir(dir, 0700);
 		if (rcode < 0) return rcode;
 	} /* else we successfully created the dir */
 
 	/*
-	 *	Set the permissions on the created dir.
+	 *	Set the permissions on the directory we created
+	 *	this should never fail unless there's a race.
 	 */
-	rcode = chmod(dir, mode);
-	if (rcode < 0) return rcode;
-	if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) rcode = chown(dir, uid, gid);
+	fd = open(dir, O_DIRECTORY);
+	if (fd < 0) return -1;
+
+	rcode = fchmod(fd, mode);
+	if (rcode < 0) {
+		close(fd);
+		return rcode;
+	}
+
+	if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) {
+		fr_suid_up();
+		rcode = fchown(fd, uid, gid);
+		fr_suid_down();
+	}
+	close(fd);
+
 	return rcode;
 }
 
