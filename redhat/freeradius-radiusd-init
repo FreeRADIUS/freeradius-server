@@ -161,7 +161,7 @@ case "$1" in
     debug)
         echo -n $"Debugging $prog: "
         if rh_status_q; then
-            log_failure_msg "$prog already running as daemon"
+            log_failure_msg "$prog already running; for live debugging see raddebug(8)"
             exit 151
         else
             log_success_msg
@@ -172,7 +172,7 @@ case "$1" in
     debug-threaded)
         echo -n $"Debugging $prog: "
         if rh_status_q; then
-            log_failure_msg "$prog already running as daemon"
+            log_failure_msg "$prog already running; for live debugging see raddebug(8)"
             exit 151
         else
             log_success_msg
