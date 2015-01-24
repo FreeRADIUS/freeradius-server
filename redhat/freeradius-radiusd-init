@@ -166,7 +166,7 @@ case "$1" in
         else
             log_success_msg
         fi
-        $exec -X -d $config_dir
+        $exec -X -d $config_dir || exit $?
         ;;
 
     debug-threaded)
@@ -177,7 +177,7 @@ case "$1" in
         else
             log_success_msg
         fi
-        $exec -f -xx -l stdout -d $config_dir
+        $exec -f -xx -l stdout -d $config_dir || exit $?
         ;;
 
     status)
