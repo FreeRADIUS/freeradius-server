@@ -19,7 +19,7 @@
 
 # Source function library.
 
-# Get the wrappers for the standard ldb init functions
+# Get the wrappers for the standard lsb init functions
 . /lib/lsb/init-functions
 
 # and the RHEL specific ones
