@@ -190,62 +190,70 @@ void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
 	return NULL;		/* wasn't found, too bad... */
 }
 
-/*
- *	Create possibly many directories.
+/** Create possibly many directories.
  *
- *	Note that the input directory name is NOT a constant!
- *	This is so that IF an error is returned, the 'directory' ptr
- *	points to the name of the file which caused the error.
+ * @note that the input directory name is NOT treated as a constant. This is so that
+ *	 if an error is returned, the 'directory' ptr points to the name of the file
+ *	 which caused the error.
+ *
+ * @param dir path to directory to create.
+ * @param mode for new directories.
+ * @param uid to set on new directories, may be -1 to use effective uid.
+ * @param gid to set on new directories, may be -1 to use effective gid.
+ * @return 0 on success, -1 on error. Error available as errno.
  */
-int rad_mkdir(char *directory, mode_t mode, uid_t uid, gid_t gid)
+int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
 {
 	int rcode;
 	char *p;
 
 	/*
-	 *	Try to make the directory.  If it exists, chmod it.
+	 *	Try to make the dir.  If it exists, chmod it.
 	 *	If a path doesn't exist, that's OK.  Otherwise
 	 *	return with an error.
 	 */
-	rcode = mkdir(directory, mode & 0777);
+	rcode = mkdir(dir, mode & 0777);
 	if (rcode < 0) {
-		if (errno == EEXIST) {
+		switch (errno) {
+		case EEXIST:
 			return 0; /* don't change permissions */
-		}
 
-		if (errno != ENOENT) {
+		case ENOENT:
+			break;
+
+		default:
 			return rcode;
 		}
 
 		/*
-		 *	A component in the directory path doesn't
-		 *	exist.  Look for the LAST directory name.  Try
+		 *	A component in the dir path doesn't
+		 *	exist.  Look for the LAST dir name.  Try
 		 *	to create that.  If there's an error, we leave
-		 *	the directory path as the one at which the
+		 *	the dir path as the one at which the
 		 *	error occured.
 		 */
-		p = strrchr(directory, FR_DIR_SEP);
-		if (!p || (p == directory)) return -1;
+		p = strrchr(dir, FR_DIR_SEP);
+		if (!p || (p == dir)) return -1;
 
 		*p = '\0';
-		rcode = rad_mkdir(directory, mode, uid, gid);
+		rcode = rad_mkdir(dir, mode, uid, gid);
 		if (rcode < 0) return rcode;
 
 		/*
-		 *	Reset the directory path, and try again to
-		 *	make the directory.
+		 *	Reset the dir path, and try again to
+		 *	make the dir.
 		 */
 		*p = FR_DIR_SEP;
-		rcode = mkdir(directory, mode & 0777);
+		rcode = mkdir(dir, mode & 0777);
 		if (rcode < 0) return rcode;
-	} /* else we successfully created the directory */
+	} /* else we successfully created the dir */
 
 	/*
-	 *	Set the permissions on the created directory.
+	 *	Set the permissions on the created dir.
 	 */
-	rcode = chmod(directory, mode);
+	rcode = chmod(dir, mode);
 	if (rcode < 0) return rcode;
-	if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) rcode = chown(directory, uid, gid);
+	if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) rcode = chown(dir, uid, gid);
 	return rcode;
 }
 
