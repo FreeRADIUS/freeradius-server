@@ -2030,38 +2030,34 @@ char * ether_addr_print(const uint8_t *addr, char *buf)
 }
 
 /*
- *	Receive a DHCP packet from a raw packet socket. Make sure it matches the ongoing request.
+ *	For a client, receive a DHCP packet from a raw packet
+ *	socket. Make sure it matches the ongoing request.
+ *
+ *	FIXME: split this into two, recv_raw_packet, and verify(packet, original)
  */
 RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *request)
 {
 	VALUE_PAIR		*vp;
-	RADIUS_PACKET	*packet;
+	RADIUS_PACKET		*packet;
 	uint8_t			*code;
 	uint32_t		magic, xid;
 	ssize_t			data_len;
 
-	uint8_t *raw_packet;
-	ethernet_header_t *ph_eth;
-	struct ip_header *ph_ip;
-	udp_header_t *ph_udp;
-	dhcp_packet_t *ph_dhcp;
-	uint16_t udp_src_port;
-	uint16_t udp_dst_port;
-	unsigned int dhcp_data_len;
-	int retval;
-	socklen_t sock_len;
-	fd_set read_fd;
+	uint8_t			*raw_packet;
+	ethernet_header_t	*eth_hdr;
+	struct ip_header	*ip_hdr;
+	udp_header_t		*udp_hdr;
+	dhcp_packet_t		*dhcp_hdr;
+	uint16_t		udp_src_port;
+	uint16_t		udp_dst_port;
+	size_t			dhcp_data_len;
+	int			retval;
+	socklen_t		sock_len;
+	fd_set 			read_fd;
 
 	packet = rad_alloc(NULL, false);
 	if (!packet) {
 		fr_strerror_printf("Failed allocating packet");
-		return NULL;
-	}
-
-	packet->data = talloc_zero_array(packet, uint8_t, MAX_PACKET_SIZE);
-	if (!packet->data) {
-		fr_strerror_printf("Out of memory");
-		rad_free(&packet);
 		return NULL;
 	}
 
@@ -2075,52 +2071,62 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	packet->sockfd = sockfd;
 
 	/* a packet was received (but maybe it is not for us) */
-
-	memset(raw_packet, 0, MAX_PACKET_SIZE);
-
 	sock_len = sizeof(struct sockaddr_ll);
 	data_len = recvfrom(sockfd, raw_packet, MAX_PACKET_SIZE, 0,
-		(struct sockaddr *)p_ll, &sock_len);
+			    (struct sockaddr *)p_ll, &sock_len);
 
 	uint8_t data_offset = ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE; // DHCP data starts after Ethernet, IP, UDP.
 
 	if (data_len <= data_offset) DISCARD_RP("Payload (%d) smaller than required for layers 2+3+4", (int)data_len);
 
 	/* map raw packet to packet header of the different layers (Ethernet, IP, UDP) */
-	ph_eth = (ethernet_header_t *)raw_packet;
-	ph_ip = (struct ip_header *)(raw_packet + ETH_HDR_SIZE);
-	ph_udp = (udp_header_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE);
-	ph_dhcp = (dhcp_packet_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
+	eth_hdr = (ethernet_header_t *)raw_packet;
 
 	/* a. Check Ethernet layer data (L2) */
-	if (ntohs(ph_eth->ether_type) != ETH_TYPE_IP) DISCARD_RP("Ethernet type (%d) != IP", ntohs(ph_eth->ether_type));
+	if (ntohs(eth_hdr->ether_type) != ETH_TYPE_IP) DISCARD_RP("Ethernet type (%d) != IP", ntohs(eth_hdr->ether_type));
 
 	/* If Ethernet destination is not broadcast (ff:ff:ff:ff:ff:ff)
 	 * Check if it matches the source HW address used (DHCP-Client-Hardware-Address = 267)
 	 */
-	if ( (memcmp(&eth_bcast, &ph_eth->ether_dst, ETH_ADDR_LEN) != 0) &&
+	if ( (memcmp(&eth_bcast, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0) &&
 			(vp = pairfind(request->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY)) &&
 			(vp->length == sizeof(vp->vp_ether)) &&
-			(memcmp(vp->vp_ether, &ph_eth->ether_dst, ETH_ADDR_LEN) != 0) ) {
+			(memcmp(vp->vp_ether, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0) ) {
 		/* No match. */
 		char eth_dest[17+1];
 		char eth_req_src[17+1];
 		DISCARD_RP("Ethernet destination (%s) is not broadcast and doesn't match request source (%s)", 
-			ether_addr_print(ph_eth->ether_dst, eth_dest),
+			ether_addr_print(eth_hdr->ether_dst, eth_dest),
 			ether_addr_print(vp->vp_ether, eth_req_src));
 	}
 
+	/*
+	 *	Ethernet is OK.  Now look at IP.
+	 */
+	ip_hdr = (struct ip_header *)(raw_packet + ETH_HDR_SIZE);
+
 	/* b. Check IPv4 layer data (L3) */
-	if (ph_ip->ip_p != 17) DISCARD_RP("IP protocol (%d) != UDP", ph_ip->ip_p);
-	/* note: checking the destination IP address is not useful (it would be the offered IP address
-	 * - which we don't know beforehand, or the broadcast address).
+	if (ip_hdr->ip_p != IPPROTO_UDP) DISCARD_RP("IP protocol (%d) != UDP", ip_hdr->ip_p);
+
+	/*
+	 *	note: checking the destination IP address is not
+	 *	useful (it would be the offered IP address - which we
+	 *	don't know beforehand, or the broadcast address).
 	 */
 
+	/*
+	 *	Now check UDP.
+	 */
+	udp_hdr = (udp_header_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE);
+
 	/* c. Check UDP layer data (L4) */
-	udp_src_port = ntohs(ph_udp->src);
-	udp_dst_port = ntohs(ph_udp->dst);
-	/* A DHCP server will always respond to port 68 (to a client) or 67 (to a relay).
-	 * Just check that both ports are 67 or 68.
+	udp_src_port = ntohs(udp_hdr->src);
+	udp_dst_port = ntohs(udp_hdr->dst);
+
+	/*
+	 *	A DHCP server will always respond to port 68 (to a
+	 *	client) or 67 (to a relay).  Just check that both
+	 *	ports are 67 or 68.
 	 */
 	if (udp_src_port != 67 && udp_src_port != 68) DISCARD_RP("UDP src port (%d) != DHCP (67 or 68)", udp_src_port);
 	if (udp_dst_port != 67 && udp_dst_port != 68) DISCARD_RP("UDP dst port (%d) != DHCP (67 or 68)", udp_dst_port);
@@ -2131,26 +2137,29 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	if (dhcp_data_len < MIN_PACKET_SIZE) DISCARD_RP("DHCP packet is too small (%d < %d)", dhcp_data_len, MIN_PACKET_SIZE);
 	if (dhcp_data_len > MAX_PACKET_SIZE) DISCARD_RP("DHCP packet is too large (%d > %d)", dhcp_data_len, MAX_PACKET_SIZE);
 	
-	if (ph_dhcp->htype != 1) DISCARD_RP("DHCP hardware type (%d) != Ethernet (1)", ph_dhcp->htype);
-	if (ph_dhcp->hlen != 6) DISCARD_RP("DHCP hardware address length (%d) != 6", ph_dhcp->hlen);
+	dhcp_hdr = (dhcp_packet_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
 
-	magic = ntohl(ph_dhcp->option_format);
+	if (dhcp_hdr->htype != 1) DISCARD_RP("DHCP hardware type (%d) != Ethernet (1)", dhcp_hdr->htype);
+	if (dhcp_hdr->hlen != 6) DISCARD_RP("DHCP hardware address length (%d) != 6", dhcp_hdr->hlen);
+
+	magic = ntohl(dhcp_hdr->option_format);
+
 	if (magic != DHCP_OPTION_MAGIC_NUMBER) DISCARD_RP("DHCP magic cookie (0x%04x) != DHCP (0x%04x)", magic, DHCP_OPTION_MAGIC_NUMBER);
 
 	/*
 	 *	Reply transaction id must match value from request.
 	 */
-	xid = ntohl(ph_dhcp->xid);
+	xid = ntohl(dhcp_hdr->xid);
 	if (xid != (uint32_t)request->id) DISCARD_RP("DHCP transaction ID (0x%04x) != xid from request (0x%04x)", xid, request->id)
 
 	/* all checks ok! this is a DHCP reply we're interested in. */
 	packet->data_len = dhcp_data_len;
-	memset(packet->data, 0, MAX_PACKET_SIZE);
-	memcpy(packet->data, raw_packet+data_offset, dhcp_data_len);
+	packet->data = talloc_memdup(packet, raw_packet + data_offset, dhcp_data_len);
+	TALLOC_FREE(raw_packet);
 	packet->id = xid;
 
 	code = dhcp_get_option((dhcp_packet_t *) packet->data,
-				   packet->data_len, 53);
+			       packet->data_len, 53);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		rad_free(&packet);
@@ -2184,9 +2193,9 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	packet->dst_port = udp_dst_port;
 
 	packet->src_ipaddr.af = AF_INET;
-	packet->src_ipaddr.ipaddr.ip4addr.s_addr = ph_ip->ip_src.s_addr;
+	packet->src_ipaddr.ipaddr.ip4addr.s_addr = ip_hdr->ip_src.s_addr;
 	packet->dst_ipaddr.af = AF_INET;
-	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = ph_ip->ip_dst.s_addr;
+	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = ip_hdr->ip_dst.s_addr;
 
 	if (fr_debug_flag > 1) {
 		char type_buf[64];
