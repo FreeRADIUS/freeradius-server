@@ -461,6 +461,11 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				break;
 
 			case PW_PACKET_SRC_PORT:
+				if ((vp->vp_integer < 1024) ||
+				    (vp->vp_integer > 65535)) {
+					ERROR("Invalid value '%u' for Packet-Src-Port", vp->vp_integer);
+					goto error;
+				}
 				request->packet->src_port = (vp->vp_integer & 0xffff);
 				break;
 
@@ -886,16 +891,6 @@ static int send_one_packet(rc_request_t *request)
 		request->timestamp = time(NULL);
 		request->tries = 1;
 		request->resend++;
-
-#ifdef WITH_TCP
-		/*
-		 *	WTF?
-		 */
-		if (client_port == 0) {
-			client_ipaddr = request->packet->src_ipaddr;
-			client_port = request->packet->src_port;
-		}
-#endif
 
 	} else {		/* request->packet->id >= 0 */
 		time_t now = time(NULL);
@@ -1452,11 +1447,12 @@ int main(int argc, char **argv)
 	if (request_head->packet->src_ipaddr.af == AF_UNSPEC) {
 		memset(&client_ipaddr, 0, sizeof(client_ipaddr));
 		client_ipaddr.af = server_ipaddr.af;
-		client_port = 0;
 	} else {
 		client_ipaddr = request_head->packet->src_ipaddr;
-		client_port = request_head->packet->src_port;
 	}
+
+	client_port = request_head->packet->src_port;
+
 #ifdef WITH_TCP
 	if (proto) {
 		sockfd = fr_tcp_client_socket(NULL, &server_ipaddr, server_port);
