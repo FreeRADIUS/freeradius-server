@@ -43,7 +43,7 @@ RCSID("$Id$")
 
 static int success = 0;
 static int retries = 3;
-static float timeout = 5;
+static float timeout = 5.0;
 static struct timeval tv_timeout;
 
 static uint16_t server_port = 0;
@@ -384,6 +384,10 @@ int main(int argc, char **argv)
 	char const *filename = NULL;
 	DICT_ATTR const *da;
 
+#ifdef HAVE_LINUX_IF_PACKET_H
+	bool raw_mode = false;
+#endif
+
 	fr_debug_flag = 0;
 
 	while ((c = getopt(argc, argv, "d:D:f:hr:t:vx"
@@ -435,8 +439,9 @@ int main(int argc, char **argv)
 	if (argc < 2) usage();
 
 	/*	convert timeout to a struct timeval */
-	tv_timeout.tv_sec = (time_t)timeout;
-	tv_timeout.tv_usec = (uint64_t)(timeout * 1000000) - (tv_timeout.tv_sec * 1000000);
+#define USEC 1000000
+	tv_timeout.tv_sec = timeout;
+	tv_timeout.tv_usec = ((timeout - (float) tv_timeout.tv_sec) * USEC);
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("dhcpclient");
@@ -562,7 +567,6 @@ int main(int argc, char **argv)
 	}
 	
 	/* set "raw mode" if an interface is specified and if destination IP address is the broadcast address. */
-	bool dc_raw_mode = false;
 #ifdef HAVE_LINUX_IF_PACKET_H
 	if (iface) {
 		iface_ind = if_nametoindex(iface);
@@ -570,26 +574,20 @@ int main(int argc, char **argv)
 			fprintf(stderr, "dhcpclient: unknown interface: %s\n", iface);
 			exit(1);
 		}
+
 		if (server_ipaddr.ipaddr.ip4addr.s_addr == 0xFFFFFFFF) {
 			DEBUG("dhcpclient: Using interface: %s (index: %d) in raw packet mode\n", iface, iface_ind);
-			dc_raw_mode = true;
+			raw_mode = true;
 		}
 	}
-#endif
 
-	if (!dc_raw_mode) {
-		sockfd = fr_socket(&client_ipaddr, client_port);
-		
-		/*
-		 *	Set option 'receive timeout' on socket.
-		 *	Note: in case of a timeout, the error will be "Resource temporarily unavailable".
-		 */
-		setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv_timeout, sizeof(struct timeval));
-
-	} else {
-#ifdef HAVE_LINUX_IF_PACKET_H
+	if (raw_mode) {
 		sockfd = fr_socket_packet(iface_ind, &ll);
+	} else
 #endif
+
+	{
+		sockfd = fr_socket(&client_ipaddr, client_port);
 	}
 
 	if (sockfd < 0) {
@@ -601,10 +599,7 @@ int main(int argc, char **argv)
 	 *	Set option 'receive timeout' on socket.
 	 *	Note: in case of a timeout, the error will be "Resource temporarily unavailable".
 	 */
-	struct timeval tv;
-	tv.tv_sec = (time_t)timeout;
-	tv.tv_usec = (uint64_t)(timeout * 1000000) - (tv.tv_sec * 1000000);
-	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,sizeof(struct timeval)) == -1) {
+	if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv_timeout,sizeof(struct timeval)) == -1) {
 		fprintf(stderr, "dhcpclient: failed setting socket timeout: %s\n",
 			fr_syserror(errno));
 		exit(1);
@@ -630,7 +625,22 @@ int main(int argc, char **argv)
 	}
 	if (fr_debug_flag) print_hex(request);
 
-	if (!dc_raw_mode) {
+#ifdef HAVE_LINUX_IF_PACKET_H
+	if (raw_mode) {
+		if (fr_dhcp_send_raw_packet(sockfd, &ll, request) < 0) {
+			fprintf(stderr, "dhcpclient: failed sending (fr_dhcp_send_raw_packet): %s\n",
+				fr_syserror(errno));
+			exit(1);
+		}
+		
+		reply = fr_dhcp_recv_raw_loop(sockfd, &ll, request);
+		if (!reply) {
+			fprintf(stderr, "dhcpclient: Error receiving reply (fr_dhcp_recv_raw_loop)\n");
+			exit(1);
+		}
+	} else
+#endif
+	{
 		if (fr_dhcp_send(request) < 0) {
 			fprintf(stderr, "dhcpclient: failed sending: %s\n",
 				fr_syserror(errno));
@@ -648,21 +658,6 @@ int main(int argc, char **argv)
 			fprintf(stderr, "dhcpclient: failed decoding\n");
 			return 1;
 		}
-
-	} else {
-#ifdef HAVE_LINUX_IF_PACKET_H
-		if (fr_dhcp_send_raw_packet(sockfd, &ll, request) < 0) {
-			fprintf(stderr, "dhcpclient: failed sending (fr_dhcp_send_raw_packet): %s\n",
-				fr_syserror(errno));
-			exit(1);
-		}
-		
-		reply = fr_dhcp_recv_raw_loop(sockfd, &ll, request);
-		if (!reply) {
-			fprintf(stderr, "dhcpclient: Error receiving reply (fr_dhcp_recv_raw_loop)\n");
-			exit(1);
-		}
-#endif
 	}
 
 	dict_free();
