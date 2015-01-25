@@ -60,15 +60,15 @@ RCSID("$Id$")
 #include <gdbm.h>
 #include "../../include/md5.h"
 
-int active = 0;
+static int active = 0;
 
-int aflag = 0;
-int cflag = 0;
-int rflag = 0;
-int vflag = 0;
-int nflag = 0;
-int oflag = 0;
-int uflag = 0;
+static int aflag = 0;
+static int cflag = 0;
+static int rflag = 0;
+static int vflag = 0;
+static int nflag = 0;
+static int oflag = 0;
+static int uflag = 0;
 
 typedef struct ippool_info {
 	uint32_t	ipaddr;
