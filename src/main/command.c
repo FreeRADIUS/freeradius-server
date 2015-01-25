@@ -41,7 +41,6 @@
 #include <sys/stat.h>
 #endif
 
-#include <libgen.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -2133,6 +2132,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	sock->copy = NULL;
 	if (sock->path) sock->copy = talloc_typed_strdup(sock, sock->path);
 
+#if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	if (sock->uid_name) {
 		struct passwd *pwd;
 
@@ -2155,139 +2155,65 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		sock->gid = -1;
 	}
 
+#else  /* can't get uid or gid of connecting user */
+
+	if (sock->uid_name || sock->gid_name) {
+		ERROR("System does not support uid or gid authentication for sockets");
+		return -1;
+	}
+
+#endif
+
 	if (!sock->mode_name) {
 		sock->co.mode = FR_READ;
 	} else {
 		sock->co.mode = fr_str2int(mode_names, sock->mode_name, 0);
 		if (!sock->co.mode) {
-			ERROR("Invalid mode name \"%s\"", sock->mode_name);
+			ERROR("Invalid mode name \"%s\"",
+			       sock->mode_name);
 			return -1;
 		}
-	}
-
-	/*
-	 *	Ensure the path to the control socket has been created.
-	 */
-	{
-		char *dir, *buff;
-		int perm = 0;
-		int ret;
-
-		buff = talloc_strdup(cs, sock->path);
-		if (!buff) return -1;
-		dir = dirname(buff);
-
-		if ((sock->uid == (uid_t) -1) && (sock->gid == (gid_t) -1)) {
-			perm = S_IREAD | S_IWRITE | S_IEXEC | S_IRGRP | S_IWGRP | S_IXGRP;	/* World readable/writable probably dangerous */
-		} else {
-			if (sock->uid != (uid_t) -1) {
-				perm |= S_IREAD | S_IWRITE | S_IEXEC;
-			}
-			if (sock->gid != (gid_t) -1) {
-				perm |= S_IRGRP | S_IWGRP | S_IXGRP;
-			}
-		}
-
-		fr_suid_up();
-		ret = rad_mkdir(dir, perm, sock->uid, sock->gid);
-		ERROR("Failed creating directory: %s", fr_syserror(errno));
-		fr_suid_down();
-		talloc_free(buff);
-
-		if (ret < 0) return -1;
 	}
 
 	/*
 	 *	FIXME: check for absolute pathnames?
 	 *	check for uid/gid on the other end...
 	 */
+
 	this->fd = fr_server_domain_socket(sock->path);
 	if (this->fd < 0) {
 		return -1;
 	}
 
+#if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	/*
 	 *	Don't chown it from (possibly) non-root to root.
 	 *	Do chown it from (possibly) root to non-root.
 	 */
-	if ((sock->uid == (uid_t) -1) && (sock->gid != (gid_t) -1)) {
+	if ((sock->uid != (uid_t) -1) || (sock->gid != (gid_t) -1)) {
 		struct stat buf;
 
 		/*
 		 *	Don't do chown if it's already owned by us.
 		 */
 		if (fstat(this->fd, &buf) < 0) {
-			ERROR("Failed reading %s: %s", sock->path, fr_syserror(errno));
+			ERROR("Failed reading %s: %s",
+			      sock->path, fr_syserror(errno));
 			return -1;
 		}
 
-		/*
-		 *	Only linux supports changing permissions on a socket
-		 *	on BSDs you can only set permissions on the directory
-		 *	containing the socket, which are then inherited by
-		 *	the socket.
-		 */
-#  ifdef __linux__
 		if ((buf.st_uid != sock->uid) || (buf.st_gid != sock->gid)) {
 			fr_suid_up();
 			if (fchown(this->fd, sock->uid, sock->gid) < 0) {
-				ERROR("Failed setting ownership of \"%s\" to (%d, %d): %s",
+				ERROR("Failed setting ownership of %s to (%d, %d): %s",
 				      sock->path, sock->uid, sock->gid, fr_syserror(errno));
 				fr_suid_down();
 				return -1;
 			}
 			fr_suid_down();
 		}
-#  else
-		/*
-		 *	We don't want to arbitrarily change directory
-		 *	permissions, especially if we don't know we created
-		 *	the directory, so just error out and get the user
-		 *	to change the permissions.
-		 */
-		{
-			char *dir, *buff;
-
-			buff = talloc_strdup(cs, sock->path);
-			if (!buff) return -1;
-
-			dir = dirname(buff);
-			if (stat(dir, &buf) < 0) {
-				ERROR("Failed reading \"%s\": %s", dir, fr_syserror(errno));
-
-			perm_error:
-				talloc_free(buff);
-				return -1;
-			}
-
-			if (sock->uid_name && (buf.st_uid != sock->uid)) {
-				struct passwd *user;
-
-				if (rad_getpwuid(buff, &user, buf.st_uid) < 0) {
-					ERROR("%s", fr_strerror());
-					goto perm_error;
-				}
-
-				ERROR("Control socket directory \"%s\" must be owned by user %s, "
-				      "currently owned by %s", dir, sock->uid_name, user->pw_name);
-				goto perm_error;
-			}
-
-			if (sock->gid_name && (buf.st_gid != sock->gid)) {
-				struct group *group;
-
-				if (rad_getgrgid(buff, &group, buf.st_gid) < 0) {
-					ERROR("%s", fr_strerror());
-					goto perm_error;
-				}
-
-				ERROR("Control socket directory \"%s\" must be owned by group %s, "
-				      "currently owned by %s", dir, sock->gid_name, group->gr_name);
-				goto perm_error;
-			}
-		}
-#  endif
 	}
+#endif
 
 	return 0;
 }
