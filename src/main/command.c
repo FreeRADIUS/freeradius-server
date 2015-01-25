@@ -80,6 +80,7 @@ typedef struct fr_command_socket_t {
 	char const	*uid_name;
 	char const	*gid_name;
 	char const	*mode_name;
+	bool		peercred;
 	char user[256];
 
 	/*
@@ -100,7 +101,7 @@ static const CONF_PARSER command_config[] = {
 	{ "uid", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, uid_name), NULL },
 	{ "gid", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, gid_name), NULL },
 	{ "mode", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, mode_name), NULL },
-
+	{ "peercred", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_command_socket_t, peercred), "yes" },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -132,10 +133,20 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 }
 #endif /* HAVE_GETPEEREID */
 
-#if defined(__linux__) && (defined(HAVE_GETPEEREID) || defined(SO_PEERCRED))
-static int fr_server_domain_socket(char const *path, uid_t uid, gid_t gid)
+/** Initialise a socket for use with peercred authentication
+ *
+ * This function initialises a socket and path in a way suitable for use with
+ * peercred.
+ *
+ * @param path to socket.
+ * @param uid that should own the socket (linux only).
+ * @param gid that should own the socket (linux only).
+ * @return 0 on success -1 on failure.
+ */
+#ifdef __linux__
+static int fr_server_domain_socket_peercred(char const *path, uid_t uid, gid_t gid)
 #else
-static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gid_t gid)
+static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, UNUSED gid_t gid)
 #endif
 {
 	int sockfd;
@@ -145,18 +156,18 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 	struct stat buf;
 
 	if (!path) {
-		ERROR("No path provided, was NULL");
+		fr_strerror_printf("No path provided, was NULL");
 		return -1;
 	}
 
 	len = strlen(path);
 	if (len >= sizeof(salocal.sun_path)) {
-		ERROR("Path too long in socket filename");
+		fr_strerror_printf("Path too long in socket filename");
 		return -1;
 	}
 
 	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		ERROR("Failed creating socket: %s", fr_syserror(errno));
+		fr_strerror_printf("Failed creating socket: %s", fr_syserror(errno));
 		return -1;
 	}
 
@@ -171,7 +182,7 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 	 */
 	if (stat(path, &buf) < 0) {
 		if (errno != ENOENT) {
-			ERROR("Failed to stat %s: %s", path, fr_syserror(errno));
+			fr_strerror_printf("Failed to stat %s: %s", path, fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -185,7 +196,7 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 		    && !S_ISSOCK(buf.st_mode)
 #endif
 			) {
-			ERROR("Cannot turn %s into socket", path);
+			fr_strerror_printf("Cannot turn %s into socket", path);
 			close(sockfd);
 			return -1;
 		}
@@ -194,13 +205,13 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 		 *	Refuse to open sockets not owned by us.
 		 */
 		if (buf.st_uid != geteuid()) {
-			ERROR("We do not own %s", path);
+			fr_strerror_printf("We do not own %s", path);
 			close(sockfd);
 			return -1;
 		}
 
 		if (unlink(path) < 0) {
-		       ERROR("Failed to delete %s: %s",
+		       fr_strerror_printf("Failed to delete %s: %s",
 			     path, fr_syserror(errno));
 		       close(sockfd);
 		       return -1;
@@ -208,7 +219,7 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 	}
 
 	if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
-		ERROR("Failed binding to %s: %s", path, fr_syserror(errno));
+		fr_strerror_printf("Failed binding to %s: %s", path, fr_syserror(errno));
 		close(sockfd);
 		return -1;
 	}
@@ -218,13 +229,13 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 	 *	doesn't seem to permit fchmod on domain sockets.
 	 */
 	if (chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
-		ERROR("Failed setting permissions on %s: %s", path, fr_syserror(errno));
+		fr_strerror_printf("Failed setting permissions on %s: %s", path, fr_syserror(errno));
 		close(sockfd);
 		return -1;
 	}
 
 	if (listen(sockfd, 8) < 0) {
-		ERROR("Failed listening to %s: %s", path, fr_syserror(errno));
+		fr_strerror_printf("Failed listening to %s: %s", path, fr_syserror(errno));
 		close(sockfd);
 		return -1;
 	}
@@ -234,14 +245,14 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 		int flags;
 
 		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
-			ERROR("Failure getting socket flags: %s", fr_syserror(errno));
+			fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
 
 		flags |= O_NONBLOCK;
 		if( fcntl(sockfd, F_SETFL, flags) < 0) {
-			ERROR("Failure setting socket flags: %s", fr_syserror(errno));
+			fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -252,7 +263,7 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 	 *	Changing socket permissions only works on linux.
 	 *	BSDs ignore socket permissions.
 	 */
-#if defined(__linux__) && (defined(HAVE_GETPEEREID) || defined(SO_PEERCRED))
+#ifdef __linux__
 	/*
 	 *	Don't chown it from (possibly) non-root to root.
 	 *	Do chown it from (possibly) root to non-root.
@@ -262,7 +273,7 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 		 *	Don't do chown if it's already owned by us.
 		 */
 		if (fstat(sockfd, &buf) < 0) {
-			ERROR("Failed reading %s: %s", path, fr_syserror(errno));
+			fr_strerror_printf("Failed reading %s: %s", path, fr_syserror(errno));
 			close(sockfd);
 			return -1;
 		}
@@ -270,7 +281,7 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 		if ((buf.st_uid != uid) || (buf.st_gid != gid)) {
 			rad_suid_up();
 			if (fchown(sockfd, uid, gid) < 0) {
-				ERROR("Failed setting ownership of %s to (%d, %d): %s",
+				fr_strerror_printf("Failed setting ownership of %s to (%d, %d): %s",
 				      path, uid, gid, fr_syserror(errno));
 				rad_suid_down();
 				close(sockfd);
@@ -2240,15 +2251,23 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock = this->data;
 
-	if (cf_section_parse(cs, sock, command_config) < 0) {
+	if (cf_section_parse(cs, sock, command_config) < 0) return -1;
+
+	/*
+	 *	Can't get uid or gid of connecting user, so can't do
+	 *	peercred authentication.
+	 */
+#if !defined(HAVE_GETPEEREID) && !defined(SO_PEERCRED)
+	if (sock->peercred && (sock->uid_name || sock->gid_name)) {
+		ERROR("System does not support uid or gid authentication for sockets");
 		return -1;
 	}
+#endif
 
 	sock->magic = COMMAND_SOCKET_MAGIC;
 	sock->copy = NULL;
 	if (sock->path) sock->copy = talloc_typed_strdup(sock, sock->path);
 
-#if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	if (sock->uid_name) {
 		struct passwd *pwd;
 
@@ -2271,15 +2290,6 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		sock->gid = -1;
 	}
 
-#else  /* can't get uid or gid of connecting user */
-
-	if (sock->uid_name || sock->gid_name) {
-		ERROR("System does not support uid or gid authentication for sockets");
-		return -1;
-	}
-
-#endif
-
 	if (!sock->mode_name) {
 		sock->co.mode = FR_READ;
 	} else {
@@ -2291,16 +2301,11 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	}
 
-	/*
-	 *	FIXME: check for absolute pathnames?
-	 *	check for uid/gid on the other end...
-	 */
-
-	this->fd = fr_server_domain_socket(sock->path, sock->uid, sock->gid);
+	this->fd = fr_server_domain_socket_peercred(sock->path, sock->uid, sock->gid);
 	if (this->fd < 0) {
+		ERROR("Failed creating control socket \"%s\": %s", sock->path, fr_strerror());
 		return -1;
 	}
-
 	return 0;
 }
 
