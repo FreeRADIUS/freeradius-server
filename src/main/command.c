@@ -133,8 +133,11 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 }
 #endif /* HAVE_GETPEEREID */
 
-
-static int fr_server_domain_socket(char const *path)
+#if defined(__linux__) && (defined(HAVE_GETPEEREID) || defined(SO_PEERCRED))
+static int fr_server_domain_socket(char const *path, uid_t uid, gid_t gid)
+#else
+static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gid_t gid)
+#endif
 {
 	int sockfd;
 	size_t len;
@@ -249,6 +252,39 @@ static int fr_server_domain_socket(char const *path)
 				fr_syserror(errno));
 			close(sockfd);
 			return -1;
+		}
+	}
+#endif
+
+	/*
+	 *	Changing socket permissions only works on linux.
+	 *	BSDs ignore socket permissions.
+	 */
+#if defined(__linux__) && (defined(HAVE_GETPEEREID) || defined(SO_PEERCRED))
+	/*
+	 *	Don't chown it from (possibly) non-root to root.
+	 *	Do chown it from (possibly) root to non-root.
+	 */
+	if ((uid != (uid_t) -1) || (gid != (gid_t) -1)) {
+		/*
+		 *	Don't do chown if it's already owned by us.
+		 */
+		if (fstat(sockfd, &buf) < 0) {
+			ERROR("Failed reading %s: %s", path, fr_syserror(errno));
+			close(sockfd);
+			return -1;
+		}
+
+		if ((buf.st_uid != uid) || (buf.st_gid != gid)) {
+			fr_suid_up();
+			if (fchown(sockfd, uid, gid) < 0) {
+				ERROR("Failed setting ownership of %s to (%d, %d): %s",
+				      path, uid, gid, fr_syserror(errno));
+				fr_suid_down();
+				close(sockfd);
+				return -1;
+			}
+			fr_suid_down();
 		}
 	}
 #endif
@@ -2180,40 +2216,10 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	 *	check for uid/gid on the other end...
 	 */
 
-	this->fd = fr_server_domain_socket(sock->path);
+	this->fd = fr_server_domain_socket(sock->path, sock->uid, sock->gid);
 	if (this->fd < 0) {
 		return -1;
 	}
-
-#if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
-	/*
-	 *	Don't chown it from (possibly) non-root to root.
-	 *	Do chown it from (possibly) root to non-root.
-	 */
-	if ((sock->uid != (uid_t) -1) || (sock->gid != (gid_t) -1)) {
-		struct stat buf;
-
-		/*
-		 *	Don't do chown if it's already owned by us.
-		 */
-		if (fstat(this->fd, &buf) < 0) {
-			ERROR("Failed reading %s: %s",
-			      sock->path, fr_syserror(errno));
-			return -1;
-		}
-
-		if ((buf.st_uid != sock->uid) || (buf.st_gid != sock->gid)) {
-			fr_suid_up();
-			if (fchown(this->fd, sock->uid, sock->gid) < 0) {
-				ERROR("Failed setting ownership of %s to (%d, %d): %s",
-				      sock->path, sock->uid, sock->gid, fr_syserror(errno));
-				fr_suid_down();
-				return -1;
-			}
-			fr_suid_down();
-		}
-	}
-#endif
 
 	return 0;
 }
