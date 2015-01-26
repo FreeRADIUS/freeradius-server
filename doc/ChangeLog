@@ -1,41 +1,41 @@
 FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
-        * Allow coa home_servers to be derived from client
-          sections if a coa_server section is provided.
-        * Automatically determine the correct port if no port is
-          provided for a home server.
-        * Allow foreach to operate over lists.
-        * Add compile time features to ${feature.*} and versions
-          of core libraries to ${version.*}.  Feature and version
-          names match output of radiud -xv. %v is now deprecated.
-        * Add support for PATCH method in rlm_rest.
-        * Validate more module xlats on startup, and warn if an
-          xlat expansion is found in a double quoted config item
-          which will not be expanded.
-        * Add support for sub-second timeouts in rlm_rest.
-        * Add support for connection timeouts in rlm_rest.
-        * Add %{jsonquote:<str>} xlat to escape strings for insertion
-          into json documents.
-        * Add %{ldapquote:<str>} xlat to escape strings for insertion
-          into json documents.
-        * Add %{explode:&ref <char>}, splits value of &ref on
-          <char> and creates new &ref type attributes with the
-          fragments.
-        * Allow rlm_ldap to use attribute references for base_dn and
-          filter config items. The attribute references are not
-          escaped, allowing DNs and filters to be created dynamically.
-        * Add %{nexttime:[<int>]h|d|w|y} to calculate the number of
-          seconds before the next <int> hour(s), day(s), week(s),
-          or year(s).
-        * Allow the left side of update sections to be xlat expansions.
-          The result of the expansion is then used to reference the
-          attribute to be modified.
+	* Allow coa home_servers to be derived from client
+	  sections if a coa_server section is provided.
+	* Automatically determine the correct port if no port is
+	  provided for a home server.
+	* Allow foreach to operate over lists.
+	* Add compile time features to ${feature.*} and versions
+	  of core libraries to ${version.*}.  Feature and version
+	  names match output of radiud -xv. %v is now deprecated.
+	* Add support for PATCH method in rlm_rest.
+	* Validate more module xlats on startup, and warn if an
+	  xlat expansion is found in a double quoted config item
+	  which will not be expanded.
+	* Add support for sub-second timeouts in rlm_rest.
+	* Add support for connection timeouts in rlm_rest.
+	* Add %{jsonquote:<str>} xlat to escape strings for insertion
+	  into json documents.
+	* Add %{ldapquote:<str>} xlat to escape strings for insertion
+	  into json documents.
+	* Add %{explode:&ref <char>}, splits value of &ref on
+	  <char> and creates new &ref type attributes with the
+	  fragments.
+	* Allow rlm_ldap to use attribute references for base_dn and
+	  filter config items. The attribute references are not
+	  escaped, allowing DNs and filters to be created dynamically.
+	* Add %{nexttime:[<int>]h|d|w|y} to calculate the number of
+	  seconds before the next <int> hour(s), day(s), week(s),
+	  or year(s).
+	* Allow the left side of update sections to be xlat expansions.
+	  The result of the expansion is then used to reference the
+	  attribute to be modified.
 	* Added %{lpad:&Attribute-Name 7 x} and rpad.  These produce
 	  fixed-width output strings, with padding to the left (lpad)
 	  or the right (rpad).
 
 	Bug fixes
-        * Fix issues parsing LDAP hostnames with non-standard ports.
+	* Fix issues parsing LDAP hostnames with non-standard ports.
 	* Fix issues with realms containing regular expressions.
 	* Allow unary negation before parantheses in rlm_expr.
 	* Fix infinite loop in kevent event loop code. Issue only
@@ -52,7 +52,7 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	  for the control socket on non-linux systems. Instead
 	  inform the user that permissions need to be changed on
 	  parent directory. Unix socket permissions are a Linux
-          extension.
+	  extension.
 
 FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
