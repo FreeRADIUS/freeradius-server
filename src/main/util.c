@@ -1200,7 +1200,8 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 		return -1;
 	}
 
-	talloc_set_type(buff, struct group);
+	talloc_set_type(buff, struct passwd);
+	*out = (struct passwd *)buff;
 
 	return 0;
 }
@@ -1262,7 +1263,8 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 		return -1;
 	}
 
-	talloc_set_type(buff, struct group);
+	talloc_set_type(buff, struct passwd);
+	*out = (struct passwd *)buff;
 
 	return 0;
 }
@@ -1325,6 +1327,7 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 	}
 
 	talloc_set_type(buff, struct group);
+	*out = (struct group *)buff;
 
 	return 0;
 }
@@ -1387,6 +1390,7 @@ int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 	}
 
 	talloc_set_type(buff, struct group);
+	*out = (struct group *)buff;
 
 	return 0;
 }
