@@ -74,6 +74,13 @@ ATTRIBUTE	Alc-PPPoE-Service-Name			35	string
 ATTRIBUTE	Alc-DHCP-Vendor-Class-Id		36	string
 
 # RADIUS subscriber accounting VSAs (HSMDA override counters)
+#
+#  In a stupid format.  These attributes are 10 octets long, in the
+#  following format:
+#
+#	2 octets - Queue ID
+#	8 octets - 64-bit counter.
+#
 ATTRIBUTE	Alc-Acct-OC-I-Inprof-Octets-64		37	octets
 ATTRIBUTE	Alc-Acct-OC-I-Outprof-Octets-64		38	octets
 ATTRIBUTE	Alc-Acct-OC-O-Inprof-Octets-64		39	octets
