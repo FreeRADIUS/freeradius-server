@@ -1168,13 +1168,15 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 	 *	matter.
 	 */
 	if (len == 0) {
+#ifdef _SC_GETPW_R_SIZE_MAX
 		long int sc_len;
 
-#ifdef _SC_GETPW_R_SIZE_MAX
 		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-#endif
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
+#else
+		len = 1024;
+#endif
 	}
 
 	buff = talloc_array(ctx, uint8_t, sizeof(struct passwd) + len);
@@ -1231,13 +1233,15 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 	 *	matter.
 	 */
 	if (len == 0) {
+#ifdef _SC_GETPW_R_SIZE_MAX
 		long int sc_len;
 
-#ifdef _SC_GETPW_R_SIZE_MAX
 		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-#endif
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
+#else
+		sc_len = 1024;
+#endif
 	}
 
 	buff = talloc_array(ctx, uint8_t, sizeof(struct passwd) + len);
@@ -1293,14 +1297,16 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 	 *	and that the value is the same, so races don't
 	 *	matter.
 	 */
-	if (len == 0) {
+	if (len == 0) {	
+#ifdef _SC_GETGR_R_SIZE_MAX
 		long int sc_len;
 
-#ifdef _SC_GETGR_R_SIZE_MAX
 		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-#endif
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
+#else
+		sc_len = 1024;
+#endif
 	}
 
 	buff = talloc_array(ctx, uint8_t, sizeof(struct group) + len);
