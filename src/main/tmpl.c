@@ -1539,7 +1539,6 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 		/* Error in expansion, this is distinct from zero length expansion */
 		slen = radius_xlat_struct(buff, bufflen, request, vpt->tmpl_xlat, escape, escape_ctx);
 		if (slen < 0) {
-			rad_assert(!*out);
 			return slen;
 		}
 		slen = strlen(buff);
