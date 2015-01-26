@@ -1986,7 +1986,10 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, instance->connect_timeout);
 	SET_OPTION(CURLOPT_TIMEOUT_MS, section->timeout);
+
+#ifdef CURLOPT_PROTOCOLS
 	SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
+#endif
 
 	/*
 	 *	FreeRADIUS custom headers
