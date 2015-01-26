@@ -95,11 +95,13 @@ typedef struct THREAD_HANDLE {
 
 #endif	/* WITH_GCD */
 
+#ifdef WNOHANG
 typedef struct thread_fork_t {
 	pid_t		pid;
 	int		status;
 	int		exited;
 } thread_fork_t;
+#endif
 
 
 #ifdef WITH_STATS
