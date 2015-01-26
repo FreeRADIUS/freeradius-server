@@ -268,9 +268,9 @@ int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
 	}
 
 	if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) {
-		fr_suid_up();
+		rad_suid_up();
 		rcode = fchown(fd, uid, gid);
-		fr_suid_down();
+		rad_suid_down();
 	}
 	close(fd);
 
@@ -1414,3 +1414,127 @@ int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
 	talloc_free(result);
 	return 0;
 }
+
+#ifdef HAVE_SETUID
+static bool doing_setuid = false;
+static uid_t suid_down_uid = (uid_t)-1;
+
+#  if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
+/** Set the uid and gid used when dropping privileges
+ *
+ * @note if this function hasn't been called, rad_suid_down will have no effect.
+ *
+ * @param uid to drop down to.
+ */
+void rad_suid_set_down_uid(uid_t uid)
+{
+	suid_down_uid = uid;
+	doing_setuid = true;
+}
+
+void rad_suid_up(void)
+{
+	uid_t ruid, euid, suid;
+
+	if (getresuid(&ruid, &euid, &suid) < 0) {
+		ERROR("Failed getting saved UID's");
+		fr_exit_now(1);
+	}
+
+	if (setresuid(-1, suid, -1) < 0) {
+		ERROR("Failed switching to privileged user");
+		fr_exit_now(1);
+	}
+
+	if (geteuid() != suid) {
+		ERROR("Switched to unknown UID");
+		fr_exit_now(1);
+	}
+}
+
+void rad_suid_down(void)
+{
+	if (!doing_setuid) return;
+
+	if (setresuid(-1, suid_down_uid, geteuid()) < 0) {
+		struct passwd *passwd;
+		char const *name;
+
+		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
+		ERROR("Failed switching to uid %s: %s", name, fr_syserror(errno));
+		talloc_free(passwd);
+		fr_exit_now(1);
+	}
+
+	if (geteuid() != suid_down_uid) {
+		ERROR("Failed switching uid: UID is incorrect");
+		fr_exit_now(1);
+	}
+
+	fr_reset_dumpable();
+}
+
+void rad_suid_down_permanent(void)
+{
+	if (!doing_setuid) return;
+
+	if (setresuid(suid_down_uid, suid_down_uid, suid_down_uid) < 0) {
+		struct passwd *passwd;
+		char const *name;
+
+		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
+		ERROR("Failed in permanent switch to uid %s: %s", name, fr_syserror(errno));
+		talloc_free(passwd);
+		fr_exit_now(1);
+	}
+
+	if (geteuid() != suid_down_uid) {
+		ERROR("Switched to unknown uid");
+		fr_exit_now(1);
+	}
+
+	fr_reset_dumpable();
+}
+#  else
+/*
+ *	Much less secure...
+ */
+void rad_suid_up(void)
+{
+}
+
+void rad_suid_down(void)
+{
+	if (!doing_setuid) return;
+
+	if (setuid(suid_down_uid) < 0) {
+		struct passwd *passwd;
+		char const *name;
+
+		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
+		ERROR("Failed switching to uid %s: %s", name, fr_syserror(errno));
+		talloc_free(passwd);
+		fr_exit_now(1);
+	}
+
+	fr_reset_dumpable();
+}
+
+void rad_suid_down_permanent(void)
+{
+	fr_reset_dumpable();
+}
+#  endif /* HAVE_SETRESUID && HAVE_GETRESUID */
+#else  /* HAVE_SETUID */
+void rad_suid_up(void)
+{
+}
+void rad_suid_down(void)
+{
+	fr_reset_dumpable();
+}
+void rad_suid_down_permanent(void)
+{
+	fr_reset_dumpable();
+}
+#endif /* HAVE_SETUID */

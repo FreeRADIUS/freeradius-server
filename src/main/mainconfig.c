@@ -399,106 +399,6 @@ error:
 }
 
 #ifdef HAVE_SETUID
-static bool doing_setuid = false;
-
-#  if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
-void fr_suid_up(void)
-{
-	uid_t ruid, euid, suid;
-
-	if (getresuid(&ruid, &euid, &suid) < 0) {
-		ERROR("Failed getting saved UID's");
-		fr_exit_now(1);
-	}
-
-	if (setresuid(-1, suid, -1) < 0) {
-		ERROR("Failed switching to privileged user");
-		fr_exit_now(1);
-	}
-
-	if (geteuid() != suid) {
-		ERROR("Switched to unknown UID");
-		fr_exit_now(1);
-	}
-}
-
-void fr_suid_down(void)
-{
-	if (!doing_setuid) return;
-
-	if (setresuid(-1, server_uid, geteuid()) < 0) {
-		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
-			progname, uid_name, fr_syserror(errno));
-		fr_exit_now(1);
-	}
-
-	if (geteuid() != server_uid) {
-		fprintf(stderr, "%s: Failed switching uid: UID is incorrect\n",
-			progname);
-		fr_exit_now(1);
-	}
-
-	fr_set_dumpable(allow_core_dumps);
-}
-
-void fr_suid_down_permanent(void)
-{
-	if (!doing_setuid) return;
-
-	if (setresuid(server_uid, server_uid, server_uid) < 0) {
-		ERROR("Failed in permanent switch to uid %s: %s",
-		       uid_name, fr_syserror(errno));
-		fr_exit_now(1);
-	}
-
-	if (geteuid() != server_uid) {
-		ERROR("Switched to unknown uid");
-		fr_exit_now(1);
-	}
-
-	fr_set_dumpable(allow_core_dumps);
-}
-#  else
-/*
- *	Much less secure...
- */
-void fr_suid_up(void)
-{
-}
-
-void fr_suid_down(void)
-{
-	if (!uid_name) return;
-
-	if (setuid(server_uid) < 0) {
-		fprintf(stderr, "%s: Failed switching to uid %s: %s\n",
-			progname, uid_name, fr_syserror(errno));
-		fr_exit_now(1);
-	}
-
-	fr_set_dumpable(allow_core_dumps);
-}
-
-void fr_suid_down_permanent(void)
-{
-	fr_set_dumpable(allow_core_dumps);
-}
-#  endif /* HAVE_SETRESUID && HAVE_GETRESUID */
-#else  /* HAVE_SETUID */
-void fr_suid_up(void)
-{
-}
-void fr_suid_down(void)
-{
-	fr_set_dumpable(allow_core_dumps);
-}
-void fr_suid_down_permanent(void)
-{
-	fr_set_dumpable(allow_core_dumps);
-}
-#endif /* HAVE_SETUID */
-
-#ifdef HAVE_SETUID
 
 /*
  *  Do chroot, if requested.
@@ -635,9 +535,8 @@ static int switch_users(CONF_SECTION *cs)
 	}
 
 	if (uid_name) {
-		doing_setuid = true;
-
-		fr_suid_down();
+		rad_suid_set_down_uid(server_uid);
+		rad_suid_down();
 	}
 #endif
 

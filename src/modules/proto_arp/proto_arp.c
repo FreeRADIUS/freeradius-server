@@ -265,12 +265,12 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (check_config) return 0;
 
-	fr_suid_up();
+	rad_suid_up();
 	if (fr_pcap_open(sock->pcap) < 0) {
 		cf_log_err_cs(cs, "Failed opening interface %s: %s", value, fr_strerror());
 		return -1;
 	}
-	fr_suid_down();
+	rad_suid_down();
 
 	if (fr_pcap_apply_filter(sock->pcap, "arp") < 0) {
 		cf_log_err_cs(cs, "Failed setting filter for interface %s: %s",
