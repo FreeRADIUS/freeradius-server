@@ -2597,16 +2597,17 @@ static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr,
 	size_t len;
 
 	switch (dv_type) {
+	default:
+	case 1:
+		len = snprintf(buffer, size, "%u", attr & 0xff);
+		break;
+
 	case 4:
 		return snprintf(buffer, size, "%u", attr);
 
 	case 2:
 		return snprintf(buffer, size, "%u", attr & 0xffff);
 
-	default:
-	case 1:
-		len = snprintf(buffer, size, "%u", attr & 0xff);
-		break;
 	}
 
 	if ((attr >> 8) == 0) return len;
