@@ -327,7 +327,7 @@ static ssize_t xlat_vendor_num(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	return snprintf(out, outlen, "%i", vp->da->vendor);
+	return snprintf(out, outlen, "%u", vp->da->vendor);
 }
 
 /** Return the attribute name of an attribute reference
@@ -364,7 +364,7 @@ static ssize_t xlat_attr_num(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	return snprintf(out, outlen, "%i", vp->da->attr);
+	return snprintf(out, outlen, "%u", vp->da->attr);
 }
 
 /** Print out attribute info
