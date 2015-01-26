@@ -398,6 +398,7 @@ static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char cons
 	return -1;
 }
 
+#ifdef HAVE_SETUID
 /*
  *  Do chroot, if requested.
  *
@@ -506,7 +507,6 @@ static int switch_users(CONF_SECTION *cs)
 	}
 #endif
 
-#ifdef HAVE_SETUID
 	/*
 	 *	Just before losing root permissions, ensure that the
 	 *	log files have the correct owner && group.
@@ -536,7 +536,6 @@ static int switch_users(CONF_SECTION *cs)
 		rad_suid_set_down_uid(server_uid);
 		rad_suid_down();
 	}
-#endif
 
 	/*
 	 *	This also clears the dumpable flag if core dumps
