@@ -759,6 +759,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 */
 			if (ldap_url->lud_scheme) {
 				if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
+					if (inst->start_tls == true) {
+						cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
+							      "with 'start_tls'");
+						return -1;
+					}
+
 					port = inst->port ? inst->port : LDAPS_PORT;
 
 				} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
