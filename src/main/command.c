@@ -276,15 +276,15 @@ static int fr_server_domain_socket(char const *path, uid_t UNUSED uid, UNUSED gi
 		}
 
 		if ((buf.st_uid != uid) || (buf.st_gid != gid)) {
-			fr_suid_up();
+			rad_suid_up();
 			if (fchown(sockfd, uid, gid) < 0) {
 				ERROR("Failed setting ownership of %s to (%d, %d): %s",
 				      path, uid, gid, fr_syserror(errno));
-				fr_suid_down();
+				rad_suid_down();
 				close(sockfd);
 				return -1;
 			}
-			fr_suid_down();
+			rad_suid_down();
 		}
 	}
 #endif

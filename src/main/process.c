@@ -5031,7 +5031,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	 *	At this point, no one has any business *ever* going
 	 *	back to root uid.
 	 */
-	fr_suid_down_permanent();
+	rad_suid_down_permanent();
 
 	return 1;
 }
