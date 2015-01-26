@@ -334,9 +334,9 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 		if (rhs == 0) {
 			RDEBUG("Division by zero!");
 			return false;
+		} else {
+			*answer = lhs / rhs;
 		}
-
-		*answer = lhs / rhs;
 		break;
 
 	case TOKEN_REMAINDER:
