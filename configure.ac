@@ -1436,7 +1436,11 @@ AC_CHECK_FUNCS( \
   getresuid \
   strlcat \
   strlcpy \
-  kqueue
+  kqueue \
+  openat \
+  mkdirat \
+  unlinkat \
+  bindat
 )
 
 AC_TYPE_SIGNAL

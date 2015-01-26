@@ -27,6 +27,7 @@
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/channel.h>
 
+#include <libgen.h>
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif
@@ -295,6 +296,363 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 	return sockfd;
 }
 
+#if !defined(HAVE_OPENAT) || !defined(HAVE_MKDIRAT) || !defined(HAVE_UNLINKAT)
+static int fr_server_domain_socket_perm(UNUSED char const *path, UNUSED uid_t uid, UNUSED gid_t gid)
+{
+	fr_error_printf("Unable to initialise control socket.  Set peercred = yes or update to "
+			"POSIX-2008 compliant libc");
+	return -1;
+}
+#else
+/** Alternative function for creating Unix domain sockets and enforcing permissions
+ *
+ * Unlike fr_server_unix_socket which is intended to be used with peercred auth
+ * this function relies on the file system to enforce access.
+ *
+ * The way it does this depends on the operating system. On Linux systems permissions
+ * can be set on the socket directly and the system will enforce them.
+ *
+ * On most other systems fchown and fchmod fail when called with socket descriptors,
+ * and although permissions can be changed in other ways, they're not enforced.
+ *
+ * For these systems we use the permissions on the parent directory to enforce
+ * permissions on the socket. It's not safe to modify these permissions ourselves
+ * due to TOCTOU attacks, so if they don't match what we require, we error out and
+ * get the user to change them (which arguably isn't any safer, but releases us of
+ * the responsibility).
+ *
+ * @note must be called without effective root permissions (fr_suid_down).
+ *
+ * @param path where domain socket should be created.
+ * @return a file descriptor for the bound socket on success, -1 on failure.
+ */
+static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
+{
+	int			dir_fd = -1, path_fd = -1, sock_fd = -1, parent_fd = -1;
+	char const		*name;
+	char			*buff = NULL, *dir = NULL, *p;
+
+	uid_t			euid;
+	gid_t			egid;
+
+	mode_t			perm = 0;
+	struct stat		st;
+
+	size_t			len;
+
+	socklen_t		socklen;
+	struct sockaddr_un	salocal;
+
+	rad_assert(path);
+
+	euid = geteuid();
+	egid = getegid();
+
+	/*
+	 *	Determine the correct permissions for the socket, or its
+	 *	containing directory.
+	 */
+	perm |= S_IREAD | S_IWRITE | S_IEXEC;
+	if (gid != (gid_t) -1) perm |= S_IRGRP | S_IWGRP | S_IXGRP;
+
+	buff = talloc_strdup(NULL, path);
+	if (!buff) return -1;
+
+	/*
+	 *	Some implementations modify it in place others use internal
+	 *	storage *sigh*. dirname also formats the path else we wouldn't
+	 *	be using it.
+	 */
+	dir = dirname(buff);
+	if (dir != buff) {
+		dir = talloc_strdup(NULL, dir);
+		if (!dir) return -1;
+		talloc_free(buff);
+	}
+
+	p = strrchr(dir, FR_DIR_SEP);
+	if (!p) {
+		fr_strerror_printf("Failed determining parent directory");
+	error:
+		talloc_free(dir);
+		close(dir_fd);
+		close(path_fd);
+		return -1;
+	}
+
+	*p = '\0';
+
+	/*
+	 *	Ensure the parent of the control socket directory exists,
+	 *	and the euid we're running under has access to it.
+	 */
+	parent_fd = open(dir, O_DIRECTORY);
+	if (parent_fd < 0) {
+		struct passwd *user;
+		struct group *group;
+
+		if (rad_getpwuid(NULL, &user, euid) < 0) goto error;
+		if (rad_getgrgid(NULL, &group, egid) < 0) {
+			talloc_free(user);
+			goto error;
+		}
+		fr_strerror_printf("Can't open directory \"%s\": %s.  Must be created manually, or modified, "
+				   "with permissions that allow writing by user %s or group %s", dir,
+				   user->pw_name, group->gr_name, fr_syserror(errno));
+		talloc_free(user);
+		talloc_free(group);
+		goto error;
+	}
+
+	*p = FR_DIR_SEP;
+
+	dir_fd = openat(parent_fd, p + 1, O_NOFOLLOW | O_DIRECTORY);
+	if (dir_fd < 0) {
+		int ret = 0;
+
+		if (errno != ENOENT) {
+			fr_strerror_printf("Failed opening control socket directory: %s", fr_syserror(errno));
+			goto error;
+		}
+
+		/*
+		 *	This fails if the radius user can't write
+		 *	to the parent directory.
+		 */
+	 	if (mkdirat(parent_fd, p + 1, 0700) < 0) {
+			fr_strerror_printf("Failed creating control socket directory: %s", fr_syserror(errno));
+			goto error;
+	 	}
+
+		dir_fd = openat(parent_fd, p + 1, O_NOFOLLOW | O_DIRECTORY);
+		if (dir_fd < 0) {
+			fr_strerror_printf("Failed opening the control socket directory we created: %s",
+					   fr_syserror(errno));
+			goto error;
+		}
+		if (fchmod(dir_fd, perm) < 0) {
+			fr_strerror_printf("Failed setting permissions on control socket directory: %s",
+					   fr_syserror(errno));
+			goto error;
+		}
+
+		rad_suid_up();
+		if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) ret = fchown(dir_fd, uid, gid);
+		rad_suid_down();
+		if (ret < 0) {
+			fr_strerror_printf("Failed changing ownership of control socket directory: %s",
+					   fr_syserror(errno));
+			return -1;
+		}
+	/*
+	 *	Control socket dir already exists, but we still need to
+	 *	check the permissions are what we expect.
+	 */
+	} else {
+		int ret;
+
+		ret = fstat(dir_fd, &st);
+		if (ret < 0) {
+			fr_strerror_printf("Failed checking permissions of control socket directory: %s",
+					   fr_syserror(errno));
+			goto error;
+		}
+
+		if ((uid != (uid_t)-1) && (st.st_uid != uid)) {
+			struct passwd *need_user, *have_user;
+
+			if (rad_getpwuid(NULL, &need_user, uid) < 0) goto error;
+			if (rad_getpwuid(NULL, &have_user, st.st_uid) < 0) {
+				talloc_free(need_user);
+				goto error;
+			}
+			fr_strerror_printf("Control socket directory must be owned by user %s, "
+					   "currently owned by %s", need_user->pw_name, have_user->pw_name);
+			talloc_free(need_user);
+			talloc_free(have_user);
+			goto error;
+		}
+
+		if ((gid != (gid_t)-1) && (st.st_gid != gid)) {
+			struct group *need_group, *have_group;
+
+			if (rad_getgrgid(NULL, &need_group, gid) < 0) goto error;
+			if (rad_getgrgid(NULL, &have_group, st.st_gid) < 0) {
+				talloc_free(need_group);
+				goto error;
+			}
+			fr_strerror_printf("Control socket directory \"%s\" must be owned by group %s, "
+					   "currently owned by %s", dir, need_group->gr_name, have_group->gr_name);
+			talloc_free(need_group);
+			talloc_free(have_group);
+			goto error;
+		}
+
+		if ((perm & 0x0c) != (st.st_mode & 0x0c)) {
+			char str_need[10], oct_need[5];
+			char str_have[10], oct_have[5];
+
+			rad_mode_to_str(str_need, perm);
+			rad_mode_to_oct(oct_need, perm);
+			rad_mode_to_str(str_have, st.st_mode);
+			rad_mode_to_oct(oct_have, st.st_mode);
+			fr_strerror_printf("Control socket directory must have permissions %s (%s), current "
+					   "permissions are %s (%s)", str_need, oct_need, str_have, oct_have);
+			goto error;
+		}
+	}
+	name = strrchr(path, FR_DIR_SEP);
+	if (!name) {
+		fr_strerror_printf("Can't determine socket name");
+		goto error;
+	}
+	name++;
+
+	/*
+	 *	We've checked the containing directory has the permissions
+	 *	we expect, and as we have the FD, and aren't following
+	 *	symlinks no one can trick us into changing or creating a
+	 *	file elsewhere.
+	 *
+	 *	It's possible an attacker may still be able to create hard
+	 *	links, for the socket file. But they would need write
+	 *	access to the directory we just created or verified, so
+	 *	this attack vector is unlikely.
+	 */
+	if ((uid != (uid_t)-1) && (rad_seuid(uid) < 0)) goto error;
+	if ((gid != (gid_t)-1) && (rad_segid(gid) < 0)) {
+		rad_seuid(euid);
+		goto error;
+	}
+
+	/*
+	 *	The original code, did openat, used fstat to figure out
+	 *	what type the file was and then used unlinkat to unlink
+	 *	it. Except on OSX (at least) openat refuses to open
+	 *	socket files. So we now rely on the fact that unlinkat
+	 *	has sane and consistent behaviour, and will not unlink
+	 *	directories. unlinkat should also fail if the socket user
+	 *	hasn't got permission to modify the socket.
+	 */
+	if ((unlinkat(dir_fd, name, 0) < 0) && (errno != ENOENT)) {
+		fr_strerror_printf("Failed removing stale socket: %s", fr_syserror(errno));
+	sock_error:
+		if (uid != (uid_t)-1) rad_seuid(euid);
+		if (gid != (gid_t)-1) rad_segid(egid);
+		close(sock_fd);
+		sock_fd = -1;
+
+		goto error;
+	}
+
+	/*
+	 *	At this point we should have established a secure directory
+	 *	to house our socket, and cleared out any stale sockets.
+	 */
+	sock_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	if (sock_fd < 0) {
+		fr_strerror_printf("Failed creating socket: %s", fr_syserror(errno));
+		goto sock_error;
+	}
+
+#ifdef HAVE_BINDAT
+	len = strlen(name);
+#else
+	len = strlen(path);
+#endif
+	if (len >= sizeof(salocal.sun_path)) {
+		fr_strerror_printf("Path too long in socket filename");
+		goto error;
+	}
+
+	memset(&salocal, 0, sizeof(salocal));
+	salocal.sun_family = AF_UNIX;
+
+#ifdef HAVE_BINDAT
+	memcpy(salocal.sun_path, name, len + 1); /* SUN_LEN does strlen */
+#else
+	memcpy(salocal.sun_path, path, len + 1); /* SUN_LEN does strlen */
+#endif
+	socklen = SUN_LEN(&salocal);
+
+	/*
+	 *	Direct socket permissions are only useful on Linux which
+	 *	actually enforces them. BSDs don't. They also need to be
+	 *	set before binding the socket to a file.
+	 */
+#ifdef __linux__
+	if (fchmod(sock_fd, perm) < 0) {
+		char str_need[10], oct_need[5];
+
+		rad_mode_to_str(str_need, perm);
+		rad_mode_to_oct(oct_need, perm);
+		fr_strerror_printf("Failed changing socket permissions to %s (%s)", str_need, oct_need);
+
+		goto sock_error;
+	}
+
+	if (fchown(sock_fd, uid, gid) < 0) {
+		struct passwd *user;
+		struct group *group;
+
+		if (rad_getpwuid(NULL, &user, uid) < 0) goto sock_error;
+		if (rad_getgrgid(NULL, &group, gid) < 0) {
+			talloc_free(user);
+			goto sock_error;
+		}
+
+		fr_strerror_printf("Failed changing ownership of socket to %s:%s", user->pw_name, group->gr_name);
+		talloc_free(user);
+		talloc_free(group);
+		goto sock_error;
+	}
+#endif
+	/*
+	 *	The correct function to use here is bindat(), but only
+	 *	quite recent versions of FreeBSD actually have it, and
+	 *	it's definitely not POSIX.
+	 */
+#ifdef HAVE_BINDAT
+	if (bindat(dir_fd, sock_fd, (struct sockaddr *)&salocal, socklen) < 0) {
+#else
+	if (bind(sock_fd, (struct sockaddr *)&salocal, socklen) < 0) {
+#endif
+		fr_strerror_printf("Failed binding socket: %s", fr_syserror(errno));
+		goto sock_error;
+	}
+
+	if (listen(sock_fd, 8) < 0) {
+		fr_strerror_printf("Failed listening on socket: %s", fr_syserror(errno));
+		goto sock_error;
+	}
+
+#ifdef O_NONBLOCK
+	{
+		int flags;
+
+		flags = fcntl(sock_fd, F_GETFL, NULL);
+		if (flags < 0)  {
+			fr_strerror_printf("Failed getting socket flags: %s", fr_syserror(errno));
+			goto sock_error;
+		}
+
+		flags |= O_NONBLOCK;
+		if (fcntl(sock_fd, F_SETFL, flags) < 0) {
+			fr_strerror_printf("Failed setting nonblocking socket flag: %s", fr_syserror(errno));
+			goto sock_error;
+		}
+	}
+#endif
+
+	if (uid != (uid_t)-1) rad_seuid(euid);
+	if (gid != (gid_t)-1) rad_segid(egid);
+
+	close(dir_fd);
+	close(path_fd);
+
+	return sock_fd;
+}
+#endif
 
 static void command_close_socket(rad_listen_t *this)
 {
@@ -2301,11 +2659,23 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	}
 
-	this->fd = fr_server_domain_socket_peercred(sock->path, sock->uid, sock->gid);
+	if (sock->peercred) {
+		this->fd = fr_server_domain_socket_peercred(sock->path, sock->uid, sock->gid);
+	} else {
+		uid_t uid = sock->uid;
+		gid_t gid = sock->gid;
+
+		if (uid == ((uid_t)-1)) uid = 0;
+		if (gid == ((gid_t)-1)) gid = 0;
+
+		this->fd = fr_server_domain_socket_perm(sock->path, uid, gid);
+	}
+
 	if (this->fd < 0) {
 		ERROR("Failed creating control socket \"%s\": %s", sock->path, fr_strerror());
 		return -1;
 	}
+
 	return 0;
 }
 
@@ -2712,7 +3082,7 @@ static int command_domain_accept(rad_listen_t *listener)
 	/*
 	 *	Perform user authentication.
 	 */
-	if (sock->uid_name || sock->gid_name) {
+	if (sock->peercred && (sock->uid_name || sock->gid_name)) {
 		uid_t uid;
 		gid_t gid;
 
