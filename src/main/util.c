@@ -1144,6 +1144,35 @@ void verify_request(char const *file, int line, REQUEST *request)
 }
 #endif
 
+/** Convert mode_t into humanly readable permissions flags
+ *
+ * @author Jonathan Leffler.
+ *
+ * @param mode to convert.
+ * @param out Where to write the string to, must be exactly 10 bytes long.
+ */
+void rad_mode_to_str(char out[10], mode_t mode)
+{
+    static char const *rwx[] = {"---", "--x", "-w-", "-wx", "r--", "r-x", "rw-", "rwx"};
+
+    strcpy(&out[0], rwx[(mode >> 6) & 0x07]);
+    strcpy(&out[3], rwx[(mode >> 3) & 0x07]);
+    strcpy(&out[6], rwx[(mode & 7)]);
+    if (mode & S_ISUID) out[2] = (mode & 0100) ? 's' : 'S';
+    if (mode & S_ISGID) out[5] = (mode & 0010) ? 's' : 'l';
+    if (mode & S_ISVTX) out[8] = (mode & 0100) ? 't' : 'T';
+    out[9] = '\0';
+}
+
+void rad_mode_to_oct(char out[5], mode_t mode)
+{
+	out[0] = '0' + ((mode >> 9) & 0x07);
+	out[1] = '0' + ((mode >> 6) & 0x07);
+	out[2] = '0' + ((mode >> 3) & 0x07);
+	out[3] = '0' + (mode & 0x07);
+	out[4] = '\0';
+}
+
 /** Resolve a uid to a passwd entry
  *
  * Resolves a uid to a passwd entry. The memory to hold the
@@ -1609,3 +1638,41 @@ void rad_suid_down_permanent(void)
 	fr_reset_dumpable();
 }
 #endif /* HAVE_SETUID */
+
+/** Alter the effective user id
+ *
+ * @param uid to set
+ * @return 0 on success -1 on failure.
+ */
+int rad_seuid(uid_t uid)
+{
+	if (seteuid(uid) < 0) {
+		struct passwd *passwd;
+
+		if (rad_getpwuid(NULL, &passwd, uid) < 0) return -1;
+		fr_strerror_printf("Failed setting euid to %s", passwd->pw_name);
+		talloc_free(passwd);
+
+		return -1;
+	}
+	return 0;
+}
+
+/** Alter the effective user id
+ *
+ * @param gid to set
+ * @return 0 on success -1 on failure.
+ */
+int rad_segid(gid_t gid)
+{
+	if (setegid(gid) < 0) {
+		struct group *group;
+
+		if (rad_getgrgid(NULL, &group, gid) < 0) return -1;
+		fr_strerror_printf("Failed setting egid to %s", group->gr_name);
+		talloc_free(group);
+
+		return -1;
+	}
+	return 0;
+}

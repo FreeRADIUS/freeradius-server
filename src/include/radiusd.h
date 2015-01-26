@@ -563,6 +563,8 @@ char const	*rad_default_sbin_dir(void);
 char const	*rad_radacct_dir(void);
 
 void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */
+void		rad_mode_to_str(char out[10], mode_t mode);
+void		rad_mode_to_oct(char out[5], mode_t mode);
 int		rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid);
 int		rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name);
 int		rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid);
@@ -570,6 +572,8 @@ int		rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name);
 int		rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name);
 int		rad_prints_uid(TALLOC_CTX *ctx, char *out, size_t outlen, uid_t uid);
 int		rad_prints_gid(TALLOC_CTX *ctx, char *out, size_t outlen, gid_t gid);
+int		rad_seuid(uid_t uid);
+int		rad_segid(gid_t gid);
 
 void		rad_suid_set_down_uid(uid_t uid);
 void		rad_suid_down(void);
