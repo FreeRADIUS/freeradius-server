@@ -229,6 +229,7 @@ $INCLUDE dictionary.nortel
 $INCLUDE dictionary.packeteer
 $INCLUDE dictionary.paloalto
 $INCLUDE dictionary.patton
+$INCLUDE dictionary.perle
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.prosoft
 $INCLUDE dictionary.proxim
