@@ -169,6 +169,17 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 	mysql_options(&(conn->db), MYSQL_READ_DEFAULT_GROUP, "freeradius");
 
+	/*
+	 *	We need to know about connection errors, and are capable
+	 *	of reconnecting automatically.
+	 */
+#ifdef MYSQL_OPT_RECONNECT
+	{
+		my_bool reconnect = 0;
+		mysql_options(&(conn->db), MYSQL_OPT_RECONNECT, &reconnect);
+	}
+#endif
+
 #if (MYSQL_VERSION_ID >= 50000)
 	if (config->query_timeout) {
 		unsigned int timeout = config->query_timeout;
