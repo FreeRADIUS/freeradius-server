@@ -43,6 +43,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <mach/mach_init.h>
 #include <mach/semaphore.h>
 
+#ifndef WITH_GCD
 #undef sem_t
 #define sem_t semaphore_t
 #undef sem_init
@@ -51,7 +52,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define sem_wait(s) semaphore_wait(*s)
 #undef sem_post
 #define sem_post(s) semaphore_signal(*s)
-#endif
+#endif	/* WITH_GCD */
+#endif	/* __APPLE__ */
 
 #ifdef HAVE_SYS_WAIT_H
 #include <sys/wait.h>
@@ -885,8 +887,8 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 #ifndef WITH_GCD
 	uint32_t	i;
 	int		rcode;
-	CONF_SECTION	*pool_cf;
 #endif
+	CONF_SECTION	*pool_cf;
 	time_t		now;
 
 	now = time(NULL);
@@ -895,8 +897,10 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 	rad_assert(*spawn_flag == true);
 	rad_assert(pool_initialized == false); /* not called on HUP */
 
-#ifndef WITH_GCD
 	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
+#ifdef WITH_GCD
+	if (pool_cf) WARN("Built with Grand Central Dispatch.  Ignoring 'thread' subsection");
+#else
 	if (!pool_cf) *spawn_flag = false;
 #endif
 
