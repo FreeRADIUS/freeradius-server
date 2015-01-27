@@ -201,10 +201,12 @@ int fr_socket(fr_ipaddr_t *ipaddr, uint16_t port)
 	}
 #endif /* HAVE_STRUCT_SOCKADDR_IN6 */
 
+#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
 	if (ipaddr->af == AF_INET) {
-		UNUSED int flag;
+		int flag;
 
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
+
 		/*
 		 *	Disable PMTU discovery.  On Linux, this
 		 *	also makes sure that the "don't fragment"
@@ -236,6 +238,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, uint16_t port)
 		}
 #endif
 	}
+#endif
 
 	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		close(sockfd);
@@ -983,7 +986,7 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 		        packet->dst_port,
 		        packet->data_len);
 	} else {
-		fprintf(fp, "%s code %i Id %i from %s:%i to %s:%i length %zu\n",
+		fprintf(fp, "%s code %u Id %i from %s:%i to %s:%i length %zu\n",
 		        received ? "Received" : "Sent",
 		        packet->code,
 		        packet->id,
