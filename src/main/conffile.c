@@ -1409,17 +1409,25 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		tv.tv_sec = sec;
 		tv.tv_usec = 0;
 		if (*end == '.') {
-			sec = strlen(end + 1);
+			size_t len;
 
-			if (sec > 6) {
+			len = strlen(end + 1);
+
+			if (len > 6) {
 				ERROR("Too much precision for timeval");
 				return -1;
 			}
 
-			strcpy(buffer, "000000");
-			memcpy(buffer, end + 1, sec);
+			/*
+			 *	If they write "0.1", that means
+			 *	"10000" microseconds.
+			 */
+			sec = strtoul(end + 1, NULL, 10);
+			while (len < 6) {
+				sec *= 10;
+				len++;
+			}
 
-			sec = strtoul(buffer, NULL, 10);
 			tv.tv_usec = sec;
 		}
 		cf_log_info(cs, "%.*s\t%s = %d.%06d",
@@ -1464,7 +1472,6 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 				  CONF_PARSER const *variables)
 {
 	int i;
-	void *data;
 
 	for (i = 0; variables[i].name != NULL; i++) {
 		if (variables[i].type == PW_TYPE_SUBSECTION) {
@@ -1503,14 +1510,12 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 		}
 
 		if (variables[i].data) {
-			data = variables[i].data; /* prefer this. */
+			*(char **) variables[i].data = NULL;
 		} else if (base) {
-			data = ((char *)base) + variables[i].offset;
+			*(char **) (((char *)base) + variables[i].offset) = NULL;
 		} else {
 			continue;
 		}
-
-		*(char **) data = NULL;
 	} /* for all variables in the configuration section */
 }
 
