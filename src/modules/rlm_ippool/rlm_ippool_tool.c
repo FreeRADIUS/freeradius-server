@@ -124,6 +124,8 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 	uint16_t	port;
 	bool		found = false;
 
+	memset(&key, 0, sizeof(key));	/* -Winitialize */
+
 	sessiondb = gdbm_open(sessiondbname, 512, mode, 0,NULL);
 	indexdb = gdbm_open(indexdbname, 512, mode, 0,NULL);
 
