@@ -19,10 +19,9 @@ $(BUILD_DIR)/tests/xlat:
 #
 #  Files in the output dir depend on the unit tests
 #
-#	src/tests/keywords/FOO		unlang for the test
-#	src/tests/keywords/FOO.attrs	input RADIUS and output filter
-#	build/tests/keywords/FOO	updated if the test succeeds
-#	build/tests/keywords/FOO.log	debug output for the test
+#	src/tests/xlat/FOO		input file
+#	build/tests/xlat/FOO		updated if the test succeeds
+#	build/tests/xlat/FOO.log	debug output for the test
 #
 #  Auto-depend on modules via $(shell grep INCLUDE $(DIR)/radiusd.conf | grep mods-enabled | sed 's/.*}/raddb/'))
 #
