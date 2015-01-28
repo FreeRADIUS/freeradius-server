@@ -402,37 +402,37 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	 *  QOP is "auth-int", tack on ": Digest-Body-Digest"
 	 */
 	qop = pairfind(request->packet->vps, PW_DIGEST_QOP, 0, TAG_ANY);
-	if ((qop != NULL) &&
-	    (strcasecmp(qop->vp_strvalue, "auth-int") == 0)) {
-		VALUE_PAIR *body;
+	if (qop) {
+		if (strcasecmp(qop->vp_strvalue, "auth-int") == 0) {
+			VALUE_PAIR *body;
 
-		/*
-		 *	Add in Digest-Body-Digest
-		 */
-		a2[a2_len] = ':';
-		a2_len++;
+			/*
+			 *	Add in Digest-Body-Digest
+			 */
+			a2[a2_len] = ':';
+			a2_len++;
 
-		/*
-		 *  Must be a hex representation of an MD5 digest.
-		 */
-		body = pairfind(request->packet->vps, PW_DIGEST_BODY_DIGEST, 0, TAG_ANY);
-		if (!body) {
-			REDEBUG("No Digest-Body-Digest: Cannot perform Digest authentication");
+			/*
+			 *  Must be a hex representation of an MD5 digest.
+			 */
+			body = pairfind(request->packet->vps, PW_DIGEST_BODY_DIGEST, 0, TAG_ANY);
+			if (!body) {
+				REDEBUG("No Digest-Body-Digest: Cannot perform Digest authentication");
+				return RLM_MODULE_INVALID;
+			}
+
+			if ((a2_len + body->vp_length) > sizeof(a2)) {
+				REDEBUG("Digest-Body-Digest is too long");
+				return RLM_MODULE_INVALID;
+			}
+
+			memcpy(a2 + a2_len, body->vp_octets, body->vp_length);
+			a2_len += body->vp_length;
+
+		} else if (strcasecmp(qop->vp_strvalue, "auth") != 0) {
+			REDEBUG("Unknown Digest-QOP \"%s\": Cannot perform Digest authentication", qop->vp_strvalue);
 			return RLM_MODULE_INVALID;
 		}
-
-		if ((a2_len + body->vp_length) > sizeof(a2)) {
-			REDEBUG("Digest-Body-Digest is too long");
-			return RLM_MODULE_INVALID;
-		}
-
-		memcpy(a2 + a2_len, body->vp_octets, body->vp_length);
-		a2_len += body->vp_length;
-
-	} else if ((qop != NULL) &&
-		   (strcasecmp(qop->vp_strvalue, "auth") != 0)) {
-		REDEBUG("Unknown Digest-QOP \"%s\": Cannot perform Digest authentication", qop->vp_strvalue);
-		return RLM_MODULE_INVALID;
 	}
 
 	a2[a2_len] = '\0';

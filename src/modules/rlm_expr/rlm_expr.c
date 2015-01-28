@@ -334,9 +334,9 @@ static bool calc_result(REQUEST *request, int64_t lhs, expr_token_t op, int64_t 
 		if (rhs == 0) {
 			RDEBUG("Division by zero!");
 			return false;
+		} else {
+			*answer = lhs / rhs;
 		}
-
-		*answer = lhs / rhs;
 		break;
 
 	case TOKEN_REMAINDER:
@@ -1258,7 +1258,7 @@ static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
 	value_pair_tmpl_t vpt;
 	vp_cursor_t cursor, to_merge;
 	VALUE_PAIR *vp, *head = NULL;
-	size_t slen;
+	ssize_t slen;
 	int count = 0;
 	char const *p = fmt;
 	char delim;
@@ -1488,7 +1488,7 @@ static bool parse_pad(REQUEST *request, char const *fmt,
 	while (isspace((int) *p)) p++;
 
 	length = strtoul(p, &end, 10);
-	if ((length <= 0) || (length == ULONG_MAX) || (length > 8192)) {
+	if ((length == ULONG_MAX) || (length > 8192)) {
 		talloc_free(vpt);
 		RDEBUG("Invalid length found at: %s", p);
 		return false;
@@ -1535,7 +1535,8 @@ static ssize_t lpad_xlat(UNUSED void *instance, REQUEST *request,
 			 char const *fmt, char *out, size_t outlen)
 {
 	char fill;
-	size_t pad, len;
+	size_t pad;
+	ssize_t len;
 	value_pair_tmpl_t *vpt;
 
 	*out = '\0';
@@ -1555,7 +1556,7 @@ static ssize_t lpad_xlat(UNUSED void *instance, REQUEST *request,
 	len = tmpl_expand(NULL, out, pad + 1, request, vpt, NULL, NULL);
 	if (len <= 0) return 0;
 
-	if (len >= pad) return pad;
+	if ((size_t) len >= pad) return pad;
 
 	/*
 	 *	We have to shift the string to the right, and pad with
@@ -1576,7 +1577,8 @@ static ssize_t rpad_xlat(UNUSED void *instance, REQUEST *request,
 			 char const *fmt, char *out, size_t outlen)
 {
 	char fill;
-	size_t pad, len;
+	size_t pad;
+	ssize_t len;
 	value_pair_tmpl_t *vpt;
 
 	*out = '\0';
@@ -1597,7 +1599,7 @@ static ssize_t rpad_xlat(UNUSED void *instance, REQUEST *request,
 	len = tmpl_expand(NULL, out, pad + 1, request, vpt, NULL, NULL);
 	if (len <= 0) return 0;
 
-	if (len >= pad) return pad;
+	if ((size_t) len >= pad) return pad;
 
 	/*
 	 *	We have to pad with "fill" characters.

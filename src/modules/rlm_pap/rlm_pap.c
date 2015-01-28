@@ -766,10 +766,10 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha2(rlm_pap_t *inst, REQUEST *requ
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha2(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	EVP_MD_CTX *ctx;
-	EVP_MD const *md;
-	char const *name;
+	EVP_MD const *md = NULL;
+	char const *name = NULL;
 	uint8_t digest[EVP_MAX_MD_SIZE];
-	unsigned int digest_len, min_len;
+	unsigned int digest_len, min_len = 0;
 
 	switch (vp->da->attr) {
 	case PW_SSHA2_224_PASSWORD:

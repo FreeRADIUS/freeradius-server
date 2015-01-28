@@ -85,11 +85,21 @@ case "$1" in
         ;;
 
     debug)
-        $PROGRAM -X $FREERADIUS_OPTIONS
+        $0 status
+        if [ $? -eq 0 ]; then
+            echo "$PROGRAM already running; for live debugging see raddebug(8)"
+            exit 151
+        fi
+        $PROGRAM -X $FREERADIUS_OPTIONS || exit $?
         ;;
 
     debug-threaded)
-        $PROGRAM -f -xx -l stdout $FREERADIUS_OPTIONS
+        $0 status
+        if [ $? -eq 0 ]; then
+            echo "$PROGRAM already running; for live debugging see raddebug(8)"
+            exit 151
+        fi
+        $PROGRAM -f -xx -l stdout $FREERADIUS_OPTIONS || exit $?
         ;;
 
     status)

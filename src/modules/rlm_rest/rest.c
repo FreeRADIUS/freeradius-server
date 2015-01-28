@@ -1986,7 +1986,10 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, instance->connect_timeout);
 	SET_OPTION(CURLOPT_TIMEOUT_MS, section->timeout);
+
+#ifdef CURLOPT_PROTOCOLS
 	SET_OPTION(CURLOPT_PROTOCOLS, (CURLPROTO_HTTP | CURLPROTO_HTTPS));
+#endif
 
 	/*
 	 *	FreeRADIUS custom headers
@@ -2079,7 +2082,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 				SET_OPTION(CURLOPT_PASSWORD, buffer);
 			}
 #ifdef CURLOPT_TLSAUTH_USERNAME
-		} else if (type == HTTP_AUTH_TLS_SRP) {
+		} else if (auth == HTTP_AUTH_TLS_SRP) {
 			SET_OPTION(CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
 
 			if (username) {

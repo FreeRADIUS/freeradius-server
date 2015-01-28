@@ -1,16 +1,54 @@
 #
-#  Sample logrotate file for FreeRADIUS.
+#  Sample logrotate file for FreeRADIUS
 #
-#  It needs to be edited for your local configuration.
+#  You can use this to rotate the /var/log/radius/* files, simply copy it to /etc/logrotate.d/radiusd
+#
+
+#
+#    Global options for all files
+#
+daily
+rotate 14
+missingok
+compress
+delaycompress
+notifempty
+
+#
+#  The main server log
 #
 /var/log/radius/radius.log {
-	daily
-	rotate 14
-	compress
-	delaycompress
-	missingok
-	notifempty
-	postrotate
-		kill -HUP `cat /var/run/radiusd.pid` > /dev/null 2>&1
-	endscript
+	copytruncate
+}
+
+#
+#  Session monitoring utilities
+#
+/var/log/radius/checkrad.log /var/log/radius/radwatch.log {
+	nocreate
+}
+
+#
+#  Session database modules
+#
+/var/log/radius/radutmp /var/log/radius/radwtmp {
+	nocreate
+}
+
+#
+#  SQL log files
+#
+/var/log/radius/sqllog.sql {
+	nocreate
+}
+
+# There are different detail-rotating strategies you can use.  One is
+# to write to a single detail file per IP and use the rotate config
+# below.  Another is to write to a daily detail file per IP with:
+#     detailfile = ${radacctdir}/%{Client-IP-Address}/%Y%m%d-detail
+# (or similar) in radiusd.conf, without rotation.  If you go with the
+# second technique, you will need another cron job that removes old
+# detail files.  You do not need to comment out the below for method #2.
+/var/log/radius/radacct/*/detail {
+	nocreate
 }

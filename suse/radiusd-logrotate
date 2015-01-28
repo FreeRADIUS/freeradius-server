@@ -1,3 +1,48 @@
+# You can use this to rotate the /var/log/radius/* files, simply copy
+# it to /etc/logrotate.d/radiusd
+
+#
+#    Global options for all files
+#
+dateext
+maxage 365
+rotate 99
+missingok
+compress
+delaycompress
+notifempty
+
+#
+#  The main server log
+#
+/var/log/radius/radius.log {
+	copytruncate
+}
+
+#
+#  Session monitoring utilities
+#
+/var/log/radius/checkrad.log /var/log/radius/radwatch.log {
+	nocreate
+	size=+1024k
+}
+
+#
+#  Session database modules
+#
+/var/log/radius/radutmp /var/log/radius/radwtmp {
+	nocreate
+	size=+2048k
+}
+
+#
+#  SQL log files
+#
+/var/log/radius/sqllog.sql {
+	nocreate
+	size=+2048k
+}
+
 # There are different detail-rotating strategies you can use.  One is
 # to write to a single detail file per IP and use the rotate config
 # below.  Another is to write to a daily detail file per IP with:
@@ -6,58 +51,6 @@
 # second technique, you will need another cron job that removes old
 # detail files.  You do not need to comment out the below for method #2.
 /var/log/radius/radacct/*/detail {
-    compress
-    dateext
-    maxage 365
-    rotate 99
-    size=+1024k
-    notifempty
-    missingok
+	nocreate
 }
 
-/var/log/radius/radius.log {
-    compress
-    dateext
-    maxage 365
-    rotate 99
-    size=+1024k
-    notifempty
-    missingok
-    create
-    postrotate
-	kill -HUP `cat /var/run/radiusd/radiusd.pid`
-    endscript
-}
-
-/var/log/radius/radwatch.log {
-    compress
-    dateext
-    maxage 365
-    rotate 99
-    size=+1024k
-    notifempty
-    missingok
-    copytruncate
-}
-
-/var/log/radius/radwtmp {
-    compress
-    dateext
-    maxage 365
-    rotate 99
-    size=+2048k
-    notifempty
-    missingok
-    create
-}
-
-/var/log/radius/sqllog.sql {
-    compress
-    dateext
-    maxage 365
-    rotate 99
-    size=+2048k
-    notifempty
-    missingok
-    create
-}

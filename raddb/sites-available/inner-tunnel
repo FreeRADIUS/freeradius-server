@@ -296,10 +296,29 @@ post-auth {
 
 
 	#
-	#  Instead of "use_tunneled_reply", do this:
+	#  Instead of "use_tunneled_reply", uncomment the
+	#  next two "update" blocks.
 	#
 #	update {
 #		&outer.session-state: += &reply:
+#	}
+
+	#
+	#  These attributes are for the inner session only.
+	#  They MUST NOT be sent in the outer reply.
+	#
+	#  If you uncomment the previous block and leave
+	#  this one commented out, WiFi WILL NOT WORK,
+	#  because the client will get two MS-MPPE-keys
+	#
+#	update outer.session-state {
+#		MS-MPPE-Encryption-Policy !* ANY
+#		MS-MPPE-Encryption-Types !* ANY
+#		MS-MPPE-Send-Key !* ANY
+#		MS-MPPE-Recv-Key !* ANY
+#		Message-Authenticator !* ANY
+#		EAP-Message !* ANY
+#		Proxy-State !* ANY
 #	}
 
 	#

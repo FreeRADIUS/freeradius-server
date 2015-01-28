@@ -93,6 +93,8 @@ static char panic_action[512];				//!< The command to execute when panicking.
 static fr_fault_cb_t panic_cb = NULL;			//!< Callback to execute whilst panicking, before the
 							//!< panic_action.
 
+static bool dump_core;					//!< Whether we should drop a core on fatal signals.
+
 static void CC_HINT(format (printf, 1, 2)) _fr_fault_log(char const *msg, ...);
 
 fr_fault_log_t fr_fault_log = _fr_fault_log;		//!< Function to use to process logging output.
@@ -525,6 +527,7 @@ int fr_set_dumpable_init(void)
  */
 int fr_set_dumpable(bool allow_core_dumps)
 {
+	dump_core = allow_core_dumps;
 	/*
 	 *	If configured, turn core dumps off.
 	 */
@@ -557,6 +560,17 @@ int fr_set_dumpable(bool allow_core_dumps)
 	}
 #endif
 	return 0;
+}
+
+/** Reset dumpable state to previously configured value
+ *
+ * Needed after suid up/down
+ *
+ * @return 0 on success, else -1 on failure.
+ */
+int fr_reset_dumpable(void)
+{
+	return fr_set_dumpable(dump_core);
 }
 
 /** Check to see if panic_action file is world writeable
