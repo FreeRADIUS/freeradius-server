@@ -317,6 +317,7 @@ post-auth {
 #		MS-MPPE-Send-Key !* ANY
 #		MS-MPPE-Recv-Key !* ANY
 #		Message-Authenticator !* ANY
+#		EAP-Message !* ANY
 #		Proxy-State !* ANY
 #	}
 
