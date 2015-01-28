@@ -49,30 +49,26 @@ if test x$with_[]modname != xno; then
 	  esac ]
 	)
 
-	dnl # extra argument: --with-threads
-	rlm_ldap_with_threads=yes
-	AC_ARG_WITH(threads,
-	[  --with-threads          use threads, if available. (default=yes) ],
-	[ case "$withval" in
-	    no)
-		rlm_ldap_with_threads=no
-		;;
-	    *)
-		;;
-	    esac ])
-
 	dnl ############################################################
 	dnl # Check for libraries
 	dnl ############################################################
 
-	dnl # Try "-lldap_r" or "-lldap"
+	dnl #
+	dnl #  Official word from those who represent OpenLDAP say
+	dnl #  libldap_r is unsupported for use outside the OpenLDAP
+	dnl #  server. But libldap *may* work with the FreeRADIUS
+	dnl #  as we use a threadpool to prevent concurrent access to
+	dnl #  the same libldap handle.
+	dnl #
+	dnl #  In FreeRADIUS <= 3.0.6 we used libldap_r in preference
+	dnl #  to libldap, however, in order to support certain distros
+	dnl #  or packagers that only ship libldap in their OpenLDAP
+	dnl #  client packages, we're forced to switch to just libldap.
+	dnl #
 	smart_try_dir=$rlm_ldap_lib_dir
-    FR_SMART_CHECK_LIB(ldap_r, ldap_init)
-    if test "x$ac_cv_lib_ldap_r_ldap_init" != "xyes"; then
-        FR_SMART_CHECK_LIB(ldap, ldap_init)
-        if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
-            fail="$fail libldap"
-        fi
+    FR_SMART_CHECK_LIB(ldap, ldap_init)
+    if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
+        fail="$fail libldap"
     fi
 
 	dnl ############################################################

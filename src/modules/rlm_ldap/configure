@@ -638,7 +638,6 @@ ac_user_opts='
 enable_option_checking
 with_rlm_ldap_lib_dir
 with_rlm_ldap_include_dir
-with_threads
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1256,7 +1255,6 @@ Optional Packages:
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-rlm-ldap-lib-dir=DIR       directory for LDAP library files
   --with-rlm-ldap-include-dir=DIR   directory for LDAP include files
-  --with-threads          use threads, if available. (default=yes)
 
 Some influential environment variables:
   CC          C compiler command
@@ -2684,198 +2682,9 @@ if test "${with_rlm_ldap_include_dir+set}" = set; then :
 fi
 
 
-		rlm_ldap_with_threads=yes
 
-# Check whether --with-threads was given.
-if test "${with_threads+set}" = set; then :
-  withval=$with_threads;  case "$withval" in
-	    no)
-		rlm_ldap_with_threads=no
-		;;
-	    *)
-		;;
-	    esac
-fi
+													smart_try_dir=$rlm_ldap_lib_dir
 
-
-
-		smart_try_dir=$rlm_ldap_lib_dir
-
-
-
-sm_lib_safe=`echo "ldap_r" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "ldap_init" | sed 'y%./+-%__p_%'`
-
-old_LIBS="$LIBS"
-old_CPPFLAGS="$CPPFLAGS"
-smart_lib=
-smart_ldflags=
-smart_lib_dir=
-
-if test "x$smart_try_dir" != "x"; then
-  for try in $smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_init in -lldap_r in $try" >&5
-$as_echo_n "checking for ldap_init in -lldap_r in $try... " >&6; }
-    LIBS="-lldap_r $old_LIBS"
-    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-extern char ldap_init();
-int
-main ()
-{
-ldap_init()
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-
-		 smart_lib="-lldap_r"
-		 smart_ldflags="-L$try -Wl,-rpath,$try"
-		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-		 break
-
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-  done
-  LIBS="$old_LIBS"
-  CPPFLAGS="$old_CPPFLAGS"
-fi
-
-if test "x$smart_lib" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_init in -lldap_r" >&5
-$as_echo_n "checking for ldap_init in -lldap_r... " >&6; }
-  LIBS="-lldap_r $old_LIBS"
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-extern char ldap_init();
-int
-main ()
-{
-ldap_init()
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-
-	        smart_lib="-lldap_r"
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-  LIBS="$old_LIBS"
-fi
-
-if test "x$smart_lib" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libldap_r${libltdl_cv_shlibext}
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=libldap_r.a
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
-
-
-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ldap_init in -lldap_r in $try" >&5
-$as_echo_n "checking for ldap_init in -lldap_r in $try... " >&6; }
-    LIBS="-lldap_r $old_LIBS"
-    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-extern char ldap_init();
-int
-main ()
-{
-ldap_init()
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-
-		  smart_lib="-lldap_r"
-		  smart_ldflags="-L$try -Wl,-rpath,$try"
-		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-		  break
-
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-  done
-  LIBS="$old_LIBS"
-  CPPFLAGS="$old_CPPFLAGS"
-fi
-
-if test "x$smart_lib" != "x"; then
-  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
-  LIBS="$smart_ldflags $smart_lib $old_LIBS"
-  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
-fi
-
-    if test "x$ac_cv_lib_ldap_r_ldap_init" != "xyes"; then
 
 
 sm_lib_safe=`echo "ldap" | sed 'y%./+-%__p_%'`
@@ -3050,9 +2859,8 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-        if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
-            fail="$fail libldap"
-        fi
+    if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
+        fail="$fail libldap"
     fi
 
 
