@@ -190,62 +190,90 @@ void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
 	return NULL;		/* wasn't found, too bad... */
 }
 
-/*
- *	Create possibly many directories.
+/** Create possibly many directories.
  *
- *	Note that the input directory name is NOT a constant!
- *	This is so that IF an error is returned, the 'directory' ptr
- *	points to the name of the file which caused the error.
+ * @note that the input directory name is NOT treated as a constant. This is so that
+ *	 if an error is returned, the 'directory' ptr points to the name of the file
+ *	 which caused the error.
+ *
+ * @param dir path to directory to create.
+ * @param mode for new directories.
+ * @param uid to set on new directories, may be -1 to use effective uid.
+ * @param gid to set on new directories, may be -1 to use effective gid.
+ * @return 0 on success, -1 on error. Error available as errno.
  */
-int rad_mkdir(char *directory, mode_t mode, uid_t uid, gid_t gid)
+int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
 {
-	int rcode;
+	int rcode, fd;
 	char *p;
 
 	/*
-	 *	Try to make the directory.  If it exists, chmod it.
+	 *	Try to make the dir.  If it exists, chmod it.
 	 *	If a path doesn't exist, that's OK.  Otherwise
 	 *	return with an error.
+	 *
+	 *	Directories permissions are initially set so
+	 *	that only we should have access. This prevents
+	 *	an attacker removing them and swapping them
+	 *	out for a link to somewhere else.
+	 *	We change them to the correct permissions later.
 	 */
-	rcode = mkdir(directory, mode & 0777);
+	rcode = mkdir(dir, 0700);
 	if (rcode < 0) {
-		if (errno == EEXIST) {
+		switch (errno) {
+		case EEXIST:
 			return 0; /* don't change permissions */
-		}
 
-		if (errno != ENOENT) {
+		case ENOENT:
+			break;
+
+		default:
 			return rcode;
 		}
 
 		/*
-		 *	A component in the directory path doesn't
-		 *	exist.  Look for the LAST directory name.  Try
+		 *	A component in the dir path doesn't
+		 *	exist.  Look for the LAST dir name.  Try
 		 *	to create that.  If there's an error, we leave
-		 *	the directory path as the one at which the
+		 *	the dir path as the one at which the
 		 *	error occured.
 		 */
-		p = strrchr(directory, FR_DIR_SEP);
-		if (!p || (p == directory)) return -1;
+		p = strrchr(dir, FR_DIR_SEP);
+		if (!p || (p == dir)) return -1;
 
 		*p = '\0';
-		rcode = rad_mkdir(directory, mode, uid, gid);
+		rcode = rad_mkdir(dir, mode, uid, gid);
 		if (rcode < 0) return rcode;
 
 		/*
-		 *	Reset the directory path, and try again to
-		 *	make the directory.
+		 *	Reset the dir path, and try again to
+		 *	make the dir.
 		 */
 		*p = FR_DIR_SEP;
-		rcode = mkdir(directory, mode & 0777);
+		rcode = mkdir(dir, 0700);
 		if (rcode < 0) return rcode;
-	} /* else we successfully created the directory */
+	} /* else we successfully created the dir */
 
 	/*
-	 *	Set the permissions on the created directory.
+	 *	Set the permissions on the directory we created
+	 *	this should never fail unless there's a race.
 	 */
-	rcode = chmod(directory, mode);
-	if (rcode < 0) return rcode;
-	if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) rcode = chown(directory, uid, gid);
+	fd = open(dir, O_DIRECTORY);
+	if (fd < 0) return -1;
+
+	rcode = fchmod(fd, mode);
+	if (rcode < 0) {
+		close(fd);
+		return rcode;
+	}
+
+	if ((uid != (uid_t)-1) || (gid != (gid_t)-1)) {
+		rad_suid_up();
+		rcode = fchown(fd, uid, gid);
+		rad_suid_down();
+	}
+	close(fd);
+
 	return rcode;
 }
 
@@ -1140,13 +1168,15 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 	 *	matter.
 	 */
 	if (len == 0) {
+#ifdef _SC_GETPW_R_SIZE_MAX
 		long int sc_len;
 
-#ifdef _SC_GETPW_R_SIZE_MAX
 		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-#endif
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
+#else
+		len = 1024;
+#endif
 	}
 
 	buff = talloc_array(ctx, uint8_t, sizeof(struct passwd) + len);
@@ -1172,7 +1202,8 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 		return -1;
 	}
 
-	talloc_set_type(buff, struct group);
+	talloc_set_type(buff, struct passwd);
+	*out = (struct passwd *)buff;
 
 	return 0;
 }
@@ -1202,13 +1233,15 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 	 *	matter.
 	 */
 	if (len == 0) {
+#ifdef _SC_GETPW_R_SIZE_MAX
 		long int sc_len;
 
-#ifdef _SC_GETPW_R_SIZE_MAX
 		sc_len = sysconf(_SC_GETPW_R_SIZE_MAX);
-#endif
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
+#else
+		sc_len = 1024;
+#endif
 	}
 
 	buff = talloc_array(ctx, uint8_t, sizeof(struct passwd) + len);
@@ -1234,7 +1267,8 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 		return -1;
 	}
 
-	talloc_set_type(buff, struct group);
+	talloc_set_type(buff, struct passwd);
+	*out = (struct passwd *)buff;
 
 	return 0;
 }
@@ -1264,13 +1298,15 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 	 *	matter.
 	 */
 	if (len == 0) {
+#ifdef _SC_GETGR_R_SIZE_MAX
 		long int sc_len;
 
-#ifdef _SC_GETGR_R_SIZE_MAX
 		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-#endif
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
+#else
+		sc_len = 1024;
+#endif
 	}
 
 	buff = talloc_array(ctx, uint8_t, sizeof(struct group) + len);
@@ -1297,6 +1333,7 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 	}
 
 	talloc_set_type(buff, struct group);
+	*out = (struct group *)buff;
 
 	return 0;
 }
@@ -1326,13 +1363,15 @@ int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 	 *	matter.
 	 */
 	if (len == 0) {
+#ifdef _SC_GETGR_R_SIZE_MAX
 		long int sc_len;
 
-#ifdef _SC_GETGR_R_SIZE_MAX
 		sc_len = sysconf(_SC_GETGR_R_SIZE_MAX);
-#endif
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
+#else
+		len = 1024;
+#endif
 	}
 
 	buff = talloc_array(ctx, uint8_t, sizeof(struct group) + len);
@@ -1359,6 +1398,7 @@ int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 	}
 
 	talloc_set_type(buff, struct group);
+	*out = (struct group *)buff;
 
 	return 0;
 }
@@ -1382,3 +1422,127 @@ int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
 	talloc_free(result);
 	return 0;
 }
+
+#ifdef HAVE_SETUID
+static bool doing_setuid = false;
+static uid_t suid_down_uid = (uid_t)-1;
+
+#  if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
+/** Set the uid and gid used when dropping privileges
+ *
+ * @note if this function hasn't been called, rad_suid_down will have no effect.
+ *
+ * @param uid to drop down to.
+ */
+void rad_suid_set_down_uid(uid_t uid)
+{
+	suid_down_uid = uid;
+	doing_setuid = true;
+}
+
+void rad_suid_up(void)
+{
+	uid_t ruid, euid, suid;
+
+	if (getresuid(&ruid, &euid, &suid) < 0) {
+		ERROR("Failed getting saved UID's");
+		fr_exit_now(1);
+	}
+
+	if (setresuid(-1, suid, -1) < 0) {
+		ERROR("Failed switching to privileged user");
+		fr_exit_now(1);
+	}
+
+	if (geteuid() != suid) {
+		ERROR("Switched to unknown UID");
+		fr_exit_now(1);
+	}
+}
+
+void rad_suid_down(void)
+{
+	if (!doing_setuid) return;
+
+	if (setresuid(-1, suid_down_uid, geteuid()) < 0) {
+		struct passwd *passwd;
+		char const *name;
+
+		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
+		ERROR("Failed switching to uid %s: %s", name, fr_syserror(errno));
+		talloc_free(passwd);
+		fr_exit_now(1);
+	}
+
+	if (geteuid() != suid_down_uid) {
+		ERROR("Failed switching uid: UID is incorrect");
+		fr_exit_now(1);
+	}
+
+	fr_reset_dumpable();
+}
+
+void rad_suid_down_permanent(void)
+{
+	if (!doing_setuid) return;
+
+	if (setresuid(suid_down_uid, suid_down_uid, suid_down_uid) < 0) {
+		struct passwd *passwd;
+		char const *name;
+
+		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown" : passwd->pw_name;
+		ERROR("Failed in permanent switch to uid %s: %s", name, fr_syserror(errno));
+		talloc_free(passwd);
+		fr_exit_now(1);
+	}
+
+	if (geteuid() != suid_down_uid) {
+		ERROR("Switched to unknown uid");
+		fr_exit_now(1);
+	}
+
+	fr_reset_dumpable();
+}
+#  else
+/*
+ *	Much less secure...
+ */
+void rad_suid_up(void)
+{
+}
+
+void rad_suid_down(void)
+{
+	if (!doing_setuid) return;
+
+	if (setuid(suid_down_uid) < 0) {
+		struct passwd *passwd;
+		char const *name;
+
+		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
+		ERROR("Failed switching to uid %s: %s", name, fr_syserror(errno));
+		talloc_free(passwd);
+		fr_exit_now(1);
+	}
+
+	fr_reset_dumpable();
+}
+
+void rad_suid_down_permanent(void)
+{
+	fr_reset_dumpable();
+}
+#  endif /* HAVE_SETRESUID && HAVE_GETRESUID */
+#else  /* HAVE_SETUID */
+void rad_suid_up(void)
+{
+}
+void rad_suid_down(void)
+{
+	fr_reset_dumpable();
+}
+void rad_suid_down_permanent(void)
+{
+	fr_reset_dumpable();
+}
+#endif /* HAVE_SETUID */

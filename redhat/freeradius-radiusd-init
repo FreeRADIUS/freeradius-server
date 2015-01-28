@@ -19,7 +19,7 @@
 
 # Source function library.
 
-# Get the wrappers for the standard ldb init functions
+# Get the wrappers for the standard lsb init functions
 . /lib/lsb/init-functions
 
 # and the RHEL specific ones
@@ -161,23 +161,23 @@ case "$1" in
     debug)
         echo -n $"Debugging $prog: "
         if rh_status_q; then
-            log_failure_msg "$prog already running as daemon"
+            log_failure_msg "$prog already running; for live debugging see raddebug(8)"
             exit 151
         else
             log_success_msg
         fi
-        $exec -X -d $config_dir
+        $exec -X -d $config_dir || exit $?
         ;;
 
     debug-threaded)
         echo -n $"Debugging $prog: "
         if rh_status_q; then
-            log_failure_msg "$prog already running as daemon"
+            log_failure_msg "$prog already running; for live debugging see raddebug(8)"
             exit 151
         else
             log_success_msg
         fi
-        $exec -f -xx -l stdout -d $config_dir
+        $exec -f -xx -l stdout -d $config_dir || exit $?
         ;;
 
     status)

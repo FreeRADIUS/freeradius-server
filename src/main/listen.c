@@ -2275,10 +2275,10 @@ static int listen_bind(rad_listen_t *this)
 		memset(&ifreq, 0, sizeof(ifreq));
 		strlcpy(ifreq.ifr_name, sock->interface, sizeof(ifreq.ifr_name));
 
-		fr_suid_up();
+		rad_suid_up();
 		rcode = setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
 				   (char *)&ifreq, sizeof(ifreq));
-		fr_suid_down();
+		rad_suid_down();
 		if (rcode < 0) {
 			close(this->fd);
 			ERROR("Failed binding to interface %s: %s",
@@ -2436,9 +2436,9 @@ static int listen_bind(rad_listen_t *this)
 	 *	May be binding to priviledged ports.
 	 */
 	if (sock->my_port != 0) {
-		fr_suid_up();
+		rad_suid_up();
 		rcode = bind(this->fd, (struct sockaddr *) &salocal, salen);
-		fr_suid_down();
+		rad_suid_down();
 		if (rcode < 0) {
 			char buffer[256];
 			close(this->fd);

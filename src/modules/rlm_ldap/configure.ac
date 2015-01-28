@@ -20,14 +20,14 @@ if test x$with_[]modname != xno; then
 	dnl # extra argument: --with-rlm-ldap-lib-dir
 	rlm_ldap_lib_dir=
 	AC_ARG_WITH(rlm-ldap-lib-dir,
-	[  --with-rlm-ldap-lib-dir=DIR       directory for LDAP library files []],
+	[  --with-rlm-ldap-lib-dir=DIR	   directory for LDAP library files []],
 	[ case "$withval" in
-	    no)
+		no)
 		AC_MSG_ERROR(Need rlm-ldap-lib-dir)
 		;;
-	    yes)
+		yes)
 		;;
-	    *)
+		*)
 		rlm_ldap_lib_dir="$withval"
 		;;
 	  esac ]
@@ -38,42 +38,38 @@ if test x$with_[]modname != xno; then
 	AC_ARG_WITH(rlm-ldap-include-dir,
 	[  --with-rlm-ldap-include-dir=DIR   directory for LDAP include files []],
 	[ case "$withval" in
-	    no)
+		no)
 		AC_MSG_ERROR(Need rlm-ldap-include-dir)
 		;;
-	    yes)
+		yes)
 		;;
-	    *)
+		*)
 		rlm_ldap_include_dir="$withval"
 		;;
 	  esac ]
 	)
 
-	dnl # extra argument: --with-threads
-	rlm_ldap_with_threads=yes
-	AC_ARG_WITH(threads,
-	[  --with-threads          use threads, if available. (default=yes) ],
-	[ case "$withval" in
-	    no)
-		rlm_ldap_with_threads=no
-		;;
-	    *)
-		;;
-	    esac ])
-
 	dnl ############################################################
 	dnl # Check for libraries
 	dnl ############################################################
 
-	dnl # Try "-lldap_r" or "-lldap"
+	dnl #
+	dnl #  Official word from those who represent OpenLDAP say
+	dnl #  libldap_r is unsupported for use outside the OpenLDAP
+	dnl #  server. But libldap *may* work with the FreeRADIUS
+	dnl #  as we use a threadpool to prevent concurrent access to
+	dnl #  the same libldap handle.
+	dnl #
+	dnl #  In FreeRADIUS <= 3.0.6 we used libldap_r in preference
+	dnl #  to libldap, however, in order to support certain distros
+	dnl #  or packagers that only ship libldap in their OpenLDAP
+	dnl #  client packages, we're forced to switch to just libldap.
+	dnl #
 	smart_try_dir=$rlm_ldap_lib_dir
-    FR_SMART_CHECK_LIB(ldap_r, ldap_init)
-    if test "x$ac_cv_lib_ldap_r_ldap_init" != "xyes"; then
-        FR_SMART_CHECK_LIB(ldap, ldap_init)
-        if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
-            fail="$fail libldap"
-        fi
-    fi
+	FR_SMART_CHECK_LIB(ldap, ldap_init)
+	if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
+		fail="$fail libldap"
+	fi
 
 	dnl ############################################################
 	dnl # Check for header files
@@ -90,20 +86,20 @@ if test x$with_[]modname != xno; then
 	dnl ############################################################
 
 	if test "x$fail" = "x"; then
-	    AC_CHECK_FUNCS(
-	        ldap_sasl_bind \
-	        ldap_unbind_ext_s \
-	        ldap_start_tls_s \
-	        ldap_initialize \
-	        ldap_set_rebind_proc \
-	    )
-        AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
-            AC_TRY_COMPILE([
-                #include <lber.h>
-                #include <ldap.h>], [ldap_set_rebind_proc(0, 0, 0);],
-                [ac_cv_ldap_set_rebind_proc=3],
-                [ac_cv_ldap_set_rebind_proc=2])
-        ])
+		AC_CHECK_FUNCS(
+			ldap_sasl_bind \
+			ldap_unbind_ext_s \
+			ldap_start_tls_s \
+			ldap_initialize \
+			ldap_set_rebind_proc \
+		)
+		AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
+			AC_TRY_COMPILE([
+				#include <lber.h>
+				#include <ldap.h>], [ldap_set_rebind_proc(0, 0, 0);],
+				[ac_cv_ldap_set_rebind_proc=3],
+				[ac_cv_ldap_set_rebind_proc=2])
+		])
 	fi
 
 	targetname=modname

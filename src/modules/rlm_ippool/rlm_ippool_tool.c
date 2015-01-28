@@ -60,15 +60,15 @@ RCSID("$Id$")
 #include <gdbm.h>
 #include "../../include/md5.h"
 
-int active = 0;
+static int active = 0;
 
-int aflag = 0;
-int cflag = 0;
-int rflag = 0;
-int vflag = 0;
-int nflag = 0;
-int oflag = 0;
-int uflag = 0;
+static int aflag = 0;
+static int cflag = 0;
+static int rflag = 0;
+static int vflag = 0;
+static int nflag = 0;
+static int oflag = 0;
+static int uflag = 0;
 
 typedef struct ippool_info {
 	uint32_t	ipaddr;
@@ -123,6 +123,8 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 	int		delete = 0;
 	uint16_t	port;
 	bool		found = false;
+
+	memset(&key, 0, sizeof(key));	/* -Winitialize */
 
 	sessiondb = gdbm_open(sessiondbname, 512, mode, 0,NULL);
 	indexdb = gdbm_open(indexdbname, 512, mode, 0,NULL);

@@ -815,6 +815,9 @@ int main(int argc, char **argv)
 
 	fprintf(outputfp, "\n");
 
+	if (inputfp != stdin) fclose(inputfp);
+	if (outputfp != stdout) fclose(outputfp);
+
 	return 0;
 }
 

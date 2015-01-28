@@ -733,43 +733,50 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 */
 		if (ldap_is_ldap_url(value)) {
 			LDAPURLDesc	*ldap_url;
-			int		port;
+			int		port = -1;
 
 			if (ldap_url_parse(value, &ldap_url)){
 				cf_log_err_cs(conf, "Parsing LDAP URL \"%s\" failed", value);
 				return -1;
 			}
 
+#ifndef HAVE_LDAP_INITIALIZE
+			/*
+			 *	No LDAP initialize function.  Can't specify a scheme.
+			 */
+			if (ldap_url->lud_scheme &&
+			    (strcmp(ldap_url->lud_scheme, "ldaps") == 0) ||
+			    (strcmp(ldap_url->lud_scheme, "ldapi") == 0) ||
+			    (strcmp(ldap_url->lud_scheme, "cldap") == 0)) {
+				cf_log_err_cs(conf, "%s is not supported by linked libldap",
+					      ldap_url->lud_scheme);
+				return -1;
+			}
+
+#else
 			/*
 			 *	Figure out the port from the URL
 			 */
-			if (ldap_url->lud_scheme && strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
-#ifndef HAVE_LDAP_INITIALIZE
-				cf_log_err_cs(conf, "ldaps is not supported by linked libldap");
-				return -1;
-#endif
-				if (inst->start_tls == true) {
-					cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
-						      "with 'start_tls'");
-					return -1;
-				}
-				port = inst->port ? inst->port : LDAPS_PORT;
-			} else if (ldap_url->lud_scheme && strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
-#ifndef HAVE_LDAP_INITIALIZE
-				cf_log_err_cs(conf, "ldapi is not supported by linked libldap");
-				return -1;
-#endif
-				port = 0;
+			if (ldap_url->lud_scheme) {
+				if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
+					if (inst->start_tls == true) {
+						cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
+							      "with 'start_tls'");
+						return -1;
+					}
 
-			} else if (ldap_url->lud_scheme && strcmp(ldap_url->lud_scheme, "cldap") == 0) {
-#ifndef HAVE_LDAP_INITIALIZE
-				cf_log_err_cs(conf, "cldap is not supported by linked libldap");
-				return -1;
+					port = inst->port ? inst->port : LDAPS_PORT;
+
+				} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
+					port = 0;
+
+				} else if (strcmp(ldap_url->lud_scheme, "cldap") == 0) {
+					port = inst->port ? inst->port : LDAP_PORT;
+				} /* else don't set the port */
+			}	  /* else don't set the port */
 #endif
-				port = inst->port ? inst->port : LDAP_PORT;
-			} else {
-				port = inst->port ? inst->port : LDAP_PORT;
-			}
+			if (port < 0) port = inst->port ? inst->port : LDAP_PORT;
+
 
 			if (ldap_url->lud_port > 0) port = ldap_url->lud_port;
 
@@ -1127,20 +1134,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	char const 	*dn = NULL;
 	rlm_ldap_map_xlat_t	expanded; /* faster than mallocing every time */
 
-	if (!request->username) {
-		RDEBUG2("Attribute \"User-Name\" is required for authorization");
-
-		return RLM_MODULE_NOOP;
-	}
-
 	/*
-	 *	Check for valid input, zero length names not permitted
+	 *	Don't be tempted to add a check for request->username
+	 *	or request->password here. rlm_ldap.authorize can be used for
+	 *	many things besides lookup up users.
 	 */
-	if (request->username->vp_length == 0) {
-		RDEBUG2("Zero length username not permitted");
-
-		return RLM_MODULE_INVALID;
-	}
 
 	if (rlm_ldap_map_xlat(request, inst->user_map, &expanded) < 0) {
 		return RLM_MODULE_FAIL;

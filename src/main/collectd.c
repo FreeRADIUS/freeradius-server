@@ -21,10 +21,10 @@
  *
  * @copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
-#ifdef HAVE_COLLECTDC_H
 #include <assert.h>
 #include <ctype.h>
 
+#ifdef HAVE_COLLECTDC_H
 #include <collectd/client.h>
 #include <freeradius-devel/radsniff.h>
 

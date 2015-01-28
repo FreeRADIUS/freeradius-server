@@ -1766,9 +1766,9 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 
-		fr_suid_up();
+		rad_suid_up();
 		rcode = bind(this->fd, (struct sockaddr *) &salocal, salen);
-		fr_suid_down();
+		rad_suid_down();
 		if (rcode < 0) {
 			char buffer[256];
 			close(this->fd);

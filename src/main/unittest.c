@@ -32,6 +32,8 @@ RCSID("$Id$")
 #	include <getopt.h>
 #endif
 
+#include <ctype.h>
+
 /*
  *  Global variables.
  */
@@ -520,6 +522,102 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 
 
 /*
+ *	Read a file compose of xlat's and expected results
+ */
+static bool do_xlats(char const *filename, FILE *fp)
+{
+	int lineno = 0;
+	ssize_t len;
+	char *p;
+	char input[8192];
+	char output[8192];
+	REQUEST *request;
+
+	request = request_alloc(NULL);
+
+	request->log.lvl = debug_flag;
+	request->log.func = vradlog_request;
+
+	while (fgets(input, sizeof(input), fp) != NULL) {
+		lineno++;
+
+		/*
+		 *	Ignore blank lines and comments
+		 */
+		p = input;
+		while (isspace((int) *p)) p++;
+
+		if (*p < ' ') continue;
+		if (*p == '#') continue;
+
+		p = strchr(p, '\n');
+		if (!p) {
+			if (!feof(fp)) {
+				fprintf(stderr, "Line %d too long in %s\n",
+					lineno, filename);
+				TALLOC_FREE(request);
+				return false;
+			}
+		} else {
+			*p = '\0';
+		}
+
+		/*
+		 *	Look for "xlat"
+		 */
+		if (strncmp(input, "xlat ", 5) == 0) {
+			ssize_t slen;
+			char const *error = NULL;
+			char *fmt = talloc_typed_strdup(NULL, input + 5);
+			xlat_exp_t *head;
+
+			slen = xlat_tokenize(fmt, fmt, &head, &error);
+			if (slen <= 0) {
+				talloc_free(fmt);
+				snprintf(output, sizeof(output), "ERROR offset %d '%s'", (int) -slen, error);
+				continue;
+			}
+
+			if (input[slen + 5] != '\0') {	
+				talloc_free(fmt);
+				snprintf(output, sizeof(output), "ERROR offset %d 'Too much text' ::%s::", (int) slen, input + slen + 5);
+				continue;
+			}
+
+			len = radius_xlat_struct(output, sizeof(output), request, head, NULL, NULL);
+			if (len < 0) {
+				snprintf(output, sizeof(output), "ERROR expanding xlat: %s", fr_strerror());
+				continue;
+			}
+
+			TALLOC_FREE(fmt); /* also frees 'head' */
+			continue;
+		}
+
+		/*
+		 *	Look for "data".
+		 */
+		if (strncmp(input, "data ", 5) == 0) {
+			if (strcmp(input + 5, output) != 0) {
+				fprintf(stderr, "Mismatch at line %d of %s\n\tgot      : %s\n\texpected : %s\n",
+					lineno, filename, output, input + 5);
+				TALLOC_FREE(request);
+				return false;
+			}
+			continue;
+		}
+
+		fprintf(stderr, "Unknown keyword in %s[%d]\n", filename, lineno);
+		TALLOC_FREE(request);
+		return false;
+	}
+
+	TALLOC_FREE(request);
+	return true;
+}
+
+
+/*
  *	The main guy.
  */
 int main(int argc, char *argv[])
@@ -533,6 +631,7 @@ int main(int argc, char *argv[])
 	REQUEST *request = NULL;
 	VALUE_PAIR *vp;
 	VALUE_PAIR *filter_vps = NULL;
+	bool xlat_only = false;
 
 	/*
 	 *	If the server was built with debugging enabled always install
@@ -574,7 +673,7 @@ int main(int argc, char *argv[])
 	default_log.fd = STDOUT_FILENO;
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "d:D:f:hi:mMn:o:xX")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:D:f:hi:mMn:o:O:xX")) != EOF) {
 
 		switch (argval) {
 			case 'd':
@@ -613,6 +712,15 @@ int main(int argc, char *argv[])
 			case 'o':
 				output_file = optarg;
 				break;
+
+			case 'O':
+				if (strcmp(optarg, "xlat_only") == 0) {
+					xlat_only = true;
+					break;
+				}
+
+				fprintf(stderr, "Unknown option '%s'\n", optarg);
+				exit(EXIT_FAILURE);
 
 			case 'X':
 				debug_flag += 2;
@@ -685,6 +793,15 @@ int main(int argc, char *argv[])
 			rcode = EXIT_FAILURE;
 			goto finish;
 		}
+	}
+
+	/*
+	 *	For simplicity, read xlat's.
+	 */
+	if (xlat_only) {
+		if (!do_xlats(input_file, fp)) rcode = EXIT_FAILURE;
+		if (input_file) fclose(fp);
+		goto finish;
 	}
 
 	/*

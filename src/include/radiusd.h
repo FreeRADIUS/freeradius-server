@@ -568,6 +568,10 @@ int		rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid);
 int		rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name);
 int		rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name);
 
+void		rad_suid_set_down_uid(uid_t uid);
+void		rad_suid_down(void);
+void		rad_suid_up(void);
+void		rad_suid_down_permanent(void);
 /* regex.c */
 
 #ifdef HAVE_REGEX
@@ -714,9 +718,6 @@ int main_config_init(void);
 int main_config_free(void);
 void main_config_hup(void);
 void hup_logfile(void);
-void fr_suid_down(void);
-void fr_suid_up(void);
-void fr_suid_down_permanent(void);
 
 /* listen.c */
 void listen_free(rad_listen_t **head);
