@@ -20,14 +20,14 @@ if test x$with_[]modname != xno; then
 	dnl # extra argument: --with-rlm-ldap-lib-dir
 	rlm_ldap_lib_dir=
 	AC_ARG_WITH(rlm-ldap-lib-dir,
-	[  --with-rlm-ldap-lib-dir=DIR       directory for LDAP library files []],
+	[  --with-rlm-ldap-lib-dir=DIR	   directory for LDAP library files []],
 	[ case "$withval" in
-	    no)
+		no)
 		AC_MSG_ERROR(Need rlm-ldap-lib-dir)
 		;;
-	    yes)
+		yes)
 		;;
-	    *)
+		*)
 		rlm_ldap_lib_dir="$withval"
 		;;
 	  esac ]
@@ -38,12 +38,12 @@ if test x$with_[]modname != xno; then
 	AC_ARG_WITH(rlm-ldap-include-dir,
 	[  --with-rlm-ldap-include-dir=DIR   directory for LDAP include files []],
 	[ case "$withval" in
-	    no)
+		no)
 		AC_MSG_ERROR(Need rlm-ldap-include-dir)
 		;;
-	    yes)
+		yes)
 		;;
-	    *)
+		*)
 		rlm_ldap_include_dir="$withval"
 		;;
 	  esac ]
@@ -66,10 +66,10 @@ if test x$with_[]modname != xno; then
 	dnl #  client packages, we're forced to switch to just libldap.
 	dnl #
 	smart_try_dir=$rlm_ldap_lib_dir
-    FR_SMART_CHECK_LIB(ldap, ldap_init)
-    if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
-        fail="$fail libldap"
-    fi
+	FR_SMART_CHECK_LIB(ldap, ldap_init)
+	if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
+		fail="$fail libldap"
+	fi
 
 	dnl ############################################################
 	dnl # Check for header files
@@ -86,20 +86,20 @@ if test x$with_[]modname != xno; then
 	dnl ############################################################
 
 	if test "x$fail" = "x"; then
-	    AC_CHECK_FUNCS(
-	        ldap_sasl_bind \
-	        ldap_unbind_ext_s \
-	        ldap_start_tls_s \
-	        ldap_initialize \
-	        ldap_set_rebind_proc \
-	    )
-        AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
-            AC_TRY_COMPILE([
-                #include <lber.h>
-                #include <ldap.h>], [ldap_set_rebind_proc(0, 0, 0);],
-                [ac_cv_ldap_set_rebind_proc=3],
-                [ac_cv_ldap_set_rebind_proc=2])
-        ])
+		AC_CHECK_FUNCS(
+			ldap_sasl_bind \
+			ldap_unbind_ext_s \
+			ldap_start_tls_s \
+			ldap_initialize \
+			ldap_set_rebind_proc \
+		)
+		AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
+			AC_TRY_COMPILE([
+				#include <lber.h>
+				#include <ldap.h>], [ldap_set_rebind_proc(0, 0, 0);],
+				[ac_cv_ldap_set_rebind_proc=3],
+				[ac_cv_ldap_set_rebind_proc=2])
+		])
 	fi
 
 	targetname=modname

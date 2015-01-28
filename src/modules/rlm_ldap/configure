@@ -1253,7 +1253,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-rlm-ldap-lib-dir=DIR       directory for LDAP library files
+  --with-rlm-ldap-lib-dir=DIR	   directory for LDAP library files
   --with-rlm-ldap-include-dir=DIR   directory for LDAP include files
 
 Some influential environment variables:
@@ -2651,12 +2651,12 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # Check whether --with-rlm-ldap-lib-dir was given.
 if test "${with_rlm_ldap_lib_dir+set}" = set; then :
   withval=$with_rlm_ldap_lib_dir;  case "$withval" in
-	    no)
+		no)
 		as_fn_error $? "Need rlm-ldap-lib-dir" "$LINENO" 5
 		;;
-	    yes)
+		yes)
 		;;
-	    *)
+		*)
 		rlm_ldap_lib_dir="$withval"
 		;;
 	  esac
@@ -2669,12 +2669,12 @@ fi
 # Check whether --with-rlm-ldap-include-dir was given.
 if test "${with_rlm_ldap_include_dir+set}" = set; then :
   withval=$with_rlm_ldap_include_dir;  case "$withval" in
-	    no)
+		no)
 		as_fn_error $? "Need rlm-ldap-include-dir" "$LINENO" 5
 		;;
-	    yes)
+		yes)
 		;;
-	    *)
+		*)
 		rlm_ldap_include_dir="$withval"
 		;;
 	  esac
@@ -2859,9 +2859,9 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-    if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
-        fail="$fail libldap"
-    fi
+	if test "x$ac_cv_lib_ldap_ldap_init" != "xyes"; then
+		fail="$fail libldap"
+	fi
 
 
 	smart_try_dir=$rlm_ldap_include_dir
@@ -3097,11 +3097,11 @@ smart_prefix=
 
 
 	if test "x$fail" = "x"; then
-	    for ac_func in ldap_sasl_bind \
-	        ldap_unbind_ext_s \
-	        ldap_start_tls_s \
-	        ldap_initialize \
-	        ldap_set_rebind_proc \
+		for ac_func in ldap_sasl_bind \
+			ldap_unbind_ext_s \
+			ldap_start_tls_s \
+			ldap_initialize \
+			ldap_set_rebind_proc \
 
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -3114,17 +3114,17 @@ _ACEOF
 fi
 done
 
-        { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ldap_set_rebind_proc takes 3 arguments" >&5
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ldap_set_rebind_proc takes 3 arguments" >&5
 $as_echo_n "checking whether ldap_set_rebind_proc takes 3 arguments... " >&6; }
 if ${ac_cv_ldap_set_rebind_proc+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
-            cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+			cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-                #include <lber.h>
-                #include <ldap.h>
+				#include <lber.h>
+				#include <ldap.h>
 int
 main ()
 {
