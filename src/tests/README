@@ -8,3 +8,22 @@ config/*
 
 	virtual server configuration that is used for the tests
 
+unit/*
+	unit tests.  Mostly parsing tests, to see if we can parse
+	conditions, xlat expansions, RADIUS attributes, etc.
+
+xlat/*
+	dynamic expansions.  All stand-alone ones.
+	e.g. can we turn %{md5:fooo} into the MD5 hash?
+
+keywords/*
+	tests of "unlang" keywords.  Both parsing and functionality.
+
+auth/*
+	tests of authentication methods.
+
+modules/*
+	tests for individual modules
+
+In general, just placing files of the correct format in a directory
+will cause them to be picked up by the test harness.
