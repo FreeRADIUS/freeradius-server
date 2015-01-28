@@ -1134,20 +1134,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	char const 	*dn = NULL;
 	rlm_ldap_map_xlat_t	expanded; /* faster than mallocing every time */
 
-	if (!request->username) {
-		RDEBUG2("Attribute \"User-Name\" is required for authorization");
-
-		return RLM_MODULE_NOOP;
-	}
-
 	/*
-	 *	Check for valid input, zero length names not permitted
+	 *	Don't be tempted to add a check for request->username
+	 *	or request->password here. rlm_ldap.authorize can be used for
+	 *	many things besides lookup up users.
 	 */
-	if (request->username->vp_length == 0) {
-		RDEBUG2("Zero length username not permitted");
-
-		return RLM_MODULE_INVALID;
-	}
 
 	if (rlm_ldap_map_xlat(request, inst->user_map, &expanded) < 0) {
 		return RLM_MODULE_FAIL;
