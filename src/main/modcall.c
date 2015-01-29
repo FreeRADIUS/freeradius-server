@@ -646,8 +646,7 @@ redo:
 		if (!strchr(c->name, '%')) {
 			VALUE_PAIR *vp = NULL;
 
-			radius_get_vp(request, c->name, &vp);
-			if (vp) {
+			if (radius_get_vp(request, c->name, &vp) && vp) {
 				vp_prints_value(buffer,
 						sizeof(buffer),
 						vp, 0);
