@@ -1341,13 +1341,15 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 #define do_ldap_option(_option, _name, _value) \
 	if (ldap_set_option(conn->handle, _option, _value) != LDAP_OPT_SUCCESS) { \
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
-		LDAP_ERR("Could not set %s: %s", _name, ldap_err2string(ldap_errno)); \
+		LDAP_ERR("Failed setting connection option %s: %s", _name, (ldap_errno != LDAP_SUCCESS) ? ldap_err2string(ldap_errno) : "Unknown error"); \
+		goto error;\
 	}
 
 #define do_ldap_global_option(_option, _name, _value) \
 	if (ldap_set_option(NULL, _option, _value) != LDAP_OPT_SUCCESS) { \
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
-		LDAP_ERR("Could not set %s: %s", _name, ldap_err2string(ldap_errno)); \
+		LDAP_ERR("Failed setting global option %s: %s", _name, (ldap_errno != LDAP_SUCCESS) ? ldap_err2string(ldap_errno) : "Unknown error"); \
+		goto error;\
 	}
 
 
