@@ -371,7 +371,11 @@ static int sql_log_write(rlm_sql_log_t *inst, REQUEST *request, const char *line
 	p = strrchr(path, '/');
 	if (p) {
 		*p = '\0';
-		rad_mkdir(path, 0755);
+		if (rad_mkdir(path, 0755) < 0) {
+			radlog_request(L_ERR, 0, request, "Failed creating %s: %s",
+				       path, strerror(errno));
+			return RLM_MODULE_FAIL;
+		}
 		*p = '/';
 	}
 
