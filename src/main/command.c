@@ -586,7 +586,6 @@ static int command_show_module_status(rad_listen_t *listener, int argc, char *ar
 {
 	CONF_SECTION *cs;
 	const module_instance_t *mi;
-	const module_t *mod;
 
 	if (argc != 1) {
 		cprintf(listener, "ERROR: No module name was given\n");

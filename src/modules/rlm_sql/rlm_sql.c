@@ -821,8 +821,6 @@ static int rlm_sql_detach(void *instance)
 	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
 
 	if (inst->config) {
-		int i;
-
 		if (inst->sqlpool) {
 			sql_poolfree(inst);
 		}
