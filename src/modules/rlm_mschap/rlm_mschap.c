@@ -30,11 +30,16 @@ RCSID("$Id$")
 #include	<freeradius-devel/rad_assert.h>
 #include	<freeradius-devel/md5.h>
 #include	<freeradius-devel/sha1.h>
+#include	<freeradius-devel/base64.h>
 
 #include 	<ctype.h>
+#include	<sys/types.h>
+#include	<sys/wait.h>
 
+#include	"rlm_mschap.h"
 #include	"mschap.h"
 #include	"smbdes.h"
+#include	"auth_wbclient.h"
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
@@ -136,27 +141,6 @@ static int pdb_decode_acct_ctrl(char const *p)
 
 	return acct_ctrl;
 }
-
-
-typedef struct rlm_mschap_t {
-	bool		use_mppe;
-	bool		require_encryption;
-	bool		require_strong;
-	bool		with_ntdomain_hack;	/* this should be in another module */
-	char const	*xlat_name;
-	char const	*ntlm_auth;
-	uint32_t	ntlm_auth_timeout;
-	char const	*ntlm_cpw;
-	char const	*ntlm_cpw_username;
-	char const	*ntlm_cpw_domain;
-	char const	*local_cpw;
-	char const	*auth_type;
-	bool		allow_retry;
-	char const	*retry_msg;
-#ifdef WITH_OPEN_DIRECTORY
-	bool		open_directory;
-#endif
-} rlm_mschap_t;
 
 
 /*
@@ -526,6 +510,10 @@ static const CONF_PARSER passchange_config[] = {
 	{ "local_cpw", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, local_cpw), NULL },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
+static const CONF_PARSER ntlmauth_helper_config[] = {
+	{ "ntlm_auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_helper), NULL },
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
 static const CONF_PARSER module_config[] = {
 	/*
 	 *	Cache the password by default.
@@ -534,8 +522,12 @@ static const CONF_PARSER module_config[] = {
 	{ "require_encryption", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, require_encryption), "no" },
 	{ "require_strong", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, require_strong), "no" },
 	{ "with_ntdomain_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, with_ntdomain_hack), "yes" },
+	{ "auth_method", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, method_s), NULL },
 	{ "ntlm_auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_auth), NULL },
 	{ "ntlm_auth_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_mschap_t, ntlm_auth_timeout), NULL },
+	{ "ntlm_username", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_username), "%{mschap:User-Name}" },
+	{ "ntlm_domain", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, ntlm_domain), NULL },
+	{ "ntlm_auth_helper", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) ntlmauth_helper_config },
 	{ "passchange", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) passchange_config },
 	{ "allow_retry", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, allow_retry), "yes" },
 	{ "retry_msg", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, retry_msg), NULL },
@@ -545,6 +537,45 @@ static const CONF_PARSER module_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
+
+
+/*
+ * ntlm_auth connection pool
+ */
+
+static int _mod_conn_free(ntlmauth_child_t *chp)
+{
+	int status;
+
+	close(chp->outfd);
+	close(chp->infd);
+	rad_waitpid(chp->pid, &status);
+
+	return 0;
+}
+
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+{
+	rlm_mschap_t *inst = instance;
+	int outfd;
+	int infd;
+	pid_t pid;
+	ntlmauth_child_t *ch;
+
+	pid = radius_start_program(inst->ntlm_helper, NULL, true, &outfd, &infd, NULL, false);
+	if (pid < 0) {
+		DEBUG("could not exec ntlm_auth command");
+		return NULL;
+	}
+
+	ch = talloc_zero(ctx, ntlmauth_child_t);
+	talloc_set_destructor(ch, _mod_conn_free);
+	ch->pid = pid;
+	ch->outfd = outfd;
+	ch->infd = infd;
+
+	return ch;
+}
 
 
 /*
@@ -571,6 +602,75 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->auth_type = "MS-CHAP";
 	} else {
 		inst->auth_type = inst->xlat_name;
+	}
+
+	/*
+	 *	Check auth method
+	 */
+	if (inst->method_s) {
+		if (strcasecmp(inst->method_s, "internal") == 0) {
+			inst->method = AUTH_INTERNAL;
+		} else if (strcasecmp(inst->method_s, "ntlm_auth") == 0) {
+			inst->method = AUTH_NTLMAUTH_EXEC;
+		} else if (strcasecmp(inst->method_s, "ntlm_auth_helper") == 0) {
+			CONF_SECTION *cs;
+
+			/*
+			 * Ensure socket is defined and sane
+			 */
+			if (!inst->ntlm_helper) {
+				cf_log_err_cs(conf, "method set to 'ntlm_auth_helper', but ntlm_auth is not defined");
+				return -1;
+			}
+
+			/*
+			 * Initialize the socket pool
+			 */
+			cs = cf_section_sub_find(conf, "ntlm_auth_helper");
+			if (!cs) {
+				cf_log_err_cs(conf, "missing ntlm_auth_helper section");
+				return -1;
+			}
+
+			inst->ntlm_auth_pool = fr_connection_pool_module_init(cs, inst, mod_conn_create, NULL, NULL);
+			if (!inst->ntlm_auth_pool) {
+				cf_log_err_cs(conf, "unable to initialize ntlm_auth helper pool");
+				return -1;
+			}
+
+			inst->method = AUTH_NTLMAUTH_HELPER;
+		} else if (strcasecmp(inst->method_s, "winbind") == 0) {
+#ifdef WITH_AUTH_WINBIND
+			inst->method = AUTH_WBCLIENT;
+#else
+			cf_log_err_cs(conf, "auth_method 'winbind' not enabled at compiled time");
+			return -1;
+#endif
+		} else {
+			cf_log_err_cs(conf, "invalid auth_method '%s'",
+				      inst->method_s);
+			return -1;
+		}
+	} else {
+		/*
+		 * Fall back to previous behaviour if method is not set.
+		 */
+		if (inst->ntlm_auth) {
+			DEBUG("rlm_mschap (%s): 'auth_method' not set, using ntlm_auth authentication", name);
+			inst->method = AUTH_NTLMAUTH_EXEC;
+		} else {
+			DEBUG("rlm_mschap (%s): 'auth_method' not set, using internal authentication", name);
+			inst->method = AUTH_INTERNAL;
+		}
+	}
+
+
+	/*
+	 *	ntlm_auth must be defined for this method type
+	 */
+	if (inst->method == AUTH_NTLMAUTH_EXEC && !inst->ntlm_auth) {
+		cf_log_err_cs(conf, "auth_method set to 'ntlm_auth', but ntlm_auth is not defined");
+		return -1;
 	}
 
 	/*
@@ -655,6 +755,57 @@ static int write_all(int fd, char const *buf, int len) {
 }
 
 /*
+ *	Read ntlm_auth response
+ */
+static size_t read_ntlmauth_response(int fdp, char *buf, size_t len)
+{
+	ssize_t n;
+	size_t total = 0;
+
+	fd_set fds;
+	struct timeval tv;
+	int retval;
+
+	FD_ZERO(&fds);
+	FD_SET(fdp, &fds);
+	tv.tv_sec = 0;
+	tv.tv_usec = 0;
+
+	while (total < len) {
+		n = read(fdp, &buf[total], len - total);
+		if (n < 0) {
+			if (errno == EINTR) {
+				continue;
+			}
+			return -1;
+		}
+
+		/*
+		 *      Socket was closed.  Don't try to re-open it.
+		 */
+		if (n == 0) return 0;
+		total += n;
+
+		/*
+		 *      Check if there's more data. ntlm_auth server
+		 *	finishes its response with \n.\n
+		 */
+		retval = select(1, &fds, NULL, NULL, &tv);
+		if (!retval) {
+			if (buf[total-3] == '\n' &&
+			    buf[total-2] == '.' &&
+			    buf[total-1] == '\n') {
+				buf[total] = '\0';
+				break;
+			} /* else there must be some more... */
+		}
+	}
+
+	return total;
+}
+
+
+/*
  * Perform an MS-CHAP2 password change
  */
 
@@ -667,9 +818,9 @@ static int CC_HINT(nonnull (1, 2, 4, 5)) do_mschap_cpw(rlm_mschap_t *inst,
 #endif
 						       uint8_t *new_nt_password,
 						       uint8_t *old_nt_hash,
-						       bool do_ntlm_auth)
+						       MSCHAP_AUTH_METHOD method)
 {
-	if (inst->ntlm_cpw && do_ntlm_auth) {
+	if (inst->ntlm_cpw && method != AUTH_INTERNAL) {
 		/*
 		 * we're going to run ntlm_auth in helper-mode
 		 * we're expecting to use the ntlm-change-password-1 protocol
@@ -1015,6 +1166,203 @@ ntlm_auth_err:
 }
 
 /*
+ *	Check NTLM authentication using ntlm_auth server via a socket
+ *	Returns -1 for failure and 0 on auth success
+ */
+static int do_ntlmauth_helper(rlm_mschap_t *inst, REQUEST *request,
+			      uint8_t nthashhash[NT_DIGEST_LENGTH])
+{
+	ntlmauth_child_t *ch;
+	char buffer[1000];
+	char value[1000];
+	size_t size;
+	ssize_t len;
+	int rcode = -1;
+	int auth = 0;
+	char *key = NULL;
+	char *error = NULL;
+
+	ch = fr_connection_get(inst->ntlm_auth_pool);
+	if (!ch) {
+		REDEBUG("Unable to get pool connection");
+		return -1;
+	}
+
+	/*
+	 *	Write the username (base64 encoded)
+	 */
+	len = radius_xlat(buffer, sizeof(buffer), request, inst->ntlm_username, NULL, NULL);
+	if (len < 0) goto done;
+
+	fr_base64_encode(value, sizeof(value), (uint8_t *) buffer, len);
+	snprintf(buffer, sizeof(buffer), "Username:: %s\n", value);
+
+	RDEBUG("Sending: '%s'", buffer);
+	if (write_all(ch->outfd, buffer, strlen(buffer)) < 0) {
+		REDEBUG("Unable to write username to ntlm_auth; reconnecting");
+		ch = fr_connection_reconnect(inst->ntlm_auth_pool, ch);
+		goto done;
+	}
+
+	/*
+	 *	Write the domain (base64 encoded)
+	 */
+	if (inst->ntlm_domain) {
+		len = radius_xlat(buffer, sizeof(buffer), request, inst->ntlm_domain, NULL, NULL);
+		if (len < 0) goto done;
+		/* Don't add domain field if there is no data, as auth will fail */
+		if (len > 0) {
+			fr_base64_encode(value, sizeof(value), (uint8_t *) buffer, len);
+			snprintf(buffer, sizeof(buffer), "Username:: %s\n", value);
+
+			RDEBUG("Sending: '%s'", buffer);
+			if (write_all(ch->outfd, buffer, strlen(buffer)) < 0) {
+				REDEBUG("Unable to write domain to ntlm_auth; reconnecting");
+				ch = fr_connection_reconnect(inst->ntlm_auth_pool, ch);
+				goto done;
+			}
+		}
+	}
+
+	/*
+	 *	Write the challenge (hex encoded)
+	 */
+	mschap_xlat(inst, request, "Challenge", value, sizeof(value));
+	snprintf(buffer, sizeof(buffer), "LANMAN-Challenge: %s\n", value);
+
+	RDEBUG("Sending: '%s'", buffer);
+	if (write_all(ch->outfd, buffer, strlen(buffer)) < 0) {
+		REDEBUG("Unable to write challenge to ntlm_auth; reconnecting");
+		ch = fr_connection_reconnect(inst->ntlm_auth_pool, ch);
+		goto done;
+	}
+
+	/*
+	 *	Write the response (hex encoded)
+	 */
+	mschap_xlat(inst, request, "NT-Response", value, sizeof(value));
+	snprintf(buffer, sizeof(buffer), "NT-Response: %s\n", value);
+
+	RDEBUG("Sending: '%s'", buffer);
+	if (write_all(ch->outfd, buffer, strlen(buffer)) < 0) {
+		REDEBUG("Unable to write response to ntlm_auth; reconnecting");
+		ch = fr_connection_reconnect(inst->ntlm_auth_pool, ch);
+		goto done;
+	}
+
+	/*
+	 *	Write everything else
+	 */
+	snprintf(buffer, sizeof(buffer), "Request-User-Session-Key: Yes\n.\n");
+
+	RDEBUG("Sending: '%s'", buffer);
+	if (write_all(ch->outfd, buffer, strlen(buffer)) < 0) {
+		REDEBUG("Unable to write to ntlm_auth; reconnecting");
+		ch = fr_connection_reconnect(inst->ntlm_auth_pool, ch);
+		goto done;
+	}
+
+	/*
+	 *	Read the response
+	 */
+	size = read_ntlmauth_response(ch->infd, buffer, sizeof(buffer));
+	if (size <= 0) {
+		REDEBUG("Failed reading from ntlm_auth; reconnecting");
+		ch = fr_connection_reconnect(inst->ntlm_auth_pool, ch);
+		goto done;
+	}
+
+	RDEBUG("Received answer: '%s'", buffer);
+
+	if (strncmp(buffer + size - 3, "\n.\n", 3)) {
+		REDEBUG("ntlm_auth didn't return enough data; reconnecting");
+		/*
+		 *	This is enough of a failure to warrant
+		 *	reconnecting, as the reply should always
+		 *	end in \n.\n
+		 */
+		ch = fr_connection_reconnect(inst->ntlm_auth_pool, ch);
+		goto done;
+	}
+
+	/*
+	 *	Parse the response.
+	 *
+	 *	This should be in lines of 'Key: Value', ending in a
+	 *	line containing a single '.'.
+	 */
+	for (char *pos = buffer; strncmp(pos, ".\n", 2); pos = index(pos, '\n') + 1) {
+
+		if (!strncmp(pos, "Authenticated: Yes\n", 19)) {
+			auth = 1;
+			continue;       
+		}
+
+		if (!strncmp(pos, "User-Session-Key: ", 18)) {
+			key = pos + 18;
+			continue;       
+		}
+
+		if (!strncmp(pos, "Authentication-Error: ", 22)) {
+			error = pos + 22;
+			continue;       
+		}
+
+	}
+
+	/*
+	 *	Bomb out if there was an auth failure
+	 */
+	if (!auth) {
+		if (error) {
+			char * end = index(error, '\n');
+			*end = '\0';
+			RDEBUG("Auth error: %s", error);
+			pairmake_reply("Module-Failure-Message", error, T_OP_EQ);
+		}
+		goto done;
+	}
+
+	/*
+	 *	Get the key from the response
+	 */
+	if (key) {
+		char * end = index(key, '\n');
+		*end = '\0';
+
+		RDEBUG("Received NT_KEY: '%s'", key);
+	} else {
+		REDEBUG("Did not receive key from socket");
+		goto done;
+	}
+
+	/*
+	 *	Check the length.  It should be at least 32, with an LF at the end.
+	 */
+	size = strlen(key);
+	if (size < 32) {
+		REDEBUG2("Invalid output from ntlm_auth: Key too short, expected 32 bytes got %zu bytes",
+			 size);
+		goto done;
+	}
+
+	/*
+	 *	Update the NT hash hash, from the NT key.
+	 */
+	if (fr_hex2bin(nthashhash, NT_DIGEST_LENGTH, key, size) != NT_DIGEST_LENGTH) {
+		REDEBUG("Invalid output from ntlm_auth: Key has non-hex values");
+		goto done;
+	}
+
+	rcode = 0;
+
+done:
+	fr_connection_release(inst->ntlm_auth_pool, ch);
+	return rcode;
+}
+
+
+/*
  *	Do the MS-CHAP stuff.
  *
  *	This function is here so that all of the MS-CHAP related
@@ -1023,15 +1371,18 @@ ntlm_auth_err:
  */
 static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUEST *request, VALUE_PAIR *password,
 						      uint8_t const *challenge, uint8_t const *response,
-						      uint8_t nthashhash[NT_DIGEST_LENGTH], bool do_ntlm_auth)
+						      uint8_t nthashhash[NT_DIGEST_LENGTH], MSCHAP_AUTH_METHOD method)
 {
 	uint8_t	calculated[24];
 
 	memset(nthashhash, 0, NT_DIGEST_LENGTH);
+
+	switch (method) {
+	case AUTH_INTERNAL:
 	/*
 	 *	Do normal authentication.
 	 */
-	if (!do_ntlm_auth) {
+		{
 		/*
 		 *	No password: can't do authentication.
 		 */
@@ -1054,7 +1405,14 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		    (password->da->attr == PW_NT_PASSWORD)) {
 			fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
 		}
-	} else {		/* run ntlm_auth */
+
+		break;
+		}
+	case AUTH_NTLMAUTH_EXEC:
+	/*
+	 *	Run ntlm_auth
+	 */
+		{
 		int	result;
 		char	buffer[256];
 		size_t	len;
@@ -1113,6 +1471,25 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 			REDEBUG("Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}
+
+		break;
+		}
+	case AUTH_NTLMAUTH_HELPER:
+	/*
+	 *	Connect to ntlm_auth server socket
+	 */
+		return do_ntlmauth_helper(inst, request, nthashhash);
+#ifdef WITH_AUTH_WINBIND
+	case AUTH_WBCLIENT:
+	/*
+	 *	Process auth via the wbclient library
+	 */
+		return do_auth_wbclient(inst, request, challenge, response, nthashhash);
+#endif
+	default:
+		/* We should never reach this line */
+		RERROR("Internal error: Unknown mschap auth method (%d)", method);
+		return -1;
 	}
 
 	return 0;
@@ -1309,21 +1686,27 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	uint8_t *p;
 	char const *username_string;
 	int chap = 0;
-	bool do_ntlm_auth;
+	MSCHAP_AUTH_METHOD auth_method;
 
 	/*
 	 *	If we have ntlm_auth configured, use it unless told
 	 *	otherwise
 	 */
-	do_ntlm_auth = (inst->ntlm_auth != NULL);
+	auth_method = inst->method;
 
 	/*
 	 *	If we have an ntlm_auth configuration, then we may
 	 *	want to suppress it.
+	 *
+	 *	Maybe MS-CHAP-Use-NTLM-Auth should be replaced by a new
+	 *	attribute such as MS-CHAP-Auth-Method, but this has possible
+	 *	complications as the requested method may not be configured.
+	 *	At least this is safe, as it will only fall back to internal
+	 *	auth, which is always available.
 	 */
-	if (do_ntlm_auth) {
+	if (auth_method != AUTH_INTERNAL) {
 		VALUE_PAIR *vp = pairfind(request->config_items, PW_MS_CHAP_USE_NTLM_AUTH, 0, TAG_ANY);
-		if (vp) do_ntlm_auth = (vp->vp_integer > 0);
+		if (vp && vp->vp_integer == 0) auth_method = AUTH_INTERNAL;
 	}
 
 	/*
@@ -1406,7 +1789,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 				RERROR("Failed generating NT-Password");
 				return RLM_MODULE_FAIL;
 			}
-		} else if (!do_ntlm_auth) {
+		} else if (auth_method == AUTH_INTERNAL) {
 			RWDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password");
 		}
 	}
@@ -1455,7 +1838,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		/*
 		 *	Only complain if we don't have NT-Password
 		 */
-		} else if (!do_ntlm_auth && !nt_password) {
+		} else if ((auth_method == AUTH_INTERNAL) && !nt_password) {
 			RWDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password");
 		}
 	}
@@ -1555,7 +1938,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 
 		/* perform the actual password change */
 		rad_assert(nt_password);
-		if (do_mschap_cpw(inst, request, nt_password, new_nt_encrypted, old_nt_encrypted, do_ntlm_auth) < 0) {
+		if (do_mschap_cpw(inst, request, nt_password, new_nt_encrypted, old_nt_encrypted, auth_method) < 0) {
 			char buffer[128];
 
 			REDEBUG("Password change failed");
@@ -1647,7 +2030,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		 *	Do the MS-CHAP authentication.
 		 */
 		if (do_mschap(inst, request, password, challenge->vp_octets, response->vp_octets + offset, nthashhash,
-			      do_ntlm_auth) < 0) {
+			      auth_method) < 0) {
 			REDEBUG("MS-CHAP-Response is incorrect");
 			goto do_error;
 		}
@@ -1753,7 +2136,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		RDEBUG2("Client is using MS-CHAPv2");
 
 		mschap_result = do_mschap(inst, request, nt_password, mschapv1_challenge,
-					  response->vp_octets + 26, nthashhash, do_ntlm_auth);
+					  response->vp_octets + 26, nthashhash, auth_method);
 		if (mschap_result == -648)
 			goto password_expired;
 

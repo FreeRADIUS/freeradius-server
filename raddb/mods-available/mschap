@@ -29,21 +29,45 @@ mschap {
 #	require_strong = yes
 
 	# The module can perform authentication itself, OR
-	# use a Windows Domain Controller.  This configuration
-	# directive tells the module to call the ntlm_auth
-	# program, which will do the authentication, and return
-	# the NT-Key.  Note that you MUST have "winbindd" and
-	# "nmbd" running on the local machine for ntlm_auth
-	# to work.  See the ntlm_auth program documentation
-	# for details.
+	# use a Windows Domain Controller. This configuration
+	# directive tells the module which authentication method
+	# to use.
 	#
-	# If ntlm_auth is configured below, then the mschap
-	# module will call ntlm_auth for every MS-CHAP
-	# authentication request.  If there is a cleartext
-	# or NT hashed password available, you can set
-	# "MS-CHAP-Use-NTLM-Auth := No" in the control items,
-	# and the mschap module will do the authentication itself,
-	# without calling ntlm_auth.
+	# Valid options are:
+	#   'internal' do internal authentication within the
+	#              mschap module
+	#   'ntlm_auth' exec ntlm_auth to perform each
+	#               authentication
+	#   'ntlm_auth_helper' start a pool of ntlm_auth
+	#                      processes and pass authentication
+	#                      data to them
+	#   'winbind' make a direct connection to winbind to
+	#             authenticate users. This option is
+	#             experimental.
+	#
+	# The default method is "internal", unless the ntlm_auth
+	# option below is uncommented, in which case "ntlm_auth"
+	# is used instead.
+	#
+#	auth_method = internal
+
+
+	# Options for auth method 'ntlm_auth':
+	#
+	# This configuration directive gives the ntlm_auth command
+	# to use when the auth method is 'ntlm_auth'. This will do
+	# the authentication against a Windows Domain Controller
+	# and return the NT-Key. Note that you MUST have
+	# "winbindd" and "nmbd" running on the local machine for
+	# ntlm_auth to work. See the ntlm_auth program
+	# documentation for details.
+	#
+	# When using this method the mschap module will call
+	# ntlm_auth for every MS-CHAP authentication request. If
+	# there is a cleartext or NT hashed password available,
+	# you can set "MS-CHAP-Use-NTLM-Auth := No" in the control
+	# items, and the mschap module will do the authentication
+	# itself, without calling ntlm_auth.
 	#
 	# Be VERY careful when editing the following line!
 	#
@@ -65,6 +89,90 @@ mschap {
 	# usually finishes quicker. Range 1 to 10 seconds.
 	#
 #	ntlm_auth_timeout = 10
+
+
+	# Username and domain to pass for authentication when using
+	# the ntlm_auth_helper auth method.
+	#
+	ntlm_username = "%{mschap:User-Name}"
+	#
+	# If this string expands to nothing, no domain is
+	# sent. If the domain is wrong, authentication
+	# will fail.
+	#
+	ntlm_domain = "%{mschap:NT-Domain}"
+
+
+	# Options for auth method 'ntlm_auth_helper':
+	#
+	# This method will start ntlm_auth processes running
+	# and pass authentication data to them. It should be
+	# faster than the traditional ntlm_auth method above as it
+	# saves the process start-up time. However, it is less
+	# well tested.
+	#
+	ntlm_auth_helper {
+		# Command to run. See ntlm_auth man page for
+		# details. The only thing that should need
+		# changing here is the path to the binary.
+		#
+		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-server-1"
+
+		# Standard connection pool settings. The pool is
+		# used to start up a number of child ntlm_auth
+		# processes to which authentication data is
+		# passed.
+		#
+		pool {
+			# Number of connections to start
+			start = 5
+
+			# Minimum number of connections to keep open
+			min = 3
+
+			# Maximum number of connections
+			#
+			# If these connections are all in use and a new one
+			# is requested, the request will NOT get a connection.
+			max = 10
+
+			# Spare connections to be left idle
+			#
+			# NOTE: Idle connections WILL be closed if
+			# "idle_timeout" is set.
+			spare = 3
+
+			# Number of uses before the connection is closed
+			#
+			# 0 means "infinite"
+			uses = 0
+
+			# The lifetime (in seconds) of the connection
+			lifetime = 0
+
+			# idle timeout (in seconds).  A connection which is
+			# unused for this length of time will be closed.
+			idle_timeout = 60
+
+			# The number of seconds to wait after the server tries
+			# to open a connection, and fails.  During this time,
+			# no new connections will be opened.
+			#
+			retry_delay = 1
+
+			# NOTE: All configuration settings are enforced.  If a
+			# connection is closed because of "idle_timeout",
+			# "uses", or "lifetime", then the total number of
+			# connections MAY fall below "min".  When that
+			# happens, it will open a new connection.  It will
+			# also log a WARNING message.
+			#
+			# The solution is to either lower the "min" connections,
+			# or increase lifetime/idle_timeout.
+		}
+
+	}
+
 
 	passchange {
 		# This support MS-CHAPv2 (not v1) password change
