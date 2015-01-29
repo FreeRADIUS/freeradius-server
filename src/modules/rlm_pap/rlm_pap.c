@@ -257,7 +257,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	\0 terminated buffers.
 	 */
 	if (vp->type == PW_TYPE_OCTETS) {
-		if (vp->length > sizeof(raw)) return;
+		if (vp->length >= sizeof(raw)) return;
 
 		memcpy(raw, vp->vp_octets, vp->length);
 		raw[vp->length] = '\0';
