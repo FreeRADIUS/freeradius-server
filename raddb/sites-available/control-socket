@@ -34,7 +34,26 @@ listen {
 	#  no permissions for "other" users.  These permissions form
 	#  minimal security, and should not be relied on.
 	#
-	socket = ${run_dir}/control/${name}.sock
+	socket = ${run_dir}/${name}.sock
+
+	#
+	#  Peercred auth
+	#
+	#  By default the server users the peercred feature of unix
+	#  sockets to get the UID and GID of the user connecting to
+	#  the socket. You may choose to disable this functionality
+	#  and rely on the file system for enforcing permissions.
+	#
+	#  On most Unix systems, the permissions set on the socket
+	#  are not enforced, but the ones on the directory containing
+	#  the socket are.
+	#
+	#  To use filesystem permissions you should create a new
+	#  directory just to house the socket file, and set
+	#  appropriate permissions on that.
+	#
+#	peercred = no
+#	socket = ${run_dir}/control/${name}.sock
 
 	#
 	#  The following two parameters perform authentication and
