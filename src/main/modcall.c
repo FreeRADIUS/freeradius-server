@@ -687,7 +687,7 @@ redo:
 
 	if ((c->type == MOD_LOAD_BALANCE) ||
 	    (c->type == MOD_REDUNDANT_LOAD_BALANCE)) {
-		int count;
+		int count = 0;
 		modcallable *this, *found;
 		modgroup *g;
 
