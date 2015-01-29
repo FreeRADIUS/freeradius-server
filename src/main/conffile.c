@@ -1078,7 +1078,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute, secret, input, cant_be_empty, tmpl, xlat;
+	bool deprecated, required, attribute, secret, file_input, cant_be_empty, tmpl, xlat;
 	char **q;
 	char const *value;
 	CONF_PAIR const *cp = NULL;
@@ -1091,7 +1091,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	required = (type & PW_TYPE_REQUIRED);
 	attribute = (type & PW_TYPE_ATTRIBUTE);
 	secret = (type & PW_TYPE_SECRET);
-	input = (type == PW_TYPE_FILE_INPUT);	/* check, not and */
+	file_input = (type == PW_TYPE_FILE_INPUT);	/* check, not and */
 	cant_be_empty = (type & PW_TYPE_NOT_EMPTY);
 	tmpl = (type & PW_TYPE_TMPL);
 	xlat = (type & PW_TYPE_XLAT);
@@ -1356,12 +1356,19 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		 *	to be caught as early as possible, during
 		 *	server startup.
 		 */
-		if (*q && input) {
+		if (*q && file_input) {
 			struct stat buf;
 
 			if (stat(*q, &buf) < 0) {
-				ERROR("Unable to open file \"%s\": %s",
-				      value, fr_syserror(errno));
+				char user[255], group[255];
+
+				ERROR("Unable to open file \"%s\": %s", value, fr_syserror(errno));
+				ERROR("Our effective user and group was %s:%s",
+				      (rad_prints_uid(NULL, user, sizeof(user), geteuid()) < 0) ?
+				      "unknown" : user,
+				      (rad_prints_gid(NULL, group, sizeof(group), getegid()) < 0) ?
+				      "unknown" : group );
+
 				return -1;
 			}
 		}
