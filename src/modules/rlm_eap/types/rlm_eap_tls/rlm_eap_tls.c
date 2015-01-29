@@ -710,7 +710,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 					pairadd(&handler->certs,
 						pairmake(cert_attr_names[EAPTLS_SAN_EMAIL][lookup],
-							 ASN1_STRING_data(name->d.rfc822Name), T_OP_SET));
+							 (char *)ASN1_STRING_data(name->d.rfc822Name), T_OP_SET));
 					break;
 				default:
 					/* XXX TODO handle other SAN types */

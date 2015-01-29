@@ -675,7 +675,7 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 		       "have %zd bytes", (declen * 2) + 1, outlen);
 	}
 
-	fr_bin2hex(decbuf, out, declen);
+	fr_bin2hex((uint8_t *)decbuf, out, declen);
 
 	return declen * 2;
 }
