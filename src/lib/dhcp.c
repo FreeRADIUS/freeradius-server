@@ -141,7 +141,7 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 	int overload = 0;
 	int field = DHCP_OPTION_FIELD;
 	size_t where, size;
-	uint8_t *data = packet->options;
+	uint8_t *data;
 
 	where = 0;
 	size = packet_size - offsetof(dhcp_packet_t, options);
