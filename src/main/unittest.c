@@ -538,6 +538,8 @@ static bool do_xlats(char const *filename, FILE *fp)
 	request->log.lvl = debug_flag;
 	request->log.func = vradlog_request;
 
+	output[0] = '\0';
+
 	while (fgets(input, sizeof(input), fp) != NULL) {
 		lineno++;
 
