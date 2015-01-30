@@ -21,3 +21,9 @@ data 3Com-User-Access-Level = 3Com-Visitor, 3Com-Ip-Host-Addr = '155.4.12.100 00
 
 encode Vendor-Specific = 0xabcdef
 data Must use 'Attr-26 = ...' instead of 'Vendor-Specific = ...'
+
+encode Attr-26 = 0x00000009abcdef
+data 1a 09 00 00 00 09 ab cd ef
+
+attribute Attr-26 = 0x00000009abcdef
+data Attr-26 = 0x00000009abcdef
