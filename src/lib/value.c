@@ -571,13 +571,11 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	}
 		goto finish;
 
-	/* raw octets: 0x01020304... */
 	case PW_TYPE_VSA:
-		if (strcmp(src, "ANY") == 0) {
-			ret = 0;
-			goto finish;
-		} /* else it's hex */
+		fr_strerror_printf("Must use 'Attr-26 = ...' instead of 'Vendor-Specific = ...'");
+		return -1;
 
+	/* raw octets: 0x01020304... */
 	case PW_TYPE_OCTETS:
 	{
 		uint8_t	*p;

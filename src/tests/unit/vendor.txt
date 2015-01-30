@@ -18,3 +18,6 @@ data 3Com-User-Access-Level = 3Com-Visitor, 3Com-Ip-Host-Addr = '155.4.12.100 00
 
 decode 1a 2c 00 00 00 2b 01 06 00 00 00 00 3c 20 31 35 35 2e 34 2e 31 32 2e 31 30 30 20 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30 3a 30 30
 data 3Com-User-Access-Level = 3Com-Visitor, 3Com-Ip-Host-Addr = '155.4.12.100 00:00:00:00:00:00'
+
+encode Vendor-Specific = 0xabcdef
+data Must use 'Attr-26 = ...' instead of 'Vendor-Specific = ...'
