@@ -25,6 +25,7 @@ RCSID("$Id$")
 USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
 
@@ -46,11 +47,11 @@ typedef struct rlm_sql_iodbc_conn {
 
 	struct sql_socket *next;
 
-	SQLCHAR error[IODBC_MAX_ERROR_LEN];
 	void	*conn;
 } rlm_sql_iodbc_conn_t;
 
-static char const *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 static int _sql_socket_destructor(rlm_sql_iodbc_conn_t *conn)
@@ -78,20 +79,25 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 	rlm_sql_iodbc_conn_t *conn;
 	SQLRETURN rcode;
+	sql_log_entry_t entry;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_iodbc_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	rcode = SQLAllocEnv(&conn->env_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("rlm_sql_iodbc: SQLAllocEnv failed: %s", sql_error(handle, config));
+		ERROR("rlm_sql_iodbc: SQLAllocEnv failed");
+		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("rlm_sql_iodbc: %s", entry.msg);
+
 		return -1;
 	}
 
 	rcode = SQLAllocConnect(conn->env_handle,
 				&conn->dbc_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("rlm_sql_iodbc: SQLAllocConnect failed: %s", sql_error(handle, config));
+		ERROR("rlm_sql_iodbc: SQLAllocConnect failed");
+		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("rlm_sql_iodbc: %s", entry.msg);
+
 		return -1;
 	}
 
@@ -108,23 +114,22 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		rcode = SQLConnect(conn->dbc_handle, server, SQL_NTS, login, SQL_NTS, password, SQL_NTS);
 	}
 	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("rlm_sql_iodbc: SQLConnectfailed: %s", sql_error(handle, config));
+		ERROR("rlm_sql_iodbc: SQLConnectfailed");
+		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("rlm_sql_iodbc: %s", entry.msg);
+
 		return -1;
 	}
 
 	return 0;
 }
 
-static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 	SQLRETURN rcode;
 
 	rcode = SQLAllocStmt(conn->dbc_handle, &conn->stmt_handle);
-	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("rlm_sql_iodbc: SQLAllocStmt failed: %s", sql_error(handle, config));
-		return -1;
-	}
+	if (!SQL_SUCCEEDED(rcode)) return -1;
 
 	if (!conn->dbc_handle) {
 		ERROR("rlm_sql_iodbc: Socket not connected");
@@ -138,10 +143,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 		rcode = SQLExecDirect(conn->stmt_handle, statement, SQL_NTS);
 	}
 
-	if (!SQL_SUCCEEDED(rcode)) {
-		ERROR("rlm_sql_iodbc: Query failed %s", sql_error(handle, config));
-		return -1;
-	}
+	if (!SQL_SUCCEEDED(rcode)) return -1;
 
 	return 0;
 }
@@ -243,18 +245,37 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	return 0;
 }
 
-static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+/** Retrieves any errors associated with the connection handle
+ *
+ * @note Caller will free any memory allocated in ctx.
+ *
+ * @param ctx to allocate temporary error buffers in.
+ * @param out Array of sql_log_entrys to fill.
+ * @param outlen Length of out array.
+ * @param handle rlm_sql connection handle.
+ * @param config rlm_sql config.
+ * @return number of errors written to the sql_log_entry array.
+ */
+static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	SQLINTEGER errornum = 0;
-	SQLSMALLINT length = 0;
-	SQLCHAR state[256] = "";
-	rlm_sql_iodbc_conn_t *conn = handle->conn;
+	rlm_sql_iodbc_conn_t	*conn = handle->conn;
+	SQLINTEGER		errornum = 0;
+	SQLSMALLINT		length = 0;
+	SQLCHAR			state[256] = "";
+	SQLCHAR			errbuff[IODBC_MAX_ERROR_LEN];
 
-	conn->error[0] = '\0';
+	rad_assert(outlen > 0);
 
+	errbuff[0] = '\0';
 	SQLError(conn->env_handle, conn->dbc_handle, conn->stmt_handle,
-		state, &errornum, conn->error, IODBC_MAX_ERROR_LEN, &length);
-	return (char const *) &conn->error;
+		 state, &errornum, errbuff, IODBC_MAX_ERROR_LEN, &length);
+	if (errbuff[0] == '\0') return 0;
+
+	out[0].type = L_ERR;
+	out[0].msg = talloc_asprintf(ctx, "%s: %s", state, errbuff);
+
+	return 1;
 }
 
 static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)

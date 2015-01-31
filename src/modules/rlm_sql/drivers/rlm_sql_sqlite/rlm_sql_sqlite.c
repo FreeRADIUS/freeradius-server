@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -601,15 +602,32 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle,
 	return 0;
 }
 
-static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+/** Retrieves any errors associated with the connection handle
+ *
+ * @note Caller will free any memory allocated in ctx.
+ *
+ * @param ctx to allocate temporary error buffers in.
+ * @param out Array of sql_log_entrys to fill.
+ * @param outlen Length of out array.
+ * @param handle rlm_sql connection handle.
+ * @param config rlm_sql config.
+ * @return number of errors written to the sql_log_entry array.
+ */
+static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
+	char const *error;
 
-	if (conn->db) {
-		return sqlite3_errmsg(conn->db);
-	}
+	rad_assert(outlen > 0);
 
-	return "Invalid handle";
+	error = sqlite3_errmsg(conn->db);
+	if (!error) return 0;
+
+	out[0].type = L_ERR;
+	out[0].msg = error;
+
+	return 1;
 }
 
 static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
@@ -644,7 +662,7 @@ rlm_sql_module_t rlm_sql_sqlite = {
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
-	.sql_error			= sql_error,
+	.sql_error		= sql_error,
 	.sql_finish_query		= sql_finish_query,
 	.sql_finish_select_query	= sql_finish_query
 };

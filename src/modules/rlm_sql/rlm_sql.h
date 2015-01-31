@@ -34,8 +34,10 @@ RCSIDH(rlm_sql_h, "$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/exfile.h>
 
-#define PW_ITEM_CHECK		0
-#define PW_ITEM_REPLY		1
+#define MOD_PREFIX "rlm_sql"
+
+#define PW_ITEM_CHECK 0
+#define PW_ITEM_REPLY 1
 
 
 /* SQL Errors */
@@ -55,6 +57,11 @@ typedef enum {
 
 
 typedef char **rlm_sql_row_t;
+
+typedef struct sql_log_entry {
+	log_type_t	type;		//!< Type of log entry L_ERR, L_WARN, L_INFO, L_DBG etc..
+	char const	*msg;		//!< Log message.
+} sql_log_entry_t;
 
 /*
  * Sections where we dynamically resolve the config entry to use,
@@ -149,6 +156,8 @@ typedef struct rlm_sql_handle {
 	void			*conn;				//!< Database specific connection handle.
 	rlm_sql_row_t		row;				//!< Row data from the last query.
 	rlm_sql_t		*inst;				//!< The rlm_sql instance this connection belongs to.
+	TALLOC_CTX		*log_ctx;			//!< Talloc pool used to avoid mallocing memory on
+								//!< when log strings need to be copied.
 } rlm_sql_handle_t;
 
 typedef struct rlm_sql_module_t {
@@ -169,7 +178,8 @@ typedef struct rlm_sql_module_t {
 	sql_rcode_t (*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-	char const *(*sql_error)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	size_t (*sql_error)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			    rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
@@ -190,9 +200,11 @@ struct sql_inst {
 
 	int (*sql_set_user)(rlm_sql_t *inst, REQUEST *request, char const *username);
 	size_t (*sql_escape_func)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
-	sql_rcode_t (*sql_query)(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
-	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
-	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_handle_t **handle, rlm_sql_t *inst);
+	sql_rcode_t (*sql_query)(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
+	sql_rcode_t (*sql_select_query)(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
+	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
+
+	char const		*name;
 };
 
 typedef struct sql_grouplist {
@@ -201,15 +213,16 @@ typedef struct sql_grouplist {
 } rlm_sql_grouplist_t;
 
 void		*mod_conn_create(TALLOC_CTX *ctx, void *instance);
-int		sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **first_pair, rlm_sql_row_t row);
+int		sql_userparse(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **first_pair, rlm_sql_row_t row);
 int		sql_read_realms(rlm_sql_handle_t *handle);
 int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);
 int		sql_read_naslist(rlm_sql_handle_t *handle);
 int		sql_read_clients(rlm_sql_handle_t *handle);
 int		sql_dict_init(rlm_sql_handle_t *handle);
 void 		CC_HINT(nonnull (1, 2, 4)) rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t *section, char const *query);
-sql_rcode_t	CC_HINT(nonnull) rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
-sql_rcode_t	CC_HINT(nonnull) rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query);
-sql_rcode_t 	rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t **handle, rlm_sql_t *inst);
+sql_rcode_t	CC_HINT(nonnull (1, 3, 4)) rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
+sql_rcode_t	CC_HINT(nonnull (1, 3, 4)) rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
+int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
+void		rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
 int		sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username);
 #endif

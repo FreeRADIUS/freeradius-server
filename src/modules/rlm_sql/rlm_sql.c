@@ -61,8 +61,6 @@ static const CONF_PARSER type_config[] = {
 	{NULL, -1, 0, NULL, NULL}
 };
 
-
-
 static const CONF_PARSER acct_config[] = {
 	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.reference), ".query" },
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.logfile), NULL },
@@ -182,9 +180,8 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		int numaffected;
 		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
 
-		if (rlm_sql_query(&handle, inst, query) != RLM_SQL_OK) {
-			char const *error = (inst->module->sql_error)(handle, inst->config);
-			REDEBUG("SQL query failed: %s", error);
+		if (rlm_sql_query(inst, request, &handle, query) != RLM_SQL_OK) {
+			RERROR("SQL query failed");
 
 			ret = -1;
 			goto finish;
@@ -225,13 +222,13 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		goto finish;
 	} /* else it's a SELECT statement */
 
-	if (rlm_sql_select_query(&handle, inst, query) != RLM_SQL_OK) {
+	if (rlm_sql_select_query(inst, request, &handle, query) != RLM_SQL_OK) {
 		ret = -1;  /* error handled by rlm_sql_select_query */
 
 		goto finish;
 	}
 
-	ret = rlm_sql_fetch_row(&row, &handle, inst);
+	ret = rlm_sql_fetch_row(&row, inst, request, &handle);
 	if (ret) {
 		REDEBUG("SQL query failed");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
@@ -294,9 +291,9 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		return -1;
 	}
 
-	if (rlm_sql_select_query(&handle, inst, inst->config->client_query) != RLM_SQL_OK) return -1;
+	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) return -1;
 
-	while (rlm_sql_fetch_row(&row, &handle, inst) == 0) {
+	while ((rlm_sql_fetch_row(&row, inst, NULL, &handle) == 0) && (row = handle->row)) {
 		char *server = NULL;
 		i++;
 
@@ -541,12 +538,14 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 	if (!inst->config->groupmemb_query || !*inst->config->groupmemb_query) return 0;
 	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, sql_escape_func, inst) < 0) return -1;
 
-	ret = rlm_sql_select_query(handle, inst, expanded);
+	ret = rlm_sql_select_query(inst, request, handle, expanded);
 	talloc_free(expanded);
 	if (ret != RLM_SQL_OK) return -1;
 
-	while (rlm_sql_fetch_row(&row, handle, inst) == 0) {
-		if (!row) break;
+	while (rlm_sql_fetch_row(&row, inst, request, handle) == 0) {
+		row = (*handle)->row;
+		if (!row)
+			break;
 
 		if (!row[0]){
 			RDEBUG("row[0] returned NULL");
@@ -1363,7 +1362,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		 *  were exhausted, and we couldn't create a new connection,
 		 *  so we do not need to call fr_connection_release.
 		 */
-		sql_ret = rlm_sql_query(&handle, inst, expanded);
+		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
 		TALLOC_FREE(expanded);
 		if (sql_ret == RLM_SQL_RECONNECT) {
 			rcode = RLM_MODULE_FAIL;
@@ -1484,12 +1483,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		return RLM_MODULE_FAIL;
 	}
 
-	if (rlm_sql_select_query(&handle, inst, expanded) != RLM_SQL_OK) {
+	if (rlm_sql_select_query(inst, request, &handle, expanded) != RLM_SQL_OK) {
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
 
-	ret = rlm_sql_fetch_row(&row, &handle, inst);
+	ret = rlm_sql_fetch_row(&row, inst, request, &handle);
 	if (ret != 0) {
 		rcode = RLM_MODULE_FAIL;
 		goto finish;
@@ -1525,7 +1524,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		goto finish;
 	}
 
-	if (rlm_sql_select_query(&handle, inst, expanded) != RLM_SQL_OK) goto finish;
+	if (rlm_sql_select_query(inst, request, &handle, expanded) != RLM_SQL_OK) goto finish;
 
 	/*
 	 *      Setup some stuff, like for MPP detection.
@@ -1540,8 +1539,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		call_num = vp->vp_strvalue;
 	}
 
-	while (rlm_sql_fetch_row(&row, &handle, inst) == 0) {
-		if (!row) break;
+	while (rlm_sql_fetch_row(&row, inst, request, &handle) == 0) {
+		row = handle->row;
+		if (!row) {
+			break;
+		}
 
 		if (!row[2]){
 			RDEBUG("Cannot zap stale entry. No username present in entry");
@@ -1661,9 +1663,9 @@ module_t rlm_sql = {
 	mod_instantiate,	/* instantiation */
 	mod_detach,		/* detach */
 	{
-		NULL,			/* authentication */
+		NULL,		/* authentication */
 		mod_authorize,	/* authorization */
-		NULL,			/* preaccounting */
+		NULL,		/* preaccounting */
 #ifdef WITH_ACCOUNTING
 		mod_accounting,	/* accounting */
 #else
@@ -1674,8 +1676,8 @@ module_t rlm_sql = {
 #else
 		NULL,
 #endif
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
+		NULL,		/* pre-proxy */
+		NULL,		/* post-proxy */
 		mod_post_auth	/* post-auth */
 	},
 };

@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
 
@@ -245,14 +246,12 @@ static sql_rcode_t sql_check_error(int error)
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
 	case -1:
-		DEBUG("rlm_sql_mysql: MYSQL check_error: %d, returning RLM_SQL_RECONNECT", error);
 		return RLM_SQL_RECONNECT;
 
 	case CR_OUT_OF_MEMORY:
 	case CR_COMMANDS_OUT_OF_SYNC:
 	case CR_UNKNOWN_ERROR:
 	default:
-		DEBUG("rlm_sql_mysql: MYSQL check_error: %d received", error);
 		return RLM_SQL_ERROR;
 	}
 }
@@ -295,23 +294,13 @@ static sql_rcode_t sql_store_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 retry_store_result:
 	if (!(conn->result = mysql_store_result(conn->sock))) {
 		rcode = sql_check_error(mysql_errno(conn->sock));
-		if (rcode != RLM_SQL_OK) {
-			ERROR("rlm_sql_mysql: Cannot store result");
-			ERROR("rlm_sql_mysql: MySQL error: %s", mysql_error(conn->sock));
-
-			return rcode;
-		}
+		if (rcode != RLM_SQL_OK) return rcode;
 #if (MYSQL_VERSION_ID >= 40100)
 		ret = mysql_next_result(conn->sock);
 		if (ret == 0) {
 			/* there are more results */
 			goto retry_store_result;
-		} else if (ret > 0) {
-			ERROR("rlm_sql_mysql: Cannot get next result");
-			ERROR("rlm_sql_mysql: MySQL error: %s", mysql_error(conn->sock));
-
-			return sql_check_error(ret);
-		}
+		} else if (ret > 0) return sql_check_error(ret);
 #endif
 	}
 	return RLM_SQL_OK;
@@ -327,8 +316,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 #else
 	if (!(num = mysql_num_fields(conn->sock))) {
 #endif
-		ERROR("rlm_sql_mysql: MYSQL Error: No Fields");
-		ERROR("rlm_sql_mysql: MYSQL error: %s", mysql_error(conn->sock));
+		return -1;
 	}
 	return num;
 }
@@ -384,12 +372,7 @@ retry_fetch_row:
 	*out = handle->row = mysql_fetch_row(conn->result);
 	if (!handle->row) {
 		rcode = sql_check_error(mysql_errno(conn->sock));
-		if (rcode != RLM_SQL_OK) {
-			ERROR("rlm_sql_mysql: Cannot fetch row");
-			ERROR("rlm_sql_mysql: MySQL error: %s", mysql_error(conn->sock));
-
-			return rcode;
-		}
+		if (rcode != RLM_SQL_OK) return rcode;
 
 #if (MYSQL_VERSION_ID >= 40100)
 		sql_free_result(handle, config);
@@ -400,12 +383,7 @@ retry_fetch_row:
 			if ((sql_store_result(handle, config) == 0) && (conn->result != NULL)) {
 				goto retry_fetch_row;
 			}
-		} else if (ret > 0) {
-			ERROR("rlm_sql_mysql: Cannot get next result");
-			ERROR("rlm_sql_mysql: MySQL error: %s", mysql_error(conn->sock));
-
-			return sql_check_error(ret);
-		}
+		} else if (ret > 0) return sql_check_error(ret);
 #endif
 	}
 	return RLM_SQL_OK;
@@ -423,15 +401,129 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	return 0;
 }
 
-static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+/** Retrieves any warnings associated with the last query
+ *
+ * MySQL stores a limited number of warnings associated with the last query
+ * executed. These can be very useful in diagnosing issues, or in some cases
+ * working around bugs in MySQL which causes it to return the wrong error.
+ *
+ * @note Caller should free any memory allocated in ctx (talloc_free_children()).
+ *
+ * @param ctx to allocate temporary error buffers in.
+ * @param out Array of sql_log_entrys to fill.
+ * @param outlen Length of out array.
+ * @param handle rlm_sql connection handle.
+ * @param config rlm_sql config.
+ * @return number of errors written to the sql_log_entry array or -1 on error.
+ */
+static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			   rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_mysql_conn_t *conn = handle->conn;
+	rlm_sql_mysql_conn_t	*conn = handle->conn;
 
-	if (!conn || !conn->sock) {
-		return "rlm_sql_mysql: no connection to db";
+	MYSQL_RES		*result;
+	MYSQL_ROW		row;
+	unsigned int		num_fields;
+	size_t			i = 0;
+	unsigned int		msgs;
+
+	if (outlen == 0) return 0;
+
+	/*
+	 *	Check to see if any warnings can be retrieved from the server.
+	 */
+	msgs = mysql_warning_count(conn->sock);
+	if (msgs == 0) return 0;
+
+	/*
+	 *	Retrieve any warnings associated with the previous query
+	 *	that were left lingering on the server.
+	 */
+	if (mysql_query(conn->sock, "SHOW WARNINGS") != 0) return -1;
+	result = mysql_store_result(conn->sock);
+	if (!result) return -1;
+
+	/*
+	 *	Fields should be [0] = Level, [1] = Code, [2] = Message
+	 */
+	num_fields = mysql_field_count(conn->sock);
+	if (num_fields < 3) {
+		WARN("Failed retrieving warnings, expected 3 fields got %u", num_fields);
+		mysql_free_result(result);
+
+		return -1;
 	}
 
-	return mysql_error(conn->sock);
+	while ((row = mysql_fetch_row(result))) {
+		char *msg = NULL;
+		log_type_t type;
+
+		/*
+		 *	Translate the MySQL log level into our internal
+		 *	log levels, so they get colourised correctly.
+		 */
+		if (strcasecmp(row[0], "warning") == 0)	type = L_WARN;
+		else if (strcasecmp(row[0], "note") == 0) type = L_DBG;
+		else type = L_ERR;
+
+		msg = talloc_asprintf(ctx, "%s: %s", row[1], row[2]);
+		out[i].type = type;
+		out[i].msg = msg;
+		if (++i == outlen) break;
+	}
+
+	mysql_free_result(result);
+
+	return i;
+}
+
+/** Retrieves any errors associated with the connection handle
+ *
+ * @note Caller should free any memory allocated in ctx (talloc_free_children()).
+ *
+ * @param ctx to allocate temporary error buffers in.
+ * @param out Array of sql_log_entrys to fill.
+ * @param outlen Length of out array.
+ * @param handle rlm_sql connection handle.
+ * @param config rlm_sql config.
+ * @return number of errors written to the sql_log_entry array.
+ */
+static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
+	rlm_sql_mysql_conn_t	*conn = handle->conn;
+	char const		*error;
+	size_t			i = 0;
+
+	rad_assert(conn && conn->sock);
+	rad_assert(outlen > 0);
+
+	error = mysql_error(conn->sock);
+
+	/*
+	 *	Grab the error now in case it gets cleared on the next operation.
+	 */
+	if (error && (error[0] != '\0')) error = talloc_asprintf(ctx, "%s (%u)", error, mysql_errno(conn->sock));
+
+	/*
+	 *	Don't attempt to get errors from the server, if the last error
+	 *	was that the server was unavailable.
+	 */
+	if ((outlen > 1) && (sql_check_error(mysql_errno(conn->sock)) != RLM_SQL_RECONNECT)) {
+		size_t ret;
+
+		ret = sql_warnings(ctx, out, outlen - 1, handle, config);
+		if (ret > 0) i += ret;
+		else DEBUG3("rlm_sql_mysql: No additional diagnostic info on server");
+	}
+
+	if (error) {
+		out[i].type = L_ERR;
+		out[i].msg = error;
+	}
+	i++;
+
+	return i;
 }
 
 /** Finish query
@@ -461,12 +553,7 @@ skip_next_result:
 	if (ret == 0) {
 		/* there are more results */
 		goto skip_next_result;
-	}  else if (ret > 0) {
-		ERROR("rlm_sql_mysql: Cannot get next result");
-		ERROR("rlm_sql_mysql: MySQL error: %s", mysql_error(conn->sock));
-
-		return sql_check_error(ret);
-	}
+	}  else if (ret > 0) return sql_check_error(ret);
 #endif
 	return RLM_SQL_OK;
 }
@@ -483,12 +570,7 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_con
 	if (ret == 0) {
 		/* there are more results */
 		sql_finish_query(handle, config);
-	}  else if (ret > 0) {
-		ERROR("rlm_sql_mysql: Cannot get next result");
-		ERROR("rlm_sql_mysql: MySQL error: %s",  mysql_error(conn->sock));
-
-		return sql_check_error(ret);
-	}
+	}  else if (ret > 0) return sql_check_error(ret);
 #endif
 	return RLM_SQL_OK;
 }

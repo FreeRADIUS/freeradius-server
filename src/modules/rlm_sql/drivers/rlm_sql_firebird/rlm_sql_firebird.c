@@ -22,10 +22,10 @@
 RCSID("$Id$")
 
 #include "sql_fbapi.h"
+#include <freeradius-devel/rad_assert.h>
 
 
 /* Forward declarations */
-static char const *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
@@ -255,28 +255,39 @@ static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_s
 	return 0;
 }
 
-/** Returns error associated with connection.
+/** Retrieves any errors associated with the connection handle
  *
+ * @note Caller will free any memory allocated in ctx.
+ *
+ * @param ctx to allocate temporary error buffers in.
+ * @param out Array of sql_log_entrys to fill.
+ * @param outlen Length of out array.
+ * @param handle rlm_sql connection handle.
+ * @param config rlm_sql config.
+ * @return number of errors written to the sql_log_entry array.
  */
-static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 
-	return conn->error;
+	rad_assert(conn);
+	rad_assert(outlen > 0);
+
+	if (!conn->error) return 0;
+
+	out[0].type = L_ERR;
+	out[0].msg = conn->error;
+
+	return 1;
 }
 
 /** Return the number of rows affected by the query (update, or insert)
  *
  */
-static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	int affected_rows=fb_affected_rows(handle->conn);
-
-	if (affected_rows < 0) {
-		ERROR("sql_affected_rows, rlm_sql_firebird. error:%s", sql_error(handle, config));
-	}
-
-	return affected_rows;
+	return fb_affected_rows(handle->conn);
 }
 
 /* Exported to rlm_sql */

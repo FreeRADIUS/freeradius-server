@@ -199,6 +199,19 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
 #define RDMARKER(_m, _i, _e)		_RMKR(L_DBG, L_DBG_LVL_1, _m, _i, _e)
 
 /*
+ *	Use different logging functions depending on whether
+ *	request is NULL or not.
+ */
+ #define ROPTIONAL(_l_request, _l_global, fmt, ...) \
+do {\
+	if (request) {\
+		_l_request(fmt, ## __VA_ARGS__);\
+	} else {\
+		_l_global(MOD_PREFIX " (%s): " fmt, inst->name, ## __VA_ARGS__);\
+ 	}\
+} while (0)
+
+/*
  *	Rate limit messages.
  */
 #define RATE_LIMIT_ENABLED rate_limit_enabled()

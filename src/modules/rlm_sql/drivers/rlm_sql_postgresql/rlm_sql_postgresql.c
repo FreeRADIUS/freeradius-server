@@ -40,6 +40,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
 
@@ -74,7 +75,7 @@ static CONF_PARSER driver_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static int mod_instantiate(CONF_SECTION *conf, UNUSED rlm_sql_config_t *config)
+static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
 #if defined(HAVE_OPENSSL_CRYPTO_H) && (defined(HAVE_PQINITOPENSSL) || defined(HAVE_PQINITSSL))
 	static bool			ssl_init = false;
@@ -403,12 +404,40 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_con
 	return 0;
 }
 
-static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+/** Retrieves any errors associated with the connection handle
+ *
+ * @note Caller will free any memory allocated in ctx.
+ *
+ * @param ctx to allocate temporary error buffers in.
+ * @param out Array of sql_log_entrys to fill.
+ * @param outlen Length of out array.
+ * @param handle rlm_sql connection handle.
+ * @param config rlm_sql config.
+ * @return number of errors written to the sql_log_entry array.
+ */
+static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
+	rlm_sql_postgres_conn_t	*conn = handle->conn;
+	char const		*p, *q;
+	size_t			i = 0;
 
-	rlm_sql_postgres_conn_t *conn = handle->conn;
+	rad_assert(outlen > 0);
 
-	return PQerrorMessage(conn->db);
+	p = PQerrorMessage(conn->db);
+	while ((q = strchr(p, '\n'))) {
+		out[i].type = L_ERR;
+		out[i].msg = talloc_asprintf(ctx, "%.*s", (int) (q - p), p);
+		p = q + 1;
+		if (++i == outlen) return outlen;
+	}
+	if (*p != '\0') {
+		out[i].type = L_ERR;
+		out[i].msg = p;
+	}
+	i++;
+
+	return i;
 }
 
 static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
