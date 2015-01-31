@@ -223,13 +223,6 @@ static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
 	return 0;
 }
 
-/*************************************************************************
- *
- *	Function: sql_create_socket
- *
- *	Purpose: Establish connection to the db
- *
- *************************************************************************/
 static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_postgres_config_t *driver = config->driver;
@@ -258,13 +251,6 @@ static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_co
 	return 0;
 }
 
-/*************************************************************************
- *
- *	Function: sql_query
- *
- *	Purpose: Issue a query to the database
- *
- *************************************************************************/
 static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 					      char const *query)
 {
@@ -356,28 +342,11 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 	return RLM_SQL_ERROR;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_select_query
- *
- *	Purpose: Issue a select query to the database
- *
- *************************************************************************/
 static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char const *query)
 {
 	return sql_query(handle, config, query);
 }
 
-/*************************************************************************
- *
- *	Function: sql_fetch_row
- *
- *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
- *	with all the data for the query in 'handle->row'. Returns
- *	0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'.
- *
- *************************************************************************/
 static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 
@@ -409,14 +378,6 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 	return 0;
 }
 
-/*************************************************************************
- *
- *      Function: sql_num_fields
- *
- *      Purpose: database specific num_fields. Returns number of rows in
- *	       query
- *
- *************************************************************************/
 static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
@@ -428,18 +389,8 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *co
 	return 0;
 }
 
-
-
-/*************************************************************************
- *
- *	Function: sql_free_result
- *
- *	Purpose: database specific free_result. Frees memory allocated
- *	       for a result set
- *
- *************************************************************************/
-static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
-
+static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+{
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
 	if (conn->result != NULL) {
@@ -452,31 +403,16 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_con
 	return 0;
 }
 
-
-
-/*************************************************************************
- *
- *	Function: sql_error
- *
- *	Purpose: database specific error. Returns error associated with
- *	       connection
- *
- *************************************************************************/
-static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
+static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+{
 
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
 	return PQerrorMessage(conn->db);
 }
 
-/*************************************************************************
- *
- *	Function: sql_affected_rows
- *
- *	Purpose: Return the number of rows affected by the last query.
- *
- *************************************************************************/
-static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
+static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+{
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
 	return conn->affected_rows;

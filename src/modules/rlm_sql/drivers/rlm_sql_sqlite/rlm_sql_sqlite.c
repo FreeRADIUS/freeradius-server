@@ -22,7 +22,6 @@
  * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
  * @copyright 2007 Apple Inc.
  */
-
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
