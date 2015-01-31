@@ -285,6 +285,7 @@ ATTRIBUTE	SSHA2-224-Password			1177	octets
 ATTRIBUTE	SSHA2-256-Password			1178	octets
 ATTRIBUTE	SSHA2-384-Password			1179	octets
 ATTRIBUTE	SSHA2-512-Password			1180	octets
+ATTRIBUTE	PBKDF2-Password				1181	octets
 
 #
 #	Range:	1200-1279

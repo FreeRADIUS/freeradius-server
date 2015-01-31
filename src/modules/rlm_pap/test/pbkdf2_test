@@ -1,0 +1,27 @@
+#!/bin/bash
+
+vector() {
+	radtest "$@" localhost 1 'testing123'
+}
+
+vector pbkdf2_sha1 password
+vector pbkdf2_sha2_224 password
+vector pbkdf2_sha2_256 password
+vector pbkdf2_sha2_384 password
+vector pbkdf2_sha2_512 password
+vector pbkdf2_sha0 password
+vector pbkdf2_iter1 password
+vector pbkdf2_iter1000 password
+vector pbkdf2_iter1000000 password
+vector pbkdf2_iter0 password
+vector pbkdf2_salt0 password
+vector pbkdf2_salt1 password
+vector pbkdf2_salt64 password
+vector pbkdf2_salt1024 password
+vector pbkdf2_iter_miss password
+vector pbkdf2_iter_small password
+vector pbkdf2_iter_big password
+vector pbkdf2_salt_small password
+vector pbkdf2_salt_big password
+vector pbkdf2_dig_small password
+vector pbkdf2_dig_big password
