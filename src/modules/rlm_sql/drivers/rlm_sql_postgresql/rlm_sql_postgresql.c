@@ -125,8 +125,16 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	 *	Allow the user to set their own, or disable it
 	 */
 	if (driver->send_application_name) {
+		CONF_SECTION	*cs;
+		char const	*name;
+
+		cs = cf_item_parent(cf_section_to_item(conf));
+
+		name = cf_section_name2(cs);
+		if (!name) name = cf_section_name1(cs);
+
 		snprintf(application_name, sizeof(application_name),
-			 "FreeRADIUS "  RADIUSD_VERSION_STRING " - %s (%s)", progname, config->xlat_name);
+			 "FreeRADIUS " RADIUSD_VERSION_STRING " - %s (%s)", progname, name);
 		db_string = talloc_asprintf_append(db_string, " application_name='%s'", application_name);
 	}
 	driver->db_string = db_string;

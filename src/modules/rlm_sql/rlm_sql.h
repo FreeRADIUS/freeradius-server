@@ -81,8 +81,6 @@ typedef struct sql_acct_section {
 } sql_acct_section_t;
 
 typedef struct sql_config {
-	char const 		*xlat_name;			//!< Module instance name.
-
 	char const 		*sql_driver_name;		//!< SQL driver module name e.g. rlm_sql_sqlite.
 	char const 		*sql_server;			//!< Server to connect to.
 	char const 		*sql_port;			//!< Port to connect to.
@@ -204,7 +202,7 @@ struct sql_inst {
 	sql_rcode_t (*sql_select_query)(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
 	sql_rcode_t (*sql_fetch_row)(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
 
-	char const		*name;
+	char const		*name;			//!< Module instance name.
 };
 
 typedef struct sql_grouplist {

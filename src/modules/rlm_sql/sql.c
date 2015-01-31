@@ -306,12 +306,13 @@ void rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *ha
 /** Call the driver's sql_query method, reconnecting if necessary.
  *
  * @param handle to query the database with. *handle should not be NULL, as this indicates
- *	  previous reconnection attempt has failed.
+ * previous reconnection attempt has failed.
+ * @param request Current request.
  * @param inst rlm_sql instance data.
  * @param query to execute. Should not be zero length.
  * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL),
- *         RLM_SQL_QUERY_ERROR/RLM_SQL_ERROR on invalid query or connection error, RLM_SQL_DUPLICATE on constraints
- *         violation.
+ * RLM_SQL_QUERY_ERROR/RLM_SQL_ERROR on invalid query or connection error, RLM_SQL_DUPLICATE on constraints
+ * violation.
  */
 sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
 {
@@ -503,7 +504,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 
 	fd = exfile_open(inst->ef, filename, 0640, true);
 	if (fd < 0) {
-		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->config->xlat_name,
+		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->name,
 		      expanded, fr_syserror(errno));
 
 		talloc_free(expanded);
@@ -516,7 +517,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 	}
 
 	if (failed) {
-		ERROR("rlm_sql (%s): Failed writing to logfile '%s': %s", inst->config->xlat_name, expanded,
+		ERROR("rlm_sql (%s): Failed writing to logfile '%s': %s", inst->name, expanded,
 		      fr_syserror(errno));
 	}
 
