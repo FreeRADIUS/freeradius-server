@@ -1334,7 +1334,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	DEBUG3("rlm_ldap (%s): New libldap handle %p", inst->xlat_name, conn->handle);
 
 	/*
-	 *	We now have a connection structure, but no actual TCP connection.
+	 *	We now have a connection structure, but no actual connection.
 	 *
 	 *	Set a bunch of LDAP options, using common code.
 	 */
