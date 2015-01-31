@@ -135,13 +135,6 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	return 0;
 }
 
-/*************************************************************************
- *
- *	Function: sql_create_socket
- *
- *	Purpose: Establish connection to the db
- *
- *************************************************************************/
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn;
@@ -243,13 +236,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	return RLM_SQL_OK;
 }
 
-/*************************************************************************
- *
- *	Function: sql_check_error
- *
- *	Purpose: check the error to see if the server is down
- *
- *************************************************************************/
 static sql_rcode_t sql_check_error(int error)
 {
 	switch (error) {
@@ -271,14 +257,6 @@ static sql_rcode_t sql_check_error(int error)
 	}
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_query
- *
- *	Purpose: Issue a query to the database
- *
- *************************************************************************/
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
@@ -303,16 +281,6 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	return RLM_SQL_OK;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_store_result
- *
- *	Purpose: database specific store_result function. Returns a result
- *	       set for the query. In case of multiple results, get the
- *	       first non-empty one.
- *
- *************************************************************************/
 static sql_rcode_t sql_store_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
@@ -349,15 +317,6 @@ retry_store_result:
 	return RLM_SQL_OK;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_num_fields
- *
- *	Purpose: database specific num_fields function. Returns number
- *	       of columns from query
- *
- *************************************************************************/
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	int num = 0;
@@ -374,14 +333,6 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	return num;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_select_query
- *
- *	Purpose: Issue a select query to the database
- *
- *************************************************************************/
 static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 	sql_rcode_t rcode;
@@ -405,15 +356,6 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	return rcode;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_num_rows
- *
- *	Purpose: database specific num_rows. Returns number of rows in
- *	       query
- *
- *************************************************************************/
 static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
@@ -425,16 +367,6 @@ static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *confi
 	return 0;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_fetch_row
- *
- *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
- *	       with all the data for the query in 'handle->row'. Returns
- *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if database is down.
- *
- *************************************************************************/
 static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
@@ -479,15 +411,6 @@ retry_fetch_row:
 	return RLM_SQL_OK;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_free_result
- *
- *	Purpose: database specific free_result. Frees memory allocated
- *	       for a result set
- *
- *************************************************************************/
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
@@ -500,16 +423,6 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	return 0;
 }
 
-
-
-/*************************************************************************
- *
- *	Function: sql_error
- *
- *	Purpose: database specific error. Returns error associated with
- *	       connection
- *
- *************************************************************************/
 static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
@@ -521,15 +434,13 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	return mysql_error(conn->sock);
 }
 
-/*************************************************************************
+/** Finish query
  *
- *	Function: sql_finish_query
+ * As a single SQL statement may return multiple results
+ * sets, (for example stored procedures) it is necessary to check
+ * whether more results exist and process them in turn if so.
  *
- *	Purpose: As a single SQL statement may return multiple results
- *	sets, (for example stored procedures) it is necessary to check
- *	whether more results exist and process them in turn if so.
- *
- *************************************************************************/
+ */
 static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 #if (MYSQL_VERSION_ID >= 40100)
@@ -560,15 +471,6 @@ skip_next_result:
 	return RLM_SQL_OK;
 }
 
-
-
-/*************************************************************************
- *
- *	Function: sql_finish_select_query
- *
- *	Purpose: End the select query, such as freeing memory or result
- *
- *************************************************************************/
 static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 #if (MYSQL_VERSION_ID >= 40100)
@@ -591,14 +493,6 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_con
 	return RLM_SQL_OK;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_affected_rows
- *
- *	Purpose: End the select query, such as freeing memory or result
- *
- *************************************************************************/
 static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;

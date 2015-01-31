@@ -55,15 +55,6 @@ typedef struct rlm_sql_oracle_conn_t {
 
 #define	MAX_DATASTR_LEN	64
 
-
-/*************************************************************************
- *
- *	Function: sql_error
- *
- *	Purpose: database specific error. Returns error associated with
- *	       connection
- *
- *************************************************************************/
 static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 
@@ -84,13 +75,6 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	return NULL;
 }
 
-/*************************************************************************
- *
- *	Function: sql_check_error
- *
- *	Purpose: check the error to see if the server is down
- *
- *************************************************************************/
 static int sql_check_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 
@@ -125,13 +109,6 @@ static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
 	return 0;
 }
 
-/*************************************************************************
- *
- *	Function: sql_socket_init
- *
- *	Purpose: Establish connection to the db
- *
- *************************************************************************/
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 
@@ -182,14 +159,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	return 0;
 }
 
-/*************************************************************************
- *
- *	Function: sql_num_fields
- *
- *	Purpose: database specific num_fields function. Returns number
- *	       of columns from query
- *
- *************************************************************************/
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	int count;
@@ -206,14 +175,6 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	return count;
 }
 
-/*************************************************************************
- *
- *	Function: sql_query
- *
- *	Purpose: Issue a non-SELECT query (ie: update/delete/insert) to
- *	       the database.
- *
- *************************************************************************/
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 	int status;
@@ -251,17 +212,8 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	return -1;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_select_query
- *
- *	Purpose: Issue a select query to the database
- *
- *************************************************************************/
 static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
-
 	int		status;
 	char		**row;
 
@@ -405,30 +357,12 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	return -1;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_store_result
- *
- *	Purpose: database specific store_result function. Returns a result
- *	       set for the query.
- *
- *************************************************************************/
 static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle,UNUSED rlm_sql_config_t *config)
 {
 	/* Not needed for Oracle */
 	return 0;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_num_rows
- *
- *	Purpose: database specific num_rows. Returns number of rows in
- *	       query
- *
- *************************************************************************/
 static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
@@ -440,16 +374,6 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t
 	return rows;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_fetch_row
- *
- *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
- *	       with all the data for the query in 'handle->row'. Returns
- *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if database is down.
- *
- *************************************************************************/
 static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 
@@ -479,16 +403,6 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	return -1;
 }
 
-
-
-/*************************************************************************
- *
- *	Function: sql_free_result
- *
- *	Purpose: database specific free_result. Frees memory allocated
- *	       for a result set
- *
- *************************************************************************/
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
@@ -503,29 +417,11 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	return 0;
 }
 
-
-
-/*************************************************************************
- *
- *	Function: sql_finish_query
- *
- *	Purpose: End the query, such as freeing memory
- *
- *************************************************************************/
 static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
 
-
-
-/*************************************************************************
- *
- *	Function: sql_finish_select_query
- *
- *	Purpose: End the select query, such as freeing memory or result
- *
- *************************************************************************/
 static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
@@ -537,20 +433,10 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 	return 0;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_affected_rows
- *
- *	Purpose: Return the number of rows affected by the query (update,
- *	       or insert)
- *
- *************************************************************************/
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	return sql_num_rows(handle, config);
 }
-
 
 /* Exported to rlm_sql */
 extern rlm_sql_module_t rlm_sql_oracle;
