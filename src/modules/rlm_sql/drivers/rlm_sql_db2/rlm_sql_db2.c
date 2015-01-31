@@ -31,6 +31,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
 
@@ -42,7 +43,6 @@ typedef struct rlm_sql_conn {
 	SQLHANDLE hdbc;
 	SQLHANDLE henv;
 	SQLHANDLE stmt;
-	char *error;
 } rlm_sql_db2_conn_t;
 
 static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
@@ -192,20 +192,38 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	return RLM_SQL_OK;
 }
 
-static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+/** Retrieves any errors associated with the connection handle
+ *
+ * @note Caller will free any memory allocated in ctx.
+ *
+ * @param ctx to allocate temporary error buffers in.
+ * @param out Array of sql_log_entrys to fill.
+ * @param outlen Length of out array.
+ * @param handle rlm_sql connection handle.
+ * @param config rlm_sql config.
+ * @return number of errors written to the sql_log_entry array.
+ */
+static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	/* this should really be enough, if not, you still got the sqlstate */
-	char sqlstate[6];
-	char msg[1024];
-	SQLINTEGER err;
-	SQLSMALLINT rl;
-	rlm_sql_db2_conn_t *conn = handle->conn;
+	char			state[6];
+	char			errbuff[1024];
+	SQLINTEGER		err;
+	SQLSMALLINT		rl;
+	rlm_sql_db2_conn_t	*conn = handle->conn;
 
-	TALLOC_FREE(conn->error);
-	SQLGetDiagRec(SQL_HANDLE_STMT, conn->stmt, 1, (SQLCHAR *) sqlstate, &err, (SQLCHAR *) msg, sizeof(msg), &rl);
-	conn->error = talloc_typed_asprintf(conn, "sqlstate %s: %s", sqlstate, msg);
+	rad_assert(conn);
+	rad_assert(outlen > 0);
 
-	return conn->error;
+	errbuff[0] = '\0';
+	SQLGetDiagRec(SQL_HANDLE_STMT, conn->stmt, 1, (SQLCHAR *) state, &err,
+		      (SQLCHAR *) errbuff, sizeof(errbuff), &rl);
+	if (errbuff[0] == '\0') return 0;
+
+	out[0].type = L_ERR;
+	out[0].msg = talloc_asprintf(ctx, "%s: %s", state, errbuff);
+
+	return 1;
 }
 
 static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)

@@ -107,9 +107,8 @@ static int nvp_vquery(unsigned int line, rlm_sqlhpwippool_t *data,
 {
 	char query[MAX_QUERY_LEN];
 	vsnprintf(query, MAX_QUERY_LEN, fmt, ap);
-	if (rlm_sql_query(&sqlsock, data->sql_inst, query)) {
-		nvp_log(__LINE__, data, L_ERR, "nvp_vquery(): query from line %u: %s",
-			line, (char const *)(data->db->sql_error)(sqlsock, data->sql_inst->config));
+	if (rlm_sql_query(data->sql_inst, NULL, &sqlsock, query)) {
+		nvp_log(__LINE__, data, L_ERR, "nvp_vquery(): query from line %u", line);
 		return 0;
 	}
 

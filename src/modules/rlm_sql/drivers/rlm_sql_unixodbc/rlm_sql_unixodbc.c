@@ -22,6 +22,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sqltypes.h>
 #include "rlm_sql.h"
@@ -34,14 +35,12 @@ typedef struct rlm_sql_unixodbc_conn {
 	void *conn;
 } rlm_sql_unixodbc_conn_t;
 
-
 USES_APPLE_DEPRECATED_API
 #include <sql.h>
 #include <sqlext.h>
 
 /* Forward declarations */
-static char const *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-static int sql_state(long err_handle, rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static int sql_check_error(long err_handle, rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
@@ -79,22 +78,22 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 	/* 1. Allocate environment handle and register version */
 	err_handle = SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &conn->env);
-	if (sql_state(err_handle, handle, config)) {
+	if (sql_check_error(err_handle, handle, config)) {
 		ERROR("rlm_sql_unixodbc: Can't allocate environment handle");
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
 	err_handle = SQLSetEnvAttr(conn->env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
-	if (sql_state(err_handle, handle, config)) {
+	if (sql_check_error(err_handle, handle, config)) {
 		ERROR("rlm_sql_unixodbc: Can't register ODBC version");
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
 	/* 2. Allocate connection handle */
 	err_handle = SQLAllocHandle(SQL_HANDLE_DBC, conn->env, &conn->dbc);
-	if (sql_state(err_handle, handle, config)) {
+	if (sql_check_error(err_handle, handle, config)) {
 		ERROR("rlm_sql_unixodbc: Can't allocate connection handle");
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
 	/* 3. Connect to the datasource */
@@ -110,19 +109,19 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 					odbc_password, strlen(config->sql_password));
 	}
 
-	if (sql_state(err_handle, handle, config)) {
+	if (sql_check_error(err_handle, handle, config)) {
 		ERROR("rlm_sql_unixodbc: Connection failed");
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
 	/* 4. Allocate the statement */
 	err_handle = SQLAllocHandle(SQL_HANDLE_STMT, conn->dbc, &conn->statement);
-	if (sql_state(err_handle, handle, config)) {
+	if (sql_check_error(err_handle, handle, config)) {
 		ERROR("rlm_sql_unixodbc: Can't allocate the statement");
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
-    return 0;
+    return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
@@ -138,7 +137,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 		memcpy(&odbc_query, &query, sizeof(odbc_query));
 		err_handle = SQLExecDirect(conn->statement, odbc_query, strlen(query));
 	}
-	if ((state = sql_state(err_handle, handle, config))) {
+	if ((state = sql_check_error(err_handle, handle, config))) {
 		if(state == RLM_SQL_RECONNECT) {
 			DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
 		}
@@ -162,7 +161,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 	colcount = sql_num_fields(handle, config);
 	if (colcount < 0) {
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
 	/* Reserving memory for result */
@@ -174,7 +173,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		SQLBindCol(conn->statement, i, SQL_C_CHAR, (SQLCHAR *)conn->row[i - 1], len, NULL);
 	}
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -190,9 +189,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	SQLSMALLINT num_fields = 0;
 
 	err_handle = SQLNumResultCols(conn->statement,&num_fields);
-	if (sql_state(err_handle, handle, config)) {
-		return -1;
-	}
+	if (sql_check_error(err_handle, handle, config)) return -1;
 
 	return num_fields;
 }
@@ -215,13 +212,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 		return 0;
 	}
 
-	if ((state = sql_state(err_handle, handle, config))) {
-		if(state == RLM_SQL_RECONNECT) {
-			DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
-		}
-
-		return state;
-	}
+	if ((state = sql_check_error(err_handle, handle, config))) return state;
 
 	handle->row = conn->row;
 	return 0;
@@ -268,27 +259,47 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	return 0;
 }
 
-static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+/** Retrieves any errors associated with the connection handle
+ *
+ * @note Caller will free any memory allocated in ctx.
+ *
+ * @param ctx to allocate temporary error buffers in.
+ * @param out Array of sql_log_entrys to fill.
+ * @param outlen Length of out array.
+ * @param handle rlm_sql connection handle.
+ * @param config rlm_sql config.
+ * @return number of errors written to the sql_log_entry array.
+ */
+static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	SQLCHAR state[256];
-	SQLCHAR error[256];
-	SQLINTEGER errornum = 0;
-	SQLSMALLINT length = 255;
-	static char result[1024];	/* NOT thread-safe! */
+	rlm_sql_unixodbc_conn_t		*conn = handle->conn;
+	SQLCHAR				state[256];
+	SQLCHAR				errbuff[256];
+	SQLINTEGER			errnum = 0;
+	SQLSMALLINT			length = 255;
 
-	rlm_sql_unixodbc_conn_t *conn = handle->conn;
+	rad_assert(outlen > 0);
 
-	error[0] = state[0] = '\0';
+	errbuff[0] = state[0] = '\0';
+	SQLError(conn->env, conn->dbc, conn->statement, state, &errnum,
+		 errbuff, sizeof(errbuff), &length);
+	if (errnum == 0) return 0;
 
-	SQLError(conn->env, conn->dbc, conn->statement, state, &errornum,
-		 error, 256, &length);
+	out[0].type = L_ERR;
+	out[0].msg = talloc_asprintf(ctx, "%s: %s", state, errbuff);
 
-	sprintf(result, "%s %s", state, error);
-	result[sizeof(result) - 1] = '\0'; /* catch idiot thread issues */
-	return result;
+	return 1;
 }
 
-static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+/** Checks the error code to determine if the connection needs to be re-esttablished
+ *
+ * @param error_handle Return code from a failed unixodbc call.
+ * @param handle rlm_sql connection handle.
+ * @param config rlm_sql config.
+ * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if reconnect is needed, or RLM_SQL_ERROR on error.
+ */
+static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	SQLCHAR state[256];
 	SQLCHAR error[256];
@@ -298,23 +309,21 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
 
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 
-	if(SQL_SUCCEEDED(err_handle)) {
-		return 0;		/* on success, just return 0 */
-	}
+	if (SQL_SUCCEEDED(error_handle)) return 0; /* on success, just return 0 */
 
 	error[0] = state[0] = '\0';
 
 	SQLError(conn->env, conn->dbc, conn->statement, state, &errornum,
-		 error, 256, &length);
+		 error, sizeof(error), &length);
 
-	if(state[0] == '0') {
+	if (state[0] == '0') {
 		switch (state[1]) {
 		/* SQLSTATE 01 class contains info and warning messages */
 		case '1':
 			INFO("rlm_sql_unixodbc: %s %s", state, error);
 			/* FALL-THROUGH */
 		case '0':		/* SQLSTATE 00 class means success */
-			res = 0;
+			res = RLM_SQL_OK;
 			break;
 
 		/* SQLSTATE 08 class describes various connection errors */
@@ -326,7 +335,7 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
 		/* any other SQLSTATE means error */
 		default:
 			ERROR("rlm_sql_unixodbc: %s %s", state, error);
-			res = -1;
+			res = RLM_SQL_ERROR;
 			break;
 		}
 	} else {
@@ -347,13 +356,11 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
-	long err_handle;
+	long error_handle;
 	SQLLEN affected_rows;
 
-	err_handle = SQLRowCount(conn->statement, &affected_rows);
-	if (sql_state(err_handle, handle, config)) {
-		return -1;
-	}
+	error_handle = SQLRowCount(conn->statement, &affected_rows);
+	if (sql_check_error(error_handle, handle, config)) return -1;
 
 	return affected_rows;
 }

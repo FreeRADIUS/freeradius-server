@@ -313,7 +313,7 @@ static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sq
 		return -1;
 	}
 
-	ret = data->sql_inst->sql_query(&handle, data->sql_inst, expanded);
+	ret = data->sql_inst->sql_query(data->sql_inst, request, &handle, expanded);
 	if (ret < 0){
 		talloc_free(expanded);
 		return -1;
@@ -355,7 +355,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, data->sql_inst) < 0) {
 		return 0;
 	}
-	retval = data->sql_inst->sql_select_query(&handle, data->sql_inst, expanded);
+	retval = data->sql_inst->sql_select_query(data->sql_inst, request, &handle, expanded);
 	talloc_free(expanded);
 
 	if (retval != 0){
@@ -363,7 +363,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 		return 0;
 	}
 
-	if (data->sql_inst->sql_fetch_row(&handle, data->sql_inst) < 0) {
+	if (data->sql_inst->sql_fetch_row(data->sql_inst, request, &handle) < 0) {
 		REDEBUG("Failed fetching query result");
 		goto finish;
 	}

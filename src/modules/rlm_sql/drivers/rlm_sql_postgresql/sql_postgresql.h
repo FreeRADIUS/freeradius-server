@@ -14,8 +14,7 @@ typedef struct pgsql_error{
 	bool 		reconnect;	//!< Should reconnect socket when receiving this error.
 } pgerror;
 
-pgerror errorcodes[]=
-{
+static pgerror errorcodes[] = {
 	{ "0100C", "DYNAMIC RESULT SETS RETURNED", false },
 	{ "01008", "IMPLICIT ZERO BIT PADDING", false },
 	{ "01003", "NULL VALUE ELIMINATED IN SET FUNCTION", false },

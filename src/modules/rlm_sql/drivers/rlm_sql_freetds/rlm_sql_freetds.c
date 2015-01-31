@@ -27,6 +27,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
 
@@ -146,8 +147,7 @@ static CS_RETCODE CS_PUBLIC csmsg_callback(CS_CONTEXT *context, CS_CLIENTMSG *em
  * @param msgp Pointer to the error structure.
  * @return CS_SUCCEED
  */
-static CS_RETCODE CS_PUBLIC servermsg_callback(UNUSED CS_CONTEXT *context, UNUSED CS_CONNECTION *conn,
-					       CS_SERVERMSG *msgp)
+static CS_RETCODE CS_PUBLIC servermsg_callback(CS_CONTEXT *context, UNUSED CS_CONNECTION *conn, CS_SERVERMSG *msgp)
 {
 	rlm_sql_freetds_conn_t *this = NULL;
 	int len = 0;
@@ -324,15 +324,31 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	return num;
 }
 
-static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+/** Retrieves any errors associated with the connection handle
+ *
+ * @note Caller will free any memory allocated in ctx.
+ *
+ * @param ctx to allocate temporary error buffers in.
+ * @param out Array of sql_log_entrys to fill.
+ * @param outlen Length of out array.
+ * @param handle rlm_sql connection handle.
+ * @param config rlm_sql config.
+ * @return number of errors written to the sql_log_entry array.
+ */
+static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
+			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
 
-	if (!conn || !conn->db) {
-		return "rlm_sql_freetds: no connection to db";
-	}
+	rad_assert(conn && conn->db);
+	rad_assert(outlen > 0);
 
-	return conn->error;
+	if (!conn->error) return 0;
+
+	out[0].type = L_ERR;
+	out[0].msg = conn->error;
+
+	return 1;
 }
 
 static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -727,11 +743,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 error:
 	if (conn->context) {
-		char const *error;
-		error = sql_error(handle, config);
-		if (error) {
-			ERROR("rlm_sql_freetds: %s", error);
-		}
+		sql_log_entry_t	error;
+
+		if (sql_error(NULL, &error, 1, handle, config) > 0) ERROR("rlm_sql_freetds: %s", error.msg);
 	}
 
 	return RLM_SQL_ERROR;

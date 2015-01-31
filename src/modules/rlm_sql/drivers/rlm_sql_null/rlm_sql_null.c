@@ -75,9 +75,13 @@ static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_
 	return 0;
 }
 
-static char const *sql_error(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+/** Stub function for retrieving errors, should not be called
+ *
+ */
+static size_t sql_error(UNUSED TALLOC_CTX *ctx, UNUSED sql_log_entry_t out[], UNUSED size_t outlen,
+			UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	return "Unknown error";
+	return 0;
 }
 
 static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
