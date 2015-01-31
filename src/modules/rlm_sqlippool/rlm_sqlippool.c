@@ -365,7 +365,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 		return 0;
 	}
 
-	if (data->sql_inst->sql_fetch_row(&row, &handle, request, data->sql_inst) < 0) {
+	if (data->sql_inst->sql_fetch_row(&row, data->sql_inst, request, &handle) < 0) {
 		REDEBUG("Failed fetching query result");
 		goto finish;
 	}
