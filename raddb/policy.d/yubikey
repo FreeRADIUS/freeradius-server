@@ -1,0 +1,81 @@
+#
+#  The following policies are for the Yubikey OTP token configuration.
+#
+
+### Mitigate default PAP authentication by password alone in two factor auth
+yubikey_authorize_otpkey {
+	if (!&request:Yubikey-OTP && &control:Yubikey-Key) {
+		update reply {
+			&Reply-Message += 'Rejected: Require Yubikey OTP'
+		}
+		reject
+	}
+	if (&request:Yubikey-OTP && !&control:Yubikey-Key) {
+		update reply {
+			&Reply-Message += 'Rejected: Missing Yubikey Key'
+		}
+		reject
+	}
+}
+
+### Mitigate valid token use for incorrect account
+yubikey_authorize_username {
+	if (!&control:Yubikey-Key) {
+		# Do nothing
+	} elsif (!&control:User-Name) {
+		update reply {
+			&Reply-Message += 'Missing User-Name'
+		}
+	} elsif (&control:User-Name != &request:User-Name) {
+		update reply {
+			&Reply-Message += 'Rejected: Mismatch Yubikey User-Name'
+		}
+		reject
+	}
+}
+
+### Mitigate private ID mismatch
+yubikey_authenticate_id {
+	if (!&control:Yubikey-Private-ID) {
+		update reply {
+			&Reply-Message += 'Missing Yubikey-Private-ID'
+		}
+	} elsif (&control:Yubikey-Private-ID != &request:Yubikey-Private-ID) {
+		update reply {
+			&Reply-Message += 'Rejected: Mismatch Yubikey Private ID'
+		}
+		reject
+	}
+}
+
+### Mitigate replay attack
+yubikey_authenticate_counter {
+	if (!&control:Yubikey-Counter) {
+		update reply {
+			&Reply-Message += 'Missing Yubikey-Counter'
+		}
+	} elsif (&control:Yubikey-Counter >= &request:Yubikey-Counter) {
+		update reply {
+			&Reply-Message += 'Rejected: Mismatch Yubikey Counter'
+		}
+		reject
+	}
+}
+
+### Update stored data
+yubikey.post-auth {
+	if (&control:Yubikey-Counter) {
+		update {
+			Tmp-String-0 := 'Yubikey-Counter'
+			Tmp-String-1 := "%{request:Yubikey-Counter}"
+		}
+		yubisql
+	}
+	if (&control:Yubikey-Timestamp) {
+		update {
+			Tmp-String-0 := 'Yubikey-Timestamp'
+			Tmp-String-1 := "%{request:Yubikey-Timestamp}"
+		}
+		yubisql
+	}
+}

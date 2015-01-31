@@ -22,33 +22,84 @@ yubikey {
 	#
 	#  Decrypt mode - Tokens will be decrypted and processed locally
 	#
+	#  In the authorize section, this module should be placed before the
+	#  persistent storage module.
+	#
+	#  If the account's use of the OTP is required, then the
+	#  yubikey_authorize_otpkey policy should be placed directly after the
+	#  authorize section's persistent storage module.
+	#
+	#  The authenticate section should have the following added:
+	#	 Auth-Type yubikey {
+	#	#	pap
+	#		yubikey
+	#	#	yubikey_authenticate_id
+	#	#	yubikey_authenticate_counter
+	#	 }
+	#
+	#  If two factor authentication (password concatenated with OTP) is
+	#  required, split configuration should be set to yes and the pap module
+	#  should be uncommented. Each account will need a password added (either
+	#  using attribute Cleartext-Password, SSHA-Password, etc.).
+	#
+	#  If the suggested check of the Yubikey-Private-ID for validation is
+	#  required, uncomment the yubikey_authenticate_id policy. Each account
+	#  will need the Yubikey-Private-ID attribute added.
+	#
+	#  If the suggested check of the Yubikey-Counter for replay attack is
+	#  required, uncomment the yubikey_authenticate_counter policy. Each
+	#  account will need the Yubikey-Counter attribute added.
+	#
 	#  The module itself does not provide persistent storage as this
 	#  would be duplicative of functionality already in the server.
+	#  See the post-auth section below.
 	#
-	#  Yubikey authentication needs two control attributes
+	#  Yubikey authentication requires the following control attribute
 	#  retrieved from persistent storage:
 	#    * Yubikey-Key     - The AES key used to decrypt the OTP data.
-	#                        The Yubikey-Public-Id and/or User-Name
-	#                        attributes may be used to retrieve the key.
-	#    * Yubikey-Counter - This is compared with the counter in the OTP
-	#                        data and used to prevent replay attacks.
-	#                        This attribute will also be available in
-	#                        the request list after successful
-	#                        decryption.
-	#
-	#  Yubikey-Counter isn't strictly required, but the server will
-	#  generate warnings if it's not present when yubikey.authenticate
-	#  is called.
+	#                        The value is a 16-byte binary blob.
 	#
 	#  These attributes are available after authorization:
 	#    * Yubikey-Public-ID  - The public portion of the OTP string
+	#                           The value is a id_len modhex string.
+	#
+	#  The Yubikey-Public-Id and/or User-Name attributes may be used to
+	#  retrieve  the Yubikey-Key, Yubikey-Private-ID, etc. from persistant
+	#  storage. For the sql module, modify the main queries from:
+	#	sql_user_name = "%{User-Name}"
+	#  to
+	#	sql_user_name = "%{Yubikey-Public-ID}"
+	#  or
+	#	sql_user_name = "%{%{Yubikey-Public-ID}:-%{User-Name}}"
+	#
+	#  If Yubikey-Public-ID is used for attribute retrieval and detection
+	#  of token misappropriation is required, the yubikey_authorize_username
+	#  policy should be placed directly after the authorize section's
+	#  persistent storage module. Each token will need the User-Name
+	#  attribute added.
 	#
 	#  These attributes are available after authentication (if successful):
 	#    * Yubikey-Private-ID - The encrypted ID included in OTP data,
-	#                           must be verified if tokens share keys.
+	#                           should be verified for increased security.
+	#                           The value is a 6-byte binary blob.
 	#    * Yubikey-Counter    - The last counter value (should be recorded).
+	#                           The value is a concatenation of the 16-bit
+	#                           session count & 8-bit use count which form a
+	#                           24-bit monotonically strictly increasing
+	#                           integer (until the invidual count ceilings
+	#                           are hit)
 	#    * Yubikey-Timestamp  - Token's internal clock (mainly useful for debugging).
+	#                           The value is a 24-bit increasing integer @ 8 Hz
+	#                           with rollover which is randomly initialized
+	#                           each session.
 	#    * Yubikey-Random     - Randomly generated value from the token.
+	#                           The value is a 16-bit integer.
+	#
+	#  If storage of the updated attributes in a SQL database is required,
+	#  the post-auth section should have the yubikey policy placed near the
+	#  oher persistent storage modules. The yubisql configuration at the end
+	#  of this file will also need to be uncommented appropriately and the
+	#  dialect set.
 	#
 	decrypt = no
 
@@ -152,3 +203,25 @@ yubikey {
 		}
 	}
 }
+
+#sql yubisql {
+#	#
+#	#  Settings if sql persistent storage is required.
+#	#
+#
+#	# These must match sql module configuration.
+#	dialect = "sqlite"
+#	authcheck_table = "radcheck"
+#
+#	# See the Yubikey-Public-Id notes above to match usage.
+#	sql_user_name = "%{User-Name}"
+#	sql_user_name = "%{Yubikey-Public-ID}"
+#	sql_user_name = "%{%{Yubikey-Public-ID}:-%{User-Name}}"
+#
+#	sqlite {
+#		filename = "/var/lib/radiusd/freeradius.db"
+#	}
+#
+#	driver = "rlm_sql_${dialect}"
+#	$INCLUDE ${modconfdir}/${.:name}/yubikey/${dialect}/queries.conf
+#}
