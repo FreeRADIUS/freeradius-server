@@ -206,7 +206,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 
 		len = strlen(buffer);
 		if (len >= freespace){
-			RDEBUG("rlm_sql (%s): Can't write result, insufficient string space", inst->config->xlat_name);
+			RDEBUG("rlm_sql (%s): Can't write result, insufficient string space", inst->name);
 
 			(inst->module->sql_finish_query)(handle, inst->config);
 
@@ -281,10 +281,10 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	RADCLIENT *c;
 
 	DEBUG("rlm_sql (%s): Processing generate_sql_clients",
-	      inst->config->xlat_name);
+	      inst->name);
 
 	DEBUG("rlm_sql (%s) in generate_sql_clients: query is %s",
-	      inst->config->xlat_name, inst->config->client_query);
+	      inst->name, inst->config->client_query);
 
 	handle = fr_connection_get(inst->pool);
 	if (!handle) {
@@ -310,19 +310,19 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		 *  5. Virtual Server (optional)
 		 */
 		if (!row[0]){
-			ERROR("rlm_sql (%s): No row id found on pass %d",inst->config->xlat_name,i);
+			ERROR("rlm_sql (%s): No row id found on pass %d",inst->name,i);
 			continue;
 		}
 		if (!row[1]){
-			ERROR("rlm_sql (%s): No nasname found for row %s",inst->config->xlat_name,row[0]);
+			ERROR("rlm_sql (%s): No nasname found for row %s",inst->name,row[0]);
 			continue;
 		}
 		if (!row[2]){
-			ERROR("rlm_sql (%s): No short name found for row %s",inst->config->xlat_name,row[0]);
+			ERROR("rlm_sql (%s): No short name found for row %s",inst->name,row[0]);
 			continue;
 		}
 		if (!row[4]){
-			ERROR("rlm_sql (%s): No secret found for row %s",inst->config->xlat_name,row[0]);
+			ERROR("rlm_sql (%s): No secret found for row %s",inst->name,row[0]);
 			continue;
 		}
 
@@ -331,7 +331,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		}
 
 		DEBUG("rlm_sql (%s): Adding client %s (%s) to %s clients list",
-		      inst->config->xlat_name,
+		      inst->name,
 		      row[1], row[2], server ? server : "global");
 
 		/* FIXME: We should really pass a proper ctx */
@@ -354,7 +354,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		}
 
 		DEBUG("rlm_sql (%s): Client \"%s\" (%s) added", c->longname, c->shortname,
-		      inst->config->xlat_name);
+		      inst->name);
 	}
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
@@ -819,9 +819,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->config = &inst->myconfig;
 	inst->cs = conf;
 
-	inst->config->xlat_name = cf_section_name2(conf);
-	if (!inst->config->xlat_name) {
-		inst->config->xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
 	} else {
 		char *group_name;
 		DICT_ATTR const *da;
@@ -830,14 +830,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		/*
 		 *	Allocate room for <instance>-SQL-Group
 		 */
-		group_name = talloc_typed_asprintf(inst, "%s-SQL-Group", inst->config->xlat_name);
+		group_name = talloc_typed_asprintf(inst, "%s-SQL-Group", inst->name);
 		DEBUG("rlm_sql (%s): Creating new attribute %s",
-		      inst->config->xlat_name, group_name);
+		      inst->name, group_name);
 
 		memset(&flags, 0, sizeof(flags));
 		if (dict_addattr(group_name, -1, 0, PW_TYPE_STRING, flags) < 0) {
 			ERROR("rlm_sql (%s): Failed to create "
-			       "attribute %s: %s", inst->config->xlat_name, group_name,
+			       "attribute %s: %s", inst->name, group_name,
 			       fr_strerror());
 			return -1;
 		}
@@ -845,25 +845,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		da = dict_attrbyname(group_name);
 		if (!da) {
 			ERROR("rlm_sql (%s): Failed to create "
-			       "attribute %s", inst->config->xlat_name, group_name);
+			       "attribute %s", inst->name, group_name);
 			return -1;
 		}
 
 		if (inst->config->groupmemb_query) {
 			DEBUG("rlm_sql (%s): Registering sql_groupcmp for %s",
-			      inst->config->xlat_name, group_name);
+			      inst->name, group_name);
 			paircompare_register(da, dict_attrbyvalue(PW_USER_NAME, 0),
 					     false, sql_groupcmp, inst);
 		}
 	}
 
-	rad_assert(inst->config->xlat_name);
+	rad_assert(inst->name);
 
 	/*
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->config->sql_driver_name, "rlm_sql_", 8) != 0) {
-		ERROR("rlm_sql (%s): \"%s\" is NOT an SQL driver!", inst->config->xlat_name, inst->config->sql_driver_name);
+		ERROR("rlm_sql (%s): \"%s\" is NOT an SQL driver!", inst->name, inst->config->sql_driver_name);
 		return -1;
 	}
 
@@ -877,23 +877,23 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->config->groupmemb_query) {
 		if (inst->config->authorize_group_check_query) {
 			WARN("rlm_sql (%s): Ignoring authorize_group_reply_query as group_membership_query "
-			     "is not configured", inst->config->xlat_name);
+			     "is not configured", inst->name);
 		}
 
 		if (inst->config->authorize_group_reply_query) {
 			WARN("rlm_sql (%s): Ignoring authorize_group_check_query as group_membership_query "
-			     "is not configured", inst->config->xlat_name);
+			     "is not configured", inst->name);
 		}
 	} else {
 		if (!inst->config->authorize_group_check_query) {
 			ERROR("rlm_sql (%s): authorize_group_check_query must be configured as group_membership_query "
-			      "is configured", inst->config->xlat_name);
+			      "is configured", inst->name);
 			return -1;
 		}
 
 		if (!inst->config->authorize_group_reply_query) {
 			ERROR("rlm_sql (%s): authorize_group_reply_query must be configured as group_membership_query "
-			      "is configured", inst->config->xlat_name);
+			      "is configured", inst->name);
 			return -1;
 		}
 	}
@@ -932,7 +932,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat_register(inst->config->xlat_name, sql_xlat, sql_escape_func, inst);
+	xlat_register(inst->name, sql_xlat, sql_escape_func, inst);
 
 	/*
 	 *	Load the appropriate driver for our database
@@ -984,13 +984,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked", inst->config->xlat_name,
+	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked", inst->name,
 	     inst->config->sql_driver_name, inst->module->name);
 
 	/*
 	 *	Initialise the connection pool for this instance
 	 */
-	INFO("rlm_sql (%s): Attempting to connect to database \"%s\"", inst->config->xlat_name, inst->config->sql_db);
+	INFO("rlm_sql (%s): Attempting to connect to database \"%s\"", inst->name, inst->config->sql_db);
 
 	inst->pool = fr_connection_pool_module_init(inst->cs, inst, mod_conn_create, NULL, NULL);
 	if (!inst->pool) return -1;
@@ -1076,7 +1076,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		rows = sql_getvpdata(request, inst, request, &handle, &check_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
-			REDEBUG("SQL query error getting check attributes");
+			REDEBUG("Error getting check attributes");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
 		}
