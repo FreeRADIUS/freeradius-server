@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/modcall.h>
 
 /*
  *	The instance data for rlm_always is the list of fake values we are
@@ -34,6 +35,7 @@ RCSID("$Id$")
 typedef struct rlm_always_t {
 	char const	*name;		//!< Name of this instance of the always module.
 	char const	*rcode_str;	//!< The base value.
+	char const	*rcode_old;	//!< Make changing the rcode work with %{poke:} and radmin.
 
 	rlm_rcode_t	rcode;		//!< The integer constant representing rcode_str.
 	uint32_t	simulcount;
@@ -65,8 +67,30 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		cf_log_err_cs(conf, "rcode value \"%s\" is invalid", inst->rcode_str);
 		return -1;
 	}
+	inst->rcode_old = NULL;	/* Hack - forces the compiler not to optimise away rcode_old */
 
 	return 0;
+}
+
+/** Reparse the rcode if it changed
+ *
+ * @note Look ma, no locks...
+ *
+ * @param inst Module instance.
+ */
+static void reparse_rcode(rlm_always_t *inst)
+{
+	rlm_rcode_t rcode;
+
+	rcode = fr_str2int(mod_rcode_table, inst->rcode_str, RLM_MODULE_UNKNOWN);
+	if (rcode == RLM_MODULE_UNKNOWN) {
+		WARN("rlm_always (%s): Ignoring rcode change.  rcode value \"%s\" is invalid ", inst->name,
+		     inst->rcode_str);
+		return;
+	}
+
+	inst->rcode = rcode;
+	inst->rcode_old = inst->rcode_str;
 }
 
 /*
@@ -76,6 +100,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 static rlm_rcode_t CC_HINT(nonnull) mod_always_return(void *instance, UNUSED REQUEST *request)
 {
 	rlm_always_t *inst = instance;
+
+	if (inst->rcode_old != inst->rcode_str) reparse_rcode(inst);
+
 	return inst->rcode;
 }
 
@@ -86,6 +113,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_always_return(void *instance, UNUSED REQ
 static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *request)
 {
 	struct rlm_always_t *inst = instance;
+
+	if (inst->rcode_old != inst->rcode_str) reparse_rcode(inst);
 
 	request->simul_count = inst->simulcount;
 
