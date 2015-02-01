@@ -35,10 +35,12 @@ RCSID("$Id$")
 #  include <mysql/mysql_version.h>
 #  include <mysql/errmsg.h>
 #  include <mysql/mysql.h>
+#  include <mysql/mysqld_error.h>
 #elif defined(HAVE_MYSQL_H)
 #  include <mysql_version.h>
 #  include <errmsg.h>
 #  include <mysql.h>
+#  include <mysqld_error.h>
 #endif
 
 #include "rlm_sql.h"
@@ -224,7 +226,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	if (!conn->sock) {
 		ERROR("rlm_sql_mysql: Couldn't connect socket to MySQL server %s@%s:%s", config->sql_login,
 		      config->sql_server, config->sql_db);
-		ERROR("rlm_sql_mysql: Mysql error: %s", mysql_error(&conn->db));
+		ERROR("rlm_sql_mysql: MySQL error: %s", mysql_error(&conn->db));
 
 		conn->sock = NULL;
 		return RLM_SQL_ERROR;
@@ -237,12 +239,21 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_check_error(int error)
+/** Analyse the last error that occurred on the socket, and determine an actions
+ *
+ * @param server Socket from which to extract the server error. May be NULL.
+ * @param client_errno Error from the client.
+ * @return an action for rlm_sql to take.
+ */
+static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 {
-	switch (error) {
-	case 0:
-		return RLM_SQL_OK;
+	int server_errno = 0;
+	if (server) server_errno = mysql_errno(server);
 
+	/*
+	 *	Process errors from the client
+	 */
+	if (client_errno > 0) switch (client_errno) {
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
 	case -1:
@@ -254,6 +265,52 @@ static sql_rcode_t sql_check_error(int error)
 	default:
 		return RLM_SQL_ERROR;
 	}
+
+	/*
+	 *	Process errors from the server
+	 */
+	if (server_errno > 0) switch (server_errno) {
+	/*
+	 *	Constraints errors that signify a duplicate, or that we might
+	 *	want to try an alternative query.
+	 *
+	 *	Errors not found in the 3.23/4.0/4.1 manual page checked for.
+	 *	Other error constants should always be available.
+	 */
+
+	case ER_DUP_UNIQUE:			/* Can't write, because of unique constraint, to table '%s'. */
+	case ER_DUP_KEY:			/* Can't write; duplicate key in table '%s' */
+
+	case ER_DUP_ENTRY:			/* Duplicate entry '%s' for key %d. */
+	case ER_NO_REFERENCED_ROW:		/* Cannot add or update a child row: a foreign key constraint fails */
+	case ER_ROW_IS_REFERENCED:		/* Cannot delete or update a parent row: a foreign key constraint fails */
+#ifdef ER_FOREIGN_DUPLICATE_KEY
+	case ER_FOREIGN_DUPLICATE_KEY: 		/* Upholding foreign key constraints for table '%s', entry '%s', key %d would lead to a duplicate entry. */
+#endif
+#ifdef ER_DUP_ENTRY_WITH_KEY_NAME
+	case ER_DUP_ENTRY_WITH_KEY_NAME:	/* Duplicate entry '%s' for key '%s' */
+#endif
+#ifdef ER_NO_REFERENCED_ROW_2
+	case ER_NO_REFERENCED_ROW_2:
+#endif
+#ifdef ER_ROW_IS_REFERENCED_2
+	case ER_ROW_IS_REFERENCED_2:
+#endif
+		return RLM_SQL_ALT_QUERY;
+
+	/*
+	 *	Constraints errors that signify an invalid query
+	 *	that can never succeed.
+	 */
+	case ER_BAD_NULL_ERROR:			/* Column '%s' cannot be null */
+	case ER_NON_UNIQ_ERROR:			/* Column '%s' in %s is ambiguous */
+		return RLM_SQL_QUERY_INVALID;
+
+	default:
+		break;
+	}
+
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
@@ -268,7 +325,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	}
 
 	mysql_query(conn->sock, query);
-	rcode = sql_check_error(mysql_errno(conn->sock));
+	rcode = sql_check_error(conn->sock, 0);
 	if (rcode != RLM_SQL_OK) {
 		return rcode;
 	}
@@ -293,14 +350,14 @@ static sql_rcode_t sql_store_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 
 retry_store_result:
 	if (!(conn->result = mysql_store_result(conn->sock))) {
-		rcode = sql_check_error(mysql_errno(conn->sock));
+		rcode = sql_check_error(conn->sock, 0);
 		if (rcode != RLM_SQL_OK) return rcode;
 #if (MYSQL_VERSION_ID >= 40100)
 		ret = mysql_next_result(conn->sock);
 		if (ret == 0) {
 			/* there are more results */
 			goto retry_store_result;
-		} else if (ret > 0) return sql_check_error(ret);
+		} else if (ret > 0) return sql_check_error(NULL, ret);
 #endif
 	}
 	return RLM_SQL_OK;
@@ -371,7 +428,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 retry_fetch_row:
 	*out = handle->row = mysql_fetch_row(conn->result);
 	if (!handle->row) {
-		rcode = sql_check_error(mysql_errno(conn->sock));
+		rcode = sql_check_error(conn->sock, 0);
 		if (rcode != RLM_SQL_OK) return rcode;
 
 #if (MYSQL_VERSION_ID >= 40100)
@@ -383,7 +440,7 @@ retry_fetch_row:
 			if ((sql_store_result(handle, config) == 0) && (conn->result != NULL)) {
 				goto retry_fetch_row;
 			}
-		} else if (ret > 0) return sql_check_error(ret);
+		} else if (ret > 0) return sql_check_error(NULL, ret);
 #endif
 	}
 	return RLM_SQL_OK;
@@ -506,13 +563,16 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	/*
 	 *	Grab the error now in case it gets cleared on the next operation.
 	 */
-	if (error && (error[0] != '\0')) error = talloc_asprintf(ctx, "%s (%u)", error, mysql_errno(conn->sock));
+	if (error && (error[0] != '\0')) {
+		error = talloc_asprintf(ctx, "ERROR %u (%s): %s", mysql_errno(conn->sock), error,
+					mysql_sqlstate(conn->sock));
+	}
 
 	/*
 	 *	Don't attempt to get errors from the server, if the last error
 	 *	was that the server was unavailable.
 	 */
-	if ((outlen > 1) && (sql_check_error(mysql_errno(conn->sock)) != RLM_SQL_RECONNECT)) {
+	if ((outlen > 1) && (sql_check_error(conn->sock, 0) != RLM_SQL_RECONNECT)) {
 		size_t ret;
 
 		ret = sql_warnings(ctx, out, outlen - 1, handle, config);
@@ -555,7 +615,7 @@ skip_next_result:
 	if (ret == 0) {
 		/* there are more results */
 		goto skip_next_result;
-	}  else if (ret > 0) return sql_check_error(ret);
+	}  else if (ret > 0) return sql_check_error(NULL, ret);
 #endif
 	return RLM_SQL_OK;
 }
@@ -572,7 +632,7 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_con
 	if (ret == 0) {
 		/* there are more results */
 		sql_finish_query(handle, config);
-	}  else if (ret > 0) return sql_check_error(ret);
+	}  else if (ret > 0) return sql_check_error(NULL, ret);
 #endif
 	return RLM_SQL_OK;
 }
@@ -589,6 +649,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 extern rlm_sql_module_t rlm_sql_mysql;
 rlm_sql_module_t rlm_sql_mysql = {
 	.name				= "rlm_sql_mysql",
+	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.mod_instantiate		= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,

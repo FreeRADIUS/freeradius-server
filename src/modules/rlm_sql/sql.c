@@ -312,7 +312,7 @@ void rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *ha
  * @param inst rlm_sql instance data.
  * @param query to execute. Should not be zero length.
  * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL),
- * RLM_SQL_QUERY_ERROR/RLM_SQL_ERROR on invalid query or connection error, RLM_SQL_DUPLICATE on constraints
+ * RLM_SQL_QUERY_INVALID/RLM_SQL_ERROR on invalid query or connection error, RLM_SQL_ALT_QUERY on constraints
  * violation.
  */
 sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
@@ -323,7 +323,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') {
 		if (request) REDEBUG("Zero length query");
-		return RLM_SQL_QUERY_ERROR;
+		return RLM_SQL_QUERY_INVALID;
 	}
 
 	/* There's no handle, we need a new one */
@@ -357,12 +357,33 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
 			/* Reconnection succeeded, try again with the new handle */
 			continue;
 
-		case RLM_SQL_QUERY_ERROR:
-		case RLM_SQL_ERROR:
+		/*
+		 *	These are bad and should make rlm_sql return invalid
+		 */
+		case RLM_SQL_QUERY_INVALID:
 			rlm_sql_print_error(inst, request, *handle, false);
 			break;
 
-		case RLM_SQL_DUPLICATE:
+		/*
+		 *	Server or client errors.
+		 *
+		 *	If the driver claims to be able to distinguish between
+		 *	duplicate row errors and other errors, and we hit a
+		 *	general error treat it as a failure.
+		 *
+		 *	Otherwise rewrite it to RLM_SQL_ALT_QUERY.
+		 */
+		case RLM_SQL_ERROR:
+			if (inst->module->flags & RLM_SQL_RCODE_FLAGS_ALT_QUERY) {
+				rlm_sql_print_error(inst, request, *handle, false);
+				break;
+			}
+			ret = RLM_SQL_ALT_QUERY;
+
+		/*
+		 *	Driver suggested using an alternative query
+		 */
+		case RLM_SQL_ALT_QUERY:
 			rlm_sql_print_error(inst, request, *handle, true);
 			break;
 
@@ -384,7 +405,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
  *	  previous reconnection attempt has failed.
  * @param query to execute. Should not be zero length.
  * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL),
- *         RLM_SQL_QUERY_ERROR/RLM_SQL_ERROR on invalid query or connection error.
+ *         RLM_SQL_QUERY_INVALID/RLM_SQL_ERROR on invalid query or connection error.
  */
 sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle,  char const *query)
 {
@@ -395,7 +416,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_hand
 	if (query[0] == '\0') {
 		if (request) REDEBUG("Zero length query");
 
-		return RLM_SQL_QUERY_ERROR;
+		return RLM_SQL_QUERY_INVALID;
 	}
 
 	/*
@@ -425,7 +446,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_hand
 			/* Reconnection succeeded, try again with the new handle */
 			continue;
 
-		case RLM_SQL_QUERY_ERROR:
+		case RLM_SQL_QUERY_INVALID:
 		case RLM_SQL_ERROR:
 		default:
 			rlm_sql_print_error(inst, request, *handle, false);
