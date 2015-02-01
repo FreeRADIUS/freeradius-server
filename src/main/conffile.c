@@ -503,9 +503,12 @@ void cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs)
 	cf_item_add(parent, &(cs->item));
 }
 
-/*
- *	Replace pair in a given section with a new pair,
- *	of the given value.
+/** Replace pair in a given section with a new pair, of the given value.
+ *
+ * @param cs to replace pair in.
+ * @param cp to replace.
+ * @param new value of cp.
+ * @return 0 on success, -1 on failure.
  */
 int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 {
