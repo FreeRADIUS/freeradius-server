@@ -113,7 +113,7 @@ MODULE_TESTS		:= $(patsubst src/tests/modules/%/all.mk,%,$(wildcard src/tests/mo
 #
 define MODULE_COPY_FILE
 $(BUILD_DIR)/${1}: src/${1}
-	@mkdir -p $$@
+	@mkdir -p $$(@D)
 	@cp $$< $$@
 
 endef
@@ -123,7 +123,7 @@ endef
 #
 define MODULE_COPY_ATTR
 $(BUILD_DIR)/${1}: src/tests/modules/default-input.attrs
-	@mkdir -p $$@
+	mkdir -p $$(@D)
 	@cp $$< $$@
 endef
 
@@ -132,7 +132,7 @@ endef
 #
 define MODULE_COPY_CONF
 $(BUILD_DIR)/${1}: src/tests/modules/${2}/module.conf
-	@mkdir -p $$@
+	@mkdir -p $$(@D)
 	@cp $$< $$@
 endef
 
