@@ -423,12 +423,15 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 	char *buffer;
 	CONF_SECTION *modules;
 	CONF_PAIR *cp;
-	CONF_SECTION *cs;
 	CONF_PARSER const *variables;
+	size_t len;
 
+	rad_assert(outlen > 1);
 	rad_assert(request != NULL);
 	rad_assert(fmt != NULL);
 	rad_assert(out != NULL);
+
+	*out = '\0';
 
 	if (outlen < 1) return 0;
 
@@ -470,12 +473,18 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 		goto fail;
 	}
 
+	/*
+	 *	Copy the old value to the output buffer, that way
+	 *	tests can restore it later, if they need to.
+	 */
+	len = strlcpy(out, cf_pair_value(cp), outlen);
+	if (len >= outlen) out = (outlen - 1);
+
 	if (cf_pair_replace(mi->cs, cp, q) < 0) {
 		RDEBUG("Failed replacing pair");
 		goto fail;
 	}
 
-	cs = mi->cs;
 	base = mi->insthandle;
 	variables = mi->entry->module->config;
 
@@ -485,9 +494,8 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 	for (i = 0; variables[i].name != NULL; i++) {
 		int ret;
 
-		if (variables[i].type == PW_TYPE_SUBSECTION) {
-			continue;
-		} /* else it's a CONF_PAIR */
+		if (variables[i].type == PW_TYPE_SUBSECTION) continue;
+		/* else it's a CONF_PAIR */
 
 		/*
 		 *	Not the pair we want.  Skip it.
@@ -506,18 +514,17 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		ret = cf_item_parse(cs, variables[i].name, variables[i].type, data, variables[i].dflt);
+		ret = cf_item_parse(mi->cs, variables[i].name, variables[i].type, data, variables[i].dflt);
 		if (ret < 0) {
+			DEBUG2("Failed inserting new value into module instance data");
 			goto fail;
 		}
-
 		break;		/* we found it, don't do any more */
 	}
 
 	talloc_free(buffer);
 
-	*out = '\0';
-	return 0;
+	return len;
 }
 
 
