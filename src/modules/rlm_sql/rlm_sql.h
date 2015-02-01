@@ -42,11 +42,11 @@ RCSIDH(rlm_sql_h, "$Id$")
 
 /* SQL Errors */
 typedef enum {
-	RLM_SQL_QUERY_ERROR = -3,	//!< Query syntax error
+	RLM_SQL_QUERY_INVALID = -3,	//!< Query syntax error
 	RLM_SQL_ERROR = -2,		//!< General connection/server error
 	RLM_SQL_OK = 0,			//!< Success
 	RLM_SQL_RECONNECT = 1,		//!< Stale connection, should reconnect
-	RLM_SQL_DUPLICATE = 2		//!< Key constraint violation
+	RLM_SQL_ALT_QUERY = 2		//!< Key constraint violation
 } sql_rcode_t;
 
 typedef enum {
@@ -158,8 +158,15 @@ typedef struct rlm_sql_handle {
 								//!< when log strings need to be copied.
 } rlm_sql_handle_t;
 
+/*
+ *	Capabilities flags for drivers
+ */
+#define RLM_SQL_RCODE_FLAGS_ALT_QUERY	1			//!< Can distinguish between other errors and those
+								//!< resulting from a unique key violation.
+
 typedef struct rlm_sql_module_t {
-	char const *name;
+	char const	*name;
+	int		flags;
 
 	sql_rcode_t (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);

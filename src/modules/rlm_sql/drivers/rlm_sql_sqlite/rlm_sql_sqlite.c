@@ -67,7 +67,12 @@ static const CONF_PARSER driver_config[] = {
 static sql_rcode_t sql_check_error(sqlite3 *db)
 {
 	int error = sqlite3_errcode(db);
-	switch (error) {
+
+	/*
+	 *	Lowest byte is error category, other byte may contain
+	 *	the extended error, depending on version.
+	 */
+	switch (error & 0xff) {
 	/*
 	 *	Not errors
 	 */
@@ -80,9 +85,14 @@ static sql_rcode_t sql_check_error(sqlite3 *db)
 	 */
 	case SQLITE_ERROR:	/* SQL error or missing database */
 	case SQLITE_FULL:
-	case SQLITE_CONSTRAINT:
 	case SQLITE_MISMATCH:
 		return RLM_SQL_ERROR;
+
+	/*
+	 *	Constraints violations
+	 */
+	case SQLITE_CONSTRAINT:
+		return RLM_SQL_ALT_QUERY;
 
 	/*
 	 *	Errors with the handle, that probably require reinitialisation
@@ -652,6 +662,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 extern rlm_sql_module_t rlm_sql_sqlite;
 rlm_sql_module_t rlm_sql_sqlite = {
 	.name				= "rlm_sql_sqlite",
+	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,
 	.mod_instantiate		= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
@@ -662,7 +673,7 @@ rlm_sql_module_t rlm_sql_sqlite = {
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
-	.sql_error		= sql_error,
+	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
 	.sql_finish_select_query	= sql_finish_query
 };

@@ -192,7 +192,7 @@ static sql_rcode_t sql_classify_error(PGresult const *result)
 
 	/* UNIQUE VIOLATION */
 	if (strcmp("23505", errorcode) == 0) {
-		return RLM_SQL_DUPLICATE;
+		return RLM_SQL_ALT_QUERY;
 	}
 
 	/* others */
@@ -333,7 +333,7 @@ static CC_HINT(nonnull) sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED r
 	 */
 	case PGRES_EMPTY_QUERY:
 		ERROR("rlm_sql_postgresql: Empty query");
-		return RLM_SQL_QUERY_ERROR;
+		return RLM_SQL_QUERY_INVALID;
 
 	/*
 	 *  The server's response was not understood.
@@ -458,6 +458,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 extern rlm_sql_module_t rlm_sql_postgresql;
 rlm_sql_module_t rlm_sql_postgresql = {
 	.name				= "rlm_sql_postgresql",
+//	.flags				= RLM_SQL_RCODE_FLAGS_ALT_QUERY,	/* Needs more testing */
 	.mod_instantiate		= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,

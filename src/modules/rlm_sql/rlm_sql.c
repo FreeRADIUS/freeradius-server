@@ -1368,39 +1368,58 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 		rlm_sql_query_log(inst, request, section, expanded);
 
+		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
+		TALLOC_FREE(expanded);
+
+		switch (sql_ret) {
 		/*
-		 *  If rlm_sql_query cannot use the socket it'll try and
-		 *  reconnect. Reconnecting will automatically release
-		 *  the current socket, and try to select a new one.
-		 *
+		 *  Query was a success! Now we just need to check if it did anything.
+		 */
+		case RLM_SQL_OK:
+			break;
+
+		/*
+		 *  A general, unrecoverable server fault.
+		 */
+		case RLM_SQL_ERROR:
+		/*
 		 *  If we get RLM_SQL_RECONNECT it means all connections in the pool
 		 *  were exhausted, and we couldn't create a new connection,
 		 *  so we do not need to call fr_connection_release.
 		 */
-		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
-		TALLOC_FREE(expanded);
-		if (sql_ret == RLM_SQL_RECONNECT) {
-			rcode = RLM_MODULE_FAIL;
+		case RLM_SQL_RECONNECT:
 			goto finish;
+
+		/*
+		 *  Query was invalid, this is a terminal error, but we still need
+		 *  to do cleanup, as the connection handle is still valid.
+		 */
+		case RLM_SQL_QUERY_INVALID:
+			rcode = RLM_MODULE_INVALID;
+			(inst->module->sql_finish_query)(handle, inst->config);
+			goto finish;
+
+		/*
+		 *  Driver found an error (like a unique key constraint violation)
+		 *  that hinted it might be a good idea to try an alternative query.
+		 */
+		case RLM_SQL_ALT_QUERY:
+			goto next;
 		}
 		rad_assert(handle);
 
 		/*
 		 *  Assume all other errors are incidental, and just meant our
 		 *  operation failed and its not a client or SQL syntax error.
-		 *
-		 *  @fixme We should actually be able to distinguish between key
-		 *  constraint violations (which we expect) and other errors.
 		 */
 		if (sql_ret == RLM_SQL_OK) {
 			numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
-			if (numaffected > 0) {
-				break;	/* A query succeeded, were done! */
-			}
+			if (numaffected > 0) break;	/* A query succeeded, were done! */
 
 			RDEBUG("No records updated");
 		}
 
+	next:
 		(inst->module->sql_finish_query)(handle, inst->config);
 
 		/*
@@ -1418,7 +1437,6 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 		RDEBUG("Trying next query...");
 	}
-
 	(inst->module->sql_finish_query)(handle, inst->config);
 
 finish:
