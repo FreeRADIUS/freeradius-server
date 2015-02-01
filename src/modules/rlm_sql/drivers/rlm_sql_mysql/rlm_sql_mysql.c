@@ -433,7 +433,10 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
 	 *	Check to see if any warnings can be retrieved from the server.
 	 */
 	msgs = mysql_warning_count(conn->sock);
-	if (msgs == 0) return 0;
+	if (msgs == 0) {
+		DEBUG3("rlm_sql_mysql: No additional diagnostic info on server");
+		return 0;
+	}
 
 	/*
 	 *	Retrieve any warnings associated with the previous query
@@ -448,7 +451,7 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
 	 */
 	num_fields = mysql_field_count(conn->sock);
 	if (num_fields < 3) {
-		WARN("Failed retrieving warnings, expected 3 fields got %u", num_fields);
+		WARN("rlm_sql_mysql: Failed retrieving warnings, expected 3 fields got %u", num_fields);
 		mysql_free_result(result);
 
 		return -1;
@@ -514,7 +517,6 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 
 		ret = sql_warnings(ctx, out, outlen - 1, handle, config);
 		if (ret > 0) i += ret;
-		else DEBUG3("rlm_sql_mysql: No additional diagnostic info on server");
 	}
 
 	if (error) {
