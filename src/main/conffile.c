@@ -507,7 +507,7 @@ void cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs)
  *
  * @param cs to replace pair in.
  * @param cp to replace.
- * @param new value of cp.
+ * @param value New value to assign to cp.
  * @return 0 on success, -1 on failure.
  */
 int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
