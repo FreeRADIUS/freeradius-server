@@ -454,7 +454,7 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 		goto fail;
 	}
 
-	if (!cf_pair_replace(mi->cs, cp, q)) {
+	if (cf_pair_replace(mi->cs, cp, q) < 0) {
 		RDEBUG("Failed replacing pair");
 		goto fail;
 	}
