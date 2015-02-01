@@ -288,13 +288,13 @@ for i in $test_files; do
     fi
 
     # Else add it to the master test file
-    cat "$i" >> "$packets"
+    printf '%s\n' "$(cat "$i")" >> "$packets"
 
     # Add the name of the file so it appears in radclient debug output
     # and can later be specified with -v -- <test> to drill down.
     echo "Radclient-Test-Name := \""$(echo "$i" | sed -e "s@${test_path}/\?@@")"\"" >> "$packets"
     echo >> "$packets"
-    cat "${i}_expected" >> "$filters"
+    printf '%s\n' "$(cat "${i}_expected")" >> "$filters"
     echo >> "$filters"
 done
 
