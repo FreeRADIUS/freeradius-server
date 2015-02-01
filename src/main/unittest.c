@@ -564,7 +564,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 				continue;
 			}
 
-			if (input[slen + 5] != '\0') {	
+			if (input[slen + 5] != '\0') {
 				talloc_free(fmt);
 				snprintf(output, sizeof(output), "ERROR offset %d 'Too much text' ::%s::", (int) slen, input + slen + 5);
 				continue;
@@ -921,6 +921,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -D dict_dir   Dictionary files are in \"dict_dir/*\".\n");
 	fprintf(output, "  -f file       Filter reply against attributes in 'file'.\n");
 	fprintf(output, "  -h            Print this help message.\n");
+	fprintf(output, "  -i file       File containing request attributes.\n");
 	fprintf(output, "  -m            On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
 	fprintf(output, "  -n name       Read raddb/name.conf instead of raddb/radiusd.conf.\n");
 	fprintf(output, "  -X            Turn on full debugging.\n");
