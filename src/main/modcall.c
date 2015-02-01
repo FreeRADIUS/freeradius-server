@@ -646,8 +646,7 @@ redo:
 		if (!strchr(c->name, '%')) {
 			VALUE_PAIR *vp = NULL;
 
-			radius_get_vp(request, c->name, &vp);
-			if (vp) {
+			if (radius_get_vp(request, c->name, &vp) && vp) {
 				vp_prints_value(buffer,
 						sizeof(buffer),
 						vp, 0);
@@ -688,7 +687,7 @@ redo:
 
 	if ((c->type == MOD_LOAD_BALANCE) ||
 	    (c->type == MOD_REDUNDANT_LOAD_BALANCE)) {
-		int count;
+		int count = 0;
 		modcallable *this, *found;
 		modgroup *g;
 

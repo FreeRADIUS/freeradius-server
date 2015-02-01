@@ -831,6 +831,12 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 		return -1;
 	}
 
+	if (thread_pool.start_threads > thread_pool.max_threads) {
+		radlog(L_ERR, "FATAL: start_servers (%i) must be <= max_servers (%i)",
+		       thread_pool.start_threads, thread_pool.max_threads);
+		return -1;
+	}
+
 	/*
 	 *	The pool has already been initialized.  Don't spawn
 	 *	new threads, and don't forget about forked children,

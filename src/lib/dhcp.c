@@ -141,7 +141,7 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 	int overload = 0;
 	int field = DHCP_OPTION_FIELD;
 	size_t where, size;
-	uint8_t *data = packet->options;
+	uint8_t *data;
 
 	where = 0;
 	size = packet_size - offsetof(dhcp_packet_t, options);
@@ -1530,8 +1530,8 @@ int fr_dhcp_add_arp_entry(int fd, const char *interface,
 	}
 
 	if (macaddr->length > sizeof (req.arp_ha.sa_data)) {
-		fr_strerror_printf("ERROR: DHCP only supports up to %d octets for "
-				   "Client Hardware Address (got %d octets)\n",
+		fr_strerror_printf("ERROR: DHCP only supports up to %zu octets for "
+				   "Client Hardware Address (got %zu octets)\n",
 				   sizeof(req.arp_ha.sa_data),
 				   macaddr->length);
 		return -1;
