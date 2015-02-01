@@ -307,10 +307,10 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 			s[1] = '\0';
 		}
 		
+		len = strlen(buffer);
+
 		if (len < sizeof(buffer)) {
-			strncat(buffer, fr_int2str(levels, (lvl & ~L_CONS), ": "),
-				sizeof(buffer) - len - 1);
-			len = strlen(buffer);
+			len += strlcpy(buffer + len, fr_int2str(levels, (lvl & ~L_CONS), ": "), sizeof(buffer) - len);
 		}
 	}
 	
