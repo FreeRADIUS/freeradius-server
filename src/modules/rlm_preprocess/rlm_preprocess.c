@@ -703,11 +703,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *r
 		vp->vp_date = request->packet->timestamp.tv_sec;
 
 		delay = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
-		if (delay && ((delay->vp_integer >= vp->vp_date) || (delay->vp_integer == UINT32_MAX))) {
-			RWARN("Ignoring invalid Acct-Delay-time of %u seconds", delay->vp_integer);
-		}
-		else {
-			vp->vp_date -= delay->vp_integer;
+		if (delay) {
+			if ((delay->vp_integer >= vp->vp_date) || (delay->vp_integer == UINT32_MAX)) {
+				RWARN("Ignoring invalid Acct-Delay-time of %u seconds", delay->vp_integer);
+			} else {
+				vp->vp_date -= delay->vp_integer;
+			}
 		}
 	}
 
