@@ -462,7 +462,6 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 	 *	tests can restore it later, if they need to.
 	 */
 	len = strlcpy(out, cf_pair_value(cp), outlen);
-	if (len >= outlen) out = (outlen - 1);
 
 	if (cf_pair_replace(mi->cs, cp, q) < 0) {
 		RDEBUG("Failed replacing pair");
