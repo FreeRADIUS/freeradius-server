@@ -880,17 +880,16 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 		goto error;
 	}
 
-	if (pool->max > 1024) pool->max = 1024;
-	if (pool->start > pool->max) pool->start = pool->max;
-	if (pool->spare > (pool->max - pool->min)) {
-		pool->spare = pool->max - pool->min;
-	}
-	if ((pool->lifetime > 0) && (pool->idle_timeout > pool->lifetime)) {
-		pool->idle_timeout = 0;
+	FR_INTEGER_BOUND_CHECK("max", pool->max, <=, 1024);
+	FR_INTEGER_BOUND_CHECK("start", pool->start, <=, pool->max);
+	FR_INTEGER_BOUND_CHECK("spare", pool->spare, <=, (pool->max - pool->min));
+
+	if (pool->lifetime > 0) {
+		FR_INTEGER_COND_CHECK("idle_timeout", pool->idle_timeout, (pool->idle_timeout <= pool->lifetime), 0);
 	}
 
-	if ((pool->idle_timeout > 0) && (pool->cleanup_interval > pool->idle_timeout)) {
-		pool->cleanup_interval = pool->idle_timeout;
+	if (pool->idle_timeout > 0) {
+		FR_INTEGER_BOUND_CHECK("cleanup_interval", pool->cleanup_interval, <=, pool->idle_timeout);
 	}
 
 	/*
