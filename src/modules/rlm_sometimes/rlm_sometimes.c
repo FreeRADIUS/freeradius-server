@@ -173,7 +173,7 @@ extern module_t rlm_sometimes;
 module_t rlm_sometimes = {
 	RLM_MODULE_INIT,
 	"sometimes",
-	RLM_TYPE_HUP_SAFE,   	/* type */
+	RLM_TYPE_HUP_SAFE,   	/* needed for radmin */
 	sizeof(rlm_sometimes_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
