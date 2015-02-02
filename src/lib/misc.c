@@ -452,6 +452,13 @@ int fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr)
 }
 
 /*
+ *	cppcheck apparently can't pick this up from the system headers.
+ */
+#ifdef CPPCHECK
+#define F_WRLCK
+#endif
+
+/*
  *	Internal wrapper for locking, to minimize the number of ifdef's
  *
  *	Use fcntl or error
