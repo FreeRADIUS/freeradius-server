@@ -301,10 +301,11 @@ static void fr_connection_exec_trigger(fr_connection_pool_t *pool,
 static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 					    time_t now, bool in_use)
 {
-	TALLOC_CTX *ctx;
+	uint64_t	number;
+	TALLOC_CTX	*ctx;
 
-	fr_connection_t *this;
-	void *conn;
+	fr_connection_t	*this;
+	void		*conn;
 
 	rad_assert(pool != NULL);
 
@@ -363,6 +364,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	}
 
 	pool->pending++;
+	number = pool->count++;
 
 	/*
 	 *	Unlock the mutex while we try to open a new
@@ -373,7 +375,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	 */
 	pthread_mutex_unlock(&pool->mutex);
 
-	INFO("%s: Opening additional connection (%" PRIu64 ")", pool->log_prefix, pool->count);
+	INFO("%s: Opening additional connection (%" PRIu64 ").  %u of %u connection pending slots used",
+	     pool->log_prefix, number, pool->pending, pool->max_pending);
 
 	/*
 	 *	Allocate a new top level ctx for the create callback
@@ -390,7 +393,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	 */
 	conn = pool->create(ctx, pool->opaque);
 	if (!conn) {
-		ERROR("%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, pool->count);
+		ERROR("%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, number);
 
 		pool->last_failed = now;
 		pthread_mutex_lock(&pool->mutex);
@@ -417,8 +420,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	this->created = now;
 	this->connection = conn;
 	this->in_use = in_use;
-
-	this->number = pool->count++;
+	this->number = number;
 	this->last_used = now;
 	fr_connection_link_head(pool, this);
 	pool->num++;
@@ -868,7 +870,8 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 
 	if ((pool->lifetime > 0) &&
 	    ((this->created + pool->lifetime) < now)) {
-		DEBUG("%s: Closing expired connection (%" PRIu64 ")", pool->log_prefix, this->number);
+		DEBUG("%s: Closing expired connection (%" PRIu64 "): Hit lifetime limit",
+		      pool->log_prefix, this->number);
 		goto do_delete;
 	}
 
