@@ -150,11 +150,12 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *i
  */
 static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, char *out, size_t freespace)
 {
-	rlm_sql_handle_t *handle = NULL;
-	rlm_sql_row_t row;
-	rlm_sql_t *inst = instance;
-	ssize_t ret = 0;
-	size_t len = 0;
+	rlm_sql_handle_t	*handle = NULL;
+	rlm_sql_row_t		row;
+	rlm_sql_t		*inst = instance;
+	sql_rcode_t		rcode;
+	ssize_t			ret = 0;
+	size_t			len = 0;
 
 	/*
 	 *	Add SQL-User-Name attribute just in case it is needed
@@ -163,10 +164,8 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	 */
 	sql_set_user(inst, request, NULL);
 
-	handle = fr_connection_get(inst->pool);
-	if (!handle) {
-		return 0;
-	}
+	handle = fr_connection_get(inst->pool);	/* connection pool should produce error */
+	if (!handle) return 0;
 
 	rlm_sql_query_log(inst, request, NULL, query);
 
@@ -180,8 +179,10 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		int numaffected;
 		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
 
-		if (rlm_sql_query(inst, request, &handle, query) != RLM_SQL_OK) {
-			RERROR("SQL query failed");
+		rcode = rlm_sql_query(inst, request, &handle, query);
+		if (rcode != RLM_SQL_OK) {
+		query_error:
+			RERROR("SQL query failed: %s", fr_int2str(sql_rcode_table, rcode, "<INVALID>"));
 
 			ret = -1;
 			goto finish;
@@ -222,19 +223,13 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		goto finish;
 	} /* else it's a SELECT statement */
 
-	if (rlm_sql_select_query(inst, request, &handle, query) != RLM_SQL_OK) {
-		ret = -1;  /* error handled by rlm_sql_select_query */
+	rcode = rlm_sql_select_query(inst, request, &handle, query);
+	if (rcode != RLM_SQL_OK) goto query_error;
 
-		goto finish;
-	}
-
-	ret = rlm_sql_fetch_row(&row, inst, request, &handle);
-	if (ret) {
-		REDEBUG("SQL query failed");
+	rcode = rlm_sql_fetch_row(&row, inst, request, &handle);
+	if (rcode) {
 		(inst->module->sql_finish_select_query)(handle, inst->config);
-		ret = -1;
-
-		goto finish;
+		goto query_error;
 	}
 
 	if (!row) {
@@ -287,9 +282,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	      inst->name, inst->config->client_query);
 
 	handle = fr_connection_get(inst->pool);
-	if (!handle) {
-		return -1;
-	}
+	if (!handle) return -1;
 
 	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) return -1;
 
@@ -1479,8 +1472,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		return RLM_MODULE_INVALID;
 	}
 
-
-	if(sql_set_user(inst, request, NULL) < 0) {
+	if (sql_set_user(inst, request, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 

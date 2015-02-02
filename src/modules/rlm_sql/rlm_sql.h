@@ -158,6 +158,7 @@ typedef struct rlm_sql_handle {
 								//!< when log strings need to be copied.
 } rlm_sql_handle_t;
 
+extern const FR_NAME_NUMBER sql_rcode_table[];
 /*
  *	Capabilities flags for drivers
  */
