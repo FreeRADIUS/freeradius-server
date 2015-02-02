@@ -33,6 +33,18 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	* Added %{lpad:&Attribute-Name 7 x} and rpad.  These produce
 	  fixed-width output strings, with padding to the left (lpad)
 	  or the right (rpad).
+	* For some SQL drivers (MySQL, sqlite) distinguish between
+	  constraints violations (on insert), invalid queries, and
+	  server errors, and return noop, invalid, and error respectively.
+	* Call SHOW WARNINGS in the MySQL driver and write them to
+	  the request log, if libmysqlclient indicates warnings are
+	  available on the server.
+	* Provide mechanism to create non-standard VSAs.
+	* Make dhcpclient work with raw sockets and various other
+	  improvements - Contributed by nchaigne
+	* Add support for SSHA2 - Contributed by PDD.
+	* Add perle dictionary - Contributed by Hachmer
+	* Modernise init scripts for RHEL, SUSE and Debian.
 
 	Bug fixes
 	* Fix issues parsing LDAP hostnames with non-standard ports.
@@ -46,13 +58,39 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	* When rlm_ldap rebinds a connection, it should use bind
 	  credentials from the module that created the connection
 	  pool, not credentials from the module referencing it.
-	* empty server config pairs should be allowed in rlm_ldap
+	* Empty server config pairs should be allowed in rlm_ldap
 	  instances that reference another module's connection pool.
 	* Don't try and change the permissions of unix sockets used
 	  for the control socket on non-linux systems. Instead
 	  inform the user that permissions need to be changed on
 	  parent directory. Unix socket permissions are a Linux
 	  extension.
+	* Mark rlm_always as huppable, so its rcode can be changed
+	  via radmin (allows policy toggles).
+	* Emit warnings when ignoring user configured pool values.
+	* Fix issue that would cause radclient to complain
+	  intermittently about differing numbers of filters and
+	  requests.
+	* Fix cosmetic issues in connection pool logging, that made
+	  it appear as if the same connection was being opened
+	  multiple times.
+	* Fix threadsafety issues in SQL drivers, where a static
+	  buffer was used to store error messages.
+	* Log RERROR, RWARN, RINFO to the global log if request
+	  logging is not enabled.
+	* Link to libldap instead of libldap_r. Linking to libldap_r
+	  is not supported for use by projects outside of OpenLDAP.
+	* Set connection timeout correctly in rlm_sql_mysql.
+	* Build with older versions of libcurl, and use CFLAGS from
+	  curl-config.
+	* Honour Packet-Src-Port and Packet-Src-IP-address in radclient.
+	* Initialise ldapai_info_version field, so libldap will report
+	  its vendor and version.
+	* Fix log rotation scripts by using the copyrotate option.
+	* Fix issue that caused opening control sockets to always
+	  fail on non-Linux systems, if a user or group was set.
+	* Save Session-State after proxying.
+	* Additional fixes for reading CoA/DM requests from flat files.
 
 FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
