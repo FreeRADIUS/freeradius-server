@@ -615,7 +615,7 @@ top_makedir := $(dir $(lastword ${MAKEFILE_LIST}))
 -include ${top_makedir}/libtool.mk
 
 ifneq "${CPPCHECK}" ""
-CHECKFLAGS := $(filter -isystem%,$(CPPFLAGS) $(CFLAGS)) $(filter -I%,$(CPPFLAGS) $(CFLAGS)) $(filter -D%,$(CPPFLAGS) $(CFLAGS))
+CHECKFLAGS := -DCPPCHECK $(filter -isystem%,$(CPPFLAGS) $(CFLAGS)) $(filter -I%,$(CPPFLAGS) $(CFLAGS)) $(filter -D%,$(CPPFLAGS) $(CFLAGS))
 endif
 
 # Include the main user-supplied submakefile. This also recursively includes
