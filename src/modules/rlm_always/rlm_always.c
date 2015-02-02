@@ -128,7 +128,7 @@ extern module_t rlm_always;
 module_t rlm_always = {
 	RLM_MODULE_INIT,
 	"always",
-	0,   	/* type */
+	RLM_TYPE_HUP_SAFE,	   	/* needed for radmin */
 	sizeof(rlm_always_t),		/* config size */
 	module_config,			/* configuration */
 	mod_instantiate,		/* instantiation */
