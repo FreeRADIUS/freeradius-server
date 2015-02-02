@@ -433,8 +433,6 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 
 	*out = '\0';
 
-	if (outlen < 1) return 0;
-
 	modules = cf_section_sub_find(request->root->config, "modules");
 	if (!modules) return 0;
 
