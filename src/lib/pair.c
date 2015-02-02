@@ -1762,7 +1762,6 @@ int readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone)
 	vp_cursor_t cursor;
 
 	VALUE_PAIR *vp = NULL;
-
 	fr_cursor_init(&cursor, out);
 
 	while (fgets(buf, sizeof(buf), fp) != NULL) {
@@ -1771,7 +1770,10 @@ int readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone)
 		 *      the end of that VP
 		 */
 		if (buf[0] == '\n') {
-			if (vp) return 0;
+			if (vp) {
+				*pfiledone = false;
+				return 0;
+			}
 			continue;
 		}
 
@@ -1793,12 +1795,12 @@ int readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone)
 		fr_cursor_merge(&cursor, vp);
 		buf[0] = '\0';
 	}
-
 	*pfiledone = true;
 
 	return 0;
 
 error:
+	*pfiledone = false;
 	vp = fr_cursor_first(&cursor);
 	if (vp) pairfree(&vp);
 
