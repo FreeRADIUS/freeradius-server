@@ -1201,8 +1201,8 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, int spawn)
 
 	if (!spawn) return NULL;
 
-	WARN("%s: %i of %u connections in use.  You probably need to increase \"spare\"", pool->log_prefix,
-	     pool->active, pool->num);
+	DEBUG("%s: %i of %u connections in use.  You  may need to increase \"spare\"", pool->log_prefix,
+	      pool->active, pool->num);
 	this = fr_connection_spawn(pool, now, true); /* MY connection! */
 	if (!this) return NULL;
 	pthread_mutex_lock(&pool->mutex);
