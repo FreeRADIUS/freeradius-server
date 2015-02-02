@@ -96,9 +96,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	}
 
 	if (inst->config->connect_query) {
-		if (rlm_sql_select_query(inst, NULL, &handle, inst->config->connect_query)) {
-			goto fail;
-		}
+		if (rlm_sql_select_query(inst, NULL, &handle, inst->config->connect_query) != RLM_SQL_OK) goto fail;
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 	}
 
@@ -306,14 +304,17 @@ void rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *ha
 
 /** Call the driver's sql_query method, reconnecting if necessary.
  *
+ * @note Caller must call (inst->module->sql_finish_query)(handle, inst->config);
+ *	after they're done with the result.
+ *
  * @param handle to query the database with. *handle should not be NULL, as this indicates
- * previous reconnection attempt has failed.
+ * 	previous reconnection attempt has failed.
  * @param request Current request.
  * @param inst rlm_sql instance data.
  * @param query to execute. Should not be zero length.
- * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL),
- * RLM_SQL_QUERY_INVALID/RLM_SQL_ERROR on invalid query or connection error, RLM_SQL_ALT_QUERY on constraints
- * violation.
+ * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if a new handle is required
+ *	(also sets *handle = NULL), RLM_SQL_QUERY_INVALID/RLM_SQL_ERROR on invalid query or
+ *	connection error, RLM_SQL_ALT_QUERY on constraints violation.
  */
 sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
 {
@@ -362,6 +363,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
 		 */
 		case RLM_SQL_QUERY_INVALID:
 			rlm_sql_print_error(inst, request, *handle, false);
+			(inst->module->sql_finish_query)(*handle, inst->config);
 			break;
 
 		/*
@@ -376,15 +378,18 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
 		case RLM_SQL_ERROR:
 			if (inst->module->flags & RLM_SQL_RCODE_FLAGS_ALT_QUERY) {
 				rlm_sql_print_error(inst, request, *handle, false);
+				(inst->module->sql_finish_query)(*handle, inst->config);
 				break;
 			}
 			ret = RLM_SQL_ALT_QUERY;
+			/* FALL-THROUGH */
 
 		/*
 		 *	Driver suggested using an alternative query
 		 */
 		case RLM_SQL_ALT_QUERY:
 			rlm_sql_print_error(inst, request, *handle, true);
+			(inst->module->sql_finish_query)(*handle, inst->config);
 			break;
 
 		}
@@ -398,6 +403,9 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
 }
 
 /** Call the driver's sql_select_query method, reconnecting if necessary.
+ *
+ * @note Caller must call (inst->module->sql_finish_select_query)(handle, inst->config);
+ *	after they're done with the result.
  *
  * @param inst rlm_sql instance data.
  * @param request Current request.
@@ -450,6 +458,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_hand
 		case RLM_SQL_ERROR:
 		default:
 			rlm_sql_print_error(inst, request, *handle, false);
+			(inst->module->sql_finish_select_query)(*handle, inst->config);
 			break;
 		}
 
