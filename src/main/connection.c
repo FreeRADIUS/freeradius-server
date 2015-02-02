@@ -302,6 +302,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 					    time_t now, bool in_use)
 {
 	uint64_t	number;
+	uint32_t	max_pending;
 	TALLOC_CTX	*ctx;
 
 	fr_connection_t	*this;
@@ -375,8 +376,14 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	 */
 	pthread_mutex_unlock(&pool->mutex);
 
-	INFO("%s: Opening additional connection (%" PRIu64 ").  %u of %u connection pending slots used",
-	     pool->log_prefix, number, pool->pending, pool->max_pending);
+	/*
+	 *	The true value for max_pending is the smaller of
+	 *	free connection slots, or pool->max_pending.
+	 */
+	max_pending = (pool->max - pool->num);
+	if (pool->max_pending < max_pending) max_pending = pool->max_pending;
+	INFO("%s: Opening additional connection (%" PRIu64 "), %u of %u pending slots used",
+	     pool->log_prefix, number, pool->pending, max_pending);
 
 	/*
 	 *	Allocate a new top level ctx for the create callback
