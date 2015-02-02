@@ -39,6 +39,20 @@ RCSID("$Id$")
 #ifdef HAVE_PTHREAD_H
 #endif
 
+/*
+ *	Translate rlm_sql rcodes to humanly
+ *	readable reason strings.
+ */
+const FR_NAME_NUMBER sql_rcode_table[] = {
+	{ "none",		RLM_SQL_OK		},
+	{ "need alt query",	RLM_SQL_ALT_QUERY	},
+	{ "server error",	RLM_SQL_ERROR		},
+	{ "query invalid",	RLM_SQL_QUERY_INVALID	},
+	{ "no connection",	RLM_SQL_RECONNECT	},
+	{ NULL, 0 }
+};
+
+
 static int _mod_conn_free(rlm_sql_handle_t *conn)
 {
 	rlm_sql_t *inst = conn->inst;
@@ -320,14 +334,14 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
 	int ret = RLM_SQL_ERROR;
 	int i, count;
 
+	/* Caller should check they have a valid handle */
+	rad_assert(*handle);
+
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') {
 		if (request) REDEBUG("Zero length query");
 		return RLM_SQL_QUERY_INVALID;
 	}
-
-	/* There's no handle, we need a new one */
-	if (!*handle) return RLM_SQL_RECONNECT;
 
 	/*
 	 *  inst->pool may be NULL is this function is called by mod_conn_create.
@@ -418,6 +432,9 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_hand
 {
 	int ret = RLM_SQL_ERROR;
 	int i, count;
+
+	/* Caller should check they have a valid handle */
+	rad_assert(*handle);
 
 	/* There's no query to run, return an error */
 	if (query[0] == '\0') {
