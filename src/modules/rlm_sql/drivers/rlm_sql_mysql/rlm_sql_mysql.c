@@ -247,13 +247,16 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  */
 static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 {
-	int server_errno = 0;
-	if (server) server_errno = mysql_errno(server);
+	int sql_errno = 0;
 
 	/*
-	 *	Process errors from the client
+	 *	The client and server error numbers are in the
+	 *	same numberspace.
 	 */
-	if (client_errno > 0) switch (client_errno) {
+	if (server) sql_errno = mysql_errno(server);
+	if ((sql_errno == 0) && (client_errno != 0)) sql_errno = client_errno;
+
+	if (sql_errno > 0) switch (sql_errno) {
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
 	case -1:
@@ -262,14 +265,8 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	case CR_OUT_OF_MEMORY:
 	case CR_COMMANDS_OUT_OF_SYNC:
 	case CR_UNKNOWN_ERROR:
-	default:
 		return RLM_SQL_ERROR;
-	}
 
-	/*
-	 *	Process errors from the server
-	 */
-	if (server_errno > 0) switch (server_errno) {
 	/*
 	 *	Constraints errors that signify a duplicate, or that we might
 	 *	want to try an alternative query.
