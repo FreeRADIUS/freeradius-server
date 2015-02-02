@@ -1370,7 +1370,6 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
 		TALLOC_FREE(expanded);
-
 		switch (sql_ret) {
 		/*
 		 *  Query was a success! Now we just need to check if it did anything.
@@ -1396,7 +1395,6 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		 */
 		case RLM_SQL_QUERY_INVALID:
 			rcode = RLM_MODULE_INVALID;
-			(inst->module->sql_finish_query)(handle, inst->config);
 			goto finish;
 
 		/*
@@ -1409,19 +1407,17 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		rad_assert(handle);
 
 		/*
-		 *  Assume all other errors are incidental, and just meant our
-		 *  operation failed and its not a client or SQL syntax error.
+		 *  We need to have updated something for the query to have been
+		 *  counted as successful.
 		 */
-		if (sql_ret == RLM_SQL_OK) {
-			numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
-			if (numaffected > 0) break;	/* A query succeeded, were done! */
-
-			RDEBUG("No records updated");
-		}
-
-	next:
+		numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
 		(inst->module->sql_finish_query)(handle, inst->config);
 
+		if (numaffected > 0) break;	/* A query succeeded, were done! */
+
+		RDEBUG("No records updated");
+
+	next:
 		/*
 		 *  We assume all entries with the same name form a redundant
 		 *  set of queries.
@@ -1437,7 +1433,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 		RDEBUG("Trying next query...");
 	}
-	(inst->module->sql_finish_query)(handle, inst->config);
+
 
 finish:
 	talloc_free(expanded);
@@ -1561,7 +1557,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		goto finish;
 	}
 
-	if (rlm_sql_select_query(inst, request, &handle, expanded) != RLM_SQL_OK) goto finish;
+	if (rlm_sql_select_query(inst, request, &handle, expanded) != RLM_SQL_OK) goto release;
 
 	/*
 	 *      Setup some stuff, like for MPP detection.
@@ -1655,9 +1651,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * req
 		}
 	}
 
-	finish:
-
+finish:
 	(inst->module->sql_finish_select_query)(handle, inst->config);
+release:
 	fr_connection_release(inst->pool, handle);
 	talloc_free(expanded);
 	sql_unset_user(inst, request);
