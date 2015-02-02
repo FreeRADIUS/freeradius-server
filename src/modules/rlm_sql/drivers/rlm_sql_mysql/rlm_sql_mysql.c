@@ -121,7 +121,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 	if (mysql_instance_count == 0) {
 		if (mysql_library_init(0, NULL, NULL)) {
-			ERROR("Could not initialise MySQL library");
+			ERROR("rlm_sql_mysql: libmysql initialisation failed");
 
 			return -1;
 		}
