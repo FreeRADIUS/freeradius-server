@@ -277,7 +277,6 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	 *	Errors not found in the 3.23/4.0/4.1 manual page checked for.
 	 *	Other error constants should always be available.
 	 */
-
 	case ER_DUP_UNIQUE:			/* Can't write, because of unique constraint, to table '%s'. */
 	case ER_DUP_KEY:			/* Can't write; duplicate key in table '%s' */
 
@@ -455,7 +454,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 		conn->result = NULL;
 	}
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 /** Retrieves any warnings associated with the last query
@@ -598,41 +597,45 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 #if (MYSQL_VERSION_ID >= 40100)
-	rlm_sql_mysql_conn_t *conn = handle->conn;
-	sql_rcode_t rcode;
-	int ret;
+	rlm_sql_mysql_conn_t	*conn = handle->conn;
+	int			ret;
+	MYSQL_RES		*result;
 
-skip_next_result:
-	rcode = sql_store_result(handle, config);
-	if (rcode != RLM_SQL_OK) {
-		return rcode;
-	} else if (conn->result != NULL) {
-		DEBUG("rlm_sql_mysql: SQL statement returned unexpected result");
-		sql_free_result(handle, config);
+	/*
+	 *	If there's no result associated with the
+	 *	connection handle, assume the first result in the
+	 *	result set hasn't been retrieved.
+	 *
+	 *	MySQL docs says there's no performance penalty for
+	 *	calling mysql_store_result for queries which don't
+	 *	return results.
+	 */
+	if (conn->result == NULL) {
+		result = mysql_store_result(conn->sock);
+		if (result) mysql_free_result(result);
+	/*
+	 *	...otherwise call sql_free_result to free an
+	 *	already stored result.
+	 */
+	} else {
+		sql_free_result(handle, config);	/* sql_free_result sets conn->result to NULL */
 	}
 
-	ret = mysql_next_result(conn->sock);
-	if (ret == 0) {
-		/* there are more results */
-		goto skip_next_result;
-	}  else if (ret > 0) return sql_check_error(NULL, ret);
-#endif
-	return RLM_SQL_OK;
-}
-
-static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
-{
-#if (MYSQL_VERSION_ID >= 40100)
-	int ret;
-	rlm_sql_mysql_conn_t *conn = handle->conn;
-#endif
-	sql_free_result(handle, config);
-#if (MYSQL_VERSION_ID >= 40100)
-	ret = mysql_next_result(conn->sock);
-	if (ret == 0) {
-		/* there are more results */
-		sql_finish_query(handle, config);
-	}  else if (ret > 0) return sql_check_error(NULL, ret);
+	/*
+	 *	Drain any other results associated with the handle
+	 *
+	 *	mysql_next_result advances the result cursor so that
+	 *	the next call to mysql_store_result will retrieve
+	 *	the next result from the server.
+	 *
+	 *	Unfortunately this really does appear to be the
+	 *	only way to return the handle to a consistent state.
+	 */
+	while (((ret = mysql_next_result(conn->sock)) == 0) &&
+	       (result = mysql_store_result(conn->sock))) {
+		mysql_free_result(result);
+	}
+	if (ret > 0) return sql_check_error(NULL, ret);
 #endif
 	return RLM_SQL_OK;
 }
@@ -662,5 +665,5 @@ rlm_sql_module_t rlm_sql_mysql = {
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
-	.sql_finish_select_query	= sql_finish_select_query
+	.sql_finish_select_query	= sql_finish_query
 };
