@@ -17,7 +17,7 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	* Add %{jsonquote:<str>} xlat to escape strings for insertion
 	  into json documents.
 	* Add %{ldapquote:<str>} xlat to escape strings for insertion
-	  into json documents.
+	  into ldap DNs.
 	* Add %{explode:&ref <char>}, splits value of &ref on
 	  <char> and creates new &ref type attributes with the
 	  fragments.
@@ -60,11 +60,6 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	  pool, not credentials from the module referencing it.
 	* Empty server config pairs should be allowed in rlm_ldap
 	  instances that reference another module's connection pool.
-	* Don't try and change the permissions of unix sockets used
-	  for the control socket on non-linux systems. Instead
-	  inform the user that permissions need to be changed on
-	  parent directory. Unix socket permissions are a Linux
-	  extension.
 	* Mark rlm_always as huppable, so its rcode can be changed
 	  via radmin (allows policy toggles).
 	* Emit warnings when ignoring user configured pool values.
@@ -90,7 +85,8 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	* Fix issue that caused opening control sockets to always
 	  fail on non-Linux systems, if a user or group was set.
 	* Save Session-State after proxying.
-	* Additional fixes for reading CoA/DM requests from flat files.
+	* Additional fixes for reading CoA/DM requests from detail
+	  files.
 
 FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
