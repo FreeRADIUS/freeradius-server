@@ -557,15 +557,7 @@ security {
 	#
 	status_server = yes
 
-	#
-	#  allow_vulnerable_openssl: Allow the server to start with
-	#  versions of OpenSSL known to have critical vulnerabilities.
-	#
-	#  This check is based on the version number reported by libssl
-	#  and may not reflect patches applied to libssl by
-	#  distribution maintainers.
-	#
-	allow_vulnerable_openssl = no
+@openssl_version_check_config@
 }
 
 # PROXY CONFIGURATION

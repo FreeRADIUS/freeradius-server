@@ -34,6 +34,22 @@ RCSID("$Id$")
 
 static long ssl_built = OPENSSL_VERSION_NUMBER;
 
+/** Print the current linked version of Openssl
+ *
+ * Print the currently linked version of the OpenSSL library.
+ */
+const char *ssl_version(void)
+{
+	return SSLeay_version(SSLEAY_VERSION);
+}
+#else
+const char *ssl_version()
+{
+	return "not linked";
+}
+#endif
+
+
 /** Check built and linked versions of OpenSSL match
  *
  * OpenSSL version number consists of:
@@ -46,6 +62,7 @@ static long ssl_built = OPENSSL_VERSION_NUMBER;
  *
  * @return 0 if ok, else -1
  */
+#if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
 int ssl_check_version(int allow_vulnerable)
 {
 	long ssl_linked;
@@ -97,25 +114,6 @@ int ssl_check_version(int allow_vulnerable)
 	}
 
 	return 0;
-}
-
-/** Print the current linked version of Openssl
- *
- * Print the currently linked version of the OpenSSL library.
- */
-const char *ssl_version(void)
-{
-	return SSLeay_version(SSLEAY_VERSION);
-}
-#else
-int ssl_check_version(UNUSED int allow_vulnerable)
-{
-	return 0;
-}
-
-const char *ssl_version()
-{
-	return "not linked";
 }
 #endif
 

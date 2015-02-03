@@ -808,6 +808,7 @@ RUSERS
 SNMPWALK
 SNMPGET
 PERL
+openssl_version_check_config
 raddbdir
 radacctdir
 logdir
@@ -921,6 +922,7 @@ with_experimental_modules
 with_openssl
 with_openssl_includes
 with_openssl_libraries
+enable_openssl_version_check
 with_rlm_FOO_lib_dir
 with_rlm_FOO_include_dir
 with_udpfromto
@@ -1560,6 +1562,8 @@ Optional Features:
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --enable-strict-dependencies  Fail configure on lack of module dependancy.
   --enable-developer               Enables features of interest to developers.
+  --disable-openssl-version-check  Disable vulnerable OpenSSL version check.
+
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -19755,6 +19759,30 @@ if test "${with_openssl_libraries+set}" = set; then :
 	;;
   esac
 
+fi
+
+
+# Check whether --enable-openssl-version-check was given.
+if test "${enable_openssl_version_check+set}" = set; then :
+  enableval=$enable_openssl_version_check;
+fi
+
+if test "x$enable_openssl_version_check" != "xno"; then
+
+$as_echo "#define ENABLE_OPENSSL_VERSION_CHECK 1" >>confdefs.h
+
+  openssl_version_check_config="\
+	#
+	#  allow_vulnerable_openssl: Allow the server to start with
+	#  versions of OpenSSL known to have critical vulnerabilities.
+	#
+	#  This check is based on the version number reported by libssl
+	#  and may not reflect patches applied to libssl by
+	#  distribution maintainers.
+	#
+	allow_vulnerable_openssl = no"
+else
+  openssl_version_check_config=
 fi
 
 

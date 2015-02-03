@@ -12,6 +12,9 @@
 /* style of ctime_r function */
 #undef CTIMERSTYLE
 
+/* Define to 1 to have OpenSSL version check enabled */
+#undef ENABLE_OPENSSL_VERSION_CHECK
+
 /* style of gethostbyaddr_r functions */
 #undef GETHOSTBYADDRRSTYLE
 
