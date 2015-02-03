@@ -58,9 +58,6 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-
-extern const FR_NAME_NUMBER mod_rcode_table[];
-
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sometimes_t *inst = instance;
