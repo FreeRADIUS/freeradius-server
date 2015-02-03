@@ -41,7 +41,7 @@ RCSID("$Id$")
 
 extern int sha1_data_problems;
 
-static int retries = 10;
+static unsigned int retries = 10;
 static float timeout = 3;
 static char const *secret = NULL;
 static int do_output = 1;
@@ -162,12 +162,12 @@ static void debug_packet(RADIUS_PACKET *packet, int direction)
 
 static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 {
-	int i;
+	unsigned int i;
 	struct timeval	tv;
 
 	if (!req || !rep) return -1;
 
-	for (i = 0; i < retries; i++) {
+	for (i = 0; i <= retries; i++) {
 		fd_set		rdfdesc;
 
 		debug_packet(req, R_SENT);
@@ -245,7 +245,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 	if (!fr_debug_flag && do_output) {
 		debug_packet(*rep, R_RECV);
 	}
-	if((*rep)->code == PW_CODE_ACCESS_ACCEPT) {
+	if ((*rep)->code == PW_CODE_ACCESS_ACCEPT) {
 		totalapp++;
 	} else if ((*rep)->code == PW_CODE_ACCESS_REJECT) {
 		totaldeny++;
