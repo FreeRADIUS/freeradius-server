@@ -275,7 +275,27 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 	RDEBUG("} # server %s", request->server);
 
-	if (rcode != RLM_MODULE_OK) {
+	switch (rcode) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		break;
+
+	/*
+	 *	Likely a fatal error we want to warn the user about
+	 */
+	case RLM_MODULE_INVALID:
+	case RLM_MODULE_FAIL:
+		ERROR("Virtual-Server %s returned %s, creating dynamic client failed", request->server,
+		      fr_int2str(mod_rcode_table, rcode, "<INVALID>"));
+		talloc_free(request);
+		goto unknown;
+
+	/*
+	 *	Probably the result of policy, or the client not existing.
+	 */
+	default:
+		DEBUG("Virtual-Server %s returned %s, ignoring client", request->server,
+		      fr_int2str(mod_rcode_table, rcode, "<INVALID>"));
 		talloc_free(request);
 		goto unknown;
 	}
