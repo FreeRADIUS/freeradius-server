@@ -111,8 +111,6 @@ static FR_NAME_NUMBER mode_names[] = {
 	{ NULL, 0 }
 };
 
-extern const FR_NAME_NUMBER mod_rcode_table[];
-
 #ifndef HAVE_GETPEEREID
 static int getpeereid(int s, uid_t *euid, gid_t *egid)
 {
