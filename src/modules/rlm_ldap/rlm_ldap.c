@@ -1134,7 +1134,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *	Don't be tempted to add a check for request->username
 	 *	or request->password here. rlm_ldap.authorize can be used for
-	 *	many things besides lookup up users.
+	 *	many things besides searching for users.
 	 */
 
 	if (rlm_ldap_map_xlat(request, inst->user_map, &expanded) < 0) {

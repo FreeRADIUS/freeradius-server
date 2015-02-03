@@ -1510,11 +1510,12 @@ void mod_conn_release(ldap_instance_t const *inst, ldap_handle_t *conn)
 	/*
 	 *	We chased a referral to another server.
 	 *
-	 *	This connection is no longer part of the pool which is connected to and bound to the configured server.
+	 *	This connection is no longer part of the pool which is
+	 *	connected to and bound to the configured server.
 	 *	Close it.
 	 *
-	 *	Note that we do NOT close it if it was bound to another user.  Instead, we let the next caller do the
-	 *	rebind.
+	 *	Note that we do NOT close it if it was bound to another user.
+	 *	Instead, we let the next caller do the rebind.
 	 */
 	if (conn->referred) {
 		fr_connection_del(inst->pool, conn);
