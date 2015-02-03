@@ -131,7 +131,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 */
 	rad_assert(clients != NULL);
 
-	client = client_find(clients, ipaddr,sock->proto);
+	client = client_find(clients, ipaddr, sock->proto);
 	if (!client) {
 		char name[256], buffer[128];
 
@@ -849,7 +849,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 #endif
 
 	if (this->server) {
-		ADDSTRING(" as server ");
+		ADDSTRING(" bound to server ");
 		strlcpy(buffer, this->server, bufsize);
 	}
 
@@ -1456,7 +1456,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 
 	default:
 		rad_recv_discard(listener->fd);
-		FR_STATS_INC(auth,total_unknown_types);
+		FR_STATS_INC(auth, total_unknown_types);
 
 		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
