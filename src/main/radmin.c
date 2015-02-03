@@ -162,27 +162,6 @@ static int fr_domain_socket(char const *path)
 
 		return -1;
 	}
-
-#ifdef O_NONBLOCK
-	{
-		int flags;
-
-		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
-			fprintf(stderr, "%s: Failure getting socket flags: %s",
-				progname, fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-
-		flags |= O_NONBLOCK;
-		if( fcntl(sockfd, F_SETFL, flags) < 0) {
-			fprintf(stderr, "%s: Failure setting socket flags: %s",
-				progname, fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-	}
-#endif
 #endif
 	return sockfd;
 }
