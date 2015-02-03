@@ -8,7 +8,7 @@ env:
     - secure: "H+uQeyOgsIyXtIPPG2VzAG8S/8KYGHlHaWhdiNuz1LM3SMcEKoPqG6o/P+HO8HVvYnA6nelyGuEryV90UfuwGY9YC6A/pqPQvx/gXSso63Zt66XSaiZjulCSm9OV8EB3wyWF7VSQ/ZHcn+L01hIlsQXTqLprMaC33cM0FYPr9fY="
   matrix:
     - LIBS_OPTIONAL=no LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
-    - LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
+    - LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG" CLANG_ANALYZE=yes
     - LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3"
 addons:
   coverity_scan:
@@ -72,5 +72,6 @@ before_install:
   - sudo apt-get install -qq -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" libmysqlclient-dev
 before_script:
   - CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL
-  - make
+  - make -j4
+  - if [ "${CLANG_ANALYZE}" = 'yes' -a ${CC} = 'clang' ]; then make -j4 scan; fi
 script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make travis-test; fi
