@@ -55,6 +55,8 @@ typedef enum rlm_components {
 	RLM_COMPONENT_COUNT	//!< 10 how many components there are.
 } rlm_components_t;
 
+extern const FR_NAME_NUMBER mod_rcode_table[];
+
 /** Map a section name, to a section typename, to an attribute number
  *
  * Used by modules.c to define the mappings between names, types and control

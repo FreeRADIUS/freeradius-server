@@ -20,7 +20,6 @@ extern "C" {
  *	of that order.
  */
 typedef struct modcallable modcallable;
-extern const FR_NAME_NUMBER mod_rcode_table[];
 
 int modcall_fixup_update(value_pair_map_t *map, void *ctx);
 
