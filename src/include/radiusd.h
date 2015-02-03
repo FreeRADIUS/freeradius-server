@@ -360,7 +360,9 @@ typedef struct main_config_t {
 	int		proxy_requests;
 	int		reject_delay;
 	int		status_server;
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
 	int		allow_vulnerable_openssl;
+#endif
 	int		max_request_time;
 	int		cleanup_delay;
 	int		max_requests;
