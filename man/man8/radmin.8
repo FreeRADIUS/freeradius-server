@@ -1,4 +1,4 @@
-.TH RADMIN 8 "14 Mar 2011" "" "FreeRADIUS Server Administration Tool"
+.TH RADMIN 8 "03 Feb 2015" "" "FreeRADIUS Server Administration Tool"
 .SH NAME
 radmin - FreeRADIUS Administration tool
 .SH SYNOPSIS
@@ -15,8 +15,6 @@ radmin - FreeRADIUS Administration tool
 .IR input_file ]
 .RB [ \-n
 .IR name ]
-.RB [ \-o
-.IR output_file ]
 .RB [ \-q ]
 .SH DESCRIPTION
 FreeRADIUS Server administration tool that connects to the control
@@ -49,9 +47,6 @@ Reads input from the specified file.  If not specified, stdin is used.
 This also sets "-q".
 .IP "\-n \fImname\fP"
 Read \fIraddb/name.conf\fP instead of \fIraddb/radiusd.conf\fP.
-.IP "\-o \fIoutput_file\fP"
-Write output to the specified file.  If not specified, stdout is used.
-This also sets "-q".
 .IP \-q
 Quiet mode.
 .SH COMMANDS

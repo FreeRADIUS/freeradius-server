@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/md5.h>
+#include <freeradius-devel/channel.h>
 
 #ifdef HAVE_SYS_UN_H
 #  include <sys/un.h>
@@ -85,7 +86,6 @@ struct main_config_t main_config;
 
 bool check_config = false;
 
-static FILE *outputfp = NULL;
 static bool echo = false;
 static char const *secret = "testing123";
 
@@ -114,7 +114,6 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -h              Print usage help information.\n");
 	fprintf(output, "  -i input_file   Read commands from 'input_file'.\n");
 	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
-	fprintf(output, "  -o output_file  Write commands to 'output_file'.\n");
 	fprintf(output, "  -q              Quiet mode.\n");
 
 	exit(status);
@@ -221,147 +220,101 @@ static int client_socket(char const *server)
 	return sockfd;
 }
 
-static void do_challenge(int sockfd)
+static ssize_t do_challenge(int sockfd)
 {
-	size_t total;
 	ssize_t r;
+	fr_channel_type_t channel;
 	uint8_t challenge[16];
 
-	for (total = 0; total < sizeof(challenge); ) {
-		r = read(sockfd, challenge + total, sizeof(challenge) - total);
-		if (r == 0) exit(1);
+	challenge[0] = 0;
 
-		if (r < 0) {
-#ifdef ECONNRESET
-			if (errno == ECONNRESET) {
-				fprintf(stderr, "%s: Connection reset",
-					progname);
-				exit(1);
-			}
-#endif
-			if (errno == EINTR) continue;
+	/*
+	 *	When connecting over a socket, the server challenges us.
+	 */
+	r = fr_channel_read(sockfd, &channel, challenge, sizeof(challenge));
+	if (r <= 0) return r;
 
-			fprintf(stderr, "%s: Failed reading data: %s\n",
-				progname, fr_syserror(errno));
-			exit(1);
-		}
-		total += r;
-		fflush(stdout);
+	if ((r != 16) || (channel != FR_CHANNEL_AUTH_CHALLENGE)) {
+		fprintf(stderr, "%s: Failed to read challenge.\n",
+			progname);
+		exit(1);
 	}
 
 	fr_hmac_md5(challenge, (uint8_t const *) secret, strlen(secret),
 		    challenge, sizeof(challenge));
 
-	if (write(sockfd, challenge, sizeof(challenge)) < 0) {
-		fprintf(stderr, "%s: Failed writing challenge data: %s\n",
-			progname, fr_syserror(errno));
-	}
+	r = fr_channel_write(sockfd, FR_CHANNEL_AUTH_RESPONSE, challenge, sizeof(challenge));
+	if (r <= 0) return r;
+
+	/*
+	 *	If the server doesn't like us, he just closes the
+	 *	socket.  So we don't look for an ACK.
+	 */
+
+	return r;
 }
 
+
+/*
+ *	Returns -1 on error.  0 on connection failed.  +1 on OK.
+ */
 static ssize_t run_command(int sockfd, char const *command,
 			   char *buffer, size_t bufsize)
 {
-	char *p;
-	ssize_t size, len;
+	ssize_t r;
+	uint32_t status;
+	fr_channel_type_t channel;
 
 	if (echo) {
-		fprintf(outputfp, "%s\n", command);
+		fprintf(stdout, "%s\n", command);
 	}
 
 	/*
 	 *	Write the text to the socket.
 	 */
-	if (write(sockfd, command, strlen(command)) < 0) return -1;
-	if (write(sockfd, "\r\n", 2) < 0) return -1;
+	r = fr_channel_write(sockfd, FR_CHANNEL_STDIN, command, strlen(command));
+	if (r <= 0) return r;
 
-	/*
-	 *	Read the response
-	 */
-	size = 0;
-	buffer[0] = '\0';
+	while (true) {
+		r = fr_channel_read(sockfd, &channel, buffer, bufsize - 1);
+		if (r <= 0) return r;
 
-	memset(buffer, 0, bufsize);
+		buffer[r] = '\0';	/* for C strings */
 
-	while (1) {
-		int rcode;
-		fd_set readfds;
-
-		FD_ZERO(&readfds);
-		FD_SET(sockfd, &readfds);
-
-		rcode = select(sockfd + 1, &readfds, NULL, NULL, NULL);
-		if (rcode < 0) {
-			if (errno == EINTR) continue;
-
-			fprintf(stderr, "%s: Failed selecting: %s\n",
-				progname, fr_syserror(errno));
-			return -1;
-		}
-
-		if (rcode == 0) {
-			fprintf(stderr, "%s: Server closed the connection.\n",
-				progname);
-			return -1;
-		}
-
-#ifdef MSG_DONTWAIT
-		len = recv(sockfd, buffer + size,
-			   bufsize - size - 1, MSG_DONTWAIT);
-#else
-		/*
-		 *	Read one byte at a time (ugh)
-		 */
-		len = recv(sockfd, buffer + size, 1, 0);
-#endif
-		if (len < 0) {
-			/*
-			 *	No data: keep looping
-			 */
-			if ((errno == EAGAIN) || (errno == EINTR)) {
-				continue;
-			}
-
-			fprintf(stderr, "%s: Error reading socket: %s\n",
-				progname, fr_syserror(errno));
-			return -1;
-		}
-		if (len == 0) return 0;	/* clean exit */
-
-		size += len;
-		buffer[size] = '\0';
-
-		/*
-		 *	There really is a better way of doing this.
-		 */
-		p = strstr(buffer, "radmin> ");
-		if (p &&
-		    ((p == buffer) ||
-		     (p[-1] == '\n') ||
-		     (p[-1] == '\r'))) {
-			*p = '\0';
-
-			if (p[-1] == '\n') p[-1] = '\0';
+		switch (channel) {
+		case FR_CHANNEL_STDOUT:
+			fprintf(stdout, "%s", buffer);
 			break;
+
+		case FR_CHANNEL_STDERR:
+			fprintf(stderr, "ERROR: %s", buffer);
+			break;
+
+		case FR_CHANNEL_CMD_STATUS:
+			if (r < 4) return 1;
+
+			memcpy(&status, buffer, sizeof(status));
+			status = ntohl(status);
+			// set the status from the data
+			return 1 + status;
+
+		default:
+			fprintf(stderr, "Unexpected response\n");
+			return -1;
 		}
 	}
 
-	/*
-	 *	Blank prompt.  Go get another command.
-	 */
-	if (!buffer[0]) return 1;
-
-	buffer[size] = '\0'; /* this is at least right */
-
-	return 2;
+	/* never gets here */
 }
 
 static int do_connect(int *out, char const *file, char const *server)
 {
-	char buffer[65536];
-	ssize_t	len, size;
 	int sockfd;
+	ssize_t r;
+	fr_channel_type_t channel;
+	char buffer[65536];
 
-	uint32_t magic, needed;
+	uint32_t magic;
 
 	/*
 	 *	Close stale file descriptors
@@ -394,43 +347,36 @@ static int do_connect(int *out, char const *file, char const *server)
 #endif
 
 	/*
-	 *	Read initial magic && version information.
+	 *	Set up the initial header data.
 	 */
-	for (size = 0; size < 8; size += len) {
-		len = read(sockfd, buffer + size, 8 - size);
-		if (len < 0) {
-			fprintf(stderr, "%s: Error reading initial data from socket: %s\n",
-				progname, fr_syserror(errno));
-			close(sockfd);
+	magic = 0xf7eead16;
+	magic = htonl(magic);
+	memcpy(buffer, &magic, sizeof(magic));
+	memset(buffer + sizeof(magic), 0, sizeof(magic));
+
+	r = fr_channel_write(sockfd, FR_CHANNEL_INIT_ACK, buffer, 8);
+	if (r <= 0) {
+	do_close:
+		fprintf(stderr, "%s: Error in socket: %s\n",
+			progname, fr_syserror(errno));
+		close(sockfd);
 			return -1;
-		}
 	}
 
-	memcpy(&magic, buffer, 4);
-	magic = ntohl(magic);
-	if (magic != 0xf7eead15) {
-		fprintf(stderr, "%s: Socket %s is not FreeRADIUS administration socket\n", progname, file);
+	r = fr_channel_read(sockfd, &channel, buffer + 8, 8);
+	if (r <= 0) goto do_close;
+
+	if ((r != 8) || (channel != FR_CHANNEL_INIT_ACK) ||
+	    (memcmp(buffer, buffer + 8, 8) != 0)) {
+		fprintf(stderr, "%s: Incompatible versions\n", progname);
 		close(sockfd);
 		return -1;
 	}
 
-	memcpy(&magic, buffer + 4, 4);
-	magic = ntohl(magic);
-
-	if (!server) {
-		needed = 1;
-	} else {
-		needed = 2;
+	if (server && secret) {
+		r = do_challenge(sockfd);
+		if (r <= 0) goto do_close;
 	}
-
-	if (magic != needed) {
-		fprintf(stderr, "%s: Socket version mismatch: Need %d, got %d\n",
-			progname, needed, magic);
-		close(sockfd);
-		return -1;
-	}
-
-	if (server && secret) do_challenge(sockfd);
 
 	*out = sockfd;
 
@@ -451,7 +397,6 @@ int main(int argc, char **argv)
 	char		*p, buffer[65536];
 	char const	*input_file = NULL;
 	FILE		*inputfp = stdin;
-	char const	*output_file = NULL;
 	char const	*server = NULL;
 
 	char const	*radius_dir = RADIUS_DIR;
@@ -459,6 +404,8 @@ int main(int argc, char **argv)
 
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
+
+	int exit_status = EXIT_SUCCESS;
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -469,15 +416,13 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	outputfp = stdout;	/* stdout is not a constant value... */
-
 	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL) {
 		progname = argv[0];
 	} else {
 		progname++;
 	}
 
-	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:o:qs:S")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:D:hi:e:Ef:n:qs:S")) != EOF) {
 		switch (argval) {
 		case 'd':
 			if (file) {
@@ -502,6 +447,7 @@ int main(int argc, char **argv)
 					progname);
 				exit(1);
 			}
+
 			commands[num_commands] = optarg;
 			break;
 
@@ -527,13 +473,6 @@ int main(int argc, char **argv)
 
 		case 'n':
 			name = optarg;
-			break;
-
-		case 'o':
-			if (strcmp(optarg, "-") != 0) {
-				output_file = optarg;
-			}
-			quiet = true;
 			break;
 
 		case 'q':
@@ -635,14 +574,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (output_file) {
-		outputfp = fopen(output_file, "w");
-		if (!outputfp) {
-			fprintf(stderr, "%s: Failed creating %s: %s\n", progname, output_file, fr_syserror(errno));
-			exit(1);
-		}
-	}
-
 	if (!file && !server) {
 		fprintf(stderr, "%s: Must use one of '-d' or '-f' or '-s'\n",
 			progname);
@@ -680,13 +611,9 @@ int main(int argc, char **argv)
 			len = run_command(sockfd, commands[i], buffer, sizeof(buffer));
 			if (len < 0) exit(1);
 
-			if (buffer[0]) {
-				fputs(buffer, outputfp);
-				fprintf(outputfp, "\n");
-				fflush(outputfp);
-			}
+			if (len == 1) exit_status = EXIT_FAILURE;
 		}
-		exit(0);
+		exit(exit_status);
 	}
 
 	if (!quiet) {
@@ -805,19 +732,18 @@ int main(int argc, char **argv)
 		if ((len < 0) && (do_connect(&sockfd, file, server) < 0)) {
 			fprintf(stderr, "Reconnecting...");
 			exit(1);
-		} else if (len == 0) break;
-		else if (len == 1) continue; /* no output. */
 
-		fputs(buffer, outputfp);
-		fflush(outputfp);
-		fprintf(outputfp, "\n");
+		} else if (len == 0) {
+			break;
+		} else if (len == 1) {
+			exit_status = EXIT_FAILURE;
+		}
 	}
 
-	fprintf(outputfp, "\n");
+	fprintf(stdout, "\n");
 
 	if (inputfp != stdin) fclose(inputfp);
-	if (outputfp != stdout) fclose(outputfp);
 
-	return 0;
+	return exit_status;
 }
 

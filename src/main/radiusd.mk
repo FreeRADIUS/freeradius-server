@@ -2,7 +2,7 @@ TARGET	:= radiusd
 SOURCES := acct.c auth.c client.c crypt.c files.c \
 		  listen.c  mainconfig.c modules.c modcall.c \
 		  radiusd.c state.c stats.c soh.c connection.c \
-		  session.c threads.c \
+		  session.c threads.c channel.c \
 		  process.c realms.c detail.c
 ifneq ($(OPENSSL_LIBS),)
 SOURCES	+= cb.c tls.c tls_listen.c
