@@ -39,12 +39,17 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	* Call SHOW WARNINGS in the MySQL driver and write them to
 	  the request log, if libmysqlclient indicates warnings are
 	  available on the server.
-	* Provide mechanism to create non-standard VSAs.
+	* Forbid the creation of Vendor-Specific for non-standard
+	  VSAs.  Use Attr-26 = 0x... instead.
 	* Make dhcpclient work with raw sockets and various other
 	  improvements - Contributed by nchaigne
 	* Add support for SSHA2 - Contributed by PDD.
 	* Add perle dictionary - Contributed by Hachmer
 	* Modernise init scripts for RHEL, SUSE and Debian.
+	* radmin now tracks the return code of commands, and exits
+	  with status "1" if any command failed to execute.
+	* radmin now sends error messages from the server to
+	  stderr, instead of to stdout.
 
 	Bug fixes
 	* Fix issues parsing LDAP hostnames with non-standard ports.
