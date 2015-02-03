@@ -87,6 +87,8 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	* Save Session-State after proxying.
 	* Additional fixes for reading CoA/DM requests from detail
 	  files.
+	* Create dynamic clients if the dynamic clients virtual server
+	  returns ok *or* updated. Emit useful messages for other codes.
 
 FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
