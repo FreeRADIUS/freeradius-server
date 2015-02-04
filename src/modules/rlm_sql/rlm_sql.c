@@ -1348,6 +1348,8 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 		sql_ret = rlm_sql_query(inst, request, &handle, expanded);
 		TALLOC_FREE(expanded);
+		RDEBUG("SQL query returned: %s", fr_int2str(sql_rcode_table, sql_ret, "<INVALID>"));
+
 		switch (sql_ret) {
 		/*
 		 *  Query was a success! Now we just need to check if it did anything.
@@ -1390,11 +1392,9 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		 */
 		numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
 		(inst->module->sql_finish_query)(handle, inst->config);
+		RDEBUG("%i records updated", numaffected);
 
 		if (numaffected > 0) break;	/* A query succeeded, were done! */
-
-		RDEBUG("No records updated");
-
 	next:
 		/*
 		 *  We assume all entries with the same name form a redundant
