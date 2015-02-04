@@ -98,7 +98,10 @@ more.  Using RADIUS allows authentication and authorization for a network to
 be centralized, and minimizes the amount of re-configuration which has to be
 done when adding or deleting new users.
 
+# CentOS defines debug package by default. Only define it if not already defined
+%if 0%{!?_enable_debug_packages:1}
 %debug_package
+%endif
 
 %package config
 Group: System Environment/Daemons
@@ -537,6 +540,7 @@ fi
 %{_libdir}/freeradius/rlm_always.so
 %{_libdir}/freeradius/rlm_attr_filter.so
 %{_libdir}/freeradius/rlm_cache.so
+%{_libdir}/freeradius/rlm_cache_rbtree.so
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_counter.so
 %{_libdir}/freeradius/rlm_cram.so
@@ -579,6 +583,7 @@ fi
 %{_libdir}/freeradius/rlm_sqlippool.so
 %{_libdir}/freeradius/rlm_unix.so
 %{_libdir}/freeradius/rlm_unpack.so
+%{_libdir}/freeradius/rlm_test.so
 %{_libdir}/freeradius/rlm_utf8.so
 %{_libdir}/freeradius/rlm_wimax.so
 %{?_with_rlm_idn: %{_libdir}/freeradius/rlm_idn.so}
@@ -630,11 +635,7 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/python/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-enabled
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-enabled/*
-# krb5
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/krb5
 # mysql
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/sql*
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/cui
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter/mysql
@@ -654,42 +655,26 @@ fi
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/ndb
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/ndb/*
 # postgres
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/sql*
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/cui
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter/postgresql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/counter/postgresql/*
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/cui
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/cui/postgresql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/cui/postgresql/*
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool/postgresql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool/postgresql/*
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/postgresql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/postgresql/*
 # sqlite
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/sql*
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/cui
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/counter/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/counter/sqlite/*
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/cui
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/cui/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/cui/sqlite/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool-dhcp
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool-dhcp/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool-dhcp/sqlite/*
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/ippool/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool/sqlite/*
-%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/sqlite/*
-# ldap
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/ldap
 # ruby
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/ruby
