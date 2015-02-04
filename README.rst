@@ -19,9 +19,9 @@ be done when adding or deleting new users to a network.
 FreeRADIUS can authenticate users on systems such as 802.1x (WiFi),
 dialup, PPPoE, VPN's, VoIP, and many others.  It supports back-end
 databases such as MySQL, PostgreSQL, Oracle, Microsoft Active
-Directory, OpenLDAP, and many more.  It is used daily to authenticate
-the Internet access for hundreds of millions of people, in sites
-ranging from 10 users, to 10 million and more users.
+Directory, Redis, OpenLDAP, and many more.  It is used daily to 
+authenticate the Internet access for hundreds of millions of people, 
+in sites ranging from 10 to 10 million+ users.
 
 Version 3.0 of the server is largely compatible with version 2.x, but
 we highly recommend that you recreate your configuration, rather than
