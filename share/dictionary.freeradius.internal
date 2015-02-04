@@ -639,6 +639,15 @@ VALUE	Session-Type			Local			0
 #	And Post-Auth
 VALUE	Post-Auth-Type			Local			0
 VALUE	Post-Auth-Type			Reject			1
+VALUE	Post-Auth-Type			Challenge		2
+
+#
+#	And Post-Proxy
+VALUE	Post-Proxy-Type			Fail			0
+VALUE	Post-Proxy-Type			Fail-Authentication	1
+VALUE	Post-Proxy-Type			Fail-Accounting		2
+VALUE	Post-Proxy-Type			Fail-CoA		3
+VALUE	Post-Proxy-Type			Fail-Disconnect		4
 
 #
 #	Experimental Non-Protocol Integer Translations for FreeRADIUS
