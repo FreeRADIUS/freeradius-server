@@ -49,6 +49,19 @@ RCSID("$Id$")
 
 static int mysql_instance_count = 0;
 
+typedef enum {
+	SERVER_WARNINGS_AUTO = 0,
+	SERVER_WARNINGS_YES,
+	SERVER_WARNINGS_NO
+} rlm_sql_mysql_warnings;
+
+static const FR_NAME_NUMBER server_warnings_table[] = {
+	{ "auto",	SERVER_WARNINGS_AUTO	},
+	{ "yes",	SERVER_WARNINGS_YES	},
+	{ "no",		SERVER_WARNINGS_NO	},
+	{ NULL, 0 }
+};
+
 typedef struct rlm_sql_mysql_conn {
 	MYSQL		db;
 	MYSQL		*sock;
@@ -57,11 +70,14 @@ typedef struct rlm_sql_mysql_conn {
 } rlm_sql_mysql_conn_t;
 
 typedef struct rlm_sql_mysql_config {
-	char const	*tls_ca_file;
-	char const	*tls_ca_path;
-	char const	*tls_certificate_file;
-	char const	*tls_private_key_file;
-	char const	*tls_cipher;
+	char const		*tls_ca_file;
+	char const		*tls_ca_path;
+	char const		*tls_certificate_file;
+	char const		*tls_private_key_file;
+	char const		*tls_cipher;
+	char const		*warnings_str;
+	rlm_sql_mysql_warnings	warnings;	//!< mysql_warning_count() doesn't
+						//!< appear to work with NDB cluster
 } rlm_sql_mysql_config_t;
 
 static CONF_PARSER tls_config[] = {
@@ -80,6 +96,8 @@ static CONF_PARSER tls_config[] = {
 
 static const CONF_PARSER driver_config[] = {
 	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
+
+	{ "warnings", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_mysql_config_t, warnings_str), "auto" },
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -112,6 +130,7 @@ static int _mod_destructor(UNUSED rlm_sql_mysql_config_t *driver)
 static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_config_t *driver;
+	int warnings;
 
 	static bool version_done = false;
 
@@ -136,6 +155,13 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	if (cf_section_parse(conf, driver, driver_config) < 0) {
 		return -1;
 	}
+
+	warnings = fr_str2int(server_warnings_table, driver->warnings_str, -1);
+	if (warnings < 0) {
+		ERROR("rlm_sql_mysql: Invalid warnings value \"%s\", must be yes, no, or auto", driver->warnings_str);
+		return -1;
+	}
+	driver->warnings = (rlm_sql_mysql_warnings)warnings;
 
 	return 0;
 }
@@ -480,18 +506,8 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
 	MYSQL_ROW		row;
 	unsigned int		num_fields;
 	size_t			i = 0;
-	unsigned int		msgs;
 
 	if (outlen == 0) return 0;
-
-	/*
-	 *	Check to see if any warnings can be retrieved from the server.
-	 */
-	msgs = mysql_warning_count(conn->sock);
-	if (msgs == 0) {
-		DEBUG3("rlm_sql_mysql: No additional diagnostic info on server");
-		return 0;
-	}
 
 	/*
 	 *	Retrieve any warnings associated with the previous query
@@ -550,6 +566,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t	*conn = handle->conn;
+	rlm_sql_mysql_config_t	*driver = config->driver;
 	char const		*error;
 	size_t			i = 0;
 
@@ -572,9 +589,31 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	 */
 	if ((outlen > 1) && (sql_check_error(conn->sock, 0) != RLM_SQL_RECONNECT)) {
 		size_t ret;
+		unsigned int msgs;
 
-		ret = sql_warnings(ctx, out, outlen - 1, handle, config);
-		if (ret > 0) i += ret;
+		switch (driver->warnings) {
+		case SERVER_WARNINGS_AUTO:
+			/*
+			 *	Check to see if any warnings can be retrieved from the server.
+			 */
+			msgs = mysql_warning_count(conn->sock);
+			if (msgs == 0) {
+				DEBUG3("rlm_sql_mysql: No additional diagnostic info on server");
+				break;
+			}
+
+		/* FALL-THROUGH */
+		case SERVER_WARNINGS_YES:
+			ret = sql_warnings(ctx, out, outlen - 1, handle, config);
+			if (ret > 0) i += ret;
+			break;
+
+		case SERVER_WARNINGS_NO:
+			break;
+
+		default:
+			rad_assert(0);
+		}
 	}
 
 	if (error) {

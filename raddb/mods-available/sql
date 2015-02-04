@@ -56,6 +56,11 @@ sql {
 #			private_key_file = "/etc/ssl/certs/private/client.key"
 #			cipher = "DHE-RSA-AES256-SHA:AES128-SHA"
 #		}
+#
+#		# If yes, (or auto and libmysqlclient reports warnings are
+#		# available), will retrieve and log additional warnings from
+#		# the server, if an error has occured. Defaults to 'auto'
+#		warnings = auto
 #	}
 #
 #	postgresql {
