@@ -1382,6 +1382,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		 *  so we do not need to call fr_connection_release.
 		 */
 		case RLM_SQL_RECONNECT:
+			rcode = RLM_MODULE_FAIL;
 			goto finish;
 
 		/*
