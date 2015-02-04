@@ -1,12 +1,8 @@
 /*
- * sql_mysql.c		SQL Module
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,12 +12,18 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2000-2007  The FreeRADIUS server project
- * Copyright 2000  Mike Machado <mike@innercite.com>
- * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
+/**
+ * $Id$
+ * @file rlm_sql_mysql.c
+ * @brief MySQL driver.
+ *
+ * @copyright 2014-2015  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2000-2007,2015  The FreeRADIUS server project
+ * @copyright 2000  Mike Machado <mike@innercite.com>
+ * @copyright 2000  Alan DeKok <aland@ox.org>
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
@@ -239,7 +241,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	return RLM_SQL_OK;
 }
 
-/** Analyse the last error that occurred on the socket, and determine an actions
+/** Analyse the last error that occurred on the socket, and determine an action
  *
  * @param server Socket from which to extract the server error. May be NULL.
  * @param client_errno Error from the client.
@@ -271,7 +273,8 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	 *	Constraints errors that signify a duplicate, or that we might
 	 *	want to try an alternative query.
 	 *
-	 *	Errors not found in the 3.23/4.0/4.1 manual page checked for.
+	 *	Error constants not found in the 3.23/4.0/4.1 manual page
+	 *	are checked for.
 	 *	Other error constants should always be available.
 	 */
 	case ER_DUP_UNIQUE:			/* Can't write, because of unique constraint, to table '%s'. */
