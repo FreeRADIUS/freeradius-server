@@ -1392,7 +1392,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		 */
 		numaffected = (inst->module->sql_affected_rows)(handle, inst->config);
 		(inst->module->sql_finish_query)(handle, inst->config);
-		RDEBUG("%i records updated", numaffected);
+		RDEBUG("%i record(s) updated", numaffected);
 
 		if (numaffected > 0) break;	/* A query succeeded, were done! */
 	next:
