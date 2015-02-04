@@ -3393,7 +3393,7 @@ void listen_free(rad_listen_t **head)
 }
 
 #ifdef WITH_STATS
-RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr, uint16_t port)
+RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr, uint16_t port, int proto)
 {
 	rad_listen_t *this;
 
@@ -3411,10 +3411,11 @@ RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr, uint16_t po
 
 		sock = this->data;
 
-		if ((sock->my_port == port) &&
-		    (fr_ipaddr_cmp(ipaddr, &sock->my_ipaddr) == 0)) {
-			return sock->clients;
-		}
+		if (sock->my_port != port) continue;
+		if (sock->proto != proto) continue;
+		if (fr_ipaddr_cmp(ipaddr, &sock->my_ipaddr) != 0) continue;
+
+		return sock->clients;
 	}
 
 	return NULL;
