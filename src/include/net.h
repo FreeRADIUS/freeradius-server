@@ -132,7 +132,7 @@ typedef struct radius_packet_t {
 	uint8_t		id;
 	uint8_t		length[2];
 	uint8_t		vector[AUTH_VECTOR_LEN];
-	uint8_t		data[1];
+	uint8_t		data[];
 } radius_packet_t;
 
 ssize_t fr_link_layer_offset(uint8_t const *data, size_t len, int link_type);
