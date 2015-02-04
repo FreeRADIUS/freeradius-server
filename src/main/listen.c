@@ -3334,6 +3334,9 @@ RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr, uint16_t po
 #ifdef WITH_ACCOUNTING
 		    && (this->type != RAD_LISTEN_ACCT)
 #endif
+#ifdef WITH_COA
+		    && (this->type != RAD_LISTEN_COA)
+#endif
 		    ) continue;
 
 		sock = this->data;
