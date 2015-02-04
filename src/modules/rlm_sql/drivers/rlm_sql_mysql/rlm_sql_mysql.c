@@ -226,7 +226,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 					NULL,
 					sql_flags);
 	if (!conn->sock) {
-		ERROR("rlm_sql_mysql: Couldn't connect socket to MySQL server %s@%s:%s", config->sql_login,
+		ERROR("rlm_sql_mysql: Couldn't connect to MySQL server %s@%s:%s", config->sql_login,
 		      config->sql_server, config->sql_db);
 		ERROR("rlm_sql_mysql: MySQL error: %s", mysql_error(&conn->db));
 
@@ -267,6 +267,7 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	case CR_OUT_OF_MEMORY:
 	case CR_COMMANDS_OUT_OF_SYNC:
 	case CR_UNKNOWN_ERROR:
+	default:
 		return RLM_SQL_ERROR;
 
 	/*
@@ -305,8 +306,6 @@ static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 	case ER_NON_UNIQ_ERROR:			/* Column '%s' in %s is ambiguous */
 		return RLM_SQL_QUERY_INVALID;
 
-	default:
-		break;
 	}
 
 	return RLM_SQL_OK;
