@@ -929,8 +929,8 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 	if (!dval) {
 		talloc_free(ml);
 		cf_log_err_cs(cs,
-			   "%s %s Not previously configured",
-			   section_type_value[comp].typename, name2);
+			   "The %s attribute has no VALUE defined for %s",
+			      section_type_value[comp].typename, name2);
 		return 0;
 	}
 
