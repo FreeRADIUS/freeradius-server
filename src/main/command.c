@@ -2770,6 +2770,7 @@ static int command_domain_accept(rad_listen_t *listener)
 	this->next = NULL;
 	this->data = sock;	/* fix it back */
 
+	sock->magic = COMMAND_SOCKET_MAGIC;
 	sock->user[0] = '\0';
 	sock->path = ((fr_command_socket_t *) listener->data)->path;
 	sock->co.offset = 0;
