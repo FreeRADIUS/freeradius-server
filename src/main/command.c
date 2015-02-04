@@ -1087,13 +1087,14 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 				    char *argv[], int *last)
 {
+	int myarg;
 	home_server_t *home;
 	uint16_t port;
 	int proto = IPPROTO_UDP;
 	fr_ipaddr_t ipaddr;
 
 	if (argc < 2) {
-		cprintf_error(listener, "Must specify <ipaddr> <port> [proto]\n");
+		cprintf_error(listener, "Must specify <ipaddr> <port> [udp|tcp]\n");
 		return NULL;
 	}
 
@@ -1105,18 +1106,27 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 
 	port = atoi(argv[1]);
 
-	if (last) *last = 2;
-	if (argc > 2) {
-		if (strcmp(argv[2], "udp") == 0) {
+	myarg = 2;
+
+	while (myarg < argc) {
+		if (strcmp(argv[myarg], "udp") == 0) {
 			proto = IPPROTO_UDP;
-			if (last) *last = 3;
+			myarg++;
+			continue;
 		}
+
 #ifdef WITH_TCP
-		if (strcmp(argv[2], "tcp") == 0) {
+		if (strcmp(argv[myarg], "tcp") == 0) {
 			proto = IPPROTO_TCP;
-			if (last) *last = 3;
+			myarg++;
+			continue;
 		}
 #endif
+
+		/*
+		 *	Unknown argument.  Leave it for the caller.
+		 */
+		break;
 	}
 
 	home = home_server_find(&ipaddr, port, proto);
@@ -1125,6 +1135,7 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 		return NULL;
 	}
 
+	*last = myarg;
 	return home;
 }
 
@@ -1134,7 +1145,7 @@ static int command_set_home_server_state(rad_listen_t *listener, int argc, char 
 	home_server_t *home;
 
 	if (argc < 3) {
-		cprintf_error(listener, "Must specify <ipaddr> <port> [proto] <state>\n");
+		cprintf_error(listener, "Must specify <ipaddr> <port> [udp|tcp] <state>\n");
 		return 0;
 	}
 
@@ -1265,7 +1276,7 @@ static rad_listen_t *get_socket(rad_listen_t *listener, int argc,
 	fr_ipaddr_t ipaddr;
 
 	if (argc < 2) {
-		cprintf_error(listener, "Must specify <ipaddr> <port> [proto]\n");
+		cprintf_error(listener, "Must specify <ipaddr> <port> [udp|tcp]\n");
 		return NULL;
 	}
 
@@ -1558,7 +1569,7 @@ static fr_command_table_t command_table_show_home[] = {
 	  "show home_server list - shows list of home servers",
 	  command_show_home_servers, NULL },
 	{ "state", FR_READ,
-	  "show home_server state <ipaddr> <port> [proto] - shows state of given home server",
+	  "show home_server state <ipaddr> <port> [udp|tcp] - shows state of given home server",
 	  command_show_home_server_state, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
@@ -2108,7 +2119,7 @@ static fr_command_table_t command_table_add[] = {
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_set_home[] = {
 	{ "state", FR_WRITE,
-	  "set home_server state <ipaddr> <port> [proto] [alive|dead] - set state for given home server",
+	  "set home_server state <ipaddr> <port> [udp|tcp] [alive|dead] - set state for given home server",
 	  command_set_home_server_state, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
@@ -2157,7 +2168,7 @@ static fr_command_table_t command_table_stats[] = {
 
 #ifdef WITH_PROXY
 	{ "home_server", FR_READ,
-	  "stats home_server [<ipaddr>/auth/acct] <port> - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
+	  "stats home_server [<ipaddr>/auth/acct] <port> [udp|tcp] - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
 	  command_stats_home_server, NULL },
 #endif
 
@@ -2168,10 +2179,7 @@ static fr_command_table_t command_table_stats[] = {
 #endif
 
 	{ "socket", FR_READ,
-	  "stats socket <ipaddr> <port> "
-#ifdef WITH_TCP
-	  "[proto] "
-#endif
+	  "stats socket <ipaddr> <port> [udp|tcp] "
 	  "- show statistics for given socket",
 	  command_stats_socket, NULL },
 
