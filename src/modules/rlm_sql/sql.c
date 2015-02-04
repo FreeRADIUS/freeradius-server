@@ -44,7 +44,7 @@ RCSID("$Id$")
  *	readable reason strings.
  */
 const FR_NAME_NUMBER sql_rcode_table[] = {
-	{ "none",		RLM_SQL_OK		},
+	{ "success",		RLM_SQL_OK		},
 	{ "need alt query",	RLM_SQL_ALT_QUERY	},
 	{ "server error",	RLM_SQL_ERROR		},
 	{ "query invalid",	RLM_SQL_QUERY_INVALID	},
