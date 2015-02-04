@@ -2409,12 +2409,21 @@ static int str2argvX(char *str, char **argv, int max_argc)
 	return argc;
 }
 
-static void print_help(rad_listen_t *listener,
+static void print_help(rad_listen_t *listener, int argc, char *argv[],
 		       fr_command_table_t *table, int recursive)
 {
 	int i;
 
 	for (i = 0; table[i].command != NULL; i++) {
+		if (argc > 0) {
+			if (strcmp(table[i].command, argv[0]) == 0) {
+				print_help(listener, argc - 1, argv + 1, table[i].table, recursive);
+				return;
+			}
+
+			continue;
+		}
+
 		if (table[i].help) {
 			cprintf(listener, "%s\n",
 				table[i].help);
@@ -2424,7 +2433,7 @@ static void print_help(rad_listen_t *listener,
 		}
 
 		if (recursive && table[i].table) {
-			print_help(listener, table[i].table, recursive);
+			print_help(listener, 0, NULL, table[i].table, recursive);
 		}
 	}
 }
@@ -2546,11 +2555,13 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 		do_help:
 			if ((argc > 1) && (strcmp(argv[1], "-r") == 0)) {
 				recursive = true;
+				argc--;
+				argv++;
 			} else {
 				recursive = false;
 			}
 
-			print_help(listener, table, recursive);
+			print_help(listener, argc - 1, argv + 1, table, recursive);
 			goto do_next;
 		}
 
