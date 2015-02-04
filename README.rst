@@ -10,17 +10,17 @@ Introduction
 ------------
 
 The FreeRADIUS Server Project is a high performance and highly
-configurable multi-protocol policy server, supporting RADIUS, DHCPv4 
-and VMPS. It is available under the terms of the GNU GPLv2.  
-Using RADIUS allows authentication and authorization for a network 
-to be centralized, and minimizes the number of changes that have to 
+configurable multi-protocol policy server, supporting RADIUS, DHCPv4
+and VMPS. It is available under the terms of the GNU GPLv2.
+Using RADIUS allows authentication and authorization for a network
+to be centralized, and minimizes the number of changes that have to
 be done when adding or deleting new users to a network.
 
 FreeRADIUS can authenticate users on systems such as 802.1x (WiFi),
 dialup, PPPoE, VPN's, VoIP, and many others.  It supports back-end
 databases such as MySQL, PostgreSQL, Oracle, Microsoft Active
-Directory, Redis, OpenLDAP, and many more.  It is used daily to 
-authenticate the Internet access for hundreds of millions of people, 
+Directory, Redis, OpenLDAP, and many more.  It is used daily to
+authenticate the Internet access for hundreds of millions of people,
 in sites ranging from 10 to 10 million+ users.
 
 Version 3.0 of the server is largely compatible with version 2.x, but
@@ -101,10 +101,10 @@ following:
 3. Verify that the server starts.  (You ARE using debugging mode, right?)
 4. Send it test packets using "radclient", or a NAS or AP.
 5. Verify that the server does what you expect
-    - If it does not work, change the configuration, and go to step (3) 
+    - If it does not work, change the configuration, and go to step (3)
     - If you're stuck, revert to using the "last working" configuration.
     - If it works, proceed to step (6).
-6. Save a copy of the working configuration, along with a note of what 
+6. Save a copy of the working configuration, along with a note of what
    you changed, and why.
 7. Make a SMALL change to the configuration.
 8. Repeat from step (3).
