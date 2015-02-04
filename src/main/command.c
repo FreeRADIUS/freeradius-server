@@ -594,7 +594,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 	mod = mi->entry->module;
 
 	for (i = 0; i < RLM_COMPONENT_COUNT; i++) {
-		if (mod->methods[i]) cprintf(listener, "\t%s\n", method_names[i]);
+		if (mod->methods[i]) cprintf(listener, "%s\n", method_names[i]);
 	}
 
 	return 1;		/* success */
@@ -624,15 +624,15 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 	mod = mi->entry->module;
 
 	if ((mod->type & RLM_TYPE_THREAD_UNSAFE) != 0)
-		cprintf(listener, "\tthread-unsafe\n");
+		cprintf(listener, "thread-unsafe\n");
 
 
 	if ((mod->type & RLM_TYPE_CHECK_CONFIG_UNSAFE) != 0)
-		cprintf(listener, "\tno-check-config\n");
+		cprintf(listener, "no-check-config\n");
 
 
 	if ((mod->type & RLM_TYPE_HUP_SAFE) != 0)
-		cprintf(listener, "\treload-on-hup\n");
+		cprintf(listener, "reload-on-hup\n");
 
 	return 1;		/* success */
 }
@@ -688,12 +688,12 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 			mi = find_module_instance(cs, name2, false);
 			if (!mi) continue;
 
-			cprintf(listener, "\t%s (%s)\n", name2, name1);
+			cprintf(listener, "%s (%s)\n", name2, name1);
 		} else {
 			mi = find_module_instance(cs, name1, false);
 			if (!mi) continue;
 
-			cprintf(listener, "\t%s\n", name1);
+			cprintf(listener, "%s\n", name1);
 		}
 	}
 
@@ -798,9 +798,9 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		     (client->ipaddr.prefix != 32)) ||
 		    ((client->ipaddr.af == AF_INET6) &&
 		     (client->ipaddr.prefix != 128))) {
-			cprintf(listener, "\t%s/%d\n", buffer, client->ipaddr.prefix);
+			cprintf(listener, "%s/%d\n", buffer, client->ipaddr.prefix);
 		} else {
-			cprintf(listener, "\t%s\n", buffer);
+			cprintf(listener, "%s\n", buffer);
 		}
 	}
 
@@ -1714,32 +1714,32 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 {
 	int i;
 
-	cprintf(listener, "\trequests\t" PU "\n", stats->total_requests);
-	cprintf(listener, "\tresponses\t" PU "\n", stats->total_responses);
+	cprintf(listener, "requests\t" PU "\n", stats->total_requests);
+	cprintf(listener, "responses\t" PU "\n", stats->total_responses);
 
 	if (auth) {
-		cprintf(listener, "\taccepts\t\t" PU "\n",
+		cprintf(listener, "accepts\t\t" PU "\n",
 			stats->total_access_accepts);
-		cprintf(listener, "\trejects\t\t" PU "\n",
+		cprintf(listener, "rejects\t\t" PU "\n",
 			stats->total_access_rejects);
-		cprintf(listener, "\tchallenges\t" PU "\n",
+		cprintf(listener, "challenges\t" PU "\n",
 			stats->total_access_challenges);
 	}
 
-	cprintf(listener, "\tdup\t\t" PU "\n", stats->total_dup_requests);
-	cprintf(listener, "\tinvalid\t\t" PU "\n", stats->total_invalid_requests);
-	cprintf(listener, "\tmalformed\t" PU "\n", stats->total_malformed_requests);
-	cprintf(listener, "\tbad_authenticator\t" PU "\n", stats->total_bad_authenticators);
-	cprintf(listener, "\tdropped\t\t" PU "\n", stats->total_packets_dropped);
-	cprintf(listener, "\tunknown_types\t" PU "\n", stats->total_unknown_types);
+	cprintf(listener, "dup\t\t" PU "\n", stats->total_dup_requests);
+	cprintf(listener, "invalid\t\t" PU "\n", stats->total_invalid_requests);
+	cprintf(listener, "malformed\t" PU "\n", stats->total_malformed_requests);
+	cprintf(listener, "bad_authenticator\t" PU "\n", stats->total_bad_authenticators);
+	cprintf(listener, "dropped\t\t" PU "\n", stats->total_packets_dropped);
+	cprintf(listener, "unknown_types\t" PU "\n", stats->total_unknown_types);
 
 	if (server) {
-		cprintf(listener, "\ttimeouts\t" PU "\n", stats->total_timeouts);
+		cprintf(listener, "timeouts\t" PU "\n", stats->total_timeouts);
 	}
 
-	cprintf(listener, "\tlast_packet\t%" PRId64 "\n", (int64_t) stats->last_packet);
+	cprintf(listener, "last_packet\t%" PRId64 "\n", (int64_t) stats->last_packet);
 	for (i = 0; i < 8; i++) {
-		cprintf(listener, "\telapsed.%s\t%u\n",
+		cprintf(listener, "elapsed.%s\t%u\n",
 			elapsed_names[i], stats->elapsed[i]);
 	}
 
@@ -1754,14 +1754,14 @@ static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED c
 
 	thread_pool_queue_stats(array, pps);
 
-	cprintf(listener, "\tqueue_len_internal\t" PU "\n", array[0]);
-	cprintf(listener, "\tqueue_len_proxy\t\t" PU "\n", array[1]);
-	cprintf(listener, "\tqueue_len_auth\t\t" PU "\n", array[2]);
-	cprintf(listener, "\tqueue_len_acct\t\t" PU "\n", array[3]);
-	cprintf(listener, "\tqueue_len_detail\t" PU "\n", array[4]);
+	cprintf(listener, "queue_len_internal\t" PU "\n", array[0]);
+	cprintf(listener, "queue_len_proxy\t\t" PU "\n", array[1]);
+	cprintf(listener, "queue_len_auth\t\t" PU "\n", array[2]);
+	cprintf(listener, "queue_len_acct\t\t" PU "\n", array[3]);
+	cprintf(listener, "queue_len_detail\t" PU "\n", array[4]);
 
-	cprintf(listener, "\tqueue_pps_in\t\t" PU "\n", pps[0]);
-	cprintf(listener, "\tqueue_pps_out\t\t" PU "\n", pps[1]);
+	cprintf(listener, "queue_pps_in\t\t" PU "\n", pps[0]);
+	cprintf(listener, "queue_pps_out\t\t" PU "\n", pps[1]);
 
 	return 1;
 }
@@ -1808,7 +1808,7 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
-	cprintf(listener, "\tstate\t%s\n",
+	cprintf(listener, "state\t%s\n",
 		fr_int2str(state_names, data->state, "?"));
 
 	if ((data->state == STATE_UNOPENED) ||
@@ -1869,7 +1869,7 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 
 	command_print_stats(listener, &home->stats,
 			    (home->type == HOME_TYPE_AUTH), 1);
-	cprintf(listener, "\toutstanding\t%d\n", home->currently_outstanding);
+	cprintf(listener, "outstanding\t%d\n", home->currently_outstanding);
 	return 1;
 }
 #endif
