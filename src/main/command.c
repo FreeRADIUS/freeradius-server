@@ -1003,36 +1003,71 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 {
 	RADCLIENT *client;
 	fr_ipaddr_t ipaddr;
+	int myarg;
 	int proto = IPPROTO_UDP;
+	RADCLIENT_LIST *list = NULL;
 
 	if (argc < 1) {
 		cprintf_error(listener, "Must specify <ipaddr>\n");
 		return NULL;
 	}
 
+	/*
+	 *	First arg is IP address.
+	 */
 	if (ip_hton(&ipaddr, AF_UNSPEC, argv[0], false) < 0) {
 		cprintf_error(listener, "Failed parsing IP address; %s\n",
 			fr_strerror());
 		return NULL;
 	}
+	myarg = 1;
+
+	while (myarg < argc) {
+		if (strcmp(argv[myarg], "udp") == 0) {
+			proto = IPPROTO_UDP;
+			myarg++;
+			continue;
+		}
 
 #ifdef WITH_TCP
-	if (argc >= 2) {
-		if (strcmp(argv[1], "tcp") == 0) {
+		if (strcmp(argv[myarg], "tcp") == 0) {
 			proto = IPPROTO_TCP;
-
-		} else if (strcmp(argv[1], "udp") == 0) {
-			proto = IPPROTO_UDP;
-
-		} else {
-			cprintf_error(listener, "Unknown protocol %s.  Please use \"udp\" or \"tcp\"\n",
-				argv[1]);
-			return NULL;
+			myarg++;
+			continue;
 		}
-	}
 #endif
 
-	client = client_find(NULL, &ipaddr, proto);
+		if (strcmp(argv[myarg], "listen") == 0) {
+			uint16_t server_port;
+			fr_ipaddr_t server_ipaddr;
+
+			if ((argc - myarg) < 2) {
+				cprintf_error(listener, "Must specify listen <ipaddr> <port>\n");
+				return NULL;
+			}
+
+			if (ip_hton(&server_ipaddr, ipaddr.af, argv[myarg + 1], false) < 0) {
+				cprintf_error(listener, "Failed parsing IP address; %s\n",
+					      fr_strerror());
+				return NULL;
+			}
+			
+			server_port = atoi(argv[myarg + 2]);
+
+			list = listener_find_client_list(&server_ipaddr, server_port, proto);
+			if (!list) {
+				cprintf_error(listener, "No such listener %s %s\n", argv[myarg + 1], argv[myarg + 2]);
+				return NULL;
+			}
+			myarg += 3;
+			continue;
+		}
+
+		cprintf_error(listener, "Unknown argument %s.\n", argv[myarg]);
+		return NULL;
+	}
+
+	client = client_find(list, &ipaddr, proto);
 	if (!client) {
 		cprintf_error(listener, "No such client\n");
 		return NULL;
@@ -2028,7 +2063,7 @@ static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 
 static fr_command_table_t command_table_del_client[] = {
 	{ "ipaddr", FR_WRITE,
-	  "del client ipaddr <ipaddr> - Delete a dynamically created client",
+	  "del client ipaddr <ipaddr> [udp|tcp] [listen <ipaddr> <port>] - Delete a dynamically created client",
 	  command_del_client, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
@@ -2102,10 +2137,7 @@ static fr_command_table_t command_table_set[] = {
 #ifdef WITH_STATS
 static fr_command_table_t command_table_stats[] = {
 	{ "client", FR_READ,
-	  "stats client [auth/acct] <ipaddr> "
-#ifdef WITH_TCP
-	  "[proto] "
-#endif
+	  "stats client [auth/acct] <ipaddr> [udp|tcp] [listen <ipaddr> <port>] "
 	  "- show statistics for given client, or for all clients (auth or acct)",
 	  command_stats_client, NULL },
 
