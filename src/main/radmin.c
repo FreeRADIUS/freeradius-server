@@ -552,7 +552,7 @@ int main(int argc, char **argv)
 			/*
 			 *	If we're root, just use the first one we gind
 			 */
-			if (uid == 0) break
+			if (uid == 0) break;
 
 			/*
 			 *	Check UID and GID.
