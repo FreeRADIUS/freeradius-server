@@ -580,8 +580,6 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 
 	pthread_mutex_lock(&pool->mutex);
 
-	fr_heap_delete(pool->heap);
-
 	/*
 	 *	Don't loop over the list.  Just keep removing the head
 	 *	until they're all gone.
@@ -591,6 +589,8 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 
 		fr_connection_close(pool, this);
 	}
+
+	fr_heap_delete(pool->heap);
 
 	fr_connection_exec_trigger(pool, "stop");
 
