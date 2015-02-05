@@ -571,7 +571,7 @@ int fr_connection_del(fr_connection_pool_t *pool, void *conn)
  */
 void fr_connection_pool_delete(fr_connection_pool_t *pool)
 {
-	fr_connection_t *this, *next;
+	fr_connection_t *this;
 
 	if (!pool) return;
 
@@ -579,9 +579,11 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 
 	pthread_mutex_lock(&pool->mutex);
 
-	for (this = pool->head; this != NULL; this = next) {
-		next = this->next;
-
+	/*
+	 *	Don't loop over the list.  Just keep removing the head
+	 *	until they're all gone.
+	 */
+	while ((this = pool->head) != NULL) {
 		INFO("%s: Closing connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
 		fr_connection_close(pool, this);
