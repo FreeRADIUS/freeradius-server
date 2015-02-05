@@ -547,7 +547,9 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
  */
 void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 {
+#ifndef NDEBUG
 	CONF_ITEM *first = ci;
+#endif
 
 	rad_assert((void *)cs != (void *)ci);
 
