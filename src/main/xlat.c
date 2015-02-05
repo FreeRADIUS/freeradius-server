@@ -2208,7 +2208,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 			type = PW_TYPE_STRING;
 			slen = value_data_from_str(request, &data, &type, NULL, child, talloc_array_length(child) - 1, '"');
-			rad_assert(slen > 0);
+			if (slen <= 0) {
+				talloc_free(child);
+				return NULL;
+			}
 
 			talloc_free(child);
 			child = data.ptr;
