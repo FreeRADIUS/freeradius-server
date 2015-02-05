@@ -27,6 +27,9 @@ RCSID("$Id$")
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/channel.h>
 
+#include <pwd.h>
+#include <grp.h>
+
 #ifdef HAVE_SYS_UN_H
 #  include <sys/un.h>
 #  ifndef SUN_LEN
@@ -484,6 +487,12 @@ int main(int argc, char **argv)
 	if (radius_dir) {
 		int rcode;
 		CONF_SECTION *cs, *subcs;
+		uid_t		uid;
+		gid_t		gid;
+		char const	*uid_name = NULL;
+		char const	*gid_name = NULL;
+		struct passwd	*pwd;
+		struct group	*grp;
 
 		file = NULL;	/* MUST read it from the conffile now */
 
@@ -511,6 +520,9 @@ int main(int argc, char **argv)
 			usage(1);
 		}
 
+		uid = getuid();
+		gid = getgid();
+
 		subcs = NULL;
 		while ((subcs = cf_subsection_find_next(cs, subcs, "listen")) != NULL) {
 			char const *value;
@@ -528,7 +540,7 @@ int main(int argc, char **argv)
 			 */
 			rcode = cf_item_parse(subcs, "socket", FR_ITEM_POINTER(PW_TYPE_STRING, &file), NULL);
 			if (rcode < 0) {
-				fprintf(stderr, "%s: Failed parsing listen section\n", progname);
+				fprintf(stderr, "%s: Failed parsing listen section 'socket'\n", progname);
 				exit(1);
 			}
 
@@ -536,6 +548,47 @@ int main(int argc, char **argv)
 				fprintf(stderr, "%s: No path given for socket\n", progname);
 				usage(1);
 			}
+
+			/*
+			 *	If we're root, just use the first one we gind
+			 */
+			if (uid == 0) break
+
+			/*
+			 *	Check UID and GID.
+			 */
+			rcode = cf_item_parse(subcs, "uid", FR_ITEM_POINTER(PW_TYPE_STRING, &uid_name), NULL);
+			if (rcode < 0) {
+				fprintf(stderr, "%s: Failed parsing listen section 'uid'\n", progname);
+				exit(1);
+			}
+
+			if (!uid_name) break;
+
+			pwd = getpwnam(uid_name);
+			if (!pwd) {
+				fprintf(stderr, "%s: Failed getting UID for user %s: %s\n", progname, uid_name, strerror(errno));
+				exit(1);
+			}
+
+			if (uid != pwd->pw_uid) continue;
+
+			rcode = cf_item_parse(subcs, "gid", FR_ITEM_POINTER(PW_TYPE_STRING, &gid_name), NULL);
+			if (rcode < 0) {
+				fprintf(stderr, "%s: Failed parsing listen section 'gid'\n", progname);
+				exit(1);
+			}
+
+			if (!gid_name) break;
+
+			grp = getgrnam(gid_name);
+			if (!grp) {
+				fprintf(stderr, "%s: Failed getting GID for group %s: %s\n", progname, gid_name, strerror(errno));
+				exit(1);
+			}
+
+			if (gid != grp->gr_gid) continue;
+
 			break;
 		}
 
