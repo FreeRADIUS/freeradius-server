@@ -444,6 +444,8 @@ redo:
 	priority = -1;
 	c = entry->c;
 
+	rad_assert(c->debug_name != NULL); /* if this happens, all bets are off. */
+
 	/*
 	 *	Nothing more to do.  Return the code and priority
 	 *	which was set by the caller.
