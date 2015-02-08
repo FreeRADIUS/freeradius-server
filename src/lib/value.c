@@ -953,9 +953,9 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		dst->sinteger = (int32_t)strtol(src, NULL, 10);
 		break;
 
-		/*
-		 *  Anything else.
-		 */
+	/*
+	 *  Anything else.
+	 */
 	default:
 		fr_strerror_printf("Unknown attribute type %d", *src_type);
 		return -1;
