@@ -86,7 +86,8 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 			}
 
 			if (map_to_vp(&vp, request, attr, NULL) < 0) {
-				RWDEBUG("Failed creating attribute for \"%s\", skipping...", self->values[i]->bv_val);
+				RWDEBUG("Failed creating attribute for valuepair \"%s\", skipping...",
+					self->values[i]->bv_val);
 				goto next_pair;
 			}
 
@@ -108,9 +109,13 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 			rad_assert(vp);
 
 			if (pairparsevalue(vp, self->values[i]->bv_val, self->values[i]->bv_len) < 0) {
-				RDEBUG("Failed parsing value for \"%s\"", map->lhs->tmpl_da->name);
+				char *escaped;
 
-				talloc_free(vp);
+				escaped = fr_aprints(vp, self->values[i]->bv_val, self->values[i]->bv_len, '"');
+				RWDEBUG("Failed parsing value \"%s\" for attribute %s: %s", escaped,
+					map->lhs->tmpl_da->name, fr_strerror());
+
+				talloc_free(vp); /* also frees escaped */
 				continue;
 			}
 
