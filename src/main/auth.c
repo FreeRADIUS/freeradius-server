@@ -507,7 +507,7 @@ autz_redo:
 	}
 
 #ifdef WITH_PROXY
- authenticate:
+authenticate:
 #endif
 
 	/*
@@ -624,8 +624,7 @@ autz_redo:
 				 *	Remove ALL reply attributes.
 				 */
 				pairfree(&request->reply->vps);
-				pairmake_reply("Reply-Message",
-					       umsg, T_OP_SET);
+				pairmake_reply("Reply-Message", umsg, T_OP_SET);
 
 				snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
 					check_item->vp_integer,
