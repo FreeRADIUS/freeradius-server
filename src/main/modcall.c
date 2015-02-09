@@ -3478,7 +3478,7 @@ bool modcall_pass2(modcallable *mc)
 #ifdef WITH_UNLANG
 		case MOD_UPDATE:
 			g = mod_callabletogroup(c);
-			if (g->done_pass2) return true;
+			if (g->done_pass2) goto do_next;;
 
 			name2 = cf_section_name2(g->cs);
 			if (!name2) {
@@ -3507,7 +3507,7 @@ bool modcall_pass2(modcallable *mc)
 		case MOD_IF:
 		case MOD_ELSIF:
 			g = mod_callabletogroup(c);
-			if (g->done_pass2) return true;
+			if (g->done_pass2) goto do_next;
 
 			name2 = cf_section_name2(g->cs);
 			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
@@ -3534,7 +3534,7 @@ bool modcall_pass2(modcallable *mc)
 #ifdef WITH_UNLANG
 		case MOD_SWITCH:
 			g = mod_callabletogroup(c);
-			if (g->done_pass2) return true;
+			if (g->done_pass2) goto do_next;
 
 			name2 = cf_section_name2(g->cs);
 			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
@@ -3626,7 +3626,7 @@ bool modcall_pass2(modcallable *mc)
 
 		case MOD_CASE:
 			g = mod_callabletogroup(c);
-			if (g->done_pass2) return true;
+			if (g->done_pass2) goto do_next;
 
 			name2 = cf_section_name2(g->cs);
 			if (!name2) {
@@ -3720,7 +3720,7 @@ bool modcall_pass2(modcallable *mc)
 
 		case MOD_FOREACH:
 			g = mod_callabletogroup(c);
-			if (g->done_pass2) return true;
+			if (g->done_pass2) goto do_next;
 
 			name2 = cf_section_name2(g->cs);
 			c->debug_name = talloc_asprintf(c, "%s %s", unlang_keyword[c->type], name2);
@@ -3788,11 +3788,14 @@ bool modcall_pass2(modcallable *mc)
 				}
 			}
 
-			if (g->done_pass2) return true;
+			if (g->done_pass2) goto do_next;
 			if (!modcall_pass2(g->children)) return false;
 			g->done_pass2 = true;
 			break;
 		}
+
+	do_next:
+		rad_assert(c->debug_name != NULL);
 	}
 
 	return true;
