@@ -661,14 +661,10 @@ authenticate:
 			}
 			if (!mpp_ok){
 				if (check_item->vp_integer > 1) {
-					snprintf(umsg, sizeof(umsg),
-						 "\r\n%s (%d)\r\n\n",
-						 main_config.denied_msg,
-						 (int)check_item->vp_integer);
+					snprintf(umsg, sizeof(umsg), "%s (%u)", main_config.denied_msg,
+						 check_item->vp_integer);
 				} else {
-					snprintf(umsg, sizeof(umsg),
-						 "\r\n%s\r\n\n",
-						 main_config.denied_msg);
+					strlcpy(umsg, main_config.denied_msg, sizeof(umsg));
 				}
 
 				request->reply->code = PW_CODE_ACCESS_REJECT;
