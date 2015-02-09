@@ -50,6 +50,9 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	  with status "1" if any command failed to execute.
 	* radmin now sends error messages from the server to
 	  stderr, instead of to stdout.
+	* radmin now looks for sockets matching it's UID and GID,
+	  rather than just always using the first one it finds.
+	* radmin can how delete clients which are tied to a listener.
 
 	Bug fixes
 	* Fix issues parsing LDAP hostnames with non-standard ports.
@@ -94,6 +97,8 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	  files.
 	* Create dynamic clients if the dynamic clients virtual server
 	  returns ok *or* updated. Emit useful messages for other codes.
+	* Compile bare "authorize" statements, and issue errors saying
+	  using them isn't a good idea.
 
 FreeRADIUS 3.0.6 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	Feature improvements
