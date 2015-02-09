@@ -1150,6 +1150,11 @@ static int load_byserver(CONF_SECTION *cs)
 					    section_type_value[comp].section);
 		if (!subcs) continue;
 
+		if (!name) {
+			cf_log_err_cs(subcs, "The %s section should be inside of a 'server { ... }' block!",
+				      section_type_value[comp].section);
+		}
+
 		if (cf_item_find_next(subcs, NULL) == NULL) continue;
 
 		/*
