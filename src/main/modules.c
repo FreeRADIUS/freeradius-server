@@ -1400,6 +1400,25 @@ int virtual_servers_load(CONF_SECTION *config)
 	}
 
 	/*
+	 *	Try to compile the "authorize", etc. sections which
+	 *	aren't in a virtual server.
+	 */
+	server = virtual_server_find(NULL);
+	if (server) {
+		int i;
+
+		for (i = RLM_COMPONENT_AUTH; i < RLM_COMPONENT_COUNT; i++) {
+			if (!modcall_pass2(server->mc[i])) return -1;
+		}
+
+		if (server->components &&
+		    (rbtree_walk(server->components, RBTREE_IN_ORDER,
+				 pass2_cb, NULL) != 0)) {
+			return -1;
+		}
+	}
+
+	/*
 	 *	Now that we've loaded everything, run pass 2 over the
 	 *	conditions and xlats.
 	 */
@@ -1416,7 +1435,6 @@ int virtual_servers_load(CONF_SECTION *config)
 
 		for (i = RLM_COMPONENT_AUTH; i < RLM_COMPONENT_COUNT; i++) {
 			if (!modcall_pass2(server->mc[i])) return -1;
-
 		}
 
 		if (server->components &&
