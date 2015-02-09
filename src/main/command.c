@@ -1497,7 +1497,7 @@ static fr_command_table_t command_table_inject[] = {
 	  command_inject_from, NULL },
 
 	{ "file", FR_WRITE,
-	  "inject file <input-file> <output-file> - Inject packet from input-file>, with results sent to <output-file>",
+	  "inject file <input-file> <output-file> - Inject packet from <input-file>, with results sent to <output-file>",
 	  command_inject_file, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
