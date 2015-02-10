@@ -1336,21 +1336,7 @@ STATE_MACHINE_DECL(request_finish)
 	 *	from an Access-Request.  See request_alloc_coa() for
 	 *	details.
 	 */
-	if (request->options == 1) {
-		pairfree(&request->config_items);
-		pairfree(&request->packet->vps);
-		request->username = NULL;
-		request->password = NULL;
-
-		if (request->proxy) {
-			pairfree(&request->proxy->vps);
-		}
-		if (request->proxy_reply) {
-			pairfree(&request->proxy_reply->vps);
-		}
-
-		goto done;
-	}
+	if (request->options == 1) goto done;
 #endif
 
 	/*
@@ -1399,21 +1385,6 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Clean up.  These are no longer needed.
 	 */
-	pairfree(&request->config_items);
-
-	pairfree(&request->packet->vps);
-	request->username = NULL;
-	request->password = NULL;
-
-#ifdef WITH_PROXY
-	if (request->proxy) {
-		pairfree(&request->proxy->vps);
-	}
-	if (request->proxy_reply) {
-		pairfree(&request->proxy_reply->vps);
-	}
-#endif
-
 	gettimeofday(&request->reply->timestamp, NULL);
 
 	/*
@@ -1512,8 +1483,6 @@ STATE_MACHINE_DECL(request_finish)
 			debug_packet(request, request->reply, false);
 		}
 	done:
-		pairfree(&request->reply->vps);
-
 		RDEBUG2("Finished request");
 		request->component = "<core>";
 		request->module = "<done>";
