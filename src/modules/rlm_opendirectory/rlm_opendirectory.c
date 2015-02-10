@@ -299,7 +299,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	 *	Can't do OpenDirectory if there's no password.
 	 */
 	if (!request->password ||
-		(request->password->da->attr != PW_PASSWORD)) {
+		(request->password->da->attr != PW_USER_PASSWORD)) {
 		REDEBUG("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
