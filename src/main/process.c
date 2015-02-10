@@ -3588,7 +3588,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			request->proxy->id);
 		request->num_proxied_requests++;
 
-		rad_assert(request->proxy_listener != NULL);;
+		rad_assert(request->proxy_listener != NULL);
 		FR_STATS_TYPE_INC(home->stats.total_requests);
 		home->last_packet_sent = now.tv_sec;
 		request->proxy_retransmit = now;

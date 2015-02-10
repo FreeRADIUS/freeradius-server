@@ -474,10 +474,10 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 				continue;
 			}
 
-			data = variables[i].data;;
+			data = variables[i].data;
 
 		} else if (variables[i].data) {
-			data = variables[i].data;;
+			data = variables[i].data;
 
 		} else {
 			data = (((char const *)base) + variables[i].offset);

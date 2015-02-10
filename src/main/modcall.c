@@ -3478,7 +3478,7 @@ bool modcall_pass2(modcallable *mc)
 #ifdef WITH_UNLANG
 		case MOD_UPDATE:
 			g = mod_callabletogroup(c);
-			if (g->done_pass2) goto do_next;;
+			if (g->done_pass2) goto do_next;
 
 			name2 = cf_section_name2(g->cs);
 			if (!name2) {
