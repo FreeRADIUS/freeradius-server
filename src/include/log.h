@@ -160,18 +160,18 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
 #define RPROXY(fmt, ...)	radlog_request(L_PROXY, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
 
 #define RDEBUGX(_l, fmt, ...)	radlog_request(L_DBG, _l, request, fmt, ## __VA_ARGS__)
-#define RDEBUG(fmt, ...)	radlog_request(L_DBG, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
-#define RDEBUG2(fmt, ...)	radlog_request(L_DBG, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
-#define RDEBUG3(fmt, ...)	radlog_request(L_DBG, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__)
-#define RDEBUG4(fmt, ...)	radlog_request(L_DBG, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
+#define RDEBUG(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
+#define RDEBUG2(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
+#define RDEBUG3(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__)
+#define RDEBUG4(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
 
 #define RINFO(fmt, ...)		radlog_request(L_INFO, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
 #define RIDEBUG(fmt, ...)	radlog_request(L_INFO, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
 #define RIDEBUG2(fmt, ...)	radlog_request(L_INFO, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
 
 #define RWARN(fmt, ...)		radlog_request(L_DBG_WARN, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
-#define RWDEBUG(fmt, ...)	radlog_request(L_DBG_WARN, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
-#define RWDEBUG2(fmt, ...)	radlog_request(L_DBG_WARN, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
+#define RWDEBUG(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
+#define RWDEBUG2(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
 
 #define RERROR(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_OFF, request, fmt, ## __VA_ARGS__)
 #define REDEBUG(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
