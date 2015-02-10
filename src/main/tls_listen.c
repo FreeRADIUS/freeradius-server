@@ -399,7 +399,7 @@ int dual_tls_recv(rad_listen_t *listener)
 		return 0;
 	} /* switch over packet types */
 
-	if (!request_receive(listener, packet, client, fun)) {
+	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&sock->packet);
 		request->packet = NULL;

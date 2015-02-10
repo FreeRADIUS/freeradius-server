@@ -1466,7 +1466,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		WARN("INJECTION IS LEAKING MEMORY!");
 	}
 
-	if (!request_receive(fake, packet, sock->inject_client, fun)) {
+	if (!request_receive(NULL, fake, packet, sock->inject_client, fun)) {
 		cprintf_error(listener, "Failed to inject request.  See log file for details\n");
 		rad_free(&packet);
 		free(fake);
