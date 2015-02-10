@@ -905,7 +905,7 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 			packet = fr_tcp_recv(pl->sockets[start].sockfd, 0);
 		} else
 #endif
-		packet = rad_recv(pl->sockets[start].sockfd, 0);
+		packet = rad_recv(NULL, pl->sockets[start].sockfd, 0);
 		if (!packet) continue;
 
 		/*

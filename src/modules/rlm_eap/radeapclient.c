@@ -188,7 +188,7 @@ static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
 			continue;
 		}
 
-		*rep = rad_recv(req->sockfd, 0);
+		*rep = rad_recv(NULL, req->sockfd, 0);
 		if (*rep != NULL) {
 			/*
 			 *	If we get a response from a machine

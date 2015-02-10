@@ -2558,7 +2558,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 /** Receive UDP client requests, and fill in the basics of a RADIUS_PACKET structure
  *
  */
-RADIUS_PACKET *rad_recv(int fd, int flags)
+RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 {
 	int sock_flags = 0;
 	ssize_t data_len;
@@ -2567,7 +2567,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	/*
 	 *	Allocate the new request data structure
 	 */
-	packet = rad_alloc(NULL, false);
+	packet = rad_alloc(ctx, false);
 	if (!packet) {
 		fr_strerror_printf("out of memory");
 		return NULL;
