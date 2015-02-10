@@ -12,6 +12,7 @@ DEFAULT
 	EAP-Message =* ANY,
 	State =* ANY,
 	Message-Authenticator =* ANY,
+	Error-Cause =* ANY,
 	Reply-Message =* ANY,
 	MS-CHAP-Error =* ANY,
 	Proxy-State =* ANY
