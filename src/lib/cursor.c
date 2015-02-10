@@ -93,17 +93,8 @@ VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
 	return fr_cursor_current(cursor);
 }
 
-/** Iterate over attributes of a given type in the pairlist
- *
- *
- */
-VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag)
+static VALUE_PAIR *fr_cursor_update(vp_cursor_t *cursor, VALUE_PAIR *i)
 {
-	VALUE_PAIR *i;
-
-	if (!cursor->first) return NULL;
-
-	i = pairfind(!cursor->found ? cursor->current : cursor->found->next, attr, vendor, tag);
 	if (!i) {
 		cursor->next = NULL;
 		cursor->current = NULL;
@@ -118,6 +109,29 @@ VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsign
 	return i;
 }
 
+/** Iterate over attributes of a given type in the pairlist
+ *
+ *
+ */
+VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag)
+{
+	VALUE_PAIR *i;
+
+	if (!cursor->first) return NULL;
+
+	for (i = !cursor->found ? cursor->current : cursor->found->next;
+	     i != NULL;
+	     i = i->next) {
+		VERIFY_VP(i);
+		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
+		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			break;
+		}
+	}
+
+	return fr_cursor_update(cursor, i);
+}
+
 /** Iterate over attributes of a given DA in the pairlist
  *
  *
@@ -128,19 +142,17 @@ VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_
 
 	if (!cursor->first) return NULL;
 
-	i = pair_find_by_da(!cursor->found ? cursor->current : cursor->found->next, da, tag);
-	if (!i) {
-		cursor->next = NULL;
-		cursor->current = NULL;
-
-		return NULL;
+	for (i = !cursor->found ? cursor->current : cursor->found->next;
+	     i != NULL;
+	     i = i->next) {
+		VERIFY_VP(i);
+		if ((i->da == da) &&
+		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			break;
+		}
 	}
 
-	cursor->next = i->next;
-	cursor->current = i;
-	cursor->found = i;
-
-	return i;
+	return fr_cursor_update(cursor, i);
 }
 
 /** Retrieve the next VALUE_PAIR
