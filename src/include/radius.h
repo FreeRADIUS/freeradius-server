@@ -66,123 +66,49 @@ typedef enum {
 #define PW_RADIUS_TLS_PORT	       	2083
 #define PW_COA_UDP_PORT			3799
 
-#define	PW_USER_NAME			1
-#define	PW_USER_PASSWORD		2
-#define	PW_PASSWORD			2
-#define	PW_CHAP_PASSWORD		3
-#define	PW_NAS_IP_ADDRESS		4
-#define	PW_NAS_PORT			5
-#define	PW_SERVICE_TYPE			6
-#define	PW_FRAMED_PROTOCOL		7
-#define	PW_FRAMED_IP_ADDRESS		8
-#define	PW_FRAMED_IP_NETMASK		9
-#define	PW_FRAMED_ROUTING		10
-#define	PW_FILTER_ID			11
-#define	PW_FRAMED_MTU			12
-#define	PW_FRAMED_COMPRESSION		13
-#define	PW_LOGIN_IP_HOST		14
-#define	PW_LOGIN_SERVICE		15
-#define	PW_LOGIN_TCP_PORT		16
-#define PW_OLD_PASSWORD			17
-#define PW_REPLY_MESSAGE		18
-#define PW_CALLBACK_NUMBER		19
-#define PW_CALLBACK_ID			20
-#if 0
-/*
- *	Deprecated, and no longer used.
- */
-#define PW_EXPIRATION			21
-#endif
-#define PW_FRAMED_ROUTE			22
-#define PW_FRAMED_IPXNET		23
-#define PW_STATE			24
-#define PW_CLASS			25
-#define PW_VENDOR_SPECIFIC		26
-#define PW_SESSION_TIMEOUT		27
-#define PW_IDLE_TIMEOUT			28
-#define PW_CALLED_STATION_ID		30
-#define PW_CALLING_STATION_ID		31
-#define PW_NAS_IDENTIFIER		32
-#define PW_PROXY_STATE			33
-#define PW_LOGIN_LAT_SERVICE		34
-#define PW_LOGIN_LAT_NODE		35
-#define PW_LOGIN_LAT_GROUP		36
-#define PW_FRAMED_APPLETALK_LINK	37
-#define PW_FRAMED_APPLETALK_NETWORK	38
-#define PW_FRAMED_APPLETALK_ZONE	39
-#define PW_ACCT_STATUS_TYPE		40
-#define PW_ACCT_DELAY_TIME		41
-#define PW_ACCT_INPUT_OCTETS		42
-#define PW_ACCT_OUTPUT_OCTETS		43
-#define PW_ACCT_SESSION_ID		44
-#define PW_ACCT_AUTHENTIC		45
-#define PW_ACCT_SESSION_TIME		46
-#define PW_ACCT_INPUT_PACKETS		47
-#define PW_ACCT_OUTPUT_PACKETS		48
-#define PW_ACCT_TERMINATE_CAUSE		49
-#define PW_ACCT_MULTI_SESSION_ID	50
-#define PW_ACCT_LINK_COUNT		51
-#define PW_ACCT_INPUT_GIGAWORDS		52
-#define PW_ACCT_OUTPUT_GIGAWORDS	53
-#define PW_EVENT_TIMESTAMP		55
-#define PW_EGRESS_VLANID		56
-#define PW_INGRESS_FILTERS		57
-#define PW_EGRESS_VLAN_NAME		58
-#define PW_USER_PRIORITY_TABLE		59
-#define PW_CHAP_CHALLENGE		60
-#define PW_NAS_PORT_TYPE		61
-#define PW_PORT_LIMIT			62
-#define PW_LOGIN_LAT_PORT		63
-#define PW_TUNNEL_TYPE			64
-#define PW_TUNNEL_MEDIUM_TYPE		65
-#define PW_TUNNEL_CLIENT_ENDPOINT	66
-#define PW_TUNNEL_SERVER_ENDPOINT	67
-#define PW_ACCT_TUNNEL_CONNECTION	68
-#define PW_TUNNEL_PASSWORD		69
-#define PW_ARAP_PASSWORD		70
-#define PW_ARAP_FEATURES		71
-#define PW_ARAP_ZONE_ACCESS		72
-#define PW_ARAP_SECURITY		73
-#define PW_ARAP_SECURITY_DATA		74
-#define PW_PASSWORD_RETRY		75
-#define PW_PROMPT			76
-#define PW_CONNECT_INFO			77
-#define PW_CONFIGURATION_TOKEN		78
-#define PW_EAP_MESSAGE			79
-#define PW_MESSAGE_AUTHENTICATOR	80
-#define PW_TUNNEL_PRIVATE_GROUP_ID	81
-#define PW_TUNNEL_ASSIGNMENT_ID		82
-#define PW_TUNNEL_PREFERENCE		83
-#define PW_ARAP_CHALLENGE_RESPONSE	84
-#define PW_ACCT_INTERIM_INTERVAL	85
-#define PW_ACCT_TUNNEL_PACKETS_LOST	86
-#define PW_NAS_PORT_ID_STRING		87
-#define PW_FRAMED_POOL			88
-#define PW_CHARGEABLE_USER_IDENTITY	89
-#define PW_CUI				89
-#define PW_TUNNEL_CLIENT_AUTH_ID	90
-#define PW_TUNNEL_SERVER_AUTH_ID	91
-#define PW_NAS_FILTER_RULE		92
-#define PW_ORIGINATING_LINE_INFO	94
-#define PW_NAS_IPV6_ADDRESS		95
-#define PW_FRAMED_IPV6_PREFIX		97
-#define PW_LOGIN_IPV6_HOST		98
-#define PW_FRAMED_IPV6_ROUTE		99
-#define PW_FRAMED_IPV6_POOL		100
-#define PW_ERROR_CAUSE			101
-#define PW_EAP_KEY_NAME			102
+#include <freeradius-devel/rfc2865.h>
+#include <freeradius-devel/rfc2866.h>
+#include <freeradius-devel/rfc2867.h>
+#include <freeradius-devel/rfc2868.h>
+#include <freeradius-devel/rfc2869.h>
 
-#define PW_OPERATOR_NAME		126
+#include <freeradius-devel/rfc3162.h>
+#include <freeradius-devel/rfc3576.h>
+#include <freeradius-devel/rfc3580.h>
 
-#define PW_EXTENDED_ATTRIBUTE		192
+#include <freeradius-devel/rfc4072.h>
+#include <freeradius-devel/rfc4372.h>
 
-#define PW_DIGEST_RESPONSE		206
-#define PW_DIGEST_ATTRIBUTES		207
+#define PW_CUI	PW_CHARGEABLE_USER_IDENTITY
+
+#include <freeradius-devel/rfc4675.h>
+#include <freeradius-devel/rfc4818.h>
+#include <freeradius-devel/rfc4849.h>
+
+#include <freeradius-devel/rfc5580.h>
+#include <freeradius-devel/rfc5607.h>
+#include <freeradius-devel/rfc5904.h>
+
+#include <freeradius-devel/rfc6572.h>
+#include <freeradius-devel/rfc6677.h>
+#include <freeradius-devel/rfc6911.h>
+#include <freeradius-devel/rfc6929.h>
+#include <freeradius-devel/rfc6930.h>
+
+#include <freeradius-devel/rfc7055.h>
+#include <freeradius-devel/rfc7155.h>
+#include <freeradius-devel/rfc7268.h>
+
 
 /*
  *	All internal attributes are now defined in this file.
  */
 #include <freeradius-devel/attributes.h>
+
+#define PW_EXTENDED_ATTRIBUTE		192
+
+#define PW_DIGEST_RESPONSE		206
+#define PW_DIGEST_ATTRIBUTES		207
 
 /*
  *	Integer Translations

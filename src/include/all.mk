@@ -55,11 +55,29 @@ src/include/autoconf.sed: src/include/autoconf.h
 	's,#[\\t ]*ifndef[\\t ]*" $$2 "$$,#if 1,g;'\
 	's,defined(" $$2 "),0,g;"}' >> $@
 
-src/include/radius.h: | src/include/attributes.h
+
+######################################################################
+#
+#  Create the header files from the dictionaries.
+#
+
+RFC_DICTS := $(filter-out %~,$(wildcard share/dictionary.rfc*))
+RFC_HEADERS := $(patsubst share/dictionary.%,src/include/%.h,$(RFC_DICTS))
 
 src/include/attributes.h: share/dictionary.freeradius.internal
 	@$(ECHO) HEADER $@
 	@grep ^ATTRIBUTE $<  | awk '{print "PW_"$$2 " " $$3}' | tr '[:lower:]' '[:upper:]' | tr -- - _ | sed 's/^/#define /' > $@
+
+src/include/%.h: share/dictionary.%
+	@$(ECHO) HEADER $@
+	@grep ^ATTRIBUTE $<  | awk '{print "PW_"$$2 " " $$3}' | tr '[:lower:]' '[:upper:]' | tr -- - _ | sed 's/^/#define /' > $@
+
+src/include/radius.h: | src/include/attributes.h $(RFC_HEADERS)
+
+#
+#  So the headers are created before we compile anything
+#
+$(JLIBTOOL): src/include/radius.h
 
 src/freeradius-devel/features.h: src/include/features.h src/freeradius-devel
 
@@ -101,6 +119,7 @@ src/include/radpaths.h: src/include/build-radpaths-h
 
 ${BUILD_DIR}/make/jlibtool: $(HEADERS_DY)
 
+######################################################################
 #
 #  Installation
 #
