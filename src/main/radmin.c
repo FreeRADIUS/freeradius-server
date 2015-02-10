@@ -550,7 +550,7 @@ int main(int argc, char **argv)
 			}
 
 			/*
-			 *	If we're root, just use the first one we gind
+			 *	If we're root, just use the first one we find
 			 */
 			if (uid == 0) break;
 

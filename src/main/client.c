@@ -207,7 +207,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		break;
 
 	case AF_INET6:
-		if (client->ipaddr.prefix == 128) client->ipaddr.prefix = 0;;
+		if (client->ipaddr.prefix == 128) client->ipaddr.prefix = 0;
 		break;
 
 	default:

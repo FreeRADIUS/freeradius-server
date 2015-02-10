@@ -597,7 +597,7 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 			 fr_hash_table_walk_t callback,
 			 void *context)
 {
-	int i, rcode;;
+	int i, rcode;
 
 	if (!ht || !callback) return 0;
 
