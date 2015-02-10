@@ -93,6 +93,13 @@ static const CONF_PARSER security_config[] = {
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
 #endif
+
+	/*
+	 *	Don't set a default here.  It's set in the code, below.  This means that
+	 *	the config item will *not* get printed out in debug mode, so that no one knows
+	 *	it exists.
+	 */
+	{ "talloc_pool_size", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.talloc_pool_size), NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -624,6 +631,8 @@ int main_config_init(void)
 	if (!main_config.dictionary_dir) {
 		main_config.dictionary_dir = DICTDIR;
 	}
+
+	main_config.talloc_pool_size = 512 * 1024; /* default */
 
 	/*
 	 *	Read the distribution dictionaries first, then

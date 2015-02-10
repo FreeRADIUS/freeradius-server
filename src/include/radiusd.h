@@ -464,6 +464,7 @@ typedef struct main_config_t {
 	bool		memory_report;
 	char const	*panic_action;
 	char const	*denied_msg;
+	uint32_t       	talloc_pool_size;
 	struct timeval	init_delay; /* initial request processing delay */
 } MAIN_CONFIG_T;
 
