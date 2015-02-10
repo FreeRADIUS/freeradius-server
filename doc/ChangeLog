@@ -54,6 +54,8 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	  rather than just always using the first one it finds.
 	* radmin can how delete clients which are tied to a listener.
 	* Moved RADIUS attribute definitions to src/include/rfc*.h
+	* Move to talloc pools for requests.  For in-memory tests
+	  (default config, 'users' file), performance increases by 30%.
 
 	Bug fixes
 	* Fix issues parsing LDAP hostnames with non-standard ports.
