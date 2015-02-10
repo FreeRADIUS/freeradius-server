@@ -168,22 +168,13 @@ int pair2unknown(VALUE_PAIR *vp)
 VALUE_PAIR *pair_find_by_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
 {
 	vp_cursor_t 	cursor;
-	VALUE_PAIR	*i;
 
 	if(!fr_assert(da)) {
 		 return NULL;
 	}
 
-	for (i = fr_cursor_init(&cursor, &vp);
-	     i;
-	     i = fr_cursor_next(&cursor)) {
-		VERIFY_VP(i);
-		if ((i->da == da) && (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
-			return i;
-		}
-	}
-
-	return NULL;
+	(void) fr_cursor_init(&cursor, &vp);
+	return fr_cursor_next_by_da(&cursor, da, tag);
 }
 
 
@@ -194,23 +185,14 @@ VALUE_PAIR *pair_find_by_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
 VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	vp_cursor_t 	cursor;
-	VALUE_PAIR	*i;
 
 	/* List head may be NULL if it contains no VPs */
 	if (!vp) return NULL;
 
 	VERIFY_LIST(vp);
 
-	for (i = fr_cursor_init(&cursor, &vp);
-	     i;
-	     i = fr_cursor_next(&cursor)) {
-		if ((i->da->attr == attr) && (i->da->vendor == vendor) && \
-		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
-			return i;
-		}
-	}
-
-	return NULL;
+	(void) fr_cursor_init(&cursor, &vp);
+	return fr_cursor_next_by_num(&cursor, attr, vendor, tag);
 }
 
 /** Delete matching pairs
