@@ -93,13 +93,6 @@ static const CONF_PARSER security_config[] = {
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
 #endif
-
-	/*
-	 *	Don't set a default here.  It's set in the code, below.  This means that
-	 *	the config item will *not* get printed out in debug mode, so that no one knows
-	 *	it exists.
-	 */
-	{ "talloc_pool_size", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.talloc_pool_size), NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -142,6 +135,17 @@ static const CONF_PARSER log_config_nodest[] = {
 };
 
 
+static const CONF_PARSER resources[] = {
+	/*
+	 *	Don't set a default here.  It's set in the code, below.  This means that
+	 *	the config item will *not* get printed out in debug mode, so that no one knows
+	 *	it exists.
+	 */
+	{ "talloc_pool_size", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.talloc_pool_size), NULL },
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
 /*
  *  A mapping of configuration file names to internal variables
  */
@@ -175,6 +179,8 @@ static const CONF_PARSER server_config[] = {
 	{ "proxy_requests", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.proxy_requests), "yes" },
 #endif
 	{ "log", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) log_config_nodest },
+
+	{ "resources", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) resources },
 
 	/*
 	 *	People with old configs will have these.  They are listed
@@ -632,7 +638,12 @@ int main_config_init(void)
 		main_config.dictionary_dir = DICTDIR;
 	}
 
-	main_config.talloc_pool_size = 512 * 1024; /* default */
+	/*
+	 *	About sizeof(REQUEST) + sizeof(RADIUS_PACKET) * 2 + sizeof(VALUE_PAIR) * 400
+	 *
+	 *	Which should be enough for many configurations.
+	 */
+	main_config.talloc_pool_size = 32 * 1024; /* default */
 
 	/*
 	 *	Read the distribution dictionaries first, then
