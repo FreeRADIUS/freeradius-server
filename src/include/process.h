@@ -51,7 +51,7 @@ extern time_t fr_start_time;
 int request_enqueue(REQUEST *request);
 #endif
 
-int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
+int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun);
 
 #ifdef WITH_PROXY

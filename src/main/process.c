@@ -308,7 +308,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank);
 static int insert_into_proxy_hash(REQUEST *request);
 #endif
 
-static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
+static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 			      RADCLIENT *client, RAD_REQUEST_FUNP fun);
 
 STATE_MACHINE_DECL(request_common);
@@ -1622,7 +1622,7 @@ STATE_MACHINE_DECL(request_running)
 	}
 }
 
-int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
+int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 		    RADCLIENT *client, RAD_REQUEST_FUNP fun)
 {
 	uint32_t count;
@@ -1757,7 +1757,7 @@ skip_dup:
 		sock->rate_pps_now++;
 	}
 
-	request = request_setup(listener, packet, client, fun);
+	request = request_setup(ctx, listener, packet, client, fun);
 	if (!request) return 1;
 
 	/*
@@ -1806,7 +1806,7 @@ skip_dup:
 }
 
 
-static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
+static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 			      RADCLIENT *client, RAD_REQUEST_FUNP fun)
 {
 	REQUEST *request;
@@ -1814,7 +1814,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc(NULL);
+	request = request_alloc(ctx);
 	if (!request) {
 		ERROR("No memory");
 		return NULL;

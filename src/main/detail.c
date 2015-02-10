@@ -328,7 +328,7 @@ int detail_recv(rad_listen_t *listener)
 	/*
 	 *	Don't bother doing limit checks, etc.
 	 */
-	if (!request_receive(listener, packet, &data->detail_client,
+	if (!request_receive(NULL, listener, packet, &data->detail_client,
 			     fun)) {
 		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
@@ -369,7 +369,7 @@ int detail_recv(rad_listen_t *listener)
 		goto signal_thread;
 	}
 
-	if (!request_receive(listener, packet, &data->detail_client,
+	if (!request_receive(NULL, listener, packet, &data->detail_client,
 			     fun)) {
 		data->state = STATE_NO_REPLY;	/* try again later */
 

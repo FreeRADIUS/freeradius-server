@@ -543,7 +543,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		return 0;
 	} /* switch over packet types */
 
-	if (!request_receive(listener, packet, client, fun)) {
+	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&sock->packet);
 		return 0;
@@ -1407,7 +1407,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if (!request_receive(listener, packet, client, rad_status_server)) {
+	if (!request_receive(NULL, listener, packet, client, rad_status_server)) {
 		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
@@ -1516,7 +1516,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 #endif
 
 
-	if (!request_receive(listener, packet, client, fun)) {
+	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
@@ -1601,7 +1601,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	/*
 	 *	There can be no duplicate accounting packets.
 	 */
-	if (!request_receive(listener, packet, client, fun)) {
+	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(acct, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
@@ -1851,7 +1851,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if (!request_receive(listener, packet, client, fun)) {
+	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(coa, total_packets_dropped);
 		rad_free(&packet);
 		return 0;

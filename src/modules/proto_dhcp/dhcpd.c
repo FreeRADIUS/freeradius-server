@@ -710,7 +710,7 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 	}
 
 	sock = listener->data;
-	if (!request_receive(listener, packet, &sock->dhcp_client, dhcp_process)) {
+	if (!request_receive(NULL, listener, packet, &sock->dhcp_client, dhcp_process)) {
 		rad_free(&packet);
 		return 0;
 	}
