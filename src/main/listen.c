@@ -1433,6 +1433,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	RAD_REQUEST_FUNP fun = NULL;
 	RADCLIENT	*client = NULL;
 	fr_ipaddr_t	src_ipaddr;
+	TALLOC_CTX	*ctx;
 
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
@@ -1480,11 +1481,18 @@ static int auth_socket_recv(rad_listen_t *listener)
 		return 0;
 	} /* switch over packet types */
 
+	ctx = talloc_pool(NULL, 512*1024);
+	if (!ctx) {
+		rad_recv_discard(listener->fd);
+		FR_STATS_INC(auth, total_packets_dropped);
+		return 0;
+	}
+
 	/*
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(NULL, listener->fd, client->message_authenticator);
+	packet = rad_recv(ctx, listener->fd, client->message_authenticator);
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		DEBUG("%s", fr_strerror());
@@ -1515,8 +1523,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 #endif
 #endif
 
-
-	if (!request_receive(NULL, listener, packet, client, fun)) {
+	if (!request_receive(ctx, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
@@ -1539,6 +1546,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	RAD_REQUEST_FUNP fun = NULL;
 	RADCLIENT	*client = NULL;
 	fr_ipaddr_t	src_ipaddr;
+	TALLOC_CTX	*ctx;
 
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
@@ -1587,11 +1595,18 @@ static int acct_socket_recv(rad_listen_t *listener)
 		return 0;
 	} /* switch over packet types */
 
+	ctx = talloc_pool(NULL, 512*1024);
+	if (!ctx) {
+		rad_recv_discard(listener->fd);
+		FR_STATS_INC(acct, total_packets_dropped);
+		return 0;
+	}
+
 	/*
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(NULL, listener->fd, 0);
+	packet = rad_recv(ctx, listener->fd, 0);
 	if (!packet) {
 		FR_STATS_INC(acct, total_malformed_requests);
 		ERROR("%s", fr_strerror());
@@ -1601,7 +1616,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	/*
 	 *	There can be no duplicate accounting packets.
 	 */
-	if (!request_receive(NULL, listener, packet, client, fun)) {
+	if (!request_receive(ctx, listener, packet, client, fun)) {
 		FR_STATS_INC(acct, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
@@ -1800,6 +1815,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	RAD_REQUEST_FUNP fun = NULL;
 	RADCLIENT	*client = NULL;
 	fr_ipaddr_t	src_ipaddr;
+	TALLOC_CTX	*ctx;
 
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
@@ -1840,18 +1856,25 @@ static int coa_socket_recv(rad_listen_t *listener)
 		return 0;
 	} /* switch over packet types */
 
+	ctx = talloc_pool(NULL, 512*1024);
+	if (!ctx) {
+		rad_recv_discard(listener->fd);
+		FR_STATS_INC(coa, total_packets_dropped);
+		return 0;
+	}
+
 	/*
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(NULL, listener->fd, client->message_authenticator);
+	packet = rad_recv(ctx, listener->fd, client->message_authenticator);
 	if (!packet) {
 		FR_STATS_INC(coa, total_malformed_requests);
 		DEBUG("%s", fr_strerror());
 		return 0;
 	}
 
-	if (!request_receive(NULL, listener, packet, client, fun)) {
+	if (!request_receive(ctx, listener, packet, client, fun)) {
 		FR_STATS_INC(coa, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
