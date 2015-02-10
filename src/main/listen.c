@@ -242,7 +242,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 	request->listener = listener;
 	request->client = client;
-	request->packet = rad_recv(listener->fd, 0x02); /* MSG_PEEK */
+	request->packet = rad_recv(NULL, listener->fd, 0x02); /* MSG_PEEK */
 	if (!request->packet) {				/* badly formed, etc */
 		talloc_free(request);
 		goto unknown;
@@ -1403,7 +1403,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(listener->fd, 1); /* require message authenticator */
+	packet = rad_recv(NULL, listener->fd, 1); /* require message authenticator */
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		DEBUG("%s", fr_strerror());
@@ -1487,7 +1487,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(listener->fd, client->message_authenticator);
+	packet = rad_recv(NULL, listener->fd, client->message_authenticator);
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
 		DEBUG("%s", fr_strerror());
@@ -1594,7 +1594,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(listener->fd, 0);
+	packet = rad_recv(NULL, listener->fd, 0);
 	if (!packet) {
 		FR_STATS_INC(acct, total_malformed_requests);
 		ERROR("%s", fr_strerror());
@@ -1847,7 +1847,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	 *	Now that we've sanity checked everything, receive the
 	 *	packet.
 	 */
-	packet = rad_recv(listener->fd, client->message_authenticator);
+	packet = rad_recv(NULL, listener->fd, client->message_authenticator);
 	if (!packet) {
 		FR_STATS_INC(coa, total_malformed_requests);
 		DEBUG("%s", fr_strerror());
@@ -1873,7 +1873,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 	RADIUS_PACKET	*packet;
 	char		buffer[128];
 
-	packet = rad_recv(listener->fd, 0);
+	packet = rad_recv(NULL, listener->fd, 0);
 	if (!packet) {
 		ERROR("%s", fr_strerror());
 		return 0;
