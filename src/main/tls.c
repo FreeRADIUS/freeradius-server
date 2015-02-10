@@ -2110,7 +2110,7 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
 	VALUE_PAIR *vp = data_ptr;
 	if (!vp) return;
 
-	DEBUG2("  Freeing cached session VPs");;
+	DEBUG2("  Freeing cached session VPs");
 
 	pairfree(&vp);
 }

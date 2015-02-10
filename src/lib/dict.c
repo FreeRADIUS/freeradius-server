@@ -2784,7 +2784,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 	DICT_VENDOR	*dv;
 	DICT_ATTR const	*found;
 
-	if (dict_valid_name(name) < 0) return -1;;
+	if (dict_valid_name(name) < 0) return -1;
 
 	/*
 	 *	Pull off vendor prefix first.
@@ -2795,7 +2795,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
 				fr_strerror_printf("Invalid vendor value in attribute name \"%s\"", name);
 
-				return -1;;
+				return -1;
 			}
 
 			p = q;
@@ -2808,13 +2808,13 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 
 			if (!q) {
 				fr_strerror_printf("Invalid vendor name in attribute name \"%s\"", name);
-				return -1;;
+				return -1;
 			}
 
 			if ((size_t) (q - p) >= sizeof(buffer)) {
 				fr_strerror_printf("Vendor name too long in attribute name \"%s\"", name);
 
-				return -1;;
+				return -1;
 			}
 
 			memcpy(buffer, p, (q - p));
@@ -2824,7 +2824,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 			if (!vendor) {
 				fr_strerror_printf("Unknown name \"%s\"", name);
 
-				return -1;;
+				return -1;
 			}
 
 			p = q;
@@ -2833,7 +2833,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 		if (*p != '-') {
 			fr_strerror_printf("Invalid text following vendor definition in attribute name \"%s\"", name);
 
-			return -1;;
+			return -1;
 		}
 		p++;
 	}
@@ -2844,7 +2844,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 	if (strncasecmp(p, "Attr-", 5) != 0) {
 		fr_strerror_printf("Unknown attribute \"%s\"", name);
 
-		return -1;;
+		return -1;
 	}
 
 	attr = strtol(p + 5, &q, 10);
@@ -2855,7 +2855,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 	if (attr == 0) {
 		fr_strerror_printf("Invalid value in attribute name \"%s\"", name);
 
-		return -1;;
+		return -1;
 	}
 
 	p = q;
@@ -2872,7 +2872,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 	    ((vendor == 0) && *p && (*p != '.'))) {
 	invalid:
 		fr_strerror_printf("Invalid OID");
-		return -1;;
+		return -1;
 	}
 
 	/*
@@ -2889,14 +2889,14 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 		if (!found) {
 			fr_strerror_printf("Cannot parse names without dictionaries");
 
-			return -1;;
+			return -1;
 		}
 
 		if ((attr != PW_VENDOR_SPECIFIC) &&
 		    !(found->flags.extended || found->flags.long_extended)) {
 			fr_strerror_printf("Standard attributes cannot use OIDs");
 
-			return -1;;
+			return -1;
 		}
 
 		if ((attr == PW_VENDOR_SPECIFIC) || found->flags.evs) {
@@ -2904,7 +2904,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
 				fr_strerror_printf("Invalid vendor");
 
-				return -1;;
+				return -1;
 			}
 
 			if (*q != '.') goto invalid;
@@ -2935,7 +2935,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 		attr = strtol(p + 1, &q, 10);
 		if (attr == 0) {
 			fr_strerror_printf("Invalid name number");
-			return -1;;
+			return -1;
 		}
 
 		if (*q) {
@@ -2953,7 +2953,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 
 	if (*p == '.') {
 		if (dict_str2oid(p + 1, &attr, &vendor, 1) < 0) {
-			return -1;;
+			return -1;
 		}
 	}
 
@@ -2963,7 +2963,7 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 	 */
 	if (!da) {
 		fr_strerror_printf("Unknown attributes disallowed");
-		return -1;;
+		return -1;
 	}
 
 	return dict_unknown_from_fields(da, attr, vendor);
