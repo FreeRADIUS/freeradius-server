@@ -477,6 +477,23 @@ static void request_timer(void *ctx)
 }
 
 /*
+ *	Wrapper for talloc pools.  If there's no parent, just free the
+ *	request.  If there is a parent, free the parent INSTEAD of the
+ *	request.
+ */
+static void request_free(REQUEST *request)
+{
+	void *ptr = talloc_parent(request);
+
+	if (ptr) {
+		talloc_free(ptr);
+	} else {
+		talloc_free(request);
+	}
+}
+
+
+/*
  *	Only ever called from the master thread.
  */
 STATE_MACHINE_DECL(request_done)
@@ -753,7 +770,7 @@ STATE_MACHINE_DECL(request_done)
 
 	if (request->ev) fr_event_delete(el, &request->ev);
 
-	talloc_free(request);
+	request_free(request);
 }
 
 
@@ -1799,7 +1816,7 @@ skip_dup:
 		} else {
 			RDEBUG("Not sending reply");
 		}
-		talloc_free(request);
+		request_free(request);
 		return 1;
 	}
 
@@ -5108,7 +5125,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	}
 #endif
 
-	talloc_free(request);
+	request_free(request);
 
 	/*
 	 *	Delete it from the list, and continue;
