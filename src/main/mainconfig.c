@@ -852,6 +852,9 @@ do {\
 
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
 
+	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, 16*1024);
+	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, 1024*1024);
+
 	/*
 	 * Set default initial request processing delay to 1/3 of a second.
 	 * Will be updated by the lowest response window across all home servers,
