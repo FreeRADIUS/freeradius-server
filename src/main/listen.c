@@ -1481,7 +1481,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 		return 0;
 	} /* switch over packet types */
 
-	ctx = talloc_pool(NULL, 512*1024);
+	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
 	if (!ctx) {
 		rad_recv_discard(listener->fd);
 		FR_STATS_INC(auth, total_packets_dropped);
@@ -1595,7 +1595,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 		return 0;
 	} /* switch over packet types */
 
-	ctx = talloc_pool(NULL, 512*1024);
+	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
 	if (!ctx) {
 		rad_recv_discard(listener->fd);
 		FR_STATS_INC(acct, total_packets_dropped);
@@ -1856,7 +1856,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 		return 0;
 	} /* switch over packet types */
 
-	ctx = talloc_pool(NULL, 512*1024);
+	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
 	if (!ctx) {
 		rad_recv_discard(listener->fd);
 		FR_STATS_INC(coa, total_packets_dropped);
