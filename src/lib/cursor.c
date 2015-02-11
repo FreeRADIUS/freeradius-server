@@ -272,12 +272,14 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *add)
  * add lists.
  *
  * @param cursor to insert VALUE_PAIRs with
- * @param add one or more VALUE_PAIRs.
+ * @param add one or more VALUE_PAIRs (may be NULL, which results in noop).
  */
 void fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
 {
 	vp_cursor_t from;
 	VALUE_PAIR *vp;
+
+	if (!add) return;
 
 	if (!fr_assert(cursor->first)) return;	/* cursor must have been initialised */
 
