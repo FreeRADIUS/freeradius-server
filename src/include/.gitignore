@@ -4,6 +4,7 @@ autoconf.sed
 
 # Dynamically generated headers
 attributes.h
+rfc*.h
 missing.h
 tls.h
 features.h
