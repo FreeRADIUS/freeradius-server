@@ -269,8 +269,6 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 
 	struct berval **values;
-	size_t value_len = 0;
-	TALLOC_CTX *value_pool;
 
 	char *group_name[LDAP_MAX_CACHEABLE + 1];
 	char **name_p = group_name;
@@ -280,9 +278,9 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 
 	char *name;
 
-	VALUE_PAIR *vp, **vps;
-	TALLOC_CTX *ctx;
-	vp_cursor_t cursor;
+	VALUE_PAIR *vp, **list, *groups = NULL;
+	TALLOC_CTX *list_ctx, *value_ctx;
+	vp_cursor_t list_cursor, groups_cursor;
 
 	int is_dn, i, count;
 
@@ -300,19 +298,20 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 	}
 	count = ldap_count_values_len(values);
 
-	vps = radius_list(request, PAIR_LIST_CONTROL);
-	ctx = radius_list_ctx(request, PAIR_LIST_CONTROL);
-	fr_cursor_init(&cursor, vps);
+	list = radius_list(request, PAIR_LIST_CONTROL);
+	list_ctx = radius_list_ctx(request, PAIR_LIST_CONTROL);
 
 	/*
-	 *	Avoid allocing buffers for each value.
-	 *
-	 *	The old code used ldap_get_values, which was likely doing
-	 *	a very similar thing internally to produce \0 terminated
-	 *	buffers from bervalues.
+	 *	Simplifies freeing temporary values
 	 */
-	for (i = 0; (i < LDAP_MAX_CACHEABLE) && (i < count); i++) value_len += values[i]->bv_len + 1;
-	value_pool = talloc_pool(request, value_len);
+	value_ctx = talloc_new(request);
+
+	/*
+	 *	Temporary list to hold new group VPs, will be merged
+	 *	once all group info has been gathered/resolved
+	 *	successfully.
+	 */
+	fr_cursor_init(&groups_cursor, groups);
 
 	for (i = 0; (i < LDAP_MAX_CACHEABLE) && (i < count); i++) {
 		is_dn = rlm_ldap_is_dn(values[i]->bv_val, values[i]->bv_len);
@@ -322,18 +321,15 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 			 *	The easy case, we're caching DNs and we got a DN.
 			 */
 			if (is_dn) {
-				MEM(vp = pairalloc(ctx, inst->cache_da));
+				MEM(vp = pairalloc(list_ctx, inst->cache_da));
 				pairstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
-				fr_cursor_insert(&cursor, vp);
-
-				RDEBUG("Added %s with value \"%s\" to control list", inst->cache_da->name,
-				       vp->vp_strvalue);
+				fr_cursor_insert(&groups_cursor, vp);
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve
 			 *	this to a DN. Store all the group names in an array so we can do one query.
 			 */
 			} else {
-				*name_p++ = rlm_ldap_berval_to_string(value_pool, values[i]);
+				*name_p++ = rlm_ldap_berval_to_string(value_ctx, values[i]);
 			}
 		}
 
@@ -342,12 +338,9 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 			 *	The easy case, we're caching names and we got a name.
 			 */
 			if (!is_dn) {
-				MEM(vp = pairalloc(ctx, inst->cache_da));
+				MEM(vp = pairalloc(list_ctx, inst->cache_da));
 				pairstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
-				fr_cursor_insert(&cursor, vp);
-
-				RDEBUG("Added control:%s with value \"%s\"", inst->cache_da->name,
-				       vp->vp_strvalue);
+				fr_cursor_insert(&groups_cursor, vp);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve
 			 *	this to a name.
@@ -357,21 +350,20 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 			} else {
 				char *dn;
 
-				dn = rlm_ldap_berval_to_string(value_pool, values[i]);
+				dn = rlm_ldap_berval_to_string(value_ctx, values[i]);
 				rcode = rlm_ldap_group_dn2name(inst, request, pconn, dn, &name);
 				talloc_free(dn);
 				if (rcode != RLM_MODULE_OK) {
 					ldap_value_free_len(values);
-					talloc_free(value_pool);
+					talloc_free(value_ctx);
+					pairfree(&groups);
 
 					return rcode;
 				}
 
-				MEM(vp = pairalloc(ctx, inst->cache_da));
+				MEM(vp = pairalloc(list_ctx, inst->cache_da));
 				pairstrncpy(vp, name, talloc_array_length(name) - 1);
-				fr_cursor_insert(&cursor, vp);
-
-				RDEBUG("Added control:%s with value \"%s\"", inst->cache_da->name, name);
+				fr_cursor_insert(&groups_cursor, vp);
 				talloc_free(name);
 			}
 		}
@@ -381,21 +373,33 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 	rcode = rlm_ldap_group_name2dn(inst, request, pconn, group_name, group_dn, sizeof(group_dn));
 
 	ldap_value_free_len(values);
-	talloc_free(value_pool);
+	talloc_free(value_ctx);
 
 	if (rcode != RLM_MODULE_OK) return rcode;
 
-	dn_p = group_dn;
-	while (*dn_p) {
-		MEM(vp = pairalloc(ctx, inst->cache_da));
-		pairstrcpy(vp, *dn_p);
-		fr_cursor_insert(&cursor, vp);
+	fr_cursor_init(&list_cursor, list);
 
-		RDEBUG("Added control:%s with value \"%s\"", inst->cache_da->name, *dn_p);
-		ldap_memfree(*dn_p);
-
-		dn_p++;
+	RDEBUG("Adding cacheable group memberships");
+	RINDENT();
+	if (RDEBUG_ENABLED) {
+		for (vp = fr_cursor_first(&groups_cursor);
+		     vp;
+		     vp = fr_cursor_next(&groups_cursor)) {
+			RDEBUG("&control:%s += \"%s\"", inst->cache_da->name, vp->vp_strvalue);
+		}
 	}
+
+	fr_cursor_merge(&list_cursor, groups);
+
+	for (dn_p = group_dn; *dn_p; dn_p++) {
+		MEM(vp = pairalloc(list_ctx, inst->cache_da));
+		pairstrcpy(vp, *dn_p);
+		fr_cursor_insert(&list_cursor, vp);
+
+		RDEBUG("&control:%s += \"%s\"", inst->cache_da->name, vp->vp_strvalue);
+		ldap_memfree(*dn_p);
+	}
+	REXDENT();
 
 	return rcode;
 }
