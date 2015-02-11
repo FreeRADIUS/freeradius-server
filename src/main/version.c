@@ -67,13 +67,6 @@ int ssl_check_version(int allow_vulnerable)
 {
 	long ssl_linked;
 
-	/*
-	 *	Initialize the library before calling any library
-	 *	functions.
-	 */
-	SSL_library_init();
-	SSL_load_error_strings();
-
 	ssl_linked = SSLeay();
 
 	/*
