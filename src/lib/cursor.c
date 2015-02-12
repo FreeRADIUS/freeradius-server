@@ -90,7 +90,7 @@ VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
 	/* Wind to the end */
 	while (cursor->next) fr_cursor_next(cursor);
 
-	return fr_cursor_current(cursor);
+	return cursor->current;
 }
 
 static VALUE_PAIR *fr_cursor_update(vp_cursor_t *cursor, VALUE_PAIR *i)
@@ -303,7 +303,7 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 
 	if (!fr_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
-	vp = fr_cursor_current(cursor);
+	vp = cursor->current;
 	if (!vp) {
 		return NULL;
 	}
@@ -338,7 +338,7 @@ VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 
 	if (!fr_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
-	vp = fr_cursor_current(cursor);
+	vp = cursor->current;
 	if (!vp) {
 		*cursor->first = new;
 		return NULL;
