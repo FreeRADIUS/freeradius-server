@@ -236,14 +236,14 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_t *inst, REQUEST *requ
 	ret = memcached_set(mandle->handle, c->key, talloc_array_length(c->key) - 1,
 		            to_store ? to_store : "",
 		            to_store ? talloc_array_length(to_store) - 1 : 0, c->expires, 0);
+	talloc_free(pool);
 	if (ret != MEMCACHED_SUCCESS) {
-		RERROR("Failed storing entry with key \"%s\": %s: %s", c->key, memcached_strerror(mandle->handle, ret),
+		RERROR("Failed storing entry with key \"%s\": %s: %s", c->key,
+		       memcached_strerror(mandle->handle, ret),
 		       memcached_last_error_message(mandle->handle));
-		talloc_free(pool);
 
 		return CACHE_ERROR;
 	}
-	talloc_free(pool);
 
 	return CACHE_OK;
 }
