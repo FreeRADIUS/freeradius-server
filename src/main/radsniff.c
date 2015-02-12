@@ -27,7 +27,6 @@
 RCSID("$Id$")
 
 #define _LIBRADIUS 1
-#include <assert.h>
 #include <time.h>
 #include <math.h>
 #include <freeradius-devel/libradius.h>
@@ -41,6 +40,8 @@ RCSID("$Id$")
 #ifdef HAVE_COLLECTDC_H
 #  include <collectd/client.h>
 #endif
+
+#define RS_ASSERT(_x) if (!(_x) && !fr_assert(_x)) exit(1)
 
 static rs_t *conf;
 static struct timeval start_pcap = {0, 0};
@@ -328,7 +329,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 	inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst, sizeof(dst));
 
 	status_str = fr_int2str(rs_events, status, NULL);
-	assert(status_str);
+	RS_ASSERT(status_str);
 
 	len = snprintf(p, s, "%s,%" PRIu64 ",%s,", status_str, count, timestr);
 	p += len;
@@ -425,7 +426,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		char const *status_str;
 
 		status_str = fr_int2str(rs_events, status, NULL);
-		assert(status_str);
+		RS_ASSERT(status_str);
 
 		len = snprintf(p, s, "** %s ** ", status_str);
 		p += len;
@@ -795,20 +796,25 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, DICT
 
 static int _request_free(rs_request_t *request)
 {
+	bool ret;
+
 	/*
 	 *	If were attempting to cleanup the request, and it's no longer in the request_tree
 	 *	something has gone very badly wrong.
 	 */
 	if (request->in_request_tree) {
-		assert(rbtree_deletebydata(request_tree, request));
+		ret = rbtree_deletebydata(request_tree, request);
+		RS_ASSERT(ret);
 	}
 
 	if (request->in_link_tree) {
-		assert(rbtree_deletebydata(link_tree, request));
+		ret = rbtree_deletebydata(link_tree, request);
+		RS_ASSERT(ret);
 	}
 
 	if (request->event) {
-		assert(fr_event_delete(events, &request->event));
+		ret = fr_event_delete(events, &request->event);
+		RS_ASSERT(ret);
 	}
 
 	rad_free(&request->packet);
@@ -824,9 +830,9 @@ static void rs_packet_cleanup(rs_request_t *request)
 	RADIUS_PACKET *packet = request->packet;
 	uint64_t count = request->id;
 
-	assert(request->stats_req);
-	assert(!request->rt_rsp || request->stats_rsp);
-	assert(packet);
+	RS_ASSERT(request->stats_req);
+	RS_ASSERT(!request->rt_rsp || request->stats_rsp);
+	RS_ASSERT(packet);
 
 	/*
 	 *	Don't pollute stats or print spurious messages as radsniff closes.
@@ -1425,6 +1431,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			original->expect = talloc_steal(original, search.expect);
 
 			if (search.link_vps) {
+				bool ret;
 				vp_cursor_t cursor;
 				VALUE_PAIR *vp;
 
@@ -1436,7 +1443,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				original->link_vps = search.link_vps;
 
 				/* We should never have conflicts */
-				assert(rbtree_insert(link_tree, original));
+				ret = rbtree_insert(link_tree, original);
+				RS_ASSERT(ret);
 				original->in_link_tree = true;
 			}
 
@@ -1452,8 +1460,11 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		}
 
 		if (!original->in_request_tree) {
+			bool ret;
+
 			/* We should never have conflicts */
-			assert(rbtree_insert(request_tree, original));
+			ret = rbtree_insert(request_tree, original);
+			RS_ASSERT(ret);
 			original->in_request_tree = true;
 		}
 
@@ -1637,8 +1648,8 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 {
 	int rcode;
 
-	assert(a->link_vps);
-	assert(b->link_vps);
+	RS_ASSERT(a->link_vps);
+	RS_ASSERT(b->link_vps);
 
 	rcode = (int) a->expect->code - (int) b->expect->code;
 	if (rcode != 0) return rcode;
@@ -1794,7 +1805,7 @@ static void rs_collectd_reopen(void *ctx)
 	rs_tv_add_ms(&now, RS_SOCKET_REOPEN_DELAY, &when);
 	if (!fr_event_insert(list, rs_collectd_reopen, list, &when, &event)) {
 		ERROR("Failed inserting re-open event");
-		assert(0);
+		RS_ASSERT(0);
 	}
 }
 #endif
@@ -1937,9 +1948,7 @@ int main(int argc, char *argv[])
 	talloc_set_log_stderr();
 
 	conf = talloc_zero(NULL, rs_t);
-	if (!fr_assert(conf)) {
-		exit (1);
-	}
+	RS_ASSERT(conf);
 
 	/*
 	 *  We don't really want probes taking down machines
@@ -2505,7 +2514,7 @@ int main(int argc, char *argv[])
 			}
 		}
 
-		assert(out->link_type >= 0);
+		RS_ASSERT(out->link_type >= 0);
 
 		if (fr_pcap_open(out) < 0) {
 			ERROR("Failed opening pcap output (%s): %s", out->name, fr_strerror());
