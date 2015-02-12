@@ -837,7 +837,8 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 	 *	No "ipaddr" or "ipv6addr", use old-style "client <ipaddr> {" syntax.
 	 */
 	} else {
-		ERROR("No 'ipaddr' or 'ipv4addr' or 'ipv6addr' configuration directive found in client %s", name2);
+		cf_log_err_cs(cs, "No 'ipaddr' or 'ipv4addr' or 'ipv6addr' configuration "
+			      "directive found in client %s", name2);
 		goto error;
 	}
 
@@ -985,6 +986,13 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 			CONF_SECTION *server;
 			home_server_t *home;
 
+			if (((c->ipaddr.af == AF_INET) && (c->ipaddr.prefix != 32)) ||
+			    ((c->ipaddr.af == AF_INET6) && (c->ipaddr.prefix != 128))) {
+			 	WARN("Subnets not supported for home servers.  "
+			 	     "Not adding client %s as home_server", name2);
+				goto done_coa;
+			}
+
 			server = home_server_cs_afrom_client(cs);
 			if (!server) goto error;
 
@@ -1006,6 +1014,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 			c->defines_coa_server = true;
 		}
 	}
+done_coa:
 #endif
 
 #ifdef WITH_TCP
