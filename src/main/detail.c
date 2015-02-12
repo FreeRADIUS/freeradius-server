@@ -810,28 +810,33 @@ open_file:
 	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | ((data->counter >> 24) & 0xff));
 
 	/*
-	 *	Prefer the Event-Timestamp in the packet, if it
-	 *	exists.  That is when the event occurred, whereas the
-	 *	"Timestamp" field is when we wrote the packet to the
-	 *	detail file, which could have been much later.
+	 *	Create / update accounting attributes.
 	 */
-	vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
-	if (vp) {
-		data->timestamp = vp->vp_integer;
-	}
+	if (packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+		/*
+		 *	Prefer the Event-Timestamp in the packet, if it
+		 *	exists.  That is when the event occurred, whereas the
+		 *	"Timestamp" field is when we wrote the packet to the
+		 *	detail file, which could have been much later.
+		 */
+		vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
+		if (vp) {
+			data->timestamp = vp->vp_integer;
+		}
 
-	/*
-	 *	Look for Acct-Delay-Time, and update
-	 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
-	 */
-	vp = pairfind(packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
-	if (!vp) {
-		vp = paircreate(packet, PW_ACCT_DELAY_TIME, 0);
-		rad_assert(vp != NULL);
-		pairadd(&packet->vps, vp);
-	}
-	if (data->timestamp != 0) {
-		vp->vp_integer += time(NULL) - data->timestamp;
+		/*
+		 *	Look for Acct-Delay-Time, and update
+		 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
+		 */
+		vp = pairfind(packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
+		if (!vp) {
+			vp = paircreate(packet, PW_ACCT_DELAY_TIME, 0);
+			rad_assert(vp != NULL);
+			pairadd(&packet->vps, vp);
+		}
+		if (data->timestamp != 0) {
+			vp->vp_integer += time(NULL) - data->timestamp;
+		}
 	}
 
 	/*
