@@ -311,10 +311,11 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	rad_assert(pool != NULL);
 
 	/*
-	 *	If we have NO connections, don't open multiple
-	 *	connections until we successfully open at least one.
+	 *	If we have NO connections, and we've previously failed
+	 *	opening connections, don't open multiple connections until
+	 *	we successfully open at least one.
 	 */
-	if ((pool->num == 0) && pool->pending) {
+	if ((pool->num == 0) && pool->pending && pool->last_failed) {
 		return NULL;
 	}
 
