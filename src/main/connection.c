@@ -1066,7 +1066,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
  * @param[in] spawn whether to spawn a new connection
  * @return a pointer to the connection handle, or NULL on error.
  */
-static void *fr_connection_get_internal(fr_connection_pool_t *pool, int spawn)
+static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 {
 	time_t now;
 	fr_connection_t *this, *next;
