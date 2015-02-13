@@ -138,7 +138,10 @@ static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 
 	for (p = fmt; *p != '\0'; p++) {
 		/* Indicate truncation */
-		if (freespace < 3) return outlen + 1;
+		if (freespace < 3) {
+			*out = '\0';
+			return outlen + 1;
+		}
 
 		if (*p == '"') {
 			*out++ = '\\';
@@ -187,6 +190,7 @@ static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 				*out++ = 't';
 				freespace--;
 				break;
+
 			default:
 				len = snprintf(out, freespace, "u%04X", *p);
 				if (is_truncated(len, freespace)) return (outlen - freespace) + len;
@@ -195,6 +199,8 @@ static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 			}
 		}
 	}
+
+	*out = '\0';
 
 	return outlen - freespace;
 }
