@@ -1053,26 +1053,6 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 
 
 /*
- *	Generate ephemeral RSA keys.
- */
-static int generate_eph_rsa_key(SSL_CTX *ctx)
-{
-	RSA *rsa;
-
-	if (!SSL_CTX_need_tmp_RSA(ctx)) return 0;
-
-	rsa = RSA_generate_key(512, RSA_F4, NULL, NULL);
-
-	if (!SSL_CTX_set_tmp_rsa(ctx, rsa)) {
-		ERROR("tls: Couldn't set ephemeral RSA key");
-		return -1;
-	}
-
-	RSA_free(rsa);
-	return 0;
-}
-
-/*
  *	Print debugging messages, and free data.
  *
  *	FIXME: Write sessions to some long-term storage, so that
@@ -2688,10 +2668,6 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		}
 	}
 
-	if (generate_eph_rsa_key(conf->ctx) < 0) {
-		goto error;
-	}
-
 	if (conf->verify_tmp_dir) {
 		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
 			ERROR("Failed changing permissions on %s: %s", conf->verify_tmp_dir, fr_syserror(errno));
@@ -2750,10 +2726,6 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		if (load_dh_params(conf->ctx, dh_file) < 0) {
 			goto error;
 		}
-	}
-
-	if (generate_eph_rsa_key(conf->ctx) < 0) {
-		goto error;
 	}
 
 	cf_data_add(cs, "tls-conf", conf, NULL);
