@@ -132,9 +132,8 @@ int udpfromto_init(int s)
 #  endif
 #endif
 
-#ifdef AF_INET6
+#if defined(AF_INET6) && defined(IPV6_PKTINFO)
 	} else if (si.ss_family == AF_INET6) {
-#  ifdef IPV6_PKTINFO
 		/*
 		 *	This should actually be standard IPv6
 		 */
@@ -144,17 +143,15 @@ int udpfromto_init(int s)
 		 *	Work around Linux-specific hackery.
 		 */
 		flag = IPV6_RECVPKTINFO;
-#else
+	} else {
+#endif
+
+		/*
+		 *	Unknown AF.  Return an error if possible.
+		 */
 #  ifdef EPROTONOSUPPORT
 		errno = EPROTONOSUPPORT;
 #  endif
-		return -1;
-#  endif
-#endif
-	} else {
-		/*
-		 *	Unknown AF.
-		 */
 		return -1;
 	}
 
@@ -383,6 +380,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	memset(&iov, 0, sizeof(iov));
 	iov.iov_base = buf;
 	iov.iov_len = len;
+
 	msgh.msg_iov = &iov;
 	msgh.msg_iovlen = 1;
 	msgh.msg_name = to;
