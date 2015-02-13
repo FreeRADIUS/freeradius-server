@@ -310,9 +310,16 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	       struct sockaddr *to, socklen_t tolen)
 {
 	struct msghdr msgh;
-	struct cmsghdr *cmsg;
 	struct iovec iov;
 	char cbuf[256];
+
+	/*
+	 *	Unknown address family, die.
+	 */
+	if (from && (from->sa_family != AF_INET) && (from->sa_family != AF_INET6)) {
+		errno = EINVAL;
+		return -1;
+	}
 
 #ifdef __FreeBSD__
 	/*
@@ -342,19 +349,28 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		break;
 	}
 #else
-#  if !defined(IP_PKTINFO) && !defined(IP_SENDSRCADDR) && !defined(IPV6_PKTINFO)
+
 	/*
 	 *	If the sendmsg() flags aren't defined, fall back to
 	 *	using sendto().
 	 */
-	from = NULL;
+#  if !defined(IP_PKTINFO) && !defined(IP_SENDSRCADDR)
+	if (from && from->sa_family == AF_INET) {
+		from = NULL;
+	}
 #  endif
-#endif
+	
+#  if !defined(IPV6_PKTINFO)
+	if (from && from->sa_family == AF_INET6) {
+		from = NULL;
+	}
+#  endif
+#endif	/* !__FreeBSD__ */
 
 	/*
-	 *	Catch the case where the caller passes invalid arguments.
+	 *	No "from", just use regular sendto.
 	 */
-	if (!from || (fromlen == 0) || (from->sa_family == AF_UNSPEC)) {
+	if (!from || (fromlen == 0)) {
 		return sendto(s, buf, len, flags, to, tolen);
 	}
 
@@ -370,13 +386,12 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 	msgh.msg_name = to;
 	msgh.msg_namelen = tolen;
 
+# if defined(IP_PKTINFO) || defined(IP_SENDSRCADDR)
 	if (from->sa_family == AF_INET) {
-#if !defined(IP_PKTINFO) && !defined(IP_SENDSRCADDR)
-		return sendto(s, buf, len, flags, to, tolen);
-#else
 		struct sockaddr_in *s4 = (struct sockaddr_in *) from;
 
 #  ifdef IP_PKTINFO
+		struct cmsghdr *cmsg;
 		struct in_pktinfo *pkt;
 
 		msgh.msg_control = cbuf;
@@ -393,6 +408,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 #  endif
 
 #  ifdef IP_SENDSRCADDR
+		struct cmsghdr *cmsg;
 		struct in_addr *in;
 
 		msgh.msg_control = cbuf;
@@ -406,16 +422,14 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		in = (struct in_addr *) CMSG_DATA(cmsg);
 		*in = s4->sin_addr;
 #  endif
-#endif	/* IP_PKTINFO or IP_SENDSRCADDR */
 	}
+#endif
 
-#ifdef AF_INET6
-	else if (from->sa_family == AF_INET6) {
-#  if !defined(IPV6_PKTINFO)
-		return sendto(s, buf, len, flags, to, tolen);
-#  else
+#  if defined(IPV6_PKTINFO)
+	if (from->sa_family == AF_INET6) {
 		struct sockaddr_in6 *s6 = (struct sockaddr_in6 *) from;
 
+		struct cmsghdr *cmsg;
 		struct in6_pktinfo *pkt;
 
 		msgh.msg_control = cbuf;
@@ -429,17 +443,8 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		pkt = (struct in6_pktinfo *) CMSG_DATA(cmsg);
 		memset(pkt, 0, sizeof(*pkt));
 		pkt->ipi6_addr = s6->sin6_addr;
+	}
 #  endif	/* IPV6_PKTINFO */
-	}
-#endif
-
-	/*
-	 *	Unknown address family.
-	 */
-	else {
-		errno = EINVAL;
-		return -1;
-	}
 
 	return sendmsg(s, &msgh, flags);
 }
