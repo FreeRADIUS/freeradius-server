@@ -53,6 +53,10 @@ RCSID("$Id$")
 #	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
+#include <openssl/ssl.h>
+#endif
+
 /*
  *  Global variables.
  */
