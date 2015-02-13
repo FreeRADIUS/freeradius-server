@@ -651,6 +651,6 @@ scan: ${ALL_PLISTS}
 
 .PHONY: clean.scan
 clean.scan:
-	$(Q)rm -f ${ALL_PLISTS}
+	$(Q)rm -rf ${ALL_PLISTS}
 
 clean: clean.scan
