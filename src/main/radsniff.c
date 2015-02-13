@@ -854,6 +854,7 @@ static void rs_packet_cleanup(rs_request_t *request)
 	 */
 	if (!request->silent_cleanup) {
 		if (!request->linked) {
+			rad_assert(request && request->stats_req);
 			request->stats_req->interval.lost_total++;
 
 			if (conf->event_flags & RS_LOST) {
