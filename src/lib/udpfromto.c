@@ -348,11 +348,13 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		}
 		break;
 	}
-#else
+#endif	/* !__FreeBSD__ */
 
 	/*
 	 *	If the sendmsg() flags aren't defined, fall back to
-	 *	using sendto().
+	 *	using sendto().  These flags are defined on FreeBSD,
+	 *	but laying it out this way simplifies the look of the
+	 *	code.
 	 */
 #  if !defined(IP_PKTINFO) && !defined(IP_SENDSRCADDR)
 	if (from && from->sa_family == AF_INET) {
@@ -365,7 +367,6 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		from = NULL;
 	}
 #  endif
-#endif	/* !__FreeBSD__ */
 
 	/*
 	 *	No "from", just use regular sendto.
