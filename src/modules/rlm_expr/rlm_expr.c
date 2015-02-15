@@ -568,7 +568,7 @@ static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		 */
 		while (isdigit((int) *p)) {
 			if (number >= 100) {
-				*(p++);
+				p++;
 				continue;
 			}
 
