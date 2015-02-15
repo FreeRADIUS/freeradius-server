@@ -661,7 +661,7 @@ post-auth {
 	#
 #	if (!&reply:State) {
 #		update reply {
-#			State := "0x%{randstr:hhhhhhhhhhhhhhhh}"
+#			State := "0x%{randstr:16h}"
 #		}
 #	}
 
