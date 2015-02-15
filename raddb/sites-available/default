@@ -655,6 +655,17 @@ session {
 #  additional steps we can take.
 post-auth {
 	#
+	#  If you need to have a State attribute, you can
+	#  add it here.  e.g. for later CoA-Request with
+	#  State, and Service-Type = Authorize-Only.
+	#
+#	if (!&reply:State) {
+#		update reply {
+#			State := "0x%{randstr:hhhhhhhhhhhhhhhh}"
+#		}
+#	}
+
+	#
 	#  For EAP-TTLS and PEAP, add the cached attributes to the reply.
 	#  The "session-state" attributes are automatically cached when
 	#  an Access-Challenge is sent, and automatically retrieved
