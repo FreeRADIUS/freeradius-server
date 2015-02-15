@@ -549,6 +549,7 @@ static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 {
 	char const 	*p;
 	unsigned int	result;
+	unsigned int	number;
 	size_t		freespace = outlen;
 
 	if (outlen <= 1) return 0;
@@ -557,7 +558,28 @@ static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 
 	p = fmt;
 	while (*p && (--freespace > 0)) {
+		number = 0;
+
+		/*
+		 *	Modifiers are polite.
+		 *
+		 *	But we limit it to 100, because we don't want
+		 *	utter stupidity.
+		 */
+		while (isdigit((int) *p)) {
+			if (number >= 100) {
+				*(p++);
+				continue;
+			}
+
+			number *= 10;
+			number += *p - '0';
+			p++;
+		}
+
+	redo:
 		result = fr_rand();
+
 		switch (*p) {
 		/*
 		 *  Lowercase letters
@@ -651,6 +673,11 @@ static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 			ERROR("rlm_expr: invalid character class '%c'", *p);
 
 			return -1;
+		}
+
+		if (number > 0) {
+			number--;
+			goto redo;
 		}
 
 		p++;
