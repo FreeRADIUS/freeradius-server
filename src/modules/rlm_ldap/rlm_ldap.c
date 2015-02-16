@@ -121,6 +121,8 @@ static CONF_PARSER user_config[] = {
 	{ "access_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_access_attr), NULL },
 	{ "access_positive", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, access_positive), "yes" },
 
+	{ "sasl_mech", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, user_sasl_mech), NULL },
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -207,6 +209,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, ldap_instance_t, password), NULL },
 	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, admin_dn), NULL },
+	{ "sasl_mech", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, admin_sasl_mech), NULL },
 
 	{ "valuepair_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, valuepair_attr), NULL },
 
@@ -554,7 +557,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-
 	/*
 	 *	Only needs to be done once, prevents races in environment
 	 *	initialisation within libldap.
@@ -636,6 +638,19 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 	}
 
+#ifndef HAVE_LDAP_SASL_BIND
+	if (inst->user_sasl_mech) {
+		cf_log_err_cs(conf, "Configuration item 'user.sasl_mech' not supported.  "
+			      "Linked libldap does not provide ldap_sasl_bind function");
+		goto error;
+	}
+
+	if (inst->admin_sasl_mech) {
+		cf_log_err_cs(conf, "Configuration item 'sasl_mech' not supported.  "
+			      "Linked libldap does not provide ldap_sasl_bind function");
+		goto error;
+	}
+#endif
 
 	/*
 	 *	For backwards compatibility hack up the first 'server'
@@ -1087,7 +1102,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Bind as the user
 	 */
 	conn->rebound = true;
-	status = rlm_ldap_bind(inst, request, &conn, dn, request->password->vp_strvalue, true);
+	status = rlm_ldap_bind(inst, request, &conn, dn, request->password->vp_strvalue,
+			       conn->inst->user_sasl_mech, true);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		rcode = RLM_MODULE_OK;
@@ -1254,7 +1270,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			 *	Bind as the user
 			 */
 			conn->rebound = true;
-			status = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue, true);
+			status = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue,
+					       conn->inst->user_sasl_mech, true);
 			switch (status) {
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;
