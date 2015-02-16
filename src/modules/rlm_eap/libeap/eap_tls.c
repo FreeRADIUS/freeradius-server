@@ -422,17 +422,17 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 
 /*
  * EAPTLS_PACKET
- * code   =  EAP-code
- * id     =  EAP-id
- * length = code + id + length + flags + tlsdata
- *	=  1   +  1 +   2    +  1    +  X
- * length = EAP-length - 1(EAP-Type = 1 octet)
- * flags  = EAP-typedata[0] (1 octet)
- * dlen   = EAP-typedata[1-4] (4 octets), if L flag set
- *	= length - 5(code+id+length+flags), otherwise
- * data   = EAP-typedata[5-n], if L flag set
- *	= EAP-typedata[1-n], otherwise
- * packet = EAP-typedata (complete typedata)
+ * code    = EAP-code
+ * id      = EAP-id
+ * length  = code + id + length + flags + tlsdata
+ *	   =  1   +  1 +   2    +  1    +  X
+ * length  = EAP-length - 1(EAP-Type = 1 octet)
+ * flags   = EAP-typedata[0] (1 octet)
+ * dlen    = EAP-typedata[1-4] (4 octets), if L flag set
+ *	   = length - 5(code+id+length+flags), otherwise
+ * data    = EAP-typedata[5-n], if L flag set
+ *	   = EAP-typedata[1-n], otherwise
+ * packet  = EAP-typedata (complete typedata)
  *
  * Points to consider during EAP-TLS data extraction
  * 1. In the received packet, No data will be present incase of ACK-NAK
