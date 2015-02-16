@@ -56,6 +56,9 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	* Moved RADIUS attribute definitions to src/include/rfc*.h
 	* Move to talloc pools for requests.  For in-memory tests
 	  (default config, 'users' file), performance increases by 30%.
+	* In rlm_ldap allow sasl_mech to be specified for admin and
+	  user binds. Only non-interactive mechs (like EXTERNAL)
+	  are currently supported.
 
 	Bug fixes
 	* Fix issues parsing LDAP hostnames with non-standard ports.
@@ -84,7 +87,7 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	  buffer was used to store error messages.
 	* Log RERROR, RWARN, RINFO to the global log if request
 	  logging is not enabled.
-	* Link to libldap instead of libldap_r. Linking to libldap_r
+	* Link to libldap instead of libldap_r. libldap_r
 	  is not supported for use by projects outside of OpenLDAP.
 	* Set connection timeout correctly in rlm_sql_mysql.
 	* Build with older versions of libcurl, and use CFLAGS from
