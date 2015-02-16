@@ -31,6 +31,10 @@ ldap {
 	#  searches will start from.
 	base_dn = 'dc=example,dc=org'
 
+	#  SASL mechanism to use for administrative binds.
+	#  Uncomment for certificate auth or peercred auth (ldapi:// only).
+#	sasl_mech = 'EXTERNAL'
+
 	#
 	#  Generic valuepair attribute
 	#
@@ -122,6 +126,9 @@ ldap {
 		#  Filter for user objects, should be specific enough
 		#  to identify a single user object.
 		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
+
+		#  SASL mechanism to use for user binds.
+#		sasl_mech = 'PLAIN'
 
 		#  Search scope, may be 'base', 'one', sub' or 'children'
 #		scope = 'sub'

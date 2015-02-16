@@ -15,9 +15,6 @@
 /* Define to 1 if you have the `ldap_unbind_ext_s' function. */
 #undef HAVE_LDAP_UNBIND_EXT_S
 
-/* Expose deprecated libldap functions */
-#undef LDAP_DEPRECATED
-
 /* Number of arguments the rebind procedure takes */
 #undef LDAP_SET_REBIND_PROC_ARGS
 

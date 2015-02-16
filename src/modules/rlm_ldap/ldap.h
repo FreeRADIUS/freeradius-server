@@ -80,6 +80,8 @@ typedef struct ldap_instance {
 							//!< directory.
 	char const	*password;			//!< Password used in administrative bind.
 
+	char const	*admin_sasl_mech;		//!< SASL mechanism to use for administrative binds.
+
 	char const	*dereference_str;		//!< When to dereference (never, searching, finding, always)
 	int		dereference;			//!< libldap value specifying dereferencing behaviour.
 
@@ -109,6 +111,7 @@ typedef struct ldap_instance {
 	/*
 	 *	User object attributes and filters
 	 */
+	char const	*user_sasl_mech;		//!< SASL mechanism to use for user binds.
 	value_pair_tmpl_t *userobj_filter;		//!< Filter to retrieve only user objects.
 	value_pair_tmpl_t *userobj_base_dn;		//!< DN to search for users under.
 	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
@@ -327,7 +330,7 @@ size_t rlm_ldap_normalise_dn(char *out, char const *in);
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
 ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			  char const *password, bool retry);
+			   char const *password, char const *sasl_mech, bool retry);
 
 char const *rlm_ldap_error_str(ldap_handle_t const *conn);
 
