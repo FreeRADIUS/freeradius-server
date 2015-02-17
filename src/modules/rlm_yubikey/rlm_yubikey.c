@@ -281,9 +281,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			strlcpy(password, passcode, password_len + 1);
 			pairstrsteal(request->password, password);
 
-			RDEBUG3("request:Yubikey-OTP := '%s'", vp->vp_strvalue);
-			RDEBUG3("request:User-Password := '%s'", request->password->vp_strvalue);
-
+			RINDENT();
+			if (RDEBUG_ENABLED3) {
+				RDEBUG3("&request:Yubikey-OTP := '%s'", vp->vp_strvalue);
+				RDEBUG3("&request:User-Password := '%s'", request->password->vp_strvalue);
+			} else {
+				RDEBUG2("&request:Yubikey-OTP := <<< secret >>>");
+				RDEBUG2("&request:User-Password := <<< secret >>>");
+			}
+			REXDENT();
 			/*
 			 *	So the ID split code works on the non password portion.
 			 */

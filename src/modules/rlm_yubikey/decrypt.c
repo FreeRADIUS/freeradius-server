@@ -55,7 +55,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 
 	RDEBUG("Token data decrypted successfully");
 
-	if (request->log.lvl && request->log.func) {
+	if (RDEBUG_ENABLED2) {
 		(void) fr_bin2hex((char *) &private_id, (uint8_t*) &token.uid, YUBIKEY_UID_SIZE);
 		RDEBUG2("Private ID	: 0x%s", private_id);
 		RDEBUG2("Session counter   : %u", yubikey_counter(token.ctr));
