@@ -1471,6 +1471,9 @@ void rad_suid_down_permanent(void)
 	fr_reset_dumpable();
 }
 #  else
+void rad_suid_set_down_uid(UNUSED uid_t uid)
+{
+}
 /*
  *	Much less secure...
  */
@@ -1501,6 +1504,9 @@ void rad_suid_down_permanent(void)
 }
 #  endif /* HAVE_SETRESUID && HAVE_GETRESUID */
 #else  /* HAVE_SETUID */
+void rad_suid_set_down_uid(UNUSED uid_t uid)
+{
+}
 void rad_suid_up(void)
 {
 }
