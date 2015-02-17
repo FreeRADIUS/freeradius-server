@@ -4350,7 +4350,6 @@ main ()
             int b;
           };
         } bar;
-        return 0;
 
   ;
   return 0;
@@ -4376,7 +4375,6 @@ main ()
               int b;
             };
           } bar;
-          return 0;
 
   ;
   return 0;

@@ -35,7 +35,6 @@ AC_DEFUN([AX_CC_STD_C11],[
             int b;
           };
         } bar;
-        return 0;
       ],
       [ax_cv_cc_std_c11_flag="-std=c11"])
 
@@ -50,7 +49,6 @@ AC_DEFUN([AX_CC_STD_C11],[
               int b;
             };
           } bar;
-          return 0;
         ],
         [ax_cv_cc_std_c11_flag="-std=c1x"])
     fi
