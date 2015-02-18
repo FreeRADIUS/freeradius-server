@@ -1668,7 +1668,6 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 	VALUE_PAIR	*vp, *head, **tail;
 	char const	*p;
 	FR_TOKEN	last_token = T_INVALID;
-	FR_TOKEN	previous_token;
 	VALUE_PAIR_RAW	raw;
 
 	/*
@@ -1685,8 +1684,6 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 	do {
 		raw.l_opand[0] = '\0';
 		raw.r_opand[0] = '\0';
-
-		previous_token = last_token;
 
 		last_token = pairread(&p, &raw);
 
