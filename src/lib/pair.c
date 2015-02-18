@@ -1482,9 +1482,10 @@ int pairmark_xlat(VALUE_PAIR *vp, char const *value)
 	return 0;
 }
 
+
 /** Read a single valuepair from a buffer, and advance the pointer
  *
- * Sets *eol to T_EOL if end of line was encountered.
+ *  Returns T_EOL if end of line was encountered.
  *
  * @param[in,out] ptr to read from and update.
  * @param[out] raw The struct to write the raw VALUE_PAIR to.
@@ -1514,11 +1515,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 		return T_INVALID;
 	}
 
-	if (*p == '#') {
-		fr_strerror_printf("Read a comment instead of a token");
-
-		return T_HASH;
-	}
+	if (*p == '#') return T_HASH;
 
 	/*
 	 *	Try to get the attribute name.
@@ -1611,8 +1608,11 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 
 	next = gettoken(&p, buf, sizeof(buf), false);
 	switch (next) {
-	case T_EOL:
 	case T_HASH:
+		next = T_EOL;
+		break;
+
+	case T_EOL:
 		break;
 
 	case T_COMMA:
@@ -1689,6 +1689,15 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 		previous_token = last_token;
 
 		last_token = pairread(&p, &raw);
+
+		/*
+		 *	JUST a hash.  Don't try to create a VP.
+		 *	Let the caller determine if an empty list is OK.
+		 */
+		if (last_token == T_HASH) {
+			last_token = T_EOL;
+			break;
+		}
 		if (last_token == T_INVALID) break;
 
 		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
@@ -1713,13 +1722,6 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 		*tail = vp;
 		tail = &((*tail)->next);
 	} while (*p && (last_token == T_COMMA));
-
-	/*
-	 *	Don't tell the caller that there was a comment.
-	 */
-	if (last_token == T_HASH) {
-		last_token = previous_token;
-	}
 
 	if (last_token == T_INVALID) {
 		pairfree(&head);

@@ -33,6 +33,33 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 /*
+ *	Debug code.
+ */
+#if 1
+static void debug_pair_list(PAIR_LIST *pl)
+{
+	VALUE_PAIR *vp;
+
+	while(pl) {
+		printf("Pair list: %s\n", pl->name);
+		printf("** Check:\n");
+		for(vp = pl->check; vp; vp = vp->next) {
+			printf("    ");
+			fprint_attr_val(stdout, vp);
+			printf("\n");
+		}
+		printf("** Reply:\n");
+		for(vp = pl->reply; vp; vp = vp->next) {
+			printf("    ");
+			fprint_attr_val(stdout, vp);
+			printf("\n");
+		}
+		pl = pl->next;
+	}
+}
+#endif
+
+/*
  *	Free a PAIR_LIST
  */
 void pairlist_free(PAIR_LIST **pl)
@@ -43,7 +70,8 @@ void pairlist_free(PAIR_LIST **pl)
 
 
 #define FIND_MODE_NAME  0
-#define FIND_MODE_REPLY 1
+#define FIND_MODE_WANT_REPLY 1
+#define FIND_MODE_HAVE_REPLY 2
 
 /*
  *	Read the users, huntgroups or hints file.
@@ -89,13 +117,13 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 	 */
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		lineno++;
+
 		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
 			fclose(fp);
 			ERROR("%s[%d]: line too long", file, lineno);
 			pairlist_free(&pl);
 			return -1;
 		}
-		if (buffer[0] == '#' || buffer[0] == '\n') continue;
 
 		/*
 		 *	If the line contains nothing but whitespace,
@@ -103,33 +131,34 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 		 */
 		ptr = buffer;
 		while (isspace((int) *ptr)) ptr++;
-		if (*ptr == '\0') continue;
+
+		if (*ptr == '#' || *ptr == '\n' || !*ptr) continue;
 
 parse_again:
-		if(mode == FIND_MODE_NAME) {
+		if (mode == FIND_MODE_NAME) {
 			/*
-			 *	Find the entry starting with the users name
+			 *	The user's name MUST be the first text on the line.
 			 */
 			if (isspace((int) buffer[0]))  {
-				if (parsecode != T_EOL) {
-					ERROR("%s[%d]: Unexpected trailing comma for entry %s",
-					       file, lineno, entry);
-					fclose(fp);
-					return -1;
-				}
-				continue;
+				ERROR("%s[%d]: Entry does not begin with a user name",
+				      file, lineno);
+				fclose(fp);
+				return -1;
 			}
 
+			/*
+			 *	Get the name.
+			 */		      
 			ptr = buffer;
 			getword(&ptr, entry, sizeof(entry), false);
+			old_lineno = lineno;
 
 			/*
 			 *	Include another file if we see
 			 *	$INCLUDE filename
 			 */
 			if (strcasecmp(entry, "$INCLUDE") == 0) {
-				while(isspace((int) *ptr))
-					ptr++;
+				while (isspace((int) *ptr)) ptr++;
 
 				/*
 				 *	If it's an absolute pathname,
@@ -174,14 +203,13 @@ parse_again:
 				while (*last)
 					last = &((*last)->next);
 				continue;
-			}
+			} /* $INCLUDE ... */
 
 			/*
 			 *	Parse the check values
 			 */
-			check_tmp = NULL;
-			reply_tmp = NULL;
-			old_lineno = lineno;
+			rad_assert(check_tmp == NULL);
+			rad_assert(reply_tmp == NULL);
 			parsecode = userparse(ctx, ptr, &check_tmp);
 			if (parsecode == T_INVALID) {
 				pairlist_free(&pl);
@@ -189,9 +217,13 @@ parse_again:
 					file, lineno, entry, fr_strerror());
 				fclose(fp);
 				return -1;
-			} else if (parsecode == T_COMMA) {
-				ERROR("%s[%d]: Unexpected trailing comma in check item list for entry %s",
-				       file, lineno, entry);
+			}
+
+			if (parsecode != T_EOL) {
+				pairlist_free(&pl);
+				talloc_free(check_tmp);
+				ERROR("%s[%d]: Invalid text after check attributes for entry %s",
+				      file, lineno, entry);
 				fclose(fp);
 				return -1;
 			}
@@ -206,6 +238,8 @@ parse_again:
 				if (((vp->op == T_OP_REG_EQ) ||
 				     (vp->op == T_OP_REG_NE)) &&
 				    (vp->da->type != PW_TYPE_STRING)) {
+					pairlist_free(&pl);
+					talloc_free(check_tmp);
 					ERROR("%s[%d]: Cannot use regular expressions for non-string attributes in entry %s",
 					      file, lineno, entry);
 					fclose(fp);
@@ -214,90 +248,117 @@ parse_again:
 			}
 #endif
 
-
-			mode = FIND_MODE_REPLY;
-			parsecode = T_COMMA;
+			/*
+			 *	The reply MUST be on a new line.
+			 */
+			mode = FIND_MODE_WANT_REPLY;
+			continue;
 		}
-		else {
-			if(*buffer == ' ' || *buffer == '\t') {
-				if (parsecode != T_COMMA) {
-					ERROR("%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
-					       file, lineno, entry);
-					fclose(fp);
-					return -1;
-				}
 
-				/*
-				 *	Parse the reply values
-				 */
-				parsecode = userparse(ctx, buffer, &reply_tmp);
-				/* valid tokens are 1 or greater */
-				if (parsecode < 1) {
-					pairlist_free(&pl);
-					ERROR("%s[%d]: Parse error (reply) for entry %s: %s",
-					       file, lineno, entry, fr_strerror());
-					fclose(fp);
-					return -1;
-				}
-			} else {
-				/*
-				 *	Done with this entry...
-				 */
-				MEM(t = talloc_zero(ctx, PAIR_LIST));
-				t->check = check_tmp;
-				t->reply = reply_tmp;
-				t->lineno = old_lineno;
-				check_tmp = NULL;
-				reply_tmp = NULL;
+		/*
+		 *	We COULD have a reply, OR we could have a new entry.
+		 */
+		if (mode == FIND_MODE_WANT_REPLY) {
+			if (!isspace((int) buffer[0])) goto create_entry;
 
-				t->name = talloc_typed_strdup(t, entry);
-
-				*last = t;
-				last = &(t->next);
-
-				mode = FIND_MODE_NAME;
-				if (buffer[0] != 0)
-					goto parse_again;
-			}
+			mode = FIND_MODE_HAVE_REPLY;
 		}
+
+		/*
+		 *	mode == FIND_MODE_HAVE_REPLY
+		 */
+
+		/*
+		 *	The previous line ended with a comma, and then
+		 *	we have the start of a new entry!
+		 */
+		if (!isspace((int) buffer[0])) {
+		trailing_comma:
+			pairlist_free(&pl);
+			talloc_free(check_tmp);
+			talloc_free(reply_tmp);
+			ERROR("%s[%d]: Invalid comma after the reply attributes.  Please delete it.",
+			      file, old_lineno);
+			fclose(fp);
+			return -1;
+		}
+
+		/*
+		 *	Parse the reply values.  If there's a trailing
+		 *	comma, keep parsing the reply values.
+		 */
+		parsecode = userparse(ctx, buffer, &reply_tmp);
+		if (parsecode == T_COMMA) {
+			old_lineno = lineno;
+			continue;
+		}
+
+		/*
+		 *	We expect an EOL.  Anything else is an error.
+		 */
+		if (parsecode != T_EOL) {
+			pairlist_free(&pl);
+			talloc_free(check_tmp);
+			talloc_free(reply_tmp);
+			ERROR("%s[%d]: Parse error (reply) for entry %s: %s",
+			      file, lineno, entry, fr_strerror());
+			fclose(fp);
+			return -1;
+		}
+
+	create_entry:
+		/*
+		 *	Done with this entry...
+		 */
+		MEM(t = talloc_zero(ctx, PAIR_LIST));
+
+		if (check_tmp) pairsteal(t, check_tmp);
+		if (reply_tmp) pairsteal(t, reply_tmp);
+
+		t->check = check_tmp;
+		t->reply = reply_tmp;
+		t->lineno = old_lineno;
+		check_tmp = NULL;
+		reply_tmp = NULL;
+
+		t->name = talloc_typed_strdup(t, entry);
+
+		*last = t;
+		last = &(t->next);
+
+		if (strcmp(entry, "bob") == 0) {
+			DEBUG("######################################################################");
+			debug_pair_list(t);
+		}
+
+		/*
+		 *	Look for a name.  If we came here because
+		 *	there were no reply attributes, then re-parse
+		 *	the current line, instead of reading another one.
+		 */
+		mode = FIND_MODE_NAME;
+		if (feof(fp)) break;
+		if (!isspace((int) buffer[0])) goto parse_again;
 	}
+
 	/*
-	 *	Make sure that we also read the last line of the file!
+	 *	We're at EOF.  If we're supposed to read more, that's
+	 *	an error.
 	 */
-	if (mode == FIND_MODE_REPLY) {
-		buffer[0] = 0;
-		goto parse_again;
-	}
+	if (mode == FIND_MODE_HAVE_REPLY) goto trailing_comma;
+
+	/*
+	 *	We had an entry, but no reply attributes.  That's OK.
+	 */
+	if (mode == FIND_MODE_WANT_REPLY) goto create_entry;
+
+	/*
+	 *	Else we were looking for an entry.  We didn't get one
+	 *	because we were at EOF, so that's OK.
+	 */
+
 	fclose(fp);
 
 	*list = pl;
 	return 0;
 }
-
-
-/*
- *	Debug code.
- */
-#if 0
-static void debug_pair_list(PAIR_LIST *pl)
-{
-	VALUE_PAIR *vp;
-
-	while(pl) {
-		printf("Pair list: %s\n", pl->name);
-		printf("** Check:\n");
-		for(vp = pl->check; vp; vp = vp->next) {
-			printf("    ");
-			fprint_attr_val(stdout, vp);
-			printf("\n");
-		}
-		printf("** Reply:\n");
-		for(vp = pl->reply; vp; vp = vp->next) {
-			printf("    ");
-			fprint_attr_val(stdout, vp);
-			printf("\n");
-		}
-		pl = pl->next;
-	}
-}
-#endif
