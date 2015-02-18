@@ -35,7 +35,7 @@ RCSID("$Id$")
 /*
  *	Debug code.
  */
-#if 1
+#if 0
 static void debug_pair_list(PAIR_LIST *pl)
 {
 	VALUE_PAIR *vp;
@@ -325,11 +325,6 @@ parse_again:
 
 		*last = t;
 		last = &(t->next);
-
-		if (strcmp(entry, "bob") == 0) {
-			DEBUG("######################################################################");
-			debug_pair_list(t);
-		}
 
 		/*
 		 *	Look for a name.  If we came here because
