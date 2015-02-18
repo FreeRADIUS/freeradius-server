@@ -61,6 +61,8 @@ FreeRADIUS 3.0.7 Wed 17 Dec 2014 16:00:00 EDT urgency=medium
 	  are currently supported.
 	* Remove support for ephemeral RSA keys.  They were "export only",
 	  and should not be used by anyone.
+	* Syntax errors in the "users" file now produce better
+	  error messages.
 
 	Bug fixes
 	* Fix issues parsing LDAP hostnames with non-standard ports.
