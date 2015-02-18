@@ -299,8 +299,8 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 #if !defined(HAVE_OPENAT) || !defined(HAVE_MKDIRAT) || !defined(HAVE_UNLINKAT)
 static int fr_server_domain_socket_perm(UNUSED char const *path, UNUSED uid_t uid, UNUSED gid_t gid)
 {
-	fr_error_printf("Unable to initialise control socket.  Set peercred = yes or update to "
-			"POSIX-2008 compliant libc");
+	ERROR("Unable to initialise control socket.  Set peercred = yes or update to "
+	      "POSIX-2008 compliant libc");
 	return -1;
 }
 #else
