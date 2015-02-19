@@ -1113,6 +1113,7 @@ static int load_byserver(CONF_SECTION *cs)
 	rbtree_t *components;
 	virtual_server_t *server = NULL;
 	indexed_modcallable *c;
+	bool is_bare;
 
 	if (name) {
 		cf_log_info(cs, "server %s { # from file %s",
@@ -1121,6 +1122,8 @@ static int load_byserver(CONF_SECTION *cs)
 		cf_log_info(cs, "server { # from file %s",
 			    cf_section_filename(cs));
 	}
+
+	is_bare = (cf_item_parent(cf_section_to_item(cs)) == NULL);
 
 	server = talloc_zero(cs, virtual_server_t);
 	server->name = name;
@@ -1151,7 +1154,7 @@ static int load_byserver(CONF_SECTION *cs)
 					    section_type_value[comp].section);
 		if (!subcs) continue;
 
-		if (!name) {
+		if (is_bare) {
 			cf_log_err_cs(subcs, "The %s section should be inside of a 'server { ... }' block!",
 				      section_type_value[comp].section);
 		}
