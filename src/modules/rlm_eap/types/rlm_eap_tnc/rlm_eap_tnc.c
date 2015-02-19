@@ -69,7 +69,7 @@ static CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
-static int tnc_attach(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_tnc_t *inst;
 	TNC_Result result;
@@ -131,7 +131,7 @@ static int mod_detach(void *instance)
  * For this package, only 'Identifier' has to be set dynamically. Any
  * other information is static.
  */
-static int tnc_initiate(void *instance, eap_handler_t *handler)
+static int mod_session_init(void *instance, eap_handler_t *handler)
 {
 	rlm_eap_tnc_t *inst = instance;
 	REQUEST *request = NULL;
@@ -237,7 +237,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	 *	stored in 'handler->eap_ds', which will be given back
 	 *	to us...
 	 */
-	handler->stage = AUTHENTICATE;
+	handler->stage = PROCESS;
 
 	return 1;
 }
@@ -252,7 +252,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
  * @param handler The eap_handler_t.
  * @return True, if successfully, else false.
  */
-static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
+static int mod_process(UNUSED void *instance, eap_handler_t *handler)
 {
 	TNC_ConnectionID conn_id;
 	TNC_Result result;
@@ -350,10 +350,9 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
  */
 extern rlm_eap_module_t rlm_eap_tnc;
 rlm_eap_module_t rlm_eap_tnc = {
-		"eap_tnc",
-		tnc_attach,		/* attach */
-		tnc_initiate,		/* Start the initial request */
-		NULL,			/* authorization */
-		mod_authenticate,	/* authentication */
-		mod_detach		/* detach */
+	.name		= "eap_tnc",
+	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+	.session_init	= mod_session_init,	/* Initialise a new EAP session */
+	.process	= mod_process,		/* Process next round of EAP method */
+	.detach		= mod_detach		/* detach */
 };

@@ -33,7 +33,7 @@ RCSID("$Id$")
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
-static int md5_initiate(UNUSED void *instance, eap_handler_t *handler)
+static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 {
 	int		i;
 	MD5_PACKET	*reply;
@@ -92,7 +92,7 @@ static int md5_initiate(UNUSED void *instance, eap_handler_t *handler)
 	 *	stored in 'handler->eap_ds', which will be given back
 	 *	to us...
 	 */
-	handler->stage = AUTHENTICATE;
+	handler->stage = PROCESS;
 
 	return 1;
 }
@@ -101,7 +101,7 @@ static int md5_initiate(UNUSED void *instance, eap_handler_t *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int md5_authenticate(UNUSED void *arg, eap_handler_t *handler)
+static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 {
 	MD5_PACKET	*packet;
 	MD5_PACKET	*reply;
@@ -112,7 +112,7 @@ static int md5_authenticate(UNUSED void *arg, eap_handler_t *handler)
 	 *	Get the Cleartext-Password for this user.
 	 */
 	rad_assert(handler->request != NULL);
-	rad_assert(handler->stage == AUTHENTICATE);
+	rad_assert(handler->stage == PROCESS);
 
 	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
@@ -162,10 +162,7 @@ static int md5_authenticate(UNUSED void *arg, eap_handler_t *handler)
  */
 extern rlm_eap_module_t rlm_eap_md5;
 rlm_eap_module_t rlm_eap_md5 = {
-	"eap_md5",
-	NULL,				/* attach */
-	md5_initiate,			/* Start the initial request */
-	NULL,				/* authorization */
-	md5_authenticate,		/* authentication */
-	NULL				/* detach */
+	.name		= "eap_md5",
+	.session_init	= mod_session_init,	/* Initialise a new EAP session */
+	.process	= mod_process		/* Process next round of EAP method */
 };
