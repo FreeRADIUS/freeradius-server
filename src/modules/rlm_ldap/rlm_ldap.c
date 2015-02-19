@@ -510,7 +510,7 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
 		DEBUG2("rlm_ldap (%s): Couldn't find configuration for %s, will return NOOP for calls "
-		       "from this section", inst->xlat_name, name);
+		       "from this section", inst->name, name);
 
 		return 0;
 	}
@@ -552,9 +552,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->chase_referrals_unset = true;	 /* use OpenLDAP defaults */
 	}
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
 	}
 
 	/*
@@ -970,7 +970,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		static ATTR_FLAGS flags;
 		char buffer[256];
 
-		snprintf(buffer, sizeof(buffer), "%s-Ldap-Group", inst->xlat_name);
+		snprintf(buffer, sizeof(buffer), "%s-Ldap-Group", inst->name);
 		if (dict_addattr(buffer, -1, 0, PW_TYPE_STRING, flags) < 0) {
 			LDAP_ERR("Error creating group attribute: %s", fr_strerror());
 
@@ -993,7 +993,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				false, rlm_ldap_groupcmp, inst);
 	}
 
-	xlat_register(inst->xlat_name, ldap_xlat, rlm_ldap_escape_func, inst);
+	xlat_register(inst->name, ldap_xlat, rlm_ldap_escape_func, inst);
 	xlat_register("ldapquote", ldapquote_xlat, NULL, inst);
 
 	/*

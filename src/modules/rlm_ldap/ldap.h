@@ -98,7 +98,7 @@ typedef struct ldap_instance {
 
 	uint32_t	ldap_debug;			//!< Debug flag for the SDK.
 
-	char const	*xlat_name;			//!< Instance name.
+	char const	*name;			//!< Instance name.
 
 	bool		expect_password;		//!< True if the user_map included a mapping between an LDAP
 							//!< attribute and one of our password reference attributes.
@@ -294,22 +294,22 @@ typedef enum {
  *	simplifies switching certain messages from the request log to
  *	the main log.
  */
-#define LDAP_INFO(fmt, ...) INFO("rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
-#define LDAP_WARN(fmt, ...) WARN("rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
+#define LDAP_INFO(fmt, ...) INFO("rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
+#define LDAP_WARN(fmt, ...) WARN("rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
 
-#define LDAP_DBGW(fmt, ...) radlog(L_DBG_WARN, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
+#define LDAP_DBGW(fmt, ...) radlog(L_DBG_WARN, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
 #define LDAP_DBGW_REQ(fmt, ...) do { if (request) {RWDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_DBGW(fmt, ##__VA_ARGS__);}} while (0)
 
-#define LDAP_DBG(fmt, ...) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
+#define LDAP_DBG(fmt, ...) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
 #define LDAP_DBG_REQ(fmt, ...) do { if (request) {RDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
 
-#define LDAP_DBG2(fmt, ...) if (debug_flag >= L_DBG_LVL_2) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
+#define LDAP_DBG2(fmt, ...) if (debug_flag >= L_DBG_LVL_2) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
 #define LDAP_DBG_REQ2(fmt, ...) do { if (request) {RDEBUG2(fmt, ##__VA_ARGS__);} else if (debug_flag >= L_DBG_LVL_2) {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
 
-#define LDAP_DBG3(fmt, ...) if (debug_flag >= L_DBG_LVL_3) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
+#define LDAP_DBG3(fmt, ...) if (debug_flag >= L_DBG_LVL_3) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
 #define LDAP_DBG_REQ3(fmt, ...) do { if (request) {RDEBUG3(fmt, ##__VA_ARGS__);} else if (debug_flag >= L_DBG_LVL_3) {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
 
-#define LDAP_ERR(fmt, ...) ERROR("rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
+#define LDAP_ERR(fmt, ...) ERROR("rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
 #define LDAP_ERR_REQ(fmt, ...) do { if (request) {REDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_ERR(fmt, ##__VA_ARGS__);}} while (0)
 
 #define LDAP_EXT() if (extra) LDAP_ERR(extra)
