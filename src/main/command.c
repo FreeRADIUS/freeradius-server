@@ -299,8 +299,8 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 #if !defined(HAVE_OPENAT) || !defined(HAVE_MKDIRAT) || !defined(HAVE_UNLINKAT)
 static int fr_server_domain_socket_perm(UNUSED char const *path, UNUSED uid_t uid, UNUSED gid_t gid)
 {
-	ERROR("Unable to initialise control socket.  Set peercred = yes or update to "
-	      "POSIX-2008 compliant libc");
+	fr_strerror_printf("Unable to initialise control socket.  Set peercred = yes or update to "
+			   "POSIX-2008 compliant libc");
 	return -1;
 }
 #else
@@ -1420,7 +1420,7 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 					      fr_strerror());
 				return NULL;
 			}
-			
+
 			server_port = atoi(argv[myarg + 2]);
 
 			list = listener_find_client_list(&server_ipaddr, server_port, proto);
