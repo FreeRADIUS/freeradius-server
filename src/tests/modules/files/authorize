@@ -15,3 +15,9 @@ unused	Cleartext-Password := "jabberwocky"
 
 famous	
 	Filter-Id := "success"
+
+user	Cleartext-Password := "hello" # comment!
+
+
+user2   # comment!
+	Filter-Id := "24"
