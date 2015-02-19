@@ -75,7 +75,7 @@ static CONF_PARSER module_config[] = {
 /*
  *	Attach the module.
  */
-static int eappeap_attach(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_peap_t		*inst;
 
@@ -140,7 +140,7 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static int eappeap_initiate(void *type_arg, eap_handler_t *handler)
+static int mod_session_init(void *type_arg, eap_handler_t *handler)
 {
 	int		status;
 	tls_session_t	*ssn;
@@ -212,7 +212,7 @@ static int eappeap_initiate(void *type_arg, eap_handler_t *handler)
 	/*
 	 *	The next stage to process the packet.
 	 */
-	handler->stage = AUTHENTICATE;
+	handler->stage = PROCESS;
 
 	return 1;
 }
@@ -220,7 +220,7 @@ static int eappeap_initiate(void *type_arg, eap_handler_t *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int mod_authenticate(void *arg, eap_handler_t *handler)
+static int mod_process(void *arg, eap_handler_t *handler)
 {
 	int rcode;
 	fr_tls_status_t status;
@@ -364,10 +364,8 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
  */
 extern rlm_eap_module_t rlm_eap_peap;
 rlm_eap_module_t rlm_eap_peap = {
-	"eap_peap",
-	eappeap_attach,			/* attach */
-	eappeap_initiate,		/* Start the initial request */
-	NULL,				/* authorization */
-	mod_authenticate,		/* authentication */
-	NULL				/* detach */
+	.name		= "eap_peap",
+	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+	.session_init	= mod_session_init,	/* Initialise a new EAP session */
+	.process	= mod_process		/* Process next round of EAP method */
 };

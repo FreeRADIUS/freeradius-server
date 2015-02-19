@@ -52,7 +52,7 @@ static CONF_PARSER module_config[] = {
 /*
  *	Attach the EAP-TLS module.
  */
-static int eaptls_attach(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_tls_t		*inst;
 
@@ -80,7 +80,7 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static int eaptls_initiate(void *type_arg, eap_handler_t *handler)
+static int mod_session_init(void *type_arg, eap_handler_t *handler)
 {
 	int		status;
 	tls_session_t	*ssn;
@@ -120,7 +120,7 @@ static int eaptls_initiate(void *type_arg, eap_handler_t *handler)
 	/*
 	 *	The next stage to process the packet.
 	 */
-	handler->stage = AUTHENTICATE;
+	handler->stage = PROCESS;
 
 	return 1;
 }
@@ -128,7 +128,7 @@ static int eaptls_initiate(void *type_arg, eap_handler_t *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int CC_HINT(nonnull) mod_authenticate(void *type_arg, eap_handler_t *handler)
+static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 {
 	fr_tls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
@@ -247,10 +247,8 @@ static int CC_HINT(nonnull) mod_authenticate(void *type_arg, eap_handler_t *hand
  */
 extern rlm_eap_module_t rlm_eap_tls;
 rlm_eap_module_t rlm_eap_tls = {
-	"eap_tls",
-	eaptls_attach,			/* attach */
-	eaptls_initiate,		/* Start the initial request */
-	NULL,				/* authorization */
-	mod_authenticate,		/* authentication */
-	NULL				/* detach */
+	.name		= "eap_tls",
+	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+	.session_init	= mod_session_init,	/* Initialise a new EAP session */
+	.process	= mod_process		/* Process next round of EAP method */
 };

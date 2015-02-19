@@ -60,7 +60,7 @@ static int mod_detach (void *arg)
 	return 0;
 }
 
-static int eap_pwd_attach (CONF_SECTION *cs, void **instance)
+static int mod_instantiate (CONF_SECTION *cs, void **instance)
 {
 	eap_pwd_t *inst;
 
@@ -166,7 +166,7 @@ static int send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
 	return 1;
 }
 
-static int eap_pwd_initiate (void *instance, eap_handler_t *handler)
+static int mod_session_init (void *instance, eap_handler_t *handler)
 {
 	pwd_session_t *pwd_session;
 	eap_pwd_t *inst = (eap_pwd_t *)instance;
@@ -253,12 +253,12 @@ static int eap_pwd_initiate (void *instance, eap_handler_t *handler)
 	pack->prep = EAP_PWD_PREP_NONE;
 	strcpy(pack->identity, inst->conf->server_id);
 
-	handler->stage = AUTHENTICATE;
+	handler->stage = PROCESS;
 
 	return send_pwd_request(pwd_session, handler->eap_ds);
 }
 
-static int mod_authenticate (void *arg, eap_handler_t *handler)
+static int mod_process (void *arg, eap_handler_t *handler)
 {
 	pwd_session_t *pwd_session;
 	pwd_hdr *hdr;
@@ -600,11 +600,10 @@ static int mod_authenticate (void *arg, eap_handler_t *handler)
 
 extern rlm_eap_module_t rlm_eap_pwd;
 rlm_eap_module_t rlm_eap_pwd = {
-	"eap_pwd",
-	eap_pwd_attach,		/* attach */
-	eap_pwd_initiate,	/* initiate to a client */
-	NULL,			/* no authorization */
-	mod_authenticate,	/* pwd authentication */
-	mod_detach		/* detach */
+	.name		= "eap_pwd",
+	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+	.session_init	= mod_session_init,		/* Create the initial request */
+	.process	= mod_process,		/* Process next round of EAP method */
+	.detach		= mod_detach		/* Destroy the submodule instance */
 };
 

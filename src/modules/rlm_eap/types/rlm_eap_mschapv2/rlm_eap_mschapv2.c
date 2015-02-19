@@ -54,7 +54,7 @@ static void fix_mppe_keys(eap_handler_t *handler, mschapv2_opaque_t *data)
 /*
  *	Attach the module.
  */
-static int mschapv2_attach(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_mschapv2_t *inst;
 
@@ -202,7 +202,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
+static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 {
 	int		i;
 	VALUE_PAIR	*challenge;
@@ -261,7 +261,7 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
 	 *	stored in 'handler->eap_ds', which will be given back
 	 *	to us...
 	 */
-	handler->stage = AUTHENTICATE;
+	handler->stage = PROCESS;
 
 	return 1;
 }
@@ -349,7 +349,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 /*
  *	Authenticate a previously sent challenge.
  */
-static int CC_HINT(nonnull) mschapv2_authenticate(void *arg, eap_handler_t *handler)
+static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 {
 	int rcode, ccode;
 	uint8_t *p;
@@ -361,7 +361,7 @@ static int CC_HINT(nonnull) mschapv2_authenticate(void *arg, eap_handler_t *hand
 	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
 	REQUEST *request = handler->request;
 
-	rad_assert(handler->stage == AUTHENTICATE);
+	rad_assert(handler->stage == PROCESS);
 
 	data = (mschapv2_opaque_t *) handler->opaque;
 
@@ -729,10 +729,8 @@ packet_ready:
  */
 extern rlm_eap_module_t rlm_eap_mschapv2;
 rlm_eap_module_t rlm_eap_mschapv2 = {
-	"eap_mschapv2",
-	mschapv2_attach,		/* attach */
-	mschapv2_initiate,		/* Start the initial request */
-	NULL,				/* authorization */
-	mschapv2_authenticate,		/* authentication */
-	NULL				/* detach */
+	.name		= "eap_mschapv2",
+	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+	.session_init	= mod_session_init,	/* Initialise a new EAP session */
+	.process	= mod_process		/* Process next round of EAP method */
 };

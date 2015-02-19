@@ -53,7 +53,7 @@ static CONF_PARSER module_config[] = {
 /*
  *	Attach the module.
  */
-static int gtc_attach(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_gtc_t	*inst;
 	DICT_VALUE	*dval;
@@ -86,7 +86,7 @@ static int gtc_attach(CONF_SECTION *cs, void **instance)
 /*
  *	Initiate the EAP-GTC session by sending a challenge to the peer.
  */
-static int gtc_initiate(void *instance, eap_handler_t *handler)
+static int mod_session_init(void *instance, eap_handler_t *handler)
 {
 	char challenge_str[1024];
 	int length;
@@ -120,7 +120,7 @@ static int gtc_initiate(void *instance, eap_handler_t *handler)
 	 *	stored in 'handler->eap_ds', which will be given back
 	 *	to us...
 	 */
-	handler->stage = AUTHENTICATE;
+	handler->stage = PROCESS;
 
 	return 1;
 }
@@ -129,7 +129,7 @@ static int gtc_initiate(void *instance, eap_handler_t *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int CC_HINT(nonnull) mod_authenticate(void *instance, eap_handler_t *handler)
+static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler)
 {
 	VALUE_PAIR *vp;
 	EAP_DS *eap_ds = handler->eap_ds;
@@ -139,7 +139,7 @@ static int CC_HINT(nonnull) mod_authenticate(void *instance, eap_handler_t *hand
 	/*
 	 *	Get the Cleartext-Password for this user.
 	 */
-	rad_assert(handler->stage == AUTHENTICATE);
+	rad_assert(handler->stage == PROCESS);
 
 	/*
 	 *	Sanity check the response.  We need at least one byte
@@ -249,10 +249,8 @@ static int CC_HINT(nonnull) mod_authenticate(void *instance, eap_handler_t *hand
  */
 extern rlm_eap_module_t rlm_eap_gtc;
 rlm_eap_module_t rlm_eap_gtc = {
-	"eap_gtc",
-	gtc_attach,	      		/* attach */
-	gtc_initiate,			/* Start the initial request */
-	NULL,				/* authorization */
-	mod_authenticate,		/* authentication */
-	NULL     			/* detach */
+	.name		= "eap_gtc",
+	.instantiate	= mod_instantiate,	/* Create new submodule instance */
+	.session_init	= mod_session_init,	/* Initialise a new EAP session */
+	.process	= mod_process		/* Process next round of EAP method */
 };

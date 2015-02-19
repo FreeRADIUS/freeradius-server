@@ -450,7 +450,7 @@ static void eap_sim_stateenter(eap_handler_t *handler,
  *	Initiate the EAP-SIM session by starting the state machine
  *      and initiating the state.
  */
-static int eap_sim_initiate(UNUSED void *instance, eap_handler_t *handler)
+static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 {
 	REQUEST *request = handler->request;
 	eap_sim_state_t *ess;
@@ -463,7 +463,7 @@ static int eap_sim_initiate(UNUSED void *instance, eap_handler_t *handler)
 	}
 
 	handler->opaque = ess;
-	handler->stage = AUTHENTICATE;
+	handler->stage = PROCESS;
 
 	/*
 	 *	Save the keying material, because it could change on a subsequent retrieval.
@@ -602,7 +602,7 @@ static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
 /** Authenticate a previously sent challenge
  *
  */
-static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
+static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 {
 	REQUEST *request = handler->request;
 	eap_sim_state_t *ess = handler->opaque;
@@ -686,10 +686,7 @@ static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
  */
 extern rlm_eap_module_t rlm_eap_sim;
 rlm_eap_module_t rlm_eap_sim = {
-	"eap_sim",
-	NULL,				/* XXX attach */
-	eap_sim_initiate,		/* Start the initial request */
-	NULL,				/* XXX authorization */
-	mod_authenticate,		/* authentication */
-	NULL				/* XXX detach */
+	.name		= "eap_sim",
+	.session_init	= mod_session_init,	/* Initialise a new EAP session */
+	.process	= mod_process,		/* Process next round of EAP method */
 };

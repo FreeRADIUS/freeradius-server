@@ -153,7 +153,7 @@ open_self:
 	/*
 	 *	Call the attach num in the EAP num module
 	 */
-	if ((method->type->attach) && ((method->type->attach)(method->cs, &(method->instance)) < 0)) {
+	if ((method->type->instantiate) && ((method->type->instantiate)(method->cs, &(method->instance)) < 0)) {
 		ERROR("rlm_eap (%s): Failed to initialise %s", inst->xlat_name, mod_name);
 
 		if (method->instance) {
@@ -188,29 +188,18 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 
 	switch (handler->stage) {
 	case INITIATE:
-		if (!module->type->initiate(module->instance, handler)) {
+		if (!module->type->session_init(module->instance, handler)) {
 			rcode = 0;
 		}
 
 		break;
 
-	case AUTHORIZE:
+	case PROCESS:
 		/*
 		 *   The called function updates the EAP reply packet.
 		 */
-		if (!module->type->authorize ||
-		    !module->type->authorize(module->instance, handler)) {
-			rcode = 0;
-		}
-
-		break;
-
-	case AUTHENTICATE:
-		/*
-		 *   The called function updates the EAP reply packet.
-		 */
-		if (!module->type->authenticate ||
-		    !module->type->authenticate(module->instance, handler)) {
+		if (!module->type->process ||
+		    !module->type->process(module->instance, handler)) {
 			rcode = 0;
 		}
 
@@ -463,7 +452,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 				return EAP_INVALID;
 			}
 
-			rad_assert(handler->stage == AUTHENTICATE);
+			rad_assert(handler->stage == PROCESS);
 			handler->type = type->num;
 			if (eap_module_call(inst->methods[type->num],
 					    handler) == 0) {
