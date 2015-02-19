@@ -72,4 +72,13 @@ ATTRIBUTE	TP-CAPWAP-Other-Software-Version	59	string
 VALUE	TP-TLS-Auth-Type		Pre-Shared-Key		0
 VALUE	TP-TLS-Auth-Type		X509-Subject-CommonName	1
 
+#
+# Vendor specific values for standard RADIUS attributes
+# 0x48f9 == 18681 == Vendor Id
+#
+VALUE	Framed-Protocol			TP-CAPWAP		0x48f90001
+
+VALUE	Service-Type			TP-CAPWAP-WTP		0x48f90001
+VALUE	Service-Type			TP-CAPWAP-STA		0x48f90002
+
 END-VENDOR	Travelping
