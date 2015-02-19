@@ -81,6 +81,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 	int16_t length;
 	mschapv2_header_t *hdr;
 	EAP_DS *eap_ds = handler->eap_ds;
+	REQUEST *request = handler->request;
 
 	eap_ds->request->code = PW_EAP_REQUEST;
 	eap_ds->request->type.num = PW_EAP_MSCHAPV2;
@@ -145,10 +146,9 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *  |   MS-Length   |                    Message...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
-		DEBUG2("MSCHAP Success\n");
+		RDEBUG2("MSCHAP Success");
 		length = 46;
-		eap_ds->request->type.data = talloc_array(eap_ds->request,
-							  uint8_t, length);
+		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
@@ -166,16 +166,14 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		break;
 
 	case PW_MSCHAP_ERROR:
-		DEBUG2("MSCHAP Failure\n");
+		REDEBUG("MSCHAP Failure");
 		length = 4 + reply->vp_length - 1;
 		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
 
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (!eap_ds->request->type.data) {
-			return 0;
-		}
+		if (!eap_ds->request->type.data) return 0;
 		memset(eap_ds->request->type.data, 0, length);
 		eap_ds->request->type.length = length;
 
@@ -191,7 +189,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		break;
 
 	default:
-		ERROR("rlm_eap_mschapv2: Internal sanity check failed");
+		RERROR("Internal sanity check failed");
 		return 0;
 	}
 
@@ -210,8 +208,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	REQUEST		*request = handler->request;
 	uint8_t 	*p;
 
-	challenge = pairmake(handler, NULL,
-			     "MS-CHAP-Challenge", NULL, T_OP_EQ);
+	challenge = pairmake(handler, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
 
 	/*
 	 *	Get a random challenge.
@@ -283,8 +280,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	data = (mschapv2_opaque_t *) handler->opaque;
 	rad_assert(request != NULL);
 
-	RDEBUG2("Passing reply from proxy back into the tunnel %d.",
-		request->reply->code);
+	RDEBUG2("Passing reply from proxy back into the tunnel %d", request->reply->code);
 
 	/*
 	 *	There is only a limited number of possibilities.
@@ -302,7 +298,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 
 	default:
 	case PW_CODE_ACCESS_REJECT:
-		RDEBUG("Proxied authentication did not succeed");
+		REDEBUG("Proxied authentication was rejected");
 		return 0;
 	}
 
@@ -329,9 +325,9 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	fix_mppe_keys(handler, data);
 
 	/*
-	 * save any other attributes for re-use in the final
-	 * access-accept e.g. vlan, etc. This lets the PEAP
-	 * use_tunneled_reply code work
+	 *	Save any other attributes for re-use in the final
+	 *	access-accept e.g. vlan, etc. This lets the PEAP
+	 *	use_tunneled_reply code work
 	 */
 	data->reply = paircopy(data, request->reply->vps);
 
@@ -378,7 +374,7 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 	switch (data->code) {
 	case PW_EAP_MSCHAPV2_FAILURE:
 		if (ccode == PW_EAP_MSCHAPV2_RESPONSE) {
-			RDEBUG2("authentication re-try from client after we sent a failure");
+			RDEBUG2("Authentication re-try from client after we sent a failure");
 			break;
 		}
 
@@ -391,14 +387,12 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 		if (ccode == PW_EAP_MSCHAPV2_CHGPASSWD) {
 			VALUE_PAIR *cpw;
 			int mschap_id = eap_ds->response->type.data[1];
-			int copied=0,seq=1;
+			int copied = 0 ,seq = 1;
 
-			RDEBUG2("password change packet received");
+			RDEBUG2("Password change packet received");
 
 			challenge = pairmake_packet("MS-CHAP-Challenge", NULL, T_OP_EQ);
-			if (!challenge) {
-				return 0;
-			}
+			if (!challenge) return 0;
 			pairmemcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
 			cpw = pairmake_packet("MS-CHAP2-CPW", NULL, T_OP_EQ);
@@ -416,8 +410,7 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 				VALUE_PAIR *nt_enc;
 
 				int to_copy = 516 - copied;
-				if (to_copy > 243)
-					to_copy = 243;
+				if (to_copy > 243) to_copy = 243;
 
 				nt_enc = pairmake_packet("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
 				nt_enc->vp_length = 4 + to_copy;
@@ -466,9 +459,7 @@ failure:
 		case PW_EAP_MSCHAPV2_SUCCESS:
 			eap_ds->request->code = PW_EAP_SUCCESS;
 
-			pairfilter(request->reply,
-				  &request->reply->vps,
-				  &data->mppe_keys, 0, 0, TAG_ANY);
+			pairfilter(request->reply, &request->reply->vps, &data->mppe_keys, 0, 0, TAG_ANY);
 			/* FALL-THROUGH */
 
 		case PW_EAP_MSCHAPV2_ACK:
@@ -478,9 +469,7 @@ failure:
 			 */
 			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-			pairfilter(request->reply,
-				  &request->reply->vps,
-				  &data->reply, 0, 0, TAG_ANY);
+			pairfilter(request->reply, &request->reply->vps, &data->reply, 0, 0, TAG_ANY);
 			return 1;
 		}
 		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
@@ -501,7 +490,7 @@ failure:
 
 	default:
 		/* should never happen */
-		REDEBUG("unknown state %d", data->code);
+		REDEBUG("Unknown state %d", data->code);
 		return 0;
 	}
 
@@ -535,8 +524,7 @@ failure:
 	 */
 	length = (eap_ds->response->type.data[2] << 8) | eap_ds->response->type.data[3];
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
-		REDEBUG("Response contains contradictory length %zu %d",
-			length, 5 + 49);
+		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
 		return 0;
 	}
 
@@ -550,15 +538,11 @@ failure:
 	 *	but it works.
 	 */
 	challenge = pairmake_packet("MS-CHAP-Challenge", NULL, T_OP_EQ);
-	if (!challenge) {
-		return 0;
-	}
+	if (!challenge) return 0;
 	pairmemcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
 	response = pairmake_packet("MS-CHAP2-Response", NULL, T_OP_EQ);
-	if (!response) {
-		return 0;
-	}
+	if (!response) return 0;
 	response->vp_length = MSCHAPV2_RESPONSE_LEN;
 	response->vp_octets = p = talloc_array(response, uint8_t, response->vp_length);
 
@@ -567,18 +551,14 @@ failure:
 	memcpy(p + 2, &eap_ds->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
 
 	name = pairmake_packet("MS-CHAP-User-Name", NULL, T_OP_EQ);
-	if (!name) {
-		return 0;
-	}
+	if (!name) return 0;
 
 	/*
 	 *	MS-Length - MS-Value - 5.
 	 */
 	name->vp_length = length - 49 - 5;
 	name->vp_strvalue = q = talloc_array(name, char, name->vp_length + 1);
-	memcpy(q,
-	       &eap_ds->response->type.data[4 + MSCHAPV2_RESPONSE_LEN],
-	       name->vp_length);
+	memcpy(q, &eap_ds->response->type.data[4 + MSCHAPV2_RESPONSE_LEN], name->vp_length);
 	q[name->vp_length] = '\0';
 
 packet_ready:
@@ -598,7 +578,7 @@ packet_ready:
 		char *username = NULL;
 		eap_tunnel_data_t *tunnel;
 
-		RDEBUG2("cancelling authentication and letting it be proxied");
+		RDEBUG2("Cancelling authentication and letting it be proxied");
 
 		/*
 		 *	Set up the callbacks for the tunnel
@@ -693,10 +673,11 @@ packet_ready:
 			 */
 			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
 			if (n == 3) {
-				DEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s", err, retry, buf);
+				RDEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s",
+					err, retry, buf);
 				fr_hex2bin(data->challenge, 16, buf, strlen(buf));
 			} else {
-				DEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
+				RDEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
 			}
 		}
 		data->code = PW_EAP_MSCHAPV2_FAILURE;
