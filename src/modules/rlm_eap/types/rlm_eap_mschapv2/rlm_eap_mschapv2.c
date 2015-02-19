@@ -207,16 +207,26 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	mschapv2_opaque_t *data;
 	REQUEST		*request = handler->request;
 	uint8_t 	*p;
+	bool		created_challenge = false;
 
-	challenge = pairmake(handler, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
+	challenge = pairfind(request->config_items, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
+	if (challenge && (challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
+		RWDEBUG("control:MS-CHAP-Challenge is incorrect length.  Ignoring it.");
+		challenge = NULL;
+	}
 
-	/*
-	 *	Get a random challenge.
-	 */
-	challenge->vp_length = MSCHAPV2_CHALLENGE_LEN;
-	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->vp_length);
-	for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) {
-		p[i] = fr_rand();
+	if (!challenge) {
+		created_challenge = true;
+		challenge = pairmake(handler, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
+
+		/*
+		 *	Get a random challenge.
+		 */
+		challenge->vp_length = MSCHAPV2_CHALLENGE_LEN;
+		challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->vp_length);
+		for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) {
+			p[i] = fr_rand();
+		}
 	}
 	RDEBUG2("Issuing Challenge");
 
@@ -241,7 +251,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	 *	and free it.
 	 */
 	eapmschapv2_compose(handler, challenge);
-	pairfree(&challenge);
+	if (created_challenge) pairfree(&challenge);
 
 #ifdef WITH_PROXY
 	/*
