@@ -580,13 +580,20 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		ldap_errno = ldap_get_option(NULL, LDAP_OPT_API_INFO, &info);
 		if (ldap_errno == LDAP_OPT_SUCCESS) {
-			if (strcmp(info.ldapai_vendor_name, LDAP_VENDOR_NAME) != 0) {
+			/*
+			 *	Don't generate warnings if the compile type vendor name
+			 *	is found within the link time vendor name.
+			 *
+			 *	This allows the server to be built against OpenLDAP but
+			 *	run with Symas OpenLDAP.
+			 */
+			if (strcasestr(info.ldapai_vendor_name, LDAP_VENDOR_NAME) == NULL) {
 				WARN("rlm_ldap: libldap vendor changed since the server was built");
 				WARN("rlm_ldap: linked: %s, built: %s", info.ldapai_vendor_name, LDAP_VENDOR_NAME);
 			}
 
-			if (info.ldapai_vendor_version != LDAP_VENDOR_VERSION) {
-				WARN("rlm_ldap: libldap version changed since the server was built");
+			if (info.ldapai_vendor_version < LDAP_VENDOR_VERSION) {
+				WARN("rlm_ldap: libldap older than the version the server was built against");
 				WARN("rlm_ldap: linked: %i, built: %i",
 				     info.ldapai_vendor_version, LDAP_VENDOR_VERSION);
 			}
