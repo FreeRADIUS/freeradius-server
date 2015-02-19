@@ -719,7 +719,7 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 			if (request) {
 				RDEBUG2("Waiting for bind result...");
 			} else {
-				DEBUG2("rlm_ldap (%s): Waiting for bind result...", inst->xlat_name);
+				DEBUG2("rlm_ldap (%s): Waiting for bind result...", inst->name);
 			}
 		}
 
@@ -1275,7 +1275,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 	conn->rebound = true;	/* not really, but oh well... */
 	rad_assert(handle == conn->handle);
 
-	DEBUG("rlm_ldap (%s): Rebinding to URL %s", conn->inst->xlat_name, url);
+	DEBUG("rlm_ldap (%s): Rebinding to URL %s", conn->inst->name, url);
 
 	status = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->admin_dn, conn->inst->password,
 			       conn->inst->admin_sasl_mech, false);
@@ -1337,7 +1337,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	conn->rebound = false;
 	conn->referred = false;
 
-	DEBUG("rlm_ldap (%s): Connecting to %s", inst->xlat_name, inst->server);
+	DEBUG("rlm_ldap (%s): Connecting to %s", inst->name, inst->server);
 #ifdef HAVE_LDAP_INITIALIZE
 	ldap_errno = ldap_initialize(&conn->handle, inst->server);
 	if (ldap_errno != LDAP_SUCCESS) {
@@ -1351,7 +1351,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 		goto error;
 	}
 #endif
-	DEBUG3("rlm_ldap (%s): New libldap handle %p", inst->xlat_name, conn->handle);
+	DEBUG3("rlm_ldap (%s): New libldap handle %p", inst->name, conn->handle);
 
 	/*
 	 *	We now have a connection structure, but no actual connection.
