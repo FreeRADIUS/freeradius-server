@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.7 Thu 19 Feb 2014 12:00:00 EDT urgency=medium
+FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Allow coa home_servers to be derived from client
 	  sections if a coa_server section is provided.
