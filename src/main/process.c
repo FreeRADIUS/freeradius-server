@@ -1868,6 +1868,9 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 			       child_state_names[request->child_state],
 			       child_state_names[REQUEST_RUNNING]);
 #endif
+#ifdef HAVE_PTHREAD_H
+	request->child_pid = NO_SUCH_CHILD_PID;
+#endif
 	request->child_state = REQUEST_RUNNING;
 	request->handle = fun;
 	NO_CHILD_THREAD;
