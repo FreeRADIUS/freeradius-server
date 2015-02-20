@@ -111,8 +111,6 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 		return -1;
 	}
 
-	parsecode = T_EOL;
-
 	/*
 	 *	Read the entire file into memory for speed.
 	 */
