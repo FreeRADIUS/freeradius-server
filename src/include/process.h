@@ -35,7 +35,6 @@ typedef enum fr_saction_t {	/* server action */
 	FR_ACTION_RUN,
 	FR_ACTION_DONE,
 	FR_ACTION_DUP,
-	FR_ACTION_CONFLICTING,
 	FR_ACTION_TIMER,
 #ifdef WITH_PROXY
 	FR_ACTION_PROXY_REPLY,

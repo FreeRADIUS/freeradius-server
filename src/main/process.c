@@ -63,7 +63,6 @@ static char const *action_codes[] = {
 	"run",
 	"done",
 	"dup",
-	"conflicting",
 	"timer",
 #ifdef WITH_PROXY
 	"proxy-reply"
@@ -577,37 +576,6 @@ STATE_MACHINE_DECL(request_done)
 		} else {
 			RDEBUG("No reply.  Ignoring retransmit");
 		}
-		break;
-
-		/*
-		 *	This is only called from the master thread
-		 *	when the request is still "alive".
-		 */
-	case FR_ACTION_CONFLICTING:
-		if (request->child_state == REQUEST_DONE) break;
-
-		/*
-		 *	The receive code should have cleaned up
-		 *	requests which were in reject / cleanup delay.
-		 */
-		rad_assert(request->child_state < REQUEST_RESPONSE_DELAY);
-
-		/*
-		 *	If there's a reply packet, then we presume
-		 *	that the child has sent the reply, and we get
-		 *	pinged here before the child has a chance to
-		 *	say "I'm done!"
-		 */
-		if (request->reply->data) break;
-
-		/*
-		 *	The request is still QUEUED or RUNNING.  That's a problem.
-		 */
-		RERROR("Received conflicting packet from "
-			       "client %s port %d - ID: %u due to "
-			       "unfinished request.  Giving up on old request.",
-			       request->client->shortname,
-			       request->packet->src_port, request->packet->id);
 		break;
 
 		/*
@@ -1163,14 +1131,6 @@ STATE_MACHINE_DECL(request_common)
 		      request->component, request->module);
 		break;
 
-	case FR_ACTION_CONFLICTING:
-		/*
-		 *	We're in the master thread, ask the child to
-		 *	stop processing the request.
-		 */
-		request_done(request, action);
-		return;
-
 	case FR_ACTION_TIMER:
 		request_process_timer(request);
 		return;
@@ -1218,10 +1178,6 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 
-	case FR_ACTION_CONFLICTING:
-		request_done(request, FR_ACTION_DONE);
-		break;
-
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
 #endif
@@ -1253,7 +1209,6 @@ STATE_MACHINE_DECL(request_response_delay)
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
 #endif
-	case FR_ACTION_CONFLICTING:
 	case FR_ACTION_TIMER:
 		request_common(request, action);
 		break;
@@ -1553,7 +1508,6 @@ STATE_MACHINE_DECL(request_running)
 		request_process_timer(request);
 		break;
 
-	case FR_ACTION_CONFLICTING:
 	case FR_ACTION_DUP:
 		request_common(request, action);
 		return;
@@ -1678,84 +1632,72 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		    (memcmp(request->packet->vector, packet->vector,
 			    sizeof(packet->vector)) == 0)) {
 
-			/*
-			 *	If the request is running, don't muck
-			 *	with it.
-			 */
-			if ((request->child_state != REQUEST_DONE) &&
-			    (request->child_state != REQUEST_RESPONSE_DELAY) &&
-			    (request->child_state != REQUEST_CLEANUP_DELAY)) {
-				request->process(request, FR_ACTION_DUP);
-
 #ifdef WITH_STATS
-				switch (packet->code) {
-				case PW_CODE_ACCESS_REQUEST:
-					FR_STATS_INC(auth, total_dup_requests);
-					break;
+			switch (packet->code) {
+			case PW_CODE_ACCESS_REQUEST:
+				FR_STATS_INC(auth, total_dup_requests);
+				break;
 
 #ifdef WITH_ACCOUNTING
-				case PW_CODE_ACCOUNTING_REQUEST:
-					FR_STATS_INC(acct, total_dup_requests);
-					break;
+			case PW_CODE_ACCOUNTING_REQUEST:
+				FR_STATS_INC(acct, total_dup_requests);
+				break;
 #endif
 #ifdef WITH_COA
-				case PW_CODE_COA_REQUEST:
-					FR_STATS_INC(coa, total_dup_requests);
-					break;
+			case PW_CODE_COA_REQUEST:
+				FR_STATS_INC(coa, total_dup_requests);
+				break;
 
-				case PW_CODE_DISCONNECT_REQUEST:
-					FR_STATS_INC(dsc, total_dup_requests);
-					break;
+			case PW_CODE_DISCONNECT_REQUEST:
+				FR_STATS_INC(dsc, total_dup_requests);
+				break;
 #endif
 
-				default:
-					break;
-				}
-#endif	/* WITH_STATS */
-				return 0; /* duplicate of live request */
+			default:
+				break;
 			}
-#ifdef HAVE_PTHREAD_H
-			/*
-			 *	There should no longer be a child
-			 *	thread associated with this request.
-			 */
-			rad_assert(pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) != 0);
-#endif
+#endif	/* WITH_STATS */
 
 			/*
-			 *	Clean up the old request, and allow
-			 *	the new one to continue.
+			 *	Tell the state machine that there's a
+			 *	duplicate request.
 			 */
-			request_done(request, FR_ACTION_DONE);
-			request = NULL;
+			request->process(request, FR_ACTION_DUP);
+			return 0; /* duplicate of live request */
+		}
 
-		} else if (request->child_state >= REQUEST_RESPONSE_DELAY) {
+		/*
+		 *	It's a new request, not a duplicate.  If the
+		 *	old one is done, then we can clean it up.
+		 */
+		if (request->child_state >= REQUEST_RESPONSE_DELAY) {
 #ifdef WITH_PTHREAD_H
 			/*
 			 *	There can't be a child thread processing the request.
 			 */
 			rad_assert(pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) != 0);
 #endif
-
-			/*
-			 *	The old request is in reject / cleanup
-			 *	delay.  We can just delete it.
-			 */
-			request->child_state = REQUEST_DONE;
-			request->process(request, FR_ACTION_DONE);
-			request = NULL;
-
 		} else {
 			/*
-			 *	The old request is in the queue or is
-			 *	running.  Log that we're ignoring the
-			 *	old one, and continue to process the
-			 *	new one.
+			 *	The request is still QUEUED or RUNNING.  That's a problem.
 			 */
-			request->process(request, FR_ACTION_CONFLICTING);
-			request = NULL;
+			RERROR("Received conflicting packet from "
+			       "client %s port %d - ID: %u due to "
+			       "unfinished request.  Giving up on old request.",
+			       request->client->shortname,
+			       request->packet->src_port, request->packet->id);
 		}
-	}
+
+		/*
+		 *	Mark the old request as done.  If there's no
+		 *	child, the request will be cleaned up
+		 *	immediately.  If there is a child, we'll set a
+		 *	timer to go clean up the request.
+		 */
+		request->process(request, FR_ACTION_DONE);
+		rad_assert(!request->in_request_hash);
+		request = NULL;
+	} /* else the new packet is unique */
 
 	/*
 	 *	Quench maximum number of outstanding requests.
@@ -2586,7 +2528,6 @@ STATE_MACHINE_DECL(proxy_no_reply)
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
-	case FR_ACTION_CONFLICTING:
 	case FR_ACTION_DUP:
 	case FR_ACTION_TIMER:
 	case FR_ACTION_PROXY_REPLY:
@@ -2613,7 +2554,6 @@ STATE_MACHINE_DECL(proxy_running)
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
-	case FR_ACTION_CONFLICTING:
 	case FR_ACTION_DUP:
 	case FR_ACTION_TIMER:
 	case FR_ACTION_PROXY_REPLY:
@@ -3747,10 +3687,6 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 	case FR_ACTION_PROXY_REPLY:
 		request_queue_or_run(request, proxy_running);
 		break;
-
-	case FR_ACTION_CONFLICTING:
-		request_done(request, action);
-		return;
 
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
