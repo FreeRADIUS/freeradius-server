@@ -1537,8 +1537,14 @@ STATE_MACHINE_DECL(request_finish)
 			request->child_state = REQUEST_CLEANUP_DELAY;
 		}
 	} else {
+		/*
+		 *	Encode and sign it here, so that the master
+		 *	thread can just send the encoded data, which
+		 *	means it does less work.
+		 */
 		RDEBUG2("Delaying response for %d.%06d seconds",
 			(int) request->response_delay.tv_sec, (int) request->response_delay.tv_usec);
+		request->listener->encode(request->listener, request);
 		NO_CHILD_THREAD;
 		request->child_state = REQUEST_RESPONSE_DELAY;
 	}
