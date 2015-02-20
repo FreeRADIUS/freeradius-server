@@ -1,3 +1,10 @@
+FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
+	Feature improvements
+
+	Bug fixes
+	* Don't complain about "authorize" in "server {}"
+	  blocks, but only if there's no "server" block.
+
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Allow coa home_servers to be derived from client
