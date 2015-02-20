@@ -239,7 +239,9 @@ static state_entry_t *fr_state_create(RADIUS_PACKET *packet, state_entry_t *old)
 			memcpy(entry->state, old->state, sizeof(entry->state));
 
 			entry->state[1] = entry->state[0] ^ entry->tries;
-			entry->state[3] = entry->state[2] ^ (RADIUSD_VERSION / 10000);
+			entry->state[8] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
+			entry->state[10] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);
+			entry->state12] = entry->state[2] ^ (((uint32_t) HEXIFY(RADIUSD_VERSION)) & 0xff);
 		}
 
 		/*
