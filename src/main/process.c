@@ -684,7 +684,10 @@ STATE_MACHINE_DECL(request_done)
 	if (!spawn_flag) request->child_state = REQUEST_DONE;
 #endif
 
-	if (request->child_state != REQUEST_DONE) {
+	/*
+	 *	If the child is still running, wait for it to be finished.
+	 */
+	if (request->child_state < REQUEST_RESPONSE_DELAY) {
 		gettimeofday(&now, NULL);
 #ifdef WITH_PROXY
 	wait_some_more:
