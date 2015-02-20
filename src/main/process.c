@@ -581,11 +581,16 @@ STATE_MACHINE_DECL(request_done)
 
 		/*
 		 *	This is only called from the master thread
-		 *	when there is a child thread processing the
-		 *	request.
+		 *	when the request is still "alive".
 		 */
 	case FR_ACTION_CONFLICTING:
 		if (request->child_state == REQUEST_DONE) break;
+
+		/*
+		 *	The receive code should have cleaned up
+		 *	requests which were in reject / cleanup delay.
+		 */
+		rad_assert(request->child_state < REQUEST_RESPONSE_DELAY);
 
 		/*
 		 *	If there's a reply packet, then we presume
@@ -595,6 +600,9 @@ STATE_MACHINE_DECL(request_done)
 		 */
 		if (request->reply->data) break;
 
+		/*
+		 *	The request is still QUEUED or RUNNING.  That's a problem.
+		 */
 		RERROR("Received conflicting packet from "
 			       "client %s port %d - ID: %u due to "
 			       "unfinished request.  Giving up on old request.",
@@ -1721,10 +1729,28 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 			request_done(request, FR_ACTION_DONE);
 			request = NULL;
 
+		} else if (request->child_state >= REQUEST_RESPONSE_DELAY) {
+#ifdef WITH_PTHREAD_H
+			/*
+			 *	There can't be a child thread processing the request.
+			 */
+			rad_assert(pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) != 0);
+#endif
+
+			/*
+			 *	The old request is in reject / cleanup
+			 *	delay.  We can just delete it.
+			 */
+			request->child_state = REQUEST_DONE;
+			request->process(request, FR_ACTION_DONE);
+			request = NULL;
+
 		} else {
 			/*
-			 *	Say we're ignoring the old one, and continue
-			 *	to process the new one.
+			 *	The old request is in the queue or is
+			 *	running.  Log that we're ignoring the
+			 *	old one, and continue to process the
+			 *	new one.
 			 */
 			request->process(request, FR_ACTION_CONFLICTING);
 			request = NULL;
