@@ -538,8 +538,8 @@ STATE_MACHINE_DECL(request_done)
 	 *	and wait for the master thread timer to clean us up.
 	 */
 	if (!we_are_master()) {
-		request->child_state = REQUEST_DONE;
 		NO_CHILD_THREAD;
+		request->child_state = REQUEST_DONE;
 		return;
 	}
 #endif
@@ -579,28 +579,18 @@ STATE_MACHINE_DECL(request_done)
 		break;
 
 		/*
-		 *	Called only when there's an error remembering
-		 *	the packet, or when the socket gets closed from
-		 *	under us.
+		 *	Mark the request as done.
 		 */
 	case FR_ACTION_DONE:
 #ifdef HAVE_PTHREAD_H
 		/*
-		 *	Do NOT set child_state to DONE if it's still in the queue.
+		 *	If the child is still running, leave it alone.
 		 */
-		if (we_are_master() && (request->child_state == REQUEST_QUEUED)) {
-			break;
-		}
-
-		/*
-		 *	If we have child threads and we're NOT the
-		 *	thread handling the request, don't do anything.
-		 */
-		if (spawn_flag &&
-		    !pthread_equal(pthread_self(), request->child_pid)) {
+		if (spawn_flag && (request->child_state < REQUEST_RESPONSE_DELAY)) {
 			break;
 		}
 #endif
+
 #ifdef DEBUG_STATE_MACHINE
 		if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
 				       request->number, __FUNCTION__,
@@ -641,7 +631,6 @@ STATE_MACHINE_DECL(request_done)
 	 *	Remove it from the request hash.
 	 */
 	if (request->in_request_hash) {
-		ASSERT_MASTER;
 		if (!rbtree_deletebydata(pl, &request->packet)) {
 			rad_assert(0 == 1);
 		}
@@ -692,9 +681,7 @@ STATE_MACHINE_DECL(request_done)
 	/*
 	 *	If there's no children, we can mark the request as done.
 	 */
-	if (!spawn_flag) {
-		request->child_state = REQUEST_DONE;
-	}
+	if (!spawn_flag) request->child_state = REQUEST_DONE;
 #endif
 
 	if (request->child_state != REQUEST_DONE) {
