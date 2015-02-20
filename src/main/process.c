@@ -545,6 +545,11 @@ STATE_MACHINE_DECL(request_done)
 	}
 #endif
 
+	/*
+	 *	Mark the request as STOP.
+	 */
+	request->master_state = REQUEST_STOP_PROCESSING;
+
 #ifdef WITH_COA
 	/*
 	 *	Move the CoA request to its own handler.
