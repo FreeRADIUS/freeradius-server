@@ -586,7 +586,7 @@ STATE_MACHINE_DECL(request_done)
 		/*
 		 *	If the child is still running, leave it alone.
 		 */
-		if (spawn_flag && (request->child_state < REQUEST_RESPONSE_DELAY)) {
+		if (spawn_flag && (request->child_state <= REQUEST_RUNNING)) {
 			break;
 		}
 #endif
@@ -687,7 +687,7 @@ STATE_MACHINE_DECL(request_done)
 	/*
 	 *	If the child is still running, wait for it to be finished.
 	 */
-	if (request->child_state < REQUEST_RESPONSE_DELAY) {
+	if (request->child_state <= REQUEST_RUNNING) {
 		gettimeofday(&now, NULL);
 #ifdef WITH_PROXY
 	wait_some_more:
@@ -1660,14 +1660,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		 *	It's a new request, not a duplicate.  If the
 		 *	old one is done, then we can clean it up.
 		 */
-		if (request->child_state >= REQUEST_RESPONSE_DELAY) {
-#ifdef WITH_PTHREAD_H
-			/*
-			 *	There can't be a child thread processing the request.
-			 */
-			rad_assert(pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) != 0);
-#endif
-		} else {
+		if (request->child_state <= REQUEST_RUNNING) {
 			/*
 			 *	The request is still QUEUED or RUNNING.  That's a problem.
 			 */
@@ -1676,6 +1669,13 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 			       "unfinished request.  Giving up on old request.",
 			       request->client->shortname,
 			       request->packet->src_port, request->packet->id);
+#ifdef WITH_PTHREAD_H
+		} else {
+			/*
+			 *	There can't be a child thread processing the request.
+			 */
+			rad_assert(pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) != 0);
+#endif
 		}
 
 		/*
