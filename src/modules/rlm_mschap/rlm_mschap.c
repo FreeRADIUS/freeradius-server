@@ -285,10 +285,10 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			return -1;
 		}
 
-		/*
-		 *	Get the MS-CHAPv1 response, or the MS-CHAPv2
-		 *	response.
-		 */
+	/*
+	 *	Get the MS-CHAPv1 response, or the MS-CHAPv2
+	 *	response.
+	 */
 	} else if (strncasecmp(fmt, "NT-Response", 11) == 0) {
 		response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (!response) response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
@@ -316,10 +316,10 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		data = response->vp_octets + 26;
 		data_len = 24;
 
-		/*
-		 *	LM-Response is deprecated, and exists only
-		 *	in MS-CHAPv1, and not often there.
-		 */
+	/*
+	 *	LM-Response is deprecated, and exists only
+	 *	in MS-CHAPv1, and not often there.
+	 */
 	} else if (strncasecmp(fmt, "LM-Response", 11) == 0) {
 		response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (!response) {
@@ -338,9 +338,9 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		data = response->vp_octets + 2;
 		data_len = 24;
 
-		/*
-		 *	Pull the NT-Domain out of the User-Name, if it exists.
-		 */
+	/*
+	 *	Pull the NT-Domain out of the User-Name, if it exists.
+	 */
 	} else if (strncasecmp(fmt, "NT-Domain", 9) == 0) {
 		char *p, *q;
 
@@ -393,9 +393,9 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		return strlen(out);
 
-		/*
-		 *	Pull the User-Name out of the User-Name...
-		 */
+	/*
+	 *	Pull the User-Name out of the User-Name...
+	 */
 	} else if (strncasecmp(fmt, "User-Name", 9) == 0) {
 		char const *p, *q;
 
@@ -445,9 +445,9 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		return strlen(out);
 
-		/*
-		 * Return the NT-Hash of the passed string
-		 */
+	/*
+	 * Return the NT-Hash of the passed string
+	 */
 	} else if (strncasecmp(fmt, "NT-Hash ", 8) == 0) {
 		char const *p;
 
@@ -468,9 +468,9 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		RDEBUG("NT-Hash of \"known-good\" password: %s", out);
 		return 32;
 
-		/*
-		 * Return the LM-Hash of the passed string
-		 */
+	/*
+	 * Return the LM-Hash of the passed string
+	 */
 	} else if (strncasecmp(fmt, "LM-Hash ", 8) == 0) {
 		char const *p;
 
