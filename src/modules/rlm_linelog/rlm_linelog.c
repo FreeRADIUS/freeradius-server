@@ -54,8 +54,11 @@ RCSID("$Id$")
 typedef struct rlm_linelog_t {
 	CONF_SECTION	*cs;
 	char const	*filename;
-	char const	*syslog_facility;
-	int		facility;
+
+	char const	*syslog_facility;	//!< Syslog facility string.
+	char const	*syslog_severity;	//!< Syslog severity string.
+	int		syslog_priority;	//!< Bitwise | of severity and facility.
+
 	uint32_t	permissions;
 	char const	*group;
 	char const	*line;
@@ -75,6 +78,7 @@ typedef struct rlm_linelog_t {
 static const CONF_PARSER module_config[] = {
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_linelog_t, filename), NULL },
 	{ "syslog_facility", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, syslog_facility), NULL },
+	{ "syslog_severity", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, syslog_severity), "info" },
 	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_linelog_t, permissions), "0600" },
 	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, group), NULL },
 	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_linelog_t, line), NULL },
@@ -89,6 +93,7 @@ static const CONF_PARSER module_config[] = {
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_linelog_t *inst = instance;
+	int num;
 
 	if (!inst->filename) {
 		cf_log_err_cs(conf, "No value provided for 'filename'");
@@ -101,18 +106,23 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 #else
-	inst->facility = 0;
 
 	if (inst->syslog_facility) {
-		inst->facility = fr_str2int(syslog_str2fac, inst->syslog_facility, -1);
-		if (inst->facility < 0) {
-			cf_log_err_cs(conf, "Invalid syslog facility '%s'",
-				   inst->syslog_facility);
+		num = fr_str2int(syslog_facility_table, inst->syslog_facility, -1);
+		if (num < 0) {
+			cf_log_err_cs(conf, "Invalid syslog facility \"%s\"", inst->syslog_facility);
 			return -1;
 		}
+
+		inst->syslog_priority |= num;
 	}
 
-	inst->facility |= LOG_INFO;
+	num = fr_str2int(syslog_severity_table, inst->syslog_severity, -1);
+	if (num < 0) {
+		cf_log_err_cs(conf, "Invalid syslog severity \"%s\"", inst->syslog_severity);
+		return -1;
+	}
+	inst->syslog_priority |= num;
 #endif
 
 	if (!inst->line && !inst->reference) {
@@ -317,7 +327,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 
 #ifdef HAVE_SYSLOG_H
 	} else {
-		syslog(inst->facility, "%s", line);
+		syslog(inst->syslog_priority, "%s", line);
 #endif
 	}
 

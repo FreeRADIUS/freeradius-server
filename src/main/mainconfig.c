@@ -765,7 +765,7 @@ do {\
 				cf_file_free(cs);
 				return -1;
 			}
-			main_config.syslog_facility = fr_str2int(syslog_str2fac, syslog_facility, -1);
+			main_config.syslog_facility = fr_str2int(syslog_facility_table, syslog_facility, -1);
 			if (main_config.syslog_facility < 0) {
 				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
 					syslog_facility);
