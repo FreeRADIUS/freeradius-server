@@ -73,7 +73,8 @@ typedef struct fr_log_t {
 
 typedef		void (*radlog_func_t)(log_type_t lvl, log_lvl_t priority, REQUEST *, char const *, va_list ap);
 
-extern FR_NAME_NUMBER const syslog_str2fac[];
+extern FR_NAME_NUMBER const syslog_facility_table[];
+extern FR_NAME_NUMBER const syslog_severity_table[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 

@@ -87,7 +87,7 @@ static const FR_NAME_NUMBER colours[] = {
 /*
  *	Syslog facility table.
  */
-const FR_NAME_NUMBER syslog_str2fac[] = {
+const FR_NAME_NUMBER syslog_facility_table[] = {
 #ifdef LOG_KERN
 	{ "kern",		LOG_KERN	},
 #endif
@@ -144,6 +144,34 @@ const FR_NAME_NUMBER syslog_str2fac[] = {
 #endif
 #ifdef LOG_LOCAL7
 	{ "local7",		LOG_LOCAL7	},
+#endif
+	{ NULL,			-1		}
+};
+
+const FR_NAME_NUMBER syslog_severity_table[] = {
+#ifdef LOG_EMERG
+	{ "emergency",		LOG_EMERG	},
+#endif
+#ifdef LOG_ALERT
+	{ "alert",		LOG_ALERT	},
+#endif
+#ifdef LOG_CRIT
+	{ "critical",		LOG_CRIT	},
+#endif
+#ifdef LOG_ERROR
+	{ "error",		LOG_ERR		},
+#endif
+#ifdef LOG_WARNING
+	{ "warning",		LOG_WARNING	},
+#endif
+#ifdef LOG_NOTICE
+	{ "notice",		LOG_NOTICE	},
+#endif
+#ifdef LOG_INFO
+	{ "info",		LOG_INFO	},
+#endif
+#ifdef LOG_DEBUG
+	{ "debug",		LOG_DEBUG	},
 #endif
 	{ NULL,			-1		}
 };
