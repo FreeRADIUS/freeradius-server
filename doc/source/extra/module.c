@@ -6,6 +6,8 @@
  *
 @page module_doc
 
+@defgroup public_module_api Functions that are guaranteed to be consistent between minor versions, suitable for use by third party modules.
+
 @section module_intro Introduction
 
 FreeRADIUS uses a pluggable module infrastructure to extend the
