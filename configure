@@ -4786,11 +4786,11 @@ $as_echo "$ac_cv_c_bigendian" >&6; }
  case $ac_cv_c_bigendian in #(
    yes)
 
-$as_echo "#define RADIUS_BIG_ENDIAN 1" >>confdefs.h
+$as_echo "#define FR_BIG_ENDIAN 1" >>confdefs.h
 ;; #(
    no)
 
-$as_echo "#define RADIUS_LITTLE_ENDIAN 1" >>confdefs.h
+$as_echo "#define FR_LITTLE_ENDIAN 1" >>confdefs.h
 
  ;; #(
    universal)

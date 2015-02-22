@@ -1,10 +1,10 @@
-/*
- *  md4c.c	MD4 message-digest algorithm
+/**
+ * $Id$
  *
- *  Version:	$Id$
+ * @note license is LGPL, but largely derived from a public domain source.
  *
- *  This file is licensed under the LGPL, but is largely derived
- *  from public domain source code.
+ * @file md4.c
+ * @brief md4 digest functions.
  */
 
 RCSID("$Id$")
@@ -15,31 +15,22 @@ RCSID("$Id$")
  */
 #include <freeradius-devel/md4.h>
 
-void fr_md4_calc(output, input, inlen)
-unsigned char *output;
-const unsigned char *input;		       /* input block */
-unsigned int inlen;		     /* length of input block */
+/** Calculate the MD4 hash of the contents of a buffer
+ *
+ * @param[out] out Where to write the MD4 digest. Must be a minimum of MD4_DIGEST_LENGTH.
+ * @param[in] in Data to hash.
+ * @param[in] inlen Length of the data.
+ */
+void fr_md4_calc(uint8_t out[MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen)
 {
-	FR_MD4_CTX	context;
+	FR_MD4_CTX ctx;
 
-	fr_md4_init(&context);
-	fr_md4_update(&context, input, inlen);
-	fr_md4_final(output, &context);
+	fr_md4_init(&ctx);
+	fr_md4_update(&ctx, in, inlen);
+	fr_md4_final(out, &ctx);
 }
 
 #ifndef HAVE_OPENSSL_MD4_H
-/*	The below was retrieved from
- *	http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/lib/libc/hash/md4.c?rev=1.2
- *	with the following changes:
- *	CVS-$OpenBSD stuff deleted
- *	#includes commented out.
- *	Support context->count as uint32_t[2] instead of uint64_t
- *	Add htole32 define from http://www.squid-cache.org/mail-archive/squid-dev/200307/0130.html
- *		(The bswap32 definition in the patch.)
- *		This is only used on BIG_ENDIAN systems, so we can always swap the bits.
- *	change BYTE_ORDER == LITTLE_ENDIAN (OpenBSD-defined) to WORDS_BIGENDIAN (autoconf-defined)
- */
-
 /*
  * This code implements the MD4 message-digest algorithm.
  * The algorithm is due to Ron Rivest.	This code was
@@ -58,76 +49,70 @@ unsigned int inlen;		     /* length of input block */
  * will fill a supplied 16-byte array with the digest.
  */
 
-/*#include <sys/types.h>*/
-/*#include <string.h>*/
-/*#include <md4.h>*/
-
-/*#if BYTE_ORDER == LITTLE_ENDIAN*/
-#ifndef WORDS_BIGENDIAN
-
-#define htole32_4(buf)		/* Nothing */
-#define htole32_14(buf)		/* Nothing */
-#define htole32_16(buf)		/* Nothing */
-
+#ifdef FR_LITTLE_ENDIAN
+#  define htole32_4(buf)		/* Nothing */
+#  define htole32_14(buf)		/* Nothing */
+#  define htole32_16(buf)		/* Nothing */
 #else
-
-#define htole32(x) \
- (((((uint32_t)x) & 0xff000000) >> 24) | \
- ((((uint32_t)x) & 0x00ff0000) >> 8) | \
- ((((uint32_t)x) & 0x0000ff00) << 8) | \
- ((((uint32_t)x) & 0x000000ff) << 24))
-
-#define htole32_4(buf) do {						\
-	(buf)[ 0] = htole32((buf)[ 0]);					\
-	(buf)[ 1] = htole32((buf)[ 1]);					\
-	(buf)[ 2] = htole32((buf)[ 2]);					\
-	(buf)[ 3] = htole32((buf)[ 3]);					\
+/* Sometimes defined by endian.h */
+#  ifndef htole32
+#    define htole32(x)\
+	(((((uint32_t)x) & 0xff000000) >> 24) |\
+	((((uint32_t)x) & 0x00ff0000) >> 8) |\
+	((((uint32_t)x) & 0x0000ff00) << 8) |\
+	((((uint32_t)x) & 0x000000ff) << 24))
+#  endif
+#  define htole32_4(buf) do {\
+	(buf)[0] = htole32((buf)[0]);\
+	(buf)[1] = htole32((buf)[1]);\
+	(buf)[2] = htole32((buf)[2]);\
+	(buf)[3] = htole32((buf)[3]);\
 } while (0)
 
-#define htole32_14(buf) do {						\
-	(buf)[ 0] = htole32((buf)[ 0]);					\
-	(buf)[ 1] = htole32((buf)[ 1]);					\
-	(buf)[ 2] = htole32((buf)[ 2]);					\
-	(buf)[ 3] = htole32((buf)[ 3]);					\
-	(buf)[ 4] = htole32((buf)[ 4]);					\
-	(buf)[ 5] = htole32((buf)[ 5]);					\
-	(buf)[ 6] = htole32((buf)[ 6]);					\
-	(buf)[ 7] = htole32((buf)[ 7]);					\
-	(buf)[ 8] = htole32((buf)[ 8]);					\
-	(buf)[ 9] = htole32((buf)[ 9]);					\
-	(buf)[10] = htole32((buf)[10]);					\
-	(buf)[11] = htole32((buf)[11]);					\
-	(buf)[12] = htole32((buf)[12]);					\
-	(buf)[13] = htole32((buf)[13]);					\
+#  define htole32_14(buf) do {\
+	(buf)[0] = htole32((buf)[0]);\
+	(buf)[1] = htole32((buf)[1]);\
+	(buf)[2] = htole32((buf)[2]);\
+	(buf)[3] = htole32((buf)[3]);\
+	(buf)[4] = htole32((buf)[4]);\
+	(buf)[5] = htole32((buf)[5]);\
+	(buf)[6] = htole32((buf)[6]);\
+	(buf)[7] = htole32((buf)[7]);\
+	(buf)[8] = htole32((buf)[8]);\
+	(buf)[9] = htole32((buf)[9]);\
+	(buf)[10] = htole32((buf)[10]);\
+	(buf)[11] = htole32((buf)[11]);\
+	(buf)[12] = htole32((buf)[12]);\
+	(buf)[13] = htole32((buf)[13]);\
 } while (0)
 
-#define htole32_16(buf) do {						\
-	(buf)[ 0] = htole32((buf)[ 0]);					\
-	(buf)[ 1] = htole32((buf)[ 1]);					\
-	(buf)[ 2] = htole32((buf)[ 2]);					\
-	(buf)[ 3] = htole32((buf)[ 3]);					\
-	(buf)[ 4] = htole32((buf)[ 4]);					\
-	(buf)[ 5] = htole32((buf)[ 5]);					\
-	(buf)[ 6] = htole32((buf)[ 6]);					\
-	(buf)[ 7] = htole32((buf)[ 7]);					\
-	(buf)[ 8] = htole32((buf)[ 8]);					\
-	(buf)[ 9] = htole32((buf)[ 9]);					\
-	(buf)[10] = htole32((buf)[10]);					\
-	(buf)[11] = htole32((buf)[11]);					\
-	(buf)[12] = htole32((buf)[12]);					\
-	(buf)[13] = htole32((buf)[13]);					\
-	(buf)[14] = htole32((buf)[14]);					\
-	(buf)[15] = htole32((buf)[15]);					\
+#  define htole32_16(buf) do {\
+	(buf)[0] = htole32((buf)[0]);\
+	(buf)[1] = htole32((buf)[1]);\
+	(buf)[2] = htole32((buf)[2]);\
+	(buf)[3] = htole32((buf)[3]);\
+	(buf)[4] = htole32((buf)[4]);\
+	(buf)[5] = htole32((buf)[5]);\
+	(buf)[6] = htole32((buf)[6]);\
+	(buf)[7] = htole32((buf)[7]);\
+	(buf)[8] = htole32((buf)[8]);\
+	(buf)[9] = htole32((buf)[9]);\
+	(buf)[10] = htole32((buf)[10]);\
+	(buf)[11] = htole32((buf)[11]);\
+	(buf)[12] = htole32((buf)[12]);\
+	(buf)[13] = htole32((buf)[13]);\
+	(buf)[14] = htole32((buf)[14]);\
+	(buf)[15] = htole32((buf)[15]);\
 } while (0)
-
 #endif
 
-/*
- * Start MD4 accumulation.
+/** Initialise a new MD4 context
+ *
  * Set bit count to 0 and buffer to mysterious initialization constants.
+ *
+ * @param[out] ctx to initialise.
  */
-void
-fr_md4_init(FR_MD4_CTX *ctx)
+void fr_md4_init(FR_MD4_CTX *ctx)
 {
 	ctx->count[0] = 0;
 	ctx->count[1] = 0;
@@ -137,12 +122,13 @@ fr_md4_init(FR_MD4_CTX *ctx)
 	ctx->state[3] = 0x10325476;
 }
 
-/*
- * Update context to reflect the concatenation of another buffer full
- * of bytes.
+/** Feed additional data into the MD4 hashing function
+ *
+ * @param[in,out] ctx to update.
+ * @param[in] in Data to hash.
+ * @param[in] inlen Length of the data.
  */
-void
-fr_md4_update(FR_MD4_CTX *ctx, unsigned char const *buf, size_t len)
+void fr_md4_update(FR_MD4_CTX *ctx, uint8_t const *in, size_t inlen)
 {
 	uint32_t count;
 
@@ -150,48 +136,51 @@ fr_md4_update(FR_MD4_CTX *ctx, unsigned char const *buf, size_t len)
 	count = (uint32_t)((ctx->count[0] >> 3) & 0x3f);
 
 	/* Update bitcount */
-/*	ctx->count += (uint64_t)len << 3;*/
-	if ((ctx->count[0] += ((uint32_t)len << 3)) < (uint32_t)len) {
-	/* Overflowed ctx->count[0] */
+/*	ctx->count += (uint64_t)inlen << 3;*/
+	if ((ctx->count[0] += ((uint32_t)inlen << 3)) < (uint32_t)inlen) {
+		/* Overflowed ctx->count[0] */
 		ctx->count[1]++;
 	}
-	ctx->count[1] += ((uint32_t)len >> 29);
+	ctx->count[1] += ((uint32_t)inlen >> 29);
 
 	/* Handle any leading odd-sized chunks */
 	if (count) {
 		unsigned char *p = (unsigned char *)ctx->buffer + count;
 
 		count = MD4_BLOCK_LENGTH - count;
-		if (len < count) {
-			memcpy(p, buf, len);
+		if (inlen < count) {
+			memcpy(p, in, inlen);
 			return;
 		}
-		memcpy(p, buf, count);
+		memcpy(p, in, count);
 		htole32_16((uint32_t *)ctx->buffer);
 		fr_md4_transform(ctx->state, ctx->buffer);
-		buf += count;
-		len -= count;
+		in += count;
+		inlen -= count;
 	}
 
 	/* Process data in MD4_BLOCK_LENGTH-byte chunks */
-	while (len >= MD4_BLOCK_LENGTH) {
-		memcpy(ctx->buffer, buf, MD4_BLOCK_LENGTH);
+	while (inlen >= MD4_BLOCK_LENGTH) {
+		memcpy(ctx->buffer, in, MD4_BLOCK_LENGTH);
 		htole32_16((uint32_t *)ctx->buffer);
 		fr_md4_transform(ctx->state, ctx->buffer);
-		buf += MD4_BLOCK_LENGTH;
-		len -= MD4_BLOCK_LENGTH;
+		in += MD4_BLOCK_LENGTH;
+		inlen -= MD4_BLOCK_LENGTH;
 	}
 
 	/* Handle any remaining bytes of data. */
-	memcpy(ctx->buffer, buf, len);
+	memcpy(ctx->buffer, in, inlen);
 }
 
-/*
- * Final wrapup - pad to 64-byte boundary with the bit pattern
- * 1 0* (64-bit count of bits processed, MSB-first)
+/** Finalise the MD4 context and write out the hash
+ *
+ * Final wrapup - pad to 64-byte boundary with the bit pattern 1 0*
+ * (64-bit count of bits processed, MSB-first).
+ *
+ * @param[out] out Where to write the MD4 digest. Minimum length of MD4_DIGEST_LENGTH.
+ * @param[in,out] ctx to finalise.
  */
-void
-fr_md4_final(unsigned char digest[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
+void fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
 {
 	uint32_t count;
 	unsigned char *p;
@@ -230,37 +219,36 @@ fr_md4_final(unsigned char digest[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
 
 	fr_md4_transform(ctx->state, ctx->buffer);
 	htole32_4(ctx->state);
-	memcpy(digest, ctx->state, MD4_DIGEST_LENGTH);
+	memcpy(out, ctx->state, MD4_DIGEST_LENGTH);
 	memset(ctx, 0, sizeof(*ctx));	/* in case it's sensitive */
 }
 
-
 /* The three core functions - F1 is optimized somewhat */
-
-/* #define F1(x, y, z) (x & y | ~x & z) */
 #define F1(x, y, z) (z ^ (x & (y ^ z)))
 #define F2(x, y, z) ((x & y) | (x & z) | (y & z))
 #define F3(x, y, z) (x ^ y ^ z)
 
 /* This is the central step in the MD4 algorithm. */
-#define MD4STEP(f, w, x, y, z, data, s) \
-	( w += f(x, y, z) + data,  w = w<<s | w>>(32-s) )
+#define MD4STEP(f, w, x, y, z, data, s) (w += f(x, y, z) + data, w = w << s | w >> (32 - s))
 
-/*
- * The core of the MD4 algorithm, this alters an existing MD4 hash to
- * reflect the addition of 16 longwords of new data.  fr_md4_update blocks
- * the data and converts bytes into longwords for this routine.
+/** The core of the MD4 algorithm
+ *
+ * This alters an existing MD4 hash to reflect the addition of 16
+ * longwords of new data.  fr_md4_update blocks the data and converts bytes
+ * into longwords for this routine.
+ *
+ * @param[in] state 16 bytes of data to feed into the hashing function.
+ * @param[in,out] block MD4 digest block to update.
  */
-void
-fr_md4_transform(uint32_t buf[4], unsigned char const inc[MD4_BLOCK_LENGTH])
+void fr_md4_transform(uint32_t state[4], uint8_t const block[MD4_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d;
-	uint32_t const *in = (uint32_t const *)inc;
+	uint32_t const *in = (uint32_t const *)block;
 
-	a = buf[0];
-	b = buf[1];
-	c = buf[2];
-	d = buf[3];
+	a = state[0];
+	b = state[1];
+	c = state[2];
+	d = state[3];
 
 	MD4STEP(F1, a, b, c, d, in[ 0],  3);
 	MD4STEP(F1, d, a, b, c, in[ 1],  7);
@@ -313,9 +301,9 @@ fr_md4_transform(uint32_t buf[4], unsigned char const inc[MD4_BLOCK_LENGTH])
 	MD4STEP(F3, c, d, a, b, in[ 7] + 0x6ed9eba1, 11);
 	MD4STEP(F3, b, c, d, a, in[15] + 0x6ed9eba1, 15);
 
-	buf[0] += a;
-	buf[1] += b;
-	buf[2] += c;
-	buf[3] += d;
+	state[0] += a;
+	state[1] += b;
+	state[2] += c;
+	state[3] += d;
 }
 #endif

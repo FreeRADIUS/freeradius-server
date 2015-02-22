@@ -12,6 +12,14 @@
 /* Define to 1 to have OpenSSL version check enabled */
 #undef ENABLE_OPENSSL_VERSION_CHECK
 
+/* Define if your processor stores words with the most significant byte first
+   */
+#undef FR_BIG_ENDIAN
+
+/* Define if your processor stores words with the least significant byte first
+   */
+#undef FR_LITTLE_ENDIAN
+
 /* style of gethostbyaddr_r functions */
 #undef GETHOSTBYADDRRSTYLE
 
@@ -510,14 +518,6 @@
 
 /* Raw version string from VERSION file */
 #undef RADIUSD_VERSION_STRING
-
-/* Define if your processor stores words with the most significant byte first
-   */
-#undef RADIUS_BIG_ENDIAN
-
-/* Define if your processor stores words with the least significant byte first
-   */
-#undef RADIUS_LITTLE_ENDIAN
 
 /* Define as the return type of signal handlers (`int' or `void'). */
 #undef RETSIGTYPE
