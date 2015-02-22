@@ -553,9 +553,9 @@ void version_print(void)
 		talloc_free(versions);
 
 		DEBUG3("Endianess:");
-#if defined(RADIUS_LITTLE_ENDIAN)
+#if defined(FR_LITTLE_ENDIAN)
 		DEBUG3("  little");
-#elif defined(RADIUS_BIG_ENDIAN)
+#elif defined(FR_BIG_ENDIAN)
 		DEBUG3("  big");
 #else
 		DEBUG3("  unknown");

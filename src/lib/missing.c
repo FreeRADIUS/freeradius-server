@@ -274,7 +274,7 @@ ntp2timeval(struct timeval *tv, char const *ntp)
 	tv->tv_usec = usec / 4295; /* close enough */
 }
 
-#if !defined(HAVE_128BIT_INTEGERS) && defined(RADIUS_LITTLE_ENDIAN)
+#if !defined(HAVE_128BIT_INTEGERS) && defined(FR_LITTLE_ENDIAN)
 /** Swap byte order of 128 bit integer
  *
  * @param num 128bit integer to swap.

@@ -1076,8 +1076,7 @@ bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 
 /** Exit possibly printing a message about why we're exiting.
  *
- * Use the fr_exit(status) macro instead of calling this function
- * directly.
+ * @note Use the fr_exit(status) macro instead of calling this function directly.
  *
  * @param file where fr_exit() was called.
  * @param line where fr_exit() was called.
@@ -1101,8 +1100,7 @@ void NEVER_RETURNS _fr_exit(char const *file, int line, int status)
 
 /** Exit possibly printing a message about why we're exiting.
  *
- * Use the fr_exit_now(status) macro instead of calling this function
- * directly.
+ * @note Use the fr_exit_now(status) macro instead of calling this function directly.
  *
  * @param file where fr_exit_now() was called.
  * @param line where fr_exit_now() was called.

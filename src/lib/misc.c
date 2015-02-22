@@ -1362,7 +1362,7 @@ size_t fr_prints_uint128(char *out, size_t outlen, uint128_t const num)
 	uint64_t n[2];
 	char *p = buff;
 	int i;
-#ifdef RADIUS_LITTLE_ENDIAN
+#ifdef FR_LITTLE_ENDIAN
 	const size_t l = 0;
 	const size_t h = 1;
 #else
