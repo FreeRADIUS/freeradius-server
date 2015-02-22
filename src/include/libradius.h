@@ -112,8 +112,8 @@ typedef void (*sig_t)(int);
  *  Add if (_x->da) (void) talloc_get_type_abort(_x->da, DICT_ATTR);
  *  to the macro below when dictionaries are talloced.
  */
-#  define VERIFY_VP(_x)		fr_verify_vp(__FILE__,  __LINE__, _x)
-#  define VERIFY_LIST(_x)	fr_verify_list(__FILE__,  __LINE__, NULL, _x)
+#  define VERIFY_VP(_x)		fr_pair_verify_vp(__FILE__,  __LINE__, _x)
+#  define VERIFY_LIST(_x)	fr_pair_verify_list(__FILE__,  __LINE__, NULL, _x)
 #  define VERIFY_PACKET(_x)	(void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
 /*
@@ -831,8 +831,8 @@ void		fr_fault_set_log_fn(fr_fault_log_t func);
 void		fr_fault_set_log_fd(int fd);
 
 #  ifdef WITH_VERIFY_PTR
-void		fr_verify_vp(char const *file, int line, VALUE_PAIR const *vp);
-void		fr_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps);
+void		fr_pair_verify_vp(char const *file, int line, VALUE_PAIR const *vp);
+void		fr_pair_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps);
 #  endif
 
 bool		fr_assert_cond(char const *file, int line, char const *expr, bool cond);
