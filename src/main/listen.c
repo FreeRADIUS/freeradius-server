@@ -3019,14 +3019,7 @@ static void *recv_thread(void *arg)
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
  */
-int listen_init(CONF_SECTION *config, rad_listen_t **head,
-#ifdef WITH_TLS
-		bool spawn_flag
-#else
-		UNUSED bool spawn_flag
-#endif
-		)
-
+int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_flag)
 {
 	bool		override = false;
 	CONF_SECTION	*cs = NULL;
