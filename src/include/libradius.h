@@ -508,9 +508,6 @@ DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 /*#define dict_valget	dict_valbyattr almost but not quite*/
 #endif
 
-/* md5.c */
-void		fr_md5_calc(uint8_t *, uint8_t const *, unsigned int);
-
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);

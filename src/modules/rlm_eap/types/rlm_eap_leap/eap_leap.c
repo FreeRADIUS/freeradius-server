@@ -50,6 +50,9 @@ RCSID("$Id$")
 #include <stdlib.h>
 #include "eap.h"
 #include "eap_leap.h"
+
+#include <freeradius-devel/md5.h>
+
 /*
  *   Extract the data from the LEAP packet.
  */

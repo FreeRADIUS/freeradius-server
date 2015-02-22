@@ -42,8 +42,9 @@ void fr_md4_calc(uint8_t out[MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen
 
 #ifndef HAVE_OPENSSL_MD4_H
 /*
- * The below was retrieved from
- * http://www.openbsd.org/cgi-bin/cvsweb/src/include/md4.h?rev=1.12
+ * The MD5 code used here and in md4.c was originally retrieved from:
+ *   http://www.openbsd.org/cgi-bin/cvsweb/src/include/md4.h?rev=1.12
+ *
  * This code implements the MD4 message-digest algorithm.
  * The algorithm is due to Ron Rivest.  This code was
  * written by Colin Plumb in 1993, no copyright is claimed.
@@ -64,13 +65,14 @@ typedef struct FR_MD4Context {
 	uint8_t buffer[MD4_BLOCK_LENGTH];	//!< Input buffer.
 } FR_MD4_CTX;
 
-void fr_md4_init(FR_MD4_CTX *ctx);
-void fr_md4_update(FR_MD4_CTX *ctx, uint8_t const *in, size_t inlen) CC_HINT(__bounded__(__string__, 2, 3));
-void fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx) CC_HINT(__bounded__(__minbytes__, 1, MD4_DIGEST_LENGTH));
-void fr_md4_transform(uint32_t buf[4], uint8_t const inc[MD4_BLOCK_LENGTH])
+void	fr_md4_init(FR_MD4_CTX *ctx);
+void	fr_md4_update(FR_MD4_CTX *ctx, uint8_t const *in, size_t inlen)
+	CC_HINT(__bounded__(__string__, 2, 3));
+void	fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
+	CC_HINT(__bounded__(__minbytes__, 1, MD4_DIGEST_LENGTH));
+void	fr_md4_transform(uint32_t buf[4], uint8_t const inc[MD4_BLOCK_LENGTH])
 	CC_HINT(__bounded__(__minbytes__, 1, 4))
 	CC_HINT(__bounded__(__minbytes__, 2, MD4_BLOCK_LENGTH));
-/*__END_DECLS*/
 #else  /* HAVE_OPENSSL_MD4_H */
 USES_APPLE_DEPRECATED_API
 #  define FR_MD4_CTX		MD4_CTX

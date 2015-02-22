@@ -1,10 +1,10 @@
-/*
- *  md5.c	MD5 message-digest algorithm
+/**
+ * $Id$
  *
- *  Version:	$Id$
+ * @note license is LGPL, but largely derived from a public domain source.
  *
- *  This file is licensed under the LGPL, but is largely derived
- *  from public domain source code.
+ * @file md5.c
+ * @brief md5 digest functions.
  */
 
 RCSID("$Id$")
@@ -17,26 +17,22 @@ RCSID("$Id$")
  */
 #include <freeradius-devel/md5.h>
 
-void fr_md5_calc(uint8_t *output, uint8_t const *input,
-		     unsigned int inlen)
+/** Calculate the MD5 hash of the contents of a buffer
+ *
+ * @param[out] out Where to write the MD5 digest. Must be a minimum of MD5_DIGEST_LENGTH.
+ * @param[in] in Data to hash.
+ * @param[in] inlen Length of the data.
+ */
+void fr_md5_calc(uint8_t *out, uint8_t const *in, size_t inlen)
 {
-	FR_MD5_CTX	context;
+	FR_MD5_CTX ctx;
 
-	fr_md5_init(&context);
-	fr_md5_update(&context, input, inlen);
-	fr_md5_final(output, &context);
+	fr_md5_init(&ctx);
+	fr_md5_update(&ctx, in, inlen);
+	fr_md5_final(out, &ctx);
 }
 
-
 #ifndef HAVE_OPENSSL_MD5_H
-/*	The below was retrieved from
- *	http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.c?rev=1.1
- *	with the following changes:
- *	#includes commented out.
- *	Support context->count as uint32_t[2] instead of uint64_t
- *	u_int* to uint*
- */
-
 /*
  * This code implements the MD5 message-digest algorithm.
  * The algorithm is due to Ron Rivest.	This code was
@@ -53,26 +49,23 @@ void fr_md5_calc(uint8_t *output, uint8_t const *input,
  * needed on buffers full of bytes, and then call fr_md5_final, which
  * will fill a supplied 16-byte array with the digest.
  */
+#define PUT_64BIT_LE(cp, value) do {\
+	(cp)[7] = (value)[1] >> 24;\
+	(cp)[6] = (value)[1] >> 16;\
+	(cp)[5] = (value)[1] >> 8;\
+	(cp)[4] = (value)[1];\
+	(cp)[3] = (value)[0] >> 24;\
+	(cp)[2] = (value)[0] >> 16;\
+	(cp)[1] = (value)[0] >> 8;\
+	(cp)[0] = (value)[0];\
+} while (0)
 
-/*#include <sys/param.h>*/
-/*#include <sys/systm.h>*/
-/*#include <crypto/md5.h>*/
-
-#define PUT_64BIT_LE(cp, value) do {		\
-	(cp)[7] = (value)[1] >> 24;		\
-	(cp)[6] = (value)[1] >> 16;		\
-	(cp)[5] = (value)[1] >> 8;		\
-	(cp)[4] = (value)[1];			\
-	(cp)[3] = (value)[0] >> 24;		\
-	(cp)[2] = (value)[0] >> 16;		\
-	(cp)[1] = (value)[0] >> 8;		\
-	(cp)[0] = (value)[0]; } while (0)
-
-#define PUT_32BIT_LE(cp, value) do {		\
-	(cp)[3] = (value) >> 24;		\
-	(cp)[2] = (value) >> 16;		\
-	(cp)[1] = (value) >> 8;			\
-	(cp)[0] = (value); } while (0)
+#define PUT_32BIT_LE(cp, value) do {\
+	(cp)[3] = (value) >> 24;\
+	(cp)[2] = (value) >> 16;\
+	(cp)[1] = (value) >> 8;\
+	(cp)[0] = (value);\
+} while (0)
 
 static const uint8_t PADDING[MD5_BLOCK_LENGTH] = {
 	0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -80,12 +73,11 @@ static const uint8_t PADDING[MD5_BLOCK_LENGTH] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-/** Start MD5 accumulation
+/** Initialise a new MD5 context
  *
- * Set bit count to 0 and buffer to mysterious
- * initialization constants.
+ * Set bit count to 0 and buffer to mysterious initialization constants.
  *
- * @param ctx MD5 context to be initialized.
+ * @param[out] ctx to initialise.
  */
 void fr_md5_init(FR_MD5_CTX *ctx)
 {
@@ -97,16 +89,13 @@ void fr_md5_init(FR_MD5_CTX *ctx)
 	ctx->state[3] = 0x10325476;
 }
 
-/** Hash more data into the MD5 context
+/** Feed additional data into the MD4 hashing function
  *
- * Update context to reflect the concatenation of another buffer full
- * of bytes.
- *
- * @param ctx MD5 hashing context to update
- * @param input Data to add to hash
- * @param len Data length
+ * @param[in,out] ctx to update.
+ * @param[in] in Data to hash.
+ * @param[in] inlen Length of the data.
  */
-void fr_md5_update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
+void fr_md5_update(FR_MD5_CTX *ctx, uint8_t const *in, size_t inlen)
 {
 	size_t have, need;
 
@@ -115,40 +104,43 @@ void fr_md5_update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
 	need = MD5_BLOCK_LENGTH - have;
 
 	/* Update bitcount */
-/*	ctx->count += (uint64_t)len << 3;*/
-	if ((ctx->count[0] += ((uint32_t)len << 3)) < (uint32_t)len) {
+/*	ctx->count += (uint64_t)inlen << 3;*/
+	if ((ctx->count[0] += ((uint32_t)inlen << 3)) < (uint32_t)inlen) {
 	/* Overflowed ctx->count[0] */
 		ctx->count[1]++;
 	}
-	ctx->count[1] += ((uint32_t)len >> 29);
+	ctx->count[1] += ((uint32_t)inlen >> 29);
 
-	if (len >= need) {
+	if (inlen >= need) {
 		if (have != 0) {
-			memcpy(ctx->buffer + have, input, need);
+			memcpy(ctx->buffer + have, in, need);
 			fr_md5_transform(ctx->state, ctx->buffer);
-			input += need;
-			len -= need;
+			in += need;
+			inlen -= need;
 			have = 0;
 		}
 
 		/* Process data in MD5_BLOCK_LENGTH-byte chunks. */
-		while (len >= MD5_BLOCK_LENGTH) {
-			fr_md5_transform(ctx->state, input);
-			input += MD5_BLOCK_LENGTH;
-			len -= MD5_BLOCK_LENGTH;
+		while (inlen >= MD5_BLOCK_LENGTH) {
+			fr_md5_transform(ctx->state, in);
+			in += MD5_BLOCK_LENGTH;
+			inlen -= MD5_BLOCK_LENGTH;
 		}
 	}
 
 	/* Handle any remaining bytes of data. */
-	if (len != 0)
-		memcpy(ctx->buffer + have, input, len);
+	if (inlen != 0) memcpy(ctx->buffer + have, in, inlen);
 }
 
-/*
- * Final wrapup - pad to 64-byte boundary with the bit pattern
- * 1 0* (64-bit count of bits processed, MSB-first)
+/** Finalise the MD5 context and write out the hash
+ *
+ * Final wrapup - pad to 64-byte boundary with the bit pattern 1 0*
+ * (64-bit count of bits processed, MSB-first).
+ *
+ * @param[out] out Where to write the MD5 digest. Minimum length of MD5_DIGEST_LENGTH.
+ * @param[in,out] ctx to finalise.
  */
-void fr_md5_final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
+void fr_md5_final(uint8_t out[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 {
 	uint8_t count[8];
 	size_t padlen;
@@ -165,29 +157,30 @@ void fr_md5_final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 	fr_md5_update(ctx, PADDING, padlen - 8); /* padlen - 8 <= 64 */
 	fr_md5_update(ctx, count, 8);
 
-	if (digest != NULL) {
+	if (out != NULL) {
 		for (i = 0; i < 4; i++)
-			PUT_32BIT_LE(digest + i * 4, ctx->state[i]);
+			PUT_32BIT_LE(out + i * 4, ctx->state[i]);
 	}
 	memset(ctx, 0, sizeof(*ctx));	/* in case it's sensitive */
 }
 
 /* The four core functions - F1 is optimized somewhat */
-
-/* #define F1(x, y, z) (x & y | ~x & z) */
 #define F1(x, y, z) (z ^ (x & (y ^ z)))
 #define F2(x, y, z) F1(z, x, y)
 #define F3(x, y, z) (x ^ y ^ z)
 #define F4(x, y, z) (y ^ (x | ~z))
 
 /* This is the central step in the MD5 algorithm. */
-#define MD5STEP(f, w, x, y, z, data, s) \
-	( w += f(x, y, z) + data,  w = w<<s | w>>(32-s),  w += x )
+#define MD5STEP(f, w, x, y, z, data, s) (w += f(x, y, z) + data, w = w << s | w >> (32 - s),  w += x)
 
-/*
- * The core of the MD5 algorithm, this alters an existing MD5 hash to
- * reflect the addition of 16 longwords of new data.  fr_md5_update blocks
- * the data and converts bytes into longwords for this routine.
+/** The core of the MD5 algorithm
+ *
+ * This alters an existing MD5 hash to reflect the addition of 16
+ * longwords of new data.  fr_md4_update blocks the data and converts bytes
+ * into longwords for this routine.
+ *
+ * @param[in] state 16 bytes of data to feed into the hashing function.
+ * @param[in,out] block MD5 digest block to update.
  */
 void fr_md5_transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
 {
