@@ -14,10 +14,12 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
+/** @addtogroup public_module_api
+ *  @{
+ */
+
 /**
  * $Id$
- *
- * @ingroup public_module_api
  *
  * @file cursor.c
  * @brief Functions to iterate over collections of VALUE_PAIRs
@@ -407,3 +409,5 @@ VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 
 	return vp;
 }
+
+/** @}*/
