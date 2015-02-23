@@ -230,6 +230,8 @@ int fr_event_insert(fr_event_list_t *el, fr_event_callback_t callback, void *ctx
 	if (*parent) fr_event_delete(el, parent);
 
 	ev = talloc_zero(el, fr_event_t);
+	if (!ev) return 0;
+
 	ev->callback = callback;
 	ev->ctx = ctx;
 	ev->when = *when;
