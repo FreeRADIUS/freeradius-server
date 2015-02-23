@@ -1684,7 +1684,7 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		 *	immediately.  If there is a child, we'll set a
 		 *	timer to go clean up the request.
 		 */
-		request->process(request, FR_ACTION_DONE);
+		request_done(request, FR_ACTION_DONE);
 		rad_assert(!request->in_request_hash);
 		request = NULL;
 	} /* else the new packet is unique */
