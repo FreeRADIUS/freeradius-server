@@ -10560,30 +10560,42 @@ $as_echo "#define TLS_STORAGE_CLASS _Thread_local" >>confdefs.h
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __builtin_choose_expr support in compiler" >&5
 $as_echo_n "checking for __builtin_choose_expr support in compiler... " >&6; }
-  if test "$cross_compiling" = yes; then :
-  have_builtin_choose_expr=no
+if ${ax_cv_cc_builtin_choose_expr+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-        int main(int argc, char **argv) {
-          return __builtin_choose_expr(0, 1, 0);
-        }
+
+          int main(int argc, char **argv) {
+            if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+            return __builtin_choose_expr(0, 1, 0);
+          }
 
 
 _ACEOF
 if ac_fn_c_try_run "$LINENO"; then :
-  have_builtin_choose_expr=yes
+  ax_cv_cc_builtin_choose_expr=yes
 else
-  have_builtin_choose_expr=no
+  ax_cv_cc_builtin_choose_expr=no
+
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
   conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $have_builtin_choose_expr" >&5
-$as_echo "$have_builtin_choose_expr" >&6; }
-  if test "x$have_builtin_choose_expr" = "xyes"; then
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_builtin_choose_expr" >&5
+$as_echo "$ax_cv_cc_builtin_choose_expr" >&6; }
+  if test "x$ax_cv_cc_builtin_choose_expr" = "xyes"; then
 
 $as_echo "#define HAVE_BUILTIN_CHOOSE_EXPR 1" >>confdefs.h
 
@@ -10592,30 +10604,42 @@ $as_echo "#define HAVE_BUILTIN_CHOOSE_EXPR 1" >>confdefs.h
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __builtin_types_compatible_p support in compiler" >&5
 $as_echo_n "checking for __builtin_types_compatible_p support in compiler... " >&6; }
-  if test "$cross_compiling" = yes; then :
-  have_builtin_types_compatible_p=no
+if ${ax_cv_cc_builtin_types_compatible_p+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-        int main(int argc, char **argv) {
-          return !(__builtin_types_compatible_p(char *, char *));
-        }
+
+          int main(int argc, char **argv) {
+            if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+            return !(__builtin_types_compatible_p(char *, char *));
+          }
 
 
 _ACEOF
 if ac_fn_c_try_run "$LINENO"; then :
-  have_builtin_types_compatible_p=yes
+  ax_cv_cc_builtin_types_compatible_p=yes
 else
-  have_builtin_types_compatible_p=no
+  ax_cv_cc_builtin_types_compatible_p=no
+
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
   conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $have_builtin_types_compatible_p" >&5
-$as_echo "$have_builtin_types_compatible_p" >&6; }
-  if test "x$have_builtin_types_compatible_p" = "xyes"; then
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_builtin_types_compatible_p" >&5
+$as_echo "$ax_cv_cc_builtin_types_compatible_p" >&6; }
+  if test "x$ax_cv_cc_builtin_types_compatible_p" = "xyes"; then
 
 $as_echo "#define HAVE_BUILTIN_TYPES_COMPATIBLE_P 1" >>confdefs.h
 
@@ -10624,32 +10648,92 @@ $as_echo "#define HAVE_BUILTIN_TYPES_COMPATIBLE_P 1" >>confdefs.h
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __builtin_bswap64 support in compiler" >&5
 $as_echo_n "checking for __builtin_bswap64 support in compiler... " >&6; }
-  if test "$cross_compiling" = yes; then :
-  have_builtin_bswap64=no
+if ${ax_cv_cc_builtin_bswap64+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-        int main(int argc, char **argv) {
-          return (__builtin_bswap64(0));
-        }
+
+          int main(int argc, char **argv) {
+            if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+            return (__builtin_bswap64(0));
+          }
 
 
 _ACEOF
 if ac_fn_c_try_run "$LINENO"; then :
-  have_builtin_bswap64=yes
+  ax_cv_cc_builtin_bswap64=yes
 else
-  have_builtin_bswap64=no
+  ax_cv_cc_builtin_bswap64=no
+
 fi
 rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
   conftest.$ac_objext conftest.beam conftest.$ac_ext
 fi
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $have_builtin_bswap64" >&5
-$as_echo "$have_builtin_bswap64" >&6; }
-  if test "x$have_builtin_bswap64" = "xyes"; then
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_builtin_bswap64" >&5
+$as_echo "$ax_cv_cc_builtin_bswap64" >&6; }
+  if test "x$ax_cv_cc_builtin_bswap64" = "xyes"; then
 
 $as_echo "#define HAVE_BUILTIN_BSWAP_64 1" >>confdefs.h
+
+  fi
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for __attribute__((__bounded__)) support in compiler" >&5
+$as_echo_n "checking for __attribute__((__bounded__)) support in compiler... " >&6; }
+if ${ax_cv_cc_bounded_attribute+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror"
+    if test "$cross_compiling" = yes; then :
+  { { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "cannot run test program while cross compiling
+See \`config.log' for more details" "$LINENO" 5; }
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+
+          void test(char *buff) __attribute__ ((__bounded__ (__string__, 1, 1)));
+          int main(int argc, char **argv) {
+            if ((argc < 0) || !argv) return 1; /* -Werror=unused-parameter */
+            return 0;
+          }
+
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  ax_cv_cc_bounded_attribute=yes
+else
+  ax_cv_cc_bounded_attribute=no
+
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+    CFLAGS="$CFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_bounded_attribute" >&5
+$as_echo "$ax_cv_cc_bounded_attribute" >&6; }
+  if test "x$ax_cv_cc_bounded_attribute" = "xyes"; then
+
+$as_echo "#define HAVE_ATTRIBUTE_BOUNDED 1" >>confdefs.h
 
   fi
 

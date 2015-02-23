@@ -32,6 +32,10 @@
 /* Define to 1 if you have the <arpa/inet.h> header file. */
 #undef HAVE_ARPA_INET_H
 
+/* Define if your compiler supports the __bounded__ attribute (usually OpenBSD
+   gcc). */
+#undef HAVE_ATTRIBUTE_BOUNDED
+
 /* Define to 1 if you have the `bindat' function. */
 #undef HAVE_BINDAT
 
