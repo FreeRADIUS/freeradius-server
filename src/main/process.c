@@ -739,6 +739,7 @@ STATE_MACHINE_DECL(request_done)
 			(unsigned int) (request->timestamp - fr_start_time));
 	} /* else don't print anything */
 
+	ASSERT_MASTER;
 	if (request->ev) fr_event_delete(el, &request->ev);
 
 	request_free(request);
@@ -1961,6 +1962,7 @@ static void tcp_socket_timer(void *ctx)
 	 */
 	end.tv_usec = USEC / 2;
 
+	ASSERT_MASTER;
 	if (!fr_event_insert(el, tcp_socket_timer, listener, &end, &sock->ev)) {
 		rad_panic("Failed to insert event");
 	}
@@ -3096,6 +3098,7 @@ STATE_MACHINE_DECL(request_ping)
 		/*
 		 *	Remove the request from any hashes
 		 */
+		ASSERT_MASTER;
 		fr_event_delete(el, &request->ev);
 		remove_from_proxy_hash(request);
 
@@ -3130,6 +3133,7 @@ STATE_MACHINE_DECL(request_ping)
 		home->num_received_pings = 0;
 		gettimeofday(&home->revive_time, NULL);
 
+		ASSERT_MASTER;
 		fr_event_delete(el, &home->ev);
 
 		RPROXY("Marking home server %s port %d alive",
@@ -3191,6 +3195,7 @@ static void ping_home_server(void *ctx)
 		if (home->state == HOME_STATE_ZOMBIE) {
 			when = home->zombie_period_start;
 			when.tv_sec += home->zombie_period;
+			ASSERT_MASTER;
 			INSERT_EVENT(ping_home_server, home);
 		}
 
@@ -3308,6 +3313,7 @@ static void ping_home_server(void *ctx)
 	add_jitter(&home->when);
 
 	DEBUG("PING: Next status packet in %u seconds", home->ping_interval);
+	ASSERT_MASTER;
 	INSERT_EVENT(ping_home_server, home);
 }
 
@@ -3369,6 +3375,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 	home->zombie_period_start.tv_sec = start;
 	home->zombie_period_start.tv_usec = USEC / 2;
 
+	ASSERT_MASTER;
 	fr_event_delete(el, &home->ev);
 	home->num_sent_pings = 0;
 	home->num_received_pings = 0;
@@ -3400,6 +3407,7 @@ void revive_home_server(void *ctx)
 	/*
 	 *	Delete any outstanding events.
 	 */
+	ASSERT_MASTER;
 	if (home->ev) fr_event_delete(el, &home->ev);
 
 	PROXY( "Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
@@ -3449,6 +3457,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 		home->when.tv_sec += home->revive_interval;
 
 		DEBUG("PING: Reviving home server %s in %u seconds", home->log_name, home->revive_interval);
+		ASSERT_MASTER;
 		INSERT_EVENT(revive_home_server, home);
 	}
 }
@@ -4259,6 +4268,7 @@ static void event_poll_detail(void *ctx)
 
 	tv_add(&when, delay);
 
+	ASSERT_MASTER;
 	if (!fr_event_insert(el, event_poll_detail, this,
 			     &when, &detail->ev)) {
 		ERROR("Failed creating handler");
@@ -4324,6 +4334,7 @@ static void listener_free_cb(void *ctx)
 		fr_event_now(el, &when);
 		when.tv_sec += 3;
 
+		ASSERT_MASTER;
 		if (!fr_event_insert(el, listener_free_cb, this, &when,
 				     &(sock->ev))) {
 			rad_panic("Failed to insert event");
@@ -4457,6 +4468,7 @@ static int event_new_fd(rad_listen_t *this)
 				when.tv_sec = sock->opened + 1;
 				when.tv_usec = 0;
 
+				ASSERT_MASTER;
 				if (!fr_event_insert(el, tcp_socket_timer, this, &when,
 						     &(sock->ev))) {
 					rad_panic("Failed to insert event");
@@ -4482,6 +4494,7 @@ static int event_new_fd(rad_listen_t *this)
 				when.tv_sec = sock->opened + 1;
 				when.tv_usec = 0;
 
+				ASSERT_MASTER;
 				if (!fr_event_insert(el, tcp_socket_timer, this, &when,
 						     &(sock->ev))) {
 					ERROR("Failed adding timer for socket: %s", fr_strerror());
@@ -4550,6 +4563,7 @@ static int event_new_fd(rad_listen_t *this)
 			gettimeofday(&when, NULL);
 			when.tv_sec += 30;
 
+			ASSERT_MASTER;
 			if (!fr_event_insert(el,
 					     (fr_event_callback_t) event_new_fd,
 					     this, &when, &sock->ev)) {
@@ -4649,6 +4663,7 @@ static int event_new_fd(rad_listen_t *this)
 		 *	No child threads, clean it up now.
 		 */
 		if (!spawn_flag) {
+			ASSERT_MASTER;
 			if (sock->ev) fr_event_delete(el, &sock->ev);
 			listen_free(&this);
 			return 1;
@@ -4660,6 +4675,7 @@ static int event_new_fd(rad_listen_t *this)
 		gettimeofday(&when, NULL);
 		when.tv_sec += 3;
 
+		ASSERT_MASTER;
 		if (!fr_event_insert(el, listener_free_cb, this, &when,
 				     &(sock->ev))) {
 			rad_panic("Failed to insert event");
@@ -5045,6 +5061,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 #endif
 
 	request->in_request_hash = false;
+	ASSERT_MASTER;
 	if (request->ev) fr_event_delete(el, &request->ev);
 
 	if (main_config.memory_report) {
