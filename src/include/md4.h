@@ -38,8 +38,6 @@ extern "C" {
 #  define MD4_DIGEST_LENGTH 16
 #endif
 
-void fr_md4_calc(uint8_t out[MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
-
 #ifndef HAVE_OPENSSL_MD4_H
 /*
  * The MD5 code used here and in md4.c was originally retrieved from:
@@ -67,12 +65,12 @@ typedef struct FR_MD4Context {
 
 void	fr_md4_init(FR_MD4_CTX *ctx);
 void	fr_md4_update(FR_MD4_CTX *ctx, uint8_t const *in, size_t inlen)
-	CC_HINT(__bounded__(__string__, 2, 3));
+	CC_BOUNDED(__string__, 2, 3);
 void	fr_md4_final(uint8_t out[MD4_DIGEST_LENGTH], FR_MD4_CTX *ctx)
-	CC_HINT(__bounded__(__minbytes__, 1, MD4_DIGEST_LENGTH));
+	CC_BOUNDED(__minbytes__, 1, MD4_DIGEST_LENGTH);
 void	fr_md4_transform(uint32_t buf[4], uint8_t const inc[MD4_BLOCK_LENGTH])
-	CC_HINT(__bounded__(__minbytes__, 1, 4))
-	CC_HINT(__bounded__(__minbytes__, 2, MD4_BLOCK_LENGTH));
+	CC_BOUNDED(__size__, 1, 4, 4)
+	CC_BOUNDED(__minbytes__, 2, MD4_BLOCK_LENGTH);
 #else  /* HAVE_OPENSSL_MD4_H */
 USES_APPLE_DEPRECATED_API
 #  define FR_MD4_CTX		MD4_CTX
@@ -81,6 +79,9 @@ USES_APPLE_DEPRECATED_API
 #  define fr_md4_final		MD4_Final
 #  define fr_md4_transform	MD4_Transform
 #endif
+
+/* md4.c */
+void fr_md4_calc(uint8_t out[MD4_DIGEST_LENGTH], uint8_t const *in, size_t inlen);
 
 #ifdef __cplusplus
 }

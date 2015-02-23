@@ -42,6 +42,7 @@ RCSID("$Id$")
 #include "eap.h"
 
 #include "eap_md5.h"
+#include <freeradius-devel/md5.h>
 
 /*
  *	We expect only RESPONSE for which SUCCESS or FAILURE is sent back
