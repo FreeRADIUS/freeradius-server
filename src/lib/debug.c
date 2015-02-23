@@ -95,9 +95,6 @@ static fr_fault_cb_t panic_cb = NULL;			//!< Callback to execute whilst panickin
 
 static bool dump_core;					//!< Whether we should drop a core on fatal signals.
 
-static void CC_HINT(format (printf, 1, 2)) _fr_fault_log(char const *msg, ...);
-
-fr_fault_log_t fr_fault_log = _fr_fault_log;		//!< Function to use to process logging output.
 static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
 
 fr_debug_state_t fr_debug_state = DEBUG_STATE_UNKNOWN;	//!< Whether were attached to by a debugger.
@@ -669,7 +666,7 @@ void fr_fault(int sig)
 	if (panic_cb && (panic_cb(sig) < 0)) goto finish;
 
 	/*
-	 *	Produce a simple backtrace - They've very basic but at least give us an
+	 *	Produce a simple backtrace - They're very basic but at least give us an
 	 *	idea of the area of the code we hit the issue in.
 	 *
 	 *	See below in fr_fault_setup() and
@@ -689,8 +686,8 @@ void fr_fault(int sig)
 		/*
 		 *	Only use backtrace_symbols() if we don't have a logging fd.
 		 *	If the server has experienced memory corruption, there's
-		 *	a high probability that calling backtrace_symbols() which
-		 *	mallocs more memory, will fail.
+		 *	a high probability that calling backtrace_symbols() (which
+		 *	mallocs more memory), will result in a dead lock.
 		 */
 		if (fr_fault_log_fd < 0) {
 			strings = backtrace_symbols(stack, frame_count);
@@ -903,12 +900,6 @@ int fr_fault_setup(char const *cmd, char const *program)
 		fr_debug_state_t debug_state;
 
 		/*
-		 *  Setup the default logger
-		 */
-		if (!fr_fault_log) fr_fault_set_log_fn(NULL);
-		talloc_set_log_fn(_fr_talloc_log);
-
-		/*
 		 *  Installing signal handlers interferes with some debugging
 		 *  operations.  Give the developer control over whether the
 		 *  signal handlers are installed or not.
@@ -925,6 +916,8 @@ int fr_fault_setup(char const *cmd, char const *program)
 		} else {
 			debug_state = DEBUG_STATE_ATTACHED;
 		}
+
+		talloc_set_log_fn(_fr_talloc_log);
 
 		/*
 		 *  These signals can't be properly dealt with in the debugger
@@ -1031,25 +1024,24 @@ void fr_fault_set_cb(fr_fault_cb_t func)
 	panic_cb = func;
 }
 
-/** Default logger, logs output to stderr
+/** Log output to the fr_fault_log_fd
  *
+ * We used to support a user defined callback, which was set to a radlog
+ * function. Unfortunately, when logging to syslog, syslog would malloc memory
+ * which would result in a deadlock if fr_fault was triggered from within
+ * a malloc call.
+ *
+ * Now we just write directly to the FD.
  */
-static void CC_HINT(format (printf, 1, 2)) _fr_fault_log(char const *msg, ...)
+void fr_fault_log(char const *msg, ...)
 {
 	va_list ap;
 
-	va_start(ap, msg);
-	vfprintf(stderr, msg, ap);
-	va_end(ap);
-}
+	if (fr_fault_log_fd < 0) return;
 
-/** Set a file descriptor to log panic_action output to.
- *
- * @param func to call to output log messages.
- */
-void fr_fault_set_log_fn(fr_fault_log_t func)
-{
-	fr_fault_log = func ? func : _fr_fault_log;
+	va_start(ap, msg);
+	vdprintf(fr_fault_log_fd, msg, ap);
+	va_end(ap);
 }
 
 /** Set a file descriptor to log memory reports to.
@@ -1061,6 +1053,14 @@ void fr_fault_set_log_fd(int fd)
 	fr_fault_log_fd = fd;
 }
 
+/** A soft assertion which triggers the fault handler in debug builds
+ *
+ * @param file the assertion failed in.
+ * @param line of the assertion in the file.
+ * @param expr that was evaluated.
+ * @param cond Result of evaluating the expression.
+ * @return the value of cond.
+ */
 bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 {
 	if (!cond) {

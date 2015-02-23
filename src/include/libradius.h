@@ -794,7 +794,6 @@ typedef enum {
 
 #define FR_FAULT_LOG(fmt, ...) fr_fault_log(fmt "\n", ## __VA_ARGS__)
 typedef void (*fr_fault_log_t)(char const *msg, ...) CC_HINT(format (printf, 1, 2));
-extern fr_fault_log_t fr_fault_log;
 extern fr_debug_state_t fr_debug_state;
 
 /** Optional callback passed to fr_fault_setup
@@ -824,8 +823,8 @@ int		fr_log_talloc_report(TALLOC_CTX *ctx);
 void		fr_fault(int sig);
 int		fr_fault_setup(char const *cmd, char const *program);
 void		fr_fault_set_cb(fr_fault_cb_t func);
-void		fr_fault_set_log_fn(fr_fault_log_t func);
 void		fr_fault_set_log_fd(int fd);
+void		fr_fault_log(char const *msg, ...) CC_HINT(format (printf, 1, 2));
 
 #  ifdef WITH_VERIFY_PTR
 void		fr_pair_verify_vp(char const *file, int line, VALUE_PAIR const *vp);

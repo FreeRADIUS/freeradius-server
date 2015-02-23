@@ -221,18 +221,6 @@ static int _restore_std(UNUSED int sig)
 	return 0;
 }
 
-/** Pass debug logging through to vradlog
- *
- */
-static void CC_HINT(format (printf, 1, 2)) _radlog_info(char const *msg, ...)
-{
-	va_list ap;
-
-	va_start(ap, msg);
-	vradlog(L_INFO, msg, ap);
-	va_end(ap);
-}
-
 /** Initialise file descriptors based on logging destination
  *
  * @param log Logger to manipulate.
@@ -336,11 +324,6 @@ int radlog_init(fr_log_t *log, bool daemonize)
 
 	close(devnull);
 
-	/*
-	 *	This handles setting up all the talloc logging
-	 *	and callbacks too.
-	 */
-	fr_fault_set_log_fn(_radlog_info);
 	fr_fault_set_log_fd(log->fd);
 
 	return 0;
