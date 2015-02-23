@@ -49,7 +49,7 @@ typedef struct timeval _timeval_t;
 	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_BOOLEAN),\
 		__builtin_choose_expr(__builtin_types_compatible_p(bool *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_SUBSECTION),\
-		NULL,\
+		_p,\
 	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_INTEGER),\
 		__builtin_choose_expr(__builtin_types_compatible_p(uint32_t *, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_IPV4_ADDR),\

@@ -1511,7 +1511,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 				cf_item_add(cs, &(subcs->item));
 			}
 
-			cf_section_parse_init(subcs, base,
+			cf_section_parse_init(subcs, (uint8_t *)base + variables[i].offset,
 					      (CONF_PARSER const *) variables[i].dflt);
 			continue;
 		}
@@ -1575,10 +1575,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 				goto error;
 			}
 
-			if (cf_section_parse(subcs, base,
-					     (CONF_PARSER const *) variables[i].dflt) < 0) {
-				goto error;
-			}
+			if (cf_section_parse(subcs, (uint8_t *)base + variables[i].offset,
+					     (CONF_PARSER const *) variables[i].dflt) < 0) goto error;
 			continue;
 		} /* else it's a CONF_PAIR */
 
@@ -1645,7 +1643,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 			CONF_SECTION *subcs;
 			subcs = cf_section_sub_find(cs, variables[i].name);
 
-			if (cf_section_parse_pass2(subcs, base,
+			if (cf_section_parse_pass2(subcs, (uint8_t *)base + variables[i].offset,
 						   (CONF_PARSER const *) variables[i].dflt) < 0) {
 				return -1;
 			}
