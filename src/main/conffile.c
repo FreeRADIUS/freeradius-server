@@ -1503,8 +1503,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 			 *	etc. allocated in the subsection.
 			 */
 			if (!subcs) {
-				subcs = cf_section_alloc(cs, variables[i].name,
-							 NULL);
+				subcs = cf_section_alloc(cs, variables[i].name, NULL);
 				if (!subcs) return;
 
 				subcs->item.filename = cs->item.filename;
@@ -1565,11 +1564,14 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		 */
 		if (variables[i].type == PW_TYPE_SUBSECTION) {
 			CONF_SECTION *subcs;
-			subcs = cf_section_sub_find(cs, variables[i].name);
 
+			subcs = cf_section_sub_find(cs, variables[i].name);
+			/*
+			 *	Default in this case is overloaded to mean a pointer
+			 *	to the CONF_PARSER struct for the subsection.
+			 */
 			if (!variables[i].dflt || !subcs) {
-				DEBUG2("Internal sanity check 1 failed in cf_section_parse %s",
-				       variables[i].name);
+				ERROR("Internal sanity check 1 failed in cf_section_parse %s", variables[i].name);
 				goto error;
 			}
 

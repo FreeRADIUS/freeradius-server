@@ -148,12 +148,22 @@ do {\
 	}\
 } while (0)
 
+/** Used to parse a CONF_ITEM into a native type
+ *
+ */
 typedef struct CONF_PARSER {
-	char const	*name;
-	int		type;			//!< PW_TYPE_STRING, etc.
-	size_t		offset;			//!< Relative pointer within "base".
-	void		*data;			//!< Absolute pointer if base is NULL.
-	const void	*dflt;			//!< Default as it would appear in radiusd.conf.
+	char const	*name;			//!< Name of the CONF_ITEM to parse.
+	int		type;			//!< PW_TYPE_STRING, etc. Not the enum type as it may be
+						//!< mixed with flags.
+
+	size_t		offset;			//!< Relative offset of field or structure to write the parsed value to.
+						//!< Must be used exclusively to data.
+
+	void		*data;			//!< Absolute pointer to a static variable to write the parsed value to.
+						//!< Must be used exclusively to offset.
+
+	const void	*dflt;			//!< Default as it would appear in radiusd.conf, or a pointer to a
+						//!< CONF_PARSER struct (the subsection) if type is PW_TYPE_SUBSECTION.
 } CONF_PARSER;
 
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
