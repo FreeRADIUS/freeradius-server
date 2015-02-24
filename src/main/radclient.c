@@ -1008,17 +1008,26 @@ static int recv_one_packet(int wait_time)
 	}
 
 	/*
-	 *	udpfromto issues.  We may have bound to "*",
-	 *	and we want to find the replies that are sent to
-	 *	(say) 127.0.0.1.
+	 *	We don't use udpfromto.  So if we bind to "*", we want
+	 *	to find replies sent to 192.0.2.4.  Therefore, we
+	 *	force all replies to have the one address we know
+	 *	about, no matter what real address they were sent to.
 	 *
 	 *	This only works if were not using any of the
 	 *	Packet-* attributes, or running with 'auto'.
 	 */
 	reply->dst_ipaddr = client_ipaddr;
 	reply->dst_port = client_port;
+
 #ifdef WITH_TCP
-	if (server_port > 0) {
+
+	/*
+	 *	TCP sockets don't use recvmsg(), and thus don't get
+	 *	the source IP/port.  However, since they're TCP, we
+	 *	know what the source IP/port is, because that's where
+	 *	we connected to.
+	 */
+	if (ipproto == IPPROTO_TCP) {
 		reply->src_ipaddr = server_ipaddr;
 		reply->src_port = server_port;
 	}
