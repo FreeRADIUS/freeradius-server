@@ -89,7 +89,7 @@ void fr_md5_init(FR_MD5_CTX *ctx)
 	ctx->state[3] = 0x10325476;
 }
 
-/** Feed additional data into the MD4 hashing function
+/** Feed additional data into the MD5 hashing function
  *
  * @param[in,out] ctx to update.
  * @param[in] in Data to hash.
@@ -176,7 +176,7 @@ void fr_md5_final(uint8_t out[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 /** The core of the MD5 algorithm
  *
  * This alters an existing MD5 hash to reflect the addition of 16
- * longwords of new data.  fr_md4_update blocks the data and converts bytes
+ * longwords of new data.  fr_md5_update blocks the data and converts bytes
  * into longwords for this routine.
  *
  * @param[in] state 16 bytes of data to feed into the hashing function.
