@@ -1497,6 +1497,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 */
 	packet = rad_recv(ctx, listener->fd, client->message_authenticator);
 	if (!packet) {
+		talloc_free(ctx);
 		FR_STATS_INC(auth, total_malformed_requests);
 		DEBUG("%s", fr_strerror());
 		return 0;
@@ -1528,7 +1529,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 
 	if (!request_receive(ctx, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
-		rad_free(&packet);
+		talloc_free(ctx);
 		return 0;
 	}
 
