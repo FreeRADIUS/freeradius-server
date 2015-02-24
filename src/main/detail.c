@@ -309,6 +309,19 @@ int detail_recv(rad_listen_t *listener)
 	packet = detail_poll(listener);
 	if (!packet) return -1;
 
+	if (DEBUG_ENABLED2) {
+		VALUE_PAIR *vp;
+		vp_cursor_t cursor;
+
+		DEBUG2("detail (%s): Read packet from %s", data->name, data->filename_work);
+
+		for (vp = fr_cursor_init(&cursor, &packet->vps);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			debug_pair(vp);
+		}
+	}
+
 	switch (packet->code) {
 	case PW_CODE_ACCOUNTING_REQUEST:
 		fun = rad_accounting;
@@ -351,6 +364,17 @@ int detail_recv(rad_listen_t *listener)
 	rcode = read(data->master_pipe[0], &packet, sizeof(packet));
 	if (rcode <= 0) return rcode;
 
+	if (DEBUG_ENABLED2) {
+		VALUE_PAIR *vp;
+		vp_cursor_t cursor;
+
+		DEBUG2("detail (%s): Read packet from %s", data->name, data->filename_work);
+		for (vp = fr_cursor_init(&cursor, &packet->vps);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			debug_pair(vp);
+		}
+	}
 	rad_assert(packet != NULL);
 
 	switch (packet->code) {
@@ -368,8 +392,7 @@ int detail_recv(rad_listen_t *listener)
 		goto signal_thread;
 	}
 
-	if (!request_receive(NULL, listener, packet, &data->detail_client,
-			     fun)) {
+	if (!request_receive(NULL, listener, packet, &data->detail_client, fun)) {
 		data->state = STATE_NO_REPLY;	/* try again later */
 
 	signal_thread:
@@ -849,15 +872,6 @@ open_file:
 		pairadd(&packet->vps, vp);
 	}
 	vp->vp_integer = data->tries;
-
-	if (debug_flag) {
-		fr_printf_log("detail_recv: Read packet from %s\n", data->filename_work);
-		for (vp = fr_cursor_init(&cursor, &packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			debug_pair(vp);
-		}
-	}
 
 	data->state = STATE_RUNNING;
 	data->running = packet->timestamp.tv_sec;
