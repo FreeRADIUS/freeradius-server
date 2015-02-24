@@ -392,7 +392,7 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 		switch (in[0]) {
 		case '\n':
 			if (outlen <= 2) break;
-			out[0] = '\'';
+			out[0] = '\\';
 			out[1] = 'n';
 
 			in++;
@@ -403,7 +403,7 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 
 		case '\r':
 			if (outlen <= 2) break;
-			out[0] = '\'';
+			out[0] = '\\';
 			out[1] = 'r';
 
 			in++;
@@ -414,7 +414,7 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 
 		case '\t':
 			if (outlen <= 2) break;
-			out[0] = '\'';
+			out[0] = '\\';
 			out[1] = 't';
 
 			in++;
