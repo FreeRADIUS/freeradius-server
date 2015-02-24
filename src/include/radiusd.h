@@ -312,6 +312,9 @@ struct rad_request {
 #define RAD_REQUEST_OPTION_DEBUG3	(3)
 #define RAD_REQUEST_OPTION_DEBUG4	(4)
 
+#define RAD_REQUEST_OPTION_COA		(1 << 0)
+#define RAD_REQUEST_OPTION_CTX		(1 << 1)
+
 typedef struct radclient_list RADCLIENT_LIST;
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *);

@@ -677,7 +677,7 @@ REQUEST *request_alloc_coa(REQUEST *request)
 	request->coa = request_alloc_fake(request);
 	if (!request->coa) return NULL;
 
-	request->coa->options = 1;	/* is a CoA packet */
+	request->coa->options = RAD_REQUEST_OPTION_COA;	/* is a CoA packet */
 	request->coa->packet->code = 0; /* unknown, as of yet */
 	request->coa->child_state = REQUEST_RUNNING;
 	request->coa->proxy = rad_alloc(request->coa, false);

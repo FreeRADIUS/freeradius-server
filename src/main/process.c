@@ -479,8 +479,14 @@ static void request_timer(void *ctx)
  */
 static void request_free(REQUEST *request)
 {
-	void *ptr = talloc_parent(request);
+	void *ptr;
 
+	if ((request->options & RAD_REQUEST_OPTION_CTX) == 0) {
+		talloc_free(request);
+		return;
+	}
+
+	ptr = talloc_parent(request);
 	rad_assert(ptr != NULL);
 	talloc_free(ptr);
 }
@@ -1294,7 +1300,7 @@ STATE_MACHINE_DECL(request_finish)
 	 *	from an Access-Request.  See request_alloc_coa() for
 	 *	details.
 	 */
-	if (request->options == 1) goto done;
+	if ((request->options & RAD_REQUEST_OPTION_COA) != 0) goto done;
 #endif
 
 	/*
@@ -1781,6 +1787,11 @@ skip_dup:
 		talloc_free(ctx);
 		return 1;
 	}
+
+	/*
+	 *	Mark it as a "real" request with a context.
+	 */
+	request->options |= RAD_REQUEST_OPTION_CTX;
 
 	/*
 	 *	Remember the request in the list.
