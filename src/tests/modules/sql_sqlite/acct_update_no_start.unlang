@@ -2,7 +2,7 @@
 #  Clear out old data
 #
 update {
-	Tmp-String-0 := "%{sql_sqlite:DELETE FROM radacct WHERE 1}"
+	Tmp-String-0 := "%{sql_sqlite:DELETE FROM radacct WHERE AcctSessionId = '00000002'}"
 }
 if (!&Tmp-String-0) {
 	test_fail
@@ -20,7 +20,7 @@ else {
 }
 
 update {
-	Tmp-Integer-0 := "%{sql_sqlite:SELECT count(*) FROM radacct WHERE 1}"
+	Tmp-Integer-0 := "%{sql_sqlite:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000002'}"
 }
 if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 1)) {
 	test_fail
@@ -30,7 +30,7 @@ else {
 }
 
 update {
-	Tmp-Integer-0 := "%{sql_sqlite:SELECT acctsessiontime FROM radacct WHERE 1}"
+	Tmp-Integer-0 := "%{sql_sqlite:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000002'}"
 }
 if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 30)) {
 	test_fail
