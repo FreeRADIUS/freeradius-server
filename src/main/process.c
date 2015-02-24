@@ -1767,7 +1767,7 @@ skip_dup:
 	 */
 	if (!ctx) {
 		ctx = talloc_pool(NULL, main_config.talloc_pool_size);
-		if (!ctx) rad_assert(0 == 1);
+		if (!ctx) return 0;
 
 		/*
 		 *	The packet is still allocated from a different
