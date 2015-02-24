@@ -80,8 +80,8 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 		data->signal = 1;
 		data->state = STATE_NO_REPLY;
 
-		RDEBUG("Detail - No response to request.  Will retry in %d seconds",
-		       data->retry_interval);
+		RDEBUG("detail (%s): No response to request.  Will retry in %d seconds",
+		       data->name, data->retry_interval);
 	} else {
 		int rtt;
 		struct timeval now;
@@ -152,8 +152,8 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 		 */
 		if (data->delay_time > (USEC / 4)) data->delay_time= USEC / 4;
 
-		RDEBUG3("Received response for request %d.  Will read the next packet in %d seconds",
-			request->number, data->delay_time / USEC);
+		RDEBUG3("detail (%s): Received response for request %d.  Will read the next packet in %d seconds",
+			data->name, request->number, data->delay_time / USEC);
 
 		data->last_packet = now;
 		data->signal = 1;
@@ -163,7 +163,7 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 
 #ifdef WITH_DETAIL_THREAD
 	if (write(data->child_pipe[1], &c, 1) < 0) {
-		ERROR("Failed writing ack to reader thread: %s", fr_syserror(errno));
+		RERROR("detail (%s): Failed writing ack to reader thread: %s", data->name, fr_syserror(errno));
 	}
 #else
 	radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
@@ -212,7 +212,7 @@ static int detail_open(rad_listen_t *this)
 		char const	*filename;
 		glob_t		files;
 
-		DEBUG2("Polling for detail file %s", data->filename);
+		DEBUG2("detail (%s): Polling for detail file", data->name);
 
 		memset(&files, 0, sizeof(files));
 		if (glob(data->filename, 0, NULL, &files) != 0) {
@@ -243,10 +243,10 @@ static int detail_open(rad_listen_t *this)
 		 */
 		filename = files.gl_pathv[found];
 
-		DEBUG("Detail - Renaming %s -> %s", filename, data->filename_work);
+		DEBUG("detail (%s): Renaming %s -> %s", data->name, filename, data->filename_work);
 		if (rename(filename, data->filename_work) < 0) {
-			ERROR("Detail - Failed renaming %s to %s: %s",
-			      filename, data->filename_work, fr_syserror(errno));
+			ERROR("detail (%s): Failed renaming %s to %s: %s",
+			      data->name, filename, data->filename_work, fr_syserror(errno));
 			goto noop;
 		}
 
@@ -328,8 +328,7 @@ int detail_recv(rad_listen_t *listener)
 	/*
 	 *	Don't bother doing limit checks, etc.
 	 */
-	if (!request_receive(NULL, listener, packet, &data->detail_client,
-			     fun)) {
+	if (!request_receive(NULL, listener, packet, &data->detail_client, fun)) {
 		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
 		return 0;
@@ -376,7 +375,8 @@ int detail_recv(rad_listen_t *listener)
 	signal_thread:
 		rad_free(&packet);
 		if (write(data->child_pipe[1], &c, 1) < 0) {
-			ERROR("Failed writing ack to reader thread: %s", fr_syserror(errno));
+			ERROR("detail (%s): Failed writing ack to reader thread: %s", data->name,
+			      fr_syserror(errno));
 		}
 	}
 
@@ -440,8 +440,8 @@ open_file:
 
 		data->fp = fdopen(data->work_fd, "r");
 		if (!data->fp) {
-			ERROR("FATAL: Failed to re-open detail file %s: %s",
-			       data->filename, fr_syserror(errno));
+			ERROR("detail (%s): FATAL: Failed to re-open detail file: %s",
+			      data->name, fr_syserror(errno));
 			fr_exit(1);
 		}
 
@@ -469,10 +469,8 @@ open_file:
 			struct stat buf;
 
 			if (fstat(data->work_fd, &buf) < 0) {
-				ERROR("Failed to stat "
-				       "detail file %s: %s",
-					data->filename,
-					fr_syserror(errno));
+				ERROR("detail (%s): Failed to stat detail file: %s",
+				      data->name, fr_syserror(errno));
 
 				goto cleanup;
 			}
@@ -487,8 +485,7 @@ open_file:
 		 */
 		if (feof(data->fp)) {
 		cleanup:
-			DEBUG("Detail - unlinking %s",
-			      data->filename_work);
+			DEBUG("detail (%s): Unlinking %s", data->name, data->filename_work);
 			unlink(data->filename_work);
 			if (data->fp) fclose(data->fp);
 			data->fp = NULL;
@@ -497,7 +494,7 @@ open_file:
 			rad_assert(data->vps == NULL);
 
 			if (data->one_shot) {
-				INFO("Finished reading \"one shot\" detail file - Exiting");
+				INFO("detail (%s): Finished reading \"one shot\" detail file - Exiting", data->name);
 				radius_signal_self(RADIUS_SIGNAL_SELF_EXIT);
 			}
 
@@ -533,7 +530,7 @@ open_file:
 			return NULL;
 		}
 
-		DEBUG("No response to detail request.  Retrying");
+		DEBUG("detail (%s): No response to detail request.  Retrying", data->name);
 		/* FALL-THROUGH */
 
 		/*
@@ -555,11 +552,13 @@ open_file:
 
 			if ((fseek(data->fp, data->timestamp_offset, SEEK_SET) < 0) ||
 			    (fwrite("\tDone", 1, 5, data->fp) < 5)) {
-				WARN("Failed marking detail request as done: %s", fr_syserror(errno));
+				WARN("detail (%s): Failed marking detail request as done: %s",
+				     data->name, fr_syserror(errno));
 			}
 			fflush(data->fp);
 			if (fseek(data->fp, data->offset, SEEK_SET) < 0) {
-				WARN("Failed seeking to next detail request: %s", fr_syserror(errno));
+				WARN("detail (%s): Failed seeking to next detail request: %s",
+				     data->name, fr_syserror(errno));
 			}
 		}
 
@@ -618,8 +617,7 @@ open_file:
 		 *	FIXME: print an error for badly formatted attributes?
 		 */
 		if (sscanf(buffer, "%255s %7s %1023s", key, op, value) != 3) {
-			WARN("Skipping badly formatted line %s",
-			       buffer);
+			WARN("detail (%s): Skipping badly formatted line %s", data->name, buffer);
 			continue;
 		}
 
@@ -643,7 +641,7 @@ open_file:
 		if (!strcasecmp(key, "Client-IP-Address")) {
 			data->client_ip.af = AF_INET;
 			if (ip_hton(&data->client_ip, AF_INET, value, false) < 0) {
-				ERROR("Failed parsing Client-IP-Address");
+				ERROR("detail (%s): Failed parsing Client-IP-Address", data->name);
 
 				pairfree(&data->vps);
 				goto cleanup;
@@ -704,7 +702,7 @@ open_file:
 	 */
  alloc_packet:
 	if (data->done_entry) {
-		DEBUG2("Skipping record for timestamp %lu", data->timestamp);
+		DEBUG2("detail (%s): Skipping record for timestamp %lu", data->name, data->timestamp);
 		pairfree(&data->vps);
 		data->state = STATE_HEADER;
 		goto do_header;
@@ -719,7 +717,8 @@ open_file:
 	 *	treat it as EOF.
 	 */
 	if (data->state != STATE_QUEUED) {
-		ERROR("Truncated record: treating it as EOF for detail file %s", data->filename_work);
+		ERROR("detail (%s): Truncated record: treating it as EOF for detail file %s",
+		      data->name, data->filename_work);
 		goto cleanup;
 	}
 
@@ -739,7 +738,7 @@ open_file:
 	 */
 	packet = rad_alloc(NULL, true);
 	if (!packet) {
-		ERROR("FATAL: Failed allocating memory for detail");
+		ERROR("detail (%s): FATAL: Failed allocating memory for detail", data->name);
 		fr_exit(1);
 	}
 
@@ -885,7 +884,7 @@ void detail_free(rad_listen_t *this)
 		data->child_pipe[0] = -1;
 
 		/*
-		 *	Tell it to stop (interrupting it's sleep)
+		 *	Tell it to stop (interrupting its sleep)
 		 */
 		pthread_kill(data->pthread_id, SIGTERM);
 
@@ -894,10 +893,12 @@ void detail_free(rad_listen_t *this)
 		 */
 		ret = read(data->master_pipe[0], &arg, sizeof(arg));
 		if (ret < 0) {
-			ERROR("Reader thread exited without informing the master: %s", fr_syserror(errno));
+			ERROR("detail (%s): Reader thread exited without informing the master: %s",
+			      data->name, fr_syserror(errno));
 		} else if (ret != sizeof(arg)) {
-			ERROR("Invalid thread pointer received from reader thread during exit");
-			ERROR("Expected %zu bytes, got %zi bytes", sizeof(arg), ret);
+			ERROR("detail (%s): Invalid thread pointer received from reader thread during exit",
+			      data->name);
+			ERROR("detail (%s): Expected %zu bytes, got %zi bytes", data->name, sizeof(arg), ret);
 		}
 
 		close(data->master_pipe[0]);
@@ -940,8 +941,8 @@ static int detail_delay(listen_detail_t *data)
 	delay += (USEC * 3) / 4;
 	delay += fr_rand() % (USEC / 2);
 
-	DEBUG2("Detail listener %s state %s waiting %d.%06d sec",
-	       data->filename,
+	DEBUG2("detail (%s): Detail listener state %s waiting %d.%06d sec",
+	       data->name,
 	       fr_int2str(state_names, data->state, "?"),
 	       (delay / USEC), delay % USEC);
 
@@ -965,8 +966,9 @@ int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 
 	data->signal = 0;
 
-	DEBUG2("Detail listener %s state %s signalled %d waiting %d.%06d sec",
-	       data->filename, fr_int2str(state_names, data->state, "?"),
+	DEBUG2("detail (%s): Detail listener state %s signalled %d waiting %d.%06d sec",
+	       data->name,
+	       fr_int2str(state_names, data->state, "?"),
 	       data->signal,
 	       data->delay_time / USEC,
 	       data->delay_time % USEC);
@@ -1010,7 +1012,8 @@ static void *detail_handler_thread(void *arg)
 			if (data->child_pipe[0] < 0) {
 				packet = NULL;
 				if (write(data->master_pipe[1], &packet, sizeof(packet)) < 0) {
-					ERROR("Failed writing exit status to master: %s", fr_syserror(errno));
+					ERROR("detail (%s): Failed writing exit status to master: %s",
+					      data->name, fr_syserror(errno));
 				}
 				return NULL;
 			}
@@ -1023,11 +1026,13 @@ static void *detail_handler_thread(void *arg)
 		 */
 		do {
 			if (write(data->master_pipe[1], &packet, sizeof(packet)) < 0) {
-				ERROR("Failed passing detail packet pointer to master: %s", fr_syserror(errno));
+				ERROR("detail (%s): Failed passing detail packet pointer to master: %s",
+				      data->name, fr_syserror(errno));
 			}
 
 			if (read(data->child_pipe[0], &c, 1) < 0) {
-				ERROR("Failed getting detail packet ack from master: %s", fr_syserror(errno));
+				ERROR("detail (%s): Failed getting detail packet ack from master: %s",
+				      data->name, fr_syserror(errno));
 				break;
 			}
 
@@ -1064,7 +1069,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	int		rcode;
 	listen_detail_t *data;
 	RADCLIENT	*client;
-	char buffer[2048];
+	char		buffer[2048];
 
 	data = this->data;
 
@@ -1073,6 +1078,9 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		cf_log_err_cs(cs, "Failed parsing listen section");
 		return -1;
 	}
+
+	data->name = cf_section_name2(cs);
+	if (!data->name) data->name = data->filename;
 
 	/*
 	 *	We don't do duplicate detection for "detail" sockets.
@@ -1111,8 +1119,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		char *p;
 
 #ifndef HAVE_GLOB_H
-		WARN("Detail file \"%s\" appears to use file globbing, but it is not supported on this system.",
-		     data->filename);
+		WARN("detail (%s): File \"%s\" appears to use file globbing, but it is not supported on this system",
+		     data->name, data->filename);
 #endif
 		strlcpy(buffer, data->filename, sizeof(buffer));
 		p = strrchr(buffer, FR_DIR_SEP);
@@ -1154,14 +1162,12 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Create the communication pipes.
 	 */
 	if (pipe(data->master_pipe) < 0) {
-		ERROR("radiusd: Error opening internal pipe: %s",
-		      fr_syserror(errno));
+		ERROR("detail (%s): Error opening internal pipe: %s", data->name, fr_syserror(errno));
 		fr_exit(1);
 	}
 
 	if (pipe(data->child_pipe) < 0) {
-		ERROR("radiusd: Error opening internal pipe: %s",
-		      fr_syserror(errno));
+		ERROR("detail (%s): Error opening internal pipe: %s", data->name, fr_syserror(errno));
 		fr_exit(1);
 	}
 
