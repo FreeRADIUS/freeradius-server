@@ -408,12 +408,12 @@ open_file:
 
 		/* FALL-THROUGH */
 
-		/*
-		 *	Try to lock fd.  If we can't, return.
-		 *	If we can, continue.  This means that
-		 *	the server doesn't block while waiting
-		 *	for the lock to open...
-		 */
+	/*
+	 *	Try to lock fd.  If we can't, return.
+	 *	If we can, continue.  This means that
+	 *	the server doesn't block while waiting
+	 *	for the lock to open...
+	 */
 	case STATE_UNLOCKED:
 		/*
 		 *	Note that we do NOT block waiting for
@@ -506,11 +506,11 @@ open_file:
 		 */
 		break;
 
-		/*
-		 *	Read more value-pair's, unless we're
-		 *	at EOF.  In that case, queue whatever
-		 *	we have.
-		 */
+	/*
+	 *	Read more value-pair's, unless we're
+	 *	at EOF.  In that case, queue whatever
+	 *	we have.
+	 */
 	case STATE_READING:
 		if (data->fp && !feof(data->fp)) break;
 		data->state = STATE_QUEUED;
@@ -520,11 +520,11 @@ open_file:
 	case STATE_QUEUED:
 		goto alloc_packet;
 
-		/*
-		 *	Periodically check what's going on.
-		 *	If the request is taking too long,
-		 *	retry it.
-		 */
+	/*
+	 *	Periodically check what's going on.
+	 *	If the request is taking too long,
+	 *	retry it.
+	 */
 	case STATE_RUNNING:
 		if (time(NULL) < (data->running + (int)data->retry_interval)) {
 			return NULL;
@@ -533,19 +533,19 @@ open_file:
 		DEBUG("detail (%s): No response to detail request.  Retrying", data->name);
 		/* FALL-THROUGH */
 
-		/*
-		 *	If there's no reply, keep
-		 *	retransmitting the current packet
-		 *	forever.
-		 */
+	/*
+	 *	If there's no reply, keep
+	 *	retransmitting the current packet
+	 *	forever.
+	 */
 	case STATE_NO_REPLY:
 		data->state = STATE_QUEUED;
 		goto alloc_packet;
 
-		/*
-		 *	We have a reply.  Clean up the old
-		 *	request, and go read another one.
-		 */
+	/*
+	 *	We have a reply.  Clean up the old
+	 *	request, and go read another one.
+	 */
 	case STATE_REPLIED:
 		if (data->track) {
 			rad_assert(data->fp != NULL);
