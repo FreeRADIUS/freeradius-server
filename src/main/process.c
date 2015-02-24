@@ -1527,6 +1527,8 @@ STATE_MACHINE_DECL(request_finish)
 		RDEBUG2("Delaying response for %d.%06d seconds",
 			(int) request->response_delay.tv_sec, (int) request->response_delay.tv_usec);
 		request->listener->encode(request->listener, request);
+		request->component = "<core>";
+		request->module = "<delay>";
 		NO_CHILD_THREAD;
 		request->child_state = REQUEST_RESPONSE_DELAY;
 	}
