@@ -719,6 +719,7 @@ open_file:
 	if (data->state != STATE_QUEUED) {
 		ERROR("detail (%s): Truncated record: treating it as EOF for detail file %s",
 		      data->name, data->filename_work);
+		pairfree(&data->vps);
 		goto cleanup;
 	}
 
