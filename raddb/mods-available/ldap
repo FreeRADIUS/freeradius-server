@@ -156,7 +156,8 @@ ldap {
 		#    access_positive = yes
 		#    access_attribute = userAccessAllowed
 		#
-		#    userAccessAllowed = false
+		#  With an LDAP object containing:
+		#    userAccessAllowed: false
 		#
 		#  Will result in the user being locked out.
 #		access_positive = yes
