@@ -38,16 +38,19 @@ typedef enum detail_state_t {
 
 typedef struct listen_detail_t {
 	fr_event_t	*ev;	/* has to be first entry (ugh) */
+	char const 	*name;			//!< Identifier used in log messages
 	int		delay_time;
 	char const	*filename;
 	char const	*filename_work;
 	VALUE_PAIR	*vps;
 	int		work_fd;
+
 #ifdef WITH_DETAIL_THREAD
 	int		master_pipe[2];
 	int		child_pipe[2];
 	pthread_t	pthread_id;
 #endif
+
 	FILE		*fp;
 	off_t		offset;
 	detail_state_t 	state;
@@ -57,8 +60,8 @@ typedef struct listen_detail_t {
 
 	off_t		last_offset;
 	off_t		timestamp_offset;
-	bool		done_entry;	/* are we done reading this entry? */
-	bool		track;	/* do we track progress through the file? */
+	bool		done_entry;		//!< Are we done reading this entry?
+	bool		track;			//!< Do we track progress through the file?
 
 	uint32_t	load_factor; /* 1..100 */
 	uint32_t	poll_interval;
