@@ -753,6 +753,13 @@ static void request_cleanup_delay_init(REQUEST *request, struct timeval const *p
 
 	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) goto done;
 
+#ifdef WITH_DETAIL
+	/*
+	 *	If the packets are from the detail file, we can clean them up now.
+	 */
+	if (request->listener->type == RAD_LISTEN_DETAIL) goto done;
+#endif
+
 	if (!request->root->cleanup_delay) goto done;
 
 	if (pnow) {
@@ -1440,16 +1447,32 @@ STATE_MACHINE_DECL(request_finish)
 			request->listener->send(request->listener, request);
 			debug_packet(request, request->reply, false);
 		}
+
 	done:
 		RDEBUG2("Finished request");
 		request->component = "<core>";
 		request->module = "<done>";
 
 #ifdef WITH_ACCOUNTING
+		/*
+		 *	Accounting packets can be cleaned up now.
+		 */
 		if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
 			NO_CHILD_THREAD;
 			request->child_state = REQUEST_DONE;
-		} else
+			return;
+		}
+#endif
+
+#ifdef WITH_DETAIL
+		/*
+		 *	If the packets are from the detail file, we can clean them up now.
+		 */
+		if (request->listener->type == RAD_LISTEN_DETAIL) {
+			NO_CHILD_THREAD;
+			request->child_state = REQUEST_DONE;
+			return;
+		}
 #endif
 
 #ifdef WITH_COA
@@ -1463,9 +1486,15 @@ STATE_MACHINE_DECL(request_finish)
 		    (request->packet->code != request->proxy->code)) {
 			NO_CHILD_THREAD;
 			request->child_state = REQUEST_DONE;
-		} else
+			return;
+		}
 #endif
 
+		/*
+		 *	No cleanup, mark the request as done.
+		 *
+		 *	Otherwise, mark it as "please do cleanup delay".
+		 */
 		if (request->root->cleanup_delay == 0) {
 			NO_CHILD_THREAD;
 			request->child_state = REQUEST_DONE;
