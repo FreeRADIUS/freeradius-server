@@ -737,8 +737,7 @@ STATE_MACHINE_DECL(request_done)
 	} /* else don't print anything */
 
 	ASSERT_MASTER;
-	if (request->ev) fr_event_delete(el, &request->ev);
-
+	fr_event_delete(el, &request->ev);
 	request_free(request);
 }
 
