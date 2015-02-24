@@ -484,11 +484,8 @@ static void request_free(REQUEST *request)
 {
 	void *ptr = talloc_parent(request);
 
-	if (ptr) {
-		talloc_free(ptr);
-	} else {
-		talloc_free(request);
-	}
+	rad_assert(ptr != NULL);
+	talloc_free(ptr);
 }
 
 
@@ -1749,8 +1746,25 @@ skip_dup:
 		sock->rate_pps_now++;
 	}
 
+	/*
+	 *	Allocate a pool for the request.
+	 */
+	if (!ctx) {
+		ctx = talloc_pool(NULL, main_config.talloc_pool_size);
+		if (!ctx) rad_assert(0 == 1);
+
+		/*
+		 *	The packet is still allocated from a different
+		 *	context, but oh well.
+		 */
+		(void) talloc_steal(ctx, packet);
+	}
+
 	request = request_setup(ctx, listener, packet, client, fun);
-	if (!request) return 1;
+	if (!request) {
+		talloc_free(ctx);
+		return 1;
+	}
 
 	/*
 	 *	Remember the request in the list.
