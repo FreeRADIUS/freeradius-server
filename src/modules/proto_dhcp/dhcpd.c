@@ -479,6 +479,7 @@ static int dhcp_process(REQUEST *request)
 	if (vp && (vp->vp_ipaddr != ntohl(INADDR_ANY))) {
 		RDEBUG("DHCP: Reply will be unicast to giaddr from original packet");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		request->reply->dst_port = request->packet->dst_port;
 		return 1;
 	}
 
