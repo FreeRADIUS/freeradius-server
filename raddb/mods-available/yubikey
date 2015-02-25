@@ -14,8 +14,8 @@ yubikey {
 	#  If true, the authorize method of rlm_yubikey will attempt to split the
 	#  value of User-Password, into the user's password, and the OTP token.
 	#
-	#  If enabled and successful, the value of User-Password will be truncated
-	#  and request:Yubikey-OTP will be added.
+	#  If enabled and successful, the value of &request:User-Password will be
+	#  truncated and &request:Yubikey-OTP will be added.
 	#
 #	split = yes
 
@@ -25,8 +25,8 @@ yubikey {
 	#  The module itself does not provide persistent storage as this
 	#  would be duplicative of functionality already in the server.
 	#
-	#  Yubikey authentication needs two attributes
-	#  retrieved from persistent storage:
+	#  Yubikey authentication needs two attributes retrieved from 
+	#  persistent storage:
 	#    * &control:Yubikey-Key        - The AES key used to decrypt the OTP data.
 	#                                    The Yubikey-Public-Id and/or User-Name
 	#                                    attributes may be used to retrieve the key.
@@ -41,7 +41,9 @@ yubikey {
 	#  is called.
 	#
 	#  These attributes are available after authorization:
-	#    * &request:Yubikey-Public-ID  - The public portion of the OTP string
+	#    * &request:Yubikey-Public-ID  - The public portion of the OTP string.
+	#  and additionally if 'split' is set:
+	#    * &request:Yubikey-OTP        - The OTP portion of User-Password.
 	#
 	#  These attributes are available after authentication (if successful):
 	#    * &request:Yubikey-Private-ID - The encrypted ID included in OTP data,
