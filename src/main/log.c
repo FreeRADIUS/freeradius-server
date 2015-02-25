@@ -46,8 +46,7 @@ RCSID("$Id$")
 
 static bool rate_limit = true;
 
-/*
- * Logging facility names
+/** Maps log categories to message prefixes
  */
 static const FR_NAME_NUMBER levels[] = {
 	{ ": Debug: ",		L_DBG		},
@@ -64,11 +63,24 @@ static const FR_NAME_NUMBER levels[] = {
 	{ NULL, 0 }
 };
 
-#define VTC_RED		"\x1b[31m"
-#define VTC_YELLOW      "\x1b[33m"
-#define VTC_BOLD	"\x1b[1m"
-#define VTC_RESET	"\x1b[0m"
+/** @name VT100 escape sequences
+ *
+ * These sequences may be written to VT100 terminals to change the
+ * colour and style of the text.
+ *
+ @code{.c}
+   fprintf(stdout, VTC_RED "This text will be coloured red" VTC_REST);
+ @endcode
+ * @{
+ */
+#define VTC_RED		"\x1b[31m"	//!< Colour following text red.
+#define VTC_YELLOW      "\x1b[33m"	//!< Colour following text yellow.
+#define VTC_BOLD	"\x1b[1m"	//!< Embolden following text.
+#define VTC_RESET	"\x1b[0m"	//!< Reset terminal text to default style/colour.
+/** @} */
 
+/** Maps log categories to VT100 style/colour escape sequences
+ */
 static const FR_NAME_NUMBER colours[] = {
 	{ "",			L_DBG		},
 	{ VTC_BOLD,		L_AUTH		},
@@ -84,8 +96,13 @@ static const FR_NAME_NUMBER colours[] = {
 	{ NULL, 0 }
 };
 
-/*
- *	Syslog facility table.
+/** Syslog facility table
+ *
+ * Maps syslog facility keywords, to the syslog facility macros defined
+ * in the system's syslog.h.
+ *
+ * @note Not all facilities are supported by every operating system.
+ *       If a facility is unavailable it will not appear in the table.
  */
 const FR_NAME_NUMBER syslog_facility_table[] = {
 #ifdef LOG_KERN
@@ -148,6 +165,12 @@ const FR_NAME_NUMBER syslog_facility_table[] = {
 	{ NULL,			-1		}
 };
 
+/** Syslog severity table
+ *
+ * Maps syslog severity keywords, to the syslog severity macros defined
+ * in the system's syslog.h file.
+ *
+ */
 const FR_NAME_NUMBER syslog_severity_table[] = {
 #ifdef LOG_EMERG
 	{ "emergency",		LOG_EMERG	},
@@ -190,7 +213,7 @@ bool log_dates_utc = false;
 fr_log_t default_log = {
 	.colourise = false,	//!< Will be set later. Should be off before we do terminal detection.
 	.fd = STDOUT_FILENO,
-	.dst = L_DST_STDOUT,
+	.dst = L_DST_STDOUT
 	.file = NULL,
 	.debug_file = NULL,
 };
@@ -796,16 +819,16 @@ void radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
  * @note talloc_free must be called on the buffer returned in spaces and text
  *
  * Used to produce error messages such as this:
-@verbatim
-I'm a string with a parser # error
-                           ^ Unexpected character in string
-@endverbatim
+ @verbatim
+  I'm a string with a parser # error
+                             ^ Unexpected character in string
+ @endverbatim
  *
  * With code resembling this:
-@verbatim
-ERROR("%s", parsed_str);
-ERROR("%s^ %s", space, text);
-@endverbatim
+ @code{.c}
+   ERROR("%s", parsed_str);
+   ERROR("%s^ %s", space, text);
+ @endcode
  *
  * @todo merge with above function (radlog_request_marker)
  *
