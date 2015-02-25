@@ -480,6 +480,10 @@ static int dhcp_process(REQUEST *request)
 		RDEBUG("DHCP: Reply will be unicast to giaddr from original packet");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		request->reply->dst_port = request->packet->dst_port;
+
+		vp = pairfind(request->reply->vps, PW_PACKET_DST_PORT, 0, TAG_ANY);
+		if (vp) request->reply->dst_port = vp->vp_integer;
+
 		return 1;
 	}
 
