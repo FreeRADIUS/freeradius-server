@@ -19,8 +19,9 @@
  * $Id$
  *
  * @file log.h
- * @brief Structures and prototypes for logging.
+ * @brief Macros and function definitions to write log messages, and control the logging system.
  *
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Alan DeKok <aland@freeradius.org>
  */
 RCSIDH(log_h, "$Id$")
@@ -44,7 +45,7 @@ typedef enum log_type {
 	L_DBG_ERR_REQ = 20	//!< Less severe error only displayed when debugging is enabled.
 } log_type_t;
 
-typedef enum log_debug {
+typedef enum log_lvl {
 	L_DBG_LVL_MIN = -1,	//!< Hack for stupid GCC warnings (comparison with 0 always true)
 	L_DBG_LVL_OFF = 0,	//!< No debug messages.
 	L_DBG_LVL_1,		//!< Highest priority debug messages (-x).
@@ -107,27 +108,14 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 
 void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *msg);
 
-/*
- * Log messages to the global or request logs.
- *
- *	R*			- Macros prefixed with an R will automatically prepend
- *				  request information to the log messages.
- *	INFO | WARN | ERROR	- Macros containing these words will be displayed at all log levels.
- *	*DEBUG* 		- Macros with the word DEBUG, will only be displayed if the server or request debug
- *				  level is above 0.
- *	*[IWE]DEBUG[0-9]?	- Macros with I, W, E as (or just after) the prefix, will log with the priority
- *				  specified by the integer if the server or request log level at or above that integer.
- *				  If there is no integer the level is 1. The I|W|E prefix determines the type
- *				  (INFO, WARN, ERROR), if there is no I|W|E prefix the DEBUG type will be used.
- */
-
 /** @name Log global messages
  *
  * Write to the global log.
  *
  * Messages will always be written irrespective of the debugging level set with ``-x`` or ``-X``.
  *
- * @note If a REQUEST * is **NOT** available, these macros **MUST** be used.
+ * @warning If a REQUEST * is **NOT** available, these macros **MUST** be used.
+ *
  * @note These macros should only be used for important global events.
  *
  * **Debug categories**
@@ -190,6 +178,7 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
  *
  * Messages will always be written irrespective of the debugging level set with ``-x`` or ``-X``.
  *
+ * @note Automatically prepends date (at lvl >= 3), request number, and module, to the log message.
  * @note If a REQUEST * is available, these macros should be used.
  * @note These macros should only be used for important global events.
  *
@@ -218,6 +207,8 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
  *
  * Messages will only be written if a request log function is set and the request or global
  * debug level is high enough.
+ *
+ * @note Automatically prepends date (at lvl >= 3), request number, and module, to the log message.
  *
  * **Debug categories**
  * Name     | Syslog severity         | Colour and style | When to use
@@ -260,10 +251,36 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
 #define REDEBUG4(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
 /** @} */
 
-#define RINDENT()		(request->log.indent += 2)
-#define REXDENT()		(request->log.indent -= 2)
+/** Indent R* messages by one level
+ *
+ * @note Has no effect on the indentation of INFO, WARN, ERROR, DEBUG messages,
+ *	 only RINFO, RWARN, RERROR etc...
+ */
+#define RINDENT() (request->log.indent += 2)
 
-#define _RMKR(_l, _p, _m, _i, _e)	radlog_request_marker(_l, _p, request, _m, _i, _e)
+/** Exdent (unindent) R* messages by one level
+ *
+ * @note Has no effect on the indentation of INFO, WARN, ERROR, DEBUG messages,
+ *	 only RINFO, RWARN, RERROR etc...
+ */
+#define REXDENT() (request->log.indent -= 2)
+
+/** Output string with error marker, showing where format error occurred
+ *
+ @verbatim
+   my pet kitty
+      ^ kitties are not pets, are nature devouring hell beasts
+ @endverbatim
+ *
+ * @warning If a REQUEST * is **NOT** available, or is NULL, this macro must **NOT** be used.
+ *
+ * @param _l log category, a log_type_t value.
+ * @param _p log priority, a log_lvl_t value.
+ * @param _m string to mark e.g. "my pet kitty".
+ * @param _i index e.g. 3 (starts from 0).
+ * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts".
+ */
+#define RMARKER(_l, _p, _m, _i, _e)	radlog_request_marker(_l, _p, request, _m, _i, _e)
 
 /** Output string with error marker, showing where format error occurred
  *
@@ -274,11 +291,13 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
       ^ kitties are not pets, are nature devouring hell beasts
  @endverbatim
  *
+ * @warning If a REQUEST * is **NOT** available, or is NULL, this macro must **NOT** be used.
+ *
  * @param _m string to mark e.g. "my pet kitty".
  * @param _i index e.g. 3 (starts from 0).
  * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts".
  */
-#define REMARKER(_m, _i, _e)		_RMKR(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e)
+#define REMARKER(_m, _i, _e)		RMARKER(L_DBG_ERR, L_DBG_LVL_1, _m, _i, _e)
 
 /** Output string with error marker, showing where format error occurred
  *
@@ -289,15 +308,26 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
       ^ kitties are not pets, are nature devouring hell beasts
  @endverbatim
  *
+ * @warning If a REQUEST * is **NOT** available, or is NULL, this macro must **NOT** be used.
+ *
  * @param _m string to mark e.g. "my pet kitty".
  * @param _i index e.g. 3 (starts from 0).
  * @param _e error e.g. "kitties are not pets, are nature devouring hell beasts".
  */
-#define RDMARKER(_m, _i, _e)		_RMKR(L_DBG, L_DBG_LVL_1, _m, _i, _e)
+#define RDMARKER(_m, _i, _e)		RMARKER(L_DBG, L_DBG_LVL_1, _m, _i, _e)
 
-/*
- *	Use different logging functions depending on whether
- *	request is NULL or not.
+/** Use different logging functions depending on whether request is NULL or not.
+ *
+ * @note The module must define MOD_PREFIX as its name (do this in the module
+ *	 header file) e.g. @code{.c}#define MOD_PREFIX "rlm_example"@endcode
+ *
+ * This is useful for areas of code which are run on server startup, and when
+ * processing requests.
+ *
+ * @param _l_request The name of a R* logging macro e.g. RDEBUG3.
+ * @param _l_global The name of a global logging macro e.g. DEBUG3.
+ * @param fmt printf style format string.
+ * @param ... printf arguments.
  */
  #define ROPTIONAL(_l_request, _l_global, fmt, ...) \
 do {\
@@ -308,10 +338,20 @@ do {\
  	}\
 } while (0)
 
-/*
- *	Rate limit messages.
+#define RATE_LIMIT_ENABLED rate_limit_enabled()		//!< True if rate limiting is enabled.
+/** Rate limit messages
+ *
+ * Rate limit log messages so they're written a maximum of once per second.
+ *
+ @code{.c}
+   RATE_LIMIT(RERROR("Home servers alive in pool %s", pool->name));
+ @endcode
+ * @note Rate limits the macro, not the message. If five different messages are
+ *	 produced using the same macro in the same second, only the first will
+ *	 be written to the log.
+ *
+ * @param _x Logging macro to limit.
  */
-#define RATE_LIMIT_ENABLED rate_limit_enabled()
 #define RATE_LIMIT(_x) \
 do {\
 	if (RATE_LIMIT_ENABLED) {\
