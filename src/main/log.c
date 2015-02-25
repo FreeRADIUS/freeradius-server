@@ -158,7 +158,7 @@ const FR_NAME_NUMBER syslog_severity_table[] = {
 #ifdef LOG_CRIT
 	{ "critical",		LOG_CRIT	},
 #endif
-#ifdef LOG_ERROR
+#ifdef LOG_ERR
 	{ "error",		LOG_ERR		},
 #endif
 #ifdef LOG_WARNING
@@ -446,21 +446,26 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	case L_DST_SYSLOG:
 		switch (type) {
 		case L_DBG:
-		case L_WARN:
 		case L_DBG_WARN:
 		case L_DBG_ERR:
 		case L_DBG_ERR_REQ:
 		case L_DBG_WARN_REQ:
 			type = LOG_DEBUG;
 			break;
+
 		case L_AUTH:
 		case L_PROXY:
 		case L_ACCT:
 			type = LOG_NOTICE;
 			break;
+
 		case L_INFO:
 			type = LOG_INFO;
 			break;
+
+		case L_WARN:
+			type = LOG_WARNING;
+
 		case L_ERR:
 			type = LOG_ERR;
 			break;
