@@ -848,10 +848,12 @@ redo:
 		    (g->vpt->type == TMPL_TYPE_XLAT) ||
 		    (g->vpt->type == TMPL_TYPE_EXEC)) {
 			char *p;
+			ssize_t len;
 
-			if (tmpl_aexpand(request, &p, request, g->vpt, NULL, NULL) < 0) goto find_null_case;
+			len = tmpl_aexpand(request, &p, request, g->vpt, NULL, NULL);
+			if (len < 0) goto find_null_case;
 			data.strvalue = p;
-			tmpl_init(&vpt, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
+			tmpl_init(&vpt, TMPL_TYPE_LITERAL, data.strvalue, len);
 		}
 
 		/*
