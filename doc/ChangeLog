@@ -11,6 +11,8 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Don't use main server log functions from within panic_action,
 	  as in the case of syslog this would cause deadlocks if the
 	  fault was triggered from within a malloc.
+	* Fix issue in "switch" when "correct_escapes = false".
+	  Fixes #911.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
