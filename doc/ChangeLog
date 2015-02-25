@@ -8,6 +8,7 @@ FreeRADIUS 2.2.7 Tuesday 18 Nov 2014 14:00:00 EST, urgency=medium
 	  builds on Cygwin.  Closes #875.
 	* Note that we don't need to generate ephemeral RSA keys.
 	* Port detail file fixes from v3.
+	* Use correct destination port for replies to DHCP relay.
 
 FreeRADIUS 2.2.6 Tuesday 18 Nov 2014 15:00:00 EST, urgency=medium
 	Feature improvements
