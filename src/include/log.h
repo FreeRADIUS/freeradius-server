@@ -127,7 +127,7 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
  *
  * Messages will always be written irrespective of the debugging level set with ``-x`` or ``-X``.
  *
- * @note If a REQUEST * is **NOT** available, these functions must be used.
+ * @note If a REQUEST * is **NOT** available, these macros **MUST** be used.
  * @note These macros should only be used for important global events.
  *
  * **Debug categories**
@@ -190,7 +190,7 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
  *
  * Messages will always be written irrespective of the debugging level set with ``-x`` or ``-X``.
  *
- * @note If a REQUEST * is available, these functions should be used.
+ * @note If a REQUEST * is available, these macros should be used.
  * @note These macros should only be used for important global events.
  *
  * **Debug categories**
