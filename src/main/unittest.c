@@ -777,14 +777,19 @@ int main(int argc, char *argv[])
 
 	fr_state_init();
 
-	/* Set the panic action (if required) */
-	if (main_config.panic_action &&
-#ifndef NDEBUG
-	    !getenv("PANIC_ACTION") &&
-#endif
-	    (fr_fault_setup(main_config.panic_action, argv[0]) < 0)) {
-		rcode = EXIT_FAILURE;
-		goto finish;
+	/*
+	 *  Set the panic action (if required)
+	 */
+	{
+		char const *panic_action = NULL;
+
+		panic_action = getenv("PANIC_ACTION");
+		if (!panic_action) panic_action = main_config.panic_action;
+
+		if (panic_action && (fr_fault_setup(panic_action, argv[0]) < 0)) {
+			fr_perror("radiusd");
+			exit(EXIT_FAILURE);
+		}
 	}
 
 	setlinebuf(stdout); /* unbuffered output */
