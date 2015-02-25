@@ -916,7 +916,8 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 
 	list = radius_list(context, map->lhs->tmpl_list);
 	if (!list) {
-		REDEBUG("Mapping \"%s\" -> \"%s\" invalid in this context", map->rhs->name, map->lhs->name);
+		REDEBUG("Mapping \"%.*s\" -> \"%.*s\" invalid in this context",
+			(int)map->rhs->len, map->rhs->name, (int)map->lhs->len, map->lhs->name);
 
 		return -2;
 	}
