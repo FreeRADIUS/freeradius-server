@@ -2334,16 +2334,16 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		 *	...and for everything else, the name of the packet.
 		 */
 		default:
-		{
 			dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, fr_packet_codes[reply->code]);
-			if (dval) post_proxy_type = dval->value;
+			if (dval) {
+				post_proxy_type = dval->value;
 
-			/*
-			 *	Create config:Post-Proxy-Type
-			 */
-			vp = radius_paircreate(request, &request->config_items, PW_POST_PROXY_TYPE, 0);
-			vp->vp_integer = dval->value;
-		}
+				/*
+				 *	Create config:Post-Proxy-Type
+				 */
+				vp = radius_paircreate(request, &request->config_items, PW_POST_PROXY_TYPE, 0);
+				vp->vp_integer = dval->value;
+			}
 			break;
 		}
 	}
