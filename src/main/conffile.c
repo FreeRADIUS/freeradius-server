@@ -902,6 +902,19 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				 *  Substitute the value of the variable.
 				 */
 				cp = cf_item_to_pair(ci);
+
+				/*
+				 *	If the thing we reference is
+				 *	marked up as being expanded in
+				 *	pass2, don't expand it now.
+				 *	Let it be expanded in pass2.
+				 */
+				if (cp->pass2) {
+					ERROR("%s[%d]: Reference \"%s\" points to a variable which has not been expanded.",
+					      cf, *lineno, input);
+					return NULL;
+				}
+
 				if (!cp->value) {
 					ERROR("%s[%d]: Reference \"%s\" has no value",
 					       cf, *lineno, input);
