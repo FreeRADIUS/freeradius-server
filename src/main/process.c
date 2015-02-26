@@ -2324,6 +2324,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	/*
 	 *	Delete any reply we had accumulated until now.
 	 */
+	RDEBUG2("Clearing existing &reply: attributes");
 	pairfree(&request->reply->vps);
 
 	/*
@@ -2331,29 +2332,36 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	BEFORE playing games with the attributes.
 	 */
 	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE, 0, TAG_ANY);
-
+	if (vp) {
+		post_proxy_type = vp->vp_integer;
 	/*
 	 *	If we have a proxy_reply, and it was a reject, setup
 	 *	post-proxy-type Reject
 	 */
-	if (!vp && reply &&
-	    reply->code == PW_CODE_ACCESS_REJECT) {
-		DICT_VALUE	*dval;
+	} else if (reply && is_radius_code(reply->code)) {
+		DICT_VALUE *dval;
 
-		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Reject");
-		if (dval) {
-			vp = radius_paircreate(request, &request->config_items,
-					       PW_POST_PROXY_TYPE, 0);
+		switch (reply->code) {
+		/*
+		 *	Why would we use consistent names for things?
+		 */
+		case PW_CODE_ACCESS_REJECT:
+			dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Reject");
+			if (dval) post_proxy_type = dval->value;
+			break;
 
-			vp->vp_integer = dval->value;
+		/*
+		 *	...and for everything else, the name of the packet.
+		 */
+		default:
+			dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, fr_packet_codes[reply->code]);
+			if (dval) post_proxy_type = dval->value;
+			break;
 		}
 	}
 
-	if (vp) {
-		post_proxy_type = vp->vp_integer;
-
-		RDEBUG2("Found Post-Proxy-Type %s", dict_valnamebyattr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
-	}
+	if (post_proxy_type > 0) RDEBUG2("Found Post-Proxy-Type %s",
+					 dict_valnamebyattr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
 
 	if (reply) {
 		VERIFY_PACKET(reply);
@@ -2447,7 +2455,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 	if (!proxy_p) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		PROXY( "No outstanding request was found for reply from host %s port %d - ID %u",
+		PROXY("No outstanding request was found for reply from host %s port %d - ID %u",
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
