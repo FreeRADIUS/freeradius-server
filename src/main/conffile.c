@@ -80,6 +80,7 @@ struct conf_pair {
 	FR_TOKEN op;			//!< Operator e.g. =, :=
 	FR_TOKEN lhs_type;		//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 	FR_TOKEN rhs_type;		//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	bool pass2;			//!< do expansion in pass2.
 };
 
 /** Internal data that is associated with a configuration section
@@ -388,7 +389,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
 			name2 = cf_expand_variables(parent->item.filename,
 						&parent->item.lineno,
 						parent,
-						buffer, sizeof(buffer), name2);
+					        buffer, sizeof(buffer), name2);
 			if (!name2) {
 				ERROR("Failed expanding section name");
 				return NULL;
@@ -850,7 +851,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			 */
 			if ((size_t) (end - ptr) >= sizeof(name)) {
 				ERROR("%s[%d]: Reference string is too large",
-				       cf, *lineno);
+				      cf, *lineno);
 				return NULL;
 			}
 
@@ -1840,6 +1841,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char buf4[8192];
 	FR_TOKEN t1 = T_INVALID, t2, t3;
 	bool has_spaces = false;
+	bool pass2;
 	char *cbuf = buf;
 	size_t len;
 	fr_cond_t *cond = NULL;
@@ -1927,6 +1929,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		has_spaces = false;
 
 	get_more:
+		pass2 = false;
+
 		/*
 		 *	The parser is getting to be evil.
 		 */
@@ -2388,14 +2392,17 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 
 			/*
-			 *	Handle variable substitution via ${foo}
+			 *	Allow "foo" by itself, or "foo = bar"
 			 */
 			switch (t3) {
 			case T_BARE_WORD:
 			case T_DOUBLE_QUOTED_STRING:
 			case T_BACK_QUOTED_STRING:
 				value = cf_expand_variables(filename, lineno, this, buf4, sizeof(buf4), buf3);
-				if (!value) return -1;
+				if (!value) {
+					pass2 = true;
+					value = buf3;
+				}
 				break;
 
 			case T_EOL:
@@ -2416,6 +2423,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			if (!cpn) return -1;
 			cpn->item.filename = talloc_strdup(cpn, filename);
 			cpn->item.lineno = *lineno;
+			cpn->pass2 = pass2;
 			cf_item_add(this, &(cpn->item));
 
 			/*
@@ -2621,6 +2629,55 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 	return 0;
 }
 
+
+/*
+ *	Do variable expansion in pass2.
+ */
+static int cf_section_pass2(CONF_SECTION *cs)
+{
+	CONF_ITEM *ci;
+	CONF_PAIR *cp;
+	char const *value;
+	char buffer[8192];
+
+	for (ci = cs->children; ci; ci = ci->next) {
+		switch (ci->type) {
+		case CONF_ITEM_SECTION:
+			if (cf_section_pass2(cf_item_to_section(ci)) < 0) return -1;
+			break;
+
+		case CONF_ITEM_PAIR:
+			cp = cf_item_to_pair(ci);
+			if (!cp->value || !cp->pass2) break;
+
+			switch (cp->rhs_type) {
+			default:
+				break;
+
+                       case T_BARE_WORD:
+                       case T_DOUBLE_QUOTED_STRING:
+                       case T_BACK_QUOTED_STRING:
+                               value = cf_expand_variables(ci->filename, &ci->lineno, cs, buffer, sizeof(buffer), cp->value);
+                               if (!value) return -1;
+
+			       rad_const_free(cp->value);
+			       cp->value = talloc_typed_strdup(cp, value);
+                               break;
+			}
+			break;
+
+		case CONF_ITEM_DATA: /* Skip data */
+			break;
+
+		case CONF_ITEM_INVALID:
+			rad_assert(0);
+		}
+	}
+
+	return 0;
+}
+
+
 /*
  *	Bootstrap a config file.
  */
@@ -2640,6 +2697,15 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	cf_item_add(cs, &(cp->item));
 
 	if (cf_file_include(cs, filename) < 0) return -1;
+
+	/*
+	 *	Now that we've read the file, go back through it and
+	 *	expand the variables.
+	 */
+	if (cf_section_pass2(cs) < 0) {
+		talloc_free(cs);
+		return -1;
+	}
 
 	return 0;
 }
