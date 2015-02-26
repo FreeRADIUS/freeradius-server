@@ -488,6 +488,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 
 		case L_WARN:
 			type = LOG_WARNING;
+			break;
 
 		case L_ERR:
 			type = LOG_ERR;
