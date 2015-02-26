@@ -2335,36 +2335,41 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	if (vp) {
 		post_proxy_type = vp->vp_integer;
 	/*
-	 *	If we have a proxy_reply, and it was a reject, setup
-	 *	post-proxy-type Reject
+	 *	If we have a proxy_reply, and it was a reject, or a NAK
+	 *	setup Post-Proxy <type>.
+	 *
+	 *	If the <type> doesn't have a section, then the Post-Proxy
+	 *	section is ignored.
 	 */
-	} else if (reply && is_radius_code(reply->code)) {
+	} else if (reply) {
 		DICT_VALUE *dval;
 
 		switch (reply->code) {
-		/*
-		 *	Why would we use consistent names for things?
-		 */
 		case PW_CODE_ACCESS_REJECT:
 			dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Reject");
 			if (dval) post_proxy_type = dval->value;
 			break;
 
-		/*
-		 *	...and for everything else, the name of the packet.
-		 */
-		default:
+		case PW_CODE_DISCONNECT_NAK:
 			dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, fr_packet_codes[reply->code]);
-			if (dval) {
-				post_proxy_type = dval->value;
-
-				/*
-				 *	Create config:Post-Proxy-Type
-				 */
-				vp = radius_paircreate(request, &request->config_items, PW_POST_PROXY_TYPE, 0);
-				vp->vp_integer = dval->value;
-			}
+			if (dval) post_proxy_type = dval->value;
 			break;
+
+		case PW_CODE_COA_NAK:
+			dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, fr_packet_codes[reply->code]);
+			if (dval) post_proxy_type = dval->value;
+			break;
+
+		default:
+			break;
+		}
+
+		/*
+		 *	Create config:Post-Proxy-Type
+		 */
+		if (dval) {
+			vp = radius_paircreate(request, &request->config_items, PW_POST_PROXY_TYPE, 0);
+			vp->vp_integer = dval->value;
 		}
 	}
 
