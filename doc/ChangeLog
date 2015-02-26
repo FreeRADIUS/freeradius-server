@@ -13,6 +13,8 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	  fault was triggered from within a malloc.
 	* Fix issue in "switch" when "correct_escapes = false".
 	  Fixes #911.
+	* Fix sqlcounter configuration to use "%%b" instead of "%b",
+	  otherwise the new syntax validation will fail.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements

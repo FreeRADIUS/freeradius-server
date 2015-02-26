@@ -251,43 +251,80 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
 
 static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlcounter_t *inst)
 {
-	int c, freespace;
+	int freespace;
 	char const *p;
 	char *q;
 	char tmpdt[40]; /* For temporary storing of dates */
 
 	q = out;
-	for (p = fmt; *p ; p++) {
+	p = fmt;
+	while (*p) {
 		/* Calculate freespace in output */
 		freespace = outlen - (q - out);
 		if (freespace <= 1) {
 			return -1;
 		}
-		c = *p;
-		if (c != '%') {
-			*q++ = *p;
+
+		/*
+		 *	Non-% get copied as-is.
+		 */
+		if (*p != '%') {
+			*q++ = *p++;
 			continue;
 		}
-		if (*++p == '\0') break;
-		if (c == '%') switch (*p) {
+		p++;
+		if (!*p) {	/* % and then EOS --> % */
+			*q++ = '%';
+			break;
+		}
+
+		if (freespace <= 2) return -1;
+
+		/*
+		 *	We need TWO %% in a row before we do our expansions.
+		 *	If we only get one, just copy the %s as-is.
+		 */
+		if (*p != '%') {
+			*q++ = '%';
+			*q++ = *p++;
+			continue;
+		}
+		p++;
+		if (!*p) {
+			*q++ = '%';
+			*q++ = '%';
+			break;
+		}
+
+		if (freespace <= 3) return -1;
+
+		switch (*p) {
 			case 'b': /* last_reset */
 				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->last_reset);
 				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
+				p++;
 				break;
 			case 'e': /* reset_time */
 				snprintf(tmpdt, sizeof(tmpdt), "%" PRId64, (int64_t) inst->reset_time);
 				strlcpy(q, tmpdt, freespace);
 				q += strlen(q);
+				p++;
 				break;
 			case 'k': /* Key Name */
 				WARN("Please replace '%%k' with '${key}'");
 				strlcpy(q, inst->key_name, freespace);
 				q += strlen(q);
+				p++;
 				break;
+
+				/*
+				 *	%%s gets copied over as-is.
+				 */
 			default:
 				*q++ = '%';
-				*q++ = *p;
+				*q++ = '%';				
+				*q++ = *p++;
 				break;
 		}
 	}
