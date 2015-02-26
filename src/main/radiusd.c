@@ -349,6 +349,8 @@ int main(int argc, char *argv[])
 	if (tls_global_version_check(main_config.allow_vulnerable_openssl) < 0) exit(EXIT_FAILURE);
 #endif
 
+	fr_talloc_fault_setup();
+
 	/*
 	 *  Set the panic action (if required)
 	 */

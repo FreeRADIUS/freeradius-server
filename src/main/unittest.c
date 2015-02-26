@@ -639,6 +639,8 @@ int main(int argc, char *argv[])
 	VALUE_PAIR *filter_vps = NULL;
 	bool xlat_only = false;
 
+	fr_talloc_fault_setup();
+
 	/*
 	 *	If the server was built with debugging enabled always install
 	 *	the basic fatal signal handlers.

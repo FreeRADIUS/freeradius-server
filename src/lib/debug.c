@@ -849,6 +849,17 @@ static int _fr_disable_null_tracking(UNUSED bool *p)
 	return 0;
 }
 
+/** Register talloc fault handlers
+ *
+ * Just register the fault handlers we need to make talloc
+ * produce useful debugging output.
+ */
+void fr_talloc_fault_setup(void)
+{
+	talloc_set_log_fn(_fr_talloc_log);
+	talloc_set_abort_fn(_fr_talloc_fault);
+}
+
 /** Registers signal handlers to execute panic_action on fatal signal
  *
  * May be called multiple time to change the panic_action/program.
