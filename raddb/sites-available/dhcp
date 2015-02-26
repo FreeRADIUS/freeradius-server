@@ -232,6 +232,19 @@ dhcp DHCP-Inform {
 	reject
 }
 
+#
+#  For Windows 7 boxes
+#
+#dhcp DHCP-Inform {
+#	update reply {
+#		Packet-Dst-Port = 67
+#		DHCP-Message-Type = DHCP-ACK
+#		DHCP-DHCP-Server-Identifier = "%{Packet-Dst-IP-Address}"
+#		DHCP-Site-specific-28 = 0x0a00
+#	}
+#	ok
+#}
+
 dhcp DHCP-Release {
 	update reply {
 	       &DHCP-Message-Type = DHCP-Do-Not-Respond
