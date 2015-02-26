@@ -2646,46 +2646,38 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 
 /*
  *	Do variable expansion in pass2.
+ *
+ *	This is a breadth-first expansion.  "deep
  */
 static int cf_section_pass2(CONF_SECTION *cs)
 {
 	CONF_ITEM *ci;
-	CONF_PAIR *cp;
-	char const *value;
-	char buffer[8192];
 
 	for (ci = cs->children; ci; ci = ci->next) {
-		switch (ci->type) {
-		case CONF_ITEM_SECTION:
-			if (cf_section_pass2(cf_item_to_section(ci)) < 0) return -1;
-			break;
+		char const *value;
+		CONF_PAIR *cp;
+		char buffer[8192];
 
-		case CONF_ITEM_PAIR:
-			cp = cf_item_to_pair(ci);
-			if (!cp->value || !cp->pass2) break;
+		if (ci->type != CONF_ITEM_PAIR) continue;
 
-			switch (cp->rhs_type) {
-			default:
-				break;
+		cp = cf_item_to_pair(ci);
+		if (!cp->value || !cp->pass2) continue;
 
-                       case T_BARE_WORD:
-                       case T_DOUBLE_QUOTED_STRING:
-                       case T_BACK_QUOTED_STRING:
-                               value = cf_expand_variables(ci->filename, &ci->lineno, cs, buffer, sizeof(buffer), cp->value);
-                               if (!value) return -1;
+		rad_assert((cp->rhs_type == T_BARE_WORD) ||
+			   (cp->rhs_type == T_DOUBLE_QUOTED_STRING) ||
+			   (cp->rhs_type == T_BACK_QUOTED_STRING));
 
-			       rad_const_free(cp->value);
-			       cp->value = talloc_typed_strdup(cp, value);
-                               break;
-			}
-			break;
+		value = cf_expand_variables(ci->filename, &ci->lineno, cs, buffer, sizeof(buffer), cp->value);
+		if (!value) return -1;
 
-		case CONF_ITEM_DATA: /* Skip data */
-			break;
+		rad_const_free(cp->value);
+		cp->value = talloc_typed_strdup(cp, value);
+	}
 
-		case CONF_ITEM_INVALID:
-			rad_assert(0);
-		}
+	for (ci = cs->children; ci; ci = ci->next) {
+		if (ci->type != CONF_ITEM_SECTION) continue;
+
+		if (cf_section_pass2(cf_item_to_section(ci)) < 0) return -1;
 	}
 
 	return 0;
