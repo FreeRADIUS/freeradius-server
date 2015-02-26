@@ -127,7 +127,7 @@ static void		*cf_data_find_internal(CONF_SECTION const *cs, char const *name, in
 static char const 	*cf_expand_variables(char const *cf, int *lineno,
 					     CONF_SECTION *outercs,
 					     char *output, size_t outsize,
-					     char const *input);
+					     char const *input, bool *soft_fail);
 
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
@@ -389,7 +389,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
 			name2 = cf_expand_variables(parent->item.filename,
 						&parent->item.lineno,
 						parent,
-					        buffer, sizeof(buffer), name2);
+						buffer, sizeof(buffer), name2, NULL);
 			if (!name2) {
 				ERROR("Failed expanding section name");
 				return NULL;
@@ -800,12 +800,14 @@ CONF_SECTION *cf_top_section(CONF_SECTION *cs)
 static char const *cf_expand_variables(char const *cf, int *lineno,
 				       CONF_SECTION *outercs,
 				       char *output, size_t outsize,
-				       char const *input)
+				       char const *input, bool *soft_fail)
 {
 	char *p;
 	char const *end, *ptr;
 	CONF_SECTION const *parentcs;
 	char name[8192];
+
+	if (soft_fail) *soft_fail = false;
 
 	/*
 	 *	Find the master parent conf section.
@@ -865,6 +867,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 
 			ci = cf_reference_item(parentcs, outercs, name);
 			if (!ci) {
+				if (soft_fail) *soft_fail = true;
 				ERROR("%s[%d]: Reference \"%s\" not found", cf, *lineno, input);
 				return NULL;
 			}
@@ -910,6 +913,8 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				 *	Let it be expanded in pass2.
 				 */
 				if (cp->pass2) {
+					if (soft_fail) *soft_fail = true;
+
 					ERROR("%s[%d]: Reference \"%s\" points to a variable which has not been expanded.",
 					      cf, *lineno, input);
 					return NULL;
@@ -1337,7 +1342,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 			value = cf_expand_variables("<internal>",
 						    &lineno,
 						    cs, buffer, sizeof(buffer),
-						    value);
+						    value, NULL);
 			if (!value) {
 				cf_log_err(&(cs->item),"Failed expanding variable %s", name);
 				return -1;
@@ -2027,7 +2032,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			if (buf2[0] == '$') relative = false;
 
-			value = cf_expand_variables(filename, lineno, this, buf4, sizeof(buf4), buf2);
+			value = cf_expand_variables(filename, lineno, this, buf4, sizeof(buf4), buf2, NULL);
 			if (!value) return -1;
 
 			if (!FR_DIR_IS_RELATIVE(value)) relative = false;
@@ -2240,7 +2245,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				ptr = cf_expand_variables(filename, lineno,
 							  this,
 							  buf3, sizeof(buf3),
-							  ptr);
+							  ptr, NULL);
 				if (!ptr) {
 					ERROR("%s[%d]: Parse error expanding ${...} in condition",
 					      filename, *lineno);
@@ -2408,11 +2413,21 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Allow "foo" by itself, or "foo = bar"
 			 */
 			switch (t3) {
+				bool soft_fail;
+
 			case T_BARE_WORD:
 			case T_DOUBLE_QUOTED_STRING:
 			case T_BACK_QUOTED_STRING:
-				value = cf_expand_variables(filename, lineno, this, buf4, sizeof(buf4), buf3);
+				value = cf_expand_variables(filename, lineno, this, buf4, sizeof(buf4), buf3, &soft_fail);
 				if (!value) {
+					if (!soft_fail) return -1;
+
+					/*
+					 *	References an item which doesn't exist,
+					 *	or which is already marked up as being
+					 *	expanded in pass2.  Wait for pass2 to
+					 *	do the expansions.
+					 */
 					pass2 = true;
 					value = buf3;
 				}
@@ -2666,7 +2681,7 @@ static int cf_section_pass2(CONF_SECTION *cs)
 			   (cp->rhs_type == T_DOUBLE_QUOTED_STRING) ||
 			   (cp->rhs_type == T_BACK_QUOTED_STRING));
 
-		value = cf_expand_variables(ci->filename, &ci->lineno, cs, buffer, sizeof(buffer), cp->value);
+		value = cf_expand_variables(ci->filename, &ci->lineno, cs, buffer, sizeof(buffer), cp->value, NULL);
 		if (!value) return -1;
 
 		rad_const_free(cp->value);
