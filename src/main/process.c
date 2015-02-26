@@ -2342,7 +2342,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	section is ignored.
 	 */
 	} else if (reply) {
-		DICT_VALUE *dval;
+		DICT_VALUE *dval = NULL;
 
 		switch (reply->code) {
 		case PW_CODE_ACCESS_REJECT:
