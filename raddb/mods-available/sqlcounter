@@ -26,10 +26,10 @@
 #  counter records (usually 'User-Name').
 #
 #  The 'query' parameter specifies the SQL query used to get
-#  the current Counter value from the database. There are 3
+#  the current Counter value from the database. There are 2
 #  parameters that can be used in the query:
-#		%b	unix time value of beginning of reset period
-#		%e	unix time value of end of reset period
+#		%%b	unix time value of beginning of reset period
+#		%%e	unix time value of end of reset period
 #
 #  The 'check_name' parameter is the name of the 'check'
 #  attribute to use to access the counter in the 'users' file
