@@ -915,7 +915,7 @@ static inline int rs_response_to_pcap(rs_event_t *event, rs_request_t *request, 
 	 *	If we're filtering by response then the requests then the capture buffer
 	 *	associated with the request should contain buffered request packets.
 	 */
-	if (conf->filter_response) {
+	if (conf->filter_response && request) {
 		rs_capture_t *start;
 
 		/*
