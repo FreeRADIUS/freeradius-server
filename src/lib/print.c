@@ -234,36 +234,15 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 		 */
 		if (*p == quote) {
 			sp = quote;
+			goto do_escape;
 
-		} else switch (*p) {
-		case '\\':
-			/*
-			 *	If the next character is a quote, we
-			 *	need to escape the backslash.
-			 */
-			if (p[1] == quote) {
-				sp = '\\';
+		}
 
-			/*
-			 *	Ensure that "\r" isn't
-			 *	interpreted as '\r', but
-			 *	instead as "\\r"
-			 */
-			} else switch (p[1]) {
-			case 'r':
-			case 't':
-			case 'n':
-			case '\\':
-				sp = '\\';
-				break;
-
-			default:
-				sp = '\0';
-				break;
-
-			}
-			break;
-
+		/*
+		 *	Try to convert 0x0a --> \r, etc.
+		 *	Backslashes get handled specially.
+		 */
+		switch (*p) {
 		case '\r':
 			sp = 'r';
 			break;
@@ -279,8 +258,72 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 		default:
 			sp = '\0';
 			break;
-		}
 
+
+			/*
+			 *	If we have \X, where 'X' is a special character,
+			 *	then the backslash needs to be escaped, so that
+			 *	the special character isn't seen in the output
+			 *	as \r.
+			 *
+			 *	i.e. the string 0x0a '\' 'r' gets printed as
+			 *	\r\\r
+			 *
+			 *	BUT \q is printed just as \q, because
+			 *	'q' isn't a special character.
+			 *
+			 *	This is arguably retarded, but it's consistent
+			 *	with the parsing rules.
+			 */
+		case '\\':
+			/*
+			 *	If the next character is a quote, we
+			 *	need to escape the backslash.  The
+			 *	quote will get handled in the next
+			 *	pass, and escaped as normal.
+			 */
+			if (p[1] == quote) {
+				sp = p[0];
+				goto do_escape;
+			}
+
+			/*
+			 *	\ + r --> \\ r
+			 */
+			switch (p[1]) {
+			case 'r':
+			case 't':
+			case 'n':
+				sp = p[1];
+				break;
+
+				/*
+				 *	\ + q means that the \ gets printed
+				 *	as itself, and we keep going to print the
+				 *	'q' as itself, too.
+				 */
+			default:
+				sp = '\0';
+				break;
+
+				/*
+				 *	\ + \ means that we print both as-is,
+				 *	and we DON'T get excited over the next
+				 *	character.
+				 */
+			case '\\':
+				if (freespace < 3) break; /* \ + <c> + \0 */
+				*out++ = '\\';
+				*out++ = '\\';
+				freespace -= 2;
+				p += 2;
+				inlen -= 2;
+				continue;
+			}
+			break;
+		} /* escape the character at *p */
+
+	do_escape:
 		if (sp) {
 			if (freespace < 3) break; /* \ + <c> + \0 */
 			*out++ = '\\';
@@ -373,7 +416,6 @@ size_t fr_prints_len(char const *in, ssize_t inlen, char quote)
 			case 'r':
 			case 't':
 			case 'n':
-			case '\\':
 				sp = '\\';
 				break;
 
@@ -381,6 +423,11 @@ size_t fr_prints_len(char const *in, ssize_t inlen, char quote)
 				sp = '\0';
 				break;
 
+			case '\\': /* skip BOTH of the escapes */
+				outlen += 2;
+				p += 2;
+				inlen -= 2;
+				continue;
 			}
 			break;
 

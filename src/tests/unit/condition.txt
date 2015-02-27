@@ -619,3 +619,13 @@ data &FreeRADIUS-Proxied-To == 127.0.0.1/32
 
 condition &FreeRADIUS-Attr-1 == 127.0.0.1
 data &FreeRADIUS-Proxied-To == 127.0.0.1/32
+
+#
+#  Escape the backslashes correctly
+#  And print them correctly
+#
+condition &User-Name =~ /@|\\/
+data &User-Name =~ /@|\\/
+
+condition &User-Name == '\\'
+data &User-Name == '\\'
