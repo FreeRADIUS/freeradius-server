@@ -1121,7 +1121,7 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 			return strlen(buffer);
 		}
 
-		c = '\'';
+		c = vpt->quote;
 		break;
 
 	case TMPL_TYPE_EXEC:
@@ -1230,7 +1230,7 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
 
 	case TMPL_TYPE_DATA:
 		return vp_data_prints_value(buffer, bufsize, vpt->tmpl_data_type, values,
-					    &vpt->tmpl_data_value, vpt->tmpl_data_length, '\'');
+					    &vpt->tmpl_data_value, vpt->tmpl_data_length, vpt->quote);
 	}
 
 	if (bufsize <= 3) {
@@ -1270,6 +1270,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		       request_refs_t request_def, pair_lists_t list_def, bool do_escape)
 {
 	bool do_xlat;
+	char quote;
 	char const *p;
 	ssize_t slen;
 	PW_TYPE data_type = PW_TYPE_STRING;
@@ -1282,14 +1283,19 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		 *	If we can parse it as an attribute, it's an attribute.
 		 *	Otherwise, treat it as a literal.
 		 */
+		quote = '\0';
+
 		slen = tmpl_afrom_attr_str(ctx, &vpt, name, request_def, list_def, true, (name[0] == '&'));
 		if ((name[0] == '&') && (slen <= 0)) return slen;
 		if (slen > 0) break;
-		/* FALL-THROUGH */
+		goto parse;
 
 	case T_SINGLE_QUOTED_STRING:
+		quote = '\'';
+
+	parse:
 		if (cf_new_escape && do_escape) {
-			slen = value_data_from_str(ctx, &data, &data_type, NULL, name, inlen, '\'');
+			slen = value_data_from_str(ctx, &data, &data_type, NULL, name, inlen, quote);
 			rad_assert(slen >= 0);
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
@@ -1297,6 +1303,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		} else {
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, inlen);
 		}
+		vpt->quote = quote;
 		slen = vpt->len;
 		break;
 
@@ -1335,6 +1342,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.strvalue, talloc_array_length(data.strvalue) - 1);
 			} else {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
+				vpt->quote = '"';
 			}
 			talloc_free(data.ptr);
 		} else {
@@ -1342,6 +1350,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, name, inlen);
 			} else {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, inlen);
+				vpt->quote = '"';
 			}
 		}
 		slen = vpt->len;
