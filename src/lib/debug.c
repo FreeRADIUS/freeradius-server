@@ -674,30 +674,15 @@ void fr_fault(int sig)
 	 *	for why we only print backtraces in debug builds if we're using GLIBC.
 	 */
 #if defined(HAVE_EXECINFO) && (!defined(NDEBUG) || !defined(__GNUC__))
-	{
-		size_t frame_count, i;
+	if (fr_fault_log_fd >= 0) {
+		size_t frame_count;
 		void *stack[MAX_BT_FRAMES];
-		char **strings;
 
 		frame_count = backtrace(stack, MAX_BT_FRAMES);
 
 		FR_FAULT_LOG("Backtrace of last %zu frames:", frame_count);
 
-		/*
-		 *	Only use backtrace_symbols() if we don't have a logging fd.
-		 *	If the server has experienced memory corruption, there's
-		 *	a high probability that calling backtrace_symbols() (which
-		 *	mallocs more memory), will result in a dead lock.
-		 */
-		if (fr_fault_log_fd < 0) {
-			strings = backtrace_symbols(stack, frame_count);
-			for (i = 0; i < frame_count; i++) {
-				FR_FAULT_LOG("%s", strings[i]);
-			}
-			free(strings);
-		} else {
-			backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
-		}
+		backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
 	}
 #endif
 
