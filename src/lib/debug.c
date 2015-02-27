@@ -753,17 +753,48 @@ finish:
 	fr_exit_now(1);
 }
 
-#ifdef SIGABRT
-/** Work around debuggers which can't backtrace past the signal handler
+/** Callback executed on fatal talloc error
  *
- * At least this provides us some information when we get talloc errors.
+ * This is the simple version which mostly behaves the same way as the default
+ * one, and will not call panic_action.
+ *
+ * @param reason string provided by talloc.
  */
+static void _fr_talloc_fault_simple(char const *reason) CC_HINT(noreturn);
+static void _fr_talloc_fault_simple(char const *reason)
+{
+	FR_FAULT_LOG("talloc abort: %s\n", reason);
+
+#if defined(HAVE_EXECINFO) && (!defined(NDEBUG) || !defined(__GNUC__))
+	if (fr_fault_log_fd >= 0) {
+		size_t frame_count;
+		void *stack[MAX_BT_FRAMES];
+
+		frame_count = backtrace(stack, MAX_BT_FRAMES);
+		FR_FAULT_LOG("Backtrace of last %zu frames:", frame_count);
+		backtrace_symbols_fd(stack, frame_count, fr_fault_log_fd);
+	}
+#endif
+	abort();
+}
+
+/** Callback executed on fatal talloc error
+ *
+ * Translates a talloc abort into a fr_fault call.
+ * Mostly to work around issues with some debuggers not being able to
+ * attach after a SIGABRT has been raised.
+ *
+ * @param reason string provided by talloc.
+ */
+static void _fr_talloc_fault(char const *reason) CC_HINT(noreturn);
 static void _fr_talloc_fault(char const *reason)
 {
-	fr_fault_log("talloc abort: %s\n", reason);
+	FR_FAULT_LOG("talloc abort: %s", reason);
+#ifdef SIGABRT
 	fr_fault(SIGABRT);
-}
 #endif
+	fr_exit_now(1);
+}
 
 /** Wrapper to pass talloc log output to our fr_fault_log function
  *
@@ -842,7 +873,7 @@ static int _fr_disable_null_tracking(UNUSED bool *p)
 void fr_talloc_fault_setup(void)
 {
 	talloc_set_log_fn(_fr_talloc_log);
-	talloc_set_abort_fn(_fr_talloc_fault);
+	talloc_set_abort_fn(_fr_talloc_fault_simple);
 }
 
 /** Registers signal handlers to execute panic_action on fatal signal
