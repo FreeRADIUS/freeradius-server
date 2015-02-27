@@ -464,17 +464,26 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	single quotes get escaped.  Everything else is
 		 *	left as-is.
 		 */
-		if ((quote == '\'') || (quote == '/')) {
+		if (quote == '\'') {
 			q = p;
 
-			/*
-			 *	Escape ONLY the quotation character.
-			 *	Everything else is left as-is.
-			 */
 			while (q < (dst->strvalue + len)) {
+				/*
+				 *	The quotation character is escaped.
+				 */
 				if ((q[0] == '\\') &&
 				    (q[1] == quote)) {
 					*(p++) = quote;
+					q += 2;
+					continue;
+				}
+
+				/*
+				 *	Two backslashes get mangled to one.
+				 */
+				if ((q[0] == '\\') &&
+				    (q[1] == '\\')) {
+					*(p++) = '\\';
 					q += 2;
 					continue;
 				}

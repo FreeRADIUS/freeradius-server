@@ -1267,8 +1267,9 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
  * @return < 0 on error (offset as negative integer), >= 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name, size_t inlen, FR_TOKEN type,
-		       request_refs_t request_def, pair_lists_t list_def)
+		       request_refs_t request_def, pair_lists_t list_def, bool do_escape)
 {
+	bool do_xlat;
 	char const *p;
 	ssize_t slen;
 	PW_TYPE data_type = PW_TYPE_STRING;
@@ -1287,28 +1288,35 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		/* FALL-THROUGH */
 
 	case T_SINGLE_QUOTED_STRING:
-		if (cf_new_escape) {
+		if (cf_new_escape && do_escape) {
 			slen = value_data_from_str(ctx, &data, &data_type, NULL, name, inlen, '\'');
 			rad_assert(slen >= 0);
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
 			talloc_free(data.ptr);
 		} else {
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, -1);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, inlen);
 		}
 		slen = vpt->len;
 		break;
 
 	case T_DOUBLE_QUOTED_STRING:
+		do_xlat = false;
+
 		p = name;
 		while (*p) {
-			if (*p == '\\') {
-				if (!p[1]) break;
-				p += 2;
-				continue;
+			if (do_escape) { /* otherwise \ is just another character */
+				if (*p == '\\') {
+					if (!p[1]) break;
+					p += 2;
+					continue;
+				}
 			}
 
-			if (*p == '%') break;
+			if (*p == '%') {
+				do_xlat = true;
+				break;
+			}
 
 			p++;
 		}
@@ -1319,35 +1327,35 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 		 *	expansion.  Otherwise, convert it to be a
 		 *	literal.
 		 */
-		if (cf_new_escape) {
+		if (cf_new_escape && do_escape) {
 			slen = value_data_from_str(ctx, &data, &data_type, NULL, name, inlen, '"');
-			rad_assert(slen >= 0);
+			if (slen < 0) return slen;
 
-			if (*p) {
+			if (do_xlat) {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.strvalue, talloc_array_length(data.strvalue) - 1);
 			} else {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
 			}
 			talloc_free(data.ptr);
 		} else {
-			if (*p) {
-				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, name, -1);
+			if (do_xlat) {
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, name, inlen);
 			} else {
-				vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, -1);
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, name, inlen);
 			}
 		}
 		slen = vpt->len;
 		break;
 
 	case T_BACK_QUOTED_STRING:
-		if (cf_new_escape) {
+		if (cf_new_escape && do_escape) {
 			slen = value_data_from_str(ctx, &data, &data_type, NULL, name, inlen, '`');
-			rad_assert(slen >= 0);
+			if (slen < 0) return slen;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, data.strvalue, talloc_array_length(data.strvalue) - 1);
 			talloc_free(data.ptr);
 		} else {
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, name, -1);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, name, inlen);
 		}
 		slen = vpt->len;
 		break;
@@ -1355,12 +1363,12 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *nam
 	case T_OP_REG_EQ: /* hack */
 		if (cf_new_escape) {
 			slen = value_data_from_str(ctx, &data, &data_type, NULL, name, inlen, '\0'); /* no unescaping */
-			rad_assert(slen >= 0);
+			if (slen < 0) return slen;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, data.strvalue, talloc_array_length(data.strvalue) - 1);
 			talloc_free(data.ptr);
 		} else {
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, name, -1);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, name, inlen);
 		}
 		slen = vpt->len;
 		break;

@@ -191,7 +191,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	case T_DOUBLE_QUOTED_STRING:
 	case T_BACK_QUOTED_STRING:
 		slen = tmpl_afrom_str(ctx, &map->lhs, attr, talloc_array_length(attr) - 1,
-				      type, dst_request_def, dst_list_def);
+				      type, dst_request_def, dst_list_def, true);
 		if (slen <= 0) {
 			char *spaces, *text;
 
@@ -231,7 +231,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 		map_cast_from_hex(map, type, value)) {
 		/* do nothing */
 	} else {
-		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, src_request_def, src_list_def);
+		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, src_request_def, src_list_def, true);
 		if (slen < 0) goto marker;
 		if (!tmpl_define_unknown_attr(map->rhs)) {
 			cf_log_err_cp(cp, "Failed creating attribute %s: %s", map->rhs->name, fr_strerror());
@@ -388,7 +388,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, F
 
 	map = talloc_zero(ctx, value_pair_map_t);
 
-	slen = tmpl_afrom_str(map, &map->lhs, lhs, strlen(lhs), lhs_type, dst_request_def, dst_list_def);
+	slen = tmpl_afrom_str(map, &map->lhs, lhs, strlen(lhs), lhs_type, dst_request_def, dst_list_def, true);
 	if (slen < 0) {
 	error:
 		talloc_free(map);
@@ -403,7 +403,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, F
 		return 0;
 	}
 
-	slen = tmpl_afrom_str(map, &map->rhs, rhs, strlen(rhs), rhs_type, src_request_def, src_list_def);
+	slen = tmpl_afrom_str(map, &map->rhs, rhs, strlen(rhs), rhs_type, src_request_def, src_list_def, true);
 	if (slen < 0) goto error;
 
 	VERIFY_MAP(map);

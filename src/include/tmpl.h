@@ -235,7 +235,7 @@ ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char con
  *	Parses any type of string into a template
  */
 ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name, size_t inlen,
-				       FR_TOKEN type, request_refs_t request_def, pair_lists_t list_def);
+				       FR_TOKEN type, request_refs_t request_def, pair_lists_t list_def, bool do_escape);
 
 void			tmpl_free(value_pair_tmpl_t **tmpl);
 

@@ -230,19 +230,22 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 		}
 
 		/*
-		 *	Escape the quotation character, if we have one.
+		 *	Always escape the quotation character.
 		 */
 		if (*p == quote) {
 			sp = quote;
 			goto do_escape;
-
 		}
 
 		/*
-		 *	" has 0x0a -> \r conversion.  Everything else
-		 *	escapes the quote and nothing more.
+		 *	Escape the backslash ONLY for single quoted strings.
 		 */
-		if (quote != '"') goto do_escape;
+		if (quote == '\'') {
+			if (*p == '\\') {
+				sp = '\\';
+			}
+			goto do_escape;
+		}
 
 		/*
 		 *	Try to convert 0x0a --> \r, etc.
@@ -261,71 +264,12 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 			sp = 't';
 			break;
 
-		default:
-			sp = '\0';
+		case '\\':
+			sp = '\\';
 			break;
 
-
-			/*
-			 *	If we have \X, where 'X' is a special character,
-			 *	then the backslash needs to be escaped, so that
-			 *	the special character isn't seen in the output
-			 *	as \r.
-			 *
-			 *	i.e. the string 0x0a '\' 'r' gets printed as
-			 *	\r\\r
-			 *
-			 *	BUT \q is printed just as \q, because
-			 *	'q' isn't a special character.
-			 *
-			 *	This is arguably retarded, but it's consistent
-			 *	with the parsing rules.
-			 */
-		case '\\':
-			/*
-			 *	If the next character is a quote, we
-			 *	need to escape the backslash.  The
-			 *	quote will get handled in the next
-			 *	pass, and escaped as normal.
-			 */
-			if (p[1] == quote) {
-				sp = p[0];
-				goto do_escape;
-			}
-
-			/*
-			 *	\ + r --> \\ r
-			 */
-			switch (p[1]) {
-			case 'r':
-			case 't':
-			case 'n':
-				sp = p[0];
-				break;
-
-				/*
-				 *	\ + q means that the \ gets printed
-				 *	as itself, and we keep going to print the
-				 *	'q' as itself, too.
-				 */
-			default:
-				sp = '\0';
-				break;
-
-				/*
-				 *	\ + \ means that we print both as-is,
-				 *	and we DON'T get excited over the next
-				 *	character.
-				 */
-			case '\\':
-				if (freespace < 3) break; /* \ + <c> + \0 */
-				*out++ = '\\';
-				*out++ = '\\';
-				freespace -= 2;
-				p += 2;
-				inlen -= 2;
-				continue;
-			}
+		default:
+			sp = '\0';
 			break;
 		} /* escape the character at *p */
 
@@ -340,15 +284,21 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 			continue;
 		}
 
-		utf8 = fr_utf8_char(p);
-		if (utf8 == 0) {
-			if (freespace < 5) break; /* \ + <o><o><o> + \0 */
-			snprintf(out, freespace, "\\%03o", *p);
-			out += 4;
-			freespace -= 4;
-			p++;
-			inlen--;
-			continue;
+		/*
+		 *	Double quoted strings have octal escaping for
+		 *	things.  Single quoted strings don't.
+		 */
+		if (quote != '\'') {
+			utf8 = fr_utf8_char(p);
+			if (utf8 == 0) {
+				if (freespace < 5) break; /* \ + <o><o><o> + \0 */
+				snprintf(out, freespace, "\\%03o", *p);
+				out += 4;
+				freespace -= 4;
+				p++;
+				inlen--;
+				continue;
+			}
 		}
 
 		do {
@@ -405,38 +355,17 @@ size_t fr_prints_len(char const *in, ssize_t inlen, char quote)
 
 		if (quote && (*p == quote)) {
 			sp = quote;
-		} else switch (*p) {
-		case '\\':
-			/*
-			 *	If the next character is a quote, we
-			 *	need to escape the backslash.
-			 */
-			if (quote && (p[1] == quote)) {
-				sp = '\\';
-			/*
-			 *	Ensure that "\r" isn't
-			 *	interpreted as '\r', but
-			 *	instead as "\\r"
-			 */
-			} else switch (p[1]) {
-			case 'r':
-			case 't':
-			case 'n':
-				sp = '\\';
-				break;
+			goto do_escape;
+		}
 
-			default:
-				sp = '\0';
-				break;
-
-			case '\\': /* skip BOTH of the escapes */
-				outlen += 2;
-				p += 2;
-				inlen -= 2;
-				continue;
+		if (quote == '\'') {
+			if (*p == '\\') {
+				sp = '\\';
 			}
-			break;
+			goto do_escape;
+		}
 
+		switch (*p) {
 		case '\r':
 			sp = 'r';
 			break;
@@ -449,11 +378,16 @@ size_t fr_prints_len(char const *in, ssize_t inlen, char quote)
 			sp = 't';
 			break;
 
+		case '\\':
+			sp = '\\';
+			break;
+
 		default:
 			sp = '\0';
 			break;
 		}
 
+	do_escape:
 		if (sp) {
 			outlen += 2;
 			p++;
@@ -461,12 +395,16 @@ size_t fr_prints_len(char const *in, ssize_t inlen, char quote)
 			continue;
 		}
 
-		utf8 = fr_utf8_char(p);
-		if (utf8 == 0) {
-			outlen += 4;
-			p++;
-			inlen--;
-			continue;
+		if (quote != '\'') {
+			utf8 = fr_utf8_char(p);
+			if (utf8 == 0) {
+				outlen += 4;
+				p++;
+				inlen--;
+				continue;
+			}
+		} else {
+			utf8 = 1;
 		}
 
 		outlen += utf8;
