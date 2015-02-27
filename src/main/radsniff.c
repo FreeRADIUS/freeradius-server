@@ -1039,7 +1039,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		rs_time_print(timestr, sizeof(timestr), &header->ts);
 	}
 
-	len = fr_link_layer_offset(data, header->caplen, event->in->link_type);
+	len = fr_link_layer_offset(data, header->caplen, event->in->link_layer);
 	if (len < 0) {
 		REDEBUG("Failed determining link layer header offset");
 		return;
@@ -2048,9 +2048,7 @@ int main(int argc, char *argv[])
 
 		case 'i':
 			*in_head = fr_pcap_init(conf, optarg, PCAP_INTERFACE_IN);
-			if (!*in_head) {
-				goto finish;
-			}
+			if (!*in_head) goto finish;
 			in_head = &(*in_head)->next;
 			conf->from_dev = true;
 			break;
@@ -2377,8 +2375,23 @@ int main(int argc, char *argv[])
 		for (dev_p = all_devices;
 		     dev_p;
 		     dev_p = dev_p->next) {
+			int link_layer;
+
 			/* Don't use the any devices, it's horribly broken */
 			if (!strcmp(dev_p->name, "any")) continue;
+
+			link_layer = fr_pcap_if_link_layer(errbuf, dev_p);
+			if (link_layer < 0) {
+				DEBUG2("Skipping %s: %s", dev_p->name, errbuf);
+				continue;
+			}
+
+			if (!fr_link_layer_supported(link_layer)) {
+				DEBUG2("Skipping %s: datalink type %s not supported",
+				       dev_p->name, pcap_datalink_val_to_name(link_layer));
+				continue;
+			}
+
 			*in_head = fr_pcap_init(conf, dev_p->name, PCAP_INTERFACE_IN);
 			in_head = &(*in_head)->next;
 		}
@@ -2473,6 +2486,12 @@ int main(int argc, char *argv[])
 				goto finish;
 			}
 
+			if (!fr_link_layer_supported(in_p->link_layer)) {
+				ERROR("Failed opening pcap handle (%s): Datalink type %s not supported",
+				      in_p->name, pcap_datalink_val_to_name(in_p->link_layer));
+				goto finish;
+			}
+
 			if (conf->pcap_filter) {
 				if (fr_pcap_apply_filter(in_p, conf->pcap_filter) < 0) {
 					ERROR("Failed applying filter");
@@ -2499,24 +2518,24 @@ int main(int argc, char *argv[])
 	 *	Open our output interface (if we have one);
 	 */
 	if (out) {
-		out->link_type = -1;	/* Infer output link type from input */
+		out->link_layer = -1;	/* Infer output link type from input */
 
 		for (in_p = in;
 		     in_p;
 		     in_p = in_p->next) {
-			if (out->link_type < 0) {
-				out->link_type = in_p->link_type;
+			if (out->link_layer < 0) {
+				out->link_layer = in_p->link_layer;
 				continue;
 			}
 
-			if (out->link_type != in_p->link_type) {
+			if (out->link_layer != in_p->link_layer) {
 				ERROR("Asked to write to output file, but inputs do not have the same link type");
 				ret = 64;
 				goto finish;
 			}
 		}
 
-		RS_ASSERT(out->link_type >= 0);
+		RS_ASSERT(out->link_layer >= 0);
 
 		if (fr_pcap_open(out) < 0) {
 			ERROR("Failed opening pcap output (%s): %s", out->name, fr_strerror());

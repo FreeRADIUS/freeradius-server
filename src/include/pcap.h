@@ -82,7 +82,7 @@ struct fr_pcap {
 	pcap_t			*handle;			//!< libpcap handle.
 	pcap_dumper_t		*dumper;			//!< libpcap dumper handle.
 
-	int			link_type;			//!< Link layer type.
+	int			link_layer;			//!< Link layer type.
 
 	int			fd;				//!< Selectable file descriptor we feed to select.
 	struct pcap_stat	pstats;				//!< The last set of pcap stats for this handle.
@@ -90,9 +90,10 @@ struct fr_pcap {
 	fr_pcap_t		*next;				//!< Next handle in collection.
 };
 
-fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type);
-int fr_pcap_open(fr_pcap_t *handle);
-int fr_pcap_apply_filter(fr_pcap_t *handle, char const *expression);
-char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c);
+int		fr_pcap_if_link_layer(char *errbuff, pcap_if_t *dev);
+fr_pcap_t	*fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type);
+int		fr_pcap_open(fr_pcap_t *handle);
+int		fr_pcap_apply_filter(fr_pcap_t *handle, char const *expression);
+char		*fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c);
 #endif
 #endif
