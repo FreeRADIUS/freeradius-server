@@ -239,6 +239,12 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 		}
 
 		/*
+		 *	" has 0x0a -> \r conversion.  Everything else
+		 *	escapes the quote and nothing more.
+		 */
+		if (quote != '"') goto do_escape;
+
+		/*
 		 *	Try to convert 0x0a --> \r, etc.
 		 *	Backslashes get handled specially.
 		 */
@@ -294,7 +300,7 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 			case 'r':
 			case 't':
 			case 'n':
-				sp = p[1];
+				sp = p[0];
 				break;
 
 				/*

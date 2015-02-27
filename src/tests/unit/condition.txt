@@ -629,3 +629,6 @@ data &User-Name =~ /@|\\/
 
 condition &User-Name == '\\'
 data &User-Name == '\\'
+
+condition &User-Name !~ /^foo\nbar$/
+data !&User-Name =~ /^foo\nbar$/
