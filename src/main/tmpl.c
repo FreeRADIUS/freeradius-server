@@ -1258,6 +1258,7 @@ size_t tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt, D
  * @param[in] request_def The default request to insert unqualified
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
+ * @param[in] do_escape whether or not we should do escaping, or "false" if the caller already did it.
  * @return < 0 on error (offset as negative integer), >= 0 on success (number of bytes parsed)
  */
 ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name, size_t inlen, FR_TOKEN type,
