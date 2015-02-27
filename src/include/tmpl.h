@@ -131,6 +131,7 @@ typedef struct value_pair_tmpl_t {
 					//!< attribute, just the string id for
 					//!< the attribute.
 	size_t		len;		//!< Name length.
+	char		quote;		//!< Quotation character for "name"
 
 #ifdef HAVE_REGEX
 	bool		iflag;		//!< regex - case insensitive (if operand is used in regex comparison)

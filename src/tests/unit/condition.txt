@@ -207,7 +207,7 @@ data &Framed-IP-Address <= 192.168.0.0/16
 
 # string attributes must be string
 condition User-Name == "bob"
-data &User-Name == 'bob'
+data &User-Name == "bob"
 
 condition User-Name == `bob`
 data &User-Name == `bob`
@@ -279,13 +279,13 @@ condition 0
 data false
 
 condition true && (User-Name == "bob")
-data &User-Name == 'bob'
+data &User-Name == "bob"
 
 condition false && (User-Name == "bob")
 data false
 
 condition false || (User-Name == "bob")
-data &User-Name == 'bob'
+data &User-Name == "bob"
 
 condition true || (User-Name == "bob")
 data true
@@ -318,7 +318,7 @@ condition ("foo" == "%{sql: foo}")
 data foo == "%{sql: foo}"
 
 condition ("foo bar" == "%{sql: foo}")
-data 'foo bar' == "%{sql: foo}"
+data "foo bar" == "%{sql: foo}"
 
 condition ("foo" == "bar")
 data false
@@ -332,7 +332,7 @@ data false
 #  in it, so it reverts back to a literal.
 #
 condition (&User-Name == "bob")
-data &User-Name == 'bob'
+data &User-Name == "bob"
 
 condition (&User-Name == "%{sql: blah}")
 data &User-Name == "%{sql: blah}"
@@ -425,7 +425,7 @@ data ERROR offset 1 Cannot use attribute reference on right side of condition
 #  is on the LHS of the condition.
 #
 condition <string>"foo" == &User-Name
-data &User-Name == 'foo'
+data &User-Name == "foo"
 
 condition <integer>"%{expr: 1 + 1}" < &NAS-Port
 data &NAS-Port > "%{expr: 1 + 1}"
@@ -465,28 +465,34 @@ data <ipaddr>&Class == &Framed-IP-Address
 #  Tags of zero mean restrict to attributes with no tag
 #
 condition &Tunnel-Password:0 == "Hello"
-data &Tunnel-Password:0 == 'Hello'
+data &Tunnel-Password:0 == "Hello"
 
 condition &Tunnel-Password:1 == "Hello"
+data &Tunnel-Password:1 == "Hello"
+
+#
+# Single quoted strings are left as-is
+#
+condition &Tunnel-Password:1 == 'Hello'
 data &Tunnel-Password:1 == 'Hello'
 
 #
 #  zero offset into arrays get parsed and ignored
 #
 condition &User-Name[0] == "bob"
-data &User-Name[0] == 'bob'
+data &User-Name[0] == "bob"
 
 condition &User-Name[1] == "bob"
-data &User-Name[1] == 'bob'
+data &User-Name[1] == "bob"
 
 condition &User-Name[n] == "bob"
-data &User-Name[n] == 'bob'
+data &User-Name[n] == "bob"
 
 condition &Tunnel-Password:1[0] == "Hello"
-data &Tunnel-Password:1[0] == 'Hello'
+data &Tunnel-Password:1[0] == "Hello"
 
 condition &Tunnel-Password:1[3] == "Hello"
-data &Tunnel-Password:1[3] == 'Hello'
+data &Tunnel-Password:1[3] == "Hello"
 
 #
 #  This is allowed for pass2-fixups.  Foo-Bar MAY be an attribute.
@@ -634,7 +640,7 @@ condition &User-Name !~ /^foo\nbar$/
 data !&User-Name =~ /^foo\nbar$/
 
 condition &User-Name == "@|\\"
-data &User-Name == '@|\\'
+data &User-Name == "@|\\"
 
-#condition &User-Name != "foo\nbar"
-#data !&User-Name == 'foobar'
+condition &User-Name != "foo\nbar"
+data !&User-Name == "foo\nbar"
