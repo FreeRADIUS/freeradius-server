@@ -43,24 +43,22 @@ static ssize_t soh_xlat(UNUSED void *instance, REQUEST *request, char const *fmt
 	VALUE_PAIR* vp[6];
 	char const *osname;
 
-	/* there will be no point unless SoH-Supported = yes
-	 *
-	 * FIXME: should have a #define for the attribute...
-	 * SoH-Supported == 2119 in dictionary.freeradius.internal
+	/*
+	 * There will be no point unless SoH-Supported = yes
 	 */
-	vp[0] = pairfind(request->packet->vps, 2119, 0, TAG_ANY);
+	vp[0] = pairfind(request->packet->vps, PW_SOH_SUPPORTED, 0, TAG_ANY);
 	if (!vp[0])
 		return 0;
 
 
 	if (strncasecmp(fmt, "OS", 2) == 0) {
 		/* OS vendor */
-		vp[0] = pairfind(request->packet->vps, 2100, 0, TAG_ANY);
-		vp[1] = pairfind(request->packet->vps, 2101, 0, TAG_ANY);
-		vp[2] = pairfind(request->packet->vps, 2102, 0, TAG_ANY);
-		vp[3] = pairfind(request->packet->vps, 2103, 0, TAG_ANY);
-		vp[4] = pairfind(request->packet->vps, 2104, 0, TAG_ANY);
-		vp[5] = pairfind(request->packet->vps, 2105, 0, TAG_ANY);
+		vp[0] = pairfind(request->packet->vps, PW_SOH_MS_MACHINE_OS_VENDOR,  0, TAG_ANY);
+		vp[1] = pairfind(request->packet->vps, PW_SOH_MS_MACHINE_OS_VERSION, 0, TAG_ANY);
+		vp[2] = pairfind(request->packet->vps, PW_SOH_MS_MACHINE_OS_RELEASE, 0, TAG_ANY);
+		vp[3] = pairfind(request->packet->vps, PW_SOH_MS_MACHINE_OS_BUILD,   0, TAG_ANY);
+		vp[4] = pairfind(request->packet->vps, PW_SOH_MS_MACHINE_SP_VERSION, 0, TAG_ANY);
+		vp[5] = pairfind(request->packet->vps, PW_SOH_MS_MACHINE_SP_RELEASE, 0, TAG_ANY);
 
 		if (vp[0] && vp[0]->vp_integer == VENDORPEC_MICROSOFT) {
 			if (!vp[1]) {
