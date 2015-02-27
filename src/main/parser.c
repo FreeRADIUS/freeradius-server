@@ -516,7 +516,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			c->type = COND_TYPE_EXISTS;
 			c->ci = ci;
 
-			tlen = tmpl_afrom_str(c, &c->data.vpt, lhs, talloc_array_length(lhs) - 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			tlen = tmpl_afrom_str(c, &c->data.vpt, lhs, talloc_array_length(lhs) - 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST, false);
 			if (tlen < 0) {
 				p = lhs_p - tlen;
 				return_P(fr_strerror());
@@ -704,7 +704,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 */
 			c->data.map = map = talloc_zero(c, value_pair_map_t);
 
-			tlen = tmpl_afrom_str(map, &map->lhs, lhs, talloc_array_length(lhs) - 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			tlen = tmpl_afrom_str(map, &map->lhs, lhs, talloc_array_length(lhs) - 1, lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST, false);
 			if (tlen < 0) {
 				p = lhs_p - tlen;
 				return_P(fr_strerror());
@@ -747,9 +747,10 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			    map->lhs->tmpl_da->flags.is_unknown &&
 			    map_cast_from_hex(map, rhs_type, rhs)) {
 				/* do nothing */
+
 			} else {
 				tlen = tmpl_afrom_str(map, &map->rhs, rhs, talloc_array_length(rhs) - 1, rhs_type,
-						      REQUEST_CURRENT, PAIR_LIST_REQUEST);
+						      REQUEST_CURRENT, PAIR_LIST_REQUEST, false);
 				if (tlen < 0) {
 					p = rhs_p - tlen;
 					return_P(fr_strerror());

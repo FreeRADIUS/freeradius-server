@@ -30,6 +30,18 @@ data true
 condition 0x22 == '"'
 data true
 
+condition '\'' == "'"
+data true
+
+condition '\\' == "\\"
+data true
+
+#
+#  The first string is \ + x
+#
+condition '\x' == "x"
+data false
+
 # embedded zeros are OK
 condition "a\000a" == 0x610061
 data true
