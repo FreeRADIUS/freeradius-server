@@ -464,7 +464,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	single quotes get escaped.  Everything else is
 		 *	left as-is.
 		 */
-		if (quote == '\'') {
+		if ((quote == '\'') || (quote == '/')) {
 			q = p;
 
 			/*
@@ -473,8 +473,8 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 			 */
 			while (q < (dst->strvalue + len)) {
 				if ((q[0] == '\\') &&
-				    (q[1] == '\'')) {
-					*(p++) = '\'';
+				    (q[1] == quote)) {
+					*(p++) = quote;
 					q += 2;
 					continue;
 				}
