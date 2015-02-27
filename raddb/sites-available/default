@@ -781,9 +781,9 @@ post-auth {
 	#
 	#  Uncomment the next few lines to copy the required data into
 	#  the EAP-Key-Name attribute
-#	if (reply:EAP-Session-Id) {
+#	if (&reply:EAP-Session-Id) {
 #		update reply {
-#			EAP-Key-Name := "%{reply:EAP-Session-Id}"
+#			EAP-Key-Name := &reply:EAP-Session-Id
 #		}
 #	}
 
