@@ -63,10 +63,10 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value, s
 	 */
 	old_sc = request_data_get(request, request, REQUEST_DATA_REGEX);
 	if (old_sc) {
-		RDEBUG4("Clearing %zu matches", old_sc->nmatch);
+		DEBUG4("Clearing %zu matches", old_sc->nmatch);
 		talloc_free(old_sc);
 	} else {
-		RDEBUG4("No matches");
+		DEBUG4("No matches");
 	}
 
 	if (nmatch == 0) return;
@@ -74,7 +74,8 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value, s
 	rad_assert(preg && *preg);
 	rad_assert(rxmatch);
 
-	RDEBUG4("Adding %zu matches", nmatch);
+	DEBUG4("Adding %zu matches", nmatch);
+
 	/*
 	 *	Add new_sc matches
 	 */
