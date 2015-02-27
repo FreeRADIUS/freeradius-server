@@ -130,8 +130,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	uint8_t mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
 	uint8_t mip_rk[2 * EVP_MAX_MD_SIZE];
 
-	msk = pairfind(request->reply->vps, 1129, 0, TAG_ANY);
-	emsk = pairfind(request->reply->vps, 1130, 0, TAG_ANY);
+	msk = pairfind(request->reply->vps, PW_EAP_MSK, 0, TAG_ANY);
+	emsk = pairfind(request->reply->vps, PW_EAP_EMSK, 0, TAG_ANY);
 	if (!msk || !emsk) {
 		RDEBUG("No EAP-MSK or EAP-EMSK.  Cannot create WiMAX keys");
 		return RLM_MODULE_NOOP;
@@ -215,8 +215,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *	Calculate mobility keys
 	 */
-	mn_nai = pairfind(request->packet->vps, 1900, 0, TAG_ANY);
-	if (!mn_nai) mn_nai = pairfind(request->reply->vps, 1900, 0, TAG_ANY);
+	mn_nai = pairfind(request->packet->vps, PW_WIMAX_MN_NAI, 0, TAG_ANY);
+	if (!mn_nai) mn_nai = pairfind(request->reply->vps, PW_WIMAX_MN_NAI, 0, TAG_ANY);
 	if (!mn_nai) {
 		RWDEBUG("WiMAX-MN-NAI was not found in the request or in the reply");
 		RWDEBUG("We cannot calculate MN-HA keys");
