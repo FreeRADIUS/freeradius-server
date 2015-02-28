@@ -68,7 +68,6 @@ typedef struct {
 	enum {
 		GROUPTYPE_SIMPLE = 0,
 		GROUPTYPE_REDUNDANT,
-		GROUPTYPE_APPEND,
 		GROUPTYPE_COUNT
 	} grouptype;				/* after mc */
 	modcallable		*children;
@@ -1194,8 +1193,8 @@ static void dump_tree(rlm_components_t comp, modcallable *c)
 #endif
 
 /* These are the default actions. For each component, the group{} block
- * behaves like the code from the old module_*() function. redundant{} and
- * append{} are based on my guesses of what they will be used for. --Pac. */
+ * behaves like the code from the old module_*() function. redundant{}
+ * are based on my guesses of what they will be used for. --Pac. */
 static const int
 defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 {
@@ -1222,18 +1221,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* invalid  */
 			MOD_ACTION_RETURN,	/* userlock */
 			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		},
-		/* append */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			2,			/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
 		}
@@ -1263,18 +1250,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
-		},
-		/* append */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			2,			/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
 		}
 	},
 	/* preacct */
@@ -1300,18 +1275,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* invalid  */
 			MOD_ACTION_RETURN,	/* userlock */
 			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		},
-		/* append */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			2,			/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
 		}
@@ -1341,18 +1304,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			1,			/* notfound */
 			2,			/* noop     */
 			4			/* updated  */
-		},
-		/* append */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			2,			/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
 		}
 	},
 	/* checksimul */
@@ -1370,18 +1321,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN	/* updated  */
 		},
 		/* redundant */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		},
-		/* append */
 		{
 			MOD_ACTION_RETURN,	/* reject   */
 			1,			/* fail     */
@@ -1419,18 +1358,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
-		},
-		/* append */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			2,			/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
 		}
 	},
 	/* post-proxy */
@@ -1458,18 +1385,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
-		},
-		/* append */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			2,			/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
 		}
 	},
 	/* post-auth */
@@ -1495,18 +1410,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* invalid  */
 			MOD_ACTION_RETURN,	/* userlock */
 			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		},
-		/* append */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			2,			/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
 		}
@@ -1538,18 +1441,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
-		},
-		/* append */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			2,			/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
 		}
 	},
 	/* send-coa */
@@ -1575,18 +1466,6 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			MOD_ACTION_RETURN,	/* invalid  */
 			MOD_ACTION_RETURN,	/* userlock */
 			MOD_ACTION_RETURN,	/* notfound */
-			MOD_ACTION_RETURN,	/* noop     */
-			MOD_ACTION_RETURN	/* updated  */
-		},
-		/* append */
-		{
-			MOD_ACTION_RETURN,	/* reject   */
-			1,			/* fail     */
-			MOD_ACTION_RETURN,	/* ok       */
-			MOD_ACTION_RETURN,	/* handled  */
-			MOD_ACTION_RETURN,	/* invalid  */
-			MOD_ACTION_RETURN,	/* userlock */
-			2,			/* notfound */
 			MOD_ACTION_RETURN,	/* noop     */
 			MOD_ACTION_RETURN	/* updated  */
 		}
@@ -2277,12 +2156,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			return do_compile_modgroup(parent, component, cs,
 						   GROUPTYPE_REDUNDANT,
-						   grouptype, MOD_GROUP);
-
-		} else if (strcmp(modrefname, "append") == 0) {
-			*modname = name2;
-			return do_compile_modgroup(parent, component, cs,
-						   GROUPTYPE_APPEND,
 						   grouptype, MOD_GROUP);
 
 		} else if (strcmp(modrefname, "load-balance") == 0) {
