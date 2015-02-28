@@ -1473,6 +1473,34 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 #endif
 };
 
+static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
+{
+	/* group */
+	{
+		MOD_ACTION_RETURN,	/* reject   */
+		MOD_ACTION_RETURN,	/* fail     */
+		2,			/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* userlock */
+		1,			/* notfound */
+		3,			/* noop     */
+		4			/* updated  */
+	},
+	/* redundant */
+	{
+		MOD_ACTION_RETURN,	/* reject   */
+		1,			/* fail     */
+		MOD_ACTION_RETURN,	/* ok       */
+		MOD_ACTION_RETURN,	/* handled  */
+		MOD_ACTION_RETURN,	/* invalid  */
+		MOD_ACTION_RETURN,	/* userlock */
+		MOD_ACTION_RETURN,	/* notfound */
+		MOD_ACTION_RETURN,	/* noop     */
+		MOD_ACTION_RETURN	/* updated  */
+	}
+};
+
 /** Validate and fixup a map that's part of an update section.
  *
  * @param map to validate.
@@ -2584,7 +2612,7 @@ allocate_csingle:
 		memcpy(csingle->actions, defaultactions[component][grouptype],
 		       sizeof csingle->actions);
 	} else { /* inside Auth-Type has different rules */
-		memcpy(csingle->actions, defaultactions[RLM_COMPONENT_AUTZ][grouptype],
+		memcpy(csingle->actions, authtype_actions[grouptype],
 		       sizeof csingle->actions);
 	}
 	rad_assert(modrefname != NULL);
@@ -2872,7 +2900,7 @@ set_codes:
 			if (!parent || (component != RLM_COMPONENT_AUTH)) {
 				c->actions[i] = defaultactions[component][parentgrouptype][i];
 			} else { /* inside Auth-Type has different rules */
-				c->actions[i] = defaultactions[RLM_COMPONENT_AUTZ][parentgrouptype][i];
+				c->actions[i] = authtype_actions[parentgrouptype][i];
 			}
 		}
 	}
