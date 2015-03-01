@@ -18,6 +18,7 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Allow forward references in configuration items.  Modules
 	  aren't always loaded in a sane order.
 	* Fix more escaping issues.  Closes #912.
+	* Decode MAC addresses correctly for VMPS.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
