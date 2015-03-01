@@ -478,6 +478,13 @@ int vqp_decode(RADIUS_PACKET *packet)
 		}
 
 		switch (vp->da->type) {
+		case PW_TYPE_ETHERNET:
+			if (length != 6) goto unknown;
+
+			memcpy(&vp->vp_ether, ptr, 4);
+			vp->vp_length = 6;
+			break;
+
 		case PW_TYPE_IPV4_ADDR:
 			if (length == 4) {
 				memcpy(&vp->vp_ipaddr, ptr, 4);
@@ -490,6 +497,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 			 *	valuepair so we must change it's da to an
 			 *	unknown attr.
 			 */
+		unknown:
 			vp->da = dict_unknown_afrom_fields(vp, vp->da->attr, vp->da->vendor);
 			/* FALL-THROUGH */
 
@@ -682,6 +690,10 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		switch (vp->da->type) {
 		case PW_TYPE_IPV4_ADDR:
 			memcpy(ptr, &vp->vp_ipaddr, 4);
+			break;
+
+		case PW_TYPE_ETHERNET:
+			memcpy(ptr, vp->vp_ether, vp->vp_length);
 			break;
 
 		default:
