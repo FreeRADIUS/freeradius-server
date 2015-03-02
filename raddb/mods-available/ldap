@@ -253,6 +253,22 @@ ldap {
 #		scope = 'sub'
 
 		#
+		#  Sets default values (not obtained from LDAP) for new client entries
+		#
+		template {
+#			login				= 'test'
+#			password			= 'test'
+#			proto	 			= tcp
+#			require_message_authenticator	= yes
+
+			# Uncomment to add a home_server with the same
+			# attributes as the client.
+#			coa_server {
+#				response_window = 2.0
+#			}
+		}
+
+		#
 		#  Client attribute mappings are in the format:
 		#      <client attribute> = <ldap attribute>
 		#

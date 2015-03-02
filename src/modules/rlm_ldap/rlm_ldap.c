@@ -1022,7 +1022,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Bulk load dynamic clients.
 	 */
 	if (inst->do_clients) {
-		CONF_SECTION *cs;
+		CONF_SECTION *cs, *map, *tmpl;
 
 		cs = cf_section_sub_find(inst->cs, "client");
 		if (!cs) {
@@ -1030,14 +1030,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			goto error;
 		}
 
-		cs = cf_section_sub_find(cs, "attribute");
-		if (!cs) {
-			cf_log_err_cs(conf, "Told to load clients but no attribute section found");
+		map = cf_section_sub_find(cs, "attribute");
+		if (!map) {
+			cf_log_err_cs(cs, "Told to load clients but no attribute section found");
 			goto error;
 		}
 
-		if (rlm_ldap_client_load(inst, cs) < 0) {
-			cf_log_err_cs(conf, "Error loading clients");
+		tmpl = cf_section_sub_find(cs, "template");
+
+		if (rlm_ldap_client_load(inst, tmpl, map) < 0) {
+			cf_log_err_cs(cs, "Error loading clients");
 
 			return -1;
 		}

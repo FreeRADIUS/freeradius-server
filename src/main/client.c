@@ -763,6 +763,95 @@ error:
 	return false;
 }
 
+/** Create a client CONF_SECTION using a mapping section to map values from a result set to client attributes
+ *
+ * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS too.
+ *
+ * @note Caller should free CONF_SECTION passed in as out, on error.
+ *	 Contents of that section will be in an undefined state.
+ *
+ * @param[in,out] out Section to perform mapping on. Either the root of the client config, or a parent section
+ *	(when this function is called recursively).
+ *	Should be alloced with cf_section_alloc, or if there's a separate template section, the
+ *	result of calling cf_section_dup on that section.
+ * @param[in] map section.
+ * @param[in] func to call to retrieve CONF_PAIR values. Must return a talloced buffer containing the value.
+ * @param[in] data to pass to func, usually a result pointer.
+ * @return 0 on success else -1 on error.
+ */
+int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data)
+{
+	CONF_ITEM const *ci;
+
+	for (ci = cf_item_find_next(map, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(map, ci)) {
+	     	CONF_PAIR const *cp;
+	     	CONF_PAIR *old;
+	     	char *value;
+		char const *attr;
+
+		/*
+		 *	Recursively process map subsection
+		 */
+		if (cf_item_is_section(ci)) {
+			CONF_SECTION *cs, *cc;
+
+			cs = cf_item_to_section(ci);
+			/*
+			 *	Use pre-existing section or alloc a new one
+			 */
+			cc = cf_section_sub_find_name2(out, cf_section_name1(cs), cf_section_name2(cs));
+			if (!cc) {
+				cc = cf_section_alloc(out, cf_section_name1(cs), cf_section_name2(cs));
+				cf_section_add(out, cc);
+				if (!cc) return -1;
+			}
+
+			if (client_map_section(cc, cs, func, data) < 0) return -1;
+			continue;
+		}
+
+		cp = cf_item_to_pair(ci);
+		attr = cf_pair_attr(cp);
+
+		/*
+		 *	The callback can return 0 (success) and not provide a value
+		 *	in which case we skip the mapping pair.
+		 *
+		 *	Or return -1 in which case we error out.
+		 */
+		if (func(&value, cp, data) < 0) {
+			cf_log_err_cs(out, "Failed performing mapping \"%s\" = \"%s\"", attr, cf_pair_value(cp));
+			return -1;
+		}
+		if (!value) continue;
+
+		/*
+		 *	Replace an existing CONF_PAIR
+		 */
+		old = cf_pair_find(out, attr);
+		if (old) {
+			cf_pair_replace(out, old, value);
+			talloc_free(value);
+			continue;
+		}
+
+		/*
+		 *	...or add a new CONF_PAIR
+		 */
+		cp = cf_pair_alloc(out, attr, value, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+		if (!cp) {
+			cf_log_err_cs(out, "Failed allocing pair \"%s\" = \"%s\"", attr, value);
+			talloc_free(value);
+			return -1;
+		}
+		talloc_free(value);
+		cf_item_add(out, cf_pair_to_item(cp));
+	}
+
+	return 0;
+}
 
 /** Allocate a new client from a config section
  *
