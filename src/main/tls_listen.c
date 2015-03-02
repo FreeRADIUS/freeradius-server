@@ -145,7 +145,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	}
 
 	/*
-	 *	Allocate a REQUEST for debugging.
+	 *	Allocate a REQUEST for debugging, and initialize the TLS session.
 	 */
 	if (!sock->request) {
 		sock->request = request = request_alloc(sock);
@@ -161,9 +161,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 		request->component = "<core>";
 		request->component = "<tls-connect>";
 
-		/*
-		 *	Not sure if we should do this on every packet...
-		 */
 		request->reply = rad_alloc(request, false);
 		if (!request->reply) return 0;
 
@@ -228,28 +225,33 @@ static int tls_socket_recv(rad_listen_t *listener)
 	}
 
 	/*
-	 *	Skip ahead to reading application data.
+	 *	If we need to do more initialization, do that here.
 	 */
-	if (SSL_is_init_finished(sock->ssn->ssl)) goto app;
+	if (!SSL_is_init_finished(sock->ssn->ssl)) {
+		if (!tls_handshake_recv(request, sock->ssn)) {
+			RDEBUG("FAILED in TLS handshake receive");
+			goto do_close;
+		}
 
-	if (!tls_handshake_recv(request, sock->ssn)) {
-		RDEBUG("FAILED in TLS handshake receive");
-		goto do_close;
+		/*
+		 *	More ACK data to send.  Do so.
+		 */
+		if (sock->ssn->dirty_out.used > 0) {
+			tls_socket_write(listener, request);
+			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
+			return 0;
+		}
+
+		/*
+		 *	FIXME: Run the request through a virtual
+		 *	server in order to see if we like the
+		 *	certificate presented by the client.
+		 */
 	}
 
-	if (sock->ssn->dirty_out.used > 0) {
-		tls_socket_write(listener, request);
-		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
-		return 0;
-	}
-
-app:
 	/*
-	 *	FIXME: Run the packet through a virtual server in
-	 *	order to see if we like the certificate presented by
-	 *	the client.
+	 *	Try to get application data.
 	 */
-
 	status = tls_application_data(sock->ssn, request);
 	RDEBUG("Application data status %d", status);
 
@@ -263,6 +265,9 @@ app:
 		return 0;
 	}
 
+	/*
+	 *	We now have a bunch of application data.
+	 */
 	dump_hex("TUNNELED DATA > ", sock->ssn->clean_out.data, sock->ssn->clean_out.used);
 
 	/*
