@@ -19,6 +19,9 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	  aren't always loaded in a sane order.
 	* Fix more escaping issues.  Closes #912.
 	* Decode MAC addresses correctly for VMPS.
+	* Fix memory leak with TLS connections.
+	* Fix state machine threading issues for conflicting packets.
+	* Fix copy_request_to_tunnel issues for tagged attributes.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
