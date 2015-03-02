@@ -1,6 +1,7 @@
 FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
         * Allow syslog_severity to be set in rlm_linelog.
+	* Allow defaults to be set for bulk_clients in LDAP and couchbase.
 
 	Bug fixes
 	* Don't complain about "authorize" in "server {}" blocks, but
