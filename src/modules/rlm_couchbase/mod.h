@@ -99,6 +99,6 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps);
 
 int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map, json_object *json, char const *docid);
 
-int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs);
+int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map);
 
 #endif /* _mod_h_ */

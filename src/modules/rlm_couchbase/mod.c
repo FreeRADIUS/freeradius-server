@@ -516,74 +516,20 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	return 0;
 }
 
-/** Iterate over all client attribute pairs and create client pair data using JSON element names
- *
- * If we hit a CONF_SECTION we recurse and process its CONF_PAIRS as well to support nested
- * configurations sections.
- *
- * @param client The new client config section using the mapped names.
- * @param map    The client attribute section from the module configuration.
- * @param json   JSON object representation of a client document fetched from Couchbase.
- * @param docid  Document id.
- * @return       Returns 0 on success, -1 on error.
- */
-int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
-			    json_object *json, char const *docid)
+static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
 {
-	CONF_ITEM const *ci;
+	json_object *jval;
 
-	for (ci = cf_item_find_next(map, NULL); ci != NULL; ci = cf_item_find_next(map, ci)) {
-		CONF_PAIR const *cp;
-		char const *attribute;
-		char const *element;
-		json_object *jval;
-
-		/*
-		 * Recursively process map subsection
-		 */
-		if (cf_item_is_section(ci)) {
-			CONF_SECTION *cs, *cc;    /* local scoped for new section */
-
-			cs = cf_item_to_section(ci);
-			cc = cf_section_alloc(client, cf_section_name1(cs), cf_section_name2(cs));
-			if (!cc) return -1;
-
-			cf_section_add(client, cc);
-
-			if (mod_client_map_section(cc, cs, json, docid) != 0) {
-				return -1;
-			}
-			/* continue on to the next item */
-			continue;
-		}
-
-		/* create pair from item and get attribute name and value */
-		cp = cf_item_to_pair(ci);
-		attribute = cf_pair_attr(cp);
-		element = cf_pair_value(cp);
-
-		/* attempt to find element in json object */
-		if (!json_object_object_get_ex(json, element, &jval)) {
-			/* skip this item */
-			continue;
-		}
-
-		/* allocate config pair */
-		cp = cf_pair_alloc(client, attribute, json_object_get_string(jval),
-				   T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
-
-		/* check pair */
-		if (!cp) {
-			ERROR("rlm_couchbase: failed allocating config pair '%s' = '%s'", attribute,
-			      json_object_get_string(jval));
-			return -1;
-		}
-
-		/* add pair to section */
-		cf_item_add(client, cf_pair_to_item(cp));
+	if (!json_object_object_get_ex((json_object *)data, cf_pair_value(cp), &jval)) {
+		*out = NULL;
+		return 0;
 	}
 
-	/* return success */
+	if (!jval) return -1;
+
+	*out = talloc_strdup(NULL, json_object_get_string(jval));
+	if (!*out) return -1;
+
 	return 0;
 }
 
@@ -596,10 +542,11 @@ int mod_client_map_section(CONF_SECTION *client, CONF_SECTION const *map,
  * run once at sever startup this should not be a concern.
  *
  * @param  inst The module instance.
- * @param  cs   The client attribute configuration section.
+ * @param  tmpl	Default values for new clients.
+ * @param  map	The client attribute configuration section.
  * @return      Returns 0 on success, -1 on error.
  */
-int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
+int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map)
 {
 	rlm_couchbase_handle_t *handle = NULL; /* connection pool handle */
 	char vpath[256], docid[MAX_KEY_SIZE];  /* view path and document id */
@@ -734,9 +681,10 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *cs)
 		DEBUG3("rlm_couchbase: cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
 
 		/* allocate conf section */
-		client = cf_section_alloc(NULL, "client", docid);
+		client = tmpl ? cf_section_dup(NULL, tmpl, "client", docid, true) :
+				cf_section_alloc(NULL, "client", docid);
 
-		if (mod_client_map_section(client, cs, cookie->jobj, docid) != 0) {
+		if (client_map_section(client, map, _get_client_value, cookie->jobj) < 0) {
 			/* free config setion */
 			talloc_free(client);
 			/* set return */

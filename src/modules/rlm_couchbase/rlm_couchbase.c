@@ -138,7 +138,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	/* load clients if requested */
 	if (inst->read_clients) {
-		CONF_SECTION *cs; /* conf section */
+		CONF_SECTION *cs, *map, *tmpl; /* conf section */
 
 		/* attempt to find client section */
 		cs = cf_section_sub_find(conf, "client");
@@ -148,20 +148,21 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 
-
 		/* attempt to find attribute subsection */
-		cs = cf_section_sub_find(cs, "attribute");
-		if (!cs) {
+		map = cf_section_sub_find(cs, "attribute");
+		if (!map) {
 			ERROR("rlm_couchbase: failed to find attribute subsection while loading clients");
 			/* fail */
 			return -1;
 		}
 
+		tmpl = cf_section_sub_find(cs, "template");
+
 		/* debugging */
 		DEBUG("rlm_couchbase: preparing to load client documents");
 
 		/* attempt to load clients */
-		if (mod_load_client_documents(inst, cs) != 0) {
+		if (mod_load_client_documents(inst, tmpl, map) != 0) {
 			/* fail */
 			return -1;
 		}
