@@ -729,7 +729,7 @@ VALUE_PAIR *paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr
 			continue;
 		}
 
-		if (vp->da->flags.has_tag && TAG_EQ(tag, vp->tag)) {
+		if (vp->da->flags.has_tag && !TAG_EQ(tag, vp->tag)) {
 			continue;
 		}
 
