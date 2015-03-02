@@ -27,7 +27,7 @@
 #ifndef _mod_h_
 #define _mod_h_
 
-RCSIDH(mod_h, "$Id$");
+RCSIDH(mod_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>
 

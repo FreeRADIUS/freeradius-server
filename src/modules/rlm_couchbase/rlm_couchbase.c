@@ -24,7 +24,7 @@
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 
-RCSID("$Id$");
+RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/libradius.h>
