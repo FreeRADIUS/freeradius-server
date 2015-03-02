@@ -506,19 +506,6 @@ STATE_MACHINE_DECL(request_done)
 
 	TRACE_STATE_MACHINE;
 
-#ifdef WITH_COA
-	/*
-	 *	CoA requests can be cleaned up in the child thread,
-	 *	but ONLY if they aren't tied into anything.
-	 */
-	if (request->parent && (request->parent->coa == request)) {
-		rad_assert(!request->in_request_hash);
-		rad_assert(!request->in_proxy_hash);
-		rad_assert(action == FR_ACTION_DONE);
-		rad_assert(request->ev == NULL);
-	}
-#endif
-
 #ifdef WITH_DETAIL
 	/*
 	 *	Tell the detail listener that we're done.
@@ -623,7 +610,6 @@ STATE_MACHINE_DECL(request_done)
 #endif
 
 	default:
-		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
 	}
 
@@ -692,14 +678,6 @@ STATE_MACHINE_DECL(request_done)
 #ifdef WITH_PROXY
 	wait_some_more:
 #endif
-
-#ifdef HAVE_PTHREAD_H
-		if (spawn_flag &&
-		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
-			RDEBUG("Waiting for child thread to stop");
-		}
-#endif
-
 		when = now;
 		if (request->delay < (USEC / 3)) request->delay = USEC / 3;
 		tv_add(&when, request->delay);
