@@ -1645,8 +1645,11 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 
 	packet_p = rbtree_finddata(pl, &packet);
 	if (packet_p) {
+		rad_child_state_t child_state;
+
 		request = fr_packet2myptr(REQUEST, packet, packet_p);
 		rad_assert(request->in_request_hash);
+		child_state = request->child_state;
 
 		/*
 		 *	Same src/dst ip/port, length, and
@@ -1691,25 +1694,27 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		}
 
 		/*
+		 *	Mark the request as done ASAP, and before we
+		 *	log anything.  The child may stop processing
+		 *	the request just as we're logging the
+		 *	complaint.
+		 */
+		request_done(request, FR_ACTION_DONE);
+		request = NULL;
+
+		/*
 		 *	It's a new request, not a duplicate.  If the
 		 *	old one is done, then we can clean it up.
 		 */
-		if (request->child_state <= REQUEST_RUNNING) {
+		if (child_state <= REQUEST_RUNNING) {
 			/*
 			 *	The request is still QUEUED or RUNNING.  That's a problem.
 			 */
-			RERROR("Received conflicting packet from "
-			       "client %s port %d - ID: %u due to "
-			       "unfinished request.  Giving up on old request.",
-			       request->client->shortname,
-			       request->packet->src_port, request->packet->id);
-#ifdef WITH_PTHREAD_H
-		} else {
-			/*
-			 *	There can't be a child thread processing the request.
-			 */
-			rad_assert(pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) != 0);
-#endif
+			ERROR("Received conflicting packet from "
+			      "client %s port %d - ID: %u due to "
+			      "unfinished request.  Giving up on old request.",
+			      client->shortname,
+			      packet->src_port, packet->id);
 		}
 
 		/*
@@ -1718,8 +1723,6 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 		 *	immediately.  If there is a child, we'll set a
 		 *	timer to go clean up the request.
 		 */
-		request_done(request, FR_ACTION_DONE);
-		request = NULL;
 	} /* else the new packet is unique */
 
 	/*
