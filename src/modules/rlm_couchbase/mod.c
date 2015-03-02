@@ -24,7 +24,7 @@
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
 
-RCSID("$Id$");
+RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 
@@ -398,7 +398,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 			/* return as 64 bit int - JSON spec does not support unsigned ints */
 			return json_object_new_int(i);
 #endif
-		break;
+
 		case PW_TYPE_SIGNED:
 #ifdef HAVE_JSON_OBJECT_NEW_INT64
 			/* debug */
@@ -410,7 +410,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 			/* return as signed int */
 			return json_object_new_int(vp->vp_signed);
 #endif
-		break;
+
 		case PW_TYPE_INTEGER64:
 #ifdef HAVE_JSON_OBJECT_NEW_INT64
 			/* debug */
@@ -420,8 +420,9 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 #else
 			/* warning */
 			RWARN("skipping 64 bit integer attribute '%s' - please upgrade json-c to 0.10+", vp->da->name);
+			break;
 #endif
-		break;
+
 		default:
 			/* silence warnings - do nothing */
 		break;
