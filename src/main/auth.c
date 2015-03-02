@@ -670,7 +670,7 @@ int rad_virtual_server(REQUEST *request)
 	VALUE_PAIR *vp;
 	int result;
 
-	RDEBUG("Virtual server received request");
+	RDEBUG("Virtual server %s received request", request->server);
 	rdebug_pair_list(L_DBG_LVL_1, request, request->packet->vps, NULL);
 
 	RDEBUG("server %s {", request->server);
