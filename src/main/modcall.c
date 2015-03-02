@@ -1469,13 +1469,13 @@ static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 	{
 		MOD_ACTION_RETURN,	/* reject   */
 		MOD_ACTION_RETURN,	/* fail     */
-		2,			/* ok       */
+		4,			/* ok       */
 		MOD_ACTION_RETURN,	/* handled  */
 		MOD_ACTION_RETURN,	/* invalid  */
 		MOD_ACTION_RETURN,	/* userlock */
 		1,			/* notfound */
-		3,			/* noop     */
-		4			/* updated  */
+		2,			/* noop     */
+		3			/* updated  */
 	},
 	/* redundant */
 	{
