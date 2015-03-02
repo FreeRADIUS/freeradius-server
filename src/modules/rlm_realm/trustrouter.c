@@ -195,8 +195,8 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 	hs->type = HOME_TYPE_AUTH;
 	hs->ipaddr = home_server_ip;
 	hs->src_ipaddr.af = home_server_ip.af;
-	hs->name = talloc_asprintf(hs, "%s-for-%s", nametemp, realm_name);
-	hs->hostname = talloc_strdup(hs, nametemp);
+	hs->log_name = talloc_asprintf(hs, "%s-for-%s", nametemp, realm_name);
+	hs->name = talloc_strdup(hs, nametemp);
 	hs->port = port;
 	hs->proto = IPPROTO_TCP;
 	hs->secret = talloc_strdup(hs, "radsec");
