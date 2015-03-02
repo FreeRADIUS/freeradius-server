@@ -619,11 +619,9 @@ RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
 				   char const *type, char const *server, bool require_ma) CC_HINT(nonnull(2, 3));
 
-RADCLIENT	*client_find(RADCLIENT_LIST const *clients,
-			     fr_ipaddr_t const *ipaddr, int proto);
+RADCLIENT	*client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto);
 
-RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients,
-				     int number);
+RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients, int number);
 RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
 bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
 RADCLIENT	*client_read(char const *filename, int in_server, int flag);
