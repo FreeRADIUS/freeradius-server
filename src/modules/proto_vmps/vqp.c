@@ -480,7 +480,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		case PW_TYPE_ETHERNET:
 			if (length != 6) goto unknown;
 
-			memcpy(&vp->vp_ether, ptr, 4);
+			memcpy(&vp->vp_ether, ptr, 6);
 			vp->vp_length = 6;
 			break;
 
