@@ -605,6 +605,18 @@ int	regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
 #endif
 
 /* client.c */
+
+/** Callback for retrieving values when building client sections
+ *
+ * Module should provide its own callback for retrieving values from a result set.
+ *
+ * @param[out] out Where to write a pointer to the talloced value buffer.
+ * @param[in] cp The value of the CONF_PAIR specifies the attribute name to retrieve from the result.
+ * @param[in] data Pointer to the result struct.
+ * @return 0 on success -1 on failure.
+ */
+typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
+
 RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);
 void		clients_free(RADCLIENT_LIST *clients);
 RADCLIENT_LIST	*clients_parse_section(CONF_SECTION *section, bool tls_required);
@@ -615,6 +627,7 @@ void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
 RADCLIENT	*client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request);
 #endif
 
+int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data);
 RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bool with_coa);
 RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
 				   char const *type, char const *server, bool require_ma) CC_HINT(nonnull(2, 3));

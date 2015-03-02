@@ -394,7 +394,7 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 /*
  *	clients.c - Dynamic clients (bulk load).
  */
-int  rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *cs);
+int  rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *cs);
 
 /*
  *	edir.c - Magic extensions for Novell
