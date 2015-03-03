@@ -1519,9 +1519,9 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 	VALUE_PAIR *vp;
 	ssize_t slen = -1;	/* quiet compiler */
 
-	rad_assert(vpt->type != TMPL_TYPE_LIST);
-
 	VERIFY_TMPL(vpt);
+
+	rad_assert(vpt->type != TMPL_TYPE_LIST);
 
 	if (out) *out = NULL;
 
