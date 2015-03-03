@@ -29,8 +29,8 @@ typedef struct conf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary 
 					///< with a #CONF_PAIR or #CONF_SECTION.
 
 
-typedef void conf_type_mismatch;
-typedef void conf_type_invalid;
+typedef void conf_type_mismatch;	//!< Dummy type used to indicate PW_TYPE_*/C type mismatch.
+typedef void conf_type_invalid;		//!< Dummy type used to indicate invalid PW_TYPE_*.
 
 #if defined(HAVE_BUILTIN_CHOOSE_EXPR) && defined(HAVE_BUILTIN_TYPES_COMPATIBLE_P)
 /*
@@ -39,9 +39,19 @@ typedef void conf_type_invalid;
  */
 typedef struct timeval _timeval_t;
 
-/*
- * Validation macro to check the type of the pointer or offset passed in
- * matches the type of the configuration item.
+/** Check the type #_t matches the destination data type
+ *
+ * Validation macro to check the type of the pointer or offset #_p passed in
+ * matches the type #_t of the configuration item.
+ *
+ * Uses various magic builtin precompilation functions, so will likely only
+ * work with recent versions of clang and gcc.
+ *
+ * @note The warnings/errors emitted are usually awful.
+ *
+ * @param _t a #PW_TYPE value with optional PW_TYPE_* flags.
+ * @param _ct data type of global or struct field, obtained with ``__typeof__``.
+ * @param _p Pointer or offset.
  */
 #  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
 	__builtin_choose_expr((_t & PW_TYPE_TMPL),\
