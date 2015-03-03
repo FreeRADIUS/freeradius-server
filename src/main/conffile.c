@@ -1107,7 +1107,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  * @param cs to search for matching #CONF_PAIR in.
  * @param name of #CONF_PAIR to search for.
  * @param type Data type to parse #CONF_PAIR value as.
- *	Should be one of the following ``data`` types, and one or more of the following ``flag`` types |'rd together:
+ *	Should be one of the following ``data`` types, and one or more of the following ``flag`` types or'd together:
  *	- ``data`` #PW_TYPE_TMPL 		- @copybrief PW_TYPE_TMPL
  					  	  Feeds the value into #tmpl_afrom_str. Value can be
  *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
@@ -1131,7 +1131,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  *	- ``flag`` #PW_TYPE_SECRET		- @copybrief PW_TYPE_SECRET
  *	- ``flag`` #PW_TYPE_FILE_INPUT		- @copybrief PW_TYPE_FILE_INPUT
  *	- ``flag`` #PW_TYPE_NOT_EMPTY		- @copybrief PW_TYPE_NOT_EMPTY
- * @param data Pointer to a global, or a field in a struct being populated with values.
+ * @param data Pointer to a global variable, or pointer to a field in the struct being populated with values.
  * @param dflt value to use, if no #CONF_PAIR is found.
  * @return -1 on error, -2 if deprecated, 0 on success (correctly parsed), 1 if default value was used.
  */
