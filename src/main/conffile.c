@@ -1129,11 +1129,18 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	rcode = 0;
 
 	cp = cf_pair_find(cs, name);
-	if (cp) {
-		value = cp->value;
-	} else {
+	/*
+	 *	No pairs match the configuration item name in the current
+	 *	section, use the default value.
+	 */
+	if (!cp) {
 		rcode = 1;
 		value = dflt;
+	/*
+	 *	Something matched, used the CONF_PAIR value.
+	 */
+	} else {
+		value = cp->value;
 	}
 
 	if (!value) {
