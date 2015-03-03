@@ -1211,13 +1211,14 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		ssize_t slen;
 		value_pair_tmpl_t *vpt;
 
-		if (!value || (cf_pair_value_type(cp) == T_INVALID)) {
+		if (!value) {
 			*(value_pair_tmpl_t **)data = NULL;
 			return 0;
 		}
 
 		slen = tmpl_afrom_str(cs, &vpt, value, strlen(value),
-				      cf_pair_value_type(cp), REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+				      cp ? cf_pair_value_type(cp) : T_DOUBLE_QUOTED_STRING,
+				      REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 		if (slen < 0) {
 			char *spaces, *text;
 
