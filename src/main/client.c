@@ -1,12 +1,8 @@
 /*
- * client.c	Read clients into memory.
- *
- * Version:     $Id$
- *
- *   This program is free software; you can redistribute it and/or modify
+ *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   the Free Software Foundation; either version 2 of the License, or (at
+ *   your option) any later version.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,12 +12,18 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
- * Copyright 2000  Alan DeKok <aland@ox.org>
  */
 
+/**
+ * $Id$
+ * @file main/client.c
+ * @brief Manage clients allowed to communicate with the server.
+ *
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2000,2006 The FreeRADIUS server project
+ * @copyright 2000 Alan DeKok <aland@ox.org>
+ * @copyright 2000 Miquel van Smoorenburg <miquels@cistron.nl>
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
@@ -136,7 +138,7 @@ static int client_num_cmp(void const *one, void const *two)
 /*
  *	Free a RADCLIENT list.
  */
-void clients_free(RADCLIENT_LIST *clients)
+void client_list_free(RADCLIENT_LIST *clients)
 {
 	int i;
 
@@ -169,7 +171,7 @@ void clients_free(RADCLIENT_LIST *clients)
 /*
  *	Return a new, initialized, set of clients.
  */
-RADCLIENT_LIST *clients_init(CONF_SECTION *cs)
+RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 {
 	RADCLIENT_LIST *clients = talloc_zero(cs, RADCLIENT_LIST);
 
@@ -242,15 +244,15 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			 */
 			clients = cf_data_find(cs, "clients");
 			if (!clients) {
-				clients = clients_init(cs);
+				clients = client_list_init(cs);
 				if (!clients) {
 					ERROR("Out of memory");
 					return false;
 				}
 
-				if (cf_data_add(cs, "clients", clients, (void (*)(void *)) clients_free) < 0) {
+				if (cf_data_add(cs, "clients", clients, (void (*)(void *)) client_list_free) < 0) {
 					ERROR("Failed to associate clients with virtual server %s", client->server);
-					clients_free(clients);
+					client_list_free(clients);
 					return false;
 				}
 			}
@@ -260,7 +262,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			 *	Initialize the global list, if not done already.
 			 */
 			if (!root_clients) {
-				root_clients = clients_init(NULL);
+				root_clients = client_list_init(NULL);
 				if (!root_clients) return false;
 			}
 			clients = root_clients;
@@ -520,9 +522,9 @@ static const CONF_PARSER client_config[] = {
  *	source-files.
  */
 #ifdef WITH_TLS
-RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, bool tls_required)
+RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, bool tls_required)
 #else
-RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_required)
+RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls_required)
 #endif
 {
 	bool		global = false, in_server = false;
@@ -537,7 +539,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_req
 	clients = cf_data_find(section, "clients");
 	if (clients) return clients;
 
-	clients = clients_init(section);
+	clients = client_list_init(section);
 	if (!clients) return NULL;
 
 	if (cf_top_section(section) == section) global = true;
@@ -551,7 +553,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_req
 		cf_log_err_cs(section,
 			   "Failed to associate clients with section %s",
 		       cf_section_name1(section));
-		clients_free(clients);
+		client_list_free(clients);
 		return NULL;
 	}
 
@@ -571,7 +573,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section, UNUSED bool tls_req
 		if (tls_required != c->tls_required) {
 			cf_log_err_cs(cs, "Client does not have the same TLS configuration as the listener");
 			client_free(c);
-			clients_free(clients);
+			client_list_free(clients);
 			return NULL;
 		}
 #endif
@@ -858,7 +860,7 @@ int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_
  * @param ctx to allocate new clients in.
  * @param cs to process as a client.
  * @param in_server Whether the client should belong to a specific virtual server.
- * @param with_coa If true and coa_server or coa_pool aren't specified automatically
+ * @param with_coa If true and coa_server or coa_pool aren't specified automatically,
  *	create a coa home_server section and add it to the client CONF_SECTION.
  * @return new RADCLIENT struct.
  */

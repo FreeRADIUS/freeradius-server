@@ -62,6 +62,7 @@ typedef struct rad_request REQUEST;
 #include <freeradius-devel/xlat.h>
 #include <freeradius-devel/tmpl.h>
 #include <freeradius-devel/map.h>
+#include <freeradius-devel/clients.h>
 
 /*
  *	All POSIX systems should have these headers
@@ -77,57 +78,6 @@ extern "C" {
  *	See util.c
  */
 typedef struct request_data_t request_data_t;
-
-typedef struct radclient {
-	fr_ipaddr_t		ipaddr;
-	fr_ipaddr_t		src_ipaddr;
-	char const		*longname;
-	char const		*secret;
-	char const		*shortname;
-	bool			message_authenticator;
-	char const		*nas_type;
-	char const		*login;
-	char const		*password;
-	char const 		*server;
-	int			number;	/* internal use only */
-	CONF_SECTION	 	*cs;
-#ifdef WITH_STATS
-	fr_stats_t		auth;
-#  ifdef WITH_ACCOUNTING
-	fr_stats_t		acct;
-#  endif
-#  ifdef WITH_COA
-	fr_stats_t		coa;
-	fr_stats_t		dsc;
-#  endif
-#endif
-
-	struct timeval		response_window;
-
-	int			proto;
-#ifdef WITH_TCP
-	fr_socket_limit_t	limit;
-#endif
-#ifdef WITH_TLS
-	bool			tls_required;
-#endif
-
-#ifdef WITH_DYNAMIC_CLIENTS
-	uint32_t		lifetime;
-	uint32_t		dynamic; /* was dynamically defined */
-	time_t			created;
-	time_t			last_new_client;
-	char const		*client_server;
-	bool			rate_limit;
-#endif
-
-#ifdef WITH_COA
-	char const		*coa_name;
-	home_server_t		*coa_server;
-	home_pool_t		*coa_pool;
-	bool			defines_coa_server;	//!< Client also defines a home_server.
-#endif
-} RADCLIENT;
 
 /*
  *	Types of listeners.
@@ -314,8 +264,6 @@ struct rad_request {
 
 #define RAD_REQUEST_OPTION_COA		(1 << 0)
 #define RAD_REQUEST_OPTION_CTX		(1 << 1)
-
-typedef struct radclient_list RADCLIENT_LIST;
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
@@ -603,42 +551,6 @@ int	regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
 int	regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name);
 #  endif
 #endif
-
-/* client.c */
-
-/** Callback for retrieving values when building client sections
- *
- * Module should provide its own callback for retrieving values from a result set.
- *
- * @param[out] out Where to write a pointer to the talloced value buffer.
- * @param[in] cp The value of the CONF_PAIR specifies the attribute name to retrieve from the result.
- * @param[in] data Pointer to the result struct.
- * @return 0 on success -1 on failure.
- */
-typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
-
-RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);
-void		clients_free(RADCLIENT_LIST *clients);
-RADCLIENT_LIST	*clients_parse_section(CONF_SECTION *section, bool tls_required);
-void		client_free(RADCLIENT *client);
-bool		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
-#ifdef WITH_DYNAMIC_CLIENTS
-void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
-RADCLIENT	*client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request);
-#endif
-
-int		client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data);
-RADCLIENT	*client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bool with_coa);
-RADCLIENT	*client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
-				   char const *type, char const *server, bool require_ma) CC_HINT(nonnull(2, 3));
-
-RADCLIENT	*client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto);
-
-RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients, int number);
-RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
-bool		client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
-RADCLIENT	*client_read(char const *filename, int in_server, int flag);
-
 
 /* files.c */
 int		pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int complain);

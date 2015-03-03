@@ -1232,9 +1232,9 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (!client_cs) client_cs = parentcs;
 
 #ifdef WITH_TLS
-	sock->clients = clients_parse_section(client_cs, (this->tls != NULL));
+	sock->clients = client_list_parse_section(client_cs, (this->tls != NULL));
 #else
-	sock->clients = clients_parse_section(client_cs, false);
+	sock->clients = client_list_parse_section(client_cs, false);
 #endif
 	if (!sock->clients) {
 		cf_log_err_cs(cs,
@@ -3085,7 +3085,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_flag)
 		sock->my_ipaddr = server_ipaddr;
 		sock->my_port = auth_port;
 
-		sock->clients = clients_parse_section(config, false);
+		sock->clients = client_list_parse_section(config, false);
 		if (!sock->clients) {
 			cf_log_err_cs(config,
 				   "Failed to find any clients for this listen section");
@@ -3135,7 +3135,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_flag)
 		sock->my_ipaddr = server_ipaddr;
 		sock->my_port = auth_port + 1;
 
-		sock->clients = clients_parse_section(config, false);
+		sock->clients = client_list_parse_section(config, false);
 		if (!sock->clients) {
 			cf_log_err_cs(config,
 				   "Failed to find any clients for this listen section");
