@@ -441,8 +441,8 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	if (*p != '\0') {
 		out[i].type = L_ERR;
 		out[i].msg = p;
+		i++;
 	}
-	i++;
 
 	return i;
 }
