@@ -1103,31 +1103,34 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  * @note The dflt value will only be used if no matching #CONF_PAIR is found. Empty strings will not
  *	 result in the dflt value being used.
  *
- * @param cs to search for matching #CONF_PAIRs in.
+ * @param cs to search for matching #CONF_PAIR in.
  * @param name of #CONF_PAIR to search for.
  * @param type Data type to parse #CONF_PAIR value as.
- *	May be one of:
- *	- #PW_TYPE_TMPL 		- Feeds the value into #tmpl_afrom_str. Value can be
- *					  obtained with #tmpl_expand or #tmpl_aexpand.
- *	- #PW_TYPE_BOOLEAN		- bool.
- *	- #PW_TYPE_INTEGER		- uint32_t.
- *	- #PW_TYPE_SHORT		- uint16_t.
- *	- #PW_TYPE_INTEGER64		- uint64_t.
- *	- #PW_TYPE_SIGNED		- int32_t.
- *	- #PW_TYPE_STRING		- char * (talloced).
- *	- #PW_TYPE_IPV4_ADDR		- fr_ipaddr_t (IPv4 address with prefix 32).
- *	- #PW_TYPE_IPV4_PREFIX		- fr_ipaddr_t (IPv4 address with variable prefix).
- *	- #PW_TYPE_IPV6_ADDR		- fr_ipaddr_t (IPv6 address with prefix 128).
- *	- #PW_TYPE_COMBO_IP_ADDR 	- fr_ipaddr_t (IPv4/IPv6 address with prefix 32/128).
- *	- #PW_TYPE_COMBO_IP_PREFIX	- fr_ipaddr_t (IPv4/IPv6 address with variable prefix).
- *	- #PW_TYPE_TIMEVAL		- struct timeval.
- *	Type may be |'rd with the following flags:
- *	- #PW_TYPE_DEPRECATED		- If a matching #CONF_PAIR is found, error out with a deprecated message.
- *	- #PW_TYPE_REQUIRED		- Error out if no matching #CONF_PAIR is found, and no deflt value is set.
- *	- #PW_TYPE_ATTRIBUTE		- String value must be a valid attribute name (deprecated, use #PW_TYPE_TMPL).
- *	- #PW_TYPE_SECRET		- Only display contents if debug level >= 3.
- *	- #PW_TYPE_FILE_INPUT		- File matching value must exist, and must be readable.
- *	- #PW_TYPE_NOT_EMPTY		- Value must not be a zero length string.
+ *	Should be one of the following ``data`` types, and one or more of the following ``flag`` types |'rd together:
+ *	- ``data`` #PW_TYPE_TMPL 		- @copybrief PW_TYPE_TMPL
+ 					  	  Feeds the value into #tmpl_afrom_str. Value can be
+ *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
+ *	- ``data`` #PW_TYPE_BOOLEAN		- @copybrief PW_TYPE_BOOLEAN
+ *	- ``data`` #PW_TYPE_INTEGER		- @copybrief PW_TYPE_INTEGER
+ *	- ``data`` #PW_TYPE_SHORT		- @copybrief PW_TYPE_SHORT
+ *	- ``data`` #PW_TYPE_INTEGER64		- @copybrief PW_TYPE_INTEGER64
+ *	- ``data`` #PW_TYPE_SIGNED		- @copybrief PW_TYPE_SIGNED
+ *	- ``data`` #PW_TYPE_STRING		- @copybrief PW_TYPE_STRING
+ *	- ``data`` #PW_TYPE_IPV4_ADDR		- @copybrief PW_TYPE_IPV4_ADDR (IPv4 address with prefix 32).
+ *	- ``data`` #PW_TYPE_IPV4_PREFIX		- @copybrief PW_TYPE_IPV4_PREFIX (IPv4 address with variable prefix).
+ *	- ``data`` #PW_TYPE_IPV6_ADDR		- @copybrief PW_TYPE_IPV6_ADDR (IPv6 address with prefix 128).
+ *	- ``data`` #PW_TYPE_COMBO_IP_ADDR 	- @copybrief PW_TYPE_COMBO_IP_ADDR (IPv4/IPv6 address with
+ 						  prefix 32/128).
+ *	- ``data`` #PW_TYPE_COMBO_IP_PREFIX	- @copybrief PW_TYPE_COMBO_IP_PREFIX (IPv4/IPv6 address with
+ *						  variable prefix).
+ *	- ``data`` #PW_TYPE_TIMEVAL		- @copybrief PW_TYPE_TIMEVAL
+ *	- ``flag`` #PW_TYPE_DEPRECATED		- @copybrief PW_TYPE_DEPRECATED
+ *	- ``flag`` #PW_TYPE_REQUIRED		- @copybrief PW_TYPE_REQUIRED
+ *	- ``flag`` #PW_TYPE_ATTRIBUTE		- @copybrief PW_TYPE_ATTRIBUTE
+ *	- ``flag`` #PW_TYPE_SECRET		- @copybrief PW_TYPE_SECRET
+ *	- ``flag`` #PW_TYPE_FILE_INPUT		- @copybrief PW_TYPE_FILE_INPUT
+ *	- ``flag`` #PW_TYPE_NOT_EMPTY		- @copybrief PW_TYPE_NOT_EMPTY
+ * @param data Pointer to a global, or a field in a struct being populated with values.
  * @param dflt value to use, if no #CONF_PAIR is found.
  * @return -1 on error, -2 if deprecated, 0 on success (correctly parsed), 1 if default value was used.
  */

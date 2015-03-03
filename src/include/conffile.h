@@ -103,29 +103,29 @@ typedef struct timeval _timeval_t;
  */
 #define PW_TYPE_SUBSECTION	102
 
-/*
- * Configuration type flags, these modify the processing of config
- * items.
+/** @name #CONF_PARSER type flags
+ *
+ * These flags should be |'rd with another PW_TYPE_* value to create validation
+ * rules for the #cf_item_parse function.
+ *
+ * @note File PW_TYPE_FILE_* ypes have a base type of string, so they're validated
+ *	 correctly by the config parser.
+ * @{
  */
-#define PW_TYPE_DEPRECATED	(1 << 10)	//!< CONF_PAIR is deprecated, the server will refuse to start
-						//!< if it finds a CONFIG_ITEM with this flag.
-#define PW_TYPE_REQUIRED	(1 << 11)	//!< CONF_PAIR is required, server will not start without this
-						//!< config item.
-#define PW_TYPE_ATTRIBUTE	(1 << 12)	//!< CONF_PAIR value must exist in the dictionary as an attribute.
-#define PW_TYPE_SECRET		(1 << 13)	//!< don't print it when debug_flag==2.
+#define PW_TYPE_DEPRECATED	(1 << 10) //!< If a matching #CONF_PAIR is found, error out with a deprecated message.
+#define PW_TYPE_REQUIRED	(1 << 11) //!< Error out if no matching #CONF_PAIR is found, and no dflt value is set.
+#define PW_TYPE_ATTRIBUTE	(1 << 12) //!< Value must resolve to attribute in dict (deprecated, use #PW_TYPE_TMPL).
+#define PW_TYPE_SECRET		(1 << 13) //!< Only print value if debug level >= 3.
 
-/*
- * File i/o types have a base type of string, so they're validate
- * correctly by the config parser.
- */
-#define PW_TYPE_FILE_INPUT	((1 << 14) | PW_TYPE_STRING)
-#define PW_TYPE_FILE_OUTPUT	((1 << 15) | PW_TYPE_STRING)
+#define PW_TYPE_FILE_INPUT	((1 << 14) | PW_TYPE_STRING) //!< File matching value must exist, and must be readable.
+#define PW_TYPE_FILE_OUTPUT	((1 << 15) | PW_TYPE_STRING) //!< File matching value must exist, and must be writeable.
 
-#define PW_TYPE_XLAT		(1 << 16)	//!< string will be dynamically expanded.
-#define PW_TYPE_TMPL		(1 << 17)	//!< CONF_PAIR should be parsed as a template.
+#define PW_TYPE_XLAT		(1 << 16) //!< string will be dynamically expanded.
+#define PW_TYPE_TMPL		(1 << 17) //!< CONF_PAIR should be parsed as a template.
 
-#define PW_TYPE_MULTI		(1 << 18)	//!< CONF_PAIR can have multiple copies.
-#define PW_TYPE_NOT_EMPTY	(1 << 19)	//!< CONF_PAIR is required to have a non zero length value.
+#define PW_TYPE_MULTI		(1 << 18) //!< CONF_PAIR can have multiple copies.
+#define PW_TYPE_NOT_EMPTY	(1 << 19) //!< CONF_PAIR is required to have a non zero length value.
+/* @} **/
 
 #define FR_INTEGER_COND_CHECK(_name, _var, _cond, _new)\
 do {\
