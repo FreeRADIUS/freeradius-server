@@ -74,31 +74,32 @@ struct conf_item {
  *
  */
 struct conf_pair {
-	CONF_ITEM item;
-	char const *attr;		//!< Attribute name
-	char const *value;		//!< Attribute value
-	FR_TOKEN op;			//!< Operator e.g. =, :=
-	FR_TOKEN lhs_type;		//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
-	FR_TOKEN rhs_type;		//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
-	bool pass2;			//!< do expansion in pass2.
+	CONF_ITEM	item;
+	char const	*attr;		//!< Attribute name
+	char const	*value;		//!< Attribute value
+	FR_TOKEN	op;		//!< Operator e.g. =, :=
+	FR_TOKEN	lhs_type;	//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	FR_TOKEN	rhs_type;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
+	bool		pass2;		//!< do expansion in pass2.
 };
 
 /** Internal data that is associated with a configuration section
  *
  */
 struct conf_data {
-	CONF_ITEM  item;
-	char const *name;
-	int	   flag;
-	void	   *data;		//!< User data
-	void       (*free)(void *);	//!< Free user data function
+	CONF_ITEM  	item;
+	char const 	*name;
+	int	   	flag;
+	void	   	*data;		//!< User data
+	void       	(*free)(void *);	//!< Free user data function
 };
 
 struct conf_part {
-	CONF_ITEM item;
-	char const	*name1;
-	char const	*name2;
-	FR_TOKEN	name2_type;
+	CONF_ITEM	item;
+	char const	*name1;		//!< First name token.  Given ``foo bar {}`` would be ``foo``.
+	char const	*name2;		//!< Second name token. Given ``foo bar {}`` would be ``bar``.
+
+	FR_TOKEN	name2_type;	//!< The type of quoting around name2.
 
 	CONF_ITEM	*children;
 	CONF_ITEM	*tail;		//!< For speed.

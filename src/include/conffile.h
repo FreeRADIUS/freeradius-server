@@ -21,10 +21,12 @@ extern "C" {
 /*
  * Export the minimum amount of information about these structs
  */
-typedef struct conf_item CONF_ITEM;
-typedef struct conf_pair CONF_PAIR;
-typedef struct conf_part CONF_SECTION;
-typedef struct conf_data CONF_DATA;
+typedef struct conf_item CONF_ITEM;	//!< Generic configuration element, extended to become
+					///< a #CONF_PAIR, a #CONF_SECTION or #CONF_DATA.
+typedef struct conf_pair CONF_PAIR;	//!< #CONF_ITEM with an attribute, an operator and a value.
+typedef struct conf_part CONF_SECTION;	//!< #CONF_ITEM used to group multiple #CONF_PAIR and #CONF_SECTION, together.
+typedef struct conf_data CONF_DATA;	//!< #CONF_ITEM used to associate arbitrary data
+					///< with a #CONF_PAIR or #CONF_SECTION.
 
 
 typedef void conf_type_mismatch;
