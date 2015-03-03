@@ -879,7 +879,7 @@ do {\
 	}
 
 	DEBUG2("%s: #### Loading Clients ####", main_config.name);
-	if (!clients_parse_section(cs, false)) {
+	if (!client_list_parse_section(cs, false)) {
 		return -1;
 	}
 
@@ -933,7 +933,7 @@ int main_config_free(void)
 	 *	Clean up the configuration data
 	 *	structures.
 	 */
-	clients_free(NULL);
+	client_list_free(NULL);
 	realms_free();
 	listen_free(&main_config.listen);
 
