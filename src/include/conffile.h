@@ -117,7 +117,7 @@ typedef struct timeval _timeval_t;
 
 /** @name #CONF_PARSER type flags
  *
- * These flags should be |'rd with another PW_TYPE_* value to create validation
+ * These flags should be or'd with another PW_TYPE_* value to create validation
  * rules for the #cf_item_parse function.
  *
  * @note File PW_TYPE_FILE_* ypes have a base type of string, so they're validated
@@ -160,22 +160,52 @@ do {\
 	}\
 } while (0)
 
-/** Used to parse a CONF_ITEM into a native type
+/** Defines a #CONF_PAIR to C data type mapping
  *
+ * Is typically used to define mappings between module sections, and module instance structs.
+ * May also be used to set global configuration options.
+ *
+ * Offset/data values should be set using #FR_CONF_OFFSET or #FR_CONF_POINTER.
+ *
+ * Example with #FR_CONF_OFFSET :
+ @code{.c}
+   static CONF_PARSER module_config[] = {
+   	{ "example", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, example_instance_t, example), "default_value" },
+   	{ NULL, -1, 0, NULL, NULL }
+   }
+ @endcode
+ *
+ * Example with #FR_CONF_POINTER :
+ @code{.c}
+   static CONF_PARSER global_config[] = {
+   	{ "example", FR_CONF_POINTER(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, &my_global), "default_value" },
+   	{ NULL, -1, 0, NULL, NULL }
+   }
+ @endcode
+ *
+ * @see FR_CONF_OFFSET
+ * @see FR_CONF_POINTER
+ * @see cf_section_parse
+ * @see cf_item_parse
  */
 typedef struct CONF_PARSER {
-	char const	*name;			//!< Name of the CONF_ITEM to parse.
-	int		type;			//!< PW_TYPE_STRING, etc. Not the enum type as it may be
-						//!< mixed with flags.
+	char const	*name;			//!< Name of the #CONF_ITEM to parse.
+	int		type;			//!< A #PW_TYPE value, may be or'd with one or more PW_TYPE_* flags.
+						//!< @see cf_item_parse.
 
 	size_t		offset;			//!< Relative offset of field or structure to write the parsed value to.
-						//!< Must be used exclusively to data.
+						//!< When #type is set to #PW_TYPE_SUBSECTION, may be used to specify
+						//!< a base offset to add to all offsets contained within the
+						//!< subsection.
+						//!< @note Must be used exclusively to #data.
 
-	void		*data;			//!< Absolute pointer to a static variable to write the parsed value to.
-						//!< Must be used exclusively to offset.
+	void		*data;			//!< Pointer to a static variable to write the parsed value to.
+						//!< @note Must be used exclusively to #offset.
 
-	const void	*dflt;			//!< Default as it would appear in radiusd.conf, or a pointer to a
-						//!< CONF_PARSER struct (the subsection) if type is PW_TYPE_SUBSECTION.
+	const void	*dflt;			//!< Default as it would appear in radiusd.conf.
+						//!< When #type is set to #PW_TYPE_SUBSECTION, should be a pointer
+						//!< to the start of another array of #CONF_PARSER structs, forming
+						//!< the subsection.
 } CONF_PARSER;
 
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
