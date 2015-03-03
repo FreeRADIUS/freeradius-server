@@ -999,7 +999,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 		VERIFY_VP(i);
 		next = i->next;
 
-		if (i->da->flags.has_tag && TAG_EQ(tag, i->tag)) {
+		if (i->da->flags.has_tag && !TAG_EQ(tag, i->tag)) {
 			continue;
 		}
 
