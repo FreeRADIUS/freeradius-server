@@ -903,11 +903,14 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t *eap_packet)
 	 */
 	if ((len <= EAP_HEADER_LEN) ||
 	    ((eap_packet->code != PW_EAP_RESPONSE) &&
-	     (eap_packet->code != PW_EAP_REQUEST)) ||
-	    (eap_packet->data[0] <= 0) ||
-	    (eap_packet->data[0] >= PW_EAP_MAX_TYPES)) {
-
+	     (eap_packet->code != PW_EAP_REQUEST))) {
 		RAUTH("Badly formatted EAP Message: Ignoring the packet");
+		return EAP_INVALID;
+	}
+
+	if ((eap_packet->data[0] <= 0) ||
+	    (eap_packet->data[0] >= PW_EAP_MAX_TYPES)) {
+		RAUTH("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
 		return EAP_INVALID;
 	}
 
