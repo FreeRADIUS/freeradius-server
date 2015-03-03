@@ -442,6 +442,8 @@ static uint8_t const *not_zeroed(uint8_t const *ptr, size_t len)
  */
 void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
 {
+	rad_assert(vpt);
+
 	if (vpt->type == TMPL_TYPE_UNKNOWN) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: value_pair_tmpl_t type was "
 			     "TMPL_TYPE_UNKNOWN (uninitialised)", file, line);
