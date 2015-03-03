@@ -81,12 +81,22 @@ typedef struct dc_offer {
 	uint32_t offered_addr;
 } dc_offer_t;
 
+static const FR_NAME_NUMBER request_types[] = {
+	{ "discover", PW_DHCP_DISCOVER },
+	{ "request",  PW_DHCP_REQUEST },
+	{ "decline",  PW_DHCP_DECLINE },
+	{ "release",  PW_DHCP_RELEASE },
+	{ "inform",   PW_DHCP_INFORM },
+
+	{ NULL, 0}
+};
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: dhcpclient [options] server[:port] <command>\n");
 	fprintf(stderr, "Send a DHCP request with provided RADIUS attrs and output response.\n");
 
-	fprintf(stderr, "  <command>              One of discover, request, offer, decline, release, inform.\n");
+	fprintf(stderr, "  <command>              One of discover, request, decline, release, inform.\n");
 	fprintf(stderr, "  -d <directory>         Set the directory where the dictionaries are stored (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -f <file>              Read packets from file, not stdin.\n");
@@ -382,6 +392,7 @@ int main(int argc, char **argv)
 	char const *dict_dir = DICTDIR;
 	char const *filename = NULL;
 	DICT_ATTR const *da;
+	bool reply_expected = true;
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 	bool raw_mode = false;
@@ -509,36 +520,20 @@ int main(int argc, char **argv)
 	/*
 	 *	See what kind of request we want to send.
 	 */
-	if (strcmp(argv[2], "discover") == 0) {
-		if (server_port == 0) server_port = 67;
-		packet_code = PW_DHCP_DISCOVER;
-
-	} else if (strcmp(argv[2], "request") == 0) {
-		if (server_port == 0) server_port = 67;
-		packet_code = PW_DHCP_REQUEST;
-
-	} else if (strcmp(argv[2], "offer") == 0) {
-		if (server_port == 0) server_port = 67;
-		packet_code = PW_DHCP_OFFER;
-
-	} else if (strcmp(argv[2], "decline") == 0) {
-		if (server_port == 0) server_port = 67;
-		packet_code = PW_DHCP_DECLINE;
-
-	} else if (strcmp(argv[2], "release") == 0) {
-		if (server_port == 0) server_port = 67;
-		packet_code = PW_DHCP_RELEASE;
-
-	} else if (strcmp(argv[2], "inform") == 0) {
-		if (server_port == 0) server_port = 67;
-		packet_code = PW_DHCP_INFORM;
-
-	} else if (isdigit((int) argv[2][0])) {
-		if (server_port == 0) server_port = 67;
-		packet_code = atoi(argv[2]);
+	if (!isdigit((int) argv[2][0])) {
+		packet_code = fr_str2int(request_types, argv[2], -2);
+		if (packet_code == -2) {
+			fprintf(stderr, "Unknown packet type: %s\n", argv[2]);
+			usage();
+		}
 	} else {
-		fprintf(stderr, "Unknown packet type %s\n", argv[2]);
-		usage();
+		packet_code = atoi(argv[2]);
+	}
+	if (server_port == 0) server_port = 67;
+
+	if ((packet_code == PW_DHCP_RELEASE) || (packet_code == PW_DHCP_DECLINE)) {
+		/*	These kind of packets do not get a reply, so don't wait for one. */
+		reply_expected = false;
 	}
 
 	request_init(filename);
@@ -631,7 +626,9 @@ int main(int argc, char **argv)
 				fr_syserror(errno));
 			exit(1);
 		}
-		
+
+		if (!reply_expected) goto done;
+
 		reply = fr_dhcp_recv_raw_loop(sockfd, &ll, request);
 		if (!reply) {
 			fprintf(stderr, "dhcpclient: Error receiving reply (fr_dhcp_recv_raw_loop)\n");
@@ -646,6 +643,8 @@ int main(int argc, char **argv)
 			exit(1);
 		}
 
+		if (!reply_expected) goto done;
+
 		reply = fr_dhcp_recv(sockfd);
 		if (!reply) {
 			fprintf(stderr, "dhcpclient: Error receiving reply %s\n", fr_strerror());
@@ -659,6 +658,7 @@ int main(int argc, char **argv)
 		}
 	}
 
+done:
 	dict_free();
 
 	if (success) return 0;
