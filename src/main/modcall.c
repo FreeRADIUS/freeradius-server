@@ -1539,7 +1539,7 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 			     cf_pair_filename(cp), cf_pair_lineno(cp));
 		}
 
-		tmpl_free(&map->rhs);
+		TALLOC_FREE(map->rhs);
 
 		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, NULL, 0);
 	}
