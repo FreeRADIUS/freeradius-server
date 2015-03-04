@@ -2594,9 +2594,10 @@ static int _listener_free(rad_listen_t *this)
 		) {
 		listen_socket_t *sock = this->data;
 
-		rad_free(&sock->packet);
-
+		rad_assert(talloc_parent(sock) == this);
 		rad_assert(sock->ev == NULL);
+		rad_assert(talloc_parent(sock->packet) == sock);
+
 
 #ifdef WITH_TLS
 		/*
@@ -2605,8 +2606,8 @@ static int _listener_free(rad_listen_t *this)
 		 *	may be used by multiple listeners.
 		 */
 		if (this->tls) {
-			TALLOC_FREE(sock->ssn);
-			TALLOC_FREE(sock->request);
+			rad_assert(talloc_parent(sock->ssn) == sock);
+			rad_assert(talloc_parent(sock->request) == sock);
 #ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
 #endif
