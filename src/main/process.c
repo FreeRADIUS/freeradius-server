@@ -509,6 +509,11 @@ STATE_MACHINE_DECL(request_done)
 
 	TRACE_STATE_MACHINE;
 
+	/*
+	 *	Force this no matter what.
+	 */
+	request->process = request_done;
+
 #ifdef WITH_DETAIL
 	/*
 	 *	Tell the detail listener that we're done.
@@ -908,25 +913,10 @@ static void request_process_timer(REQUEST *request)
 		}
 
 		rad_assert(request->proxy != NULL);
-#ifdef WITH_COA
+
 		/*
-		 *	Ugh.
+		 *	Delay some more, hoping that we get a response.
 		 */
-		if (request->packet->code != request->proxy->code) {
-			if (request->proxy_reply) {
-				request->process = coa_running;
-			} else {
-				request->process = coa_wait_for_reply;
-			}
-		} else
-#endif
-
-		if (request->proxy_reply) {
-			request->process = proxy_running;
-		} else {
-			request->process = proxy_wait_for_reply;
-		}
-
 		when = request->proxy->timestamp;
 		tv_add(&when, request->delay);
 
@@ -936,7 +926,7 @@ static void request_process_timer(REQUEST *request)
 		}
 
 		/*
-		 *	Leave the initial delay alone.
+		 *	Otherwise set the timer for the future.
 		 */
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
@@ -1090,17 +1080,6 @@ STATE_MACHINE_DECL(request_common)
 
 	switch (action) {
 	case FR_ACTION_DUP:
-#ifdef WITH_PROXY
-		/*
-		 *	We're still waiting for a proxy reply.
-		 */
-		if (request->child_state == REQUEST_PROXIED) {
-			request->process = proxy_wait_for_reply;
-			proxy_wait_for_reply(request, action);
-			return;
-		}
-#endif
-
 		ERROR("(%u) Ignoring duplicate packet from "
 		      "client %s port %d - ID: %u due to unfinished request "
 		      "in component %s module %s",
@@ -1513,20 +1492,6 @@ STATE_MACHINE_DECL(request_running)
 	case FR_ACTION_DUP:
 		request_common(request, action);
 		return;
-
-#ifdef WITH_PROXY
-		/*
-		 *	This can happen due to a race condition where
-		 *	we send a proxied request, and immediately get
-		 *	another reply, before the timer has a chance
-		 *	to update the various states.
-		 */
-	case FR_ACTION_PROXY_REPLY:
-		request->child_state = REQUEST_RUNNING;
-		request->process = proxy_running;
-		request->process(request, FR_ACTION_RUN);
-		break;
-#endif
 
 	case FR_ACTION_RUN:
 		if (!request_pre_handler(request, action)) {
@@ -2522,6 +2487,11 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	}
 #endif	/* WITH_STATS */
 
+	/*
+	 *	Tell the request state machine that we have a proxy
+	 *	reply.  Depending on the function, this should either
+	 *	ignore it, or process it.
+	 */
 	request->process(request, FR_ACTION_PROXY_REPLY);
 
 	return 1;
@@ -2602,9 +2572,14 @@ STATE_MACHINE_DECL(proxy_running)
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
+		/*
+		 *	Silently ignore duplicate proxy replies.
+		 */
+	case FR_ACTION_PROXY_REPLY:
+		break;
+
 	case FR_ACTION_DUP:
 	case FR_ACTION_TIMER:
-	case FR_ACTION_PROXY_REPLY:
 		request_common(request, action);
 		break;
 
@@ -3040,14 +3015,29 @@ static int request_proxy(REQUEST *request, int retransmit)
 	gettimeofday(&request->proxy_retransmit, NULL);
 	if (!retransmit) {
 		request->proxy->timestamp = request->proxy_retransmit;
-		request->home_server->last_packet_sent = request->proxy_retransmit.tv_sec;
 	}
+	request->home_server->last_packet_sent = request->proxy_retransmit.tv_sec;
 
 	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
-	NO_CHILD_THREAD;
-	request->child_state = REQUEST_PROXIED;
-	request->proxy_listener->send(request->proxy_listener, request);
+
+	/*
+	 *	Encode the packet before we do anything else.
+	 */
+	request->proxy_listener->encode(request->proxy_listener, request);
 	debug_packet(request, request->proxy, false);
+
+	/*
+	 *	Set the state function, then the state, no child, and
+	 *	send the packet.
+	 */
+	request->process = proxy_wait_for_reply;
+	request->child_state = REQUEST_PROXIED;
+	NO_CHILD_THREAD;
+
+	/*
+	 *	And send the packet.
+	 */
+	request->proxy_listener->send(request->proxy_listener, request);
 	return 1;
 }
 
@@ -3735,9 +3725,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		break;
 
 		/*
-		 *	Duplicate proxy replies have been quenched by
-		 *	now.  This state is only called ONCE, when we
-		 *	receive a new reply from the home server.
+		 *	We received a new reply.  Go process it.
 		 */
 	case FR_ACTION_PROXY_REPLY:
 		request_queue_or_run(request, proxy_running);
@@ -3956,6 +3944,7 @@ static void request_coa_originate(REQUEST *request)
 	 */
 	gettimeofday(&coa->proxy->timestamp, NULL);
 	coa->packet->timestamp = coa->proxy->timestamp; /* for max_request_time */
+	coa->home_server->last_packet_sent = coa->proxy->timestamp.tv_sec;
 	coa->delay = 0;		/* need to calculate a new delay */
 
 	/*
@@ -3964,21 +3953,35 @@ static void request_coa_originate(REQUEST *request)
 	 */
 	fr_state_put_vps(coa, NULL, coa->packet);
 
-	coa->process = coa_wait_for_reply;
+	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
+
+	/*
+	 *	Encode the packet before we do anything else.
+	 */
+	coa->proxy_listener->encode(coa->proxy_listener, coa);
+	debug_packet(coa, coa->proxy, false);
+
 #ifdef DEBUG_STATE_MACHINE
 	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
 			       child_state_names[request->child_state],
-			       child_state_names[REQUEST_RUNNING]);
+			       child_state_names[REQUEST_PROXIED]);
 #endif
+
+	/*
+	 *	Set the state function, then the state, no child, and
+	 *	send the packet.
+	 */
+	coa->process = coa_wait_for_reply;
+	coa->child_state = REQUEST_PROXIED;
+
 #ifdef HAVE_PTHREAD_H
 	coa->child_pid = NO_SUCH_CHILD_PID;
 #endif
-	coa->child_state = REQUEST_PROXIED;
-	rad_assert(coa->proxy_reply == NULL);
-	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
-	coa->home_server->last_packet_sent = coa->proxy->timestamp.tv_sec;
+
+	/*
+	 *	And send the packet.
+	 */
 	coa->proxy_listener->send(coa->proxy_listener, coa);
-	debug_packet(coa, coa->proxy, false);
 }
 
 
@@ -4233,12 +4236,14 @@ STATE_MACHINE_DECL(coa_running)
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
-	case FR_ACTION_TIMER:
-		request_process_timer(request);
+		/*
+		 *	Silently ignore duplicate proxy replies.
+		 */
+	case FR_ACTION_PROXY_REPLY:
 		break;
 
-	case FR_ACTION_PROXY_REPLY:
-		request_common(request, action);
+	case FR_ACTION_TIMER:
+		request_process_timer(request);
 		break;
 
 	case FR_ACTION_RUN:
