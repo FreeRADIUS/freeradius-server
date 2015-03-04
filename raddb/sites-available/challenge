@@ -1,0 +1,76 @@
+#
+#	This file gives an example of using Challenge-Response
+#
+#	In this example, the user logs in with a password, which has
+#	to be "hello".  The server will send them a challenge
+#	consisting of a random number 0..9.  The user has to respond
+#	with that number.
+#
+#
+#	$Id$
+#
+listen {
+	type = auth
+	ipaddr = *
+	port = 2000
+	virtual_server = challenge
+}
+
+server challenge {
+authorize {
+
+	#
+	#  If ther's no State attribute, then this is the request from
+	#  the user.
+	#
+	if (!State) {
+		update control {
+			Auth-Type := Step1
+			Cleartext-Password := "hello"
+		}
+	}
+	else {
+		#
+		#  Do authentication for step 2.
+		#  Set the "known good" password to the number
+		#  saved in the session-state list.
+		#
+		update control {
+			Auth-Type := Step2
+			Cleartext-Password := &session-state:Tmp-Integer-0
+		}
+	}
+}
+
+authenticate {
+	Auth-Type Step1 {
+		#  If the password doesn't match, the user is rejected
+		#  immediately.
+		pap
+
+		#
+		#  Set the random number to save.
+		#
+		update session-state {
+			Tmp-Integer-0 := "%{randstr:n}"
+		}
+		update reply {
+			Reply-Message := &session-state:Tmp-Integer-0
+		}
+
+		#
+		#  Send an Access-Challenge.
+		#  See raddb/policy.d/control for the definition
+		#  of "challenge"
+		#
+		challenge
+	}
+
+	Auth-Type Step2 {
+		#
+		#  Do PAP authentication with the password.
+		#
+		pap
+	}
+}
+}
