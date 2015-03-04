@@ -542,9 +542,11 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 {
 	VALUE_PAIR	*nvp, *vpa, *vpn;
 	AV		*av;
-	char		namebuf[256], *name;
-	char	    buffer[1024];
+	char		namebuf[256];
+	const char 	*name;
+	char	    	buffer[1024];
 	int		attr, len;
+	size_t		namelen;
 
 	hv_undef(rad_hv);
 	nvp = paircopy(vp);
@@ -554,28 +556,39 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		attr = nvp->attribute;
 		vpa = paircopy2(nvp,attr);
 
+		/*
+		 *	Get the name for this attribute.
+		 */
+		if ((vpa->flags.has_tag) &&
+		    (vpa->flags.tag != 0)) {
+			snprintf(namebuf, sizeof(namebuf), "%s:%d",
+				 vpa->name, vpa->flags.tag);
+			name = namebuf;
+		} else {
+			name = vpa->name;
+		}
+		namelen = strlen(name);
+
 		if (vpa->next) {
+			/*
+			 *	There may be many instances of this
+			 *	attribute.  If so, create an
+			 *	intermediate array, and store them
+			 *	all.
+			 */
 			av = newAV();
-			vpn = vpa;
-			while (vpn) {
+
+			for (vpn = vpa; vpn != NULL; vpn = vpn->next) {
 				len = vp_prints_value(buffer, sizeof(buffer),
 						vpn, FALSE);
 				av_push(av, newSVpv(buffer, len));
-				vpn = vpn->next;
 			}
-			hv_store(rad_hv, nvp->name, strlen(nvp->name),
+			hv_store(rad_hv, name, namelen,
 					newRV_noinc((SV *) av), 0);
 		} else {
-			if ((vpa->flags.has_tag) &&
-			    (vpa->flags.tag != 0)) {
-				snprintf(namebuf, sizeof(namebuf), "%s:%d",
-					 nvp->name, nvp->flags.tag);
-				name = namebuf;
-			}
-
 			len = vp_prints_value(buffer, sizeof(buffer),
 					      vpa, FALSE);
-			hv_store(rad_hv, name, strlen(name),
+			hv_store(rad_hv, name, namelen,
 				 newSVpv(buffer, len), 0);
 		}
 
