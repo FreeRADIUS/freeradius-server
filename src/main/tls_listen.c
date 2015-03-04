@@ -166,7 +166,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 		rad_assert(sock->ssn == NULL);
 
-		sock->ssn = tls_new_session(listener->tls, listener->tls, sock->request,
+		sock->ssn = tls_new_session(sock, listener->tls, sock->request,
 					    listener->tls->require_client_cert);
 		if (!sock->ssn) {
 			TALLOC_FREE(sock->request);
@@ -174,7 +174,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 			return 0;
 		}
 
-		(void) talloc_steal(sock, sock->ssn);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 		SSL_set_ex_data(sock->ssn->ssl, fr_tls_ex_index_certs, (void *)&request->packet->vps);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_TALLOC, sock->parent);
