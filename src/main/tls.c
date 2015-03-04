@@ -210,13 +210,13 @@ static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 
 #endif
 
-tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
+tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd)
 {
 	int verify_mode;
 	tls_session_t *ssn = NULL;
 	REQUEST *request;
 
-	ssn = talloc_zero(conf, tls_session_t);
+	ssn = talloc_zero(ctx, tls_session_t);
 	if (!ssn) return NULL;
 
 	ssn->ctx = conf->ctx;

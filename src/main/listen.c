@@ -2733,7 +2733,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, uint16_t src_port)
 #ifdef WITH_TLS
 	if ((home->proto == IPPROTO_TCP) && home->tls) {
 		DEBUG("Trying SSL to port %d\n", home->port);
-		sock->ssn = tls_new_client_session(home->tls, this->fd);
+		sock->ssn = tls_new_client_session(sock, home->tls, this->fd);
 		if (!sock->ssn) {
 			ERROR("Failed starting SSL to '%s'", buffer);
 			home->last_failed_open = now;

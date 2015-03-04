@@ -300,7 +300,7 @@ int		tls_global_version_check(char const *acknowledged);
 #endif
 void		tls_global_cleanup(void);
 tls_session_t	*tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert);
-tls_session_t	*tls_new_client_session(fr_tls_server_conf_t *conf, int fd);
+tls_session_t	*tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd);
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
 SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client);
