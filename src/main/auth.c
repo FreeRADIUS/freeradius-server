@@ -570,15 +570,6 @@ authenticate:
 	do {
 		result = rad_check_password(request);
 		if (result > 0) {
-			/*
-			 *	We presume that the reply has been set by someone.
-			 */
-			if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
-				fr_state_put_vps(request, request->packet, request->reply);
-
-			} else {
-				fr_state_discard(request, request->packet);
-			}
 			return RLM_MODULE_HANDLED;
 		}
 
