@@ -238,8 +238,6 @@ ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char con
 ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name, size_t inlen,
 				       FR_TOKEN type, request_refs_t request_def, pair_lists_t list_def, bool do_escape);
 
-void			tmpl_free(value_pair_tmpl_t **tmpl);
-
 bool			tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv);
 
 void			tmpl_cast_in_place_str(value_pair_tmpl_t *vpt);

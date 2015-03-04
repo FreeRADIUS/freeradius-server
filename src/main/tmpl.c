@@ -1048,23 +1048,6 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const
 	return slen;
 }
 
-/** Release memory allocated to value pair template.
- *
- * @param[in,out] tmpl to free.
- */
-void tmpl_free(value_pair_tmpl_t **tmpl)
-{
-	if (*tmpl == NULL) return;
-
-	if ((*tmpl)->type != TMPL_TYPE_UNKNOWN) VERIFY_TMPL(*tmpl);
-
-	dict_attr_free(&((*tmpl)->tmpl_da));
-
-	talloc_free(*tmpl);
-
-	*tmpl = NULL;
-}
-
 /**  Print a template to a string
  *
  * @param[out] buffer for the output string
