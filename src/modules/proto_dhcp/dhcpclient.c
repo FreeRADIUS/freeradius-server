@@ -88,16 +88,16 @@ static const FR_NAME_NUMBER request_types[] = {
 	{ "decline",  PW_DHCP_DECLINE },
 	{ "release",  PW_DHCP_RELEASE },
 	{ "inform",   PW_DHCP_INFORM },
-
+	{ "auto",     PW_CODE_UNDEFINED },
 	{ NULL, 0}
 };
 
 static void NEVER_RETURNS usage(void)
 {
-	fprintf(stderr, "Usage: dhcpclient [options] server[:port] <command>\n");
+	fprintf(stderr, "Usage: dhcpclient [options] server[:port] [<command>]\n");
 	fprintf(stderr, "Send a DHCP request with provided RADIUS attrs and output response.\n");
 
-	fprintf(stderr, "  <command>              One of discover, request, decline, release, inform.\n");
+	fprintf(stderr, "  <command>              One of: discover, request, decline, release, inform; or: auto.\n");
 	fprintf(stderr, "  -d <directory>         Set the directory where the dictionaries are stored (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -f <file>              Read packets from file, not stdin.\n");
@@ -156,10 +156,15 @@ static int request_init(char const *filename)
 		default:
 			break;
 
-			/*
-			 *	Allow it to set the packet type in
-			 *	the attributes read from the file.
-			 */
+		/*
+		 *	Allow it to set the packet type in
+		 *	the attributes read from the file.
+		 *	(this takes precedence over the command argument.)
+		 */
+		case PW_DHCP_MESSAGE_TYPE:
+			request->code = vp->vp_integer - PW_DHCP_OFFSET;
+			break;
+
 		case PW_PACKET_TYPE:
 			request->code = vp->vp_integer;
 			break;
@@ -198,6 +203,11 @@ static int request_init(char const *filename)
 		} /* switch over the attribute */
 
 	} /* loop over the VP's we read in */
+	
+	/*
+	 *	Use the default set on the command line
+	 */
+	if (!request->code) request->code = packet_code;
 
 	if (fp != stdin) fclose(fp);
 
@@ -521,21 +531,18 @@ int main(int argc, char **argv)
 	/*
 	 *	See what kind of request we want to send.
 	 */
-	if (!isdigit((int) argv[2][0])) {
-		packet_code = fr_str2int(request_types, argv[2], -2);
-		if (packet_code == -2) {
-			fprintf(stderr, "Unknown packet type: %s\n", argv[2]);
-			usage();
+	if (argc >= 3) {
+		if (!isdigit((int) argv[2][0])) {
+			packet_code = fr_str2int(request_types, argv[2], -2);
+			if (packet_code == -2) {
+				fprintf(stderr, "Unknown packet type: %s\n", argv[2]);
+				usage();
+			}
+		} else {
+			packet_code = atoi(argv[2]);
 		}
-	} else {
-		packet_code = atoi(argv[2]);
 	}
 	if (server_port == 0) server_port = 67;
-
-	if ((packet_code == PW_DHCP_RELEASE) || (packet_code == PW_DHCP_DECLINE)) {
-		/*	These kind of packets do not get a reply, so don't wait for one. */
-		reply_expected = false;
-	}
 
 	request_init(filename);
 
@@ -546,7 +553,20 @@ int main(int argc, char **argv)
 		fprintf(stderr, "dhcpclient: Nothing to send.\n");
 		exit(1);
 	}
-	request->code = packet_code;
+
+	/*
+	 *	Sanity check.
+	 */
+	if (!request->code) {
+		fprintf(stderr, "dhcpclient: Command was %s, and request did not contain DHCP-Message-Type nor Packet-Type.\n",
+			(argc >= 3) ? "'auto'" : "unspecified");
+		exit(1);
+	}
+
+	if ((request->code == PW_DHCP_RELEASE) || (request->code == PW_DHCP_DECLINE)) {
+		/*	These kind of packets do not get a reply, so don't wait for one. */
+		reply_expected = false;
+	}
 
 	/*
 	 *	Bind to the first specified IP address and port.
