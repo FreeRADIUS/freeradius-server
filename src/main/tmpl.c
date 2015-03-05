@@ -1644,13 +1644,13 @@ size_t tmpl_prints(char *out, size_t outlen, value_pair_tmpl_t const *vpt, DICT_
  *
  * @param err May be NULL if no error code is required. Will be set to:
  *	- 0 on success.
- *	- -1 if no matching #VALUE_PAIR could not be found.
+ *	- -1 if no matching #VALUE_PAIR could be found.
  *	- -2 if list could not be found (doesn't exist in current #REQUEST).
  *	- -3 if context could not be found (no parent #REQUEST available).
  * @param cursor to store iterator state.
  * @param request The current #REQUEST.
  * @param vpt specifying the #VALUE_PAIR type/tag or list to iterate over.
- * @return the first #VALUE_PAIR specified by the #value_pair_tmpl_t, NULL if no matching
+ * @return the first #VALUE_PAIR specified by the #value_pair_tmpl_t, or NULL if no matching
  *	#VALUE_PAIR found, and NULL on error.
  *
  * @see tmpl_cursor_next
@@ -1786,7 +1786,7 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, value_pair_tmpl_t const *vpt)
  *	- #TMPL_TYPE_LIST
  *	- #TMPL_TYPE_ATTR
  * @return
- *	- -1 if no matching #VALUE_PAIR could not be found.
+ *	- -1 if no matching #VALUE_PAIR could be found.
  *	- -2 if list could not be found (doesn't exist in current #REQUEST).
  *	- -3 if context could not be found (no parent #REQUEST available).
  *	- -4 on memory allocation error.
@@ -1829,7 +1829,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pai
  *	- #TMPL_TYPE_LIST
  *	- #TMPL_TYPE_ATTR
  * @return
- *	- -1 if no matching #VALUE_PAIR could not be found.
+ *	- -1 if no matching #VALUE_PAIR could be found.
  *	- -2 if list could not be found (doesn't exist in current #REQUEST).
  *	- -3 if context could not be found (no parent #REQUEST available).
  */
