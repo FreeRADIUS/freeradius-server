@@ -1662,7 +1662,7 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 		    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
 			tmpl_cast_in_place_str(map->rhs);
 		} else {
-			if (!tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da)) {
+			if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 				cf_log_err(map->ci, "%s", fr_strerror());
 				return -1;
 			}
@@ -3570,7 +3570,7 @@ bool modcall_pass2(modcallable *mc)
 				if (f->vpt->type == TMPL_TYPE_ATTR) {
 					rad_assert(f->vpt->tmpl_da != NULL);
 
-					if (!tmpl_cast_in_place(g->vpt, f->vpt->tmpl_da->type, f->vpt->tmpl_da)) {
+					if (tmpl_cast_in_place(g->vpt, f->vpt->tmpl_da->type, f->vpt->tmpl_da) < 0) {
 						cf_log_err_cs(g->cs, "Invalid argument for case statement: %s",
 							      fr_strerror());
 						return false;

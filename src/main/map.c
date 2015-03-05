@@ -214,7 +214,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 			goto marker;
 		}
 
-		if (!tmpl_define_unknown_attr(map->lhs)) {
+		if (tmpl_define_unknown_attr(map->lhs) < 0) {
 			cf_log_err_cp(cp, "Failed creating attribute %s: %s",
 				      map->lhs->name, fr_strerror());
 			goto error;
@@ -233,7 +233,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	} else {
 		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, src_request_def, src_list_def, true);
 		if (slen < 0) goto marker;
-		if (!tmpl_define_unknown_attr(map->rhs)) {
+		if (tmpl_define_unknown_attr(map->rhs) < 0) {
 			cf_log_err_cp(cp, "Failed creating attribute %s: %s", map->rhs->name, fr_strerror());
 			goto error;
 		}

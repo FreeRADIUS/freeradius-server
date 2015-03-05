@@ -1037,9 +1037,9 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *in,
  * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_LITERAL.
  * @param[in] type to cast to.
  * @param[in] enumv Enumerated dictionary values associated with a #DICT_ATTR.
- * @return true for success, false for failure.
+ * @return 0 on success, -1 on failure.
  */
-bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
+int tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 {
 	ssize_t ret;
 
@@ -1054,14 +1054,14 @@ bool tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *e
 	 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 	 */
 	ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type, enumv, vpt->name, vpt->len, '\0');
-	if (ret < 0) return false;
+	if (ret < 0) return -1;
 
 	vpt->type = TMPL_TYPE_DATA;
 	vpt->tmpl_data_length = (size_t) ret;
 
 	VERIFY_TMPL(vpt);
 
-	return true;
+	return 0;
 }
 
 /** Convert #value_pair_tmpl_t of type #TMPL_TYPE_LITERAL to #TMPL_TYPE_DATA of type #PW_TYPE_STRING
@@ -1151,27 +1151,27 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
  *
  * @param vpt to add. ``tmpl_da`` pointer will be updated to point to the
  *	#DICT_ATTR inserted into the dictionary.
- * @return true on success, false on failure.
+ * @return 0 on success, -1 on failure.
  */
-bool tmpl_define_unknown_attr(value_pair_tmpl_t *vpt)
+int tmpl_define_unknown_attr(value_pair_tmpl_t *vpt)
 {
 	DICT_ATTR const *da;
 
-	if (!vpt) return false;
+	if (!vpt) return -1;
 
 	VERIFY_TMPL(vpt);
 
 	if ((vpt->type != TMPL_TYPE_ATTR) &&
 	    (vpt->type != TMPL_TYPE_DATA)) {
-		return true;
+		return 0;
 	}
 
-	if (!vpt->tmpl_da->flags.is_unknown) return true;
+	if (!vpt->tmpl_da->flags.is_unknown) return 0;
 
 	da = dict_unknown_add(vpt->tmpl_da);
-	if (!da) return false;
+	if (!da) return -1;
 	vpt->tmpl_da = da;
-	return true;
+	return 0;
 }
 /* @} **/
 
