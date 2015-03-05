@@ -80,6 +80,10 @@ static libssl_defect_t libssl_defects[] =
 static int fr_tls_ex_index_vps = -1;
 int fr_tls_ex_index_certs = -1;
 
+/* Session */
+static void 		session_close(tls_session_t *ssn);
+static void 		session_init(tls_session_t *ssn);
+
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
@@ -583,7 +587,7 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 	return 1;
 }
 
-void session_init(tls_session_t *ssn)
+static void session_init(tls_session_t *ssn)
 {
 	ssn->ssl = NULL;
 	ssn->into_ssl = ssn->from_ssl = NULL;
@@ -602,7 +606,7 @@ void session_init(tls_session_t *ssn)
 	ssn->free_opaque = NULL;
 }
 
-void session_close(tls_session_t *ssn)
+static void session_close(tls_session_t *ssn)
 {
 	SSL_set_quiet_shutdown(ssn->ssl, 1);
 	SSL_shutdown(ssn->ssl);

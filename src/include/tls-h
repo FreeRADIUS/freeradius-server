@@ -316,10 +316,6 @@ void tls_fail(tls_session_t *ssn);
 fr_tls_status_t tls_ack_handler(tls_session_t *tls_session, REQUEST *request);
 fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request);
 
-/* Session */
-void 		session_close(tls_session_t *ssn);
-void 		session_init(tls_session_t *ssn);
-
 #define FR_TLS_EX_INDEX_HANDLER  (10)
 #define FR_TLS_EX_INDEX_CONF	 (11)
 #define FR_TLS_EX_INDEX_REQUEST	 (12)
