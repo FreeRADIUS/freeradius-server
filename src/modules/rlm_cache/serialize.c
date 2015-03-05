@@ -171,7 +171,7 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		 *	Convert literal to a type appropriate for
 		 *	the VP.
 		 */
-		if (!tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da)) goto error;
+		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) goto error;
 
 		vp = pairalloc(c, map->lhs->tmpl_da);
 		len = value_data_copy(vp, &vp->data, map->rhs->tmpl_data_type,

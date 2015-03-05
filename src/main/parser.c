@@ -710,7 +710,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				return_P(fr_strerror());
 			}
 
-			if (!tmpl_define_unknown_attr(map->lhs)) {
+			if (tmpl_define_unknown_attr(map->lhs) < 0) {
 				return_lhs("Failed defining attribute");
 			return_lhs:
 				if (lhs) talloc_free(lhs);
@@ -756,7 +756,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					return_P(fr_strerror());
 				}
 
-				if (!tmpl_define_unknown_attr(map->rhs)) {
+				if (tmpl_define_unknown_attr(map->rhs) < 0) {
 					return_rhs("Failed defining attribute");
 				}
 			}
@@ -813,7 +813,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	Cast it to the appropriate data type.
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast)) {
+				    (tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast) < 0)) {
 					*error = "Failed to parse field";
 					if (lhs) talloc_free(lhs);
 					if (rhs) talloc_free(rhs);
@@ -827,7 +827,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_DATA) &&
 				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast)) {
+				    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
 					return_rhs("Failed to parse field");
 				}
 
@@ -1023,7 +1023,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	literal.  Cast the RHS to the type of the cast.
 				 */
 				if (c->cast && (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
-				    !tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast)) {
+				    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
 					return_rhs("Failed to parse field");
 				}
 
@@ -1054,7 +1054,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 						break;
 					}
 
-					if (!tmpl_cast_in_place(c->data.map->rhs, type, c->data.map->lhs->tmpl_da)) {
+					if (tmpl_cast_in_place(c->data.map->rhs, type, c->data.map->lhs->tmpl_da) < 0) {
 						DICT_ATTR const *da = c->data.map->lhs->tmpl_da;
 
 						if ((da->vendor == 0) &&

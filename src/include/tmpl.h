@@ -307,7 +307,7 @@ ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char con
 ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name, size_t inlen,
 				       FR_TOKEN type, request_refs_t request_def, pair_lists_t list_def, bool do_escape);
 
-bool			tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv);
+int			tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv);
 
 void			tmpl_cast_in_place_str(value_pair_tmpl_t *vpt);
 
@@ -333,7 +333,7 @@ int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 
 int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
 
-bool			tmpl_define_unknown_attr(value_pair_tmpl_t *vpt);
+int			tmpl_define_unknown_attr(value_pair_tmpl_t *vpt);
 
 #ifdef __cplusplus
 }
