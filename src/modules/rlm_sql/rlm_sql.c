@@ -572,10 +572,13 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
  * The group membership query should only return one element which is the username. The returned
  * username will then be checked with the passed check string.
  */
+static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
+			VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
+			UNUSED VALUE_PAIR **reply_pairs) CC_HINT(nonnull (1, 2, 4));
 
-static int CC_HINT(nonnull (1, 2, 4)) sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
-						   VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
-						   UNUSED VALUE_PAIR **reply_pairs)
+static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp,
+			VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
+			UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_sql_handle_t *handle;
 	rlm_sql_t *inst = instance;
@@ -1003,8 +1006,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return RLM_MODULE_OK;
 }
 
-
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
 
@@ -1299,7 +1302,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 	 */
 	item = cf_reference_item(NULL, section->cs, path);
 	if (!item) {
-		RWDEBUG("No such item %s", path);
+		RWDEBUG("No such configuration item %s", path);
 		rcode = RLM_MODULE_NOOP;
 
 		goto finish;
@@ -1431,7 +1434,9 @@ finish:
 /*
  *	Accounting: Insert or update session data in our sql table
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST * request) {
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+{
 	rlm_sql_t *inst = instance;
 
 	if (inst->config->accounting.reference_cp) {
@@ -1452,8 +1457,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST * req
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-
-static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST * request) {
+static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
+{
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	rlm_sql_handle_t 	*handle = NULL;
 	rlm_sql_t		*inst = instance;
@@ -1648,7 +1654,9 @@ release:
 /*
  *	Postauth: Write a record of the authentication attempt
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST * request) {
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+{
 	rlm_sql_t *inst = instance;
 
 	if (inst->config->postauth.reference_cp) {
