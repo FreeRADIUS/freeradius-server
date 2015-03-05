@@ -1201,7 +1201,7 @@ int tmpl_define_unknown_attr(value_pair_tmpl_t *vpt)
  *	- #TMPL_TYPE_ATTR
  * @param escape xlat escape function (only used for xlat types).
  * @param escape_ctx xlat escape function data.
- * @return -1 on error, else 0.
+ * @return -1 on error, else the length of data written to buff, or pointed to by out.
  */
 ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *request,
 		    value_pair_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx)
@@ -1339,7 +1339,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
  *	- #TMPL_TYPE_ATTR
  * @param escape xlat escape function (only used for xlat types).
  * @param escape_ctx xlat escape function data.
- * @return -1 on error, else 0.
+ * @return -1 on error, else the length of data written to buff, or pointed to by out.
  */
 ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_tmpl_t const *vpt,
 		     RADIUS_ESCAPE_STRING escape, void *escape_ctx)
