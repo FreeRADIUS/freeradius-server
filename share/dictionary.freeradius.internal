@@ -592,14 +592,13 @@ ATTRIBUTE	Radclient-Test-Name			2200	string
 #	Non-Protocol Integer Translations
 #
 
-VALUE	Auth-Type			Local			0
-VALUE	Auth-Type			System			1
-VALUE	Auth-Type			SecurID			2
-VALUE	Auth-Type			Crypt-Local		3
-VALUE	Auth-Type			Reject			4
-VALUE	Auth-Type			ActivCard		5
-VALUE	Auth-Type			EAP			6
-VALUE	Auth-Type			ARAP			7
+VALUE	Auth-Type			Local			1
+VALUE	Auth-Type			System			2
+VALUE	Auth-Type			SecurID			3
+VALUE	Auth-Type			Crypt-Local		4
+VALUE	Auth-Type			Reject			5
+VALUE	Auth-Type			ActivCard		6
+VALUE	Auth-Type			EAP			7
 
 #
 #	FreeRADIUS extensions (most originally from Cistron)
@@ -623,31 +622,31 @@ VALUE	Auth-Type			MS-CHAP-V2		1034
 #
 #	Authorization type, too.
 #
-VALUE	Autz-Type			Local			0
+VALUE	Autz-Type			Local			1
 
 #
 #	And accounting
 #
-VALUE	Acct-Type			Local			0
+VALUE	Acct-Type			Local			1
 
 #
 #	And Session handling
 #
-VALUE	Session-Type			Local			0
+VALUE	Session-Type			Local			1
 
 #
 #	And Post-Auth
-VALUE	Post-Auth-Type			Local			0
-VALUE	Post-Auth-Type			Reject			1
-VALUE	Post-Auth-Type			Challenge		2
+VALUE	Post-Auth-Type			Local			1
+VALUE	Post-Auth-Type			Reject			2
+VALUE	Post-Auth-Type			Challenge		3
 
 #
 #	And Post-Proxy
-VALUE	Post-Proxy-Type			Fail			0
-VALUE	Post-Proxy-Type			Fail-Authentication	1
-VALUE	Post-Proxy-Type			Fail-Accounting		2
-VALUE	Post-Proxy-Type			Fail-CoA		3
-VALUE	Post-Proxy-Type			Fail-Disconnect		4
+VALUE	Post-Proxy-Type			Fail			1
+VALUE	Post-Proxy-Type			Fail-Authentication	2
+VALUE	Post-Proxy-Type			Fail-Accounting		3
+VALUE	Post-Proxy-Type			Fail-CoA		4
+VALUE	Post-Proxy-Type			Fail-Disconnect		5
 
 #
 #	Experimental Non-Protocol Integer Translations for FreeRADIUS
