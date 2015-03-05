@@ -811,7 +811,6 @@ static void _fr_talloc_log(char const *msg)
 int fr_log_talloc_report(TALLOC_CTX *ctx)
 {
 	FILE *log;
-	int i = 0;
 	int fd;
 
 	fd = dup(fr_fault_log_fd);
@@ -830,15 +829,24 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 		fprintf(log, "Current state of talloced memory:\n");
 		talloc_report_full(talloc_null_ctx, log);
 	} else {
+		int i;
+
 		fprintf(log, "Talloc chunk lineage:\n");
 		fprintf(log, "%p (%s)", ctx, talloc_get_name(ctx));
-		while ((ctx = talloc_parent(ctx))) fprintf(log, " < %p (%s)", ctx, talloc_get_name(ctx));
+
+		i = 0;
+		while ((i < 20) && (ctx = talloc_parent(ctx))) {
+			fprintf(log, " < %p (%s)", ctx, talloc_get_name(ctx));
+			i++;
+		}
 		fprintf(log, "\n");
 
+		i = 0;
 		do {
 			fprintf(log, "Talloc context level %i:\n", i++);
 			talloc_report_full(ctx, log);
 		} while ((ctx = talloc_parent(ctx)) &&
+			 (i < 20) &&
 			 (talloc_parent(ctx) != talloc_autofree_ctx) &&	/* Stop before we hit the autofree ctx */
 			 (talloc_parent(ctx) != talloc_null_ctx));  	/* Stop before we hit NULL ctx */
 	}
