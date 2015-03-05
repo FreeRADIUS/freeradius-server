@@ -63,9 +63,9 @@ static char const *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
 ", built on " __DATE__ " at " __TIME__;
 
 static int rs_useful_codes[] = {
-	PW_CODE_ACCESS_REQUEST,		//!< RFC2865 - Authentication request
-	PW_CODE_ACCESS_ACCEPT,		//!< RFC2865 - Access-Accept
-	PW_CODE_ACCESS_REJECT,		//!< RFC2865 - Access-Reject
+	PW_CODE_ACCESS_REQUEST,			//!< RFC2865 - Authentication request
+	PW_CODE_ACCESS_ACCEPT,			//!< RFC2865 - Access-Accept
+	PW_CODE_ACCESS_REJECT,			//!< RFC2865 - Access-Reject
 	PW_CODE_ACCOUNTING_REQUEST,		//!< RFC2866 - Accounting-Request
 	PW_CODE_ACCOUNTING_RESPONSE,		//!< RFC2866 - Accounting-Response
 	PW_CODE_ACCESS_CHALLENGE,		//!< RFC2865 - Access-Challenge
@@ -214,13 +214,6 @@ static void rs_time_print(char *out, size_t len, struct timeval const *t)
 	} else {
 		snprintf(out + ret, len - ret, ".000000");
 	}
-}
-
-static void rs_packet_print_null(UNUSED uint64_t count, UNUSED rs_status_t status, UNUSED fr_pcap_t *handle,
-				 UNUSED RADIUS_PACKET *packet, UNUSED struct timeval *elapsed,
-				 UNUSED struct timeval *latency, UNUSED bool response, UNUSED bool body)
-{
-	return;
 }
 
 static size_t rs_prints_csv(char *out, size_t outlen, char const *in, size_t inlen)
@@ -499,6 +492,16 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 			INFO("\tAuthenticator-Field = 0x%s", vector);
 		}
 	}
+}
+
+static inline void rs_packet_print(rs_request_t *request, uint64_t count, rs_status_t status, fr_pcap_t *handle,
+				   RADIUS_PACKET *packet, struct timeval *elapsed, struct timeval *latency,
+				   bool response, bool body)
+{
+	if (!conf->logger) return;
+
+	if (request) request->logged = true;
+	conf->logger(count, status, handle, packet, elapsed, latency, response, body);
 }
 
 static void rs_stats_print(rs_latency_t *stats, PW_CODE code)
@@ -861,12 +864,12 @@ static void rs_packet_cleanup(rs_request_t *request)
 			if (conf->event_flags & RS_LOST) {
 				/* @fixme We should use flags in the request to indicate whether it's been dumped
 				 * to a PCAP file or logged yet, this simplifies the body logging logic */
-				conf->logger(request->id, RS_LOST, request->in, packet, NULL, NULL, false,
-					     conf->filter_response_vps || !(conf->event_flags & RS_NORMAL));
+				rs_packet_print(request, request->id, RS_LOST, request->in, packet, NULL, NULL, false,
+					        conf->filter_response_vps || !(conf->event_flags & RS_NORMAL));
 			}
 		}
 
-		if (request->in->type == PCAP_INTERFACE_IN) {
+		if ((request->in->type == PCAP_INTERFACE_IN) && request->logged) {
 			RDEBUG("Cleaning up request packet ID %i", request->expect->id);
 		}
 	}
@@ -1152,7 +1155,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	if (!rad_packet_ok(current, 0, &reason)) {
 		REDEBUG("%s", fr_strerror());
 		if (conf->event_flags & RS_ERROR) {
-			conf->logger(count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);
+			rs_packet_print(NULL, count, RS_ERROR, event->in, current, &elapsed, NULL, false, false);
 		}
 		rad_free(&current);
 
@@ -1525,13 +1528,15 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		if (conf->filter_response && RIDEBUG_ENABLED() && (conf->event_flags & RS_NORMAL)) {
 			rs_time_print(timestr, sizeof(timestr), &original->packet->timestamp);
 			rs_tv_sub(&original->packet->timestamp, &start_pcap, &elapsed);
-			conf->logger(original->id, RS_NORMAL, original->in, original->packet, &elapsed, NULL, false, true);
+			rs_packet_print(original, original->id, RS_NORMAL, original->in,
+					original->packet, &elapsed, NULL, false, true);
 			rs_tv_sub(&header->ts, &start_pcap, &elapsed);
 			rs_time_print(timestr, sizeof(timestr), &header->ts);
 		}
 
 		if (conf->event_flags & status) {
-			conf->logger(count, status, event->in, current, &elapsed, &latency, response, true);
+			rs_packet_print(original, count, status, event->in, current,
+					&elapsed, &latency, response, true);
 		}
 	/*
 	 *	It's the original request
@@ -1539,8 +1544,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 	 *	If were filtering on responses we can only indicate we received it on response, or timeout.
 	 */
 	} else if (!conf->filter_response && (conf->event_flags & status)) {
-		conf->logger(original ? original->id : count, status, event->in,
-			     current, &elapsed, NULL, response, true);
+		rs_packet_print(original, original ? original->id : count, status, event->in,
+				current, &elapsed, NULL, response, true);
 	}
 
 	fflush(fr_log_fp);
@@ -1972,7 +1977,7 @@ int main(int argc, char *argv[])
 	conf->stats.prefix = RS_DEFAULT_PREFIX;
 #endif
 	conf->radius_secret = RS_DEFAULT_SECRET;
-	conf->logger = rs_packet_print_null;
+	conf->logger = NULL;
 
 #ifdef HAVE_COLLECTDC_H
 	conf->stats.prefix = RS_DEFAULT_PREFIX;

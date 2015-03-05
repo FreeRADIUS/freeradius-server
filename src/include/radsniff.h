@@ -174,6 +174,8 @@ typedef struct rs_request {
 	uint64_t		id;			//!< Monotonically increasing packet counter.
 	fr_event_t		*event;			//!< Event created when we received the original request.
 
+	bool			logged;			//!< Whether any messages regarding this request were logged.
+
 	struct timeval		when;			//!< Time when the packet was received, or next time an event
 							//!< is scheduled.
 	fr_pcap_t		*in;			//!< PCAP handle the original request was received on.
