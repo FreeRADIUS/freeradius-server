@@ -394,7 +394,7 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list)
  * If we can't find a string that looks like a request qualifier, set out to def, and
  * return 0.
  *
- * @param[out] out The #request_refs_t value the name resolve to (or #REQUEST_UNKNOWN).
+ * @param[out] out The #request_refs_t value the name resolved to (or #REQUEST_UNKNOWN).
  * @param[in] name of attribute.
  * @param[in] def default request ref to return if no request qualifier is present.
  * @return 0 if no valid request qualifier could be found, else the number of bytes consumed.
@@ -548,7 +548,7 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
  *
  * @param[out] vpt to modify.
  * @param[in] name of attribute including #request_refs and #pair_lists qualifiers.
- *	If only #request_refs #pair_lists qualifiers are found, a #TMPL_TYPE_LIST
+ *	If only #request_refs and #pair_lists qualifiers are found, a #TMPL_TYPE_LIST
  *	#value_pair_tmpl_t will be produced.
  * @param[in] request_def The default #REQUEST to set if no #request_refs qualifiers are
  *	found in name.
@@ -845,23 +845,24 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const
 
 /** Convert an arbitrary string into a #value_pair_tmpl_t
  *
- * @note Unlike #tmpl_afrom_attr_str return code 0 doesn't indicate failure, just means a 0
- *	length string was parsed.
+ * @note Unlike #tmpl_afrom_attr_str return code 0 doesn't necessarily indicate failure,
+ *	may just mean a 0 length string was parsed.
  *
  * @note xlats and regexes are left uncompiled.  This is to support the two pass parsing
  *	done by the modcall code.  Compilation on pass1 of that code could fail, as
- *	attributes or xlat functions registered by modules, may not be available.
+ *	attributes or xlat functions registered by modules may not be available (yet).
  *
  * @note For details of attribute parsing see #tmpl_from_attr_substr.
  *
- * @param[in] ctx for talloc.
+ * @param[in,out] ctx To allocate #value_pair_tmpl_t in.
  * @param[out] out Where to write the pointer to the new #value_pair_tmpl_t.
  * @param[in] in String to convert to a #value_pair_tmpl_t.
  * @param[in] inlen length of string to convert.
  * @param[in] type of quoting around value. May be one of:
- *	- #T_BARE_WORD - If string begins with ``&`` produces #TMPL_TYPE_ATTR, or error.
- *	  If string does not begin with ``&`` produces #TMPL_TYPE_LITERAL or
- *	  #TMPL_TYPE_ATTR.
+ *	- #T_BARE_WORD - If string begins with ``&`` produces #TMPL_TYPE_ATTR,
+ *	  #TMPL_TYPE_ATTR_UNDEFINED, #TMPL_TYPE_LIST or error.
+ *	  If string does not begin with ``&`` produces #TMPL_TYPE_LITERAL,
+ *	  #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
  *	- #T_SINGLE_QUOTED_STRING - Produces #TMPL_TYPE_LITERAL
  *	- #T_DOUBLE_QUOTED_STRING - Produces #TMPL_TYPE_XLAT or #TMPL_TYPE_LITERAL (if
  *	  string doesn't contain ``%``).
@@ -1081,7 +1082,7 @@ void tmpl_cast_in_place_str(value_pair_tmpl_t *vpt)
 	vpt->tmpl_data_length = talloc_array_length(vpt->tmpl_data.vp_strvalue) - 1;
 }
 
-/** Expand a #value_pair_tmpl_t to a string, parse it as type cast, create a #VALUE_PAIR from the result
+/** Expand a #value_pair_tmpl_t to a string, parse it as an attribute of type cast, create a #VALUE_PAIR from the result
  *
  * @note Like #tmpl_expand, but produces a #VALUE_PAIR.
  *
@@ -1326,8 +1327,8 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 
 /** Expand a template to a string, allocing a new buffer to hold the string
  *
- * @param ctx to alloc new buffer in.
- * @param out Where to write a pointer to the new buffer.
+ * @param ctx to allocate new buffer in.
+ * @param out Where to write pointer to the new buffer.
  * @param request Current request.
  * @param vpt to expand. Must be one of the following types:
  *	- #TMPL_TYPE_LITERAL
