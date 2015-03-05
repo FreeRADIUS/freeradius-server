@@ -778,7 +778,6 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 	}
 
 no_such_item:
-	WARN("No such configuration item %s", ptr);
 	return NULL;
 }
 
