@@ -1566,7 +1566,14 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
 	 *	create it again.
 	 */
 	dval = dict_valbyname(da->attr, da->vendor, name);
-	if (dval) return 1;
+	if (dval) {
+		if (dval->value == 0) {
+			ERROR("The dictionaries must not define VALUE %s %s 0",
+			      da->name, name);
+			return 0;
+		}
+		return 1;
+	}
 
 	/*
 	 *	Create a new unique value with a
@@ -1576,7 +1583,7 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
 	 *	is that it's unique.
 	 */
 	do {
-		value = fr_rand() & 0x00ffffff;
+		value = (fr_rand() & 0x00ffffff) + 1;
 	} while (dict_valbyattr(da->attr, da->vendor, value));
 
 	cf_log_module(cs, "Creating %s = %s", da->name, name);
