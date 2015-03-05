@@ -1308,16 +1308,20 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		goto finish;
 	}
 
+	/*
+	 *	If we can't find a matching config item we do
+	 *	nothing so return RLM_MODULE_NOOP.
+	 */
 	item = cf_reference_item(NULL, section->cs, path);
 	if (!item) {
-		rcode = RLM_MODULE_FAIL;
+		RWDEBUG("No such item %s", path);
+		rcode = RLM_MODULE_NOOP;
 
 		goto finish;
 	}
-
 	if (cf_item_is_section(item)){
-		REDEBUG("Sections are not supported as references");
-		rcode = RLM_MODULE_FAIL;
+		RWDEBUG("Sections are not supported as references");
+		rcode = RLM_MODULE_NOOP;
 
 		goto finish;
 	}
