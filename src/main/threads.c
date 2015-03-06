@@ -1082,6 +1082,10 @@ void thread_pool_stop(void)
 		pthread_join(handle->pthread_id, NULL);
 		delete_thread(handle);
 	}
+
+	for (i = 0; i < RAD_LISTEN_MAX; i++) {
+		fr_fifo_free(thread_pool.fifo[i]);
+	}
 #endif
 }
 
