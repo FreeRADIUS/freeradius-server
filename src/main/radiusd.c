@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'D':
-				main_config.dictionary_dir = talloc_typed_strdup(NULL, optarg);
+				main_config.dictionary_dir = talloc_typed_strdup(autofree, optarg);
 				break;
 
 			case 'f':
