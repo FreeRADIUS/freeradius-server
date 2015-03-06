@@ -175,9 +175,15 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char cons
 			if (cf_new_escape) {
 				ssize_t slen;
 				value_data_t data;
+				char quote = *start;
 				PW_TYPE src_type = PW_TYPE_STRING;
 
-				slen = value_data_from_str(ctx, &data, &src_type, NULL, start + 1, p - (start + 1), *start);
+				/*
+				 *	Regex compilers can handle escapes.  So we don't do it.
+				 */
+				if (quote == '/') quote = '\0';
+
+				slen = value_data_from_str(ctx, &data, &src_type, NULL, start + 1, p - (start + 1), quote);
 				if (slen < 0) {
 					*error = "error parsing string";
 					return slen - 1;
@@ -186,7 +192,6 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char cons
 				talloc_free(*out);
 				*out = talloc_steal(ctx, data.ptr);
 				data.strvalue = NULL;
-
 			} else {
 				*q = '\0'; /* terminate the output string */
 			}
