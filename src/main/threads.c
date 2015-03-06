@@ -1091,6 +1091,11 @@ void thread_pool_stop(void)
 	for (i = 0; i < RAD_LISTEN_MAX; i++) {
 		fr_fifo_free(thread_pool.fifo[i]);
 	}
+
+#ifdef WNOHANG
+	fr_hash_table_free(thread_pool.waiters);
+#endif
+
 #endif
 }
 
