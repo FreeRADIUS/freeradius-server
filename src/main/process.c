@@ -2145,7 +2145,8 @@ static void remove_from_proxy_hash(REQUEST *request)
 static int insert_into_proxy_hash(REQUEST *request)
 {
 	char buf[128];
-	int rcode = 0, tries;
+	int tries;
+	bool success = false;
 	void *proxy_listener;
 
 	VERIFY_REQUEST(request);
@@ -2165,13 +2166,11 @@ static int insert_into_proxy_hash(REQUEST *request)
 		listen_socket_t *sock;
 
 		RDEBUG3("proxy: Trying to allocate ID (%d/2)", tries);
-		rcode = fr_packet_list_id_alloc(proxy_list,
+		success = fr_packet_list_id_alloc(proxy_list,
 						request->home_server->proto,
 						&request->proxy, &proxy_listener);
-		if ((debug_flag > 2) && (rcode == 0)) {
-			RDEBUG("proxy: Failed allocating ID: %s", fr_strerror());
-		}
-		if (rcode > 0) break;
+		if (success) break;
+
 		if (tries > 0) continue; /* try opening new socket only once */
 
 #ifdef HAVE_PTHREAD_H
@@ -2219,7 +2218,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	}
 
-	if (!proxy_listener || (rcode == 0)) {
+	if (!proxy_listener || !success) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		REDEBUG2("proxy: Failed allocating Id for proxied request");
 	fail:
