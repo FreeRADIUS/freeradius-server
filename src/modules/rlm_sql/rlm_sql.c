@@ -880,19 +880,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			WARN("rlm_sql (%s): Ignoring authorize_group_check_query as group_membership_query "
 			     "is not configured", inst->name);
 		}
-	} else {
-		if (!inst->config->authorize_group_check_query) {
-			ERROR("rlm_sql (%s): authorize_group_check_query must be configured as group_membership_query "
-			      "is configured", inst->name);
-			return -1;
-		}
-
-		if (!inst->config->authorize_group_reply_query) {
-			ERROR("rlm_sql (%s): authorize_group_reply_query must be configured as group_membership_query "
-			      "is configured", inst->name);
-			return -1;
-		}
-	}
+	} /* allow the group check / reply queries to be NULL */
 
 	/*
 	 *	This will always exist, as cf_section_parse_init()
