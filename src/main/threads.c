@@ -1096,6 +1096,17 @@ void thread_pool_stop(void)
 	fr_hash_table_free(thread_pool.waiters);
 #endif
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	/*
+	 *	We're no longer threaded.  Remove the mutexes and free
+	 *	the memory.
+	 */
+	CRYPTO_set_id_callback(NULL);
+	CRYPTO_set_locking_callback(NULL);
+
+	free(ssl_mutexes);
+#endif
+
 #endif
 }
 
