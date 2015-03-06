@@ -516,6 +516,13 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	return 0;
 }
 
+/** Handle client value processing for client_map_section()
+ *
+ * @param  out  Character output
+ * @param  cp   Configuration pair
+ * @param  data The client data
+ * @return      Returns 0 on success, -1 on error.
+ */
 static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
 {
 	json_object *jval;
@@ -542,22 +549,22 @@ static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
  * run once at sever startup this should not be a concern.
  *
  * @param  inst The module instance.
- * @param  tmpl	Default values for new clients.
- * @param  map	The client attribute configuration section.
+ * @param  tmpl Default values for new clients.
+ * @param  map  The client attribute configuration section.
  * @return      Returns 0 on success, -1 on error.
  */
 int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map)
 {
 	rlm_couchbase_handle_t *handle = NULL; /* connection pool handle */
-	char vpath[256], docid[MAX_KEY_SIZE];  /* view path and document id */
-	char error[512];                       /* view error return */
-	int idx = 0;                           /* row array index counter */
-	int retval = 0;                        /* return value */
-	lcb_error_t cb_error = LCB_SUCCESS;    /* couchbase error holder */
-	json_object *json, *jval;              /* json object holders */
-	json_object *jrows = NULL;             /* json object to hold view rows */
-	CONF_SECTION *client;                  /* freeradius config section */
-	RADCLIENT *c;                          /* freeradius client */
+	char vpath[256], vid[MAX_KEY_SIZE], vkey[MAX_KEY_SIZE];  /* view path and fields */
+	char error[512];                                         /* view error return */
+	int idx = 0;                                             /* row array index counter */
+	int retval = 0;                                          /* return value */
+	lcb_error_t cb_error = LCB_SUCCESS;                      /* couchbase error holder */
+	json_object *json, *jval;                                /* json object holders */
+	json_object *jrows = NULL;                               /* json object to hold view rows */
+	CONF_SECTION *client;                                    /* freeradius config section */
+	RADCLIENT *c;                                            /* freeradius client */
 
 	/* get handle */
 	handle = fr_connection_get(inst->pool);
@@ -646,26 +653,38 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		/* fetch current index */
 		json = json_object_array_get_idx(jrows, idx);
 
-		/* get document id */
+		/* get view id */
 		if (json_object_object_get_ex(json, "id", &jval)) {
-			/* clear docid */
-			memset(docid, 0, sizeof(docid));
+			/* clear view id */
+			memset(vid, 0, sizeof(vid));
 			/* copy and check length */
-			if (strlcpy(docid, json_object_get_string(jval), sizeof(docid)) >= sizeof(docid)) {
-				ERROR("rlm_couchbase: document id from row longer than MAX_KEY_SIZE (%d)",
+			if (strlcpy(vid, json_object_get_string(jval), sizeof(vid)) >= sizeof(vid)) {
+				ERROR("rlm_couchbase: id from row longer than MAX_KEY_SIZE (%d)",
 				      MAX_KEY_SIZE);
 				continue;
 			}
+		} else {
+			WARN("rlm_couchbase: failed to fetch id from row - skipping");
+			continue;
 		}
 
-		/* check for valid doc id */
-		if (docid[0] == 0) {
-			WARN("rlm_couchbase: failed to fetch document id from row - skipping");
+		/* get view key */
+		if (json_object_object_get_ex(json, "key", &jval)) {
+			/* clear view key */
+			memset(vkey, 0, sizeof(vkey));
+			/* copy and check length */
+			if (strlcpy(vkey, json_object_get_string(jval), sizeof(vkey)) >= sizeof(vkey)) {
+				ERROR("rlm_couchbase: key from row longer than MAX_KEY_SIZE (%d)",
+				      MAX_KEY_SIZE);
+				continue;
+			}
+		} else {
+			WARN("rlm_couchbase: failed to fetch key from row - skipping");
 			continue;
 		}
 
 		/* fetch document */
-		cb_error = couchbase_get_key(cb_inst, cookie, docid);
+		cb_error = couchbase_get_key(cb_inst, cookie, vid);
 
 		/* check error and object */
 		if (cb_error != LCB_SUCCESS || cookie->jerr != json_tokener_success || !cookie->jobj) {
@@ -681,8 +700,8 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 		DEBUG3("rlm_couchbase: cookie->jobj == %s", json_object_to_json_string(cookie->jobj));
 
 		/* allocate conf section */
-		client = tmpl ? cf_section_dup(NULL, tmpl, "client", docid, true) :
-				cf_section_alloc(NULL, "client", docid);
+		client = tmpl ? cf_section_dup(NULL, tmpl, "client", vkey, true) :
+				cf_section_alloc(NULL, "client", vkey);
 
 		if (client_map_section(client, map, _get_client_value, cookie->jobj) < 0) {
 			/* free config setion */
@@ -714,7 +733,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 
 		/* attempt to add client */
 		if (!client_add(NULL, c)) {
-			ERROR("rlm_couchbase: failed to add client from %s, possible duplicate?", docid);
+			ERROR("rlm_couchbase: failed to add client '%s' from '%s', possible duplicate?", vkey, vid);
 			/* free client */
 			client_free(c);
 			/* set return */
