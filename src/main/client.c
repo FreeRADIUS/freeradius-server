@@ -465,6 +465,7 @@ RADCLIENT *client_find_old(fr_ipaddr_t const *ipaddr)
 }
 
 static fr_ipaddr_t cl_ipaddr;
+static uint32_t cl_netmask;
 static char const *cl_srcipaddr = NULL;
 #ifdef WITH_TCP
 static char const *hs_proto = NULL;
@@ -486,6 +487,8 @@ static const CONF_PARSER client_config[] = {
 	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_COMBO_IP_PREFIX, &cl_ipaddr), NULL },
 	{ "ipv4addr", FR_CONF_POINTER(PW_TYPE_IPV4_PREFIX, &cl_ipaddr), NULL },
 	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6_PREFIX, &cl_ipaddr), NULL },
+
+	{ "netmask", FR_CONF_POINTER(PW_TYPE_INTEGER, &cl_netmask), NULL },
 
 	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &cl_srcipaddr), NULL },
 
@@ -882,6 +885,8 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 	c->cs = cs;
 
 	memset(&cl_ipaddr, 0, sizeof(cl_ipaddr));
+	cl_netmask = 255;
+
 	if (cf_section_parse(cs, c, client_config) < 0) {
 		cf_log_err_cs(cs, "Error parsing client section");
 	error:
@@ -900,6 +905,20 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 	if (in_server && c->server) {
 		cf_log_err_cs(cs, "Clients inside of an server section cannot point to a server");
 		goto error;
+	}
+
+	/*
+	 *	Allow the old method to specify "netmask".  Just using "1.2.3.4" means it's a /32.
+	 */
+	if (cl_netmask != 255) {
+		if ((cl_ipaddr.prefix != cl_netmask) &&
+		    (((cl_ipaddr.af == AF_INET) && cl_ipaddr.prefix != 32) ||
+		     ((cl_ipaddr.af == AF_INET6) && cl_ipaddr.prefix != 128))) {
+			cf_log_err_cs(cs, "Clients cannot use 'ipaddr/mask' and 'netmask' at the same time.");
+			goto error;
+		}
+
+		cl_ipaddr.prefix = cl_netmask;
 	}
 
 	/*
