@@ -1628,7 +1628,11 @@ size_t tmpl_prints(char *out, size_t outlen, value_pair_tmpl_t const *vpt, DICT_
 	/*
 	 *	Print it with appropriate escaping
 	 */
-	len = fr_prints(q, outlen - 3, vpt->name, -1, c);
+	if (cf_new_escape && (c == '/')) {
+		len = fr_prints(q, outlen - 3, vpt->name, -1, '\0');
+	} else {
+		len = fr_prints(q, outlen - 3, vpt->name, -1, c);
+	}
 
 	q += len;
 	*(q++) = c;
