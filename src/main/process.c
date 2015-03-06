@@ -246,6 +246,7 @@ static int event_new_fd(rad_listen_t *this);
  */
 #if defined (HAVE_PTHREAD_H) && (defined(WITH_PROXY) || defined(WITH_TCP))
 static rad_listen_t *new_listeners = NULL;
+static TALLOC_CTX *proxy_ctx = NULL;
 
 static pthread_mutex_t	fd_mutex;
 #define FD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
@@ -2156,7 +2157,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 #endif
 
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
-		this = proxy_new_listener(request->home_server, 0);
+		this = proxy_new_listener(proxy_ctx, request->home_server, 0);
 		if (!this) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			goto fail;
@@ -4978,6 +4979,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 		main_config.init_delay.tv_usec >>= 1;
 		main_config.init_delay.tv_sec >>= 1;
 
+		proxy_ctx = talloc_init("proxy");
 	}
 #endif
 
@@ -5202,6 +5204,8 @@ void radius_event_free(void)
 #ifdef WITH_PROXY
 	fr_packet_list_free(proxy_list);
 	proxy_list = NULL;
+
+	if (proxy_ctx) talloc_free(proxy_ctx);
 #endif
 
 	TALLOC_FREE(el);

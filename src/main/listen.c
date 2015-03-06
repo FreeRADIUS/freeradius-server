@@ -2711,7 +2711,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
  *	Not thread-safe, but all calls to it are protected by the
  *	proxy mutex in event.c
  */
-rad_listen_t *proxy_new_listener(home_server_t *home, uint16_t src_port)
+rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t src_port)
 {
 	time_t now;
 	rad_listen_t *this;
@@ -2735,7 +2735,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, uint16_t src_port)
 		return NULL;
 	}
 
-	this = listen_alloc(NULL, RAD_LISTEN_PROXY);
+	this = listen_alloc(ctx, RAD_LISTEN_PROXY);
 
 	sock = this->data;
 	sock->other_ipaddr = home->ipaddr;
@@ -3355,7 +3355,13 @@ add_sockets:
 		home.ipaddr.af = home.src_ipaddr.af;
 		/* everything else is already set to zero */
 
-		this = proxy_new_listener(&home, port);
+		/*
+		 *	It's OK to allocate a UDP listener from the
+		 *	main config.  The listener will never be
+		 *	deleted until the server stops and the config
+		 *	is freed.
+		 */
+		this = proxy_new_listener(config, &home, port);
 		if (!this) {
 			listen_free(head);
 			return -1;
