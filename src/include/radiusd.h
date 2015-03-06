@@ -299,6 +299,8 @@ struct rad_listen_t {
 #ifdef WITH_TCP
 	int		count;
 	bool		dual;
+	rbtree_t	*children;
+	rad_listen_t	*parent;
 #endif
 	bool		nodup;
 	bool		synchronous;

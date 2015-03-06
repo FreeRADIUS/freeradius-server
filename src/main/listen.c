@@ -551,6 +551,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	return 1;
 }
 
+
 static int dual_tcp_accept(rad_listen_t *listener)
 {
 	int newfd;
@@ -642,9 +643,11 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	sock->limit.num_connections++;
 
 	/*
-	 *	Add the new listener.
+	 *	Add the new listener.  We require a new context here,
+	 *	because the allocations for the packet, etc. in the
+	 *	child listener will be done in a child thread.
 	 */
-	this = listen_alloc(listener, listener->type);
+	this = listen_alloc(NULL, listener->type);
 	if (!this) return -1;
 
 	/*
@@ -685,6 +688,10 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	this->fd = newfd;
 	this->status = RAD_LISTEN_STATUS_INIT;
 
+	this->parent = listener;
+	if (!rbtree_insert(listener->children, this)) {
+		ERROR("Failed inserting TCP socket into parent list.");
+	}
 
 #ifdef WITH_COMMAND_SOCKET
 	if (this->type == RAD_LISTEN_COMMAND) {
@@ -901,6 +908,32 @@ static CONF_PARSER limit_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
+
+
+#ifdef WITH_TCP
+/*
+ *	TLS requires child threads to handle the listeners.  Which
+ *	means that we need a separate talloc context per child thread.
+ *	Which means that we need to manually clean up the child
+ *	listeners.  Which means we need to manually track them.
+ *
+ *	All child thread linking/unlinking is done in the master
+ *	thread.  If we care, we can later add a mutex for the parent
+ *	listener.
+ */
+static int listener_cmp(void const *one, void const *two)
+{
+	if (one < two) return -1;
+	if (one > two) return +1;
+	return 0;
+}
+
+static int listener_unlink(UNUSED void *ctx, UNUSED void *data)
+{
+	return 2;		/* unlink this node from the tree */
+}
+#endif
+
 
 /*
  *	Parse an authentication or accounting socket.
@@ -1252,6 +1285,12 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 *	allow us to accept the socket.
 		 */
 		this->recv = dual_tcp_accept;
+
+		this->children = rbtree_create(this, listener_cmp, NULL, 0);
+		if (!this->children) {
+			cf_log_err_cs(cs, "Failed to create child list for TCP socket.");
+			return -1;
+		}
 	}
 #endif
 
@@ -2607,6 +2646,19 @@ static int _listener_free(rad_listen_t *this)
 
 		rad_assert(!sock->packet || (talloc_parent(sock->packet) == sock));
 
+		/*
+		 *	Remove the child from the parent tree.
+		 */
+		if (this->parent) {
+			rbtree_deletebydata(this->parent->children, this);
+		}
+
+		/*
+		 *	Delete / close all of the children, too!
+		 */
+		if (this->children) {
+			rbtree_walk(this->children, RBTREE_DELETE_ORDER, listener_unlink, this);
+		}
 
 #ifdef WITH_TLS
 		/*
@@ -2627,6 +2679,7 @@ static int _listener_free(rad_listen_t *this)
 
 	return 0;
 }
+
 
 /*
  *	Allocate & initialize a new listener.
@@ -2682,7 +2735,7 @@ rad_listen_t *proxy_new_listener(home_server_t *home, uint16_t src_port)
 		return NULL;
 	}
 
-	this = listen_alloc(main_config.config, RAD_LISTEN_PROXY);
+	this = listen_alloc(NULL, RAD_LISTEN_PROXY);
 
 	sock = this->data;
 	sock->other_ipaddr = home->ipaddr;
