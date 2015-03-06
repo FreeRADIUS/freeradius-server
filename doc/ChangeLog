@@ -27,6 +27,8 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Allow "ok" to over-ride "updated" inside of Auth-Type sections.
 	* Update state machine so that post-proxy is run though child
 	  threads for performance, instead of blocking the main thread.
+	* Allow "netmask" to work again in client definitions.
+	* Relax restrictions on SQL group checks.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
