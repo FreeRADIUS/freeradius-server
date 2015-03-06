@@ -173,7 +173,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	Try querying for the dynamic realm.
 	 */
 	if (!realm)
-		realm = tr_query_realm(realmname, inst->default_community, inst->rp_realm, inst->trust_router, inst->tr_port);
+	  realm = tr_query_realm(request, realmname, inst->default_community, inst->rp_realm, inst->trust_router, inst->tr_port);
 #endif
 	if (!realm) {
 		RDEBUG2("No such realm \"%s\"", (!realmname) ? "NULL" : realmname);

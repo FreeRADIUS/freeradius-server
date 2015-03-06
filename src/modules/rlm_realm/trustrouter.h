@@ -27,7 +27,7 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-REALM *tr_query_realm(char const *realm,
+REALM *tr_query_realm(REQUEST *request, char const *realm,
 		      char const *community,
 		      char const *rprealm,
 		      char const *trustrouter,
