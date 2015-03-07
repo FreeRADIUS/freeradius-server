@@ -70,6 +70,18 @@ static FR_NAME_NUMBER const ldap_dereference[] = {
 	{  NULL , -1 }
 };
 
+static CONF_PARSER sasl_mech_dynamic[] = {
+	{ "mech", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL | PW_TYPE_NOT_EMPTY, ldap_sasl_dynamic, mech), NULL },
+	{ "proxy", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, ldap_sasl_dynamic, proxy), NULL },
+	{ "realm", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, ldap_sasl_dynamic, realm), NULL }
+};
+
+static CONF_PARSER sasl_mech_static[] = {
+	{ "mech", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, ldap_sasl, mech), NULL },
+	{ "proxy", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_sasl, proxy), NULL },
+	{ "realm", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_sasl, realm), NULL }
+};
+
 /*
  *	TLS Configuration
  */
@@ -121,7 +133,9 @@ static CONF_PARSER user_config[] = {
 	{ "access_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_access_attr), NULL },
 	{ "access_positive", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, access_positive), "yes" },
 
-	{ "sasl_mech", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, user_sasl_mech), NULL },
+	/* Should be deprecated */
+	{ "sasl_mech", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL | PW_TYPE_DEPRECATED | PW_TYPE_NOT_EMPTY, ldap_instance_t, user_sasl.mech), NULL },
+	{ "sasl", FR_CONF_OFFSET(PW_TYPE_SUBSECTION, ldap_instance_t, user_sasl), (void const *) sasl_mech_dynamic },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -207,9 +221,12 @@ static const CONF_PARSER module_config[] = {
 	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, config_server), NULL },	/* Do not set to required */
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, ldap_instance_t, port), NULL },
 
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, ldap_instance_t, password), NULL },
-	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, admin_dn), NULL },
-	{ "sasl_mech", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, admin_sasl_mech), NULL },
+	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, admin_identity), NULL },
+	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, ldap_instance_t, admin_password), NULL },
+
+	/* Should be deprecated */
+	{ "sasl_mech", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, ldap_instance_t, admin_sasl.mech), NULL },
+	{ "sasl", FR_CONF_OFFSET(PW_TYPE_SUBSECTION, ldap_instance_t, admin_sasl), (void const *) sasl_mech_static },
 
 	{ "valuepair_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, valuepair_attr), NULL },
 
@@ -645,16 +662,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 	}
 
-#ifndef HAVE_LDAP_SASL_BIND
-	if (inst->user_sasl_mech) {
-		cf_log_err_cs(conf, "Configuration item 'user.sasl_mech' not supported.  "
+#ifndef HAVE_LDAP_SASL_INTERACTIVE_BIND
+	if (inst->user_sasl.mech) {
+		cf_log_err_cs(conf, "Configuration item 'user.sasl.mech' not supported.  "
 			      "Linked libldap does not provide ldap_sasl_bind function");
 		goto error;
 	}
 
-	if (inst->admin_sasl_mech) {
-		cf_log_err_cs(conf, "Configuration item 'sasl_mech' not supported.  "
-			      "Linked libldap does not provide ldap_sasl_bind function");
+	if (inst->admin_sasl.mech) {
+		cf_log_err_cs(conf, "Configuration item 'sasl.mech' not supported.  "
+			      "Linked libldap does not provide ldap_sasl_interactive_bind function");
 		goto error;
 	}
 #endif
@@ -1062,6 +1079,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	ldap_instance_t	*inst = instance;
 	ldap_handle_t	*conn;
 
+	char		sasl_mech_buff[LDAP_MAX_DN_STR_LEN];
+	char		sasl_proxy_buff[LDAP_MAX_DN_STR_LEN];
+	char		sasl_realm_buff[LDAP_MAX_DN_STR_LEN];
+	ldap_sasl	sasl;
+
 	/*
 	 * Ensure that we're being passed a plain-text password, and not
 	 * anything else.
@@ -1092,10 +1114,42 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		return RLM_MODULE_INVALID;
 	}
 
-	RDEBUG("Login attempt by \"%s\"", request->username->vp_strvalue);
-
 	conn = mod_conn_get(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
+
+	/*
+	 *	Expand dynamic SASL fields
+	 */
+	if (conn->inst->user_sasl.mech) {
+		memset(&sasl, 0, sizeof(sasl));
+
+		if (tmpl_expand(&sasl.mech, sasl_mech_buff, sizeof(sasl_mech_buff), request,
+				conn->inst->user_sasl.mech, rlm_ldap_escape_func, inst) < 0) {
+			REDEBUG("Failed expanding user.sasl.mech: %s", fr_strerror());
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+		}
+
+		if (conn->inst->user_sasl.proxy) {
+			if (tmpl_expand(&sasl.proxy, sasl_proxy_buff, sizeof(sasl_proxy_buff), request,
+					conn->inst->user_sasl.proxy, rlm_ldap_escape_func, inst) < 0) {
+				REDEBUG("Failed expanding user.sasl.proxy: %s", fr_strerror());
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
+		}
+
+		if (conn->inst->user_sasl.realm) {
+			if (tmpl_expand(&sasl.realm, sasl_realm_buff, sizeof(sasl_realm_buff), request,
+					conn->inst->user_sasl.realm, rlm_ldap_escape_func, inst) < 0) {
+				REDEBUG("Failed expanding user.sasl.realm: %s", fr_strerror());
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
+			}
+		}
+	}
+
+	RDEBUG("Login attempt by \"%s\"", request->username->vp_strvalue);
 
 	/*
 	 *	Get the DN by doing a search.
@@ -1106,13 +1160,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 		return rcode;
 	}
-
-	/*
-	 *	Bind as the user
-	 */
 	conn->rebound = true;
 	status = rlm_ldap_bind(inst, request, &conn, dn, request->password->vp_strvalue,
-			       conn->inst->user_sasl_mech, true);
+			       conn->inst->user_sasl.mech ? &sasl : NULL, true);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		rcode = RLM_MODULE_OK;
@@ -1140,6 +1190,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		break;
 	};
 
+finish:
 	mod_conn_release(inst, conn);
 
 	return rcode;
@@ -1279,8 +1330,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			 *	Bind as the user
 			 */
 			conn->rebound = true;
-			status = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue,
-					       conn->inst->user_sasl_mech, true);
+			status = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue, NULL, true);
 			switch (status) {
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;
