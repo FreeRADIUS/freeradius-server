@@ -1,0 +1,327 @@
+#
+#  Run the "files" module
+#
+
+#
+#  Remove old log files
+#
+group {
+	update request {
+		Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_a.log`
+	}
+	fail = 1
+}
+if (fail) {
+	ok
+}
+
+#  Check linelog fails over to the default message (an xlat expansion)
+update control {
+	Tmp-String-0 := 'test_default'
+}
+linelog_fmt_and_ref
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+}
+
+if (&Tmp-String-0 == 'bob default') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check linelog adds a newline at the end of each message (also tests if execs pointed to by refs work)
+update control {
+	Tmp-String-0 := 'test_exec'
+}
+linelog_fmt_and_ref
+
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+}
+
+if (&Tmp-String-0 == 'bob exec') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check it's not overwriting the same line repeatedly
+update request {
+	Tmp-String-0 := `/usr/bin/head -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+}
+
+if (&Tmp-String-0 == 'bob default') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check linelog can use attrs pointed to by refs
+update control {
+	Tmp-String-0 := 'test_attr'
+}
+linelog_fmt_and_ref
+
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+}
+
+if (&Tmp-String-0 == 'bob') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check linelog can use xlats pointed to by refs
+update control {
+	Tmp-String-0 := 'test_xlat'
+}
+linelog_fmt_and_ref
+
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+}
+
+if (&Tmp-String-0 == 'bob xlat') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check linelog can use literals pointed to by refs
+update control {
+	Tmp-String-0 := 'test_literal'
+}
+linelog_fmt_and_ref
+
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+}
+
+if (&Tmp-String-0 == '%{User-Name} literal') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check linelog can use empty conf pairs
+update control {
+	Tmp-String-0 := 'test_empty'
+}
+linelog_fmt_and_ref
+
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+}
+
+if (&Tmp-String-0 == '') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Remove the file
+update request {
+	Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_a.log`
+}
+
+#  Remove old log files
+group {
+	update request {
+		Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_b.log`
+	}
+	fail = 1
+}
+if (fail) {
+	ok
+}
+
+#  Check behaviour when we don't have a default configured (should not create new file)
+update control {
+	Tmp-String-0 := 'test_default'
+}
+linelog_ref
+if (noop) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+group {
+	update request {
+		Tmp-String-0 := `/bin/test ! -e $ENV{MODULE_TEST_DIR}/test_b.log`
+	}
+	fail = 1
+}
+if (fail) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+#  Check ref still works (with an exec)
+update control {
+	Tmp-String-0 := 'test_exec'
+}
+linelog_ref
+
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_b.log`
+}
+
+if (&Tmp-String-0 == 'bob exec') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Remove the file
+update request {
+	Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_b.log`
+}
+
+#  Remove old log files
+group {
+	update request {
+		Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_c.log`
+	}
+	fail = 1
+}
+if (fail) {
+	ok
+}
+
+#  Check behaviour using an attribute ref as a path
+update control {
+	Tmp-String-0 := '.messages.test_xlat'
+}
+
+linelog_fmt_and_ref_attr
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log`
+}
+
+if (&Tmp-String-0 == 'bob xlat') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check behaviour using an attribute ref (non existent path, with default also an attribute ref)
+update control {
+	Tmp-String-0 := 'test_xlat'
+}
+
+linelog_fmt_and_ref_attr
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log`
+}
+
+if (&Tmp-String-0 == 'bob') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check '.' is always prefixed to the path
+update control {
+	Tmp-String-0 := 'messages.test_xlat'
+}
+
+linelog_fmt_and_ref_attr
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log`
+}
+
+if (&Tmp-String-0 == 'bob xlat') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check '..' results in a 'fail' (can't go up one level)
+update control {
+	Tmp-String-0 := '..messages.test_attr'
+}
+
+linelog_fmt_and_ref_attr {
+	fail = 1
+}
+if (fail) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log`
+}
+
+if (&Tmp-String-0 == 'bob xlat') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check '.messages' results in a 'fail' (messages is a section)
+update control {
+	Tmp-String-0 := '.messages'
+}
+
+linelog_fmt_and_ref_attr {
+	fail = 1
+}
+if (fail) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Remove the file
+update request {
+	Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_c.log`
+}
+
+#  Remove old log files
+group {
+	update request {
+		Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_d.log`
+	}
+	fail = 1
+}
+if (fail) {
+	ok
+}
+linelog_fmt
+
+update request {
+	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_d.log`
+}
+if (&Tmp-String-0 == 'bob') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Remove the file
+update request {
+	Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_d.log`
+}
