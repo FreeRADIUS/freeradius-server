@@ -198,6 +198,7 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 
 #ifdef WITH_PROXY
 static fr_packet_list_t *proxy_list = NULL;
+static TALLOC_CTX *proxy_ctx = NULL;
 #endif
 
 #ifdef HAVE_PTHREAD_H
