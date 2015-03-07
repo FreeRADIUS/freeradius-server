@@ -987,15 +987,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *in,
 		break;
 
 	case T_OP_REG_EQ: /* hack */
-		if (cf_new_escape) {
-			slen = value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, '\0'); /* no unescaping */
-			if (slen < 0) return slen;
-
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, data.strvalue, talloc_array_length(data.strvalue) - 1);
-			talloc_free(data.ptr);
-		} else {
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, in, inlen);
-		}
+		vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, in, inlen);
 		slen = vpt->len;
 		break;
 
