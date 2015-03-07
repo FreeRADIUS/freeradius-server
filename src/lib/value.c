@@ -447,9 +447,9 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		char const	*q;
 		int		x;
 
-		dst->strvalue = p = talloc_memdup(ctx, src, len + 1);
+		dst->strvalue = p = talloc_array(ctx, char, len + 1);
+		memcpy(p, src, len);
 		p[len] = '\0';
-		talloc_set_type(p, char);
 
 		/*
 		 *	No de-quoting.  Just copy the string.
