@@ -153,29 +153,8 @@ static home_server_t *srvr_blk_to_home_server(TALLOC_CTX *ctx,
 
 	rad_assert(blk != NULL);
 	tid_srvr_get_address(blk, &sa, &sa_len);
-	switch (sa->sa_family) {
 
-	case AF_INET: {
-		const struct sockaddr_in *sin = (const struct sockaddr_in *) sa;
-		home_server_ip.af = AF_INET;
-		home_server_ip.scope = 0;
-		home_server_ip.ipaddr.ip4addr = sin->sin_addr;
-		port = ntohs(sin->sin_port);
-		break;
-	}
-
-	case AF_INET6: {
-		const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *) sa;
-		home_server_ip.af = AF_INET6;
-		home_server_ip.scope = sin6->sin6_scope_id;
-		home_server_ip.ipaddr.ip6addr = sin6->sin6_addr;
-		break;
-	}
-
-	default:
-		DEBUG2("Unknown address family in tid srvr block");
-		return NULL;
-	}
+	fr_sockaddr2ipaddr((struct sockaddr_storage *) sa, salen, &home_server_ip, &port);
   
 	if (0 != getnameinfo(sa, sa_len,
 			     nametemp,
