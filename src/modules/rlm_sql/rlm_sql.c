@@ -1438,7 +1438,7 @@ finish:
  *	Accounting: Insert or update session data in our sql table
  */
 static rlm_rcode_t mod_accounting(void *instance, REQUEST *request) CC_HINT(nonnull);
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	rlm_sql_t *inst = instance;
 
