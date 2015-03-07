@@ -2441,17 +2441,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 
 			/*
-			 *	These are not allowed.  Print a
-			 *	helpful error message.
-			 */
-			if ((t3 == T_BACK_QUOTED_STRING) &&
-			    (!this || (strcmp(this->name1, "update") != 0))) {
-				ERROR("%s[%d]: Syntax error: Invalid string `...` in assignment",
-				       filename, *lineno);
-				return -1;
-			}
-
-			/*
 			 *	Allow "foo" by itself, or "foo = bar"
 			 */
 			switch (t3) {
