@@ -29,41 +29,51 @@ RCSID("$Id$")
 #include <freeradius-devel/exfile.h>
 
 #ifdef HAVE_FCNTL_H
-#include <fcntl.h>
+#  include <fcntl.h>
 #endif
 
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif
 
 #ifdef HAVE_GRP_H
-#include <grp.h>
+#  include <grp.h>
 #endif
 
 #ifdef HAVE_SYSLOG_H
-#include <syslog.h>
-
-#ifndef LOG_INFO
-#define LOG_INFO (0)
+#  include <syslog.h>
+#  ifndef LOG_INFO
+#    define LOG_INFO (0)
+#  endif
 #endif
-#endif
 
-/*
- *	Define a structure for our module configuration.
+#include <sys/uio.h>
+
+typedef enum {
+	LINELOG_DST_FILE = 0,	//!< Log to a file.
+	LINELOG_DST_SYSLOG,	//!< Log to syslog.
+} linelog_dst_t;
+
+/** linelog module instance
  */
 typedef struct rlm_linelog_t {
-	CONF_SECTION	*cs;
-	char const	*filename;
+	linelog_dst_t		log_dst;		//!< Logging destination.
 
-	char const	*syslog_facility;	//!< Syslog facility string.
-	char const	*syslog_severity;	//!< Syslog severity string.
-	int		syslog_priority;	//!< Bitwise | of severity and facility.
+	char const		*syslog_facility;	//!< Syslog facility string.
+	char const		*syslog_severity;	//!< Syslog severity string.
+	int			syslog_priority;	//!< Bitwise | of severity and facility.
 
-	uint32_t	permissions;
-	char const	*group;
-	char const	*line;
-	char const	*reference;
-	exfile_t	*ef;
+	char const		*filename;		//!< File to write to.
+	uint32_t		permissions;		//!< Permissions to use when creating new files.
+	char const		*group_str;		//!< Group to set on new files.
+	gid_t			group;			//!< Resolved gid.
+	exfile_t		*ef;			//!< Exclusive file access handle.
+
+	value_pair_tmpl_t	*log_src;		//!< Source of log messages.
+
+	value_pair_tmpl_t	*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
+							///< log messages).
+	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
 } rlm_linelog_t;
 
 /*
@@ -80,9 +90,9 @@ static const CONF_PARSER module_config[] = {
 	{ "syslog_facility", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, syslog_facility), NULL },
 	{ "syslog_severity", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, syslog_severity), "info" },
 	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_linelog_t, permissions), "0600" },
-	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, group), NULL },
-	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_linelog_t, line), NULL },
-	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_linelog_t, reference), NULL },
+	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, group_str), NULL },
+	{ "format", FR_CONF_OFFSET(PW_TYPE_TMPL, rlm_linelog_t, log_src), NULL },
+	{ "reference", FR_CONF_OFFSET(PW_TYPE_TMPL, rlm_linelog_t, log_ref), NULL },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -100,39 +110,54 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-#ifndef HAVE_SYSLOG_H
 	if (strcmp(inst->filename, "syslog") == 0) {
+#ifndef HAVE_SYSLOG_H
 		cf_log_err_cs(conf, "Syslog output is not supported on this system");
 		return -1;
-	}
 #else
+		inst->log_dst = LINELOG_DST_SYSLOG;
 
-	if (inst->syslog_facility) {
-		num = fr_str2int(syslog_facility_table, inst->syslog_facility, -1);
+		if (inst->syslog_facility) {
+			num = fr_str2int(syslog_facility_table, inst->syslog_facility, -1);
+			if (num < 0) {
+				cf_log_err_cs(conf, "Invalid syslog facility \"%s\"", inst->syslog_facility);
+				return -1;
+			}
+
+			inst->syslog_priority |= num;
+		}
+
+		num = fr_str2int(syslog_severity_table, inst->syslog_severity, -1);
 		if (num < 0) {
-			cf_log_err_cs(conf, "Invalid syslog facility \"%s\"", inst->syslog_facility);
+			cf_log_err_cs(conf, "Invalid syslog severity \"%s\"", inst->syslog_severity);
+			return -1;
+		}
+		inst->syslog_priority |= num;
+#endif
+	} else {
+		inst->log_dst = LINELOG_DST_FILE;
+
+		inst->ef = exfile_init(inst, 64, 30);
+		if (!inst->ef) {
+			cf_log_err_cs(conf, "Failed creating log file context");
 			return -1;
 		}
 
-		inst->syslog_priority |= num;
+		if (inst->group_str) {
+			char *endptr;
+
+			inst->group = strtol(inst->group_str, &endptr, 10);
+			if (*endptr != '\0') {
+				if (rad_getgid(inst, &(inst->group), inst->group_str) < 0) {
+					cf_log_err_cs(conf, "Unable to find system group \"%s\"", inst->group_str);
+					return -1;
+				}
+			}
+		}
 	}
 
-	num = fr_str2int(syslog_severity_table, inst->syslog_severity, -1);
-	if (num < 0) {
-		cf_log_err_cs(conf, "Invalid syslog severity \"%s\"", inst->syslog_severity);
-		return -1;
-	}
-	inst->syslog_priority |= num;
-#endif
-
-	if (!inst->line && !inst->reference) {
+	if (!inst->log_src && !inst->log_ref) {
 		cf_log_err_cs(conf, "Must specify a log format, or reference");
-		return -1;
-	}
-
-	inst->ef = exfile_init(inst, 64, 30);
-	if (!inst->ef) {
-		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;
 	}
 
@@ -141,12 +166,19 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 }
 
 
-/*
- *	Escape unprintable characters.
+/** Escape unprintable characters
+ *
+ * ``\n``, ``\r`` are escaped as ``\r`` and ``\n``, all other unprintables are escaped as
+ * ``\<oct><oct><oct>``.
+ *
+ * @param request The current request.
+ * @param out Where to write the escaped string.
+ * @param outlen Length of the output buffer.
+ * @param in String to escape.
+ * @param arg unused.
  */
-static size_t linelog_escape_func(UNUSED REQUEST *request,
-		char *out, size_t outlen, char const *in,
-		UNUSED void *arg)
+static size_t linelog_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
+				  char const *in, UNUSED void *arg)
 {
 	int len = 0;
 
@@ -204,69 +236,103 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
 	return len;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *request)
+/** Write a linelog message
+ *
+ * Write a log message to syslog or a flat file.
+ *
+ * @param instance of rlm_linelog.
+ * @param request The current request.
+ * @return #RLM_MODULE_NOOP if no message to log, #RLM_MODULE_FAIL if we failed writing the
+ *	message, #RLM_MODULE_OK on success.
+ */
+static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request)
 {
-	int fd = -1;
-	char *p;
-	char line[4096];
-	rlm_linelog_t *inst = (rlm_linelog_t*) instance;
-	char const *value = inst->line;
+	int			fd = -1;
+	char			buff[4096], path[2048];
+	char			*p = buff;
+	rlm_linelog_t		*inst = instance;
+	char const		*value;
+	value_pair_tmpl_t	empty, *vpt = NULL, *vpt_p = NULL;
+	rlm_rcode_t		rcode = RLM_MODULE_OK;
+	ssize_t			slen;
 
-#ifdef HAVE_GRP_H
-	gid_t gid;
-	char *endptr;
-#endif
+	buff[0] = '.';	/* force to be in current section */
+	buff[1] = '\0';
+	buff[2] = '\0';
 
-	line[0] = '\0';
+	/*
+	 *	Expand log_ref to a config path, using the module
+	 *	configuration section as the root.
+	 */
+	if (inst->log_ref) {
+		CONF_ITEM	*ci;
+		CONF_PAIR	*cp;
+		char const	*tmpl_str;
 
-	if (inst->reference) {
-		CONF_ITEM *ci;
-		CONF_PAIR *cp;
-
-		p = line + 1;
-
-		if (radius_xlat(p, sizeof(line) - 2, request, inst->reference, linelog_escape_func, NULL) < 0) {
+		if (tmpl_expand(NULL, buff + 1, sizeof(buff) - 1,
+				request, inst->log_ref, linelog_escape_func, NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
 
-		line[0] = '.';	/* force to be in current section */
+		if (buff[1] == '.') p++;
 
 		/*
-		 *	Don't allow it to go back up
+		 *	Don't go back up.
 		 */
-		if (line[1] == '.') goto do_log;
+		if (buff[2] == '.') {
+			REDEBUG("Invalid path \"%s\"", p);
+			return RLM_MODULE_FAIL;
+		}
 
-		ci = cf_reference_item(NULL, inst->cs, line);
+		ci = cf_reference_item(NULL, inst->cs, p);
 		if (!ci) {
-			RDEBUG2("No such entry \"%s\"", line);
-			return RLM_MODULE_NOOP;
+			RDEBUG2("Path \"%s\" doesn't exist", p);
+			goto default_msg;
 		}
 
 		if (!cf_item_is_pair(ci)) {
-			RDEBUG2("Entry \"%s\" is not a variable assignment ", line);
-			goto do_log;
+			REDEBUG("Path \"%s\" resolves to a section (should be a pair)", p);
+			return RLM_MODULE_FAIL;
 		}
 
 		cp = cf_item_to_pair(ci);
-		value = cf_pair_value(cp);
-		if (!value) {
-			RDEBUG2("Entry \"%s\" has no value", line);
-			goto do_log;
+		tmpl_str = cf_pair_value(cp);
+		if (!tmpl_str || (tmpl_str[0] == '\0')) {
+			RDEBUG2("Path \"%s\" resolves to an empty config pair", p);
+			vpt_p = tmpl_init(&empty, TMPL_TYPE_LITERAL, "", 0);
+			goto open_log;
 		}
 
 		/*
-		 *	Value exists, but is empty.  Don't log anything.
+		 *	Alloc a template from the value of the CONF_PAIR
+		 *	using request as the context (which will hopefully avoid a malloc).
 		 */
-		if (!*value) return RLM_MODULE_OK;
+		slen = tmpl_afrom_str(request, &vpt, tmpl_str, talloc_array_length(tmpl_str) - 1,
+				      cf_pair_value_type(cp), REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+		if (slen <= 0) {
+			REMARKER(tmpl_str, -slen, fr_strerror());
+			return RLM_MODULE_FAIL;
+		}
+		vpt_p = vpt;
+
+		goto open_log;
 	}
 
- do_log:
+default_msg:
+	if (!inst->log_src) {
+		RDEBUG2("No default message configured");
+		return RLM_MODULE_NOOP;
+	}
 	/*
-	 *	FIXME: Check length.
+	 *	Use the pre-parsed format template
 	 */
-	if (strcmp(inst->filename, "syslog") != 0) {
-		char path[2048];
+	RDEBUG2("Using default message");
+	vpt_p = inst->log_src;
 
+
+open_log:
+	if (inst->log_dst == LINELOG_DST_FILE) {
 		if (radius_xlat(path, sizeof(path), request, inst->filename, rad_filename_escape, NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
@@ -276,49 +342,47 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 		if (p) {
 			*p = '\0';
 			if (rad_mkdir(path, 0700, -1, -1) < 0) {
-				RERROR("rlm_linelog: Failed to create directory %s: %s", path, fr_syserror(errno));
-				return RLM_MODULE_FAIL;
+				RERROR("Failed to create directory %s: %s", path, fr_syserror(errno));
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
 			}
 			*p = '/';
 		}
 
 		fd = exfile_open(inst->ef, path, inst->permissions, true);
 		if (fd < 0) {
-			ERROR("rlm_linelog: Failed to open %s: %s", path, fr_syserror(errno));
-			return RLM_MODULE_FAIL;
+			RERROR("Failed to open %s: %s", path, fr_syserror(errno));
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
 		}
 
-		if (inst->group != NULL) {
-			gid = strtol(inst->group, &endptr, 10);
-			if (*endptr != '\0') {
-				if (rad_getgid(request, &gid, inst->group) < 0) {
-					RDEBUG2("Unable to find system group \"%s\"", inst->group);
-					goto skip_group;
-				}
-			}
-
-			if (chown(path, -1, gid) == -1) {
-				RDEBUG2("Unable to change system group of \"%s\"", path);
-			}
+		if (inst->group_str && (chown(path, -1, inst->group) == -1)) {
+			RWARN("Unable to change system group of \"%s\": %s", path, fr_strerror());
 		}
 	}
-
- skip_group:
 
 	/*
-	 *	FIXME: Check length.
+	 *	Get the data we're going to log
 	 */
-	if (value && (radius_xlat(line, sizeof(line) - 1, request, value, linelog_escape_func, NULL) < 0)) {
-		if (fd >= 0) exfile_close(inst->ef, fd);
-
-		return RLM_MODULE_FAIL;
+	slen = tmpl_expand(&value, buff, sizeof(buff), request, vpt_p, linelog_escape_func, NULL);
+	if (slen < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
 	}
 
-	if (fd >= 0) {
-		strcat(line, "\n");
+	/*
+	 *	Write out the log entry
+	 */
+	if (inst->log_dst == LINELOG_DST_FILE) {
+		static char const *nl = "\n";
+		struct iovec vector[] = {{NULL, slen}, {NULL, 1}};
 
-		if (write(fd, line, strlen(line)) < 0) {
-			ERROR("rlm_linelog: Failed writing: %s", fr_syserror(errno));
+		/* iov_base is not declared as const *sigh* */
+		memcpy(&vector[0].iov_base, &value, sizeof(vector[0].iov_base));
+		memcpy(&vector[1].iov_base, &nl, sizeof(vector[1].iov_base));
+
+		if (writev(fd, vector, sizeof(vector) / sizeof(*vector)) < 0) {
+			RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));
 			exfile_close(inst->ef, fd);
 			return RLM_MODULE_FAIL;
 		}
@@ -327,11 +391,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 
 #ifdef HAVE_SYSLOG_H
 	} else {
-		syslog(inst->syslog_priority, "%s", line);
+		syslog(inst->syslog_priority, "%s", buff);
 #endif
 	}
 
-	return RLM_MODULE_OK;
+finish:
+	if (fd >= 0) exfile_close(inst->ef, fd);
+	talloc_free(vpt);
+
+	return rcode;
 }
 
 
