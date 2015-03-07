@@ -73,7 +73,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 			default:
 				break;
 		}
-		ROPTIONAL(RDEBUG3, DEBUG3, "SASL result    : %s", cb_p->result ? cb_p->result : "");
+		ROPTIONAL(RDEBUG3, DEBUG3, "SASL result    : %s", cb_p->result ? (char const *)cb_p->result : "");
 	}
 	return SASL_OK;
 }
