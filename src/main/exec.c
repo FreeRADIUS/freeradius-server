@@ -65,19 +65,18 @@ static void tv_sub(struct timeval *end, struct timeval *start,
 	}
 }
 
-
 /** Start a process
  *
- * @param cmd Command to execute. This is parsed into argv[] parts,
- * 	then each individual argv part is xlat'ed.
+ * @param cmd Command to execute. This is parsed into argv[] parts, then each individual argv
+ *	part is xlat'ed.
  * @param request Current reuqest
- * @param exec_wait set to 1 if you want to read from or write to child
- * @param[in,out] input_fd pointer to int, receives the stdin file.
- * 	descriptor. Set to NULL and the child will have /dev/null on stdin
- * @param[in,out] output_fd pinter to int, receives the stdout file
- * 	descriptor. Set to NULL and child will have /dev/null on stdout.
- * @param input_pairs list of value pairs - these will be put into
- * 	the environment variables of the child.
+ * @param exec_wait set to true to read from or write to child.
+ * @param[in,out] input_fd pointer to int, receives the stdin file descriptor. Set to NULL
+ *	and the child will have /dev/null on stdin.
+ * @param[in,out] output_fd pinter to int, receives the stdout file descriptor. Set to NULL
+ *	and child will have /dev/null on stdout.
+ * @param input_pairs list of value pairs - these will be put into the environment variables
+ *	of the child.
  * @param shell_escape values before passing them as arguments.
  * @return PID of the child process, -1 on error.
  */
@@ -501,8 +500,8 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
  *
  * @param[out] out buffer to append plaintext (non valuepair) output.
  * @param[in] outlen length of out buffer.
- * @param[out] output_pairs list of value pairs - child stdout will be parsed and added into this list
- *	of value pairs.
+ * @param[out] output_pairs list of value pairs - Data on child's stdout will be parsed and
+ *	added into this list of value pairs.
  * @param[in] request Current request (may be NULL).
  * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv part
  *	is xlat'ed.
