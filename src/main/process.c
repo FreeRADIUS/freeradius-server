@@ -247,7 +247,6 @@ static int event_new_fd(rad_listen_t *this);
  */
 #if defined (HAVE_PTHREAD_H) && (defined(WITH_PROXY) || defined(WITH_TCP))
 static rad_listen_t *new_listeners = NULL;
-static TALLOC_CTX *proxy_ctx = NULL;
 
 static pthread_mutex_t	fd_mutex;
 #define FD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
