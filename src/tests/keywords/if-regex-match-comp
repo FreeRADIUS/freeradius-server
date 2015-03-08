@@ -109,12 +109,12 @@ if (&Tmp-String-0 =~ /^foo$/) {
 	}
 }
 
-# compiled - ref - non-multiline
-if (&Tmp-String-0 !~ /^foo\nbar$/) {
-	update reply {
-		Filter-Id += 'Fail 16'
-	}
-}
+# compiled - ref - multiline
+#if (&Tmp-String-0 !~ /^foo\nbar$/) {
+#	update reply {
+#		Filter-Id += 'Fail 16'
+#	}
+#}
 
 # compiled - ref - multiline
 if (&Tmp-String-0 !~ /^bar$/m) {
