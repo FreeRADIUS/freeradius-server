@@ -152,7 +152,13 @@ static int request_init(char const *filename)
 	 *	Fix / set various options
 	 */
 	for (vp = fr_cursor_init(&cursor, &request->vps); vp; vp = fr_cursor_next(&cursor)) {
-		switch (vp->da->attr) {
+
+		if (vp->da->vendor == DHCP_MAGIC_VENDOR && vp->da->attr == PW_DHCP_MESSAGE_TYPE) {
+			/*	Allow to set packet type using DHCP-Message-Type. */
+			request->code = vp->vp_integer + PW_DHCP_OFFSET;
+
+		} else if (!vp->da->vendor) switch (vp->da->attr) {
+
 		default:
 			break;
 
@@ -161,10 +167,6 @@ static int request_init(char const *filename)
 		 *	the attributes read from the file.
 		 *	(this takes precedence over the command argument.)
 		 */
-		case PW_DHCP_MESSAGE_TYPE:
-			request->code = vp->vp_integer - PW_DHCP_OFFSET;
-			break;
-
 		case PW_PACKET_TYPE:
 			request->code = vp->vp_integer;
 			break;
