@@ -1,13 +1,16 @@
 #
 #  Run the "files" module
 #
+update control {
+	Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
+}
 
 #
 #  Remove old log files
 #
 group {
 	update request {
-		Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_a.log`
+		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
 	}
 	fail = 1
 }
@@ -21,7 +24,7 @@ update control {
 }
 linelog_fmt_and_ref
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == 'bob default') {
@@ -38,7 +41,7 @@ update control {
 linelog_fmt_and_ref
 
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == 'bob exec') {
@@ -50,7 +53,7 @@ else {
 
 #  Check it's not overwriting the same line repeatedly
 update request {
-	Tmp-String-0 := `/usr/bin/head -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+	Tmp-String-0 := `/bin/sh -c "head -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == 'bob default') {
@@ -67,7 +70,7 @@ update control {
 linelog_fmt_and_ref
 
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == 'bob') {
@@ -84,7 +87,7 @@ update control {
 linelog_fmt_and_ref
 
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == 'bob xlat') {
@@ -101,7 +104,7 @@ update control {
 linelog_fmt_and_ref
 
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == '%{User-Name} literal') {
@@ -118,7 +121,7 @@ update control {
 linelog_fmt_and_ref
 
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 if (&Tmp-String-0 == '') {
@@ -130,13 +133,13 @@ else {
 
 #  Remove the file
 update request {
-	Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_a.log`
+	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_a.log"`
 }
 
 #  Remove old log files
 group {
 	update request {
-		Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_b.log`
+		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
 	}
 	fail = 1
 }
@@ -158,7 +161,7 @@ else {
 
 group {
 	update request {
-		Tmp-String-0 := `/bin/test ! -e $ENV{MODULE_TEST_DIR}/test_b.log`
+		Tmp-String-0 := `/bin/sh -c "test ! -e $ENV{MODULE_TEST_DIR}/test_b.log"`
 	}
 	fail = 1
 }
@@ -176,7 +179,7 @@ update control {
 linelog_ref
 
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_b.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_b.log"`
 }
 
 if (&Tmp-String-0 == 'bob exec') {
@@ -188,13 +191,13 @@ else {
 
 #  Remove the file
 update request {
-	Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_b.log`
+	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_b.log"`
 }
 
 #  Remove old log files
 group {
 	update request {
-		Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_c.log`
+		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
 	}
 	fail = 1
 }
@@ -209,7 +212,7 @@ update control {
 
 linelog_fmt_and_ref_attr
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 }
 
 if (&Tmp-String-0 == 'bob xlat') {
@@ -226,7 +229,7 @@ update control {
 
 linelog_fmt_and_ref_attr
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 }
 
 if (&Tmp-String-0 == 'bob') {
@@ -243,7 +246,7 @@ update control {
 
 linelog_fmt_and_ref_attr
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 }
 
 if (&Tmp-String-0 == 'bob xlat') {
@@ -269,7 +272,7 @@ else {
 }
 
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_c.log"`
 }
 
 if (&Tmp-String-0 == 'bob xlat') {
@@ -296,13 +299,13 @@ else {
 
 #  Remove the file
 update request {
-	Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_c.log`
+	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_c.log"`
 }
 
 #  Remove old log files
 group {
 	update request {
-		Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_d.log`
+		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
 	}
 	fail = 1
 }
@@ -312,7 +315,7 @@ if (fail) {
 linelog_fmt
 
 update request {
-	Tmp-String-0 := `/usr/bin/tail -n1 $ENV{MODULE_TEST_DIR}/test_d.log`
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_d.log"`
 }
 if (&Tmp-String-0 == 'bob') {
 	test_pass
@@ -323,5 +326,5 @@ else {
 
 #  Remove the file
 update request {
-	Tmp-String-0 := `/bin/rm $ENV{MODULE_TEST_DIR}/test_d.log`
+	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_d.log"`
 }
