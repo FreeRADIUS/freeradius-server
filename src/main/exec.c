@@ -102,7 +102,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 
 	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, true, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
-		DEBUG("invalid command line '%s'.", cmd);
+		ERROR("Invalid command '%s'", cmd);
 		return -1;
 	}
 
@@ -123,13 +123,13 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	if (exec_wait) {
 		if (input_fd) {
 			if (pipe(to_child) != 0) {
-				DEBUG("Couldn't open pipe to child: %s", fr_syserror(errno));
+				ERROR("Couldn't open pipe to child: %s", fr_syserror(errno));
 				return -1;
 			}
 		}
 		if (output_fd) {
 			if (pipe(from_child) != 0) {
-				DEBUG("Couldn't open pipe from child: %s", fr_syserror(errno));
+				ERROR("Couldn't open pipe from child: %s", fr_syserror(errno));
 				/* safe because these either need closing or are == -1 */
 				close(to_child[0]);
 				close(to_child[1]);
@@ -207,7 +207,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 */
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			DEBUG("Failed opening /dev/null: %s\n", fr_syserror(errno));
+			ERROR("Failed opening /dev/null: %s\n", fr_syserror(errno));
 
 			/*
 			 *	Where the status code is interpreted as a module rcode
@@ -293,7 +293,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	 *	Parent process.
 	 */
 	if (pid < 0) {
-		DEBUG("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
+		ERROR("Couldn't fork %s: %s", argv[0], fr_syserror(errno));
 		if (exec_wait) {
 			/* safe because these either need closing or are == -1 */
 			close(to_child[0]);
@@ -326,7 +326,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	return pid;
 #else
 	if (exec_wait) {
-		DEBUG("Wait is not supported");
+		ERROR("Wait is not supported");
 		return -1;
 	}
 
