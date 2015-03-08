@@ -540,6 +540,39 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
  *
  * @{
  */
+
+/** Initialise a #value_pair_tmpl_t to search for, or create attributes
+ *
+ * @param vpt to initialise.
+ * @param da of #VALUE_PAIR type to operate on.
+ * @param tag Must be one of:
+ *	- A positive integer specifying a specific tag.
+ *	- #TAG_ANY - Attribute with no specific tag value.
+ *	- #TAG_NONE - No tag.
+ * @param num Specific instance, or all instances. Must be one of:
+ *	- A positive integer specifying an instance.
+ *	- #NUM_ALL - All instances.
+ *	- #NUM_ANY - The first instance found.
+ *	- #NUM_LAST - The last instance found.
+ * @param request to operate on.
+ * @param list to operate on.
+ */
+void tmpl_from_da(value_pair_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
+		  request_refs_t request, pair_lists_t list)
+{
+	static char const name[] = "internal";
+
+	rad_assert(da);
+
+	tmpl_init(vpt, TMPL_TYPE_ATTR, name, sizeof(name));
+	vpt->tmpl_da = da;
+
+	vpt->tmpl_request = request;
+	vpt->tmpl_list = list;
+	vpt->tmpl_tag = tag;
+	vpt->tmpl_num = num;
+}
+
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #value_pair_tmpl_t
  *
  * @note The name field is just a copy of the input pointer, if you know that string might be

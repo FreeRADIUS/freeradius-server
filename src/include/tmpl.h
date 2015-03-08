@@ -272,6 +272,40 @@ typedef struct value_pair_tmpl_t {
 void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt);
 #endif
 
+/** Produces an initialiser for static #TMPL_TYPE_LIST type #value_pair_tmpl_t
+ *
+ * Example:
+ @code{.c}
+   static value_pair_tmpl_t list = tmpl_initialiser_list(CURRENT_REQUEST, PAIR_LIST_REQUEST);
+   vp_cursor_t cursor;
+   VALUE_PAIR *vp;
+
+   // Iterate over all pairs in the request list
+   for (vp = tmpl_cursor_init(NULL, &cursor, request, &list);
+   	vp;
+   	vp = tmpl_cursor_next(&cursor, &list)) {
+   	// Do something
+   }
+ @endcode
+ *
+ * @param _request to locate the list in.
+ * @param _list to set as the target for the template.
+ * @see tmpl_cursor_init
+ * @see tmpl_cursor_next
+ */
+#define	tmpl_initialiser_list(_request, _list)\
+{ \
+	.name = "static", \
+	.len = sizeof("static"), \
+	.type = TMPL_TYPE_LIST, \
+	.data = { \
+		.attribute = { \
+			.request = _request, \
+			.list = _list \
+		} \
+	} \
+}
+
 VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);
 
 RADIUS_PACKET		*radius_packet(REQUEST *request, pair_lists_t list_name);
@@ -289,6 +323,9 @@ value_pair_tmpl_t	*tmpl_init(value_pair_tmpl_t *vpt, tmpl_type_t type,
 
 value_pair_tmpl_t	*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 				    ssize_t len);
+
+void			tmpl_from_da(value_pair_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
+				     request_refs_t request, pair_lists_t list);
 
 ssize_t			tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
 					      request_refs_t request_def, pair_lists_t list_def,
