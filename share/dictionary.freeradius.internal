@@ -286,6 +286,8 @@ ATTRIBUTE	SSHA2-256-Password			1178	octets internal
 ATTRIBUTE	SSHA2-384-Password			1179	octets internal
 ATTRIBUTE	SSHA2-512-Password			1180	octets internal
 
+ATTRIBUTE	Exec-Export				1181	string internal
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
