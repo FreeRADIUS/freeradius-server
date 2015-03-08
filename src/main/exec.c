@@ -85,20 +85,21 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   VALUE_PAIR *input_pairs, bool shell_escape)
 {
 #ifndef __MINGW32__
-	char *p;
-	VALUE_PAIR *vp;
-	int n;
-	int to_child[2] = {-1, -1};
-	int from_child[2] = {-1, -1};
-	pid_t pid;
+	char		*p;
+	VALUE_PAIR	*vp;
+	int		n;
+	int		to_child[2] = {-1, -1};
+	int		from_child[2] = {-1, -1};
+	pid_t		pid;
 #endif
-	int argc;
-	int i;
-	char *argv[MAX_ARGV];
-	char argv_buf[4096];
+	int		argc;
+	int		i;
+	char		*argv[MAX_ARGV];
+	char		argv_buf[4096];
 #define MAX_ENVP 1024
-	char *envp[MAX_ENVP];
-	int envlen = 0;
+	char		*envp[MAX_ENVP];
+	int		envlen = 0;
+	TALLOC_CTX	*input_ctx = NULL;
 
 	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, true, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
@@ -106,15 +107,9 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		return -1;
 	}
 
-
-#ifndef NDEBUG
-	if (debug_flag > 2) {
-		DEBUG3("executing cmd %s", cmd);
-		for (i = 0; i < argc; i++) {
-			DEBUG3("\t[%d] %s", i, argv[i]);
-		}
+	if (DEBUG_ENABLED3) {
+		for (i = 0; i < argc; i++) DEBUG3("arg[%d] %s", i, argv[i]);
 	}
-#endif
 
 #ifndef __MINGW32__
 	/*
@@ -144,6 +139,8 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		vp_cursor_t cursor;
 		char buffer[1024];
 
+		input_ctx = talloc_new(request);
+
 		/*
 		 *	Set up the environment variables in the
 		 *	parent, so we don't call libc functions that
@@ -172,18 +169,26 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			n = strlen(buffer);
 			vp_prints_value(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
 
-			envp[envlen++] = strdup(buffer);
+			DEBUG3("export %s", buffer);
+			envp[envlen++] = talloc_strdup(input_ctx, buffer);
 
 			/*
 			 *	Don't add too many attributes.
 			 */
 			if (envlen == (MAX_ENVP - 1)) break;
-
-			/*
-			 *	NULL terminate for execve
-			 */
-			envp[envlen] = NULL;
 		}
+
+		fr_cursor_init(&cursor, radius_list(request, PAIR_LIST_CONTROL));
+		while ((vp = fr_cursor_next_by_num(&cursor, PW_EXEC_EXPORT, 0, TAG_ANY))) {
+			DEBUG3("export %s", vp->vp_strvalue);
+			memcpy(&envp[envlen++], &(vp->vp_strvalue), sizeof(*envp));
+
+		}
+
+		/*
+		 *	NULL terminate for execve
+		 */
+		envp[envlen] = NULL;
 	}
 
 	if (exec_wait) {
@@ -285,9 +290,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	/*
 	 *	Free child environment variables
 	 */
-	for (i = 0; i < envlen; i++) {
-		free(envp[i]);
-	}
+	talloc_free(input_ctx);
 
 	/*
 	 *	Parent process.
