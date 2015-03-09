@@ -33,6 +33,7 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* track proxy statistics, including CoA and Disconnect.
 	* If radmin has a connection failure when running a command,
 	  it re-connects and runs the command again.
+	* mark home servers "unknown" less aggressively.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
