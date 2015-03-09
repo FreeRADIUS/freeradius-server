@@ -2069,14 +2069,32 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 		request->home_server->currently_outstanding--;
 
 		/*
-		 *	If we're NOT sending it packets, then we don't know
-		 *	if it's alive or dead.
+		 *	If we're NOT sending it packets, AND it's been
+		 *	a while since we got a response, then we don't
+		 *	know if it's alive or dead.
 		 */
 		if ((request->home_server->currently_outstanding == 0) &&
 		    (request->home_server->state == HOME_STATE_ALIVE)) {
-			request->home_server->state = HOME_STATE_UNKNOWN;
-			request->home_server->last_packet_sent = 0;
-			request->home_server->last_packet_recv = 0;
+			struct timeval when, now;
+
+			when.tv_sec = request->home_server->last_packet_recv ;
+			when.tv_usec = 0;
+
+			timeradd(&when, request_response_window(request), &when);
+			gettimeofday(&now, NULL);
+
+			/*
+			 *	last_packet + response_window
+			 *
+			 *	We *administratively* mark the home
+			 *	server as "unknown" state, because we
+			 *	haven't seen a packet for a while.
+			 */
+			if (timercmp(&now, &when, >)) {
+				request->home_server->state = HOME_STATE_UNKNOWN;
+				request->home_server->last_packet_sent = 0;
+				request->home_server->last_packet_recv = 0;
+			}
 		}
 	}
 
