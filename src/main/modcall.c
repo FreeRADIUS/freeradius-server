@@ -1657,33 +1657,27 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
 		 */
-		if (!cf_new_escape &&
-		    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
-		    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
-			tmpl_cast_in_place_str(map->rhs);
-		} else {
-			if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
-				cf_log_err(map->ci, "%s", fr_strerror());
+		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+			cf_log_err(map->ci, "%s", fr_strerror());
+			return -1;
+		}
+
+		/*
+		 *	Fixup LHS da if it doesn't match the type
+		 *	of the RHS.
+		 */
+		if (map->lhs->tmpl_da->type != map->rhs->tmpl_data_type) {
+			DICT_ATTR const *da;
+
+			da = dict_attrbytype(map->lhs->tmpl_da->attr, map->lhs->tmpl_da->vendor,
+					     map->rhs->tmpl_data_type);
+			if (!da) {
+				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
+						   fr_int2str(dict_attr_types, map->rhs->tmpl_data_type,
+						   "<INVALID>"), map->lhs->tmpl_da->name);
 				return -1;
 			}
-
-			/*
-			 *	Fixup LHS da if it doesn't match the type
-			 *	of the RHS.
-			 */
-			if (map->lhs->tmpl_da->type != map->rhs->tmpl_data_type) {
-				DICT_ATTR const *da;
-
-				da = dict_attrbytype(map->lhs->tmpl_da->attr, map->lhs->tmpl_da->vendor,
-						     map->rhs->tmpl_data_type);
-				if (!da) {
-					fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
-							   fr_int2str(dict_attr_types, map->rhs->tmpl_data_type,
-							   "<INVALID>"), map->lhs->tmpl_da->name);
-					return -1;
-				}
-				map->lhs->tmpl_da = da;
-			}
+			map->lhs->tmpl_da = da;
 		}
 	} /* else we can't precompile the data */
 

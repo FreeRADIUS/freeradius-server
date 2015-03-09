@@ -283,7 +283,6 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 			     char const *ptr);
 
 extern CONF_SECTION *root_config;
-extern bool cf_new_escape;
 
 #ifdef __cplusplus
 }

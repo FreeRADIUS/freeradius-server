@@ -172,24 +172,19 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char cons
 			/*
 			 *	Call the STANDARD parse function to figure out what the string is.
 			 */
-			if (cf_new_escape) {
-				ssize_t slen;
-				value_data_t data;
-				PW_TYPE src_type = PW_TYPE_STRING;
+			ssize_t slen;
+			value_data_t data;
+			PW_TYPE src_type = PW_TYPE_STRING;
 
-				slen = value_data_from_str(ctx, &data, &src_type, NULL, start + 1, p - (start + 1), *start);
-				if (slen < 0) {
-					*error = "error parsing string";
-					return slen - 1;
-				}
-
-				talloc_free(*out);
-				*out = talloc_steal(ctx, data.ptr);
-				data.strvalue = NULL;
-
-			} else {
-				*q = '\0'; /* terminate the output string */
+			slen = value_data_from_str(ctx, &data, &src_type, NULL, start + 1, p - (start + 1), *start);
+			if (slen < 0) {
+				*error = "error parsing string";
+				return slen - 1;
 			}
+
+			talloc_free(*out);
+			*out = talloc_steal(ctx, data.ptr);
+			data.strvalue = NULL;
 
 			p++;
 			return (p - start);
@@ -202,35 +197,11 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char cons
 				return -(p - start);
 			}
 
-			/*
-			 *	Hacks for backwards compatibility
-			 */
-			if (cf_new_escape) {
-				if (p[1] == start[0]) { /* Convert '\'' --> ' */
-					p++;
-				} else {
-					*(q++) = *(p++);
-				}
-
+			if (p[1] == start[0]) { /* Convert '\'' --> ' */
+				p++;
 			} else {
-				switch (p[1]) {
-				case 'r':
-					*q++ = '\r';
-					break;
-				case 'n':
-					*q++ = '\n';
-					break;
-				case 't':
-					*q++ = '\t';
-					break;
-				default:
-					*q++ = p[1];
-					break;
-				}
-				p += 2;
-				continue;
+				*(q++) = *(p++);
 			}
-
 		}
 		*(q++) = *(p++);
 	}

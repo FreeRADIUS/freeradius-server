@@ -818,8 +818,6 @@ int main(int argc, char *argv[])
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
 
-	cf_new_escape = true;	/* fix the tests */
-
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
 		fr_perror("radattr");

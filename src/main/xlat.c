@@ -2199,7 +2199,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *
 		 *	This is really the reverse of fr_prints().
 		 */
-		if (cf_new_escape && *child) {
+		if (*child) {
 			ssize_t slen;
 			PW_TYPE type;
 			value_data_t data;
