@@ -117,7 +117,6 @@ struct conf_part {
 };
 
 CONF_SECTION *root_config = NULL;
-bool cf_new_escape = false;
 
 
 static int		cf_data_add_internal(CONF_SECTION *cs, char const *name, void *data,
@@ -2374,7 +2373,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		/*
 		 *	Grab the next token.
 		 */
-		t2 = gettoken(&ptr, buf2, sizeof(buf2), !cf_new_escape);
+		t2 = gettoken(&ptr, buf2, sizeof(buf2), false);
 		switch (t2) {
 		case T_EOL:
 		case T_HASH:
@@ -2410,8 +2409,16 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	comma.  If they have { or } in a bare
 			 *	word, well... too bad.
 			 */
-			if (cf_new_escape && (*ptr != '"') && (*ptr != '\'')
-			    && (*ptr != '`') && (*ptr != '/')) {
+			switch (*ptr) {
+			case '"':
+			case '\'':
+			case '`':
+			case '/':
+				t3 = getstring(&ptr, buf3, sizeof(buf3), false);
+				break;
+
+			default:
+			{
 				const char *q = ptr;
 
 				t3 = T_BARE_WORD;
@@ -2419,17 +2426,14 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				       !isspace(*q)) q++;
 
 				if ((size_t) (q - ptr) >= sizeof(buf3)) {
-					ERROR("%s[%d]: Parse error: value too long",
-					      filename, *lineno);
+					ERROR("%s[%d]: Parse error: value too long", filename, *lineno);
 					return -1;
 				}
 
 				memcpy(buf3, ptr, (q - ptr));
 				buf3[q - ptr] = '\0';
 				ptr = q;
-
-			} else {
-				t3 = getstring(&ptr, buf3, sizeof(buf3), !cf_new_escape);
+			}
 			}
 
 			if (t3 == T_INVALID) {
@@ -2483,17 +2487,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			cpn->item.lineno = *lineno;
 			cpn->pass2 = pass2;
 			cf_item_add(this, &(cpn->item));
-
-			/*
-			 *	Hacks for escaping
-			 */
-			if (!cf_new_escape && !this->item.parent && value &&
-			    (strcmp(buf1, "correct_escapes") == 0) &&
-			    ((strcmp(value, "true") == 0) ||
-			     (strcmp(value, "yes") == 0) ||
-			     (strcmp(value, "1") == 0))) {
-				cf_new_escape = true;
-			}
 
 			/*
 			 *	Require a comma, unless there's a comment.

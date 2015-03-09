@@ -942,7 +942,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *in,
 		quote = '\'';
 
 	parse:
-		if (cf_new_escape && do_unescape) {
+		if (do_unescape) {
 			slen = value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, quote);
 			rad_assert(slen >= 0);
 
@@ -982,7 +982,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *in,
 		 *	expansion.  Otherwise, convert it to be a
 		 *	literal.
 		 */
-		if (cf_new_escape && do_unescape) {
+		if (do_unescape) {
 			slen = value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, '"');
 			if (slen < 0) return slen;
 
@@ -1007,7 +1007,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *in,
 		break;
 
 	case T_BACK_QUOTED_STRING:
-		if (cf_new_escape && do_unescape) {
+		if (do_unescape) {
 			slen = value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, '`');
 			if (slen < 0) return slen;
 
@@ -1158,10 +1158,9 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	/*
 	 *	New escapes: strings are in binary form.
 	 */
-	if (cf_new_escape && (vp->da->type == PW_TYPE_STRING)) {
+	if (vp->da->type == PW_TYPE_STRING) {
 		vp->data.ptr = talloc_steal(vp, data.ptr);
 		vp->vp_length = rcode;
-
 	} else if (pairparsevalue(vp, data.strvalue, rcode) < 0) {
 		talloc_free(data.ptr);
 		pairfree(&vp);
@@ -1330,9 +1329,8 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 	 *	Or, if it's from a "string" attribute, it needs re-parsing.
 	 *	Integers, IP addresses, etc. don't need re-parsing.
 	 */
-	if (cf_new_escape &&
-	    ((vpt->type != TMPL_TYPE_ATTR) ||
-	     (vpt->tmpl_da->type == PW_TYPE_STRING))) {
+	if ((vpt->type != TMPL_TYPE_ATTR) ||
+	     (vpt->tmpl_da->type == PW_TYPE_STRING)) {
 	     	value_data_t vd;
 
 		PW_TYPE type = PW_TYPE_STRING;
@@ -1459,9 +1457,8 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_t
 	 *	Or, if it's from a "string" attribute, it needs re-parsing.
 	 *	Integers, IP addresses, etc. don't need re-parsing.
 	 */
-	if (cf_new_escape &&
-	    ((vpt->type != TMPL_TYPE_ATTR) ||
-	     (vpt->tmpl_da->type == PW_TYPE_STRING))) {
+	if ((vpt->type != TMPL_TYPE_ATTR) ||
+	     (vpt->tmpl_da->type == PW_TYPE_STRING)) {
 	     	value_data_t vd;
 
 		PW_TYPE type = PW_TYPE_STRING;
@@ -1654,7 +1651,7 @@ size_t tmpl_prints(char *out, size_t outlen, value_pair_tmpl_t const *vpt, DICT_
 	/*
 	 *	Print it with appropriate escaping
 	 */
-	if (cf_new_escape && (c == '/')) {
+	if (c == '/') {
 		len = fr_prints(q, outlen - 3, vpt->name, vpt->len, '\0');
 	} else {
 		len = fr_prints(q, outlen - 3, vpt->name, vpt->len, c);
