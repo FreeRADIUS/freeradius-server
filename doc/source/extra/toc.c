@@ -54,7 +54,7 @@ git checkout v3.0.x
 @endcode
 - Web: http://github.com/FreeRADIUS/freeradius-server/tree/v3.0.x
 
-@subsection branch_2xx 2.x.x stable branch
+@subsection branch_2xx 2.x.x long-term support branch
 
 @note This branch is now permanently feature frozen. New features or modules 
       should be submitted against the v3.1.x branch.
