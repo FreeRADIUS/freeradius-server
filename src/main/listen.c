@@ -1942,9 +1942,6 @@ static int proxy_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	/*
-	 *	FIXME: Client MIB updates?
-	 */
 	switch (packet->code) {
 	case PW_CODE_ACCESS_ACCEPT:
 	case PW_CODE_ACCESS_CHALLENGE:
@@ -1973,11 +1970,17 @@ static int proxy_socket_recv(rad_listen_t *listener)
 		       packet->code,
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
+#ifdef WITH_STATS
+		listener->stats.total_unknown_types++;
+#endif
 		rad_free(&packet);
 		return 0;
 	}
 
 	if (!request_proxy_reply(packet)) {
+#ifdef WITH_STATS
+		listener->stats.total_packets_dropped++;
+#endif
 		rad_free(&packet);
 		return 0;
 	}

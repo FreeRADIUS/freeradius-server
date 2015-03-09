@@ -2483,6 +2483,50 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	packet->timestamp = now;
 	request->priority = RAD_LISTEN_PROXY;
 
+#ifdef WITH_STATS
+	/*
+	 *	Update the proxy listener stats here, because only one
+	 *	thread accesses that at a time.  The home_server and
+	 *	main proxy_*_stats structures are updated once the
+	 *	request is cleaned up.
+	 */
+	request->proxy_listener->stats.total_responses++;
+
+	switch (request->proxy->code) {
+	case PW_CODE_ACCESS_REQUEST:
+		if (request->proxy_reply->code == PW_CODE_ACCESS_ACCEPT) {
+			request->proxy_listener->stats.total_access_accepts++;
+
+		} else if (request->proxy_reply->code == PW_CODE_ACCESS_REJECT) {
+			request->proxy_listener->stats.total_access_rejects++;
+
+		} else if (request->proxy_reply->code == PW_CODE_ACCESS_CHALLENGE) {
+			request->proxy_listener->stats.total_access_challenges++;
+		}
+		break;
+
+#ifdef WITH_ACCOUNTING
+	case PW_CODE_ACCOUNTING_REQUEST:
+		request->proxy_listener->stats.total_responses++;
+		break;
+
+#endif
+
+#ifdef WITH_COA
+	case PW_CODE_COA_REQUEST:
+		request->proxy_listener->stats.total_responses++;
+		break;
+
+	case PW_CODE_DISCONNECT_REQUEST:
+		request->proxy_listener->stats.total_responses++;
+		break;
+
+#endif
+	default:
+		break;
+	}
+#endif
+
 	/*
 	 *	We've received a reply.  If we hadn't been sending it
 	 *	packets for a while, just mark it alive.
@@ -3035,8 +3079,6 @@ static int request_proxy(REQUEST *request, int retransmit)
 		request->proxy->timestamp = request->proxy_retransmit;
 	}
 	request->home_server->last_packet_sent = request->proxy_retransmit.tv_sec;
-
-	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 
 	/*
 	 *	Encode the packet before we do anything else.
@@ -3970,8 +4012,6 @@ static void request_coa_originate(REQUEST *request)
 	 *	and cache the VPS.
 	 */
 	fr_state_put_vps(coa, NULL, coa->packet);
-
-	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
 
 	/*
 	 *	Encode the packet before we do anything else.
