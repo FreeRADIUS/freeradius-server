@@ -193,7 +193,16 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char **out,  char cons
 				*out = talloc_steal(ctx, data.ptr);
 				data.strvalue = NULL;
 			} else {
-				*q = '\0'; /* terminate the output string */
+				char *out2;
+
+				*(q++) = '\0'; /* terminate the output string */
+
+				out2 = talloc_realloc(ctx, *out, char, (q - *out));
+				if (!out2) {
+					*error = "Out of memory";
+					return -1;
+				}
+				*out = out2;
 			}
 
 			p++;
