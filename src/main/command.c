@@ -1497,7 +1497,8 @@ static home_server_t *get_home_server(rad_listen_t *listener, int argc,
 		return NULL;
 	}
 
-	*last = myarg;
+	if (last) *last = myarg;
+
 	return home;
 }
 
