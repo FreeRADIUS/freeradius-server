@@ -662,6 +662,8 @@ int main(int argc, char **argv)
 	 */
 
 	while (1) {
+		int retries;
+
 #ifndef USE_READLINE
 		if (!quiet) {
 			printf("radmin> ");
@@ -760,13 +762,25 @@ int main(int argc, char **argv)
 			continue;
 		}
 
+		retries = 0;
+	retry:
 		len = run_command(sockfd, line, buffer, sizeof(buffer));
-		if ((len < 0) && (do_connect(&sockfd, file, server) < 0)) {
-			fprintf(stderr, "Reconnecting...");
+		if (len < 0) {
+			if (!quiet) fprintf(stderr, "Reconnecting...");
+
+			if (do_connect(&sockfd, file, server) < 0) {
+				exit(1);
+			}
+
+			retries++;
+			if (retries < 2) goto retry;
+
+			fprintf(stderr, "Failed to connect to server\n");
 			exit(1);
 
 		} else if (len == 0) {
 			break;
+
 		} else if (len == 1) {
 			exit_status = EXIT_FAILURE;
 		}
