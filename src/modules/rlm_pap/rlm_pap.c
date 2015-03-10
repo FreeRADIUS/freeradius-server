@@ -98,6 +98,7 @@ static const FR_NAME_NUMBER header_names[] = {
 #endif
 	{ "{sha}",		PW_SHA_PASSWORD },
 	{ "{ssha}",		PW_SSHA_PASSWORD },
+	{ "{md4}",		PW_NT_PASSWORD },
 	{ "{nt}",		PW_NT_PASSWORD },
 	{ "{nthash}",		PW_NT_PASSWORD },
 	{ "{x-nthash}",		PW_NT_PASSWORD },
