@@ -2500,8 +2500,13 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 */
 	request->proxy_listener->stats.total_responses++;
 
+	request->home_server->stats.last_packet = packet->timestamp.tv_sec;
+	request->proxy_listener->stats.last_packet = packet->timestamp.tv_sec;
+
 	switch (request->proxy->code) {
 	case PW_CODE_ACCESS_REQUEST:
+		proxy_auth_stats.last_packet = packet->timestamp.tv_sec;
+
 		if (request->proxy_reply->code == PW_CODE_ACCESS_ACCEPT) {
 			request->proxy_listener->stats.total_access_accepts++;
 
@@ -2516,6 +2521,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
 		request->proxy_listener->stats.total_responses++;
+		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
 		break;
 
 #endif
@@ -2523,10 +2529,12 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 #ifdef WITH_COA
 	case PW_CODE_COA_REQUEST:
 		request->proxy_listener->stats.total_responses++;
+		proxy_coa_stats.last_packet = packet->timestamp.tv_sec;
 		break;
 
 	case PW_CODE_DISCONNECT_REQUEST:
 		request->proxy_listener->stats.total_responses++;
+		proxy_dsc_stats.last_packet = packet->timestamp.tv_sec;
 		break;
 
 #endif
@@ -2543,19 +2551,6 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		request->home_server->state = HOME_STATE_ALIVE;
 		request->home_server->response_timeouts = 0;
 	}
-
-#ifdef WITH_STATS
-	request->home_server->stats.last_packet = packet->timestamp.tv_sec;
-	request->proxy_listener->stats.last_packet = packet->timestamp.tv_sec;
-
-	if (request->proxy->code == PW_CODE_ACCESS_REQUEST) {
-		proxy_auth_stats.last_packet = packet->timestamp.tv_sec;
-#ifdef WITH_ACCOUNTING
-	} else if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
-		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
-#endif
-	}
-#endif	/* WITH_STATS */
 
 	/*
 	 *	Tell the request state machine that we have a proxy
