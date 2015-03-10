@@ -485,6 +485,10 @@ static void request_free(REQUEST *request)
 {
 	void *ptr;
 
+	rad_assert(request->ev == NULL);
+	rad_assert(!request->in_request_hash);
+	rad_assert(!request->in_proxy_hash);
+
 	if ((request->options & RAD_REQUEST_OPTION_CTX) == 0) {
 		talloc_free(request);
 		return;
@@ -1756,6 +1760,10 @@ skip_dup:
 		} else {
 			RDEBUG("Not sending reply");
 		}
+
+		/*
+		 *	Don't do delayed reject.  Oh well.
+		 */
 		request_free(request);
 		return 1;
 	}
