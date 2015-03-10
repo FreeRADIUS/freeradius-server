@@ -59,6 +59,8 @@ typedef enum {
 typedef struct rlm_linelog_t {
 	linelog_dst_t		log_dst;		//!< Logging destination.
 
+	char const		*delimiter;	//!< Line termination string (usually \n).
+
 	char const		*syslog_facility;	//!< Syslog facility string.
 	char const		*syslog_severity;	//!< Syslog severity string.
 	int			syslog_priority;	//!< Bitwise | of severity and facility.
@@ -87,6 +89,7 @@ typedef struct rlm_linelog_t {
  */
 static const CONF_PARSER module_config[] = {
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_linelog_t, filename), NULL },
+	{ "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, delimiter), "\n" },
 	{ "syslog_facility", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, syslog_facility), NULL },
 	{ "syslog_severity", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, syslog_severity), "info" },
 	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_linelog_t, permissions), "0600" },
@@ -374,12 +377,11 @@ open_log:
 	 *	Write out the log entry
 	 */
 	if (inst->log_dst == LINELOG_DST_FILE) {
-		static char const *nl = "\n";
-		struct iovec vector[] = {{NULL, slen}, {NULL, 1}};
+		struct iovec vector[] = {{NULL, slen}, {NULL, talloc_array_length(inst->delimiter) - 1}};
 
 		/* iov_base is not declared as const *sigh* */
 		memcpy(&vector[0].iov_base, &value, sizeof(vector[0].iov_base));
-		memcpy(&vector[1].iov_base, &nl, sizeof(vector[1].iov_base));
+		memcpy(&vector[1].iov_base, &(inst->delimiter), sizeof(vector[1].iov_base));
 
 		if (writev(fd, vector, sizeof(vector) / sizeof(*vector)) < 0) {
 			RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));

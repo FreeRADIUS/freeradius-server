@@ -1,0 +1,49 @@
+#
+#  Run the "files" module
+#
+update control {
+	Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
+}
+
+#
+#  Remove old log files
+#
+group {
+	update request {
+		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_delim.log"`
+	}
+	fail = 1
+}
+if (fail) {
+	ok
+}
+
+linelog_fmt_delim
+update request {
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_delim.log"`
+}
+
+if (&Tmp-String-0 == 'bob, ') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Check strings are appended
+linelog_fmt_delim
+update request {
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_delim.log"`
+}
+
+if (&Tmp-String-0 == 'bob, bob, ') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Remove the file
+update request {
+	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_delim.log"`
+}

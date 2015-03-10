@@ -18,6 +18,12 @@ linelog {
 	filename = ${logdir}/linelog
 
 	#
+	#  Custom line delimiters. Defaults to \n (newline) but may be
+	#  any UTF8 multichar string.
+	#
+#	delimiter = "\n"
+
+	#
 	#  The Unix-style permissions on the log file.
 	#
 	#  Depending on format string, the log file may contain secret or
@@ -76,6 +82,8 @@ linelog {
 	#  Defaults to info.
 	#
 	#  The default format string.
+	#
+	#  May be an attribute ref, xlat, literal or exec.
 	format = "This is a log message for %{User-Name}"
 
 	#
@@ -98,12 +106,15 @@ linelog {
 	#
 	#  Reference the Packet-Type (Access-Request, etc.)  If it doesn't
 	#  exist, reference the "format" entry, above.
+	#
+	#  May be an attribute ref, xlat, literal or exec.
 	reference = "messages.%{%{Packet-Type}:-default}"
 
 	#
 	#  The messages defined here are taken from the "reference"
 	#  expansion, above.
 	#
+	#  Pairs may be attributes refs, xlats, literals or execs.
 	messages {
 		default = "Unknown packet type %{Packet-Type}"
 
