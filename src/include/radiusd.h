@@ -271,11 +271,11 @@ struct rad_request {
 #endif
 };				/* REQUEST typedef */
 
-#define RAD_REQUEST_OPTION_NONE		(0)
-#define RAD_REQUEST_OPTION_DEBUG	(1)
-#define RAD_REQUEST_OPTION_DEBUG2	(2)
-#define RAD_REQUEST_OPTION_DEBUG3	(3)
-#define RAD_REQUEST_OPTION_DEBUG4	(4)
+#define RAD_REQUEST_LVL_NONE		(0)
+#define RAD_REQUEST_LVL_DEBUG	(1)
+#define RAD_REQUEST_LVL_DEBUG2	(2)
+#define RAD_REQUEST_LVL_DEBUG3	(3)
+#define RAD_REQUEST_LVL_DEBUG4	(4)
 
 #define RAD_REQUEST_OPTION_COA		(1 << 0)
 #define RAD_REQUEST_OPTION_CTX		(1 << 1)
