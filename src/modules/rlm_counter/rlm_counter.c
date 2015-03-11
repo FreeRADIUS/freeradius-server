@@ -118,22 +118,16 @@ static const CONF_PARSER module_config[] = {
 	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, key_name), NULL },
 	{ "reset", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, reset), NULL },
 
-	{ "count-attribute", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_counter_t, count_attribute), NULL },
 	{ "count_attribute", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, count_attribute), NULL },
 
-	{ "counter-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_counter_t, counter_name), NULL },
 	{ "counter_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, counter_name), NULL },
 
-	{ "check-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_counter_t, check_name), NULL },
 	{ "check_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, check_name), NULL },
 
-	{ "reply-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_counter_t, reply_name), NULL },
 	{ "reply_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, reply_name), NULL },
 
-	{ "allowed-servicetype", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_counter_t, service_type), NULL },
 	{ "allowed_service_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_counter_t, service_type), NULL },
 
-	{ "cache-size", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_counter_t, cache_size), NULL },
 	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_counter_t, cache_size), "1000" },
 
 	{ NULL, -1, 0, NULL, NULL }

@@ -88,14 +88,11 @@ static const CONF_PARSER module_config[] = {
 	{ "radius_db", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_db), "radius" },
 	{ "read_groups", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, read_groups), "yes" },
 	{ "read_profiles", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, read_profiles), "yes" },
-	{ "readclients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, do_clients), NULL },
 	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, do_clients), "no" },
-	{ "deletestalesessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, delete_stale_sessions), NULL },
 	{ "delete_stale_sessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, delete_stale_sessions), "yes" },
 	{ "sql_user_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, query_user), "" },
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, logfile), NULL },
 	{ "default_user_profile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, default_profile), "" },
-	{ "nas_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sql_config_t, client_query), NULL },
 	{ "client_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_query), "SELECT id,nasname,shortname,type,secret FROM nas" },
 	{ "open_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, connect_query), NULL },
 
@@ -109,7 +106,6 @@ static const CONF_PARSER module_config[] = {
 	{ "simul_count_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, simul_count_query), NULL },
 	{ "simul_verify_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, simul_verify_query), NULL },
 #endif
-	{ "safe-characters", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sql_config_t, allowed_chars), NULL },
 	{ "safe_characters", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, allowed_chars), "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 
 	/*

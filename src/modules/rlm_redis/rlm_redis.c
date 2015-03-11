@@ -31,7 +31,6 @@ RCSID("$Id$")
 #include "rlm_redis.h"
 
 static const CONF_PARSER module_config[] = {
-	{ "hostname", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, REDIS_INST, hostname), NULL },
 	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, REDIS_INST, hostname), NULL },
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, REDIS_INST, port), "6379" },
 	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, REDIS_INST, database), "0" },

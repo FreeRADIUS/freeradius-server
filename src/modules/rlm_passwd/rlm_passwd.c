@@ -391,16 +391,12 @@ static const CONF_PARSER module_config[] = {
 	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, struct passwd_instance, format), NULL },
 	{ "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, struct passwd_instance, delimiter), ":" },
 
-	{ "ignorenislike", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, struct passwd_instance, ignore_nislike), NULL },
 	{ "ignore_nislike", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, ignore_nislike), "yes" },
 
-	{ "ignoreempty", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, struct passwd_instance, ignore_empty), NULL },
 	{ "ignore_empty",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, ignore_empty), "yes" },
 
-	{ "allowmultiplekeys", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, struct passwd_instance, allow_multiple), NULL },
 	{ "allow_multiple_keys", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, allow_multiple), "no" },
 
-	{ "hashsize", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, struct passwd_instance, hash_size), NULL },
 	{ "hash_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, struct passwd_instance, hash_size), "100" },
 
 	{ NULL, -1, 0, NULL, NULL }

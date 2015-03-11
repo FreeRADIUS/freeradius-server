@@ -89,19 +89,14 @@ static CONF_PARSER tls_config[] = {
 	/*
 	 *	Deprecated attributes
 	 */
-	{ "cacertfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, ldap_instance_t, tls_ca_file), NULL },
 	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, ldap_instance_t, tls_ca_file), NULL },
 
-	{ "cacertdir", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, ldap_instance_t, tls_ca_path), NULL },
 	{ "ca_path", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, ldap_instance_t, tls_ca_path), NULL },
 
-	{ "certfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, ldap_instance_t, tls_certificate_file), NULL },
 	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, ldap_instance_t, tls_certificate_file), NULL },
 
-	{ "keyfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, ldap_instance_t, tls_private_key_file), NULL }, // OK if it changes on HUP
 	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, ldap_instance_t, tls_private_key_file), NULL }, // OK if it changes on HUP
 
-	{ "randfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, ldap_instance_t, tls_random_file), NULL },
 	{ "random_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, ldap_instance_t, tls_random_file), NULL },
 
 	/*
@@ -134,7 +129,6 @@ static CONF_PARSER user_config[] = {
 	{ "access_positive", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, access_positive), "yes" },
 
 	/* Should be deprecated */
-	{ "sasl_mech", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL | PW_TYPE_DEPRECATED | PW_TYPE_NOT_EMPTY, ldap_instance_t, user_sasl.mech), NULL },
 	{ "sasl", FR_CONF_OFFSET(PW_TYPE_SUBSECTION, ldap_instance_t, user_sasl), (void const *) sasl_mech_dynamic },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -225,7 +219,6 @@ static const CONF_PARSER module_config[] = {
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, ldap_instance_t, admin_password), NULL },
 
 	/* Should be deprecated */
-	{ "sasl_mech", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, ldap_instance_t, admin_sasl.mech), NULL },
 	{ "sasl", FR_CONF_OFFSET(PW_TYPE_SUBSECTION, ldap_instance_t, admin_sasl), (void const *) sasl_mech_static },
 
 	{ "valuepair_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, valuepair_attr), NULL },

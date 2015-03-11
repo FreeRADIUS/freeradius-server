@@ -114,88 +114,63 @@ static CONF_PARSER message_config[] = {
  *	buffer over-flows.
  */
 static CONF_PARSER module_config[] = {
-	{ "sql-instance-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, sql_instance_name), NULL },
 	{ "sql_module_instance", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_sqlippool_t, sql_instance_name), "sql" },
 
-	{ "lease-duration", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_sqlippool_t, lease_duration), NULL },
 	{ "lease_duration", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlippool_t, lease_duration), "86400" },
 
-	{ "pool-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, pool_name), NULL },
 	{ "pool_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, pool_name), "" },
 
-	{ "default-pool", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlippool_t, defaultpool), NULL },
 	{ "default_pool", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlippool_t, defaultpool), "main_pool" },
 
 
 	{ "ipv6", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlippool_t, ipv6), NULL},
 
-	{ "allocate-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_begin), NULL },
 	{ "allocate_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, allocate_begin), "START TRANSACTION" },
 
-	{ "allocate-clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_clear), NULL },
 	{ "allocate_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlippool_t, allocate_clear), ""  },
 
-	{ "allocate-find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_find), NULL },
 	{ "allocate_find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlippool_t, allocate_find), ""  },
 
-	{ "allocate-update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_update), NULL },
 	{ "allocate_update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlippool_t, allocate_update), ""  },
 
-	{ "allocate-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, allocate_commit), NULL },
 	{ "allocate_commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, allocate_commit), "COMMIT" },
 
 
-	{ "pool-check", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, pool_check), NULL },
 	{ "pool_check", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, pool_check), ""  },
 
 
-	{ "start-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, start_begin), NULL },
 	{ "start_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, start_begin), "START TRANSACTION" },
 
-	{ "start-update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, start_update), NULL },
 	{ "start_update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlippool_t, start_update), ""  },
 
-	{ "start-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, start_commit), NULL },
 	{ "start_commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, start_commit), "COMMIT" },
 
 
-	{ "alive-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, alive_begin), NULL },
 	{ "alive_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, alive_begin), "START TRANSACTION" },
 
-	{ "alive-update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, alive_update), NULL },
 	{ "alive_update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlippool_t, alive_update), ""  },
 
-	{ "alive-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, alive_commit), NULL },
 	{ "alive_commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, alive_commit), "COMMIT" },
 
 
-	{ "stop-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, stop_begin), NULL },
 	{ "stop_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, stop_begin), "START TRANSACTION" },
 
-	{ "stop-clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, stop_clear), NULL },
 	{ "stop_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlippool_t, stop_clear), ""  },
 
-	{ "stop-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, stop_commit), NULL },
 	{ "stop_commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, stop_commit), "COMMIT" },
 
 
-	{ "on-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, on_begin), NULL },
 	{ "on_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, on_begin), "START TRANSACTION" },
 
-	{ "on-clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, on_clear), NULL },
 	{ "on_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlippool_t, on_clear), ""  },
 
-	{ "on-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, on_commit), NULL },
 	{ "on_commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, on_commit), "COMMIT" },
 
 
-	{ "off-begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, off_begin), NULL },
 	{ "off_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, off_begin), "START TRANSACTION" },
 
-	{ "off-clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, off_clear), NULL },
 	{ "off_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_REQUIRED, rlm_sqlippool_t, off_clear), ""  },
 
-	{ "off-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, off_commit), NULL },
 	{ "off_commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, off_commit), "COMMIT" },
 
 	{ "messages", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) message_config },

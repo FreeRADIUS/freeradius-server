@@ -53,10 +53,8 @@ typedef struct rlm_rediswho_t {
 } rlm_rediswho_t;
 
 static CONF_PARSER module_config[] = {
-	{ "redis-instance-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_rediswho_t, redis_instance_name), NULL },
 	{ "redis_module_instance", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rediswho_t, redis_instance_name), "redis" },
 
-	{ "trim-count", FR_CONF_OFFSET(PW_TYPE_SIGNED | PW_TYPE_DEPRECATED, rlm_rediswho_t, trim_count), NULL },
 	{ "trim_count", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), "-1" },
 
 	{ "insert", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, insert), NULL },
