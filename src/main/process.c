@@ -69,13 +69,7 @@ static char const *action_codes[] = {
 #endif
 };
 
-#ifdef DEBUG_STATE_MACHINE
-#define TRACE_STATE_MACHINE if (debug_flag) do { struct timeval debug_tv; \
-						 gettimeofday(&debug_tv, NULL);\
-						 debug_tv.tv_sec -= fr_start_time;\
-						 printf("(%u) %d.%06d ********\tSTATE %s action %s live M-%s C-%s\t********\n",\
-							request->number, (int) debug_tv.tv_sec, (int) debug_tv.tv_usec,  __FUNCTION__, action_codes[action], master_state_names[request->master_state], child_state_names[request->child_state]); } while (0)
-
+#ifndef NDEBUG
 static char const *master_state_names[REQUEST_MASTER_NUM_STATES] = {
 	"?",
 	"active",
@@ -93,8 +87,17 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 	"done"
 };
 
+#  define TRACE_STATE_MACHINE \
+	if (RDEBUG_ENABLED3) do { \
+		struct timeval debug_tv; \
+		gettimeofday(&debug_tv, NULL); \
+		debug_tv.tv_sec -= fr_start_time; \
+		RDEBUG3("%d.%06d ********    STATE %s action %s live M-%s C-%s    ********\n", \
+			(int) debug_tv.tv_sec, (int) debug_tv.tv_usec,  __FUNCTION__, action_codes[action], \
+			master_state_names[request->master_state], child_state_names[request->child_state]); \
+	} while (0)
 #else
-#define TRACE_STATE_MACHINE {}
+#  define TRACE_STATE_MACHINE {}
 #endif
 
 /*
@@ -591,7 +594,7 @@ STATE_MACHINE_DECL(request_done)
 		}
 #endif
 
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 		if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
 				       request->number, __FUNCTION__,
 				       child_state_names[request->child_state],
@@ -769,7 +772,7 @@ static void request_cleanup_delay_init(REQUEST *request, struct timeval const *p
 	 *	Set timer for when we need to clean it up.
 	 */
 	if (timercmp(&when, &now, >)) {
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 		if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
 		request->process = request_cleanup_delay;
@@ -801,7 +804,7 @@ static void request_process_timer(REQUEST *request)
 {
 	struct timeval now, when;
 	rad_assert(request->magic == REQUEST_MAGIC);
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 	int action = FR_ACTION_TIMER;
 #endif
 
@@ -959,7 +962,7 @@ static void request_process_timer(REQUEST *request)
 		tv_add(&when, request->response_delay.tv_usec);
 
 		if (timercmp(&when, &now, >)) {
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_response_delay");
 #endif
 			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
@@ -985,7 +988,7 @@ static void request_process_timer(REQUEST *request)
 		when.tv_sec += request->root->cleanup_delay;
 
 		if (timercmp(&when, &now, >)) {
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
 			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
@@ -1002,7 +1005,7 @@ static void request_process_timer(REQUEST *request)
 static void request_queue_or_run(REQUEST *request,
 				 fr_request_process_t process)
 {
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 	int action = FR_ACTION_TIMER;
 #endif
 
@@ -1015,7 +1018,7 @@ static void request_queue_or_run(REQUEST *request,
 	 *	it.
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 		if (debug_flag) printf("(%u) ********\tSTATE %s M-%s causes C-%s-> C-%s\t********\n",
 				       request->number, __FUNCTION__,
 				       master_state_names[request->master_state],
@@ -1190,7 +1193,13 @@ STATE_MACHINE_DECL(request_response_delay)
 }
 
 
-static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int action)
+static int CC_HINT(nonnull) request_pre_handler(REQUEST *request,
+#ifndef NDEBUG
+						int action
+#else
+						UNUSED int action
+#endif
+						)
 {
 	int rcode;
 
@@ -1501,7 +1510,7 @@ STATE_MACHINE_DECL(request_running)
 
 	case FR_ACTION_RUN:
 		if (!request_pre_handler(request, action)) {
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 			if (debug_flag) printf("(%u) ********\tSTATE %s failed in pre-handler C-%s -> C-%s\t********\n",
 					       request->number, __FUNCTION__,
 					       child_state_names[request->child_state],
@@ -1522,7 +1531,7 @@ STATE_MACHINE_DECL(request_running)
 		 */
 		if ((action == FR_ACTION_RUN) &&
 		    request_will_proxy(request)) {
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 			if (debug_flag) printf("(%u) ********\tWill Proxy\t********\n", request->number);
 #endif
 			/*
@@ -1535,7 +1544,7 @@ STATE_MACHINE_DECL(request_running)
 		} else
 #endif
 		{
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 			if (debug_flag) printf("(%u) ********\tFinished\t********\n", request->number);
 #endif
 
@@ -1805,7 +1814,7 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 	request->number = request_num_counter++;
 	request->priority = listener->type;
 	request->master_state = REQUEST_ACTIVE;
-#ifdef DEBUG_STATE_MACHINE
+#ifndef NDEBUG
 	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
 			       request->number, __FUNCTION__,
 			       child_state_names[request->child_state],
@@ -3373,11 +3382,11 @@ static void ping_home_server(void *ctx)
 	request->proxy->dst_ipaddr = home->ipaddr;
 	request->proxy->dst_port = home->port;
 	request->home_server = home;
-#ifdef DEBUG_STATE_MACHINE
-	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
-			       child_state_names[request->child_state],
-			       child_state_names[REQUEST_DONE]);
-	if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_ping");
+#ifndef NDEBUG
+	RDEBUG3("********    STATE %s C-%s -> C-%s    ********", __FUNCTION__,
+		child_state_names[request->child_state],
+		child_state_names[REQUEST_DONE]);
+	RDEBUG3("********    NEXT-STATE %s -> %s", __FUNCTION__, "request_ping");
 #endif
 #ifdef HAVE_PTHREAD_H
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
@@ -4023,10 +4032,10 @@ static void request_coa_originate(REQUEST *request)
 	coa->proxy_listener->encode(coa->proxy_listener, coa);
 	debug_packet(coa, coa->proxy, false);
 
-#ifdef DEBUG_STATE_MACHINE
-	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
-			       child_state_names[request->child_state],
-			       child_state_names[REQUEST_PROXIED]);
+#ifndef NDEBUG
+	RDEBUG3("********    STATE %s C-%s -> C-%s    ********",__FUNCTION__,
+		child_state_names[request->child_state],
+		child_state_names[REQUEST_PROXIED]);
 #endif
 
 	/*
