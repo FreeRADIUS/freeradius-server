@@ -1232,7 +1232,7 @@ done:
 		 */
 		if ((c->data.map->op == T_OP_CMP_TRUE) ||
 		    (c->data.map->op == T_OP_CMP_FALSE)) {
-			value_pair_tmpl_t *vpt;
+			vp_tmpl_t *vpt;
 
 			vpt = talloc_steal(c, c->data.map->lhs);
 			c->data.map->lhs = NULL;
@@ -1316,7 +1316,7 @@ done:
 		if (c->cast &&
 		    (c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
 		    (c->data.map->lhs->type != TMPL_TYPE_ATTR)) {
-			value_pair_tmpl_t *tmp;
+			vp_tmpl_t *tmp;
 
 			tmp = c->data.map->rhs;
 			c->data.map->rhs = c->data.map->lhs;

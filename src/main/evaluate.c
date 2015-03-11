@@ -68,7 +68,7 @@ static bool all_digits(char const *string)
 
 /** Evaluate a template
  *
- * Converts a value_pair_tmpl_t to a boolean value.
+ * Converts a vp_tmpl_t to a boolean value.
  *
  * @param[in] request the REQUEST
  * @param[in] modreturn the previous module return code
@@ -76,7 +76,7 @@ static bool all_digits(char const *string)
  * @param[in] vpt the template to evaluate
  * @return -1 on error, 0 for "no match", 1 for "match".
  */
-int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, value_pair_tmpl_t const *vpt)
+int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t const *vpt)
 {
 	int rcode;
 	int modcode;

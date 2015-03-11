@@ -74,7 +74,7 @@ typedef struct {
 	modcallable		*tail;		/* of the children list */
 	CONF_SECTION		*cs;
 	value_pair_map_t	*map;		/* update */
-	value_pair_tmpl_t	*vpt;		/* switch */
+	vp_tmpl_t	*vpt;		/* switch */
 	fr_cond_t		*cond;		/* if/elsif */
 	bool			done_pass2;
 } modgroup;
@@ -799,7 +799,7 @@ redo:
 		fr_cond_t cond;
 		value_data_t data;
 		value_pair_map_t map;
-		value_pair_tmpl_t vpt;
+		vp_tmpl_t vpt;
 
 		MOD_LOG_OPEN_BRACE;
 
@@ -1740,7 +1740,7 @@ static modcallable *do_compile_modswitch (modcallable *parent, rlm_components_t 
 	modcallable *csingle;
 	modgroup *g;
 	ssize_t slen;
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -1842,7 +1842,7 @@ static modcallable *do_compile_modcase(modcallable *parent, rlm_components_t com
 	char const *name2;
 	modcallable *csingle;
 	modgroup *g;
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
 	if (!parent || (parent->type != MOD_SWITCH)) {
 		cf_log_err_cs(cs, "\"case\" statements may only appear within a \"switch\" section");
@@ -1924,7 +1924,7 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	modcallable *csingle;
 	modgroup *g;
 	ssize_t slen;
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -2951,14 +2951,14 @@ void add_to_modcallable(modcallable *parent, modcallable *this)
 
 
 #ifdef WITH_UNLANG
-static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bool convert,
+static bool pass2_xlat_compile(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert,
 			       DICT_ATTR const *da)
 {
 	ssize_t slen;
 	char *fmt;
 	char const *error;
 	xlat_exp_t *head;
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
 	vpt = *pvpt;
 
@@ -2985,7 +2985,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 	 *	Convert %{Attribute-Name} to &Attribute-Name
 	 */
 	if (convert) {
-		value_pair_tmpl_t *attr;
+		vp_tmpl_t *attr;
 
 		attr = xlat_to_tmpl_attr(talloc_parent(vpt), head);
 		if (attr) {
@@ -3037,7 +3037,7 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, value_pair_tmpl_t **pvpt, bo
 
 
 #ifdef HAVE_REGEX
-static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
+static bool pass2_regex_compile(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 {
 	ssize_t slen;
 	regex_t *preg;
@@ -3084,7 +3084,7 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
 }
 #endif
 
-static bool pass2_fixup_undefined(CONF_ITEM const *ci, value_pair_tmpl_t *vpt)
+static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 {
 	DICT_ATTR const *da;
 
@@ -3228,7 +3228,7 @@ check_paircmp:
 	    (strncmp(map->lhs->name, "Foreach-Variable-", 17) == 0)) {
 		char *fmt;
 		ssize_t slen;
-		value_pair_tmpl_t *vpt;
+		vp_tmpl_t *vpt;
 
 		fmt = talloc_asprintf(map->lhs, "%%{%s}", map->lhs->name);
 		slen = tmpl_afrom_str(map, &vpt, fmt, talloc_array_length(fmt) - 1,
@@ -3479,7 +3479,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	switch to using that.
 			 */
 			if (g->vpt->type == TMPL_TYPE_LITERAL) {
-				value_pair_tmpl_t *vpt;
+				vp_tmpl_t *vpt;
 
 				slen = tmpl_afrom_str(g->cs, &vpt, c->name, strlen(c->name), cf_section_name2_type(g->cs),
 						      REQUEST_CURRENT, PAIR_LIST_REQUEST, true);

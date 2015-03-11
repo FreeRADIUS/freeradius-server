@@ -226,7 +226,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	if (*p == '&') {
 		ssize_t slen;
 		VALUE_PAIR *vp;
-		value_pair_tmpl_t vpt;
+		vp_tmpl_t vpt;
 
 		p += 1;
 
@@ -1168,7 +1168,7 @@ static ssize_t hmac_sha1_xlat(UNUSED void *instance, REQUEST *request,
 static ssize_t pairs_xlat(UNUSED void *instance, REQUEST *request,
 			  char const *fmt, char *out, size_t outlen)
 {
-	value_pair_tmpl_t vpt;
+	vp_tmpl_t vpt;
 	vp_cursor_t cursor;
 	size_t len, freespace = outlen;
 	char *p = out;
@@ -1282,7 +1282,7 @@ static ssize_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
 			    char const *fmt, char *out, size_t outlen)
 {
-	value_pair_tmpl_t vpt;
+	vp_tmpl_t vpt;
 	vp_cursor_t cursor, to_merge;
 	VALUE_PAIR *vp, *head = NULL;
 	ssize_t slen;
@@ -1481,14 +1481,14 @@ static ssize_t next_time_xlat(UNUSED void *instance, REQUEST *request,
  *	Parse the 3 arguments to lpad / rpad.
  */
 static bool parse_pad(REQUEST *request, char const *fmt,
-		       value_pair_tmpl_t **pvpt, size_t *plength,
+		       vp_tmpl_t **pvpt, size_t *plength,
 		       char *fill)
 {
 	ssize_t slen;
 	unsigned long length;
 	char const *p;
 	char *end;
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
 	*fill = ' ';		/* the default */
 
@@ -1500,7 +1500,7 @@ static bool parse_pad(REQUEST *request, char const *fmt,
 		return false;
 	}
 
-	vpt = talloc(request, value_pair_tmpl_t);
+	vpt = talloc(request, vp_tmpl_t);
 	if (!vpt) return false;
 
 	slen = tmpl_from_attr_substr(vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
@@ -1564,7 +1564,7 @@ static ssize_t lpad_xlat(UNUSED void *instance, REQUEST *request,
 	char fill;
 	size_t pad;
 	ssize_t len;
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
 	*out = '\0';
 	if (!parse_pad(request, fmt, &vpt, &pad, &fill)) {
@@ -1606,7 +1606,7 @@ static ssize_t rpad_xlat(UNUSED void *instance, REQUEST *request,
 	char fill;
 	size_t pad;
 	ssize_t len;
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
 	*out = '\0';
 

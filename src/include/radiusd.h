@@ -596,8 +596,8 @@ void		paircompare_unregister(DICT_ATTR const *attr, RAD_COMPARE_FUNC func);
 void		paircompare_unregister_instance(void *instance);
 int		paircompare(REQUEST *request, VALUE_PAIR *req_list,
 			    VALUE_PAIR *check, VALUE_PAIR **rep_list);
-value_pair_tmpl_t	*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
-xlat_exp_t		*xlat_from_tmpl_attr(TALLOC_CTX *ctx, value_pair_tmpl_t *vpt);
+vp_tmpl_t	*xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *xlat);
+xlat_exp_t		*xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt);
 int		radius_xlat_do(REQUEST *request, VALUE_PAIR *vp);
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
 int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
@@ -684,7 +684,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when);
 /* evaluate.c */
 typedef struct fr_cond_t fr_cond_t;
 int radius_evaluate_tmpl(REQUEST *request, int modreturn, int depth,
-			 value_pair_tmpl_t const *vpt);
+			 vp_tmpl_t const *vpt);
 int radius_evaluate_map(REQUEST *request, int modreturn, int depth,
 			fr_cond_t const *c);
 int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,

@@ -64,7 +64,7 @@ struct xlat_exp {
 	xlat_exp_t *child;	//!< Nested expansion.
 	xlat_exp_t *alternate;	//!< Alternative expansion if this one expanded to a zero length string.
 
-	value_pair_tmpl_t attr;	//!< An attribute template.
+	vp_tmpl_t attr;	//!< An attribute template.
 	xlat_t const *xlat;	//!< The xlat expansion to expand format with.
 };
 
@@ -383,7 +383,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
 
-	value_pair_tmpl_t vpt;
+	vp_tmpl_t vpt;
 
 	if (!RDEBUG_ENABLED2) {
 		*out = '\0';
@@ -1772,7 +1772,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 }
 
 
-static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, value_pair_tmpl_t const *vpt,
+static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 			bool escape, bool return_null)
 {
 	VALUE_PAIR *vp = NULL, *virtual = NULL;
@@ -2466,13 +2466,13 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 
 /** Try to convert an xlat to a tmpl for efficiency
  *
- * @param ctx to allocate new value_pair_tmpl_t in.
+ * @param ctx to allocate new vp_tmpl_t in.
  * @param node to convert.
- * @return NULL if unable to convert (not necessarily error), or a new value_pair_tmpl_t.
+ * @return NULL if unable to convert (not necessarily error), or a new vp_tmpl_t.
  */
-value_pair_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
+vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 {
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
 	if (node->next || (node->type != XLAT_ATTRIBUTE)) return NULL;
 
@@ -2495,9 +2495,9 @@ value_pair_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
  *
  * @param ctx to allocate new xlat_expt_t in.
  * @param vpt to convert.
- * @return NULL if unable to convert (not necessarily error), or a new value_pair_tmpl_t.
+ * @return NULL if unable to convert (not necessarily error), or a new vp_tmpl_t.
  */
-xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, value_pair_tmpl_t *vpt)
+xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 {
 	xlat_exp_t *node;
 

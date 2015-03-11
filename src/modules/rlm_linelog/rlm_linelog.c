@@ -72,9 +72,9 @@ typedef struct rlm_linelog_t {
 	gid_t			group;			//!< Resolved gid.
 	exfile_t		*ef;			//!< Exclusive file access handle.
 
-	value_pair_tmpl_t	*log_src;		//!< Source of log messages.
+	vp_tmpl_t	*log_src;		//!< Source of log messages.
 
-	value_pair_tmpl_t	*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
+	vp_tmpl_t	*log_ref;		//!< Path to a #CONF_PAIR (to use as the source of
 							///< log messages).
 	CONF_SECTION		*cs;			//!< #CONF_SECTION to use as the root for #log_ref lookups.
 } rlm_linelog_t;
@@ -259,7 +259,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request)
 	char			*p = buff;
 	rlm_linelog_t		*inst = instance;
 	char const		*value;
-	value_pair_tmpl_t	empty, *vpt = NULL, *vpt_p = NULL;
+	vp_tmpl_t	empty, *vpt = NULL, *vpt_p = NULL;
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	ssize_t			slen;
 

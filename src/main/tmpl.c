@@ -86,7 +86,7 @@ const FR_NAME_NUMBER request_refs[] = {
  * For adding new #VALUE_PAIR to the lists, the #radius_list_ctx function can be used
  * to obtain the appropriate TALLOC_CTX pointer.
  *
- * @note These don't really have much to do with #value_pair_tmpl_t. They're in the same
+ * @note These don't really have much to do with #vp_tmpl_t. They're in the same
  *	file as they're used almost exclusively by the tmpl_* functions.
  * @{
  */
@@ -466,33 +466,33 @@ int radius_request(REQUEST **context, request_refs_t name)
 }
 /** @} */
 
-/** @name Alloc or initialise #value_pair_tmpl_t
+/** @name Alloc or initialise #vp_tmpl_t
  *
  * @note Should not usually be called outside of tmpl_* functions, use one of
  *	the tmpl_*from_* functions instead.
  * @{
  */
 
-/** Initialise stack allocated #value_pair_tmpl_t
+/** Initialise stack allocated #vp_tmpl_t
  *
  * @note Name is not strdupe'd or memcpy'd so must be available, and must not change
- *	for the lifetime of the #value_pair_tmpl_t.
+ *	for the lifetime of the #vp_tmpl_t.
  *
  * @param[out] vpt to initialise.
- * @param[in] type to set in the #value_pair_tmpl_t.
- * @param[in] name of the #value_pair_tmpl_t.
+ * @param[in] type to set in the #vp_tmpl_t.
+ * @param[in] name of the #vp_tmpl_t.
  * @param[in] len The length of the buffer (or a substring of the buffer) pointed to by name.
  *	If < 0 strlen will be used to determine the length.
- * @return a pointer to the initialised #value_pair_tmpl_t. The same value as
+ * @return a pointer to the initialised #vp_tmpl_t. The same value as
  *	vpt.
  */
-value_pair_tmpl_t *tmpl_init(value_pair_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t len)
+vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t len)
 {
 	rad_assert(vpt);
 	rad_assert(type != TMPL_TYPE_UNKNOWN);
 	rad_assert(type <= TMPL_TYPE_NULL);
 
-	memset(vpt, 0, sizeof(value_pair_tmpl_t));
+	memset(vpt, 0, sizeof(vp_tmpl_t));
 	vpt->type = type;
 
 	if (name) {
@@ -503,25 +503,25 @@ value_pair_tmpl_t *tmpl_init(value_pair_tmpl_t *vpt, tmpl_type_t type, char cons
 	return vpt;
 }
 
-/** Create a new heap allocated #value_pair_tmpl_t
+/** Create a new heap allocated #vp_tmpl_t
  *
  * @param[in,out] ctx to allocate in.
- * @param[in] type to set in the #value_pair_tmpl_t.
- * @param[in] name of the #value_pair_tmpl_t (will be copied to a new talloc buffer parented
- *	by the #value_pair_tmpl_t).
+ * @param[in] type to set in the #vp_tmpl_t.
+ * @param[in] name of the #vp_tmpl_t (will be copied to a new talloc buffer parented
+ *	by the #vp_tmpl_t).
  * @param[in] len The length of the buffer (or a substring of the buffer) pointed to by name.
  *	If < 0 strlen will be used to determine the length.
- * @return the newly allocated #value_pair_tmpl_t.
+ * @return the newly allocated #vp_tmpl_t.
  */
-value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize_t len)
+vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize_t len)
 {
 	char *p;
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
 	rad_assert(type != TMPL_TYPE_UNKNOWN);
 	rad_assert(type <= TMPL_TYPE_NULL);
 
-	vpt = talloc_zero(ctx, value_pair_tmpl_t);
+	vpt = talloc_zero(ctx, vp_tmpl_t);
 	if (!vpt) return NULL;
 	vpt->type = type;
 	if (name) {
@@ -536,12 +536,12 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
 }
 /* @} **/
 
-/** @name Create new #value_pair_tmpl_t from a string
+/** @name Create new #vp_tmpl_t from a string
  *
  * @{
  */
 
-/** Initialise a #value_pair_tmpl_t to search for, or create attributes
+/** Initialise a #vp_tmpl_t to search for, or create attributes
  *
  * @param vpt to initialise.
  * @param da of #VALUE_PAIR type to operate on.
@@ -557,7 +557,7 @@ value_pair_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *nam
  * @param request to operate on.
  * @param list to operate on.
  */
-void tmpl_from_da(value_pair_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
+void tmpl_from_da(vp_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
 		  request_refs_t request, pair_lists_t list)
 {
 	static char const name[] = "internal";
@@ -573,16 +573,16 @@ void tmpl_from_da(value_pair_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int n
 	vpt->tmpl_num = num;
 }
 
-/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #value_pair_tmpl_t
+/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
  *
  * @note The name field is just a copy of the input pointer, if you know that string might be
- *	freed before you're done with the #value_pair_tmpl_t use #tmpl_afrom_attr_str
+ *	freed before you're done with the #vp_tmpl_t use #tmpl_afrom_attr_str
  *	instead.
  *
  * @param[out] vpt to modify.
  * @param[in] name of attribute including #request_refs and #pair_lists qualifiers.
  *	If only #request_refs and #pair_lists qualifiers are found, a #TMPL_TYPE_LIST
- *	#value_pair_tmpl_t will be produced.
+ *	#vp_tmpl_t will be produced.
  * @param[in] request_def The default #REQUEST to set if no #request_refs qualifiers are
  *	found in name.
  * @param[in] list_def The default list to set if no #pair_lists qualifiers are found in
@@ -590,21 +590,21 @@ void tmpl_from_da(value_pair_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int n
  * @param[in] allow_unknown If true attributes in the format accepted by
  *	#dict_unknown_from_substr will be allowed, even if they're not in the main
  *	dictionaries.
- *	If an unknown attribute is found A #TMPL_TYPE_ATTR #value_pair_tmpl_t ill be
+ *	If an unknown attribute is found A #TMPL_TYPE_ATTR #vp_tmpl_t ill be
  *	produced with the unknown #DICT_ATTR stored in the ``unknown.da`` buffer.
  *	This #DICT_ATTR will have its ``flags.is_unknown`` field set to true.
- *	If #tmpl_from_attr_substr is being called on startup, the #value_pair_tmpl_t may be
+ *	If #tmpl_from_attr_substr is being called on startup, the #vp_tmpl_t may be
  *	fed to #tmpl_define_unknown_attr to add it to the main dictionaries.
- *	If #tmpl_from_attr_substr is not called, the #value_pair_tmpl_t cannot be used to
+ *	If #tmpl_from_attr_substr is not called, the #vp_tmpl_t cannot be used to
  *	search for #VALUE_PAIR in a #REQUEST.
  * @param[in] allow_undefined If true, we don't generate a parse error on unknown attributes.
- *	If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED #value_pair_tmpl_t
+ *	If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED #vp_tmpl_t
  *	will be produced.
  * @return <= 0 on error (offset as negative integer), > 0 on success
  *	(number of bytes parsed).
  *	@see REMARKER to produce pretty error markers from the return value.
  */
-ssize_t tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
+ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			      request_refs_t request_def, pair_lists_t list_def,
 			      bool allow_unknown, bool allow_undefined)
 {
@@ -793,14 +793,14 @@ finish:
 	return vpt->len;
 }
 
-/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #value_pair_tmpl_t
+/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
  *
  * @note Unlike #tmpl_from_attr_substr this function will error out if the entire
  *	name string isn't parsed.
  *
  * @copydetails tmpl_from_attr_substr
  */
-ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
+ssize_t tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
 			   request_refs_t request_def, pair_lists_t list_def,
 			   bool allow_unknown, bool allow_undefined)
 {
@@ -818,16 +818,16 @@ ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
 	return slen;
 }
 
-/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #value_pair_tmpl_t
+/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
  *
  * @note Unlike #tmpl_from_attr_substr this function will error out if the entire
  *	name string isn't parsed.
  *
- * @param[in,out] ctx to allocate #value_pair_tmpl_t in.
- * @param[out] out Where to write pointer to new #value_pair_tmpl_t.
+ * @param[in,out] ctx to allocate #vp_tmpl_t in.
+ * @param[out] out Where to write pointer to new #vp_tmpl_t.
  * @param[in] name of attribute including #request_refs and #pair_lists qualifiers.
  *	If only #request_refs #pair_lists qualifiers are found, a #TMPL_TYPE_LIST
- *	#value_pair_tmpl_t will be produced.
+ *	#vp_tmpl_t will be produced.
  * @param[in] request_def The default #REQUEST to set if no #request_refs qualifiers are
  *	found in name.
  * @param[in] list_def The default list to set if no #pair_lists qualifiers are found in
@@ -835,28 +835,28 @@ ssize_t tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
  * @param[in] allow_unknown If true attributes in the format accepted by
  *	#dict_unknown_from_substr will be allowed, even if they're not in the main
  *	dictionaries.
- *	If an unknown attribute is found A #TMPL_TYPE_ATTR #value_pair_tmpl_t ill be
+ *	If an unknown attribute is found A #TMPL_TYPE_ATTR #vp_tmpl_t ill be
  *	produced with the unknown #DICT_ATTR stored in the ``unknown.da`` buffer.
  *	This #DICT_ATTR will have its ``flags.is_unknown`` field set to true.
- *	If #tmpl_from_attr_substr is being called on startup, the #value_pair_tmpl_t may be
+ *	If #tmpl_from_attr_substr is being called on startup, the #vp_tmpl_t may be
  *	fed to #tmpl_define_unknown_attr to add it to the main dictionaries.
- *	If #tmpl_from_attr_substr is not called, the #value_pair_tmpl_t cannot be used to
+ *	If #tmpl_from_attr_substr is not called, the #vp_tmpl_t cannot be used to
  *	search for #VALUE_PAIR in a #REQUEST.
  * @param[in] allow_undefined If true, we don't generate a parse error on unknown attributes.
- *	If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED #value_pair_tmpl_t
+ *	If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED #vp_tmpl_t
  *	will be produced.
  * @return <= 0 on error (offset as negative integer), > 0 on success
  *	(number of bytes parsed).
  *	@see REMARKER to produce pretty error markers from the return value.
  */
-ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name,
+ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 			    request_refs_t request_def, pair_lists_t list_def,
 			    bool allow_unknown, bool allow_undefined)
 {
 	ssize_t slen;
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
-	MEM(vpt = talloc(ctx, value_pair_tmpl_t)); /* tmpl_from_attr_substr zeros it */
+	MEM(vpt = talloc(ctx, vp_tmpl_t)); /* tmpl_from_attr_substr zeros it */
 
 	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown, allow_undefined);
 	if (slen <= 0) {
@@ -877,7 +877,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const
 	return slen;
 }
 
-/** Convert an arbitrary string into a #value_pair_tmpl_t
+/** Convert an arbitrary string into a #vp_tmpl_t
  *
  * @note Unlike #tmpl_afrom_attr_str return code 0 doesn't necessarily indicate failure,
  *	may just mean a 0 length string was parsed.
@@ -888,9 +888,9 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const
  *
  * @note For details of attribute parsing see #tmpl_from_attr_substr.
  *
- * @param[in,out] ctx To allocate #value_pair_tmpl_t in.
- * @param[out] out Where to write the pointer to the new #value_pair_tmpl_t.
- * @param[in] in String to convert to a #value_pair_tmpl_t.
+ * @param[in,out] ctx To allocate #vp_tmpl_t in.
+ * @param[out] out Where to write the pointer to the new #vp_tmpl_t.
+ * @param[in] in String to convert to a #vp_tmpl_t.
  * @param[in] inlen length of string to convert.
  * @param[in] type of quoting around value. May be one of:
  *	- #T_BARE_WORD - If string begins with ``&`` produces #TMPL_TYPE_ATTR,
@@ -914,7 +914,7 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const
  *
  * @see tmpl_from_attr_substr
  */
-ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *in, size_t inlen, FR_TOKEN type,
+ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t inlen, FR_TOKEN type,
 		       request_refs_t request_def, pair_lists_t list_def, bool do_unescape)
 {
 	bool do_xlat;
@@ -922,7 +922,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *in,
 	char const *p;
 	ssize_t slen;
 	PW_TYPE data_type = PW_TYPE_STRING;
-	value_pair_tmpl_t *vpt = NULL;
+	vp_tmpl_t *vpt = NULL;
 	value_data_t data;
 
 	switch (type) {
@@ -1039,7 +1039,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *in,
 }
 /* @} **/
 
-/** @name Cast or convert #value_pair_tmpl_t
+/** @name Cast or convert #vp_tmpl_t
  *
  * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_LITERAL to a #TMPL_TYPE_DATA of a
  *  specified #PW_TYPE.
@@ -1055,7 +1055,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *in,
  * @{
  */
 
-/** Convert a #value_pair_tmpl_t containing literal data, to the type specified
+/** Convert a #vp_tmpl_t containing literal data, to the type specified
  *
  * @note Conversion is done in place.
  *
@@ -1064,7 +1064,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *in,
  * @param[in] enumv Enumerated dictionary values associated with a #DICT_ATTR.
  * @return 0 on success, -1 on failure.
  */
-int tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
+int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 {
 	ssize_t ret;
 
@@ -1089,13 +1089,13 @@ int tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *en
 	return 0;
 }
 
-/** Convert #value_pair_tmpl_t of type #TMPL_TYPE_LITERAL to #TMPL_TYPE_DATA of type #PW_TYPE_STRING
+/** Convert #vp_tmpl_t of type #TMPL_TYPE_LITERAL to #TMPL_TYPE_DATA of type #PW_TYPE_STRING
  *
  * @note Conversion is done in place.
  *
  * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_LITERAL.
  */
-void tmpl_cast_in_place_str(value_pair_tmpl_t *vpt)
+void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
 {
 	rad_assert(vpt != NULL);
 	rad_assert(vpt->type == TMPL_TYPE_LITERAL);
@@ -1108,7 +1108,7 @@ void tmpl_cast_in_place_str(value_pair_tmpl_t *vpt)
 	vpt->tmpl_data_length = talloc_array_length(vpt->tmpl_data.vp_strvalue) - 1;
 }
 
-/** Expand a #value_pair_tmpl_t to a string, parse it as an attribute of type cast, create a #VALUE_PAIR from the result
+/** Expand a #vp_tmpl_t to a string, parse it as an attribute of type cast, create a #VALUE_PAIR from the result
  *
  * @note Like #tmpl_expand, but produces a #VALUE_PAIR.
  *
@@ -1125,7 +1125,7 @@ void tmpl_cast_in_place_str(value_pair_tmpl_t *vpt)
  * @return 0 on success, -1 on failure.
  */
 int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
-		    value_pair_tmpl_t const *vpt, DICT_ATTR const *cast)
+		    vp_tmpl_t const *vpt, DICT_ATTR const *cast)
 {
 	int rcode;
 	VALUE_PAIR *vp;
@@ -1171,13 +1171,13 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	return 0;
 }
 
-/** Add an unknown #DICT_ATTR specified by a #value_pair_tmpl_t to the main dictionary
+/** Add an unknown #DICT_ATTR specified by a #vp_tmpl_t to the main dictionary
  *
  * @param vpt to add. ``tmpl_da`` pointer will be updated to point to the
  *	#DICT_ATTR inserted into the dictionary.
  * @return 0 on success, -1 on failure.
  */
-int tmpl_define_unknown_attr(value_pair_tmpl_t *vpt)
+int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 {
 	DICT_ATTR const *da;
 
@@ -1199,16 +1199,16 @@ int tmpl_define_unknown_attr(value_pair_tmpl_t *vpt)
 }
 /* @} **/
 
-/** @name Resolve a #value_pair_tmpl_t outputting the result in various formats
+/** @name Resolve a #vp_tmpl_t outputting the result in various formats
  *
  * @{
  */
 
-/** Expand a #value_pair_tmpl_t to a string, writing the result to a buffer
+/** Expand a #vp_tmpl_t to a string, writing the result to a buffer
  *
  * Depending what arguments are passed, either copies the value to buff, or writes a pointer
  * to a string buffer to out. This allows the most efficient access to the value resolved by
- * the #value_pair_tmpl_t, avoiding unecessary string copies.
+ * the #vp_tmpl_t, avoiding unecessary string copies.
  *
  * @param out Where to write a pointer to the string buffer. On return may point to buff if
  *	buff was used to store the value. Otherwise will point to a #value_data_t buffer,
@@ -1228,7 +1228,7 @@ int tmpl_define_unknown_attr(value_pair_tmpl_t *vpt)
  * @return -1 on error, else the length of data written to buff, or pointed to by out.
  */
 ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *request,
-		    value_pair_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+		    vp_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
 	VALUE_PAIR *vp;
 	ssize_t slen = -1;	/* quiet compiler */
@@ -1364,7 +1364,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
  * @param escape_ctx xlat escape function data.
  * @return -1 on error, else the length of data written to buff, or pointed to by out.
  */
-ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_tmpl_t const *vpt,
+ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t const *vpt,
 		     RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
 	VALUE_PAIR *vp;
@@ -1476,16 +1476,16 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_t
 	return slen;
 }
 
-/** Print a #value_pair_tmpl_t to a string
+/** Print a #vp_tmpl_t to a string
  *
- * @param[out] out Where to write the presentation format #value_pair_tmpl_t string.
+ * @param[out] out Where to write the presentation format #vp_tmpl_t string.
  * @param[in] outlen Size of output buffer.
  * @param[in] vpt to print
  * @param[in] values Used for integer attributes only. #DICT_ATTR to use when mapping integer
  *	values to strings.
  * @return the size of the string written to the output buffer.
  */
-size_t tmpl_prints(char *out, size_t outlen, value_pair_tmpl_t const *vpt, DICT_ATTR const *values)
+size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR const *values)
 {
 	size_t len;
 	char c;
@@ -1664,9 +1664,9 @@ size_t tmpl_prints(char *out, size_t outlen, value_pair_tmpl_t const *vpt, DICT_
 	return q - out;
 }
 
-/** Initialise a #vp_cursor_t to the #VALUE_PAIR specified by a #value_pair_tmpl_t
+/** Initialise a #vp_cursor_t to the #VALUE_PAIR specified by a #vp_tmpl_t
  *
- * This makes iterating over the one or more #VALUE_PAIR specified by a #value_pair_tmpl_t
+ * This makes iterating over the one or more #VALUE_PAIR specified by a #vp_tmpl_t
  * significantly easier.
  *
  * @param err May be NULL if no error code is required. Will be set to:
@@ -1677,12 +1677,12 @@ size_t tmpl_prints(char *out, size_t outlen, value_pair_tmpl_t const *vpt, DICT_
  * @param cursor to store iterator state.
  * @param request The current #REQUEST.
  * @param vpt specifying the #VALUE_PAIR type/tag or list to iterate over.
- * @return the first #VALUE_PAIR specified by the #value_pair_tmpl_t, or NULL if no matching
+ * @return the first #VALUE_PAIR specified by the #vp_tmpl_t, or NULL if no matching
  *	#VALUE_PAIR found, and NULL on error.
  *
  * @see tmpl_cursor_next
  */
-VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, value_pair_tmpl_t const *vpt)
+VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp_tmpl_t const *vpt)
 {
 	VALUE_PAIR **vps, *vp = NULL;
 
@@ -1780,7 +1780,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, va
  *	- #TMPL_TYPE_ATTR
  * @return NULL if no more matching #VALUE_PAIR of the specified type/tag are found.
  */
-VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, value_pair_tmpl_t const *vpt)
+VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, vp_tmpl_t const *vpt)
 {
 	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
 
@@ -1803,7 +1803,7 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, value_pair_tmpl_t const *vpt)
 	}
 }
 
-/** Copy pairs matching a #value_pair_tmpl_t in the current #REQUEST
+/** Copy pairs matching a #vp_tmpl_t in the current #REQUEST
  *
  * @param ctx to allocate new #VALUE_PAIR in.
  * @param out Where to write the copied #VALUE_PAIR (s).
@@ -1818,7 +1818,7 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, value_pair_tmpl_t const *vpt)
  *	- -3 if context could not be found (no parent #REQUEST available).
  *	- -4 on memory allocation error.
  */
-int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt)
 {
 	VALUE_PAIR *vp;
 	vp_cursor_t from, to;
@@ -1847,7 +1847,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pai
 	return err;
 }
 
-/** Returns the first VP matching a #value_pair_tmpl_t
+/** Returns the first VP matching a #vp_tmpl_t
  *
  * @param out where to write the retrieved vp.
  * @param request The current #REQUEST.
@@ -1860,7 +1860,7 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, value_pai
  *	- -2 if list could not be found (doesn't exist in current #REQUEST).
  *	- -3 if context could not be found (no parent #REQUEST available).
  */
-int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt)
+int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
@@ -1877,7 +1877,7 @@ int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vp
 /* @} **/
 
 #ifdef WITH_VERIFY_PTR
-/** Used to check whether areas of a value_pair_tmpl_t are zeroed out
+/** Used to check whether areas of a vp_tmpl_t are zeroed out
  *
  * @param ptr Offset to begin checking at.
  * @param len How many bytes to check.
@@ -1895,27 +1895,27 @@ static uint8_t const *not_zeroed(uint8_t const *ptr, size_t len)
 }
 #define CHECK_ZEROED(_x) not_zeroed((uint8_t const *)&_x + sizeof(_x), sizeof(vpt->data) - sizeof(_x))
 
-/** Verify fields of a value_pair_tmpl_t make sense
+/** Verify fields of a vp_tmpl_t make sense
  *
- * @note If the #value_pair_tmpl_t is invalid, causes the server to exit.
+ * @note If the #vp_tmpl_t is invalid, causes the server to exit.
  *
  * @param file obtained with __FILE__.
  * @param line obtained with __LINE__.
  * @param vpt to check.
  */
-void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt)
+void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 {
 	rad_assert(vpt);
 
 	if (vpt->type == TMPL_TYPE_UNKNOWN) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: value_pair_tmpl_t type was "
+		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: vp_tmpl_t type was "
 			     "TMPL_TYPE_UNKNOWN (uninitialised)", file, line);
 		fr_assert(0);
 		fr_exit_now(1);
 	}
 
 	if (vpt->type > TMPL_TYPE_NULL) {
-		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: value_pair_tmpl_t type was %i "
+		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: vp_tmpl_t type was %i "
 			     "(outside range of tmpl_names)", file, line, vpt->type);
 		fr_assert(0);
 		fr_exit_now(1);
