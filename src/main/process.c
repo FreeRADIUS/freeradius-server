@@ -3218,7 +3218,6 @@ STATE_MACHINE_DECL(request_ping)
 		/*
 		 *	Remove the request from any hashes
 		 */
-		ASSERT_MASTER;
 		fr_event_delete(el, &request->ev);
 		remove_from_proxy_hash(request);
 
@@ -3253,7 +3252,6 @@ STATE_MACHINE_DECL(request_ping)
 		home->num_received_pings = 0;
 		gettimeofday(&home->revive_time, NULL);
 
-		ASSERT_MASTER;
 		fr_event_delete(el, &home->ev);
 
 		RPROXY("Marking home server %s port %d alive",
@@ -3270,6 +3268,7 @@ STATE_MACHINE_DECL(request_ping)
 
 	rad_assert(!request->in_request_hash);
 	rad_assert(request->ev == NULL);
+	NO_CHILD_THREAD;
 	request_done(request, FR_ACTION_DONE);
 }
 
@@ -3293,6 +3292,7 @@ static void ping_home_server(void *ctx)
 	}
 
 	gettimeofday(&now, NULL);
+	ASSERT_MASTER;
 
 	/*
 	 *	We've run out of zombie time.  Mark it dead.
@@ -3315,7 +3315,6 @@ static void ping_home_server(void *ctx)
 		if (home->state == HOME_STATE_ZOMBIE) {
 			when = home->zombie_period_start;
 			when.tv_sec += home->zombie_period;
-			ASSERT_MASTER;
 			INSERT_EVENT(ping_home_server, home);
 		}
 
@@ -3391,7 +3390,7 @@ static void ping_home_server(void *ctx)
 #ifdef HAVE_PTHREAD_H
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 #endif
-	request->child_state = REQUEST_DONE;
+	request->child_state = REQUEST_PROXIED;
 	request->process = request_ping;
 
 	rad_assert(request->proxy_listener == NULL);
@@ -3433,7 +3432,6 @@ static void ping_home_server(void *ctx)
 	add_jitter(&home->when);
 
 	DEBUG("PING: Next status packet in %u seconds", home->ping_interval);
-	ASSERT_MASTER;
 	INSERT_EVENT(ping_home_server, home);
 }
 
@@ -3495,8 +3493,8 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 	home->zombie_period_start.tv_sec = start;
 	home->zombie_period_start.tv_usec = USEC / 2;
 
-	ASSERT_MASTER;
 	fr_event_delete(el, &home->ev);
+
 	home->num_sent_pings = 0;
 	home->num_received_pings = 0;
 
