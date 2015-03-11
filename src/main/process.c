@@ -773,8 +773,16 @@ static void request_cleanup_delay_init(REQUEST *request, struct timeval const *p
 		if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
 		request->process = request_cleanup_delay;
-		request->child_state = REQUEST_DONE;
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		request->child_state = REQUEST_CLEANUP_DELAY;
+
+		/*
+		 *	Update this if we can, otherwise let the timers pick it up.
+		 */
+		if (we_are_master()) {
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		} else {
+			NO_CHILD_THREAD;
+		}
 		return;
 	}
 
@@ -961,6 +969,8 @@ static void request_process_timer(REQUEST *request)
 		RDEBUG2("Sending delayed response");
 		request->listener->send(request->listener, request);
 		debug_packet(request, request->reply, false);
+
+		request->process = request_cleanup_delay;
 		request->child_state = REQUEST_CLEANUP_DELAY;
 		/* FALL-THROUGH */
 
@@ -970,8 +980,6 @@ static void request_process_timer(REQUEST *request)
 #ifdef WITH_COA
 		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
 #endif
-
-		request->process = request_cleanup_delay;
 
 		when = request->reply->timestamp;
 		when.tv_sec += request->root->cleanup_delay;
@@ -1456,17 +1464,10 @@ STATE_MACHINE_DECL(request_finish)
 #endif
 
 		/*
-		 *	No cleanup, mark the request as done.
-		 *
-		 *	Otherwise, mark it as "please do cleanup delay".
+		 *	Clean up the request.
 		 */
-		if (request->root->cleanup_delay == 0) {
-			NO_CHILD_THREAD;
-			request->child_state = REQUEST_DONE;
-		} else {
-			NO_CHILD_THREAD;
-			request->child_state = REQUEST_CLEANUP_DELAY;
-		}
+		request_cleanup_delay_init(request, NULL);
+
 	} else {
 		/*
 		 *	Encode and sign it here, so that the master
