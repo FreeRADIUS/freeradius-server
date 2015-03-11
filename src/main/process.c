@@ -2621,8 +2621,9 @@ STATE_MACHINE_DECL(proxy_no_reply)
 	case FR_ACTION_RUN:
 		if (process_proxy_reply(request, NULL)) {
 			request_finish(request, action);
+		} else {
+			request_done(request, FR_ACTION_DONE);
 		}
-		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
