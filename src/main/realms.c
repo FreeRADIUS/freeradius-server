@@ -566,7 +566,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
 	home = talloc_zero(ctx, home_server_t);
 	home->name = cf_section_name2(cs);
-	home->log_name = home->name;
+	home->log_name = talloc_typed_strdup(home, home->name);
 	home->cs = cs;
 	home->state = HOME_STATE_UNKNOWN;
 
@@ -615,7 +615,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		}
 
 		home->secret = "";
-		home->log_name = home->server;
+		home->log_name = talloc_typed_strdup(home, home->server);
 	/*
 	 *	Otherwise it's an invalid config section and we
 	 *	raise an error.
