@@ -635,7 +635,7 @@ static ssize_t xlat_debug(UNUSED void *instance, REQUEST *request,
 	/*
 	 *  Expand to previous (or current) level
 	 */
-	snprintf(out, outlen, "%d", request->log.lvl & RAD_REQUEST_OPTION_DEBUG4);
+	snprintf(out, outlen, "%d", request->log.lvl & RAD_REQUEST_LVL_DEBUG4);
 
 	/*
 	 *  Assume we just want to get the current value and NOT set it to 0
@@ -645,7 +645,7 @@ static ssize_t xlat_debug(UNUSED void *instance, REQUEST *request,
 
 	level = atoi(fmt);
 	if (level == 0) {
-		request->log.lvl = RAD_REQUEST_OPTION_NONE;
+		request->log.lvl = RAD_REQUEST_LVL_NONE;
 		request->log.func = NULL;
 	} else {
 		if (level > 4) level = 4;
