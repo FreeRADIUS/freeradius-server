@@ -810,6 +810,7 @@ static void _fr_talloc_log(char const *msg)
  */
 int fr_log_talloc_report(TALLOC_CTX *ctx)
 {
+	#define TALLOC_REPORT_MAX_DEPTH 20
 	FILE *log;
 	int fd;
 
@@ -835,7 +836,7 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 		fprintf(log, "%p (%s)", ctx, talloc_get_name(ctx));
 
 		i = 0;
-		while ((i < 20) && (ctx = talloc_parent(ctx))) {
+		while ((i < TALLOC_REPORT_MAX_DEPTH) && (ctx = talloc_parent(ctx))) {
 			fprintf(log, " < %p (%s)", ctx, talloc_get_name(ctx));
 			i++;
 		}
@@ -846,7 +847,7 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 			fprintf(log, "Talloc context level %i:\n", i++);
 			talloc_report_full(ctx, log);
 		} while ((ctx = talloc_parent(ctx)) &&
-			 (i < 20) &&
+			 (i < TALLOC_REPORT_MAX_DEPTH) &&
 			 (talloc_parent(ctx) != talloc_autofree_ctx) &&	/* Stop before we hit the autofree ctx */
 			 (talloc_parent(ctx) != talloc_null_ctx));  	/* Stop before we hit NULL ctx */
 	}
