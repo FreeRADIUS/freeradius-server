@@ -48,7 +48,7 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 
 	DICT_ATTR const *da;
 	VALUE_PAIR *vp;
-	value_pair_tmpl_t *vpt;
+	vp_tmpl_t *vpt;
 
 	rad_assert(map != NULL);
 
@@ -827,7 +827,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	vp_cursor_t dst_list, src_list;
 
 	value_pair_map_t	exp_map;
-	value_pair_tmpl_t	exp_lhs;
+	vp_tmpl_t	exp_lhs;
 
 	VERIFY_MAP(map);
 	rad_assert(map->lhs != NULL);

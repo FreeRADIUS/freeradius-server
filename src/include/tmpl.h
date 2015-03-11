@@ -21,9 +21,9 @@
  * @file tmpl.h
  * @brief Structures and prototypes for templates
  *
- * These functions are used to work with #value_pair_tmpl_t structs.
+ * These functions are used to work with #vp_tmpl_t structs.
  *
- * #value_pair_tmpl_t (VPTs) specify either a data source, or a data sink.
+ * #vp_tmpl_t (VPTs) specify either a data source, or a data sink.
  *
  * Examples of sources are #TMPL_TYPE_XLAT, #TMPL_TYPE_EXEC and #TMPL_TYPE_ATTR.
  * Examples of sinks are #TMPL_TYPE_ATTR, #TMPL_TYPE_LIST.
@@ -31,7 +31,7 @@
  * VPTs are used to gather values or attributes for evaluation, or copying, and to specify
  * where values or #VALUE_PAIR should be copied to.
  *
- * To create new #value_pair_tmpl_t use one of the tmpl_*from_* functions.  These parse
+ * To create new #vp_tmpl_t use one of the tmpl_*from_* functions.  These parse
  * strings into VPTs. The main parsing function is #tmpl_afrom_str, which can produce
  * most types of VPTs. It uses the type of quoting (passed as an #FR_TOKEN) to determine
  * what type of VPT to parse the string as. For example a #T_DOUBLE_QUOTED_STRING will
@@ -45,7 +45,7 @@
  *
  * In the case of #TMPL_TYPE_ATTR and #TMPL_TYPE_LIST, there are special cursor overlay
  * functions which can be used to iterate over only the #VALUE_PAIR that match a
- * value_pair_tmpl_t in a given list.
+ * vp_tmpl_t in a given list.
  *
  * @see tmpl_cursor_init
  * @see tmpl_cursor_next
@@ -127,7 +127,7 @@ typedef struct pair_list {
 	struct pair_list	*lastdefault;
 } PAIR_LIST;
 
-/** Types of #value_pair_tmpl_t
+/** Types of #vp_tmpl_t
  */
 typedef enum tmpl_type {
 	TMPL_TYPE_UNKNOWN = 0,		//!< Uninitialised.
@@ -186,7 +186,7 @@ typedef struct {
  *
  * @see value_pair_map_t
  */
-typedef struct value_pair_tmpl_t {
+typedef struct vp_tmpl_t {
 	tmpl_type_t	type;		//!< What type of value tmpl refers to.
 	char const	*name;		//!< Original attribute ref string, or
 					//!< where this refers to a none FR
@@ -222,7 +222,7 @@ typedef struct value_pair_tmpl_t {
 		regex_t		*preg;	//!< pre-parsed regex_t
 #endif
 	} data;
-} value_pair_tmpl_t;
+} vp_tmpl_t;
 
 /** @name Field accessors for #TMPL_TYPE_ATTR, #TMPL_TYPE_ATTR_UNDEFINED, #TMPL_TYPE_LIST
  *
@@ -269,7 +269,7 @@ typedef struct value_pair_tmpl_t {
 #  define VERIFY_TMPL(_x)
 #else
 #  define VERIFY_TMPL(_x) tmpl_verify(__FILE__,  __LINE__, _x)
-void tmpl_verify(char const *file, int line, value_pair_tmpl_t const *vpt);
+void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
 #endif
 
 VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);
@@ -284,56 +284,56 @@ int			radius_request(REQUEST **request, request_refs_t name);
 
 size_t			radius_request_name(request_refs_t *out, char const *name, request_refs_t unknown);
 
-value_pair_tmpl_t	*tmpl_init(value_pair_tmpl_t *vpt, tmpl_type_t type,
+vp_tmpl_t	*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
 				   char const *name, ssize_t len);
 
-value_pair_tmpl_t	*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
+vp_tmpl_t	*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 				    ssize_t len);
 
-ssize_t			tmpl_from_attr_substr(value_pair_tmpl_t *vpt, char const *name,
+ssize_t			tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 					      request_refs_t request_def, pair_lists_t list_def,
 					      bool allow_unknown, bool allow_undefined);
 
-ssize_t			tmpl_from_attr_str(value_pair_tmpl_t *vpt, char const *name,
+ssize_t			tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
 					   request_refs_t request_def,
 					   pair_lists_t list_def,
 					   bool allow_unknown, bool allow_undefined);
 
-ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name,
+ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 					    request_refs_t request_def,
 					    pair_lists_t list_def,
 					    bool allow_unknown, bool allow_undefined);
 
-ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, value_pair_tmpl_t **out, char const *name, size_t inlen,
+ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, size_t inlen,
 				       FR_TOKEN type, request_refs_t request_def, pair_lists_t list_def, bool do_escape);
 
-int			tmpl_cast_in_place(value_pair_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv);
+int			tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv);
 
-void			tmpl_cast_in_place_str(value_pair_tmpl_t *vpt);
+void			tmpl_cast_in_place_str(vp_tmpl_t *vpt);
 
 int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
-					value_pair_tmpl_t const *vpt, DICT_ATTR const *cast);
+					vp_tmpl_t const *vpt, DICT_ATTR const *cast);
 
-size_t			tmpl_prints(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt,
+size_t			tmpl_prints(char *buffer, size_t bufsize, vp_tmpl_t const *vpt,
 				    DICT_ATTR const *values);
 
 ssize_t			tmpl_expand(char const **out, char *buff, size_t outlen, REQUEST *request,
-				    value_pair_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx);
+				    vp_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx);
 
-ssize_t			tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, value_pair_tmpl_t const *vpt,
+ssize_t			tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t const *vpt,
 				     RADIUS_ESCAPE_STRING escape, void *escape_ctx);
 
 VALUE_PAIR		*tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request,
-					  value_pair_tmpl_t const *vpt);
+					  vp_tmpl_t const *vpt);
 
-VALUE_PAIR		*tmpl_cursor_next(vp_cursor_t *cursor, value_pair_tmpl_t const *vpt);
+VALUE_PAIR		*tmpl_cursor_next(vp_cursor_t *cursor, vp_tmpl_t const *vpt);
 
 int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
-				      value_pair_tmpl_t const *vpt);
+				      vp_tmpl_t const *vpt);
 
-int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, value_pair_tmpl_t const *vpt);
+int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt);
 
-int			tmpl_define_unknown_attr(value_pair_tmpl_t *vpt);
+int			tmpl_define_unknown_attr(vp_tmpl_t *vpt);
 
 #ifdef __cplusplus
 }

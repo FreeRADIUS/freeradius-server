@@ -1212,10 +1212,10 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	 */
 	if (tmpl) {
 		ssize_t slen;
-		value_pair_tmpl_t *vpt;
+		vp_tmpl_t *vpt;
 
 		if (!value) {
-			*(value_pair_tmpl_t **)data = NULL;
+			*(vp_tmpl_t **)data = NULL;
 			return 0;
 		}
 
@@ -1292,7 +1292,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 			talloc_free(vpt);
 			return -1;
 		}
-		*(value_pair_tmpl_t **)data = vpt;
+		*(vp_tmpl_t **)data = vpt;
 
 		return 0;
 	}

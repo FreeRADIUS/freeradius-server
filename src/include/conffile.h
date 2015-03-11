@@ -55,7 +55,7 @@ typedef struct timeval _timeval_t;
  */
 #  define FR_CONF_TYPE_CHECK(_t, _ct, _p) \
 	__builtin_choose_expr((_t & PW_TYPE_TMPL),\
-		__builtin_choose_expr(__builtin_types_compatible_p(value_pair_tmpl_t **, _ct), _p, (conf_type_mismatch) 0),\
+		__builtin_choose_expr(__builtin_types_compatible_p(vp_tmpl_t **, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_STRING),\
 		__builtin_choose_expr(__builtin_types_compatible_p(char const **, _ct), _p, (conf_type_mismatch) 0),\
 	__builtin_choose_expr((((_t) & 0xff) == PW_TYPE_BOOLEAN),\

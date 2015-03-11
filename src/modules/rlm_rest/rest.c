@@ -1314,7 +1314,7 @@ static int json_pairmake(rlm_rest_t *instance, rlm_rest_section_t *section,
 			.is_json = 0
 		};
 
-		value_pair_tmpl_t dst;
+		vp_tmpl_t dst;
 		REQUEST *current = request;
 		VALUE_PAIR **vps, *vp = NULL;
 

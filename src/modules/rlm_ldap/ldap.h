@@ -112,8 +112,8 @@ typedef struct ldap_instance {
 	 *	User object attributes and filters
 	 */
 	char const	*user_sasl_mech;		//!< SASL mechanism to use for user binds.
-	value_pair_tmpl_t *userobj_filter;		//!< Filter to retrieve only user objects.
-	value_pair_tmpl_t *userobj_base_dn;		//!< DN to search for users under.
+	vp_tmpl_t *userobj_filter;		//!< Filter to retrieve only user objects.
+	vp_tmpl_t *userobj_base_dn;		//!< DN to search for users under.
 	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
 	int		userobj_scope;			//!< Search scope.
 
@@ -130,7 +130,7 @@ typedef struct ldap_instance {
 	 */
 
 	char const	*groupobj_filter;		//!< Filter to retrieve only group objects.
-	value_pair_tmpl_t *groupobj_base_dn;		//!< DN to search for users under.
+	vp_tmpl_t *groupobj_base_dn;		//!< DN to search for users under.
 	char const	*groupobj_scope_str;		//!< Scope (sub, one, base).
 	int		groupobj_scope;			//!< Search scope.
 
@@ -170,13 +170,13 @@ typedef struct ldap_instance {
 	/*
 	 *	Profiles
 	 */
-	value_pair_tmpl_t *default_profile;		//!< If this is set, we will search for a profile object
+	vp_tmpl_t *default_profile;		//!< If this is set, we will search for a profile object
 							//!< with this name, and map any attributes it contains.
 							//!< No value should be set if profiles are not being used
 							//!< as there is an associated performance penalty.
 	char const	*profile_attr;			//!< Attribute that identifies profiles to apply. May appear
 							//!< in userobj or groupobj.
-	value_pair_tmpl_t *profile_filter;		//!< Filter to retrieve only retrieve group objects.
+	vp_tmpl_t *profile_filter;		//!< Filter to retrieve only retrieve group objects.
 
 	/*
 	 *	Accounting
