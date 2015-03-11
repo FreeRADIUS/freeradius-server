@@ -1377,7 +1377,7 @@ static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd)
 		 */
 
 		if (debug_flag) {
-			request->log.lvl = RAD_REQUEST_OPTION_DEBUG2;
+			request->log.lvl = RAD_REQUEST_LVL_DEBUG2;
 			request->log.func = vradlog_request;
 		}
 		request->component = "";
