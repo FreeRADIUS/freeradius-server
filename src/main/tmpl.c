@@ -1294,7 +1294,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
-		if (out && (vp->da->type == PW_TYPE_STRING)) {
+		if (out && (vp->da->type == PW_TYPE_STRING) || (vp->da->type == PW_TYPE_OCTETS)) {
 			*out = vp->vp_strvalue;
 			slen = vp->vp_length;
 		} else {

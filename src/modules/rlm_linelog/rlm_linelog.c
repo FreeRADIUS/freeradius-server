@@ -59,7 +59,8 @@ typedef enum {
 typedef struct rlm_linelog_t {
 	linelog_dst_t		log_dst;		//!< Logging destination.
 
-	char const		*delimiter;	//!< Line termination string (usually \n).
+	char const		*delimiter;		//!< Line termination string (usually \n).
+	size_t			delimiter_len;		//!< Length of line termination string.
 
 	char const		*syslog_facility;	//!< Syslog facility string.
 	char const		*syslog_severity;	//!< Syslog severity string.
@@ -164,6 +165,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+	inst->delimiter_len = talloc_array_length(inst->delimiter) - 1;
+
 	inst->cs = conf;
 	return 0;
 }
@@ -259,6 +262,11 @@ static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request)
 	value_pair_tmpl_t	empty, *vpt = NULL, *vpt_p = NULL;
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	ssize_t			slen;
+
+	struct iovec		vector_s[2];
+	struct iovec		*vector = NULL, *vector_p;
+	size_t			vector_len;
+	bool			with_delim;
 
 	buff[0] = '.';	/* force to be in current section */
 	buff[1] = '\0';
@@ -364,12 +372,87 @@ open_log:
 		}
 	}
 
+	with_delim = (inst->log_dst != LINELOG_DST_SYSLOG) && (inst->delimiter_len > 0);
+
 	/*
-	 *	Get the data we're going to log
+	 *	Log all the things!
 	 */
-	slen = tmpl_expand(&value, buff, sizeof(buff), request, vpt_p, linelog_escape_func, NULL);
-	if (slen < 0) {
-		rcode = RLM_MODULE_FAIL;
+	switch (vpt_p->type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_LIST:
+	{
+		#define VECTOR_INCREMENT 20
+		vp_cursor_t	cursor;
+		VALUE_PAIR	*vp;
+		int		alloced = VECTOR_INCREMENT, i;
+
+		MEM(vector = talloc_array(request, struct iovec, alloced));
+		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt_p), i = 0;
+		     vp;
+		     vp = tmpl_cursor_next(&cursor, vpt_p), i++) {
+		     	/* need extra for line terminator */
+			if ((with_delim && ((i + 1) >= alloced)) ||
+			    (i >= alloced)) {
+				alloced += VECTOR_INCREMENT;
+				MEM(vector = talloc_realloc(request, vector, struct iovec, alloced));
+			}
+
+			switch (vp->da->type) {
+			case PW_TYPE_OCTETS:
+			case PW_TYPE_STRING:
+				vector[i].iov_base = vp->data.ptr;
+				vector[i].iov_len = vp->vp_length;
+				break;
+
+			default:
+				p = vp_aprints_value(vector, vp, '\0');
+				vector[i].iov_base = p;
+				vector[i].iov_len = talloc_array_length(p) - 1;
+				break;
+			}
+
+			/*
+			 *	Add the line delimiter string
+			 */
+			if (with_delim) {
+				i++;
+				memcpy(&vector[i].iov_base, &(inst->delimiter), sizeof(vector[i].iov_base));
+				vector[i].iov_len = inst->delimiter_len;
+			}
+		}
+		vector_p = vector;
+		vector_len = i;
+	}
+		break;
+
+	/*
+	 *	Log a single thing
+	 */
+	default:
+		slen = tmpl_expand(&value, buff, sizeof(buff), request, vpt_p, linelog_escape_func, NULL);
+		if (slen < 0) {
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+		}
+
+		/* iov_base is not declared as const *sigh* */
+		memcpy(&vector_s[0].iov_base, &value, sizeof(vector_s[0].iov_base));
+		vector_s[0].iov_len = slen;
+
+		if (!with_delim) {
+			vector_len = 1;
+		} else {
+			memcpy(&vector_s[1].iov_base, &(inst->delimiter), sizeof(vector_s[1].iov_base));
+			vector_s[1].iov_len = inst->delimiter_len;
+			vector_len = 2;
+		}
+
+		vector_p = &vector_s[0];
+	}
+
+	if (vector_len == 0) {
+		RDEBUG("No data to write");
+		rcode = RLM_MODULE_NOOP;
 		goto finish;
 	}
 
@@ -377,13 +460,7 @@ open_log:
 	 *	Write out the log entry
 	 */
 	if (inst->log_dst == LINELOG_DST_FILE) {
-		struct iovec vector[] = {{NULL, slen}, {NULL, talloc_array_length(inst->delimiter) - 1}};
-
-		/* iov_base is not declared as const *sigh* */
-		memcpy(&vector[0].iov_base, &value, sizeof(vector[0].iov_base));
-		memcpy(&vector[1].iov_base, &(inst->delimiter), sizeof(vector[1].iov_base));
-
-		if (writev(fd, vector, sizeof(vector) / sizeof(*vector)) < 0) {
+		if (writev(fd, vector_p, vector_len) < 0) {
 			RERROR("Failed writing to \"%s\": %s", path, fr_syserror(errno));
 			exfile_close(inst->ef, fd);
 			return RLM_MODULE_FAIL;
@@ -393,13 +470,18 @@ open_log:
 
 #ifdef HAVE_SYSLOG_H
 	} else {
-		syslog(inst->syslog_priority, "%s", buff);
+		size_t i;
+
+		for (i = 0; i < vector_len; i++) {
+			syslog(inst->syslog_priority, "%.*s", (int)vector[i].iov_len, vector[i].iov_base);
+		}
 #endif
 	}
 
 finish:
 	if (fd >= 0) exfile_close(inst->ef, fd);
 	talloc_free(vpt);
+	talloc_free(vector);
 
 	return rcode;
 }
