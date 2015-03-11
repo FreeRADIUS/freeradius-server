@@ -760,6 +760,8 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	Guess the port if we need to.
 		 */
 		if (home->port == 0) {
+			char buffer[INET6_ADDRSTRLEN + 3];
+
 			/*
 			 *	For RADSEC we use the special RADIUS over TCP/TLS port
 			 *	for both accounting and authentication, but for some
@@ -786,6 +788,15 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			default:
 				rad_assert(0);
 			}
+
+			/*
+			 *	Now that we have a real port, use that.
+			 */
+			rad_const_free(home->log_name);
+
+			fr_ntop(buffer, sizeof(buffer), &home->ipaddr);
+
+			home->log_name = talloc_asprintf(home, "%s:%i", buffer, home->port);
 		}
 
 		/*
