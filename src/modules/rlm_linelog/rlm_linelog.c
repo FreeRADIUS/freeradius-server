@@ -473,7 +473,7 @@ open_log:
 		size_t i;
 
 		for (i = 0; i < vector_len; i++) {
-			syslog(inst->syslog_priority, "%.*s", (int)vector[i].iov_len, vector[i].iov_base);
+			syslog(inst->syslog_priority, "%.*s", (int)vector[i].iov_len, (char *)vector[i].iov_base);
 		}
 #endif
 	}
