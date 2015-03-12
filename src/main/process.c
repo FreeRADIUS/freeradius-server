@@ -236,12 +236,14 @@ static bool we_are_master(void)
 /*
  *	Assertions are debug checks.
  */
-#ifdef NDEBUG
-#define ASSERT_MASTER
-#else
+#ifndef NDEBUG
 #define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
 #endif
 #endif	/* HAVE_PTHREAD_H */
+
+#ifndef ASSERT_MASTER
+#define ASSERT_MASTER
+#endif
 
 static int event_new_fd(rad_listen_t *this);
 
