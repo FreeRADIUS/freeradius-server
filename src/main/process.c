@@ -4292,9 +4292,6 @@ STATE_MACHINE_DECL(coa_no_reply)
 		break;
 
 	case FR_ACTION_RUN:
-		/*
-		 *	FIXME: do recv_coa Fail
-		 */
 		(void) process_proxy_reply(request, NULL);
 		request_done(request, FR_ACTION_DONE);
 		break;
