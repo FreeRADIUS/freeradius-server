@@ -2669,6 +2669,7 @@ STATE_MACHINE_DECL(proxy_running)
 
 	case FR_ACTION_RUN:
 		(void) process_proxy_reply(request, request->proxy_reply);
+		request->reply->code = request->proxy_reply->code;
 		request_finish(request, action);
 		break;
 
