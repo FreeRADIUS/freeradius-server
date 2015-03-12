@@ -1292,7 +1292,7 @@ STATE_MACHINE_DECL(request_finish)
 		if (request->reply->code == 0) {
 			vp = pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY);
 
-			if (!vp || (vp->vp_integer != PW_CODE_ACCESS_REJECT)) {
+			if (!vp || (vp->vp_integer != 5)) {
 				RDEBUG2("There was no response configured: "
 					"rejecting request");
 			}
