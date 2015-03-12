@@ -403,7 +403,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	INFO("rlm_sql_sqlite: Opening SQLite database \"%s\"", driver->filename);
 #ifdef HAVE_SQLITE3_OPEN_V2
 	status = sqlite3_open_v2(driver->filename, &(conn->db), SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, NULL);
+	sqlite3_busy_timeout( conn->db, 200); /*wait up to 200 ms for db locks*/
 #else
+	
 	status = sqlite3_open(driver->filename, &(conn->db));
 #endif
 	if (!conn->db) {
