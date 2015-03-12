@@ -13,6 +13,7 @@
 server abfab-idp {
 authorize {
         psk_authorize
+	abfab_client_check
 	filter_username
 	preprocess
 
@@ -95,8 +96,12 @@ post-auth {
 
 		# Insert EAP-Failure message if the request was
 		# rejected by policy instead of because of an
-		# authentication failure
-		eap
+		# authentication failure And already has an EAP message
+		# For non-ABFAB, we insert the failure all the time, but for ABFAB
+		# It's more desirable to preserve reply-message when we can
+if &reply:Eap-Message {
+			eap
+			}
 
 		#  Remove reply message if the response contains an EAP-Message
 		remove_reply_message_if_eap
@@ -116,7 +121,6 @@ pre-proxy {
 	# No need to uncomment this if you have already enabled this in
 	# the authorize section.
 #	operator-name
-	abfab_pre_proxy
 
 	#  The client requests the CUI by sending a CUI attribute
 	#  containing one zero byte.
