@@ -2619,7 +2619,9 @@ STATE_MACHINE_DECL(proxy_no_reply)
 		break;
 
 	case FR_ACTION_RUN:
-		(void) process_proxy_reply(request, NULL);
+		if (process_proxy_reply(request, NULL)) {
+			request->handle(request);
+		}
 		request_finish(request, action);
 		break;
 
@@ -2648,8 +2650,9 @@ STATE_MACHINE_DECL(proxy_running)
 		break;
 
 	case FR_ACTION_RUN:
-		(void) process_proxy_reply(request, request->proxy_reply);
-		request->reply->code = request->proxy_reply->code;
+		if (process_proxy_reply(request, request->proxy_reply)) {
+			request->handle(request);
+		}
 		request_finish(request, action);
 		break;
 
@@ -4271,7 +4274,9 @@ STATE_MACHINE_DECL(coa_no_reply)
 		break;
 
 	case FR_ACTION_RUN:
-		(void) process_proxy_reply(request, NULL);
+		if (process_proxy_reply(request, NULL)) {
+			request->handle(request);
+		}
 		request_done(request, FR_ACTION_DONE);
 		break;
 
