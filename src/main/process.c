@@ -222,7 +222,7 @@ static pthread_t NO_SUCH_CHILD_PID;
 #define NO_CHILD_THREAD
 #endif
 
-#if  defined(HAVE_PTHREAD_H) && !defined (NDEBUG)
+#ifdef HAVE_PTHREAD_H
 static bool we_are_master(void)
 {
 	if (spawn_flag &&
@@ -232,12 +232,16 @@ static bool we_are_master(void)
 
 	return true;
 }
-#define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
 
-#else
-#define we_are_master(_x) (1)
+/*
+ *	Assertions are debug checks.
+ */
+#ifdef NDEBUG
 #define ASSERT_MASTER
+#else
+#define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
 #endif
+#endif	/* HAVE_PTHREAD_H */
 
 static int event_new_fd(rad_listen_t *this);
 
