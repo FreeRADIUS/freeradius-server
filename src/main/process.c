@@ -733,7 +733,7 @@ STATE_MACHINE_DECL(request_done)
 }
 
 
-static void request_cleanup_delay_init(REQUEST *request, struct timeval const *pnow)
+static void request_cleanup_delay_init(REQUEST *request)
 {
 	struct timeval now, when;
 
@@ -750,11 +750,7 @@ static void request_cleanup_delay_init(REQUEST *request, struct timeval const *p
 
 	if (!request->root->cleanup_delay) goto done;
 
-	if (pnow) {
-		now = *pnow;
-	} else {
-		gettimeofday(&now, NULL);
-	}
+	gettimeofday(&now, NULL);
 
 	rad_assert(request->reply->timestamp.tv_sec != 0);
 	when = request->reply->timestamp;
@@ -1482,7 +1478,7 @@ STATE_MACHINE_DECL(request_finish)
 		/*
 		 *	Clean up the request.
 		 */
-		request_cleanup_delay_init(request, NULL);
+		request_cleanup_delay_init(request);
 
 	} else {
 		/*
@@ -3157,7 +3153,7 @@ static int request_proxy_anew(REQUEST *request)
 			request_queue_or_run(request, proxy_running);
 		} else {
 			gettimeofday(&request->reply->timestamp, NULL);
-			request_cleanup_delay_init(request, NULL);
+			request_cleanup_delay_init(request);
 		}
 		return 0;
 	}
@@ -3802,7 +3798,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			request_queue_or_run(request, proxy_no_reply);
 		} else {
 			gettimeofday(&request->reply->timestamp, NULL);
-			request_cleanup_delay_init(request, NULL);
+			request_cleanup_delay_init(request);
 		}
 		break;
 
