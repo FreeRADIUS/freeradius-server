@@ -2615,11 +2615,8 @@ STATE_MACHINE_DECL(proxy_no_reply)
 		break;
 
 	case FR_ACTION_RUN:
-		if (process_proxy_reply(request, NULL)) {
-			request_finish(request, action);
-		} else {
-			request_done(request, FR_ACTION_DONE);
-		}
+		(void) process_proxy_reply(request, NULL);
+		request_finish(request, action);
 		break;
 
 	default:
@@ -2647,12 +2644,8 @@ STATE_MACHINE_DECL(proxy_running)
 		break;
 
 	case FR_ACTION_RUN:
-		if (process_proxy_reply(request, request->proxy_reply)) {
-			request->handle(request);
-			request_finish(request, action);
-		} else {
-			request_done(request, FR_ACTION_DONE);
-		}
+		(void) process_proxy_reply(request, request->proxy_reply);
+		request_finish(request, action);
 		break;
 
 	default:
