@@ -4306,10 +4306,8 @@ STATE_MACHINE_DECL(coa_running)
 	case FR_ACTION_RUN:
 		if (process_proxy_reply(request, request->proxy_reply)) {
 			request->handle(request);
-			request_finish(request, action);
-		} else {
-			request_done(request, FR_ACTION_DONE);
 		}
+		request_done(request, FR_ACTION_DONE);
 		break;
 
 	default:
