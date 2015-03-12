@@ -239,6 +239,12 @@ static bool we_are_master(void)
 #ifndef NDEBUG
 #define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
 #endif
+#else
+
+/*
+ *	No threads: we're always master.
+ */
+#define we_are_master(_x) (1)
 #endif	/* HAVE_PTHREAD_H */
 
 #ifndef ASSERT_MASTER
