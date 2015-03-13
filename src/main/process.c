@@ -1081,6 +1081,17 @@ static void request_queue_or_run(REQUEST *request,
 #endif
 }
 
+
+static void request_dup(REQUEST *request)
+{
+	ERROR("(%u) Ignoring duplicate packet from "
+	      "client %s port %d - ID: %u due to unfinished request "
+	      "in component %s module %s",
+	      request->number, request->client->shortname,
+	      request->packet->src_port,request->packet->id,
+	      request->component, request->module);
+}
+
 STATE_MACHINE_DECL(request_common)
 {
 	VERIFY_REQUEST(request);
@@ -1097,15 +1108,6 @@ STATE_MACHINE_DECL(request_common)
 	}
 
 	switch (action) {
-	case FR_ACTION_DUP:
-		ERROR("(%u) Ignoring duplicate packet from "
-		      "client %s port %d - ID: %u due to unfinished request "
-		      "in component %s module %s",
-		      request->number, request->client->shortname,
-		      request->packet->src_port,request->packet->id,
-		      request->component, request->module);
-		break;
-
 	case FR_ACTION_TIMER:
 		request_process_timer(request);
 		return;
@@ -1498,8 +1500,8 @@ STATE_MACHINE_DECL(request_running)
 		break;
 
 	case FR_ACTION_DUP:
-		request_common(request, action);
-		return;
+		request_dup(request);
+		break;
 
 	case FR_ACTION_RUN:
 		if (!request_pre_handler(request, action)) {
@@ -2615,6 +2617,9 @@ STATE_MACHINE_DECL(proxy_no_reply)
 
 	switch (action) {
 	case FR_ACTION_DUP:
+		request_dup(request);
+		break;
+
 	case FR_ACTION_TIMER:
 		request_common(request, action);
 		break;
@@ -2644,6 +2649,9 @@ STATE_MACHINE_DECL(proxy_running)
 
 	switch (action) {
 	case FR_ACTION_DUP:
+		request_dup(request);
+		break;
+
 	case FR_ACTION_TIMER:
 		request_common(request, action);
 		break;
