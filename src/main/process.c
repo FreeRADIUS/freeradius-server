@@ -634,7 +634,7 @@ STATE_MACHINE_DECL(request_done)
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
 		proxy_reply_too_late(request);
-		return;
+		break;
 #endif
 
 	default:
@@ -1141,12 +1141,12 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 		when.tv_sec += request->delay;
 
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-		return;
+		break;
 
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
 		proxy_reply_too_late(request);
-		return;
+		break;
 #endif
 
 	case FR_ACTION_TIMER:
@@ -1169,15 +1169,15 @@ STATE_MACHINE_DECL(request_response_delay)
 	switch (action) {
 	case FR_ACTION_DUP:
 		ERROR("(%u) Discarding duplicate request from "
-		       "client %s port %d - ID: %u due to delayed response",
-		       request->number, request->client->shortname,
-		       request->packet->src_port,request->packet->id);
-		return;
+		      "client %s port %d - ID: %u due to delayed response",
+		      request->number, request->client->shortname,
+		      request->packet->src_port,request->packet->id);
+		break;
 
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
 		proxy_reply_too_late(request);
-		return;
+		break;
 #endif
 
 	case FR_ACTION_TIMER:
@@ -2621,7 +2621,7 @@ STATE_MACHINE_DECL(proxy_no_reply)
 
 	case FR_ACTION_PROXY_REPLY:
 		proxy_reply_too_late(request);
-		return;
+		break;
 
 	case FR_ACTION_RUN:
 		if (process_proxy_reply(request, NULL)) {
