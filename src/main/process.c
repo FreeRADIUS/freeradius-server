@@ -331,7 +331,7 @@ static void request_coa_originate(REQUEST *request);
 STATE_MACHINE_DECL(coa_running);
 STATE_MACHINE_DECL(coa_wait_for_reply);
 STATE_MACHINE_DECL(coa_no_reply);
-STATE_MACHINE_DECL(coa_separate);
+static void coa_separate(REQUEST *request);
 #endif
 
 #undef USEC
@@ -576,9 +576,9 @@ STATE_MACHINE_DECL(request_done)
 	 *	Move the CoA request to its own handler.
 	 */
 	if (request->coa) {
-		coa_separate(request->coa, FR_ACTION_TIMER);
+		coa_separate(request->coa);
 	} else if (request->parent && (request->parent->coa == request)) {
-		coa_separate(request, FR_ACTION_TIMER);
+		coa_separate(request);
 	}
 #endif
 
@@ -835,7 +835,7 @@ static void request_process_timer(REQUEST *request)
 	 *	parent.  Then, set up the timers so that we can clean
 	 *	it up as appropriate.
 	 */
-	if (request->coa) coa_separate(request->coa, FR_ACTION_TIMER);
+	if (request->coa) coa_separate(request->coa);
 #endif
 
 	gettimeofday(&now, NULL);
@@ -3988,24 +3988,18 @@ static void request_coa_originate(REQUEST *request)
 }
 
 
-static void coa_timer(REQUEST *request)
+static void coa_retransmit(REQUEST *request)
 {
 	uint32_t delay, frac;
 	struct timeval now, when, mrd;
 
 	VERIFY_REQUEST(request);
 
-	rad_assert(request->parent == NULL);
+	fr_event_now(el, &now);
 
 	/*
-	 *	Do CoA separation, enforce lifetime, etc.
+	 *	FIXME: Enforce max_request_time
 	 */
-	if (request->proxy_reply) {
-		request_process_timer(request);
-		return;
-	}
-
-	gettimeofday(&now, NULL);
 
 	if (request->delay == 0) {
 		/*
@@ -4111,9 +4105,6 @@ static void coa_timer(REQUEST *request)
 
 	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 
-	/*
-	 *	Status servers don't count as real packets sent.
-	 */
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 }
@@ -4123,34 +4114,17 @@ STATE_MACHINE_DECL(coa_wait_for_reply)
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
+	ASSERT_MASTER;
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		/*
-		 *	This is big enough to be in it's own function.
-		 */
-		coa_timer(request);
+		if (request->parent) coa_separate(request);
+
+		coa_retransmit(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
-		rad_assert(request->parent != NULL);
-		rad_assert(request->parent->coa == request);
-		rad_assert((request->proxy->code == PW_CODE_COA_REQUEST) ||
-			   (request->proxy->code == PW_CODE_DISCONNECT_REQUEST));
-		rad_assert(request->process != NULL);
-
-		coa_separate(request, FR_ACTION_PROXY_REPLY);
-
-		rad_assert(request->parent == NULL);
-
-		/*
-		 *	Do NOT get the session-state VPs.  The request
-		 *	already contains the packet and the reply, so
-		 *	there's no more state we need to maintain.
-		 *
-		 *	The state for "originate CoA" is for the next
-		 *	Access-Request, not for the CoA ACK/BAK
-		 */
+		if (request->parent) coa_separate(request);
 
 		request_queue_or_run(request, coa_running);
 		break;
@@ -4161,11 +4135,15 @@ STATE_MACHINE_DECL(coa_wait_for_reply)
 	}
 }
 
-STATE_MACHINE_DECL(coa_separate)
+static void coa_separate(REQUEST *request)
 {
 	VERIFY_REQUEST(request);
+#ifdef DEBUG_STATE_MACHINE
+	int action = FR_ACTION_TIMER;
+#endif
 
 	TRACE_STATE_MACHINE;
+	ASSERT_MASTER;
 
 	rad_assert(request->parent != NULL);
 	rad_assert(request->parent->coa == request);
@@ -4178,27 +4156,6 @@ STATE_MACHINE_DECL(coa_separate)
 	(void) talloc_steal(NULL, request);
 	request->parent->coa = NULL;
 	request->parent = NULL;
-
-	/*
-	 *	Most of the time we're called for timers.
-	 */
-	switch (action) {
-	case FR_ACTION_TIMER:
-		request->process(request, FR_ACTION_TIMER);
-		break;
-
-		/*
-		 *	Set up the main timers.
-		 */
-	case FR_ACTION_PROXY_REPLY:
-		request->child_state = REQUEST_QUEUED;
-		request_process_timer(request);
-		break;
-
-	default:
-		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
-		break;
-	}
 }
 
 STATE_MACHINE_DECL(coa_no_reply)
