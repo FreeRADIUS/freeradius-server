@@ -1692,6 +1692,7 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 	request->number = request_num_counter++;
 	request->priority = listener->type;
 	request->master_state = REQUEST_ACTIVE;
+	request->child_state = REQUEST_RUNNING;
 #ifdef DEBUG_STATE_MACHINE
 	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
 			       request->number, __FUNCTION__,
@@ -1701,7 +1702,6 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 #ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
-	request->child_state = REQUEST_RUNNING;
 	request->handle = fun;
 	NO_CHILD_THREAD;
 
