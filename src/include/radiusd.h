@@ -64,7 +64,7 @@ typedef struct rad_request REQUEST;
 #include <freeradius-devel/tmpl.h>
 #include <freeradius-devel/map.h>
 #include <freeradius-devel/clients.h>
-
+#include <freeradius-devel/process.h>
 /*
  *	All POSIX systems should have these headers
  */
@@ -79,38 +79,6 @@ extern "C" {
  *	See util.c
  */
 typedef struct request_data_t request_data_t;
-
-/*
- *	Types of listeners.
- *
- *	Ordered by priority!
- */
-typedef enum RAD_LISTEN_TYPE {
-	RAD_LISTEN_NONE = 0,
-#ifdef WITH_PROXY
-	RAD_LISTEN_PROXY,
-#endif
-	RAD_LISTEN_AUTH,
-#ifdef WITH_ACCOUNTING
-	RAD_LISTEN_ACCT,
-#endif
-#ifdef WITH_DETAIL
-	RAD_LISTEN_DETAIL,
-#endif
-#ifdef WITH_VMPS
-	RAD_LISTEN_VQP,
-#endif
-#ifdef WITH_DHCP
-	RAD_LISTEN_DHCP,
-#endif
-#ifdef WITH_COMMAND_SOCKET
-	RAD_LISTEN_COMMAND,
-#endif
-#ifdef WITH_COA
-	RAD_LISTEN_COA,
-#endif
-	RAD_LISTEN_MAX
-} RAD_LISTEN_TYPE;
 
 /** Return codes indicating the result of the module call
  *
@@ -133,16 +101,6 @@ typedef enum rlm_rcodes {
 } rlm_rcode_t;
 extern const FR_NAME_NUMBER modreturn_table[];
 
-/*
- *	For listening on multiple IP's and ports.
- */
-typedef struct rad_listen_t rad_listen_t;
-
-typedef		void (*fr_request_process_t)(REQUEST *, int);
-/*
- *  Function handler for requests.
- */
-typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 
 #if defined(WITH_VERIFY_PTR)
 #  define VERIFY_REQUEST(_x) verify_request(__FILE__, __LINE__, _x)
@@ -177,44 +135,59 @@ struct rad_request {
 	uint32_t		magic; 		//!< Magic number used to detect memory corruption,
 						//!< or request structs that have not been properly initialised.
 #endif
-	RADIUS_PACKET		*packet;	//!< Incoming request.
-#ifdef WITH_PROXY
-	RADIUS_PACKET		*proxy;		//!< Outgoing request.
-#endif
-	RADIUS_PACKET		*reply;		//!< Outgoing response.
-#ifdef WITH_PROXY
-	RADIUS_PACKET		*proxy_reply;	//!< Incoming response.
-#endif
-	VALUE_PAIR		*config_items;	//!< VALUE_PAIRs used to set per request parameters
-						//!< for modules and the server core at runtime.
-	VALUE_PAIR		*state;		//!< VALUE_PAIRs used to set session parameters
-						//!< for multiple packets, e.g. EAP.
-	VALUE_PAIR		*username;	//!< Cached username VALUE_PAIR.
-	VALUE_PAIR		*password;	//!< Cached password VALUE_PAIR.
-
-	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
-
-	RAD_REQUEST_FUNP	handle;		//!< The function to call to move the request through the
-						//!< various server configuration sections.
-
-	struct main_config_t	*root;		//!< Pointer to the main config hack to try and deal with hup.
+	unsigned int	       	number; 	//!< Monotonically increasing request number. Reset on server restart.
+	time_t			timestamp;	//!< When the request was received.
 
 	request_data_t		*data;		//!< Request metadata.
 
+	rad_listen_t		*listener;	//!< The listener that received the request.
 	RADCLIENT		*client;	//!< The client that originally sent us the request.
+
+	RADIUS_PACKET		*packet;	//!< Incoming request.
+	VALUE_PAIR		*username;	//!< Cached username #VALUE_PAIR from request #RADIUS_PACKET.
+	VALUE_PAIR		*password;	//!< Cached password #VALUE_PAIR from request #RADIUS_PACKET.
+
+	RADIUS_PACKET		*reply;		//!< Outgoing response.
+
+	VALUE_PAIR		*config_items;	//!< #VALUE_PAIR (s) used to set per request parameters
+						//!< for modules and the server core at runtime.
+	VALUE_PAIR		*state;		//!< #VALUE_PAIR (s) available over the lifetime of the authentication
+						//!< attempt. Useful where the attempt involves a sequence of
+						//!< many request/challenge packets, like OTP, and EAP.
+
+#ifdef WITH_PROXY
+	rad_listen_t		*proxy_listener;//!< Listener for outgoing requests.
+	RADIUS_PACKET		*proxy;		//!< Outgoing request to proxy server.
+	RADIUS_PACKET		*proxy_reply;	//!< Incoming response from proxy server.
+
+	home_server_t	       	*home_server;
+	home_pool_t		*home_pool;	//!< For dynamic failover
+#endif
+
+	fr_request_process_t	process;	//!< The function to call to move the request through the state machine.
+
+	struct timeval		response_delay;	//!< How long to wait before sending Access-Rejects.
+	fr_state_action_t	timer_action;	//!< What action to perform when the timer event fires.
+	fr_event_t		*ev;		//!< Event in event loop tied to this request.
+
+	RAD_REQUEST_FUNP	handle;		//!< The function to call to move the request through the
+						//!< various server configuration sections.
+	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
+	char const		*module;	//!< Module the request is currently being processed by.
+	char const		*component; 	//!< Section the request is in.
+
+	int			delay;
+
+	rad_master_state_t	master_state;	//!< Set by the master thread to signal the child that's currently
+						//!< working with the request, to do something.
+	rad_child_state_t	child_state;
 
 #ifdef HAVE_PTHREAD_H
 	pthread_t    		child_pid;	//!< Current thread handling the request.
 #endif
-	time_t			timestamp;	//!< When the request was received.
-	unsigned int	       	number; 	//!< Monotonically increasing request number. Reset on server restart.
 
-	rad_listen_t		*listener;	//!< The listener that received the request.
-#ifdef WITH_PROXY
-	rad_listen_t		*proxy_listener;//!< Listener for outgoing requests.
-#endif
+	struct main_config_t	*root;		//!< Pointer to the main config hack to try and deal with hup.
 
-	rlm_rcode_t		rcode;		//!< Last rcode returned by a module
 
 	int			simul_max;	//!< Maximum number of concurrent sessions for this user.
 #ifdef WITH_SESSION_MGMT
@@ -222,29 +195,16 @@ struct rad_request {
 	int			simul_mpp; 	//!< WEIRD: 1 is false, 2 is true.
 #endif
 
-	char const		*module;	//!< Module the request is currently being processed by.
-	char const		*component; 	//!< Section the request is in.
-
-	int			delay;
-
-	rad_master_state_t	master_state;
-	rad_child_state_t	child_state;
 	RAD_LISTEN_TYPE		priority;
-
-	struct timeval		response_delay;
-	int			timer_action;
-	fr_event_t		*ev;
 
 	bool			in_request_hash;
 #ifdef WITH_PROXY
 	bool			in_proxy_hash;
 
-	home_server_t	       	*home_server;
-	home_pool_t		*home_pool;	//!< For dynamic failover
-
 	struct timeval		proxy_retransmit;
 
-	uint32_t		num_proxied_requests;
+	uint32_t		num_proxied_requests;	//!< How many times this request was proxied.
+							//!< Retransmissions are driven by requests from the NAS.
 	uint32_t		num_proxied_responses;
 #endif
 
@@ -255,7 +215,7 @@ struct rad_request {
 		radlog_func_t	func;		//!< Function to call to output log messages about this
 						//!< request.
 
-		log_lvl_t	lvl;		//!< Request options, currently just holds the debug level or
+		log_lvl_t	lvl;		//!< Controls the verbosity of debug statements regarding
 						//!< the request.
 
 		uint8_t		indent;		//!< By how much to indent log messages. uin8_t so it's obvious
@@ -271,115 +231,14 @@ struct rad_request {
 #endif
 };				/* REQUEST typedef */
 
-#define RAD_REQUEST_LVL_NONE		(0)
+#define RAD_REQUEST_LVL_NONE	(0)		//!< No debug messages should be printed.
 #define RAD_REQUEST_LVL_DEBUG	(1)
 #define RAD_REQUEST_LVL_DEBUG2	(2)
 #define RAD_REQUEST_LVL_DEBUG3	(3)
 #define RAD_REQUEST_LVL_DEBUG4	(4)
 
-#define RAD_REQUEST_OPTION_COA		(1 << 0)
-#define RAD_REQUEST_OPTION_CTX		(1 << 1)
-
-typedef int (*rad_listen_recv_t)(rad_listen_t *);
-typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
-typedef int (*rad_listen_print_t)(rad_listen_t const *, char *, size_t);
-typedef int (*rad_listen_encode_t)(rad_listen_t *, REQUEST *);
-typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
-
-struct rad_listen_t {
-	struct rad_listen_t *next; /* should be rbtree stuff */
-
-	/*
-	 *	For normal sockets.
-	 */
-	RAD_LISTEN_TYPE	type;
-	int		fd;
-	char const	*server;
-	int		status;
-#ifdef WITH_TCP
-	int		count;
-	bool		dual;
-	rbtree_t	*children;
-	rad_listen_t	*parent;
-#endif
-	bool		nodup;
-	bool		synchronous;
-	uint32_t	workers;
-
-#ifdef WITH_TLS
-	fr_tls_server_conf_t *tls;
-#endif
-
-	rad_listen_recv_t recv;
-	rad_listen_send_t send;
-	rad_listen_encode_t encode;
-	rad_listen_decode_t decode;
-	rad_listen_print_t print;
-
-	CONF_SECTION const *cs;
-	void		*data;
-
-#ifdef WITH_STATS
-	fr_stats_t	stats;
-#endif
-};
-
-/*
- *	This shouldn't really be exposed...
- */
-typedef struct listen_socket_t {
-	/*
-	 *	For normal sockets.
-	 */
-	fr_ipaddr_t	my_ipaddr;
-	uint16_t	my_port;
-
-	char const	*interface;
-#ifdef SO_BROADCAST
-	int		broadcast;
-#endif
-	time_t		rate_time;
-	uint32_t	rate_pps_old;
-	uint32_t	rate_pps_now;
-	uint32_t	max_rate;
-
-	/* for outgoing sockets */
-	home_server_t	*home;
-	fr_ipaddr_t	other_ipaddr;
-	uint16_t	other_port;
-
-	int		proto;
-
-#ifdef WITH_TCP
-	/* for a proxy connecting to home servers */
-	time_t		last_packet;
-	time_t		opened;
-	fr_event_t	*ev;
-
-	fr_socket_limit_t limit;
-
-	struct listen_socket_t *parent;
-	RADCLIENT	*client;
-
-	RADIUS_PACKET   *packet; /* for reading partial packets */
-#endif
-
-#ifdef WITH_TLS
-	tls_session_t	*ssn;
-	REQUEST		*request; /* horrible hacks */
-	VALUE_PAIR	*certs;
-	pthread_mutex_t mutex;
-	uint8_t		*data;
-	size_t		partial;
-#endif
-
-	RADCLIENT_LIST	*clients;
-} listen_socket_t;
-
-#define RAD_LISTEN_STATUS_INIT       (0)
-#define RAD_LISTEN_STATUS_KNOWN      (1)
-#define RAD_LISTEN_STATUS_EOL 	     (2)
-#define RAD_LISTEN_STATUS_REMOVE_NOW (3)
+#define RAD_REQUEST_OPTION_COA	(1 << 0)
+#define RAD_REQUEST_OPTION_CTX	(1 << 1)
 
 typedef struct main_config_t {
 	struct main_config *next;
