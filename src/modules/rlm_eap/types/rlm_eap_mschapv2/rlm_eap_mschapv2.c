@@ -209,7 +209,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	uint8_t 	*p;
 	bool		created_challenge = false;
 
-	challenge = pairfind(request->config_items, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
+	challenge = pairfind(request->config, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
 	if (challenge && (challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("control:MS-CHAP-Challenge is incorrect length.  Ignoring it.");
 		challenge = NULL;

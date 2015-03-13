@@ -556,7 +556,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 			continue;
 		}
 		do {
-			addresult(request, inst, request, &request->config_items, pw, 0, "config_items");
+			addresult(request, inst, request, &request->config, pw, 0, "config");
 			addresult(request->reply, inst, request, &request->reply->vps, pw, 1, "reply_items");
 			addresult(request->packet, inst, request, &request->packet->vps, pw, 2, "request_items");
 		} while ((pw = get_next(buffer, inst->ht, &last_found)));

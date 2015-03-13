@@ -332,7 +332,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
 
-	for (vp = fr_cursor_init(&cursor, &request->config_items);
+	for (vp = fr_cursor_init(&cursor, &request->config);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 	     	VERIFY_VP(vp);
@@ -354,7 +354,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			/*
 			 *	Password already exists: use that instead of this one.
 			 */
-			if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
+			if (pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
 				RWDEBUG("Config already contains a \"known good\" password "
 					"(&control:Cleartext-Password).  Ignoring &config:Password-With-Header");
 				break;
@@ -475,8 +475,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 *	Likely going to be proxied.  Avoid printing
 		 *	warning message.
 		 */
-		if (pairfind(request->config_items, PW_REALM, 0, TAG_ANY) ||
-		    (pairfind(request->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY))) {
+		if (pairfind(request->config, PW_REALM, 0, TAG_ANY) ||
+		    (pairfind(request->config, PW_PROXY_TO_REALM, 0, TAG_ANY))) {
 			return RLM_MODULE_NOOP;
 		}
 
@@ -514,7 +514,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 	if (inst->auth_type) {
-		vp = radius_paircreate(request, &request->config_items,
+		vp = radius_paircreate(request, &request->config,
 				       PW_AUTH_TYPE, 0);
 		vp->vp_integer = inst->auth_type;
 	}
@@ -980,7 +980,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	config items, to find out which authentication
 	 *	function to call.
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->config_items);
+	for (vp = fr_cursor_init(&cursor, &request->config);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {

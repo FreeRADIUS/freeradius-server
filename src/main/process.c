@@ -1304,7 +1304,7 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Override the response code if a control:Response-Packet-Type attribute is present.
 	 */
-	vp = pairfind(request->config_items, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
 	if (vp) {
 		if (vp->vp_integer == 256) {
 			RDEBUG2("Not responding to request");
@@ -1319,7 +1319,7 @@ STATE_MACHINE_DECL(request_finish)
 	 */
 	else if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 		if (request->reply->code == 0) {
-			vp = pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY);
+			vp = pairfind(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
 			if (!vp || (vp->vp_integer != 5)) {
 				RDEBUG2("There was no response configured: "
 					"rejecting request");
@@ -1341,7 +1341,7 @@ STATE_MACHINE_DECL(request_finish)
 		rad_postauth(request);
 		break;
 	case PW_CODE_ACCESS_CHALLENGE:
-		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0,
+		pairdelete(&request->config, PW_POST_AUTH_TYPE, 0,
 			   TAG_ANY);
 		vp = pairmake_config("Post-Auth-Type", "Challenge", T_OP_SET);
 		if (vp) rad_postauth(request);
@@ -1359,7 +1359,7 @@ STATE_MACHINE_DECL(request_finish)
 	 *	to reject if a module returns reject.
 	 */
 	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
-		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
+		pairdelete(&request->config, PW_POST_AUTH_TYPE, 0, TAG_ANY);
 		vp = pairmake_config("Post-Auth-Type", "Reject", T_OP_SET);
 		if (vp) rad_postauth(request);
 	}
@@ -2332,7 +2332,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	Run the packet through the post-proxy stage,
 	 *	BEFORE playing games with the attributes.
 	 */
-	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_POST_PROXY_TYPE, 0, TAG_ANY);
 	if (vp) {
 		post_proxy_type = vp->vp_integer;
 	/*
@@ -2369,7 +2369,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		 *	Create config:Post-Proxy-Type
 		 */
 		if (dval) {
-			vp = radius_paircreate(request, &request->config_items, PW_POST_PROXY_TYPE, 0);
+			vp = radius_paircreate(request, &request->config, PW_POST_PROXY_TYPE, 0);
 			vp->vp_integer = dval->value;
 		}
 	}
@@ -2641,12 +2641,12 @@ static int setup_post_proxy_fail(REQUEST *request)
 
 	if (!dval) {
 		DEBUG("No Post-Proxy-Type Fail: ignoring");
-		pairdelete(&request->config_items, PW_POST_PROXY_TYPE, 0, TAG_ANY);
+		pairdelete(&request->config, PW_POST_PROXY_TYPE, 0, TAG_ANY);
 		return 0;
 	}
 
-	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE, 0, TAG_ANY);
-	if (!vp) vp = radius_paircreate(request, &request->config_items,
+	vp = pairfind(request->config, PW_POST_PROXY_TYPE, 0, TAG_ANY);
+	if (!vp) vp = radius_paircreate(request, &request->config,
 					PW_POST_PROXY_TYPE, 0);
 	vp->vp_integer = dval->value;
 
@@ -2731,7 +2731,7 @@ static int request_will_proxy(REQUEST *request)
 	 */
 	if (request->reply->code != 0) return 0;
 
-	vp = pairfind(request->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
 	if (vp) {
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {
@@ -2763,7 +2763,7 @@ static int request_will_proxy(REQUEST *request)
 			return 0;
 		}
 
-	} else if ((vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
+	} else if ((vp = pairfind(request->config, PW_HOME_SERVER_POOL, 0, TAG_ANY)) != NULL) {
 		int pool_type;
 
 		switch (request->packet->code) {
@@ -2793,8 +2793,8 @@ static int request_will_proxy(REQUEST *request)
 		/*
 		 *	Send it directly to a home server (i.e. NAS)
 		 */
-	} else if (((vp = pairfind(request->config_items, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
-		   ((vp = pairfind(request->config_items, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
+	} else if (((vp = pairfind(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
+		   ((vp = pairfind(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
 		VALUE_PAIR *port;
 		uint16_t dst_port;
 		fr_ipaddr_t dst_ipaddr;
@@ -2811,7 +2811,7 @@ static int request_will_proxy(REQUEST *request)
 			dst_ipaddr.prefix = 128;
 		}
 
-		port = pairfind(request->config_items, PW_PACKET_DST_PORT, 0, TAG_ANY);
+		port = pairfind(request->config, PW_PACKET_DST_PORT, 0, TAG_ANY);
 		if (!port) {
 		dst_port = PW_COA_UDP_PORT;
 		} else {
@@ -2941,7 +2941,7 @@ do_home:
 	/*
 	 *	Call the pre-proxy routines.
 	 */
-	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_PRE_PROXY_TYPE, 0, TAG_ANY);
 	if (vp) {
 		DICT_VALUE const *dval = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer);
 		/* Must be a validation issue */
@@ -3877,7 +3877,7 @@ static void request_coa_originate(REQUEST *request)
 	/*
 	 *	Check whether we want to originate one, or cancel one.
 	 */
-	vp = pairfind(request->config_items, PW_SEND_COA_REQUEST, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_SEND_COA_REQUEST, 0, TAG_ANY);
 	if (!vp) {
 		vp = pairfind(request->coa->proxy->vps, PW_SEND_COA_REQUEST, 0, TAG_ANY);
 	}
@@ -3985,7 +3985,7 @@ static void request_coa_originate(REQUEST *request)
 	coa->packet = rad_copy_packet(coa, request->packet);
 	coa->reply = rad_copy_packet(coa, request->reply);
 
-	coa->config_items = paircopy(coa, request->config_items);
+	coa->config = paircopy(coa, request->config);
 	coa->num_coa_requests = 0;
 	coa->handle = null_handler;
 	coa->number = request->number; /* it's associated with the same request */
@@ -3993,7 +3993,7 @@ static void request_coa_originate(REQUEST *request)
 	/*
 	 *	Call the pre-proxy routines.
 	 */
-	vp = pairfind(request->config_items, PW_PRE_PROXY_TYPE, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_PRE_PROXY_TYPE, 0, TAG_ANY);
 	if (vp) {
 		DICT_VALUE const *dval = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer);
 		/* Must be a validation issue */

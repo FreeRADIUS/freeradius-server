@@ -934,7 +934,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 		if (t->default_method != 0) {
 			RDEBUG2("Setting default EAP type for tunneled EAP session");
-			vp = pairmake(fake, &fake->config_items, "EAP-Type", "0", T_OP_EQ);
+			vp = pairmake(fake, &fake->config, "EAP-Type", "0", T_OP_EQ);
 			vp->vp_integer = t->default_method;
 		}
 		break; }
@@ -982,7 +982,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 */
 			if (t->default_method != 0) {
 				RDEBUG2("Setting default EAP type for tunneled EAP session");
-				vp = pairmake(fake, &fake->config_items, "EAP-Type", "0", T_OP_EQ);
+				vp = pairmake(fake, &fake->config, "EAP-Type", "0", T_OP_EQ);
 				vp->vp_integer = t->default_method;
 			}
 		}
@@ -990,7 +990,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	setup_fake_request(request, fake, t);
 
-	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
+	if ((vp = pairfind(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 		fake->server = vp->vp_strvalue;
 
 	} else if (t->virtual_server) {
@@ -1024,7 +1024,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY);
+		vp = pairfind(fake->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
 
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
@@ -1097,8 +1097,8 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			pairfilter(request, &request->config_items,
-				   &fake->config_items,
+			pairfilter(request, &request->config,
+				   &fake->config,
 				   PW_PROXY_TO_REALM, 0, TAG_ANY);
 
 			/*

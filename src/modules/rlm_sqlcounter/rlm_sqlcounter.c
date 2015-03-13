@@ -516,7 +516,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		return rcode;
 	}
 
-	limit = pair_find_by_da(request->config_items, da, TAG_ANY);
+	limit = pair_find_by_da(request->config, da, TAG_ANY);
 	if (limit == NULL) {
 		/* Yes this really is 'check' as distinct from control */
 		RWDEBUG2("Couldn't find check attribute, control:%s, doing nothing...", inst->limit_name);

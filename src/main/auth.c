@@ -111,7 +111,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 		if (!request->password) {
 			VALUE_PAIR *auth_type;
 
-			auth_type = pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY);
+			auth_type = pairfind(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
 			if (auth_type) {
 				snprintf(clean_password, sizeof(clean_password),
 					 "<via Auth-Type = %s>",
@@ -180,7 +180,7 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 *	if the authentication type is PW_AUTHTYPE_ACCEPT or
 	 *	PW_AUTHTYPE_REJECT.
 	 */
-	fr_cursor_init(&cursor, &request->config_items);
+	fr_cursor_init(&cursor, &request->config);
 	while ((auth_type_pair = fr_cursor_next_by_num(&cursor, PW_AUTH_TYPE, 0, TAG_ANY))) {
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
@@ -223,11 +223,11 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 *	been set, and complain if so.
 	 */
 	if (auth_type < 0) {
-		if (pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY) != NULL) {
+		if (pairfind(request->config, PW_CRYPT_PASSWORD, 0, TAG_ANY) != NULL) {
 			RWDEBUG2("Please update your configuration, and remove 'Auth-Type = Crypt'");
 			RWDEBUG2("Use the PAP module instead");
 		}
-		else if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) != NULL) {
+		else if (pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) != NULL) {
 			RWDEBUG2("Please update your configuration, and remove 'Auth-Type = Local'");
 			RWDEBUG2("Use the PAP or CHAP modules instead");
 		}
@@ -294,7 +294,7 @@ int rad_postauth(REQUEST *request)
 	/*
 	 *	Do post-authentication calls. ignoring the return code.
 	 */
-	vp = pairfind(request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_POST_AUTH_TYPE, 0, TAG_ANY);
 	if (vp) {
 		postauth_type = vp->vp_integer;
 		RDEBUG2("Using Post-Auth-Type %s",
@@ -378,7 +378,7 @@ int rad_authenticate(REQUEST *request)
 		 */
 		case PW_CODE_ACCESS_ACCEPT:
 			tmp = radius_paircreate(request,
-						&request->config_items,
+						&request->config,
 						PW_AUTH_TYPE, 0);
 			if (tmp) tmp->vp_integer = PW_AUTHTYPE_ACCEPT;
 			goto authenticate;
@@ -459,7 +459,7 @@ autz_redo:
 		return result;
 	}
 	if (!autz_retry) {
-		tmp = pairfind(request->config_items, PW_AUTZ_TYPE, 0, TAG_ANY);
+		tmp = pairfind(request->config, PW_AUTZ_TYPE, 0, TAG_ANY);
 		if (tmp) {
 			autz_type = tmp->vp_integer;
 			RDEBUG2("Using Autz-Type %s",
@@ -479,7 +479,7 @@ autz_redo:
 #ifdef WITH_PROXY
 	    (request->proxy == NULL) &&
 #endif
-	    ((tmp = pairfind(request->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY)) != NULL)) {
+	    ((tmp = pairfind(request->config, PW_PROXY_TO_REALM, 0, TAG_ANY)) != NULL)) {
 		REALM *realm;
 
 		realm = realm_find2(tmp->vp_strvalue);
@@ -566,12 +566,12 @@ authenticate:
 
 #ifdef WITH_SESSION_MGMT
 	if (result >= 0 &&
-	    (check_item = pairfind(request->config_items, PW_SIMULTANEOUS_USE, 0, TAG_ANY)) != NULL) {
+	    (check_item = pairfind(request->config, PW_SIMULTANEOUS_USE, 0, TAG_ANY)) != NULL) {
 		int r, session_type = 0;
 		char		logstr[1024];
 		char		umsg[MAX_STRING_LEN + 1];
 
-		tmp = pairfind(request->config_items, PW_SESSION_TYPE, 0, TAG_ANY);
+		tmp = pairfind(request->config, PW_SESSION_TYPE, 0, TAG_ANY);
 		if (tmp) {
 			session_type = tmp->vp_integer;
 			RDEBUG2("Using Session-Type %s",
@@ -676,7 +676,7 @@ int rad_virtual_server(REQUEST *request)
 	result = rad_authenticate(request);
 
 	if (request->reply->code == PW_CODE_ACCESS_REJECT) {
-		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
+		pairdelete(&request->config, PW_POST_AUTH_TYPE, 0, TAG_ANY);
 		vp = pairmake_config("Post-Auth-Type", "Reject", T_OP_SET);
 		if (vp) rad_postauth(request);
 	}

@@ -119,7 +119,7 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pai
 	/*
 	 *	Send as many packets as necessary to different destinations.
 	 */
-	fr_cursor_init(&cursor, &request->config_items);
+	fr_cursor_init(&cursor, &request->config);
 	while ((vp = fr_cursor_next_by_num(&cursor, PW_REPLICATE_TO_REALM, 0, TAG_ANY))) {
 		home_server_t *home;
 		REALM *realm;

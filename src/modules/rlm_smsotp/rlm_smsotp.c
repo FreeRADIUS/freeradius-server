@@ -308,7 +308,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	if (state != NULL) {
 		DEBUG("rlm_smsotp: Found reply to access challenge (AUTZ), Adding Auth-Type '%s'",inst->authtype);
 
-		pairdelete(&request->config_items, PW_AUTH_TYPE, 0, TAG_ANY); /* delete old auth-type */
+		pairdelete(&request->config, PW_AUTH_TYPE, 0, TAG_ANY); /* delete old auth-type */
 		pairmake_config("Auth-Type", inst->authtype, T_OP_SET);
 	}
 

@@ -32,7 +32,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 		return RLM_MODULE_FAIL;
 	}
 
-	key = pair_find_by_da(request->config_items, da, TAG_ANY);
+	key = pair_find_by_da(request->config, da, TAG_ANY);
 	if (!key) {
 		REDEBUG("Yubikey-Key attribute not found in control list, can't decrypt OTP data");
 		return RLM_MODULE_INVALID;
@@ -120,7 +120,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	/*
 	 *	Now we check for replay attacks
 	 */
-	vp = pair_find_by_da(request->config_items, da, TAG_ANY);
+	vp = pair_find_by_da(request->config, da, TAG_ANY);
 	if (!vp) {
 		RWDEBUG("Yubikey-Counter not found in control list, skipping replay attack checks");
 		return RLM_MODULE_OK;

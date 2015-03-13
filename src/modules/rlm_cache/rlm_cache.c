@@ -119,7 +119,7 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 {
 	VALUE_PAIR *vp;
 
-	vp = pairfind(request->config_items, PW_CACHE_MERGE, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_CACHE_MERGE, 0, TAG_ANY);
 	if (vp && (vp->vp_integer == 0)) {
 		RDEBUG2("Told not to merge entry into request");
 		return;
@@ -129,7 +129,7 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 
 	if (c->control) {
 		rdebug_pair_list(L_DBG_LVL_2, request, c->control, "&control:");
-		radius_pairmove(request, &request->config_items, paircopy(request, c->control), false);
+		radius_pairmove(request, &request->config, paircopy(request, c->control), false);
 	}
 
 	if (c->packet && request->packet) {
@@ -327,7 +327,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_MERGE, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_CACHE_MERGE, 0, TAG_ANY);
 	if (vp && (vp->vp_integer > 0)) merge = true;
 
 	if (merge) cache_merge(inst, request, c);
@@ -436,7 +436,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *reques
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_STATUS_ONLY, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_CACHE_STATUS_ONLY, 0, TAG_ANY);
 	if (vp && vp->vp_integer) {
 		rcode = c ? RLM_MODULE_OK:
 			    RLM_MODULE_NOTFOUND;
@@ -448,7 +448,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *reques
 	 *	A TTL of 0 means "delete from the cache".
 	 *	A TTL < 0 means "delete from the cache and recreate the entry".
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_TTL, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_CACHE_TTL, 0, TAG_ANY);
 	if (vp) ttl = vp->vp_signed;
 
 	/*
@@ -494,7 +494,7 @@ insert:
 	 *	If Cache-Read-Only == yes, then we only allow already cached entries
 	 *	to be merged into the request
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_READ_ONLY, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_CACHE_READ_ONLY, 0, TAG_ANY);
 	if (vp && vp->vp_integer) {
 		rcode = RLM_MODULE_NOTFOUND;
 		goto finish;
@@ -513,7 +513,7 @@ finish:
 	/*
 	 *	Clear control attributes
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->config_items);
+	for (vp = fr_cursor_init(&cursor, &request->config);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (vp->da->vendor == 0) switch (vp->da->attr) {

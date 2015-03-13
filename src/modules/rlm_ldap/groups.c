@@ -808,7 +808,7 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 	int		ret;
 	vp_cursor_t	cursor;
 
-	fr_cursor_init(&cursor, &request->config_items);
+	fr_cursor_init(&cursor, &request->config);
 
 	/*
 	 *	We return RLM_MODULE_INVALID here as an indication
