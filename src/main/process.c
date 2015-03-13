@@ -332,6 +332,9 @@ STATE_MACHINE_DECL(coa_running);
 STATE_MACHINE_DECL(coa_wait_for_reply);
 STATE_MACHINE_DECL(coa_no_reply);
 static void coa_separate(REQUEST *request);
+#define COA_SEPARATE if (request->coa) coa_separate(request->coa);
+#else
+#define COA_SEPARATE
 #endif
 
 #undef USEC
@@ -829,15 +832,6 @@ static void request_process_timer(REQUEST *request)
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
 
-#ifdef WITH_COA
-	/*
-	 *	If we originated a CoA request, divorce it from the
-	 *	parent.  Then, set up the timers so that we can clean
-	 *	it up as appropriate.
-	 */
-	if (request->coa) coa_separate(request->coa);
-#endif
-
 	gettimeofday(&now, NULL);
 
 	/*
@@ -1018,6 +1012,7 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
+	COA_SEPARATE;
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -1076,6 +1071,7 @@ STATE_MACHINE_DECL(request_response_delay)
 
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
+	COA_SEPARATE;
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -1433,6 +1429,7 @@ STATE_MACHINE_DECL(request_running)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
+		COA_SEPARATE;
 		request_process_timer(request);
 		break;
 
