@@ -551,8 +551,13 @@ static void proxy_reply_too_late(REQUEST *request)
 #endif
 
 
-/*
- *	Only ever called from the master thread.
+/** Mark a request DONE and clean it up.
+ *
+ *  When a request is DONE, it can have ties to a number of other
+ *  portions of the server.  The request hash, proxy hash, events,
+ *  child threads, etc.  This function takes care of either cleaning
+ *  up the request, or managing the timers to wait for the ties to be
+ *  removed.
  */
 STATE_MACHINE_DECL(request_done)
 {
@@ -985,6 +990,19 @@ static void request_dup(REQUEST *request)
 	      request->component, request->module);
 }
 
+
+/** Sit on a request until it's time to clean it up.
+ *
+ *  A NAS may not see a response from the server.  When the NAS
+ *  retransmits, we want to be able to send a cached reply back.  The
+ *  alternative is to re-process the packet, which does bad things for
+ *  EAP, among others.
+ *
+ *  IF we do see a NAS retransmit, we extend the cleanup delay,
+ *  because the NAS might miss our cached reply.
+ *
+ *  Otherwise, once we reach cleanup_delay, we transition to DONE.
+ */
 STATE_MACHINE_DECL(request_cleanup_delay)
 {
 	struct timeval when, now;
@@ -1045,6 +1063,17 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 	}
 }
 
+
+/** Sit on a request until it's time to respond to it.
+ *
+ *  For security reasons, rejects (and maybe some other) packets are
+ *  delayed for a while before we respond.  This delay means that
+ *  badly behaved NASes don't hammer the server with authentication
+ *  attempts.
+ *
+ *  Otherwise, once we reach response_delay, we send the reply, and
+ *  transition to cleanup_delay.
+ */
 STATE_MACHINE_DECL(request_response_delay)
 {
 	struct timeval when, now;
@@ -1163,6 +1192,12 @@ static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int act
 	return 1;
 }
 
+
+/**  Do the final processing of a request before we reply to the NAS.
+ *
+ *  Various cleanups, suppress responses, copy Proxy-State, and set
+ *  response_delay or cleanup_delay;
+ */
 STATE_MACHINE_DECL(request_finish)
 {
 	VALUE_PAIR *vp;
@@ -1390,6 +1425,10 @@ STATE_MACHINE_DECL(request_finish)
 	}
 }
 
+/** Process a request from a client.
+ *
+ *  The outcome might be that the request is proxied.
+ */
 STATE_MACHINE_DECL(request_running)
 {
 	VERIFY_REQUEST(request);
@@ -2514,6 +2553,11 @@ static int setup_post_proxy_fail(REQUEST *request)
 	return 1;
 }
 
+
+/** Process a request after the proxy has timed out.
+ *
+ *  Run the packet through Post-Proxy-Type Fail
+ */
 STATE_MACHINE_DECL(proxy_no_reply)
 {
 	VERIFY_REQUEST(request);
@@ -2547,6 +2591,11 @@ STATE_MACHINE_DECL(proxy_no_reply)
 	}
 }
 
+/** Process the request after receiving a proxy reply.
+ *
+ *  Throught the post-proxy section, and the through the handler
+ *  function.
+ */
 STATE_MACHINE_DECL(proxy_running)
 {
 	VERIFY_REQUEST(request);
@@ -3091,6 +3140,10 @@ static int request_proxy_anew(REQUEST *request)
 	return 1;
 }
 
+
+/** Ping a home server.
+ *
+ */
 STATE_MACHINE_DECL(request_ping)
 {
 	home_server_t *home = request->home_server;
@@ -3483,6 +3536,13 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 	}
 }
 
+/** Wait for a reply after proxying a request.
+ *
+ *  Retransmit the proxied packet, or time out and go to
+ *  proxy_no_reply.  Mark the home server unresponsive, etc.
+ *
+ *  If we do receive a reply, we transition to proxy_running.
+ */
 STATE_MACHINE_DECL(proxy_wait_for_reply)
 {
 	struct timeval now, when;
@@ -3707,6 +3767,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 	}
 }
 #endif	/* WITH_PROXY */
+
 
 /***********************************************************************
  *
@@ -4074,6 +4135,14 @@ static void coa_retransmit(REQUEST *request)
 				      request);
 }
 
+
+/** Wait for a reply after originating a CoA a request.
+ *
+ *  Retransmit the proxied packet, or time out and go to
+ *  coa_no_reply.  Mark the home server unresponsive, etc.
+ *
+ *  If we do receive a reply, we transition to coa_running.
+ */
 STATE_MACHINE_DECL(coa_wait_for_reply)
 {
 	VERIFY_REQUEST(request);
@@ -4124,6 +4193,11 @@ static void coa_separate(REQUEST *request)
 	request->parent = NULL;
 }
 
+
+/** Process a request after the CoA has timed out.
+ *
+ *  Run the packet through Post-Proxy-Type Fail
+ */
 STATE_MACHINE_DECL(coa_no_reply)
 {
 	char buffer[128];
@@ -4159,6 +4233,12 @@ STATE_MACHINE_DECL(coa_no_reply)
 	}
 }
 
+
+/** Process the request after receiving a coa reply.
+ *
+ *  Throught the post-proxy section, and the through the handler
+ *  function.
+ */
 STATE_MACHINE_DECL(coa_running)
 {
 	VERIFY_REQUEST(request);
