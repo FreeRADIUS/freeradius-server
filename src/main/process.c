@@ -118,7 +118,7 @@ static void request_timer(void *ctx);
  * @param when the event should fine.
  * @param action to perform when we resume processing the request.
  */
-static inline void state_machine_timer(REQUEST *request, struct timeval *when, fr_state_action_t *action)
+static inline void state_machine_timer(REQUEST *request, struct timeval *when, fr_state_action_t action)
 {
 	request->timer_action = action;
 	fr_event_insert(el, request_timer, request, when, &request->ev);
