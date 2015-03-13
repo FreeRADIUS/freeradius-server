@@ -1337,9 +1337,9 @@ STATE_MACHINE_DECL(request_finish)
 		 *	If we've originated this CoA request, it gets
 		 *	cleaned up now.
 		 */
-	        if (request->proxy &&
+		if (request->proxy &&
 		    ((request->proxy->code == PW_CODE_COA_REQUEST) ||
-		     (request->proxy->code == PW_CODE_DISCONNECT_REQUEST)) &&
+		    (request->proxy->code == PW_CODE_DISCONNECT_REQUEST)) &&
 		    (request->packet->code != request->proxy->code)) {
 			NO_CHILD_THREAD;
 			request->child_state = REQUEST_DONE;
@@ -4942,27 +4942,27 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	}
 #endif
 
-       DEBUG("%s: #### Opening IP addresses and Ports ####", main_config.name);
+	DEBUG("%s: #### Opening IP addresses and Ports ####", main_config.name);
 
-       /*
-	*	The server temporarily switches to an unprivileged
-	*	user very early in the bootstrapping process.
-	*	However, some sockets MAY require privileged access
-	*	(bind to device, or to port < 1024, or to raw
-	*	sockets).  Those sockets need to call suid up/down
-	*	themselves around the functions that need a privileged
-	*	uid.
-	*/
-       if (listen_init(cs, &head, spawn_flag) < 0) {
+	/*
+	 *	The server temporarily switches to an unprivileged
+	 *	user very early in the bootstrapping process.
+	 *	However, some sockets MAY require privileged access
+	 *	(bind to device, or to port < 1024, or to raw
+	 *	sockets).  Those sockets need to call suid up/down
+	 *	themselves around the functions that need a privileged
+	 *	uid.
+	 */
+	if (listen_init(cs, &head, spawn_flag) < 0) {
 		fr_exit_now(1);
 	}
 
 	main_config.listen = head;
 
 	/*
-	 *	At this point, no one has any business *ever* going
-	 *	back to root uid.
-	 */
+	*	At this point, no one has any business *ever* going
+	*	back to root uid.
+	*/
 	rad_suid_down_permanent();
 
 	return 1;
