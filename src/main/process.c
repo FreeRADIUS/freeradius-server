@@ -370,6 +370,8 @@ static void coa_separate(REQUEST *request);
 #define COA_SEPARATE
 #endif
 
+#define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {request_done(request, FR_ACTION_DONE);return;}} while (0)
+
 #undef USEC
 #define USEC (1000000)
 
@@ -1073,6 +1075,7 @@ static void NONNULL request_cleanup_delay(REQUEST *request, int action)
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
 	COA_SEPARATE;
+	CHECK_FOR_STOP;
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -1153,6 +1156,7 @@ static void NONNULL request_response_delay(REQUEST *request, int action)
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
 	COA_SEPARATE;
+	CHECK_FOR_STOP;
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -1274,21 +1278,9 @@ static void NONNULL request_finish(REQUEST *request, int action)
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
 
 	(void) action;	/* -Wunused */
-
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
-#ifdef WITH_DETAIL
-		/*
-		 *	Always send a reply to the detail listener.
-		 */
-		if (request->listener->type == RAD_LISTEN_DETAIL) {
-			goto do_detail;
-		}
-#endif
-		NO_CHILD_THREAD;
-		return;
-	}
 
 #ifdef WITH_COA
 	/*
@@ -1384,7 +1376,6 @@ static void NONNULL request_finish(REQUEST *request, int action)
 	 *	Always send the reply to the detail listener.
 	 */
 	if (request->listener->type == RAD_LISTEN_DETAIL) {
-	do_detail:
 		request->simul_max = 1;
 		request->listener->send(request->listener, request);
 		/*
@@ -1545,6 +1536,7 @@ static void NONNULL request_running(REQUEST *request, int action)
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
 
 	switch (action) {
 	case FR_ACTION_TIMER:
@@ -2677,6 +2669,7 @@ static void NONNULL proxy_no_reply(REQUEST *request, int action)
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -2714,6 +2707,7 @@ static void NONNULL proxy_running(REQUEST *request, int action)
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -3658,16 +3652,12 @@ static void NONNULL proxy_wait_for_reply(REQUEST *request, int action)
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
 
 	rad_assert(request->packet->code != PW_CODE_STATUS_SERVER);
 	rad_assert(request->home_server != NULL);
 
 	gettimeofday(&now, NULL);
-
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		request_done(request, FR_ACTION_DONE);
-		return;
-	}
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -4258,6 +4248,7 @@ static void NONNULL coa_wait_for_reply(REQUEST *request, int action)
 
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
+	CHECK_FOR_STOP;
 
 	switch (action) {
 	case FR_ACTION_TIMER:
@@ -4313,6 +4304,7 @@ static void NONNULL coa_no_reply(REQUEST *request, int action)
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
 
 	switch (action) {
 	case FR_ACTION_TIMER:
@@ -4351,6 +4343,7 @@ static void NONNULL coa_running(REQUEST *request, int action)
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
+	CHECK_FOR_STOP;
 
 	switch (action) {
 	case FR_ACTION_TIMER:
