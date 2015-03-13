@@ -918,23 +918,7 @@ static void request_process_timer(REQUEST *request)
 		break;
 
 	case REQUEST_CLEANUP_DELAY:
-		rad_assert(request->root->cleanup_delay > 0);
-
-#ifdef WITH_COA
-		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
-#endif
-
-		when = request->reply->timestamp;
-		when.tv_sec += request->root->cleanup_delay;
-
-		if (timercmp(&when, &now, >)) {
-#ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
-#endif
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-			return;
-		} /* else it's time to clean up */
-		/* FALL-THROUGH */
+		break;
 
 	case REQUEST_DONE:
 		goto done;
@@ -1028,7 +1012,7 @@ static void request_dup(REQUEST *request)
 
 STATE_MACHINE_DECL(request_cleanup_delay)
 {
-	struct timeval when;
+	struct timeval when, now;
 
 	VERIFY_REQUEST(request);
 
@@ -1060,8 +1044,23 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 #endif
 
 	case FR_ACTION_TIMER:
-		request_process_timer(request);
-		return;
+		fr_event_now(el, &now);
+
+		rad_assert(request->root->cleanup_delay > 0);
+
+		when = request->reply->timestamp;
+		when.tv_sec += request->root->cleanup_delay;
+
+		if (timercmp(&when, &now, >)) {
+#ifdef DEBUG_STATE_MACHINE
+			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
+#endif
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			return;
+		} /* else it's time to clean up */
+
+		request_done(request, REQUEST_DONE);
+		break;
 
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
@@ -1096,9 +1095,6 @@ STATE_MACHINE_DECL(request_response_delay)
 		fr_event_now(el, &now);
 
 		rad_assert(request->response_delay.tv_sec > 0);
-#ifdef WITH_COA
-		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
-#endif
 
 		/*
 		 *	See if it's time to send the reply.  If not,
