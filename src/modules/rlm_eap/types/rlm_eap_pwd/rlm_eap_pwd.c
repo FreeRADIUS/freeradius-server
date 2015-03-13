@@ -415,7 +415,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 		pwd_session->peer_id_len);
 		p[fake->username->vp_length] = 0;
 
-		if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
+		if ((vp = pairfind(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 			fake->server = vp->vp_strvalue;
 		} else if (inst->conf->virtual_server) {
 			fake->server = inst->conf->virtual_server;
@@ -451,7 +451,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 
-		if ((pw = pairfind(fake->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
+		if ((pw = pairfind(fake->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
 			DEBUG2("failed to find password for %s to do pwd authentication",
 			pwd_session->peer_id);
 			talloc_free(fake);

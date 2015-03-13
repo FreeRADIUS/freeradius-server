@@ -62,7 +62,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	 *	Set the response code.  Default to "fail" if none was
 	 *	specified.
 	 */
-	vp = pairfind(request->config_items, PW_CHBIND_RESPONSE_CODE, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_CHBIND_RESPONSE_CODE, 0, TAG_ANY);
 	if (vp) {
 		ptr[0] = vp->vp_integer;
 	} else {

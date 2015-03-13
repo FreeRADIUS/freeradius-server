@@ -462,7 +462,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *  Check if Pool-Name attribute exists. If it exists check our name and
 	 *  run only if they match
 	 */
-	vp = pairfind(request->config_items, PW_POOL_NAME, 0, TAG_ANY);
+	vp = pairfind(request->config, PW_POOL_NAME, 0, TAG_ANY);
 	if (vp != NULL){
 		if (!inst->name || (strcmp(inst->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;

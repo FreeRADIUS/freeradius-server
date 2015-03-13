@@ -483,7 +483,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (pairfind(request->config_items, PW_POOL_NAME, 0, TAG_ANY) == NULL) {
+	if (pairfind(request->config, PW_POOL_NAME, 0, TAG_ANY) == NULL) {
 		RDEBUG("No Pool-Name defined");
 
 		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);

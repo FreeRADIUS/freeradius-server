@@ -526,7 +526,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 #ifdef WITH_PROXY
 	request->proxy_reply = NULL;
 #endif
-	request->config_items = NULL;
+	request->config = NULL;
 	request->username = NULL;
 	request->password = NULL;
 	request->timestamp = time(NULL);
@@ -1024,7 +1024,7 @@ void verify_request(char const *file, int line, REQUEST *request)
 	(void) talloc_get_type_abort(request, REQUEST);
 
 #ifdef WITH_VERIFY_PTR
-	fr_pair_verify_list(file, line, request, request->config_items);
+	fr_pair_verify_list(file, line, request, request->config);
 	fr_pair_verify_list(file, line, request, request->state);
 #endif
 

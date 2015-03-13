@@ -2364,7 +2364,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		break;
 
 	case HOME_POOL_KEYED_BALANCE:
-		if ((vp = pairfind(request->config_items, PW_LOAD_BALANCE_KEY, 0, TAG_ANY)) != NULL) {
+		if ((vp = pairfind(request->config, PW_LOAD_BALANCE_KEY, 0, TAG_ANY)) != NULL) {
 			hash = fr_hash(vp->vp_strvalue, vp->vp_length);
 			start = hash % pool->num_home_servers;
 			break;

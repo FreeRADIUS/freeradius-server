@@ -135,7 +135,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		VALUE_PAIR *vp;
 
 		auth_type_found = 0;
-		vp = pairfind(request->config_items, PW_AUTHTYPE, 0, TAG_ANY);
+		vp = pairfind(request->config, PW_AUTHTYPE, 0, TAG_ANY);
 		if (vp) {
 			auth_type_found = 1;
 			if (strcmp(vp->vp_strvalue, inst->name)) {

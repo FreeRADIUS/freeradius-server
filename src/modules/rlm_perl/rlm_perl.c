@@ -802,8 +802,8 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 
 		perl_store_vps(request->packet, request, &request->packet->vps, rad_request_hv, "RAD_REQUEST", "request");
 		perl_store_vps(request->reply, request, &request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
-		perl_store_vps(request, request, &request->config_items, rad_check_hv, "RAD_CHECK", "control");
-		perl_store_vps(request, request, &request->config_items, rad_config_hv, "RAD_CONFIG", "control");
+		perl_store_vps(request, request, &request->config, rad_check_hv, "RAD_CHECK", "control");
+		perl_store_vps(request, request, &request->config, rad_config_hv, "RAD_CONFIG", "control");
 
 #ifdef WITH_PROXY
 		rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
@@ -878,8 +878,8 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		}
 
 		if ((get_hv_content(request, request, rad_check_hv, &vp, "RAD_CHECK", "control")) == 0) {
-			pairfree(&request->config_items);
-			request->config_items = vp;
+			pairfree(&request->config);
+			request->config = vp;
 			vp = NULL;
 		}
 

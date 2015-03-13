@@ -1084,7 +1084,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	 *	If the caller isn't looking for the result we can just return the current userdn value.
 	 */
 	if (!force) {
-		vp = pairfind(request->config_items, PW_LDAP_USERDN, 0, TAG_ANY);
+		vp = pairfind(request->config, PW_LDAP_USERDN, 0, TAG_ANY);
 		if (vp) {
 			RDEBUG("Using user DN from request \"%s\"", vp->vp_strvalue);
 			*rcode = RLM_MODULE_OK;
@@ -1170,7 +1170,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	 *	we pass the string back to libldap we must not alter it.
 	 */
 	RDEBUG("User object found at DN \"%s\"", dn);
-	vp = pairmake(request, &request->config_items, "LDAP-UserDN", NULL, T_OP_EQ);
+	vp = pairmake(request, &request->config, "LDAP-UserDN", NULL, T_OP_EQ);
 	if (vp) {
 		pairstrcpy(vp, dn);
 		*rcode = RLM_MODULE_OK;
@@ -1239,11 +1239,11 @@ void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request)
 	*	an LDAP attribute and a password reference attribute in the control list.
 	*/
 	if (inst->expect_password && (debug_flag > 1)) {
-		if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) &&
-		    !pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY) &&
-		    !pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) &&
-		    !pairfind(request->config_items, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
-		    !pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
+		if (!pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) &&
+		    !pairfind(request->config, PW_NT_PASSWORD, 0, TAG_ANY) &&
+		    !pairfind(request->config, PW_USER_PASSWORD, 0, TAG_ANY) &&
+		    !pairfind(request->config, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
+		    !pairfind(request->config, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
 			RWDEBUG("No \"known good\" password added. Ensure the admin user has permission to "
 				"read the password attribute");
 			RWDEBUG("PAP authentication will *NOT* work with Active Directory (if that is what you "

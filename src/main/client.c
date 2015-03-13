@@ -1211,7 +1211,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	c->ipaddr.af = AF_UNSPEC;
 	c->src_ipaddr.af = AF_UNSPEC;
 
-	fr_cursor_init(&cursor, &request->config_items);
+	fr_cursor_init(&cursor, &request->config);
 
 	RDEBUG2("Converting control list to client fields");
 	RINDENT();

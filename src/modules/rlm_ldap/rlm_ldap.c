@@ -1234,7 +1234,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
+	if (pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
 		goto skip_edir;
 	}
 
@@ -1260,7 +1260,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		/*
 		 *	Add Cleartext-Password attribute to the request
 		 */
-		vp = radius_paircreate(request, &request->config_items, PW_CLEARTEXT_PASSWORD, 0);
+		vp = radius_paircreate(request, &request->config, PW_CLEARTEXT_PASSWORD, 0);
 		pairstrcpy(vp, password);
 		vp->vp_length = pass_size;
 

@@ -437,7 +437,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			/* ctx may be reply or proxy */
 			reply_tmp = paircopy(reply_packet, pl->reply);
 			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
-			pairmove(request, &request->config_items, &check_tmp);
+			pairmove(request, &request->config, &check_tmp);
 			pairfree(&check_tmp);
 
 			/*
@@ -482,7 +482,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 /*
  *	Pre-Accounting - read the acct_users file for check_items and
- *	config_items. Reply items are Not Recommended(TM) in acct_users,
+ *	config. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request)

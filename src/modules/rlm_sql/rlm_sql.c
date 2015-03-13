@@ -729,7 +729,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			 	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 			}
 			REXDENT();
-			radius_pairmove(request, &request->config_items, check_tmp, true);
+			radius_pairmove(request, &request->config, check_tmp, true);
 			check_tmp = NULL;
 		}
 
@@ -1103,7 +1103,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			rdebug_pair(2, request, vp, NULL);
 		}
 		REXDENT();
-		radius_pairmove(request, &request->config_items, check_tmp, true);
+		radius_pairmove(request, &request->config, check_tmp, true);
 
 		rcode = RLM_MODULE_OK;
 		check_tmp = NULL;
@@ -1192,7 +1192,7 @@ skipreply:
 		 *  Check for a default_profile or for a User-Profile.
 		 */
 		RDEBUG3("... falling-through to profile processing");
-		user_profile = pairfind(request->config_items, PW_USER_PROFILE, 0, TAG_ANY);
+		user_profile = pairfind(request->config, PW_USER_PROFILE, 0, TAG_ANY);
 
 		char const *profile = user_profile ?
 				      user_profile->vp_strvalue :

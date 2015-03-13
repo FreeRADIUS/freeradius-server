@@ -2759,7 +2759,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	user.
 	 */
 	if ((!ssn->allow_session_resumption) ||
-	    (((vp = pairfind(request->config_items, PW_ALLOW_SESSION_RESUMPTION, 0, TAG_ANY)) != NULL) &&
+	    (((vp = pairfind(request->config, PW_ALLOW_SESSION_RESUMPTION, 0, TAG_ANY)) != NULL) &&
 	     (vp->vp_integer == 0))) {
 		SSL_CTX_remove_session(ssn->ctx,
 				       ssn->ssl->session);

@@ -161,7 +161,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 			fake->packet->vps = paircopy(fake->packet, request->packet->vps);
 
 			/* set the virtual server to use */
-			if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
+			if ((vp = pairfind(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 				fake->server = vp->vp_strvalue;
 			} else {
 				fake->server = inst->virtual_server;

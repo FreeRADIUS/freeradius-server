@@ -1064,7 +1064,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 					vp = paircreate(fake, PW_EAP_TYPE, 0);
 					rad_assert(vp != NULL);
 					vp->vp_integer = t->default_method;
-					pairadd(&fake->config_items, vp);
+					pairadd(&fake->config, vp);
 				}
 
 			} else {
@@ -1161,7 +1161,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		}
 	}
 
-	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
+	if ((vp = pairfind(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 		fake->server = vp->vp_strvalue;
 
 	} else if (t->virtual_server) {
@@ -1220,7 +1220,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY);
+		vp = pairfind(fake->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
 			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);
@@ -1229,8 +1229,8 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			pairfilter(request, &request->config_items,
-				  &fake->config_items,
+			pairfilter(request, &request->config,
+				  &fake->config,
 				  PW_PROXY_TO_REALM, 0, TAG_ANY);
 
 			/*

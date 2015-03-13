@@ -172,7 +172,7 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler)
 		/*
 		 *	For now, do cleartext password authentication.
 		 */
-		vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+		vp = pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 		if (!vp) {
 			REDEBUG2("Cleartext-Password is required for authentication");
 			eap_ds->request->code = PW_EAP_FAILURE;

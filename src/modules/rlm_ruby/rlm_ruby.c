@@ -203,7 +203,7 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 	char buf[BUF_SIZE]; /* same size as vp_print buffer */
 
 	VALUE_PAIR *vp;
-	VALUE rb_request, rb_result, rb_reply_items, rb_config_items, rbString1, rbString2;
+	VALUE rb_request, rb_result, rb_reply_items, rb_config, rbString1, rbString2;
 
 	int n_tuple;
 	DEBUG("Calling ruby function %s which has id: %lu\n", function_name, func);
@@ -275,12 +275,12 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 		 */
 		if (request) {
 			rb_reply_items = rb_ary_entry(rb_result, 1);
-			rb_config_items = rb_ary_entry(rb_result, 2);
+			rb_config = rb_ary_entry(rb_result, 2);
 
 			add_vp_tuple(request->reply, request, &request->reply->vps,
 				     rb_reply_items, function_name);
-			add_vp_tuple(request, request, &request->config_items,
-				     rb_config_items, function_name);
+			add_vp_tuple(request, request, &request->config,
+				     rb_config, function_name);
 		}
 	} else if (FIXNUM_P(rb_result)) {
 		rcode = FIX2INT(rb_result);

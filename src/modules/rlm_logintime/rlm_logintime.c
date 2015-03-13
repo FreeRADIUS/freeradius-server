@@ -150,7 +150,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	VALUE_PAIR *ends, *timeout;
 	int left;
 
-	ends = pairfind(request->config_items, PW_LOGIN_TIME, 0, TAG_ANY);
+	ends = pairfind(request->config, PW_LOGIN_TIME, 0, TAG_ANY);
 	if (!ends) {
 		return RLM_MODULE_NOOP;
 	}

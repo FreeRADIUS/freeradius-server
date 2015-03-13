@@ -315,7 +315,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->name);
 	if (dval) {
-		vp = radius_paircreate(request, &request->config_items, PW_AUTH_TYPE, 0);
+		vp = radius_paircreate(request, &request->config, PW_AUTH_TYPE, 0);
 		vp->vp_integer = dval->value;
 	}
 

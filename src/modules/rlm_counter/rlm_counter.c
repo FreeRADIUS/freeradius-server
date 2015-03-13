@@ -731,7 +731,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *      Look for the check item
 	 */
-	if ((check_vp = pair_find_by_da(request->config_items, inst->check_attr, TAG_ANY)) == NULL) {
+	if ((check_vp = pair_find_by_da(request->config, inst->check_attr, TAG_ANY)) == NULL) {
 		DEBUG2("rlm_counter: Could not find Check item value pair");
 		return rcode;
 	}

@@ -1260,7 +1260,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 		return RLM_MODULE_NOOP;
 	}
 
-	if (pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY)) {
+	if (pairfind(request->config, PW_AUTH_TYPE, 0, TAG_ANY)) {
 		RWDEBUG2("Auth-Type already set.  Not setting to MS-CHAP");
 		return RLM_MODULE_NOOP;
 	}
@@ -1323,7 +1323,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	 *	want to suppress it.
 	 */
 	if (do_ntlm_auth) {
-		VALUE_PAIR *vp = pairfind(request->config_items, PW_MS_CHAP_USE_NTLM_AUTH, 0, TAG_ANY);
+		VALUE_PAIR *vp = pairfind(request->config, PW_MS_CHAP_USE_NTLM_AUTH, 0, TAG_ANY);
 		if (vp) do_ntlm_auth = (vp->vp_integer > 0);
 	}
 
@@ -1331,9 +1331,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	 *	Find the SMB-Account-Ctrl attribute, or the
 	 *	SMB-Account-Ctrl-Text attribute.
 	 */
-	smb_ctrl = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL, 0, TAG_ANY);
+	smb_ctrl = pairfind(request->config, PW_SMB_ACCOUNT_CTRL, 0, TAG_ANY);
 	if (!smb_ctrl) {
-		password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL_TEXT, 0, TAG_ANY);
+		password = pairfind(request->config, PW_SMB_ACCOUNT_CTRL_TEXT, 0, TAG_ANY);
 		if (password) {
 			smb_ctrl = pairmake_config("SMB-Account-CTRL", "0", T_OP_SET);
 			if (smb_ctrl) {
@@ -1359,12 +1359,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	/*
 	 *	Decide how to get the passwords.
 	 */
-	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	password = pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 
 	/*
 	 *	We need an NT-Password.
 	 */
-	nt_password = pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY);
+	nt_password = pairfind(request->config, PW_NT_PASSWORD, 0, TAG_ANY);
 	if (nt_password) {
 		VERIFY_VP(nt_password);
 
@@ -1415,7 +1415,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	/*
 	 *	Or an LM-Password.
 	 */
-	lm_password = pairfind(request->config_items, PW_LM_PASSWORD, 0, TAG_ANY);
+	lm_password = pairfind(request->config, PW_LM_PASSWORD, 0, TAG_ANY);
 	if (lm_password) {
 		VERIFY_VP(lm_password);
 

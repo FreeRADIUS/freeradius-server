@@ -100,7 +100,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 *
 	 * Drop requests if hop-count > 16 or admin specified another value
 	 */
-	if ((vp = pairfind(request->config_items, 271, DHCP_MAGIC_VENDOR, TAG_ANY))) { /* DHCP-Relay-Max-Hop-Count */
+	if ((vp = pairfind(request->config, 271, DHCP_MAGIC_VENDOR, TAG_ANY))) { /* DHCP-Relay-Max-Hop-Count */
 	    maxhops = vp->vp_integer;
 	}
 	vp = pairfind(request->packet->vps, 259, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Hop-Count */
@@ -124,7 +124,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->lsock.my_ipaddr.ipaddr.ip4addr.s_addr;
 	request->packet->src_port = sock->lsock.my_port;
 
-	vp = pairfind(request->config_items, 270, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Relay-To-IP-Address */
+	vp = pairfind(request->config, 270, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Relay-To-IP-Address */
 	rad_assert(vp != NULL);
 
 	/* set DEST ipaddr/port to the next server ipaddr/port */
@@ -371,7 +371,7 @@ static int dhcp_process(REQUEST *request)
 	}
 
 	/* Packet from client, and we have DHCP-Relay-To-IP-Address */
-	if (pairfind(request->config_items, 270, DHCP_MAGIC_VENDOR, TAG_ANY)) {
+	if (pairfind(request->config, 270, DHCP_MAGIC_VENDOR, TAG_ANY)) {
 		return dhcprelay_process_client_request(request);
 	}
 
