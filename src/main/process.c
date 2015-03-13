@@ -959,8 +959,6 @@ static void request_process_timer(REQUEST *request)
 		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
 #endif
 
-		request->process = request_response_delay;
-
 		when = request->reply->timestamp;
 
 		tv_add(&when, request->response_delay.tv_sec * USEC);
@@ -1487,6 +1485,7 @@ STATE_MACHINE_DECL(request_finish)
 		request->listener->encode(request->listener, request);
 		request->component = "<core>";
 		request->module = "<delay>";
+		request->process = request_response_delay;
 		NO_CHILD_THREAD;
 		request->child_state = REQUEST_RESPONSE_DELAY;
 	}
