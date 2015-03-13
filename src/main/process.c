@@ -111,6 +111,7 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 #define STATE_MACHINE_DECL(_x) static void CC_HINT(nonnull) _x(REQUEST *request, int action)
 
 static void request_timer(void *ctx);
+
 /** Insert #REQUEST back into the event heap, to continue executing at a future time
  *
  * @param request to set add the timer event for.
@@ -121,9 +122,9 @@ static inline void state_machine_timer(REQUEST *request, struct timeval *when, f
 {
 	request->timer_action = action;
 	fr_event_insert(el, request_timer, request, when, &request->ev);
-};
+}
 
-/** @copybrief state_machine_time
+/** @copybrief state_machine_timer
  *
  * @param _x the action to perform when we resume processing the request.
  */
