@@ -512,15 +512,26 @@ static void request_free(REQUEST *request)
 }
 
 
+#ifdef WITH_PROXY
+static void proxy_reply_too_late(REQUEST *request)
+{
+	char buffer[128];
+
+	RDEBUG2("Reply from home server %s port %d  - ID: %d arrived too late.  Try increasing 'retry_delay' or 'max_request_time'",
+		inet_ntop(request->proxy->dst_ipaddr.af,
+			  &request->proxy->dst_ipaddr.ipaddr,
+			  buffer, sizeof(buffer)),
+		request->proxy->dst_port, request->proxy->id);
+}
+#endif
+
+
 /*
  *	Only ever called from the master thread.
  */
 STATE_MACHINE_DECL(request_done)
 {
 	struct timeval now, when;
-#ifdef WITH_PROXY
-	char buffer[128];
-#endif
 
 	VERIFY_REQUEST(request);
 
@@ -621,16 +632,8 @@ STATE_MACHINE_DECL(request_done)
 		break;
 
 #ifdef WITH_PROXY
-		/*
-		 *	Child is still alive, and we're receiving more
-		 *	packets from the home server.
-		 */
 	case FR_ACTION_PROXY_REPLY:
-		RDEBUG2("Reply from home server %s port %d  - ID: %d arrived too late.  Try increasing 'retry_delay' or 'max_request_time'",
-		       inet_ntop(request->proxy->src_ipaddr.af,
-				 &request->proxy->src_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-			request->proxy->dst_port, request->proxy->id);
+		proxy_reply_too_late(request);
 		return;
 #endif
 
@@ -1080,10 +1083,6 @@ static void request_queue_or_run(REQUEST *request,
 
 STATE_MACHINE_DECL(request_common)
 {
-#ifdef WITH_PROXY
-	char buffer[128];
-#endif
-
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
@@ -1110,16 +1109,6 @@ STATE_MACHINE_DECL(request_common)
 	case FR_ACTION_TIMER:
 		request_process_timer(request);
 		return;
-
-#ifdef WITH_PROXY
-	case FR_ACTION_PROXY_REPLY:
-		RDEBUG2("Reply from home server %s port %d  - ID: %d arrived too late.  Try increasing 'retry_delay' or 'max_request_time'",
-		        inet_ntop(request->proxy->dst_ipaddr.af,
-				 &request->proxy->dst_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-			request->proxy->dst_port, request->proxy->id);
-		return;
-#endif
 
 	default:
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
@@ -1156,7 +1145,10 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
+		proxy_reply_too_late(request);
+		return;
 #endif
+
 	case FR_ACTION_TIMER:
 		request_common(request, action);
 		return;
@@ -1184,7 +1176,10 @@ STATE_MACHINE_DECL(request_response_delay)
 
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
+		proxy_reply_too_late(request);
+		return;
 #endif
+
 	case FR_ACTION_TIMER:
 		request_common(request, action);
 		break;
@@ -2621,9 +2616,12 @@ STATE_MACHINE_DECL(proxy_no_reply)
 	switch (action) {
 	case FR_ACTION_DUP:
 	case FR_ACTION_TIMER:
-	case FR_ACTION_PROXY_REPLY:
 		request_common(request, action);
 		break;
+
+	case FR_ACTION_PROXY_REPLY:
+		proxy_reply_too_late(request);
+		return;
 
 	case FR_ACTION_RUN:
 		if (process_proxy_reply(request, NULL)) {
@@ -2645,12 +2643,6 @@ STATE_MACHINE_DECL(proxy_running)
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
-		/*
-		 *	Silently ignore duplicate proxy replies.
-		 */
-	case FR_ACTION_PROXY_REPLY:
-		break;
-
 	case FR_ACTION_DUP:
 	case FR_ACTION_TIMER:
 		request_common(request, action);
@@ -2663,7 +2655,7 @@ STATE_MACHINE_DECL(proxy_running)
 		request_finish(request, action);
 		break;
 
-	default:
+	default:		/* duplicate proxy replies are suppressed */
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
 	}
@@ -4300,12 +4292,6 @@ STATE_MACHINE_DECL(coa_running)
 	TRACE_STATE_MACHINE;
 
 	switch (action) {
-		/*
-		 *	Silently ignore duplicate proxy replies.
-		 */
-	case FR_ACTION_PROXY_REPLY:
-		break;
-
 	case FR_ACTION_TIMER:
 		request_process_timer(request);
 		break;
