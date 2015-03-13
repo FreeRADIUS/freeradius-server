@@ -843,18 +843,9 @@ done:
 
 
 /*
- *	Function to do all time-related events.
- *
- *	- separate child from parent in master thread
- *	- if a request is marked STOP, then:
- *	  - wait a bit more if it's queued or running
- *	  - otherwise transition to DONE, where this
- *          function is no longer called
- *	- enforce max_request_time for QUEUED or RUNNING
- *	- enforce cleanup_delay
- *	- acknowledge DONE state
+ *	Enforce max_request_time.
  */
-static void request_process_timer(REQUEST *request)
+static void request_max_time(REQUEST *request)
 {
 	struct timeval now, when;
 	rad_assert(request->magic == REQUEST_MAGIC);
@@ -867,92 +858,59 @@ static void request_process_timer(REQUEST *request)
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
 
-	gettimeofday(&now, NULL);
-
 	/*
-	 *	The request was forcibly stopped.
+	 *	The child thread has acknowledged it's done.
+	 *	Transition to the DONE state.
+	 *
+	 *	If the request was marked STOP, then the "check for
+	 *	stop" macro already took care of it.
 	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		switch (request->child_state) {
-		case REQUEST_QUEUED:
-		case REQUEST_RUNNING:
-#ifdef HAVE_PTHREAD_H
-			rad_assert(spawn_flag == true);
-#endif
-
-		delay:
-			/*
-			 *	Sleep for some more.  We HOPE that the
-			 *	child will become responsive at some
-			 *	point in the future.
-			 */
-			when = now;
-			tv_add(&when, request->delay);
-			request->delay += request->delay >> 1;
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-			return;
-
-			/*
-			 *	These should all be managed by the master thread
-			 */
-#ifdef WITH_PROXY
-		case REQUEST_PROXIED:
-#endif
-		case REQUEST_RESPONSE_DELAY:
-		case REQUEST_CLEANUP_DELAY:
-		case REQUEST_DONE:
-		done:
-			request_done(request, FR_ACTION_DONE);
-			return;
-		}
+	if (request->child_state == REQUEST_DONE) {
+	done:
+		request_done(request, FR_ACTION_DONE);
+		return;
 	}
 
 	/*
-	 *	It's still supposed to be running.
+	 *	The request is still running.  Enforce max_request_time.
 	 */
-	switch (request->child_state) {
-	case REQUEST_QUEUED:
-	case REQUEST_RUNNING:
-		when = request->packet->timestamp;
-		when.tv_sec += request->root->max_request_time;
+	fr_event_now(el, &now);
+	when = request->packet->timestamp;
+	when.tv_sec += request->root->max_request_time;
 
-		/*
-		 *	Taking too long: tell it to die.
-		 */
-		if (timercmp(&now, &when, >=)) {
+	/*
+	 *	Taking too long: tell it to die.
+	 */
+	if (timercmp(&now, &when, >=)) {
 #ifdef HAVE_PTHREAD_H
-			/*
-			 *	If there's a child thread processing it,
-			 *	complain.
-			 */
-			if (spawn_flag &&
-			    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
-				ERROR("Unresponsive child for request %u, in component %s module %s",
-				      request->number,
-				      request->component ? request->component : "<core>",
-				      request->module ? request->module : "<core>");
-				exec_trigger(request, NULL, "server.thread.unresponsive", true);
-			}
-#endif
-			request->master_state = REQUEST_STOP_PROCESSING;
+		/*
+		 *	If there's a child thread processing it,
+		 *	complain.
+		 */
+		if (spawn_flag &&
+		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
+			ERROR("Unresponsive child for request %u, in component %s module %s",
+			      request->number,
+			      request->component ? request->component : "<core>",
+			      request->module ? request->module : "<core>");
+			exec_trigger(request, NULL, "server.thread.unresponsive", true);
 		}
-		goto delay;	/* sleep some more */
-
-#ifdef WITH_PROXY
-	case REQUEST_PROXIED:
-		break;
 #endif
-
-	case REQUEST_RESPONSE_DELAY:
-		break;
-
-	case REQUEST_CLEANUP_DELAY:
-		break;
-
-	case REQUEST_DONE:
+		/*
+		 *	Tell the request that it's done.
+		 */
 		goto done;
 	}
 
+	/*
+	 *	Sleep for some more.  We HOPE that the child will
+	 *	become responsive at some point in the future.  We do
+	 *	this by adding 50% to the current timer.
+	 */
+	when = now;
+	tv_add(&when, request->delay);
+	request->delay += request->delay >> 1;
+	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 }
 
 static void request_queue_or_run(REQUEST *request,
@@ -1541,7 +1499,7 @@ static void NONNULL request_running(REQUEST *request, int action)
 	switch (action) {
 	case FR_ACTION_TIMER:
 		COA_SEPARATE;
-		request_process_timer(request);
+		request_max_time(request);
 		break;
 
 	case FR_ACTION_DUP:
@@ -2677,7 +2635,7 @@ static void NONNULL proxy_no_reply(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_TIMER:
-		request_process_timer(request);
+		request_max_time(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
@@ -2715,7 +2673,7 @@ static void NONNULL proxy_running(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_TIMER:
-		request_process_timer(request);
+		request_max_time(request);
 		break;
 
 	case FR_ACTION_RUN:
@@ -4308,7 +4266,7 @@ static void NONNULL coa_no_reply(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		request_process_timer(request);
+		request_max_time(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY: /* too late! */
@@ -4347,7 +4305,7 @@ static void NONNULL coa_running(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		request_process_timer(request);
+		request_max_time(request);
 		break;
 
 	case FR_ACTION_RUN:
