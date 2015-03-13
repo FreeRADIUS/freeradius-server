@@ -846,9 +846,6 @@ done:
  *	  - otherwise transition to DONE, where this
  *          function is no longer called
  *	- enforce max_request_time for QUEUED or RUNNING
- *	- enforce max_request_time for PROXIED
- *	  - change state if we time out for proxy reply
- *	  - otherwise set the timer for the proxy timeout
  *	- enforce cleanup_delay
  *	- enforce reject_delay
  *	- acknowledge DONE state
@@ -948,34 +945,8 @@ static void request_process_timer(REQUEST *request)
 
 #ifdef WITH_PROXY
 	case REQUEST_PROXIED:
-		when = request->packet->timestamp;
-		when.tv_sec += request->root->max_request_time;
-
-		if (timercmp(&now, &when, >=)) {
-			RWDEBUG("No response to proxied request in 'max_request_time'.  Stopping it.");
-			request_done(request, FR_ACTION_DONE);
-			break;
-		}
-
-		rad_assert(request->proxy != NULL);
-
-		/*
-		 *	Delay some more, hoping that we get a response.
-		 */
-		when = request->proxy->timestamp;
-		tv_add(&when, request->delay);
-
-		if (timercmp(&now, &when, >=)) {
-			request->process(request, FR_ACTION_TIMER);
-			return;
-		}
-
-		/*
-		 *	Otherwise set the timer for the future.
-		 */
-		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-		return;
-#endif	/* WITH_PROXY */
+		break;
+#endif
 
 	case REQUEST_RESPONSE_DELAY:
 		rad_assert(request->response_delay.tv_sec > 0);
@@ -4160,6 +4131,9 @@ static void coa_timer(REQUEST *request)
 
 	rad_assert(request->parent == NULL);
 
+	/*
+	 *	Do CoA separation, enforce lifetime, etc.
+	 */
 	if (request->proxy_reply) {
 		request_process_timer(request);
 		return;
