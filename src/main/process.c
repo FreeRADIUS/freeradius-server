@@ -806,6 +806,21 @@ done:
 
 /*
  *	Function to do all time-related events.
+ *
+ *	- separate child from parent in master thread
+ *	- stop processing the packet if the socket was closed
+ *	  we can probably rely on eol_listener for that
+ *	- if a request is marked STOP, then:
+ *	  - wait a bit more if it's queued or running
+ *	  - otherwise transition to DONE, where this
+ *          function is no longer called
+ *	- enforce max_request_time for QUEUED or RUNNING
+ *	- enforce max_request_time for PROXIED
+ *	  - change state if we time out for proxy reply
+ *	  - otherwise set the timer for the proxy timeout
+ *	- enforce cleanup_delay
+ *	- enforce reject_delay
+ *	- acknowledge DONE state
  */
 static void request_process_timer(REQUEST *request)
 {
@@ -890,8 +905,6 @@ static void request_process_timer(REQUEST *request)
 		}
 	}
 
-	rad_assert(request->master_state == REQUEST_ACTIVE);
-
 	/*
 	 *	It's still supposed to be running.
 	 */
@@ -930,7 +943,6 @@ static void request_process_timer(REQUEST *request)
 
 		if (timercmp(&now, &when, >=)) {
 			RWDEBUG("No response to proxied request in 'max_request_time'.  Stopping it.");
-			request->master_state = REQUEST_STOP_PROCESSING;
 			request_done(request, FR_ACTION_DONE);
 			break;
 		}
