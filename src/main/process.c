@@ -847,7 +847,6 @@ done:
  *          function is no longer called
  *	- enforce max_request_time for QUEUED or RUNNING
  *	- enforce cleanup_delay
- *	- enforce reject_delay
  *	- acknowledge DONE state
  */
 static void request_process_timer(REQUEST *request)
@@ -949,31 +948,7 @@ static void request_process_timer(REQUEST *request)
 #endif
 
 	case REQUEST_RESPONSE_DELAY:
-		rad_assert(request->response_delay.tv_sec > 0);
-#ifdef WITH_COA
-		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
-#endif
-
-		when = request->reply->timestamp;
-
-		tv_add(&when, request->response_delay.tv_sec * USEC);
-		tv_add(&when, request->response_delay.tv_usec);
-
-		if (timercmp(&when, &now, >)) {
-#ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_response_delay");
-#endif
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-			return;
-		} /* else it's time to send the reject */
-
-		RDEBUG2("Sending delayed response");
-		request->listener->send(request->listener, request);
-		debug_packet(request, request->reply, false);
-
-		request->process = request_cleanup_delay;
-		request->child_state = REQUEST_CLEANUP_DELAY;
-		/* FALL-THROUGH */
+		break;
 
 	case REQUEST_CLEANUP_DELAY:
 		rad_assert(request->root->cleanup_delay > 0);
@@ -1177,6 +1152,8 @@ static void NONNULL request_cleanup_delay(REQUEST *request, int action)
  */
 static void NONNULL request_response_delay(REQUEST *request, int action)
 {
+	struct timeval when, now;
+
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
@@ -1197,7 +1174,38 @@ static void NONNULL request_response_delay(REQUEST *request, int action)
 #endif
 
 	case FR_ACTION_TIMER:
-		request_process_timer(request);
+		fr_event_now(el, &now);
+
+		rad_assert(request->response_delay.tv_sec > 0);
+#ifdef WITH_COA
+		rad_assert(!request->proxy || (request->packet->code == request->proxy->code));
+#endif
+
+		/*
+		 *	See if it's time to send the reply.  If not,
+		 *	we wait some more.
+		 */
+		when = request->reply->timestamp;
+
+		tv_add(&when, request->response_delay.tv_sec * USEC);
+		tv_add(&when, request->response_delay.tv_usec);
+
+		if (timercmp(&when, &now, >)) {
+#ifdef DEBUG_STATE_MACHINE
+			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_response_delay");
+#endif
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+			return;
+		} /* else it's time to send the reject */
+
+		RDEBUG2("Sending delayed response");
+		debug_packet(request, request->reply, false);
+		request->listener->send(request->listener, request);
+
+		/*
+		 *	Clean up the request.
+		 */
+		request_cleanup_delay_init(request);
 		break;
 
 	default:
