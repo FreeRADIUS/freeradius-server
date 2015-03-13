@@ -841,8 +841,6 @@ done:
  *	Function to do all time-related events.
  *
  *	- separate child from parent in master thread
- *	- stop processing the packet if the socket was closed
- *	  we can probably rely on eol_listener for that
  *	- if a request is marked STOP, then:
  *	  - wait a bit more if it's queued or running
  *	  - otherwise transition to DONE, where this
@@ -875,28 +873,7 @@ static void request_process_timer(REQUEST *request)
 	 *	it up as appropriate.
 	 */
 	if (request->coa) coa_separate(request->coa, FR_ACTION_TIMER);
-
-	/*
-	 *	If we're the request, OR it isn't originating a CoA
-	 *	request, check more things.
-	 */
-	if (!request->proxy || (request->packet->code == request->proxy->code))
 #endif
-	{
-		rad_assert(request->listener != NULL);
-
-		/*
-		 *	The socket was closed.  Tell the request that
-		 *	there is no point in continuing.
-		 */
-		if (request->listener->status != RAD_LISTEN_STATUS_KNOWN) {
-			if ((request->master_state == REQUEST_ACTIVE) &&
-			    (request->child_state < REQUEST_RESPONSE_DELAY)) {
-				WARN("Socket was closed while processing request %u: Stopping it.", request->number);
-				request->master_state = REQUEST_STOP_PROCESSING;
-			}
-		}
-	}
 
 	gettimeofday(&now, NULL);
 
@@ -2155,6 +2132,7 @@ static int eol_listener(void *ctx, void *data)
 	if (request->listener != this) return 0;
 
 	request->master_state = REQUEST_STOP_PROCESSING;
+	request->process = request_done;
 
 	return 0;
 }
