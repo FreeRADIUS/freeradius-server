@@ -667,7 +667,7 @@ static void NONNULL request_done(REQUEST *request, int action)
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
 		proxy_reply_too_late(request);
-		return;
+		break;
 #endif
 
 	default:
@@ -1201,12 +1201,12 @@ static void NONNULL request_cleanup_delay(REQUEST *request, int action)
 		when.tv_sec += request->delay;
 
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-		return;
+		break;
 
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
 		proxy_reply_too_late(request);
-		return;
+		break;
 #endif
 
 	case FR_ACTION_TIMER:
@@ -1250,15 +1250,15 @@ static void NONNULL request_response_delay(REQUEST *request, int action)
 	switch (action) {
 	case FR_ACTION_DUP:
 		ERROR("(%u) Discarding duplicate request from "
-		       "client %s port %d - ID: %u due to delayed response",
-		       request->number, request->client->shortname,
-		       request->packet->src_port,request->packet->id);
-		return;
+		      "client %s port %d - ID: %u due to delayed response",
+		      request->number, request->client->shortname,
+		      request->packet->src_port,request->packet->id);
+		break;
 
 #ifdef WITH_PROXY
 	case FR_ACTION_PROXY_REPLY:
 		proxy_reply_too_late(request);
-		return;
+		break;
 #endif
 
 	case FR_ACTION_TIMER:
@@ -2749,7 +2749,7 @@ static void NONNULL proxy_no_reply(REQUEST *request, int action)
 
 	case FR_ACTION_PROXY_REPLY:
 		proxy_reply_too_late(request);
-		return;
+		break;
 
 	case FR_ACTION_RUN:
 		if (process_proxy_reply(request, NULL)) {
