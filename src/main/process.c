@@ -356,7 +356,6 @@ static int insert_into_proxy_hash(REQUEST *request);
 static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 			      RADCLIENT *client, RAD_REQUEST_FUNP fun);
 
-STATE_MACHINE_DECL(request_common);
 STATE_MACHINE_DECL(request_response_delay);
 STATE_MACHINE_DECL(request_cleanup_delay);
 STATE_MACHINE_DECL(request_running);
@@ -1125,32 +1124,6 @@ static void request_dup(REQUEST *request)
 	      request->component, request->module);
 }
 
-STATE_MACHINE_DECL(request_common)
-{
-	VERIFY_REQUEST(request);
-
-	TRACE_STATE_MACHINE;
-	ASSERT_MASTER;
-
-	/*
-	 *	Bail out as early as possible.
-	 */
-	if (request->master_state == REQUEST_STOP_PROCESSING) {
-		request_done(request, FR_ACTION_DONE);
-		return;
-	}
-
-	switch (action) {
-	case FR_ACTION_TIMER:
-		request_process_timer(request);
-		return;
-
-	default:
-		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
-		break;
-	}
-}
-
 
 /** Sit on a request until it's time to clean it up.
  *
@@ -1212,7 +1185,7 @@ static void NONNULL request_cleanup_delay(REQUEST *request, int action)
 #endif
 
 	case FR_ACTION_TIMER:
-		request_common(request, action);
+		request_process_timer(request);
 		return;
 
 	default:
@@ -1264,7 +1237,7 @@ static void NONNULL request_response_delay(REQUEST *request, int action)
 #endif
 
 	case FR_ACTION_TIMER:
-		request_common(request, action);
+		request_process_timer(request);
 		break;
 
 	default:
@@ -2749,7 +2722,7 @@ static void NONNULL proxy_no_reply(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_TIMER:
-		request_common(request, action);
+		request_process_timer(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
@@ -2786,7 +2759,7 @@ static void NONNULL proxy_running(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_TIMER:
-		request_common(request, action);
+		request_process_timer(request);
 		break;
 
 	case FR_ACTION_RUN:
@@ -4201,6 +4174,7 @@ static void coa_timer(REQUEST *request)
 		request_process_timer(request);
 		return;
 	}
+
 	gettimeofday(&now, NULL);
 
 	if (request->delay == 0) {
@@ -4420,7 +4394,7 @@ static void NONNULL coa_no_reply(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		request_common(request, action);
+		request_process_timer(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY: /* too late! */
