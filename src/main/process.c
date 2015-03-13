@@ -70,11 +70,16 @@ static char const *action_codes[] = {
 };
 
 #ifdef DEBUG_STATE_MACHINE
-#define TRACE_STATE_MACHINE if (debug_flag) do { struct timeval debug_tv; \
-						 gettimeofday(&debug_tv, NULL);\
-						 debug_tv.tv_sec -= fr_start_time;\
-						 printf("(%u) %d.%06d ********\tSTATE %s action %s live M-%s C-%s\t********\n",\
-							request->number, (int) debug_tv.tv_sec, (int) debug_tv.tv_usec,  __FUNCTION__, action_codes[action], master_state_names[request->master_state], child_state_names[request->child_state]); } while (0)
+#  define TRACE_STATE_MACHINE \
+if (debug_flag) do { \
+	struct timeval debug_tv; \
+	gettimeofday(&debug_tv, NULL); \
+	debug_tv.tv_sec -= fr_start_time; \
+	printf("(%u) %d.%06d ********\tSTATE %s action %s live M-%s C-%s\t********\n",\
+	       request->number, (int) debug_tv.tv_sec, (int) debug_tv.tv_usec, \
+	       __FUNCTION__, action_codes[action], master_state_names[request->master_state], \
+	       child_state_names[request->child_state]); \
+} while (0)
 
 static char const *master_state_names[REQUEST_MASTER_NUM_STATES] = {
 	"?",
@@ -94,18 +99,35 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 };
 
 #else
-#define TRACE_STATE_MACHINE {}
+#  define TRACE_STATE_MACHINE {}
 #endif
 
-/*
- *	Declare a state in the state machine.
+/** Declare a state in the state machine
  *
+ * Expands to the start of a function definition for a given state.
+ *
+ * @param _x the name of the state.
  */
 #define STATE_MACHINE_DECL(_x) static void CC_HINT(nonnull) _x(REQUEST *request, int action)
 
-#define STATE_MACHINE_TIMER(_x) request->timer_action = _x; \
-		fr_event_insert(el, request_timer, request, \
-				&when, &request->ev);
+static void request_timer(void *ctx);
+/** Insert #REQUEST back into the event heap, to continue executing at a future time
+ *
+ * @param request to set add the timer event for.
+ * @param when the event should fine.
+ * @param action to perform when we resume processing the request.
+ */
+static inline state_machine_timer(REQUEST *request, struct timeval *when, fr_state_action_t *action)
+{
+	request->timer_action = action;
+	fr_event_insert(el, request_timer, request, when, &request->ev);
+};
+
+/** @copybrief state_machine_time
+ *
+ * @param _x the action to perform when we resume processing the request.
+ */
+#define STATE_MACHINE_TIMER(_x) state_machine_timer(request, &when, _x)
 
 /*
  *	We need a different VERIFY_REQUEST macro in process.c
@@ -194,32 +216,30 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
  *	being called from a child thread or the master, and then do
  *	different things based on that.
  */
-
-
 #ifdef WITH_PROXY
 static fr_packet_list_t *proxy_list = NULL;
 static TALLOC_CTX *proxy_ctx = NULL;
 #endif
 
 #ifdef HAVE_PTHREAD_H
-#ifdef WITH_PROXY
+#  ifdef WITH_PROXY
 static pthread_mutex_t proxy_mutex;
 static bool proxy_no_new_sockets = false;
-#endif
+#  endif
 
-#define PTHREAD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK if (spawn_flag) pthread_mutex_unlock
+#  define PTHREAD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
+#  define PTHREAD_MUTEX_UNLOCK if (spawn_flag) pthread_mutex_unlock
 
 static pthread_t NO_SUCH_CHILD_PID;
-#define NO_CHILD_THREAD request->child_pid = NO_SUCH_CHILD_PID
+#  define NO_CHILD_THREAD request->child_pid = NO_SUCH_CHILD_PID
 
 #else
 /*
  *	This is easier than ifdef's throughout the code.
  */
-#define PTHREAD_MUTEX_LOCK(_x)
-#define PTHREAD_MUTEX_UNLOCK(_x)
-#define NO_CHILD_THREAD
+#  define PTHREAD_MUTEX_LOCK(_x)
+#  define PTHREAD_MUTEX_UNLOCK(_x)
+#  define NO_CHILD_THREAD
 #endif
 
 #ifdef HAVE_PTHREAD_H
@@ -236,19 +256,19 @@ static bool we_are_master(void)
 /*
  *	Assertions are debug checks.
  */
-#ifndef NDEBUG
-#define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
-#endif
+#  ifndef NDEBUG
+#    define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
+#    endif
 #else
 
 /*
  *	No threads: we're always master.
  */
-#define we_are_master(_x) (1)
+#  define we_are_master(_x) (1)
 #endif	/* HAVE_PTHREAD_H */
 
 #ifndef ASSERT_MASTER
-#define ASSERT_MASTER
+#  define ASSERT_MASTER
 #endif
 
 static int event_new_fd(rad_listen_t *this);
@@ -261,8 +281,8 @@ static int event_new_fd(rad_listen_t *this);
 static rad_listen_t *new_listeners = NULL;
 
 static pthread_mutex_t	fd_mutex;
-#define FD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
-#define FD_MUTEX_UNLOCK if (spawn_flag) pthread_mutex_unlock
+#  define FD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
+#  define FD_MUTEX_UNLOCK if (spawn_flag) pthread_mutex_unlock
 
 void radius_update_listener(rad_listen_t *this)
 {
@@ -303,8 +323,8 @@ void radius_update_listener(rad_listen_t *this)
 /*
  *	This is easier than ifdef's throughout the code.
  */
-#define FD_MUTEX_LOCK(_x)
-#define FD_MUTEX_UNLOCK(_x)
+#  define FD_MUTEX_LOCK(_x)
+#  define FD_MUTEX_UNLOCK(_x)
 #endif
 
 static int request_num_counter = 1;
@@ -1147,7 +1167,7 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 		 *	Double the cleanup_delay to catch retransmits.
 		 */
 		when = request->reply->timestamp;
-		request->delay += request->delay ;
+		request->delay += request->delay;
 		when.tv_sec += request->delay;
 
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
@@ -4873,8 +4893,7 @@ static void handle_signal_self(int flag)
 		fr_event_loop_exit(el, 0x80);
 	}
 
-#ifdef WITH_DETAIL
-#ifndef WITH_DETAIL_THREAD
+#if defined(WITH_DETAIL) && !defined(WITH_DETAIL_THREAD)
 	if ((flag & RADIUS_SIGNAL_SELF_DETAIL) != 0) {
 		rad_listen_t *this;
 
@@ -4899,11 +4918,8 @@ static void handle_signal_self(int flag)
 		}
 	}
 #endif
-#endif
 
-#ifdef WITH_TCP
-#ifdef WITH_PROXY
-#ifdef HAVE_PTHREAD_H
+#if defined(WITH_TCP) && defined(WITH_PROXY) && defined(HAVE_PTHREAD_H)
 	/*
 	 *	There are new listeners in the list.  Run
 	 *	event_new_fd() on them.
@@ -4927,9 +4943,7 @@ static void handle_signal_self(int flag)
 		new_listeners = NULL;
 		FD_MUTEX_UNLOCK(&fd_mutex);
 	}
-#endif	/* HAVE_PTHREAD_H */
-#endif	/* WITH_PROXY */
-#endif	/* WITH_TCP */
+#endif
 }
 
 #ifndef HAVE_PTHREAD_H
