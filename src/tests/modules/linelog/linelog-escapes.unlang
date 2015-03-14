@@ -1,0 +1,82 @@
+
+update control {
+	Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
+}
+
+#
+#  Remove old log files
+#
+group {
+	update request {
+		Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+	}
+	fail = 1
+}
+if (fail) {
+	ok
+}
+
+#  Raw attribute value should be written out without further molestation.
+#  Because the value is wrapped in '' the \n is left as \n.
+update control {
+	Tmp-String-0 := 'test_attr'
+	Tmp-String-1 := 'foo\nbar'
+}
+
+linelog_escapes
+update request {
+	Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+}
+#  Fixme? Should probably be 666f6f5c6e626172
+if ("%{hex:&Tmp-String-0}" == '666f6f0a626172') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+update request {
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+}
+#  Fixme? Should probably be 'foo\nbar'
+if (&Tmp-String-0 == "foo\nbar") {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Raw attribute value should be written out without further molestation.
+#  Because the value is wrapped in "" the \n is converted to 0x0a (binary).
+update control {
+	Tmp-String-0 := 'test_attr'
+	Tmp-String-1 := "foo\nbar"
+}
+
+linelog_escapes
+update request {
+	Tmp-String-0 := `/bin/sh -c "tail -n2 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+}
+if ("%{hex:&Tmp-String-0}" == '666f6f0a626172') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+update request {
+	Tmp-String-0 := `/bin/sh -c "tail -n1 $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+}
+if (&Tmp-String-0 == "bar") {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#  Fixme... needs completing. Too many broken escaping things.
+
+#  Remove the file
+update request {
+	Tmp-String-0 := `/bin/sh -c "rm $ENV{MODULE_TEST_DIR}/test_escapes.log"`
+}
