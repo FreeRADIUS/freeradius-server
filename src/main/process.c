@@ -102,6 +102,14 @@ static char const *child_state_names[REQUEST_CHILD_NUM_STATES] = {
 #  define TRACE_STATE_MACHINE {}
 #endif
 
+static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char const *msg)
+{
+	ERROR("%s[%u]: %s", file, line, msg);
+	fr_exit_now(1);
+}
+
+#define rad_panic(x) _rad_panic(__FILE__, __LINE__, x)
+
 /** Declare a state in the state machine
  *
  * Expands to the start of a function definition for a given state.
@@ -118,17 +126,20 @@ static void request_timer(void *ctx);
  * @param when the event should fine.
  * @param action to perform when we resume processing the request.
  */
-static inline void state_machine_timer(REQUEST *request, struct timeval *when, fr_state_action_t action)
+static inline void state_machine_timer(char const *file, int line, REQUEST *request,
+				       struct timeval *when, fr_state_action_t action)
 {
 	request->timer_action = action;
-	fr_event_insert(el, request_timer, request, when, &request->ev);
+	if (!fr_event_insert(el, request_timer, request, when, &request->ev)) {
+		_rad_panic(file, line, "Failed to insert event");
+	}
 }
 
 /** @copybrief state_machine_timer
  *
  * @param _x the action to perform when we resume processing the request.
  */
-#define STATE_MACHINE_TIMER(_x) state_machine_timer(request, &when, _x)
+#define STATE_MACHINE_TIMER(_x) state_machine_timer(__FILE__, __LINE__, request, &when, _x)
 
 /*
  *	We need a different VERIFY_REQUEST macro in process.c
@@ -364,17 +375,6 @@ static void coa_separate(REQUEST *request);
 #define USEC (1000000)
 
 #define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
-
-static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char const *msg)
-{
-	ERROR("[%s:%d] %s", file, line, msg);
-#ifndef NDEBUG
-	rad_assert(0 == 1);
-#endif
-	fr_exit(1);
-}
-
-#define rad_panic(x) _rad_panic(__FILE__, __LINE__, x)
 
 static void tv_add(struct timeval *tv, int usec_delay)
 {
