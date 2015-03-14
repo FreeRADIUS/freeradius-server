@@ -1121,7 +1121,9 @@ done_coa:
 	return c;
 }
 
-/** Add a client from a result set (LDAP, SQL, et al)
+/** Add a client from a result set (SQL)
+ *
+ * @todo This function should die. SQL should use client_afrom_cs.
  *
  * @param ctx Talloc context.
  * @param identifier Client IP Address / IPv4 subnet / IPv6 subnet / FQDN.
@@ -1292,32 +1294,67 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 		case PW_TYPE_STRING:
 		{
-			CONF_PARSER const *cp;
+			CONF_PARSER const *parse;
+			CONF_PAIR *cp;
+			CONF_ITEM *ci;
 
+			/*
+			 *	This is fairly nasty... In order to figure out the CONF_PAIR
+			 *	name associated with a field, find offsets that match between
+			 *	the dynamic_config CONF_PARSER table, and the client_config
+			 *	CONF_PARSER table.
+			 *
+			 *	This is so that things that expect to find CONF_PAIRs in the
+			 *	client CONF_SECTION for fields like 'nas_type' can.
+			 */
+			for (parse = client_config; parse->name; parse++) {
+				if (parse->offset == dynamic_config[i].offset) break;
+			}
+			rad_assert(parse);
+
+			RDEBUG2("%s = '%s'", parse->name, strvalue);
+
+			cp = cf_pair_alloc(c->cs, parse->name, strvalue, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+			ci = cf_pair_to_item(cp);
+			cf_item_add(c->cs, ci);
+
+			/*
+			 *	Cache pointer to CONF_PAIR buffer in RADCLIENT struct
+			 */
 			p = (char **) ((char *) c + dynamic_config[i].offset);
-			if (*p) talloc_free(*p);
-			if (vp->vp_strvalue[0]) {
-				*p = talloc_typed_strdup(c->cs, vp->vp_strvalue);
-			} else {
-				*p = NULL;
-			}
+			if (*p) TALLOC_FREE(*p);
+			if (!vp->vp_strvalue[0]) break;
 
-			if (RDEBUG_ENABLED2) for (cp = client_config; cp->name; cp++) {
-				if (cp->offset == dynamic_config[i].offset) RDEBUG2("%s = '%s'", cp->name, strvalue);
-			}
+			/*
+			 *	We could reuse the CONF_PAIR buff, this just keeps things
+			 *	consistent between client_afrom_cs, and client_afrom_query.
+			 */
+			*p = talloc_strdup(c, strvalue);
 		}
 			break;
 
 		case PW_TYPE_BOOLEAN:
 		{
-			CONF_PARSER const *cp;
+			CONF_PARSER const *parse;
+			CONF_PAIR *cp;
+			CONF_ITEM *ci;
+
+			/*
+			 *	Same nastiness as above.
+			 */
+			for (parse = client_config; parse->name; parse++) {
+				if (parse->offset == dynamic_config[i].offset) break;
+			}
+			rad_assert(parse);
+
+			RDEBUG2("%s = '%s'", parse->name, strvalue);
+
+			cp = cf_pair_alloc(c->cs, parse->name, strvalue, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+			ci = cf_pair_to_item(cp);
+			cf_item_add(c->cs, ci);
 
 			pi = (int *) ((bool *) ((char *) c + dynamic_config[i].offset));
 			*pi = vp->vp_integer;
-
-			if (RDEBUG_ENABLED2) for (cp = client_config; cp->name; cp++) {
-				if (cp->offset == dynamic_config[i].offset) RDEBUG2("%s = %s", cp->name, strvalue);
-			}
 		}
 			break;
 
