@@ -28,12 +28,15 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Update state machine so that post-proxy is run though child
 	  threads for performance, instead of blocking the main thread.
 	* Allow "netmask" to work again in client definitions.
-	* Relax restrictions on SQL group checks.
+	* Relax restrictions on SQL group queries.
 	* track outgoing proxy sockets and clean them up more aggressively.
 	* track proxy statistics, including CoA and Disconnect.
 	* If radmin has a connection failure when running a command,
 	  it re-connects and runs the command again.
 	* mark home servers "unknown" less aggressively.
+	* Fix potential SEGV in PostgreSQL driver on error.
+	* Fix issue where fields like nas_type would not be accessible via
+	  the %{client:} xlat, for dynamic clients.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
