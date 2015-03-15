@@ -144,7 +144,7 @@ static CONF_PARSER group_config[] = {
 
 	{ "name_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, groupobj_name_attr), "cn" },
 	{ "membership_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_membership_attr), NULL },
-	{ "membership_filter", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, groupobj_membership_filter), NULL },
+	{ "membership_filter", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, ldap_instance_t, groupobj_membership_filter), NULL },
 	{ "cacheable_name", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, cacheable_group_name), "no" },
 	{ "cacheable_dn", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, cacheable_group_dn), "no" },
 	{ "cache_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, cache_attribute), NULL },
