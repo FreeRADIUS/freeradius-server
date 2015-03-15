@@ -1197,13 +1197,14 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
  */
 RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 {
-	int i, *pi;
-	char **p;
-	RADCLIENT *c;
-	char buffer[128];
+	int		i, *pi;
+	char		**p;
+	RADCLIENT	*c;
+	CONF_PAIR	*cp = NULL;
+	char		buffer[128];
 
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp = NULL;
+	vp_cursor_t	cursor;
+	VALUE_PAIR	*vp = NULL;
 
 	if (!clients || !request) return NULL;
 
@@ -1254,16 +1255,17 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		switch (dynamic_config[i].type) {
 		case PW_TYPE_IPV4_ADDR:
 			if (da->attr == PW_FREERADIUS_CLIENT_IP_ADDRESS) {
-				RDEBUG2("ipaddr = %s", strvalue);
 				c->ipaddr.af = AF_INET;
 				c->ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 				c->ipaddr.prefix = 32;
+				cp = cf_pair_alloc(c->cs, "ipv4addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			} else if (da->attr == PW_FREERADIUS_CLIENT_SRC_IP_ADDRESS) {
 #ifdef WITH_UDPFROMTO
 				RDEBUG2("src_ipaddr = %s", strvalue);
 				c->src_ipaddr.af = AF_INET;
 				c->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 				c->src_ipaddr.prefix = 32;
+				cp = cf_pair_alloc(c->cs, "src_ipaddr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 #else
 				RWARN("Server not built with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address");
 #endif
@@ -1273,16 +1275,16 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 		case PW_TYPE_IPV6_ADDR:
 			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_ADDRESS) {
-				RDEBUG2("ipaddr = %s", strvalue);
 				c->ipaddr.af = AF_INET6;
 				c->ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 				c->ipaddr.prefix = 128;
+				cp = cf_pair_alloc(c->cs, "ipv6addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			} else if (da->attr == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
 #ifdef WITH_UDPFROMTO
-				RDEBUG2("src_ipaddr = %s", strvalue);
 				c->src_ipaddr.af = AF_INET6;
 				c->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 				c->src_ipaddr.prefix = 128;
+				cp = cf_pair_alloc(c->cs, "src_addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 #else
 				RWARN("Server not built with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address");
 #endif
@@ -1292,21 +1294,22 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 		case PW_TYPE_IPV4_PREFIX:
 			if (da->attr == PW_FREERADIUS_CLIENT_IP_PREFIX) {
-				RDEBUG2("ipaddr = %s", strvalue);
 				c->ipaddr.af = AF_INET;
 				memcpy(&c->ipaddr.ipaddr.ip4addr, &vp->vp_ipv4prefix[2],
 				       sizeof(c->ipaddr.ipaddr.ip4addr.s_addr));
 				fr_ipaddr_mask(&c->ipaddr, (vp->vp_ipv4prefix[1] & 0x3f));
+				cp = cf_pair_alloc(c->cs, "ipv4addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			}
 
 			break;
 
 		case PW_TYPE_IPV6_PREFIX:
 			if (da->attr == PW_FREERADIUS_CLIENT_IPV6_PREFIX) {
-				RDEBUG2("ipaddr = %s", strvalue);
 				c->ipaddr.af = AF_INET6;
-				memcpy(&c->ipaddr.ipaddr.ip6addr, &vp->vp_ipv6prefix[2], sizeof(c->ipaddr.ipaddr.ip6addr));
+				memcpy(&c->ipaddr.ipaddr.ip6addr, &vp->vp_ipv6prefix[2],
+				       sizeof(c->ipaddr.ipaddr.ip6addr));
 				fr_ipaddr_mask(&c->ipaddr, vp->vp_ipv6prefix[1]);
+				cp = cf_pair_alloc(c->cs, "ipv6addr", strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 			}
 
 			break;
@@ -1314,8 +1317,19 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		case PW_TYPE_STRING:
 		{
 			CONF_PARSER const *parse;
-			CONF_PAIR *cp;
-			CONF_ITEM *ci;
+
+			/*
+			 *	Cache pointer to CONF_PAIR buffer in RADCLIENT struct
+			 */
+			p = (char **) ((char *) c + dynamic_config[i].offset);
+			if (*p) TALLOC_FREE(*p);
+			if (!vp->vp_strvalue[0]) break;
+
+			/*
+			 *	We could reuse the CONF_PAIR buff, this just keeps things
+			 *	consistent between client_afrom_cs, and client_afrom_query.
+			 */
+			*p = talloc_strdup(c, strvalue);
 
 			/*
 			 *	This is fairly nasty... In order to figure out the CONF_PAIR
@@ -1331,32 +1345,16 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			}
 			rad_assert(parse);
 
-			RDEBUG2("%s = '%s'", parse->name, strvalue);
-
 			cp = cf_pair_alloc(c->cs, parse->name, strvalue, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
-			ci = cf_pair_to_item(cp);
-			cf_item_add(c->cs, ci);
-
-			/*
-			 *	Cache pointer to CONF_PAIR buffer in RADCLIENT struct
-			 */
-			p = (char **) ((char *) c + dynamic_config[i].offset);
-			if (*p) TALLOC_FREE(*p);
-			if (!vp->vp_strvalue[0]) break;
-
-			/*
-			 *	We could reuse the CONF_PAIR buff, this just keeps things
-			 *	consistent between client_afrom_cs, and client_afrom_query.
-			 */
-			*p = talloc_strdup(c, strvalue);
 		}
 			break;
 
 		case PW_TYPE_BOOLEAN:
 		{
 			CONF_PARSER const *parse;
-			CONF_PAIR *cp;
-			CONF_ITEM *ci;
+
+			pi = (int *) ((bool *) ((char *) c + dynamic_config[i].offset));
+			*pi = vp->vp_integer;
 
 			/*
 			 *	Same nastiness as above.
@@ -1366,20 +1364,25 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			}
 			rad_assert(parse);
 
-			RDEBUG2("%s = '%s'", parse->name, strvalue);
-
-			cp = cf_pair_alloc(c->cs, parse->name, strvalue, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
-			ci = cf_pair_to_item(cp);
-			cf_item_add(c->cs, ci);
-
-			pi = (int *) ((bool *) ((char *) c + dynamic_config[i].offset));
-			*pi = vp->vp_integer;
+			cp = cf_pair_alloc(c->cs, parse->name, strvalue, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 		}
 			break;
 
 		default:
 			goto error;
 		}
+
+		if (!cp) {
+			RERROR("Error creating equivalent conf pair for %s", vp->da->name);
+			goto error;
+		}
+
+		if (cf_pair_attr_type(cp) == T_SINGLE_QUOTED_STRING) {
+			RDEBUG2("%s = '%s'", cf_pair_attr(cp), cf_pair_value(cp));
+		} else {
+			RDEBUG2("%s = %s", cf_pair_attr(cp), cf_pair_value(cp));
+		}
+		cf_pair_add(c->cs, cp);
 
 		talloc_free(vp);
 	}
@@ -1388,8 +1391,6 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	vp = fr_cursor_remove(&cursor);
 	if (vp) {
 		do {
-			CONF_PAIR *cp;
-			CONF_ITEM *ci;
 			char *value;
 
 			value = vp_aprints_value(vp, vp, '\'');
@@ -1398,11 +1399,16 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 				goto error;
 			}
 
-			RDEBUG2("%s = '%s'", vp->da->name, value);
-
-			cp = cf_pair_alloc(c->cs, vp->da->name, value, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
-			ci = cf_pair_to_item(cp);
-			cf_item_add(c->cs, ci);
+			if (vp->da->type == PW_TYPE_STRING) {
+				RDEBUG2("%s = '%s'", vp->da->name, value);
+				cp = cf_pair_alloc(c->cs, vp->da->name, value, T_OP_SET,
+						   T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+			} else {
+				RDEBUG2("%s = %s", vp->da->name, value);
+				cp = cf_pair_alloc(c->cs, vp->da->name, value, T_OP_SET,
+						   T_BARE_WORD, T_BARE_WORD);
+			}
+			cf_pair_add(c->cs, cp);
 
 			talloc_free(vp);
 		} while ((vp = fr_cursor_remove(&cursor)));
