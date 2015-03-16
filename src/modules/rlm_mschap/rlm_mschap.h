@@ -5,10 +5,20 @@
 
 RCSIDH(rlm_mschap_h, "$Id$")
 
+#include "config.h"
+
+#ifdef HAVE_WBCLIENT_H
+#define WITH_AUTH_WINBIND
+#include <wbclient.h>
+#endif
+
 /* Method of authentication we are going to use */
 typedef enum {
 	AUTH_INTERNAL		= 0,
 	AUTH_NTLMAUTH_EXEC	= 1
+#ifdef WITH_AUTH_WINBIND
+	,AUTH_WBCLIENT       	= 2
+#endif
 } MSCHAP_AUTH_METHOD;
 
 typedef struct rlm_mschap_t {
@@ -27,6 +37,11 @@ typedef struct rlm_mschap_t {
 	bool			allow_retry;
 	char const		*retry_msg;
 	MSCHAP_AUTH_METHOD	method;
+	vp_tmpl_t		*wb_username;
+	vp_tmpl_t		*wb_domain;
+#ifdef WITH_AUTH_WINBIND
+	struct wbcContext	*wb_ctx;
+#endif
 #ifdef WITH_OPEN_DIRECTORY
 	bool			open_directory;
 #endif

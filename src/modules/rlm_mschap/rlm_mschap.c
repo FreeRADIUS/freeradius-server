@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include	"rlm_mschap.h"
 #include	"mschap.h"
 #include	"smbdes.h"
+#include	"auth_wbclient.h"
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
@@ -520,6 +521,8 @@ static const CONF_PARSER module_config[] = {
 	{ "passchange", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) passchange_config },
 	{ "allow_retry", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, allow_retry), "yes" },
 	{ "retry_msg", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, retry_msg), NULL },
+	{ "winbind_username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, rlm_mschap_t, wb_username), NULL },
+	{ "winbind_domain", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, rlm_mschap_t, wb_domain), NULL },
 #ifdef WITH_OPEN_DIRECTORY
 	{ "use_open_directory", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, open_directory), "yes" },
 #endif
@@ -557,12 +560,40 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Set auth method
 	 */
+	inst->method = AUTH_INTERNAL;
+
+	if (inst->wb_username) {
+#ifdef WITH_AUTH_WINBIND
+		inst->method = AUTH_WBCLIENT;
+	
+		inst->wb_ctx = wbcCtxCreate();
+		if (!inst->wb_ctx) {
+			ERROR("rlm_mschap (%s): failed to create winbind context", name);
+			return -1;
+		}
+#else
+		ERROR("rlm_mschap (%s): 'winbind' auth not enabled at compiled time", name);
+		return -1;
+#endif
+	}
+
+	/* preserve existing behaviour: this option overrides all */
 	if (inst->ntlm_auth) {
-		DEBUG("rlm_mschap (%s): authenticating by calling 'ntlm_auth'", name);
 		inst->method = AUTH_NTLMAUTH_EXEC;
-	} else {
+	}
+
+	switch (inst->method) {
+	case AUTH_INTERNAL:
 		DEBUG("rlm_mschap (%s): using internal authentication", name);
-		inst->method = AUTH_INTERNAL;
+		break;
+	case AUTH_NTLMAUTH_EXEC:
+		DEBUG("rlm_mschap (%s): authenticating by calling 'ntlm_auth'", name);
+		break;
+#ifdef WITH_AUTH_WINBIND
+	case AUTH_WBCLIENT:
+		DEBUG("rlm_mschap (%s): authenticating directly to winbind", name);
+		break;
+#endif
 	}
 
 	/*
@@ -584,6 +615,21 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	return 0;
 }
+
+/*
+ *	Tidy up instance
+ */
+static int mod_detach(UNUSED void *instance)
+{
+#ifdef WITH_AUTH_WINBIND
+	rlm_mschap_t *inst = instance;
+
+	wbcCtxFree(inst->wb_ctx);
+#endif
+
+	return 0;
+}
+
 
 /*
  *	add_reply() adds either MS-CHAP2-Success or MS-CHAP-Error
@@ -1118,6 +1164,13 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 
 		break;
 		}
+#ifdef WITH_AUTH_WINBIND
+	case AUTH_WBCLIENT:
+	/*
+	 *	Process auth via the wbclient library
+	 */
+		return do_auth_wbclient(inst, request, challenge, response, nthashhash);
+#endif
 	default:
 		/* We should never reach this line */
 		RERROR("Internal error: Unknown mschap auth method (%d)", method);
@@ -1904,7 +1957,7 @@ module_t rlm_mschap = {
 	sizeof(rlm_mschap_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
+	mod_detach,			/* detach */
 	{
 		mod_authenticate,	/* authenticate */
 		mod_authorize,		/* authorize */

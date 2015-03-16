@@ -21,6 +21,7 @@ Build-Depends: debhelper (>= 7.4),
  libsqlite3-dev,
  libssl-dev,
  libtalloc-dev,
+ libwbclient-dev,
  libyubikey-dev,
  python-dev
 Section: net
