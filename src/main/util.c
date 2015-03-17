@@ -491,8 +491,6 @@ static int _request_free(REQUEST *request)
 
 #ifdef WITH_COA
 	rad_assert(request->coa == NULL);
-
-	rad_assert(request->parent == NULL);
 #endif
 
 #ifndef NDEBUG
