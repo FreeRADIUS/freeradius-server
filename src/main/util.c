@@ -520,13 +520,7 @@ static int _request_free(REQUEST *request)
 	rad_assert(!request->ev);
 
 #ifdef WITH_COA
-	if (request->coa) {
-		request->coa->parent = NULL;
-	}
-
-	if (request->parent && (request->parent->coa == request)) {
-		request->parent->coa = NULL;
-	}
+	rad_assert(request->coa == NULL);
 #endif
 
 #ifndef NDEBUG
