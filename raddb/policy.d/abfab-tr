@@ -15,29 +15,35 @@ psk_authorize {
 			# do things here
 		}
 		else {
+		update reply {
+			Reply-Message = "RP not authorized for this ABFAB request"
+			}
 			reject
 		}
 	}
 }
 
-abfab_pre_proxy {
+abfab_client_check {
 	# check that the acceptor host name is correct
 	if ("%{client:gss_acceptor_host_name}" && "%{gss-acceptor-host-name}") {
 		if ("%{client:gss_acceptor_host_name}" != "%{gss-acceptor-host-name}") {
+			update reply {
+			        Reply-Message = "GSS-Acceptor-Host-Name incorrect"
+				}
 			reject
 		}
 	}
 
 	# set trust-router-coi attribute from the client configuration
 	if ("%{client:trust_router_coi}") {
-		update proxy-request {
+		update request {
 			Trust-Router-COI := "%{client:trust_router_coi}"
 		}
 	}
 
 	# set gss-acceptor-realm-name attribute from the client configuration
 	if ("%{client:gss_acceptor_realm_name}") {
-		update proxy-request {
+		update request {
 			GSS-Acceptor-Realm-Name := "%{client:gss_acceptor_realm_name}"
 		}
 	}

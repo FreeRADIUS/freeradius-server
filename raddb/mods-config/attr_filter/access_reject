@@ -15,4 +15,5 @@ DEFAULT
 	Error-Cause =* ANY,
 	Reply-Message =* ANY,
 	MS-CHAP-Error =* ANY,
-	Proxy-State =* ANY
+	Proxy-State =* ANY,
+	Error-Cause =* ANY
