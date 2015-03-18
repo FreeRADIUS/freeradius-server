@@ -37,6 +37,9 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Fix potential SEGV in PostgreSQL driver on error.
 	* Fix issue where fields like nas_type would not be accessible via
 	  the %{client:} xlat, for dynamic clients.
+	* Set default busy_timeout (of 200ms) in the sqlite driver, so writes
+	  don't cause selects to fail in multithreaded mode. This is user
+	  configurable, and may be increased if required.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
