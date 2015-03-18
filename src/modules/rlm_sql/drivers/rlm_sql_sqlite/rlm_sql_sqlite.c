@@ -55,12 +55,13 @@ typedef struct rlm_sql_sqlite_conn {
 } rlm_sql_sqlite_conn_t;
 
 typedef struct rlm_sql_sqlite_config {
-	char const *filename;
+	char const	*filename;
+	uint32_t	busy_timeout;
 } rlm_sql_sqlite_config_t;
 
 static const CONF_PARSER driver_config[] = {
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_sql_sqlite_config_t, filename), NULL },
-
+	{ "busy_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_sqlite_config_t, busy_timeout), "200" },
 	{NULL, -1, 0, NULL, NULL}
 };
 
@@ -415,8 +416,10 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 		return RLM_SQL_ERROR;
 	}
-
 	if (sql_check_error(conn->db) != RLM_SQL_OK) return RLM_SQL_ERROR;
+
+	status = sqlite3_busy_timeout(conn->db, driver->busy_timeout);
+	if (status != SQLITE_OK) ERROR("rlm_sql_sqlite: Failed setting busy timeout");
 
 	/*
 	 *	Enable extended return codes for extra debugging info.
