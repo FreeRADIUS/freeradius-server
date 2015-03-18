@@ -1382,8 +1382,7 @@ skip_edir:
 
 		case RLM_MODULE_UPDATED:
 			rcode = RLM_MODULE_UPDATED;
-			goto finish;
-
+			/* FALL-THROUGH */
 		default:
 			break;
 		}
