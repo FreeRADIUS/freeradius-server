@@ -491,7 +491,7 @@ bool realm_home_server_add(home_server_t *home)
 	 *	the server.
 	 */
 	if (event_loop_started && !realm_config->dynamic) {
-		ERROR("Failed to add dynamic home server, \"dynamic = true\" must be set in proxy.conf");
+		ERROR("Failed to add dynamic home server, \"dynamic = yes\" must be set in proxy.conf");
 		return false;
 	}
 
