@@ -643,18 +643,16 @@ static int inet_pton4(char const *src, struct in_addr *dst)
 
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
-/* int
- * inet_pton6(src, dst)
- *	convert presentation level address to network order binary form.
- * return:
- *	1 if `src' is a valid [RFC1884 2.2] address, else 0.
- * notice:
- *	(1) does not touch `dst' unless it's returning 1.
- *	(2) :: in a full address is silently ignored.
- * credit:
- *	inspired by Mark Andrews.
- * author:
- *	Paul Vixie, 1996.
+/** Convert presentation level address to network order binary form
+ *
+ * @note Does not touch dst unless it's returning 1.
+ * @note :: in a full address is silently ignored.
+ * @note Inspired by Mark Andrews.
+ * @author Paul Vixie, 1996.
+ *
+ * @param src presentation level address.
+ * @param dst where to write output address.
+ * @return 1 if `src' is a valid [RFC1884 2.2] address, else 0.
  */
 static int inet_pton6(char const *src, unsigned char *dst)
 {
