@@ -32,6 +32,7 @@ SOURCES		:= cbuff.c \
 		   strlcpy.c \
 		   token.c \
 		   udpfromto.c \
+		   unix.c \
 		   value.c \
 		   fifo.c \
 		   packet.c \

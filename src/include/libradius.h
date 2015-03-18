@@ -902,6 +902,11 @@ void		*fr_fifo_pop(fr_fifo_t *fi);
 void		*fr_fifo_peek(fr_fifo_t *fi);
 int		fr_fifo_num_elements(fr_fifo_t *fi);
 
+/*
+ *	Unix domain sockets
+ */
+int		fr_domain_socket(char const *path);
+
 #ifdef __cplusplus
 }
 #endif
