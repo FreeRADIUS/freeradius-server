@@ -42,9 +42,36 @@ listen {
 clients radsec-abfab {
 	#
 	#  Allow all clients, but require TLS.
+	#  This client stanza will match other RP proxies from other
+	#  realms  established via the trustrouter.  In general
+	#  additional client stanzas are also required for local services.
 	#
         client default {
 	        ipaddr = 0.0.0.0/0
 		proto = tls
 	}
+
+	#  An example local service
+	#  client service_1 {
+	#  	ipaddr = 192.0.2.20
+	#  	#  You should either set gss_acceptor_host_name below
+	#  	#  or set up policy to confirm that a client claims
+	#  	#  the right acceptor hostname when using ABFAB.  If
+	#  	#  set,  the RADIUS server will confirm that all
+	#  	#  requests have this value for the acceptor host name
+	#  	gss_acceptor_host_name = "server.example.com"
+	#  	#  If set, this acceptor realm name will be included.
+	#  Foreign realms will typically reject a request if this is not
+	#  	#  properly set.
+	#  	gss_acceptor_realm_name = "example.com"
+	#  	#  Additionally, trust_router_coi can be set; if set
+	#  	#  it will override the default_community in the realm
+ 	#  	#  module
+	#  	# trust_router_coi =  "community1.example.net"
+	#  	#  In production depployments it is important to set
+	#  	#  	up certificate verification  so that even if
+	#  	#  clients spoof IP addresses, one client cannot
+	#  	#  impersonate another.
+	#  }
+
 }
