@@ -30,13 +30,6 @@ RCSID("$Id$")
 #include <pwd.h>
 #include <grp.h>
 
-#ifdef HAVE_SYS_UN_H
-#  include <sys/un.h>
-#  ifndef SUN_LEN
-#    define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
-#  endif
-#endif
-
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
 #endif
@@ -120,53 +113,6 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -q              Quiet mode.\n");
 
 	exit(status);
-}
-
-static int fr_domain_socket(char const *path)
-{
-	int sockfd = -1;
-#ifdef HAVE_SYS_UN_H
-	size_t len;
-	socklen_t socklen;
-	struct sockaddr_un saremote;
-
-	len = strlen(path);
-	if (len >= sizeof(saremote.sun_path)) {
-		fprintf(stderr, "%s: Path too long in filename\n", progname);
-		return -1;
-	}
-
-	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "%s: Failed creating socket: %s\n",
-			progname, fr_syserror(errno));
-		return -1;
-	}
-
-	saremote.sun_family = AF_UNIX;
-	memcpy(saremote.sun_path, path, len + 1); /* SUN_LEN does strlen */
-
-	socklen = SUN_LEN(&saremote);
-
-	if (connect(sockfd, (struct sockaddr *)&saremote, socklen) < 0) {
-		struct stat buf;
-
-		close(sockfd);
-		fprintf(stderr, "%s: Failed connecting to %s: %s\n",
-			progname, path, fr_syserror(errno));
-
-		/*
-		 *	The file doesn't exist.  Tell the user how to
-		 *	fix it.
-		 */
-		if ((stat(path, &buf) < 0) &&
-		    (errno == ENOENT)) {
-			fprintf(stderr, "  Perhaps you need to run the commands:\n\tcd /etc/raddb\n\tln -s sites-available/control-socket sites-enabled/control-socket\n  and then re-start the server?\n");
-		}
-
-		return -1;
-	}
-#endif
-	return sockfd;
 }
 
 static int client_socket(char const *server)
@@ -311,7 +257,17 @@ static int do_connect(int *out, char const *file, char const *server)
 		 *	FIXME: Get destination from command line, if possible?
 		 */
 		sockfd = fr_domain_socket(file);
-		if (sockfd < 0) return -1;
+		if (sockfd < 0) {
+			fr_perror("radmin");
+			if (errno == ENOENT) {
+					fprintf(stderr, "Perhaps you need to run the commands:");
+					fprintf(stderr, "\tcd /etc/raddb\n");
+					fprintf(stderr, "\tln -s sites-available/control-socket "
+						"sites-enabled/control-socket\n");
+					fprintf(stderr, "and then re-start the server?\n");
+			}
+			return -1;
+		}
 	} else {
 		sockfd = client_socket(server);
 	}
