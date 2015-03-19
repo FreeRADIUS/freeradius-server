@@ -138,7 +138,7 @@ static int client_socket(char const *server)
 		exit(1);
 	}
 
-	sockfd = fr_tcp_client_socket(NULL, &ipaddr, port);
+	sockfd = fr_socket_client_tcp(NULL, &ipaddr, port, false);
 	if (sockfd < 0) {
 		fprintf(stderr, "%s: Failed opening socket %s: %s\n",
 			progname, server, fr_syserror(errno));
@@ -256,7 +256,7 @@ static int do_connect(int *out, char const *file, char const *server)
 		/*
 		 *	FIXME: Get destination from command line, if possible?
 		 */
-		sockfd = fr_domain_socket(file);
+		sockfd = fr_socket_client_unix(file, false);
 		if (sockfd < 0) {
 			fr_perror("radmin");
 			if (errno == ENOENT) {

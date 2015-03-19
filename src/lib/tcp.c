@@ -29,59 +29,6 @@ RCSID("$Id$")
 /* FIXME: into common RADIUS header? */
 #define MAX_PACKET_LEN 4096
 
-/*
- *	Open a socket TO the given IP and port.
- */
-int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
-			 fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
-{
-	int sockfd;
-	struct sockaddr_storage salocal;
-	socklen_t	salen;
-
-	if (!dst_ipaddr) return -1;
-
-	sockfd = socket(dst_ipaddr->af, SOCK_STREAM, 0);
-	if (sockfd < 0) {
-		return sockfd;
-	}
-
-	/*
-	 *	Allow the caller to bind us to a specific source IP.
-	 */
-	if (src_ipaddr && (src_ipaddr->af != AF_UNSPEC)) {
-		if (!fr_ipaddr2sockaddr(src_ipaddr, 0, &salocal, &salen)) {
-			close(sockfd);
-			return -1;
-		}
-
-		if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
-			fr_strerror_printf("Failure binding to IP: %s", fr_syserror(errno));
-			close(sockfd);
-			return -1;
-		}
-	}
-
-	if (!fr_ipaddr2sockaddr(dst_ipaddr, dst_port, &salocal, &salen)) {
-		close(sockfd);
-		return -1;
-	}
-
-	/*
-	 *	FIXME: If EINPROGRESS, then tell the caller that
-	 *	somehow.  The caller can then call connect() when the
-	 *	socket is ready...
-	 */
-	if (connect(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
-		fr_strerror_printf("Failed in connect(): %s", fr_syserror(errno));
-		close(sockfd);
-		return -1;
-	}
-
-	return sockfd;
-}
-
-
 RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 {
 	RADIUS_PACKET *packet = rad_alloc(NULL, false);

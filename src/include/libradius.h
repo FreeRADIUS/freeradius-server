@@ -732,6 +732,7 @@ int		fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 				   fr_ipaddr_t *ipaddr, uint16_t *port);
 int		fr_nonblock(int fd);
 int		fr_blocking(int fd);
+ssize_t		fr_writev(int fd, struct iovec[], int iovcnt, struct timeval *timeout);
 
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
 size_t		fr_prints_uint128(char *out, size_t outlen, uint128_t const num);
@@ -906,9 +907,12 @@ void		*fr_fifo_peek(fr_fifo_t *fi);
 int		fr_fifo_num_elements(fr_fifo_t *fi);
 
 /*
- *	Unix domain sockets
+ *	socket.c
  */
-int		fr_domain_socket(char const *path);
+int		fr_socket_client_unix(char const *path, bool async);
+int		fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async);
+int		fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async);
+int		fr_socket_wait_for_connect(int sockfd, struct timeval *timeout);
 
 #ifdef __cplusplus
 }

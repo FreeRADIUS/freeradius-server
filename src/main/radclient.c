@@ -806,9 +806,9 @@ static int send_one_packet(rc_request_t *request)
 
 #ifdef WITH_TCP
 			if (proto) {
-				mysockfd = fr_tcp_client_socket(NULL,
+				mysockfd = fr_socket_client_tcp(NULL,
 								&request->packet->dst_ipaddr,
-								request->packet->dst_port);
+								request->packet->dst_port, false);
 			} else
 #endif
 			mysockfd = fr_socket(&client_ipaddr, 0);
@@ -1463,7 +1463,7 @@ int main(int argc, char **argv)
 
 #ifdef WITH_TCP
 	if (proto) {
-		sockfd = fr_tcp_client_socket(NULL, &server_ipaddr, server_port);
+		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
 	} else
 #endif
 	sockfd = fr_socket(&client_ipaddr, client_port);

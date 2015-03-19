@@ -2763,8 +2763,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		 *
 		 *	http://www.developerweb.net/forum/showthread.php?p=13486
 		 */
-		this->fd = fr_tcp_client_socket(&home->src_ipaddr,
-						&home->ipaddr, home->port);
+		this->fd = fr_socket_client_tcp(&home->src_ipaddr,
+						&home->ipaddr, home->port, false);
 	} else
 #endif
 
