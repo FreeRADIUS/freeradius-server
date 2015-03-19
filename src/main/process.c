@@ -550,6 +550,8 @@ static void proxy_reply_too_late(REQUEST *request)
 }
 #endif
 
+#define NONNULL CC_HINT(nonnull)
+
 
 /** Mark a request DONE and clean it up.
  *
@@ -558,8 +560,14 @@ static void proxy_reply_too_late(REQUEST *request)
  *  child threads, etc.  This function takes care of either cleaning
  *  up the request, or managing the timers to wait for the ties to be
  *  removed.
+ *
+ *  \dot
+ *	digraph done {
+ *		done -> done [ label = "still running" ];
+ *	}
+ *  \enddot
  */
-STATE_MACHINE_DECL(request_done)
+static void NONNULL request_done(REQUEST *request, int action)
 {
 	struct timeval now, when;
 
@@ -1002,8 +1010,22 @@ static void request_dup(REQUEST *request)
  *  because the NAS might miss our cached reply.
  *
  *  Otherwise, once we reach cleanup_delay, we transition to DONE.
+ *
+ *  \dot
+ *	digraph cleanup_delay {
+ *		cleanup_delay;
+ *		send_reply [ label = "send_reply\nincrease cleanup delay" ];
+ *
+ *		cleanup_delay -> send_reply [ label = "DUP" ];
+ *		send_reply -> cleanup_delay;
+ *		cleanup_delay -> proxy_reply_too_late [ label = "PROXY_REPLY" ];
+ *		proxy_reply_too_late -> cleanup_delay;
+ *		cleanup_delay -> cleanup_delay [ label = "TIMER < timeout" ];
+ *		cleanup_delay -> done [ label = "TIMER >= timeout" ];
+ *	}
+ *  \enddot
  */
-STATE_MACHINE_DECL(request_cleanup_delay)
+static void NONNULL request_cleanup_delay(REQUEST *request, int action)
 {
 	struct timeval when, now;
 
@@ -1073,8 +1095,18 @@ STATE_MACHINE_DECL(request_cleanup_delay)
  *
  *  Otherwise, once we reach response_delay, we send the reply, and
  *  transition to cleanup_delay.
+ *
+ *  \dot
+ *	digraph response_delay {
+ *		response_delay -> proxy_reply_too_late [ label = "PROXY_REPLY" ];
+ *		proxy_reply_too_late -> response_delay;
+ *		response_delay -> response_delay [ label = "DUP, TIMER < timeout" ];
+ *		response_delay -> send_reply [ label = "TIMER >= timeout" ];
+ *		send_reply -> cleanup_delay;
+ *	}
+ *  \enddot
  */
-STATE_MACHINE_DECL(request_response_delay)
+static void NONNULL request_response_delay(REQUEST *request, int action)
 {
 	struct timeval when, now;
 
@@ -1138,7 +1170,7 @@ STATE_MACHINE_DECL(request_response_delay)
 }
 
 
-static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int action)
+static int NONNULL request_pre_handler(REQUEST *request, UNUSED int action)
 {
 	int rcode;
 
@@ -1198,7 +1230,7 @@ static int CC_HINT(nonnull) request_pre_handler(REQUEST *request, UNUSED int act
  *  Various cleanups, suppress responses, copy Proxy-State, and set
  *  response_delay or cleanup_delay;
  */
-STATE_MACHINE_DECL(request_finish)
+static void NONNULL request_finish(REQUEST *request, int action)
 {
 	VALUE_PAIR *vp;
 
@@ -1428,8 +1460,17 @@ STATE_MACHINE_DECL(request_finish)
 /** Process a request from a client.
  *
  *  The outcome might be that the request is proxied.
+ *
+ *  \dot
+ *	digraph running {
+ *		running -> running [ label = "TIMER < max_request_time" ];
+ *		running -> done [ label = "TIMER >= max_request_time" ];
+ *		running -> proxy [ label = "proxied" ];
+ *		running -> dup [ label = "DUP", arrowhead = "none" ];
+ *	}
+ *  \enddot
  */
-STATE_MACHINE_DECL(request_running)
+static void NONNULL request_running(REQUEST *request, int action)
 {
 	VERIFY_REQUEST(request);
 
@@ -2558,7 +2599,7 @@ static int setup_post_proxy_fail(REQUEST *request)
  *
  *  Run the packet through Post-Proxy-Type Fail
  */
-STATE_MACHINE_DECL(proxy_no_reply)
+static void NONNULL proxy_no_reply(REQUEST *request, int action)
 {
 	VERIFY_REQUEST(request);
 
@@ -2596,7 +2637,7 @@ STATE_MACHINE_DECL(proxy_no_reply)
  *  Throught the post-proxy section, and the through the handler
  *  function.
  */
-STATE_MACHINE_DECL(proxy_running)
+static void NONNULL proxy_running(REQUEST *request, int action)
 {
 	VERIFY_REQUEST(request);
 
@@ -3144,7 +3185,7 @@ static int request_proxy_anew(REQUEST *request)
 /** Ping a home server.
  *
  */
-STATE_MACHINE_DECL(request_ping)
+static void NONNULL request_ping(REQUEST *request, int action)
 {
 	home_server_t *home = request->home_server;
 	char buffer[128];
@@ -3543,7 +3584,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
  *
  *  If we do receive a reply, we transition to proxy_running.
  */
-STATE_MACHINE_DECL(proxy_wait_for_reply)
+static void NONNULL proxy_wait_for_reply(REQUEST *request, int action)
 {
 	struct timeval now, when;
 	struct timeval *response_window = NULL;
@@ -4143,7 +4184,7 @@ static void coa_retransmit(REQUEST *request)
  *
  *  If we do receive a reply, we transition to coa_running.
  */
-STATE_MACHINE_DECL(coa_wait_for_reply)
+static void NONNULL coa_wait_for_reply(REQUEST *request, int action)
 {
 	VERIFY_REQUEST(request);
 
@@ -4198,7 +4239,7 @@ static void coa_separate(REQUEST *request)
  *
  *  Run the packet through Post-Proxy-Type Fail
  */
-STATE_MACHINE_DECL(coa_no_reply)
+static void NONNULL coa_no_reply(REQUEST *request, int action)
 {
 	char buffer[128];
 
@@ -4239,7 +4280,7 @@ STATE_MACHINE_DECL(coa_no_reply)
  *  Throught the post-proxy section, and the through the handler
  *  function.
  */
-STATE_MACHINE_DECL(coa_running)
+static void NONNULL coa_running(REQUEST *request, int action)
 {
 	VERIFY_REQUEST(request);
 
