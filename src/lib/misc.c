@@ -1291,6 +1291,71 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 	return 1;
 }
 
+#ifdef O_NONBLOCK
+/** Set O_NONBLOCK on a socket
+ *
+ * @note O_NONBLOCK is POSIX.
+ *
+ * @param fd to set nonblocking flag on.
+ * @return flags set on the socket, or -1 on error.
+ */
+int fr_nonblock(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, NULL);
+	if (flags < 0)  {
+		fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return flags;
+}
+
+/** Unset O_NONBLOCK on a socket
+ *
+ * @note O_NONBLOCK is POSIX.
+ *
+ * @param fd to set nonblocking flag on.
+ * @return flags set on the socket, or -1 on error.
+ */
+int fr_blocking(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, NULL);
+	if (flags < 0)  {
+		fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	flags ^= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return flags;
+}
+#else
+int fr_nonblock(UNUSED int fd)
+{
+	fr_strerror_printf("Non blocking sockets are not supported");
+	return -1;
+}
+int fr_blocking(UNUSED int fd)
+{
+	fr_strerror_printf("Non blocking sockets are not supported");
+	return -1;
+}
+#endif
+
 /** Convert UTF8 string to UCS2 encoding
  *
  * @note Borrowed from src/crypto/ms_funcs.c of wpa_supplicant project (http://hostap.epitest.fi/wpa_supplicant/)
