@@ -210,7 +210,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
 	linelog_instance_t	*inst = instance;
 	linelog_conn_t		*conn;
-	int			sockfd;
+	int			sockfd = -1;
 	struct timeval		*timeout = NULL;
 
 	switch (inst->log_dst) {
@@ -268,6 +268,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	case LINELOG_DST_FILE:
 	case LINELOG_DST_SYSLOG:
 		rad_assert(0);
+		return NULL;
 	}
 
 	if (errno == EINPROGRESS) {
