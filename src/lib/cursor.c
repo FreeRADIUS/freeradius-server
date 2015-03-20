@@ -342,6 +342,7 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	if (!cursor->next) cursor->next = vp->next;
 
 	cursor->last->next = vp;
+	cursor->last = vp;	/* Wind it forward a little more */
 }
 
 /** Merges multiple VALUE_PAIR into the cursor
