@@ -1417,9 +1417,6 @@ ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, struct timeval *tim
 			int	ret;
 			fd_set	write_set;
 
-			/* If timeout == 0, sockets should be blocking */
-			if (!fr_assert(timeout != 0)) return -1;
-
 			FD_ZERO(&write_set);
 			FD_SET(fd, &write_set);
 
