@@ -275,8 +275,10 @@ VALUE_PAIR *fr_cursor_current(vp_cursor_t *cursor)
 
 /** Insert a single VALUE_PAIR at the end of the list
  *
- * Insert a VALUE_PAIR at the end of the list, and advance the cursor
- * to the newly inserted attribute.
+ * @note Will not advance cursor position to new attribute, but will set cursor
+ *	 to this attribute, if it's the first one in the list.
+ *
+ * Insert a VALUE_PAIR at the end of the list.
  *
  * @addtogroup module_safe
  *
@@ -301,7 +303,6 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	/*
 	 *	Cursor was initialised with a pointer to a NULL value_pair
 	 */
-
 	if (!*cursor->first) {
 		*cursor->first = vp;
 		cursor->current = vp;
@@ -319,7 +320,7 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	VERIFY_VP(cursor->last);
 
 	/*
-	 *	Something outside of the cursor added another VALUE_PAIR
+	 *	Wind last to the end of the list.
 	 */
 	if (cursor->last->next) {
 		for (i = cursor->last; i; i = i->next) {
@@ -332,17 +333,13 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	 *	Either current was never set, or something iterated to the end of the
 	 *	attribute list.
 	 */
-	if (!cursor->current) {
-		cursor->current = vp;
-	}
+	if (!cursor->current) cursor->current = vp;
 
 	/*
 	 *	If there's no next cursor, and the pair we just inserted has additional
 	 *	linked pairs, we need to set next to be the next VP in the list.
 	 */
-	if (!cursor->next) {
-		cursor->next = vp->next;
-	}
+	if (!cursor->next) cursor->next = vp->next;
 
 	cursor->last->next = vp;
 }
@@ -398,7 +395,9 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 	*last = vp->next;
 	vp->next = NULL;
 
-	/* Fixup cursor->found if we removed the VP it was referring to */
+	/*
+	 *	Fixup cursor->found if we removed the VP it was referring to
+	 */
 	if (vp == cursor->found) cursor->found = *last;
 
 	return vp;
