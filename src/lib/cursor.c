@@ -401,6 +401,10 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 	 */
 	if (vp == cursor->found) cursor->found = *last;
 
+	/*
+	 *	Fixup cursor->last if we removed the VP it was referring to
+	 */
+	if (vp == cursor->last) cursor->last = *last;
 	return vp;
 }
 
