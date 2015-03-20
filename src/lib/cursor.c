@@ -336,13 +336,16 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	if (!cursor->current) cursor->current = vp;
 
 	/*
-	 *	If there's no next cursor, and the pair we just inserted has additional
-	 *	linked pairs, we need to set next to be the next VP in the list.
+	 *	Add the VALUE_PAIR onto the end of the list
 	 */
-	if (!cursor->next) cursor->next = vp->next;
-
 	cursor->last->next = vp;
 	cursor->last = vp;	/* Wind it forward a little more */
+
+	/*
+	 *	If there's no next cursor and the new current, points to another
+	 *	VALUE_PAIR, fix that up.
+	 */
+	if (!cursor->next) cursor->next = cursor->current->next;
 }
 
 /** Merges multiple VALUE_PAIR into the cursor
