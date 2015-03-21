@@ -3164,16 +3164,10 @@ static int request_proxy(REQUEST *request, int retransmit)
 		}
 
 		/*
-		 *	Just do the work here, rather than trying to
-		 *	run the "decode proxy reply" stuff...
+		 *	Do the proxy reply (if any)
 		 */
-		process_proxy_reply(request, request->proxy_reply);
-
-		/*
-		 *	If we have a reply, run it through the handler.
-		 */
-		if (request->proxy_reply) {
-			request->handle(request); /* to do more post-proxy stuff */
+		if (process_proxy_reply(request, request->proxy_reply)) {
+			request->handle(request);
 		}
 
 		return -1;	/* so we call request_finish */
