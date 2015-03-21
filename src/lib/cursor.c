@@ -313,7 +313,8 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	/*
 	 *	We don't yet know where the last VALUE_PAIR is
 	 *
-	 *	Assume current is closer to the end of the list and use that if available.
+	 *	Assume current is closer to the end of the list and
+	 *	use that if available.
 	 */
 	if (!cursor->last) cursor->last = cursor->current ? cursor->current : *cursor->first;
 
@@ -330,20 +331,22 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	}
 
 	/*
-	 *	Either current was never set, or something iterated to the end of the
-	 *	attribute list.
+	 *	Either current was never set, or something iterated to the
+	 *	end of the attribute list. In both cases the newly inserted
+	 *	VALUE_PAIR should be set as the current VALUE_PAIR.
 	 */
 	if (!cursor->current) cursor->current = vp;
 
 	/*
-	 *	Add the VALUE_PAIR onto the end of the list
+	 *	Add the VALUE_PAIR to the end of the list
 	 */
 	cursor->last->next = vp;
 	cursor->last = vp;	/* Wind it forward a little more */
 
 	/*
-	 *	If there's no next cursor and the new current, points to another
-	 *	VALUE_PAIR, fix that up.
+	 *	If the next pointer was NULL, and the VALUE_PAIR
+	 *	just added has a next pointer value, set the cursor's next
+	 *	pointer to the VALUE_PAIR's next pointer.
 	 */
 	if (!cursor->next) cursor->next = cursor->current->next;
 }
