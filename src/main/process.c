@@ -4989,7 +4989,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	request_num_counter = 0;
 
 #ifdef WITH_PROXY
-	if (main_config.proxy_requests) {
+	if (main_config.proxy_requests && !check_config) {
 		/*
 		 *	Create the tree for managing proxied requests and
 		 *	responses.
