@@ -66,6 +66,19 @@ mschap {
 	#
 #	ntlm_auth_timeout = 10
 
+	# An alternative to using ntlm_auth is to connect to the
+	# winbind daemon directly for authentication. This option
+	# is likely to be faster and may be useful on busy systems,
+	# but is less well tested.
+	#
+	# Using this option requires libwbclient from Samba 4.2.1
+	# or later to be installed. Make sure that ntlm_auth above is
+	# commented out.
+	#
+#	winbind_username = "%{mschap:User-Name}"
+#	winbind_domain = "%{mschap:NT-Domain}"
+
+
 	passchange {
 		# This support MS-CHAPv2 (not v1) password change
 		# requests.  See doc/mschap.rst for more IMPORTANT
