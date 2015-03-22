@@ -119,6 +119,7 @@ static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char c
 #define STATE_MACHINE_DECL(_x) static void _x(REQUEST *request, int action)
 
 static void request_timer(void *ctx);
+
 /** Insert #REQUEST back into the event heap, to continue executing at a future time
  *
  * @param file the state machine timer call occurred in.
@@ -370,10 +371,10 @@ static void request_coa_originate(REQUEST *request) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_wait_for_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_running) CC_HINT(nonnull);
-static void coa_separate(REQUEST *request);
-#define COA_SEPARATE if (request->coa) coa_separate(request->coa);
+static void coa_separate(REQUEST *request) CC_HINT(nonnull);
+#  define COA_SEPARATE if (request->coa) coa_separate(request->coa);
 #else
-#define COA_SEPARATE
+#  define COA_SEPARATE
 #endif
 
 #define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {request_done(request, FR_ACTION_DONE);return;}} while (0)
@@ -398,7 +399,7 @@ static void tv_add(struct timeval *tv, int usec_delay)
 }
 
 /*
- *	In daemon mode, AND this request has debug flags set.
+ *	Debug the packet if requested.
  */
 static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 {
@@ -1262,7 +1263,6 @@ static void request_finish(REQUEST *request, int action)
 	if (vp) {
 		if (vp->vp_integer == 256) {
 			RDEBUG2("Not responding to request");
-
 			request->reply->code = 0;
 		} else {
 			request->reply->code = vp->vp_integer;
@@ -3374,6 +3374,7 @@ static void ping_home_server(void *ctx)
 	} else {
 #ifdef WITH_ACCOUNTING
 		request->proxy->code = PW_CODE_ACCOUNTING_REQUEST;
+
 		pairmake(request->proxy, &request->proxy->vps,
 			 "User-Name", home->ping_user_name, T_OP_SET);
 		pairmake(request->proxy, &request->proxy->vps,
