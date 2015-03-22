@@ -121,6 +121,8 @@ static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char c
 static void request_timer(void *ctx);
 /** Insert #REQUEST back into the event heap, to continue executing at a future time
  *
+ * @param file the state machine timer call occurred in.
+ * @param line the state machine timer call occurred on.
  * @param request to set add the timer event for.
  * @param when the event should fine.
  * @param action to perform when we resume processing the request.
