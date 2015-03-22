@@ -34,11 +34,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	}
 
 	if (pairfind(request->config, PW_AUTHTYPE, 0, TAG_ANY) != NULL) {
-		RWDEBUG2("Auth-Type already set.  Not setting to CHAP");
+		RWDEBUG2("&control:Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
 
-	RDEBUG("Setting 'Auth-Type := CHAP'");
+	RINDENT();
+	RDEBUG("&control:Auth-Type := CHAP");
+	REXDENT();
 	pairmake_config("Auth-Type", "CHAP", T_OP_EQ);
 
 	return RLM_MODULE_OK;
@@ -53,37 +55,33 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQUEST *request)
 {
-	VALUE_PAIR *passwd_item, *chap;
+	VALUE_PAIR *password, *chap;
 	uint8_t pass_str[MAX_STRING_LEN];
 
 	if (!request->username) {
-		RWDEBUG("Attribute 'User-Name' is required for authentication.\n");
+		RWDEBUG("&request:User-Name attribute is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
 	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	if (!chap) {
-		REDEBUG("You set 'Auth-Type = CHAP' for a request that does not contain a CHAP-Password attribute!");
+		REDEBUG("You set '&control:Auth-Type = CHAP' for a request that "
+			"does not contain a CHAP-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->vp_length == 0) {
-		REDEBUG("CHAP-Password is empty");
+		REDEBUG("&request:CHAP-Password is empty");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->vp_length != CHAP_VALUE_LENGTH + 1) {
-		REDEBUG("CHAP-Password has invalid length");
+		REDEBUG("&request:CHAP-Password has invalid length");
 		return RLM_MODULE_INVALID;
 	}
 
-	/*
-	 *	Don't print out the CHAP password here.  It's binary crap.
-	 */
-	RDEBUG("Login attempt by \"%s\" with CHAP password",
-		request->username->vp_strvalue);
-
-	if ((passwd_item = pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL){
+	password = pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	if (password == NULL) {
 		if (pairfind(request->config, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			REDEBUG("!!! Please update your configuration so that the \"known !!!");
@@ -94,12 +92,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
 
-		REDEBUG("Cleartext password is required for authentication");
+		REDEBUG("&control:Cleartext-Password is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	rad_chap_encode(request->packet, pass_str,
-			chap->vp_octets[0], passwd_item);
+	rad_chap_encode(request->packet, pass_str, chap->vp_octets[0], password);
 
 	if (RDEBUG_ENABLED3) {
 		uint8_t const *p;
@@ -107,13 +104,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		VALUE_PAIR *vp;
 		char buffer[CHAP_VALUE_LENGTH * 2 + 1];
 
-		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\"", passwd_item->vp_strvalue);
+		RDEBUG3("Comparing with \"known good\" &control:Cleartext-Password value \"%s\"",
+			password->vp_strvalue);
 
 		vp = pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
 		if (vp) {
+			RDEBUG2("Using challenge from &request:CHAP-Challenge");
 			p = vp->vp_octets;
 			length = vp->vp_length;
 		} else {
+			RDEBUG2("Using challenge from authenticator field");
 			p = request->packet->vector;
 			length = sizeof(request->packet->vector);
 		}
@@ -132,14 +132,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
 
-	if (rad_digest_cmp(pass_str + 1, chap->vp_octets + 1,
-			   CHAP_VALUE_LENGTH) != 0) {
+	if (rad_digest_cmp(pass_str + 1, chap->vp_octets + 1, CHAP_VALUE_LENGTH) != 0) {
 		REDEBUG("Password comparison failed: password is incorrect");
 		return RLM_MODULE_REJECT;
 	}
 
-	RDEBUG("CHAP user \"%s\" authenticated successfully",
-	      request->username->vp_strvalue);
+	RDEBUG("CHAP user \"%s\" authenticated successfully", request->username->vp_strvalue);
 
 	return RLM_MODULE_OK;
 }
@@ -155,11 +153,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
  */
 extern module_t rlm_chap;
 module_t rlm_chap = {
-	 RLM_MODULE_INIT,
+	RLM_MODULE_INIT,
 	"CHAP",
 	0,   	/* type */
-	 0,
-	 NULL,				/* CONF_PARSER */
+	0,
+	NULL,				/* CONF_PARSER */
 	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{
