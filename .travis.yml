@@ -2,14 +2,16 @@ language: c
 compiler:
   - clang
   - gcc
+sudo: false
 env:
   global:
     - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
     - secure: "H+uQeyOgsIyXtIPPG2VzAG8S/8KYGHlHaWhdiNuz1LM3SMcEKoPqG6o/P+HO8HVvYnA6nelyGuEryV90UfuwGY9YC6A/pqPQvx/gXSso63Zt66XSaiZjulCSm9OV8EB3wyWF7VSQ/ZHcn+L01hIlsQXTqLprMaC33cM0FYPr9fY="
   matrix:
-    - LIBS_OPTIONAL=no LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
-    - LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG" CLANG_ANALYZE=yes
-    - LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3"
+    - BUILD_PACKAGES=no LIBS_OPTIONAL=no LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
+    - BUILD_PACKAGES=no LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
+    - BUILD_PACKAGES=no LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3"
+#    - BUILD_PACKAGES=yes
 addons:
   coverity_scan:
     project:
@@ -20,59 +22,63 @@ addons:
     build_command_prepend: ./configure
     build_command: make
     branch_pattern: coverity_scan
+  apt_sources:
+    - couchbase-precise
+  apt_packages:
+    - autoconf
+    - build-essential
+    - debhelper
+    - devscripts
+    - dh-make
+    - fakeroot
+    - gdb
+    - lintian
+    - pbuilder
+    - python-dev
+    - quilt
+    - libruby
+    - ruby-dev
+    - libcollectdclient-dev
+    - firebird-dev
+    - freetds-dev
+    - libcap-dev
+    - libcouchbase2-libevent
+    - libcouchbase-dev
+    - libcurl4-openssl-dev
+    - libgdbm-dev
+    - libhiredis-dev
+    - libidn11-dev
+    - libiodbc2-dev libiodbc2
+    - libjson0
+    - libjson0-dev
+    - libkrb5-dev
+    - libldap2-dev
+    - libmemcached-dev
+    - libmysqlclient-dev
+    - libpam0g-dev
+    - libpcap-dev
+    - libpcre3-dev
+    - libperl-dev
+    - libpq-dev
+    - libreadline-dev
+    - libsnmp-dev
+    - libssl-dev
+    - libtalloc-dev
+    - libtalloc2-dbg
+    - libunbound-dev
+    - libwbclient-dev
+    - libykclient-dev
+    - libyubikey-dev
 before_install:
   - $CC --version
-  - wget -O - http://packages.couchbase.com/ubuntu/couchbase.key | sudo apt-key add -
-  - sudo sudo wget -O /etc/apt/sources.list.d/couchbase.list http://packages.couchbase.com/ubuntu/couchbase-ubuntu1204.list
-  - sudo apt-get update -qq
-  - >
-      sudo apt-get install --no-install-recommends -qq
-      autoconf
-      build-essential
-      debhelper
-      devscripts
-      dh-make
-      fakeroot
-      gdb
-      lintian
-      pbuilder
-      python-dev
-      quilt
-      libruby
-      ruby-dev
-      libcollectdclient-dev
-      firebird-dev
-      freetds-dev
-      libcap-dev
-      libcouchbase2-libevent
-      libcouchbase-dev
-      libcurl4-openssl-dev
-      libgdbm-dev
-      libhiredis-dev
-      libidn11-dev
-      libiodbc2-dev libiodbc2
-      libjson0
-      libjson0-dev
-      libkrb5-dev
-      libldap2-dev
-      libmemcached-dev
-      libpam0g-dev
-      libpcap-dev
-      libpcre3-dev
-      libperl-dev
-      libpq-dev
-      libreadline-dev
-      libsnmp-dev
-      libssl-dev
-      libtalloc-dev
-      libtalloc2-dbg
-      libunbound-dev
-      libwbclient-dev
-      libykclient-dev
-      libyubikey-dev
-  - sudo apt-get install -qq -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" libmysqlclient-dev
 before_script:
-  - CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL
-  - make -j4
-  - if [ "${CLANG_ANALYZE}" = 'yes' -a ${CC} = 'clang' ]; then make -j4 scan; fi
-script: if [ ${COVERITY_SCAN_BRANCH} != 1 ]; then make travis-test; fi
+# Configure the server
+  - if [ "${BUILD_PACKAGES}" = 'no' ]; then CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL; fi
+  - if [ "${BUILD_PACKAGES}" = 'yes' ]; then ./configure -C --without-modules; fi
+# Build the server
+  - if [ "${BUILD_PACKAGES}" = 'no' ]; then make -j8; fi
+# Run CLANG analyzer and we're building with CLANG
+  - if [ "${BUILD_PACKAGES}" = 'no' -a "${COVERITY_SCAN_BRANCH}" != 1 -a ${CC} = 'clang' ]; then make -j8 scan; fi
+script:
+  - if [ "${BUILD_PACKAGES}" = 'no' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
+  - if [ "${BUILD_PACKAGES}" = 'yes' ]; then make deb; fi
