@@ -346,6 +346,7 @@ static int request_num_counter = 1;
 static int request_will_proxy(REQUEST *request) CC_HINT(nonnull);
 static int request_proxy(REQUEST *request, int retransmit) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_ping) CC_HINT(nonnull);
+
 STATE_MACHINE_DECL(request_response_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_cleanup_delay) CC_HINT(nonnull);
 STATE_MACHINE_DECL(request_running) CC_HINT(nonnull);
@@ -369,7 +370,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action) CC_HINT(nonn
 static void request_coa_originate(REQUEST *request) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_wait_for_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_no_reply) CC_HINT(nonnull);
-STATE_MACHINE_DECL(coa_running);
+STATE_MACHINE_DECL(coa_running) CC_HINT(nonnull);
 static void coa_separate(REQUEST *request) CC_HINT(nonnull);
 #  define COA_SEPARATE if (request->coa) coa_separate(request->coa);
 #else
@@ -556,6 +557,7 @@ static void proxy_reply_too_late(REQUEST *request)
 		request->proxy->dst_port, request->proxy->id);
 }
 #endif
+
 
 /** Mark a request DONE and clean it up.
  *
@@ -1272,7 +1274,6 @@ static void request_finish(REQUEST *request, int action)
 	else if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 		if (request->reply->code == 0) {
 			vp = pairfind(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
-
 			if (!vp || (vp->vp_integer != 5)) {
 				RDEBUG2("There was no response configured: "
 					"rejecting request");
@@ -2567,7 +2568,6 @@ static int setup_post_proxy_fail(REQUEST *request)
 	if (request->proxy->code == PW_CODE_ACCESS_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Authentication");
-
 	} else if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Accounting");
@@ -3047,7 +3047,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *	We're actually sending a proxied packet.  Do that now.
 	 */
 	if (!request->in_proxy_hash && !insert_into_proxy_hash(request)) {
-		ERROR("Failed to insert request into the proxy list");
+		RPROXY("Failed to insert request into the proxy list");
 		return -1;
 	}
 
