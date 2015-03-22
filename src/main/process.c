@@ -2694,6 +2694,34 @@ static void proxy_running(REQUEST *request, int action)
 	}
 }
 
+/** Determine if a #REQUEST needs to be proxied, and perform pre-proxy operations
+ *
+ * Whether a request will be proxied is determined by the attributes present
+ * in request->config. If any of the following attributes are found, the
+ * request may be proxied.
+ *
+ * The key attributes are:
+ *   - #PW_PROXY_TO_REALM          - Specifies a realm the request should be proxied to.
+ *   - #PW_HOME_SERVER_POOL        - Specifies a specific home server pool to proxy to.
+ *   - #PW_PACKET_DST_IP_ADDRESS   - Specifies a specific IPv4 home server to proxy to.
+ *   - #PW_PACKET_DST_IPV6_ADDRESS - Specifies a specific IPv6 home server to proxy to.
+ *
+ * Certain packet types such as #PW_CODE_STATUS_SERVER will never be proxied.
+ *
+ * If request should be proxied, will:
+ *   - Add request:Proxy-State
+ *   - Strip the current username value of its realm (depending on config)
+ *   - Create a CHAP-Challenge from the original request vector, if one doesn't already
+ *     exist.
+ *   - Call the pre-process section in the current server, or in the virtual server
+ *     associated with the home server pool we're proxying to.
+ *
+ * @todo A lot of this logic is RADIUS specific, and should be moved out into a protocol
+ *	specific function.
+ *
+ * @param request The #REQUEST to evaluate for proxying.
+ * @return 0 if not proxying, 1 if request should be proxied, -1 on error.
+ */
 static int request_will_proxy(REQUEST *request)
 {
 	int rcode, pre_proxy_type = 0;
@@ -2774,9 +2802,9 @@ static int request_will_proxy(REQUEST *request)
 
 		pool = home_pool_byname(vp->vp_strvalue, pool_type);
 
-		/*
-		 *	Send it directly to a home server (i.e. NAS)
-		 */
+	/*
+	 *	Send it directly to a home server (i.e. NAS)
+	 */
 	} else if (((vp = pairfind(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
 		   ((vp = pairfind(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
 		VALUE_PAIR *port;
@@ -2953,6 +2981,7 @@ do_home:
 	} else {
 		rcode = process_pre_proxy(pre_proxy_type, request);
 	}
+
 	switch (rcode) {
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
@@ -2972,10 +3001,8 @@ do_home:
 	case RLM_MODULE_NOOP:
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		break;
+		return 1;
 	}
-
-	return 1;
 }
 
 static int request_proxy(REQUEST *request, int retransmit)
