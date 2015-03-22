@@ -3278,18 +3278,12 @@ fi
 
 smart_prefix=
 
-    if test "x$ac_cv_header_wbclient_h" = "xyes"; then
-
-$as_echo "#define HAVE_WBCLIENT_H 1" >>confdefs.h
-
-        mschap_sources="$mschap_sources auth_wbclient.c"
-    else
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: wbclient.h not found. Use --with-winbind-include-dir=<path>." >&5
+    if test "x$ac_cv_header_wbclient_h" != "xyes"; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: wbclient.h not found. Use --with-winbind-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: wbclient.h not found. Use --with-winbind-include-dir=<path>." >&2;}
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&5
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&5
 $as_echo "$as_me: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&2;}
     fi
-
 
 
     smart_try_dir="$winbind_lib_dir"
@@ -3467,12 +3461,16 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
 fi
 
-    if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"
-    then
+    if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then
       { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: winbind libraries not found. Use --with-winbind-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: winbind libraries not found. Use --with-winbind-lib-dir=<path>." >&2;}
       { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&5
 $as_echo "$as_me: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&2;}
+    elif test "x$ac_cv_header_wbclient_h" = "xyes"; then
+      mschap_sources="$mschap_sources auth_wbclient.c"
+
+$as_echo "#define WITH_AUTH_WINBIND 1" >>confdefs.h
+
     fi
 
     targetname=rlm_mschap

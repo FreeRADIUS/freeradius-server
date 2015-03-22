@@ -3,7 +3,7 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_mschap])
 
 if test x$with_[]modname != xno; then
-    
+
     AC_PROG_CC
     AC_PROG_CPP
 
@@ -75,14 +75,10 @@ if test x$with_[]modname != xno; then
     smart_try_dir="$winbind_include_dir"
     FR_SMART_CHECK_INCLUDE(wbclient.h, [#include <stdint.h>
 					#include <stdbool.h>])
-    if test "x$ac_cv_header_wbclient_h" = "xyes"; then
-        AC_DEFINE([HAVE_WBCLIENT_H],[1],[Build with direct winbind auth support])
-        mschap_sources="$mschap_sources auth_wbclient.c"
-    else
-	AC_MSG_WARN([wbclient.h not found. Use --with-winbind-include-dir=<path>.])
-	AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
+    if test "x$ac_cv_header_wbclient_h" != "xyes"; then
+        AC_MSG_WARN([wbclient.h not found. Use --with-winbind-include-dir=<path>.])
+        AC_MSG_WARN([silently building without support for direct authentication via winbind. requires: libwbclient])
     fi
-
 
     dnl ############################################################
     dnl # Check for libraries
@@ -90,10 +86,12 @@ if test x$with_[]modname != xno; then
 
     smart_try_dir="$winbind_lib_dir"
     FR_SMART_CHECK_LIB(wbclient, wbcCtxAuthenticateUserEx)
-    if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"
-    then
+    if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then
       AC_MSG_WARN([winbind libraries not found. Use --with-winbind-lib-dir=<path>.])
       AC_MSG_WARN([Samba must be version 4.2.1 or higher to use this feature.])
+    elif test "x$ac_cv_header_wbclient_h" = "xyes"; then
+      mschap_sources="$mschap_sources auth_wbclient.c"
+      AC_DEFINE([WITH_AUTH_WINBIND],[1],[Build with direct winbind auth support])
     fi
 
     targetname=modname

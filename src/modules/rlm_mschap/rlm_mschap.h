@@ -7,9 +7,8 @@ RCSIDH(rlm_mschap_h, "$Id$")
 
 #include "config.h"
 
-#ifdef HAVE_WBCLIENT_H
-#define WITH_AUTH_WINBIND
-#include <wbclient.h>
+#ifdef WITH_AUTH_WINBIND
+#  include <wbclient.h>
 #endif
 
 /* Method of authentication we are going to use */
