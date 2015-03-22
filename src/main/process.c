@@ -116,7 +116,7 @@ static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char c
  *
  * @param _x the name of the state.
  */
-#define STATE_MACHINE_DECL(_x) static void CC_HINT(nonnull) _x(REQUEST *request, int action)
+#define STATE_MACHINE_DECL(_x) static void _x(REQUEST *request, int action)
 
 static void request_timer(void *ctx);
 /** Insert #REQUEST back into the event heap, to continue executing at a future time
@@ -342,28 +342,34 @@ void radius_update_listener(rad_listen_t *this)
 
 static int request_num_counter = 1;
 #ifdef WITH_PROXY
-static int request_will_proxy(REQUEST *request);
-static int request_proxy(REQUEST *request, int retransmit);
-STATE_MACHINE_DECL(proxy_wait_for_reply);
-STATE_MACHINE_DECL(proxy_no_reply);
-STATE_MACHINE_DECL(proxy_running);
-static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply);
-static void remove_from_proxy_hash(REQUEST *request);
-static void remove_from_proxy_hash_nl(REQUEST *request, bool yank);
-static int insert_into_proxy_hash(REQUEST *request);
+static int request_will_proxy(REQUEST *request) CC_HINT(nonnull);
+static int request_proxy(REQUEST *request, int retransmit) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_ping) CC_HINT(nonnull);
+
+STATE_MACHINE_DECL(request_response_delay) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_cleanup_delay) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_running) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_done) CC_HINT(nonnull);
+
+STATE_MACHINE_DECL(proxy_no_reply) CC_HINT(nonnull);
+STATE_MACHINE_DECL(proxy_running) CC_HINT(nonnull);
+STATE_MACHINE_DECL(proxy_wait_for_reply) CC_HINT(nonnull);
+
+static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply) CC_HINT(nonnull (1));
+static void remove_from_proxy_hash(REQUEST *request) CC_HINT(nonnull);
+static void remove_from_proxy_hash_nl(REQUEST *request, bool yank) CC_HINT(nonnull);
+static int insert_into_proxy_hash(REQUEST *request) CC_HINT(nonnull);
 #endif
 
 static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 			      RADCLIENT *client, RAD_REQUEST_FUNP fun);
+static int request_pre_handler(REQUEST *request, UNUSED int action) CC_HINT(nonnull);
 
-STATE_MACHINE_DECL(request_response_delay);
-STATE_MACHINE_DECL(request_cleanup_delay);
-STATE_MACHINE_DECL(request_running);
 #ifdef WITH_COA
-static void request_coa_originate(REQUEST *request);
-STATE_MACHINE_DECL(coa_running);
-STATE_MACHINE_DECL(coa_wait_for_reply);
-STATE_MACHINE_DECL(coa_no_reply);
+static void request_coa_originate(REQUEST *request) CC_HINT(nonnull);
+STATE_MACHINE_DECL(coa_wait_for_reply) CC_HINT(nonnull);
+STATE_MACHINE_DECL(coa_no_reply) CC_HINT(nonnull);
+STATE_MACHINE_DECL(coa_running) CC_HINT(nonnull);
 static void coa_separate(REQUEST *request);
 #define COA_SEPARATE if (request->coa) coa_separate(request->coa);
 #else
