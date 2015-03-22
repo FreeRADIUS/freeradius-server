@@ -2610,7 +2610,6 @@ static int setup_post_proxy_fail(REQUEST *request)
 	if (!dval) dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail");
 
 	if (!dval) {
-		DEBUG("No Post-Proxy-Type Fail: ignoring");
 		pairdelete(&request->config, PW_POST_PROXY_TYPE, 0, TAG_ANY);
 		return 0;
 	}
@@ -3072,7 +3071,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *	We're actually sending a proxied packet.  Do that now.
 	 */
 	if (!request->in_proxy_hash && !insert_into_proxy_hash(request)) {
-		RPROXY("Failed to insert initial packet into the proxy list");
+		RPROXY("Failed to insert request into the proxy list");
 		return -1;
 	}
 
