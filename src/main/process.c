@@ -116,7 +116,7 @@ static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char c
  *
  * @param _x the name of the state.
  */
-#define STATE_MACHINE_DECL(_x) static void CC_HINT(nonnull) _x(REQUEST *request, int action)
+#define STATE_MACHINE_DECL(_x) static void _x(REQUEST *request, int action)
 
 static void request_timer(void *ctx);
 
@@ -343,32 +343,37 @@ void radius_update_listener(rad_listen_t *this)
 
 static int request_num_counter = 1;
 #ifdef WITH_PROXY
-static int request_will_proxy(REQUEST *request);
-static int request_proxy(REQUEST *request, int retransmit);
-STATE_MACHINE_DECL(proxy_wait_for_reply);
-STATE_MACHINE_DECL(proxy_no_reply);
-STATE_MACHINE_DECL(proxy_running);
-static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply);
-static void remove_from_proxy_hash(REQUEST *request);
-static void remove_from_proxy_hash_nl(REQUEST *request, bool yank);
-static int insert_into_proxy_hash(REQUEST *request);
+static int request_will_proxy(REQUEST *request) CC_HINT(nonnull);
+static int request_proxy(REQUEST *request, int retransmit) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_ping) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_response_delay) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_cleanup_delay) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_running) CC_HINT(nonnull);
+STATE_MACHINE_DECL(request_done) CC_HINT(nonnull);
+
+STATE_MACHINE_DECL(proxy_no_reply) CC_HINT(nonnull);
+STATE_MACHINE_DECL(proxy_running) CC_HINT(nonnull);
+STATE_MACHINE_DECL(proxy_wait_for_reply) CC_HINT(nonnull);
+
+static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply) CC_HINT(nonnull (1));
+static void remove_from_proxy_hash(REQUEST *request) CC_HINT(nonnull);
+static void remove_from_proxy_hash_nl(REQUEST *request, bool yank) CC_HINT(nonnull);
+static int insert_into_proxy_hash(REQUEST *request) CC_HINT(nonnull);
 #endif
 
 static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *packet,
 			      RADCLIENT *client, RAD_REQUEST_FUNP fun);
+static int request_pre_handler(REQUEST *request, UNUSED int action) CC_HINT(nonnull);
 
-STATE_MACHINE_DECL(request_response_delay);
-STATE_MACHINE_DECL(request_cleanup_delay);
-STATE_MACHINE_DECL(request_running);
 #ifdef WITH_COA
-static void request_coa_originate(REQUEST *request);
+static void request_coa_originate(REQUEST *request) CC_HINT(nonnull);
+STATE_MACHINE_DECL(coa_wait_for_reply) CC_HINT(nonnull);
+STATE_MACHINE_DECL(coa_no_reply) CC_HINT(nonnull);
 STATE_MACHINE_DECL(coa_running);
-STATE_MACHINE_DECL(coa_wait_for_reply);
-STATE_MACHINE_DECL(coa_no_reply);
-static void coa_separate(REQUEST *request);
-#define COA_SEPARATE if (request->coa) coa_separate(request->coa);
+static void coa_separate(REQUEST *request) CC_HINT(nonnull);
+#  define COA_SEPARATE if (request->coa) coa_separate(request->coa);
 #else
-#define COA_SEPARATE
+#  define COA_SEPARATE
 #endif
 
 #define CHECK_FOR_STOP do { if (request->master_state == REQUEST_STOP_PROCESSING) {request_done(request, FR_ACTION_DONE);return;}} while (0)
@@ -552,9 +557,6 @@ static void proxy_reply_too_late(REQUEST *request)
 }
 #endif
 
-#define NONNULL CC_HINT(nonnull)
-
-
 /** Mark a request DONE and clean it up.
  *
  *  When a request is DONE, it can have ties to a number of other
@@ -569,7 +571,7 @@ static void proxy_reply_too_late(REQUEST *request)
  *	}
  *  \enddot
  */
-static void NONNULL request_done(REQUEST *request, int action)
+static void request_done(REQUEST *request, int action)
 {
 	struct timeval now, when;
 
@@ -1027,7 +1029,7 @@ static void request_dup(REQUEST *request)
  *	}
  *  \enddot
  */
-static void NONNULL request_cleanup_delay(REQUEST *request, int action)
+static void request_cleanup_delay(REQUEST *request, int action)
 {
 	struct timeval when, now;
 
@@ -1108,7 +1110,7 @@ static void NONNULL request_cleanup_delay(REQUEST *request, int action)
  *	}
  *  \enddot
  */
-static void NONNULL request_response_delay(REQUEST *request, int action)
+static void request_response_delay(REQUEST *request, int action)
 {
 	struct timeval when, now;
 
@@ -1172,7 +1174,7 @@ static void NONNULL request_response_delay(REQUEST *request, int action)
 }
 
 
-static int NONNULL request_pre_handler(REQUEST *request, UNUSED int action)
+static int request_pre_handler(REQUEST *request, UNUSED int action)
 {
 	int rcode;
 
@@ -1232,7 +1234,7 @@ static int NONNULL request_pre_handler(REQUEST *request, UNUSED int action)
  *  Various cleanups, suppress responses, copy Proxy-State, and set
  *  response_delay or cleanup_delay;
  */
-static void NONNULL request_finish(REQUEST *request, int action)
+static void request_finish(REQUEST *request, int action)
 {
 	VALUE_PAIR *vp;
 
@@ -1472,7 +1474,7 @@ static void NONNULL request_finish(REQUEST *request, int action)
  *	}
  *  \enddot
  */
-static void NONNULL request_running(REQUEST *request, int action)
+static void request_running(REQUEST *request, int action)
 {
 	VERIFY_REQUEST(request);
 
@@ -2601,7 +2603,7 @@ static int setup_post_proxy_fail(REQUEST *request)
  *
  *  Run the packet through Post-Proxy-Type Fail
  */
-static void NONNULL proxy_no_reply(REQUEST *request, int action)
+static void proxy_no_reply(REQUEST *request, int action)
 {
 	VERIFY_REQUEST(request);
 
@@ -2639,7 +2641,7 @@ static void NONNULL proxy_no_reply(REQUEST *request, int action)
  *  Throught the post-proxy section, and the through the handler
  *  function.
  */
-static void NONNULL proxy_running(REQUEST *request, int action)
+static void proxy_running(REQUEST *request, int action)
 {
 	VERIFY_REQUEST(request);
 
@@ -3181,7 +3183,7 @@ static int request_proxy_anew(REQUEST *request)
 /** Ping a home server.
  *
  */
-static void NONNULL request_ping(REQUEST *request, int action)
+static void request_ping(REQUEST *request, int action)
 {
 	home_server_t *home = request->home_server;
 	char buffer[128];
@@ -3580,7 +3582,7 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
  *
  *  If we do receive a reply, we transition to proxy_running.
  */
-static void NONNULL proxy_wait_for_reply(REQUEST *request, int action)
+static void proxy_wait_for_reply(REQUEST *request, int action)
 {
 	struct timeval now, when;
 	struct timeval *response_window = NULL;
@@ -4180,7 +4182,7 @@ static void coa_retransmit(REQUEST *request)
  *
  *  If we do receive a reply, we transition to coa_running.
  */
-static void NONNULL coa_wait_for_reply(REQUEST *request, int action)
+static void coa_wait_for_reply(REQUEST *request, int action)
 {
 	VERIFY_REQUEST(request);
 
@@ -4235,7 +4237,7 @@ static void coa_separate(REQUEST *request)
  *
  *  Run the packet through Post-Proxy-Type Fail
  */
-static void NONNULL coa_no_reply(REQUEST *request, int action)
+static void coa_no_reply(REQUEST *request, int action)
 {
 	char buffer[128];
 
@@ -4276,7 +4278,7 @@ static void NONNULL coa_no_reply(REQUEST *request, int action)
  *  Throught the post-proxy section, and the through the handler
  *  function.
  */
-static void NONNULL coa_running(REQUEST *request, int action)
+static void coa_running(REQUEST *request, int action)
 {
 	VERIFY_REQUEST(request);
 
