@@ -361,30 +361,20 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval *timeout)
 
 	switch (ret) {
 	case 1: /* ok (maybe) */
-		if (FD_ISSET(sockfd, &error_set)) {
-			if (write(sockfd, NULL, 0) < 0) {
-			failed:
-				fr_strerror_printf("Failed connecting socket: %s", fr_syserror(errno));
-			} else {
-				fr_strerror_printf("Failed connecting socket: Unknown error");
-			}
+	{
+		int error;
+		socklen_t socklen = sizeof(error);
+
+		if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, (void *)&error, &socklen)) {
+			fr_strerror_printf("Failed connecting socket: %s", fr_syserror(errno));
 			return -1;
 		}
 
-		/*
-		 *	Not all implementations set pending errors correctly.
-		 *	Seen this on OSX at least.
-		 *
-		 *	For stream descriptors the call below produces a zero
-		 *	length message. For pipes and fifos it produces no message.
-		 *
-		 *	In both cases it should reveal whether the socket is
-		 *	actually connected or not.
-		 */
-		if (write(sockfd, NULL, 0) < 0) goto failed;
-
-		/* If it wasn't in the error set, it must be in the write set */
-		if (!fr_assert(FD_ISSET(sockfd, &write_set))) return -1;
+		if (FD_ISSET(sockfd, &error_set)) {
+			fr_strerror_printf("Failed connecting socket: Unknown error");
+			return -1;
+		}
+	}
 		return 0;
 
 	case 0: /* timeout */
