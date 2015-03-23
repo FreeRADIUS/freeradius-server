@@ -23,6 +23,19 @@
 #include <ldap.h>
 #include "config.h"
 
+
+/*
+ *	Because the LTB people define LDAP_VENDOR_VERSION_PATCH
+ *	as X, which precludes its use in printf statements *sigh*
+ *
+ *	Identifiers that are not macros, all evaluate to 0,
+ *	which is why this works.
+ */
+#if !defined(LDAP_VENDOR_VERSION_PATCH) || LDAP_VENDOR_VERSION_PATCH == 0
+#  undef LDAP_VENDOR_VERSION_PATCH
+#  define LDAP_VENDOR_VERSION_PATCH 0
+#endif
+
 /*
  *      For compatibility with other LDAP libraries
  */
