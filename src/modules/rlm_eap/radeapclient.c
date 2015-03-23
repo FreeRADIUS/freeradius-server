@@ -125,6 +125,10 @@ struct rc_transaction {
 
 rc_eap_context_t eap_ctx; // (temporary, will be talloc'ed later on.)
 
+uint32_t num_trans = 0; //!< number of transactions initialized.
+rc_input_vps_list_t rc_vps_list_in; //!< list of available input vps entries.
+
+
 static void map_eap_methods(RADIUS_PACKET *req);
 static void unmap_eap_methods(RADIUS_PACKET *rep);
 static int map_eapsim_types(RADIUS_PACKET *r);
@@ -162,7 +166,7 @@ int rad_virtual_server(REQUEST UNUSED *request)
  static void rc_add_vps_entry(rc_input_vps_list_t *list, rc_input_vps_t *entry)
 {
 	if (!list || !entry) return;
-	
+
 	if (!list->head) {
 		assert(list->tail == NULL);
 		list->head = entry;
@@ -179,11 +183,54 @@ int rad_virtual_server(REQUEST UNUSED *request)
 	list->size ++;
 }
 
+/** Remove a selected rc_input_vps_t entry from its current list.
+ */
+static rc_input_vps_t *rc_yank_vps_entry(rc_input_vps_t *entry)
+{
+	if (!entry) return NULL;
+
+	if (!entry->list) return entry; /* not in a list, nothing to do. Just return the entry. */
+
+	rc_input_vps_t *prev, *next;
+
+	prev = entry->prev;
+	next = entry->next;
+
+	rc_input_vps_list_t *list = entry->list;
+
+	assert(list->head != NULL); /* entry belongs to a list, so the list can't be empty. */
+	assert(list->tail != NULL); /* same. */
+
+	if (prev) {
+		assert(list->head != entry); /* if entry has a prev, then entry can't be head. */
+		prev->next = next;
+	}
+	else {
+		assert(list->head == entry); /* if entry has no prev, then entry must be head. */
+		list->head = next;
+	}
+
+	if (next) {
+		assert(list->tail != entry); /* if entry has a next, then entry can't be tail. */
+		next->prev = prev;
+	}
+	else {
+		assert(list->tail == entry); /* if entry has no next, then entry must be tail. */
+		list->tail = prev;
+	}
+
+	entry->list = NULL;
+	entry->prev = NULL;
+	entry->next = NULL;
+	list->size --;
+	return entry;
+}
+
 /** Load input entries (list of vps) from a file or stdin, and add them to the list.
  *  They will be used to initiate transactions.
  */
 static int UNUSED rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_list_t *list, uint32_t max_entries)
-// (UNUSED for now.)
+//TODO: use it!
 {
 	FILE *file_in = NULL;
 	bool file_done = false;
@@ -234,6 +281,33 @@ static int UNUSED rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_
 	DEBUG("Read %d element(s) from input: %s", list->size, filename);
 	return 1;
 }
+
+/** Grab an element from the input list. Initialize a new transaction context, using this element.
+ */
+static UNUSED rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
+//TODO: use it!
+{
+	if (!rc_vps_list_in.head || rc_vps_list_in.size == 0) {
+		/* Empty list, can't create a new transaction. */
+		return NULL;
+	}
+
+	rc_input_vps_t *vps_entry = rc_vps_list_in.head;
+
+	rc_yank_vps_entry(vps_entry); /* This cannot fail (we checked the list beforehand.) */
+
+	/* We grabbed an vps entry, now we can initialize a new transaction. */
+	rc_transaction_t *transaction;
+	MEM(transaction = talloc_zero(ctx, rc_transaction_t));
+
+	transaction->input_vps = vps_entry;
+	transaction->id = num_trans ++;
+
+	talloc_steal(transaction, vps_entry); /* It's ours now. */
+
+	return transaction;
+}
+
 
 static uint16_t getport(char const *name)
 {
