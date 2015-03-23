@@ -146,6 +146,10 @@ int rlm_ldap_map_verify(value_pair_map_t *map, void *instance)
 	case TMPL_TYPE_ATTR:
 		break;
 
+	case TMPL_TYPE_ATTR_UNDEFINED:
+		cf_log_err(map->ci, "Unknown attribute %s", map->lhs->tmpl_unknown_name);
+		return -1;
+
 	default:
 		cf_log_err(map->ci, "Left hand side of map must be an attribute or list, not a %s",
 			   fr_int2str(tmpl_names, map->lhs->type, "<INVALID>"));
@@ -162,6 +166,10 @@ int rlm_ldap_map_verify(value_pair_map_t *map, void *instance)
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_LITERAL:
 		break;
+
+	case TMPL_TYPE_ATTR_UNDEFINED:
+		cf_log_err(map->ci, "Unknown attribute %s", map->rhs->tmpl_unknown_name);
+		return -1;
 
 	default:
 		cf_log_err(map->ci, "Right hand side of map must be an xlat, attribute, exec, or literal, not a %s",
