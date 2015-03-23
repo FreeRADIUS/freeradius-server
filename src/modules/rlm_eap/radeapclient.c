@@ -65,6 +65,18 @@ static char password[256];
 
 static struct eapsim_keys eapsim_mk;
 
+// structure which contains EAP context, necessary to perform the full EAP transaction.
+typedef struct rc_eap_context {
+	int eap_type;	//!< contains the EAP-Type
+	
+	// for EAP-SIM:
+	struct eapsim_keys eapsim_mk;
+	
+	// for EAP-MD5:
+	char password[256];	//!< copy of User-Password (or CHAP-Password).
+	int tried_eap_md5;
+} rc_eap_context_t;
+
 static void map_eap_methods(RADIUS_PACKET *req);
 static void unmap_eap_methods(RADIUS_PACKET *rep);
 static int map_eapsim_types(RADIUS_PACKET *r);
