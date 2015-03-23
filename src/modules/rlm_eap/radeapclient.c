@@ -46,7 +46,6 @@ static float timeout = 3;
 static char const *secret = NULL;
 static int do_output = 1;
 static int do_summary = 0;
-static bool filedone = false;
 static int totalapp = 0;
 static int totaldeny = 0;
 static char filesecret[256];
@@ -121,8 +120,6 @@ struct rc_transaction {
 	fr_event_t *event;	//!< armed event (if any).
 };
 
-
-rc_eap_context_t eap_ctx; // (temporary, will be talloc'ed later on.)
 
 uint32_t num_trans = 0; //!< number of transactions initialized.
 rc_input_vps_list_t rc_vps_list_in; //!< list of available input vps entries.
@@ -228,8 +225,7 @@ static rc_input_vps_t *rc_yank_vps_entry(rc_input_vps_t *entry)
 /** Load input entries (list of vps) from a file or stdin, and add them to the list.
  *  They will be used to initiate transactions.
  */
-static int UNUSED rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_list_t *list, uint32_t max_entries)
-//TODO: use it!
+static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_list_t *list, uint32_t max_entries)
 {
 	FILE *file_in = NULL;
 	bool file_done = false;
@@ -277,7 +273,7 @@ static int UNUSED rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_
 	if (file_in != stdin) fclose(file_in);
 
 	/* And we're done. */
-	DEBUG("Read %d element(s) from input: %s", list->size, filename);
+	DEBUG("Read %d element(s) from input: %s", list->size, (filename ? filename : "-"));
 	return 1;
 }
 
@@ -303,6 +299,16 @@ static UNUSED rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	transaction->id = num_trans ++;
 
 	talloc_steal(transaction, vps_entry); /* It's ours now. */
+	
+	RADIUS_PACKET *packet;
+	MEM(packet = rad_alloc(transaction, 1));
+	transaction->packet = packet;
+
+	/* Fill in the packet value pairs. */
+	packet->vps = paircopy(packet, vps_entry->vps_in);
+
+	transaction->eap_context = talloc_zero(transaction, rc_eap_context_t);
+	// TODO: only if it's actually EAP.
 
 	return transaction;
 }
@@ -1032,28 +1038,30 @@ static int respond_eap_md5(rc_eap_context_t *eap_context,
 
 
 
-static int sendrecv_eap(RADIUS_PACKET *rep)
+static int sendrecv_eap(rc_transaction_t *transaction)
 {
+	if (!transaction || !transaction->packet) return -1;
+
+	RADIUS_PACKET *rep = transaction->packet;
 	RADIUS_PACKET *req = NULL;
 	VALUE_PAIR *vp, *vpnext;
-
-	if (!rep) return -1;
+	rc_eap_context_t *eap_ctx = transaction->eap_context;
 
 	/*
 	 *	Keep a copy of the the User-Password attribute.
 	 */
 	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(eap_ctx.password, vp->vp_strvalue, sizeof(eap_ctx.password));
+		strlcpy(eap_ctx->password, vp->vp_strvalue, sizeof(eap_ctx->password));
 
 	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(eap_ctx.password, vp->vp_strvalue, sizeof(eap_ctx.password));
+		strlcpy(eap_ctx->password, vp->vp_strvalue, sizeof(eap_ctx->password));
 		/*
 		 *	Otherwise keep a copy of the CHAP-Password attribute.
 		 */
 	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(eap_ctx.password, vp->vp_strvalue, sizeof(eap_ctx.password));
+		strlcpy(eap_ctx->password, vp->vp_strvalue, sizeof(eap_ctx->password));
 	} else {
-		eap_ctx.password[0] = '\0';
+		eap_ctx->password[0] = '\0';
 	}
 
  again:
@@ -1131,15 +1139,15 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 
 	fr_md5_calc(rep->vector, rep->vector, sizeof(rep->vector));
 
-	if (eap_ctx.password[0] != '\0') {
+	if (eap_ctx->password[0] != '\0') {
 		if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
-			pairstrcpy(vp, eap_ctx.password);
+			pairstrcpy(vp, eap_ctx->password);
 
 		} else if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-			pairstrcpy(vp, eap_ctx.password);
+			pairstrcpy(vp, eap_ctx->password);
 
 		} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-			pairstrcpy(vp, eap_ctx.password);
+			pairstrcpy(vp, eap_ctx->password);
 
 			uint8_t *p;
 			p = talloc_zero_array(vp, uint8_t, 17);
@@ -1169,14 +1177,14 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 			break;
 
 		case PW_EAP_TYPE_BASE + PW_EAP_MD5:
-			if (respond_eap_md5(&eap_ctx, req, rep) && eap_ctx.tried_eap_md5 < 3) {
-				eap_ctx.tried_eap_md5++;
+			if (respond_eap_md5(eap_ctx, req, rep) && eap_ctx->tried_eap_md5 < 3) {
+				eap_ctx->tried_eap_md5++;
 				goto again;
 			}
 			break;
 
 		case PW_EAP_TYPE_BASE + PW_EAP_SIM:
-			if (respond_eap_sim(&eap_ctx, req, rep)) {
+			if (respond_eap_sim(eap_ctx, req, rep)) {
 				goto again;
 			}
 			break;
@@ -1264,8 +1272,6 @@ int main(int argc, char **argv)
 		  sha1_data_problems = 1; /* for debugging only */
 #endif
 		  break;
-
-
 
 		case 'r':
 			if (!isdigit((int) *optarg))
@@ -1453,37 +1459,35 @@ int main(int argc, char **argv)
 	if (argv[3]) secret = argv[3];
 
 	/*
-	 *	Read valuepairs.
-	 *	Maybe read them, from stdin, if there's no
-	 *	filename, or if the filename is '-'.
+	 *	Read input data vp(s) from the file (or stdin).
 	 */
-	if (filename && (strcmp(filename, "-") != 0)) {
-		fp = fopen(filename, "r");
-		if (!fp) {
-			ERROR("Error opening %s: %s", filename, fr_syserror(errno));
-			exit(1);
-		}
-	} else {
-		fp = stdin;
+	INFO("Loading input data...");
+	if (!rc_load_input(autofree, filename, &rc_vps_list_in, 0)
+	    || rc_vps_list_in.size == 0) {
+		ERROR("No valid input. Nothing to send.");
+		exit(EXIT_FAILURE);
 	}
+	INFO("Loaded: %d input element(s).", rc_vps_list_in.size);
 
-	/*
-	 *	Send request.
-	 */
 	if ((req->sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		ERROR("socket: %s", fr_syserror(errno));
 		exit(1);
 	}
 
-	while (!filedone) {
-		if (req->vps) pairfree(&req->vps);
-		if (readvp2(NULL, &req->vps, fp, &filedone) < 0) {
-			ERROR("%s", fr_strerror());
-			break;
-		}
+	/*
+	 *	Send requests.
+	 */
+	while (1) {
+		rc_transaction_t *trans = rc_init_transaction(autofree);
+		if (!trans) break;
 
-		memset(&eap_ctx, 0, sizeof(eap_ctx));
-		sendrecv_eap(req);
+		// TODO. For now, just copy what we have in "req".
+		trans->packet->code = req->code;
+		trans->packet->sockfd = req->sockfd;
+		memcpy(&trans->packet->dst_ipaddr, &req->dst_ipaddr, sizeof(req->dst_ipaddr));
+		trans->packet->dst_port = port;
+
+		sendrecv_eap(trans);
 	}
 
 	if (do_summary) {
