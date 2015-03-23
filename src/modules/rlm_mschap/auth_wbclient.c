@@ -46,6 +46,7 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		     uint8_t nthashhash[NT_DIGEST_LENGTH])
 {
 	int rcode = -1;
+	struct wbcContext *wb_ctx;
 	struct wbcAuthUserParams authparams;
 	wbcErr err;
 	int len;
@@ -105,10 +106,18 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 	/*
 	 * Send auth request across to winbind
 	 */
+	wb_ctx = fr_connection_get(inst->wb_pool);
+	if (wb_ctx == NULL) {
+		RERROR("Unable to get winbind connection from pool");
+		goto done;
+	}
+
 	RDEBUG2("sending authentication request user='%s' domain='%s'", authparams.account_name,
 									authparams.domain_name);
 
-	err = wbcCtxAuthenticateUserEx(inst->wb_ctx, &authparams, &info, &error);
+	err = wbcCtxAuthenticateUserEx(wb_ctx, &authparams, &info, &error);
+
+	fr_connection_release(inst->wb_pool, wb_ctx);
 
 
 	/*

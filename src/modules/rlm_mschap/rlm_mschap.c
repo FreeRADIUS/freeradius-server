@@ -500,6 +500,40 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 }
 
 
+#ifdef WITH_AUTH_WINBIND
+/*
+ *	Free connection pool winbind context
+ */
+static int _mod_conn_free(struct wbcContext **wb_ctx)
+{
+	wbcCtxFree(*wb_ctx);
+
+	return 0;
+}
+
+/*
+ *	Create connection pool winbind context
+ */
+static void *mod_conn_create(TALLOC_CTX *ctx, UNUSED void *instance)
+{
+	struct wbcContext **wb_ctx;
+
+	wb_ctx = talloc_zero(ctx, struct wbcContext *);
+	*wb_ctx = wbcCtxCreate();
+
+	if (*wb_ctx == NULL) {
+		ERROR("failed to create winbind context");
+		talloc_free(wb_ctx);
+		return NULL;
+	}
+
+	talloc_set_destructor(wb_ctx, _mod_conn_free);
+
+	return *wb_ctx;
+}
+#endif
+
+
 static const CONF_PARSER passchange_config[] = {
 	{ "ntlm_auth", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, ntlm_cpw), NULL },
 	{ "ntlm_auth_username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_mschap_t, ntlm_cpw_username), NULL },
@@ -565,10 +599,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->wb_username) {
 #ifdef WITH_AUTH_WINBIND
 		inst->method = AUTH_WBCLIENT;
-	
-		inst->wb_ctx = wbcCtxCreate();
-		if (!inst->wb_ctx) {
-			ERROR("rlm_mschap (%s): failed to create winbind context", name);
+
+		inst->wb_pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, NULL);
+		if (!inst->wb_pool) {
+			ERROR("rlm_mschap (%s): unable to initialise winbind connection pool", name);
 			return -1;
 		}
 #else
@@ -624,12 +658,11 @@ static int mod_detach(UNUSED void *instance)
 #ifdef WITH_AUTH_WINBIND
 	rlm_mschap_t *inst = instance;
 
-	wbcCtxFree(inst->wb_ctx);
+	fr_connection_pool_delete(inst->wb_pool);
 #endif
 
 	return 0;
 }
-
 
 /*
  *	add_reply() adds either MS-CHAP2-Success or MS-CHAP-Error
