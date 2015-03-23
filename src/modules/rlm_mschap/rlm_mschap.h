@@ -38,9 +38,7 @@ typedef struct rlm_mschap_t {
 	MSCHAP_AUTH_METHOD	method;
 	vp_tmpl_t		*wb_username;
 	vp_tmpl_t		*wb_domain;
-#ifdef WITH_AUTH_WINBIND
-	struct wbcContext	*wb_ctx;
-#endif
+	fr_connection_pool_t    *wb_pool;
 #ifdef WITH_OPEN_DIRECTORY
 	bool			open_directory;
 #endif
