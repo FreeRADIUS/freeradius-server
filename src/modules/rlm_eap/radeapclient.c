@@ -61,11 +61,10 @@ char const *radiusd_version = "";
 #endif
 
 log_lvl_t debug_flag = 0;
-static char password[256];
 
-static struct eapsim_keys eapsim_mk;
 
-// structure which contains EAP context, necessary to perform the full EAP transaction.
+/** Structure which contains EAP context, necessary to perform the full EAP transaction.
+ */
 typedef struct rc_eap_context {
 	int eap_type;	//!< contains the EAP-Type
 	
@@ -76,6 +75,8 @@ typedef struct rc_eap_context {
 	char password[256];	//!< copy of User-Password (or CHAP-Password).
 	int tried_eap_md5;
 } rc_eap_context_t;
+
+rc_eap_context_t eap_ctx; // (temporary, will be talloc'ed later on.)
 
 static void map_eap_methods(RADIUS_PACKET *req);
 static void unmap_eap_methods(RADIUS_PACKET *rep);
@@ -300,8 +301,8 @@ static void cleanresp(RADIUS_PACKET *resp)
  *
  * pick a supported version, put it into the reply, and insert a nonce.
  */
-static int process_eap_start(RADIUS_PACKET *req,
-			     RADIUS_PACKET *rep)
+static int process_eap_start(rc_eap_context_t *eap_context,
+                             RADIUS_PACKET *req, RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *vp, *newvp;
 	VALUE_PAIR *anyidreq_vp, *fullauthidreq_vp, *permanentidreq_vp;
@@ -339,9 +340,9 @@ static int process_eap_start(RADIUS_PACKET *req,
 	/*
 	 * record the versionlist for the MK calculation.
 	 */
-	eapsim_mk.versionlistlen = versioncount*2;
-	memcpy(eapsim_mk.versionlist, (unsigned char const *)(versions+1),
-	       eapsim_mk.versionlistlen);
+	eap_context->eapsim_mk.versionlistlen = versioncount*2;
+	memcpy(eap_context->eapsim_mk.versionlist, (unsigned char const *)(versions+1),
+	       eap_context->eapsim_mk.versionlistlen);
 
 	/* walk the version list, and pick the one we support, which
 	 * at present, is 1, EAP_SIM_VERSION.
@@ -403,7 +404,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		pairreplace(&(rep->vps), newvp);
 
 		/* record the selected version */
-		memcpy(eapsim_mk.versionselect, &no_versions, 2);
+		memcpy(eap_context->eapsim_mk.versionselect, &no_versions, 2);
 	}
 
 	vp = newvp = NULL;
@@ -428,7 +429,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		pairreplace(&(rep->vps), newvp);
 
 		/* also keep a copy of the nonce! */
-		memcpy(eapsim_mk.nonce_mt, nonce, 16);
+		memcpy(eap_context->eapsim_mk.nonce_mt, nonce, 16);
 	}
 
 	{
@@ -457,8 +458,8 @@ static int process_eap_start(RADIUS_PACKET *req,
 		pairreplace(&(rep->vps), newvp);
 
 		/* record it */
-		memcpy(eapsim_mk.identity, vp->vp_strvalue, idlen);
-		eapsim_mk.identitylen = idlen;
+		memcpy(eap_context->eapsim_mk.identity, vp->vp_strvalue, idlen);
+		eap_context->eapsim_mk.identitylen = idlen;
 	}
 
 	return 1;
@@ -474,7 +475,8 @@ static int process_eap_start(RADIUS_PACKET *req,
  * values.
  *
  */
-static int process_eap_challenge(RADIUS_PACKET *req, RADIUS_PACKET *rep)
+static int process_eap_challenge(rc_eap_context_t *eap_context,
+                                 RADIUS_PACKET *req, RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *newvp;
 	VALUE_PAIR *mac, *randvp;
@@ -564,9 +566,9 @@ static int process_eap_challenge(RADIUS_PACKET *req, RADIUS_PACKET *rep)
 		ERROR("needs to have sres1, 2 and 3 set.");
 		return 0;
 	}
-	memcpy(eapsim_mk.sres[0], sres1->vp_strvalue, sizeof(eapsim_mk.sres[0]));
-	memcpy(eapsim_mk.sres[1], sres2->vp_strvalue, sizeof(eapsim_mk.sres[1]));
-	memcpy(eapsim_mk.sres[2], sres3->vp_strvalue, sizeof(eapsim_mk.sres[2]));
+	memcpy(eap_context->eapsim_mk.sres[0], sres1->vp_strvalue, sizeof(eap_context->eapsim_mk.sres[0]));
+	memcpy(eap_context->eapsim_mk.sres[1], sres2->vp_strvalue, sizeof(eap_context->eapsim_mk.sres[1]));
+	memcpy(eap_context->eapsim_mk.sres[2], sres3->vp_strvalue, sizeof(eap_context->eapsim_mk.sres[2]));
 
 	Kc1 = pairfind(rep->vps, PW_EAP_SIM_KC1, 0, TAG_ANY);
 	Kc2 = pairfind(rep->vps, PW_EAP_SIM_KC2, 0, TAG_ANY);
@@ -578,20 +580,20 @@ static int process_eap_challenge(RADIUS_PACKET *req, RADIUS_PACKET *rep)
 		ERROR("needs to have Kc1, 2 and 3 set.");
 		return 0;
 	}
-	memcpy(eapsim_mk.Kc[0], Kc1->vp_strvalue, sizeof(eapsim_mk.Kc[0]));
-	memcpy(eapsim_mk.Kc[1], Kc2->vp_strvalue, sizeof(eapsim_mk.Kc[1]));
-	memcpy(eapsim_mk.Kc[2], Kc3->vp_strvalue, sizeof(eapsim_mk.Kc[2]));
+	memcpy(eap_context->eapsim_mk.Kc[0], Kc1->vp_strvalue, sizeof(eap_context->eapsim_mk.Kc[0]));
+	memcpy(eap_context->eapsim_mk.Kc[1], Kc2->vp_strvalue, sizeof(eap_context->eapsim_mk.Kc[1]));
+	memcpy(eap_context->eapsim_mk.Kc[2], Kc3->vp_strvalue, sizeof(eap_context->eapsim_mk.Kc[2]));
 
 	/* all set, calculate keys */
-	eapsim_calculate_keys(&eapsim_mk);
+	eapsim_calculate_keys(&eap_context->eapsim_mk);
 
 	if(debug_flag) {
-	  eapsim_dump_mk(&eapsim_mk);
+	  eapsim_dump_mk(&eap_context->eapsim_mk);
 	}
 
 	/* verify the MAC, now that we have all the keys. */
-	if(eapsim_checkmac(NULL, req->vps, eapsim_mk.K_aut,
-			   eapsim_mk.nonce_mt, sizeof(eapsim_mk.nonce_mt),
+	if(eapsim_checkmac(NULL, req->vps, eap_context->eapsim_mk.K_aut,
+			   eap_context->eapsim_mk.nonce_mt, sizeof(eap_context->eapsim_mk.nonce_mt),
 			   calcmac)) {
 		DEBUG("MAC check succeed");
 	} else {
@@ -637,7 +639,7 @@ static int process_eap_challenge(RADIUS_PACKET *req, RADIUS_PACKET *rep)
 	}
 
 	newvp = paircreate(rep, PW_EAP_SIM_KEY, 0);
-	pairmemcpy(newvp, eapsim_mk.K_aut, EAPSIM_AUTH_SIZE);
+	pairmemcpy(newvp, eap_context->eapsim_mk.K_aut, EAPSIM_AUTH_SIZE);
 
 	pairreplace(&(rep->vps), newvp);
 
@@ -650,7 +652,8 @@ static int process_eap_challenge(RADIUS_PACKET *req, RADIUS_PACKET *rep)
  * the *reponse* is to the server.
  *
  */
-static int respond_eap_sim(RADIUS_PACKET *req, RADIUS_PACKET *resp)
+static int respond_eap_sim(rc_eap_context_t *eap_context,
+                           RADIUS_PACKET *req, RADIUS_PACKET *resp)
 {
 	enum eapsim_clientstates state, newstate;
 	enum eapsim_subtype subtype;
@@ -698,7 +701,7 @@ static int respond_eap_sim(RADIUS_PACKET *req, RADIUS_PACKET *resp)
 	case EAPSIM_CLIENT_INIT:
 		switch (subtype) {
 		case EAPSIM_START:
-			newstate = process_eap_start(req, resp);
+			newstate = process_eap_start(eap_context, req, resp);
 			break;
 
 		case EAPSIM_CHALLENGE:
@@ -717,11 +720,11 @@ static int respond_eap_sim(RADIUS_PACKET *req, RADIUS_PACKET *resp)
 		switch (subtype) {
 		case EAPSIM_START:
 			/* NOT SURE ABOUT THIS ONE, retransmit, I guess */
-			newstate = process_eap_start(req, resp);
+			newstate = process_eap_start(eap_context, req, resp);
 			break;
 
 		case EAPSIM_CHALLENGE:
-			newstate = process_eap_challenge(req, resp);
+			newstate = process_eap_challenge(eap_context, req, resp);
 			break;
 
 		default:
@@ -753,8 +756,8 @@ static int respond_eap_sim(RADIUS_PACKET *req, RADIUS_PACKET *resp)
 	return 1;
 }
 
-static int respond_eap_md5(RADIUS_PACKET *req,
-			   RADIUS_PACKET *rep)
+static int respond_eap_md5(rc_eap_context_t *eap_context,
+                           RADIUS_PACKET *req, RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *vp, *id, *state;
 	size_t valuesize;
@@ -802,7 +805,7 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 	 */
 	fr_md5_init(&context);
 	fr_md5_update(&context, &identifier, 1);
-	fr_md5_update(&context, (uint8_t *) password, strlen(password));
+	fr_md5_update(&context, (uint8_t *) eap_context->password, strlen(eap_context->password));
 	fr_md5_update(&context, value, valuesize);
 	fr_md5_final(response, &context);
 
@@ -835,7 +838,6 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 {
 	RADIUS_PACKET *req = NULL;
 	VALUE_PAIR *vp, *vpnext;
-	int tried_eap_md5 = 0;
 
 	if (!rep) return -1;
 
@@ -843,17 +845,17 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	 *	Keep a copy of the the User-Password attribute.
 	 */
 	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(password, vp->vp_strvalue, sizeof(password));
+		strlcpy(eap_ctx.password, vp->vp_strvalue, sizeof(eap_ctx.password));
 
 	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(password, vp->vp_strvalue, sizeof(password));
+		strlcpy(eap_ctx.password, vp->vp_strvalue, sizeof(eap_ctx.password));
 		/*
 		 *	Otherwise keep a copy of the CHAP-Password attribute.
 		 */
 	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(password, vp->vp_strvalue, sizeof(password));
+		strlcpy(eap_ctx.password, vp->vp_strvalue, sizeof(eap_ctx.password));
 	} else {
-		*password = '\0';
+		eap_ctx.password[0] = '\0';
 	}
 
  again:
@@ -931,15 +933,15 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 
 	fr_md5_calc(rep->vector, rep->vector, sizeof(rep->vector));
 
-	if (*password != '\0') {
+	if (eap_ctx.password[0] != '\0') {
 		if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
-			pairstrcpy(vp, password);
+			pairstrcpy(vp, eap_ctx.password);
 
 		} else if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-			pairstrcpy(vp, password);
+			pairstrcpy(vp, eap_ctx.password);
 
 		} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-			pairstrcpy(vp, password);
+			pairstrcpy(vp, eap_ctx.password);
 
 			uint8_t *p;
 			p = talloc_zero_array(vp, uint8_t, 17);
@@ -969,14 +971,14 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 			break;
 
 		case PW_EAP_TYPE_BASE + PW_EAP_MD5:
-			if (respond_eap_md5(req, rep) && tried_eap_md5 < 3) {
-				tried_eap_md5++;
+			if (respond_eap_md5(&eap_ctx, req, rep) && eap_ctx.tried_eap_md5 < 3) {
+				eap_ctx.tried_eap_md5++;
 				goto again;
 			}
 			break;
 
 		case PW_EAP_TYPE_BASE + PW_EAP_SIM:
-			if (respond_eap_sim(req, rep)) {
+			if (respond_eap_sim(&eap_ctx, req, rep)) {
 				goto again;
 			}
 			break;
@@ -1282,6 +1284,7 @@ int main(int argc, char **argv)
 			break;
 		}
 
+		memset(&eap_ctx, 0, sizeof(eap_ctx));
 		sendrecv_eap(req);
 	}
 
