@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 
 #include <ctype.h>
+#include <assert.h>
 
 #if HAVE_GETOPT_H
 #	include <getopt.h>
@@ -63,6 +64,11 @@ char const *radiusd_version = "";
 
 log_lvl_t debug_flag = 0;
 
+//TODO: move structures to a header file.
+
+typedef struct rc_input_vps_list rc_input_vps_list_t;
+typedef struct rc_input_vps rc_input_vps_t;
+typedef struct rc_transaction rc_transaction_t;
 
 /** Structure which contains EAP context, necessary to perform the full EAP transaction.
  */
@@ -76,6 +82,46 @@ typedef struct rc_eap_context {
 	char password[256];	//!< copy of User-Password (or CHAP-Password).
 	int tried_eap_md5;
 } rc_eap_context_t;
+
+
+/** Structure which holds a list of available input vps.
+ */
+struct rc_input_vps_list {
+	rc_input_vps_t *head;
+	rc_input_vps_t *tail;
+	uint32_t size;
+};
+
+/** Structure which holds an input vps entry (read from file or stdin),
+ *  and linkage to previous / next entries.
+ */
+struct rc_input_vps {
+	VALUE_PAIR *vps_in;	//!< the list of attribute/value pairs.
+
+	rc_input_vps_list_t *list;	//!< the list to which this entry belongs (NULL for an unchained entry).
+
+	rc_input_vps_t *prev;
+	rc_input_vps_t *next;
+};
+
+
+/** Structure which holds a transaction: sent packet, reply received...
+ */
+struct rc_transaction {
+	uint32_t id;	//!< id of transaction (0 for the first one).
+
+	RADIUS_PACKET *packet;
+	RADIUS_PACKET *reply;
+
+	rc_input_vps_t *input_vps;
+	
+	rc_eap_context_t *eap_context;
+
+	uint32_t tries;
+
+	fr_event_t *event;	//!< armed event (if any).
+};
+
 
 rc_eap_context_t eap_ctx; // (temporary, will be talloc'ed later on.)
 
@@ -109,6 +155,84 @@ int rad_virtual_server(REQUEST UNUSED *request)
 {
   /*We're not the server so we cannot do this*/
   abort();
+}
+
+/** Add an allocated rc_input_vps_t entry to the tail of the list.
+ */
+ static void rc_add_vps_entry(rc_input_vps_list_t *list, rc_input_vps_t *entry)
+{
+	if (!list || !entry) return;
+	
+	if (!list->head) {
+		assert(list->tail == NULL);
+		list->head = entry;
+		entry->prev = NULL;
+	} else {
+		assert(list->tail != NULL);
+		assert(list->tail->next == NULL);
+		list->tail->next = entry;
+		entry->prev = list->tail;
+	}
+	list->tail = entry;
+	entry->next = NULL;
+	entry->list = list;
+	list->size ++;
+}
+
+/** Load input entries (list of vps) from a file or stdin, and add them to the list.
+ *  They will be used to initiate transactions.
+ */
+static int UNUSED rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_list_t *list, uint32_t max_entries)
+// (UNUSED for now.)
+{
+	FILE *file_in = NULL;
+	bool file_done = false;
+	rc_input_vps_t *request;
+
+	/* Determine where to read the VP's from. */
+	if (filename && strcmp(filename, "-") != 0) {
+		DEBUG2("Opening input file: %s", filename);
+
+		file_in = fopen(filename, "r");
+		if (!file_in) {
+			ERROR("Error opening %s: %s", filename, strerror(errno));
+			return 0;
+		}
+	} else {
+		DEBUG2("Reading input vps from stdin");
+		file_in = stdin;
+	}
+
+	/* Loop over the file (or stdin). */
+	do {
+		MEM(request = talloc_zero(ctx, rc_input_vps_t));
+
+		if (readvp2(request, &request->vps_in, file_in, &file_done) < 0) {
+			ERROR("Error parsing input file: [%s]", filename);
+			talloc_free(request);
+			break;
+		}
+		if (NULL == request->vps_in) {
+			/* Last line might be empty, in this case readvp2 will return a NULL vps pointer. Silently ignore this. */
+			talloc_free(request);
+			break;
+		}
+
+		/* Add that to the list */
+		rc_add_vps_entry(list, request);
+
+		if (max_entries && list->size >= max_entries) {
+			/* Only load what we need. */
+			break;
+		}
+
+	} while (!file_done);
+	
+	if (file_in != stdin) fclose(file_in);
+
+	/* And we're done. */
+	DEBUG("Read %d element(s) from input: %s", list->size, filename);
+	return 1;
 }
 
 static uint16_t getport(char const *name)
