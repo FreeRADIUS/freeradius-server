@@ -60,7 +60,7 @@ static int mod_detach(void *instance)
 		krb5_free_context(inst->context);
 	}
 #ifdef KRB5_IS_THREAD_SAFE
-	fr_connection_pool_delete(inst->pool);
+	fr_connection_pool_free(inst->pool);
 #endif
 
 	return 0;

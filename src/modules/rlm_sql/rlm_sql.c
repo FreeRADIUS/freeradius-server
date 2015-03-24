@@ -784,7 +784,7 @@ static int mod_detach(void *instance)
 {
 	rlm_sql_t *inst = instance;
 
-	if (inst->pool) fr_connection_pool_delete(inst->pool);
+	if (inst->pool) fr_connection_pool_free(inst->pool);
 
 	/*
 	 *  We need to explicitly free all children, so if the driver

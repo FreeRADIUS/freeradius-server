@@ -83,7 +83,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					      fr_connection_alive_t a,
 					      char const *log_prefix,
 					      char const *trigger_prefix);
-void fr_connection_pool_delete(fr_connection_pool_t *pool);
+void fr_connection_pool_free(fr_connection_pool_t *pool);
 
 void *fr_connection_get(fr_connection_pool_t *pool);
 int fr_connection_get_num(fr_connection_pool_t *pool);

@@ -572,7 +572,7 @@ int fr_connection_del(fr_connection_pool_t *pool, void *conn)
  *
  * @param[in,out] pool to delete.
  */
-void fr_connection_pool_delete(fr_connection_pool_t *pool)
+void fr_connection_pool_free(fr_connection_pool_t *pool)
 {
 	fr_connection_t *this;
 
@@ -841,7 +841,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 		this = fr_connection_spawn(pool, now, false);
 		if (!this) {
 		error:
-			fr_connection_pool_delete(pool);
+			fr_connection_pool_free(pool);
 			return NULL;
 		}
 	}
