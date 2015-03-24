@@ -41,8 +41,9 @@ RCSID("$Id$")
 
 extern int sha1_data_problems;
 
-static unsigned int retries = 10;
-static float timeout = 3;
+static unsigned int parallel = 1;
+static unsigned int retries = 3;
+static float timeout = 5;
 static char const *secret = NULL;
 static int do_output = 1;
 static int do_summary = 0;
@@ -121,8 +122,12 @@ struct rc_transaction {
 };
 
 
-
+TALLOC_CTX *autofree;
 static uint32_t num_trans = 0; //!< number of transactions initialized.
+static uint32_t num_started = 0; //!< number of transactions started.
+static uint32_t num_ongoing = 0; //!< number of ongoing transactions ongoing.
+static uint32_t num_finished = 0; //!< number of finished transactions.
+
 static rc_input_vps_list_t rc_vps_list_in; //!< list of available input vps entries.
 static fr_packet_list_t *pl = NULL;	//!< list of outgoing packets.
 static unsigned int num_sockets = 0;	//!< number of allocated sockets.
@@ -136,29 +141,35 @@ static int packet_code = PW_CODE_UNDEFINED;
 static fr_ipaddr_t client_ipaddr;
 static uint16_t client_port = 0;
 
-static void rc_map_eap_methods(RADIUS_PACKET *req);
+static int rc_map_eap_methods(RADIUS_PACKET *req);
 static void rc_unmap_eap_methods(RADIUS_PACKET *rep);
 static int rc_map_eapsim_types(RADIUS_PACKET *r);
 static int rc_unmap_eapsim_types(RADIUS_PACKET *r);
 
+static void rc_get_port(PW_CODE type, uint16_t *port);
+static void rc_evprep_packet_timeout(rc_transaction_t *trans);
+static void rc_deallocate_id(rc_transaction_t *trans);
+
+
 static void NEVER_RETURNS usage(void)
 {
-	fprintf(stdout, "Usage: radeapclient [options] server[:port] <command> [<secret>]");
+	fprintf(stdout, "Usage: radeapclient [options] server[:port] <command> [<secret>]\n");
 
-	fprintf(stdout, " <command>    One of auth, acct, status, or disconnect.");
-	fprintf(stdout, " -d raddb     Set dictionary directory.");
-	fprintf(stdout, " -f file      Read packets from file, not stdin.");
-	fprintf(stdout, " -r retries   If timeout, retry sending the packet 'retries' times.");
-	fprintf(stdout, " -t timeout   Wait 'timeout' seconds before retrying (may be a floating point number).");
-	fprintf(stdout, " -h	       Print usage help information.");
-	fprintf(stdout, " -i id        Set request id to 'id'.  Values may be 0..255");
-	fprintf(stdout, " -S file      read secret from file, not command line.");
-	fprintf(stdout, " -q	       Do not print anything out.");
-	fprintf(stdout, " -s	       Print out summary information of auth results.");
-	fprintf(stdout, " -v	       Show program version information.");
-	fprintf(stdout, " -x	       Debugging mode.");
-	fprintf(stdout, " -4	       Use IPv4 address of server");
-	fprintf(stdout, " -6	       Use IPv6 address of server.");
+	fprintf(stdout, "  <command>              One of auth, acct, status, coa, disconnect or auto.\n");
+	fprintf(stdout, "  -4                     Use IPv4 address of server\n");
+	fprintf(stdout, "  -6                     Use IPv6 address of server.\n");
+	fprintf(stdout, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stdout, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
+	fprintf(stdout, "  -f <file>              Read packets from file, not stdin.\n");
+	fprintf(stdout, "  -h                     Print usage help information.\n");
+	fprintf(stdout, "  -p <num>               Send 'num' packets in parallel.\n");
+	fprintf(stdout, "  -q                     Do not print anything out.\n");
+	fprintf(stdout, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
+	fprintf(stdout, "  -s                     Print out summary information of auth results.\n");
+	fprintf(stdout, "  -S <file>              read secret from file, not command line.\n");
+	fprintf(stdout, "  -t <timeout>           Wait 'timeout' seconds before retrying (may be a floating point number).\n");
+	fprintf(stdout, "  -v                     Show program version information.\n");
+	fprintf(stdout, "  -x                     Debugging mode.\n");
 
 	exit(1);
 }
@@ -301,10 +312,44 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 	return 1;
 }
 
+/** Perform packet initialization.
+ */
+static int rc_init_packet(RADIUS_PACKET *packet)
+{
+	//TODO: parse the vps for "Packet-"...
+
+	if (packet->dst_port == 0) packet->dst_port = server_port;
+
+	if (packet->dst_ipaddr.af == AF_UNSPEC) {
+		if (server_ipaddr.af == AF_UNSPEC) {
+			DEBUG("No server was given, and request did not contain Packet-Dst-IP-Address");
+			return 0;
+		}
+		packet->dst_ipaddr = server_ipaddr;
+	}
+
+	/* Use the default set on the command line. */
+	if (packet->code == PW_CODE_UNDEFINED) packet->code = packet_code;
+	
+	/* Automatically set the dst port (if one wasn't already set). */
+	if (packet->dst_port == 0) {
+		rc_get_port(packet->code, &packet->dst_port);
+		if (packet->dst_port == 0) {
+			DEBUG("Can't determine destination port");
+			return 0;
+		}
+	}
+
+	packet->sockfd = -1;
+
+	/* Done. */
+	return 1;
+}
+
+
 /** Grab an element from the input list. Initialize a new transaction context, using this element.
  */
-static UNUSED rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
-//TODO: use it!
+static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 {
 	if (!rc_vps_list_in.head || rc_vps_list_in.size == 0) {
 		/* Empty list, can't create a new transaction. */
@@ -331,8 +376,19 @@ static UNUSED rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	/* Fill in the packet value pairs. */
 	packet->vps = paircopy(packet, vps_entry->vps_in);
 
-	transaction->eap_context = talloc_zero(transaction, rc_eap_context_t);
-	// TODO: only if it's actually EAP.
+	/* Initialize the packet. */
+	rc_init_packet(packet);
+
+	/* Build EAP-Message (if EAP is involved. Otherwise, do nothing). */
+	int eap_type = rc_map_eap_methods(packet);
+	if (eap_type) {
+		MEM(transaction->eap_context = talloc_zero(transaction, rc_eap_context_t));
+		transaction->eap_context->eap_type = eap_type;
+	}
+	
+	/* Update transactions counters. */
+	num_started ++;
+	num_ongoing ++;
 
 	return transaction;
 }
@@ -342,7 +398,14 @@ static UNUSED rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 static void rc_finish_transaction(rc_transaction_t *transaction)
 {
 	if (transaction->event) fr_event_delete(ev_list, &transaction->event);
+	rc_deallocate_id(transaction);
 	talloc_free(transaction);
+
+	/* Update transactions counters. */
+	num_ongoing --;
+	num_finished ++;
+
+	DEBUG4("pl: %d, ev: %d, in: %d", fr_packet_list_num_outgoing(pl), fr_event_list_num_elements(ev_list), rc_vps_list_in.size);
 }
 
 
@@ -1070,7 +1133,8 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 
 
 
-static int sendrecv_eap(rc_transaction_t *transaction)
+static int UNUSED sendrecv_eap(rc_transaction_t *transaction)
+// it's now unused, and soon will die (horribly ?)
 {
 	if (!transaction || !transaction->packet) return -1;
 
@@ -1232,20 +1296,28 @@ static int sendrecv_eap(rc_transaction_t *transaction)
 static void rc_add_socket(fr_ipaddr_t *src_ipaddr, uint16_t src_port, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
 {
 	int mysockfd;
+	
+	/* Trace what we're doing. */
+	char src_addr[15+1] = "";
+	char dst_addr[15+1] = "";
+	inet_ntop(AF_INET, &(src_ipaddr->ipaddr.ip4addr.s_addr), src_addr, sizeof(src_addr));
+	inet_ntop(AF_INET, &(dst_ipaddr->ipaddr.ip4addr.s_addr), dst_addr, sizeof(dst_addr));
+	
+	INFO("Adding new socket: src: %s:%d, dst: %s:%d", src_addr, src_port, dst_addr, dst_port);
 
 	mysockfd = fr_socket(src_ipaddr, src_port);
 	if (mysockfd < 0) {
-		ERROR("%s: failed to create new socket: %s", progname, fr_strerror());
+		ERROR("Failed to create new socket: %s", fr_strerror());
 		exit(1);
 	}
 
 	if (!fr_packet_list_socket_add(pl, mysockfd, ipproto, dst_ipaddr, dst_port, NULL)) {
-		ERROR("%s: failed to add new socket: %s", progname, fr_strerror());
+		ERROR("Failed to add new socket: %s", fr_strerror());
 		exit(1);
 	}
 
 	num_sockets ++;
-	DEBUG("Added new socket: %d, num sockets: %d", mysockfd, num_sockets);
+	DEBUG("Added new socket: %d (num sockets: %d)", mysockfd, num_sockets);
 }
 
 /** Send one packet for a transaction.
@@ -1276,12 +1348,12 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 				break;
 			}
 			if (nb_sock_add >= 1) {
-				ERROR("%s: added %d new socket(s), but still could not get an ID (currently: %d outgoing requests).", progname,
+				ERROR("Added %d new socket(s), but still could not get an ID (currently: %d outgoing requests).",
 					nb_sock_add, fr_packet_list_num_outgoing(pl));
 				exit(1);
 			}
 
-			/* Could not find a free packet ID. Allocate a new socket, then try again. y*/
+			/* Could not find a free packet ID. Allocate a new socket, then try again. */
 			rc_add_socket(&packet->src_ipaddr, packet->src_port, &packet->dst_ipaddr, packet->dst_port);
 
 			nb_sock_add ++;
@@ -1301,7 +1373,7 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 	gettimeofday(&packet->timestamp, NULL); /* set outgoing packet timestamp. */
 	
 	if (rad_send(packet, NULL, secret) < 0) {
-		ERROR("%s: Failed to send packet (sockfd: %d, id: %d): %s", progname,
+		ERROR("Failed to send packet (sockfd: %d, id: %d): %s",
 			packet->sockfd, packet->id, fr_strerror());
 	}
 
@@ -1322,8 +1394,8 @@ static int rc_send_transaction_packet(rc_transaction_t *trans, RADIUS_PACKET **p
 
 	int ret = rc_send_one_packet(trans, packet_p);
 	if (ret == 1) {
-		/* send successful: arm the timeout callback. */
-		// TODO
+		/* Send successful: arm the timeout callback. */
+		rc_evprep_packet_timeout(trans);
 	}
 	return ret;
 }
@@ -1369,8 +1441,7 @@ static void rc_deallocate_id(rc_transaction_t *trans)
 
 /** Receive one packet, maybe.
  */
-static int UNUSED rc_recv_one_packet(struct timeval *tv_wait_time)
-//TODO: use it!
+static int rc_recv_one_packet(struct timeval *tv_wait_time)
 {
 	fd_set set;
 	struct timeval tv;
@@ -1406,7 +1477,7 @@ static int UNUSED rc_recv_one_packet(struct timeval *tv_wait_time)
 	 */
 	reply = fr_packet_list_recv(pl, &set);
 	if (!reply) {
-		ERROR("%s: received bad packet: %s", progname, fr_strerror());
+		ERROR("Received bad packet: %s", fr_strerror());
 		return -1;	/* bad packet */
 	}
 
@@ -1466,7 +1537,7 @@ static int UNUSED rc_recv_one_packet(struct timeval *tv_wait_time)
 
 	if (rad_decode(trans->reply, trans->packet, secret) != 0) {
 		/* This can fail if packet contains too many attributes. */
-		fr_perror("%s", progname);
+		DEBUG("Failed decoding reply");
 		goto packet_done;
 	}
 
@@ -1495,8 +1566,9 @@ static int UNUSED rc_recv_one_packet(struct timeval *tv_wait_time)
 			{
 				/* answer the challenge from server. */
 				trans->eap_context->tried_eap_md5 ++;
+				rc_deallocate_id(trans);
 				rc_send_transaction_packet(trans, &trans->packet); 
-				ongoing_trans = true; // don't free the transaction.
+				ongoing_trans = true; // don't free the transaction yet.
 			}
 			goto packet_done;
 			break;
@@ -1504,8 +1576,9 @@ static int UNUSED rc_recv_one_packet(struct timeval *tv_wait_time)
 		case PW_EAP_TYPE_BASE + PW_EAP_SIM:
 			if (rc_respond_eap_sim(trans->eap_context, trans->reply, trans->packet)) {
 				/* answer the challenge from server. */
+				rc_deallocate_id(trans);
 				rc_send_transaction_packet(trans, &trans->packet);
-				ongoing_trans = true; // don't free the transaction.
+				ongoing_trans = true; // don't free the transaction yet.
 			}
 			goto packet_done;
 			break;
@@ -1532,14 +1605,125 @@ eap_done:
 	goto packet_done;
 
 packet_done:
-	rc_deallocate_id(trans);
-	
 	rad_free(&trans->reply);
 	rad_free(&reply);	/* may be NULL */
 	
-	if (!ongoing_trans) rc_finish_transaction(trans);
-	
+	if (!ongoing_trans) {
+		rc_deallocate_id(trans);
+		rc_finish_transaction(trans);
+	}
+
 	return 1;
+}
+
+/** Event callback: packet timeout.
+ */
+static void rc_evcb_packet_timeout(void *ctx)
+{
+	rc_transaction_t *trans = ctx;
+	if (!trans || !trans->packet) return;
+
+	DEBUG("Timeout for transaction: %d, tries (so far): %d (max: %d)", trans->id, trans->tries, retries);
+
+	if (trans->event) fr_event_delete(ev_list, &trans->event);
+	
+	if (trans->tries < retries) {
+		/* Try again. */
+		rc_send_transaction_packet(trans, &trans->packet);
+	} else {
+		DEBUG("No response for transaction: %d, giving up", trans->id);
+		rc_finish_transaction(trans);
+	}
+}
+
+/** Prepare event: packet timeout.
+ */
+static void rc_evprep_packet_timeout(rc_transaction_t *trans)
+{
+	struct timeval tv_event;
+	gettimeofday(&tv_event, NULL);
+	tv_event.tv_sec += 3;  // TODO: use parameter.
+
+	if (!fr_event_insert(ev_list, rc_evcb_packet_timeout, (void *)trans, &tv_event, &trans->event)) {
+		ERROR("Failed to insert event");
+		exit(1);
+	}
+}
+
+/** Trigger all armed events for which time is reached.
+ */
+static int rc_loop_events(void)
+{
+	struct timeval when;
+	uint32_t nb_processed = 0;
+
+	if (!fr_event_list_num_elements(ev_list)) return 0;
+
+	while (1) {
+		gettimeofday(&when, NULL);
+		if (!fr_event_run(ev_list, &when)) {
+			/* no more. */
+			break;
+		}
+		nb_processed ++;
+	}
+	return nb_processed;
+}
+
+/** Receive loop.
+ *  Handle incoming packets, until nothing more is received.
+ */
+static int dhb_loop_recv(void)
+{
+	uint32_t nb_received = 0;
+	while (rc_recv_one_packet(NULL) > 0) {
+		nb_received ++;
+	}
+	return nb_received;
+}
+
+/** Loop starting new transactions, until a limit is reached
+ *  (max parallelism, or no more input available.)
+ */
+static int rc_loop_start_transactions(void)
+{
+	int nb_started = 0;
+
+	while (1) {
+		if (num_ongoing >= parallel) break;
+
+		/* Try to initialize a new transaction. */
+		rc_transaction_t *trans = rc_init_transaction(autofree);
+		if (!trans) break;
+		
+		nb_started ++;
+		rc_send_transaction_packet(trans, &trans->packet);
+	}
+	return nb_started;
+}
+
+/** Main loop: Handle events. Receive and process responses. Start new transactions.
+ *  Until we're done.
+ */
+static void rc_main_loop(void)
+{
+	while (1) {
+		/* Handle events. */
+		rc_loop_events();
+
+		/* Receive and process response until no more are received (don't wait). */
+		dhb_loop_recv();
+		
+		/* Start new transactions and send the associated packet. */
+		rc_loop_start_transactions();
+		
+		/* Check if we're done. */
+		if ( (rc_vps_list_in.size == 0)
+			&& (fr_packet_list_num_outgoing(pl) == 0) ) {
+			break;
+		}
+	}
+	INFO("Main loop: done.");
 }
 
 
@@ -1662,7 +1846,6 @@ static void rc_resolve_hostname(char *server_arg)
 
 int main(int argc, char **argv)
 {
-	RADIUS_PACKET *req;
 	char *p;
 	int c;
 	char *filename = NULL;
@@ -1684,14 +1867,15 @@ int main(int argc, char **argv)
 	 *	directly, so we'll allocate a new context beneath it, and
 	 *	free that before any leak reports.
 	 */
-	TALLOC_CTX *autofree = talloc_init("main");
+	autofree = talloc_init("main");
 
 	id = ((int)getpid() & 0xff);
 	fr_debug_flag = 0;
+	fr_log_fp = stdout;
 
 	set_radius_dir(autofree, RADIUS_DIR);
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:hi:qst:r:S:xXv")) != EOF)
+	while ((c = getopt(argc, argv, "46c:d:D:f:hp:qst:r:S:xXv")) != EOF)
 	{
 		switch (c) {
 		case '4':
@@ -1708,6 +1892,10 @@ int main(int argc, char **argv)
 			break;
 		case 'f':
 			filename = optarg;
+			break;
+		case 'p':
+			parallel = atoi(optarg);
+			if (parallel <= 0) usage();
 			break;
 		case 'q':
 			do_output = 0;
@@ -1728,14 +1916,6 @@ int main(int argc, char **argv)
 				usage();
 			retries = atoi(optarg);
 			break;
-		case 'i':
-			if (!isdigit((int) *optarg))
-				usage();
-			id = atoi(optarg);
-			if ((id < 0) || (id > 255)) {
-				usage();
-			}
-			break;
 		case 's':
 			do_summary = 1;
 			break;
@@ -1748,7 +1928,7 @@ int main(int argc, char **argv)
 			printf("$Id$ built on "__DATE__ "at "__TIME__ "");
 			exit(0);
 
-	       case 'S':
+		case 'S':
 		       fp = fopen(optarg, "r");
 		       if (!fp) {
 			       ERROR("Error opening %s: %s",
@@ -1822,13 +2002,6 @@ int main(int argc, char **argv)
 		DEBUG2("Including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
 	}
 
-	req = rad_alloc(NULL, true); //TODO: remove this.
-	if (!req) {
-		ERROR("%s", fr_strerror());
-		exit(1);
-	}
-	req->id = id;
-
 	/*
 	 *	Get the request type
 	 */
@@ -1863,11 +2036,6 @@ int main(int argc, char **argv)
 	}
 	INFO("Loaded: %d input element(s).", rc_vps_list_in.size);
 
-	if ((req->sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
-		ERROR("socket: %s", fr_syserror(errno));
-		exit(1);
-	}
-
 	/* Initialize the packets list. */
 	MEM(pl = fr_packet_list_create(1));
 
@@ -1879,20 +2047,9 @@ int main(int argc, char **argv)
 	}
 
 	/*
-	 *	Send requests.
+	 *	Start main loop.
 	 */
-	while (1) {
-		rc_transaction_t *trans = rc_init_transaction(autofree);
-		if (!trans) break;
-
-		// TODO. For now, just copy what we have in "req".
-		trans->packet->code = packet_code;
-		trans->packet->sockfd = req->sockfd;
-		memcpy(&trans->packet->dst_ipaddr, &server_ipaddr, sizeof(server_ipaddr));
-		trans->packet->dst_port = server_port;
-
-		sendrecv_eap(trans);
-	}
+	rc_main_loop();
 
 	if (do_summary) {
 		INFO("\n\t   Total approved auths:  %d", totalapp);
@@ -1904,23 +2061,17 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-/*
- * given a radius request with some attributes in the EAP range, build
- * them all into a single EAP-Message body.
+/** Given a radius request with some attributes in the EAP range, build
+ *  them all into a single EAP-Message body.
  *
- * Note that this function will build multiple EAP-Message bodies
- * if there are multiple eligible EAP-types. This is incorrect, as the
- * recipient will in fact concatenate them.
- *
- * XXX - we could break the loop once we process one type. Maybe this
- *       just deserves an assert?
- *
+ *  If there are multiple eligibles EAP-Type, the first one is picked.
+ *  Function returns 0 if no EAP is involved, or the EAP-Type otherwise.
  */
-static void rc_map_eap_methods(RADIUS_PACKET *req)
+static int rc_map_eap_methods(RADIUS_PACKET *req)
 {
 	VALUE_PAIR *vp, *vpnext;
 	int id, eapcode;
-	int eap_method;
+	int eap_method = 0;
 
 	eap_packet_t *pt_ep = talloc_zero(req, eap_packet_t);
 
@@ -1949,12 +2100,12 @@ static void rc_map_eap_methods(RADIUS_PACKET *req)
 	}
 
 	if(!vp) {
-		return;
+		return 0;
 	}
 
 	eap_method = vp->da->attr - PW_EAP_TYPE_BASE;
 
-	switch (eap_method) {
+	switch(eap_method) {
 	case PW_EAP_IDENTITY:
 	case PW_EAP_NOTIFICATION:
 	case PW_EAP_NAK:
@@ -1977,13 +2128,15 @@ static void rc_map_eap_methods(RADIUS_PACKET *req)
 		pt_ep->code = eapcode;
 		pt_ep->id = id;
 		pt_ep->type.num = eap_method;
-		pt_ep->type.length = vp->vp_length;
+		pt_ep->type.length = vp->length;
 
-		pt_ep->type.data = talloc_memdup(vp, vp->vp_octets, vp->vp_length);
+		pt_ep->type.data = talloc_memdup(vp, vp->vp_octets, vp->length);
 		talloc_set_type(pt_ep->type.data, uint8_t);
 
 		eap_basic_compose(req, pt_ep);
 	}
+
+	return eap_method;
 }
 
 /*
