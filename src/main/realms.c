@@ -530,7 +530,17 @@ bool realm_home_server_add(home_server_t *home)
 
 		home2->type = HOME_TYPE_ACCT;
 		home2->dual = true;
-		home2->port++;
+
+#ifdef WITH_TLS
+		/*
+		 *	Accounting port is the same as the authentication port for RadSec.
+		 */
+		if (!home->tls)
+#endif
+		{
+			home2->port++;
+		}
+
 		home2->ping_user_password = NULL;
 		home2->cs = home->cs;
 		home2->parent_server = home->parent_server;
