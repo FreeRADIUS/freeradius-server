@@ -126,18 +126,20 @@ static uint32_t num_trans = 0; //!< number of transactions initialized.
 static rc_input_vps_list_t rc_vps_list_in; //!< list of available input vps entries.
 static fr_packet_list_t *pl = NULL;	//!< list of outgoing packets.
 static unsigned int num_sockets = 0;	//!< number of allocated sockets.
+static fr_event_list_t *ev_list = NULL; //!< list of armed events.
 
 static int force_af = AF_UNSPEC;
 static int ipproto = IPPROTO_UDP;
 static fr_ipaddr_t server_ipaddr;
 static uint16_t server_port = 0;
 static int packet_code = PW_CODE_UNDEFINED;
+static fr_ipaddr_t client_ipaddr;
+static uint16_t client_port = 0;
 
-
-static void map_eap_methods(RADIUS_PACKET *req);
-static void unmap_eap_methods(RADIUS_PACKET *rep);
-static int map_eapsim_types(RADIUS_PACKET *r);
-static int unmap_eapsim_types(RADIUS_PACKET *r);
+static void rc_map_eap_methods(RADIUS_PACKET *req);
+static void rc_unmap_eap_methods(RADIUS_PACKET *rep);
+static int rc_map_eapsim_types(RADIUS_PACKET *r);
+static int rc_unmap_eapsim_types(RADIUS_PACKET *r);
 
 static void NEVER_RETURNS usage(void)
 {
@@ -333,6 +335,14 @@ static UNUSED rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	// TODO: only if it's actually EAP.
 
 	return transaction;
+}
+
+/** Terminate a transaction.
+ */
+static void rc_finish_transaction(rc_transaction_t *transaction)
+{
+	if (transaction->event) fr_event_delete(ev_list, &transaction->event);
+	talloc_free(transaction);
 }
 
 
@@ -878,7 +888,7 @@ static int process_eap_challenge(rc_eap_context_t *eap_context,
  * the *reponse* is to the server.
  *
  */
-static int respond_eap_sim(rc_eap_context_t *eap_context,
+static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
                            RADIUS_PACKET *req, RADIUS_PACKET *resp)
 {
 	enum eapsim_clientstates state, newstate;
@@ -912,7 +922,7 @@ static int respond_eap_sim(rc_eap_context_t *eap_context,
 	/*
 	 * map the attributes, and authenticate them.
 	 */
-	unmap_eapsim_types(req);
+	rc_unmap_eapsim_types(req);
 
 	if((vp = pairfind(req->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY)) == NULL)
 	{
@@ -973,7 +983,7 @@ static int respond_eap_sim(rc_eap_context_t *eap_context,
 	pairreplace(&(resp->vps), eapid);
 
 	/* update stete info, and send new packet */
-	map_eapsim_types(resp);
+	rc_map_eapsim_types(resp);
 
 	/* copy the radius state object in */
 	pairreplace(&(resp->vps), radstate);
@@ -982,7 +992,7 @@ static int respond_eap_sim(rc_eap_context_t *eap_context,
 	return 1;
 }
 
-static int respond_eap_md5(rc_eap_context_t *eap_context,
+static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
                            RADIUS_PACKET *req, RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *vp, *id, *state;
@@ -1093,7 +1103,7 @@ static int sendrecv_eap(rc_transaction_t *transaction)
 	 * if there are EAP types, encode them into an EAP-Message
 	 *
 	 */
-	map_eap_methods(rep);
+	rc_map_eap_methods(rep);
 
 	/*
 	 *  Fix up Digest-Attributes issues
@@ -1186,7 +1196,7 @@ static int sendrecv_eap(rc_transaction_t *transaction)
 	}
 
 	/* okay got back the packet, go and decode the EAP-Message. */
-	unmap_eap_methods(req);
+	rc_unmap_eap_methods(req);
 
 	debug_packet(req, R_RECV);
 
@@ -1199,14 +1209,14 @@ static int sendrecv_eap(rc_transaction_t *transaction)
 			break;
 
 		case PW_EAP_TYPE_BASE + PW_EAP_MD5:
-			if (respond_eap_md5(eap_ctx, req, rep) && eap_ctx->tried_eap_md5 < 3) {
+			if (rc_respond_eap_md5(eap_ctx, req, rep) && eap_ctx->tried_eap_md5 < 3) {
 				eap_ctx->tried_eap_md5++;
 				goto again;
 			}
 			break;
 
 		case PW_EAP_TYPE_BASE + PW_EAP_SIM:
-			if (respond_eap_sim(eap_ctx, req, rep)) {
+			if (rc_respond_eap_sim(eap_ctx, req, rep)) {
 				goto again;
 			}
 			break;
@@ -1240,8 +1250,7 @@ static void rc_add_socket(fr_ipaddr_t *src_ipaddr, uint16_t src_port, fr_ipaddr_
 
 /** Send one packet for a transaction.
  */
-static int UNUSED rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
-//TODO: use it!
+static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 {
 	if (!trans || !packet_p || !*packet_p) return -1;
 
@@ -1301,6 +1310,235 @@ static int UNUSED rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **pa
 	if (fr_debug_flag > 0) fr_packet_header_print(fr_log_fp, packet, false);
 	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, packet->vps);
 
+	return 1;
+}
+
+/** Send current packet of a transaction. Arm timeout event.
+ */
+static int rc_send_transaction_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
+// note: we need a 'RADIUS_PACKET **' for fr_packet_list_id_alloc.
+{
+	if (!trans || !packet_p || !*packet_p) return -1;
+
+	int ret = rc_send_one_packet(trans, packet_p);
+	if (ret == 1) {
+		/* send successful: arm the timeout callback. */
+		// TODO
+	}
+	return ret;
+}
+
+/** Deallocate RADIUS packet ID.
+ */
+static void rc_deallocate_id(rc_transaction_t *trans)
+{
+	if (!trans || !trans->packet ||
+	    (trans->packet->id < 0)) {
+		return;
+	}
+
+	RADIUS_PACKET *packet = trans->packet;
+
+	DEBUG2("Deallocating (sockfd: %d, id: %d)", packet->sockfd, packet->id);
+
+	/*
+	 *	One more unused RADIUS ID.
+	 */
+	fr_packet_list_id_free(pl, packet, true);
+	/* note: "true" means automatically yank, so we must *not* yank ourselves before calling (otherwise, it does nothing)
+	 * so, *don't*: fr_packet_list_yank(pl, request->packet); */
+	
+	/* free more stuff to ensure next allocate won't be stuck on a "full" socket. */
+	packet->id = -1;
+	packet->sockfd = -1;
+	packet->src_ipaddr.af = AF_UNSPEC;
+	packet->src_port = 0;
+
+	/*
+	 *	If we've already sent a packet, free up the old one,
+	 *	and ensure that the next packet has a unique
+	 *	authentication vector.
+	 */
+	if (packet->data) {
+		talloc_free(packet->data);
+		packet->data = NULL;
+	}
+
+	if (trans->reply) rad_free(&trans->reply);
+}
+
+/** Receive one packet, maybe.
+ */
+static int UNUSED rc_recv_one_packet(struct timeval *tv_wait_time)
+//TODO: use it!
+{
+	fd_set set;
+	struct timeval tv;
+	rc_transaction_t *trans;
+	RADIUS_PACKET *reply, **packet_p;
+	volatile int max_fd;
+	bool ongoing_trans = false;
+	char buffer[128];
+
+	/* Wait for reply, timing out as necessary */
+	FD_ZERO(&set);
+
+	max_fd = fr_packet_list_fd_set(pl, &set);
+	if (max_fd < 0) {
+		/* no sockets to listen on! */
+		return 0;
+	}
+
+	if (NULL == tv_wait_time) {
+		timerclear(&tv);
+	} else {
+		tv.tv_sec = tv_wait_time->tv_sec;
+		tv.tv_usec = tv_wait_time->tv_usec;
+	}
+
+	if (select(max_fd, &set, NULL, NULL, &tv) <= 0) {
+		/* No packet was received. */
+		return 0;
+	}
+
+	/*
+	 *	Look for the packet.
+	 */
+	reply = fr_packet_list_recv(pl, &set);
+	if (!reply) {
+		ERROR("%s: received bad packet: %s", progname, fr_strerror());
+		return -1;	/* bad packet */
+	}
+
+	/*
+	 *	We don't use udpfromto.  So if we bind to "*", we want
+	 *	to find replies sent to 192.0.2.4.  Therefore, we
+	 *	force all replies to have the one address we know
+	 *	about, no matter what real address they were sent to.
+	 *
+	 *	This only works if were not using any of the
+	 *	Packet-* attributes, or running with 'auto'.
+	 */
+	reply->dst_ipaddr = client_ipaddr;
+	reply->dst_port = client_port;
+
+	reply->src_ipaddr = server_ipaddr;
+	reply->src_port = server_port;
+	
+	// note: for this to work in all cases, we should handle a list of destinations (IP,port).
+	// for now we just do it the easy way (as in radclient).
+	// TODO: better (later).
+
+	packet_p = fr_packet_list_find_byreply(pl, reply);
+
+	if (!packet_p) {
+		/* got reply to packet we didn't send.
+		 * (or maybe we sent it, got no response, freed the ID. Then server responds to first request.)
+		 */
+		DEBUG("No outstanding request was found for reply from %s (sockfd: %d, id: %d)", 
+			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			reply->sockfd, reply->id);
+		rad_free(&reply);
+		return -1;
+	}
+
+	trans = fr_packet2myptr(rc_transaction_t, packet, packet_p);
+
+	if (trans->event) fr_event_delete(ev_list, &trans->event);
+
+	/*
+	 *	Fails the signature validation: not a valid reply.
+	 */ 
+	if (rad_verify(reply, trans->packet, secret) < 0) {
+		/* shared secret is incorrect.
+		 * (or maybe this is a response to another packet we sent, for which we got no response,
+		 * freed the ID, then reused it. Then server responds to first packet.)
+		 */
+		DEBUG("Conflicting response authenticator for reply from %s (sockfd: %d, id: %d)", 
+			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
+			reply->sockfd, reply->id);
+
+		goto packet_done;
+	}
+
+	trans->reply = reply;
+	reply = NULL;
+
+	if (rad_decode(trans->reply, trans->packet, secret) != 0) {
+		/* This can fail if packet contains too many attributes. */
+		fr_perror("%s", progname);
+		goto packet_done;
+	}
+
+	gettimeofday(&trans->reply->timestamp, NULL); /* set received packet timestamp. */
+
+	if (fr_debug_flag > 0) fr_packet_header_print(fr_log_fp, trans->reply, true);
+	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, trans->reply->vps);
+
+	if (!trans->eap_context) {
+		goto packet_done;
+	}
+
+	rc_unmap_eap_methods(trans->reply);
+
+	/* now look for the code type. */
+	VALUE_PAIR *vp, *vpnext;
+	for (vp = trans->reply->vps; vp != NULL; vp = vpnext) {
+		vpnext = vp->next;
+
+		switch (vp->da->attr) {
+		default:
+			break;
+
+		case PW_EAP_TYPE_BASE + PW_EAP_MD5:
+			if (rc_respond_eap_md5(trans->eap_context, trans->reply, trans->packet) && trans->eap_context->tried_eap_md5 < 3)
+			{
+				/* answer the challenge from server. */
+				trans->eap_context->tried_eap_md5 ++;
+				rc_send_transaction_packet(trans, &trans->packet); 
+				ongoing_trans = true; // don't free the transaction.
+			}
+			goto packet_done;
+			break;
+
+		case PW_EAP_TYPE_BASE + PW_EAP_SIM:
+			if (rc_respond_eap_sim(trans->eap_context, trans->reply, trans->packet)) {
+				/* answer the challenge from server. */
+				rc_send_transaction_packet(trans, &trans->packet);
+				ongoing_trans = true; // don't free the transaction.
+			}
+			goto packet_done;
+			break;
+		}
+	}
+
+	goto eap_done;
+
+eap_done:
+	/* EAP transaction ends here (no more requests from EAP server). */
+
+	/* 
+	 * success: if we have EAP-Code = Success, and reply is an Access-Accept.
+	 */
+	if (trans->reply->code != PW_CODE_ACCESS_ACCEPT) {
+		DEBUG("EAP transaction finished, but reply is not an Access-Accept");
+		goto packet_done;
+	}
+	vp = pairfind(trans->reply->vps, PW_EAP_CODE, 0, TAG_ANY);
+	if ( (!vp) || (vp->vp_integer != 3) ) {
+		DEBUG("EAP transaction finished, but reply does not contain EAP-Code = Success");
+		goto packet_done;
+	}
+	goto packet_done;
+
+packet_done:
+	rc_deallocate_id(trans);
+	
+	rad_free(&trans->reply);
+	rad_free(&reply);	/* may be NULL */
+	
+	if (!ongoing_trans) rc_finish_transaction(trans);
+	
 	return 1;
 }
 
@@ -1630,6 +1868,16 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	/* Initialize the packets list. */
+	MEM(pl = fr_packet_list_create(1));
+
+	/* Initialize the events list. */
+	ev_list = fr_event_list_create(autofree, NULL);
+	if (!ev_list) {
+		ERROR("Failed to create event list");
+		exit(1);
+	}
+
 	/*
 	 *	Send requests.
 	 */
@@ -1668,7 +1916,7 @@ int main(int argc, char **argv)
  *       just deserves an assert?
  *
  */
-static void map_eap_methods(RADIUS_PACKET *req)
+static void rc_map_eap_methods(RADIUS_PACKET *req)
 {
 	VALUE_PAIR *vp, *vpnext;
 	int id, eapcode;
@@ -1742,7 +1990,7 @@ static void map_eap_methods(RADIUS_PACKET *req)
  * given a radius request with an EAP-Message body, decode it specific
  * attributes.
  */
-static void unmap_eap_methods(RADIUS_PACKET *rep)
+static void rc_unmap_eap_methods(RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *eap1;
 	eap_packet_raw_t *e;
@@ -1811,7 +2059,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 	return;
 }
 
-static int map_eapsim_types(RADIUS_PACKET *r)
+static int rc_map_eapsim_types(RADIUS_PACKET *r)
 {
 	int ret;
 
@@ -1828,7 +2076,7 @@ static int map_eapsim_types(RADIUS_PACKET *r)
 	return 1;
 }
 
-static int unmap_eapsim_types(RADIUS_PACKET *r)
+static int rc_unmap_eapsim_types(RADIUS_PACKET *r)
 {
 	VALUE_PAIR	     *esvp;
 	uint8_t *eap_data;
@@ -1901,8 +2149,8 @@ main(int argc, char *argv[])
 			vp_printlist(stdout, req->vps);
 		}
 
-		map_eapsim_types(req);
-		map_eap_methods(req);
+		rc_map_eapsim_types(req);
+		rc_map_eap_methods(req);
 
 		if (fr_debug_flag > 1) {
 			DEBUG("Mapped to:");
@@ -1917,8 +2165,8 @@ main(int argc, char *argv[])
 		pairadd(&req2->vps, vp);
 
 		/* only call unmap for sim types here */
-		unmap_eap_methods(req2);
-		unmap_eapsim_types(req2);
+		rc_unmap_eap_methods(req2);
+		rc_unmap_eapsim_types(req2);
 
 		if (fr_debug_flag > 1) {
 			DEBUG("Unmapped to:");
