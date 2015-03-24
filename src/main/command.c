@@ -53,6 +53,9 @@ typedef int (*fr_command_func_t)(rad_listen_t *, int, char *argv[]);
 #define FR_READ  (1)
 #define FR_WRITE (2)
 
+#define CMD_FAIL FR_CHANNEL_FAIL
+#define CMD_OK   FR_CHANNEL_SUCCESS
+
 struct fr_command_table_t {
 	char const *command;
 	int mode;		/* read/write */
@@ -715,7 +718,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 
 	if (argc == 0) {
 		radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
-		return 1;
+		return CMD_OK;
 	}
 
 	/*
@@ -723,34 +726,34 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 	 */
 	if (strcmp(argv[0], "main.log") == 0) {
 		hup_logfile();
-		return 1;
+		return CMD_OK;
 	}
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
 	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	if ((mi->entry->module->type & RLM_TYPE_HUP_SAFE) == 0) {
 		cprintf_error(listener, "Module %s cannot be hup'd\n",
 			argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	if (!module_hup_module(mi->cs, mi, time(NULL))) {
 		cprintf_error(listener, "Failed to reload module\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	snprintf(buffer, sizeof(buffer), "modules.%s.hup",
 		 cf_section_name1(mi->cs));
 	exec_trigger(NULL, mi->cs, buffer, true);
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static int command_terminate(UNUSED rad_listen_t *listener,
@@ -758,7 +761,7 @@ static int command_terminate(UNUSED rad_listen_t *listener,
 {
 	radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static int command_uptime(rad_listen_t *listener,
@@ -769,7 +772,7 @@ static int command_uptime(rad_listen_t *listener,
 	CTIME_R(&fr_start_time, buffer, sizeof(buffer));
 	cprintf(listener, "Up since %s", buffer); /* no \r\n */
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
@@ -780,21 +783,21 @@ static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
 
 	if (argc != 1) {
 		cprintf_error(listener, "No path was given\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	ci = cf_reference_item(main_config.config, main_config.config, argv[0]);
-	if (!ci) return 0;
+	if (!ci) return CMD_FAIL;
 
-	if (!cf_item_is_pair(ci)) return 0;
+	if (!cf_item_is_pair(ci)) return CMD_FAIL;
 
 	cp = cf_item_to_pair(ci);
 	value = cf_pair_value(cp);
-	if (!value) return 0;
+	if (!value) return CMD_FAIL;
 
 	cprintf(listener, "%s\n", value);
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
@@ -903,21 +906,21 @@ static int command_show_module_config(rad_listen_t *listener, int argc, char *ar
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
 	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	cprint_conf_parser(listener, 0, mi->cs, mi->insthandle);
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static char const *method_names[RLM_COMPONENT_COUNT] = {
@@ -941,16 +944,16 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
 	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	mod = mi->entry->module;
@@ -959,7 +962,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 		if (mod->methods[i]) cprintf(listener, "%s\n", method_names[i]);
 	}
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 
@@ -971,16 +974,16 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
 	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	mod = mi->entry->module;
@@ -996,7 +999,7 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 	if ((mod->type & RLM_TYPE_HUP_SAFE) != 0)
 		cprintf(listener, "reload-on-hup\n");
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static int command_show_module_status(rad_listen_t *listener, int argc, char *argv[])
@@ -1006,16 +1009,16 @@ static int command_show_module_status(rad_listen_t *listener, int argc, char *ar
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
 	mi = find_module_instance(cs, argv[0], false);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	if (!mi->force) {
@@ -1025,7 +1028,7 @@ static int command_show_module_status(rad_listen_t *listener, int argc, char *ar
 	}
 
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 
@@ -1037,7 +1040,7 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	CONF_SECTION *cs, *subcs;
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
 	subcs = NULL;
 	while ((subcs = cf_subsection_find_next(cs, subcs, NULL)) != NULL) {
@@ -1059,7 +1062,7 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		}
 	}
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 #ifdef WITH_PROXY
@@ -1140,7 +1143,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 			home->currently_outstanding);
 	}
 
-	return 1;
+	return CMD_OK;
 }
 #endif
 
@@ -1166,14 +1169,14 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		}
 	}
 
-	return 1;
+	return CMD_OK;
 }
 
 
 static int command_show_version(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
 {
 	cprintf(listener, "%s\n", radiusd_version);
-	return 1;
+	return CMD_OK;
 }
 
 static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
@@ -1193,7 +1196,7 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 
 	fr_debug_flag = debug_flag = number;
 
-	return 1;
+	return CMD_OK;
 }
 
 static char debug_log_file_buffer[1024];
@@ -1211,7 +1214,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 
 	default_log.debug_file = NULL;
 
-	if (argc == 0) return 1;
+	if (argc == 0) return CMD_OK;
 
 	/*
 	 *	This looks weird, but it's here to avoid locking
@@ -1227,7 +1230,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 
 	default_log.debug_file = &debug_log_file_buffer[0];
 
-	return 1;
+	return CMD_OK;
 }
 
 extern fr_cond_t *debug_condition;
@@ -1245,7 +1248,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	if (argc == 0) {
 		talloc_free(debug_condition);
 		debug_condition = NULL;
-		return 1;
+		return CMD_OK;
 	}
 
 	if (!((argc == 1) &&
@@ -1321,7 +1324,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 
 		talloc_free(spaces);
 		talloc_free(text);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	/*
@@ -1333,7 +1336,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	talloc_free(debug_condition);
 	debug_condition = new_condition;
 
-	return 1;
+	return CMD_OK;
 }
 
 static int command_show_debug_condition(rad_listen_t *listener,
@@ -1343,23 +1346,23 @@ static int command_show_debug_condition(rad_listen_t *listener,
 
 	if (debug_condition) {
 		cprintf(listener, "\n");
-		return 1;
+		return CMD_OK;
 	}
 
 	fr_cond_sprint(buffer, sizeof(buffer), debug_condition);
 
 	cprintf(listener, "%s\n", buffer);
-	return 1;
+	return CMD_OK;
 }
 
 
 static int command_show_debug_file(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
-	if (!default_log.debug_file) return 0;
+	if (!default_log.debug_file) return CMD_FAIL;
 
 	cprintf(listener, "%s\n", default_log.debug_file);
-	return 1;
+	return CMD_OK;
 }
 
 
@@ -1367,7 +1370,7 @@ static int command_show_debug_level(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
 	cprintf(listener, "%d\n", debug_flag);
-	return 1;
+	return CMD_OK;
 }
 
 
@@ -1512,12 +1515,12 @@ static int command_set_home_server_state(rad_listen_t *listener, int argc, char 
 
 	if (argc < 3) {
 		cprintf_error(listener, "Must specify <ipaddr> <port> [udp|tcp] <state>\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	home = get_home_server(listener, argc, argv, &last);
 	if (!home) {
-		return 0;
+		return CMD_FAIL;
 	}
 
 	if (strcmp(argv[last], "alive") == 0) {
@@ -1531,10 +1534,10 @@ static int command_set_home_server_state(rad_listen_t *listener, int argc, char 
 
 	} else {
 		cprintf_error(listener, "Unknown state \"%s\"\n", argv[last]);
-		return 0;
+		return CMD_FAIL;
 	}
 
-	return 1;
+	return CMD_OK;
 }
 
 static int command_show_home_server_state(rad_listen_t *listener, int argc, char *argv[])
@@ -1542,9 +1545,7 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 	home_server_t *home;
 
 	home = get_home_server(listener, argc, argv, NULL);
-	if (!home) {
-		return 0;
-	}
+	if (!home) return CMD_FAIL;
 
 	switch (home->state) {
 	case HOME_STATE_ALIVE:
@@ -1568,7 +1569,7 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 		break;
 	}
 
-	return 1;
+	return CMD_OK;
 }
 #endif
 
@@ -1693,7 +1694,7 @@ static int command_inject_to(rad_listen_t *listener, int argc, char *argv[])
 	sock->dst_ipaddr = data->my_ipaddr;
 	sock->dst_port = data->my_port;
 
-	return 1;
+	return CMD_OK;
 }
 
 static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
@@ -1726,7 +1727,7 @@ static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
 	}
 	sock->inject_client = client;
 
-	return 1;
+	return CMD_OK;
 }
 
 static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
@@ -1848,7 +1849,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 
 #endif
 
-	return 1;
+	return CMD_OK;
 }
 
 
@@ -2054,7 +2055,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 		return 0;
 	}
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static int command_set_module_status(rad_listen_t *listener, int argc, char *argv[])
@@ -2097,7 +2098,7 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 		mi->force = true;
 	}
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 #ifdef WITH_STATS
@@ -2154,7 +2155,7 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 			elapsed_names[i], stats->elapsed[i]);
 	}
 
-	return 1;
+	return CMD_OK;
 }
 
 
@@ -2174,7 +2175,7 @@ static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED c
 	cprintf(listener, "queue_pps_in\t\t" PU "\n", pps[0]);
 	cprintf(listener, "queue_pps_out\t\t" PU "\n", pps[1]);
 
-	return 1;
+	return CMD_OK;
 }
 #endif
 
@@ -2224,7 +2225,7 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 
 	if ((data->state == STATE_UNOPENED) ||
 	    (data->state == STATE_UNLOCKED)) {
-		return 1;
+		return CMD_OK;
 	}
 
 	/*
@@ -2235,7 +2236,7 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 		cprintf(listener, "tries\t0\n");
 		cprintf(listener, "offset\t0\n");
 		cprintf(listener, "size\t0\n");
-		return 1;
+		return CMD_OK;
 	}
 
 	cprintf(listener, "packets\t%d\n", data->packets);
@@ -2243,7 +2244,7 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 	cprintf(listener, "offset\t%u\n", (unsigned int) data->offset);
 	cprintf(listener, "size\t%u\n", (unsigned int) buf.st_size);
 
-	return 1;
+	return CMD_OK;
 }
 #endif
 
@@ -2279,7 +2280,7 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 	command_print_stats(listener, &home->stats,
 			    (home->type == HOME_TYPE_AUTH), 1);
 	cprintf(listener, "outstanding\t%d\n", home->currently_outstanding);
-	return 1;
+	return CMD_OK;
 }
 #endif
 
@@ -2409,7 +2410,7 @@ static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[
 		return 0;
 	}
 
-	return 1;
+	return CMD_OK;
 }
 
 
@@ -2435,7 +2436,7 @@ static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 	 */
 	client->lifetime = 1;
 
-	return 1;
+	return CMD_OK;
 }
 
 
