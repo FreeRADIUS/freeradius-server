@@ -658,7 +658,7 @@ static int mod_detach(UNUSED void *instance)
 #ifdef WITH_AUTH_WINBIND
 	rlm_mschap_t *inst = instance;
 
-	fr_connection_pool_delete(inst->wb_pool);
+	fr_connection_pool_free(inst->wb_pool);
 #endif
 
 	return 0;

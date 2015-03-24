@@ -873,7 +873,7 @@ static int mod_detach(void *instance)
 
 	/* destroy connection pool */
 	if (inst->pool) {
-		fr_connection_pool_delete(inst->pool);
+		fr_connection_pool_free(inst->pool);
 	}
 
 	/* return okay */

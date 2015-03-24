@@ -98,7 +98,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
  */
 static int _mod_detach(rlm_cache_memcached_t *driver)
 {
-	fr_connection_pool_delete(driver->pool);
+	fr_connection_pool_free(driver->pool);
 	return 0;
 }
 

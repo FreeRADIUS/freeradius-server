@@ -478,7 +478,7 @@ static int mod_detach(void *instance)
 {
 	ldap_instance_t *inst = instance;
 
-	fr_connection_pool_delete(inst->pool);
+	fr_connection_pool_free(inst->pool);
 
 	if (inst->user_map) {
 		talloc_free(inst->user_map);

@@ -847,7 +847,7 @@ static int mod_detach(void *instance)
 {
 	rlm_rest_t *inst = instance;
 
-	fr_connection_pool_delete(inst->conn_pool);
+	fr_connection_pool_free(inst->conn_pool);
 
 	/* Free any memory used by libcurl */
 	rest_cleanup();

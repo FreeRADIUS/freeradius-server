@@ -144,7 +144,7 @@ init:
 
 int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst)
 {
-	fr_connection_pool_delete(inst->conn_pool);
+	fr_connection_pool_free(inst->conn_pool);
 	ykclient_done(&inst->ykc);
 	ykclient_global_done();
 

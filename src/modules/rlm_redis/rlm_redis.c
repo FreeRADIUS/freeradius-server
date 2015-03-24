@@ -187,7 +187,7 @@ static int mod_detach(void *instance)
 {
 	REDIS_INST *inst = instance;
 
-	fr_connection_pool_delete(inst->pool);
+	fr_connection_pool_free(inst->pool);
 
 	return 0;
 }

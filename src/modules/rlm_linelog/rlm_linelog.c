@@ -305,7 +305,7 @@ static int mod_detach(void *instance)
 {
 	linelog_instance_t *inst = instance;
 
-	fr_connection_pool_delete(inst->pool);
+	fr_connection_pool_free(inst->pool);
 
 	return 0;
 }
