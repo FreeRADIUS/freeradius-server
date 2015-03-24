@@ -42,9 +42,12 @@ RCSID("$Id$")
 
 extern int sha1_data_problems;
 
+#define USEC 1000000
+
 static unsigned int parallel = 1;
 static unsigned int retries = 3;
 static float timeout = 5;
+struct timeval tv_timeout;
 static char const *secret = NULL;
 static int do_output = 1;
 static int do_summary = 0;
@@ -96,6 +99,8 @@ struct rc_input_vps_list {
  *  and linkage to previous / next entries.
  */
 struct rc_input_vps {
+	uint32_t num;	//!< The number (within the file) of the input we're reading.
+	
 	VALUE_PAIR *vps_in;	//!< the list of attribute/value pairs.
 
 	rc_input_vps_list_t *list;	//!< the list to which this entry belongs (NULL for an unchained entry).
@@ -120,13 +125,16 @@ struct rc_transaction {
 	uint32_t tries;
 
 	fr_event_t *event;	//!< armed event (if any).
+
+	char		password[256];
+	char const	*name;	//!< Test name (as specified in the request).
 };
 
 
 TALLOC_CTX *autofree;
 static uint32_t num_trans = 0; //!< number of transactions initialized.
 static uint32_t num_started = 0; //!< number of transactions started.
-static uint32_t num_ongoing = 0; //!< number of ongoing transactions ongoing.
+static uint32_t num_ongoing = 0; //!< number of ongoing transactions.
 static uint32_t num_finished = 0; //!< number of finished transactions.
 
 static rc_input_vps_list_t rc_vps_list_in; //!< list of available input vps entries.
@@ -137,6 +145,7 @@ static fr_event_list_t *ev_list = NULL; //!< list of armed events.
 static int force_af = AF_UNSPEC;
 static int ipproto = IPPROTO_UDP;
 static fr_ipaddr_t server_ipaddr;
+static bool server_addr_init = false;
 static uint16_t server_port = 0;
 static int packet_code = PW_CODE_UNDEFINED;
 static fr_ipaddr_t client_ipaddr;
@@ -191,6 +200,15 @@ int rad_virtual_server(REQUEST UNUSED *request)
 {
   /*We're not the server so we cannot do this*/
   abort();
+}
+
+/** Convert a float to struct timeval.
+ */
+static void rc_float_to_timeval(struct timeval *tv, float f_val)
+{
+	tv->tv_sec = (time_t)f_val;
+	uint64_t usec = (uint64_t)(f_val * USEC) - (tv->tv_sec * USEC);
+	tv->tv_usec = usec;
 }
 
 /** Add an allocated rc_input_vps_t entry to the tail of the list.
@@ -299,6 +317,8 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 		/* Add that to the list */
 		rc_add_vps_entry(list, request);
 
+		request->num = list->size;
+
 		if (max_entries && list->size >= max_entries) {
 			/* Only load what we need. */
 			break;
@@ -313,17 +333,151 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 	return 1;
 }
 
-/** Perform packet initialization.
+/** Perform packet initialization for a transaction.
  */
-static int rc_init_packet(RADIUS_PACKET *packet)
+static int rc_init_packet(rc_transaction_t *trans)
 {
-	//TODO: parse the vps for "Packet-"...
+	if (!trans || !trans->packet) return 0;
+
+	RADIUS_PACKET *packet = trans->packet;
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+
+	/*
+	 *	Process special attributes
+	 */
+	for (vp = fr_cursor_init(&cursor, &packet->vps);
+		 vp;
+		 vp = fr_cursor_next(&cursor)) {
+		/*
+		 *	Double quoted strings get marked up as xlat expansions,
+		 *	but we don't support that in request.
+		 */
+		if (vp->type == VT_XLAT) {
+			vp->type = VT_DATA;
+			vp->vp_strvalue = vp->value.xlat;
+			vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
+		}
+
+		if (!vp->da->vendor) switch (vp->da->attr) {
+		default:
+			break;
+
+		/*
+		 *	Allow it to set the packet type in
+		 *	the attributes read from the file.
+		 */
+		case PW_PACKET_TYPE:
+			packet->code = vp->vp_integer;
+			break;
+
+		case PW_PACKET_DST_PORT:
+			//this does not work. (it doesn't in radclient either)... TODO: fix (how ?)
+			packet->dst_port = (vp->vp_integer & 0xffff);
+			break;
+
+		case PW_PACKET_DST_IP_ADDRESS:
+			//this does not work. (it doesn't in radclient either)... TODO: fix (how ?)
+			packet->dst_ipaddr.af = AF_INET;
+			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			packet->dst_ipaddr.prefix = 32;
+			break;
+
+		case PW_PACKET_DST_IPV6_ADDRESS:
+			packet->dst_ipaddr.af = AF_INET6;
+			packet->dst_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+			packet->dst_ipaddr.prefix = 128;
+			break;
+
+		case PW_PACKET_SRC_PORT:
+			if ((vp->vp_integer < 1024) ||
+				(vp->vp_integer > 65535)) {
+				DEBUG("Invalid value '%u' for Packet-Src-Port", vp->vp_integer);
+			} else {
+				packet->src_port = (vp->vp_integer & 0xffff);
+			}
+			break;
+
+		case PW_PACKET_SRC_IP_ADDRESS:
+			packet->src_ipaddr.af = AF_INET;
+			packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+			packet->src_ipaddr.prefix = 32;
+			break;
+
+		case PW_PACKET_SRC_IPV6_ADDRESS:
+			packet->src_ipaddr.af = AF_INET6;
+			packet->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+			packet->src_ipaddr.prefix = 128;
+			break;
+
+		case PW_DIGEST_REALM:
+		case PW_DIGEST_NONCE:
+		case PW_DIGEST_METHOD:
+		case PW_DIGEST_URI:
+		case PW_DIGEST_QOP:
+		case PW_DIGEST_ALGORITHM:
+		case PW_DIGEST_BODY_DIGEST:
+		case PW_DIGEST_CNONCE:
+		case PW_DIGEST_NONCE_COUNT:
+		case PW_DIGEST_USER_NAME:
+		/* overlapping! */
+		{
+			DICT_ATTR const *da;
+			uint8_t *p, *q;
+
+			p = talloc_array(vp, uint8_t, vp->vp_length + 2);
+
+			memcpy(p + 2, vp->vp_octets, vp->vp_length);
+			p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
+			vp->vp_length += 2;
+			p[1] = vp->vp_length;
+
+			da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
+			if (!da) {
+				ERROR("Out of memory");
+				exit(1);
+			}
+			vp->da = da;
+
+			/*
+			 *	Re-do pairmemsteal ourselves,
+			 *	because we play games with
+			 *	vp->da, and pairmemsteal goes
+			 *	to GREAT lengths to sanitize
+			 *	and fix and change and
+			 *	double-check the various
+			 *	fields.
+			 */
+			memcpy(&q, &vp->vp_octets, sizeof(q));
+			talloc_free(q);
+
+			vp->vp_octets = talloc_steal(vp, p);
+			vp->type = VT_DATA;
+
+			VERIFY_VP(vp);
+		}
+			break;
+
+		/*
+		 *	Keep a copy of the the password attribute.
+		 */
+		case PW_USER_PASSWORD:
+		case PW_CHAP_PASSWORD:
+		case PW_MS_CHAP_PASSWORD:
+			strlcpy(trans->password, vp->vp_strvalue, sizeof(trans->password));
+			break;
+
+		case PW_RADCLIENT_TEST_NAME:
+			trans->name = vp->vp_strvalue;
+			break;
+		}
+	} /* loop over the VP's we read in */
 
 	if (packet->dst_port == 0) packet->dst_port = server_port;
 
 	if (packet->dst_ipaddr.af == AF_UNSPEC) {
-		if (server_ipaddr.af == AF_UNSPEC) {
-			DEBUG("No server was given, and request did not contain Packet-Dst-IP-Address");
+		if (!server_addr_init) {
+			DEBUG("No server was given, and input entry %u did not contain Packet-Dst-IP-Address, ignored.", trans->input_vps->num);
 			return 0;
 		}
 		packet->dst_ipaddr = server_ipaddr;
@@ -336,7 +490,7 @@ static int rc_init_packet(RADIUS_PACKET *packet)
 	if (packet->dst_port == 0) {
 		rc_get_port(packet->code, &packet->dst_port);
 		if (packet->dst_port == 0) {
-			DEBUG("Can't determine destination port");
+			DEBUG("Can't determine destination port for input entry %u, ignored.", trans->input_vps->num);
 			return 0;
 		}
 	}
@@ -377,8 +531,12 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	/* Fill in the packet value pairs. */
 	packet->vps = paircopy(packet, vps_entry->vps_in);
 
-	/* Initialize the packet. */
-	rc_init_packet(packet);
+	/* Initialize the transaction packet. */
+	if (!rc_init_packet(transaction)) {
+		/* Failed... */
+		talloc_free(transaction);
+		return NULL;
+	}
 
 	/* Build EAP-Message (if EAP is involved. Otherwise, do nothing). */
 	int eap_type = rc_map_eap_methods(packet);
@@ -1507,9 +1665,9 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 		/* got reply to packet we didn't send.
 		 * (or maybe we sent it, got no response, freed the ID. Then server responds to first request.)
 		 */
-		DEBUG("No outstanding request was found for reply from %s (sockfd: %d, id: %d)", 
+		DEBUG("No outstanding request was found for reply from %s, port %d (sockfd: %d, id: %d)", 
 			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
-			reply->sockfd, reply->id);
+			reply->src_port, reply->sockfd, reply->id);
 		rad_free(&reply);
 		return -1;
 	}
@@ -1643,7 +1801,7 @@ static void rc_evprep_packet_timeout(rc_transaction_t *trans)
 {
 	struct timeval tv_event;
 	gettimeofday(&tv_event, NULL);
-	tv_event.tv_sec += 3;  // TODO: use parameter.
+	timeradd(&tv_event, &tv_timeout, &tv_event);
 
 	if (!fr_event_insert(ev_list, rc_evcb_packet_timeout, (void *)trans, &tv_event, &trans->event)) {
 		ERROR("Failed to insert event");
@@ -1833,6 +1991,7 @@ static void rc_resolve_hostname(char *server_arg)
 			ERROR("%s: Failed to find IP address for host %s: %s", progname, hostname, strerror(errno));
 			exit(1);
 		}
+		server_addr_init = true;
 
 		/* Strip port from hostname if needed. */
 		if (portname) server_port = atoi(portname);
@@ -1851,7 +2010,6 @@ int main(int argc, char **argv)
 	int c;
 	char *filename = NULL;
 	FILE *fp;
-	int id;
 
 	static fr_log_t radclient_log = {
 		.colourise = true,
@@ -1870,7 +2028,6 @@ int main(int argc, char **argv)
 	 */
 	autofree = talloc_init("main");
 
-	id = ((int)getpid() & 0xff);
 	fr_debug_flag = 0;
 	fr_log_fp = stdout;
 
@@ -1970,6 +2127,8 @@ int main(int argc, char **argv)
 		usage();
 	}
 
+	/* Prepare the timeout. */
+	rc_float_to_timeval(&tv_timeout, timeout);
 
 	if (!main_config.dictionary_dir) {
 		main_config.dictionary_dir = DICTDIR;
