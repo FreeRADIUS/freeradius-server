@@ -20,7 +20,7 @@
 # Source function library.
 
 # Get the wrappers for the standard lsb init functions
-[ -e /lib/lsb/init-functions ] && . /lib/lsb/init-functions
+. /lib/lsb/init-functions
 
 # and the distro specific ones
 . /etc/init.d/functions
