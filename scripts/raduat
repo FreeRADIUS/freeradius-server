@@ -92,7 +92,7 @@ cluster_types=$(echo $cluster_dirs | sed 's/\s/ /g')
 
 role_types=
 for i in $cluster_dirs; do
-    for j in $(find "$TESTDIR/$i/" -mindepth 1 -maxdepth 1 -type d); do
+    for j in $(find "$TESTDIR/$(basename $i)/" -mindepth 1 -maxdepth 1 -type d); do
         role=$(basename "$j")
         if [ "$role_types" == '' ]; then
             role_types="$role"
