@@ -723,7 +723,7 @@ redo:
 			 *	section.  If we get FAIL, then
 			 *	continue.  Otherwise, stop.
 			 */
-			for (i = 1; i < count; i++) {
+			for (i = 0; i < count; i++) {
 				modcall_child(request, component,
 					      depth + 1, entry, found,
 					      &result);
