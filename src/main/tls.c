@@ -287,6 +287,18 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	return ssn;
 }
 
+
+/** Create a new TLS session
+ *
+ * Configures a new TLS session, configuring options, setting callbacks etc...
+ *
+ * @param ctx to alloc session data in. Should usually be NULL unless the lifetime of the
+ *	session is tied to another talloc'd object.
+ * @param conf to use to configure the tls session.
+ * @param request The current #REQUEST.
+ * @param client_cert Whether to require a client_cert.
+ * @return a new session on success, or NULL on error.
+ */
 tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert)
 {
 	tls_session_t *state = NULL;
@@ -313,8 +325,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	}
 
 	if ((new_tls = SSL_new(conf->ctx)) == NULL) {
-		ERROR("SSL: Error creating new SSL: %s",
-		       ERR_error_string(ERR_get_error(), NULL));
+		RERROR("Error creating new SSL session: %s", ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
 	}
 
@@ -322,7 +333,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	SSL_set_app_data(new_tls, NULL);
 
 	if ((state = talloc_zero(ctx, tls_session_t)) == NULL) {
-		ERROR("SSL: Error allocating memory for SSL state");
+		RERROR("Error allocating memory for SSL state");
 		return NULL;
 	}
 	session_init(state);
