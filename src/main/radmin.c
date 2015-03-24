@@ -223,8 +223,7 @@ static ssize_t run_command(int sockfd, char const *command,
 
 			memcpy(&status, buffer, sizeof(status));
 			status = ntohl(status);
-			// set the status from the data
-			return 1 + status;
+			return status;
 
 		default:
 			fprintf(stderr, "Unexpected response\n");
@@ -599,7 +598,7 @@ int main(int argc, char **argv)
 			len = run_command(sockfd, commands[i], buffer, sizeof(buffer));
 			if (len < 0) exit(1);
 
-			if (len == 1) exit_status = EXIT_FAILURE;
+			if (len == FR_CHANNEL_FAIL) exit_status = EXIT_FAILURE;
 		}
 		exit(exit_status);
 	}
@@ -734,10 +733,10 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Failed to connect to server\n");
 			exit(1);
 
-		} else if (len == 0) {
+		} else if (len == FR_CHANNEL_SUCCESS) {
 			break;
 
-		} else if (len == 1) {
+		} else if (len == FR_CHANNEL_FAIL) {
 			exit_status = EXIT_FAILURE;
 		}
 	}
