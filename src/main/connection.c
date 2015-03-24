@@ -79,6 +79,8 @@ struct fr_connection {
  * @see fr_connection
  */
 struct fr_connection_pool_t {
+	int		ref;		//!< Reference counter to prevent connection
+					//!< pool being freed multiple times.
 	uint32_t       	start;		//!< Number of initial connections
 	uint32_t       	min;		//!< Minimum number of concurrent
 					//!< connections to keep open.
@@ -576,6 +578,15 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 
 	if (!pool) return;
 
+	/*
+	 *	More modules hold a reference to this pool, don't free
+	 *	it yet.
+	 */
+	if (pool->ref > 0) {
+		pool->ref--;
+		return;
+	}
+
 	DEBUG("%s: Removing connection pool", pool->log_prefix);
 
 	pthread_mutex_lock(&pool->mutex);
@@ -695,6 +706,7 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 		cf_data_add(cs, CONNECTION_POOL_CF_KEY, pool, NULL);
 		return pool;
 	}
+	pool->ref++;
 
 	DEBUG4("%s: Found pool reference %p in config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
 
