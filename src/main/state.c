@@ -96,7 +96,7 @@ static void state_entry_free(state_entry_t *entry)
 	next = entry->next;
 
 	if (prev) {
-		rad_assert(state_tail != entry);
+		rad_assert(state_head != entry);
 		prev->next = next;
 	} else if (state_head) {
 		rad_assert(state_head == entry);
