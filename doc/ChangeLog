@@ -42,6 +42,10 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	  configurable, and may be increased if required.
 	* Convert Password-With-Header attributes to binary (from hex or 
 	  base64), in the authorize method of rlm_pap.
+	* Fix invalid assert in state.c, that could cause abort in
+	  post-auth.
+	* Fix double free when -m flag is used, and connection pools are
+	  referenced by multiple modules.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
