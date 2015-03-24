@@ -2916,7 +2916,7 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 
 			len = 1;
 			status = table[i].func(listener, argc - 1, argv + 1);
-			break;
+			goto do_next;
 		}
 	}
 
