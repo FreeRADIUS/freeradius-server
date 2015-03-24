@@ -44,7 +44,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <arpa/inet.h>
 
 #ifdef HAVE_UNISTD_H
-#include <unistd.h>
+#  include <unistd.h>
 #endif
 
 #include <freeradius-devel/radiusd.h>
@@ -57,24 +57,25 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  */
 fr_tls_status_t eaptls_process(eap_handler_t *handler);
 
-int 		eaptls_success(eap_handler_t *handler, int peap_flag) CC_HINT(nonnull);
-int 		eaptls_fail(eap_handler_t *handler, int peap_flag) CC_HINT(nonnull);
-int 		eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn) CC_HINT(nonnull);
+int	eaptls_success(eap_handler_t *handler, int peap_flag) CC_HINT(nonnull);
+int	eaptls_fail(eap_handler_t *handler, int peap_flag) CC_HINT(nonnull);
+int	eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn) CC_HINT(nonnull);
 
 
 /* MPPE key generation */
-void	    eaptls_gen_mppe_keys(REQUEST *request, SSL *s,
-				 char const *prf_label);
-void		eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
-void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
+void	eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);
+void	eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
+void	eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
 
 #define BUFFER_SIZE 1024
 
-#define EAP_TLS_START	  	1
-#define EAP_TLS_ACK	  	2
-#define EAP_TLS_SUCCESS	 3
-#define EAP_TLS_FAIL	  	4
-#define EAP_TLS_ALERT	  	9
+typedef enum tls_op {
+	EAP_TLS_START	= 1,
+	EAP_TLS_ACK	= 2,
+	EAP_TLS_SUCCESS	= 3,
+	EAP_TLS_FAIL	= 4,
+	EAP_TLS_ALERT	= 9
+} tls_op_t;
 
 #define TLS_HEADER_LEN	  4
 
@@ -96,11 +97,11 @@ typedef struct tls_packet {
 
 
 /* EAP-TLS framework */
-EAPTLS_PACKET 	*eaptls_alloc(void);
-void 		eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr);
+EAPTLS_PACKET	*eaptls_alloc(void);
+void		eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr);
 tls_session_t	*eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_conf, bool client_cert);
-int 		eaptls_start(EAP_DS *eap_ds, int peap);
-int 		eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply);
+int		eaptls_start(EAP_DS *eap_ds, int peap);
+int		eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply);
 
 fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *key);
 
