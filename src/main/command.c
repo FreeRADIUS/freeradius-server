@@ -1140,7 +1140,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 			home->currently_outstanding);
 	}
 
-	return 0;
+	return 1;
 }
 #endif
 
@@ -1166,7 +1166,7 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		}
 	}
 
-	return 0;
+	return 1;
 }
 
 
@@ -1193,7 +1193,7 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 
 	fr_debug_flag = debug_flag = number;
 
-	return 0;
+	return 1;
 }
 
 static char debug_log_file_buffer[1024];
@@ -1211,7 +1211,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 
 	default_log.debug_file = NULL;
 
-	if (argc == 0) return 0;
+	if (argc == 0) return 1;
 
 	/*
 	 *	This looks weird, but it's here to avoid locking
@@ -1227,7 +1227,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 
 	default_log.debug_file = &debug_log_file_buffer[0];
 
-	return 0;
+	return 1;
 }
 
 extern fr_cond_t *debug_condition;
@@ -1245,7 +1245,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	if (argc == 0) {
 		talloc_free(debug_condition);
 		debug_condition = NULL;
-		return 0;
+		return 1;
 	}
 
 	if (!((argc == 1) &&
@@ -1333,7 +1333,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	talloc_free(debug_condition);
 	debug_condition = new_condition;
 
-	return 0;
+	return 1;
 }
 
 static int command_show_debug_condition(rad_listen_t *listener,
@@ -1341,12 +1341,15 @@ static int command_show_debug_condition(rad_listen_t *listener,
 {
 	char buffer[1024];
 
-	if (!debug_condition) return 0;
+	if (debug_condition) {
+		cprintf(listener, "\n");
+		return 1;
+	}
 
 	fr_cond_sprint(buffer, sizeof(buffer), debug_condition);
 
 	cprintf(listener, "%s\n", buffer);
-	return 0;
+	return 1;
 }
 
 
@@ -1356,7 +1359,7 @@ static int command_show_debug_file(rad_listen_t *listener,
 	if (!default_log.debug_file) return 0;
 
 	cprintf(listener, "%s\n", default_log.debug_file);
-	return 0;
+	return 1;
 }
 
 
@@ -1364,7 +1367,7 @@ static int command_show_debug_level(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
 	cprintf(listener, "%d\n", debug_flag);
-	return 0;
+	return 1;
 }
 
 
@@ -2271,9 +2274,7 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 	}
 
 	home = get_home_server(listener, argc, argv, NULL);
-	if (!home) {
-		return 0;
-	}
+	if (!home) return 0;
 
 	command_print_stats(listener, &home->stats,
 			    (home->type == HOME_TYPE_AUTH), 1);
@@ -2312,9 +2313,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 		 *	Per-client statistics.
 		 */
 		client = get_client(listener, argc - 1, argv + 1);
-		if (!client) {
-			return 0;
-		}
+		if (!client) return 0;
 	}
 
 	if (strcmp(argv[0], "auth") == 0) {
@@ -2376,9 +2375,7 @@ static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 	rad_listen_t *sock;
 
 	sock = get_socket(listener, argc, argv, NULL);
-	if (!sock) {
-		return 0;
-	}
+	if (!sock) return 0;
 
 	if (sock->type != RAD_LISTEN_AUTH) auth = false;
 
