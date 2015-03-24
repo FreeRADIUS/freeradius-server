@@ -121,8 +121,17 @@ struct rc_transaction {
 };
 
 
-uint32_t num_trans = 0; //!< number of transactions initialized.
-rc_input_vps_list_t rc_vps_list_in; //!< list of available input vps entries.
+
+static uint32_t num_trans = 0; //!< number of transactions initialized.
+static rc_input_vps_list_t rc_vps_list_in; //!< list of available input vps entries.
+static fr_packet_list_t *pl = NULL;	//!< list of outgoing packets.
+static unsigned int num_sockets = 0;	//!< number of allocated sockets.
+
+static int force_af = AF_UNSPEC;
+static int ipproto = IPPROTO_UDP;
+static fr_ipaddr_t server_ipaddr;
+static uint16_t server_port = 0;
+static int packet_code = PW_CODE_UNDEFINED;
 
 
 static void map_eap_methods(RADIUS_PACKET *req);
@@ -151,6 +160,19 @@ static void NEVER_RETURNS usage(void)
 
 	exit(1);
 }
+
+static const FR_NAME_NUMBER rc_request_types[] = {
+	{ "auth",	PW_CODE_ACCESS_REQUEST },
+	{ "challenge",	PW_CODE_ACCESS_CHALLENGE },
+	{ "acct",	PW_CODE_ACCOUNTING_REQUEST },
+	{ "status",	PW_CODE_STATUS_SERVER },
+	{ "disconnect",	PW_CODE_DISCONNECT_REQUEST },
+	{ "coa",	PW_CODE_COA_REQUEST },
+	{ "auto",	PW_CODE_UNDEFINED },
+
+	{ NULL, 0}
+};
+
 int rad_virtual_server(REQUEST UNUSED *request)
 {
   /*We're not the server so we cannot do this*/
@@ -1195,6 +1217,94 @@ static int sendrecv_eap(rc_transaction_t *transaction)
 }
 
 
+/** Allocate a new socket, and add it to the packet list.
+ */
+static void rc_add_socket(fr_ipaddr_t *src_ipaddr, uint16_t src_port, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
+{
+	int mysockfd;
+
+	mysockfd = fr_socket(src_ipaddr, src_port);
+	if (mysockfd < 0) {
+		ERROR("%s: failed to create new socket: %s", progname, fr_strerror());
+		exit(1);
+	}
+
+	if (!fr_packet_list_socket_add(pl, mysockfd, ipproto, dst_ipaddr, dst_port, NULL)) {
+		ERROR("%s: failed to add new socket: %s", progname, fr_strerror());
+		exit(1);
+	}
+
+	num_sockets ++;
+	DEBUG("Added new socket: %d, num sockets: %d", mysockfd, num_sockets);
+}
+
+/** Send one packet for a transaction.
+ */
+static int UNUSED rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
+//TODO: use it!
+{
+	if (!trans || !packet_p || !*packet_p) return -1;
+
+	assert(pl != NULL);
+
+	RADIUS_PACKET *packet = *packet_p;
+
+	if (packet->id == -1) {
+		/* Haven't sent the packet yet.  Initialize it. */
+		bool rcode;
+		int i;
+
+		assert(trans->reply == NULL);
+
+		trans->tries = 0;
+		packet->src_ipaddr.af = server_ipaddr.af;
+		int nb_sock_add = 0;
+		while (1) {
+			/* Allocate a RADIUS packet ID from a suitable socket of the packet list. */
+			rcode = fr_packet_list_id_alloc(pl, ipproto, packet_p, NULL);
+
+			if (rcode) { /* Got an ID. */
+				break;
+			}
+			if (nb_sock_add >= 1) {
+				ERROR("%s: added %d new socket(s), but still could not get an ID (currently: %d outgoing requests).", progname,
+					nb_sock_add, fr_packet_list_num_outgoing(pl));
+				exit(1);
+			}
+
+			/* Could not find a free packet ID. Allocate a new socket, then try again. y*/
+			rc_add_socket(&packet->src_ipaddr, packet->src_port, &packet->dst_ipaddr, packet->dst_port);
+
+			nb_sock_add ++;
+		}
+
+		assert(packet->id != -1);
+		assert(packet->data == NULL);
+
+		for (i = 0; i < 4; i++) {
+			((uint32_t *) packet->vector)[i] = fr_rand();
+		}
+	}
+
+	/*
+	 *	Send the packet.
+	 */
+	gettimeofday(&packet->timestamp, NULL); /* set outgoing packet timestamp. */
+	
+	if (rad_send(packet, NULL, secret) < 0) {
+		ERROR("%s: Failed to send packet (sockfd: %d, id: %d): %s", progname,
+			packet->sockfd, packet->id, fr_strerror());
+	}
+
+	trans->tries ++;
+
+	if (fr_debug_flag > 0) fr_packet_header_print(fr_log_fp, packet, false);
+	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, packet->vps);
+
+	return 1;
+}
+
+
 void set_radius_dir(TALLOC_CTX *ctx, char const *path)
 {
 	if (radius_dir) {
@@ -1208,16 +1318,118 @@ void set_radius_dir(TALLOC_CTX *ctx, char const *path)
 }
 
 
+/** Set a port from the request type if we don't already have one.
+ */
+static void rc_get_port(PW_CODE type, uint16_t *port)
+{
+	switch (type) {
+	default:
+	case PW_CODE_ACCESS_REQUEST:
+	case PW_CODE_ACCESS_CHALLENGE:
+	case PW_CODE_STATUS_SERVER:
+		if (*port == 0) *port = getport("radius");
+		if (*port == 0) *port = PW_AUTH_UDP_PORT;
+		return;
+
+	case PW_CODE_ACCOUNTING_REQUEST:
+		if (*port == 0) *port = getport("radacct");
+		if (*port == 0) *port = PW_ACCT_UDP_PORT;
+		return;
+
+	case PW_CODE_DISCONNECT_REQUEST:
+		if (*port == 0) *port = PW_POD_UDP_PORT;
+		return;
+
+	case PW_CODE_COA_REQUEST:
+		if (*port == 0) *port = PW_COA_UDP_PORT;
+		return;
+
+	case PW_CODE_UNDEFINED:
+		if (*port == 0) *port = 0;
+		return;
+	}
+}
+
+/** Resolve a port to a request type.
+ */
+static PW_CODE rc_get_code(uint16_t port)
+{
+	/*
+	 *	getport returns 0 if the service doesn't exist
+	 *	so we need to return early, to avoid incorrect
+	 *	codes.
+	 */
+	if (port == 0) return PW_CODE_UNDEFINED;
+
+	if ((port == getport("radius")) || (port == PW_AUTH_UDP_PORT) || (port == PW_AUTH_UDP_PORT_ALT)) {
+		return PW_CODE_ACCESS_REQUEST;
+	}
+	if ((port == getport("radacct")) || (port == PW_ACCT_UDP_PORT) || (port == PW_ACCT_UDP_PORT_ALT)) {
+		return PW_CODE_ACCOUNTING_REQUEST;
+	}
+	if (port == PW_COA_UDP_PORT) return PW_CODE_COA_REQUEST;
+	if (port == PW_POD_UDP_PORT) return PW_CODE_DISCONNECT_REQUEST;
+
+	return PW_CODE_UNDEFINED;
+}
+
+/** Resolve server hostname.
+ */
+static void rc_resolve_hostname(char *server_arg)
+{
+	if (force_af == AF_UNSPEC) force_af = AF_INET;
+	server_ipaddr.af = force_af;
+	if (strcmp(server_arg, "-") != 0) {
+		char *p;
+		char const *hostname = server_arg;
+		char const *portname = server_arg;
+		char buffer[256];
+
+		if (*server_arg == '[') { /* IPv6 URL encoded */
+			p = strchr(server_arg, ']');
+			if ((size_t) (p - server_arg) >= sizeof(buffer)) {
+				usage();
+			}
+
+			memcpy(buffer, server_arg + 1, p - server_arg - 1);
+			buffer[p - server_arg - 1] = '\0';
+
+			hostname = buffer;
+			portname = p + 1;
+
+		}
+		p = strchr(portname, ':');
+		if (p && (strchr(p + 1, ':') == NULL)) {
+			*p = '\0';
+			portname = p + 1;
+		} else {
+			portname = NULL;
+		}
+
+		if (ip_hton(&server_ipaddr, force_af, hostname, false) < 0) {
+			ERROR("%s: Failed to find IP address for host %s: %s", progname, hostname, strerror(errno));
+			exit(1);
+		}
+
+		/* Strip port from hostname if needed. */
+		if (portname) server_port = atoi(portname);
+
+		/*
+		 *	Work backwards from the port to determine the packet type
+		 */
+		if (packet_code == PW_CODE_UNDEFINED) packet_code = rc_get_code(server_port);
+	}
+	rc_get_port(packet_code, &server_port);
+}
+
 int main(int argc, char **argv)
 {
 	RADIUS_PACKET *req;
 	char *p;
 	int c;
-	uint16_t port = 0;
 	char *filename = NULL;
 	FILE *fp;
 	int id;
-	int force_af = AF_UNSPEC;
 
 	static fr_log_t radclient_log = {
 		.colourise = true,
@@ -1372,7 +1584,7 @@ int main(int argc, char **argv)
 		DEBUG2("Including dictionary file %s/%s", radius_dir, RADIUS_DICTIONARY);
 	}
 
-	req = rad_alloc(NULL, true);
+	req = rad_alloc(NULL, true); //TODO: remove this.
 	if (!req) {
 		ERROR("%s", fr_strerror());
 		exit(1);
@@ -1380,78 +1592,22 @@ int main(int argc, char **argv)
 	req->id = id;
 
 	/*
-	 *	Resolve hostname.
+	 *	Get the request type
 	 */
-	if (force_af == AF_UNSPEC) force_af = AF_INET;
-	req->dst_ipaddr.af = force_af;
-	if (strcmp(argv[1], "-") != 0) {
-		char const *hostname = argv[1];
-		char const *portname = argv[1];
-		char buffer[256];
-
-		if (*argv[1] == '[') { /* IPv6 URL encoded */
-			p = strchr(argv[1], ']');
-			if ((size_t) (p - argv[1]) >= sizeof(buffer)) {
-				usage();
-			}
-
-			memcpy(buffer, argv[1] + 1, p - argv[1] - 1);
-			buffer[p - argv[1] - 1] = '\0';
-
-			hostname = buffer;
-			portname = p + 1;
-
+	if (!isdigit((int) argv[2][0])) {
+		packet_code = fr_str2int(rc_request_types, argv[2], -2);
+		if (packet_code == -2) {
+			ERROR("Unrecognised request type \"%s\"", argv[2]);
+			usage();
 		}
-		p = strchr(portname, ':');
-		if (p && (strchr(p + 1, ':') == NULL)) {
-			*p = '\0';
-			portname = p + 1;
-		} else {
-			portname = NULL;
-		}
-
-		if (ip_hton(&req->dst_ipaddr, force_af, hostname, false) < 0) {
-			ERROR("Failed to find IP address for host %s: %s", hostname, fr_syserror(errno));
-			exit(1);
-		}
-
-		/*
-		 *	Strip port from hostname if needed.
-		 */
-		if (portname) port = atoi(portname);
+	} else {
+		packet_code = atoi(argv[2]);
 	}
 
 	/*
-	 *	See what kind of request we want to send.
+	 *	Resolve hostname.
 	 */
-	if (strcmp(argv[2], "auth") == 0) {
-		if (port == 0) port = getport("radius");
-		if (port == 0) port = PW_AUTH_UDP_PORT;
-		req->code = PW_CODE_ACCESS_REQUEST;
-
-	} else if (strcmp(argv[2], "acct") == 0) {
-		if (port == 0) port = getport("radacct");
-		if (port == 0) port = PW_ACCT_UDP_PORT;
-		req->code = PW_CODE_ACCOUNTING_REQUEST;
-		do_summary = 0;
-
-	} else if (strcmp(argv[2], "status") == 0) {
-		if (port == 0) port = getport("radius");
-		if (port == 0) port = PW_AUTH_UDP_PORT;
-		req->code = PW_CODE_STATUS_SERVER;
-
-	} else if (strcmp(argv[2], "disconnect") == 0) {
-		if (port == 0) port = PW_POD_UDP_PORT;
-		req->code = PW_CODE_DISCONNECT_REQUEST;
-
-	} else if (isdigit((int) argv[2][0])) {
-		if (port == 0) port = getport("radius");
-		if (port == 0) port = PW_AUTH_UDP_PORT;
-		req->code = atoi(argv[2]);
-	} else {
-		usage();
-	}
-	req->dst_port = port;
+	rc_resolve_hostname(argv[1]);
 
 	/*
 	 *	Add the secret.
@@ -1482,10 +1638,10 @@ int main(int argc, char **argv)
 		if (!trans) break;
 
 		// TODO. For now, just copy what we have in "req".
-		trans->packet->code = req->code;
+		trans->packet->code = packet_code;
 		trans->packet->sockfd = req->sockfd;
-		memcpy(&trans->packet->dst_ipaddr, &req->dst_ipaddr, sizeof(req->dst_ipaddr));
-		trans->packet->dst_port = port;
+		memcpy(&trans->packet->dst_ipaddr, &server_ipaddr, sizeof(server_ipaddr));
+		trans->packet->dst_port = server_port;
 
 		sendrecv_eap(trans);
 	}
