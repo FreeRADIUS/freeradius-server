@@ -523,23 +523,23 @@ bool realm_home_server_add(home_server_t *home)
 
 	if (!home_server_insert(home, home->cs)) return false;
 
-	if (home->dual) {
+	/*
+	 *	Dual home servers cause us to auto-create an
+	 *	accounting server for UDP sockets, and leave
+	 *	everything alone for TLS sockets.
+	 */
+	if (home->dual
+#ifdef WITH_TLS
+	    && !home->tls
+#endif
+) {
 		home_server_t *home2 = talloc(talloc_parent(home), home_server_t);
 
 		memcpy(home2, home, sizeof(*home2));
 
 		home2->type = HOME_TYPE_ACCT;
 		home2->dual = true;
-
-#ifdef WITH_TLS
-		/*
-		 *	Accounting port is the same as the authentication port for RadSec.
-		 */
-		if (!home->tls)
-#endif
-		{
-			home2->port++;
-		}
+		home2->port++;
 
 		home2->ping_user_password = NULL;
 		home2->cs = home->cs;
@@ -569,7 +569,6 @@ bool realm_home_server_add(home_server_t *home)
 home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs)
 {
 	home_server_t	*home;
-
 	CONF_SECTION	*tls;
 
 	if (!rc) rc = realm_config; /* Use the global config */
@@ -643,15 +642,15 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
  		if (home->type_str) type = fr_str2int(home_server_types, home->type_str, HOME_TYPE_INVALID);
 
+		home->type = type;
+
  		switch (type) {
  		case HOME_TYPE_AUTH_ACCT:
 			home->dual = true;
-			home->type = HOME_TYPE_AUTH;
 			break;
 
 		case HOME_TYPE_AUTH:
 		case HOME_TYPE_ACCT:
-			home->type = type;
 			break;
 
 #ifdef WITH_COA
@@ -660,7 +659,6 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 				cf_log_err_cs(cs, "Home servers of type \"coa\" cannot point to a virtual server");
 				goto error;
 			}
-			home->type = type;
 			break;
 #endif
 
@@ -742,6 +740,12 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	 *	Check the TLS configuration.
 	 */
 	tls = cf_section_sub_find(cs, "tls");
+#ifndef WITH_TLS
+	if (tls) {
+		cf_log_err_cs(cs, "TLS transport is not available in this executable");
+		goto error;
+	}
+#endif
 
 	/*
 	 *	If were doing RADSEC (tls+tcp) the secret should default
@@ -760,14 +764,29 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	}
 
 	/*
-	 *	If the home is not a virtual server, guess the port
-	 *	and look up the source ip address.
+	 *	Virtual servers have some TLS restrictions.
 	 */
-	if (!home->server) {
+	if (home->server) {
+		if (tls) {
+			cf_log_err_cs(cs, "Virtual home_servers cannot have a \"tls\" subsection");
+			goto error;
+		}
+	} else {
+		/*
+		 *	If the home is not a virtual server, guess the port
+		 *	and look up the source ip address.
+		 */
 		rad_assert(home->ipaddr.af != AF_UNSPEC);
 
+#ifdef WITH_TLS
+		if (tls && (home->proto != IPPROTO_TCP)) {
+			cf_log_err_cs(cs, "TLS transport is not available for UDP sockets");
+			goto error;
+		}
+#endif
+
 		/*
-		 *	Guess the port if we need to.
+		 *	Set the default port if necessary.
 		 */
 		if (home->port == 0) {
 			char buffer[INET6_ADDRSTRLEN + 3];
@@ -777,12 +796,17 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			 *	for both accounting and authentication, but for some
 			 *	bizarre reason for RADIUS over plain TCP we use separate
 			 *	ports 1812 and 1813.
-			 *
-			 *	Blame whoever wrote RFC 6613.
 			 */
+#ifdef WITH_TLS
 			if (tls) {
 				home->port = PW_RADIUS_TLS_PORT;
-			} else switch (home->type) {
+			} else
+#endif
+			switch (home->type) {
+			default:
+				rad_assert(0);
+				/* FALL-THROUGH */
+
 			case HOME_TYPE_AUTH:
 				home->port = PW_AUTH_UDP_PORT;
 				break;
@@ -794,9 +818,6 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			case HOME_TYPE_COA:
 				home->port = PW_COA_UDP_PORT;
 				break;
-
-			default:
-				rad_assert(0);
 			}
 
 			/*
@@ -828,17 +849,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			home->src_ipaddr.af = home->ipaddr.af;
 		}
 
-		if (tls && (home->proto != IPPROTO_TCP)) {
-			cf_log_err_cs(cs, "TLS transport is not available for UDP sockets");
-			goto error;
-		}
-
-#ifndef WITH_TLS
-		if (tls) {
-			cf_log_err_cs(cs, "TLS transport is not available in this executable");
-			goto error;
-		}
-#else
+#ifdef WITH_TLS
 		/*
 		 *	Parse the SSL client configuration.
 		 */
@@ -849,11 +860,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			}
 		}
 #endif
-
-	} else if (tls) {
-		cf_log_err_cs(cs, "Virtual home_servers cannot have a \"tls\" subsection");
-		goto error;
-	}
+	} /* end of parse home server */
 
 	realm_home_server_sanitize(home, cs);
 
@@ -975,6 +982,21 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 	if (home) {
 		*phome = home;
 		return 1;
+	}
+
+	switch (server_type) {
+	case HOME_TYPE_AUTH:
+	case HOME_TYPE_ACCT:
+		myhome.type = HOME_TYPE_AUTH_ACCT;
+		home = rbtree_finddata(home_servers_byname, &myhome);
+		if (home) {
+			*phome = home;
+			return 1;
+		}
+		break;
+
+	default:
+		break;
 	}
 
 	cf_log_err_cp(cp, "Unknown home_server \"%s\".", name);
@@ -1249,13 +1271,21 @@ static int server_pool_add(realm_config_t *rc,
 
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (!home) {
-			DEBUG2("Internal sanity check failed");
-			goto error;
+			switch (server_type) {
+			case HOME_TYPE_AUTH:
+			case HOME_TYPE_ACCT:
+				myhome.type = HOME_TYPE_AUTH_ACCT;
+				home = rbtree_finddata(home_servers_byname, &myhome);
+				break;
+
+			default:
+				break;
+			}
 		}
 
-		if (0) {
-			WARN("Duplicate home server %s in server pool %s", home->name, pool->name);
-			continue;
+		if (!home) {
+			ERROR("Failed to find home server %s", value);
+			goto error;
 		}
 
 		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
