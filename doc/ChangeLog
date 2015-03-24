@@ -46,6 +46,8 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	  post-auth.
 	* Fix double free when -m flag is used, and connection pools are
 	  referenced by multiple modules.
+	* RADIUS over TLS accounting uses the same port as authentication.
+	* Regularized return codes from radmin commands.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
