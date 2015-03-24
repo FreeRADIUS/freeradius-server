@@ -1089,6 +1089,9 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 		} else if (home->type == HOME_TYPE_ACCT) {
 			type = "acct";
 
+		} else if (home->type == HOME_TYPE_AUTH_ACCT) {
+			type = "auth+acct";
+
 #ifdef WITH_COA
 		} else if (home->type == HOME_TYPE_COA) {
 			type = "coa";
