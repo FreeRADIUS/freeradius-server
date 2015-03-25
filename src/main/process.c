@@ -4726,7 +4726,15 @@ static int event_new_fd(rad_listen_t *this)
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
-			fr_packet_list_walk(proxy_list, this, proxy_eol_cb);
+			if (!fr_packet_list_socket_freeze(proxy_list,
+							  this->fd)) {
+				ERROR("Fatal error freezing socket: %s", fr_strerror());
+				fr_exit(1);
+			}
+
+			if (this->count > 0) {
+				fr_packet_list_walk(proxy_list, this, proxy_eol_cb);
+			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		}
 #endif
