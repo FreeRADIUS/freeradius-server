@@ -776,8 +776,7 @@ static void request_done(REQUEST *request, int action)
 		 *	If we're the last one, remove the listener now.
 		 */
 		if ((request->listener->count == 0) &&
-		    (request->listener->status == RAD_LISTEN_STATUS_EOL)) {
-			request->listener->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+		    (request->listener->status >= RAD_LISTEN_STATUS_FROZEN)) {
 			event_new_fd(request->listener);
 		}
 	}
@@ -1892,9 +1891,9 @@ static void tcp_socket_timer(void *ctx)
 
 	ASSERT_MASTER;
 
-	fr_event_now(el, &now);
-
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return;
+
+	fr_event_now(el, &now);
 
 	switch (listener->type) {
 #ifdef WITH_PROXY
@@ -1945,7 +1944,10 @@ static void tcp_socket_timer(void *ctx)
 			}
 #endif
 
-			listener->status = RAD_LISTEN_STATUS_EOL;
+			/*
+			 *	Mark the socket as "don't use if at all possible".
+			 */
+			listener->status = RAD_LISTEN_STATUS_FROZEN;
 			event_new_fd(listener);
 			return;
 		}
@@ -3657,9 +3659,17 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		 */
 		if (request->home_server->server) return;
 
+		/*
+		 *	Use a new connection when the home server is
+		 *	dead, or when there's no proxy listener, or
+		 *	when the listener is failed or dead.
+		 *
+		 *	If the listener is known or frozen, use it for
+		 *	retransmits.
+		 */
 		if ((home->state == HOME_STATE_IS_DEAD) ||
 		    !request->proxy_listener ||
-		    (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN)) {
+		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
 			request_proxy_anew(request);
 			return;
 		}
@@ -3726,7 +3736,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 
 #ifdef WITH_TCP
 		if (!request->proxy_listener ||
-		    (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN)) {
+		    (request->proxy_listener->status >= RAD_LISTEN_STATUS_EOL)) {
 			remove_from_proxy_hash(request);
 
 			when = request->packet->timestamp;
@@ -4669,7 +4679,40 @@ static int event_new_fd(rad_listen_t *this)
 
 #ifdef WITH_TCP
 	/*
-	 *	Stop using this socket, if at all possible.
+	 *	The socket has reached a timeout.  Try to close it.
+	 */
+	if (this->status == RAD_LISTEN_STATUS_FROZEN) {
+		/*
+		 *	Requests are still using the socket.  Wait for
+		 *	them to finish.
+		 */
+		if (this->count > 0) {
+			struct timeval when;
+			listen_socket_t *sock = this->data;
+
+			/*
+			 *	Try again to clean up the socket in 30
+			 *	seconds.
+			 */
+			gettimeofday(&when, NULL);
+			when.tv_sec += 30;
+
+			ASSERT_MASTER;
+			if (!fr_event_insert(el,
+					     (fr_event_callback_t) event_new_fd,
+					     this, &when, &sock->ev)) {
+				rad_panic("Failed to insert event");
+			}
+
+			return 1;
+		}
+
+		fr_event_fd_delete(el, 0, this->fd);
+		this->status = RAD_LISTEN_STATUS_REMOVE_NOW;
+	}
+
+	/*
+	 *	The socket has had a catastrophic error.  Close it.
 	 */
 	if (this->status == RAD_LISTEN_STATUS_EOL) {
 		/*
