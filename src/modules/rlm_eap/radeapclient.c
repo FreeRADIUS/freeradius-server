@@ -75,15 +75,21 @@ typedef struct rc_transaction rc_transaction_t;
 
 /** Structure which contains EAP context, necessary to perform the full EAP transaction.
  */
+typedef struct rc_eap_sim_context {
+	struct eapsim_keys keys;
+} rc_eap_sim_context_t;
+
+typedef struct rc_eap_md5_context {
+	char password[256];	//!< copy of User-Password (or CHAP-Password).
+	int tried;
+} rc_eap_md5_context_t;
+
 typedef struct rc_eap_context {
 	int eap_type;	//!< contains the EAP-Type
-	
-	// for EAP-SIM:
-	struct eapsim_keys eapsim_mk;
-	
-	// for EAP-MD5:
-	char password[256];	//!< copy of User-Password (or CHAP-Password).
-	int tried_eap_md5;
+	union {
+		rc_eap_sim_context_t sim;
+		rc_eap_md5_context_t md5;
+	} eap;
 } rc_eap_context_t;
 
 
@@ -527,7 +533,7 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	transaction->id = num_trans ++;
 
 	talloc_steal(transaction, vps_entry); /* It's ours now. */
-	
+
 	RADIUS_PACKET *packet;
 	MEM(packet = rad_alloc(transaction, 1));
 	transaction->packet = packet;
@@ -548,20 +554,20 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 		MEM(transaction->eap_context = talloc_zero(transaction, rc_eap_context_t));
 		transaction->eap_context->eap_type = eap_type;
 
-		/*
-		 *	Keep a copy of the the User-Password or CHAP-Password.
-		 */
-		VALUE_PAIR *vp;
-		vp = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
-		if (!vp) vp = pairfind(packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
-		if (!vp) vp = pairfind(packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
-		if (vp) {
-			strlcpy(transaction->eap_context->password, vp->vp_strvalue, sizeof(transaction->eap_context->password));
+		if (eap_type == PW_EAP_MD5) {
+			/*
+			 *	Keep a copy of the the User-Password or CHAP-Password.
+			 */
+			VALUE_PAIR *vp;
+			vp = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+			if (!vp) vp = pairfind(packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+			if (!vp) vp = pairfind(packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+			if (vp) {
+				strlcpy(transaction->eap_context->eap.md5.password, vp->vp_strvalue, sizeof(transaction->eap_context->eap.md5.password));
+			}
 		}
-		// is this actually of any use ?? probably not. TODO: check.
-
 	}
-	
+
 	/* Update transactions counters. */
 	num_started ++;
 	num_ongoing ++;
@@ -669,9 +675,9 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	/*
 	 * record the versionlist for the MK calculation.
 	 */
-	eap_context->eapsim_mk.versionlistlen = versioncount*2;
-	memcpy(eap_context->eapsim_mk.versionlist, (unsigned char const *)(versions+1),
-	       eap_context->eapsim_mk.versionlistlen);
+	eap_context->eap.sim.keys.versionlistlen = versioncount*2;
+	memcpy(eap_context->eap.sim.keys.versionlist, (unsigned char const *)(versions+1),
+	       eap_context->eap.sim.keys.versionlistlen);
 
 	/* walk the version list, and pick the one we support, which
 	 * at present, is 1, EAP_SIM_VERSION.
@@ -733,7 +739,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 		pairreplace(&(rep->vps), newvp);
 
 		/* record the selected version */
-		memcpy(eap_context->eapsim_mk.versionselect, &no_versions, 2);
+		memcpy(eap_context->eap.sim.keys.versionselect, &no_versions, 2);
 	}
 
 	vp = newvp = NULL;
@@ -758,7 +764,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 		pairreplace(&(rep->vps), newvp);
 
 		/* also keep a copy of the nonce! */
-		memcpy(eap_context->eapsim_mk.nonce_mt, nonce, 16);
+		memcpy(eap_context->eap.sim.keys.nonce_mt, nonce, 16);
 	}
 
 	{
@@ -787,8 +793,8 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 		pairreplace(&(rep->vps), newvp);
 
 		/* record it */
-		memcpy(eap_context->eapsim_mk.identity, vp->vp_strvalue, idlen);
-		eap_context->eapsim_mk.identitylen = idlen;
+		memcpy(eap_context->eap.sim.keys.identity, vp->vp_strvalue, idlen);
+		eap_context->eap.sim.keys.identitylen = idlen;
 	}
 
 	return 1;
@@ -895,9 +901,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		ERROR("needs to have sres1, 2 and 3 set.");
 		return 0;
 	}
-	memcpy(eap_context->eapsim_mk.sres[0], sres1->vp_strvalue, sizeof(eap_context->eapsim_mk.sres[0]));
-	memcpy(eap_context->eapsim_mk.sres[1], sres2->vp_strvalue, sizeof(eap_context->eapsim_mk.sres[1]));
-	memcpy(eap_context->eapsim_mk.sres[2], sres3->vp_strvalue, sizeof(eap_context->eapsim_mk.sres[2]));
+	memcpy(eap_context->eap.sim.keys.sres[0], sres1->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[0]));
+	memcpy(eap_context->eap.sim.keys.sres[1], sres2->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[1]));
+	memcpy(eap_context->eap.sim.keys.sres[2], sres3->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[2]));
 
 	Kc1 = pairfind(rep->vps, PW_EAP_SIM_KC1, 0, TAG_ANY);
 	Kc2 = pairfind(rep->vps, PW_EAP_SIM_KC2, 0, TAG_ANY);
@@ -909,20 +915,20 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		ERROR("needs to have Kc1, 2 and 3 set.");
 		return 0;
 	}
-	memcpy(eap_context->eapsim_mk.Kc[0], Kc1->vp_strvalue, sizeof(eap_context->eapsim_mk.Kc[0]));
-	memcpy(eap_context->eapsim_mk.Kc[1], Kc2->vp_strvalue, sizeof(eap_context->eapsim_mk.Kc[1]));
-	memcpy(eap_context->eapsim_mk.Kc[2], Kc3->vp_strvalue, sizeof(eap_context->eapsim_mk.Kc[2]));
+	memcpy(eap_context->eap.sim.keys.Kc[0], Kc1->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[0]));
+	memcpy(eap_context->eap.sim.keys.Kc[1], Kc2->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[1]));
+	memcpy(eap_context->eap.sim.keys.Kc[2], Kc3->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[2]));
 
 	/* all set, calculate keys */
-	eapsim_calculate_keys(&eap_context->eapsim_mk);
+	eapsim_calculate_keys(&eap_context->eap.sim.keys);
 
 	if (debug_flag) {
-	  eapsim_dump_mk(&eap_context->eapsim_mk);
+	  eapsim_dump_mk(&eap_context->eap.sim.keys);
 	}
 
 	/* verify the MAC, now that we have all the keys. */
-	if (eapsim_checkmac(NULL, req->vps, eap_context->eapsim_mk.K_aut,
-			   eap_context->eapsim_mk.nonce_mt, sizeof(eap_context->eapsim_mk.nonce_mt),
+	if (eapsim_checkmac(NULL, req->vps, eap_context->eap.sim.keys.K_aut,
+			   eap_context->eap.sim.keys.nonce_mt, sizeof(eap_context->eap.sim.keys.nonce_mt),
 			   calcmac)) {
 		DEBUG("MAC check succeed");
 	} else {
@@ -968,7 +974,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	}
 
 	newvp = paircreate(rep, PW_EAP_SIM_KEY, 0);
-	pairmemcpy(newvp, eap_context->eapsim_mk.K_aut, EAPSIM_AUTH_SIZE);
+	pairmemcpy(newvp, eap_context->eap.sim.keys.K_aut, EAPSIM_AUTH_SIZE);
 
 	pairreplace(&(rep->vps), newvp);
 
@@ -1134,7 +1140,7 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 	 */
 	fr_md5_init(&context);
 	fr_md5_update(&context, &identifier, 1);
-	fr_md5_update(&context, (uint8_t *) eap_context->password, strlen(eap_context->password));
+	fr_md5_update(&context, (uint8_t *) eap_context->eap.md5.password, strlen(eap_context->eap.md5.password));
 	fr_md5_update(&context, value, valuesize);
 	fr_md5_final(response, &context);
 
@@ -1429,10 +1435,10 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 			break;
 
 		case PW_EAP_TYPE_BASE + PW_EAP_MD5:
-			if (rc_respond_eap_md5(trans->eap_context, trans->reply, trans->packet) && trans->eap_context->tried_eap_md5 < 3)
+			if (rc_respond_eap_md5(trans->eap_context, trans->reply, trans->packet) && trans->eap_context->eap.md5.tried < 3)
 			{
 				/* answer the challenge from server. */
-				trans->eap_context->tried_eap_md5 ++;
+				trans->eap_context->eap.md5.tried ++;
 				rc_deallocate_id(trans);
 				rc_send_transaction_packet(trans, &trans->packet); 
 				ongoing_trans = true; // don't free the transaction yet.
