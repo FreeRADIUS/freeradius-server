@@ -42,6 +42,7 @@ Source0: ftp://ftp.freeradius.org/pub/radius/freeradius-server-%{version}.tar.bz
 Source100: freeradius-radiusd-init
 Source102: freeradius-logrotate
 Source103: freeradius-pam-conf
+Source104: radiusd.service
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
@@ -375,7 +376,14 @@ perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
 mkdir -p $RPM_BUILD_ROOT/var/log/radius/radacct
 touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
 
+# For systemd based systems, that define _unitdir, install the radiusd unit
+%if %{?_unitdir:1}%{!?_unitdir:0}
+install -D -m 755 %{SOURCE104} $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
+# For SystemV install the init script
+%else
 install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{initddir}/radiusd
+%endif
+
 install -D -m 644 %{SOURCE102} $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/radiusd
 install -D -m 644 %{SOURCE103} $RPM_BUILD_ROOT/%{_sysconfdir}/pam.d/radiusd
 
@@ -480,7 +488,13 @@ fi
 %doc %{docdir}/
 %config(noreplace) %{_sysconfdir}/pam.d/radiusd
 %config(noreplace) %{_sysconfdir}/logrotate.d/radiusd
+
+%if %{?_unitdir:1}%{!?_unitdir:0}
+%{_unitdir}/radiusd.service
+%else
 %{initddir}/radiusd
+%endif
+
 %dir %attr(755,radiusd,radiusd) /var/lib/radiusd
 %dir %attr(755,radiusd,radiusd) /var/run/radiusd/
 # binaries
