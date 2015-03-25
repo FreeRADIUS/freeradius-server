@@ -79,12 +79,12 @@ typedef struct rc_eap_sim_context {
 } rc_eap_sim_context_t;
 
 typedef struct rc_eap_md5_context {
-	char password[256];	//!< copy of User-Password (or CHAP-Password).
 	int tried;
 } rc_eap_md5_context_t;
 
 typedef struct rc_eap_context {
 	int eap_type;	//!< contains the EAP-Type
+	char password[256];	//!< copy of User-Password (or CHAP-Password).
 	union {
 		rc_eap_sim_context_t sim;
 		rc_eap_md5_context_t md5;
@@ -119,6 +119,8 @@ struct rc_input_vps {
  */
 struct rc_transaction {
 	uint32_t id;	//!< id of transaction (0 for the first one).
+
+	uint32_t num_packet;	//!< number of packets sent for this transaction.
 
 	RADIUS_PACKET *packet;
 	RADIUS_PACKET *reply;
@@ -511,6 +513,39 @@ static int rc_init_packet(rc_transaction_t *trans)
 	return 1;
 }
 
+/** Map EAP methods and build EAP-Message (if EAP is involved).
+ *  Also allocate the EAP context.
+ */
+static void rc_build_eap_context(rc_transaction_t *trans)
+{
+	if (!trans || !trans->packet) return;
+
+	RADIUS_PACKET *packet = trans->packet;
+
+	/* Build EAP-Message (if EAP is involved. Otherwise, do nothing). */
+	int eap_type = rc_map_eap_methods(packet);
+
+	if (eap_type) {
+		if (!trans->eap_context) {
+			MEM(trans->eap_context = talloc_zero(trans, rc_eap_context_t));
+		}
+		trans->eap_context->eap_type = eap_type;
+
+		/*
+		 *	Keep a copy of the the User-Password or CHAP-Password.
+		 *	Note: this is not useful for EAP-SIM, but we cannot know what kind
+		 *	of challenge the server will issue.
+		 */
+		VALUE_PAIR *vp;
+		vp = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+		if (!vp) vp = pairfind(packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+		if (!vp) vp = pairfind(packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+		if (vp) {
+			strlcpy(trans->eap_context->password, vp->vp_strvalue, sizeof(trans->eap_context->password));
+		}
+	}
+}
+
 /** Grab an element from the input list. Initialize a new transaction context, using this element.
  */
 static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
@@ -525,62 +560,44 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	rc_yank_vps_entry(vps_entry); /* This cannot fail (we checked the list beforehand.) */
 
 	/* We grabbed an vps entry, now we can initialize a new transaction. */
-	rc_transaction_t *transaction;
-	MEM(transaction = talloc_zero(ctx, rc_transaction_t));
+	rc_transaction_t *trans;
+	MEM(trans = talloc_zero(ctx, rc_transaction_t));
 
-	transaction->input_vps = vps_entry;
-	transaction->id = num_trans ++;
+	trans->input_vps = vps_entry;
+	trans->id = num_trans ++;
 
-	talloc_steal(transaction, vps_entry); /* It's ours now. */
+	talloc_steal(trans, vps_entry); /* It's ours now. */
 
 	RADIUS_PACKET *packet;
-	MEM(packet = rad_alloc(transaction, 1));
-	transaction->packet = packet;
+	MEM(packet = rad_alloc(trans, 1));
+	trans->packet = packet;
 
 	/* Fill in the packet value pairs. */
 	packet->vps = paircopy(packet, vps_entry->vps_in);
 
 	/* Initialize the transaction packet. */
-	if (!rc_init_packet(transaction)) {
+	if (!rc_init_packet(trans)) {
 		/* Failed... */
-		talloc_free(transaction);
+		talloc_free(trans);
 		return NULL;
-	}
-
-	/* Build EAP-Message (if EAP is involved. Otherwise, do nothing). */
-	int eap_type = rc_map_eap_methods(packet);
-	if (eap_type) {
-		MEM(transaction->eap_context = talloc_zero(transaction, rc_eap_context_t));
-		transaction->eap_context->eap_type = eap_type;
-
-		if (eap_type == PW_EAP_MD5) {
-			/*
-			 *	Keep a copy of the the User-Password or CHAP-Password.
-			 */
-			VALUE_PAIR *vp;
-			vp = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
-			if (!vp) vp = pairfind(packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
-			if (!vp) vp = pairfind(packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
-			if (vp) {
-				strlcpy(transaction->eap_context->eap.md5.password, vp->vp_strvalue, sizeof(transaction->eap_context->eap.md5.password));
-			}
-		}
 	}
 
 	/* Update transactions counters. */
 	num_started ++;
 	num_ongoing ++;
 
-	return transaction;
+	return trans;
 }
 
 /** Terminate a transaction.
  */
-static void rc_finish_transaction(rc_transaction_t *transaction)
+static void rc_finish_transaction(rc_transaction_t *trans)
 {
-	if (transaction->event) fr_event_delete(ev_list, &transaction->event);
-	rc_deallocate_id(transaction);
-	talloc_free(transaction);
+	if (!trans) return;
+
+	if (trans->event) fr_event_delete(ev_list, &trans->event);
+	rc_deallocate_id(trans);
+	talloc_free(trans);
 
 	/* Update transactions counters. */
 	num_ongoing --;
@@ -1005,7 +1022,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	}
 
 	/* first, dig up the state from the request packet, setting
-	 * outselves to be in EAP-SIM-Start state if there is none.
+	 * ourselves to be in EAP-SIM-Start state if there is none.
 	 */
 
 	if ((statevp = pairfind(resp->vps, PW_EAP_SIM_STATE, 0, TAG_ANY)) == NULL)
@@ -1091,7 +1108,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 }
 
 static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
-                           RADIUS_PACKET *req, RADIUS_PACKET *rep)
+                              RADIUS_PACKET *req, RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *vp, *id, *state;
 	size_t valuesize;
@@ -1139,7 +1156,7 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 	 */
 	fr_md5_init(&context);
 	fr_md5_update(&context, &identifier, 1);
-	fr_md5_update(&context, (uint8_t *) eap_context->eap.md5.password, strlen(eap_context->eap.md5.password));
+	fr_md5_update(&context, (uint8_t *) eap_context->password, strlen(eap_context->password));
 	fr_md5_update(&context, value, valuesize);
 	fr_md5_final(response, &context);
 
@@ -1211,6 +1228,8 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 		bool rcode;
 		int i;
 
+		rc_build_eap_context(trans); /* In case of EAP, build EAP-Message and initialize EAP context. */
+
 		assert(trans->reply == NULL);
 
 		trans->tries = 0;
@@ -1246,13 +1265,16 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 	/*
 	 *	Send the packet.
 	 */
+	DEBUG("Transaction: %u, sending packet: %u (id: %u)...", trans->id, trans->num_packet, packet->id);
+
 	gettimeofday(&packet->timestamp, NULL); /* set outgoing packet timestamp. */
-	
+
 	if (rad_send(packet, NULL, secret) < 0) {
 		ERROR("Failed to send packet (sockfd: %d, id: %d): %s",
 			packet->sockfd, packet->id, fr_strerror());
 	}
 
+	trans->num_packet ++;
 	trans->tries ++;
 
 	if (fr_debug_flag > 0) fr_packet_header_print(fr_log_fp, packet, false);
@@ -1415,14 +1437,19 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 
 	gettimeofday(&trans->reply->timestamp, NULL); /* set received packet timestamp. */
 
+	if (trans->eap_context) {
+		/* Call unmap before packet print (so we can see the decoded EAP stuff). */
+		rc_unmap_eap_methods(trans->reply);
+	}
+
+	DEBUG("Transaction: %u, received packet (id: %u).", trans->id, trans->reply->id);
+
 	if (fr_debug_flag > 0) fr_packet_header_print(fr_log_fp, trans->reply, true);
 	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, trans->reply->vps);
 
 	if (!trans->eap_context) {
 		goto packet_done;
 	}
-
-	rc_unmap_eap_methods(trans->reply);
 
 	/* now look for the code type. */
 	VALUE_PAIR *vp, *vpnext;
