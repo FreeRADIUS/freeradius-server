@@ -148,8 +148,6 @@ static fr_ipaddr_t server_ipaddr;
 static bool server_addr_init = false;
 static uint16_t server_port = 0;
 static int packet_code = PW_CODE_UNDEFINED;
-static fr_ipaddr_t client_ipaddr;
-static uint16_t client_port = 0;
 
 static int rc_map_eap_methods(RADIUS_PACKET *req);
 static void rc_unmap_eap_methods(RADIUS_PACKET *rep);
@@ -284,27 +282,31 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 	FILE *file_in = NULL;
 	bool file_done = false;
 	rc_input_vps_t *request;
+	char const *input;
+	uint32_t input_num = 0;
 
 	/* Determine where to read the VP's from. */
 	if (filename && strcmp(filename, "-") != 0) {
 		DEBUG2("Opening input file: %s", filename);
-
 		file_in = fopen(filename, "r");
 		if (!file_in) {
 			ERROR("Error opening %s: %s", filename, strerror(errno));
 			return 0;
 		}
+		input = filename;
 	} else {
 		DEBUG2("Reading input vps from stdin");
 		file_in = stdin;
+		input = "stdin";
 	}
 
 	/* Loop over the file (or stdin). */
 	do {
+		input_num ++;
 		MEM(request = talloc_zero(ctx, rc_input_vps_t));
 
 		if (readvp2(request, &request->vps_in, file_in, &file_done) < 0) {
-			ERROR("Error parsing input file: [%s]", filename);
+			ERROR("Error parsing entry %u from input: %s", input_num, input);
 			talloc_free(request);
 			break;
 		}
@@ -323,13 +325,12 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 			/* Only load what we need. */
 			break;
 		}
-
 	} while (!file_done);
-	
+
 	if (file_in != stdin) fclose(file_in);
 
 	/* And we're done. */
-	DEBUG("Read %d element(s) from input: %s", list->size, (filename ? filename : "-"));
+	DEBUG("Read %d element(s) from input: %s", list->size, input);
 	return 1;
 }
 
@@ -372,12 +373,10 @@ static int rc_init_packet(rc_transaction_t *trans)
 			break;
 
 		case PW_PACKET_DST_PORT:
-			//this does not work. (it doesn't in radclient either)... TODO: fix (how ?)
 			packet->dst_port = (vp->vp_integer & 0xffff);
 			break;
 
 		case PW_PACKET_DST_IP_ADDRESS:
-			//this does not work. (it doesn't in radclient either)... TODO: fix (how ?)
 			packet->dst_ipaddr.af = AF_INET;
 			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 			packet->dst_ipaddr.prefix = 32;
@@ -434,7 +433,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 
 			da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 			if (!da) {
-				ERROR("Out of memory");
+				ERROR("Attribute 'Digest-Attributes' not found by value");
 				exit(1);
 			}
 			vp->da = da;
@@ -484,8 +483,14 @@ static int rc_init_packet(rc_transaction_t *trans)
 	}
 
 	/* Use the default set on the command line. */
-	if (packet->code == PW_CODE_UNDEFINED) packet->code = packet_code;
-	
+	if (packet->code == PW_CODE_UNDEFINED) {
+		if (packet_code == PW_CODE_UNDEFINED) {
+			DEBUG("No packet type was given, and input entry %u did not contain Packet-Type, ignored.", trans->input_vps->num);
+			return 0;
+		}
+		packet->code = packet_code;
+	}
+
 	/* Automatically set the dst port (if one wasn't already set). */
 	if (packet->dst_port == 0) {
 		rc_get_port(packet->code, &packet->dst_port);
@@ -500,7 +505,6 @@ static int rc_init_packet(rc_transaction_t *trans)
 	/* Done. */
 	return 1;
 }
-
 
 /** Grab an element from the input list. Initialize a new transaction context, using this element.
  */
@@ -543,6 +547,19 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	if (eap_type) {
 		MEM(transaction->eap_context = talloc_zero(transaction, rc_eap_context_t));
 		transaction->eap_context->eap_type = eap_type;
+
+		/*
+		 *	Keep a copy of the the User-Password or CHAP-Password.
+		 */
+		VALUE_PAIR *vp;
+		vp = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+		if (!vp) vp = pairfind(packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+		if (!vp) vp = pairfind(packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+		if (vp) {
+			strlcpy(transaction->eap_context->password, vp->vp_strvalue, sizeof(transaction->eap_context->password));
+		}
+		// is this actually of any use ?? probably not. TODO: check.
+
 	}
 	
 	/* Update transactions counters. */
@@ -578,156 +595,10 @@ static uint16_t getport(char const *name)
 	return ntohs(svp->s_port);
 }
 
-#define R_RECV (0)
-#define R_SENT (1)
-static void debug_packet(RADIUS_PACKET *packet, int direction)
-{
-	VALUE_PAIR *vp;
-	char buffer[1024];
-	char const *received, *from;
-	fr_ipaddr_t const *ip;
-	uint16_t port;
 
-	if (!packet) return;
-
-	if (direction == 0) {
-		received = "Received";
-		from = "from";	/* what else? */
-		ip = &packet->src_ipaddr;
-		port = packet->src_port;
-
-	} else {
-		received = "Sending";
-		from = "to";	/* hah! */
-		ip = &packet->dst_ipaddr;
-		port = packet->dst_port;
-	}
-
-	/*
-	 *	Client-specific debugging re-prints the input
-	 *	packet into the client log.
-	 *
-	 *	This really belongs in a utility library
-	 */
-	if (is_radius_code(packet->code)) {
-		DEBUG("%s %s packet %s host %s port %d, id=%d, length=%d",
-		       received, fr_packet_codes[packet->code], from,
-		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
-		       port, packet->id, (int) packet->data_len);
-	} else {
-		DEBUG("%s packet %s host %s port %d code=%d, id=%d, length=%d",
-		       received, from,
-		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
-		       port,
-		       packet->code, packet->id, (int) packet->data_len);
-	}
-
-	for (vp = packet->vps; vp != NULL; vp = vp->next) {
-		vp_prints(buffer, sizeof(buffer), vp);
-		DEBUG("\t%s", buffer);
-	}
-	fflush(stdout);
-}
-
-
-static int send_packet(RADIUS_PACKET *req, RADIUS_PACKET **rep)
-{
-	unsigned int i;
-	struct timeval	tv;
-
-	if (!req || !rep) return -1;
-
-	for (i = 0; i <= retries; i++) {
-		fd_set		rdfdesc;
-
-		debug_packet(req, R_SENT);
-
-		if (rad_send(req, NULL, secret) < 0) {
-			ERROR("%s", fr_strerror());
-			exit(1);
-		}
-
-		/* And wait for reply, timing out as necessary */
-		FD_ZERO(&rdfdesc);
-		FD_SET(req->sockfd, &rdfdesc);
-
-		tv.tv_sec = (int)timeout;
-		tv.tv_usec = 1000000 * (timeout - (int) timeout);
-
-		/* Something's wrong if we don't get exactly one fd. */
-		if (select(req->sockfd + 1, &rdfdesc, NULL, NULL, &tv) != 1) {
-			continue;
-		}
-
-		*rep = rad_recv(NULL, req->sockfd, 0);
-		if (*rep != NULL) {
-			/*
-			 *	If we get a response from a machine
-			 *	which we did NOT send a request to,
-			 *	then complain.
-			 */
-			if (((*rep)->src_ipaddr.af != req->dst_ipaddr.af) ||
-			    (memcmp(&(*rep)->src_ipaddr.ipaddr,
-				    &req->dst_ipaddr.ipaddr,
-				    ((req->dst_ipaddr.af == AF_INET ? /* AF_INET6? */
-				      sizeof(req->dst_ipaddr.ipaddr.ip4addr) : /* FIXME: AF_INET6 */
-				      sizeof(req->dst_ipaddr.ipaddr.ip6addr)))) != 0) ||
-			    ((*rep)->src_port != req->dst_port)) {
-				char src[128], dst[128];
-
-				ip_ntoh(&(*rep)->src_ipaddr, src, sizeof(src));
-				ip_ntoh(&req->dst_ipaddr, dst, sizeof(dst));
-				ERROR("ERROR: Sent request to host %s port %d, got response from host %s port %d!",
-					dst, req->dst_port,
-					src, (*rep)->src_port);
-				exit(1);
-			}
-			break;
-		} else {	/* NULL: couldn't receive the packet */
-			ERROR("%s", fr_strerror());
-			exit(1);
-		}
-	}
-
-	/* No response or no data read (?) */
-	if (i == retries) {
-		ERROR("rad_client: no response from server");
-		exit(1);
-	}
-
-	/*
-	 *	FIXME: Discard the packet & listen for another.
-	 *
-	 *	Hmm... we should really be using eapol_test, which does
-	 *	a lot more than radeapclient.
-	 */
-	if (rad_verify(*rep, req, secret) != 0) {
-		ERROR("rad_verify: %s", fr_strerror());
-		exit(1);
-	}
-
-	if (rad_decode(*rep, req, secret) != 0) {
-		ERROR("rad_decode: %s", fr_strerror());
-		exit(1);
-	}
-
-	/* libradius debug already prints out the value pairs for us */
-	if (!fr_debug_flag && do_output) {
-		debug_packet(*rep, R_RECV);
-	}
-	if ((*rep)->code == PW_CODE_ACCESS_ACCEPT) {
-		totalapp++;
-	} else if ((*rep)->code == PW_CODE_ACCESS_REJECT) {
-		totaldeny++;
-	}
-
-	return 0;
-}
-
-static void cleanresp(RADIUS_PACKET *resp)
+static void rc_cleanresp(RADIUS_PACKET *resp)
 {
 	VALUE_PAIR *vpnext, *vp, **last;
-
 
 	/*
 	 * maybe should just copy things we care about, or keep
@@ -737,11 +608,11 @@ static void cleanresp(RADIUS_PACKET *resp)
 	pairdelete(&resp->vps, PW_EAP_TYPE_BASE+PW_EAP_IDENTITY, 0, TAG_ANY);
 
 	last = &resp->vps;
-	for(vp = *last; vp != NULL; vp = vpnext)
+	for (vp = *last; vp != NULL; vp = vpnext)
 	{
 		vpnext = vp->next;
 
-		if((vp->da->attr > PW_EAP_TYPE_BASE &&
+		if ((vp->da->attr > PW_EAP_TYPE_BASE &&
 		    vp->da->attr <= PW_EAP_TYPE_BASE+256) ||
 		   (vp->da->attr > PW_EAP_SIM_BASE &&
 		    vp->da->attr <= PW_EAP_SIM_BASE+256))
@@ -759,8 +630,8 @@ static void cleanresp(RADIUS_PACKET *resp)
  *
  * pick a supported version, put it into the reply, and insert a nonce.
  */
-static int process_eap_start(rc_eap_context_t *eap_context,
-                             RADIUS_PACKET *req, RADIUS_PACKET *rep)
+static int rc_process_eap_start(rc_eap_context_t *eap_context,
+                                RADIUS_PACKET *req, RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *vp, *newvp;
 	VALUE_PAIR *anyidreq_vp, *fullauthidreq_vp, *permanentidreq_vp;
@@ -769,9 +640,9 @@ static int process_eap_start(rc_eap_context_t *eap_context,
 	unsigned int i,versioncount;
 
 	/* form new response clear of any EAP stuff */
-	cleanresp(rep);
+	rc_cleanresp(rep);
 
-	if((vp = pairfind(req->vps, PW_EAP_SIM_VERSION_LIST, 0, TAG_ANY)) == NULL) {
+	if ((vp = pairfind(req->vps, PW_EAP_SIM_VERSION_LIST, 0, TAG_ANY)) == NULL) {
 		ERROR("illegal start message has no VERSION_LIST");
 		return 0;
 	}
@@ -779,7 +650,7 @@ static int process_eap_start(rc_eap_context_t *eap_context,
 	versions = (uint16_t const *) vp->vp_strvalue;
 
 	/* verify that the attribute length is big enough for a length field */
-	if(vp->vp_length < 4)
+	if (vp->vp_length < 4)
 	{
 		ERROR("start message has illegal VERSION_LIST. Too short: %u", (unsigned int) vp->vp_length);
 		return 0;
@@ -789,7 +660,7 @@ static int process_eap_start(rc_eap_context_t *eap_context,
 	/* verify that the attribute length is big enough for the given number
 	 * of versions present.
 	 */
-	if((unsigned)vp->vp_length <= (versioncount*2 + 2))
+	if ((unsigned)vp->vp_length <= (versioncount*2 + 2))
 	{
 		ERROR("start message is too short. Claimed %d versions does not fit in %u bytes", versioncount, (unsigned int) vp->vp_length);
 		return 0;
@@ -806,18 +677,18 @@ static int process_eap_start(rc_eap_context_t *eap_context,
 	 * at present, is 1, EAP_SIM_VERSION.
 	 */
 	selectedversion=0;
-	for(i=0; i < versioncount; i++)
+	for (i=0; i < versioncount; i++)
 	{
-		if(ntohs(versions[i+1]) == EAP_SIM_VERSION)
+		if (ntohs(versions[i+1]) == EAP_SIM_VERSION)
 		{
 			selectedversion=EAP_SIM_VERSION;
 			break;
 		}
 	}
-	if(selectedversion == 0)
+	if (selectedversion == 0)
 	{
 		ERROR("eap-sim start message. No compatible version found. We need %d", EAP_SIM_VERSION);
-		for(i=0; i < versioncount; i++)
+		for (i=0; i < versioncount; i++)
 		{
 			ERROR("\tfound version %d",
 				ntohs(versions[i+1]));
@@ -834,7 +705,7 @@ static int process_eap_start(rc_eap_context_t *eap_context,
 	fullauthidreq_vp = pairfind(req->vps, PW_EAP_SIM_FULLAUTH_ID_REQ, 0, TAG_ANY);
 	permanentidreq_vp = pairfind(req->vps, PW_EAP_SIM_PERMANENT_ID_REQ, 0, TAG_ANY);
 
-	if(!fullauthidreq_vp ||
+	if (!fullauthidreq_vp ||
 	   anyidreq_vp != NULL ||
 	   permanentidreq_vp != NULL) {
 		ERROR("start message has %sanyidreq, %sfullauthid and %spermanentid. Illegal combination.",
@@ -899,7 +770,7 @@ static int process_eap_start(rc_eap_context_t *eap_context,
 		 * insert the identity here.
 		 */
 		vp = pairfind(rep->vps, PW_USER_NAME, 0, TAG_ANY);
-		if(!vp)
+		if (!vp)
 		{
 			ERROR("eap-sim: We need to have a User-Name attribute!");
 			return 0;
@@ -933,8 +804,8 @@ static int process_eap_start(rc_eap_context_t *eap_context,
  * values.
  *
  */
-static int process_eap_challenge(rc_eap_context_t *eap_context,
-                                 RADIUS_PACKET *req, RADIUS_PACKET *rep)
+static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
+                                    RADIUS_PACKET *req, RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *newvp;
 	VALUE_PAIR *mac, *randvp;
@@ -945,7 +816,7 @@ static int process_eap_challenge(rc_eap_context_t *eap_context,
 	/* look for the AT_MAC and the challenge data */
 	mac   = pairfind(req->vps, PW_EAP_SIM_MAC, 0, TAG_ANY);
 	randvp= pairfind(req->vps, PW_EAP_SIM_RAND, 0, TAG_ANY);
-	if(!mac || !randvp) {
+	if (!mac || !randvp) {
 		ERROR("challenge message needs to contain RAND and MAC");
 		return 0;
 	}
@@ -966,24 +837,24 @@ static int process_eap_challenge(rc_eap_context_t *eap_context,
 	  randcfgvp[1] = pairfind(rep->vps, PW_EAP_SIM_RAND2, 0, TAG_ANY);
 	  randcfgvp[2] = pairfind(rep->vps, PW_EAP_SIM_RAND3, 0, TAG_ANY);
 
-	  if(!randcfgvp[0] ||
+	  if (!randcfgvp[0] ||
 	     !randcfgvp[1] ||
 	     !randcfgvp[2]) {
 	    ERROR("needs to have rand1, 2 and 3 set.");
 	    return 0;
 	  }
 
-	  if(memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
+	  if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
 	     memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
 	     memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE)!=0) {
 	    int rnum,i,j;
 
 	    ERROR("one of rand 1,2,3 didn't match");
-	    for(rnum = 0; rnum < 3; rnum++) {
+	    for (rnum = 0; rnum < 3; rnum++) {
 	      ERROR("received   rand %d: ", rnum);
 	      j=0;
 	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-		if(j==4) {
+		if (j==4) {
 		  DEBUG("_");
 		  j=0;
 		}
@@ -994,7 +865,7 @@ static int process_eap_challenge(rc_eap_context_t *eap_context,
 	      ERROR("configured rand %d: ", rnum);
 	      j=0;
 	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-		if(j==4) {
+		if (j==4) {
 		  DEBUG("_");
 		  j=0;
 		}
@@ -1018,7 +889,7 @@ static int process_eap_challenge(rc_eap_context_t *eap_context,
 	sres2 = pairfind(rep->vps, PW_EAP_SIM_SRES2, 0, TAG_ANY);
 	sres3 = pairfind(rep->vps, PW_EAP_SIM_SRES3, 0, TAG_ANY);
 
-	if(!sres1 ||
+	if (!sres1 ||
 	   !sres2 ||
 	   !sres3) {
 		ERROR("needs to have sres1, 2 and 3 set.");
@@ -1032,7 +903,7 @@ static int process_eap_challenge(rc_eap_context_t *eap_context,
 	Kc2 = pairfind(rep->vps, PW_EAP_SIM_KC2, 0, TAG_ANY);
 	Kc3 = pairfind(rep->vps, PW_EAP_SIM_KC3, 0, TAG_ANY);
 
-	if(!Kc1 ||
+	if (!Kc1 ||
 	   !Kc2 ||
 	   !Kc3) {
 		ERROR("needs to have Kc1, 2 and 3 set.");
@@ -1045,12 +916,12 @@ static int process_eap_challenge(rc_eap_context_t *eap_context,
 	/* all set, calculate keys */
 	eapsim_calculate_keys(&eap_context->eapsim_mk);
 
-	if(debug_flag) {
+	if (debug_flag) {
 	  eapsim_dump_mk(&eap_context->eapsim_mk);
 	}
 
 	/* verify the MAC, now that we have all the keys. */
-	if(eapsim_checkmac(NULL, req->vps, eap_context->eapsim_mk.K_aut,
+	if (eapsim_checkmac(NULL, req->vps, eap_context->eapsim_mk.K_aut,
 			   eap_context->eapsim_mk.nonce_mt, sizeof(eap_context->eapsim_mk.nonce_mt),
 			   calcmac)) {
 		DEBUG("MAC check succeed");
@@ -1059,7 +930,7 @@ static int process_eap_challenge(rc_eap_context_t *eap_context,
 		j=0;
 		DEBUG("calculated MAC (");
 		for (i = 0; i < 20; i++) {
-			if(j==4) {
+			if (j==4) {
 				printf("_");
 				j=0;
 			}
@@ -1072,7 +943,7 @@ static int process_eap_challenge(rc_eap_context_t *eap_context,
 	}
 
 	/* form new response clear of any EAP stuff */
-	cleanresp(rep);
+	rc_cleanresp(rep);
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
 	newvp = paircreate(rep, PW_EAP_SIM_SUBTYPE, 0);
@@ -1132,7 +1003,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	 * outselves to be in EAP-SIM-Start state if there is none.
 	 */
 
-	if((statevp = pairfind(resp->vps, PW_EAP_SIM_STATE, 0, TAG_ANY)) == NULL)
+	if ((statevp = pairfind(resp->vps, PW_EAP_SIM_STATE, 0, TAG_ANY)) == NULL)
 	{
 		/* must be initial request */
 		statevp = paircreate(resp, PW_EAP_SIM_STATE, 0);
@@ -1146,7 +1017,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	 */
 	rc_unmap_eapsim_types(req);
 
-	if((vp = pairfind(req->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY)) == NULL)
+	if ((vp = pairfind(req->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY)) == NULL)
 	{
 		return 0;
 	}
@@ -1159,7 +1030,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	case EAPSIM_CLIENT_INIT:
 		switch (subtype) {
 		case EAPSIM_START:
-			newstate = process_eap_start(eap_context, req, resp);
+			newstate = rc_process_eap_start(eap_context, req, resp);
 			break;
 
 		case EAPSIM_CHALLENGE:
@@ -1178,11 +1049,11 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 		switch (subtype) {
 		case EAPSIM_START:
 			/* NOT SURE ABOUT THIS ONE, retransmit, I guess */
-			newstate = process_eap_start(eap_context, req, resp);
+			newstate = rc_process_eap_start(eap_context, req, resp);
 			break;
 
 		case EAPSIM_CHALLENGE:
-			newstate = process_eap_challenge(eap_context, req, resp);
+			newstate = rc_process_eap_challenge(eap_context, req, resp);
 			break;
 
 		default:
@@ -1224,7 +1095,7 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 	FR_MD5_CTX	context;
 	uint8_t    response[16];
 
-	cleanresp(rep);
+	rc_cleanresp(rep);
 
 	if ((state = paircopy_by_num(NULL, req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
 	{
@@ -1250,7 +1121,7 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 	value = &vp->vp_octets[1];
 
 	/* sanitize items */
-	if(valuesize > vp->vp_length)
+	if (valuesize > vp->vp_length)
 	{
 		ERROR("md5 valuesize if too big (%u > %u)",
 			(unsigned int) valuesize, (unsigned int) vp->vp_length);
@@ -1286,165 +1157,6 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 
 	/* copy the state object in */
 	pairreplace(&(rep->vps), state);
-
-	return 1;
-}
-
-
-
-static int UNUSED sendrecv_eap(rc_transaction_t *transaction)
-// it's now unused, and soon will die (horribly ?)
-{
-	if (!transaction || !transaction->packet) return -1;
-
-	RADIUS_PACKET *rep = transaction->packet;
-	RADIUS_PACKET *req = NULL;
-	VALUE_PAIR *vp, *vpnext;
-	rc_eap_context_t *eap_ctx = transaction->eap_context;
-
-	/*
-	 *	Keep a copy of the the User-Password attribute.
-	 */
-	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(eap_ctx->password, vp->vp_strvalue, sizeof(eap_ctx->password));
-
-	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(eap_ctx->password, vp->vp_strvalue, sizeof(eap_ctx->password));
-		/*
-		 *	Otherwise keep a copy of the CHAP-Password attribute.
-		 */
-	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-		strlcpy(eap_ctx->password, vp->vp_strvalue, sizeof(eap_ctx->password));
-	} else {
-		eap_ctx->password[0] = '\0';
-	}
-
- again:
-	rep->id++;
-
-	/*
-	 * if there are EAP types, encode them into an EAP-Message
-	 *
-	 */
-	rc_map_eap_methods(rep);
-
-	/*
-	 *  Fix up Digest-Attributes issues
-	 */
-	for (vp = rep->vps; vp != NULL; vp = vp->next) {
-		switch (vp->da->attr) {
-		default:
-			break;
-
-		case PW_DIGEST_REALM:
-		case PW_DIGEST_NONCE:
-		case PW_DIGEST_METHOD:
-		case PW_DIGEST_URI:
-		case PW_DIGEST_QOP:
-		case PW_DIGEST_ALGORITHM:
-		case PW_DIGEST_BODY_DIGEST:
-		case PW_DIGEST_CNONCE:
-		case PW_DIGEST_NONCE_COUNT:
-		case PW_DIGEST_USER_NAME:
-		/* overlapping! */
-		{
-			DICT_ATTR const *da;
-			uint8_t *p, *q;
-
-			p = talloc_array(vp, uint8_t, vp->vp_length + 2);
-
-			memcpy(p + 2, vp->vp_octets, vp->vp_length);
-			p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
-			vp->vp_length += 2;
-			p[1] = vp->vp_length;
-
-			da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
-			vp->da = da;
-
-			/*
-			 *	Re-do pairmemsteal ourselves,
-			 *	because we play games with
-			 *	vp->da, and pairmemsteal goes
-			 *	to GREAT lengths to sanitize
-			 *	and fix and change and
-			 *	double-check the various
-			 *	fields.
-			 */
-			memcpy(&q, &vp->vp_octets, sizeof(q));
-			talloc_free(q);
-
-			vp->vp_octets = talloc_steal(vp, p);
-			vp->type = VT_DATA;
-
-			VERIFY_VP(vp);
-		}
-			break;
-		}
-	}
-
-	/*
-	 *	If we've already sent a packet, free up the old
-	 *	one, and ensure that the next packet has a unique
-	 *	ID and authentication vector.
-	 */
-	if (rep->data) {
-		talloc_free(rep->data);
-		rep->data = NULL;
-	}
-
-	fr_md5_calc(rep->vector, rep->vector, sizeof(rep->vector));
-
-	if (eap_ctx->password[0] != '\0') {
-		if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
-			pairstrcpy(vp, eap_ctx->password);
-
-		} else if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-			pairstrcpy(vp, eap_ctx->password);
-
-		} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-			pairstrcpy(vp, eap_ctx->password);
-
-			uint8_t *p;
-			p = talloc_zero_array(vp, uint8_t, 17);
-			rad_chap_encode(rep, p, rep->id, vp);
-			pairmemsteal(vp, p);
-		}
-	} /* there WAS a password */
-
-	/* send the response, wait for the next request */
-	send_packet(rep, &req);
-	if (!req) {
-		ERROR("Failed getting response (EAP-Request from server)");
-		return -1;
-	}
-
-	/* okay got back the packet, go and decode the EAP-Message. */
-	rc_unmap_eap_methods(req);
-
-	debug_packet(req, R_RECV);
-
-	/* now look for the code type. */
-	for (vp = req->vps; vp != NULL; vp = vpnext) {
-		vpnext = vp->next;
-
-		switch (vp->da->attr) {
-		default:
-			break;
-
-		case PW_EAP_TYPE_BASE + PW_EAP_MD5:
-			if (rc_respond_eap_md5(eap_ctx, req, rep) && eap_ctx->tried_eap_md5 < 3) {
-				eap_ctx->tried_eap_md5++;
-				goto again;
-			}
-			break;
-
-		case PW_EAP_TYPE_BASE + PW_EAP_SIM:
-			if (rc_respond_eap_sim(eap_ctx, req, rep)) {
-				goto again;
-			}
-			break;
-		}
-	}
 
 	return 1;
 }
@@ -1632,7 +1344,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 	}
 
 	/*
-	 *	Look for the packet.
+	 *	Receive the reply.
 	 */
 	reply = fr_packet_list_recv(pl, &set);
 	if (!reply) {
@@ -1641,23 +1353,15 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 	}
 
 	/*
-	 *	We don't use udpfromto.  So if we bind to "*", we want
-	 *	to find replies sent to 192.0.2.4.  Therefore, we
-	 *	force all replies to have the one address we know
-	 *	about, no matter what real address they were sent to.
-	 *
-	 *	This only works if were not using any of the
-	 *	Packet-* attributes, or running with 'auto'.
+	 *	Look for the packet which matches the reply.
 	 */
-	reply->dst_ipaddr = client_ipaddr;
-	reply->dst_port = client_port;
-
 	reply->src_ipaddr = server_ipaddr;
 	reply->src_port = server_port;
-	
-	// note: for this to work in all cases, we should handle a list of destinations (IP,port).
-	// for now we just do it the easy way (as in radclient).
-	// TODO: better (later).
+
+	/*
+	 * Note: this only works if all packets have the same destination (IP, port).
+	 * We should handle a list of destinations. But we don't. radclient doesn't do it either).
+	 */
 
 	packet_p = fr_packet_list_find_byreply(pl, reply);
 
@@ -1690,6 +1394,10 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 
 		goto packet_done;
 	}
+
+	/* Set reply destination = packet source. */
+	reply->dst_ipaddr = trans->packet->src_ipaddr;
+	reply->dst_port = trans->packet->src_port;
 
 	trans->reply = reply;
 	reply = NULL;
@@ -1764,6 +1472,16 @@ eap_done:
 	goto packet_done;
 
 packet_done:
+
+	/* Basic statistics (salvaged from old code). TODO: something better. */
+	if (trans->reply) {
+		if (trans->reply->code == PW_CODE_ACCESS_ACCEPT) {
+			totalapp ++;
+		} else if (trans->reply->code == PW_CODE_ACCESS_REJECT) {
+			totaldeny ++;
+		}
+	}
+
 	rad_free(&trans->reply);
 	rad_free(&reply);	/* may be NULL */
 	
@@ -2236,36 +1954,36 @@ static int rc_map_eap_methods(RADIUS_PACKET *req)
 	eap_packet_t *pt_ep = talloc_zero(req, eap_packet_t);
 
 	vp = pairfind(req->vps, PW_EAP_ID, 0, TAG_ANY);
-	if(!vp) {
+	if (!vp) {
 		id = ((int)getpid() & 0xff);
 	} else {
 		id = vp->vp_integer;
 	}
 
 	vp = pairfind(req->vps, PW_EAP_CODE, 0, TAG_ANY);
-	if(!vp) {
+	if (!vp) {
 		eapcode = PW_EAP_REQUEST;
 	} else {
 		eapcode = vp->vp_integer;
 	}
 
-	for(vp = req->vps; vp != NULL; vp = vpnext) {
+	for (vp = req->vps; vp != NULL; vp = vpnext) {
 		/* save it in case it changes! */
 		vpnext = vp->next;
 
-		if(vp->da->attr >= PW_EAP_TYPE_BASE &&
+		if (vp->da->attr >= PW_EAP_TYPE_BASE &&
 		   vp->da->attr < PW_EAP_TYPE_BASE+256) {
 			break;
 		}
 	}
 
-	if(!vp) {
+	if (!vp) {
 		return 0;
 	}
 
 	eap_method = vp->da->attr - PW_EAP_TYPE_BASE;
 
-	switch(eap_method) {
+	switch (eap_method) {
 	case PW_EAP_IDENTITY:
 	case PW_EAP_NOTIFICATION:
 	case PW_EAP_NAK:
@@ -2288,9 +2006,9 @@ static int rc_map_eap_methods(RADIUS_PACKET *req)
 		pt_ep->code = eapcode;
 		pt_ep->id = id;
 		pt_ep->type.num = eap_method;
-		pt_ep->type.length = vp->length;
+		pt_ep->type.length = vp->vp_length;
 
-		pt_ep->type.data = talloc_memdup(vp, vp->vp_octets, vp->length);
+		pt_ep->type.data = talloc_memdup(vp, vp->vp_octets, vp->vp_length);
 		talloc_set_type(pt_ep->type.data, uint8_t);
 
 		eap_basic_compose(req, pt_ep);
@@ -2346,7 +2064,7 @@ static void rc_unmap_eap_methods(RADIUS_PACKET *rep)
 		len = e->length[0]*256 + e->length[1];
 
 		/* verify the length is big enough to hold type */
-		if(len < 5)
+		if (len < 5)
 		{
 			talloc_free(e);
 			return;
@@ -2380,7 +2098,7 @@ static int rc_map_eapsim_types(RADIUS_PACKET *r)
 
 	ret = map_eapsim_basictypes(r, pt_ep);
 
-	if(ret != 1) {
+	if (ret != 1) {
 		return ret;
 	}
 
@@ -2409,117 +2127,4 @@ static int rc_unmap_eapsim_types(RADIUS_PACKET *r)
 	talloc_free(eap_data);
 	return rcode_unmap;
 }
-
-#ifdef TEST_CASE
-
-#include <assert.h>
-
-char const *radius_dir = RADDBDIR;
-
-main(int argc, char *argv[])
-{
-	int filedone;
-	RADIUS_PACKET *req,*req2;
-	VALUE_PAIR *vp, *vpkey, *vpextra;
-	extern unsigned int sha1_data_problems;
-
-	req = NULL;
-	req2 = NULL;
-	filedone = 0;
-
-	if(argc>1) {
-	  sha1_data_problems = 1;
-	}
-
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-		ERROR("%s", fr_strerror());
-		return 1;
-	}
-
-	req = rad_alloc(NULL, true)
-	if (!req) {
-		ERROR("%s", fr_strerror());
-		exit(1);
-	}
-
-	req2 = rad_alloc(NULL, true);
-	if (!req2) {
-		ERROR("%s", fr_strerror());
-		exit(1);
-	}
-
-	while(!filedone) {
-		if (req->vps) pairfree(&req->vps);
-		if (req2->vps) pairfree(&req2->vps);
-
-		if (readvp2(NULL, &req->vps, stdin, &filedone) < 0) {
-			ERROR("%s", fr_strerror());
-			break;
-		}
-
-		if (fr_debug_flag > 1) {
-			DEBUG("Read:");
-			vp_printlist(stdout, req->vps);
-		}
-
-		rc_map_eapsim_types(req);
-		rc_map_eap_methods(req);
-
-		if (fr_debug_flag > 1) {
-			DEBUG("Mapped to:");
-			vp_printlist(stdout, req->vps);
-		}
-
-		/* find the EAP-Message, copy it to req2 */
-		vp = paircopy_by_num(NULL, req->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-
-		if(!vp) continue;
-
-		pairadd(&req2->vps, vp);
-
-		/* only call unmap for sim types here */
-		rc_unmap_eap_methods(req2);
-		rc_unmap_eapsim_types(req2);
-
-		if (fr_debug_flag > 1) {
-			DEBUG("Unmapped to:");
-			vp_printlist(stdout, req2->vps);
-		}
-
-		vp = pairfind(req2->vps, PW_EAP_SIM_MAC, 0, TAG_ANY);
-		vpkey   = pairfind(req->vps, PW_EAP_SIM_KEY, 0, TAG_ANY);
-		vpextra = pairfind(req->vps, PW_EAP_SIM_EXTRA, 0, TAG_ANY);
-
-		if(vp != NULL && vpkey != NULL && vpextra!=NULL) {
-			uint8_t calcmac[16];
-
-			/* find the EAP-Message, copy it to req2 */
-
-			memset(calcmac, 0, sizeof(calcmac));
-			DEBUG("Confirming MAC...");
-			if (eapsim_checkmac(req2->vps, vpkey->vp_strvalue,
-					    vpextra->vp_strvalue, vpextra->length,
-					    calcmac)) {
-				DEBUG("succeed");
-			} else {
-				int i, j;
-
-				DEBUG("calculated MAC (");
-				for (i = 0; i < 20; i++) {
-					if(j==4) {
-						DEBUG("_");
-						j=0;
-					}
-					j++;
-
-					DEBUG("%02x", calcmac[i]);
-				}
-				DEBUG("did not match");
-			}
-		}
-
-		fflush(stdout);
-	}
-}
-#endif
 
