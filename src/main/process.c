@@ -1951,6 +1951,24 @@ static void tcp_socket_timer(void *ctx)
 
 		do_close:
 
+#ifdef WITH_PROXY
+			/*
+			 *	Proxy sockets get frozen, so that we don't use
+			 *	them for new requests.  But we do keep them
+			 *	open to listen for replies to requests we had
+			 *	previously sent.
+			 */
+			if (listener->type == RAD_LISTEN_PROXY) {
+				PTHREAD_MUTEX_LOCK(&proxy_mutex);
+				if (!fr_packet_list_socket_freeze(proxy_list,
+								  listener->fd)) {
+					ERROR("Fatal error freezing socket: %s", fr_strerror());
+					fr_exit(1);
+				}
+				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+			}
+#endif
+
 			listener->status = RAD_LISTEN_STATUS_EOL;
 			event_new_fd(listener);
 			return;
@@ -4685,19 +4703,10 @@ static int event_new_fd(rad_listen_t *this)
 
 #ifdef WITH_PROXY
 		/*
-		 *	Proxy sockets get frozen, so that we don't use
-		 *	them for new requests.  But we do keep them
-		 *	open to listen for replies to requests we had
-		 *	previously sent.
+		 *	Tell all requests using this socket that the socket is dead.
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
-			if (!fr_packet_list_socket_freeze(proxy_list,
-							  this->fd)) {
-				ERROR("Fatal error freezing socket: %s", fr_strerror());
-				fr_exit(1);
-			}
-
 			fr_packet_list_walk(proxy_list, this, proxy_eol_cb);
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		}
