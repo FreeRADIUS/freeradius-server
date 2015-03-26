@@ -1,5 +1,7 @@
 FreeRADIUS 2.2.7 Tuesday 18 Nov 2014 14:00:00 EST, urgency=medium
 	Feature improvements
+	* Allow "eap" to be listed in Post-Auth-Type Reject
+	  so that it sends EAP-Fail and Message-Authenticator.
 
 	Bug fixes
 	* Fix typo in code checking for blocked threads.
