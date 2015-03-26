@@ -41,13 +41,13 @@ ATTRIBUTE	Mikrotik-Address-List			19	string
 ATTRIBUTE	Mikrotik-Wireless-MPKey			20	string
 ATTRIBUTE	Mikrotik-Wireless-Comment		21	string
 ATTRIBUTE	Mikrotik-Delegated-IPv6-Pool		22	string
-ATTRIBUTE	Mikrotik_DHCP_Option_Set		23	string
-ATTRIBUTE	Mikrotik_DHCP_Option_Param_STR1		24	string
-ATTRIBUTE	Mikortik_DHCP_Option_Param_STR2		25	string
-ATTRIBUTE	Mikrotik_Wireless_VLANID		26	integer
-ATTRIBUTE	Mikrotik_Wireless_VLANIDtype		27	integer
-ATTRIBUTE	Mikrotik_Wireless_Minsignal		28	string
-ATTRIBUTE	Mikrotik_Wireless_Maxsignal		29	string
+ATTRIBUTE	Mikrotik-DHCP-Option-Set		23	string
+ATTRIBUTE	Mikrotik-DHCP-Option-Param-STR1		24	string
+ATTRIBUTE	Mikortik-DHCP-Option-ParamSTR2		25	string
+ATTRIBUTE	Mikrotik-Wireless-VLANID		26	integer
+ATTRIBUTE	Mikrotik-Wireless-VLANID-Type		27	integer
+ATTRIBUTE	Mikrotik-Wireless-Minsignal		28	string
+ATTRIBUTE	Mikrotik-Wireless-Maxsignal		29	string
 
 # MikroTik Values
 
