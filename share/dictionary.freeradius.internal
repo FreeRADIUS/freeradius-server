@@ -538,6 +538,7 @@ VALUE	Session-Type			Local			0
 #
 #	And Post-Auth
 VALUE	Post-Auth-Type			Local			0
+VALUE	Post-Auth-Type			Reject			2
 
 #
 #	Experimental Non-Protocol Integer Translations for FreeRADIUS
