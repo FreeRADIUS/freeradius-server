@@ -1023,8 +1023,7 @@ static void request_dup(REQUEST *request)
  *
  *		cleanup_delay -> send_reply [ label = "DUP" ];
  *		send_reply -> cleanup_delay;
- *		cleanup_delay -> proxy_reply_too_late [ label = "PROXY_REPLY" ];
- *		proxy_reply_too_late -> cleanup_delay;
+ *		cleanup_delay -> proxy_reply_too_late [ label = "PROXY_REPLY", arrowhead = "none" ];
  *		cleanup_delay -> cleanup_delay [ label = "TIMER < timeout" ];
  *		cleanup_delay -> done [ label = "TIMER >= timeout" ];
  *	}
@@ -1103,8 +1102,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
  *
  *  \dot
  *	digraph response_delay {
- *		response_delay -> proxy_reply_too_late [ label = "PROXY_REPLY" ];
- *		proxy_reply_too_late -> response_delay;
+ *		response_delay -> proxy_reply_too_late [ label = "PROXY_REPLY", arrowhead = "none" ];
  *		response_delay -> response_delay [ label = "DUP, TIMER < timeout" ];
  *		response_delay -> send_reply [ label = "TIMER >= timeout" ];
  *		send_reply -> cleanup_delay;
@@ -2646,6 +2644,18 @@ static int setup_post_proxy_fail(REQUEST *request)
 /** Process a request after the proxy has timed out.
  *
  *  Run the packet through Post-Proxy-Type Fail
+ *
+ *  \dot
+ *	digraph proxy_no_reply {
+ *		proxy_no_reply;
+ *
+ *		proxy_no_reply -> dup [ label = "DUP", arrowhead = "none" ];
+ *		proxy_no_reply -> timer [ label = "TIMER < max_request_time" ];
+ *		proxy_no_reply -> proxy_reply_too_late [ label = "PROXY_REPLY" arrowhead = "none"];
+ *		proxy_no_reply -> process_proxy_reply [ label = "RUN" ];
+ *		proxy_no_reply -> done [ label = "TIMER >= timeout" ];
+ *	}
+ *  \enddot
  */
 static void proxy_no_reply(REQUEST *request, int action)
 {
@@ -2684,6 +2694,17 @@ static void proxy_no_reply(REQUEST *request, int action)
  *
  *  Throught the post-proxy section, and the through the handler
  *  function.
+ *
+ *  \dot
+ *	digraph proxy_running {
+ *		proxy_running;
+ *
+ *		proxy_running -> dup [ label = "DUP", arrowhead = "none" ];
+ *		proxy_running -> timer [ label = "TIMER < max_request_time" ];
+ *		proxy_running -> process_proxy_reply [ label = "RUN" ];
+ *		proxy_running -> done [ label = "TIMER >= timeout" ];
+ *	}
+ *  \enddot
  */
 static void proxy_running(REQUEST *request, int action)
 {
@@ -3652,6 +3673,18 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
  *  proxy_no_reply.  Mark the home server unresponsive, etc.
  *
  *  If we do receive a reply, we transition to proxy_running.
+ *
+ *  \dot
+ *	digraph proxy_wait_for_reply {
+ *		proxy_wait_for_reply;
+ *
+ *		proxy_wait_for_reply -> retransmit_proxied_request [ label = "DUP", arrowhead = "none" ];
+ *		proxy_wait_for_reply -> proxy_no_reply [ label = "TIMER >= response_window" ];
+ *		proxy_wait_for_reply -> timer [ label = "TIMER < max_request_time" ];
+ *		proxy_wait_for_reply -> proxy_running [ label = "PROXY_REPLY" arrowhead = "none"];
+ *		proxy_wait_for_reply -> done [ label = "TIMER >= max_request_time" ];
+ *	}
+ *  \enddot
  */
 static void proxy_wait_for_reply(REQUEST *request, int action)
 {
@@ -4260,6 +4293,17 @@ static void coa_retransmit(REQUEST *request)
  *  coa_no_reply.  Mark the home server unresponsive, etc.
  *
  *  If we do receive a reply, we transition to coa_running.
+ *
+ *  \dot
+ *	digraph coa_wait_for_reply {
+ *		coa_wait_for_reply;
+ *
+ *		coa_wait_for_reply -> coa_no_reply [ label = "TIMER >= response_window" ];
+ *		coa_wait_for_reply -> timer [ label = "TIMER < max_request_time" ];
+ *		coa_wait_for_reply -> coa_running [ label = "PROXY_REPLY" arrowhead = "none"];
+ *		coa_wait_for_reply -> done [ label = "TIMER >= max_request_time" ];
+ *	}
+ *  \enddot
  */
 static void coa_wait_for_reply(REQUEST *request, int action)
 {
@@ -4315,6 +4359,18 @@ static void coa_separate(REQUEST *request)
 /** Process a request after the CoA has timed out.
  *
  *  Run the packet through Post-Proxy-Type Fail
+ *
+ *  \dot
+ *	digraph coa_no_reply {
+ *		coa_no_reply;
+ *
+ *		coa_no_reply -> dup [ label = "DUP", arrowhead = "none" ];
+ *		coa_no_reply -> timer [ label = "TIMER < max_request_time" ];
+ *		coa_no_reply -> coa_reply_too_late [ label = "PROXY_REPLY" arrowhead = "none"];
+ *		coa_no_reply -> process_proxy_reply [ label = "RUN" ];
+ *		coa_no_reply -> done [ label = "TIMER >= timeout" ];
+ *	}
+ *  \enddot
  */
 static void coa_no_reply(REQUEST *request, int action)
 {
@@ -4356,6 +4412,16 @@ static void coa_no_reply(REQUEST *request, int action)
  *
  *  Throught the post-proxy section, and the through the handler
  *  function.
+ *
+ *  \dot
+ *	digraph coa_running {
+ *		coa_running;
+ *
+ *		coa_running -> timer [ label = "TIMER < max_request_time" ];
+ *		coa_running -> process_proxy_reply [ label = "RUN" ];
+ *		coa_running -> done [ label = "TIMER >= timeout" ];
+ *	}
+ *  \enddot
  */
 static void coa_running(REQUEST *request, int action)
 {
