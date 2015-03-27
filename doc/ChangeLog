@@ -53,6 +53,7 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Fix RHEL spec file so it works correctly for Centos7 which uses
 	  systemd, and didn't like the SystemV init script.
 	* radwho and radlast now have a -D option to load dictionaries
+	* DHCP packets are no longer checked for duplicates.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
