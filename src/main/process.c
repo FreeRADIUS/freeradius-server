@@ -809,6 +809,13 @@ static void request_cleanup_delay_init(REQUEST *request)
 	if (request->listener->type == RAD_LISTEN_DETAIL) goto done;
 #endif
 
+#ifdef WITH_DHCP
+	/*
+	 *	If the packets are from the DHCP, we can clean them up now.
+	 */
+	if (request->listener->type == RAD_LISTEN_DHCP) goto done;
+#endif
+
 	if (!request->root->cleanup_delay) goto done;
 
 	gettimeofday(&now, NULL);
@@ -1436,6 +1443,17 @@ static void request_finish(REQUEST *request, int action)
 		 *	If the packets are from the detail file, we can clean them up now.
 		 */
 		if (request->listener->type == RAD_LISTEN_DETAIL) {
+			NO_CHILD_THREAD;
+			request->child_state = REQUEST_DONE;
+			return;
+		}
+#endif
+
+#ifdef WITH_DHCP
+		/*
+		 *	If the packets are from DHCP, we can clean them up now.
+		 */
+		if (request->listener->type == RAD_LISTEN_DHCP) {
 			NO_CHILD_THREAD;
 			request->child_state = REQUEST_DONE;
 			return;
