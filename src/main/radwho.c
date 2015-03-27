@@ -51,6 +51,7 @@ char const *radlog_dir = NULL;
 
 static char const *radutmp_file = NULL;
 static char const *raddb_dir = NULL;
+static char const *dict_dir = NULL;
 
 char const *radacct_dir = NULL;
 char const *radlib_dir = NULL;
@@ -225,9 +226,12 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	while((c = getopt(argc, argv, "d:fF:nN:sSipP:crRu:U:Z")) != EOF) switch (c) {
+	while((c = getopt(argc, argv, "d:D:fF:nN:sSipP:crRu:U:Z")) != EOF) switch (c) {
 		case 'd':
 			raddb_dir = optarg;
+			break;
+		case 'D':
+			dict_dir = optarg;
 			break;
 		case 'F':
 			radutmp_file = optarg;
@@ -292,6 +296,17 @@ int main(int argc, char **argv)
 		fr_perror("radwho");
 		return 1;
 	}
+
+	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+		fr_perror("radwho");
+		return 1;
+	}
+
+	if (dict_read(raddb_dir, RADIUS_DICTIONARY) == -1) {
+		fr_perror("radwho");
+		return 1;
+	}
+	fr_strerror();	/* Clear the error buffer */
 
 	/*
 	 *	Be safe.
