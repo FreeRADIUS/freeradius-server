@@ -43,13 +43,18 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <ctype.h>
 
 #ifdef WITH_TLS
-#ifdef HAVE_OPENSSL_RAND_H
-#include <openssl/rand.h>
-#endif
+#  ifdef HAVE_OPENSSL_RAND_H
+#    include <openssl/rand.h>
+#  endif
 
-#ifdef HAVE_OPENSSL_OCSP_H
-#include <openssl/ocsp.h>
-#endif
+#  ifdef HAVE_OPENSSL_OCSP_H
+#    include <openssl/ocsp.h>
+#  endif
+
+#  ifdef HAVE_OPENSSL_EVP_H
+#    include <openssl/evp.h>
+#  endif
+#  include <openssl/ssl.h>
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct libssl_defect {
@@ -920,9 +925,11 @@ void tls_session_information(tls_session_t *tls_session)
 
 static CONF_PARSER cache_config[] = {
 	{ "enable", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, session_cache_enable), "no" },
+
 	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, session_timeout), "24" },
-	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, session_cache_size), "255" },
 	{ "name", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, session_id_name), NULL },
+
+	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, session_cache_size), "255" },
 	{ "persist_dir", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_path), NULL },
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
@@ -2176,9 +2183,11 @@ void tls_global_cleanup(void)
 /*
  *	Create SSL context
  *
- *	- Load the trusted CAs
- *	- Load the Private key & the certificate
- *	- Set the Context options & Verify options
+/** Create SSL context
+ *
+ * - Load the trusted CAs
+ * - Load the Private key & the certificate
+ * - Set the Context options & Verify options
  */
 SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 {
@@ -2547,13 +2556,10 @@ post_ca:
 		 *	Create a unique context Id per EAP-TLS configuration.
 		 */
 		if (conf->session_id_name) {
-			snprintf(conf->session_context_id,
-				 sizeof(conf->session_context_id),
-				 "FR eap %s",
-				 conf->session_id_name);
+			snprintf(conf->session_context_id, sizeof(conf->session_context_id),
+				 "FR eap %s", conf->session_id_name);
 		} else {
-			snprintf(conf->session_context_id,
-				 sizeof(conf->session_context_id),
+			snprintf(conf->session_context_id, sizeof(conf->session_context_id),
 				 "FR eap %p", conf);
 		}
 

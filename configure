@@ -8567,6 +8567,7 @@ $as_echo "#define HAVE_OPENSSL_SSL_H 1" >>confdefs.h
       openssl/md5.h \
       openssl/md4.h \
       openssl/sha.h \
+      openssl/ssl.h \
       openssl/ocsp.h \
       openssl/engine.h
 do :
