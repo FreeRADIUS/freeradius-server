@@ -51,7 +51,7 @@ char const *radlog_dir = NULL;
 
 static char const *radutmp_file = NULL;
 static char const *raddb_dir = NULL;
-static char const *dict_dir = NULL;
+static char const *dict_dir = DICTDIR;
 
 char const *radacct_dir = NULL;
 char const *radlib_dir = NULL;
