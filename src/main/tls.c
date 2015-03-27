@@ -2202,9 +2202,6 @@ void tls_global_cleanup(void)
 	CRYPTO_cleanup_all_ex_data();
 }
 
-/*
- *	Create SSL context
- *
 /** Create SSL context
  *
  * - Load the trusted CAs
