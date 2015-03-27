@@ -225,7 +225,7 @@ ATTRIBUTE	DHCP-Service-Scope			79	octets
 # Rapid Commit
 ATTRIBUTE	DHCP-Rapid-Commit			80	octets
 # Fully Qualified Domain Name
-ATTRIBUTE	DHCP-Client-FQDN			81	string
+ATTRIBUTE	DHCP-Client-FQDN			81	octets
 # Relay Agent Information
 ATTRIBUTE	DHCP-Relay-Agent-Information		82	tlv
 
