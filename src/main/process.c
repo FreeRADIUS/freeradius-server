@@ -800,21 +800,17 @@ static void request_cleanup_delay_init(REQUEST *request)
 
 	VERIFY_REQUEST(request);
 
-	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) goto done;
-
-#ifdef WITH_DETAIL
 	/*
-	 *	If the packets are from the detail file, we can clean them up now.
+	 *	Do cleanup delay ONLY for RADIUS packets from a real
+	 *	client.  Everything else just gets cleaned up
+	 *	immediately.
 	 */
-	if (request->listener->type == RAD_LISTEN_DETAIL) goto done;
+	if (!(request->packet->code == PW_CODE_ACCESS_REQUEST)
+#ifdef WITH_COA
+	    || (request->packet->code == PW_CODE_COA_REQUEST)
+	    || (request->packet->code == PW_CODE_DISCONNECT_REQUEST)
 #endif
-
-#ifdef WITH_DHCP
-	/*
-	 *	If the packets are from the DHCP, we can clean them up now.
-	 */
-	if (request->listener->type == RAD_LISTEN_DHCP) goto done;
-#endif
+		) goto done;
 
 	if (!request->root->cleanup_delay) goto done;
 
@@ -1325,13 +1321,15 @@ static void request_finish(REQUEST *request, int action)
 	 */
 	if (request->listener->type == RAD_LISTEN_DETAIL) {
 		request->simul_max = 1;
-		request->listener->send(request->listener, request);
+
 		/*
 		 *	But only print the reply if there is one.
 		 */
 		if (request->reply->code != 0) {
 			debug_packet(request, request->reply, false);
 		}
+
+		request->listener->send(request->listener, request);
 		goto done;
 	}
 #endif
@@ -1398,8 +1396,8 @@ static void request_finish(REQUEST *request, int action)
 		 *	Don't print a reply if there's none to send.
 		 */
 		if (request->reply->code != 0) {
-			request->listener->send(request->listener, request);
 			debug_packet(request, request->reply, false);
+			request->listener->send(request->listener, request);
 		}
 
 	done:
@@ -1407,57 +1405,6 @@ static void request_finish(REQUEST *request, int action)
 		request->component = "<core>";
 		request->module = "<done>";
 
-#ifdef WITH_ACCOUNTING
-		/*
-		 *	Accounting packets can be cleaned up now.
-		 */
-		if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
-			NO_CHILD_THREAD;
-			request->child_state = REQUEST_DONE;
-			return;
-		}
-#endif
-
-#ifdef WITH_DETAIL
-		/*
-		 *	If the packets are from the detail file, we can clean them up now.
-		 */
-		if (request->listener->type == RAD_LISTEN_DETAIL) {
-			NO_CHILD_THREAD;
-			request->child_state = REQUEST_DONE;
-			return;
-		}
-#endif
-
-#ifdef WITH_DHCP
-		/*
-		 *	If the packets are from DHCP, we can clean them up now.
-		 */
-		if (request->listener->type == RAD_LISTEN_DHCP) {
-			NO_CHILD_THREAD;
-			request->child_state = REQUEST_DONE;
-			return;
-		}
-#endif
-
-#ifdef WITH_COA
-		/*
-		 *	If we've originated this CoA request, it gets
-		 *	cleaned up now.
-		 */
-		if (request->proxy &&
-		    ((request->proxy->code == PW_CODE_COA_REQUEST) ||
-		    (request->proxy->code == PW_CODE_DISCONNECT_REQUEST)) &&
-		    (request->packet->code != request->proxy->code)) {
-			NO_CHILD_THREAD;
-			request->child_state = REQUEST_DONE;
-			return;
-		}
-#endif
-
-		/*
-		 *	Clean up the request.
-		 */
 		request_cleanup_delay_init(request);
 
 	} else {
@@ -3778,8 +3725,8 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		FR_STATS_TYPE_INC(home->stats.total_requests);
 		home->last_packet_sent = now.tv_sec;
 		request->proxy_retransmit = now;
-		request->proxy_listener->send(request->proxy_listener, request);
 		debug_packet(request, request->proxy, false);
+		request->proxy_listener->send(request->proxy_listener, request);
 		break;
 
 	case FR_ACTION_TIMER:
