@@ -1094,6 +1094,7 @@ if test "x$WITH_OPENSSL" = xyes; then
       openssl/md5.h \
       openssl/md4.h \
       openssl/sha.h \
+      openssl/ssl.h \
       openssl/ocsp.h \
       openssl/engine.h,
       [ OPENSSL_CPPFLAGS="$smart_include" ],

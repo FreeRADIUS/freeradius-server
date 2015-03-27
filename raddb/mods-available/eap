@@ -348,26 +348,32 @@ eap {
 		#
 		cache {
 			#
-			#  Enable it.  The default is "no".
-			#  Deleting the entire "cache" subsection
-			#  also disables caching.
+			#  Enable it.  The default is "no". Deleting the entire "cache"
+			#  subsection also disables caching.
 			#
-			#  You can disallow resumption for a
-			#  particular user by adding the following
-			#  attribute to the control item list:
+			#  You can disallow resumption for a particular user by adding the
+			#  following attribute to the control item list:
 			#
-			#		Allow-Session-Resumption = No
+			#    Allow-Session-Resumption = No
 			#
-			#  If "enable = no" below, you CANNOT
-			#  enable resumption for just one user
-			#  by setting the above attribute to "yes".
+			#  If "enable = no" below, you CANNOT enable resumption for just one
+			#  user by setting the above attribute to "yes".
 			#
 			enable = yes
 
 			#
-			#  Lifetime of the cached entries, in hours.
-			#  The sessions will be deleted after this
-			#  time.
+			#  Internal "name" of the session cache. Used to distinguish which
+			#  TLS context sessions belong to.
+			#
+			#  The server will generate a random value if unset. This will change
+			#  across server restart so you MUST set the "name" if you want to
+			#  persist sessions (see below).
+			#
+#                       name = "EAP module"
+
+			#
+			#  Lifetime of the cached entries, in hours. The sessions will be
+			#  deleted/invalidated after this time.
 			#
 			lifetime = 24 # hours
 
