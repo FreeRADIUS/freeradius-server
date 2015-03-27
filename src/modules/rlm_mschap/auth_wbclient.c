@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <wbclient.h>
+#include <core/ntstatus.h>
 
 #include "rlm_mschap.h"
 #include "mschap.h"
@@ -39,7 +40,10 @@ RCSID("$Id$")
  *	Check NTLM authentication direct to winbind via
  *	Samba's libwbclient library
  *
- *	Returns -1 for failure and 0 on auth success
+ *	Returns:
+ *	 0    success
+ *	 -1   auth failure
+ *	 -648 password expired
  */
 int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		     uint8_t const *challenge, uint8_t const *response,
@@ -121,7 +125,8 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 
 
 	/*
-	 * Try and give some useful feedback on what happened
+	 * Try and give some useful feedback on what happened. There are only
+	 * a few errors that can actually be returned from wbcCtxAuthenticateUserEx.
 	 */
 	switch (err) {
 	case WBC_ERR_SUCCESS:
@@ -132,19 +137,46 @@ int do_auth_wbclient(rlm_mschap_t *inst, REQUEST *request,
 		break;
 	case WBC_ERR_WINBIND_NOT_AVAILABLE:
 		RERROR("Unable to contact winbind!");
-		RERROR("Check that winbind is running and that FreeRADIUS");
-		RERROR("has permission to connect to the winbind socket.");
+		RDEBUG2("Check that winbind is running and that FreeRADIUS has");
+		RDEBUG2("permission to connect to the winbind privileged socket.");
 		break;
 	case WBC_ERR_DOMAIN_NOT_FOUND:
-		REDEBUG2("Authentication failed: domain not found");
+		REDEBUG2("Domain not found");
 		break;
 	case WBC_ERR_AUTH_ERROR:
-		REDEBUG2("Authentication failed (check domain is correct)");
+		if (!error) {
+			REDEBUG2("Authentication failed");
+			break;
+		}
+
+		/*
+		 * The password needs to be changed, so set rcode appropriately.
+		 */
+		if (error->nt_status & NT_STATUS_PASSWORD_EXPIRED ||
+		    error->nt_status & NT_STATUS_PASSWORD_MUST_CHANGE) {
+			rcode = -648;
+		}
+
+		/*
+		 * Return the NT_STATUS human readable error string, if there is one.
+		 */
+		if (error->display_string) {
+			REDEBUG2("%s [0x%X]", error->display_string, error->nt_status);
+		} else {
+			REDEBUG2("Authentication failed [0x%X]", error->nt_status);
+		}
 		break;
 	default:
-		REDEBUG2("Authentication failed: wbcErr %d", err);
+		/*
+		 * Only errors left are 
+		 *   WBC_ERR_INVALID_PARAM
+		 *   WBC_ERR_NO_MEMORY
+		 * neither of which are particularly likely.
+		 */
 		if (error && error->display_string) {
-			REDEBUG2("wbcErr %s", error->display_string);
+			REDEBUG2("libwbclient error: wbcErr %d (%s)", err, error->display_string);
+		} else {
+			REDEBUG2("libwbclient error: wbcErr %d", err);
 		}
 		break;
 	}
