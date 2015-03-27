@@ -610,6 +610,12 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	RADCLIENT *client;
 	CONF_PAIR *cp;
 
+	/*
+	 *	Set if before parsing, so the user can forcibly turn
+	 *	it off later.
+	 */
+	this->nodup = true;
+
 	rcode = common_socket_parse(cs, this);
 	if (rcode != 0) return rcode;
 
