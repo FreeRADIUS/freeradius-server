@@ -3,6 +3,8 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
         * Allow syslog_severity to be set in rlm_linelog.
 	* Allow defaults to be set for bulk clients in LDAP and couchbase.
 	* Updates to dhcpclient.  Patches from Nicolas C.
+	* rlm_mschap now supports direct connections to winbind, which
+	  is faster than ntlm_auth.  See raddb/mods-available/mschap
 
 	Bug fixes
 	* Don't complain about "authorize" in "server {}" blocks, but
@@ -50,6 +52,7 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Regularized return codes from radmin commands.
 	* Fix RHEL spec file so it works correctly for Centos7 which uses
 	  systemd, and didn't like the SystemV init script.
+	* radwho and radlast now have a -D option to load dictionaries
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
