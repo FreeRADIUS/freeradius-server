@@ -50,7 +50,7 @@ char const *progname = "radwho";
 char const *radlog_dir = NULL;
 
 static char const *radutmp_file = NULL;
-static char const *raddb_dir = NULL;
+static char const *raddb_dir = RADDBDIR;
 static char const *dict_dir = DICTDIR;
 
 char const *radacct_dir = NULL;
