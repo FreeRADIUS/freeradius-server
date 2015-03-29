@@ -2683,10 +2683,10 @@ static void proxy_running(REQUEST *request, int action)
  * request may be proxied.
  *
  * The key attributes are:
- *   - #PW_PROXY_TO_REALM          - Specifies a realm the request should be proxied to.
- *   - #PW_HOME_SERVER_POOL        - Specifies a specific home server pool to proxy to.
- *   - #PW_PACKET_DST_IP_ADDRESS   - Specifies a specific IPv4 home server to proxy to.
- *   - #PW_PACKET_DST_IPV6_ADDRESS - Specifies a specific IPv6 home server to proxy to.
+ *   - PW_PROXY_TO_REALM          - Specifies a realm the request should be proxied to.
+ *   - PW_HOME_SERVER_POOL        - Specifies a specific home server pool to proxy to.
+ *   - PW_PACKET_DST_IP_ADDRESS   - Specifies a specific IPv4 home server to proxy to.
+ *   - PW_PACKET_DST_IPV6_ADDRESS - Specifies a specific IPv6 home server to proxy to.
  *
  * Certain packet types such as #PW_CODE_STATUS_SERVER will never be proxied.
  *
