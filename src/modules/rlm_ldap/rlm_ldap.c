@@ -2562,7 +2562,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			DEBUG("  [%s] Bind failed with invalid credentials", inst->xlat_name);
 			*result = RLM_MODULE_REJECT;
 		} else {
-			radlog(L_ERR, "  [%s] LDAP login failed: check identity, password settings in ldap section of radiusd.conf", inst->xlat_name);
+			radlog(L_ERR, "  [%s] LDAP login failed: check identity, password settings in ldap module configuration", inst->xlat_name);
 			*result = RLM_MODULE_FAIL;
 		}
 		if(err != NULL){
