@@ -455,7 +455,7 @@ ldap {
 #		ca_path	= ${certdir}
 #		certificate_file = /path/to/radius.crt
 #		private_key_file = /path/to/radius.key
-#		random_file = ${certdir}/random
+#		random_file = /dev/urandom
 
 		#  Certificate Verification requirements.  Can be:
 		#    'never' (don't even bother trying)

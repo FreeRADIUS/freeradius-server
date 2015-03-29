@@ -22,7 +22,7 @@ DH_KEY_SIZE	= 1024
 #
 ######################################################################
 .PHONY: all
-all: index.txt serial dh random server ca client
+all: index.txt serial dh server ca client
 
 .PHONY: client
 client: client.pem
@@ -118,13 +118,6 @@ index.txt:
 serial:
 	@echo '01' > serial
 
-random:
-	@if [ -c /dev/urandom ] ; then \
-		ln -sf /dev/urandom random; \
-	else \
-		date > ./random; \
-	fi
-
 print:
 	openssl x509 -text -in server.crt
 
@@ -139,4 +132,4 @@ clean:
 #
 destroycerts:
 	rm -f *~ dh *.csr *.crt *.p12 *.der *.pem *.key index.txt* \
-			serial* random *\.0 *\.1
+			serial*  *\.0 *\.1

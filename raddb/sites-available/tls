@@ -130,7 +130,7 @@ listen {
 		#  write to files in its configuration
 		#  directory.
 		#
-#		random_file = ${certdir}/random
+#		random_file = /dev/urandom
 
 		#
 		#  The default fragment size is 1K.
@@ -429,7 +429,7 @@ home_server tls {
 		#  	openssl dhparam -out certs/dh 1024
 		#
 		dh_file = ${certdir}/dh
-		random_file = ${certdir}/random
+		random_file = /dev/urandom
 
 		#
 		#  The default fragment size is 1K.
