@@ -620,13 +620,14 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 
 	/* loop across all row elements */
 	for (idx = 0; idx < json_object_array_length(jrows); idx++) {
+		/* clear docid */
+		memset(docid, 0, sizeof(docid));
+
 		/* fetch current index */
 		json = json_object_array_get_idx(jrows, idx);
 
 		/* get document id */
 		if (json_object_object_get_ex(json, "id", &jval)) {
-			/* clear docid */
-			memset(docid, 0, sizeof(docid));
 			/* copy and check length */
 			if (strlcpy(docid, json_object_get_string(jval), sizeof(docid)) >= sizeof(docid)) {
 				RERROR("document id from row longer than MAX_KEY_SIZE (%d)", MAX_KEY_SIZE);

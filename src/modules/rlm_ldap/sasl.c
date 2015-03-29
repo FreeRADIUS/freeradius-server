@@ -110,7 +110,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(ldap_instance_t const *inst, REQUEST *req
 		/*
 		 *	Write the servers response to the debug log
 		 */
-		if (RDEBUG_ENABLED3 && result) {
+		if (((request && RDEBUG_ENABLED3) || DEBUG_ENABLED3) && result) {
 			struct berval *srv_cred;
 
 			if (ldap_parse_sasl_bind_result(conn->handle, result, &srv_cred, 0) == 0) {
