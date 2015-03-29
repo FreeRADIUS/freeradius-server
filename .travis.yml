@@ -8,10 +8,10 @@ env:
     - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
     - secure: "H+uQeyOgsIyXtIPPG2VzAG8S/8KYGHlHaWhdiNuz1LM3SMcEKoPqG6o/P+HO8HVvYnA6nelyGuEryV90UfuwGY9YC6A/pqPQvx/gXSso63Zt66XSaiZjulCSm9OV8EB3wyWF7VSQ/ZHcn+L01hIlsQXTqLprMaC33cM0FYPr9fY="
   matrix:
-    - BUILD_PACKAGES=no LIBS_OPTIONAL=no LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
-    - BUILD_PACKAGES=no LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
-    - BUILD_PACKAGES=no LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3"
-#    - BUILD_PACKAGES=yes
+    - DO_BUILD=yes LIBS_OPTIONAL=no LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
+    - DO_BUILD=yes LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
+    - DO_BUILD=yes LIBS_OPTIONAL=yes LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG -O2 -g3"
+#    - DO_BUILD=no
 addons:
   coverity_scan:
     project:
@@ -73,12 +73,14 @@ before_install:
   - $CC --version
 before_script:
 # Configure the server
-  - if [ "${BUILD_PACKAGES}" = 'no' ]; then CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL; fi
-  - if [ "${BUILD_PACKAGES}" = 'yes' ]; then ./configure -C --without-modules; fi
+  - if [ "${DO_BUILD}" = 'yes' ]; then CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL; fi
+  - if [ "${DO_BUILD}" = 'no' ]; then ./configure -C --without-modules; fi
 # Build the server
-  - if [ "${BUILD_PACKAGES}" = 'no' ]; then make -j8; fi
+  - if [ "${DO_BUILD}" = 'yes' ]; then make -j8; fi
 # Run CLANG analyzer if we're building with CLANG
-  - if [ "${BUILD_PACKAGES}" = 'no' -a "${COVERITY_SCAN_BRANCH}" != 1 -a ${CC} = 'clang' ]; then make -j8 scan && [ "$(find build/plist/ -name *.html)" = '' ]; fi
+  - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 -a ${CC} = 'clang' ]; then make -j8 scan && [ "$(find build/plist/ -name *.html)" = '' ]; fi
 script:
-  - if [ "${BUILD_PACKAGES}" = 'no' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
-  - if [ "${BUILD_PACKAGES}" = 'yes' ]; then make deb; fi
+  - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
+  - if [ "${DO_BUILD}" = 'no' ]; then make deb; fi
+# Build the doxygen documentation
+  - if [ "${DO_BUILD}" = 'no' ]; then doxygen doc/source/DoxyFile | tee build/doxygen.log && [ test -n "$(cat doxygen.log)" ]; fi
