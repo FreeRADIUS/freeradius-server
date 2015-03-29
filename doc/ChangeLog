@@ -5,6 +5,8 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Updates to dhcpclient.  Patches from Nicolas C.
 	* rlm_mschap now supports direct connections to winbind, which
 	  is faster than ntlm_auth.  See raddb/mods-available/mschap
+	* Recommend /dev/urandom for TLS randomness, instead of
+	  ${certdir}/random
 
 	Bug fixes
 	* Don't complain about "authorize" in "server {}" blocks, but
