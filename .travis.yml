@@ -77,8 +77,8 @@ before_script:
   - if [ "${BUILD_PACKAGES}" = 'yes' ]; then ./configure -C --without-modules; fi
 # Build the server
   - if [ "${BUILD_PACKAGES}" = 'no' ]; then make -j8; fi
-# Run CLANG analyzer and we're building with CLANG
-  - if [ "${BUILD_PACKAGES}" = 'no' -a "${COVERITY_SCAN_BRANCH}" != 1 -a ${CC} = 'clang' ]; then make -j8 scan; fi
+# Run CLANG analyzer if we're building with CLANG
+  - if [ "${BUILD_PACKAGES}" = 'no' -a "${COVERITY_SCAN_BRANCH}" != 1 -a ${CC} = 'clang' ]; then make -j8 scan && [ "$(find build/plist/ -name *.html)" = '' ]; fi
 script:
   - if [ "${BUILD_PACKAGES}" = 'no' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
   - if [ "${BUILD_PACKAGES}" = 'yes' ]; then make deb; fi
