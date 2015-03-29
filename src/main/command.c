@@ -543,7 +543,6 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		if (uid != (uid_t)-1) rad_seuid(euid);
 		if (gid != (gid_t)-1) rad_segid(egid);
 		close(sock_fd);
-		sock_fd = -1;
 
 		goto error;
 	}
