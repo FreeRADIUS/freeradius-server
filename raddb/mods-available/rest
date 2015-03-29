@@ -11,7 +11,7 @@ rest {
 #		certificate_file	= /path/to/radius.crt
 #		private_key_file	= /path/to/radius.key
 #		private_key_password	= "supersecret"
-#		random_file		= ${certdir}/random
+#		random_file		= /dev/urandom
 
 		#  Server certificate verification requirements.  Can be:
 		#    "no"  (don't even bother trying)

@@ -241,7 +241,7 @@ eap {
 		#  write to files in its configuration
 		#  directory.
 		#
-#		random_file = ${certdir}/random
+#		random_file = /dev/urandom
 
 		#
 		#  This can never exceed the size of a RADIUS
