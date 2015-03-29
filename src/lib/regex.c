@@ -361,7 +361,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 			regerror(ret, preg, errbuf, sizeof(errbuf));
 
 			fr_strerror_printf("regex evaluation failed: %s", errbuf);
-			*nmatch = 0;
+			if (nmatch) *nmatch = 0;
 			return -1;
 		}
 		return 0;
