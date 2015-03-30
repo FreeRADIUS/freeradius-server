@@ -986,8 +986,17 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 #endif
 
+#ifdef SSL_OP_NO_TLSv1_1
 	{ "disable_tlsv1_1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_1), NULL },
-	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
+#endif
+
+	/*
+	 * @fixme Disabled because using TLS1.2 seems to cause MPPE key issues with eapol_test
+	 * need to fix FreeRADIUS or wpa_supplicant.
+	 */
+#ifdef SSL_OP_NO_TLSv1_2
+	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), "yes" },
+#endif
 
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
 
@@ -2460,7 +2469,7 @@ post_ca:
 #endif
 
 #ifdef SSL_OP_NO_TICKET
-	ctx_options |= SSL_OP_NO_TICKET ;
+	ctx_options |= SSL_OP_NO_TICKET;
 #endif
 
 	/*
