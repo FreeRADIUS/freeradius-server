@@ -22,53 +22,54 @@ addons:
     build_command_prepend: ./configure
     build_command: make
     branch_pattern: coverity_scan
-  apt_sources:
-    - couchbase-precise
-  apt_packages:
-    - autoconf
-    - build-essential
-    - debhelper
-    - devscripts
-    - dh-make
-    - fakeroot
-    - gdb
-    - lintian
-    - pbuilder
-    - python-dev
-    - quilt
-    - libruby
-    - ruby-dev
-    - libcollectdclient-dev
-    - firebird-dev
-    - freetds-dev
-    - libcap-dev
-    - libcouchbase2-libevent
-    - libcouchbase-dev
-    - libcurl4-openssl-dev
-    - libgdbm-dev
-    - libhiredis-dev
-    - libidn11-dev
-    - libiodbc2-dev libiodbc2
-    - libjson0
-    - libjson0-dev
-    - libkrb5-dev
-    - libldap2-dev
-    - libmemcached-dev
-    - libmysqlclient-dev
-    - libpam0g-dev
-    - libpcap-dev
-    - libpcre3-dev
-    - libperl-dev
-    - libpq-dev
-    - libreadline-dev
-    - libsnmp-dev
-    - libssl-dev
-    - libtalloc-dev
-    - libtalloc2-dbg
-    - libunbound-dev
-    - libwbclient-dev
-    - libykclient-dev
-    - libyubikey-dev
+  apt:
+    sources:
+      - couchbase-precise
+    packages:
+      - autoconf
+      - build-essential
+      - debhelper
+      - devscripts
+      - dh-make
+      - fakeroot
+      - gdb
+      - lintian
+      - pbuilder
+      - python-dev
+      - quilt
+      - libruby
+      - ruby-dev
+      - libcollectdclient-dev
+      - firebird-dev
+      - freetds-dev
+      - libcap-dev
+      - libcouchbase2-libevent
+      - libcouchbase-dev
+      - libcurl4-openssl-dev
+      - libgdbm-dev
+      - libhiredis-dev
+      - libidn11-dev
+      - libiodbc2-dev libiodbc2
+      - libjson0
+      - libjson0-dev
+      - libkrb5-dev
+      - libldap2-dev
+      - libmemcached-dev
+      - libmysqlclient-dev
+      - libpam0g-dev
+      - libpcap-dev
+      - libpcre3-dev
+      - libperl-dev
+      - libpq-dev
+      - libreadline-dev
+      - libsnmp-dev
+      - libssl-dev
+      - libtalloc-dev
+      - libtalloc2-dbg
+      - libunbound-dev
+      - libwbclient-dev
+      - libykclient-dev
+      - libyubikey-dev
 before_install:
   - $CC --version
 before_script:
