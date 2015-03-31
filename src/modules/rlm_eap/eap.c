@@ -891,9 +891,10 @@ void eap_success(eap_handler_t *handler)
 /*
  * Basic EAP packet verfications & validations
  */
-static int eap_validation(REQUEST *request, eap_packet_raw_t *eap_packet)
+static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 {
 	uint16_t len;
+	eap_packet_raw_t *eap_packet = *eap_packet_p;
 
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
@@ -910,6 +911,56 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t *eap_packet)
 
 	if ((eap_packet->data[0] <= 0) ||
 	    (eap_packet->data[0] >= PW_EAP_MAX_TYPES)) {
+#if 0
+		if (eap_packet->data[0] == PW_EAP_EXPANDED_TYPE) {
+			uint8_t *p, *q;
+
+			if (len <= (EAP_HEADER_LEN + 1 + 3 + 4)) {
+				RAUTH("Expanded EAP type is too short: ignoring the packet");
+				return EAP_INVALID;
+			}
+
+			if ((eap_packet->data[1] != 0) ||
+			    (eap_packet->data[2] != 0) ||
+			    (eap_packet->data[3] != 0)) {
+				RAUTH("Expanded EAP type has unknown Vendor-ID: ignoring the packet");
+				return EAP_INVALID;
+			}
+
+			if ((eap_packet->data[4] != 0) ||
+			    (eap_packet->data[5] != 0) ||
+			    (eap_packet->data[6] != 0)) {
+				RAUTH("Expanded EAP type has unknown Vendor-Type: ignoring the packet");
+				return EAP_INVALID;
+			}
+
+			if (eap_packet->data[7] >= PW_EAP_MAX_TYPES) {
+				RAUTH("Unsupported Expanded EAP type %u: ignoring the packet", eap_packet->data[7]);
+				return EAP_INVALID;
+			}
+
+			/*
+			 *	Re-write the EAP packet to NOT have the expanded type.
+			 */
+			p = talloc_array(talloc_parent(eap_packet), uint8_t, len - 7);
+			if (!p) return EAP_INVALID;
+
+			q = (uint8_t *) eap_packet;
+
+			memcpy(p, q, EAP_HEADER_LEN);
+			p[EAP_HEADER_LEN] = eap_packet->data[7];
+			memcpy(p + EAP_HEADER_LEN + 1, q + EAP_HEADER_LEN + 1 + 3 + 4, len - 7 - EAP_HEADER_LEN - 1);
+			len -= 7;
+			p[2] = (len >> 8) & 0xff;
+			p[3] = len & 0xff;
+
+			talloc_free(eap_packet);
+			*eap_packet_p = (eap_packet_raw_t *) p;
+
+			return EAP_VALID;
+		}
+#endif
+
 		RAUTH("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
 		return EAP_INVALID;
 	}
@@ -1028,18 +1079,20 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			   REQUEST *request)
 {
 	eap_handler_t	*handler = NULL;
-	eap_packet_raw_t	*eap_packet = *eap_packet_p;
+	eap_packet_raw_t *eap_packet;
 	VALUE_PAIR	*vp;
 
 	/*
 	 *	Ensure it's a valid EAP-Request, or EAP-Response.
 	 */
-	if (eap_validation(request, eap_packet) == EAP_INVALID) {
+	if (eap_validation(request, eap_packet_p) == EAP_INVALID) {
 	error:
 		talloc_free(*eap_packet_p);
 		*eap_packet_p = NULL;
 		return NULL;
 	}
+
+	eap_packet = *eap_packet_p;
 
 	/*
 	 *	eap_handler_t MUST be found in the list if it is not

@@ -101,6 +101,8 @@ typedef enum eap_method {
 	PW_EAP_MAX_TYPES		/* 54 - for validation */
 } eap_type_t;
 
+#define PW_EAP_EXPANDED_TYPE	(254)
+
 typedef enum eap_rcode {
 	EAP_NOTFOUND,    	//!< EAP handler data not found.
 	EAP_FOUND,       	//!< EAP handler data found, continue.
