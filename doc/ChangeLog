@@ -59,6 +59,7 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* radwho and radlast now have a -D option to load dictionaries
 	* DHCP packets are no longer checked for duplicates.
 	* Don't crash in sql module group comparisons in corner case.
+	* Calculate MPPE keys correctly when using TLS 1.2.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
