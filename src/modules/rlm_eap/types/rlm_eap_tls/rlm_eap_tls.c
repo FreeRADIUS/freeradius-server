@@ -144,9 +144,14 @@ static CONF_PARSER module_config[] = {
 	{ "disable_tlsv1_1", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, disable_tlsv1_1), NULL, NULL },
 #endif
+
+	/*
+	 * @fixme Disabled because using TLS1.2 seems to cause MPPE key issues with eapol_test
+	 * need to fix FreeRADIUS or wpa_supplicant.
+	 */
 #ifdef SSL_OP_NO_TLSv1_2
 	{ "disable_tlsv1_2", PW_TYPE_BOOLEAN,
-	  offsetof(EAP_TLS_CONF, disable_tlsv1_2), NULL, NULL },
+	  offsetof(EAP_TLS_CONF, disable_tlsv1_2), NULL, "yes" },
 #endif
 
 	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (const void *) cache_config },
@@ -1165,7 +1170,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 #endif
 
 #ifdef SSL_OP_NO_TICKET
-	ctx_options |= SSL_OP_NO_TICKET ;
+	ctx_options |= SSL_OP_NO_TICKET;
 #endif
 
 	/*
