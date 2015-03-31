@@ -69,6 +69,18 @@ sub setlock($;$$)
     else { return 0 }
 }
 
+sub unlock($;$$)
+{
+    my ($fh, $start, $len) = @_;
+    $start = 0 unless defined $start;
+    $len = 0 unless defined $len;
+
+                                    #type     whence    start   till  pid
+    my $packed = pack($FLOCK_STRUCT, F_WRLCK, SEEK_SET, $start, $len, 0);
+    if (fcntl($fh, F_UNLCK, $packed)) { return 1 }
+    else { return 0 }
+}
+
 sub usage()
 {
     print STDERR <<HERE;
@@ -127,7 +139,9 @@ sub process_file($$)
             } else {
 		print "error: Lost connection to database\n";
 		$dbinfo->{handle}->disconnect;
+		unlock(\*FILE);
 		connect_wait($dbinfo);
+		setlock(\*FILE);
             }
         }
     }
