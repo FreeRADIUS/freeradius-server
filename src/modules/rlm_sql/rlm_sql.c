@@ -709,6 +709,8 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 				pairfree(&check_tmp);
 				entry = entry->next;
 
+				if (!entry) break;
+
 				goto next;	/* != continue */
 			}
 
