@@ -4,9 +4,11 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Allow defaults to be set for bulk clients in LDAP and couchbase.
 	* Updates to dhcpclient.  Patches from Nicolas C.
 	* rlm_mschap now supports direct connections to winbind, which
-	  is faster than ntlm_auth.  See raddb/mods-available/mschap
+	  is faster than ntlm_auth.  See raddb/mods-available/mschap.
+	  Patch from Matthew Newton.
 	* Recommend /dev/urandom for TLS randomness, instead of
 	  ${certdir}/random
+	* Allow TLSv1 to be disabled via "disable_tlsv1" in tls{}.
 
 	Bug fixes
 	* Don't complain about "authorize" in "server {}" blocks, but
@@ -56,6 +58,7 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	  systemd, and didn't like the SystemV init script.
 	* radwho and radlast now have a -D option to load dictionaries
 	* DHCP packets are no longer checked for duplicates.
+	* Don't crash in sql module group comparisons in corner case.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
