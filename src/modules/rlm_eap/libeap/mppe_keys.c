@@ -140,7 +140,7 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	if (SSL_export_keying_material(s, out, sizeof(out), prf_label, prf_size, NULL, 0, 0) != 1) {
-		ERROR("Failed generating keying material");
+		DEBUG("Failed generating keying material");
 		return;
 	}
 #else
