@@ -168,13 +168,15 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	Allow DEFAULT realms unless told not to.
 	 */
 	realm = realm_find(realmname);
+
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
 	/*
 	 *	Try querying for the dynamic realm.
 	 */
-	if (!realm)
-	  realm = tr_query_realm(request, realmname, inst->default_community, inst->rp_realm, inst->trust_router, inst->tr_port);
+	if (!realm && inst->trust_router)
+		realm = tr_query_realm(request, realmname, inst->default_community, inst->rp_realm, inst->trust_router, inst->tr_port);
 #endif
+
 	if (!realm) {
 		RDEBUG2("No such realm \"%s\"", (!realmname) ? "NULL" : realmname);
 		talloc_free(namebuf);
@@ -371,7 +373,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
 	/* initialize the trust router integration code */
-	if (!tr_init()) return -1;
+	if (strcmp(inst->trust_router, "none") != 0) {
+		if (!tr_init()) return -1;
+	} else {
+		rad_const_free(&inst->trust_router);
+	}
 #endif
 
 	return 0;
