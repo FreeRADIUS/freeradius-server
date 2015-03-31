@@ -13,6 +13,7 @@ FreeRADIUS 2.2.7 Tuesday 18 Nov 2014 14:00:00 EST, urgency=medium
 	* Use correct destination port for replies to DHCP relay.
 	* rlm_perl can store multiple tagged attributes of the
 	  same name.
+	* Update EAP-TLS methods for TLSv1.2
 
 FreeRADIUS 2.2.6 Tuesday 18 Nov 2014 15:00:00 EST, urgency=medium
 	Feature improvements
