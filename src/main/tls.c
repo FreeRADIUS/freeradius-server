@@ -995,7 +995,7 @@ static CONF_PARSER tls_server_config[] = {
 	 * need to fix FreeRADIUS or wpa_supplicant.
 	 */
 #ifdef SSL_OP_NO_TLSv1_2
-	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), "yes" },
+	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 #endif
 
 	{ "cache", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) cache_config },
