@@ -356,6 +356,8 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 
 	if (!realm) return NULL;
 
+	if (!trustrouter || (strcmp(trustrouter, "none") == 0)) return NULL;
+
 	/* clear the cookie structure */
 	memset (&cookie, 0, sizeof(cookie));
 
