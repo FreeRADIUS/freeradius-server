@@ -1012,10 +1012,6 @@ static CONF_PARSER tls_server_config[] = {
 	{ "disable_tlsv1_1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_1), NULL },
 #endif
 
-	/*
-	 * @fixme Disabled because using TLS1.2 seems to cause MPPE key issues with eapol_test
-	 * need to fix FreeRADIUS or wpa_supplicant.
-	 */
 #ifdef SSL_OP_NO_TLSv1_2
 	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 #endif
