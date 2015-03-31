@@ -46,7 +46,7 @@ extern int sha1_data_problems;
 static unsigned int parallel = 1;
 static unsigned int retries = 3;
 static float timeout = 5;
-struct timeval tv_timeout;
+static struct timeval tv_timeout;
 static char const *secret = NULL;
 static int do_output = 1;
 static int do_summary = 0;
@@ -138,7 +138,7 @@ struct rc_transaction {
 };
 
 
-TALLOC_CTX *autofree;
+static TALLOC_CTX *autofree;
 static uint32_t num_trans = 0; //!< number of transactions initialized.
 static uint32_t num_started = 0; //!< number of transactions started.
 static uint32_t num_ongoing = 0; //!< number of ongoing transactions.
@@ -1470,7 +1470,6 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 				ongoing_trans = true; // don't free the transaction yet.
 			}
 			goto packet_done;
-			break;
 
 		case PW_EAP_TYPE_BASE + PW_EAP_SIM:
 			if (rc_respond_eap_sim(trans->eap_context, trans->reply, trans->packet)) {
@@ -1480,7 +1479,6 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 				ongoing_trans = true; // don't free the transaction yet.
 			}
 			goto packet_done;
-			break;
 		}
 	}
 
