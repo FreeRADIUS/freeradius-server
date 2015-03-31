@@ -7,10 +7,12 @@ Changelog with the version number and any last updates.
 vi doc/ChangeLog
 git commit doc/ChangeLog
 
+
 	Change version numbers in the VERSION file:
 
 vi VERSION
 git commit VERSION
+
 
 	Make the files
 
@@ -26,6 +28,7 @@ make dist
 	have to run the command it prints out yourself.
 
 make dist-tag
+
 
 	Sign the packages.  You will need the correct GPG key for this
 	to work.
