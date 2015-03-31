@@ -240,5 +240,3 @@ have a really good reason for doing so.
       kinds of work into one function makes the server difficult to
       debug and maintain.
 
-      See the 'coding-methods.txt' document in this directory for
-      further description of coding methods.
