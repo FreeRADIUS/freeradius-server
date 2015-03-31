@@ -263,9 +263,30 @@ do_return:
 		return -1;
 	}
 
-	if (rad_lockfd(ef->entries[i].fd, 0) < 0) {
-		fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
-		goto error;
+	/*
+	 *	Try to lock it.  If we can't lock it, it's because
+	 *	some reader has re-named the file to "foo.work" and
+	 *	locked it.  So, we close the current file, re-open it,
+	 *	and try again/
+	 */
+	if (rad_lockfd_nonblock(ef->entries[i].fd, 0) < 0) {
+		if (errno != EAGAIN) {
+			fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
+			goto error;
+		}
+
+		close(ef->entries[i].fd);
+		ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
+		if (ef->entries[i].fd < 0) {
+			fr_strerror_printf("Failed to open file %s: %s",
+					   filename, strerror(errno));
+			goto error;
+		}
+
+		if (rad_lockfd(ef->entries[i].fd, 0) < 0) {
+			fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
+			goto error;
+		}
 	}
 
 	/*
