@@ -1111,7 +1111,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 			 *	realm_config_t without a mutex, by one of the
 			 *	workers, would be bad.
 			 */
-			home = home_server_afrom_cs(c, NULL, server);
+			home = home_server_afrom_cs(NULL, NULL, server);
 			if (!home) {
 				talloc_free(server);
 				goto error;
