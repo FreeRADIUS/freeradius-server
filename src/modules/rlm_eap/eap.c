@@ -911,7 +911,10 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 
 	if ((eap_packet->data[0] <= 0) ||
 	    (eap_packet->data[0] >= PW_EAP_MAX_TYPES)) {
-#if 0
+		/*
+		 *	Handle expanded types by smashing them to
+		 *	normal types.
+		 */
 		if (eap_packet->data[0] == PW_EAP_EXPANDED_TYPE) {
 			uint8_t *p, *q;
 
@@ -934,33 +937,39 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 				return EAP_INVALID;
 			}
 
-			if (eap_packet->data[7] >= PW_EAP_MAX_TYPES) {
+			if ((eap_packet->data[7] == 0) ||
+			    (eap_packet->data[7] >= PW_EAP_MAX_TYPES)) {
 				RAUTH("Unsupported Expanded EAP type %u: ignoring the packet", eap_packet->data[7]);
+				return EAP_INVALID;
+			}
+
+			if (eap_packet->data[7] == PW_EAP_NAK) {
+				RAUTH("Unsupported Expanded EAP-NAK: ignoring the packet");
 				return EAP_INVALID;
 			}
 
 			/*
 			 *	Re-write the EAP packet to NOT have the expanded type.
 			 */
-			p = talloc_array(talloc_parent(eap_packet), uint8_t, len - 7);
-			if (!p) return EAP_INVALID;
-
 			q = (uint8_t *) eap_packet;
+			memmove(q + EAP_HEADER_LEN, q + EAP_HEADER_LEN + 7, len - 7 - EAP_HEADER_LEN);
 
-			memcpy(p, q, EAP_HEADER_LEN);
-			p[EAP_HEADER_LEN] = eap_packet->data[7];
-			memcpy(p + EAP_HEADER_LEN + 1, q + EAP_HEADER_LEN + 1 + 3 + 4, len - 7 - EAP_HEADER_LEN - 1);
+			p = talloc_realloc(talloc_parent(eap_packet), eap_packet, uint8_t, len - 7);
+			if (!p) {
+				RAUTH("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
+				return EAP_INVALID;
+			}
+
 			len -= 7;
 			p[2] = (len >> 8) & 0xff;
 			p[3] = len & 0xff;
 
-			talloc_free(eap_packet);
 			*eap_packet_p = (eap_packet_raw_t *) p;
+			RDEBUG("Converting Expanded EAP to normal EAP");
 
 			return EAP_VALID;
 		}
-#endif
-
+		
 		RAUTH("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
 		return EAP_INVALID;
 	}
