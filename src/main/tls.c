@@ -988,6 +988,10 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 #endif
 
+#ifdef SSL_OP_NO_TLSv1
+	{ "disable_tlsv1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1), NULL },
+#endif
+
 #ifdef SSL_OP_NO_TLSv1_1
 	{ "disable_tlsv1_1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_1), NULL },
 #endif
@@ -1039,9 +1043,14 @@ static CONF_PARSER tls_client_config[] = {
 #endif
 #endif
 
+#ifdef SSL_OP_NO_TLSv1
+	{ "disable_tlsv1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1), NULL },
+#endif
+
 #ifdef SSL_OP_NO_TLSv1_1
 	{ "disable_tlsv1_1", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_1), NULL },
 #endif
+
 #ifdef SSL_OP_NO_TLSv1_2
 	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 #endif
@@ -2439,6 +2448,9 @@ post_ca:
 	 *	As of 3.0.5, we always allow TLSv1.1 and TLSv1.2.
 	 *	Though they can be *globally* disabled if necessary.x
 	 */
+#ifdef SSL_OP_NO_TLSv1
+	if (conf->disable_tlsv1) ctx_options |= SSL_OP_NO_TLSv1;
+#endif
 #ifdef SSL_OP_NO_TLSv1_1
 	if (conf->disable_tlsv1_1) ctx_options |= SSL_OP_NO_TLSv1_1;
 #endif

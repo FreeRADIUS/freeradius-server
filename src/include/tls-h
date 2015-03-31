@@ -346,6 +346,7 @@ struct fr_tls_server_conf_t {
 	uint32_t	verify_depth;
 	bool		file_type;
 	bool		include_length;
+	bool		disable_tlsv1;
 	bool		disable_tlsv1_1;
 	bool		disable_tlsv1_2;
 
