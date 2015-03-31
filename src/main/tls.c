@@ -2227,6 +2227,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 	X509_STORE *certstore;
 	int verify_mode = SSL_VERIFY_NONE;
 	int ctx_options = 0;
+	int ctx_tls_versions = 0;
 	int type;
 
 	/*
@@ -2462,13 +2463,23 @@ post_ca:
 	 */
 #ifdef SSL_OP_NO_TLSv1
 	if (conf->disable_tlsv1) ctx_options |= SSL_OP_NO_TLSv1;
+
+	ctx_tls_versions |= SSL_OP_NO_TLSv1;
 #endif
 #ifdef SSL_OP_NO_TLSv1_1
 	if (conf->disable_tlsv1_1) ctx_options |= SSL_OP_NO_TLSv1_1;
+
+	ctx_tls_versions |= SSL_OP_NO_TLSv1_1;
 #endif
 #ifdef SSL_OP_NO_TLSv1_2
 	if (conf->disable_tlsv1_2) ctx_options |= SSL_OP_NO_TLSv1_2;
+
+	ctx_tls_versions |= SSL_OP_NO_TLSv1_2;
 #endif
+
+	if ((ctx_options & ctx_tls_versions) == ctx_tls_versions) {
+		ERROR("You have disabled all available TLS versions.  EAP will not work.");
+	}
 
 #ifdef SSL_OP_NO_TICKET
 	ctx_options |= SSL_OP_NO_TICKET;
