@@ -965,7 +965,8 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 			p[3] = len & 0xff;
 
 			*eap_packet_p = (eap_packet_raw_t *) p;
-			RDEBUG("Converting Expanded EAP to normal EAP");
+			RWARN("Converting Expanded EAP to normal EAP.");
+			RWARN("Unnecessary use of Expanded EAP types is not recommened.");
 
 			return EAP_VALID;
 		}
