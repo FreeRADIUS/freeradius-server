@@ -3673,6 +3673,11 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		}
 
 #ifdef WITH_TCP
+		/*
+		 *	The home server is still alive, but TCP.  We
+		 *	rely on TCP to get the request and reply back.
+		 *	So there's no need to retransmit.
+		 */
 		if (home->proto == IPPROTO_TCP) {
 			DEBUG2("Suppressing duplicate proxied request (tcp) to home server %s port %d proto TCP - ID: %d",
 			       inet_ntop(request->proxy->dst_ipaddr.af,
