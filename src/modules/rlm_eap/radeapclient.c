@@ -363,7 +363,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 		 */
 		if (vp->type == VT_XLAT) {
 			vp->type = VT_DATA;
-			vp->vp_strvalue = vp->value.xlat;
+			vp->vp_strvalue = vp->xlat;
 			vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
 		}
 
