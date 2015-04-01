@@ -1942,7 +1942,6 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
  error:
 	cf_log_info(cs, " } # realm %s", name2);
-	talloc_free(r);
 	return 0;
 }
 
