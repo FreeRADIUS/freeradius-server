@@ -41,11 +41,21 @@ radius.conf
   It processes these by joining each record onto one line, then splitting the
   tab-delimited key-value pairs out.
 
-  The file will need to be edited at least to set the input method. For
+  The file will need to be edited at least to set the input method: for
   experimentation the given input (stdin) may be used. If logstash is running on
   the RADIUS server then 'file' input may be appropriate, otherwise a different
   input such as log-courier or logstash-forwarder may be better to get the data
   over the network to the logstash server.
+
+
+Example usage
+-------------
+
+Install mapping (only needs to be done once):
+$ ./radius-mapping.sh
+
+Feed a detail file in:
+$ /path/to/logstash -f radius.conf < acct-detail
 
 
 See also
