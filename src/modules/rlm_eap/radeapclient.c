@@ -43,7 +43,7 @@ extern int sha1_data_problems;
 
 #define USEC 1000000
 
-static unsigned int parallel = 1;
+static uint32_t parallel = 1;
 static unsigned int retries = 3;
 static float timeout = 5;
 static struct timeval tv_timeout;
@@ -1801,7 +1801,8 @@ int main(int argc, char **argv)
 			break;
 		case 'p':
 			parallel = atoi(optarg);
-			if (parallel <= 0) usage();
+			if (parallel == 0) parallel = 1;
+			if (parallel > 65536) parallel = 65536;
 			break;
 		case 'q':
 			do_output = 0;
