@@ -2915,6 +2915,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 					RDEBUG2("Could not write session VPs to persistent cache: %s",
 						fr_syserror(errno));
 				} else {
+					VALUE_PAIR *prev = NULL;
 					vp_cursor_t cursor;
 					/* generate a dummy user-style entry which is easy to read back */
 					fprintf(vp_file, "# SSL cached session\n");
@@ -2922,9 +2923,23 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 					for (vp = fr_cursor_init(&cursor, &vps);
 					     vp;
 					     vp = fr_cursor_next(&cursor)) {
+						/*
+						 *	Terminate the previous line.
+						 */
+						if (prev) fprintf(vp_file, ",\n");
+
+						/*
+						 *	Write this one.
+						 */
 						vp_prints(buf, sizeof(buf), vp);
 						fprintf(vp_file, "\t%s,\n", buf);
+						prev = vp;
 					}
+
+					/*
+					 *	Terminate the final line.
+					 */
+					fprintf(vp_file, "\n");
 					fclose(vp_file);
 				}
 			}
