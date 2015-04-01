@@ -959,20 +959,20 @@ redo:
 				      &result);
 
 		} else {
-			this = found;
+			uint32_t i;
 
-			do {
+			for (i = 0; i < count; i++) {
 				modcall_child(request, component,
-					      depth + 1, entry, this,
+					      depth + 1, entry, found,
 					      &result);
-				if (this->actions[result] == MOD_ACTION_RETURN) {
+				if (found->actions[result] == MOD_ACTION_RETURN) {
 					priority = -1;
 					break;
 				}
 
-				this = this->next;
-				if (!this) this = g->children;
-			} while (this != found);
+				found = found->next;
+				if (!found) found = g->children;
+			}
 		}
 		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
