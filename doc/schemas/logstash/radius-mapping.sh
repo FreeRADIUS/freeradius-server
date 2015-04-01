@@ -20,8 +20,9 @@ curl -XPUT '127.0.0.1:9200/_template/radius' -d '
               "type":"string",
               "index":"analyzed"
             }
-          },
-          "no_analyze_strings":{
+          }
+        },
+        { "no_analyze_strings":{
             "match":"*",
             "match_mapping_type":"string",
             "mapping":{
