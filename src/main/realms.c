@@ -1368,6 +1368,8 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	myhome.type = type;
 	home = rbtree_finddata(home_servers_byname, &myhome);
 	if (home) {
+		WARN("Please use pools instead of authhost and accthost");
+
 		if (secret && (strcmp(home->secret, secret) != 0)) {
 			cf_log_err_cs(cs, "Inconsistent shared secret for home server \"%s\"", name);
 			return 0;
