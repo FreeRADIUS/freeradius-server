@@ -131,7 +131,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle)
  */
 int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool append)
 {
-	uint32_t i;
+	uint32_t i, tries;
 	uint32_t hash;
 	time_t now = time(NULL);
 	struct stat st;
@@ -269,7 +269,9 @@ do_return:
 	 *	locked it.  So, we close the current file, re-open it,
 	 *	and try again/
 	 */
-	if (rad_lockfd_nonblock(ef->entries[i].fd, 0) < 0) {
+	tries = 0;
+	while ((rad_lockfd_nonblock(ef->entries[i].fd, 0) < 0) &&
+	       (tries < 4)) {
 		if (errno != EAGAIN) {
 			fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
 			goto error;
@@ -282,11 +284,11 @@ do_return:
 					   filename, strerror(errno));
 			goto error;
 		}
+	}
 
-		if (rad_lockfd(ef->entries[i].fd, 0) < 0) {
-			fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
-			goto error;
-		}
+	if (tries >= 4) {
+		fr_strerror_printf("Failed to lock file %s: too many tries", filename);
+		goto error;
 	}
 
 	/*
