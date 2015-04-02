@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <assert.h>
 
 #if HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #include <freeradius-devel/conf.h>
@@ -40,33 +40,37 @@ RCSID("$Id$")
 #include "eap_types.h"
 #include "eap_sim.h"
 
+#ifdef WITH_TLS
+#  include <freeradius-devel/tls.h>
+#endif
+
 extern int sha1_data_problems;
 
 #define USEC 1000000
 
+
+/*
+ *  Global variables.
+ */
+char const *progname = "radeapclient";
+log_lvl_t debug_flag = 0;
+struct main_config_t main_config;
+char const *radiusd_version = "";
+
+
 static uint32_t parallel = 1;
-static unsigned int rate_limit = 0;
+static uint32_t rate_limit = 0;
 static unsigned int retries = 3;
 static float timeout = 5;
 static struct timeval tv_timeout;
 static char const *secret = NULL;
-static int do_output = 1;
-static int do_summary = 0;
+static bool do_output = true;
+static bool do_summary = false;
 static int totalapp = 0;
 static int totaldeny = 0;
 static char filesecret[256];
 static char const *radius_dir = NULL;
-char const *progname = "radeapclient";
-/* fr_randctx randctx; */
 
-struct main_config_t main_config;
-char const *radiusd_version = "";
-
-#ifdef WITH_TLS
-#include <freeradius-devel/tls.h>
-#endif
-
-log_lvl_t debug_flag = 0;
 
 //TODO: move structures to a header file.
 
@@ -164,7 +168,7 @@ static void rc_unmap_eap_methods(RADIUS_PACKET *rep);
 static int rc_map_eapsim_types(RADIUS_PACKET *r);
 static int rc_unmap_eapsim_types(RADIUS_PACKET *r);
 
-static void rc_get_port(PW_CODE type, uint16_t *port);
+static void rc_get_radius_port(PW_CODE type, uint16_t *port);
 static void rc_evprep_packet_timeout(rc_transaction_t *trans);
 static void rc_deallocate_id(rc_transaction_t *trans);
 
@@ -205,10 +209,50 @@ static const FR_NAME_NUMBER rc_request_types[] = {
 	{ NULL, 0}
 };
 
+
+/* This is not called, but is required by libfreeradius-eap.so */
 int rad_virtual_server(REQUEST UNUSED *request)
 {
-  /*We're not the server so we cannot do this*/
+  /* We're not the server so we cannot do this */
   abort();
+}
+
+/** Set the global radius config directory.
+ *  
+ *  (copied from main/mainconfig.c)
+ */
+void set_radius_dir(TALLOC_CTX *ctx, char const *path)
+{
+	if (radius_dir) {
+		char *p;
+
+		memcpy(&p, &radius_dir, sizeof(p));
+		talloc_free(p);
+		radius_dir = NULL;
+	}
+	if (path) radius_dir = talloc_strdup(ctx, path);
+}
+
+
+
+/** Print a "hexstring" buffer (with optional separator each N octets)
+ */
+static char *rc_print_hexstr(char *pch_out, const uint8_t *in, int size, int separ_i, char sep)
+{
+	int i, j = 0;
+
+	for (i = 0; i < size; i++) {
+		if ((separ_i) && (j == separ_i)) {
+			*pch_out = sep;
+			pch_out += 1;
+			j = 0;
+		}
+		j++;
+		sprintf(pch_out, "%02x", in[i]);
+		pch_out += 2;
+	}
+	*pch_out = '\0';
+	return pch_out;
 }
 
 /** Convert a float to struct timeval.
@@ -511,7 +555,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 
 	/* Automatically set the dst port (if one wasn't already set). */
 	if (packet->dst_port == 0) {
-		rc_get_port(packet->code, &packet->dst_port);
+		rc_get_radius_port(packet->code, &packet->dst_port);
 		if (packet->dst_port == 0) {
 			DEBUG("Can't determine destination port for input entry %u, ignored.", trans->input_vps->num);
 			return 0;
@@ -618,17 +662,6 @@ static void rc_finish_transaction(rc_transaction_t *trans)
 }
 
 
-static uint16_t getport(char const *name)
-{
-	struct	servent		*svp;
-
-	svp = getservbyname(name, "udp");
-	if (!svp) return 0;
-
-	return ntohs(svp->s_port);
-}
-
-
 static void rc_cleanresp(RADIUS_PACKET *resp)
 {
 	VALUE_PAIR *vpnext, *vp, **last;
@@ -658,10 +691,9 @@ static void rc_cleanresp(RADIUS_PACKET *resp)
 	}
 }
 
-/*
- * we got an EAP-Request/Sim/Start message in a legal state.
+/** We got an EAP-Request/Sim/Start message in a legal state.
  *
- * pick a supported version, put it into the reply, and insert a nonce.
+ *  pick a supported version, put it into the reply, and insert a nonce.
  */
 static int rc_process_eap_start(rc_eap_context_t *eap_context,
                                 RADIUS_PACKET *req, RADIUS_PACKET *rep)
@@ -739,8 +771,8 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	permanentidreq_vp = pairfind(req->vps, PW_EAP_SIM_PERMANENT_ID_REQ, 0, TAG_ANY);
 
 	if (!fullauthidreq_vp ||
-	   anyidreq_vp != NULL ||
-	   permanentidreq_vp != NULL) {
+	    anyidreq_vp != NULL ||
+	    permanentidreq_vp != NULL) {
 		ERROR("start message has %sanyidreq, %sfullauthid and %spermanentid. Illegal combination.",
 			(anyidreq_vp != NULL ? "a ": "no "),
 			(fullauthidreq_vp != NULL ? "a ": "no "),
@@ -827,30 +859,28 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	return 1;
 }
 
-/*
- * we got an EAP-Request/Sim/Challenge message in a legal state.
+/** We got an EAP-Request/Sim/Challenge message in a legal state.
  *
- * use the RAND challenge to produce the SRES result, and then
- * use that to generate a new MAC.
+ *  use the RAND challenge to produce the SRES result, and then
+ *  use that to generate a new MAC.
  *
- * for the moment, we ignore the RANDs, then just plug in the SRES
- * values.
- *
+ *  for the moment, we ignore the RANDs, then just plug in the SRES
+ *  values.
  */
 static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
                                     RADIUS_PACKET *req, RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *newvp;
 	VALUE_PAIR *mac, *randvp;
-	VALUE_PAIR *sres1,*sres2,*sres3;
+	VALUE_PAIR *sres1, *sres2, *sres3;
 	VALUE_PAIR *Kc1, *Kc2, *Kc3;
-	uint8_t calcmac[20];
+	uint8_t calcmac[EAPSIM_CALCMAC_SIZE];
 
 	/* look for the AT_MAC and the challenge data */
-	mac   = pairfind(req->vps, PW_EAP_SIM_MAC, 0, TAG_ANY);
-	randvp= pairfind(req->vps, PW_EAP_SIM_RAND, 0, TAG_ANY);
+	mac = pairfind(req->vps, PW_EAP_SIM_MAC, 0, TAG_ANY);
+	randvp = pairfind(req->vps, PW_EAP_SIM_RAND, 0, TAG_ANY);
 	if (!mac || !randvp) {
-		ERROR("challenge message needs to contain RAND and MAC");
+		ERROR("Challenge message needs to contain RAND and MAC");
 		return 0;
 	}
 
@@ -859,56 +889,42 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	 * to this challenge.
 	 */
 	{
-	  VALUE_PAIR *randcfgvp[3];
-	  uint8_t const *randcfg[3];
+		VALUE_PAIR *randcfgvp[3];
+		uint8_t const *randcfg[3];
 
-	  randcfg[0] = &randvp->vp_octets[2];
-	  randcfg[1] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE];
-	  randcfg[2] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE*2];
+		randcfg[0] = &randvp->vp_octets[2];
+		randcfg[1] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE];
+		randcfg[2] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE*2];
 
-	  randcfgvp[0] = pairfind(rep->vps, PW_EAP_SIM_RAND1, 0, TAG_ANY);
-	  randcfgvp[1] = pairfind(rep->vps, PW_EAP_SIM_RAND2, 0, TAG_ANY);
-	  randcfgvp[2] = pairfind(rep->vps, PW_EAP_SIM_RAND3, 0, TAG_ANY);
+		randcfgvp[0] = pairfind(rep->vps, PW_EAP_SIM_RAND1, 0, TAG_ANY);
+		randcfgvp[1] = pairfind(rep->vps, PW_EAP_SIM_RAND2, 0, TAG_ANY);
+		randcfgvp[2] = pairfind(rep->vps, PW_EAP_SIM_RAND3, 0, TAG_ANY);
 
-	  if (!randcfgvp[0] ||
-	     !randcfgvp[1] ||
-	     !randcfgvp[2]) {
-	    ERROR("needs to have rand1, 2 and 3 set.");
-	    return 0;
-	  }
-
-	  if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
-	     memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
-	     memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE)!=0) {
-	    int rnum,i,j;
-
-	    ERROR("one of rand 1,2,3 didn't match");
-	    for (rnum = 0; rnum < 3; rnum++) {
-	      ERROR("received   rand %d: ", rnum);
-	      j=0;
-	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-		if (j==4) {
-		  DEBUG("_");
-		  j=0;
+		if (!randcfgvp[0] ||
+		    !randcfgvp[1] ||
+		    !randcfgvp[2]) {
+			ERROR("Need to have RAND 1, 2 and 3 set");
+			return 0;
 		}
-		j++;
 
-		ERROR("%02x", randcfg[rnum][i]);
-	      }
-	      ERROR("configured rand %d: ", rnum);
-	      j=0;
-	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-		if (j==4) {
-		  DEBUG("_");
-		  j=0;
+		if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE) != 0 ||
+		    memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE) != 0 ||
+		    memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE) != 0)
+		{
+			int rnum;
+
+			ERROR("one of RAND 1, 2, or 3 didn't match");
+
+			char ch_rand[EAPSIM_RAND_SIZE*2 +1 +3] = ""; // +3 for separators.
+			for (rnum = 0; rnum < 3; rnum++) {
+				rc_print_hexstr(ch_rand, randcfg[rnum], EAPSIM_RAND_SIZE, 4, '_');
+				ERROR("Received   rand %d: %s", rnum, ch_rand);
+
+				rc_print_hexstr(ch_rand, randcfgvp[rnum]->vp_octets, EAPSIM_RAND_SIZE, 4, '_');
+				ERROR("Configured rand %d: %s", rnum, ch_rand);
+			}
+			return 0;
 		}
-		j++;
-
-		ERROR("%02x", randcfgvp[rnum]->vp_octets[i]);
-	      }
-	    }
-	    return 0;
-	  }
 	}
 
 	/*
@@ -923,9 +939,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	sres3 = pairfind(rep->vps, PW_EAP_SIM_SRES3, 0, TAG_ANY);
 
 	if (!sres1 ||
-	   !sres2 ||
-	   !sres3) {
-		ERROR("needs to have sres1, 2 and 3 set.");
+	    !sres2 ||
+	    !sres3) {
+		ERROR("Need to have SRES 1, 2, and 3 set");
 		return 0;
 	}
 	memcpy(eap_context->eap.sim.keys.sres[0], sres1->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[0]));
@@ -937,9 +953,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	Kc3 = pairfind(rep->vps, PW_EAP_SIM_KC3, 0, TAG_ANY);
 
 	if (!Kc1 ||
-	   !Kc2 ||
-	   !Kc3) {
-		ERROR("needs to have Kc1, 2 and 3 set.");
+	    !Kc2 ||
+	    !Kc3) {
+		ERROR("Need to have Kc 1, 2, and 3 set");
 		return 0;
 	}
 	memcpy(eap_context->eap.sim.keys.Kc[0], Kc1->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[0]));
@@ -950,28 +966,22 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	eapsim_calculate_keys(&eap_context->eap.sim.keys);
 
 	if (debug_flag) {
-	  eapsim_dump_mk(&eap_context->eap.sim.keys);
+		eapsim_dump_mk(&eap_context->eap.sim.keys);
 	}
 
 	/* verify the MAC, now that we have all the keys. */
-	if (eapsim_checkmac(NULL, req->vps, eap_context->eap.sim.keys.K_aut,
-			   eap_context->eap.sim.keys.nonce_mt, sizeof(eap_context->eap.sim.keys.nonce_mt),
-			   calcmac)) {
-		DEBUG("MAC check succeed");
-	} else {
-		int i, j;
-		j=0;
-		DEBUG("calculated MAC (");
-		for (i = 0; i < 20; i++) {
-			if (j==4) {
-				printf("_");
-				j=0;
-			}
-			j++;
+	int rcode_mac = eapsim_checkmac(NULL, req->vps, eap_context->eap.sim.keys.K_aut,
+	                                eap_context->eap.sim.keys.nonce_mt, sizeof(eap_context->eap.sim.keys.nonce_mt),
+	                                calcmac);
 
-			DEBUG("%02x", calcmac[i]);
-		}
-		DEBUG("did not match");
+	char ch_calc_mac[EAPSIM_CALCMAC_SIZE*2 +1 +4] = ""; // +4 for separators.
+	rc_print_hexstr(ch_calc_mac, calcmac, EAPSIM_CALCMAC_SIZE, 4, '_');
+
+	if (rcode_mac) {
+		DEBUG2("MAC check succeeded (%s)", ch_calc_mac);
+	}
+	else {
+		ERROR("Challenge MAC check failed. Calculated MAC (%s) did not match", ch_calc_mac);
 		return 0;
 	}
 
@@ -1008,19 +1018,18 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	return 1;
 }
 
-/*
- * this code runs the EAP-SIM client state machine.
- * the *request* is from the server.
- * the *reponse* is to the server.
- *
+/** This runs the EAP-SIM client state machine.
+ *  the *request* is from the server.
+ *  the *reponse* is to the server.
  */
 static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
-                           RADIUS_PACKET *req, RADIUS_PACKET *resp)
+                              RADIUS_PACKET *req, RADIUS_PACKET *resp)
 {
 	enum eapsim_clientstates state, newstate;
 	enum eapsim_subtype subtype;
 	VALUE_PAIR *vp, *statevp, *radstate, *eapid;
 	char statenamebuf[32], subtypenamebuf[32];
+	int rcode_eap;
 
 	if ((radstate = paircopy_by_num(NULL, req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
 	{
@@ -1063,16 +1072,16 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	case EAPSIM_CLIENT_INIT:
 		switch (subtype) {
 		case EAPSIM_START:
-			newstate = rc_process_eap_start(eap_context, req, resp);
+			rcode_eap = rc_process_eap_start(eap_context, req, resp);
 			break;
 
 		case EAPSIM_CHALLENGE:
 		case EAPSIM_NOTIFICATION:
 		case EAPSIM_REAUTH:
 		default:
-			ERROR("sim in state %s message %s is illegal. Reply dropped.",
-				sim_state2name(state, statenamebuf, sizeof(statenamebuf)),
-				sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)));
+			ERROR("sim in state '%s' (%d), message '%s' (%d) is illegal. Reply dropped.", 
+				sim_state2name(state, statenamebuf, sizeof(statenamebuf)), state,
+				sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)), subtype);
 			/* invalid state, drop message */
 			return 0;
 		}
@@ -1082,11 +1091,11 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 		switch (subtype) {
 		case EAPSIM_START:
 			/* NOT SURE ABOUT THIS ONE, retransmit, I guess */
-			newstate = rc_process_eap_start(eap_context, req, resp);
+			rcode_eap = rc_process_eap_start(eap_context, req, resp);
 			break;
 
 		case EAPSIM_CHALLENGE:
-			newstate = rc_process_eap_challenge(eap_context, req, resp);
+			rcode_eap = rc_process_eap_challenge(eap_context, req, resp);
 			break;
 
 		default:
@@ -1098,17 +1107,23 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 		}
 		break;
 
-
 	default:
-		ERROR("sim in illegal state %s",
-			sim_state2name(state, statenamebuf, sizeof(statenamebuf)));
+		ERROR("sim in illegal state '%s' (%d)", 
+			sim_state2name(state, statenamebuf, sizeof(statenamebuf)), state);
 		return 0;
 	}
+
+	/* process_eap_* functions return 0 if fail, 1 if success. */
+	if (!rcode_eap) {
+		ERROR("EAP process failed, aborting EAP-SIM transaction.");
+		return 0;
+	}
+	newstate = EAPSIM_CLIENT_START; // (1)
 
 	/* copy the eap state object in */
 	pairreplace(&(resp->vps), eapid);
 
-	/* update stete info, and send new packet */
+	/* update state info, and send new packet */
 	rc_map_eapsim_types(resp);
 
 	/* copy the radius state object in */
@@ -1690,35 +1705,33 @@ static void rc_main_loop(void)
 	INFO("Main loop: done.");
 }
 
-
-void set_radius_dir(TALLOC_CTX *ctx, char const *path)
+/** Get port number for a given service name.
+ */
+static uint16_t rc_getport(char const *name)
 {
-	if (radius_dir) {
-		char *p;
+	struct	servent		*svp;
 
-		memcpy(&p, &radius_dir, sizeof(p));
-		talloc_free(p);
-		radius_dir = NULL;
-	}
-	if (path) radius_dir = talloc_strdup(ctx, path);
+	svp = getservbyname(name, "udp");
+	if (!svp) return 0;
+
+	return ntohs(svp->s_port);
 }
-
 
 /** Set a port from the request type if we don't already have one.
  */
-static void rc_get_port(PW_CODE type, uint16_t *port)
+static void rc_get_radius_port(PW_CODE type, uint16_t *port)
 {
 	switch (type) {
 	default:
 	case PW_CODE_ACCESS_REQUEST:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_STATUS_SERVER:
-		if (*port == 0) *port = getport("radius");
+		if (*port == 0) *port = rc_getport("radius");
 		if (*port == 0) *port = PW_AUTH_UDP_PORT;
 		return;
 
 	case PW_CODE_ACCOUNTING_REQUEST:
-		if (*port == 0) *port = getport("radacct");
+		if (*port == 0) *port = rc_getport("radacct");
 		if (*port == 0) *port = PW_ACCT_UDP_PORT;
 		return;
 
@@ -1741,16 +1754,16 @@ static void rc_get_port(PW_CODE type, uint16_t *port)
 static PW_CODE rc_get_code(uint16_t port)
 {
 	/*
-	 *	getport returns 0 if the service doesn't exist
+	 *	rc_getport returns 0 if the service doesn't exist
 	 *	so we need to return early, to avoid incorrect
 	 *	codes.
 	 */
 	if (port == 0) return PW_CODE_UNDEFINED;
 
-	if ((port == getport("radius")) || (port == PW_AUTH_UDP_PORT) || (port == PW_AUTH_UDP_PORT_ALT)) {
+	if ((port == rc_getport("radius")) || (port == PW_AUTH_UDP_PORT) || (port == PW_AUTH_UDP_PORT_ALT)) {
 		return PW_CODE_ACCESS_REQUEST;
 	}
-	if ((port == getport("radacct")) || (port == PW_ACCT_UDP_PORT) || (port == PW_ACCT_UDP_PORT_ALT)) {
+	if ((port == rc_getport("radacct")) || (port == PW_ACCT_UDP_PORT) || (port == PW_ACCT_UDP_PORT_ALT)) {
 		return PW_CODE_ACCOUNTING_REQUEST;
 	}
 	if (port == PW_COA_UDP_PORT) return PW_CODE_COA_REQUEST;
@@ -1793,7 +1806,7 @@ static void rc_resolve_hostname(char *server_arg)
 		}
 
 		if (ip_hton(&server_ipaddr, force_af, hostname, false) < 0) {
-			ERROR("%s: Failed to find IP address for host %s: %s", progname, hostname, strerror(errno));
+			ERROR("Failed to find IP address for host %s: %s", hostname, strerror(errno));
 			exit(1);
 		}
 		server_addr_init = true;
@@ -1806,8 +1819,10 @@ static void rc_resolve_hostname(char *server_arg)
 		 */
 		if (packet_code == PW_CODE_UNDEFINED) packet_code = rc_get_code(server_port);
 	}
-	rc_get_port(packet_code, &server_port);
+	rc_get_radius_port(packet_code, &server_port);
 }
+
+
 
 int main(int argc, char **argv)
 {
@@ -1823,8 +1838,6 @@ int main(int argc, char **argv)
 		.file = NULL,
 		.debug_file = NULL,
 	};
-
-	radlog_init(&radclient_log, false);
 
 	/*
 	 *	We probably don't want to free the talloc autofree context
@@ -1866,7 +1879,7 @@ int main(int argc, char **argv)
 			if (parallel > 65536) parallel = 65536;
 			break;
 		case 'q':
-			do_output = 0;
+			do_output = false;
 			break;
 		case 'x':
 			debug_flag++;
@@ -1875,9 +1888,9 @@ int main(int argc, char **argv)
 
 		case 'X':
 #if 0
-		  sha1_data_problems = 1; /* for debugging only */
+			sha1_data_problems = 1; /* for debugging only */
 #endif
-		  break;
+			break;
 
 		case 'r':
 			if (!isdigit((int) *optarg))
@@ -1885,7 +1898,7 @@ int main(int argc, char **argv)
 			retries = atoi(optarg);
 			break;
 		case 's':
-			do_summary = 1;
+			do_summary = true;
 			break;
 		case 't':
 			if (!isdigit((int) *optarg))
@@ -1897,33 +1910,32 @@ int main(int argc, char **argv)
 			exit(0);
 
 		case 'S':
-		       fp = fopen(optarg, "r");
-		       if (!fp) {
-			       ERROR("Error opening %s: %s",
+			fp = fopen(optarg, "r");
+			if (!fp) {
+				ERROR("Error opening %s: %s", optarg, fr_syserror(errno));
+				exit(1);
+			}
+			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
+				ERROR("Error reading %s: %s",
 				       optarg, fr_syserror(errno));
-			       exit(1);
-		       }
-		       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
-			       ERROR("Error reading %s: %s",
-				       optarg, fr_syserror(errno));
-			       exit(1);
-		       }
-		       fclose(fp);
+				exit(1);
+			}
+			fclose(fp);
 
-		       /* truncate newline */
-		       p = filesecret + strlen(filesecret) - 1;
-		       while ((p >= filesecret) &&
-			      (*p < ' ')) {
-			       *p = '\0';
-			       --p;
-		       }
+			/* truncate newline */
+			p = filesecret + strlen(filesecret) - 1;
+			while ((p >= filesecret) &&
+			       (*p < ' ')) {
+					*p = '\0';
+					--p;
+			}
 
-		       if (strlen(filesecret) < 2) {
-			       ERROR("Secret in %s is too short", optarg);
-			       exit(1);
-		       }
-		       secret = filesecret;
-		       break;
+			if (strlen(filesecret) < 2) {
+				ERROR("Secret in %s is too short", optarg);
+				exit(1);
+			}
+			secret = filesecret;
+			break;
 		case 'h':
 		default:
 			usage();
@@ -1936,6 +1948,15 @@ int main(int argc, char **argv)
 	    ((!secret) && (argc < 4))) {
 		usage();
 	}
+
+	/* Initialize logging */
+	if (!do_output) {
+		debug_flag = 0;
+		fr_debug_flag = 0;
+		radclient_log.dst = L_DST_NULL;
+		radclient_log.fd = 0;
+	}
+	radlog_init(&radclient_log, false);
 
 	/* Prepare the timeout. */
 	rc_float_to_timeval(&tv_timeout, timeout);
@@ -2034,6 +2055,8 @@ int main(int argc, char **argv)
 	return 0;
 }
 
+
+
 /** Given a radius request with some attributes in the EAP range, build
  *  them all into a single EAP-Message body.
  *
@@ -2112,9 +2135,8 @@ static int rc_map_eap_methods(RADIUS_PACKET *req)
 	return eap_method;
 }
 
-/*
- * given a radius request with an EAP-Message body, decode it specific
- * attributes.
+/** Given a radius request with an EAP-Message body, decode its specific
+ *  attributes.
  */
 static void rc_unmap_eap_methods(RADIUS_PACKET *rep)
 {
