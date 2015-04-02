@@ -32,12 +32,14 @@ RCSID("$Id$")
 typedef struct rlm_eap_mschapv2_t {
 	bool with_ntdomain_hack;
 	bool send_error;
+	char const *identity;
 } rlm_eap_mschapv2_t;
 
 static CONF_PARSER module_config[] = {
 	{ "with_ntdomain_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, with_ntdomain_hack), "no" },
 
 	{ "send_error", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, send_error), "no" },
+	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_mschapv2_t, identity), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -75,7 +77,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 /*
  *	Compose the response.
  */
-static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
+static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler, VALUE_PAIR *reply)
 {
 	uint8_t *ptr;
 	int16_t length;
@@ -103,10 +105,17 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 *  |                             Challenge...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |                             Name...
+		 *  |                             Server Name...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
-		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(handler->identity);
+		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN;
+
+		if (inst && inst->identity) {
+			length += strlen(inst->identity);
+		} else {
+			length += strlen(handler->identity);
+		}
+
 		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
@@ -131,7 +140,12 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *	Copy the Challenge, success, or error over.
 		 */
 		memcpy(ptr, reply->vp_octets, reply->vp_length);
-		memcpy((ptr + reply->vp_length), handler->identity, strlen(handler->identity));
+
+		if (inst && inst->identity) {
+			memcpy((ptr + reply->vp_length), inst->identity, strlen(inst->identity));
+		} else {
+			memcpy((ptr + reply->vp_length), handler->identity, strlen(handler->identity));
+		}
 		break;
 
 	case PW_MSCHAP2_SUCCESS:
@@ -200,7 +214,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
+static int mod_session_init(void *instance, eap_handler_t *handler)
 {
 	int		i;
 	VALUE_PAIR	*challenge;
@@ -208,6 +222,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	REQUEST		*request = handler->request;
 	uint8_t 	*p;
 	bool		created_challenge = false;
+	rlm_eap_mschapv2_t *inst = instance;
 
 	challenge = pairfind(request->config, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
 	if (challenge && (challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
@@ -250,7 +265,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmschapv2_compose(handler, challenge);
+	eapmschapv2_compose(inst, handler, challenge);
 	if (created_challenge) pairfree(&challenge);
 
 #ifdef WITH_PROXY
@@ -324,7 +339,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	 *	Done doing EAP proxy stuff.
 	 */
 	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-	eapmschapv2_compose(handler, response);
+	eapmschapv2_compose(NULL, handler, response);
 	data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
 	/*
@@ -708,7 +723,7 @@ packet_ready:
 	 *	Compose the response (whatever it is),
 	 *	and return it to the over-lying EAP module.
 	 */
-	eapmschapv2_compose(handler, response);
+	eapmschapv2_compose(inst, handler, response);
 	pairfree(&response);
 
 	return 1;

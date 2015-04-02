@@ -798,5 +798,11 @@ eap {
 		#  working.
 		#
 #		send_error = no
+
+		#  Server identifier to send back in the challenge.
+		#  This should generally be the host name of the
+		#  RADIUS server.  Or, some information to uniquely
+		#  identify it.
+#		identity = "FreeRADIUS"
 	}
 }
