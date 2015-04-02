@@ -55,7 +55,12 @@ extern int sha1_data_problems;
 char const *progname = "radeapclient";
 log_lvl_t debug_flag = 0;
 struct main_config_t main_config;
-char const *radiusd_version = "";
+
+char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
+#ifdef RADIUSD_VERSION_COMMIT
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
+#endif
+", built on " __DATE__ " at " __TIME__;
 
 
 static uint32_t parallel = 1;
@@ -126,6 +131,7 @@ struct rc_transaction {
 
 	uint32_t num_packet;	//!< number of packets sent for this transaction.
 
+	struct timeval timestamp;	//!< when the transaction is started.
 	RADIUS_PACKET *packet;
 	RADIUS_PACKET *reply;
 
@@ -141,16 +147,36 @@ struct rc_transaction {
 	char const	*name;	//!< Test name (as specified in the request).
 };
 
-
-/** Structures which holds statistics information
+ 
+/** Define workflow types (transactions for which we got a response)
  */
-typedef struct rc_rtt_stats {
-	uint32_t       count;
+typedef enum {
+	RC_WF_ALL = 0,
+	RC_WF_ACCESS_REQUEST_ACCEPT,
+	RC_WF_EAP_REQUEST_SUCCESS,
+	RC_WF_MAX
+} rc_wf_type_t;
+
+#define LG_PAD_STATS    20
+#define LG_PAD_WF_TYPES 25
+
+static char const *rc_wf_types[RC_WF_MAX] = {
+	"(All)",
+	"Access-Request - Accept",
+	"EAP Request - Success"
+};
+
+/** Structure which holds per-workflow statistics information
+ */
+typedef struct rc_wf_stats {
+	uint32_t       num;
 	struct timeval tv_rtt_cumul;
 	struct timeval tv_rtt_min;
 	struct timeval tv_rtt_max;
-} rc_rtt_stats_t;
+} rc_wf_stats_t;
 
+/** Structure which holds global statistics information
+ */
 typedef struct rc_stats {
 	uint32_t nb_started;			//!< number of transactions started
 	uint32_t nb_eap;				//!< number of EAP transactions started
@@ -161,7 +187,7 @@ typedef struct rc_stats {
 	uint32_t nb_packets_retries;	//!< number of packets retransmissions
 	uint32_t nb_packets_recv;		//!< number of packets received
 
-	rc_rtt_stats_t rtt;
+	rc_wf_stats_t wf_stats[RC_WF_MAX];
 
 } rc_stats_t;
 
@@ -198,6 +224,7 @@ static int rc_unmap_eapsim_types(RADIUS_PACKET *r);
 static void rc_get_radius_port(PW_CODE type, uint16_t *port);
 static void rc_evprep_packet_timeout(rc_transaction_t *trans);
 static void rc_deallocate_id(rc_transaction_t *trans);
+static void rc_wf_stat_update(rc_transaction_t *trans, rc_wf_type_t wf_type);
 
 
 static void NEVER_RETURNS usage(void)
@@ -215,7 +242,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stdout, "  -p <num>               Send 'num' packets in parallel.\n");
 	fprintf(stdout, "  -q                     Do not print anything out.\n");
 	fprintf(stdout, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
-	fprintf(stdout, "  -s                     Print out summary information of auth results.\n");
+	fprintf(stdout, "  -s                     Print out summary statistics information.\n");
 	fprintf(stdout, "  -S <file>              read secret from file, not command line.\n");
 	fprintf(stdout, "  -t <timeout>           Wait 'timeout' seconds before retrying (may be a floating point number).\n");
 	fprintf(stdout, "  -v                     Show program version information.\n");
@@ -664,6 +691,8 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 		talloc_free(trans);
 		return NULL;
 	}
+
+	gettimeofday(&trans->timestamp, NULL);
 
 	/* Update transactions counters. */
 	num_started ++;
@@ -1563,6 +1592,7 @@ eap_done:
 		goto packet_done;
 	}
 	STATS_INC(nb_success);
+	rc_wf_stat_update(trans, RC_WF_EAP_REQUEST_SUCCESS);
 
 	goto packet_done;
 
@@ -1572,6 +1602,9 @@ packet_done:
 		/* Statistics for non-EAP transactions */
 		switch (trans->reply->code) {
 			case PW_CODE_ACCESS_ACCEPT:
+				STATS_INC(nb_success);
+				rc_wf_stat_update(trans, RC_WF_ACCESS_REQUEST_ACCEPT);
+				break;
 			case PW_CODE_ACCOUNTING_RESPONSE:
 				STATS_INC(nb_success);
 				break;
@@ -1869,31 +1902,94 @@ static void rc_resolve_hostname(char *server_arg)
 	rc_get_radius_port(packet_code, &server_port);
 }
 
+/** Update per-workflow statistics (number of transactions, rtt min, max, and cumulated).
+ */
+static void rc_wf_stat_update(rc_transaction_t *trans, rc_wf_type_t wf_type)
+{
+	if (!trans || !trans->packet || !trans->reply) return;
+	if (!wf_type || wf_type >= RC_WF_MAX) return;
+
+	struct timeval tv_rtt;
+	timersub(&trans->reply->timestamp, &trans->timestamp, &tv_rtt);
+	/* The reference timestamp is that of the transaction, because several packets can be involved, e.g. EAP. */
+
+	int i;
+	for (i=0; i<2; i++) { /* update the specified workflow type, and also "All" (0) */
+		rc_wf_stats_t *my_stats = &stats.wf_stats[i*wf_type];
+
+		if ((0 == my_stats->num) || (timercmp(&tv_rtt, &my_stats->tv_rtt_min, <))) {
+			my_stats->tv_rtt_min.tv_sec = tv_rtt.tv_sec;
+			my_stats->tv_rtt_min.tv_usec = tv_rtt.tv_usec;
+		}
+		if ((0 == my_stats->num) || (timercmp(&tv_rtt, &my_stats->tv_rtt_max, >=))) {
+			my_stats->tv_rtt_max.tv_sec = tv_rtt.tv_sec;
+			my_stats->tv_rtt_max.tv_usec = tv_rtt.tv_usec;
+		}
+
+		timeradd(&my_stats->tv_rtt_cumul, &tv_rtt, &my_stats->tv_rtt_cumul);
+		my_stats->num ++;
+	}
+}
+
+/** Print per-workflow detailed statistics.
+ */
+static void rc_print_wf_stats(FILE *fp)
+{
+	/* ensure there is something to print */
+	int i;
+	int i_start = 0;
+	int num_stat = 0;
+	for (i=1; i<RC_WF_MAX; i++) {
+		if (stats.wf_stats[i].num > 0) num_stat ++;
+	}
+	if (num_stat == 0) return;
+
+	fprintf(fp, "*** Statistics (per-workflow):\n");
+
+	if (num_stat == 1) i_start = 1; /* only print "All" if we have more than one (otherwise it's redundant). */
+
+	for (i=i_start; i<RC_WF_MAX; i++) {
+		rc_wf_stats_t *my_stats = &stats.wf_stats[i];
+
+		if (my_stats->num == 0) continue;
+
+		float avg_rtt = 1000 * rc_timeval_to_float(&my_stats->tv_rtt_cumul) / my_stats->num;
+		float min_rtt = 1000 * rc_timeval_to_float(&my_stats->tv_rtt_min);
+		float max_rtt = 1000 * rc_timeval_to_float(&my_stats->tv_rtt_max);
+
+		fprintf(fp, "\t%-*.*s:  nb: %d, RTT (ms): [avg: %.3f, min: %.3f, max: %.3f]\n",
+			LG_PAD_WF_TYPES, LG_PAD_WF_TYPES, rc_wf_types[i], my_stats->num, avg_rtt, min_rtt, max_rtt);
+	}
+}
+
 /** Do summary / statistics (if asked for).
  */
-#define STATS_LG_PAD 20
 static void rc_summary(void)
 {
-	if (!do_output || !do_summary) return;
+	if (!do_summary) return;
 
-	printf("*** Statistics summary:\n");
+	FILE *fp = stdout;
+
+	fprintf(fp, "*** Statistics summary:\n");
 
 	if (stats.nb_started == stats.nb_eap) {
 		/* Only EAP. */
-		printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "EAP transactions", stats.nb_started);
+		fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "EAP transactions", stats.nb_started);
 	} else if (stats.nb_eap == 0) {
 		/* No EAP. Label those as "Requests". */
-		printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "Requests", stats.nb_started);
+		fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Requests", stats.nb_started);
 	} else {
 		/* Bit of both. */
-		printf("\t%-*.*s: %u (with EAP: %u)\n", STATS_LG_PAD, STATS_LG_PAD, "Transactions", stats.nb_started, stats.nb_eap);
+		fprintf(fp, "\t%-*.*s: %u (with EAP: %u)\n", LG_PAD_STATS, LG_PAD_STATS, "Transactions", stats.nb_started, stats.nb_eap);
 	}
 
-	printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "Success", stats.nb_success);
-	printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "Fail", stats.nb_fail);
-	printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "Lost", stats.nb_lost);
-	printf("\t%-*.*s: %u (retries: %u)\n", STATS_LG_PAD, STATS_LG_PAD, "Packets sent", stats.nb_packets_sent, stats.nb_packets_retries);
-	printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "Packets received", stats.nb_packets_recv);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Success", stats.nb_success);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Fail", stats.nb_fail);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Lost", stats.nb_lost);
+	fprintf(fp, "\t%-*.*s: %u (retries: %u)\n", LG_PAD_STATS, LG_PAD_STATS, "Packets sent", stats.nb_packets_sent, stats.nb_packets_retries);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Packets received", stats.nb_packets_recv);
+	
+	rc_print_wf_stats(fp);
 }
 
 
@@ -1980,9 +2076,8 @@ int main(int argc, char **argv)
 			timeout = atof(optarg);
 			break;
 		case 'v':
-			printf("$Id$ built on "__DATE__ "at "__TIME__ "");
-			exit(0);
-
+			printf("%s: %s\n", progname, radiusd_version);
+			exit(EXIT_SUCCESS);
 		case 'S':
 			fp = fopen(optarg, "r");
 			if (!fp) {
@@ -2093,7 +2188,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Read input data vp(s) from the file (or stdin).
 	 */
-	INFO("Loading input data...");
+	DEBUG("Loading input data...");
 	if (!rc_load_input(autofree, filename, &rc_vps_list_in, 0)
 	    || rc_vps_list_in.size == 0) {
 		ERROR("No valid input. Nothing to send.");
