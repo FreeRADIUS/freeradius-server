@@ -75,6 +75,10 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+	if (!inst->identity) {
+		inst->identity = talloc_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
+	}
+
 	return 0;
 }
 
@@ -113,15 +117,9 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler,
 		 *  |                             Server Name...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
-		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN;
-
-		if (inst && inst->identity) {
-			length += strlen(inst->identity);
-		} else {
-			length += strlen(handler->identity);
-		}
-
+		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(inst->identity);
 		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
+
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
@@ -146,11 +144,7 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler,
 		 */
 		memcpy(ptr, reply->vp_octets, reply->vp_length);
 
-		if (inst && inst->identity) {
-			memcpy((ptr + reply->vp_length), inst->identity, strlen(inst->identity));
-		} else {
-			memcpy((ptr + reply->vp_length), handler->identity, strlen(handler->identity));
-		}
+		memcpy((ptr + reply->vp_length), inst->identity, strlen(inst->identity));
 		break;
 
 	case PW_MSCHAP2_SUCCESS:
