@@ -70,6 +70,11 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+	if (inst->identity && (strlen(inst->identity) > 255)) {
+		cf_log_err_cs(cs, "identity is too long");
+		return -1;
+	}
+
 	return 0;
 }
 
