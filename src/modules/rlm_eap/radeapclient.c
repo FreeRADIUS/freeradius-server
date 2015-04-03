@@ -30,7 +30,7 @@ RCSID("$Id$")
 #include <assert.h>
 
 #if HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #include <freeradius-devel/conf.h>
@@ -40,32 +40,42 @@ RCSID("$Id$")
 #include "eap_types.h"
 #include "eap_sim.h"
 
+#ifdef WITH_TLS
+#  include <freeradius-devel/tls.h>
+#endif
+
 extern int sha1_data_problems;
 
 #define USEC 1000000
 
+
+/*
+ *  Global variables.
+ */
+char const *progname = "radeapclient";
+log_lvl_t debug_flag = 0;
+struct main_config_t main_config;
+
+char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
+#ifdef RADIUSD_VERSION_COMMIT
+" (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"
+#endif
+", built on " __DATE__ " at " __TIME__;
+
+
 static uint32_t parallel = 1;
+static uint32_t rate_limit = 0;
 static unsigned int retries = 3;
 static float timeout = 5;
 static struct timeval tv_timeout;
 static char const *secret = NULL;
-static int do_output = 1;
-static int do_summary = 0;
-static int totalapp = 0;
-static int totaldeny = 0;
+static bool do_output = true;
+static bool do_summary = false;
 static char filesecret[256];
+static float progress_interval = 0;
+struct timeval tv_progress_interval;
 static char const *radius_dir = NULL;
-char const *progname = "radeapclient";
-/* fr_randctx randctx; */
 
-struct main_config_t main_config;
-char const *radiusd_version = "";
-
-#ifdef WITH_TLS
-#include <freeradius-devel/tls.h>
-#endif
-
-log_lvl_t debug_flag = 0;
 
 //TODO: move structures to a header file.
 
@@ -123,6 +133,7 @@ struct rc_transaction {
 
 	uint32_t num_packet;	//!< number of packets sent for this transaction.
 
+	struct timeval timestamp;	//!< when the transaction is started.
 	RADIUS_PACKET *packet;
 	RADIUS_PACKET *reply;
 
@@ -138,8 +149,64 @@ struct rc_transaction {
 	char const	*name;	//!< Test name (as specified in the request).
 };
 
+ 
+/** Define workflow types (transactions for which we got a response)
+ */
+typedef enum {
+	RC_WF_ALL = 0,
+	RC_WF_ACCESS_REQUEST_ACCEPT,
+	RC_WF_COA_REQUEST_ACK,
+	RC_WF_EAP_REQUEST_SUCCESS,
+	RC_WF_ACCOUNTING_REQUEST_RESPONSE,
+	RC_WF_MAX
+} rc_wf_type_t;
+
+#define LG_PAD_STATS    20
+#define LG_PAD_WF_TYPES 25
+
+static char const *rc_wf_types[RC_WF_MAX] = {
+	"(All)",
+	"Access-Request - Accept",
+	"CoA-Request - Ack",
+	"EAP Request - Success",
+	"Accounting-Request - Response"
+};
+
+/** Structure which holds per-workflow statistics information
+ */
+typedef struct rc_wf_stats {
+	uint32_t       num;
+	struct timeval tv_rtt_cumul;
+	struct timeval tv_rtt_min;
+	struct timeval tv_rtt_max;
+} rc_wf_stats_t;
+
+/** Structure which holds global statistics information
+ */
+typedef struct rc_stats {
+	uint32_t nb_started;			//!< number of transactions started
+	uint32_t nb_eap;				//!< number of EAP transactions started
+	uint32_t nb_success;			//!< number of successful transactions
+	uint32_t nb_fail;				//!< number of failed transactions
+	uint32_t nb_lost;				//!< number of packets to which we received no response
+	uint32_t nb_packets_sent;		//!< number of packets sent (including retransmissions)
+	uint32_t nb_packets_retries;	//!< number of packets retransmissions
+	uint32_t nb_packets_recv;		//!< number of packets received
+
+	rc_wf_stats_t wf_stats[RC_WF_MAX];
+
+} rc_stats_t;
+
+#define STATS_INC(_stat_type) { \
+	stats._stat_type ++; \
+}
+
 
 static TALLOC_CTX *autofree;
+static rc_stats_t stats;
+static struct timeval tv_start;
+static struct timeval tv_end;
+static uint32_t num_input = 0; //!< number of input entries loaded.
 static uint32_t num_trans = 0; //!< number of transactions initialized.
 static uint32_t num_started = 0; //!< number of transactions started.
 static uint32_t num_ongoing = 0; //!< number of ongoing transactions.
@@ -149,6 +216,8 @@ static rc_input_vps_list_t rc_vps_list_in; //!< list of available input vps entr
 static fr_packet_list_t *pl = NULL;	//!< list of outgoing packets.
 static unsigned int num_sockets = 0;	//!< number of allocated sockets.
 static fr_event_list_t *ev_list = NULL; //!< list of armed events.
+static char ch_elapsed[12+1];
+#define ELAPSED rc_print_elapsed(ch_elapsed, 3)
 
 static int force_af = AF_UNSPEC;
 static int ipproto = IPPROTO_UDP;
@@ -157,16 +226,25 @@ static bool server_addr_init = false;
 static uint16_t server_port = 0;
 static int packet_code = PW_CODE_UNDEFINED;
 
+
 static int rc_map_eap_methods(RADIUS_PACKET *req);
 static void rc_unmap_eap_methods(RADIUS_PACKET *rep);
 static int rc_map_eapsim_types(RADIUS_PACKET *r);
 static int rc_unmap_eapsim_types(RADIUS_PACKET *r);
 
-static void rc_get_port(PW_CODE type, uint16_t *port);
+static void rc_get_radius_port(PW_CODE type, uint16_t *port);
 static void rc_evprep_packet_timeout(rc_transaction_t *trans);
+static void rc_evprep_progress_stat(void);
 static void rc_deallocate_id(rc_transaction_t *trans);
+static void rc_wf_stat_update(rc_transaction_t *trans, rc_wf_type_t wf_type);
+static void rc_do_progress_stat(void);
+static uint32_t rc_get_elapsed(void);
+static float rc_get_wf_rate(rc_wf_type_t i);
 
 
+
+/** Display usage and exit.
+ */
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stdout, "Usage: radeapclient [options] server[:port] <command> [<secret>]\n");
@@ -178,10 +256,12 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stdout, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stdout, "  -f <file>              Read packets from file, not stdin.\n");
 	fprintf(stdout, "  -h                     Print usage help information.\n");
+	fprintf(stdout, "  -n <num>               Rate limit. Send at most N requests/s.\n");
+	fprintf(stdout, "  -o <time>              Output progress statistics each 'time' seconds.\n");
 	fprintf(stdout, "  -p <num>               Send 'num' packets in parallel.\n");
 	fprintf(stdout, "  -q                     Do not print anything out.\n");
 	fprintf(stdout, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
-	fprintf(stdout, "  -s                     Print out summary information of auth results.\n");
+	fprintf(stdout, "  -s                     Print out summary statistics information.\n");
 	fprintf(stdout, "  -S <file>              read secret from file, not command line.\n");
 	fprintf(stdout, "  -t <timeout>           Wait 'timeout' seconds before retrying (may be a floating point number).\n");
 	fprintf(stdout, "  -v                     Show program version information.\n");
@@ -202,10 +282,76 @@ static const FR_NAME_NUMBER rc_request_types[] = {
 	{ NULL, 0}
 };
 
+
+/* This is not called, but is required by libfreeradius-eap.so */
 int rad_virtual_server(REQUEST UNUSED *request)
 {
-  /*We're not the server so we cannot do this*/
+  /* We're not the server so we cannot do this */
   abort();
+}
+
+/** Set the global radius config directory.
+ *  
+ *  (copied from main/mainconfig.c)
+ */
+void set_radius_dir(TALLOC_CTX *ctx, char const *path)
+{
+	if (radius_dir) {
+		char *p;
+
+		memcpy(&p, &radius_dir, sizeof(p));
+		talloc_free(p);
+		radius_dir = NULL;
+	}
+	if (path) radius_dir = talloc_strdup(ctx, path);
+}
+
+
+/** Print a elapsed time buffer (SS.uuuuuu).
+ */
+static char *rc_print_elapsed(char *out, uint8_t decimals)
+{
+	if (!out || !timerisset(&tv_start)) return NULL;
+
+	if (decimals > 6) decimals = 6;
+
+	struct timeval tv_now;
+	struct timeval tv_delta;
+
+	gettimeofday(&tv_now, NULL);
+	timersub(&tv_now, &tv_start, &tv_delta);
+
+	uint32_t u_sec = (uint32_t)(tv_delta.tv_sec);
+	sprintf(out, "%d", u_sec);
+
+	/* assuming tv_usec < USEC */
+	if (decimals) {
+		char buffer[8] = "";
+		sprintf(buffer, ".%06ld", tv_delta.tv_usec);
+		strncat(out, buffer, decimals+1); /* (this is always terminated with 0). */
+	}
+
+	return out;
+}
+
+/** Print a "hexstring" buffer (with optional separator each N octets)
+ */
+static char *rc_print_hexstr(char *pch_out, const uint8_t *in, int size, int separ_i, char sep)
+{
+	int i, j = 0;
+
+	for (i = 0; i < size; i++) {
+		if ((separ_i) && (j == separ_i)) {
+			*pch_out = sep;
+			pch_out += 1;
+			j = 0;
+		}
+		j++;
+		sprintf(pch_out, "%02x", in[i]);
+		pch_out += 2;
+	}
+	*pch_out = '\0';
+	return pch_out;
 }
 
 /** Convert a float to struct timeval.
@@ -215,6 +361,13 @@ static void rc_float_to_timeval(struct timeval *tv, float f_val)
 	tv->tv_sec = (time_t)f_val;
 	uint64_t usec = (uint64_t)(f_val * USEC) - (tv->tv_sec * USEC);
 	tv->tv_usec = usec;
+}
+
+/** Convert a struct timeval to float
+ */
+static float rc_timeval_to_float(struct timeval *tv)
+{
+	return ((float)tv->tv_sec + ((float)tv->tv_usec / USEC));
 }
 
 /** Add an allocated rc_input_vps_t entry to the tail of the list.
@@ -338,6 +491,7 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 	if (file_in != stdin) fclose(file_in);
 
 	/* And we're done. */
+	num_input += list->size;
 	DEBUG("Read %d element(s) from input: %s", list->size, input);
 	return 1;
 }
@@ -501,7 +655,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 
 	/* Automatically set the dst port (if one wasn't already set). */
 	if (packet->dst_port == 0) {
-		rc_get_port(packet->code, &packet->dst_port);
+		rc_get_radius_port(packet->code, &packet->dst_port);
 		if (packet->dst_port == 0) {
 			DEBUG("Can't determine destination port for input entry %u, ignored.", trans->input_vps->num);
 			return 0;
@@ -529,6 +683,7 @@ static void rc_build_eap_context(rc_transaction_t *trans)
 	if (eap_type) {
 		if (!trans->eap_context) {
 			MEM(trans->eap_context = talloc_zero(trans, rc_eap_context_t));
+			STATS_INC(nb_eap);
 		}
 		trans->eap_context->eap_type = eap_type;
 
@@ -583,9 +738,13 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 		return NULL;
 	}
 
+	gettimeofday(&trans->timestamp, NULL);
+
 	/* Update transactions counters. */
 	num_started ++;
 	num_ongoing ++;
+
+	STATS_INC(nb_started);
 
 	return trans;
 }
@@ -608,20 +767,10 @@ static void rc_finish_transaction(rc_transaction_t *trans)
 }
 
 
-static uint16_t getport(char const *name)
-{
-	struct	servent		*svp;
-
-	svp = getservbyname(name, "udp");
-	if (!svp) return 0;
-
-	return ntohs(svp->s_port);
-}
-
-
 static void rc_cleanresp(RADIUS_PACKET *resp)
 {
-	VALUE_PAIR *vpnext, *vp, **last;
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
 
 	/*
 	 * maybe should just copy things we care about, or keep
@@ -630,28 +779,23 @@ static void rc_cleanresp(RADIUS_PACKET *resp)
 	pairdelete(&resp->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	pairdelete(&resp->vps, PW_EAP_TYPE_BASE+PW_EAP_IDENTITY, 0, TAG_ANY);
 
-	last = &resp->vps;
-	for (vp = *last; vp != NULL; vp = vpnext)
-	{
-		vpnext = vp->next;
-
-		if ((vp->da->attr > PW_EAP_TYPE_BASE &&
-		    vp->da->attr <= PW_EAP_TYPE_BASE+256) ||
-		   (vp->da->attr > PW_EAP_SIM_BASE &&
-		    vp->da->attr <= PW_EAP_SIM_BASE+256))
+	for (vp = fr_cursor_init(&cursor, &resp->vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if ((vp->da->attr >= PW_EAP_TYPE_BASE &&
+		     vp->da->attr < PW_EAP_TYPE_BASE+256) ||
+		   (vp->da->attr >= PW_EAP_SIM_BASE &&
+		    vp->da->attr < PW_EAP_SIM_BASE+256))
 		{
-			*last = vpnext;
+			vp = fr_cursor_remove(&cursor);
 			talloc_free(vp);
-		} else {
-			last = &vp->next;
 		}
 	}
 }
 
-/*
- * we got an EAP-Request/Sim/Start message in a legal state.
+/** We got an EAP-Request/Sim/Start message in a legal state.
  *
- * pick a supported version, put it into the reply, and insert a nonce.
+ *  pick a supported version, put it into the reply, and insert a nonce.
  */
 static int rc_process_eap_start(rc_eap_context_t *eap_context,
                                 RADIUS_PACKET *req, RADIUS_PACKET *rep)
@@ -729,8 +873,8 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	permanentidreq_vp = pairfind(req->vps, PW_EAP_SIM_PERMANENT_ID_REQ, 0, TAG_ANY);
 
 	if (!fullauthidreq_vp ||
-	   anyidreq_vp != NULL ||
-	   permanentidreq_vp != NULL) {
+	    anyidreq_vp != NULL ||
+	    permanentidreq_vp != NULL) {
 		ERROR("start message has %sanyidreq, %sfullauthid and %spermanentid. Illegal combination.",
 			(anyidreq_vp != NULL ? "a ": "no "),
 			(fullauthidreq_vp != NULL ? "a ": "no "),
@@ -817,30 +961,28 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	return 1;
 }
 
-/*
- * we got an EAP-Request/Sim/Challenge message in a legal state.
+/** We got an EAP-Request/Sim/Challenge message in a legal state.
  *
- * use the RAND challenge to produce the SRES result, and then
- * use that to generate a new MAC.
+ *  use the RAND challenge to produce the SRES result, and then
+ *  use that to generate a new MAC.
  *
- * for the moment, we ignore the RANDs, then just plug in the SRES
- * values.
- *
+ *  for the moment, we ignore the RANDs, then just plug in the SRES
+ *  values.
  */
 static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
                                     RADIUS_PACKET *req, RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *newvp;
 	VALUE_PAIR *mac, *randvp;
-	VALUE_PAIR *sres1,*sres2,*sres3;
+	VALUE_PAIR *sres1, *sres2, *sres3;
 	VALUE_PAIR *Kc1, *Kc2, *Kc3;
-	uint8_t calcmac[20];
+	uint8_t calcmac[EAPSIM_CALCMAC_SIZE];
 
 	/* look for the AT_MAC and the challenge data */
-	mac   = pairfind(req->vps, PW_EAP_SIM_MAC, 0, TAG_ANY);
-	randvp= pairfind(req->vps, PW_EAP_SIM_RAND, 0, TAG_ANY);
+	mac = pairfind(req->vps, PW_EAP_SIM_MAC, 0, TAG_ANY);
+	randvp = pairfind(req->vps, PW_EAP_SIM_RAND, 0, TAG_ANY);
 	if (!mac || !randvp) {
-		ERROR("challenge message needs to contain RAND and MAC");
+		ERROR("Challenge message needs to contain RAND and MAC");
 		return 0;
 	}
 
@@ -849,56 +991,42 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	 * to this challenge.
 	 */
 	{
-	  VALUE_PAIR *randcfgvp[3];
-	  uint8_t const *randcfg[3];
+		VALUE_PAIR *randcfgvp[3];
+		uint8_t const *randcfg[3];
 
-	  randcfg[0] = &randvp->vp_octets[2];
-	  randcfg[1] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE];
-	  randcfg[2] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE*2];
+		randcfg[0] = &randvp->vp_octets[2];
+		randcfg[1] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE];
+		randcfg[2] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE*2];
 
-	  randcfgvp[0] = pairfind(rep->vps, PW_EAP_SIM_RAND1, 0, TAG_ANY);
-	  randcfgvp[1] = pairfind(rep->vps, PW_EAP_SIM_RAND2, 0, TAG_ANY);
-	  randcfgvp[2] = pairfind(rep->vps, PW_EAP_SIM_RAND3, 0, TAG_ANY);
+		randcfgvp[0] = pairfind(rep->vps, PW_EAP_SIM_RAND1, 0, TAG_ANY);
+		randcfgvp[1] = pairfind(rep->vps, PW_EAP_SIM_RAND2, 0, TAG_ANY);
+		randcfgvp[2] = pairfind(rep->vps, PW_EAP_SIM_RAND3, 0, TAG_ANY);
 
-	  if (!randcfgvp[0] ||
-	     !randcfgvp[1] ||
-	     !randcfgvp[2]) {
-	    ERROR("needs to have rand1, 2 and 3 set.");
-	    return 0;
-	  }
-
-	  if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
-	     memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE)!=0 ||
-	     memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE)!=0) {
-	    int rnum,i,j;
-
-	    ERROR("one of rand 1,2,3 didn't match");
-	    for (rnum = 0; rnum < 3; rnum++) {
-	      ERROR("received   rand %d: ", rnum);
-	      j=0;
-	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-		if (j==4) {
-		  DEBUG("_");
-		  j=0;
+		if (!randcfgvp[0] ||
+		    !randcfgvp[1] ||
+		    !randcfgvp[2]) {
+			ERROR("Need to have RAND 1, 2 and 3 set");
+			return 0;
 		}
-		j++;
 
-		ERROR("%02x", randcfg[rnum][i]);
-	      }
-	      ERROR("configured rand %d: ", rnum);
-	      j=0;
-	      for (i = 0; i < EAPSIM_RAND_SIZE; i++) {
-		if (j==4) {
-		  DEBUG("_");
-		  j=0;
+		if (memcmp(randcfg[0], randcfgvp[0]->vp_octets, EAPSIM_RAND_SIZE) != 0 ||
+		    memcmp(randcfg[1], randcfgvp[1]->vp_octets, EAPSIM_RAND_SIZE) != 0 ||
+		    memcmp(randcfg[2], randcfgvp[2]->vp_octets, EAPSIM_RAND_SIZE) != 0)
+		{
+			int rnum;
+
+			ERROR("one of RAND 1, 2, or 3 didn't match");
+
+			char ch_rand[EAPSIM_RAND_SIZE*2 +1 +3] = ""; // +3 for separators.
+			for (rnum = 0; rnum < 3; rnum++) {
+				rc_print_hexstr(ch_rand, randcfg[rnum], EAPSIM_RAND_SIZE, 4, '_');
+				ERROR("Received   rand %d: %s", rnum, ch_rand);
+
+				rc_print_hexstr(ch_rand, randcfgvp[rnum]->vp_octets, EAPSIM_RAND_SIZE, 4, '_');
+				ERROR("Configured rand %d: %s", rnum, ch_rand);
+			}
+			return 0;
 		}
-		j++;
-
-		ERROR("%02x", randcfgvp[rnum]->vp_octets[i]);
-	      }
-	    }
-	    return 0;
-	  }
 	}
 
 	/*
@@ -913,9 +1041,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	sres3 = pairfind(rep->vps, PW_EAP_SIM_SRES3, 0, TAG_ANY);
 
 	if (!sres1 ||
-	   !sres2 ||
-	   !sres3) {
-		ERROR("needs to have sres1, 2 and 3 set.");
+	    !sres2 ||
+	    !sres3) {
+		ERROR("Need to have SRES 1, 2, and 3 set");
 		return 0;
 	}
 	memcpy(eap_context->eap.sim.keys.sres[0], sres1->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[0]));
@@ -927,9 +1055,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	Kc3 = pairfind(rep->vps, PW_EAP_SIM_KC3, 0, TAG_ANY);
 
 	if (!Kc1 ||
-	   !Kc2 ||
-	   !Kc3) {
-		ERROR("needs to have Kc1, 2 and 3 set.");
+	    !Kc2 ||
+	    !Kc3) {
+		ERROR("Need to have Kc 1, 2, and 3 set");
 		return 0;
 	}
 	memcpy(eap_context->eap.sim.keys.Kc[0], Kc1->vp_strvalue, sizeof(eap_context->eap.sim.keys.Kc[0]));
@@ -940,28 +1068,22 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	eapsim_calculate_keys(&eap_context->eap.sim.keys);
 
 	if (debug_flag) {
-	  eapsim_dump_mk(&eap_context->eap.sim.keys);
+		eapsim_dump_mk(&eap_context->eap.sim.keys);
 	}
 
 	/* verify the MAC, now that we have all the keys. */
-	if (eapsim_checkmac(NULL, req->vps, eap_context->eap.sim.keys.K_aut,
-			   eap_context->eap.sim.keys.nonce_mt, sizeof(eap_context->eap.sim.keys.nonce_mt),
-			   calcmac)) {
-		DEBUG("MAC check succeed");
-	} else {
-		int i, j;
-		j=0;
-		DEBUG("calculated MAC (");
-		for (i = 0; i < 20; i++) {
-			if (j==4) {
-				printf("_");
-				j=0;
-			}
-			j++;
+	int rcode_mac = eapsim_checkmac(NULL, req->vps, eap_context->eap.sim.keys.K_aut,
+	                                eap_context->eap.sim.keys.nonce_mt, sizeof(eap_context->eap.sim.keys.nonce_mt),
+	                                calcmac);
 
-			DEBUG("%02x", calcmac[i]);
-		}
-		DEBUG("did not match");
+	char ch_calc_mac[EAPSIM_CALCMAC_SIZE*2 +1 +4] = ""; // +4 for separators.
+	rc_print_hexstr(ch_calc_mac, calcmac, EAPSIM_CALCMAC_SIZE, 4, '_');
+
+	if (rcode_mac) {
+		DEBUG2("MAC check succeeded (%s)", ch_calc_mac);
+	}
+	else {
+		ERROR("Challenge MAC check failed. Calculated MAC (%s) did not match", ch_calc_mac);
 		return 0;
 	}
 
@@ -998,19 +1120,18 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	return 1;
 }
 
-/*
- * this code runs the EAP-SIM client state machine.
- * the *request* is from the server.
- * the *reponse* is to the server.
- *
+/** This runs the EAP-SIM client state machine.
+ *  the *request* is from the server.
+ *  the *reponse* is to the server.
  */
 static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
-                           RADIUS_PACKET *req, RADIUS_PACKET *resp)
+                              RADIUS_PACKET *req, RADIUS_PACKET *resp)
 {
 	enum eapsim_clientstates state, newstate;
 	enum eapsim_subtype subtype;
 	VALUE_PAIR *vp, *statevp, *radstate, *eapid;
 	char statenamebuf[32], subtypenamebuf[32];
+	int rcode_eap;
 
 	if ((radstate = paircopy_by_num(NULL, req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
 	{
@@ -1053,16 +1174,16 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	case EAPSIM_CLIENT_INIT:
 		switch (subtype) {
 		case EAPSIM_START:
-			newstate = rc_process_eap_start(eap_context, req, resp);
+			rcode_eap = rc_process_eap_start(eap_context, req, resp);
 			break;
 
 		case EAPSIM_CHALLENGE:
 		case EAPSIM_NOTIFICATION:
 		case EAPSIM_REAUTH:
 		default:
-			ERROR("sim in state %s message %s is illegal. Reply dropped.",
-				sim_state2name(state, statenamebuf, sizeof(statenamebuf)),
-				sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)));
+			ERROR("sim in state '%s' (%d), message '%s' (%d) is illegal. Reply dropped.", 
+				sim_state2name(state, statenamebuf, sizeof(statenamebuf)), state,
+				sim_subtype2name(subtype, subtypenamebuf, sizeof(subtypenamebuf)), subtype);
 			/* invalid state, drop message */
 			return 0;
 		}
@@ -1072,11 +1193,11 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 		switch (subtype) {
 		case EAPSIM_START:
 			/* NOT SURE ABOUT THIS ONE, retransmit, I guess */
-			newstate = rc_process_eap_start(eap_context, req, resp);
+			rcode_eap = rc_process_eap_start(eap_context, req, resp);
 			break;
 
 		case EAPSIM_CHALLENGE:
-			newstate = rc_process_eap_challenge(eap_context, req, resp);
+			rcode_eap = rc_process_eap_challenge(eap_context, req, resp);
 			break;
 
 		default:
@@ -1088,17 +1209,23 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 		}
 		break;
 
-
 	default:
-		ERROR("sim in illegal state %s",
-			sim_state2name(state, statenamebuf, sizeof(statenamebuf)));
+		ERROR("sim in illegal state '%s' (%d)", 
+			sim_state2name(state, statenamebuf, sizeof(statenamebuf)), state);
 		return 0;
 	}
+
+	/* process_eap_* functions return 0 if fail, 1 if success. */
+	if (!rcode_eap) {
+		ERROR("EAP process failed, aborting EAP-SIM transaction.");
+		return 0;
+	}
+	newstate = EAPSIM_CLIENT_START; // (1)
 
 	/* copy the eap state object in */
 	pairreplace(&(resp->vps), eapid);
 
-	/* update stete info, and send new packet */
+	/* update state info, and send new packet */
 	rc_map_eapsim_types(resp);
 
 	/* copy the radius state object in */
@@ -1275,6 +1402,9 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 			packet->sockfd, packet->id, fr_strerror());
 	}
 
+	STATS_INC(nb_packets_sent);
+	if (trans->tries) STATS_INC(nb_packets_retries);
+
 	trans->num_packet ++;
 	trans->tries ++;
 
@@ -1404,6 +1534,8 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 		return -1;
 	}
 
+	STATS_INC(nb_packets_recv);
+
 	trans = fr_packet2myptr(rc_transaction_t, packet, packet_p);
 
 	if (trans->event) fr_event_delete(ev_list, &trans->event);
@@ -1493,23 +1625,43 @@ eap_done:
 	 */
 	if (trans->reply->code != PW_CODE_ACCESS_ACCEPT) {
 		DEBUG("EAP transaction finished, but reply is not an Access-Accept");
+		STATS_INC(nb_fail);
 		goto packet_done;
 	}
 	vp = pairfind(trans->reply->vps, PW_EAP_CODE, 0, TAG_ANY);
 	if ( (!vp) || (vp->vp_integer != 3) ) {
 		DEBUG("EAP transaction finished, but reply does not contain EAP-Code = Success");
+		STATS_INC(nb_fail);
 		goto packet_done;
 	}
+	STATS_INC(nb_success);
+	rc_wf_stat_update(trans, RC_WF_EAP_REQUEST_SUCCESS);
+
 	goto packet_done;
 
 packet_done:
 
-	/* Basic statistics (salvaged from old code). TODO: something better. */
-	if (trans->reply) {
-		if (trans->reply->code == PW_CODE_ACCESS_ACCEPT) {
-			totalapp ++;
-		} else if (trans->reply->code == PW_CODE_ACCESS_REJECT) {
-			totaldeny ++;
+	if (trans->reply && !trans->eap_context) {
+		/* Statistics for non-EAP transactions */
+		switch (trans->reply->code) {
+			case PW_CODE_ACCESS_ACCEPT:
+				STATS_INC(nb_success);
+				rc_wf_stat_update(trans, RC_WF_ACCESS_REQUEST_ACCEPT);
+				break;
+			case PW_CODE_COA_ACK:
+				STATS_INC(nb_success);
+				rc_wf_stat_update(trans, RC_WF_COA_REQUEST_ACK);
+				break;
+			case PW_CODE_ACCOUNTING_RESPONSE:
+				STATS_INC(nb_success);
+				rc_wf_stat_update(trans, RC_WF_ACCOUNTING_REQUEST_RESPONSE);
+				break;
+			case PW_CODE_ACCESS_REJECT:
+			case PW_CODE_COA_NAK:
+				STATS_INC(nb_fail);
+				break;
+			default:
+				break;
 		}
 	}
 
@@ -1541,6 +1693,8 @@ static void rc_evcb_packet_timeout(void *ctx)
 	} else {
 		DEBUG("No response for transaction: %d, giving up", trans->id);
 		rc_finish_transaction(trans);
+
+		STATS_INC(nb_lost);
 	}
 }
 
@@ -1558,9 +1712,39 @@ static void rc_evprep_packet_timeout(rc_transaction_t *trans)
 	}
 }
 
+/** Event callback: report progress statistics.
+ */
+static void rc_evcb_progress_stat(void UNUSED *ctx)
+{
+	/* print the progress statistics */
+	rc_do_progress_stat();
+
+	/* schedule the next */
+	rc_evprep_progress_stat();
+}
+
+/** Prepare event: report progress statistics.
+ */
+static void rc_evprep_progress_stat(void)
+{
+	if (!timerisset(&tv_progress_interval)) return;
+
+	struct timeval tv_event;
+	gettimeofday(&tv_event, NULL);
+
+	timeradd(&tv_event, &tv_progress_interval, &tv_event);
+
+	static fr_event_t *event; /* only one of this kind. */
+
+	if (!fr_event_insert(ev_list, rc_evcb_progress_stat, (void *) NULL, &tv_event, &event)) {
+		ERROR("Failed to insert event");
+		exit(1);
+	}
+}
+
 /** Trigger all armed events for which time is reached.
  */
-static int rc_loop_events(void)
+static uint32_t rc_loop_events(void)
 {
 	struct timeval when;
 	uint32_t nb_processed = 0;
@@ -1581,7 +1765,7 @@ static int rc_loop_events(void)
 /** Receive loop.
  *  Handle incoming packets, until nothing more is received.
  */
-static int dhb_loop_recv(void)
+static uint32_t rc_loop_recv(void)
 {
 	uint32_t nb_received = 0;
 	while (rc_recv_one_packet(NULL) > 0) {
@@ -1590,20 +1774,66 @@ static int dhb_loop_recv(void)
 	return nb_received;
 }
 
+/** Compute maximum number of new requests that can be started
+ *  while conforming to the specified rate limit.
+ */
+static uint32_t rc_rate_limit(bool *do_limit)
+{
+	uint32_t max_start_new = 0;
+	*do_limit = false;
+ 
+	if (rate_limit) {
+		/* get elapsed time so far */
+		struct timeval tv_now, tv_elapsed;
+		gettimeofday(&tv_now, NULL);
+		timersub(&tv_now, &tv_start, &tv_elapsed);
+		float elapsed = rc_timeval_to_float(&tv_elapsed);
+
+		if (elapsed > 0) {
+			*do_limit = true; /* enforce a limit */
+
+			/* project ourselves a small amount of time in the future to perform calculation */
+			float elapsed_p = elapsed + 0.01;
+
+			/* Compute:
+			 * The maximum number of started requests (according to the rate limit and elapsed time),
+			 * and the maximum number of new requests that can be started according to the rate limit.
+			 */
+			uint32_t num_start_limit = (float)rate_limit * elapsed_p;
+			if (num_start_limit > num_started) max_start_new = num_start_limit - num_started;
+
+//#define DEBUG_RATE_LIMIT 1
+#ifdef DEBUG_RATE_LIMIT
+			if (max_start_new) {
+				float cur_rate = num_started / elapsed;
+				float target_rate = (float)(num_started + max_start_new) / elapsed_p;
+				printf("RATE LIMIT - elapsed: %.3f, started: %d, rate: %.3f, limit: %d, new: %d, target rate: %.6f\n",
+					elapsed, num_started, cur_rate, num_start_limit, max_start_new, target_rate);
+			}
+#endif
+		}
+	}
+	return max_start_new;
+}
+
 /** Loop starting new transactions, until a limit is reached
  *  (max parallelism, or no more input available.)
  */
-static int rc_loop_start_transactions(void)
+static uint32_t rc_loop_start_transactions(void)
 {
-	int nb_started = 0;
+	uint32_t nb_started = 0;
+	bool do_limit = false;
+
+	uint32_t max_start = rc_rate_limit(&do_limit);
 
 	while (1) {
-		if (num_ongoing >= parallel) break;
+		if (num_ongoing >= parallel) break; /* parallel limit */
+		if (do_limit && nb_started >= max_start) break; /* rate limit */
 
 		/* Try to initialize a new transaction. */
 		rc_transaction_t *trans = rc_init_transaction(autofree);
 		if (!trans) break;
-		
+
 		nb_started ++;
 		rc_send_transaction_packet(trans, &trans->packet);
 	}
@@ -1620,7 +1850,7 @@ static void rc_main_loop(void)
 		rc_loop_events();
 
 		/* Receive and process response until no more are received (don't wait). */
-		dhb_loop_recv();
+		rc_loop_recv();
 		
 		/* Start new transactions and send the associated packet. */
 		rc_loop_start_transactions();
@@ -1634,35 +1864,33 @@ static void rc_main_loop(void)
 	INFO("Main loop: done.");
 }
 
-
-void set_radius_dir(TALLOC_CTX *ctx, char const *path)
+/** Get port number for a given service name.
+ */
+static uint16_t rc_getport(char const *name)
 {
-	if (radius_dir) {
-		char *p;
+	struct	servent		*svp;
 
-		memcpy(&p, &radius_dir, sizeof(p));
-		talloc_free(p);
-		radius_dir = NULL;
-	}
-	if (path) radius_dir = talloc_strdup(ctx, path);
+	svp = getservbyname(name, "udp");
+	if (!svp) return 0;
+
+	return ntohs(svp->s_port);
 }
-
 
 /** Set a port from the request type if we don't already have one.
  */
-static void rc_get_port(PW_CODE type, uint16_t *port)
+static void rc_get_radius_port(PW_CODE type, uint16_t *port)
 {
 	switch (type) {
 	default:
 	case PW_CODE_ACCESS_REQUEST:
 	case PW_CODE_ACCESS_CHALLENGE:
 	case PW_CODE_STATUS_SERVER:
-		if (*port == 0) *port = getport("radius");
+		if (*port == 0) *port = rc_getport("radius");
 		if (*port == 0) *port = PW_AUTH_UDP_PORT;
 		return;
 
 	case PW_CODE_ACCOUNTING_REQUEST:
-		if (*port == 0) *port = getport("radacct");
+		if (*port == 0) *port = rc_getport("radacct");
 		if (*port == 0) *port = PW_ACCT_UDP_PORT;
 		return;
 
@@ -1685,16 +1913,16 @@ static void rc_get_port(PW_CODE type, uint16_t *port)
 static PW_CODE rc_get_code(uint16_t port)
 {
 	/*
-	 *	getport returns 0 if the service doesn't exist
+	 *	rc_getport returns 0 if the service doesn't exist
 	 *	so we need to return early, to avoid incorrect
 	 *	codes.
 	 */
 	if (port == 0) return PW_CODE_UNDEFINED;
 
-	if ((port == getport("radius")) || (port == PW_AUTH_UDP_PORT) || (port == PW_AUTH_UDP_PORT_ALT)) {
+	if ((port == rc_getport("radius")) || (port == PW_AUTH_UDP_PORT) || (port == PW_AUTH_UDP_PORT_ALT)) {
 		return PW_CODE_ACCESS_REQUEST;
 	}
-	if ((port == getport("radacct")) || (port == PW_ACCT_UDP_PORT) || (port == PW_ACCT_UDP_PORT_ALT)) {
+	if ((port == rc_getport("radacct")) || (port == PW_ACCT_UDP_PORT) || (port == PW_ACCT_UDP_PORT_ALT)) {
 		return PW_CODE_ACCOUNTING_REQUEST;
 	}
 	if (port == PW_COA_UDP_PORT) return PW_CODE_COA_REQUEST;
@@ -1737,7 +1965,7 @@ static void rc_resolve_hostname(char *server_arg)
 		}
 
 		if (ip_hton(&server_ipaddr, force_af, hostname, false) < 0) {
-			ERROR("%s: Failed to find IP address for host %s: %s", progname, hostname, strerror(errno));
+			ERROR("Failed to find IP address for host %s: %s", hostname, strerror(errno));
 			exit(1);
 		}
 		server_addr_init = true;
@@ -1750,8 +1978,169 @@ static void rc_resolve_hostname(char *server_arg)
 		 */
 		if (packet_code == PW_CODE_UNDEFINED) packet_code = rc_get_code(server_port);
 	}
-	rc_get_port(packet_code, &server_port);
+	rc_get_radius_port(packet_code, &server_port);
 }
+
+/** Update per-workflow statistics (number of transactions, rtt min, max, and cumulated).
+ */
+static void rc_wf_stat_update(rc_transaction_t *trans, rc_wf_type_t wf_type)
+{
+	if (!trans || !trans->packet || !trans->reply) return;
+	if (!wf_type || wf_type >= RC_WF_MAX) return;
+
+	struct timeval tv_rtt;
+	timersub(&trans->reply->timestamp, &trans->timestamp, &tv_rtt);
+	/* The reference timestamp is that of the transaction, because several packets can be involved, e.g. EAP. */
+
+	int i;
+	for (i=0; i<2; i++) { /* update the specified workflow type, and also "All" (0) */
+		rc_wf_stats_t *my_stats = &stats.wf_stats[i*wf_type];
+
+		if ((0 == my_stats->num) || (timercmp(&tv_rtt, &my_stats->tv_rtt_min, <))) {
+			my_stats->tv_rtt_min.tv_sec = tv_rtt.tv_sec;
+			my_stats->tv_rtt_min.tv_usec = tv_rtt.tv_usec;
+		}
+		if ((0 == my_stats->num) || (timercmp(&tv_rtt, &my_stats->tv_rtt_max, >=))) {
+			my_stats->tv_rtt_max.tv_sec = tv_rtt.tv_sec;
+			my_stats->tv_rtt_max.tv_usec = tv_rtt.tv_usec;
+		}
+
+		timeradd(&my_stats->tv_rtt_cumul, &tv_rtt, &my_stats->tv_rtt_cumul);
+		my_stats->num ++;
+	}
+}
+
+/** Print per-workflow detailed statistics.
+ */
+static void rc_print_wf_stats(FILE *fp)
+{
+	/* ensure there is something to print */
+	int i;
+	int i_start = 0;
+	int num_stat = 0;
+	for (i=1; i<RC_WF_MAX; i++) {
+		if (stats.wf_stats[i].num > 0) num_stat ++;
+	}
+	if (num_stat == 0) return;
+
+	fprintf(fp, "*** Statistics (per-workflow):\n");
+
+	if (num_stat == 1) i_start = 1; /* only print "All" if we have more than one (otherwise it's redundant). */
+
+	for (i=i_start; i<RC_WF_MAX; i++) {
+		rc_wf_stats_t *my_stats = &stats.wf_stats[i];
+
+		if (my_stats->num == 0) continue;
+
+		float avg_rtt = 1000 * rc_timeval_to_float(&my_stats->tv_rtt_cumul) / my_stats->num;
+		float min_rtt = 1000 * rc_timeval_to_float(&my_stats->tv_rtt_min);
+		float max_rtt = 1000 * rc_timeval_to_float(&my_stats->tv_rtt_max);
+
+		/* Only print rate if scenario lasted at least a little time. */
+		if (rc_get_elapsed() < 200) {
+			fprintf(fp, "\t%-*.*s:  nb: %d, RTT (ms): [avg: %.3f, min: %.3f, max: %.3f]\n",
+				LG_PAD_WF_TYPES, LG_PAD_WF_TYPES, rc_wf_types[i], my_stats->num, avg_rtt, min_rtt, max_rtt);
+		} else {
+			fprintf(fp, "\t%-*.*s:  nb: %d, RTT (ms): [avg: %.3f, min: %.3f, max: %.3f], rate (avg/s): %.3f\n",
+				LG_PAD_WF_TYPES, LG_PAD_WF_TYPES, rc_wf_types[i], my_stats->num, avg_rtt, min_rtt, max_rtt,
+				rc_get_wf_rate(i));
+		}
+	}
+}
+
+/** Do summary / statistics (if asked for).
+ */
+static void rc_summary(void)
+{
+	if (!do_summary) return;
+
+	FILE *fp = stdout;
+
+	fprintf(fp, "*** Statistics summary:\n");
+
+	if (stats.nb_started == stats.nb_eap) {
+		/* Only EAP. */
+		fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "EAP transactions", stats.nb_started);
+	} else if (stats.nb_eap == 0) {
+		/* No EAP. Label those as "Requests". */
+		fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Requests", stats.nb_started);
+	} else {
+		/* Bit of both. */
+		fprintf(fp, "\t%-*.*s: %u (with EAP: %u)\n", LG_PAD_STATS, LG_PAD_STATS, "Transactions", stats.nb_started, stats.nb_eap);
+	}
+
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Success", stats.nb_success);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Fail", stats.nb_fail);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Lost", stats.nb_lost);
+	fprintf(fp, "\t%-*.*s: %u (retries: %u)\n", LG_PAD_STATS, LG_PAD_STATS, "Packets sent", stats.nb_packets_sent, stats.nb_packets_retries);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Packets received", stats.nb_packets_recv);
+	
+	rc_print_wf_stats(fp);
+}
+
+/** Get elapsed time (in ms).
+ */
+static uint32_t rc_get_elapsed(void)
+{
+	uint32_t u_ms_elapsed;
+	struct timeval tv_elapsed;
+
+	if (timerisset(&tv_end)) {
+		timersub(&tv_end, &tv_start, &tv_elapsed);
+	} else {
+		struct timeval tv_now;
+		gettimeofday(&tv_now, NULL);
+		timersub(&tv_now, &tv_start, &tv_elapsed);
+	}
+
+	u_ms_elapsed = (tv_elapsed.tv_sec * 1000) + (tv_elapsed.tv_usec/1000);
+
+	return u_ms_elapsed;
+}
+
+/** Compute the started transactions rate /s.
+ */
+static float rc_get_start_rate(void)
+{
+	uint32_t u_ms_elapsed = rc_get_elapsed();
+
+	if (u_ms_elapsed > 0) { /* should always be the case, but just to be sure. */
+		return (float)(num_started * 1000) / (float)u_ms_elapsed;
+	}
+	return 0;
+}
+
+/** Compute the rate /s of a given workflow type.
+ */
+static float rc_get_wf_rate(rc_wf_type_t i)
+{
+	rc_wf_stats_t *my_stats = &stats.wf_stats[i];
+	uint32_t u_ms_elapsed = rc_get_elapsed();
+
+	if (u_ms_elapsed > 0) { // should always be the case, just to be sure.
+		return (float)(my_stats->num * 1000) / (float)u_ms_elapsed;
+	}
+	return 0;
+}
+
+/** Display simple progress statistics.
+ */
+static void rc_do_progress_stat(void)
+{
+	if (!do_output || !progress_interval) return;
+
+	printf("STAT (%s):", ELAPSED);
+
+	printf(" %.2f%%", (100 * (float)num_started / num_input));
+	printf(", start: %u (on: %u, ok: %u, fail: %u, lost: %u)",
+		num_started, num_ongoing, stats.nb_success, stats.nb_fail, stats.nb_lost);
+
+	printf(", rate (/s): %.1f", rc_get_start_rate());
+
+	printf("\n");
+}
+
+
 
 int main(int argc, char **argv)
 {
@@ -1768,8 +2157,6 @@ int main(int argc, char **argv)
 		.debug_file = NULL,
 	};
 
-	radlog_init(&radclient_log, false);
-
 	/*
 	 *	We probably don't want to free the talloc autofree context
 	 *	directly, so we'll allocate a new context beneath it, and
@@ -1782,32 +2169,49 @@ int main(int argc, char **argv)
 
 	set_radius_dir(autofree, RADIUS_DIR);
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:hp:qst:r:S:xXv")) != EOF)
+	while ((c = getopt(argc, argv, "46c:d:D:f:hn:o:p:qr:sS:t:vxX")) != EOF)
 	{
 		switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
+
 		case '6':
 			force_af = AF_INET6;
 			break;
+
 		case 'd':
 			set_radius_dir(autofree, optarg);
 			break;
+
 		case 'D':
 			main_config.dictionary_dir = talloc_typed_strdup(NULL, optarg);
 			break;
+
 		case 'f':
 			filename = optarg;
 			break;
+
+		case 'n':
+			rate_limit = atoi(optarg);
+			if (rate_limit == 0) usage();
+			break;
+
+		case 'o':
+			progress_interval = atof(optarg);
+			if (progress_interval < 0.1) usage();
+			break;
+
 		case 'p':
 			parallel = atoi(optarg);
 			if (parallel == 0) parallel = 1;
 			if (parallel > 65536) parallel = 65536;
 			break;
+
 		case 'q':
-			do_output = 0;
+			do_output = false;
 			break;
+
 		case 'x':
 			debug_flag++;
 			fr_debug_flag++;
@@ -1815,55 +2219,58 @@ int main(int argc, char **argv)
 
 		case 'X':
 #if 0
-		  sha1_data_problems = 1; /* for debugging only */
+			sha1_data_problems = 1; /* for debugging only */
 #endif
-		  break;
+			break;
 
 		case 'r':
 			if (!isdigit((int) *optarg))
 				usage();
 			retries = atoi(optarg);
 			break;
+
 		case 's':
-			do_summary = 1;
+			do_summary = true;
 			break;
+
 		case 't':
 			if (!isdigit((int) *optarg))
 				usage();
 			timeout = atof(optarg);
 			break;
+
 		case 'v':
-			printf("$Id$ built on "__DATE__ "at "__TIME__ "");
-			exit(0);
+			printf("%s: %s\n", progname, radiusd_version);
+			exit(EXIT_SUCCESS);
 
 		case 'S':
-		       fp = fopen(optarg, "r");
-		       if (!fp) {
-			       ERROR("Error opening %s: %s",
+			fp = fopen(optarg, "r");
+			if (!fp) {
+				ERROR("Error opening %s: %s", optarg, fr_syserror(errno));
+				exit(1);
+			}
+			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
+				ERROR("Error reading %s: %s",
 				       optarg, fr_syserror(errno));
-			       exit(1);
-		       }
-		       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
-			       ERROR("Error reading %s: %s",
-				       optarg, fr_syserror(errno));
-			       exit(1);
-		       }
-		       fclose(fp);
+				exit(1);
+			}
+			fclose(fp);
 
-		       /* truncate newline */
-		       p = filesecret + strlen(filesecret) - 1;
-		       while ((p >= filesecret) &&
-			      (*p < ' ')) {
-			       *p = '\0';
-			       --p;
-		       }
+			/* truncate newline */
+			p = filesecret + strlen(filesecret) - 1;
+			while ((p >= filesecret) &&
+			       (*p < ' ')) {
+					*p = '\0';
+					--p;
+			}
 
-		       if (strlen(filesecret) < 2) {
-			       ERROR("Secret in %s is too short", optarg);
-			       exit(1);
-		       }
-		       secret = filesecret;
-		       break;
+			if (strlen(filesecret) < 2) {
+				ERROR("Secret in %s is too short", optarg);
+				exit(1);
+			}
+			secret = filesecret;
+			break;
+
 		case 'h':
 		default:
 			usage();
@@ -1876,6 +2283,18 @@ int main(int argc, char **argv)
 	    ((!secret) && (argc < 4))) {
 		usage();
 	}
+
+	/* Initialize logging */
+	if (!do_output) {
+		debug_flag = 0;
+		fr_debug_flag = 0;
+		radclient_log.dst = L_DST_NULL;
+		radclient_log.fd = 0;
+	}
+	radlog_init(&radclient_log, false);
+
+	/* Prepare progress report time. */
+	rc_float_to_timeval(&tv_progress_interval, progress_interval);
 
 	/* Prepare the timeout. */
 	rc_float_to_timeval(&tv_timeout, timeout);
@@ -1956,20 +2375,31 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
+	/* Keep track of elapsed time. */
+	gettimeofday(&tv_start, NULL);
+
+	/* Arm progress statistics */
+	rc_evprep_progress_stat();
+
 	/*
 	 *	Start main loop.
 	 */
 	rc_main_loop();
 
-	if (do_summary) {
-		INFO("\n\t   Total approved auths:  %d", totalapp);
-		INFO("\t     Total denied auths:  %d", totaldeny);
-	}
+	rc_do_progress_stat(); /* one last time. */
+	gettimeofday(&tv_end, NULL);
+
+	/*
+	 *	Do summary / statistics (if asked for).
+	 */
+	rc_summary();
 
 	talloc_free(autofree);
 
 	return 0;
 }
+
+
 
 /** Given a radius request with some attributes in the EAP range, build
  *  them all into a single EAP-Message body.
@@ -2049,9 +2479,8 @@ static int rc_map_eap_methods(RADIUS_PACKET *req)
 	return eap_method;
 }
 
-/*
- * given a radius request with an EAP-Message body, decode it specific
- * attributes.
+/** Given a radius request with an EAP-Message body, decode its specific
+ *  attributes.
  */
 static void rc_unmap_eap_methods(RADIUS_PACKET *rep)
 {
