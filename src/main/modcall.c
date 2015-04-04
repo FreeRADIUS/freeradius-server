@@ -951,8 +951,6 @@ redo:
 			}
 		}
 
-		MOD_LOG_OPEN_BRACE;
-
 		if (c->type == MOD_LOAD_BALANCE) {
 			modcall_child(request, component,
 				      depth + 1, entry, found,
