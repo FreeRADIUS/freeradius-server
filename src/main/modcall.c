@@ -380,14 +380,14 @@ typedef struct modcall_stack_entry_t {
 
 
 static bool modcall_recurse(REQUEST *request, rlm_components_t component, int depth,
-			    modcall_stack_entry_t *entry);
+			    modcall_stack_entry_t *entry, bool do_children);
 
 /*
  *	Call a child of a block.
  */
 static void modcall_child(REQUEST *request, rlm_components_t component, int depth,
 			  modcall_stack_entry_t *entry, modcallable *c,
-			  rlm_rcode_t *result)
+			  rlm_rcode_t *result, bool do_children)
 {
 	modcall_stack_entry_t *next;
 
@@ -406,7 +406,7 @@ static void modcall_child(REQUEST *request, rlm_components_t component, int dept
 	next->unwind = 0;
 
 	if (!modcall_recurse(request, component,
-			     depth, next)) {
+			     depth, next, do_children)) {
 		*result = RLM_MODULE_FAIL;
 		 return;
 	}
@@ -428,7 +428,7 @@ static void modcall_child(REQUEST *request, rlm_components_t component, int dept
  *	Interpret the various types of blocks.
  */
 static bool modcall_recurse(REQUEST *request, rlm_components_t component, int depth,
-			    modcall_stack_entry_t *entry)
+			    modcall_stack_entry_t *entry, bool do_children)
 {
 	bool if_taken, was_if;
 	modcallable *c;
@@ -682,7 +682,7 @@ redo:
 			next->priority = 0;
 			next->unwind = 0;
 
-			if (!modcall_recurse(request, component, depth + 1, next)) {
+			if (!modcall_recurse(request, component, depth + 1, next, true)) {
 				break;
 			}
 
@@ -777,7 +777,7 @@ redo:
 		MOD_LOG_OPEN_BRACE;
 		modcall_child(request, component,
 			      depth + 1, entry, g->children,
-			      &result);
+			      &result, true);
 		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_GROUP */
@@ -912,7 +912,7 @@ redo:
 
 	do_null_case:
 		talloc_free(data.ptr);
-		modcall_child(request, component, depth + 1, entry, found, &result);
+		modcall_child(request, component, depth + 1, entry, found, &result, true);
 		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	} /* MOD_SWITCH */
@@ -944,7 +944,7 @@ redo:
 		if (c->type == MOD_LOAD_BALANCE) {
 			modcall_child(request, component,
 				      depth + 1, entry, found,
-				      &result);
+				      &result, false);
 
 		} else {
 			this = found;
@@ -952,7 +952,7 @@ redo:
 			do {
 				modcall_child(request, component,
 					      depth + 1, entry, this,
-					      &result);
+					      &result, false);
 				if (this->actions[result] == MOD_ACTION_RETURN) {
 					priority = -1;
 					break;
@@ -1084,9 +1084,11 @@ calculate_result:
 	}
 
 next_sibling:
-	entry->c = entry->c->next;
+	if (do_children) {
+		entry->c = entry->c->next;
 
-	if (entry->c) goto redo;
+		if (entry->c) goto redo;
+	}
 
 finish:
 	/*
@@ -1119,7 +1121,7 @@ int modcall(rlm_components_t component, modcallable *c, REQUEST *request)
 	/*
 	 *	Call the main handler.
 	 */
-	if (!modcall_recurse(request, component, 0, &stack[0])) {
+	if (!modcall_recurse(request, component, 0, &stack[0], true)) {
 		return RLM_MODULE_FAIL;
 	}
 
