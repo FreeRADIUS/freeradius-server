@@ -380,14 +380,14 @@ typedef struct modcall_stack_entry_t {
 
 
 static bool modcall_recurse(REQUEST *request, rlm_components_t component, int depth,
-			    modcall_stack_entry_t *entry, bool do_children);
+			    modcall_stack_entry_t *entry, bool do_next_sibling);
 
 /*
  *	Call a child of a block.
  */
 static void modcall_child(REQUEST *request, rlm_components_t component, int depth,
 			  modcall_stack_entry_t *entry, modcallable *c,
-			  rlm_rcode_t *result, bool do_children)
+			  rlm_rcode_t *result, bool do_next_sibling)
 {
 	modcall_stack_entry_t *next;
 
@@ -406,7 +406,7 @@ static void modcall_child(REQUEST *request, rlm_components_t component, int dept
 	next->unwind = 0;
 
 	if (!modcall_recurse(request, component,
-			     depth, next, do_children)) {
+			     depth, next, do_next_sibling)) {
 		*result = RLM_MODULE_FAIL;
 		 return;
 	}
@@ -428,7 +428,7 @@ static void modcall_child(REQUEST *request, rlm_components_t component, int dept
  *	Interpret the various types of blocks.
  */
 static bool modcall_recurse(REQUEST *request, rlm_components_t component, int depth,
-			    modcall_stack_entry_t *entry, bool do_children)
+			    modcall_stack_entry_t *entry, bool do_next_sibling)
 {
 	bool if_taken, was_if;
 	modcallable *c;
@@ -1084,7 +1084,7 @@ calculate_result:
 	}
 
 next_sibling:
-	if (do_children) {
+	if (do_next_sibling) {
 		entry->c = entry->c->next;
 
 		if (entry->c) goto redo;
