@@ -13,6 +13,7 @@
 /** Decrypt a Yubikey OTP AES block
  *
  * @param inst Module configuration.
+ * @param request The current request.
  * @param passcode string to decrypt.
  * @return one of the RLM_RCODE_* constants.
  */
