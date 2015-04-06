@@ -430,8 +430,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 /** Escape unprintable characters
  *
- * ``\n``, ``\r`` are escaped as ``\r`` and ``\n``, all other unprintables are escaped as
- * ``\<oct><oct><oct>``.
+ * - Newline is escaped as ``\\n``.
+ * - Return is escaped as ``\\r``.
+ * - All other unprintables are escaped as @verbatim \<oct><oct><oct> @endverbatim.
  *
  * @param request The current request.
  * @param out Where to write the escaped string.
