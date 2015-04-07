@@ -624,11 +624,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		 *	This is SLOW!  Doing it for every log message
 		 *	in every request is NOT recommended!
 		 */
-
-		 /* FIXME: escape chars! */
-		if (radius_xlat(buffer, sizeof(buffer), request, filename, NULL, NULL) < 0) {
-			return;
-		}
+		if (radius_xlat(buffer, sizeof(buffer), request, filename, rad_filename_escape, NULL) < 0) return;
 		request->log.func = rl;
 
 		p = strrchr(buffer, FR_DIR_SEP);
