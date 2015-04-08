@@ -46,7 +46,7 @@ typedef enum log_type {
 } log_type_t;
 
 typedef enum log_lvl {
-	L_DBG_LVL_MIN = -1,	//!< Hack for stupid GCC warnings (comparison with 0 always true)
+	L_DBG_LVL_DISABLE = -1,	//!< Don't print messages.
 	L_DBG_LVL_OFF = 0,	//!< No debug messages.
 	L_DBG_LVL_1,		//!< Highest priority debug messages (-x).
 	L_DBG_LVL_2,		//!< 2nd highest priority debug messages (-xx | -X).
