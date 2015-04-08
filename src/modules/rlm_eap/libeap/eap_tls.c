@@ -162,6 +162,8 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 
 		if (handler->certs) {
 			pairadd(&vps, paircopy(handler->certs));
+
+			pairadd(&request->packet->vps, paircopy(handler->certs));
 		}
 
 		if (vps) {
