@@ -1166,7 +1166,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 
 	fr_bin2hex(buffer, sess->session_id, size);
 
-	DEBUG2("SSL: Adding session %s to cache", buffer);
+	DEBUG2("  TLS: adding session %s to cache", buffer);
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (conf && conf->session_cache_path) {
@@ -1736,7 +1736,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	sn = X509_get_serialNumber(client_cert);
 
-	RDEBUG2("TLS Verify adding attributes");
+	RDEBUG2("TLS Verify creating certificate attributes");
 	RINDENT();
 
 	/*
@@ -1755,7 +1755,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			p += 2;
 		}
 		vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
-		rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
 
 
@@ -1769,7 +1769,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
 		vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
-		rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
 
 	/*
@@ -1781,7 +1781,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	subject[sizeof(subject) - 1] = '\0';
 	if (certs && identity && (lookup <= 1) && subject[0]) {
 		vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
-		rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
@@ -1789,7 +1789,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	issuer[sizeof(issuer) - 1] = '\0';
 	if (certs && identity && (lookup <= 1) && issuer[0]) {
 		vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
-		rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
 
 	/*
@@ -1800,7 +1800,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	common_name[sizeof(common_name) - 1] = '\0';
 	if (certs && identity && (lookup <= 1) && common_name[0] && subject[0]) {
 		vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
-		rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 	}
 
 	/*
@@ -1822,14 +1822,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				case GEN_EMAIL:
 					vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
 						      (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
-					rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
+					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 					break;
 #endif	/* GEN_EMAIL */
 #ifdef GEN_DNS
 				case GEN_DNS:
 					vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_DNS][lookup],
 						      (char *) ASN1_STRING_data(name->d.dNSName), T_OP_SET);
-					rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
+					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 					break;
 #endif	/* GEN_DNS */
 #ifdef GEN_OTHERNAME
@@ -1840,7 +1840,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 					    if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
 						    vp = pairmake(talloc_ctx, certs, cert_attr_names[FR_TLS_SAN_UPN][lookup],
 								  (char *) ASN1_STRING_data(name->d.otherName->value->value.utf8string), T_OP_SET);
-						    rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
+						    rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 						break;
 					    } else {
 						RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)");
@@ -2858,6 +2858,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			RDEBUG("FAIL: Forcibly stopping session resumption as it is not allowed");
 			return -1;
 		}
+
 	/*
 	 *	Else resumption IS allowed, so we store the
 	 *	user data in the cache.
