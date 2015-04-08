@@ -3027,6 +3027,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 
 {
 	int err;
+	VALUE_PAIR **certs;
 
 	/*
 	 *	Decrypt the complete record.
@@ -3084,6 +3085,14 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 	 *	Passed all checks, successfully decrypted data
 	 */
 	ssn->clean_out.used = err;
+
+	/*
+	 *	Add the certificates to intermediate packets, so that
+	 *	the inner tunnel policies can use them.
+	 */
+	certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, fr_tls_ex_index_certs);
+
+	if (certs) pairadd(&request->packet->vps, paircopy(request->packet, *certs));
 
 	return FR_TLS_OK;
 }
