@@ -2877,6 +2877,11 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			 *	request
 			 */
 			pairadd(&vps, paircopy(talloc_ctx, *certs));
+
+			/*
+			 *	Save the certs in the packet, so that we can see them.
+			 */
+			pairadd(&request->packet->vps, paircopy(request->packet, *certs));
 		}
 
 		if (vps) {
