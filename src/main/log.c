@@ -69,7 +69,7 @@ static const FR_NAME_NUMBER levels[] = {
  * colour and style of the text.
  *
  @code{.c}
-   fprintf(stdout, VTC_RED "This text will be coloured red" VTC_REST);
+   fprintf(stdout, VTC_RED "This text will be coloured red" VTC_RESET);
  @endcode
  * @{
  */
