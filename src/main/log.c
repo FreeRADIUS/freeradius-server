@@ -545,7 +545,8 @@ int radlog(log_type_t type, char const *msg, ...)
  * @param msg with printf style substitution tokens.
  * @param ... Substitution arguments.
  */
-static int CC_HINT(format (printf, 2, 3)) radlog_always(log_type_t type, char const *msg, ...)
+static int radlog_always(log_type_t type, char const *msg, ...) CC_HINT(format (printf, 2, 3));
+static int radlog_always(log_type_t type, char const *msg, ...)
 {
 	va_list ap;
 	int r;
@@ -560,6 +561,7 @@ static int CC_HINT(format (printf, 2, 3)) radlog_always(log_type_t type, char co
 /** Whether a server debug message should be logged
  *
  * @param type of message.
+ * @param lvl of debugging this message should be logged at.
  * @return true if message should be logged, else false.
  */
 inline bool debug_enabled(log_type_t type, log_lvl_t lvl)
