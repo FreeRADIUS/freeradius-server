@@ -1,8 +1,4 @@
 /*
- * log.c	Logging module.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -16,13 +12,19 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2001,2006  The FreeRADIUS server project
- * Copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
- * Copyright 2000  Alan DeKok <aland@ox.org>
- * Copyright 2001  Chad Miller <cmiller@surfsouth.com>
  */
 
+/**
+ * $Id$
+ *
+ * @brief Logging functions used by the server core.
+ * @file main/log.c
+ *
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Miquel van Smoorenburg <miquels@cistron.nl>
+ * @copyright 2000  Alan DeKok <aland@ox.org>
+ * @copyright 2001  Chad Miller <cmiller@surfsouth.com>
+ */
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
@@ -223,7 +225,7 @@ static int stdout_fd = -1;	//!< The original unmolested stdout file descriptor
 
 static char const spaces[] = "                                                                                                                        ";
 
-/** On fault, reset STDOUT and STDERR to something useful.
+/** On fault, reset STDOUT and STDERR to something useful
  *
  * @return 0
  */
@@ -352,11 +354,13 @@ int radlog_init(fr_log_t *log, bool daemonize)
 	return 0;
 }
 
-/*
- *	Log the message to the logfile. Include the severity and
- *	a time stamp.
+/** Send a server log message to its destination
+ *
+ * @param type of log message.
+ * @param msg with printf style substitution tokens.
+ * @param ap Substitution arguments.
  */
-int vradlog(log_type_t type, char const *fmt, va_list ap)
+int vradlog(log_type_t type, char const *msg, va_list ap)
 {
 	unsigned char *p;
 	char buffer[10240];	/* The largest config item size, then extra for prefixes and suffixes */
@@ -422,7 +426,7 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	}
 
 	if (len < sizeof(buffer)) {
-		len += vsnprintf(buffer + len, sizeof(buffer) - len - 1, fmt, ap);
+		len += vsnprintf(buffer + len, sizeof(buffer) - len - 1, msg, ap);
 	}
 
 	/*
@@ -511,6 +515,12 @@ int vradlog(log_type_t type, char const *fmt, va_list ap)
 	return 0;
 }
 
+/** Send a server log message to its destination
+ *
+ * @param type of log message.
+ * @param msg with printf style substitution tokens.
+ * @param ... Substitution arguments.
+ */
 int radlog(log_type_t type, char const *msg, ...)
 {
 	va_list ap;
@@ -529,8 +539,11 @@ int radlog(log_type_t type, char const *msg, ...)
 	return r;
 }
 
-/*
- *	Always log.
+/** Send a server log message to its destination without evaluating its debug level
+ *
+ * @param type of log message.
+ * @param msg with printf style substitution tokens.
+ * @param ... Substitution arguments.
  */
 static int CC_HINT(format (printf, 2, 3)) radlog_always(log_type_t type, char const *msg, ...)
 {
@@ -544,6 +557,11 @@ static int CC_HINT(format (printf, 2, 3)) radlog_always(log_type_t type, char co
 	return r;
 }
 
+/** Whether a server debug message should be logged
+ *
+ * @param type of message.
+ * @return true if message should be logged, else false.
+ */
 inline bool debug_enabled(log_type_t type, log_lvl_t lvl)
 {
 	if ((type & L_DBG) && (lvl <= debug_flag)) return true;
@@ -551,6 +569,8 @@ inline bool debug_enabled(log_type_t type, log_lvl_t lvl)
 	return false;
 }
 
+/** Whether rate limiting is enabled
+ */
 bool rate_limit_enabled(void)
 {
 	if (rate_limit || (debug_flag < 1)) return true;
@@ -558,6 +578,13 @@ bool rate_limit_enabled(void)
 	return false;
 }
 
+/** Whether a request specific debug message should be logged
+ *
+ * @param type of message.
+ * @param lvl of debugging this message should be logged at.
+ * @param request The current request.
+ * @return true if message should be logged, else false.
+ */
 inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *request)
 {
 	/*
@@ -579,6 +606,14 @@ inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *reques
 	return false;
 }
 
+/** Send a log message to its destination, possibly including fields from the request
+ *
+ * @param type of log message, #L_ERR, #L_WARN, #L_INFO, #L_DBG.
+ * @param lvl Minimum required server or request level to output this message.
+ * @param request The current request.
+ * @param msg with printf style substitution tokens.
+ * @param ap Substitution arguments.
+ */
 void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, va_list ap)
 {
 	size_t len = 0;
@@ -611,8 +646,9 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		filename = default_log.debug_file;
 		if (!filename)
 #endif
-
-		filename = default_log.file;
+		{
+			filename = default_log.file;
+		}
 	}
 
 	if (filename) {
@@ -627,6 +663,10 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		if (radius_xlat(buffer, sizeof(buffer), request, filename, rad_filename_escape, NULL) < 0) return;
 		request->log.func = rl;
 
+		/*
+		 *	Ensure the directory structure exists, for
+		 *	where we're going to write the log file.
+		 */
 		p = strrchr(buffer, FR_DIR_SEP);
 		if (p) {
 			*p = '\0';
@@ -653,6 +693,9 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 	vsnprintf(buffer + len, sizeof(buffer) - len, msg, aq);
 	va_end(aq);
 
+	/*
+	 *	Make sure the indent isn't set to something crazy
+	 */
 	indent = request->log.indent > sizeof(spaces) ?
 		 sizeof(spaces) :
 		 request->log.indent;
@@ -727,9 +770,10 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
  * @see radlog_request_error for more details.
  *
  * @param type the log category.
- * @param lvl of debugging this message should be displayed at.
+ * @param lvl of debugging this message should be logged at.
  * @param request The current request.
- * @param msg format string.
+ * @param msg with printf style substitution tokens.
+ * @param ... Substitution arguments.
  */
 void radlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
@@ -756,9 +800,10 @@ void radlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char const
  * consistent behaviour.
  *
  * @param type the log category.
- * @param lvl of debugging this message should be displayed at.
+ * @param lvl of debugging this message should be logged at.
  * @param request The current request.
- * @param msg format string.
+ * @param msg with printf style substitution tokens.
+ * @param ... Substitution arguments.
  */
 void radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char const *msg, ...)
 {
@@ -773,17 +818,17 @@ void radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char
 	va_end(ap);
 }
 
-/** Parse error, write out string we were parsing, and a message indicating the error
+/** Write the string being parsed, and a marker showing where the parse error ocurred
  *
  * @param type the log category.
- * @param lvl of debugging this message should be displayed at.
+ * @param lvl of debugging this message should be logged at.
  * @param request The current request.
- * @param fmt string we were parsing.
+ * @param msg string we were parsing.
  * @param idx The position of the marker relative to the string.
  * @param error What the parse error was.
  */
 void radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
-			   char const *fmt, size_t idx, char const *error)
+			   char const *msg, size_t idx, char const *error)
 {
 	char const *prefix = "";
 	uint8_t indent;
@@ -793,7 +838,7 @@ void radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 	if (idx >= sizeof(spaces)) {
 		size_t offset = (idx - (sizeof(spaces) - 1)) + (sizeof(spaces) * 0.75);
 		idx -= offset;
-		fmt += offset;
+		msg += offset;
 
 		prefix = "... ";
 	}
@@ -804,7 +849,7 @@ void radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 	indent = request->log.indent;
 	request->log.indent = 0;
 
-	radlog_request(type, lvl, request, "%s%s", prefix, fmt);
+	radlog_request(type, lvl, request, "%s%s", prefix, msg);
 	radlog_request(type, lvl, request, "%s%.*s^ %s", prefix, (int) idx, spaces, error);
 
 	request->log.indent = indent;
