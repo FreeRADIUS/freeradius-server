@@ -340,16 +340,16 @@ char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
 
 /** Binary safe strndup function
  *
- * @param[in] ctx to allocate new buffer in.
+ * @param[in] t The talloc context o allocate new buffer in.
  * @param[in] in String to dup, may contain embedded '\0'.
  * @param[in] inlen Number of bytes to dup.
  * @return duped string.
  */
-char *talloc_strndup_bs(TALLOC_CTX *ctx, char const *in, size_t inlen)
+char *talloc_strndup_bs(void const *t, char const *in, size_t inlen)
 {
 	char *p;
 
-	p = talloc_array(ctx, char, inlen + 1);
+	p = talloc_array(t, char, inlen + 1);
 	if (!p) return NULL;
 	memcpy(p, in, inlen);
 	p[inlen] = '\0';
