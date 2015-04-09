@@ -1886,6 +1886,10 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 			attribute[16 + len] = '\0';
 
+			for (p = attribute + 16; *p != '\0'; p++) {
+				if (*p == ' ') *p = '-';
+			}
+
 			X509V3_EXT_print(out, ext, 0, 0);
 			len = BIO_read(out, value , sizeof(value) - 1);
 			if (len <= 0) continue;
