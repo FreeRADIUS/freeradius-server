@@ -1386,7 +1386,7 @@ ssize_t value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type,
 		break;
 
 	case PW_TYPE_STRING:
-		dst->strvalue = talloc_strndup_bs(ctx, src->strvalue, src_len);
+		dst->strvalue = talloc_bstrndup(ctx, src->strvalue, src_len);
 		if (!dst->strvalue) return -1;
 		break;
 
