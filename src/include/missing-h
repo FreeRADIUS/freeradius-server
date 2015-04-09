@@ -436,6 +436,11 @@ typedef void(*sig_t)(int);
 }
 #endif
 
+/*
+ *	Not really missing, but may be submitted as patches
+ *	to the talloc project at some point in the future.
+ */
 char *talloc_typed_strdup(const void *t, const char *p);
 char *talloc_typed_asprintf(const void *t, const char *fmt, ...) CC_HINT(format (printf, 2, 3));
+char *talloc_strndup_bs(TALLOC_CTX *ctx, char const *in, size_t inlen);
 #endif /* _FR_MISSING_H */
