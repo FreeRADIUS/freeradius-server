@@ -1896,7 +1896,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			 *	Mash the OpenSSL name to our name, and
 			 *	create the attribute.
 			 */
-			for (p = value + 16; *p != '\0'; p++) {
+			for (p = value; *p != '\0'; p++) {
 				if (*p == ' ') *p = '-';
 			}
 
