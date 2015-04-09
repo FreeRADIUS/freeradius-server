@@ -965,7 +965,7 @@ static int rest_decode_plain(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_sectio
 	 *  Use rawlen to protect against overrun, and to cope with any binary data
 	 */
 	vp = pairmake_reply("REST-HTTP-Body", NULL, T_OP_ADD);
-	pairstrncpy(vp, raw, rawlen);
+	pairbstrncpy(vp, raw, rawlen);
 
 	RDEBUG2("Adding reply:REST-HTTP-Body += \"%s\"", vp->vp_strvalue);
 

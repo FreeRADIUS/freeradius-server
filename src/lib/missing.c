@@ -345,7 +345,7 @@ char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
  * @param[in] inlen Number of bytes to dup.
  * @return duped string.
  */
-char *talloc_strndup_bs(void const *t, char const *in, size_t inlen)
+char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
 {
 	char *p;
 
