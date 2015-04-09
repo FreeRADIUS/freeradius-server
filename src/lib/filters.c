@@ -968,8 +968,7 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	 *	Once the filter is *completely* parsed, then we will
 	 *	over-write it with the final binary filter.
 	 */
-	p = talloc_memdup(NULL, value, len+1);
-	p[len] = '\0';
+	p = talloc_strndup_bs(NULL, value, len);
 
 	/*
 	 *	Rather than printing specific error messages, we create
