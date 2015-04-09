@@ -322,7 +322,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 			 */
 			if (is_dn) {
 				MEM(vp = pairalloc(list_ctx, inst->cache_da));
-				pairstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
+				pairbstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
 				fr_cursor_insert(&groups_cursor, vp);
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve
@@ -339,7 +339,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 			 */
 			if (!is_dn) {
 				MEM(vp = pairalloc(list_ctx, inst->cache_da));
-				pairstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
+				pairbstrncpy(vp, values[i]->bv_val, values[i]->bv_len);
 				fr_cursor_insert(&groups_cursor, vp);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve
@@ -362,7 +362,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *req
 				}
 
 				MEM(vp = pairalloc(list_ctx, inst->cache_da));
-				pairstrncpy(vp, name, talloc_array_length(name) - 1);
+				pairbstrncpy(vp, name, talloc_array_length(name) - 1);
 				fr_cursor_insert(&groups_cursor, vp);
 				talloc_free(name);
 			}
@@ -497,7 +497,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *re
 			if (!values) continue;
 
 			MEM(vp = pairmake_config(inst->cache_da->name, NULL, T_OP_ADD));
-			pairstrncpy(vp, values[0]->bv_val, values[0]->bv_len);
+			pairbstrncpy(vp, values[0]->bv_val, values[0]->bv_len);
 
 			RDEBUG("Added control:%s with value \"%.*s\"", inst->cache_da->name,
 			       (int)values[0]->bv_len, values[0]->bv_val);

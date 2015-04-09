@@ -715,7 +715,7 @@ char *vp_data_aprints_value(TALLOC_CTX *ctx,
 		size_t len, ret;
 
 		if (!quote) {
-			p = talloc_strndup_bs(ctx, data->strvalue, inlen);
+			p = talloc_bstrndup(ctx, data->strvalue, inlen);
 			if (!p) return NULL;
 			talloc_set_type(p, char);
 			return p;
