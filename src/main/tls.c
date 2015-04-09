@@ -1902,8 +1902,9 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 			vp = pairmake(talloc_ctx, certs, attribute, value, T_OP_ADD);
 			if (!vp) {
-				RDEBUG3("Skipping %s += '%s'.  Define %s in the server dictionary "
-					"if you require this attribute", attribute, value, attribute);
+				RDEBUG3("Skipping %s += '%s'.  Please check that both the "
+					"attribute and value are defined in the dictionaries",
+					attribute, value);
 			} else {
 				rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
 			}
