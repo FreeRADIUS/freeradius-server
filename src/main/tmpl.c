@@ -524,7 +524,7 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 	if (!vpt) return NULL;
 	vpt->type = type;
 	if (name) {
-		vpt->name = talloc_bstrndup(vpt, name, len < 0 ? strlen(name) : len);
+		vpt->name = talloc_bstrndup(vpt, name, len < 0 ? strlen(name) : (size_t)len);
 		vpt->len = talloc_array_length(vpt->name) - 1;
 	}
 
