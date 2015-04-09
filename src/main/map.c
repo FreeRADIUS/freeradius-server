@@ -111,7 +111,11 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 	map->rhs->tmpl_data_type = da->type;
 	map->rhs->tmpl_data_length = vp->vp_length;
 	if (vp->da->flags.is_pointer) {
-		map->rhs->tmpl_data_value.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->vp_length);
+		if (vp->da->type == PW_TYPE_STRING) {
+			map->rhs->tmpl_data_value.ptr = talloc_strndup_bs(map->rhs, vp->data.ptr, vp->vp_length);
+		} else {
+			map->rhs->tmpl_data_value.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->vp_length);
+		}
 	} else {
 		memcpy(&map->rhs->tmpl_data_value, &vp->data, sizeof(map->rhs->tmpl_data_value));
 	}
