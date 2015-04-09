@@ -1918,14 +1918,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 			value[len] = '\0';
 
-			/*
-			 *	Mash the OpenSSL name to our name, and
-			 *	create the attribute.
-			 */
-			for (p = value; *p != '\0'; p++) {
-				if (*p == ' ') *p = '-';
-			}
-
 			vp = pairmake(talloc_ctx, certs, attribute, value, T_OP_ADD);
 			if (!vp) {
 				RDEBUG3("Skipping %s += '%s'.  Please check that both the "
