@@ -442,5 +442,5 @@ typedef void(*sig_t)(int);
  */
 char *talloc_typed_strdup(const void *t, const char *p);
 char *talloc_typed_asprintf(const void *t, const char *fmt, ...) CC_HINT(format (printf, 2, 3));
-char *talloc_strndup_bs(const void *t, char const *in, size_t inlen);
+char *talloc_bstrndup(const void *t, char const *in, size_t inlen);
 #endif /* _FR_MISSING_H */

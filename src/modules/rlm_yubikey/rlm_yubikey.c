@@ -333,7 +333,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			return RLM_MODULE_FAIL;
 		}
 
-		pairstrncpy(vp, passcode, inst->id_len);
+		pairbstrncpy(vp, passcode, inst->id_len);
 	}
 
 	return RLM_MODULE_OK;

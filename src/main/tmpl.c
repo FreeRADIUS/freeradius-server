@@ -524,7 +524,7 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 	if (!vpt) return NULL;
 	vpt->type = type;
 	if (name) {
-		vpt->name = talloc_strndup_bs(vpt, name, len < 0 ? strlen(name) : len);
+		vpt->name = talloc_bstrndup(vpt, name, len < 0 ? strlen(name) : len);
 		vpt->len = talloc_array_length(vpt->name) - 1;
 	}
 
@@ -1343,7 +1343,7 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 	switch (vpt->type) {
 	case TMPL_TYPE_LITERAL:
 		RDEBUG4("EXPAND TMPL LITERAL");
-		*out = talloc_strndup_bs(ctx, vpt->name, vpt->len);
+		*out = talloc_bstrndup(ctx, vpt->name, vpt->len);
 		return vpt->len;
 
 	case TMPL_TYPE_EXEC:

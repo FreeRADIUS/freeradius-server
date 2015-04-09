@@ -2506,7 +2506,7 @@ xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 	if (vpt->type != TMPL_TYPE_ATTR) return NULL;
 
 	node = talloc_zero(ctx, xlat_exp_t);
-	node->fmt = talloc_strndup_bs(node, vpt->name, vpt->len);
+	node->fmt = talloc_bstrndup(node, vpt->name, vpt->len);
 	tmpl_init(&node->attr, TMPL_TYPE_ATTR, node->fmt, talloc_array_length(node->fmt) - 1);
 	memcpy(&node->attr.data, &vpt->data, sizeof(vpt->data));
 

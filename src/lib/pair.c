@@ -661,7 +661,7 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 
 	case PW_TYPE_STRING:
 		n->vp_strvalue = NULL;	/* else pairstrnpy will free vp's value */
-		pairstrncpy(n, vp->vp_strvalue, n->vp_length);
+		pairbstrncpy(n, vp->vp_strvalue, n->vp_length);
 		break;
 
 	default:
@@ -2045,7 +2045,7 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
  * @param[in] src data to copy.
  * @param[in] len of data to copy.
  */
-void pairstrncpy(VALUE_PAIR *vp, char const *src, size_t len)
+void pairbstrncpy(VALUE_PAIR *vp, char const *src, size_t len)
 {
 	char *p, *q;
 

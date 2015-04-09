@@ -873,7 +873,7 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *da
 		q = end = data + len;
 
 		if (!vp->da->flags.array) {
-			pairstrncpy(vp, (char const *)p, q - p);
+			pairbstrncpy(vp, (char const *)p, q - p);
 			break;
 		}
 
@@ -887,7 +887,7 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *da
 			/* Malformed but recoverable */
 			if (!q) q = end;
 
-			pairstrncpy(vp, (char const *)p, q - p);
+			pairbstrncpy(vp, (char const *)p, q - p);
 			p = q + 1;
 
 			/* Need another VP for the next round */
@@ -1912,7 +1912,7 @@ int fr_socket_packet(int iface_index, struct sockaddr_ll *p_ll)
 	if (lsockfd < 0) {
 		fr_strerror_printf("cannot open socket: %s", fr_syserror(errno));
 		return lsockfd;
-	} 
+	}
 
 	/* Set link layer parameters */
 	memset(p_ll, 0, sizeof(struct sockaddr_ll));
@@ -1923,7 +1923,7 @@ int fr_socket_packet(int iface_index, struct sockaddr_ll *p_ll)
 	p_ll->sll_hatype = ARPHRD_ETHER;
 	p_ll->sll_pkttype = PACKET_OTHERHOST;
 	p_ll->sll_halen = 6;
-    
+
 	if (bind(lsockfd, (struct sockaddr *)p_ll, sizeof(struct sockaddr_ll)) < 0) {
 		close(lsockfd);
 		fr_strerror_printf("cannot bind raw socket: %s", fr_syserror(errno));
@@ -1959,7 +1959,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET 
 	struct ip_header *iph = (struct ip_header *)(dhcp_packet + ETH_HDR_SIZE);
 	iph->ip_vhl = IP_VHL(4, 5);
 	iph->ip_tos = 0;
-	iph->ip_len = htons(IP_HDR_SIZE +  UDP_HDR_SIZE + packet->data_len);  
+	iph->ip_len = htons(IP_HDR_SIZE +  UDP_HDR_SIZE + packet->data_len);
 	iph->ip_id = 0;
 	iph->ip_off = 0;
 	iph->ip_ttl = 64;
@@ -2014,7 +2014,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET 
 		   inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst_ip_buf, sizeof(dst_ip_buf)), packet->dst_port);
 	}
 
-	return sendto(sockfd, dhcp_packet, 
+	return sendto(sockfd, dhcp_packet,
 		(ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE + packet->data_len),
 		0, (struct sockaddr *) p_ll, sizeof(struct sockaddr_ll));
 }
@@ -2095,7 +2095,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 		/* No match. */
 		char eth_dest[17+1];
 		char eth_req_src[17+1];
-		DISCARD_RP("Ethernet destination (%s) is not broadcast and doesn't match request source (%s)", 
+		DISCARD_RP("Ethernet destination (%s) is not broadcast and doesn't match request source (%s)",
 			ether_addr_print(eth_hdr->ether_dst, eth_dest),
 			ether_addr_print(vp->vp_ether, eth_req_src));
 	}
@@ -2136,7 +2136,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 
 	if (dhcp_data_len < MIN_PACKET_SIZE) DISCARD_RP("DHCP packet is too small (%d < %d)", dhcp_data_len, MIN_PACKET_SIZE);
 	if (dhcp_data_len > MAX_PACKET_SIZE) DISCARD_RP("DHCP packet is too large (%d > %d)", dhcp_data_len, MAX_PACKET_SIZE);
-	
+
 	dhcp_hdr = (dhcp_packet_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
 
 	if (dhcp_hdr->htype != 1) DISCARD_RP("DHCP hardware type (%d) != Ethernet (1)", dhcp_hdr->htype);

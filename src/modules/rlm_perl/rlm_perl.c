@@ -703,7 +703,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 
 		switch (vp->da->type) {
 		case PW_TYPE_STRING:
-			pairstrncpy(vp, val, len);
+			pairbstrncpy(vp, val, len);
 			break;
 
 		default:
