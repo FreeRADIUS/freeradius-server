@@ -547,8 +547,6 @@ ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Dns	1931	string internal
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Upn	1932	string internal
 ATTRIBUTE	TLS-PSK-Identity			1933	string internal
 
-VALUE	TLS-Client-Cert-X509v3-Extended-Key-Usage TLS-Web-Client-Authentication 130
-
 # 1934 - 1939: reserved for future cert attributes
 
 #
