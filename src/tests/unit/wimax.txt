@@ -31,6 +31,9 @@ data 1a 14 00 00 60 b5 54 0e 00 09 0b 04 03 01 05 06 04 04 1a 99
 decode -
 data WiMAX-PFDv2-Classifier-Direction = 1, WiMAX-PFDv2-Src-Port = 6809
 
+decode 1a 11 00 00 60 b5 54 0b 00 09 08 05 06 04 04 1a 99
+data WiMAX-PFDv2-Src-Port = 6809
+
 # 26.24757.89.9.4 has the correct length.
 # 26.24757.89.9.5 has the correct length.
 # 26.24757.89.9.5.4 has the wrong length.
