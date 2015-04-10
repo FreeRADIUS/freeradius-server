@@ -1651,8 +1651,23 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 		    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
 		    (cf_pair_value_type(cp) == T_SINGLE_QUOTED_STRING)) {
 			tmpl_cast_in_place_str(map->rhs);
+
 		} else {
-			if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+			/*
+			 *
+			 */
+			if (map->lhs->auto_converted) {
+				vp_tmpl_t *vpt = map->rhs;
+				map->rhs = NULL;
+
+				if (!map_cast_from_hex(map, T_BARE_WORD, vpt->name)) {
+					map->rhs = vpt;
+					cf_log_err(map->ci, "%s", fr_strerror());
+					return -1;
+				}
+				talloc_free(vpt);
+
+			} else if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 				cf_log_err(map->ci, "%s", fr_strerror());
 				return -1;
 			}
