@@ -675,8 +675,6 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 	}
 
 do_tag:
-	type = TMPL_TYPE_ATTR;
-
 	/*
 	 *	The string MIGHT have a tag.
 	 */
