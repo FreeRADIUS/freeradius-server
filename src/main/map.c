@@ -1359,18 +1359,18 @@ void map_debug_log(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR con
 	 */
 	default:
 	case TMPL_TYPE_LITERAL:
-		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
 		value = buffer;
 		break;
 
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
-		vp_prints_value(buffer, sizeof(buffer), vp, '"');
+		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
 		value = buffer;
 		break;
 
 	case TMPL_TYPE_DATA:
-		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
 		value = buffer;
 		break;
 
@@ -1379,7 +1379,7 @@ void map_debug_log(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR con
 	 *	want to know what it was...
 	 */
 	case TMPL_TYPE_LIST:
-		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
 
 		if (map->rhs->tmpl_request == REQUEST_OUTER) {
 			value = talloc_typed_asprintf(request, "&outer.%s:%s -> %s",
@@ -1393,7 +1393,7 @@ void map_debug_log(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR con
 		break;
 
 	case TMPL_TYPE_ATTR:
-		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
 		value = talloc_typed_asprintf(request, "&%s -> %s", map->rhs->tmpl_da->name, buffer);
 		break;
 
