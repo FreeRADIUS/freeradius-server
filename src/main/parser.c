@@ -1016,7 +1016,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	This allows Framed-IP-Address < 192.168.0.0./24
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
-				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL)) {
+				    ((c->data.map->rhs->type == TMPL_TYPE_LITERAL) ||
+				     (c->data.map->rhs->type == TMPL_TYPE_DATA))) {
 					PW_TYPE type;
 
 					switch (c->data.map->lhs->tmpl_da->type) {
