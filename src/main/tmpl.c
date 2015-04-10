@@ -553,19 +553,21 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
  * @param[in] allow_unknown If true attributes in the format accepted by
  *	#dict_unknown_from_substr will be allowed, even if they're not in the main
  *	dictionaries.
- *	If an unknown attribute is found A #TMPL_TYPE_ATTR #vp_tmpl_t ill be
+ *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
  *	produced with the unknown #DICT_ATTR stored in the ``unknown.da`` buffer.
  *	This #DICT_ATTR will have its ``flags.is_unknown`` field set to true.
  *	If #tmpl_from_attr_substr is being called on startup, the #vp_tmpl_t may be
- *	fed to #tmpl_define_unknown_attr to add it to the main dictionaries.
- *	If #tmpl_from_attr_substr is not called, the #vp_tmpl_t cannot be used to
- *	search for #VALUE_PAIR in a #REQUEST.
+ *	passed to #tmpl_define_unknown_attr to add the unknown attribute to the main
+ *	dictionary.
+ *	If the unknown attribute is not added to the main dictionary the #vp_tmpl_t
+ *	cannot be used to search for a #VALUE_PAIR in a #REQUEST.
  * @param[in] allow_undefined If true, we don't generate a parse error on unknown attributes.
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED #vp_tmpl_t
  *	will be produced.
  * @return <= 0 on error (offset as negative integer), > 0 on success
  *	(number of bytes parsed).
- *	@see REMARKER to produce pretty error markers from the return value.
+ *
+ * @see REMARKER to produce pretty error markers from the return value.
  */
 ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			      request_refs_t request_def, pair_lists_t list_def,
@@ -626,6 +628,9 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			/*
 			 *	Check what we just parsed really hasn't been defined
 			 *	in the main dictionaries.
+			 *
+			 *	If it has, parsing is the same as if the attribute
+			 *	name had been used instead of its OID.
 			 */
 			attr.da = dict_attrbyvalue(((DICT_ATTR *)&attr.unknown.da)->attr,
 						   ((DICT_ATTR *)&attr.unknown.da)->vendor);
@@ -797,19 +802,21 @@ ssize_t tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
  * @param[in] allow_unknown If true attributes in the format accepted by
  *	#dict_unknown_from_substr will be allowed, even if they're not in the main
  *	dictionaries.
- *	If an unknown attribute is found A #TMPL_TYPE_ATTR #vp_tmpl_t ill be
+ *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
  *	produced with the unknown #DICT_ATTR stored in the ``unknown.da`` buffer.
  *	This #DICT_ATTR will have its ``flags.is_unknown`` field set to true.
  *	If #tmpl_from_attr_substr is being called on startup, the #vp_tmpl_t may be
- *	fed to #tmpl_define_unknown_attr to add it to the main dictionaries.
- *	If #tmpl_from_attr_substr is not called, the #vp_tmpl_t cannot be used to
- *	search for #VALUE_PAIR in a #REQUEST.
+ *	passed to #tmpl_define_unknown_attr to add the unknown attribute to the main
+ *	dictionary.
+ *	If the unknown attribute is not added to the main dictionary the #vp_tmpl_t
+ *	cannot be used to search for a #VALUE_PAIR in a #REQUEST.
  * @param[in] allow_undefined If true, we don't generate a parse error on unknown attributes.
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED #vp_tmpl_t
  *	will be produced.
  * @return <= 0 on error (offset as negative integer), > 0 on success
  *	(number of bytes parsed).
- *	@see REMARKER to produce pretty error markers from the return value.
+ *
+ * @see REMARKER to produce pretty error markers from the return value.
  */
 ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 			    request_refs_t request_def, pair_lists_t list_def,
