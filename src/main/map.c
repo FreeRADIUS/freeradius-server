@@ -325,7 +325,9 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 	     ci = cf_item_find_next(cs, ci)) {
 		if (total++ == max) {
 			cf_log_err(ci, "Map size exceeded");
-			goto error;
+		error:
+			TALLOC_FREE(*out);
+			return -1;
 		}
 
 		if (!cf_item_is_pair(ci)) {
@@ -350,9 +352,7 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 	}
 
 	return 0;
-error:
-	TALLOC_FREE(*out);
-	return -1;
+
 }
 
 
