@@ -634,7 +634,10 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			 */
 			attr.da = dict_attrbyvalue(((DICT_ATTR *)&attr.unknown.da)->attr,
 						   ((DICT_ATTR *)&attr.unknown.da)->vendor);
-			if (attr.da) goto do_tag;
+			if (attr.da) {
+				vpt->auto_converted = true;
+				goto skip_tag;
+			}
 
 			if (!allow_unknown) {
 				fr_strerror_printf("Unknown attribute");
@@ -674,7 +677,6 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		goto skip_tag;
 	}
 
-do_tag:
 	/*
 	 *	The string MIGHT have a tag.
 	 */
