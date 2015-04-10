@@ -1058,11 +1058,14 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
  * @{
  */
 
-/** Convert a #vp_tmpl_t containing literal data, to the type specified
+/** Convert #vp_tmpl_t of type #TMPL_TYPE_LITERAL or #TMPL_TYPE_DATA to #TMPL_TYPE_DATA of type specified
  *
  * @note Conversion is done in place.
+ * @note Irrespective of whether the #vp_tmpl_t was #TMPL_TYPE_LITERAL or #TMPL_TYPE_DATA,
+ *	on successful cast it will be #TMPL_TYPE_DATA.
  *
- * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_LITERAL.
+ * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_LITERAL
+ *	or #TMPL_TYPE_DATA.
  * @param[in] type to cast to.
  * @param[in] enumv Enumerated dictionary values associated with a #DICT_ATTR.
  * @return 0 on success, -1 on failure.
@@ -1074,18 +1077,55 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 	VERIFY_TMPL(vpt);
 
 	rad_assert(vpt != NULL);
-	rad_assert(vpt->type == TMPL_TYPE_LITERAL);
+	rad_assert((vpt->type == TMPL_TYPE_LITERAL) || (vpt->type == TMPL_TYPE_DATA));
 
-	vpt->tmpl_data_type = type;
+	switch (vpt->type) {
+	case TMPL_TYPE_LITERAL:
+		vpt->tmpl_data_type = type;
 
-	/*
-	 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
-	 */
-	ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type, enumv, vpt->name, vpt->len, '\0');
-	if (ret < 0) return -1;
+		/*
+		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
+		 */
+		ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type,
+					  enumv, vpt->name, vpt->len, '\0');
+		if (ret < 0) return -1;
 
-	vpt->type = TMPL_TYPE_DATA;
-	vpt->tmpl_data_length = (size_t) ret;
+		vpt->type = TMPL_TYPE_DATA;
+		vpt->tmpl_data_length = (size_t) ret;
+		break;
+
+	case TMPL_TYPE_DATA:
+	{
+		value_data_t new;
+
+		if (type == vpt->tmpl_data_type) return 0;	/* noop */
+
+		ret = value_data_cast(vpt, &new, type, enumv, vpt->tmpl_data_type,
+				      NULL, &vpt->tmpl_data_value, vpt->tmpl_data_length);
+		if (ret < 0) return -1;
+
+		/*
+		 *	Free old value buffers
+		 */
+		switch (vpt->tmpl_data_type) {
+		case PW_TYPE_STRING:
+		case PW_TYPE_OCTETS:
+			talloc_free(vpt->tmpl_data_value.ptr);
+			break;
+
+		default:
+			break;
+		}
+
+		memcpy(&vpt->tmpl_data_value, &new, sizeof(vpt->tmpl_data_value));
+		vpt->tmpl_data_type = type;
+		vpt->tmpl_data_length = (size_t) ret;
+	}
+		break;
+
+	default:
+		rad_assert(0);
+	}
 
 	VERIFY_TMPL(vpt);
 
