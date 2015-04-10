@@ -1654,10 +1654,24 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 	 */
 	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_LITERAL)) {
 		/*
+		 *	Convert it to the correct type.
+		 */
+		if (map->lhs->auto_converted) {
+			vp_tmpl_t *vpt = map->rhs;
+			map->rhs = NULL;
+
+			if (!map_cast_from_hex(map, T_BARE_WORD, vpt->name)) {
+				map->rhs = vpt;
+				cf_log_err(map->ci, "%s", fr_strerror());
+				return -1;
+			}
+			talloc_free(vpt);
+
+		/*
 		 *	It's a literal string, just copy it.
 		 *	Don't escape anything.
 		 */
-		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+		} else if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
 			cf_log_err(map->ci, "%s", fr_strerror());
 			return -1;
 		}
