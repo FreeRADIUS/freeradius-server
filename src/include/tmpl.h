@@ -194,6 +194,7 @@ typedef struct vp_tmpl_t {
 					//!< the attribute.
 	size_t		len;		//!< Name length.
 	char		quote;		//!< Quotation character for "name"
+	bool		auto_converted; //!< Attr-26.9.1 --> Cisco-AVPair
 
 #ifdef HAVE_REGEX
 	bool		iflag;		//!< regex - case insensitive (if operand is used in regex comparison)
