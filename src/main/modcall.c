@@ -1656,7 +1656,9 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 		/*
 		 *	Convert it to the correct type.
 		 */
-		if (map->lhs->auto_converted) {
+		if (map->lhs->auto_converted &&
+		    (map->rhs->name[0] == '0') && (map->rhs->name[1] == 'x') &&
+		    (map->rhs->len > 2) && ((map->rhs->len & 0x01) == 0)) {
 			vp_tmpl_t *vpt = map->rhs;
 			map->rhs = NULL;
 
