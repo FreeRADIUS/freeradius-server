@@ -231,9 +231,11 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	 */
 	type = cf_pair_value_type(cp);
 
-	if ((type == T_BARE_WORD) && (value[0] == '0') && (tolower((int)value[1] == 'x')) &&
-		map_cast_from_hex(map, type, value)) {
-		/* do nothing */
+	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+	    map->lhs->tmpl_da->flags.is_unknown &&
+	    !map_cast_from_hex(map, type, value)) {
+		goto error;
+
 	} else {
 		slen = tmpl_afrom_str(map, &map->rhs, value, strlen(value), type, src_request_def, src_list_def, true);
 		if (slen < 0) goto marker;
