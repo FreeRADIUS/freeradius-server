@@ -93,7 +93,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		}
 
 		REDEBUG("&control:Cleartext-Password is required for authentication");
-		return RLM_MODULE_INVALID;
+		return RLM_MODULE_FAIL;
 	}
 
 	rad_chap_encode(request->packet, pass_str, chap->vp_octets[0], password);
