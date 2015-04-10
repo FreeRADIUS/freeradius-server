@@ -232,7 +232,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	 */
 	type = cf_pair_value_type(cp);
 
-	if ((type == T_BARE_WORD) && (value[0] == '0') && (tolower((int)value[1] == 'x')) &&
+	if ((type == T_BARE_WORD) && (value[0] == '0') && (tolower((int)value[1]) == 'x') &&
 		map_cast_from_hex(map, type, value)) {
 		/* do nothing */
 	} else {
