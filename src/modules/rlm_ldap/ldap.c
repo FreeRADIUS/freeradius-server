@@ -34,10 +34,16 @@
 
 /** Converts "bad" strings into ones which are safe for LDAP
  *
- * This is a callback for xlat operations.
+ * @note RFC 4515 says filter strings can only use the @verbatim \<hex><hex> @endverbatim
+ *	format, whereas RFC 4514 indicates that some chars in DNs, may be escaped simply
+ *	with a backslash. For simplicity, we always use the hex escape sequences.
+ *	In other areas where we're doing DN comparison, the DNs need to be normalised first
+ *	so that they both use only hex escape sequences.
  *
- * Will escape any characters in input strings that would cause the string to be interpreted as part of a DN and or
- * filter. Escape sequence is @verbatim \<hex><hex> @endverbatim
+ * @note This is a callback for xlat operations.
+ *
+ * Will escape any characters in input strings that would cause the string to be interpreted
+ * as part of a DN and or filter. Escape sequence is @verbatim \<hex><hex> @endverbatim.
  *
  * @param request The current request.
  * @param out Pointer to output buffer.
@@ -51,17 +57,14 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
 	static char const hextab[] = "0123456789abcdef";
 	size_t left = outlen;
 
-	if (*in && ((*in == ' ') || (*in == '#'))) {
-		goto encode;
-	}
+	if (*in && ((*in == ' ') || (*in == '#'))) goto encode;
 
 	while (*in) {
 		/*
 		 *	Encode unsafe characters.
 		 */
 		if (memchr(encode, *in, sizeof(encode) - 1)) {
-			encode:
-
+		encode:
 			/*
 			 *	Only 3 or less bytes available.
 			 */
