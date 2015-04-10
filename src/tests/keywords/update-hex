@@ -1,0 +1,29 @@
+#
+# PRE: update
+#
+#  Update using a bareword containing a hex string
+#
+update {
+       control:Cleartext-Password := 'hello'
+       reply:Filter-Id := "filter"
+}
+
+update {
+	Tmp-String-0 := 0x626f62
+}
+
+if (Tmp-String-0 != 'bob') {
+	update reply {
+		Filter-Id += 'Fail 0'
+	}
+}
+
+update {
+	Tmp-String-0 := '0x626f62'
+}
+
+if (Tmp-String-0 != '0x626f62') {
+	update reply {
+		Filter-Id += 'Fail 1'
+	}
+}

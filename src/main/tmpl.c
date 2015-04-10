@@ -931,6 +931,43 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 	switch (type) {
 	case T_BARE_WORD:
 		/*
+		 *  No attribute names start with 0x, and if they did, the user
+		 *  can just use the explicit & prefix.
+		 */
+		if ((in[0] == '0') && (tolower(in[1]) == 'x')) {
+			size_t binlen, len;
+
+			/*
+			 *  Hex strings must contain even number of characters
+			 */
+			if (inlen & 0x01) {
+				fr_strerror_printf("Hex string not even length");
+				return -inlen;
+			}
+
+			if (inlen <= 2) {
+				fr_strerror_printf("Zero length hex string is invalid");
+				return -inlen;
+			}
+
+			binlen = (inlen - 2) / 2;
+
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen);
+			vpt->tmpl_data_value.ptr = talloc_array(vpt, uint8_t, binlen);
+			vpt->tmpl_data_length = binlen;
+			vpt->tmpl_data_type = PW_TYPE_OCTETS;
+
+			len = fr_hex2bin(vpt->tmpl_data_value.ptr, binlen, in + 2, inlen - 2);
+			if (len != binlen) {
+				fr_strerror_printf("Hex string contains none hex char");
+				talloc_free(vpt);
+				return -(len + 2);
+			}
+			slen = len;
+			break;
+		}
+
+		/*
 		 *	If we can parse it as an attribute, it's an attribute.
 		 *	Otherwise, treat it as a literal.
 		 */
