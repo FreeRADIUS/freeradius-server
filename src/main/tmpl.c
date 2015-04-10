@@ -1188,10 +1188,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 
 	VERIFY_TMPL(vpt);
 
-	if ((vpt->type != TMPL_TYPE_ATTR) &&
-	    (vpt->type != TMPL_TYPE_DATA)) {
-		return 0;
-	}
+	if (vpt->type != TMPL_TYPE_ATTR) return 0;
 
 	if (!vpt->tmpl_da->flags.is_unknown) return 0;
 
