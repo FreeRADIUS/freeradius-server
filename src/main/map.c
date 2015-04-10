@@ -120,6 +120,7 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 		memcpy(&map->rhs->tmpl_data_value, &vp->data, sizeof(map->rhs->tmpl_data_value));
 	}
 	map->rhs->name = vp_aprints_value(map->rhs, vp, '"');
+	map->rhs->len = talloc_array_length(map->rhs->name) - 1;
 
 	/*
 	 *	Set the LHS to the REAL attribute name.
