@@ -4,8 +4,9 @@
  * @brief LDAP authorization and authentication module headers.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Network RADIUS SARL<info@networkradius.com>
- * @copyright 2013 The FreeRADIUS Server Project.
+ * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
 #ifndef _RLM_LDAP_H
 #define _RLM_LDAP_H
@@ -189,7 +190,7 @@ typedef struct ldap_instance {
 	/*
 	 *	Profiles
 	 */
-	vp_tmpl_t *default_profile;		//!< If this is set, we will search for a profile object
+	vp_tmpl_t	*default_profile;		//!< If this is set, we will search for a profile object
 							//!< with this name, and map any attributes it contains.
 							//!< No value should be set if profiles are not being used
 							//!< as there is an associated performance penalty.
