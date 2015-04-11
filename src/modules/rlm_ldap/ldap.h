@@ -138,8 +138,8 @@ typedef struct ldap_instance {
 	/*
 	 *	User object attributes and filters
 	 */
-	vp_tmpl_t *userobj_filter;		//!< Filter to retrieve only user objects.
-	vp_tmpl_t *userobj_base_dn;		//!< DN to search for users under.
+	vp_tmpl_t	*userobj_filter;		//!< Filter to retrieve only user objects.
+	vp_tmpl_t	*userobj_base_dn;		//!< DN to search for users under.
 	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
 	int		userobj_scope;			//!< Search scope.
 
@@ -157,7 +157,7 @@ typedef struct ldap_instance {
 	 *	Group object attributes and filters
 	 */
 	char const	*groupobj_filter;		//!< Filter to retrieve only group objects.
-	vp_tmpl_t *groupobj_base_dn;		//!< DN to search for users under.
+	vp_tmpl_t	*groupobj_base_dn;		//!< DN to search for users under.
 	char const	*groupobj_scope_str;		//!< Scope (sub, one, base).
 	int		groupobj_scope;			//!< Search scope.
 
@@ -203,7 +203,7 @@ typedef struct ldap_instance {
 							//!< as there is an associated performance penalty.
 	char const	*profile_attr;			//!< Attribute that identifies profiles to apply. May appear
 							//!< in userobj or groupobj.
-	vp_tmpl_t *profile_filter;		//!< Filter to retrieve only retrieve group objects.
+	vp_tmpl_t	*profile_filter;		//!< Filter to retrieve only retrieve group objects.
 
 	/*
 	 *	Accounting
