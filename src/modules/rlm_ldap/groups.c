@@ -101,8 +101,8 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 		return RLM_MODULE_INVALID;
 	}
 
-	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->groupobj_scope,
-				 filter, attrs, &result);
+	status = rlm_ldap_search(&result, inst, request, pconn, base_dn, inst->groupobj_scope,
+				 filter, attrs, NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
@@ -213,7 +213,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *
 
 	RDEBUG("Resolving group DN \"%s\" to group name", dn);
 
-	status = rlm_ldap_search(inst, request, pconn, dn, LDAP_SCOPE_BASE, NULL, attrs, &result);
+	status = rlm_ldap_search(&result, inst, request, pconn, dn, LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
@@ -452,7 +452,8 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *re
 		return RLM_MODULE_INVALID;
 	}
 
-	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->groupobj_scope, filter, attrs, &result);
+	status = rlm_ldap_search(&result, inst, request, pconn, base_dn,
+				 inst->groupobj_scope, filter, attrs, NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
@@ -596,7 +597,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST
 	}
 
 	RINDENT();
-	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->groupobj_scope, filter, NULL, NULL);
+	status = rlm_ldap_search(NULL, inst, request, pconn, base_dn, inst->groupobj_scope, filter, NULL, NULL, NULL);
 	REXDENT();
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
@@ -638,7 +639,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST 
 
 	RDEBUG2("Checking user object's %s attributes", inst->userobj_membership_attr);
 	RINDENT();
-	status = rlm_ldap_search(inst, request, pconn, dn, LDAP_SCOPE_BASE, NULL, attrs, &result);
+	status = rlm_ldap_search(&result, inst, request, pconn, dn, LDAP_SCOPE_BASE, NULL, attrs, NULL, NULL);
 	REXDENT();
 	switch (status) {
 	case LDAP_PROC_SUCCESS:

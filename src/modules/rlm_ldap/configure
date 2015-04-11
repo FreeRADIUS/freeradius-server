@@ -3102,6 +3102,9 @@ smart_prefix=
 			ldap_start_tls_s \
 			ldap_initialize \
 			ldap_set_rebind_proc \
+			ldap_create_sort_control \
+			ldap_create_sort_keylist \
+			ldap_free_sort_keylist
 
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`

@@ -124,6 +124,7 @@ static CONF_PARSER user_config[] = {
 	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, ldap_instance_t, userobj_filter), NULL },
 	{ "scope", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_scope_str), "sub" },
 	{ "base_dn", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, ldap_instance_t, userobj_base_dn), "" },
+	{ "sort_by", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_sort_by), NULL },
 
 	{ "access_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_instance_t, userobj_access_attr), NULL },
 	{ "access_positive", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, ldap_instance_t, access_positive), "yes" },
@@ -302,8 +303,8 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 
 	memcpy(&attrs, &ldap_url->lud_attrs, sizeof(attrs));
 
-	status = rlm_ldap_search(inst, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope, ldap_url->lud_filter,
-				 attrs, &result);
+	status = rlm_ldap_search(&result, inst, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope,
+				 ldap_url->lud_filter, attrs, NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
@@ -497,6 +498,10 @@ static int mod_detach(void *instance)
 #endif
 	}
 
+#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
+	if (inst->userobj_sort_ctrl) ldap_control_free(inst->userobj_sort_ctrl);
+#endif
+
 	return 0;
 }
 
@@ -665,6 +670,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->admin_sasl.mech) {
 		cf_log_err_cs(conf, "Configuration item 'sasl.mech' not supported.  "
 			      "Linked libldap does not provide ldap_sasl_interactive_bind function");
+		goto error;
+	}
+#endif
+
+#ifndef HAVE_LDAP_CREATE_SORT_CONTROL
+	if (inst->userobj_sort_by) {
+		cf_log_err_cs(conf, "Configuration item 'sort_by' not supported.  "
+			      "Linked libldap does not provide ldap_create_sort_control function");
 		goto error;
 	}
 #endif
@@ -945,6 +958,37 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 , inst->clientobj_scope_str);
 		goto error;
 	}
+
+#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
+	/*
+	 *	Build the server side sort control for user objects
+	 */
+	if (inst->userobj_sort_by) {
+		LDAPSortKey	**keys;
+		int		ret;
+		char		*p;
+
+		memcpy(&p, &inst->userobj_sort_by, sizeof(p));
+
+		ret = ldap_create_sort_keylist(&keys, p);
+		if (ret != LDAP_SUCCESS) {
+			cf_log_err_cs(conf, "Invalid user.sort_by value \"%s\": %s",
+				      inst->userobj_sort_by, ldap_err2string(ret));
+			goto error;
+		}
+
+		/*
+		 *	Always set the control as critical, if it's not needed
+		 *	the user can comment it out...
+		 */
+		ret = ldap_create_sort_control(inst->handle, keys, 1, &inst->userobj_sort_ctrl);
+		ldap_free_sort_keylist(keys);
+		if (ret != LDAP_SUCCESS) {
+			LDAP_ERR("Failed creating server sort control: %s", ldap_err2string(ret));
+			goto error;
+		}
+	}
+#endif
 
 	if (inst->tls_require_cert_str) {
 #ifdef LDAP_OPT_X_TLS_NEVER
