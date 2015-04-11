@@ -24,6 +24,13 @@
 #include <ldap.h>
 #include "config.h"
 
+/*
+ *	Ensure the have the ldap_create_sort_keylist()
+ *	function too, else we can't use ldap_create_sort_control()
+ */
+#if !defined(LDAP_CREATE_SORT_KEYLIST) || !defined(LDAP_FREE_SORT_KEYLIST)
+#  undef HAVE_LDAP_CREATE_SORT_CONTROL
+#endif
 
 /*
  *	Because the LTB people define LDAP_VENDOR_VERSION_PATCH
@@ -143,10 +150,7 @@ typedef struct ldap_instance {
 	vp_tmpl_t	*userobj_base_dn;		//!< DN to search for users under.
 	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
 	char const	*userobj_sort_by;		//!< List of attributes to sort by.
-
-#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
 	LDAPControl	*userobj_sort_ctrl;		//!< Server side sort control.
-#endif
 
 	int		userobj_scope;			//!< Search scope.
 
