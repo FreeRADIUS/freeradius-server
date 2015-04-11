@@ -111,7 +111,7 @@ typedef struct ldap_instance {
 
 	uint32_t	ldap_debug;			//!< Debug flag for the SDK.
 
-	char const	*name;			//!< Instance name.
+	char const	*name;				//!< Instance name.
 
 	bool		expect_password;		//!< True if the user_map included a mapping between an LDAP
 							//!< attribute and one of our password reference attributes.
@@ -128,6 +128,12 @@ typedef struct ldap_instance {
 	vp_tmpl_t	*userobj_filter;		//!< Filter to retrieve only user objects.
 	vp_tmpl_t	*userobj_base_dn;		//!< DN to search for users under.
 	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
+	char const	*userobj_sort_by;		//!< List of attributes to sort by.
+
+#ifdef HAVE_LDAP_CREATE_SORT_CONTROL
+	LDAPControl	*userobj_sort_ctrl;		//!< Server side sort control.
+#endif
+
 	int		userobj_scope;			//!< Search scope.
 
 	char const	*userobj_membership_attr;	//!< Attribute that describes groups the user is a member of.
@@ -347,9 +353,10 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
 
 char const *rlm_ldap_error_str(ldap_handle_t const *conn);
 
-ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+ldap_rcode_t rlm_ldap_search(LDAPMessage **result, ldap_instance_t const *inst, REQUEST *request,
+			     ldap_handle_t **pconn,
 			     char const *dn, int scope, char const *filter, char const * const *attrs,
-			     LDAPMessage **result);
+			     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			     char const *dn, LDAPMod *mods[]);

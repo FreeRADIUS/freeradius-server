@@ -92,6 +92,9 @@ if test x$with_[]modname != xno; then
 			ldap_start_tls_s \
 			ldap_initialize \
 			ldap_set_rebind_proc \
+			ldap_create_sort_control \
+			ldap_create_sort_keylist \
+			ldap_free_sort_keylist
 		)
 		AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
 			AC_TRY_COMPILE([

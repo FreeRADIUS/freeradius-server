@@ -144,8 +144,8 @@ int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *tmpl, CONF_S
 		conn->rebound = false;
 	}
 
-	status = rlm_ldap_search(inst, NULL, &conn, inst->clientobj_base_dn, inst->clientobj_scope,
-				 inst->clientobj_filter, attrs, &result);
+	status = rlm_ldap_search(&result, inst, NULL, &conn, inst->clientobj_base_dn, inst->clientobj_scope,
+				 inst->clientobj_filter, attrs, NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;

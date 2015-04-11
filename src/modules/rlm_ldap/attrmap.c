@@ -480,7 +480,8 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 		return RLM_MODULE_INVALID;
 	}
 
-	status = rlm_ldap_search(inst, request, pconn, dn, LDAP_SCOPE_BASE, filter, expanded->attrs, &result);
+	status = rlm_ldap_search(&result, inst, request, pconn, dn,
+				 LDAP_SCOPE_BASE, filter, expanded->attrs, NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;

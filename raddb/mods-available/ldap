@@ -133,6 +133,19 @@ ldap {
 		#  Search scope, may be 'base', 'one', sub' or 'children'
 #		scope = 'sub'
 
+		#  Server side result sorting
+		#
+		#  A list of space delimited attributes to order the result
+		#  set by, if the filter matches multiple objects.
+		#  Only the first result in the set will be processed.
+		#
+		#  If the attribute name is prefixed with a hyphen '-' the
+		#  sorting order will be reversed for that attribute.
+		#
+		#  If sort_by is set, and the server does not support sorting
+		#  the search will fail.
+#		sort_by = '-uid'
+
 		#  If this is undefined, anyone is authorised.
 		#  If it is defined, the contents of this attribute
 		#  determine whether or not the user is authorised
