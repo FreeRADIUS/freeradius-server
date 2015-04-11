@@ -45,6 +45,8 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 	size_t len;
 	ssize_t rlen;
 	uint8_t *ptr;
+	char const *p;
+	pair_lists_t list;
 
 	DICT_ATTR const *da;
 	VALUE_PAIR *vp;
@@ -128,6 +130,24 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 	vpt = tmpl_alloc(map, TMPL_TYPE_ATTR, map->lhs->tmpl_da->name, -1);
 	memcpy(&vpt->data.attribute, &map->lhs->data.attribute, sizeof(vpt->data.attribute));
 	vpt->tmpl_da = da;
+
+	/*
+	 *	Be sure to keep the "&control:" or "control:" prefix.
+	 *	If it's there, we re-generate it from whatever was in
+	 *	the original name, including the '&'.
+	 */
+	p = map->lhs->name;
+	if (*p == '&') p++;
+	len = radius_list_name(&list, p, PAIR_LIST_UNKNOWN);
+
+	if (list != PAIR_LIST_UNKNOWN) {
+		rad_const_free(vpt->name);
+
+		vpt->name = talloc_asprintf(vpt, "%.*s:%s",
+					    (int) len, map->lhs->name,
+					    map->lhs->tmpl_da->name);
+		vpt->len = strlen(vpt->name);
+	}
 
 	talloc_free(map->lhs);
 	map->lhs = vpt;
