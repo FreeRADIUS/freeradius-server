@@ -4,8 +4,9 @@
  * @brief LDAP authorization and authentication module headers.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Network RADIUS SARL<info@networkradius.com>
- * @copyright 2013 The FreeRADIUS Server Project.
+ * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
 #ifndef _RLM_LDAP_H
 #define _RLM_LDAP_H
@@ -78,21 +79,21 @@
 #define LDAP_MAX_DN_STR_LEN		1024		//!< Maximum length of an xlat expanded DN.
 
 typedef struct ldap_acct_section {
-	CONF_SECTION		*cs;			//!< Section configuration.
+	CONF_SECTION	*cs;				//!< Section configuration.
 
-	char const		*reference;		//!< Configuration reference string.
+	char const	*reference;			//!< Configuration reference string.
 } ldap_acct_section_t;
 
 typedef struct ldap_sasl {
-	char const		*mech;			//!< SASL mech(s) to try.
-	char const		*proxy;			//!< Identity to proxy.
-	char const		*realm;			//!< Kerberos realm.
+	char const	*mech;				//!< SASL mech(s) to try.
+	char const	*proxy;				//!< Identity to proxy.
+	char const	*realm;				//!< Kerberos realm.
 } ldap_sasl;
 
 typedef struct ldap_sasl_dynamic {
-	vp_tmpl_t	*mech;			//!< SASL mech(s) to try.
-	vp_tmpl_t	*proxy;			//!< Identity to proxy.
-	vp_tmpl_t	*realm;			//!< Kerberos realm.
+	vp_tmpl_t	*mech;				//!< SASL mech(s) to try.
+	vp_tmpl_t	*proxy;				//!< Identity to proxy.
+	vp_tmpl_t	*realm;				//!< Kerberos realm.
 } ldap_sasl_dynamic;
 
 typedef struct ldap_instance {
@@ -203,7 +204,7 @@ typedef struct ldap_instance {
 	/*
 	 *	Profiles
 	 */
-	vp_tmpl_t *default_profile;		//!< If this is set, we will search for a profile object
+	vp_tmpl_t	*default_profile;		//!< If this is set, we will search for a profile object
 							//!< with this name, and map any attributes it contains.
 							//!< No value should be set if profiles are not being used
 							//!< as there is an associated performance penalty.
