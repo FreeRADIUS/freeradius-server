@@ -12,6 +12,8 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Allow Expanded EAP types where vendor is 0 (IETF) and
 	  type is normal EAP type.  Supplicants sending Expanded
 	  EAP types like this are broken.
+	* Add support for server side sort controls when searching for
+	  user objects in rlm_ldap.
 
 	Bug fixes
 	* Don't complain about "authorize" in "server {}" blocks, but
