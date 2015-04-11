@@ -794,6 +794,8 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
  *
  * Binds as the administrative user and performs a search, dealing with any errors.
  *
+ * @param[out] result Where to store the result. Must be freed with ldap_msgfree if LDAP_PROC_SUCCESS is returned.
+ *	May be NULL in which case result will be automatically freed after use.
  * @param[in] inst rlm_ldap configuration.
  * @param[in] request Current request.
  * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
@@ -801,13 +803,14 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
  * @param[in] scope to use (LDAP_SCOPE_BASE, LDAP_SCOPE_ONE, LDAP_SCOPE_SUB).
  * @param[in] filter to use, should be pre-escaped.
  * @param[in] attrs to retrieve.
- * @param[out] result Where to store the result. Must be freed with ldap_msgfree if LDAP_PROC_SUCCESS is returned.
- *	May be NULL in which case result will be automatically freed after use.
+ * @param[in] serverctrls Search controls to pass to the server.  May be NULL.
+ * @param[in] clientctrls Search controls for ldap_search.  May be NULL.
  * @return One of the LDAP_PROC_* values.
  */
-ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+ldap_rcode_t rlm_ldap_search(LDAPMessage **result, ldap_instance_t const *inst, REQUEST *request,
+			     ldap_handle_t **pconn,
 			     char const *dn, int scope, char const *filter, char const * const *attrs,
-			     LDAPMessage **result)
+			     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	ldap_rcode_t	status = LDAP_PROC_ERROR;
 	LDAPMessage	*our_result = NULL;
@@ -870,7 +873,7 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 	 */
 	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
 		(void) ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs,
-				       0, NULL, NULL, &tv, 0, &msgid);
+				       0, serverctrls, clientctrls, &tv, 0, &msgid);
 
 		LDAP_DBG_REQ("Waiting for search result...");
 		status = rlm_ldap_result(inst, *pconn, msgid, dn, &our_result, &error, &extra);
@@ -1072,6 +1075,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	char	    	filter_buff[LDAP_MAX_FILTER_STR_LEN];
 	char const	*base_dn;
 	char	    	base_dn_buff[LDAP_MAX_DN_STR_LEN];
+	LDAPControl	*serverctrls[] = { inst->userobj_sort_ctrl, NULL };
 
 	bool freeit = false;					//!< Whether the message should
 								//!< be freed after being processed.
@@ -1134,7 +1138,8 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 		return NULL;
 	}
 
-	status = rlm_ldap_search(inst, request, pconn, base_dn, inst->userobj_scope, filter, attrs, result);
+	status = rlm_ldap_search(result, inst, request, pconn, base_dn,
+				 inst->userobj_scope, filter, attrs, serverctrls, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;
