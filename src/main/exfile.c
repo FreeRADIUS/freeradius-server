@@ -61,6 +61,9 @@ struct exfile_t {
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
+#define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
+					//!< before giving up.
+
 static int _exfile_free(exfile_t *ef)
 {
 	uint32_t i;
@@ -269,9 +272,9 @@ do_return:
 	 *	locked it.  So, we close the current file, re-open it,
 	 *	and try again/
 	 */
-	tries = 0;
-	while ((rad_lockfd_nonblock(ef->entries[i].fd, 0) < 0) &&
-	       (tries < 4)) {
+	for (tries = 0; tries < MAX_TRY_LOCK; tries++) {
+		if (rad_lockfd_nonblock(ef->entries[i].fd, 0) >= 0) break;
+
 		if (errno != EAGAIN) {
 			fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
 			goto error;
@@ -286,7 +289,7 @@ do_return:
 		}
 	}
 
-	if (tries >= 4) {
+	if (tries >= MAX_TRY_LOCK) {
 		fr_strerror_printf("Failed to lock file %s: too many tries", filename);
 		goto error;
 	}
