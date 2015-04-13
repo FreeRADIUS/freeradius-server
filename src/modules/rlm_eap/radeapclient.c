@@ -65,8 +65,6 @@ static struct timeval tv_timeout;
 static char const *secret = NULL;
 static bool do_output = true;
 static bool do_summary = false;
-static int totalapp = 0;
-static int totaldeny = 0;
 static char filesecret[256];
 static char const *radius_dir = NULL;
 
@@ -143,7 +141,36 @@ struct rc_transaction {
 };
 
 
+/** Structures which holds statistics information
+ */
+typedef struct rc_rtt_stats {
+	uint32_t       count;
+	struct timeval tv_rtt_cumul;
+	struct timeval tv_rtt_min;
+	struct timeval tv_rtt_max;
+} rc_rtt_stats_t;
+
+typedef struct rc_stats {
+	uint32_t nb_started;			//!< number of transactions started
+	uint32_t nb_eap;				//!< number of EAP transactions started
+	uint32_t nb_success;			//!< number of successful transactions
+	uint32_t nb_fail;				//!< number of failed transactions
+	uint32_t nb_lost;				//!< number of packets to which we received no response
+	uint32_t nb_packets_sent;		//!< number of packets sent (including retransmissions)
+	uint32_t nb_packets_retries;	//!< number of packets retransmissions
+	uint32_t nb_packets_recv;		//!< number of packets received
+
+	rc_rtt_stats_t rtt;
+
+} rc_stats_t;
+
+#define STATS_INC(_stat_type) { \
+	stats._stat_type ++; \
+}
+
+
 static TALLOC_CTX *autofree;
+static rc_stats_t stats;
 static struct timeval tv_start;
 static uint32_t num_trans = 0; //!< number of transactions initialized.
 static uint32_t num_started = 0; //!< number of transactions started.
@@ -582,6 +609,7 @@ static void rc_build_eap_context(rc_transaction_t *trans)
 	if (eap_type) {
 		if (!trans->eap_context) {
 			MEM(trans->eap_context = talloc_zero(trans, rc_eap_context_t));
+			STATS_INC(nb_eap);
 		}
 		trans->eap_context->eap_type = eap_type;
 
@@ -639,6 +667,8 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	/* Update transactions counters. */
 	num_started ++;
 	num_ongoing ++;
+
+	STATS_INC(nb_started);
 
 	return trans;
 }
@@ -1299,6 +1329,9 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 			packet->sockfd, packet->id, fr_strerror());
 	}
 
+	STATS_INC(nb_packets_sent);
+	if (trans->tries) STATS_INC(nb_packets_retries);
+
 	trans->num_packet ++;
 	trans->tries ++;
 
@@ -1428,6 +1461,8 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 		return -1;
 	}
 
+	STATS_INC(nb_packets_recv);
+
 	trans = fr_packet2myptr(rc_transaction_t, packet, packet_p);
 
 	if (trans->event) fr_event_delete(ev_list, &trans->event);
@@ -1517,23 +1552,33 @@ eap_done:
 	 */
 	if (trans->reply->code != PW_CODE_ACCESS_ACCEPT) {
 		DEBUG("EAP transaction finished, but reply is not an Access-Accept");
+		STATS_INC(nb_fail);
 		goto packet_done;
 	}
 	vp = pairfind(trans->reply->vps, PW_EAP_CODE, 0, TAG_ANY);
 	if ( (!vp) || (vp->vp_integer != 3) ) {
 		DEBUG("EAP transaction finished, but reply does not contain EAP-Code = Success");
+		STATS_INC(nb_fail);
 		goto packet_done;
 	}
+	STATS_INC(nb_success);
+
 	goto packet_done;
 
 packet_done:
 
-	/* Basic statistics (salvaged from old code). TODO: something better. */
-	if (trans->reply) {
-		if (trans->reply->code == PW_CODE_ACCESS_ACCEPT) {
-			totalapp ++;
-		} else if (trans->reply->code == PW_CODE_ACCESS_REJECT) {
-			totaldeny ++;
+	if (trans->reply && !trans->eap_context) {
+		/* Statistics for non-EAP transactions */
+		switch (trans->reply->code) {
+			case PW_CODE_ACCESS_ACCEPT:
+			case PW_CODE_ACCOUNTING_RESPONSE:
+				STATS_INC(nb_success);
+				break;
+			case PW_CODE_ACCESS_REJECT:
+				STATS_INC(nb_fail);
+				break;
+			default:
+				break;
 		}
 	}
 
@@ -1565,6 +1610,8 @@ static void rc_evcb_packet_timeout(void *ctx)
 	} else {
 		DEBUG("No response for transaction: %d, giving up", trans->id);
 		rc_finish_transaction(trans);
+
+		STATS_INC(nb_lost);
 	}
 }
 
@@ -1821,6 +1868,33 @@ static void rc_resolve_hostname(char *server_arg)
 	rc_get_radius_port(packet_code, &server_port);
 }
 
+/** Do summary / statistics (if asked for).
+ */
+#define STATS_LG_PAD 20
+static void rc_summary(void)
+{
+	if (!do_output || !do_summary) return;
+
+	printf("*** Statistics summary:\n");
+
+	if (stats.nb_started == stats.nb_eap) {
+		/* Only EAP. */
+		printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "EAP transactions", stats.nb_started);
+	} else if (stats.nb_eap == 0) {
+		/* No EAP. Label those as "Requests". */
+		printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "Requests", stats.nb_started);
+	} else {
+		/* Bit of both. */
+		printf("\t%-*.*s: %u (with EAP: %u)\n", STATS_LG_PAD, STATS_LG_PAD, "Transactions", stats.nb_started, stats.nb_eap);
+	}
+
+	printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "Success", stats.nb_success);
+	printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "Fail", stats.nb_fail);
+	printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "Lost", stats.nb_lost);
+	printf("\t%-*.*s: %u (retries: %u)\n", STATS_LG_PAD, STATS_LG_PAD, "Packets sent", stats.nb_packets_sent, stats.nb_packets_retries);
+	printf("\t%-*.*s: %u\n", STATS_LG_PAD, STATS_LG_PAD, "Packets received", stats.nb_packets_recv);
+}
+
 
 
 int main(int argc, char **argv)
@@ -2044,10 +2118,10 @@ int main(int argc, char **argv)
 	 */
 	rc_main_loop();
 
-	if (do_summary) {
-		INFO("\n\t   Total approved auths:  %d", totalapp);
-		INFO("\t     Total denied auths:  %d", totaldeny);
-	}
+	/*
+	 *	Do summary / statistics (if asked for).
+	 */
+	rc_summary();
 
 	talloc_free(autofree);
 
