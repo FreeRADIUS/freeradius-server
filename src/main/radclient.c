@@ -260,6 +260,30 @@ static PW_CODE radclient_get_code(uint16_t port)
 	return PW_CODE_UNDEFINED;
 }
 
+
+static bool already_hex(VALUE_PAIR *vp)
+{
+	size_t i;
+
+	if (!vp || (vp->da->type != PW_TYPE_OCTETS)) return true;
+
+	/*
+	 *	If it's 17 octets, it *might* be already encoded.
+	 *	Or, it might just be a 17-character password (maybe UTF-8)
+	 *	Check it for non-printable characters.  The odds of ALL
+	 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
+	 *	or 1/(2^51), which is pretty much zero.
+	 */
+	for (i = 0; i < vp->vp_length; i++) {
+		if (vp->vp_octets[i] < 32) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
 /*
  *	Initialize a radclient data structure and add it to
  *	the global linked list.
@@ -410,7 +434,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			pairsort(&request->filter, attrtagcmp);
 		}
 
-		request->password[0] = '\0';
 		/*
 		 *	Process special attributes
 		 */
@@ -528,13 +551,28 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			}
 				break;
 
+				/*
+				 *	Cache this for later.
+				 */
+			case PW_CLEARTEXT_PASSWORD:
+				request->password = vp;
+				break;
+
 			/*
 			 *	Keep a copy of the the password attribute.
 			 */
-			case PW_USER_PASSWORD:
 			case PW_CHAP_PASSWORD:
+				/*
+				 *	If it's already hex, do nothing.
+				 */
+				if ((vp->vp_length == 17) &&
+				    (already_hex(vp))) break;
+				/* FALL-THROUGH */
+
+			case PW_USER_PASSWORD:
 			case PW_MS_CHAP_PASSWORD:
-				strlcpy(request->password, vp->vp_strvalue, sizeof(request->password));
+				request->password = pairmake(request->packet, &request->packet->vps, "Cleartext-Password",
+							     vp->vp_strvalue, T_OP_EQ);
 				break;
 
 			case PW_RADCLIENT_TEST_NAME:
@@ -836,52 +874,25 @@ static int send_one_packet(rc_request_t *request)
 		 *	Update the password, so it can be encrypted with the
 		 *	new authentication vector.
 		 */
-		if (request->password[0] != '\0') {
+		if (request->password) {
 			VALUE_PAIR *vp;
 
 			if ((vp = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-				pairstrcpy(vp, request->password);
+				pairstrcpy(vp, request->password->vp_strvalue);
+
 			} else if ((vp = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-				bool already_hex = false;
+				size_t len, len2;
+				uint8_t buffer[17];
 
-				/*
-				 *	If it's 17 octets, it *might* be already encoded.
-				 *	Or, it might just be a 17-character password (maybe UTF-8)
-				 *	Check it for non-printable characters.  The odds of ALL
-				 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
-				 *	or 1/(2^51), which is pretty much zero.
-				 */
-				if (vp->vp_length == 17) {
-					for (i = 0; i < 17; i++) {
-						if (vp->vp_octets[i] < 32) {
-							already_hex = true;
-							break;
-						}
-					}
-				}
+				len = len2 = request->password->vp_length;
+				if (len2 < 17) len2 = 17;
 
-				/*
-				 *	Allow the user to specify ASCII or hex CHAP-Password
-				 */
-				if (!already_hex) {
-					uint8_t *p;
-					size_t len, len2;
+				rad_chap_encode(request->packet, buffer, fr_rand() & 0xff, request->password);
+				pairmemcpy(vp, buffer, 17);
 
-					len = len2 = strlen(request->password);
-					if (len2 < 17) len2 = 17;
-
-					p = talloc_zero_array(vp, uint8_t, len2);
-
-					memcpy(p, request->password, len);
-
-					rad_chap_encode(request->packet,
-							p,
-							fr_rand() & 0xff, vp);
-					vp->vp_octets = p;
-					vp->vp_length = 17;
-				}
 			} else if (pairfind(request->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY) != NULL) {
-				mschapv1_encode(request->packet, &request->packet->vps, request->password);
+				mschapv1_encode(request->packet, &request->packet->vps, request->password->vp_strvalue);
+
 			} else {
 				DEBUG("WARNING: No password in the request");
 			}

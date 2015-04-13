@@ -71,7 +71,7 @@ struct rc_request {
 
 	rc_file_pair_t	*files;		//!< Request and response file names.
 
-	char		password[256];
+	VALUE_PAIR	*password;	//!< Cleartext-Password
 	time_t		timestamp;
 
 	RADIUS_PACKET	*packet;	//!< The outgoing request.
