@@ -70,6 +70,8 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	  They are not available for session resumption.
 	* radclient encodes CHAP-Password properly when using -c.
 	  Closes #955.
+	* Fix issue in rlm_cache_memcached driver that caused variable
+	  length values to be truncated.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
