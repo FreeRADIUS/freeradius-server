@@ -571,12 +571,19 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				 */
 				if ((vp->vp_length == 17) &&
 				    (already_hex(vp))) break;
-				/* FALL-THROUGH */
+
+				/*
+				 *	CHAP-Password is octets, so it may not be zero terminated.
+				 */
+				request->password = pairmake(request->packet, &request->packet->vps, "Cleartext-Password",
+							     "", T_OP_EQ);
+				pairbstrncpy(request->password, vp->vp_strvalue, vp->vp_length);
+				break;
 
 			case PW_USER_PASSWORD:
 			case PW_MS_CHAP_PASSWORD:
 				request->password = pairmake(request->packet, &request->packet->vps, "Cleartext-Password",
-							     vp->vp_strvalue, T_OP_EQ);
+							     vp->vp_strvalue, T_OP_EQ);				
 				break;
 
 			case PW_RADCLIENT_TEST_NAME:
