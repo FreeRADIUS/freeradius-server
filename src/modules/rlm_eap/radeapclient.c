@@ -44,6 +44,7 @@ extern int sha1_data_problems;
 #define USEC 1000000
 
 static uint32_t parallel = 1;
+static uint32_t rate_limit = 0;
 static unsigned int retries = 3;
 static float timeout = 5;
 static struct timeval tv_timeout;
@@ -139,6 +140,7 @@ struct rc_transaction {
 
 
 static TALLOC_CTX *autofree;
+static struct timeval tv_start;
 static uint32_t num_trans = 0; //!< number of transactions initialized.
 static uint32_t num_started = 0; //!< number of transactions started.
 static uint32_t num_ongoing = 0; //!< number of ongoing transactions.
@@ -177,6 +179,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stdout, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stdout, "  -f <file>              Read packets from file, not stdin.\n");
 	fprintf(stdout, "  -h                     Print usage help information.\n");
+	fprintf(stdout, "  -n <num>               Rate limit. Send at most N requests/s.\n");
 	fprintf(stdout, "  -p <num>               Send 'num' packets in parallel.\n");
 	fprintf(stdout, "  -q                     Do not print anything out.\n");
 	fprintf(stdout, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
@@ -214,6 +217,13 @@ static void rc_float_to_timeval(struct timeval *tv, float f_val)
 	tv->tv_sec = (time_t)f_val;
 	uint64_t usec = (uint64_t)(f_val * USEC) - (tv->tv_sec * USEC);
 	tv->tv_usec = usec;
+}
+
+/** Convert a struct timeval to float
+ */
+static float rc_timeval_to_float(struct timeval *tv)
+{
+	return ((float)tv->tv_sec + ((float)tv->tv_usec / USEC));
 }
 
 /** Add an allocated rc_input_vps_t entry to the tail of the list.
@@ -1559,7 +1569,7 @@ static void rc_evprep_packet_timeout(rc_transaction_t *trans)
 
 /** Trigger all armed events for which time is reached.
  */
-static int rc_loop_events(void)
+static uint32_t rc_loop_events(void)
 {
 	struct timeval when;
 	uint32_t nb_processed = 0;
@@ -1580,7 +1590,7 @@ static int rc_loop_events(void)
 /** Receive loop.
  *  Handle incoming packets, until nothing more is received.
  */
-static int dhb_loop_recv(void)
+static uint32_t rc_loop_recv(void)
 {
 	uint32_t nb_received = 0;
 	while (rc_recv_one_packet(NULL) > 0) {
@@ -1589,20 +1599,66 @@ static int dhb_loop_recv(void)
 	return nb_received;
 }
 
+/** Compute maximum number of new requests that can be started
+ *  while conforming to the specified rate limit.
+ */
+static uint32_t rc_rate_limit(bool *do_limit)
+{
+	uint32_t max_start_new = 0;
+	*do_limit = false;
+ 
+	if (rate_limit) {
+		/* get elapsed time so far */
+		struct timeval tv_now, tv_elapsed;
+		gettimeofday(&tv_now, NULL);
+		timersub(&tv_now, &tv_start, &tv_elapsed);
+		float elapsed = rc_timeval_to_float(&tv_elapsed);
+
+		if (elapsed > 0) {
+			*do_limit = true; /* enforce a limit */
+
+			/* project ourselves a small amount of time in the future to perform calculation */
+			float elapsed_p = elapsed + 0.01;
+
+			/* Compute:
+			 * The maximum number of started requests (according to the rate limit and elapsed time),
+			 * and the maximum number of new requests that can be started according to the rate limit.
+			 */
+			uint32_t num_start_limit = (float)rate_limit * elapsed_p;
+			if (num_start_limit > num_started) max_start_new = num_start_limit - num_started;
+
+//#define DEBUG_RATE_LIMIT 1
+#ifdef DEBUG_RATE_LIMIT
+			if (max_start_new) {
+				float cur_rate = num_started / elapsed;
+				float target_rate = (float)(num_started + max_start_new) / elapsed_p;
+				printf("RATE LIMIT - elapsed: %.3f, started: %d, rate: %.3f, limit: %d, new: %d, target rate: %.6f\n",
+					elapsed, num_started, cur_rate, num_start_limit, max_start_new, target_rate);
+			}
+#endif
+		}
+	}
+	return max_start_new;
+}
+
 /** Loop starting new transactions, until a limit is reached
  *  (max parallelism, or no more input available.)
  */
-static int rc_loop_start_transactions(void)
+static uint32_t rc_loop_start_transactions(void)
 {
-	int nb_started = 0;
+	uint32_t nb_started = 0;
+	bool do_limit = false;
+
+	uint32_t max_start = rc_rate_limit(&do_limit);
 
 	while (1) {
-		if (num_ongoing >= parallel) break;
+		if (num_ongoing >= parallel) break; /* parallel limit */
+		if (do_limit && nb_started >= max_start) break; /* rate limit */
 
 		/* Try to initialize a new transaction. */
 		rc_transaction_t *trans = rc_init_transaction(autofree);
 		if (!trans) break;
-		
+
 		nb_started ++;
 		rc_send_transaction_packet(trans, &trans->packet);
 	}
@@ -1619,7 +1675,7 @@ static void rc_main_loop(void)
 		rc_loop_events();
 
 		/* Receive and process response until no more are received (don't wait). */
-		dhb_loop_recv();
+		rc_loop_recv();
 		
 		/* Start new transactions and send the associated packet. */
 		rc_loop_start_transactions();
@@ -1781,7 +1837,7 @@ int main(int argc, char **argv)
 
 	set_radius_dir(autofree, RADIUS_DIR);
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:hp:qst:r:S:xXv")) != EOF)
+	while ((c = getopt(argc, argv, "46c:d:D:f:hn:p:qst:r:S:xXv")) != EOF)
 	{
 		switch (c) {
 		case '4':
@@ -1798,6 +1854,10 @@ int main(int argc, char **argv)
 			break;
 		case 'f':
 			filename = optarg;
+			break;
+		case 'n':
+			rate_limit = atoi(optarg);
+			if (rate_limit == 0) usage();
 			break;
 		case 'p':
 			parallel = atoi(optarg);
@@ -1954,6 +2014,9 @@ int main(int argc, char **argv)
 		ERROR("Failed to create event list");
 		exit(1);
 	}
+
+	/* Keep track of elapsed time. */
+	gettimeofday(&tv_start, NULL);
 
 	/*
 	 *	Start main loop.
