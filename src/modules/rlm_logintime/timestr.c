@@ -176,10 +176,9 @@ static int day_fill(char *bitmap, const char *tm)
 static int week_fill(char *bitmap, char *tm)
 {
 	char *s;
-	char tmp[128];
+	char tmp[256];
 
-	strlcpy(tmp, tm, 128);
-	tmp[127] = 0;
+	strlcpy(tmp, tm, sizeof(tmp));
 	for (s = tmp; *s; s++)
 		if (isupper(*s)) *s = tolower(*s);
 
