@@ -71,6 +71,8 @@ static char const *secret = NULL;
 static bool do_output = true;
 static bool do_summary = false;
 static char filesecret[256];
+static float progress_interval = 0;
+struct timeval tv_progress_interval;
 static char const *radius_dir = NULL;
 
 
@@ -202,6 +204,8 @@ typedef struct rc_stats {
 static TALLOC_CTX *autofree;
 static rc_stats_t stats;
 static struct timeval tv_start;
+static struct timeval tv_end;
+static uint32_t num_input = 0; //!< number of input entries loaded.
 static uint32_t num_trans = 0; //!< number of transactions initialized.
 static uint32_t num_started = 0; //!< number of transactions started.
 static uint32_t num_ongoing = 0; //!< number of ongoing transactions.
@@ -211,6 +215,8 @@ static rc_input_vps_list_t rc_vps_list_in; //!< list of available input vps entr
 static fr_packet_list_t *pl = NULL;	//!< list of outgoing packets.
 static unsigned int num_sockets = 0;	//!< number of allocated sockets.
 static fr_event_list_t *ev_list = NULL; //!< list of armed events.
+static char ch_elapsed[12+1];
+#define ELAPSED rc_print_elapsed(ch_elapsed, 3)
 
 static int force_af = AF_UNSPEC;
 static int ipproto = IPPROTO_UDP;
@@ -219,6 +225,7 @@ static bool server_addr_init = false;
 static uint16_t server_port = 0;
 static int packet_code = PW_CODE_UNDEFINED;
 
+
 static int rc_map_eap_methods(RADIUS_PACKET *req);
 static void rc_unmap_eap_methods(RADIUS_PACKET *rep);
 static int rc_map_eapsim_types(RADIUS_PACKET *r);
@@ -226,10 +233,17 @@ static int rc_unmap_eapsim_types(RADIUS_PACKET *r);
 
 static void rc_get_radius_port(PW_CODE type, uint16_t *port);
 static void rc_evprep_packet_timeout(rc_transaction_t *trans);
+static void rc_evprep_progress_stat(void);
 static void rc_deallocate_id(rc_transaction_t *trans);
 static void rc_wf_stat_update(rc_transaction_t *trans, rc_wf_type_t wf_type);
+static void rc_do_progress_stat(void);
+static uint32_t rc_get_elapsed(void);
+static float rc_get_wf_rate(rc_wf_type_t i);
 
 
+
+/** Display usage and exit.
+ */
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stdout, "Usage: radeapclient [options] server[:port] <command> [<secret>]\n");
@@ -242,6 +256,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stdout, "  -f <file>              Read packets from file, not stdin.\n");
 	fprintf(stdout, "  -h                     Print usage help information.\n");
 	fprintf(stdout, "  -n <num>               Rate limit. Send at most N requests/s.\n");
+	fprintf(stdout, "  -o <time>              Output progress statistics each 'time' seconds.\n");
 	fprintf(stdout, "  -p <num>               Send 'num' packets in parallel.\n");
 	fprintf(stdout, "  -q                     Do not print anything out.\n");
 	fprintf(stdout, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");
@@ -291,6 +306,32 @@ void set_radius_dir(TALLOC_CTX *ctx, char const *path)
 }
 
 
+/** Print a elapsed time buffer (SS.uuuuuu).
+ */
+static char *rc_print_elapsed(char *out, uint8_t decimals)
+{
+	if (!out || !timerisset(&tv_start)) return NULL;
+
+	if (decimals > 6) decimals = 6;
+
+	struct timeval tv_now;
+	struct timeval tv_delta;
+
+	gettimeofday(&tv_now, NULL);
+	timersub(&tv_now, &tv_start, &tv_delta);
+
+	uint32_t u_sec = (uint32_t)(tv_delta.tv_sec);
+	sprintf(out, "%d", u_sec);
+
+	/* assuming tv_usec < USEC */
+	if (decimals) {
+		char buffer[8] = "";
+		sprintf(buffer, ".%06ld", tv_delta.tv_usec);
+		strncat(out, buffer, decimals+1); /* (this is always terminated with 0). */
+	}
+
+	return out;
+}
 
 /** Print a "hexstring" buffer (with optional separator each N octets)
  */
@@ -449,6 +490,7 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 	if (file_in != stdin) fclose(file_in);
 
 	/* And we're done. */
+	num_input += list->size;
 	DEBUG("Read %d element(s) from input: %s", list->size, input);
 	return 1;
 }
@@ -1672,6 +1714,36 @@ static void rc_evprep_packet_timeout(rc_transaction_t *trans)
 	}
 }
 
+/** Event callback: report progress statistics.
+ */
+static void rc_evcb_progress_stat(void UNUSED *ctx)
+{
+	/* print the progress statistics */
+	rc_do_progress_stat();
+
+	/* schedule the next */
+	rc_evprep_progress_stat();
+}
+
+/** Prepare event: report progress statistics.
+ */
+static void rc_evprep_progress_stat(void)
+{
+	if (!timerisset(&tv_progress_interval)) return;
+
+	struct timeval tv_event;
+	gettimeofday(&tv_event, NULL);
+
+	timeradd(&tv_event, &tv_progress_interval, &tv_event);
+
+	static fr_event_t *event; /* only one of this kind. */
+
+	if (!fr_event_insert(ev_list, rc_evcb_progress_stat, (void *) NULL, &tv_event, &event)) {
+		ERROR("Failed to insert event");
+		exit(1);
+	}
+}
+
 /** Trigger all armed events for which time is reached.
  */
 static uint32_t rc_loop_events(void)
@@ -1966,8 +2038,15 @@ static void rc_print_wf_stats(FILE *fp)
 		float min_rtt = 1000 * rc_timeval_to_float(&my_stats->tv_rtt_min);
 		float max_rtt = 1000 * rc_timeval_to_float(&my_stats->tv_rtt_max);
 
-		fprintf(fp, "\t%-*.*s:  nb: %d, RTT (ms): [avg: %.3f, min: %.3f, max: %.3f]\n",
-			LG_PAD_WF_TYPES, LG_PAD_WF_TYPES, rc_wf_types[i], my_stats->num, avg_rtt, min_rtt, max_rtt);
+		/* Only print rate if scenario lasted at least a little time. */
+		if (rc_get_elapsed() < 200) {
+			fprintf(fp, "\t%-*.*s:  nb: %d, RTT (ms): [avg: %.3f, min: %.3f, max: %.3f]\n",
+				LG_PAD_WF_TYPES, LG_PAD_WF_TYPES, rc_wf_types[i], my_stats->num, avg_rtt, min_rtt, max_rtt);
+		} else {
+			fprintf(fp, "\t%-*.*s:  nb: %d, RTT (ms): [avg: %.3f, min: %.3f, max: %.3f], rate (avg/s): %.3f\n",
+				LG_PAD_WF_TYPES, LG_PAD_WF_TYPES, rc_wf_types[i], my_stats->num, avg_rtt, min_rtt, max_rtt,
+				rc_get_wf_rate(i));
+		}
 	}
 }
 
@@ -2001,6 +2080,68 @@ static void rc_summary(void)
 	rc_print_wf_stats(fp);
 }
 
+/** Get elapsed time (in ms).
+ */
+static uint32_t rc_get_elapsed(void)
+{
+	uint32_t u_ms_elapsed;
+	struct timeval tv_elapsed;
+
+	if (timerisset(&tv_end)) {
+		timersub(&tv_end, &tv_start, &tv_elapsed);
+	} else {
+		struct timeval tv_now;
+		gettimeofday(&tv_now, NULL);
+		timersub(&tv_now, &tv_start, &tv_elapsed);
+	}
+
+	u_ms_elapsed = (tv_elapsed.tv_sec * 1000) + (tv_elapsed.tv_usec/1000);
+
+	return u_ms_elapsed;
+}
+
+/** Compute the started transactions rate /s.
+ */
+static float rc_get_start_rate(void)
+{
+	uint32_t u_ms_elapsed = rc_get_elapsed();
+
+	if (u_ms_elapsed > 0) { /* should always be the case, but just to be sure. */
+		return (float)(num_started * 1000) / (float)u_ms_elapsed;
+	}
+	return 0;
+}
+
+/** Compute the rate /s of a given workflow type.
+ */
+static float rc_get_wf_rate(rc_wf_type_t i)
+{
+	rc_wf_stats_t *my_stats = &stats.wf_stats[i];
+	uint32_t u_ms_elapsed = rc_get_elapsed();
+
+	if (u_ms_elapsed > 0) { // should always be the case, just to be sure.
+		return (float)(my_stats->num * 1000) / (float)u_ms_elapsed;
+	}
+	return 0;
+}
+
+/** Display simple progress statistics.
+ */
+static void rc_do_progress_stat(void)
+{
+	if (!do_output || !progress_interval) return;
+
+	printf("STAT (%s):", ELAPSED);
+
+	printf(" %.2f%%", (100 * (float)num_started / num_input));
+	printf(", start: %u (on: %u, ok: %u, fail: %u, lost: %u)",
+		num_started, num_ongoing, stats.nb_success, stats.nb_fail, stats.nb_lost);
+
+	printf(", rate (/s): %.1f", rc_get_start_rate());
+
+	printf("\n");
+}
+
 
 
 int main(int argc, char **argv)
@@ -2030,36 +2171,49 @@ int main(int argc, char **argv)
 
 	set_radius_dir(autofree, RADIUS_DIR);
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:hn:p:qst:r:S:xXv")) != EOF)
+	while ((c = getopt(argc, argv, "46c:d:D:f:hn:o:p:qr:sS:t:vxX")) != EOF)
 	{
 		switch (c) {
 		case '4':
 			force_af = AF_INET;
 			break;
+
 		case '6':
 			force_af = AF_INET6;
 			break;
+
 		case 'd':
 			set_radius_dir(autofree, optarg);
 			break;
+
 		case 'D':
 			main_config.dictionary_dir = talloc_typed_strdup(NULL, optarg);
 			break;
+
 		case 'f':
 			filename = optarg;
 			break;
+
 		case 'n':
 			rate_limit = atoi(optarg);
 			if (rate_limit == 0) usage();
 			break;
+
+		case 'o':
+			progress_interval = atof(optarg);
+			if (progress_interval < 0.1) usage();
+			break;
+
 		case 'p':
 			parallel = atoi(optarg);
 			if (parallel == 0) parallel = 1;
 			if (parallel > 65536) parallel = 65536;
 			break;
+
 		case 'q':
 			do_output = false;
 			break;
+
 		case 'x':
 			debug_flag++;
 			fr_debug_flag++;
@@ -2076,17 +2230,21 @@ int main(int argc, char **argv)
 				usage();
 			retries = atoi(optarg);
 			break;
+
 		case 's':
 			do_summary = true;
 			break;
+
 		case 't':
 			if (!isdigit((int) *optarg))
 				usage();
 			timeout = atof(optarg);
 			break;
+
 		case 'v':
 			printf("%s: %s\n", progname, radiusd_version);
 			exit(EXIT_SUCCESS);
+
 		case 'S':
 			fp = fopen(optarg, "r");
 			if (!fp) {
@@ -2114,6 +2272,7 @@ int main(int argc, char **argv)
 			}
 			secret = filesecret;
 			break;
+
 		case 'h':
 		default:
 			usage();
@@ -2135,6 +2294,9 @@ int main(int argc, char **argv)
 		radclient_log.fd = 0;
 	}
 	radlog_init(&radclient_log, false);
+
+	/* Prepare progress report time. */
+	rc_float_to_timeval(&tv_progress_interval, progress_interval);
 
 	/* Prepare the timeout. */
 	rc_float_to_timeval(&tv_timeout, timeout);
@@ -2197,7 +2359,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Read input data vp(s) from the file (or stdin).
 	 */
-	DEBUG("Loading input data...");
+	INFO("Loading input data...");
 	if (!rc_load_input(autofree, filename, &rc_vps_list_in, 0)
 	    || rc_vps_list_in.size == 0) {
 		ERROR("No valid input. Nothing to send.");
@@ -2218,10 +2380,16 @@ int main(int argc, char **argv)
 	/* Keep track of elapsed time. */
 	gettimeofday(&tv_start, NULL);
 
+	/* Arm progress statistics */
+	rc_evprep_progress_stat();
+
 	/*
 	 *	Start main loop.
 	 */
 	rc_main_loop();
+
+	rc_do_progress_stat(); /* one last time. */
+	gettimeofday(&tv_end, NULL);
 
 	/*
 	 *	Do summary / statistics (if asked for).
