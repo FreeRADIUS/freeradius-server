@@ -67,6 +67,7 @@ static uint32_t rate_limit = 0;
 static unsigned int retries = 3;
 static float timeout = 5;
 static struct timeval tv_timeout;
+static unsigned int recycle_count = 1;
 static char const *secret = NULL;
 static bool do_output = true;
 static bool do_summary = false;
@@ -119,6 +120,8 @@ struct rc_input_vps {
 	VALUE_PAIR *vps_in;	//!< the list of attribute/value pairs.
 
 	rc_input_vps_list_t *list;	//!< the list to which this entry belongs (NULL for an unchained entry).
+	
+	uint32_t recycle;	//!< number of times this input has been used to start a transaction.
 
 	rc_input_vps_t *prev;
 	rc_input_vps_t *next;
@@ -251,6 +254,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stdout, "  <command>              One of auth, acct, status, coa, disconnect or auto.\n");
 	fprintf(stdout, "  -4                     Use IPv4 address of server\n");
 	fprintf(stdout, "  -6                     Use IPv6 address of server.\n");
+	fprintf(stdout, "  -c <count>             Send each packet 'count' times.\n");
 	fprintf(stdout, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stdout, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stdout, "  -f <file>              Read packets from file, not stdin.\n");
@@ -736,6 +740,8 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 		talloc_free(trans);
 		return NULL;
 	}
+	
+	vps_entry->recycle ++;
 
 	gettimeofday(&trans->timestamp, NULL);
 
@@ -756,6 +762,15 @@ static void rc_finish_transaction(rc_transaction_t *trans)
 
 	if (trans->event) fr_event_delete(ev_list, &trans->event);
 	rc_deallocate_id(trans);
+
+	rc_input_vps_t *vps_entry = trans->input_vps;
+	if (vps_entry->recycle < recycle_count) {
+		/* Not done yet with this input. Put it back into the list of available entries. */
+		talloc_steal(autofree, vps_entry);
+		rc_add_vps_entry(&rc_vps_list_in, vps_entry);
+		trans->input_vps = NULL;
+	}
+
 	talloc_free(trans);
 
 	/* Update transactions counters. */
@@ -2177,6 +2192,12 @@ int main(int argc, char **argv)
 
 		case '6':
 			force_af = AF_INET6;
+			break;
+
+		case 'c':
+			if (!isdigit((int) *optarg)) usage();
+			recycle_count = atoi(optarg);
+			if (recycle_count == 0) recycle_count = 1;
 			break;
 
 		case 'd':
