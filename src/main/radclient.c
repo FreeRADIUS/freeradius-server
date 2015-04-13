@@ -884,11 +884,7 @@ static int send_one_packet(rc_request_t *request)
 				pairstrcpy(vp, request->password->vp_strvalue);
 
 			} else if ((vp = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-				size_t len, len2;
 				uint8_t buffer[17];
-
-				len = len2 = request->password->vp_length;
-				if (len2 < 17) len2 = 17;
 
 				rad_chap_encode(request->packet, buffer, fr_rand() & 0xff, request->password);
 				pairmemcpy(vp, buffer, 17);
