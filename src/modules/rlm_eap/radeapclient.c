@@ -152,7 +152,9 @@ struct rc_transaction {
 typedef enum {
 	RC_WF_ALL = 0,
 	RC_WF_ACCESS_REQUEST_ACCEPT,
+	RC_WF_COA_REQUEST_ACK,
 	RC_WF_EAP_REQUEST_SUCCESS,
+	RC_WF_ACCOUNTING_REQUEST_RESPONSE,
 	RC_WF_MAX
 } rc_wf_type_t;
 
@@ -162,7 +164,9 @@ typedef enum {
 static char const *rc_wf_types[RC_WF_MAX] = {
 	"(All)",
 	"Access-Request - Accept",
-	"EAP Request - Success"
+	"CoA-Request - Ack",
+	"EAP Request - Success",
+	"Accounting-Request - Response"
 };
 
 /** Structure which holds per-workflow statistics information
@@ -1604,10 +1608,16 @@ packet_done:
 				STATS_INC(nb_success);
 				rc_wf_stat_update(trans, RC_WF_ACCESS_REQUEST_ACCEPT);
 				break;
+			case PW_CODE_COA_ACK:
+				STATS_INC(nb_success);
+				rc_wf_stat_update(trans, RC_WF_COA_REQUEST_ACK);
+				break;
 			case PW_CODE_ACCOUNTING_RESPONSE:
 				STATS_INC(nb_success);
+				rc_wf_stat_update(trans, RC_WF_ACCOUNTING_REQUEST_RESPONSE);
 				break;
 			case PW_CODE_ACCESS_REJECT:
+			case PW_CODE_COA_NAK:
 				STATS_INC(nb_fail);
 				break;
 			default:
