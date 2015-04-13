@@ -128,6 +128,8 @@ rest {
 	#  except in the case of a 401 code.
 	#
 
+	#  Authorize/Authenticate
+	#
 	#  Code   Meaning       Process body  Module code
 	#  404    not found     no            notfound
 	#  410    gone          no            notfound
@@ -142,13 +144,14 @@ rest {
 		method = 'get'
 		tls = ${..tls}
 	}
-	#  Same as authorize
 	authenticate {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
 		method = 'get'
 		tls = ${..tls}
 	}
 
+	#  Accounting/Post-auth
+	#
 	#  Code   Meaning       Process body  Module code
 	#  204    no content    no            ok
 	#  2xx    successful    yes           ok/updated
@@ -159,12 +162,6 @@ rest {
 		method = 'post'
 		tls = ${..tls}
 	}
-
-	#  Code   Meaning       Process body  Module code
-	#  204    no content    no            ok
-	#  2xx    successful    yes           ok/updated
-	#  5xx    server error  no            fail
-	#  xxx    -             no            invalid
 	post-auth {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
 		method = 'post'
