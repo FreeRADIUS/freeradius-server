@@ -1238,8 +1238,8 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
 @verbatim
 {
 	"<attribute0>":{
-		do_xlat:<bool>,
-		is_json:<bool>,
+		"do_xlat":<bool>,
+		"is_json":<bool>,
 		"op":"<operator>",
 		"value":[<value0>,<value1>,<valueN>]
 	},
@@ -1252,11 +1252,11 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
 		}
 	},
 	"<attribute2>":"<value0>",
-	"<attributeN>":"[<value0>,<value1>,<valueN>]"
+	"<attributeN>":[<value0>,<value1>,<valueN>]
 }
 @endverbatim
  *
- * JSON valuepair flags (bools):
+ * JSON valuepair flags:
  *  - do_xlat	(optional) Controls xlat expansion of values. Defaults to true.
  *  - is_json	(optional) If true, any nested JSON data will be copied to the
  *			   VALUE_PAIR in string form. Defaults to true.
