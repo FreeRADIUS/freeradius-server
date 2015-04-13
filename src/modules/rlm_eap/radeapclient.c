@@ -768,7 +768,8 @@ static void rc_finish_transaction(rc_transaction_t *trans)
 
 static void rc_cleanresp(RADIUS_PACKET *resp)
 {
-	VALUE_PAIR *vpnext, *vp, **last;
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
 
 	/*
 	 * maybe should just copy things we care about, or keep
@@ -777,20 +778,16 @@ static void rc_cleanresp(RADIUS_PACKET *resp)
 	pairdelete(&resp->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	pairdelete(&resp->vps, PW_EAP_TYPE_BASE+PW_EAP_IDENTITY, 0, TAG_ANY);
 
-	last = &resp->vps;
-	for (vp = *last; vp != NULL; vp = vpnext)
-	{
-		vpnext = vp->next;
-
-		if ((vp->da->attr > PW_EAP_TYPE_BASE &&
-		    vp->da->attr <= PW_EAP_TYPE_BASE+256) ||
-		   (vp->da->attr > PW_EAP_SIM_BASE &&
-		    vp->da->attr <= PW_EAP_SIM_BASE+256))
+	for (vp = fr_cursor_init(&cursor, &resp->vps);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		if ((vp->da->attr >= PW_EAP_TYPE_BASE &&
+		     vp->da->attr < PW_EAP_TYPE_BASE+256) ||
+		   (vp->da->attr >= PW_EAP_SIM_BASE &&
+		    vp->da->attr < PW_EAP_SIM_BASE+256))
 		{
-			*last = vpnext;
+			vp = fr_cursor_remove(&cursor);
 			talloc_free(vp);
-		} else {
-			last = &vp->next;
 		}
 	}
 }
