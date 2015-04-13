@@ -68,6 +68,8 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Fix load-balance sections.  Closes #945
 	* TLS certificates are available again in the post-auth section.
 	  They are not available for session resumption.
+	* radclient encodes CHAP-Password properly when using -c.
+	  Closes #955.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
