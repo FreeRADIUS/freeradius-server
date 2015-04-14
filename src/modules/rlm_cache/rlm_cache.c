@@ -373,7 +373,24 @@ static int cache_verify(value_pair_map_t *map, void *ctx)
 
 	if ((map->lhs->type != TMPL_TYPE_ATTR) &&
 	    (map->lhs->type != TMPL_TYPE_LIST)) {
-		cf_log_err(map->ci, "Left operand must be an attribute ref or a list");
+		cf_log_err(map->ci, "Destination must be an attribute ref or a list");
+		return -1;
+	}
+
+	switch (map->lhs->tmpl_list) {
+	case PAIR_LIST_REQUEST:
+	case PAIR_LIST_REPLY:
+	case PAIR_LIST_CONTROL:
+	case PAIR_LIST_STATE:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Destination list must be one of request, reply, control or session-state");
+		return -1;
+	}
+
+	if (map->lhs->tmpl_request != REQUEST_CURRENT) {
+		cf_log_err(map->ci, "Cached attributes can only be inserted into the current request");
 		return -1;
 	}
 
