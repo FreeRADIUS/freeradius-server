@@ -74,6 +74,7 @@ typedef struct rlm_cache_entry_t {
 	VALUE_PAIR		*control;		//!< Cached control list.
 	VALUE_PAIR		*packet;		//!< Cached request list.
 	VALUE_PAIR		*reply;			//!< Cached reply list.
+	VALUE_PAIR		*state;			//!< Cached session-state list.
 } rlm_cache_entry_t;
 
 typedef int			(*mod_instantiate_t)(CONF_SECTION *conf, rlm_cache_t *inst);
