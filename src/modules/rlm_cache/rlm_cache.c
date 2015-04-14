@@ -127,11 +127,6 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 
 	RDEBUG2("Merging cache entry into request");
 
-	if (c->control) {
-		rdebug_pair_list(L_DBG_LVL_2, request, c->control, "&control:");
-		radius_pairmove(request, &request->config, paircopy(request, c->control), false);
-	}
-
 	if (c->packet && request->packet) {
 		rdebug_pair_list(L_DBG_LVL_2, request, c->packet, "&request:");
 		radius_pairmove(request, &request->packet->vps, paircopy(request->packet, c->packet), false);
@@ -140,6 +135,16 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 	if (c->reply && request->reply) {
 		rdebug_pair_list(L_DBG_LVL_2, request, c->reply, "&reply:");
 		radius_pairmove(request, &request->reply->vps, paircopy(request->reply, c->reply), false);
+	}
+
+	if (c->control) {
+		rdebug_pair_list(L_DBG_LVL_2, request, c->control, "&control:");
+		radius_pairmove(request, &request->config, paircopy(request, c->control), false);
+	}
+
+	if (c->state) {
+		rdebug_pair_list(L_DBG_LVL_2, request, c->state, "&session-state:");
+		radius_pairmove(request, &request->state, paircopy(request->state, c->state), false);
 	}
 
 	if (inst->stats) {
@@ -239,7 +244,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 				char const *key, int ttl)
 {
 	VALUE_PAIR *vp, *to_cache;
-	vp_cursor_t src_list, cached_request, cached_reply, cached_control;
+	vp_cursor_t src_list, packet, reply, control, state;
 
 	value_pair_map_t const *map;
 
@@ -261,9 +266,10 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 
 	RDEBUG("Creating new cache entry");
 
-	fr_cursor_init(&cached_request, &c->packet);
-	fr_cursor_init(&cached_reply, &c->reply);
-	fr_cursor_init(&cached_control, &c->control);
+	fr_cursor_init(&packet, &c->packet);
+	fr_cursor_init(&reply, &c->reply);
+	fr_cursor_init(&control, &c->control);
+	fr_cursor_init(&state, &c->state);
 
 	for (map = inst->maps; map != NULL; map = map->next) {
 		rad_assert(map->lhs && map->rhs);
@@ -307,15 +313,19 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 
 			switch (map->lhs->tmpl_list) {
 			case PAIR_LIST_REQUEST:
-				fr_cursor_insert(&cached_request, vp);
+				fr_cursor_insert(&packet, vp);
 				break;
 
 			case PAIR_LIST_REPLY:
-				fr_cursor_insert(&cached_reply, vp);
+				fr_cursor_insert(&reply, vp);
 				break;
 
 			case PAIR_LIST_CONTROL:
-				fr_cursor_insert(&cached_control, vp);
+				fr_cursor_insert(&control, vp);
+				break;
+
+			case PAIR_LIST_STATE:
+				fr_cursor_insert(&state, vp);
 				break;
 
 			default:
@@ -587,6 +597,10 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 
 	case PAIR_LIST_CONTROL:
 		vps = c->control;
+		break;
+
+	case PAIR_LIST_STATE:
+		vps = c->state;
 		break;
 
 	default:

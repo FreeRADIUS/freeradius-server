@@ -91,8 +91,12 @@ cache {
 	#  represents the cache entry. see man unlang for more information
 	#  on update blocks.
 	#
+	#  Note: Only request, reply, control and session-state lists
+	#  are available in cache entries. Attempting to store attributes
+	#  in other lists will raise an error during config validation.
+	#
 	update {
-		# [outer.]<list>:<attribute> <op> <value>
+		# <list>:<attribute> <op> <value>
 
 		# Cache all instances of Reply-Message in the reply list
 		reply:Reply-Message += &reply:Reply-Message
