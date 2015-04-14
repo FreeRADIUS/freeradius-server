@@ -1,10 +1,13 @@
 TARGET   := radeapclient
 SOURCES := radeapclient.c
 
+SOURCES += ${top_srcdir}/src/modules/rlm_mschap/smbdes.c \
+		   ${top_srcdir}/src/modules/rlm_mschap/mschap.c
+
 SOURCES += ${top_srcdir}/src/main/files.c \
 	   ${top_srcdir}/src/main/threads.c \
 	   ${top_srcdir}/src/main/version.c
-
+   
 TGT_PREREQS := libfreeradius-radius.a libfreeradius-server.a
 TGT_LDLIBS  := $(LIBS)
 
@@ -21,4 +24,5 @@ endif
 
 SRC_CFLAGS += -DWITH_EAPCLIENT
 SRC_INCDIRS  := ${top_srcdir}/src/modules/rlm_eap/libeap
+SRC_CFLAGS   += -I${top_srcdir}/src/modules/rlm_mschap
 endif

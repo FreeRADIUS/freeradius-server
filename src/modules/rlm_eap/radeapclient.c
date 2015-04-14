@@ -39,6 +39,9 @@ RCSID("$Id$")
 #include "eap_types.h"
 #include "eap_sim.h"
 
+#include "smbdes.h"
+#include "mschap.h"
+
 #ifdef WITH_TLS
 #  include <freeradius-devel/tls.h>
 #endif
@@ -95,7 +98,7 @@ typedef struct rc_eap_md5_context {
 
 typedef struct rc_eap_context {
 	int eap_type;	//!< contains the EAP-Type
-	char password[256];	//!< copy of User-Password (or CHAP-Password).
+	VALUE_PAIR *password;	//!< Cleartext-Password
 	union {
 		rc_eap_sim_context_t sim;
 		rc_eap_md5_context_t md5;
@@ -147,7 +150,7 @@ struct rc_transaction {
 
 	fr_event_t *event;	//!< armed event (if any).
 
-	char		password[256];
+	VALUE_PAIR	*password;	//!< Cleartext-Password
 	char const	*name;	//!< Test name (as specified in the request).
 };
 
@@ -235,6 +238,8 @@ static int rc_map_eapsim_types(RADIUS_PACKET *r);
 static int rc_unmap_eapsim_types(RADIUS_PACKET *r);
 
 static void rc_get_radius_port(PW_CODE type, uint16_t *port);
+static bool rc_already_hex(VALUE_PAIR *vp);
+static int rc_mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request, char const *password);
 static void rc_evprep_packet_timeout(rc_transaction_t *trans);
 static void rc_evprep_progress_stat(void);
 static void rc_deallocate_id(rc_transaction_t *trans);
@@ -623,12 +628,34 @@ static int rc_init_packet(rc_transaction_t *trans)
 			break;
 
 		/*
+		 *	Cache this for later.
+		 */
+		case PW_CLEARTEXT_PASSWORD:
+			trans->password = vp;
+			break;
+
+		/*
 		 *	Keep a copy of the the password attribute.
 		 */
-		case PW_USER_PASSWORD:
 		case PW_CHAP_PASSWORD:
+			/*
+			 *	If it's already hex, do nothing.
+			 */
+			if ((vp->vp_length == 17) &&
+			    (rc_already_hex(vp))) break;
+
+			/*
+			 *	CHAP-Password is octets, so it may not be zero terminated.
+			 */
+			trans->password = pairmake(trans, &packet->vps, "Cleartext-Password",
+			                           "", T_OP_EQ);
+			pairbstrncpy(trans->password, vp->vp_strvalue, vp->vp_length);
+			break;
+
+		case PW_USER_PASSWORD:
 		case PW_MS_CHAP_PASSWORD:
-			strlcpy(trans->password, vp->vp_strvalue, sizeof(trans->password));
+			trans->password = pairmake(trans, &packet->vps, "Cleartext-Password",
+			                           vp->vp_strvalue, T_OP_EQ);
 			break;
 
 		case PW_RADCLIENT_TEST_NAME:
@@ -695,13 +722,7 @@ static void rc_build_eap_context(rc_transaction_t *trans)
 		 *	Note: this is not useful for EAP-SIM, but we cannot know what kind
 		 *	of challenge the server will issue.
 		 */
-		VALUE_PAIR *vp;
-		vp = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
-		if (!vp) vp = pairfind(packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
-		if (!vp) vp = pairfind(packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
-		if (vp) {
-			strlcpy(trans->eap_context->password, vp->vp_strvalue, sizeof(trans->eap_context->password));
-		}
+		trans->eap_context->password = trans->password;
 	}
 }
 
@@ -728,7 +749,7 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	talloc_steal(trans, vps_entry); /* It's ours now. */
 
 	RADIUS_PACKET *packet;
-	MEM(packet = rad_alloc(trans, 1));
+	MEM(packet = rad_alloc(trans, true));
 	trans->packet = packet;
 
 	/* Fill in the packet value pairs. */
@@ -1298,7 +1319,7 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 	 */
 	fr_md5_init(&context);
 	fr_md5_update(&context, &identifier, 1);
-	fr_md5_update(&context, (uint8_t *) eap_context->password, strlen(eap_context->password));
+	fr_md5_update(&context, eap_context->password->vp_octets, eap_context->password->vp_length);
 	fr_md5_update(&context, value, valuesize);
 	fr_md5_final(response, &context);
 
@@ -1401,6 +1422,30 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 
 		for (i = 0; i < 4; i++) {
 			((uint32_t *) packet->vector)[i] = fr_rand();
+		}
+
+		/*
+		 *	Update the password, so it can be encrypted with the
+		 *	new authentication vector.
+		 */
+		if (trans->password) {
+			VALUE_PAIR *vp;
+
+			if ((vp = pairfind(trans->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
+				pairstrcpy(vp, trans->password->vp_strvalue);
+
+			} else if ((vp = pairfind(trans->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
+				uint8_t buffer[17];
+
+				rad_chap_encode(trans->packet, buffer, fr_rand() & 0xff, trans->password);
+				pairmemcpy(vp, buffer, 17);
+
+			} else if (pairfind(trans->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY) != NULL) {
+				rc_mschapv1_encode(trans->packet, &trans->packet->vps, trans->password->vp_strvalue);
+
+			} else {
+				DEBUG("WARNING: No password in the request");
+			}
 		}
 	}
 
@@ -1943,6 +1988,70 @@ static PW_CODE rc_get_code(uint16_t port)
 	if (port == PW_POD_UDP_PORT) return PW_CODE_DISCONNECT_REQUEST;
 
 	return PW_CODE_UNDEFINED;
+}
+
+static bool rc_already_hex(VALUE_PAIR *vp)
+{
+	size_t i;
+
+	if (!vp || (vp->da->type != PW_TYPE_OCTETS)) return true;
+
+	/*
+	 *	If it's 17 octets, it *might* be already encoded.
+	 *	Or, it might just be a 17-character password (maybe UTF-8)
+	 *	Check it for non-printable characters.  The odds of ALL
+	 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
+	 *	or 1/(2^51), which is pretty much zero.
+	 */
+	for (i = 0; i < vp->vp_length; i++) {
+		if (vp->vp_octets[i] < 32) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static int rc_mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request, char const *password)
+{
+	unsigned int i;
+	uint8_t *p;
+	VALUE_PAIR *challenge, *reply;
+	uint8_t nthash[16];
+
+	pairdelete(&packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
+	pairdelete(&packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
+
+	challenge = paircreate(packet, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
+	if (!challenge) {
+		return 0;
+	}
+
+	pairadd(request, challenge);
+	challenge->vp_length = 8;
+	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->vp_length);
+	for (i = 0; i < challenge->vp_length; i++) {
+		p[i] = fr_rand();
+	}
+
+	reply = paircreate(packet, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
+	if (!reply) {
+		return 0;
+	}
+
+	pairadd(request, reply);
+	reply->vp_length = 50;
+	reply->vp_octets = p = talloc_array(reply, uint8_t, reply->vp_length);
+	memset(p, 0, reply->vp_length);
+
+	p[1] = 0x01; /* NT hash */
+
+	if (mschap_ntpwdhash(nthash, password) < 0) {
+		return 0;
+	}
+
+	smbdes_mschap(nthash, challenge->vp_octets, p + 26);
+	return 1;
 }
 
 /** Resolve server hostname.
