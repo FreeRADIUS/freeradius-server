@@ -366,6 +366,73 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 	return q - start;
 }
 
+static bool condition_check_types(fr_cond_t *c, PW_TYPE lhs_type)
+{
+	/*
+	 *	SOME integer mismatch is OK.  If the LHS has a large type,
+	 *	and the RHS has a small type, it's OK.
+	 *
+	 *	If the LHS has a small type, and the RHS has a large type,
+	 *	then add a cast to the LHS.
+	 */
+	if (lhs_type == PW_TYPE_INTEGER64) {
+		if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER) ||
+		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
+		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE)) {
+			c->cast = NULL;
+			return true;
+		}
+	}
+
+	if (lhs_type == PW_TYPE_INTEGER) {
+		if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
+		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE)) {
+			c->cast = NULL;
+			return true;
+		}
+
+		if (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) {
+			c->cast = c->data.map->rhs->tmpl_da;
+			return true;
+		}
+	}
+
+	if (lhs_type == PW_TYPE_SHORT) {
+		if (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE) {
+			c->cast = NULL;
+			return true;
+		}
+
+		if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) ||
+		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER)) {
+			c->cast = c->data.map->rhs->tmpl_da;
+			return true;
+		}
+	}
+
+	if (lhs_type == PW_TYPE_BYTE) {
+		if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) ||
+		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER) ||
+		    (c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT)) {
+			c->cast = c->data.map->rhs->tmpl_da;
+			return true;
+		}
+	}
+
+	if ((lhs_type == PW_TYPE_IPV4_PREFIX) &&
+	    (c->data.map->rhs->tmpl_da->type == PW_TYPE_IPV4_ADDR)) {
+		return true;
+	}
+
+	if ((lhs_type == PW_TYPE_IPV6_PREFIX) &&
+	    (c->data.map->rhs->tmpl_da->type == PW_TYPE_IPV6_ADDR)) {
+		return true;
+	}
+
+	return false;
+}
+
+
 /*
  *	Less code means less bugs
  */
@@ -815,6 +882,10 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			if (c->cast) {
 				if ((c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
 				    (c->cast->type != c->data.map->rhs->tmpl_da->type)) {
+					if (condition_check_types(c, c->cast->type)) {
+						goto keep_going;
+					}
+
 					goto same_type;
 				}
 
@@ -932,53 +1003,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				if ((c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
 				    (c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
 				    (c->data.map->lhs->tmpl_da->type != c->data.map->rhs->tmpl_da->type)) {
-
-					/*
-					 *	SOME integer mismatch is OK.  If the LHS has a large type,
-					 *	and the RHS has a small type, it's OK.
-					 *
-					 *	If the LHS has a small type, and the RHS has a large type,
-					 *	then add a cast to the LHS.
-					 */
-					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_INTEGER64) {
-						if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER) ||
-						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
-						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE)) {
-							goto keep_going;
-						}
-					}
-
-					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_INTEGER) {
-						if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT) ||
-						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE)) {
-							goto keep_going;
-						}
-
-						if (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) {
-							c->cast = c->data.map->rhs->tmpl_da;
-							goto keep_going;
-						}
-					}
-
-					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_SHORT) {
-						if (c->data.map->rhs->tmpl_da->type == PW_TYPE_BYTE) {
-							goto keep_going;
-						}
-
-						if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) ||
-						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER)) {
-							c->cast = c->data.map->rhs->tmpl_da;
-							goto keep_going;
-						}
-					}
-
-					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_BYTE) {
-						if ((c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER64) ||
-						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_INTEGER) ||
-						    (c->data.map->rhs->tmpl_da->type == PW_TYPE_SHORT)) {
-							c->cast = c->data.map->rhs->tmpl_da;
-							goto keep_going;
-						}
+					if (condition_check_types(c, c->data.map->lhs->tmpl_da->type)) {
+						goto keep_going;
 					}
 
 				same_type:
@@ -1365,12 +1391,13 @@ done:
 		}
 
 		/*
-		 *	<ipaddr>"foo" CMP &Attribute-Name The cast is
-		 *	unnecessary, and we can re-write it so that
-		 *	the attribute reference is on the LHS.
+		 *	<ipaddr>"foo" CMP &Attribute-Name The cast may
+		 *	not be necessary, and we can re-write it so
+		 *	that the attribute reference is on the LHS.
 		 */
 		if (c->cast &&
 		    (c->data.map->rhs->type == TMPL_TYPE_ATTR) &&
+		    (c->cast->type == c->data.map->rhs->tmpl_da->type) &&
 		    (c->data.map->lhs->type != TMPL_TYPE_ATTR)) {
 			vp_tmpl_t *tmp;
 
