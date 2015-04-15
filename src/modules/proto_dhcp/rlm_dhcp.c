@@ -68,12 +68,13 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	}
 
 	if (src.type != TMPL_TYPE_ATTR) {
-		REDEBUG("dhcp_options cannot operate on a list");
+		REDEBUG("dhcp_options cannot operate on a %s", fr_int2str(tmpl_names, src.type, "<INVALID>"));
 		goto error;
 	}
 
 	if (src.tmpl_da->type != PW_TYPE_OCTETS) {
-		REDEBUG("dhcp_options requires an octets type attribute");
+		REDEBUG("dhcp_options got a %s attribute needed octets",
+			fr_int2str(dict_attr_types, src.tmpl_da->type, "<INVALID>"));
 		goto error;
 	}
 
