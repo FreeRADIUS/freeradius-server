@@ -683,6 +683,19 @@ The hex value of the Attribute-Name, as a series of hex digits.
 e.g. If a request contains "Framed-IP-Address = 127.0.0.1", the expansion
 of %{hex:Framed-IP-Address} will yeild "0x7f000001".
 
+.IP %{Attribute-Name[#]}
+The number of instances of Attribute-Name.
+
+e.g. If a request contains "User-Name = bob", the expansion
+of %{User-Name[#]} will yeild "1".
+
+.IP %{Attribute-Name[*]}
+All instances of Attribute-Name, concatenated together with \\n as the
+separator.
+
+e.g. If a response contains "Reply-Message = 'Hello', Reply-Message = 'bob'
+the expnsion of "%{reply:Reply-Message[*]} will yield "Hello\\nbob"
+
 .SH ATTRIBUTE ASSIGNMENTS
 The attribute lists described above may be edited by listing one or
 more attributes in an "update" section.  Once the attributes have been
