@@ -657,8 +657,8 @@ data false
 condition <ipv4prefix>192.168.0.0/16 > 192.168.1.2
 data true
 
-condition <cidr>&NAS-IP-Address == 192.168.0.0/24
+condition <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
 data <ipv4prefix>&NAS-IP-Address == 192.168.0.0/24
 
-condition <cidr>192.168.0.0/24 > &NAS-IP-Address
-data <cidr>192.168.0.0/24 > &NAS-IP-Address
+condition <ipv4prefix>192.168.0.0/24 > &NAS-IP-Address
+data <ipv4prefix>192.168.0.0/24 > &NAS-IP-Address
