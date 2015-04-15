@@ -51,34 +51,55 @@ typedef struct rlm_dhcp_t {
 static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 				 char const *fmt, char *out, size_t freespace)
 {
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp, *head = NULL;
-	int decoded = 0;
+	vp_cursor_t	cursor, src_cursor;
+	vp_tmpl_t	src;
+	VALUE_PAIR	*vp, *head = NULL;
+	int		decoded = 0;
+	ssize_t		slen;
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		 *out = '\0';
-		 return 0;
-	}
-
-	if ((fr_dhcp_decode_options(request->packet, &head, vp->vp_octets, vp->vp_length) < 0) || (!head)) {
-		RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
+	slen = tmpl_from_attr_str(&src, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	if (slen <= 0) {
+		REMARKER(fmt, slen, fr_strerror());
+	error:
 		*out = '\0';
 		return -1;
 	}
 
-
-	for (vp = fr_cursor_init(&cursor, &head);
-	     vp;
-	     vp = fr_cursor_next(&cursor)) {
-		decoded++;
+	if (src.type != TMPL_TYPE_ATTR) {
+		REDEBUG("dhcp_options cannot operate on a list");
+		goto error;
 	}
 
-	pairmove(request->packet, &(request->packet->vps), &head);
+	if (src.tmpl_da->type != PW_TYPE_OCTETS) {
+		REDEBUG("dhcp_options requires an octets type attribute");
+		goto error;
+	}
 
-	/* Free any unmoved pairs */
-	pairfree(&head);
+	for (vp = tmpl_cursor_init(NULL, &src_cursor, request, &src);
+	     vp;
+	     vp = tmpl_cursor_next(&src_cursor, &src)) {
+		/*
+		 *	@fixme: we should pass in a cursor, then decoding multiple
+		 *	source attributes can be made atomic.
+		 */
+		if ((fr_dhcp_decode_options(request->packet, &head, vp->vp_octets, vp->vp_length) < 0) || (!head)) {
+			RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
+			goto error;
+		}
+
+		for (vp = fr_cursor_init(&cursor, &head);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			decoded++;
+		}
+
+		pairmove(request->packet, &(request->packet->vps), &head);
+
+		/* Free any unmoved pairs */
+		pairfree(&head);
+	}
 
 	snprintf(out, freespace, "%i", decoded);
 
