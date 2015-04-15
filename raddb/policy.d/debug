@@ -26,10 +26,20 @@ debug_reply {
 }
 
 #
+#  Outputs the contents of the session state list in debugging (-X) mode
+#
+debug_session_state {
+	if("%{debug_attr:session-state:}" == '') {
+		noop
+	}
+}
+
+#
 #  Outputs the contents of the main lists in debugging (-X) mode
 #
 debug_all {
 	debug_control
 	debug_request
 	debug_reply
+	debug_session_state
 }
