@@ -1,0 +1,26 @@
+#
+# PRE: update if
+#
+update {
+       control:Cleartext-Password := 'hello'
+       reply:Filter-Id := 'filter'
+}
+
+update request {
+	Cisco-AVPair := 'foo=bar'
+	Cisco-AVPair += 'bar=baz'
+	Cisco-AVPair += 'baz=foo'
+}
+
+if (&Cisco-AVPair[*] =~ /bar=(.*)/) {
+	if ("%{1}" != 'baz') {
+		update reply {
+			Filter-Id += 'Fail 1'
+		}
+	}
+}
+else {
+	update reply {
+		Filter-Id += 'Fail 2'
+	}
+}
