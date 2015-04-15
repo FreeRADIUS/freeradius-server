@@ -2046,7 +2046,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	char *str = NULL, *child;
 	char const *p;
 
-	XLAT_DEBUG("%.*sxlat aprint %d", lvl, xlat_spaces, node->type);
+	XLAT_DEBUG("%.*sxlat aprint %d %s", lvl, xlat_spaces, node->type, node->fmt);
 
 	switch (node->type) {
 		/*
@@ -2268,11 +2268,23 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		rad_assert(node->alternate != NULL);
 
 		str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
-		if (str) break;
+		if (str) {
+			XLAT_DEBUG("ALTERNATE got string: %s", str);
+			break;
+		}
 
+		XLAT_DEBUG("ALTERNATE going to alternate");
 		str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl);
 		break;
 
+	}
+
+	/*
+	 *	If there's no data, return that, instead of an empty string.
+	 */
+	if (str && !str[0]) {
+		talloc_free(str);
+		return NULL;
 	}
 
 	/*
