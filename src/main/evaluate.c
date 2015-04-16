@@ -353,8 +353,9 @@ finish:
  *
  * @return -1 on error, 0 for "no match", 1 for "match".
  */
-static int cond_normalise_values(REQUEST *request, fr_cond_t const *c,
-				 PW_TYPE lhs_type, DICT_ATTR const *lhs_enumv, value_data_t const *lhs, size_t lhs_len)
+static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
+				  PW_TYPE lhs_type, DICT_ATTR const *lhs_enumv,
+				  value_data_t const *lhs, size_t lhs_len)
 {
 	value_pair_map_t const *map = c->data.map;
 
@@ -608,7 +609,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 #ifndef NDEBUG
 			rad_assert(radius_find_compare(map->lhs->tmpl_da)); /* expensive assert */
 #endif
-			rcode = cond_normalise_values(request, c, PW_TYPE_INVALID, NULL, NULL, 0);
+			rcode = cond_normalise_and_cmp(request, c, PW_TYPE_INVALID, NULL, NULL, 0);
 			break;
 		}
 		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->lhs);
@@ -619,14 +620,14 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			 *	if we get at least one set of operands that
 			 *	evaluates to true.
 			 */
-	     		rcode = cond_normalise_values(request, c, vp->da->type, vp->da, &vp->data, vp->vp_length);
+	     		rcode = cond_normalise_and_cmp(request, c, vp->da->type, vp->da, &vp->data, vp->vp_length);
 	     		if (rcode != 0) break;
 		}
 	}
 		break;
 
 	case TMPL_TYPE_DATA:
-		rcode = cond_normalise_values(request, c,
+		rcode = cond_normalise_and_cmp(request, c,
 					      map->lhs->tmpl_data_type, NULL, &map->lhs->tmpl_data_value,
 					      map->lhs->tmpl_data_length);
 		break;
@@ -654,7 +655,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		}
 		rad_assert(data.strvalue);
 
-		rcode = cond_normalise_values(request, c, PW_TYPE_STRING, NULL, &data, ret);
+		rcode = cond_normalise_and_cmp(request, c, PW_TYPE_STRING, NULL, &data, ret);
 		if (map->lhs->type != TMPL_TYPE_LITERAL) talloc_free(data.ptr);
 	}
 		break;
