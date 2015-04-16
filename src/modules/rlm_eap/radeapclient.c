@@ -172,7 +172,6 @@ struct rc_transaction {
 	fr_event_t *event;	//!< armed event (if any).
 
 	VALUE_PAIR	*password;	//!< Cleartext-Password
-	char const	*name;	//!< Test name (as specified in the request).
 };
 
  
@@ -218,6 +217,9 @@ typedef struct rc_stats {
 	uint32_t nb_packets_sent;		//!< number of packets sent (including retransmissions)
 	uint32_t nb_packets_retries;	//!< number of packets retransmissions
 	uint32_t nb_packets_recv;		//!< number of packets received
+
+	uint32_t nb_filter_fail;		//!< number of transactions for which the filter checks failed.
+	uint32_t nb_filter_pass;		//!< number of transactions for which the filter checks passed.
 
 	rc_wf_stats_t wf_stats[RC_WF_MAX];
 
@@ -526,7 +528,6 @@ static int rc_load_input(TALLOC_CTX *ctx, rc_file_pair_t *files, rc_input_vps_li
 
 	/* Loop over the file (or stdin). */
 	do {
-		cur_input_num ++;
 		MEM(request = talloc_zero(ctx, rc_input_vps_t));
 
 		if (readvp2(request, &request->vps_in, packets, &packets_done) < 0) {
@@ -913,6 +914,7 @@ static int rc_load_input(TALLOC_CTX *ctx, rc_file_pair_t *files, rc_input_vps_li
 			/* Only load what we need. */
 			break;
 		}
+		cur_input_num ++;
 	} while (!packets_done);
 
 	if (packets != stdin) fclose(packets);
@@ -1882,6 +1884,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 	STATS_INC(nb_packets_recv);
 
 	trans = fr_packet2myptr(rc_transaction_t, packet, packet_p);
+	rc_input_vps_t *input = trans->input_vps;
 
 	if (trans->event) fr_event_delete(ev_list, &trans->event);
 
@@ -1985,6 +1988,39 @@ eap_done:
 	goto packet_done;
 
 packet_done:
+	if (trans->reply && !ongoing_trans) {
+		/*
+		 *	If we had an expected response code, check to see if the
+		 *	packet matched that.
+		 */
+		if (trans->reply->code != input->filter_code) {
+			if (is_radius_code(trans->reply->code)) {
+				WARN("(%d) %s: Expected %s got %s", input->num, input->name,
+				     fr_packet_codes[input->filter_code], fr_packet_codes[trans->reply->code]);
+			} else {
+				WARN("(%d) %s: Expected %u got %d", input->num, input->name,
+				     input->filter_code, trans->reply->code);
+			}
+			STATS_INC(nb_filter_fail);
+		/*
+		 *	Check if the contents of the packet matched the filter
+		 */
+		} else if (!input->vps_filter) {
+			STATS_INC(nb_filter_pass);
+		} else {
+			VALUE_PAIR const *failed[2];
+
+			pairsort(&trans->reply->vps, attrtagcmp);
+			if (pairvalidate(failed, input->vps_filter, trans->reply->vps)) {
+				DEBUG("(%d) %s: Response passed filter", input->num, input->name);
+				STATS_INC(nb_filter_pass);
+			} else {
+				pairvalidate_debug(trans, failed);
+				WARN("(%d) %s: Response for failed filter: %s", input->num, input->name, fr_strerror());
+				STATS_INC(nb_filter_fail);
+			}
+		}
+	}
 
 	if (trans->reply && !trans->eap_context) {
 		/* Statistics for non-EAP transactions */
@@ -2489,6 +2525,9 @@ static void rc_summary(void)
 	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Success", stats.nb_success);
 	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Fail", stats.nb_fail);
 	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Lost", stats.nb_lost);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Failed filter", stats.nb_filter_fail);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Passed filter", stats.nb_filter_pass);
+
 	fprintf(fp, "\t%-*.*s: %u (retries: %u)\n", LG_PAD_STATS, LG_PAD_STATS, "Packets sent", stats.nb_packets_sent, stats.nb_packets_retries);
 	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Packets received", stats.nb_packets_recv);
 	
@@ -2819,6 +2858,7 @@ int main(int argc, char **argv)
 	}
 	INFO("Loaded: %d input element(s).", rc_vps_list_in.size);
 
+	/* Note: at this point the server address and port are necessarily resolved. */
 
 	/* Initialize the packets list. */
 	MEM(pl = fr_packet_list_create(1));
