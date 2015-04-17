@@ -109,81 +109,6 @@ static int detail_cmp(void const *a, void const *b)
 }
 
 /*
- *	Ensure that the filename doesn't walk back up the tree.
- */
-static size_t fix_directories(UNUSED REQUEST *request, char *out, size_t outlen,
-			      char const *in, UNUSED void *arg)
-{
-	char const *q = in;
-	char *p = out;
-	size_t left = outlen;
-
-	while (*q) {
-		if (*q != '/') {
-			if (left < 2) break;
-
-			/*
-			 *	Smash control characters and spaces to
-			 *	something simpler.
-			 */
-			if (*q < ' ') {
-				*(p++) = '_';
-				continue;
-			}
-
-			*(p++) = *(q++);
-			left--;
-			continue;
-		}
-
-		/*
-		 *	For now, allow slashes in the expanded
-		 *	filename.  This allows the admin to set
-		 *	attributes which create sub-directories.
-		 *	Unfortunately, it also allows users to send
-		 *	attributes which *may* end up creating
-		 *	sub-directories.
-		 */
-		if (left < 2) break;
-		*(p++) = *(q++);
-
-		/*
-		 *	Get rid of ////../.././///.///..//
-		 */
-	redo:
-		/*
-		 *	Get rid of ////
-		 */
-		if (*q == '/') {
-			q++;
-			goto redo;
-		}
-
-		/*
-		 *	Get rid of /./././
-		 */
-		if ((q[0] == '.') &&
-		    (q[1] == '/')) {
-			q += 2;
-			goto redo;
-		}
-
-		/*
-		 *	Get rid of /../../../
-		 */
-		if ((q[0] == '.') && (q[1] == '.') &&
-		    (q[2] == '/')) {
-			q += 3;
-			goto redo;
-		}
-	}
-	*p = '\0';
-
-	return (p - out);
-}
-
-
-/*
  *	(Re-)read radiusd.conf into memory.
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
@@ -202,7 +127,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->escape) {
 		inst->escape_func = rad_filename_escape;
 	} else {
-		inst->escape_func = fix_directories;
+		inst->escape_func = rad_filename_make_safe;
 	}
 
 	inst->ef = exfile_init(inst, 64, 30);

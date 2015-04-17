@@ -74,11 +74,9 @@ linelog {
 	destination = 'file'
 
 	file {
-		#
 		#  The file where the logs will go.
 		filename = ${logdir}/linelog
 
-		#
 		#  The Unix-style permissions on the log file.
 		#
 		#  Depending on format string, the log file may contain secret or
@@ -91,6 +89,13 @@ linelog {
 		#  The user that freeradius runs as must be in the specified
 		#  group, otherwise it will not be possible to set the group.
 #		group = ${security.group}
+
+		#
+		#  Most file systems can handly nearly the full range of UTF-8
+		#  characters.  Ones that can deal with a limited range should
+		#  set this to "yes".
+		#
+		escape_filenames = no
 	}
 
 #	unix {
