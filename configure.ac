@@ -716,6 +716,7 @@ if test "x$WITH_THREADS" = "xyes"; then
       [
         HAVE_LPTHREAD='yes'
         CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
+        LIBS="-lpthread $LIBS"
 
         dnl #
         dnl #  -pthread should add all required CPP definitions and linker
@@ -724,8 +725,6 @@ if test "x$WITH_THREADS" = "xyes"; then
         dnl #
         AX_CC_PTHREAD_FLAG
         if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
-          LIBS="-lpthread $LIBS"
-        else
           CFLAGS="$CFLAGS -pthread"
         fi
       ]
@@ -735,10 +734,6 @@ if test "x$WITH_THREADS" = "xyes"; then
     dnl #  Check for libc_r which used to be the threading library used
     dnl #  for FreeBSD. Internet says it may be deprecated, but if we
     dnl #  can't find lpthread it's probably worth checking.
-    dnl #
-    dnl #  -pthread is not a typo, it's a GCC option which sets additional
-    dnl #  flags required
-    dnl #  for multithreading with the pthreads library.
     dnl #
     if test "x$HAVE_LPTHREAD" != "xyes"; then
       AC_CHECK_LIB(c_r, pthread_create,
