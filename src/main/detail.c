@@ -575,12 +575,17 @@ open_file:
 		if (data->track) {
 			rad_assert(data->fp != NULL);
 
-			if ((fseek(data->fp, data->timestamp_offset, SEEK_SET) < 0) ||
-			    (fwrite("\tDone", 1, 5, data->fp) < 5)) {
-				WARN("detail (%s): Failed marking detail request as done: %s",
+			if (fseek(data->fp, data->timestamp_offset, SEEK_SET) < 0) {
+				WARN("detail (%s): Failed seeking to timestamp offset: %s",
+				     data->name, fr_syserror(errno));
+			} else if (fwrite("\tDone", 1, 5, data->fp) < 5) {
+				WARN("detail (%s): Failed marking request as done: %s",
+				     data->name, fr_syserror(errno));
+			} else if (fflush(data->fp) != 0) {
+				WARN("detail (%s): Failed flushing marked detail file to disk: %s",
 				     data->name, fr_syserror(errno));
 			}
-			fflush(data->fp);
+
 			if (fseek(data->fp, data->offset, SEEK_SET) < 0) {
 				WARN("detail (%s): Failed seeking to next detail request: %s",
 				     data->name, fr_syserror(errno));
