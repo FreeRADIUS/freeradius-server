@@ -67,7 +67,7 @@ if test x$with_[]modname != xno; then
     smart_try_dir="$securid_include_dir"
     FR_SMART_CHECK_INCLUDE(acexport.h)
     if test "x$ac_cv_header_acexport_h" != "xyes"; then
-      AC_MSG_WARN([securid headers not found. Use --with-securid-include-dir=<path>.])
+      AC_MSG_WARN([securid headers not found. Use --with-rlm-securid-include-dir=<path>.])
       fail="$fail acexport.h"
     fi
 
@@ -80,7 +80,7 @@ if test x$with_[]modname != xno; then
     FR_SMART_CHECK_LIB(aceclnt, SD_Init)
     if test "x$ac_cv_lib_aceclnt_SD_Init" != "xyes"
     then
-      AC_MSG_WARN([securid libraries not found. Use --with-securid-lib-dir=<path>.])
+      AC_MSG_WARN([securid libraries not found. Use --with-rlm-securid-lib-dir=<path>.])
       fail="$fail libaceclnt"
     fi
 
