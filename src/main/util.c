@@ -342,14 +342,13 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		if (((*in >= 'A') && (*in <= 'Z')) ||
 		    ((*in >= 'a') && (*in <= 'z')) ||
 		    ((*in >= '0') && (*in <= '9')) ||
-		    (*in == '_') || (*in == '.')) {
+		    (*in == '_')) {
 		    	if (freespace <= 1) break;
 
 		 	*out++ = *in++;
 		 	freespace--;
 		 	continue;
 		}
-
 		if (freespace <= 2) break;
 
 		/*
@@ -397,7 +396,7 @@ ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t i
 		if (((*p >= 'A') && (*p <= 'Z')) ||
 		    ((*p >= 'a') && (*p <= 'z')) ||
 		    ((*p >= '0') && (*p <= '9')) ||
-		    (*p == '_') || (*p == '.')) {
+		    (*p == '_')) {
 		 	*out++ = *p;
 		 	freespace--;
 		 	continue;
