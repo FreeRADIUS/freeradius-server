@@ -6176,6 +6176,7 @@ if test "x$ac_cv_lib_pthread_pthread_create" = xyes; then :
 
         HAVE_LPTHREAD='yes'
         CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
+        LIBS="-lpthread $LIBS"
 
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-pthread\"" >&5
@@ -6225,8 +6226,6 @@ fi
 $as_echo "$ax_cv_cc_pthread_flag" >&6; }
 
         if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
-          LIBS="-lpthread $LIBS"
-        else
           CFLAGS="$CFLAGS -pthread"
         fi
 
@@ -6234,7 +6233,7 @@ $as_echo "$ax_cv_cc_pthread_flag" >&6; }
 fi
 
 
-                                        if test "x$HAVE_LPTHREAD" != "xyes"; then
+                        if test "x$HAVE_LPTHREAD" != "xyes"; then
       { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lc_r" >&5
 $as_echo_n "checking for pthread_create in -lc_r... " >&6; }
 if ${ac_cv_lib_c_r_pthread_create+:} false; then :
