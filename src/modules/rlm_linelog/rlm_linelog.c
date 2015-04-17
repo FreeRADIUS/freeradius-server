@@ -104,6 +104,8 @@ typedef struct linelog_instance_t {
 		char const		*group_str;		//!< Group to set on new files.
 		gid_t			group;			//!< Resolved gid.
 		exfile_t		*ef;			//!< Exclusive file access handle.
+		bool			escape;			//!< Do filename escaping, yes / no.
+		RADIUS_ESCAPE_STRING	escape_func;		//!< Escape function.
 	} file;
 
 	struct {
@@ -126,6 +128,7 @@ static const CONF_PARSER file_config[] = {
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_XLAT, linelog_instance_t, file.name), NULL },
 	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, linelog_instance_t, file.permissions), "0600" },
 	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, linelog_instance_t, file.group_str), NULL },
+	{ "escape_filenames", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, linelog_instance_t, file.escape), "no" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -318,6 +321,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	linelog_instance_t	*inst = instance;
 	char			prefix[100];
+
+	/*
+	 *	Escape filenames only if asked.
+	 */
+	if (inst->file.escape) {
+		inst->file.escape_func = rad_filename_escape;
+	} else {
+		inst->file.escape_func = rad_filename_make_safe;
+	}
 
 	inst->log_dst = fr_str2int(linelog_dst_table, inst->log_dst_str, LINELOG_DST_INVALID);
 	if (inst->log_dst == LINELOG_DST_INVALID) {
@@ -695,7 +707,7 @@ build_vector:
 	{
 		char path[2048];
 
-		if (radius_xlat(path, sizeof(path), request, inst->file.name, rad_filename_escape, NULL) < 0) {
+		if (radius_xlat(path, sizeof(path), request, inst->file.name, inst->file.escape_func, NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
 
