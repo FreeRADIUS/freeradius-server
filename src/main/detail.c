@@ -201,6 +201,7 @@ static int detail_open(rad_listen_t *this)
 	 *	this file will be read && processed before the
 	 *	file globbing is done.
 	 */
+	data->fp = NULL;
 	data->work_fd = open(data->filename_work, O_RDWR);
 	if (data->work_fd < 0) {
 #ifndef HAVE_GLOB_H
@@ -456,6 +457,7 @@ open_file:
 			 *	try again.
 			 */
 			close(data->work_fd);
+			data->fp = NULL;
 			data->work_fd = -1;
 			data->state = STATE_UNOPENED;
 			return NULL;
