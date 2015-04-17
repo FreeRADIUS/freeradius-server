@@ -277,6 +277,86 @@ int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
 	return rcode;
 }
 
+/** Ensures that a filename cannot walk up the directory structure
+ *
+ * Also sanitizes control chars.
+ *
+ * @param request Current request (may be NULL).
+ * @param out Output buffer.
+ * @param outlen Size of the output buffer.
+ * @param in string to escape.
+ * @param arg Context arguments (unused, should be NULL).
+ */
+size_t rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+{
+	char const *q = in;
+	char *p = out;
+	size_t left = outlen;
+
+	while (*q) {
+		if (*q != '/') {
+			if (left < 2) break;
+
+			/*
+			 *	Smash control characters and spaces to
+			 *	something simpler.
+			 */
+			if (*q < ' ') {
+				*(p++) = '_';
+				continue;
+			}
+
+			*(p++) = *(q++);
+			left--;
+			continue;
+		}
+
+		/*
+		 *	For now, allow slashes in the expanded
+		 *	filename.  This allows the admin to set
+		 *	attributes which create sub-directories.
+		 *	Unfortunately, it also allows users to send
+		 *	attributes which *may* end up creating
+		 *	sub-directories.
+		 */
+		if (left < 2) break;
+		*(p++) = *(q++);
+
+		/*
+		 *	Get rid of ////../.././///.///..//
+		 */
+	redo:
+		/*
+		 *	Get rid of ////
+		 */
+		if (*q == '/') {
+			q++;
+			goto redo;
+		}
+
+		/*
+		 *	Get rid of /./././
+		 */
+		if ((q[0] == '.') &&
+		    (q[1] == '/')) {
+			q += 2;
+			goto redo;
+		}
+
+		/*
+		 *	Get rid of /../../../
+		 */
+		if ((q[0] == '.') && (q[1] == '.') &&
+		    (q[2] == '/')) {
+			q += 3;
+			goto redo;
+		}
+	}
+	*p = '\0';
+
+	return (p - out);
+}
+
 /** Escapes the raw string such that it should be safe to use as part of a file path
  *
  * This function is designed to produce a string that's still readable but portable

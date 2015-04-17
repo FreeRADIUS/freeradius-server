@@ -55,6 +55,10 @@ typedef struct rlm_linelog_t {
 	CONF_SECTION	*cs;
 	char const	*filename;
 
+	bool		escape;			//!< do filename escaping, yes / no
+
+	RADIUS_ESCAPE_STRING escape_func;	//!< escape function
+
 	char const	*syslog_facility;	//!< Syslog facility string.
 	char const	*syslog_severity;	//!< Syslog severity string.
 	int		syslog_priority;	//!< Bitwise | of severity and facility.
@@ -77,6 +81,7 @@ typedef struct rlm_linelog_t {
  */
 static const CONF_PARSER module_config[] = {
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_linelog_t, filename), NULL },
+	{ "escape_filenames", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_linelog_t, escape), "no" },
 	{ "syslog_facility", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, syslog_facility), NULL },
 	{ "syslog_severity", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_linelog_t, syslog_severity), "info" },
 	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_linelog_t, permissions), "0600" },
@@ -98,6 +103,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->filename) {
 		cf_log_err_cs(conf, "No value provided for 'filename'");
 		return -1;
+	}
+
+	/*
+	 *	Escape filenames only if asked.
+	 */
+	if (inst->escape) {
+		inst->escape_func = rad_filename_escape;
+	} else {
+		inst->escape_func = rad_filename_make_safe;
 	}
 
 #ifndef HAVE_SYSLOG_H
@@ -267,7 +281,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
 	if (strcmp(inst->filename, "syslog") != 0) {
 		char path[2048];
 
-		if (radius_xlat(path, sizeof(path), request, inst->filename, rad_filename_escape, NULL) < 0) {
+		if (radius_xlat(path, sizeof(path), request, inst->filename, inst->escape_func, NULL) < 0) {
 			return RLM_MODULE_FAIL;
 		}
 

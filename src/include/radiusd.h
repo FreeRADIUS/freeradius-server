@@ -358,6 +358,8 @@ int		log_err (char *);
 #define MEM(x) if (!(x)) { ERROR("%s[%u] OUT OF MEMORY", __FILE__, __LINE__); _fr_exit_now(__FILE__, __LINE__, 1); }
 void (*reset_signal(int signo, void (*func)(int)))(int);
 int		rad_mkdir(char *directory, mode_t mode, uid_t uid, gid_t gid);
+size_t		rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen,
+				       char const *in, UNUSED void *arg);
 size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,
 				    char const *in, UNUSED void *arg);
 ssize_t		rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen);
