@@ -463,7 +463,11 @@ open_file:
 			return NULL;
 		}
 
-		data->fp = fdopen(data->work_fd, "r");
+		/*
+		 *	Only open for writing if we're
+		 *	marking requests as completed.
+		 */
+		data->fp = fdopen(data->work_fd, data->track ? "r+" : "r");
 		if (!data->fp) {
 			ERROR("detail (%s): FATAL: Failed to re-open detail file: %s",
 			      data->name, fr_syserror(errno));
