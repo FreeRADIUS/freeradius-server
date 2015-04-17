@@ -2864,8 +2864,8 @@ fi
 smart_prefix=
 
     if test "x$ac_cv_header_acexport_h" != "xyes"; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: securid headers not found. Use --with-securid-include-dir=<path>." >&5
-$as_echo "$as_me: WARNING: securid headers not found. Use --with-securid-include-dir=<path>." >&2;}
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: securid headers not found. Use --with-rlm-securid-include-dir=<path>." >&5
+$as_echo "$as_me: WARNING: securid headers not found. Use --with-rlm-securid-include-dir=<path>." >&2;}
       fail="$fail acexport.h"
     fi
 
@@ -3047,8 +3047,8 @@ fi
 
     if test "x$ac_cv_lib_aceclnt_SD_Init" != "xyes"
     then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: securid libraries not found. Use --with-securid-lib-dir=<path>." >&5
-$as_echo "$as_me: WARNING: securid libraries not found. Use --with-securid-lib-dir=<path>." >&2;}
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: securid libraries not found. Use --with-rlm-securid-lib-dir=<path>." >&5
+$as_echo "$as_me: WARNING: securid libraries not found. Use --with-rlm-securid-lib-dir=<path>." >&2;}
       fail="$fail libaceclnt"
     fi
 
