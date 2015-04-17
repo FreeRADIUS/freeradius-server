@@ -717,25 +717,56 @@ if test "x$WITH_THREADS" = "xyes"; then
   dnl #  On Some systems, we need extra pre-processor flags, to get them to
   dnl #  to do the threading properly.
   dnl #
-  AC_CHECK_LIB(pthread, pthread_create,
-    [
-      CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
-      LIBS="-lpthread $LIBS"
-    ],
-    [
-      dnl #
-      dnl # -pthread is not a typo, it's a GCC option which sets additional flags required
-      dnl # for multithreading with the pthreads library.
-      dnl #
+  if test "x$WITH_THREADS" != "xno"; then
+    AC_CHECK_LIB(pthread, pthread_create,
+      [
+        HAVE_LPTHREAD='yes'
+        CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
+
+        dnl #
+        dnl #  -pthread should add all required CPP definitions and linker
+        dnl #  arguments. But not all compilers support it, or some compilers
+        dnl #  only support it on certain platforms.
+        dnl #
+        AX_CC_PTHREAD_FLAG
+        if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
+          LIBS="-lpthread $LIBS"
+        else
+          CFLAGS="$CFLAGS -pthread"
+        fi
+      ]
+    )
+
+    dnl #
+    dnl #  Check for libc_r which used to be the threading library used
+    dnl #  for FreeBSD. Internet says it may be deprecated, but if we
+    dnl #  can't find lpthread it's probably worth checking.
+    dnl #
+    dnl #  -pthread is not a typo, it's a GCC option which sets additional
+    dnl #  flags required
+    dnl #  for multithreading with the pthreads library.
+    dnl #
+    if test "x$HAVE_LPTHREAD" != "xyes"; then
       AC_CHECK_LIB(c_r, pthread_create,
-        [ CFLAGS="$CFLAGS -pthread -D_THREAD_SAFE" ],
         [
-          WITH_THREADS="no"
-          fail=[-lpthread]
-        ]
+          CFLAGS="$CFLAGS -D_THREAD_SAFE"
+
+          dnl #
+          dnl #  -pthread should add all required CPP definitions and linker
+          dnl #  arguments. But not all compilers support it, or some compilers
+          dnl #  only support it on certain platforms.
+          dnl #
+          AX_CC_PTHREAD_FLAG
+          if test "x$ax_cv_cc_pthread_flag" != 'xyes'; then
+            LIBS="-lc_r $LIBS"
+          else
+            CFLAGS="$CFLAGS -pthread"
+          fi
+        ],
+        [ fail=[-lc_r or -lpthread] ]
       )
-    ]
-  )
+    fi
+  fi
 
   if test "x$WITH_THREADS" != "xyes"; then
     AC_MSG_WARN([silently not building with thread support.])
