@@ -123,9 +123,18 @@ server home.example.com {
 		#  "detail" file, where it will be read, and sent to
 		#  another home server.
 		#
-		Post-Proxy-Type Fail {
+		Post-Proxy-Type Fail-Accounting {
 			detail.example.com
 		}
+
+		#
+		#  This section is run when there are problems
+		#  proxying Access-Request packets
+		#
+		Post-Proxy-Type Fail-Authentication {
+			# add policies here
+		}
+
 	}
 
 
