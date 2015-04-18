@@ -895,7 +895,7 @@ post-proxy {
 	#  Accounting-Requests from the NAS, but only writes
 	#  accounting packets to disk if the home server is down.
 	#
-#	Post-Proxy-Type Fail {
+#	Post-Proxy-Type Fail-Accounting {
 #			detail
 #	}
 }
