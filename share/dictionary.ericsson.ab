@@ -422,10 +422,8 @@ ATTRIBUTE	Acct-Alt-Session-ID			197	string
 ATTRIBUTE	Idle-Timeout-Threshold			198	integer
 ATTRIBUTE	Double-Authentication			199	integer
 ATTRIBUTE	SBC-Adjacency				200	string
-#binary in radiator
-ATTRIBUTE	DHCP-Field				201	string
-#binary in radiator
-ATTRIBUTE	DHCP-Option				202	string
+ATTRIBUTE	DHCP-Field				201	octets
+ATTRIBUTE	DHCP-Option				202	octets
 ATTRIBUTE	Security-Service			203	string
 ATTRIBUTE	Reauth-Service-Name			204	string has_tag
 ATTRIBUTE	Flow-IP-Profile				205	string
