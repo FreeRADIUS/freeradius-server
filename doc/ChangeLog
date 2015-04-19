@@ -75,6 +75,8 @@ FreeRADIUS 3.0.8 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	* Fix track functionality in detail reader, so it no longer
 	  fails with a "Failed marking detail request as done: Bad file
 	  descriptor" error.
+	* Actually add the peer identity (as User-Name) to the inner
+	  tunnel in EAP-PWD requests, so it's available for lookups.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
