@@ -391,8 +391,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 			return 0;
 		}
 
-		memcpy(pwd_session->peer_id, id->identity,
-		pwd_session->peer_id_len);
+		memcpy(pwd_session->peer_id, id->identity, pwd_session->peer_id_len);
 		pwd_session->peer_id[pwd_session->peer_id_len] = '\0';
 
 		/*
@@ -411,8 +410,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 		fake->username->vp_length = pwd_session->peer_id_len;
 		fake->username->vp_strvalue = p = talloc_array(fake->username, char, fake->username->vp_length + 1);
 
-		memcpy(p, pwd_session->peer_id,
-		pwd_session->peer_id_len);
+		memcpy(p, pwd_session->peer_id, pwd_session->peer_id_len);
 		p[fake->username->vp_length] = 0;
 
 		if ((vp = pairfind(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
