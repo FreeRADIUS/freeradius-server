@@ -1119,19 +1119,13 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
-	if ((data->load_factor < 1) || (data->load_factor > 100)) {
-		cf_log_err_cs(cs, "Load factor must be between 1 and 100");
-		return -1;
-	}
+	FR_INTEGER_BOUND_CHECK("load_factor", data->load_factor, >=, 1);
+	FR_INTEGER_BOUND_CHECK("load_factor", data->load_factor, <=, 100);
 
-	if ((data->poll_interval < 1) || (data->poll_interval > 20)) {
-		cf_log_err_cs(cs, "poll_interval must be between 1 and 20");
-		return -1;
-	}
+	FR_INTEGER_BOUND_CHECK("poll_interval", data->poll_interval, >=, 1);
+	FR_INTEGER_BOUND_CHECK("poll_interval", data->poll_interval, <=, 60);
 
-	if (check_config) return 0;
-
-	if (data->max_outstanding == 0) data->max_outstanding = 1;
+	FR_INTEGER_BOUND_CHECK("max_outstanding", data->max_outstanding, >=, 1);
 
 	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, >=, 4);
 	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, <=, 3600);
