@@ -1177,6 +1177,11 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->secret = client->shortname;
 	client->nas_type = talloc_strdup(data, "none");	/* Part of 'data' not dynamically allocated */
 
+	/*
+	 *	Only checking the config.  Don't start threads or anything else.
+	 */
+	if (check_config) return 0;
+
 #ifdef WITH_DETAIL_THREAD
 	/*
 	 *	Create the communication pipes.
