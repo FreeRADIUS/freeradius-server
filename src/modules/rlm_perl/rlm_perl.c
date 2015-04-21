@@ -478,11 +478,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	char		**envp = NULL;
 	char const	*xlat_name;
 	int		exitstatus = 0, argc=0;
+	char		arg[] = "0";
 
-	CONF_SECTION *cs;
+	CONF_SECTION	*cs;
 
-	MEM(embed_c = talloc_zero_array(inst, char const *, 4));
-	memcpy(&embed, &embed_c, sizeof(embed));
+	xlat_name = cf_section_name2(conf);
+	if (!xlat_name) xlat_name = cf_section_name1(conf);
+	if (xlat_name) xlat_register(xlat_name, perl_xlat, NULL, inst);
 
 #ifdef USE_ITHREADS
 	/*
@@ -496,8 +498,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rlm_perl_make_key(inst->thread_key);
 #endif
 
-	char arg[] = "0";
-
+	/*
+	 *	Setup the argument array we pass to the perl interpreter
+	 */
+	MEM(embed_c = talloc_zero_array(inst, char const *, 4));
+	memcpy(&embed, &embed_c, sizeof(embed));
 	embed_c[0] = NULL;
 	if (inst->perl_flags) {
 		embed_c[1] = inst->perl_flags;
@@ -510,14 +515,20 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		argc = 3;
 	}
 
+	/*
+	 *	Create tweak the server's environment to support
+	 *	perl. Docs say only call this once... Oops.
+	 */
 	PERL_SYS_INIT3(&argc, &embed, &envp);
 
+	/*
+	 *	Allocate a new perl interpreter to do the parsing
+	 */
 	if ((inst->perl = perl_alloc()) == NULL) {
 		ERROR("rlm_perl: No memory for allocating new perl !");
-		return (-1);
+		return -1;
 	}
-
-	perl_construct(inst->perl);
+	perl_construct(inst->perl);	/* ...and initialise it */
 
 #ifdef USE_ITHREADS
 	PL_perl_destruct_level = 2;
@@ -532,17 +543,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
 #endif
 
-	xlat_name = cf_section_name2(conf);
-	if (!xlat_name) xlat_name = cf_section_name1(conf);
-	if (xlat_name) xlat_register(xlat_name, perl_xlat, NULL, inst);
-
 	exitstatus = perl_parse(inst->perl, xs_init, argc, embed, NULL);
 
 	end_AV = PL_endav;
 	PL_endav = (AV *)NULL;
 
 	if (exitstatus) {
-		ERROR("rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
+		ERROR("rlm_perl: perl_parse failed: %s not found or has syntax errors", inst->module);
 		return -1;
 	}
 
@@ -551,7 +558,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (cs) {
 		DEBUG("rlm_perl (%s): parsing 'config' section...", xlat_name);
 
-		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF",1);
+		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF", 1);
 		perl_parse_config(cs, 0, inst->rad_perlconf_hv);
 
 		DEBUG("rlm_perl (%s): done parsing 'config'.", xlat_name);
