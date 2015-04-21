@@ -474,24 +474,24 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_perl_t       *inst = instance;
+	rlm_perl_t	*inst = instance;
 	AV		*end_AV;
 
-	char const **embed_c;	/* Stupid Perl and lack of const consistency */
-	char **embed;
-	char **envp = NULL;
-	char const *xlat_name;
-	int exitstatus = 0, argc=0;
+	char const	**embed_c;	/* Stupid Perl and lack of const consistency */
+	char		**embed;
+	char		**envp = NULL;
+	char const	xlat_name;
+	int		exitstatus = 0, argc=0;
 
 	CONF_SECTION *cs;
 
 	MEM(embed_c = talloc_zero_array(inst, char const *, 4));
 	memcpy(&embed, &embed_c, sizeof(embed));
+
+#ifdef USE_ITHREADS
 	/*
 	 *	Create pthread key. This key will be stored in instance
 	 */
-
-#ifdef USE_ITHREADS
 	pthread_mutex_init(&inst->clone_mutex, NULL);
 
 	inst->thread_key = rad_malloc(sizeof(*inst->thread_key));
@@ -687,7 +687,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char *key, SV *sv, FR_TOKEN op,
 		      const char *hash_name, const char *list_name)
 {
-	char	    *val;
+	char		*val;
 	VALUE_PAIR      *vp;
 
 	if (SvOK(sv)) {
