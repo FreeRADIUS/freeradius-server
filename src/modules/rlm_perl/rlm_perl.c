@@ -983,35 +983,6 @@ static int mod_detach(void *instance)
 		hv_undef(inst->rad_perlconf_hv);
 	}
 
-#if 0
-	/*
-	 *	FIXME: Call this in the destruct function?
-	 */
-	{
-		dTHXa(handle->clone);
-		PERL_SET_CONTEXT(handle->clone);
-		{
-			dSP; ENTER; SAVETMPS; PUSHMARK(SP);
-			count = call_pv(inst->func_detach, G_SCALAR | G_EVAL );
-			SPAGAIN;
-
-			if (count == 1) {
-				exitstatus = POPi;
-				/*
-				 * FIXME: bug in perl
-				 *
-				 */
-				if (exitstatus >= 100 || exitstatus < 0) {
-					exitstatus = RLM_MODULE_FAIL;
-				}
-			}
-			PUTBACK;
-			FREETMPS;
-			LEAVE;
-		}
-	}
-#endif
-
 	if (inst->perl_parsed && inst->func_detach) {
 		dTHXa(inst->perl);
 		PERL_SET_CONTEXT(inst->perl);
