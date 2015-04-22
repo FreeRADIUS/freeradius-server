@@ -384,13 +384,13 @@ ldap {
 		rebind = yes
 
 		#  Seconds to wait for LDAP query to finish. default: 20
-		timeout = 10
+		res_timeout = 10
 
 		#  Seconds LDAP server has to process the query (server-side
 		#  time limit). default: 20
 		#
 		#  LDAP_OPT_TIMELIMIT is set to this value.
-		timelimit = 3
+		srv_timelimit = 3
 
 		#  Seconds to wait for response of the server. (network
 		#  failures) default: 10
