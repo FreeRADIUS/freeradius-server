@@ -337,7 +337,7 @@ post-auth {
 		#  Let the outer session know which module failed, and why.
 		#
 		update outer.session-state {
-			Module-Failure-Message := &request:Module-Failure-Message
+			&Module-Failure-Message := &request:Module-Failure-Message
 		}
 	}
 }
