@@ -1,3 +1,8 @@
+FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
+	Feature improvements
+	
+	Bug fixes
+	
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
         * Allow syslog_severity to be set in rlm_linelog.
@@ -77,7 +82,7 @@ FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  descriptor" error.
 	* Actually add the peer identity (as User-Name) to the inner
 	  tunnel in EAP-PWD requests, so it's available for lookups.
-	* Fixes to PostfreSQL queries.  Patches from Santiago Gimeno.
+	* Fixes to PostgreSQL queries.  Patches from Santiago Gimeno.
 
 FreeRADIUS 3.0.7 Thu 19 Feb 2015 12:00:00 EDT urgency=medium
 	Feature improvements
