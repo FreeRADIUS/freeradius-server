@@ -354,6 +354,7 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 	new = cf_pair_alloc(parent, cp->attr, cf_pair_value(cp),
 			    cp->op, cp->lhs_type, cp->rhs_type);
 	if (new) {
+		new->parsed = cp->parsed;
 		new->item.lineno = cp->item.lineno;
 		new->item.filename = talloc_strdup(new, cp->item.filename);
 	}
@@ -764,7 +765,10 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 	 *	section.
 	 */
 	cp = cf_pair_find(cs, p);
-	if (cp) return &(cp->item);
+	if (cp) {
+		cp->parsed = true;	/* conf pairs which are referenced count as parsed */
+		return &(cp->item);
+	}
 
 	next = cf_section_sub_find(cs, p);
 	if (next) return &(next->item);
@@ -1137,7 +1141,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute, secret, file_input, cant_be_empty, tmpl, xlat;
+	bool deprecated, required, attribute, secret, file_input, cant_be_empty, tmpl, xlat, multi;
 	char **q;
 	char const *value;
 	CONF_PAIR *cp = NULL;
@@ -1154,6 +1158,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	cant_be_empty = (type & PW_TYPE_NOT_EMPTY);
 	tmpl = (type & PW_TYPE_TMPL);
 	xlat = (type & PW_TYPE_XLAT);
+	multi = (type & PW_TYPE_MULTI);
 
 	if (attribute) required = true;
 	if (required) cant_be_empty = true;	/* May want to review this in the future... */
@@ -1174,8 +1179,17 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	 *	Something matched, used the CONF_PAIR value.
 	 */
 	} else {
+		CONF_PAIR *next = cp;
 		value = cp->value;
 		cp->parsed = true;
+
+		/*
+		 *	@fixme We should actually validate
+		 *	the value of the pairs too
+		 */
+		if (multi) while ((next = cf_pair_find_next(cs, next, name))) {
+			next->parsed = true;
+		}
 	}
 
 	if (!value) {
@@ -1602,13 +1616,11 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
 
 	for (ci = cs->children; ci; ci = ci->next) {
 		/*
-		 *	Recurse on sections.
+		 *	Don't recurse on sections. We can only safely
+		 *	check conf pairs at the same level as the
+		 *	section that was just parsed.
 		 */
-		if (ci->type == CONF_ITEM_SECTION) {
-			cf_section_parse_warn(cf_item_to_section(ci));
-			continue;
-		}
-
+		if (ci->type == CONF_ITEM_SECTION) continue;
 		if (ci->type == CONF_ITEM_PAIR) {
 			CONF_PAIR *cp;
 
