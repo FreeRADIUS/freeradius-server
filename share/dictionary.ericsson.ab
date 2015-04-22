@@ -80,6 +80,7 @@ ATTRIBUTE	Tunnel-DNIS				37	integer
 
 VALUE	Tunnel-DNIS			DNIS			1
 VALUE	Tunnel-DNIS			DNIS-Only		2
+VALUE	Tunnel-DNIS			DNIS-Generate		4
 
 ATTRIBUTE	Medium-Type				38	integer
 
@@ -434,5 +435,17 @@ ATTRIBUTE	Cluster-Partition-ID			209	string
 ATTRIBUTE	Circuit-Group-Member			210	string
 ATTRIBUTE	Delegated-Max-Prefix			212	integer
 ATTRIBUTE	IPv4-Address-Release-Control		213	string
+ATTRIBUTE	Acct-Input-IPv4-Octets			214	integer
+ATTRIBUTE	Acct-Output-IPv4-Octets			215	integer
+ATTRIBUTE	Acct-Input-IPv4-Packets			216	integer
+ATTRIBUTE	Acct-Output-IPv4-Packets		217	integer
+ATTRIBUTE	Acct-Input-IPv4-Gigawords		218	integer
+ATTRIBUTE	Acct-Output-IPv4-Gigawords		219	integer
+ATTRIBUTE	Acct-Input-IPv6-Octets			220	integer
+ATTRIBUTE	Acct-Output-IPv6-Octets			221	integer
+ATTRIBUTE	Acct-Input-IPv6-Packets			222	integer
+ATTRIBUTE	Acct-Output-IPv6-Packets		223	integer
+ATTRIBUTE	Acct-Input-IPv6-Gigawords		224	integer
+ATTRIBUTE	Acct-Output-IPv6-Gigawords		225	integer
 
 END-VENDOR	Ericsson-AB
