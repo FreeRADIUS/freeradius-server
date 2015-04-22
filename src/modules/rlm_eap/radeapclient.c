@@ -73,7 +73,7 @@ static bool do_output = true;
 static bool do_summary = false;
 static char filesecret[256];
 static float progress_interval = 0;
-struct timeval tv_progress_interval;
+static struct timeval tv_progress_interval;
 static char const *radius_dir = NULL;
 
 
@@ -330,7 +330,7 @@ static char *rc_print_elapsed(char *out, uint8_t decimals)
 	/* assuming tv_usec < USEC */
 	if (decimals) {
 		char buffer[8] = "";
-		sprintf(buffer, ".%06ld", tv_delta.tv_usec);
+		sprintf(buffer, ".%06d", (int) tv_delta.tv_usec);
 		strncat(out, buffer, decimals+1); /* (this is always terminated with 0). */
 	}
 
