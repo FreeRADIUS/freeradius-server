@@ -81,6 +81,7 @@ struct conf_pair {
 	FR_TOKEN	lhs_type;	//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 	FR_TOKEN	rhs_type;	//!< Value Quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
 	bool		pass2;		//!< do expansion in pass2.
+	bool		parsed;		//!< Was this item used during parsing?
 };
 
 /** Internal data that is associated with a configuration section
@@ -1139,7 +1140,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	bool deprecated, required, attribute, secret, file_input, cant_be_empty, tmpl, xlat;
 	char **q;
 	char const *value;
-	CONF_PAIR const *cp = NULL;
+	CONF_PAIR *cp = NULL;
 	fr_ipaddr_t *ipaddr;
 	char buffer[8192];
 
@@ -1161,6 +1162,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	rcode = 0;
 
 	cp = cf_pair_find(cs, name);
+
 	/*
 	 *	No pairs match the configuration item name in the current
 	 *	section, use the default value.
@@ -1173,6 +1175,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	 */
 	} else {
 		value = cp->value;
+		cp->parsed = true;
 	}
 
 	if (!value) {
@@ -1528,6 +1531,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 
 		cpn = cf_pair_alloc(cs, name, value, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 		if (!cpn) return -1;
+		cpn->parsed = true;
 		cpn->item.filename = "<internal>";
 		cpn->item.lineno = 0;
 		cf_item_add(cs, &(cpn->item));
@@ -1591,6 +1595,37 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 	} /* for all variables in the configuration section */
 }
 
+
+static void cf_section_parse_warn(CONF_SECTION *cs)
+{
+	CONF_ITEM *ci;
+
+	for (ci = cs->children; ci; ci = ci->next) {
+		/*
+		 *	Recurse on sections.
+		 */
+		if (ci->type == CONF_ITEM_SECTION) {
+			cf_section_parse_warn(cf_item_to_section(ci));
+			continue;
+		}
+
+		if (ci->type == CONF_ITEM_PAIR) {
+			CONF_PAIR *cp;
+
+			cp = cf_item_to_pair(ci);
+			if (cp->parsed) continue;
+
+			WARN("%s[%d]: The item '%s' is defined, but is unused by the configuration",
+			     cp->item.filename ? cp->item.filename : "unknown",
+			     cp->item.lineno ? cp->item.lineno : 0,
+				cp->attr);
+		}
+
+		/*
+		 *	Skip everything else.
+		 */
+	}
+}
 
 /*
  *	Parse a configuration section into user-supplied variables.
@@ -1665,6 +1700,12 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			goto error;
 		}
 	} /* for all variables in the configuration section */
+
+	/*
+	 *	Warn about items in the configuration which weren't
+	 *	checked during parsing.
+	 */
+	if (check_config || (debug_flag >= 3)) cf_section_parse_warn(cs);
 
 	cf_log_info(cs, "%.*s}", cs->depth, parse_spaces);
 
