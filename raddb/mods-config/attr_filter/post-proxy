@@ -58,14 +58,13 @@
 # These rules allow:
 #       o Only Login-User Service-Type ( no framed/ppp sessions )
 #       o Telnet sessions only ( no rlogin, tcp-clear )
-#       o Login hosts of either 192.0.2.1 or 192.0.2.2
+#       o Login host of 192.0.2.1
 #
 #tisp
 #	Service-Type == Login-User,
 #	Login-Service == Telnet,
 #	Login-TCP-Port == 23,
-#	Login-IP-Host == 192.0.2.1,
-#	Login-IP-Host == 192.0.2.2
+#	Login-IP-Host == 192.0.2.1
 
 #
 # The following example can be used for a home server which is only
@@ -101,17 +100,8 @@
 #
 
 DEFAULT
-	Service-Type == Framed-User,
-	Service-Type == Login-User,
-	Login-Service == Telnet,
-	Login-Service == Rlogin,
-	Login-Service == TCP-Clear,
-	Login-TCP-Port <= 65536,
 	Framed-IP-Address == 255.255.255.254,
 	Framed-IP-Netmask == 255.255.255.255,
-	Framed-Protocol == PPP,
-	Framed-Protocol == SLIP,
-	Framed-Compression == Van-Jacobson-TCP-IP,
 	Framed-MTU >= 576,
 	Framed-Filter-ID =* ANY,
 	Reply-Message =* ANY,
