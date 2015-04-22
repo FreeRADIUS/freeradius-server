@@ -1706,7 +1706,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	 *	Warn about items in the configuration which weren't
 	 *	checked during parsing.
 	 */
-	if (check_config || (debug_flag >= 3)) cf_section_parse_warn(cs);
+	if (debug_flag >= 3) cf_section_parse_warn(cs);
 
 	cf_log_info(cs, "%.*s}", cs->depth, parse_spaces);
 
