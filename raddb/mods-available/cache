@@ -30,29 +30,28 @@ cache {
 	#                          a cluster of RADIUS servers.
 #	driver = "rlm_cache_rbtree"
 
-#
-#	Some drivers accept specific options, to set them a
-#	config section with the the name as the driver should be added
-#	to the cache instance.
-#
-#	Driver specific options are:
-#
+	#
+	#  Some drivers accept specific options, to set them a
+	#  config section with the the name as the driver should be added
+	#  to the cache instance.
+	#
+	#  Driver specific options are:
+	#
 #	memcached {
 #		# Memcached configuration options, as documented here:
 #		#    http://docs.libmemcached.org/libmemcached_configuration.html#memcached
 #		options = "--SERVER=localhost"
 #
 #		pool {
-#			start = 5
-#			min = 4
+#			start = ${thread[pool].start_servers}
+#			min = ${thread[pool].min_spare_servers}
 #			max = ${thread[pool].max_servers}
-#			spare = 3
+#			spare = ${thread[pool].max_spare_servers}
 #			uses = 0
 #			lifetime = 0
 #			idle_timeout = 60
 #		}
 #	}
-
 
 	#  The key used to index the cache.  It is dynamically expanded
 	#  at run time.
