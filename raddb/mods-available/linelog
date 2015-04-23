@@ -16,9 +16,6 @@ linelog {
 	#
 #	delimiter = "\n"
 
-	#  If logging via syslog, the severity can be set here.
-	#  Defaults to info.
-	#
 	#  The default format string.
 	#
 	#  May be an attribute ref, xlat, literal or exec.
@@ -101,7 +98,7 @@ linelog {
 #	unix {
 #		filename = /path/to/unix.socket
 #
-#		#  May optionally include a 'pool' section
+#		pool = ${..pool}
 #	}
 
 	tcp {
@@ -114,7 +111,7 @@ linelog {
 		#  Connect and write timeout (in seconds)
 		timeout = 2.0
 
-		#  May optionally include a 'pool' section
+		pool = ${..pool}
 	}
 
 	udp {
@@ -127,7 +124,7 @@ linelog {
 		#  Connect and write timeout (in seconds)
 		timeout = 2.0
 
-		#  May optionally include a 'pool' section
+		pool = ${..pool}
 	}
 
 	syslog {
@@ -171,6 +168,68 @@ linelog {
 		#  - debug       Messages that contain information normally of use
 		#                only when debugging a program.
 #		syslog_severity = info
+	}
+
+	#
+	#  The connection pool is new for 3.0, and will be used in many
+	#  modules, for all kinds of connection-related activity.
+	#
+	pool {
+		#  Connections to create during module instantiation.
+		#  If the server cannot create specified number of
+		#  connections during instantiation it will exit.
+		#  Set to 0 to allow the server to start without the
+		#  web service being available.
+		start = ${thread[pool].start_servers}
+
+		#  Minimum number of connections to keep open
+		min = ${thread[pool].min_spare_servers}
+
+		#  Maximum number of connections
+		#
+		#  If these connections are all in use and a new one
+		#  is requested, the request will NOT get a connection.
+		#
+		#  Setting 'max' to LESS than the number of threads means
+		#  that some threads may starve, and you will see errors
+		#  like 'No connections available and at max connection limit'
+		#
+		#  Setting 'max' to MORE than the number of threads means
+		#  that there are more connections than necessary.
+		max = ${thread[pool].max_servers}
+
+		#  Spare connections to be left idle
+		#
+		#  NOTE: Idle connections WILL be closed if "idle_timeout"
+		#  is set.  This should be less than or equal to "max" above.
+		spare = ${thread[pool].max_spare_servers}
+
+		#  Number of uses before the connection is closed
+		#
+		# 0 means "infinite"
+		uses = 0
+
+		#  The number of seconds to wait after the server tries
+		#  to open a connection, and fails.  During this time,
+		#  no new connections will be opened.
+		retry_delay = 30
+
+		#  The lifetime (in seconds) of the connection
+		lifetime = 0
+
+		#  idle timeout (in seconds).  A connection which is
+		#  unused for this length of time will be closed.
+		idle_timeout = 60
+
+		#  NOTE: All configuration settings are enforced.  If a
+		#  connection is closed because of "idle_timeout",
+		#  "uses", or "lifetime", then the total number of
+		#  connections MAY fall below "min".  When that
+		#  happens, it will open a new connection.  It will
+		#  also log a WARNING message.
+		#
+		#  The solution is to either lower the "min" connections,
+		#  or increase lifetime/idle_timeout.
 	}
 }
 
