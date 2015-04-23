@@ -3011,6 +3011,67 @@ do_home:
 	}
 }
 
+static int proxy_to_virtual_server(REQUEST *request)
+{
+	REQUEST *fake;
+
+	if (request->packet->dst_port == 0) {
+		WARN("Cannot proxy an internal request");
+		return 0;
+	}
+
+	DEBUG("Proxying to virtual server %s",
+	      request->home_server->server);
+
+	/*
+	 *	Packets to virtual servers don't get
+	 *	retransmissions sent to them.  And the virtual
+	 *	server is run ONLY if we have no child
+	 *	threads, or we're running in a child thread.
+	 */
+	rad_assert(!spawn_flag || !we_are_master());
+
+	fake = request_alloc_fake(request);
+
+	fake->packet->vps = paircopy(fake->packet, request->packet->vps);
+	talloc_free(request->proxy);
+
+	fake->server = request->home_server->server;
+	fake->handle = request->handle;
+	fake->process = NULL; /* should never be run for anything */
+
+	/*
+	 *	Run the virtual server.
+	 */
+	request_running(fake, FR_ACTION_RUN);
+
+	request->proxy = talloc_steal(request, fake->packet);
+	fake->packet = NULL;
+	request->proxy_reply = talloc_steal(request, fake->reply);
+	fake->reply = NULL;
+
+	talloc_free(fake);
+
+	/*
+	 *	No reply code, toss the reply we have,
+	 *	and do post-proxy-type Fail.
+	 */
+	if (!request->proxy_reply->code) {
+		TALLOC_FREE(request->proxy_reply);
+		setup_post_proxy_fail(request);
+	}
+
+	/*
+	 *	Do the proxy reply (if any)
+	 */
+	if (process_proxy_reply(request, request->proxy_reply)) {
+		request->handle(request);
+	}
+
+	return -1;	/* so we call request_finish */
+}
+
+
 static int request_proxy(REQUEST *request, int retransmit)
 {
 	char buffer[128];
@@ -3040,65 +3101,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *
 	 *	So, we have some horrible hacks to get around that.
 	 */
-	if (request->home_server->server) {
-		REQUEST *fake;
-
-		if (request->packet->dst_port == 0) {
-			WARN("Cannot proxy an internal request");
-			return 0;
-		}
-
-		DEBUG("Proxying to virtual server %s",
-		      request->home_server->server);
-
-		/*
-		 *	Packets to virtual serrers don't get
-		 *	retransmissions sent to them.  And the virtual
-		 *	server is run ONLY if we have no child
-		 *	threads, or we're running in a child thread.
-		 */
-		rad_assert(retransmit == 0);
-		rad_assert(!spawn_flag || !we_are_master());
-
-		fake = request_alloc_fake(request);
-
-		fake->packet->vps = paircopy(fake->packet, request->packet->vps);
-		talloc_free(request->proxy);
-
-		fake->server = request->home_server->server;
-		fake->handle = request->handle;
-		fake->process = NULL; /* should never be run for anything */
-
-		/*
-		 *	Run the virtual server.
-		 */
-		request_running(fake, FR_ACTION_RUN);
-
-		request->proxy = talloc_steal(request, fake->packet);
-		fake->packet = NULL;
-		request->proxy_reply = talloc_steal(request, fake->reply);
-		fake->reply = NULL;
-
-		talloc_free(fake);
-
-		/*
-		 *	No reply code, toss the reply we have,
-		 *	and do post-proxy-type Fail.
-		 */
-		if (!request->proxy_reply->code) {
-			TALLOC_FREE(request->proxy_reply);
-			setup_post_proxy_fail(request);
-		}
-
-		/*
-		 *	Do the proxy reply (if any)
-		 */
-		if (process_proxy_reply(request, request->proxy_reply)) {
-			request->handle(request);
-		}
-
-		return -1;	/* so we call request_finish */
-	}
+	if (request->home_server->server) return proxy_to_virtual_server(request);
 
 	/*
 	 *	We're actually sending a proxied packet.  Do that now.
@@ -3197,19 +3200,6 @@ static int request_proxy_anew(REQUEST *request)
 		}
 		return 0;
 	}
-	home_server_update_request(home, request);
-
-	if (!insert_into_proxy_hash(request)) {
-		RPROXY("Failed to insert retransmission into the proxy list");
-		goto post_proxy_fail;
-	}
-
-	/*
-	 *	Free the old packet, to force re-encoding
-	 */
-	talloc_free(request->proxy->data);
-	request->proxy->data = NULL;
-	request->proxy->data_len = 0;
 
 #ifdef WITH_ACCOUNTING
 	/*
@@ -3230,6 +3220,33 @@ static int request_proxy_anew(REQUEST *request)
 		}
 	}
 #endif
+
+	/*
+	 *	May have failed over to a "fallback" virtual server.
+	 *	If so, run that instead of doing proxying to a real
+	 *	server.
+	 */
+	if (home->server) {
+		request->home_server = home;
+		TALLOC_FREE(request->proxy);
+
+		(void) proxy_to_virtual_server(request);
+		return 0;
+	}
+
+	home_server_update_request(home, request);
+
+	if (!insert_into_proxy_hash(request)) {
+		RPROXY("Failed to insert retransmission into the proxy list");
+		goto post_proxy_fail;
+	}
+
+	/*
+	 *	Free the old packet, to force re-encoding
+	 */
+	talloc_free(request->proxy->data);
+	request->proxy->data = NULL;
+	request->proxy->data_len = 0;
 
 	if (request_proxy(request, 1) != 1) goto post_proxy_fail;
 
