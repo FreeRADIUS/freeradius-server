@@ -105,7 +105,7 @@ linelog {
 	#
 	#  Reference the Packet-Type (Access-Request, etc.)  If it doesn't
 	#  exist, reference the "format" entry, above.
-	reference = "messages.%{%{Packet-Type}:-default}"
+	reference = "messages.%{%{reply:Packet-Type}:-default}"
 
 	#
 	#  The messages defined here are taken from the "reference"
@@ -114,8 +114,8 @@ linelog {
 	messages {
 		default = "Unknown packet type %{Packet-Type}"
 
-		Access-Request = "Requested access: %{User-Name}"
-		Access-Reject = "Rejected access: %{User-Name}"
+		Access-Accept = "Accepted user: %{User-Name}"
+		Access-Reject = "Rejected user: %{User-Name}"
 		Access-Challenge = "Sent challenge: %{User-Name}"
 	}
 }
