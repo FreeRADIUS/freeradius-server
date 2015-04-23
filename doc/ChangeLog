@@ -1,8 +1,8 @@
 FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
-	
+
 	Bug fixes
-	
+
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
         * Allow syslog_severity to be set in rlm_linelog.
