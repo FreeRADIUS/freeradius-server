@@ -464,11 +464,15 @@ ldap {
 	#  When the server is not threaded, the connection pool
 	#  limits are ignored, and only one connection is used.
 	pool {
-		#  Number of connections to start
-		start = 5
+		#  Connections to create during module instantiation.
+		#  If the server cannot create specified number of
+		#  connections during instantiation it will exit.
+		#  Set to 0 to allow the server to start without the
+		#  directory being available.
+		start = ${thread[pool].start_servers}
 
 		#  Minimum number of connections to keep open
-		min = 4
+		min = ${thread[pool].min_spare_servers}
 
 		#  Maximum number of connections
 		#
@@ -485,14 +489,19 @@ ldap {
 
 		#  Spare connections to be left idle
 		#
-		#  NOTE: Idle connections WILL be closed if 'idle_timeout'
-		#  is set.
-		spare = 3
+		#  NOTE: Idle connections WILL be closed if "idle_timeout"
+		#  is set.  This should be less than or equal to "max" above.
+		spare = ${thread[pool].max_spare_servers}
 
 		#  Number of uses before the connection is closed
 		#
-		#  0 means 'infinite'
+		#  0 means "infinite"
 		uses = 0
+
+		#  The number of seconds to wait after the server tries
+		#  to open a connection, and fails.  During this time,
+		#  no new connections will be opened.
+		retry_delay = 30
 
 		#  The lifetime (in seconds) of the connection
 		lifetime = 0
@@ -500,12 +509,6 @@ ldap {
 		#  Idle timeout (in seconds).  A connection which is
 		#  unused for this length of time will be closed.
 		idle_timeout = 60
-
-		# The number of seconds to wait after the server tries
-		# to open a connection, and fails.  During this time,
-		# no new connections will be opened.
-		#
-		retry_delay = 1
 
 		#  NOTE: All configuration settings are enforced.  If a
 		#  connection is closed because of 'idle_timeout',
