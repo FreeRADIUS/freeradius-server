@@ -46,7 +46,7 @@ linelog {
 	#  exist, reference the "format" entry, above.
 	#
 	#  May be an attribute ref, xlat, literal or exec.
-	reference = "messages.%{%{Packet-Type}:-default}"
+	reference = "messages.%{%{reply:Packet-Type}:-default}"
 
 	#
 	#  The messages defined here are taken from the "reference"
@@ -56,8 +56,8 @@ linelog {
 	messages {
 		default = "Unknown packet type %{Packet-Type}"
 
-		Access-Request = "Requested access: %{User-Name}"
-		Access-Reject = "Rejected access: %{User-Name}"
+		Access-Accept = "Sent accept: %{User-Name}"
+		Access-Reject = "Sent reject: %{User-Name}"
 		Access-Challenge = "Sent challenge: %{User-Name}"
 	}
 
