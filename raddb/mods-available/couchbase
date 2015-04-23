@@ -123,74 +123,83 @@ couchbase {
 	# Set to 'yes' to enable simultaneous use checking (multiple logins).
 	# NOTE: This will cause the execution of a view request on every check
 	# and may be a performance penalty.
-	#check_simul = no
+#	check_simul = no
 
 	# Couchbase view that should return all account documents keyed by username.
-	#simul_view = "_design/acct/_view/by_user"
+#	simul_view = "_design/acct/_view/by_user"
 
 	# The key to the above view.
 	# NOTE: This will need to match EXACTLY what you emit from your view.
-	#simul_vkey = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}"
+#	simul_vkey = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}"
 
 	# Set to 'yes' to enable verification of the results returned from the above view.
 	# NOTE: This may be an additional performance penalty to the actual check and
 	# should be avoided unless absolutely neccessary.
-	#verify_simul = no
+#	verify_simul = no
 
 	# Remove stale session if checkrad does not see a double login.
 	# NOTE: This will only be executed if both check_simul and verify_simul
 	# are set to 'yes' above.
-	#delete_stale_sessions = yes
+#	delete_stale_sessions = yes
 
 	#
 	#  The connection pool is new for 3.0, and will be used in many
 	#  modules, for all kinds of connection-related activity.
 	#
 	pool {
-		# Number of connections to start
+		#  Connections to create during module instantiation.
+		#  If the server cannot create specified number of
+		#  connections during instantiation it will exit.
+		#  Set to 0 to allow the server to start without the
+		#  couchbase being available.
 		start = ${thread[pool].start_servers}
 
-		# Minimum number of connections to keep open
+		#  Minimum number of connections to keep open
 		min = ${thread[pool].min_spare_servers}
 
-		# Maximum number of connections
+		#  Maximum number of connections
 		#
-		# If these connections are all in use and a new one
-		# is requested, the request will NOT get a connection.
+		#  If these connections are all in use and a new one
+		#  is requested, the request will NOT get a connection.
 		#
-		# NOTE: This should be greater than or equal to "min" above.
+		#  Setting 'max' to LESS than the number of threads means
+		#  that some threads may starve, and you will see errors
+		#  like 'No connections available and at max connection limit'
+		#
+		#  Setting 'max' to MORE than the number of threads means
+		#  that there are more connections than necessary.
 		max = ${thread[pool].max_servers}
 
-		# Spare connections to be left idle
+		#  Spare connections to be left idle
 		#
-		# NOTE: Idle connections WILL be closed if "idle_timeout"
-		# is set.  This should be less than or equal to "max" above.
+		#  NOTE: Idle connections WILL be closed if "idle_timeout"
+		#  is set.  This should be less than or equal to "max" above.
 		spare = ${thread[pool].max_spare_servers}
 
-		# Number of uses before the connection is closed
+		#  Number of uses before the connection is closed
 		#
-		# NOTE: A setting of 0 means infinite (no limit).
+		#  0 means "infinite"
 		uses = 0
 
-		# The lifetime (in seconds) of the connection
+		#  The lifetime (in seconds) of the connection
 		#
-		# NOTE: A setting of 0 means infinite (no limit).
+		#  NOTE: A setting of 0 means infinite (no limit).
 		lifetime = 0
 
-		# The idle timeout (in seconds).  A connection which is
-		# unused for this length of time will be closed.
+		#  The idle timeout (in seconds).  A connection which is
+		#  unused for this length of time will be closed.
 		#
-		# NOTE: A setting of 0 means infinite (no timeout).
+		#  NOTE: A setting of 0 means infinite (no timeout).
 		idle_timeout = 1200
 
-		# NOTE: All configuration settings are enforced.  If a
-		# connection is closed because of "idle_timeout",
-		# "uses", or "lifetime", then the total number of
-		# connections MAY fall below "min".  When that
-		# happens, it will open a new connection.  It will
-		# also log a WARNING message.
+		#  NOTE: All configuration settings are enforced.  If a
+		#  connection is closed because of "idle_timeout",
+		#  "uses", or "lifetime", then the total number of
+		#  connections MAY fall below "min".  When that
+		#  happens, it will open a new connection.  It will
+		#  also log a WARNING message.
 		#
-		# The solution is to either lower the "min" connections,
-		# or increase lifetime/idle_timeout.
+		#  The solution is to either lower the "min" connections,
+		#  or increase lifetime/idle_timeout.
 	}
 }
