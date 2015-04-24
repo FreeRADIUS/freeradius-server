@@ -99,11 +99,12 @@ typedef enum {
 #include <freeradius-devel/rfc7155.h>
 #include <freeradius-devel/rfc7268.h>
 
-
 /*
  *	All internal attributes are now defined in this file.
  */
 #include <freeradius-devel/attributes.h>
+
+#include <freeradius-devel/vqp.h>
 
 #define PW_DIGEST_RESPONSE		206
 #define PW_DIGEST_ATTRIBUTES		207
@@ -162,22 +163,6 @@ typedef enum {
 #define PW_MSCHAP2_RESPONSE		25
 #define PW_MSCHAP2_SUCCESS		26
 #define PW_MSCHAP2_CPW			27
-
-/*
- *	Cisco's VLAN Query Protocol.
- */
-#define PW_VQP_PACKET_TYPE		0x2b00
-#define PW_VQP_ERROR_CODE		0x2b01
-#define PW_VQP_SEQUENCE_NUMBER		0x2b02
-
-#define PW_VQP_CLIENT_IP_ADDRESS	0x2c01
-#define PW_VQP_PORT_NAME		0x2c02
-#define PW_VQP_VLAN_NAME		0x2c03
-#define PW_VQP_DOMAIN_NAME		0x2c04
-#define PW_VQP_ETHERNET_FRAME		0x2c05
-#define PW_VQP_MAC			0x2c06
-#define PW_VQP_UNKNOWN			0x2c07
-#define PW_VQP_COOKIE			0x2c08
 
 /*
  * JANET's code for transporting eap channel binding data over ttls
