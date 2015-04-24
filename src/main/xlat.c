@@ -635,7 +635,7 @@ static ssize_t xlat_debug(UNUSED void *instance, REQUEST *request,
 	/*
 	 *  Expand to previous (or current) level
 	 */
-	snprintf(out, outlen, "%d", request->log.lvl & RAD_REQUEST_LVL_DEBUG4);
+	snprintf(out, outlen, "%d", request->log.lvl);
 
 	/*
 	 *  Assume we just want to get the current value and NOT set it to 0
@@ -1266,7 +1266,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			XLAT_DEBUG("MOD <-- %s ... %s", node->fmt, p);
 
 			slen = xlat_tokenize_literal(node, p, &node->child, true, error);
-			if (slen <= 0) {
+			if (slen < 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
@@ -2185,11 +2185,18 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	case XLAT_MODULE:
 		XLAT_DEBUG("xlat_aprint MODULE");
-		if (xlat_process(&child, request, node->child, node->xlat->escape, node->xlat->instance) == 0) {
-			return NULL;
+
+		if (node->child) {
+			if (xlat_process(&child, request, node->child, node->xlat->escape, node->xlat->instance) == 0) {
+				return NULL;
+			}
+
+			XLAT_DEBUG("%.*sEXPAND mod %s %s", lvl, xlat_spaces, node->fmt, node->child->fmt);
+		} else {
+			XLAT_DEBUG("%.*sEXPAND mod %s", lvl, xlat_spaces, node->fmt);
+			child = talloc_typed_strdup(ctx, "");
 		}
 
-		XLAT_DEBUG("%.*sEXPAND mod %s %s", lvl, xlat_spaces, node->fmt, node->child->fmt);
 		XLAT_DEBUG("%.*s      ---> %s", lvl, xlat_spaces, child);
 
 		/*
