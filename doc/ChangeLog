@@ -1,7 +1,13 @@
 FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
+	* Make "pool" configurations more consistent, and
+	  update documentation for them.
 
 	Bug fixes
+	* Be more careful about unused config item warnings
+	  when using -Xx.
+	* Move more defines to be auto-generated.
+	* Allow virtual servers in proxy fallback.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
