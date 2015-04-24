@@ -33,7 +33,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		return RLM_MODULE_NOOP;
 	}
 
-	if (pairfind(request->config, PW_AUTHTYPE, 0, TAG_ANY) != NULL) {
+	if (pairfind(request->config, PW_AUTH_TYPE, 0, TAG_ANY) != NULL) {
 		RWDEBUG2("&control:Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}

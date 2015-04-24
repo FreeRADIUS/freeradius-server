@@ -149,18 +149,6 @@ typedef enum {
 #define PW_TCP_CLEAR			2
 #define PW_PORTMASTER			3
 
-/*	Authentication Level	*/
-
-#define PW_AUTHTYPE_LOCAL		1
-#define PW_AUTHTYPE_REJECT		4
-#define PW_AUTHTYPE_EAP			6
-#define PW_AUTHTYPE_ACCEPT		254
-#define PW_AUTHTYPE_MS_CHAP		1028
-
-/* Post-auth types */
-#define PW_POSTAUTHTYPE_LOCAL		0
-#define PW_POSTAUTHTYPE_REJECT		1
-
 /*	Port Types		*/
 
 #define PW_NAS_PORT_ASYNC		0
@@ -202,15 +190,6 @@ typedef enum {
 #define PW_MSCHAP2_RESPONSE		25
 #define PW_MSCHAP2_SUCCESS		26
 #define PW_MSCHAP2_CPW			27
-
-/*
- *	Old nonsense.	Will be deleted ASAP
- */
-#define PW_AUTHTYPE			1000
-#define PW_AUTZTYPE			1011
-#define PW_ACCTTYPE			1012
-#define PW_SESSTYPE			1013
-#define PW_POSTAUTHTYPE			1014
 
 /*
  *	Cisco's VLAN Query Protocol.

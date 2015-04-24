@@ -1057,7 +1057,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 				 *	Run the EAP authentication.
 				 */
 				RDEBUG2("Calling authenticate in order to initiate tunneled EAP session");
-				rcode = process_authenticate(PW_AUTHTYPE_EAP, fake);
+				rcode = process_authenticate(PW_AUTH_TYPE_EAP, fake);
 				if (rcode == RLM_MODULE_OK) {
 					/*
 					 *	Authentication succeeded! Rah!
