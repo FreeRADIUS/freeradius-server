@@ -53,7 +53,7 @@ void otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const 
 	}
 
 	switch (pwe) {
-	case PW_NONE:
+	case PWE_NONE:
 	case PWE_PAP:
 	case PWE_CHAP:
 		return;
