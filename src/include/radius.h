@@ -105,8 +105,6 @@ typedef enum {
  */
 #include <freeradius-devel/attributes.h>
 
-#define PW_EXTENDED_ATTRIBUTE		192
-
 #define PW_DIGEST_RESPONSE		206
 #define PW_DIGEST_ATTRIBUTES		207
 
@@ -130,32 +128,6 @@ typedef enum {
 
 #define PW_PPP				1
 #define PW_SLIP				2
-
-/*	Framed Routing Values	*/
-
-#define PW_NONE				0
-#define PW_BROADCAST			1
-#define PW_LISTEN			2
-#define PW_BROADCAST_LISTEN		3
-
-/*	Framed Compression Types	*/
-
-#define PW_VAN_JACOBSEN_TCP_IP		1
-
-/*	Login Services	*/
-
-#define PW_TELNET			0
-#define PW_RLOGIN			1
-#define PW_TCP_CLEAR			2
-#define PW_PORTMASTER			3
-
-/*	Port Types		*/
-
-#define PW_NAS_PORT_ASYNC		0
-#define PW_NAS_PORT_SYNC		1
-#define PW_NAS_PORT_ISDN		2
-#define PW_NAS_PORT_ISDN_V120		3
-#define PW_NAS_PORT_ISDN_V110		4
 
 /*	Status Types	*/
 
