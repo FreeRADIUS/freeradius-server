@@ -151,12 +151,8 @@ typedef enum {
 
 /*	Authentication Level	*/
 
-#define PW_AUTHTYPE_LOCAL		0
-#define PW_AUTHTYPE_SYSTEM		1
-#define PW_AUTHTYPE_SECURID		2
-#define PW_AUTHTYPE_CRYPT		3
+#define PW_AUTHTYPE_LOCAL		1
 #define PW_AUTHTYPE_REJECT		4
-#define PW_AUTHTYPE_ACTIVCARD		5
 #define PW_AUTHTYPE_EAP			6
 #define PW_AUTHTYPE_ACCEPT		254
 #define PW_AUTHTYPE_MS_CHAP		1028
