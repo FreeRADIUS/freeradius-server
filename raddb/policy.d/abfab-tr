@@ -25,7 +25,7 @@ psk_authorize {
 
 abfab_client_check {
 	# check that the acceptor host name is correct
-	if ("%{client:gss_acceptor_host_name}" && "%{gss-acceptor-host-name}") {
+	if ("%{client:gss_acceptor_host_name}" && &gss-acceptor-host-name) {
 		if ("%{client:gss_acceptor_host_name}" != "%{gss-acceptor-host-name}") {
 			update reply {
 			        Reply-Message = "GSS-Acceptor-Host-Name incorrect"
