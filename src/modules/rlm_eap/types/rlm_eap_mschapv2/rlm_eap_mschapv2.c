@@ -663,7 +663,7 @@ packet_ready:
 	/*
 	 *	This is a wild & crazy hack.
 	 */
-	rcode = process_authenticate(PW_AUTHTYPE_MS_CHAP, request);
+	rcode = process_authenticate(PW_AUTH_TYPE_MS_CHAP, request);
 
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
