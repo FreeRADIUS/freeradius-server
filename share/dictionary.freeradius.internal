@@ -595,10 +595,9 @@ ATTRIBUTE	Radclient-Test-Name			2200	string
 VALUE	Auth-Type			Local			1
 VALUE	Auth-Type			System			2
 VALUE	Auth-Type			SecurID			3
-VALUE	Auth-Type			Crypt-Local		4
-VALUE	Auth-Type			Reject			5
-VALUE	Auth-Type			ActivCard		6
-VALUE	Auth-Type			EAP			7
+VALUE	Auth-Type			Reject			4
+VALUE	Auth-Type			ActivCard		5
+VALUE	Auth-Type			EAP			6
 
 #
 #	FreeRADIUS extensions (most originally from Cistron)
