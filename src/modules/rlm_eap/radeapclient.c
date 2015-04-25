@@ -39,6 +39,9 @@ RCSID("$Id$")
 #include "eap_types.h"
 #include "eap_sim.h"
 
+#include "smbdes.h"
+#include "mschap.h"
+
 #ifdef WITH_TLS
 #  include <freeradius-devel/tls.h>
 #endif
@@ -95,13 +98,21 @@ typedef struct rc_eap_md5_context {
 
 typedef struct rc_eap_context {
 	int eap_type;	//!< contains the EAP-Type
-	char password[256];	//!< copy of User-Password (or CHAP-Password).
+	VALUE_PAIR *password;	//!< Cleartext-Password
 	union {
 		rc_eap_sim_context_t sim;
 		rc_eap_md5_context_t md5;
 	} eap;
 } rc_eap_context_t;
 
+
+/** Structure which holds a set of input files (packets, and optional filters)
+ */
+typedef struct rc_file_pair {
+	char const *packets;		//!< The file containing the request packet
+	char const *filters;		//!< The file containing the definition of the
+					//!< packet we want to match.
+} rc_file_pair_t;
 
 /** Structure which holds a list of available input vps.
  */
@@ -116,11 +127,24 @@ struct rc_input_vps_list {
  */
 struct rc_input_vps {
 	uint32_t num;	//!< The number (within the file) of the input we're reading.
-	
-	VALUE_PAIR *vps_in;	//!< the list of attribute/value pairs.
+
+	rc_file_pair_t *files;		//!< Request and response file names.
+
+	VALUE_PAIR *vps_in;		//!< the list of input attribute/value pairs used to build the packet.
+	VALUE_PAIR *vps_filter;	//!< the list of filter attribute/value pairs that the response must pass.
+
+	PW_CODE packet_code;	//!< Code of packet to send.
+	PW_CODE filter_code;	//!< Expected code of the response packet.
+	fr_ipaddr_t src_ipaddr;
+	fr_ipaddr_t dst_ipaddr;
+	uint16_t src_port;
+	uint16_t dst_port;
+
+	VALUE_PAIR	*password;	//!< Cleartext-Password
+	char const	*name;	//!< Test name (as specified in the request).
 
 	rc_input_vps_list_t *list;	//!< the list to which this entry belongs (NULL for an unchained entry).
-	
+
 	uint32_t recycle;	//!< number of times this input has been used to start a transaction.
 
 	rc_input_vps_t *prev;
@@ -147,8 +171,7 @@ struct rc_transaction {
 
 	fr_event_t *event;	//!< armed event (if any).
 
-	char		password[256];
-	char const	*name;	//!< Test name (as specified in the request).
+	VALUE_PAIR	*password;	//!< Cleartext-Password
 };
 
  
@@ -195,6 +218,9 @@ typedef struct rc_stats {
 	uint32_t nb_packets_retries;	//!< number of packets retransmissions
 	uint32_t nb_packets_recv;		//!< number of packets received
 
+	uint32_t nb_filter_fail;		//!< number of transactions for which the filter checks failed.
+	uint32_t nb_filter_pass;		//!< number of transactions for which the filter checks passed.
+
 	rc_wf_stats_t wf_stats[RC_WF_MAX];
 
 } rc_stats_t;
@@ -215,6 +241,7 @@ static uint32_t num_ongoing = 0; //!< number of ongoing transactions.
 static uint32_t num_finished = 0; //!< number of finished transactions.
 
 static rc_input_vps_list_t rc_vps_list_in; //!< list of available input vps entries.
+static rbtree_t *filename_tree = NULL;
 static fr_packet_list_t *pl = NULL;	//!< list of outgoing packets.
 static unsigned int num_sockets = 0;	//!< number of allocated sockets.
 static fr_event_list_t *ev_list = NULL; //!< list of armed events.
@@ -234,7 +261,10 @@ static void rc_unmap_eap_methods(RADIUS_PACKET *rep);
 static int rc_map_eapsim_types(RADIUS_PACKET *r);
 static int rc_unmap_eapsim_types(RADIUS_PACKET *r);
 
-static void rc_get_radius_port(PW_CODE type, uint16_t *port);
+static bool rc_get_radius_port(PW_CODE type, uint16_t *port);
+static PW_CODE rc_get_code(uint16_t port);
+static bool rc_already_hex(VALUE_PAIR *vp);
+static int rc_mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request, char const *password);
 static void rc_evprep_packet_timeout(rc_transaction_t *trans);
 static void rc_evprep_progress_stat(void);
 static void rc_deallocate_id(rc_transaction_t *trans);
@@ -357,6 +387,21 @@ static char *rc_print_hexstr(char *pch_out, const uint8_t *in, int size, int sep
 	return pch_out;
 }
 
+/** Print an IP address.
+ *  Caller must allocate output buffer of size INET6_ADDRSTRLEN.
+ */
+static const char *rc_print_addr(fr_ipaddr_t *addr, char *out) {
+	if (!addr || !out) return NULL;
+	switch (addr->af) {
+		case AF_INET:
+			return inet_ntop(AF_INET, &(addr->ipaddr.ip4addr.s_addr), out, INET_ADDRSTRLEN);
+		case AF_INET6:
+			return inet_ntop(AF_INET6, &(addr->ipaddr.ip6addr), out, INET6_ADDRSTRLEN);
+		default:
+			return NULL;
+	}
+}
+
 /** Convert a float to struct timeval.
  */
 static void rc_float_to_timeval(struct timeval *tv, float f_val)
@@ -441,62 +486,477 @@ static rc_input_vps_t *rc_yank_vps_entry(rc_input_vps_t *entry)
 /** Load input entries (list of vps) from a file or stdin, and add them to the list.
  *  They will be used to initiate transactions.
  */
-static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_list_t *list, uint32_t max_entries)
+static int rc_load_input(TALLOC_CTX *ctx, rc_file_pair_t *files, rc_input_vps_list_t *list, uint32_t max_entries)
 {
-	FILE *file_in = NULL;
-	bool file_done = false;
+	if (!ctx || !files || !list) return 0;
+
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
+	FILE *packets, *filters = NULL;
+	bool packets_done = false;
 	rc_input_vps_t *request;
 	char const *input;
-	uint32_t input_num = 0;
+	uint32_t cur_input_num = 0;
+	char const *filename = files->packets;
 
 	/* Determine where to read the VP's from. */
 	if (filename && strcmp(filename, "-") != 0) {
 		DEBUG2("Opening input file: %s", filename);
-		file_in = fopen(filename, "r");
-		if (!file_in) {
+		packets = fopen(filename, "r");
+		if (!packets) {
 			ERROR("Error opening %s: %s", filename, strerror(errno));
 			return 0;
 		}
 		input = filename;
+
+		/*
+		 *	Read in the pairs representing the expected response.
+		 */
+		if (files->filters) {
+			filters = fopen(files->filters, "r");
+			if (!filters) {
+				ERROR("Error opening %s: %s", files->filters, strerror(errno));
+				fclose(packets);
+				return 0;
+			}
+		}
 	} else {
 		DEBUG2("Reading input vps from stdin");
-		file_in = stdin;
-		input = "stdin";
+		packets = stdin;
+		input = "-";
 	}
 
 	/* Loop over the file (or stdin). */
 	do {
-		input_num ++;
 		MEM(request = talloc_zero(ctx, rc_input_vps_t));
 
-		if (readvp2(request, &request->vps_in, file_in, &file_done) < 0) {
-			ERROR("Error parsing entry %u from input: %s", input_num, input);
-			talloc_free(request);
-			break;
+		if (readvp2(request, &request->vps_in, packets, &packets_done) < 0) {
+			ERROR("Input parsing error (entry: %u from input: %s)", cur_input_num, input);
+			goto error;
 		}
 		if (NULL == request->vps_in) {
 			/* Last line might be empty, in this case readvp2 will return a NULL vps pointer. Silently ignore this. */
+			packets_done = true;
 			talloc_free(request);
 			break;
+		}
+
+		request->files = files;
+
+		/*
+		 *	Read in filter VP's.
+		 */
+		if (filters) {
+			bool filters_done;
+
+			if (readvp2(request, &request->vps_filter, filters, &filters_done) < 0) {
+				ERROR("Filters parsing error (entry: %u from filters: %s)", cur_input_num, files->filters);
+				goto error;
+			}
+			if (NULL == request->vps_filter) {
+				/* Last line might be empty, in this case readvp2 will return a NULL vps pointer. Silently ignore this. */
+				filters_done = true;
+			}
+
+			if (filters_done && !packets_done) {
+				ERROR("Differing number of packets/filters in %s:%s "
+				        "(too many requests)", files->packets, files->filters);
+				goto error;
+			}
+
+			if (!filters_done && packets_done) {
+				ERROR("Differing number of packets/filters in %s:%s "
+				        "(too many filters)", files->packets, files->filters);
+				goto error;
+			}
+
+			/*
+			 *	xlat expansions aren't supported here
+			 */
+			for (vp = fr_cursor_init(&cursor, &request->vps_filter);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) {
+				if (vp->type == VT_XLAT) {
+					vp->type = VT_DATA;
+					vp->vp_strvalue = vp->xlat;
+					vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
+				}
+
+				if (vp->da->vendor == 0 ) switch (vp->da->attr) {
+				case PW_RESPONSE_PACKET_TYPE:
+				case PW_PACKET_TYPE:
+					fr_cursor_remove(&cursor);	/* so we don't break the filter */
+					request->filter_code = vp->vp_integer;
+					talloc_free(vp);
+
+				default:
+					break;
+				}
+			}
+
+			/*
+			 *	This allows efficient list comparisons later
+			 */
+			pairsort(&request->vps_filter, attrtagcmp);
+		}
+
+		/*
+		 *	Process special attributes
+		 */
+		for (vp = fr_cursor_init(&cursor, &request->vps_in);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			/*
+			 *	Double quoted strings get marked up as xlat expansions,
+			 *	but we don't support that in request.
+			 */
+			if (vp->type == VT_XLAT) {
+				vp->type = VT_DATA;
+				vp->vp_strvalue = vp->xlat;
+				vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
+			}
+
+			if (!vp->da->vendor) switch (vp->da->attr) {
+			default:
+				break;
+
+			/*
+			 *	Allow it to set the packet type in
+			 *	the attributes read from the file.
+			 */
+			case PW_PACKET_TYPE:
+				request->packet_code = vp->vp_integer;
+				break;
+
+			case PW_RESPONSE_PACKET_TYPE:
+				request->filter_code = vp->vp_integer;
+				break;
+
+			case PW_PACKET_DST_PORT:
+				/* If the server port is still unresolved, allow to pick the first value from packets. 
+				 * If the server port is set, use it, and ignore Packet-Dst-Port (we can't handle multiple destinations).
+				 */
+				if (!server_port) {
+					request->dst_port = (vp->vp_integer & 0xffff);
+					server_port = request->dst_port;
+					DEBUG("Server port set to: %d (from Packet-Dst-Port)", server_port);
+
+					/* Work backwards from the port to determine the packet type */
+					if (packet_code == PW_CODE_UNDEFINED) packet_code = rc_get_code(server_port);
+				}
+				break;
+
+			case PW_PACKET_DST_IP_ADDRESS:
+				/* If the server address is still unresolved, allow to pick the first value from packets.
+				 * If the server address is set, use it, and ignore Packet-Dst-IP-Address (we can't handle multiple destinations).
+				 */
+				if (!server_addr_init) {
+					request->dst_ipaddr.af = AF_INET;
+					request->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+					request->dst_ipaddr.prefix = 32;
+
+					server_ipaddr = request->dst_ipaddr;
+					server_addr_init = true;
+					char addr[INET6_ADDRSTRLEN] = "";
+					DEBUG("Server address set to: %s (from Packet-Dst-IP-Address)", rc_print_addr(&server_ipaddr, addr));
+				}
+				break;
+
+			case PW_PACKET_DST_IPV6_ADDRESS:
+				/* If the server address is still unresolved, allow to pick the first value from packets.
+				 * If the server address is set, use it, and ignore Packet-Dst-IPv6-Address (we can't handle multiple destinations).
+				 */
+				if (!server_addr_init) {
+					request->dst_ipaddr.af = AF_INET6;
+					request->dst_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+					request->dst_ipaddr.prefix = 128;
+
+					server_ipaddr = request->dst_ipaddr;
+					server_addr_init = true;
+					char addr[INET6_ADDRSTRLEN] = "";
+					DEBUG("Server address set to: %s (from Packet-Dst-IPv6-Address)", rc_print_addr(&server_ipaddr, addr));
+				}
+				break;
+
+			case PW_PACKET_SRC_PORT:
+				if ((vp->vp_integer < 1024) ||
+				    (vp->vp_integer > 65535)) {
+					ERROR("Invalid value '%u' for Packet-Src-Port", vp->vp_integer);
+					goto error;
+				}
+				request->src_port = (vp->vp_integer & 0xffff);
+				break;
+
+			case PW_PACKET_SRC_IP_ADDRESS:
+				request->src_ipaddr.af = AF_INET;
+				request->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				request->src_ipaddr.prefix = 32;
+				break;
+
+			case PW_PACKET_SRC_IPV6_ADDRESS:
+				request->src_ipaddr.af = AF_INET6;
+				request->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+				request->src_ipaddr.prefix = 128;
+				break;
+
+			case PW_DIGEST_REALM:
+			case PW_DIGEST_NONCE:
+			case PW_DIGEST_METHOD:
+			case PW_DIGEST_URI:
+			case PW_DIGEST_QOP:
+			case PW_DIGEST_ALGORITHM:
+			case PW_DIGEST_BODY_DIGEST:
+			case PW_DIGEST_CNONCE:
+			case PW_DIGEST_NONCE_COUNT:
+			case PW_DIGEST_USER_NAME:
+			/* overlapping! */
+			{
+				DICT_ATTR const *da;
+				uint8_t *p, *q;
+
+				p = talloc_array(vp, uint8_t, vp->vp_length + 2);
+
+				memcpy(p + 2, vp->vp_octets, vp->vp_length);
+				p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
+				vp->vp_length += 2;
+				p[1] = vp->vp_length;
+
+				da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
+				if (!da) {
+					ERROR("Attribute 'Digest-Attributes' not found by value");
+					exit(1);
+				}
+				vp->da = da;
+
+				/*
+				 *	Re-do pairmemsteal ourselves,
+				 *	because we play games with
+				 *	vp->da, and pairmemsteal goes
+				 *	to GREAT lengths to sanitize
+				 *	and fix and change and
+				 *	double-check the various
+				 *	fields.
+				 */
+				memcpy(&q, &vp->vp_octets, sizeof(q));
+				talloc_free(q);
+
+				vp->vp_octets = talloc_steal(vp, p);
+				vp->type = VT_DATA;
+
+				VERIFY_VP(vp);
+			}
+				break;
+
+				/*
+				 *	Cache this for later.
+				 */
+			case PW_CLEARTEXT_PASSWORD:
+				request->password = vp;
+				break;
+
+			/*
+			 *	Keep a copy of the the password attribute.
+			 */
+			case PW_CHAP_PASSWORD:
+				/*
+				 *	If it's already hex, do nothing.
+				 */
+				if ((vp->vp_length == 17) &&
+				    (rc_already_hex(vp))) break;
+
+				/*
+				 *	CHAP-Password is octets, so it may not be zero terminated.
+				 */
+				request->password = pairmake(request, &request->vps_in, "Cleartext-Password",
+				                             "", T_OP_EQ);
+				pairbstrncpy(request->password, vp->vp_strvalue, vp->vp_length);
+				break;
+
+			case PW_USER_PASSWORD:
+			case PW_MS_CHAP_PASSWORD:
+				request->password = pairmake(request, &request->vps_in, "Cleartext-Password",
+				                             vp->vp_strvalue, T_OP_EQ);
+				break;
+
+			case PW_RADCLIENT_TEST_NAME:
+				request->name = vp->vp_strvalue;
+				break;
+			}
+		} /* loop over the VP's we read in */
+
+		/*
+		 *	Use the default set on the command line
+		 */
+		if (request->packet_code == PW_CODE_UNDEFINED) request->packet_code = packet_code;
+		if (request->dst_port == 0) request->dst_port = server_port;
+
+		if (request->dst_ipaddr.af == AF_UNSPEC) {
+			if (!server_addr_init) {
+				ERROR("No server was given, and no specified Packet-Dst-IP-Address (entry: %u from: %s)", cur_input_num, input);
+				goto error;
+			}
+			request->dst_ipaddr = server_ipaddr;
+		}
+
+		/*
+		 *	Default to the filename
+		 */
+		if (!request->name) request->name = request->files->packets;
+
+		/*
+		 *	Automatically set the response code from the request code
+		 *	(if one wasn't already set).
+		 */
+		if (request->filter_code == PW_CODE_UNDEFINED) {
+			switch (request->packet_code) {
+			case PW_CODE_ACCESS_REQUEST:
+				request->filter_code = PW_CODE_ACCESS_ACCEPT;
+				break;
+
+			case PW_CODE_ACCOUNTING_REQUEST:
+				request->filter_code = PW_CODE_ACCOUNTING_RESPONSE;
+				break;
+
+			case PW_CODE_COA_REQUEST:
+				request->filter_code = PW_CODE_COA_ACK;
+				break;
+
+			case PW_CODE_DISCONNECT_REQUEST:
+				request->filter_code = PW_CODE_DISCONNECT_ACK;
+				break;
+
+			case PW_CODE_STATUS_SERVER:
+				switch (rc_get_code(request->dst_port)) {
+				case PW_CODE_ACCESS_REQUEST:
+					request->filter_code = PW_CODE_ACCESS_ACCEPT;
+					break;
+
+				case PW_CODE_ACCOUNTING_REQUEST:
+					request->filter_code = PW_CODE_ACCOUNTING_RESPONSE;
+					break;
+
+				default:
+					//REDEBUG("Can't determine expected response to Status-Server request, specify "
+					ERROR("Can't determine expected response to Status-Server request, specify "
+					      "a well known RADIUS port, or add a Response-Packet-Type attribute "
+					      "to the request of filter");
+					goto error;
+				}
+				break;
+
+			case PW_CODE_UNDEFINED:
+				ERROR("Both Packet-Type and Response-Packet-Type undefined, specify at least one, "
+				      "or a well known RADIUS port (entry: %u from: %s)", cur_input_num, input);
+				goto error;
+
+			default:
+				ERROR("Can't determine expected Response-Packet-Type for Packet-Type %d (entry: %u from: %s)",
+				      request->packet_code, cur_input_num, input);
+				goto error;
+			}
+		/*
+		 *	Automatically set the request code from the response code
+		 *	(if one wasn't already set).
+		 */
+		} else if (request->packet_code == PW_CODE_UNDEFINED) {
+			switch (request->filter_code) {
+			case PW_CODE_ACCESS_ACCEPT:
+			case PW_CODE_ACCESS_REJECT:
+				request->packet_code = PW_CODE_ACCESS_REQUEST;
+				break;
+
+			case PW_CODE_ACCOUNTING_RESPONSE:
+				request->packet_code = PW_CODE_ACCOUNTING_REQUEST;
+				break;
+
+			case PW_CODE_DISCONNECT_ACK:
+			case PW_CODE_DISCONNECT_NAK:
+				request->packet_code = PW_CODE_DISCONNECT_REQUEST;
+				break;
+
+			case PW_CODE_COA_ACK:
+			case PW_CODE_COA_NAK:
+				request->packet_code = PW_CODE_COA_REQUEST;
+				break;
+
+			default:
+				ERROR("Can't determine expected Packet-Type for Response-Packet-Type %d (entry: %u from: %s)",
+					request->filter_code, cur_input_num, input);
+				goto error;
+			}
+		}
+
+		/*
+		 *	Automatically set the dst port (if one wasn't already set).
+		 */
+		if (request->dst_port == 0) {
+			if (server_port) {
+				request->dst_port = server_port;
+			} else {
+				/* Attempt to resolve the port from the request packet code. */
+				/* This will also set the server port (we can't handle multiple destinations). */
+				if (rc_get_radius_port(request->packet_code, &server_port)) {
+					DEBUG("Server port set to: %d (resolved from request packet code: %d)", server_port, request->packet_code);
+					request->dst_port = server_port;
+				} else {
+					ERROR("Can't determine destination port (entry: %u from: %s)", cur_input_num, input);
+					goto error;
+				}
+			}
 		}
 
 		/* Add that to the list */
 		rc_add_vps_entry(list, request);
 
-		request->num = list->size;
+		request->num = cur_input_num;
 
 		if (max_entries && list->size >= max_entries) {
 			/* Only load what we need. */
 			break;
 		}
-	} while (!file_done);
+		cur_input_num ++;
+	} while (!packets_done);
 
-	if (file_in != stdin) fclose(file_in);
+	if (packets != stdin) fclose(packets);
 
 	/* And we're done. */
-	num_input += list->size;
-	DEBUG("Read %d element(s) from input: %s", list->size, input);
+	num_input += cur_input_num;
+	DEBUG("Read %u element(s) from input: %s", cur_input_num, input);
 	return 1;
+
+error:
+	talloc_free(request);
+
+	if (packets != stdin) fclose(packets);
+	if (filters) fclose(filters);
+
+	return 0;
+}
+
+/** Compare two rc_file_pair_t
+ */
+static int rc_filename_cmp(void const *one, void const *two)
+{
+	int cmp;
+
+	rc_file_pair_t const *a = one;
+	rc_file_pair_t const *b = two;
+
+	cmp = strcmp(a->packets, b->packets);
+	if (cmp != 0) return cmp;
+
+	return strcmp(a->filters, b->filters);
+}
+
+/** Walk over the list of rc_file_pair_t. Load their input.
+ */
+static int rc_filename_walk(UNUSED void *context, void *data)
+{
+	rc_file_pair_t *files = data;
+
+	if (!rc_load_input(autofree, files, &rc_vps_list_in, 0)) return -1;	/* stop walking */
+
+	return 0;
 }
 
 /** Perform packet initialization for a transaction.
@@ -506,164 +966,19 @@ static int rc_init_packet(rc_transaction_t *trans)
 	if (!trans || !trans->packet) return 0;
 
 	RADIUS_PACKET *packet = trans->packet;
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
 
-	/*
-	 *	Process special attributes
+	rc_input_vps_t *in = trans->input_vps;
+	
+	/* These were already set when parsing input,
+	 * at this point we merely copy them into the new packet.
 	 */
-	for (vp = fr_cursor_init(&cursor, &packet->vps);
-		 vp;
-		 vp = fr_cursor_next(&cursor)) {
-		/*
-		 *	Double quoted strings get marked up as xlat expansions,
-		 *	but we don't support that in request.
-		 */
-		if (vp->type == VT_XLAT) {
-			vp->type = VT_DATA;
-			vp->vp_strvalue = vp->xlat;
-			vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
-		}
+	packet->code = in->packet_code;
+	packet->dst_port = in->dst_port;
+	packet->dst_ipaddr = in->dst_ipaddr;
+	packet->src_port = in->src_port;
+	packet->src_ipaddr = in->src_ipaddr;
 
-		if (!vp->da->vendor) switch (vp->da->attr) {
-		default:
-			break;
-
-		/*
-		 *	Allow it to set the packet type in
-		 *	the attributes read from the file.
-		 */
-		case PW_PACKET_TYPE:
-			packet->code = vp->vp_integer;
-			break;
-
-		case PW_PACKET_DST_PORT:
-			packet->dst_port = (vp->vp_integer & 0xffff);
-			break;
-
-		case PW_PACKET_DST_IP_ADDRESS:
-			packet->dst_ipaddr.af = AF_INET;
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-			packet->dst_ipaddr.prefix = 32;
-			break;
-
-		case PW_PACKET_DST_IPV6_ADDRESS:
-			packet->dst_ipaddr.af = AF_INET6;
-			packet->dst_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
-			packet->dst_ipaddr.prefix = 128;
-			break;
-
-		case PW_PACKET_SRC_PORT:
-			if ((vp->vp_integer < 1024) ||
-				(vp->vp_integer > 65535)) {
-				DEBUG("Invalid value '%u' for Packet-Src-Port", vp->vp_integer);
-			} else {
-				packet->src_port = (vp->vp_integer & 0xffff);
-			}
-			break;
-
-		case PW_PACKET_SRC_IP_ADDRESS:
-			packet->src_ipaddr.af = AF_INET;
-			packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-			packet->src_ipaddr.prefix = 32;
-			break;
-
-		case PW_PACKET_SRC_IPV6_ADDRESS:
-			packet->src_ipaddr.af = AF_INET6;
-			packet->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
-			packet->src_ipaddr.prefix = 128;
-			break;
-
-		case PW_DIGEST_REALM:
-		case PW_DIGEST_NONCE:
-		case PW_DIGEST_METHOD:
-		case PW_DIGEST_URI:
-		case PW_DIGEST_QOP:
-		case PW_DIGEST_ALGORITHM:
-		case PW_DIGEST_BODY_DIGEST:
-		case PW_DIGEST_CNONCE:
-		case PW_DIGEST_NONCE_COUNT:
-		case PW_DIGEST_USER_NAME:
-		/* overlapping! */
-		{
-			DICT_ATTR const *da;
-			uint8_t *p, *q;
-
-			p = talloc_array(vp, uint8_t, vp->vp_length + 2);
-
-			memcpy(p + 2, vp->vp_octets, vp->vp_length);
-			p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
-			vp->vp_length += 2;
-			p[1] = vp->vp_length;
-
-			da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
-			if (!da) {
-				ERROR("Attribute 'Digest-Attributes' not found by value");
-				exit(1);
-			}
-			vp->da = da;
-
-			/*
-			 *	Re-do pairmemsteal ourselves,
-			 *	because we play games with
-			 *	vp->da, and pairmemsteal goes
-			 *	to GREAT lengths to sanitize
-			 *	and fix and change and
-			 *	double-check the various
-			 *	fields.
-			 */
-			memcpy(&q, &vp->vp_octets, sizeof(q));
-			talloc_free(q);
-
-			vp->vp_octets = talloc_steal(vp, p);
-			vp->type = VT_DATA;
-
-			VERIFY_VP(vp);
-		}
-			break;
-
-		/*
-		 *	Keep a copy of the the password attribute.
-		 */
-		case PW_USER_PASSWORD:
-		case PW_CHAP_PASSWORD:
-		case PW_MS_CHAP_PASSWORD:
-			strlcpy(trans->password, vp->vp_strvalue, sizeof(trans->password));
-			break;
-
-		case PW_RADCLIENT_TEST_NAME:
-			trans->name = vp->vp_strvalue;
-			break;
-		}
-	} /* loop over the VP's we read in */
-
-	if (packet->dst_port == 0) packet->dst_port = server_port;
-
-	if (packet->dst_ipaddr.af == AF_UNSPEC) {
-		if (!server_addr_init) {
-			DEBUG("No server was given, and input entry %u did not contain Packet-Dst-IP-Address, ignored.", trans->input_vps->num);
-			return 0;
-		}
-		packet->dst_ipaddr = server_ipaddr;
-	}
-
-	/* Use the default set on the command line. */
-	if (packet->code == PW_CODE_UNDEFINED) {
-		if (packet_code == PW_CODE_UNDEFINED) {
-			DEBUG("No packet type was given, and input entry %u did not contain Packet-Type, ignored.", trans->input_vps->num);
-			return 0;
-		}
-		packet->code = packet_code;
-	}
-
-	/* Automatically set the dst port (if one wasn't already set). */
-	if (packet->dst_port == 0) {
-		rc_get_radius_port(packet->code, &packet->dst_port);
-		if (packet->dst_port == 0) {
-			DEBUG("Can't determine destination port for input entry %u, ignored.", trans->input_vps->num);
-			return 0;
-		}
-	}
+	trans->password = in->password;
 
 	packet->sockfd = -1;
 
@@ -695,13 +1010,7 @@ static void rc_build_eap_context(rc_transaction_t *trans)
 		 *	Note: this is not useful for EAP-SIM, but we cannot know what kind
 		 *	of challenge the server will issue.
 		 */
-		VALUE_PAIR *vp;
-		vp = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
-		if (!vp) vp = pairfind(packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
-		if (!vp) vp = pairfind(packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
-		if (vp) {
-			strlcpy(trans->eap_context->password, vp->vp_strvalue, sizeof(trans->eap_context->password));
-		}
+		trans->eap_context->password = trans->password;
 	}
 }
 
@@ -728,7 +1037,7 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	talloc_steal(trans, vps_entry); /* It's ours now. */
 
 	RADIUS_PACKET *packet;
-	MEM(packet = rad_alloc(trans, 1));
+	MEM(packet = rad_alloc(trans, true));
 	trans->packet = packet;
 
 	/* Fill in the packet value pairs. */
@@ -1298,7 +1607,7 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 	 */
 	fr_md5_init(&context);
 	fr_md5_update(&context, &identifier, 1);
-	fr_md5_update(&context, (uint8_t *) eap_context->password, strlen(eap_context->password));
+	fr_md5_update(&context, eap_context->password->vp_octets, eap_context->password->vp_length);
 	fr_md5_update(&context, value, valuesize);
 	fr_md5_final(response, &context);
 
@@ -1325,19 +1634,19 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 	return 1;
 }
 
-
 /** Allocate a new socket, and add it to the packet list.
  */
 static void rc_add_socket(fr_ipaddr_t *src_ipaddr, uint16_t src_port, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
 {
 	int mysockfd;
-	
+
 	/* Trace what we're doing. */
-	char src_addr[15+1] = "";
-	char dst_addr[15+1] = "";
-	inet_ntop(AF_INET, &(src_ipaddr->ipaddr.ip4addr.s_addr), src_addr, sizeof(src_addr));
-	inet_ntop(AF_INET, &(dst_ipaddr->ipaddr.ip4addr.s_addr), dst_addr, sizeof(dst_addr));
-	
+	char src_addr[INET6_ADDRSTRLEN] = "";
+	char dst_addr[INET6_ADDRSTRLEN] = "";
+
+	rc_print_addr(src_ipaddr, src_addr);
+	rc_print_addr(dst_ipaddr, dst_addr);
+
 	INFO("Adding new socket: src: %s:%d, dst: %s:%d", src_addr, src_port, dst_addr, dst_port);
 
 	mysockfd = fr_socket(src_ipaddr, src_port);
@@ -1401,6 +1710,30 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 
 		for (i = 0; i < 4; i++) {
 			((uint32_t *) packet->vector)[i] = fr_rand();
+		}
+
+		/*
+		 *	Update the password, so it can be encrypted with the
+		 *	new authentication vector.
+		 */
+		if (trans->password) {
+			VALUE_PAIR *vp;
+
+			if ((vp = pairfind(trans->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
+				pairstrcpy(vp, trans->password->vp_strvalue);
+
+			} else if ((vp = pairfind(trans->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
+				uint8_t buffer[17];
+
+				rad_chap_encode(trans->packet, buffer, fr_rand() & 0xff, trans->password);
+				pairmemcpy(vp, buffer, 17);
+
+			} else if (pairfind(trans->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY) != NULL) {
+				rc_mschapv1_encode(trans->packet, &trans->packet->vps, trans->password->vp_strvalue);
+
+			} else {
+				DEBUG("WARNING: No password in the request");
+			}
 		}
 	}
 
@@ -1551,6 +1884,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 	STATS_INC(nb_packets_recv);
 
 	trans = fr_packet2myptr(rc_transaction_t, packet, packet_p);
+	rc_input_vps_t *input = trans->input_vps;
 
 	if (trans->event) fr_event_delete(ev_list, &trans->event);
 
@@ -1654,6 +1988,39 @@ eap_done:
 	goto packet_done;
 
 packet_done:
+	if (trans->reply && !ongoing_trans) {
+		/*
+		 *	If we had an expected response code, check to see if the
+		 *	packet matched that.
+		 */
+		if (trans->reply->code != input->filter_code) {
+			if (is_radius_code(trans->reply->code)) {
+				WARN("(%d) %s: Expected %s got %s", input->num, input->name,
+				     fr_packet_codes[input->filter_code], fr_packet_codes[trans->reply->code]);
+			} else {
+				WARN("(%d) %s: Expected %u got %d", input->num, input->name,
+				     input->filter_code, trans->reply->code);
+			}
+			STATS_INC(nb_filter_fail);
+		/*
+		 *	Check if the contents of the packet matched the filter
+		 */
+		} else if (!input->vps_filter) {
+			STATS_INC(nb_filter_pass);
+		} else {
+			VALUE_PAIR const *failed[2];
+
+			pairsort(&trans->reply->vps, attrtagcmp);
+			if (pairvalidate(failed, input->vps_filter, trans->reply->vps)) {
+				DEBUG("(%d) %s: Response passed filter", input->num, input->name);
+				STATS_INC(nb_filter_pass);
+			} else {
+				pairvalidate_debug(trans, failed);
+				WARN("(%d) %s: Response for failed filter: %s", input->num, input->name, fr_strerror());
+				STATS_INC(nb_filter_fail);
+			}
+		}
+	}
 
 	if (trans->reply && !trans->eap_context) {
 		/* Statistics for non-EAP transactions */
@@ -1892,7 +2259,7 @@ static uint16_t rc_getport(char const *name)
 
 /** Set a port from the request type if we don't already have one.
  */
-static void rc_get_radius_port(PW_CODE type, uint16_t *port)
+static bool rc_get_radius_port(PW_CODE type, uint16_t *port)
 {
 	switch (type) {
 	default:
@@ -1901,25 +2268,27 @@ static void rc_get_radius_port(PW_CODE type, uint16_t *port)
 	case PW_CODE_STATUS_SERVER:
 		if (*port == 0) *port = rc_getport("radius");
 		if (*port == 0) *port = PW_AUTH_UDP_PORT;
-		return;
+		break;
 
 	case PW_CODE_ACCOUNTING_REQUEST:
 		if (*port == 0) *port = rc_getport("radacct");
 		if (*port == 0) *port = PW_ACCT_UDP_PORT;
-		return;
+		break;
 
 	case PW_CODE_DISCONNECT_REQUEST:
 		if (*port == 0) *port = PW_POD_UDP_PORT;
-		return;
+		break;
 
 	case PW_CODE_COA_REQUEST:
 		if (*port == 0) *port = PW_COA_UDP_PORT;
-		return;
+		break;
 
 	case PW_CODE_UNDEFINED:
 		if (*port == 0) *port = 0;
-		return;
+		break;
 	}
+	
+	return (*port != 0);
 }
 
 /** Resolve a port to a request type.
@@ -1943,6 +2312,70 @@ static PW_CODE rc_get_code(uint16_t port)
 	if (port == PW_POD_UDP_PORT) return PW_CODE_DISCONNECT_REQUEST;
 
 	return PW_CODE_UNDEFINED;
+}
+
+static bool rc_already_hex(VALUE_PAIR *vp)
+{
+	size_t i;
+
+	if (!vp || (vp->da->type != PW_TYPE_OCTETS)) return true;
+
+	/*
+	 *	If it's 17 octets, it *might* be already encoded.
+	 *	Or, it might just be a 17-character password (maybe UTF-8)
+	 *	Check it for non-printable characters.  The odds of ALL
+	 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
+	 *	or 1/(2^51), which is pretty much zero.
+	 */
+	for (i = 0; i < vp->vp_length; i++) {
+		if (vp->vp_octets[i] < 32) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static int rc_mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request, char const *password)
+{
+	unsigned int i;
+	uint8_t *p;
+	VALUE_PAIR *challenge, *reply;
+	uint8_t nthash[16];
+
+	pairdelete(&packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
+	pairdelete(&packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
+
+	challenge = paircreate(packet, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
+	if (!challenge) {
+		return 0;
+	}
+
+	pairadd(request, challenge);
+	challenge->vp_length = 8;
+	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->vp_length);
+	for (i = 0; i < challenge->vp_length; i++) {
+		p[i] = fr_rand();
+	}
+
+	reply = paircreate(packet, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
+	if (!reply) {
+		return 0;
+	}
+
+	pairadd(request, reply);
+	reply->vp_length = 50;
+	reply->vp_octets = p = talloc_array(reply, uint8_t, reply->vp_length);
+	memset(p, 0, reply->vp_length);
+
+	p[1] = 0x01; /* NT hash */
+
+	if (mschap_ntpwdhash(nthash, password) < 0) {
+		return 0;
+	}
+
+	smbdes_mschap(nthash, challenge->vp_octets, p + 26);
+	return 1;
 }
 
 /** Resolve server hostname.
@@ -1983,16 +2416,22 @@ static void rc_resolve_hostname(char *server_arg)
 			exit(1);
 		}
 		server_addr_init = true;
+		char addr[INET6_ADDRSTRLEN] = "";
+		DEBUG("Server address set to: %s (from server argument)", rc_print_addr(&server_ipaddr, addr));
 
 		/* Strip port from hostname if needed. */
-		if (portname) server_port = atoi(portname);
+		if (portname) {
+			server_port = atoi(portname);
+			if (server_port) {
+				DEBUG("Server port set to: %d (from server argument)", server_port);
+			}
+		}
 
 		/*
 		 *	Work backwards from the port to determine the packet type
 		 */
 		if (packet_code == PW_CODE_UNDEFINED) packet_code = rc_get_code(server_port);
 	}
-	rc_get_radius_port(packet_code, &server_port);
 }
 
 /** Update per-workflow statistics (number of transactions, rtt min, max, and cumulated).
@@ -2086,6 +2525,9 @@ static void rc_summary(void)
 	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Success", stats.nb_success);
 	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Fail", stats.nb_fail);
 	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Lost", stats.nb_lost);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Failed filter", stats.nb_filter_fail);
+	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Passed filter", stats.nb_filter_pass);
+
 	fprintf(fp, "\t%-*.*s: %u (retries: %u)\n", LG_PAD_STATS, LG_PAD_STATS, "Packets sent", stats.nb_packets_sent, stats.nb_packets_retries);
 	fprintf(fp, "\t%-*.*s: %u\n", LG_PAD_STATS, LG_PAD_STATS, "Packets received", stats.nb_packets_recv);
 	
@@ -2160,7 +2602,6 @@ int main(int argc, char **argv)
 {
 	char *p;
 	int c;
-	char *filename = NULL;
 	FILE *fp;
 
 	static fr_log_t radclient_log = {
@@ -2182,6 +2623,8 @@ int main(int argc, char **argv)
 	fr_log_fp = stdout;
 
 	set_radius_dir(autofree, RADIUS_DIR);
+
+	MEM(filename_tree = rbtree_create(NULL, rc_filename_cmp, NULL, 0));
 
 	while ((c = getopt(argc, argv, "46c:d:D:f:hn:o:p:qr:sS:t:vxX")) != EOF)
 	{
@@ -2209,7 +2652,20 @@ int main(int argc, char **argv)
 			break;
 
 		case 'f':
-			filename = optarg;
+		{
+			rc_file_pair_t *files;
+			MEM(files = talloc_zero(autofree, rc_file_pair_t));
+
+			p = strchr(optarg, ':');
+			if (p) {
+				MEM(files->packets = talloc_strndup(files, optarg, p - optarg));
+				files->filters = p + 1;
+			} else {
+				files->packets = optarg;
+				files->filters = NULL;
+			}
+			rbtree_insert(filename_tree, (void *) files);
+		}
 			break;
 
 		case 'n':
@@ -2375,15 +2831,34 @@ int main(int argc, char **argv)
 	if (argv[3]) secret = argv[3];
 
 	/*
-	 *	Read input data vp(s) from the file (or stdin).
+	 *	Read input data vp(s) from the files (or stdin).
 	 */
 	INFO("Loading input data...");
-	if (!rc_load_input(autofree, filename, &rc_vps_list_in, 0)
-	    || rc_vps_list_in.size == 0) {
+
+	/*
+	 *	If no '-f' is specified, we're reading from stdin.
+	 */
+	if (rbtree_num_elements(filename_tree) == 0) {
+		rc_file_pair_t *files;
+		MEM(files = talloc_zero(autofree, rc_file_pair_t));
+		files->packets = "-";
+		rbtree_insert(filename_tree, (void *) files);
+	}
+
+	/*
+	 *	Walk over the list of filenames, creating the input data vp(s).
+	 */
+	if (rbtree_walk(filename_tree, RBTREE_IN_ORDER, rc_filename_walk, NULL) != 0) {
+		ERROR("Failed parsing input files");
+		exit(1);
+	}
+	if (rc_vps_list_in.size == 0) {
 		ERROR("No valid input. Nothing to send.");
-		exit(EXIT_FAILURE);
+		exit(1);
 	}
 	INFO("Loaded: %d input element(s).", rc_vps_list_in.size);
+
+	/* Note: at this point the server address and port are necessarily resolved. */
 
 	/* Initialize the packets list. */
 	MEM(pl = fr_packet_list_create(1));
