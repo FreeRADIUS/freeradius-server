@@ -19,7 +19,7 @@ if test x$with_[]modname != xno; then
 	)
 
 dnl #
-dnl #	Yes, these DO have to be on seperate lines,
+dnl #	Yes, these DO have to be on separate lines,
 dnl #	otherwise autoheader won't pick them up.
 dnl #
 	AC_CHECK_HEADERS( \
