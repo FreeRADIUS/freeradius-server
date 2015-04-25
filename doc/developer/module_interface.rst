@@ -42,7 +42,7 @@ Modules perform an action when RADIUS packets are received.  Modules
 which do more (creating threads, forking programs) will NOT be added
 to the server, and the server core will NOT be modified to enable
 these kinds of modules.  Those functions more properly belong in a
-seperate application.
+separate application.
 
 Modules ARE permitted to open sockets to other network programs, and
 to send and receive data on those sockets.  Modules are NOT permitted
