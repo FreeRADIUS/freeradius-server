@@ -141,7 +141,7 @@ max_request_time = 30
 #  cached reply.
 #
 #  If this value is set too low, then duplicate requests from the NAS
-#  MAY NOT be detected, and will instead be handled as seperate requests.
+#  MAY NOT be detected, and will instead be handled as separate requests.
 #
 #  If this value is set too high, then the server will cache too many
 #  requests, and some new requests may get blocked.  (See 'max_requests'.)
