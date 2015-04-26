@@ -76,7 +76,6 @@ static float progress_interval = 0;
 static struct timeval tv_progress_interval;
 static char const *radius_dir = NULL;
 
-
 //TODO: move structures to a header file.
 
 typedef struct rc_input_vps_list rc_input_vps_list_t;
