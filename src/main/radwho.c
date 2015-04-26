@@ -90,7 +90,7 @@ static const CONF_PARSER module_config[] = {
  */
 static char *fullname(char *username)
 {
-#ifdef HAVE_PWD_Hx
+#ifdef HAVE_PWD_H
 	struct passwd *pwd;
 	char *s;
 
