@@ -53,7 +53,7 @@ extern int sha1_data_problems;
  */
 char const *progname = "radeapclient";
 log_lvl_t debug_flag = 0;
-struct main_config_t main_config;
+main_config_t main_config;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
