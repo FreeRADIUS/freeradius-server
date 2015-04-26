@@ -106,7 +106,7 @@ struct rc_input_vps_list {
  */
 struct rc_input_vps {
 	uint32_t num;	//!< The number (within the file) of the input we're reading.
-	
+
 	VALUE_PAIR *vps_in;	//!< the list of attribute/value pairs.
 
 	rc_input_vps_list_t *list;	//!< the list to which this entry belongs (NULL for an unchained entry).
@@ -127,7 +127,7 @@ struct rc_transaction {
 	RADIUS_PACKET *reply;
 
 	rc_input_vps_t *input_vps;
-	
+
 	rc_eap_context_t *eap_context;
 
 	uint32_t tries;
@@ -1190,13 +1190,13 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 static void rc_add_socket(fr_ipaddr_t *src_ipaddr, uint16_t src_port, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
 {
 	int mysockfd;
-	
+
 	/* Trace what we're doing. */
 	char src_addr[15+1] = "";
 	char dst_addr[15+1] = "";
 	inet_ntop(AF_INET, &(src_ipaddr->ipaddr.ip4addr.s_addr), src_addr, sizeof(src_addr));
 	inet_ntop(AF_INET, &(dst_ipaddr->ipaddr.ip4addr.s_addr), dst_addr, sizeof(dst_addr));
-	
+
 	INFO("Adding new socket: src: %s:%d, dst: %s:%d", src_addr, src_port, dst_addr, dst_port);
 
 	mysockfd = fr_socket(src_ipaddr, src_port);
@@ -1318,7 +1318,7 @@ static void rc_deallocate_id(rc_transaction_t *trans)
 	fr_packet_list_id_free(pl, packet, true);
 	/* note: "true" means automatically yank, so we must *not* yank ourselves before calling (otherwise, it does nothing)
 	 * so, *don't*: fr_packet_list_yank(pl, request->packet); */
-	
+
 	/* free more stuff to ensure next allocate won't be stuck on a "full" socket. */
 	packet->id = -1;
 	packet->sockfd = -1;
@@ -1397,7 +1397,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 		/* got reply to packet we didn't send.
 		 * (or maybe we sent it, got no response, freed the ID. Then server responds to first request.)
 		 */
-		DEBUG("No outstanding request was found for reply from %s, port %d (sockfd: %d, id: %d)", 
+		DEBUG("No outstanding request was found for reply from %s, port %d (sockfd: %d, id: %d)",
 			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
 			reply->src_port, reply->sockfd, reply->id);
 		rad_free(&reply);
@@ -1410,13 +1410,13 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 
 	/*
 	 *	Fails the signature validation: not a valid reply.
-	 */ 
+	 */
 	if (rad_verify(reply, trans->packet, secret) < 0) {
 		/* shared secret is incorrect.
 		 * (or maybe this is a response to another packet we sent, for which we got no response,
 		 * freed the ID, then reused it. Then server responds to first packet.)
 		 */
-		DEBUG("Conflicting response authenticator for reply from %s (sockfd: %d, id: %d)", 
+		DEBUG("Conflicting response authenticator for reply from %s (sockfd: %d, id: %d)",
 			inet_ntop(reply->src_ipaddr.af, &reply->src_ipaddr.ipaddr, buffer, sizeof(buffer)),
 			reply->sockfd, reply->id);
 
@@ -1467,7 +1467,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 				/* answer the challenge from server. */
 				trans->eap_context->eap.md5.tried ++;
 				rc_deallocate_id(trans);
-				rc_send_transaction_packet(trans, &trans->packet); 
+				rc_send_transaction_packet(trans, &trans->packet);
 				ongoing_trans = true; // don't free the transaction yet.
 			}
 			goto packet_done;
@@ -1488,7 +1488,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 eap_done:
 	/* EAP transaction ends here (no more requests from EAP server). */
 
-	/* 
+	/*
 	 * success: if we have EAP-Code = Success, and reply is an Access-Accept.
 	 */
 	if (trans->reply->code != PW_CODE_ACCESS_ACCEPT) {
@@ -1515,7 +1515,7 @@ packet_done:
 
 	rad_free(&trans->reply);
 	rad_free(&reply);	/* may be NULL */
-	
+
 	if (!ongoing_trans) {
 		rc_deallocate_id(trans);
 		rc_finish_transaction(trans);
@@ -1534,7 +1534,7 @@ static void rc_evcb_packet_timeout(void *ctx)
 	DEBUG("Timeout for transaction: %d, tries (so far): %d (max: %d)", trans->id, trans->tries, retries);
 
 	if (trans->event) fr_event_delete(ev_list, &trans->event);
-	
+
 	if (trans->tries < retries) {
 		/* Try again. */
 		rc_send_transaction_packet(trans, &trans->packet);
@@ -1603,7 +1603,7 @@ static int rc_loop_start_transactions(void)
 		/* Try to initialize a new transaction. */
 		rc_transaction_t *trans = rc_init_transaction(autofree);
 		if (!trans) break;
-		
+
 		nb_started ++;
 		rc_send_transaction_packet(trans, &trans->packet);
 	}
@@ -1621,10 +1621,10 @@ static void rc_main_loop(void)
 
 		/* Receive and process response until no more are received (don't wait). */
 		dhb_loop_recv();
-		
+
 		/* Start new transactions and send the associated packet. */
 		rc_loop_start_transactions();
-		
+
 		/* Check if we're done. */
 		if ( (rc_vps_list_in.size == 0)
 			&& (fr_packet_list_num_outgoing(pl) == 0) ) {
