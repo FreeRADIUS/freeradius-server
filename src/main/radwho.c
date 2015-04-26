@@ -61,7 +61,7 @@ bool log_stripped_names;
 /*
  *	Global, for log.c to use.
  */
-struct main_config_t main_config;
+main_config_t main_config;
 
 #include <sys/wait.h>
 pid_t rad_fork(void)
