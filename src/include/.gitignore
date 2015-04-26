@@ -9,6 +9,7 @@ missing.h
 tls.h
 features.h
 radpaths.h
+vqp.h
 
 # Build scripts
 build-radpaths-h
