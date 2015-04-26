@@ -58,7 +58,7 @@ static char const *radius_dir = NULL;
 char const *progname = "radeapclient";
 /* fr_randctx randctx; */
 
-struct main_config_t main_config;
+main_config_t main_config;
 char const *radiusd_version = "";
 
 #ifdef WITH_TLS

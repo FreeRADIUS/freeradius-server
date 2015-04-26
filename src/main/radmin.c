@@ -78,7 +78,7 @@ static char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
  *	have a "libfreeradius-server", or "libfreeradius-util".
  */
 log_lvl_t debug_flag = 0;
-struct main_config_t main_config;
+main_config_t main_config;
 
 bool check_config = false;
 
