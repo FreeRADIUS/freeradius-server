@@ -1887,7 +1887,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 *	Grab the X509 extensions, and create attributes out of them.
 	 *	For laziness, we re-use the OpenSSL names
 	 */
-	if (sk_X509_EXTENSION_num(ext_list) > 0) {
+	if (certs && (sk_X509_EXTENSION_num(ext_list) > 0)) {
 		int i, len;
 		char *p;
 		BIO *out;
