@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/heap.h>
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -51,8 +52,10 @@ struct fr_connection {
 	fr_connection_t	*next;		//!< Next connection in list.
 
 	time_t		created;	//!< Time connection was created.
-	time_t		last_used;	//!< Last time the connection was
+	struct timeval 	last_reserved;	//!< Last time the connection was
 					//!< reserved.
+
+	struct timeval	last_released;  //!< Time the connection was released.
 
 	uint32_t	num_uses;	//!< Number of times the connection
 					//!< has been reserved.
@@ -64,6 +67,8 @@ struct fr_connection {
 					//!< uses for a connection handle.
 	bool		in_use;		//!< Whether the connection is currently
 					//!< reserved.
+
+	int		heap;		//! For the next connection heap
 #ifdef PTHREAD_DEBUG
 	pthread_t	pthread_id;	//!< When 'in_use == true'
 #endif
@@ -111,10 +116,9 @@ struct fr_connection_pool_t {
 	uint32_t       	idle_timeout;	//!< How long a connection can be idle
 					//!< before being closed.
 
-	bool		spread;		//!< If true requests will be spread
-					//!< across all connections, instead of
-					//!< re-using the most recently used
-					//!< connections first.
+	bool		spread;		//!< If true we spread requests over
+					//!< the connections, using the connection
+					//!< released longest ago, first.
 
 	time_t		last_checked;	//!< Last time we pruned the connection
 					//!< pool.
@@ -134,6 +138,8 @@ struct fr_connection_pool_t {
 					//!< the lifetime of the pool.
 	uint32_t       	num;		//!< Number of connections in the pool.
 	uint32_t	active;	 	//!< Number of currently reserved connections.
+
+	fr_heap_t	*heap;		//!< For the next connection heap
 
 	fr_connection_t	*head;		//!< Start of the connection list.
 	fr_connection_t *tail;		//!< End of the connection list.
@@ -240,35 +246,6 @@ static void fr_connection_link_head(fr_connection_pool_t *pool,
 		pool->tail = this;
 	} else {
 		rad_assert(this->next != NULL);
-	}
-}
-
-/** Adds a connection to the tail of the connection list
- *
- * @note Must be called with the mutex held.
- *
- * @param[in,out] pool to modify.
- * @param[in] this Connection to add.
- */
-static void fr_connection_link_tail(fr_connection_pool_t *pool,
-				    fr_connection_t *this)
-{
-	rad_assert(pool != NULL);
-	rad_assert(this != NULL);
-	rad_assert(pool->head != this);
-	rad_assert(pool->tail != this);
-
-	if (pool->tail) {
-		pool->tail->next = this;
-	}
-	this->prev = pool->tail;
-	this->next = NULL;
-	pool->tail = this;
-	if (!pool->head) {
-		rad_assert(this->prev == NULL);
-		pool->head = this;
-	} else {
-		rad_assert(this->prev != NULL);
 	}
 }
 
@@ -410,7 +387,6 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		pool->max_pending = 1;
 		pool->pending--;
 		pthread_mutex_unlock(&pool->mutex);
-
 		return NULL;
 	}
 
@@ -430,9 +406,26 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	this->created = now;
 	this->connection = conn;
 	this->in_use = in_use;
+
 	this->number = number;
-	this->last_used = now;
+	gettimeofday(&this->last_reserved, NULL);
+	this->last_released = this->last_reserved;
+
+	/*
+	 *	The connection pool is starting up.  Insert the
+	 *	connection into the heap.
+	 */
+	if (!in_use) {
+		fr_heap_insert(pool->heap, this);
+	}
+
 	fr_connection_link_head(pool, this);
+
+	/*
+	 *	Do NOT insert the connection into the heap.  That's
+	 *	done when the connection is released.
+	 */
+
 	pool->num++;
 
 	rad_assert(pool->pending > 0);
@@ -478,15 +471,23 @@ static void fr_connection_close(fr_connection_pool_t *pool,
 		pthread_t pthread_id = pthread_self();
 		rad_assert(pthread_equal(this->pthread_id, pthread_id) != 0);
 #endif
+
 		this->in_use = false;
 
 		rad_assert(pool->active != 0);
 		pool->active--;
+
+	} else {
+		/*
+		 *	Connection isn't used, remove it from the heap.
+		 */
+		fr_heap_extract(pool->heap, this);
 	}
 
 	fr_connection_exec_trigger(pool, "close");
 
 	fr_connection_unlink(pool, this);
+
 	rad_assert(pool->num > 0);
 	pool->num--;
 	talloc_free(this);
@@ -600,6 +601,8 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
 
 		fr_connection_close(pool, this);
 	}
+
+	fr_heap_delete(pool->heap);
 
 	fr_connection_exec_trigger(pool, "stop");
 
@@ -724,6 +727,41 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	return pool;
 }
 
+/*
+ *	Order connections by reserved most recently
+ */
+static int last_reserved_cmp(void const *one, void const *two)
+{
+	fr_connection_t const *a = one;
+	fr_connection_t const *b = two;
+
+	if (a->last_reserved.tv_sec < b->last_reserved.tv_sec) return -1;
+	if (a->last_reserved.tv_sec > b->last_reserved.tv_sec) return +1;
+
+	if (a->last_reserved.tv_usec < b->last_reserved.tv_usec) return -1;
+	if (a->last_reserved.tv_usec > b->last_reserved.tv_usec) return +1;
+
+	return 0;
+}
+
+/*
+ *	Order connections by released least recently
+ */
+static int last_released_cmp(void const *one, void const *two)
+{
+	fr_connection_t const *a = one;
+	fr_connection_t const *b = two;
+
+	if (b->last_released.tv_sec < a->last_released.tv_sec) return -1;
+	if (b->last_released.tv_sec > a->last_released.tv_sec) return +1;
+
+	if (b->last_released.tv_usec < a->last_released.tv_usec) return -1;
+	if (b->last_released.tv_usec > a->last_released.tv_usec) return +1;
+
+	return 0;
+}
+
+
 /** Create a new connection pool
  *
  * Allocates structures used by the connection pool, initialises the various
@@ -784,6 +822,52 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	pool->alive = a;
 
 	pool->head = pool->tail = NULL;
+
+	/*
+	 *	We keep a heap of connections, sorted by the last time
+	 *	we STARTED using them.  Newly opened connections
+	 *	aren't in the heap.  They're only inserted in the list
+	 *	once they're released.
+	 *
+	 *	We do "most recently started" instead of "most
+	 *	recently used", because MRU is done as most recently
+	 *	*released*.  We want to order connections by
+	 *	responsiveness, and MRU prioritizes high latency
+	 *	connections.
+	 *
+	 *	We want most recently *started*, which gives
+	 *	preference to low latency links, and pushes high
+	 *	latency links down in the priority heap.
+	 *
+	 *	https://code.facebook.com/posts/1499322996995183/solving-the-mystery-of-link-imbalance-a-metastable-failure-state-at-scale/
+	 */
+	if (!pool->spread) {
+		pool->heap = fr_heap_create(last_reserved_cmp, offsetof(fr_connection_t, heap));
+	/*
+	 *	For some types of connections we need to used a different
+	 *	algorithm, because load balancing benefits are secondary
+	 *	to maintaining a cache of open connections.
+	 *
+	 *	With libcurl's multihandle, connections can only be reused
+	 *	if all handles that make up the multhandle are done processing
+	 *	their requests.
+	 *
+	 *	We can't tell when that's happened using libcurl, and even
+	 *	if we could, blocking until all servers had responded
+	 *	would have huge cost.
+	 *
+	 *	The solution is to order the heap so that the connection that
+	 *	was released longest ago is at the top.
+	 *
+	 *	That way we maximise time between connection use.
+	 */
+	} else {
+		pool->heap = fr_heap_create(last_released_cmp, offsetof(fr_connection_t, heap));
+	}
+	if (!pool->heap) {
+		talloc_free(pool);
+		return NULL;
+	}
 
 	pool->log_prefix = log_prefix ? talloc_typed_strdup(pool, log_prefix) : "core";
 	pool->trigger_prefix = trigger_prefix ?
@@ -897,9 +981,9 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 	}
 
 	if ((pool->idle_timeout > 0) &&
-	    ((this->last_used + pool->idle_timeout) < now)) {
+	    ((this->last_released.tv_sec + pool->idle_timeout) < now)) {
 		INFO("%s: Closing connection (%" PRIu64 "): Hit idle_timeout, was idle for %u seconds",
-		     pool->log_prefix, this->number, (int) (now - this->last_used));
+		     pool->log_prefix, this->number, (int) (now - this->last_released.tv_sec));
 		goto do_delete;
 	}
 
@@ -1037,7 +1121,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 			if (this->in_use) continue;
 
 			if (!found ||
-			   (this->last_used < found->last_used)) {
+			    timercmp(&this->last_reserved, &found->last_reserved, <)) {
 				found = this;
 			}
 		}
@@ -1081,19 +1165,37 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 {
 	time_t now;
-	fr_connection_t *this, *next;
+	fr_connection_t *this;
 
 	if (!pool) return NULL;
 
 	pthread_mutex_lock(&pool->mutex);
 
 	now = time(NULL);
-	for (this = pool->head; this != NULL; this = next) {
-		next = this->next;
-		if (!fr_connection_manage(pool, this, now)) continue;
 
-		if (!this->in_use) goto do_return;
+	/*
+	 *	Grab the link with the lowest latency, and check it
+	 *	for limits.  If "connection manage" says the link is
+	 *	no longer usable, go grab another one.
+	 */
+	do {
+		this = fr_heap_peek(pool->heap);
+		if (!this) break;
+
+	} while (!fr_connection_manage(pool, this, now));
+
+	/*
+	 *	We have a working connection.  Extract it from the
+	 *	heap and use it.
+	 */
+	if (this) {
+		fr_heap_extract(pool->heap, this);
+		goto do_return;
 	}
+
+	/*
+	 *	We don't have a connection.  Try to open a new one.
+	 */
 	rad_assert(pool->active == pool->num);
 
 	if (pool->num == pool->max) {
@@ -1129,7 +1231,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 do_return:
 	pool->active++;
 	this->num_uses++;
-	this->last_used = now;
+	gettimeofday(&this->last_reserved, NULL);
 	this->in_use = true;
 
 #ifdef PTHREAD_DEBUG
@@ -1194,28 +1296,19 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 	this->in_use = false;
 
 	/*
-	 *	Determines whether the last used connection gets
-	 *	re-used first.
+	 *	Record when the connection was last released
 	 */
-	if (pool->spread) {
-		/*
-		 *	Put it at the tail of the list, so
-		 *	that it will get re-used last.
-		 */
-		if (this != pool->tail) {
-			fr_connection_unlink(pool, this);
-			fr_connection_link_tail(pool, this);
-		}
-	} else {
-		/*
-		 *	Put it at the head of the list, so
-		 *	that it will get re-used quickly.
-		 */
-		if (this != pool->head) {
-			fr_connection_unlink(pool, this);
-			fr_connection_link_head(pool, this);
-		}
-	}
+	gettimeofday(&this->last_released, NULL);
+
+	/*
+	 *	Insert the connection in the heap.
+	 *
+	 *	This will either be based on when we *started* using it
+	 *	(allowing fast links to be re-used, and slow links to be
+	 *	gradually expired), or when we released it (allowing
+	 *	the maximum amount of time between connection use).
+	 */
+	fr_heap_insert(pool->heap, this);
 
 	rad_assert(pool->active != 0);
 	pool->active--;
