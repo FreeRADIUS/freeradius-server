@@ -2,6 +2,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
 	* Make "pool" configurations more consistent, and
 	  update documentation for them.
+	* Move connection pool logic to "most recently started",
+	  instead of MRU.  This should help with pool stability.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
