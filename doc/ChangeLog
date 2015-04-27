@@ -11,6 +11,7 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* Move more defines to be auto-generated.
 	* Allow virtual servers in proxy fallback.
 	* Allow %{module:} to work.
+	* Don't crash in RadSec.  Closes #980.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
