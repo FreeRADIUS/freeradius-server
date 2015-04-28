@@ -1208,7 +1208,7 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 		}
 	}
 
-	if (ret != 0) {
+	if ((ret != 0) || !*out) {
 		fr_strerror_printf("Failed resolving UID: %s", fr_syserror(ret));
 		talloc_free(buff);
 		errno = ret;
@@ -1273,7 +1273,7 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 		}
 	}
 
-	if (ret != 0) {
+	if ((ret != 0) || !*out) {
 		fr_strerror_printf("Failed resolving UID: %s", fr_syserror(ret));
 		talloc_free(buff);
 		errno = ret;
@@ -1338,7 +1338,7 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 		}
 	}
 
-	if (ret != 0) {
+	if ((ret != 0) || !*out) {
 		fr_strerror_printf("Failed resolving GID: %s", fr_syserror(ret));
 		talloc_free(buff);
 		errno = ret;
@@ -1403,7 +1403,7 @@ int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 		}
 	}
 
-	if (ret != 0) {
+	if ((ret != 0) || !*out) {
 		fr_strerror_printf("Failed resolving GID: %s", fr_syserror(ret));
 		talloc_free(buff);
 		errno = ret;
