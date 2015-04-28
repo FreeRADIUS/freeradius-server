@@ -495,8 +495,10 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
      CC_HINT(nonnull (3));
 
 /* valuepair.c */
+int paircompare_register_byname(char const *name, DICT_ATTR const *from,
+				bool first_only, RAD_COMPARE_FUNC func, void *instance);
 int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
-	  bool first_only, RAD_COMPARE_FUNC func, void *instance);
+			 bool first_only, RAD_COMPARE_FUNC func, void *instance);
 void		paircompare_unregister(DICT_ATTR const *attr, RAD_COMPARE_FUNC func);
 void		paircompare_unregister_instance(void *instance);
 int		paircompare(REQUEST *request, VALUE_PAIR *req_list,
