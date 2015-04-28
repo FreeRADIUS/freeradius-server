@@ -92,6 +92,7 @@ static int _exfile_free(exfile_t *ef)
  * @param ctx The talloc context
  * @param max_entries Max file descriptors to cache, and manage locks for.
  * @param max_idle Maximum time a file descriptor can be idle before it's closed.
+ * @param locking whether or not to lock the files.
  * @return the new context, or NULL on error.
  */
 exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, bool locking)
