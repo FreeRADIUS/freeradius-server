@@ -828,7 +828,6 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, ldap_instance_t const *inst, 
 
 	int 		i;
 
-
 	rad_assert(*pconn && (*pconn)->handle);
 
 	/*
@@ -1047,11 +1046,12 @@ finish:
 
 /** Retrieve the DN of a user object
  *
- * Retrieves the DN of a user and adds it to the control list as LDAP-UserDN. Will also retrieve any attributes
- * passed and return the result in *result.
+ * Retrieves the DN of a user and adds it to the control list as LDAP-UserDN. Will also retrieve any
+ * attributes passed and return the result in *result.
  *
- * This potentially allows for all authorization and authentication checks to be performed in one ldap search
- * operation, which is a big bonus given the number of crappy, slow *cough*AD*cough* LDAP directory servers out there.
+ * This potentially allows for all authorization and authentication checks to be performed in one
+ * ldap search operation, which is a big bonus given the number of crappy, slow *cough*AD*cough*
+ * LDAP directory servers out there.
  *
  * @param[in] inst rlm_ldap configuration.
  * @param[in] request Current request.
@@ -1071,6 +1071,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	VALUE_PAIR	*vp = NULL;
 	LDAPMessage	*tmp_msg = NULL, *entry = NULL;
 	int		ldap_errno;
+	int		cnt;
 	char		*dn = NULL;
 	char const	*filter = NULL;
 	char	    	filter_buff[LDAP_MAX_FILTER_STR_LEN];
@@ -1156,6 +1157,31 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	}
 
 	rad_assert(*pconn);
+
+	/*
+	 *	Forbid the use of unsorted search results that
+	 *	contain multiple entries, as it's a potential
+	 *	security issue, and likely non deterministic.
+	 */
+	if (!inst->userobj_sort_ctrl) {
+		cnt = ldap_count_entries((*pconn)->handle, *result);
+		if (cnt > 1) {
+			REDEBUG("Ambiguous search result, returned %i unsorted entries (should return 1 or 0).  "
+				"Enable sorting, or specify a more restrictive base_dn, filter or scope", cnt);
+			REDEBUG("The following entries were returned:");
+			RINDENT();
+			for (entry = ldap_first_entry((*pconn)->handle, *result);
+			     entry;
+			     entry = ldap_next_entry((*pconn)->handle, NULL)) {
+				dn = ldap_get_dn((*pconn)->handle, entry);
+				REDEBUG("%s", dn);
+				ldap_memfree(dn);
+			}
+			REXDENT();
+			*rcode = RLM_MODULE_FAIL;
+			goto finish;
+		}
+	}
 
 	entry = ldap_first_entry((*pconn)->handle, *result);
 	if (!entry) {
