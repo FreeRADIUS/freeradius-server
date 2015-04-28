@@ -234,7 +234,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	}
 	fr_link_talloc_ctx_free(inst, inst->session_tree);
 
-	if (fr_debug_flag) {
+	if (fr_debug_lvl) {
 		inst->handler_tree = rbtree_create(NULL, eap_handler_ptr_cmp, NULL, 0);
 		if (!inst->handler_tree) {
 			ERROR("rlm_eap (%s): Cannot initialize tree", inst->xlat_name);

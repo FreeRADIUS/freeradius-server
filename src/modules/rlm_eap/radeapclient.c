@@ -52,7 +52,7 @@ extern int sha1_data_problems;
  *  Global variables.
  */
 char const *progname = "radeapclient";
-log_lvl_t debug_flag = 0;
+log_lvl_t rad_debug_lvl = 0;
 main_config_t main_config;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
@@ -1080,7 +1080,7 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	/* all set, calculate keys */
 	eapsim_calculate_keys(&eap_context->eap.sim.keys);
 
-	if (debug_flag) {
+	if (rad_debug_lvl) {
 		eapsim_dump_mk(&eap_context->eap.sim.keys);
 	}
 
@@ -1421,8 +1421,8 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 	trans->num_packet ++;
 	trans->tries ++;
 
-	if (fr_debug_flag > 0) fr_packet_header_print(fr_log_fp, packet, false);
-	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, packet->vps);
+	if (fr_debug_lvl > 0) fr_packet_header_print(fr_log_fp, packet, false);
+	if (fr_debug_lvl > 0) vp_printlist(fr_log_fp, packet->vps);
 
 	return 1;
 }
@@ -1590,8 +1590,8 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 
 	DEBUG("Transaction: %u, received packet (id: %u).", trans->id, trans->reply->id);
 
-	if (fr_debug_flag > 0) fr_packet_header_print(fr_log_fp, trans->reply, true);
-	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, trans->reply->vps);
+	if (fr_debug_lvl > 0) fr_packet_header_print(fr_log_fp, trans->reply, true);
+	if (fr_debug_lvl > 0) vp_printlist(fr_log_fp, trans->reply->vps);
 
 	if (!trans->eap_context) {
 		goto packet_done;
@@ -2177,7 +2177,7 @@ int main(int argc, char **argv)
 	 */
 	autofree = talloc_init("main");
 
-	fr_debug_flag = 0;
+	fr_debug_lvl = 0;
 	fr_log_fp = stdout;
 
 	set_radius_dir(autofree, RADIUS_DIR);
@@ -2232,8 +2232,8 @@ int main(int argc, char **argv)
 			break;
 
 		case 'x':
-			debug_flag++;
-			fr_debug_flag++;
+			rad_debug_lvl++;
+			fr_debug_lvl++;
 			break;
 
 		case 'X':
@@ -2305,8 +2305,8 @@ int main(int argc, char **argv)
 
 	/* Initialize logging */
 	if (!do_output) {
-		debug_flag = 0;
-		fr_debug_flag = 0;
+		rad_debug_lvl = 0;
+		fr_debug_lvl = 0;
 		radclient_log.dst = L_DST_NULL;
 		radclient_log.fd = 0;
 	}

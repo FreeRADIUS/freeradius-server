@@ -48,22 +48,22 @@ RCSIDH(radsniff_h, "$Id$")
  *	Logging macros
  */
 #undef DEBUG2
-#define DEBUG2(fmt, ...)	if (fr_debug_flag > 2) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
+#define DEBUG2(fmt, ...)	if (fr_debug_lvl > 2) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 #undef DEBUG
-#define DEBUG(fmt, ...)		if (fr_debug_flag > 1) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
+#define DEBUG(fmt, ...)		if (fr_debug_lvl > 1) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 #undef INFO
-#define INFO(fmt, ...)		if (fr_debug_flag > 0) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
+#define INFO(fmt, ...)		if (fr_debug_lvl > 0) fprintf(fr_log_fp , fmt "\n", ## __VA_ARGS__)
 
 #define ERROR(fmt, ...)		fr_perror("radsniff: " fmt, ## __VA_ARGS__)
 
-#define RIDEBUG_ENABLED()	(conf->print_packet && (fr_debug_flag > 0))
-#define RDEBUG_ENABLED()	(conf->print_packet && (fr_debug_flag > 1))
-#define RDEBUG_ENABLED2()	(conf->print_packet && (fr_debug_flag > 2))
+#define RIDEBUG_ENABLED()	(conf->print_packet && (fr_debug_lvl > 0))
+#define RDEBUG_ENABLED()	(conf->print_packet && (fr_debug_lvl > 1))
+#define RDEBUG_ENABLED2()	(conf->print_packet && (fr_debug_lvl > 2))
 
 #define REDEBUG(fmt, ...)	if (conf->print_packet) fr_perror("%s (%" PRIu64 ") " fmt , timestr, count, ## __VA_ARGS__)
-#define RIDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 0)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
-#define RDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 1)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
-#define RDEBUG2(fmt, ...)	if (conf->print_packet && (fr_debug_flag > 2)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
+#define RIDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_lvl > 0)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
+#define RDEBUG(fmt, ...)	if (conf->print_packet && (fr_debug_lvl > 1)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
+#define RDEBUG2(fmt, ...)	if (conf->print_packet && (fr_debug_lvl > 2)) fprintf(fr_log_fp , "%s (%" PRIu64 ") " fmt "\n", timestr, count, ## __VA_ARGS__)
 
 typedef enum {
 	RS_NORMAL	= 0x01,

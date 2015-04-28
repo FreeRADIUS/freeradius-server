@@ -669,7 +669,7 @@ redo:
 		     vp != NULL;
 		     vp = fr_cursor_next(&copy)) {
 #ifndef NDEBUG
-			if (fr_debug_flag >= 2) {
+			if (fr_debug_lvl >= 2) {
 				char buffer[1024];
 
 				vp_prints_value(buffer, sizeof(buffer), vp, '"');
@@ -2946,7 +2946,7 @@ modcallable *compile_modgroup(modcallable *parent,
 					       GROUPTYPE_SIMPLE,
 					       GROUPTYPE_SIMPLE, MOD_GROUP);
 
-	if (debug_flag > 3) {
+	if (rad_debug_lvl > 3) {
 		modcall_debug(ret, 2);
 	}
 

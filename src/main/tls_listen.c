@@ -54,7 +54,7 @@ static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 {
 	size_t i;
 
-	if (debug_flag < 3) return;
+	if (rad_debug_lvl < 3) return;
 
 	printf("%s %d\n", msg, (int) data_len);
 	if (data_len > 256) data_len = 256;
@@ -301,7 +301,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Copied from src/lib/radius.c, rad_recv();
 	 */
-	if (fr_debug_flag) {
+	if (fr_debug_lvl) {
 		char host_ipaddr[128];
 
 		if (is_radius_code(packet->code)) {

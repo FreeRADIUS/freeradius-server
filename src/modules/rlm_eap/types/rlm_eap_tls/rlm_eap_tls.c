@@ -202,7 +202,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 	case FR_TLS_OK:
 		RDEBUG2("Received unexpected tunneled data after successful handshake");
 #ifndef NDEBUG
-		if ((debug_flag > 2) && fr_log_fp) {
+		if ((rad_debug_lvl > 2) && fr_log_fp) {
 			unsigned int i;
 			unsigned int data_len;
 			unsigned char buffer[1024];

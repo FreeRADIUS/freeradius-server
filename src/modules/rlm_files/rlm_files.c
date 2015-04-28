@@ -135,7 +135,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 	 *	Walk through the 'users' file list, if we're debugging,
 	 *	or if we're in compat_mode.
 	 */
-	if ((debug_flag) ||
+	if ((rad_debug_lvl) ||
 	    (strcmp(compat_mode_str, "cistron") == 0)) {
 		VALUE_PAIR *vp;
 		bool compat_mode = false;

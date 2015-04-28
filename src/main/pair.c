@@ -665,7 +665,7 @@ VALUE_PAIR *radius_paircreate(TALLOC_CTX *ctx, VALUE_PAIR **vps,
  */
 void debug_pair(VALUE_PAIR *vp)
 {
-	if (!vp || !debug_flag || !fr_log_fp) return;
+	if (!vp || !rad_debug_lvl || !fr_log_fp) return;
 
 	vp_print(fr_log_fp, vp);
 }

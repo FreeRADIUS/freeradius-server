@@ -146,7 +146,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		 *	If they're running in debug mode, show them
 		 *	every packet.
 		 */
-		if (debug_flag == 0) {
+		if (rad_debug_lvl == 0) {
 			static time_t last_printed = 0;
 
 			now = time(NULL);
@@ -2746,7 +2746,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	 */
 	this->print(this, buffer, sizeof(buffer));
 
-	if (debug_flag >= 2) {
+	if (rad_debug_lvl >= 2) {
 		DEBUG("Opening new proxy socket '%s'", buffer);
 	}
 
