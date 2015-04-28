@@ -80,7 +80,7 @@ static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *
 	struct passwd	*pwd;
 	struct group	*grp;
 	char		**member;
-	int		retval;
+	int		retval = -1;
 
 	/*
 	 *	No user name, can't compare.
@@ -91,16 +91,26 @@ static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *
 		RERROR("%s", fr_strerror());
 		return -1;
 	}
+
 	if (rad_getgrnam(request, &grp, check->vp_strvalue) < 0) {
 		RERROR("%s", fr_strerror());
 		talloc_free(pwd);
 		return -1;
 	}
 
-	retval = (pwd->pw_gid == grp->gr_gid) ? 0 : -1;
-	if (retval < 0) {
+	/*
+	 *	The users default group isn't the one we're looking for,
+	 *	look through the list of group members.
+	 */
+	if (pwd->pw_gid == grp->gr_gid) {
+		retval = 0;
+
+	} else {
 		for (member = grp->gr_mem; *member && retval; member++) {
-			if (strcmp(*member, pwd->pw_name) == 0) retval = 0;
+			if (strcmp(*member, pwd->pw_name) == 0) {
+				retval = 0;
+				break;
+			}
 		}
 	}
 
@@ -137,9 +147,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		ERROR("rlm_unix (%s): 'User-Name' attribute not found in dictionary", inst->name);
 		return -1;
 	}
+
 	/* FIXME - delay these until a group file has been read so we know
 	 * groupcmp can actually do something */
 	paircompare_register(group_da, user_name_da, false, groupcmp, inst);
+
 #ifdef PW_GROUP_NAME /* compat */
 	{
 		DICT_ATTR const *group_name_da;
@@ -152,6 +164,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		paircompare_register(group_name_da, user_name_da, true, groupcmp, inst);
 	}
 #endif
+
+	if (paircompare_register_byname("Unix-Group", user_name_da, false, groupcmp, inst) < 0) {
+		ERROR("rlm_unix (%s): Failed registering Unix-Group: %s", inst->name,
+		      fr_strerror());
+		return -1;
+	}
 
 	return 0;
 }
