@@ -1659,9 +1659,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	xlat_register(inst->xlat_name, expr_xlat, NULL, inst);
 
-	/*
-	 *	FIXME: unregister these, too
-	 */
 	xlat_register("rand", rand_xlat, NULL, inst);
 	xlat_register("randstr", randstr_xlat, NULL, inst);
 	xlat_register("urlquote", urlquote_xlat, NULL, inst);
