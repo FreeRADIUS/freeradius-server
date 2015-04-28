@@ -772,7 +772,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 
 finish:
 	talloc_free(head);
-	pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
+	pairdelete(&request->packet->vps, inst->group_da->attr, 0, TAG_ANY);
 
 	return rcode;
 }
@@ -978,8 +978,30 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->pool) return -1;
 
 	if (inst->config->groupmemb_query) {
-		paircompare_register(dict_attrbyvalue(PW_SQL_GROUP, 0),
-				     dict_attrbyvalue(PW_USER_NAME, 0), false, sql_groupcmp, inst);
+		if (!cf_section_name2(conf)) {
+			char buffer[256];
+
+			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", inst->name);
+
+			if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0), false, sql_groupcmp, inst) < 0) {
+				ERROR("Error registering group comparison: %s", fr_strerror());
+				return -1;
+			}
+
+			inst->group_da = dict_attrbyname(buffer);
+
+			/*
+			 *	We're the default instance
+			 */
+		} else {
+			if (paircompare_register_byname("SQL-Group", dict_attrbyvalue(PW_USER_NAME, 0),
+							false, sql_groupcmp, inst) < 0) {
+				ERROR("Error registering group comparison: %s", fr_strerror());
+				return -1;
+			}
+
+			inst->group_da = dict_attrbyname("SQL-Group");
+		}
 	}
 
 	if (inst->config->do_clients) {
