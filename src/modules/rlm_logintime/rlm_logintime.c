@@ -238,13 +238,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-static int mod_detach(UNUSED void *instance)
-{
-	paircompare_unregister(dict_attrbyvalue(PW_CURRENT_TIME, 0), timecmp);
-	paircompare_unregister(dict_attrbyvalue(PW_TIME_OF_DAY, 0), time_of_day);
-	return 0;
-}
-
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -262,7 +255,7 @@ module_t rlm_logintime = {
 	sizeof(rlm_logintime_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
-	mod_detach,		/* detach */
+	NULL,		/* detach */
 	{
 		NULL,			/* authentication */
 		mod_authorize, 	/* authorization */
