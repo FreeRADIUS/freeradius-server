@@ -326,6 +326,40 @@ static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
 
 /** Register a function as compare function.
  *
+ * @param name the attribute comparison to register
+ * @param from the attribute we want to compare with. Normally this is the same as attribute.
+ *  If null call the comparison function on every attributes in the request if first_only is false
+ * @param first_only will decide if we loop over the request attributes or stop on the first one
+ * @param func comparison function
+ * @param instance argument to comparison function
+ * @return 0
+ */
+int paircompare_register_byname(char const *name, DICT_ATTR const *from,
+				bool first_only, RAD_COMPARE_FUNC func, void *instance)
+{
+	ATTR_FLAGS flags;
+	DICT_ATTR const *da;
+
+	memset(&flags, 0, sizeof(flags));
+
+	if (dict_addattr(name, -1, 0, from->type, flags) < 0) {
+		fr_strerror_printf("Failed creating attribute '%s'", name);
+		return -1;
+	}
+
+	da = dict_attrbyname(name);
+	if (!da) {
+		fr_strerror_printf("Failed finding attribute '%s'", name);
+		return -1;
+	}
+
+	DEBUG("Creating attribute %s", name);
+
+	return paircompare_register(da, from, first_only, func, instance);
+}
+
+/** Register a function as compare function.
+ *
  * @param attribute to register comparison function for.
  * @param from the attribute we want to compare with. Normally this is the same as attribute.
  *  If null call the comparison function on every attributes in the request if first_only is false
