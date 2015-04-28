@@ -11,6 +11,9 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* You cannot assign values to LDAP-Group or SQL-Group
 	* Only the "sql" module registers SQL-Group.  Other modules
 	  register "instance-name-SQL-Group", similarly to "ldap".
+	* Unknown attributes are now complained about more often
+	  when used in unlang statements.  e.g. if (Foo-Bar == 3)
+	  used to not cause parse errors.  Now it does.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
