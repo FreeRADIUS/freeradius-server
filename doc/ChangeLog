@@ -4,6 +4,13 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  update documentation for them.
 	* Move connection pool logic to "most recently started",
 	  instead of MRU.  This should help with pool stability.
+	* More VSAs for 3GPP2
+	* Added examples of multi-value attributes to rlm_perl.
+	* LDAP-Group and SQL-Group attributes are now dynamically
+	  allocated.
+	* You cannot assign values to LDAP-Group or SQL-Group
+	* Only the "sql" module registers SQL-Group.  Other modules
+	  register "instance-name-SQL-Group", similarly to "ldap".
 
 	Bug fixes
 	* Be more careful about unused config item warnings
@@ -12,6 +19,9 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* Allow virtual servers in proxy fallback.
 	* Allow %{module:} to work.
 	* Don't crash in RadSec.  Closes #980.
+	* Return better errors when a unix group / user
+	  is not found.
+	* Re-enable detail module "locking" parameter.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
