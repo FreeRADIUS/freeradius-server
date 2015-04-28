@@ -1137,8 +1137,60 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 						}
 						c->data.map->lhs->tmpl_da = da;
 					}
+				} /* attr to literal comparison */
+
+				/*
+				 *	If the LHS is a bare word, AND it looks like
+				 *	an attribute, try to parse it as such.
+				 *
+				 *	This allows LDAP-Group and SQL-Group to work.
+				 *
+				 *	The real fix is to just read the config files,
+				 *	and do no parsing until after all of the modules
+				 *	are loaded.  But that has issues, too.
+				 */
+				if ((c->data.map->lhs->type == TMPL_TYPE_LITERAL) &&
+				    (lhs_type == T_BARE_WORD) &&
+				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL)) {
+					int hyphens = 0;
+					bool may_be_attr = true;
+					size_t i;
+					vp_tmpl_t *vpt;
+					ssize_t attr_slen;
+
+					/*
+					 *	Backwards compatibility: Allow Foo-Bar,
+					 *	e.g. LDAP-Group and SQL-Group.
+					 */
+					for (i = 0; i < c->data.map->lhs->len; i++) {
+						if (!dict_attr_allowed_chars[(unsigned char) c->data.map->lhs->name[i]]) {
+							may_be_attr = false;
+							break;
+						}
+
+						if (c->data.map->lhs->name[i] == '-') {
+							hyphens++;
+							if (hyphens > 1) {
+								may_be_attr = false;
+								break;
+							}
+						}
+					}
+
+					if (hyphens != 1) may_be_attr = false;
+
+					if (may_be_attr) {
+						attr_slen = tmpl_afrom_attr_str(c->data.map, &vpt, lhs,
+										REQUEST_CURRENT, PAIR_LIST_REQUEST,
+										true, true);
+						if ((attr_slen > 0) && (vpt->len == c->data.map->lhs->len)) {
+							talloc_free(c->data.map->lhs);
+							c->data.map->lhs = vpt;
+							c->pass2_fixup = PASS2_FIXUP_ATTR;
+						}
+					}
 				}
-			}
+			} /* we didn't have a cast */
 
 		keep_going:
 			p += slen;
