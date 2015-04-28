@@ -36,7 +36,7 @@ extern "C" {
  */
 typedef struct exfile_t exfile_t;
 
-exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle);
+exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle, bool locking);
 int exfile_open(exfile_t *lf, char const *filename, mode_t permissions, bool append);
 int exfile_close(exfile_t *lf, int fd);
 int exfile_unlock(exfile_t *lf, int fd);
