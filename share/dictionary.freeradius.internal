@@ -102,12 +102,12 @@ ATTRIBUTE	Digest-CNonce				1070	string internal
 ATTRIBUTE	Digest-Nonce-Count			1071	string internal
 ATTRIBUTE	Digest-User-Name			1072	string internal
 ATTRIBUTE	Pool-Name				1073	string internal
-ATTRIBUTE	Ldap-Group				1074	string internal
+# LDAP-Group is now dynamically created
 ATTRIBUTE	Module-Success-Message			1075	string internal
 ATTRIBUTE	Module-Failure-Message			1076	string internal
 #		X99-Fast		1077	integer internal
 ATTRIBUTE	Rewrite-Rule				1078	string internal
-ATTRIBUTE	Sql-Group				1079	string internal
+# SQL-Group is now dynamically created
 ATTRIBUTE	Response-Packet-Type			1080	integer internal,virtual
 ATTRIBUTE	Digest-HA1				1081	string internal
 ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1082	integer internal
@@ -133,6 +133,7 @@ ATTRIBUTE	Virtual-Server				1099	string internal,virtual
 ATTRIBUTE	Cleartext-Password			1100	string internal
 ATTRIBUTE	Password-With-Header			1101	string internal
 ATTRIBUTE	Inner-Tunnel-User-Name			1102	string internal
+
 #
 #	EAP-IKEv2 is experimental.
 #
