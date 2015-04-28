@@ -341,6 +341,7 @@ int paircompare_register_byname(char const *name, DICT_ATTR const *from,
 	DICT_ATTR const *da;
 
 	memset(&flags, 0, sizeof(flags));
+	flags.compare = 1;
 
 	if (dict_addattr(name, -1, 0, from->type, flags) < 0) {
 		fr_strerror_printf("Failed creating attribute '%s'", name);

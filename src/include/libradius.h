@@ -188,6 +188,8 @@ typedef struct attr_flags {
 
 	unsigned int	virtual : 1;				//!< for dynamic expansion
 
+	unsigned int	compare : 1;				//!< has a paircompare registered
+
 	uint8_t		encrypt;      				//!< Ecryption method.
 	uint8_t		length;
 } ATTR_FLAGS;
