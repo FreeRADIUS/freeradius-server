@@ -46,6 +46,7 @@ struct exfile_t {
 	pthread_mutex_t mutex;
 #endif
 	exfile_entry_t *entries;
+	bool		locking;
 };
 
 
@@ -93,7 +94,7 @@ static int _exfile_free(exfile_t *ef)
  * @param max_idle Maximum time a file descriptor can be idle before it's closed.
  * @return the new context, or NULL on error.
  */
-exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle)
+exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, bool locking)
 {
 	exfile_t *ef;
 
@@ -115,6 +116,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle)
 
 	ef->max_entries = max_entries;
 	ef->max_idle = max_idle;
+	ef->locking = locking;
 
 	talloc_set_destructor(ef, _exfile_free);
 
@@ -272,26 +274,28 @@ do_return:
 	 *	locked it.  So, we close the current file, re-open it,
 	 *	and try again/
 	 */
-	for (tries = 0; tries < MAX_TRY_LOCK; tries++) {
-		if (rad_lockfd_nonblock(ef->entries[i].fd, 0) >= 0) break;
+	if (ef->locking) {
+		for (tries = 0; tries < MAX_TRY_LOCK; tries++) {
+			if (rad_lockfd_nonblock(ef->entries[i].fd, 0) >= 0) break;
 
-		if (errno != EAGAIN) {
-			fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
-			goto error;
+			if (errno != EAGAIN) {
+				fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
+				goto error;
+			}
+
+			close(ef->entries[i].fd);
+			ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
+			if (ef->entries[i].fd < 0) {
+				fr_strerror_printf("Failed to open file %s: %s",
+						   filename, strerror(errno));
+				goto error;
+			}
 		}
 
-		close(ef->entries[i].fd);
-		ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
-		if (ef->entries[i].fd < 0) {
-			fr_strerror_printf("Failed to open file %s: %s",
-					   filename, strerror(errno));
+		if (tries >= MAX_TRY_LOCK) {
+			fr_strerror_printf("Failed to lock file %s: too many tries", filename);
 			goto error;
 		}
-	}
-
-	if (tries >= MAX_TRY_LOCK) {
-		fr_strerror_printf("Failed to lock file %s: too many tries", filename);
-		goto error;
 	}
 
 	/*
@@ -353,7 +357,7 @@ int exfile_close(exfile_t *ef, int fd)
 		 *	Unlock the bytes that we had previously locked.
 		 */
 		if (ef->entries[i].dup == fd) {
-			(void) rad_unlockfd(ef->entries[i].dup, 0);
+			if (ef->locking) (void) rad_unlockfd(ef->entries[i].dup, 0);
 			close(ef->entries[i].dup); /* releases the fcntl lock */
 			ef->entries[i].dup = -1;
 
