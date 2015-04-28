@@ -197,7 +197,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		   (mip_rk_1[2] << 8) | mip_rk_1[3]);
 	if (mip_spi < 256) mip_spi += 256;
 
-	if (debug_flag) {
+	if (rad_debug_lvl) {
 		int len = rk_len;
 		char buffer[512];
 

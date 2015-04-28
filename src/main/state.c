@@ -265,7 +265,7 @@ static state_entry_t *fr_state_create(RADIUS_PACKET *packet, state_entry_t *old)
 	 *	one we created above.
 	 */
 	if (vp) {
-		if (debug_flag && (vp->vp_length > sizeof(entry->state))) {
+		if (rad_debug_lvl && (vp->vp_length > sizeof(entry->state))) {
 			WARN("State should be %zd octets!",
 			     sizeof(entry->state));
 		}

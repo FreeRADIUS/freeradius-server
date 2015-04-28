@@ -154,7 +154,7 @@ static int digest_fix(REQUEST *request)
 			memcpy(q, p + 2, attrlen - 2);
 			q[attrlen - 2] = '\0';
 
-			if ((debug_flag > 1) && fr_log_fp) {
+			if ((rad_debug_lvl > 1) && fr_log_fp) {
 				vp_print(fr_log_fp, sub);
 			}
 
@@ -455,7 +455,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	fr_bin2hex((char *) kd, hash, sizeof(hash));
 
 #ifndef NRDEBUG
-	if (debug_flag > 1) {
+	if (rad_debug_lvl > 1) {
 		fr_printf_log("H(A1) = ");
 		for (i = 0; i < 16; i++) {
 			fr_printf_log("%02x", hash[i]);
@@ -524,7 +524,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	fr_bin2hex((char *) kd + kd_len, hash, sizeof(hash));
 
 #ifndef NRDEBUG
-	if (debug_flag > 1) {
+	if (rad_debug_lvl > 1) {
 		fr_printf_log("H(A2) = ");
 		for (i = 0; i < 16; i++) {
 			fr_printf_log("%02x", hash[i]);
@@ -559,7 +559,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 	}
 
 #ifndef NRDEBUG
-	if (debug_flag > 1) {
+	if (rad_debug_lvl > 1) {
 		fr_printf_log("EXPECTED ");
 		for (i = 0; i < 16; i++) {
 			fr_printf_log("%02x", kd[i]);

@@ -637,7 +637,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->username = NULL;
 	request->password = NULL;
 	request->timestamp = time(NULL);
-	request->log.lvl = debug_flag; /* Default to global debug level */
+	request->log.lvl = rad_debug_lvl; /* Default to global debug level */
 
 	request->module = "";
 	request->component = "<core>";

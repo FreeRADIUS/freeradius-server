@@ -197,7 +197,7 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 *	Warn if more than one Auth-Type was found, because only the last
 	 *	one found will actually be used.
 	 */
-	if ((auth_type_count > 1) && (debug_flag)) {
+	if ((auth_type_count > 1) && (rad_debug_lvl)) {
 		RERROR("Warning:  Found %d auth-types on request for user '%s'",
 			auth_type_count, request->username->vp_strvalue);
 	}
@@ -545,7 +545,7 @@ authenticate:
 		if (request->password) {
 			VERIFY_VP(request->password);
 			/* double check: maybe the secret is wrong? */
-			if ((debug_flag > 1) && (request->password->da->attr == PW_USER_PASSWORD)) {
+			if ((rad_debug_lvl > 1) && (request->password->da->attr == PW_USER_PASSWORD)) {
 				uint8_t const *p;
 
 				p = (uint8_t const *) request->password->vp_strvalue;

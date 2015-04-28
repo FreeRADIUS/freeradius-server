@@ -433,7 +433,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	Don't do chroot/setuid/setgid if we're in debugging
 	 *	as non-root.
 	 */
-	if (debug_flag && (getuid() != 0)) return 1;
+	if (rad_debug_lvl && (getuid() != 0)) return 1;
 
 	if (cf_section_parse(cs, NULL, bootstrap_config) < 0) {
 		fprintf(stderr, "radiusd: Error: Failed to parse user/group information.\n");
@@ -835,10 +835,10 @@ do {\
 	 *	command-line: use whatever is in the config
 	 *	file.
 	 */
-	if (debug_flag == 0) {
-		debug_flag = main_config.debug_level;
+	if (rad_debug_lvl == 0) {
+		rad_debug_lvl = main_config.debug_level;
 	}
-	fr_debug_flag = debug_flag;
+	fr_debug_lvl = rad_debug_lvl;
 
 	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time,
 			      (main_config.max_request_time != 0), 100);

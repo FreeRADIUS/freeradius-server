@@ -583,7 +583,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 #ifndef NDEBUG
 		size_t i;
 
-		if ((debug_flag > 2) && fr_log_fp) {
+		if ((rad_debug_lvl > 2) && fr_log_fp) {
 			for (i = 0; i < total; i++) {
 				if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  TTLS tunnel data out %04x: ", (int) i);
 
@@ -842,7 +842,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 		fake->reply = talloc_steal(fake, request->proxy_reply);
 		request->proxy_reply = NULL;
 
-		if ((debug_flag > 0) && fr_log_fp) {
+		if ((rad_debug_lvl > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "server %s {\n",
 				(!fake->server) ? "" : fake->server);
 		}
@@ -855,7 +855,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 		rcode = rad_postauth(fake);
 		RDEBUG2("post-auth returns %d", rcode);
 
-		if ((debug_flag > 0) && fr_log_fp) {
+		if ((rad_debug_lvl > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "} # server %s\n",
 				(!fake->server) ? "" : fake->server);
 
@@ -975,7 +975,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	}
 
 #ifndef NDEBUG
-	if ((debug_flag > 2) && fr_log_fp) {
+	if ((rad_debug_lvl > 2) && fr_log_fp) {
 		size_t i;
 
 		for (i = 0; i < data_len; i++) {
@@ -1170,7 +1170,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	} /* else fake->server == request->server */
 
 
-	if ((debug_flag > 0) && fr_log_fp) {
+	if ((rad_debug_lvl > 0) && fr_log_fp) {
 		RDEBUG("Sending tunneled request");
 	}
 

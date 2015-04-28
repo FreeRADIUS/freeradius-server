@@ -476,11 +476,11 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 		/*
 		 *	Print out verbose HEX output
 		 */
-		if (conf->print_packet && (fr_debug_flag > 3)) {
+		if (conf->print_packet && (fr_debug_lvl > 3)) {
 			rad_print_hex(packet);
 		}
 
-		if (conf->print_packet && (fr_debug_flag > 1)) {
+		if (conf->print_packet && (fr_debug_lvl > 1)) {
 			char vector[(AUTH_VECTOR_LEN * 2) + 1];
 
 			if (packet->vps) {
@@ -702,7 +702,7 @@ static void rs_stats_process(void *ctx)
 	for (i = 0; i < rs_codes_len; i++) {
 		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]]);
 		rs_stats_process_counters(&stats->exchange[rs_useful_codes[i]]);
-		if (fr_debug_flag > 0) {
+		if (fr_debug_lvl > 0) {
 			rs_stats_print(&stats->exchange[rs_useful_codes[i]], rs_useful_codes[i]);
 		}
 	}
@@ -1939,7 +1939,7 @@ int main(int argc, char *argv[])
 
 	rs_stats_t stats;
 
-	fr_debug_flag = 1;
+	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
 
 	/*
@@ -2089,8 +2089,8 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'q':
-			if (fr_debug_flag > 0) {
-				fr_debug_flag--;
+			if (fr_debug_lvl > 0) {
+				fr_debug_lvl--;
 			}
 			break;
 
@@ -2130,7 +2130,7 @@ int main(int argc, char *argv[])
 
 		case 'x':
 		case 'X':
-			fr_debug_flag++;
+			fr_debug_lvl++;
 			break;
 
 		case 'W':
@@ -2242,7 +2242,7 @@ int main(int argc, char *argv[])
 
 	if (conf->list_attributes) {
 		conf->logger = rs_packet_print_csv;
-	} else if (fr_debug_flag > 0) {
+	} else if (fr_debug_lvl > 0) {
 		conf->logger = rs_packet_print_fancy;
 	}
 
@@ -2408,7 +2408,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Print captures values which will be used
 	 */
-	if (fr_debug_flag > 2) {
+	if (fr_debug_lvl > 2) {
 		DEBUG2("Sniffing with options:");
 		if (conf->from_dev)	{
 			char *buff = fr_pcap_device_names(conf, in, ' ');

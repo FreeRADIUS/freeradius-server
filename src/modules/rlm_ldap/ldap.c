@@ -1252,7 +1252,7 @@ void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request)
 	*	Expect_password is set when we process the mapping, and is only true if there was a mapping between
 	*	an LDAP attribute and a password reference attribute in the control list.
 	*/
-	if (inst->expect_password && (debug_flag > 1)) {
+	if (inst->expect_password && (rad_debug_lvl > 1)) {
 		if (!pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) &&
 		    !pairfind(request->config, PW_NT_PASSWORD, 0, TAG_ANY) &&
 		    !pairfind(request->config, PW_USER_PASSWORD, 0, TAG_ANY) &&

@@ -703,7 +703,7 @@ void tls_session_information(tls_session_t *tls_session)
 	 *	Don't print this out in the normal course of
 	 *	operations.
 	 */
-	if (debug_flag == 0) {
+	if (rad_debug_lvl == 0) {
 		return;
 	}
 
@@ -1448,7 +1448,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	cbio = BIO_new_connect(host);
 
 	bio_out = NULL;
-	if (debug_flag) {
+	if (rad_debug_lvl) {
 		if (default_log.dst == L_DST_STDOUT) {
 			bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
 		} else if (default_log.dst == L_DST_STDERR) {
@@ -2054,7 +2054,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	} /* depth == 0 */
 
-	if (debug_flag > 0) {
+	if (rad_debug_lvl > 0) {
 		RDEBUG2("chain-depth=%d, ", depth);
 		RDEBUG2("error=%d", err);
 
