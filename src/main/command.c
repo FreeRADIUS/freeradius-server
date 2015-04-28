@@ -1196,7 +1196,7 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 		return -1;
 	}
 
-	fr_debug_flag = debug_flag = number;
+	fr_debug_lvl = rad_debug_lvl = number;
 
 	return CMD_OK;
 }
@@ -1205,7 +1205,7 @@ static char debug_log_file_buffer[1024];
 
 static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 {
-	if (debug_flag && default_log.dst == L_DST_STDOUT) {
+	if (rad_debug_lvl && default_log.dst == L_DST_STDOUT) {
 		cprintf_error(listener, "Cannot redirect debug logs to a file when already in debugging mode.\n");
 		return -1;
 	}
@@ -1371,7 +1371,7 @@ static int command_show_debug_file(rad_listen_t *listener,
 static int command_show_debug_level(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
-	cprintf(listener, "%d\n", debug_flag);
+	cprintf(listener, "%d\n", rad_debug_lvl);
 	return CMD_OK;
 }
 
@@ -1612,7 +1612,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 
 		fprintf(fp, "%s\n", what);
 
-		if (debug_flag) {
+		if (rad_debug_lvl) {
 			RDEBUG("Injected %s packet to host %s port 0 code=%d, id=%d", what,
 			       inet_ntop(request->reply->src_ipaddr.af,
 					 &request->reply->src_ipaddr.ipaddr,
@@ -1816,7 +1816,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 #endif
 	}
 
-	if (debug_flag) {
+	if (rad_debug_lvl) {
 		DEBUG("Injecting %s packet from host %s port 0 code=%d, id=%d",
 				fr_packet_codes[packet->code],
 				inet_ntop(packet->src_ipaddr.af,

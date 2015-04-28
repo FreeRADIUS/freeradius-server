@@ -1162,7 +1162,7 @@ static void thread_pool_manage(time_t now)
 	 */
 	active_threads = thread_pool.active_threads;
 	spare = thread_pool.total_threads - active_threads;
-	if (debug_flag) {
+	if (rad_debug_lvl) {
 		static uint32_t old_total = 0;
 		static uint32_t old_active = 0;
 

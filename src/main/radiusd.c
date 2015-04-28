@@ -59,7 +59,7 @@ char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 char const *radlib_dir = NULL;
 bool log_stripped_names;
-log_lvl_t debug_flag = 0;
+log_lvl_t rad_debug_lvl = 0;
 bool check_config = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	debug_flag = 0;
+	rad_debug_lvl = 0;
 	set_radius_dir(autofree, RADIUS_DIR);
 
 	/*
@@ -242,7 +242,7 @@ int main(int argc, char *argv[])
 			case 'X':
 				spawn_flag = false;
 				main_config.daemonize = false;
-				debug_flag += 2;
+				rad_debug_lvl += 2;
 				main_config.log_auth = true;
 				main_config.log_auth_badpass = true;
 				main_config.log_auth_goodpass = true;
@@ -253,7 +253,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'x':
-				debug_flag++;
+				rad_debug_lvl++;
 				break;
 
 			default:
@@ -306,7 +306,7 @@ int main(int argc, char *argv[])
 	 */
 	if (display_version) {
 		/* Don't print timestamps */
-		debug_flag += 2;
+		rad_debug_lvl += 2;
 		fr_log_fp = stdout;
 		default_log.dst = L_DST_STDOUT;
 		default_log.fd = STDOUT_FILENO;
@@ -316,7 +316,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_SUCCESS);
 	}
 
-	if (debug_flag) version_print();
+	if (rad_debug_lvl) version_print();
 
 	/*
 	 *  Under linux CAP_SYS_PTRACE is usually only available before setuid/setguid,
@@ -497,7 +497,7 @@ int main(int argc, char *argv[])
 	 *  immediately.  Use SIGTERM to shut down the server cleanly in
 	 *  that case.
 	 */
-	if (main_config.debug_memory || (debug_flag == 0)) {
+	if (main_config.debug_memory || (rad_debug_lvl == 0)) {
 		if ((fr_set_signal(SIGINT, sig_fatal) < 0)
 #ifdef SIGQUIT
 		|| (fr_set_signal(SIGQUIT, sig_fatal) < 0)

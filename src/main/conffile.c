@@ -1424,7 +1424,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		/*
 		 *	Hide secrets when using "radiusd -X".
 		 */
-		if (secret && (debug_flag <= 2)) {
+		if (secret && (rad_debug_lvl <= 2)) {
 			cf_log_info(cs, "%.*s\t%s = <<< secret >>>",
 				    cs->depth, parse_spaces, name);
 		} else {
@@ -1717,7 +1717,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	 *	Warn about items in the configuration which weren't
 	 *	checked during parsing.
 	 */
-	if (debug_flag >= 3) cf_section_parse_warn(cs);
+	if (rad_debug_lvl >= 3) cf_section_parse_warn(cs);
 
 	cf_log_info(cs, "%.*s}", cs->depth, parse_spaces);
 
@@ -3453,7 +3453,7 @@ void cf_log_info(CONF_SECTION const *cs, char const *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	if ((debug_flag > 1) && cs) vradlog(L_DBG, fmt, ap);
+	if ((rad_debug_lvl > 1) && cs) vradlog(L_DBG, fmt, ap);
 	va_end(ap);
 }
 
@@ -3466,7 +3466,7 @@ void cf_log_module(CONF_SECTION const *cs, char const *fmt, ...)
 	char buffer[256];
 
 	va_start(ap, fmt);
-	if (debug_flag > 1 && cs) {
+	if (rad_debug_lvl > 1 && cs) {
 		vsnprintf(buffer, sizeof(buffer), fmt, ap);
 
 		DEBUG("%.*s# %s", cs->depth, parse_spaces, buffer);
