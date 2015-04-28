@@ -244,6 +244,19 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 				      map->lhs->name, fr_strerror());
 			goto error;
 		}
+
+		/*
+		 *	Assigning to a dynamically defined comparison
+		 *	attribute won't do what the admin expects.  So
+		 *	disallow it.
+		 */
+		if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+		    map->lhs->tmpl_da->flags.compare) {
+			cf_log_err_cp(cp, "Cannot assign to comparison attribute %s",
+				      map->lhs->name);
+			goto error;
+		}
+
 		break;
 	}
 
