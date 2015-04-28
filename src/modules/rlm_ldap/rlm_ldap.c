@@ -1011,31 +1011,28 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Group comparison checks.
 	 */
 	if (cf_section_name2(conf)) {
-		ATTR_FLAGS flags;
 		char buffer[256];
 
-		memset(&flags, 0, sizeof(flags));
 		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", inst->name);
-		if (dict_addattr(buffer, -1, 0, PW_TYPE_STRING, flags) < 0) {
-			LDAP_ERR("Error creating group attribute: %s", fr_strerror());
 
-			return -1;
-		}
-		inst->group_da = dict_attrbyname(buffer);
-		if (!inst->group_da) {
-			LDAP_ERR("Failed creating attribute %s", buffer);
-
+		if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0), false, rlm_ldap_groupcmp, inst) < 0) {
+			LDAP_ERR("Error registering group comparison: %s", fr_strerror());
 			goto error;
 		}
 
-		paircompare_register(inst->group_da, dict_attrbyvalue(PW_USER_NAME, 0), false, rlm_ldap_groupcmp, inst);
-	/*
-	 *	Were the default instance
-	 */
+		inst->group_da = dict_attrbyname(buffer);
+
+		/*
+		 *	We're the default instance
+		 */
 	} else {
-		inst->group_da = dict_attrbyvalue(PW_LDAP_GROUP, 0);
-		paircompare_register(dict_attrbyvalue(PW_LDAP_GROUP, 0), dict_attrbyvalue(PW_USER_NAME, 0),
-				false, rlm_ldap_groupcmp, inst);
+		if (paircompare_register_byname("LDAP-Group", dict_attrbyvalue(PW_USER_NAME, 0),
+						false, rlm_ldap_groupcmp, inst) < 0) {
+			LDAP_ERR("Error registering group comparison: %s", fr_strerror());
+			goto error;
+		}
+
+		inst->group_da = dict_attrbyname("LDAP-Group");
 	}
 
 	xlat_register(inst->name, ldap_xlat, rlm_ldap_escape_func, inst);

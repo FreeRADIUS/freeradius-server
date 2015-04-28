@@ -211,6 +211,7 @@ struct sql_inst {
 	sql_rcode_t (*sql_fetch_row)(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
 
 	char const		*name;			//!< Module instance name.
+	DICT_ATTR const		*group_da;
 };
 
 typedef struct sql_grouplist {
