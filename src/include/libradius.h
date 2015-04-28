@@ -136,10 +136,10 @@ typedef void (*sig_t)(int);
 #  define VENDORPEC_USR		429
 #  define VENDORPEC_LUCENT	4846
 #  define VENDORPEC_STARENT	8164
-#  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
+#  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 #endif
 
-#  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
+#  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \
 					vp_print(fr_log_fp, vp); \
 				     } \
 				} while(0)
@@ -681,7 +681,7 @@ char const	*fr_strerror(void);
 char const	*fr_syserror(int num);
 extern bool	fr_dns_lookups;	/* do IP -> hostname lookups? */
 extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
-extern int	fr_debug_flag;	/* 0 = no debugging information */
+extern int	fr_debug_lvl;	/* 0 = no debugging information */
 extern uint32_t	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];

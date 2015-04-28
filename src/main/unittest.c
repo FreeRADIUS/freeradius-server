@@ -41,7 +41,7 @@ char const *progname = NULL;
 char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 char const *radlib_dir = NULL;
-log_lvl_t debug_flag = 0;
+log_lvl_t rad_debug_lvl = 0;
 bool check_config = false;
 bool log_stripped_names = false;
 
@@ -313,7 +313,7 @@ static REQUEST *request_setup(FILE *fp)
 		}
 	} /* loop over the VP's we read in */
 
-	if (debug_flag) {
+	if (rad_debug_lvl) {
 		for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
@@ -351,7 +351,7 @@ static REQUEST *request_setup(FILE *fp)
 	/*
 	 *	Debugging
 	 */
-	request->log.lvl = debug_flag;
+	request->log.lvl = rad_debug_lvl;
 	request->log.func = vradlog_request;
 
 	request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
@@ -523,7 +523,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 
 	request = request_alloc(NULL);
 
-	request->log.lvl = debug_flag;
+	request->log.lvl = rad_debug_lvl;
 	request->log.func = vradlog_request;
 
 	output[0] = '\0';
@@ -641,7 +641,7 @@ int main(int argc, char *argv[])
 	else
 		progname++;
 
-	debug_flag = 0;
+	rad_debug_lvl = 0;
 	set_radius_dir(NULL, RADIUS_DIR);
 
 	/*
@@ -715,14 +715,14 @@ int main(int argc, char *argv[])
 				exit(EXIT_FAILURE);
 
 			case 'X':
-				debug_flag += 2;
+				rad_debug_lvl += 2;
 				main_config.log_auth = true;
 				main_config.log_auth_badpass = true;
 				main_config.log_auth_goodpass = true;
 				break;
 
 			case 'x':
-				debug_flag++;
+				rad_debug_lvl++;
 				break;
 
 			default:
@@ -731,8 +731,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if (debug_flag) version_print();
-	fr_debug_flag = debug_flag;
+	if (rad_debug_lvl) version_print();
+	fr_debug_lvl = rad_debug_lvl;
 
 	/*
 	 *	Mismatch between the binary and the libraries it depends on

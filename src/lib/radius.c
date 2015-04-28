@@ -153,7 +153,7 @@ void fr_printf_log(char const *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	if ((fr_debug_flag == 0) || !fr_log_fp) {
+	if ((fr_debug_lvl == 0) || !fr_log_fp) {
 		va_end(ap);
 		return;
 	}
@@ -762,7 +762,7 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 		ptr[1] += len;
 
 #ifndef NDEBUG
-		if ((fr_debug_flag > 3) && fr_log_fp) {
+		if ((fr_debug_lvl > 3) && fr_log_fp) {
 			fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
 			print_hex_data(ptr + 2, len, 3);
 		}
@@ -776,7 +776,7 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 	}
 
 #ifndef NDEBUG
-	if ((fr_debug_flag > 3) && fr_log_fp) {
+	if ((fr_debug_lvl > 3) && fr_log_fp) {
 		DICT_ATTR const *da;
 
 		da = dict_attrbyvalue(svp->da->attr & ((1 << fr_attr_shift[nest ]) - 1), svp->da->vendor);
@@ -1134,7 +1134,7 @@ int rad_vp2extended(RADIUS_PACKET const *packet,
 	ptr[1] += len;
 
 #ifndef NDEBUG
-	if ((fr_debug_flag > 3) && fr_log_fp) {
+	if ((fr_debug_lvl > 3) && fr_log_fp) {
 		int jump = 3;
 
 		fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
@@ -1227,7 +1227,7 @@ int rad_vp2wimax(RADIUS_PACKET const *packet,
 	ptr[7] += len;
 
 #ifndef NDEBUG
-	if ((fr_debug_flag > 3) && fr_log_fp) {
+	if ((fr_debug_lvl > 3) && fr_log_fp) {
 		fprintf(fr_log_fp, "\t\t%02x %02x  %02x%02x%02x%02x (%u)  %02x %02x %02x   ",
 		       ptr[0], ptr[1],
 		       ptr[2], ptr[3], ptr[4], ptr[5],
@@ -1277,7 +1277,7 @@ static ssize_t vp2attr_concat(UNUSED RADIUS_PACKET const *packet,
 		memcpy(ptr + 2, p, left);
 
 #ifndef NDEBUG
-		if ((fr_debug_flag > 3) && fr_log_fp) {
+		if ((fr_debug_lvl > 3) && fr_log_fp) {
 			fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
 			print_hex_data(ptr + 2, len, 3);
 		}
@@ -1319,7 +1319,7 @@ static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
 	ptr[1] += len;
 
 #ifndef NDEBUG
-	if ((fr_debug_flag > 3) && fr_log_fp) {
+	if ((fr_debug_lvl > 3) && fr_log_fp) {
 		fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
 		print_hex_data(ptr + 2, len, 3);
 	}
@@ -1409,25 +1409,25 @@ static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
 	if (dv->length) ptr[dv->type + dv->length - 1] += len;
 
 #ifndef NDEBUG
-	if ((fr_debug_flag > 3) && fr_log_fp) {
+	if ((fr_debug_lvl > 3) && fr_log_fp) {
 		switch (dv->type) {
 		default:
 			break;
 
 		case 4:
-			if ((fr_debug_flag > 3) && fr_log_fp)
+			if ((fr_debug_lvl > 3) && fr_log_fp)
 				fprintf(fr_log_fp, "\t\t%02x%02x%02x%02x ",
 					ptr[0], ptr[1], ptr[2], ptr[3]);
 			break;
 
 		case 2:
-			if ((fr_debug_flag > 3) && fr_log_fp)
+			if ((fr_debug_lvl > 3) && fr_log_fp)
 				fprintf(fr_log_fp, "\t\t%02x%02x ",
 					ptr[0], ptr[1]);
 		break;
 
 		case 1:
-			if ((fr_debug_flag > 3) && fr_log_fp)
+			if ((fr_debug_lvl > 3) && fr_log_fp)
 				fprintf(fr_log_fp, "\t\t%02x ", ptr[0]);
 			break;
 		}
@@ -1511,7 +1511,7 @@ int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 	if (len < 0) return len;
 
 #ifndef NDEBUG
-	if ((fr_debug_flag > 3) && fr_log_fp) {
+	if ((fr_debug_lvl > 3) && fr_log_fp) {
 		fprintf(fr_log_fp, "\t\t%02x %02x  %02x%02x%02x%02x (%u)  ",
 		       ptr[0], ptr[1],
 		       ptr[2], ptr[3], ptr[4], ptr[5],
@@ -1571,7 +1571,7 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 		ptr[1] = 18;
 		memset(ptr + 2, 0, 16);
 #ifndef NDEBUG
-		if ((fr_debug_flag > 3) && fr_log_fp) {
+		if ((fr_debug_lvl > 3) && fr_log_fp) {
 			fprintf(fr_log_fp, "\t\t50 12 ...\n");
 		}
 #endif
@@ -2012,7 +2012,7 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	}
 
 #ifndef NDEBUG
-	if ((fr_debug_flag > 3) && fr_log_fp) rad_print_hex(packet);
+	if ((fr_debug_lvl > 3) && fr_log_fp) rad_print_hex(packet);
 #endif
 
 #ifdef WITH_TCP
@@ -2638,7 +2638,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	packet->vps = NULL;
 
 #ifndef NDEBUG
-	if ((fr_debug_flag > 3) && fr_log_fp) rad_print_hex(packet);
+	if ((fr_debug_lvl > 3) && fr_log_fp) rad_print_hex(packet);
 #endif
 
 	return packet;

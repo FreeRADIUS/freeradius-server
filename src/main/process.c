@@ -71,7 +71,7 @@ static char const *action_codes[] = {
 
 #ifdef DEBUG_STATE_MACHINE
 #  define TRACE_STATE_MACHINE \
-if (debug_flag) do { \
+if (rad_debug_lvl) do { \
 	struct timeval debug_tv; \
 	gettimeofday(&debug_tv, NULL); \
 	debug_tv.tv_sec -= fr_start_time; \
@@ -659,7 +659,7 @@ static void request_done(REQUEST *request, int action)
 #endif
 
 #ifdef DEBUG_STATE_MACHINE
-		if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
+		if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
 				       request->number, __FUNCTION__,
 				       child_state_names[request->child_state],
 				       child_state_names[REQUEST_DONE]);
@@ -827,7 +827,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 	 */
 	if (timercmp(&when, &now, >)) {
 #ifdef DEBUG_STATE_MACHINE
-		if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
+		if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
 		request->process = request_cleanup_delay;
 		request->child_state = REQUEST_CLEANUP_DELAY;
@@ -939,7 +939,7 @@ static void request_queue_or_run(REQUEST *request,
 	 */
 	if (request->master_state == REQUEST_STOP_PROCESSING) {
 #ifdef DEBUG_STATE_MACHINE
-		if (debug_flag) printf("(%u) ********\tSTATE %s M-%s causes C-%s-> C-%s\t********\n",
+		if (rad_debug_lvl) printf("(%u) ********\tSTATE %s M-%s causes C-%s-> C-%s\t********\n",
 				       request->number, __FUNCTION__,
 				       master_state_names[request->master_state],
 				       child_state_names[request->child_state],
@@ -1077,7 +1077,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
 
 		if (timercmp(&when, &now, >)) {
 #ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
+			if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
 			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
@@ -1153,7 +1153,7 @@ static void request_response_delay(REQUEST *request, int action)
 
 		if (timercmp(&when, &now, >)) {
 #ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_response_delay");
+			if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_response_delay");
 #endif
 			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
@@ -1457,7 +1457,7 @@ static void request_running(REQUEST *request, int action)
 	case FR_ACTION_RUN:
 		if (!request_pre_handler(request, action)) {
 #ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tSTATE %s failed in pre-handler C-%s -> C-%s\t********\n",
+			if (rad_debug_lvl) printf("(%u) ********\tSTATE %s failed in pre-handler C-%s -> C-%s\t********\n",
 					       request->number, __FUNCTION__,
 					       child_state_names[request->child_state],
 					       child_state_names[REQUEST_DONE]);
@@ -1478,7 +1478,7 @@ static void request_running(REQUEST *request, int action)
 		if ((action == FR_ACTION_RUN) &&
 		    request_will_proxy(request)) {
 #ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tWill Proxy\t********\n", request->number);
+			if (rad_debug_lvl) printf("(%u) ********\tWill Proxy\t********\n", request->number);
 #endif
 			/*
 			 *	If this fails, it
@@ -1491,7 +1491,7 @@ static void request_running(REQUEST *request, int action)
 #endif
 		{
 #ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tFinished\t********\n", request->number);
+			if (rad_debug_lvl) printf("(%u) ********\tFinished\t********\n", request->number);
 #endif
 
 #ifdef WITH_COA
@@ -1762,7 +1762,7 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 	request->master_state = REQUEST_ACTIVE;
 	request->child_state = REQUEST_RUNNING;
 #ifdef DEBUG_STATE_MACHINE
-	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
+	if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n",
 			       request->number, __FUNCTION__,
 			       child_state_names[request->child_state],
 			       child_state_names[REQUEST_RUNNING]);
@@ -3089,7 +3089,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 
 	rad_assert(request->proxy->id >= 0);
 
-	if (debug_flag) {
+	if (rad_debug_lvl) {
 		struct timeval *response_window;
 
 		response_window = request_response_window(request);
@@ -3427,10 +3427,10 @@ static void ping_home_server(void *ctx)
 	request->proxy->dst_port = home->port;
 	request->home_server = home;
 #ifdef DEBUG_STATE_MACHINE
-	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
+	if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
 			       child_state_names[request->child_state],
 			       child_state_names[REQUEST_DONE]);
-	if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_ping");
+	if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_ping");
 #endif
 #ifdef HAVE_PTHREAD_H
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
@@ -4105,7 +4105,7 @@ static void request_coa_originate(REQUEST *request)
 	debug_packet(coa, coa->proxy, false);
 
 #ifdef DEBUG_STATE_MACHINE
-	if (debug_flag) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
+	if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
 			       child_state_names[request->child_state],
 			       child_state_names[REQUEST_PROXIED]);
 #endif
@@ -4496,7 +4496,7 @@ static void event_status(struct timeval *wake)
 	int argval;
 #endif
 
-	if (debug_flag == 0) {
+	if (rad_debug_lvl == 0) {
 		if (just_started) {
 			INFO("Ready to process requests");
 			just_started = false;

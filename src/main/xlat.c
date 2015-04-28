@@ -1757,7 +1757,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 		return slen;
 	}
 
-	if (*head && (debug_flag > 2)) {
+	if (*head && (rad_debug_lvl > 2)) {
 		DEBUG("%s", fmt);
 		DEBUG("Parsed xlat tree:");
 		xlat_tokenize_debug(*head, 0);

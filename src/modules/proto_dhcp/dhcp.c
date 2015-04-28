@@ -55,8 +55,8 @@ RCSID("$Id$")
 #endif
 
 /* @todo: this is a hack */
-#  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
-#  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
+#  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
+#  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \
 					vp_print(fr_log_fp, vp); \
 				     } \
 				} while(0)
@@ -73,7 +73,7 @@ static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 /* Discard raw packets which we are not interested in. Allow to trace why we discard. */
 #define DISCARD_RP(...) { \
-	if (fr_debug_flag > 2) { \
+	if (fr_debug_lvl > 2) { \
 		fprintf(stdout, "dhcpclient: discarding received packet: "); \
 		fprintf(stdout, ## __VA_ARGS__); \
 		fprintf(stdout, "\n"); \
@@ -386,7 +386,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	fr_sockaddr2ipaddr(&src, sizeof_src, &packet->src_ipaddr, &port);
 	packet->src_port = port;
 
-	if (fr_debug_flag > 1) {
+	if (fr_debug_lvl > 1) {
 		char type_buf[64];
 		char const *name = type_buf;
 		char src_ip_buf[256], dst_ip_buf[256];
@@ -438,7 +438,7 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 		return -1;
 	}
 
-	if (fr_debug_flag > 1) {
+	if (fr_debug_lvl > 1) {
 		char type_buf[64];
 		char const *name = type_buf;
 #ifdef WITH_UDPFROMTO
@@ -1054,7 +1054,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	fr_cursor_init(&cursor, &head);
 	p = packet->data;
 
-	if ((fr_debug_flag > 2) && fr_log_fp) {
+	if ((fr_debug_lvl > 2) && fr_log_fp) {
 		for (i = 0; i < packet->data_len; i++) {
 			if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "%d: ", (int) i);
 			fprintf(fr_log_fp, "%02x ", packet->data[i]);
@@ -1228,7 +1228,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		maxms->vp_integer = mtu->vp_integer;
 	}
 
-	if (fr_debug_flag) fflush(stdout);
+	if (fr_debug_lvl) fflush(stdout);
 
 	return 0;
 }
@@ -1708,7 +1708,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	/*
 	 *	Print the header.
 	 */
-	if (fr_debug_flag > 1) {
+	if (fr_debug_lvl > 1) {
 		uint8_t *pp = p;
 
 		p = packet->data;
@@ -1827,7 +1827,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		packet->data_len = DEFAULT_PACKET_SIZE;
 	}
 
-	if ((fr_debug_flag > 2) && fr_log_fp) {
+	if ((fr_debug_lvl > 2) && fr_log_fp) {
 		fprintf(fr_log_fp, "DHCP Sending %zu bytes\n", packet->data_len);
 		for (i = 0; i < packet->data_len; i++) {
 			if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "%d: ", (int) i);
@@ -1993,7 +1993,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET 
 	uh->checksum = fr_udp_checksum((uint8_t const *)(dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE), ntohs(uh->len), uh->checksum,
 					packet->src_ipaddr.ipaddr.ip4addr, packet->dst_ipaddr.ipaddr.ip4addr);
 
-	if (fr_debug_flag > 1) {
+	if (fr_debug_lvl > 1) {
 		char type_buf[64];
 		char const *name = type_buf;
 		char src_ip_buf[INET6_ADDRSTRLEN];
@@ -2197,7 +2197,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	packet->dst_ipaddr.af = AF_INET;
 	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = ip_hdr->ip_dst.s_addr;
 
-	if (fr_debug_flag > 1) {
+	if (fr_debug_lvl > 1) {
 		char type_buf[64];
 		char const *name = type_buf;
 		char src_ip_buf[256], dst_ip_buf[256];

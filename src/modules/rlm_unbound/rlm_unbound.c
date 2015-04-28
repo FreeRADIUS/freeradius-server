@@ -439,11 +439,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	/*	Glean some default settings to match the main server.	*/
 	/*	TODO: debug_level can be changed at runtime. */
-	/*	TODO: log until fork when stdout or stderr and !debug_flag. */
+	/*	TODO: log until fork when stdout or stderr and !rad_debug_lvl. */
 	log_level = 0;
 
-	if (debug_flag > 0) {
-		log_level = debug_flag;
+	if (rad_debug_lvl > 0) {
+		log_level = rad_debug_lvl;
 
 	} else if (main_config.debug_level > 0) {
 		log_level = main_config.debug_level;
@@ -481,7 +481,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	switch (default_log.dst) {
 	case L_DST_STDOUT:
-		if (!debug_flag) {
+		if (!rad_debug_lvl) {
 			log_dst = L_DST_NULL;
 			break;
 		}
@@ -490,7 +490,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		break;
 
 	case L_DST_STDERR:
-		if (!debug_flag) {
+		if (!rad_debug_lvl) {
 			log_dst = L_DST_NULL;
 			break;
 		}
@@ -572,7 +572,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (optval && strlen(optval)) {
 			log_dst = L_DST_FILES;
 
-		} else if (!debug_flag) {
+		} else if (!rad_debug_lvl) {
 			log_dst = L_DST_NULL;
 		}
 

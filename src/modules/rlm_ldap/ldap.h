@@ -327,11 +327,11 @@ typedef enum {
 #define LDAP_DBG(fmt, ...) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
 #define LDAP_DBG_REQ(fmt, ...) do { if (request) {RDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
 
-#define LDAP_DBG2(fmt, ...) if (debug_flag >= L_DBG_LVL_2) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
-#define LDAP_DBG_REQ2(fmt, ...) do { if (request) {RDEBUG2(fmt, ##__VA_ARGS__);} else if (debug_flag >= L_DBG_LVL_2) {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
+#define LDAP_DBG2(fmt, ...) if (rad_debug_lvl >= L_DBG_LVL_2) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
+#define LDAP_DBG_REQ2(fmt, ...) do { if (request) {RDEBUG2(fmt, ##__VA_ARGS__);} else if (rad_debug_lvl >= L_DBG_LVL_2) {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
 
-#define LDAP_DBG3(fmt, ...) if (debug_flag >= L_DBG_LVL_3) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
-#define LDAP_DBG_REQ3(fmt, ...) do { if (request) {RDEBUG3(fmt, ##__VA_ARGS__);} else if (debug_flag >= L_DBG_LVL_3) {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
+#define LDAP_DBG3(fmt, ...) if (rad_debug_lvl >= L_DBG_LVL_3) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
+#define LDAP_DBG_REQ3(fmt, ...) do { if (request) {RDEBUG3(fmt, ##__VA_ARGS__);} else if (rad_debug_lvl >= L_DBG_LVL_3) {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
 
 #define LDAP_ERR(fmt, ...) ERROR("rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
 #define LDAP_ERR_REQ(fmt, ...) do { if (request) {REDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_ERR(fmt, ##__VA_ARGS__);}} while (0)

@@ -329,7 +329,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	 *	type & data to the client.
 	 */
 #ifndef NDEBUG
-	if ((debug_flag > 2) && fr_log_fp) {
+	if ((rad_debug_lvl > 2) && fr_log_fp) {
 		size_t i, total, start = EAP_HEADER_LEN;
 		total = 0;
 
@@ -419,7 +419,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 	VALUE_PAIR *vp;
 	peap_tunnel_t *t = tls_session->opaque;
 
-	if ((debug_flag > 0) && fr_log_fp) {
+	if ((rad_debug_lvl > 0) && fr_log_fp) {
 		RDEBUG("Got tunneled reply RADIUS code %d", reply->code);
 		rdebug_pair_list(L_DBG_LVL_1, request, reply->vps, NULL);
 	}
@@ -571,7 +571,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 		fake->reply = talloc_steal(fake, request->proxy_reply);
 		request->proxy_reply = NULL;
 
-		if ((debug_flag > 0) && fr_log_fp) {
+		if ((rad_debug_lvl > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "server %s {\n", fake->server);
 		}
 
@@ -589,7 +589,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_handler_t *handler, void *data
 		 */
 		rcode = rad_postauth(fake);
 
-		if ((debug_flag > 0) && fr_log_fp) {
+		if ((rad_debug_lvl > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "} # server %s\n", fake->server);
 
 			RDEBUG("Final reply from tunneled session code %d", fake->reply->code);
@@ -706,7 +706,7 @@ static void print_tunneled_data(uint8_t const *data, size_t data_len)
 {
 	size_t i;
 
-	if ((debug_flag > 2) && fr_log_fp) {
+	if ((rad_debug_lvl > 2) && fr_log_fp) {
 		for (i = 0; i < data_len; i++) {
 		  if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  PEAP tunnel data in %02x: ", (int) i);
 
@@ -748,7 +748,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	if ((t->status != PEAP_STATUS_TUNNEL_ESTABLISHED) &&
 	    !eapmessage_verify(request, data, data_len)) {
 		REDEBUG("Tunneled data is invalid");
-		if (debug_flag > 2) print_tunneled_data(data, data_len);
+		if (rad_debug_lvl > 2) print_tunneled_data(data, data_len);
 		return RLM_MODULE_REJECT;
 	}
 

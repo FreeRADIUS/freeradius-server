@@ -109,7 +109,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 
 
 #ifndef NDEBUG
-	if (debug_flag > 2) {
+	if (rad_debug_lvl > 2) {
 		DEBUG3("executing cmd %s", cmd);
 		for (i = 0; i < argc; i++) {
 			DEBUG3("\t[%d] %s", i, argv[i]);
@@ -251,7 +251,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	If we are debugging, then we want the error
 		 *	messages to go to the STDERR of the server.
 		 */
-		if (debug_flag == 0) {
+		if (rad_debug_lvl == 0) {
 			dup2(devnull, STDERR_FILENO);
 		}
 		close(devnull);

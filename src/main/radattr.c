@@ -40,8 +40,8 @@ typedef struct REQUEST REQUEST;
 #include <assert.h>
 
 #include <freeradius-devel/log.h>
-extern log_lvl_t debug_flag;
-log_lvl_t debug_flag = 0;
+extern log_lvl_t rad_debug_lvl;
+log_lvl_t rad_debug_lvl = 0;
 
 #include <sys/wait.h>
 pid_t rad_fork(void);
@@ -834,8 +834,8 @@ int main(int argc, char *argv[])
 			dict_dir = optarg;
 			break;
 		case 'x':
-			fr_debug_flag++;
-			debug_flag = fr_debug_flag;
+			fr_debug_lvl++;
+			rad_debug_lvl = fr_debug_lvl;
 			break;
 		case 'M':
 			report = true;

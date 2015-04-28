@@ -969,7 +969,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 			return rcode;
 		}
 	} else {
-		if (debug_flag) map_debug_log(request, map, NULL);
+		if (rad_debug_lvl) map_debug_log(request, map, NULL);
 	}
 
 	/*
@@ -980,7 +980,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	     vp = fr_cursor_next(&src_list)) {
 		VERIFY_VP(vp);
 
-		if (debug_flag) map_debug_log(request, map, vp);
+		if (rad_debug_lvl) map_debug_log(request, map, vp);
 		pairsteal(parent, vp);
 	}
 

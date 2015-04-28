@@ -40,7 +40,7 @@ RCSID("$Id$")
 
 bool	fr_dns_lookups = false;	    /* IP -> hostname lookups? */
 bool    fr_hostname_lookups = true; /* hostname -> IP lookups? */
-int	fr_debug_flag = 0;
+int	fr_debug_lvl = 0;
 
 static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",

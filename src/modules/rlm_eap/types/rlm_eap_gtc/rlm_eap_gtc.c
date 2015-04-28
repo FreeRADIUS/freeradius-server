@@ -152,7 +152,7 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler)
 	}
 
 #if 0
-	if ((debug_flag > 2) && fr_log_fp) {
+	if ((rad_debug_lvl > 2) && fr_log_fp) {
 		int i;
 
 		for (i = 0; i < eap_ds->response->length - 4; i++) {

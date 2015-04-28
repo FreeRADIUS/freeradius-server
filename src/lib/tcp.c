@@ -153,7 +153,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 	 */
 	packet->vps = NULL;
 
-	if (fr_debug_flag) {
+	if (fr_debug_lvl) {
 		char ip_buf[128], buffer[256];
 
 		if (packet->src_ipaddr.af != AF_UNSPEC) {

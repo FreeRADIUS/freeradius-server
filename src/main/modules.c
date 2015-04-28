@@ -1095,7 +1095,7 @@ static int load_component_section(CONF_SECTION *cs,
 			return -1;
 		}
 
-		if (debug_flag > 2) modcall_debug(this, 2);
+		if (rad_debug_lvl > 2) modcall_debug(this, 2);
 
 		add_to_modcallable(subcomp->modulelist, this);
 	}
@@ -1132,7 +1132,7 @@ static int load_byserver(CONF_SECTION *cs)
 		ERROR("Failed to initialize components");
 
 	error:
-		if (debug_flag == 0) {
+		if (rad_debug_lvl == 0) {
 			ERROR("Failed to load virtual server %s",
 			      (name != NULL) ? name : "<default>");
 		}
@@ -1180,7 +1180,7 @@ static int load_byserver(CONF_SECTION *cs)
 		if (comp == RLM_COMPONENT_SESS) continue;
 #endif
 
-		if (debug_flag <= 3) {
+		if (rad_debug_lvl <= 3) {
 			cf_log_module(cs, "Loading %s {...}",
 				      section_type_value[comp].section);
 		} else {
@@ -1191,7 +1191,7 @@ static int load_byserver(CONF_SECTION *cs)
 			goto error;
 		}
 
-		if (debug_flag > 3) {
+		if (rad_debug_lvl > 3) {
 			DEBUG(" } # %s", section_type_value[comp].section);
 		}
 
@@ -1277,7 +1277,7 @@ static int load_byserver(CONF_SECTION *cs)
 		cf_log_info(cs, "} # server");
 	}
 
-	if (debug_flag == 0) {
+	if (rad_debug_lvl == 0) {
 		INFO("Loaded virtual server %s",
 		       (name != NULL) ? name : "<default>");
 	}

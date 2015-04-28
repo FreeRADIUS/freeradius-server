@@ -60,7 +60,7 @@ struct sockaddr_ll ll;	/* Socket address structure */
 static char *iface = NULL;
 static int iface_ind = -1;
 
-#  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
+#  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 #endif
 
 static RADIUS_PACKET *request = NULL;
@@ -350,7 +350,7 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd, struct sockaddr_ll *p_l
 		if (cur_reply_p) {
 			nb_reply ++;
 			
-			if (fr_debug_flag) print_hex(cur_reply_p);
+			if (fr_debug_lvl) print_hex(cur_reply_p);
 
 			if (fr_dhcp_decode(cur_reply_p) < 0) {
 				fprintf(stderr, "dhcpclient: failed decoding reply\n");
@@ -411,7 +411,7 @@ int main(int argc, char **argv)
 	bool raw_mode = false;
 #endif
 
-	fr_debug_flag = 0;
+	fr_debug_lvl = 0;
 
 	while ((c = getopt(argc, argv, "d:D:f:hr:t:vx"
 #ifdef HAVE_LINUX_IF_PACKET_H
@@ -449,7 +449,7 @@ int main(int argc, char **argv)
 			exit(0);
 
 		case 'x':
-			fr_debug_flag++;
+			fr_debug_lvl++;
 			fr_log_fp = stdout;
 			break;
 		case 'h':
@@ -640,7 +640,7 @@ int main(int argc, char **argv)
 			fr_strerror());
 		exit(1);
 	}
-	if (fr_debug_flag) print_hex(request);
+	if (fr_debug_lvl) print_hex(request);
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 	if (raw_mode) {
@@ -673,7 +673,7 @@ int main(int argc, char **argv)
 			fprintf(stderr, "dhcpclient: Error receiving reply %s\n", fr_strerror());
 			exit(1);
 		}
-		if (fr_debug_flag) print_hex(reply);
+		if (fr_debug_lvl) print_hex(reply);
 
 		if (fr_dhcp_decode(reply) < 0) {
 			fprintf(stderr, "dhcpclient: failed decoding\n");
