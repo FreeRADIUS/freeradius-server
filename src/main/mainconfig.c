@@ -840,7 +840,8 @@ do {\
 	}
 	fr_debug_flag = debug_flag;
 
-	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time, (main_config.max_request_time != 0), 100);
+	FR_INTEGER_COND_CHECK("max_request_time", main_config.max_request_time,
+			      (main_config.max_request_time != 0), 100);
 
 	/*
 	 *	reject_delay can be zero.  OR 1 though 10.
@@ -852,8 +853,8 @@ do {\
 
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
 
-	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, 16*1024);
-	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, 1024*1024);
+	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, 16 * 1024);
+	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, 1024 * 1024);
 
 	/*
 	 * Set default initial request processing delay to 1/3 of a second.
