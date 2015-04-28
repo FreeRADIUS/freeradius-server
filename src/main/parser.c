@@ -1177,7 +1177,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 						}
 					}
 
-					if (hyphens != 1) may_be_attr = false;
+					if (!hyphens || (hyphens > 3)) may_be_attr = false;
 
 					if (may_be_attr) {
 						attr_slen = tmpl_afrom_attr_str(c->data.map, &vpt, lhs,
