@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#ifndef NDEBUG
+#if 0
 static void map_dump(REQUEST *request, value_pair_map_t const *map)
 {
 	RDEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
