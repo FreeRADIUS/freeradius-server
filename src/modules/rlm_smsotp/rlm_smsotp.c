@@ -327,21 +327,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  */
 extern module_t rlm_smsotp;
 module_t rlm_smsotp = {
-	RLM_MODULE_INIT,
-	"smsotp",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_smsotp_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_authenticate,	/* authentication */
-		mod_authorize,	/* authorization */
-		NULL,	/* preaccounting */
-		NULL,	/* accounting */
-		NULL,	/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "smsotp",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_smsotp_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize
 	},
 };

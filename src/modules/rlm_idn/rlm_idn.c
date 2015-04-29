@@ -150,25 +150,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 extern module_t rlm_idn;
 module_t rlm_idn = {
-	RLM_MODULE_INIT,
-	"idn",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_idn_t),
-	mod_config,			/* CONF_PARSER */
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,		 	/* authentication */
-		NULL,			/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
-#ifdef WITH_COA
-		, NULL,
-		NULL
-#endif
-	},
+	.magic		= RLM_MODULE_INIT,
+	.name		= "idn",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_idn_t),
+	.config		= mod_config,
+	.instantiate	= mod_instantiate
 };

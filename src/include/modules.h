@@ -41,18 +41,18 @@ extern "C" {
  */
 typedef enum rlm_components {
 	MOD_AUTHENTICATE = 0,	//!< 0 methods index for authenticate section.
-	MOD_AUTHORIZE,	//!< 1 methods index for authorize section.
-	MOD_PREACCT,	//!< 2 methods index for preacct section.
-	MOD_ACCOUNTING,	//!< 3 methods index for accounting section.
-	MOD_SESSION,	//!< 4 methods index for checksimul section.
-	MOD_PRE_PROXY,//!< 5 methods index for preproxy section.
-	MOD_POST_PROXY, //!< 6 methods index for postproxy section.
-	MOD_POST_AUTH,//!< 7 methods index for postauth section.
+	MOD_AUTHORIZE,		//!< 1 methods index for authorize section.
+	MOD_PREACCT,		//!< 2 methods index for preacct section.
+	MOD_ACCOUNTING,		//!< 3 methods index for accounting section.
+	MOD_SESSION,		//!< 4 methods index for checksimul section.
+	MOD_PRE_PROXY,		//!< 5 methods index for preproxy section.
+	MOD_POST_PROXY,		//!< 6 methods index for postproxy section.
+	MOD_POST_AUTH,		//!< 7 methods index for postauth section.
 #ifdef WITH_COA
-	MOD_RECV_COA,	//!< 8 methods index for recvcoa section.
-	MOD_SEND_COA,	//!< 9 methods index for sendcoa section.
+	MOD_RECV_COA,		//!< 8 methods index for recvcoa section.
+	MOD_SEND_COA,		//!< 9 methods index for sendcoa section.
 #endif
-	MOD_COUNT	//!< 10 how many components there are.
+	MOD_COUNT		//!< 10 how many components there are.
 } rlm_components_t;
 
 extern const FR_NAME_NUMBER mod_rcode_table[];
@@ -135,17 +135,16 @@ typedef int (*detach_t)(void *instance);
  * within the module to different sections.
  */
 typedef struct module_t {
-	uint64_t 		magic;				//!< Used to validate module struct.
-	char const		*name;				//!< The name of the module (without rlm_ prefix).
-	int			type;				//!< One or more of the RLM_TYPE_* constants.
-	size_t			inst_size;			//!< Size of the instance data
-	CONF_PARSER const	*config;			//!< Configuration information
-	instantiate_t		instantiate;			//!< Function to use for instantiation.
-	detach_t		detach;				//!< Function to use to free module instance.
+	uint64_t 		magic;			//!< Used to validate module struct.
+	char const		*name;			//!< The name of the module (without rlm_ prefix).
+	int			type;			//!< One or more of the RLM_TYPE_* constants.
+	size_t			inst_size;		//!< Size of the instance data
+	CONF_PARSER const	*config;		//!< Configuration information
+	instantiate_t		instantiate;		//!< Function to use for instantiation.
+	detach_t		detach;			//!< Function to use to free module instance.
 	packetmethod		methods[MOD_COUNT];	//!< Pointers to the various section functions, ordering
-								//!< determines which function is mapped to
-								//!< which section.
-
+							//!< determines which function is mapped to.
+							//!< which section.
 } module_t;
 
 int modules_init(CONF_SECTION *);

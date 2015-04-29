@@ -768,25 +768,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
  */
 extern module_t rlm_eap;
 module_t rlm_eap = {
-	RLM_MODULE_INIT,
-	"eap",
-	0,   	/* type */
-	sizeof(rlm_eap_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		mod_authenticate,	/* authentication */
-		mod_authorize,		/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "eap",
+	.inst_size	= sizeof(rlm_eap_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize,
 #ifdef WITH_PROXY
-		mod_post_proxy,		/* post-proxy */
-#else
-		NULL,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
-		mod_post_auth		/* post-auth */
+		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };

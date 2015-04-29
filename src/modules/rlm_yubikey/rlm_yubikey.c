@@ -416,25 +416,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
  */
 extern module_t rlm_yubikey;
 module_t rlm_yubikey = {
-	RLM_MODULE_INIT,
-	"yubikey",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_yubikey_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "yubikey",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_yubikey_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
 #ifdef HAVE_YKCLIENT
-	mod_detach,			/* detach */
-#else
-	NULL,
+	.detach		= mod_detach,
 #endif
-	{
-		mod_authenticate,	/* authentication */
-		mod_authorize,		/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize
 	},
 };

@@ -185,21 +185,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance,
  */
 extern module_t rlm_chap;
 module_t rlm_chap = {
-	RLM_MODULE_INIT,
-	"CHAP",
-	0,   	/* type */
-	0,
-	NULL,				/* CONF_PARSER */
-	NULL,				/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_authenticate,	/* authentication */
-		mod_authorize,	 	/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		mod_pre_proxy,	      	/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "chap",
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PRE_PROXY]		= mod_pre_proxy
 	},
 };

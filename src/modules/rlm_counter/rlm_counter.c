@@ -861,21 +861,15 @@ static int mod_detach(void *instance)
  */
 extern module_t rlm_counter;
 module_t rlm_counter = {
-	RLM_MODULE_INIT,
-	"counter",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_counter_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize,		/* authorization */
-		NULL,			/* preaccounting */
-		mod_accounting,		/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "counter",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_counter_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_ACCOUNTING]	= mod_accounting
 	},
 };
