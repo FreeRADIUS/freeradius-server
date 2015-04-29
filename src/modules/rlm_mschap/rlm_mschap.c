@@ -1984,21 +1984,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 
 extern module_t rlm_mschap;
 module_t rlm_mschap = {
-	RLM_MODULE_INIT,
-	"MS-CHAP",
-	RLM_TYPE_THREAD_SAFE | RLM_TYPE_HUP_SAFE,	/* type */
-	sizeof(rlm_mschap_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		mod_authenticate,	/* authenticate */
-		mod_authorize,		/* authorize */
-		NULL,			/* pre-accounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "MS-CHAP",
+	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_mschap_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize
 	},
 };

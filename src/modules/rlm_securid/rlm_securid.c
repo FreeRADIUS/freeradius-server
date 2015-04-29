@@ -550,21 +550,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
  */
 extern module_t rlm_securid;
 module_t rlm_securid = {
-	RLM_MODULE_INIT,
-	"securid",
-	RLM_TYPE_HUP_SAFE,   	/* type */
-	sizeof(rlm_securid_t),
-	module_config,
-	mod_instantiate, 		/* instantiation */
-	mod_detach, 			/* detach */
-	{
-		mod_authenticate, 	/* authentication */
-		NULL, 			/* authorization */
-		NULL, 			/* preaccounting */
-		NULL, 			/* accounting */
-		NULL, 			/* checksimul */
-		NULL, 			/* pre-proxy */
-		NULL, 			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "securid",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_securid_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate
 	},
 };

@@ -803,21 +803,18 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 extern module_t rlm_cache;
 module_t rlm_cache = {
-	RLM_MODULE_INIT,
-	"cache",
-	0,				/* type */
-	sizeof(rlm_cache_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		NULL,			/* authentication */
-		mod_cache_it,		/* authorization */
-		mod_cache_it,		/* preaccounting */
-		mod_cache_it,		/* accounting */
-		NULL,			/* checksimul */
-		mod_cache_it,	      	/* pre-proxy */
-		mod_cache_it,	       	/* post-proxy */
-		mod_cache_it,		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "cache",
+	.inst_size	= sizeof(rlm_cache_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_cache_it,
+		[MOD_PREACCT]		= mod_cache_it,
+		[MOD_ACCOUNTING]	= mod_cache_it,
+		[MOD_PRE_PROXY]		= mod_cache_it,
+		[MOD_POST_PROXY]	= mod_cache_it,
+		[MOD_POST_AUTH]		= mod_cache_it
 	},
 };

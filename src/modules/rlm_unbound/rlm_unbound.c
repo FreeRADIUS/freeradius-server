@@ -749,13 +749,11 @@ static int mod_detach(UNUSED void *instance)
 
 extern module_t rlm_unbound;
 module_t rlm_unbound = {
-	RLM_MODULE_INIT,
-	"unbound",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_unbound_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	/* This module does not directly interact with requests */
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
+	.magic		= RLM_MODULE_INIT,
+	.name		= "unbound",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_unbound_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach
 };

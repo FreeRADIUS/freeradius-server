@@ -289,21 +289,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 extern module_t rlm_redis;
 module_t rlm_redis = {
-	RLM_MODULE_INIT,
-	"redis",
-	RLM_TYPE_THREAD_SAFE, /* type */
-	sizeof(REDIS_INST),	/* yuck */
-	module_config,
-	mod_instantiate, /* instantiation */
-	mod_detach, /* detach */
-	{
-		NULL, /* authentication */
-		NULL, /* authorization */
-		NULL, /* preaccounting */
-		NULL, /* accounting */
-		NULL, /* checksimul */
-		NULL, /* pre-proxy */
-		NULL, /* post-proxy */
-		NULL /* post-auth */
-	},
+	.magic		= RLM_MODULE_INIT,
+	.name		= "redis",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(REDIS_INST),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach
 };

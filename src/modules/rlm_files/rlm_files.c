@@ -536,26 +536,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 /* globally exported name */
 extern module_t rlm_files;
 module_t rlm_files = {
-	RLM_MODULE_INIT,
-	"files",
-	RLM_TYPE_HUP_SAFE,
-	sizeof(rlm_files_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		mod_authenticate,	/* authentication */
-		mod_authorize, 	/* authorization */
-		mod_preacct,		/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "files",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_files_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_preacct,
+
 #ifdef WITH_PROXY
-		mod_pre_proxy,		/* pre-proxy */
-		mod_post_proxy,		/* post-proxy */
-#else
-		NULL, NULL,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
-		mod_post_auth		/* post-auth */
+		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };
 

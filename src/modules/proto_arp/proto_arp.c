@@ -308,11 +308,14 @@ static int arp_socket_print(const rad_listen_t *this, char *buffer, size_t bufsi
 
 extern fr_protocol_t proto_arp;
 fr_protocol_t proto_arp = {
-	RLM_MODULE_INIT,
-	"arp",
-	sizeof(arp_socket_t),
-	NULL,
-	arp_socket_parse, arp_socket_free,
-	arp_socket_recv, arp_socket_send,
-	arp_socket_print, arp_socket_encode, arp_socket_decode
+	.magic		= RLM_MODULE_INIT,
+	.name		= "arp",
+	.inst_size	= sizeof(arp_socket_t),
+	.parse		= arp_socket_parse,
+	.free		= arp_socket_free,
+	.recv		= arp_socket_recv,
+	.send		= arp_socket_send,
+	.print		= arp_socket_print,
+	.encode		= arp_socket_encode,
+	.decode		= arp_socket_decode
 };

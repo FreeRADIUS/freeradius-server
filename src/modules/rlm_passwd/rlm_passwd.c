@@ -573,25 +573,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 
 extern module_t rlm_passwd;
 module_t rlm_passwd = {
-	RLM_MODULE_INIT,
-	"passwd",
-	RLM_TYPE_HUP_SAFE,   	/* type */
-	sizeof(struct passwd_instance),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		NULL,			/* authentication */
-		mod_passwd_map,		/* authorization */
-		NULL,			/* pre-accounting */
-		mod_passwd_map,		/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		mod_passwd_map	       	/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "passwd",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(struct passwd_instance),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_passwd_map,
+		[MOD_ACCOUNTING]	= mod_passwd_map,
+		[MOD_POST_AUTH]		= mod_passwd_map,
 #ifdef WITH_COA
-		, mod_passwd_map,
-		mod_passwd_map
+		[MOD_RECV_COA]		= mod_passwd_map,
+		[MOD_SEND_COA]		= mod_passwd_map
 #endif
 	},
 };

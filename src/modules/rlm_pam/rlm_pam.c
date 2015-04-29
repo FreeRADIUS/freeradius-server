@@ -232,22 +232,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 extern module_t rlm_pam;
 module_t rlm_pam = {
-	RLM_MODULE_INIT,
-	"pam",
-	RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
-	sizeof(rlm_pam_t),
-	module_config,
-	NULL,				/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_authenticate,	/* authenticate */
-		NULL,			/* authorize */
-		NULL,			/* pre-accounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "pam",
+	.type		= RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
+	.inst_size	= sizeof(rlm_pam_t),
+	.config		= module_config,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate
 	},
 };
 

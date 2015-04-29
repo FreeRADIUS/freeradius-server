@@ -126,30 +126,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *requ
 
 extern module_t rlm_always;
 module_t rlm_always = {
-	RLM_MODULE_INIT,
-	"always",
-	RLM_TYPE_HUP_SAFE,	   	/* needed for radmin */
-	sizeof(rlm_always_t),		/* config size */
-	module_config,			/* configuration */
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_always_return,		/* authentication */
-		mod_always_return,		/* authorization */
-		mod_always_return,		/* preaccounting */
-		mod_always_return,		/* accounting */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "always",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_always_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_always_return,
+		[MOD_AUTHORIZE]		= mod_always_return,
+		[MOD_PREACCT]		= mod_always_return,
+		[MOD_ACCOUNTING]	= mod_always_return,
 #ifdef WITH_SESSION_MGMT
-		mod_checksimul,	/* checksimul */
-#else
-		NULL,
+		[MOD_SESSION]		= mod_checksimul,
 #endif
-		mod_always_return,	       	/* pre-proxy */
-		mod_always_return,		/* post-proxy */
-		mod_always_return		/* post-auth */
+		[MOD_PRE_PROXY]		= mod_always_return,
+		[MOD_POST_PROXY]	= mod_always_return,
+		[MOD_POST_AUTH]		= mod_always_return,
 #ifdef WITH_COA
-		,
-		mod_always_return,		/* recv-coa */
-		mod_always_return		/* send-coa */
+		[MOD_RECV_COA]		= mod_always_return,
+		[MOD_SEND_COA]		= mod_always_return
 #endif
 	},
 };
