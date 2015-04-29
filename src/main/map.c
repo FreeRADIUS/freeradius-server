@@ -873,8 +873,6 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	rad_assert(map->lhs != NULL);
 	rad_assert(map->rhs != NULL);
 
-	map_dump(request, map);
-
 	/*
 	 *	Preprocessing of the LHS of the map.
 	 */
