@@ -332,7 +332,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	DICT_ATTR const *da;
 
 	if (paircompare_register_byname(inst->counter_name, NULL, true, counter_cmp, inst) < 0) {
-		ERROR("rlm_counterL: Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
+		cf_log_err_cs(conf, "Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
 		return -1;
 	}
 
@@ -349,14 +349,14 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 */
 	memset(&flags, 0, sizeof(flags));
 	if (dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
-		ERROR("rlm_counter: Failed to create check attribute %s: %s", inst->counter_name, fr_strerror());
+		cf_log_err_cs(conf, "Failed to create check attribute %s: %s", inst->counter_name, fr_strerror());
 		return -1;
 
 	}
 
 	da = dict_attrbyname(inst->check_name);
 	if (!da) {
-		ERROR("rlm_counter: Failed to find check attribute %s", inst->counter_name);
+		cf_log_err_cs(conf, "Failed to find check attribute %s", inst->counter_name);
 		return -1;
 	}
 	inst->check_attr = da;
