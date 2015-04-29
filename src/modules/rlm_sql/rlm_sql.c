@@ -807,6 +807,12 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_sql_t *inst = instance;
 
+	/*
+	 *	Hack...
+	 */
+	inst->config = &inst->myconfig;
+	inst->cs = conf;
+
 	if (inst->config->groupmemb_query) {
 		if (!cf_section_name2(conf)) {
 			char buffer[256];
@@ -841,12 +847,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sql_t *inst = instance;
-
-	/*
-	 *	Hack...
-	 */
-	inst->config = &inst->myconfig;
-	inst->cs = conf;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
