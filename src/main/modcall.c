@@ -2547,7 +2547,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 *	which isn't loaded into the "modules" section.
 		 */
 		if (cf_section_sub_find_name2(modules, NULL, realname)) {
-			this = find_module_instance(modules, realname, true);
+			this = module_instantiate(modules, realname);
 			if (this) goto allocate_csingle;
 
 			/*
@@ -2591,7 +2591,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				buffer[p - modrefname - 1] = '\0';
 				component = i;
 
-				this = find_module_instance(modules, buffer, true);
+				this = module_instantiate(modules, buffer);
 				if (this) {
 					method = i;
 					goto allocate_csingle;

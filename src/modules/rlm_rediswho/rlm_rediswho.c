@@ -123,8 +123,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->cs = conf;
 
-	modinst = find_module_instance(cf_section_find("modules"),
-				       inst->redis_instance_name, true);
+	modinst = module_instantiate(cf_section_find("modules"),
+				       inst->redis_instance_name);
 	if (!modinst) {
 		ERROR("rediswho: failed to find module instance \"%s\"",
 		       inst->redis_instance_name);

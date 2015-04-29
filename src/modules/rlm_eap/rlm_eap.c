@@ -183,7 +183,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		/*
 		 *	Load the type.
 		 */
-		ret = eap_module_load(inst, &inst->methods[method], method, scs);
+		ret = eap_module_instantiate(inst, &inst->methods[method], method, scs);
 
 		(void) talloc_get_type_abort(inst->methods[method], eap_module_t);
 
