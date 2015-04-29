@@ -542,12 +542,74 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
 	return 0;
 }
 
+/** Bootstrap the module
+ *
+ * Define attributes.
+ *
+ * @param conf to parse.
+ * @param instance configuration data.
+ * @return 0 on success < 0 on failure.
+ */
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	ldap_instance_t *inst = instance;
+
+	/*
+	 *	Setup the cache attribute
+	 */
+	if (inst->cache_attribute) {
+		ATTR_FLAGS flags;
+
+		memset(&flags, 0, sizeof(flags));
+		if (dict_addattr(inst->cache_attribute, -1, 0, PW_TYPE_STRING, flags) < 0) {
+			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
+		error:
+			return -1;
+
+		}
+		inst->cache_da = dict_attrbyname(inst->cache_attribute);
+	} else {
+		inst->cache_da = inst->group_da;	/* Default to the group_da */
+	}
+
+	/*
+	 *	Group comparison checks.
+	 */
+	if (cf_section_name2(conf)) {
+		char buffer[256];
+
+		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", inst->name);
+
+		if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0), false, rlm_ldap_groupcmp, inst) < 0) {
+			LDAP_ERR("Error registering group comparison: %s", fr_strerror());
+			goto error;
+		}
+
+		inst->group_da = dict_attrbyname(buffer);
+
+		/*
+		 *	We're the default instance
+		 */
+	} else {
+		if (paircompare_register_byname("LDAP-Group", dict_attrbyvalue(PW_USER_NAME, 0),
+						false, rlm_ldap_groupcmp, inst) < 0) {
+			LDAP_ERR("Error registering group comparison: %s", fr_strerror());
+			goto error;
+		}
+
+		inst->group_da = dict_attrbyname("LDAP-Group");
+	}
+
+	return 0;
+}
+
+
 /** Instantiate the module
  *
  * Creates a new instance of the module reading parameters from a configuration section.
  *
  * @param conf to parse.
- * @param instance Where to write pointer to configuration data.
+ * @param instance configuration data.
  * @return 0 on success < 0 on failure.
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
@@ -1020,53 +1082,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	/*
-	 *	Group comparison checks.
-	 */
-	if (cf_section_name2(conf)) {
-		char buffer[256];
-
-		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", inst->name);
-
-		if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0), false, rlm_ldap_groupcmp, inst) < 0) {
-			LDAP_ERR("Error registering group comparison: %s", fr_strerror());
-			goto error;
-		}
-
-		inst->group_da = dict_attrbyname(buffer);
-
-		/*
-		 *	We're the default instance
-		 */
-	} else {
-		if (paircompare_register_byname("LDAP-Group", dict_attrbyvalue(PW_USER_NAME, 0),
-						false, rlm_ldap_groupcmp, inst) < 0) {
-			LDAP_ERR("Error registering group comparison: %s", fr_strerror());
-			goto error;
-		}
-
-		inst->group_da = dict_attrbyname("LDAP-Group");
-	}
-
 	xlat_register(inst->name, ldap_xlat, rlm_ldap_escape_func, inst);
 	xlat_register("ldapquote", ldapquote_xlat, NULL, inst);
-
-	/*
-	 *	Setup the cache attribute
-	 */
-	if (inst->cache_attribute) {
-		ATTR_FLAGS flags;
-
-		memset(&flags, 0, sizeof(flags));
-		if (dict_addattr(inst->cache_attribute, -1, 0, PW_TYPE_STRING, flags) < 0) {
-			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
-
-			goto error;
-		}
-		inst->cache_da = dict_attrbyname(inst->cache_attribute);
-	} else {
-		inst->cache_da = inst->group_da;	/* Default to the group_da */
-	}
 
 	/*
 	 *	Initialize the socket pool.
@@ -1726,6 +1743,7 @@ module_t rlm_ldap = {
 	.type		= 0,
 	.inst_size	= sizeof(ldap_instance_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {
