@@ -78,11 +78,6 @@ extern const section_type_value_t section_type_value[];
 #define RLM_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe.
 						//!< Server will protect calls
 						//!< with mutex.
-#define RLM_TYPE_CHECK_CONFIG_UNSAFE (1 << 1) 	//!< Don't instantiate module on -C.
-						//!< Module will NOT be
-						//!< instantiated if the server
-						//!< is started in config
-						//!< check mode.
 #define RLM_TYPE_HUP_SAFE	(1 << 2) 	//!< Will be restarted on HUP.
 						//!< Server will instantiated
 						//!< new instance, and then
@@ -140,11 +135,10 @@ typedef struct module_t {
 	int			type;			//!< One or more of the RLM_TYPE_* constants.
 	size_t			inst_size;		//!< Size of the instance data
 	CONF_PARSER const	*config;		//!< Configuration information
+	instantiate_t		bootstrap;		//!< register dynamic attrs, etc.
 	instantiate_t		instantiate;		//!< Function to use for instantiation.
 	detach_t		detach;			//!< Function to use to free module instance.
-	packetmethod		methods[MOD_COUNT];	//!< Pointers to the various section functions, ordering
-							//!< determines which function is mapped to.
-							//!< which section.
+	packetmethod		methods[MOD_COUNT];	//!< Pointers to the various section functions.
 } module_t;
 
 int modules_init(CONF_SECTION *);

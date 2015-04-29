@@ -438,9 +438,9 @@ int modules_free(void)
 
 
 /*
- *	Find a module on disk or in memory, and link to it.
+ *	dlopen() a module.
  */
-static module_entry_t *linkto_module(char const *module_name, CONF_SECTION *cs)
+static module_entry_t *module_dlopen(CONF_SECTION *cs, char const *module_name)
 {
 	module_entry_t myentry;
 	module_entry_t *node;
@@ -554,17 +554,101 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 	return 0;
 }
 
-/*
- *	Find a module instance.
+/** Bootstrap a module.
+ *
+ *  Load the module shared library, allocate instance memory for it,
+ *  parse the module configuration, and call the modules "bootstrap" method.
  */
-module_instance_t *find_module_instance(CONF_SECTION *modules,
-					char const *askedname, bool do_link)
+static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 {
-	bool check_config_safe = false;
-	CONF_SECTION *cs;
-	char const *name1, *instname;
+	char const *name1, *name2;
 	module_instance_t *node, myNode;
 	char module_name[256];
+
+	/*
+	 *	Figure out which module we want to load.
+	 */
+	name1 = cf_section_name1(cs);
+	name2 = cf_section_name2(cs);
+	if (!name2) name2 = name1;
+
+	strlcpy(myNode.name, name2, sizeof(myNode.name));
+
+	/*
+	 *	See if the module already exists.
+	 */
+	node = rbtree_finddata(instance_tree, &myNode);
+	if (node) {
+		ERROR("Duplicate module \"%s %s\", in file %s:%d and file %s:%d",
+		      name1, name2,
+		      cf_section_filename(cs),
+		      cf_section_lineno(cs),
+		      cf_section_filename(node->cs),
+		      cf_section_lineno(node->cs));
+		return NULL;
+	}
+
+	/*
+	 *	Hang the node struct off of the configuration
+	 *	section. If the CS is free'd the instance will be
+	 *	free'd, too.
+	 */
+	node = talloc_zero(cs, module_instance_t);
+	node->cs = cs;
+	strlcpy(node->name, name2, sizeof(node->name));
+
+	/*
+	 *	Names in the "modules" section aren't prefixed
+	 *	with "rlm_", so we add it here.
+	 */
+	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
+
+	/*
+	 *	Load the module shared library.
+	 */
+	node->entry = module_dlopen(cs, module_name);
+	if (!node->entry) {
+		talloc_free(node);
+		return NULL;
+	}
+	
+	cf_log_module(cs, "Loading module \"%s\" from file %s", node->name,
+		      cf_section_filename(cs));
+
+	/*
+	 *	Parse the modules configuration.
+	 */
+	if (module_conf_parse(node, &node->insthandle) < 0) {
+		talloc_free(node);
+		return NULL;
+	}
+
+	/*
+	 *	Bootstrap the module.
+	 */
+	if (node->entry->module->bootstrap &&
+	    ((node->entry->module->bootstrap)(cs, node->insthandle) < 0)) {
+		cf_log_err_cs(cs, "Instantiation failed for module \"%s\"", node->name);
+		talloc_free(node);
+		return NULL;
+	}
+
+	/*
+	 *	Remember the module for later.
+	 */
+	rbtree_insert(instance_tree, node);
+
+	return node;
+}
+
+
+/** Find an existing module instance.
+ *
+ */
+module_instance_t *module_find(CONF_SECTION *modules, char const *askedname)
+{
+	char const *instname;
+	module_instance_t myNode;
 
 	if (!modules) return NULL;
 
@@ -574,105 +658,56 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 *	exist."
 	 */
 	instname = askedname;
-	if (instname[0] == '-') {
-		instname++;
-	}
+	if (instname[0] == '-') instname++;
 
-	/*
-	 *	Module instances are declared in the modules{} block
-	 *	and referenced later by their name, which is the
-	 *	name2 from the config section, or name1 if there was
-	 *	no name2.
-	 */
-	cs = cf_section_sub_find_name2(modules, NULL, instname);
-	if (!cs) {
-		ERROR("Cannot find a configuration entry for module \"%s\"", instname);
-		return NULL;
-	}
-
-	/*
-	 *	If there's already a module instance, return it.
-	 */
 	strlcpy(myNode.name, instname, sizeof(myNode.name));
 
-	node = rbtree_finddata(instance_tree, &myNode);
-	if (node) {
-		return node;
-	}
+	return rbtree_finddata(instance_tree, &myNode);
+}
 
-	if (!do_link) {
+
+/** Load a module, and instantiate it.
+ *
+ */
+module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedname)
+
+{
+	module_instance_t *node;
+
+	/*
+	 *	Find the module.  If it's not there, do nothing.
+	 */
+	node = module_find(modules, askedname);
+	if (!node) {
+		ERROR("Cannot find a configuration entry for module \"%s\"", askedname);
 		return NULL;
 	}
 
-	name1 = cf_section_name1(cs);
+	/*
+	 *	The module is already instantiated.  Return it.
+	 */
+	if (node->instantiated) return node;
 
 	/*
-	 *	Found the configuration entry, hang the node struct off of the
-	 *	configuration section. If the CS is free'd the instance will
-	 *	be too.
+	 *	We're just checking the configuration.
 	 */
-	node = talloc_zero(cs, module_instance_t);
-	node->cs = cs;
+	if (check_config) return node;
 
 	/*
-	 *	Names in the "modules" section aren't prefixed
-	 *	with "rlm_", so we add it here.
+	 *	Call the instantiate method, if any.
 	 */
-	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
+	if (node->entry->module->instantiate) {
+		cf_log_module(node->cs, "Instantiating module \"%s\" from file %s", node->name,
+			      cf_section_filename(node->cs));
 
-	/*
-	 *	Pull in the module object
-	 */
-	node->entry = linkto_module(module_name, cs);
-	if (!node->entry) {
-		talloc_free(node);
-		/* linkto_module logs any errors */
-		return NULL;
-	}
-
-	if (check_config && (node->entry->module->instantiate) &&
-	    (node->entry->module->type & RLM_TYPE_CHECK_CONFIG_UNSAFE) != 0) {
-		char const *value = NULL;
-		CONF_PAIR *cp;
-
-		cp = cf_pair_find(cs, "force_check_config");
-		if (cp) {
-			value = cf_pair_value(cp);
+		/*
+		 *	Call the module's instantiation routine.
+		 */
+		if ((node->entry->module->instantiate)(node->cs, node->insthandle) < 0) {
+			cf_log_err_cs(node->cs, "Instantiation failed for module \"%s\"", node->name);
+		
+			return NULL;
 		}
-
-		if (value && (strcmp(value, "yes") == 0)) goto print_inst;
-
-		cf_log_module(cs, "Skipping instantiation of %s", instname);
-	} else {
-	print_inst:
-		check_config_safe = true;
-		cf_log_module(cs, "Instantiating module \"%s\" from file %s", instname,
-			      cf_section_filename(cs));
-	}
-
-	strlcpy(node->name, instname, sizeof(node->name));
-
-	/*
-	 *	Parse the module configuration, and setup destructors so the
-	 *	module's detach method is called when it's instance data is
-	 *	about to be freed.
-	 */
-	if (module_conf_parse(node, &node->insthandle) < 0) {
-		talloc_free(node);
-
-		return NULL;
-	}
-
-	/*
-	 *	Call the module's instantiation routine.
-	 */
-	if ((node->entry->module->instantiate) &&
-	    (!check_config || check_config_safe) &&
-	    ((node->entry->module->instantiate)(cs, node->insthandle) < 0)) {
-		cf_log_err_cs(cs, "Instantiation failed for module \"%s\"", node->name);
-		talloc_free(node);
-
-		return NULL;
 	}
 
 #ifdef HAVE_PTHREAD_H
@@ -688,15 +723,10 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		 *	Initialize the mutex.
 		 */
 		pthread_mutex_init(node->mutex, NULL);
-	} else {
-		/*
-		 *	The module is thread-safe.  Don't give it a mutex.
-		 */
-		node->mutex = NULL;
-	}
-
+	}	
 #endif
-	rbtree_insert(instance_tree, node);
+
+	node->instantiated = true;
 
 	return node;
 }
@@ -768,7 +798,7 @@ int find_module_sibling_section(CONF_SECTION **out, CONF_SECTION *module, char c
 	 *	instantiation order issues.
 	 */
 	inst_name = cf_pair_value(cp);
-	inst = find_module_instance(cf_item_parent(cf_section_to_item(module)), inst_name, true);
+	inst = module_instantiate(cf_item_parent(cf_section_to_item(module)), inst_name);
 
 	/*
 	 *	Remove the config data we added for loop
@@ -1797,40 +1827,30 @@ int modules_init(CONF_SECTION *config)
 	 *	This is O(N^2) in the number of modules, but most
 	 *	systems should have less than 100 modules.
 	 */
-	for (ci=cf_item_find_next(modules, NULL);
+	for (ci = cf_item_find_next(modules, NULL);
 	     ci != NULL;
-	     ci=next) {
-		char const *name1, *name2;
-		CONF_SECTION *subcs, *duplicate;
+	     ci = next) {
+		char const *name1;
+		CONF_SECTION *subcs;
+		module_instance_t *node;
 
 		next = cf_item_find_next(modules, ci);
 
 		if (!cf_item_is_section(ci)) continue;
 
+		subcs = cf_item_to_section(ci);
+
+		node = module_bootstrap(subcs);
+		if (!node) return -1;
+
 		if (!next || !cf_item_is_section(next)) continue;
 
-		subcs = cf_item_to_section(ci);
 		name1 = cf_section_name1(subcs);
-		name2 = cf_section_name2(subcs);
 
 		if (is_reserved_word(name1)) {
 			cf_log_err_cs(subcs, "Module cannot be named for an 'unlang' keyword");
 			return -1;
 		}
-
-		duplicate = cf_section_find_name2(cf_item_to_section(next),
-						  name1, name2);
-		if (!duplicate) continue;
-
-		if (!name2) name2 = "";
-
-		ERROR("Duplicate module \"%s %s\", in file %s:%d and file %s:%d",
-		       name1, name2,
-		       cf_section_filename(subcs),
-		       cf_section_lineno(subcs),
-		       cf_section_filename(duplicate),
-		       cf_section_lineno(duplicate));
-		return -1;
 	}
 
 	/*
@@ -1863,7 +1883,7 @@ int modules_init(CONF_SECTION *config)
 				cp = cf_item_to_pair(ci);
 				name = cf_pair_attr(cp);
 
-				module = find_module_instance(modules, name, true);
+				module = module_instantiate(modules, name);
 				if (!module && (name[0] != '-')) {
 					return -1;
 				}
@@ -1921,7 +1941,7 @@ int modules_init(CONF_SECTION *config)
 							return -1;
 						}
 
-						module = find_module_instance(modules, cf_pair_attr(cp), true);
+						module = module_instantiate(modules, cf_pair_attr(cp));
 						if (!module) {
 							return -1;
 						}
@@ -1981,7 +2001,7 @@ int modules_init(CONF_SECTION *config)
 		name = cf_section_name2(subcs);
 		if (!name) name = cf_section_name1(subcs);
 
-		module = find_module_instance(modules, name, true);
+		module = module_instantiate(modules, name);
 		if (!module) return -1;
 	}
 	cf_log_info(cs, " } # modules");

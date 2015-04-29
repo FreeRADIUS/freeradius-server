@@ -444,7 +444,7 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 
 	*(p++) = '\0';
 
-	mi = find_module_instance(modules, buffer, false);
+	mi = module_find(modules, buffer);
 	if (!mi) {
 		RDEBUG("Failed finding module '%s'", buffer);
 	fail:

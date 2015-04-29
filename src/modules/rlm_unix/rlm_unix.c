@@ -125,7 +125,7 @@ static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *
 /*
  *	Read the config
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	struct unix_instance *inst = instance;
 
@@ -540,7 +540,7 @@ module_t rlm_unix = {
 	.type		= RLM_TYPE_THREAD_UNSAFE,
 	.inst_size	= sizeof(struct unix_instance),
 	.config		= module_config,
-	.instantiate	= mod_instantiate,
+	.bootstrap	= mod_bootstrap,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_ACCOUNTING]	= mod_accounting
