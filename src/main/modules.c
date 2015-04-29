@@ -689,11 +689,6 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 	if (node->instantiated) return node;
 
 	/*
-	 *	We're just checking the configuration.
-	 */
-	if (check_config) return node;
-
-	/*
 	 *	Call the instantiate method, if any.
 	 */
 	if (node->entry->module->instantiate) {
