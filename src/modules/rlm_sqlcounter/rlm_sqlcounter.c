@@ -323,7 +323,7 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 				 */
 			default:
 				*q++ = '%';
-				*q++ = '%';				
+				*q++ = '%';
 				*q++ = *p++;
 				break;
 		}
@@ -626,22 +626,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  */
 extern module_t rlm_sqlcounter;
 module_t rlm_sqlcounter = {
-	RLM_MODULE_INIT,
-	"rlm_sqlcounter",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_sqlcounter_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize,		/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "rlm_sqlcounter",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_sqlcounter_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize
 	},
 };
 

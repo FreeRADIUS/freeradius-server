@@ -348,30 +348,24 @@ RLM_AF_FUNC(send_coa, reply)
 /* globally exported name */
 extern module_t rlm_attr_filter;
 module_t rlm_attr_filter = {
-	RLM_MODULE_INIT,
-	"attr_filter",
-	RLM_TYPE_HUP_SAFE,   	/* type */
-	sizeof(rlm_attr_filter_t),
-	module_config,
-	mod_instantiate,	/* instantiation */
-	NULL,			/* detach */
-	{
-		NULL,		/* authentication */
-		mod_authorize,	/* authorization */
-		mod_preacct,	/* pre-acct */
-		mod_accounting,	/* accounting */
-		NULL,		/* checksimul */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "attr_filter",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_attr_filter_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_preacct,
+		[MOD_ACCOUNTING]	= mod_accounting,
 #ifdef WITH_PROXY
-		mod_pre_proxy,	/* pre-proxy */
-		mod_post_proxy,	/* post-proxy */
-#else
-		NULL, NULL,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
-		mod_post_auth	/* post-auth */
+		[MOD_POST_AUTH]		= mod_post_auth,
 #ifdef WITH_COA
-		,
-		mod_recv_coa,
-		mod_send_coa
+		[MOD_RECV_COA]		= mod_recv_coa,
+		[MOD_SEND_COA]		= mod_send_coa
 #endif
 	},
 };

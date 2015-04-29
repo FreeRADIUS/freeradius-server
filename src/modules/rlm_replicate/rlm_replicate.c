@@ -255,29 +255,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_recv_coa(void *instance, REQUEST *reques
  */
 extern module_t rlm_replicate;
 module_t rlm_replicate = {
-	RLM_MODULE_INIT,
-	"replicate",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	0,
-	NULL,				/* CONF_PARSER */
-	NULL,				/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize,		/* authorization */
-		mod_preaccounting,	/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "replicate",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_preaccounting,
 #ifdef WITH_PROXY
-		mod_pre_proxy,		/* pre-proxy */
-		NULL,			/* post-proxy */
-#else
-		NULL, NULL,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
 #endif
-		NULL			/* post-auth */
 #ifdef WITH_COA
-		, mod_recv_coa,		/* coa-request */
-		NULL
+		[MOD_RECV_COA]		= mod_recv_coa
 #endif
 	},
 };

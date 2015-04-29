@@ -505,25 +505,17 @@ static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, REQUEST *request)
 /* globally exported name */
 extern module_t rlm_realm;
 module_t rlm_realm = {
-	RLM_MODULE_INIT,
-	"realm",
-	RLM_TYPE_HUP_SAFE,   	/* type */
-	sizeof(struct rlm_realm_t),
-	module_config,
-	mod_instantiate,	       	/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize,	/* authorization */
-		mod_preacct,		/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "realm",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(struct rlm_realm_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_preacct,
 #ifdef WITH_COA
-		, mod_realm_recv_coa,	/* recv-coa */
-		NULL			/* send-coa */
+		[MOD_RECV_COA]		= mod_realm_recv_coa
 #endif
 	},
 };

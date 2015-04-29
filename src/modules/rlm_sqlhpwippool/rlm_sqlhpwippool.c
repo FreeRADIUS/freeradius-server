@@ -769,21 +769,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 
 extern module_t rlm_sqlhpwippool;
 module_t rlm_sqlhpwippool = {
-	RLM_MODULE_INIT,
-	"sqlhpwippool",			/* name */
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_sqlhpwippool_t),
-	module_config,
-	mod_instantiate,	/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		NULL,			/* authorization */
-		NULL,			/* preaccounting */
-		mod_accounting,/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		mod_post_auth	/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "sqlhpwippool",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_sqlhpwippool_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_ACCOUNTING]	= mod_accounting,
+		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };

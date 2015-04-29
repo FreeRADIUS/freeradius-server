@@ -120,21 +120,12 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  */
 extern module_t rlm_expiration;
 module_t rlm_expiration = {
-	RLM_MODULE_INIT,
-	"expiration",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	0,
-	NULL,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize,		/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		mod_authorize  		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "expiration",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_POST_AUTH]		= mod_authorize
 	},
 };

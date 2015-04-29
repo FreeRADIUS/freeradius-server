@@ -168,30 +168,25 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 
 extern module_t rlm_sometimes;
 module_t rlm_sometimes = {
-	RLM_MODULE_INIT,
-	"sometimes",
-	RLM_TYPE_HUP_SAFE,   	/* needed for radmin */
-	sizeof(rlm_sometimes_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_sometimes_packet,	/* authentication */
-		mod_sometimes_packet,	/* authorization */
-		mod_sometimes_packet,	/* preaccounting */
-		mod_sometimes_packet,	/* accounting */
-		NULL,
+	.magic		= RLM_MODULE_INIT,
+	.name		= "sometimes",
+	.type		= RLM_TYPE_HUP_SAFE,   	/* needed for radmin */
+	.inst_size	= sizeof(rlm_sometimes_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_sometimes_packet,
+		[MOD_AUTHORIZE]		= mod_sometimes_packet,
+		[MOD_PREACCT]		= mod_sometimes_packet,
+		[MOD_ACCOUNTING]	= mod_sometimes_packet,
 #ifdef WITH_PROXY
-		mod_pre_proxy,		/* pre-proxy */
-		mod_post_proxy,		/* post-proxy */
-#else
-		NULL, NULL,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
-		mod_sometimes_reply	/* post-auth */
+		[MOD_POST_AUTH]		= mod_sometimes_reply,
 #ifdef WITH_COA
-		,
-		mod_sometimes_packet,	/* recv-coa */
-		mod_sometimes_reply	/* send-coa */
+		[MOD_RECV_COA]		= mod_sometimes_packet,
+		[MOD_SEND_COA]		= mod_sometimes_reply,
 #endif
 	},
 };

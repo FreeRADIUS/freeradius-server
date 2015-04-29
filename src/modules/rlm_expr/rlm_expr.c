@@ -1546,13 +1546,13 @@ static bool parse_pad(REQUEST *request, char const *fmt,
 
 		*fill = *p;
 	}
-       
+
 	*pvpt = vpt;
 	*plength = length;
 
 	return true;
 }
-		      
+
 
 /** left pad a string
  *
@@ -1704,17 +1704,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 extern module_t rlm_expr;
 module_t rlm_expr = {
-	RLM_MODULE_INIT,
-	"expr",				/* Name */
-	0,   	/* type */
-	sizeof(rlm_expr_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		NULL,			/* authorization */
-		NULL,			/* pre-accounting */
-		NULL			/* accounting */
-	},
+	.magic		= RLM_MODULE_INIT,
+	.name		= "expr",
+	.inst_size	= sizeof(rlm_expr_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
 };

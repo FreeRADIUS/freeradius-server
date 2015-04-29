@@ -768,11 +768,13 @@ static int dhcp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 extern fr_protocol_t proto_dhcp;
 fr_protocol_t proto_dhcp = {
-	RLM_MODULE_INIT,
-	"dhcp",
-	sizeof(dhcp_socket_t),
-	NULL,
-	dhcp_socket_parse, NULL,
-	dhcp_socket_recv, dhcp_socket_send,
-	common_socket_print, dhcp_socket_encode, dhcp_socket_decode
+	.magic		= RLM_MODULE_INIT,
+	.name		= "dhcp",
+	.inst_size	= sizeof(dhcp_socket_t),
+	.parse		= dhcp_socket_parse,
+	.recv		= dhcp_socket_recv,
+	.send		= dhcp_socket_send,
+	.print		= common_socket_print,
+	.encode		= dhcp_socket_encode,
+	.decode		= dhcp_socket_decode
 };

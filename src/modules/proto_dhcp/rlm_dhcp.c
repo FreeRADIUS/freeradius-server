@@ -191,21 +191,8 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  */
 extern module_t rlm_dhcp;
 module_t rlm_dhcp = {
-	RLM_MODULE_INIT,
-	"dhcp",
-	0,				/* type */
-	sizeof(rlm_dhcp_t),
-	NULL,				/* CONF_PARSER */
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		NULL,			/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,		 	/* post-proxy */
-		NULL,			/* post-auth */
-	},
+	.magic		= RLM_MODULE_INIT,
+	.name		= "dhcp",
+	.inst_size	= sizeof(rlm_dhcp_t),
+	.instantiate	= mod_instantiate
 };

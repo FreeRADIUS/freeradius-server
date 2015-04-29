@@ -354,25 +354,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_do_linelog(void *instance, REQUEST *requ
  */
 extern module_t rlm_linelog;
 module_t rlm_linelog = {
-	RLM_MODULE_INIT,
-	"linelog",
-	RLM_TYPE_HUP_SAFE,   	/* type */
-	sizeof(rlm_linelog_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_do_linelog,		/* authentication */
-		mod_do_linelog,		/* authorization */
-		mod_do_linelog,		/* preaccounting */
-		mod_do_linelog,		/* accounting */
-		NULL,			/* checksimul */
-		mod_do_linelog, 	/* pre-proxy */
-		mod_do_linelog,		/* post-proxy */
-		mod_do_linelog		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "linelog",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_linelog_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_do_linelog,
+		[MOD_AUTHORIZE]		= mod_do_linelog,
+		[MOD_PREACCT]		= mod_do_linelog,
+		[MOD_ACCOUNTING]	= mod_do_linelog,
+		[MOD_PRE_PROXY]		= mod_do_linelog,
+		[MOD_POST_PROXY]	= mod_do_linelog,
+		[MOD_POST_AUTH]		= mod_do_linelog,
 #ifdef WITH_COA
-		, mod_do_linelog,	/* recv-coa */
-		mod_do_linelog		/* send-coa */
+		[MOD_RECV_COA]		= mod_do_linelog,
+		[MOD_SEND_COA]		= mod_do_linelog
 #endif
 	},
 };

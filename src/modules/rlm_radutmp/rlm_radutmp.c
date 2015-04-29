@@ -741,30 +741,18 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *requ
 /* globally exported name */
 extern module_t rlm_radutmp;
 module_t rlm_radutmp = {
-	RLM_MODULE_INIT,
-	"radutmp",
-	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_HUP_SAFE,   	/* type */
-	sizeof(rlm_radutmp_t),
-	module_config,
-	NULL,			       /* instantiation */
-	NULL,			       /* detach */
-	{
-		NULL,		 /* authentication */
-		NULL,		 /* authorization */
-		NULL,		 /* preaccounting */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "radutmp",
+	.type		= RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_radutmp_t),
+	.config		= module_config,
+	.methods = {
 #ifdef WITH_ACCOUNTING
-		mod_accounting,   /* accounting */
-#else
-		NULL,
+		[MOD_ACCOUNTING]	= mod_accounting,
 #endif
 #ifdef WITH_SESSION_MGMT
-		mod_checksimul,	/* checksimul */
-#else
-		NULL,
+		[MOD_SESSION]		= mod_checksimul
 #endif
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
 	},
 };
 

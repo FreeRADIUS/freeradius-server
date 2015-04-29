@@ -189,21 +189,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void * instance, REQ
 
 extern module_t rlm_cram;
 module_t rlm_cram = {
-	RLM_MODULE_INIT,
-	"CRAM",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	0,
-	NULL,				/* CONF_PARSER */
-	NULL,				/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_authenticate,	/* authenticate */
-		NULL,			/* authorize */
-		NULL,			/* pre-accounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "cram",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate
 	},
 };

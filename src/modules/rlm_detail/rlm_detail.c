@@ -527,29 +527,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 /* globally exported name */
 extern module_t rlm_detail;
 module_t rlm_detail = {
-	RLM_MODULE_INIT,
-	"detail",
-	RLM_TYPE_HUP_SAFE,
-	sizeof(detail_instance_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize,		/* authorization */
-		NULL,			/* preaccounting */
-		mod_accounting,		/* accounting */
-		NULL,			/* checksimul */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "detail",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(detail_instance_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_ACCOUNTING]	= mod_accounting,
 #ifdef WITH_PROXY
-		mod_pre_proxy,      	/* pre-proxy */
-		mod_post_proxy,		/* post-proxy */
-#else
-		NULL, NULL,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
-		mod_post_auth		/* post-auth */
+		[MOD_POST_AUTH]		= mod_post_auth,
 #ifdef WITH_COA
-		, mod_recv_coa,
-		mod_send_coa
+		[MOD_RECV_COA]		= mod_recv_coa,
+		[MOD_SEND_COA]		= mod_send_coa
 #endif
 	},
 };

@@ -207,21 +207,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void * instance, REQUEST * re
 
 extern module_t rlm_rediswho;
 module_t rlm_rediswho = {
-	RLM_MODULE_INIT,
-	"rediswho",
-	RLM_TYPE_THREAD_SAFE,	/* type */
-	sizeof(rlm_rediswho_t),
-	module_config,
-	mod_instantiate,	/* instantiation */
-	NULL, 			/* detach */
-	{
-		NULL, /* authentication */
-		NULL, /* authorization */
-		NULL, /* preaccounting */
-		mod_accounting, /* accounting */
-		NULL, /* checksimul */
-		NULL, /* pre-proxy */
-		NULL, /* post-proxy */
-		NULL /* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "rediswho",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_rediswho_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_ACCOUNTING]	= mod_accounting
 	},
 };

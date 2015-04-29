@@ -886,29 +886,20 @@ static int mod_detach(void *instance)
  */
 extern module_t rlm_couchbase;
 module_t rlm_couchbase = {
-	RLM_MODULE_INIT,
-	"rlm_couchbase",
-	RLM_TYPE_THREAD_SAFE,       /* type */
-	sizeof(rlm_couchbase_t),
-	module_config,
-	mod_instantiate,            /* instantiation */
-	mod_detach,                 /* detach */
-	{
-		NULL,                   /* authentication */
-		mod_authorize,          /* authorization */
-		NULL,                   /* preaccounting */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "rlm_couchbase",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_couchbase_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
 #ifdef WITH_ACCOUNTING
-		mod_accounting,         /* accounting */
-#else
-		NULL,
+		[MOD_ACCOUNTING]	= mod_accounting,
 #endif
 #ifdef WITH_SESSION_MGMT
-		mod_checksimul,         /* checksimul */
-#else
-		NULL,
+		[MOD_SESSION]		= mod_checksimul
 #endif
-		NULL,                   /* pre-proxy */
-		NULL,                   /* post-proxy */
-		NULL                    /* post-auth */
 	},
 };

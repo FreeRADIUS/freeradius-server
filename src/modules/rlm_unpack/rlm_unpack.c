@@ -210,19 +210,8 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  */
 extern module_t rlm_unpack;
 module_t rlm_unpack = {
-	RLM_MODULE_INIT,
-	"unpack",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	0,
-	NULL,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		NULL,			/* authorization */
-		NULL, NULL, NULL,
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
-	},
+	.magic		= RLM_MODULE_INIT,
+	.name		= "unpack",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.instantiate	= mod_instantiate
 };
