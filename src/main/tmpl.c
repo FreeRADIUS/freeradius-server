@@ -202,9 +202,11 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 		break;
 
 	case PAIR_LIST_REQUEST:
+		if (!request->packet) return NULL;
 		return &request->packet->vps;
 
 	case PAIR_LIST_REPLY:
+		if (!request->reply) return NULL;
 		return &request->reply->vps;
 
 	case PAIR_LIST_CONTROL:
