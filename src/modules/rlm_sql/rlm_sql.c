@@ -803,6 +803,41 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_sql_t *inst = instance;
+
+	if (inst->config->groupmemb_query) {
+		if (!cf_section_name2(conf)) {
+			char buffer[256];
+
+			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", inst->name);
+
+			if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0), false, sql_groupcmp, inst) < 0) {
+				ERROR("Error registering group comparison: %s", fr_strerror());
+				return -1;
+			}
+
+			inst->group_da = dict_attrbyname(buffer);
+
+			/*
+			 *	We're the default instance
+			 */
+		} else {
+			if (paircompare_register_byname("SQL-Group", dict_attrbyvalue(PW_USER_NAME, 0),
+							false, sql_groupcmp, inst) < 0) {
+				ERROR("Error registering group comparison: %s", fr_strerror());
+				return -1;
+			}
+
+			inst->group_da = dict_attrbyname("SQL-Group");
+		}
+	}
+
+	return 0;
+}
+
+
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sql_t *inst = instance;
@@ -816,39 +851,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
 		inst->name = cf_section_name1(conf);
-	} else {
-		char *group_name;
-		DICT_ATTR const *da;
-		ATTR_FLAGS flags;
-
-		/*
-		 *	Allocate room for <instance>-SQL-Group
-		 */
-		group_name = talloc_typed_asprintf(inst, "%s-SQL-Group", inst->name);
-		DEBUG("rlm_sql (%s): Creating new attribute %s",
-		      inst->name, group_name);
-
-		memset(&flags, 0, sizeof(flags));
-		if (dict_addattr(group_name, -1, 0, PW_TYPE_STRING, flags) < 0) {
-			ERROR("rlm_sql (%s): Failed to create "
-			       "attribute %s: %s", inst->name, group_name,
-			       fr_strerror());
-			return -1;
-		}
-
-		da = dict_attrbyname(group_name);
-		if (!da) {
-			ERROR("rlm_sql (%s): Failed to create "
-			       "attribute %s", inst->name, group_name);
-			return -1;
-		}
-
-		if (inst->config->groupmemb_query) {
-			DEBUG("rlm_sql (%s): Registering sql_groupcmp for %s",
-			      inst->name, group_name);
-			paircompare_register(da, dict_attrbyvalue(PW_USER_NAME, 0),
-					     false, sql_groupcmp, inst);
-		}
 	}
 
 	rad_assert(inst->name);
@@ -976,33 +978,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->pool = fr_connection_pool_module_init(inst->cs, inst, mod_conn_create, NULL, NULL);
 	if (!inst->pool) return -1;
-
-	if (inst->config->groupmemb_query) {
-		if (!cf_section_name2(conf)) {
-			char buffer[256];
-
-			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", inst->name);
-
-			if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0), false, sql_groupcmp, inst) < 0) {
-				ERROR("Error registering group comparison: %s", fr_strerror());
-				return -1;
-			}
-
-			inst->group_da = dict_attrbyname(buffer);
-
-			/*
-			 *	We're the default instance
-			 */
-		} else {
-			if (paircompare_register_byname("SQL-Group", dict_attrbyvalue(PW_USER_NAME, 0),
-							false, sql_groupcmp, inst) < 0) {
-				ERROR("Error registering group comparison: %s", fr_strerror());
-				return -1;
-			}
-
-			inst->group_da = dict_attrbyname("SQL-Group");
-		}
-	}
 
 	if (inst->config->do_clients) {
 		if (generate_sql_clients(inst) == -1){
@@ -1687,6 +1662,7 @@ module_t rlm_sql = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_sql_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {
