@@ -17,6 +17,9 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* Rename RLM_COMPONENT_* to MOD_* in the code.
 	  This makes many things easier.
 	* Move to C99 initializers for modules.
+	* Load modules in raddb/mods-enabled.  This allows attributes
+	  like "LDAP-Group" to be used in the "files" module,
+	  without explicit ordering or listing in "instantiate".
 
 	Bug fixes
 	* Be more careful about unused config item warnings
