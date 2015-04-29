@@ -14,6 +14,9 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* Unknown attributes are now complained about more often
 	  when used in unlang statements.  e.g. if (Foo-Bar == 3)
 	  used to not cause parse errors.  Now it does.
+	* Rename RLM_COMPONENT_* to MOD_* in the code.
+	  This makes many things easier.
+	* Move to C99 initializers for modules.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
@@ -25,6 +28,7 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* Return better errors when a unix group / user
 	  is not found.
 	* Re-enable detail module "locking" parameter.
+	* Don't crash when logging replies from Status-Server packets.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
