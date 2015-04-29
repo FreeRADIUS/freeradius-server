@@ -134,12 +134,6 @@ static struct {
 };
 
 /*
- *	This allows us to initialise PyThreadState on a per thread basis
- */
-fr_thread_local_setup(PyThreadState *, local_thread_state)	/* macro */
-
-
-/*
  *	Let assume that radiusd module is only one since we have only
  *	one intepreter
  */
