@@ -40,19 +40,19 @@ extern "C" {
  * Used as indexes in the methods array in the module_t struct.
  */
 typedef enum rlm_components {
-	RLM_COMPONENT_AUTH = 0,	//!< 0 methods index for authenticate section.
-	RLM_COMPONENT_AUTZ,	//!< 1 methods index for authorize section.
-	RLM_COMPONENT_PREACCT,	//!< 2 methods index for preacct section.
-	RLM_COMPONENT_ACCT,	//!< 3 methods index for accounting section.
-	RLM_COMPONENT_SESS,	//!< 4 methods index for checksimul section.
-	RLM_COMPONENT_PRE_PROXY,//!< 5 methods index for preproxy section.
-	RLM_COMPONENT_POST_PROXY, //!< 6 methods index for postproxy section.
-	RLM_COMPONENT_POST_AUTH,//!< 7 methods index for postauth section.
+	MOD_AUTHENTICATE = 0,	//!< 0 methods index for authenticate section.
+	MOD_AUTHORIZE,	//!< 1 methods index for authorize section.
+	MOD_PREACCT,	//!< 2 methods index for preacct section.
+	MOD_ACCOUNTING,	//!< 3 methods index for accounting section.
+	MOD_SESSION,	//!< 4 methods index for checksimul section.
+	MOD_PRE_PROXY,//!< 5 methods index for preproxy section.
+	MOD_POST_PROXY, //!< 6 methods index for postproxy section.
+	MOD_POST_AUTH,//!< 7 methods index for postauth section.
 #ifdef WITH_COA
-	RLM_COMPONENT_RECV_COA,	//!< 8 methods index for recvcoa section.
-	RLM_COMPONENT_SEND_COA,	//!< 9 methods index for sendcoa section.
+	MOD_RECV_COA,	//!< 8 methods index for recvcoa section.
+	MOD_SEND_COA,	//!< 9 methods index for sendcoa section.
 #endif
-	RLM_COMPONENT_COUNT	//!< 10 how many components there are.
+	MOD_COUNT	//!< 10 how many components there are.
 } rlm_components_t;
 
 extern const FR_NAME_NUMBER mod_rcode_table[];
@@ -142,7 +142,7 @@ typedef struct module_t {
 	CONF_PARSER const	*config;			//!< Configuration information
 	instantiate_t		instantiate;			//!< Function to use for instantiation.
 	detach_t		detach;				//!< Function to use to free module instance.
-	packetmethod		methods[RLM_COMPONENT_COUNT];	//!< Pointers to the various section functions, ordering
+	packetmethod		methods[MOD_COUNT];	//!< Pointers to the various section functions, ordering
 								//!< determines which function is mapped to
 								//!< which section.
 
