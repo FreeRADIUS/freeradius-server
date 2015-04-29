@@ -922,7 +922,7 @@ static int command_show_module_config(rad_listen_t *listener, int argc, char *ar
 	return CMD_OK;
 }
 
-static char const *method_names[RLM_COMPONENT_COUNT] = {
+static char const *method_names[MOD_COUNT] = {
 	"authenticate",
 	"authorize",
 	"preacct",
@@ -957,7 +957,7 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 
 	mod = mi->entry->module;
 
-	for (i = 0; i < RLM_COMPONENT_COUNT; i++) {
+	for (i = 0; i < MOD_COUNT; i++) {
 		if (mod->methods[i]) cprintf(listener, "%s\n", method_names[i]);
 	}
 
