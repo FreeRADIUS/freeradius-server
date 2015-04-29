@@ -1904,11 +1904,14 @@ static int bfd_socket_print(const rad_listen_t *this, char *buffer, size_t bufsi
 
 extern fr_protocol_t proto_bfd;
 fr_protocol_t proto_bfd = {
-	RLM_MODULE_INIT,
-	"bfd",
-	sizeof(bfd_socket_t),
-	NULL,
-	bfd_socket_parse, bfd_socket_free,
-	bfd_socket_recv, bfd_socket_send,
-	bfd_socket_print, bfd_socket_encode, bfd_socket_decode
+	.magic		= RLM_MODULE_INIT,
+	.name		= "bfd",
+	.inst_size	= sizeof(bfd_socket_t),
+	.parse		= bfd_socket_parse,
+	.free		= bfd_socket_free,
+	.recv		= bfd_socket_recv,
+	.send		= bfd_socket_send,
+	.print		= bfd_socket_print,
+	.encode		= bfd_socket_encode,
+	.decode		= bfd_socket_decode
 };

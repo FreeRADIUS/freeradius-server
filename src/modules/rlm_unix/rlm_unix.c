@@ -535,21 +535,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 /* globally exported name */
 extern module_t rlm_unix;
 module_t rlm_unix = {
-	RLM_MODULE_INIT,
-	"System",
-	RLM_TYPE_THREAD_UNSAFE,
-	sizeof(struct unix_instance),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,		    /* authentication */
-		mod_authorize,       /* authorization */
-		NULL,		 /* preaccounting */
-		mod_accounting,      /* accounting */
-		NULL,		  /* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "system",
+	.type		= RLM_TYPE_THREAD_UNSAFE,
+	.inst_size	= sizeof(struct unix_instance),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_ACCOUNTING]	= mod_accounting
 	},
 };

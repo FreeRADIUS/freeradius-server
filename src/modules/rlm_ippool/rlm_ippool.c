@@ -812,21 +812,16 @@ static int mod_detach(void *instance)
  */
 extern module_t rlm_ippool;
 module_t rlm_ippool = {
-	RLM_MODULE_INIT,
-	"ippool",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_ippool_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		NULL,			/* authentication */
-		NULL,		 	/* authorization */
-		NULL,			/* preaccounting */
-		mod_accounting,	/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		mod_post_auth		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "ippool",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_ippool_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+
+		[MOD_ACCOUNTING]	= mod_accounting,
+		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };

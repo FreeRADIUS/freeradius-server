@@ -469,21 +469,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
  */
 extern module_t rlm_wimax;
 module_t rlm_wimax = {
-	RLM_MODULE_INIT,
-	"wimax",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_wimax_t),
-	module_config,
-	NULL,			/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize,	/* authorization */
-		mod_preacct,		/* preaccounting */
-		mod_accounting,	/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		mod_post_auth 		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "wimax",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_wimax_t),
+	.config		= module_config,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_preacct,
+		[MOD_ACCOUNTING]	= mod_accounting,
+		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };

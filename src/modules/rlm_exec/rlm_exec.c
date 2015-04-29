@@ -463,25 +463,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
  */
 extern module_t rlm_exec;
 module_t rlm_exec = {
-	RLM_MODULE_INIT,
-	"exec",				/* Name */
-	RLM_TYPE_THREAD_SAFE,   	/* type */
-	sizeof(rlm_exec_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_exec_dispatch,	/* authentication */
-		mod_exec_dispatch,	/* authorization */
-		mod_exec_dispatch,	/* pre-accounting */
-		mod_accounting,		/* accounting */
-		NULL,			/* check simul */
-		mod_exec_dispatch,	/* pre-proxy */
-		mod_exec_dispatch,	/* post-proxy */
-		mod_post_auth		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "exec",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_exec_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_exec_dispatch,
+		[MOD_AUTHORIZE]		= mod_exec_dispatch,
+		[MOD_PREACCT]		= mod_exec_dispatch,
+		[MOD_ACCOUNTING]	= mod_accounting,
+		[MOD_PRE_PROXY]		= mod_exec_dispatch,
+		[MOD_POST_PROXY]	= mod_exec_dispatch,
+		[MOD_POST_AUTH]		= mod_post_auth,
 #ifdef WITH_COA
-		, mod_exec_dispatch,
-		mod_exec_dispatch
+		[MOD_RECV_COA]		= mod_exec_dispatch,
+		[MOD_SEND_COA]		= mod_exec_dispatch
 #endif
 	},
 };

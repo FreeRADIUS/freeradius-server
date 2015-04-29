@@ -726,22 +726,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *r
 /* globally exported name */
 extern module_t rlm_preprocess;
 module_t rlm_preprocess = {
-	RLM_MODULE_INIT,
-	"preprocess",
-	0,   		/* type */
-	sizeof(rlm_preprocess_t),
-	module_config,
-	mod_instantiate,			/* instantiation */
-	NULL,					/* detach */
-	{
-		NULL,				/* authentication */
-		mod_authorize,			/* authorization */
-		mod_preaccounting,		/* pre-accounting */
-		NULL,				/* accounting */
-		NULL,				/* checksimul */
-		NULL,				/* pre-proxy */
-		NULL,				/* post-proxy */
-		NULL				/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "preprocess",
+	.inst_size	= sizeof(rlm_preprocess_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_preaccounting
 	},
 };
 

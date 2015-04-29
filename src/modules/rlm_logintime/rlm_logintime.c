@@ -248,21 +248,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 extern module_t rlm_logintime;
 module_t rlm_logintime = {
-	RLM_MODULE_INIT,
-	"logintime",
-	0,   	/* type */
-	sizeof(rlm_logintime_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,		/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize, 	/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		mod_authorize  		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "logintime",
+	.inst_size	= sizeof(rlm_logintime_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_POST_AUTH]		= mod_authorize
 	},
 };
