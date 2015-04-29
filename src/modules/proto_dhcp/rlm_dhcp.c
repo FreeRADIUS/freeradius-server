@@ -144,7 +144,7 @@ static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 /*
  *	Instantiate the module.
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_dhcp_t *inst = instance;
 	DICT_ATTR const *da;
@@ -194,5 +194,5 @@ module_t rlm_dhcp = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "dhcp",
 	.inst_size	= sizeof(rlm_dhcp_t),
-	.instantiate	= mod_instantiate
+	.bootstrap	= mod_bootstrap,
 };

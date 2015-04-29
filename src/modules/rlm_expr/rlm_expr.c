@@ -1648,7 +1648,7 @@ static ssize_t rpad_xlat(UNUSED void *instance, REQUEST *request,
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_expr_t *inst = instance;
 
@@ -1708,5 +1708,5 @@ module_t rlm_expr = {
 	.name		= "expr",
 	.inst_size	= sizeof(rlm_expr_t),
 	.config		= module_config,
-	.instantiate	= mod_instantiate,
+	.bootstrap	= mod_bootstrap,
 };
