@@ -1722,13 +1722,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST * requ
 extern module_t rlm_ldap;
 module_t rlm_ldap = {
 	.magic		= RLM_MODULE_INIT,
-	"ldap",
-	RLM_TYPE_THREAD_SAFE,	/* type: reserved 	 */
-	sizeof(ldap_instance_t),
-	module_config,
-	mod_instantiate,	/* instantiation 	 */
-	mod_detach,		/* detach 		 */
-	{
+	.name		= "ldap",
+	.type		= 0,
+	.inst_size	= sizeof(ldap_instance_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
 		[MOD_ACCOUNTING]	= mod_accounting,
