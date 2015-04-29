@@ -33,6 +33,20 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+#ifndef NDEBUG
+static void map_dump(REQUEST *request, value_pair_map_t const *map)
+{
+	RDEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
+	       fr_int2str(tmpl_names, map->lhs->type, "???"),
+	       fr_int2str(tmpl_names, map->rhs->type, "???"));
+
+	if (map->rhs) {
+		RDEBUG(">>> MAP NAMES %s %s", map->lhs->name, map->rhs->name);
+	}
+}
+#endif
+
+
 /** re-parse a map where the lhs is an unknown attribute.
  *
  *
@@ -242,18 +256,6 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 		if (tmpl_define_unknown_attr(map->lhs) < 0) {
 			cf_log_err_cp(cp, "Failed creating attribute %s: %s",
 				      map->lhs->name, fr_strerror());
-			goto error;
-		}
-
-		/*
-		 *	Assigning to a dynamically defined comparison
-		 *	attribute won't do what the admin expects.  So
-		 *	disallow it.
-		 */
-		if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-		    map->lhs->tmpl_da->flags.compare) {
-			cf_log_err_cp(cp, "Cannot assign to comparison attribute %s",
-				      map->lhs->name);
 			goto error;
 		}
 
@@ -870,6 +872,8 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	VERIFY_MAP(map);
 	rad_assert(map->lhs != NULL);
 	rad_assert(map->rhs != NULL);
+
+	map_dump(request, map);
 
 	/*
 	 *	Preprocessing of the LHS of the map.
