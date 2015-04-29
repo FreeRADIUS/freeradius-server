@@ -88,12 +88,12 @@ static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *
 	if (!request->username) return -1;
 
 	if (rad_getpwnam(request, &pwd, request->username->vp_strvalue) < 0) {
-		RERROR("%s", fr_strerror());
+		RDEBUG("%s", fr_strerror());
 		return -1;
 	}
 
 	if (rad_getgrnam(request, &grp, check->vp_strvalue) < 0) {
-		RERROR("%s", fr_strerror());
+		RDEBUG("%s", fr_strerror());
 		talloc_free(pwd);
 		return -1;
 	}
