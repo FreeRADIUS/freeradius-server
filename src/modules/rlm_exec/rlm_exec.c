@@ -204,7 +204,7 @@ static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	char const *p;
 	rlm_exec_t	*inst = instance;
@@ -468,7 +468,7 @@ module_t rlm_exec = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_exec_t),
 	.config		= module_config,
-	.instantiate	= mod_instantiate,
+	.bootstrap	= mod_bootstrap,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_exec_dispatch,
 		[MOD_AUTHORIZE]		= mod_exec_dispatch,

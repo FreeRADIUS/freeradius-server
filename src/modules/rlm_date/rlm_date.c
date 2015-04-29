@@ -101,7 +101,7 @@ static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *f
 }
 DIAG_ON(format-nonliteral)
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_date_t *inst = instance;
 
@@ -121,6 +121,6 @@ module_t rlm_date = {
 	.name		= "date",
 	.inst_size	= sizeof(rlm_date_t),
 	.config		= module_config,
-	.instantiate	= mod_instantiate
+	.bootstrap	= mod_bootstrap
 };
 

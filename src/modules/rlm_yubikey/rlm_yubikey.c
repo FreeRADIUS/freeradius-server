@@ -127,6 +127,28 @@ static ssize_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char 
 	return len;
 }
 
+
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_yubikey_t *inst = instance;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+#ifndef HAVE_YUBIKEY
+	if (inst->decrypt) {
+		cf_log_err_cs(conf, "Requires libyubikey for OTP decryption");
+		return -1;
+	}
+#endif
+
+	if (!cf_section_name2(conf)) return 0;
+
+	xlat_register("modhextohex", modhex_to_hex_xlat, NULL, inst);
+
+	return 0;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -141,25 +163,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_yubikey_t *inst = instance;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
-
-#ifndef HAVE_YUBIKEY
-	if (inst->decrypt) {
-		ERROR("rlm_yubikey (%s): Requires libyubikey for OTP decryption", inst->name);
-		return -1;
-	}
-#endif
-
 	if (inst->validate) {
 #ifdef HAVE_YKCLIENT
 		CONF_SECTION *cs;
 
 		cs = cf_section_sub_find(conf, "validation");
 		if (!cs) {
-			ERROR("rlm_yubikey (%s): Missing validation section", inst->name);
+			cf_log_err_cs(conf, "Missing validation section");
 			return -1;
 		}
 
@@ -167,12 +177,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 #else
-		ERROR("rlm_yubikey (%s): Requires libykclient for OTP validation against Yubicloud servers", inst->name);
+		cf_log_err_cs(conf, "Requires libykclient for OTP validation against Yubicloud servers");
 		return -1;
 #endif
 	}
-
-	xlat_register("modhextohex", modhex_to_hex_xlat, NULL, inst);
 
 	return 0;
 }
@@ -421,6 +429,7 @@ module_t rlm_yubikey = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_yubikey_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 #ifdef HAVE_YKCLIENT
 	.detach		= mod_detach,
