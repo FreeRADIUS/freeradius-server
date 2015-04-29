@@ -379,6 +379,41 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 	return 0;
 }
 
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_sqlcounter_t *inst = instance;
+	DICT_ATTR const *da;
+	ATTR_FLAGS flags;
+
+	/*
+	 *  Register the counter comparison operation.
+	 */
+	if (paircompare_register_byname(inst->counter_name, NULL, true, sqlcounter_cmp, inst) < 0) {
+		cf_log_err_cs(conf, "Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
+		return -1;
+	}
+
+
+	inst->dict_attr = dict_attrbyname(inst->counter_name);
+	da = dict_attrbyname(inst->counter_name);
+	if (!da) {
+		cf_log_err_cs(conf, "Failed to find counter attribute %s", inst->counter_name);
+		return -1;
+	}
+	inst->dict_attr = da;
+
+	/*
+	 *  Create a new attribute for the check item.
+	 */
+	memset(&flags, 0, sizeof(flags));
+	if ((dict_addattr(inst->limit_name, -1, 0, PW_TYPE_INTEGER64, flags) < 0) ||
+	    !(da = dict_attrbyname(inst->limit_name))) {
+		cf_log_err_cs(conf, "Failed to create check attribute %s: %s", inst->limit_name, fr_strerror());
+		return -1;
+	}
+
+	return 0;
+}
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -394,7 +429,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sqlcounter_t *inst = instance;
 	DICT_ATTR const *da;
-	ATTR_FLAGS flags;
 	time_t now;
 
 	rad_assert(inst->query && *inst->query);
@@ -413,29 +447,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 	inst->reply_attr = da;
 
-	/*
-	 *  Create a new attribute for the counter.
-	 */
-	rad_assert(inst->counter_name && *inst->counter_name);
-	memset(&flags, 0, sizeof(flags));
-	if ((dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER64, flags) < 0) ||
-	    !(da = dict_attrbyname(inst->counter_name))) {
-		cf_log_err_cs(conf, "Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
-		return -1;
-	}
-
-	inst->dict_attr = da;
-
-	/*
-	 *  Create a new attribute for the check item.
-	 */
-	rad_assert(inst->limit_name && *inst->limit_name);
-	if ((dict_addattr(inst->limit_name, -1, 0, PW_TYPE_INTEGER64, flags) < 0) ||
-	    !(da = dict_attrbyname(inst->limit_name))) {
-		cf_log_err_cs(conf, "Failed to create check attribute %s: %s", inst->limit_name, fr_strerror());
-		return -1;
-	}
-
 	now = time(NULL);
 	inst->reset_time = 0;
 
@@ -453,11 +464,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		cf_log_err_cs(conf, "Invalid reset '%s'", inst->reset);
 		return -1;
 	}
-
-	/*
-	 *  Register the counter comparison operation.
-	 */
-	paircompare_register(inst->dict_attr, NULL, true, sqlcounter_cmp, inst);
 
 	return 0;
 }
@@ -627,6 +633,7 @@ module_t rlm_sqlcounter = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_sqlcounter_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize
