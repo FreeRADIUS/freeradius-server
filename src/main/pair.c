@@ -343,18 +343,26 @@ int paircompare_register_byname(char const *name, DICT_ATTR const *from,
 	memset(&flags, 0, sizeof(flags));
 	flags.compare = 1;
 
-	if (dict_addattr(name, -1, 0, from->type, flags) < 0) {
-		fr_strerror_printf("Failed creating attribute '%s'", name);
-		return -1;
-	}
-
 	da = dict_attrbyname(name);
-	if (!da) {
-		fr_strerror_printf("Failed finding attribute '%s'", name);
-		return -1;
-	}
+	if (da) {
+		if (!da->flags.compare) {
+			fr_strerror_printf("Attribute '%s' already exists.", name);
+			return -1;
+		}
+	} else {
+		if (dict_addattr(name, -1, 0, from->type, flags) < 0) {
+			fr_strerror_printf("Failed creating attribute '%s'", name);
+			return -1;
+		}
 
-	DEBUG("Creating attribute %s", name);
+		da = dict_attrbyname(name);
+		if (!da) {
+			fr_strerror_printf("Failed finding attribute '%s'", name);
+			return -1;
+		}
+
+		DEBUG("Creating attribute %s", name);
+	}
 
 	return paircompare_register(da, from, first_only, func, instance);
 }
