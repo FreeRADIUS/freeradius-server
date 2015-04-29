@@ -781,6 +781,24 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 	return 0;
 }
 
+
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_rest_t *inst = instance;
+
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+
+	/*
+	 *	Register the rest xlat function
+	 */
+	xlat_register(inst->xlat_name, rest_xlat, rest_uri_escape, inst);
+	xlat_register("jsonquote", jsonquote_xlat, NULL, inst);
+
+	return 0;
+}
+
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -794,20 +812,6 @@ static int parse_sub_section(CONF_SECTION *parent, rlm_rest_section_t *config, r
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_rest_t *inst = instance;
-	char const *xlat_name;
-
-	xlat_name = cf_section_name2(conf);
-	if (!xlat_name) {
-		xlat_name = cf_section_name1(conf);
-	}
-
-	inst->xlat_name = xlat_name;
-
-	/*
-	 *	Register the rest xlat function
-	 */
-	xlat_register(inst->xlat_name, rest_xlat, rest_uri_escape, inst);
-	xlat_register("jsonquote", jsonquote_xlat, NULL, inst);
 
 	/*
 	 *	Parse sub-section configs.
@@ -871,6 +875,7 @@ module_t rlm_rest = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_rest_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {

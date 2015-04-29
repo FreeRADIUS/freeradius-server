@@ -676,13 +676,10 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-/*
- *	Instantiate the module.
- */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_cache_t *inst = instance;
-	CONF_SECTION *update;
 
 	inst->cs = conf;
 
@@ -694,11 +691,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	xlat_register(inst->xlat_name, cache_xlat, NULL, inst);
 
+	return 0;
+}
+
+
+/*
+ *	Instantiate the module.
+ */
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
+	rlm_cache_t *inst = instance;
+	CONF_SECTION *update;
+
+	inst->cs = conf;
+
 	/*
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->driver_name, "rlm_cache_", 8) != 0) {
-		ERROR("rlm_cache (%s): \"%s\" is NOT an Cache driver!", inst->xlat_name, inst->driver_name);
+		cf_log_err_cs(conf, "\"%s\" is NOT an Cache driver!", inst->driver_name);
 		return -1;
 	}
 
@@ -707,15 +718,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->handle = lt_dlopenext(inst->driver_name);
 	if (!inst->handle) {
-		ERROR("rlm_cache (%s): Could not link driver %s: %s", inst->xlat_name, inst->driver_name, dlerror());
-		ERROR("rlm_cache (%s): Make sure it (and all its dependent libraries!) are in the search path"
-		      "of your system's ld", inst->xlat_name);
+		cf_log_err_cs(conf, "Could not link driver %s: %s", inst->driver_name, dlerror());
+		cf_log_err_cs(conf, "Make sure it (and all its dependent libraries!) are in the search path"
+			      "of your system's ld");
 		return -1;
 	}
 
 	inst->module = (cache_module_t *) dlsym(inst->handle, inst->driver_name);
 	if (!inst->module) {
-		ERROR("rlm_cache (%s): Could not link symbol %s: %s", inst->xlat_name, inst->driver_name, dlerror());
+		cf_log_err_cs(conf, "Could not link symbol %s: %s", inst->driver_name, dlerror());
 		return -1;
 	}
 
@@ -806,6 +817,7 @@ module_t rlm_cache = {
 	.name		= "cache",
 	.inst_size	= sizeof(rlm_cache_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {

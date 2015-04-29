@@ -544,6 +544,11 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	ldap_instance_t *inst = instance;
 
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
+	}
+
 	/*
 	 *	Setup the cache attribute
 	 */
@@ -590,6 +595,9 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		inst->group_da = dict_attrbyname("LDAP-Group");
 	}
 
+	xlat_register(inst->name, ldap_xlat, rlm_ldap_escape_func, inst);
+	xlat_register("ldapquote", ldapquote_xlat, NULL, inst);
+
 	return 0;
 }
 
@@ -617,11 +625,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	options = cf_section_sub_find(conf, "options");
 	if (!options || !cf_pair_find(options, "chase_referrals")) {
 		inst->chase_referrals_unset = true;	 /* use OpenLDAP defaults */
-	}
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
 	}
 
 	/*
@@ -1068,9 +1071,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				    LDAP_MAX_ATTRMAP) < 0)) {
 		return -1;
 	}
-
-	xlat_register(inst->name, ldap_xlat, rlm_ldap_escape_func, inst);
-	xlat_register("ldapquote", ldapquote_xlat, NULL, inst);
 
 	/*
 	 *	Initialize the socket pool.

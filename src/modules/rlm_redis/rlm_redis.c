@@ -259,23 +259,23 @@ int rlm_redis_finish_query(REDISSOCK *dissocket)
 	return 0;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	static bool version_done;
-
 	REDIS_INST *inst = instance;
 
-	if (!version_done) {
-		version_done = true;
-
-		INFO("rlm_redis: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
-	}
+	INFO("rlm_redis: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
 
 	inst->xlat_name = cf_section_name2(conf);
-
 	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
-	xlat_register(inst->xlat_name, redis_xlat, NULL, inst); /* FIXME! */
+	xlat_register(inst->xlat_name, redis_xlat, NULL, inst);
+
+	return 0;
+}
+
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
+	REDIS_INST *inst = instance;
 
 	inst->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, NULL);
 	if (!inst->pool) {
@@ -295,6 +295,7 @@ module_t rlm_redis = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(REDIS_INST),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach
 };

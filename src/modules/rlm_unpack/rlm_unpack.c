@@ -192,8 +192,10 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 /*
  *	Register the xlats
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
+	if (cf_section_name2(conf)) return 0;
+
 	xlat_register("unpack", unpack_xlat, NULL, instance);
 
 	return 0;
@@ -213,5 +215,5 @@ module_t rlm_unpack = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "unpack",
 	.type		= RLM_TYPE_THREAD_SAFE,
-	.instantiate	= mod_instantiate
+	.bootstrap	= mod_bootstrap
 };

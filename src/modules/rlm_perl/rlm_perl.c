@@ -454,6 +454,20 @@ static void perl_parse_config(CONF_SECTION *cs, int lvl, HV *rad_hv)
 	DEBUG("%*s}", indent_section, " ");
 }
 
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_perl_t	*inst = instance;
+
+	char const	*xlat_name;
+
+	xlat_name = cf_section_name2(conf);
+	if (!xlat_name) xlat_name = cf_section_name1(conf);
+
+	xlat_register(xlat_name, perl_xlat, NULL, inst);
+
+	return 0;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -476,15 +490,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	char const	**embed_c;	/* Stupid Perl and lack of const consistency */
 	char		**embed;
 	char		**envp = NULL;
-	char const	*xlat_name;
 	int		exitstatus = 0, argc=0;
 	char		arg[] = "0";
 
 	CONF_SECTION	*cs;
-
-	xlat_name = cf_section_name2(conf);
-	if (!xlat_name) xlat_name = cf_section_name1(conf);
-	if (xlat_name) xlat_register(xlat_name, perl_xlat, NULL, inst);
 
 #ifdef USE_ITHREADS
 	/*
@@ -556,12 +565,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/* parse perl configuration sub-section */
 	cs = cf_section_sub_find(conf, "config");
 	if (cs) {
-		DEBUG("rlm_perl (%s): parsing 'config' section...", xlat_name);
-
 		inst->rad_perlconf_hv = get_hv("RAD_PERLCONF", 1);
 		perl_parse_config(cs, 0, inst->rad_perlconf_hv);
-
-		DEBUG("rlm_perl (%s): done parsing 'config'.", xlat_name);
 	}
 
 	inst->perl_parsed = true;
@@ -1035,6 +1040,7 @@ module_t rlm_perl = {
 #endif
 	.inst_size	= sizeof(rlm_perl_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {

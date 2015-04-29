@@ -817,6 +817,11 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	inst->config = &inst->myconfig;
 	inst->cs = conf;
 
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
+	}
+
 	if (inst->config->groupmemb_query) {
 		if (!cf_section_name2(conf)) {
 			char buffer[256];
@@ -844,6 +849,11 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		}
 	}
 
+	/*
+	 *	Register the SQL xlat function
+	 */
+	xlat_register(inst->name, sql_xlat, sql_escape_func, inst);
+
 	return 0;
 }
 
@@ -851,13 +861,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sql_t *inst = instance;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
-
-	rad_assert(inst->name);
 
 	/*
 	 *	Complain if the strings exist, but are empty.
@@ -931,11 +934,6 @@ do { \
 	inst->sql_query			= rlm_sql_query;
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
-
-	/*
-	 *	Register the SQL xlat function
-	 */
-	xlat_register(inst->name, sql_xlat, sql_escape_func, inst);
 
 	/*
 	 *	Load the appropriate driver for our database
