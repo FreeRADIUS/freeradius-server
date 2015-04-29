@@ -201,8 +201,8 @@ struct sql_inst {
 							//!< dictionary attribute.
 	exfile_t		*ef;
 
-	void *handle;
-	rlm_sql_module_t *module;
+	void			*handle;
+	rlm_sql_module_t	*module;
 
 	int (*sql_set_user)(rlm_sql_t *inst, REQUEST *request, char const *username);
 	size_t (*sql_escape_func)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
