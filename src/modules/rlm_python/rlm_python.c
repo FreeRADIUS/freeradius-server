@@ -54,9 +54,9 @@ struct py_function_def {
 	char const	*function_name;
 };
 
+PyThreadState	*main_thread_state;
 typedef struct rlm_python_t {
 	void		*libpython;
-	PyThreadState	*main_thread_state;
 	char const	*python_path;
 
 	struct py_function_def
@@ -205,7 +205,6 @@ static int mod_init(rlm_python_t *inst)
 	int i;
 	static char name[] = "radiusd";
 
-	if (radiusd_module) return 0;
 
 	/*
 	 *	Explicitly load libpython, so symbols will be available to lib-dynload modules
@@ -216,28 +215,35 @@ static int mod_init(rlm_python_t *inst)
 		WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
 	}
 
-	Py_SetProgramName(name);
-#ifdef HAVE_PTHREAD_H
-	Py_InitializeEx(0);				/* Don't override signal handlers */
-	PyEval_InitThreads(); 				/* This also grabs a lock */
-	inst->main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
-#endif
+	if (radiusd_module) {
+		PyEval_AcquireLock();
+		PyThreadState_Swap(main_thread_state);
+	}
+	else  {
+		Py_SetProgramName(name);
+	#ifdef HAVE_PTHREAD_H
+		Py_InitializeEx(0);				/* Don't override signal handlers */
+		PyEval_InitThreads(); 				/* This also grabs a lock */
+		main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
+	#endif
+
+		if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
+							 "FreeRADIUS Module")) == NULL)
+			goto failed;
+
+		for (i = 0; radiusd_constants[i].name; i++) {
+			if ((PyModule_AddIntConstant(radiusd_module, radiusd_constants[i].name,
+							 radiusd_constants[i].value)) < 0) {
+				goto failed;
+			}
+		}
+	}
+
 	if (inst->python_path) {
 		char *path;
 
 		memcpy(&path, &inst->python_path, sizeof(path));
 		PySys_SetPath(path);
-	}
-
-	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
-					     "FreeRADIUS Module")) == NULL)
-		goto failed;
-
-	for (i = 0; radiusd_constants[i].name; i++) {
-		if ((PyModule_AddIntConstant(radiusd_module, radiusd_constants[i].name,
-					     radiusd_constants[i].value)) < 0) {
-			goto failed;
-		}
 	}
 
 #ifdef HAVE_PTHREAD_H
@@ -404,7 +410,7 @@ static void do_python_cleanup(void *arg)
 }
 #endif
 
-static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFunc, char const *funcname, bool worker)
+static rlm_rcode_t do_python(REQUEST *request, PyObject *pFunc, char const *funcname, bool worker)
 {
 	vp_cursor_t	cursor;
 	VALUE_PAIR      *vp;
@@ -427,7 +433,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		PyThreadState *my_thread_state;
 		my_thread_state = fr_thread_local_init(local_thread_state, do_python_cleanup);
 		if (!my_thread_state) {
-			my_thread_state = PyThreadState_New(inst->main_thread_state->interp);
+			my_thread_state = PyThreadState_New(main_thread_state->interp);
 			RDEBUG3("Initialised new thread state %p", my_thread_state);
 			if (!my_thread_state) {
 				REDEBUG("Failed initialising local PyThreadState on first run");
@@ -692,7 +698,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 *	Call the instantiate function.  No request.  Use the
 	 *	return value.
 	 */
-	return do_python(inst, NULL, inst->instantiate.function, "instantiate", false);
+	return do_python(NULL, inst->instantiate.function, "instantiate", false);
 failed:
 	Pyx_BLOCK_THREADS
 	mod_error();
@@ -709,7 +715,7 @@ static int mod_detach(void *instance)
 	/*
 	 *	Master should still have no thread state
 	 */
-	ret = do_python(inst, NULL, inst->detach.function, "detach", false);
+	ret = do_python(NULL, inst->detach.function, "detach", false);
 
 	mod_instance_clear(inst);
 	dlclose(inst->libpython);
@@ -718,7 +724,7 @@ static int mod_detach(void *instance)
 }
 
 #define A(x) static rlm_rcode_t CC_HINT(nonnull) mod_##x(void *instance, REQUEST *request) { \
-		return do_python((rlm_python_t *) instance, request, ((rlm_python_t *)instance)->x.function, #x, true);\
+		return do_python(request, ((rlm_python_t *)instance)->x.function, #x, true);\
 	}
 
 A(authenticate)
