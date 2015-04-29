@@ -93,7 +93,7 @@ static int _eap_module_free(eap_module_t *inst)
 /** Load required EAP sub-modules (methods)
  *
  */
-int eap_module_load(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF_SECTION *cs)
+int eap_module_instantiate(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF_SECTION *cs)
 {
 	eap_module_t *method;
 	char *mod_name, *p;
