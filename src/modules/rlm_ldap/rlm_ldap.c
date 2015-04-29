@@ -619,8 +619,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	If the configuration parameters can't be parsed, then fail.
 	 */
-	if ((parse_sub_section(inst, conf, &inst->accounting, RLM_COMPONENT_ACCT) < 0) ||
-	    (parse_sub_section(inst, conf, &inst->postauth, RLM_COMPONENT_POST_AUTH) < 0)) {
+	if ((parse_sub_section(inst, conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
+	    (parse_sub_section(inst, conf, &inst->postauth, MOD_POST_AUTH) < 0)) {
 		cf_log_err_cs(conf, "Failed parsing configuration");
 
 		goto error;

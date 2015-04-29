@@ -42,8 +42,8 @@ typedef struct virtual_server_t {
 	int		can_free;
 	CONF_SECTION	*cs;
 	rbtree_t	*components;
-	modcallable	*mc[RLM_COMPONENT_COUNT];
-	CONF_SECTION	*subcs[RLM_COMPONENT_COUNT];
+	modcallable	*mc[MOD_COUNT];
+	CONF_SECTION	*subcs[MOD_COUNT];
 	struct virtual_server_t *next;
 } virtual_server_t;
 
@@ -67,7 +67,7 @@ struct fr_module_hup_t {
 /*
  *	Ordered by component
  */
-const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
+const section_type_value_t section_type_value[MOD_COUNT] = {
 	{ "authenticate", "Auth-Type",       PW_AUTH_TYPE },
 	{ "authorize",    "Autz-Type",       PW_AUTZ_TYPE },
 	{ "preacct",      "Pre-Acct-Type",   PW_PRE_ACCT_TYPE },
@@ -1019,7 +1019,7 @@ static int load_component_section(CONF_SECTION *cs,
 		 *	i.e. They're not allowed in a "group" or "redundant"
 		 *	subsection.
 		 */
-		if (comp == RLM_COMPONENT_AUTH) {
+		if (comp == MOD_AUTHENTICATE) {
 			DICT_VALUE *dval;
 			char const *modrefname = NULL;
 			if (cp) {
@@ -1145,7 +1145,7 @@ static int load_byserver(CONF_SECTION *cs)
 	 *	configuration section, and loading it.
 	 */
 	found = 0;
-	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
+	for (comp = 0; comp < MOD_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 
 		subcs = cf_section_sub_find(cs,
@@ -1167,17 +1167,17 @@ static int load_byserver(CONF_SECTION *cs)
 #ifdef WITH_PROXY
 		    !main_config.proxy_requests &&
 #endif
-		    ((comp == RLM_COMPONENT_PRE_PROXY) ||
-		     (comp == RLM_COMPONENT_POST_PROXY))) {
+		    ((comp == MOD_PRE_PROXY) ||
+		     (comp == MOD_POST_PROXY))) {
 			continue;
 		}
 
 #ifndef WITH_ACCOUNTING
-		if (comp == RLM_COMPONENT_ACCT) continue;
+		if (comp == MOD_ACCOUNTING) continue;
 #endif
 
 #ifndef WITH_SESSION_MGMT
-		if (comp == RLM_COMPONENT_SESS) continue;
+		if (comp == MOD_SESSION) continue;
 #endif
 
 		if (rad_debug_lvl <= 3) {
@@ -1226,12 +1226,12 @@ static int load_byserver(CONF_SECTION *cs)
 		if (subcs) {
 			cf_log_module(cs, "Loading vmps {...}");
 			if (load_component_section(subcs, components,
-						   RLM_COMPONENT_POST_AUTH) < 0) {
+						   MOD_POST_AUTH) < 0) {
 				goto error;
 			}
 			c = lookup_by_index(components,
-					    RLM_COMPONENT_POST_AUTH, 0);
-			if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
+					    MOD_POST_AUTH, 0);
+			if (c) server->mc[MOD_POST_AUTH] = c->modulelist;
 			break;
 		}
 #endif
@@ -1259,12 +1259,12 @@ static int load_byserver(CONF_SECTION *cs)
 			if (!load_subcomponent_section(subcs,
 						       components,
 						       da,
-						       RLM_COMPONENT_POST_AUTH)) {
+						       MOD_POST_AUTH)) {
 				goto error; /* FIXME: memleak? */
 			}
 			c = lookup_by_index(components,
-					    RLM_COMPONENT_POST_AUTH, 0);
-			if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
+					    MOD_POST_AUTH, 0);
+			if (c) server->mc[MOD_POST_AUTH] = c->modulelist;
 
 			subcs = cf_subsection_find_next(cs, subcs, "dhcp");
 		}
@@ -1414,7 +1414,7 @@ int virtual_servers_load(CONF_SECTION *config)
 	if (server) {
 		int i;
 
-		for (i = RLM_COMPONENT_AUTH; i < RLM_COMPONENT_COUNT; i++) {
+		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
 			if (!modcall_pass2(server->mc[i])) return -1;
 		}
 
@@ -1440,7 +1440,7 @@ int virtual_servers_load(CONF_SECTION *config)
 		server = virtual_server_find(name2);
 		if (!server) continue;
 
-		for (i = RLM_COMPONENT_AUTH; i < RLM_COMPONENT_COUNT; i++) {
+		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
 			if (!modcall_pass2(server->mc[i])) return -1;
 		}
 
@@ -1604,7 +1604,7 @@ static bool server_define_types(CONF_SECTION *cs)
 	/*
 	 *	Loop over all of the components
 	 */
-	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
+	for (comp = 0; comp < MOD_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 		CONF_ITEM *modref;
 		DICT_ATTR const *da;
@@ -1996,7 +1996,7 @@ int modules_init(CONF_SECTION *config)
  */
 rlm_rcode_t process_authorize(int autz_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_AUTZ, autz_type, request);
+	return indexed_modcall(MOD_AUTHORIZE, autz_type, request);
 }
 
 /*
@@ -2004,7 +2004,7 @@ rlm_rcode_t process_authorize(int autz_type, REQUEST *request)
  */
 rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_AUTH, auth_type, request);
+	return indexed_modcall(MOD_AUTHENTICATE, auth_type, request);
 }
 
 #ifdef WITH_ACCOUNTING
@@ -2013,7 +2013,7 @@ rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
  */
 rlm_rcode_t module_preacct(REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_PREACCT, 0, request);
+	return indexed_modcall(MOD_PREACCT, 0, request);
 }
 
 /*
@@ -2021,7 +2021,7 @@ rlm_rcode_t module_preacct(REQUEST *request)
  */
 rlm_rcode_t process_accounting(int acct_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_ACCT, acct_type, request);
+	return indexed_modcall(MOD_ACCOUNTING, acct_type, request);
 }
 #endif
 
@@ -2042,7 +2042,7 @@ int process_checksimul(int sess_type, REQUEST *request, int maxsimul)
 	request->simul_max = maxsimul;
 	request->simul_mpp = 1;
 
-	rcode = indexed_modcall(RLM_COMPONENT_SESS, sess_type, request);
+	rcode = indexed_modcall(MOD_SESSION, sess_type, request);
 
 	if (rcode != RLM_MODULE_OK) {
 		/* FIXME: Good spot for a *rate-limited* warning to the log */
@@ -2059,7 +2059,7 @@ int process_checksimul(int sess_type, REQUEST *request, int maxsimul)
  */
 rlm_rcode_t process_pre_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_PRE_PROXY, type, request);
+	return indexed_modcall(MOD_PRE_PROXY, type, request);
 }
 
 /*
@@ -2067,7 +2067,7 @@ rlm_rcode_t process_pre_proxy(int type, REQUEST *request)
  */
 rlm_rcode_t process_post_proxy(int type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_POST_PROXY, type, request);
+	return indexed_modcall(MOD_POST_PROXY, type, request);
 }
 #endif
 
@@ -2076,17 +2076,17 @@ rlm_rcode_t process_post_proxy(int type, REQUEST *request)
  */
 rlm_rcode_t process_post_auth(int postauth_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_POST_AUTH, postauth_type, request);
+	return indexed_modcall(MOD_POST_AUTH, postauth_type, request);
 }
 
 #ifdef WITH_COA
 rlm_rcode_t process_recv_coa(int recv_coa_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_RECV_COA, recv_coa_type, request);
+	return indexed_modcall(MOD_RECV_COA, recv_coa_type, request);
 }
 
 rlm_rcode_t process_send_coa(int send_coa_type, REQUEST *request)
 {
-	return indexed_modcall(RLM_COMPONENT_SEND_COA, send_coa_type, request);
+	return indexed_modcall(MOD_SEND_COA, send_coa_type, request);
 }
 #endif

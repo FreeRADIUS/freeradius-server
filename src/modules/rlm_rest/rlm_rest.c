@@ -813,13 +813,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Parse sub-section configs.
 	 */
 	if (
-		(parse_sub_section(conf, &inst->authorize, RLM_COMPONENT_AUTZ) < 0) ||
-		(parse_sub_section(conf, &inst->authenticate, RLM_COMPONENT_AUTH) < 0) ||
-		(parse_sub_section(conf, &inst->accounting, RLM_COMPONENT_ACCT) < 0) ||
+		(parse_sub_section(conf, &inst->authorize, MOD_AUTHORIZE) < 0) ||
+		(parse_sub_section(conf, &inst->authenticate, MOD_AUTHENTICATE) < 0) ||
+		(parse_sub_section(conf, &inst->accounting, MOD_ACCOUNTING) < 0) ||
 
 /* @todo add behaviour for checksimul */
-/*		(parse_sub_section(conf, &inst->checksimul, RLM_COMPONENT_SESS) < 0) || */
-		(parse_sub_section(conf, &inst->post_auth, RLM_COMPONENT_POST_AUTH) < 0))
+/*		(parse_sub_section(conf, &inst->checksimul, MOD_SESSION) < 0) || */
+		(parse_sub_section(conf, &inst->post_auth, MOD_POST_AUTH) < 0))
 	{
 		return -1;
 	}

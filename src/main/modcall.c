@@ -321,7 +321,7 @@ static rlm_rcode_t CC_HINT(nonnull) call_modsingle(rlm_components_t component, m
 	return request->rcode;
 }
 
-static int default_component_results[RLM_COMPONENT_COUNT] = {
+static int default_component_results[MOD_COUNT] = {
 	RLM_MODULE_REJECT,	/* AUTH */
 	RLM_MODULE_NOTFOUND,	/* AUTZ */
 	RLM_MODULE_NOOP,	/* PREACCT */
@@ -1186,7 +1186,7 @@ static void dump_tree(rlm_components_t comp, modcallable *c)
  * behaves like the code from the old module_*() function. redundant{}
  * are based on my guesses of what they will be used for. --Pac. */
 static const int
-defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
+defaultactions[MOD_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 {
 	/* authenticate */
 	{
@@ -2581,8 +2581,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		/*
 		 *	Find the component.
 		 */
-		for (i = RLM_COMPONENT_AUTH;
-		     i < RLM_COMPONENT_COUNT;
+		for (i = MOD_AUTHENTICATE;
+		     i < MOD_COUNT;
 		     i++) {
 			if (strcmp(p, comp2str[i]) == 0) {
 				char buffer[256];
@@ -2635,7 +2635,7 @@ allocate_csingle:
 	csingle = mod_singletocallable(single);
 	csingle->parent = parent;
 	csingle->next = NULL;
-	if (!parent || (component != RLM_COMPONENT_AUTH)) {
+	if (!parent || (component != MOD_AUTHENTICATE)) {
 		memcpy(csingle->actions, defaultactions[component][grouptype],
 		       sizeof csingle->actions);
 	} else { /* inside Auth-Type has different rules */
@@ -2924,7 +2924,7 @@ set_codes:
 	 */
 	for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 		if (!c->actions[i]) {
-			if (!parent || (component != RLM_COMPONENT_AUTH)) {
+			if (!parent || (component != MOD_AUTHENTICATE)) {
 				c->actions[i] = defaultactions[component][parentgrouptype][i];
 			} else { /* inside Auth-Type has different rules */
 				c->actions[i] = authtype_actions[parentgrouptype][i];
