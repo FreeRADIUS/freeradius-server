@@ -324,6 +324,46 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
 }
 
 
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+{
+	rlm_counter_t *inst = instance;
+	ATTR_FLAGS flags;
+
+	DICT_ATTR const *da;
+
+	if (paircompare_register_byname(inst->counter_name, NULL, true, counter_cmp, inst) < 0) {
+		ERROR("rlm_counterL: Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
+		return -1;
+	}
+
+
+	da = dict_attrbyname(inst->counter_name);
+	if (!da) {
+		cf_log_err_cs(conf, "Failed to find counter attribute %s", inst->counter_name);
+		return -1;
+	}
+	inst->dict_attr = da;
+
+	/*
+	 *	Create a new attribute for the check item.
+	 */
+	memset(&flags, 0, sizeof(flags));
+	if (dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
+		ERROR("rlm_counter: Failed to create check attribute %s: %s", inst->counter_name, fr_strerror());
+		return -1;
+
+	}
+
+	da = dict_attrbyname(inst->check_name);
+	if (!da) {
+		ERROR("rlm_counter: Failed to find check attribute %s", inst->counter_name);
+		return -1;
+	}
+	inst->check_attr = da;
+
+	return 0;
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -339,7 +379,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rlm_counter_t *inst = instance;
 	DICT_ATTR const *da;
 	DICT_VALUE *dval;
-	ATTR_FLAGS flags;
 	time_t now;
 	int cache_size;
 	int ret;
@@ -378,40 +417,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	} else {
 		inst->reply_attr = NULL;
 	}
-
-	/*
-	 *  Create a new attribute for the counter.
-	 */
-	rad_assert(inst->counter_name && *inst->counter_name);
-	memset(&flags, 0, sizeof(flags));
-	if (dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
-		ERROR("rlm_counter: Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
-		return -1;
-	}
-
-	da = dict_attrbyname(inst->counter_name);
-	if (!da) {
-		cf_log_err_cs(conf, "Failed to find counter attribute %s", inst->counter_name);
-		return -1;
-	}
-	inst->dict_attr = da;
-	DEBUG2("rlm_counter: Counter attribute %s is number %d", inst->counter_name, inst->dict_attr->attr);
-
-	/*
-	 * Create a new attribute for the check item.
-	 */
-	rad_assert(inst->check_name && *inst->check_name);
-	if (dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
-		ERROR("rlm_counter: Failed to create check attribute %s: %s", inst->counter_name, fr_strerror());
-		return -1;
-
-	}
-	da = dict_attrbyname(inst->check_name);
-	if (!da) {
-		ERROR("rlm_counter: Failed to find check attribute %s", inst->counter_name);
-		return -1;
-	}
-	inst->check_attr = da;
 
 	/*
 	 * Find the attribute for the allowed protocol
@@ -501,13 +506,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 	}
-
-
-	/*
-	 *	Register the counter comparison operation.
-	 * FIXME: move all attributes to DA
-	 */
-	paircompare_register(inst->dict_attr, NULL, true, counter_cmp, inst);
 
 	/*
 	 * Init the mutex
@@ -872,6 +870,7 @@ module_t rlm_counter = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_counter_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {
