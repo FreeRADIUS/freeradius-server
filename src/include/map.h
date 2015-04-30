@@ -44,9 +44,9 @@ extern "C" {
  * @see vp_tmpl_t
  */
 typedef struct value_pair_map {
-	vp_tmpl_t	*lhs;	//!< Typically describes the attribute
+	vp_tmpl_t		*lhs;	//!< Typically describes the attribute
 					//!< to add or modify.
-	vp_tmpl_t	*rhs;   //!< Typically describes a value or a
+	vp_tmpl_t		*rhs;   //!< Typically describes a value or a
 					//!< src attribute to copy.
 
 	FR_TOKEN		op; 	//!< The operator that controls
