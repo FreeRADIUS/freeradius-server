@@ -231,12 +231,20 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	if (!clients) {
 		if (client->server != NULL) {
 			CONF_SECTION *cs;
+			CONF_SECTION *listen;
 
 			cs = cf_section_sub_find_name2(main_config.config, "server", client->server);
 			if (!cs) {
 				ERROR("Failed to find virtual server %s", client->server);
 				return false;
 			}
+
+			/*
+			 *	If this server has no "listen" section, add the clients
+			 *	to the global client list.
+			 */
+			listen = cf_section_sub_find(cs, "listen");
+			if (!listen) goto global_clients;
 
 			/*
 			 *	If the client list already exists, use that.
@@ -258,6 +266,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			}
 
 		} else {
+		global_clients:
 			/*
 			 *	Initialize the global list, if not done already.
 			 */
