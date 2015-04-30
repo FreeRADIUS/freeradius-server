@@ -22,6 +22,9 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  without explicit ordering or listing in "instantiate".
 	* Added 'bootstrap' section to modules.  Third-party modules
 	  will need to be updated.
+	* When adding clients from a DB, add them to a virtual server
+	  if that virtual server has a "listen" section.  Otherwise,
+	  add the clients to the global list.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
