@@ -12,13 +12,16 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  register "instance-name-SQL-Group", similarly to "ldap".
 	* Unknown attributes are now complained about more often
 	  when used in unlang statements.  e.g. if (Foo-Bar == 3)
-	  used to not cause parse errors.  Now it does.
+	  used to be a string to string comparison.  It is now a
+	  parse error.
 	* Rename RLM_COMPONENT_* to MOD_* in the code.
 	  This makes many things easier.
 	* Move to C99 initializers for modules.
 	* Load modules in raddb/mods-enabled.  This allows attributes
 	  like "LDAP-Group" to be used in the "files" module,
 	  without explicit ordering or listing in "instantiate".
+	* Added 'bootstrap' section to modules.  Third-party modules
+	  will need to be updated.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
