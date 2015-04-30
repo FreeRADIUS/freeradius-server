@@ -165,7 +165,7 @@ typedef struct {
  *
  * Is used as both the RHS and LHS of a map (both update, and conditional types)
  *
- * @section update_maps Use in update value_pair_map_t
+ * @section update_maps Use in update vp_map_t
  * When used on the LHS it describes an attribute to create and should be one of these types:
  * - #TMPL_TYPE_ATTR
  * - #TMPL_TYPE_LIST
@@ -180,11 +180,11 @@ typedef struct {
  * - #TMPL_TYPE_DATA
  * - #TMPL_TYPE_XLAT_STRUCT (pre-parsed xlat)
  *
- * @section conditional_maps Use in conditional value_pair_map_t
+ * @section conditional_maps Use in conditional vp_map_t
  * When used as part of a condition it may be any of the RHS side types, as well as:
  * - #TMPL_TYPE_REGEX_STRUCT (pre-parsed regex)
  *
- * @see value_pair_map_t
+ * @see vp_map_t
  */
 typedef struct vp_tmpl_t {
 	tmpl_type_t	type;		//!< What type of value tmpl refers to.

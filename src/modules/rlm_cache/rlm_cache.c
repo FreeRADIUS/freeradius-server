@@ -246,7 +246,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	VALUE_PAIR *vp, *to_cache;
 	vp_cursor_t src_list, packet, reply, control, state;
 
-	value_pair_map_t const *map;
+	vp_map_t const *map;
 
 	bool merge = true;
 	rlm_cache_entry_t *c;
@@ -366,7 +366,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 /** Verify that a map in the cache section makes sense
  *
  */
-static int cache_verify(value_pair_map_t *map, void *ctx)
+static int cache_verify(vp_map_t *map, void *ctx)
 {
 	if (modcall_fixup_update(map, ctx) < 0) return -1;
 

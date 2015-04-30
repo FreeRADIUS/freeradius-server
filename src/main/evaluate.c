@@ -155,7 +155,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		         PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
 		         PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
 {
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 
 	ssize_t		slen;
 	int		ret;
@@ -280,7 +280,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 			   PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
 			   PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
 {
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 	int rcode;
 
 #ifdef WITH_EVAL_DEBUG
@@ -357,7 +357,7 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
 				  PW_TYPE lhs_type, DICT_ATTR const *lhs_enumv,
 				  value_data_t const *lhs, size_t lhs_len)
 {
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 
 	DICT_ATTR const *cast = NULL;
 	PW_TYPE cast_type = PW_TYPE_INVALID;
@@ -586,7 +586,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 {
 	int rcode = 0;
 
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 
 	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
 		   fr_int2str(tmpl_names, map->lhs->type, "???"),
