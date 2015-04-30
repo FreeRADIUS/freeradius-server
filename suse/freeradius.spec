@@ -5,7 +5,7 @@
 
 
 Name:         freeradius-server
-Version: 2.2.7
+Version: 2.2.8
 Release:      0
 License:      GPLv2 ; LGPLv2.1
 Group:        Productivity/Networking/Radius/Servers

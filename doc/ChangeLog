@@ -1,4 +1,9 @@
-FreeRADIUS 2.2.7 Wednesday 22 Apr 2014 14:00:00 EST, urgency=medium
+FreeRADIUS 2.2.8 Wednesday 22 Apr 2015 14:00:00 EST, urgency=medium
+	Feature improvements
+
+	Bug fixes
+
+FreeRADIUS 2.2.7 Wednesday 22 Apr 2015 14:00:00 EST, urgency=medium
 	Feature improvements
 	* Allow "eap" to be listed in Post-Auth-Type Reject
 	  so that it sends EAP-Fail and Message-Authenticator.
