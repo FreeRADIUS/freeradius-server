@@ -1317,12 +1317,14 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	switch (type) {
 	case PW_TYPE_BOOLEAN:
 		/*
-		 *	Allow yes/no and on/off
+		 *	Allow yes/no, true/false, and on/off
 		 */
 		if ((strcasecmp(value, "yes") == 0) ||
+		    (strcasecmp(value, "true") == 0) ||
 		    (strcasecmp(value, "on") == 0)) {
 			*(bool *)data = true;
 		} else if ((strcasecmp(value, "no") == 0) ||
+			   (strcasecmp(value, "false") == 0) ||
 			   (strcasecmp(value, "off") == 0)) {
 			*(bool *)data = false;
 		} else {
