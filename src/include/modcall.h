@@ -21,7 +21,7 @@ extern "C" {
  */
 typedef struct modcallable modcallable;
 
-int modcall_fixup_update(value_pair_map_t *map, void *ctx);
+int modcall_fixup_update(vp_map_t *map, void *ctx);
 
 int modcall(rlm_components_t component, modcallable *c, REQUEST *request);
 

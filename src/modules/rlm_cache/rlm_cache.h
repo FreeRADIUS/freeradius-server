@@ -60,7 +60,7 @@ typedef struct rlm_cache_t {
 	int32_t			epoch;			//!< Time after which entries are considered valid.
 	bool			stats;			//!< Generate statistics.
 
-	value_pair_map_t	*maps;			//!< Attribute map applied to users.
+	vp_map_t	*maps;			//!< Attribute map applied to users.
 							//!< and profiles.
 	CONF_SECTION		*cs;
 } rlm_cache_t;

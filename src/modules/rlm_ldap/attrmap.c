@@ -33,7 +33,7 @@
  *
  * @see map_to_vp
  */
-static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, void *ctx)
+static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
 {
 	rlm_ldap_result_t *self = ctx;
 	VALUE_PAIR *head = NULL, *vp;
@@ -56,7 +56,7 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 	 */
 	case TMPL_TYPE_LIST:
 		for (i = 0; i < self->count; i++) {
-			value_pair_map_t *attr = NULL;
+			vp_map_t *attr = NULL;
 
 			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]->bv_val);
 			if (map_afrom_attr_str(request, &attr, self->values[i]->bv_val,
@@ -133,7 +133,7 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, value_pair_
 	return 0;
 }
 
-int rlm_ldap_map_verify(value_pair_map_t *map, void *instance)
+int rlm_ldap_map_verify(vp_map_t *map, void *instance)
 {
 	ldap_instance_t *inst = instance;
 
@@ -234,7 +234,7 @@ int rlm_ldap_map_verify(value_pair_map_t *map, void *instance)
  */
 void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded)
 {
-	value_pair_map_t const *map;
+	vp_map_t const *map;
 	unsigned int total = 0;
 
 	char const *name;
@@ -258,9 +258,9 @@ void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded)
 /** Expand values in an attribute map where needed
  *
  */
-int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_map_xlat_t *expanded)
+int rlm_ldap_map_xlat(REQUEST *request, vp_map_t const *maps, rlm_ldap_map_xlat_t *expanded)
 {
-	value_pair_map_t const *map;
+	vp_map_t const *map;
 	unsigned int total = 0;
 
 	VALUE_PAIR *found, **from = NULL;
@@ -358,7 +358,7 @@ int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_m
 int rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
 		    rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry)
 {
-	value_pair_map_t const 	*map;
+	vp_map_t const 	*map;
 	unsigned int		total = 0;
 	int			applied = 0;	/* How many maps have been applied to the current request */
 
@@ -418,7 +418,7 @@ int rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
 
 		RINDENT();
 		for (i = 0; i < count; i++) {
-			value_pair_map_t *attr;
+			vp_map_t *attr;
 			char *value;
 
 			value = rlm_ldap_berval_to_string(request, values[i]);

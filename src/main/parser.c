@@ -579,7 +579,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			bool iflag = false;
 			bool mflag = false;
 #endif
-			value_pair_map_t *map;
+			vp_map_t *map;
 
 			/*
 			 *	The next thing should now be a comparison operator.
@@ -747,7 +747,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 *	want to separate parse errors in the
 			 *	LHS from ones in the RHS.
 			 */
-			c->data.map = map = talloc_zero(c, value_pair_map_t);
+			c->data.map = map = talloc_zero(c, vp_map_t);
 
 			tlen = tmpl_afrom_str(map, &map->lhs, lhs, talloc_array_length(lhs) - 1,
 					      lhs_type, REQUEST_CURRENT, PAIR_LIST_REQUEST, false);

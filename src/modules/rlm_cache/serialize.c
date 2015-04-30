@@ -151,7 +151,7 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 	p = in;
 
 	while (((size_t)(p - in)) < (size_t)inlen) {
-		value_pair_map_t *map = NULL;
+		vp_map_t *map = NULL;
 		VALUE_PAIR *vp = NULL;
 		ssize_t len;
 

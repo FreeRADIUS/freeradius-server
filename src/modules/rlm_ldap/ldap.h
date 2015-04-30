@@ -141,7 +141,7 @@ typedef struct ldap_instance {
 	/*
 	 *	RADIUS attribute to LDAP attribute maps
 	 */
-	value_pair_map_t *user_map; 			//!< Attribute map applied to users and profiles.
+	vp_map_t *user_map; 			//!< Attribute map applied to users and profiles.
 
 	/*
 	 *	User object attributes and filters
@@ -296,7 +296,7 @@ typedef struct ldap_handle {
 } ldap_handle_t;
 
 typedef struct rlm_ldap_map_xlat {
-	value_pair_map_t const *maps;
+	vp_map_t const *maps;
 	char const *attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
 								     //!< and NULL termination.
 	int count;
@@ -422,11 +422,11 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 /*
  *	attrmap.c - Attribute mapping code.
  */
-int rlm_ldap_map_verify(value_pair_map_t *map, void *instance);
+int rlm_ldap_map_verify(vp_map_t *map, void *instance);
 
 void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded);
 
-int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_map_xlat_t *expanded);
+int rlm_ldap_map_xlat(REQUEST *request, vp_map_t const *maps, rlm_ldap_map_xlat_t *expanded);
 
 int rlm_ldap_map_do(ldap_instance_t const *inst, REQUEST *request, LDAP *handle,
 		    rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry);
