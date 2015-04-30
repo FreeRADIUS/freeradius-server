@@ -73,7 +73,7 @@ typedef struct {
 	modcallable		*children;
 	modcallable		*tail;		/* of the children list */
 	CONF_SECTION		*cs;
-	value_pair_map_t	*map;		/* update */
+	vp_map_t	*map;		/* update */
 	vp_tmpl_t	*vpt;		/* switch */
 	fr_cond_t		*cond;		/* if/elsif */
 	bool			done_pass2;
@@ -594,7 +594,7 @@ redo:
 	if (c->type == MOD_UPDATE) {
 		int rcode;
 		modgroup *g = mod_callabletogroup(c);
-		value_pair_map_t *map;
+		vp_map_t *map;
 
 		MOD_LOG_OPEN_BRACE;
 		RINDENT();
@@ -798,7 +798,7 @@ redo:
 		modgroup *g, *h;
 		fr_cond_t cond;
 		value_data_t data;
-		value_pair_map_t map;
+		vp_map_t map;
 		vp_tmpl_t vpt;
 
 		MOD_LOG_OPEN_BRACE;
@@ -1507,7 +1507,7 @@ static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
  * @param ctx data to pass to fixup function (currently unused).
  * @return 0 if valid else -1.
  */
-int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
+int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 {
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
 
@@ -1709,7 +1709,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, rlm_components_t c
 	modgroup *g;
 	modcallable *csingle;
 
-	value_pair_map_t *head;
+	vp_map_t *head;
 
 	/*
 	 *	This looks at cs->name2 to determine which list to update
@@ -3119,7 +3119,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 
 static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
-	value_pair_map_t *map;
+	vp_map_t *map;
 
 	if (c->type == COND_TYPE_EXISTS) {
 		if (c->data.vpt->type == TMPL_TYPE_XLAT) {
@@ -3329,7 +3329,7 @@ check_paircmp:
  */
 static bool modcall_pass2_update(modgroup *g)
 {
-	value_pair_map_t *map;
+	vp_map_t *map;
 
 	for (map = g->map; map != NULL; map = map->next) {
 		if (map->rhs->type == TMPL_TYPE_XLAT) {
@@ -3708,7 +3708,7 @@ void modcall_debug(modcallable *mc, int depth)
 {
 	modcallable *this;
 	modgroup *g;
-	value_pair_map_t *map;
+	vp_map_t *map;
 	char buffer[1024];
 
 	for (this = mc; this != NULL; this = this->next) {
