@@ -21,7 +21,8 @@
  * @file map.h
  * @brief Structures and prototypes for maps
  *
- * @copyright 2013  The FreeRADIUS server project
+ * @copyright 2015 The FreeRADIUS server project
+ * @copyright 2015 Arran Cudbard-bell <a.cudbardb@freeradius.org>
  */
 
 RCSIDH(map_h, "$Id$")
@@ -43,7 +44,7 @@ extern "C" {
  *
  * @see vp_tmpl_t
  */
-typedef struct value_pair_map {
+typedef struct vp_map {
 	vp_tmpl_t		*lhs;	//!< Typically describes the attribute
 					//!< to add or modify.
 	vp_tmpl_t		*rhs;   //!< Typically describes a value or a
@@ -56,7 +57,7 @@ typedef struct value_pair_map {
 					//!< created from. Mainly used for
 					//!< logging validation errors.
 
-	struct value_pair_map	*next;	//!< The next valuepair map.
+	struct vp_map		*next;	//!< The next valuepair map.
 } vp_map_t;
 
 #ifndef WITH_VERIFY_PTR
@@ -85,8 +86,8 @@ int		map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 			     map_validate_t validate, void *ctx, unsigned int max) CC_HINT(nonnull(1, 2));
 
 int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
-				 request_refs_t dst_request_def, pair_lists_t dst_list_def,
-				 request_refs_t src_request_def, pair_lists_t src_list_def);
+				   request_refs_t dst_request_def, pair_lists_t dst_list_def,
+				   request_refs_t src_request_def, pair_lists_t src_list_def);
 
 int		map_to_vp(VALUE_PAIR **out, REQUEST *request,
 			  vp_map_t const *map, void *ctx) CC_HINT(nonnull (1,2,3));
@@ -101,7 +102,7 @@ size_t		map_prints(char *buffer, size_t bufsize, vp_map_t const *map);
 void		map_debug_log(REQUEST *request, vp_map_t const *map,
 			      VALUE_PAIR const *vp) CC_HINT(nonnull(1, 2));
 
-bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs);
+bool		map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs);
 #ifdef __cplusplus
 }
 #endif
