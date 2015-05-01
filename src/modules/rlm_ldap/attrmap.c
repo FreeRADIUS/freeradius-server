@@ -93,6 +93,11 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t co
 
 			fr_cursor_merge(&cursor, vp);
 			talloc_free(attr);
+
+			/*
+			 *	Only process the first value, unless the operator is +=
+			 */
+			if (map->op != T_OP_ADD) break;
 		}
 		break;
 
@@ -121,6 +126,11 @@ static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t co
 
 			vp->op = map->op;
 			fr_cursor_insert(&cursor, vp);
+
+			/*
+			 *	Only process the first value, unless the operator is +=
+			 */
+			if (map->op != T_OP_ADD) break;
 		}
 		break;
 
