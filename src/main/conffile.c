@@ -2321,7 +2321,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			/*
 			 *	Skip (...) to find the {
 			 */
-			slen = fr_condition_tokenize(nextcs, cf_section_to_item(nextcs), ptr, &cond,
+			slen = fr_condition_tokenize(this, cf_section_to_item(this), ptr, &cond,
 						     &error, FR_COND_TWO_PASS);
 			memcpy(&p, &ptr, sizeof(p));
 
