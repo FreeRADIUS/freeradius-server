@@ -323,7 +323,6 @@ static rlm_rcode_t mod_map_proc(REQUEST *request, char const *query,
 	sql_rcode_t		ret;
 
 	vp_map_t const		*map;
-	bool			multi_value = false;	/* Do any maps use T_OP_ADD ? */
 
 	int			rows;
 	rlm_sql_row_t		row;
@@ -400,8 +399,6 @@ static rlm_rcode_t mod_map_proc(REQUEST *request, char const *query,
 			field_index[i] = j;
 			found_field = true;
 		}
-
-		if (map->op == T_OP_ADD) multi_value = true;
 	}
 
 	/*
@@ -414,11 +411,6 @@ static rlm_rcode_t mod_map_proc(REQUEST *request, char const *query,
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 		goto finish;
 	}
-
-	/*
-	 *	Only process the first row if no map has a += operator
-	 */
-	if (!multi_value) rows = 1;
 
 	/*
 	 *	We've resolved all the maps to result indexes, now convert
@@ -434,9 +426,7 @@ static rlm_rcode_t mod_map_proc(REQUEST *request, char const *query,
 		for (map = head, j = 0;
 		     map && (j < MAX_SQL_FIELD_INDEX);
 		     map = map->next, j++) {
-			if ((i > 0) && (map->op != T_OP_ADD)) continue;
 			if (field_index[j] < 0) continue;	/* We didn't find the map RHS in the field set */
-
 			if (map_to_request(request, map, _sql_map_proc_get_value, row[field_index[j]]) < 0) goto error;
 		}
 	}
