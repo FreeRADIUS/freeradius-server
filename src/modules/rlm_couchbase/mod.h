@@ -85,6 +85,8 @@ typedef struct rlm_couchbase_handle_t {
 /* define functions */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
 
+int mod_conn_alive(UNUSED void *instance, void *handle);
+
 int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance);
 
 int mod_attribute_to_element(const char *name, json_object *map, void *buf);
