@@ -30,6 +30,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/token.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/exfile.h>
@@ -262,6 +263,183 @@ finish:
 	fr_connection_release(inst->pool, handle);
 
 	return ret;
+}
+
+/** Converts a string value into a #VALUE_PAIR
+ *
+ * @param[out] out where to write the resulting #VALUE_PAIR.
+ * @param[in] request The current request.
+ * @param[in] map to process.
+ * @param[in] ctx The value to parse.
+ * @return 0 on success, -1 on failure.
+ */
+static int _sql_map_proc_get_value(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
+{
+	VALUE_PAIR	*vp;
+	char const	*value = ctx;
+
+	vp = pairalloc(request, map->lhs->tmpl_da);
+	if (pairparsevalue(vp, value, talloc_array_length(value)) < 0) {
+		char *escaped;
+
+		escaped = fr_aprints(vp, value, talloc_array_length(value), '"');
+		REDEBUG("Failed parsing value \"%s\" for attribute %s: %s", escaped,
+			map->lhs->tmpl_da->name, fr_strerror());
+		talloc_free(vp);
+
+		return -1;
+	}
+
+	vp->op = map->op;
+	*out = vp;
+
+	return 0;
+}
+
+/** Executes a SELECT query and maps the result to server attributes
+ *
+ * @param request The current request.
+ * @param query string to execute.
+ * @param head of the map list.
+ * @param cache structure.
+ * @param ctx rlm_sql_t instance.
+ * @return #RLM_MODULE_OK no fields matching a map rhs value were found, #RLM_MODULE_NOTFOUND
+ *	no rows were returned, #RLM_MODULE_FOUND if one or more #VALUE_PAIR were added to
+ *	the #REQUEST or #RLM_MODULE_FAIL if a fault occurred.
+ */
+static rlm_rcode_t sql_map_proc_evaluate(REQUEST *request, char const *query,
+					 vp_map_t const *head, UNUSED void *cache, void *ctx)
+{
+	rlm_sql_t		*inst = talloc_get_type_abort(ctx, rlm_sql_t);
+	rlm_sql_handle_t	*handle = NULL;
+
+	int			i, j;
+
+	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
+	sql_rcode_t		ret;
+
+	vp_map_t const		*map;
+	bool			multi_value = false;	/* Do any maps use T_OP_ADD ? */
+
+	int			rows;
+	rlm_sql_row_t		row;
+
+	int			field_cnt;
+	char const		**fields, *map_rhs;
+	char			map_rhs_buff[128];
+	int			index[64];
+	bool			found_field = false;	/* Did we find any matching fields in the result set ? */
+
+	rad_assert(inst->module->sql_fields);		/* Should have been caught during validation... */
+
+	memset(index, -1, sizeof(index));
+
+	/*
+	 *	Add SQL-User-Name attribute just in case it is needed
+	 *	We could search the string fmt for SQL-User-Name to see if this is
+	 * 	needed or not
+	 */
+	sql_set_user(inst, request, NULL);
+
+	handle = fr_connection_get(inst->pool);		/* connection pool should produce error */
+	if (!handle) return 0;
+
+	rlm_sql_query_log(inst, request, NULL, query);
+
+	ret = rlm_sql_select_query(inst, request, &handle, query);
+	if (ret != RLM_SQL_OK) {
+		RERROR("SQL query failed: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
+		goto finish;
+	}
+
+	rows = (inst->module->sql_num_rows)(handle, inst->config);
+	if (!rows) {
+		RDEBUG("SQL query returned no results");
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		rcode = RLM_MODULE_NOTFOUND;
+		goto finish;
+	}
+
+	ret = (inst->module->sql_fields)(&fields, handle, inst->config);
+	if (ret != RLM_SQL_OK) {
+		RERROR("Failed retrieving field names: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
+	error:
+		rcode = RLM_MODULE_FAIL;
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		goto finish;
+	}
+	rad_assert(fields);
+	field_cnt = talloc_array_length(fields);
+
+	/*
+	 *	Iterate over the maps, it's O(N2)ish but probably
+	 *	faster than building a radix tree each time the
+	 *	map set is evaluated (map->rhs can be dynamic).
+	 */
+	for (map = head, i = 0;
+	     map && (i < (int)(sizeof(index) / sizeof(*index)));
+	     map = map->next, i++) {
+		/*
+		 *	Expand the RHS to get the name of the SQL field
+		 */
+		if (tmpl_expand(&map_rhs, map_rhs_buff, sizeof(map_rhs_buff),
+				request, map->rhs, NULL, NULL) < 0) {
+			RERROR("Failed getting field name: %s", fr_strerror());
+			goto error;
+		}
+
+		for (j = 0; j < field_cnt; j++) {
+			if (strcmp(fields[j], map_rhs) != 0) continue;
+			index[i] = j;
+			found_field = true;
+		}
+
+		if (map->op == T_OP_ADD) multi_value = true;
+	}
+
+	/*
+	 *	Couldn't resolve any map RHS values to fields
+	 *	in the result set.
+	 */
+	if (!found_field) {
+		RDEBUG("No fields matching map found in query result");
+		rcode = RLM_MODULE_OK;
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		goto finish;
+	}
+
+	/*
+	 *	Only process the first row if no map has a += operator
+	 */
+	if (!multi_value) rows = 1;
+
+	/*
+	 *	We've resolved all the maps to result indexes, now convert
+	 *	the values at those indexes into VALUE_PAIRs
+	 */
+	for (i = 0; i < rows; i++) {
+		ret = rlm_sql_fetch_row(&row, inst, request, &handle);
+		if (ret != RLM_SQL_OK) {
+			RERROR("Failed retrieving row: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
+			goto error;
+		}
+
+		for (map = head, j = 0;
+		     map;
+		     map = map->next, j++) {
+			if ((i > 0) && (map->op != T_OP_ADD)) continue;
+			if (index[j] < 0) continue;	/* We didn't find the map RHS in the field set */
+
+			if (map_to_request(request, map, _sql_map_proc_get_value, row[index[j]]) < 0) goto error;
+		}
+	}
+
+	(inst->module->sql_finish_select_query)(handle, inst->config);
+
+finish:
+	fr_connection_release(inst->pool, handle);
+
+	return rcode;
 }
 
 static int generate_sql_clients(rlm_sql_t *inst)
@@ -868,6 +1046,12 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *	Register the SQL xlat function
 	 */
 	xlat_register(inst->name, sql_xlat, sql_escape_func, inst);
+
+	/*
+	 *	Register the SQL map processor function
+	 */
+	if (inst->module->sql_fields) map_proc_register(inst, inst->name, sql_map_proc_evaluate,
+							inst, sql_escape_func, inst, NULL);
 
 	return 0;
 }
