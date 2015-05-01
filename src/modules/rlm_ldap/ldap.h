@@ -430,9 +430,6 @@ int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t
 int rlm_ldap_map_do(ldap_instance_t const *inst, REQUEST *request, LDAP *handle,
 		    rlm_ldap_map_exp_t const *expanded, LDAPMessage *entry);
 
-rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-				 char const *profile, rlm_ldap_map_exp_t const *expanded);
-
 /*
  *	clients.c - Dynamic clients (bulk load).
  */
