@@ -180,16 +180,16 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 	inst->maps = maps;
 
 	if (proc->cache_alloc) {
-		TALLOC_CTX *link;
+		TALLOC_CTX *con;
 
 		/*
 		 *	Creates a threadsafe context, that will be freed
 		 *	at the same time as the map_proc_inst_t structure.
 		 */
-		link = talloc_new(NULL);
-		fr_link_talloc_ctx_free(inst, link);
+		con = talloc_new(NULL);
+		fr_link_talloc_ctx_free(inst, con);
 
-		if (proc->cache_alloc(link, &inst->cache, src, maps, proc->func_ctx) < 0) {
+		if (proc->cache_alloc(con, &inst->cache, src, maps, proc->func_ctx) < 0) {
 			talloc_free(inst);
 			return NULL;
 		}
