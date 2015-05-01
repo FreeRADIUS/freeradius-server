@@ -295,12 +295,13 @@ typedef struct ldap_handle {
 	ldap_instance_t	*inst;				//!< rlm_ldap configuration.
 } ldap_handle_t;
 
-typedef struct rlm_ldap_map_xlat {
-	vp_map_t const *maps;
-	char const *attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
-								     //!< and NULL termination.
-	int count;
-} rlm_ldap_map_xlat_t;
+typedef struct rlm_ldap_map_exp {
+	vp_map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
+	char const	*attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
+							//!< and NULL termination.
+	TALLOC_CTX	*ctx;				//!< Context to allocate new attributes in.
+	int		count;				//!< Index on next free element.
+} rlm_ldap_map_exp_t;
 
 typedef struct rlm_ldap_result {
 	struct berval	**values;			//!< libldap struct containing bv_val (char *)
@@ -424,15 +425,13 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
  */
 int rlm_ldap_map_verify(vp_map_t *map, void *instance);
 
-void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded);
-
-int rlm_ldap_map_xlat(REQUEST *request, vp_map_t const *maps, rlm_ldap_map_xlat_t *expanded);
+int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps);
 
 int rlm_ldap_map_do(ldap_instance_t const *inst, REQUEST *request, LDAP *handle,
-		    rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry);
+		    rlm_ldap_map_exp_t const *expanded, LDAPMessage *entry);
 
 rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-				 char const *profile, rlm_ldap_map_xlat_t const *expanded);
+				 char const *profile, rlm_ldap_map_exp_t const *expanded);
 
 /*
  *	clients.c - Dynamic clients (bulk load).

@@ -1269,7 +1269,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	ldap_handle_t		*conn;
 	LDAPMessage		*result, *entry;
 	char const 		*dn = NULL;
-	rlm_ldap_map_xlat_t	expanded; /* faster than mallocing every time */
+	rlm_ldap_map_exp_t	expanded; /* faster than mallocing every time */
+
+	memset(&expanded, 0, sizeof(expanded));
 
 	/*
 	 *	Don't be tempted to add a check for request->username
@@ -1277,9 +1279,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	many things besides searching for users.
 	 */
 
-	if (rlm_ldap_map_xlat(request, inst->user_map, &expanded) < 0) {
-		return RLM_MODULE_FAIL;
-	}
+	if (rlm_ldap_map_expand(&expanded, request, inst->user_map) < 0) return RLM_MODULE_FAIL;
 
 	conn = mod_conn_get(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
@@ -1482,7 +1482,7 @@ skip_edir:
 	}
 
 finish:
-	rlm_ldap_map_xlat_free(&expanded);
+	TALLOC_FREE(expanded.ctx);
 	if (result) ldap_msgfree(result);
 	mod_conn_release(inst, conn);
 
