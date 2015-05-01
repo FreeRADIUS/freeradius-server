@@ -822,13 +822,32 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		inst->name = cf_section_name1(conf);
 	}
 
+	/*
+	 *	Load the appropriate driver for our database.
+	 *
+	 *	We need this to check if the sql_fields callback is provided.
+	 */
+	inst->handle = lt_dlopenext(inst->config->sql_driver_name);
+	if (!inst->handle) {
+		ERROR("Could not link driver %s: %s", inst->config->sql_driver_name, dlerror());
+		ERROR("Make sure it (and all its dependent libraries!) are in the search path of your system's ld");
+		return -1;
+	}
+
+	inst->module = (rlm_sql_module_t *) dlsym(inst->handle,  inst->config->sql_driver_name);
+	if (!inst->module) {
+		ERROR("Could not link symbol %s: %s", inst->config->sql_driver_name, dlerror());
+		return -1;
+	}
+
 	if (inst->config->groupmemb_query) {
 		if (!cf_section_name2(conf)) {
 			char buffer[256];
 
 			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", inst->name);
 
-			if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0), false, sql_groupcmp, inst) < 0) {
+			if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0),
+							false, sql_groupcmp, inst) < 0) {
 				ERROR("Error registering group comparison: %s", fr_strerror());
 				return -1;
 			}
@@ -934,23 +953,6 @@ do { \
 	inst->sql_query			= rlm_sql_query;
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
-
-	/*
-	 *	Load the appropriate driver for our database
-	 */
-	inst->handle = lt_dlopenext(inst->config->sql_driver_name);
-	if (!inst->handle) {
-		ERROR("Could not link driver %s: %s", inst->config->sql_driver_name, dlerror());
-		ERROR("Make sure it (and all its dependent libraries!) are in the search path of your system's ld");
-		return -1;
-	}
-
-	inst->module = (rlm_sql_module_t *) dlsym(inst->handle,
-						  inst->config->sql_driver_name);
-	if (!inst->module) {
-		ERROR("Could not link symbol %s: %s", inst->config->sql_driver_name, dlerror());
-		return -1;
-	}
 
 	if (inst->module->mod_instantiate) {
 		CONF_SECTION *cs;
