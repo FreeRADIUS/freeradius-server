@@ -300,21 +300,21 @@ static int _sql_map_proc_get_value(VALUE_PAIR **out, REQUEST *request, vp_map_t 
 
 /** Executes a SELECT query and maps the result to server attributes
  *
+ * @param mod_inst #rlm_sql_t instance.
+ * @param proc_inst Instance data for this specific mod_proc call (unused).
  * @param request The current request.
  * @param query string to execute.
- * @param head of the map list.
- * @param cache structure.
- * @param ctx #rlm_sql_t instance.
+ * @param maps Head of the map list.
  * @return
  *	- #RLM_MODULE_OK no fields matching a map rhs value were found.
  *	- #RLM_MODULE_NOTFOUND no rows were returned.
  *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
-static rlm_rcode_t mod_map_proc(REQUEST *request, char const *query,
-				vp_map_t const *head, UNUSED void *cache, void *ctx)
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+				char const *query, vp_map_t const *maps)
 {
-	rlm_sql_t		*inst = talloc_get_type_abort(ctx, rlm_sql_t);
+	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
 	rlm_sql_handle_t	*handle = NULL;
 
 	int			i, j;
@@ -382,7 +382,7 @@ static rlm_rcode_t mod_map_proc(REQUEST *request, char const *query,
 	 *	faster than building a radix tree each time the
 	 *	map set is evaluated (map->rhs can be dynamic).
 	 */
-	for (map = head, i = 0;
+	for (map = maps, i = 0;
 	     map && (i < MAX_SQL_FIELD_INDEX);
 	     map = map->next, i++) {
 		/*
@@ -423,7 +423,7 @@ static rlm_rcode_t mod_map_proc(REQUEST *request, char const *query,
 			goto error;
 		}
 
-		for (map = head, j = 0;
+		for (map = maps, j = 0;
 		     map && (j < MAX_SQL_FIELD_INDEX);
 		     map = map->next, j++) {
 			if (field_index[j] < 0) continue;	/* We didn't find the map RHS in the field set */
@@ -1047,8 +1047,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the SQL map processor function
 	 */
-	if (inst->module->sql_fields) map_proc_register(inst, inst->name, mod_map_proc,
-							inst, sql_escape_func, inst, NULL);
+	if (inst->module->sql_fields) map_proc_register(inst, inst->name, mod_map_proc, sql_escape_func, NULL, 0);
 
 	return 0;
 }

@@ -35,56 +35,46 @@ extern "C" {
 #endif
 
 typedef struct map_proc map_proc_t;
-
-/** Map processor instance
- *
- * Every time a map processor is called in the virtual server config
- * a new instance structure should be allocated.
- */
-typedef struct map_proc_inst {
-	map_proc_t const	*proc;		//!< Map processor.
-	vp_tmpl_t const		*src;		//!< Evaluated to provide source value for map processor.
-	vp_map_t const		*maps;		//!< Head of the map list.
-	void			*cache;		//!< Cache structure passed to the map processor.
-} map_proc_inst_t;
+typedef struct map_proc_inst map_proc_inst_t;
 
 /** Function to evaluate the src string and map the result to server attributes
  *
+ * @param[in] mod_inst Instance of the module that registered the map_proc.
+ * @param[in] proc_inst Map proc data created by #map_proc_instantiate_t.
  * @param[in] request The current request.
  * @param[in] src Talloced buffer, the result of evaluating the src #vp_tmpl_t.
  * @param[in] maps Head of the list of maps to process.
- * @param[in] cache structure created by the #map_proc_cache_alloc_t, or NULL if no cache cb was
- *	provided.
- * @param[in] func_ctx passed to #map_proc_register.
  * @return
  *	- #RLM_MODULE_OK - If data was available, but did match the map.
  *	- #RLM_MODULE_NOTFOUND - If no data available for given src.
  *	- #RLM_MODULE_UPDATED - If new pairs were added to the request.
  *	- #RLM_MODULE_FAIL - If an error occurred performing the mapping.
  */
-typedef rlm_rcode_t (*map_proc_func_t)(REQUEST *request, char const *src,
-				       vp_map_t const *maps, void *cache, void *func_ctx);
+typedef rlm_rcode_t (*map_proc_func_t)(void *mod_inst, void *proc_inst, REQUEST *request,
+				       char const *src, vp_map_t const *maps);
 
 /** Allocate new instance data for a map processor
  *
- * @param[in,out] ctx to allocate cache structure in.
- * @param[out] out Where to write pointer to new cache struct.
+ * @param[out] proc_inst Structure to populate. Allocated by #map_proc_instantiate.
+ * @param[in] mod_inst Module instance that registered the #map_proc_t.
  * @param[in] src template.
- * @param[in] maps Head of the list of maps.
- * @param[in] func_ctx passed to #map_proc_register.
+ * @param[in] maps Head of the list of maps to process.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-typedef int (*map_proc_cache_alloc_t)(TALLOC_CTX *ctx, void **out,
-				      vp_tmpl_t const *src, vp_map_t const *maps, void *func_ctx);
+typedef int (*map_proc_instantiate_t)(void *proc_inst, void *mod_inst, vp_tmpl_t const *src, vp_map_t const *maps);
 
 map_proc_t	*map_proc_find(char const *name);
-int		map_proc_register(TALLOC_CTX *ctx, char const *name, map_proc_func_t func,
-				  void *func_ctx, RADIUS_ESCAPE_STRING escape, void *escape_ctx,
-				  map_proc_cache_alloc_t cache_alloc);
+
+int		map_proc_register(void *mod_inst, char const *name,
+				  map_proc_func_t evaluate,
+				  RADIUS_ESCAPE_STRING escape,
+				  map_proc_instantiate_t instantiate, size_t inst_size);
+
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 				      vp_tmpl_t const *src, vp_map_t const *maps);
+
 rlm_rcode_t	map_proc(REQUEST *request, map_proc_inst_t const *inst);
 
 #ifdef __cplusplus

@@ -32,19 +32,27 @@ RCSID("$Id$")
 
 static rbtree_t *map_proc_root = NULL;
 
-/** Describes a single map processor
+/** Map processor registration
  */
 struct map_proc {
+	void			*mod_inst;		//!< Module instance.
 	char			name[MAX_STRING_LEN];	//!< Name of the map function.
 	int			length;			//!< Length of name.
 
-	map_proc_func_t		func;			//!< Module's map processor function.
-	map_proc_cache_alloc_t	cache_alloc;		//!< Callback to create new cache structure on
-							//!< instantiate.
+	map_proc_func_t		evaluate;		//!< Module's map processor function.
+	map_proc_instantiate_t	instantiate;		//!< Callback to create new instance struct.
 	RADIUS_ESCAPE_STRING	escape;			//!< Escape function to apply to expansions in the map
 							//!< query string.
-	void			*escape_ctx;		//!< Context data from the escape function.
-	void			*func_ctx;		//!< Context data for the map function.
+	size_t			inst_size;		//!< Size of map_proc instance data to allocate.
+};
+
+/** Map processor instance
+ */
+struct map_proc_inst {
+	map_proc_t const	*proc;			//!< Map processor.
+	vp_tmpl_t const		*src;			//!< Evaluated to provide source value for map processor.
+	vp_map_t const		*maps;			//!< Head of the map list.
+	void			*data;			//!< Instance data created by #map_proc_instantiate
 };
 
 /** Compare two map_proc_t structs, based ONLY on the name
@@ -106,21 +114,20 @@ map_proc_t *map_proc_find(char const *name)
  *
  * This should be called by every module that provides a map processing function.
  *
- * @param[in] ctx To allocate new #map_proc_t in. Must be specified. Usually the module instance.
- *	If ctx is freed #map_proc_t is automatically unregistered.
+ * @param[in] mod_inst of module registering the map_proc.
  * @param[in] name of map processor. If processor already exists, it is replaced.
- * @param[in] func Module's map processor function.
- * @param[in] func_ctx to pass to the map function when it's called.
+ * @param[in] evaluate Module's map processor function.
  * @param[in] escape function to sanitize any sub expansions in the map source query.
- * @param[in] escape_ctx to pass to sanitization functions.
- * @param[in] cache_alloc function (optional).
+ * @param[in] instantiate function (optional).
+ * @param[in] inst_size of talloc chunk to allocate for instance data (optional).
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_proc_register(TALLOC_CTX *ctx, char const *name, map_proc_func_t func,
-		      void *func_ctx, RADIUS_ESCAPE_STRING escape, void *escape_ctx,
-		      map_proc_cache_alloc_t cache_alloc)
+int map_proc_register(void *mod_inst, char const *name,
+		      map_proc_func_t evaluate,
+		      RADIUS_ESCAPE_STRING escape,
+		      map_proc_instantiate_t instantiate, size_t inst_size)
 {
 	map_proc_t *proc;
 
@@ -141,7 +148,7 @@ int map_proc_register(TALLOC_CTX *ctx, char const *name, map_proc_func_t func,
 	if (!proc) {
 		rbnode_t *node;
 
-		proc = talloc_zero(ctx, map_proc_t);
+		proc = talloc_zero(mod_inst, map_proc_t);
 		strlcpy(proc->name, name, sizeof(proc->name));
 		proc->length = strlen(proc->name);
 
@@ -154,11 +161,11 @@ int map_proc_register(TALLOC_CTX *ctx, char const *name, map_proc_func_t func,
 		talloc_set_destructor(proc, _map_proc_unregister);
 	}
 
-	proc->func = func;
-	proc->func_ctx = func_ctx;
+	proc->mod_inst = mod_inst;
+	proc->evaluate = evaluate;
 	proc->escape = escape;
-	proc->escape_ctx = escape_ctx;
-	proc->cache_alloc = cache_alloc;
+	proc->instantiate = instantiate;
+	proc->inst_size = inst_size;
 
 	return 0;
 }
@@ -185,17 +192,15 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 	inst->src = src;
 	inst->maps = maps;
 
-	if (proc->cache_alloc) {
-		TALLOC_CTX *ctx_link;
+	if (proc->instantiate) {
+		void *data = NULL;
 
-		/*
-		 *	Creates a threadsafe context, that will be freed
-		 *	at the same time as the map_proc_inst_t structure.
-		 */
-		ctx_link = talloc_new(NULL);
-		fr_link_talloc_ctx_free(inst, ctx_link);
+		if (proc->inst_size > 0) {
+			inst->data = talloc_zero_array(inst, uint8_t, proc->inst_size);
+			if (!data) return NULL;
+		}
 
-		if (proc->cache_alloc(ctx_link, &inst->cache, src, maps, proc->func_ctx) < 0) {
+		if (proc->instantiate(inst->data, proc->mod_inst, src, maps) < 0) {
 			talloc_free(inst);
 			return NULL;
 		}
@@ -217,11 +222,11 @@ rlm_rcode_t map_proc(REQUEST *request, map_proc_inst_t const *inst)
 	char		*value;
 	rlm_rcode_t	rcode;
 
-	if (tmpl_aexpand(request, &value, request, inst->src, inst->proc->escape, inst->proc->escape_ctx) < 0) {
+	if (tmpl_aexpand(request, &value, request, inst->src, inst->proc->escape, inst->proc->mod_inst) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
-	rcode = inst->proc->func(request, value, inst->maps, inst->cache, inst->proc->func_ctx);
+	rcode = inst->proc->evaluate(inst->proc->mod_inst, inst->data, request, value, inst->maps);
 	talloc_free(value);
 
 	return rcode;
