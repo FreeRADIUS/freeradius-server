@@ -229,111 +229,45 @@ int rlm_ldap_map_verify(vp_map_t *map, void *instance)
 	return 0;
 }
 
-/** Free attribute map values
- *
- */
-void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded)
-{
-	vp_map_t const *map;
-	unsigned int total = 0;
-
-	char const *name;
-
-	for (map = expanded->maps; map != NULL; map = map->next) {
-		name = expanded->attrs[total++];
-		if (!name) return;
-
-		switch (map->rhs->type) {
-		case TMPL_TYPE_EXEC:
-		case TMPL_TYPE_XLAT:
-		case TMPL_TYPE_ATTR:
-			rad_const_free(name);
-			break;
-		default:
-			break;
-		}
-	}
-}
-
 /** Expand values in an attribute map where needed
  *
+ * @param[out] expanded array of attributes.
+ * @param[in] request The current request.
+ * @param[in] maps to expand.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int rlm_ldap_map_xlat(REQUEST *request, vp_map_t const *maps, rlm_ldap_map_xlat_t *expanded)
+int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps)
 {
-	vp_map_t const *map;
-	unsigned int total = 0;
+	vp_map_t const	*map;
+	unsigned int	total = 0;
 
-	VALUE_PAIR *found, **from = NULL;
-	REQUEST *context;
+	TALLOC_CTX	*ctx = NULL;
+	char const	*attr;
+	char		attr_buff[1024 + 1];	/* X.501 says we need to support at least 1024 chars for attr names */
+
+	rad_assert(!expanded->ctx);
 
 	for (map = maps; map != NULL; map = map->next) {
-		switch (map->rhs->type) {
-		case TMPL_TYPE_XLAT:
-		{
-			ssize_t len;
-			char *exp = NULL;
-
-			len = radius_axlat(&exp, request, map->rhs->name, NULL, NULL);
-			if (len < 0) {
-				RDEBUG("Expansion of LDAP attribute \"%s\" failed", map->rhs->name);
-
-				goto error;
-			}
-
-			expanded->attrs[total++] = exp;
-			break;
-		}
-
-		case TMPL_TYPE_ATTR:
-			context = request;
-
-			if (radius_request(&context, map->rhs->tmpl_request) == 0) {
-				from = radius_list(context, map->rhs->tmpl_list);
-			}
-			if (!from) continue;
-
-			found = pair_find_by_da(*from, map->rhs->tmpl_da, TAG_ANY);
-			if (!found) continue;
-
-			expanded->attrs[total++] = talloc_typed_strdup(request, found->vp_strvalue);
-			break;
-
-		case TMPL_TYPE_EXEC:
-		{
-			char answer[1024];
-			VALUE_PAIR **input_pairs = NULL;
-			int result;
-
-			input_pairs = radius_list(request, PAIR_LIST_REQUEST);
-			result = radius_exec_program(answer, sizeof(answer), NULL, request,
-						     map->rhs->name, input_pairs ? *input_pairs : NULL,
-						     true, true, EXEC_TIMEOUT);
-			if (result != 0) {
-				return -1;
-			}
-
-			expanded->attrs[total++] = talloc_typed_strdup(request, answer);
-		}
-			break;
-
-		case TMPL_TYPE_LITERAL:
-			expanded->attrs[total++] = map->rhs->name;
-			break;
-
-		default:
-			rad_assert(0);
-		error:
-			expanded->attrs[total] = NULL;
-
-			rlm_ldap_map_xlat_free(expanded);
-
+		if (tmpl_expand(&attr, attr_buff, sizeof(attr_buff), request, map->rhs, NULL, NULL) < 0) {
+			RDEBUG("Expansion of LDAP attribute \"%s\" failed", map->rhs->name);
+			TALLOC_FREE(ctx);
 			return -1;
 		}
+
+		/*
+		 *	Dynamic value
+		 */
+		if (attr == attr_buff) {
+			if (!ctx) ctx = talloc_new(NULL);
+			expanded->attrs[total++] = talloc_strdup(ctx, attr_buff);
+			continue;
+		}
+		expanded->attrs[total++] = attr;
 	}
-
-	rad_assert(total < LDAP_MAX_ATTRMAP);
-
 	expanded->attrs[total] = NULL;
+	expanded->ctx = ctx;	/* Freeing this frees any dynamic values */
 	expanded->count = total;
 	expanded->maps = maps;
 
@@ -358,7 +292,7 @@ int rlm_ldap_map_xlat(REQUEST *request, vp_map_t const *maps, rlm_ldap_map_xlat_
  *	- -1 on failure.
  */
 int rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
-		    rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry)
+		    rlm_ldap_map_exp_t const *expanded, LDAPMessage *entry)
 {
 	vp_map_t const 	*map;
 	unsigned int		total = 0;
@@ -461,7 +395,7 @@ int rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
  * @return One of the RLM_MODULE_* values.
  */
 rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-				 char const *dn, rlm_ldap_map_xlat_t const *expanded)
+				 char const *dn, rlm_ldap_map_exp_t const *expanded)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	ldap_rcode_t	status;
