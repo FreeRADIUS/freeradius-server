@@ -2308,6 +2308,17 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 
 			/*
+			 *	Can only have "if" in 3 named sections.
+			 */
+			server = this->item.parent;
+			while ((strcmp(server->name1, "server") != 0) &&
+			       (strcmp(server->name1, "policy") != 0) &&
+			       (strcmp(server->name1, "instantiate") != 0)) {
+				server = server->item.parent;
+				if (!server) goto invalid_location;
+			}
+
+			/*
 			 *	Skip (...) to find the {
 			 */
 			slen = fr_condition_tokenize(nextcs, cf_section_to_item(nextcs), ptr, &cond,
@@ -2351,14 +2362,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					return -1;
 				}
 			} /* else leave it alone */
-
-			server = this->item.parent;
-			while ((strcmp(server->name1, "server") != 0) &&
-			       (strcmp(server->name1, "policy") != 0) &&
-			       (strcmp(server->name1, "instantiate") != 0)) {
-				server = server->item.parent;
-				if (!server) goto invalid_location;
-			}
 
 			nextcs = cf_section_alloc(this, buf1, ptr);
 			if (!nextcs) {
