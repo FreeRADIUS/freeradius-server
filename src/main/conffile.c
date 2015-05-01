@@ -2413,7 +2413,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			memcpy(buf2, ptr, slen);
 			buf2[slen] = '\0';
 			ptr = p;
-			t2 = T_BARE_WORD;
 
 			if ((t3 = gettoken(&ptr, buf3, sizeof(buf3), true)) != T_LCBRACE) {
 				talloc_free(css);
