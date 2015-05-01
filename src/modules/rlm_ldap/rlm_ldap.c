@@ -1350,8 +1350,6 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	char const 		*dn = NULL;
 	rlm_ldap_map_exp_t	expanded; /* faster than mallocing every time */
 
-	memset(&expanded, 0, sizeof(expanded));
-
 	/*
 	 *	Don't be tempted to add a check for request->username
 	 *	or request->password here. rlm_ldap.authorize can be used for
@@ -1561,7 +1559,7 @@ skip_edir:
 	}
 
 finish:
-	TALLOC_FREE(expanded.ctx);
+	talloc_free(expanded.ctx);
 	if (result) ldap_msgfree(result);
 	mod_conn_release(inst, conn);
 
