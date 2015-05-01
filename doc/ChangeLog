@@ -37,6 +37,9 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  is not found.
 	* Re-enable detail module "locking" parameter.
 	* Don't crash when logging replies from Status-Server packets.
+	* The couchbase module now takes "update" instead of "map",
+	  for consistenct with the rest of the server.  See
+	  raddb/mods-available/couchbase
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
