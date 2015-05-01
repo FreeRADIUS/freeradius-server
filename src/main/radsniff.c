@@ -568,9 +568,14 @@ static void rs_stats_print(rs_latency_t *stats, PW_CODE code)
  *
  * @param in pcap handle to check.
  * @param interval time between checks (used for debug output)
- * @return 0, no drops, -1 we couldn't check, -2 dropped because of buffer exhaustion, -3 dropped because of NIC.
+ * @return
+ *	- 0 No drops.
+ *	- -1 We couldn't check.
+ *	- -2 Dropped because of buffer exhaustion.
+ *	- -3 Dropped because of NIC.
  */
-static int rs_check_pcap_drop(fr_pcap_t *in, int interval) {
+static int rs_check_pcap_drop(fr_pcap_t *in, int interval)
+{
 	int ret = 0;
 	struct pcap_stat pstats;
 

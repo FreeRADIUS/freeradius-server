@@ -50,9 +50,11 @@ static int _pairfree(VALUE_PAIR *vp) {
  *
  * Allocates a new attribute and a new dictionary attr if no DA is provided.
  *
- * @param[in] ctx for allocated memory, usually a pointer to a RADIUS_PACKET
- * @param[in] da Specifies the dictionary attribute to build the VP from.
- * @return a new value pair or NULL if an error occurred.
+ * @param[in] ctx for allocated memory, usually a pointer to a #RADIUS_PACKET
+ * @param[in] da Specifies the dictionary attribute to build the #VALUE_PAIR from.
+ * @return
+ *	- A new #VALUE_PAIR.
+ *	- NULL if an error occurred.
  */
 VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 {
@@ -86,19 +88,21 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 
 /** Create a new valuepair
  *
- * If attr and vendor match a dictionary entry then a VP with that DICT_ATTR
+ * If attr and vendor match a dictionary entry then a VP with that #DICT_ATTR
  * will be returned.
  *
  * If attr or vendor are uknown will call dict_attruknown to create a dynamic
- * DICT_ATTR of PW_TYPE_OCTETS.
+ * #DICT_ATTR of #PW_TYPE_OCTETS.
  *
- * Which type of DICT_ATTR the VALUE_PAIR was created with can be determined by
+ * Which type of #DICT_ATTR the #VALUE_PAIR was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  *
- * @param[in] ctx for allocated memory, usually a pointer to a RADIUS_PACKET
+ * @param[in] ctx for allocated memory, usually a pointer to a #RADIUS_PACKET.
  * @param[in] attr number.
  * @param[in] vendor number.
- * @return the new valuepair or NULL on error.
+ * @return
+ *	- A new #VALUE_PAIR.
+ *	- NULL on error.
  */
 VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 {
@@ -141,7 +145,9 @@ void pairfree(VALUE_PAIR **vps)
 /** Mark malformed or unrecognised attributed as unknown
  *
  * @param vp to change DICT_ATTR of.
- * @return 0 on success (or if already unknown) else -1 on error.
+ * @return
+ *	- 0 on success (or if already unknown).
+ *	- -1 on failure.
  */
 int pair2unknown(VALUE_PAIR *vp)
 {
@@ -618,7 +624,9 @@ mismatch:
  *
  * @param[in] ctx for talloc
  * @param[in] vp to copy.
- * @return a copy of the input VP or NULL on error.
+ * @return
+ *	- A copy of the input VP.
+ *	- NULL on error.
  */
 VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 {
@@ -671,13 +679,13 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	return n;
 }
 
-/** Copy a pairlist.
+/** Copy a pairlist
  *
  * Copy all pairs from 'from' regardless of tag, attribute or vendor.
  *
- * @param[in] ctx for new VALUE_PAIRs to be allocated in.
- * @param[in] from whence to copy VALUE_PAIRs.
- * @return the head of the new VALUE_PAIR list or NULL on error.
+ * @param[in] ctx for new #VALUE_PAIR (s) to be allocated in.
+ * @param[in] from whence to copy #VALUE_PAIR (s).
+ * @return the head of the new #VALUE_PAIR list or NULL on error.
  */
 VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
 {
@@ -707,11 +715,11 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
  * the input list to a new list, and returns the head of this list.
  *
  * @param[in] ctx for talloc
- * @param[in] from whence to copy VALUE_PAIRs.
+ * @param[in] from whence to copy #VALUE_PAIR.
  * @param[in] attr to match, if 0 input list will not be filtered by attr.
  * @param[in] vendor to match.
- * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
- * @return the head of the new VALUE_PAIR list or NULL on error.
+ * @param[in] tag to match, #TAG_ANY matches any tag, #TAG_NONE matches tagless VPs.
+ * @return the head of the new #VALUE_PAIR list or NULL on error.
  */
 VALUE_PAIR *paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag)
 {
@@ -1062,7 +1070,9 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
  * @param value string to convert. Binary safe for variable length values if len is provided.
  * @param inlen may be < 0 in which case strlen(len) is used to determine length, else inline
  *	  should be the length of the string or sub string to parse.
- * @return 0 on success -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 {
@@ -1105,9 +1115,9 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	return 0;
 }
 
-/** Use simple heuristics to create an VALUE_PAIR from an unknown address string
+/** Use simple heuristics to create an #VALUE_PAIR from an unknown address string
  *
- * If a DICT_ATTR is not provided for the address type, parsing will fail with
+ * If a #DICT_ATTR is not provided for the address type, parsing will fail with
  * and error.
  *
  * @param ctx to allocate VP in.
@@ -1116,7 +1126,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
  * @param ipv6 dictionary attribute to use for an IPv6 address.
  * @param ipv4_prefix dictionary attribute to use for an IPv4 prefix.
  * @param ipv6_prefix dictionary attribute to use for an IPv6 prefix.
- * @return NULL on error, or new VALUE_PAIR.
+ * @return NULL on error, or new #VALUE_PAIR.
  */
 VALUE_PAIR *pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DICT_ATTR *ipv6,
 			DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix)
@@ -1209,7 +1219,7 @@ static VALUE_PAIR *pair_unknown2known(VALUE_PAIR *vp, DICT_ATTR const *da)
  * @param attribute name to parse.
  * @param value to parse (must be a hex string).
  * @param op to assign to new valuepair.
- * @return new valuepair or NULL on error.
+ * @return new #VALUE_PAIR or NULL on error.
  */
 static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 				char const *attribute, char const *value,
@@ -1275,19 +1285,19 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 }
 
 
-/** Create a VALUE_PAIR from ASCII strings
+/** Create a #VALUE_PAIR from ASCII strings
  *
  * Converts an attribute string identifier (with an optional tag qualifier)
- * and value string into a VALUE_PAIR.
+ * and value string into a #VALUE_PAIR.
  *
- * The string value is parsed according to the type of VALUE_PAIR being created.
+ * The string value is parsed according to the type of #VALUE_PAIR being created.
  *
- * @param[in] ctx for talloc
+ * @param[in] ctx for talloc.
  * @param[in] vps list where the attribute will be added (optional)
  * @param[in] attribute name.
  * @param[in] value attribute value (may be NULL if value will be set later).
- * @param[in] op to assign to new VALUE_PAIR.
- * @return a new VALUE_PAIR.
+ * @param[in] op to assign to new #VALUE_PAIR.
+ * @return a new #VALUE_PAIR.
  */
 VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		     char const *attribute, char const *value, FR_TOKEN op)
@@ -1453,12 +1463,13 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 
 /** Mark a valuepair for xlat expansion
  *
- * Copies xlat source (unprocessed) string to valuepair value,
- * and sets value type.
+ * Copies xlat source (unprocessed) string to valuepair value, and sets value type.
  *
  * @param vp to mark for expansion.
  * @param value to expand.
- * @return 0 if marking succeeded or -1 if vp already had a value, or OOM.
+ * @return
+ *	- 0 if marking succeeded.
+ *	- -1 if #VALUE_PAIR already had a value, or OOM.
  */
 int pairmark_xlat(VALUE_PAIR *vp, char const *value)
 {
@@ -1656,13 +1667,13 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
  *
  * The line may specify multiple attributes separated by commas.
  *
- * @note If the function returns T_INVALID, an error has occurred and
+ * @note If the function returns #T_INVALID, an error has occurred and
  * @note the valuepair list should probably be freed.
  *
  * @param ctx for talloc
  * @param buffer to read valuepairs from.
  * @param list where the parsed VALUE_PAIRs will be appended.
- * @return the last token parsed, or T_INVALID
+ * @return the last token parsed, or #T_INVALID
  */
 FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 {
@@ -1799,7 +1810,10 @@ error:
  *
  * @param[in] a the first attribute
  * @param[in] b the second attribute
- * @return 1 if true, 0 if false, -1 on error.
+ * @return
+ *	- 1 if true.
+ *	- 0 if false.
+ *	- -1 on failure.
  */
 int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
 {
@@ -1870,9 +1884,13 @@ int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
  *
  * This is useful for comparing lists of attributes inserted into a binary tree.
  *
- * @param a first list of VALUE_PAIRs.
- * @param b second list of VALUE_PAIRs.
- * @return -1 if a < b, 0 if the two lists are equal, 1 if a > b, -2 on error.
+ * @param a first list of #VALUE_PAIR.
+ * @param b second list of #VALUE_PAIR.
+ * @return
+ *	- -1 if a < b.
+ *	- 0 if the two lists are equal.
+ *	- 1 if a > b.
+ *	- -2 on error.
  */
 int pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
 {

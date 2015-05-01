@@ -54,7 +54,7 @@ typedef struct rlm_sql_freetds_conn {
  * @param context The FreeTDS library context.
  * @param conn DB connection handle.
  * @param emsgp Pointer to the error structure.
- * @return CS_CUCCEED
+ * @return CS_SUCCEED
  */
 static CS_RETCODE CS_PUBLIC clientmsg_callback(CS_CONTEXT *context, UNUSED CS_CONNECTION *conn, CS_CLIENTMSG *emsgp)
 {
@@ -333,7 +333,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
  * @param outlen Length of out array.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return number of errors written to the sql_log_entry array.
+ * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)

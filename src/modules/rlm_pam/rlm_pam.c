@@ -131,7 +131,9 @@ static int pam_conv(int num_msg, struct pam_message const **msg, struct pam_resp
  * @param username User to authenticate.
  * @param passwd Password to authenticate with,
  * @param pamauth Type of PAM authentication.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int do_pam(REQUEST *request, char const *username, char const *passwd, char const *pamauth)
 {

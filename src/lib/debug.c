@@ -119,8 +119,11 @@ static TALLOC_CTX *talloc_autofree_ctx;
 
 /** Determine if we're running under a debugger by attempting to attach using pattach
  *
- * @return 0 if we're not, 1 if we are, -1 if we can't tell because of an error,
- *	-2 if we can't tell because we don't have the CAP_SYS_PTRACE capability.
+ * @return
+ *	- 0 if we're not.
+ *	- 1 if we are.
+ *	- -1 if we can't tell because of an error.
+ *	- -2 if we can't tell because we don't have the CAP_SYS_PTRACE capability.
  */
 static int fr_get_debug_state(void)
 {
@@ -563,7 +566,9 @@ int fr_set_dumpable(bool allow_core_dumps)
  *
  * Needed after suid up/down
  *
- * @return 0 on success, else -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_reset_dumpable(void)
 {
@@ -572,7 +577,9 @@ int fr_reset_dumpable(void)
 
 /** Check to see if panic_action file is world writeable
  *
- * @return 0 if file is OK, else -1.
+ * @return
+ *	- 0 if file is OK.
+ *	- -1 if the file is world writeable.
  */
 static int fr_fault_check_permissions(void)
 {
@@ -893,7 +900,9 @@ void fr_talloc_fault_setup(void)
  *        for the parent PID before the command is executed, and %e
  *        will be substituted for the currently running program.
  * @param program Name of program currently executing (argv[0]).
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_fault_setup(char const *cmd, char const *program)
 {

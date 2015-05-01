@@ -98,7 +98,7 @@ void fr_strerror_printf(char const *fmt, ...)
  *
  * Will only return the last library error once, after which it will return a zero length string.
  *
- * @return library error or zero length string
+ * @return library error or zero length string.
  */
 char const *fr_strerror(void)
 {

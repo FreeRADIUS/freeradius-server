@@ -34,7 +34,11 @@ RCSID("$Id$")
  * @param[in] b_type of data to compare.
  * @param[in] b_len of data to compare.
  * @param[in] b Value to compare.
- * @return -1 if a is less than b, 0 if both are equal, 1 if a is more than b, < -1 on error.
+ * @return
+ *	- -1 if a is less than b.
+ *	- 0 if both are equal.
+ *	- 1 if a is more than b.
+ *	- < -1 on failure.
  */
 int value_data_cmp(PW_TYPE a_type, value_data_t const *a, size_t a_len,
 		   PW_TYPE b_type, value_data_t const *b, size_t b_len)
@@ -295,7 +299,10 @@ static int value_data_cidr_cmp_op(FR_TOKEN op, int bytes,
  * @param[in] b_type of data to compare.
  * @param[in] b_len of data to compare.
  * @param[in] b Value to compare.
- * @return 1 if true, 0 if false, -1 on error.
+ * @return
+ *	- 1 if true
+ *	- 0 if false
+ *	- -1 on failure.
  */
 int value_data_cmp_op(FR_TOKEN op,
 		      PW_TYPE a_type, value_data_t const *a, size_t a_len,
@@ -416,7 +423,9 @@ static char const hextab[] = "0123456789abcdef";
  * @param[in] src_len may be < 0 in which case strlen(len) is used to determine length, else src_len
  *	  should be the length of the string or sub string to parse.
  * @param[in] quote quotation character used to drive de-escaping
- * @return length of data written to out or -1 on parse error.
+ * @return
+ *	- Length of data written to out
+ *	- -1 on parse error.
  */
 ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 			    PW_TYPE *src_type, DICT_ATTR const *src_enumv,
@@ -1019,7 +1028,9 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
  * @param src_enumv Enumerated values used to convert integers to strings.
  * @param src Input data.
  * @param src_len Input data len.
- * @return the length of data in the dst or -1 on error.
+ * @return
+ *	- Length of data in the dst.
+ *	- -1 on failure.
  */
 ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 			PW_TYPE dst_type, DICT_ATTR const *dst_enumv,

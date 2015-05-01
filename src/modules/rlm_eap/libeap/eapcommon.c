@@ -80,8 +80,9 @@ const FR_NAME_NUMBER eap_rcode_table[] = {
  * Converts a name into an IANA EAP type.
  *
  * @param name to convert.
- * @return The IANA EAP type or PW_EAP_INVALID if the name doesn't match any
- * known types.
+ * @return
+ *	- IANA EAP type.
+ *	- #PW_EAP_INVALID if the name doesn't match any known types.
  */
 eap_type_t eap_name2type(char const *name)
 {

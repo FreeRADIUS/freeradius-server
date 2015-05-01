@@ -127,7 +127,9 @@ int fr_utf8_char(uint8_t const *str)
  * @param[out] chr_len Where to write the length of the multibyte char passed in chr (may be NULL).
  * @param[in] str Haystack.
  * @param[in] chr Multibyte needle.
- * @return The position of chr in str or NULL if not found.
+ * @return
+ *	- Position of chr in str.
+ *	- NULL if not found.
  */
 char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
 {
@@ -164,7 +166,9 @@ char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
  * @param[out] out where to write the escaped string.
  * @param[out] outlen the length of the buffer pointed to by out.
  * @param[in] quote the quotation character
- * @return the number of bytes written to the out buffer, or a number >= outlen if truncation has occurred.
+ * @return
+ *	- The number of bytes written to the out buffer.
+ *	- A number >= outlen if truncation has occurred.
  */
 size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char quote)
 {
@@ -462,7 +466,9 @@ char *fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
  * @param data to print.
  * @param inlen Length of data.
  * @param quote char to escape in string output.
- * @return  the number of bytes written to the out buffer, or a number >= outlen if truncation has occurred.
+ * @return
+ *	- Number of bytes written to the out buffer.
+ *	- A number >= outlen if truncation has occurred.
  */
 size_t vp_data_prints_value(char *out, size_t outlen,
 			    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
@@ -687,9 +693,11 @@ print_int:
  * @param[out] out Where to write the string.
  * @param[in] outlen Size of outlen (must be at least 3 bytes).
  * @param[in] vp to print.
- * @param[in] quote Char to add before and after printed value, if 0 no char will be added, if < 0 raw string will be
- *	added.
- * @return the length of data written to out, or a value >= outlen on truncation.
+ * @param[in] quote Char to add before and after printed value, if 0 no char will be added, if < 0
+ *	raw string will be added.
+ * @return
+ *	- Length of data written to out.
+ *	- Value >= outlen on truncation.
  */
 size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote)
 {
@@ -925,7 +933,7 @@ char *vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type)
 	return talloc_typed_strdup(ctx, "<UNKNOWN-TYPE>");
 }
 
-/**  Prints attribute enumv escaped suitably for use as JSON enumv
+/** Prints attribute as string, escaped suitably for use as JSON string
  *
  *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
  *  JSON value to.
@@ -933,7 +941,9 @@ char *vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type)
  * @param out Where to write the string.
  * @param outlen Lenth of output buffer.
  * @param vp to print.
- * @return the length of data written to out, or a value >= outlen on truncation.
+ * @return
+ *	- Length of data written to out.
+ *	- value >= outlen on truncation.
  */
 size_t vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
@@ -1092,7 +1102,9 @@ static char const *vp_tokens[] = {
  * @param out Where to write the string.
  * @param outlen Lenth of output buffer.
  * @param vp to print.
- * @return the length of data written to out, or a value >= outlen on truncation.
+ * @return
+ *	- Length of data written to out.
+ *	- value >= outlen on truncation.
  */
 size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 {

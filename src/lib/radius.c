@@ -789,7 +789,9 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 
 /** Encodes the data portion of an attribute
  *
- * @return -1 on error, or the length of the data portion.
+ * @return
+ *	- Length of the data portion.
+ *	- -1 on failure.
  */
 static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 			   RADIUS_PACKET const *original,
@@ -2243,7 +2245,9 @@ int rad_tlv_ok(uint8_t const *data, size_t length,
  * @param packet to check
  * @param flags to control decoding
  * @param reason if not NULL, will have the failure reason written to where it points.
- * @return bool, true on success, false on failure.
+ * @return
+ *	- True on success.
+ *	- False on failure.
  */
 bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 {
@@ -3327,7 +3331,9 @@ create_attrs:
  * rad_packet_ok().  "length" may be up to the length of the
  * packet.
  *
- * @return -1 on error, or "length".
+ * @return
+ *	- Length on success.
+ *	- -1 on failure.
  */
 ssize_t data2vp(TALLOC_CTX *ctx,
 		RADIUS_PACKET *packet, RADIUS_PACKET const *original,
@@ -3874,7 +3880,9 @@ fr_thread_local_setup(uint8_t *, rad_vp2data_buff)
  *
  * @param out where to write the pointer to the value.
  * @param vp to get the value from.
- * @return -1 on error, or the length of the value
+ * @return
+ *	- The length of the value.
+ *	- -1 on failure.
  */
 ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 {
@@ -3989,7 +3997,9 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 
 /** Calculate/check digest, and decode radius attributes
  *
- * @return -1 on decoding error, 0 on success
+ * @return
+ *	- 0 on success
+ *	- -1 on decoding error.
  */
 int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	       char const *secret)
@@ -4543,7 +4553,9 @@ uint32_t fr_rand(void)
  * @param ctx the context in which the packet is allocated. May be NULL if
  *	the packet is not associated with a REQUEST.
  * @param new_vector if true a new request authenticator will be generated.
- * @return a new RADIUS_PACKET or NULL on error.
+ * @return
+ *	- New RADIUS_PACKET.
+ *	- NULL on error.
  */
 RADIUS_PACKET *rad_alloc(TALLOC_CTX *ctx, bool new_vector)
 {
@@ -4581,7 +4593,9 @@ RADIUS_PACKET *rad_alloc(TALLOC_CTX *ctx, bool new_vector)
  * @param ctx the context in which the packet is allocated. May be NULL if
  *	the packet is not associated with a REQUEST.
  * @param packet The request packet.
- * @return a new RADIUS_PACKET or NULL on error.
+ * @return
+ *	- New RADIUS_PACKET.
+ *	- NULL on error.
  */
 RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 {
@@ -4638,7 +4652,9 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
  * @param ctx the context in which the packet is allocated. May be NULL if
  *	the packet is not associated with a REQUEST.
  * @param in The packet to copy
- * @return a new RADIUS_PACKET or NULL on error.
+ * @return
+ *	- New RADIUS_PACKET.
+ *	- NULL on error.
  */
 RADIUS_PACKET *rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 {

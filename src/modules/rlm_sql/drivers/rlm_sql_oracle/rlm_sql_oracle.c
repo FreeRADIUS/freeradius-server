@@ -65,7 +65,9 @@ typedef struct rlm_sql_oracle_conn_t {
  * @param outlen The length of the error buffer.
  * @param handle sql handle.
  * @param config Instance config.
- * @return 0 on success, -1 if there was no error.
+ * @return
+ *	- 0 on success.
+ *	- -1 if there was no error.
  */
 static int sql_prints_error(char *out, size_t outlen, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
@@ -92,7 +94,7 @@ static int sql_prints_error(char *out, size_t outlen, rlm_sql_handle_t *handle, 
  * @param outlen Length of out array.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return number of errors written to the sql_log_entry array.
+ * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 		        rlm_sql_handle_t *handle, rlm_sql_config_t *config)

@@ -28,7 +28,9 @@
 /** Check whether fr_link_layer_offset can process a link_layer
  *
  * @param link_layer to check.
- * @return true if supported, else false.
+ * @return
+ *	- true if supported.
+ *	- false if not supported.
  */
 bool fr_link_layer_supported(int link_layer)
 {
@@ -60,7 +62,9 @@ bool fr_link_layer_supported(int link_layer)
  * @param data start of packet data.
  * @param len caplen.
  * @param link_layer value returned from pcap_linktype.
- * @return the length of the header, or -1 on error.
+ * @return
+ *	- Length of the header.
+ *	- -1 on failure.
  */
 ssize_t fr_link_layer_offset(uint8_t const *data, size_t len, int link_layer)
 {
@@ -144,7 +148,7 @@ done:
 
 /** Calculate UDP checksum
  *
- * Zero out UDP checksum in UDP header before calling fr_udp_checksum to get 'expected' checksum.
+ * Zero out UDP checksum in UDP header before calling #fr_udp_checksum to get 'expected' checksum.
  *
  * @param data Pointer to the start of the UDP header
  * @param len value of udp length field in host byte order. Must be validated to make
@@ -152,7 +156,9 @@ done:
  * @param checksum current checksum, leave as 0 to just enable validation.
  * @param src_addr in network byte order.
  * @param dst_addr in network byte order.
- * @return 0 if the checksum is correct, else another number.
+ * @return
+ *	- 0 if the checksum is correct.
+ *	- !0 if checksum is incorrect.
  */
 uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 struct in_addr const src_addr, struct in_addr const dst_addr)
@@ -172,19 +178,12 @@ uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 	sum += htons(IPPROTO_UDP);
 	sum += htons(len);
 
-	for (i = len; i > 1; i -= 2) {
-		sum += *p++;
-	}
-
-	if (i) {
-		sum += (0xff & *(uint8_t const *)p) << 8;
-	}
+	for (i = len; i > 1; i -= 2) sum += *p++;
+	if (i) sum += (0xff & *(uint8_t const *)p) << 8;
 
 	sum -= checksum;
 
-	while (sum >> 16) {
-		sum = (sum & 0xffff) + (sum >> 16);
-	}
+	while (sum >> 16) sum = (sum & 0xffff) + (sum >> 16);
 
 	return ((uint16_t) ~sum);
 }

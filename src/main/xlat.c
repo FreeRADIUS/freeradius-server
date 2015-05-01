@@ -694,7 +694,9 @@ static xlat_t *xlat_find(char const *name)
  * @param[in] func xlat function to be called.
  * @param[in] escape function to sanitize any sub expansions passed to the xlat function.
  * @param[in] instance of module that's registering the xlat function.
- * @return 0 on success, -1 on failure
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape, void *instance)
 {
@@ -1057,7 +1059,9 @@ bool xlat_register_redundant(CONF_SECTION *cs)
  * @param out where to write a pointer to the buffer to the data the xlat function needs to work on.
  * @param request current request.
  * @param fmt string.
- * @returns the length of the data or -1 on error.
+ * @returns
+ *	- The length of the data.
+ *	- -1 on failure.
  */
 ssize_t xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt)
 {
@@ -2400,7 +2404,7 @@ static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * cons
  * @param[in] node the xlat structure to expand
  * @param[in] escape function to escape final value e.g. SQL quoting.
  * @param[in] escape_ctx pointer to pass to escape function.
- * @return length of string written @bug should really have -1 for failure
+ * @return length of string written @bug should really have -1 for failure.
  */
 static ssize_t xlat_expand_struct(char **out, size_t outlen, REQUEST *request, xlat_exp_t const *node,
 				  RADIUS_ESCAPE_STRING escape, void *escape_ctx)
@@ -2448,7 +2452,7 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
  * @param[in] fmt string to expand.
  * @param[in] escape function to escape final value e.g. SQL quoting.
  * @param[in] escape_ctx pointer to pass to escape function.
- * @return length of string written @bug should really have -1 for failure
+ * @return length of string written @bug should really have -1 for failure.
  */
 static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char const *fmt,
 			   RADIUS_ESCAPE_STRING escape, void *escape_ctx)
@@ -2487,7 +2491,9 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
  *
  * @param ctx to allocate new vp_tmpl_t in.
  * @param node to convert.
- * @return NULL if unable to convert (not necessarily error), or a new vp_tmpl_t.
+ * @return
+ *	- NULL if unable to convert (not necessarily error).
+ *	- A new #vp_tmpl_t.
  */
 vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 {
@@ -2514,7 +2520,9 @@ vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
  *
  * @param ctx to allocate new xlat_expt_t in.
  * @param vpt to convert.
- * @return NULL if unable to convert (not necessarily error), or a new vp_tmpl_t.
+ * @return
+ *	- NULL if unable to convert (not necessarily error).
+ *	- a new #vp_tmpl_t.
  */
 xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 {

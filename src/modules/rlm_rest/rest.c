@@ -246,7 +246,9 @@ typedef struct json_flags {
  * @see rest_cleanup
  *
  * @param[in] instance configuration data.
- * @return 0 if init succeeded -1 if it failed.
+ * @return
+ *	- 0 if init succeeded.
+ *	- -1 if it failed.
  */
 int rest_init(rlm_rest_t *instance)
 {
@@ -414,8 +416,9 @@ connection_error:
  *
  * @param[in] instance configuration data.
  * @param[in] handle to check.
- * @returns false if the last socket is dead, or if the socket state couldn't be
- *	determined, else true.
+ * @returns
+ *	- False if the last socket is dead, or if the socket state couldn't be determined.
+ *	- True if TCP socket is still alive.
  */
 int mod_conn_alive(void *instance, void *handle)
 {
@@ -447,8 +450,9 @@ int mod_conn_alive(void *instance, void *handle)
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
- * @return length of data (including NULL) written to ptr, or 0 if no more
- *	data to write.
+ * @return
+ *	- Length of data (including NULL) written to ptr.
+ *	- 0 if no more data to write.
  */
 static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *userdata)
 {
@@ -493,8 +497,9 @@ static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *use
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
- * @return length of data (including NULL) written to ptr, or 0 if no more
- *	data to write.
+ * @return
+ *	- Length of data (including NULL) written to ptr.
+ *	- 0 if no more data to write.
  */
 static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userdata)
 {
@@ -671,8 +676,9 @@ no_space:
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls.
- * @return length of data (including NULL) written to ptr, or 0 if no more
- *	data to write.
+ * @return
+ *	- Length of data (including NULL) written to ptr.
+ *	- 0 if no more data to write.
  */
 static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userdata)
 {
@@ -879,8 +885,9 @@ no_space:
  * @param[in] limit Maximum buffer size to alloc.
  * @param[in] userdata rlm_rest_request_t to keep encoding state between calls to
  *	stream function.
- * @return the length of the data written to the buffer (excluding NULL) or -1
- *	if alloc >= limit.
+ * @return
+ *	- Length of the data written to the buffer (excluding NULL).
+ *	- -1 if alloc >= limit.
  */
 static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size_t limit, void *userdata)
 {
@@ -949,7 +956,9 @@ static void rest_request_init(REQUEST *request, rlm_rest_request_t *ctx, bool so
  * @param[in] request Current request.
  * @param[in] raw buffer containing POST data.
  * @param[in] rawlen Length of data in raw buffer.
- * @return the number of VALUE_PAIRs processed or -1 on unrecoverable error.
+ * @return
+ *	- Number of VALUE_PAIR processed.
+ *	- -1 on unrecoverable error.
  */
 static int rest_decode_plain(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
 			     REQUEST *request, UNUSED void *handle, char *raw, size_t rawlen)
@@ -991,7 +1000,9 @@ static int rest_decode_plain(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_sectio
  * @param[in] request Current request.
  * @param[in] raw buffer containing POST data.
  * @param[in] rawlen Length of data in raw buffer.
- * @return the number of VALUE_PAIRs processed or -1 on unrecoverable error.
+ * @return
+ *	- Number of VALUE_PAIRs processed.
+ *	- -1 on unrecoverable error.
  */
 static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
 			    REQUEST *request, void *handle, char *raw, size_t rawlen)
@@ -1160,7 +1171,9 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
  * @param[in] flags containing the operator other flags controlling value
  *	expansion.
  * @param[in] leaf object containing the VALUE_PAIR value.
- * @return The VALUE_PAIR just created, or NULL on error.
+ * @return
+ *	- #VALUE_PAIR just created.
+ *	- NULL on error.
  */
 static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
 				      TALLOC_CTX *ctx, REQUEST *request, DICT_ATTR const *da,
@@ -1276,7 +1289,9 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_re
  * @param[in] level Current nesting level.
  * @param[in] max counter, decremented after each VALUE_PAIR is created,
  * 	      when 0 no more attributes will be processed.
- * @return number of attributes created or < 0 on error.
+ * @return
+ *	- Number of attributes created.
+ *	- < 0 on error.
  */
 static int json_pairmake(rlm_rest_t *instance, rlm_rest_section_t *section,
 			 REQUEST *request, json_object *object, UNUSED int level, int max)
@@ -1476,7 +1491,9 @@ static int json_pairmake(rlm_rest_t *instance, rlm_rest_section_t *section,
  * @param[in] handle REST handle.
  * @param[in] raw buffer containing JSON data.
  * @param[in] rawlen Length of data in raw buffer.
- * @return the number of VALUE_PAIRs processed or -1 on unrecoverable error.
+ * @return
+ *	- The number of #VALUE_PAIR processed.
+ *	- -1 on unrecoverable error.
  */
 static int rest_decode_json(rlm_rest_t *instance, rlm_rest_section_t *section,
 			    REQUEST *request, UNUSED void *handle, char *raw, UNUSED size_t rawlen)
@@ -1522,7 +1539,9 @@ static int rest_decode_json(rlm_rest_t *instance, rlm_rest_section_t *section,
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_response_t to keep parsing state between calls.
- * @return Length of data processed, or 0 on error.
+ * @return
+ *	- Length of data processed.
+ *	- 0 on error.
  */
 static size_t rest_response_header(void *in, size_t size, size_t nmemb, void *userdata)
 {
@@ -1724,7 +1743,9 @@ malformed:
  * @param[in] size Multiply by nmemb to get the length of ptr.
  * @param[in] nmemb Multiply by size to get the length of ptr.
  * @param[in] userdata rlm_rest_response_t to keep parsing state between calls.
- * @return length of data processed, or 0 on error.
+ * @return
+ *	- Length of data processed.
+ *	- 0 on error.
  */
 static size_t rest_response_body(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
@@ -1870,7 +1891,9 @@ size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle)
  * @param[in] handle rlm_rest_handle_t to configure.
  * @param[in] func to pass to libcurl for chunked.
  *	      transfers (NULL if not using chunked mode).
- * @return 0 on success -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int rest_request_config_body(UNUSED rlm_rest_t *instance, rlm_rest_section_t *section,
 				    REQUEST *request, rlm_rest_handle_t *handle, rest_read_t func)
@@ -1945,7 +1968,9 @@ error:
  * @param[in] username to use for HTTP authentication, may be NULL in which case configured defaults will be used.
  * @param[in] password to use for HTTP authentication, may be NULL in which case configured defaults will be used.
  * @param[in] uri buffer containing the expanded URI to send the request to.
- * @return 0 on success (all opts configured) -1 on error.
+ * @return
+ *	- 0 on success (all opts configured).
+ *	- -1 on failure.
  */
 int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			REQUEST *request, void *handle, http_method_t method,
@@ -2284,7 +2309,9 @@ error_header:
  * @param[in] section configuration data.
  * @param[in] request Current request.
  * @param[in] handle to use.
- * @return 0 on success or -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rest_request_perform(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
 			 REQUEST *request, void *handle)
@@ -2313,7 +2340,9 @@ int rest_request_perform(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t 
  * @param[in] section configuration data.
  * @param[in] request Current request.
  * @param[in] handle to use.
- * @return 0 on success or -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rest_response_decode(rlm_rest_t *instance, rlm_rest_section_t *section, REQUEST *request, void *handle)
 {
@@ -2440,8 +2469,9 @@ size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen, char c
  * @param[in] instance configuration data.
  * @param[in] uri configuration data.
  * @param[in] request Current request
- * @return length of data written to buffer (excluding NULL) or < 0 if an error
- *	occurred.
+ * @return
+ *	- Length of data written to buffer (excluding NULL).
+ *	- < 0 if an error occurred.
  */
 ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, REQUEST *request, char const *uri)
 {
@@ -2510,8 +2540,9 @@ ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, REQUEST *request
  * @param[in] request Current request
  * @param[in] handle to use.
  * @param[in] uri configuration data.
- * @return length of data written to buffer (excluding NULL) or < 0 if an error
- *	occurred.
+ * @return
+ *	- Length of data written to buffer (excluding NULL).
+ *	- < 0 if an error occurred.
  */
 ssize_t rest_uri_host_unescape(char **out, UNUSED rlm_rest_t *instance, REQUEST *request,
 			       void *handle, char const *uri)

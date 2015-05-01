@@ -185,7 +185,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
  * Return must be freed with talloc_free
  *
  * @param[in] ctx for talloc.
- * @param[in] out Where to write the pointer to the new value_pair_map_struct.
+ * @param[in] out Where to write the pointer to the new #vp_map_t.
  * @param[in] cp to convert to map.
  * @param[in] dst_request_def The default request to insert unqualified
  *	attributes into.
@@ -195,7 +195,9 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
  *	references in.
  * @param[in] src_list_def The default list to resolve unqualified attributes
  *	in.
- * @return vp_map_t if successful or NULL on error.
+ * @return
+ *	- #vp_map_t if successful.
+ *	- NULL on error.
  */
 int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		 request_refs_t dst_request_def, pair_lists_t dst_list_def,
@@ -307,7 +309,9 @@ error:
  * @param[in] validate map using this callback (may be NULL).
  * @param[in] ctx to pass to callback.
  * @param[in] max number of mappings to process.
- * @return -1 on error, else 0.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 		 pair_lists_t dst_list_def, pair_lists_t src_list_def,
@@ -389,8 +393,7 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 
 }
 
-
-/** Convert strings to vp_map_t
+/** Convert strings to #vp_map_t
  *
  * Treatment of operands depends on quotation, barewords are treated
  * as attribute references, double quoted values are treated as
@@ -406,15 +409,11 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
  * @param[in] op the operation to perform
  * @param[in] rhs of the operation
  * @param[in] rhs_type type of the RHS string
- * @param[in] dst_request_def The default request to insert unqualified
- *	attributes into.
- * @param[in] dst_list_def The default list to insert unqualified attributes
- *	into.
- * @param[in] src_request_def The default request to resolve attribute
- *	references in.
- * @param[in] src_list_def The default list to resolve unqualified attributes
- *	in.
- * @return vp_map_t if successful or NULL on error.
+ * @param[in] dst_request_def The default request to insert unqualified attributes into.
+ * @param[in] dst_list_def The default list to insert unqualified attributes into.
+ * @param[in] src_request_def The default request to resolve attribute references in.
+ * @param[in] src_list_def The default list to resolve unqualified attributes in.
+ * @return #vp_map_t if successful or NULL on error.
  */
 int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN lhs_type,
 		     FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
@@ -456,7 +455,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN 
 /** Convert a value pair string to valuepair map
  *
  * Takes a valuepair string with list and request qualifiers and converts it into a
- * vp_map_t.
+ * #vp_map_t.
  *
  * @param ctx where to allocate the map.
  * @param out Where to write the new map (must be freed with talloc_free()).
@@ -465,7 +464,9 @@ int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN 
  * @param dst_list_def to use if attribute isn't qualified.
  * @param src_request_def to use if attribute isn't qualified.
  * @param src_list_def to use if attribute isn't qualified.
- * @return 0 on success, < 0 on error.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on error.
  */
 int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 		       request_refs_t dst_request_def, pair_lists_t dst_list_def,
@@ -519,10 +520,13 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
  * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
  * has been broken out into it's own function.
  *
- * @param[out] out Where to write the VALUE_PAIR(s).
+ * @param[out] out Where to write the #VALUE_PAIR (s).
  * @param[in] request structure (used only for talloc).
- * @param[in] map the map. The LHS (dst) must be TMPL_TYPE_ATTR or TMPL_TYPE_LIST. The RHS (src) must be TMPL_TYPE_EXEC.
- * @return -1 on failure, 0 on success.
+ * @param[in] map the map. The LHS (dst) must be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
+ *	The RHS (src) must be #TMPL_TYPE_EXEC.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map)
 {
@@ -591,13 +595,15 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *ma
 	return -1;
 }
 
-/** Convert a map to a VALUE_PAIR.
+/** Convert a map to a #VALUE_PAIR
  *
- * @param[out] out Where to write the VALUE_PAIR(s), which may be NULL if not found
+ * @param[out] out Where to write the #VALUE_PAIR (s), which may be NULL if not found
  * @param[in] request structure (used only for talloc)
- * @param[in] map the map. The LHS (dst) has to be TMPL_TYPE_ATTR or TMPL_TYPE_LIST.
+ * @param[in] map the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
  * @param[in] ctx unused
- * @return 0 on success, -1 on failure
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *ctx)
 {
@@ -842,9 +848,9 @@ do {\
 	}\
 } while (0)
 
-/** Convert vp_map_t to VALUE_PAIR(s) and add them to a REQUEST.
+/** Convert #vp_map_t to #VALUE_PAIR (s) and add them to a #REQUEST.
  *
- * Takes a single vp_map_t, resolves request and list identifiers
+ * Takes a single #vp_map_t, resolves request and list identifiers
  * to pointers in the current request, then attempts to retrieve module
  * specific value(s) using callback, and adds the resulting values to the
  * correct request/list.
@@ -852,9 +858,12 @@ do {\
  * @param request The current request.
  * @param map specifying destination attribute and location and src identifier.
  * @param func to retrieve module specific values and convert them to
- *	VALUE_PAIRS.
+ *	#VALUE_PAIR.
  * @param ctx to be passed to func.
- * @return -1 if the operation failed, -2 in the source attribute wasn't valid, 0 on success.
+ * @return
+ *	- -1 if the operation failed.
+ *	- -2 in the source attribute wasn't valid.
+ *	- 0 on success.
  */
 int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t func, void *ctx)
 {
@@ -1306,7 +1315,9 @@ finish:
  *
  * @param request The current request.
  * @param map to check.
- * @return true if the map resolves to a request and list else false.
+ * @return
+ *	- true if the map resolves to a request and list.
+ *	- false.
  */
 bool map_dst_valid(REQUEST *request, vp_map_t const *map)
 {
@@ -1322,10 +1333,10 @@ bool map_dst_valid(REQUEST *request, vp_map_t const *map)
 
 /**  Print a map to a string
  *
- * @param[out] buffer for the output string
- * @param[in] bufsize of the buffer
- * @param[in] map to print
- * @return the size of the string printed
+ * @param[out] buffer for the output string.
+ * @param[in] bufsize of the buffer.
+ * @param[in] map to print.
+ * @return the size of the string printed.
  */
 size_t map_prints(char *buffer, size_t bufsize, vp_map_t const *map)
 {

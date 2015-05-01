@@ -415,7 +415,9 @@ static bool condition_check_types(fr_cond_t *c, PW_TYPE lhs_type)
  *  @param[out] pcond pointer to the returned condition structure
  *  @param[out] error the parse error (if any)
  *  @param[in] flags do one/two pass
- *  @return length of the string skipped, or when negative, the offset to the offending error
+ *  @return
+ *	- Length of the string skipped.
+ *	- < 0 (the offset to the offending error) on error.
  */
 static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, bool brace,
 				  fr_cond_t **pcond, char const **error, int flags)
@@ -1657,9 +1659,12 @@ done:
  *  @param[out] head the parsed condition structure
  *  @param[out] error the parse error (if any)
  *  @param[in] flags do one/two pass
- *  @return length of the string skipped, or when negative, the offset to the offending error
+ *  @return
+ *	- Length of the string skipped.
+ *	- < 0 (the offset to the offending error) on error.
  */
-ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start, fr_cond_t **head, char const **error, int flags)
+ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *start,
+			      fr_cond_t **head, char const **error, int flags)
 {
 	return condition_tokenize(ctx, ci, start, false, head, error, flags);
 }

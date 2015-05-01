@@ -296,15 +296,17 @@ static int _cf_section_free(CONF_SECTION *cs)
 	return 0;
 }
 
-/** Allocate a CONF_PAIR
+/** Allocate a #CONF_PAIR
  *
- * @param parent CONF_SECTION to hang this CONF_PAIR off of.
+ * @param parent #CONF_SECTION to hang this #CONF_PAIR off of.
  * @param attr name.
- * @param value of CONF_PAIR.
- * @param op T_OP_EQ, T_OP_SET etc.
- * @param lhs_type T_BARE_WORD, T_DOUBLE_QUOTED_STRING, T_BACK_QUOTED_STRING
- * @param rhs_type T_BARE_WORD, T_DOUBLE_QUOTED_STRING, T_BACK_QUOTED_STRING
- * @return NULL on error, else a new CONF_SECTION parented by parent.
+ * @param value of #CONF_PAIR.
+ * @param op #T_OP_EQ, #T_OP_SET etc.
+ * @param lhs_type #T_BARE_WORD, #T_DOUBLE_QUOTED_STRING, #T_BACK_QUOTED_STRING
+ * @param rhs_type #T_BARE_WORD, #T_DOUBLE_QUOTED_STRING, #T_BACK_QUOTED_STRING
+ * @return
+ *	- NULL on error.
+ *	- A new #CONF_SECTION parented by parent.
  */
 CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
 			 FR_TOKEN op, FR_TOKEN lhs_type, FR_TOKEN rhs_type)
@@ -338,11 +340,13 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	return cp;
 }
 
-/** Duplicate a CONF_PAIR
+/** Duplicate a #CONF_PAIR
  *
  * @param parent to allocate new pair in.
  * @param cp to duplicate.
- * @return NULL on error, else a duplicate of the input pair.
+ * @return
+ *	- NULL on error.
+ *	- A duplicate of the input pair.
  */
 CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 {
@@ -372,12 +376,14 @@ void cf_pair_add(CONF_SECTION *parent, CONF_PAIR *cp)
 	cf_item_add(parent, cf_pair_to_item(cp));
 }
 
-/** Allocate a CONF_SECTION
+/** Allocate a #CONF_SECTION
  *
- * @param parent CONF_SECTION to hang this CONF_SECTION off of.
+ * @param parent #CONF_SECTION to hang this #CONF_SECTION off of.
  * @param name1 Primary name.
  * @param name2 Secondary name.
- * @return NULL on error, else a new CONF_SECTION parented by parent.
+ * @return
+ *	- NULL on error.
+ *	- A new #CONF_SECTION parented by parent.
  */
 CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char const *name2)
 {
@@ -446,7 +452,9 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
  * @param name1 of new section.
  * @param name2 of new section.
  * @param copy_meta Copy additional meta data for a section (like template, base, depth and variables).
- * @return a duplicate of the existing section, or NULL on error.
+ * @return
+ *	- A duplicate of the existing section.
+ *	- NULL on error.
  */
 CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 			     char const *name1, char const *name2, bool copy_meta)
@@ -511,7 +519,9 @@ void cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs)
  * @param cs to replace pair in.
  * @param cp to replace.
  * @param value New value to assign to cp.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 {
@@ -1136,7 +1146,11 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  *	- ``flag`` #PW_TYPE_NOT_EMPTY		- @copybrief PW_TYPE_NOT_EMPTY
  * @param data Pointer to a global variable, or pointer to a field in the struct being populated with values.
  * @param dflt value to use, if no #CONF_PAIR is found.
- * @return -1 on error, -2 if deprecated, 0 on success (correctly parsed), 1 if default value was used.
+ * @return
+ *	- -1 on failure.
+ *	- -2 if deprecated.
+ *	- 0 on success (correctly parsed).
+ *	- 1 if default value was used.
  */
 int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt)
 {
@@ -2862,8 +2876,12 @@ FR_TOKEN cf_pair_operator(CONF_PAIR const *pair)
 /** Return the value (lhs) type
  *
  * @param pair to extract value type from.
- * @return one of T_BARE_WORD, T_SINGLE_QUOTED_STRING, T_BACK_QUOTED_STRING
- *	T_DOUBLE_QUOTED_STRING or T_INVALID if the pair is NULL.
+ * @return
+ *	- #T_BARE_WORD.
+ *	- #T_SINGLE_QUOTED_STRING.
+ *	- #T_BACK_QUOTED_STRING.
+ *	- #T_DOUBLE_QUOTED_STRING.
+ *	- #T_INVALID if the pair is NULL.
  */
 FR_TOKEN cf_pair_attr_type(CONF_PAIR const *pair)
 {
@@ -2873,8 +2891,12 @@ FR_TOKEN cf_pair_attr_type(CONF_PAIR const *pair)
 /** Return the value (rhs) type
  *
  * @param pair to extract value type from.
- * @return one of T_BARE_WORD, T_SINGLE_QUOTED_STRING, T_BACK_QUOTED_STRING
- *	T_DOUBLE_QUOTED_STRING or T_INVALID if the pair is NULL.
+ * @return
+ *	- #T_BARE_WORD.
+ *	- #T_SINGLE_QUOTED_STRING.
+ *	- #T_BACK_QUOTED_STRING.
+ *	- #T_DOUBLE_QUOTED_STRING.
+ *	- #T_INVALID if the pair is NULL.
  */
 FR_TOKEN cf_pair_value_type(CONF_PAIR const *pair)
 {
@@ -2999,7 +3021,7 @@ CONF_SECTION *cf_section_find_name2(CONF_SECTION const *cs,
  * @param cs to search in.
  * @param pair to search from (may be NULL).
  * @param attr to find (may be NULL in which case any attribute matches).
- * @return the next matching CONF_PAIR or NULL if none matched.
+ * @return the next matching #CONF_PAIR or NULL if none matched.
  */
 CONF_PAIR *cf_pair_find_next(CONF_SECTION const *cs,
 			     CONF_PAIR const *pair, char const *attr)

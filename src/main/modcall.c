@@ -1505,7 +1505,9 @@ static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
  *
  * @param map to validate.
  * @param ctx data to pass to fixup function (currently unused).
- * @return 0 if valid else -1.
+ * @return
+ *	- 0 if valid.
+ *	- -1 not valid.
  */
 int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 {

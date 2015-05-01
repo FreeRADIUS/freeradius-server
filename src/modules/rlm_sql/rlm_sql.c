@@ -271,7 +271,9 @@ finish:
  * @param[in] request The current request.
  * @param[in] map to process.
  * @param[in] ctx The value to parse.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int _sql_map_proc_get_value(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
 {
@@ -302,10 +304,12 @@ static int _sql_map_proc_get_value(VALUE_PAIR **out, REQUEST *request, vp_map_t 
  * @param query string to execute.
  * @param head of the map list.
  * @param cache structure.
- * @param ctx rlm_sql_t instance.
- * @return #RLM_MODULE_OK no fields matching a map rhs value were found, #RLM_MODULE_NOTFOUND
- *	no rows were returned, #RLM_MODULE_FOUND if one or more #VALUE_PAIR were added to
- *	the #REQUEST or #RLM_MODULE_FAIL if a fault occurred.
+ * @param ctx #rlm_sql_t instance.
+ * @return
+ *	- #RLM_MODULE_OK no fields matching a map rhs value were found.
+ *	- #RLM_MODULE_NOTFOUND no rows were returned.
+ *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_FAIL if a fault occurred.
  */
 static rlm_rcode_t sql_map_proc_evaluate(REQUEST *request, char const *query,
 					 vp_map_t const *head, UNUSED void *cache, void *ctx)

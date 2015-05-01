@@ -96,12 +96,16 @@ static int _fr_disarm_talloc_ctx_free(bool **armed)
 
 /** Link a parent and a child context, so the child is freed before the parent
  *
- * @note This is not thread safe. Do not free parent before threads are joined, do not call from a child thread.
- * @note It's OK to free the child before threads are joined, but this will leak memory until the parent is freed.
+ * @note This is not thread safe. Do not free parent before threads are joined, do not call from a
+ *	child thread.
+ * @note It's OK to free the child before threads are joined, but this will leak memory until the
+ *	parent is freed.
  *
  * @param parent who's fate the child should share.
  * @param child bound to parent's lifecycle.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_link_talloc_ctx_free(TALLOC_CTX *parent, TALLOC_CTX *child)
 {
@@ -147,7 +151,9 @@ static void _fr_inet_ntop_free(void *arg)
  *
  * @param af address family, either AF_INET or AF_INET6.
  * @param src pointer to network address structure.
- * @return NULL on error, else pointer to ASCII buffer containing text version of address.
+ * @return
+ *	- NULL on error.
+ *	- Pointer to ASCII buffer containing text version of address on success.
  */
 char const *fr_inet_ntop(int af, void const *src)
 {
@@ -206,7 +212,9 @@ char const *ip_ntoa(char *buffer, uint32_t ipaddr)
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv6 resolution if no A records can be found.
- * @return 0 if ip address was parsed successfully, else -1 on error.
+ * @return
+ *	- 0 if ip address was parsed successfully
+ *	- -1 on failure.
  */
 int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
 {
@@ -309,7 +317,9 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv4 resolution if no AAAA records can be found.
- * @return 0 if ip address was parsed successfully, else -1 on error.
+ * @return
+ *	- 0 if ip address was parsed successfully.
+ *	- -1 on failure.
  */
 int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
 {
@@ -399,8 +409,11 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
  * @param out Where to write the ip address value.
  * @param value to parse.
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
- * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
- * @return 0 if ip address was parsed successfully, else -1 on error.
+ * @param resolve If true and value doesn't look like an IP address, try and resolve value as a
+ *	hostname.
+ * @return
+ *	- 0 if ip address was parsed successfully
+ *	- -1 on failure.
  */
 int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
 {
@@ -653,7 +666,9 @@ static int inet_pton4(char const *src, struct in_addr *dst)
  *
  * @param src presentation level address.
  * @param dst where to write output address.
- * @return 1 if `src' is a valid [RFC1884 2.2] address, else 0.
+ * @return
+ *	- 1 if `src' is a valid [RFC1884 2.2] address.
+ *	- 0 if `src' in not a valid [RFC1884 2.2] address.
  */
 static int inet_pton6(char const *src, unsigned char *dst)
 {
@@ -817,7 +832,9 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
  * @param af To search for in preference.
  * @param hostname to search for.
  * @param fallback to the other adress family, if no records matching af, found.
- * @return 0 on success, else -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 {
@@ -1109,7 +1126,9 @@ uint32_t fr_strtoul(char const *value, char **end)
 
 /** Check whether the string is all whitespace
  *
- * @return true if the entirety of the string is whitespace, else false.
+ * @return
+ *	- true if the entirety of the string is whitespace.
+ *	- false if the string contains non whitespace.
  */
 bool is_whitespace(char const *value)
 {
@@ -1122,7 +1141,9 @@ bool is_whitespace(char const *value)
 
 /** Check whether the string is all numbers
  *
- * @return true if the entirety of the string is are numebrs, else false.
+ * @return
+ *	- true if the entirety of the string is number chars.
+ *	- false if string contains none number chars.
  */
 bool is_integer(char const *value)
 {
@@ -1133,9 +1154,11 @@ bool is_integer(char const *value)
 	return true;
 }
 
-/** Check whether the string is allzeros
+/** Check whether the string is all zeros
  *
- * @return true if the entirety of the string is are numebrs, else false.
+ * @return
+ *	- true if the entirety of the string is are zeros.
+ *	- false if string contains none zeros.
  */
 bool is_zero(char const *value)
 {
@@ -1298,7 +1321,9 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
  * @note O_NONBLOCK is POSIX.
  *
  * @param fd to set nonblocking flag on.
- * @return flags set on the socket, or -1 on error.
+ * @return
+ *	- Flags set on the socket.
+ *	- -1 on failure.
  */
 int fr_nonblock(int fd)
 {
@@ -1324,7 +1349,9 @@ int fr_nonblock(int fd)
  * @note O_NONBLOCK is POSIX.
  *
  * @param fd to set nonblocking flag on.
- * @return flags set on the socket, or -1 on error.
+ * @return
+ *	- Flags set on the socket.
+ *	- -1 on failure.
  */
 int fr_blocking(int fd)
 {
@@ -1371,7 +1398,9 @@ int fr_blocking(UNUSED int fd)
  * @param vector to write.
  * @param iovcnt number of elements in iovec.
  * @param timeout how long to wait for fd to become writeable before timing out.
- * @return number of bytes written, -1 on error.
+ * @return
+ *	- Number of bytes written.
+ *	- -1 on failure.
  */
 ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, struct timeval *timeout)
 {
@@ -1593,7 +1622,9 @@ static char *mystrtok(char **ptr, char const *sep)
  *
  * @param date_str input date string.
  * @param date time_t to write result to.
- * @return 0 on success or -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_get_time(char const *date_str, time_t *date)
 {
@@ -1718,7 +1749,7 @@ int fr_get_time(char const *date_str, time_t *date)
 	}
 
 	/*
-	 *  Returns -1 on error.
+	 *  Returns -1 on failure.
 	 */
 	t = mktime(tm);
 	if (t == (time_t) -1) return -1;
@@ -1732,7 +1763,10 @@ int fr_get_time(char const *date_str, time_t *date)
  *
  * @param a first pointer to compare.
  * @param b second pointer to compare.
- * @return -1 if a < b, +1 if b > a, or 0 if both equal.
+ * @return
+ *	- -1 if a < b.
+ *	- +1 if b > a.
+ *	- 0 if both equal.
  */
 int8_t fr_pointer_cmp(void const *a, void const *b)
 {

@@ -63,7 +63,9 @@ RCSID("$Id$")
  *
  * @param[out] request_bv where to write the request BER value (must be freed with ber_bvfree).
  * @param[in] dn to query for.
- * @return 0 on success, and < 0 on error.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on error.
  */
 static int ber_encode_request_data(char const *dn, struct berval **request_bv)
 {
@@ -119,7 +121,9 @@ finish:
  * @param[out] server_version that responded.
  * @param[out] out data.
  * @param[out] outlen Length of data written to out.
- * @return 0 on success, and < 0 on error.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on error.
  */
 static int ber_decode_login_data(struct berval *reply_bv, int *server_version, void *out, size_t *outlen)
 {
@@ -154,7 +158,9 @@ finish:
  * @param[in] dn of user we want to retrieve the password for.
  * @param[out] password Where to write the retrieved password.
  * @param[out] passlen Length of data written to the password buffer.
- * @return 0 on success and < 0 on failure.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
  */
 int nmasldap_get_password(LDAP *ld, char const *dn, char *password, size_t *passlen)
 {

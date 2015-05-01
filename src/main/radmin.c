@@ -184,7 +184,7 @@ static ssize_t do_challenge(int sockfd)
 
 
 /*
- *	Returns -1 on error.  0 on connection failed.  +1 on OK.
+ *	Returns -1 on failure.  0 on connection failed.  +1 on OK.
  */
 static ssize_t run_command(int sockfd, char const *command,
 			   char *buffer, size_t bufsize)

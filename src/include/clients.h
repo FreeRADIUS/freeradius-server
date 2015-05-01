@@ -126,7 +126,9 @@ typedef struct radclient_list RADCLIENT_LIST;
  * @param[out] out Where to write a pointer to the talloced value buffer.
  * @param[in] cp The value of the CONF_PAIR specifies the attribute name to retrieve from the result.
  * @param[in] data Pointer to the result struct to copy values from.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 typedef int (*client_value_cb_t)(char **out, CONF_PAIR const *cp, void *data);
 

@@ -162,7 +162,10 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 
 /** Find a cached entry.
  *
- * @return RLM_MODULE_OK on success, RLM_MODULE_FAIL on failure, RLM_MODULE_NOTFOUND if notfound.
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_FAIL on failure.
+ *	- #RLM_MODULE_NOTFOUND if notfound.
  */
 static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
 			      rlm_cache_handle_t **handle, char const *key)
@@ -238,7 +241,10 @@ static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t
 
 /** Create and insert a cache entry.
  *
- * @return RLM_MODULE_OK on success, RLM_MODULE_UPDATED if we merged the cache entry and RLM_MODULE_FAIL on failure.
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_UPDATED if we merged the cache entry.
+ *	- #RLM_MODULE_FAIL on failure.
  */
 static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
 				char const *key, int ttl)

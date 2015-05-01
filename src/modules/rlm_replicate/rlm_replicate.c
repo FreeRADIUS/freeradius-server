@@ -99,7 +99,11 @@ error:
  * @param[in] request 	The current request.
  * @param[in] list	of attributes to copy to the duplicate packet.
  * @param[in] code	to write into the code field of the duplicate packet.
- * @return RCODE fail on error, invalid if list does not exist, noop if no replications succeeded, else ok.
+ * @return
+ *	- #RLM_MODULE_FAIL on error.
+ *	- #RLM_MODULE_INVALID if list does not exist.
+ *	- #RLM_MODULE_NOOP if no replications succeeded.
+ *	- #RLM_MODULE_OK if successful.
  */
 static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_t list, PW_CODE code)
 {
