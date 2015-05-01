@@ -272,15 +272,21 @@ typedef struct ldap_instance {
 	LDAP		*handle;			//!< Hack for OpenLDAP libldap global initialisation.
 } ldap_instance_t;
 
+/** Tracks the state of a libldap connection handle
+ */
 typedef struct ldap_handle {
-	LDAP		*handle;			//!< LDAP LD handle.
-	int		rebound;			//!< Whether the connection has been rebound to something
+	LDAP		*handle;			//!< libldap handle.
+	bool		rebound;			//!< Whether the connection has been rebound to something
 							//!< other than the admin user.
-	int		referred;			//!< Whether the connection is now established a server
+	bool		referred;			//!< Whether the connection is now established a server
 							//!< other than the configured one.
 	ldap_instance_t	*inst;				//!< rlm_ldap configuration.
 } ldap_handle_t;
 
+/** Result of expanding the RHS of a set of maps
+ *
+ * Used to store the array of attributes we'll be querying for.
+ */
 typedef struct rlm_ldap_map_exp {
 	vp_map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
 	char const	*attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
@@ -289,12 +295,18 @@ typedef struct rlm_ldap_map_exp {
 	int		count;				//!< Index on next free element.
 } rlm_ldap_map_exp_t;
 
+/** Contains a collection of values
+ *
+ */
 typedef struct rlm_ldap_result {
 	struct berval	**values;			//!< libldap struct containing bv_val (char *)
 							//!< and length bv_len.
 	int		count;				//!< Number of values.
 } rlm_ldap_result_t;
 
+/** Codes returned by rlm_ldap internal function
+ *
+ */
 typedef enum {
 	LDAP_PROC_SUCCESS = 0,				//!< Operation was successfull.
 
