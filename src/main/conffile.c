@@ -2110,6 +2110,8 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		       goto check_for_more;
 	       }
 
+	       if (t1 != T_BARE_WORD) goto skip_keywords;
+
 		/*
 		 *	Allow for $INCLUDE files
 		 *
@@ -2427,6 +2429,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			goto section_alloc;
 		}
 
+	skip_keywords:
 		/*
 		 *	Grab the next token.
 		 */
