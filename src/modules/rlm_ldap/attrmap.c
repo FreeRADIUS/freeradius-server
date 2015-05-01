@@ -241,7 +241,7 @@ int rlm_ldap_map_verify(vp_map_t *map, void *instance)
 
 /** Expand values in an attribute map where needed
  *
- * @param[out] expanded array of attributes.
+ * @param[out] expanded array of attributes. Need not be initialised (we'll initialise).
  * @param[in] request The current request.
  * @param[in] maps to expand.
  * @return
@@ -256,8 +256,6 @@ int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t
 	TALLOC_CTX	*ctx = NULL;
 	char const	*attr;
 	char		attr_buff[1024 + 1];	/* X.501 says we need to support at least 1024 chars for attr names */
-
-	rad_assert(!expanded->ctx);
 
 	for (map = maps; map != NULL; map = map->next) {
 		if (tmpl_expand(&attr, attr_buff, sizeof(attr_buff), request, map->rhs, NULL, NULL) < 0) {
