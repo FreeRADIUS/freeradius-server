@@ -65,14 +65,14 @@ static int map_proc_cmp(void const *one, void const *two)
 
 /** Unregister a map processor
  *
- * @param[in] map_proc to unregister.
+ * @param[in] proc to unregister.
  */
-static int _map_proc_unregister(map_proc_t *map_proc)
+static int _map_proc_unregister(map_proc_t *proc)
 {
 	map_proc_t find;
 	map_proc_t *found;
 
-	strlcpy(find.name, map_proc->name, sizeof(find.name));
+	strlcpy(find.name, proc->name, sizeof(find.name));
 	find.length = strlen(find.name);
 
 	found = rbtree_finddata(map_proc_root, &find);
@@ -180,16 +180,16 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 	inst->maps = maps;
 
 	if (proc->cache_alloc) {
-		TALLOC_CTX *con;
+		TALLOC_CTX *ctx_link;
 
 		/*
 		 *	Creates a threadsafe context, that will be freed
 		 *	at the same time as the map_proc_inst_t structure.
 		 */
-		con = talloc_new(NULL);
-		fr_link_talloc_ctx_free(inst, con);
+		ctx_link = talloc_new(NULL);
+		fr_link_talloc_ctx_free(inst, ctx_link);
 
-		if (proc->cache_alloc(con, &inst->cache, src, maps, proc->func_ctx) < 0) {
+		if (proc->cache_alloc(ctx_link, &inst->cache, src, maps, proc->func_ctx) < 0) {
 			talloc_free(inst);
 			return NULL;
 		}
