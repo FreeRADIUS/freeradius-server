@@ -129,7 +129,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/* initiate connection pool */
-	inst->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, NULL);
+	inst->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, mod_conn_alive, NULL);
 
 	/* check connection pool */
 	if (!inst->pool) {
