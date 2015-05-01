@@ -726,12 +726,24 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		}
 
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
+			DICT_VALUE *dv;
+
 			/*
 			 *  New attribute, write name, type, and beginning of value array.
 			 */
 			RDEBUG2("Encoding attribute \"%s\"", vp->da->name);
 
-			type = fr_int2str(dict_attr_types, vp->da->type, "<INVALID>");
+			switch (vp->da->type) {
+				case PW_TYPE_INTEGER:
+				case PW_TYPE_BYTE:
+				case PW_TYPE_SHORT:
+					dv = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->data.integer);
+					break;
+				default:
+					dv = NULL;
+			}
+
+			type = (dv ? "mapped" : fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
 
 			len = snprintf(p, freespace + 1, "\"%s\":{\"type\":\"%s\",\"value\":[", vp->da->name, type);
 			if (len >= freespace) goto no_space;
@@ -751,6 +763,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 		if (ctx->state == READ_STATE_ATTR_CONT) {
 			for (;;) {
 				size_t attr_space;
+				DICT_VALUE *dv;
 
 				rad_assert(vp);	/* coverity */
 
@@ -759,6 +772,16 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				 *  shortest attribute value.
 				 */
 				if (freespace < 1) goto no_space;
+
+				switch (vp->da->type) {
+					case PW_TYPE_INTEGER:
+					case PW_TYPE_BYTE:
+					case PW_TYPE_SHORT:
+						dv = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->data.integer);
+						break;
+					default:
+						dv = NULL;
+				}
 
 				/*
 				 *  Code below expects length of the buffer, so we
@@ -769,7 +792,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				 *  write that out.
 				 */
 				attr_space = fr_cursor_next_peek(&ctx->cursor) ? freespace - 1 : freespace;
-				len = vp_prints_value_json(p, attr_space + 1, vp);
+				len = (dv ? snprintf(p, freespace, "\"%s\"", dv->name) : vp_prints_value_json(p, attr_space + 1, vp));
 				if (is_truncated(len, attr_space + 1)) goto no_space;
 
 				/*
