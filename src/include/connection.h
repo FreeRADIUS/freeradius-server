@@ -53,7 +53,9 @@ typedef struct fr_connection_pool_t fr_connection_pool_t;
  *
  * @param[in,out] ctx to allocate memory in.
  * @param[in] opaque pointer passed to fr_connection_pool_init.
- * @return NULL on error, else a connection handle.
+ * @return
+ *	- NULL on error.
+ *	- A connection handle on success.
  */
 typedef void *(*fr_connection_create_t)(TALLOC_CTX *ctx, void *opaque);
 
@@ -66,7 +68,9 @@ typedef void *(*fr_connection_create_t)(TALLOC_CTX *ctx, void *opaque);
  * @note Not currently use by connection pool manager.
  * @param[in] opaque pointer passed to fr_connection_pool_init.
  * @param[in] connection handle returned by fr_connection_create_t.
- * @return < 0 on error or if the connection is unusable, else 0.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on error or if the connection is unusable.
  */
 typedef int (*fr_connection_alive_t)(void *opaque, void *connection);
 

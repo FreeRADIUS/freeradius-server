@@ -275,7 +275,9 @@ static void fr_connection_exec_trigger(fr_connection_pool_t *pool,
  * @param[in] pool to modify.
  * @param[in] now Current time.
  * @param[in] in_use whether the new connection should be "in_use" or not
- * @return the new connection struct or NULL on error.
+ * @return
+ *	- New connection struct.
+ *	- NULL on error.
  */
 static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 					    time_t now, bool in_use)
@@ -504,8 +506,9 @@ static void fr_connection_close(fr_connection_pool_t *pool,
  *
  * @param[in] pool to search in.
  * @param[in] conn handle to search for.
- * @return the connection containing the specified handle, or NULL if non is
- * found.
+ * @return
+ *	- Connection containing the specified handle.
+ *	- NULL if non if connection was found.
  */
 static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *conn)
 {
@@ -547,7 +550,9 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
  *
  * @param[in,out] pool Connection pool to modify.
  * @param[in] conn to delete.
- * @return 0 if the connection could not be found, else 1.
+ * @return
+ *	- 0 If the connection could not be found.
+ *	- 1 if the connection was deleted.
  */
 int fr_connection_del(fr_connection_pool_t *pool, void *conn)
 {
@@ -622,7 +627,9 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
  * @param[in] log_prefix override, if NULL will be set automatically from the module CONF_SECTION.
- * @return A new connection pool or NULL on error.
+ * @return
+ *	- New connection pool.
+ *	- NULL on error.
  */
 fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 						     void *opaque,
@@ -779,7 +786,9 @@ static int last_released_cmp(void const *one, void const *two)
  * @param[in] a Callback to check the status of connections.
  * @param[in] log_prefix prefix to prepend to all log messages.
  * @param[in] trigger_prefix prefix to prepend to all trigger names.
- * @return A new connection pool or NULL on error.
+ * @return
+ *	- New connection pool.
+ *	- NULL on error.
  */
 fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					      CONF_SECTION *cs,
@@ -947,7 +956,9 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
  * @param[in,out] pool to modify.
  * @param[in,out] this Connection to manage.
  * @param[in] now Current time.
- * @return 0 if the connection was closed, otherwise 1.
+ * @return
+ *	- 0 if connection was closed.
+ *	- 1 if connection handle was left open.
  */
 static int fr_connection_manage(fr_connection_pool_t *pool,
 				fr_connection_t *this,
@@ -1160,7 +1171,9 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
  *
  * @param[in,out] pool to reserve the connection from.
  * @param[in] spawn whether to spawn a new connection
- * @return a pointer to the connection handle, or NULL on error.
+ * @return
+ *	- A pointer to the connection handle.
+ *	- NULL on error.
  */
 static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 {
@@ -1260,7 +1273,9 @@ do_return:
  *
  * @see fr_connection_release
  * @param[in,out] pool to reserve the connection from.
- * @return a pointer to the connection handle, or NULL on error.
+ * @return
+ *	- A pointer to the connection handle.
+ *	- NULL on error.
  */
 void *fr_connection_get(fr_connection_pool_t *pool)
 {

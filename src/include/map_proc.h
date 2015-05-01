@@ -53,9 +53,14 @@ typedef struct map_proc_inst {
  * @param[in] request The current request.
  * @param[in] src Talloced buffer, the result of evaluating the src #vp_tmpl_t.
  * @param[in] maps Head of the list of maps to process.
- * @param[in] cache structure created by the #map_proc_cache_cb_t, or NULL if no cache cb was
+ * @param[in] cache structure created by the #map_proc_cache_alloc_t, or NULL if no cache cb was
  *	provided.
  * @param[in] func_ctx passed to #map_proc_register.
+ * @return
+ *	- #RLM_MODULE_OK - If data was available, but did match the map.
+ *	- #RLM_MODULE_NOTFOUND - If no data available for given src.
+ *	- #RLM_MODULE_UPDATED - If new pairs were added to the request.
+ *	- #RLM_MODULE_FAIL - If an error occurred performing the mapping.
  */
 typedef rlm_rcode_t (*map_proc_func_t)(REQUEST *request, char const *src,
 				       vp_map_t const *maps, void *cache, void *func_ctx);
@@ -67,6 +72,9 @@ typedef rlm_rcode_t (*map_proc_func_t)(REQUEST *request, char const *src,
  * @param[in] src template.
  * @param[in] maps Head of the list of maps.
  * @param[in] func_ctx passed to #map_proc_register.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 typedef int (*map_proc_cache_alloc_t)(TALLOC_CTX *ctx, void **out,
 				      vp_tmpl_t const *src, vp_map_t const *maps, void *func_ctx);

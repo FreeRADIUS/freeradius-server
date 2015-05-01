@@ -70,7 +70,9 @@ static char const hextab[] = "0123456789abcdef";
  * @param[in] modhex data.
  * @param[in] len of input and output buffers.
  * @param[out] hex where to write the standard hexits.
- * @return The number of bytes written to the output buffer, or -1 on error.
+ * @return
+ *	- The number of bytes written to the output buffer.
+ *	- -1 on failure.
  */
 static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
 {

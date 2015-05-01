@@ -45,7 +45,9 @@ RCSID("$Id$")
  *
  * @param[out] out Pointer to 16 byte output buffer.
  * @param[in] password to encode.
- * @return 0 on success else -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int mschap_ntpwdhash(uint8_t *out, char const *password)
 {

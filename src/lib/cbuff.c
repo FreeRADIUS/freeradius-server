@@ -54,7 +54,9 @@ struct fr_cbuff {
  * @param ctx to allocate the buffer in.
  * @param size of buffer to allocate.
  * @param lock If true, insert and next operations will lock the buffer.
- * @return new cbuff, or NULL on error.
+ * @return
+ *	- New cbuff.
+ *	- NULL on error.
  */
 #ifdef HAVE_PTHREAD_H
 fr_cbuff_t *fr_cbuff_alloc(TALLOC_CTX *ctx, uint32_t size, bool lock)
@@ -129,7 +131,9 @@ void fr_cbuff_rp_insert(fr_cbuff_t *cbuff, void *obj)
  *
  * @param cbuff to remove element from
  * @param ctx to hang obj off.
- * @return NULL if no elements in the buffer, else an element from the buffer reparented to ctx.
+ * @return
+ *	- NULL if no elements in the buffer.
+ *	- An element from the buffer reparented to ctx.
  */
 void *fr_cbuff_rp_next(fr_cbuff_t *cbuff, TALLOC_CTX *ctx)
 {

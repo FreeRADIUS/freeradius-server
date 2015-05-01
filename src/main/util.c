@@ -200,7 +200,9 @@ void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
  * @param mode for new directories.
  * @param uid to set on new directories, may be -1 to use effective uid.
  * @param gid to set on new directories, may be -1 to use effective gid.
- * @return 0 on success, -1 on error. Error available as errno.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure. Error available as errno.
  */
 int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
 {
@@ -462,8 +464,9 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
  * @param outlen Length of the output buffer.
  * @param in Input filename.
  * @param inlen Length of input.
- * @return number of bytes written to output buffer, or offset where parse error
- *	occurred on failure.
+ * @return
+ *	- Number of bytes written to output buffer
+ *	- offset where parse error occurred on failure.
  */
 ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen)
 {
@@ -1255,7 +1258,9 @@ void rad_mode_to_oct(char out[5], mode_t mode)
  * @param ctx to allocate passwd entry in.
  * @param out Where to write pointer to entry.
  * @param uid to resolve.
- * @return 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 {
@@ -1320,7 +1325,9 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
  * @param ctx to allocate passwd entry in.
  * @param out Where to write pointer to entry.
  * @param name to resolve.
- * @return 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 {
@@ -1385,7 +1392,9 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
  * @param ctx to allocate passwd entry in.
  * @param out Where to write pointer to entry.
  * @param gid to resolve.
- * @return 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 {
@@ -1450,7 +1459,9 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
  * @param ctx to allocate passwd entry in.
  * @param out Where to write pointer to entry.
  * @param name to resolve.
- * @return 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 {
@@ -1511,7 +1522,9 @@ int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
  * @param ctx TALLOC_CTX for temporary allocations.
  * @param name of group.
  * @param out where to write gid.
- * @return 0 on success, -1 on error;
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
 {
@@ -1537,7 +1550,9 @@ int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
  * @param out Where to write the uid string.
  * @param outlen length of output buffer.
  * @param uid to resolve.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_prints_uid(TALLOC_CTX *ctx, char *out, size_t outlen, uid_t uid)
 {
@@ -1565,7 +1580,9 @@ int rad_prints_uid(TALLOC_CTX *ctx, char *out, size_t outlen, uid_t uid)
  * @param out Where to write the uid string.
  * @param outlen length of output buffer.
  * @param gid to resolve.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_prints_gid(TALLOC_CTX *ctx, char *out, size_t outlen, gid_t gid)
 {
@@ -1715,7 +1732,9 @@ void rad_suid_down_permanent(void)
 /** Alter the effective user id
  *
  * @param uid to set
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_seuid(uid_t uid)
 {
@@ -1734,7 +1753,9 @@ int rad_seuid(uid_t uid)
 /** Alter the effective user id
  *
  * @param gid to set
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_segid(gid_t gid)
 {

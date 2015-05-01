@@ -653,7 +653,10 @@ int		readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
 
 /** Compare two attributes using and operator.
  *
- * @return 1 if equal, 0 if not eaqual, -1 on error.
+ * @return
+ *	- 1 if equal.
+ *	- 0 if not equal.
+ *	- -1 on failure.
  */
 #define		paircmp_op(_op, _a, _b)	value_data_cmp_op(_op, _a->da->type, &_a->data, _a->vp_length, _b->da->type, &_b->data, _b->vp_length)
 
@@ -809,7 +812,9 @@ extern fr_debug_state_t fr_debug_state;
  * If the callback returns < 0, the main fault handler will not be called.
  *
  * @param signum signal raised.
- * @return 0 on success < 0 on failure.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
  */
 typedef int (*fr_fault_cb_t)(int signum);
 typedef struct fr_bt_marker fr_bt_marker_t;

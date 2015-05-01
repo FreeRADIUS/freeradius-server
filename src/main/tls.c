@@ -302,7 +302,9 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
  * @param conf to use to configure the tls session.
  * @param request The current #REQUEST.
  * @param client_cert Whether to require a client_cert.
- * @return a new session on success, or NULL on error.
+ * @return
+ *	- A new session on success.
+ *	- NULL on error.
  */
 tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert)
 {
@@ -2183,7 +2185,8 @@ void tls_global_init(void)
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 /** Check for vulnerable versions of libssl
  *
- * @param acknowledged The highest CVE number a user has confirmed is not present in the system's libssl.
+ * @param acknowledged The highest CVE number a user has confirmed is not present in the system's
+ *	libssl.
  * @return 0 if the CVE specified by the user matches the most recent CVE we have, else -1.
  */
 int tls_global_version_check(char const *acknowledged)

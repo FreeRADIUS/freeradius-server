@@ -553,7 +553,7 @@ static int ascend_parse_ipx(int argc, char **argv, ascend_ipx_filter_t *filter)
  *	ipaddr should already be initialized to zero.
  *	ipaddr is in network byte order.
  *
- *	Returns -1 on error, or the number of bits in the netmask, otherwise.
+ *	Returns -1 on failure, or the number of bits in the netmask, otherwise.
  */
 static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 {
@@ -650,7 +650,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 /*
  *	ascend_parse_port:  Parse a comparator and port.
  *
- *	Returns -1 on error, or the comparator.
+ *	Returns -1 on failure, or the comparator.
  */
 static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 {
@@ -949,7 +949,9 @@ static int ascend_parse_generic(int argc, char **argv,
  * @param out Where to write parsed filter.
  * @param value ascend filter text.
  * @param len of value.
- * @return -1 for error or 0.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 {

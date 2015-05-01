@@ -264,7 +264,9 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
  * @param request Current request.
  * @param param ip address string.
  * @param param_len ip address string len.
- * @return 0 on success or < 0 on error.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on error.
  */
 static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sqlippool_t *data, REQUEST *request,
 			     char *param, int param_len)

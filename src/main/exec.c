@@ -78,7 +78,9 @@ static void tv_sub(struct timeval *end, struct timeval *start,
  * @param input_pairs list of value pairs - these will be put into the environment variables
  *	of the child.
  * @param shell_escape values before passing them as arguments.
- * @return PID of the child process, -1 on error.
+ * @return
+ *	- PID of the child process.
+ *	- -1 on failure.
  */
 pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   int *input_fd, int *output_fd,
@@ -372,7 +374,9 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
  * @param timeout amount of time to wait, in seconds.
  * @param answer buffer to write into.
  * @param left length of buffer.
- * @return -1 on error, or length of output.
+ * @return
+ *	- -1 on failure.
+ *	- Length of output.
  */
 int radius_readfrom_program(int fd, pid_t pid, int timeout,
 			    char *answer, int left)
@@ -506,14 +510,17 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
  * @param[out] output_pairs list of value pairs - Data on child's stdout will be parsed and
  *	added into this list of value pairs.
  * @param[in] request Current request (may be NULL).
- * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv part
- *	is xlat'ed.
- * @param[in] input_pairs list of value pairs - these will be available in the environment of the child.
+ * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv
+ *	part is xlat'ed.
+ * @param[in] input_pairs list of value pairs - these will be available in the environment of the
+ *	child.
  * @param[in] exec_wait set to 1 if you want to read from or write to child.
  * @param[in] shell_escape values before passing them as arguments.
  * @param[in] timeout amount of time to wait, in seconds.
-
- * @return 0 if exec_wait==0, exit code if exec_wait!=0, -1 on error.
+ * @return
+ *	- 0 if exec_wait==0.
+ *	- exit code if exec_wait!=0.
+ *	- -1 on failure.
  */
 int radius_exec_program(char *out, size_t outlen, VALUE_PAIR **output_pairs,
 			REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,

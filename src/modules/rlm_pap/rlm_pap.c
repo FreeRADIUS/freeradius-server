@@ -199,7 +199,9 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_len)
  *
  * @param request Current request.
  * @param vp Password-With-Header attribute to convert.
- * @return a new VALUE_PAIR on success, NULL on error.
+ * @return
+ *	- New #VALUE_PAIR on success.
+ *	- NULL on error.
  */
 static VALUE_PAIR *normify_with_header(REQUEST *request, VALUE_PAIR *vp)
 {

@@ -301,7 +301,9 @@ uint128_t ntohlll(uint128_t const num)
  *
  * @param[in] t The talloc context to hang the result off.
  * @param[in] p The string you want to duplicate.
- * @return The duplicated string, NULL on error.
+ * @return
+ *	- Duplicated string.
+ *	- NULL on error.
  */
 char *talloc_typed_strdup(void const *t, char const *p)
 {
@@ -322,7 +324,9 @@ char *talloc_typed_strdup(void const *t, char const *p)
  *
  * @param[in] t The talloc context to hang the result off.
  * @param[in] fmt The format string.
- * @return The formatted string, NULL on error.
+ * @return
+ *	- Formatted string.
+ *	- NULL on error.
  */
 char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
 {

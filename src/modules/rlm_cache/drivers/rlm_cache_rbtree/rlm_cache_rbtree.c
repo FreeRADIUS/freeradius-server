@@ -113,7 +113,9 @@ static int _mod_detach(rlm_cache_rbtree_t *driver)
  *
  * @param conf rbtree specific conf section.
  * @param inst main rlm_cache instance.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int mod_instantiate(UNUSED CONF_SECTION *conf, rlm_cache_t *inst)
 {
@@ -158,7 +160,9 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, rlm_cache_t *inst)
  *
  * @param inst main rlm_cache instance.
  * @param request The current request.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_t *inst, REQUEST *request)
 {
@@ -180,7 +184,9 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_t *inst, REQUEST *r
  * @param request The current request.
  * @param handle Dummy handle (not used).
  * @param key to search for.
- * @return CACHE_OK on success CACHE_MISS if no entry found.
+ * @return
+ *	- #CACHE_OK on success.
+ *	- #CACHE_MISS if no entry found.
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
 				       rlm_cache_handle_t **handle, char const *key)
@@ -221,7 +227,9 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, rlm_cache_t *ins
  * @param request The current request.
  * @param handle Dummy handle (not used).
  * @param c entry to insert.
- * @return CACHE_OK on success else CACHE_ERROR on error.
+ * @return
+ *	- #CACHE_OK on success.
+ *	- #CACHE_ERROR on error.
  */
 static cache_status_t cache_entry_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
 					 rlm_cache_entry_t *c)
@@ -252,7 +260,7 @@ static cache_status_t cache_entry_insert(rlm_cache_t *inst, REQUEST *request, rl
  * @param request The current request.
  * @param handle Dummy handle (not used).
  * @param c entry to expire
- * @return CACHE_OK.
+ * @return #CACHE_OK.
  */
 static cache_status_t cache_entry_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
 					 rlm_cache_entry_t *c)
@@ -290,7 +298,6 @@ static uint32_t cache_entry_count(rlm_cache_t *inst, REQUEST *request, rlm_cache
  * @param inst rlm_cache instance.
  * @param request The current request.
  */
-
 #ifdef HAVE_PTHREAD_H
 static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *request)
 #else

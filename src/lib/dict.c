@@ -640,7 +640,9 @@ int dict_valid_name(char const *name)
  *
  * @todo we need to check length of none vendor attributes.
  *
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 ATTR_FLAGS flags)
@@ -2771,7 +2773,9 @@ DICT_ATTR const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int attr, u
  *
  * @param[in] da to initialise.
  * @param[in] name of attribute.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 {
@@ -2979,7 +2983,9 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
  *
  * @param[in] ctx to alloc new attribute in.
  * @param[in] name of attribute.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 DICT_ATTR const *dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name)
 {
@@ -3013,7 +3019,9 @@ DICT_ATTR const *dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name)
  *
  * @param[out] da to initialise.
  * @param[in,out] name string start.
- * @return 0 on success or -1 on error;
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int dict_unknown_from_substr(DICT_ATTR *da, char const **name)
 {
@@ -3068,7 +3076,7 @@ DICT_ATTR const *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
  *
  * Used only for COMBO_IP
  *
- * @return The attribute, or NULL if not found
+ * @return The attribute, or NULL if not found.
  */
 DICT_ATTR const *dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type)
@@ -3217,7 +3225,9 @@ DICT_ATTR const *dict_attrbyname(char const *name)
  * NULL.
  *
  * @param[in,out] name string start.
- * @return NULL if no attributes matching the name could be found, else
+ * @return
+ *	- NULL if no attributes matching the name could be found.
+ *	- #DICT_ATTR found in the global dictionary.
  */
 DICT_ATTR const *dict_attrbyname_substr(char const **name)
 {
@@ -3356,11 +3366,12 @@ DICT_VENDOR *dict_vendorbyvalue(int vendorpec)
 
 /** Converts an unknown to a known by adding it to the internal dictionaries.
  *
- * Does not free old DICT_ATTR, that is left up to the caller.
+ * Does not free old #DICT_ATTR, that is left up to the caller.
  *
  * @param old unknown attribute to add.
- * @return existing DICT_ATTR if old was found in a dictionary, else the new entry in the dictionary
- * 	   representing old.
+ * @return
+ *	- Existing #DICT_ATTR if old was found in a dictionary.
+ *	- A new entry representing old.
  */
 DICT_ATTR const *dict_unknown_add(DICT_ATTR const *old)
 {

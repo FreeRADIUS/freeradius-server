@@ -112,7 +112,9 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value, s
  * @param out Where to write the subcapture string.
  * @param request to extract.
  * @param num Subcapture index (0 for entire match).
- * @return 0 on success, -1 on notfound.
+ * @return
+ *	- 0 on success.
+ *	- -1 on notfound.
  */
 int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
 {
@@ -169,7 +171,9 @@ int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t
  * @param out Where to write the subcapture string.
  * @param request to extract.
  * @param name of subcapture.
- * @return 0 on success, -1 on notfound.
+ * @return
+ *	- 0 on success.
+ *	- -1 on notfound.
  */
 int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, char const *name)
 {
@@ -227,7 +231,9 @@ int regex_request_to_sub_named(TALLOC_CTX *ctx, char **out, REQUEST *request, ch
  * @param out Where to write the subcapture string.
  * @param request to extract.
  * @param num Subcapture index (0 for entire match).
- * @return 0 on success, -1 on notfound.
+ * @return
+ *	- 0 on success.
+ *	- -1 on notfound.
  */
 int regex_request_to_sub(TALLOC_CTX *ctx, char **out, REQUEST *request, uint32_t num)
 {

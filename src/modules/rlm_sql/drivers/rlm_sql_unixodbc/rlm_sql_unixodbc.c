@@ -264,11 +264,11 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  * @note Caller will free any memory allocated in ctx.
  *
  * @param ctx to allocate temporary error buffers in.
- * @param out Array of sql_log_entrys to fill.
+ * @param out Array of #sql_log_entry_t to fill.
  * @param outlen Length of out array.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return number of errors written to the sql_log_entry array.
+ * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -297,7 +297,10 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
  * @param error_handle Return code from a failed unixodbc call.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if reconnect is needed, or RLM_SQL_ERROR on error.
+ * @return
+ *	- #RLM_SQL_OK on success.
+ *	- #RLM_SQL_RECONNECT if reconnect is needed.
+ *	- #RLM_SQL_ERROR on error.
  */
 static sql_rcode_t sql_check_error(long error_handle, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {

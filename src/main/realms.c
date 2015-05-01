@@ -449,7 +449,9 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
  *
  * @param home server to add.
  * @param cs That defined the home server.
- * @return true on success else false.
+ * @return
+ *	- true on success.
+ *	- false on failure.
  */
 static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 {
@@ -482,7 +484,9 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 /** Add an already allocate home_server_t to the various trees
  *
  * @param home server to add.
- * @return true on success, else false on error.
+ * @return
+ *	- true on success.
+ *	- false on error.
  */
 bool realm_home_server_add(home_server_t *home)
 {
@@ -559,12 +563,14 @@ bool realm_home_server_add(home_server_t *home)
 	return true;
 }
 
-/** Alloc a new home server defined by a CONF_SECTION
+/** Alloc a new home server defined by a #CONF_SECTION
  *
  * @param ctx to allocate home_server_t in.
  * @param rc Realm config, may be NULL in which case the global realm_config will be used.
  * @param cs Configuration section containing home server parameters.
- * @return a new home_server_t alloced in the context of the realm_config, or NULL on error.
+ * @return
+ *	- New #home_server_t alloced in the context of the realm_config.
+ *	- NULL on error.
  */
 home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs)
 {
@@ -878,10 +884,12 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
  *  - src_ipaddr
  *
  * @note new CONF_SECTION will be allocated in the context of the client, but the client
- *	CONF_SECTION will not be modified.
+ *	C#ONF_SECTION will not be modified.
  *
  * @param client CONF_SECTION to inherit values from.
- * @return a new server CONF_SCTION, or a pointer to the existing CONF_SECTION in the client.
+ * @return
+ *	- A new server #CONF_SECTION.
+ *	- A pointer to the existing #CONF_SECTION in the client.
  */
 CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
 {

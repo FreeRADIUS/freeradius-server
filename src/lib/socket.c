@@ -56,7 +56,9 @@
  * @param path to the file bound to the unix socket.
  * @param async Whether to set the socket to nonblocking, allowing use of
  *	#fr_socket_wait_for_connect.
- * @return socket FD on success, -1 on error.
+ * @return
+ *	- Socket FD on success.
+ *	- -1 on failure.
  */
 int fr_socket_client_unix(char const *path, bool async)
 {
@@ -137,14 +139,14 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
    if (sockfd < 0) {
    	fr_perror();
    	exit(1);
-}
+   }
    if ((errno == EINPROGRESS) && (fr_socket_wait_for_connect(sockfd, timeout) < 0)) {
    error:
    	fr_perror();
    	close(sockfd);
    	goto error;
-}
-//Optionally, if blocking operation is required
+   }
+   //Optionally, if blocking operation is required
    if (fr_blocking(sockfd) < 0) goto error;
  @endcode
  *
@@ -154,7 +156,9 @@ int fr_socket_client_unix(UNUSED char const *path, UNUSED bool async)
  * @param dst_port Where to connect to.
  * @param async Whether to set the socket to nonblocking, allowing use of
  *	#fr_socket_wait_for_connect.
- * @return FD on success, -1 on failure.
+ * @return
+ *	- FD on success
+ *	- -1 on failure.
  */
 int fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async)
 {
@@ -258,7 +262,9 @@ int fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint1
  * @param dst_port Where to send datagrams.
  * @param async Whether to set the socket to nonblocking, allowing use of
  *	#fr_socket_wait_for_connect.
- * @return FD on success, -1 on failure.
+ * @return
+ *	- FD on success.
+ *	- -1 on failure.
  */
 int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async)
 {
@@ -340,7 +346,11 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint1
  *
  * @param sockfd the socket to wait on.
  * @param timeout How long to wait for socket to open.
- * @return 0 on success, -1 on connection error, -2 on timeout, -3 on select error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on connection error.
+ *	- -2 on timeout.
+ *	- -3 on select error.
  */
 int fr_socket_wait_for_connect(int sockfd, struct timeval *timeout)
 {

@@ -86,7 +86,9 @@ static int _map_proc_unregister(map_proc_t *proc)
 /** Find a map processor by name
  *
  * @param[in] name of map processor.
- * @return a map_proc matching name, or NULL if none was found.
+ * @return
+ *	- #map_proc matching name.
+ *	- NULL if none was found.
  */
 map_proc_t *map_proc_find(char const *name)
 {
@@ -104,15 +106,17 @@ map_proc_t *map_proc_find(char const *name)
  *
  * This should be called by every module that provides a map processing function.
  *
- * @param[in] ctx To allocate new map_proc_t in. Must be specified. Usually the module instance.
- *	If ctx is freed map_proc_t is automatically unregistered.
+ * @param[in] ctx To allocate new #map_proc_t in. Must be specified. Usually the module instance.
+ *	If ctx is freed #map_proc_t is automatically unregistered.
  * @param[in] name of map processor. If processor already exists, it is replaced.
  * @param[in] func Module's map processor function.
  * @param[in] func_ctx to pass to the map function when it's called.
  * @param[in] escape function to sanitize any sub expansions in the map source query.
  * @param[in] escape_ctx to pass to sanitization functions.
  * @param[in] cache_alloc function (optional).
- * @return 0 on success, -1 on failure
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int map_proc_register(TALLOC_CTX *ctx, char const *name, map_proc_func_t func,
 		      void *func_ctx, RADIUS_ESCAPE_STRING escape, void *escape_ctx,
@@ -167,7 +171,9 @@ int map_proc_register(TALLOC_CTX *ctx, char const *name, map_proc_func_t func,
  * @param proc resolved with #map_proc_find.
  * @param src template.
  * @param maps Head of the list of maps.
- * @return a new map_proc_inst_t on success, else NULL on error.
+ * @return
+ *	- New #map_proc_inst_t on success.
+ *	- NULL on error.
  */
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 				      vp_tmpl_t const *src, vp_map_t const *maps)

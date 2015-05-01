@@ -1265,7 +1265,10 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
  * @param out where to write the DHCP option.
  * @param outlen length of output buffer.
  * @param vp option to encode.
- * @return the length of data writen, -1 if out of buffer, -2 if unsupported type.
+ * @return
+ *	- The length of data writen.
+ *	- -1 if out of buffer.
+ *	- -2 if unsupported type.
  */
 static ssize_t fr_dhcp_vp2attr(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
 {
@@ -1412,7 +1415,10 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
  * @param outlen Length of out buffer.
  * @param ctx to use for any allocated memory.
  * @param cursor with current VP set to the option to be encoded. Will be advanced to the next option to encode.
- * @return > 0 length of data written, < 0 error, 0 not valid option (skipping).
+ * @return
+ *	- > 0 length of data written.
+ *	- < 0 error.
+ *	- 0 not valid option (skipping).
  */
 ssize_t fr_dhcp_encode_option(TALLOC_CTX *ctx, uint8_t *out, size_t outlen, vp_cursor_t *cursor)
 {

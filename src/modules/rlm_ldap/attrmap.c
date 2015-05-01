@@ -353,7 +353,9 @@ int rlm_ldap_map_xlat(REQUEST *request, vp_map_t const *maps, rlm_ldap_map_xlat_
  * @param[in] handle associated with entry.
  * @param[in] expanded attributes (rhs of map).
  * @param[in] entry to retrieve attributes from.
- * @return number of maps successfully applied, or -1 on error.
+ * @return
+ *	- Number of maps successfully applied.
+ *	- -1 on failure.
  */
 int rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
 		    rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry)
