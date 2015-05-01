@@ -226,9 +226,9 @@ int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_h
 int		sql_read_naslist(rlm_sql_handle_t *handle);
 int		sql_read_clients(rlm_sql_handle_t *handle);
 int		sql_dict_init(rlm_sql_handle_t *handle);
-void 		CC_HINT(nonnull (1, 2, 4)) rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t *section, char const *query);
-sql_rcode_t	CC_HINT(nonnull (1, 3, 4)) rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
-sql_rcode_t	CC_HINT(nonnull (1, 3, 4)) rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
+void 		rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t *section, char const *query) CC_HINT(nonnull (1, 2, 4));
+sql_rcode_t	rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
+sql_rcode_t	rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
 int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
 int		sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username);
