@@ -278,7 +278,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	if (!clients) {
 		if (client->server != NULL) {
 			CONF_SECTION *cs;
-			CONF_SECTION *listen;
+			CONF_SECTION *subcs;
 
 			cs = cf_section_sub_find_name2(mainconfig.config,
 						       "server", client->server);
@@ -292,8 +292,8 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			 *	If this server has no "listen" section, add the clients
 			 *	to the global client list.
 			 */
-			listen = cf_section_sub_find(cs, "listen");
-			if (!listen) goto global_clients;
+			subcs = cf_section_sub_find(cs, "listen");
+			if (!subcs) goto global_clients;
 
 			/*
 			 *	If the client list already exists, use that.
