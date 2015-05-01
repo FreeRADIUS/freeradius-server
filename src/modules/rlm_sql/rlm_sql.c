@@ -332,16 +332,14 @@ static rlm_rcode_t sql_map_proc_evaluate(REQUEST *request, char const *query,
 	char const		**fields, *map_rhs;
 	char			map_rhs_buff[128];
 
-#define ARRAY_SIZE (64)
+#define MAX_SQL_FIELD_INDEX (64)
 
-	int			array[ARRAY_SIZE];
+	int			field_index[MAX_SQL_FIELD_INDEX];
 	bool			found_field = false;	/* Did we find any matching fields in the result set ? */
 
 	rad_assert(inst->module->sql_fields);		/* Should have been caught during validation... */
 
-	for (i = 0; i < ARRAY_SIZE; i++) {
-		array[i] = -1;
-	}
+	for (i = 0; i < MAX_SQL_FIELD_INDEX; i++) field_index[i] = -1;
 
 	/*
 	 *	Add SQL-User-Name attribute just in case it is needed
@@ -386,7 +384,7 @@ static rlm_rcode_t sql_map_proc_evaluate(REQUEST *request, char const *query,
 	 *	map set is evaluated (map->rhs can be dynamic).
 	 */
 	for (map = head, i = 0;
-	     map && (i < ARRAY_SIZE);
+	     map && (i < MAX_SQL_FIELD_INDEX);
 	     map = map->next, i++) {
 		/*
 		 *	Expand the RHS to get the name of the SQL field
@@ -399,7 +397,7 @@ static rlm_rcode_t sql_map_proc_evaluate(REQUEST *request, char const *query,
 
 		for (j = 0; j < field_cnt; j++) {
 			if (strcmp(fields[j], map_rhs) != 0) continue;
-			array[i] = j;
+			field_index[i] = j;
 			found_field = true;
 		}
 
@@ -434,12 +432,12 @@ static rlm_rcode_t sql_map_proc_evaluate(REQUEST *request, char const *query,
 		}
 
 		for (map = head, j = 0;
-		     map;
+		     map && (j < MAX_SQL_FIELD_INDEX);
 		     map = map->next, j++) {
 			if ((i > 0) && (map->op != T_OP_ADD)) continue;
-			if (array[j] < 0) continue;	/* We didn't find the map RHS in the field set */
+			if (field_index[j] < 0) continue;	/* We didn't find the map RHS in the field set */
 
-			if (map_to_request(request, map, _sql_map_proc_get_value, row[array[j]]) < 0) goto error;
+			if (map_to_request(request, map, _sql_map_proc_get_value, row[field_index[j]]) < 0) goto error;
 		}
 	}
 
