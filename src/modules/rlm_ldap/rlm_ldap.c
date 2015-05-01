@@ -262,17 +262,21 @@ static ssize_t ldapquote_xlat(UNUSED void *instance, REQUEST *request, char cons
  */
 static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
-	ldap_rcode_t status;
-	size_t len = 0;
-	ldap_instance_t *inst = instance;
-	LDAPURLDesc *ldap_url;
-	LDAPMessage *result = NULL;
-	LDAPMessage *entry = NULL;
-	struct berval **values;
-	ldap_handle_t *conn;
-	int ldap_errno;
-	char const *url;
-	char const **attrs;
+	ldap_rcode_t		status;
+	size_t			len = 0;
+	ldap_instance_t		*inst = instance;
+
+	LDAPURLDesc		*ldap_url;
+	LDAPMessage		*result = NULL;
+	LDAPMessage		*entry = NULL;
+
+	struct berval		**values;
+
+	ldap_handle_t		*conn;
+	int			ldap_errno;
+
+	char const		*url;
+	char const		**attrs;
 
 	url = fmt;
 
@@ -1132,6 +1136,7 @@ error:
 	return -1;
 }
 
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode;
@@ -1330,7 +1335,8 @@ free_result:
 	return rcode;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rcode_t		rcode = RLM_MODULE_OK;
 	ldap_rcode_t		status;
@@ -1794,17 +1800,18 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	return rcode;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST * request) {
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+{
 	ldap_instance_t *inst = instance;
 
-	if (inst->accounting) {
-		return user_modify(inst, request, inst->accounting);
-	}
+	if (inst->accounting) return user_modify(inst, request, inst->accounting);
 
 	return RLM_MODULE_NOOP;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST * request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
 	ldap_instance_t	*inst = instance;
 
