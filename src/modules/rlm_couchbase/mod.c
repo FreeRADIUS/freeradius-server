@@ -103,33 +103,6 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	return chandle;
 }
 
-/** Check the health of a connection handle
- *
- * Attempt to determing the state of the Couchbase connection by requesting
- * a cluster statistics report.  Mark the connection as failed if the request
- * returns anything other than success.
- *
- * @param  instance The module instance (currently unused).
- * @param  handle   The connection handle.
- * @return          Returns 0 on success (alive) and -1 on error (unavailable).
- */
-int mod_conn_alive(UNUSED void *instance, void *handle)
-{
-	rlm_couchbase_handle_t *chandle = handle;   /* connection handle pointer */
-	lcb_t cb_inst = chandle->handle;            /* couchbase instance */
-	lcb_error_t cb_error = LCB_SUCCESS;         /* couchbase error status */
-
-	/* attempt to get server stats */
-	if ((cb_error = couchbase_server_stats(cb_inst, NULL)) != LCB_SUCCESS) {
-		/* log error */
-		ERROR("rlm_couchbase: failed to get couchbase server stats: %s (0x%x)",
-		      lcb_strerror(NULL, cb_error), cb_error);
-		/* error out */
-		return -1;
-	}
-	return 0;
-}
-
 /** Build a JSON object map from the configuration "map" section
  *
  * Parse the "map" section from the module configuration file and store this
