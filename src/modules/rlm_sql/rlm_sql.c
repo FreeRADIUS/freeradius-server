@@ -311,8 +311,8 @@ static int _sql_map_proc_get_value(VALUE_PAIR **out, REQUEST *request, vp_map_t 
  *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
-static rlm_rcode_t sql_map_proc_evaluate(REQUEST *request, char const *query,
-					 vp_map_t const *head, UNUSED void *cache, void *ctx)
+static rlm_rcode_t mod_map_proc(REQUEST *request, char const *query,
+				vp_map_t const *head, UNUSED void *cache, void *ctx)
 {
 	rlm_sql_t		*inst = talloc_get_type_abort(ctx, rlm_sql_t);
 	rlm_sql_handle_t	*handle = NULL;
@@ -1057,7 +1057,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the SQL map processor function
 	 */
-	if (inst->module->sql_fields) map_proc_register(inst, inst->name, sql_map_proc_evaluate,
+	if (inst->module->sql_fields) map_proc_register(inst, inst->name, mod_map_proc,
 							inst, sql_escape_func, inst, NULL);
 
 	return 0;
