@@ -357,7 +357,7 @@ free_urldesc:
  *
  * Unlike LDAP xlat, this can be used to process attributes from multiple entries.
  *
- * @param[in] mod_inst #rlm_ldap_t.
+ * @param[in] mod_inst #ldap_instance_t
  * @param[in] proc_inst unused.
  * @param[in,out] request The current request.
  * @param[in] url LDAP url specifying base DN and filter.
