@@ -85,6 +85,8 @@
 #define LDAP_MAX_FILTER_STR_LEN		1024		//!< Maximum length of an xlat expanded filter.
 #define LDAP_MAX_DN_STR_LEN		1024		//!< Maximum length of an xlat expanded DN.
 
+#define LDAP_VIRTUAL_DN_ATTR		"dn"		//!< 'Virtual' attribute which maps to the DN of the object.
+
 typedef struct ldap_acct_section {
 	CONF_SECTION	*cs;				//!< Section configuration.
 
