@@ -384,8 +384,6 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	rlm_ldap_map_exp_t	expanded; /* faster than mallocing every time */
 
-	memset(&expanded, 0, sizeof(expanded));
-
 	if (!ldap_is_ldap_url(url)) {
 		REDEBUG("Map query string does not look like a valid LDAP URI");
 		return RLM_MODULE_FAIL;
@@ -428,13 +426,13 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	for (entry = ldap_first_entry(conn->handle, result);
 	     entry;
 	     entry = ldap_next_entry(conn->handle, entry)) {
-	     	int	i;
-	     	char	*dn = NULL;
+		int	i;
+		char	*dn = NULL;
 
-	     	if (RDEBUG_ENABLED2) {
+		if (RDEBUG_ENABLED2) {
 			dn = ldap_get_dn(conn->handle, entry);
 			REDEBUG2("Processing \"%s\"", dn);
-	     	}
+		}
 
 		RINDENT();
 		for (map = maps, i = 0;
