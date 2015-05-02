@@ -35,21 +35,21 @@ extern "C" {
 
 typedef struct xlat_exp xlat_exp_t;
 
-typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
-typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
+typedef size_t (*xlat_escape_t)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
+typedef ssize_t (*xlat_func_t)(void *instance, REQUEST *, char const *, char *, size_t);
 
-ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape,
+ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_t escape,
 		    void *escape_ctx)
 	CC_HINT(nonnull (1 ,3 ,4));
 
 ssize_t radius_xlat_struct(char *out, size_t outlen, REQUEST *request, xlat_exp_t const *xlat,
-			   RADIUS_ESCAPE_STRING escape, void *ctx)
+			   xlat_escape_t escape, void *ctx)
 	CC_HINT(nonnull (1 ,3 ,4));
 
-ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, xlat_escape_t escape, void *escape_ctx)
 	CC_HINT(nonnull (1, 2, 3));
 
-ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, RADIUS_ESCAPE_STRING escape,
+ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat, xlat_escape_t escape,
 			    void *ctx)
 	CC_HINT(nonnull (1, 2, 3));
 
@@ -57,9 +57,9 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head, char const 
 
 size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 
-int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
+int		xlat_register(char const *module, xlat_func_t func, xlat_escape_t escape,
 			      void *instance);
-void		xlat_unregister(char const *module, RAD_XLAT_FUNC func, void *instance);
+void		xlat_unregister(char const *module, xlat_func_t func, void *instance);
 void		xlat_unregister_module(void *instance);
 bool		xlat_register_redundant(CONF_SECTION *cs);
 ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt);
