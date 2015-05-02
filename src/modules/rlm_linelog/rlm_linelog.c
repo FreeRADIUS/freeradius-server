@@ -57,7 +57,7 @@ typedef struct rlm_linelog_t {
 
 	bool		escape;			//!< do filename escaping, yes / no
 
-	RADIUS_ESCAPE_STRING escape_func;	//!< escape function
+	xlat_escape_t escape_func;	//!< escape function
 
 	char const	*syslog_facility;	//!< Syslog facility string.
 	char const	*syslog_severity;	//!< Syslog severity string.
