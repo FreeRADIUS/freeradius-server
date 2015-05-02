@@ -33,7 +33,7 @@
  *
  * @see map_to_vp
  */
-static int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
+int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
 {
 	rlm_ldap_result_t *self = ctx;
 	VALUE_PAIR *head = NULL, *vp;

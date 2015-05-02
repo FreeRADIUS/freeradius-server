@@ -273,6 +273,7 @@ typedef struct ldap_instance {
 } ldap_instance_t;
 
 /** Tracks the state of a libldap connection handle
+ *
  */
 typedef struct ldap_handle {
 	LDAP		*handle;			//!< libldap handle.
@@ -304,7 +305,7 @@ typedef struct rlm_ldap_result {
 	int		count;				//!< Number of values.
 } rlm_ldap_result_t;
 
-/** Codes returned by rlm_ldap internal function
+/** Codes returned by rlm_ldap internal functions
  *
  */
 typedef enum {
@@ -417,6 +418,8 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 /*
  *	attrmap.c - Attribute mapping code.
  */
+int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx);
+
 int rlm_ldap_map_verify(vp_map_t *map, void *instance);
 
 int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps);
