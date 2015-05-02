@@ -36,6 +36,8 @@ RCSID("$Id$")
 
 #include	"ldap.h"
 
+#include	<freeradius-devel/map_proc.h>
+
 /*
  *	Scopes
  */
@@ -351,6 +353,153 @@ free_urldesc:
 	return len;
 }
 
+/** Perform a search and map the result of the search to server attributes
+ *
+ * Unlike LDAP xlat, this can be used to process attributes from multiple entries.
+ *
+ * @param[in] mod_inst #rlm_ldap_t.
+ * @param[in] proc_inst unused.
+ * @param[in,out] request The current request.
+ * @param[in] url LDAP url specifying base DN and filter.
+ * @param[in] maps Head of the map list.
+ * @return
+ *	- #RLM_MODULE_NOTFOUND no rows were returned.
+ *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_FAIL if an error occurred.
+ */
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+				char const *url, vp_map_t const *maps)
+{
+	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
+	ldap_instance_t		*inst = talloc_get_type_abort(mod_inst, ldap_instance_t);
+	ldap_rcode_t		status;
+
+	LDAPURLDesc		*ldap_url;
+
+	LDAPMessage		*result = NULL;
+	LDAPMessage		*entry = NULL;
+	vp_map_t const		*map;
+
+	ldap_handle_t		*conn;
+
+	rlm_ldap_map_exp_t	expanded; /* faster than mallocing every time */
+
+	memset(&expanded, 0, sizeof(expanded));
+
+	if (!ldap_is_ldap_url(url)) {
+		REDEBUG("Map query string does not look like a valid LDAP URI");
+		return RLM_MODULE_FAIL;
+	}
+
+	if (ldap_url_parse(url, &ldap_url)){
+		REDEBUG("Parsing LDAP URL failed");
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	Expand the RHS of the maps to get the name of the attributes.
+	 */
+	if (rlm_ldap_map_expand(&expanded, request, maps) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto free_urldesc;
+	}
+
+	conn = mod_conn_get(inst, request);
+	if (!conn) goto free_expanded;
+
+	status = rlm_ldap_search(&result, inst, request, &conn, ldap_url->lud_dn, ldap_url->lud_scope,
+				 ldap_url->lud_filter, expanded.attrs, NULL, NULL);
+	switch (status) {
+	case LDAP_PROC_SUCCESS:
+		break;
+
+	case LDAP_PROC_NO_RESULT:
+		rcode = RLM_MODULE_NOTFOUND;
+		goto free_socket;
+
+	default:
+		rcode = RLM_MODULE_FAIL;
+		goto free_socket;
+	}
+
+	rad_assert(conn);
+	rad_assert(result);
+
+	for (entry = ldap_first_entry(conn->handle, result);
+	     entry;
+	     entry = ldap_next_entry(conn->handle, entry)) {
+	     	int	i;
+	     	char	*dn = NULL;
+
+	     	if (RDEBUG_ENABLED2) {
+			dn = ldap_get_dn(conn->handle, entry);
+			REDEBUG2("Processing \"%s\"", dn);
+	     	}
+
+		RINDENT();
+		for (map = maps, i = 0;
+		     map != NULL;
+		     map = map->next, i++) {
+			int			ret;
+			rlm_ldap_result_t	attr;
+
+			attr.values = ldap_get_values_len(conn->handle, entry, expanded.attrs[i]);
+			if (!attr.values) {
+				/*
+				 *	Many LDAP directories don't expose the DN of
+				 *	the object as an attribute, so we need this
+				 *	hack, to allow the user to retrieve it.
+				 */
+				if (strcmp(LDAP_VIRTUAL_DN_ATTR, expanded.attrs[i]) == 0) {
+					struct berval value;
+					struct berval *values[2] = { &value, NULL };
+
+					if (!dn) dn = ldap_get_dn(conn->handle, entry);
+					value.bv_val = dn;
+					value.bv_len = strlen(dn);
+
+					attr.values = values;
+					attr.count = 1;
+
+					ret = map_to_request(request, map, rlm_ldap_map_getvalue, &attr);
+					if (ret == -1) {
+						rcode = RLM_MODULE_FAIL;
+						ldap_memfree(dn);
+						goto free_result;
+					}
+					continue;
+				}
+
+				RDEBUG3("Attribute \"%s\" not found in LDAP object", expanded.attrs[i]);
+
+				continue;
+			}
+			attr.count = ldap_count_values_len(attr.values);
+
+			ret = map_to_request(request, map, rlm_ldap_map_getvalue, &attr);
+			ldap_value_free_len(attr.values);
+			if (ret == -1) {
+				rcode = RLM_MODULE_FAIL;
+				ldap_memfree(dn);
+				goto free_result;
+			}
+		}
+		ldap_memfree(dn);
+		REXDENT();
+	}
+
+free_result:
+	ldap_msgfree(result);
+free_socket:
+	mod_conn_release(inst, conn);
+free_expanded:
+	talloc_free(expanded.ctx);
+free_urldesc:
+	ldap_free_urldesc(ldap_url);
+
+	return rcode;
+}
+
 /** Perform LDAP-Group comparison checking
  *
  * Attempts to match users to groups using a variety of methods.
@@ -617,6 +766,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	xlat_register(inst->name, ldap_xlat, rlm_ldap_escape_func, inst);
 	xlat_register("ldapquote", ldapquote_xlat, NULL, inst);
+	map_proc_register(inst, inst->name, mod_map_proc, NULL, NULL, 0);
 
 	return 0;
 }
