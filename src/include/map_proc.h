@@ -69,7 +69,7 @@ map_proc_t	*map_proc_find(char const *name);
 
 int		map_proc_register(void *mod_inst, char const *name,
 				  map_proc_func_t evaluate,
-				  RADIUS_ESCAPE_STRING escape,
+				  xlat_escape_t escape,
 				  map_proc_instantiate_t instantiate, size_t inst_size);
 
 map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,

@@ -41,7 +41,7 @@ struct map_proc {
 
 	map_proc_func_t		evaluate;		//!< Module's map processor function.
 	map_proc_instantiate_t	instantiate;		//!< Callback to create new instance struct.
-	RADIUS_ESCAPE_STRING	escape;			//!< Escape function to apply to expansions in the map
+	xlat_escape_t	escape;			//!< Escape function to apply to expansions in the map
 							//!< query string.
 	size_t			inst_size;		//!< Size of map_proc instance data to allocate.
 };
@@ -126,7 +126,7 @@ map_proc_t *map_proc_find(char const *name)
  */
 int map_proc_register(void *mod_inst, char const *name,
 		      map_proc_func_t evaluate,
-		      RADIUS_ESCAPE_STRING escape,
+		      xlat_escape_t escape,
 		      map_proc_instantiate_t instantiate, size_t inst_size)
 {
 	map_proc_t *proc;

@@ -1320,7 +1320,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  *	- The length of data written to buff, or pointed to by out.
  */
 ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *request,
-		    vp_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+		    vp_tmpl_t const *vpt, xlat_escape_t escape, void *escape_ctx)
 {
 	VALUE_PAIR *vp;
 	ssize_t slen = -1;	/* quiet compiler */
@@ -1459,7 +1459,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
  *	- The length of data written to buff, or pointed to by out.
  */
 ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t const *vpt,
-		     RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+		     xlat_escape_t escape, void *escape_ctx)
 {
 	VALUE_PAIR *vp;
 	ssize_t slen = -1;	/* quiet compiler */
