@@ -193,11 +193,9 @@ map_proc_inst_t *map_proc_instantiate(TALLOC_CTX *ctx, map_proc_t const *proc,
 	inst->maps = maps;
 
 	if (proc->instantiate) {
-		void *data = NULL;
-
 		if (proc->inst_size > 0) {
 			inst->data = talloc_zero_array(inst, uint8_t, proc->inst_size);
-			if (!data) return NULL;
+			if (!inst->data) return NULL;
 		}
 
 		if (proc->instantiate(inst->data, proc->mod_inst, src, maps) < 0) {
