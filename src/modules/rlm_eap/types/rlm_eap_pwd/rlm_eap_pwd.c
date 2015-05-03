@@ -42,10 +42,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define MSK_EMSK_LEN    (2*MPPE_KEY_LEN)
 
 static CONF_PARSER pwd_module_config[] = {
-	{ "group", FR_CONF_OFFSET(PW_TYPE_INTEGER, EAP_PWD_CONF, group), "19" },
-	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, EAP_PWD_CONF, fragment_size), "1020" },
-	{ "server_id", FR_CONF_OFFSET(PW_TYPE_STRING, EAP_PWD_CONF, server_id), NULL },
-	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, EAP_PWD_CONF, virtual_server), NULL },
+	{ "group", FR_CONF_OFFSET(PW_TYPE_INTEGER, eap_pwd_t, group), "19" },
+	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, eap_pwd_t, fragment_size), "1020" },
+	{ "server_id", FR_CONF_OFFSET(PW_TYPE_STRING, eap_pwd_t, server_id), NULL },
+	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, eap_pwd_t, virtual_server), NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -67,14 +67,11 @@ static int mod_instantiate (CONF_SECTION *cs, void **instance)
 	*instance = inst = talloc_zero(cs, eap_pwd_t);
 	if (!inst) return -1;
 
-	inst->conf = talloc_zero(inst, EAP_PWD_CONF);
-	if (!inst->conf) return -1;
-
-	if (cf_section_parse(cs, inst->conf, pwd_module_config) < 0) {
+	if (cf_section_parse(cs, inst, pwd_module_config) < 0) {
 		return -1;
 	}
 
-	if (inst->conf->fragment_size < 100) {
+	if (inst->fragment_size < 100) {
 		cf_log_err_cs(cs, "Fragment size is too small");
 		return -1;
 	}
@@ -186,11 +183,11 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	/*
 	* make sure the server's been configured properly
 	*/
-	if (!inst->conf->server_id) {
+	if (!inst->server_id) {
 		ERROR("rlm_eap_pwd: Server ID is not configured");
 		return -1;
 	}
-	switch (inst->conf->group) {
+	switch (inst->group) {
 	case 19:
 	case 20:
 	case 21:
@@ -208,7 +205,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	/*
 	 * set things up so they can be free'd reliably
 	 */
-	session->group_num = inst->conf->group;
+	session->group_num = inst->group;
 	session->private_value = NULL;
 	session->peer_scalar = NULL;
 	session->my_scalar = NULL;
@@ -223,7 +220,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	/*
 	 *	The admin can dynamically change the MTU.
 	 */
-	session->mtu = inst->conf->fragment_size;
+	session->mtu = inst->fragment_size;
 	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
 
 	/*
@@ -247,7 +244,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	/*
 	 * construct an EAP-pwd-ID/Request
 	 */
-	session->out_buf_len = sizeof(pwd_id_packet_t) + strlen(inst->conf->server_id);
+	session->out_buf_len = sizeof(pwd_id_packet_t) + strlen(inst->server_id);
 	if ((session->out_buf = talloc_zero_array(session, uint8_t, session->out_buf_len)) == NULL) {
 		return -1;
 	}
@@ -259,7 +256,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	session->token = fr_rand();
 	memcpy(packet->token, (char *)&session->token, 4);
 	packet->prep = EAP_PWD_PREP_NONE;
-	strcpy(packet->identity, inst->conf->server_id);
+	strcpy(packet->identity, inst->server_id);
 
 	handler->stage = PROCESS;
 
@@ -424,8 +421,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 
 		if ((vp = pairfind(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 			fake->server = vp->vp_strvalue;
-		} else if (inst->conf->virtual_server) {
-			fake->server = inst->conf->virtual_server;
+		} else if (inst->virtual_server) {
+			fake->server = inst->virtual_server;
 		} /* else fake->server == request->server */
 
 		RDEBUG("Sending tunneled request");
@@ -467,7 +464,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 
 		if (compute_password_element(session, session->group_num,
 			     		     pw->data.strvalue, strlen(pw->data.strvalue),
-					     inst->conf->server_id, strlen(inst->conf->server_id),
+					     inst->server_id, strlen(inst->server_id),
 					     session->peer_id, strlen(session->peer_id),
 					     &session->token)) {
 			DEBUG2("failed to obtain password element");
