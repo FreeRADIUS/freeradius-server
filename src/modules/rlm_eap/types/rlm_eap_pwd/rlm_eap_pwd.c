@@ -256,7 +256,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	session->token = fr_rand();
 	memcpy(packet->token, (char *)&session->token, 4);
 	packet->prep = EAP_PWD_PREP_NONE;
-	strcpy(packet->identity, inst->server_id);
+	memcpy(packet->identity, inst->server_id, session->out_len - sizeof(pwd_id_packet_t) );
 
 	handler->stage = PROCESS;
 
