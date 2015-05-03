@@ -236,8 +236,8 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	reply.flags = ssn->peap_flag;
 
 	/* Send data, NOT more than the FRAGMENT size */
-	if (ssn->dirty_out.used > ssn->offset) {
-		size = ssn->offset;
+	if (ssn->dirty_out.used > ssn->mtu) {
+		size = ssn->mtu;
 		reply.flags = SET_MORE_FRAGMENTS(reply.flags);
 		/* Length MUST be included if it is the First Fragment */
 		if (ssn->fragment == 0) {
