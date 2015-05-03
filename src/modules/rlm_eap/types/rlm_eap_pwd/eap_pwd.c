@@ -311,9 +311,10 @@ fail:
 	return ret;
 }
 
-int process_peer_commit (pwd_session_t *session, uint8_t *commit, BN_CTX *bnctx)
+int process_peer_commit (pwd_session_t *session, uint8_t *in, size_t in_len, BN_CTX *bnctx)
 {
 	uint8_t *ptr;
+	size_t data_len;
 	BIGNUM *x = NULL, *y = NULL, *cofactor = NULL;
 	EC_POINT *K = NULL, *point = NULL;
 	int res = 1;
@@ -336,12 +337,24 @@ int process_peer_commit (pwd_session_t *session, uint8_t *commit, BN_CTX *bnctx)
 	}
 
 	/* element, x then y, followed by scalar */
-	ptr = (uint8_t *)commit;
-	BN_bin2bn(ptr, BN_num_bytes(session->prime), x);
-	ptr += BN_num_bytes(session->prime);
-	BN_bin2bn(ptr, BN_num_bytes(session->prime), y);
-	ptr += BN_num_bytes(session->prime);
-	BN_bin2bn(ptr, BN_num_bytes(session->order), session->peer_scalar);
+	ptr = (uint8_t *)in;
+	data_len = BN_num_bytes(session->prime);
+
+	/*
+	 *	Did the peer send enough data?
+	 */
+	if (in_len < (2 * data_len + BN_num_bytes(session->order))) {
+		DEBUG("pwd: Invalid commit packet");
+		goto finish;
+	}
+
+	BN_bin2bn(ptr, data_len, x);
+	ptr += data_len;
+	BN_bin2bn(ptr, data_len, y);
+	ptr += data_len;
+
+	data_len = BN_num_bytes(session->order);
+	BN_bin2bn(ptr, data_len, session->peer_scalar);
 
 	if (!EC_POINT_set_affine_coordinates_GFp(session->group, session->peer_element, x, y, bnctx)) {
 		DEBUG2("pwd: unable to get coordinates of peer's element");
@@ -404,7 +417,7 @@ finish:
 	return res;
 }
 
-int compute_server_confirm (pwd_session_t *session, uint8_t *buf, BN_CTX *bnctx)
+int compute_server_confirm (pwd_session_t *session, uint8_t *out, BN_CTX *bnctx)
 {
 	BIGNUM *x = NULL, *y = NULL;
 	HMAC_CTX ctx;
@@ -492,7 +505,7 @@ int compute_server_confirm (pwd_session_t *session, uint8_t *buf, BN_CTX *bnctx)
 	 */
 	H_Update(&ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 
-	H_Final(&ctx, buf);
+	H_Final(&ctx, out);
 
 	req = 0;
 finish:
@@ -503,7 +516,7 @@ finish:
 	return req;
 }
 
-int compute_peer_confirm (pwd_session_t *session, uint8_t *buf, BN_CTX *bnctx)
+int compute_peer_confirm (pwd_session_t *session, uint8_t *out, BN_CTX *bnctx)
 {
 	BIGNUM *x = NULL, *y = NULL;
 	HMAC_CTX ctx;
@@ -591,7 +604,7 @@ int compute_peer_confirm (pwd_session_t *session, uint8_t *buf, BN_CTX *bnctx)
 	 */
 	H_Update(&ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 
-	H_Final(&ctx, buf);
+	H_Final(&ctx, out);
 
 	req = 0;
 finish:
