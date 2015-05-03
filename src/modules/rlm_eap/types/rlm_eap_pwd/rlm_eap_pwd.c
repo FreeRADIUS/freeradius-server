@@ -580,6 +580,12 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		break;
 
 	case PWD_STATE_CONFIRM:
+		if (in_len < SHA256_DIGEST_LENGTH) {
+			RDEBUG("Peer confirm is too short (%zd < %zd)",
+			       in_len, SHA256_DIGEST_LENGTH);
+			return 0;
+		}
+
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_CONFIRM) {
 			RDEBUG2("pwd exchange is incorrect: not commit!");
 			return 0;
