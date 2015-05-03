@@ -83,7 +83,7 @@ typedef struct _pwd_session_t {
     uint32_t token;
     char peer_id[MAX_STRING_LEN];
     size_t peer_id_len;
-    int mtu;
+    size_t mtu;
     uint8_t *in_buf;      /* reassembled fragments */
     size_t in_buf_pos;
     size_t in_buf_len;
