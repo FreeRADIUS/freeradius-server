@@ -98,21 +98,21 @@ static int _free_pwd_session (pwd_session_t *session)
 	return 0;
 }
 
-static int send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
+static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 {
 	int len;
 	uint16_t totlen;
 	pwd_hdr *hdr;
 
-	len = (sess->out_buf_len - sess->out_buf_pos) + sizeof(pwd_hdr);
+	len = (session->out_buf_len - session->out_buf_pos) + sizeof(pwd_hdr);
 	rad_assert(len > 0);
 	eap_ds->request->code = PW_EAP_REQUEST;
 	eap_ds->request->type.num = PW_EAP_PWD;
-	eap_ds->request->type.length = (len > sess->mtu) ? sess->mtu : len;
+	eap_ds->request->type.length = (len > session->mtu) ? session->mtu : len;
 	eap_ds->request->type.data = talloc_zero_array(eap_ds->request, uint8_t, eap_ds->request->type.length);
 	hdr = (pwd_hdr *)eap_ds->request->type.data;
 
-	switch (sess->state) {
+	switch (session->state) {
 	case PWD_STATE_ID_REQ:
 		EAP_PWD_SET_EXCHANGE(hdr, EAP_PWD_EXCH_ID);
 		break;
@@ -132,43 +132,43 @@ static int send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
 	/*
 	 * are we fragmenting?
 	 */
-	if ((int)((sess->out_buf_len - sess->out_buf_pos) + sizeof(pwd_hdr)) > sess->mtu) {
+	if ((int)((session->out_buf_len - session->out_buf_pos) + sizeof(pwd_hdr)) > session->mtu) {
 		EAP_PWD_SET_MORE_BIT(hdr);
-		if (sess->out_buf_pos == 0) {
+		if (session->out_buf_pos == 0) {
 			/*
 			 * the first fragment, add the total length
 			 */
 			EAP_PWD_SET_LENGTH_BIT(hdr);
-			totlen = ntohs(sess->out_buf_len);
+			totlen = ntohs(session->out_buf_len);
 			memcpy(hdr->data, (char *)&totlen, sizeof(totlen));
 			memcpy(hdr->data + sizeof(uint16_t),
-			sess->out_buf,
-			sess->mtu - sizeof(pwd_hdr) - sizeof(uint16_t));
-			sess->out_buf_pos += (sess->mtu - sizeof(pwd_hdr) - sizeof(uint16_t));
+			       session->out_buf,
+			       session->mtu - sizeof(pwd_hdr) - sizeof(uint16_t));
+			session->out_buf_pos += (session->mtu - sizeof(pwd_hdr) - sizeof(uint16_t));
 		} else {
 			/*
 			 * an intermediate fragment
 			 */
-			memcpy(hdr->data, sess->out_buf + sess->out_buf_pos, (sess->mtu - sizeof(pwd_hdr)));
-			sess->out_buf_pos += (sess->mtu - sizeof(pwd_hdr));
+			memcpy(hdr->data, session->out_buf + session->out_buf_pos, (session->mtu - sizeof(pwd_hdr)));
+			session->out_buf_pos += (session->mtu - sizeof(pwd_hdr));
 		}
 	} else {
 		/*
 		 * either it's not a fragment or it's the last fragment.
 		 * The out buffer isn't needed anymore though so get rid of it.
 		 */
-		memcpy(hdr->data, sess->out_buf + sess->out_buf_pos,
-		(sess->out_buf_len - sess->out_buf_pos));
-		talloc_free(sess->out_buf);
-		sess->out_buf = NULL;
-		sess->out_buf_pos = sess->out_buf_len = 0;
+		memcpy(hdr->data, session->out_buf + session->out_buf_pos,
+		(session->out_buf_len - session->out_buf_pos));
+		talloc_free(session->out_buf);
+		session->out_buf = NULL;
+		session->out_buf_pos = session->out_buf_len = 0;
 	}
 	return 1;
 }
 
 static int mod_session_init (void *instance, eap_handler_t *handler)
 {
-	pwd_session_t *pwd_session;
+	pwd_session_t *session;
 	eap_pwd_t *inst = (eap_pwd_t *)instance;
 	VALUE_PAIR *vp;
 	pwd_id_packet *pack;
@@ -198,27 +198,27 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 		return -1;
 	}
 
-	if ((pwd_session = talloc_zero(handler, pwd_session_t)) == NULL) return -1;
-	talloc_set_destructor(pwd_session, _free_pwd_session);
+	if ((session = talloc_zero(handler, pwd_session_t)) == NULL) return -1;
+	talloc_set_destructor(session, _free_pwd_session);
 	/*
 	 * set things up so they can be free'd reliably
 	 */
-	pwd_session->group_num = inst->conf->group;
-	pwd_session->private_value = NULL;
-	pwd_session->peer_scalar = NULL;
-	pwd_session->my_scalar = NULL;
-	pwd_session->k = NULL;
-	pwd_session->my_element = NULL;
-	pwd_session->peer_element = NULL;
-	pwd_session->group = NULL;
-	pwd_session->pwe = NULL;
-	pwd_session->order = NULL;
-	pwd_session->prime = NULL;
+	session->group_num = inst->conf->group;
+	session->private_value = NULL;
+	session->peer_scalar = NULL;
+	session->my_scalar = NULL;
+	session->k = NULL;
+	session->my_element = NULL;
+	session->peer_element = NULL;
+	session->group = NULL;
+	session->pwe = NULL;
+	session->order = NULL;
+	session->prime = NULL;
 
 	/*
 	* figure out the MTU (basically do what eap-tls does)
 	*/
-	pwd_session->mtu = inst->conf->fragment_size;
+	session->mtu = inst->conf->fragment_size;
 	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
 
 	/*
@@ -227,40 +227,40 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	 * the fragmentation code deals with the included length
 	 * so we don't need to subtract that here.
 	 */
-	if (vp && ((int)(vp->vp_integer - 9) < pwd_session->mtu)) {
-		pwd_session->mtu = vp->vp_integer - 9;
+	if (vp && ((int)(vp->vp_integer - 9) < session->mtu)) {
+		session->mtu = vp->vp_integer - 9;
 	}
 
-	pwd_session->state = PWD_STATE_ID_REQ;
-	pwd_session->in_buf = NULL;
-	pwd_session->out_buf_pos = 0;
-	handler->opaque = pwd_session;
+	session->state = PWD_STATE_ID_REQ;
+	session->in_buf = NULL;
+	session->out_buf_pos = 0;
+	handler->opaque = session;
 
 	/*
 	 * construct an EAP-pwd-ID/Request
 	 */
-	pwd_session->out_buf_len = sizeof(pwd_id_packet) + strlen(inst->conf->server_id);
-	if ((pwd_session->out_buf = talloc_zero_array(pwd_session, uint8_t, pwd_session->out_buf_len)) == NULL) {
+	session->out_buf_len = sizeof(pwd_id_packet) + strlen(inst->conf->server_id);
+	if ((session->out_buf = talloc_zero_array(session, uint8_t, session->out_buf_len)) == NULL) {
 		return -1;
 	}
 
-	pack = (pwd_id_packet *)pwd_session->out_buf;
-	pack->group_num = htons(pwd_session->group_num);
+	pack = (pwd_id_packet *)session->out_buf;
+	pack->group_num = htons(session->group_num);
 	pack->random_function = EAP_PWD_DEF_RAND_FUN;
 	pack->prf = EAP_PWD_DEF_PRF;
-	pwd_session->token = fr_rand();
-	memcpy(pack->token, (char *)&pwd_session->token, 4);
+	session->token = fr_rand();
+	memcpy(pack->token, (char *)&session->token, 4);
 	pack->prep = EAP_PWD_PREP_NONE;
 	strcpy(pack->identity, inst->conf->server_id);
 
 	handler->stage = PROCESS;
 
-	return send_pwd_request(pwd_session, handler->eap_ds);
+	return send_pwd_request(session, handler->eap_ds);
 }
 
-static int mod_process (void *arg, eap_handler_t *handler)
+static int mod_process(void *arg, eap_handler_t *handler)
 {
-	pwd_session_t *pwd_session;
+	pwd_session_t *session;
 	pwd_hdr *hdr;
 	pwd_id_packet *id;
 	eap_packet_t *response;
@@ -277,7 +277,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 
 	if (!handler || ((eap_ds = handler->eap_ds) == NULL) || !inst) return 0;
 
-	pwd_session = (pwd_session_t *)handler->opaque;
+	session = (pwd_session_t *)handler->opaque;
 	request = handler->request;
 	response = handler->eap_ds->response;
 	hdr = (pwd_hdr *)response->type.data;
@@ -288,11 +288,11 @@ static int mod_process (void *arg, eap_handler_t *handler)
 	/*
 	* see if we're fragmenting, if so continue until we're done
 	*/
-	if (pwd_session->out_buf_pos) {
+	if (session->out_buf_pos) {
 		if (len) {
 			RDEBUG2("pwd got something more than an ACK for a fragment");
 		}
-		return send_pwd_request(pwd_session, eap_ds);
+		return send_pwd_request(session, eap_ds);
 	}
 
 	/*
@@ -300,18 +300,18 @@ static int mod_process (void *arg, eap_handler_t *handler)
 	* buffer to hold all the fragments
 	*/
 	if (EAP_PWD_GET_LENGTH_BIT(hdr)) {
-		if (pwd_session->in_buf) {
+		if (session->in_buf) {
 			RDEBUG2("pwd already alloced buffer for fragments");
 			return 0;
 		}
-		pwd_session->in_buf_len = ntohs(buf[0] * 256 | buf[1]);
-		if ((pwd_session->in_buf = talloc_zero_array(pwd_session, uint8_t, pwd_session->in_buf_len)) == NULL) {
+		session->in_buf_len = ntohs(buf[0] * 256 | buf[1]);
+		if ((session->in_buf = talloc_zero_array(session, uint8_t, session->in_buf_len)) == NULL) {
 			RDEBUG2("pwd cannot allocate %zd buffer to hold fragments",
-				pwd_session->in_buf_len);
+				session->in_buf_len);
 			return 0;
 		}
-		memset(pwd_session->in_buf, 0, pwd_session->in_buf_len);
-		pwd_session->in_buf_pos = 0;
+		memset(session->in_buf, 0, session->in_buf_len);
+		session->in_buf_pos = 0;
 		buf += sizeof(uint16_t);
 		len -= sizeof(uint16_t);
 	}
@@ -321,14 +321,14 @@ static int mod_process (void *arg, eap_handler_t *handler)
 	 * buffer those fragments!
 	 */
 	if (EAP_PWD_GET_MORE_BIT(hdr)) {
-		rad_assert(pwd_session->in_buf != NULL);
-		if ((pwd_session->in_buf_pos + len) > pwd_session->in_buf_len) {
+		rad_assert(session->in_buf != NULL);
+		if ((session->in_buf_pos + len) > session->in_buf_len) {
 			RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent");
 			return 0;
 		}
 
-		memcpy(pwd_session->in_buf + pwd_session->in_buf_pos, buf, len);
-		pwd_session->in_buf_pos += len;
+		memcpy(session->in_buf + session->in_buf_pos, buf, len);
+		session->in_buf_pos += len;
 
 		/*
 		 * send back an ACK for this fragment
@@ -346,20 +346,20 @@ static int mod_process (void *arg, eap_handler_t *handler)
 	}
 
 
-	if (pwd_session->in_buf) {
+	if (session->in_buf) {
 		/*
 		 * the last fragment...
 		 */
-		if ((pwd_session->in_buf_pos + len) > pwd_session->in_buf_len) {
+		if ((session->in_buf_pos + len) > session->in_buf_len) {
 			RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent");
 			return 0;
 		}
-		memcpy(pwd_session->in_buf + pwd_session->in_buf_pos, buf, len);
-		buf = pwd_session->in_buf;
-		len = pwd_session->in_buf_len;
+		memcpy(session->in_buf + session->in_buf_pos, buf, len);
+		buf = session->in_buf;
+		len = session->in_buf_len;
 	}
 
-	switch (pwd_session->state) {
+	switch (session->state) {
 	case PWD_STATE_ID_REQ:
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_ID) {
 			RDEBUG2("pwd exchange is incorrect: not ID");
@@ -370,29 +370,29 @@ static int mod_process (void *arg, eap_handler_t *handler)
 		if ((id->prf != EAP_PWD_DEF_PRF) ||
 		    (id->random_function != EAP_PWD_DEF_RAND_FUN) ||
 		    (id->prep != EAP_PWD_PREP_NONE) ||
-		    (CRYPTO_memcmp(id->token, (char *)&pwd_session->token, 4)) ||
-		    (id->group_num != ntohs(pwd_session->group_num))) {
+		    (CRYPTO_memcmp(id->token, (char *)&session->token, 4)) ||
+		    (id->group_num != ntohs(session->group_num))) {
 			RDEBUG2("pwd id response is invalid");
 			return 0;
 		}
 		/*
 		 * we've agreed on the ciphersuite, record it...
 		 */
-		ptr = (uint8_t *)&pwd_session->ciphersuite;
+		ptr = (uint8_t *)&session->ciphersuite;
 		memcpy(ptr, (char *)&id->group_num, sizeof(uint16_t));
 		ptr += sizeof(uint16_t);
 		*ptr = EAP_PWD_DEF_RAND_FUN;
 		ptr += sizeof(uint8_t);
 		*ptr = EAP_PWD_DEF_PRF;
 
-		pwd_session->peer_id_len = len - sizeof(pwd_id_packet);
-		if (pwd_session->peer_id_len >= sizeof(pwd_session->peer_id)) {
+		session->peer_id_len = len - sizeof(pwd_id_packet);
+		if (session->peer_id_len >= sizeof(session->peer_id)) {
 			RDEBUG2("pwd id response is malformed");
 			return 0;
 		}
 
-		memcpy(pwd_session->peer_id, id->identity, pwd_session->peer_id_len);
-		pwd_session->peer_id[pwd_session->peer_id_len] = '\0';
+		memcpy(session->peer_id, id->identity, session->peer_id_len);
+		session->peer_id[session->peer_id_len] = '\0';
 
 		/*
 		 * make fake request to get the password for the usable ID
@@ -407,9 +407,9 @@ static int mod_process (void *arg, eap_handler_t *handler)
 			talloc_free(fake);
 			return 0;
 		}
-		fake->username->vp_length = pwd_session->peer_id_len;
+		fake->username->vp_length = session->peer_id_len;
 		fake->username->vp_strvalue = p = talloc_array(fake->username, char, fake->username->vp_length + 1);
-		memcpy(p, pwd_session->peer_id, pwd_session->peer_id_len);
+		memcpy(p, session->peer_id, session->peer_id_len);
 		p[fake->username->vp_length] = '\0';
 
 		pairadd(&fake->packet->vps, fake->username);
@@ -452,16 +452,16 @@ static int mod_process (void *arg, eap_handler_t *handler)
 
 		if ((pw = pairfind(fake->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
 			DEBUG2("failed to find password for %s to do pwd authentication",
-			pwd_session->peer_id);
+			session->peer_id);
 			talloc_free(fake);
 			return 0;
 		}
 
-		if (compute_password_element(pwd_session, pwd_session->group_num,
+		if (compute_password_element(session, session->group_num,
 			     		     pw->data.strvalue, strlen(pw->data.strvalue),
 					     inst->conf->server_id, strlen(inst->conf->server_id),
-					     pwd_session->peer_id, strlen(pwd_session->peer_id),
-					     &pwd_session->token)) {
+					     session->peer_id, strlen(session->peer_id),
+					     &session->token)) {
 			DEBUG2("failed to obtain password element");
 			talloc_free(fake);
 			return 0;
@@ -471,7 +471,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 		/*
 		 * compute our scalar and element
 		 */
-		if (compute_scalar_element(pwd_session, inst->bnctx)) {
+		if (compute_scalar_element(session, inst->bnctx)) {
 			DEBUG2("failed to compute server's scalar and element");
 			return 0;
 		}
@@ -484,7 +484,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 		/*
 		 * element is a point, get both coordinates: x and y
 		 */
-		if (!EC_POINT_get_affine_coordinates_GFp(pwd_session->group, pwd_session->my_element, x, y,
+		if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y,
 							 inst->bnctx)) {
 			DEBUG2("server point assignment failed");
 			BN_clear_free(x);
@@ -495,26 +495,26 @@ static int mod_process (void *arg, eap_handler_t *handler)
 		/*
 		 * construct request
 		 */
-		pwd_session->out_buf_len = BN_num_bytes(pwd_session->order) + (2 * BN_num_bytes(pwd_session->prime));
-		if ((pwd_session->out_buf = talloc_array(pwd_session, uint8_t, pwd_session->out_buf_len)) == NULL) {
+		session->out_buf_len = BN_num_bytes(session->order) + (2 * BN_num_bytes(session->prime));
+		if ((session->out_buf = talloc_array(session, uint8_t, session->out_buf_len)) == NULL) {
 			return 0;
 		}
-		memset(pwd_session->out_buf, 0, pwd_session->out_buf_len);
+		memset(session->out_buf, 0, session->out_buf_len);
 
-		ptr = pwd_session->out_buf;
-		offset = BN_num_bytes(pwd_session->prime) - BN_num_bytes(x);
+		ptr = session->out_buf;
+		offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 		BN_bn2bin(x, ptr + offset);
 
-		ptr += BN_num_bytes(pwd_session->prime);
-		offset = BN_num_bytes(pwd_session->prime) - BN_num_bytes(y);
+		ptr += BN_num_bytes(session->prime);
+		offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 		BN_bn2bin(y, ptr + offset);
 
-		ptr += BN_num_bytes(pwd_session->prime);
-		offset = BN_num_bytes(pwd_session->order) - BN_num_bytes(pwd_session->my_scalar);
-		BN_bn2bin(pwd_session->my_scalar, ptr + offset);
+		ptr += BN_num_bytes(session->prime);
+		offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
+		BN_bn2bin(session->my_scalar, ptr + offset);
 
-		pwd_session->state = PWD_STATE_COMMIT;
-		ret = send_pwd_request(pwd_session, eap_ds);
+		session->state = PWD_STATE_COMMIT;
+		ret = send_pwd_request(session, eap_ds);
 		break;
 
 		case PWD_STATE_COMMIT:
@@ -526,7 +526,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 		/*
 		 * process the peer's commit and generate the shared key, k
 		 */
-		if (process_peer_commit(pwd_session, buf, inst->bnctx)) {
+		if (process_peer_commit(session, buf, inst->bnctx)) {
 			RDEBUG2("failed to process peer's commit");
 			return 0;
 		}
@@ -534,7 +534,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 		/*
 		 * compute our confirm blob
 		 */
-		if (compute_server_confirm(pwd_session, pwd_session->my_confirm, inst->bnctx)) {
+		if (compute_server_confirm(session, session->my_confirm, inst->bnctx)) {
 			ERROR("rlm_eap_pwd: failed to compute confirm!");
 			return 0;
 		}
@@ -542,16 +542,16 @@ static int mod_process (void *arg, eap_handler_t *handler)
 		/*
 		 * construct a response...which is just our confirm blob
 		 */
-		pwd_session->out_buf_len = SHA256_DIGEST_LENGTH;
-		if ((pwd_session->out_buf = talloc_array(pwd_session, uint8_t, pwd_session->out_buf_len)) == NULL) {
+		session->out_buf_len = SHA256_DIGEST_LENGTH;
+		if ((session->out_buf = talloc_array(session, uint8_t, session->out_buf_len)) == NULL) {
 			return 0;
 		}
 
-		memset(pwd_session->out_buf, 0, pwd_session->out_buf_len);
-		memcpy(pwd_session->out_buf, pwd_session->my_confirm, SHA256_DIGEST_LENGTH);
+		memset(session->out_buf, 0, session->out_buf_len);
+		memcpy(session->out_buf, session->my_confirm, SHA256_DIGEST_LENGTH);
 
-		pwd_session->state = PWD_STATE_CONFIRM;
-		ret = send_pwd_request(pwd_session, eap_ds);
+		session->state = PWD_STATE_CONFIRM;
+		ret = send_pwd_request(session, eap_ds);
 		break;
 
 	case PWD_STATE_CONFIRM:
@@ -559,7 +559,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 			RDEBUG2("pwd exchange is incorrect: not commit!");
 			return 0;
 		}
-		if (compute_peer_confirm(pwd_session, peer_confirm, inst->bnctx)) {
+		if (compute_peer_confirm(session, peer_confirm, inst->bnctx)) {
 			RDEBUG2("pwd exchange cannot compute peer's confirm");
 			return 0;
 		}
@@ -567,7 +567,7 @@ static int mod_process (void *arg, eap_handler_t *handler)
 			RDEBUG2("pwd exchange fails: peer confirm is incorrect!");
 			return 0;
 		}
-		if (compute_keys(pwd_session, peer_confirm, msk, emsk)) {
+		if (compute_keys(session, peer_confirm, msk, emsk)) {
 			RDEBUG2("pwd exchange cannot generate (E)MSK!");
 			return 0;
 		}
@@ -589,9 +589,9 @@ static int mod_process (void *arg, eap_handler_t *handler)
 	/*
 	 * we processed the buffered fragments, get rid of them
 	 */
-	if (pwd_session->in_buf) {
-		talloc_free(pwd_session->in_buf);
-		pwd_session->in_buf = NULL;
+	if (session->in_buf) {
+		talloc_free(session->in_buf);
+		session->in_buf = NULL;
 	}
 
 	return ret;
