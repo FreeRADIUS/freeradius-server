@@ -84,12 +84,12 @@ typedef struct _pwd_session_t {
     char peer_id[MAX_STRING_LEN];
     size_t peer_id_len;
     size_t mtu;
-    uint8_t *in_buf;      /* reassembled fragments */
-    size_t in_buf_pos;
-    size_t in_buf_len;
-    uint8_t *out_buf;     /* message to fragment */
-    size_t out_buf_pos;
-    size_t out_buf_len;
+    uint8_t *in;      /* reassembled fragments */
+    size_t in_pos;
+    size_t in_len;
+    uint8_t *out;     /* message to fragment */
+    size_t out_pos;
+    size_t out_len;
     EC_GROUP *group;
     EC_POINT *pwe;
     BIGNUM *order;
