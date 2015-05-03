@@ -38,8 +38,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include "eap_pwd.h"
 
-#define MSK_EMSK_LEN    64
 #define MPPE_KEY_LEN    32
+#define MSK_EMSK_LEN    (2*MPPE_KEY_LEN)
 
 static CONF_PARSER pwd_module_config[] = {
 	{ "group", FR_CONF_OFFSET(PW_TYPE_INTEGER, EAP_PWD_CONF, group), "19" },
@@ -584,7 +584,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 * return the MSK (in halves)
 		 */
 		eap_add_reply(handler->request, "MS-MPPE-Recv-Key", msk, MPPE_KEY_LEN);
-		eap_add_reply(handler->request, "MS-MPPE-Send-Key", msk+MPPE_KEY_LEN, MPPE_KEY_LEN);
+		eap_add_reply(handler->request, "MS-MPPE-Send-Key", msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
 
 		ret = 1;
 		break;
