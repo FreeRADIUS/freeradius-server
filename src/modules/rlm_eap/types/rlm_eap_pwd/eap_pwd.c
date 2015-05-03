@@ -100,7 +100,7 @@ static void eap_pwd_kdf(uint8_t *key, int keylen, char const *label, int labelle
 	}
 }
 
-int compute_password_element (pwd_session_t *sess, uint16_t grp_num,
+int compute_password_element (pwd_session_t *session, uint16_t grp_num,
 			      char const *password, int password_len,
 			      char const *id_server, int id_server_len,
 			      char const *id_peer, int id_peer_len,
@@ -137,43 +137,43 @@ int compute_password_element (pwd_session_t *sess, uint16_t grp_num,
 		goto fail;
 	}
 
-	sess->pwe = NULL;
-	sess->order = NULL;
-	sess->prime = NULL;
+	session->pwe = NULL;
+	session->order = NULL;
+	session->prime = NULL;
 
-	if ((sess->group = EC_GROUP_new_by_curve_name(nid)) == NULL) {
+	if ((session->group = EC_GROUP_new_by_curve_name(nid)) == NULL) {
 		DEBUG("unable to create EC_GROUP");
 		goto fail;
 	}
 
 	if (((rnd = BN_new()) == NULL) ||
 	    ((cofactor = BN_new()) == NULL) ||
-	    ((sess->pwe = EC_POINT_new(sess->group)) == NULL) ||
-	    ((sess->order = BN_new()) == NULL) ||
-	    ((sess->prime = BN_new()) == NULL) ||
+	    ((session->pwe = EC_POINT_new(session->group)) == NULL) ||
+	    ((session->order = BN_new()) == NULL) ||
+	    ((session->prime = BN_new()) == NULL) ||
 	    ((x_candidate = BN_new()) == NULL)) {
 		DEBUG("unable to create bignums");
 		goto fail;
 	}
 
-	if (!EC_GROUP_get_curve_GFp(sess->group, sess->prime, NULL, NULL, NULL)) {
+	if (!EC_GROUP_get_curve_GFp(session->group, session->prime, NULL, NULL, NULL)) {
 		DEBUG("unable to get prime for GFp curve");
 		goto fail;
 	}
 
-	if (!EC_GROUP_get_order(sess->group, sess->order, NULL)) {
+	if (!EC_GROUP_get_order(session->group, session->order, NULL)) {
 		DEBUG("unable to get order for curve");
 		goto fail;
 	}
 
-	if (!EC_GROUP_get_cofactor(sess->group, cofactor, NULL)) {
+	if (!EC_GROUP_get_cofactor(session->group, cofactor, NULL)) {
 		DEBUG("unable to get cofactor for curve");
 		goto fail;
 	}
 
-	primebitlen = BN_num_bits(sess->prime);
-	primebytelen = BN_num_bytes(sess->prime);
-	if ((prfbuf = talloc_zero_array(sess, uint8_t, primebytelen)) == NULL) {
+	primebitlen = BN_num_bits(session->prime);
+	primebytelen = BN_num_bytes(session->prime);
+	if ((prfbuf = talloc_zero_array(session, uint8_t, primebytelen)) == NULL) {
 		DEBUG("unable to alloc space for prf buffer");
 		goto fail;
 	}
@@ -211,7 +211,7 @@ int compute_password_element (pwd_session_t *sess, uint16_t grp_num,
 		 * we have to shift right the amount we masked off.
 		 */
 		if (primebitlen % 8) BN_rshift(x_candidate, x_candidate, (8 - (primebitlen % 8)));
-		if (BN_ucmp(x_candidate, sess->prime) >= 0) continue;
+		if (BN_ucmp(x_candidate, session->prime) >= 0) continue;
 
 		/*
 		 * need to unambiguously identify the solution, if there is
@@ -223,7 +223,7 @@ int compute_password_element (pwd_session_t *sess, uint16_t grp_num,
 		 * solve the quadratic equation, if it's not solvable then we
 		 * don't have a point
 		 */
-		if (!EC_POINT_set_compressed_coordinates_GFp(sess->group, sess->pwe, x_candidate, is_odd, NULL)) {
+		if (!EC_POINT_set_compressed_coordinates_GFp(session->group, session->pwe, x_candidate, is_odd, NULL)) {
 			continue;
 		}
 
@@ -233,20 +233,20 @@ int compute_password_element (pwd_session_t *sess, uint16_t grp_num,
 		 * says this is required by X9.62. We're not X9.62 but it can't
 		 * hurt just to be sure.
 		 */
-		if (!EC_POINT_is_on_curve(sess->group, sess->pwe, NULL)) {
+		if (!EC_POINT_is_on_curve(session->group, session->pwe, NULL)) {
 			DEBUG("EAP-pwd: point is not on curve");
 			continue;
 		}
 
 		if (BN_cmp(cofactor, BN_value_one())) {
 			/* make sure the point is not in a small sub-group */
-			if (!EC_POINT_mul(sess->group, sess->pwe, NULL, sess->pwe,
+			if (!EC_POINT_mul(session->group, session->pwe, NULL, session->pwe,
 				cofactor, NULL)) {
 				DEBUG("EAP-pwd: cannot multiply generator by order");
 				continue;
 			}
 
-			if (EC_POINT_is_at_infinity(sess->group, sess->pwe)) {
+			if (EC_POINT_is_at_infinity(session->group, session->pwe)) {
 				DEBUG("EAP-pwd: point is at infinity");
 				continue;
 			}
@@ -255,9 +255,9 @@ int compute_password_element (pwd_session_t *sess, uint16_t grp_num,
 		break;
 	}
 
-	sess->group_num = grp_num;
+	session->group_num = grp_num;
 	if (0) {
-		fail:		/* DON'T free sess, it's in handler->opaque */
+		fail:		/* DON'T free session, it's in handler->opaque */
 		ret = -1;
 	}
 
@@ -270,35 +270,35 @@ int compute_password_element (pwd_session_t *sess, uint16_t grp_num,
 	return ret;
 }
 
-int compute_scalar_element (pwd_session_t *sess, BN_CTX *bnctx) {
+int compute_scalar_element (pwd_session_t *session, BN_CTX *bnctx) {
 	BIGNUM *mask = NULL;
 	int ret = -1;
 
-	if (((sess->private_value = BN_new()) == NULL) ||
-	    ((sess->my_element = EC_POINT_new(sess->group)) == NULL) ||
-	    ((sess->my_scalar = BN_new()) == NULL) ||
+	if (((session->private_value = BN_new()) == NULL) ||
+	    ((session->my_element = EC_POINT_new(session->group)) == NULL) ||
+	    ((session->my_scalar = BN_new()) == NULL) ||
 	    ((mask = BN_new()) == NULL)) {
 		DEBUG2("server scalar allocation failed");
 		goto fail;
 	}
 
-	if (BN_rand_range(sess->private_value, sess->order) != 1) {
+	if (BN_rand_range(session->private_value, session->order) != 1) {
 		DEBUG2("Unable to get randomness for private_value");
 		goto fail;
 	}
-	if (BN_rand_range(mask, sess->order) != 1) {
+	if (BN_rand_range(mask, session->order) != 1) {
 		DEBUG2("Unable to get randomness for mask");
 		goto fail;
 	}
-	BN_add(sess->my_scalar, sess->private_value, mask);
-	BN_mod(sess->my_scalar, sess->my_scalar, sess->order, bnctx);
+	BN_add(session->my_scalar, session->private_value, mask);
+	BN_mod(session->my_scalar, session->my_scalar, session->order, bnctx);
 
-	if (!EC_POINT_mul(sess->group, sess->my_element, NULL, sess->pwe, mask, bnctx)) {
+	if (!EC_POINT_mul(session->group, session->my_element, NULL, session->pwe, mask, bnctx)) {
 		DEBUG2("server element allocation failed");
 		goto fail;
 	}
 
-	if (!EC_POINT_invert(sess->group, sess->my_element, bnctx)) {
+	if (!EC_POINT_invert(session->group, session->my_element, bnctx)) {
 		DEBUG2("server element inversion failed");
 		goto fail;
 	}
@@ -311,67 +311,67 @@ fail:
 	return ret;
 }
 
-int process_peer_commit (pwd_session_t *sess, uint8_t *commit, BN_CTX *bnctx)
+int process_peer_commit (pwd_session_t *session, uint8_t *commit, BN_CTX *bnctx)
 {
 	uint8_t *ptr;
 	BIGNUM *x = NULL, *y = NULL, *cofactor = NULL;
 	EC_POINT *K = NULL, *point = NULL;
 	int res = 1;
 
-	if (((sess->peer_scalar = BN_new()) == NULL) ||
-	    ((sess->k = BN_new()) == NULL) ||
+	if (((session->peer_scalar = BN_new()) == NULL) ||
+	    ((session->k = BN_new()) == NULL) ||
 	    ((cofactor = BN_new()) == NULL) ||
 	    ((x = BN_new()) == NULL) ||
 	    ((y = BN_new()) == NULL) ||
-	    ((point = EC_POINT_new(sess->group)) == NULL) ||
-	    ((K = EC_POINT_new(sess->group)) == NULL) ||
-	    ((sess->peer_element = EC_POINT_new(sess->group)) == NULL)) {
+	    ((point = EC_POINT_new(session->group)) == NULL) ||
+	    ((K = EC_POINT_new(session->group)) == NULL) ||
+	    ((session->peer_element = EC_POINT_new(session->group)) == NULL)) {
 		DEBUG2("pwd: failed to allocate room to process peer's commit");
 		goto finish;
 	}
 
-	if (!EC_GROUP_get_cofactor(sess->group, cofactor, NULL)) {
+	if (!EC_GROUP_get_cofactor(session->group, cofactor, NULL)) {
 		DEBUG2("pwd: unable to get group co-factor");
 		goto finish;
 	}
 
 	/* element, x then y, followed by scalar */
 	ptr = (uint8_t *)commit;
-	BN_bin2bn(ptr, BN_num_bytes(sess->prime), x);
-	ptr += BN_num_bytes(sess->prime);
-	BN_bin2bn(ptr, BN_num_bytes(sess->prime), y);
-	ptr += BN_num_bytes(sess->prime);
-	BN_bin2bn(ptr, BN_num_bytes(sess->order), sess->peer_scalar);
+	BN_bin2bn(ptr, BN_num_bytes(session->prime), x);
+	ptr += BN_num_bytes(session->prime);
+	BN_bin2bn(ptr, BN_num_bytes(session->prime), y);
+	ptr += BN_num_bytes(session->prime);
+	BN_bin2bn(ptr, BN_num_bytes(session->order), session->peer_scalar);
 
-	if (!EC_POINT_set_affine_coordinates_GFp(sess->group, sess->peer_element, x, y, bnctx)) {
+	if (!EC_POINT_set_affine_coordinates_GFp(session->group, session->peer_element, x, y, bnctx)) {
 		DEBUG2("pwd: unable to get coordinates of peer's element");
 		goto finish;
 	}
 
 	/* check to ensure peer's element is not in a small sub-group */
 	if (BN_cmp(cofactor, BN_value_one())) {
-		if (!EC_POINT_mul(sess->group, point, NULL, sess->peer_element, cofactor, NULL)) {
+		if (!EC_POINT_mul(session->group, point, NULL, session->peer_element, cofactor, NULL)) {
 			DEBUG2("pwd: unable to multiply element by co-factor");
 			goto finish;
 		}
 
-		if (EC_POINT_is_at_infinity(sess->group, point)) {
+		if (EC_POINT_is_at_infinity(session->group, point)) {
 			DEBUG2("pwd: peer's element is in small sub-group");
 			goto finish;
 		}
 	}
 
 	/* compute the shared key, k */
-	if ((!EC_POINT_mul(sess->group, K, NULL, sess->pwe, sess->peer_scalar, bnctx)) ||
-	    (!EC_POINT_add(sess->group, K, K, sess->peer_element, bnctx)) ||
-	    (!EC_POINT_mul(sess->group, K, NULL, K, sess->private_value, bnctx))) {
+	if ((!EC_POINT_mul(session->group, K, NULL, session->pwe, session->peer_scalar, bnctx)) ||
+	    (!EC_POINT_add(session->group, K, K, session->peer_element, bnctx)) ||
+	    (!EC_POINT_mul(session->group, K, NULL, K, session->private_value, bnctx))) {
 		DEBUG2("pwd: unable to compute shared key, k");
 		goto finish;
 	}
 
 	/* ensure that the shared key isn't in a small sub-group */
 	if (BN_cmp(cofactor, BN_value_one())) {
-		if (!EC_POINT_mul(sess->group, K, NULL, K, cofactor, NULL)) {
+		if (!EC_POINT_mul(session->group, K, NULL, K, cofactor, NULL)) {
 			DEBUG2("pwd: unable to multiply k by co-factor");
 			goto finish;
 		}
@@ -383,12 +383,12 @@ int process_peer_commit (pwd_session_t *sess, uint8_t *commit, BN_CTX *bnctx)
 	 * never going to happen it is a simple and safe check "just to be
 	 * sure" so let's be safe.
 	 */
-	if (EC_POINT_is_at_infinity(sess->group, K)) {
+	if (EC_POINT_is_at_infinity(session->group, K)) {
 		DEBUG2("pwd: k is point-at-infinity!");
 		goto finish;
 	}
 
-	if (!EC_POINT_get_affine_coordinates_GFp(sess->group, K, sess->k, NULL, bnctx)) {
+	if (!EC_POINT_get_affine_coordinates_GFp(session->group, K, session->k, NULL, bnctx)) {
 		DEBUG2("pwd: unable to get shared secret from K");
 		goto finish;
 	}
@@ -404,7 +404,7 @@ finish:
 	return res;
 }
 
-int compute_server_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
+int compute_server_confirm (pwd_session_t *session, uint8_t *buf, BN_CTX *bnctx)
 {
 	BIGNUM *x = NULL, *y = NULL;
 	HMAC_CTX ctx;
@@ -414,7 +414,7 @@ int compute_server_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
 	/*
 	 * Each component of the cruft will be at most as big as the prime
 	 */
-	if (((cruft = talloc_zero_array(sess, uint8_t, BN_num_bytes(sess->prime))) == NULL) ||
+	if (((cruft = talloc_zero_array(session, uint8_t, BN_num_bytes(session->prime))) == NULL) ||
 	    ((x = BN_new()) == NULL) || ((y = BN_new()) == NULL)) {
 		DEBUG2("pwd: unable to allocate space to compute confirm!");
 		goto finish;
@@ -432,65 +432,65 @@ int compute_server_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
 	 *
 	 * First is k
 	 */
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(sess->k);
-	BN_bn2bin(sess->k, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(session->k);
+	BN_bn2bin(session->k, cruft + offset);
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * next is server element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(sess->group, sess->my_element, x, y, bnctx)) {
+	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, bnctx)) {
 		DEBUG2("pwd: unable to get coordinates of server element");
 		goto finish;
 	}
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(x);
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(y);
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and server scalar
 	 */
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->order) - BN_num_bytes(sess->my_scalar);
-	BN_bn2bin(sess->my_scalar, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->order));
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
+	BN_bn2bin(session->my_scalar, cruft + offset);
+	H_Update(&ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * next is peer element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(sess->group, sess->peer_element, x, y, bnctx)) {
+	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->peer_element, x, y, bnctx)) {
 		DEBUG2("pwd: unable to get coordinates of peer's element");
 		goto finish;
 	}
 
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(x);
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(y);
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and peer scalar
 	 */
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->order) - BN_num_bytes(sess->peer_scalar);
-	BN_bn2bin(sess->peer_scalar, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->order));
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->order) - BN_num_bytes(session->peer_scalar);
+	BN_bn2bin(session->peer_scalar, cruft + offset);
+	H_Update(&ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * finally, ciphersuite
 	 */
-	H_Update(&ctx, (uint8_t *)&sess->ciphersuite, sizeof(sess->ciphersuite));
+	H_Update(&ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 
 	H_Final(&ctx, buf);
 
@@ -503,7 +503,7 @@ finish:
 	return req;
 }
 
-int compute_peer_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
+int compute_peer_confirm (pwd_session_t *session, uint8_t *buf, BN_CTX *bnctx)
 {
 	BIGNUM *x = NULL, *y = NULL;
 	HMAC_CTX ctx;
@@ -513,7 +513,7 @@ int compute_peer_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
 	/*
 	 * Each component of the cruft will be at most as big as the prime
 	 */
-	if (((cruft = talloc_zero_array(sess, uint8_t, BN_num_bytes(sess->prime))) == NULL) ||
+	if (((cruft = talloc_zero_array(session, uint8_t, BN_num_bytes(session->prime))) == NULL) ||
 	    ((x = BN_new()) == NULL) || ((y = BN_new()) == NULL)) {
 		DEBUG2("pwd: unable to allocate space to compute confirm!");
 		goto finish;
@@ -531,65 +531,65 @@ int compute_peer_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
 	 *
 	 * First is k
 	 */
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(sess->k);
-	BN_bn2bin(sess->k, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(session->k);
+	BN_bn2bin(session->k, cruft + offset);
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	* then peer element: x, y
 	*/
-	if (!EC_POINT_get_affine_coordinates_GFp(sess->group, sess->peer_element, x, y, bnctx)) {
+	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->peer_element, x, y, bnctx)) {
 		DEBUG2("pwd: unable to get coordinates of peer's element");
 		goto finish;
 	}
 
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(x);
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(y);
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and peer scalar
 	 */
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->order) - BN_num_bytes(sess->peer_scalar);
-	BN_bn2bin(sess->peer_scalar, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->order));
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->order) - BN_num_bytes(session->peer_scalar);
+	BN_bn2bin(session->peer_scalar, cruft + offset);
+	H_Update(&ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * then server element: x, y
 	 */
-	if (!EC_POINT_get_affine_coordinates_GFp(sess->group, sess->my_element, x, y, bnctx)) {
+	if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, bnctx)) {
 		DEBUG2("pwd: unable to get coordinates of server element");
 		goto finish;
 	}
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(x);
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 	BN_bn2bin(x, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(y);
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(y);
 	BN_bn2bin(y, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
 	/*
 	 * and server scalar
 	 */
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->order) - BN_num_bytes(sess->my_scalar);
-	BN_bn2bin(sess->my_scalar, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->order));
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
+	BN_bn2bin(session->my_scalar, cruft + offset);
+	H_Update(&ctx, cruft, BN_num_bytes(session->order));
 
 	/*
 	 * finally, ciphersuite
 	 */
-	H_Update(&ctx, (uint8_t *)&sess->ciphersuite, sizeof(sess->ciphersuite));
+	H_Update(&ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
 
 	H_Final(&ctx, buf);
 
@@ -602,7 +602,7 @@ finish:
 	return req;
 }
 
-int compute_keys (pwd_session_t *sess, uint8_t *peer_confirm, uint8_t *msk, uint8_t *emsk)
+int compute_keys (pwd_session_t *session, uint8_t *peer_confirm, uint8_t *msk, uint8_t *emsk)
 {
 	HMAC_CTX ctx;
 	uint8_t mk[SHA256_DIGEST_LENGTH], *cruft;
@@ -610,7 +610,7 @@ int compute_keys (pwd_session_t *sess, uint8_t *peer_confirm, uint8_t *msk, uint
 	uint8_t msk_emsk[128];		/* 64 each */
 	int offset;
 
-	if ((cruft = talloc_array(sess, uint8_t, BN_num_bytes(sess->prime))) == NULL) {
+	if ((cruft = talloc_array(session, uint8_t, BN_num_bytes(session->prime))) == NULL) {
 		DEBUG2("pwd: unable to allocate space to compute keys");
 		return -1;
 	}
@@ -621,28 +621,28 @@ int compute_keys (pwd_session_t *sess, uint8_t *peer_confirm, uint8_t *msk, uint
 	 */
 	session_id[0] = PW_EAP_PWD;
 	H_Init(&ctx);
-	H_Update(&ctx, (uint8_t *)&sess->ciphersuite, sizeof(sess->ciphersuite));
-	offset = BN_num_bytes(sess->order) - BN_num_bytes(sess->peer_scalar);
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	BN_bn2bin(sess->peer_scalar, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->order));
-	offset = BN_num_bytes(sess->order) - BN_num_bytes(sess->my_scalar);
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	BN_bn2bin(sess->my_scalar, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->order));
+	H_Update(&ctx, (uint8_t *)&session->ciphersuite, sizeof(session->ciphersuite));
+	offset = BN_num_bytes(session->order) - BN_num_bytes(session->peer_scalar);
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	BN_bn2bin(session->peer_scalar, cruft + offset);
+	H_Update(&ctx, cruft, BN_num_bytes(session->order));
+	offset = BN_num_bytes(session->order) - BN_num_bytes(session->my_scalar);
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	BN_bn2bin(session->my_scalar, cruft + offset);
+	H_Update(&ctx, cruft, BN_num_bytes(session->order));
 	H_Final(&ctx, (uint8_t *)&session_id[1]);
 
 	/* then compute MK = H(k | commit-peer | commit-server) */
 	H_Init(&ctx);
 
-	memset(cruft, 0, BN_num_bytes(sess->prime));
-	offset = BN_num_bytes(sess->prime) - BN_num_bytes(sess->k);
-	BN_bn2bin(sess->k, cruft + offset);
-	H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
+	memset(cruft, 0, BN_num_bytes(session->prime));
+	offset = BN_num_bytes(session->prime) - BN_num_bytes(session->k);
+	BN_bn2bin(session->k, cruft + offset);
+	H_Update(&ctx, cruft, BN_num_bytes(session->prime));
 
 	H_Update(&ctx, peer_confirm, SHA256_DIGEST_LENGTH);
 
-	H_Update(&ctx, sess->my_confirm, SHA256_DIGEST_LENGTH);
+	H_Update(&ctx, session->my_confirm, SHA256_DIGEST_LENGTH);
 
 	H_Final(&ctx, mk);
 
