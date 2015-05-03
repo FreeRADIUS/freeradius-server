@@ -71,7 +71,7 @@ typedef struct _pwd_id_packet {
 #define EAP_PWD_PREP_MS		1
 #define EAP_PWD_PREP_SASL	2
     char identity[];
-} CC_HINT(packed) pwd_id_packet;
+} CC_HINT(packed) pwd_id_packet_t;
 
 typedef struct _pwd_session_t {
     uint16_t state;
