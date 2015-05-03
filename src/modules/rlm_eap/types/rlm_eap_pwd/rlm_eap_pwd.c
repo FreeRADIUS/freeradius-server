@@ -272,7 +272,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	REQUEST *request, *fake;
 	VALUE_PAIR *pw, *vp;
 	EAP_DS *eap_ds;
-	int in_len, ret = 0;
+	size_t in_len;
+	int ret = 0;
 	eap_pwd_t *inst = (eap_pwd_t *)arg;
 	uint16_t offset;
 	uint8_t exch, *in, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
@@ -286,6 +287,14 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	request = handler->request;
 	response = handler->eap_ds->response;
 	hdr = (pwd_hdr *)response->type.data;
+
+	/*
+	 *	The header must be at least one byte.
+	 */
+	if (!response->type.length) {
+		RDEBUG("Packet with no data");
+		return 0;
+	}
 
 	in = hdr->data;
 	in_len = response->type.length - sizeof(pwd_hdr);
@@ -308,6 +317,12 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			RDEBUG2("pwd already alloced buffer for fragments");
 			return 0;
 		}
+
+		if (in_len < 2) {
+			RDEBUG("Invalid packet: length bit set, but no length field");
+			return 0;
+		}
+
 		session->in_len = ntohs(in[0] * 256 | in[1]);
 		if ((session->in = talloc_zero_array(session, uint8_t, session->in_len)) == NULL) {
 			RDEBUG2("pwd cannot allocate %zd buffer to hold fragments",
@@ -326,8 +341,9 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 */
 	if (EAP_PWD_GET_MORE_BIT(hdr)) {
 		rad_assert(session->in != NULL);
+
 		if ((session->in_pos + in_len) > session->in_len) {
-			RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent");
+			RDEBUG2("Fragment overflows packet.");
 			return 0;
 		}
 
@@ -371,10 +387,15 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		}
 
 		packet = (pwd_id_packet_t *) in;
+		if (in_len < sizeof(packet)) {
+			RDEBUG("Packet is too small (%zd < %zd).", in_len, sizeof(packet));
+			return 0;
+		}
+
 		if ((packet->prf != EAP_PWD_DEF_PRF) ||
 		    (packet->random_function != EAP_PWD_DEF_RAND_FUN) ||
 		    (packet->prep != EAP_PWD_PREP_NONE) ||
-		    (CRYPTO_memcmp(packet->token, (char *)&session->token, 4)) ||
+		    (CRYPTO_memcmp(packet->token, &session->token, 4)) ||
 		    (packet->group_num != ntohs(session->group_num))) {
 			RDEBUG2("pwd id response is invalid");
 			return 0;
