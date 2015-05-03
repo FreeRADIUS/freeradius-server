@@ -74,8 +74,13 @@ static int mod_instantiate (CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+	if (inst->conf->fragment_size < 100) {
+		cf_log_err_cs(cs, "Fragment size is too small");
+		return -1;
+	}
+
 	if ((inst->bnctx = BN_CTX_new()) == NULL) {
-		ERROR("rlm_eap_pwd: Failed to get BN context");
+		cf_log_err_cs(cs, "Failed to get BN context");
 		return -1;
 	}
 
@@ -100,7 +105,7 @@ static int _free_pwd_session (pwd_session_t *session)
 
 static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 {
-	int len;
+	size_t len;
 	uint16_t totlen;
 	pwd_hdr *hdr;
 
@@ -132,7 +137,7 @@ static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 	/*
 	 * are we fragmenting?
 	 */
-	if ((int)((session->out_buf_len - session->out_buf_pos) + sizeof(pwd_hdr)) > session->mtu) {
+	if (((session->out_buf_len - session->out_buf_pos) + sizeof(pwd_hdr)) > session->mtu) {
 		EAP_PWD_SET_MORE_BIT(hdr);
 		if (session->out_buf_pos == 0) {
 			/*
@@ -216,18 +221,21 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	session->prime = NULL;
 
 	/*
-	* figure out the MTU (basically do what eap-tls does)
-	*/
+	 *	The admin can dynamically change the MTU.
+	 */
 	session->mtu = inst->conf->fragment_size;
 	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
 
 	/*
-	 * 9 = 4 (EAPOL header) + 4 (EAP header) + 1 (EAP type)
+	 *	session->mtu is *our* MTU.  We need to subtract off the EAP
+	 *	overhead.
 	 *
-	 * the fragmentation code deals with the included length
-	 * so we don't need to subtract that here.
+	 *	9 = 4 (EAPOL header) + 4 (EAP header) + 1 (EAP type)
+	 *
+	 *	The fragmentation code deals with the included length
+	 *	so we don't need to subtract that here.
 	 */
-	if (vp && ((int)(vp->vp_integer - 9) < session->mtu)) {
+	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < session->mtu)) {
 		session->mtu = vp->vp_integer - 9;
 	}
 
