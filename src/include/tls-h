@@ -113,7 +113,7 @@ typedef struct _tls_info_t {
  * dirty_in  - data EAP server receives.
  * clean_out - data that is cleaned after receiving.
  * dirty_out - data EAP server sends.
- * offset    - current fragment size transmitted
+ * mtu	     - current fragment size transmitted
  * fragment  - Flag, In fragment mode or not.
  * tls_msg_len - Actual/Total TLS message length.
  * length_flag - A flag to include length in every TLS Data/Alert packet
@@ -144,8 +144,8 @@ typedef struct _tls_session_t {
 	 * Framed-MTU attribute in RADIUS,
 	 * if present, can also be used to set this
 	 */
-	unsigned int 	offset;
-	unsigned int 	tls_msg_len;
+	size_t 		mtu;
+	size_t		tls_msg_len;
 	int 		fragment;
 	int		length_flag;
 	int		peap_flag;
