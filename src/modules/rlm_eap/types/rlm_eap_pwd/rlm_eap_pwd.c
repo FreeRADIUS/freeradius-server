@@ -176,7 +176,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	pwd_session_t *session;
 	eap_pwd_t *inst = (eap_pwd_t *)instance;
 	VALUE_PAIR *vp;
-	pwd_id_packet *pack;
+	pwd_id_packet_t *packet;
 
 	if (!inst || !handler) {
 		ERROR("rlm_eap_pwd: Initiate, NULL data provided");
@@ -247,19 +247,19 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	/*
 	 * construct an EAP-pwd-ID/Request
 	 */
-	session->out_buf_len = sizeof(pwd_id_packet) + strlen(inst->conf->server_id);
+	session->out_buf_len = sizeof(pwd_id_packet_t) + strlen(inst->conf->server_id);
 	if ((session->out_buf = talloc_zero_array(session, uint8_t, session->out_buf_len)) == NULL) {
 		return -1;
 	}
 
-	pack = (pwd_id_packet *)session->out_buf;
-	pack->group_num = htons(session->group_num);
-	pack->random_function = EAP_PWD_DEF_RAND_FUN;
-	pack->prf = EAP_PWD_DEF_PRF;
+	packet = (pwd_id_packet_t *)session->out_buf;
+	packet->group_num = htons(session->group_num);
+	packet->random_function = EAP_PWD_DEF_RAND_FUN;
+	packet->prf = EAP_PWD_DEF_PRF;
 	session->token = fr_rand();
-	memcpy(pack->token, (char *)&session->token, 4);
-	pack->prep = EAP_PWD_PREP_NONE;
-	strcpy(pack->identity, inst->conf->server_id);
+	memcpy(packet->token, (char *)&session->token, 4);
+	packet->prep = EAP_PWD_PREP_NONE;
+	strcpy(packet->identity, inst->conf->server_id);
 
 	handler->stage = PROCESS;
 
@@ -270,7 +270,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 {
 	pwd_session_t *session;
 	pwd_hdr *hdr;
-	pwd_id_packet *id;
+	pwd_id_packet_t *packet;
 	eap_packet_t *response;
 	REQUEST *request, *fake;
 	VALUE_PAIR *pw, *vp;
@@ -374,12 +374,12 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			return 0;
 		}
 
-		id = (pwd_id_packet *)buf;
-		if ((id->prf != EAP_PWD_DEF_PRF) ||
-		    (id->random_function != EAP_PWD_DEF_RAND_FUN) ||
-		    (id->prep != EAP_PWD_PREP_NONE) ||
-		    (CRYPTO_memcmp(id->token, (char *)&session->token, 4)) ||
-		    (id->group_num != ntohs(session->group_num))) {
+		packet = (pwd_id_packet_t *)buf;
+		if ((packet->prf != EAP_PWD_DEF_PRF) ||
+		    (packet->random_function != EAP_PWD_DEF_RAND_FUN) ||
+		    (packet->prep != EAP_PWD_PREP_NONE) ||
+		    (CRYPTO_memcmp(packet->token, (char *)&session->token, 4)) ||
+		    (packet->group_num != ntohs(session->group_num))) {
 			RDEBUG2("pwd id response is invalid");
 			return 0;
 		}
@@ -387,19 +387,19 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 * we've agreed on the ciphersuite, record it...
 		 */
 		ptr = (uint8_t *)&session->ciphersuite;
-		memcpy(ptr, (char *)&id->group_num, sizeof(uint16_t));
+		memcpy(ptr, (char *)&packet->group_num, sizeof(uint16_t));
 		ptr += sizeof(uint16_t);
 		*ptr = EAP_PWD_DEF_RAND_FUN;
 		ptr += sizeof(uint8_t);
 		*ptr = EAP_PWD_DEF_PRF;
 
-		session->peer_id_len = len - sizeof(pwd_id_packet);
+		session->peer_id_len = len - sizeof(pwd_id_packet_t);
 		if (session->peer_id_len >= sizeof(session->peer_id)) {
 			RDEBUG2("pwd id response is malformed");
 			return 0;
 		}
 
-		memcpy(session->peer_id, id->identity, session->peer_id_len);
+		memcpy(session->peer_id, packet->identity, session->peer_id_len);
 		session->peer_id[session->peer_id_len] = '\0';
 
 		/*
