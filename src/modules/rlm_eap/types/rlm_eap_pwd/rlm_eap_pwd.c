@@ -106,7 +106,7 @@ static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 	uint16_t totlen;
 	pwd_hdr *hdr;
 
-	len = (session->out_buf_len - session->out_buf_pos) + sizeof(pwd_hdr);
+	len = (session->out_len - session->out_pos) + sizeof(pwd_hdr);
 	rad_assert(len > 0);
 	eap_ds->request->code = PW_EAP_REQUEST;
 	eap_ds->request->type.num = PW_EAP_PWD;
@@ -134,36 +134,36 @@ static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 	/*
 	 * are we fragmenting?
 	 */
-	if (((session->out_buf_len - session->out_buf_pos) + sizeof(pwd_hdr)) > session->mtu) {
+	if (((session->out_len - session->out_pos) + sizeof(pwd_hdr)) > session->mtu) {
 		EAP_PWD_SET_MORE_BIT(hdr);
-		if (session->out_buf_pos == 0) {
+		if (session->out_pos == 0) {
 			/*
 			 * the first fragment, add the total length
 			 */
 			EAP_PWD_SET_LENGTH_BIT(hdr);
-			totlen = ntohs(session->out_buf_len);
+			totlen = ntohs(session->out_len);
 			memcpy(hdr->data, (char *)&totlen, sizeof(totlen));
 			memcpy(hdr->data + sizeof(uint16_t),
-			       session->out_buf,
+			       session->out,
 			       session->mtu - sizeof(pwd_hdr) - sizeof(uint16_t));
-			session->out_buf_pos += (session->mtu - sizeof(pwd_hdr) - sizeof(uint16_t));
+			session->out_pos += (session->mtu - sizeof(pwd_hdr) - sizeof(uint16_t));
 		} else {
 			/*
 			 * an intermediate fragment
 			 */
-			memcpy(hdr->data, session->out_buf + session->out_buf_pos, (session->mtu - sizeof(pwd_hdr)));
-			session->out_buf_pos += (session->mtu - sizeof(pwd_hdr));
+			memcpy(hdr->data, session->out + session->out_pos, (session->mtu - sizeof(pwd_hdr)));
+			session->out_pos += (session->mtu - sizeof(pwd_hdr));
 		}
 	} else {
 		/*
 		 * either it's not a fragment or it's the last fragment.
 		 * The out buffer isn't needed anymore though so get rid of it.
 		 */
-		memcpy(hdr->data, session->out_buf + session->out_buf_pos,
-		(session->out_buf_len - session->out_buf_pos));
-		talloc_free(session->out_buf);
-		session->out_buf = NULL;
-		session->out_buf_pos = session->out_buf_len = 0;
+		memcpy(hdr->data, session->out + session->out_pos,
+		(session->out_len - session->out_pos));
+		talloc_free(session->out);
+		session->out = NULL;
+		session->out_pos = session->out_len = 0;
 	}
 	return 1;
 }
@@ -237,19 +237,19 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	}
 
 	session->state = PWD_STATE_ID_REQ;
-	session->in_buf = NULL;
-	session->out_buf_pos = 0;
+	session->in = NULL;
+	session->out_pos = 0;
 	handler->opaque = session;
 
 	/*
 	 * construct an EAP-pwd-ID/Request
 	 */
-	session->out_buf_len = sizeof(pwd_id_packet_t) + strlen(inst->server_id);
-	if ((session->out_buf = talloc_zero_array(session, uint8_t, session->out_buf_len)) == NULL) {
+	session->out_len = sizeof(pwd_id_packet_t) + strlen(inst->server_id);
+	if ((session->out = talloc_zero_array(session, uint8_t, session->out_len)) == NULL) {
 		return -1;
 	}
 
-	packet = (pwd_id_packet_t *)session->out_buf;
+	packet = (pwd_id_packet_t *)session->out;
 	packet->group_num = htons(session->group_num);
 	packet->random_function = EAP_PWD_DEF_RAND_FUN;
 	packet->prf = EAP_PWD_DEF_PRF;
@@ -272,10 +272,10 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	REQUEST *request, *fake;
 	VALUE_PAIR *pw, *vp;
 	EAP_DS *eap_ds;
-	int len, ret = 0;
+	int in_len, ret = 0;
 	eap_pwd_t *inst = (eap_pwd_t *)arg;
 	uint16_t offset;
-	uint8_t exch, *buf, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
+	uint8_t exch, *in, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
 	uint8_t peer_confirm[SHA256_DIGEST_LENGTH];
 	BIGNUM *x = NULL, *y = NULL;
 	char *p;
@@ -287,16 +287,15 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	response = handler->eap_ds->response;
 	hdr = (pwd_hdr *)response->type.data;
 
-	buf = hdr->data;
-	len = response->type.length - sizeof(pwd_hdr);
+	in = hdr->data;
+	in_len = response->type.length - sizeof(pwd_hdr);
 
 	/*
 	* see if we're fragmenting, if so continue until we're done
 	*/
-	if (session->out_buf_pos) {
-		if (len) {
-			RDEBUG2("pwd got something more than an ACK for a fragment");
-		}
+	if (session->out_pos) {
+		if (in_len) RDEBUG2("pwd got something more than an ACK for a fragment");
+
 		return send_pwd_request(session, eap_ds);
 	}
 
@@ -305,20 +304,20 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	* buffer to hold all the fragments
 	*/
 	if (EAP_PWD_GET_LENGTH_BIT(hdr)) {
-		if (session->in_buf) {
+		if (session->in) {
 			RDEBUG2("pwd already alloced buffer for fragments");
 			return 0;
 		}
-		session->in_buf_len = ntohs(buf[0] * 256 | buf[1]);
-		if ((session->in_buf = talloc_zero_array(session, uint8_t, session->in_buf_len)) == NULL) {
+		session->in_len = ntohs(in[0] * 256 | in[1]);
+		if ((session->in = talloc_zero_array(session, uint8_t, session->in_len)) == NULL) {
 			RDEBUG2("pwd cannot allocate %zd buffer to hold fragments",
-				session->in_buf_len);
+				session->in_len);
 			return 0;
 		}
-		memset(session->in_buf, 0, session->in_buf_len);
-		session->in_buf_pos = 0;
-		buf += sizeof(uint16_t);
-		len -= sizeof(uint16_t);
+		memset(session->in, 0, session->in_len);
+		session->in_pos = 0;
+		in += sizeof(uint16_t);
+		in_len -= sizeof(uint16_t);
 	}
 
 	/*
@@ -326,14 +325,14 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 * buffer those fragments!
 	 */
 	if (EAP_PWD_GET_MORE_BIT(hdr)) {
-		rad_assert(session->in_buf != NULL);
-		if ((session->in_buf_pos + len) > session->in_buf_len) {
+		rad_assert(session->in != NULL);
+		if ((session->in_pos + in_len) > session->in_len) {
 			RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent");
 			return 0;
 		}
 
-		memcpy(session->in_buf + session->in_buf_pos, buf, len);
-		session->in_buf_pos += len;
+		memcpy(session->in + session->in_pos, in, in_len);
+		session->in_pos += in_len;
 
 		/*
 		 * send back an ACK for this fragment
@@ -351,17 +350,17 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	}
 
 
-	if (session->in_buf) {
+	if (session->in) {
 		/*
 		 * the last fragment...
 		 */
-		if ((session->in_buf_pos + len) > session->in_buf_len) {
+		if ((session->in_pos + in_len) > session->in_len) {
 			RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent");
 			return 0;
 		}
-		memcpy(session->in_buf + session->in_buf_pos, buf, len);
-		buf = session->in_buf;
-		len = session->in_buf_len;
+		memcpy(session->in + session->in_pos, in, in_len);
+		in = session->in;
+		in_len = session->in_len;
 	}
 
 	switch (session->state) {
@@ -371,7 +370,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			return 0;
 		}
 
-		packet = (pwd_id_packet_t *)buf;
+		packet = (pwd_id_packet_t *) in;
 		if ((packet->prf != EAP_PWD_DEF_PRF) ||
 		    (packet->random_function != EAP_PWD_DEF_RAND_FUN) ||
 		    (packet->prep != EAP_PWD_PREP_NONE) ||
@@ -390,7 +389,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		ptr += sizeof(uint8_t);
 		*ptr = EAP_PWD_DEF_PRF;
 
-		session->peer_id_len = len - sizeof(pwd_id_packet_t);
+		session->peer_id_len = in_len - sizeof(pwd_id_packet_t);
 		if (session->peer_id_len >= sizeof(session->peer_id)) {
 			RDEBUG2("pwd id response is malformed");
 			return 0;
@@ -500,13 +499,13 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 * construct request
 		 */
-		session->out_buf_len = BN_num_bytes(session->order) + (2 * BN_num_bytes(session->prime));
-		if ((session->out_buf = talloc_array(session, uint8_t, session->out_buf_len)) == NULL) {
+		session->out_len = BN_num_bytes(session->order) + (2 * BN_num_bytes(session->prime));
+		if ((session->out = talloc_array(session, uint8_t, session->out_len)) == NULL) {
 			return 0;
 		}
-		memset(session->out_buf, 0, session->out_buf_len);
+		memset(session->out, 0, session->out_len);
 
-		ptr = session->out_buf;
+		ptr = session->out;
 		offset = BN_num_bytes(session->prime) - BN_num_bytes(x);
 		BN_bn2bin(x, ptr + offset);
 
@@ -531,7 +530,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 * process the peer's commit and generate the shared key, k
 		 */
-		if (process_peer_commit(session, buf, inst->bnctx)) {
+		if (process_peer_commit(session, in, inst->bnctx)) {
 			RDEBUG2("failed to process peer's commit");
 			return 0;
 		}
@@ -547,13 +546,13 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 * construct a response...which is just our confirm blob
 		 */
-		session->out_buf_len = SHA256_DIGEST_LENGTH;
-		if ((session->out_buf = talloc_array(session, uint8_t, session->out_buf_len)) == NULL) {
+		session->out_len = SHA256_DIGEST_LENGTH;
+		if ((session->out = talloc_array(session, uint8_t, session->out_len)) == NULL) {
 			return 0;
 		}
 
-		memset(session->out_buf, 0, session->out_buf_len);
-		memcpy(session->out_buf, session->my_confirm, SHA256_DIGEST_LENGTH);
+		memset(session->out, 0, session->out_len);
+		memcpy(session->out, session->my_confirm, SHA256_DIGEST_LENGTH);
 
 		session->state = PWD_STATE_CONFIRM;
 		ret = send_pwd_request(session, eap_ds);
@@ -568,7 +567,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			RDEBUG2("pwd exchange cannot compute peer's confirm");
 			return 0;
 		}
-		if (CRYPTO_memcmp(peer_confirm, buf, SHA256_DIGEST_LENGTH)) {
+		if (CRYPTO_memcmp(peer_confirm, in, SHA256_DIGEST_LENGTH)) {
 			RDEBUG2("pwd exchange fails: peer confirm is incorrect!");
 			return 0;
 		}
@@ -594,9 +593,9 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	/*
 	 * we processed the buffered fragments, get rid of them
 	 */
-	if (session->in_buf) {
-		talloc_free(session->in_buf);
-		session->in_buf = NULL;
+	if (session->in) {
+		talloc_free(session->in);
+		session->in = NULL;
 	}
 
 	return ret;
