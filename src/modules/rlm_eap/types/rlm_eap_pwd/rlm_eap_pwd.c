@@ -530,7 +530,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 * process the peer's commit and generate the shared key, k
 		 */
-		if (process_peer_commit(session, in, inst->bnctx)) {
+		if (process_peer_commit(session, in, in_len, inst->bnctx)) {
 			RDEBUG2("failed to process peer's commit");
 			return 0;
 		}

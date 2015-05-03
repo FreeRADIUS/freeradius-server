@@ -109,9 +109,9 @@ int compute_password_element(pwd_session_t *sess, uint16_t grp_num,
 			     char const *id_peer, int id_peer_len,
 			     uint32_t *token);
 int compute_scalar_element(pwd_session_t *sess, BN_CTX *bnctx);
-int process_peer_commit (pwd_session_t *sess, uint8_t *commit, BN_CTX *bnctx);
-int compute_server_confirm(pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx);
-int compute_peer_confirm(pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx);
+int process_peer_commit (pwd_session_t *sess, uint8_t *in, size_t in_len, BN_CTX *bnctx);
+int compute_server_confirm(pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
+int compute_peer_confirm(pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
 int compute_keys(pwd_session_t *sess, uint8_t *peer_confirm,
 		 uint8_t *msk, uint8_t *emsk);
 #ifdef PRINTBUF
