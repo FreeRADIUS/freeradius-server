@@ -291,8 +291,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	/*
 	 *	The header must be at least one byte.
 	 */
-	if (!response->type.length) {
-		RDEBUG("Packet with no data");
+	if (!hdr || (response->type.length < sizeof(pwd_hdr))) {
+		RDEBUG("Packet with insufficient data");
 		return 0;
 	}
 
