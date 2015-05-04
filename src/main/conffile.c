@@ -102,6 +102,10 @@ struct conf_part {
 
 	FR_TOKEN	name2_type;	//!< The type of quoting around name2.
 
+	int		argc;		//!< number of additional arguments
+	char const	**argv;		//!< additional arguments
+	FR_TOKEN	*argv_type;
+
 	CONF_ITEM	*children;
 	CONF_ITEM	*tail;		//!< For speed.
 	CONF_SECTION	*template;
@@ -1949,6 +1953,34 @@ static char const *cf_local_file(char const *base, char const *filename,
 	return buffer;
 }
 
+static bool invalid_location(CONF_SECTION *this, char const *name, char const *filename, int lineno)
+{
+	/*
+	 *	if / elsif MUST be inside of a
+	 *	processing section, which MUST in turn
+	 *	be inside of a "server" directive.
+	 */
+	if (!this || !this->item.parent) {
+	invalid_location:
+		ERROR("%s[%d]: Invalid location for '%s'",
+		      filename, lineno, name);
+		return true;
+	}
+
+	/*
+	 *	Can only have "if" in 3 named sections.
+	 */
+	this = this->item.parent;
+	while ((strcmp(this->name1, "server") != 0) &&
+	       (strcmp(this->name1, "policy") != 0) &&
+	       (strcmp(this->name1, "instantiate") != 0)) {
+		this = this->item.parent;
+		if (!this) goto invalid_location;
+	}
+
+	return false;
+}
+
 
 /*
  *	Read a part of the config file.
@@ -2304,32 +2336,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			ssize_t slen;
 			char const *error = NULL;
 			char *p;
-			CONF_SECTION *server;
 			fr_cond_t *cond = NULL;
 
-			/*
-			 *	if / elsif MUST be inside of a
-			 *	processing section, which MUST in turn
-			 *	be inside of a "server" directive.
-			 */
-			if (!this->item.parent) {
-			invalid_location:
-				ERROR("%s[%d]: Invalid location for '%s'",
-				       filename, *lineno, buf1);
-				return -1;
-			}
-
-			/*
-			 *	Can only have "if" in 3 named sections.
-			 */
-			server = this->item.parent;
-			while (server &&
-			       (strcmp(server->name1, "server") != 0) &&
-			       (strcmp(server->name1, "policy") != 0) &&
-			       (strcmp(server->name1, "instantiate") != 0)) {
-				server = server->item.parent;
-				if (!server) goto invalid_location;
-			}
+			if (invalid_location(this, buf1, filename, *lineno)) return -1;
 
 			/*
 			 *	Skip (...) to find the {
@@ -2441,8 +2450,10 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			talloc_free(p);
 			css->name2 = talloc_typed_strdup(css, buf2);
 
-			cf_item_add(this, &(css->item));
 			cf_data_add_internal(css, "if", cond, NULL, false);
+
+		add_section:
+			cf_item_add(this, &(css->item));
 
 			/*
 			 *	The current section is now the child section.
@@ -2450,6 +2461,55 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			this = css;
 			css = NULL;
 			goto check_for_more;
+		}
+
+		/*
+		 *	"map" sections have three arguments <sigh>
+		 */
+		if (strcmp(buf1, "map") == 0) {
+			if (invalid_location(this, buf1, filename, *lineno)) return -1;
+
+			t2 = gettoken(&ptr, buf2, sizeof(buf2), false);
+			if (t2 != T_BARE_WORD) {
+				ERROR("%s[%d]: Expected module name after 'map'",
+				      filename, *lineno);
+				return -1;
+			}
+
+			t3 = gettoken(&ptr, buf3, sizeof(buf3), false);
+			if ((t3 != T_BARE_WORD) && (t3 != T_DOUBLE_QUOTED_STRING)) {
+				ERROR("%s[%d]: Expected map string after '%s'",
+				      filename, *lineno, buf2);
+				return -1;
+			}
+
+			if (gettoken(&ptr, buf4, sizeof(buf4), false) != T_LCBRACE) {
+				ERROR("%s[%d]: Expecting section start brace '{' in 'map' definition",
+				      filename, *lineno);
+				return -1;
+			}
+
+			/*
+			 *	Allocate the section
+			 */
+			css = cf_section_alloc(this, buf1, buf2);
+			if (!css) {
+				ERROR("%s[%d]: Failed allocating memory for section",
+				      filename, *lineno);
+				return -1;
+			}
+			css->item.filename = talloc_strdup(css, filename);
+			css->item.lineno = *lineno;
+			css->name2_type = T_BARE_WORD;
+
+			css->argc = 1;
+			css->argv = talloc_array(css, char const *, 1);
+			css->argv[0] = talloc_typed_strdup(css->argv, buf3);
+
+			css->argv_type = talloc_array(css, FR_TOKEN, 1);
+			css->argv_type[0] = t3;
+
+			goto add_section;
 		}
 
 	skip_keywords:
@@ -2974,6 +3034,13 @@ char const *cf_section_name(CONF_SECTION const *cs)
 	if (name) return name;
 
 	return cf_section_name1(cs);
+}
+
+char const *cf_section_argv(CONF_SECTION const *cs, int argc)
+{
+	if (!cs || !cs->argv || (argc < 0) || (argc > cs->argc)) return NULL;
+
+	return cs->argv[argc];
 }
 
 /*
@@ -3514,6 +3581,13 @@ const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs)
 FR_TOKEN cf_section_name2_type(CONF_SECTION const *cs)
 {
 	if (!cs) return T_INVALID;
+
+	return cs->name2_type;
+}
+
+FR_TOKEN cf_section_argv_type(CONF_SECTION const *cs, int argc)
+{
+	if (!cs || !cs->argv_type || (argc < 0) || (argc > cs->argc)) return T_INVALID;
 
 	return cs->name2_type;
 }
