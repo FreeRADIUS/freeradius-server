@@ -581,7 +581,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 
 	case PWD_STATE_CONFIRM:
 		if (in_len < SHA256_DIGEST_LENGTH) {
-			RDEBUG("Peer confirm is too short (%zd < %zd)",
+			RDEBUG("Peer confirm is too short (%zd < %d)",
 			       in_len, SHA256_DIGEST_LENGTH);
 			return 0;
 		}
