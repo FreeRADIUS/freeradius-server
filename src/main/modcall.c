@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/modcall.h>
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/rad_assert.h>
 
 
@@ -64,18 +65,21 @@ struct modcallable {
 #define MOD_LOG_CLOSE_BRACE RDEBUG2("} # %s = %s", c->debug_name, fr_int2str(mod_rcode_table, result, "<invalid>"))
 
 typedef struct {
-	modcallable		mc;		/* self */
+	modcallable		mc;		//!< Self.
 	enum {
 		GROUPTYPE_SIMPLE = 0,
 		GROUPTYPE_REDUNDANT,
 		GROUPTYPE_COUNT
-	} grouptype;				/* after mc */
+	} grouptype;				//!< After mc.
 	modcallable		*children;
-	modcallable		*tail;		/* of the children list */
+	modcallable		*tail;		//!< of the children list.
 	CONF_SECTION		*cs;
-	vp_map_t		*map;		/* update */
-	vp_tmpl_t		*vpt;		/* switch */
-	fr_cond_t		*cond;		/* if/elsif */
+
+	vp_map_t		*map;		//!< #MOD_UPDATE, #MOD_MAP.
+	vp_tmpl_t		*vpt;		//!< #MOD_SWITCH, #MOD_MAP.
+	fr_cond_t		*cond;		//!< #MOD_IF, #MOD_ELSIF.
+
+	map_proc_inst_t		*proc_inst;	//!< Instantiation data for #MOD_MAP.
 	bool			done_pass2;
 } modgroup;
 
@@ -618,11 +622,11 @@ redo:
 	 *	Map RHS to LHS attributes.
 	 */
 	if (c->type == MOD_MAP) {
+		modgroup *g = mod_callabletogroup(c);
 		MOD_LOG_OPEN_BRACE;
 		RINDENT();
-
+		result = map_proc(request, g->proc_inst);
 		REXDENT();
-		result = RLM_MODULE_NOOP;
 		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
 	}
@@ -1751,10 +1755,12 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	ssize_t slen;
 	char const *tmpl_str;
 	FR_TOKEN type;
-	module_instance_t *mod;
 
 	vp_map_t *head;
 	vp_tmpl_t *vpt;
+
+	map_proc_t *proc;
+	map_proc_inst_t *proc_inst;
 
 	modules = cf_section_find("modules");
 	if (!modules) {
@@ -1762,11 +1768,11 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 		return NULL;
 	}
 
-	mod = module_find(modules, name2);
-	if (!mod) {
-		cf_log_err_cs(cs, "Failed to find module '%s'", name2);
+	proc = map_proc_find(name2);
+	if (!proc) {
+		cf_log_err_cs(cs, "Failed to find map processor '%s'", name2);
 		return NULL;
-	}	
+	}
 
 	tmpl_str = cf_section_argv(cs, 0); /* AFTER name1, name2 */
 	if (!tmpl_str) {
@@ -1780,7 +1786,7 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	 *	Try to parse the template.
 	 */
 	slen = tmpl_afrom_str(cs, &vpt, tmpl_str, strlen(tmpl_str), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-	if (!slen < 0) {
+	if (slen < 0) {
 		cf_log_err_cs(cs, "Failed parsing map: %s", fr_strerror());
 		return NULL;
 	}
@@ -1796,6 +1802,13 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	}
 
 	g = talloc_zero(parent, modgroup);
+	proc_inst = map_proc_instantiate(g, proc, vpt, head);
+	if (!proc_inst) {
+		talloc_free(g);
+		cf_log_err_cs(cs, "Failed instantiating map processor '%s'", name2);
+		return NULL;
+	}
+
 	csingle = mod_grouptocallable(g);
 
 	csingle->parent = parent;
@@ -1813,6 +1826,7 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	g->cs = cs;
 	g->map = talloc_steal(g, head);
 	g->vpt = talloc_steal(g, vpt);
+	g->proc_inst = proc_inst;
 
 	/*
 	 *	Cache the module in the modgroup struct.
