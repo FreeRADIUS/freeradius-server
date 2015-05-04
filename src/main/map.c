@@ -342,8 +342,11 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 
 	ci = cf_section_to_item(cs);
 
+	/*
+	 *	Check the destination list for "update" sections.
+	 */
 	cs_list = p = cf_section_name2(cs);
-	if (cs_list) {
+	if (cs_list && (strcmp(cf_section_name1(cs), "update") == 0)) {
 		p += radius_request_name(&request_def, p, REQUEST_CURRENT);
 		if (request_def == REQUEST_UNKNOWN) {
 			cf_log_err(ci, "Default request specified in mapping section is invalid");
