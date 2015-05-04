@@ -52,7 +52,7 @@ struct modcallable {
 	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE,
 #ifdef WITH_UNLANG
 	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
-	       MOD_FOREACH, MOD_BREAK, MOD_RETURN,
+	       MOD_FOREACH, MOD_BREAK, MOD_RETURN, MOD_MAP,
 #endif
 	       MOD_POLICY, MOD_REFERENCE, MOD_XLAT } type;
 	rlm_components_t method;
@@ -73,8 +73,8 @@ typedef struct {
 	modcallable		*children;
 	modcallable		*tail;		/* of the children list */
 	CONF_SECTION		*cs;
-	vp_map_t	*map;		/* update */
-	vp_tmpl_t	*vpt;		/* switch */
+	vp_map_t		*map;		/* update */
+	vp_tmpl_t		*vpt;		/* switch */
 	fr_cond_t		*cond;		/* if/elsif */
 	bool			done_pass2;
 } modgroup;
@@ -356,6 +356,7 @@ char const *unlang_keyword[] = {
 	"foreach",
 	"break",
 	"return",
+	"map",
 #endif
 	"policy",
 	"reference",
@@ -611,7 +612,20 @@ redo:
 		result = RLM_MODULE_NOOP;
 		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
-	} /* MOD_IF */
+	} /* MOD_UPDATE */
+
+	/*
+	 *	Map RHS to LHS attributes.
+	 */
+	if (c->type == MOD_MAP) {
+		MOD_LOG_OPEN_BRACE;
+		RINDENT();
+
+		REXDENT();
+		result = RLM_MODULE_NOOP;
+		MOD_LOG_CLOSE_BRACE;
+		goto calculate_result;
+	}
 
 	/*
 	 *	Loop over a set of attributes.
@@ -1501,6 +1515,29 @@ static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 	}
 };
 
+
+/** Validate and fixup a map that's part of an map section.
+ *
+ * @param map to validate.
+ * @param ctx data to pass to fixup function (currently unused).
+ * @return 0 if valid else -1.
+ */
+static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
+{
+	if (map->lhs->type != TMPL_TYPE_ATTR) {
+		cf_log_err(map->ci, "Left side of map must be an attribute");
+		return -1;
+	}
+
+	if (map->op != T_OP_EQ) {
+		cf_log_err(map->ci, "Operator must be '='");
+		return -1;
+	}
+
+	return 0;
+}
+
+
 /** Validate and fixup a map that's part of an update section.
  *
  * @param map to validate.
@@ -1704,6 +1741,91 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 
 
 #ifdef WITH_UNLANG
+static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t component,
+				      CONF_SECTION *cs, char const *name2)
+{
+	int rcode;
+	modgroup *g;
+	modcallable *csingle;
+	CONF_SECTION *modules;
+	ssize_t slen;
+	char const *tmpl_str;
+	FR_TOKEN type;
+	module_instance_t *mod;
+
+	vp_map_t *head;
+	vp_tmpl_t *vpt;
+
+	modules = cf_section_find("modules");
+	if (!modules) {
+		cf_log_err_cs(cs, "'map' sections require a 'modules' section");
+		return NULL;
+	}
+
+	mod = module_find(modules, name2);
+	if (!mod) {
+		cf_log_err_cs(cs, "Failed to find module '%s'", name2);
+		return NULL;
+	}	
+
+	tmpl_str = cf_section_argv(cs, 0); /* AFTER name1, name2 */
+	if (!tmpl_str) {
+		cf_log_err_cs(cs, "No template found in map");
+		return NULL;
+	}
+
+	type = cf_section_argv_type(cs, 0);
+
+	/*
+	 *	Try to parse the template.
+	 */
+	slen = tmpl_afrom_str(cs, &vpt, tmpl_str, strlen(tmpl_str), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	if (!slen < 0) {
+		cf_log_err_cs(cs, "Failed parsing map: %s", fr_strerror());
+		return NULL;
+	}
+
+	/*
+	 *	This looks at cs->name2 to determine which list to update
+	 */
+	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_map, NULL, 256);
+	if (rcode < 0) return NULL; /* message already printed */
+	if (!head) {
+		cf_log_err_cs(cs, "'map' sections cannot be empty");
+		return NULL;
+	}
+
+	g = talloc_zero(parent, modgroup);
+	csingle = mod_grouptocallable(g);
+
+	csingle->parent = parent;
+	csingle->next = NULL;
+
+	csingle->name = talloc_asprintf(csingle, "map %s %s", name2, tmpl_str);
+	csingle->type = MOD_MAP;
+	csingle->method = component;
+
+	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	       sizeof(csingle->actions));
+
+	g->grouptype = GROUPTYPE_SIMPLE;
+	g->children = NULL;
+	g->cs = cs;
+	g->map = talloc_steal(g, head);
+	g->vpt = talloc_steal(g, vpt);
+
+	/*
+	 *	Cache the module in the modgroup struct.
+	 *
+	 *	Ensure that the module has a "map" entry in its module
+	 *	header?  Or ensure that the map is registered in the
+	 *	"boostrap" phase, so that it's always available here.
+	 */
+
+	return csingle;
+
+}
+
 static modcallable *do_compile_modupdate(modcallable *parent, rlm_components_t component,
 					 CONF_SECTION *cs, char const *name2)
 {
@@ -2277,6 +2399,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			return do_compile_modupdate(parent, component, cs,
 						    name2);
+
+		} else 	if (strcmp(modrefname, "map") == 0) {
+			*modname = name2;
+
+			return do_compile_modmap(parent, component, cs,
+						 name2);
 
 		} else 	if (strcmp(modrefname, "switch") == 0) {
 			*modname = name2;
@@ -3402,6 +3530,7 @@ bool modcall_pass2(modcallable *mc)
 		case MOD_REFERENCE:
 		case MOD_BREAK:
 		case MOD_RETURN:
+		case MOD_MAP:
 #endif
 
 		case MOD_SINGLE:
@@ -3727,11 +3856,19 @@ void modcall_debug(modcallable *mc, int depth)
 			break;
 
 #ifdef WITH_UNLANG
+		case MOD_MAP:
+			g = mod_callabletogroup(this); /* FIXMAP: print option 3, too */
+			DEBUG("%.*s%s %s {", depth, modcall_spaces,
+			      unlang_keyword[this->type],
+			      cf_section_name2(g->cs));
+			goto print_map;
+
 		case MOD_UPDATE:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				unlang_keyword[this->type]);
 
+		print_map:
 			for (map = g->map; map != NULL; map = map->next) {
 				map_prints(buffer, sizeof(buffer), map);
 				DEBUG("%.*s%s", depth + 1, modcall_spaces, buffer);
