@@ -249,7 +249,9 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 char const *cf_section_name1(CONF_SECTION const *cs);
 char const *cf_section_name2(CONF_SECTION const *cs);
 char const *cf_section_name(CONF_SECTION const *cs);
+char const *cf_section_argv(CONF_SECTION const *cs, int argc);
 FR_TOKEN cf_section_name2_type(CONF_SECTION const *cs);
+FR_TOKEN cf_section_argv_type(CONF_SECTION const *cs, int argc);
 int dump_config(CONF_SECTION const *cs);
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION const *section,
 				      CONF_SECTION const *subsection,
