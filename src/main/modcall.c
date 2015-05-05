@@ -1550,22 +1550,11 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	/*
 	 *	Depending on the attribute type, some operators are disallowed.
 	 */
-	if (map->lhs->type == TMPL_TYPE_ATTR) {
-		switch (map->op) {
-		default:
-			cf_log_err(map->ci, "Invalid operator for attribute");
-			return -1;
-
-		case T_OP_EQ:
-		case T_OP_CMP_EQ:
-		case T_OP_ADD:
-		case T_OP_SUB:
-		case T_OP_LE:
-		case T_OP_GE:
-		case T_OP_CMP_FALSE:
-		case T_OP_SET:
-			break;
-		}
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (!fr_assignment_op[map->op] && !fr_equality_op[map->op])) {
+		cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
+			   "Only assignment or filter operators are allowed",
+			   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		return -1;
 	}
 
 	if (map->lhs->type == TMPL_TYPE_LIST) {
