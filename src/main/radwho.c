@@ -45,7 +45,6 @@ static char const *eol = "\n";
 static int showname = -1;
 static int showptype = 0;
 static int showcid = 0;
-log_lvl_t rad_debug_lvl = 0;
 char const *progname = "radwho";
 char const *radlog_dir = NULL;
 
