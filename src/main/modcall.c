@@ -43,21 +43,42 @@ static modcallable *do_compile_modgroup(modcallable *,
 #define MOD_ACTION_RETURN  (-1)
 #define MOD_ACTION_REJECT  (-2)
 
-/* Here are our basic types: modcallable, modgroup, and modsingle. For an
- * explanation of what they are all about, see doc/configurable_failover.rst */
-struct modcallable {
-	modcallable *parent;
-	struct modcallable *next;
-	char const *name;
-	char const *debug_name;
-	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE,
+/** Types of modcallable_t nodes
+ *
+ * Here are our basic types: modcallable, modgroup, and modsingle. For an
+ * explanation of what they are all about, see doc/configurable_failover.rst
+ */
+typedef enum {
+	MOD_SINGLE = 1,			//!< Module method.
+	MOD_GROUP,			//!< Grouping section.
+	MOD_LOAD_BALANCE,		//!< Load balance section.
+	MOD_REDUNDANT_LOAD_BALANCE,	//!< Redundant load balance section.
 #ifdef WITH_UNLANG
-	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
-	       MOD_FOREACH, MOD_BREAK, MOD_RETURN, MOD_MAP,
+	MOD_IF,				//!< Condition.
+	MOD_ELSE,			//!< !Condition.
+	MOD_ELSIF,			//!< !Condition && Condition.
+	MOD_UPDATE,			//!< Update block.
+	MOD_SWITCH,			//!< Switch section.
+	MOD_CASE,			//!< Case section (within a #MOD_SWITCH).
+	MOD_FOREACH,			//!< Foreach section.
+	MOD_BREAK,			//!< Break statement (within a #MOD_FOREACH).
+	MOD_RETURN,			//!< Return statement.
+	MOD_MAP,			//!< Mapping section (like #MOD_UPDATE, but uses
+					//!< values from a #map_proc_t call).
 #endif
-	       MOD_POLICY, MOD_REFERENCE, MOD_XLAT } type;
-	rlm_components_t method;
-	int actions[RLM_MODULE_NUMCODES];
+	MOD_POLICY,			//!< Policy section.
+	MOD_REFERENCE,			//!< Virtual server.
+	MOD_XLAT			//!< Bare xlat statement.
+} mod_type_t;
+
+struct modcallable {
+	modcallable		*parent;
+	struct modcallable	*next;
+	char const		*name;
+	char const 		*debug_name;
+	mod_type_t		type;
+	rlm_components_t	method;
+	int			actions[RLM_MODULE_NUMCODES];
 };
 
 #define MOD_LOG_OPEN_BRACE RDEBUG2("%s {", c->debug_name)
