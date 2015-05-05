@@ -306,8 +306,7 @@ static int _sql_map_proc_get_value(VALUE_PAIR **out, REQUEST *request, vp_map_t 
  * @param query string to execute.
  * @param maps Head of the map list.
  * @return
- *	- #RLM_MODULE_OK no fields matching a map rhs value were found.
- *	- #RLM_MODULE_NOOP no rows were returned.
+ *	- #RLM_MODULE_NOOP no rows were returned or columns matched.
  *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
@@ -407,7 +406,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	 */
 	if (!found_field) {
 		RDEBUG("No fields matching map found in query result");
-		rcode = RLM_MODULE_OK;
+		rcode = RLM_MODULE_NOOP;
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 		goto finish;
 	}

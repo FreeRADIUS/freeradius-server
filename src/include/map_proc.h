@@ -45,8 +45,7 @@ typedef struct map_proc_inst map_proc_inst_t;
  * @param[in] src Talloced buffer, the result of evaluating the src #vp_tmpl_t.
  * @param[in] maps Head of the list of maps to process.
  * @return
- *	- #RLM_MODULE_OK - If data was available, but did match the map.
- *	- #RLM_MODULE_NOOP - If no data available for given src.
+ *	- #RLM_MODULE_NOOP - If no data available for given src, or no mappings matched available data.
  *	- #RLM_MODULE_UPDATED - If new pairs were added to the request.
  *	- #RLM_MODULE_FAIL - If an error occurred performing the mapping.
  */
