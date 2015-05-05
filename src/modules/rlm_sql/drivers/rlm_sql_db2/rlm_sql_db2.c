@@ -177,7 +177,6 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	return RLM_SQL_OK;
 }
 
-
 static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	int c, i;
