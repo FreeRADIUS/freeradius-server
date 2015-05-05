@@ -317,3 +317,51 @@ if (&control:Tmp-Integer-0 == 0) {
 else {
 	test_fail
 }
+
+# Clear the control list
+update {
+	&control:Tmp-String-0 !* ANY
+	&control:Tmp-String-1 !* ANY
+	&control:Tmp-Integer-0 !* ANY
+}
+
+update request {
+	&Tmp-String-0 := 'username'
+	&Tmp-String-1 := 'name'
+}
+
+# Retrieve our test row(s) - Using different RHS types
+map sql_sqlite 'SELECT * FROM radusergroup WHERE priority = 0' {
+	&control:Tmp-String-0	= &Tmp-String-0
+	&control:Tmp-String-1	= "group%{Tmp-String-1}"
+	&control:Tmp-Integer-0	= `/bin/echo priority`
+}
+
+if (updated) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&control:Tmp-String-0 == 'bob') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&control:Tmp-String-1 == 'bar') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&control:Tmp-Integer-0 == 0) {
+	test_pass
+}
+else {
+	test_fail
+}
+
