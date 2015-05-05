@@ -195,11 +195,6 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	return num_fields;
 }
 
-static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
-{
-	return sql_affected_rows(handle, config);
-}
-
 static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
@@ -416,7 +411,6 @@ rlm_sql_module_t rlm_sql_unixodbc = {
 	.sql_select_query		= sql_select_query,
 	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
-	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fields			= sql_fields,
 	.sql_fetch_row			= sql_fetch_row,
