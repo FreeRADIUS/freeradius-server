@@ -521,15 +521,11 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 	 *	Also parse the configuration data, if required.
 	 */
 	if (node->entry->module->inst_size) {
-		/* FIXME: make this rlm_config_t ?? */
 		*handle = talloc_zero_array(node, uint8_t, node->entry->module->inst_size);
 		rad_assert(handle);
 
-		/*
-		 *	So we can see where this configuration is from
-		 *	FIXME: set it to rlm_NAME_t, or some such thing
-		 */
-		talloc_set_name(*handle, "rlm_config_t");
+		talloc_set_name(*handle, "rlm_%s_t",
+				node->entry->module->name ? node->entry->module->name : "config");
 
 		if (node->entry->module->config &&
 		    (cf_section_parse(node->cs, *handle, node->entry->module->config) < 0)) {
