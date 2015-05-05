@@ -42,7 +42,7 @@
 /* Define if we have a binary safe regular expression library */
 #undef HAVE_BINSAFE_REGEX
 
-/* Define if the compiler supports __builtin_types_compatible_p */
+/* Define if the compiler supports __builtin_bswap64 */
 #undef HAVE_BUILTIN_BSWAP_64
 
 /* Define if the compiler supports __builtin_choose_expr */
