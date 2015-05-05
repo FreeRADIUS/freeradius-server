@@ -54,7 +54,7 @@ static int sql_num_fields(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_confi
 	return 0;
 }
 
-static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fields(char const **out[], UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	*out = NULL;
 	return 0;
