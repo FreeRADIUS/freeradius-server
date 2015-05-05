@@ -1549,13 +1549,54 @@ static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
  */
 static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 {
-	if (map->lhs->type != TMPL_TYPE_ATTR) {
-		cf_log_err(map->ci, "Left side of map must be an attribute");
+	CONF_PAIR *cp = cf_item_to_pair(map->ci);
+
+	/*
+	 *	Anal-retentive checks.
+	 */
+	if (DEBUG_ENABLED3) {
+		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     map->lhs->name, fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		}
+
+		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     fr_int2str(fr_tokens, map->op, "<INVALID>"), map->rhs->name);
+		}
+	}
+
+	switch (map->lhs->type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_STRUCT:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Left side of map must be an attribute "
+		           "or an xlat (that expands to an attribute)");
 		return -1;
 	}
 
-	if (map->op != T_OP_EQ) {
-		cf_log_err(map->ci, "Operator must be '='");
+	switch (map->rhs->type) {
+	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_EXEC:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Right side of map must be an attribute, literal, xlat or exec");
+		return -1;
+	}
+
+	if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
+		cf_log_err(map->ci, "Invalid operator \"%s\" in map section.  "
+			   "Only assignment or filter operators are allowed",
+			   fr_int2str(fr_tokens, map->op, "<INVALID>"));
 		return -1;
 	}
 
@@ -1815,7 +1856,7 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	proc_inst = map_proc_instantiate(g, proc, vpt, head);
 	if (!proc_inst) {
 		talloc_free(g);
-		cf_log_err_cs(cs, "Failed instantiating map processor '%s'", name2);
+		cf_log_err_cs(cs, "Failed instantiating map function '%s'", name2);
 		return NULL;
 	}
 
