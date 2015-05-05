@@ -87,8 +87,10 @@ if test x$with_[]modname != xno; then
 	lib_path="${ORACLE_HOME}/lib "
     fi
 
+    AC_MSG_WARN([Oracle version >= 12 needs -laio])
+
     for path in $lib_path "/usr/local/instaclient/lib" "" "/opt/lib"; do
-	for oracle_version in 11 10 9 ""; do
+	for oracle_version in 12.1 12 11 10 9 ""; do
 	    if test "$path" != ""; then
 		AC_MSG_CHECKING([for OCIInitialize in nnz${oracle_version} in $path])
 	    else
@@ -96,6 +98,7 @@ if test x$with_[]modname != xno; then
 	    fi
 
 	    LIBS="$old_LIBS -L$path -lclntsh -lnnz${oracle_version}"
+
 	    AC_TRY_LINK([#include <oci.h>
 
 		static OCIEnv           *p_env;
@@ -136,7 +139,7 @@ if test x$with_[]modname != xno; then
 
     if test "x$mod_ldflags" = "x"; then
 	AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME.])
-	fail=["$fail libclntsh libnnz[9-11]"]
+	fail=["$fail libclntsh libnnz[9-12]"]
     fi
 
     targetname=modname
