@@ -369,6 +369,8 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	rad_assert(fields);
 	field_cnt = talloc_array_length(fields);
 
+	if (RDEBUG_ENABLED3) for (j = 0; j < field_cnt; j++) RDEBUG3("Got field: %s", fields[j]);
+
 	/*
 	 *	Iterate over the maps, it's O(N2)ish but probably
 	 *	faster than building a radix tree each time the
