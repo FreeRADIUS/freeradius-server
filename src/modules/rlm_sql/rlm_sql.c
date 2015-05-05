@@ -307,7 +307,7 @@ static int _sql_map_proc_get_value(VALUE_PAIR **out, REQUEST *request, vp_map_t 
  * @param maps Head of the map list.
  * @return
  *	- #RLM_MODULE_OK no fields matching a map rhs value were found.
- *	- #RLM_MODULE_NOTFOUND no rows were returned.
+ *	- #RLM_MODULE_NOOP no rows were returned.
  *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if a fault occurred.
  */
@@ -827,7 +827,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	}
 	if (rows == 0) {
 		RDEBUG2("User not found in any groups");
-		rcode = RLM_MODULE_NOTFOUND;
+		rcode = RLM_MODULE_NOOP;
 		*do_fall_through = FALL_THROUGH_DEFAULT;
 
 		goto finish;

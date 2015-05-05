@@ -363,7 +363,7 @@ free_urldesc:
  * @param[in] url LDAP url specifying base DN and filter.
  * @param[in] maps Head of the map list.
  * @return
- *	- #RLM_MODULE_NOTFOUND no rows were returned.
+ *	- #RLM_MODULE_NOOP no rows were returned.
  *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
  *	- #RLM_MODULE_FAIL if an error occurred.
  */
@@ -412,7 +412,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		break;
 
 	case LDAP_PROC_NO_RESULT:
-		rcode = RLM_MODULE_NOTFOUND;
+		rcode = RLM_MODULE_NOOP;
 		goto free_socket;
 
 	default:
