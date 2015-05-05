@@ -41,7 +41,7 @@ struct map_proc {
 
 	map_proc_func_t		evaluate;		//!< Module's map processor function.
 	map_proc_instantiate_t	instantiate;		//!< Callback to create new instance struct.
-	xlat_escape_t	escape;			//!< Escape function to apply to expansions in the map
+	xlat_escape_t		escape;			//!< Escape function to apply to expansions in the map
 							//!< query string.
 	size_t			inst_size;		//!< Size of map_proc instance data to allocate.
 };
