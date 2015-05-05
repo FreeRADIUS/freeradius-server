@@ -491,6 +491,35 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 	return 0;
 }
 
+/** Processes fmt as a map string and applies it to the current request
+ *
+ * e.g. "%{map:&User-Name := 'foo'}"
+ *
+ * Allows sets of modifications to be cached and then applied.
+ * Useful for processing generic attributes from LDAP.
+ */
+static ssize_t xlat_map(UNUSED void *instance, REQUEST *request,
+			char const *fmt, char *out, size_t outlen)
+{
+	vp_map_t *map = NULL;
+	int ret;
+
+	if (map_afrom_attr_str(request, &map, fmt,
+			       REQUEST_CURRENT, PAIR_LIST_REQUEST,
+			       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		REDEBUG("Failed parsing \"%s\" as valuepair (%s)", fr_strerror(), fmt);
+		return -1;
+	}
+
+	RINDENT();
+	ret = map_to_request(request, map, map_to_vp, NULL);
+	REXDENT();
+	talloc_free(map);
+	if (ret < 0) return strlcpy(out, "0", outlen);
+
+	return strlcpy(out, "1", outlen);
+}
+
 /** Prints the current module processing the request
  *
  */
@@ -752,6 +781,7 @@ int xlat_register(char const *name, xlat_func_t func, xlat_escape_t escape, void
 		XLAT_REGISTER(attr_num);
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(xlat);
+		XLAT_REGISTER(map);
 		XLAT_REGISTER(module);
 		XLAT_REGISTER(debug_attr);
 #if defined(HAVE_REGEX) && defined(HAVE_PCRE)
