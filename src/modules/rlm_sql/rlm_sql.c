@@ -327,7 +327,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	int			rows;
 	int			field_cnt;
-	char const		**fields, *map_rhs;
+	char const		**fields = NULL, *map_rhs;
 	char			map_rhs_buff[128];
 
 #define MAX_SQL_FIELD_INDEX (64)
@@ -434,6 +434,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 
 finish:
+	talloc_free(fields);
 	fr_connection_release(inst->pool, handle);
 
 	return rcode;
