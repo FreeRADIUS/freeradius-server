@@ -2464,7 +2464,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		}
 
 		/*
-		 *	"map" sections have three arguments <sigh>
+		 *	"map" sections have three arguments!
 		 */
 		if (strcmp(buf1, "map") == 0) {
 			if (invalid_location(this, buf1, filename, *lineno)) return -1;
@@ -2477,7 +2477,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			}
 
 			t3 = gettoken(&ptr, buf3, sizeof(buf3), false);
-			if ((t3 != T_BARE_WORD) && (t3 != T_DOUBLE_QUOTED_STRING)) {
+			if (!fr_str_tok[t3]) {
 				ERROR("%s[%d]: Expected map string after '%s'",
 				      filename, *lineno, buf2);
 				return -1;
