@@ -424,10 +424,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		}
 	}
 
-	if (ret == RLM_SQL_ERROR) {
-		rcode = RLM_MODULE_FAIL;
-		goto error;
-	}
+	if (ret == RLM_SQL_ERROR) goto error;
 
 	if (!rows) {
 		RDEBUG("SQL query returned no results");
