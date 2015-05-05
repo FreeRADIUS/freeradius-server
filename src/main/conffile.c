@@ -2534,7 +2534,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		case T_OP_LE:
 		case T_OP_GE:
 		case T_OP_CMP_FALSE:
-			if (!this || (strcmp(this->name1, "update") != 0)) {
+			if (!this || ((strcmp(this->name1, "update") != 0) && (strcmp(this->name1, "map") != 0))) {
 				ERROR("%s[%d]: Invalid operator in assignment",
 				       filename, *lineno);
 				return -1;
