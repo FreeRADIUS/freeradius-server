@@ -40,7 +40,7 @@ USES_APPLE_DEPRECATED_API
 typedef struct rlm_sql_iodbc_conn {
 	HENV    env_handle;
 	HDBC    dbc_handle;
-	HSTMT   stmt_handle;
+	HSTMT   stmt;
 	int	id;
 
 	rlm_sql_row_t row;
@@ -58,8 +58,8 @@ static int _sql_socket_destructor(rlm_sql_iodbc_conn_t *conn)
 {
 	DEBUG2("rlm_sql_iodbc: Socket destructor called, closing socket");
 
-	if (conn->stmt_handle) {
-		SQLFreeStmt(conn->stmt_handle, SQL_DROP);
+	if (conn->stmt) {
+		SQLFreeStmt(conn->stmt, SQL_DROP);
 	}
 
 	if (conn->dbc_handle) {
@@ -128,7 +128,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 	SQLRETURN rcode;
 
-	rcode = SQLAllocStmt(conn->dbc_handle, &conn->stmt_handle);
+	rcode = SQLAllocStmt(conn->dbc_handle, &conn->stmt);
 	if (!SQL_SUCCEEDED(rcode)) return -1;
 
 	if (!conn->dbc_handle) {
@@ -140,7 +140,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		SQLCHAR *statement;
 
 		memcpy(&statement, &query, sizeof(statement));
-		rcode = SQLExecDirect(conn->stmt_handle, statement, SQL_NTS);
+		rcode = SQLExecDirect(conn->stmt, statement, SQL_NTS);
 	}
 
 	if (!SQL_SUCCEEDED(rcode)) return -1;
@@ -167,7 +167,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	row[numfields] = NULL;
 
 	for(i=1; i<=numfields; i++) {
-		SQLColAttributes(conn->stmt_handle, ((SQLUSMALLINT) i), SQL_COLUMN_LENGTH, NULL, 0, NULL, &len);
+		SQLColAttributes(conn->stmt, ((SQLUSMALLINT) i), SQL_COLUMN_LENGTH, NULL, 0, NULL, &len);
 		len++;
 
 		/*
@@ -182,7 +182,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		 *
 		 * http://msdn.microsoft.com/library/psdk/dasdk/odap4o4z.htm
 		 */
-		SQLBindCol(conn->stmt_handle, i, SQL_C_CHAR, (SQLCHAR *)row[i-1], len, 0);
+		SQLBindCol(conn->stmt, i, SQL_C_CHAR, (SQLCHAR *)row[i-1], len, 0);
 	}
 
 	conn->row = row;
@@ -201,20 +201,47 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	SQLSMALLINT count=0;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
-	SQLNumResultCols(conn->stmt_handle, &count);
+	SQLNumResultCols(conn->stmt, &count);
 
 	return (int)count;
 }
 
-static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	/*
-	 * I presume this function is used to determine the number of
-	 * rows in a result set *before* fetching them.  I don't think
-	 * this is possible in ODBC 2.x, but I'd be happy to be proven
-	 * wrong.  If you know how to do this, email me at jeff@apex.net
-	 */
-	return 0;
+	rlm_sql_iodbc_conn_t *conn = handle->conn;
+
+	SQLSMALLINT	fields, len, i;
+
+	char const	**names;
+	char		field[128];
+
+	SQLNumResultCols(conn->stmt, &fields);
+	if (fields == 0) return RLM_SQL_ERROR;
+
+	MEM(names = talloc_array(handle, char const *, fields));
+
+	for (i = 0; i < fields; i++) {
+		char *p;
+
+		switch (SQLColAttribute(conn->stmt, i, SQL_DESC_BASE_COLUMN_NAME,
+					field, sizeof(field), &len, NULL)) {
+		case SQL_INVALID_HANDLE:
+		case SQL_ERROR:
+			ERROR("Failed retrieving field name at index %i", i);
+			talloc_free(names);
+			return RLM_SQL_ERROR;
+
+		default:
+			break;
+		}
+
+		MEM(p = talloc_array(names, char, (size_t)len + 1));
+		strlcpy(p, field, (size_t)len + 1);
+		names[i] = p;
+	}
+	*out = names;
+
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -224,7 +251,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 
 	handle->row = NULL;
 
-	if((rc = SQLFetch(conn->stmt_handle)) == SQL_NO_DATA_FOUND) {
+	if((rc = SQLFetch(conn->stmt)) == SQL_NO_DATA_FOUND) {
 		return 0;
 	}
 	/* XXX Check rc for database down, if so, return RLM_SQL_RECONNECT */
@@ -242,7 +269,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	free(conn->row);
 	conn->row = NULL;
 
-	SQLFreeStmt(conn->stmt_handle, SQL_DROP);
+	SQLFreeStmt(conn->stmt, SQL_DROP);
 
 	return 0;
 }
@@ -270,7 +297,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 	rad_assert(outlen > 0);
 
 	errbuff[0] = '\0';
-	SQLError(conn->env_handle, conn->dbc_handle, conn->stmt_handle,
+	SQLError(conn->env_handle, conn->dbc_handle, conn->stmt,
 		 state, &errornum, errbuff, IODBC_MAX_ERROR_LEN, &length);
 	if (errbuff[0] == '\0') return 0;
 
@@ -295,7 +322,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	long count;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
-	SQLRowCount(conn->stmt_handle, &count);
+	SQLRowCount(conn->stmt, &count);
 	return (int)count;
 }
 
@@ -308,8 +335,8 @@ rlm_sql_module_t rlm_sql_iodbc = {
 	.sql_select_query		= sql_select_query,
 	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
-	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
+	.sql_fields			= sql_fields,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
