@@ -57,14 +57,14 @@ if test x$with_[]modname != xno; then
 		esac])
 
 	dnl Check for SQLConnect in -lodbc
-	smart_try_dir="$unixodbc_lib_dir"
+	smart_try_dir="$unixodbc_lib_dir /usr/local/unixodbc/lib"
 	FR_SMART_CHECK_LIB(odbc, SQLConnect)
 	if test "x$ac_cv_lib_odbc_SQLConnect" != xyes; then
 		fail="$fail libodbc"
 	fi
 
 	dnl Check for sql.h
-	smart_try_dir="$unixodbc_include_dir"
+	smart_try_dir="$unixodbc_include_dir /usr/local/unixodbc/include"
 	FR_SMART_CHECK_INCLUDE(sql.h)
 	if test "x$ac_cv_header_sql_h" != xyes; then
 		fail="$fail sql.h"
