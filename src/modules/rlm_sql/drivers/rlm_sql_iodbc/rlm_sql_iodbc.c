@@ -37,6 +37,10 @@ USES_APPLE_DEPRECATED_API
 
 #define IODBC_MAX_ERROR_LEN 256
 
+#ifndef NUMTCHAR
+#	define NUMTCHAR(X)	(sizeof (X) / sizeof (SQLTCHAR))
+#endif
+
 typedef struct rlm_sql_iodbc_conn {
 	HENV    env_handle;
 	HDBC    dbc_handle;
@@ -48,6 +52,8 @@ typedef struct rlm_sql_iodbc_conn {
 	struct sql_socket *next;
 
 	void	*conn;
+
+	char **col_names;
 } rlm_sql_iodbc_conn_t;
 
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
@@ -119,6 +125,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 		return -1;
 	}
+
+	conn->col_names = NULL;
 
 	return 0;
 }
@@ -206,6 +214,57 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	return (int)count;
 }
 
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
+	SQLRETURN rc;
+	rlm_sql_iodbc_conn_t *conn = handle->conn;
+	int		fields, i;
+	char **names;
+
+	fields = sql_num_fields(handle, config);
+	if (fields <= 0)
+		return RLM_SQL_ERROR;
+
+	names = (char **) rad_malloc(sizeof(char *) * (fields + 1));
+	memset(names, 0, (sizeof(char *) * (fields)));
+
+	for (i = 0; i < fields; i++) {
+		int colNum = i + 1;
+		SQLTCHAR colName[50]; /* 50? it's a magic number */
+		SQLSMALLINT colTypeNullable;
+		SQLULEN colPrecisionNullable;
+		SQLSMALLINT colScaleNullable;
+		SQLSMALLINT colNullable;
+
+		/* stolen from $iodbc_source/sample/iodbctest.c */
+		rc = SQLDescribeCol(conn->stmt_handle,
+				colNum,
+				(SQLTCHAR *) colName,
+				NUMTCHAR (colName),
+				NULL,
+				&colTypeNullable,
+				&colPrecisionNullable,
+				&colScaleNullable,
+				&colNullable
+		);
+		if (rc != SQL_SUCCESS) {
+			ERROR("rlm_sql_iodbc: Problems with SQLDescribeCol() in sql_fields()");
+			free(names);
+			return RLM_SQL_ERROR;
+		}
+
+		/**
+		 * The content of array names[] will be released in sql_free_result();
+		 */
+		names[i] = strndup((const char *)colName, sizeof(colName));
+	}
+
+	conn->col_names = names;
+	*out = conn->col_names;
+
+	return RLM_SQL_OK;
+}
+
 static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	/*
@@ -236,7 +295,15 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	int i = 0;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
-	for (i = 0; i < sql_num_fields(handle, config); i++) free(conn->row[i]);
+	for (i = 0; i < sql_num_fields(handle, config); i++) {
+		free(conn->row[i]);
+
+		if (conn->col_names[i]) {
+			free(conn->col_names[i]);
+			conn->col_names[i] = NULL;
+		}
+	}
+
 	free(conn->row);
 	conn->row = NULL;
 
@@ -308,6 +375,7 @@ rlm_sql_module_t rlm_sql_iodbc = {
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
+	.sql_fields 			= sql_fields,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
