@@ -2882,8 +2882,11 @@ $as_echo "$as_me: WARNING: oracle headers not found. Use --with-oracle-include-d
 	lib_path="${ORACLE_HOME}/lib "
     fi
 
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Oracle version >= 12 needs -laio" >&5
+$as_echo "$as_me: WARNING: Oracle version >= 12 needs -laio" >&2;}
+
     for path in $lib_path "/usr/local/instaclient/lib" "" "/opt/lib"; do
-	for oracle_version in 11 10 9 ""; do
+	for oracle_version in 12.1 12 11 10 9 ""; do
 	    if test "$path" != ""; then
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCIInitialize in nnz${oracle_version} in $path" >&5
 $as_echo_n "checking for OCIInitialize in nnz${oracle_version} in $path... " >&6; }
@@ -2893,6 +2896,7 @@ $as_echo_n "checking for OCIInitialize in nnz${oracle_version}... " >&6; }
 	    fi
 
 	    LIBS="$old_LIBS -L$path -lclntsh -lnnz${oracle_version}"
+
 	    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <oci.h>
@@ -2948,7 +2952,7 @@ $as_echo "no" >&6; }
     if test "x$mod_ldflags" = "x"; then
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME." >&5
 $as_echo "$as_me: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME." >&2;}
-	fail="$fail libclntsh libnnz[9-11]"
+	fail="$fail libclntsh libnnz[9-12]"
     fi
 
     targetname=rlm_sql_oracle
