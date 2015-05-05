@@ -1806,6 +1806,9 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	ssize_t slen;
 	char const *tmpl_str;
 	FR_TOKEN type;
+	char quote;
+	size_t tmpl_len, quoted_len;
+	char *quoted_str;
 
 	vp_map_t *head;
 	vp_tmpl_t *vpt;
@@ -1831,12 +1834,13 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 		return NULL;
 	}
 
+	tmpl_len = strlen(tmpl_str);
 	type = cf_section_argv_type(cs, 0);
 
 	/*
 	 *	Try to parse the template.
 	 */
-	slen = tmpl_afrom_str(cs, &vpt, tmpl_str, strlen(tmpl_str), type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	slen = tmpl_afrom_str(cs, &vpt, tmpl_str, tmpl_len, type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
 	if (slen < 0) {
 		cf_log_err_cs(cs, "Failed parsing map: %s", fr_strerror());
 		return NULL;
@@ -1865,9 +1869,33 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	csingle->parent = parent;
 	csingle->next = NULL;
 
-	csingle->name = talloc_asprintf(csingle, "map %s %s", name2, tmpl_str);
+	switch (type) {
+	case T_DOUBLE_QUOTED_STRING:
+		quote = '"';
+		break;
+
+	case T_SINGLE_QUOTED_STRING:
+		quote = '\'';
+		break;
+
+	case T_BACK_QUOTED_STRING:
+		quote = '`';
+		break;
+
+	default:
+		quote = '\0';
+		break;
+	}
+
+	quoted_len = fr_prints_len(tmpl_str, tmpl_len, quote);
+	quoted_str = talloc_array(csingle, char, quoted_len);
+	fr_prints(quoted_str, quoted_len, tmpl_str, tmpl_len, quote);
+
+	csingle->name = talloc_asprintf(csingle, "map %s %s", name2, quoted_str);
 	csingle->type = MOD_MAP;
 	csingle->method = component;
+
+	talloc_free(quoted_str);
 
 	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
 	       sizeof(csingle->actions));
