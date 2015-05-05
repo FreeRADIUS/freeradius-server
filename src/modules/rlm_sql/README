@@ -13,6 +13,7 @@ Returning 'SQL_DOWN' allows sql.c to reconnect and try again, in most cases
 sql_select_query: returns -1 on failure, SQL_DOWN on 'socket not connected'
 sql_query: returns -1 on failure, SQL_DOWN on 'socket not connected'
 sql_store_result: returns -1 on failure, SQL_DOWN on 'socket not connected'
+sql_fields: return -1 on failure
 sql_num_fields: cannot return an error, complains if zero fields
 sql_finish_select_query: returns 0 always
 sql_finish_query: does nothing, returns 0
