@@ -3589,5 +3589,5 @@ FR_TOKEN cf_section_argv_type(CONF_SECTION const *cs, int argc)
 {
 	if (!cs || !cs->argv_type || (argc < 0) || (argc > cs->argc)) return T_INVALID;
 
-	return cs->name2_type;
+	return cs->argv_type[argc];
 }
