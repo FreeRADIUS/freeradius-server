@@ -1564,7 +1564,7 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 	/*
 	 *	Message-Authenticator is hard-coded.
 	 */
-	if (vp->da->attr == PW_MESSAGE_AUTHENTICATOR) {
+	if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
 		if (room < 18) return -1;
 
 		ptr[0] = PW_MESSAGE_AUTHENTICATOR;
@@ -1795,7 +1795,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	Set the Message-Authenticator to the correct
 		 *	length and initial value.
 		 */
-		if (reply->da->attr == PW_MESSAGE_AUTHENTICATOR) {
+		if (!reply->da->vendor && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
 			/*
 			 *	Cache the offset to the
 			 *	Message-Authenticator
