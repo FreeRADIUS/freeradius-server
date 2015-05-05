@@ -161,6 +161,8 @@ int map_proc_register(void *mod_inst, char const *name,
 		talloc_set_destructor(proc, _map_proc_unregister);
 	}
 
+	DEBUG3("map_proc_register: %s", proc->name);
+
 	proc->mod_inst = mod_inst;
 	proc->evaluate = evaluate;
 	proc->escape = escape;

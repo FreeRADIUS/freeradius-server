@@ -793,6 +793,8 @@ int xlat_register(char const *name, xlat_func_t func, xlat_escape_t escape, void
 	c->length = strlen(c->name);
 	c->instance = instance;
 
+	DEBUG3("xlat_register: %s", c->name);
+
 	node = rbtree_insert_node(xlat_root, c);
 	if (!node) {
 		talloc_free(c);
