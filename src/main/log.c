@@ -46,7 +46,8 @@ RCSID("$Id$")
 #include <pthread.h>
 #endif
 
-static bool rate_limit = true;
+log_lvl_t	rad_debug_lvl = 0;		//!< Global debugging level
+static bool	rate_limit = true;		//!< Whether repeated log entries should be rate limited
 
 /** Maps log categories to message prefixes
  */
