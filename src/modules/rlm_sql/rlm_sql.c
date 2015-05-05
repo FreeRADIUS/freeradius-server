@@ -323,9 +323,9 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	vp_map_t const		*map;
 
-	int			rows;
 	rlm_sql_row_t		row;
 
+	int			rows;
 	int			field_cnt;
 	char const		**fields, *map_rhs;
 	char			map_rhs_buff[128];
@@ -354,14 +354,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	ret = rlm_sql_select_query(inst, request, &handle, query);
 	if (ret != RLM_SQL_OK) {
 		RERROR("SQL query failed: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
-		goto finish;
-	}
-
-	rows = (inst->module->sql_num_rows)(handle, inst->config);
-	if (!rows) {
-		RDEBUG("SQL query returned no results");
-		(inst->module->sql_finish_select_query)(handle, inst->config);
-		rcode = RLM_MODULE_NOTFOUND;
+		rcode = RLM_MODULE_FAIL;
 		goto finish;
 	}
 
@@ -413,21 +406,30 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 	/*
 	 *	We've resolved all the maps to result indexes, now convert
-	 *	the values at those indexes into VALUE_PAIRs
+	 *	the values at those indexes into VALUE_PAIRs.
+	 *
+	 *	Note: Not all SQL client libraries provide a row count,
+	 *	so we have to do the count here.
 	 */
-	for (i = 0; i < rows; i++) {
-		ret = rlm_sql_fetch_row(&row, inst, request, &handle);
-		if (ret != RLM_SQL_OK) {
-			RERROR("Failed retrieving row: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
-			goto error;
-		}
-
+	for (ret = rlm_sql_fetch_row(&row, inst, request, &handle), rows = 0;
+	     ret == RLM_SQL_OK;
+	     ret = rlm_sql_fetch_row(&row, inst, request, &handle), rows++) {
 		for (map = maps, j = 0;
 		     map && (j < MAX_SQL_FIELD_INDEX);
 		     map = map->next, j++) {
 			if (field_index[j] < 0) continue;	/* We didn't find the map RHS in the field set */
 			if (map_to_request(request, map, _sql_map_proc_get_value, row[field_index[j]]) < 0) goto error;
 		}
+	}
+
+	if (ret == RLM_SQL_ERROR) {
+		rcode = RLM_MODULE_FAIL;
+		goto error;
+	}
+
+	if (!rows) {
+		RDEBUG("SQL query returned no results");
+		rcode = RLM_MODULE_NOOP;
 	}
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);

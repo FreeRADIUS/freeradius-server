@@ -487,20 +487,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 
-	if (conn->statement) {
-		return sqlite3_column_count(conn->statement);
-	}
-
-	return 0;
-}
-
-static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
-{
-	rlm_sql_sqlite_conn_t *conn = handle->conn;
-
-	if (conn->statement) {
-		return sqlite3_data_count(conn->statement);
-	}
+	if (conn->statement) return sqlite3_column_count(conn->statement);
 
 	return 0;
 }
@@ -689,7 +676,6 @@ rlm_sql_module_t rlm_sql_sqlite = {
 	.sql_select_query		= sql_select_query,
 	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
-	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_fields			= sql_fields,
