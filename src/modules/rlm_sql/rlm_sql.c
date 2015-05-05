@@ -281,7 +281,7 @@ static int _sql_map_proc_get_value(VALUE_PAIR **out, REQUEST *request, vp_map_t 
 	char const	*value = ctx;
 
 	vp = pairalloc(request, map->lhs->tmpl_da);
-	if (pairparsevalue(vp, value, talloc_array_length(value)) < 0) {
+	if (pairparsevalue(vp, value, talloc_array_length(value) - 1) < 0) {
 		char *escaped;
 
 		escaped = fr_aprints(vp, value, talloc_array_length(value), '"');
