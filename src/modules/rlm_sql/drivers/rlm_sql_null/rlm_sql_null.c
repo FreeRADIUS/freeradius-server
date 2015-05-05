@@ -54,6 +54,12 @@ static int sql_num_fields(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_confi
 	return 0;
 }
 
+static sql_rcode_t sql_fields(char const **out[], UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
+	*out = NULL;
+	return 0;
+}
+
 static sql_rcode_t sql_select_query(UNUSED rlm_sql_handle_t *handle,
 				    UNUSED rlm_sql_config_t *config, UNUSED char const *query)
 {
@@ -113,6 +119,7 @@ rlm_sql_module_t rlm_sql_null = {
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
 	.sql_fetch_row			= sql_fetch_row,
+	.sql_fields 			= sql_fields,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
