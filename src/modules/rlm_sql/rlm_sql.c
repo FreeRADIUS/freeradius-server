@@ -989,9 +989,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	inst->cs = conf;
 
 	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	/*
 	 *	Load the appropriate driver for our database.
@@ -1010,6 +1008,9 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		ERROR("Could not link symbol %s: %s", inst->config->sql_driver_name, dlerror());
 		return -1;
 	}
+
+	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked", inst->name,
+	     inst->config->sql_driver_name, inst->module->name);
 
 	if (inst->config->groupmemb_query) {
 		if (!cf_section_name2(conf)) {
@@ -1147,9 +1148,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;
 	}
-
-	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked", inst->name,
-	     inst->config->sql_driver_name, inst->module->name);
 
 	/*
 	 *	Initialise the connection pool for this instance
@@ -1838,7 +1836,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 extern module_t rlm_sql;
 module_t rlm_sql = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "SQL",
+	.name		= "sql",
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_sql_t),
 	.config		= module_config,
