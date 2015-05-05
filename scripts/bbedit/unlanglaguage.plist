@@ -29,6 +29,7 @@
 	<key>BBLMKeywordList</key>
 	<array>
 		<string>update</string>
+		<string>map</string>
 		<string>switch</string>
 		<string>case</string>
 		<string>if</string>
@@ -45,6 +46,8 @@
 		<string>userlock</string>
 		<string>invalid</string>
 		<string>handled</string>
+		<string>return</string>
+		<string>break</string>
 	</array>
 	<key>BBLMSuffixMap</key>
 	<array>
