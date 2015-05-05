@@ -454,7 +454,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	field_info = mysql_fetch_fields(conn->result);
 	if (!field_info) return RLM_SQL_ERROR;
 
-	MEM(names = talloc_zero_array(handle, char const *, fields + 1));
+	MEM(names = talloc_array(handle, char const *, fields));
 
 	for (i = 0; i < fields; i++) names[i] = field_info[i].name;
 	*out = names;

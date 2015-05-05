@@ -366,7 +366,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	fields = PQnfields(conn->result);
 	if (fields <= 0) return RLM_SQL_ERROR;
 
-	MEM(names = talloc_zero_array(handle, char const *, fields + 1));
+	MEM(names = talloc_array(handle, char const *, fields));
 
 	for (i = 0; i < fields; i++) names[i] = PQfname(conn->result, i);
 	*out = names;
