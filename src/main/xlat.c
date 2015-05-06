@@ -507,7 +507,7 @@ static ssize_t xlat_map(UNUSED void *instance, REQUEST *request,
 	if (map_afrom_attr_str(request, &map, fmt,
 			       REQUEST_CURRENT, PAIR_LIST_REQUEST,
 			       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
-		REDEBUG("Failed parsing \"%s\" as valuepair (%s)", fr_strerror(), fmt);
+		REDEBUG("Failed parsing \"%s\" as map: %s", fmt, fr_strerror());
 		return -1;
 	}
 
