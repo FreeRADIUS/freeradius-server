@@ -177,11 +177,12 @@ VALUE	Module-Return-Code		updated			8
 ATTRIBUTE	Packet-Original-Timestamp		1109	date internal
 ATTRIBUTE	SQL-Table-Name				1110	string internal
 ATTRIBUTE	Home-Server-Pool			1111	string internal
+ATTRIBUTE	Attribute-Map				1112	string internal
 
 ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr internal
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr internal
-# The rest of the FreeRADIUS-Client-* attributes are at 1150...
 
+# The rest of the FreeRADIUS-Client-* attributes are at 1150...
 ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer internal
 
 VALUE	FreeRADIUS-Client-Require-MA	no			0
