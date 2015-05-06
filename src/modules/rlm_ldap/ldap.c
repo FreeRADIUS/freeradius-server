@@ -447,7 +447,7 @@ char const *rlm_ldap_error_str(ldap_handle_t const *conn)
  *	(with talloc_free).
  * @return One of the LDAP_PROC_* codes.
  */
-static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
+static ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
 				    LDAPMessage **result, char const **error, char **extra)
 {
 	ldap_rcode_t status = LDAP_PROC_SUCCESS;
@@ -677,7 +677,7 @@ process_error:
  * @param[in] retry if the server is down.
  * @return one of the LDAP_PROC_* values.
  */
-ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
+ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
 			   char const *password, char const *sasl_mech, bool retry)
 {
 	ldap_rcode_t	status = LDAP_PROC_ERROR;
@@ -803,7 +803,7 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
  * @param[in] clientctrls Search controls for ldap_search.  May be NULL.
  * @return One of the LDAP_PROC_* values.
  */
-ldap_rcode_t rlm_ldap_search(LDAPMessage **result, ldap_instance_t const *inst, REQUEST *request,
+ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUEST *request,
 			     ldap_handle_t **pconn,
 			     char const *dn, int scope, char const *filter, char const * const *attrs,
 			     LDAPControl **serverctrls, LDAPControl **clientctrls)
@@ -962,7 +962,7 @@ finish:
  * @param[in] mods to make, see 'man ldap_modify' for more information.
  * @return One of the LDAP_PROC_* values.
  */
-ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			     char const *dn, LDAPMod *mods[])
 {
 	ldap_rcode_t	status = LDAP_PROC_ERROR;
@@ -1057,7 +1057,7 @@ finish:
  * @param[out] rcode The status of the operation, one of the RLM_MODULE_* codes.
  * @return The user's DN or NULL on error.
  */
-char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode)
 {
 	static char const *tmp_attrs[] = { NULL };
@@ -1230,7 +1230,7 @@ finish:
  * @param[in] entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
  * @return RLM_MODULE_USERLOCK if the user was denied access, else RLM_MODULE_OK.
  */
-rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request,
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
 				  ldap_handle_t const *conn, LDAPMessage *entry)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
@@ -1265,7 +1265,7 @@ rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request,
  * @param inst rlm_ldap configuration.
  * @param request Current request.
  */
-void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request)
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 {
        /*
 	*	More warning messages for people who can't be bothered to read the documentation.
@@ -1358,7 +1358,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	int ldap_errno, ldap_version;
 	struct timeval tv;
 
-	ldap_instance_t *inst = instance;
+	rlm_ldap_t *inst = instance;
 	ldap_handle_t *conn;
 
 	/*
@@ -1543,7 +1543,7 @@ error:
  * @param inst rlm_ldap configuration.
  * @param request Current request (may be NULL).
  */
-ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, UNUSED REQUEST *request)
+ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, UNUSED REQUEST *request)
 {
 	return fr_connection_get(inst->pool);
 }
@@ -1556,7 +1556,7 @@ ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, UNUSED REQUEST *request
  * @param inst rlm_ldap configuration.
  * @param conn to release.
  */
-void mod_conn_release(ldap_instance_t const *inst, ldap_handle_t *conn)
+void mod_conn_release(rlm_ldap_t const *inst, ldap_handle_t *conn)
 {
 	/*
 	 *	Could have already been free'd due to a previous error.

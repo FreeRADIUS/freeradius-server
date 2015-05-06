@@ -95,7 +95,7 @@ static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
  * @param[in] map to load client attribute/LDAP attribute mappings from.
  * @return -1 on error else 0.
  */
-int rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *map)
+int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *map)
 {
 	int 		ret = 0;
 	ldap_rcode_t	status;

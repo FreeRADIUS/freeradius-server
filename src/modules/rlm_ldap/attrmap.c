@@ -145,7 +145,7 @@ int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *ma
 
 int rlm_ldap_map_verify(vp_map_t *map, void *instance)
 {
-	ldap_instance_t *inst = instance;
+	rlm_ldap_t *inst = instance;
 
 	/*
 	 *	Destinations where we can put the VALUE_PAIRs we
@@ -297,7 +297,7 @@ int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t
  * @param[in] entry to retrieve attributes from.
  * @return number of maps successfully applied, or -1 on error.
  */
-int rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
+int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 		    rlm_ldap_map_exp_t const *expanded, LDAPMessage *entry)
 {
 	vp_map_t const 	*map;

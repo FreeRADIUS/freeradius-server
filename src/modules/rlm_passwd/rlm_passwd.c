@@ -370,7 +370,7 @@ int main(void){
 }
 
 #else  /* TEST */
-struct passwd_instance {
+typedef struct rlm_passwd_t {
 	struct hashtable	*ht;
 	struct mypasswd		*pwdfmt;
 	char const		*filename;
@@ -384,24 +384,24 @@ struct passwd_instance {
 	uint32_t		listable;
 	DICT_ATTR const		*keyattr;
 	bool			ignore_empty;
-};
+} rlm_passwd_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, struct passwd_instance, filename), NULL },
-	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, struct passwd_instance, format), NULL },
-	{ "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, struct passwd_instance, delimiter), ":" },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_passwd_t, filename), NULL },
+	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_passwd_t, format), NULL },
+	{ "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_passwd_t, delimiter), ":" },
 
-	{ "ignorenislike", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, struct passwd_instance, ignore_nislike), NULL },
-	{ "ignore_nislike", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, ignore_nislike), "yes" },
+	{ "ignorenislike", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_passwd_t, ignore_nislike), NULL },
+	{ "ignore_nislike", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_passwd_t, ignore_nislike), "yes" },
 
-	{ "ignoreempty", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, struct passwd_instance, ignore_empty), NULL },
-	{ "ignore_empty",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, ignore_empty), "yes" },
+	{ "ignoreempty", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_passwd_t, ignore_empty), NULL },
+	{ "ignore_empty",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_passwd_t, ignore_empty), "yes" },
 
-	{ "allowmultiplekeys", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, struct passwd_instance, allow_multiple), NULL },
-	{ "allow_multiple_keys", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, allow_multiple), "no" },
+	{ "allowmultiplekeys", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_passwd_t, allow_multiple), NULL },
+	{ "allow_multiple_keys", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_passwd_t, allow_multiple), "no" },
 
-	{ "hashsize", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, struct passwd_instance, hash_size), NULL },
-	{ "hash_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, struct passwd_instance, hash_size), "100" },
+	{ "hashsize", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_passwd_t, hash_size), NULL },
+	{ "hash_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_passwd_t, hash_size), "100" },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -414,7 +414,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	size_t len;
 	int i;
 	DICT_ATTR const * da;
-	struct passwd_instance *inst = instance;
+	rlm_passwd_t *inst = instance;
 
 	rad_assert(inst->filename && *inst->filename);
 	rad_assert(inst->format && *inst->format);
@@ -507,7 +507,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 }
 
 static int mod_detach (void *instance) {
-#define inst ((struct passwd_instance *)instance)
+#define inst ((rlm_passwd_t *)instance)
 	if(inst->ht) {
 		release_ht(inst->ht);
 		inst->ht = NULL;
@@ -517,7 +517,7 @@ static int mod_detach (void *instance) {
 #undef inst
 }
 
-static void addresult (TALLOC_CTX *ctx, struct passwd_instance *inst, REQUEST *request,
+static void addresult (TALLOC_CTX *ctx, rlm_passwd_t *inst, REQUEST *request,
 		       VALUE_PAIR **vps, struct mypasswd * pw, char when, char const *listname)
 {
 	uint32_t i;
@@ -538,7 +538,7 @@ static void addresult (TALLOC_CTX *ctx, struct passwd_instance *inst, REQUEST *r
 
 static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *request)
 {
-#define inst ((struct passwd_instance *)instance)
+#define inst ((rlm_passwd_t *)instance)
 	char buffer[1024];
 	VALUE_PAIR *key, *i;
 	struct mypasswd * pw, *last_found;
@@ -580,7 +580,7 @@ module_t rlm_passwd = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "passwd",
 	.type		= RLM_TYPE_HUP_SAFE,
-	.inst_size	= sizeof(struct passwd_instance),
+	.inst_size	= sizeof(rlm_passwd_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,

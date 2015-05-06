@@ -871,7 +871,7 @@ static int mod_detach(void *instance)
 extern module_t rlm_rest;
 module_t rlm_rest = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "rlm_rest",
+	.name		= "rest",
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_rest_t),
 	.config		= module_config,

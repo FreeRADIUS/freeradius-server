@@ -69,18 +69,18 @@ typedef struct detail_instance {
 	exfile_t    	*ef;		//!< Log file handler
 
 	fr_hash_table_t *ht;		//!< Holds suppressed attributes.
-} detail_instance_t;
+} rlm_detail_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "detailfile", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, detail_instance_t, filename), NULL },
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, detail_instance_t, filename), "%A/%{Client-IP-Address}/detail" },
-	{ "header", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, detail_instance_t, header), "%t" },
-	{ "detailperm", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, detail_instance_t, perm), NULL },
-	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, detail_instance_t, perm), "0600" },
-	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, detail_instance_t, group), NULL },
-	{ "locking", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, locking), "no" },
-	{ "escape_filenames", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, escape), "no" },
-	{ "log_packet_header", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, log_srcdst), "no" },
+	{ "detailfile", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, rlm_detail_t, filename), NULL },
+	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_detail_t, filename), "%A/%{Client-IP-Address}/detail" },
+	{ "header", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_detail_t, header), "%t" },
+	{ "detailperm", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_detail_t, perm), NULL },
+	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_detail_t, perm), "0600" },
+	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_detail_t, group), NULL },
+	{ "locking", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_detail_t, locking), "no" },
+	{ "escape_filenames", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_detail_t, escape), "no" },
+	{ "log_packet_header", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_detail_t, log_srcdst), "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -90,7 +90,7 @@ static const CONF_PARSER module_config[] = {
  */
 static int mod_detach(void *instance)
 {
-	detail_instance_t *inst = instance;
+	rlm_detail_t *inst = instance;
 	if (inst->ht) fr_hash_table_free(inst->ht);
 	return 0;
 }
@@ -115,7 +115,7 @@ static int detail_cmp(void const *a, void const *b)
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	detail_instance_t *inst = instance;
+	rlm_detail_t *inst = instance;
 	CONF_SECTION	*cs;
 
 	inst->name = cf_section_name2(conf);
@@ -219,7 +219,7 @@ static void detail_vp_print(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacke
  * @param[in] packet associated with the request (request, reply, proxy-request, proxy-reply...).
  * @param[in] compat Write out entry in compatibility mode.
  */
-static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RADIUS_PACKET *packet, bool compat)
+static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_PACKET *packet, bool compat)
 {
 	VALUE_PAIR *vp;
 	char timestamp[256];
@@ -353,7 +353,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	char		*endptr;
 #endif
 
-	detail_instance_t *inst = instance;
+	rlm_detail_t *inst = instance;
 
 	/*
 	 *	Generate the path for the detail file.  Use the same
@@ -436,7 +436,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 {
 #ifdef WITH_DETAIL
 	if (request->listener->type == RAD_LISTEN_DETAIL &&
-	    strcmp(((detail_instance_t *)instance)->filename,
+	    strcmp(((rlm_detail_t *)instance)->filename,
 		   ((listen_detail_t *)request->listener->data)->filename) == 0) {
 		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file");
 		return RLM_MODULE_NOOP;
@@ -530,7 +530,7 @@ module_t rlm_detail = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "detail",
 	.type		= RLM_TYPE_HUP_SAFE,
-	.inst_size	= sizeof(detail_instance_t),
+	.inst_size	= sizeof(rlm_detail_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,

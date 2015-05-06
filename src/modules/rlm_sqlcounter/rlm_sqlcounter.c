@@ -633,7 +633,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 extern module_t rlm_sqlcounter;
 module_t rlm_sqlcounter = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "rlm_sqlcounter",
+	.name		= "sqlcounter",
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_sqlcounter_t),
 	.config		= module_config,

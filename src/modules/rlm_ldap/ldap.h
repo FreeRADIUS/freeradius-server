@@ -270,7 +270,7 @@ typedef struct ldap_instance {
 #endif
 
 	LDAP		*handle;			//!< Hack for OpenLDAP libldap global initialisation.
-} ldap_instance_t;
+} rlm_ldap_t;
 
 /** Tracks the state of a libldap connection handle
  *
@@ -281,7 +281,7 @@ typedef struct ldap_handle {
 							//!< other than the admin user.
 	bool		referred;			//!< Whether the connection is now established a server
 							//!< other than the configured one.
-	ldap_instance_t	*inst;				//!< rlm_ldap configuration.
+	rlm_ldap_t	*inst;				//!< rlm_ldap configuration.
 } ldap_handle_t;
 
 /** Result of expanding the RHS of a set of maps
@@ -367,26 +367,26 @@ size_t rlm_ldap_normalise_dn(char *out, char const *in);
 
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
-ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
+ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
 			   char const *password, char const *sasl_mech, bool retry);
 
 char const *rlm_ldap_error_str(ldap_handle_t const *conn);
 
-ldap_rcode_t rlm_ldap_search(LDAPMessage **result, ldap_instance_t const *inst, REQUEST *request,
+ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUEST *request,
 			     ldap_handle_t **pconn,
 			     char const *dn, int scope, char const *filter, char const * const *attrs,
 			     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			     char const *dn, LDAPMod *mods[]);
 
-char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode);
 
-rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t const *conn,
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t const *conn,
 				  LDAPMessage *entry);
 
-void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request);
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request);
 
 /*
  *	ldap.c - Callbacks for the connection pool API.
@@ -395,25 +395,25 @@ char *rlm_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
 
-ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, REQUEST *request);
+ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
 
-void mod_conn_release(ldap_instance_t const *inst, ldap_handle_t *conn);
+void mod_conn_release(rlm_ldap_t const *inst, ldap_handle_t *conn);
 
 /*
  *	groups.c - Group membership functions.
  */
-rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 				       LDAPMessage *entry, char const *attr);
 
-rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn);
+rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn);
 
-rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 					    VALUE_PAIR *check);
 
-rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 					   char const *dn, VALUE_PAIR *check);
 
-rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request, VALUE_PAIR *check);
+rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALUE_PAIR *check);
 
 /*
  *	attrmap.c - Attribute mapping code.
@@ -424,13 +424,13 @@ int rlm_ldap_map_verify(vp_map_t *map, void *instance);
 
 int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps);
 
-int rlm_ldap_map_do(ldap_instance_t const *inst, REQUEST *request, LDAP *handle,
+int rlm_ldap_map_do(rlm_ldap_t const *inst, REQUEST *request, LDAP *handle,
 		    rlm_ldap_map_exp_t const *expanded, LDAPMessage *entry);
 
 /*
  *	clients.c - Dynamic clients (bulk load).
  */
-int  rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *cs);
+int  rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *cs);
 
 /*
  *	edir.c - Magic extensions for Novell
