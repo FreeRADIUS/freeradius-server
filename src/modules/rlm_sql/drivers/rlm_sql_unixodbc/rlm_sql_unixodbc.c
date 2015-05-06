@@ -258,15 +258,15 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_co
 	sql_free_result(handle, config);
 
 	/*
-	 *	SQL_CLOSE - The cursor (if any) associated with the stmt
-	 *	handle (stmtHandle) is closed and all pending results are
+	 *	SQL_CLOSE - The cursor (if any) associated with the statement
+	 *	handle (StatementHandle) is closed and all pending results are
 	 *	discarded. The application can reopen the cursor by calling
 	 *	SQLExecute() with the same or different values in the
-	 *	application variables (if any) that are bound to stmtHandle.
-	 *	If no cursor has been associated with the stmt handle,
+	 *	application variables (if any) that are bound to StatementHandle.
+	 *	If no cursor has been associated with the statement handle,
 	 *	this option has no effect (no warning or error is generated).
 	 *
-	 *	So, this call does NOT free the stmt at all, it merely
+	 *	So, this call does NOT free the statement at all, it merely
 	 *	resets it for the next call. This is terrible terrible naming.
 	 */
 	SQLFreeStmt(conn->stmt, SQL_CLOSE);
