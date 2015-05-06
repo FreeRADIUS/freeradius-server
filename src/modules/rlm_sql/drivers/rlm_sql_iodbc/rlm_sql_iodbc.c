@@ -89,7 +89,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		ERROR("rlm_sql_iodbc: SQLAllocEnv failed");
 		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("rlm_sql_iodbc: %s", entry.msg);
 
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
 	rcode = SQLAllocConnect(conn->env_handle,
@@ -98,7 +98,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		ERROR("rlm_sql_iodbc: SQLAllocConnect failed");
 		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("rlm_sql_iodbc: %s", entry.msg);
 
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
 	/*
@@ -117,7 +117,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		ERROR("rlm_sql_iodbc: SQLConnectfailed");
 		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("rlm_sql_iodbc: %s", entry.msg);
 
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
 	return 0;
@@ -129,11 +129,11 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	SQLRETURN rcode;
 
 	rcode = SQLAllocStmt(conn->dbc_handle, &conn->stmt);
-	if (!SQL_SUCCEEDED(rcode)) return -1;
+	if (!SQL_SUCCEEDED(rcode)) return RLM_SQL_ERROR;
 
 	if (!conn->dbc_handle) {
 		ERROR("rlm_sql_iodbc: Socket not connected");
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
 	{
@@ -143,7 +143,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		rcode = SQLExecDirect(conn->stmt, statement, SQL_NTS);
 	}
 
-	if (!SQL_SUCCEEDED(rcode)) return -1;
+	if (!SQL_SUCCEEDED(rcode)) return RLM_SQL_ERROR;
 
 	return 0;
 }
@@ -156,9 +156,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	long len = 0;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
-	if(sql_query(handle, config, query) < 0) {
-		return -1;
-	}
+	if (sql_query(handle, config, query) < 0) return RLM_SQL_ERROR;
 
 	numfields = sql_num_fields(handle, config);
 
