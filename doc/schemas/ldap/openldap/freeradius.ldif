@@ -60,8 +60,11 @@ olcAttributeTypes: {55}( 1.3.6.1.4.1.11344.4.3.1.56 NAME 'radiusStripUserName' D
 olcAttributeTypes: {56}( 1.3.6.1.4.1.11344.4.3.1.57 NAME 'dialupAccess' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {57}( 1.3.6.1.4.1.11344.4.3.1.58 NAME 'radiusExpiration' DESC 'controlItem: Expiration' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
 olcAttributeTypes: {58}( 1.3.6.1.4.1.11344.4.3.1.59 NAME 'radiusAttribute' DESC 'controlItem: $GENERIC$' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
-olcAttributeTypes: {60}( 1.3.6.1.4.1.11344.4.3.1.61 NAME 'radiusNASIpAddress' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
-olcAttributeTypes: {61}( 1.3.6.1.4.1.11344.4.3.1.62 NAME 'radiusReplyMessage' DESC 'replyItem: Reply-Message' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+olcAttributeTypes: {59}( 1.3.6.1.4.1.11344.4.3.1.61 NAME 'radiusNASIpAddress' DESC '' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 SINGLE-VALUE )
+olcAttributeTypes: {60}( 1.3.6.1.4.1.11344.4.3.1.62 NAME 'radiusReplyMessage' DESC 'replyItem: Reply-Message' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+olcAttributeTypes: {61}( 1.3.6.1.4.1.11344.4.3.1.63 NAME 'radiusControlAttribute' DESC 'controlItem: $GENERIC$' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+olcAttributeTypes: {62}( 1.3.6.1.4.1.11344.4.3.1.64 NAME 'radiusReplyAttribute' DESC 'replyItem: $GENERIC$' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
+olcAttributeTypes: {63}( 1.3.6.1.4.1.11344.4.3.1.65 NAME 'radiusRequestAttribute' DESC 'requestItem: $GENERIC$' EQUALITY caseIgnoreIA5Match SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 )
 olcObjectClasses: {0}( 1.3.6.1.4.1.11344.4.3.2.1 NAME 'radiusprofile' DESC '' SUP top AUXILIARY MAY ( radiusArapFeatures $ radiusArapSecurity $ radiusArapZoneAccess $ radiusAuthType $
  radiusCallbackId $ radiusCallbackNumber $radiusCalledStationId $ radiusCallingStationId $ radiusClass $ radiusClientIPAddress $ radiusFilterId $ radiusFramedAppleTalkLink $ radiusFramedAppleTalkNetwork $
  radiusFramedAppleTalkZone $ radiusFramedCompression $ radiusFramedIPAddress $ radiusFramedIPNetmask $ radiusFramedIPXNetwork $ radiusFramedMTU $radiusFramedProtocol $ radiusAttribute $
@@ -69,5 +72,5 @@ olcObjectClasses: {0}( 1.3.6.1.4.1.11344.4.3.2.1 NAME 'radiusprofile' DESC '' SU
  radiusLoginLATService $ radiusLoginService $ radiusLoginTCPPort $ radiusLoginTime $ radiusPasswordRetry $ radiusPortLimit $ radiusPrompt $ radiusProxyToRealm $ radiusRealm $ radiusReplicateToRealm $
  radiusServiceType $ radiusSessionTimeout $ radiusStripUserName $ radiusTerminationAction $ radiusTunnelClientEndpoint $ radiusProfileDN $ radiusSimultaneousUse $ radiusTunnelAssignmentId $
  radiusTunnelMediumType $ radiusTunnelPassword $ radiusTunnelPreference $ radiusTunnelPrivateGroupId $ radiusTunnelServerEndpoint $ radiusTunnelType $ radiusUserCategory $ radiusVSA $ radiusExpiration $
- dialupAccess $ radiusNASIpAddress $ radiusReplyMessage ) )
+ dialupAccess $ radiusNASIpAddress $ radiusReplyMessage $ radiusControlAttribute $ radiusReplyAttribute $ radiusRequestAttribute ) )
 olcObjectClasses: {1}( 1.3.6.1.4.1.11344.4.3.2.2 NAME 'radiusObjectProfile' DESC 'A Container Objectclass to be used for creating radius profile object' SUP top STRUCTURAL MUST cn MAY ( uid $ userPassword $ description ) )
