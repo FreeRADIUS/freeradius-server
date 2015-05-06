@@ -1,0 +1,12 @@
+root_dir: .
+# pki_dir and cachedir are prefixed with root_dir
+pki_dir: /tmp/
+cachedir: /cache/
+file_roots:
+  base:
+    # salt directory in current working directory
+    - salt
+pillar_roots:
+  base:
+    # pillar directory in current working directory
+    - pillar

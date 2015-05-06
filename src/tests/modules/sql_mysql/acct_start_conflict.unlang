@@ -1,5 +1,7 @@
-#
+# 
 #  PRE: acct_2_stop
+#
+
 #
 #  Check that conflicting unique IDs triggers failover to alternative query
 #
@@ -8,7 +10,7 @@
 #  Clear out old data
 #
 update {
-	Tmp-String-0 := "%{sql:DELETE FROM radacct WHERE AcctSessionId = '00000001'}"
+	Tmp-String-0 := "%{sql_mysql:DELETE FROM radacct WHERE AcctSessionId = '00000001'}"
 }
 if (!&Tmp-String-0) {
 	test_fail
@@ -20,7 +22,7 @@ else {
 #
 #  Insert the Accounting-Request start
 #
-sql.accounting
+sql_mysql.accounting
 if (ok) {
 	test_pass
 }
@@ -32,7 +34,7 @@ else {
 #  Check the database has at least one row
 #
 update {
-	Tmp-Integer-0 := "%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000001'}"
+	Tmp-Integer-0 := "%{sql_mysql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000001'}"
 }
 if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 1)) {
 	test_fail
@@ -45,7 +47,7 @@ else {
 #  Check acctsessiontime matches the value in the request
 #
 update {
-	Tmp-Integer-0 := "%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000001'}"
+	Tmp-Integer-0 := "%{sql_mysql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000001'}"
 }
 if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 0)) {
 	test_fail
@@ -60,7 +62,7 @@ else {
 update request {
 	Connect-Info = 'updated'
 }
-sql.accounting
+sql_mysql.accounting
 if (ok) {
 	test_pass
 }
@@ -68,7 +70,7 @@ else {
 	test_pass
 }
 update {
-	Tmp-String-0 := "%{sql:SELECT connectinfo_start FROM radacct WHERE AcctSessionId = '00000001'}"
+	Tmp-String-0 := "%{sql_mysql:SELECT connectinfo_start FROM radacct WHERE AcctSessionId = '00000001'}"
 }
 if (!&Tmp-Integer-0 || (&Tmp-String-0 != 'updated')) {
 	test_fail
