@@ -889,7 +889,7 @@ static int mod_detach(void *instance)
 extern module_t rlm_couchbase;
 module_t rlm_couchbase = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "rlm_couchbase",
+	.name		= "couchbase",
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_couchbase_t),
 	.config		= module_config,

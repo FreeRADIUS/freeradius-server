@@ -55,17 +55,16 @@ USES_APPLE_DEPRECATED_API
 #include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/sysutmp.h>
 
-static char trans[64] =
-   "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static char trans[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 #define ENC(c) trans[c]
 
-struct unix_instance {
+typedef struct rlm_unix {
 	char const *name;	//!< Instance name.
 	char const *radwtmp;
-};
+} rlm_unix_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "radwtmp", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, struct unix_instance, radwtmp), "NULL" },
+	{ "radwtmp", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_unix_t, radwtmp), "NULL" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -127,7 +126,7 @@ static int groupcmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *
  */
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	struct unix_instance *inst = instance;
+	rlm_unix_t *inst = instance;
 
 	DICT_ATTR const *group_da, *user_name_da;
 
@@ -373,7 +372,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 #endif
 	uint32_t	nas_port = 0;
 	bool		port_seen = true;
-	struct unix_instance *inst = (struct unix_instance *) instance;
+	rlm_unix_t *inst = (rlm_unix_t *) instance;
 
 	/*
 	 *	No radwtmp.  Don't do anything.
@@ -536,9 +535,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 extern module_t rlm_unix;
 module_t rlm_unix = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "system",
+	.name		= "unix",
 	.type		= RLM_TYPE_THREAD_UNSAFE,
-	.inst_size	= sizeof(struct unix_instance),
+	.inst_size	= sizeof(rlm_unix_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.methods = {

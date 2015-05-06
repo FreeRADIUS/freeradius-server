@@ -213,7 +213,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void * instance, REQUES
 extern module_t rlm_soh;
 module_t rlm_soh = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "SoH",
+	.name		= "soh",
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_soh_t),
 	.config		= module_config,

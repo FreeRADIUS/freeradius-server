@@ -25,18 +25,18 @@
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/rad_assert.h>
-#include	<freeradius-devel/md5.h>
-#include	<freeradius-devel/sha1.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/md5.h>
+#include <freeradius-devel/sha1.h>
 
-#include 	<ctype.h>
+#include <ctype.h>
 
-#include	"rlm_mschap.h"
-#include	"mschap.h"
-#include	"smbdes.h"
-#include	"auth_wbclient.h"
+#include "rlm_mschap.h"
+#include "mschap.h"
+#include "smbdes.h"
+#include "auth_wbclient.h"
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
@@ -1992,7 +1992,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 extern module_t rlm_mschap;
 module_t rlm_mschap = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "MS-CHAP",
+	.name		= "mschap",
 	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_mschap_t),
 	.config		= module_config,
