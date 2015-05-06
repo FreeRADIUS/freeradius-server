@@ -2811,10 +2811,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	 *	Now that we've read the file, go back through it and
 	 *	expand the variables.
 	 */
-	if (cf_section_pass2(cs) < 0) {
-		talloc_free(cs);
-		return -1;
-	}
+	if (cf_section_pass2(cs) < 0) return -1;
 
 	return 0;
 }

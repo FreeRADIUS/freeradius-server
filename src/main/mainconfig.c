@@ -720,12 +720,10 @@ do {\
 	version_init_numbers(subcs);
 
 	/* Read the configuration file */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
-		 radius_dir, main_config.name);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
 	if (cf_file_read(cs, buffer) < 0) {
 		ERROR("Errors reading or parsing %s", buffer);
 		talloc_free(cs);
-
 		return -1;
 	}
 
@@ -982,8 +980,7 @@ void main_config_hup(void)
 	if (!cs) return;
 
 	/* Read the configuration file */
-	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
-		 radius_dir, main_config.name);
+	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
 	if (cf_file_read(cs, buffer) < 0) {
 		ERROR("Failed to re-read or parse %s", buffer);
 		talloc_free(cs);

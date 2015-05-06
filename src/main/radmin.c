@@ -471,6 +471,7 @@ int main(int argc, char **argv)
 
 		if (cf_file_read(cs, buffer) < 0) {
 			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, buffer);
+			talloc_free(cs);
 			usage(1);
 		}
 
