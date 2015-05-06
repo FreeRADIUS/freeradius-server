@@ -162,7 +162,7 @@ static int nvp_select(rlm_sql_row_t *row, unsigned int line, rlm_sqlhpwippool_t 
 		return 0;
 	}
 
-	if ((data->db->sql_num_rows)(sqlsock, data->sql_inst->config) < 1) {
+	if (data->db->sql_num_rows && ((data->db->sql_num_rows)(sqlsock, data->sql_inst->config) < 1)) {
 		nvp_log(__LINE__, data, L_DBG,
 			"nvp_select(): no results in query from line %u", line);
 		return -1;
