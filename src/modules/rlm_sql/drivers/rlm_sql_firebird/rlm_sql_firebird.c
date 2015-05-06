@@ -80,9 +80,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	res = fb_init_socket(conn);
-	if (res) {
-		return -1;
-	}
+	if (res) return RLM_SQL_ERROR;
 
 	if (fb_connect(conn, config)) {
 		ERROR("rlm_sql_firebird: Connection failed: %s", conn->error);
@@ -149,7 +147,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 #ifdef _PTHREAD_H
 		pthread_mutex_unlock(&conn->mut);
 #endif
-		return -1;
+		return RLM_SQL_ERROR;
 	}
 
 	if (conn->statement_type != isc_info_sql_stmt_select) {
@@ -234,7 +232,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config
 		if (res) {
 			ERROR("rlm_sql_firebird. Fetch problem: %s", conn->error);
 
-			return -1;
+			return RLM_SQL_ERROR;
 		}
 	} else {
 		conn->statement_type=0;
