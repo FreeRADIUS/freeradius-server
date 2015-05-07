@@ -93,7 +93,7 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 		for (vp = fr_cursor_init(&cursor, &head);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-		     	rdebug_pair(L_DBG_LVL_2, request, vp, "dhcp_options: ");
+			rdebug_pair(L_DBG_LVL_2, request, vp, "dhcp_options: ");
 			decoded++;
 		}
 
