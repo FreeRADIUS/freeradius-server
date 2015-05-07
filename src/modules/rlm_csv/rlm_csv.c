@@ -28,6 +28,11 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
+#include	<freeradius-devel/map_proc.h>
+
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+				char const *key, vp_map_t const *maps);
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -36,6 +41,7 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_csv_t {
+	char const	*name;
 	char const	*filename;
 	char const	*delimiter;
 	char const	*header;
@@ -180,10 +186,6 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 		return NULL;
 	}
 
-	DEBUG("###################################################################### LINE %d key %s entry %s",
-	      lineno, e->key, e->data[0]);
-
-
 	/*
 	 *	FIXME: Allow duplicate keys later.
 	 */
@@ -196,6 +198,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 	return e;
 }
 
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -206,7 +209,7 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_csv_t *inst = instance;
 	int i;
@@ -216,6 +219,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	FILE *fp;
 	int lineno;
 	char buffer[8192];
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) {
+		inst->name = cf_section_name1(conf);
+	}
 
 	if (inst->delimiter[1]) {
 		cf_log_err_cs(conf, "'delimiter' must be one character long");
@@ -329,8 +337,113 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	And register the map function.
 	 */
+	map_proc_register(inst, inst->name, mod_map_proc, NULL, NULL, 0);
 
 	return 0;
+}
+
+
+/*
+ *	Convert field X to a VP/
+ */
+static int csv_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
+{
+	char const *str = ctx;
+	VALUE_PAIR *head = NULL, *vp;
+	vp_cursor_t cursor;
+
+	fr_cursor_init(&cursor, &head);
+
+	if (map->lhs->type != TMPL_TYPE_ATTR) {
+		RDEBUG("LHS %s is not an attr", map->lhs->name);
+		return -1;
+	}
+
+	/*
+	 *	FIXME: allow multiple entries.
+	 *
+	 *	FIXME: cache length of data, too
+	 */
+	vp = pairalloc(request, map->lhs->tmpl_da);
+	rad_assert(vp);
+
+	if (pairparsevalue(vp, str, strlen(str)) < 0) {
+		char *escaped;
+
+		escaped = fr_aprints(vp, str, strlen(str), '"');
+		RWDEBUG("Failed parsing value \"%s\" for attribute %s: %s", escaped,
+			map->lhs->tmpl_da->name, fr_strerror());
+
+		talloc_free(vp); /* also frees escaped */
+		return -1;
+	}
+
+	vp->op = map->op;
+	fr_cursor_merge(&cursor, vp);
+
+	*out = head;
+	return 0;
+}
+
+
+
+/** Perform a search and map the result of the search to server attributes
+ *
+ * @param[in] mod_inst #rlm_csv_t
+ * @param[in] proc_inst mapping map entries to field numbers.
+ * @param[in,out] request The current request.
+ * @param[in] key key to look for
+ * @param[in] maps Head of the map list.
+ * @return
+ *	- #RLM_MODULE_NOOP no rows were returned.
+ *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_FAIL if an error occurred.
+ */
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+				char const *key, vp_map_t const *maps)
+{
+	rlm_csv_t		*inst = mod_inst;
+	rlm_csv_entry_t		*e, my_entry;
+	vp_map_t const		*map;
+
+	my_entry.key = key;
+
+	e = rbtree_finddata(inst->tree, &my_entry);
+	if (!e) return RLM_MODULE_NOOP;
+
+	RINDENT();
+	for (map = maps;
+	     map != NULL;
+	     map = map->next) {
+		int i, field;
+
+		if (map->rhs->type != TMPL_TYPE_LITERAL) {
+			RDEBUG("RHS %s has to be literal!", map->rhs->name);
+			return RLM_MODULE_FAIL;
+		}
+
+		/*
+		 *	The RHS has to map to something...
+		 */
+		field = -1;
+		for (i = 0; i < inst->num_fields; i++) {
+			if (strcmp(map->rhs->name, inst->field_names[i]) == 0) {
+				field = inst->field_offsets[i];
+				break;
+			}
+		}
+
+		if (field < 0) {
+			RDEBUG("No such field name %s", map->rhs->name);
+			return RLM_MODULE_FAIL;
+		}
+
+		if (map_to_request(request, map, csv_map_getvalue, (void *) e->data[i]) < 0) {
+			return RLM_MODULE_FAIL;
+		}
+	}
+
+	return RLM_MODULE_UPDATED;
 }
 
 extern module_t rlm_csv;
@@ -340,5 +453,5 @@ module_t rlm_csv = {
 	.type		= 0,
 	.inst_size	= sizeof(rlm_csv_t),
 	.config		= module_config,
-	.instantiate	= mod_instantiate,
+	.bootstrap	= mod_bootstrap,
 };
