@@ -1027,12 +1027,6 @@ ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const 
 				return -1;
 			}
 			fr_cursor_merge(&cursor, vp);
-
-			for (vp = fr_cursor_current(&cursor);
-			     vp;
-			     vp = fr_cursor_next(&cursor)) {
-				debug_pair(vp);
-			}
 			a_p += a_len;
 		} /* loop over array entries */
 	next:
@@ -1161,12 +1155,20 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 */
 	{
 		VALUE_PAIR *options = NULL;
+		vp_cursor_t options_cursor;
 
 		if (fr_dhcp_decode_options(packet, &options, packet->data + 240, packet->data_len - 240) < 0) {
 			return -1;
 		}
 
-		if (options) fr_cursor_merge(&cursor, options);
+		if (options) {
+			for (vp = fr_cursor_init(&options_cursor, options);
+			     vp;
+			     vp = fr_cursor_next(&options_cursor)) {
+			 	debug_pair(vp);
+			}
+			fr_cursor_merge(&cursor, options);
+		}
 	}
 
 	/*
