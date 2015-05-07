@@ -66,7 +66,6 @@ typedef struct listen_detail_t {
 	uint32_t	load_factor; /* 1..100 */
 	uint32_t	poll_interval;
 	uint32_t	retry_interval;
-	uint32_t	max_outstanding;
 
 	int		signal;
 	int		packets;
