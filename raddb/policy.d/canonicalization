@@ -13,7 +13,7 @@
 nai_regexp = '^([^@]*)(@([-[:alnum:]]+\.[-[:alnum:].]+))?$'
 
 split_username_nai {
-	if (&User-Name && (&User-Name =~ /${policy.nai_regexp}/)){
+	if (&User-Name && (&User-Name =~ /${policy.nai_regexp}/)) {
 		update request {
 			&Stripped-User-Name := "%{1}"
 			&Stripped-User-Domain = "%{3}"
@@ -33,7 +33,7 @@ split_username_nai {
 #  If called in post-proxy we modify the proxy-reply message
 #
 split_username_nai.post-proxy {
-	if (&proxy-reply:User-Name && (&proxy-reply:User-Name =~ /${policy.nai_regexp}/)){
+	if (&proxy-reply:User-Name && (&proxy-reply:User-Name =~ /${policy.nai_regexp}/)) {
 		update proxy-reply {
 			&Stripped-User-Name := "%{1}"
 			&Stripped-User-Domain = "%{3}"
