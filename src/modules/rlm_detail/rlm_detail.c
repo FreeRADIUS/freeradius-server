@@ -534,6 +534,7 @@ module_t rlm_detail = {
 	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_accounting,
 		[MOD_ACCOUNTING]	= mod_accounting,
 #ifdef WITH_PROXY
 		[MOD_PRE_PROXY]		= mod_pre_proxy,

@@ -72,7 +72,6 @@ typedef struct listen_detail_t {
 	int		tries;
 	bool		one_shot;
 	int		outstanding;
-	int		max_outstanding;
 	int		has_rtt;
 	int		srtt;
 	int		rttvar;
