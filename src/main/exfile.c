@@ -93,7 +93,9 @@ static int _exfile_free(exfile_t *ef)
  * @param max_entries Max file descriptors to cache, and manage locks for.
  * @param max_idle Maximum time a file descriptor can be idle before it's closed.
  * @param locking whether or not to lock the files.
- * @return the new context, or NULL on error.
+ * @return
+ *	- new context.
+ *	- NULL on error.
  */
 exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, bool locking)
 {
@@ -133,7 +135,9 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, 
  * @param filename the file to open.
  * @param permissions to use.
  * @param append If true seek to the end of the file.
- * @return an FD used to write to the file, or -1 on error.
+ * @return
+ *	- FD used to write to the file.
+ *	- -1 on failure.
  */
 int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool append)
 {
@@ -339,13 +343,15 @@ do_return:
 
 /** Close the log file.  Really just return it to the pool.
  *
- * When multithreaded, the FD is locked via a mutex.  This way we're
- * sure that no other thread is writing to the file.  This function
- * will unlock the mutex, so that other threads can write to the file.
+ * When multithreaded, the FD is locked via a mutex. This way we're sure that no other thread is
+ * writing to the file. This function will unlock the mutex, so that other threads can write to
+ * the file.
  *
- * @param ef The logfile context returned from exfile_init()
- * @param fd the FD to close (i.e. return to the pool)
- * @return 0 on success, or -1 on error
+ * @param ef The logfile context returned from #exfile_init.
+ * @param fd the FD to close (i.e. return to the pool).
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int exfile_close(exfile_t *ef, int fd)
 {

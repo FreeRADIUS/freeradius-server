@@ -106,8 +106,10 @@ typedef rlm_rcode_t (*packetmethod)(void *instance, REQUEST *request);
  *
  * @param[in] mod_cs Module instance's configuration section.
  * @param[out] instance Module instance's configuration structure, should be
- *		alloced by by callback and freed by detach.
- * @return -1 if instantiation failed, else 0.
+ *	alloced by by callback and freed by detach.
+ * @return
+ *	- 0 on success.
+ *	- -1 if instantiation failed.
  */
 typedef int (*instantiate_t)(CONF_SECTION *mod_cs, void *instance);
 
@@ -120,7 +122,9 @@ typedef int (*instantiate_t)(CONF_SECTION *mod_cs, void *instance);
  * free any memory allocated during instantiate.
  *
  * @param[in] instance to free.
- * @return -1 if detach failed, else 0.
+ * @return
+ *	- 0 on success.
+ *	- -1 if detach failed.
  */
 typedef int (*detach_t)(void *instance);
 

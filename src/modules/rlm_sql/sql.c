@@ -236,13 +236,15 @@ int sql_userparse(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **head, rlm_sql_
 /** Call the driver's sql_fetch_row function
  *
  * Calls the driver's sql_fetch_row logging any errors. On success, will
- * write row data to (*handle)->row.
+ * write row data to ``(*handle)->row``.
  *
  * @param out Where to write row data.
- * @param inst Instance of rlm_sql.
+ * @param inst Instance of #rlm_sql_t.
  * @param request The Current request, may be NULL.
  * @param handle Handle to retrieve errors for.
- * @return on success RLM_SQL_OK, other sql_rcode_t constants on error.
+ * @return
+ *	- #RLM_SQL_OK on success.
+ *	- other #sql_rcode_t constants on error.
  */
 sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle)
 {
@@ -318,17 +320,19 @@ void rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *ha
 
 /** Call the driver's sql_query method, reconnecting if necessary.
  *
- * @note Caller must call (inst->module->sql_finish_query)(handle, inst->config);
+ * @note Caller must call ``(inst->module->sql_finish_query)(handle, inst->config);``
  *	after they're done with the result.
  *
  * @param handle to query the database with. *handle should not be NULL, as this indicates
  * 	previous reconnection attempt has failed.
  * @param request Current request.
- * @param inst rlm_sql instance data.
+ * @param inst #rlm_sql_t instance data.
  * @param query to execute. Should not be zero length.
- * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if a new handle is required
- *	(also sets *handle = NULL), RLM_SQL_QUERY_INVALID/RLM_SQL_ERROR on invalid query or
- *	connection error, RLM_SQL_ALT_QUERY on constraints violation.
+ * @return
+ *	- #RLM_SQL_OK on success.
+ *	- #RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL).
+ *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
+ *	- #RLM_SQL_ALT_QUERY on constraints violation.
  */
 sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
 {
@@ -418,16 +422,18 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
 
 /** Call the driver's sql_select_query method, reconnecting if necessary.
  *
- * @note Caller must call (inst->module->sql_finish_select_query)(handle, inst->config);
+ * @note Caller must call ``(inst->module->sql_finish_select_query)(handle, inst->config);``
  *	after they're done with the result.
  *
- * @param inst rlm_sql instance data.
+ * @param inst #rlm_sql_t instance data.
  * @param request Current request.
  * @param handle to query the database with. *handle should not be NULL, as this indicates
  *	  previous reconnection attempt has failed.
  * @param query to execute. Should not be zero length.
- * @return RLM_SQL_OK on success, RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL),
- *         RLM_SQL_QUERY_INVALID/RLM_SQL_ERROR on invalid query or connection error.
+ * @return
+ *	- #RLM_SQL_OK on success.
+ *	- #RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL).
+ *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
  */
 sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle,  char const *query)
 {

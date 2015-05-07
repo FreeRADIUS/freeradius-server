@@ -34,7 +34,7 @@ RCSID("$Id$")
 #include <ctype.h>
 
 #if 0
-static void map_dump(REQUEST *request, value_pair_map_t const *map)
+static void map_dump(REQUEST *request, vp_map_t const *map)
 {
 	RDEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
 	       fr_int2str(tmpl_names, map->lhs->type, "???"),
@@ -54,7 +54,7 @@ static void map_dump(REQUEST *request, value_pair_map_t const *map)
  * @param rhs_type quotation type around rhs.
  * @param rhs string to re-parse.
  */
-bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs)
+bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 {
 	size_t len;
 	ssize_t rlen;
@@ -173,7 +173,7 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 	return true;
 }
 
-/** Convert CONFIG_PAIR (which may contain refs) to value_pair_map_t.
+/** Convert CONFIG_PAIR (which may contain refs) to vp_map_t.
  *
  * Treats the left operand as an attribute reference
  * @verbatim<request>.<list>.<attribute>@endverbatim
@@ -185,7 +185,7 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
  * Return must be freed with talloc_free
  *
  * @param[in] ctx for talloc.
- * @param[in] out Where to write the pointer to the new value_pair_map_struct.
+ * @param[in] out Where to write the pointer to the new #vp_map_t.
  * @param[in] cp to convert to map.
  * @param[in] dst_request_def The default request to insert unqualified
  *	attributes into.
@@ -195,13 +195,15 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
  *	references in.
  * @param[in] src_list_def The default list to resolve unqualified attributes
  *	in.
- * @return value_pair_map_t if successful or NULL on error.
+ * @return
+ *	- #vp_map_t if successful.
+ *	- NULL on error.
  */
-int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
+int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		 request_refs_t dst_request_def, pair_lists_t dst_list_def,
 		 request_refs_t src_request_def, pair_lists_t src_list_def)
 {
-	value_pair_map_t *map;
+	vp_map_t *map;
 	char const *attr, *value;
 	ssize_t slen;
 	FR_TOKEN type;
@@ -210,7 +212,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 
 	if (!cp) return -1;
 
-	map = talloc_zero(ctx, value_pair_map_t);
+	map = talloc_zero(ctx, vp_map_t);
 	map->op = cf_pair_operator(cp);
 	map->ci = cf_pair_to_item(cp);
 
@@ -307,9 +309,11 @@ error:
  * @param[in] validate map using this callback (may be NULL).
  * @param[in] ctx to pass to callback.
  * @param[in] max number of mappings to process.
- * @return -1 on error, else 0.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
+int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 		 pair_lists_t dst_list_def, pair_lists_t src_list_def,
 		 map_validate_t validate, void *ctx,
 		 unsigned int max)
@@ -322,7 +326,7 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 	CONF_PAIR *cp;
 
 	unsigned int total = 0;
-	value_pair_map_t **tail, *map;
+	vp_map_t **tail, *map;
 	TALLOC_CTX *parent;
 
 	*out = NULL;
@@ -338,8 +342,11 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 
 	ci = cf_section_to_item(cs);
 
+	/*
+	 *	Check the destination list for "update" sections.
+	 */
 	cs_list = p = cf_section_name2(cs);
-	if (cs_list) {
+	if (cs_list && (strcmp(cf_section_name1(cs), "update") == 0)) {
 		p += radius_request_name(&request_def, p, REQUEST_CURRENT);
 		if (request_def == REQUEST_UNKNOWN) {
 			cf_log_err(ci, "Default request specified in mapping section is invalid");
@@ -389,8 +396,7 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 
 }
 
-
-/** Convert strings to value_pair_map_t
+/** Convert strings to #vp_map_t
  *
  * Treatment of operands depends on quotation, barewords are treated
  * as attribute references, double quoted values are treated as
@@ -406,17 +412,13 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
  * @param[in] op the operation to perform
  * @param[in] rhs of the operation
  * @param[in] rhs_type type of the RHS string
- * @param[in] dst_request_def The default request to insert unqualified
- *	attributes into.
- * @param[in] dst_list_def The default list to insert unqualified attributes
- *	into.
- * @param[in] src_request_def The default request to resolve attribute
- *	references in.
- * @param[in] src_list_def The default list to resolve unqualified attributes
- *	in.
- * @return value_pair_map_t if successful or NULL on error.
+ * @param[in] dst_request_def The default request to insert unqualified attributes into.
+ * @param[in] dst_list_def The default list to insert unqualified attributes into.
+ * @param[in] src_request_def The default request to resolve attribute references in.
+ * @param[in] src_list_def The default list to resolve unqualified attributes in.
+ * @return #vp_map_t if successful or NULL on error.
  */
-int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, FR_TOKEN lhs_type,
+int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN lhs_type,
 		     FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
 		     request_refs_t dst_request_def,
 		     pair_lists_t dst_list_def,
@@ -424,9 +426,9 @@ int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, F
 		     pair_lists_t src_list_def)
 {
 	ssize_t slen;
-	value_pair_map_t *map;
+	vp_map_t *map;
 
-	map = talloc_zero(ctx, value_pair_map_t);
+	map = talloc_zero(ctx, vp_map_t);
 
 	slen = tmpl_afrom_str(map, &map->lhs, lhs, strlen(lhs), lhs_type, dst_request_def, dst_list_def, true);
 	if (slen < 0) {
@@ -456,7 +458,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, F
 /** Convert a value pair string to valuepair map
  *
  * Takes a valuepair string with list and request qualifiers and converts it into a
- * value_pair_map_t.
+ * #vp_map_t.
  *
  * @param ctx where to allocate the map.
  * @param out Where to write the new map (must be freed with talloc_free()).
@@ -465,9 +467,11 @@ int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, F
  * @param dst_list_def to use if attribute isn't qualified.
  * @param src_request_def to use if attribute isn't qualified.
  * @param src_list_def to use if attribute isn't qualified.
- * @return 0 on success, < 0 on error.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on error.
  */
-int map_afrom_attr_str(TALLOC_CTX *ctx, value_pair_map_t **out, char const *vp_str,
+int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 		       request_refs_t dst_request_def, pair_lists_t dst_list_def,
 		       request_refs_t src_request_def, pair_lists_t src_list_def)
 {
@@ -475,7 +479,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, value_pair_map_t **out, char const *vp_s
 	FR_TOKEN quote;
 
 	VALUE_PAIR_RAW raw;
-	value_pair_map_t *map = NULL;
+	vp_map_t *map = NULL;
 
 	quote = gettoken(&p, raw.l_opand, sizeof(raw.l_opand), false);
 	switch (quote) {
@@ -519,12 +523,15 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, value_pair_map_t **out, char const *vp_s
  * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
  * has been broken out into it's own function.
  *
- * @param[out] out Where to write the VALUE_PAIR(s).
+ * @param[out] out Where to write the #VALUE_PAIR (s).
  * @param[in] request structure (used only for talloc).
- * @param[in] map the map. The LHS (dst) must be TMPL_TYPE_ATTR or TMPL_TYPE_LIST. The RHS (src) must be TMPL_TYPE_EXEC.
- * @return -1 on failure, 0 on success.
+ * @param[in] map the map. The LHS (dst) must be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
+ *	The RHS (src) must be #TMPL_TYPE_EXEC.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map)
+static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map)
 {
 	int result;
 	char *expanded = NULL;
@@ -591,15 +598,17 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t c
 	return -1;
 }
 
-/** Convert a map to a VALUE_PAIR.
+/** Convert a map to a #VALUE_PAIR
  *
- * @param[out] out Where to write the VALUE_PAIR(s), which may be NULL if not found
+ * @param[out] out Where to write the #VALUE_PAIR (s), which may be NULL if not found
  * @param[in] request structure (used only for talloc)
- * @param[in] map the map. The LHS (dst) has to be TMPL_TYPE_ATTR or TMPL_TYPE_LIST.
+ * @param[in] map the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
  * @param[in] ctx unused
- * @return 0 on success, -1 on failure
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, UNUSED void *ctx)
+int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *ctx)
 {
 	int rcode = 0;
 	ssize_t len;
@@ -842,9 +851,9 @@ do {\
 	}\
 } while (0)
 
-/** Convert value_pair_map_t to VALUE_PAIR(s) and add them to a REQUEST.
+/** Convert #vp_map_t to #VALUE_PAIR (s) and add them to a #REQUEST.
  *
- * Takes a single value_pair_map_t, resolves request and list identifiers
+ * Takes a single #vp_map_t, resolves request and list identifiers
  * to pointers in the current request, then attempts to retrieve module
  * specific value(s) using callback, and adds the resulting values to the
  * correct request/list.
@@ -852,11 +861,14 @@ do {\
  * @param request The current request.
  * @param map specifying destination attribute and location and src identifier.
  * @param func to retrieve module specific values and convert them to
- *	VALUE_PAIRS.
+ *	#VALUE_PAIR.
  * @param ctx to be passed to func.
- * @return -1 if the operation failed, -2 in the source attribute wasn't valid, 0 on success.
+ * @return
+ *	- -1 if the operation failed.
+ *	- -2 in the source attribute wasn't valid.
+ *	- 0 on success.
  */
-int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_getvalue_t func, void *ctx)
+int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t func, void *ctx)
 {
 	int rcode = 0;
 	int num;
@@ -866,7 +878,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	TALLOC_CTX *parent;
 	vp_cursor_t dst_list, src_list;
 
-	value_pair_map_t	exp_map;
+	vp_map_t	exp_map;
 	vp_tmpl_t	exp_lhs;
 
 	VERIFY_MAP(map);
@@ -1306,9 +1318,11 @@ finish:
  *
  * @param request The current request.
  * @param map to check.
- * @return true if the map resolves to a request and list else false.
+ * @return
+ *	- true if the map resolves to a request and list.
+ *	- false.
  */
-bool map_dst_valid(REQUEST *request, value_pair_map_t const *map)
+bool map_dst_valid(REQUEST *request, vp_map_t const *map)
 {
 	REQUEST *context = request;
 
@@ -1322,12 +1336,12 @@ bool map_dst_valid(REQUEST *request, value_pair_map_t const *map)
 
 /**  Print a map to a string
  *
- * @param[out] buffer for the output string
- * @param[in] bufsize of the buffer
- * @param[in] map to print
- * @return the size of the string printed
+ * @param[out] buffer for the output string.
+ * @param[in] bufsize of the buffer.
+ * @param[in] map to print.
+ * @return the size of the string printed.
  */
-size_t map_prints(char *buffer, size_t bufsize, value_pair_map_t const *map)
+size_t map_prints(char *buffer, size_t bufsize, vp_map_t const *map)
 {
 	size_t len;
 	DICT_ATTR const *da = NULL;
@@ -1377,7 +1391,7 @@ size_t map_prints(char *buffer, size_t bufsize, value_pair_map_t const *map)
 /*
  *	Debug print a map / VP
  */
-void map_debug_log(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR const *vp)
+void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 {
 	char *value;
 	char buffer[1024];

@@ -45,7 +45,6 @@ static char const *eol = "\n";
 static int showname = -1;
 static int showptype = 0;
 static int showcid = 0;
-log_lvl_t rad_debug_lvl = 0;
 char const *progname = "radwho";
 char const *radlog_dir = NULL;
 
@@ -343,6 +342,7 @@ int main(int argc, char **argv)
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", raddb_dir);
 	if (cf_file_read(maincs, buffer) < 0) {
 		fprintf(stderr, "%s: Error reading or parsing radiusd.conf\n", argv[0]);
+		talloc_free(maincs);
 		exit(1);
 	}
 

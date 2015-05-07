@@ -46,7 +46,8 @@ RCSID("$Id$")
 #include <pthread.h>
 #endif
 
-static bool rate_limit = true;
+log_lvl_t	rad_debug_lvl = 0;		//!< Global debugging level
+static bool	rate_limit = true;		//!< Whether repeated log entries should be rate limited
 
 /** Maps log categories to message prefixes
  */
@@ -250,7 +251,9 @@ static int _restore_std(UNUSED int sig)
  *
  * @param log Logger to manipulate.
  * @param daemonize Whether the server is starting as a daemon.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int radlog_init(fr_log_t *log, bool daemonize)
 {
@@ -562,7 +565,9 @@ static int radlog_always(log_type_t type, char const *msg, ...)
  *
  * @param type of message.
  * @param lvl of debugging this message should be logged at.
- * @return true if message should be logged, else false.
+ * @return
+ *	- true if message should be logged.
+ *	- false if message shouldn't be logged.
  */
 inline bool debug_enabled(log_type_t type, log_lvl_t lvl)
 {
@@ -585,7 +590,9 @@ bool rate_limit_enabled(void)
  * @param type of message.
  * @param lvl of debugging this message should be logged at.
  * @param request The current request.
- * @return true if message should be logged, else false.
+ * @return
+ *	- true if message should be logged.
+ *	- false if message shouldn't be logged.
  */
 inline bool radlog_debug_enabled(log_type_t type, log_lvl_t lvl, REQUEST *request)
 {

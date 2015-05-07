@@ -487,20 +487,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 
-	if (conn->statement) {
-		return sqlite3_column_count(conn->statement);
-	}
-
-	return 0;
-}
-
-static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
-{
-	rlm_sql_sqlite_conn_t *conn = handle->conn;
-
-	if (conn->statement) {
-		return sqlite3_data_count(conn->statement);
-	}
+	if (conn->statement) return sqlite3_column_count(conn->statement);
 
 	return 0;
 }
@@ -515,7 +502,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	fields = sqlite3_column_count(conn->statement);
 	if (fields <= 0) return RLM_SQL_ERROR;
 
-	MEM(names = talloc_zero_array(handle, char const *, fields + 1));
+	MEM(names = talloc_array(handle, char const *, fields));
 
 	for (i = 0; i < fields; i++) names[i] = sqlite3_column_name(conn->statement, i);
 	*out = names;
@@ -641,7 +628,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  * @param outlen Length of out array.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return number of errors written to the sql_log_entry array.
+ * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -689,7 +676,6 @@ rlm_sql_module_t rlm_sql_sqlite = {
 	.sql_select_query		= sql_select_query,
 	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
-	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_fields			= sql_fields,

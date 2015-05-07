@@ -2726,7 +2726,10 @@ static void proxy_running(REQUEST *request, int action)
  *	specific function.
  *
  * @param request The #REQUEST to evaluate for proxying.
- * @return 0 if not proxying, 1 if request should be proxied, -1 on error.
+ * @return
+ *	- 0 if not proxying.
+ *	- 1 if #REQUEST should be proxied.
+ *	- -1 on failure.
  */
 static int request_will_proxy(REQUEST *request)
 {

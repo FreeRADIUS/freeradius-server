@@ -138,7 +138,9 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
  * @param request Current request
  * @param p binary blob
  * @param data_len length of blob
- * @return 1 on success, 0 on failure
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len)
 {
@@ -381,8 +383,9 @@ static char const* healthclass2str(uint8_t hc) {
  * @param data MS-SOH blob
  * @param data_len length of MS-SOH blob
  *
- * @return 0 on success, -1 on failure
- *
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 

@@ -1080,9 +1080,9 @@ static const CONF_PARSER detail_config[] = {
 	{ "load_factor", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, load_factor), STRINGIFY(10) },
 	{ "poll_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, poll_interval), STRINGIFY(1) },
 	{ "retry_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, retry_interval), STRINGIFY(30) },
-	{ "one_shot", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, one_shot), NULL },
-	{ "track", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, track), NULL },
-	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, load_factor), NULL },
+	{ "one_shot", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, one_shot), "no" },
+	{ "track", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, track), "no" },
+	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, max_outstanding), STRINGIFY(1)},
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };

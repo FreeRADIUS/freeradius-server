@@ -270,7 +270,9 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
  *
  * @param[in] request To resolve list in.
  * @param[in] list #pair_lists_t value to resolve to #RADIUS_PACKET.
- * @return a #RADIUS_PACKET on success, else NULL.
+ * @return
+ *	- #RADIUS_PACKET on success.
+ *	- NULL on failure.
  *
  * @see radius_list
  */
@@ -320,7 +322,9 @@ RADIUS_PACKET *radius_packet(REQUEST *request, pair_lists_t list)
  *
  * @param[in] request containing the target lists.
  * @param[in] list #pair_lists_t value to resolve to TALLOC_CTX.
- * @return a TALLOC_CTX on success, else NULL.
+ * @return
+ *	- TALLOC_CTX on success.
+ *	- NULL on failure.
  *
  * @see radius_list
  */
@@ -440,7 +444,9 @@ size_t radius_request_name(request_refs_t *out, char const *name, request_refs_t
  * @param[in,out] context #REQUEST to start resolving from, and where to write
  *	a pointer to the resolved #REQUEST back to.
  * @param[in] name (request) to resolve.
- * @return 0 if request is valid in this context, else -1.
+ * @return
+ *	- 0 if request is valid in this context.
+ *	- -1 if request is not valid in this context.
  */
 int radius_request(REQUEST **context, request_refs_t name)
 {
@@ -485,8 +491,7 @@ int radius_request(REQUEST **context, request_refs_t name)
  * @param[in] name of the #vp_tmpl_t.
  * @param[in] len The length of the buffer (or a substring of the buffer) pointed to by name.
  *	If < 0 strlen will be used to determine the length.
- * @return a pointer to the initialised #vp_tmpl_t. The same value as
- *	vpt.
+ * @return a pointer to the initialised #vp_tmpl_t. The same value as vpt.
  */
 vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t len)
 {
@@ -1107,7 +1112,9 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
  *	or #TMPL_TYPE_DATA.
  * @param[in] type to cast to.
  * @param[in] enumv Enumerated dictionary values associated with a #DICT_ATTR.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 {
@@ -1204,7 +1211,9 @@ void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
  *	- #TMPL_TYPE_ATTR
  *	- #TMPL_TYPE_DATA
  * @param cast type of #VALUE_PAIR to create.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 		    vp_tmpl_t const *vpt, DICT_ATTR const *cast)
@@ -1257,7 +1266,9 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
  *
  * @param vpt to add. ``tmpl_da`` pointer will be updated to point to the
  *	#DICT_ATTR inserted into the dictionary.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 {
@@ -1304,10 +1315,12 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  *	- #TMPL_TYPE_ATTR
  * @param escape xlat escape function (only used for xlat types).
  * @param escape_ctx xlat escape function data.
- * @return -1 on error, else the length of data written to buff, or pointed to by out.
+ * @return
+ *	- -1 on failure.
+ *	- The length of data written to buff, or pointed to by out.
  */
 ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *request,
-		    vp_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+		    vp_tmpl_t const *vpt, xlat_escape_t escape, void *escape_ctx)
 {
 	VALUE_PAIR *vp;
 	ssize_t slen = -1;	/* quiet compiler */
@@ -1441,10 +1454,12 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
  *	- #TMPL_TYPE_ATTR
  * @param escape xlat escape function (only used for xlat types).
  * @param escape_ctx xlat escape function data.
- * @return -1 on error, else the length of data written to buff, or pointed to by out.
+ * @return
+ *	- -1 on failure.
+ *	- The length of data written to buff, or pointed to by out.
  */
 ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t const *vpt,
-		     RADIUS_ESCAPE_STRING escape, void *escape_ctx)
+		     xlat_escape_t escape, void *escape_ctx)
 {
 	VALUE_PAIR *vp;
 	ssize_t slen = -1;	/* quiet compiler */
@@ -1756,8 +1771,9 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
  * @param cursor to store iterator state.
  * @param request The current #REQUEST.
  * @param vpt specifying the #VALUE_PAIR type/tag or list to iterate over.
- * @return the first #VALUE_PAIR specified by the #vp_tmpl_t, or NULL if no matching
- *	#VALUE_PAIR found, and NULL on error.
+ * @return
+ *	- First #VALUE_PAIR specified by the #vp_tmpl_t.
+ *	- NULL if no matching #VALUE_PAIR found, and NULL on error.
  *
  * @see tmpl_cursor_next
  */
@@ -1857,7 +1873,9 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
  *	Must be one of the following types:
  *	- #TMPL_TYPE_LIST
  *	- #TMPL_TYPE_ATTR
- * @return NULL if no more matching #VALUE_PAIR of the specified type/tag are found.
+ * @return
+ *	- The next #VALUE_PAIR matching the #vp_tmpl_t.
+ *	- NULL if no more matching #VALUE_PAIR of the specified type/tag are found.
  */
 VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, vp_tmpl_t const *vpt)
 {
@@ -1960,7 +1978,9 @@ int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt)
  *
  * @param ptr Offset to begin checking at.
  * @param len How many bytes to check.
- * @return pointer to the first non-zero byte, or NULL if all bytes were zero.
+ * @return
+ *	- Pointer to the first non-zero byte.
+ *	- NULL if all bytes were zero.
  */
 static uint8_t const *not_zeroed(uint8_t const *ptr, size_t len)
 {

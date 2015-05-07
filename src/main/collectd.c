@@ -72,7 +72,9 @@ static void _copy_double_to_double(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmp
  * @param type_instance the name of the counter/guage within the collection e.g. latency.
  * @param stats structure to derive statistics from.
  * @param values Value templates used to populate lcc_value_list.
- * @return a new rs_stats_tmpl_t on success or NULL on failure.
+ * @return
+ *	- New #rs_stats_tmpl_t on success.
+ *	- NULL on failure.
  */
 static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 					       char const *plugin_instance,
@@ -336,7 +338,9 @@ void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timev
 /** Connect to a collectd server for stats output
  *
  * @param[in,out] conf radsniff configuration, we write the generated handle here.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success
+ *	- -1 on failure.
  */
 int rs_stats_collectd_open(rs_t *conf)
 {
@@ -364,7 +368,9 @@ int rs_stats_collectd_open(rs_t *conf)
 /** Close connection
  *
  * @param[in,out] conf radsniff configuration.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rs_stats_collectd_close(rs_t *conf)
 {

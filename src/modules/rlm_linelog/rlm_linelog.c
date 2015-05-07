@@ -105,7 +105,7 @@ typedef struct linelog_instance_t {
 		gid_t			group;			//!< Resolved gid.
 		exfile_t		*ef;			//!< Exclusive file access handle.
 		bool			escape;			//!< Do filename escaping, yes / no.
-		RADIUS_ESCAPE_STRING	escape_func;		//!< Escape function.
+		xlat_escape_t	escape_func;		//!< Escape function.
 	} file;
 
 	struct {
@@ -517,8 +517,10 @@ static size_t linelog_escape_func(UNUSED REQUEST *request, char *out, size_t out
  *
  * @param instance of rlm_linelog.
  * @param request The current request.
- * @return #RLM_MODULE_NOOP if no message to log, #RLM_MODULE_FAIL if we failed writing the
- *	message, #RLM_MODULE_OK on success.
+ * @return
+ *	- #RLM_MODULE_NOOP if no message to log.
+ *	- #RLM_MODULE_FAIL if we failed writing the message.
+ *	- #RLM_MODULE_OK on success.
  */
 static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request)

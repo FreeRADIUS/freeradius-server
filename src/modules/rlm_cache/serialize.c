@@ -34,7 +34,9 @@ RCSID("$Id$")
  *	than the maximum serialized size of the entry.
  * @param out Where to write pointer to serialized cache entry.
  * @param c Cache entry to serialize.
- * @return 0 on success else -1.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t *c)
 {
@@ -129,7 +131,9 @@ finish:
  * @param in String representation of cache entry.
  * @param inlen Length of string. May be < 0 in which case strlen will be
  *	used to calculate the length of the string.
- * @return 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 {
@@ -151,7 +155,7 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 	p = in;
 
 	while (((size_t)(p - in)) < (size_t)inlen) {
-		value_pair_map_t *map = NULL;
+		vp_map_t *map = NULL;
 		VALUE_PAIR *vp = NULL;
 		ssize_t len;
 

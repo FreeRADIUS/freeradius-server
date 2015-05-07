@@ -287,7 +287,7 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 		return NULL;
 	}
 
-	ssn->offset = conf->fragment_size;
+	ssn->mtu = conf->fragment_size;
 
 	return ssn;
 }
@@ -302,7 +302,9 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
  * @param conf to use to configure the tls session.
  * @param request The current #REQUEST.
  * @param client_cert Whether to require a client_cert.
- * @return a new session on success, or NULL on error.
+ * @return
+ *	- A new session on success.
+ *	- NULL on error.
  */
 tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert)
 {
@@ -407,10 +409,10 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *	of EAP-TLS in order to calculate fragment sizes is
 	 *	just too much.
 	 */
-	state->offset = conf->fragment_size;
+	state->mtu = conf->fragment_size;
 	vp = pairfind(request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
-	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < state->offset)) {
-		state->offset = vp->vp_integer;
+	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < state->mtu)) {
+		state->mtu = vp->vp_integer;
 	}
 
 	if (conf->session_cache_enable) state->allow_session_resumption = true; /* otherwise it's false */
@@ -615,7 +617,7 @@ static void session_init(tls_session_t *ssn)
 
 	memset(&ssn->info, 0, sizeof(ssn->info));
 
-	ssn->offset = 0;
+	ssn->mtu = 0;
 	ssn->fragment = 0;
 	ssn->tls_msg_len = 0;
 	ssn->length_flag = 0;
@@ -2183,7 +2185,8 @@ void tls_global_init(void)
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 /** Check for vulnerable versions of libssl
  *
- * @param acknowledged The highest CVE number a user has confirmed is not present in the system's libssl.
+ * @param acknowledged The highest CVE number a user has confirmed is not present in the system's
+ *	libssl.
  * @return 0 if the CVE specified by the user matches the most recent CVE we have, else -1.
  */
 int tls_global_version_check(char const *acknowledged)

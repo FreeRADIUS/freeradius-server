@@ -71,7 +71,7 @@ typedef struct _pwd_id_packet {
 #define EAP_PWD_PREP_MS		1
 #define EAP_PWD_PREP_SASL	2
     char identity[];
-} CC_HINT(packed) pwd_id_packet;
+} CC_HINT(packed) pwd_id_packet_t;
 
 typedef struct _pwd_session_t {
     uint16_t state;
@@ -83,13 +83,13 @@ typedef struct _pwd_session_t {
     uint32_t token;
     char peer_id[MAX_STRING_LEN];
     size_t peer_id_len;
-    int mtu;
-    uint8_t *in_buf;      /* reassembled fragments */
-    size_t in_buf_pos;
-    size_t in_buf_len;
-    uint8_t *out_buf;     /* message to fragment */
-    size_t out_buf_pos;
-    size_t out_buf_len;
+    size_t mtu;
+    uint8_t *in;      /* reassembled fragments */
+    size_t in_pos;
+    size_t in_len;
+    uint8_t *out;     /* message to fragment */
+    size_t out_pos;
+    size_t out_len;
     EC_GROUP *group;
     EC_POINT *pwe;
     BIGNUM *order;
@@ -109,9 +109,9 @@ int compute_password_element(pwd_session_t *sess, uint16_t grp_num,
 			     char const *id_peer, int id_peer_len,
 			     uint32_t *token);
 int compute_scalar_element(pwd_session_t *sess, BN_CTX *bnctx);
-int process_peer_commit (pwd_session_t *sess, uint8_t *commit, BN_CTX *bnctx);
-int compute_server_confirm(pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx);
-int compute_peer_confirm(pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx);
+int process_peer_commit (pwd_session_t *sess, uint8_t *in, size_t in_len, BN_CTX *bnctx);
+int compute_server_confirm(pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
+int compute_peer_confirm(pwd_session_t *sess, uint8_t *out, BN_CTX *bnctx);
 int compute_keys(pwd_session_t *sess, uint8_t *peer_confirm,
 		 uint8_t *msk, uint8_t *emsk);
 #ifdef PRINTBUF

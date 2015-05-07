@@ -250,7 +250,9 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
  *
  * @param instance The configuration data.
  * @param handler The eap_handler_t.
- * @return True, if successfully, else false.
+ * @return
+ *	- true if successful.
+ *	- false on error.
  */
 static int mod_process(UNUSED void *instance, eap_handler_t *handler)
 {

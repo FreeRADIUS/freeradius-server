@@ -76,7 +76,9 @@ static const CONF_PARSER module_config[] = {
  *
  * @param  conf     The module configuration.
  * @param  instance The module instance.
- * @return          Returns 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
@@ -181,7 +183,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *
  * @param  instance The module instance.
  * @param  request  The authorization request.
- * @return          Returns operation status (@p rlm_rcode_t).
+ * @return Operation status (#rlm_rcode_t).
  */
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
@@ -265,7 +267,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  *
  * @param instance The module instance.
  * @param request  The accounting request object.
- * @return Returns operation status (@p rlm_rcode_t).
+ * @return Operation status (#rlm_rcode_t).
  */
 static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
@@ -452,7 +454,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
  *
  * @param instance The module instance.
  * @param request  The checksimul request object.
- * @return Returns operation status (@p rlm_rcode_t).
+ * @return Operation status (#rlm_rcode_t).
  */
 static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	rlm_couchbase_t *inst = instance;      /* our module instance */
@@ -861,7 +863,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
  * Detach the module instance and free any allocated resources.
  *
  * @param  instance The module instance.
- * @return          Returns 0 (success) in all conditions.
+ * @return Returns 0 (success) in all conditions.
  */
 static int mod_detach(void *instance)
 {
@@ -887,7 +889,7 @@ static int mod_detach(void *instance)
 extern module_t rlm_couchbase;
 module_t rlm_couchbase = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "rlm_couchbase",
+	.name		= "couchbase",
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_couchbase_t),
 	.config		= module_config,

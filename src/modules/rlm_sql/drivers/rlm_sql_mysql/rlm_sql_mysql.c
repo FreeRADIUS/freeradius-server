@@ -271,7 +271,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  *
  * @param server Socket from which to extract the server error. May be NULL.
  * @param client_errno Error from the client.
- * @return an action for rlm_sql to take.
+ * @return an action for #rlm_sql_t to take.
  */
 static sql_rcode_t sql_check_error(MYSQL *server, int client_errno)
 {
@@ -454,7 +454,7 @@ static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUS
 	field_info = mysql_fetch_fields(conn->result);
 	if (!field_info) return RLM_SQL_ERROR;
 
-	MEM(names = talloc_zero_array(handle, char const *, fields + 1));
+	MEM(names = talloc_array(handle, char const *, fields));
 
 	for (i = 0; i < fields; i++) names[i] = field_info[i].name;
 	*out = names;
@@ -521,7 +521,9 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  * @param outlen Length of out array.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return number of errors written to the sql_log_entry array or -1 on error.
+ * @return
+ *	- Number of errors written to the #sql_log_entry_t array.
+ *	- -1 on failure.
  */
 static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			   rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -586,7 +588,7 @@ static size_t sql_warnings(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen
  * @param outlen Length of out array.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return number of errors written to the sql_log_entry array.
+ * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			rlm_sql_handle_t *handle, rlm_sql_config_t *config)

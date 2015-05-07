@@ -32,7 +32,7 @@
 #include <sasl/sasl.h>
 
 typedef struct rlm_ldap_sasl_ctx {
-	ldap_instance_t	const	*inst;		//!< LDAP instance
+	rlm_ldap_t	const	*inst;		//!< LDAP instance
 	REQUEST			*request;	//!< The current request.
 
 	char const		*identity;	//!< User's DN or identity.
@@ -45,7 +45,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 {
 	rlm_ldap_sasl_ctx_t *this = ctx;
 	REQUEST *request = this->request;
-	ldap_instance_t const *inst = this->inst;
+	rlm_ldap_t const *inst = this->inst;
 	sasl_interact_t *cb = sasl_callbacks;
 	sasl_interact_t *cb_p;
 
@@ -78,7 +78,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 	return SASL_OK;
 }
 
-ldap_rcode_t rlm_ldap_sasl_interactive(ldap_instance_t const *inst, REQUEST *request,
+ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				       ldap_handle_t *conn, char const *identity,
 				       char const *password, ldap_sasl *sasl,
 				       char const **error, char **extra)

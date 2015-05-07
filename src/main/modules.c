@@ -105,7 +105,11 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
  *
  * @param cs being parsed.
  * @param module being loaded.
- * @returns 0 on success, -1 if prefix mismatch, -2 if version mismatch, -3 if commit mismatch.
+ * @returns
+ *	- 0 on success.
+ *	- -1 if prefix mismatch.
+ *	- -2 if version mismatch.
+ *	- -3 if commit mismatch.
  */
 static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 {
@@ -525,15 +529,11 @@ static int module_conf_parse(module_instance_t *node, void **handle)
 	 *	Also parse the configuration data, if required.
 	 */
 	if (node->entry->module->inst_size) {
-		/* FIXME: make this rlm_config_t ?? */
 		*handle = talloc_zero_array(node, uint8_t, node->entry->module->inst_size);
 		rad_assert(handle);
 
-		/*
-		 *	So we can see where this configuration is from
-		 *	FIXME: set it to rlm_NAME_t, or some such thing
-		 */
-		talloc_set_name(*handle, "rlm_config_t");
+		talloc_set_name(*handle, "rlm_%s_t",
+				node->entry->module->name ? node->entry->module->name : "config");
 
 		if (node->entry->module->config &&
 		    (cf_section_parse(node->cs, *handle, node->entry->module->config) < 0)) {
@@ -611,7 +611,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 		talloc_free(node);
 		return NULL;
 	}
-	
+
 	cf_log_module(cs, "Loading module \"%s\" from file %s", node->name,
 		      cf_section_filename(cs));
 
@@ -689,11 +689,6 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 	if (node->instantiated) return node;
 
 	/*
-	 *	We're just checking the configuration.
-	 */
-	if (check_config) return node;
-
-	/*
 	 *	Call the instantiate method, if any.
 	 */
 	if (node->entry->module->instantiate) {
@@ -705,7 +700,7 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 		 */
 		if ((node->entry->module->instantiate)(node->cs, node->insthandle) < 0) {
 			cf_log_err_cs(node->cs, "Instantiation failed for module \"%s\"", node->name);
-		
+
 			return NULL;
 		}
 	}
@@ -723,7 +718,7 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 		 *	Initialize the mutex.
 		 */
 		pthread_mutex_init(node->mutex, NULL);
-	}	
+	}
 #endif
 
 	node->instantiated = true;
@@ -731,10 +726,10 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 	return node;
 }
 
-/** Resolve polymorphic item's from a module's CONF_SECTION to a subsection in another module
+/** Resolve polymorphic item's from a module's #CONF_SECTION to a subsection in another module
  *
  * This allows certain module sections to reference module sections in other instances
- * of the same module and share CONF_DATA associated with them.
+ * of the same module and share #CONF_DATA associated with them.
  *
  * @verbatim
 example {
@@ -748,12 +743,16 @@ example inst {
 }
  * @endverbatim
  *
- * @param out where to write the pointer to a module's config section.  May be NULL on success, indicating the config
- *	  item was not found within the module CONF_SECTION, or the chain of module references was followed and the
- *	  module at the end of the chain did not a subsection.
- * @param module CONF_SECTION.
+ * @param out where to write the pointer to a module's config section.  May be NULL on success,
+ *	indicating the config item was not found within the module #CONF_SECTION
+ *	or the chain of module references was followed and the module at the end of the chain
+ *	did not a subsection.
+ * @param module #CONF_SECTION.
  * @param name of the polymorphic sub-section.
- * @return 0 on success with referenced section, 1 on success with local section, or -1 on failure.
+ * @return
+ *	- 0 on success with referenced section.
+ *	- 1 on success with local section.
+ *	- -1 on failure.
  */
 int find_module_sibling_section(CONF_SECTION **out, CONF_SECTION *module, char const *name)
 {

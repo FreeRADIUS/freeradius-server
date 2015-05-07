@@ -39,16 +39,13 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-typedef struct eap_pwd_conf {
+typedef struct _eap_pwd_t {
+    BN_CTX *bnctx;
+
     uint32_t	group;
     uint32_t	fragment_size;
     char const	*server_id;
     char const	*virtual_server;
-} EAP_PWD_CONF;
-
-typedef struct _eap_pwd_t {
-    EAP_PWD_CONF *conf;
-    BN_CTX *bnctx;
 } eap_pwd_t;
 
 #endif  /* _RLM_EAP_PWD_H */

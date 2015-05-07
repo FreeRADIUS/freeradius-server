@@ -65,7 +65,9 @@ typedef struct rlm_sql_oracle_conn_t {
  * @param outlen The length of the error buffer.
  * @param handle sql handle.
  * @param config Instance config.
- * @return 0 on success, -1 if there was no error.
+ * @return
+ *	- 0 on success.
+ *	- -1 if there was no error.
  */
 static int sql_prints_error(char *out, size_t outlen, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
@@ -92,7 +94,7 @@ static int sql_prints_error(char *out, size_t outlen, rlm_sql_handle_t *handle, 
  * @param outlen Length of out array.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return number of errors written to the sql_log_entry array.
+ * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 		        rlm_sql_handle_t *handle, rlm_sql_config_t *config)
@@ -211,6 +213,47 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 		       conn->error)) return -1;
 
 	return count;
+}
+
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
+	rlm_sql_oracle_conn_t *conn = handle->conn;
+	int		fields, i, status;
+	char const	**names;
+	OCIParam	*param;
+
+	fields = sql_num_fields(handle, config);
+	if (fields <= 0) return RLM_SQL_ERROR;
+
+	MEM(names = talloc_array(handle, char const *, fields));
+
+	for (i = 0; i < fields; i++) {
+		OraText *pcol_name = NULL;
+		ub4 pcol_size = 0;
+
+		status = OCIParamGet(conn->query, OCI_HTYPE_STMT, conn->error, (dvoid **)&param, i + 1);
+		if (status != OCI_SUCCESS) {
+			ERROR("rlm_sql_oracle: OCIParamGet(OCI_HTYPE_STMT) failed in sql_fields()");
+		error:
+			talloc_free(names);
+
+			return RLM_SQL_ERROR;
+		}
+
+		status = OCIAttrGet((dvoid **)param, OCI_DTYPE_PARAM, &pcol_name, &pcol_size,
+				    OCI_ATTR_NAME, conn->error);
+		if (status != OCI_SUCCESS) {
+			ERROR("rlm_sql_oracle: OCIParamGet(OCI_ATTR_NAME) failed in sql_fields()");
+
+			goto error;
+		}
+
+		names[i] = (char const *)pcol_name;
+	}
+
+	*out = names;
+
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
@@ -402,7 +445,6 @@ static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *confi
 
 static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-
 	int status;
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
@@ -478,6 +520,7 @@ rlm_sql_module_t rlm_sql_oracle = {
 	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
+	.sql_fields			= sql_fields,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,

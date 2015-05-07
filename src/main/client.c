@@ -186,7 +186,9 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
  *
  * @param clients list to add client to, may be NULL if global client list is being used.
  * @param client to add.
- * @return true on success, false on failure.
+ * @return
+ *	- true on success.
+ *	- false on failure.
  */
 bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
@@ -231,12 +233,20 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	if (!clients) {
 		if (client->server != NULL) {
 			CONF_SECTION *cs;
+			CONF_SECTION *subcs;
 
 			cs = cf_section_sub_find_name2(main_config.config, "server", client->server);
 			if (!cs) {
 				ERROR("Failed to find virtual server %s", client->server);
 				return false;
 			}
+
+			/*
+			 *	If this server has no "listen" section, add the clients
+			 *	to the global client list.
+			 */
+			subcs = cf_section_sub_find(cs, "listen");
+			if (!subcs) goto global_clients;
 
 			/*
 			 *	If the client list already exists, use that.
@@ -258,6 +268,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			}
 
 		} else {
+		global_clients:
 			/*
 			 *	Initialize the global list, if not done already.
 			 */
@@ -778,7 +789,9 @@ error:
  * @param[in] map section.
  * @param[in] func to call to retrieve CONF_PAIR values. Must return a talloced buffer containing the value.
  * @param[in] data to pass to func, usually a result pointer.
- * @return 0 on success else -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int client_map_section(CONF_SECTION *out, CONF_SECTION const *map, client_value_cb_t func, void *data)
 {
@@ -1132,7 +1145,9 @@ done_coa:
  * @param type NAS-Type.
  * @param server Virtual-Server to associate clients with.
  * @param require_ma If true all packets from client must include a message-authenticator.
- * @return The new client, or NULL on error.
+ * @return
+ *	- New client.
+ *	- NULL on error.
  */
 RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret,
 			      char const *shortname, char const *type, char const *server, bool require_ma)
@@ -1174,7 +1189,9 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
  *
  * @param clients list to add new client to.
  * @param request Fake request.
- * @return a new client on success, else NULL on error.
+ * @return
+ *	- New client on success.
+ *	- NULL on error.
  */
 RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 {

@@ -26,6 +26,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/modcall.h>
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/rad_assert.h>
 
 
@@ -42,21 +43,42 @@ static modcallable *do_compile_modgroup(modcallable *,
 #define MOD_ACTION_RETURN  (-1)
 #define MOD_ACTION_REJECT  (-2)
 
-/* Here are our basic types: modcallable, modgroup, and modsingle. For an
- * explanation of what they are all about, see doc/configurable_failover.rst */
-struct modcallable {
-	modcallable *parent;
-	struct modcallable *next;
-	char const *name;
-	char const *debug_name;
-	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE,
+/** Types of modcallable_t nodes
+ *
+ * Here are our basic types: modcallable, modgroup, and modsingle. For an
+ * explanation of what they are all about, see doc/configurable_failover.rst
+ */
+typedef enum {
+	MOD_SINGLE = 1,			//!< Module method.
+	MOD_GROUP,			//!< Grouping section.
+	MOD_LOAD_BALANCE,		//!< Load balance section.
+	MOD_REDUNDANT_LOAD_BALANCE,	//!< Redundant load balance section.
 #ifdef WITH_UNLANG
-	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
-	       MOD_FOREACH, MOD_BREAK, MOD_RETURN,
+	MOD_IF,				//!< Condition.
+	MOD_ELSE,			//!< !Condition.
+	MOD_ELSIF,			//!< !Condition && Condition.
+	MOD_UPDATE,			//!< Update block.
+	MOD_SWITCH,			//!< Switch section.
+	MOD_CASE,			//!< Case section (within a #MOD_SWITCH).
+	MOD_FOREACH,			//!< Foreach section.
+	MOD_BREAK,			//!< Break statement (within a #MOD_FOREACH).
+	MOD_RETURN,			//!< Return statement.
+	MOD_MAP,			//!< Mapping section (like #MOD_UPDATE, but uses
+					//!< values from a #map_proc_t call).
 #endif
-	       MOD_POLICY, MOD_REFERENCE, MOD_XLAT } type;
-	rlm_components_t method;
-	int actions[RLM_MODULE_NUMCODES];
+	MOD_POLICY,			//!< Policy section.
+	MOD_REFERENCE,			//!< Virtual server.
+	MOD_XLAT			//!< Bare xlat statement.
+} mod_type_t;
+
+struct modcallable {
+	modcallable		*parent;
+	struct modcallable	*next;
+	char const		*name;
+	char const 		*debug_name;
+	mod_type_t		type;
+	rlm_components_t	method;
+	int			actions[RLM_MODULE_NUMCODES];
 };
 
 #define MOD_LOG_OPEN_BRACE RDEBUG2("%s {", c->debug_name)
@@ -64,18 +86,21 @@ struct modcallable {
 #define MOD_LOG_CLOSE_BRACE RDEBUG2("} # %s = %s", c->debug_name, fr_int2str(mod_rcode_table, result, "<invalid>"))
 
 typedef struct {
-	modcallable		mc;		/* self */
+	modcallable		mc;		//!< Self.
 	enum {
 		GROUPTYPE_SIMPLE = 0,
 		GROUPTYPE_REDUNDANT,
 		GROUPTYPE_COUNT
-	} grouptype;				/* after mc */
+	} grouptype;				//!< After mc.
 	modcallable		*children;
-	modcallable		*tail;		/* of the children list */
+	modcallable		*tail;		//!< of the children list.
 	CONF_SECTION		*cs;
-	value_pair_map_t	*map;		/* update */
-	vp_tmpl_t	*vpt;		/* switch */
-	fr_cond_t		*cond;		/* if/elsif */
+
+	vp_map_t		*map;		//!< #MOD_UPDATE, #MOD_MAP.
+	vp_tmpl_t		*vpt;		//!< #MOD_SWITCH, #MOD_MAP.
+	fr_cond_t		*cond;		//!< #MOD_IF, #MOD_ELSIF.
+
+	map_proc_inst_t		*proc_inst;	//!< Instantiation data for #MOD_MAP.
 	bool			done_pass2;
 } modgroup;
 
@@ -356,6 +381,7 @@ char const *unlang_keyword[] = {
 	"foreach",
 	"break",
 	"return",
+	"map",
 #endif
 	"policy",
 	"reference",
@@ -594,7 +620,7 @@ redo:
 	if (c->type == MOD_UPDATE) {
 		int rcode;
 		modgroup *g = mod_callabletogroup(c);
-		value_pair_map_t *map;
+		vp_map_t *map;
 
 		MOD_LOG_OPEN_BRACE;
 		RINDENT();
@@ -611,7 +637,20 @@ redo:
 		result = RLM_MODULE_NOOP;
 		MOD_LOG_CLOSE_BRACE;
 		goto calculate_result;
-	} /* MOD_IF */
+	} /* MOD_UPDATE */
+
+	/*
+	 *	Map RHS to LHS attributes.
+	 */
+	if (c->type == MOD_MAP) {
+		modgroup *g = mod_callabletogroup(c);
+		MOD_LOG_OPEN_BRACE;
+		RINDENT();
+		result = map_proc(request, g->proc_inst);
+		REXDENT();
+		MOD_LOG_CLOSE_BRACE;
+		goto calculate_result;
+	}
 
 	/*
 	 *	Loop over a set of attributes.
@@ -798,7 +837,7 @@ redo:
 		modgroup *g, *h;
 		fr_cond_t cond;
 		value_data_t data;
-		value_pair_map_t map;
+		vp_map_t map;
 		vp_tmpl_t vpt;
 
 		MOD_LOG_OPEN_BRACE;
@@ -1501,13 +1540,79 @@ static const int authtype_actions[GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 	}
 };
 
-/** Validate and fixup a map that's part of an update section.
+
+/** Validate and fixup a map that's part of an map section.
  *
  * @param map to validate.
  * @param ctx data to pass to fixup function (currently unused).
  * @return 0 if valid else -1.
  */
-int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
+static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
+{
+	CONF_PAIR *cp = cf_item_to_pair(map->ci);
+
+	/*
+	 *	Anal-retentive checks.
+	 */
+	if (DEBUG_ENABLED3) {
+		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     map->lhs->name, fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		}
+
+		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
+			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
+			     cf_pair_filename(cp), cf_pair_lineno(cp),
+			     fr_int2str(fr_tokens, map->op, "<INVALID>"), map->rhs->name);
+		}
+	}
+
+	switch (map->lhs->type) {
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_STRUCT:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Left side of map must be an attribute "
+		           "or an xlat (that expands to an attribute)");
+		return -1;
+	}
+
+	switch (map->rhs->type) {
+	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_XLAT_STRUCT:
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_EXEC:
+		break;
+
+	default:
+		cf_log_err(map->ci, "Right side of map must be an attribute, literal, xlat or exec");
+		return -1;
+	}
+
+	if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
+		cf_log_err(map->ci, "Invalid operator \"%s\" in map section.  "
+			   "Only assignment or filter operators are allowed",
+			   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		return -1;
+	}
+
+	return 0;
+}
+
+
+/** Validate and fixup a map that's part of an update section.
+ *
+ * @param map to validate.
+ * @param ctx data to pass to fixup function (currently unused).
+ * @return
+ *	- 0 if valid.
+ *	- -1 not valid.
+ */
+int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 {
 	CONF_PAIR *cp = cf_item_to_pair(map->ci);
 
@@ -1560,22 +1665,11 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 	/*
 	 *	Depending on the attribute type, some operators are disallowed.
 	 */
-	if (map->lhs->type == TMPL_TYPE_ATTR) {
-		switch (map->op) {
-		default:
-			cf_log_err(map->ci, "Invalid operator for attribute");
-			return -1;
-
-		case T_OP_EQ:
-		case T_OP_CMP_EQ:
-		case T_OP_ADD:
-		case T_OP_SUB:
-		case T_OP_LE:
-		case T_OP_GE:
-		case T_OP_CMP_FALSE:
-		case T_OP_SET:
-			break;
-		}
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (!fr_assignment_op[map->op] && !fr_equality_op[map->op])) {
+		cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
+			   "Only assignment or filter operators are allowed",
+			   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+		return -1;
 	}
 
 	if (map->lhs->type == TMPL_TYPE_LIST) {
@@ -1702,6 +1796,129 @@ int modcall_fixup_update(value_pair_map_t *map, UNUSED void *ctx)
 
 
 #ifdef WITH_UNLANG
+static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t component,
+				      CONF_SECTION *cs, char const *name2)
+{
+	int rcode;
+	modgroup *g;
+	modcallable *csingle;
+	CONF_SECTION *modules;
+	ssize_t slen;
+	char const *tmpl_str;
+	FR_TOKEN type;
+	char quote;
+	size_t tmpl_len, quoted_len;
+	char *quoted_str;
+
+	vp_map_t *head;
+	vp_tmpl_t *vpt;
+
+	map_proc_t *proc;
+	map_proc_inst_t *proc_inst;
+
+	modules = cf_section_find("modules");
+	if (!modules) {
+		cf_log_err_cs(cs, "'map' sections require a 'modules' section");
+		return NULL;
+	}
+
+	proc = map_proc_find(name2);
+	if (!proc) {
+		cf_log_err_cs(cs, "Failed to find map processor '%s'", name2);
+		return NULL;
+	}
+
+	tmpl_str = cf_section_argv(cs, 0); /* AFTER name1, name2 */
+	if (!tmpl_str) {
+		cf_log_err_cs(cs, "No template found in map");
+		return NULL;
+	}
+
+	tmpl_len = strlen(tmpl_str);
+	type = cf_section_argv_type(cs, 0);
+
+	/*
+	 *	Try to parse the template.
+	 */
+	slen = tmpl_afrom_str(cs, &vpt, tmpl_str, tmpl_len, type, REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+	if (slen < 0) {
+		cf_log_err_cs(cs, "Failed parsing map: %s", fr_strerror());
+		return NULL;
+	}
+
+	/*
+	 *	This looks at cs->name2 to determine which list to update
+	 */
+	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_map, NULL, 256);
+	if (rcode < 0) return NULL; /* message already printed */
+	if (!head) {
+		cf_log_err_cs(cs, "'map' sections cannot be empty");
+		return NULL;
+	}
+
+	g = talloc_zero(parent, modgroup);
+	proc_inst = map_proc_instantiate(g, proc, vpt, head);
+	if (!proc_inst) {
+		talloc_free(g);
+		cf_log_err_cs(cs, "Failed instantiating map function '%s'", name2);
+		return NULL;
+	}
+
+	csingle = mod_grouptocallable(g);
+
+	csingle->parent = parent;
+	csingle->next = NULL;
+
+	switch (type) {
+	case T_DOUBLE_QUOTED_STRING:
+		quote = '"';
+		break;
+
+	case T_SINGLE_QUOTED_STRING:
+		quote = '\'';
+		break;
+
+	case T_BACK_QUOTED_STRING:
+		quote = '`';
+		break;
+
+	default:
+		quote = '\0';
+		break;
+	}
+
+	quoted_len = fr_prints_len(tmpl_str, tmpl_len, quote);
+	quoted_str = talloc_array(csingle, char, quoted_len);
+	fr_prints(quoted_str, quoted_len, tmpl_str, tmpl_len, quote);
+
+	csingle->name = talloc_asprintf(csingle, "map %s %s", name2, quoted_str);
+	csingle->type = MOD_MAP;
+	csingle->method = component;
+
+	talloc_free(quoted_str);
+
+	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	       sizeof(csingle->actions));
+
+	g->grouptype = GROUPTYPE_SIMPLE;
+	g->children = NULL;
+	g->cs = cs;
+	g->map = talloc_steal(g, head);
+	g->vpt = talloc_steal(g, vpt);
+	g->proc_inst = proc_inst;
+
+	/*
+	 *	Cache the module in the modgroup struct.
+	 *
+	 *	Ensure that the module has a "map" entry in its module
+	 *	header?  Or ensure that the map is registered in the
+	 *	"boostrap" phase, so that it's always available here.
+	 */
+
+	return csingle;
+
+}
+
 static modcallable *do_compile_modupdate(modcallable *parent, rlm_components_t component,
 					 CONF_SECTION *cs, char const *name2)
 {
@@ -1709,7 +1926,7 @@ static modcallable *do_compile_modupdate(modcallable *parent, rlm_components_t c
 	modgroup *g;
 	modcallable *csingle;
 
-	value_pair_map_t *head;
+	vp_map_t *head;
 
 	/*
 	 *	This looks at cs->name2 to determine which list to update
@@ -2275,6 +2492,12 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 			return do_compile_modupdate(parent, component, cs,
 						    name2);
+
+		} else 	if (strcmp(modrefname, "map") == 0) {
+			*modname = name2;
+
+			return do_compile_modmap(parent, component, cs,
+						 name2);
 
 		} else 	if (strcmp(modrefname, "switch") == 0) {
 			*modname = name2;
@@ -3119,7 +3342,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 
 static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
-	value_pair_map_t *map;
+	vp_map_t *map;
 
 	if (c->type == COND_TYPE_EXISTS) {
 		if (c->data.vpt->type == TMPL_TYPE_XLAT) {
@@ -3329,7 +3552,7 @@ check_paircmp:
  */
 static bool modcall_pass2_update(modgroup *g)
 {
-	value_pair_map_t *map;
+	vp_map_t *map;
 
 	for (map = g->map; map != NULL; map = map->next) {
 		if (map->rhs->type == TMPL_TYPE_XLAT) {
@@ -3400,6 +3623,7 @@ bool modcall_pass2(modcallable *mc)
 		case MOD_REFERENCE:
 		case MOD_BREAK:
 		case MOD_RETURN:
+		case MOD_MAP:
 #endif
 
 		case MOD_SINGLE:
@@ -3708,7 +3932,7 @@ void modcall_debug(modcallable *mc, int depth)
 {
 	modcallable *this;
 	modgroup *g;
-	value_pair_map_t *map;
+	vp_map_t *map;
 	char buffer[1024];
 
 	for (this = mc; this != NULL; this = this->next) {
@@ -3725,11 +3949,19 @@ void modcall_debug(modcallable *mc, int depth)
 			break;
 
 #ifdef WITH_UNLANG
+		case MOD_MAP:
+			g = mod_callabletogroup(this); /* FIXMAP: print option 3, too */
+			DEBUG("%.*s%s %s {", depth, modcall_spaces,
+			      unlang_keyword[this->type],
+			      cf_section_name2(g->cs));
+			goto print_map;
+
 		case MOD_UPDATE:
 			g = mod_callabletogroup(this);
 			DEBUG("%.*s%s {", depth, modcall_spaces,
 				unlang_keyword[this->type]);
 
+		print_map:
 			for (map = g->map; map != NULL; map = map->next) {
 				map_prints(buffer, sizeof(buffer), map);
 				DEBUG("%.*s%s", depth + 1, modcall_spaces, buffer);

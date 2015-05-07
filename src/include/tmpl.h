@@ -62,7 +62,7 @@
  * #tmpl_expand will return a pointer to the raw #VALUE_PAIR buffer. This can be very
  * useful when using the #PW_TYPE_TMPL type in #CONF_PARSER structs, as it allows the
  * user to determine whether they want the module to sanitise the value using presentation
- * format specific #RADIUS_ESCAPE_STRING function, or to operate on the raw value.
+ * format specific #xlat_escape_t function, or to operate on the raw value.
  *
  * @see tmpl_expand
  * @see tmpl_aexpand
@@ -165,7 +165,7 @@ typedef struct {
  *
  * Is used as both the RHS and LHS of a map (both update, and conditional types)
  *
- * @section update_maps Use in update value_pair_map_t
+ * @section update_maps Use in update vp_map_t
  * When used on the LHS it describes an attribute to create and should be one of these types:
  * - #TMPL_TYPE_ATTR
  * - #TMPL_TYPE_LIST
@@ -180,11 +180,11 @@ typedef struct {
  * - #TMPL_TYPE_DATA
  * - #TMPL_TYPE_XLAT_STRUCT (pre-parsed xlat)
  *
- * @section conditional_maps Use in conditional value_pair_map_t
+ * @section conditional_maps Use in conditional vp_map_t
  * When used as part of a condition it may be any of the RHS side types, as well as:
  * - #TMPL_TYPE_REGEX_STRUCT (pre-parsed regex)
  *
- * @see value_pair_map_t
+ * @see vp_map_t
  */
 typedef struct vp_tmpl_t {
 	tmpl_type_t	type;		//!< What type of value tmpl refers to.
@@ -356,10 +356,10 @@ size_t			tmpl_prints(char *buffer, size_t bufsize, vp_tmpl_t const *vpt,
 				    DICT_ATTR const *values);
 
 ssize_t			tmpl_expand(char const **out, char *buff, size_t outlen, REQUEST *request,
-				    vp_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx);
+				    vp_tmpl_t const *vpt, xlat_escape_t escape, void *escape_ctx);
 
 ssize_t			tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t const *vpt,
-				     RADIUS_ESCAPE_STRING escape, void *escape_ctx);
+				     xlat_escape_t escape, void *escape_ctx);
 
 VALUE_PAIR		*tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request,
 					  vp_tmpl_t const *vpt);

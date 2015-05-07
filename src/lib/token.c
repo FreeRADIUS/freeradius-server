@@ -70,14 +70,14 @@ const bool fr_assignment_op[] = {
 	true,		/* := */
 	true,		/* = */
 	false,		/* != */
-	true,		/* >= */
-	true,		/* > 		15 */
-	true,		/* <= */
-	true,		/* < */
+	false,		/* >= */
+	false,		/* > 		15 */
+	false,		/* <= */
+	false,		/* < */
 	false,		/* =~ */
 	false,		/* !~ */
 	false,		/* =* 		20 */
-	true,		/* !* */
+	false,		/* !* */
 	false,		/* == */
 	false,				/* # */
 	false,		/* bare word */

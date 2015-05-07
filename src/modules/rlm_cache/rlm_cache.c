@@ -162,7 +162,10 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 
 /** Find a cached entry.
  *
- * @return RLM_MODULE_OK on success, RLM_MODULE_FAIL on failure, RLM_MODULE_NOTFOUND if notfound.
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_FAIL on failure.
+ *	- #RLM_MODULE_NOTFOUND if notfound.
  */
 static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
 			      rlm_cache_handle_t **handle, char const *key)
@@ -238,7 +241,10 @@ static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t
 
 /** Create and insert a cache entry.
  *
- * @return RLM_MODULE_OK on success, RLM_MODULE_UPDATED if we merged the cache entry and RLM_MODULE_FAIL on failure.
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_UPDATED if we merged the cache entry.
+ *	- #RLM_MODULE_FAIL on failure.
  */
 static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
 				char const *key, int ttl)
@@ -246,7 +252,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	VALUE_PAIR *vp, *to_cache;
 	vp_cursor_t src_list, packet, reply, control, state;
 
-	value_pair_map_t const *map;
+	vp_map_t const *map;
 
 	bool merge = false;
 	rlm_cache_entry_t *c;
@@ -367,7 +373,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 /** Verify that a map in the cache section makes sense
  *
  */
-static int cache_verify(value_pair_map_t *map, void *ctx)
+static int cache_verify(vp_map_t *map, void *ctx)
 {
 	if (modcall_fixup_update(map, ctx) < 0) return -1;
 
@@ -677,13 +683,10 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-/*
- *	Instantiate the module.
- */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_cache_t *inst = instance;
-	CONF_SECTION *update;
 
 	inst->cs = conf;
 
@@ -695,11 +698,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	xlat_register(inst->xlat_name, cache_xlat, NULL, inst);
 
+	return 0;
+}
+
+
+/*
+ *	Instantiate the module.
+ */
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
+	rlm_cache_t *inst = instance;
+	CONF_SECTION *update;
+
+	inst->cs = conf;
+
 	/*
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->driver_name, "rlm_cache_", 8) != 0) {
-		ERROR("rlm_cache (%s): \"%s\" is NOT an Cache driver!", inst->xlat_name, inst->driver_name);
+		cf_log_err_cs(conf, "\"%s\" is NOT an Cache driver!", inst->driver_name);
 		return -1;
 	}
 
@@ -708,15 +725,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->handle = lt_dlopenext(inst->driver_name);
 	if (!inst->handle) {
-		ERROR("rlm_cache (%s): Could not link driver %s: %s", inst->xlat_name, inst->driver_name, dlerror());
-		ERROR("rlm_cache (%s): Make sure it (and all its dependent libraries!) are in the search path"
-		      "of your system's ld", inst->xlat_name);
+		cf_log_err_cs(conf, "Could not link driver %s: %s", inst->driver_name, dlerror());
+		cf_log_err_cs(conf, "Make sure it (and all its dependent libraries!) are in the search path"
+			      "of your system's ld");
 		return -1;
 	}
 
 	inst->module = (cache_module_t *) dlsym(inst->handle, inst->driver_name);
 	if (!inst->module) {
-		ERROR("rlm_cache (%s): Could not link symbol %s: %s", inst->xlat_name, inst->driver_name, dlerror());
+		cf_log_err_cs(conf, "Could not link symbol %s: %s", inst->driver_name, dlerror());
 		return -1;
 	}
 
@@ -807,6 +824,7 @@ module_t rlm_cache = {
 	.name		= "cache",
 	.inst_size	= sizeof(rlm_cache_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {

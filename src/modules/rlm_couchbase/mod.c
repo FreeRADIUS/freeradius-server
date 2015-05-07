@@ -41,7 +41,7 @@ RCSID("$Id$")
  * resources and closes the socket connection.
  *
  * @param  chandle The connection handle to destroy.
- * @return         Always returns 0 (success) in all conditions.
+ * @return 0.
  */
 static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
 {
@@ -61,7 +61,9 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
  *
  * @param  ctx      The connection parent context.
  * @param  instance The module instance.
- * @return          The new connection handle or NULL on error.
+ * @return
+ *	- New connection handle.
+ *	- NULL on error.
  */
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 {
@@ -111,7 +113,9 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
  *
  * @param  instance The module instance (currently unused).
  * @param  handle   The connection handle.
- * @return          Returns 0 on success (alive) and -1 on error (unavailable).
+ * @return
+ *	- 0 on success (alive).
+ *	- -1 on failure (unavailable).
  */
 int mod_conn_alive(UNUSED void *instance, void *handle)
 {
@@ -138,7 +142,9 @@ int mod_conn_alive(UNUSED void *instance, void *handle)
  *
  * @param  conf     Configuration section.
  * @param  instance The module instance.
- * @return          Returns 0 on success, -1 on error.
+ * @return
+ *	 - 0 on success.
+ *	- -1 on failure.
  */
 int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 {
@@ -149,11 +155,11 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	const char *attribute, *element;    /* attribute and element names */
 
 	/* find map section */
-	cs = cf_section_sub_find(conf, "map");
+	cs = cf_section_sub_find(conf, "update");
 
 	/* check section */
 	if (!cs) {
-		ERROR("rlm_couchbase: failed to find 'map' section in config");
+		ERROR("rlm_couchbase: failed to find 'update' section in config");
 		/* fail */
 		return -1;
 	}
@@ -177,21 +183,21 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 		/* get value pair from item */
 		cp = cf_item_to_pair(ci);
 
-		/* get pair name (element name) */
-		element = cf_pair_attr(cp);
+		/* get pair name (attribute name) */
+		attribute = cf_pair_attr(cp);
 
-		/* get pair value (attribute name) */
-		attribute = cf_pair_value(cp);
+		/* get pair value (element name) */
+		element = cf_pair_value(cp);
 
 		/* add pair name and value */
 		json_object_object_add(inst->map, attribute, json_object_new_string(element));
 
 		/* debugging */
-		DEBUG3("rlm_couchbase: added attribute '%s' to element '%s' map to object", attribute, element);
+		DEBUG3("rlm_couchbase: added attribute '%s' to element '%s' mapping", attribute, element);
 	}
 
 	/* debugging */
-	DEBUG3("rlm_couchbase: built attribute to element map %s", json_object_to_json_string(inst->map));
+	DEBUG3("rlm_couchbase: built attribute to element mapping %s", json_object_to_json_string(inst->map));
 
 	/* return */
 	return 0;
@@ -205,7 +211,9 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
  * @param  name The character name of the requested attribute.
  * @param  map  The JSON object map to use for the lookup.
  * @param  buf  The buffer where the given element will be stored if found.
- * @return      Returns 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 {
@@ -362,7 +370,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
  *
  * @param  request The request object.
  * @param  vp      The value pair to convert.
- * @return         Returns a JSON object.
+ * @return A JSON object.
  */
 json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 {
@@ -454,7 +462,9 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
  *
  * @param  json JSON object representation of an accounting document.
  * @param  vps  The value pairs associated with the current accounting request.
- * @return      Returns 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 {
@@ -521,7 +531,9 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
  * @param  out  Character output
  * @param  cp   Configuration pair
  * @param  data The client data
- * @return      Returns 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
 {
@@ -551,7 +563,9 @@ static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
  * @param  inst The module instance.
  * @param  tmpl Default values for new clients.
  * @param  map  The client attribute configuration section.
- * @return      Returns 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map)
 {

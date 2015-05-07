@@ -19,7 +19,7 @@
 /**
  * $Id$
  *
- * @file vqp.h
+ * @file proto_vmps/vqp.h
  * @brief Structures and prototypes for Cisco's VLAN Query Protocol
  *
  * @copyright 2007  The FreeRADIUS server project

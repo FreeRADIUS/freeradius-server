@@ -74,7 +74,10 @@ static bool all_digits(char const *string)
  * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] vpt the template to evaluate
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t const *vpt)
 {
@@ -149,13 +152,16 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
 #ifdef HAVE_REGEX
 /** Perform a regular expressions comparison between two operands
  *
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		         PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
 		         PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
 {
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 
 	ssize_t		slen;
 	int		ret;
@@ -274,13 +280,16 @@ static void cond_print_operands(REQUEST *request,
  * Deals with regular expression comparisons, virtual attribute
  * comparisons, and data comparisons.
  *
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 			   PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
 			   PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
 {
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 	int rcode;
 
 #ifdef WITH_EVAL_DEBUG
@@ -351,13 +360,16 @@ finish:
  *
  * If casting is successful, we call cond_cmp_values to do the comparison
  *
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
 				  PW_TYPE lhs_type, DICT_ATTR const *lhs_enumv,
 				  value_data_t const *lhs, size_t lhs_len)
 {
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 
 	DICT_ATTR const *cast = NULL;
 	PW_TYPE cast_type = PW_TYPE_INVALID;
@@ -580,13 +592,16 @@ finish:
  * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_cond_t const *c)
 {
 	int rcode = 0;
 
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 
 	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
 		   fr_int2str(tmpl_names, map->lhs->type, "???"),
@@ -684,7 +699,11 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
  * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
- * @return -1 on failure, -2 on attribute not found, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- -2 on attribute not found.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 int radius_evaluate_cond(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
 {

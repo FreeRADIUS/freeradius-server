@@ -82,7 +82,9 @@ static int _free_pcap(fr_pcap_t *pcap) {
  *
  * @param errbuff Error message.
  * @param dev to get link layer for.
- * @return datalink layer or -1 on failure.
+ * @return
+ *	- Datalink layer.
+ *	- -1 on failure.
  */
 int fr_pcap_if_link_layer(char *errbuff, pcap_if_t *dev)
 {
@@ -124,7 +126,9 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
  *
  * This opens interfaces for capture or injection, or files/streams for reading/writing.
  * @param pcap created with fr_pcap_init.
- * @return 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_pcap_open(fr_pcap_t *pcap)
 {
@@ -271,7 +275,10 @@ int fr_pcap_open(fr_pcap_t *pcap)
  *
  * @param pcap handle to apply filter to.
  * @param expression PCAP expression to use as a filter.
- * @return 0 on success, 1 can't apply to interface, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- 1 can't apply to interface.
+ *	- -1 on failure.
  */
 int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 {

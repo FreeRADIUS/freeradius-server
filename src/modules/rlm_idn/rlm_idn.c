@@ -131,7 +131,7 @@ static ssize_t xlat_idna(void *instance, REQUEST *request, char const *fmt, char
 	return len;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_idn_t *inst = instance;
 	char const *xlat_name;
@@ -155,5 +155,5 @@ module_t rlm_idn = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_idn_t),
 	.config		= mod_config,
-	.instantiate	= mod_instantiate
+	.bootstrap	= mod_bootstrap
 };

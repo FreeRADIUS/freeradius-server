@@ -98,7 +98,9 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
  *
  * @param[in] in Str to check.
  * @param[in] inlen Length of string to check.
- * @return true if string looks like a DN, else false.
+ * @return
+ *	- true if string looks like a DN.
+ *	- false if string does not look like DN.
  */
 bool rlm_ldap_is_dn(char const *in, size_t inlen)
 {
@@ -303,7 +305,9 @@ size_t rlm_ldap_normalise_dn(char *out, char const *in)
  *
  * @param full DN.
  * @param part Partial DN as returned by ldap_parse_result.
- * @return the length of the portion of full which wasn't matched or -1 on error.
+ * @return
+ *	- Length of the portion of full which wasn't matched
+ *	- -1 on failure.
  */
 static size_t rlm_ldap_common_dn(char const *full, char const *part)
 {
@@ -445,9 +449,9 @@ char const *rlm_ldap_error_str(ldap_handle_t const *conn)
  * @param[out] error Where to write the error string, may be NULL, must not be freed.
  * @param[out] extra Where to write additional error string to, may be NULL (faster) or must be freed
  *	(with talloc_free).
- * @return One of the LDAP_PROC_* codes.
+ * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
-ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
+ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
 			     LDAPMessage **result, char const **error, char **extra)
 {
 	ldap_rcode_t status = LDAP_PROC_SUCCESS;
@@ -499,7 +503,7 @@ ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t const *c
 
 	/*
 	 *	Now retrieve the result and check for errors
-	 *	ldap_result returns -1 on error, and 0 on timeout
+	 *	ldap_result returns -1 on failure, and 0 on timeout
 	 */
 	lib_errno = ldap_result(conn->handle, msgid, 1, &tv, result);
 	if (lib_errno == 0) {
@@ -681,9 +685,9 @@ process_error:
  * @param[in] password of the user, may be NULL if no password is specified.
  * @param[in] sasl mechanism to use for bind, and additional parameters.
  * @param[in] retry if the server is down.
- * @return one of the LDAP_PROC_* values.
+ * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
-ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
+ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
 			   char const *password, ldap_sasl *sasl, bool retry)
 {
 	ldap_rcode_t		status = LDAP_PROC_ERROR;
@@ -806,9 +810,9 @@ ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_h
  * @param[in] attrs to retrieve.
  * @param[in] serverctrls Search controls to pass to the server.  May be NULL.
  * @param[in] clientctrls Search controls for ldap_search.  May be NULL.
- * @return One of the LDAP_PROC_* values.
+ * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
-ldap_rcode_t rlm_ldap_search(LDAPMessage **result, ldap_instance_t const *inst, REQUEST *request,
+ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUEST *request,
 			     ldap_handle_t **pconn,
 			     char const *dn, int scope, char const *filter, char const * const *attrs,
 			     LDAPControl **serverctrls, LDAPControl **clientctrls)
@@ -965,9 +969,9 @@ finish:
  * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
  * @param[in] dn of the object to modify.
  * @param[in] mods to make, see 'man ldap_modify' for more information.
- * @return One of the LDAP_PROC_* values.
+ * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
-ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			     char const *dn, LDAPMod *mods[])
 {
 	ldap_rcode_t	status = LDAP_PROC_ERROR;
@@ -1062,7 +1066,7 @@ finish:
  * @param[out] rcode The status of the operation, one of the RLM_MODULE_* codes.
  * @return The user's DN or NULL on error.
  */
-char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode)
 {
 	static char const *tmp_attrs[] = { NULL };
@@ -1233,9 +1237,11 @@ finish:
  * @param[in] request Current request.
  * @param[in] conn used to retrieve access attributes.
  * @param[in] entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
- * @return RLM_MODULE_USERLOCK if the user was denied access, else RLM_MODULE_OK.
+ * @return
+ *	- #RLM_MODULE_USERLOCK if the user was denied access.
+ *	- #RLM_MODULE_OK otherwise.
  */
-rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request,
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
 				  ldap_handle_t const *conn, LDAPMessage *entry)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
@@ -1270,7 +1276,7 @@ rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request,
  * @param inst rlm_ldap configuration.
  * @param request Current request.
  */
-void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request)
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 {
        /*
 	*	More warning messages for people who can't be bothered to read the documentation.
@@ -1363,7 +1369,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	int ldap_errno, ldap_version;
 	struct timeval tv;
 
-	ldap_instance_t *inst = instance;
+	rlm_ldap_t *inst = instance;
 	ldap_handle_t *conn;
 
 	/*
@@ -1548,7 +1554,7 @@ error:
  * @param inst rlm_ldap configuration.
  * @param request Current request (may be NULL).
  */
-ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, UNUSED REQUEST *request)
+ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, UNUSED REQUEST *request)
 {
 	return fr_connection_get(inst->pool);
 }
@@ -1561,7 +1567,7 @@ ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, UNUSED REQUEST *request
  * @param inst rlm_ldap configuration.
  * @param conn to release.
  */
-void mod_conn_release(ldap_instance_t const *inst, ldap_handle_t *conn)
+void mod_conn_release(rlm_ldap_t const *inst, ldap_handle_t *conn)
 {
 	/*
 	 *	Could have already been free'd due to a previous error.

@@ -41,7 +41,6 @@ char const *progname = NULL;
 char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 char const *radlib_dir = NULL;
-log_lvl_t rad_debug_lvl = 0;
 bool check_config = false;
 bool log_stripped_names = false;
 

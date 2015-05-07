@@ -582,7 +582,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			case PW_USER_PASSWORD:
 			case PW_MS_CHAP_PASSWORD:
 				request->password = pairmake(request->packet, &request->packet->vps, "Cleartext-Password",
-							     vp->vp_strvalue, T_OP_EQ);				
+							     vp->vp_strvalue, T_OP_EQ);
 				break;
 
 			case PW_RADCLIENT_TEST_NAME:
@@ -1332,6 +1332,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'v':
+			fr_debug_lvl = 1;
 			DEBUG("%s", radclient_version);
 			exit(0);
 

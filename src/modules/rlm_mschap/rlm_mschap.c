@@ -25,18 +25,18 @@
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/rad_assert.h>
-#include	<freeradius-devel/md5.h>
-#include	<freeradius-devel/sha1.h>
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
+#include <freeradius-devel/md5.h>
+#include <freeradius-devel/sha1.h>
 
-#include 	<ctype.h>
+#include <ctype.h>
 
-#include	"rlm_mschap.h"
-#include	"mschap.h"
-#include	"smbdes.h"
-#include	"auth_wbclient.h"
+#include "rlm_mschap.h"
+#include "mschap.h"
+#include "smbdes.h"
+#include "auth_wbclient.h"
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
@@ -565,11 +565,7 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-/*
- *	Create instance for our module. Allocate space for
- *	instance structure and read configuration parameters
- */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	char const *name;
 	rlm_mschap_t *inst = instance;
@@ -581,6 +577,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!name) name = cf_section_name1(conf);
 	inst->xlat_name = name;
 	xlat_register(inst->xlat_name, mschap_xlat, NULL, inst);
+
+	return 0;
+}
+
+/*
+ *	Create instance for our module. Allocate space for
+ *	instance structure and read configuration parameters
+ */
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
+	rlm_mschap_t *inst = instance;
 
 	/*
 	 *	For backwards compatibility
@@ -602,11 +609,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		inst->wb_pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, NULL);
 		if (!inst->wb_pool) {
-			ERROR("rlm_mschap (%s): unable to initialise winbind connection pool", name);
+			cf_log_err_cs(conf, "Unable to initialise winbind connection pool");
 			return -1;
 		}
 #else
-		ERROR("rlm_mschap (%s): 'winbind' auth not enabled at compiled time", name);
+		cf_log_err_cs(conf, "'winbind' auth not enabled at compiled time");
 		return -1;
 #endif
 	}
@@ -618,14 +625,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	switch (inst->method) {
 	case AUTH_INTERNAL:
-		DEBUG("rlm_mschap (%s): using internal authentication", name);
+		DEBUG("rlm_mschap (%s): using internal authentication", inst->xlat_name);
 		break;
 	case AUTH_NTLMAUTH_EXEC:
-		DEBUG("rlm_mschap (%s): authenticating by calling 'ntlm_auth'", name);
+		DEBUG("rlm_mschap (%s): authenticating by calling 'ntlm_auth'", inst->xlat_name);
 		break;
 #ifdef WITH_AUTH_WINBIND
 	case AUTH_WBCLIENT:
-		DEBUG("rlm_mschap (%s): authenticating directly to winbind", name);
+		DEBUG("rlm_mschap (%s): authenticating directly to winbind", inst->xlat_name);
 		break;
 #endif
 	}
@@ -1985,10 +1992,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 extern module_t rlm_mschap;
 module_t rlm_mschap = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "MS-CHAP",
+	.name		= "mschap",
 	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_HUP_SAFE,
 	.inst_size	= sizeof(rlm_mschap_t),
 	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,
 	.detach		= mod_detach,
 	.methods = {

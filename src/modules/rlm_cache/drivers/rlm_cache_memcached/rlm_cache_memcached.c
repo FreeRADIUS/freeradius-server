@@ -106,7 +106,9 @@ static int _mod_detach(rlm_cache_memcached_t *driver)
  *
  * @param conf memcached specific conf section.
  * @param inst main rlm_cache instance.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int mod_instantiate(CONF_SECTION *conf, rlm_cache_t *inst)
 {
@@ -164,7 +166,10 @@ static void cache_entry_free(rlm_cache_entry_t *c)
  * @param request The current request.
  * @param handle Pointer to memcached handle.
  * @param key to search for.
- * @return CACHE_OK on success CACHE_MISS if no entry found, CACHE_ERROR on error.
+ * @return
+ *	- #CACHE_OK on success.
+ *	- #CACHE_MISS if no entry found.
+ *	- #CACHE_ERROR on error.
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED rlm_cache_t *inst, REQUEST *request,
 				       rlm_cache_handle_t **handle, char const *key)
@@ -212,7 +217,9 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED rlm_cache
  * @param request The current request.
  * @param handle Pointer to memcached handle.
  * @param c entry to insert.
- * @return CACHE_OK on success else CACHE_ERROR on error.
+ * @return
+ *	- #CACHE_OK on success.
+ *	- #CACHE_ERROR on error.
  */
 static cache_status_t cache_entry_insert(UNUSED rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
 					 rlm_cache_entry_t *c)
@@ -254,7 +261,9 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_t *inst, REQUEST *requ
  * @param request The current request.
  * @param handle Pointer to memcached handle.
  * @param c entry to expire.
- * @return CACHE_OK on success else CACHE_ERROR.
+ * @return
+ *	- #CACHE_OK on success.
+ *	- #CACHE_ERROR on failure.
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
 					 rlm_cache_entry_t *c)

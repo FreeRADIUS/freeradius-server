@@ -30,6 +30,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/token.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/exfile.h>
@@ -262,6 +263,181 @@ finish:
 	fr_connection_release(inst->pool, handle);
 
 	return ret;
+}
+
+/** Converts a string value into a #VALUE_PAIR
+ *
+ * @param[out] out where to write the resulting #VALUE_PAIR.
+ * @param[in] request The current request.
+ * @param[in] map to process.
+ * @param[in] ctx The value to parse.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int _sql_map_proc_get_value(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
+{
+	VALUE_PAIR	*vp;
+	char const	*value = ctx;
+
+	vp = pairalloc(request, map->lhs->tmpl_da);
+	if (pairparsevalue(vp, value, talloc_array_length(value) - 1) < 0) {
+		char *escaped;
+
+		escaped = fr_aprints(vp, value, talloc_array_length(value), '"');
+		REDEBUG("Failed parsing value \"%s\" for attribute %s: %s", escaped,
+			map->lhs->tmpl_da->name, fr_strerror());
+		talloc_free(vp);
+
+		return -1;
+	}
+
+	vp->op = map->op;
+	*out = vp;
+
+	return 0;
+}
+
+/** Executes a SELECT query and maps the result to server attributes
+ *
+ * @param mod_inst #rlm_sql_t instance.
+ * @param proc_inst Instance data for this specific mod_proc call (unused).
+ * @param request The current request.
+ * @param query string to execute.
+ * @param maps Head of the map list.
+ * @return
+ *	- #RLM_MODULE_NOOP no rows were returned or columns matched.
+ *	- #RLM_MODULE_UPDATED if one or more #VALUE_PAIR were added to the #REQUEST.
+ *	- #RLM_MODULE_FAIL if a fault occurred.
+ */
+static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST *request,
+				char const *query, vp_map_t const *maps)
+{
+	rlm_sql_t		*inst = talloc_get_type_abort(mod_inst, rlm_sql_t);
+	rlm_sql_handle_t	*handle = NULL;
+
+	int			i, j;
+
+	rlm_rcode_t		rcode = RLM_MODULE_UPDATED;
+	sql_rcode_t		ret;
+
+	vp_map_t const		*map;
+
+	rlm_sql_row_t		row;
+
+	int			rows;
+	int			field_cnt;
+	char const		**fields = NULL, *map_rhs;
+	char			map_rhs_buff[128];
+
+#define MAX_SQL_FIELD_INDEX (64)
+
+	int			field_index[MAX_SQL_FIELD_INDEX];
+	bool			found_field = false;	/* Did we find any matching fields in the result set ? */
+
+	rad_assert(inst->module->sql_fields);		/* Should have been caught during validation... */
+
+	for (i = 0; i < MAX_SQL_FIELD_INDEX; i++) field_index[i] = -1;
+
+	/*
+	 *	Add SQL-User-Name attribute just in case it is needed
+	 *	We could search the string fmt for SQL-User-Name to see if this is
+	 * 	needed or not
+	 */
+	sql_set_user(inst, request, NULL);
+
+	handle = fr_connection_get(inst->pool);		/* connection pool should produce error */
+	if (!handle) return 0;
+
+	rlm_sql_query_log(inst, request, NULL, query);
+
+	ret = rlm_sql_select_query(inst, request, &handle, query);
+	if (ret != RLM_SQL_OK) {
+		RERROR("SQL query failed: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+
+	ret = (inst->module->sql_fields)(&fields, handle, inst->config);
+	if (ret != RLM_SQL_OK) {
+		RERROR("Failed retrieving field names: %s", fr_int2str(sql_rcode_table, ret, "<INVALID>"));
+	error:
+		rcode = RLM_MODULE_FAIL;
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		goto finish;
+	}
+	rad_assert(fields);
+	field_cnt = talloc_array_length(fields);
+
+	if (RDEBUG_ENABLED3) for (j = 0; j < field_cnt; j++) RDEBUG3("Got field: %s", fields[j]);
+
+	/*
+	 *	Iterate over the maps, it's O(N2)ish but probably
+	 *	faster than building a radix tree each time the
+	 *	map set is evaluated (map->rhs can be dynamic).
+	 */
+	for (map = maps, i = 0;
+	     map && (i < MAX_SQL_FIELD_INDEX);
+	     map = map->next, i++) {
+		/*
+		 *	Expand the RHS to get the name of the SQL field
+		 */
+		if (tmpl_expand(&map_rhs, map_rhs_buff, sizeof(map_rhs_buff),
+				request, map->rhs, NULL, NULL) < 0) {
+			RERROR("Failed getting field name: %s", fr_strerror());
+			goto error;
+		}
+
+		for (j = 0; j < field_cnt; j++) {
+			if (strcmp(fields[j], map_rhs) != 0) continue;
+			field_index[i] = j;
+			found_field = true;
+		}
+	}
+
+	/*
+	 *	Couldn't resolve any map RHS values to fields
+	 *	in the result set.
+	 */
+	if (!found_field) {
+		RDEBUG("No fields matching map found in query result");
+		rcode = RLM_MODULE_NOOP;
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		goto finish;
+	}
+
+	/*
+	 *	We've resolved all the maps to result indexes, now convert
+	 *	the values at those indexes into VALUE_PAIRs.
+	 *
+	 *	Note: Not all SQL client libraries provide a row count,
+	 *	so we have to do the count here.
+	 */
+	for (ret = rlm_sql_fetch_row(&row, inst, request, &handle), rows = 0;
+	     ret == RLM_SQL_OK;
+	     ret = rlm_sql_fetch_row(&row, inst, request, &handle), rows++) {
+		for (map = maps, j = 0;
+		     map && (j < MAX_SQL_FIELD_INDEX);
+		     map = map->next, j++) {
+			if (field_index[j] < 0) continue;	/* We didn't find the map RHS in the field set */
+			if (map_to_request(request, map, _sql_map_proc_get_value, row[field_index[j]]) < 0) goto error;
+		}
+	}
+
+	if (ret == RLM_SQL_ERROR) goto error;
+
+	if (!rows) {
+		RDEBUG("SQL query returned no results");
+		rcode = RLM_MODULE_NOOP;
+	}
+
+	(inst->module->sql_finish_select_query)(handle, inst->config);
+
+finish:
+	talloc_free(fields);
+	fr_connection_release(inst->pool, handle);
+
+	return rcode;
 }
 
 static int generate_sql_clients(rlm_sql_t *inst)
@@ -652,7 +828,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	}
 	if (rows == 0) {
 		RDEBUG2("User not found in any groups");
-		rcode = RLM_MODULE_NOTFOUND;
+		rcode = RLM_MODULE_NOOP;
 		*do_fall_through = FALL_THROUGH_DEFAULT;
 
 		goto finish;
@@ -807,13 +983,44 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_sql_t *inst = instance;
 
+	/*
+	 *	Hack...
+	 */
+	inst->config = &inst->myconfig;
+	inst->cs = conf;
+
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+
+	/*
+	 *	Load the appropriate driver for our database.
+	 *
+	 *	We need this to check if the sql_fields callback is provided.
+	 */
+	inst->handle = lt_dlopenext(inst->config->sql_driver_name);
+	if (!inst->handle) {
+		ERROR("Could not link driver %s: %s", inst->config->sql_driver_name, dlerror());
+		ERROR("Make sure it (and all its dependent libraries!) are in the search path of your system's ld");
+		return -1;
+	}
+
+	inst->module = (rlm_sql_module_t *) dlsym(inst->handle,  inst->config->sql_driver_name);
+	if (!inst->module) {
+		ERROR("Could not link symbol %s: %s", inst->config->sql_driver_name, dlerror());
+		return -1;
+	}
+
+	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked", inst->name,
+	     inst->config->sql_driver_name, inst->module->name);
+
 	if (inst->config->groupmemb_query) {
 		if (!cf_section_name2(conf)) {
 			char buffer[256];
 
 			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", inst->name);
 
-			if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0), false, sql_groupcmp, inst) < 0) {
+			if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0),
+							false, sql_groupcmp, inst) < 0) {
 				ERROR("Error registering group comparison: %s", fr_strerror());
 				return -1;
 			}
@@ -834,6 +1041,16 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		}
 	}
 
+	/*
+	 *	Register the SQL xlat function
+	 */
+	xlat_register(inst->name, sql_xlat, sql_escape_func, inst);
+
+	/*
+	 *	Register the SQL map processor function
+	 */
+	if (inst->module->sql_fields) map_proc_register(inst, inst->name, mod_map_proc, sql_escape_func, NULL, 0);
+
 	return 0;
 }
 
@@ -841,19 +1058,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sql_t *inst = instance;
-
-	/*
-	 *	Hack...
-	 */
-	inst->config = &inst->myconfig;
-	inst->cs = conf;
-
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
-
-	rad_assert(inst->name);
 
 	/*
 	 *	Sanity check for crazy people.
@@ -913,28 +1117,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
 
-	/*
-	 *	Register the SQL xlat function
-	 */
-	xlat_register(inst->name, sql_xlat, sql_escape_func, inst);
-
-	/*
-	 *	Load the appropriate driver for our database
-	 */
-	inst->handle = lt_dlopenext(inst->config->sql_driver_name);
-	if (!inst->handle) {
-		ERROR("Could not link driver %s: %s", inst->config->sql_driver_name, dlerror());
-		ERROR("Make sure it (and all its dependent libraries!) are in the search path of your system's ld");
-		return -1;
-	}
-
-	inst->module = (rlm_sql_module_t *) dlsym(inst->handle,
-						  inst->config->sql_driver_name);
-	if (!inst->module) {
-		ERROR("Could not link symbol %s: %s", inst->config->sql_driver_name, dlerror());
-		return -1;
-	}
-
 	if (inst->module->mod_instantiate) {
 		CONF_SECTION *cs;
 		char const *name;
@@ -967,9 +1149,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;
 	}
-
-	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked", inst->name,
-	     inst->config->sql_driver_name, inst->module->name);
 
 	/*
 	 *	Initialise the connection pool for this instance
@@ -1658,7 +1837,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 extern module_t rlm_sql;
 module_t rlm_sql = {
 	.magic		= RLM_MODULE_INIT,
-	.name		= "SQL",
+	.name		= "sql",
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.inst_size	= sizeof(rlm_sql_t),
 	.config		= module_config,
