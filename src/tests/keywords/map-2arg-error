@@ -1,0 +1,6 @@
+#
+#  PRE: update
+#
+map foo {	# ERROR
+    User-Name = 'foo'
+}

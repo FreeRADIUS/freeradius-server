@@ -68,7 +68,7 @@ $(BUILD_DIR)/tests/keywords/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/keyword
 
 KEYWORD_MODULES := $(shell grep -- mods-enabled src/tests/keywords/radiusd.conf | sed 's,.*/,,')
 KEYWORD_RADDB	:= $(addprefix raddb/mods-enabled/,$(KEYWORD_MODULES))
-KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_example.la rlm_cache.la
+KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_example.la rlm_cache.la rlm_csv.la
 
 #
 #  Files in the output dir depend on the unit tests
@@ -86,7 +86,7 @@ KEYWORD_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(KEYWORD_MODULES))) rlm_exampl
 #  Otherwise, check the log file for a parse error which matches the
 #  ERROR line in the input.
 #
-$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TESTBINDIR)/unittest | $(BUILD_DIR)/tests/keywords $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la
+$(BUILD_DIR)/tests/keywords/%: $(DIR)/% $(BUILD_DIR)/tests/keywords/%.attrs $(TESTBINDIR)/unittest | $(BUILD_DIR)/tests/keywords $(KEYWORD_RADDB) $(KEYWORD_LIBS) build.raddb rlm_cache_rbtree.la rlm_test.la rlm_csv.la
 	@echo UNIT-TEST $(notdir $@)
 	@if ! KEYWORD=$(notdir $@) $(TESTBIN)/unittest -D share -d src/tests/keywords/ -i $@.attrs -f $@.attrs -xx > $@.log 2>&1; then \
 		if ! grep ERROR $< 2>&1 > /dev/null; then \
