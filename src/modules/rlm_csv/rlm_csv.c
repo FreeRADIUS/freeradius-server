@@ -91,6 +91,16 @@ static bool buf2entry(rlm_csv_t *inst, char *buf, char **out)
 
 	if (*buf != '"') {
 		*out = strchr(buf + 1, *inst->delimiter);
+
+		if (!*out) {	/* mash CR / LF */
+			for (p = buf + 1; *p != '\0'; p++) {
+				if (*p < ' ') {
+					*p = '\0';
+					break;
+				}
+			}
+		}
+
 		return true;
 	}
 
@@ -98,6 +108,12 @@ static bool buf2entry(rlm_csv_t *inst, char *buf, char **out)
 	q = buf;
 
 	while (*p) {
+		if (*p < ' ') {
+			*q = '\0';
+			*out = NULL;
+			return true;
+		}
+
 		/*
 		 *	Double quotes to single quotes.
 		 */
