@@ -1847,6 +1847,18 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	}
 
 	/*
+	 *	Limit the allowed template types.
+	 */
+	if ((vpt->type != TMPL_TYPE_LITERAL) &&
+	    (vpt->type != TMPL_TYPE_ATTR) &&
+	    (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) &&
+	    (vpt->type != TMPL_TYPE_EXEC)) {
+		talloc_free(vpt);
+		cf_log_err_cs(cs, "Invalid template for map");
+		return NULL;
+	}
+
+	/*
 	 *	This looks at cs->name2 to determine which list to update
 	 */
 	rcode = map_afrom_cs(&head, cs, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, modcall_fixup_map, NULL, 256);
