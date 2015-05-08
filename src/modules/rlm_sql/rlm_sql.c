@@ -1014,7 +1014,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	     inst->config->sql_driver_name, inst->module->name);
 
 	if (inst->config->groupmemb_query) {
-		if (!cf_section_name2(conf)) {
+		if (cf_section_name2(conf)) {
 			char buffer[256];
 
 			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", inst->name);
