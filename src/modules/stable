@@ -3,6 +3,7 @@ rlm_attr_filter
 rlm_cache
 rlm_chap
 rlm_counter
+rlm_csv
 rlm_detail
 rlm_dhcp
 rlm_digest
