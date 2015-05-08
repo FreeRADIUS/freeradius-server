@@ -360,7 +360,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 
 /*
- *	Convert field X to a VP/
+ *	Convert field X to a VP.
  */
 static int csv_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
 {
@@ -368,6 +368,7 @@ static int csv_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *
 	VALUE_PAIR *head = NULL, *vp;
 	vp_cursor_t cursor;
 
+	rad_assert(ctx != NULL);
 	fr_cursor_init(&cursor, &head);
 
 	if (map->lhs->type != TMPL_TYPE_ATTR) {
@@ -377,13 +378,11 @@ static int csv_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *
 
 	/*
 	 *	FIXME: allow multiple entries.
-	 *
-	 *	FIXME: cache length of data, too
 	 */
 	vp = pairalloc(request, map->lhs->tmpl_da);
 	rad_assert(vp);
 
-	if (pairparsevalue(vp, str, strlen(str)) < 0) {
+	if (pairparsevalue(vp, str, talloc_array_length(str) - 1) < 0) {
 		char *escaped;
 
 		escaped = fr_aprints(vp, str, strlen(str), '"');
@@ -432,29 +431,46 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	     map != NULL;
 	     map = map->next) {
 		int i, field;
+		char *field_name;
 
+		/*
+		 *	Avoid memory allocations if possible.
+		 */
 		if (map->rhs->type != TMPL_TYPE_LITERAL) {
-			RDEBUG("RHS %s has to be literal!", map->rhs->name);
-			return RLM_MODULE_FAIL;
+			if (tmpl_aexpand(request, &field_name, request, map->rhs, NULL, NULL) < 0) {
+				RDEBUG("Failed expanding RHS at %s", map->lhs->name);
+				return RLM_MODULE_FAIL;
+			}
+		} else {
+			memcpy(&field_name, &map->rhs->name, sizeof(field_name)); /* const */
 		}
 
 		/*
-		 *	The RHS has to map to something...
+		 *	Find out which field the RHS maps to.
+		 *
+		 *	For maps of less than 32 entries or so, an
+		 *	array is faster than more complex solutions.
 		 */
 		field = -1;
 		for (i = 0; i < inst->num_fields; i++) {
-			if (strcmp(map->rhs->name, inst->field_names[i]) == 0) {
+			if (strcmp(field_name, inst->field_names[i]) == 0) {
 				field = inst->field_offsets[i];
 				break;
 			}
 		}
+
+		if (field_name != map->rhs->name) talloc_free(field_name);
 
 		if (field < 0) {
 			RDEBUG("No such field name %s", map->rhs->name);
 			return RLM_MODULE_FAIL;
 		}
 
-		if (map_to_request(request, map, csv_map_getvalue, (void *) e->data[i]) < 0) {
+		/*
+		 *	Pass the raw data to the callback, which will
+		 *	create the VP and add it to the map.
+		 */
+		if (map_to_request(request, map, csv_map_getvalue, (void *) e->data[field]) < 0) {
 			return RLM_MODULE_FAIL;
 		}
 	}
