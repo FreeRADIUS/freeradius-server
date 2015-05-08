@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 	bool display_version = false;
 	int flag = 0;
 	int from_child[2] = {-1, -1};
-	fr_state_t *state;
+	fr_state_t *state = NULL;
 
 	/*
 	 *  We probably don't want to free the talloc autofree context

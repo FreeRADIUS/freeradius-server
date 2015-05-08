@@ -621,7 +621,7 @@ int main(int argc, char *argv[])
 	VALUE_PAIR *vp;
 	VALUE_PAIR *filter_vps = NULL;
 	bool xlat_only = false;
-	fr_state_t *state;
+	fr_state_t *state = NULL;
 
 	fr_talloc_fault_setup();
 
