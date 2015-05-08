@@ -173,6 +173,8 @@ void fr_state_delete(fr_state_t *state)
 
 	rbtree_free(my_tree);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	if (state != &global_state) talloc_free(state);
 }
 
 /*
