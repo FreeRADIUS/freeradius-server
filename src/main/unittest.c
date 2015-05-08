@@ -637,6 +637,7 @@ int main(int argc, char *argv[])
 	VALUE_PAIR *vp;
 	VALUE_PAIR *filter_vps = NULL;
 	bool xlat_only = false;
+	fr_state_t *state;
 
 	fr_talloc_fault_setup();
 
@@ -776,7 +777,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	fr_state_init();
+	state =fr_state_init(NULL);
 
 	/*
 	 *  Set the panic action (if required)
@@ -919,7 +920,7 @@ finish:
 
 	xlat_free();		/* modules may have xlat's */
 
-	fr_state_delete();
+	fr_state_delete(state);
 
 	/*
 	 *	Free the configuration items.

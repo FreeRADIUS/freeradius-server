@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
 	bool display_version = false;
 	int flag = 0;
 	int from_child[2] = {-1, -1};
+	fr_state_t *state;
 
 	/*
 	 *  We probably don't want to free the talloc autofree context
@@ -572,7 +573,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Initialise the state rbtree (used to link multiple rounds of challenges).
 	 */
-	fr_state_init();
+	state = fr_state_init(NULL);
 
 	/*
 	 *  Process requests until HUP or exit.
@@ -626,7 +627,7 @@ cleanup:
 
 	xlat_free();		/* modules may have xlat's */
 
-	fr_state_delete();
+	fr_state_delete(state);
 
 	/*
 	 *  Free the configuration items.
