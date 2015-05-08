@@ -3673,6 +3673,7 @@ bool modcall_pass2(modcallable *mc)
 				return false;
 			}
 			g->done_pass2 = true;
+			c->debug_name = c->name;
 			break;
 
 		case MOD_XLAT:   /* @todo: pre-parse xlat's */
