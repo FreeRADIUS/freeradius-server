@@ -3562,7 +3562,7 @@ check_paircmp:
 /*
  *	Compile the RHS of update sections to xlat_exp_t
  */
-static bool modcall_pass2_update(modgroup *g)
+static bool pass2_update_compile(modgroup *g)
 {
 	vp_map_t *map;
 
@@ -3591,6 +3591,40 @@ static bool modcall_pass2_update(modgroup *g)
 		if (map->rhs->type == TMPL_TYPE_ATTR_UNDEFINED) {
 			if (!pass2_fixup_undefined(map->ci, map->rhs)) return false;
 		}
+	}
+
+	return true;
+}
+
+/*
+ *	Compile the RHS of map sections to xlat_exp_t
+ */
+static bool pass2_map_compile(modgroup *g)
+{
+	/*
+	 *	Compile the map
+	 */
+	if (!pass2_update_compile(g)) return false;
+
+	switch (g->vpt->type) {
+	case TMPL_TYPE_XLAT:
+		if (!pass2_xlat_compile(g->map->ci, &g->vpt, false, NULL)) {
+			return false;
+		}
+		break;
+
+	case TMPL_TYPE_ATTR_UNDEFINED:
+		if (!pass2_fixup_undefined(g->map->ci, g->vpt)) return false;
+		break;
+
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_EXEC:
+	case TMPL_TYPE_LITERAL:
+		break;
+
+	default:
+		rad_assert(0 == 1);
+		break;
 	}
 
 	return true;
@@ -3625,7 +3659,17 @@ bool modcall_pass2(modcallable *mc)
 				c->debug_name = talloc_asprintf(c, "update %s", name2);
 			}
 
-			if (!modcall_pass2_update(g)) {
+			if (!pass2_update_compile(g)) {
+				return false;
+			}
+			g->done_pass2 = true;
+			break;
+
+		case MOD_MAP:
+			g = mod_callabletogroup(c);
+			if (g->done_pass2) goto do_next;
+
+			if (!pass2_map_compile(g)) {
 				return false;
 			}
 			g->done_pass2 = true;
@@ -3635,7 +3679,6 @@ bool modcall_pass2(modcallable *mc)
 		case MOD_REFERENCE:
 		case MOD_BREAK:
 		case MOD_RETURN:
-		case MOD_MAP:
 #endif
 
 		case MOD_SINGLE:
