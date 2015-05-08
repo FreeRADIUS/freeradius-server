@@ -1,9 +1,9 @@
 # Clear out any rows with priority 0 (each test should use a different
 # priority, so they don't interfere with each other).
-"%{sql_sqlite:DELETE FROM radusergroup WHERE priority = 0}"
+"%{sql:DELETE FROM radusergroup WHERE priority = 0}"
 
 # Module should return NOOP if there's no result set to work with
-map sql_sqlite 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
 	&control:Tmp-String-0	:= 'username'
 	&control:Tmp-String-1	:= 'groupname'
 	&control:Tmp-Integer-0	:= 'priority'
@@ -37,10 +37,10 @@ else {
 }
 
 # Insert our first test row
-"%{sql_sqlite:INSERT INTO radusergroup (username, groupname, priority) VALUES ('bob', 'bar', 0)}"
+"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('bob', 'bar', 0)}"
 
 # Retrieve our test row
-map sql_sqlite 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
 	&control:Tmp-String-0	:= 'username'
 	&control:Tmp-String-1	:= 'groupname'
 	&control:Tmp-Integer-0	:= 'priority'
@@ -81,10 +81,10 @@ update {
 }
 
 # Insert our second test row
-"%{sql_sqlite:INSERT INTO radusergroup (username, groupname, priority) VALUES ('oof', 'rab', 0)}"
+"%{sql:INSERT INTO radusergroup (username, groupname, priority) VALUES ('oof', 'rab', 0)}"
 
 # Retrieve our test row(s) - With := we should get the values from the second row
-map sql_sqlite 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
 	&control:Tmp-String-0	:= 'username'
 	&control:Tmp-String-1	:= 'groupname'
 	&control:Tmp-Integer-0	:= 'priority'
@@ -126,7 +126,7 @@ update {
 }
 
 # Retrieve our test row(s) - With = we should get the values from the first row
-map sql_sqlite 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
 	&control:Tmp-String-0	= 'username'
 	&control:Tmp-String-1	= 'groupname'
 	&control:Tmp-Integer-0	= 'priority'
@@ -168,7 +168,7 @@ update {
 }
 
 # Retrieve our test row(s) - With += we should get the values from both rows
-map sql_sqlite 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
 	&control:Tmp-String-0	+= 'username'
 	&control:Tmp-String-1	+= 'groupname'
 	&control:Tmp-Integer-0	+= 'priority'
@@ -224,7 +224,7 @@ update {
 }
 
 # Retrieve the id column only (should result in noop)
-map sql_sqlite 'SELECT id FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT id FROM radusergroup WHERE priority = 0' {
 	&control:Tmp-String-0	+= 'username'
 	&control:Tmp-String-1	+= 'groupname'
 	&control:Tmp-Integer-0	+= 'priority'
@@ -238,7 +238,7 @@ else {
 }
 
 # Retrieve test row with specific username (using xlat'd query)
-map sql_sqlite "SELECT * FROM radusergroup WHERE priority = 0 AND username = '%{User-Name}'" {
+map sql "SELECT * FROM radusergroup WHERE priority = 0 AND username = '%{User-Name}'" {
 	&control:Tmp-String-0	= 'username'
 	&control:Tmp-String-1	= 'groupname'
 	&control:Tmp-Integer-0	= 'priority'
@@ -284,7 +284,7 @@ update {
 }
 
 # Retrieve test row with specific username (using ref'd query)
-map sql_sqlite &Tmp-String-0 {
+map sql &Tmp-String-0 {
 	&control:Tmp-String-0	= 'username'
 	&control:Tmp-String-1	= 'groupname'
 	&control:Tmp-Integer-0	= 'priority'
@@ -331,7 +331,7 @@ update request {
 }
 
 # Retrieve our test row(s) - Using different RHS types
-map sql_sqlite 'SELECT * FROM radusergroup WHERE priority = 0' {
+map sql 'SELECT * FROM radusergroup WHERE priority = 0' {
 	&control:Tmp-String-0	= &Tmp-String-0
 	&control:Tmp-String-1	= "group%{Tmp-String-1}"
 	&control:Tmp-Integer-0	= `/bin/echo priority`
