@@ -59,7 +59,7 @@ typedef struct rlm_csv_t {
 typedef struct rlm_csv_entry_t {
 	struct rlm_csv_entry_t *next;
 	char const *key;
-	char const *data[];
+	char *data[];
 } rlm_csv_entry_t;
 
 /*
@@ -516,7 +516,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		 *	Pass the raw data to the callback, which will
 		 *	create the VP and add it to the map.
 		 */
-		if (map_to_request(request, map, csv_map_getvalue, (void *) e->data[field]) < 0) {
+		if (map_to_request(request, map, csv_map_getvalue, e->data[field]) < 0) {
 			return RLM_MODULE_FAIL;
 		}
 	}
