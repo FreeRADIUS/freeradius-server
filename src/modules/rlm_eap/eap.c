@@ -876,6 +876,7 @@ void eap_fail(eap_handler_t *handler)
 	talloc_free(handler->eap_ds->request);
 	handler->eap_ds->request = talloc_zero(handler->eap_ds, eap_packet_t);
 	handler->eap_ds->request->code = PW_EAP_FAILURE;
+	handler->finished = true;
 	eap_compose(handler);
 }
 
@@ -885,6 +886,7 @@ void eap_fail(eap_handler_t *handler)
 void eap_success(eap_handler_t *handler)
 {
 	handler->eap_ds->request->code = PW_EAP_SUCCESS;
+	handler->finished = true;
 	eap_compose(handler);
 }
 

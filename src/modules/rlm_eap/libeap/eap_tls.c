@@ -68,7 +68,6 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	REQUEST		*request = handler->request;
 
 	handler->tls = true;
-	handler->finished = false;
 
 	/*
 	 *	Every new session is started only from EAP-TLS-START.

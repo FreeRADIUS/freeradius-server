@@ -51,18 +51,9 @@ static int mod_detach(void *instance)
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&(inst->session_mutex));
-	if (inst->handler_tree) pthread_mutex_destroy(&(inst->handler_mutex));
 #endif
 
 	rbtree_free(inst->session_tree);
-	if (inst->handler_tree) {
-		rbtree_free(inst->handler_tree);
-		/*
-		 *  Must be NULL else when nodes are freed they try to
-		 *  delete themselves from the tree.
-		 */
-		inst->handler_tree = NULL;
-	}
 	inst->session_tree = NULL;
 	eaplist_free(inst);
 
@@ -96,17 +87,6 @@ static int eap_handler_cmp(void const *a, void const *b)
 		       "servers.  Has there been a proxy fail-over?");
 	}
 
-	return 0;
-}
-
-
-/*
- *	Compare two handler pointers
- */
-static int eap_handler_ptr_cmp(void const *a, void const *b)
-{
-	if (a < b) return -1;
-	if (a > b) return +1;
 	return 0;
 }
 
@@ -233,22 +213,6 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		return -1;
 	}
 	fr_link_talloc_ctx_free(inst, inst->session_tree);
-
-	if (fr_debug_lvl) {
-		inst->handler_tree = rbtree_create(NULL, eap_handler_ptr_cmp, NULL, 0);
-		if (!inst->handler_tree) {
-			ERROR("rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
-			return -1;
-		}
-		fr_link_talloc_ctx_free(inst, inst->handler_tree);
-
-#ifdef HAVE_PTHREAD_H
-		if (pthread_mutex_init(&(inst->handler_mutex), NULL) < 0) {
-			ERROR("rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, fr_syserror(errno));
-			return -1;
-		}
-#endif
-	}
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&(inst->session_mutex), NULL) < 0) {
