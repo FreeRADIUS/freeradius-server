@@ -1851,10 +1851,11 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	 */
 	if ((vpt->type != TMPL_TYPE_LITERAL) &&
 	    (vpt->type != TMPL_TYPE_ATTR) &&
+	    (vpt->type != TMPL_TYPE_XLAT) &&
 	    (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) &&
 	    (vpt->type != TMPL_TYPE_EXEC)) {
 		talloc_free(vpt);
-		cf_log_err_cs(cs, "Invalid template for map");
+		cf_log_err_cs(cs, "Invalid third argument for map");
 		return NULL;
 	}
 
