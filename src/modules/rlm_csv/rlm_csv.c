@@ -215,6 +215,49 @@ static rlm_csv_entry_t *file2csv(CONF_SECTION *conf, rlm_csv_t *inst, int lineno
 }
 
 
+static int fieldname2offset(rlm_csv_t *inst, char const *field_name)
+{
+	int i;
+
+	/*
+	 *	Find out which field the RHS maps to.
+	 *
+	 *	For maps of less than 32 entries or so, an
+	 *	array is faster than more complex solutions.
+	 */
+	for (i = 0; i < inst->num_fields; i++) {
+		if (strcmp(field_name, inst->field_names[i]) == 0) {
+			return inst->field_offsets[i];
+		}
+	}
+
+	return -1;
+}
+
+
+/*
+ *	Verify the result of the map.
+ */
+static int csv_map_verify(UNUSED void *proc_inst, void *mod_inst, UNUSED vp_tmpl_t const *src, vp_map_t const *maps)
+{
+	rlm_csv_t *inst = mod_inst;
+	vp_map_t const *map;
+
+	for (map = maps;
+	     map != NULL;
+	     map = map->next) {
+		if (map->rhs->type != TMPL_TYPE_LITERAL) continue;
+
+		if (fieldname2offset(inst, map->rhs->name) < 0) {
+			cf_log_err(map->ci, "Unknown field '%s'", map->rhs->name);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -353,11 +396,10 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	And register the map function.
 	 */
-	map_proc_register(inst, inst->name, mod_map_proc, NULL, NULL, 0);
+	map_proc_register(inst, inst->name, mod_map_proc, NULL, csv_map_verify, 0);
 
 	return 0;
 }
-
 
 /*
  *	Convert field X to a VP.
@@ -371,10 +413,7 @@ static int csv_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *
 	rad_assert(ctx != NULL);
 	fr_cursor_init(&cursor, &head);
 
-	if (map->lhs->type != TMPL_TYPE_ATTR) {
-		RDEBUG("LHS %s is not an attr", map->lhs->name);
-		return -1;
-	}
+	rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 
 	/*
 	 *	FIXME: allow multiple entries.
@@ -430,7 +469,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	for (map = maps;
 	     map != NULL;
 	     map = map->next) {
-		int i, field;
+		int field;
 		char *field_name;
 
 		/*
@@ -445,19 +484,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 			memcpy(&field_name, &map->rhs->name, sizeof(field_name)); /* const */
 		}
 
-		/*
-		 *	Find out which field the RHS maps to.
-		 *
-		 *	For maps of less than 32 entries or so, an
-		 *	array is faster than more complex solutions.
-		 */
-		field = -1;
-		for (i = 0; i < inst->num_fields; i++) {
-			if (strcmp(field_name, inst->field_names[i]) == 0) {
-				field = inst->field_offsets[i];
-				break;
-			}
-		}
+		field = fieldname2offset(inst, field_name);
 
 		if (field_name != map->rhs->name) talloc_free(field_name);
 
