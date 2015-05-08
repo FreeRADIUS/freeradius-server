@@ -152,7 +152,6 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	inst = type_arg;
 
 	handler->tls = true;
-	handler->finished = false;
 
 	/*
 	 *	Check if we need a client certificate.

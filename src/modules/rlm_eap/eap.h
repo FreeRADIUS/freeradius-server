@@ -118,8 +118,8 @@ typedef struct _eap_handler {
 
 	int		trips;
 
-	int		tls;
-	int		finished;
+	bool		tls;
+	bool		finished;
 	VALUE_PAIR	*certs;
 } eap_handler_t;
 

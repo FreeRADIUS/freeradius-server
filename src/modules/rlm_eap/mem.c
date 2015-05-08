@@ -74,8 +74,6 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 
 static int _eap_handler_free(eap_handler_t *handler)
 {
-	rlm_eap_t *inst = handler->inst_holder;
-
 	if (handler->identity) {
 		talloc_free(handler->identity);
 		handler->identity = NULL;
@@ -94,16 +92,28 @@ static int _eap_handler_free(eap_handler_t *handler)
 
 	if (handler->certs) pairfree(&handler->certs);
 
-	PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
-	if (inst->handler_tree) {
-		rbtree_deletebydata(inst->handler_tree, handler);
-	}
 	/*
-	 *	Free operations need to be synchronised too.
+	 *	Give helpful debug messages if:
+	 *
+	 *	we're debugging TLS sessions, which don't finish,
+	 *	and which aren't deleted early due to a likely RADIUS
+	 *	retransmit which nukes our ID, and therefore our stare.
 	 */
-	talloc_free(handler);
-	PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
+	if (fr_debug_lvl && handler->tls && !handler->finished &&
+	    (time(NULL) > (handler->timestamp + 3))) {
+		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!                  !!",
+		     handler->state[0], handler->state[1],
+		     handler->state[2], handler->state[3],
+		     handler->state[4], handler->state[5],
+		     handler->state[6], handler->state[7]);
 
+		WARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
+		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	}
+
+	talloc_free(handler);
+	
 	return 0;
 }
 
@@ -114,23 +124,12 @@ eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
 {
 	eap_handler_t	*handler;
 
-	PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
 	handler = talloc_zero(NULL, eap_handler_t);
-	if (handler == NULL) {
-		PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
+	if (!handler) {
 		ERROR("Failed allocating handler");
 		return NULL;
 	}
-	if (inst->handler_tree) {
-		if (!rbtree_insert(inst->handler_tree, handler)) {
-			PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
-			ERROR("Failed inserting EAP handler into handler tree");
-			talloc_free(handler);
-			return NULL;
-		}
-	}
 	handler->inst_holder = inst;
-	PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
 
 	/* Doesn't need to be inside the critical region */
 	talloc_set_destructor(handler, _eap_handler_free);
@@ -138,71 +137,6 @@ eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
 	return handler;
 }
 
-typedef struct check_handler_t {
-	rlm_eap_t	*inst;
-	eap_handler_t	*handler;
-	int		trips;
-} check_handler_t;
-
-static int _check_opaque_free(check_handler_t *check)
-{
-	bool do_warning = false;
-	uint8_t state[8];
-
-	if (!check->inst || !check->handler) {
-		return 0;
-	}
-
-	if (!check->inst->handler_tree) goto done;
-
-	PTHREAD_MUTEX_LOCK(&(check->inst->handler_mutex));
-	if (!rbtree_finddata(check->inst->handler_tree, check->handler)) {
-		goto done;
-	}
-
-	/*
-	 *	The session has continued *after* this packet.
-	 *	Don't do a warning.
-	 */
-	if (check->handler->trips > check->trips) {
-		goto done;
-	}
-
-	/*
-	 *	No TLS means no warnings.
-	 */
-	if (!check->handler->tls) goto done;
-
-	/*
-	 *	If we're being deleted early, it's likely because we
-	 *	received a transmit from the client that re-uses the
-	 *	same RADIUS Id, which forces the current packet to be
-	 *	deleted.  In that case, ignore the error.
-	 */
-	if (time(NULL) < (check->handler->timestamp + 3)) goto done;
-
-	if (!check->handler->finished) {
-		do_warning = true;
-		memcpy(state, check->handler->state, sizeof(state));
-	}
-
-done:
-	PTHREAD_MUTEX_UNLOCK(&(check->inst->handler_mutex));
-
-	if (do_warning) {
-		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!  !!",
-		      state[0], state[1],
-		      state[2], state[3],
-		      state[4], state[5],
-		      state[6], state[7]);
-
-		WARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
-		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-	}
-
-	return 0;
-}
 
 void eaplist_free(rlm_eap_t *inst)
 {
@@ -398,20 +332,6 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Big-time failure.
 	 */
 	status = rbtree_insert(inst->session_tree, handler);
-
-	/*
-	 *	Catch Access-Challenge without response.
-	 */
-	if (inst->handler_tree) {
-		check_handler_t *check = talloc(handler, check_handler_t);
-
-		check->inst = inst;
-		check->handler = handler;
-		check->trips = handler->trips;
-
-		talloc_set_destructor(check, _check_opaque_free);
-		request_data_add(request, inst, 0, check, true);
-	}
 
 	if (status) {
 		eap_handler_t *prev;
