@@ -385,7 +385,7 @@ static int csv_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *
 	if (pairparsevalue(vp, str, talloc_array_length(str) - 1) < 0) {
 		char *escaped;
 
-		escaped = fr_aprints(vp, str, strlen(str), '"');
+		escaped = fr_aprints(vp, str, talloc_array_length(str) - 1, '\'');
 		RWDEBUG("Failed parsing value \"%s\" for attribute %s: %s", escaped,
 			map->lhs->tmpl_da->name, fr_strerror());
 
