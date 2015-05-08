@@ -409,16 +409,35 @@ static int csv_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *
 	char const *str = ctx;
 	VALUE_PAIR *head = NULL, *vp;
 	vp_cursor_t cursor;
+	DICT_ATTR const *da;
 
 	rad_assert(ctx != NULL);
 	fr_cursor_init(&cursor, &head);
 
-	rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
-
 	/*
 	 *	FIXME: allow multiple entries.
 	 */
-	vp = pairalloc(request, map->lhs->tmpl_da);
+	if (map->lhs->type == TMPL_TYPE_ATTR) {
+		da = map->lhs->tmpl_da;
+
+	} else {
+		char *attr;
+
+		if (tmpl_aexpand(request, &attr, request, map->lhs, NULL, NULL) <= 0) {
+			RWDEBUG("Failed expanding string");
+			return -1;
+		}
+
+		da = dict_attrbyname(attr);
+		if (!da) {
+			RWDEBUG("No such attribute '%s'", attr);
+			return -1;
+		}
+
+		talloc_free(attr);
+	}
+
+	vp = pairalloc(request, da);
 	rad_assert(vp);
 
 	if (pairparsevalue(vp, str, talloc_array_length(str) - 1) < 0) {
