@@ -183,7 +183,7 @@ void fr_state_delete(fr_state_t *state)
 /*
  *	Create a new entry.  Called with the mutex held.
  */
-static state_entry_t *fr_state_create(fr_state_t *state, RADIUS_PACKET *packet, state_entry_t *old)
+static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packet, state_entry_t *old)
 {
 	size_t i;
 	uint32_t x;
@@ -330,7 +330,7 @@ static state_entry_t *fr_state_create(fr_state_t *state, RADIUS_PACKET *packet, 
 /*
  *	Find the entry, based on the State attribute.
  */
-static state_entry_t *fr_state_find(fr_state_t *state, RADIUS_PACKET *packet)
+static state_entry_t *state_entry_find(fr_state_t *state, RADIUS_PACKET *packet)
 {
 	VALUE_PAIR *vp;
 	state_entry_t *entry, my_entry;
@@ -364,7 +364,7 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 	request->state = NULL;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = fr_state_find(state, original);
+	entry = state_entry_find(state, original);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return;
@@ -394,7 +394,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	}
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = fr_state_find(state, packet);
+	entry = state_entry_find(state, packet);
 
 	/*
 	 *	This has to be done in a mutex lock, because talloc
@@ -437,12 +437,12 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
 	if (original) {
-		old = fr_state_find(state, original);
+		old = state_entry_find(state, original);
 	} else {
 		old = NULL;
 	}
 
-	entry = fr_state_create(state, packet, old);
+	entry = state_entry_create(state, packet, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return false;
@@ -464,7 +464,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
  *	Find the opaque data associated with a State attribute.
  *	Leave the data in the entry.
  */
-void *fr_state_find_data(fr_state_t *state, RADIUS_PACKET *packet)
+void *state_entry_find_data(fr_state_t *state, RADIUS_PACKET *packet)
 {
 	void *data;
 	state_entry_t *entry;
@@ -472,7 +472,7 @@ void *fr_state_find_data(fr_state_t *state, RADIUS_PACKET *packet)
 	if (!state) return false;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = fr_state_find(state, packet);
+	entry = state_entry_find(state, packet);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return NULL;
@@ -497,7 +497,7 @@ void *fr_state_get_data(fr_state_t *state, RADIUS_PACKET *packet)
 	if (!state) return NULL;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = fr_state_find(state, packet);
+	entry = state_entry_find(state, packet);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return NULL;
@@ -525,12 +525,12 @@ bool fr_state_put_data(fr_state_t *state, RADIUS_PACKET *original, RADIUS_PACKET
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
 	if (original) {
-		old = fr_state_find(state, original);
+		old = state_entry_find(state, original);
 	} else {
 		old = NULL;
 	}
 
-	entry = fr_state_create(state, packet, old);
+	entry = state_entry_create(state, packet, old);
 	if (!entry) {
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return false;
