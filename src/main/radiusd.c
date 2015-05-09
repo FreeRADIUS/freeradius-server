@@ -573,7 +573,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Initialise the state rbtree (used to link multiple rounds of challenges).
 	 */
-	state = fr_state_init(NULL);
+	state = fr_state_init(NULL, 0);
 
 	/*
 	 *  Process requests until HUP or exit.

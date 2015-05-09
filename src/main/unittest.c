@@ -777,7 +777,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	state =fr_state_init(NULL);
+	state =fr_state_init(NULL, 0);
 
 	/*
 	 *  Set the panic action (if required)

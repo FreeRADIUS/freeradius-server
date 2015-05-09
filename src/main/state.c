@@ -45,6 +45,7 @@ typedef struct state_entry_t {
 } state_entry_t;
 
 struct fr_state_t {
+	int max_sessions;
 	rbtree_t *tree;
 
 	state_entry_t *head, *tail;
@@ -116,7 +117,7 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 		state->tail = prev;
 	}
 
-	if (entry->opaque) talloc_free(entry->opaque);
+	if (entry->data) talloc_free(entry->data);
 
 #ifdef WITH_VERIFY_PTR
 	(void) talloc_get_type_abort(entry, state_entry_t);
@@ -125,17 +126,20 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 	talloc_free(entry);
 }
 
-fr_state_t *fr_state_init(TALLOC_CTX *ctx)
+fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions)
 {
 	fr_state_t *state;
 
 	if (!ctx) {
 		state = &global_state;
 		if (state->tree) return state;
+
+		state->max_sessions = main_config.max_requests * 2;
 	} else {
 		state = talloc_zero(NULL, fr_state_t);
 		if (!state) return 0;
 
+		state->max_sessions = max_sessions;
 		fr_link_talloc_ctx_free(ctx, state);
 	}
 
@@ -207,7 +211,7 @@ static state_entry_t *fr_state_create(fr_state_t *state, RADIUS_PACKET *packet, 
 		 *	Unused.  We can delete it, even if now isn't
 		 *	the time to clean it up.
 		 */
-		if (!entry->vps && !entry->opaque) {
+		if (!entry->vps && !entry->data) {
 			state_entry_free(state, entry);
 			continue;
 		}
@@ -215,11 +219,7 @@ static state_entry_t *fr_state_create(fr_state_t *state, RADIUS_PACKET *packet, 
 		break;
 	}
 
-	/*
-	 *	Limit the size of the cache based on how many requests
-	 *	we can handle at the same time.
-	 */
-	if (rbtree_num_elements(state->tree) >= main_config.max_requests * 2) {
+	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) {
 		return NULL;
 	}
 
@@ -259,6 +259,7 @@ static state_entry_t *fr_state_create(fr_state_t *state, RADIUS_PACKET *packet, 
 		if (!vp) {
 			memcpy(entry->state, old->state, sizeof(entry->state));
 
+			entry->state[0] = entry->tries;
 			entry->state[1] = entry->state[0] ^ entry->tries;
 			entry->state[8] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
 			entry->state[10] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);
@@ -268,7 +269,7 @@ static state_entry_t *fr_state_create(fr_state_t *state, RADIUS_PACKET *packet, 
 		/*
 		 *	The old one isn't used any more, so we can free it.
 		 */
-		if (!old->opaque) state_entry_free(state, old);
+		if (!old->data) state_entry_free(state, old);
 
 	} else if (!vp) {
 		/*
@@ -279,6 +280,8 @@ static state_entry_t *fr_state_create(fr_state_t *state, RADIUS_PACKET *packet, 
 			x = fr_rand();
 			memcpy(entry->state + (i * 4), &x, sizeof(x));
 		}
+
+		entry->state[0] = 0;
 	}
 
 	/*
@@ -475,7 +478,7 @@ void *fr_state_find_data(fr_state_t *state, RADIUS_PACKET *packet)
 		return NULL;
 	}
 
-	data = entry->opaque;
+	data = entry->data;
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	return data;
@@ -500,8 +503,8 @@ void *fr_state_get_data(fr_state_t *state, RADIUS_PACKET *packet)
 		return NULL;
 	}
 
-	data = entry->opaque;
-	entry->opaque = NULL;
+	data = entry->data;
+	entry->data = NULL;
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	return data;
@@ -537,8 +540,8 @@ bool fr_state_put_data(fr_state_t *state, RADIUS_PACKET *original, RADIUS_PACKET
 	 *	If we're moving the data, ensure that we delete it
 	 *	from the old state.
 	 */
-	if (old && (old->opaque == data)) {
-		old->opaque = NULL;
+	if (old && (old->data == data)) {
+		old->data = NULL;
 	}
 
 	entry->data = data;
