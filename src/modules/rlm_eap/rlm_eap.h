@@ -50,7 +50,6 @@ typedef struct eap_module {
 typedef struct rlm_eap {
 	rbtree_t	*session_tree;
 	eap_handler_t	*session_head, *session_tail;
-	rbtree_t	*handler_tree; /* for debugging only */
 	eap_module_t 	*methods[PW_EAP_MAX_TYPES];
 
 	/*
