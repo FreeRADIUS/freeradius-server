@@ -464,7 +464,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
  *	Find the opaque data associated with a State attribute.
  *	Leave the data in the entry.
  */
-void *state_entry_find_data(fr_state_t *state, RADIUS_PACKET *packet)
+void *fr_state_find_data(fr_state_t *state, RADIUS_PACKET *packet)
 {
 	void *data;
 	state_entry_t *entry;
