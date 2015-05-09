@@ -41,8 +41,7 @@ typedef struct state_entry_t {
 
 	VALUE_PAIR	*vps;
 
-	void 		*opaque;
-	void 		(*free_opaque)(void *opaque);
+	void 		*data;
 } state_entry_t;
 
 struct fr_state_t {
@@ -117,9 +116,7 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 		state->tail = prev;
 	}
 
-	if (entry->opaque) {
-		entry->free_opaque(entry->opaque);
-	}
+	if (entry->opaque) talloc_free(entry->opaque);
 
 #ifdef WITH_VERIFY_PTR
 	(void) talloc_get_type_abort(entry, state_entry_t);
@@ -136,8 +133,10 @@ fr_state_t *fr_state_init(TALLOC_CTX *ctx)
 		state = &global_state;
 		if (state->tree) return state;
 	} else {
-		state = talloc_zero(ctx, fr_state_t);
+		state = talloc_zero(NULL, fr_state_t);
 		if (!state) return 0;
+
+		fr_link_talloc_ctx_free(ctx, state);
 	}
 
 #ifdef HAVE_PTHREAD_H
@@ -462,7 +461,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
  *	Find the opaque data associated with a State attribute.
  *	Leave the data in the entry.
  */
-void *fr_state_find_data(fr_state_t *state, UNUSED REQUEST *request, RADIUS_PACKET *packet)
+void *fr_state_find_data(fr_state_t *state, RADIUS_PACKET *packet)
 {
 	void *data;
 	state_entry_t *entry;
@@ -487,7 +486,7 @@ void *fr_state_find_data(fr_state_t *state, UNUSED REQUEST *request, RADIUS_PACK
  *	Get the opaque data associated with a State attribute.
  *	and remove the data from the entry.
  */
-void *fr_state_get_data(fr_state_t *state, UNUSED REQUEST *request, RADIUS_PACKET *packet)
+void *fr_state_get_data(fr_state_t *state, RADIUS_PACKET *packet)
 {
 	void *data;
 	state_entry_t *entry;
@@ -513,8 +512,8 @@ void *fr_state_get_data(fr_state_t *state, UNUSED REQUEST *request, RADIUS_PACKE
  *	Get the opaque data associated with a State attribute.
  *	and remove the data from the entry.
  */
-bool fr_state_put_data(fr_state_t *state, UNUSED REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet,
-		       void *data, void (*free_data)(void *))
+bool fr_state_put_data(fr_state_t *state, RADIUS_PACKET *original, RADIUS_PACKET *packet,
+		       void *data)
 {
 	state_entry_t *entry, *old;
 
@@ -542,8 +541,7 @@ bool fr_state_put_data(fr_state_t *state, UNUSED REQUEST *request, RADIUS_PACKET
 		old->opaque = NULL;
 	}
 
-	entry->opaque = data;
-	entry->free_opaque = free_data;
+	entry->data = data;
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 	return true;
