@@ -27,6 +27,7 @@
 RCSIDH(rlm_eap_h, "$Id$")
 
 #include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/state.h>
 #include "eap.h"
 #include "eap_types.h"
 
@@ -48,9 +49,7 @@ typedef struct eap_module {
  * mutex = ensure only one thread is updating the sessions[] struct
  */
 typedef struct rlm_eap {
-	rbtree_t	*session_tree;
-	eap_handler_t	*session_head, *session_tail;
-	rbtree_t	*handler_tree; /* for debugging only */
+	fr_state_t	*state;
 	eap_module_t 	*methods[PW_EAP_MAX_TYPES];
 
 	/*
@@ -104,13 +103,5 @@ eap_handler_t 	*eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_msg, REQUEST
 EAP_DS      	*eap_ds_alloc(eap_handler_t *handler);
 eap_handler_t 	*eap_handler_alloc(rlm_eap_t *inst);
 void	    	eap_ds_free(EAP_DS **eap_ds);
-int 	    	eaplist_add(rlm_eap_t *inst, eap_handler_t *handler) CC_HINT(nonnull);
-eap_handler_t 	*eaplist_find(rlm_eap_t *inst, REQUEST *request, eap_packet_raw_t *eap_packet);
-void		eaplist_free(rlm_eap_t *inst);
-
-/* State */
-void	    	generate_key(void);
-VALUE_PAIR  	*generate_state(time_t timestamp);
-int	    	verify_state(VALUE_PAIR *state, time_t timestamp);
 
 #endif /*_RLM_EAP_H*/

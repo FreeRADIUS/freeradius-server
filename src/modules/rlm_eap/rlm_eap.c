@@ -40,52 +40,15 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
+
 /*
  * delete all the allocated space by eap module
  */
 static int mod_detach(void *instance)
 {
-	rlm_eap_t *inst;
+	rlm_eap_t *inst = (rlm_eap_t *)instance;
 
-	inst = (rlm_eap_t *)instance;
-
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_destroy(&(inst->session_mutex));
-#endif
-
-	rbtree_free(inst->session_tree);
-	inst->session_tree = NULL;
-	eaplist_free(inst);
-
-	return 0;
-}
-
-
-/*
- *	Compare two handlers.
- */
-static int eap_handler_cmp(void const *a, void const *b)
-{
-	int rcode;
-	eap_handler_t const *one = a;
-	eap_handler_t const *two = b;
-
-	if (one->eap_id < two->eap_id) return -1;
-	if (one->eap_id > two->eap_id) return +1;
-
-	rcode = memcmp(one->state, two->state, sizeof(one->state));
-	if (rcode != 0) return rcode;
-
-	/*
-	 *	As of 2.1.8, we don't key off of source IP.  This
-	 *	a NAS to send packets load-balanced (or fail-over)
-	 *	across multiple intermediate proxies, and still have
-	 *	EAP work.
-	 */
-	if (fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr) != 0) {
-		WARN("EAP packets are arriving from two different upstream "
-		       "servers.  Has there been a proxy fail-over?");
-	}
+	fr_state_delete(inst->state);
 
 	return 0;
 }
@@ -199,27 +162,14 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	inst->default_method = method; /* save the numerical method */
 
 	/*
-	 *	List of sessions are set to NULL by the memset
-	 *	of 'inst', above.
-	 */
-
-	/*
 	 *	Lookup sessions in the tree.  We don't free them in
 	 *	the tree, as that's taken care of elsewhere...
 	 */
-	inst->session_tree = rbtree_create(NULL, eap_handler_cmp, NULL, 0);
-	if (!inst->session_tree) {
-		ERROR("rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
+	inst->state = fr_state_init(inst, inst->max_sessions);
+	if (!inst->state) {
+		ERROR("rlm_eap (%s): Cannot initialize session tracking structure", inst->xlat_name);
 		return -1;
 	}
-	fr_link_talloc_ctx_free(inst, inst->session_tree);
-
-#ifdef HAVE_PTHREAD_H
-	if (pthread_mutex_init(&(inst->session_mutex), NULL) < 0) {
-		ERROR("rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, fr_syserror(errno));
-		return -1;
-	}
-#endif
 
 	return 0;
 }
@@ -383,12 +333,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	intentionally failing the session, as opposed
 		 *	to accidentally failing it.
 		 */
-		if (!eaplist_add(inst, handler)) {
+		if (!fr_state_put_data(inst->state, request->packet, request->reply,
+				       handler)) {
 			RDEBUG("Failed adding handler to the list");
 			eap_fail(handler);
 			talloc_free(handler);
 			return RLM_MODULE_FAIL;
 		}
+
+		eap_ds_free(&(handler->prev_eapds));
+		handler->prev_eapds = handler->eap_ds;
+		handler->eap_ds = NULL;
 
 	} else {
 		RDEBUG2("Freeing handler");
@@ -510,7 +465,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
 {
 	size_t		i;
 	size_t		len;
@@ -518,6 +473,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 	VALUE_PAIR	*vp;
 	eap_handler_t	*handler;
 	vp_cursor_t	cursor;
+	rlm_eap_t	*inst = instance;
 
 	/*
 	 *	If there was a handler associated with this request,
@@ -565,11 +521,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 		 */
 		if ((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
 		    (handler->eap_ds->request->type.num >= PW_EAP_MD5)) {
-			if (!eaplist_add(inst, handler)) {
+			if (!fr_state_put_data(inst->state, request->packet, request->reply,
+					       handler)) {
 				eap_fail(handler);
 				talloc_free(handler);
 				return RLM_MODULE_FAIL;
 			}
+
+			eap_ds_free(&(handler->prev_eapds));
+			handler->prev_eapds = handler->eap_ds;
+			handler->eap_ds = NULL;
 
 		} else {	/* couldn't have been LEAP, there's no tunnel */
 			RDEBUG2("Freeing handler");

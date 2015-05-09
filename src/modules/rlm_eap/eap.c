@@ -1111,10 +1111,17 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	 *	EAP-Identity response
 	 */
 	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
-		handler = eaplist_find(inst, request, eap_packet);
+		handler = fr_state_get_data(inst->state, request->packet);
 		if (!handler) {
 			/* Either send EAP_Identity or EAP-Fail */
-			RDEBUG("Either EAP-request timed out OR EAP-response to an unknown EAP-request");
+			RDEBUG("No EAP session matching state.");
+			goto error;
+		}
+
+		handler->trips++;
+		if (handler->trips >= 50) {
+			RERROR("Failing EAP session due to too many round trips");
+			talloc_free(handler);
 			goto error;
 		}
 
