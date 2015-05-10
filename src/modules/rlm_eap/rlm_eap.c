@@ -42,19 +42,6 @@ static const CONF_PARSER module_config[] = {
 
 
 /*
- * delete all the allocated space by eap module
- */
-static int mod_detach(void *instance)
-{
-	rlm_eap_t *inst = (rlm_eap_t *)instance;
-
-	fr_state_delete(inst->state);
-
-	return 0;
-}
-
-
-/*
  * read the config section and load all the eap authentication types present.
  */
 static int mod_instantiate(CONF_SECTION *cs, void *instance)
@@ -698,7 +685,6 @@ module_t rlm_eap = {
 	.inst_size	= sizeof(rlm_eap_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
