@@ -324,6 +324,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	     (handler->eap_ds->request->code == PW_EAP_SUCCESS) &&
 	     (handler->eap_ds->request->type.num == 0))) {
 
+		eap_ds_free(&(handler->prev_eapds));
+		handler->prev_eapds = handler->eap_ds;
+		handler->eap_ds = NULL;
+
 		/*
 		 *	Return FAIL if we can't remember the handler.
 		 *	This is actually disallowed by the
@@ -340,10 +344,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			talloc_free(handler);
 			return RLM_MODULE_FAIL;
 		}
-
-		eap_ds_free(&(handler->prev_eapds));
-		handler->prev_eapds = handler->eap_ds;
-		handler->eap_ds = NULL;
 
 	} else {
 		RDEBUG2("Freeing handler");
@@ -521,16 +521,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 */
 		if ((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
 		    (handler->eap_ds->request->type.num >= PW_EAP_MD5)) {
+			eap_ds_free(&(handler->prev_eapds));
+			handler->prev_eapds = handler->eap_ds;
+			handler->eap_ds = NULL;
+
 			if (!fr_state_put_data(inst->state, request->packet, request->reply,
 					       handler)) {
 				eap_fail(handler);
 				talloc_free(handler);
 				return RLM_MODULE_FAIL;
 			}
-
-			eap_ds_free(&(handler->prev_eapds));
-			handler->prev_eapds = handler->eap_ds;
-			handler->eap_ds = NULL;
 
 		} else {	/* couldn't have been LEAP, there's no tunnel */
 			RDEBUG2("Freeing handler");
