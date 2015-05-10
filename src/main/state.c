@@ -55,7 +55,7 @@ struct fr_state_t {
 #endif
 };
 
-static fr_state_t global_state;
+static fr_state_t *global_state = NULL;
 
 #ifdef HAVE_PTHREAD_H
 
@@ -131,8 +131,10 @@ fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions)
 	fr_state_t *state;
 
 	if (!ctx) {
-		state = &global_state;
-		if (state->tree) return state;
+		if (global_state) return global_state;
+
+		state = global_state = talloc_zero(NULL, fr_state_t);
+		if (!state) return 0;
 
 		state->max_sessions = main_config.max_requests * 2;
 	} else {
@@ -150,7 +152,7 @@ fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions)
 	}
 #endif
 
-	state->tree = rbtree_create(NULL, state_entry_cmp, NULL, 0);
+	state->tree = rbtree_create(state, state_entry_cmp, NULL, 0);
 	if (!state->tree) {
 		talloc_free(state);
 		return NULL;
@@ -177,7 +179,9 @@ void fr_state_delete(fr_state_t *state)
 	rbtree_free(my_tree);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	if (state != &global_state) talloc_free(state);
+	if (state == global_state) global_state = NULL;
+
+	talloc_free(state);
 }
 
 /*
@@ -358,7 +362,7 @@ static state_entry_t *state_entry_find(fr_state_t *state, RADIUS_PACKET *packet)
 void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 {
 	state_entry_t *entry;
-	fr_state_t *state = &global_state;
+	fr_state_t *state = global_state;
 
 	pairfree(&request->state);
 	request->state = NULL;
@@ -381,7 +385,7 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 {
 	state_entry_t *entry;
-	fr_state_t *state = &global_state;
+	fr_state_t *state = global_state;
 
 	rad_assert(request->state == NULL);
 
@@ -424,7 +428,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet)
 {
 	state_entry_t *entry, *old;
-	fr_state_t *state = &global_state;
+	fr_state_t *state = global_state;
 
 	if (!request->state) {
 		RDEBUG3("session-state: Nothing to cache");
