@@ -1207,7 +1207,6 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	if (!clients || !request) return NULL;
 
 	c = talloc_zero(clients, RADCLIENT);
-	c->cs = request->client->cs;
 	c->ipaddr.af = AF_UNSPEC;
 	c->src_ipaddr.af = AF_UNSPEC;
 
