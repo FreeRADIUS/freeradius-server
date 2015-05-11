@@ -48,6 +48,9 @@ RCSID("$Id$")
 #include <fcntl.h>
 #endif
 
+#ifdef HAVE_SYS_STAT_H
+#include <sys/stat.h>
+#endif
 
 #ifdef DEBUG_PRINT_PACKET
 static void print_packet(RADIUS_PACKET *packet)
@@ -183,6 +186,10 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 *	It's a dynamically generated client, check it.
 	 */
 	if (client->dynamic && (src_port != 0)) {
+#ifdef HAVE_SYS_STAT_H
+		char const *filename;
+#endif
+
 		/*
 		 *	Lives forever.  Return it.
 		 */
@@ -200,6 +207,26 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		 *	It's not dead yet.  Return it.
 		 */
 		if ((client->created + client->lifetime) > now) return client;
+
+#ifdef HAVE_SYS_STAT_H
+		/*
+		 *	The client was read from a file, and the file
+		 *	hasn't changed since the client was created.
+		 *	Just renew the creation time, and continue.
+		 *	We don't need to re-load the same information.
+		 */
+		if (client->cs &&
+		    (filename = cf_section_filename(client->cs)) != NULL) {
+			struct stat buf;
+
+			if ((stat(filename, &buf) >= 0) &&
+			    (buf.st_mtime < client->created)) {
+				client->created = now;
+				return client;
+			}
+		}
+#endif
+
 
 		/*
 		 *	This really puts them onto a queue for later
