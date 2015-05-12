@@ -144,7 +144,7 @@ int rad_accounting(REQUEST *request)
 		}
 	}
 
-#if defined(WITH_DETAIL) && defined(WITH_PROXUY)
+#if defined(WITH_DETAIL) && defined(WITH_PROXY)
 	/*
 	 *	We proxied from the detail file, but didn't get a
 	 *	reply, then don't mark the request as replied.
