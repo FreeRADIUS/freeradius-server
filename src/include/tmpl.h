@@ -319,10 +319,10 @@ int			radius_request(REQUEST **request, request_refs_t name);
 
 size_t			radius_request_name(request_refs_t *out, char const *name, request_refs_t unknown);
 
-vp_tmpl_t	*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
+vp_tmpl_t		*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
 				   char const *name, ssize_t len);
 
-vp_tmpl_t	*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
+vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 				    ssize_t len);
 
 void			tmpl_from_da(vp_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
