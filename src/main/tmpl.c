@@ -828,9 +828,6 @@ ssize_t tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
 
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
  *
- * @note Unlike #tmpl_from_attr_substr this function will error out if the entire
- *	name string isn't parsed.
- *
  * @param[in,out] ctx to allocate #vp_tmpl_t in.
  * @param[out] out Where to write pointer to new #vp_tmpl_t.
  * @param[in] name of attribute including #request_refs and #pair_lists qualifiers.
@@ -858,6 +855,36 @@ ssize_t tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
  *	(number of bytes parsed).
  *
  * @see REMARKER to produce pretty error markers from the return value.
+ */
+ssize_t tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
+			       request_refs_t request_def, pair_lists_t list_def,
+			       bool allow_unknown, bool allow_undefined)
+{
+	ssize_t slen;
+	vp_tmpl_t *vpt;
+
+	MEM(vpt = talloc(ctx, vp_tmpl_t)); /* tmpl_from_attr_substr zeros it */
+
+	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown, allow_undefined);
+	if (slen <= 0) {
+		TALLOC_FREE(vpt);
+		return slen;
+	}
+	vpt->name = talloc_strndup(vpt, vpt->name, slen);
+
+	VERIFY_TMPL(vpt);
+
+	*out = vpt;
+
+	return slen;
+}
+
+/** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
+ *
+ * @note Unlike #tmpl_afrom_attr_substr this function will error out if the entire
+ *	name string isn't parsed.
+ *
+ * @copydetails tmpl_afrom_attr_substr
  */
 ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 			    request_refs_t request_def, pair_lists_t list_def,

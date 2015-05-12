@@ -337,6 +337,10 @@ ssize_t			tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
 					   pair_lists_t list_def,
 					   bool allow_unknown, bool allow_undefined);
 
+ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
+					       request_refs_t request_def, pair_lists_t list_def,
+					       bool allow_unknown, bool allow_undefined);
+
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 					    request_refs_t request_def,
 					    pair_lists_t list_def,
