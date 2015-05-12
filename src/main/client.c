@@ -1206,6 +1206,7 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
  */
 RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 {
+	static int	cnt;
 	int		i, *pi;
 	char		**p;
 	RADCLIENT	*c;
@@ -1217,7 +1218,11 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 	if (!clients || !request) return NULL;
 
+	snprintf(buffer, sizeof(buffer), "dynamic%i", cnt++);
+
 	c = talloc_zero(clients, RADCLIENT);
+	c->cs = cf_section_alloc(NULL, "client", buffer);
+	talloc_steal(c, c->cs);
 	c->ipaddr.af = AF_UNSPEC;
 	c->src_ipaddr.af = AF_UNSPEC;
 

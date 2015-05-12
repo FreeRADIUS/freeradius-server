@@ -387,12 +387,12 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
 
 	if (!name1) return NULL;
 
-	if (name2) {
+	if (name2 && parent) {
 		if (strchr(name2, '$')) {
 			name2 = cf_expand_variables(parent->item.filename,
-						&parent->item.lineno,
-						parent,
-						buffer, sizeof(buffer), name2, NULL);
+						    &parent->item.lineno,
+						    parent,
+						    buffer, sizeof(buffer), name2, NULL);
 			if (!name2) {
 				ERROR("Failed expanding section name");
 				return NULL;
