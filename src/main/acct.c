@@ -144,6 +144,15 @@ int rad_accounting(REQUEST *request)
 		}
 	}
 
+#if defined(WITH_DETAIL) && defined(WITH_PROXUY)
+	/*
+	 *	We proxied from the detail file, but didn't get a
+	 *	reply, then don't mark the request as replied.
+	 */
+	if ((request->listener->type == RAD_LISTEN_DETAIL) &&
+	    (request->proxy && !request->proxy_reply)) return RLM_MODULE_FAIL;
+#endif
+
 	/*
 	 *	We get here IF we're not proxying, OR if we've
 	 *	received the accounting reply from the end server,
