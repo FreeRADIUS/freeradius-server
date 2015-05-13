@@ -334,7 +334,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 	rad_assert(lhs_type == rhs_type);
 
 	EVAL_DEBUG("CMP WITH VALUE DATA");
-	rcode = value_data_cmp_op(map->op, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+	rcode = value_data_cmp_op(map->op, lhs_type, lhs, rhs_type, rhs);
 finish:
 	switch (rcode) {
 	case 0:

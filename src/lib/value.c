@@ -294,10 +294,8 @@ static int value_data_cidr_cmp_op(FR_TOKEN op, int bytes,
  *
  * @param[in] op to use in comparison.
  * @param[in] a_type of data to compare.
- * @param[in] a_len of data to compare.
  * @param[in] a Value to compare.
  * @param[in] b_type of data to compare.
- * @param[in] b_len of data to compare.
  * @param[in] b Value to compare.
  * @return
  *	- 1 if true
@@ -305,8 +303,8 @@ static int value_data_cidr_cmp_op(FR_TOKEN op, int bytes,
  *	- -1 on failure.
  */
 int value_data_cmp_op(FR_TOKEN op,
-		      PW_TYPE a_type, value_data_t const *a, size_t a_len,
-		      PW_TYPE b_type, value_data_t const *b, size_t b_len)
+		      PW_TYPE a_type, value_data_t const *a,
+		      PW_TYPE b_type, value_data_t const *b)
 {
 	int compare = 0;
 
@@ -377,8 +375,8 @@ int value_data_cmp_op(FR_TOKEN op,
 
 	default:
 	cmp:
-		compare = value_data_cmp(a_type, a, a_len,
-					 b_type, b, b_len);
+		compare = value_data_cmp(a_type, a, a->length,
+					 b_type, b, b->length);
 		if (compare < -1) {	/* comparison error */
 			return -1;
 		}

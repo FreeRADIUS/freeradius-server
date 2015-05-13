@@ -653,15 +653,15 @@ int		readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
  *	- 0 if not equal.
  *	- -1 on failure.
  */
-#define		paircmp_op(_op, _a, _b)	value_data_cmp_op(_op, _a->da->type, &_a->data, _a->vp_length, _b->da->type, &_b->data, _b->vp_length)
+#define		paircmp_op(_op, _a, _b)	value_data_cmp_op(_op, _a->da->type, &_a->data, _b->da->type, &_b->data)
 
 /* value.c */
 int		value_data_cmp(PW_TYPE a_type, value_data_t const *a, size_t a_len,
 			       PW_TYPE b_type, value_data_t const *b, size_t b_len);
 
 int		value_data_cmp_op(FR_TOKEN op,
-				  PW_TYPE a_type, value_data_t const *a, size_t a_len,
-				  PW_TYPE b_type, value_data_t const *b, size_t b_len);
+				  PW_TYPE a_type, value_data_t const *a,
+				  PW_TYPE b_type, value_data_t const *b);
 
 int		value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				    PW_TYPE *src_type, DICT_ATTR const *src_enumv,
