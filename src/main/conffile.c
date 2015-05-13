@@ -1240,7 +1240,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		rad_assert(type == PW_TYPE_STRING); /* for now, fix it later */
 		rad_assert(!attribute);
 		rad_assert(!xlat);
-		vpt = tmpl_alloc(cs, TMPL_TYPE_LITERAL, value, talloc_array_length(value) - 1);
+		vpt = tmpl_alloc(cs, TMPL_TYPE_LITERAL, value, strlen(value));
 		*(vp_tmpl_t **)data = vpt;
 
 		return 0;
