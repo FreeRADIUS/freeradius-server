@@ -25,6 +25,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* When adding clients from a DB, add them to a virtual server
 	  if that virtual server has a "listen" section.  Otherwise,
 	  add the clients to the global list.
+	* When reading dynamic clients from a file, don't expire them
+	  if the underlying file is unchanged.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
