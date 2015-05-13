@@ -1017,8 +1017,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 
 	parse:
 		if (do_unescape) {
-			slen = value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, quote);
-			rad_assert(slen >= 0);
+			value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, quote);
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
 			talloc_free(data.ptr);
@@ -1057,9 +1056,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 		 *	literal.
 		 */
 		if (do_unescape) {
-			slen = value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, '"');
-			if (slen < 0) return slen;
-
+			if (value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, '"') < 0) return -1;
 			if (do_xlat) {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.strvalue,
 						 talloc_array_length(data.strvalue) - 1);
@@ -1082,8 +1079,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 
 	case T_BACK_QUOTED_STRING:
 		if (do_unescape) {
-			slen = value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, '`');
-			if (slen < 0) return slen;
+			if (value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, '`') < 0) return -1;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, data.strvalue, talloc_array_length(data.strvalue) - 1);
 			talloc_free(data.ptr);
@@ -1152,21 +1148,14 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 
 	switch (vpt->type) {
 	case TMPL_TYPE_LITERAL:
-	{
-		ssize_t ret;
-
 		vpt->tmpl_data_type = type;
 
 		/*
 		 *	Why do we pass a pointer to the tmpl type? Goddamn WiMAX.
 		 */
-		ret = value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type,
-					  enumv, vpt->name, vpt->len, '\0');
-		if (ret < 0) return -1;
-
+		if (value_data_from_str(vpt, &vpt->tmpl_data_value, &vpt->tmpl_data_type,
+					enumv, vpt->name, vpt->len, '\0') < 0) return -1;
 		vpt->type = TMPL_TYPE_DATA;
-		vpt->tmpl_data_length = (size_t) ret;
-	}
 		break;
 
 	case TMPL_TYPE_DATA:
@@ -1450,13 +1439,16 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 	 */
 	if ((vpt->type != TMPL_TYPE_ATTR) ||
 	     (vpt->tmpl_da->type == PW_TYPE_STRING)) {
-	     	value_data_t vd;
+	     	value_data_t	vd;
+	     	int		ret;
 
 		PW_TYPE type = PW_TYPE_STRING;
 
-		slen = value_data_from_str(ctx, &vd, &type, NULL, *out, slen, '"');
+		ret = value_data_from_str(ctx, &vd, &type, NULL, *out, slen, '"');
 		talloc_free(*out);	/* free the old value */
+		if (ret < 0) return -1;
 		*out = vd.ptr;
+		slen = vd.length;
 	}
 #endif
 
@@ -1580,13 +1572,16 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 	 */
 	if ((vpt->type != TMPL_TYPE_ATTR) ||
 	     (vpt->tmpl_da->type == PW_TYPE_STRING)) {
-	     	value_data_t vd;
+	     	value_data_t	vd;
+	     	int		ret;
 
 		PW_TYPE type = PW_TYPE_STRING;
 
-		slen = value_data_from_str(ctx, &vd, &type, NULL, *out, slen, '"');
+		ret = value_data_from_str(ctx, &vd, &type, NULL, *out, slen, '"');
 		talloc_free(*out);	/* free the old value */
+		if (ret < 0) return -1;
 		*out = vd.ptr;
+		slen = vd.length;
 	}
 
 	if (vpt->type == TMPL_TYPE_XLAT_STRUCT) {

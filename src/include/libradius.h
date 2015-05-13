@@ -663,7 +663,7 @@ int		value_data_cmp_op(FR_TOKEN op,
 				  PW_TYPE a_type, value_data_t const *a, size_t a_len,
 				  PW_TYPE b_type, value_data_t const *b, size_t b_len);
 
-ssize_t		value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
+int		value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				    PW_TYPE *src_type, DICT_ATTR const *src_enumv,
 				    char const *src, ssize_t src_len, char quote);
 

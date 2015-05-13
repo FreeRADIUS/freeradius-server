@@ -424,12 +424,12 @@ static char const hextab[] = "0123456789abcdef";
  *	  should be the length of the string or sub string to parse.
  * @param[in] quote quotation character used to drive de-escaping
  * @return
- *	- Length of data written to out
+ *	- 0 on success.
  *	- -1 on parse error.
  */
-ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
-			    PW_TYPE *src_type, DICT_ATTR const *src_enumv,
-			    char const *src, ssize_t src_len, char quote)
+int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
+			PW_TYPE *src_type, DICT_ATTR const *src_enumv,
+			char const *src, ssize_t src_len, char quote)
 {
 	DICT_VALUE	*dval;
 	size_t		len;
@@ -980,7 +980,8 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	}
 
 finish:
-	return ret;
+	dst->length = ret;
+	return 0;
 }
 
 /** Performs byte order reversal for types that need it
@@ -1028,7 +1029,7 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
  * @param src_enumv Enumerated values used to convert integers to strings.
  * @param src Input data.
  * @return
- *	- >= 0 on success.
+ *	- 0 on success.
  *	- -1 on failure.
  */
 int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,

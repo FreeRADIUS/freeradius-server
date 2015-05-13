@@ -2239,13 +2239,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *	This is really the reverse of fr_prints().
 		 */
 		if (*child) {
-			ssize_t slen;
 			PW_TYPE type;
 			value_data_t data;
 
 			type = PW_TYPE_STRING;
-			slen = value_data_from_str(request, &data, &type, NULL, child, talloc_array_length(child) - 1, '"');
-			if (slen <= 0) {
+			if (value_data_from_str(request, &data, &type, NULL, child, talloc_array_length(child) - 1, '"') < 0) {
 				talloc_free(child);
 				return NULL;
 			}

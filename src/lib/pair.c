@@ -1076,7 +1076,6 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
  */
 int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 {
-	ssize_t ret;
 	PW_TYPE type;
 	VERIFY_VP(vp);
 
@@ -1088,8 +1087,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs escaping
 	 */
-	ret = value_data_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"');
-	if (ret < 0) return -1;
+	if (value_data_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"') < 0) return -1;
 
 	/*
 	 *	If we parsed to a different type than the DA associated with
@@ -1106,8 +1104,6 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		}
 		vp->da = da;
 	}
-
-	vp->vp_length = ret;
 	vp->type = VT_DATA;
 
 	VERIFY_VP(vp);
