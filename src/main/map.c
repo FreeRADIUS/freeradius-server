@@ -808,8 +808,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 		new = pairalloc(request, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		len = value_data_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value,
-				      map->rhs->tmpl_data_length);
+		len = value_data_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value);
 		if (len < 0) goto error;
 
 		new->vp_length = len;

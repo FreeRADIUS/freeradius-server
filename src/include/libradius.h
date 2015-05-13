@@ -672,8 +672,7 @@ ssize_t		value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 				PW_TYPE src_type, DICT_ATTR const *src_enumv,
 				value_data_t const *src, size_t src_len);
 
-ssize_t		value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type,
-				const value_data_t *src, size_t src_len);
+int		value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type, const value_data_t *src);
 
 size_t		value_data_prints(char *out, size_t outlen,
 				  PW_TYPE type, DICT_ATTR const *enumv,

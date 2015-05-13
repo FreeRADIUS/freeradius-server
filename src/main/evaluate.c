@@ -318,8 +318,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 		vp = pairalloc(request, map->lhs->tmpl_da);
 		vp->op = c->data.map->op;
 
-		value_data_copy(vp, &vp->data, rhs_type, rhs, rhs_len);
-		vp->vp_length = rhs_len;
+		value_data_copy(vp, &vp->data, rhs_type, rhs);
 
 		rcode = paircompare(request, request->packet->vps, vp, NULL);
 		rcode = (rcode == 0) ? 1 : 0;
