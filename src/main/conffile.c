@@ -1225,10 +1225,11 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	}
 
 	/*
-	 *	Process a value as a template.
+	 *	Process a value as a LITERAL template.  Once all of
+	 *	the attrs and xlats are defined, the pass2 code
+	 *	converts it to the appropriate type.
 	 */
 	if (tmpl) {
-		ssize_t slen;
 		vp_tmpl_t *vpt;
 
 		if (!value) {
@@ -1236,79 +1237,10 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 			return 0;
 		}
 
-		slen = tmpl_afrom_str(cs, &vpt, value, strlen(value),
-				      cp ? cf_pair_value_type(cp) : T_DOUBLE_QUOTED_STRING,
-				      REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
-		if (slen < 0) {
-			char *spaces, *text;
-
-			fr_canonicalize_error(cs, &spaces, &text, slen, fr_strerror());
-
-			cf_log_err_cs(cs, "Failed parsing configuration item '%s'", name);
-			cf_log_err_cs(cs, "%s", value);
-			cf_log_err_cs(cs, "%s^ %s", spaces, text);
-
-			talloc_free(spaces);
-			talloc_free(text);
-
-			return -1;
-		}
-
-		/*
-		 *	Sanity check
-		 *
-		 *	Don't add default - update with new types.
-		 */
-		switch (vpt->type) {
-		case TMPL_TYPE_LITERAL:
-		case TMPL_TYPE_ATTR:
-		case TMPL_TYPE_ATTR_UNDEFINED:
-		case TMPL_TYPE_LIST:
-		case TMPL_TYPE_DATA:
-		case TMPL_TYPE_EXEC:
-		case TMPL_TYPE_XLAT:
-		case TMPL_TYPE_XLAT_STRUCT:
-			break;
-
-		case TMPL_TYPE_UNKNOWN:
-		case TMPL_TYPE_REGEX:
-		case TMPL_TYPE_REGEX_STRUCT:
-		case TMPL_TYPE_NULL:
-			rad_assert(0);
-		}
-
-		/*
-		 *	If the attribute flag is set, the template must be an
-		 *	attribute reference.
-		 */
-		if (attribute && (vpt->type != TMPL_TYPE_ATTR)) {
-			cf_log_err(&(cs->item), "Configuration item '%s' must be an attr "
-				   "but is an %s", name, fr_int2str(tmpl_names, vpt->type, "<INVALID>"));
-			talloc_free(vpt);
-			return -1;
-		}
-
-		/*
-		 *	If the xlat flag is set, the template must be an xlat
-		 */
-		if (xlat && (vpt->type != TMPL_TYPE_XLAT_STRUCT)) {
-			cf_log_err(&(cs->item), "Configuration item '%s' must be an xlat expansion but is an %s",
-				   name, fr_int2str(tmpl_names, vpt->type, "<INVALID>"));
-			talloc_free(vpt);
-			return -1;
-		}
-
-		/*
-		 *	If we have a type, and the template is an attribute reference
-		 *	check that the attribute reference matches the type.
-		 */
-		if ((type > 0) && (vpt->type == TMPL_TYPE_ATTR) && (vpt->tmpl_da->type != type)) {
-			cf_log_err(&(cs->item), "Configuration item '%s' attr must be an %s, but is an %s",
-				   name, fr_int2str(dict_attr_types, type, "<INVALID>"),
-				   fr_int2str(dict_attr_types, vpt->tmpl_da->type, "<INVALID>"));
-			talloc_free(vpt);
-			return -1;
-		}
+		rad_assert(type == PW_TYPE_STRING); /* for now, fix it later */
+		rad_assert(!attribute);
+		rad_assert(!xlat);
+		vpt = tmpl_alloc(cs, TMPL_TYPE_LITERAL, value, talloc_array_length(value) - 1);
 		*(vp_tmpl_t **)data = vpt;
 
 		return 0;
@@ -1750,6 +1682,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 	 */
 	for (i = 0; variables[i].name != NULL; i++) {
 		CONF_PAIR *cp;
+		void *data;
 
 		/*
 		 *	Handle subsections specially
@@ -1765,7 +1698,19 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 			continue;
 		} /* else it's a CONF_PAIR */
 
+		/*
+		 *	Figure out which data we need to fix.
+		 */
+		if (variables[i].data) {
+			data = variables[i].data; /* prefer this. */
+		} else if (base) {
+			data = ((char *)base) + variables[i].offset;
+		} else {
+			data = NULL;
+		}
+
 		cp = cf_pair_find(cs, variables[i].name);
+		xlat = NULL;
 
 	redo:
 		if (!cp || !cp->value) continue;
@@ -1793,30 +1738,81 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 		}
 
 		/*
-		 *	xlat expansions should be parseable.
+		 *	Parse (and throw away) the xlat string.
+		 *
+		 *	FIXME: All of these should be converted from PW_TYPE_XLAT
+		 *	to PW_TYPE_TMPL.
 		 */
-		value = talloc_strdup(cs, cp->value); /* modified by xlat_tokenize */
-		xlat = NULL;
+		if ((variables[i].type & PW_TYPE_XLAT) != 0) {
+			/*
+			 *	xlat expansions should be parseable.
+			 */
+			value = talloc_strdup(cs, cp->value); /* modified by xlat_tokenize */
+			xlat = NULL;
 
-		slen = xlat_tokenize(cs, value, &xlat, &error);
-		if (slen < 0) {
-			char *spaces, *text;
+			slen = xlat_tokenize(cs, value, &xlat, &error);
+			if (slen < 0) {
+				char *spaces, *text;
 
-			fr_canonicalize_error(cs, &spaces, &text, slen, cp->value);
+			error:
+				fr_canonicalize_error(cs, &spaces, &text, slen, cp->value);
 
-			cf_log_err(&cp->item, "Failed parsing expanded string:");
-			cf_log_err(&cp->item, "%s", text);
-			cf_log_err(&cp->item, "%s^ %s", spaces, error);
+				cf_log_err(&cp->item, "Failed parsing expanded string:");
+				cf_log_err(&cp->item, "%s", text);
+				cf_log_err(&cp->item, "%s^ %s", spaces, error);
 
-			talloc_free(spaces);
-			talloc_free(text);
+				talloc_free(spaces);
+				talloc_free(text);
+				talloc_free(value);
+				talloc_free(xlat);
+				return -1;
+			}
+
 			talloc_free(value);
 			talloc_free(xlat);
-			return -1;
 		}
 
-		talloc_free(value);
-		talloc_free(xlat);
+		/*
+		 *	Convert the LITERAL template to the actual
+		 *	type.
+		 */
+		if ((variables[i].type & PW_TYPE_TMPL) != 0) {
+			vp_tmpl_t *vpt;
+
+			slen = tmpl_afrom_str(cs, &vpt, cp->value, talloc_array_length(cp->value) - 1,
+					      cp->rhs_type,
+					      REQUEST_CURRENT, PAIR_LIST_REQUEST, true);
+			if (slen < 0) {
+				error = fr_strerror();
+				goto error;
+			}
+
+			/*
+			 *	Sanity check
+			 *
+			 *	Don't add default - update with new types.
+			 */
+			switch (vpt->type) {
+			case TMPL_TYPE_LITERAL:
+			case TMPL_TYPE_ATTR:
+			case TMPL_TYPE_ATTR_UNDEFINED:
+			case TMPL_TYPE_LIST:
+			case TMPL_TYPE_DATA:
+			case TMPL_TYPE_EXEC:
+			case TMPL_TYPE_XLAT:
+			case TMPL_TYPE_XLAT_STRUCT:
+				break;
+
+			case TMPL_TYPE_UNKNOWN:
+			case TMPL_TYPE_REGEX:
+			case TMPL_TYPE_REGEX_STRUCT:
+			case TMPL_TYPE_NULL:
+				rad_assert(0);
+			}
+
+			if (data) talloc_free(*(vp_tmpl_t **)data);
+			*(vp_tmpl_t **)data = vpt;
+		}
 
 		/*
 		 *	If the "multi" flag is set, check all of them.
