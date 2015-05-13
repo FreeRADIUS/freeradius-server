@@ -431,7 +431,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 
 		if (RDEBUG_ENABLED2) {
 			dn = ldap_get_dn(conn->handle, entry);
-			REDEBUG2("Processing \"%s\"", dn);
+			RDEBUG2("Processing \"%s\"", dn);
 		}
 
 		RINDENT();
