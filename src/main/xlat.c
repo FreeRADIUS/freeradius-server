@@ -470,7 +470,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 					      &vp->data, vp->vp_length);
 			if (ret < 0) goto next_type;	/* We expect some to fail */
 
-			value = vp_data_aprints_value(dst, type->number, NULL, dst, (size_t)ret, '\'');
+			value = value_data_aprints(dst, type->number, NULL, dst, (size_t)ret, '\'');
 			if (!value) goto next_type;
 
 			if ((pad = (11 - strlen(type->name))) < 0) {

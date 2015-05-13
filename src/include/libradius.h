@@ -445,14 +445,9 @@ char		*fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
 
 #define		is_truncated(_ret, _max) ((_ret) >= (_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? ((_max) - 1) : _ret)
-size_t		vp_data_prints_value(char *out, size_t outlen,
-				     PW_TYPE type, DICT_ATTR const *enumv,
-				     value_data_t const *data, ssize_t inlen, char quote);
 size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
 
-char		*vp_data_aprints_value(TALLOC_CTX *ctx,
-				       PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
-				       size_t inlen, char quote);
+
 char     	*vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
 size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
@@ -679,6 +674,14 @@ ssize_t		value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 
 ssize_t		value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type,
 				const value_data_t *src, size_t src_len);
+
+size_t		value_data_prints(char *out, size_t outlen,
+				  PW_TYPE type, DICT_ATTR const *enumv,
+				  value_data_t const *data, ssize_t inlen, char quote);
+
+char		*value_data_aprints(TALLOC_CTX *ctx,
+				    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
+				    size_t inlen, char quote);
 
 /*
  *	Error functions.

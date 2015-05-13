@@ -1758,7 +1758,7 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 		return (q - out);
 
 	case TMPL_TYPE_DATA:
-		return vp_data_prints_value(out, outlen, vpt->tmpl_data_type, values,
+		return value_data_prints(out, outlen, vpt->tmpl_data_type, values,
 					    &vpt->tmpl_data_value, vpt->tmpl_data_length, vpt->quote);
 	}
 
