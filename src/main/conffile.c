@@ -1182,6 +1182,12 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	if (required) cant_be_empty = true;	/* May want to review this in the future... */
 
 	type &= 0xff;				/* normal types are small */
+
+	if (!type) {
+		cf_log_err(&(cs->item), "Configuration item '%s' must have a data type", name);
+		return -1;
+	}
+
 	rcode = 0;
 
 	cp = cf_pair_find(cs, name);
