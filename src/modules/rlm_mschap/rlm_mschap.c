@@ -1576,11 +1576,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 
 		RDEBUG("MS-CHAPv2 password change request received");
 
-		if (!nt_password) {
-			REDEBUG("No valid NT-Password attribute found, can't change password");
-			return RLM_MODULE_INVALID;
-		}
-
 		if (cpw->vp_length != 68) {
 			REDEBUG("MS-CHAP2-CPW has the wrong format: length %zu != 68", cpw->vp_length);
 			return RLM_MODULE_INVALID;
