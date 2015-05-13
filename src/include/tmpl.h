@@ -213,7 +213,6 @@ typedef struct vp_tmpl_t {
 		 */
 		struct {
 			PW_TYPE			type;			 //!< Type of data.
-			size_t			length;			 //!< of the vpd data.
 			value_data_t		data;			 //!< Value data.
 		} literal;
 
@@ -251,7 +250,7 @@ typedef struct vp_tmpl_t {
  */
 #define tmpl_data		data.literal
 #define tmpl_data_type		data.literal.type
-#define tmpl_data_length	data.literal.length
+#define tmpl_data_length	data.literal.data.length
 #define tmpl_data_value		data.literal.data
 /* @} **/
 
