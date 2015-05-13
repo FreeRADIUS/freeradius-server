@@ -29,10 +29,8 @@ RCSID("$Id$")
 /** Compare two values
  *
  * @param[in] a_type of data to compare.
- * @param[in] a_len of data to compare.
  * @param[in] a Value to compare.
  * @param[in] b_type of data to compare.
- * @param[in] b_len of data to compare.
  * @param[in] b Value to compare.
  * @return
  *	- -1 if a is less than b.
@@ -40,8 +38,8 @@ RCSID("$Id$")
  *	- 1 if a is more than b.
  *	- < -1 on failure.
  */
-int value_data_cmp(PW_TYPE a_type, value_data_t const *a, size_t a_len,
-		   PW_TYPE b_type, value_data_t const *b, size_t b_len)
+int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
+		   PW_TYPE b_type, value_data_t const *b)
 {
 	int compare = 0;
 
@@ -61,10 +59,10 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a, size_t a_len,
 	{
 		size_t length;
 
-		if (a_len > b_len) {
-			length = a_len;
+		if (a->length > b->length) {
+			length = a->length;
 		} else {
-			length = b_len;
+			length = b->length;
 		}
 
 		if (length) {
@@ -78,7 +76,7 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a, size_t a_len,
 		 *
 		 *	i.e. "0x00" is smaller than "0x0000"
 		 */
-		compare = a_len - b_len;
+		compare = a->length - b->length;
 	}
 		break;
 
@@ -375,8 +373,7 @@ int value_data_cmp_op(FR_TOKEN op,
 
 	default:
 	cmp:
-		compare = value_data_cmp(a_type, a, a->length,
-					 b_type, b, b->length);
+		compare = value_data_cmp(a_type, a, b_type, b);
 		if (compare < -1) {	/* comparison error */
 			return -1;
 		}
