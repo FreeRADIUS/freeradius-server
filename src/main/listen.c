@@ -1806,13 +1806,18 @@ int rad_coa_recv(REQUEST *request)
 			request->reply->code = ack;
 			break;
 		}
-	} else if (request->proxy_reply) {
+
+	}
+
+#ifdef WITH_PROXY
+	else if (request->proxy_reply) {
 		/*
 		 *	Start the reply code with the proxy reply
 		 *	code.
 		 */
 		request->reply->code = request->proxy_reply->code;
 	}
+#endif
 
 	/*
 	 *	Copy State from the request to the reply.
