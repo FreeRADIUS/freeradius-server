@@ -144,13 +144,11 @@ int rad_accounting(REQUEST *request)
 		}
 	}
 
-#if defined(WITH_DETAIL) && defined(WITH_PROXY)
+#ifdef WITH_PROXY
 	/*
-	 *	We proxied from the detail file, but didn't get a
-	 *	reply, then don't mark the request as replied.
+	 *	We didn't see a reply to the proxied request.  Fail.
 	 */
-	if ((request->listener->type == RAD_LISTEN_DETAIL) &&
-	    (request->proxy && !request->proxy_reply)) return RLM_MODULE_FAIL;
+	if (request->proxy && !request->proxy_reply) return RLM_MODULE_FAIL;
 #endif
 
 	/*
