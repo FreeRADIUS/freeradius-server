@@ -1730,7 +1730,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 		xlat = NULL;
 
 	redo:
-		if (!cp || !cp->value) continue;
+		if (!cp || !cp->value || !data) continue;
 
 		if ((cp->rhs_type != T_DOUBLE_QUOTED_STRING) &&
 		    (cp->rhs_type != T_BARE_WORD)) continue;
@@ -1826,7 +1826,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 				rad_assert(0);
 			}
 
-			if (data) talloc_free(*(vp_tmpl_t **)data);
+			talloc_free(*(vp_tmpl_t **)data);
 			*(vp_tmpl_t **)data = vpt;
 		}
 
