@@ -677,11 +677,11 @@ ssize_t		value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type,
 
 size_t		value_data_prints(char *out, size_t outlen,
 				  PW_TYPE type, DICT_ATTR const *enumv,
-				  value_data_t const *data, ssize_t inlen, char quote);
+				  value_data_t const *data, char quote);
 
 char		*value_data_aprints(TALLOC_CTX *ctx,
 				    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
-				    size_t inlen, char quote);
+				    char quote);
 
 /*
  *	Error functions.

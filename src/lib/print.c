@@ -469,7 +469,7 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quot
 {
 	VERIFY_VP(vp);
 
-	return value_data_prints(out, outlen, vp->da->type, vp->da, &vp->data, vp->vp_length, quote);
+	return value_data_prints(out, outlen, vp->da->type, vp->da, &vp->data, quote);
 }
 
 /** Print one attribute value to a string
@@ -483,7 +483,7 @@ char *vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	VERIFY_VP(vp);
 
-	return value_data_aprints(ctx, vp->da->type, vp->da, &vp->data, vp->vp_length, quote);
+	return value_data_aprints(ctx, vp->da->type, vp->da, &vp->data, quote);
 }
 
 char *vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type)

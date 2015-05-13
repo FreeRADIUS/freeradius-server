@@ -1060,7 +1060,7 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	Serialise a value_data_t
 	 */
 	if (dst_type == PW_TYPE_STRING) {
-		dst->strvalue = value_data_aprints(ctx, src_type, src_enumv, src, src_len, '\0');
+		dst->strvalue = value_data_aprints(ctx, src_type, src_enumv, src, '\0');
 		return talloc_array_length(dst->strvalue) - 1;
 	}
 
@@ -1417,8 +1417,7 @@ ssize_t value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type,
  *
  */
 char *value_data_aprints(TALLOC_CTX *ctx,
-			 PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
-			 size_t inlen, char quote)
+			 PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data, char quote)
 {
 	char *p = NULL;
 	unsigned int i;
@@ -1429,18 +1428,18 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 		size_t len, ret;
 
 		if (!quote) {
-			p = talloc_bstrndup(ctx, data->strvalue, inlen);
+			p = talloc_bstrndup(ctx, data->strvalue, data->length);
 			if (!p) return NULL;
 			talloc_set_type(p, char);
 			return p;
 		}
 
 		/* Gets us the size of the buffer we need to alloc */
-		len = fr_prints_len(data->strvalue, inlen, quote);
+		len = fr_prints_len(data->strvalue, data->length, quote);
 		p = talloc_array(ctx, char, len);
 		if (!p) return NULL;
 
-		ret = fr_prints(p, len, data->strvalue, inlen, quote);
+		ret = fr_prints(p, len, data->strvalue, data->length, quote);
 		if (!fr_assert(ret == (len - 1))) {
 			talloc_free(p);
 			return NULL;
@@ -1490,19 +1489,19 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 #ifdef WITH_ASCEND_BINARY
 		p = talloc_array(ctx, char, 128);
 		if (!p) return NULL;
-		print_abinary(p, 128, (uint8_t *) &data->filter, inlen, 0);
+		print_abinary(p, 128, (uint8_t *) &data->filter, data->length, 0);
 		break;
 #else
 		  /* FALL THROUGH */
 #endif
 
 	case PW_TYPE_OCTETS:
-		p = talloc_array(ctx, char, 2 + 1 + inlen * 2);
+		p = talloc_array(ctx, char, 2 + 1 + data->length * 2);
 		if (!p) return NULL;
 		p[0] = '0';
 		p[1] = 'x';
 
-		fr_bin2hex(p + 2, data->octets, inlen);
+		fr_bin2hex(p + 2, data->octets, data->length);
 		break;
 
 	case PW_TYPE_DATE:
@@ -1531,7 +1530,7 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 		char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
 
 		buff[0] = '\0';
-		value_data_prints(buff, sizeof(buff), type, enumv, data, inlen, '\0');
+		value_data_prints(buff, sizeof(buff), type, enumv, data, '\0');
 
 		p = talloc_typed_strdup(ctx, buff);
 	}
@@ -1543,7 +1542,7 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 		char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
 
 		buff[0] = '\0';
-		value_data_prints(buff, sizeof(buff), type, enumv, data, inlen, '\0');
+		value_data_prints(buff, sizeof(buff), type, enumv, data, '\0');
 
 		p = talloc_typed_strdup(ctx, buff);
 	}
@@ -1591,15 +1590,13 @@ char *value_data_aprints(TALLOC_CTX *ctx,
  * @param type of data being printed.
  * @param enumv Enumerated string values for integer types.
  * @param data to print.
- * @param inlen Length of data.
  * @param quote char to escape in string output.
  * @return
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
 size_t value_data_prints(char *out, size_t outlen,
-			 PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
-			 ssize_t inlen, char quote)
+			 PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data, char quote)
 {
 	DICT_VALUE	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
@@ -1611,7 +1608,7 @@ size_t value_data_prints(char *out, size_t outlen,
 	size_t		len = 0, freespace = outlen;
 
 	if (!data) return 0;
-	if (outlen == 0) return inlen;
+	if (outlen == 0) return data->length;
 
 	*out = '\0';
 
@@ -1622,12 +1619,12 @@ size_t value_data_prints(char *out, size_t outlen,
 		 *	Ensure that WE add the quotation marks around the string.
 		 */
 		if (quote) {
-			if (freespace < 3) return inlen + 2;
+			if (freespace < 3) return data->length + 2;
 
 			*out++ = quote;
 			freespace--;
 
-			len = fr_prints(out, freespace, data->strvalue, inlen, quote);
+			len = fr_prints(out, freespace, data->strvalue, data->length, quote);
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
 				out[outlen - 2] = (char) quote;
@@ -1644,7 +1641,7 @@ size_t value_data_prints(char *out, size_t outlen,
 			return len + 2;
 		}
 
-		return fr_prints(out, outlen, data->strvalue, inlen, quote);
+		return fr_prints(out, outlen, data->strvalue, data->length, quote);
 
 	case PW_TYPE_INTEGER:
 		i = data->integer;
@@ -1710,7 +1707,7 @@ print_int:
 		size_t max;
 
 		/* Return the number of bytes we would have written */
-		len = (inlen * 2) + 2;
+		len = (data->length * 2) + 2;
 		if (freespace <= 1) {
 			return len;
 		}
@@ -1732,7 +1729,7 @@ print_int:
 
 		/* Get maximum number of bytes we can encode given freespace */
 		max = ((freespace % 2) ? freespace - 1 : freespace - 2) / 2;
-		fr_bin2hex(out, data->octets, ((size_t)inlen > max) ? max : (size_t)inlen);
+		fr_bin2hex(out, data->octets, ((size_t)data->length > max) ? max : (size_t)data->length);
 	}
 		return len;
 
