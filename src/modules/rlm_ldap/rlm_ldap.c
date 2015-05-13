@@ -554,24 +554,6 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
-	 *	Setup the cache attribute
-	 */
-	if (inst->cache_attribute) {
-		ATTR_FLAGS flags;
-
-		memset(&flags, 0, sizeof(flags));
-		if (dict_addattr(inst->cache_attribute, -1, 0, PW_TYPE_STRING, flags) < 0) {
-			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
-		error:
-			return -1;
-
-		}
-		inst->cache_da = dict_attrbyname(inst->cache_attribute);
-	} else {
-		inst->cache_da = inst->group_da;	/* Default to the group_da */
-	}
-
-	/*
 	 *	Group comparison checks.
 	 */
 	if (cf_section_name2(conf)) {
@@ -597,6 +579,24 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		}
 
 		inst->group_da = dict_attrbyname("LDAP-Group");
+	}
+
+	/*
+	 *	Setup the cache attribute
+	 */
+	if (inst->cache_attribute) {
+		ATTR_FLAGS flags;
+
+		memset(&flags, 0, sizeof(flags));
+		if (dict_addattr(inst->cache_attribute, -1, 0, PW_TYPE_STRING, flags) < 0) {
+			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
+		error:
+			return -1;
+
+		}
+		inst->cache_da = dict_attrbyname(inst->cache_attribute);
+	} else {
+		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}
 
 	xlat_register(inst->name, ldap_xlat, rlm_ldap_escape_func, inst);
