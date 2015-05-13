@@ -158,8 +158,8 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
  *	- 1 for "match".
  */
 static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
-		         PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
-		         PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
+		         PW_TYPE lhs_type, value_data_t const *lhs,
+		         PW_TYPE rhs_type, value_data_t const *rhs)
 {
 	vp_map_t const *map = c->data.map;
 
@@ -185,7 +185,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	default:
 		rad_assert(rhs_type == PW_TYPE_STRING);
 		rad_assert(rhs->strvalue);
-		slen = regex_compile(request, &rreg, rhs->strvalue, rhs_len,
+		slen = regex_compile(request, &rreg, rhs->strvalue, rhs->length,
 				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
 		if (slen <= 0) {
 			REMARKER(rhs->strvalue, -slen, fr_strerror());
@@ -197,7 +197,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 	}
 
-	ret = regex_exec(preg, lhs->strvalue, lhs_len, rxmatch, &nmatch);
+	ret = regex_exec(preg, lhs->strvalue, lhs->length, rxmatch, &nmatch);
 	switch (ret) {
 	case 0:
 		EVAL_DEBUG("CLEARING SUBCAPTURES");
@@ -206,7 +206,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	case 1:
 		EVAL_DEBUG("SETTING SUBCAPTURES");
-		regex_sub_to_request(request, &preg, lhs->strvalue, lhs_len, rxmatch, nmatch);
+		regex_sub_to_request(request, &preg, lhs->strvalue, lhs->length, rxmatch, nmatch);
 		break;
 
 	case -1:
@@ -226,24 +226,24 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 #ifdef WITH_EVAL_DEBUG
 static void cond_print_operands(REQUEST *request,
-			   	PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
-			   	PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
+			   	PW_TYPE lhs_type, value_data_t const *lhs,
+			   	PW_TYPE rhs_type, value_data_t const *rhs)
 {
 	if (lhs) {
 		if (lhs_type == PW_TYPE_STRING) {
-			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->strvalue, lhs_len);
+			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->strvalue, lhs->length);
 		} else {
 			char *lhs_hex;
 
-			lhs_hex = talloc_array(request, char, (lhs_len * 2) + 1);
+			lhs_hex = talloc_array(request, char, (lhs->length * 2) + 1);
 
 			if (lhs_type == PW_TYPE_OCTETS) {
-				fr_bin2hex(lhs_hex, lhs->octets, lhs_len);
+				fr_bin2hex(lhs_hex, lhs->octets, lhs->length);
 			} else {
-				fr_bin2hex(lhs_hex, (uint8_t const *)lhs, lhs_len);
+				fr_bin2hex(lhs_hex, (uint8_t const *)lhs, lhs->length);
 			}
 
-			EVAL_DEBUG("LHS: 0x%s (%zu)", lhs_hex, lhs_len);
+			EVAL_DEBUG("LHS: 0x%s (%zu)", lhs_hex, lhs->length);
 
 			talloc_free(lhs_hex);
 		}
@@ -253,19 +253,19 @@ static void cond_print_operands(REQUEST *request,
 
 	if (rhs) {
 		if (rhs_type == PW_TYPE_STRING) {
-			EVAL_DEBUG("RHS: \"%s\" (%zu)" , rhs->strvalue, rhs_len);
+			EVAL_DEBUG("RHS: \"%s\" (%zu)" , rhs->strvalue, rhs->length);
 		} else {
 			char *rhs_hex;
 
-			rhs_hex = talloc_array(request, char, (rhs_len * 2) + 1);
+			rhs_hex = talloc_array(request, char, (rhs->length * 2) + 1);
 
 			if (rhs_type == PW_TYPE_OCTETS) {
-				fr_bin2hex(rhs_hex, rhs->octets, rhs_len);
+				fr_bin2hex(rhs_hex, rhs->octets, rhs->length);
 			} else {
-				fr_bin2hex(rhs_hex, (uint8_t const *)rhs, rhs_len);
+				fr_bin2hex(rhs_hex, (uint8_t const *)rhs, rhs->length);
 			}
 
-			EVAL_DEBUG("RHS: 0x%s (%zu)", rhs_hex, rhs_len);
+			EVAL_DEBUG("RHS: 0x%s (%zu)", rhs_hex, rhs->length);
 
 			talloc_free(rhs_hex);
 		}
@@ -286,15 +286,15 @@ static void cond_print_operands(REQUEST *request,
  *	- 1 for "match".
  */
 static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
-			   PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
-			   PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
+			   PW_TYPE lhs_type, value_data_t const *lhs,
+			   PW_TYPE rhs_type, value_data_t const *rhs)
 {
 	vp_map_t const *map = c->data.map;
 	int rcode;
 
 #ifdef WITH_EVAL_DEBUG
 		EVAL_DEBUG("CMP OPERANDS");
-		cond_print_operands(request, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+		cond_print_operands(request, lhs_type, lhs, rhs_type, rhs);
 #endif
 
 #ifdef HAVE_REGEX
@@ -302,7 +302,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 	 *	Regex comparison
 	 */
 	if (map->op == T_OP_REG_EQ) {
-		rcode = cond_do_regex(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+		rcode = cond_do_regex(request, c, lhs_type, lhs, rhs_type, rhs);
 		goto finish;
 	}
 #endif
@@ -366,7 +366,7 @@ finish:
  */
 static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
 				  PW_TYPE lhs_type, DICT_ATTR const *lhs_enumv,
-				  value_data_t const *lhs, size_t lhs_len)
+				  value_data_t const *lhs)
 {
 	vp_map_t const *map = c->data.map;
 
@@ -377,8 +377,7 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
 
 	PW_TYPE rhs_type = PW_TYPE_INVALID;
 	DICT_ATTR const *rhs_enumv = NULL;
-	value_data_t const *rhs = NULL;
-	size_t rhs_len;
+	value_data_t *rhs = NULL;
 
 	value_data_t lhs_cast, rhs_cast;
 	void *lhs_cast_buff = NULL, *rhs_cast_buff = NULL;
@@ -486,13 +485,12 @@ do {\
 			rhs_type = vp->da->type;
 			rhs_enumv = vp->da;
 			rhs = &vp->data;
-			rhs_len = vp->vp_length;
 
 			CHECK_INT_CAST(lhs, rhs);
 			CAST(lhs);
 			CAST(rhs);
 
-			rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+			rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
 			if (rcode != 0) break;
 
 			TALLOC_FREE(rhs_cast_buff);
@@ -503,13 +501,12 @@ do {\
 	case TMPL_TYPE_DATA:
 		rhs_type = map->rhs->tmpl_data_type;
 		rhs = &map->rhs->tmpl_data_value;
-		rhs_len = map->rhs->tmpl_data_length;
 
 		CHECK_INT_CAST(lhs, rhs);
 		CAST(lhs);
 		CAST(rhs);
 
-		rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+		rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
 		break;
 
 	/*
@@ -534,11 +531,11 @@ do {\
 				goto finish;
 			}
 			data.strvalue = p;
-			rhs_len = ret;
+			data.length = ret;
 
 		} else {
 			data.strvalue = map->rhs->name;
-			rhs_len = map->rhs->len;
+			data.length = map->rhs->len;
 		}
 		rad_assert(data.strvalue);
 
@@ -549,7 +546,7 @@ do {\
 		CAST(lhs);
 		CAST(rhs);
 
-		rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+		rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
 		if (map->rhs->type != TMPL_TYPE_LITERAL)talloc_free(data.ptr);
 
 		break;
@@ -560,7 +557,7 @@ do {\
 	 */
 	case TMPL_TYPE_REGEX_STRUCT:
 		CAST(lhs);
-		rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, PW_TYPE_INVALID, NULL, 0);
+		rcode = cond_cmp_values(request, c, lhs_type, lhs, PW_TYPE_INVALID, NULL);
 		break;
 	/*
 	 *	Unsupported types (should have been parse errors)
@@ -620,7 +617,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 #ifndef NDEBUG
 			rad_assert(radius_find_compare(map->lhs->tmpl_da)); /* expensive assert */
 #endif
-			rcode = cond_normalise_and_cmp(request, c, PW_TYPE_INVALID, NULL, NULL, 0);
+			rcode = cond_normalise_and_cmp(request, c, PW_TYPE_INVALID, NULL, NULL);
 			break;
 		}
 		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->lhs);
@@ -631,7 +628,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			 *	if we get at least one set of operands that
 			 *	evaluates to true.
 			 */
-	     		rcode = cond_normalise_and_cmp(request, c, vp->da->type, vp->da, &vp->data, vp->vp_length);
+	     		rcode = cond_normalise_and_cmp(request, c, vp->da->type, vp->da, &vp->data);
 	     		if (rcode != 0) break;
 		}
 	}
@@ -639,8 +636,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 	case TMPL_TYPE_DATA:
 		rcode = cond_normalise_and_cmp(request, c,
-					      map->lhs->tmpl_data_type, NULL, &map->lhs->tmpl_data_value,
-					      map->lhs->tmpl_data_length);
+					      map->lhs->tmpl_data_type, NULL, &map->lhs->tmpl_data_value);
 		break;
 
 	case TMPL_TYPE_LITERAL:
@@ -660,13 +656,14 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 				return ret;
 			}
 			data.strvalue = p;
+			data.length = (size_t)ret;
 		} else {
 			data.strvalue = map->lhs->name;
-			ret = map->lhs->len;
+			data.length = map->lhs->len;
 		}
 		rad_assert(data.strvalue);
 
-		rcode = cond_normalise_and_cmp(request, c, PW_TYPE_STRING, NULL, &data, ret);
+		rcode = cond_normalise_and_cmp(request, c, PW_TYPE_STRING, NULL, &data);
 		if (map->lhs->type != TMPL_TYPE_LITERAL) talloc_free(data.ptr);
 	}
 		break;
