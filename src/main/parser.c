@@ -468,9 +468,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 		c->type = COND_TYPE_CHILD;
 		c->ci = ci;
 		slen = condition_tokenize(c, ci, p, true, &c->data.child, error, flags);
-		if (slen <= 0) {
-			return_SLEN;
-		}
+		if (slen <= 0) return_SLEN;
 
 		if (!c->data.child) {
 			return_P("Empty condition is invalid");
