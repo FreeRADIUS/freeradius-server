@@ -611,7 +611,6 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *ma
 int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *ctx)
 {
 	int rcode = 0;
-	ssize_t len;
 	VALUE_PAIR *vp = NULL, *new, *found = NULL;
 	REQUEST *context = request;
 	vp_cursor_t cursor;
@@ -765,16 +764,13 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 				new = pairalloc(request, map->lhs->tmpl_da);
 				if (!new) return -1;
 
-				len = value_data_cast(new, &new->data, new->da->type, new->da,
-						      vp->da->type, vp->da, &vp->data, vp->vp_length);
-				if (len < 0) {
+				if (value_data_cast(new, &new->data, new->da->type, new->da,
+						    vp->da->type, vp->da, &vp->data) < 0) {
 					REDEBUG("Attribute conversion failed: %s", fr_strerror());
 					pairfree(&found);
 					pairfree(&new);
 					return -1;
 				}
-
-				new->vp_length = len;
 				vp = fr_cursor_remove(&from);
 				talloc_free(vp);
 
@@ -808,10 +804,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 		new = pairalloc(request, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		len = value_data_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value);
-		if (len < 0) goto error;
-
-		new->vp_length = len;
+		if (value_data_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value) < 0) goto error;
 		new->op = map->op;
 		*out = new;
 

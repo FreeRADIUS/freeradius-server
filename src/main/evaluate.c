@@ -394,19 +394,16 @@ static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
 #define CAST(_s) \
 do {\
 	if ((cast_type != PW_TYPE_INVALID) && (_s ## _type != PW_TYPE_INVALID) && (cast_type != _s ## _type)) {\
-		ssize_t r;\
 		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
 			   fr_int2str(dict_attr_types, _s ## _type, "<INVALID>"),\
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));\
-		r = value_data_cast(request, &_s ## _cast, cast_type, cast, _s ## _type, _s ## _enumv, _s, _s ## _len);\
-		if (r < 0) {\
+		if (value_data_cast(request, &_s ## _cast, cast_type, cast, _s ## _type, _s ## _enumv, _s) < 0) {\
 			REDEBUG("Failed casting " #_s " operand: %s", fr_strerror());\
 			rcode = -1;\
 			goto finish;\
 		}\
 		if (cast && cast->flags.is_pointer) _s ## _cast_buff = _s ## _cast.ptr;\
 		_s ## _type = cast_type;\
-		_s ## _len = (size_t)r;\
 		_s = &_s ## _cast;\
 	}\
 } while (0)

@@ -211,7 +211,6 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	size_t i;
 	VALUE_PAIR *vp;
 	uint8_t const *p;
-	ssize_t	ret;
 	size_t	len;
 	value_data_t dst;
 	uint8_t const *buff = NULL;
@@ -235,13 +234,11 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	 *	print that as hex.
 	 */
 	} else {
-		ret = value_data_cast(request, &dst, PW_TYPE_OCTETS, NULL, vp->da->type,
-				      NULL, &vp->data, vp->vp_length);
-		if (ret < 0) {
+		if (value_data_cast(request, &dst, PW_TYPE_OCTETS, NULL, vp->da->type, NULL, &vp->data) < 0) {
 			REDEBUG("%s", fr_strerror());
 			goto error;
 		}
-		len = (size_t) ret;
+		len = (size_t)dst.length;
 		p = buff = dst.octets;
 	}
 
@@ -442,8 +439,6 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 
 			value_data_t *dst = NULL;
 
-			ssize_t ret;
-
 			if ((PW_TYPE) type->number == vp->da->type) {
 				goto next_type;
 			}
@@ -466,9 +461,10 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			}
 
 			dst = talloc_zero(vp, value_data_t);
-			ret = value_data_cast(dst, dst, type->number, NULL, vp->da->type, vp->da,
-					      &vp->data, vp->vp_length);
-			if (ret < 0) goto next_type;	/* We expect some to fail */
+			/* We expect some to fail */
+			if (value_data_cast(dst, dst, type->number, NULL, vp->da->type, vp->da, &vp->data) < 0) {
+				goto next_type;
+			}
 
 			value = value_data_aprints(dst, type->number, NULL, dst, '\'');
 			if (!value) goto next_type;

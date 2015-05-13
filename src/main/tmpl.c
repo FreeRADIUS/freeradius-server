@@ -1145,8 +1145,6 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
  */
 int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 {
-	ssize_t ret;
-
 	VERIFY_TMPL(vpt);
 
 	rad_assert(vpt != NULL);
@@ -1154,6 +1152,9 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 
 	switch (vpt->type) {
 	case TMPL_TYPE_LITERAL:
+	{
+		ssize_t ret;
+
 		vpt->tmpl_data_type = type;
 
 		/*
@@ -1165,6 +1166,7 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 
 		vpt->type = TMPL_TYPE_DATA;
 		vpt->tmpl_data_length = (size_t) ret;
+	}
 		break;
 
 	case TMPL_TYPE_DATA:
@@ -1173,9 +1175,8 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 
 		if (type == vpt->tmpl_data_type) return 0;	/* noop */
 
-		ret = value_data_cast(vpt, &new, type, enumv, vpt->tmpl_data_type,
-				      NULL, &vpt->tmpl_data_value, vpt->tmpl_data_length);
-		if (ret < 0) return -1;
+		if (value_data_cast(vpt, &new, type, enumv, vpt->tmpl_data_type,
+				    NULL, &vpt->tmpl_data_value) < 0) return -1;
 
 		/*
 		 *	Free old value buffers
@@ -1192,7 +1193,6 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 
 		memcpy(&vpt->tmpl_data_value, &new, sizeof(vpt->tmpl_data_value));
 		vpt->tmpl_data_type = type;
-		vpt->tmpl_data_length = (size_t) ret;
 	}
 		break;
 

@@ -1027,15 +1027,14 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
  * @param src_type to cast from.
  * @param src_enumv Enumerated values used to convert integers to strings.
  * @param src Input data.
- * @param src_len Input data len.
  * @return
- *	- Length of data in the dst.
+ *	- >= 0 on success.
  *	- -1 on failure.
  */
-ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
-			PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
-			PW_TYPE src_type, DICT_ATTR const *src_enumv,
-			value_data_t const *src, size_t src_len)
+int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
+		    PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
+		    PW_TYPE src_type, DICT_ATTR const *src_enumv,
+		    value_data_t const *src)
 {
 	if (!fr_assert(dst_type != src_type)) return -1;
 
@@ -1043,17 +1042,18 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	Deserialise a value_data_t
 	 */
 	if (src_type == PW_TYPE_STRING) {
-		return value_data_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src_len, '\0');
+		return value_data_from_str(ctx, dst, &dst_type, dst_enumv, src->strvalue, src->length, '\0');
 	}
 
 	/*
 	 *	Converts the src data to octets with no processing.
 	 */
 	if (dst_type == PW_TYPE_OCTETS) {
-		value_data_hton(dst, src_type, src, src_len);
-		dst->octets = talloc_memdup(ctx, dst, src_len);
+		value_data_hton(dst, src_type, src, src->length);
+		dst->octets = talloc_memdup(ctx, dst, src->length);
+		dst->length = src->length;
 		talloc_set_type(dst->octets, uint8_t);
-		return talloc_array_length(dst->strvalue);
+		return 0;
 	}
 
 	/*
@@ -1061,7 +1061,8 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 */
 	if (dst_type == PW_TYPE_STRING) {
 		dst->strvalue = value_data_aprints(ctx, src_type, src_enumv, src, '\0');
-		return talloc_array_length(dst->strvalue) - 1;
+		dst->length = talloc_array_length(dst->strvalue) - 1;
+		return 0;
 	}
 
 	if ((src_type == PW_TYPE_IFID) &&
@@ -1069,7 +1070,8 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		memcpy(&dst->integer64, src->ifid, sizeof(src->ifid));
 		dst->integer64 = htonll(dst->integer64);
 	fixed_length:
-		return dict_attr_sizes[dst_type][0];
+		dst->length = dict_attr_sizes[dst_type][0];
+		return 0;
 	}
 
 	if ((src_type == PW_TYPE_INTEGER64) &&
@@ -1339,23 +1341,24 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	The attribute we've found has to have a size which is
 	 *	compatible with the type of the destination cast.
 	 */
-	if ((src_len < dict_attr_sizes[dst_type][0]) ||
-	    (src_len > dict_attr_sizes[dst_type][1])) {
+	if ((src->length < dict_attr_sizes[dst_type][0]) ||
+	    (src->length > dict_attr_sizes[dst_type][1])) {
 	    	char const *src_type_name;
 
-	    	src_type_name =  fr_int2str(dict_attr_types, src_type, "<INVALID>");
+	    	src_type_name = fr_int2str(dict_attr_types, src_type, "<INVALID>");
 		fr_strerror_printf("Invalid cast from %s to %s. Length should be between %zu and %zu but is %zu",
 				   src_type_name,
 				   fr_int2str(dict_attr_types, dst_type, "<INVALID>"),
 				   dict_attr_sizes[dst_type][0], dict_attr_sizes[dst_type][1],
-				   src_len);
+				   src->length);
 		return -1;
 	}
 
 	if (src_type == PW_TYPE_OCTETS) {
 	do_octets:
-		value_data_hton(dst, dst_type, src->octets, src_len);
-		return src_len;
+		value_data_hton(dst, dst_type, src->octets, src->length);
+		dst->length = src->length;
+		return 0;
 	}
 
 	/*
@@ -1374,10 +1377,11 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 		dst->integer = htonl(src->ipaddr.s_addr);
 
 	} else {		/* they're of the same byte order */
-		memcpy(&dst, &src, src_len);
+		memcpy(&dst, &src, src->length);
 	}
+	dst->length = src->length;
 
-	return src_len;
+	return 0;
 }
 
 /** Copy value data verbatim duplicating any buffers
