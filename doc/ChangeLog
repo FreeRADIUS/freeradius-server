@@ -45,6 +45,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* Don't require NT-Password for MS-CHAP password changes.
 	* More threading issues for rlm_python.  Patch from
 	  Michael Rigoni.
+	* Fix security issues with EAP-PWD.
+	  See http://freeradius.org/security.html#eap-pwd-2015
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
