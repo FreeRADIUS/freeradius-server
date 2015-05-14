@@ -1,7 +1,7 @@
 #
 #  PRE: acct_1_update
 #
-sql_mysql.accounting
+sql.accounting
 if (ok) {
 	test_pass
 }
@@ -10,7 +10,7 @@ else {
 }
 
 update {
-	Tmp-Integer-0 := "%{sql_mysql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000000'}"
+	Tmp-Integer-0 := "%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000000'}"
 }
 if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 1)) {
 	test_fail
@@ -20,7 +20,7 @@ else {
 }
 
 update {
-	Tmp-Integer-0 := "%{sql_mysql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000000'}"
+	Tmp-Integer-0 := "%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000000'}"
 }
 if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 60)) {
 	test_fail
