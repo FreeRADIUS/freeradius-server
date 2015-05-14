@@ -576,6 +576,46 @@ void tmpl_from_da(vp_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
 	vpt->tmpl_num = num;
 }
 
+/** Create a #vp_tmpl_t from a #value_data_t
+ *
+ * @param[in,out] ctx to allocate #vp_tmpl_t in.
+ * @param[out] out Where to write pointer to new #vp_tmpl_t.
+ * @param[in] data to convert.
+ * @param[in] type of data.
+ * @param[in] enumv Used to convert integers to string types for printing. May be NULL.
+ * @param[in] steal If true, any buffers are moved to the new ctx instead of being duplicated.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
+			  PW_TYPE type, DICT_ATTR const *enumv, bool steal)
+{
+	char const *name;
+	vp_tmpl_t *vpt;
+
+	vpt = talloc(ctx, vp_tmpl_t);
+	name = value_data_aprints(vpt, type, enumv, data, '\0');
+	tmpl_init(vpt, TMPL_TYPE_DATA, name, talloc_array_length(name));
+
+	if (steal) {
+		if (value_data_steal(vpt, &vpt->tmpl_data_value, type, data) < 0) {
+			talloc_free(vpt);
+			return -1;
+		}
+		vpt->tmpl_data_type = type;
+	} else {
+		if (value_data_copy(vpt, &vpt->tmpl_data_value, type, data) < 0) {
+			talloc_free(vpt);
+			return -1;
+		}
+		vpt->tmpl_data_type = type;
+	}
+	*out = vpt;
+
+	return 0;
+}
+
 /** Parse a string into a TMPL_TYPE_ATTR_* or #TMPL_TYPE_LIST type #vp_tmpl_t
  *
  * @note The name field is just a copy of the input pointer, if you know that string might be

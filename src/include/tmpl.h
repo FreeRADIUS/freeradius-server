@@ -327,6 +327,9 @@ vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 void			tmpl_from_da(vp_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
 				     request_refs_t request, pair_lists_t list);
 
+int			tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
+					      PW_TYPE type, DICT_ATTR const *enumv, bool steal);
+
 ssize_t			tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 					      request_refs_t request_def, pair_lists_t list_def,
 					      bool allow_unknown, bool allow_undefined);
