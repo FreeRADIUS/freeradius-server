@@ -1,5 +1,5 @@
 /*
- * valuepair.c	Functions to handle value_data_t
+ * value.c	Functions to handle value_data_t
  *
  * Version:	$Id$
  *
