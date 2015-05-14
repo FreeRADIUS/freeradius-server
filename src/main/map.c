@@ -597,11 +597,14 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 
 /** Convert a map to a VALUE_PAIR.
  *
- * @param[out] out Where to write the VALUE_PAIR(s), which may be NULL if not found
+ * @param[in,out] ctx to allocate #VALUE_PAIR (s) in.
+ * @param[out] out Where to write the #VALUE_PAIR (s), which may be NULL if not found
  * @param[in] request structure (used only for talloc)
- * @param[in] map the map. The LHS (dst) has to be TMPL_TYPE_ATTR or TMPL_TYPE_LIST.
- * @param[in] ctx unused
- * @return 0 on success, -1 on failure
+ * @param[in] map the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
+ * @param[in] uctx unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *uctx)
 {
