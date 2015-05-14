@@ -91,7 +91,7 @@ int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
 				   request_refs_t src_request_def, pair_lists_t src_list_def);
 
 int		map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
-			  vp_map_t const *map, void *uctx) CC_HINT(nonnull (1,2,3));
+			  vp_map_t const *map, void *uctx) CC_HINT(nonnull (2,3,4));
 
 int		map_to_request(REQUEST *request, vp_map_t const *map,
 			       radius_map_getvalue_t func, void *ctx);
