@@ -937,7 +937,7 @@ uint32_t rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval
  */
 
 int rad_expand_xlat(REQUEST *request, char const *cmd,
-		    int max_argc, char *argv[], bool can_fail,
+		    int max_argc, char const *argv[], bool can_fail,
 		    size_t argv_buflen, char *argv_buf)
 {
 	char const *from;
