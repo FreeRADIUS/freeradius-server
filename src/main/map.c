@@ -516,6 +516,126 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 	return 0;
 }
 
+/** Compare map where LHS is #TMPL_TYPE_ATTR
+ *
+ * Compares maps by lhs->tmpl_da, lhs->tmpl_tag, lhs->tmpl_num
+ *
+ * @note both map->lhs must be #TMPL_TYPE_ATTR.
+ *
+ * @param a first map.
+ * @param b second map.
+ */
+int8_t map_cmp_by_lhs_attr(void const *a, void const *b)
+{
+	vp_tmpl_t const *my_a = ((vp_map_t const *)a)->lhs;
+	vp_tmpl_t const *my_b = ((vp_map_t const *)b)->lhs;
+
+	VERIFY_TMPL(my_a);
+	VERIFY_TMPL(my_b);
+
+	uint8_t cmp;
+
+	rad_assert(my_a->type == TMPL_TYPE_ATTR);
+	rad_assert(my_b->type == TMPL_TYPE_ATTR);
+
+	cmp = fr_pointer_cmp(my_a->tmpl_da, my_b->tmpl_da);
+	if (cmp != 0) return cmp;
+
+	if (my_a->tmpl_tag < my_b->tmpl_tag) return -1;
+
+	if (my_a->tmpl_tag > my_b->tmpl_tag) return 1;
+
+	if (my_a->tmpl_num < my_b->tmpl_num) return -1;
+
+	if (my_a->tmpl_num > my_b->tmpl_num) return 1;
+
+	return 0;
+}
+
+static void map_sort_split(vp_map_t *source, vp_map_t **front, vp_map_t **back)
+{
+	vp_map_t *fast;
+	vp_map_t *slow;
+
+	/*
+	 *	Stopping condition - no more elements left to split
+	 */
+	if (!source || !source->next) {
+		*front = source;
+		*back = NULL;
+
+		return;
+	}
+
+	/*
+	 *	Fast advances twice as fast as slow, so when it gets to the end,
+	 *	slow will point to the middle of the linked list.
+	 */
+	slow = source;
+	fast = source->next;
+
+	while (fast) {
+		fast = fast->next;
+		if (fast) {
+			slow = slow->next;
+			fast = fast->next;
+		}
+	}
+
+	*front = source;
+	*back = slow->next;
+	slow->next = NULL;
+}
+
+static vp_map_t *map_sort_merge(vp_map_t *a, vp_map_t *b, fr_cmp_t cmp)
+{
+	vp_map_t *result = NULL;
+
+	if (!a) return b;
+	if (!b) return a;
+
+	/*
+	 *	Compare things in the maps
+	 */
+	if (cmp(a, b) <= 0) {
+		result = a;
+		result->next = map_sort_merge(a->next, b, cmp);
+	} else {
+		result = b;
+		result->next = map_sort_merge(a, b->next, cmp);
+	}
+
+	return result;
+}
+
+/** Sort a linked list of #vp_map_t using merge sort
+ *
+ * @param[in,out] maps List of #vp_map_t to sort.
+ * @param[in] cmp to sort with
+ */
+void map_sort(vp_map_t **maps, fr_cmp_t cmp)
+{
+	vp_map_t *head = *maps;
+	vp_map_t *a;
+	vp_map_t *b;
+
+	/*
+	 *	If there's 0-1 elements it must already be sorted.
+	 */
+	if (!head || !head->next) {
+		return;
+	}
+
+	map_sort_split(head, &a, &b);	/* Split into sublists */
+	map_sort(&a, cmp);		/* Traverse left */
+	map_sort(&b, cmp);		/* Traverse right */
+
+	/*
+	 *	merge the two sorted lists together
+	 */
+	*maps = map_sort_merge(a, b, cmp);
+}
+
 /** Process map which has exec as a src
  *
  * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
