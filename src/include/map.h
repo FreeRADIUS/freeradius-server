@@ -90,6 +90,10 @@ int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
 				   request_refs_t dst_request_def, pair_lists_t dst_list_def,
 				   request_refs_t src_request_def, pair_lists_t src_list_def);
 
+int8_t		map_cmp_by_lhs_attr(void const *a, void const *b);
+
+void		map_sort(vp_map_t **maps, fr_cmp_t cmp);
+
 int		map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 			  vp_map_t const *map, void *uctx) CC_HINT(nonnull (2,3,4));
 
