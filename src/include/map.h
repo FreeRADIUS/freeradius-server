@@ -70,7 +70,8 @@ typedef struct vp_map {
 #endif
 
 typedef int (*map_validate_t)(vp_map_t *map, void *ctx);
-typedef int (*radius_map_getvalue_t)(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx);
+typedef int (*radius_map_getvalue_t)(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
+				     vp_map_t const *map, void *uctx);
 
 int		map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 			     request_refs_t dst_request_def, pair_lists_t dst_list_def,
@@ -89,8 +90,8 @@ int		map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *raw,
 				   request_refs_t dst_request_def, pair_lists_t dst_list_def,
 				   request_refs_t src_request_def, pair_lists_t src_list_def);
 
-int		map_to_vp(VALUE_PAIR **out, REQUEST *request,
-			  vp_map_t const *map, void *ctx) CC_HINT(nonnull (1,2,3));
+int		map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
+			  vp_map_t const *map, void *uctx) CC_HINT(nonnull (1,2,3));
 
 int		map_to_request(REQUEST *request, vp_map_t const *map,
 			       radius_map_getvalue_t func, void *ctx);

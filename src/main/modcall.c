@@ -1003,7 +1003,7 @@ redo:
 			radius_xlat(buffer, sizeof(buffer), request, mx->xlat_name, NULL, NULL);
 		} else {
 			RDEBUG("`%s`", mx->xlat_name);
-			radius_exec_program(NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
+			radius_exec_program(request, NULL, 0, NULL, request, mx->xlat_name, request->packet->vps,
 					    false, true, EXEC_TIMEOUT);
 		}
 
