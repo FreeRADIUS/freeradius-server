@@ -2045,7 +2045,7 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
  * @param[in] src data to copy.
  * @param[in] len of data to copy.
  */
-void pairbstrncpy(VALUE_PAIR *vp, char const *src, size_t len)
+void pairbstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
 {
 	char *p, *q;
 
