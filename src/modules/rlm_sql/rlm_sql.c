@@ -267,20 +267,21 @@ finish:
 
 /** Converts a string value into a #VALUE_PAIR
  *
+ * @param[in,out] ctx to allocate #VALUE_PAIR (s).
  * @param[out] out where to write the resulting #VALUE_PAIR.
  * @param[in] request The current request.
  * @param[in] map to process.
- * @param[in] ctx The value to parse.
+ * @param[in] uctx The value to parse.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int _sql_map_proc_get_value(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
+static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
 {
 	VALUE_PAIR	*vp;
-	char const	*value = ctx;
+	char const	*value = uctx;
 
-	vp = pairalloc(request, map->lhs->tmpl_da);
+	vp = pairalloc(ctx, map->lhs->tmpl_da);
 	if (pairparsevalue(vp, value, talloc_array_length(value) - 1) < 0) {
 		char *escaped;
 

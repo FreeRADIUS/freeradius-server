@@ -404,9 +404,9 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 /*
  *	Convert field X to a VP.
  */
-static int csv_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
+static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
 {
-	char const *str = ctx;
+	char const *str = uctx;
 	VALUE_PAIR *head = NULL, *vp;
 	vp_cursor_t cursor;
 	DICT_ATTR const *da;
@@ -423,7 +423,7 @@ static int csv_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *
 	} else {
 		char *attr;
 
-		if (tmpl_aexpand(request, &attr, request, map->lhs, NULL, NULL) <= 0) {
+		if (tmpl_aexpand(ctx, &attr, request, map->lhs, NULL, NULL) <= 0) {
 			RWDEBUG("Failed expanding string");
 			return -1;
 		}
@@ -437,7 +437,7 @@ static int csv_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *
 		talloc_free(attr);
 	}
 
-	vp = pairalloc(request, da);
+	vp = pairalloc(ctx, da);
 	rad_assert(vp);
 
 	if (pairparsevalue(vp, str, talloc_array_length(str) - 1) < 0) {

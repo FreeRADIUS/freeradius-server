@@ -523,6 +523,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
  * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
  * has been broken out into it's own function.
  *
+ * @param[in,out] ctx to allocate new #VALUE_PAIR (s) in.
  * @param[out] out Where to write the #VALUE_PAIR (s).
  * @param[in] request structure (used only for talloc).
  * @param[in] map the map. The LHS (dst) must be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
@@ -531,7 +532,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map)
+static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map)
 {
 	int result;
 	char *expanded = NULL;
@@ -557,7 +558,8 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *ma
 	 *	if dst is an attribute, then we create an attribute of that type and then
 	 *	call pairparsevalue on the output of the script.
 	 */
-	result = radius_exec_program(answer, sizeof(answer), (map->lhs->type == TMPL_TYPE_LIST) ? &output_pairs : NULL,
+	result = radius_exec_program(ctx, answer, sizeof(answer),
+				     (map->lhs->type == TMPL_TYPE_LIST) ? &output_pairs : NULL,
 				     request, map->rhs->name, input_pairs ? *input_pairs : NULL,
 				     true, true, EXEC_TIMEOUT);
 	talloc_free(expanded);
@@ -579,7 +581,7 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *ma
 	{
 		VALUE_PAIR *vp;
 
-		vp = pairalloc(request, map->lhs->tmpl_da);
+		vp = pairalloc(ctx, map->lhs->tmpl_da);
 		if (!vp) return -1;
 		vp->op = map->op;
 		if (pairparsevalue(vp, answer, -1) < 0) {
@@ -608,7 +610,7 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *ma
  *	- 0 on success.
  *	- -1 on failure.
  */
-int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *ctx)
+int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *uctx)
 {
 	int rcode = 0;
 	VALUE_PAIR *vp = NULL, *new, *found = NULL;
@@ -643,7 +645,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 		}
 		if (!from) return 0;
 
-		found = paircopy(request, *from);
+		found = paircopy(ctx, *from);
 
 		/*
 		 *	List to list copy is empty if the src list has no attributes.
@@ -670,7 +672,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 		rad_assert(map->rhs->tmpl_xlat != NULL);
 
-		new = pairalloc(request, map->lhs->tmpl_da);
+		new = pairalloc(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
 		str = NULL;
@@ -702,7 +704,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 
-		new = pairalloc(request, map->lhs->tmpl_da);
+		new = pairalloc(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
 		str = NULL;
@@ -726,7 +728,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 
-		new = pairalloc(request, map->lhs->tmpl_da);
+		new = pairalloc(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
 		if (pairparsevalue(new, map->rhs->name, -1) < 0) {
@@ -747,7 +749,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 		/*
 		 * @todo should log error, and return -1 for v3.1 (causes update to fail)
 		 */
-		if (tmpl_copy_vps(request, &found, request, map->rhs) < 0) return 0;
+		if (tmpl_copy_vps(ctx, &found, request, map->rhs) < 0) return 0;
 
 		vp = fr_cursor_init(&from, &found);
 
@@ -761,7 +763,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 
 			(void) fr_cursor_init(&to, out);
 			for (; vp; vp = fr_cursor_next(&from)) {
-				new = pairalloc(request, map->lhs->tmpl_da);
+				new = pairalloc(ctx, map->lhs->tmpl_da);
 				if (!new) return -1;
 
 				if (value_data_cast(new, &new->data, new->da->type, new->da,
@@ -801,7 +803,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 		rad_assert(map->lhs->tmpl_da->type == map->rhs->tmpl_data_type);
 
-		new = pairalloc(request, map->lhs->tmpl_da);
+		new = pairalloc(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
 		if (value_data_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value) < 0) goto error;
@@ -819,7 +821,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED vo
 	 *	exec string is xlat expanded and arguments are shell escaped.
 	 */
 	case TMPL_TYPE_EXEC:
-		return map_exec_to_vp(out, request, map);
+		return map_exec_to_vp(ctx, out, request, map);
 
 	default:
 		rad_assert(0);	/* Should have been caught at parse time */
@@ -976,7 +978,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 *	VPs to work with.
 	 */
 	if (map->rhs->type != TMPL_TYPE_NULL) {
-		rcode = func(&head, request, map, ctx);
+		rcode = func(request, &head, request, map, ctx);
 		if (rcode < 0) {
 			rad_assert(!head);
 			return rcode;

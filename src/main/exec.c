@@ -505,6 +505,7 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
 
 /** Execute a program.
  *
+ * @param[in,out] ctx to allocate new VALUE_PAIR (s) in.
  * @param[out] out buffer to append plaintext (non valuepair) output.
  * @param[in] outlen length of out buffer.
  * @param[out] output_pairs list of value pairs - Data on child's stdout will be parsed and
@@ -522,7 +523,7 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
  *	- exit code if exec_wait!=0.
  *	- -1 on failure.
  */
-int radius_exec_program(char *out, size_t outlen, VALUE_PAIR **output_pairs,
+int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
 			REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
 			bool exec_wait, bool shell_escape, int timeout)
 
@@ -602,7 +603,7 @@ int radius_exec_program(char *out, size_t outlen, VALUE_PAIR **output_pairs,
 			answer[--len] = '\0';
 		}
 
-		if (userparse(request, answer, output_pairs) == T_INVALID) {
+		if (userparse(ctx, answer, output_pairs) == T_INVALID) {
 			RERROR("Failed parsing output from: %s: %s", cmd, fr_strerror());
 			strlcpy(out, answer, len);
 			ret = -1;

@@ -280,14 +280,11 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	for (map = inst->maps; map != NULL; map = map->next) {
 		rad_assert(map->lhs && map->rhs);
 
-		if (map_to_vp(&to_cache, request, map, NULL) < 0) {
+		if (map_to_vp(c, &to_cache, request, map, NULL) < 0) {
 			RDEBUG("Skipping %s", map->rhs->name);
 			continue;
 		}
 
-		/*
-		 *	Reparent the VPs map_to_vp may return multiple.
-		 */
 		for (vp = fr_cursor_init(&src_list, &to_cache);
 		     vp;
 		     vp = fr_cursor_next(&src_list)) {
@@ -313,7 +310,6 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 			RINDENT();
 			if (RDEBUG_ENABLED2) map_debug_log(request, map, vp);
 			REXDENT();
-			(void) talloc_steal(c, vp);
 
 			vp->op = map->op;
 

@@ -33,9 +33,9 @@
  *
  * @see map_to_vp
  */
-int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *ctx)
+int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx)
 {
-	rlm_ldap_result_t *self = ctx;
+	rlm_ldap_result_t *self = uctx;
 	VALUE_PAIR *head = NULL, *vp;
 	vp_cursor_t cursor;
 	int i;
@@ -59,9 +59,9 @@ int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *ma
 			vp_map_t *attr = NULL;
 
 			RDEBUG3("Parsing valuepair string \"%s\"", self->values[i]->bv_val);
-			if (map_afrom_attr_str(request, &attr, self->values[i]->bv_val,
-					     map->lhs->tmpl_request, map->lhs->tmpl_list,
-					     REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+			if (map_afrom_attr_str(ctx, &attr, self->values[i]->bv_val,
+					       map->lhs->tmpl_request, map->lhs->tmpl_list,
+					       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 				RWDEBUG("Failed parsing \"%s\" as valuepair (%s), skipping...", fr_strerror(),
 					self->values[i]->bv_val);
 				continue;
@@ -85,7 +85,7 @@ int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *ma
 				goto next_pair;
 			}
 
-			if (map_to_vp(&vp, request, attr, NULL) < 0) {
+			if (map_to_vp(request, &vp, request, attr, NULL) < 0) {
 				RWDEBUG("Failed creating attribute for valuepair \"%s\", skipping...",
 					self->values[i]->bv_val);
 				goto next_pair;
@@ -110,7 +110,7 @@ int rlm_ldap_map_getvalue(VALUE_PAIR **out, REQUEST *request, vp_map_t const *ma
 		for (i = 0; i < self->count; i++) {
 			if (!self->values[i]->bv_len) continue;
 
-			vp = pairalloc(request, map->lhs->tmpl_da);
+			vp = pairalloc(ctx, map->lhs->tmpl_da);
 			rad_assert(vp);
 
 			if (pairparsevalue(vp, self->values[i]->bv_val, self->values[i]->bv_len) < 0) {

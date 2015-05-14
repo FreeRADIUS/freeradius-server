@@ -1509,7 +1509,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 
 	DEBUG("Trigger %s -> %s", name, value);
 
-	radius_exec_program(NULL, 0, NULL, request, value, vp, false, true, EXEC_TIMEOUT);
+	radius_exec_program(request, NULL, 0, NULL, request, value, vp, false, true, EXEC_TIMEOUT);
 
 	if (alloc) talloc_free(request);
 }

@@ -488,9 +488,9 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   VALUE_PAIR *input_pairs, bool shell_escape);
 int radius_readfrom_program(int fd, pid_t pid, int timeout,
 			    char *answer, int left);
-int radius_exec_program(char *out, size_t outlen, VALUE_PAIR **output_pairs,
+int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
 			REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
-			bool exec_wait, bool shell_escape, int timeout) CC_HINT(nonnull (4, 5));
+			bool exec_wait, bool shell_escape, int timeout) CC_HINT(nonnull (5, 6));
 void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench)
      CC_HINT(nonnull (3));
 

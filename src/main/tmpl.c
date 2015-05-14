@@ -1363,7 +1363,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 	{
 		RDEBUG4("EXPAND TMPL EXEC");
 		rad_assert(buff);
-		if (radius_exec_program(buff, bufflen, NULL, request, vpt->name, NULL,
+		if (radius_exec_program(request, buff, bufflen, NULL, request, vpt->name, NULL,
 					true, false, EXEC_TIMEOUT) != 0) {
 			return -1;
 		}
@@ -1501,7 +1501,8 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 
 		RDEBUG4("EXPAND TMPL EXEC");
 		buff = talloc_array(ctx, char, 1024);
-		if (radius_exec_program(buff, 1024, NULL, request, vpt->name, NULL, true, false, EXEC_TIMEOUT) != 0) {
+		if (radius_exec_program(request, buff, 1024, NULL, request, vpt->name, NULL,
+					true, false, EXEC_TIMEOUT) != 0) {
 			TALLOC_FREE(buff);
 			return -1;
 		}
