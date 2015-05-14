@@ -1,5 +1,5 @@
 #
-#  PRE: update if
+#  PRE:
 #
 update {
 	&request:Tmp-String-0 := 'testkey'
