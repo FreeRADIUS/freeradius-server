@@ -529,9 +529,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_clear(UNUSED rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\"", vp->vp_strvalue);
+		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\" (%zd)", vp->vp_strvalue, vp->vp_length);
 	} else {
-		RDEBUG3("Comparing with \"known good\" Cleartext-Password");
+		RDEBUG("Comparing with \"known good\" Cleartext-Password");
 	}
 
 	if ((vp->vp_length != request->password->vp_length) ||
@@ -970,7 +970,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 	if (RDEBUG_ENABLED3) {
-		RDEBUG3("Login attempt with password \"%s\"", request->password->vp_strvalue);
+		RDEBUG3("Login attempt with password \"%s\" (%zd)", request->password->vp_strvalue, request->password->vp_length);
 	} else {
 		RDEBUG("Login attempt with password");
 	}
