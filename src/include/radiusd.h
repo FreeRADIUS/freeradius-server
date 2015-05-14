@@ -408,7 +408,7 @@ int		rad_copy_string_bare(char *dst, char const *src);
 int		rad_copy_variable(char *dst, char const *from);
 uint32_t	rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval *now);
 int		rad_expand_xlat(REQUEST *request, char const *cmd,
-				int max_argc, char *argv[], bool can_fail,
+				int max_argc, char const *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
 
 void		verify_request(char const *file, int line, REQUEST *request);	/* only for special debug builds */

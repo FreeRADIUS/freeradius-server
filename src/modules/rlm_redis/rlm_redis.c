@@ -201,7 +201,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 {
 	REDISSOCK *dissocket;
 	int argc;
-	char *argv[MAX_REDIS_ARGS];
+	char const *argv[MAX_REDIS_ARGS];
 	char argv_buf[MAX_QUERY_LEN];
 
 	if (!query || !*query || !inst || !dissocket_p) {
