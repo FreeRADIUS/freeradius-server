@@ -730,7 +730,6 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	rlm_rcode_t	rcode = RLM_MODULE_REJECT;
 	uint8_t const	*data;
 	unsigned int	data_len;
-	char *p;
 
 	REQUEST *request = handler->request;
 	EAP_DS *eap_ds = handler->eap_ds;
@@ -790,10 +789,8 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		t->username = pairmake(t, NULL, "User-Name", NULL, T_OP_EQ);
 		rad_assert(t->username != NULL);
 
-		t->username->vp_strvalue = p = talloc_array(t->username, char, data_len);
-		memcpy(p, data + 1, data_len - 1);
-		t->username->vp_length = data_len - 1;
-		p[t->username->vp_length] = 0;
+		pairbstrncpy(t->username, data + 1, data_len - 1);
+
 		RDEBUG("Got inner identity '%s'", t->username->vp_strvalue);
 		if (t->soh) {
 			t->status = PEAP_STATUS_WAIT_FOR_SOH_RESPONSE;
@@ -970,10 +967,8 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			t->username = pairmake(t, NULL, "User-Name", NULL, T_OP_EQ);
 			rad_assert(t->username != NULL);
 
-			t->username->vp_strvalue = p = talloc_array(t->username, char, data_len);
-			memcpy(p, data + 1, data_len - 1);
-			t->username->vp_length = data_len - 1;
-			p[t->username->vp_length] = 0;
+			pairbstrncpy(t->username, data + 1, data_len - 1);
+
 			RDEBUG2("Got tunneled identity of %s", t->username->vp_strvalue);
 
 			/*

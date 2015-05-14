@@ -144,7 +144,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 	size_t		offset;
 	size_t		size;
 	size_t		data_left = data_len;
-	char		*p;
 	VALUE_PAIR	*first = NULL;
 	VALUE_PAIR	*vp;
 	RADIUS_PACKET	*packet = fake->packet; /* FIXME: api issues */
@@ -349,15 +348,9 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			memcpy(vp->vp_ipv6prefix, data, vp->vp_length);
 			break;
 
-			/*
-			 *	Ensure it's NUL terminated.
-			 */
 		case PW_TYPE_STRING:
-			vp->vp_strvalue = p = talloc_array(vp, char, size + 1);
-			vp->type = VT_DATA;
-			memcpy(p, data, size);
-			p[size] = '\0';
-			vp->vp_length = strlen(p);
+			pairbstrncpy(vp, data, size);
+			vp->vp_length = strlen(vp->vp_strvalue); /* embedded zeros are NOT allowed */
 			break;
 
 			/*
@@ -1038,19 +1031,13 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
-				char *p;
-
 				/*
 				 *	Create & remember a User-Name
 				 */
 				t->username = pairmake(t, NULL, "User-Name", NULL, T_OP_EQ);
 				rad_assert(t->username != NULL);
-				t->username->vp_length = vp->vp_length - 5;
 
-				t->username->vp_strvalue = p = talloc_array(t->username, char,
-									    t->username->vp_length + 1);
-				memcpy(p, vp->vp_octets + 5, t->username->vp_length);
-				p[t->username->vp_length] = 0;
+				pairbstrncpy(t->username, vp->vp_octets + 5, vp->vp_length - 5);
 
 				RDEBUG("Got tunneled identity of %s",
 				       t->username->vp_strvalue);
