@@ -1413,7 +1413,37 @@ int value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const 
 	return 0;
 }
 
+/** Copy value data verbatim moving any buffers to the specified context
+ *
+ * @param ctx To allocate buffers in.
+ * @param dst Where to copy value_data to.
+ * @param src_type Type of src.
+ * @param src Where to copy value_data from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const value_data_t *src)
+{
+	switch (src_type) {
+	default:
+		memcpy(dst, src, sizeof(*src));
+		break;
 
+	case PW_TYPE_STRING:
+		dst->strvalue = talloc_steal(ctx, src->strvalue);
+		if (!dst->strvalue) return -1;
+		break;
+
+	case PW_TYPE_OCTETS:
+		dst->octets = talloc_steal(ctx, src->octets);
+		if (!dst->octets) return -1;
+		break;
+	}
+	dst->length = src->length;
+
+	return 0;
+}
 
 /** Print one attribute value to a string
  *
