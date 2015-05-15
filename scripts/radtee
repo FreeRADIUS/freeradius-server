@@ -92,6 +92,7 @@ THREADS = 32
 # For example:
 #     '127.0.0.1': 'test',
 CLIENTS = {
+#     '127.0.0.1': 'test'
 }
 
 # Ignore any sniffed requests from these IP addresses.
@@ -416,10 +417,10 @@ class RadiusComparer(Thread):
 			if pkt.code == packet.AccessRequest:
 				auth = packet.AuthPacket(data[42:])
 				auth.authenticator = pkt.authenticator
-				auth.secret = clients.CLIENTS.get(ip.get_ip_src(), None)
+				auth.secret = CLIENTS.get(ip.get_ip_src(), None)
 				if not auth.secret:
 					# No configuration for this client.
-					sys.stdout.write('C=%s' % ip.get_ip_src())
+					sys.stdout.write('C=%s (client not authorize)\n' % ip.get_ip_src())
 					sys.stdout.flush()
 					continue
 				passwd = None
