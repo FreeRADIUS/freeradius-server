@@ -394,7 +394,7 @@ size_t		rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen,
 ssize_t		rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 void		rad_const_free(void const *ptr);
-char		*rad_ajoin(TALLOC_CTX *ctx, char const **array, char c);
+char		*rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c);
 REQUEST		*request_alloc(TALLOC_CTX *ctx);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);
 REQUEST		*request_alloc_coa(REQUEST *request);

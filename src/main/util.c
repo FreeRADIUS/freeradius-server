@@ -547,33 +547,45 @@ void rad_const_free(void const *ptr)
 	talloc_free(tmp);
 }
 
-char *rad_ajoin(TALLOC_CTX *ctx, char const **array, char c)
+/** talloc a buffer to hold the concatenated value of all elements of argv
+ *
+ * @param ctx to allocate buffer in.
+ * @param argv array of substrings.
+ * @param argc length of array.
+ * @param c separation character. Optional, may be '\0' for no separator.
+ * @return the concatenation of the elements of argv, separated by c.
+ */
+char *rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c)
 {
-	char const **array_p;
 	char *buff, *p;
-	size_t len = 0, left, wrote;
+	int i;
+	size_t total = 0, freespace;
 
-	if (!*array) {
+	if (!*argv) {
 		goto null;
 	}
 
-	for (array_p = array; *array_p; array_p++) {
-		len += (strlen(*array_p) + 1);
-	}
-
-	if (!len) {
-		null:
+	for (i = 0; i < argc; i++) total += (strlen(argv[i]) + ((c == '\0') ? 0 : 1));
+	if (!total) {
+	null:
 		return talloc_zero_array(ctx, char, 1);
 	}
 
-	left = len + 1;
-	buff = p = talloc_zero_array(ctx, char, left);
-	for (array_p = array; *array_p; array_p++) {
-		wrote = snprintf(p, left, "%s%c", *array_p, c);
-		left -= wrote;
-		p += wrote;
+	if (c == '\0') total++;
+
+	freespace = total;
+	buff = p = talloc_array(ctx, char, total);
+	for (i = 0; i < argc; i++) {
+		size_t len;
+
+		len = strlcpy(p, argv[i], freespace);
+		p += len;
+		freespace -= len;
+
+		*p++ = c;
+		freespace--;
 	}
-	buff[len - 1] = '\0';
+	buff[total] = '\0';
 
 	return buff;
 }
