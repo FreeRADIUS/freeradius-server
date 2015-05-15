@@ -3460,7 +3460,18 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 					     packet->vector);
 			}
 			buffer[253] = '\0';
-			datalen = strlen((char *) buffer);
+
+			/*
+			 *	Take off trailing zeros from the END.
+			 *	This allows passwords to have zeros in
+			 *	the middle of a field.
+			 *
+			 *	However, if the password has a zero at
+			 *	the end, it will get mashed by this
+			 *	code.  There's really no way around
+			 *	that.
+			 */
+			while ((datalen > 0) && (buffer[datalen - 1] == '\0')) datalen--;
 			break;
 
 		/*
