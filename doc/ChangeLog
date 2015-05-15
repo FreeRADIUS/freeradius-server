@@ -43,8 +43,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  for consistent with the rest of the server.  See
 	  raddb/mods-available/couchbase
 	* Don't require NT-Password for MS-CHAP password changes.
-	* More threading issues for rlm_python.  Patch from
-	  Michael Rigoni.
+	* Be a bit more careful about decrypting MS-CHAP-MPPE-Key
+	  attributes. Closes #1013.  There is no perfect fix, tho.
 	* Fix security issues with EAP-PWD.
 	  See http://freeradius.org/security.html#eap-pwd-2015
 
