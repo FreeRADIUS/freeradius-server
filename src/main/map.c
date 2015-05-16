@@ -1312,11 +1312,12 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		/* Wind to last instance */
 		fr_cursor_last(&src_list);
 		if (dst) {
-			dst = fr_cursor_remove(&dst_list);
+			dst = fr_cursor_replace(&dst_list, fr_cursor_remove(&src_list));
 			DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
 			pairfree(&dst);
+		} else {
+			fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
 		}
-		fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
 		/* Free any we didn't insert */
 		pairfree(&head);
 		break;

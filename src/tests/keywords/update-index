@@ -1,0 +1,52 @@
+#
+# PRE: update update-remove-index
+#
+#  A more generic "update" mechanism
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := "filter"
+}
+
+update {
+	control:Reply-Message += 'a'
+	control:Reply-Message += 'b'
+	control:Reply-Message += 'c'
+}
+
+if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'b') || (&control:Reply-Message[2] != 'c')) {
+	update {
+		reply:Filter-Id := 'Fail 0'
+	}
+}
+
+# Overwrite a specific index, and check the value here is replaced
+update {
+	&control:Reply-Message[1] := 'd'
+}
+
+if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'd') || (&control:Reply-Message[2] != 'c')) {
+	update {
+		reply:Filter-Id := 'Fail 1'
+	}
+}
+
+# Check isolation...
+update {
+	&control:Reply-Message[0] := &control:Reply-Message[0]
+}
+
+if ((&control:Reply-Message[0] != 'a') || (&control:Reply-Message[1] != 'd') || (&control:Reply-Message[2] != 'c')) {
+	update {
+		reply:Filter-Id := 'Fail 2'
+	}
+}
+
+# Verify we haven't acquired any extra..
+
+if ("%{control:Reply-Message[#]}" != 3) {
+	update {
+		reply:Filter-Id := 'Fail 3'
+	}
+}
+
