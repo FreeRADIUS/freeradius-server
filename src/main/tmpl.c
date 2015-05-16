@@ -604,13 +604,27 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		return -(p - name);
 	}
 
-	if (*p == '\0') {
-		type = TMPL_TYPE_LIST;
-		goto finish;
-	}
-
 	attr.tag = TAG_ANY;
 	attr.num = NUM_ANY;
+
+	/*
+	 *	This may be just a bare list, but it can still
+	 *	have instance selectors and tag selectors.
+	 */
+	switch (*p) {
+	case '\0':
+		type = TMPL_TYPE_LIST;
+		attr.num = NUM_ALL;	/* Hack - Should be removed once tests are updated */
+		goto finish;
+
+	case '[':
+		type = TMPL_TYPE_LIST;
+		attr.num = NUM_ALL;	/* Hack - Should be removed once tests are updated */
+		goto do_num;
+
+	default:
+		break;
+	}
 
 	attr.da = dict_attrbyname_substr(&p);
 	if (!attr.da) {
@@ -638,7 +652,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 						   ((DICT_ATTR *)&attr.unknown.da)->vendor);
 			if (attr.da) {
 				vpt->auto_converted = true;
-				goto skip_tag;
+				goto do_num;
 			}
 
 			if (!allow_unknown) {
@@ -652,7 +666,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			 */
 			attr.da = (DICT_ATTR *)&attr.unknown.da;
 
-			goto skip_tag; /* unknown attributes can't have tags */
+			goto do_num; /* unknown attributes can't have tags */
 		}
 
 		/*
@@ -676,14 +690,14 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		}
 		*q = '\0';
 
-		goto skip_tag;
+		goto do_num;
 	}
 
 	/*
 	 *	The string MIGHT have a tag.
 	 */
 	if (*p == ':') {
-		if (!attr.da->flags.has_tag) {
+		if (attr.da && !attr.da->flags.has_tag) { /* Lists don't have a da */
 			fr_strerror_printf("Attribute '%s' cannot have a tag", attr.da->name);
 			return -(p - name);
 		}
@@ -698,7 +712,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		p = q;
 	}
 
-skip_tag:
+do_num:
 	if (*p == '\0') goto finish;
 
 	if (*p == '[') {
@@ -1553,8 +1567,6 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 	case TMPL_TYPE_XLAT_STRUCT:
 		c = '"';
 		break;
-
-	case TMPL_TYPE_LIST:
 	case TMPL_TYPE_LITERAL:	/* single-quoted or bare word */
 		/*
 		 *	Hack
@@ -1737,6 +1749,7 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp_tmpl_t const *vpt)
 {
 	VALUE_PAIR **vps, *vp = NULL;
+	int num;
 
 	VERIFY_TMPL(vpt);
 
@@ -1760,9 +1773,6 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 	 *	May not may not be found, but it *is* a known name.
 	 */
 	case TMPL_TYPE_ATTR:
-	{
-		int num;
-
 		switch (vpt->tmpl_num) {
 		case NUM_ANY:
 			vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
@@ -1777,7 +1787,6 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 		 *	Get the last instance of a VALUE_PAIR.
 		 */
 		case NUM_LAST:
-
 		{
 			VALUE_PAIR *last = NULL;
 
@@ -1785,7 +1794,7 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 				VERIFY_VP(vp);
 				last = vp;
 			}
-
+			VERIFY_VP(last);
 			if (!last) break;
 			return last;
 		}
@@ -1799,6 +1808,8 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 		 *	total number of attributes.
 		 */
 		case NUM_COUNT:
+			return fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
+
 		default:
 			num = vpt->tmpl_num;
 			while ((vp = fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag))) {
@@ -1810,10 +1821,49 @@ VALUE_PAIR *tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request, vp
 
 		if (err) *err = -1;
 		return NULL;
-	}
 
 	case TMPL_TYPE_LIST:
-		vp = fr_cursor_init(cursor, vps);
+		switch (vpt->tmpl_num) {
+		case NUM_COUNT:
+		case NUM_ANY:
+		case NUM_ALL:
+			vp = fr_cursor_init(cursor, vps);
+			if (!vp) {
+				if (err) *err = -1;
+				return NULL;
+			}
+			VERIFY_VP(vp);
+			return vp;
+
+		/*
+		 *	Get the last instance of a VALUE_PAIR.
+		 */
+		case NUM_LAST:
+		{
+			VALUE_PAIR *last = NULL;
+
+			for (vp = fr_cursor_init(cursor, vps);
+			     vp;
+			     vp = fr_cursor_next(cursor)) {
+				VERIFY_VP(vp);
+				last = vp;
+			}
+			if (!last) break;
+			VERIFY_VP(last);
+			return last;
+		}
+
+		default:
+			num = vpt->tmpl_num;
+			for (vp = fr_cursor_init(cursor, vps);
+			     vp;
+			     vp = fr_cursor_next(cursor)) {
+				VERIFY_VP(vp);
+				if (num-- <= 0) return vp;
+			}
+			break;
+		}
+
 		break;
 
 	default:
@@ -1843,10 +1893,25 @@ VALUE_PAIR *tmpl_cursor_next(vp_cursor_t *cursor, vp_tmpl_t const *vpt)
 	 *	May not may not be found, but it *is* a known name.
 	 */
 	case TMPL_TYPE_ATTR:
-		if (vpt->tmpl_num != NUM_ALL) return NULL;
+		switch (vpt->tmpl_num) {
+		default:
+			return NULL;
+
+		case NUM_ALL:
+		case NUM_COUNT:	/* This cursor is being used to count matching attrs */
+			break;
+		}
 		return fr_cursor_next_by_da(cursor, vpt->tmpl_da, vpt->tmpl_tag);
 
 	case TMPL_TYPE_LIST:
+		switch (vpt->tmpl_num) {
+		default:
+			return NULL;
+
+		case NUM_ALL:
+		case NUM_COUNT:	/* This cursor is being used to count matching attrs */
+			break;
+		}
 		return fr_cursor_next(cursor);
 
 	default:

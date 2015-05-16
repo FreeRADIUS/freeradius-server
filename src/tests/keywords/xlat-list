@@ -1,0 +1,64 @@
+#
+# PRE: update
+#
+update control {
+    control !* ANY
+}
+
+update control {
+	Tmp-IP-Address-0 := 192.0.2.1
+	Tmp-IP-Address-0 += 192.0.2.2
+}
+
+if ("%{control:[#]}" != 2) {
+	update {
+		reply:Filter-Id += 'fail 0'
+	}
+}
+
+debug_control
+
+if (("%{control:[0]}" != 192.0.2.1) || ("%{control:[1]}" != 192.0.2.2)) {
+	update {
+		reply:Filter-Id += 'fail 1'
+	}
+}
+
+if (("%{control:[n]}" != 192.0.2.2)) {
+    update {
+        reply:Filter-Id += 'fail 1a'
+    }
+}
+
+if ("%{control:[*]}" != '192.0.2.1,192.0.2.2') {
+	update {
+		reply:Filter-Id += 'fail 2'
+	}
+}
+
+# Try calling these xlats in mapping too, they may get optimised to VPTs which is a
+# different code path.
+update request {
+	Tmp-IP-Address-1 += "%{control:[1]}"
+	Tmp-IP-Address-1 += "%{control:[0]}"
+	Tmp-String-0 = "%{control:[*]}"
+	Tmp-Integer-0 = "%{control:[#]}"
+}
+
+if (Tmp-String-0 != '192.0.2.1,192.0.2.2') {
+	update {
+		reply:Filter-Id += 'fail 3'
+	}
+}
+
+if (Tmp-Integer-0 != 2) {
+	update {
+		reply:Filter-Id += 'fail 4'
+	}
+}
+
+# Boilerplate junk
+update {
+	control:Cleartext-Password := 'hello'
+    reply:Filter-Id := 'filter'
+}
