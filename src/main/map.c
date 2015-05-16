@@ -1099,7 +1099,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	 *	VPs to work with.
 	 */
 	if (map->rhs->type != TMPL_TYPE_NULL) {
-		rcode = func(request, &head, request, map, ctx);
+		rcode = func(parent, &head, request, map, ctx);
 		if (rcode < 0) {
 			rad_assert(!head);
 			return rcode;
@@ -1113,7 +1113,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	}
 
 	/*
-	 *	Reparent the VPs (func may return multiple)
+	 *	Print the VPs
 	 */
 	for (vp = fr_cursor_init(&src_list, &head);
 	     vp;
@@ -1121,7 +1121,6 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		VERIFY_VP(vp);
 
 		if (rad_debug_lvl) map_debug_log(request, map, vp);
-		pairsteal(parent, vp);
 	}
 
 	/*
