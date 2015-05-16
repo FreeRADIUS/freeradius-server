@@ -1811,11 +1811,19 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	RADIUS_PACKET *packet = NULL;
 	DICT_VALUE *dv;
 	char *ret = NULL;
-	int err;
-
-	char quote = escape ? '"' : '\0';
 
 	vp_cursor_t cursor;
+	char quote = escape ? '"' : '\0';
+
+	rad_assert((vpt->type == TMPL_TYPE_ATTR) || (vpt->type == TMPL_TYPE_LIST));
+
+	/*
+	 *	We only support count and concatenate operations on lists.
+	 */
+	if (vpt->type == TMPL_TYPE_LIST) {
+		vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+		goto do_print;
+	}
 
 	/*
 	 *	See if we're dealing with an attribute in the request
@@ -1823,7 +1831,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	 *	This allows users to manipulate virtual attributes as if
 	 *	they were real ones.
 	 */
-	vp = tmpl_cursor_init(&err, &cursor, request, vpt);
+	vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
 	if (vp) goto do_print;
 
 	/*
@@ -2014,8 +2022,9 @@ do_print:
 	{
 		int count = 0;
 
-		fr_cursor_first(&cursor);
-		while (fr_cursor_next_by_da(&cursor, vpt->tmpl_da, vpt->tmpl_tag)) count++;
+		for (vp = tmpl_cursor_init(NULL, &cursor, request, vpt);
+		     vp;
+		     vp = tmpl_cursor_next(&cursor, vpt)) count++;
 
 		return talloc_typed_asprintf(ctx, "%d", count);
 	}
