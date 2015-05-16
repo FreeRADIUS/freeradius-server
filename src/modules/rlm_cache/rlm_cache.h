@@ -60,7 +60,7 @@ typedef struct rlm_cache_t {
 	int32_t			epoch;			//!< Time after which entries are considered valid.
 	bool			stats;			//!< Generate statistics.
 
-	vp_map_t	*maps;			//!< Attribute map applied to users.
+	vp_map_t		*maps;			//!< Attribute map applied to users.
 							//!< and profiles.
 	CONF_SECTION		*cs;
 } rlm_cache_t;
@@ -71,10 +71,7 @@ typedef struct rlm_cache_entry_t {
 	time_t			created;		//!< When the entry was created.
 	time_t			expires;		//!< When the entry expires.
 
-	VALUE_PAIR		*control;		//!< Cached control list.
-	VALUE_PAIR		*packet;		//!< Cached request list.
-	VALUE_PAIR		*reply;			//!< Cached reply list.
-	VALUE_PAIR		*state;			//!< Cached session-state list.
+	vp_map_t		*maps;			//!< Head of the maps list.
 } rlm_cache_entry_t;
 
 typedef int			(*mod_instantiate_t)(CONF_SECTION *conf, rlm_cache_t *inst);

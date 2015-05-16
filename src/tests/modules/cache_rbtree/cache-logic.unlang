@@ -2,9 +2,7 @@
 #  PRE: update if
 #
 update {
-	&control:Cleartext-Password := 'hello'
 	&request:Tmp-String-0 := 'testkey'
-	&reply:Filter-Id := 'filter'
 }
 
 
@@ -17,18 +15,18 @@ update control {
 
 cache
 if (!ok) {
-	update reply {
-		Filter-Id := 'fail 0'
-	}
-	reject
+	test_fail
+}
+else {
+    test_pass
 }
 
 # Check the module didn't perform a merge
 if (&request:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 1'
-	}
-	reject
+	test_fail
+}
+else {
+    test_pass
 }
 
 # Check status-only works correctly (should return ok and consume attribute)
@@ -37,32 +35,33 @@ update control {
 }
 cache
 if (!ok) {
-	update reply {
-		Filter-Id := 'fail 2a'
-	}
-	reject
+	test_fail
+}
+else {
+    test_pass
 }
 
 if (&control:Cache-Status-Only) {
-	update reply {
-		Filter-Id := 'fail 2b'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Retrieve the entry (should be copied to request list)
 cache
 if (!updated) {
-	update reply {
-		Filter-Id := 'fail 3a'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 3b'
-	}
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Retrieving the entry should not expire it
@@ -72,17 +71,17 @@ update request {
 
 cache
 if (!updated) {
-	update reply {
-		Filter-Id := 'fail 4a'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 4b'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Force expiry of the entry
@@ -91,10 +90,10 @@ update control {
 }
 cache
 if (!ok) {
-	update reply {
-		Filter-Id := 'fail 5'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Check status-only works correctly (should return notfound and consume attribute)
@@ -103,17 +102,17 @@ update control {
 }
 cache
 if (!notfound) {
-	update reply {
-		Filter-Id := 'fail 6a'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 if (&control:Cache-Status-Only) {
-	update reply {
-		Filter-Id := 'fail 6b'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Check read-only works correctly (should return notfound and consume attribute)
@@ -122,17 +121,17 @@ update control {
 }
 cache
 if (!notfound) {
-	update reply {
-		Filter-Id := 'fail 7a'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 if (&control:Cache-Read-Only) {
-	update reply {
-		Filter-Id := 'fail 7b'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # ...and check the entry wasn't recreated
@@ -141,10 +140,10 @@ update control {
 }
 cache
 if (!notfound) {
-	update reply {
-		Filter-Id := 'fail 7c'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # This should still allow the creation of a new entry
@@ -153,32 +152,32 @@ update control {
 }
 cache
 if (!ok) {
-	update reply {
-		Filter-Id := 'fail 8a'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 cache
 if (!updated) {
-	update reply {
-		Filter-Id := 'fail 8b'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 if (&Cache-TTL) {
-	update reply {
-		Filter-Id := 'fail 8c'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 8d'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 update control {
@@ -191,18 +190,18 @@ update control {
 }
 cache
 if (!updated) {
-	update reply {
-		Filter-Id := 'fail 9a'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Request Tmp-String-1 shouldn't have been updated yet
 if (&request:Tmp-String-1 == &control:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 9b'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Check that a new entry is created
@@ -211,34 +210,34 @@ update control {
 }
 cache
 if (!ok) {
-	update reply {
-		Filter-Id := 'fail 10a'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Request Tmp-String-1 still shouldn't have been updated yet
 if (&request:Tmp-String-1 == &control:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 10b'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 cache
 if (!updated) {
-	update reply {
-		Filter-Id := 'fail 10c'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Request Tmp-String-1 should now have been updated
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 10d'
-	}
-	reject
+	test_fail
+}
+else {
+    test_pass
 }
 
 # Check Cache-Merge = yes works as expected (should update current request)
@@ -249,35 +248,33 @@ update control {
 }
 cache
 if (!updated) {
-	update reply {
-		Filter-Id := 'fail 11a'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Request Tmp-String-1 should now have been updated
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-	update reply {
-		Filter-Id := 'fail 11b'
-	}
-	reject
+    test_fail
+}
+else {
+    test_pass
 }
 
 # Check Cache-Entry-Hits is updated as we expect
 if (&request:Cache-Entry-Hits != 0) {
-	update reply {
-		Filter-Id := 'fail 12a'
-	}
-	reject
+	test_fail
+}
+else {
+    test_pass
 }
 
 cache
 
 if (&request:Cache-Entry-Hits != 1) {
-	update reply {
-		Filter-Id := 'fail 12b'
-	}
-	reject
+	test_fail
 }
-
-
+else {
+    test_pass
+}

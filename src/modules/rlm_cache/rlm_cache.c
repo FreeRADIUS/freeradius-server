@@ -115,9 +115,11 @@ static void cache_free(rlm_cache_t *inst, rlm_cache_entry_t **c)
 /*
  *	Merge a cached entry into a REQUEST.
  */
-static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c)
+static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c) CC_HINT(nonnull);
+static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c)
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR	*vp;
+	vp_map_t	*map;
 
 	vp = pairfind(request->config, PW_CACHE_MERGE, 0, TAG_ANY);
 	if (vp && (vp->vp_integer == 0)) {
@@ -127,25 +129,25 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 
 	RDEBUG2("Merging cache entry into request");
 
-	if (c->packet && request->packet) {
-		rdebug_pair_list(L_DBG_LVL_2, request, c->packet, "&request:");
-		radius_pairmove(request, &request->packet->vps, paircopy(request->packet, c->packet), false);
-	}
+	RINDENT();
+	for (map = c->maps; map; map = map->next) {
+		/*
+		 *	The only reason that the application of a map entry
+		 *	can fail, is if the destination list or request
+		 *	isn't valid. For now we don't consider this fatal
+		 *	and continue merging the rest of the maps.
+		 */
+		if (map_to_request(request, map, map_to_vp, NULL) < 0) {
+			char buffer[1024];
 
-	if (c->reply && request->reply) {
-		rdebug_pair_list(L_DBG_LVL_2, request, c->reply, "&reply:");
-		radius_pairmove(request, &request->reply->vps, paircopy(request->reply, c->reply), false);
+			map_prints(buffer, sizeof(buffer), map);
+			REXDENT();
+			RDEBUG("Skipping %s", buffer);
+			RINDENT();
+			continue;
+		}
 	}
-
-	if (c->control) {
-		rdebug_pair_list(L_DBG_LVL_2, request, c->control, "&control:");
-		radius_pairmove(request, &request->config, paircopy(request, c->control), false);
-	}
-
-	if (c->state) {
-		rdebug_pair_list(L_DBG_LVL_2, request, c->state, "&session-state:");
-		radius_pairmove(request, &request->state, paircopy(request->state, c->state), false);
-	}
+	REXDENT();
 
 	if (inst->stats) {
 		rad_assert(request->packet != NULL);
@@ -249,13 +251,14 @@ static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t
 static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
 				char const *key, int ttl)
 {
-	VALUE_PAIR *vp, *to_cache;
-	vp_cursor_t src_list, packet, reply, control, state;
+	vp_map_t		const *map;
+	vp_map_t		**last, *c_map;
 
-	vp_map_t const *map;
+	VALUE_PAIR		*vp;
+	bool			merge = false;
+	rlm_cache_entry_t	*c;
 
-	bool merge = false;
-	rlm_cache_entry_t *c;
+	TALLOC_CTX		*pool;
 
 	if ((inst->max_entries > 0) && inst->module->count &&
 	    (inst->module->count(inst, request, handle) > inst->max_entries)) {
@@ -270,26 +273,33 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	c->created = c->expires = request->timestamp;
 	c->expires += ttl;
 
+	last = &c->maps;
+
 	RDEBUG("Creating new cache entry");
 
-	fr_cursor_init(&packet, &c->packet);
-	fr_cursor_init(&reply, &c->reply);
-	fr_cursor_init(&control, &c->control);
-	fr_cursor_init(&state, &c->state);
-
+	/*
+	 *	Alloc a pool so we don't have excessive mallocs when
+	 *	gathering VALUE_PAIRs to cache.
+	 */
+	pool = talloc_pool(NULL, 1024);
 	for (map = inst->maps; map != NULL; map = map->next) {
+		VALUE_PAIR	*to_cache = NULL;
+		vp_cursor_t	cursor;
+
 		rad_assert(map->lhs && map->rhs);
 
-		if (map_to_vp(c, &to_cache, request, map, NULL) < 0) {
+		/*
+		 *	Calling map_to_vp gives us exactly the same result,
+		 *	as if this were an update section.
+		 */
+		if (map_to_vp(pool, &to_cache, request, map, NULL) < 0) {
 			RDEBUG("Skipping %s", map->rhs->name);
 			continue;
 		}
 
-		for (vp = fr_cursor_init(&src_list, &to_cache);
+		for (vp = fr_cursor_init(&cursor, &to_cache);
 		     vp;
-		     vp = fr_cursor_next(&src_list)) {
-			VERIFY_VP(vp);
-
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Prevent people from accidentally caching
 			 *	cache control attributes.
@@ -311,30 +321,66 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 			if (RDEBUG_ENABLED2) map_debug_log(request, map, vp);
 			REXDENT();
 
-			vp->op = map->op;
+			MEM(c_map = talloc_zero(c, vp_map_t));
+			c_map->op = map->op;
 
-			switch (map->lhs->tmpl_list) {
-			case PAIR_LIST_REQUEST:
-				fr_cursor_insert(&packet, vp);
+			/*
+			 *	Now we turn the VALUE_PAIRs into maps.
+			 */
+			switch (map->lhs->type) {
+			/*
+			 *	Attributes are easy, reuse the LHS, and create a new
+			 *	RHS with the value_data_t from the VALUE_PAIR.
+			 */
+			case TMPL_TYPE_ATTR:
+				c_map->lhs = map->lhs;	/* lhs shouldn't be touched, so this is ok */
+			do_rhs:
+				MEM(c_map->rhs = tmpl_init(talloc(c_map, vp_tmpl_t),
+							   TMPL_TYPE_DATA, map->rhs->name, map->rhs->len));
+				if (value_data_copy(c_map->rhs, &c_map->rhs->tmpl_data_value,
+						    vp->da->type, &vp->data) < 0) {
+					REDEBUG("Failed copying attribute value");
+					talloc_free(pool);
+					talloc_free(c);
+					return RLM_MODULE_FAIL;
+				}
+				c_map->rhs->tmpl_data_type = vp->da->type;
 				break;
 
-			case PAIR_LIST_REPLY:
-				fr_cursor_insert(&reply, vp);
-				break;
+			/*
+			 *	Lists are weird... We need to fudge a new LHS template,
+			 *	which is a combination of the LHS list and the attribute.
+			 */
+			case TMPL_TYPE_LIST:
+			{
+				char attr[256];
 
-			case PAIR_LIST_CONTROL:
-				fr_cursor_insert(&control, vp);
-				break;
+				MEM(c_map->lhs = tmpl_init(talloc(c_map, vp_tmpl_t),
+							   TMPL_TYPE_ATTR, map->lhs->name, map->lhs->len));
+				c_map->lhs->tmpl_da = vp->da;
+				c_map->lhs->tmpl_tag = vp->tag;
+				c_map->lhs->tmpl_list = map->lhs->tmpl_list;
+				c_map->lhs->tmpl_num = map->lhs->tmpl_num;
+				c_map->lhs->tmpl_request = map->lhs->tmpl_request;
 
-			case PAIR_LIST_STATE:
-				fr_cursor_insert(&state, vp);
-				break;
+				/*
+				 *	We need to rebuild the attribute name, to be the
+				 *	one we copied from the source list.
+				 */
+				c_map->lhs->len = tmpl_prints(attr, sizeof(attr), c_map->lhs, NULL);
+				c_map->lhs->name = talloc_strdup(map->lhs, attr);
+			}
+				goto do_rhs;
 
 			default:
-				rad_assert(0);	/* should have been caught by validation */
+				rad_assert(0);
 			}
+			*last = c_map;
+			last = &(*last)->next;
 		}
+		talloc_free_children(pool); /* reset pool state */
 	}
+	talloc_free(pool);
 
 	/*
 	 *	Check to see if we need to merge the entry into the request
@@ -379,51 +425,6 @@ static int cache_verify(vp_map_t *map, void *ctx)
 		return -1;
 	}
 
-	switch (map->lhs->tmpl_list) {
-	case PAIR_LIST_REQUEST:
-	case PAIR_LIST_REPLY:
-	case PAIR_LIST_CONTROL:
-	case PAIR_LIST_STATE:
-		break;
-
-	default:
-		cf_log_err(map->ci, "Destination list must be one of request, reply, control or session-state");
-		return -1;
-	}
-
-	if (map->lhs->tmpl_request != REQUEST_CURRENT) {
-		cf_log_err(map->ci, "Cached attributes can only be inserted into the current request");
-		return -1;
-	}
-
-	switch (map->rhs->type) {
-	case TMPL_TYPE_EXEC:
-		cf_log_err(map->ci, "Exec values are not allowed");
-		return -1;
-	/*
-	 *	Only =, :=, += and -= operators are supported for
-	 *	cache entries.
-	 */
-	case TMPL_TYPE_LITERAL:
-	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_ATTR:
-		switch (map->op) {
-		case T_OP_SET:
-		case T_OP_EQ:
-		case T_OP_SUB:
-		case T_OP_ADD:
-			break;
-
-		default:
-			cf_log_err(map->ci, "Operator \"%s\" not allowed for %s values",
-				   fr_int2str(fr_tokens, map->op, "<INVALID>"),
-				   fr_int2str(tmpl_names, map->rhs->type, "<INVALID>"));
-			return -1;
-		}
-	default:
-		break;
-	}
-
 	return 0;
 }
 
@@ -434,17 +435,18 @@ static int cache_verify(vp_map_t *map, void *ctx)
  *	If you want to cache something different in different sections,
  *	configure another cache module.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *request)
+static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 {
-	rlm_cache_entry_t *c;
-	rlm_cache_t *inst = instance;
+	rlm_cache_entry_t	*c;
+	rlm_cache_t		*inst = instance;
 
-	rlm_cache_handle_t *handle;
+	rlm_cache_handle_t	*handle;
 
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
-	char buffer[1024];
-	rlm_rcode_t rcode;
+	vp_cursor_t		cursor;
+	VALUE_PAIR		*vp;
+	char			buffer[1024];
+	rlm_rcode_t		rcode;
 
 	int ttl = inst->ttl;
 
@@ -559,36 +561,26 @@ finish:
 	return rcode;
 }
 
-static ssize_t CC_HINT(nonnull) cache_xlat(void *instance, REQUEST *request,
-					   char const *fmt, char *out, size_t freespace);
-
 /*
  *	Allow single attribute values to be retrieved from the cache.
  */
-static ssize_t cache_xlat(void *instance, REQUEST *request,
-			  char const *fmt, char *out, size_t freespace)
+static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+			  CC_HINT(nonnull);
+static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
 	rlm_cache_entry_t 	*c = NULL;
 	rlm_cache_t		*inst = instance;
 	rlm_cache_handle_t	*handle = NULL;
 
-	VALUE_PAIR		*vp, *vps;
-	pair_lists_t		list;
-	DICT_ATTR const		*target;
-	char const		*p = fmt;
-	size_t			len;
-	int			ret = 0;
+	size_t			slen;
+	ssize_t			ret = 0;
 
-	p += radius_list_name(&list, p, PAIR_LIST_REQUEST);
-	if (list == PAIR_LIST_UNKNOWN) {
-		REDEBUG("Unknown list qualifier in \"%s\"", fmt);
-		ret = -1;
-		goto finish;
-	}
+	vp_tmpl_t		target;
+	vp_map_t		*map = NULL;
 
-	target = dict_attrbyname(p);
-	if (!target) {
-		REDEBUG("Unknown attribute \"%s\"", p);
+	slen = tmpl_from_attr_substr(&target, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	if (slen <= 0) {
+		REDEBUG("%s", fr_strerror());
 		return -1;
 	}
 
@@ -606,41 +598,27 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 		return -1;
 	}
 
-	switch (list) {
-	case PAIR_LIST_REQUEST:
-		vps = c->packet;
-		break;
+	for (map = c->maps; map; map = map->next) {
+		if ((map->lhs->tmpl_da != target.tmpl_da) ||
+		    (map->lhs->tmpl_tag != target.tmpl_tag) ||
+		    (map->lhs->tmpl_list != target.tmpl_list)) continue;
 
-	case PAIR_LIST_REPLY:
-		vps = c->reply;
+		ret = value_data_prints(out, freespace, map->rhs->tmpl_data_type,
+					map->lhs->tmpl_da, &map->rhs->tmpl_data_value, '\0');
+		if (is_truncated(slen, freespace)) {
+			REDEBUG("Insufficient buffer space to write cached value");
+			ret = -1;
+			goto finish;
+		}
 		break;
-
-	case PAIR_LIST_CONTROL:
-		vps = c->control;
-		break;
-
-	case PAIR_LIST_STATE:
-		vps = c->state;
-		break;
-
-	default:
-		REDEBUG("Unsupported list \"%s\"", fr_int2str(pair_lists, list, "<UNKNOWN>"));
-		ret = -1;
-		goto finish;
 	}
 
-	vp = pairfind(vps, target->attr, target->vendor, TAG_ANY);
-	if (!vp) {
-		RDEBUG("No instance of this attribute has been cached");
+	/*
+	 *	Check if we found a matching map
+	 */
+	if (!map) {
 		*out = '\0';
-		goto finish;
-	}
-
-	len = vp_prints_value(out, freespace, vp, 0);
-	if (is_truncated(len, freespace)) {
-		REDEBUG("Insufficient buffer space to write cached value");
-		ret = -1;
-		goto finish;
+		return 0;
 	}
 
 finish:

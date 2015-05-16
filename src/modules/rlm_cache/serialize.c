@@ -40,86 +40,45 @@ RCSID("$Id$")
  */
 int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t *c)
 {
-	TALLOC_CTX *pairs = NULL;
+	TALLOC_CTX	*value_pool = NULL;
+	char		attr[256];	/* Attr name buffer */
+	vp_map_t	*map;
 
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
-
-	char *to_store = NULL, *pair;
+	char		*to_store = NULL;
 
 	to_store = talloc_asprintf(ctx, "&Cache-Expires = %" PRIu64 "\n&Cache-Created = %" PRIu64 "\n",
 				   (uint64_t)c->expires, (uint64_t)c->created);
-	if (!to_store) goto error;
+	if (!to_store) return -1;
 
 	/*
-	 *	It's valid to have an empty cache entry (save allocing the
-	 *	pairs pool)
+	 *	It's valid to have an empty cache entry (save allocing the pairs pool)
 	 */
-	if (!c->control && !c->packet && !c->reply) goto finish;
+	if (!c->maps) goto finish;
 
-	/*
-	 *  In the majority of cases using these pools reduces the number of mallocs
-	 *  to two, except in the case where the total serialized pairs length is
-	 *  greater than the pairs pool, or the total serialized string is greater
-	 *  than the store pool.
-	 */
-	pairs = talloc_pool(ctx, 512);
-	if (!pairs) {
+	value_pool = talloc_pool(ctx, 512);
+	if (!value_pool) {
 	error:
-		talloc_free(pairs);
+		talloc_free(to_store);
+		talloc_free(value_pool);
 		return -1;
 	}
 
-	if (c->control) {
-		for (vp = fr_cursor_init(&cursor, &c->control);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			pair = vp_aprints(pairs, vp, '\'');
-			if (!pair) goto error;
+	for (map = c->maps; map; map = map->next) {
+		char	*value;
 
-			to_store = talloc_asprintf_append_buffer(to_store, "&control:%s\n", pair);
-			if (!to_store) goto error;
-		}
+		tmpl_prints(attr, sizeof(attr), map->lhs, map->lhs->tmpl_da);
+
+		value = value_data_aprints(value_pool, map->rhs->tmpl_data_type,
+					   map->lhs->tmpl_da, &map->rhs->tmpl_data_value, '\'');
+		if (!value) goto error;
+
+		to_store = talloc_asprintf_append_buffer(to_store, "%s %s %s\n", attr,
+							 fr_int2str(fr_tokens, map->op, "<INVALID>"),
+							 value);
+		if (!to_store) goto error;
 	}
-
-	if (c->packet) {
-		for (vp = fr_cursor_init(&cursor, &c->packet);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			pair = vp_aprints(pairs, vp, '\'');
-			if (!pair) goto error;
-
-			to_store = talloc_asprintf_append_buffer(to_store, "&%s\n", pair);
-			if (!to_store) goto error;
-		}
-	}
-
-	if (c->reply) {
-		for (vp = fr_cursor_init(&cursor, &c->reply);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			pair = vp_aprints(pairs, vp, '\'');
-			if (!pair) goto error;
-
-			to_store = talloc_asprintf_append_buffer(to_store, "&reply:%s\n", pair);
-			if (!to_store) goto error;
-		}
-	}
-
-	if (c->state) {
-		for (vp = fr_cursor_init(&cursor, &c->state);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			pair = vp_aprints(pairs, vp, '\'');
-			if (!pair) goto error;
-
-			to_store = talloc_asprintf_append_buffer(to_store, "&session-state:%s\n", pair);
-			if (!to_store) goto error;
-		}
-	}
-
 finish:
-	talloc_free(pairs);
+	talloc_free(value_pool);
 	*out = to_store;
 
 	return 0;
@@ -137,36 +96,26 @@ finish:
  */
 int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 {
-	vp_cursor_t packet, control, reply, state;
-
-	TALLOC_CTX *store = NULL;
-	char *p, *q;
-
-	store = talloc_pool(c, 1024);
-	if (!store) return -1;
+	vp_map_t	**last = &c->maps;
+	char		*p, *q;
 
 	if (inlen < 0) inlen = strlen(in);
-
-	fr_cursor_init(&packet, &c->packet);
-	fr_cursor_init(&control, &c->control);
-	fr_cursor_init(&reply, &c->reply);
-	fr_cursor_init(&state, &c->state);
 
 	p = in;
 
 	while (((size_t)(p - in)) < (size_t)inlen) {
-		vp_map_t *map = NULL;
-		VALUE_PAIR *vp = NULL;
+		vp_map_t	*map = NULL;
 
 		q = strchr(p, '\n');
 		if (!q) break;	/* List should also be terminated with a \n */
 		*q = '\0';
 
-		if (map_afrom_attr_str(store, &map, p,
+		if (map_afrom_attr_str(c, &map, p,
 				       REQUEST_CURRENT, PAIR_LIST_REQUEST,
 				       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 			fr_strerror_printf("Failed parsing pair: %s", p);
-			goto error;
+		error:
+			talloc_free(map);
 		}
 
 		if (map->lhs->type != TMPL_TYPE_ATTR) {
@@ -188,57 +137,31 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		 */
 		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) goto error;
 
-		vp = pairalloc(c, map->lhs->tmpl_da);
-		if (value_data_copy(vp, &vp->data, map->rhs->tmpl_data_type, &map->rhs->tmpl_data_value) < 0) {
-			goto error;
-		}
-
 		/*
 		 *	Pull out the special attributes, and set the
 		 *	relevant cache entry fields.
 		 */
-		if (vp->da->vendor == 0) switch (vp->da->attr) {
+		if (map->lhs->tmpl_da->vendor == 0) switch (map->lhs->tmpl_da->attr) {
 		case PW_CACHE_CREATED:
-			c->created = vp->vp_date;
-			talloc_free(vp);
+			c->created = map->rhs->tmpl_data_value.date;
+			talloc_free(map);
 			goto next;
 
 		case PW_CACHE_EXPIRES:
-			c->expires = vp->vp_date;
-			talloc_free(vp);
+			c->expires = map->rhs->tmpl_data_value.date;
+			talloc_free(map);
 			goto next;
 
 		default:
 			break;
 		}
 
-		switch (map->lhs->tmpl_list) {
-		case PAIR_LIST_REQUEST:
-			fr_cursor_insert(&packet, vp);
-			break;
+		/* It's not a special attribute, add it to the map list */
+		*last = map;
+		last = &(*last)->next;
 
-		case PAIR_LIST_CONTROL:
-			fr_cursor_insert(&control, vp);
-			break;
-
-		case PAIR_LIST_REPLY:
-			fr_cursor_insert(&reply, vp);
-			break;
-
-		case PAIR_LIST_STATE:
-			fr_cursor_insert(&state, vp);
-			break;
-
-		default:
-			fr_strerror_printf("Invalid cache list for pair: %s", p);
-		error:
-			talloc_free(vp);
-			talloc_free(map);
-			return -1;
-		}
 	next:
 		p = q + 1;
-		talloc_free(map);
 	}
 
 	return 0;
