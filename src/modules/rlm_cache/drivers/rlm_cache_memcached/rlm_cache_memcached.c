@@ -144,7 +144,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_t *inst)
 
 	inst->driver = driver;
 
-	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", inst->xlat_name);
+	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", inst->name);
 
 	driver->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, buffer);
 	if (!driver->pool) return -1;
