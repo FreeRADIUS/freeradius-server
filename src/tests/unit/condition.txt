@@ -592,14 +592,14 @@ condition request:Foo+Bar == request:Foo+Bar
 data true
 
 condition &request:Foo+Bar == 'request:Foo+Bar'
-data ERROR offset 12 Unexpected text after attribute name
+data ERROR offset 12 Unexpected text after unknown attr
 
 condition 'request:Foo+d' == &request:Foo+Bar
-data ERROR offset 31 Unexpected text after attribute name
+data ERROR offset 31 Unexpected text after unknown attr
 
 #  Attribute tags are not allowed for unknown attributes
 condition &request:FooBar:0 == &request:FooBar
-data ERROR offset 15 Unexpected text after attribute name
+data ERROR offset 15 Unexpected text after unknown attr
 
 condition &not-a-list:User-Name == &not-a-list:User-Name
 data ERROR offset 1 Invalid list qualifier

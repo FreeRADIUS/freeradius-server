@@ -857,7 +857,8 @@ ssize_t tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
 	slen = tmpl_from_attr_substr(vpt, name, request_def, list_def, allow_unknown, allow_undefined);
 	if (slen <= 0) return slen;
 	if (name[slen] != '\0') {
-		fr_strerror_printf("Unexpected text after attribute name");
+		/* This looks wrong, but it produces meaningful errors for unknown attrs with tags */
+		fr_strerror_printf("Unexpected text after %s", fr_int2str(tmpl_names, vpt->type, "<INVALID>"));
 		return -slen;
 	}
 
@@ -941,7 +942,8 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 		return slen;
 	}
 	if (name[slen] != '\0') {
-		fr_strerror_printf("Unexpected text after attribute name");
+		/* This looks wrong, but it produces meaningful errors for unknown attrs with tags */
+		fr_strerror_printf("Unexpected text after %s", fr_int2str(tmpl_names, vpt->type, "<INVALID>"));
 		TALLOC_FREE(vpt);
 		return -slen;
 	}
