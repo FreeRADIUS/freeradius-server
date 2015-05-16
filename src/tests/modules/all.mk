@@ -34,7 +34,7 @@ $(foreach x,$(TEST_SUBBUILT),$(eval $x.test: rlm_$(subst /,_,$x).la))
 #  For the remaining subdirs, add on the directory to include.
 #  test.mk will run the tests for all modules
 #  It is included last so that the module specific makefiles can be processed first
-#  (modules that require a test server can 
+#  (modules that require a test server can set the corresponding require_test_server variable)
 #
 SUBMAKEFILES := $(addsuffix /all.mk,$(TEST_BUILT) $(subst _,/,$(TEST_SUBBUILT))) test.mk
 
