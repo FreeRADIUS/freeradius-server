@@ -334,16 +334,15 @@ static int mod_conn_reconnect(rlm_cache_t *inst, UNUSED REQUEST *request, rlm_ca
 
 extern cache_module_t rlm_cache_memcached;
 cache_module_t rlm_cache_memcached = {
-	"rlm_cache_memcached",
-	mod_instantiate,
-	NULL,			/* alloc */
-	cache_entry_free,
-	cache_entry_find,
-	cache_entry_insert,
-	cache_entry_expire,
-	NULL,			/* count */
+	.name		= "rlm_cache_memcached",
+	.instantiate	= mod_instantiate,
+	.free		= cache_entry_free,
 
-	mod_conn_get,
-	mod_conn_release,
-	mod_conn_reconnect
+	.find		= cache_entry_find,
+	.insert		= cache_entry_insert,
+	.expire		= cache_entry_expire,
+
+	.acquire	= mod_conn_get,
+	.release	= mod_conn_release,
+	.reconnect	= mod_conn_reconnect
 };
