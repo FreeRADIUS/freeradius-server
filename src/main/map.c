@@ -1537,26 +1537,34 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		break;
 
 	/*
-	 *	Just printing the value doesn't make sense, but we still
-	 *	want to know what it was...
+	 *	For the lists, we can't use the original name, and have to
+	 *	rebuild it using tmpl_prints, for each attribute we're
+	 *	copying.
 	 */
 	case TMPL_TYPE_LIST:
-		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
+	{
+		char		attr[256];
+		vp_tmpl_t	vpt;
 
-		if (map->rhs->tmpl_request == REQUEST_OUTER) {
-			value = talloc_typed_asprintf(request, "&outer.%s:%s -> %s",
-						      fr_int2str(pair_lists, map->rhs->tmpl_list, "<INVALID>"),
-						      vp->da->name, buffer);
-		} else {
-			value = talloc_typed_asprintf(request, "&%s:%s -> %s",
-						      fr_int2str(pair_lists, map->rhs->tmpl_list, "<INVALID>"),
-						      vp->da->name, buffer);
-		}
+		/*
+		 *	Fudge a temporary tmpl that describes the attribute we're copying
+		 *	this is a combination of the original list tmpl, and values from
+		 *	the VALUE_PAIR. This way, we get tag info included.
+		 */
+		memcpy(&vpt, map->rhs, sizeof(vpt));
+		vpt.tmpl_da = vp->da;
+		vpt.tmpl_tag = vp->tag;
+		vpt.type = TMPL_TYPE_ATTR;
+
+		vp_prints_value(buffer, sizeof(buffer), vp, (vp->da->type == PW_TYPE_STRING) ? '\'' : '\0');
+		tmpl_prints(attr, sizeof(attr), &vpt, vp->da);
+		value = talloc_typed_asprintf(request, "%s -> %s", attr, buffer);
+	}
 		break;
 
 	case TMPL_TYPE_ATTR:
-		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
-		value = talloc_typed_asprintf(request, "&%s -> %s", map->rhs->tmpl_da->name, buffer);
+		vp_prints_value(buffer, sizeof(buffer), vp, (vp->da->type == PW_TYPE_STRING) ? '\'' : '\0');
+		value = talloc_typed_asprintf(request, "%.*s -> %s", (int)map->rhs->len, map->rhs->name, buffer);
 		break;
 
 	case TMPL_TYPE_NULL:
@@ -1567,7 +1575,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_LIST:
-		RDEBUG("%s%s %s %s", map->lhs->name, vp ? vp->da->name : "",
+		RDEBUG("%.*s:%s %s %s", (int)map->lhs->len, map->lhs->name, vp ? vp->da->name : "",
 		       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
 		break;
 
