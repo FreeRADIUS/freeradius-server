@@ -74,7 +74,7 @@ typedef struct rlm_cache_entry_t {
 	vp_map_t		*maps;			//!< Head of the maps list.
 } rlm_cache_entry_t;
 
-typedef int			(*mod_instantiate_t)(CONF_SECTION *conf, rlm_cache_t *inst);
+typedef int			(*cache_instantiate_t)(CONF_SECTION *conf, rlm_cache_t *inst);
 typedef rlm_cache_entry_t	*(*cache_entry_alloc_t)(rlm_cache_t *inst, REQUEST *request);
 typedef void			(*cache_entry_free_t)(rlm_cache_entry_t *c);
 
@@ -94,7 +94,7 @@ typedef int			(*cache_reconnect_t)(rlm_cache_t *inst, REQUEST *request, rlm_cach
 struct cache_module {
 	char const		*name;			//!< Driver name.
 
-	mod_instantiate_t	mod_instantiate;	//!< (optional) Instantiate a driver.
+	cache_instantiate_t	instantiate;		//!< (optional) Instantiate a driver.
 	cache_entry_alloc_t	alloc;			//!< (optional) Allocate a new entry.
 	cache_entry_free_t	free;			//!< (optional) Free memory used by an entry.
 

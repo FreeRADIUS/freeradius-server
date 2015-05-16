@@ -722,7 +722,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->module->insert);
 	rad_assert(inst->module->expire);
 
-	if (inst->module->mod_instantiate) {
+	if (inst->module->instantiate) {
 		CONF_SECTION *cs;
 		char const *name;
 
@@ -745,7 +745,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 *	Should write its instance data in inst->driver,
 		 *	and parent it off of inst.
 		 */
-		if (inst->module->mod_instantiate(cs, inst) < 0) return -1;
+		if (inst->module->instantiate(cs, inst) < 0) return -1;
 	}
 
 	rad_assert(inst->key && *inst->key);

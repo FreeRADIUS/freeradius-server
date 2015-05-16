@@ -344,16 +344,15 @@ static void cache_release(UNUSED rlm_cache_t *inst, REQUEST *request, rlm_cache_
 
 extern cache_module_t rlm_cache_rbtree;
 cache_module_t rlm_cache_rbtree = {
-	"rlm_cache_rbtree",
-	mod_instantiate,
-	cache_entry_alloc,
-	NULL,			/* free */
-	cache_entry_find,
-	cache_entry_insert,
-	cache_entry_expire,
-	cache_entry_count,
+	.name		= "rlm_cache_rbtree",
+	.instantiate	= mod_instantiate,
+	.alloc		= cache_entry_alloc,
 
-	cache_acquire,
-	cache_release,
-	NULL			/* no reconnect method */
+	.find		= cache_entry_find,
+	.insert		= cache_entry_insert,
+	.expire		= cache_entry_expire,
+	.count		= cache_entry_count,
+
+	.acquire	= cache_acquire,
+	.release	= cache_release,
 };
