@@ -679,13 +679,13 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	inst->cs = conf;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat_register(inst->xlat_name, cache_xlat, NULL, inst);
+	xlat_register(inst->name, cache_xlat, NULL, inst);
 
 	return 0;
 }
@@ -726,7 +726,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	INFO("rlm_cache (%s): Driver %s (module %s) loaded and linked", inst->xlat_name,
+	INFO("rlm_cache (%s): Driver %s (module %s) loaded and linked", inst->name,
 	     inst->driver_name, inst->module->name);
 
 	/*

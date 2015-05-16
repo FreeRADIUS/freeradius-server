@@ -47,7 +47,7 @@ typedef enum {
  *	be used as the instance handle.
  */
 typedef struct rlm_cache_t {
-	char const		*xlat_name;		//!< Name of xlat function to register.
+	char const		*name;		//!< Name of xlat function to register.
 
 	char const		*driver_name;		//!< Datastore name
 	void			*handle;		//!< Datastore handle.
