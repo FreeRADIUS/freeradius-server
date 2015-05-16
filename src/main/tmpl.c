@@ -1595,9 +1595,7 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 
 		len = strlen(out);
 
-		if ((vpt->tmpl_tag == TAG_ANY) && (vpt->tmpl_num == NUM_ANY)) {
-			return len;
-		}
+		if ((vpt->tmpl_tag == TAG_ANY) && (vpt->tmpl_num == NUM_ANY)) return len;
 
 		q = out + len;
 		outlen -= len;
@@ -1676,8 +1674,7 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 		return (q - out);
 
 	case TMPL_TYPE_DATA:
-		return value_data_prints(out, outlen, vpt->tmpl_data_type, values,
-					    &vpt->tmpl_data_value, vpt->tmpl_data_length, vpt->quote);
+		return value_data_prints(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_value, vpt->quote);
 	}
 
 	if (outlen <= 3) {
