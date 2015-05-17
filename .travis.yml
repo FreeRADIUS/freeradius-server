@@ -6,7 +6,7 @@ sudo: false
 env:
   global:
     - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
-#    - SQL_MYSQL_TEST_SERVER="127.0.0.1"
+    - SQL_MYSQL_TEST_SERVER="127.0.0.1"
     - SQL_POSTGRESQL_TEST_SERVER="127.0.0.1"
     - secure: "H+uQeyOgsIyXtIPPG2VzAG8S/8KYGHlHaWhdiNuz1LM3SMcEKoPqG6o/P+HO8HVvYnA6nelyGuEryV90UfuwGY9YC6A/pqPQvx/gXSso63Zt66XSaiZjulCSm9OV8EB3wyWF7VSQ/ZHcn+L01hIlsQXTqLprMaC33cM0FYPr9fY="
   matrix:
@@ -86,10 +86,15 @@ before_script:
 # Run CLANG analyzer if we're building with CLANG
   - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 -a ${CC} = 'clang' ]; then make -j8 scan && [ "$(find build/plist/ -name *.html)" = '' ]; fi
 # Create RADIUS DB for Postgres
-  - psql -c 'create database radius;' -U postgres
+  - psql -c 'CREATE DATABASE radius;' -U postgres
   - psql -U postgres radius < raddb/mods-config/sql/main/postgresql/schema.sql
   - psql -U postgres radius < raddb/mods-config/sql/main/postgresql/setup.sql
   - psql -c 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO radius;' -U postgres radius
+# Create RADIUS DB for MySQL
+  - mysql -u root -e 'CREATE DATABASE radius;'
+  - mysql -u root radius < raddb/mods-config/sql/main/mysql/schema.sql
+  - mysql -u root radius < raddb/mods-config/sql/main/mysql/setup.sql
+  - mysql -u root -e 'GRANT ALL on radius.* TO radius@localhost;'
 script:
   - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
 #  - if [ "${DO_BUILD}" = 'no' ]; then make deb; fi
