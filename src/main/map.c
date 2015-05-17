@@ -1544,8 +1544,8 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	case TMPL_TYPE_LIST:
 	{
 		char		attr[256];
+		char		quote = '\0';
 		vp_tmpl_t	vpt;
-
 		/*
 		 *	Fudge a temporary tmpl that describes the attribute we're copying
 		 *	this is a combination of the original list tmpl, and values from
@@ -1556,15 +1556,33 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		vpt.tmpl_tag = vp->tag;
 		vpt.type = TMPL_TYPE_ATTR;
 
-		vp_prints_value(buffer, sizeof(buffer), vp, (vp->da->type == PW_TYPE_STRING) ? '\'' : '\0');
+		/*
+		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
+		 *	around the list. The attribute value has no quoting, so we choose
+		 *	the quoting based on the data type, and whether it's printable.
+		 */
+		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
+									 vp->vp_length) ? '\'' : '"';
+		vp_prints_value(buffer, sizeof(buffer), vp, quote);
 		tmpl_prints(attr, sizeof(attr), &vpt, vp->da);
 		value = talloc_typed_asprintf(request, "%s -> %s", attr, buffer);
 	}
 		break;
 
 	case TMPL_TYPE_ATTR:
-		vp_prints_value(buffer, sizeof(buffer), vp, (vp->da->type == PW_TYPE_STRING) ? '\'' : '\0');
+	{
+		char quote = '\0';
+
+		/*
+		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
+		 *	around the list. The attribute value has no quoting, so we choose
+		 *	the quoting based on the data type, and whether it's printable.
+		 */
+		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
+									 vp->vp_length) ? '\'' : '"';
+		vp_prints_value(buffer, sizeof(buffer), vp, quote);
 		value = talloc_typed_asprintf(request, "%.*s -> %s", (int)map->rhs->len, map->rhs->name, buffer);
+	}
 		break;
 
 	case TMPL_TYPE_NULL:
