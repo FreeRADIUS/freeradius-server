@@ -41,38 +41,48 @@ RCSID("$Id$")
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "driver", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_cache_t, driver_name), "rlm_cache_rbtree" },
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_cache_t, key), NULL },
-	{ "ttl", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, ttl), "500" },
-	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, max_entries), "0" },
+	{ "driver", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_cache_config_t, driver_name), "rlm_cache_rbtree" },
+	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_cache_config_t, key), NULL },
+	{ "ttl", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_config_t, ttl), "500" },
+	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_config_t, max_entries), "0" },
 
 	/* Should be a type which matches time_t, @fixme before 2038 */
-	{ "epoch", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_cache_t, epoch), "0" },
-	{ "add_stats", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_cache_t, stats), "no" },
+	{ "epoch", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_cache_config_t, epoch), "0" },
+	{ "add_stats", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_cache_config_t, stats), "no" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
+/** Get exclusive use of a handle to access the cache
+ *
+ */
 static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *request)
 {
-	if (!inst->module->acquire) return 0;
+	if (!inst->driver->acquire) return 0;
 
-	return inst->module->acquire(out, inst, request);
+	return inst->driver->acquire(out, &inst->config, inst->driver_inst, request);
 }
 
+/** Release a handle we previously acquired
+ *
+ */
 static void cache_release(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
 {
-	if (!inst->module->release) return;
+	if (!inst->driver->release) return;
 	if (!handle || !*handle) return;
 
-	inst->module->release(inst, request, handle);
+	inst->driver->release(&inst->config, inst->driver_inst, request, *handle);
+	*handle = NULL;
 }
 
-static int cache_reconnect(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
+/** Reconnect an suspected inviable handle
+ *
+ */
+static int cache_reconnect(rlm_cache_handle_t **handle, rlm_cache_t *inst, REQUEST *request)
 {
-	rad_assert(inst->module->reconnect);
+	rad_assert(inst->driver->reconnect);
 
-	return inst->module->reconnect(inst, request, handle);
+	return inst->driver->reconnect(handle, &inst->config, inst->driver_inst, request);
 }
 
 /** Allocate a cache entry
@@ -85,7 +95,7 @@ static int cache_reconnect(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle
  */
 static rlm_cache_entry_t *cache_alloc(rlm_cache_t *inst, REQUEST *request)
 {
-	if (inst->module->alloc) return inst->module->alloc(inst, request);
+	if (inst->driver->alloc) return inst->driver->alloc(&inst->config, inst->driver_inst, request);
 
 	return talloc_zero(NULL, rlm_cache_entry_t);
 }
@@ -101,19 +111,19 @@ static rlm_cache_entry_t *cache_alloc(rlm_cache_t *inst, REQUEST *request)
  * Some drivers (like rlm_cache_rbtree) don't register a free function.
  * This means that the cache entry never needs to be explicitly freed.
  *
- * @param c Cache entry to free.
- * @param inst Module instance.
+ * @param[in] inst Module instance.
+ * @param[in,out] c Cache entry to free.
  */
 static void cache_free(rlm_cache_t *inst, rlm_cache_entry_t **c)
 {
-	if (!c || !*c || !inst->module->free) return;
+	if (!c || !*c || !inst->driver->free) return;
 
-	inst->module->free(*c);
+	inst->driver->free(*c);
 	*c = NULL;
 }
 
-/*
- *	Merge a cached entry into a REQUEST.
+/** Merge a cached entry into a #REQUEST
+ *
  */
 static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c) CC_HINT(nonnull);
 static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c)
@@ -149,7 +159,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *
 	}
 	REXDENT();
 
-	if (inst->stats) {
+	if (inst->config.stats) {
 		rad_assert(request->packet != NULL);
 		vp = pairfind(request->packet->vps, PW_CACHE_ENTRY_HITS, 0, TAG_ANY);
 		if (!vp) {
@@ -165,9 +175,9 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *
 /** Find a cached entry.
  *
  * @return
- *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_OK on cache hit.
  *	- #RLM_MODULE_FAIL on failure.
- *	- #RLM_MODULE_NOTFOUND if notfound.
+ *	- #RLM_MODULE_NOTFOUND on cache miss.
  */
 static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
 			      rlm_cache_handle_t **handle, char const *key)
@@ -179,11 +189,11 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 	*out = NULL;
 
 	for (;;) {
-		ret = inst->module->find(&c, inst, request, handle, key);
+		ret = inst->driver->find(&c, &inst->config, inst->driver_inst, request, *handle, key);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			RDEBUG("Reconnecting...");
-			if (cache_reconnect(inst, request, handle) == 0) continue;
+			if (cache_reconnect(handle, inst, request) == 0) continue;
 			return RLM_MODULE_FAIL;
 
 		case CACHE_OK:
@@ -206,10 +216,10 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 	 *	Yes, but it expired, OR the "forget all" epoch has
 	 *	passed.  Delete it, and pretend it doesn't exist.
 	 */
-	if ((c->expires < request->timestamp) || (c->created < inst->epoch)) {
+	if ((c->expires < request->timestamp) || (c->created < inst->config.epoch)) {
 		RDEBUG("Removing expired entry");
 
-		inst->module->expire(inst, request, handle, c);
+		inst->driver->expire(&inst->config, inst->driver_inst, request, handle, c);
 		cache_free(inst, &c);
 		return RLM_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
@@ -229,9 +239,9 @@ static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t
 {
 	rad_assert(*c);
 
-	for (;;) switch (inst->module->expire(inst, request, handle, *c)) {
+	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_inst, request, handle, *c)) {
 	case CACHE_RECONNECT:
-		if (cache_reconnect(inst, request, handle) == 0) continue;
+		if (cache_reconnect(handle, inst, request) == 0) continue;
 
 	/* FALL-THROUGH */
 	default:
@@ -241,7 +251,7 @@ static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t
 	}
 }
 
-/** Create and insert a cache entry.
+/** Create and insert a cache entry
  *
  * @return
  *	- #RLM_MODULE_OK on success.
@@ -260,9 +270,9 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 
 	TALLOC_CTX		*pool;
 
-	if ((inst->max_entries > 0) && inst->module->count &&
-	    (inst->module->count(inst, request, handle) > inst->max_entries)) {
-		RWDEBUG("Cache is full: %d entries", inst->max_entries);
+	if ((inst->config.max_entries > 0) && inst->driver->count &&
+	    (inst->driver->count(&inst->config, inst->driver_inst, request, handle) > inst->config.max_entries)) {
+		RWDEBUG("Cache is full: %d entries", inst->config.max_entries);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -393,10 +403,10 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	for (;;) {
 		cache_status_t ret;
 
-		ret = inst->module->insert(inst, request, handle, c);
+		ret = inst->driver->insert(&inst->config, inst->driver_inst, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
-			if (cache_reconnect(inst, request, handle) == 0) continue;
+			if (cache_reconnect(handle, inst, request) == 0) continue;
 			return RLM_MODULE_FAIL;
 
 		case CACHE_OK:
@@ -428,12 +438,13 @@ static int cache_verify(vp_map_t *map, void *ctx)
 	return 0;
 }
 
-/*
- *	Do caching checks.  Since we can update ANY VP list, we do
- *	exactly the same thing for all sections (autz / auth / etc.)
+/** Do caching checks
  *
- *	If you want to cache something different in different sections,
- *	configure another cache module.
+ * Since we can update ANY VP list, we do exactly the same thing for all sections
+ * (autz / auth / etc.)
+ *
+ * If you want to cache something different in different sections, configure
+ * another cache module.
  */
 static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
@@ -448,9 +459,9 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	char			buffer[1024];
 	rlm_rcode_t		rcode;
 
-	int ttl = inst->ttl;
+	int ttl = inst->config.ttl;
 
-	if (radius_xlat(buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+	if (radius_xlat(buffer, sizeof(buffer), request, inst->config.key, NULL, NULL) < 0) return RLM_MODULE_FAIL;
 
 	if (buffer[0] == '\0') {
 		REDEBUG("Zero length key string is invalid");
@@ -486,7 +497,7 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	 *	If there's no existing cache entry, go and create a new one.
 	 */
 	if (!c) {
-		if (ttl <= 0) ttl = inst->ttl;
+		if (ttl <= 0) ttl = inst->config.ttl;
 		goto insert;
 	}
 
@@ -495,7 +506,7 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	 */
 	if (vp) {
 		if (ttl == 0) {
-			cache_expire(inst, request, &handle, &c);
+			cache_expire(inst, request, handle, &c);
 			RDEBUG("Forcing expiry of entry");
 			rcode = RLM_MODULE_OK;
 			goto finish;
@@ -503,7 +514,7 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 
 		if (ttl < 0) {
 			RDEBUG("Forcing expiry of existing entry");
-			cache_expire(inst, request, &handle, &c);
+			cache_expire(inst, request, handle, &c);
 			ttl *= -1;
 			goto insert;
 		}
@@ -561,8 +572,8 @@ finish:
 	return rcode;
 }
 
-/*
- *	Allow single attribute values to be retrieved from the cache.
+/** Allow single attribute values to be retrieved from the cache
+ *
  */
 static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 			  CC_HINT(nonnull);
@@ -628,9 +639,8 @@ finish:
 	return ret;
 }
 
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
+/** Free any memory allocated under the instance
+ *
  */
 static int mod_detach(void *instance)
 {
@@ -657,78 +667,78 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-
+/** Register module xlats
+ *
+ */
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_cache_t *inst = instance;
 
 	inst->cs = conf;
 
-	inst->name = cf_section_name2(conf);
-	if (!inst->name) inst->name = cf_section_name1(conf);
+	inst->config.name = cf_section_name2(conf);
+	if (!inst->config.name) inst->config.name = cf_section_name1(conf);
 
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat_register(inst->name, cache_xlat, NULL, inst);
+	xlat_register(inst->config.name, cache_xlat, NULL, inst);
 
 	return 0;
 }
 
-
-/*
- *	Instantiate the module.
+/** Create a new rlm_cache_instance
+ *
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_cache_t *inst = instance;
-	CONF_SECTION *update;
+	rlm_cache_t	*inst = instance;
+	CONF_SECTION	*update;
 
 	inst->cs = conf;
 
 	/*
 	 *	Sanity check for crazy people.
 	 */
-	if (strncmp(inst->driver_name, "rlm_cache_", 8) != 0) {
-		cf_log_err_cs(conf, "\"%s\" is NOT an Cache driver!", inst->driver_name);
+	if (strncmp(inst->config.driver_name, "rlm_cache_", 8) != 0) {
+		cf_log_err_cs(conf, "\"%s\" is NOT an Cache driver!", inst->config.driver_name);
 		return -1;
 	}
 
 	/*
 	 *	Load the appropriate driver for our database
 	 */
-	inst->handle = lt_dlopenext(inst->driver_name);
+	inst->handle = lt_dlopenext(inst->config.driver_name);
 	if (!inst->handle) {
-		cf_log_err_cs(conf, "Could not link driver %s: %s", inst->driver_name, dlerror());
+		cf_log_err_cs(conf, "Could not link driver %s: %s", inst->config.driver_name, dlerror());
 		cf_log_err_cs(conf, "Make sure it (and all its dependent libraries!) are in the search path"
 			      "of your system's ld");
 		return -1;
 	}
 
-	inst->module = (cache_module_t *) dlsym(inst->handle, inst->driver_name);
-	if (!inst->module) {
-		cf_log_err_cs(conf, "Could not link symbol %s: %s", inst->driver_name, dlerror());
+	inst->driver = (cache_driver_t *) dlsym(inst->handle, inst->config.driver_name);
+	if (!inst->driver) {
+		cf_log_err_cs(conf, "Could not link symbol %s: %s", inst->config.driver_name, dlerror());
 		return -1;
 	}
 
-	INFO("rlm_cache (%s): Driver %s (module %s) loaded and linked", inst->name,
-	     inst->driver_name, inst->module->name);
+	INFO("rlm_cache (%s): Driver %s loaded and linked", inst->config.name, inst->driver->name);
 
 	/*
 	 *	Non optional fields and callbacks
 	 */
-	rad_assert(inst->module->name);
-	rad_assert(inst->module->find);
-	rad_assert(inst->module->insert);
-	rad_assert(inst->module->expire);
+	rad_assert(inst->driver->name);
+	rad_assert(inst->driver->find);
+	rad_assert(inst->driver->insert);
+	rad_assert(inst->driver->expire);
 
-	if (inst->module->instantiate) {
+	if (inst->driver->instantiate) {
 		CONF_SECTION *cs;
 		char const *name;
 
-		name = strrchr(inst->driver_name, '_');
+		name = strrchr(inst->config.driver_name, '_');
 		if (!name) {
-			name = inst->driver_name;
+			name = inst->config.driver_name;
 		} else {
 			name++;
 		}
@@ -745,17 +755,19 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 *	Should write its instance data in inst->driver,
 		 *	and parent it off of inst.
 		 */
-		if (inst->module->instantiate(cs, inst) < 0) return -1;
+		if (inst->driver->inst_size) MEM(inst->driver_inst = talloc_zero_array(inst, uint8_t,
+										       inst->driver->inst_size));
+		if (inst->driver->instantiate(cs, &inst->config, inst->driver_inst) < 0) return -1;
 	}
 
-	rad_assert(inst->key && *inst->key);
+	rad_assert(inst->config.key && *inst->config.key);
 
-	if (inst->ttl == 0) {
+	if (inst->config.ttl == 0) {
 		cf_log_err_cs(conf, "Must set 'ttl' to non-zero");
 		return -1;
 	}
 
-	if (inst->epoch != 0) {
+	if (inst->config.epoch != 0) {
 		cf_log_err_cs(conf, "Must not set 'epoch' in the configuration files");
 		return -1;
 	}

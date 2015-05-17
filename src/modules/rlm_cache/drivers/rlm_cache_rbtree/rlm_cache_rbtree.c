@@ -48,9 +48,9 @@ typedef struct rlm_cache_rbtree_entry {
 	size_t			offset;		//!< Offset used for heap.
 } rlm_cache_rbtree_entry_t;
 
-/*
- *	Compare two entries by key.  There may only be one entry with
- *	the same key.
+/** Compare two entries by key
+ *
+ * There may only be one entry with the same key.
  */
 static int cache_entry_cmp(void const *one, void const *two)
 {
@@ -60,9 +60,9 @@ static int cache_entry_cmp(void const *one, void const *two)
 	return strcmp(a->key, b->key);
 }
 
-/*
- *	Compare two entries by expiry time.  There may be multiple
- *	entries with the same expiry time.
+/** Compare two entries by expiry time
+ *
+ * There may be multiple entries with the same expiry time.
  */
 static int cache_heap_cmp(void const *one, void const *two)
 {
@@ -92,8 +92,6 @@ static int _cache_entry_free(UNUSED void *ctx, void *data)
 
 /** Cleanup a cache_rbtree instance
  *
- * @param driver to free.
- * @return 0
  */
 static int _mod_detach(rlm_cache_rbtree_t *driver)
 {
@@ -111,18 +109,14 @@ static int _mod_detach(rlm_cache_rbtree_t *driver)
 
 /** Create a new cache_rbtree instance
  *
- * @param conf rbtree specific conf section.
- * @param inst main rlm_cache instance.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
+ * @copydetails cache_instantiate_t
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, rlm_cache_t *inst)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_cache_config_t const *config, void *driver_inst)
 {
-	rlm_cache_rbtree_t *driver;
+	rlm_cache_rbtree_t *driver = driver_inst;
 
-	driver = talloc_zero(inst, rlm_cache_rbtree_t);
 	talloc_set_destructor(driver, _mod_detach);
+
 	/*
 	 *	The cache.
 	 */
@@ -149,8 +143,6 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, rlm_cache_t *inst)
 	}
 #endif
 
-	inst->driver = driver;
-
 	return 0;
 }
 
@@ -158,13 +150,10 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, rlm_cache_t *inst)
  *
  * Allows allocation of cache entry structures with additional fields.
  *
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @return
- *	- 0 on success.
- *	- -1 on failure.
+ * @copydetails cache_entry_alloc_t
  */
-static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_t *inst, REQUEST *request)
+static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
+					    REQUEST *request)
 {
 	rlm_cache_rbtree_entry_t *c;
 
@@ -179,23 +168,19 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_t *inst, REQUEST *r
 
 /** Locate a cache entry
  *
- * @param out Where to write the search result.
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @param handle Dummy handle (not used).
- * @param key to search for.
- * @return
- *	- #CACHE_OK on success.
- *	- #CACHE_MISS if no entry found.
+ * @note handle not used except for sanity checks.
+ *
+ * @copydetails cache_entry_find_t
  */
-static cache_status_t cache_entry_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
-				       rlm_cache_handle_t **handle, char const *key)
+static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
+				       UNUSED rlm_cache_config_t const *config, void *driver_inst,
+				       REQUEST *request, void *handle, char const *key)
 {
-	rlm_cache_rbtree_t *driver = inst->driver;
+	rlm_cache_rbtree_t *driver = driver_inst;
 
 	rlm_cache_entry_t *c, my_c;
 
-	rad_assert(*handle == request);
+	rad_assert(handle == request);
 
 	/*
 	 *	Clear out old entries
@@ -223,30 +208,30 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, rlm_cache_t *ins
 
 /** Insert a new entry into the data store
  *
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @param handle Dummy handle (not used).
- * @param c entry to insert.
- * @return
- *	- #CACHE_OK on success.
- *	- #CACHE_ERROR on error.
+ * @note handle not used except for sanity checks.
+ *
+ * @copydetails cache_entry_insert_t
  */
-static cache_status_t cache_entry_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
-					 rlm_cache_entry_t *c)
+static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config, void *driver_inst,
+					 REQUEST *request, void *handle,
+					 rlm_cache_entry_t const *c)
 {
-	rlm_cache_rbtree_t *driver = inst->driver;
+	rlm_cache_rbtree_t *driver = driver_inst;
+	rlm_cache_entry_t *my_c;
 
-	rad_assert(*handle == request);
+	rad_assert(handle == request);
 
-	if (!rbtree_insert(driver->cache, c)) {
-		REDEBUG("Failed adding entry for key \"%s\"", c->key);
+	memcpy(&my_c, &c, sizeof(my_c));
+
+	if (!rbtree_insert(driver->cache, my_c)) {
+		REDEBUG("Failed adding entry for key \"%s\"", my_c->key);
 
 		return CACHE_ERROR;
 	}
 
-	if (!fr_heap_insert(driver->heap, c)) {
-		rbtree_deletebydata(driver->cache, c);
-		REDEBUG("Failed adding entry for key \"%s\"", c->key);
+	if (!fr_heap_insert(driver->heap, my_c)) {
+		rbtree_deletebydata(driver->cache, my_c);
+		REDEBUG("Failed adding entry for key \"%s\"", my_c->key);
 
 		return CACHE_ERROR;
 	}
@@ -256,18 +241,17 @@ static cache_status_t cache_entry_insert(rlm_cache_t *inst, REQUEST *request, rl
 
 /** Free an entry and remove it from the data store
  *
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @param handle Dummy handle (not used).
- * @param c entry to expire
- * @return #CACHE_OK.
+ * @note handle not used except for sanity checks.
+ *
+ * @copydetails cache_entry_expire_t
  */
-static cache_status_t cache_entry_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
+static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *driver_inst,
+					 REQUEST *request, void *handle,
 					 rlm_cache_entry_t *c)
 {
-	rlm_cache_rbtree_t *driver = inst->driver;
+	rlm_cache_rbtree_t *driver = driver_inst;
 
-	rad_assert(*handle == request);
+	rad_assert(handle == request);
 
 	fr_heap_extract(driver->heap, c);
 	rbtree_deletebydata(driver->cache, c);
@@ -278,39 +262,41 @@ static cache_status_t cache_entry_expire(rlm_cache_t *inst, REQUEST *request, rl
 
 /** Return the number of entries in the cache
  *
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @param handle Dummy handle (not used).
- * @return the number of entries in the cache.
+ * @note handle not used except for sanity checks.
+ *
+ * @copydetails cache_entry_count_t
  */
-static uint32_t cache_entry_count(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
+static uint32_t cache_entry_count(UNUSED rlm_cache_config_t *config, void *driver_inst,
+				  REQUEST *request, void *handle)
 {
-	rlm_cache_rbtree_t *driver = inst->driver;
+	rlm_cache_rbtree_t *driver = driver_inst;
 
-	rad_assert(*handle == request);
+	rad_assert(handle == request);
 
 	return rbtree_num_elements(driver->cache);
 }
 
 /** Lock the rbtree
  *
- * @param out Where to write the dummy handle.
- * @param inst rlm_cache instance.
- * @param request The current request.
+ * @note handle not used except for sanity checks.
+ *
+ * @copydetails cache_acquire_t
  */
 #ifdef HAVE_PTHREAD_H
-static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *request)
+static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config, void *driver_inst,
+			 REQUEST *request)
 #else
-static int cache_acquire(rlm_cache_handle_t **out, UNUSED rlm_cache_t *inst, REQUEST *request)
+static int cache_acquire(void **handle, UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
+			 REQUEST *request)
 #endif
 {
 #ifdef HAVE_PTHREAD_H
-	rlm_cache_rbtree_t *driver = inst->driver;
+	rlm_cache_rbtree_t *driver = driver_inst;
 #endif
 
 	PTHREAD_MUTEX_LOCK(&driver->mutex);
 
-	*out = request;		/* handle is unused, this is just for sanity checking */
+	*handle = request;		/* handle is unused, this is just for sanity checking */
 
 	RDEBUG3("Mutex acquired");
 
@@ -319,33 +305,34 @@ static int cache_acquire(rlm_cache_handle_t **out, UNUSED rlm_cache_t *inst, REQ
 
 /** Release an entry unlocking any mutexes
  *
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @param handle The dummy handle created by cache_acquire.
+ * @note handle not used except for sanity checks.
+ *
+ * @copydetails cache_release_t
  */
 #ifdef HAVE_PTHREAD_H
-static void cache_release(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
+static void cache_release(UNUSED rlm_cache_config_t const *config, void *driver_inst, REQUEST *request,
+			  rlm_cache_handle_t *handle)
 #else
-static void cache_release(UNUSED rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
+static void cache_release(UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst, REQUEST *request,
+			  rlm_cache_handle_t *handle)
 #endif
 {
 #ifdef HAVE_PTHREAD_H
-	rlm_cache_rbtree_t *driver = inst->driver;
+	rlm_cache_rbtree_t *driver = driver_inst;
 #endif
 
-	rad_assert(*handle == request);
+	rad_assert(handle == request);
 
 	PTHREAD_MUTEX_UNLOCK(&driver->mutex);
 
 	RDEBUG3("Mutex released");
-
-	*handle = NULL;
 }
 
-extern cache_module_t rlm_cache_rbtree;
-cache_module_t rlm_cache_rbtree = {
+extern cache_driver_t rlm_cache_rbtree;
+cache_driver_t rlm_cache_rbtree = {
 	.name		= "rlm_cache_rbtree",
 	.instantiate	= mod_instantiate,
+	.inst_size	= sizeof(rlm_cache_rbtree_t),
 	.alloc		= cache_entry_alloc,
 
 	.find		= cache_entry_find,

@@ -38,7 +38,7 @@ RCSID("$Id$")
  *	- 0 on success.
  *	- -1 on failure.
  */
-int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t *c)
+int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 {
 	TALLOC_CTX	*value_pool = NULL;
 	char		attr[256];	/* Attr name buffer */
