@@ -57,7 +57,10 @@ static int cache_entry_cmp(void const *one, void const *two)
 	rlm_cache_entry_t const *a = one;
 	rlm_cache_entry_t const *b = two;
 
-	return strcmp(a->key, b->key);
+	if (a->key_len < b->key_len) return -1;
+	if (a->key_len > b->key_len) return +1;
+
+	return memcmp(a->key, b->key, a->key_len);
 }
 
 /** Compare two entries by expiry time
@@ -174,7 +177,7 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *con
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, void *driver_inst,
-				       REQUEST *request, void *handle, char const *key)
+				       REQUEST *request, void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_rbtree_t *driver = driver_inst;
 
@@ -196,6 +199,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	 *	Is there an entry for this key?
 	 */
 	my_c.key = key;
+	my_c.key_len = key_len;
 	c = rbtree_finddata(driver->cache, &my_c);
 	if (!c) {
 		*out = NULL;

@@ -47,7 +47,7 @@ typedef enum {
 typedef struct rlm_cache_config_t {
 	char const		*name;			//!< Name of xlat function to register.
 	char const		*driver_name;		//!< Driver name.
-	char const		*key;			//!< xlat fmt string to expand.
+	vp_tmpl_t		*key;			//!< What to expand to get the value of the key.
 	uint32_t		ttl;			//!< How long an entry is valid for.
 	uint32_t		max_entries;		//!< Maximum entries allowed.
 	int32_t			epoch;			//!< Time after which entries are considered valid.
@@ -74,7 +74,8 @@ typedef struct rlm_cache_t {
 } rlm_cache_t;
 
 typedef struct rlm_cache_entry_t {
-	char const		*key;			//!< Key used to identify entry.
+	uint8_t const		*key;			//!< Key used to identify entry.
+	size_t			key_len;		//!< Length of key data.
 	long long int		hits;			//!< How many times the entry has been retrieved.
 	time_t			created;		//!< When the entry was created.
 	time_t			expires;		//!< When the entry expires.
@@ -129,8 +130,8 @@ typedef void		(*cache_entry_free_t)(rlm_cache_entry_t *c);
  * @param[in] request The current request.
  * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
  *	#cache_acquire_t callback was provided.
- * @param[in] key to use to lookup cache entry. Length/type can be found with talloc_array_length and
- *	talloc_get_type.
+ * @param[in] key to use to lookup cache entry
+ * @param[in] key_len the length of the key string.
  * @return
  *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
  *	- #CACHE_ERROR - If the lookup couldn't be completed.
@@ -139,7 +140,7 @@ typedef void		(*cache_entry_free_t)(rlm_cache_entry_t *c);
  */
 typedef cache_status_t	(*cache_entry_find_t)(rlm_cache_entry_t **out, rlm_cache_config_t const *config,
 					      void *driver_inst, REQUEST *request, void *handle,
-					      char const *key);
+					      uint8_t const *key, size_t key_len);
 
 /** Insert an entry into the cache
  *

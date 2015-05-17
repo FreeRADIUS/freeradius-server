@@ -42,7 +42,7 @@ RCSID("$Id$")
  */
 static const CONF_PARSER module_config[] = {
 	{ "driver", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_cache_config_t, driver_name), "rlm_cache_rbtree" },
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_cache_config_t, key), NULL },
+	{ "key", FR_CONF_OFFSET(PW_TYPE_TMPL | PW_TYPE_REQUIRED, rlm_cache_config_t, key), NULL },
 	{ "ttl", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_config_t, ttl), "500" },
 	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_config_t, max_entries), "0" },
 
@@ -171,7 +171,6 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *
 	}
 }
 
-
 /** Find a cached entry.
  *
  * @return
@@ -180,7 +179,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *
  *	- #RLM_MODULE_NOTFOUND on cache miss.
  */
 static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
-			      rlm_cache_handle_t **handle, char const *key)
+			      rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
 {
 	cache_status_t ret;
 
@@ -189,7 +188,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 	*out = NULL;
 
 	for (;;) {
-		ret = inst->driver->find(&c, &inst->config, inst->driver_inst, request, *handle, key);
+		ret = inst->driver->find(&c, &inst->config, inst->driver_inst, request, *handle, key, key_len);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			RDEBUG("Reconnecting...");
@@ -200,7 +199,13 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 			break;
 
 		case CACHE_MISS:
-			RDEBUG("No cache entry found for \"%s\"", key);
+			if (RDEBUG_ENABLED2) {
+				char *p;
+
+				p = fr_aprints(request, (char const *)key, key_len, '"');
+				RDEBUG("No cache entry found for \"%s\"", p);
+				talloc_free(p);
+			}
 			return RLM_MODULE_NOTFOUND;
 
 		/* FALL-THROUGH */
@@ -224,7 +229,13 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 		return RLM_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
 
-	RDEBUG("Found entry for \"%s\"", key);
+	if (RDEBUG_ENABLED2) {
+		char *p;
+
+		p = fr_aprints(request, (char const *)key, key_len, '"');
+		RDEBUG2("Found entry for \"%s\"", p);
+		talloc_free(p);
+	}
 
 	c->hits++;
 	*out = c;
@@ -259,7 +270,7 @@ static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t
  *	- #RLM_MODULE_FAIL on failure.
  */
 static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
-				char const *key, int ttl)
+				uint8_t const *key, size_t key_len, int ttl)
 {
 	vp_map_t		const *map;
 	vp_map_t		**last, *c_map;
@@ -279,7 +290,8 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	c = cache_alloc(inst, request);
 	if (!c) return RLM_MODULE_FAIL;
 
-	c->key = talloc_typed_strdup(c, key);
+	c->key = talloc_memdup(c, key, key_len);
+	c->key_len = key_len;
 	c->created = c->expires = request->timestamp;
 	c->expires += ttl;
 
@@ -355,6 +367,9 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 					return RLM_MODULE_FAIL;
 				}
 				c_map->rhs->tmpl_data_type = vp->da->type;
+				if (vp->da->type == PW_TYPE_STRING) {
+					c_map->rhs->quote = is_printable(vp->vp_strvalue, vp->vp_length) ? '\'' : '"';
+				}
 				break;
 
 			/*
@@ -456,21 +471,25 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 
 	vp_cursor_t		cursor;
 	VALUE_PAIR		*vp;
-	char			buffer[1024];
+	uint8_t			buffer[1024];
+	uint8_t const		*key;
+	ssize_t			key_len;
 	rlm_rcode_t		rcode;
 
 	int ttl = inst->config.ttl;
 
-	if (radius_xlat(buffer, sizeof(buffer), request, inst->config.key, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
+			     request, inst->config.key, NULL, NULL);
+	if (key_len < 0) return RLM_MODULE_FAIL;
 
-	if (buffer[0] == '\0') {
+	if (key_len == 0) {
 		REDEBUG("Zero length key string is invalid");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
 
-	rcode = cache_find(&c, inst, request, &handle, buffer);
+	rcode = cache_find(&c, inst, request, &handle, key, key_len);
 	if (rcode == RLM_MODULE_FAIL) goto finish;
 	rad_assert(handle);
 
@@ -545,7 +564,7 @@ insert:
 	/*
 	 *	Create a new entry.
 	 */
-	rcode = cache_insert(inst, request, &handle, buffer, ttl);
+	rcode = cache_insert(inst, request, &handle, key, key_len, ttl);
 	rad_assert(handle);
 
 finish:
@@ -586,8 +605,16 @@ static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, cha
 	size_t			slen;
 	ssize_t			ret = 0;
 
+	uint8_t			buffer[1024];
+	uint8_t const		*key;
+	ssize_t			key_len;
+
 	vp_tmpl_t		target;
 	vp_map_t		*map = NULL;
+
+	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
+			      request, inst->config.key, NULL, NULL);
+	if (key_len < 0) return -1;
 
 	slen = tmpl_from_attr_substr(&target, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
@@ -597,7 +624,7 @@ static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, cha
 
 	if (cache_acquire(&handle, inst, request) < 0) return -1;
 
-	switch (cache_find(&c, inst, request, handle, fmt)) {
+	switch (cache_find(&c, inst, request, handle, key, key_len)) {
 	case RLM_MODULE_OK:		/* found */
 		break;
 
@@ -759,8 +786,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 										       inst->driver->inst_size));
 		if (inst->driver->instantiate(cs, &inst->config, inst->driver_inst) < 0) return -1;
 	}
-
-	rad_assert(inst->config.key && *inst->config.key);
 
 	if (inst->config.ttl == 0) {
 		cf_log_err_cs(conf, "Must set 'ttl' to non-zero");

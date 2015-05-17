@@ -151,24 +151,24 @@ static void cache_entry_free(rlm_cache_entry_t *c)
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 				       UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
-				       REQUEST *request, void *handle, char const *key)
+				       REQUEST *request, void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_memcached_handle_t *mandle = handle;
 
-	memcached_return_t mret;
-	size_t len;
-	int ret;
-	uint32_t flags;
+	memcached_return_t	mret;
+	size_t			len;
+	int			ret;
+	uint32_t		flags;
 
-	char *from_store;
+	char			*from_store;
 
-	rlm_cache_entry_t *c;
+	rlm_cache_entry_t	*c;
 
-	from_store = memcached_get(mandle->handle, key, strlen(key), &len, &flags, &mret);
+	from_store = memcached_get(mandle->handle, (char const *)key, key_len, &len, &flags, &mret);
 	if (!from_store) {
 		if (mret == MEMCACHED_NOTFOUND) return CACHE_MISS;
 
-		RERROR("Failed retrieving entry for key \"%s\": %s: %s", key, memcached_strerror(mandle->handle, mret),
+		RERROR("Failed retrieving entry: %s: %s", memcached_strerror(mandle->handle, mret),
 		       memcached_last_error_message(mandle->handle));
 
 		return CACHE_ERROR;
@@ -184,7 +184,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		talloc_free(c);
 		return CACHE_ERROR;
 	}
-	c->key = talloc_strdup(c, key);
+	c->key = talloc_memdup(c, key, key_len);
 	*out = c;
 
 	return CACHE_OK;
@@ -213,12 +213,12 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		return CACHE_ERROR;
 	}
 
-	ret = memcached_set(mandle->handle, c->key, talloc_array_length(c->key) - 1,
+	ret = memcached_set(mandle->handle, (char const *)c->key, c->key_len,
 		            to_store ? to_store : "",
 		            to_store ? talloc_array_length(to_store) - 1 : 0, c->expires, 0);
 	talloc_free(pool);
 	if (ret != MEMCACHED_SUCCESS) {
-		RERROR("Failed storing entry with key \"%s\": %s: %s", c->key,
+		RERROR("Failed storing entry: %s: %s",
 		       memcached_strerror(mandle->handle, ret),
 		       memcached_last_error_message(mandle->handle));
 
@@ -239,9 +239,9 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
 
 	memcached_return_t ret;
 
-	ret = memcached_delete(mandle->handle, c->key, talloc_array_length(c->key) - 1, 0);
+	ret = memcached_delete(mandle->handle, (char const *)c->key, c->key_len, 0);
 	if (ret != MEMCACHED_SUCCESS) {
-		RERROR("Failed deleting entry with key \"%s\": %s", c->key,
+		RERROR("Failed deleting entry: %s",
 		       memcached_last_error_message(mandle->handle));
 
 		return CACHE_ERROR;
