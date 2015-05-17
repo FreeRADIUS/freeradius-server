@@ -12,7 +12,17 @@ else {
 }
 
 update {
-	Tmp-String-0 := "%{sql:INSERT INTO radcheck (username, attribute, op, value) VALUES ('foo', 'NAS-IP-Address', '==', '1.2.3.4'), ('foo', 'Cleartext-Password', ':=', 'password')}"
+	Tmp-String-0 := "%{sql:INSERT INTO radcheck (username, attribute, op, value) VALUES ('foo', 'NAS-IP-Address', '==', '1.2.3.4')}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+update {
+	Tmp-String-0 := "%{sql:INSERT INTO radcheck (username, attribute, op, value) VALUES ('foo', 'Cleartext-Password', ':=', 'password')}"
 }
 if (!&Tmp-String-0) {
 	test_fail
