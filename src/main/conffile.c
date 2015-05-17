@@ -1164,7 +1164,16 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	if (attribute) required = true;
 	if (required) cant_be_empty = true;	/* May want to review this in the future... */
 
+	/*
+	 *	Everything except templates must have a base type.
+	 */
+	if (!(type & 0xff) && !tmpl) {
+		cf_log_err(&(cs->item), "Configuration item '%s' must have a data type", name);
+		return -1;
+	}
+
 	type &= 0xff;				/* normal types are small */
+
 	rcode = 0;
 
 	cp = cf_pair_find(cs, name);
@@ -1237,7 +1246,6 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 			return 0;
 		}
 
-		rad_assert(type == PW_TYPE_STRING); /* for now, fix it later */
 		rad_assert(!attribute);
 		rad_assert(!xlat);
 		vpt = tmpl_alloc(cs, TMPL_TYPE_LITERAL, value, strlen(value));
