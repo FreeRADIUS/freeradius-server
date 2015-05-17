@@ -1256,17 +1256,27 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  * @{
  */
 
-/** Expand a #vp_tmpl_t to a string, writing the result to a buffer
+/** Expand a #vp_tmpl_t to a string writing the result to a buffer
+ *
+ * The intended use of #tmpl_expand and #tmpl_aexpand is for modules to easily convert a #vp_tmpl_t
+ * provided by the conf parser, into a usable value.
+ * The value returned should be raw and undoctored for #PW_TYPE_STRING and #PW_TYPE_OCTETS types,
+ * and the printable (string) version of the data for all others.
  *
  * Depending what arguments are passed, either copies the value to buff, or writes a pointer
  * to a string buffer to out. This allows the most efficient access to the value resolved by
  * the #vp_tmpl_t, avoiding unecessary string copies.
  *
+ * @note This function is used where raw string values are needed, which may mean the string
+ *	returned may be binary data or contain unprintable chars. #fr_prints or #fr_aprints should
+ *	be used before using these values in debug statements. #is_printable can be used to check
+ *	if the string only contains printable chars.
+ *
  * @param out Where to write a pointer to the string buffer. On return may point to buff if
  *	buff was used to store the value. Otherwise will point to a #value_data_t buffer,
  *	or the name of the template. To force copying to buff, out should be NULL.
- * @param buff Expansion buffer, may be NULL if out is not NULL, and processing
- *	#TMPL_TYPE_LITERAL or string types.
+ * @param buff Expansion buffer, may be NULL if out is not NULL, and processing #TMPL_TYPE_LITERAL
+ *	or string types.
  * @param bufflen Length of expansion buffer.
  * @param request Current request.
  * @param vpt to expand. Must be one of the following types:
@@ -1275,6 +1285,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  *	- #TMPL_TYPE_XLAT
  *	- #TMPL_TYPE_XLAT_STRUCT
  *	- #TMPL_TYPE_ATTR
+ *	- #TMPL_TYPE_DATA
  * @param escape xlat escape function (only used for xlat types).
  * @param escape_ctx xlat escape function data.
  * @return -1 on error, else the length of data written to buff, or pointed to by out.
@@ -1346,12 +1357,29 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
-		if (out && (vp->da->type == PW_TYPE_STRING)) {
-			*out = vp->vp_strvalue;
+		if (out && ((vp->da->type == PW_TYPE_STRING) || (vp->da->type == PW_TYPE_OCTETS))) {
+			*out = vp->data.ptr;
 			slen = vp->vp_length;
 		} else {
 			if (out) *out = buff;
 			slen = vp_prints_value(buff, bufflen, vp, '\0');
+		}
+	}
+		break;
+
+	case TMPL_TYPE_DATA:
+	{
+		RDEBUG4("EXPAND TMPL DATA");
+
+		if (out && ((vpt->tmpl_data_type == PW_TYPE_STRING) || (vpt->tmpl_data_type == PW_TYPE_OCTETS))) {
+			*out = vpt->tmpl_data_value.ptr;
+			slen = vpt->tmpl_data_length;
+		} else {
+			if (out) *out = buff;
+			/**
+			 *  @todo tmpl_expand should accept an enumv da from the lhs of the map.
+			 */
+			slen = value_data_prints(buff, bufflen, vpt->tmpl_data_type, NULL, &vpt->tmpl_data_value, vpt->tmpl_data_length, '\0');
 		}
 	}
 		break;
@@ -1362,7 +1390,6 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_REGEX_STRUCT:
@@ -1381,10 +1408,9 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 	 *	Or, if it's from a "string" attribute, it needs re-parsing.
 	 *	Integers, IP addresses, etc. don't need re-parsing.
 	 */
-	if (cf_new_escape &&
-	    ((vpt->type != TMPL_TYPE_ATTR) ||
-	     (vpt->tmpl_da->type == PW_TYPE_STRING))) {
-	     	value_data_t vd;
+	if (cf_new_escape && (vpt->type != TMPL_TYPE_ATTR)) {
+	     	value_data_t	vd;
+	     	int		ret;
 
 		PW_TYPE type = PW_TYPE_STRING;
 
@@ -1404,6 +1430,22 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 
 /** Expand a template to a string, allocing a new buffer to hold the string
  *
+ * The intended use of #tmpl_expand and #tmpl_aexpand is for modules to easily convert a #vp_tmpl_t
+ * provided by the conf parser, into a usable value.
+ * The value returned should be raw and undoctored for #PW_TYPE_STRING and #PW_TYPE_OCTETS types,
+ * and the printable (string) version of the data for all others.
+ *
+ * This function will always duplicate values, whereas #tmpl_expand may return a pointer to an
+ * existing buffer.
+ *
+ * @note This function is used where raw string values are needed, which may mean the string
+ *	returned may be binary data or contain unprintable chars. #fr_prints or #fr_aprints should
+ *	be used before using these values in debug statements. #is_printable can be used to check
+ *	if the string only contains printable chars.
+ *
+ * @note The type (char or uint8_t) can be obtained with talloc_get_type, and may be used as a
+ *	hint as to how to process or print the data.
+ *
  * @param ctx to allocate new buffer in.
  * @param out Where to write pointer to the new buffer.
  * @param request Current request.
@@ -1413,9 +1455,12 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
  *	- #TMPL_TYPE_XLAT
  *	- #TMPL_TYPE_XLAT_STRUCT
  *	- #TMPL_TYPE_ATTR
+ *	- #TMPL_TYPE_DATA
  * @param escape xlat escape function (only used for xlat types).
- * @param escape_ctx xlat escape function data.
- * @return -1 on error, else the length of data written to buff, or pointed to by out.
+ * @param escape_ctx xlat escape function data (only used for xlat types).
+ * @return
+ *	- -1 on failure.
+ *	- The length of data written to buff, or pointed to by out.
  */
 ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t const *vpt,
 		     xlat_escape_t escape, void *escape_ctx)
@@ -1482,9 +1527,51 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 		ret = tmpl_find_vp(&vp, request, vpt);
 		if (ret < 0) return -2;
 
-		*out = vp_aprints_value(ctx, vp, '"');
-		if (!*out) return -1;
-		slen = talloc_array_length(*out) - 1;
+		switch (vpt->tmpl_da->type) {
+		case PW_TYPE_STRING:
+			*out = talloc_bstrndup(ctx, vp->vp_strvalue, vp->vp_length);
+			if (!*out) return -1;
+			slen = vp->vp_length;
+			break;
+
+		case PW_TYPE_OCTETS:
+			*out = talloc_memdup(ctx, vp->vp_octets, vp->vp_length);
+			if (!*out) return -1;
+			slen = vp->vp_length;
+			break;
+
+		default:
+			*out = vp_aprints_value(ctx, vp, '\0');
+			if (!*out) return -1;
+			slen = talloc_array_length(*out) - 1;
+			break;
+		}
+	}
+		break;
+
+	case TMPL_TYPE_DATA:
+	{
+		RDEBUG4("EXPAND TMPL DATA");
+
+		switch (vpt->tmpl_data_type) {
+		case PW_TYPE_STRING:
+			*out = talloc_bstrndup(ctx, vpt->tmpl_data_value.strvalue, vpt->tmpl_data_length);
+			if (!*out) return -1;
+			slen = vpt->tmpl_data_length;
+			break;
+
+		case PW_TYPE_OCTETS:
+			*out = talloc_memdup(ctx, vpt->tmpl_data_value.octets, vpt->tmpl_data_length);
+			if (!*out) return -1;
+			slen = vpt->tmpl_data_length;
+			break;
+
+		default:
+			*out = value_data_aprints(ctx, vpt->tmpl_data_type, NULL, &vpt->tmpl_data_value, vpt->tmpl_data_length, '\0');
+			if (!*out) return -1;
+			slen = talloc_array_length(*out) - 1;
+			break;
+		}
 	}
 		break;
 
@@ -1494,7 +1581,6 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 	case TMPL_TYPE_UNKNOWN:
 	case TMPL_TYPE_NULL:
 	case TMPL_TYPE_LIST:
-	case TMPL_TYPE_DATA:
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_ATTR_UNDEFINED:
 	case TMPL_TYPE_REGEX_STRUCT:
@@ -1511,10 +1597,8 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 	 *	Or, if it's from a "string" attribute, it needs re-parsing.
 	 *	Integers, IP addresses, etc. don't need re-parsing.
 	 */
-	if (cf_new_escape &&
-	    ((vpt->type != TMPL_TYPE_ATTR) ||
-	     (vpt->tmpl_da->type == PW_TYPE_STRING))) {
-	     	value_data_t vd;
+	if (cf_new_escape && (vpt->type != TMPL_TYPE_ATTR)) {
+	     	value_data_t	vd;
 
 		PW_TYPE type = PW_TYPE_STRING;
 
