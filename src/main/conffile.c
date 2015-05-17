@@ -1793,9 +1793,15 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 			 *	Don't add default - update with new types.
 			 */
 			switch (vpt->type) {
+			/*
+			 *	All attributes should have been defined by this point.
+			 */
+			case TMPL_TYPE_ATTR_UNDEFINED:
+				cf_log_err(&cp->item, "Unknown attribute '%s'", vpt->tmpl_unknown_name);
+				return -1;
+
 			case TMPL_TYPE_LITERAL:
 			case TMPL_TYPE_ATTR:
-			case TMPL_TYPE_ATTR_UNDEFINED:
 			case TMPL_TYPE_LIST:
 			case TMPL_TYPE_DATA:
 			case TMPL_TYPE_EXEC:
