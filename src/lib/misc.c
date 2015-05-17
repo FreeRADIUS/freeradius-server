@@ -1139,6 +1139,30 @@ bool is_whitespace(char const *value)
 	return true;
 }
 
+/** Check whether the string is made up of printable UTF8 chars
+ *
+ * @param value to check.
+ * @param len of value.
+ *
+ * @return
+ *	- true if the string is printable.
+ *	- false if the string contains non printable chars
+ */
+ bool is_printable(void const *value, size_t len)
+ {
+ 	uint8_t	const *p = value;
+ 	int	clen;
+ 	size_t	i;
+
+ 	for (i = 0; i < len; i++) {
+ 		clen = fr_utf8_char(p);
+ 		if (clen == 0) return false;
+ 		i += (size_t)clen;
+ 		p += clen;
+ 	}
+ 	return true;
+ }
+
 /** Check whether the string is all numbers
  *
  * @return
