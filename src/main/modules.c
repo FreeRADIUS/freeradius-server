@@ -684,7 +684,7 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 	 *	Now that ALL modules are instantiated, and ALL xlats
 	 *	are defined, go compile the config items marked as XLAT.
 	 */
-	if (node->entry->module->config && node->cs &&
+	if (node->entry->module->config &&
 	    (cf_section_parse_pass2(node->cs, node->insthandle,
 				    node->entry->module->config) < 0)) {
 		return NULL;
