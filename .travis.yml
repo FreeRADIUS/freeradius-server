@@ -87,6 +87,8 @@ before_script:
   - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 -a ${CC} = 'clang' ]; then make -j8 scan && [ "$(find build/plist/ -name *.html)" = '' ]; fi
 # Create RADIUS DB for Postgres
   - ./scripts/travis/postgresql-setup
+# Create RADIUS DB for MySQL
+  - ./scripts/travis/mysql-setup
 script:
   - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
 #  - if [ "${DO_BUILD}" = 'no' ]; then make deb; fi
