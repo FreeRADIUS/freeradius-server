@@ -716,6 +716,7 @@ size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
 size_t		fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen);
 uint32_t	fr_strtoul(char const *value, char **end);
 bool		is_whitespace(char const *value);
+bool		is_printable(void const *value, size_t len);
 bool		is_integer(char const *value);
 bool		is_zero(char const *value);
 
