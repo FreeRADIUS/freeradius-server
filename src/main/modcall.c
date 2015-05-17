@@ -1849,11 +1849,15 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	/*
 	 *	Limit the allowed template types.
 	 */
-	if ((vpt->type != TMPL_TYPE_LITERAL) &&
-	    (vpt->type != TMPL_TYPE_ATTR) &&
-	    (vpt->type != TMPL_TYPE_XLAT) &&
-	    (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) &&
-	    (vpt->type != TMPL_TYPE_EXEC)) {
+	switch (vpt->type) {
+	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_ATTR:
+	case TMPL_TYPE_XLAT:
+	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_EXEC:
+		break;
+
+	default:
 		talloc_free(vpt);
 		cf_log_err_cs(cs, "Invalid third argument for map");
 		return NULL;
