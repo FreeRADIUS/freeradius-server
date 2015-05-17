@@ -223,9 +223,8 @@ update {
 	&control:Tmp-Integer-0 !* ANY
 }
 
-# Retrieve the id column only (should result in noop)
-map sql 'SELECT id FROM radusergroup WHERE priority = 0' {
-	&control:Tmp-String-0	+= 'username'
+# Retrieve the username column only (should result in noop because not in map)
+map sql 'SELECT username FROM radusergroup WHERE priority = 0' {
 	&control:Tmp-String-1	+= 'groupname'
 	&control:Tmp-Integer-0	+= 'priority'
 }
