@@ -1560,7 +1560,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 
 		/*
 		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
-		 *	around the list. The attribute value has no quoting, so we choose
+		 *	around the list ref. The attribute value has no quoting, so we choose
 		 *	the quoting based on the data type, and whether it's printable.
 		 */
 		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
@@ -1577,7 +1577,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 
 		/*
 		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
-		 *	around the list. The attribute value has no quoting, so we choose
+		 *	around the attr ref. The attribute value has no quoting, so we choose
 		 *	the quoting based on the data type, and whether it's printable.
 		 */
 		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
