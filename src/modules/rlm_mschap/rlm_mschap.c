@@ -1108,11 +1108,10 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 	memset(nthashhash, 0, NT_DIGEST_LENGTH);
 
 	switch (method) {
+		/*
+		 *	Do normal authentication.
+		 */
 	case AUTH_INTERNAL:
-	/*
-	 *	Do normal authentication.
-	 */
-		{
 		/*
 		 *	No password: can't do authentication.
 		 */
@@ -1135,14 +1134,12 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 		    (password->da->attr == PW_NT_PASSWORD)) {
 			fr_md4_calc(nthashhash, password->vp_octets, MD4_DIGEST_LENGTH);
 		}
-
 		break;
-		}
-	case AUTH_NTLMAUTH_EXEC:
-	/*
-	 *	Run ntlm_auth
-	 */
-		{
+
+		/*
+		 *	Run ntlm_auth
+		 */
+	case AUTH_NTLMAUTH_EXEC: {
 		int	result;
 		char	buffer[256];
 		size_t	len;
@@ -1201,18 +1198,19 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 			REDEBUG("Invalid output from ntlm_auth: NT_KEY has non-hex values");
 			return -1;
 		}
-
 		break;
 		}
+
 #ifdef WITH_AUTH_WINBIND
+		/*
+		 *	Process auth via the wbclient library
+		 */
 	case AUTH_WBCLIENT:
-	/*
-	 *	Process auth via the wbclient library
-	 */
 		return do_auth_wbclient(inst, request, challenge, response, nthashhash);
 #endif
-	default:
+
 		/* We should never reach this line */
+	default:
 		RERROR("Internal error: Unknown mschap auth method (%d)", method);
 		return -1;
 	}
