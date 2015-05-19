@@ -8,6 +8,10 @@ sql_sqlite.test:
 
 SQLITE_TESTDIR := $(BUILD_DIR)/tests/modules/sql_sqlite
 
+$(SQLITE_TESTDIR)/acct_update_no_start: $(SQLITE_TESTDIR)/acct_start_conflict
+
+$(SQLITE_TESTDIR)/acct_start_conflict: $(SQLITE_TESTDIR)/acct_2_stop
+
 $(SQLITE_TESTDIR)/acct_2_stop: $(SQLITE_TESTDIR)/acct_1_update
 
 $(SQLITE_TESTDIR)/acct_1_update: $(SQLITE_TESTDIR)/acct_0_start
