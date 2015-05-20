@@ -337,15 +337,14 @@ authorize {
 	#  It also sets the EAP-Type attribute in the request
 	#  attribute list to the EAP type from the packet.
 	#
-	#  As of 2.0, the EAP module returns "ok" in the authorize stage
-	#  for TTLS and PEAP.  In 1.x, it never returned "ok" here, so
-	#  this change is compatible with older configurations.
+	#  The EAP module returns "ok" if it is not yet ready to
+	#  authenticate the user.  The configuration below checks for
+	#  that code, and stops processing the "authorize" section if
+	#  so.
 	#
-	#  The example below uses module failover to avoid querying all
-	#  of the following modules if the EAP module returns "ok".
-	#  Therefore, your LDAP and/or SQL servers will not be queried
-	#  for the many packets that go back and forth to set up TTLS
-	#  or PEAP.  The load on those servers will therefore be reduced.
+	#  Any LDAP and/or SQL servers will not be queried for the
+	#  initial set of packets that go back and forth to set up
+	#  TTLS or PEAP.
 	#
 	eap {
 		ok = return
@@ -355,19 +354,20 @@ authorize {
 	#  Pull crypt'd passwords from /etc/passwd or /etc/shadow,
 	#  using the system API's to get the password.  If you want
 	#  to read /etc/passwd or /etc/shadow directly, see the
-	#  passwd module in radiusd.conf.
+	#  mods-available/passwd module.
 	#
 #	unix
 
 	#
-	#  Read the 'users' file
+	#  Read the 'users' file.  In v3, this is located in
+	#  raddb/mods-config/files/authorize
 	files
 
 	#
 	#  Look in an SQL database.  The schema of the database
 	#  is meant to mirror the "users" file.
 	#
-	#  See "Authorization Queries" in sql.conf
+	#  See "Authorization Queries" in mods-available/sql
 	-sql
 
 	#
@@ -597,7 +597,7 @@ accounting {
 	#
 	#  Log traffic to an SQL database.
 	#
-	#  See "Accounting queries" in sql.conf
+	#  See "Accounting queries" in mods-available/sql
 	-sql
 
 	#
@@ -645,7 +645,7 @@ session {
 #	radutmp
 
 	#
-	#  See "Simultaneous Use Checking Queries" in sql.conf
+	#  See "Simultaneous Use Checking Queries" in mods-available/sql
 #	sql
 }
 
@@ -695,7 +695,7 @@ post-auth {
 	#
 	#  After authenticating the user, do another SQL query.
 	#
-	#  See "Authentication Logging Queries" in sql.conf
+	#  See "Authentication Logging Queries" in mods-available/sql
 	-sql
 
 	#
