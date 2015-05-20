@@ -1790,8 +1790,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
-if test x$with_rlm_redis != xno; then
-
+if test x$with_libfreeradius-redis != xno; then
 
         redis_include_dir=
 
@@ -3053,20 +3052,20 @@ $as_echo "$as_me: WARNING: hiredis libraries not found. Use --with-redis-lib-dir
       fail="$fail libhiredis"
     fi
 
-    targetname=rlm_redis
+    targetname=libfreeradius-redis
 else
     targetname=
-    echo \*\*\* module rlm_redis is disabled.
+    echo \*\*\* module libfreeradius-redis is disabled.
 fi
 
 if test "x$fail" != x; then
 	if test "x${enable_strict_dependencies}" = xyes; then
-		as_fn_error $? "set --without-rlm_redis to disable it explicitly." "$LINENO" 5
+		as_fn_error $? "set --without-libfreeradius-redis to disable it explicitly." "$LINENO" 5
 	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_redis." >&5
-$as_echo "$as_me: WARNING: silently not building rlm_redis." >&2;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_redis requires:$fail." >&5
-$as_echo "$as_me: WARNING: FAILURE: rlm_redis requires:$fail." >&2;};
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building libfreeradius-redis." >&5
+$as_echo "$as_me: WARNING: silently not building libfreeradius-redis." >&2;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: libfreeradius-redis requires:$fail." >&5
+$as_echo "$as_me: WARNING: FAILURE: libfreeradius-redis requires:$fail." >&2;};
 		targetname=
 	fi
 fi
@@ -3080,7 +3079,7 @@ mod_cflags="$SMART_CPPFLAGS"
   unset ac_cv_env_LIBS_set
   unset ac_cv_env_LIBS_value
 
-  ac_config_files="$ac_config_files all.mk"
+  ac_config_files="$ac_config_files libfreeradius-redis.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -3787,7 +3786,7 @@ cat >>$CONFIG_STATUS <<\_ACEOF || ac_write_fail=1
 for ac_config_target in $ac_config_targets
 do
   case $ac_config_target in
-    "all.mk") CONFIG_FILES="$CONFIG_FILES all.mk" ;;
+    "libfreeradius-redis.mk") CONFIG_FILES="$CONFIG_FILES libfreeradius-redis.mk" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac

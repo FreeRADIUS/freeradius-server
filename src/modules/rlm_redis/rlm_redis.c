@@ -17,164 +17,112 @@
 /**
  * $Id$
  * @file rlm_redis.c
- * @brief Driver for the REDIS noSQL key value stores.
+ * @brief Driver for the Redis noSQL key value store.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
- * @copyright 2011  TekSavvy Solutions <gabe@teksavvy.com>
+ * @author Gabriel Blanchard
+ *
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2011 TekSavvy Solutions <gabe@teksavvy.com>
+ * @copyright 2000,2006,2015  The FreeRADIUS server project
  */
 
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/rad_assert.h>
 
-#include "rlm_redis.h"
+#include "redis.h"
+
+#define MAX_QUERY_LEN	4096			//!< Maximum command length.
+#define MAX_REDIS_ARGS	16			//!< Maximum number of arguments.
+
+/** rlm_redis module instance
+ *
+ */
+typedef struct rlm_redis_t {
+	redis_conn_conf_t	*server;	//!< Connection parameters for the Redis server.
+						//!< Must be first field in this struct.
+
+	char const		*name;		//!< Instance name.
+	fr_connection_pool_t	*pool;		//!< Connection pool.
+} rlm_redis_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, REDIS_INST, hostname), NULL },
-	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, REDIS_INST, port), "6379" },
-	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, REDIS_INST, database), "0" },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, REDIS_INST, password), NULL },
+	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, redis_conn_conf_t, hostname), NULL },
+	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, redis_conn_conf_t, port), "6379" },
+	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, redis_conn_conf_t, database), "0" },
+	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, redis_conn_conf_t, password), NULL },
 
 	{ NULL, -1, 0, NULL, NULL} /* end the list */
 };
 
-static int _mod_conn_free(REDISSOCK *dissocket)
-{
-	redisFree(dissocket->conn);
-
-	if (dissocket->reply) {
-		freeReplyObject(dissocket->reply);
-		dissocket->reply = NULL;
-	}
-
-	return 0;
-}
-
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
-{
-	REDIS_INST *inst = instance;
-	REDISSOCK *dissocket = NULL;
-	redisContext *conn;
-	redisReply *reply = NULL;
-	char buffer[1024];
-
-	conn = redisConnect(inst->hostname, inst->port);
-	if (conn->err) return NULL;
-
-	if (inst->password) {
-		snprintf(buffer, sizeof(buffer), "AUTH %s", inst->password);
-
-		reply = redisCommand(conn, buffer);
-		if (!reply) {
-			ERROR("rlm_redis (%s): Failed to run AUTH", inst->xlat_name);
-
-		do_close:
-			if (reply) freeReplyObject(reply);
-			redisFree(conn);
-			return NULL;
-		}
-
-
-		switch (reply->type) {
-		case REDIS_REPLY_STATUS:
-			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("rlm_redis (%s): Failed authentication: reply %s",
-				       inst->xlat_name, reply->str);
-				goto do_close;
-			}
-			break;	/* else it's OK */
-
-		default:
-			ERROR("rlm_redis (%s): Unexpected reply to AUTH",
-			       inst->xlat_name);
-			goto do_close;
-		}
-	}
-
-	if (inst->database) {
-		snprintf(buffer, sizeof(buffer), "SELECT %d", inst->database);
-
-		reply = redisCommand(conn, buffer);
-		if (!reply) {
-			ERROR("rlm_redis (%s): Failed to run SELECT",
-			       inst->xlat_name);
-			goto do_close;
-		}
-
-
-		switch (reply->type) {
-		case REDIS_REPLY_STATUS:
-			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("rlm_redis (%s): Failed SELECT %d: reply %s",
-				       inst->xlat_name, inst->database,
-				       reply->str);
-				goto do_close;
-			}
-			break;	/* else it's OK */
-
-		default:
-			ERROR("rlm_redis (%s): Unexpected reply to SELECT",
-			       inst->xlat_name);
-			goto do_close;
-		}
-	}
-
-	dissocket = talloc_zero(ctx, REDISSOCK);
-	dissocket->conn = conn;
-	talloc_set_destructor(dissocket, _mod_conn_free);
-
-	return dissocket;
-}
-
 static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
-	REDIS_INST *inst = instance;
-	REDISSOCK *dissocket;
-	size_t ret = 0;
-	char *buffer_ptr;
-	char buffer[21];
+	rlm_redis_t	*inst = instance;
+	redis_conn_t	*conn;
+	redisReply	*reply;
+	size_t		ret = 0, len;
 
-	dissocket = fr_connection_get(inst->pool);
-	if (!dissocket) return -1;
+	int		argc;
+	char const	*argv[MAX_REDIS_ARGS];
+	char		argv_buf[MAX_QUERY_LEN];
 
-	/* Query failed for some reason, release socket and return */
-	if (rlm_redis_query(&dissocket, inst, fmt, request) < 0) {
-		goto release;
-	}
+	conn = fr_connection_get(inst->pool);
+	if (!conn) return -1;
 
-	switch (dissocket->reply->type) {
-	case REDIS_REPLY_INTEGER:
-		buffer_ptr = buffer;
-		snprintf(buffer_ptr, sizeof(buffer), "%lld",
-			 dissocket->reply->integer);
-
-		ret = strlen(buffer_ptr);
-		break;
-
-	case REDIS_REPLY_STATUS:
-	case REDIS_REPLY_STRING:
-		buffer_ptr = dissocket->reply->str;
-		ret = dissocket->reply->len;
-		break;
-
-	default:
-		buffer_ptr = NULL;
-		break;
-	}
-
-	if ((ret >= freespace) || (!buffer_ptr)) {
-		RDEBUG("rlm_redis (%s): Can't write result, insufficient space or unsupported result\n",
-		       inst->xlat_name);
+	argc = rad_expand_xlat(request, fmt, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
+	if (argc <= 0) {
+		REDEBUG("Invalid command: %s", fmt);
 		ret = -1;
 		goto release;
 	}
 
-	strlcpy(out, buffer_ptr, freespace);
+	/* Query failed for some reason, release socket and return */
+	reply = redisCommandArgv(conn->handle, argc, argv, NULL);
+	switch (fr_redis_command_status(conn, reply)) {
+	case 0:
+		break;
+
+	default:
+		rad_assert(0);
+		/* FALL-THROUGH */
+
+	case -1:
+		RERROR("Command failed: %s", fr_strerror());
+		freeReplyObject(reply);
+		ret = -1;
+		goto release;
+
+	case -2:
+		RERROR("Connection error: %s.  Reconnecting", fr_strerror());
+		ret = -1;
+		goto release;
+	}
+
+	switch (reply->type) {
+	case REDIS_REPLY_INTEGER:
+		ret = snprintf(out, freespace, "%lld", reply->integer);
+		break;
+
+	case REDIS_REPLY_STATUS:
+	case REDIS_REPLY_STRING:
+		len = (((size_t)reply->len) >= freespace) ? freespace - 1: reply->len;
+		memcpy(out, reply->str, len);
+		ret = reply->len;
+		break;
+
+	default:
+		REDEBUG("Server returned non-value type \"%s\"",
+			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+		ret = -1;
+		break;
+	}
+	freeReplyObject(reply);
 
 release:
-	rlm_redis_finish_query(dissocket);
-	fr_connection_release(inst->pool, dissocket);
+	fr_connection_release(inst->pool, conn);
 
 	return ret;
 }
@@ -185,104 +133,34 @@ release:
  */
 static int mod_detach(void *instance)
 {
-	REDIS_INST *inst = instance;
+	rlm_redis_t *inst = instance;
 
 	fr_connection_pool_free(inst->pool);
 
 	return 0;
 }
 
-/*
- *	Query the redis database
- */
-int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
-		    char const *query, REQUEST *request)
-{
-	REDISSOCK *dissocket;
-	int argc;
-	char const *argv[MAX_REDIS_ARGS];
-	char argv_buf[MAX_QUERY_LEN];
-
-	if (!query || !*query || !inst || !dissocket_p) {
-		return -1;
-	}
-
-	argc = rad_expand_xlat(request, query, MAX_REDIS_ARGS, argv, false,
-				sizeof(argv_buf), argv_buf);
-	if (argc <= 0)
-		return -1;
-
-	dissocket = *dissocket_p;
-
-	DEBUG2("executing %s ...", argv[0]);
-	dissocket->reply = redisCommandArgv(dissocket->conn, argc, argv, NULL);
-	if (!dissocket->reply) {
-		RERROR("%s", dissocket->conn->errstr);
-
-		dissocket = fr_connection_reconnect(inst->pool, dissocket);
-		if (!dissocket) {
-		error:
-			*dissocket_p = NULL;
-			return -1;
-		}
-
-		dissocket->reply = redisCommand(dissocket->conn, query);
-		if (!dissocket->reply) {
-			RERROR("Failed after re-connect");
-			fr_connection_del(inst->pool, dissocket);
-			goto error;
-		}
-
-		*dissocket_p = dissocket;
-	}
-
-	if (dissocket->reply->type == REDIS_REPLY_ERROR) {
-		RERROR("Query failed, %s", query);
-		return -1;
-	}
-
-	return 0;
-}
-
-/*
- *	Clear the redis reply object if any
- */
-int rlm_redis_finish_query(REDISSOCK *dissocket)
-{
-	if (!dissocket || !dissocket->reply) {
-		return -1;
-	}
-
-	freeReplyObject(dissocket->reply);
-	dissocket->reply = NULL;
-	return 0;
-}
-
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	REDIS_INST *inst = instance;
+	rlm_redis_t *inst = instance;
 
-	INFO("rlm_redis: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
+	fr_redis_version_print();
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+	inst->server->prefix = talloc_asprintf(inst, "rlm_redis (%s)", inst->name);
 
-	xlat_register(inst->xlat_name, redis_xlat, NULL, inst);
+	xlat_register(inst->name, redis_xlat, NULL, inst);
 
 	return 0;
 }
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	REDIS_INST *inst = instance;
+	rlm_redis_t *inst = instance;
 
-	inst->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, NULL);
-	if (!inst->pool) {
-		return -1;
-	}
-
-	inst->redis_query = rlm_redis_query;
-	inst->redis_finish_query = rlm_redis_finish_query;
+	inst->pool = fr_connection_pool_module_init(conf, inst->server, fr_redis_conn_create, NULL, NULL);
+	if (!inst->pool) return -1;
 
 	return 0;
 }
@@ -292,7 +170,7 @@ module_t rlm_redis = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "redis",
 	.type		= RLM_TYPE_THREAD_SAFE,
-	.inst_size	= sizeof(REDIS_INST),
+	.inst_size	= sizeof(rlm_redis_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
 	.instantiate	= mod_instantiate,

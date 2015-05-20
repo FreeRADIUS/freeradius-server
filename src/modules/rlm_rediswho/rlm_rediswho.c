@@ -19,41 +19,44 @@
  * @file rlm_rediswho.c
  * @brief Session tracking using redis.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
+ * @author Gabriel Blanchard
+ *
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2011  TekSavvy Solutions <gabe@teksavvy.com>
+ * @copyright 2000,2006  The FreeRADIUS server project
  */
 
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/rad_assert.h>
 
-#include <ctype.h>
+#include "../rlm_redis/redis.h"
 
-#include <rlm_redis.h>
+typedef struct rlm_rediswho {
+	redis_conn_conf_t	*server;	//!< Connection parameters for the Redis server.
+						//!< Must be first field in this struct.
 
-typedef struct rlm_rediswho_t {
-	char const *xlat_name;
-	CONF_SECTION *cs;
+	char const		*name;		//!< Instance name.
+	CONF_SECTION		*cs;
+	fr_connection_pool_t	*pool;		//!< Connection pool.
 
-	char const *redis_instance_name;
-	REDIS_INST *redis_inst;
+	int			expiry_time;	//!< Expiry time in seconds if no updates are received for a user
 
-	/*
-	 * 	expiry time in seconds if no updates are received for a user
-	 */
-	int expiry_time;
+	int			trim_count;	//!< How many session updates to keep track of per user.
 
-	/*
-	 *	How many session updates to keep track of per user
-	 */
-	int trim_count;
-	char const *insert;
-	char const *trim;
-	char const *expire;
+	char const		*insert;	//!< Command for inserting session data
+	char const		*trim;		//!< Command for trimming the session list.
+	char const		*expire;	//!< Command for expiring entries.
 } rlm_rediswho_t;
 
 static CONF_PARSER module_config[] = {
-	{ "redis_module_instance", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rediswho_t, redis_instance_name), "redis" },
+	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, redis_conn_conf_t, hostname), NULL },
+	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, redis_conn_conf_t, port), "6379" },
+	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, redis_conn_conf_t, database), "0" },
+	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, redis_conn_conf_t, password), NULL },
 
 	{ "trim_count", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), "-1" },
 
@@ -67,113 +70,106 @@ static CONF_PARSER module_config[] = {
 /*
  *	Query the database executing a command with no result rows
  */
-static int rediswho_command(char const *fmt, REDISSOCK **dissocket_p,
-			    rlm_rediswho_t *inst, REQUEST *request)
+static int rediswho_command(UNUSED rlm_rediswho_t *inst, REQUEST *request, char const *fmt, redis_conn_t **conn_p)
 {
-	REDISSOCK *dissocket;
-	int result = 0;
+	redisReply	*reply;
+	int		ret = -1;
 
-	if (!fmt) {
-		return 0;
-	}
+	int		argc;
+	char const	*argv[MAX_REDIS_ARGS];
+	char		argv_buf[MAX_REDIS_COMMAND_LEN];
 
-	if (inst->redis_inst->redis_query(dissocket_p, inst->redis_inst,
-					  fmt, request) < 0) {
+	if (!fmt || !*fmt) return 0;
 
-		ERROR("rediswho_command: database query error in: '%s'", fmt);
-		return -1;
+	argc = rad_expand_xlat(request, fmt, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
+ 	if (argc < 0) return -1;
 
-	}
-	dissocket = *dissocket_p;
-
-	switch (dissocket->reply->type) {
-	case REDIS_REPLY_INTEGER:
-		DEBUG("rediswho_command: query response %lld\n",
-		      dissocket->reply->integer);
-		if (dissocket->reply->integer > 0)
-			result = dissocket->reply->integer;
+	reply = redisCommandArgv((*conn_p)->handle, argc, argv, NULL);
+	switch (fr_redis_command_status(*conn_p, reply)) {
+	case 0:
 		break;
 
-	case REDIS_REPLY_STATUS:
+	default:
+		rad_assert(0);
+		/* FALL-THROUGH */
+
+	case -1:
+		RERROR("Command failed: %s", fr_strerror());
+		freeReplyObject(reply);
+		return -1;
+
+	case -2:
+		RERROR("Connection error: %s.  Reconnecting", fr_strerror());
+		return -1;
+	}
+
+	switch (reply->type) {
+	case REDIS_REPLY_INTEGER:
+		RDEBUG2("Query response %lld", reply->integer);
+		if (reply->integer > 0) ret = reply->integer;
+		break;
+
 	case REDIS_REPLY_STRING:
-		DEBUG("rediswho_command: query response %s\n",
-		      dissocket->reply->str);
+		REDEBUG2("Query response %s", reply->str);
 		break;
 
 	default:
 		break;
 	}
+	freeReplyObject(reply);
 
-	(inst->redis_inst->redis_finish_query)(dissocket);
-
-	return result;
+	return ret;
 }
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	module_instance_t *modinst;
 	rlm_rediswho_t *inst = instance;
 
-	inst->xlat_name = cf_section_name2(conf);
-
-	if (!inst->xlat_name)
-		inst->xlat_name = cf_section_name1(conf);
-
-	inst->cs = conf;
-
-	modinst = module_instantiate(cf_section_find("modules"),
-				       inst->redis_instance_name);
-	if (!modinst) {
-		ERROR("rediswho: failed to find module instance \"%s\"",
-		       inst->redis_instance_name);
-		return -1;
-	}
-
-	if (strcmp(modinst->entry->name, "rlm_redis") != 0) {
-		ERROR("rediswho: Module \"%s\""
-		       " is not an instance of the redis module",
-		       inst->redis_instance_name);
-		return -1;
-	}
-
-	inst->redis_inst = (REDIS_INST *) modinst->insthandle;
+	inst->pool = fr_connection_pool_module_init(conf, inst->server, fr_redis_conn_create, NULL, NULL);
+	if (!inst->pool) return -1;
 
 	return 0;
 }
 
-static int mod_accounting_all(REDISSOCK **dissocket_p,
-			      rlm_rediswho_t *inst, REQUEST *request)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	int result;
+	rlm_rediswho_t *inst = instance;
 
-	result = rediswho_command(inst->insert, dissocket_p, inst, request);
-	if (result < 0) {
-		return RLM_MODULE_FAIL;
-	}
+	fr_redis_version_print();
+
+	inst->cs = conf;
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+	inst->server->prefix = talloc_asprintf(inst, "rlm_rediswho (%s)", inst->name);
+
+	return 0;
+}
+
+static rlm_rcode_t mod_accounting_all(rlm_rediswho_t *inst, REQUEST *request, redis_conn_t **conn_p)
+{
+	int ret;
+
+	ret = rediswho_command(inst, request, inst->insert, conn_p);
+	if (ret < 0) return RLM_MODULE_FAIL;
 
 	/* Only trim if necessary */
-	if (inst->trim_count >= 0 && result > inst->trim_count) {
-		if (rediswho_command(inst->trim, dissocket_p,
-				     inst, request) < 0) {
-			return RLM_MODULE_FAIL;
-		}
+	if ((inst->trim_count >= 0) && (ret > inst->trim_count)) {
+		if (rediswho_command(inst, request, inst->trim, conn_p) < 0) return RLM_MODULE_FAIL;
 	}
 
-	if (rediswho_command(inst->expire, dissocket_p, inst, request) < 0) {
-		return RLM_MODULE_FAIL;
-	}
-
+	if (rediswho_command(inst, request, inst->expire, conn_p) < 0) return RLM_MODULE_FAIL;
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void * instance, REQUEST * request)
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
-	rlm_rcode_t rcode;
-	VALUE_PAIR * vp;
-	DICT_VALUE *dv;
-	CONF_SECTION *cs;
-	rlm_rediswho_t *inst = (rlm_rediswho_t *) instance;
-	REDISSOCK *dissocket;
+	rlm_rediswho_t 	*inst = instance;
+	rlm_rcode_t	rcode;
+	VALUE_PAIR	*vp;
+	DICT_VALUE	*dv;
+	CONF_SECTION	*cs;
+
+	redis_conn_t	*conn;
 
 	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (!vp) {
@@ -193,12 +189,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void * instance, REQUEST * re
 		return RLM_MODULE_NOOP;
 	}
 
-	dissocket = fr_connection_get(inst->redis_inst->pool);
-	if (!dissocket) return RLM_MODULE_FAIL;
+	conn = fr_connection_get(inst->pool);
+	if (!conn) return RLM_MODULE_FAIL;
 
-	rcode = mod_accounting_all(&dissocket, inst, request);
+	rcode = mod_accounting_all(inst, request, &conn);
 
-	if (dissocket) fr_connection_release(inst->redis_inst->pool, dissocket);
+	fr_connection_release(inst->pool, conn);
 
 	return rcode;
 }
@@ -211,6 +207,7 @@ module_t rlm_rediswho = {
 	.inst_size	= sizeof(rlm_rediswho_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
+	.bootstrap	= mod_bootstrap,
 	.methods = {
 		[MOD_ACCOUNTING]	= mod_accounting
 	},
