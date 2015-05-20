@@ -377,6 +377,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		}
 		if (redisAppendCommand(randle->handle, "EXPIREAT %b %i", c->key,
 				       c->key_len, c->expires) != REDIS_OK) goto append_error;
+		pipelined++;
 		RDEBUG3("EXEC");
 		if (redisAppendCommand(randle->handle, "EXEC") != REDIS_OK) goto append_error;
 		pipelined++;
