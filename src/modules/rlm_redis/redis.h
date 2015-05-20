@@ -34,8 +34,6 @@ RCSIDH(redis_h, "$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <hiredis/hiredis.h>
 
-#include "config.h"
-
 #define MAX_REDIS_COMMAND_LEN	4096
 #define MAX_REDIS_ARGS		16
 
@@ -80,3 +78,5 @@ int	fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out,
 int	fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], vp_map_t *map);
 
 void	fr_redis_version_print(void);
+
+#endif /* LIBFREERADIUS_REDIS_H */
