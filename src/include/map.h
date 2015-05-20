@@ -45,16 +45,12 @@ extern "C" {
  * @see vp_tmpl_t
  */
 typedef struct vp_map {
-	vp_tmpl_t		*lhs;	//!< Typically describes the attribute
-					//!< to add or modify.
-	vp_tmpl_t		*rhs;   //!< Typically describes a value or a
-					//!< src attribute to copy.
+	vp_tmpl_t		*lhs;	//!< Typically describes the attribute to add, modify or compare.
+	vp_tmpl_t		*rhs;   //!< Typically describes a literal value or a src attribute to copy or compare.
 
-	FR_TOKEN		op; 	//!< The operator that controls
-					//!< insertion of the dst attribute.
+	FR_TOKEN		op; 	//!< The operator that controls insertion of the dst attribute.
 
-	CONF_ITEM		*ci;	//!< Config item that the map was
-					//!< created from. Mainly used for
+	CONF_ITEM		*ci;	//!< Config item that the map was created from. Mainly used for
 					//!< logging validation errors.
 
 	struct vp_map		*next;	//!< The next valuepair map.
