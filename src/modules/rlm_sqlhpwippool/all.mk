@@ -1,7 +1,11 @@
-TARGETNAME	:= rlm_sqlhpwippool
+-include src/modules/rlm_sql/all.mk
 
-ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+ifneq "${TARGETNAME}" ""
+  TARGETNAME	:= rlm_sqlhpwippool
+  TARGET	:= $(TARGETNAME).a
+
+  # Be sure to NOT include the rlm_sql drivers
+  SUBMAKEFILES	:= 
 endif
 
 SOURCES		:= $(TARGETNAME).c
