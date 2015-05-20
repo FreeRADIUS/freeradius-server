@@ -222,7 +222,14 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 	 *	passed.  Delete it, and pretend it doesn't exist.
 	 */
 	if ((c->expires < request->timestamp) || (c->created < inst->config.epoch)) {
-		RDEBUG("Removing expired entry");
+		if (RDEBUG_ENABLED2) {
+			char *p;
+
+			p = fr_aprints(request, (char const *)key, key_len, '"');
+			RDEBUG2("Found entry for \"%s\", but it expired %li seconds ago.  Removing it", p,
+				request->timestamp - c->expires);
+			talloc_free(p);
+		}
 
 		inst->driver->expire(&inst->config, inst->driver_inst, request, handle, c);
 		cache_free(inst, &c);
