@@ -223,9 +223,9 @@ static int mod_init(rlm_python_t *inst)
 	inst->main_thread_state = PyThreadState_Get();	/* We need this for setting up thread local stuff */
 #endif
 	if (inst->python_path) {
-		char *path;
+		char path[4096];
 
-		memcpy(&path, &inst->python_path, sizeof(path));
+		strlcpy(path, inst->python_path, sizeof(path));
 		PySys_SetPath(path);
 	}
 
