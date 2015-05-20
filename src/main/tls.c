@@ -700,6 +700,7 @@ void tls_session_information(tls_session_t *tls_session)
 	char const *str_write_p, *str_version, *str_content_type = "";
 	char const *str_details1 = "", *str_details2= "";
 	REQUEST *request;
+	char buffer[32];
 
 	/*
 	 *	Don't print this out in the normal course of
@@ -738,7 +739,8 @@ void tls_session_information(tls_session_t *tls_session)
 #endif
 
 	default:
-		str_version = "Unknown TLS version";
+		sprintf(buffer, "UNKNOWN TLS VERSION ?%04X?", tls_session->info.version);
+		str_version = buffer;
 		break;
 	}
 
