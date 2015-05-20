@@ -157,8 +157,6 @@ authorize {
 		ok = return
 	}
 
-	reject
-
 	#
 	#  Pull crypt'd passwords from /etc/passwd or /etc/shadow,
 	#  using the system API's to get the password.  If you want
