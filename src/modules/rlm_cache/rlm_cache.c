@@ -257,7 +257,7 @@ static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t
 {
 	rad_assert(*c);
 
-	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_inst, request, handle, *c)) {
+	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_inst, request, *handle, *c)) {
 	case CACHE_RECONNECT:
 		if (cache_reconnect(handle, inst, request) == 0) continue;
 
