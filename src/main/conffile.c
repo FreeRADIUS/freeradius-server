@@ -194,6 +194,7 @@ void cf_pair_free(CONF_PAIR **cp)
 	 *	attr && value are allocated contiguous with cp.
 	 */
 
+	free((*cp)->item.filename);
 #ifndef NDEBUG
 	memset(*cp, 0, sizeof(cp));
 #endif
@@ -403,6 +404,7 @@ void cf_section_free(CONF_SECTION **cs)
 	/*
 	 * And free the section
 	 */
+	free((*cs)->item.filename);
 #ifndef NDEBUG
 	memset(*cs, 0, sizeof(cs));
 #endif
@@ -1090,7 +1092,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 
 		cpn = cf_pair_alloc(name, value, T_OP_SET, T_BARE_WORD, cs);
 		if (!cpn) return -1;
-		cpn->item.filename = "<internal>";
+		cpn->item.filename = strdup("<internal>");
 		cpn->item.lineno = 0;
 		cf_item_add(cs, cf_pairtoitem(cpn));
 	}
@@ -1745,7 +1747,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			 */
 		do_set:
 			cpn = cf_pair_alloc(buf1, value, t2, t3, this);
-			cpn->item.filename = filename;
+			cpn->item.filename = strdup(filename);
 			cpn->item.lineno = *lineno;
 			cf_item_add(this, cf_pairtoitem(cpn));
 			continue;
@@ -1838,7 +1840,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				return -1;
 			}
 			cf_item_add(this, cf_sectiontoitem(css));
-			css->item.filename = filename;
+			css->item.filename = strdup(filename);
 			css->item.lineno = *lineno;
 
 			/*
@@ -1936,7 +1938,7 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 		return -1;
 	}
 
-	if (!cs->item.filename) cs->item.filename = filename;
+	if (!cs->item.filename) cs->item.filename = strdup(filename);
 
 	/*
 	 *	Read the section.  It's OK to have EOF without a
@@ -1969,7 +1971,7 @@ CONF_SECTION *cf_file_read(const char *filename)
 	p = strrchr(cp->value, FR_DIR_SEP);
 	if (p) *p = '\0';
 
-	cp->item.filename = "internal";
+	cp->item.filename = strdup("<internal>");
 	cp->item.lineno = 0;
 	cf_item_add(cs, cf_pairtoitem(cp));
 
