@@ -120,8 +120,9 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 
 	redisReply		*reply;
 	vp_map_t		*head = NULL, **last = &head;
+#ifdef HAVE_TALLOC_POOLED_OBJECT
 	size_t			pool_size = 0;
-
+#endif
 	rlm_cache_entry_t	*c;
 
 	/*
@@ -174,6 +175,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		return CACHE_ERROR;
 	}
 
+#ifdef HAVE_TALLOC_POOLED_OBJECT
 	/*
 	 *	We can get a pretty good idea of the required size of the pool
 	 */
@@ -182,8 +184,16 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		if (reply->element[i]->type == REDIS_REPLY_STRING) pool_size += reply->element[i]->len + 1;
 	}
 
-	c = talloc_pooled_object(NULL,  rlm_cache_entry_t, pool_size, 1);
+	/*
+	 *	reply->elements gives us the number of chunks, as the maps are triplets, and there
+	 *	are three chunks per map
+	 */
 
+	c = talloc_pooled_object(NULL,  rlm_cache_entry_t, reply->elements, pool_size);
+	memset(&pool, 0, sizeof(rlm_cache_entry_t));
+#else
+	c = talloc_zero(NULL, rlm_cache_entry_t);
+#endif
 	/*
 	 *	Convert the key/value pairs back into maps
 	 */

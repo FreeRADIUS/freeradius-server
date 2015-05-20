@@ -1654,10 +1654,9 @@ dnl #
 dnl # Check for talloc_set_memlimit
 dnl # This was only included in version 2.0.8
 dnl #
-AC_CHECK_LIB(talloc, talloc_set_memlimit,
-  [
-    AC_DEFINE(HAVE_TALLOC_SET_MEMLIMIT, 1, [Define to 1 if you have the function talloc_set_memlimit.])
-  ]
+AC_CHECK_FUNCS(
+  talloc_set_memlimit \
+  talloc_pooled_object
 )
 
 dnl #
