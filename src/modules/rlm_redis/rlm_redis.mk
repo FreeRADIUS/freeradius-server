@@ -2,7 +2,7 @@
 #  might not always be available, and the TARGETNAME from the previous
 #  target may stick around.
 TARGETNAME=
--include libfreeradius-redis.mk
+-include $(top_builddir)/src/modules/rlm_redis/libfreeradius-redis.mk
 
 ifneq "${TARGETNAME}" ""
   TARGETNAME	:= rlm_redis
