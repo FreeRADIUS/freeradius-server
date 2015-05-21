@@ -594,6 +594,7 @@ fi
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 %{_libdir}/freeradius/rlm_sqlcounter.so
 %{_libdir}/freeradius/rlm_sqlippool.so
+%{_libdir}/freeradius/rlm_sqlhpwippool.so
 %{_libdir}/freeradius/rlm_unix.so
 %{_libdir}/freeradius/rlm_unpack.so
 %{_libdir}/freeradius/rlm_utf8.so
@@ -602,7 +603,6 @@ fi
 %if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
 %{_libdir}/freeradius/rlm_example.so
 %{_libdir}/freeradius/rlm_smsotp.so
-%{_libdir}/freeradius/rlm_sqlhpwippool.so
 %endif
 
 %files config
