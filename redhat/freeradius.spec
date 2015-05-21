@@ -557,6 +557,7 @@ fi
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_counter.so
 %{_libdir}/freeradius/rlm_cram.so
+%{_libdir}/freeradius/rlm_csv.so
 %{_libdir}/freeradius/rlm_date.so
 %{_libdir}/freeradius/rlm_detail.so
 %{_libdir}/freeradius/rlm_dhcp.so
