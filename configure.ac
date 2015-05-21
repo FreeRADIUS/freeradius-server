@@ -34,9 +34,9 @@ dnl #  Custom hackery to discover version at configure time
 dnl #
 dnl #############################################################
 
-RADIUSD_MAJOR_VERSION=`cat VERSION | sed 's/\..*//'`
-RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^[[^\.]]*\.//' | sed 's/\..*$//'`
-RADIUSD_INCRM_VERSION=`cat VERSION | sed 's/^.*\..*\.//' | sed 's/[[\.-]].*$//'`
+RADIUSD_MAJOR_VERSION=`cat VERSION | cut -f1 -d.`
+RADIUSD_MINOR_VERSION=`cat VERSION | cut -f2 -d.`
+RADIUSD_INCRM_VERSION=`cat VERSION | cut -f3 -d.`
 
 RADIUSD_VERSION=`echo | awk -v major="$RADIUSD_MAJOR_VERSION" \
 -v minor="$RADIUSD_MINOR_VERSION" \
