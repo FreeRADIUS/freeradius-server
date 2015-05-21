@@ -108,7 +108,7 @@ static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, cha
 
 	case REDIS_REPLY_STATUS:
 	case REDIS_REPLY_STRING:
-		len = (((size_t)reply->len) >= freespace) ? freespace - 1: reply->len;
+		len = (((size_t)reply->len) >= freespace) ? freespace - 1: (size_t) reply->len;
 		memcpy(out, reply->str, len);
 		ret = reply->len;
 		break;
