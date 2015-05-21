@@ -752,6 +752,7 @@ fi
 
 %files redis
 %defattr(-,root,root)
+%{_libdir}/freeradius/libfreeradius-redis.so
 %{_libdir}/freeradius/rlm_redis.so
 %{_libdir}/freeradius/rlm_rediswho.so
 %{_libdir}/freeradius/rlm_cache_redis.so
