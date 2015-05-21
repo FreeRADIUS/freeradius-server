@@ -532,7 +532,7 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	 */
 	if (vp) {
 		if (ttl == 0) {
-			cache_expire(inst, request, handle, &c);
+			cache_expire(inst, request, &handle, &c);
 			RDEBUG("Forcing expiry of entry");
 			rcode = RLM_MODULE_OK;
 			goto finish;
@@ -540,7 +540,7 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 
 		if (ttl < 0) {
 			RDEBUG("Forcing expiry of existing entry");
-			cache_expire(inst, request, handle, &c);
+			cache_expire(inst, request, &handle, &c);
 			ttl *= -1;
 			goto insert;
 		}
