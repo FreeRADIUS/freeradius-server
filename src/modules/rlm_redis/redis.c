@@ -329,7 +329,12 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
  * @param pool to allocate any buffers in.
  * @param out Where to write pointers to the member of the tuple. Unused elements should be
  *	a multiple of three, and it should have at least three unused elements.
+ * @param out_len Where to write the size of the data pointed to by the equivalent index
+ *	in the out array.
  * @param map to convert.
+ * @return
+ *	0 on success.
+ *	-1 on failure.
  */
 int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], vp_map_t *map)
 {
