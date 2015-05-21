@@ -132,7 +132,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 	if (RDEBUG_ENABLED3) {
 		char *p;
 
-		p = fr_aprints(NULL, (char *)key, key_len, '"');
+		p = fr_aprints(NULL, (char const *)key, key_len, '"');
 		RDEBUG3("LRANGE %s 0 -1", key);
 		talloc_free(p);
 	}
@@ -321,7 +321,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	*argv_p++ = command;
 	*argv_len_p++ = sizeof(command) - 1;
 
-	*argv_p++ = (char *)c->key;
+	*argv_p++ = (char const *)c->key;
 	*argv_len_p++ = c->key_len;
 
 	/*
@@ -355,7 +355,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	}
 
 	if (RDEBUG_ENABLED3) {
-		p = fr_aprints(request, (char *)c->key, c->key_len, '\0');
+		p = fr_aprints(request, (char const *)c->key, c->key_len, '\0');
 		RDEBUG3("DEL \"%s\"", p);
 		talloc_free(p);
 
