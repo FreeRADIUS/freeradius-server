@@ -11,6 +11,7 @@ Build-Depends: debhelper (>= 7.4),
  libjson-c-dev | libjson0-dev,
  libkrb5-dev,
  libldap2-dev,
+ libhiredis-dev,
  libpam0g-dev,
  libpcap-dev,
  libperl-dev,
@@ -120,6 +121,13 @@ Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, $
 Description: REST module for FreeRADIUS server
  The FreeRADIUS server can make calls to remote web APIs, and this module
  is necessary for that.
+
+Package: freeradius-redis
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: redis module for FreeRADIUS server
+ The FreeRADIUS server can communicate with the redis K/V store. This package
+ installs both the rlm_redis module, and the rlm_cache_redis driver.
 
 Package: freeradius-postgresql
 Architecture: any
