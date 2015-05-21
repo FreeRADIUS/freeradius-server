@@ -111,3 +111,8 @@ AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(libfreeradius-redis.mk)
+
+dnl # This is needed so that all.mk is not created unless configure is run
+dnl # so that it doesn't attempt to include libfreeradius-redis.mk which
+dnl # is also dependent on configure being run.
+AC_OUTPUT(all.mk)

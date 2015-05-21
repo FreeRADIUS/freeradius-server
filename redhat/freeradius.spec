@@ -23,7 +23,6 @@
 %{!?_with_rlm_idn: %global _without_rlm_idn --without-rlm_idn}
 %{!?_with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
 %{!?_with_rlm_redis: %global _without_rlm_redis --without-rlm_redis}
-%{!?_with_rlm_redis: %global _without_rlm_rediswho --without-rlm_rediswho}
 %{!?_with_rlm_ruby: %global _without_rlm_ruby --without-rlm_ruby}
 %{!?_with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
 %{!?_with_rlm_sql_freetds: %global _without_rlm_sql_freetds --without-rlm_sql_freetds}
@@ -351,7 +350,6 @@ export CFLAGS="$RPM_OPT_FLAGS -fpic"
         %{?_without_rlm_sql_freetds} \
         %{?_with_rlm_redis} \
         %{?_without_rlm_redis} \
-        %{?_without_rlm_rediswho} \
         %{?_with_rlm_ruby} \
         %{?_without_rlm_ruby}
 #        --with-modules="rlm_wimax" \
