@@ -22,7 +22,6 @@
 %if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
 %{!?_with_rlm_idn: %global _without_rlm_idn --without-rlm_idn}
 %{!?_with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
-%{!?_with_rlm_redis: %global _without_rlm_redis --without-rlm_redis}
 %{!?_with_rlm_ruby: %global _without_rlm_ruby --without-rlm_ruby}
 %{!?_with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
 %{!?_with_rlm_sql_freetds: %global _without_rlm_sql_freetds --without-rlm_sql_freetds}
