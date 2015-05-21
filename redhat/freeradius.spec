@@ -35,17 +35,22 @@ Group: System Environment/Daemons
 URL: http://www.freeradius.org/
 
 Source0: ftp://ftp.freeradius.org/pub/radius/freeradius-server-%{version}.tar.bz2
+
+%if %{?_unitdir:1}%{!?_unitdir:0}
+Source100: radiusd.service
+%else
 Source100: freeradius-radiusd-init
+%define initddir %{?_initddir:%{_initddir}}%{!?_initddir:%{_initrddir}}
+%endif
+
 Source102: freeradius-logrotate
 Source103: freeradius-pam-conf
-Source104: radiusd.service
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
 Obsoletes: freeradius < 3.1.0-1%{?dist}
 
 %define docdir %{_docdir}/freeradius-%{version}
-%define initddir %{?_initddir:%{_initddir}}%{!?_initddir:%{_initrddir}}
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -371,7 +376,7 @@ touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
 
 # For systemd based systems, that define _unitdir, install the radiusd unit
 %if %{?_unitdir:1}%{!?_unitdir:0}
-install -D -m 755 %{SOURCE104} $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
+install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
 # For SystemV install the init script
 %else
 install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{initddir}/radiusd
@@ -452,7 +457,11 @@ exit 0
 
 %post
 if [ $1 = 1 ]; then
+%if %{?_unitdir:1}%{!?_unitdir:0}
+  /bin/systemctl enable radiusd
+%else
   /sbin/chkconfig --add radiusd
+%endif
 fi
 
 %post config
@@ -465,8 +474,11 @@ fi
 
 %preun
 if [ $1 = 0 ]; then
-  /sbin/service radiusd stop > /dev/null 2>&1
+%if %{?_unitdir:1}%{!?_unitdir:0}
+  /bin/systemctl disable radiusd
+%else
   /sbin/chkconfig --del radiusd
+%endif
 fi
 
 
