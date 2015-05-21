@@ -323,13 +323,12 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
  * - Strings and octets will be encoded in their raw form.
  * - Other types will be converted to their printable form and will be encoded as strings.
  *
- * The reason this function exists, is because redisCommandArgv doesn't provide a facility
- * for specifying the type of arguments encoded, so integers get shoved into Redis as strings.
- *
  * @note lhs must be a #TMPL_TYPE_ATTR.
  * @note rhs must be a #TMPL_TYPE_DATA.
  *
- * @param out Command to append to. Must be a talloced buffer.
+ * @param pool to allocate any buffers in.
+ * @param out Where to write pointers to the member of the tuple. Unused elements should be
+ *	a multiple of three, and it should have at least three unused elements.
  * @param map to convert.
  */
 int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], vp_map_t *map)
