@@ -361,9 +361,17 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 
 	new = cf_pair_alloc(parent, cp->attr, cf_pair_value(cp),
 			    cp->op, cp->lhs_type, cp->rhs_type);
-	if (new) {
-		new->parsed = cp->parsed;
-		new->item.lineno = cp->item.lineno;
+	if (!new) return NULL;
+
+	new->parsed = cp->parsed;
+	new->item.lineno = cp->item.lineno;
+
+	/*
+	 *	Avoid mallocs if possible.
+	 */
+	if (strcmp(parent->item.filename, cp->item.filename) == 0) {
+		new->item.filename = parent->item.filename;
+	} else {
 		new->item.filename = talloc_strdup(new, cp->item.filename);
 	}
 
@@ -477,7 +485,12 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 	}
 
 	new->item.lineno = cs->item.lineno;
-	new->item.filename = talloc_strdup(new, cs->item.filename);
+
+	if (strcmp(parent->item.filename, cs->item.filename) == 0) {
+		new->item.filename = parent->item.filename;
+	} else {
+		new->item.filename = talloc_strdup(new, cs->item.filename);
+	}
 
 	for (ci = cs->children; ci; ci = ci->next) {
 		switch (ci->type) {
@@ -2401,7 +2414,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				      filename, *lineno);
 				return -1;
 			}
-			css->item.filename = talloc_strdup(css, filename);
+			css->item.filename = filename;
 			css->item.lineno = *lineno;
 
 			slen = fr_condition_tokenize(css, cf_section_to_item(css), ptr, &cond,
@@ -2636,7 +2649,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		do_set:
 			cpn = cf_pair_alloc(this, buf1, value, t2, t1, t3);
 			if (!cpn) return -1;
-			cpn->item.filename = talloc_strdup(cpn, filename);
+			cpn->item.filename = filename;
 			cpn->item.lineno = *lineno;
 			cpn->pass2 = pass2;
 			cf_item_add(this, &(cpn->item));
@@ -2686,7 +2699,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				return -1;
 			}
 
-			css->item.filename = talloc_strdup(css, filename);
+			css->item.filename = filename;
 			css->item.lineno = *lineno;
 			cf_item_add(this, &(css->item));
 
@@ -2742,13 +2755,19 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 /*
  *	Include one config file in another.
  */
-int cf_file_include(CONF_SECTION *cs, char const *filename)
+int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 {
 	FILE		*fp;
 	int		lineno = 0;
 	struct stat	statbuf;
 	time_t		*mtime;
 	CONF_DATA	*cd;
+	char const	*filename;
+
+	/*
+	 *	So we only need to do this once.
+	 */
+	filename = talloc_strdup(cs, filename_in);
 
 	DEBUG2("including configuration file %s", filename);
 
@@ -2765,15 +2784,6 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 			fclose(fp);
 			ERROR("Configuration file %s is globally writable.  "
 			      "Refusing to start due to insecure configuration.", filename);
-			return -1;
-		}
-#endif
-
-#if 0 && defined(S_IROTH)
-		if (statbuf.st_mode & S_IROTH) != 0) {
-			fclose(fp);
-			ERROR("Configuration file %s is globally readable.  "
-			      "Refusing to start due to insecure configuration", filename);
 			return -1;
 		}
 #endif
@@ -2807,7 +2817,7 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 		return -1;
 	}
 
-	if (!cs->item.filename) cs->item.filename = talloc_strdup(cs, filename);
+	if (!cs->item.filename) cs->item.filename = filename;
 
 	/*
 	 *	Read the section.  It's OK to have EOF without a
