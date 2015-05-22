@@ -2811,7 +2811,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	p = strrchr(cp->value, FR_DIR_SEP);
 	if (p) *p = '\0';
 
-	cp->item.filename = "internal";
+	cp->item.filename = "<internal>";
 	cp->item.lineno = -1;
 	cf_item_add(cs, &(cp->item));
 
