@@ -55,7 +55,7 @@ cache {
 
 	#  The key used to index the cache.  It is dynamically expanded
 	#  at run time.
-	key = "%{User-Name}"
+	key = &User-Name
 
 	#  The TTL of cache entries, in seconds.  Entries older than this
 	#  will be expired.
@@ -98,10 +98,10 @@ cache {
 		# <list>:<attribute> <op> <value>
 
 		# Cache all instances of Reply-Message in the reply list
-		&reply:Reply-Message += &reply:Reply-Message
+		&reply:Reply-Message := &reply:Reply-Message
 
 		# Add our own to show when the cache was last updated
-		&reply:Reply-Message += "Cache last updated at %t"
+		&reply:Reply-Message := "Cache last updated at %t"
 
 		&reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
 	}
