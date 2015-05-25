@@ -225,9 +225,10 @@ ldap {
 #		cacheable_name = 'no'
 #		cacheable_dn = 'no'
 
-		#  Override the normal cache attribute (<inst>-LDAP-Group)
-		#  and create a custom attribute.  This can help if multiple
-		#  module instances are used in fail-over.
+		#  Override the normal cache attribute (<inst>-LDAP-Group or
+		#  LDAP-Group if using the default instance) and create a
+		#  custom attribute.  This can help if multiple module instances 
+		#  are used in fail-over.
 #		cache_attribute = 'LDAP-Cached-Membership'
 	}
 
