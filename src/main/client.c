@@ -1263,7 +1263,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		/*
 		 *	Freed at the same time as the vp.
 		 */
-		if (RDEBUG_ENABLED2) strvalue = vp_aprints_value(vp, vp, '\'');
+		strvalue = vp_aprints_value(vp, vp, '\'');
 
 		switch (dynamic_config[i].type) {
 		case PW_TYPE_IPV4_ADDR:
