@@ -76,9 +76,10 @@ void cbtls_info(SSL const *s, int where, int ret)
  *	Fill in our 'info' with TLS data.
  */
 void cbtls_msg(int write_p, int msg_version, int content_type,
-	       void const *buf, size_t len,
+	       void const *inbuf, size_t len,
 	       SSL *ssl UNUSED, void *arg)
 {
+	uint8_t const *buf = inbuf;
 	tls_session_t *state = (tls_session_t *)arg;
 
 	/*
@@ -87,19 +88,19 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	 */
 	if (!state) return;
 
-	state->info.origin = (unsigned char)write_p;
-	state->info.content_type = (unsigned char)content_type;
+	state->info.origin = write_p;
+	state->info.content_type = content_type;
 	state->info.record_len = len;
 	state->info.version = msg_version;
-	state->info.initialized = 1;
+	state->info.initialized = true;
 
 	if (content_type == SSL3_RT_ALERT) {
-		state->info.alert_level = ((unsigned char const *)buf)[0];
-		state->info.alert_description = ((unsigned char const *)buf)[1];
+		state->info.alert_level = buf[0];
+		state->info.alert_description = buf[1];
 		state->info.handshake_type = 0x00;
 
 	} else if (content_type == SSL3_RT_HANDSHAKE) {
-		state->info.handshake_type = ((unsigned char const *)buf)[0];
+		state->info.handshake_type = buf[0];
 		state->info.alert_level = 0x00;
 		state->info.alert_description = 0x00;
 
