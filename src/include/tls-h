@@ -88,20 +88,21 @@ typedef enum {
  * 	or configure TLS not to exceed MAX_RECORD_SIZE.
  */
 typedef struct _record_t {
-	unsigned char data[MAX_RECORD_SIZE];
-	unsigned int  used;
+	uint8_t data[MAX_RECORD_SIZE];
+	size_t  used;
 } record_t;
 
 typedef struct _tls_info_t {
-	unsigned char	origin;
-	unsigned char	content_type;
-	unsigned char	handshake_type;
-	unsigned char	alert_level;
-	unsigned char	alert_description;
+	int		origin;
+	int		content_type;
+	uint8_t		handshake_type;
+	uint8_t		alert_level;
+	uint8_t		alert_description;
+	bool		initialized;
+
 	char 		info_description[256];
 	size_t		record_len;
 	int		version;
-	char		initialized;
 } tls_info_t;
 
 /*

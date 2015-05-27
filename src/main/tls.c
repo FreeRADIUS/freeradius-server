@@ -507,7 +507,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 
 	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
 	if (err != (int) ssn->dirty_in.used) {
-		RDEBUG("Failed writing %d to SSL BIO: %d", ssn->dirty_in.used,
+		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used,
 			err);
 		record_init(&ssn->dirty_in);
 		return 0;
@@ -3038,7 +3038,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 			ssn->dirty_in.used);
 	if (err != (int) ssn->dirty_in.used) {
 		record_init(&ssn->dirty_in);
-		RDEBUG("Failed writing %d to SSL BIO: %d", ssn->dirty_in.used, err);
+		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
 		return FR_TLS_FAIL;
 	}
 
@@ -3114,7 +3114,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		RERROR("FAIL: Unexpected ACK received.  Could not obtain session information");
 		return FR_TLS_INVALID;
 	}
-	if (ssn->info.initialized == 0) {
+	if (!ssn->info.initialized) {
 		RDEBUG("No SSL info available. Waiting for more SSL data");
 		return FR_TLS_REQUEST;
 	}

@@ -276,7 +276,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 */
 	if ((sock->ssn->clean_out.used < 20) ||
 	    (((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]) != (int) sock->ssn->clean_out.used)) {
-		RDEBUG("Received bad packet: Length %d contents %d",
+		RDEBUG("Received bad packet: Length %zd contents %d",
 		       sock->ssn->clean_out.used,
 		       (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]);
 		goto do_close;
