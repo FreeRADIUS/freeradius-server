@@ -1890,7 +1890,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 				snprintf(newchal + (i * 2), 3, "%02x", fr_rand() & 0xff);
 			}
 
-			snprintf(buffer, sizeof(buffer), "E=648 R=0 C=%s V=3 M=Password Expired", newchal);
+			snprintf(buffer, sizeof(buffer), "E=648 R=%d C=%s V=3 M=Password Expired",
+				 inst->allow_retry, newchal);
 
 			RDEBUG("Password has expired.  The user should retry authentication");
 			mschap_add_reply(request, *response->vp_octets, "MS-CHAP-Error", buffer, strlen(buffer));
