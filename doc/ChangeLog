@@ -47,6 +47,9 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  attributes. Closes #1013.  There is no perfect fix, tho.
 	* Fix security issues with EAP-PWD.
 	  See http://freeradius.org/security.html#eap-pwd-2015
+	* Fix dynamic clients read from SQL in non-debug mode
+	* MS-CHAP now allows retries (i.e. password change) when
+	  passwords are expired.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
