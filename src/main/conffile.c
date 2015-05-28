@@ -369,7 +369,7 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 	/*
 	 *	Avoid mallocs if possible.
 	 */
-	if (strcmp(parent->item.filename, cp->item.filename) == 0) {
+	if (!cp->item.filename || (strcmp(parent->item.filename, cp->item.filename) == 0)) {
 		new->item.filename = parent->item.filename;
 	} else {
 		new->item.filename = talloc_strdup(new, cp->item.filename);
@@ -486,7 +486,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 
 	new->item.lineno = cs->item.lineno;
 
-	if (strcmp(parent->item.filename, cs->item.filename) == 0) {
+	if (!cs->item.filename || (strcmp(parent->item.filename, cs->item.filename) == 0)) {
 		new->item.filename = parent->item.filename;
 	} else {
 		new->item.filename = talloc_strdup(new, cs->item.filename);
