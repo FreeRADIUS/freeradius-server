@@ -4137,8 +4137,6 @@ static void request_coa_originate(REQUEST *request)
 			       child_state_names[REQUEST_PROXIED]);
 #endif
 
-	if (we_are_master()) coa_separate(request->coa);
-
 	/*
 	 *	Set the state function, then the state, no child, and
 	 *	send the packet.
@@ -4155,7 +4153,7 @@ static void request_coa_originate(REQUEST *request)
 	 */
 	coa->proxy_listener->send(coa->proxy_listener, coa);
 
-	request_queue_or_run(coa, coa->process);
+	if (we_are_master()) coa_separate(request->coa);
 }
 
 
@@ -4351,6 +4349,11 @@ static void coa_separate(REQUEST *request)
 	(void) talloc_steal(NULL, request);
 	request->parent->coa = NULL;
 	request->parent = NULL;
+
+	if (we_are_master()) {
+		request->delay = 0;
+		coa_retransmit(request);
+	}
 }
 
 
