@@ -1297,6 +1297,14 @@ static void request_finish(REQUEST *request, int action)
 		rad_postauth(request);
 	}
 
+#ifdef WITH_COA
+	/*
+	 *	Maybe originate a CoA request.
+	 */
+	if ((action == FR_ACTION_RUN) && !request->proxy && request->coa) {
+		request_coa_originate(request);
+	}
+#endif
 
 	/*
 	 *	Clean up.  These are no longer needed.
@@ -1492,15 +1500,6 @@ static void request_running(REQUEST *request, int action)
 		{
 #ifdef DEBUG_STATE_MACHINE
 			if (rad_debug_lvl) printf("(%u) ********\tFinished\t********\n", request->number);
-#endif
-
-#ifdef WITH_COA
-			/*
-			 *	Maybe originate a CoA request.
-			 */
-			if ((action == FR_ACTION_RUN) && request->coa) {
-				request_coa_originate(request);
-			}
 #endif
 
 #ifdef WITH_PROXY
@@ -4110,6 +4109,8 @@ static void request_coa_originate(REQUEST *request)
 			       child_state_names[REQUEST_PROXIED]);
 #endif
 
+	if (we_are_master()) coa_separate(request->coa);
+
 	/*
 	 *	Set the state function, then the state, no child, and
 	 *	send the packet.
@@ -4125,6 +4126,8 @@ static void request_coa_originate(REQUEST *request)
 	 *	And send the packet.
 	 */
 	coa->proxy_listener->send(coa->proxy_listener, coa);
+
+	request_queue_or_run(coa, coa->process);
 }
 
 
@@ -4132,14 +4135,11 @@ static void coa_retransmit(REQUEST *request)
 {
 	uint32_t delay, frac;
 	struct timeval now, when, mrd;
+	char buffer[128];
 
 	VERIFY_REQUEST(request);
 
 	fr_event_now(el, &now);
-
-	/*
-	 *	FIXME: Enforce max_request_time
-	 */
 
 	if (request->delay == 0) {
 		/*
@@ -4177,8 +4177,6 @@ static void coa_retransmit(REQUEST *request)
 	 */
 	if (request->home_server->coa_mrc &&
 	    (request->num_coa_requests >= request->home_server->coa_mrc)) {
-		char buffer[128];
-
 		RERROR("Failing request - originate-coa ID %u, due to lack of any response from coa server %s port %d",
 		       request->proxy->id,
 			       inet_ntop(request->proxy->dst_ipaddr.af,
@@ -4245,6 +4243,13 @@ static void coa_retransmit(REQUEST *request)
 
 	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 
+	RDEBUG2("Sending duplicate CoA request to home server %s port %d - ID: %d",
+		inet_ntop(request->proxy->dst_ipaddr.af,
+			  &request->proxy->dst_ipaddr.ipaddr,
+			  buffer, sizeof(buffer)),
+		request->proxy->dst_port,
+		request->proxy->id);
+
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 }
@@ -4278,6 +4283,8 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
+		request_max_time(request);
+
 		if (request->parent) coa_separate(request);
 
 		coa_retransmit(request);
