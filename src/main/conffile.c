@@ -1172,7 +1172,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute, secret, file_input, cant_be_empty, tmpl, xlat, multi;
+	bool deprecated, required, attribute, secret, file_input, cant_be_empty, tmpl, multi;
 	char **q;
 	char const *value;
 	CONF_PAIR *cp = NULL;
@@ -1188,7 +1188,6 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	file_input = (type == PW_TYPE_FILE_INPUT);	/* check, not and */
 	cant_be_empty = (type & PW_TYPE_NOT_EMPTY);
 	tmpl = (type & PW_TYPE_TMPL);
-	xlat = (type & PW_TYPE_XLAT);
 	multi = (type & PW_TYPE_MULTI);
 
 	if (attribute) required = true;
@@ -1277,7 +1276,6 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		}
 
 		rad_assert(!attribute);
-		rad_assert(!xlat);
 		vpt = tmpl_alloc(cs, TMPL_TYPE_LITERAL, value, strlen(value));
 		*(vp_tmpl_t **)data = vpt;
 
