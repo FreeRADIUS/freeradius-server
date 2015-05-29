@@ -4148,12 +4148,12 @@ static void request_coa_originate(REQUEST *request)
 	coa->child_pid = NO_SUCH_CHILD_PID;
 #endif
 
+	if (we_are_master()) coa_separate(request->coa);
+
 	/*
 	 *	And send the packet.
 	 */
 	coa->proxy_listener->send(coa->proxy_listener, coa);
-
-	if (we_are_master()) coa_separate(request->coa);
 }
 
 
