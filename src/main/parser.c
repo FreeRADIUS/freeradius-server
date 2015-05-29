@@ -54,7 +54,7 @@ size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *in)
 	char *end = buffer + bufsize - 1;
 	fr_cond_t const *c = in;
 
-	rad_assert(buffsize > 0);
+	rad_assert(bufsize > 0);
 
 next:
 	if (!c) {
