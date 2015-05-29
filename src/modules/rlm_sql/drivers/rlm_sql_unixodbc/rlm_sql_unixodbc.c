@@ -239,16 +239,18 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 	long err_handle;
 	int state;
 
+	*out = NULL;
+
 	handle->row = NULL;
 
 	err_handle = SQLFetch(conn->stmt);
-	if (err_handle == SQL_NO_DATA_FOUND) return 0;
+	if (err_handle == SQL_NO_DATA_FOUND) return RLM_SQL_OK;
 
 	if ((state = sql_check_error(err_handle, handle, config))) return state;
 
 	*out = handle->row = conn->row;
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)

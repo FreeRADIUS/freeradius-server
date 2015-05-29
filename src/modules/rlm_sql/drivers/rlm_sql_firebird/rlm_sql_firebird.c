@@ -226,7 +226,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 
 	if (conn->statement_type != isc_info_sql_stmt_exec_procedure) {
 		res = fb_fetch(conn);
-		if (res == 100) return 0;
+		if (res == 100) return RLM_SQL_OK;
 		if (res) {
 			ERROR("rlm_sql_firebird. Fetch problem: %s", conn->error);
 
@@ -240,7 +240,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 
 	*out = handle->row = conn->row;
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 /** End the select query, such as freeing memory or result.

@@ -253,7 +253,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 	/* XXX Check rc for database down, if so, return RLM_SQL_RECONNECT */
 
 	*out = handle->row = conn->row;
-	return 0;
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config)

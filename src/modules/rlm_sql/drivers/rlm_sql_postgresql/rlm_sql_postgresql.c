@@ -383,8 +383,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 	*out = NULL;
 	handle->row = NULL;
 
-	if (conn->cur_row >= PQntuples(conn->result))
-		return 0;
+	if (conn->cur_row >= PQntuples(conn->result)) return RLM_SQL_OK;
 
 	free_result_row(conn);
 
@@ -402,7 +401,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, U
 		*out = handle->row = conn->row;
 	}
 
-	return 0;
+	return RLM_SQL_OK;
 }
 
 static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
