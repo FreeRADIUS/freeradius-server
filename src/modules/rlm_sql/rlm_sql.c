@@ -282,7 +282,11 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 	char const	*value = uctx;
 
 	vp = pairalloc(ctx, map->lhs->tmpl_da);
-	if (pairparsevalue(vp, value, talloc_array_length(value) - 1) < 0) {
+	/*
+	 *	Buffer not always talloced, sometimes it's
+	 *	just a pointer to a field in a result struct.
+	 */
+	if (pairparsevalue(vp, value, strlen(value)) < 0) {
 		char *escaped;
 
 		escaped = fr_aprints(vp, value, talloc_array_length(value), '"');
