@@ -419,6 +419,9 @@ error:
  */
 static int switch_users(CONF_SECTION *cs)
 {
+	bool do_suid = false;
+	bool do_sgid = false;
+
 	/*
 	 *	Get the current maximum for core files.  Do this
 	 *	before anything else so as to ensure it's properly
@@ -440,25 +443,34 @@ static int switch_users(CONF_SECTION *cs)
 		return 0;
 	}
 
-
 #ifdef HAVE_GRP_H
-	/*  Set GID.  */
+	/*
+	 *	Get the correct GID for the server.
+	 */
+	server_gid = getgid();
+
 	if (gid_name) {
 		struct group *gr;
 
 		gr = getgrnam(gid_name);
-		if (gr == NULL) {
+		if (!gr) {
 			fprintf(stderr, "%s: Cannot get ID for group %s: %s\n",
 				progname, gid_name, fr_syserror(errno));
 			return 0;
 		}
-		server_gid = gr->gr_gid;
-	} else {
-		server_gid = getgid();
+
+		if (server_gid != gr->gr_gid) {
+			server_gid = gr->gr_gid;
+			do_sgid = true;
+		}
 	}
 #endif
 
-	/*  Set UID.  */
+	/*
+	 *	Get the correct UID for the server.
+	 */
+	server_uid = getuid();
+
 	if (uid_name) {
 		struct passwd *user;
 
@@ -468,25 +480,28 @@ static int switch_users(CONF_SECTION *cs)
 			return 0;
 		}
 
-		if (getuid() == user->pw_uid) {
-			uid_name = NULL;
-		} else {
-
+		/*
+		 *	We're not the correct user.  Go set that.
+		 */
+		if (server_uid != user->pw_uid) {
 			server_uid = user->pw_uid;
-#ifdef HAVE_INITGROUPS
-			if (initgroups(uid_name, server_gid) < 0) {
-				fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
-					progname, uid_name, fr_syserror(errno));
-				talloc_free(user);
-				return 0;
-			}
-#endif
+			do_suid = true;
 		}
+
+#ifdef HAVE_INITGROUPS
+		if (initgroups(uid_name, server_gid) < 0) {
+			fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
+				progname, uid_name, fr_syserror(errno));
+			talloc_free(user);
+			return 0;
+		}
+#endif
 		talloc_free(user);
-	} else {
-		server_uid = getuid();
 	}
 
+	/*
+	 *	Do chroot BEFORE changing UIDs.
+	 */
 	if (chroot_dir) {
 		if (chroot(chroot_dir) < 0) {
 			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
@@ -512,40 +527,51 @@ static int switch_users(CONF_SECTION *cs)
 	}
 
 #ifdef HAVE_GRP_H
-	/*  Set GID.  */
-	if (gid_name && (setgid(server_gid) < 0)) {
-		fprintf(stderr, "%s: Failed setting group to %s: %s",
-			progname, gid_name, fr_syserror(errno));
-		return 0;
+	/*
+	 *	Set the GID.  Don't bother checking it.
+	 */
+	if (do_sgid) {
+		if (setgid(server_gid) < 0){
+			fprintf(stderr, "%s: Failed setting group to %s: %s",
+				progname, gid_name, fr_syserror(errno));
+			return 0;
+		}
 	}
 #endif
-
+	
 	/*
-	 *	Just before losing root permissions, ensure that the
-	 *	log files have the correct owner && group.
-	 *
-	 *	We have to do this because the log file MAY have been
-	 *	specified on the command-line.
+	 *	If we don't already have a log file open, open one
+	 *	now.  We may not have been logging anything yet.  The
+	 *	server normally starts up fairly quietly.
 	 */
-	if (uid_name || gid_name) {
-		if ((default_log.dst == L_DST_FILES) &&
-		    (default_log.fd < 0)) {
-			default_log.fd = open(main_config.log_file,
-					      O_WRONLY | O_APPEND | O_CREAT, 0640);
-			if (default_log.fd < 0) {
-				fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", main_config.log_file, fr_syserror(errno));
-				return 0;
-			}
-
-			if (chown(main_config.log_file, server_uid, server_gid) < 0) {
-				fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n",
-					progname, main_config.log_file, fr_syserror(errno));
-				return 0;
-			}
+	if ((default_log.dst == L_DST_FILES) &&
+	    (default_log.fd < 0)) {
+		default_log.fd = open(main_config.log_file,
+				      O_WRONLY | O_APPEND | O_CREAT, 0640);
+		if (default_log.fd < 0) {
+			fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", main_config.log_file, fr_syserror(errno));
+			return 0;
 		}
 	}
 
-	if (uid_name) {
+	/*
+	 *	If we need to change UID, ensure that the log files
+	 *	have the correct owner && group.
+	 *
+	 *	We have to do this because some log files MAY already
+	 *	have been written as root.  We need to change them to
+	 *	have the correct ownership before proceeding.
+	 */
+	if ((do_suid || do_sgid) &&
+	    (default_log.dst == L_DST_FILES)) {
+		if (fchown(default_log.fd, server_uid, server_gid) < 0) {
+			fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n",
+				progname, main_config.log_file, fr_syserror(errno));
+			return 0;
+		}
+	}
+
+	if (do_suid) {
 		rad_suid_set_down_uid(server_uid);
 		rad_suid_down();
 	}
