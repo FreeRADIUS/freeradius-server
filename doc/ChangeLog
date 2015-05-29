@@ -27,6 +27,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  add the clients to the global list.
 	* When reading dynamic clients from a file, don't expire them
 	  if the underlying file is unchanged.
+	* Allow the server to originate CoA requests from the post-auth
+	  stage.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
@@ -50,6 +52,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* Fix dynamic clients read from SQL in non-debug mode
 	* MS-CHAP now allows retries (i.e. password change) when
 	  passwords are expired.
+	* Allow "user=radiusd" when the server is already user
+	  "radiusd"
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
@@ -946,7 +950,7 @@ FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Added EAP-PWD implementation from Dan Harkins
 	* Added connection pools for modules. This unifies connection
 	  management which was previously different for different modules.
-	* SQL now uses the connection pool.  See mods-available/sql
+l	* SQL now uses the connection pool.  See mods-available/sql
 	* SQL now supports arbitrary Acct-Status-Types.
 	  These changes are not compatible with 2.x.
 	* SQL now has full support for SQLite.  See raddb/sql/main/sqlite/
