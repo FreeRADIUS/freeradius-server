@@ -54,7 +54,14 @@ size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *in)
 	char *end = buffer + bufsize - 1;
 	fr_cond_t const *c = in;
 
+	rad_assert(buffsize > 0);
+
 next:
+	if (!c) {
+		buffer[0] = '\0';
+		return 0;
+	}
+
 	if (c->negate) {
 		*(p++) = '!';	/* FIXME: only allow for child? */
 	}
