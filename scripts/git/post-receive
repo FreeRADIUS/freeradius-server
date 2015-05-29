@@ -9,11 +9,15 @@
 #
 # Copyright 2012  Arran Cudbard-Bell <a.cudbard-bell@freeradius.org>
 
+PATH=/bin:/usr/bin:/usr/sbin:/sbin
 # Tag to update when we successfully manage to start the server with a new configuration
 : ${STABLE_TAG='stable'}
 
 # Descriptive name of daemon
 : ${DAEMON_DESC='FreeRADIUS'}
+
+# Init script for radiusd
+: ${DAEMON_STATUS='/etc/init.d/radiusd status'}
 
 # Command used to restart the RADIUS daemon
 : ${DAEMON_REST='radmin -e hup'}
@@ -65,6 +69,13 @@ conf_check () {
 	return $ret
 }
 
+daemon_status () {
+	echo -n "Checking if radiusd is running ... "
+	$DAEMON_STATUS; ret=$?
+
+	return $ret
+}
+
 daemon_restart () {
 	echo -n "Restarting server... "
 
@@ -113,7 +124,7 @@ if ! conf_check; then
 	conf_rollback
 	exit 64
 else
-	if ! daemon_restart; then
+	if daemon_status && ! daemon_restart ; then
 		if ! conf_rollback; then
 			echo "WARNING: Manually verify $DAEMON_DESC status immediately!"
 			exit 64
