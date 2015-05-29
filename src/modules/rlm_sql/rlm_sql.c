@@ -419,7 +419,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 	 *	so we have to do the count here.
 	 */
 	for (ret = rlm_sql_fetch_row(&row, inst, request, &handle), rows = 0;
-	     ret == RLM_SQL_OK;
+	     (ret == RLM_SQL_OK) && row;
 	     ret = rlm_sql_fetch_row(&row, inst, request, &handle), rows++) {
 		for (map = maps, j = 0;
 		     map && (j < MAX_SQL_FIELD_INDEX);
