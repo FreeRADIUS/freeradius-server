@@ -486,16 +486,16 @@ static int switch_users(CONF_SECTION *cs)
 		if (server_uid != user->pw_uid) {
 			server_uid = user->pw_uid;
 			do_suid = true;
+#ifdef HAVE_INITGROUPS
+			if (initgroups(uid_name, server_gid) < 0) {
+				fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
+					progname, uid_name, fr_syserror(errno));
+				talloc_free(user);
+				return 0;
+			}
+#endif
 		}
 
-#ifdef HAVE_INITGROUPS
-		if (initgroups(uid_name, server_gid) < 0) {
-			fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
-				progname, uid_name, fr_syserror(errno));
-			talloc_free(user);
-			return 0;
-		}
-#endif
 		talloc_free(user);
 	}
 
