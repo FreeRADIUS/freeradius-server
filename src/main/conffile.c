@@ -450,7 +450,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1, char con
  * @note recursively duplicates any child sections.
  * @note does not duplicate any data associated with a section, or its child sections.
  *
- * @param parent section.
+ * @param parent section (may be NULL).
  * @param cs to duplicate.
  * @param name1 of new section.
  * @param name2 of new section.
@@ -475,7 +475,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 
 	new->item.lineno = cs->item.lineno;
 
-	if (!cs->item.filename || (strcmp(parent->item.filename, cs->item.filename) == 0)) {
+	if (!cs->item.filename || (parent && (strcmp(parent->item.filename, cs->item.filename) == 0))) {
 		new->item.filename = parent->item.filename;
 	} else {
 		new->item.filename = talloc_strdup(new, cs->item.filename);
