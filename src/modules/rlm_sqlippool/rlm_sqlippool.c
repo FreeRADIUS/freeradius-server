@@ -87,18 +87,18 @@ typedef struct rlm_sqlippool_t {
 
 #ifdef WITH_PROXY
 						/* Pre proxy sequence */
-	char const	*preproxy_begin;	//<! SQL query to begin
-	char const	*preproxy_clear;	//<! SQL query to clear an IP.
-	char const	*preproxy_find;		//<! SQL query to find an used IP.
-	char const	*preproxy_update;	//<! SQL query to update an IP entry.
-	char const	*preproxy_commit;	//<! SQL query to commit.
+	char const	*preproxy_begin;	//!< SQL query to begin
+	char const	*preproxy_clear;	//!< SQL query to clear an IP.
+	char const	*preproxy_find;		//!< SQL query to find an used IP.
+	char const	*preproxy_update;	//!< SQL query to update an IP entry.
+	char const	*preproxy_commit;	//!< SQL query to commit.
 
 						/* Post proxy sequence */
-	char const	*postproxy_begin;	//<! SQL query to begin
-	char const	*postproxy_clear;	//<! SQL query to clear an IP.
-	char const	*postproxy_find;	//<! SQL query to find an used IP.
-	char const	*postproxy_update;	//<! SQL query to update an IP entry.
-	char const	*postproxy_commit;	//<! SQL query to commit.
+	char const	*postproxy_begin;	//!< SQL query to begin
+	char const	*postproxy_clear;	//!< SQL query to clear an IP.
+	char const	*postproxy_find;	//!< SQL query to find an used IP.
+	char const	*postproxy_update;	//!< SQL query to update an IP entry.
+	char const	*postproxy_commit;	//!< SQL query to commit.
 #endif
 
 						/* Logging Section */
