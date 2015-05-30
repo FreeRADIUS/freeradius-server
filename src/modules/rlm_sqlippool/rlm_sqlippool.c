@@ -49,7 +49,9 @@ typedef struct rlm_sqlippool_t {
 	int		framed_ip_address; 	//!< the attribute number for Framed-IP(v6)-Address
 
 	time_t		last_clear;		//!< So we only do it once a second.
+#ifdef WITH_PROXY
 	time_t		proxy_last_clear;	//!< So we only do it once a second (for proxy section)
+#endif
 	char const	*allocate_begin;	//!< SQL query to begin.
 	char const	*allocate_clear;	//!< SQL query to clear an IP.
 	char const	*allocate_find;		//!< SQL query to find an unused IP.
@@ -83,6 +85,7 @@ typedef struct rlm_sqlippool_t {
 	char const	*off_clear;		//!< SQL query to clear an entire NAS.
 	char const	*off_commit;		//!< SQL query to commit.
 
+#ifdef WITH_PROXY
 						/* Pre proxy sequence */
 	char const	*preproxy_begin;	//<! SQL query to begin
 	char const	*preproxy_clear;	//<! SQL query to clear an IP.
@@ -96,6 +99,7 @@ typedef struct rlm_sqlippool_t {
 	char const	*postproxy_find;	//<! SQL query to find an used IP.
 	char const	*postproxy_update;	//<! SQL query to update an IP entry.
 	char const	*postproxy_commit;	//<! SQL query to commit.
+#endif
 
 						/* Logging Section */
 	char const	*log_exists;		//!< There was an ip address already assigned.
