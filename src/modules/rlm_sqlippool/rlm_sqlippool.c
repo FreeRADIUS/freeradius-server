@@ -49,6 +49,7 @@ typedef struct rlm_sqlippool_t {
 	int		framed_ip_address; 	//!< the attribute number for Framed-IP(v6)-Address
 
 	time_t		last_clear;		//!< So we only do it once a second.
+	time_t		proxy_last_clear;	//!< So we only do it once a second (for proxy section)
 	char const	*allocate_begin;	//!< SQL query to begin.
 	char const	*allocate_clear;	//!< SQL query to clear an IP.
 	char const	*allocate_find;		//!< SQL query to find an unused IP.
@@ -81,6 +82,20 @@ typedef struct rlm_sqlippool_t {
 	char const	*off_begin;		//!< SQL query to begin.
 	char const	*off_clear;		//!< SQL query to clear an entire NAS.
 	char const	*off_commit;		//!< SQL query to commit.
+
+						/* Pre proxy sequence */
+	char const	*preproxy_begin;	//<! SQL query to begin
+	char const	*preproxy_clear;	//<! SQL query to clear an IP.
+	char const	*preproxy_find;		//<! SQL query to find an used IP.
+	char const	*preproxy_update;	//<! SQL query to update an IP entry.
+	char const	*preproxy_commit;	//<! SQL query to commit.
+
+						/* Post proxy sequence */
+	char const	*postproxy_begin;	//<! SQL query to begin
+	char const	*postproxy_clear;	//<! SQL query to clear an IP.
+	char const	*postproxy_find;	//<! SQL query to find an used IP.
+	char const	*postproxy_update;	//<! SQL query to update an IP entry.
+	char const	*postproxy_commit;	//<! SQL query to commit.
 
 						/* Logging Section */
 	char const	*log_exists;		//!< There was an ip address already assigned.
@@ -198,6 +213,27 @@ static CONF_PARSER module_config[] = {
 	{ "off-commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_DEPRECATED, rlm_sqlippool_t, off_commit), NULL },
 	{ "off_commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, off_commit), "COMMIT" },
 
+#ifdef WITH_PROXY
+	{ "preproxy_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, preproxy_begin), NULL },
+
+	{ "preproxy_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, preproxy_clear), NULL },
+
+	{ "preproxy_commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, preproxy_commit), NULL },
+
+	{ "preproxy_find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, preproxy_find), NULL },
+
+	{ "preproxy_update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, preproxy_update), NULL },
+
+	{ "postproxy_begin", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, postproxy_begin), NULL },
+
+	{ "postproxy_clear", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, postproxy_clear), NULL },
+
+	{ "postproxy_commit", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, postproxy_commit), NULL },
+
+	{ "postproxy_find", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, postproxy_find), NULL },
+
+	{ "postproxy_update", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sqlippool_t, postproxy_update), NULL },
+#endif
 	{ "messages", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) message_config },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -300,9 +336,9 @@ static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sq
 	int ret;
 
 	/*
-	 *	If we don't have a command, do nothing.
+	 *	If we don't have a command or command is an empty string, do nothing.
 	 */
-	if (!*fmt) return 0;
+	if (!fmt || !*fmt || strlen(fmt)<=0) return 0;
 
 	/*
 	 *	@todo this needs to die (should just be done in xlat expansion)
@@ -341,6 +377,11 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 	char *expanded = NULL;
 
 	int rlen, retval;
+
+	/*
+	 *	If we don't have a command or command is an empty string, do nothing.
+	 */
+	if (!fmt || !*fmt || strlen(fmt)<=0) return 0;
 
 	/*
 	 *	@todo this needs to die (should just be done in xlat expansion)
@@ -722,6 +763,176 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	return rcode;
 }
 
+#ifdef WITH_PROXY
+
+/**
+ * Internal function for handle PRE_PROXY and POST_PROXY sections.
+ * @param instance
+ * @param request
+ * @param proxy_section    Identify section: 0 --> PRE_PROXY, 1 --> POST_PROXY.
+ */
+static rlm_rcode_t sqlippool_proxy (void *instance, REQUEST *request, char proxy_section)
+{
+	rlm_sqlippool_t *inst = (rlm_sqlippool_t *) instance;
+	char allocation[MAX_STRING_LEN];
+	int allocation_len;
+	VALUE_PAIR *vp;
+	rlm_sql_handle_t *handle = NULL;
+	time_t now;
+
+	// Note: Avoid check if is already preset Framed-IP-Address to permit
+	// override of the field.
+
+	handle = fr_connection_get(inst->sql_inst->pool);
+	if (!handle) {
+		REDEBUG("cannot get sql connection");
+		return RLM_MODULE_FAIL;
+	}
+
+	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	Limit the number of clears we do.  There are minor
+	 *	race conditions for the check, but so what.  The
+	 *	actual work is protected by a transaction.  The idea
+	 *	here is that if we're allocating 100 IPs a second,
+	 *	we're only do 1 CLEAR per second.
+	 *	TODO: see if could be correct use last_clear field instead of
+	 *	      proxy_last_clear
+	 */
+	now = time(NULL);
+	if (inst->proxy_last_clear < now) {
+		inst->proxy_last_clear = now;
+
+		if (proxy_section) {
+			// POST_PROXY section
+			DO(postproxy_begin);
+			DO(postproxy_clear);
+			DO(postproxy_commit);
+
+		} else {
+			// PRE_PROXY section
+			DO(preproxy_begin);
+			DO(preproxy_clear);
+			DO(preproxy_commit);
+		}
+	}
+
+	if (proxy_section) {
+		DO(postproxy_begin);
+	} else {
+		DO(preproxy_begin);
+	}
+
+	allocation_len = sqlippool_query1(allocation, sizeof(allocation),
+					  proxy_section ? inst->postproxy_find : inst->preproxy_find,
+					  handle,
+					  inst, request, (char *) NULL, 0);
+
+	/*
+	 * Nothing found...
+	 */
+	if (allocation_len == 0) {
+		if (proxy_section) {
+			DO(postproxy_commit);
+		} else {
+			DO(preproxy_commit);
+		}
+
+		fr_connection_release(inst->sql_inst->pool, handle);
+
+		RDEBUG("IP address could not be allocated");
+		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
+	}
+
+
+	// TODO: Check if could be correct remove Framed-IP-Address before
+	//       execute *proxy_find.
+	if (proxy_section) {
+		// POST_PROXY
+		if (pairfind(request->proxy_reply->vps, inst->framed_ip_address, 0, TAG_ANY) != NULL) {
+			RDEBUG("Framed-IP-Address already exists. I remove it.");
+			pairdelete(&request->proxy_reply->vps, inst->framed_ip_address, 0, TAG_ANY);
+		}
+	} else {
+		// PRE_PROXY
+		if (pairfind(request->proxy->vps, inst->framed_ip_address, 0, TAG_ANY) != NULL) {
+			RDEBUG("Framed-IP-Address already exists. I remove it.");
+			pairdelete(&request->proxy->vps, inst->framed_ip_address, 0, TAG_ANY);
+		}
+	}
+
+	/*
+	 *	See if we can create the VP from the returned data.  If not,
+	 *	error out.  If so, add it to the list.
+	 */
+	if (proxy_section)
+		vp = paircreate(request->proxy_reply, inst->framed_ip_address, 0);
+	else
+		vp = paircreate(request->proxy, inst->framed_ip_address, 0);
+
+	if (pairparsevalue(vp, allocation, allocation_len) < 0) {
+
+		if (proxy_section) {
+			DO(postproxy_commit);
+		} else {
+			DO(preproxy_commit);
+		}
+
+		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
+		fr_connection_release(inst->sql_inst->pool, handle);
+		return do_logging(request, inst->log_failed, RLM_MODULE_NOOP);
+	}
+
+	RDEBUG("Allocated IP %s", allocation);
+	if (proxy_section) {
+		pairadd(&request->proxy_reply->vps, vp);
+
+		// UPDATE
+		sqlippool_command(inst->postproxy_update, handle, inst, request,
+				  allocation, allocation_len);
+
+		DO(postproxy_commit);
+
+	} else {
+		pairadd(&request->proxy->vps, vp);
+
+		// UPDATE
+		sqlippool_command(inst->preproxy_update, handle, inst, request,
+				  allocation, allocation_len);
+
+		DO(preproxy_commit);
+
+	}
+
+	fr_connection_release(inst->sql_inst->pool, handle);
+
+	return do_logging(request, inst->log_success, RLM_MODULE_OK);
+}
+
+/*
+ *	Preproxy
+ */
+static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
+{
+	return sqlippool_proxy (instance, request, 0);
+}
+
+/*
+ *	Postproxy
+ */
+static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
+{
+	return sqlippool_proxy (instance, request, 1);
+}
+
+#endif
+
+
 /*
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
@@ -741,6 +952,10 @@ module_t rlm_sqlippool = {
 	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_ACCOUNTING]	= mod_accounting,
+#ifdef WITH_PROXY
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
+#endif
 		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };
