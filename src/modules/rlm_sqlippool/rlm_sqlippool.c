@@ -279,7 +279,7 @@ static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sq
 	/*
 	 *	If we don't have a command, do nothing.
 	 */
-	if (!*fmt) return 0;
+	if (!fmt || !*fmt) return 0;
 
 	/*
 	 *	@todo this needs to die (should just be done in xlat expansion)
