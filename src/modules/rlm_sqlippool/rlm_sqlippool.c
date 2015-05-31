@@ -302,7 +302,7 @@ static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sq
 	/*
 	 *	If we don't have a command, do nothing.
 	 */
-	if (!*fmt) return 0;
+	if (!fmt || !*fmt || strlen(fmt)<=0) return 0;
 
 	/*
 	 *	@todo this needs to die (should just be done in xlat expansion)
@@ -342,6 +342,7 @@ static int CC_HINT(nonnull (1, 3, 4, 5)) sqlippool_query1(char *out, int outlen,
 
 	int rlen, retval;
 
+	if (!fmt || !*fmt || strlen(fmt)<=0) return 0;
 	/*
 	 *	@todo this needs to die (should just be done in xlat expansion)
 	 */
