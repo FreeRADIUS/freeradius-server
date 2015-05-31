@@ -771,8 +771,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 
 /**
  * Internal function for handle PRE_PROXY and POST_PROXY sections.
- * @param instance
- * @param request
+ * @param instance         rlm_sqlippool_t structure of the current instance.
+ * @param request          Packet request
  * @param proxy_section    Identify section: 0 --> PRE_PROXY, 1 --> POST_PROXY.
  */
 static rlm_rcode_t sqlippool_proxy (void *instance, REQUEST *request, char proxy_section)
