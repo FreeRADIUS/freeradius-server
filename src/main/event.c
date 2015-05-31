@@ -2476,6 +2476,16 @@ static void request_post_handler(REQUEST *request)
 		}
 
 		/*
+		 *	Do post-auth.  If it returns reject, then
+		 *	run Post-Auth-Type Reject.
+		 */
+		if (request->reply->code == PW_AUTHENTICATION_ACK) {
+			if (rad_postauth(request) == RLM_MODULE_REJECT) {
+				request->reply->code = PW_AUTHENTICATION_REJECT;
+			}
+		}
+		
+		/*
 		 *	Run rejected packets through
 		 *
 		 *	Post-Auth-Type = Reject
@@ -2508,10 +2518,6 @@ static void request_post_handler(REQUEST *request)
 				request->child_state = REQUEST_REJECT_DELAY;
 				return;
 			}
-		}
-		
-		if (request->reply->code == PW_AUTHENTICATION_ACK) {
-			rad_postauth(request);
 		}
 		
 		/* FALL-THROUGH */
