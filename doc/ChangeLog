@@ -1,7 +1,15 @@
 FreeRADIUS 2.2.8 Wednesday 22 Apr 2015 14:00:00 EST, urgency=medium
 	Feature improvements
+	* None.
 
 	Bug fixes
+	* Fixes for clients tied to virtual servers.  If there is
+	  no "listen" section there, clients use the main "listen"
+	  section.
+	* Remove compiler warnings
+	* Print out correct filenames in debug mode
+	* Allow post-auth section to return "reject".  This turns
+	  the response into Access-Reject.
 
 FreeRADIUS 2.2.7 Wednesday 22 Apr 2015 14:00:00 EST, urgency=medium
 	Feature improvements
