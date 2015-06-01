@@ -82,37 +82,42 @@ static bool		do_colourise = false;
 
 static char const	*radius_dir = NULL;	//!< Path to raddb directory
 
+/**********************************************************************
+ *
+ *	We need to figure out where the logs go, before doing anything
+ *	else.  This is so that the log messages go to the correct
+ *	place.
+ *
+ *	BUT, we want the settings from the command line to over-ride
+ *	the ones in the configuration file.  So, these items are
+ *	parsed ONLY if there is no "-l foo" on the command line.
+ *
+ **********************************************************************/
 
 /*
- *  Security configuration for the server.
+ *	Log destinations
  */
-static const CONF_PARSER security_config[] = {
-	{ "max_attributes",  FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_max_attributes), STRINGIFY(0) },
-	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_TIMEVAL, &main_config.reject_delay), STRINGIFY(0) },
-	{ "status_server", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.status_server), "no"},
-#ifdef ENABLE_OPENSSL_VERSION_CHECK
-	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
-#endif
-	{ NULL, -1, 0, NULL, NULL }
-};
-
-
-/*
- *	Logging configuration for the server.
- */
-static const CONF_PARSER logdest_config[] = {
+static const CONF_PARSER startup_log_config[] = {
 	{ "destination",  FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dest), "files" },
 	{ "syslog_facility",  FR_CONF_POINTER(PW_TYPE_STRING, &syslog_facility), STRINGIFY(0) },
 
+	{ "localstatedir", FR_CONF_POINTER(PW_TYPE_STRING, &localstatedir), "${prefix}/var"},
 	{ "logdir", FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dir), "${localstatedir}/log"},
 	{ "file",  FR_CONF_POINTER(PW_TYPE_STRING, &main_config.log_file), "${logdir}/radius.log" },
-	{ "requests",  FR_CONF_POINTER(PW_TYPE_STRING, &default_log.file), NULL },
+	{ "requests",  FR_CONF_POINTER(PW_TYPE_STRING | PW_TYPE_DEPRECATED, &default_log.file), NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 
-static const CONF_PARSER serverdest_config[] = {
-	{ "log",  FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) logdest_config },
+/*
+ *	Basic configuration for the server.
+ */
+static const CONF_PARSER startup_server_config[] = {
+	{ "log",  FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) startup_log_config },
+
+	{ "name", FR_CONF_POINTER(PW_TYPE_STRING, &my_name), "radiusd"},
+	{ "prefix", FR_CONF_POINTER(PW_TYPE_STRING, &prefix), "/usr/local"},
+
 	{ "log_file",  FR_CONF_POINTER(PW_TYPE_STRING, &main_config.log_file), NULL },
 	{ "log_destination", FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dest), NULL },
 	{ "use_utc", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &log_dates_utc), NULL },
@@ -120,7 +125,13 @@ static const CONF_PARSER serverdest_config[] = {
 };
 
 
-static const CONF_PARSER log_config_nodest[] = {
+/**********************************************************************
+ *
+ *	Now that we've parsed the log destination, AND the security
+ *	items, we can parse the rest of the configuration items.
+ *
+ **********************************************************************/
+static const CONF_PARSER log_config[] = {
 	{ "stripped_names", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &log_stripped_names),"no" },
 	{ "auth", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.log_auth), "no" },
 	{ "auth_badpass", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.log_auth_badpass), "no" },
@@ -136,6 +147,19 @@ static const CONF_PARSER log_config_nodest[] = {
 };
 
 
+/*
+ *  Security configuration for the server.
+ */
+static const CONF_PARSER security_config[] = {
+	{ "max_attributes",  FR_CONF_POINTER(PW_TYPE_INTEGER, &fr_max_attributes), STRINGIFY(0) },
+	{ "reject_delay",  FR_CONF_POINTER(PW_TYPE_TIMEVAL, &main_config.reject_delay), STRINGIFY(0) },
+	{ "status_server", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.status_server), "no"},
+#ifdef ENABLE_OPENSSL_VERSION_CHECK
+	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
+#endif
+	{ NULL, -1, 0, NULL, NULL }
+};
+
 static const CONF_PARSER resources[] = {
 	/*
 	 *	Don't set a default here.  It's set in the code, below.  This means that
@@ -147,9 +171,6 @@ static const CONF_PARSER resources[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-/*
- *  A mapping of configuration file names to internal variables
- */
 static const CONF_PARSER server_config[] = {
 	/*
 	 *	FIXME: 'prefix' is the ONLY one which should be
@@ -179,7 +200,7 @@ static const CONF_PARSER server_config[] = {
 #ifdef WITH_PROXY
 	{ "proxy_requests", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &main_config.proxy_requests), "yes" },
 #endif
-	{ "log", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) log_config_nodest },
+	{ "log", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) log_config },
 
 	{ "resources", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) resources },
 
@@ -201,6 +222,20 @@ static const CONF_PARSER server_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
+
+/**********************************************************************
+ *
+ *	The next few items are here as a "bootstrap" for security.
+ *	They allow the server to switch users, chroot, while still
+ *	opening the various output files with the correct permission.
+ *
+ *	It's rare (or impossible) to have parse errors here, so we
+ *	don't worry too much about that.  In contrast, when we parse
+ *	the rest of the configuration, we CAN get parse errors.  We
+ *	want THOSE parse errors to go to the log file, and we want the
+ *	log file to have the correct permissions.
+ *
+ **********************************************************************/
 static const CONF_PARSER bootstrap_security_config[] = {
 #ifdef HAVE_SETUID
 	{ "user",  FR_CONF_POINTER(PW_TYPE_STRING, &uid_name), NULL },
@@ -214,6 +249,10 @@ static const CONF_PARSER bootstrap_security_config[] = {
 
 static const CONF_PARSER bootstrap_config[] = {
 	{  "security", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) bootstrap_security_config },
+
+	{ "name", FR_CONF_POINTER(PW_TYPE_STRING, &my_name), "radiusd"},
+	{ "prefix", FR_CONF_POINTER(PW_TYPE_STRING, &prefix), "/usr/local"},
+	{ "localstatedir", FR_CONF_POINTER(PW_TYPE_STRING, &localstatedir), "${prefix}/var"},
 
 	{ "logdir", FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dir), "${localstatedir}/log"},
 	{ "run_dir", FR_CONF_POINTER(PW_TYPE_STRING, &run_dir), "${localstatedir}/run/${name}"},
@@ -230,6 +269,7 @@ static const CONF_PARSER bootstrap_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }
 };
+
 
 static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
@@ -781,7 +821,7 @@ do {\
 	 *	set it now.
 	 */
 	if (default_log.dst == L_DST_NULL) {
-		if (cf_section_parse(cs, NULL, serverdest_config) < 0) {
+		if (cf_section_parse(cs, NULL, startup_server_config) < 0) {
 			fprintf(stderr, "radiusd: Error: Failed to parse log{} section.\n");
 			cf_file_free(cs);
 			return -1;
