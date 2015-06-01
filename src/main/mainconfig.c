@@ -571,7 +571,26 @@ static int switch_users(CONF_SECTION *cs)
 		}
 	}
 
+	/*
+	 *	If we did change from root to a normal user, do some
+	 *	more work.
+	 *
+	 *	Try to create the "run_dir", where the PID file is
+	 *	located.  Because this attempt is new in 3.0.9, it's a
+	 *	soft fail.
+	 *
+	 *	And once we're done with all of the aboe work,
+	 *	permanently change the UID.
+	 */
 	if (do_suid) {
+		char *my_run_dir = talloc_strdup(NULL, run_dir);
+
+		if (rad_mkdir(my_run_dir, 0600, server_uid, server_gid) < 0) {
+			radlog(L_WARN, "Failed to create run_dir %s: %s",
+			       run_dir, strerror(errno));
+		}
+		talloc_free(my_run_dir);
+
 		rad_suid_set_down_uid(server_uid);
 		rad_suid_down();
 	}
