@@ -726,8 +726,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	INFO("rlm_cache (%s): Driver %s (module %s) loaded and linked", inst->name,
-	     inst->driver_name, inst->module->name);
+	DEBUG("rlm_cache (%s): Driver %s (module %s) loaded and linked", inst->name,
+	      inst->driver_name, inst->module->name);
 
 	/*
 	 *	Non optional fields and callbacks
