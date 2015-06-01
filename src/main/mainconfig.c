@@ -104,6 +104,7 @@ static const CONF_PARSER logdest_config[] = {
 	{ "destination",  FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dest), "files" },
 	{ "syslog_facility",  FR_CONF_POINTER(PW_TYPE_STRING, &syslog_facility), STRINGIFY(0) },
 
+	{ "logdir", FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dir), "${localstatedir}/log"},
 	{ "file",  FR_CONF_POINTER(PW_TYPE_STRING, &main_config.log_file), "${logdir}/radius.log" },
 	{ "requests",  FR_CONF_POINTER(PW_TYPE_STRING, &default_log.file), NULL },
 	{ NULL, -1, 0, NULL, NULL }
