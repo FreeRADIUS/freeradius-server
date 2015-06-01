@@ -29,6 +29,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  if the underlying file is unchanged.
 	* Allow the server to originate CoA requests from the post-auth
 	  stage.
+	* The server creates ${run_dir} and ${logdir} in daemon mode,
+	  if they do not already exist.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
@@ -54,6 +56,9 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  passwords are expired.
 	* Allow "user=radiusd" when the server is already user
 	  "radiusd"
+	* suid up/down works on non-Linux systems.  This means
+	  that the control socket should have the correct
+	  ownership.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
