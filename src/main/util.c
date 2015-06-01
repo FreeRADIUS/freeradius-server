@@ -1496,7 +1496,6 @@ int rad_prints_gid(TALLOC_CTX *ctx, char *out, size_t outlen, gid_t gid)
 static bool doing_setuid = false;
 static uid_t suid_down_uid = (uid_t)-1;
 
-#  if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
 /** Set the uid and gid used when dropping privileges
  *
  * @note if this function hasn't been called, rad_suid_down will have no effect.
@@ -1509,6 +1508,7 @@ void rad_suid_set_down_uid(uid_t uid)
 	doing_setuid = true;
 }
 
+#  if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
 void rad_suid_up(void)
 {
 	uid_t ruid, euid, suid;
@@ -1573,26 +1573,32 @@ void rad_suid_down_permanent(void)
 	fr_reset_dumpable();
 }
 #  else
-void rad_suid_set_down_uid(UNUSED uid_t uid)
-{
-}
 /*
  *	Much less secure...
  */
 void rad_suid_up(void)
 {
+	if (!doing_setuid) return;
+
+	if (seteuid(0) < 0) {
+		ERROR("Failed switching up to euid 0: %s", fr_syserror(errno));
+		fr_exit_now(1);
+	}
+
 }
 
 void rad_suid_down(void)
 {
 	if (!doing_setuid) return;
 
-	if (setuid(suid_down_uid) < 0) {
+	if (geteuid() == suid_down_uid) return;
+
+	if (seteuid(suid_down_uid) < 0) {
 		struct passwd *passwd;
 		char const *name;
 
 		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
-		ERROR("Failed switching to uid %s: %s", name, fr_syserror(errno));
+		ERROR("Failed switching to euid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
 		fr_exit_now(1);
 	}
@@ -1602,11 +1608,36 @@ void rad_suid_down(void)
 
 void rad_suid_down_permanent(void)
 {
+	if (!doing_setuid) return;
+
+	/*
+	 *	Already done.  Don't do anything else.
+	 */
+	if (getuid() == suid_down_uid) return;
+
+	/*
+	 *	We're root, but running as a normal user.  Fix that,
+	 *	so we can call setuid().
+	 */
+	if (geteuid() == suid_down_uid) {
+		rad_suid_up();
+	}
+
+	if (setuid(suid_down_uid) < 0) {
+		struct passwd *passwd;
+		char const *name;
+
+		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
+		ERROR("Failed switching permanently to uid %s: %s", name, fr_syserror(errno));
+		talloc_free(passwd);
+		fr_exit_now(1);
+	}
+
 	fr_reset_dumpable();
 }
 #  endif /* HAVE_SETRESUID && HAVE_GETRESUID */
 #else  /* HAVE_SETUID */
-void rad_suid_set_down_uid(UNUSED uid_t uid)
+void rad_suid_set_down_uid(uid_t uid)
 {
 }
 void rad_suid_up(void)
