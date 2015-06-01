@@ -582,7 +582,40 @@ static int switch_users(CONF_SECTION *cs)
 		}
 	}
 #endif
-	
+
+	/*
+	 *	If we did change from root to a normal user, do some
+	 *	more work.
+	 *
+	 *	Try to create the various output directories.  Because
+	 *	this creation is new in 3.0.9, it's a soft fail.
+	 *
+	 *	And once we're done with all of the above work,
+	 *	permanently change the UID.
+	 */
+	if (do_suid) {
+		char *my_dir;
+
+		my_dir = talloc_strdup(NULL, run_dir);
+		if (rad_mkdir(my_dir, 0750, server_uid, server_gid) < 0) {
+			DEBUG("Failed to create run_dir %s: %s",
+			      my_dir, strerror(errno));
+		}
+		talloc_free(my_dir);
+
+		if (default_log.dst == L_DST_FILES) {
+			my_dir = talloc_strdup(NULL, radlog_dir);
+			if (rad_mkdir(my_dir, 0750, server_uid, server_gid) < 0) {
+				DEBUG("Failed to create logdir %s: %s",
+				      my_dir, strerror(errno));
+			}
+			talloc_free(my_dir);
+		}
+
+		rad_suid_set_down_uid(server_uid);
+		rad_suid_down();
+	}
+
 	/*
 	 *	If we don't already have a log file open, open one
 	 *	now.  We may not have been logging anything yet.  The
@@ -613,30 +646,6 @@ static int switch_users(CONF_SECTION *cs)
 				progname, main_config.log_file, fr_syserror(errno));
 			return 0;
 		}
-	}
-
-	/*
-	 *	If we did change from root to a normal user, do some
-	 *	more work.
-	 *
-	 *	Try to create the "run_dir", where the PID file is
-	 *	located.  Because this attempt is new in 3.0.9, it's a
-	 *	soft fail.
-	 *
-	 *	And once we're done with all of the aboe work,
-	 *	permanently change the UID.
-	 */
-	if (do_suid) {
-		char *my_run_dir = talloc_strdup(NULL, run_dir);
-
-		if (rad_mkdir(my_run_dir, 0600, server_uid, server_gid) < 0) {
-			radlog(L_WARN, "Failed to create run_dir %s: %s",
-			       run_dir, strerror(errno));
-		}
-		talloc_free(my_run_dir);
-
-		rad_suid_set_down_uid(server_uid);
-		rad_suid_down();
 	}
 
 	/*
