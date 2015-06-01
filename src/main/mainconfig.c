@@ -215,6 +215,9 @@ static const CONF_PARSER bootstrap_security_config[] = {
 static const CONF_PARSER bootstrap_config[] = {
 	{  "security", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) bootstrap_security_config },
 
+	{ "logdir", FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dir), "${localstatedir}/log"},
+	{ "run_dir", FR_CONF_POINTER(PW_TYPE_STRING, &run_dir), "${localstatedir}/run/${name}"},
+
 	/*
 	 *	For backwards compatibility.
 	 */
