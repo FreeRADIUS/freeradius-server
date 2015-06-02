@@ -1149,14 +1149,10 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 			} else {
 		case T_OP_EQ:
 				rad_assert(map->rhs->type == TMPL_TYPE_EXEC);
+		case T_OP_ADD:
 				pairmove(parent, list, &head);
 				pairfree(&head);
 			}
-			goto finish;
-
-		case T_OP_ADD:
-			pairadd(list, head);
-			head = NULL;
 			goto finish;
 
 		default:

@@ -1,0 +1,8 @@
+# Local files
+*.swp
+.DS_Store
+*.md5
+
+# Salt runtime directories
+tmp
+cache

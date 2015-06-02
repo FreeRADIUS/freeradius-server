@@ -758,6 +758,13 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	/*
+	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
+	 */
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	tls_global_init();
+#endif
+
 	if (xlat_register("poke", xlat_poke, NULL, NULL) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
@@ -899,8 +906,8 @@ int main(int argc, char *argv[])
 
 		if (filter_vps && !pairvalidate(failed, filter_vps, request->reply->vps)) {
 			pairvalidate_debug(request, failed);
-			fr_perror("Output file %s does not match attributes in filter %s",
-				  output_file ? output_file : input_file, filter_file);
+			fr_perror("Output file %s does not match attributes in filter %s (%s)",
+				  output_file ? output_file : input_file, filter_file, fr_strerror());
 			rcode = EXIT_FAILURE;
 			goto finish;
 		}

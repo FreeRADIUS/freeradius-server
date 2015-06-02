@@ -1,5 +1,5 @@
 #
-#  PRE: update cache-logic if
+#  PRE: cache-logic
 #
 update {
 	&request:Tmp-String-0 := 'testkey'
