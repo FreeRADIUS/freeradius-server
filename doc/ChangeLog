@@ -31,6 +31,9 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  stage.
 	* The server creates ${run_dir} and ${logdir} in daemon mode,
 	  if they do not already exist.
+	* Add dictionary for Wi-Fi Alliance Hotspot 2.0.  The server
+	  now supports all mandatory and optional attributes for this
+	  specification, including CUI.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
