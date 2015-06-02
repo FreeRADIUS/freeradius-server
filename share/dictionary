@@ -269,6 +269,7 @@ $INCLUDE dictionary.versanet
 $INCLUDE dictionary.waverider
 $INCLUDE dictionary.walabi
 $INCLUDE dictionary.wichorus
+$INCLUDE dictionary.wifialliance
 $INCLUDE dictionary.wimax
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
