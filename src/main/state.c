@@ -285,7 +285,15 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 			memcpy(entry->state + (i * 4), &x, sizeof(x));
 		}
 
-		entry->state[0] = 0;
+		/*
+		 *	Allow a portion ofthe State attribute to be set.
+		 *
+		 *	This allows load-balancing proxies to be much
+		 *	less stateful.
+		 */
+		if (main_config.state_seed < 256) {
+			entry->state[3] = main_config.state_seed;
+		}
 	}
 
 	/*

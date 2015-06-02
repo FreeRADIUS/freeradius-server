@@ -157,6 +157,8 @@ static const CONF_PARSER security_config[] = {
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
 #endif
+	{ "state_seed", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.state_seed), NULL},
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -892,6 +894,8 @@ do {\
 	 */
 	if (!switch_users(cs)) fr_exit(1);
 #endif
+
+	main_config.state_seed = 256; /* initialize it to a non-standard value */
 
 	/*
 	 *	This allows us to figure out where, relative to

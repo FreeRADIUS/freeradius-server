@@ -166,6 +166,8 @@ typedef struct main_config {
 	bool		allow_core_dumps;		//!< Whether the server is allowed to drop a core when
 							//!< receiving a fatal signal.
 
+	uint32_t       	state_seed;			//!< magic for proxying
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
