@@ -1509,7 +1509,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	FR_STATS_INC(auth, total_requests);
 
 	if (rcode < 20) {	/* RADIUS_HDR_LEN */
-		ERROR("Receive - %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		FR_STATS_INC(auth, total_malformed_requests);
 		return 0;
 	}
@@ -1545,8 +1545,8 @@ static int auth_socket_recv(rad_listen_t *listener)
 		rad_recv_discard(listener->fd);
 		FR_STATS_INC(auth, total_unknown_types);
 
-		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
-		      code, client->shortname, src_port);
+		if (DEBUG_ENABLED) ERROR("Receive - Invalid packet code %d sent to authentication port from "
+					 "client %s port %d", code, client->shortname, src_port);
 		return 0;
 	} /* switch over packet types */
 
@@ -1565,7 +1565,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	if (!packet) {
 		talloc_free(ctx);
 		FR_STATS_INC(auth, total_malformed_requests);
-		ERROR("Receive - %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;
 	}
 
