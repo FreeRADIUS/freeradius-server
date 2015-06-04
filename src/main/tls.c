@@ -66,6 +66,25 @@ typedef struct libssl_defect {
 	char const	*comment;
 } libssl_defect_t;
 
+FR_NAME_NUMBER const fr_tls_status_table[] = {
+	{ "invalid",			FR_TLS_INVALID },
+	{ "request",			FR_TLS_REQUEST },
+	{ "response",			FR_TLS_RESPONSE },
+	{ "success",			FR_TLS_SUCCESS },
+	{ "fail",			FR_TLS_FAIL },
+	{ "noop",			FR_TLS_NOOP },
+
+	{ "start",			FR_TLS_START },
+	{ "ok",				FR_TLS_OK },
+	{ "ack",			FR_TLS_ACK },
+	{ "first fragment",		FR_TLS_FIRST_FRAGMENT },
+	{ "more fragments",		FR_TLS_MORE_FRAGMENTS },
+	{ "length included",		FR_TLS_LENGTH_INCLUDED },
+	{ "more fragments with length",	FR_TLS_MORE_FRAGMENTS_WITH_LENGTH },
+	{ "handled",			FR_TLS_HANDLED },
+	{  NULL , 			-1},
+}
+
 /* Record critical defects in libssl here (newest first)*/
 static libssl_defect_t libssl_defects[] =
 {
