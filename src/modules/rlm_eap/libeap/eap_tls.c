@@ -353,7 +353,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			RDEBUG2("Received TLS ACK");
 			return tls_ack_handler(handler->opaque, request);
 		} else {
-			RERROR("Received Invalid TLS ACK");
+			REDEBUG("Received Invalid TLS ACK");
 			return FR_TLS_INVALID;
 		}
 	}
@@ -807,7 +807,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	if (tlspacket->dlen !=
 	    (tls_session->record_plus)(&tls_session->dirty_in, tlspacket->data, tlspacket->dlen)) {
 		talloc_free(tlspacket);
-		RDEBUG("Exceeded maximum record size");
+		REDEBUG("Exceeded maximum record size");
 		status = FR_TLS_FAIL;
 		goto done;
 	}
@@ -979,7 +979,7 @@ fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *attr)
 	 *	The EAP RFC's say 1020, but we're less picky.
 	 */
 	if (tls_conf->fragment_size < 100) {
-		ERROR("Fragment size is too small.  Expected >= 100 bytes, got %zu bytes", tls_conf->fragment_size);
+		ERROR("Configured fragment size is too small, must be >= 100");
 		return NULL;
 	}
 
@@ -990,7 +990,7 @@ fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *attr)
 	 *	that can be devoted *solely* to EAP.
 	 */
 	if (tls_conf->fragment_size > 4000) {
-		ERROR("Fragment size is too large.  Expected <= 4000 bytes, got %zu bytes", tls_conf->fragment_size);
+		ERROR("Configured fragment size is too large, must be <= 4000");
 		return NULL;
 	}
 
