@@ -228,7 +228,12 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 *	Process TLS layer until done.
 	 */
 	status = eaptls_process(handler);
-	RDEBUG2("eaptls_process returned %d\n", status);
+	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
+		REDEBUG("eaptls_process returned \"%s\"", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	} else {
+		RDEBUG2("eaptls_process returned \"%s\"", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	}
+
 	switch (status) {
 	/*
 	 *	EAP-TLS handshake was successful, tell the

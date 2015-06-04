@@ -139,15 +139,20 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 	RDEBUG2("Authenticate");
 
 	status = eaptls_process(handler);
-	RDEBUG2("eaptls_process returned %d\n", status);
+	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
+		REDEBUG("eaptls_process returned \"%s\"", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	} else {
+		RDEBUG2("eaptls_process returned \"%s\"", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	}
+
 	switch (status) {
-		/*
-		 *	EAP-TLS handshake was successful, return an
-		 *	EAP-TLS-Success packet here.
-		 *
-		 *	If a virtual server was configured, check that
-		 *	it accepts the certificates, too.
-		 */
+	/*
+	 *	EAP-TLS handshake was successful, return an
+	 *	EAP-TLS-Success packet here.
+	 *
+	 *	If a virtual server was configured, check that
+	 *	it accepts the certificates, too.
+	 */
 	case FR_TLS_SUCCESS:
 		if (inst->virtual_server) {
 			VALUE_PAIR *vp;
