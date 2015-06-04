@@ -327,7 +327,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	RDEBUG2("Peer sent EAP-TLS flags %c%c%c",
 		TLS_START(eaptls_packet->flags) ? 'S' : '-',
 		TLS_MORE_FRAGMENTS(eaptls_packet->flags) ? 'M' : '-',
-		TLS_LENGTH_INCLUDE(eaptls_packet->flags) ? 'L' : '-');
+		TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? 'L' : '-');
 
 
 	/*
@@ -508,7 +508,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 		memcpy(&data_len, &eap_ds->response->type.data[1], 4);
 		data_len = ntohl(data_len);
 		if (data_len > MAX_RECORD_SIZE) {
-			REDEBUG("Reassembled TLS record will be %zu bytes, "
+			REDEBUG("Reassembled TLS record will be %u bytes, "
 				"greater than our maximum record size (" STRINGIFY(MAX_RECORD_SIZE) " bytes)",
 				data_len);
 			talloc_free(tlspacket);
