@@ -1510,6 +1510,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	FR_STATS_INC(auth, total_requests);
 
 	if (rcode < 20) {	/* RADIUS_HDR_LEN */
+		RATE_LIMIT(ERROR("Received malformed packet: %s", fr_strerror()));
 		FR_STATS_INC(auth, total_malformed_requests);
 		return 0;
 	}

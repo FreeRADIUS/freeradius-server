@@ -332,6 +332,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < 4) {
+		fr_strerror_printf("Expected at least 4 bytes of header data, got %zu bytes", data_len);
 		rad_recv_discard(sockfd);
 
 		return 1;
@@ -347,6 +348,8 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 		 *	a RADIUS header length: discard it.
 		 */
 		if (packet_len < RADIUS_HDR_LEN) {
+			fr_strerror_printf("Expected at least " STRINGIFY(RADIUS_HDR_LEN)  " bytes of packet "
+					   "data, got %zu bytes", packet_len);
 			rad_recv_discard(sockfd);
 
 			return 1;
@@ -356,6 +359,8 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 			 *	Anything after 4k will be discarded.
 			 */
 		} else if (packet_len > MAX_PACKET_LEN) {
+			fr_strerror_printf("Length field value too large, expected maximum of "
+					   STRINGIFY(MAX_PACKET_LEN) " bytes, got %zu bytes", packet_len);
 			rad_recv_discard(sockfd);
 
 			return 1;
@@ -366,6 +371,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	 *	Convert AF.  If unknown, discard packet.
 	 */
 	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, src_port)) {
+		fr_strerror_printf("Unkown address family");
 		rad_recv_discard(sockfd);
 
 		return 1;
