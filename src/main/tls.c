@@ -83,7 +83,7 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
 	{ "more fragments with length",	FR_TLS_MORE_FRAGMENTS_WITH_LENGTH },
 	{ "handled",			FR_TLS_HANDLED },
 	{  NULL , 			-1},
-}
+};
 
 /* Record critical defects in libssl here (newest first)*/
 static libssl_defect_t libssl_defects[] =
