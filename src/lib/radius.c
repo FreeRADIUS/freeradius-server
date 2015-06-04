@@ -36,6 +36,11 @@ RCSID("$Id$")
 #include	<freeradius-devel/udpfromto.h>
 #endif
 
+/*
+ *	Some messages get printed out only in debugging mode.
+ */
+#define FR_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
+
 #if 0
 #define VP_TRACE printf
 
@@ -332,7 +337,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < 4) {
-		fr_strerror_printf("Expected at least 4 bytes of header data, got %zu bytes", data_len);
+		FR_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zu bytes", data_len);
 		rad_recv_discard(sockfd);
 
 		return 1;
@@ -348,7 +353,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 		 *	a RADIUS header length: discard it.
 		 */
 		if (packet_len < RADIUS_HDR_LEN) {
-			fr_strerror_printf("Expected at least " STRINGIFY(RADIUS_HDR_LEN)  " bytes of packet "
+			FR_STRERROR_PRINTF("Expected at least " STRINGIFY(RADIUS_HDR_LEN)  " bytes of packet "
 					   "data, got %zu bytes", packet_len);
 			rad_recv_discard(sockfd);
 
@@ -359,7 +364,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 			 *	Anything after 4k will be discarded.
 			 */
 		} else if (packet_len > MAX_PACKET_LEN) {
-			fr_strerror_printf("Length field value too large, expected maximum of "
+			FR_STRERROR_PRINTF("Length field value too large, expected maximum of "
 					   STRINGIFY(MAX_PACKET_LEN) " bytes, got %zu bytes", packet_len);
 			rad_recv_discard(sockfd);
 
@@ -371,7 +376,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	 *	Convert AF.  If unknown, discard packet.
 	 */
 	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, src_port)) {
-		fr_strerror_printf("Unkown address family");
+		FR_STRERROR_PRINTF("Unkown address family");
 		rad_recv_discard(sockfd);
 
 		return 1;
@@ -2266,7 +2271,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	"The minimum length is 20 ..."
 	 */
 	if (packet->data_len < RADIUS_HDR_LEN) {
-		fr_strerror_printf("Malformed RADIUS packet from host %s: too short (received %zu < minimum %d)",
+		FR_STRERROR_PRINTF("Malformed RADIUS packet from host %s: too short (received %zu < minimum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -2290,7 +2295,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 */
 	if ((hdr->code == 0) ||
 	    (hdr->code >= FR_MAX_PACKET_CODE)) {
-		fr_strerror_printf("Bad RADIUS packet from host %s: unknown packet code %d",
+		FR_STRERROR_PRINTF("Bad RADIUS packet from host %s: unknown packet code %d",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -2322,7 +2327,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	"The minimum length is 20 ..."
 	 */
 	if (totallen < RADIUS_HDR_LEN) {
-		fr_strerror_printf("Malformed RADIUS packet from host %s: too short (length %zu < minimum %d)",
+		FR_STRERROR_PRINTF("Malformed RADIUS packet from host %s: too short (length %zu < minimum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -2355,7 +2360,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	i.e. No response to the NAS.
 	 */
 	if (packet->data_len < totallen) {
-		fr_strerror_printf("Malformed RADIUS packet from host %s: received %zu octets, packet length says %zu",
+		FR_STRERROR_PRINTF("Malformed RADIUS packet from host %s: received %zu octets, packet length says %zu",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -2401,7 +2406,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		 *	attribute header.
 		 */
 		if (count < 2) {
-			fr_strerror_printf("Malformed RADIUS packet from host %s: attribute header overflows the packet",
+			FR_STRERROR_PRINTF("Malformed RADIUS packet from host %s: attribute header overflows the packet",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
@@ -2413,7 +2418,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		 *	Attribute number zero is NOT defined.
 		 */
 		if (attr[0] == 0) {
-			fr_strerror_printf("Malformed RADIUS packet from host %s: Invalid attribute 0",
+			FR_STRERROR_PRINTF("Malformed RADIUS packet from host %s: Invalid attribute 0",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
@@ -2426,7 +2431,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		 *	fields.  Anything shorter is an invalid attribute.
 		 */
 		if (attr[1] < 2) {
-			fr_strerror_printf("Malformed RADIUS packet from host %s: attribute %u too short",
+			FR_STRERROR_PRINTF("Malformed RADIUS packet from host %s: attribute %u too short",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
@@ -2440,7 +2445,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		 *	attribute, it's a bad packet.
 		 */
 		if (count < attr[1]) {
-			fr_strerror_printf("Malformed RADIUS packet from host %s: attribute %u data overflows the packet",
+			FR_STRERROR_PRINTF("Malformed RADIUS packet from host %s: attribute %u data overflows the packet",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
@@ -2466,7 +2471,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 
 		case PW_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
-				fr_strerror_printf("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
+				FR_STRERROR_PRINTF("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
 						     host_ipaddr, sizeof(host_ipaddr)),
@@ -2495,7 +2500,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	If not, we complain, and throw the packet away.
 	 */
 	if (count != 0) {
-		fr_strerror_printf("Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
+		FR_STRERROR_PRINTF("Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
@@ -2510,7 +2515,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 */
 	if ((fr_max_attributes > 0) &&
 	    (num_attributes > fr_max_attributes)) {
-		fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
+		FR_STRERROR_PRINTF("Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -2531,7 +2536,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	Message-Authenticator attributes.
 	 */
 	if (require_ma && !seen_ma) {
-		fr_strerror_printf("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
+		FR_STRERROR_PRINTF("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
@@ -2587,7 +2592,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	 *	Check for socket errors.
 	 */
 	if (data_len < 0) {
-		fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
+		FR_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
 		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;
@@ -2600,7 +2605,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	 *	packet.
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
-		fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes");
+		FR_STRERROR_PRINTF("Discarding packet: Larger than RFC limitation of 4096 bytes");
 		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;
@@ -2613,7 +2618,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	 *	packet->data == NULL
 	 */
 	if ((packet->data_len == 0) || !packet->data) {
-		fr_strerror_printf("Empty packet: Socket is not ready");
+		FR_STRERROR_PRINTF("Empty packet: Socket is not ready");
 		rad_free(&packet);
 		return NULL;
 	}
