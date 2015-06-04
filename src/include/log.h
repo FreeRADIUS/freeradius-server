@@ -130,14 +130,13 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
  *
  * @{
  */
-#define _SL(_l, _p, _f, ...)	if (rad_debug_lvl >= _p) radlog(_l, _f, ## __VA_ARGS__)
-#define AUTH(fmt, ...)		_SL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define ACCT(fmt, ...)		_SL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define PROXY(fmt, ...)		_SL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define AUTH(fmt, ...)		radlog(L_AUTH, fmt, ## __VA_ARGS__)
+#define ACCT(fmt, ...)		radlog(L_ACCT, fmt, ## __VA_ARGS__)
+#define PROXY(fmt, ...)		radlog(L_PROXY, fmt, ## __VA_ARGS__)
 
-#define INFO(fmt, ...)		_SL(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define WARN(fmt, ...)		_SL(L_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define ERROR(fmt, ...)		_SL(L_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define INFO(fmt, ...)		radlog(L_INFO,  fmt, ## __VA_ARGS__)
+#define WARN(fmt, ...)		radlog(L_WARN, fmt, ## __VA_ARGS__)
+#define ERROR(fmt, ...)		radlog(L_ERR, fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log global debug messages (DEBUG*)
@@ -166,10 +165,11 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
 #define DEBUG_ENABLED3		debug_enabled(L_DBG, L_DBG_LVL_3)			//!< True if global debug level 1-3 messages are enabled
 #define DEBUG_ENABLED4		debug_enabled(L_DBG, L_DBG_LVL_MAX)			//!< True if global debug level 1-4 messages are enabled
 
+#define _SL(_l, _p, _f, ...)	if (rad_debug_lvl >= _p) radlog(_l, _f, ## __VA_ARGS__)
 #define DEBUG(fmt, ...)		_SL(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define DEBUG2(fmt, ...)	_SL(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 #define DEBUG3(fmt, ...)	_SL(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
-#define DEBUG4(fmt, ...)	 _SL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
+#define DEBUG4(fmt, ...)	_SL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific messages (R*)
