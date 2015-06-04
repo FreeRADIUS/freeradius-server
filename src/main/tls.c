@@ -405,7 +405,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *	Verify the peer certificate, if asked.
 	 */
 	if (client_cert) {
-		RDEBUG2("Requiring client certificate");
+		RDEBUG2("Setting verify mode to require certificate from client");
 		verify_mode = SSL_VERIFY_PEER;
 		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
@@ -526,8 +526,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 
 	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
 	if (err != (int) ssn->dirty_in.used) {
-		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used,
-			err);
+		REDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
 		record_init(&ssn->dirty_in);
 		return 0;
 	}
@@ -545,21 +544,11 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	}
 
 	/* Some Extra STATE information for easy debugging */
-	if (SSL_is_init_finished(ssn->ssl)) {
-		DEBUG2("SSL Connection Established\n");
-	}
-	if (SSL_in_init(ssn->ssl)) {
-		DEBUG2("In SSL Handshake Phase\n");
-	}
-	if (SSL_in_before(ssn->ssl)) {
-		DEBUG2("Before SSL Handshake Phase\n");
-	}
-	if (SSL_in_accept_init(ssn->ssl)) {
-		DEBUG2("In SSL Accept mode \n");
-	}
-	if (SSL_in_connect_init(ssn->ssl)) {
-		DEBUG2("In SSL Connect mode \n");
-	}
+	if (SSL_is_init_finished(ssn->ssl)) RDEBUG2("SSL Connection Established");
+	if (SSL_in_init(ssn->ssl)) RDEBUG2("In SSL Handshake Phase");
+	if (SSL_in_before(ssn->ssl)) RDEBUG2("Before SSL Handshake Phase");
+	if (SSL_in_accept_init(ssn->ssl)) RDEBUG2("In SSL Accept mode");
+	if (SSL_in_connect_init(ssn->ssl)) RDEBUG2("In SSL Connect mode");
 
 	err = BIO_ctrl_pending(ssn->from_ssl);
 	if (err > 0) {
@@ -570,7 +559,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 
 		} else if (BIO_should_retry(ssn->from_ssl)) {
 			record_init(&ssn->dirty_in);
-			DEBUG2("  tls: Asking for more data in tunnel");
+			RDEBUG2("Asking for more data in tunnel");
 			return 1;
 
 		} else {
@@ -579,7 +568,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			return 0;
 		}
 	} else {
-		DEBUG2("SSL Application Data");
+		RDEBUG2("SSL Application Data");
 		/* Its clean application data, do whatever we want */
 		record_init(&ssn->clean_out);
 	}
