@@ -261,7 +261,7 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
  * Challenges will come from one of three places eventually:
  *
  * 1  from attributes like PW_EAP_SIM_RANDx
- *	    (these might be retrived from a database)
+ *	    (these might be retrieved from a database)
  *
  * 2  from internally implemented SIM authenticators
  *	    (a simple one based upon XOR will be provided)
