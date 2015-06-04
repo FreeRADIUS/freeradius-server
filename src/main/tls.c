@@ -498,7 +498,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 		 *	them - so "politely inform" the caller that
 		 *	the code needs updating here.
 		 */
-		ERROR("SSL: FATAL SSL error ..... %d\n", e);
+		REDEBUG("FATAL SSL error: %d", e);
 		return 0;
 	}
 
@@ -3094,15 +3094,16 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 	RDEBUG2("Received TLS ACK");
 
 	if (ssn == NULL){
-		RERROR("FAIL: Unexpected ACK received.  Could not obtain session information");
+		REDEBUG("Unexpected ACK received:  No ongoing SSL session");
 		return FR_TLS_INVALID;
 	}
 	if (!ssn->info.initialized) {
-		RDEBUG("No SSL info available. Waiting for more SSL data");
+		RDEBUG("No SSL info available.  Waiting for more SSL data");
 		return FR_TLS_REQUEST;
 	}
+
 	if ((ssn->info.content_type == handshake) && (ssn->info.origin == 0)) {
-		RERROR("FAIL: ACK without earlier message");
+		REDEBUG("Unexpected ACK received:  We sent no previous messages");
 		return FR_TLS_INVALID;
 	}
 
@@ -3137,7 +3138,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		 *	to the default section below.
 		 */
 	default:
-		RERROR("Invalid ACK received: %d", ssn->info.content_type);
+		REDEBUG("Invalid ACK received: %d", ssn->info.content_type);
 
 		return FR_TLS_INVALID;
 	}
