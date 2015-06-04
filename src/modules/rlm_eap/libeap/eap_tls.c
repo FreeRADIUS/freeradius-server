@@ -345,12 +345,10 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) &&
 	     ((eaptls_packet->flags & 0xc0) == 0x00))) {
 
-		if (prev_eap_ds &&
-		    (prev_eap_ds->request->id == eap_ds->response->id)) {
-			/*
-			 *	Run the ACK handler directly from here.
-			 */
-			RDEBUG2("Received TLS ACK");
+		/*
+		 *	Run the ACK handler directly from here.
+		 */
+		if (prev_eap_ds && (prev_eap_ds->request->id == eap_ds->response->id)) {
 			return tls_ack_handler(handler->opaque, request);
 		} else {
 			REDEBUG("Received Invalid TLS ACK");
@@ -380,8 +378,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	from a fragment acknowledgement.
 	 */
 	if (TLS_LENGTH_INCLUDED(eaptls_packet->flags)) {
-		RDEBUG2("TLS Length %d",
-		       eaptls_packet->data[2] * 256 | eaptls_packet->data[3]);
+		RDEBUG2("TLS Length %d", eaptls_packet->data[2] * 256 | eaptls_packet->data[3]);
 		if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
 			/*
 			 * FIRST_FRAGMENT is identified
