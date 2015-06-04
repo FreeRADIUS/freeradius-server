@@ -82,17 +82,6 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	}
 
 	/*
-	 *	Verify the peer certificate, if asked.
-	 */
-	if (client_cert) {
-		RDEBUG2("Requiring client certificate");
-		verify_mode = SSL_VERIFY_PEER;
-		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
-	}
-	SSL_set_verify(ssn->ssl, verify_mode, cbtls_verify);
-
-	/*
 	 *	Create a structure for all the items required to be
 	 *	verified for each client and set that as opaque data
 	 *	structure.
