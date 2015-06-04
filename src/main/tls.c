@@ -452,7 +452,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 	if ((l = ERR_get_error()) != 0) {
 		char const *p = ERR_error_string(l, NULL);
 
-		if (request && p) REDEBUG("SSL says: %s", p);
+		if (p) ROPTIONAL(REDEBUG, ERROR, "SSL says: %s", p);
 	}
 	e = SSL_get_error(s, ret);
 
@@ -482,11 +482,11 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 		 *	being regarded as "dead".
 		 */
 	case SSL_ERROR_SYSCALL:
-		REDEBUG("%s failed in a system call (%d), TLS session failed", text, ret);
+		ROPTIONAL(REDEBUG, ERROR, "%s failed in a system call (%d), TLS session failed", text, ret);
 		return 0;
 
 	case SSL_ERROR_SSL:
-		REDEBUG("%s failed inside of TLS (%d), TLS session failed", text, ret);
+		ROPTIONAL(REDEBUG, ERROR, "%s failed inside of TLS (%d), TLS session failed", text, ret);
 		return 0;
 
 	default:
@@ -496,7 +496,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 		 *	them - so "politely inform" the caller that
 		 *	the code needs updating here.
 		 */
-		REDEBUG("FATAL SSL error: %d", e);
+		ROPTIONAL(REDEBUG, ERROR, "FATAL SSL error: %d", e);
 		return 0;
 	}
 
