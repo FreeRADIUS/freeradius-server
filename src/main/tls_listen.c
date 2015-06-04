@@ -289,7 +289,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
 	if (!rad_packet_ok(packet, 0, NULL)) {
-		RDEBUG("Received bad packet: %s", fr_strerror());
+		ERROR("Receive - %s", fr_strerror());
 		DEBUG("Closing TLS socket from client");
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		tls_socket_close(listener);
