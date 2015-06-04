@@ -237,47 +237,48 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	}
 
 	status = eaptls_process(handler);
-	RDEBUG2("eaptls_process returned %d\n", status);
+	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
+		REDEBUG("eaptls_process returned \"%s\"", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	} else {
+		RDEBUG2("eaptls_process returned \"%s\"", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	}
+
 	switch (status) {
-		/*
-		 *	EAP-TLS handshake was successful, tell the
-		 *	client to keep talking.
-		 *
-		 *	If this was EAP-TLS, we would just return
-		 *	an EAP-TLS-Success packet here.
-		 */
+	/*
+	 *	EAP-TLS handshake was successful, tell the
+	 *	client to keep talking.
+	 *
+	 *	If this was EAP-TLS, we would just return
+	 *	an EAP-TLS-Success packet here.
+	 */
 	case FR_TLS_SUCCESS:
-		RDEBUG2("FR_TLS_SUCCESS");
 		peap->status = PEAP_STATUS_TUNNEL_ESTABLISHED;
 		break;
 
-		/*
-		 *	The TLS code is still working on the TLS
-		 *	exchange, and it's a valid TLS request.
-		 *	do nothing.
-		 */
+	/*
+	 *	The TLS code is still working on the TLS
+	 *	exchange, and it's a valid TLS request.
+	 *	do nothing.
+	 */
 	case FR_TLS_HANDLED:
-	  /*
-	   *	FIXME: If the SSL session is established, grab the state
-	   *	and EAP id from the inner tunnel, and update it with
-	   *	the expected EAP id!
-	   */
-		RDEBUG2("FR_TLS_HANDLED");
+		/*
+		 *	FIXME: If the SSL session is established, grab the state
+		 *	and EAP id from the inner tunnel, and update it with
+		 *	the expected EAP id!
+		 */
 		return 1;
 
-		/*
-		 *	Handshake is done, proceed with decoding tunneled
-		 *	data.
-		 */
+	/*
+	 *	Handshake is done, proceed with decoding tunneled
+	 *	data.
+	 */
 	case FR_TLS_OK:
-		RDEBUG2("FR_TLS_OK");
 		break;
 
 		/*
 		 *	Anything else: fail.
 		 */
 	default:
-		RDEBUG2("FR_TLS_OTHERS");
 		return 0;
 	}
 
