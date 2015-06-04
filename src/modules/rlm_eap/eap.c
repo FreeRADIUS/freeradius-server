@@ -182,7 +182,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 
 	rad_assert(module != NULL);
 
-	RDEBUG2("Calling %s to process EAP data", module->type->name);
+	RDEBUG2("Calling EAP submodule %s to process data", module->type->name);
 
 	request->module = module->type->name;
 
@@ -207,7 +207,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 
 	default:
 		/* Should never enter here */
-		RDEBUG("Internal sanity check failed on eap");
+		RDEBUG("Internal sanity check failed on EAP");
 		rcode = 0;
 		break;
 	}
@@ -364,7 +364,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		return EAP_INVALID;
 	}
 
-	RDEBUG2("Peer sent EAP method \"%s\" (%d)", eap_type2name(type->num), type->num);
+	RDEBUG2("Peer sent EAP %s (%d) request", eap_type2name(type->num), type->num);
 	/*
 	 *	Figure out what to do.
 	 */
@@ -383,8 +383,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		if ((next < PW_EAP_MD5) ||
 		    (next >= PW_EAP_MAX_TYPES) ||
 		    (!inst->methods[next])) {
-			REDEBUG2("Tried to start unsupported method (%d)",
-				 next);
+			REDEBUG2("Tried to start unsupported method (%d)", next);
 
 			return EAP_INVALID;
 		}
@@ -401,10 +400,8 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		handler->type = next;
 
 		if (eap_module_call(inst->methods[next], handler) == 0) {
-			REDEBUG2("Failed starting EAP %s (%d) session. "
-				 "EAP sub-module failed",
-				 eap_type2name(next),
-				 next);
+			REDEBUG2("Failed starting EAP %s (%d) session.  EAP sub-module failed",
+				 eap_type2name(next), next);
 
 			return EAP_INVALID;
 		}
@@ -436,16 +433,11 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		 *	Key off of the configured sub-modules.
 		 */
 		default:
-			RDEBUG2("EAP %s (%d)",
-				eap_type2name(type->num),
-				type->num);
-
 			/*
 			 *	We haven't configured it, it doesn't exit.
 			 */
 			if (!inst->methods[type->num]) {
-				REDEBUG2("Client asked for unsupported "
-					 "type %s (%d)",
+				REDEBUG2("Client asked for unsupported method %s (%d)",
 					 eap_type2name(type->num),
 					 type->num);
 
@@ -456,8 +448,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			handler->type = type->num;
 			if (eap_module_call(inst->methods[type->num],
 					    handler) == 0) {
-				REDEBUG2("Failed continuing EAP %s (%d) session. "
-					 "EAP sub-module failed",
+				REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
 					 eap_type2name(type->num),
 					 type->num);
 
@@ -541,9 +532,9 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 		default:
 			++reply->id;
 		}
+		RDEBUG2("Sending response, EAP ID %d", reply->id);
 	} else {
-		RDEBUG2("Underlying EAP-Type set EAP ID to %d",
-		       reply->id);
+		RDEBUG2("Sending response, EAP ID %d (set by EAP method handler)", reply->id);
 	}
 
 	/*
@@ -620,7 +611,7 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 		}
 
 		/* Should never enter here */
-		ERROR("rlm_eap: reply code %d is unknown, Rejecting the request.", reply->code);
+		REDEBUG("Reply code %d is unknown, rejecting the request", reply->code);
 		request->reply->code = PW_CODE_ACCESS_REJECT;
 		reply->code = PW_EAP_FAILURE;
 		rcode = RLM_MODULE_REJECT;
@@ -767,7 +758,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	    (eap_msg->vp_octets[0] >= PW_EAP_MAX_CODES)) {
 		RDEBUG2("Unknown EAP packet");
 	} else {
-		RDEBUG2("Peer sent code %s (%i) ID %d length %zu",
+		RDEBUG2("Peer sent EAP %s (code %i) ID %d length %zu",
 		        eap_codes[eap_msg->vp_octets[0]],
 		        eap_msg->vp_octets[0],
 		        eap_msg->vp_octets[1],
