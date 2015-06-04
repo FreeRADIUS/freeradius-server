@@ -64,7 +64,6 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_conf, bool client_cert)
 {
 	tls_session_t	*ssn;
-	int		verify_mode = 0;
 	REQUEST		*request = handler->request;
 
 	handler->tls = true;
