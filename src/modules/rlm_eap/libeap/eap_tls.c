@@ -460,8 +460,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	uint32_t	len = 0;
 	uint8_t		*data = NULL;
 
-	if (status  == FR_TLS_INVALID)
-		return NULL;
+	if (status == FR_TLS_INVALID) return NULL;
 
 	/*
 	 *	The main EAP code & eaptls_verify() take care of
@@ -624,12 +623,10 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
  *	SSL_CTX (internally) or TLS module(explicitly). If TLS module,
  *	then how to let SSL API know about these sessions.)
  */
-static fr_tls_status_t eaptls_operation(fr_tls_status_t status,
-					eap_handler_t *handler)
+static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *handler)
 {
-	tls_session_t *tls_session;
-
-	tls_session = (tls_session_t *)handler->opaque;
+	REQUEST		*request = handler->request;
+	tls_session_t	*tls_session = handler->opaque;
 
 	if ((status == FR_TLS_MORE_FRAGMENTS) ||
 	    (status == FR_TLS_MORE_FRAGMENTS_WITH_LENGTH) ||
