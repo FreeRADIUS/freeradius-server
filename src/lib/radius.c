@@ -2274,7 +2274,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	"The minimum length is 20 ..."
 	 */
 	if (packet->data_len < RADIUS_HDR_LEN) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too short (received %zu < minimum %d)",
+		fr_strerror_printf("Malformed RADIUS packet from host %s: too short (received %zu < minimum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -2298,7 +2298,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 */
 	if ((hdr->code == 0) ||
 	    (hdr->code >= FR_MAX_PACKET_CODE)) {
-		fr_strerror_printf("WARNING: Bad RADIUS packet from host %s: unknown packet code %d",
+		fr_strerror_printf("Bad RADIUS packet from host %s: unknown packet code %d",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -2330,7 +2330,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	"The minimum length is 20 ..."
 	 */
 	if (totallen < RADIUS_HDR_LEN) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too short (length %zu < minimum %d)",
+		fr_strerror_printf("Malformed RADIUS packet from host %s: too short (length %zu < minimum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -2363,7 +2363,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	i.e. No response to the NAS.
 	 */
 	if (packet->data_len < totallen) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: received %zu octets, packet length says %zu",
+		fr_strerror_printf("Malformed RADIUS packet from host %s: received %zu octets, packet length says %zu",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -2409,7 +2409,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		 *	attribute header.
 		 */
 		if (count < 2) {
-			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: attribute header overflows the packet",
+			fr_strerror_printf("Malformed RADIUS packet from host %s: attribute header overflows the packet",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
@@ -2421,7 +2421,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		 *	Attribute number zero is NOT defined.
 		 */
 		if (attr[0] == 0) {
-			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: Invalid attribute 0",
+			fr_strerror_printf("Malformed RADIUS packet from host %s: Invalid attribute 0",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)));
@@ -2434,7 +2434,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		 *	fields.  Anything shorter is an invalid attribute.
 		 */
 		if (attr[1] < 2) {
-			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: attribute %u too short",
+			fr_strerror_printf("Malformed RADIUS packet from host %s: attribute %u too short",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
@@ -2448,7 +2448,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 		 *	attribute, it's a bad packet.
 		 */
 		if (count < attr[1]) {
-			fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: attribute %u data overflows the packet",
+			fr_strerror_printf("Malformed RADIUS packet from host %s: attribute %u data overflows the packet",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
@@ -2474,7 +2474,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 
 		case PW_MESSAGE_AUTHENTICATOR:
 			if (attr[1] != 2 + AUTH_VECTOR_LEN) {
-				fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
+				fr_strerror_printf("Malformed RADIUS packet from host %s: Message-Authenticator has invalid length %d",
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
 						     host_ipaddr, sizeof(host_ipaddr)),
@@ -2503,7 +2503,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	If not, we complain, and throw the packet away.
 	 */
 	if (count != 0) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
+		fr_strerror_printf("Malformed RADIUS packet from host %s: packet attributes do NOT exactly fill the packet",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
@@ -2518,7 +2518,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 */
 	if ((fr_max_attributes > 0) &&
 	    (num_attributes > fr_max_attributes)) {
-		fr_strerror_printf("WARNING: Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
+		fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
@@ -2539,7 +2539,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	 *	Message-Authenticator attributes.
 	 */
 	if (require_ma && !seen_ma) {
-		fr_strerror_printf("WARNING: Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
+		fr_strerror_printf("Insecure packet from host %s:  Packet does not contain required Message-Authenticator attribute",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)));
@@ -4071,7 +4071,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			char host_ipaddr[128];
 
 			pairfree(&head);
-			fr_strerror_printf("WARNING: Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
+			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
 					     host_ipaddr, sizeof(host_ipaddr)),
