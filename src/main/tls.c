@@ -482,13 +482,11 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 		 *	being regarded as "dead".
 		 */
 	case SSL_ERROR_SYSCALL:
-		ERROR("SSL: %s failed in a system call (%d), TLS session fails.",
-		       text, ret);
+		REDEBUG("%s failed in a system call (%d), TLS session failed", text, ret);
 		return 0;
 
 	case SSL_ERROR_SSL:
-		ERROR("SSL: %s failed inside of TLS (%d), TLS session fails.",
-		       text, ret);
+		REDEBUG("%s failed inside of TLS (%d), TLS session failed", text, ret);
 		return 0;
 
 	default:
