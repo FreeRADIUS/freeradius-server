@@ -298,10 +298,10 @@ static int eaptls_send_ack(EAP_DS *eap_ds, int peap_flag)
  */
 static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 {
-	EAP_DS *eap_ds = handler->eap_ds;
-	EAP_DS *prev_eap_ds = handler->prev_eapds;
-	eaptls_packet_t	*eaptls_packet, *eaptls_prev = NULL;
-	REQUEST *request = handler->request;
+	EAP_DS			*eap_ds = handler->eap_ds;
+	EAP_DS			*prev_eap_ds = handler->prev_eapds;
+	eaptls_packet_t		*eaptls_packet, *eaptls_prev = NULL;
+	REQUEST			*request = handler->request;
 
 	/*
 	 *	We don't check ANY of the input parameters.  It's all
@@ -322,6 +322,15 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		eaptls_prev = (eaptls_packet_t *)prev_eap_ds->response->type.data;
 
 	/*
+	 *	First output the flags (for debugging)
+	 */
+	RDEBUG2("Peer sent EAP-TLS flags %c%c%c",
+		TLS_START(eaptls_packet->flags) ? 'S' : '-',
+		TLS_MORE_FRAGMENTS(eaptls_packet->flags) ? 'M' : '-',
+		TLS_LENGTH_INCLUDE(eaptls_packet->flags) ? 'L' : '-');
+
+
+	/*
 	 *	check for ACK
 	 *
 	 *	If there's no TLS data, or there's 1 byte of TLS data,
@@ -332,10 +341,6 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	if ((!eaptls_packet) ||
 	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) &&
 	     ((eaptls_packet->flags & 0xc0) == 0x00))) {
-
-		/*
-		 *	Run the ACK handler directly from here.
-		 */
 		if (prev_eap_ds && (prev_eap_ds->request->id == eap_ds->response->id)) {
 			return tls_ack_handler(handler->opaque, request);
 		} else {
@@ -348,7 +353,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	We send TLS_START, but do not receive it.
 	 */
 	if (TLS_START(eaptls_packet->flags)) {
-		REDEBUG("Received unexpected EAP-TLS Start message");
+		REDEBUG("Peer sent EAP-TLS Start message (only the server is allowed to do this)");
 		return FR_TLS_INVALID;
 	}
 
@@ -366,30 +371,30 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	from a fragment acknowledgement.
 	 */
 	if (TLS_LENGTH_INCLUDED(eaptls_packet->flags)) {
-		RDEBUG2("TLS Length %d", eaptls_packet->data[2] * 256 | eaptls_packet->data[3]);
+		RDEBUG2("Peer indicated complete TLS record size will be %d bytes",
+		        eaptls_packet->data[2] * 256 | eaptls_packet->data[3]);
 		if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
+			RDEBUG2("Peer indicated TLS record needs fragmenting");
 			/*
 			 * FIRST_FRAGMENT is identified
 			 * 1. If there is no previous EAP-response received.
 			 * 2. If EAP-response received, then its M bit not set.
 			 * 	(It is because Last fragment will not have M bit set)
 			 */
-			if (!prev_eap_ds ||
-			    (!prev_eap_ds->response) ||
-			    (!eaptls_prev) ||
+			if (!prev_eap_ds || (!prev_eap_ds->response) || (!eaptls_prev) ||
 			    !TLS_MORE_FRAGMENTS(eaptls_prev->flags)) {
-
-				RDEBUG2("Received EAP-TLS First Fragment of the message");
+			    	RDEBUG2("Got first TLS record fragment");
 				return FR_TLS_FIRST_FRAGMENT;
 			} else {
-
-				RDEBUG2("More Fragments with length included");
+				RDEBUG2("Got additional TLS record fragment (with length?)");
 				return FR_TLS_MORE_FRAGMENTS_WITH_LENGTH;
 			}
 		} else {
-			RDEBUG2("Length Included");
+			RDEBUG2("Got complete TLS record (no fragmentation)");
 			return FR_TLS_LENGTH_INCLUDED;
 		}
+	} else {
+		RDEBUG2("Got additional TLS record fragment");
 	}
 
 	if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
@@ -483,7 +488,8 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	 */
 	if (TLS_LENGTH_INCLUDED(tlspacket->flags) &&
 	    (tlspacket->length < 5)) { /* flags + TLS message length */
-		REDEBUG("Invalid EAP-TLS packet received:  Length bit is set, but no length was found");
+		REDEBUG("Invalid EAP-TLS packet received:  Length bit is set, "
+			"but packet too short to contain length field");
 		talloc_free(tlspacket);
 		return NULL;
 	}
@@ -502,7 +508,9 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 		memcpy(&data_len, &eap_ds->response->type.data[1], 4);
 		data_len = ntohl(data_len);
 		if (data_len > MAX_RECORD_SIZE) {
-			REDEBUG("The EAP-TLS packet will contain more data than we can process");
+			REDEBUG("Reassembled TLS record will be %zu bytes, "
+				"greater than our maximum record size (" STRINGIFY(MAX_RECORD_SIZE) " bytes)",
+				data_len);
 			talloc_free(tlspacket);
 			return NULL;
 		}
