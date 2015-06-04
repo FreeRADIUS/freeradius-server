@@ -350,7 +350,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Don't trust anyone.
 	 */
 	if ((type->num == 0) || (type->num >= PW_EAP_MAX_TYPES)) {
-		REDEBUG("Peer sent method %d, which is outside known range", type->num);
+		REDEBUG("Peer sent EAP method number %d, which is outside known range", type->num);
 
 		return EAP_INVALID;
 	}
@@ -364,7 +364,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		return EAP_INVALID;
 	}
 
-	RDEBUG2("Peer sent method %s (%d)", eap_type2name(type->num), type->num);
+	RDEBUG2("Peer sent EAP method \"%s\" (%d)", eap_type2name(type->num), type->num);
 	/*
 	 *	Figure out what to do.
 	 */
@@ -972,7 +972,7 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 
 			return EAP_VALID;
 		}
-		
+
 		RAUTH("Unsupported EAP type %u: ignoring the packet", eap_packet->data[0]);
 		return EAP_INVALID;
 	}
