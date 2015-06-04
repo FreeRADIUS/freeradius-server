@@ -726,9 +726,9 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 */
 	status = eaptls_verify(handler);
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
-		REDEBUG("eaptls_verify returned \"%s\"", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		REDEBUG("[eaptls verify] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("eaptls_verify returned \"%s\"", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eaptls verify] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 
 	switch (status) {
