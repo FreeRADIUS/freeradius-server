@@ -131,6 +131,8 @@ static char const 	*cf_expand_variables(char const *cf, int *lineno,
 					     char *output, size_t outsize,
 					     char const *input, bool *soft_fail);
 
+static int cf_file_include(CONF_SECTION *cs, char const *filename_in);
+
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
  */
@@ -2687,7 +2689,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 /*
  *	Include one config file in another.
  */
-int cf_file_include(CONF_SECTION *cs, char const *filename_in)
+static int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 {
 	FILE		*fp;
 	int		lineno = 0;
