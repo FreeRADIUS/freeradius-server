@@ -282,6 +282,7 @@ void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
 CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 			     CONF_SECTION *outercs,
 			     char const *ptr);
+bool cf_file_changed(CONF_SECTION *cs);
 
 extern CONF_SECTION *root_config;
 

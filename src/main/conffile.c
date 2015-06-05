@@ -352,6 +352,49 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	return fp;
 }
 
+/*
+ *	Return 0 for keep going, 1 for stop.
+ */
+static int file_callback(UNUSED void *ctx, void *data)
+{
+	struct stat buf;
+	cf_file_t *file = data;
+
+	if (stat(file->filename, &buf) < 0) return 1;
+
+	/*
+	 *	The file changed, we'll need to re-read it.
+	 */
+	if (buf.st_mtime != file->buf.st_mtime) return 1;
+
+	return 0;
+}
+
+
+/*
+ *	See if any of the files have changed.
+ */
+bool cf_file_changed(CONF_SECTION *cs)
+{
+	int rcode;
+	CONF_DATA *cd;
+	CONF_SECTION *top;
+	rbtree_t *tree;
+
+	top = cf_top_section(cs);
+	cd = cf_data_find_internal(top, "filename", 0);
+	if (!cd) return true;
+
+	tree = cd->data;
+
+	rcode = rbtree_walk(tree, RBTREE_IN_ORDER, file_callback, cs);
+	if (rcode == 0) {
+		return false;
+	}
+
+	return true;
+}
+
 static int _cf_section_free(CONF_SECTION *cs)
 {
 	/*

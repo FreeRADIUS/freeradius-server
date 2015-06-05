@@ -1060,13 +1060,18 @@ void main_config_hup(void)
 	CONF_SECTION *cs;
 	char buffer[1024];
 
-	INFO("HUP - Re-reading configuration files");
+	if (!cf_file_changed(cs_cache->cs)) {
+		INFO("HUP - No files changed.  Ignoring");
+		return;
+	}
 
 	cs = cf_section_alloc(NULL, "main", NULL);
 	if (!cs) return;
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf", radius_dir, main_config.name);
+
+	INFO("HUP - Re-reading configuration files");
 	if (cf_file_read(cs, buffer) < 0) {
 		ERROR("Failed to re-read or parse %s", buffer);
 		talloc_free(cs);
