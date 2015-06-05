@@ -339,11 +339,14 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 #endif
 	}
 
+	/*
+	 *	We can include the same file twice.  e.g. when it
+	 *	contains common definitions, such as for SQL.
+	 *
+	 *	Though the admin should really use templates for that.
+	 */
 	if (!rbtree_insert(tree, file)) {
-		ERROR("Cannot include the same file twice: \"%s\"", filename);
 		talloc_free(file);
-		fclose(fp);
-		return NULL;
 	}
 
 	return fp;
