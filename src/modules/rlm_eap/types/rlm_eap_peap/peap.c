@@ -251,7 +251,7 @@ static int eapmessage_verify(REQUEST *request,
 		 */
 	case PW_EAP_MSCHAPV2:
 	default:
-		RDEBUG2("EAP type %s (%d)", eap_type2name(eap_method),
+		RDEBUG2("EAP method %s (%d)", eap_type2name(eap_method),
 			eap_method);
 		return 1;
 	}

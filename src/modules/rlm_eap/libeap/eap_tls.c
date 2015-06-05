@@ -272,17 +272,19 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
  *	fragments to receive to make the complete
  *	TLS-record/TLS-Message
  */
-static int eaptls_send_ack(EAP_DS *eap_ds, int peap_flag)
+static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
 {
 	EAPTLS_PACKET 	reply;
+	REQUEST		*request = handler->request;
 
+	RDEBUG2("ACKing Peer's TLS record fragment");
 	reply.code = FR_TLS_ACK;
 	reply.length = TLS_HEADER_LEN + 1/*flags*/;
 	reply.flags = peap_flag;
 	reply.data = NULL;
 	reply.dlen = 0;
 
-	eaptls_compose(eap_ds, &reply);
+	eaptls_compose(handler->eap_ds, &reply);
 
 	return 1;
 }
@@ -324,7 +326,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	/*
 	 *	First output the flags (for debugging)
 	 */
-	RDEBUG2("Peer sent EAP-TLS flags %c%c%c",
+	RDEBUG3("Peer sent flags %c%c%c",
 		TLS_START(eaptls_packet->flags) ? 'S' : '-',
 		TLS_MORE_FRAGMENTS(eaptls_packet->flags) ? 'M' : '-',
 		TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? 'L' : '-');
@@ -394,14 +396,19 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			RDEBUG2("Got complete TLS record (no fragmentation)");
 			return FR_TLS_LENGTH_INCLUDED;
 		}
-	} else {
-		RDEBUG2("Got additional TLS record fragment");
 	}
 
-	if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
-		RDEBUG2("More fragments to follow");
-		return FR_TLS_MORE_FRAGMENTS;
+	/*
+	 *	The previous packet had the M flags set, but this one doesn't,
+	 *	this must be the final record fragment
+	 */
+	if (TLS_MORE_FRAGMENTS(eaptls_prev->flags) && !TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
+		RDEBUG2("Got final TLS record fragment");
+	} else {
+		RDEBUG2("Got additional TLS record fragment.  Peer indicated more fragments to follow");
 	}
+
+	if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) return FR_TLS_MORE_FRAGMENTS;
 
 	/*
 	 *	None of the flags are set, but it's still a valid
@@ -628,7 +635,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 		/*
 		 *	Send the ACK.
 		 */
-		eaptls_send_ack(handler->eap_ds, tls_session->peap_flag);
+		eaptls_send_ack(handler, tls_session->peap_flag);
 		return FR_TLS_HANDLED;
 
 	}
@@ -720,7 +727,8 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 
 	if (!request) return FR_TLS_FAIL;
 
-	RDEBUG2("Processing EAP-TLS");
+	RDEBUG2("Continuing EAP-TLS");
+
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 
 	if (handler->certs) pairadd(&request->packet->vps,
@@ -826,8 +834,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 			/*
 			 *	Send the ACK.
 			 */
-			eaptls_send_ack(handler->eap_ds,
-					tls_session->peap_flag);
+			eaptls_send_ack(handler, tls_session->peap_flag);
 			RDEBUG2("Init is done, but tunneled data is fragmented");
 			status = FR_TLS_HANDLED;
 			goto done;
