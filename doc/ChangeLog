@@ -34,6 +34,9 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* Add dictionary for Wi-Fi Alliance Hotspot 2.0.  The server
 	  now supports all mandatory and optional attributes for this
 	  specification.
+	* HUP now re-loads the configuration only if the files have
+	  changed.  If all files are unchanged, HUP re-opens the
+	  log file, and does nothing else.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
