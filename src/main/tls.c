@@ -334,6 +334,10 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	int		verify_mode = 0;
 	VALUE_PAIR	*vp;
 
+	rad_assert(request != NULL);
+
+	RDEBUG2("Initiating new EAP-TLS session");
+	
 	/*
 	 *	Manually flush the sessions every so often.  If HALF
 	 *	of the session lifetime has passed since we last
@@ -436,8 +440,6 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	}
 
 	if (conf->session_cache_enable) state->allow_session_resumption = true; /* otherwise it's false */
-
-	RDEBUG2("Initiate");
 
 	return state;
 }
@@ -1534,9 +1536,8 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 
 	/* Verify OCSP response status */
 	status = OCSP_response_status(resp);
-	DEBUG2(LOG_PREFIX ":ocsp: Response status: %s",OCSP_response_status_str(status));
 	if (status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-		DEBUG2(LOG_PREFIX ": ocsp: Response status: %s", OCSP_response_status_str(status));
+		ERROR(LOG_PREFIX ": ocsp: Response status: %s", OCSP_response_status_str(status));
 		goto ocsp_end;
 	}
 	bresp = OCSP_response_get1_basic(resp);
@@ -1562,7 +1563,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		}
 		goto ocsp_end;
 	}
-
+	DEBUG2(LOG_PREFIX ": ocsp: Response status: %s", OCSP_response_status_str(status));
 
 	if (bio_out) {
 		BIO_puts(bio_out, "\tThis Update: ");
@@ -1746,7 +1747,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	sn = X509_get_serialNumber(client_cert);
 
-	RDEBUG2("TLS Verify creating certificate attributes");
+	RDEBUG2("Creating attributes from certificate OIDs");
 	RINDENT();
 
 	/*
@@ -1934,7 +1935,12 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 					"attribute and value are defined in the dictionaries",
 					attribute, value);
 			} else {
+				/*
+				 *	rdebug_pair_list indents (so pre REXDENT())
+				 */
+				REXDENT();
 				rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
+				RINDENT();
 			}
 		}
 
@@ -1994,7 +2000,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			} else {
 				RDEBUG2("checking certificate CN (%s) with xlat'ed value (%s)", common_name, cn_str);
 				if (strcmp(cn_str, common_name) != 0) {
-					AUTH("tls: Certificate CN (%s) does not match specified value (%s)!", common_name, cn_str);
+					AUTH(LOG_PREFIX ": Certificate CN (%s) does not match specified value (%s)!",
+					     common_name, cn_str);
 					my_ok = 0;
 				}
 			}
@@ -2065,15 +2072,15 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	} /* depth == 0 */
 
-	if (RDEBUG_ENABLED2) {
-		RDEBUG2("chain-depth   : %d, ", depth);
-		RDEBUG2("error         : %d", err);
+	if (RDEBUG_ENABLED3) {
+		RDEBUG3("chain-depth   : %d", depth);
+		RDEBUG3("error         : %d", err);
 
-		if (identity) RDEBUG2("identity      : %s", *identity);
-		RDEBUG2("common name   : %s", common_name);
-		RDEBUG2("subject       : %s", subject);
-		RDEBUG2("issuer        : %s", issuer);
-		RDEBUG2("verify return : %d", my_ok);
+		if (identity) RDEBUG3("identity      : %s", *identity);
+		RDEBUG3("common name   : %s", common_name);
+		RDEBUG3("subject       : %s", subject);
+		RDEBUG3("issuer        : %s", issuer);
+		RDEBUG3("verify return : %d", my_ok);
 	}
 	return my_ok;
 }
@@ -3113,8 +3120,6 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
  */
 fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 {
-	RDEBUG2("Received TLS ACK");
-
 	if (ssn == NULL){
 		REDEBUG("Unexpected ACK received:  No ongoing SSL session");
 		return FR_TLS_INVALID;
@@ -3131,12 +3136,12 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 
 	switch (ssn->info.content_type) {
 	case alert:
-		RDEBUG2("ACK alert");
+		RDEBUG2("Peer ACKed our alert");
 		return FR_TLS_FAIL;
 
 	case handshake:
 		if ((ssn->info.handshake_type == handshake_finished) && (ssn->dirty_out.used == 0)) {
-			RDEBUG2("ACK handshake is finished");
+			RDEBUG2("Peer ACKed our handshake fragment.  handshake is finished");
 
 			/*
 			 *	From now on all the content is
@@ -3147,12 +3152,12 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 			return FR_TLS_SUCCESS;
 		} /* else more data to send */
 
-		RDEBUG2("ACK handshake fragment handler");
+		RDEBUG2("Peer ACKed our handshake fragment");
 		/* Fragmentation handler, send next fragment */
 		return FR_TLS_REQUEST;
 
 	case application_data:
-		RDEBUG2("ACK handshake fragment handler in application data");
+		RDEBUG2("Peer ACKed our application data fragment");
 		return FR_TLS_REQUEST;
 
 		/*
@@ -3161,10 +3166,8 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		 */
 	default:
 		REDEBUG("Invalid ACK received: %d", ssn->info.content_type);
-
 		return FR_TLS_INVALID;
 	}
 }
-
 #endif	/* WITH_TLS */
 

@@ -182,7 +182,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 
 	rad_assert(module != NULL);
 
-	RDEBUG2("Calling EAP submodule %s to process data", module->type->name);
+	RDEBUG2("Calling submodule %s to process data", module->type->name);
 
 	request->module = module->type->name;
 
@@ -364,7 +364,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		return EAP_INVALID;
 	}
 
-	RDEBUG2("Peer sent EAP %s (%d) request", eap_type2name(type->num), type->num);
+	RDEBUG2("Peer sent packet with method EAP %s (%d)", eap_type2name(type->num), type->num);
 	/*
 	 *	Figure out what to do.
 	 */
@@ -532,9 +532,6 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 		default:
 			++reply->id;
 		}
-		RDEBUG2("Sending response, EAP ID %d", reply->id);
-	} else {
-		RDEBUG2("Sending response, EAP ID %d (set by EAP method handler)", reply->id);
 	}
 
 	/*
@@ -617,6 +614,10 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 		rcode = RLM_MODULE_REJECT;
 		break;
 	}
+
+	RDEBUG2("Sending EAP %s (code %i) ID %d length %i",
+		eap_codes[eap_packet->code], eap_packet->code, reply->id,
+		eap_packet->length[0] * 256 + eap_packet->length[1]);
 
 	return rcode;
 }
@@ -756,7 +757,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 */
 	if ((eap_msg->vp_octets[0] == 0) ||
 	    (eap_msg->vp_octets[0] >= PW_EAP_MAX_CODES)) {
-		RDEBUG2("Unknown EAP packet");
+		RDEBUG2("Peer sent EAP packet with unknown code %i", eap_msg->vp_octets[0]);
 	} else {
 		RDEBUG2("Peer sent EAP %s (code %i) ID %d length %zu",
 		        eap_codes[eap_msg->vp_octets[0]],
