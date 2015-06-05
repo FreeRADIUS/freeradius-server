@@ -68,6 +68,19 @@ typedef struct libssl_defect {
 	char const	*comment;
 } libssl_defect_t;
 
+/* Record critical defects in libssl here (newest first)*/
+static libssl_defect_t libssl_defects[] =
+{
+	{
+		.low		= 0x010001000,		/* 1.0.1  */
+		.high		= 0x01000106f,		/* 1.0.1f */
+		.id		= "CVE-2014-0160",
+		.name		= "Heartbleed",
+		.comment	= "For more information see http://heartbleed.com"
+	}
+};
+#endif /* ENABLE_OPENSSL_VERSION_CHECK */
+
 FR_NAME_NUMBER const fr_tls_status_table[] = {
 	{ "invalid",			FR_TLS_INVALID },
 	{ "request",			FR_TLS_REQUEST },
@@ -86,19 +99,6 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
 	{ "handled",			FR_TLS_HANDLED },
 	{  NULL , 			-1},
 };
-
-/* Record critical defects in libssl here (newest first)*/
-static libssl_defect_t libssl_defects[] =
-{
-	{
-		.low		= 0x010001000,		/* 1.0.1  */
-		.high		= 0x01000106f,		/* 1.0.1f */
-		.id		= "CVE-2014-0160",
-		.name		= "Heartbleed",
-		.comment	= "For more information see http://heartbleed.com"
-	}
-};
-#endif
 
 /* index we use to store cached session VPs
  * needs to be dynamic so we can supply a "free" function
