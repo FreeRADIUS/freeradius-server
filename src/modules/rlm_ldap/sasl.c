@@ -50,8 +50,8 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 	sasl_interact_t *cb_p;
 
 	for (cb_p = cb; cb_p->id != SASL_CB_LIST_END; cb_p++) {
-		ROPTIONAL(RDEBUG3, DEBUG3, "SASL challenge : %s", cb_p->challenge);
-		ROPTIONAL(RDEBUG3, DEBUG3, "SASL prompt    : %s", cb_p->prompt);
+		MOD_ROPTIONAL(RDEBUG3, DEBUG3, "SASL challenge : %s", cb_p->challenge);
+		MOD_ROPTIONAL(RDEBUG3, DEBUG3, "SASL prompt    : %s", cb_p->prompt);
 
 		switch (cb_p->id) {
 			case SASL_CB_AUTHNAME:
@@ -73,7 +73,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 			default:
 				break;
 		}
-		ROPTIONAL(RDEBUG3, DEBUG3, "SASL result    : %s", cb_p->result ? (char const *)cb_p->result : "");
+		MOD_ROPTIONAL(RDEBUG3, DEBUG3, "SASL result    : %s", cb_p->result ? (char const *)cb_p->result : "");
 	}
 	return SASL_OK;
 }
@@ -97,14 +97,14 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 	sasl_ctx.identity = identity;
 	sasl_ctx.password = password;
 
-	ROPTIONAL(RDEBUG2, DEBUG2, "Starting SASL mech(s): %s", sasl->mech);
+	MOD_ROPTIONAL(RDEBUG2, DEBUG2, "Starting SASL mech(s): %s", sasl->mech);
 	do {
 		ret = ldap_sasl_interactive_bind(conn->handle, NULL, sasl->mech,
 						 NULL, NULL, LDAP_SASL_AUTOMATIC,
 						 _sasl_interact, &sasl_ctx, result,
 						 &mech, &msgid);
 		ldap_msgfree(result);	/* We always need to free the old message */
-		if (ret >= 0) ROPTIONAL(RDEBUG3, DEBUG3, "Continuing SASL mech %s...", mech);
+		if (ret >= 0) MOD_ROPTIONAL(RDEBUG3, DEBUG3, "Continuing SASL mech %s...", mech);
 
 		status = rlm_ldap_result(inst, conn, msgid, identity, &result, error, extra);
 		/*
@@ -117,7 +117,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				char *escaped;
 
 				escaped = fr_aprints(request, srv_cred->bv_val, srv_cred->bv_len, '\0');
-				ROPTIONAL(RDEBUG3, DEBUG3, "SASL response  : %s", escaped);
+				MOD_ROPTIONAL(RDEBUG3, DEBUG3, "SASL response  : %s", escaped);
 
 				talloc_free(escaped);
 				ldap_memfree(srv_cred);
