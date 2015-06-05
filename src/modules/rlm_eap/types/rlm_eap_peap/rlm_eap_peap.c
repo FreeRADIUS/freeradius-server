@@ -196,7 +196,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 *	so rather than hoping the user figures it out,
 	 *	we force it here.
 	 */
-	ssn->length_flag = 0;
+	ssn->length_flag = false;
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS
