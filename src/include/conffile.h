@@ -224,7 +224,6 @@ int		cf_section_parse_pass2(CONF_SECTION *, void *base, CONF_PARSER const *varia
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);
 int		cf_file_read(CONF_SECTION *cs, char const *file);
 void		cf_file_free(CONF_SECTION *cs);
-int		cf_file_include(CONF_SECTION *cs, char const *file);
 
 CONF_PAIR	*cf_pair_find(CONF_SECTION const *, char const *name);
 CONF_PAIR	*cf_pair_find_next(CONF_SECTION const *, CONF_PAIR const *, char const *name);
