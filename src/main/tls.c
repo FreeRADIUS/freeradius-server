@@ -623,9 +623,9 @@ static void session_init(tls_session_t *ssn)
 	memset(&ssn->info, 0, sizeof(ssn->info));
 
 	ssn->mtu = 0;
-	ssn->fragment = 0;
+	ssn->fragment = false;
 	ssn->tls_msg_len = 0;
-	ssn->length_flag = 0;
+	ssn->length_flag = false;
 	ssn->opaque = NULL;
 	ssn->free_opaque = NULL;
 }
