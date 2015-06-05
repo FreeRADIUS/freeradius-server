@@ -402,7 +402,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	The previous packet had the M flags set, but this one doesn't,
 	 *	this must be the final record fragment
 	 */
-	if (TLS_MORE_FRAGMENTS(eaptls_prev->flags) && !TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
+	if ((eaptls_prev && TLS_MORE_FRAGMENTS(eaptls_prev->flags)) && !TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
 		RDEBUG2("Got final TLS record fragment");
 	} else {
 		RDEBUG2("Got additional TLS record fragment.  Peer indicated more fragments to follow");
