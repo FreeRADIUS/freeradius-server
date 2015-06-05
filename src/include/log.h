@@ -349,12 +349,12 @@ do {\
  * @param fmt printf style format string.
  * @param ... printf arguments.
  */
- #define ROPTIONAL(_l_request, _l_global, _l_prefix, fmt, ...) \
+ #define ROPTIONAL(_l_request, _l_global, fmt, ...) \
 do {\
 	if (request) {\
 		_l_request(fmt, ## __VA_ARGS__);\
 	} else {\
-		_l_global(_l_prefix ": " fmt, ## __VA_ARGS__);\
+		_l_global(LOG_PREFIX ": " fmt, ## __VA_ARGS__);\
  	}\
 } while (0)
 
