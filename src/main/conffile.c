@@ -2693,8 +2693,8 @@ int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 	int		lineno = 0;
 	struct stat	statbuf;
 	time_t		*mtime;
-	CONF_DATA	*cd;
 	char const	*filename;
+	CONF_SECTION	*top;
 
 	/*
 	 *	So we only need to do this once.
@@ -2721,7 +2721,9 @@ int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 #endif
 	}
 
-	if (cf_data_find_internal(cs, filename, PW_TYPE_FILE_INPUT)) {
+	top = cf_top_section(cs);
+
+	if (cf_data_find_internal(top, filename, PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED)) {
 		fclose(fp);
 		ERROR("Cannot include the same file twice: \"%s\"", filename);
 
@@ -2731,21 +2733,13 @@ int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 	/*
 	 *	Add the filename to the section
 	 */
-	mtime = talloc(cs, time_t);
+	mtime = talloc(top, time_t);
 	*mtime = statbuf.st_mtime;
 
-	if (cf_data_add_internal(cs, filename, mtime, NULL, PW_TYPE_FILE_INPUT) < 0) {
+	if (cf_data_add_internal(top, filename, mtime, NULL, PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED) < 0) {
 		fclose(fp);
 		ERROR("Internal error opening file \"%s\"",
-		       filename);
-		return -1;
-	}
-
-	cd = cf_data_find_internal(cs, filename, PW_TYPE_FILE_INPUT);
-	if (!cd) {
-		fclose(fp);
-		ERROR("Internal error opening file \"%s\"",
-		       filename);
+		      filename);
 		return -1;
 	}
 
@@ -2755,7 +2749,7 @@ int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 	 *	Read the section.  It's OK to have EOF without a
 	 *	matching close brace.
 	 */
-	if (cf_section_read(cd->name, &lineno, fp, cs) < 0) {
+	if (cf_section_read(filename, &lineno, fp, cs) < 0) {
 		fclose(fp);
 		return -1;
 	}
