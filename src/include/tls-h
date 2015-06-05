@@ -106,20 +106,9 @@ typedef struct _tls_info_t {
 	int		version;
 } tls_info_t;
 
-/*
- * tls_session_t Structure gets stored as opaque in eap_handler_t
- * This contains EAP-REQUEST specific data
- * (ie FR_TLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
+/** Contains EAP-REQUEST specific data (ie FR_TLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
  *
- * clean_in  - data that needs to be sent but only after it is soiled.
- * dirty_in  - data EAP server receives.
- * clean_out - data that is cleaned after receiving.
- * dirty_out - data EAP server sends.
- * mtu	     - current fragment size transmitted
- * fragment  - Flag, In fragment mode or not.
- * tls_msg_len - Actual/Total TLS message length.
- * length_flag - A flag to include length in every TLS Data/Alert packet
- * 					if set to no then only the first fragment contains length
+ * The tls_session_t Structure gets stored as opaque in eap_handler_t
  */
 typedef struct _tls_session_t {
 	SSL_CTX		*ctx;
@@ -128,41 +117,37 @@ typedef struct _tls_session_t {
 
 	BIO 		*into_ssl;
 	BIO 		*from_ssl;
-	record_t 	clean_in;
-	record_t 	clean_out;
-	record_t 	dirty_in;
-	record_t 	dirty_out;
+	record_t 	clean_in;			//!< Data that needs to be sent but only after it is soiled.
+	record_t 	clean_out;			//!< Data that is cleaned after receiving.
+	record_t 	dirty_in;			//!< Data EAP server receives.
+	record_t 	dirty_out;			//!< Data EAP server sends.
 
 	void 		(*record_init)(record_t *buf);
 	void 		(*record_close)(record_t *buf);
-	unsigned int 	(*record_plus)(record_t *buf, void const *ptr,
-				       unsigned int size);
-	unsigned int 	(*record_minus)(record_t *buf, void *ptr,
-					unsigned int size);
+	unsigned int 	(*record_plus)(record_t *buf, void const *ptr, unsigned int size);
+	unsigned int 	(*record_minus)(record_t *buf, void *ptr, unsigned int size);
 
-	bool		invalid_hb_used;
+	bool		invalid_hb_used;		//!< Whether heartbleed attack was detected.
 
 	/*
-	 * Framed-MTU attribute in RADIUS,
-	 * if present, can also be used to set this
+	 *	Framed-MTU attribute in RADIUS, if present, can also be used to set this
 	 */
-	size_t 		mtu;
-	size_t		tls_msg_len;
-	int 		fragment;
-	int		length_flag;
+	size_t 		mtu;				//!< Current fragment size transmitted.
+	size_t		tls_msg_len;			//!< Actual/Total TLS message length.
+	bool		fragment;			//!< Flag, In fragment mode or not.
+	bool		length_flag;			//!< A flag to include length in every TLS Data/Alert packet.
+							//!< If set to no then only the first fragment contains length.
 	int		peap_flag;
 
 	/*
-	 *	Used by TTLS & PEAP to keep track of other per-session
-	 *	data.
+	 *	Used by TTLS & PEAP to keep track of other per-session data.
 	 */
 	void 		*opaque;
 	void 		(*free_opaque)(void *opaque);
 
 	char const	*prf_label;
-	int		allow_session_resumption;
+	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
 } tls_session_t;
-
 
 /*
  *	RFC 2716, Section 4.2:
