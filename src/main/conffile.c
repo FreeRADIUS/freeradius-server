@@ -121,6 +121,11 @@ struct conf_part {
 	CONF_PARSER const *variables;
 };
 
+typedef struct cf_file_t {
+	char const	*filename;
+	struct stat	buf;
+} cf_file_t;
+
 CONF_SECTION *root_config = NULL;
 
 
@@ -135,6 +140,8 @@ static char const 	*cf_expand_variables(char const *cf, int *lineno,
 					     char const *input, bool *soft_fail);
 
 static int cf_file_include(CONF_SECTION *cs, char const *filename_in);
+
+
 
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
@@ -274,6 +281,75 @@ static int data_cmp(void const *a, void const *b)
 	if (rcode != 0) return rcode;
 
 	return strcmp(one->name, two->name);
+}
+
+/*
+ *	Functions for tracking filenames.
+ */
+static int filename_cmp(void const *a, void const *b)
+{
+	cf_file_t const *one = a;
+	cf_file_t const *two = b;
+
+	if (one->buf.st_dev < two->buf.st_dev) return -1;
+	if (one->buf.st_dev > two->buf.st_dev) return +1;
+
+	if (one->buf.st_ino < two->buf.st_ino) return -1;
+	if (one->buf.st_ino > two->buf.st_ino) return +1;
+
+	return 0;
+}
+
+static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
+{
+	cf_file_t *file;
+	CONF_DATA *cd;
+	CONF_SECTION *top;
+	rbtree_t *tree;
+	int fd;
+	FILE *fp;
+
+	top = cf_top_section(cs);
+	cd = cf_data_find_internal(top, "filename", 0);
+	if (!cd) return NULL;
+
+	tree = cd->data;
+
+	fp = fopen(filename, "r");
+	if (!fp) {
+		ERROR("Unable to open file \"%s\": %s",
+		      filename, fr_syserror(errno));
+		return NULL;
+	}
+
+	fd = fileno(fp);
+
+	file = talloc(tree, cf_file_t);
+	if (!file) {
+		fclose(fp);
+		return NULL;
+	}
+	file->filename = filename;
+
+	if (fstat(fd, &file->buf) == 0) {
+#ifdef S_IWOTH
+		if ((file->buf.st_mode & S_IWOTH) != 0) {
+			fclose(fp);
+			ERROR("Configuration file %s is globally writable.  "
+			      "Refusing to start due to insecure configuration.", filename);
+			return NULL;
+		}
+#endif
+	}
+
+	if (!rbtree_insert(tree, file)) {
+		ERROR("Cannot include the same file twice: \"%s\"", filename);
+		talloc_free(file);
+		fclose(fp);
+		return NULL;
+	}
+
+	return fp;
 }
 
 static int _cf_section_free(CONF_SECTION *cs)
@@ -2759,10 +2835,7 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 {
 	FILE		*fp;
 	int		lineno = 0;
-	struct stat	statbuf;
-	time_t		*mtime;
 	char const	*filename;
-	CONF_SECTION	*top;
 
 	/*
 	 *	So we only need to do this once.
@@ -2771,45 +2844,8 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 
 	DEBUG2("including configuration file %s", filename);
 
-	fp = fopen(filename, "r");
-	if (!fp) {
-		ERROR("Unable to open file \"%s\": %s",
-		       filename, fr_syserror(errno));
-		return -1;
-	}
-
-	if (stat(filename, &statbuf) == 0) {
-#ifdef S_IWOTH
-		if ((statbuf.st_mode & S_IWOTH) != 0) {
-			fclose(fp);
-			ERROR("Configuration file %s is globally writable.  "
-			      "Refusing to start due to insecure configuration.", filename);
-			return -1;
-		}
-#endif
-	}
-
-	top = cf_top_section(cs);
-
-	if (cf_data_find_internal(top, filename, PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED)) {
-		fclose(fp);
-		ERROR("Cannot include the same file twice: \"%s\"", filename);
-
-		return -1;
-	}
-
-	/*
-	 *	Add the filename to the section
-	 */
-	mtime = talloc(top, time_t);
-	*mtime = statbuf.st_mtime;
-
-	if (cf_data_add_internal(top, filename, mtime, NULL, PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED) < 0) {
-		fclose(fp);
-		ERROR("Internal error opening file \"%s\"",
-		      filename);
-		return -1;
-	}
+	fp = cf_file_open(cs, filename);
+	if (!fp) return -1;
 
 	if (!cs->item.filename) cs->item.filename = filename;
 
@@ -2874,6 +2910,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 {
 	char *p;
 	CONF_PAIR *cp;
+	rbtree_t *tree;
 
 	cp = cf_pair_alloc(cs, "confdir", filename, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 	if (!cp) return -1;
@@ -2884,6 +2921,11 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	cp->item.filename = "<internal>";
 	cp->item.lineno = -1;
 	cf_item_add(cs, &(cp->item));
+
+	tree = rbtree_create(cs, filename_cmp, NULL, 0);
+	if (!tree) return -1;
+
+	cf_data_add_internal(cs, "filename", tree, NULL, 0);
 
 	if (cf_file_include(cs, filename) < 0) return -1;
 
