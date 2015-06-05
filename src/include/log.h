@@ -343,7 +343,6 @@ do {\
  * This is useful for areas of code which are run on server startup, and when
  * processing requests.
  *
- * @param _l_prefix added to global messages.
  * @param _l_request The name of a R* logging macro e.g. RDEBUG3.
  * @param _l_global The name of a global logging macro e.g. DEBUG3.
  * @param fmt printf style format string.
