@@ -1060,6 +1060,15 @@ void main_config_hup(void)
 	CONF_SECTION *cs;
 	char buffer[1024];
 
+	/*
+	 *	Re-open the log file.  If we can't, then keep logging
+	 *	to the old log file.
+	 *
+	 *	The "open log file" code is here rather than in log.c,
+	 *	because it makes that function MUCH simpler.
+	 */
+	hup_logfile();
+
 	if (!cf_file_changed(cs_cache->cs)) {
 		INFO("HUP - No files changed.  Ignoring");
 		return;
@@ -1097,15 +1106,6 @@ void main_config_hup(void)
 	cc->cs = talloc_steal(cc, cs);
 	cc->next = cs_cache;
 	cs_cache = cc;
-
-	/*
-	 *	Re-open the log file.  If we can't, then keep logging
-	 *	to the old log file.
-	 *
-	 *	The "open log file" code is here rather than in log.c,
-	 *	because it makes that function MUCH simpler.
-	 */
-	hup_logfile();
 
 	INFO("HUP - loading modules");
 
