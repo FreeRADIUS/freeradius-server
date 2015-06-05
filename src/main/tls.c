@@ -56,7 +56,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  endif
 #  include <openssl/ssl.h>
 
-#define MOD_PREFIX "tls"
+#define LOG_PREFIX "tls"
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct libssl_defect {
@@ -454,7 +454,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 	if ((l = ERR_get_error()) != 0) {
 		char const *p = ERR_error_string(l, NULL);
 
-		if (p) ROPTIONAL(REDEBUG, ERROR, "SSL says: %s", p);
+		if (p) ROPTIONAL(REDEBUG, ERROR, LOG_PREFIX, "SSL says: %s", p);
 	}
 	e = SSL_get_error(s, ret);
 
@@ -484,11 +484,11 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 		 *	being regarded as "dead".
 		 */
 	case SSL_ERROR_SYSCALL:
-		ROPTIONAL(REDEBUG, ERROR, "%s failed in a system call (%d), TLS session failed", text, ret);
+		ROPTIONAL(REDEBUG, ERROR, LOG_PREFIX, "%s failed in a system call (%d), TLS session failed", text, ret);
 		return 0;
 
 	case SSL_ERROR_SSL:
-		ROPTIONAL(REDEBUG, ERROR, "%s failed inside of TLS (%d), TLS session failed", text, ret);
+		ROPTIONAL(REDEBUG, ERROR, LOG_PREFIX, "%s failed inside of TLS (%d), TLS session failed", text, ret);
 		return 0;
 
 	default:
@@ -498,7 +498,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 		 *	them - so "politely inform" the caller that
 		 *	the code needs updating here.
 		 */
-		ROPTIONAL(REDEBUG, ERROR, "FATAL SSL error: %d", e);
+		ROPTIONAL(REDEBUG, ERROR, LOG_PREFIX, "FATAL SSL error: %d", e);
 		return 0;
 	}
 
@@ -539,9 +539,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		return 1;
 	}
 
-	if (!int_ssl_check(request, ssn->ssl, err, "SSL_read")) {
-		return 0;
-	}
+	if (!int_ssl_check(request, ssn->ssl, err, "SSL_read")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
 	if (SSL_is_init_finished(ssn->ssl)) RDEBUG2("SSL Connection Established");
