@@ -56,6 +56,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  endif
 #  include <openssl/ssl.h>
 
+#define MOD_PREFIX "tls"
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct libssl_defect {
 	uint64_t	high;
