@@ -1363,7 +1363,7 @@ static int ocsp_parse_cert_url(X509 *cert, char **phost, char **pport,
 /* Maximum leeway in validity period: default 5 minutes */
 #define MAX_VALIDITY_PERIOD     (5 * 60)
 
-static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
+static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		      fr_tls_server_conf_t *conf)
 {
 	OCSP_CERTID	*certid;
@@ -1407,22 +1407,21 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		memcpy(&url, &conf->ocsp_url, sizeof(url));
 		/* Reading the libssl src, they do a strdup on the URL, so it could of been const *sigh* */
 		OCSP_parse_url(url, &host, &port, &path, &use_ssl);
-	}
-	else {
+	} else {
 		ocsp_parse_cert_url(client_cert, &host, &port, &path, &use_ssl);
 	}
 
 	if (!host || !port || !path) {
-		DEBUG2(LOG_PREFIX ": ocsp: Host / port / path missing.  Not doing OCSP");
+		RWDEBUG("ocsp: Host / port / path missing.  Not doing OCSP");
 		ocsp_ok = 2;
 		goto ocsp_skip;
 	}
 
-	DEBUG2(LOG_PREFIX ": ocsp: Using responder URL \"http://%s:%s%s\"", host, port, path);
+	RDEBUG2("ocsp: Using responder URL \"http://%s:%s%s\"", host, port, path);
 
 	/* Check host and port length are sane, then create Host: HTTP header */
 	if ((strlen(host) + strlen(port) + 2) > sizeof(hostheader)) {
-		WARN(LOG_PREFIX ": ocsp: Host and port too long");
+		RWDEBUG("ocsp: Host and port too long");
 		goto ocsp_skip;
 	}
 	snprintf(hostheader, sizeof(hostheader), "%s:%s", host, port);
@@ -1446,7 +1445,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	/* Send OCSP request and wait for response */
 	resp = OCSP_sendreq_bio(cbio, path, req);
 	if (!resp) {
-		ERROR(LOG_PREFIX ": ocsp: Couldn't get OCSP response");
+		REDEBUG("ocsp: Couldn't get OCSP response");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1456,26 +1455,26 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 
 	rc = BIO_do_connect(cbio);
 	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(cbio))) {
-		ERROR(LOG_PREFIX ": ocsp: Couldn't connect to OCSP responder");
+		REDEBUG("ocsp: Couldn't connect to OCSP responder");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
 
 	ctx = OCSP_sendreq_new(cbio, path, NULL, -1);
 	if (!ctx) {
-		ERROR(LOG_PREFIX ": ocsp: Couldn't create OCSP request");
+		REDEBUG("ocsp: Couldn't create OCSP request");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
 
 	if (!OCSP_REQ_CTX_add1_header(ctx, "Host", hostheader)) {
-		ERROR(LOG_PREFIX ": ocsp: Couldn't set Host header");
+		REDEBUG("ocsp: Couldn't set Host header");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
 
 	if (!OCSP_REQ_CTX_set1_req(ctx, req)) {
-		ERROR(LOG_PREFIX ": ocsp: Couldn't add data to OCSP request");
+		REDEBUG("ocsp: Couldn't add data to OCSP request");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1493,7 +1492,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	} while ((rc == -1) && BIO_should_retry(cbio));
 
 	if (conf->ocsp_timeout && (rc == -1) && BIO_should_retry(cbio)) {
-		ERROR(LOG_PREFIX ": ocsp: Response timed out");
+		REDEBUG("ocsp: Response timed out");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1501,7 +1500,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	OCSP_REQ_CTX_free(ctx);
 
 	if (rc == 0) {
-		ERROR(LOG_PREFIX ": ocsp: Couldn't get OCSP response");
+		REDEBUG("ocsp: Couldn't get OCSP response");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1510,22 +1509,22 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	/* Verify OCSP response status */
 	status = OCSP_response_status(resp);
 	if (status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-		ERROR(LOG_PREFIX ": ocsp: Response status: %s", OCSP_response_status_str(status));
+		REDEBUG("ocsp: Response status: %s", OCSP_response_status_str(status));
 		goto ocsp_end;
 	}
 	bresp = OCSP_response_get1_basic(resp);
 	if (conf->ocsp_use_nonce && OCSP_check_nonce(req, bresp)!=1) {
-		ERROR(LOG_PREFIX ": ocsp: Response has wrong nonce value");
+		REDEBUG("ocsp: Response has wrong nonce value");
 		goto ocsp_end;
 	}
 	if (OCSP_basic_verify(bresp, NULL, store, 0)!=1){
-		ERROR(LOG_PREFIX ": Couldn't verify OCSP basic response");
+		REDEBUG("ocsp: Couldn't verify OCSP basic response");
 		goto ocsp_end;
 	}
 
 	/*	Verify OCSP cert status */
 	if (!OCSP_resp_find_status(bresp, certid, &status, &reason, &rev, &thisupd, &nextupd)) {
-		ERROR(LOG_PREFIX ": ocsp: No Status found");
+		REDEBUG("ocsp: No Status found");
 		goto ocsp_end;
 	}
 
@@ -1536,7 +1535,6 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		}
 		goto ocsp_end;
 	}
-	DEBUG2(LOG_PREFIX ": ocsp: Response status: %s", OCSP_response_status_str(status));
 
 	if (bio_out) {
 		BIO_puts(bio_out, "\tThis Update: ");
@@ -1551,14 +1549,14 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 
 	switch (status) {
 	case V_OCSP_CERTSTATUS_GOOD:
-		DEBUG2(LOG_PREFIX ": Cert status: good");
+		RDEBUG2("ocsp: Cert status: good");
 		ocsp_ok = 1;
 		break;
 
 	default:
 		/* REVOKED / UNKNOWN */
-		ERROR(LOG_PREFIX ": Cert status: %s", OCSP_cert_status_str(status));
-		if (reason != -1) ERROR(LOG_PREFIX ": Reason: %s", OCSP_crl_reason_str(reason));
+		REDEBUG("ocsp: Cert status: %s", OCSP_cert_status_str(status));
+		if (reason != -1) REDEBUG("ocsp: Reason: %s", OCSP_crl_reason_str(reason));
 
 		if (bio_out) {
 			BIO_puts(bio_out, "\tRevocation Time: ");
@@ -1582,22 +1580,22 @@ ocsp_end:
  ocsp_skip:
 	switch (ocsp_ok) {
 	case 1:
-		DEBUG2(LOG_PREFIX ": Certificate is valid");
+		RDEBUG2("ocsp: Certificate is valid");
 		break;
 
 	case 2:
 		if (conf->ocsp_softfail) {
-			DEBUG2(LOG_PREFIX ": Unable to check certificate, assuming it's valid");
-			WARN(LOG_PREFIX ": This may be insecure");
+			RWDEBUG("ocsp: Unable to check certificate, assuming it's valid");
+			RWDEBUG("ocsp: This may be insecure");
 			ocsp_ok = 1;
 		} else {
-			WARN(LOG_PREFIX ": Unable to check certificate, failing");
+			REDEBUG("ocsp: Unable to check certificate, failing");
 			ocsp_ok = 0;
 		}
 		break;
 
 	default:
-		WARN(LOG_PREFIX ": Certificate has been expired/revoked");
+		REDEBUG("ocsp: Certificate has been expired/revoked");
 		break;
 	}
 
@@ -1982,11 +1980,11 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 #ifdef HAVE_OPENSSL_OCSP_H
 		if (my_ok && conf->ocsp_enable){
-			RDEBUG2("--> Starting OCSP Request");
+			RDEBUG2("Starting OCSP Request");
 			if (X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) {
 				RERROR("Couldn't get issuer_cert for %s", common_name);
 			} else {
-				my_ok = ocsp_check(ocsp_store, issuer_cert, client_cert, conf);
+				my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
 			}
 		}
 #endif
