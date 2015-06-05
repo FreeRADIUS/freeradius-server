@@ -259,7 +259,7 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *requ
 	 */
 	ret = (inst->module->sql_fetch_row)(out, *handle, inst->config);
 	if (ret < 0) {
-		ROPTIONAL(RERROR, ERROR, "Error fetching row");
+		MOD_ROPTIONAL(RERROR, ERROR, "Error fetching row");
 
 		rlm_sql_print_error(inst, request, *handle, false);
 	}
@@ -285,7 +285,7 @@ void rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *ha
 
 	num = (inst->module->sql_error)(handle->log_ctx, log, (sizeof(log) / sizeof(*log)), handle, inst->config);
 	if (num == 0) {
-		ROPTIONAL(RERROR, ERROR, "Unknown error");
+		MOD_ROPTIONAL(RERROR, ERROR, "Unknown error");
 		return;
 	}
 
@@ -296,21 +296,21 @@ void rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *ha
 
 		switch (log[i].type) {
 		case L_ERR:
-			ROPTIONAL(RERROR, ERROR, "%s: %s", driver, log[i].msg);
+			MOD_ROPTIONAL(RERROR, ERROR, "%s: %s", driver, log[i].msg);
 			break;
 
 		case L_WARN:
-			ROPTIONAL(RWARN, WARN, "%s: %s", driver, log[i].msg);
+			MOD_ROPTIONAL(RWARN, WARN, "%s: %s", driver, log[i].msg);
 			break;
 
 		case L_INFO:
-			ROPTIONAL(RINFO, INFO, "%s: %s", driver, log[i].msg);
+			MOD_ROPTIONAL(RINFO, INFO, "%s: %s", driver, log[i].msg);
 			break;
 
 		case L_DBG:
 		default:
 		debug:
-			ROPTIONAL(RDEBUG, DEBUG, "%s: %s", driver, log[i].msg);
+			MOD_ROPTIONAL(RDEBUG, DEBUG, "%s: %s", driver, log[i].msg);
 			break;
 		}
 	}
@@ -358,7 +358,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
 	 *  a new connection, then give up.
 	 */
 	for (i = 0; i < (count + 1); i++) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query);
+		MOD_ROPTIONAL(RDEBUG2, DEBUG2, "Executing query: %s", query);
 
 		ret = (inst->module->sql_query)(*handle, inst->config, query);
 		switch (ret) {
@@ -415,7 +415,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
 		return ret;
 	}
 
-	ROPTIONAL(RERROR, ERROR, "Hit reconnection limit");
+	MOD_ROPTIONAL(RERROR, ERROR, "Hit reconnection limit");
 
 	return RLM_SQL_ERROR;
 }
@@ -459,7 +459,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_hand
 	 *  For sanity, for when no connections are viable, and we can't make a new one
 	 */
 	for (i = 0; i < (count + 1); i++) {
-		ROPTIONAL(RDEBUG2, DEBUG2, "Executing select query: %s", query);
+		MOD_ROPTIONAL(RDEBUG2, DEBUG2, "Executing select query: %s", query);
 
 		ret = (inst->module->sql_select_query)(*handle, inst->config, query);
 		switch (ret) {
@@ -488,7 +488,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_hand
 		return ret;
 	}
 
-	ROPTIONAL(RERROR, ERROR, "Hit reconnection limit");
+	MOD_ROPTIONAL(RERROR, ERROR, "Hit reconnection limit");
 
 	return RLM_SQL_ERROR;
 }
