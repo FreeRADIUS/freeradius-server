@@ -353,6 +353,55 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 }
 
 /*
+ *	Do some checks on the file as an "input" file.  i.e. one read
+ *	by a module.
+ */
+static bool cf_file_input(CONF_SECTION *cs, char const *filename)
+{
+	cf_file_t *file;
+	CONF_DATA *cd;
+	CONF_SECTION *top;
+	rbtree_t *tree;
+
+	top = cf_top_section(cs);
+	cd = cf_data_find_internal(top, "filename", 0);
+	if (!cd) return false;
+
+	tree = cd->data;
+
+	file = talloc(tree, cf_file_t);
+	if (!file) return false;
+
+	file->filename = filename;
+
+	if (stat(filename, &file->buf) < 0) {
+		ERROR("Unable to open file \"%s\": %s",
+		      filename, fr_strerror());
+		talloc_free(file);
+		return false;
+	}
+
+#ifdef S_IWOTH
+	if ((file->buf.st_mode & S_IWOTH) != 0) {
+		ERROR("Configuration file %s is globally writable.  "
+		      "Refusing to start due to insecure configuration.", filename);
+		return false;
+	}
+#endif
+
+	/*
+	 *	It's OK to include the same file twice...
+	 */
+	if (!rbtree_insert(tree, file)) {
+		talloc_free(file);
+	}
+
+	return true;
+
+}
+
+
+/*
  *	Return 0 for keep going, 1 for stop.
  */
 static int file_callback(UNUSED void *ctx, void *data)
@@ -1517,21 +1566,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		 *	to be caught as early as possible, during
 		 *	server startup.
 		 */
-		if (*q && file_input) {
-			struct stat buf;
-
-			if (stat(*q, &buf) < 0) {
-				char user[255], group[255];
-
-				ERROR("Unable to open file \"%s\": %s", value, fr_syserror(errno));
-				ERROR("Our effective user and group was %s:%s",
-				      (rad_prints_uid(NULL, user, sizeof(user), geteuid()) < 0) ?
-				      "unknown" : user,
-				      (rad_prints_gid(NULL, group, sizeof(group), getegid()) < 0) ?
-				      "unknown" : group );
-
-				return -1;
-			}
+		if (*q && file_input && !cf_file_input(cs, *q)) {
+			return -1;
 		}
 		break;
 
