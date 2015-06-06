@@ -139,6 +139,10 @@ typedef struct _tls_session_t {
 							//!< If set to no then only the first fragment contains length.
 	int		peap_flag;
 
+	size_t		tls_record_in_total_len;	//!< How long the peer indicated the complete tls record
+							//!< would be.
+	size_t		tls_record_in_recvd_len;	//!< How much of the record we've received so far.
+
 	/*
 	 *	Used by TTLS & PEAP to keep track of other per-session data.
 	 */

@@ -31,7 +31,7 @@ RCSIDH(eap_methods_h, "$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-/* Field length and other arbitrary things */
+/* Code (1) + Identifier (1) + Length (2) */
 #define EAP_HEADER_LEN 		4
 
 typedef enum eap_code {

@@ -301,9 +301,11 @@ static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
 static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 {
 	EAP_DS			*eap_ds = handler->eap_ds;
+	tls_session_t		*tls_session = handler->opaque;
 	EAP_DS			*prev_eap_ds = handler->prev_eapds;
 	eaptls_packet_t		*eaptls_packet, *eaptls_prev = NULL;
 	REQUEST			*request = handler->request;
+	size_t			frag_len;
 
 	/*
 	 *	We don't check ANY of the input parameters.  It's all
@@ -330,7 +332,6 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		TLS_START(eaptls_packet->flags) ? 'S' : '-',
 		TLS_MORE_FRAGMENTS(eaptls_packet->flags) ? 'M' : '-',
 		TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? 'L' : '-');
-
 
 	/*
 	 *	check for ACK
@@ -360,6 +361,12 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	}
 
 	/*
+	 *	Calculate this fragment's length
+	 */
+	frag_len = eap_ds->response->length -
+		   (EAP_HEADER_LEN + (TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? 6 : 2));
+
+	/*
 	 *	The L bit (length included) is set to indicate the
 	 *	presence of the four octet TLS Message Length field,
 	 *	and MUST be set for the first fragment of a fragmented
@@ -373,28 +380,74 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	from a fragment acknowledgement.
 	 */
 	if (TLS_LENGTH_INCLUDED(eaptls_packet->flags)) {
-		RDEBUG2("Peer indicated complete TLS record size will be %d bytes",
-		        eaptls_packet->data[2] * 256 | eaptls_packet->data[3]);
+		size_t total_len = eaptls_packet->data[2] * 256 | eaptls_packet->data[3];
+
+		if (frag_len > total_len) {
+			REDEBUG("TLS fragment length (%zu bytes) greater than TLS record length (%zu bytes)", frag_len,
+				total_len);
+			return FR_TLS_INVALID;
+		}
+
+		RDEBUG2("Peer indicated complete TLS record size will be %zu bytes", total_len);
 		if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
-			RDEBUG2("Peer indicated TLS record needs fragmenting");
 			/*
-			 * FIRST_FRAGMENT is identified
-			 * 1. If there is no previous EAP-response received.
-			 * 2. If EAP-response received, then its M bit not set.
-			 * 	(It is because Last fragment will not have M bit set)
+			 *	The supplicant is free to send fragments of wildly varying
+			 *	lengths, but the vast majority won't.
+			 *
+			 *	In this calculation we take into account the fact that the future
+			 *	fragments are likely to be 4 bytes larger than the initial one
+			 *	as they won't contain the length field.
+			 */
+			if (frag_len + 4) {	/* check for wrap, else clang scan gets excited */
+				RDEBUG2("Expecting %i TLS record fragments",
+					(int)((((total_len - frag_len) + ((frag_len + 4) - 1)) / (frag_len + 4)) + 1));
+			}
+
+			/*
+			 *	FIRST_FRAGMENT is identified
+			 *	1. If there is no previous EAP-response received.
+			 *	2. If EAP-response received, then its M bit not set.
+			 * 	   (It is because Last fragment will not have M bit set)
 			 */
 			if (!prev_eap_ds || (!prev_eap_ds->response) || (!eaptls_prev) ||
 			    !TLS_MORE_FRAGMENTS(eaptls_prev->flags)) {
-			    	RDEBUG2("Got first TLS record fragment");
+			    	RDEBUG2("Got first TLS record fragment (%zu bytes).  Peer indicated more fragments "
+			    		"to follow", frag_len);
+			    	tls_session->tls_record_in_total_len = total_len;
+			    	tls_session->tls_record_in_recvd_len = frag_len;
+
 				return FR_TLS_FIRST_FRAGMENT;
-			} else {
-				RDEBUG2("Got additional TLS record fragment (with length?)");
-				return FR_TLS_MORE_FRAGMENTS_WITH_LENGTH;
 			}
-		} else {
-			RDEBUG2("Got complete TLS record (no fragmentation)");
-			return FR_TLS_LENGTH_INCLUDED;
+
+			/*
+			 *	Check we've not exceeded the originally indicated TLS record size.
+			 */
+			tls_session->tls_record_in_recvd_len += frag_len;
+			if (tls_session->tls_record_in_recvd_len > tls_session->tls_record_in_total_len) {
+				REDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
+					"total TLS record length (%zu bytes)", frag_len, total_len);
+				return FR_TLS_INVALID;
+			}
+
+			RDEBUG2("Got additional TLS record fragment with length (%zu bytes).  "
+				"Peer indicated more fragments to follow", frag_len);
+			return FR_TLS_MORE_FRAGMENTS_WITH_LENGTH;
 		}
+
+		/*
+		 *	If it's a complete record, our fragment size should match the
+		 *	value of the four octet TLS length field.
+		 */
+		if (total_len != frag_len) {
+			REDEBUG("Peer indicated no more fragments, but TLS record length (%zu bytes) "
+				"does not match EAP-TLS data length (%zu bytes)", total_len, frag_len);
+			return FR_TLS_INVALID;
+		}
+
+		tls_session->tls_record_in_total_len = total_len;
+		tls_session->tls_record_in_recvd_len = frag_len;
+		RDEBUG2("Got complete TLS record (%zu bytes)", frag_len);
+		return FR_TLS_LENGTH_INCLUDED;
 	}
 
 	/*
@@ -402,16 +455,31 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	this must be the final record fragment
 	 */
 	if ((eaptls_prev && TLS_MORE_FRAGMENTS(eaptls_prev->flags)) && !TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
-		RDEBUG2("Got final TLS record fragment");
-	} else {
-		RDEBUG2("Got additional TLS record fragment.  Peer indicated more fragments to follow");
+		RDEBUG2("Got final TLS record fragment (%zu bytes)", frag_len);
+		tls_session->tls_record_in_recvd_len += frag_len;
+		if (tls_session->tls_record_in_recvd_len != tls_session->tls_record_in_total_len) {
+			REDEBUG("Total received TLS record fragments (%zu bytes), does not equal indicated "
+				"TLS record length (%zu bytes)",
+				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
+			return FR_TLS_INVALID;
+		}
 	}
 
-	if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) return FR_TLS_MORE_FRAGMENTS;
+	if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
+		RDEBUG2("Got additional TLS record fragment (%zu bytes).  Peer indicated more fragments to follow",
+			frag_len);
+		tls_session->tls_record_in_recvd_len += frag_len;
+		if (tls_session->tls_record_in_recvd_len > tls_session->tls_record_in_total_len) {
+			REDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
+				"indicated TLS record length (%zu bytes)",
+				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
+			return FR_TLS_INVALID;
+		}
+		return FR_TLS_MORE_FRAGMENTS;
+	}
 
 	/*
-	 *	None of the flags are set, but it's still a valid
-	 *	EAPTLS packet.
+	 *	None of the flags are set, but it's still a valid EAP-TLS packet.
 	 */
 	return FR_TLS_OK;
 }
@@ -507,9 +575,6 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	 *
 	 *	Likewise, if the EAP packet says N bytes, and the TLS
 	 *	packet says there's fewer bytes, it's a problem.
-	 *
-	 *	FIXME: Try to ensure that the claimed length is
-	 *	consistent across multiple TLS fragments.
 	 */
 	if (TLS_LENGTH_INCLUDED(tlspacket->flags)) {
 		memcpy(&data_len, &eap_ds->response->type.data[1], 4);
@@ -521,16 +586,6 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 			talloc_free(tlspacket);
 			return NULL;
 		}
-
-#if 0
-		DEBUG2(" TLS: %d %d\n", data_len, tlspacket->length);
-
-		if (data_len < tlspacket->length) {
-			REDEBUG("EAP-TLS packet claims to be smaller than the encapsulating EAP packet");
-			talloc_free(tlspacket);
-			return NULL;
-		}
-#endif
 	}
 
 	switch (status) {
