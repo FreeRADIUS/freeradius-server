@@ -1988,7 +1988,7 @@ extern module_t rlm_mschap;
 module_t rlm_mschap = {
 	.magic		= RLM_MODULE_INIT,
 	.name		= "mschap",
-	.type		= RLM_TYPE_THREAD_SAFE | RLM_TYPE_HUP_SAFE,
+	.type		= 0,
 	.inst_size	= sizeof(rlm_mschap_t),
 	.config		= module_config,
 	.bootstrap	= mod_bootstrap,
