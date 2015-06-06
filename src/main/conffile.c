@@ -123,6 +123,8 @@ struct conf_part {
 
 typedef struct cf_file_t {
 	char const	*filename;
+	CONF_SECTION	*cs;
+	bool		input;
 	struct stat	buf;
 } cf_file_t;
 
@@ -329,7 +331,10 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 		fclose(fp);
 		return NULL;
 	}
+
 	file->filename = filename;
+	file->cs = cs;
+	file->input = true;
 
 	if (fstat(fd, &file->buf) == 0) {
 #ifdef S_IWOTH
@@ -376,6 +381,8 @@ static bool cf_file_input(CONF_SECTION *cs, char const *filename)
 	if (!file) return false;
 
 	file->filename = filename;
+	file->cs = cs;
+	file->input = true;
 
 	if (stat(filename, &file->buf) < 0) {
 		ERROR("Unable to open file \"%s\": %s",
@@ -407,17 +414,48 @@ static bool cf_file_input(CONF_SECTION *cs, char const *filename)
 /*
  *	Return 0 for keep going, 1 for stop.
  */
-static int file_callback(UNUSED void *ctx, void *data)
+static int file_callback(void *ctx, void *data)
 {
+	int *rcode = ctx;
 	struct stat buf;
 	cf_file_t *file = data;
 
-	if (stat(file->filename, &buf) < 0) return 1;
+	/*
+	 *	The file doesn't exist or we can no longer read it.
+	 */
+	if (stat(file->filename, &buf) < 0) {
+		*rcode = CF_FILE_ERROR;
+		return 1;
+	}
 
 	/*
 	 *	The file changed, we'll need to re-read it.
 	 */
-	if (buf.st_mtime != file->buf.st_mtime) return 1;
+	if (buf.st_mtime != file->buf.st_mtime) {
+		/*
+		 *	Set none -> whatever
+		 */
+		if (*rcode == CF_FILE_NONE) {
+			if (!file->input) {
+				*rcode = CF_FILE_CONFIG;
+				return 1;
+			}
+
+			*rcode = CF_FILE_MODULE;
+			return 0;
+			
+		}
+
+		/*
+		 *	A module WAS changed, but now we discover that
+		 *	a main config file has changed.  We might as
+		 *	well re-load everything.
+		 */
+		if ((*rcode == CF_FILE_MODULE) && !file->input) {
+			*rcode = CF_FILE_CONFIG;
+			return 1;
+		}
+	}
 
 	return 0;
 }
@@ -426,7 +464,7 @@ static int file_callback(UNUSED void *ctx, void *data)
 /*
  *	See if any of the files have changed.
  */
-bool cf_file_changed(CONF_SECTION *cs)
+int cf_file_changed(CONF_SECTION *cs)
 {
 	int rcode;
 	CONF_DATA *cd;
@@ -439,12 +477,10 @@ bool cf_file_changed(CONF_SECTION *cs)
 
 	tree = cd->data;
 
-	rcode = rbtree_walk(tree, RBTREE_IN_ORDER, file_callback, cs);
-	if (rcode == 0) {
-		return false;
-	}
+	rcode = CF_FILE_NONE;
+	(void) rbtree_walk(tree, RBTREE_IN_ORDER, file_callback, &rcode);
 
-	return true;
+	return rcode;
 }
 
 static int _cf_section_free(CONF_SECTION *cs)

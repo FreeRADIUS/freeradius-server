@@ -1056,6 +1056,7 @@ void hup_logfile(void)
 
 void main_config_hup(void)
 {
+	int rcode;
 	cached_config_t *cc;
 	CONF_SECTION *cs;
 	char buffer[1024];
@@ -1069,8 +1070,19 @@ void main_config_hup(void)
 	 */
 	hup_logfile();
 
-	if (!cf_file_changed(cs_cache->cs)) {
+	rcode = cf_file_changed(cs_cache->cs);
+	if (rcode == CF_FILE_NONE) {
 		INFO("HUP - No files changed.  Ignoring");
+		return;
+	}
+
+	if (rcode == CF_FILE_ERROR) {
+		INFO("HUP - Cannot read configuration files.  Ignoring");
+		return;
+	}
+
+	if (rcode == CF_FILE_MODULE) {
+		INFO("HUP - Files loaded by a module have changed.");
 		return;
 	}
 
