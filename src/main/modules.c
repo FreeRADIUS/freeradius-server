@@ -1525,6 +1525,9 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 	mh->next = node->mh;
 	node->mh = mh;
 
+	/*
+	 *	Replace the instance handle while the module is running.
+	 */
 	node->insthandle = insthandle;
 
 	/*
