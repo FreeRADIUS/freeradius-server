@@ -78,19 +78,12 @@ addons:
 before_install:
   - $CC --version
 before_script:
-# Configure the server
-  - if [ "${DO_BUILD}" = 'yes' ]; then CFLAGS="${BUILD_CFLAGS}" ./configure -C --enable-werror --prefix=$HOME/freeradius --with-shared-libs=$LIBS_SHARED --with-threads=$LIBS_OPTIONAL --with-udpfromto=$LIBS_OPTIONAL --with-openssl=$LIBS_OPTIONAL --with-pcre=$LIBS_OPTIONAL; fi
-  - if [ "${DO_BUILD}" = 'no' ]; then ./configure -C --without-modules; fi
-# Build the server
-  - if [ "${DO_BUILD}" = 'yes' ]; then make -j8; fi
-# Run CLANG analyzer if we're building with CLANG
-  - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 -a ${CC} = 'clang' ]; then make -j8 scan && [ "$(find build/plist/ -name *.html)" = '' ]; fi
-# Create RADIUS DB for Postgres
-  - ./scripts/travis/postgresql-setup
-# Create RADIUS DB for MySQL
-  - ./scripts/travis/mysql-setup
+  - ./scripts/travis/build.sh
 script:
+# If this is not a coverity scan, run the tests.  This is an optimisation to make sure we don't run tests
+# on the same build product multiple times.
   - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
+# Build the debian packages (disabled until we get the dependencies fixed)
 #  - if [ "${DO_BUILD}" = 'no' ]; then make deb; fi
 # Build the doxygen documentation
   - if [ "${DO_BUILD}" = 'no' ]; then cd doc/source; doxygen 3>&1 1>&2 2>&3 | grep -iv '^warning:' | tee doxygen_stderr.log && [ ! -n "$(cat doxygen_stderr.log)" ]; fi
