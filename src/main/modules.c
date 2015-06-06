@@ -1475,6 +1475,7 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 	fr_module_hup_t *mh;
 
 	if (!node ||
+	    node->entry->module->bootstrap ||
 	    !node->entry->module->instantiate ||
 	    ((node->entry->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
 		return 1;
