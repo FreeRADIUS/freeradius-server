@@ -420,6 +420,9 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 				return FR_TLS_FIRST_FRAGMENT;
 			}
 
+			RDEBUG2("Got additional TLS record fragment with length (%zu bytes).  "
+				"Peer indicated more fragments to follow", frag_len);
+
 			/*
 			 *	Check we've not exceeded the originally indicated TLS record size.
 			 */
@@ -430,8 +433,6 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 				return FR_TLS_INVALID;
 			}
 
-			RDEBUG2("Got additional TLS record fragment with length (%zu bytes).  "
-				"Peer indicated more fragments to follow", frag_len);
 			return FR_TLS_MORE_FRAGMENTS_WITH_LENGTH;
 		}
 
