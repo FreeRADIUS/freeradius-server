@@ -63,9 +63,7 @@ static FR_NAME_NUMBER state_names[] = {
  */
 int detail_send(rad_listen_t *listener, REQUEST *request)
 {
-#ifdef WITH_DETAIL_THREAD
 	char c = 0;
-#endif
 	listen_detail_t *data = listener->data;
 
 	rad_assert(request->listener == listener);
@@ -161,13 +159,9 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 		data->counter++;
 	}
 
-#ifdef WITH_DETAIL_THREAD
 	if (write(data->child_pipe[1], &c, 1) < 0) {
 		RERROR("detail (%s): Failed writing ack to reader thread: %s", data->name, fr_syserror(errno));
 	}
-#else
-	radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
-#endif
 
 	return 0;
 }
@@ -292,65 +286,6 @@ static int detail_open(rad_listen_t *this)
  *	t_rtt + t_delay wait for signal that the server is idle.
  *
  */
-#ifndef WITH_DETAIL_THREAD
-static RADIUS_PACKET *detail_poll(rad_listen_t *listener);
-
-int detail_recv(rad_listen_t *listener)
-{
-	RADIUS_PACKET *packet;
-	listen_detail_t *data = listener->data;
-	RAD_REQUEST_FUNP fun = NULL;
-
-	/*
-	 *	We may be in the main thread.  It needs to update the
-	 *	timers before we try to read from the file again.
-	 */
-	if (data->signal) return 0;
-
-	packet = detail_poll(listener);
-	if (!packet) return -1;
-
-	if (DEBUG_ENABLED2) {
-		VALUE_PAIR *vp;
-		vp_cursor_t cursor;
-
-		DEBUG2("detail (%s): Read packet from %s", data->name, data->filename_work);
-
-		for (vp = fr_cursor_init(&cursor, &packet->vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			debug_pair(vp);
-		}
-	}
-
-	switch (packet->code) {
-	case PW_CODE_ACCOUNTING_REQUEST:
-		fun = rad_accounting;
-		break;
-
-	case PW_CODE_COA_REQUEST:
-	case PW_CODE_DISCONNECT_REQUEST:
-		fun = rad_coa_recv;
-		break;
-
-	default:
-		rad_free(&packet);
-		data->state = STATE_REPLIED;
-		return 0;
-	}
-
-	/*
-	 *	Don't bother doing limit checks, etc.
-	 */
-	if (!request_receive(NULL, listener, packet, &data->detail_client, fun)) {
-		rad_free(&packet);
-		data->state = STATE_NO_REPLY;	/* try again later */
-		return 0;
-	}
-
-	return 1;
-}
-#else
 int detail_recv(rad_listen_t *listener)
 {
 	char c = 0;
@@ -409,7 +344,6 @@ int detail_recv(rad_listen_t *listener)
 	 */
 	return 0;
 }
-#endif
 
 static RADIUS_PACKET *detail_poll(rad_listen_t *listener)
 {
@@ -897,7 +831,6 @@ void detail_free(rad_listen_t *this)
 {
 	listen_detail_t *data = this->data;
 
-#ifdef WITH_DETAIL_THREAD
 	if (!check_config) {
 		ssize_t ret;
 		void *arg = NULL;
@@ -932,7 +865,6 @@ void detail_free(rad_listen_t *this)
 
 		if (arg) pthread_join(data->pthread_id, &arg);
 	}
-#endif
 
 	if (data->fp != NULL) {
 		fclose(data->fp);
@@ -980,27 +912,7 @@ static int detail_delay(listen_detail_t *data)
  */
 int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
-#ifdef WITH_DETAIL_THREAD
 	return 0;
-#else
-	listen_detail_t *data = this->data;
-
-	/*
-	 *	We haven't sent a packet... delay things a bit.
-	 */
-	if (!data->signal) return detail_delay(data);
-
-	data->signal = 0;
-
-	DEBUG2("detail (%s): Detail listener state %s signalled %d waiting %d.%06d sec",
-	       data->name,
-	       fr_int2str(state_names, data->state, "?"),
-	       data->signal,
-	       data->delay_time / USEC,
-	       data->delay_time % USEC);
-
-	return data->delay_time;
-#endif
 }
 
 /*
@@ -1008,17 +920,10 @@ int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
  */
 int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request)
 {
-#ifdef WITH_DETAIL_THREAD
 	return 0;
-#else
-	listen_detail_t *data = this->data;
-
-	return data->signal;
-#endif
 }
 
 
-#ifdef WITH_DETAIL_THREAD
 static void *detail_handler_thread(void *arg)
 {
 	char c;
@@ -1071,7 +976,6 @@ static void *detail_handler_thread(void *arg)
 
 	return NULL;
 }
-#endif
 
 
 static const CONF_PARSER detail_config[] = {
@@ -1179,7 +1083,6 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (check_config) return 0;
 
-#ifdef WITH_DETAIL_THREAD
 	/*
 	 *	Create the communication pipes.
 	 */
@@ -1196,7 +1099,6 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	pthread_create(&data->pthread_id, NULL, detail_handler_thread, this);
 
 	this->fd = data->master_pipe[0];
-#endif
 
 	return 0;
 }
