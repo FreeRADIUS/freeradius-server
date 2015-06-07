@@ -1032,6 +1032,11 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, <=, 3600);
 
 	/*
+	 *	Only checking the config.  Don't start threads or anything else.
+	 */
+	if (check_config) return 0;
+
+	/*
 	 *	If the filename is a glob, use "detail.work" as the
 	 *	work file name.
 	 */
@@ -1077,11 +1082,6 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->longname = client->shortname = data->filename;
 	client->secret = client->shortname;
 	client->nas_type = talloc_strdup(data, "none");	/* Part of 'data' not dynamically allocated */
-
-	/*
-	 *	Only checking the config.  Don't start threads or anything else.
-	 */
-	if (check_config) return 0;
 
 	/*
 	 *	Create the communication pipes.
