@@ -2783,9 +2783,9 @@ static int request_will_proxy(REQUEST *request)
 
 		pool = home_pool_byname(vp->vp_strvalue, pool_type);
 
-	/*
-	 *	Send it directly to a home server (i.e. NAS)
-	 */
+		/*
+		 *	Send it directly to a home server (i.e. NAS)
+		 */
 	} else if (((vp = pairfind(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
 		   ((vp = pairfind(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
 		VALUE_PAIR *port;
@@ -2806,7 +2806,23 @@ static int request_will_proxy(REQUEST *request)
 
 		port = pairfind(request->config, PW_PACKET_DST_PORT, 0, TAG_ANY);
 		if (!port) {
-		dst_port = PW_COA_UDP_PORT;
+			if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
+				dst_port = PW_AUTH_UDP_PORT;
+
+#ifdef WITH_ACCOUNTING
+			} else if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) {
+				dst_port = PW_ACCT_UDP_PORT;
+#endif
+
+#ifdef WITH_COA
+			} else if ((request->packet->code == PW_CODE_COA_REQUEST) ||
+				   (request->packet->code == PW_CODE_DISCONNECT_REQUEST)) {
+				dst_port = PW_COA_UDP_PORT;
+#endif
+			} else { /* shouldn't happen for RADIUS... */
+				return 0;
+			}
+
 		} else {
 			dst_port = vp->vp_integer;
 		}
@@ -2818,7 +2834,7 @@ static int request_will_proxy(REQUEST *request)
 		if (!home) {
 			char buffer[256];
 
-			WARN("No such CoA home server %s port %u",
+			WARN("No such home server %s port %u",
 			     inet_ntop(dst_ipaddr.af, &dst_ipaddr.ipaddr, buffer, sizeof(buffer)),
 			     (unsigned int) dst_port);
 			return 0;
