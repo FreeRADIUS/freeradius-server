@@ -384,9 +384,8 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		size_t total_len = eaptls_packet->data[2] * 256 | eaptls_packet->data[3];
 
 		if (frag_len > total_len) {
-			REDEBUG("TLS fragment length (%zu bytes) greater than TLS record length (%zu bytes)", frag_len,
+			RWDEBUG("TLS fragment length (%zu bytes) greater than TLS record length (%zu bytes)", frag_len,
 				total_len);
-			return FR_TLS_INVALID;
 		}
 
 		RDEBUG2("Peer indicated complete TLS record size will be %zu bytes", total_len);
@@ -428,9 +427,8 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			 */
 			tls_session->tls_record_in_recvd_len += frag_len;
 			if (tls_session->tls_record_in_recvd_len > tls_session->tls_record_in_total_len) {
-				REDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
+				RWDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
 					"total TLS record length (%zu bytes)", frag_len, total_len);
-				return FR_TLS_INVALID;
 			}
 
 			return FR_TLS_MORE_FRAGMENTS_WITH_LENGTH;
@@ -441,9 +439,8 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		 *	value of the four octet TLS length field.
 		 */
 		if (total_len != frag_len) {
-			REDEBUG("Peer indicated no more fragments, but TLS record length (%zu bytes) "
+			RWDEBUG("Peer indicated no more fragments, but TLS record length (%zu bytes) "
 				"does not match EAP-TLS data length (%zu bytes)", total_len, frag_len);
-			return FR_TLS_INVALID;
 		}
 
 		tls_session->tls_record_in_total_len = total_len;
@@ -460,10 +457,9 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		RDEBUG2("Got final TLS record fragment (%zu bytes)", frag_len);
 		tls_session->tls_record_in_recvd_len += frag_len;
 		if (tls_session->tls_record_in_recvd_len != tls_session->tls_record_in_total_len) {
-			REDEBUG("Total received TLS record fragments (%zu bytes), does not equal indicated "
+			RWDEBUG("Total received TLS record fragments (%zu bytes), does not equal indicated "
 				"TLS record length (%zu bytes)",
 				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
-			return FR_TLS_INVALID;
 		}
 	}
 
@@ -472,10 +468,9 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			frag_len);
 		tls_session->tls_record_in_recvd_len += frag_len;
 		if (tls_session->tls_record_in_recvd_len > tls_session->tls_record_in_total_len) {
-			REDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
+			RWDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
 				"indicated TLS record length (%zu bytes)",
 				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
-			return FR_TLS_INVALID;
 		}
 		return FR_TLS_MORE_FRAGMENTS;
 	}
