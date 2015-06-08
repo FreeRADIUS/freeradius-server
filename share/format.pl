@@ -2,7 +2,7 @@
 #
 #  Format the dictionaries according to a standard scheme.
 #
-#  Usage: cat dictionary | ./format.pl > new
+#  Usage: ./format.pl dictionary.foo
 #
 #  We don't over-write the dictionaries in place, so that the process
 #  can be double-checked by hand.
