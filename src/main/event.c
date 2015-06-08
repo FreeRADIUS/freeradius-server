@@ -905,7 +905,7 @@ static void check_for_zombie_home_server(REQUEST *request)
 		return;
 	}
 
-	mark_home_server_dead(home, &request->when);
+	mark_home_server_dead(home, &when);
 }
 
 static int proxy_to_virtual_server(REQUEST *request);
