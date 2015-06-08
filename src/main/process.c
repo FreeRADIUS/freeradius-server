@@ -3385,8 +3385,8 @@ static void ping_home_server(void *ctx)
 	 */
 	if (home->ping_check == HOME_PING_CHECK_NONE) {
 		if (home->state == HOME_STATE_ZOMBIE) {
-			when = home->zombie_period_start;
-			when.tv_sec += home->zombie_period;
+			home->when = home->zombie_period_start;
+			home->when.tv_sec += home->zombie_period;
 			INSERT_EVENT(ping_home_server, home);
 		}
 
