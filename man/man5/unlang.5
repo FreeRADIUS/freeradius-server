@@ -690,14 +690,14 @@ e.g. If a request contains "User-Name = bob", the expansion
 of %{User-Name[#]} will yeild "1".
 
 .IP %{Attribute-Name[*]}
-All values of Attribute-Name, concatenated together with \\n as the
+All values of Attribute-Name, concatenated together with ',' as the
 separator.
 
 .IP %{List-Name:[#]}
 The number of attributes in the named list.
 
 .IP %{List-Name:[*]}
-All values of attributes in the named-list, concatenated together with \\n
+All values of attributes in the named-list, concatenated together with ','
 as the separator. Use the %{pairs:} xlat to get a list of attributes and
 values.
 
