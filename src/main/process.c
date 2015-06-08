@@ -2868,7 +2868,27 @@ static int request_will_proxy(REQUEST *request)
 			return 0;
 		}
 
-		goto do_home;
+		/*
+		 *	The home server is alive (or may be alive).
+		 *	Send the packet to the IP.
+		 */
+		if (home->state != HOME_STATE_IS_DEAD) goto do_home;
+
+		/*
+		 *	The home server is dead.  If you wanted
+		 *	fail-over, you should have proxied to a pool.
+		 *	Sucks to be you.
+		 */
+		setup_post_proxy_fail(request);
+
+		/*
+		 *	Do the proxy reply (if any)
+		 */
+		if (process_proxy_reply(request, NULL)) {
+			request->handle(request);
+		}
+
+		return 0;
 
 	} else {
 		return 0;
