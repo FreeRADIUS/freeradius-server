@@ -350,4 +350,8 @@ ATTRIBUTE   Alc-Portal-Url                            177 string
 # names longer than the allowed maximum are treated as host setup failures
 ATTRIBUTE   Alc-SLAAC-IPv6-Pool                       181 string
 
+# The VLAN is transparently taken from the UE’s Ethernet layer and can be reflected
+# in both authentication and accounting
+ATTRIBUTE   Alc-Wlan-SSID-VLAN                        206 string
+
 END-VENDOR	Alcatel-Lucent-Service-Router
