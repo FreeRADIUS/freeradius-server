@@ -71,7 +71,7 @@ while (@ARGV) {
 	#
 	#  Remember the vendor
 	#
-	if (/^VENDOR\s+([\w-]+)\s+(\w+)(.*)/) {
+	if (/^VENDOR\s+([-\w]+)\s+(\w+)(.*)/) {
 	    $name=$1;
 	    $len = length $name;
 	    if ($len < 32) {
