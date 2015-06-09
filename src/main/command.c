@@ -2176,6 +2176,38 @@ static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED c
 }
 #endif
 
+#ifndef NDEBUG
+static int command_stats_memory(rad_listen_t *listener, int argc, char *argv[])
+{
+
+	if (!main_config.debug_memory || !main_config.memory_report) {
+		cprintf(listener, "No memory debugging was enabled.\n");
+		return CMD_OK;
+	}
+
+	if (argc == 0) goto fail;
+
+	if (strcmp(argv[0], "total") == 0) {
+		cprintf(listener, "%zd\n", talloc_total_size(NULL));
+		return CMD_OK;
+	}
+
+	if (strcmp(argv[0], "blocks") == 0) {
+		cprintf(listener, "%zd\n", talloc_total_blocks(NULL));
+		return CMD_OK;
+	}
+
+	if (strcmp(argv[0], "full") == 0) {
+		cprintf(listener, "see stdout of the server for the full report.\n");
+		fr_log_talloc_report(NULL);
+		return CMD_OK;
+	}
+
+fail:
+	cprintf_error(listener, "Must use 'stats memory full' or 'stats memory total'\n");
+	return CMD_FAIL;
+}
+#endif
 
 #ifdef WITH_DETAIL
 static FR_NAME_NUMBER state_names[] = {
@@ -2539,6 +2571,12 @@ static fr_command_table_t command_table_stats[] = {
 	  "stats socket <ipaddr> <port> [udp|tcp] "
 	  "- show statistics for given socket",
 	  command_stats_socket, NULL },
+
+#ifndef NDEBUG
+	{ "memory", FR_READ,
+	  "stats memory - show statistics on used memory",
+	  command_stats_memory, NULL },
+#endif
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
