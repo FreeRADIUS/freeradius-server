@@ -2204,7 +2204,7 @@ static int command_stats_memory(rad_listen_t *listener, int argc, char *argv[])
 	}
 
 fail:
-	cprintf_error(listener, "Must use 'stats memory full' or 'stats memory total'\n");
+	cprintf_error(listener, "Must use 'stats memory [blocks|full|total]'\n");
 	return CMD_FAIL;
 }
 #endif
@@ -2574,7 +2574,7 @@ static fr_command_table_t command_table_stats[] = {
 
 #ifndef NDEBUG
 	{ "memory", FR_READ,
-	  "stats memory - show statistics on used memory",
+	  "stats memory [blocks|full|total] - show statistics on used memory",
 	  command_stats_memory, NULL },
 #endif
 
