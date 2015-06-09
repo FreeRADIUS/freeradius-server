@@ -379,6 +379,20 @@ void fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
  *
  * @todo this is really inefficient and should be fixed...
  *
+ * The current VP will be set to the one before the VP being removed,
+ * this is so the commonly used check and remove loop (below) works
+ * as expected.
+ @code {.c}
+   for (vp = fr_cursor_init(&cursor, head);
+        vp;
+        vp = fr_cursor_next(&cursor) {
+        if (<condition>) {
+            vp = fr_cursor_remove(&cursor);
+            talloc_free(vp);
+        }
+   }
+ @endcode
+ *
  * @addtogroup module_safe
  *
  * @param cursor to remove the current pair from.
@@ -386,30 +400,49 @@ void fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
  */
 VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 {
-	VALUE_PAIR *vp, **last;
+	VALUE_PAIR *vp, *before;
 
 	if (!fr_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
 	vp = cursor->current;
 	if (!vp) return NULL;
 
-	last = cursor->first;
-	while (*last != vp) last = &(*last)->next;
+	/*
+	 *	Where VP is head of the list
+	 */
+	if (*(cursor->first) == vp) {
+		*(cursor->first) = vp->next;
+		cursor->current = vp->next;
+		cursor->next = vp->next ? vp->next->next : NULL;
+		goto fixup;
+	}
 
-	fr_cursor_next(cursor);   /* Advance the cursor past the one were about to delete */
+	/*
+	 *	Where VP is not head of the list
+	 */
+	before = *(cursor->first);
+	if (!before) return NULL;
 
-	*last = vp->next;
-	vp->next = NULL;
+	/*
+	 *	Find the VP immediately preceding the one being removed
+	 */
+	while (before->next != vp) before = before->next;
+
+	cursor->next = before->next = vp->next;	/* close the gap */
+	cursor->current = before;		/* current jumps back one, but this is usually desirable */
+
+fixup:
+	vp->next = NULL;			/* limit scope of pairfree() */
 
 	/*
 	 *	Fixup cursor->found if we removed the VP it was referring to
 	 */
-	if (vp == cursor->found) cursor->found = *last;
+	if (vp == cursor->found) cursor->found = cursor->current;
 
 	/*
 	 *	Fixup cursor->last if we removed the VP it was referring to
 	 */
-	if (vp == cursor->last) cursor->last = *last;
+	if (vp == cursor->last) cursor->last = cursor->current;
 	return vp;
 }
 
