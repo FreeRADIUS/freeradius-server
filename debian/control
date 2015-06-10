@@ -100,6 +100,13 @@ Description: FreeRADIUS shared library development files
  .
  This package contains the development headers and static library version.
 
+Package: freeradius-dhcp
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: DHCP module for FreeRADIUS server
+ The FreeRADIUS server can act as a DHCP server, and this module
+ is necessary for that.
+
 Package: freeradius-krb5
 Architecture: any
 Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
