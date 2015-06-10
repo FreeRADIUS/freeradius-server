@@ -677,7 +677,7 @@ static void process_file(const char *root_dir, char const *filename)
 			len = 0;
 			while (vp) {
 				len = rad_vp2attr(NULL, NULL, NULL, (VALUE_PAIR const **)(void **)&vp,
-						  attr, sizeof(data) - (attr - data));
+						  attr, data + sizeof(data) - attr);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
 						vp->da->name, fr_strerror());
@@ -689,7 +689,7 @@ static void process_file(const char *root_dir, char const *filename)
 			}
 
 			pairfree(&head);
-			outlen = len;
+			outlen = attr - data;
 			goto print_hex;
 		}
 
