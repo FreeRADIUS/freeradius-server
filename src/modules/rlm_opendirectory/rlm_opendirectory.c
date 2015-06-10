@@ -361,14 +361,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	uuid_clear(guid_sacl);
 
 	if (rad_getgid(request, &gid, kRadiusSACLName) < 0) {
+		RDEBUG("The SACL group \"%s\" does not exist on this system.", kRadiusSACLName);
+	} else {
 		err = mbr_gid_to_uuid(gid, guid_sacl);
 		if (err != 0) {
 			ERROR("rlm_opendirectory: The group \"%s\" does not have a GUID.", kRadiusSACLName);
 			return RLM_MODULE_FAIL;
 		}
-	}
-	else {
-		RDEBUG("The SACL group \"%s\" does not exist on this system.", kRadiusSACLName);
 	}
 
 	/* resolve client access list */
