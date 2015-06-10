@@ -220,7 +220,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 
 	dissocket = *dissocket_p;
 
-	DEBUG2("executing %s ...", argv[0]);
+	DEBUG2("rlm_redis (%s): executing the query: \"%s\"", inst->xlat_name, query);
 	dissocket->reply = redisCommandArgv(dissocket->conn, argc, argv, NULL);
 	if (!dissocket->reply) {
 		RERROR("%s", dissocket->conn->errstr);
