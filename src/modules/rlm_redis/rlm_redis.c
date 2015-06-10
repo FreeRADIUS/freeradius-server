@@ -62,6 +62,8 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 
 	conn = redisConnect(inst->hostname, inst->port);
 	if (conn && conn->err) {
+		ERROR("rlm_redis (%s): Problems with redisConnect('%s', %d), %s",
+				inst->xlat_name, inst->hostname, inst->port, redisReplyReaderGetError(conn));
 		redisFree(conn);
 		return NULL;
 	}
