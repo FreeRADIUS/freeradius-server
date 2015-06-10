@@ -43,7 +43,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include	<openssl/rc4.h>
 #endif
 
-#ifdef WITH_OPEN_DIRECTORY
+#ifdef __APPLE__
 int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair);
 #endif
 
@@ -557,7 +557,7 @@ static const CONF_PARSER module_config[] = {
 	{ "retry_msg", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_mschap_t, retry_msg), NULL },
 	{ "winbind_username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, rlm_mschap_t, wb_username), NULL },
 	{ "winbind_domain", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, rlm_mschap_t, wb_domain), NULL },
-#ifdef WITH_OPEN_DIRECTORY
+#ifdef __APPLE__
 	{ "use_open_directory", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_mschap_t, open_directory), "yes" },
 #endif
 
@@ -1817,7 +1817,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 				username->vp_strvalue, response_name->vp_strvalue);
 		}
 
-#ifdef WITH_OPEN_DIRECTORY
+#ifdef __APPLE__
 		/*
 		 *  No "known good" NT-Password attribute.  Try to do
 		 *  OpenDirectory authentication.

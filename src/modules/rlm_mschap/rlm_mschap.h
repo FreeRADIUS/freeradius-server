@@ -39,7 +39,7 @@ typedef struct rlm_mschap_t {
 	vp_tmpl_t		*wb_username;
 	vp_tmpl_t		*wb_domain;
 	fr_connection_pool_t    *wb_pool;
-#ifdef WITH_OPEN_DIRECTORY
+#ifdef __APPLE__
 	bool			open_directory;
 #endif
 } rlm_mschap_t;
