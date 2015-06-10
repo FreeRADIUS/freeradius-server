@@ -152,10 +152,8 @@ static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, cha
 	switch (dissocket->reply->type) {
 	case REDIS_REPLY_INTEGER:
 		buffer_ptr = buffer;
-		snprintf(buffer_ptr, sizeof(buffer), "%lld",
+		ret = snprintf(buffer_ptr, sizeof(buffer), "%lld",
 			 dissocket->reply->integer);
-
-		ret = strlen(buffer_ptr);
 		break;
 
 	case REDIS_REPLY_STATUS:
