@@ -61,7 +61,10 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	char buffer[1024];
 
 	conn = redisConnect(inst->hostname, inst->port);
-	if (conn->err) return NULL;
+	if (conn && conn->err) {
+		redisFree(conn);
+		return NULL;
+	}
 
 	if (inst->password) {
 		snprintf(buffer, sizeof(buffer), "AUTH %s", inst->password);
