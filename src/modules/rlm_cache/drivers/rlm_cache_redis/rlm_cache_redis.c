@@ -445,28 +445,28 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
-					 REQUEST *request, void *handle, rlm_cache_entry_t *c)
+					 REQUEST *request, void *handle,  uint8_t const *key, size_t key_len)
 {
 	redis_conn_t	*randle = talloc_get_type_abort(handle, redis_conn_t);
 	redisReply	*reply;
 
-	reply = redisCommand(randle->handle, "DEL %b", c->key, c->key_len);
+	reply = redisCommand(randle->handle, "DEL %b", key, key_len);
 	switch (fr_redis_command_status(randle, reply)) {
 	case 0:
 		if (reply->type == REDIS_REPLY_INTEGER) {
 			if (reply->integer) {
-				RDEBUG2("Entry successfully removed");
-			} else {
-				RDEBUG2("Entry already removed");
+				freeReplyObject(reply);
+				return CACHE_OK;
 			}
+
 			freeReplyObject(reply);
-			return CACHE_OK;
-		} else {
-			REDEBUG("Bad result type, expected integer, got %s",
-				fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
-			freeReplyObject(reply);
-			return CACHE_ERROR;
+			return CACHE_MISS;
 		}
+
+		REDEBUG("Bad result type, expected integer, got %s",
+			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+		freeReplyObject(reply);
+		return CACHE_ERROR;
 
 	default:
 		rad_assert(0);

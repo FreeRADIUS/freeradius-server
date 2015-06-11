@@ -218,8 +218,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		            to_store ? talloc_array_length(to_store) - 1 : 0, c->expires, 0);
 	talloc_free(pool);
 	if (ret != MEMCACHED_SUCCESS) {
-		RERROR("Failed storing entry: %s: %s",
-		       memcached_strerror(mandle->handle, ret),
+		RERROR("Failed storing entry: %s: %s", memcached_strerror(mandle->handle, ret),
 		       memcached_last_error_message(mandle->handle));
 
 		return CACHE_ERROR;
@@ -233,21 +232,24 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
  * @copydetails cache_entry_expire_t
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
-					 REQUEST *request, void *handle, rlm_cache_entry_t *c)
+					 REQUEST *request, void *handle, uint8_t const *key, size_t key_len)
 {
 	rlm_cache_memcached_handle_t *mandle = handle;
 
 	memcached_return_t ret;
 
-	ret = memcached_delete(mandle->handle, (char const *)c->key, c->key_len, 0);
-	if (ret != MEMCACHED_SUCCESS) {
-		RERROR("Failed deleting entry: %s",
-		       memcached_last_error_message(mandle->handle));
+	ret = memcached_delete(mandle->handle, (char const *)key, key_len, 0);
+	switch (ret) {
+	case MEMCACHED_SUCCESS:
+		return CACHE_OK;
 
+	case MEMCACHED_DATA_DOES_NOT_EXIST:
+		return CACHE_MISS;
+
+	default:
+		RERROR("Failed deleting entry: %s", memcached_last_error_message(mandle->handle));
 		return CACHE_ERROR;
 	}
-
-	return CACHE_OK;
 }
 
 /** Get a memcached handle

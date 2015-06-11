@@ -162,7 +162,7 @@ static rlm_cache_entry_t *cache_entry_alloc(UNUSED rlm_cache_config_t const *con
 
 	c = talloc_zero(NULL, rlm_cache_rbtree_entry_t);
 	if (!c) {
-		REDEBUG("Failed allocating cache entry");
+		RERROR("Failed allocating cache entry");
 		return NULL;
 	}
 
@@ -228,14 +228,14 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	memcpy(&my_c, &c, sizeof(my_c));
 
 	if (!rbtree_insert(driver->cache, my_c)) {
-		REDEBUG("Failed adding entry for key \"%s\"", my_c->key);
+		RERROR("Failed adding entry");
 
 		return CACHE_ERROR;
 	}
 
 	if (!fr_heap_insert(driver->heap, my_c)) {
 		rbtree_deletebydata(driver->cache, my_c);
-		REDEBUG("Failed adding entry for key \"%s\"", my_c->key);
+		RERROR("Failed adding entry to expiry heap");
 
 		return CACHE_ERROR;
 	}
@@ -251,16 +251,46 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
  */
 static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *driver_inst,
 					 REQUEST *request, void *handle,
-					 rlm_cache_entry_t *c)
+					 uint8_t const *key, size_t key_len)
 {
 	rlm_cache_rbtree_t *driver = driver_inst;
+	rlm_cache_entry_t *c, my_c;
 
 	rad_assert(handle == request);
+
+	my_c.key = key;
+	my_c.key_len = key_len;
+	c = rbtree_finddata(driver->cache, &my_c);
+	if (!c) return CACHE_MISS;
 
 	fr_heap_extract(driver->heap, c);
 	rbtree_deletebydata(driver->cache, c);
 	talloc_free(c);
 
+	return CACHE_OK;
+}
+
+/** Update the TTL of an entry
+ *
+ * @note handle not used except for sanity checks.
+ *
+ * @copydetails cache_set_ttl_t
+ */
+static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *config, void *driver_inst,
+					  REQUEST *request, UNUSED void *handle,
+					  rlm_cache_entry_t *c)
+{
+	rlm_cache_rbtree_t *driver = driver_inst;
+	int ret;
+
+	ret = fr_heap_extract(driver->heap, c);
+	rad_assert(ret == 1);	/* must be in the tree */
+
+	if (!fr_heap_insert(driver->heap, c)) {
+		rbtree_deletebydata(driver->cache, c);	/* make sure we don't leak entries... */
+		RERROR("Failed updating entry TTL.  Entry was forcefully expired");
+		return CACHE_ERROR;
+	}
 	return CACHE_OK;
 }
 
@@ -342,6 +372,7 @@ cache_driver_t rlm_cache_rbtree = {
 	.find		= cache_entry_find,
 	.insert		= cache_entry_insert,
 	.expire		= cache_entry_expire,
+	.set_ttl	= cache_entry_set_ttl,
 	.count		= cache_entry_count,
 
 	.acquire	= cache_acquire,

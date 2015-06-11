@@ -18,7 +18,7 @@ if (!ok) {
 	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Check the module didn't perform a merge
@@ -26,7 +26,7 @@ if (&request:Tmp-String-1) {
 	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Check status-only works correctly (should return ok and consume attribute)
@@ -38,30 +38,30 @@ if (!ok) {
 	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 if (&control:Cache-Status-Only) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Retrieve the entry (should be copied to request list)
 cache
 if (!updated) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Retrieving the entry should not expire it
@@ -71,29 +71,31 @@ update request {
 
 cache
 if (!updated) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Force expiry of the entry
 update control {
+	Cache-Allow-Merge := no
+	Cache-Allow-Insert := no
 	Cache-TTL := 0
 }
 cache
 if (!ok) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Check status-only works correctly (should return notfound and consume attribute)
@@ -102,36 +104,37 @@ update control {
 }
 cache
 if (!notfound) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 if (&control:Cache-Status-Only) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
-# Check read-only works correctly (should return notfound and consume attribute)
+# Check merge-only works correctly (should return notfound and consume attribute)
 update control {
-	Cache-Read-Only := 'yes'
+	Cache-Allow-Merge := 'yes'
+	Cache-Allow-Insert := 'no'
 }
 cache
 if (!notfound) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
-if (&control:Cache-Read-Only) {
-    test_fail
+if (&control:Cache-Allow-Merge) {
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # ...and check the entry wasn't recreated
@@ -140,10 +143,10 @@ update control {
 }
 cache
 if (!notfound) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # This should still allow the creation of a new entry
@@ -152,32 +155,32 @@ update control {
 }
 cache
 if (!ok) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 cache
 if (!updated) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 if (&Cache-TTL) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 update control {
@@ -190,18 +193,18 @@ update control {
 }
 cache
 if (!updated) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Request Tmp-String-1 shouldn't have been updated yet
 if (&request:Tmp-String-1 == &control:Tmp-String-1) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Check that a new entry is created
@@ -209,27 +212,27 @@ update control {
 	Cache-TTL := -1
 }
 cache
-if (!ok) {
-    test_fail
+if (!updated) {
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Request Tmp-String-1 still shouldn't have been updated yet
 if (&request:Tmp-String-1 == &control:Tmp-String-1) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 cache
 if (!updated) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Request Tmp-String-1 should now have been updated
@@ -237,7 +240,7 @@ if (&request:Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Check Cache-Merge = yes works as expected (should update current request)
@@ -248,18 +251,18 @@ update control {
 }
 cache
 if (!updated) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Request Tmp-String-1 should now have been updated
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
-    test_fail
+	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 # Check Cache-Entry-Hits is updated as we expect
@@ -267,7 +270,7 @@ if (&request:Cache-Entry-Hits != 0) {
 	test_fail
 }
 else {
-    test_pass
+	test_pass
 }
 
 cache
@@ -276,5 +279,5 @@ if (&request:Cache-Entry-Hits != 1) {
 	test_fail
 }
 else {
-    test_pass
+	test_pass
 }

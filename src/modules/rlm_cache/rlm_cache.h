@@ -156,6 +156,8 @@ typedef cache_status_t	(*cache_entry_find_t)(rlm_cache_entry_t **out, rlm_cache_
  *
  * @note This callback is not optional.
  *
+ * @note This callback *must* overwrite existing cache entries on insert.
+ *
  * @param config for this instance of the rlm_cache module.
  * @param driver_inst Driver specific instance data.
  * @param request The current request.
@@ -180,15 +182,40 @@ typedef cache_status_t	(*cache_entry_insert_t)(rlm_cache_config_t const *config,
  * @param[in] request The current request.
  * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
  *	#cache_acquire_t callback was provided.
- * @param[in] c to expire (and possibly free).
+ * @param[in] key of entry to expire.
+ * @param[in] key_len the length of the key string.
  * @return
  *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
  *	- #CACHE_ERROR - If the entry couldn't be expire.
  *	- #CACHE_OK - If the entry was expired.
+ *	- @CACHE_MISS - If the entry didn't exist, so couldn't be expired.
  */
 typedef cache_status_t	(*cache_entry_expire_t)(rlm_cache_config_t const *config, void *driver_inst,
 						REQUEST *request, void *handle,
-						rlm_cache_entry_t *c);
+						uint8_t const *key, size_t key_len);
+
+/** Update the ttl of an entry in the cace
+ *
+ * @note This callback optional. If it's not specified the cache code will expire and
+ *	 recreate the entry with a new TTL.
+ *
+ * If the #rlm_cache_handle_t is inviable, the driver should return #CACHE_RECONNECT, to have
+ * it reinitialised/reconnected.
+ *
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] driver_inst Driver specific instance data.
+ * @param[in] request The current request.
+ * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
+ *	#cache_acquire_t callback was provided.
+ * @param[in] c to update the TTL of. c->ttl will have been set to the new value.
+ * @return
+ *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
+ *	- #CACHE_ERROR - If the entry TTL couldn't be updated.
+ *	- #CACHE_OK - If the entry's TTL was updated.
+ */
+typedef cache_status_t	(*cache_entry_set_ttl_t)(rlm_cache_config_t const *config, void *driver_inst,
+						 REQUEST *request, void *handle,
+						 rlm_cache_entry_t *c);
 
 /** Get the number of entries in the cache
  *
@@ -249,23 +276,25 @@ typedef int		(*cache_reconnect_t)(rlm_cache_handle_t **handle, rlm_cache_config_
 					     void *driver_inst, REQUEST *request);
 
 struct cache_driver {
-	char const		*name;			//!< Driver name.
+	char const			*name;			//!< Driver name.
 
-	cache_instantiate_t	instantiate;		//!< (optional) Instantiate a driver.
-	cache_entry_alloc_t	alloc;			//!< (optional) Allocate a new entry.
-	cache_entry_free_t	free;			//!< (optional) Free memory used by an entry.
+	cache_instantiate_t		instantiate;		//!< (optional) Instantiate a driver.
+	cache_entry_alloc_t		alloc;			//!< (optional) Allocate a new entry.
+	cache_entry_free_t		free;			//!< (optional) Free memory used by an entry.
 
-	cache_entry_find_t	find;			//!< Retrieve an existing cache entry.
-	cache_entry_insert_t	insert;			//!< Add a new entry.
-	cache_entry_expire_t	expire;			//!< Remove an old entry.
-	cache_entry_count_t	count;			//!< (Optional) Number of entries currently in the cache.
+	cache_entry_find_t		find;			//!< Retrieve an existing cache entry.
+	cache_entry_insert_t		insert;			//!< Add a new entry.
+	cache_entry_expire_t		expire;			//!< Remove an old entry.
+	cache_entry_set_ttl_t		set_ttl;		//!< (Optional) Update the TTL of an entry.
+	cache_entry_count_t		count;			//!< (Optional) Number of entries currently in
+								//!< the cache.
 
-	cache_acquire_t		acquire;		//!< (optional) Acquire exclusive access to a resource
-							//!< used to retrieve the cache entry.
-	cache_release_t		release;		//!< (optional) Release access to resource acquired
-							//!< with acquire callback.
-	cache_reconnect_t	reconnect;		//!< (optional) Re-initialise resource.
+	cache_acquire_t			acquire;		//!< (optional) Acquire exclusive access to a resource
+								//!< used to retrieve the cache entry.
+	cache_release_t			release;		//!< (optional) Release access to resource acquired
+								//!< with acquire callback.
+	cache_reconnect_t		reconnect;		//!< (optional) Re-initialise resource.
 
-	size_t			inst_size;		//!< How many bytes should be allocated for the driver's
-							//!< instance data.
+	size_t				inst_size;		//!< How many bytes should be allocated for the driver's
+								//!< instance data.
 };

@@ -960,7 +960,9 @@ do {\
 	if (RDEBUG_ENABLED3) {\
 		char *old = vp_aprints_value(request, _old, '"');\
 		char *new = vp_aprints_value(request, _new, '"');\
-		RDEBUG3("Overwriting value \"%s\" with \"%s\"", old, new);\
+		RINDENT();\
+		RDEBUG3("--> overwriting '%s' with '%s'", old, new);\
+		REXDENT();\
 		talloc_free(old);\
 		talloc_free(new);\
 	}\

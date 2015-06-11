@@ -272,7 +272,14 @@ ATTRIBUTE	Cache-TTL				1172	signed internal
 ATTRIBUTE	Cache-Status-Only			1173	integer internal
 ATTRIBUTE	Cache-Merge				1174	integer internal
 ATTRIBUTE	Cache-Entry-Hits			1175	integer internal
+
+ATTRIBUTE	Cache-Allow-Merge			1176	integer	internal
+
+# Old name (should be removed for 4.0)
 ATTRIBUTE	Cache-Read-Only				1176	integer internal
+
+ATTRIBUTE	Cache-Allow-Insert			1177	integer	internal
+
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
@@ -280,15 +287,18 @@ VALUE	Cache-Status-Only		yes			1
 VALUE	Cache-Merge			no			0
 VALUE	Cache-Merge			yes			1
 
-VALUE	Cache-Read-Only			no			0
-VALUE	Cache-Read-Only			yes			1
+VALUE	Cache-Allow-Merge		no			0
+VALUE	Cache-Allow-Merge		yes			1
 
-ATTRIBUTE	SSHA2-224-Password			1177	octets internal
-ATTRIBUTE	SSHA2-256-Password			1178	octets internal
-ATTRIBUTE	SSHA2-384-Password			1179	octets internal
-ATTRIBUTE	SSHA2-512-Password			1180	octets internal
+VALUE	Cache-Allow-Insert		no			0
+VALUE	Cache-Allow-Insert		yes			1
 
-ATTRIBUTE	Exec-Export				1181	string internal
+ATTRIBUTE	SSHA2-224-Password			1180	octets internal
+ATTRIBUTE	SSHA2-256-Password			1181	octets internal
+ATTRIBUTE	SSHA2-384-Password			1182	octets internal
+ATTRIBUTE	SSHA2-512-Password			1183	octets internal
+
+ATTRIBUTE	Exec-Export				1190	string internal
 
 #
 #	Range:	1200-1279

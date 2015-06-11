@@ -124,21 +124,18 @@ static void cache_free(rlm_cache_t *inst, rlm_cache_entry_t **c)
 
 /** Merge a cached entry into a #REQUEST
  *
+ * @return
+ *	- #RLM_MODULE_OK if no entries were merged.
+ *	- #RLM_MODULE_UPDATED if entries were merged.
  */
-static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c) CC_HINT(nonnull);
-static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c)
+static rlm_rcode_t cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c) CC_HINT(nonnull);
+static rlm_rcode_t cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c)
 {
 	VALUE_PAIR	*vp;
 	vp_map_t	*map;
-
-	vp = pairfind(request->config, PW_CACHE_MERGE, 0, TAG_ANY);
-	if (vp && (vp->vp_integer == 0)) {
-		RDEBUG2("Told not to merge entry into request");
-		return;
-	}
+	int		merged = 0;
 
 	RDEBUG2("Merging cache entry into request");
-
 	RINDENT();
 	for (map = c->maps; map; map = map->next) {
 		/*
@@ -156,6 +153,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *
 			RINDENT();
 			continue;
 		}
+		merged++;
 	}
 	REXDENT();
 
@@ -169,6 +167,10 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *
 		}
 		vp->vp_integer = c->hits;
 	}
+
+	return merged > 0 ?
+		RLM_MODULE_UPDATED :
+		RLM_MODULE_OK;
 }
 
 /** Find a cached entry.
@@ -231,7 +233,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 			talloc_free(p);
 		}
 
-		inst->driver->expire(&inst->config, inst->driver_inst, request, handle, c);
+		inst->driver->expire(&inst->config, inst->driver_inst, request, handle, c->key, c->key_len);
 		cache_free(inst, &c);
 		return RLM_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
@@ -252,20 +254,28 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 
 /** Expire a cache entry (removing it from the datastore)
  *
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_NOTFOUND if no entry existed.
+ *	- #RLM_MODULE_FAIL on failure.
  */
-static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle, rlm_cache_entry_t **c)
+static rlm_rcode_t cache_expire(rlm_cache_t *inst, REQUEST *request,
+				rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
 {
-	rad_assert(*c);
-
-	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_inst, request, *handle, *c)) {
+	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_inst, request,
+					      *handle, key, key_len)) {
 	case CACHE_RECONNECT:
 		if (cache_reconnect(handle, inst, request) == 0) continue;
 
 	/* FALL-THROUGH */
 	default:
-		cache_free(inst, c);
-		*c = NULL;
-		return;
+		return RLM_MODULE_FAIL;
+
+	case CACHE_OK:
+		return RLM_MODULE_OK;
+
+	case CACHE_MISS:
+		return RLM_MODULE_NOTFOUND;
 	}
 }
 
@@ -444,6 +454,59 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	}
 }
 
+/** Update the TTL of an entry
+ *
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_FAIL on failure.
+ */
+static rlm_rcode_t cache_set_ttl(rlm_cache_t *inst, REQUEST *request,
+				 rlm_cache_handle_t **handle, rlm_cache_entry_t *c)
+{
+	/*
+	 *	Call the driver's insert method to overwrite the old entry
+	 */
+	if (!inst->driver->set_ttl) for (;;) {
+		cache_status_t ret;
+
+		ret = inst->driver->insert(&inst->config, inst->driver_inst, request, *handle, c);
+		switch (ret) {
+		case CACHE_RECONNECT:
+			if (cache_reconnect(handle, inst, request) == 0) continue;
+			return RLM_MODULE_FAIL;
+
+		case CACHE_OK:
+			RDEBUG("Updated entry TTL");
+			return RLM_MODULE_OK;
+
+		default:
+			return RLM_MODULE_FAIL;
+		}
+	}
+
+	/*
+	 *	Or call the set ttl method if the driver can do this more
+	 *	efficiently.
+	 */
+	for (;;) {
+		cache_status_t ret;
+
+		ret = inst->driver->set_ttl(&inst->config, inst->driver_inst, request, *handle, c);
+		switch (ret) {
+		case CACHE_RECONNECT:
+			if (cache_reconnect(handle, inst, request) == 0) continue;
+			return RLM_MODULE_FAIL;
+
+		case CACHE_OK:
+			RDEBUG("Updated entry TTL");
+			return RLM_MODULE_OK;
+
+		default:
+			return RLM_MODULE_FAIL;
+		}
+	}
+}
+
 /** Verify that a map in the cache section makes sense
  *
  */
@@ -471,22 +534,26 @@ static int cache_verify(vp_map_t *map, void *ctx)
 static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request) CC_HINT(nonnull);
 static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 {
-	rlm_cache_entry_t	*c;
+	rlm_cache_entry_t	*c = NULL;
 	rlm_cache_t		*inst = instance;
 
 	rlm_cache_handle_t	*handle;
 
 	vp_cursor_t		cursor;
 	VALUE_PAIR		*vp;
+
+	bool			merge = true, insert = true, expire = false, set_ttl = false;
+	int			exists = -1;
+
 	uint8_t			buffer[1024];
 	uint8_t const		*key;
 	ssize_t			key_len;
-	rlm_rcode_t		rcode;
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
-	int ttl = inst->config.ttl;
+	int			ttl = inst->config.ttl;
 
 	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
-			     request, inst->config.key, NULL, NULL);
+			      request, inst->config.key, NULL, NULL);
 	if (key_len < 0) return RLM_MODULE_FAIL;
 
 	if (key_len == 0) {
@@ -494,85 +561,172 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
-
-	rcode = cache_find(&c, inst, request, &handle, key, key_len);
-	if (rcode == RLM_MODULE_FAIL) goto finish;
-	rad_assert(handle);
-
 	/*
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
 	vp = pairfind(request->config, PW_CACHE_STATUS_ONLY, 0, TAG_ANY);
 	if (vp && vp->vp_integer) {
+		if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
+
+		rcode = cache_find(&c, inst, request, &handle, key, key_len);
+		if (rcode == RLM_MODULE_FAIL) goto finish;
+		rad_assert(handle);
+
 		rcode = c ? RLM_MODULE_OK:
 			    RLM_MODULE_NOTFOUND;
 		goto finish;
 	}
 
 	/*
-	 *	Update the expiry time based on the TTL.
-	 *	A TTL of 0 means "delete from the cache".
-	 *	A TTL < 0 means "delete from the cache and recreate the entry".
+	 *	Figure out what operation we're doing
 	 */
+	vp = pairfind(request->config, PW_CACHE_ALLOW_MERGE, 0, TAG_ANY);
+	if (vp) merge = (bool)vp->vp_integer;
+
+	vp = pairfind(request->config, PW_CACHE_ALLOW_INSERT, 0, TAG_ANY);
+	if (vp) insert = (bool)vp->vp_integer;
+
 	vp = pairfind(request->config, PW_CACHE_TTL, 0, TAG_ANY);
-	if (vp) ttl = vp->vp_signed;
-
-	/*
-	 *	If there's no existing cache entry, go and create a new one.
-	 */
-	if (!c) {
-		if (ttl <= 0) ttl = inst->config.ttl;
-		goto insert;
-	}
-
-	/*
-	 *	Expire the entry if requested to do so
-	 */
 	if (vp) {
-		if (ttl == 0) {
-			cache_expire(inst, request, &handle, &c);
-			RDEBUG("Forcing expiry of entry");
-			rcode = RLM_MODULE_OK;
-			goto finish;
+		if (vp->vp_signed == 0) {
+			expire = true;
+		} else if (vp->vp_signed < 0) {
+			expire = true;
+			ttl = -(vp->vp_signed);
+		} else {
+			set_ttl = true;
+			ttl = vp->vp_signed;
 		}
+	}
 
-		if (ttl < 0) {
-			RDEBUG("Forcing expiry of existing entry");
-			cache_expire(inst, request, &handle, &c);
-			ttl *= -1;
-			goto insert;
+	if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
+
+	/*
+	 *	Retrieve the cache entry and merge it with the current request
+	 *	recording whether the entry existed.
+	 */
+	if (merge) {
+		rcode = cache_find(&c, inst, request, &handle, key, key_len);
+		switch (rcode) {
+		case RLM_MODULE_FAIL:
+			goto finish;
+
+		case RLM_MODULE_OK:
+			rcode = cache_merge(inst, request, c);
+			exists = 1;
+			break;
+
+		case RLM_MODULE_NOTFOUND:
+			rcode = RLM_MODULE_NOTFOUND;
+			exists = 0;
+			break;
+
+		default:
+			rad_assert(0);
 		}
-		c->expires = request->timestamp + ttl;
-		RDEBUG("Setting TTL to %d", ttl);
+		rad_assert(handle);
 	}
 
 	/*
-	 *	Cache entry was still valid, so we merge it into the request
-	 *	and return. No need to add a new entry.
+	 *	Expire the entry if told to, and we either don't know whether
+	 *	it exists, or we know it does.
+	 *
 	 */
-	cache_merge(inst, request, c);
-	rcode = RLM_MODULE_UPDATED;
+	if (expire && ((exists == -1) || (exists == 1))) {
+		rad_assert(!set_ttl);
+		switch (cache_expire(inst, request, &handle, key, key_len)) {
+		case RLM_MODULE_FAIL:
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
 
-	goto finish;
+		case RLM_MODULE_OK:
+			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_OK;
+			break;
 
-insert:
+		case RLM_MODULE_NOTFOUND:
+			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_NOTFOUND;
+			break;
+
+		default:
+			rad_assert(0);
+		}
+		rad_assert(handle);
+		exists = 0;	/* If it previously existed, it doesn't now */
+	}
+
 	/*
-	 *	If Cache-Read-Only == yes, then we only allow already cached entries
-	 *	to be merged into the request
+	 *	If we still don't know whether it exists or not
+	 *	and we need to do an insert or set_ttl operation
+	 *	determine that now.
 	 */
-	vp = pairfind(request->config, PW_CACHE_READ_ONLY, 0, TAG_ANY);
-	if (vp && vp->vp_integer) {
-		rcode = RLM_MODULE_NOTFOUND;
+	if ((exists < 0) && (insert || set_ttl)) {
+		switch (cache_find(&c, inst, request, &handle, key, key_len)) {
+		case RLM_MODULE_FAIL:
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case RLM_MODULE_OK:
+			exists = 1;
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			break;
+
+		case RLM_MODULE_NOTFOUND:
+			exists = 0;
+
+		default:
+			rad_assert(0);
+		}
+		rad_assert(handle);
+	}
+
+	/*
+	 *	We can only insert if an entry doesn't already
+	 *	exist in the cache.
+	 */
+	if (insert && (exists == 0)) {
+		switch (cache_insert(inst, request, &handle, key, key_len, ttl)) {
+		case RLM_MODULE_FAIL:
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case RLM_MODULE_OK:
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			break;
+
+		case RLM_MODULE_UPDATED:
+			rcode = RLM_MODULE_UPDATED;
+			break;
+
+		default:
+			rad_assert(0);
+		}
+		rad_assert(handle);
 		goto finish;
 	}
 
 	/*
-	 *	Create a new entry.
+	 *	We can only alter the TTL on an entry if it exists.
 	 */
-	rcode = cache_insert(inst, request, &handle, key, key_len, ttl);
-	rad_assert(handle);
+	if (set_ttl && (exists == 1)) {
+		rad_assert(c);
+
+		c->expires = request->timestamp + ttl;
+
+		switch (cache_set_ttl(inst, request, &handle, c)) {
+		case RLM_MODULE_FAIL:
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_OK:
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			break;
+
+		default:
+			rad_assert(0);
+		}
+	}
 
 finish:
 	cache_free(inst, &c);
@@ -587,8 +741,10 @@ finish:
 		if (vp->da->vendor == 0) switch (vp->da->attr) {
 		case PW_CACHE_TTL:
 		case PW_CACHE_STATUS_ONLY:
-		case PW_CACHE_READ_ONLY:
+		case PW_CACHE_ALLOW_MERGE:
+		case PW_CACHE_ALLOW_INSERT:
 		case PW_CACHE_MERGE:
+			RDEBUG2("Removing &control:%s", vp->da->name);
 			vp = fr_cursor_remove(&cursor);
 			talloc_free(vp);
 			break;
