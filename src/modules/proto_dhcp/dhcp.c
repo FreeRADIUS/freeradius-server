@@ -652,13 +652,7 @@ static int fr_dhcp_decode_vsa(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t const *
 	return 0;
 
 malformed:
-	(*tlv)->vp_tlv = talloc_array(*tlv, uint8_t, len);
-	if (!(*tlv)->vp_tlv) {
-		fr_strerror_printf("No memory");
-		return -1;
-	}
-	memcpy((*tlv)->vp_tlv, data, len);
-	(*tlv)->vp_length = len;
+	pairmemcpy(*tlv, data, len);
 
 	return 0;
 }
@@ -812,13 +806,7 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 	return 0;
 
 malformed:
-	(*tlv)->vp_tlv = talloc_array(*tlv, uint8_t, len);
-	if (!(*tlv)->vp_tlv) {
-		fr_strerror_printf("No memory");
-		return -1;
-	}
-	memcpy((*tlv)->vp_tlv, data, len);
-	(*tlv)->vp_length = len;
+	pairmemcpy(*tlv, data, len);
 
 	return 0;
 }
