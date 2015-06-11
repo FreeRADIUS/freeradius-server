@@ -274,7 +274,7 @@ static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config
  *
  * @note handle not used except for sanity checks.
  *
- * @copydetails cache_set_ttl_t
+ * @copydetails cache_entry_set_ttl_t
  */
 static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *config, void *driver_inst,
 					  REQUEST *request, UNUSED void *handle,
