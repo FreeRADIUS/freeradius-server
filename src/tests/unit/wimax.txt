@@ -134,3 +134,6 @@ data 1a 25 00 00 60 b5 1c 1f 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 01 04 
 
 encode Acct-Interim-Interval := 3600, WiMAX-Packet-Data-Flow-Id := 32, WiMAX-Service-Data-Flow-ID := 32, WiMAX-Service-Profile-ID := 32, WiMAX-Packet-Data-Flow-Id := 33, WiMAX-Service-Data-Flow-ID := 33, WiMAX-Service-Profile-ID := 33, Session-Timeout := 7200
 data 55 06 00 00 0e 10 1a 25 00 00 60 b5 1c 1f 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 01 04 00 21 02 04 00 21 03 06 00 00 00 21 1b 06 00 00 1c 20
+
+encode WiMAX-Packet-Data-Flow-Id := 32, WiMAX-Service-Data-Flow-ID := 32, WiMAX-Service-Profile-ID := 32, Session-Timeout := 7200, WiMAX-Packet-Data-Flow-Id := 33, WiMAX-Service-Data-Flow-ID := 33, WiMAX-Service-Profile-ID := 33
+data 1a 17 00 00 60 b5 1c 11 00 01 04 00 20 02 04 00 20 03 06 00 00 00 20 1b 06 00 00 1c 20 1a 17 00 00 60 b5 1c 11 00 01 04 00 21 02 04 00 21 03 06 00 00 00 21
