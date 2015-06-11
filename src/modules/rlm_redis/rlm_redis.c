@@ -42,7 +42,10 @@ static const CONF_PARSER module_config[] = {
 
 static int _mod_conn_free(REDISSOCK *dissocket)
 {
-	redisFree(dissocket->conn);
+	if (dissocket->conn) {
+		redisFree(dissocket->conn);
+		dissocket->conn = NULL;
+	}
 
 	if (dissocket->reply) {
 		freeReplyObject(dissocket->reply);
@@ -107,7 +110,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 			       inst->xlat_name);
 			goto do_close;
 		}
-
 
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
