@@ -652,6 +652,7 @@ static int fr_dhcp_decode_vsa(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t const *
 	return 0;
 
 malformed:
+	pair2unknown(*tlv);
 	pairmemcpy(*tlv, data, len);
 
 	return 0;
@@ -806,6 +807,7 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 	return 0;
 
 malformed:
+	pair2unknown(*tlv);
 	pairmemcpy(*tlv, data, len);
 
 	return 0;
