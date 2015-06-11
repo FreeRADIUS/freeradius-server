@@ -188,7 +188,7 @@ typedef cache_status_t	(*cache_entry_insert_t)(rlm_cache_config_t const *config,
  *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
  *	- #CACHE_ERROR - If the entry couldn't be expire.
  *	- #CACHE_OK - If the entry was expired.
- *	- @CACHE_MISS - If the entry didn't exist, so couldn't be expired.
+ *	- #CACHE_MISS - If the entry didn't exist, so couldn't be expired.
  */
 typedef cache_status_t	(*cache_entry_expire_t)(rlm_cache_config_t const *config, void *driver_inst,
 						REQUEST *request, void *handle,

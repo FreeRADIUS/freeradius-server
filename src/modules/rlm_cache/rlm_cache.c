@@ -673,6 +673,7 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 
 		case RLM_MODULE_NOTFOUND:
 			exists = 0;
+			break;
 
 		default:
 			rad_assert(0);
