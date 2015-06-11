@@ -674,7 +674,6 @@ static void process_file(const char *root_dir, char const *filename)
 
 			attr = data;
 			vp = head;
-			len = 0;
 			while (vp) {
 				len = rad_vp2attr(NULL, NULL, NULL, (VALUE_PAIR const **)(void **)&vp,
 						  attr, data + sizeof(data) - attr);
