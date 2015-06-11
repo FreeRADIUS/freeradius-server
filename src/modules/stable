@@ -38,3 +38,5 @@ rlm_unix
 rlm_sometimes
 rlm_wimax
 rlm_yubikey
+rlm_redis
+rlm_rediswho
