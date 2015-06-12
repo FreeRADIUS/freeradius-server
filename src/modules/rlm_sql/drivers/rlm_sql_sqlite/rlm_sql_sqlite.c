@@ -479,11 +479,6 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	return sql_check_error(conn->db);
 }
 
-static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
-{
-	return 0;
-}
-
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
@@ -577,29 +572,27 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 			break;
 
 		case SQLITE_TEXT:
-			{
-				char const *p;
-				p = (char const *) sqlite3_column_text(conn->statement, i);
+		{
+			char const *p;
+			p = (char const *) sqlite3_column_text(conn->statement, i);
 
-				if (p) {
-					MEM(row[i] = talloc_typed_strdup(row, p));
-				}
-			}
+			if (p) MEM(row[i] = talloc_typed_strdup(row, p));
+		}
 			break;
 
 		case SQLITE_BLOB:
-			{
-				uint8_t const *p;
-				size_t len;
+		{
+			uint8_t const *p;
+			size_t len;
 
-				p = sqlite3_column_blob(conn->statement, i);
-				if (p) {
-					len = sqlite3_column_bytes(conn->statement, i);
+			p = sqlite3_column_blob(conn->statement, i);
+			if (p) {
+				len = sqlite3_column_bytes(conn->statement, i);
 
-					MEM(row[i] = talloc_zero_array(row, char, len + 1));
-					memcpy(row[i], p, len);
-				}
+				MEM(row[i] = talloc_zero_array(row, char, len + 1));
+				memcpy(row[i], p, len);
 			}
+		}
 			break;
 
 		default:
@@ -687,7 +680,6 @@ rlm_sql_module_t rlm_sql_sqlite = {
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
-	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,

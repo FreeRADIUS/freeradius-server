@@ -497,14 +497,6 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
-{
-	/*
-	 *	Not needed for freetds, code that may have gone here iS in sql_select_query and sql_fetch_row
-	 */
-	return RLM_SQL_OK;
-}
-
 static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
@@ -758,7 +750,6 @@ rlm_sql_module_t rlm_sql_freetds = {
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
-	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
