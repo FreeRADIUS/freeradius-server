@@ -2369,7 +2369,7 @@ static int my_dict_init(char const *parent, char const *filename,
 				 *	attribute into the upper 8
 				 *	bits of the vendor ID
 				 */
-				block_vendor |= (da->attr & fr_attr_mask[0]) * FR_MAX_VENDOR;
+				block_vendor |= da->vendor;
 			}
 
 			continue;
