@@ -3360,7 +3360,6 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	ssize_t rcode;
 	uint32_t vendor;
 	DICT_ATTR const *child;
-	DICT_VENDOR *dv;
 	VALUE_PAIR *vp;
 	uint8_t const *data = start;
 	char *p;
@@ -3664,16 +3663,19 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 
 		memcpy(&vendor, data, 4);
 		vendor = ntohl(vendor);
-		dv = dict_vendorbyvalue(vendor);
-		if (!dv) {
-			child = dict_unknown_afrom_fields(ctx, data[4], da->vendor | vendor);
-		} else {
-			child = dict_attrbyparent(da, data[4], vendor);
-			if (!child) {
-				child = dict_unknown_afrom_fields(ctx, data[4], da->vendor | vendor);
-			}
+		vendor |= da->vendor;
+
+		child = dict_attrbyvalue(data[4], vendor);
+		if (!child) {
+			/*
+			 *	Create a "raw" attribute from the
+			 *	contents of the EVS VSA.
+			 */
+			da = dict_unknown_afrom_fields(ctx, data[4], vendor);
+			data += 5;
+			datalen -= 5;
+			break;
 		}
-		if (!child) goto raw;
 
 		rcode = data2vp(ctx, packet, original, secret, child,
 				data + 5, attrlen - 5, attrlen - 5, pvp);
