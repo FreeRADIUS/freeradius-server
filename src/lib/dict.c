@@ -1826,6 +1826,74 @@ static int process_value_alias(char const* fn, int const line, char **argv,
 }
 
 
+static int parse_format(char const *fn, int line, char const *format, int *pvalue, int *ptype, int *plength, bool *pcontinuation)
+{
+	char const *p;
+	int type, length;
+	bool continuation = false;
+
+	if (strncasecmp(format, "format=", 7) != 0) {
+		fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected \"format=\", got \"%s\"",
+				   fn, line, format);
+		return -1;
+	}
+
+	p = format + 7;
+	if ((strlen(p) < 3) ||
+	    !isdigit((int) p[0]) ||
+	    (p[1] != ',') ||
+	    !isdigit((int) p[2]) ||
+	    (p[3] && (p[3] != ','))) {
+		fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+				   fn, line, p);
+		return -1;
+	}
+
+	type = (int) (p[0] - '0');
+	length = (int) (p[2] - '0');
+
+	if ((type != 1) && (type != 2) && (type != 4)) {
+		fr_strerror_printf("dict_init: %s[%d]: invalid type value %d for VENDOR",
+				   fn, line, type);
+		return -1;
+	}
+
+	if ((length != 0) && (length != 1) && (length != 2)) {
+		fr_strerror_printf("dict_init: %s[%d]: invalid length value %d for VENDOR",
+				   fn, line, length);
+		return -1;
+	}
+
+	if (p[3] == ',') {
+		if (!p[4]) {
+			fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+					   fn, line, p);
+			return -1;
+		}
+
+		if ((p[4] != 'c') ||
+		    (p[5] != '\0')) {
+			fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+					   fn, line, p);
+			return -1;
+		}
+		continuation = true;
+
+		if ((*pvalue != VENDORPEC_WIMAX) ||
+		    (type != 1) || (length != 1)) {
+			fr_strerror_printf("dict_init: %s[%d]: Only WiMAX VSAs can have continuations",
+					   fn, line);
+			return -1;
+		}
+	}
+
+	*ptype = type;
+	*plength = length;
+	*pcontinuation = continuation;
+	return 0;
+}
+
+
 /*
  *	Process the VENDOR command
  */
@@ -1833,8 +1901,9 @@ static int process_vendor(char const* fn, int const line, char **argv,
 			  int argc)
 {
 	int		value;
+	int		type, length;
 	bool		continuation = false;
-	char const	*format = NULL;
+	DICT_VENDOR	*dv;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_printf( "dict_init: %s[%d] invalid VENDOR entry",
@@ -1864,93 +1933,39 @@ static int process_vendor(char const* fn, int const line, char **argv,
 	}
 
 	/*
-	 *	Look for a format statement
+	 *	Look for a format statement.  Allow it to over-ride the hard-coded formats below.
 	 */
 	if (argc == 3) {
-		format = argv[2];
+		if (parse_format(fn, line, argv[2], &value, &type, &length, &continuation) < 0) {
+			return -1;
+		}
 
 	} else if (value == VENDORPEC_USR) { /* catch dictionary screw-ups */
-		format = "format=4,0";
+		type = 4;
+		length = 0;
 
 	} else if (value == VENDORPEC_LUCENT) {
-		format = "format=2,1";
+		type = 2;
+		length = 1;
 
 	} else if (value == VENDORPEC_STARENT) {
-		format = "format=2,2";
+		type = 2;
+		length = 2;
 
-	} /* else no fixups to do */
-
-	if (format) {
-		int type, length;
-		char const *p;
-		DICT_VENDOR *dv;
-
-		if (strncasecmp(format, "format=", 7) != 0) {
-			fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected \"format=\", got \"%s\"",
-				   fn, line, format);
-			return -1;
-		}
-
-		p = format + 7;
-		if ((strlen(p) < 3) ||
-		    !isdigit((int) p[0]) ||
-		    (p[1] != ',') ||
-		    !isdigit((int) p[2]) ||
-		    (p[3] && (p[3] != ','))) {
-			fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
-				   fn, line, p);
-			return -1;
-		}
-
-		type = (int) (p[0] - '0');
-		length = (int) (p[2] - '0');
-
-		if (p[3] == ',') {
-			if (!p[4]) {
-				fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
-				   fn, line, p);
-				return -1;
-			}
-
-			if ((p[4] != 'c') ||
-			    (p[5] != '\0')) {
-				fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
-					   fn, line, p);
-				return -1;
-			}
-			continuation = true;
-
-			if ((value != VENDORPEC_WIMAX) ||
-			    (type != 1) || (length != 1)) {
-				fr_strerror_printf("dict_init: %s[%d]: Only WiMAX VSAs can have continuations",
-					   fn, line);
-				return -1;
-			}
-		}
-
-		dv = dict_vendorbyvalue(value);
-		if (!dv) {
-			fr_strerror_printf("dict_init: %s[%d]: Failed adding format for VENDOR",
-				   fn, line);
-			return -1;
-		}
-
-		if ((type != 1) && (type != 2) && (type != 4)) {
-			fr_strerror_printf("dict_init: %s[%d]: invalid type value %d for VENDOR",
-				   fn, line, type);
-			return -1;
-		}
-
-		if ((length != 0) && (length != 1) && (length != 2)) {
-			fr_strerror_printf("dict_init: %s[%d]: invalid length value %d for VENDOR",
-				   fn, line, length);
-			return -1;
-		}
-
-		dv->type = type;
-		dv->length = length;
-		dv->flags = continuation;
+	} else {
+		type = length = 1;
 	}
+
+	dv = dict_vendorbyvalue(value);
+	if (!dv) {
+		fr_strerror_printf("dict_init: %s[%d]: Failed adding format for VENDOR",
+				   fn, line);
+		return -1;
+	}
+
+	dv->type = type;
+	dv->length = length;
+	dv->flags = continuation;
 
 	return 0;
 }
