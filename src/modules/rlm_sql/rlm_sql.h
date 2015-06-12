@@ -165,6 +165,29 @@ extern const FR_NAME_NUMBER sql_rcode_table[];
 #define RLM_SQL_RCODE_FLAGS_ALT_QUERY	1			//!< Can distinguish between other errors and those
 								//!< resulting from a unique key violation.
 
+/** Retrieve errors from the last query operation
+ *
+ * @note Buffers allocated in the context provided will be automatically freed. The driver
+ *	should not free these buffers explicitly.
+ * @note If the driver uses its own buffers to aggregate messages, they should be cleared
+ *	on sql_query_finish, and after each call to sql_error, to prevent the same messages
+ *	being printed multiple times.
+ *
+ * @param[in,out] ctx to allocate any buffers required. If static buffers are provided by the
+ *	driver they need not be strduped, just write the pointer to those buffers to the .msg
+ *	field of a sql_log_entry_t element.
+ * @param[out] out a pre-allocated array of log entries to fill. Need not be NULL terminated.
+ * @param[in] outlen Number of log entries available for populating. Do not write to index
+ *	out[outlen] or higher.
+ * @param[in] handle to retrieve errors from.
+ * @param[in] config of the SQL instance.
+ * @return
+ *	0  - If no error messages are available.
+ *	>0 - Number of log entries
+ */
+typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, rlm_sql_handle_t *handle,
+			      rlm_sql_config_t *config);
+
 typedef struct rlm_sql_module_t {
 	char const	*name;
 	int		flags;
@@ -184,8 +207,7 @@ typedef struct rlm_sql_module_t {
 	sql_rcode_t (*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-	size_t (*sql_error)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			    rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	sql_error_t	sql_error;				//!< Get any errors from the previous query.
 
 	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
