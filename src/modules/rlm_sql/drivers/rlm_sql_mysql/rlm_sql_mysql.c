@@ -70,12 +70,14 @@ typedef struct rlm_sql_mysql_conn {
 } rlm_sql_mysql_conn_t;
 
 typedef struct rlm_sql_mysql_config {
-	char const		*tls_ca_file;
-	char const		*tls_ca_path;
-	char const		*tls_certificate_file;
-	char const		*tls_private_key_file;
-	char const		*tls_cipher;
-	char const		*warnings_str;
+	char const *tls_ca_file;		//!< Path to the CA used to validate the server's certificate.
+	char const *tls_ca_path;		//!< Directory containing CAs that may be used to validate the
+						//!< servers certificate.
+	char const *tls_certificate_file;	//!< Public certificate we present to the server.
+	char const *tls_private_key_file;	//!< Private key for the certificate we present to the server.
+	char const *tls_cipher;
+
+	char const *warnings_str;		//!< Whether we always query the server for additional warnings.
 	rlm_sql_mysql_warnings	warnings;	//!< mysql_warning_count() doesn't
 						//!< appear to work with NDB cluster
 } rlm_sql_mysql_config_t;
