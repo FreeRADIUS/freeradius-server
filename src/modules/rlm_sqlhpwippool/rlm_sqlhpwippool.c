@@ -155,7 +155,7 @@ static int nvp_select(rlm_sql_row_t *row, unsigned int line, rlm_sqlhpwippool_t 
 	}
 	va_end(ap);
 
-	if ((data->db->sql_store_result)(sqlsock, data->sql_inst->config)) {
+	if (data->db->sql_store_result && (data->db->sql_store_result)(sqlsock, data->sql_inst->config)) {
 		nvp_log(__LINE__, data, L_ERR,
 			"nvp_select(): error while saving results of query from line %u",
 			line);

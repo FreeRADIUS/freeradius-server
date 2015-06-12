@@ -44,11 +44,6 @@ static sql_rcode_t sql_query(UNUSED rlm_sql_handle_t * handle,
 	return 0;
 }
 
-static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
-{
-	return 0;
-}
-
 static int sql_num_fields(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	return 0;
@@ -109,7 +104,6 @@ rlm_sql_module_t rlm_sql_null = {
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
-	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
 	.sql_fetch_row			= sql_fetch_row,
