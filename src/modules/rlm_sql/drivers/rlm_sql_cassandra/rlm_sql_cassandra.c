@@ -424,7 +424,7 @@ static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, r
 		}
 		}
 	}
-	*out = NULL;
+	*out = row;
 
 	return RLM_SQL_OK;
 }
