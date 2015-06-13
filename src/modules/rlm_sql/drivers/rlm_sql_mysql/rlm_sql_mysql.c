@@ -120,11 +120,7 @@ static int _sql_socket_destructor(rlm_sql_mysql_conn_t *conn)
 
 static int _mod_destructor(UNUSED rlm_sql_mysql_config_t *driver)
 {
-	mysql_instance_count--;
-
-	if (mysql_instance_count == 0) {
-		 mysql_library_end();
-	}
+	if (--mysql_instance_count == 0) mysql_library_end();
 
 	return 0;
 }
