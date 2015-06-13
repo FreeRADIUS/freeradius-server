@@ -8,6 +8,7 @@ freeradius-mysql
 freeradius-postgresql
 freeradius-rest
 freeradius-utils
+freeradius-dhcp
 freeradius
 libfreeradius-dev
 libfreeradius3
