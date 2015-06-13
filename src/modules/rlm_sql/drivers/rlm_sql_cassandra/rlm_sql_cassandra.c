@@ -178,10 +178,25 @@ static int _sql_socket_destructor(rlm_sql_cassandra_conn_t *conn)
 {
 	DEBUG2("rlm_sql_cassandra: Socket destructor called, closing socket");
 
-	if (conn->iterator) cass_iterator_free(conn->iterator);
-	if (conn->result) cass_result_free(conn->result);
-	if (conn->session) cass_session_free(conn->session);
-	if (conn->cluster) cass_cluster_free(conn->cluster);
+	if (conn->iterator) {
+		cass_iterator_free(conn->iterator);
+		conn->iterator = NULL;
+	}
+
+	if (conn->result) {
+		cass_result_free(conn->result);
+		conn->result = NULL;
+	}
+
+	if (conn->session) {
+		cass_session_free(conn->session);
+		conn->session = NULL;
+	}
+
+	if (conn->cluster) {
+		cass_cluster_free(conn->cluster);
+		conn->cluster = NULL;
+	}
 
 	return 0;
 }
@@ -198,7 +213,11 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
 	DEBUG4("rlm_sql_cassandra: Configuring driver's CassCluster structure");
-	cluster = conn->cluster = cass_cluster_new();
+
+	conn->cluster = cluster = cass_cluster_new();
+	if (!cluster) {
+		return RLM_SQL_ERROR;
+	}
 	cass_cluster_set_contact_points(cluster, config->sql_server);
 	cass_cluster_set_port(cluster, atoi(config->sql_port));
 	cass_cluster_set_connect_timeout(cluster, config->connect_timeout_ms);
