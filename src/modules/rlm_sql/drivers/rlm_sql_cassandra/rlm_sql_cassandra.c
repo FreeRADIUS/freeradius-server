@@ -199,6 +199,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 	DEBUG4("rlm_sql_cassandra: Configuring driver's CassCluster structure");
 	cluster = conn->cluster = cass_cluster_new();
+	if (!cluster) return RLM_SQL_ERROR;
+
 	cass_cluster_set_contact_points(cluster, config->sql_server);
 	cass_cluster_set_port(cluster, atoi(config->sql_port));
 	cass_cluster_set_connect_timeout(cluster, config->connect_timeout_ms);
@@ -207,6 +209,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 
 	DEBUG2("rlm_sql_cassandra: Connecting to Cassandra cluster");
 	session = conn->session = cass_session_new();
+	if (!session) return RLM_SQL_ERROR;
+
 	future = cass_session_connect_keyspace(session, cluster, config->sql_db);
 	ret = cass_future_error_code(future);
 	if (ret != CASS_OK) {
