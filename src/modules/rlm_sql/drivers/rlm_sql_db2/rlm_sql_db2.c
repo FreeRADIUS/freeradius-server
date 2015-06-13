@@ -54,9 +54,7 @@ static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
 		SQLFreeHandle(SQL_HANDLE_DBC, conn->hdbc);
 	}
 
-	if (conn->henv) {
-		SQLFreeHandle(SQL_HANDLE_ENV, conn->henv);
-	}
+	if (conn->henv) SQLFreeHandle(SQL_HANDLE_ENV, conn->henv);
 
 	return RLM_SQL_OK;
 }

@@ -52,9 +52,7 @@ static int _sql_socket_destructor(rlm_sql_firebird_conn_t *conn)
 	pthread_mutex_destroy (&conn->mut);
 #endif
 
-	for (i=0; i < conn->row_fcount; i++) {
-		free(conn->row[i]);
-	}
+	for (i = 0; i < conn->row_fcount; i++) free(conn->row[i]);
 
 	free(conn->row);
 	free(conn->row_sizes);

@@ -49,21 +49,14 @@ static int _sql_socket_destructor(rlm_sql_unixodbc_conn_t *conn)
 {
 	DEBUG2("rlm_sql_unixodbc: Socket destructor called, closing socket");
 
-	if (conn->stmt) {
-		SQLFreeStmt(conn->stmt, SQL_DROP);
-		conn->stmt = NULL;
-	}
+	if (conn->stmt) SQLFreeStmt(conn->stmt, SQL_DROP);
 
 	if (conn->dbc) {
 		SQLDisconnect(conn->dbc);
 		SQLFreeConnect(conn->dbc);
-		conn->dbc = NULL;
 	}
 
-	if (conn->env) {
-		SQLFreeEnv(conn->env);
-		conn->env = NULL;
-	}
+	if (conn->env) SQLFreeEnv(conn->env);
 
 	return 0;
 }

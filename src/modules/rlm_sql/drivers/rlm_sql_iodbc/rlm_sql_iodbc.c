@@ -58,18 +58,14 @@ static int _sql_socket_destructor(rlm_sql_iodbc_conn_t *conn)
 {
 	DEBUG2("rlm_sql_iodbc: Socket destructor called, closing socket");
 
-	if (conn->stmt) {
-		SQLFreeStmt(conn->stmt, SQL_DROP);
-	}
+	if (conn->stmt) SQLFreeStmt(conn->stmt, SQL_DROP);
 
 	if (conn->dbc_handle) {
 		SQLDisconnect(conn->dbc_handle);
 		SQLFreeConnect(conn->dbc_handle);
 	}
 
-	if (conn->env_handle) {
-		SQLFreeEnv(conn->env_handle);
-	}
+	if (conn->env_handle) SQLFreeEnv(conn->env_handle);
 
 	return 0;
 }

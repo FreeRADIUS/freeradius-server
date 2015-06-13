@@ -129,21 +129,10 @@ unknown:
 
 static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
 {
-	if (conn->ctx) {
-		OCILogoff(conn->ctx, conn->error);
-	}
-
-	if (conn->query) {
-		OCIHandleFree((dvoid *)conn->query, OCI_HTYPE_STMT);
-	}
-
-	if (conn->error) {
-		OCIHandleFree((dvoid *)conn->error, OCI_HTYPE_ERROR);
-	}
-
-	if (conn->env) {
-		OCIHandleFree((dvoid *)conn->env, OCI_HTYPE_ENV);
-	}
+	if (conn->ctx) OCILogoff(conn->ctx, conn->error);
+	if (conn->query) OCIHandleFree((dvoid *)conn->query, OCI_HTYPE_STMT);
+	if (conn->error) OCIHandleFree((dvoid *)conn->error, OCI_HTYPE_ERROR);
+	if (conn->env) OCIHandleFree((dvoid *)conn->env, OCI_HTYPE_ENV);
 
 	return 0;
 }

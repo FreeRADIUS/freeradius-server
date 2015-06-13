@@ -368,9 +368,7 @@ static int _sql_socket_destructor(rlm_sql_sqlite_conn_t *conn)
 
 	if (conn->db) {
 		status = sqlite3_close(conn->db);
-		if (status != SQLITE_OK) {
-			WARN("rlm_sql_sqlite: Got SQLite error code (%u) when closing socket", status);
-		}
+		if (status != SQLITE_OK) WARN("rlm_sql_sqlite: Got SQLite error code (%u) when closing socket", status);
 	}
 
 	return 0;

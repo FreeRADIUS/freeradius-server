@@ -221,13 +221,10 @@ static int _sql_socket_destructor(rlm_sql_postgres_conn_t *conn)
 {
 	DEBUG2("rlm_sql_postgresql: Socket destructor called, closing socket");
 
-	if (!conn->db) {
-		return 0;
-	}
+	if (!conn->db) return 0;
 
 	/* PQfinish also frees the memory used by the PGconn structure */
 	PQfinish(conn->db);
-	conn->db = NULL;
 
 	return 0;
 }
