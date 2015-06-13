@@ -178,10 +178,25 @@ static int _sql_socket_destructor(rlm_sql_cassandra_conn_t *conn)
 {
 	DEBUG2("rlm_sql_cassandra: Socket destructor called, closing socket");
 
-	if (conn->iterator) cass_iterator_free(conn->iterator);
-	if (conn->result) cass_result_free(conn->result);
-	if (conn->session) cass_session_free(conn->session);
-	if (conn->cluster) cass_cluster_free(conn->cluster);
+	if (conn->iterator) {
+		cass_iterator_free(conn->iterator);
+		conn->iterator = NULL;
+	}
+
+	if (conn->result) {
+		cass_result_free(conn->result);
+		conn->result = NULL;
+	}
+
+	if (conn->session) {
+		cass_session_free(conn->session);
+		conn->session = NULL;
+	}
+
+	if (conn->cluster) {
+		cass_cluster_free(conn->cluster);
+		conn->cluster = NULL;
+	}
 
 	return 0;
 }
