@@ -87,7 +87,7 @@ if test x$with_[]modname != xno; then
 
 	if test "x$fail" = "x"; then
 		AC_CHECK_FUNCS(
-			ldap_sasl_bind \
+			ldap_sasl_interactive_bind \
 			ldap_unbind_ext_s \
 			ldap_start_tls_s \
 			ldap_initialize \

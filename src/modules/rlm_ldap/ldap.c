@@ -451,8 +451,8 @@ char const *rlm_ldap_error_str(ldap_handle_t const *conn)
  *	(with talloc_free).
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
-static ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
-				    LDAPMessage **result, char const **error, char **extra)
+ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
+			     LDAPMessage **result, char const **error, char **extra)
 {
 	ldap_rcode_t status = LDAP_PROC_SUCCESS;
 
@@ -543,6 +543,11 @@ process_error:
 	switch (lib_errno) {
 	case LDAP_SUCCESS:
 		*error = "Success";
+		break;
+
+	case LDAP_SASL_BIND_IN_PROGRESS:
+		*error = "Continuing";
+		status = LDAP_PROC_CONTINUE;
 		break;
 
 	case LDAP_NO_SUCH_OBJECT:
@@ -660,7 +665,7 @@ process_error:
 
 	talloc_free(our_err);
 
-	if ((lib_errno || srv_errno) && *result) {
+	if ((status < 0) && *result) {
 		ldap_msgfree(*result);
 		*result = NULL;
 	}
@@ -677,24 +682,28 @@ process_error:
  * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
  * @param[in] dn of the user, may be NULL to bind anonymously.
  * @param[in] password of the user, may be NULL if no password is specified.
- * @param[in] sasl_mech SASL mechanism to use for bind.
+ * @param[in] sasl mechanism to use for bind, and additional parameters.
  * @param[in] retry if the server is down.
- * @return one of the LDAP_PROC_* values.
+ * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			   char const *password, char const *sasl_mech, bool retry)
+			   char const *password, ldap_sasl *sasl, bool retry)
 {
-	ldap_rcode_t	status = LDAP_PROC_ERROR;
+	ldap_rcode_t		status = LDAP_PROC_ERROR;
 
-	int		msgid = -1;
+	int			msgid = -1;
 
-	char const	*error = NULL;
-	char 		*extra = NULL;
+	char const		*error = NULL;
+	char 			*extra = NULL;
 
-	int 		i, num;
+	int 			i, num;
 
 	rad_assert(*pconn && (*pconn)->handle);
 	rad_assert(!retry || inst->pool);
+
+#ifndef HAVE_LDAP_SASL_INTERACTIVE_BIND
+	rad_assert(!sasl->mech);
+#endif
 
 	/*
 	 *	Bind as anonymous user
@@ -707,31 +716,26 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 	 */
 	num = retry ? fr_connection_get_num(inst->pool) : 0;
 	for (i = num; i >= 0; i--) {
-#ifdef HAVE_LDAP_SASL_BIND
-		if (sasl_mech) {
-			struct berval cred;
-
-			if (password) {
-				memcpy(&cred.bv_val, &password, sizeof(cred.bv_val));
-				cred.bv_len = talloc_array_length(password) - 1;
-			} else {
-				memset(&cred, 0, sizeof(cred));
-			}
-			ldap_sasl_bind((*pconn)->handle, dn, sasl_mech, &cred, NULL, NULL, &msgid);
+#ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
+		if (sasl->mech) {
+			status = rlm_ldap_sasl_interactive(inst, request, *pconn, dn, password, sasl,
+							   &error, &extra);
 		} else
 #endif
-		msgid = ldap_bind((*pconn)->handle, dn, password, LDAP_AUTH_SIMPLE);
+		{
+			msgid = ldap_bind((*pconn)->handle, dn, password, LDAP_AUTH_SIMPLE);
 
-		/* We got a valid message ID */
-		if (msgid >= 0) {
-			if (request) {
-				RDEBUG2("Waiting for bind result...");
-			} else {
-				DEBUG2("rlm_ldap (%s): Waiting for bind result...", inst->name);
+			/* We got a valid message ID */
+			if (msgid >= 0) {
+				if (request) {
+					RDEBUG2("Waiting for bind result...");
+				} else {
+					DEBUG2("rlm_ldap (%s): Waiting for bind result...", inst->name);
+				}
 			}
-		}
 
-		status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
+			status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
+		}
 
 		switch (status) {
 		case LDAP_PROC_SUCCESS:
@@ -840,8 +844,8 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 	 *	Do all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_dn, (*pconn)->inst->password,
-				       (*pconn)->inst->admin_sasl_mech, true);
+		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
+				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -984,8 +988,8 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 	 *	Perform all modifications as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_dn, (*pconn)->inst->password,
-				       (*pconn)->inst->admin_sasl_mech, true);
+		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
+				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -1109,8 +1113,8 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	 *	Perform all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_dn, (*pconn)->inst->password,
-				       (*pconn)->inst->admin_sasl_mech, true);
+		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
+				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true);
 		if (status != LDAP_PROC_SUCCESS) {
 			*rcode = RLM_MODULE_FAIL;
 			return NULL;
@@ -1318,8 +1322,8 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 
 	DEBUG("rlm_ldap (%s): Rebinding to URL %s", conn->inst->name, url);
 
-	status = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->admin_dn, conn->inst->password,
-			       conn->inst->admin_sasl_mech, false);
+	status = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
+			       &(conn->inst->admin_sasl), false);
 	if (status != LDAP_PROC_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 
@@ -1528,8 +1532,8 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	}
 #endif /* HAVE_LDAP_START_TLS_S */
 
-	status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_dn, conn->inst->password,
-			       conn->inst->admin_sasl_mech, false);
+	status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
+			       &(conn->inst->admin_sasl), false);
 	if (status != LDAP_PROC_SUCCESS) {
 		goto error;
 	}

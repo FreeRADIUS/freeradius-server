@@ -12,8 +12,8 @@
 /* Define to 1 if you have the `ldap_initialize' function. */
 #undef HAVE_LDAP_INITIALIZE
 
-/* Define to 1 if you have the `ldap_sasl_bind' function. */
-#undef HAVE_LDAP_SASL_BIND
+/* Define to 1 if you have the `ldap_sasl_interactive_bind' function. */
+#undef HAVE_LDAP_SASL_INTERACTIVE_BIND
 
 /* Define to 1 if you have the `ldap_set_rebind_proc' function. */
 #undef HAVE_LDAP_SET_REBIND_PROC

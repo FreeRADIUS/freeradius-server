@@ -3097,7 +3097,7 @@ smart_prefix=
 
 
 	if test "x$fail" = "x"; then
-		for ac_func in ldap_sasl_bind \
+		for ac_func in ldap_sasl_interactive_bind \
 			ldap_unbind_ext_s \
 			ldap_start_tls_s \
 			ldap_initialize \

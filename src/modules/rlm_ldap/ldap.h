@@ -67,6 +67,8 @@
 #  define LDAP_CONST
 #endif
 
+#define MOD_PREFIX			"rlm_ldap"	//!< The name of the module.
+
 #define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and
 							//!< FreeRADIUS attributes.
 #define LDAP_MAP_RESERVED		4		//!< Number of additional items to allocate in expanded
@@ -81,27 +83,41 @@
 #define LDAP_MAX_GROUP_NAME_LEN		128		//!< Maximum name of a group name.
 #define LDAP_MAX_ATTR_STR_LEN		256		//!< Maximum length of an xlat expanded LDAP attribute.
 #define LDAP_MAX_FILTER_STR_LEN		1024		//!< Maximum length of an xlat expanded filter.
-#define LDAP_MAX_DN_STR_LEN		2048		//!< Maximum length of an xlat expanded DN.
+#define LDAP_MAX_DN_STR_LEN		1024		//!< Maximum length of an xlat expanded DN.
+
+#define LDAP_VIRTUAL_DN_ATTR		"dn"		//!< 'Virtual' attribute which maps to the DN of the object.
 
 typedef struct ldap_acct_section {
 	CONF_SECTION	*cs;				//!< Section configuration.
 
-	char const *reference;				//!< Configuration reference string.
+	char const	*reference;			//!< Configuration reference string.
 } ldap_acct_section_t;
+
+typedef struct ldap_sasl {
+	char const	*mech;				//!< SASL mech(s) to try.
+	char const	*proxy;				//!< Identity to proxy.
+	char const	*realm;				//!< Kerberos realm.
+} ldap_sasl;
+
+typedef struct ldap_sasl_dynamic {
+	vp_tmpl_t	*mech;				//!< SASL mech(s) to try.
+	vp_tmpl_t	*proxy;				//!< Identity to proxy.
+	vp_tmpl_t	*realm;				//!< Kerberos realm.
+} ldap_sasl_dynamic;
 
 typedef struct ldap_instance {
 	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
 	fr_connection_pool_t *pool;			//!< Connection pool instance.
 
-	char const     	*config_server;			//!< server from the config files
+	char const	*config_server;			//!< Server set in the config.
 	char		*server;			//!< Initial server to bind to.
 	uint16_t	port;				//!< Port to use when binding to the server.
 
-	char const	*admin_dn;			//!< DN we bind as when we need to query the LDAP
+	char const	*admin_identity;		//!< Identity we bind as when we need to query the LDAP
 							//!< directory.
-	char const	*password;			//!< Password used in administrative bind.
+	char const	*admin_password;		//!< Password used in administrative bind.
 
-	char const	*admin_sasl_mech;		//!< SASL mechanism to use for administrative binds.
+	ldap_sasl	admin_sasl;			//!< SASL parameters used when binding as the admin.
 
 	char const	*dereference_str;		//!< When to dereference (never, searching, finding, always)
 	int		dereference;			//!< libldap value specifying dereferencing behaviour.
@@ -132,7 +148,6 @@ typedef struct ldap_instance {
 	/*
 	 *	User object attributes and filters
 	 */
-	char const	*user_sasl_mech;		//!< SASL mechanism to use for user binds.
 	vp_tmpl_t	*userobj_filter;		//!< Filter to retrieve only user objects.
 	vp_tmpl_t	*userobj_base_dn;		//!< DN to search for users under.
 	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
@@ -149,10 +164,11 @@ typedef struct ldap_instance {
 	char const	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
 							//!< attribute and value.
 
+	ldap_sasl_dynamic user_sasl;			//!< SASL parameters used when binding as the user.
+
 	/*
 	 *	Group object attributes and filters
 	 */
-
 	char const	*groupobj_filter;		//!< Filter to retrieve only group objects.
 	vp_tmpl_t	*groupobj_base_dn;		//!< DN to search for users under.
 	char const	*groupobj_scope_str;		//!< Scope (sub, one, base).
@@ -309,6 +325,7 @@ typedef struct rlm_ldap_result {
  *
  */
 typedef enum {
+	LDAP_PROC_CONTINUE = 1,				//!< Operation is in progress.
 	LDAP_PROC_SUCCESS = 0,				//!< Operation was successfull.
 
 	LDAP_PROC_ERROR	= -1,				//!< Unrecoverable library/server error.
@@ -368,7 +385,7 @@ size_t rlm_ldap_normalise_dn(char *out, char const *in);
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
 ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			   char const *password, char const *sasl_mech, bool retry);
+			   char const *password, ldap_sasl *sasl, bool retry);
 
 char const *rlm_ldap_error_str(ldap_handle_t const *conn);
 
@@ -391,6 +408,9 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request);
 /*
  *	ldap.c - Callbacks for the connection pool API.
  */
+ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
+			     LDAPMessage **result, char const **error, char **extra);
+
 char *rlm_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 
 void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
@@ -439,4 +459,11 @@ int nmasldap_get_password(LDAP *ld, char const *dn, char *password, size_t *len)
 
 char const *edir_errstr(int code);
 
+/*
+ *	sasl.s - SASL bind functions
+ */
+ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
+				       ldap_handle_t *pconn, char const *dn,
+				       char const *password, ldap_sasl *sasl,
+				       char const **error, char **extra);
 #endif

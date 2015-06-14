@@ -31,9 +31,21 @@ ldap {
 	#  searches will start from.
 	base_dn = 'dc=example,dc=org'
 
-	#  SASL mechanism to use for administrative binds.
-	#  Uncomment for certificate auth or peercred auth (ldapi:// only).
-#	sasl_mech = 'EXTERNAL'
+	#  SASL parameters to use for admin binds
+	#
+	#  When we're prompted by the SASL library, these control
+	#  the responses given.
+	#
+	sasl {
+		# SASL mechanism
+#		mech = 'PLAIN'
+
+		# SASL authorisation identity to proxy.
+#		proxy = 'autz_id'
+
+		# SASL realm. Used for kerberos.
+#		realm = 'example.org'
+	}
 
 	#
 	#  Generic valuepair attribute
@@ -128,8 +140,24 @@ ldap {
 		#  to identify a single user object.
 		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
 
-		#  SASL mechanism to use for user binds.
-#		sasl_mech = 'PLAIN'
+		#  SASL parameters to use for user binds
+		#
+		#  When we're prompted by the SASL library, these control
+		#  the responses given.
+		#
+		#  Any of the config items below may be an attribute ref
+		#  or and expansion, so different SASL mechs, proxy IDs
+		#  and realms may be used for different users.
+		sasl {
+			# SASL mechanism
+#			mech = 'PLAIN'
+
+			# SASL authorisation identity to proxy.
+#			proxy = &User-Name
+
+			# SASL realm. Used for kerberos.
+#			realm = 'example.org'
+		}
 
 		#  Search scope, may be 'base', 'one', sub' or 'children'
 #		scope = 'sub'
