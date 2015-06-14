@@ -38,7 +38,9 @@
  * @param[out] values array of char pointers.
  * @param[in,out] idx records current array offset.
  * @param[in] cs to iterate over.
- * @return 0 on success else -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int rlm_ldap_client_get_attrs(char const **values, int *idx, CONF_SECTION const *cs)
 {
@@ -93,7 +95,9 @@ static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
  * @param[in] inst rlm_ldap configuration.
  * @param[in] tmpl to use as the base for the new client.
  * @param[in] map to load client attribute/LDAP attribute mappings from.
- * @return -1 on error else 0.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *map)
 {

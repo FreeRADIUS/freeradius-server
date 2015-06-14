@@ -98,7 +98,9 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
  *
  * @param[in] in Str to check.
  * @param[in] inlen Length of string to check.
- * @return true if string looks like a DN, else false.
+ * @return
+ *	- true if string looks like a DN.
+ *	- false if string does not look like DN.
  */
 bool rlm_ldap_is_dn(char const *in, size_t inlen)
 {
@@ -303,7 +305,9 @@ size_t rlm_ldap_normalise_dn(char *out, char const *in)
  *
  * @param full DN.
  * @param part Partial DN as returned by ldap_parse_result.
- * @return the length of the portion of full which wasn't matched or -1 on error.
+ * @return
+ *	- Length of the portion of full which wasn't matched
+ *	- -1 on failure.
  */
 static size_t rlm_ldap_common_dn(char const *full, char const *part)
 {
@@ -445,7 +449,7 @@ char const *rlm_ldap_error_str(ldap_handle_t const *conn)
  * @param[out] error Where to write the error string, may be NULL, must not be freed.
  * @param[out] extra Where to write additional error string to, may be NULL (faster) or must be freed
  *	(with talloc_free).
- * @return One of the LDAP_PROC_* codes.
+ * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 static ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
 				    LDAPMessage **result, char const **error, char **extra)
@@ -499,7 +503,7 @@ static ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const 
 
 	/*
 	 *	Now retrieve the result and check for errors
-	 *	ldap_result returns -1 on error, and 0 on timeout
+	 *	ldap_result returns -1 on failure, and 0 on timeout
 	 */
 	lib_errno = ldap_result(conn->handle, msgid, 1, &tv, result);
 	if (lib_errno == 0) {
@@ -801,7 +805,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
  * @param[in] attrs to retrieve.
  * @param[in] serverctrls Search controls to pass to the server.  May be NULL.
  * @param[in] clientctrls Search controls for ldap_search.  May be NULL.
- * @return One of the LDAP_PROC_* values.
+ * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUEST *request,
 			     ldap_handle_t **pconn,
@@ -960,7 +964,7 @@ finish:
  * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
  * @param[in] dn of the object to modify.
  * @param[in] mods to make, see 'man ldap_modify' for more information.
- * @return One of the LDAP_PROC_* values.
+ * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			     char const *dn, LDAPMod *mods[])
@@ -1228,7 +1232,9 @@ finish:
  * @param[in] request Current request.
  * @param[in] conn used to retrieve access attributes.
  * @param[in] entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
- * @return RLM_MODULE_USERLOCK if the user was denied access, else RLM_MODULE_OK.
+ * @return
+ *	- #RLM_MODULE_USERLOCK if the user was denied access.
+ *	- #RLM_MODULE_OK otherwise.
  */
 rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request,
 				  ldap_handle_t const *conn, LDAPMessage *entry)

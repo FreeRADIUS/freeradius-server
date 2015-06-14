@@ -351,7 +351,9 @@ free_urldesc:
  * @param check Which group to check for user membership.
  * @param check_pairs Unknown.
  * @param reply_pairs Unknown.
- * @return 1 on failure (or if the user is not a member), else 0.
+ * @return
+ *	- 1 on failure (or if the user is not a member).
+ *	- 0 on success.
  */
 static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
 			     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
@@ -507,7 +509,9 @@ static int mod_detach(void *instance)
  * @param[in] parent of the config section.
  * @param[out] config to write the sub section parameters to.
  * @param[in] comp The section name were parsing the config for.
- * @return 0 on success, else < 0 on failure.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
  */
 static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_section_t **config,
 			     rlm_components_t comp)
@@ -542,7 +546,9 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
  *
  * @param conf to parse.
  * @param instance configuration data.
- * @return 0 on success < 0 on failure.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
  */
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
@@ -612,7 +618,9 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  *
  * @param conf to parse.
  * @param instance configuration data.
- * @return 0 on success < 0 on failure.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
