@@ -36,8 +36,6 @@ RCSID("$Id$")
 
 #include	"ldap.h"
 
-#include	<freeradius-devel/map_proc.h>
-
 /*
  *	Scopes
  */
