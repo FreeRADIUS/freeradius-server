@@ -328,8 +328,20 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_counter_t *inst = instance;
 	ATTR_FLAGS flags;
-
 	DICT_ATTR const *da;
+
+	memset(&flags, 0, sizeof(flags));
+	flags.compare = 1;	/* ugly hack */
+	da = dict_attrbyname(inst->counter_name);
+	if (da && (da->type != PW_TYPE_INTEGER)) {
+		cf_log_err_cs(conf, "Counter attribute %s MUST be integer", inst->counter_name);
+		return -1;
+	}
+
+	if (!da && (dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER, flags) < 0)) {
+		cf_log_err_cs(conf, "Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
+		return -1;
+	}
 
 	if (paircompare_register_byname(inst->counter_name, NULL, true, counter_cmp, inst) < 0) {
 		cf_log_err_cs(conf, "Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
@@ -347,7 +359,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Create a new attribute for the check item.
 	 */
-	memset(&flags, 0, sizeof(flags));
+	flags.compare = 0;
 	if (dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
 		cf_log_err_cs(conf, "Failed to create check attribute %s: %s", inst->counter_name, fr_strerror());
 		return -1;
