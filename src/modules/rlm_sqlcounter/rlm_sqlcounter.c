@@ -385,27 +385,37 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	DICT_ATTR const *da;
 	ATTR_FLAGS flags;
 
-	/*
-	 *  Register the counter comparison operation.
-	 */
-	if (paircompare_register_byname(inst->counter_name, NULL, true, sqlcounter_cmp, inst) < 0) {
+	memset(&flags, 0, sizeof(flags));
+	flags.compare = 1;	/* ugly hack */
+	da = dict_attrbyname(inst->counter_name);
+	if (da && (da->type != PW_TYPE_INTEGER64)) {
+		cf_log_err_cs(conf, "Counter attribute %s MUST be integer64", inst->counter_name);
+		return -1;
+	}
+
+	if (!da && (dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER64, flags) < 0)) {
 		cf_log_err_cs(conf, "Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
 		return -1;
 	}
 
+	/*
+	 *  Register the counter comparison operation.
+	 */
+	if (paircompare_register_byname(inst->counter_name, NULL, true, sqlcounter_cmp, inst) < 0) {
+		cf_log_err_cs(conf, "Failed registering counter attribute %s: %s", inst->counter_name, fr_strerror());
+		return -1;
+	}
 
 	inst->dict_attr = dict_attrbyname(inst->counter_name);
-	da = dict_attrbyname(inst->counter_name);
-	if (!da) {
+	if (!inst->dict_attr) {
 		cf_log_err_cs(conf, "Failed to find counter attribute %s", inst->counter_name);
 		return -1;
 	}
-	inst->dict_attr = da;
 
 	/*
 	 *  Create a new attribute for the check item.
 	 */
-	memset(&flags, 0, sizeof(flags));
+	flags.compare = 0;
 	if ((dict_addattr(inst->limit_name, -1, 0, PW_TYPE_INTEGER64, flags) < 0) ||
 	    !(da = dict_attrbyname(inst->limit_name))) {
 		cf_log_err_cs(conf, "Failed to create check attribute %s: %s", inst->limit_name, fr_strerror());
