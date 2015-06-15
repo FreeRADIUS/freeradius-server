@@ -33,7 +33,7 @@ $(BUILD_DIR)/share/dictionary: $(top_srcdir)/share/dictionary $(top_srcdir)/shar
 #
 #  Files in the output dir depend on the unit tests
 #
-$(BUILD_DIR)/tests/unit/%: $(DIR)/% $(TESTBINDIR)/radattr $(BUILD_DIR)/share | $(BUILD_DIR)/tests/unit
+$(BUILD_DIR)/tests/unit/%: $(DIR)/% $(TESTBINDIR)/radattr $(BUILD_DIR)/share/dictionary | $(BUILD_DIR)/tests/unit
 	@echo UNIT-TEST $(notdir $@)
 	@if ! $(TESTBIN)/radattr -D $(BUILD_DIR)/share $<; then \
 		echo "$(TESTBIN)/radattr -D $(BUILD_DIR)/share $<"; \
