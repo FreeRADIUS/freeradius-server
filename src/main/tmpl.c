@@ -2421,6 +2421,11 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			break;
 
 		case PW_TYPE_TLV:
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA is of type TLV",
+				     file, line);
+			fr_assert(0);
+			fr_exit_now(1);
+
 		case PW_TYPE_OCTETS:
 			break;
 
