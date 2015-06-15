@@ -7,13 +7,11 @@
 
 # experimental modules
 %bcond_with rlm_idn
-%bcond_with rlm_redis
 %bcond_with rlm_ruby
 %bcond_with rlm_sql_freetds
 %bcond_with rlm_sql_oracle
 %{?_with_rlm_idn: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_opendirectory: %global _with_experimental_modules --with-experimental-modules}
-%{?_with_rlm_redis: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_ruby: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_securid: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_sql_freetds: %global _with_experimental_modules --with-experimental-modules}
@@ -22,8 +20,6 @@
 %if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
 %{!?_with_rlm_idn: %global _without_rlm_idn --without-rlm_idn}
 %{!?_with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
-%{!?_with_rlm_redis: %global _without_rlm_redis --without-rlm_redis}
-%{!?_with_rlm_redis: %global _without_rlm_rediswho --without-rlm_rediswho}
 %{!?_with_rlm_ruby: %global _without_rlm_ruby --without-rlm_ruby}
 %{!?_with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
 %{!?_with_rlm_sql_freetds: %global _without_rlm_sql_freetds --without-rlm_sql_freetds}
@@ -248,7 +244,6 @@ This plugin provides Oracle support for the FreeRADIUS server project.
 %endif
 %endif
 
-%if %{?_with_rlm_redis:1}%{!?_with_rlm_redis:0}
 %package redis
 Summary: Redis support for FreeRADIUS
 Group: System Environment/Daemons
@@ -258,7 +253,6 @@ BuildRequires: hiredis-devel
 
 %description redis
 This plugin provides Redis support for the FreeRADIUS server project.
-%endif
 
 %package rest
 Summary: REST support for FreeRADIUS
@@ -347,9 +341,6 @@ export CFLAGS="$RPM_OPT_FLAGS -fpic"
         %{?_without_rlm_securid} \
         %{?_with_rlm_sql_freetds} \
         %{?_without_rlm_sql_freetds} \
-        %{?_with_rlm_redis} \
-        %{?_without_rlm_redis} \
-        %{?_without_rlm_rediswho} \
         %{?_with_rlm_ruby} \
         %{?_without_rlm_ruby}
 #        --with-modules="rlm_wimax" \
@@ -754,12 +745,10 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_unixodbc.so
 
-%if %{?_with_rlm_redis:1}%{!?_with_rlm_redis:0}
 %files redis
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_redis.so
 %{_libdir}/freeradius/rlm_rediswho.so
-%endif
 
 %files rest
 %defattr(-,root,root)
