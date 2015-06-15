@@ -545,118 +545,12 @@ static int fr_dhcp_array_members(size_t *len, DICT_ATTR const *da)
      +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  @endverbatim
  *
- * So although the vendor is identified, the format of the data isn't specified
- * so we can't actually resolve the suboption to an attribute.
- *
- * To get around that, we create an attribute with a vendor matching the
- * enterprise number, and attr 0.
- *
- * How the suboption data is then processed, is dependent on what type
- * \<iana\>.0 is defined as in the dictionary.
- *
- * @param[in,out] tlv to decode. *tlv will be set to the head of the list of suboptions and original will be freed.
- * @param[in] ctx context to alloc new attributes in.
- * @param[in] data to parse.
- * @param[in] len length of data to parse.
+ * So although the vendor is identified, the format of the data isn't
+ * specified so we can't actually resolve the suboption to an
+ * attribute.  For now, we just convert it to an attribute of
+ * DHCP-Vendor-Specific-Information with raw octets contents.
  */
-static int fr_dhcp_decode_vsa(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t const *data, size_t len)
-{
-	uint8_t const *p, *q;
-	vp_cursor_t cursor;
 
-	VALUE_PAIR *head;
-
-	if (len < 4) goto malformed;
-
-	p = data;
-	q = p + len;
-	while (p < q) {
-		if (p + 5 >= q) goto malformed;
-		p += sizeof(uint32_t);
-		p += p[0];
-
-		/*
-		 *	Check if length > the length of the buffer we have left
-		 */
-		if (p >= q) goto malformed;
-		p++;
-	}
-
-	head = NULL;
-	fr_cursor_init(&cursor, &head);
-
-	/*
-	 *	Now we know its sane, start decoding!
-	 */
-	p = data;
-	while (p < q) {
-		uint32_t vendor;
-		DICT_ATTR const *da;
-		VALUE_PAIR *vp;
-
-		vendor = ntohl(*((uint32_t const *) p));
-		/*
-		 *	This is pretty much all we can do.  RFC 4243 doesn't specify
-		 *	an attribute field, so it's up to vendors to figure out how
-		 *	they want to encode their attributes.
-		 */
-		da = dict_attrbyvalue(0, vendor);
-		if (!da) {
-			da = dict_unknown_afrom_fields(ctx, 0, vendor);
-			if (!da) {
-				pairfree(&head);
-				goto malformed;
-			}
-		}
-		vp = pairalloc(ctx, da);
-		if (!vp) {
-			pairfree(&head);
-			return -1;
-		}
-		vp->op = T_OP_EQ;
-		pairsteal(ctx, vp); /* for unknown attributes hack */
-
-		if (fr_dhcp_attr2vp(ctx, &vp, p + 5, p[4]) < 0) {
-			dict_attr_free(&da);
-			pairfree(&head);
-			return -1;
-		}
-
-		fr_cursor_merge(&cursor, vp);
-		dict_attr_free(&da); /* for unknown attributes hack */
-
-		p += 4 + 1 + p[4];	/* vendor id (4) + len (1) + vsa len (n) */
-	}
-
-	/*
-	 *	The caller allocated TLV, if decoding it generated additional
-	 *	attributes, we now need to free it, and write the HEAD of our
-	 *	new list of attributes in its place.
-	 */
-	if (head) {
-		vp_cursor_t tlv_cursor;
-
-		/*
-		 *	Free the old TLV attribute
-		 */
-		TALLOC_FREE(*tlv);
-
-		/*
-		 *	Cursor not necessary but means we don't have to set
-		 *	->next directly.
-		 */
-		fr_cursor_init(&tlv_cursor, tlv);
-		fr_cursor_merge(&tlv_cursor, head);
-	}
-
-	return 0;
-
-malformed:
-	pair2unknown(*tlv);
-	pairmemcpy(*tlv, data, len);
-
-	return 0;
-}
 
 /** Decode DHCP suboptions
  *
@@ -916,12 +810,6 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *da
 	 */
 	case PW_TYPE_TLV:
 		return fr_dhcp_decode_suboption(ctx, vp_p, data, len);
-
-	/*
-	 *	For option 82.9
-	 */
-	case PW_TYPE_VSA:
-		return fr_dhcp_decode_vsa(ctx, vp_p, data, len);
 
 	default:
 		fr_strerror_printf("Internal sanity check %d %d", vp->da->type, __LINE__);
