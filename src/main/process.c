@@ -2551,9 +2551,12 @@ static int setup_post_proxy_fail(REQUEST *request)
 	if (request->proxy->code == PW_CODE_ACCESS_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Authentication");
+#ifdef WITH_ACCOUNTING
 	} else if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Accounting");
+#endif
+
 #ifdef WITH_COA
 	} else if (request->proxy->code == PW_CODE_COA_REQUEST) {
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-CoA");
