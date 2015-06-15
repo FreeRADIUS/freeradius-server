@@ -1149,7 +1149,7 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
  *	- -1 if out of buffer.
  *	- -2 if unsupported type.
  */
-static ssize_t fr_dhcp_vp2attr(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
+static ssize_t fr_dhcp_vp2data(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
 {
 	uint32_t lvalue;
 	uint8_t *p = out;
@@ -1185,10 +1185,6 @@ static ssize_t fr_dhcp_vp2attr(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
 		memcpy(p, vp->vp_strvalue, vp->vp_length);
 		break;
 
-	case PW_TYPE_TLV:	/* FIXME: split it on 255? */
-		memcpy(p, vp->vp_tlv, vp->vp_length);
-		break;
-
 	case PW_TYPE_OCTETS:
 		memcpy(p, vp->vp_octets, vp->vp_length);
 		break;
@@ -1203,89 +1199,93 @@ static ssize_t fr_dhcp_vp2attr(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
 
 /** Create a new TLV attribute from multiple sub options
  *
- * @param[in,out] ctx to allocate new attribute in.
+ * @param[in,out] out buffer to write the data
+ * @param[out] outlen length of the output buffer
  * @param[in,out] cursor should be set to the start of the list of TLV attributes.
  *   Will be advanced to the first non-TLV attribute.
- * @return attribute holding the concatenation of the values of the sub options.
+ * @return length of data encoded, or -1 on error
  */
-static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
+static ssize_t fr_dhcp_vp2data_tlv(uint8_t *out, ssize_t outlen, vp_cursor_t *cursor)
 {
-	ssize_t length;
+	ssize_t len;
 	unsigned int parent; 	/* Parent attribute of suboption */
 	uint8_t attr = 0;
-	uint8_t *p, *opt_len = NULL;
-	vp_cursor_t to_pack;
-	VALUE_PAIR *vp, *tlv;
+	uint8_t *p, *opt_len;
+	vp_cursor_t tlv_cursor;
+	VALUE_PAIR *vp;
 
 #define SUBOPTION_PARENT(_x) (_x & 0xffff00ff)
 #define SUBOPTION_ATTR(_x) ((_x & 0xff00) >> 8)
 
 	vp = fr_cursor_current(cursor);
-	if (!vp) return NULL;
+	if (!vp) return -1;
 
 	parent = SUBOPTION_PARENT(vp->da->attr);
-	tlv = paircreate(ctx, parent, DHCP_MAGIC_VENDOR);
-	if (!tlv) return NULL;
-
-	fr_cursor_copy(&to_pack, cursor);
 
 	/*
-	 *  Loop over TLVs to determine how much memory we need to allocate
-	 *
-	 *  We advanced the cursor we were passed, so if we fail encoding,
-	 *  the cursor is at the right position for the next potentially
-	 *  encodable attr.
+	 *	Remember where we started off.
 	 */
-	for (vp = fr_cursor_current(cursor);
-	     vp && vp->da->flags.is_tlv && !vp->da->flags.extended && (SUBOPTION_PARENT(vp->da->attr) == parent);
-	     vp = fr_cursor_next(cursor)) {
+	fr_cursor_copy(&tlv_cursor, cursor);
+
+	/*
+	 *	Loop over TLVs to determine how much memory we need to allocate
+	 *
+	 *	We advanced the tlv_cursor we were passed, so if we
+	 *	fail encoding, the tlv_cursor is at the right position
+	 *	for the next potentially encodable attr.
+	 */
+	len = 0;
+	for (vp = fr_cursor_current(&tlv_cursor);
+	     vp && vp->da->flags.is_tlv && (SUBOPTION_PARENT(vp->da->attr) == parent);
+	     vp = fr_cursor_next(&tlv_cursor)) {
+		if (SUBOPTION_ATTR(vp->da->attr) == 0) {
+			fr_strerror_printf("Invalid attribute number 0");
+			return -1;
+		}
+
 		/*
-		 *  If it's not an array type or is an array type, but is not the same
-		 *  as the previous attribute, we add 2 for the additional sub-option
-		 *  header bytes.
+		 *	If it's not an array type or is an array type,
+		 *	but is not the same as the previous attribute,
+		 *	we add 2 for the additional sub-option header
+		 *	bytes.
 		 */
 		if (!vp->da->flags.array || (SUBOPTION_ATTR(vp->da->attr) != attr)) {
 			attr = SUBOPTION_ATTR(vp->da->attr);
-			tlv->vp_length += 2;
+			len += 2;
 		}
-		tlv->vp_length += vp->vp_length;
+		len += vp->vp_length;
 	}
 
-	tlv->vp_tlv = talloc_zero_array(tlv, uint8_t, tlv->vp_length);
-	if (!tlv->vp_tlv) {
-		talloc_free(tlv);
-		return NULL;
+	if (len > outlen) {
+		fr_strerror_printf("Insufficient room for suboption");
+		return -1;
 	}
-	p = tlv->vp_tlv;
 
 	attr = 0;
-	for (vp = fr_cursor_current(&to_pack);
-	     vp && vp->da->flags.is_tlv && !vp->da->flags.extended && (SUBOPTION_PARENT(vp->da->attr) == parent);
-	     vp = fr_cursor_next(&to_pack)) {
-		if (SUBOPTION_ATTR(vp->da->attr) == 0) {
-			fr_strerror_printf("Invalid attribute number 0");
-			return NULL;
-		}
-
+	opt_len = NULL;
+	p = out;
+	
+	for (vp = fr_cursor_current(cursor);
+	     vp && vp->da->flags.is_tlv && (SUBOPTION_PARENT(vp->da->attr) == parent);
+	     vp = fr_cursor_next(cursor)) {
 		/* Don't write out the header, were packing array options */
 		if (!vp->da->flags.array || (attr != SUBOPTION_ATTR(vp->da->attr))) {
 			attr = SUBOPTION_ATTR(vp->da->attr);
 			*p++ = attr;
 			opt_len = p++;
+			*opt_len = 0;
 		}
 
-		length = fr_dhcp_vp2attr(p, (tlv->vp_tlv + tlv->vp_length) - p, vp);
-		if ((length < 0) || (length > 255)) {
-			talloc_free(tlv);
-			return NULL;
+		len = fr_dhcp_vp2data(p, out + outlen - p, vp);
+		if ((len < 0) || (len > 255)) {
+			return -1;
 		}
 
-		fr_assert(opt_len);
-		*opt_len += length;
-		p += length;
+		*opt_len += len;
+		p += len;
 	};
 
-	return tlv;
+	return p - out;
 }
 
 /** Encode a DHCP option and any sub-options.
@@ -1299,7 +1299,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(TALLOC_CTX *ctx, vp_cursor_t *cursor)
  *	- < 0 error.
  *	- 0 not valid option (skipping).
  */
-ssize_t fr_dhcp_encode_option(TALLOC_CTX *ctx, uint8_t *out, size_t outlen, vp_cursor_t *cursor)
+ssize_t fr_dhcp_encode_option(UNUSED TALLOC_CTX *ctx, uint8_t *out, size_t outlen, vp_cursor_t *cursor)
 {
 	VALUE_PAIR *vp;
 	DICT_ATTR const *previous;
@@ -1335,49 +1335,33 @@ ssize_t fr_dhcp_encode_option(TALLOC_CTX *ctx, uint8_t *out, size_t outlen, vp_c
 
 	/* DHCP options with the same number get coalesced into a single option */
 	do {
-		VALUE_PAIR *tlv = NULL;
-
-		/* Sub option */
-		if (vp->da->flags.is_tlv) {
-			/*
-			 *  Coalesce TLVs into one sub-option.
-			 *  Cursor will be advanced to next non-TLV attribute.
-			 */
-			tlv = vp = fr_dhcp_vp2suboption(ctx, cursor);
-
-			/*
-			 *  Skip if there's an issue coalescing the sub-options.
-			 *  Cursor will still have been advanced to next non-TLV attribute.
-			 */
-			if (!tlv) return 0;
 		/*
-		 *  If not calling fr_dhcp_vp2suboption() advance the cursor, so fr_cursor_current()
-		 *  returns the next attribute.
+		 *	Sub-option encoder will encode the data and
+		 *	advance the cursor.
 		 */
+		if (vp->da->flags.is_tlv) {
+			len = fr_dhcp_vp2data_tlv(p, freespace, cursor);
+			previous = NULL;
+
 		} else {
+			len = fr_dhcp_vp2data(p, freespace, vp);
 			fr_cursor_next(cursor);
+			previous = vp->da;
 		}
 
-		if ((*opt_len + vp->vp_length) > 255) {
+		if (len < 0) return len;
+
+		if ((*opt_len + len) > 255) {
 			fr_strerror_printf("Skipping \"%s\": Option splitting not supported "
 					   "(option > 255 bytes)", vp->da->name);
-			talloc_free(tlv);
 			return 0;
-		}
-
-		len = fr_dhcp_vp2attr(p, freespace, vp);
-		talloc_free(tlv);
-		if (len < 0) {
-			/* Failed encoding option */
-			return len;
 		}
 
 		p += len;
 		*opt_len += len;
 		freespace -= len;
 
-		previous = vp->da;
-	} while ((vp = fr_cursor_current(cursor)) && (previous == vp->da) && vp->da->flags.array);
+	} while ((vp = fr_cursor_current(cursor)) && previous && (previous == vp->da) && vp->da->flags.array);
 
 	return p - out;
 }
