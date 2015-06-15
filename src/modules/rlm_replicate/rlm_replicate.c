@@ -244,6 +244,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
 }
 
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+{
+	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
+}
+
 static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST, request->packet->code);
@@ -279,6 +284,7 @@ module_t rlm_replicate = {
 	.type		= RLM_TYPE_THREAD_SAFE,
 	.methods = {
 		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_ACCOUNTING]	= mod_accounting,
 		[MOD_PREACCT]		= mod_preaccounting,
 #ifdef WITH_PROXY
 		[MOD_PRE_PROXY]		= mod_pre_proxy,
