@@ -1269,7 +1269,7 @@ static ssize_t fr_dhcp_vp2data_tlv(uint8_t *out, ssize_t outlen, vp_cursor_t *cu
 	     vp && vp->da->flags.is_tlv && (SUBOPTION_PARENT(vp->da->attr) == parent);
 	     vp = fr_cursor_next(cursor)) {
 		/* Don't write out the header, were packing array options */
-		if (!vp->da->flags.array || (attr != SUBOPTION_ATTR(vp->da->attr))) {
+		if (!opt_len || !vp->da->flags.array || (attr != SUBOPTION_ATTR(vp->da->attr))) {
 			attr = SUBOPTION_ATTR(vp->da->attr);
 			*p++ = attr;
 			opt_len = p++;
