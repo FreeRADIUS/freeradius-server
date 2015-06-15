@@ -217,13 +217,13 @@ static void sql_print_error(sqlite3 *db, int status, char const *fmt, ...)
 	 */
 	if ((status != SQLITE_OK) && (status != hstatus)) {
 #ifdef HAVE_SQLITE3_ERRSTR
-		ERROR("rlm_sql_sqlite: %s: code 0x%x (%i): %s", p, status, status, sqlite3_errstr(status));
+		ERROR("rlm_sql_sqlite: %s: Code 0x%4x (%i): %s", p, status, status, sqlite3_errstr(status));
 #else
-		ERROR("rlm_sql_sqlite: %s: code 0x%x (%i)", p, status, status);
+		ERROR("rlm_sql_sqlite: %s: Code 0x%4x (%i)", p, status, status);
 #endif
 	}
 
-	if (hstatus != SQLITE_OK) ERROR("rlm_sql_sqlite: %s: code 0x%x (%i): %s",
+	if (hstatus != SQLITE_OK) ERROR("rlm_sql_sqlite: %s: Code 0x%4x (%i): %s",
 					p, hstatus, hstatus, sqlite3_errmsg(db));
 }
 
@@ -231,7 +231,7 @@ static void sql_print_error(sqlite3 *db, int status, char const *fmt, ...)
 static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 {
 	ssize_t		len;
-	int		line = 0;
+	int		statement_cnt = 0;
 	char		*buffer;
 	char		*p, *q, *s;
 	int		cl;
@@ -325,7 +325,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	while ((q = strchr(p, ';'))) {
 		if (q[1] != '\n') {
 			p = q + 1;
-			line++;
+			statement_cnt++;
 			continue;
 		}
 
@@ -334,18 +334,18 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 #ifdef HAVE_SQLITE3_PREPARE_V2
 		status = sqlite3_prepare_v2(db, s, len, &statement, &z_tail);
 #else
-		status = sqlite3_prepare(db, s, len, &>statement, &z_tail);
+		status = sqlite3_prepare(db, s, len, &statement, &z_tail);
 #endif
 
 		if (sql_check_error(db, status) != RLM_SQL_OK) {
-			sql_print_error(db, status, "[%i] Error preparing statement", line);
+			sql_print_error(db, status, "Failed preparing statement %i", statement_cnt);
 			talloc_free(buffer);
 			return -1;
 		}
 
 		status = sqlite3_step(statement);
 		if (sql_check_error(db, status) != RLM_SQL_OK) {
-			sql_print_error(db, status, "[%i] Error executing statement", line);
+			sql_print_error(db, status, "Failed executing statement %i", statement_cnt);
 			sqlite3_finalize(statement);
 			talloc_free(buffer);
 			return -1;
@@ -353,12 +353,12 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 
 		status = sqlite3_finalize(statement);
 		if (sql_check_error(db, status) != RLM_SQL_OK) {
-			sql_print_error(db, status, "[%i] Error finalizing statement", line);
+			sql_print_error(db, status, "Failed finalizing statement %i", statement_cnt);
 			talloc_free(buffer);
 			return -1;
 		}
 
-		line++;
+		statement_cnt++;
 		p = s = q + 1;
 	}
 
