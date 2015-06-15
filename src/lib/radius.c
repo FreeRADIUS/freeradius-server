@@ -2910,7 +2910,7 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 /** Convert TLVs to one or more VPs
  *
  */
-static ssize_t data2vp_tlvs(TALLOC_CTX *ctx,
+ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 			    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			    char const *secret, DICT_ATTR const *da,
 			    uint8_t const *start, size_t length,
@@ -3698,8 +3698,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	attribute, OR they've already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		rcode = data2vp_tlvs(ctx, packet, original, secret, da,
-				     data, attrlen, pvp);
+		rcode = rad_data2vp_tlvs(ctx, packet, original, secret, da,
+					 data, attrlen, pvp);
 		if (rcode < 0) goto raw;
 		return rcode;
 
