@@ -646,29 +646,8 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 
 	/* don't use this! */
 	case PW_TYPE_TLV:
-	{
-		uint8_t	*p;
-
-		if ((len < 2) || (len & 0x01) || (strncasecmp(src, "0x", 2) != 0)) {
-			fr_strerror_printf("Invalid TLV specification");
-			return -1;
-		}
-		len -= 2;
-
-		ret = len >> 1;
-		p = talloc_array(ctx, uint8_t, ret);
-		if (!p) {
-			fr_strerror_printf("No memory");
-			return -1;
-		}
-		if (fr_hex2bin(p, ret, src + 2, len) != (size_t)ret) {
-			fr_strerror_printf("Invalid hex data in TLV");
-			return -1;
-		}
-
-		dst->tlv = p;
-	}
-		goto finish;
+		fr_strerror_printf("Cannot parse TLV");
+		return -1;
 
 	case PW_TYPE_IPV4_ADDR:
 	{

@@ -272,7 +272,6 @@ typedef struct value_data {
 
 		uint8_t			ipv4prefix[6];			//!< IPv4 prefix (should be struct?).
 
-		uint8_t			*tlv;				//!< Nested TLV (should go away).
 		void			*ptr;				//!< generic pointer.
 	};
 
@@ -368,7 +367,6 @@ typedef struct value_pair_raw {
 #define vp_signed	data.sinteger
 #define vp_integer64	data.integer64
 #define vp_ipv4prefix	data.ipv4prefix
-#define vp_tlv		data.tlv
 
 #define vp_length	data.length
 

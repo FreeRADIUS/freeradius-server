@@ -660,7 +660,6 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	}
 
 	switch (vp->da->type) {
-	case PW_TYPE_TLV:
 	case PW_TYPE_OCTETS:
 		n->vp_octets = NULL;	/* else pairmemcpy will free vp's value */
 		pairmemcpy(n, vp->vp_octets, n->vp_length);
@@ -887,11 +886,6 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 				j = found->next;
 				memcpy(found, i, sizeof(*found));
 				found->next = j;
-				break;
-
-			case PW_TYPE_TLV:
-				pairmemsteal(found, i->vp_tlv);
-				i->vp_tlv = NULL;
 				break;
 
 			case PW_TYPE_OCTETS:
@@ -1440,6 +1434,57 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	}
 
 	/*
+	 *	We allow this for stupidity, but it's really a bad idea.
+	 */
+	if (vp->da->type == PW_TYPE_TLV) {
+		ssize_t len;
+		DICT_ATTR const *unknown;
+		VALUE_PAIR *head = NULL;
+		VALUE_PAIR **tail = &head;
+
+		if (!value) {
+			talloc_free(vp);
+			return NULL;
+		}
+
+		unknown = dict_unknown_afrom_fields(vp, vp->da->attr, vp->da->vendor);
+		if (!unknown) {
+			talloc_free(vp);
+			return NULL;
+		}
+
+		vp->da = unknown;
+
+		/*
+		 *	Parse it as an unknown type, i.e. octets.
+		 */
+		if (pairparsevalue(vp, value, -1) < 0) {
+			talloc_free(vp);
+			return NULL;
+		}
+
+		/*
+		 *	It's badly formatted.  Treat it as unknown.
+		 */
+		if (rad_tlv_ok(vp->vp_octets, vp->vp_length, 1, 1) < 0) {
+			goto do_add;
+		}
+
+		/*
+		 *	Decode the TLVs
+		 */
+		len = rad_data2vp_tlvs(ctx, NULL, NULL, NULL, da, vp->vp_octets,
+				       vp->vp_length, tail);
+		if (len < 0) {
+			goto do_add;
+		}
+
+		talloc_free(vp);
+		vp = head;
+		goto do_add;
+	}
+
+	/*
 	 *	FIXME: if (strcasecmp(attribute, vp->da->name) != 0)
 	 *	then the user MAY have typed in the attribute name
 	 *	as Vendor-%d-Attr-%d, and the value MAY be octets.
@@ -1452,6 +1497,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		return NULL;
 	}
 
+do_add:
 	if (vps) pairadd(vps, vp);
 	return vp;
 }
@@ -1945,7 +1991,6 @@ static void pairtypeset(VALUE_PAIR *vp)
 
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-	case PW_TYPE_TLV:
 		talloc_set_type(vp->data.ptr, uint8_t);
 		return;
 
@@ -2129,7 +2174,6 @@ inline void fr_pair_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 
 	if (vp->data.ptr) switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-	case PW_TYPE_TLV:
 	{
 		size_t len;
 		TALLOC_CTX *parent;

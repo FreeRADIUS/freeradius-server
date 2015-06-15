@@ -854,7 +854,6 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
-	case PW_TYPE_TLV:
 		data = vp->data.ptr;
 		if (!data) {
 			fr_strerror_printf("ERROR: Cannot encode NULL data");
@@ -3951,7 +3950,6 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	switch (vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
-	case PW_TYPE_TLV:
 		memcpy(out, &vp->data.ptr, sizeof(*out));
 		break;
 
@@ -4020,6 +4018,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	case PW_TYPE_LONG_EXTENDED:
 	case PW_TYPE_EVS:
 	case PW_TYPE_VSA:
+	case PW_TYPE_TLV:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_MAX:
 		fr_strerror_printf("Cannot get data for VALUE_PAIR type %i", vp->da->type);
