@@ -555,6 +555,12 @@ ssize_t		rad_attr2vp(TALLOC_CTX *ctx,
 			    uint8_t const *data, size_t length,
 			    VALUE_PAIR **pvp);
 
+ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
+			 RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			 char const *secret, DICT_ATTR const *da,
+			 uint8_t const *start, size_t length,
+			 VALUE_PAIR **pvp);
+
 ssize_t		rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp);
 
 int		rad_vp2extended(RADIUS_PACKET const *packet,
