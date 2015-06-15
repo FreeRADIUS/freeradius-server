@@ -44,21 +44,14 @@ static int mod_detach(void *instance)
 #ifndef HEIMDAL_KRB5
 	talloc_free(inst->vic_options);
 
-	if (inst->gic_options) {
-		krb5_get_init_creds_opt_free(inst->context, inst->gic_options);
-	}
-
-	if (inst->server) {
-		krb5_free_principal(inst->context, inst->server);
-	}
+	if (inst->gic_options) krb5_get_init_creds_opt_free(inst->context, inst->gic_options);
+	if (inst->server) krb5_free_principal(inst->context, inst->server);
 #endif
 
 	/* Don't free hostname, it's just a pointer into service_princ */
 	talloc_free(inst->service);
 
-	if (inst->context) {
-		krb5_free_context(inst->context);
-	}
+	if (inst->context) krb5_free_context(inst->context);
 #ifdef KRB5_IS_THREAD_SAFE
 	fr_connection_pool_free(inst->pool);
 #endif
@@ -109,9 +102,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) {
-		inst->xlat_name = cf_section_name1(conf);
-	}
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
 	ret = krb5_init_context(&inst->context);
 	if (ret) {
@@ -144,10 +135,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 #ifdef HEIMDAL_KRB5
-	if (inst->hostname) {
-		DEBUG("rlm_krb5 (%s): Ignoring hostname component of service principal \"%s\", not "
-		      "needed/supported by Heimdal", inst->xlat_name, inst->hostname);
-	}
+	if (inst->hostname) DEBUG("rlm_krb5 (%s): Ignoring hostname component of service principal \"%s\", not "
+				  "needed/supported by Heimdal", inst->xlat_name, inst->hostname);
 #else
 
 	/*
@@ -337,12 +326,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	krb5_principal client;
 
-#ifdef KRB5_IS_THREAD_SAFE
+#  ifdef KRB5_IS_THREAD_SAFE
 	conn = fr_connection_get(inst->pool);
 	if (!conn) return RLM_MODULE_FAIL;
-#else
+#  else
 	conn = inst->conn;
-#endif
+#  endif
 
 	/*
 	 *	Zero out local storage
@@ -389,9 +378,9 @@ cleanup:
 		krb5_free_principal(conn->context, client);
 	}
 
-#ifdef KRB5_IS_THREAD_SAFE
+#  ifdef KRB5_IS_THREAD_SAFE
 	fr_connection_release(inst->pool, conn);
-#endif
+#  endif
 	return rcode;
 }
 
@@ -414,12 +403,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	rad_assert(inst->context);
 
-#ifdef KRB5_IS_THREAD_SAFE
+#  ifdef KRB5_IS_THREAD_SAFE
 	conn = fr_connection_get(inst->pool);
 	if (!conn) return RLM_MODULE_FAIL;
-#else
+#  else
 	conn = inst->conn;
-#endif
+#  endif
 
 	/*
 	 *	Zero out local storage
@@ -448,19 +437,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	RDEBUG("Attempting to authenticate against service principal");
 	ret = krb5_verify_init_creds(conn->context, &init_creds, inst->server, conn->keytab, NULL, inst->vic_options);
-	if (ret) {
-		rcode = krb5_process_error(request, conn, ret);
-	}
+	if (ret) rcode = krb5_process_error(request, conn, ret);
 
 cleanup:
-	if (client) {
-		krb5_free_principal(conn->context, client);
-	}
+	if (client) krb5_free_principal(conn->context, client);
 	krb5_free_cred_contents(conn->context, &init_creds);
 
-#ifdef KRB5_IS_THREAD_SAFE
+#  ifdef KRB5_IS_THREAD_SAFE
 	fr_connection_release(inst->pool, conn);
-#endif
+#  endif
 	return rcode;
 }
 
