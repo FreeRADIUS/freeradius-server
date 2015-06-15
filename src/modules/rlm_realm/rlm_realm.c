@@ -289,6 +289,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		fr_ipaddr_t my_ipaddr;
 
 		my_ipaddr.af = AF_INET;
+		my_ipaddr.prefix = 32;
 		my_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 
 		/*
@@ -299,8 +300,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	send it there again.
 		 */
 		for (i = 0; i < realm->acct_pool->num_home_servers; i++) {
-			if (fr_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr,
-					    &my_ipaddr) == 0) {
+			if (fr_ipaddr_cmp(&realm->acct_pool->servers[i]->ipaddr, &my_ipaddr) == 0) {
 				RDEBUG2("Suppressing proxy due to FreeRADIUS-Proxied-To");
 				return RLM_MODULE_OK;
 			}
