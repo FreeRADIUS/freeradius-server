@@ -50,7 +50,8 @@ CREATE TABLE radacct (
   KEY acctsessiontime (acctsessiontime),
   KEY acctstarttime (acctstarttime),
   KEY acctstoptime (acctstoptime),
-  KEY nasipaddress (nasipaddress)
+  KEY nasipaddress (nasipaddress),
+  INDEX bulk_close (acctstoptime, nasipaddress, acctstarttime)
 ) ENGINE=ndbcluster;
 
 #
