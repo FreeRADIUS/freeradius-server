@@ -158,7 +158,7 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pai
 #ifdef WITH_COA
 		case PW_CODE_COA_REQUEST:
 		case PW_CODE_DISCONNECT_REQUEST:
-			pool = realm->acct_pool;
+			pool = realm->coa_pool;
 			break;
 #endif
 		}
