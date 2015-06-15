@@ -38,6 +38,15 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  changed.  If all files are unchanged, HUP re-opens the
 	  log file, and does nothing else.
 	* Much better debug messages for EAP-TLS.
+	* Increase default max_requests to 16384.  Memory is cheap now.
+	* Added "stats memory" commands to radmin.  Debug build only.
+	* Aptilo controller dictionary updates.
+	* SQL modules now use Acct-Unique-Session-Id everywhere.
+	* The redis modules are now stable.
+	* The LDAP module now supports SASL "interactive bind" method.
+	* DHCP code is now in libfreeradius-dhcp.
+	* More DHCP encoding / decoding unit tests.
+	* rlm_replicate can now be listed in the "accounting" section.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
@@ -68,6 +77,14 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  ownership.
 	* Fix issue which caused the server to sometimes have problems
 	  when a home server was marked zombie.
+	* Fix format.pl because Perl is now more picky.
+	* Fix proxy to Packet-Dst-IP-Address, so that it uses the
+	  correct destination port.
+	* Fix corner case with cursor functions and removal.
+	* OpenDirectory fixes and documentation.
+	* Fix leaks in rlm_redis.
+	* RFC 6929 "evs" attributes are now encoded / decoded
+	  properly.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
