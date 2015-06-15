@@ -2879,14 +2879,6 @@ static int request_will_proxy(REQUEST *request)
 		 *	fail-over, you should have proxied to a pool.
 		 *	Sucks to be you.
 		 */
-		setup_post_proxy_fail(request);
-
-		/*
-		 *	Do the proxy reply (if any)
-		 */
-		if (process_proxy_reply(request, NULL)) {
-			request->handle(request);
-		}
 
 		return 0;
 
