@@ -387,6 +387,9 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		pool->max_pending = 1;
 		pool->pending--;
 		pthread_mutex_unlock(&pool->mutex);
+
+		talloc_free(ctx);
+
 		return NULL;
 	}
 
@@ -399,6 +402,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	this = talloc_zero(pool, fr_connection_t);
 	if (!this) {
 		pthread_mutex_unlock(&pool->mutex);
+		talloc_free(ctx);
+
 		return NULL;
 	}
 	fr_link_talloc_ctx_free(this, ctx);
