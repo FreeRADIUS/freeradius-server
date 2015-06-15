@@ -613,7 +613,7 @@ static int fr_dhcp_decode_vsa(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t const *
 			pairfree(&head);
 			return -1;
 		}
-		vp->op = T_OP_ADD;
+		vp->op = T_OP_EQ;
 		pairsteal(ctx, vp); /* for unknown attributes hack */
 
 		if (fr_dhcp_attr2vp(ctx, &vp, p + 5, p[4]) < 0) {
@@ -765,7 +765,7 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 				pairfree(&head);
 				return -1;
 			}
-			vp->op = T_OP_ADD;
+			vp->op = T_OP_EQ;
 			pairsteal(ctx, vp); /* for unknown attributes hack */
 
 			if (fr_dhcp_attr2vp(ctx, &vp, a_p, a_len) < 0) {
@@ -1008,7 +1008,7 @@ ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const 
 				pairfree(out);
 				return -1;
 			}
-			vp->op = T_OP_ADD;
+			vp->op = T_OP_EQ;
 
 			if (fr_dhcp_attr2vp(ctx, &vp, a_p, a_len) < 0) {
 				pairfree(&vp);
