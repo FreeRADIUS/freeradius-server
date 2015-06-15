@@ -1556,6 +1556,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 		FR_STATS_INC(auth, total_packets_dropped);
 		return 0;
 	}
+	talloc_set_name_const(ctx, "auth_listener_pool");
 
 	/*
 	 *	Now that we've sanity checked everything, receive the
@@ -1672,6 +1673,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 		FR_STATS_INC(acct, total_packets_dropped);
 		return 0;
 	}
+	talloc_set_name_const(ctx, "acct_listener_pool");
 
 	/*
 	 *	Now that we've sanity checked everything, receive the
@@ -1938,6 +1940,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 		FR_STATS_INC(coa, total_packets_dropped);
 		return 0;
 	}
+	talloc_set_name_const(ctx, "coa_socket_recv_pool");
 
 	/*
 	 *	Now that we've sanity checked everything, receive the

@@ -1685,6 +1685,7 @@ skip_dup:
 	if (!ctx) {
 		ctx = talloc_pool(NULL, main_config.talloc_pool_size);
 		if (!ctx) return 0;
+		talloc_set_name_const(ctx, "request_receive_pool");
 
 		/*
 		 *	The packet is still allocated from a different

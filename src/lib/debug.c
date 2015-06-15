@@ -817,7 +817,8 @@ static void _fr_talloc_log(char const *msg)
  */
 int fr_log_talloc_report(TALLOC_CTX *ctx)
 {
-	#define TALLOC_REPORT_MAX_DEPTH 20
+#define TALLOC_REPORT_MAX_DEPTH 20
+
 	FILE *log;
 	int fd;
 

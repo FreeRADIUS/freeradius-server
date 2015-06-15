@@ -987,7 +987,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	}
 
 	/*
-	 *	Allocate a fake REQUEST structe.
+	 *	Allocate a fake REQUEST structure.
 	 */
 	fake = request_alloc_fake(request);
 
