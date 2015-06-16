@@ -586,6 +586,7 @@ ac_unique_file="rlm_ldap.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
+SASL
 mod_cflags
 mod_ldflags
 OBJEXT
@@ -3185,6 +3186,14 @@ _ACEOF
 
 mod_ldflags=$SMART_LIBS
 mod_cflags="$SMART_CPPFLAGS"
+
+if test x"$ac_cv_func_ldap_sasl_interactive_bind" = "xyes"; then
+	SASL=sasl.c
+else
+	SASL=
+fi
+
+
 
 
 

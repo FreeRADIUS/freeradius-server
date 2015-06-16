@@ -132,8 +132,16 @@ AC_DEFINE_UNQUOTED(LDAP_SET_REBIND_PROC_ARGS, ${ac_cv_ldap_set_rebind_proc}, [Nu
 
 mod_ldflags=$SMART_LIBS
 mod_cflags="$SMART_CPPFLAGS"
+
+if test x"$ac_cv_func_ldap_sasl_interactive_bind" = "xyes"; then
+	SASL=sasl.c
+else
+	SASL=
+fi
+
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
+AC_SUBST(SASL)
 AC_SUBST(targetname)
 AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(all.mk)
