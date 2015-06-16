@@ -1274,7 +1274,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int inlen, 
 		char		filename[256];
 		unsigned char	*p;
 		struct		stat st;
-		VALUE_PAIR	*vp;
+		VALUE_PAIR	*vps;
 
 		/* read in the cached VPs from the .vps file */
 		len = snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path, FR_DIR_SEP, buffer);
@@ -1340,10 +1340,9 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int inlen, 
 			goto error;
 		}
 
-		/* cache the VPs into the session */
-		vp = paircopy(talloc_ctx, pairlist->reply);
-
-		SSL_SESSION_set_ex_data(sess, fr_tls_ex_index_vps, vp);
+		/* move the cached VPs into the session */
+		pairfilter(talloc_ctx, &vps, &pairlist->reply, 0, 0, TAG_ANY);
+		SSL_SESSION_set_ex_data(sess, fr_tls_ex_index_vps, vps);
 		RWDEBUG("Successfully restored session %s", buffer);
 	}
 error:
