@@ -49,7 +49,7 @@ typedef struct rlm_ldap_sasl_ctx {
  * @param handle used for the SASL bind.
  * @param flags data as provided to ldap_sasl_interactive_bind.
  * @param ctx Our context data, containing the identity, password, realm and various other things.
- * @param array of callbacks to provide responses for.
+ * @param sasl_callbacks Array of challenges to provide responses for.
  * @return SASL_OK.
  */
 static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx, void *sasl_callbacks)
