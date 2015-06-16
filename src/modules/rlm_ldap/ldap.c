@@ -718,7 +718,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 	num = retry ? fr_connection_get_num(inst->pool) : 0;
 	for (i = num; i >= 0; i--) {
 #ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
-		if (sasl->mech) {
+		if (sasl && sasl->mech) {
 			status = rlm_ldap_sasl_interactive(inst, request, *pconn, dn, password, sasl,
 							   &error, &extra);
 		} else

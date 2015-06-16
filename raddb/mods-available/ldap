@@ -24,6 +24,7 @@ ldap {
 #	port = 389
 
 	#  Administrator account for searching and possibly modifying.
+	#  If using SASL + KRB5 these should be commented out.
 #	identity = 'cn=admin,dc=example,dc=org'
 #	password = mypass
 
@@ -31,10 +32,25 @@ ldap {
 	#  searches will start from.
 	base_dn = 'dc=example,dc=org'
 
+	#
 	#  SASL parameters to use for admin binds
 	#
 	#  When we're prompted by the SASL library, these control
-	#  the responses given.
+	#  the responses given, as well as the identity and password
+	#  directives above.
+	#
+	#  If any directive is commented out, a NULL response will be
+	#  provided to cyrus-sasl.
+	#
+	#  Unfortunately the only way to control Keberos here is through
+	#  environmental variables, as cyrus-sasl provides no API to
+	#  set the krb5 config directly.
+	#
+	#  Full documentation for MIT krb5 can be found here:
+	#
+	#	http://web.mit.edu/kerberos/krb5-devel/doc/admin/env_variables.html
+	#
+	#  At a minimum you probably want to set KRB5_CLIENT_KTNAME.
 	#
 	sasl {
 		# SASL mechanism
@@ -256,7 +272,7 @@ ldap {
 
 		#  Override the normal cache attribute (<inst>-LDAP-Group or
 		#  LDAP-Group if using the default instance) and create a
-		#  custom attribute.  This can help if multiple module instances 
+		#  custom attribute.  This can help if multiple module instances
 		#  are used in fail-over.
 #		cache_attribute = 'LDAP-Cached-Membership'
 	}

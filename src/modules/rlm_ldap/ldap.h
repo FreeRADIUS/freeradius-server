@@ -465,5 +465,5 @@ char const *edir_errstr(int code);
 ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				       ldap_handle_t *pconn, char const *dn,
 				       char const *password, ldap_sasl *sasl,
-				       char const **error, char **extra);
+				       char const **error, char **error_extra);
 #endif
