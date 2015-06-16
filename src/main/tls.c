@@ -1316,8 +1316,10 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int len, in
 
 		/* move the cached VPs into the session */
 		pairfilter(talloc_ctx, &vps, &pairlist->reply, 0, 0, TAG_ANY);
+
 		SSL_SESSION_set_ex_data(sess, fr_tls_ex_index_vps, vps);
 		RWDEBUG("Successfully restored session %s", buffer);
+		rdebug_pair_list(L_DBG_LVL_2, request, vps, "reply:");
 	}
 err:
 	if (sess_data) talloc_free(sess_data);
@@ -2945,6 +2947,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 */
 	} else {
 		size_t size;
+		vp_cursor_t cursor;
 		char buffer[2 * MAX_SESSION_SIZE + 1];
 
 		size = ssn->ssl->session->session_id_length;
@@ -2956,44 +2959,53 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		if (!vps) {
 			RWDEBUG("No information in cached session %s", buffer);
 			return -1;
-		} else {
-			vp_cursor_t cursor;
-
-			RDEBUG("Adding cached attributes for session %s:", buffer);
-			rdebug_pair_list(L_DBG_LVL_1, request, vps, NULL);
-			for (vp = fr_cursor_init(&cursor, &vps);
-			     vp;
-			     vp = fr_cursor_next(&cursor)) {
-				/*
-				 *	TLS-* attrs get added back to
-				 *	the request list.
-				 */
-				if ((vp->da->vendor == 0) &&
-				    (vp->da->attr >= PW_TLS_CERT_SERIAL) &&
-				    (vp->da->attr <= PW_TLS_CLIENT_CERT_SUBJECT_ALT_NAME_UPN)) {
-					pairadd(&request->packet->vps, paircopyvp(request->packet, vp));
-				} else {
-					pairadd(&request->reply->vps, paircopyvp(request->reply, vp));
-				}
-			}
-
-			if (conf->session_cache_path) {
-				/* "touch" the cached session/vp file */
-				char filename[256];
-
-				snprintf(filename, sizeof(filename), "%s%c%s.asn1",
-					conf->session_cache_path, FR_DIR_SEP, buffer);
-				utime(filename, NULL);
-				snprintf(filename, sizeof(filename), "%s%c%s.vps",
-					conf->session_cache_path, FR_DIR_SEP, buffer);
-				utime(filename, NULL);
-			}
-
-			/*
-			 *	Mark the request as resumed.
-			 */
-			pairmake_packet("EAP-Session-Resumed", "1", T_OP_SET);
 		}
+
+		RDEBUG("Adding cached attributes from session %s", buffer);
+
+		/*
+		 *	The cbtls_get_session() function doesn't have
+		 *	access to sock->certs or handler->certs, which
+		 *	is where the certificates normally live.  So
+		 *	the certs are all in the VPS list here, and
+		 *	have to be manually extracted.
+		 */
+		RINDENT();
+		for (vp = fr_cursor_init(&cursor, &vps);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			/*
+			 *	TLS-* attrs get added back to
+			 *	the request list.
+			 */
+			if ((vp->da->vendor == 0) &&
+			    (vp->da->attr >= PW_TLS_CERT_SERIAL) &&
+			    (vp->da->attr <= PW_TLS_CLIENT_CERT_SUBJECT_ALT_NAME_UPN)) {
+				rdebug_pair(L_DBG_LVL_2, request, vp, "request:");
+				pairadd(&request->packet->vps, paircopyvp(request->packet, vp));
+			} else {
+				rdebug_pair(L_DBG_LVL_2, request, vp, "reply:");
+				pairadd(&request->reply->vps, paircopyvp(request->reply, vp));
+			}
+		}
+		REXDENT();
+
+		if (conf->session_cache_path) {
+			/* "touch" the cached session/vp file */
+			char filename[256];
+
+			snprintf(filename, sizeof(filename), "%s%c%s.asn1",
+				 conf->session_cache_path, FR_DIR_SEP, buffer);
+			utime(filename, NULL);
+			snprintf(filename, sizeof(filename), "%s%c%s.vps",
+				 conf->session_cache_path, FR_DIR_SEP, buffer);
+			utime(filename, NULL);
+		}
+
+		/*
+		 *	Mark the request as resumed.
+		 */
+		pairmake_packet("EAP-Session-Resumed", "1", T_OP_SET);
 	}
 
 	return 0;
