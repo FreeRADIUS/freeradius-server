@@ -44,9 +44,11 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* SQL modules now use Acct-Unique-Session-Id everywhere.
 	* The redis modules are now stable.
 	* The LDAP module now supports SASL "interactive bind" method.
+	  This allows Kerberos based administrator and user binds.
 	* DHCP code is now in libfreeradius-dhcp.
 	* More DHCP encoding / decoding unit tests.
 	* rlm_replicate can now be listed in the "accounting" section.
+	* Better sqlite debugging output.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
@@ -85,6 +87,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* Fix leaks in rlm_redis.
 	* RFC 6929 "evs" attributes are now encoded / decoded
 	  properly.
+	* Fix talloc pool leaks when receiving malformed or
+	  retransmitted Accounting/CoA requests.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
