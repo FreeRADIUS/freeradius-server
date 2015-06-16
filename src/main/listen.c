@@ -1686,6 +1686,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	if (!packet) {
 		FR_STATS_INC(acct, total_malformed_requests);
 		ERROR("Receive - %s", fr_strerror());
+		talloc_free(ctx);
 		return 0;
 	}
 
@@ -1695,6 +1696,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	if (!request_receive(ctx, listener, packet, client, fun)) {
 		FR_STATS_INC(acct, total_packets_dropped);
 		rad_free(&packet);
+		talloc_free(ctx);
 		return 0;
 	}
 
