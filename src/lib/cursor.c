@@ -53,8 +53,6 @@ inline static VALUE_PAIR *fr_cursor_update(vp_cursor_t *cursor, VALUE_PAIR *vp)
 
 /** Setup a cursor to iterate over attribute pairs
  *
- * @note Don't call directly, use the fr_cursor_init macro instead.
- *
  * @addtogroup module_safe
  *
  * @param cursor Where to initialise the cursor (uses existing structure).
