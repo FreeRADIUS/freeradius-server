@@ -777,11 +777,15 @@ void vp_print(FILE *fp, VALUE_PAIR const *vp)
 /** Print a list of attributes and enumv
  *
  * @param fp to output to.
- * @param vp to print.
+ * @param const_vp to print.
  */
-void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
+void vp_printlist(FILE *fp, VALUE_PAIR const *const_vp)
 {
+	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
+
+	memcpy(&vp, &const_vp, sizeof(vp)); /* const work-arounds */
+
 	for (vp = fr_cursor_init(&cursor, &vp); vp; vp = fr_cursor_next(&cursor)) {
 		vp_print(fp, vp);
 	}

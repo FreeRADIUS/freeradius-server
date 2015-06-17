@@ -596,8 +596,7 @@ void		pairfree(VALUE_PAIR **);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR	*pair_find_by_da(VALUE_PAIR *, DICT_ATTR const *da, int8_t tag);
 
-#define		fr_cursor_init(_x, _y)	_fr_cursor_init(_x,(VALUE_PAIR const * const *) _y)
-VALUE_PAIR	*_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *node);
+VALUE_PAIR	*fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *node);
 void		fr_cursor_copy(vp_cursor_t *out, vp_cursor_t *in);
 VALUE_PAIR	*fr_cursor_first(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_last(vp_cursor_t *cursor);

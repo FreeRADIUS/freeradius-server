@@ -58,16 +58,20 @@ inline static VALUE_PAIR *fr_cursor_update(vp_cursor_t *cursor, VALUE_PAIR *vp)
  * @addtogroup module_safe
  *
  * @param cursor Where to initialise the cursor (uses existing structure).
- * @param vp to start from.
- * @return the attribute pointed to by #VALUE_PAIR.
+ * @param const_vp to start from.
+ * @return the attribute pointed to by vp.
  */
-VALUE_PAIR *_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *vp)
+VALUE_PAIR *fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *const_vp)
 {
-	if (!vp || !cursor) {
+	VALUE_PAIR **vp;
+
+	if (!const_vp || !cursor) {
 		return NULL;
 	}
 
 	memset(cursor, 0, sizeof(*cursor));
+
+	memcpy(&vp, &const_vp, sizeof(vp)); /* stupid const hacks */
 
 	/*
 	 *  Useful check to see if uninitialised memory is pointed
