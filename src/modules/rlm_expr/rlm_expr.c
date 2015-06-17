@@ -231,7 +231,7 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 		p += 1;
 
 		slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
-		if (slen < 0) {
+		if (slen <= 0) {
 			REDEBUG("Failed parsing attribute name '%s': %s", p, fr_strerror());
 			return false;
 		}
