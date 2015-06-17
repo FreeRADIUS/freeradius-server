@@ -1365,7 +1365,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
+	if (dict_read(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radclient");
 		return 1;
 	}
