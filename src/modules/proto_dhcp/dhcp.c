@@ -1039,7 +1039,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		}
 
 		if (options) {
-			for (vp = fr_cursor_init(&options_cursor, options);
+			for (vp = fr_cursor_init(&options_cursor, &options);
 			     vp;
 			     vp = fr_cursor_next(&options_cursor)) {
 			 	debug_pair(vp);
