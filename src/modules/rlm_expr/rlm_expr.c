@@ -224,54 +224,48 @@ static bool get_number(REQUEST *request, char const **string, int64_t *answer)
 	 *	Look for an attribute.
 	 */
 	if (*p == '&') {
-		ssize_t slen;
-		VALUE_PAIR *vp;
-		vp_tmpl_t vpt;
+		ssize_t		slen;
+		VALUE_PAIR	*vp;
+		vp_tmpl_t	vpt;
 
 		p += 1;
 
 		slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 		if (slen < 0) {
-			RDEBUG("Failed parsing attribute name '%s': %s", p, fr_strerror());
+			REDEBUG("Failed parsing attribute name '%s': %s", p, fr_strerror());
 			return false;
 		}
 
 		p += slen;
 
 		if (tmpl_find_vp(&vp, request, &vpt) < 0) {
-			RDEBUG("Can't find &%s", vpt.tmpl_da->name);
+			RWDEBUG("Can't find &%.*s.  Using 0 as operand value", (int)vpt.len, vpt.name);
 			x = 0;
 			goto done;
 		}
 
-		switch (vp->da->type) {
-		default:
-			RDEBUG("WARNING: Non-integer attribute %s", vp->da->name);
-			x = 0;
-			break;
+		if (vp->da->type != PW_TYPE_INTEGER64) {
+			value_data_t	value;
 
-		case PW_TYPE_INTEGER64:
-			/*
-			 *	FIXME: error out if the number is too large.
-			 */
-			x = vp->vp_integer64;
-			break;
+			if (value_data_cast(vp, &value, PW_TYPE_INTEGER64, NULL, vp->da->type, vp->da, &vp->data) < 0) {
+				REDEBUG("Failed converting &%.*s to an integer value: %s", (int) vpt.len,
+					vpt.name, fr_strerror());
+				return false;
+			}
+			if (value.integer64 > INT64_MAX) {
+			overflow:
+				REDEBUG("Value of &%.*s (%"PRIu64 ") would overflow a signed 64bit integer "
+					"(our internal arithmetic type)", (int)vpt.len, vpt.name, value.integer64);
+				return false;
+			}
+			x = (int64_t)value.integer64;
 
-		case PW_TYPE_INTEGER:
-			x = vp->vp_integer;
-			break;
-
-		case PW_TYPE_SIGNED:
-			x = vp->vp_signed;
-			break;
-
-		case PW_TYPE_SHORT:
-			x = vp->vp_short;
-			break;
-
-		case PW_TYPE_BYTE:
-			x = vp->vp_byte;
-			break;
+			RINDENT();
+			RDEBUG3("&%.*s --> %" PRIu64, (int)vpt.len, vpt.name, x);
+			REXDENT();
+		} else {
+			if (vp->vp_integer64 > INT64_MAX) goto overflow;
+			x = (int64_t)vp->vp_integer64;
 		}
 
 		goto done;

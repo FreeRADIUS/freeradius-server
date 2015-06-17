@@ -34,6 +34,7 @@ update request {
 	Tmp-Integer-0 = 1
 	Tmp-Integer-1 = 3
 	Tmp-Integer-2 = 4
+	Tmp-Date-0 = "%l"
 }
 
 if ("%{expr: 1 + 2 * &Tmp-Integer-1 + 4}" != 11) {
@@ -84,18 +85,24 @@ if ("%{expr: 1 << 2 | 1}" != 5) {
 	}
 }
 
-#
-#  Unary negation
-#
-if ("%{expr: 6 + -(1 + 3)}" != 2) {
+if ("%{expr: &Tmp-Date-0}" <= 0) {
 	update reply {
 		Filter-Id := "fail-11"
 	}
 }
 
+#
+#  Unary negation
+#
+if ("%{expr: 6 + -(1 + 3)}" != 2) {
+	update reply {
+		Filter-Id := "fail-12"
+	}
+}
+
 if ("%{expr: 6 * -&Tmp-Integer-2}" != -24) {
 	update reply {
-		Filter-Id := "fail-11"
+		Filter-Id := "fail-13"
 	}
 }
 
