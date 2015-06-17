@@ -312,7 +312,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 	 *	once all group info has been gathered/resolved
 	 *	successfully.
 	 */
-	fr_cursor_init(&groups_cursor, groups);
+	fr_cursor_init(&groups_cursor, &groups);
 
 	for (i = 0; (i < LDAP_MAX_CACHEABLE) && (i < count); i++) {
 		is_dn = rlm_ldap_is_dn(values[i]->bv_val, values[i]->bv_len);
