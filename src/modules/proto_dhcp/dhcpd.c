@@ -604,7 +604,7 @@ static int dhcp_process(REQUEST *request)
 
 static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
-	int rcode, broadcast = 1;
+	int rcode;
 	int on = 1;
 	dhcp_socket_t *sock;
 	RADCLIENT *client;
@@ -630,15 +630,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	See whether or not we enable broadcast packets.
 	 */
-	cp = cf_pair_find(cs, "broadcast");
-	if (cp) {
-		char const *value = cf_pair_value(cp);
-		if (value && (strcmp(value, "no") == 0)) {
-			broadcast = 0;
-		}
-	}
-
-	if (broadcast) {
+	if (sock->broadcast) {
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
 			ERROR("Can't set broadcast option: %s\n",
 			       fr_syserror(errno));
