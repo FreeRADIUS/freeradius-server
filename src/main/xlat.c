@@ -167,10 +167,14 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		return snprintf(out, outlen, "%u", htonl((*(uint32_t *)(vp->vp_ipv4prefix + 2))));
 
 	case PW_TYPE_INTEGER:
-	case PW_TYPE_DATE:
 		return snprintf(out, outlen, "%u", vp->vp_integer);
+
+	case PW_TYPE_DATE:
+		return snprintf(out, outlen, "%u", vp->vp_date);
+
 	case PW_TYPE_BYTE:
 		return snprintf(out, outlen, "%u", (unsigned int) vp->vp_byte);
+
 	case PW_TYPE_SHORT:
 		return snprintf(out, outlen, "%u", (unsigned int) vp->vp_short);
 
