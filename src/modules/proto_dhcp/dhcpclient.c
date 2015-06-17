@@ -465,10 +465,16 @@ int main(int argc, char **argv)
 	tv_timeout.tv_sec = timeout;
 	tv_timeout.tv_usec = ((timeout - (float) tv_timeout.tv_sec) * USEC);
 
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-		fr_perror("dhcpclient");
+	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+		fr_perror("radclient");
 		return 1;
 	}
+
+	if (dict_read(radius_dir, RADIUS_DICTIONARY) < 0) {
+		fr_perror("radclient");
+		return 1;
+	}
+	fr_strerror();	/* Clear the error buffer */
 
 	/*
 	 *	Ensure that dictionary.dhcp is loaded.
@@ -476,13 +482,7 @@ int main(int argc, char **argv)
 	da = dict_attrbyname("DHCP-Message-Type");
 	if (!da) {
 		if (dict_read(dict_dir, "dictionary.dhcp") < 0) {
-			fprintf(stderr, "Failed reading dictionary.dhcp: %s",
-				fr_strerror());
-			return -1;
-		}
-
-		if (dict_read(dict_dir, "dictionary.freeradius.internal") < 0) {
-			fprintf(stderr, "Failed reading dictionary.freeradius.internal: %s",
+			fprintf(stderr, "Failed reading dictionary.dhcp: %s\n",
 				fr_strerror());
 			return -1;
 		}
