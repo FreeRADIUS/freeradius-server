@@ -21,6 +21,7 @@ sql {
 	# The sub-module to use to execute queries. This should match
 	# the database you're attempting to connect to.
 	#
+	#    * rlm_sql_cassandra
 	#    * rlm_sql_mysql
 	#    * rlm_sql_mssql
 	#    * rlm_sql_oracle
@@ -30,13 +31,13 @@ sql {
 	#
 	driver = "rlm_sql_null"
 
-#
-#	Several drivers accept specific options, to set them, a
-#	config section with the the name as the driver should be added
-#	to the sql instance.
-#
-#	Driver specific options are:
-#
+	#
+	# Several drivers accept specific options, to set them, a
+	# config section with the the name as the driver should be added
+	# to the sql instance.
+	#
+
+	# Driver specific options are:
 #	sqlite {
 #		# Path to the sqlite database
 #		filename = "/tmp/freeradius.db"
@@ -73,6 +74,29 @@ sql {
 #		send_application_name = yes
 #	}
 #
+#       cassandra {
+#		# Consistency level, may be one of:
+#		#   any          - A write must be written to the commit log and
+#		#		   memtable on all replica nodes in the cluster for that partition.
+#		#   one          - A write must be written to the commit log and
+#		#		   memtable of at least one replica node.
+#		#   two          - A write must be written to the commit log and memtable of at
+#		#		   least two replica nodes.
+#		#   three        - A write must be written to the commit log and memtable of at least
+#		#		   three replica nodes.
+#		#   quorum       - A write must be written to the commit log and memtable on a quorum
+#		#		   of replica nodes.
+#		#   all          - A write must be written to the commit log and memtable on all replica
+#		#		   nodes in the cluster for that partition.
+#		#   each_quorum  - Strong consistency. A write must be written to the commit log
+#		#		   and memtable on a quorum of replica nodes in all data centers.
+#		#   local_quorum - Strong consistency. A write must be written to the commit log and
+#		#		   memtable on a quorum of replica nodes in the same data center as
+#		#		   the coordinator node. Avoids latency of inter-data center communication.
+#		#   local_one    - A write must be sent to, and successfully acknowledged by, at least one
+#		#		   replica node in the local data center.
+#		consistency = quorum
+#	}
 
 	# The dialect of SQL you want to use, this should usually match
 	# the driver you selected above.
