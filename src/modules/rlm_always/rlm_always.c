@@ -93,17 +93,28 @@ static void reparse_rcode(rlm_always_t *inst)
 	inst->rcode_old = inst->rcode_str;
 }
 
+static rlm_rcode_t CC_HINT(nonnull) handle_action(void *instance, UNUSED REQUEST *request, bool simul)
+{
+	struct rlm_always_t *inst = instance;
+
+	if (inst->rcode_old != inst->rcode_str) reparse_rcode(inst);
+
+	if (simul) {
+		request->simul_count = inst->simulcount;
+
+		if (inst->mpp) request->simul_mpp = 2;
+	}
+
+	return inst->rcode;
+}
+
 /*
  *	Just return the rcode ... this function is autz, auth, acct, and
  *	preacct!
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_always_return(void *instance, UNUSED REQUEST *request)
 {
-	rlm_always_t *inst = instance;
-
-	if (inst->rcode_old != inst->rcode_str) reparse_rcode(inst);
-
-	return inst->rcode;
+	return handle_action(instance, request, false);
 }
 
 #ifdef WITH_SESSION_MGMT
@@ -112,15 +123,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_always_return(void *instance, UNUSED REQ
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *request)
 {
-	struct rlm_always_t *inst = instance;
-
-	if (inst->rcode_old != inst->rcode_str) reparse_rcode(inst);
-
-	request->simul_count = inst->simulcount;
-
-	if (inst->mpp) request->simul_mpp = 2;
-
-	return inst->rcode;
+	return handle_action(instance, request, true);
 }
 #endif
 
