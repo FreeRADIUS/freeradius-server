@@ -103,14 +103,17 @@ static RADCLIENT *client_alloc(void *ctx)
 
 static REQUEST *request_setup(FILE *fp)
 {
-	VALUE_PAIR *vp;
-	REQUEST *request;
-	vp_cursor_t cursor;
+	VALUE_PAIR	*vp;
+	REQUEST		*request;
+	vp_cursor_t	cursor;
+	struct timeval	now;
 
 	/*
 	 *	Create and initialize the new request.
 	 */
 	request = request_alloc(NULL);
+	gettimeofday(&now, NULL);
+	request->timestamp = now.tv_sec;
 
 	request->packet = rad_alloc(request, false);
 	if (!request->packet) {
@@ -118,6 +121,7 @@ static REQUEST *request_setup(FILE *fp)
 		talloc_free(request);
 		return NULL;
 	}
+	request->packet->timestamp = now;
 
 	request->reply = rad_alloc(request, false);
 	if (!request->reply) {
@@ -529,14 +533,20 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
  */
 static bool do_xlats(char const *filename, FILE *fp)
 {
-	int lineno = 0;
-	ssize_t len;
-	char *p;
-	char input[8192];
-	char output[8192];
-	REQUEST *request;
+	int		lineno = 0;
+	ssize_t		len;
+	char		*p;
+	char		input[8192];
+	char		output[8192];
+	REQUEST		*request;
+	struct timeval	now;
 
+	/*
+	 *	Create and initialize the new request.
+	 */
 	request = request_alloc(NULL);
+	gettimeofday(&now, NULL);
+	request->timestamp = now.tv_sec;
 
 	request->log.lvl = rad_debug_lvl;
 	request->log.func = vradlog_request;
