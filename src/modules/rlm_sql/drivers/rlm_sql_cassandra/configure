@@ -3070,6 +3070,8 @@ if test "x$fail" != x; then
 $as_echo "$as_me: WARNING: silently not building rlm_sql_cassandra." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_sql_cassandra requires:$fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_sql_cassandra requires:$fail." >&2;};
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: available from https://github.com/datastax/cpp-driver" >&5
+$as_echo "$as_me: WARNING: available from https://github.com/datastax/cpp-driver" >&2;};
 		targetname=
 	fi
 fi

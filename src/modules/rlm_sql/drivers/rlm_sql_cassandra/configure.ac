@@ -106,6 +106,7 @@ if test "x$fail" != x; then
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
 		AC_MSG_WARN([FAILURE: ]modname[ requires:$fail.]);
+		AC_MSG_WARN([available from https://github.com/datastax/cpp-driver]);
 		targetname=
 	fi
 fi

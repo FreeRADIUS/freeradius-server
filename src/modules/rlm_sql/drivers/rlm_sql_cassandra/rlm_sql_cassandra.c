@@ -46,10 +46,7 @@ static int rlm_sql_cass_instances = 0;
  *
  */
 typedef struct rlm_sql_cassandra_conn {
-	CassCluster		*cluster;		//!< Configuration of the cassandra cluster connection.
-	CassSession		*session;		//!< Connection to the cassandra cluster.
-
-	const CassResult	*result;		//!< Result from executing a query.
+	CassResult const	*result;		//!< Result from executing a query.
 	CassIterator		*iterator;		//!< Row set iterator.
 
 	TALLOC_CTX		*log_ctx;		//!< Prevent unneeded memory allocation by keeping a
@@ -61,14 +58,25 @@ typedef struct rlm_sql_cassandra_conn {
  *
  */
 typedef struct rlm_sql_cassandra_config {
+	CassCluster		*cluster;		//!< Configuration of the cassandra cluster connection.
+	CassSession		*session;		//!< Cluster's connection pool.
+	CassSsl			*ssl;			//!< Connection's SSL context.
+	bool			done_connect_keyspace;	//!< Whether we've connected to a keyspace.
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t		connect_mutex;		//!< Mutex to prevent multiple connections attempting
+							//!< to connect a keyspace concurrently.
+#endif
+
+	char const 		*tls_ca_file;		//!< Path to the CA used to validate the server's certificate.
+	char const 		*tls_certificate_file;	//!< Public certificate we present to the server.
+	char const 		*tls_private_key_file;	//!< Private key for the certificate we present to the server.
+	char const		*tls_private_key_password;	//!< String to decrypt private key.
+	char const 		*tls_verify_cert_str;	//!< Whether we validate the cert provided by the server.
+
 	char const		*consistency_str;	//!< Level of consistency required.
 	CassConsistency		consistency;		//!< Level of consistency converted to a constant.
 } rlm_sql_cassandra_config_t;
-
-static const CONF_PARSER driver_config[] = {
-	{ "consistency", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, consistency_str), "quorum" },
-	{ NULL, -1, 0, NULL, NULL}
-};
 
 static const FR_NAME_NUMBER consistency_levels[] = {
 	{ "any",		CASS_CONSISTENCY_ANY },
@@ -81,6 +89,30 @@ static const FR_NAME_NUMBER consistency_levels[] = {
 	{ "local_quorum",	CASS_CONSISTENCY_LOCAL_QUORUM },
 	{ "local_one",		CASS_CONSISTENCY_LOCAL_ONE },
 	{ NULL, 0 }
+};
+
+static const FR_NAME_NUMBER verify_cert_table[] = {
+	{ "no",			CASS_SSL_VERIFY_NONE },
+	{ "yes",		CASS_SSL_VERIFY_PEER_CERT },
+	{ "identity",		CASS_SSL_VERIFY_PEER_IDENTITY },
+	{ NULL, 0 }
+};
+
+static CONF_PARSER tls_config[] = {
+	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_ca_file), NULL },
+	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_certificate_file), NULL },
+	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_private_key_file), NULL },
+	{ "private_key_password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, rlm_sql_cassandra_config_t, tls_private_key_password), NULL },
+
+	{ "verify_cert", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, tls_verify_cert_str), NULL },
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+static const CONF_PARSER driver_config[] = {
+	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
+	{ "consistency", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, consistency_str), "quorum" },
+	{ NULL, -1, 0, NULL, NULL}
 };
 
 /** Log callback for libcassandra
@@ -181,15 +213,24 @@ static void sql_set_last_error_printf(rlm_sql_cassandra_conn_t *conn, char const
 	conn->last_error.type = L_ERR;
 }
 
-static int _mod_destructor(UNUSED rlm_sql_cassandra_config_t *conf)
+static int _mod_destructor(rlm_sql_cassandra_config_t *config)
 {
+	if (config->ssl) cass_ssl_free(config->ssl);
+	if (config->session) cass_session_free(config->session);	/* also synchronously closes the session */
+	if (config->cluster) cass_cluster_free(config->cluster);
+
+	pthread_mutex_destroy(&config->connect_mutex);
 	if (--rlm_sql_cass_instances == 0) cass_log_cleanup();	/* must be last call to libcassandra */
+
 	return 0;
 }
 
 static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
 	static bool version_done = false;
+	bool do_tls = false;
+
+	CassCluster *cluster;
 
 	rlm_sql_cassandra_config_t *driver;
 	int consistency;
@@ -199,10 +240,25 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 		INFO("rlm_sql_cassandra: Built against libcassandra version %d.%d.%d%s",
 		     CASS_VERSION_MAJOR, CASS_VERSION_MINOR, CASS_VERSION_PATCH, CASS_VERSION_SUFFIX);
+
+		/*
+		 *	Setup logging callbacks (only needs to be done once)
+		 */
+		cass_log_set_level(CASS_LOG_INFO);
+		cass_log_set_callback(_rlm_sql_cassandra_log, NULL);
 	}
 
 	MEM(driver = config->driver = talloc_zero(config, rlm_sql_cassandra_config_t));
+#ifdef HAVE_PTHREAD_H
+	if (pthread_mutex_init(&driver->connect_mutex, NULL) < 0) {
+		ERROR("Failed initializing mutex: %s", fr_syserror(errno));
+		talloc_free(driver);
+		return -1;
+	}
+#endif
 	talloc_set_destructor(driver, _mod_destructor);
+
+	if (cf_section_sub_find(conf, "tls")) do_tls = true;
 
 	if (cf_section_parse(conf, driver, driver_config) < 0) return -1;
 
@@ -211,11 +267,73 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		ERROR("rlm_sql_cassandra: Invalid consistency level \"%s\"", driver->consistency_str);
 		return -1;
 	}
-
 	driver->consistency = (CassConsistency)consistency;
 
-	cass_log_set_level(CASS_LOG_INFO);
-	cass_log_set_callback(_rlm_sql_cassandra_log, driver);
+	/*
+	 *	Connect to the cluster
+	 */
+#define DO_CASS_OPTION(_opt, _x) \
+do {\
+	CassError _ret;\
+	if ((_ret = (_x)) != CASS_OK) {\
+		ERROR("rlm_sql_cassandra: Error setting " _opt ": %s", cass_error_desc(_ret));\
+		return RLM_SQL_ERROR;\
+	}\
+} while (0)
+
+	DEBUG4("rlm_sql_cassandra: Configuring driver's CassCluster structure");
+	cluster = driver->cluster = cass_cluster_new();
+	if (!cluster) return RLM_SQL_ERROR;
+
+	DO_CASS_OPTION("sql_server", cass_cluster_set_contact_points(cluster, config->sql_server));
+	DO_CASS_OPTION("sql_port", cass_cluster_set_port(cluster, atoi(config->sql_port)));
+	/* Can't fail */
+	if (config->connect_timeout_ms) cass_cluster_set_connect_timeout(cluster, config->connect_timeout_ms);
+	/* Can't fail */
+	if (config->query_timeout) cass_cluster_set_request_timeout(cluster, config->query_timeout * 1000);
+	/* Can't fail */
+	if (config->sql_login && config->sql_password) cass_cluster_set_credentials(cluster, config->sql_login,
+										    config->sql_password);
+
+	if (do_tls) {
+		CassSsl	*ssl;
+
+		ssl = driver->ssl = cass_ssl_new();
+		if (!ssl) return RLM_SQL_ERROR;
+
+		if (driver->tls_verify_cert_str) {
+			int	verify_cert;
+
+			verify_cert = fr_str2int(verify_cert_table, driver->tls_verify_cert_str, -1);
+			if (verify_cert < 0) {
+				ERROR("rlm_sql_cassandra: Invalid certificate validation type \"%s\", "
+				      "must be one of 'yes', 'no', 'identity'", driver->tls_verify_cert_str);
+				return -1;
+			}
+			cass_ssl_set_verify_flags(ssl, verify_cert);
+		}
+
+		DEBUG2("rlm_sql_cassandra: Enabling SSL");
+
+
+		if (driver->tls_ca_file) {
+			DO_CASS_OPTION("ca_file", cass_ssl_add_trusted_cert(ssl, driver->tls_ca_file));
+		}
+
+		if (driver->tls_certificate_file) {
+			DO_CASS_OPTION("certificate_file", cass_ssl_set_cert(ssl, driver->tls_certificate_file));
+		}
+
+		if (driver->tls_private_key_file) {
+			DO_CASS_OPTION("private_key", cass_ssl_set_private_key(ssl, driver->tls_private_key_file,
+				       					       driver->tls_private_key_password));
+		}
+
+		cass_cluster_set_ssl(cluster, ssl);
+	}
+
+	driver->session = cass_session_new();
+	if (!driver->session) return RLM_SQL_ERROR;
 
 	rlm_sql_cass_instances++;
 
@@ -228,8 +346,6 @@ static int _sql_socket_destructor(rlm_sql_cassandra_conn_t *conn)
 
 	if (conn->iterator) cass_iterator_free(conn->iterator);
 	if (conn->result) cass_result_free(conn->result);
-	if (conn->session) cass_session_free(conn->session);
-	if (conn->cluster) cass_cluster_free(conn->cluster);
 
 	return 0;
 }
@@ -237,43 +353,40 @@ static int _sql_socket_destructor(rlm_sql_cassandra_conn_t *conn)
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_cassandra_conn_t	*conn;
-	CassCluster			*cluster;
-	CassSession			*session;
-	CassFuture			*future;
-	CassError			ret;
+	rlm_sql_cassandra_config_t	*driver = config->driver;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_cassandra_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
-	DEBUG4("rlm_sql_cassandra: Configuring driver's CassCluster structure");
-	cluster = conn->cluster = cass_cluster_new();
-	if (!cluster) return RLM_SQL_ERROR;
+	/*
+	 *	We do this one inside sql_socket_init, to allow pool.start = 0 to
+	 *	work as expected (allow the server to start if Cassandra is
+	 *	unavailable).
+	 */
+	if (!driver->done_connect_keyspace) {
+		CassFuture	*future;
+		CassError	ret;
 
-	cass_cluster_set_contact_points(cluster, config->sql_server);
-	cass_cluster_set_port(cluster, atoi(config->sql_port));
-	if (config->connect_timeout_ms) cass_cluster_set_connect_timeout(cluster, config->connect_timeout_ms);
-	if (config->query_timeout) cass_cluster_set_request_timeout(cluster, config->query_timeout * 1000);
-	if (config->sql_login && config->sql_password) cass_cluster_set_credentials(cluster, config->sql_login,
-										    config->sql_password);
+		pthread_mutex_lock(&driver->connect_mutex);
+		if (!driver->done_connect_keyspace) {
+			DEBUG2("rlm_sql_cassandra: Connecting to Cassandra cluster");
+			future = cass_session_connect_keyspace(driver->session, driver->cluster, config->sql_db);
+			ret = cass_future_error_code(future);
+			if (ret != CASS_OK) {
+				const char	*msg;
+				size_t		msg_len;
 
-	DEBUG2("rlm_sql_cassandra: Connecting to Cassandra cluster");
-	session = conn->session = cass_session_new();
-	if (!session) return RLM_SQL_ERROR;
+				cass_future_error_message(future, &msg, &msg_len);
+				ERROR("rlm_sql_cassandra: Unable to connect: [%x] %s", (int)ret, msg);
+				cass_future_free(future);
 
-	future = cass_session_connect_keyspace(session, cluster, config->sql_db);
-	ret = cass_future_error_code(future);
-	if (ret != CASS_OK) {
-		const char	*msg;
-		size_t		msg_len;
-
-		cass_future_error_message(future, &msg, &msg_len);
-		ERROR("rlm_sql_cassandra: Unable to connect: [%x] %s", (int)ret, msg);
-		cass_future_free(future);
-
-		return RLM_SQL_ERROR;
+				return RLM_SQL_ERROR;
+			}
+			cass_future_free(future);
+			driver->done_connect_keyspace = true;
+		}
+		pthread_mutex_unlock(&driver->connect_mutex);
 	}
-	cass_future_free(future);
-
 	conn->log_ctx = talloc_pool(conn, 1024);	/* Pre-allocate some memory for log messages */
 
 	return RLM_SQL_OK;
@@ -290,7 +403,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	statement = cass_statement_new_n(query, talloc_array_length(query) - 1, 0);
 	cass_statement_set_consistency(statement, conf->consistency);
 
-	future = cass_session_execute(conn->session, statement);
+	future = cass_session_execute(conf->session, statement);
 	cass_statement_free(statement);
 
 	ret = cass_future_error_code(future);
