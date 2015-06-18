@@ -1171,19 +1171,29 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 
 	REQUEST			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 
+	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+	if (!conf) {
+		RWDEBUG("Failed to find TLS configuration in session");
+		return NULL;
+	}
+
+	if (!conf->session_cache_path) {
+		RWDEBUG("Failed to find 'persist_dir' in TLS configuration.");
+		return NULL;
+	}
+
 	size = sess->session_id_length;
 	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
 
 	fr_bin2hex(buffer, sess->session_id, size);
 
-	RDEBUG2("Serialising session %s, and storing in cache", buffer);
-
-	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
-	if (conf && conf->session_cache_path) {
-		int fd, todo, blob_len, rv;
+	{
+		int fd, rv, todo, blob_len;
 		size_t len;
 		char filename[256];
 		unsigned char *p;
+
+		RDEBUG2("Serialising session %s, and storing in cache", buffer);
 
 		/* find out what length data we need */
 		blob_len = i2d_SSL_SESSION(sess, NULL);
@@ -1257,6 +1267,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int inlen, 
 	PAIR_LIST		*pairlist = NULL;
 
 	REQUEST			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+
 	rad_assert(request != NULL);
 
 	size = inlen;
@@ -1266,9 +1277,22 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int inlen, 
 
 	RDEBUG2("Peer requested cached session: %s", buffer);
 
+	*copy = 0;
+
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+	if (!conf) {
+		RWDEBUG("Failed to find TLS configuration in session");
+		return NULL;
+	}
+
+	if (!conf->session_cache_path) {
+		RWDEBUG("Failed to find 'persist_dir' in TLS configuration.");
+		return NULL;
+	}
+
 	talloc_ctx = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TALLOC);
-	if (conf && conf->session_cache_path) {
+
+	{
 		int		rv, fd, todo;
 		size_t		len;
 		char		filename[256];
@@ -1351,7 +1375,6 @@ error:
 	if (sess_data) talloc_free(sess_data);
 	if (pairlist) pairlist_free(&pairlist);
 
-	*copy = 0;
 	return sess;
 }
 
