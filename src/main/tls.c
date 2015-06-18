@@ -103,7 +103,7 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
 /* index we use to store cached session VPs
  * needs to be dynamic so we can supply a "free" function
  */
-static int fr_tls_ex_index_vps = -1;
+int fr_tls_ex_index_vps = -1;
 int fr_tls_ex_index_certs = -1;
 
 /* Session */
@@ -2976,7 +2976,6 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 */
 	} else {
 		size_t size;
-		vp_cursor_t cursor;
 		char buffer[2 * MAX_SESSION_SIZE + 1];
 
 		size = ssn->ssl->session->session_id_length;
@@ -2984,40 +2983,10 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		fr_bin2hex(buffer, ssn->ssl->session->session_id, size);
 
-		vps = SSL_SESSION_get_ex_data(ssn->ssl->session, fr_tls_ex_index_vps);
-		if (!vps) {
-			RWDEBUG("No information in cached session %s", buffer);
-			return -1;
-		}
-
-		RDEBUG("Adding cached attributes from session %s", buffer);
-
 		/*
-		 *	The cbtls_get_session() function doesn't have
-		 *	access to sock->certs or handler->certs, which
-		 *	is where the certificates normally live.  So
-		 *	the certs are all in the VPS list here, and
-		 *	have to be manually extracted.
+		 *	The "restore VPs from OpenSSL cache" code is
+		 *	now in eaptls_process()
 		 */
-		RINDENT();
-		for (vp = fr_cursor_init(&cursor, &vps);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			/*
-			 *	TLS-* attrs get added back to
-			 *	the request list.
-			 */
-			if ((vp->da->vendor == 0) &&
-			    (vp->da->attr >= PW_TLS_CERT_SERIAL) &&
-			    (vp->da->attr <= PW_TLS_CLIENT_CERT_SUBJECT_ALT_NAME_UPN)) {
-				rdebug_pair(L_DBG_LVL_2, request, vp, "request:");
-				pairadd(&request->packet->vps, paircopyvp(request->packet, vp));
-			} else {
-				rdebug_pair(L_DBG_LVL_2, request, vp, "reply:");
-				pairadd(&request->reply->vps, paircopyvp(request->reply, vp));
-			}
-		}
-		REXDENT();
 
 		if (conf->session_cache_path) {
 			/* "touch" the cached session/vp file */
