@@ -219,7 +219,9 @@ static int _mod_destructor(rlm_sql_cassandra_config_t *config)
 	if (config->session) cass_session_free(config->session);	/* also synchronously closes the session */
 	if (config->cluster) cass_cluster_free(config->cluster);
 
+#ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&config->connect_mutex);
+#endif
 	if (--rlm_sql_cass_instances == 0) cass_log_cleanup();	/* must be last call to libcassandra */
 
 	return 0;
@@ -252,7 +254,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&driver->connect_mutex, NULL) < 0) {
 		ERROR("Failed initializing mutex: %s", fr_syserror(errno));
-		talloc_free(driver);
+		TALLOC_FREE(driver);
 		return -1;
 	}
 #endif
@@ -367,7 +369,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		CassFuture	*future;
 		CassError	ret;
 
+#ifdef HAVE_PTHREAD_H
 		pthread_mutex_lock(&driver->connect_mutex);
+#endif
 		if (!driver->done_connect_keyspace) {
 			DEBUG2("rlm_sql_cassandra: Connecting to Cassandra cluster");
 			future = cass_session_connect_keyspace(driver->session, driver->cluster, config->sql_db);
@@ -385,7 +389,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 			cass_future_free(future);
 			driver->done_connect_keyspace = true;
 		}
+#ifdef HAVE_PTHREAD_H
 		pthread_mutex_unlock(&driver->connect_mutex);
+#endif
 	}
 	conn->log_ctx = talloc_pool(conn, 1024);	/* Pre-allocate some memory for log messages */
 
