@@ -1130,11 +1130,22 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 
 	fr_bin2hex(buffer, sess->session_id, size);
 
-	DEBUG2(LOG_PREFIX ": Removing session %s from the cache", buffer);
 	conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ctx);
-	if (conf && conf->session_cache_path) {
+	if (!conf) {
+		DEBUG(LOG_PREFIX ": Failed to find TLS configuration in session");
+		return;
+	}
+
+	if (!conf->session_cache_path) {
+		DEBUG(LOG_PREFIX ": Failed to find 'persist_dir' in TLS configuration.  Cannot remove any cached session.");
+		return;
+	}
+
+	{
 		char filename[256];
 		size_t len;
+
+		DEBUG2(LOG_PREFIX ": Removing session %s from the cache", buffer);
 
 		/* remove session and any cached VPs */
 		len = snprintf(filename, sizeof(filename), "%s%c%s.asn1", conf->session_cache_path, FR_DIR_SEP, buffer);
@@ -1178,7 +1189,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 	}
 
 	if (!conf->session_cache_path) {
-		RWDEBUG("Failed to find 'persist_dir' in TLS configuration.");
+		RDEBUG("Failed to find 'persist_dir' in TLS configuration.  Session will not be cached.");
 		return NULL;
 	}
 
@@ -1286,7 +1297,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int inlen, 
 	}
 
 	if (!conf->session_cache_path) {
-		RWDEBUG("Failed to find 'persist_dir' in TLS configuration.");
+		RDEBUG("Failed to find 'persist_dir' in TLS configuration.  Session will not be cached.");
 		return NULL;
 	}
 
@@ -2944,12 +2955,13 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		}
 
 		if (vps) {
-			RDEBUG2("Saving session %s vps %p in the cache", buffer, vps);
 			SSL_SESSION_set_ex_data(ssn->ssl->session, fr_tls_ex_index_vps, vps);
 			if (conf->session_cache_path) {
 				/* write the VPs to the cache file */
 				char filename[256], buf[1024];
 				FILE *vp_file;
+
+				RDEBUG2("Saving session %s in the cache", buffer);
 
 				snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path,
 					 FR_DIR_SEP, buffer);
@@ -2986,6 +2998,8 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 					fprintf(vp_file, "\n");
 					fclose(vp_file);
 				}
+			} else {
+				RDEBUG("Failed to find 'persist_dir' in TLS configuration.  Session will not be cached.");
 			}
 		} else {
 			RDEBUG2("No information to cache: session caching will be disabled for session %s", buffer);
