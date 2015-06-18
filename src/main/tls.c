@@ -1185,12 +1185,12 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) {
 		RWDEBUG("Failed to find TLS configuration in session");
-		return NULL;
+		return 0;
 	}
 
 	if (!conf->session_cache_path) {
 		RDEBUG("Failed to find 'persist_dir' in TLS configuration.  Session will not be cached.");
-		return NULL;
+		return 0;
 	}
 
 	size = sess->session_id_length;
