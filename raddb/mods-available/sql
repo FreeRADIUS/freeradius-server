@@ -1,109 +1,49 @@
 # -*- text -*-
-##
-## sql.conf -- SQL modules
-##
-##	$Id$
-
-######################################################################
 #
 #  Configuration for the SQL module
 #
 #  The database schemas and queries are located in subdirectories:
 #
-#	sql/<DB>/main/schema.sql	Schema
-#	sql/<DB>/main/queries.conf	Authorisation and Accounting queries
+#	sql/<driver>/main/schema.sql	Schema
+#	sql/<driver>/main/queries.conf	Authorisation and Accounting queries
 #
-#  Where "DB" is mysql, mssql, oracle, or postgresql.
+#  Driver specific configuration options are located in sql prefix config files
 #
+#       mods-available/sql_<driver>
 #
-
+#  Where "driver" is cassandra, db2, firebird, freetds, iodbc, null, mysql
+#  oracle, postgresql, sqlite, unixodbc.
+#
+# $Id$
+#
 sql {
-	# The sub-module to use to execute queries. This should match
-	# the database you're attempting to connect to.
-	#
-	#    * rlm_sql_cassandra
-	#    * rlm_sql_mysql
-	#    * rlm_sql_mssql
-	#    * rlm_sql_oracle
-	#    * rlm_sql_postgresql
-	#    * rlm_sql_sqlite
-	#    * rlm_sql_null (log queries to disk)
-	#
-	driver = "rlm_sql_null"
-
-	#
-	# Several drivers accept specific options, to set them, a
-	# config section with the the name as the driver should be added
-	# to the sql instance.
-	#
-
-	# Driver specific options are:
-#	sqlite {
-#		# Path to the sqlite database
-#		filename = "/tmp/freeradius.db"
-#
-#		# How long to wait for write locks on the database to be
-#		# released (in ms) before giving up.
-#		busy_timeout = 200
-#
-#		# If the file above does not exist and bootstrap is set
-#		# a new database file will be created, and the SQL statements
-#		# contained within the bootstrap file will be executed.
-#		bootstrap = "${modconfdir}/${..:name}/main/sqlite/schema.sql"
-# 	}
-#
-#	mysql {
-#		# If any of the files below are set, TLS encryption is enabled
-#		tls {
-#			ca_file = "/etc/ssl/certs/my_ca.crt"
-#			ca_path = "/etc/ssl/certs/"
-#			certificate_file = "/etc/ssl/certs/private/client.crt"
-#			private_key_file = "/etc/ssl/certs/private/client.key"
-#			cipher = "DHE-RSA-AES256-SHA:AES128-SHA"
-#		}
-#
-#		# If yes, (or auto and libmysqlclient reports warnings are
-#		# available), will retrieve and log additional warnings from
-#		# the server if an error has occured. Defaults to 'auto'
-#		warnings = auto
-#	}
-#
-#	postgresql {
-#		# Send application_name to the postgres server
-#		# Only supported in PG 9.0 and greater. Defaults to no.
-#		send_application_name = yes
-#	}
-#
-#       cassandra {
-#		# Consistency level, may be one of:
-#		#   any          - A write must be written to the commit log and
-#		#		   memtable on all replica nodes in the cluster for that partition.
-#		#   one          - A write must be written to the commit log and
-#		#		   memtable of at least one replica node.
-#		#   two          - A write must be written to the commit log and memtable of at
-#		#		   least two replica nodes.
-#		#   three        - A write must be written to the commit log and memtable of at least
-#		#		   three replica nodes.
-#		#   quorum       - A write must be written to the commit log and memtable on a quorum
-#		#		   of replica nodes.
-#		#   all          - A write must be written to the commit log and memtable on all replica
-#		#		   nodes in the cluster for that partition.
-#		#   each_quorum  - Strong consistency. A write must be written to the commit log
-#		#		   and memtable on a quorum of replica nodes in all data centers.
-#		#   local_quorum - Strong consistency. A write must be written to the commit log and
-#		#		   memtable on a quorum of replica nodes in the same data center as
-#		#		   the coordinator node. Avoids latency of inter-data center communication.
-#		#   local_one    - A write must be sent to, and successfully acknowledged by, at least one
-#		#		   replica node in the local data center.
-#		consistency = quorum
-#	}
-
-	# The dialect of SQL you want to use, this should usually match
-	# the driver you selected above.
+	# The dialect of SQL you want to use
 	#
 	# If you're using rlm_sql_null, then it should be the type of
 	# database the logged queries are going to be executed against.
 	dialect = "sqlite"
+
+	# The sub-module to use to execute queries. This should match
+	# the database you're attempting to connect to.
+	#
+	#    * rlm_sql_cassandra
+	#    * rlm_sql_db2
+	#    * rlm_sql_firedbird
+	#    * rlm_sql_freetds (mssql)
+	#    * rlm_sql_iodbc
+	#    * rlm_sql_null (log queries to disk)
+	#    * rlm_sql_mysql
+	#    * rlm_sql_oracle
+	#    * rlm_sql_postgresql
+	#    * rlm_sql_sqlite
+	#    * rlm_sql_unixodbc
+	#
+	driver = "rlm_sql_${dialect}"
+
+	# Uncomment to include driver specific configuration file
+	# (if one exists)
+	# These config files contain driver specific options.
+#	$INCLUDE ${.:name}_${dialect}.
 
 	# Connection info:
 	#
@@ -166,8 +106,8 @@ sql {
 	#  max_queries
 
 	#
-	#  The connection pool is new for 3.0, and will be used in many
-	#  modules, for all kinds of connection-related activity.
+	# The connection pool is new for 3.0, and will be used in many
+	# modules, for all kinds of connection-related activity.
 	#
 	# When the server is not threaded, the connection pool
 	# limits are ignored, and only one connection is used.
@@ -255,5 +195,9 @@ sql {
 	client_table = "nas"
 
 	# Read database-specific queries
+	#
+	# Not all drivers ship with query.conf or schema.sql files.
+	# For those which don't, please create them and contribute
+	# them back to the project.
 	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }

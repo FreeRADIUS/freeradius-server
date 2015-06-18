@@ -46,11 +46,11 @@ static int rlm_sql_cass_instances = 0;
  *
  */
 typedef struct rlm_sql_cassandra_conn {
-	CassResult const	*result;		//!< Result from executing a query.
-	CassIterator		*iterator;		//!< Row set iterator.
+	CassResult const	*result;			//!< Result from executing a query.
+	CassIterator		*iterator;			//!< Row set iterator.
 
-	TALLOC_CTX		*log_ctx;		//!< Prevent unneeded memory allocation by keeping a
-							//!< permanent pool, to store log entries.
+	TALLOC_CTX		*log_ctx;			//!< Prevent unneeded memory allocation by keeping a
+								//!< permanent pool, to store log entries.
 	sql_log_entry_t		last_error;
 } rlm_sql_cassandra_conn_t;
 
@@ -58,24 +58,77 @@ typedef struct rlm_sql_cassandra_conn {
  *
  */
 typedef struct rlm_sql_cassandra_config {
-	CassCluster		*cluster;		//!< Configuration of the cassandra cluster connection.
-	CassSession		*session;		//!< Cluster's connection pool.
-	CassSsl			*ssl;			//!< Connection's SSL context.
-	bool			done_connect_keyspace;	//!< Whether we've connected to a keyspace.
+	CassCluster		*cluster;			//!< Configuration of the cassandra cluster connection.
+	CassSession		*session;			//!< Cluster's connection pool.
+	CassSsl			*ssl;				//!< Connection's SSL context.
+	bool			done_connect_keyspace;		//!< Whether we've connected to a keyspace.
 
 #ifdef HAVE_PTHREAD_H
-	pthread_mutex_t		connect_mutex;		//!< Mutex to prevent multiple connections attempting
-							//!< to connect a keyspace concurrently.
+	pthread_mutex_t		connect_mutex;			//!< Mutex to prevent multiple connections attempting
+								//!< to connect a keyspace concurrently.
 #endif
 
-	char const 		*tls_ca_file;		//!< Path to the CA used to validate the server's certificate.
-	char const 		*tls_certificate_file;	//!< Public certificate we present to the server.
-	char const 		*tls_private_key_file;	//!< Private key for the certificate we present to the server.
-	char const		*tls_private_key_password;	//!< String to decrypt private key.
-	char const 		*tls_verify_cert_str;	//!< Whether we validate the cert provided by the server.
+	/*
+	 *	Configuration options
+	 */
+	char const		*consistency_str;		//!< Level of consistency required.
+	CassConsistency		consistency;			//!< Level of consistency converted to a constant.
 
-	char const		*consistency_str;	//!< Level of consistency required.
-	CassConsistency		consistency;		//!< Level of consistency converted to a constant.
+	uint32_t		connections_per_host;		//!< Number of connections to each server in each
+								//!< IO thread.
+	uint32_t		connections_per_host_max;	//!< Maximum  number of connections to each server
+								//!< in each IO threads.
+	uint32_t		io_threads;			//!< Number of IO threads.
+
+	uint32_t		spawn_threshold;		//!< Threshold for the maximum number of concurrent
+								//!< requests in-flight on a connection before creating
+								//!< a new connection.
+	uint32_t		spawn_max;			//!< The maximum number of connections that
+								//!< will be created concurrently.
+
+	bool			load_balance_round_robin;	//!< Enable round robin load balancing.
+
+	bool			token_aware_routing;		//!< Whether to use token aware routing.
+
+	char const		*lbdc_local_dc;			//!< The primary data center to try first.
+	uint32_t		lbdc_hosts_per_remote_dc;	//!< The number of host used in each remote DC if
+								//!< no hosts are available in the local dc
+
+	bool			lbdc_allow_remote_dcs_for_local_cl;	//!< Allows remote hosts to be used if no local
+								//!< dc hosts are available and the consistency level
+								//!< is LOCAL_ONE or LOCAL_QUORUM.
+
+	struct timeval		lar_exclusion_threshold;	//!< How much worse the latency me be, compared to
+								//!< the average latency of the best performing node
+								//!< before it's penalized.
+								//!< This gets mangled to a double.
+
+	struct timeval		lar_scale;			//!< Weight given to older latencies when calculating
+								//!< the average latency of a node. A bigger scale will
+								//!< give more weight to older latency measurements.
+
+	struct timeval		lar_retry_period;		//!< The amount of time a node is penalized by the
+								//!< policy before being given a second chance when
+								//!< the current average latency exceeds the calculated
+								//!< threshold
+								//!< (exclusion_threshold * best_average_latency).
+
+	struct timeval		lar_update_rate;		//!< The rate at which the best average latency is
+								//!< recomputed.
+	uint64_t		lar_min_measured;		//!< The minimum number of measurements per-host
+								//!< required to be considered by the policy.
+
+	uint32_t		tcp_keepalive;			//!< How often to send TCP keepalives.
+	bool			tcp_nodelay;			//!< Disable TCP naggle algorithm.
+
+	char const 		*tls_ca_file;			//!< Path to the CA used to validate the server's
+								//!< certificate.
+	char const 		*tls_certificate_file;		//!< Public certificate we present to the server.
+	char const 		*tls_private_key_file;		//!< Private key for the certificate we present to the
+								//!< server.
+	char const		*tls_private_key_password;	//!< String to decrypt private key.
+	char const 		*tls_verify_cert_str;		//!< Whether we validate the cert provided by the
+								//!< server.
 } rlm_sql_cassandra_config_t;
 
 static const FR_NAME_NUMBER consistency_levels[] = {
@@ -98,6 +151,20 @@ static const FR_NAME_NUMBER verify_cert_table[] = {
 	{ NULL, 0 }
 };
 
+static CONF_PARSER load_balance_dc_aware_config[] = {
+	{ "local_dc", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, lbdc_local_dc), NULL },
+	{ "hosts_per_remote_dc" , FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, lbdc_hosts_per_remote_dc), NULL },
+	{ "allow_remote_dcs_for_local_cl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, lbdc_allow_remote_dcs_for_local_cl), NULL}
+};
+
+static CONF_PARSER latency_aware_routing_config[] = {
+	{ "exclusion_threshold", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_exclusion_threshold), NULL },
+	{ "scale", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_scale), NULL },
+	{ "retry_period", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_retry_period), NULL },
+	{ "update_rate", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_update_rate), NULL },
+	{ "min_measured", FR_CONF_OFFSET(PW_TYPE_INTEGER64, rlm_sql_cassandra_config_t, lar_min_measured), NULL }
+};
+
 static CONF_PARSER tls_config[] = {
 	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_ca_file), NULL },
 	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_certificate_file), NULL },
@@ -110,8 +177,27 @@ static CONF_PARSER tls_config[] = {
 };
 
 static const CONF_PARSER driver_config[] = {
-	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
 	{ "consistency", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, consistency_str), "quorum" },
+
+	{ "connections_per_host", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, connections_per_host), NULL },
+	{ "connections_per_host_max", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, connections_per_host_max), NULL },
+
+	{ "io_threads", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, io_threads), NULL },
+
+	{ "spawn_threshold", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, spawn_threshold), NULL },
+	{ "spawn_max", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, spawn_max), NULL },
+
+	{ "load_balance_dc_aware", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) load_balance_dc_aware_config },
+	{ "load_balance_round_robin", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, load_balance_round_robin), "no" },
+
+	{ "token_aware_routing", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, token_aware_routing), "yes" },
+	{ "latency_aware_routing", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) latency_aware_routing_config },
+
+	{ "tcp_keepalive", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, tcp_keepalive), NULL },
+	{ "tcp_nodelay", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, tcp_nodelay), "no" },
+
+	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
+
 	{ NULL, -1, 0, NULL, NULL}
 };
 
@@ -231,11 +317,20 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
 	static bool version_done = false;
 	bool do_tls = false;
+	bool do_latency_aware_routing = false;
 
 	CassCluster *cluster;
 
 	rlm_sql_cassandra_config_t *driver;
-	int consistency;
+
+#define DO_CASS_OPTION(_opt, _x) \
+do {\
+	CassError _ret;\
+	if ((_ret = (_x)) != CASS_OK) {\
+		ERROR("rlm_sql_cassandra: Error setting " _opt ": %s", cass_error_desc(_ret));\
+		return RLM_SQL_ERROR;\
+	}\
+} while (0)
 
 	if (!version_done) {
 		version_done = true;
@@ -260,33 +355,22 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 #endif
 	talloc_set_destructor(driver, _mod_destructor);
 
+	/*
+	 *	This has to be done before we call cf_section_parse
+	 *	as it sets default values, and creates the section.
+	 */
 	if (cf_section_sub_find(conf, "tls")) do_tls = true;
+	if (cf_section_sub_find(conf, "latency_aware_routing")) do_latency_aware_routing = true;
 
 	if (cf_section_parse(conf, driver, driver_config) < 0) return -1;
-
-	consistency = fr_str2int(consistency_levels, driver->consistency_str, -1);
-	if (consistency < 0) {
-		ERROR("rlm_sql_cassandra: Invalid consistency level \"%s\"", driver->consistency_str);
-		return -1;
-	}
-	driver->consistency = (CassConsistency)consistency;
-
-	/*
-	 *	Connect to the cluster
-	 */
-#define DO_CASS_OPTION(_opt, _x) \
-do {\
-	CassError _ret;\
-	if ((_ret = (_x)) != CASS_OK) {\
-		ERROR("rlm_sql_cassandra: Error setting " _opt ": %s", cass_error_desc(_ret));\
-		return RLM_SQL_ERROR;\
-	}\
-} while (0)
 
 	DEBUG4("rlm_sql_cassandra: Configuring driver's CassCluster structure");
 	cluster = driver->cluster = cass_cluster_new();
 	if (!cluster) return RLM_SQL_ERROR;
 
+	/*
+	 *	Parameters inherited from the top level SQL module config
+	 */
 	DO_CASS_OPTION("sql_server", cass_cluster_set_contact_points(cluster, config->sql_server));
 	DO_CASS_OPTION("sql_port", cass_cluster_set_port(cluster, atoi(config->sql_port)));
 	/* Can't fail */
@@ -296,6 +380,87 @@ do {\
 	/* Can't fail */
 	if (config->sql_login && config->sql_password) cass_cluster_set_credentials(cluster, config->sql_login,
 										    config->sql_password);
+
+	/*
+	 *	Driver specific parameters
+	 */
+	if (driver->consistency_str) {
+		int consistency;
+
+		consistency = fr_str2int(consistency_levels, driver->consistency_str, -1);
+		if (consistency < 0) {
+			ERROR("rlm_sql_cassandra: Invalid consistency level \"%s\"", driver->consistency_str);
+			return -1;
+		}
+		driver->consistency = (CassConsistency)consistency;
+	}
+
+	if (driver->connections_per_host) {
+		DO_CASS_OPTION("connections_per_host",
+			       cass_cluster_set_core_connections_per_host(driver->cluster,
+			       						  driver->connections_per_host));
+	}
+
+	if (driver->connections_per_host_max) {
+		DO_CASS_OPTION("connections_per_host_max",
+				cass_cluster_set_max_connections_per_host(driver->cluster,
+									  driver->connections_per_host_max));
+	}
+
+	if (driver->io_threads) {
+		DO_CASS_OPTION("io_threads", cass_cluster_set_num_threads_io(driver->cluster, driver->io_threads));
+	}
+
+	if (driver->spawn_threshold) {
+		DO_CASS_OPTION("spawn_threshold",
+			       cass_cluster_set_max_concurrent_requests_threshold(driver->cluster,
+			       							  driver->spawn_threshold));
+	}
+
+	if (driver->spawn_max) {
+		DO_CASS_OPTION("spawn_max",
+			       cass_cluster_set_max_concurrent_creation(driver->cluster, driver->spawn_max));
+	}
+
+	if (driver->load_balance_round_robin) cass_cluster_set_load_balance_round_robin(driver->cluster);
+
+	cass_cluster_set_token_aware_routing(driver->cluster, driver->token_aware_routing);
+
+	if (driver->lbdc_local_dc) {
+		DO_CASS_OPTION("load_balance_dc_aware",
+			       cass_cluster_set_load_balance_dc_aware(driver->cluster,
+			       					      driver->lbdc_local_dc,
+			       					      driver->lbdc_hosts_per_remote_dc,
+			       					      driver->lbdc_allow_remote_dcs_for_local_cl));
+	}
+
+	if (do_latency_aware_routing) {
+		cass_double_t	exclusion_threshold;
+		uint64_t	scale_ms, retry_period_ms, update_rate_ms;
+
+		exclusion_threshold = driver->lar_exclusion_threshold.tv_sec +
+				      (driver->lar_exclusion_threshold.tv_usec / 1000000);
+
+		scale_ms = (driver->lar_scale.tv_sec * (uint64_t)1000) + (driver->lar_scale.tv_usec / 1000);
+		retry_period_ms = (driver->lar_retry_period.tv_sec * (uint64_t)1000) +
+				  (driver->lar_retry_period.tv_usec / 1000);
+		update_rate_ms = (driver->lar_update_rate.tv_sec * (uint64_t)1000) +
+				 (driver->lar_update_rate.tv_usec / 1000);
+
+		/* Can't fail */
+		cass_cluster_set_latency_aware_routing(driver->cluster, true);
+
+		/* Can't fail */
+		cass_cluster_set_latency_aware_routing_settings(driver->cluster,
+							        exclusion_threshold,
+							        scale_ms,
+							        retry_period_ms,
+							        update_rate_ms,
+							        driver->lar_min_measured);
+	}
+
+	if (driver->tcp_keepalive) cass_cluster_set_tcp_keepalive(driver->cluster, true, driver->tcp_keepalive);
+	cass_cluster_set_tcp_nodelay(driver->cluster, driver->tcp_nodelay);
 
 	if (do_tls) {
 		CassSsl	*ssl;
@@ -407,7 +572,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 	CassError			ret;
 
 	statement = cass_statement_new_n(query, talloc_array_length(query) - 1, 0);
-	cass_statement_set_consistency(statement, conf->consistency);
+	if (conf->consistency_str) cass_statement_set_consistency(statement, conf->consistency);
 
 	future = cass_session_execute(conf->session, statement);
 	cass_statement_free(statement);
