@@ -1134,11 +1134,6 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 		return;
 	}
 
-	if (!conf->session_cache_path) {
-		DEBUG(LOG_PREFIX ": Failed to find 'persist_dir' in TLS configuration.  Cannot remove any cached session.");
-		return;
-	}
-
 	{
 		int rv;
 		char filename[256];
@@ -1174,11 +1169,6 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) {
 		RWDEBUG("Failed to find TLS configuration in session");
-		return 0;
-	}
-
-	if (!conf->session_cache_path) {
-		RDEBUG("Failed to find 'persist_dir' in TLS configuration.  Session will not be cached on disk.");
 		return 0;
 	}
 
@@ -1223,8 +1213,8 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 			 conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDWR|O_CREAT|O_EXCL, 0600);
 		if (fd < 0) {
-			RWDEBUG("Session serialisation failed, failed opening session file %s: %s",
-				filename, fr_syserror(errno));
+			RERROR("Session serialisation failed, failed opening session file %s: %s",
+			      filename, fr_syserror(errno));
 			goto error;
 		}
 
@@ -1277,11 +1267,6 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int len, in
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) {
 		RWDEBUG("Failed to find TLS configuration in session");
-		return NULL;
-	}
-
-	if (!conf->session_cache_path) {
-		RDEBUG("Failed to find 'persist_dir' in TLS configuration.  Session was not cached on disk.");
 		return NULL;
 	}
 
@@ -2580,9 +2565,14 @@ post_ca:
 	 *	Callbacks, etc. for session resumption.
 	 */
 	if (conf->session_cache_enable) {
-		SSL_CTX_sess_set_new_cb(ctx, cbtls_new_session);
-		SSL_CTX_sess_set_get_cb(ctx, cbtls_get_session);
-		SSL_CTX_sess_set_remove_cb(ctx, cbtls_remove_session);
+		/*
+		 *	Cache sessions on disk if requested.
+		 */
+		if (conf->session_cache_path) {
+			SSL_CTX_sess_set_new_cb(ctx, cbtls_new_session);
+			SSL_CTX_sess_set_get_cb(ctx, cbtls_get_session);
+			SSL_CTX_sess_set_remove_cb(ctx, cbtls_remove_session);
+		}
 
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
 		if (fr_tls_ex_index_vps < 0)
