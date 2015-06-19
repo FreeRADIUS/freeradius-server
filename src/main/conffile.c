@@ -443,7 +443,7 @@ static int file_callback(void *ctx, void *data)
 
 			*rcode = CF_FILE_MODULE;
 			return 0;
-			
+
 		}
 
 		/*
@@ -695,7 +695,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 
 	new->item.lineno = cs->item.lineno;
 
-	if (!cs->item.filename || (parent && (strcmp(parent->item.filename, cs->item.filename) == 0))) {	
+	if (!cs->item.filename || (parent && (strcmp(parent->item.filename, cs->item.filename) == 0))) {
 		new->item.filename = parent->item.filename;
 	} else {
 		new->item.filename = talloc_strdup(new, cs->item.filename);
@@ -1108,7 +1108,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			ci = cf_reference_item(parentcs, outercs, name);
 			if (!ci) {
 				if (soft_fail) *soft_fail = true;
-				ERROR("%s[%d]: Reference \"%s\" not found", cf, *lineno, input);
+				ERROR("%s[%d]: Reference \"${%s}\" not found", cf, *lineno, name);
 				return NULL;
 			}
 
