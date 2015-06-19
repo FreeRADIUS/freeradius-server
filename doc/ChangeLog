@@ -37,7 +37,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* HUP now re-loads the configuration only if the files have
 	  changed.  If all files are unchanged, HUP re-opens the
 	  log file, and does nothing else.
-	* Much better debug messages for EAP-TLS.
+	* Much better debug messages for EAP-TLS, including which
+	  attributes are cached, and when they are retrieved.
 	* Increase default max_requests to 16384.  Memory is cheap now.
 	* Added "stats memory" commands to radmin.  Debug build only.
 	* Aptilo controller dictionary updates.
@@ -89,6 +90,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  properly.
 	* Fix talloc pool leaks when receiving malformed or
 	  retransmitted Accounting/CoA requests.
+	* Printed attributes again use double quotes instead of
+	  single quotes.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
