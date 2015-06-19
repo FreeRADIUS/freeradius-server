@@ -419,7 +419,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		}
 
 		/*
-		 *	Else this is the a complete TLS record.
+		 *	Else this is the complete TLS record.
 		 */
 		if (total_len != frag_len) {
 			REDEBUG("Peer indicated no more fragments, but TLS record length (%zu bytes) "
