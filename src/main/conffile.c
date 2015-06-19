@@ -440,7 +440,7 @@ static int file_callback(void *ctx, void *data)
 
 			*rcode = CF_FILE_MODULE;
 			return 0;
-			
+
 		}
 
 		/*
@@ -1095,7 +1095,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			ci = cf_reference_item(parentcs, outercs, name);
 			if (!ci) {
 				if (soft_fail) *soft_fail = true;
-				ERROR("%s[%d]: Reference \"%s\" not found", cf, *lineno, input);
+				ERROR("%s[%d]: Reference \"${%s}\" not found", cf, *lineno, name);
 				return NULL;
 			}
 
