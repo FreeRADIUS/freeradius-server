@@ -1,7 +1,7 @@
 #
 #  Input packet
 #
-User-Name = 'user2@example.org'
+User-Name = 'user1@example.org'
 NAS-Port = 17826193
 NAS-IP-Address = 192.0.2.10
 Framed-IP-Address = 198.51.100.59
@@ -10,8 +10,8 @@ Acct-Status-Type = Interim-Update
 Acct-Delay-Time = 1
 Acct-Input-Octets = 10
 Acct-Output-Octets = 10
-Acct-Session-Id = '00000000'
-Acct-Unique-Session-Id = '00000000'
+Acct-Session-Id = '00000001'
+Acct-Unique-Session-Id = '00000001'
 Acct-Authentic = RADIUS
 Acct-Session-Time = 30
 Acct-Input-Packets = 10
