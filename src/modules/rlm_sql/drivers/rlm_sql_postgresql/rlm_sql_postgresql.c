@@ -109,8 +109,8 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		db_string = talloc_asprintf_append(db_string, " host='%s'", config->sql_server);
 	}
 
-	if (config->sql_port[0] != '\0') {
-		db_string = talloc_asprintf_append(db_string, " port=%s", config->sql_port);
+	if (config->sql_port) {
+		db_string = talloc_asprintf_append(db_string, " port=%i", config->sql_port);
 	}
 
 	if (config->sql_login[0] != '\0') {
