@@ -42,7 +42,7 @@ RCSID("$Id$")
  *
  */
 typedef struct rlm_redis_t {
-	redis_conn_conf_t	*server;	//!< Connection parameters for the Redis server.
+	redis_conn_conf_t	server;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
 	char const		*name;		//!< Instance name.
@@ -148,7 +148,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
-	inst->server->prefix = talloc_asprintf(inst, "rlm_redis (%s)", inst->name);
+	inst->server.prefix = talloc_asprintf(inst, "rlm_redis (%s)", inst->name);
 
 	xlat_register(inst->name, redis_xlat, NULL, inst);
 
@@ -159,7 +159,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_redis_t *inst = instance;
 
-	inst->pool = fr_connection_pool_module_init(conf, inst->server, fr_redis_conn_create, NULL, NULL);
+	inst->pool = fr_connection_pool_module_init(conf, &inst->server, fr_redis_conn_create, NULL, NULL);
 	if (!inst->pool) return -1;
 
 	return 0;
