@@ -95,7 +95,6 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
 	{ "first fragment",		FR_TLS_FIRST_FRAGMENT },
 	{ "more fragments",		FR_TLS_MORE_FRAGMENTS },
 	{ "length included",		FR_TLS_LENGTH_INCLUDED },
-	{ "more fragments with length",	FR_TLS_MORE_FRAGMENTS_WITH_LENGTH },
 	{ "handled",			FR_TLS_HANDLED },
 	{  NULL , 			-1},
 };

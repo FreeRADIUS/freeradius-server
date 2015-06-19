@@ -585,18 +585,22 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 		request->reply->code = PW_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_HANDLED; /* leap weirdness */
 		break;
+
 	case PW_EAP_SUCCESS:
 		request->reply->code = PW_CODE_ACCESS_ACCEPT;
 		rcode = RLM_MODULE_OK;
 		break;
+
 	case PW_EAP_FAILURE:
 		request->reply->code = PW_CODE_ACCESS_REJECT;
 		rcode = RLM_MODULE_REJECT;
 		break;
+
 	case PW_EAP_REQUEST:
 		request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 		rcode = RLM_MODULE_HANDLED;
 		break;
+
 	default:
 		/*
 		 *	When we're pulling MS-CHAPv2 out of EAP-MS-CHAPv2,

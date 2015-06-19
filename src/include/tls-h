@@ -62,7 +62,6 @@ typedef enum {
 	FR_TLS_FIRST_FRAGMENT,    		//!< First fragment.
 	FR_TLS_MORE_FRAGMENTS,    		//!< More fragments, to send/receive.
 	FR_TLS_LENGTH_INCLUDED,	  		//!< Length included.
-	FR_TLS_MORE_FRAGMENTS_WITH_LENGTH,   	//!< More fragments with length.
 	FR_TLS_HANDLED	  			//!< TLS code has handled it.
 } fr_tls_status_t;
 extern FR_NAME_NUMBER const fr_tls_status_table[];
@@ -139,6 +138,8 @@ typedef struct _tls_session_t {
 							//!< If set to no then only the first fragment contains length.
 	int		peap_flag;
 
+	bool		tls_record_transfer_started;	//!< Whether a record transfer from the peer is currently
+							//!< in progress.
 	size_t		tls_record_in_total_len;	//!< How long the peer indicated the complete tls record
 							//!< would be.
 	size_t		tls_record_in_recvd_len;	//!< How much of the record we've received so far.

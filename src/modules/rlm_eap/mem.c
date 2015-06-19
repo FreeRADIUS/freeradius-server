@@ -72,7 +72,7 @@ static int _eap_handler_free(eap_handler_t *handler)
 		handler->identity = NULL;
 	}
 
-	if (handler->prev_eapds) eap_ds_free(&(handler->prev_eapds));
+	if (handler->prev_eap_ds) eap_ds_free(&(handler->prev_eap_ds));
 	if (handler->eap_ds) eap_ds_free(&(handler->eap_ds));
 
 	if ((handler->opaque) && (handler->free_opaque)) {
