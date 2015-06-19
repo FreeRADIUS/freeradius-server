@@ -730,7 +730,7 @@ size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 	out += len;
 	freespace -= len;
 
-	len = vp_prints_value(out, freespace, vp, '\'');
+	len = vp_prints_value(out, freespace, vp, '"');
 	if (is_truncated(len, freespace)) return (outlen - freespace) + len;
 	freespace -= len;
 
