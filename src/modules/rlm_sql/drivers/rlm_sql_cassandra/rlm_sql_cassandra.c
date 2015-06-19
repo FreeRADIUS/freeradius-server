@@ -372,7 +372,7 @@ do {\
 	 *	Parameters inherited from the top level SQL module config
 	 */
 	DO_CASS_OPTION("sql_server", cass_cluster_set_contact_points(cluster, config->sql_server));
-	DO_CASS_OPTION("sql_port", cass_cluster_set_port(cluster, atoi(config->sql_port)));
+	if (config->sql_port) DO_CASS_OPTION("sql_port", cass_cluster_set_port(cluster, config->sql_port));
 	/* Can't fail */
 	if (config->connect_timeout_ms) cass_cluster_set_connect_timeout(cluster, config->connect_timeout_ms);
 	/* Can't fail */

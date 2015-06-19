@@ -246,7 +246,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 					config->sql_login,
 					config->sql_password,
 					config->sql_db,
-					atoi(config->sql_port),
+					config->sql_port,
 					NULL,
 					sql_flags);
 	if (!conn->sock) {
