@@ -6,10 +6,13 @@
 --     Database schema for Cassandra rlm_sql module                     --
 --                                                                      --
 --------------------------------------------------------------------------
+
+-- Load with:
+--	cqlsh --debug -file schema.sql
+
 --
 -- Table structure for table 'radacct'
 --
-
 CREATE KEYSPACE radius WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 };
 USE radius;
 
