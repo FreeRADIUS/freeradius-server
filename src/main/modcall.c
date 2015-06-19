@@ -3360,6 +3360,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
 {
 	vp_map_t *map;
+	vp_tmpl_t *vpt;
 
 	if (c->type == COND_TYPE_EXISTS) {
 		if (c->data.vpt->type == TMPL_TYPE_XLAT) {
@@ -3484,7 +3485,6 @@ check_paircmp:
 	    (strncmp(map->lhs->name, "Foreach-Variable-", 17) == 0)) {
 		char *fmt;
 		ssize_t slen;
-		vp_tmpl_t *vpt;
 
 		fmt = talloc_asprintf(map->lhs, "%%{%s}", map->lhs->name);
 		slen = tmpl_afrom_str(map, &vpt, fmt, talloc_array_length(fmt) - 1,
@@ -3516,6 +3516,23 @@ check_paircmp:
 	}
 	rad_assert(map->lhs->type != TMPL_TYPE_REGEX);
 #endif
+
+	/*
+	 *	Convert &Packet-Type to "%{Packet-Type}", because
+	 *	these attributes don't really exist.  The code to
+	 *	find an attribute reference doesn't work, but the
+	 *	xlat code does.
+	 */
+	vpt = c->data.map->lhs;
+	if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.virtual) {
+		if (!c->cast) c->cast = vpt->tmpl_da;
+		vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
+		vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	}
+
+	/*
+	 *	@todo v3.1: do the same thing for the RHS...
+	 */
 
 	/*
 	 *	Only attributes can have a paircompare registered, and
