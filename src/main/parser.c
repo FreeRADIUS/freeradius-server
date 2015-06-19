@@ -965,6 +965,26 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				}
 
 			} else {
+				vp_tmpl_t *vpt;
+
+				/*
+				 *	Convert &Packet-Type to "%{Packet-Type}", because
+				 *	these attributes don't really exist.  The code to
+				 *	find an attribute reference doesn't work, but the
+				 *	xlat code does.
+				 */
+				vpt = c->data.map->lhs;
+				if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.virtual) {
+					vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
+					vpt->type = TMPL_TYPE_XLAT_STRUCT;
+				}
+
+				vpt = c->data.map->rhs;
+				if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.virtual) {
+					vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
+					vpt->type = TMPL_TYPE_XLAT_STRUCT;
+				}
+
 				/*
 				 *	Two attributes?  They must be of the same type
 				 */
@@ -1124,7 +1144,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					int hyphens = 0;
 					bool may_be_attr = true;
 					size_t i;
-					vp_tmpl_t *vpt;
 					ssize_t attr_slen;
 
 					/*
