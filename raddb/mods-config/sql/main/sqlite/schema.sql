@@ -48,6 +48,9 @@ CREATE INDEX acctinterval ON radacct(acctinterval);
 CREATE INDEX acctstoptime ON radacct(acctstoptime);
 CREATE INDEX nasipaddress ON radacct(nasipaddress);
 
+-- For use by onoff query
+CREATE INDEX radacct_bulk_close ON radacct(acctstoptime, nasipaddress, acctstarttime);
+
 --
 -- Table structure for table 'radcheck'
 --

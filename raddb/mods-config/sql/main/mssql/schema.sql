@@ -220,6 +220,10 @@ GO
  CREATE  INDEX [NASIPAddress] ON [radacct]([NASIPAddress]) ON [PRIMARY]
 GO
 
+ /* For use by onoff */
+ CREATE  INDEX [RadacctBulkClose] ON [radacct]([NASIPAddress],[AcctStartTime]) WHERE [AcctStopTime] IS NULL ON [PRIMARY]
+GO
+
  CREATE  INDEX [UserName] ON [radcheck]([UserName]) ON [PRIMARY]
 GO
 

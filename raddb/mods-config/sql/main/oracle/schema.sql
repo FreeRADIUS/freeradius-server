@@ -39,11 +39,13 @@ CREATE TABLE radacct (
 	XAscendSessionSvrKey	VARCHAR(10)
 );
 
-CREATE UNIUQE INDEX radacct_idx0
+CREATE UNIQUE INDEX radacct_idx0
 	ON radacct(acctuniqueid);
 CREATE UNIQUE INDEX radacct_idx1
 	ON radacct(acctsessionid,username,acctstarttime,
 		acctstoptime,nasipaddress,framedipaddress);
+CREATE INDEX radacct_idx2
+        ON radacct(acctstoptime,nasipaddress,acctstarttime);
 
 CREATE SEQUENCE radacct_seq START WITH 1 INCREMENT BY 1;
 

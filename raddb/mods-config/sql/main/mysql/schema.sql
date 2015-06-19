@@ -49,7 +49,8 @@ CREATE TABLE radacct (
   KEY acctstarttime (acctstarttime),
   KEY acctinterval (acctinterval),
   KEY acctstoptime (acctstoptime),
-  KEY nasipaddress (nasipaddress)
+  KEY nasipaddress (nasipaddress),
+  INDEX bulk_close (acctstoptime, nasipaddress, acctstarttime)
 ) ENGINE = INNODB;
 
 #
