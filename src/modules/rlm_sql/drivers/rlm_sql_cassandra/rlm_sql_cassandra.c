@@ -74,17 +74,52 @@ typedef struct rlm_sql_cassandra_config {
 	char const		*consistency_str;		//!< Level of consistency required.
 	CassConsistency		consistency;			//!< Level of consistency converted to a constant.
 
+	uint32_t		protocol_version;		//!< The protocol version.
+
 	uint32_t		connections_per_host;		//!< Number of connections to each server in each
 								//!< IO thread.
 	uint32_t		connections_per_host_max;	//!< Maximum  number of connections to each server
 								//!< in each IO threads.
 	uint32_t		io_threads;			//!< Number of IO threads.
 
+	uint32_t		io_queue_size;			//!< Size of the the fixed size queue that stores
+								//!< pending requests.
+
+	uint32_t		io_flush_requests_max;		//!< Maximum number of requests processed by an
+								//!< IO worker per flush.
+
+	uint32_t		pending_requests_high;		//!< Sets the high water mark for the number of requests
+								//!< queued waiting for a connection in a connection
+								//!< pool. Disables writes to a host on an IO worker
+								//!< if the number of requests queued exceed this value.
+
+	uint32_t		pending_requests_low;		//!< Sets the low water mark for the number of requests
+								//!< queued waiting for a connection in a connection
+								//!< pool. After exceeding high water mark requests,
+								//!< writes to a host will only resume once the number
+								//!< of requests fall below this value.
+
+	uint32_t		write_bytes_high;		//!< High water mark for the number of bytes
+								//!< outstanding on a connection. Disables writes to
+								//!< a connection if the number of bytes queued exceed
+								//!< this value.
+
+	uint32_t		write_bytes_low;		//!< Low water mark for number of bytes outstanding on
+								//!< a connection. After exceeding high water mark
+								//!< bytes, writes will only resume once the number of
+								//!< bytes fall below this value.
+
+	uint32_t		event_queue_size;		//!< Sets the size of the the fixed size queue
+								//!< that stores events.
+
 	uint32_t		spawn_threshold;		//!< Threshold for the maximum number of concurrent
 								//!< requests in-flight on a connection before creating
 								//!< a new connection.
 	uint32_t		spawn_max;			//!< The maximum number of connections that
 								//!< will be created concurrently.
+
+	struct timeval		spawn_retry_delay;		//!< Amount of time to wait before attempting
+								//!< to reconnect.
 
 	bool			load_balance_round_robin;	//!< Enable round robin load balancing.
 
@@ -153,16 +188,16 @@ static const FR_NAME_NUMBER verify_cert_table[] = {
 
 static CONF_PARSER load_balance_dc_aware_config[] = {
 	{ "local_dc", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, lbdc_local_dc), NULL },
-	{ "hosts_per_remote_dc" , FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, lbdc_hosts_per_remote_dc), NULL },
-	{ "allow_remote_dcs_for_local_cl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, lbdc_allow_remote_dcs_for_local_cl), NULL}
+	{ "hosts_per_remote_dc" , FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, lbdc_hosts_per_remote_dc), "0" },
+	{ "allow_remote_dcs_for_local_cl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, lbdc_allow_remote_dcs_for_local_cl), "no" }
 };
 
 static CONF_PARSER latency_aware_routing_config[] = {
-	{ "exclusion_threshold", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_exclusion_threshold), NULL },
-	{ "scale", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_scale), NULL },
-	{ "retry_period", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_retry_period), NULL },
-	{ "update_rate", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_update_rate), NULL },
-	{ "min_measured", FR_CONF_OFFSET(PW_TYPE_INTEGER64, rlm_sql_cassandra_config_t, lar_min_measured), NULL }
+	{ "exclusion_threshold", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_exclusion_threshold), "2.0" },
+	{ "scale", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_scale), "0.1" },
+	{ "retry_period", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_retry_period), "10" },
+	{ "update_rate", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_update_rate), "0.1" },
+	{ "min_measured", FR_CONF_OFFSET(PW_TYPE_INTEGER64, rlm_sql_cassandra_config_t, lar_min_measured), "50" }
 };
 
 static CONF_PARSER tls_config[] = {
@@ -179,13 +214,25 @@ static CONF_PARSER tls_config[] = {
 static const CONF_PARSER driver_config[] = {
 	{ "consistency", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, consistency_str), "quorum" },
 
+	{ "protocol_version", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, protocol_version), NULL },
+
 	{ "connections_per_host", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, connections_per_host), NULL },
 	{ "connections_per_host_max", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, connections_per_host_max), NULL },
 
 	{ "io_threads", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, io_threads), NULL },
+	{ "io_queue_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, io_queue_size), NULL },
+	{ "io_flush_requests_max", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, io_flush_requests_max), NULL },
+
+	{ "pending_requests_high", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, pending_requests_high), NULL },
+	{ "pending_requests_low", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, pending_requests_low), NULL },
+	{ "write_bytes_high", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, write_bytes_high), NULL },
+	{ "write_bytes_low", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, write_bytes_low), NULL },
+
+	{ "event_queue_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, event_queue_size), NULL },
 
 	{ "spawn_threshold", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, spawn_threshold), NULL },
 	{ "spawn_max", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, spawn_max), NULL },
+	{ "spawn_retry_delay", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, spawn_retry_delay), NULL },
 
 	{ "load_balance_dc_aware", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) load_balance_dc_aware_config },
 	{ "load_balance_round_robin", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, load_balance_round_robin), "no" },
@@ -395,6 +442,11 @@ do {\
 		driver->consistency = (CassConsistency)consistency;
 	}
 
+	if (driver->protocol_version) {
+		DO_CASS_OPTION("protocol_version",
+			       cass_cluster_set_protocol_version(driver->cluster, driver->protocol_version));
+	}
+
 	if (driver->connections_per_host) {
 		DO_CASS_OPTION("connections_per_host",
 			       cass_cluster_set_core_connections_per_host(driver->cluster,
@@ -411,6 +463,46 @@ do {\
 		DO_CASS_OPTION("io_threads", cass_cluster_set_num_threads_io(driver->cluster, driver->io_threads));
 	}
 
+	if (driver->io_queue_size) {
+		DO_CASS_OPTION("io_queue_size",
+			       cass_cluster_set_num_threads_io(driver->cluster, driver->io_queue_size));
+	}
+
+	if (driver->io_flush_requests_max) {
+		DO_CASS_OPTION("io_flush_requests_max",
+			       cass_cluster_set_max_requests_per_flush(driver->cluster,
+			       					       driver->io_flush_requests_max));
+	}
+
+	if (driver->pending_requests_high) {
+		DO_CASS_OPTION("pending_requests_high",
+			       cass_cluster_set_pending_requests_high_water_mark(driver->cluster,
+			       							 driver->pending_requests_high));
+	}
+
+	if (driver->pending_requests_low) {
+		DO_CASS_OPTION("pending_requests_low",
+			       cass_cluster_set_pending_requests_high_water_mark(driver->cluster,
+			       							 driver->pending_requests_low));
+	}
+
+	if (driver->write_bytes_high) {
+		DO_CASS_OPTION("write_bytes_high",
+			       cass_cluster_set_write_bytes_high_water_mark(driver->cluster,
+			       						    driver->write_bytes_high));
+	}
+
+	if (driver->write_bytes_low) {
+		DO_CASS_OPTION("write_bytes_low",
+			       cass_cluster_set_write_bytes_low_water_mark(driver->cluster,
+			       						   driver->write_bytes_low));
+	}
+
+	if (driver->event_queue_size) {
+		DO_CASS_OPTION("event_queue_size",
+			       cass_cluster_set_num_threads_io(driver->cluster, driver->event_queue_size));
+	}
+
 	if (driver->spawn_threshold) {
 		DO_CASS_OPTION("spawn_threshold",
 			       cass_cluster_set_max_concurrent_requests_threshold(driver->cluster,
@@ -420,6 +512,14 @@ do {\
 	if (driver->spawn_max) {
 		DO_CASS_OPTION("spawn_max",
 			       cass_cluster_set_max_concurrent_creation(driver->cluster, driver->spawn_max));
+	}
+
+	{
+		uint32_t delay;
+
+		delay = (driver->spawn_retry_delay.tv_sec * (uint64_t)1000) +
+			(driver->spawn_retry_delay.tv_usec / 1000);
+		if (delay) cass_cluster_set_reconnect_wait_time(driver->cluster, delay);
 	}
 
 	if (driver->load_balance_round_robin) cass_cluster_set_load_balance_round_robin(driver->cluster);
@@ -480,8 +580,7 @@ do {\
 			cass_ssl_set_verify_flags(ssl, verify_cert);
 		}
 
-		DEBUG2("rlm_sql_cassandra: Enabling SSL");
-
+		DEBUG2("rlm_sql_cassandra: Enabling TLS");
 
 		if (driver->tls_ca_file) {
 			DO_CASS_OPTION("ca_file", cass_ssl_add_trusted_cert(ssl, driver->tls_ca_file));

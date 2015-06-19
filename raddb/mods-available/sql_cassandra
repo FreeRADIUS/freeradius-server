@@ -30,6 +30,9 @@ cassandra {
 	#		   replica node in the local data center.
 	consistency = 'quorum'
 
+	# Protocol version (default 2).
+#	protocol_version = 2
+
 	# Number of connections to each server in each IO thread (default 1).
 #	connections_per_host = 1
 
@@ -39,15 +42,48 @@ cassandra {
 	# Number of IO threads (default 1).
 #	io_threads = 1
 
+	# Size of the the fixed size queue that stores pending requests (default 4096).
+#	io_queue_size = 4096
+
+	# Maximum number of requests processed by an IO worker per flush.
+#	io_flush_requests_max = 128
+
+	# High water mark for the number of requests queued waiting for a connection in
+	# a connection pool. Disables writes to a host on an IO worker if the number of
+	# requests queued exceed this value (default 128 * mac_connections_per_host).
+#	pending_requests_high = 128
+
+	# Low water mark for the number of requests queued waiting for a connection
+	# in a connection pool. After exceeding high water mark requests, writes to a
+	# host will only resume once the number of requests fall below this value
+	# (default 64 * max_connections_per_host).
+#	pending_requests_low = 64
+
+	# High water mark for the number of bytes outstanding on a connection. Disables
+	# writes to a connection if the number of bytes queued exceed this value
+	# (default 65356).
+#	write_bytes_high = 65356
+
+	# Sets the low water mark for number of bytes outstanding on a connection.
+	# After exceeding high water mark bytes, writes will only resume once the number
+	# of bytes fall below this value (default 32768).
+#	write_bytes_low = 32768
+
+	# The size of the the fixed size queue that stores events (default 4096).
+#	event_queue_size = 4096
+
 	# How many requests need to be in flight before we spawn a new connection (default 100).
 #	spawn_threshold = 100
 
 	# How many connections can be spawned concurrently (default 2).
 #	spawn_max = 2
 
+	# Sets the amount of time to wait before attempting to reconnect (default 2.0).
+#	spawn_retry_delay = 2.0
+
 	# Use DC aware load balancing (enabled by default)
 	load_balance_dc_aware {
-		# Primary data centre to try first
+		# Primary data centre to try first, must be set for other settings to be effective.
 #		local_dc = 'datacenter1'
 
 		# Number of hosts used at each remote dc (default 0).
