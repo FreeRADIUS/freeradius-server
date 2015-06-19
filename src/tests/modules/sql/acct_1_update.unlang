@@ -10,7 +10,7 @@ else {
 }
 
 update {
-	Tmp-Integer-0 := "%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000000'}"
+	Tmp-Integer-0 := "%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000001'}"
 }
 if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 1)) {
 	test_fail
@@ -20,7 +20,7 @@ else {
 }
 
 update {
-	Tmp-Integer-0 := "%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000000'}"
+	Tmp-Integer-0 := "%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000001'}"
 }
 if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 30)) {
 	test_fail
