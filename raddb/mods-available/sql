@@ -43,7 +43,7 @@ sql {
 	# Uncomment to include driver specific configuration file
 	# (if one exists)
 	# These config files contain driver specific options.
-#	$INCLUDE ${.:name}_${dialect}.
+#	$INCLUDE ${modenableddir}/${.:name}_${dialect}
 
 	# Connection info:
 	#

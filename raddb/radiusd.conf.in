@@ -66,6 +66,7 @@ name = radiusd
 #  Location of config and logfiles.
 confdir = ${raddbdir}
 modconfdir = ${confdir}/mods-config
+modenableddir = ${confdir}/mods-enabled
 certdir = ${confdir}/certs
 cadir   = ${confdir}/certs
 run_dir = ${localstatedir}/run/${name}
