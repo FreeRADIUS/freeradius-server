@@ -217,13 +217,13 @@ static void sql_print_error(sqlite3 *db, int status, char const *fmt, ...)
 	 */
 	if ((status != SQLITE_OK) && (status != hstatus)) {
 #ifdef HAVE_SQLITE3_ERRSTR
-		ERROR("rlm_sql_sqlite: %s: Code 0x%4x (%i): %s", p, status, status, sqlite3_errstr(status));
+		ERROR("rlm_sql_sqlite: %s: Code 0x%04x (%i): %s", p, status, status, sqlite3_errstr(status));
 #else
-		ERROR("rlm_sql_sqlite: %s: Code 0x%4x (%i)", p, status, status);
+		ERROR("rlm_sql_sqlite: %s: Code 0x%04x (%i)", p, status, status);
 #endif
 	}
 
-	if (hstatus != SQLITE_OK) ERROR("rlm_sql_sqlite: %s: Code 0x%4x (%i): %s",
+	if (hstatus != SQLITE_OK) ERROR("rlm_sql_sqlite: %s: Code 0x%04x (%i): %s",
 					p, hstatus, hstatus, sqlite3_errmsg(db));
 }
 
