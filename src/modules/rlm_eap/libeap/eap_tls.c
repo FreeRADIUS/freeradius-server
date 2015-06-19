@@ -427,9 +427,13 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			return FR_TLS_INVALID;
 		}
 
-		tls_session->tls_record_in_total_len = total_len;
-		tls_session->tls_record_in_recvd_len = frag_len;
-		RDEBUG2("Got complete TLS record (%zu bytes)", frag_len);
+		/*
+		 *	RFC5216 doesn't specify explicitly whether a non-fragmented
+		 *	packet should include the length or not.
+		 *
+		 *	We support both options for maximum compatibility.
+		 */
+		RDEBUG2("Got complete TLS record, with length (%zu bytes)", frag_len);
 		return FR_TLS_LENGTH_INCLUDED;
 	}
 
@@ -485,7 +489,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	None of the flags are set, it wasn't an in progress transfer,
 	 *	but it's still a valid EAP-TLS packet.
 	 */
-	RDEBUG2("Got TLS record (%zu bytes)", frag_len);
+	RDEBUG2("Got complete TLS record (%zu bytes)", frag_len);
 
 	return FR_TLS_OK;
 }
