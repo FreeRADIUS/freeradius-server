@@ -83,7 +83,7 @@ typedef struct sql_acct_section {
 typedef struct sql_config {
 	char const 		*sql_driver_name;		//!< SQL driver module name e.g. rlm_sql_sqlite.
 	char const 		*sql_server;			//!< Server to connect to.
-	uint32_t 		*sql_port;			//!< Port to connect to.
+	uint32_t 		sql_port;			//!< Port to connect to.
 	char const 		*sql_login;			//!< Login credentials to use.
 	char const 		*sql_password;			//!< Login password to use.
 	char const 		*sql_db;			//!< Database to run queries against.
