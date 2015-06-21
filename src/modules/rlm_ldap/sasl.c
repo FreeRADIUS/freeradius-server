@@ -112,6 +112,10 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 	LDAPMessage		*result = NULL;
 	rlm_ldap_sasl_ctx_t	sasl_ctx;		/* SASL defaults */
 
+	/* rlm_ldap_result may not be called */
+	*error = NULL;
+	*extra = NULL;
+
 	sasl_ctx.inst = inst;
 	sasl_ctx.request = request;
 	sasl_ctx.identity = identity;
@@ -127,24 +131,31 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 		ldap_msgfree(result);	/* We always need to free the old message */
 
 		/*
+		 *	If ldap_sasl_interactive_bind indicates it didn't want
+		 *	to continue, then we're done.
+		 *
+		 *	Calling ldap_result here, results in a timeout in some
+		 *	cases, so we need to figure out whether the bind was
+		 *	successful without the help of rlm_ldap_result.
+		 */
+		if (ret != LDAP_SASL_BIND_IN_PROGRESS) {
+			status = rlm_ldap_result(inst, conn, -1, identity, NULL, error, extra);
+			break;
+		}
+
+		/*
 		 *	If LDAP parse result indicates there was an error
 		 *	then we're done.
 		 */
 		status = rlm_ldap_result(inst, conn, msgid, identity, &result, error, extra);
 		switch (status) {
-		case LDAP_PROC_SUCCESS:
+		case LDAP_PROC_SUCCESS:		/* ldap_sasl_interactive_bind should have indicated success */
 		case LDAP_PROC_CONTINUE:
 			break;
 
 		default:
 			goto done;
 		}
-
-		/*
-		 *	If ldap_sasl_interactive_bind indicates
-		 *	it didn't want to continue, then we're also done.
-		 */
-		if (ret != LDAP_SASL_BIND_IN_PROGRESS) break;
 
 		/*
 		 *	...otherwise, the bind is still in progress.
