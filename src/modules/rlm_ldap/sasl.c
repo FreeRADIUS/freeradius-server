@@ -120,15 +120,38 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 	sasl_ctx.extra = sasl;
 
 	MOD_ROPTIONAL(RDEBUG2, DEBUG2, "Starting SASL mech(s): %s", sasl->mech);
-	do {
+	for (;;) {
 		ret = ldap_sasl_interactive_bind(conn->handle, NULL, sasl->mech,
 						 NULL, NULL, LDAP_SASL_AUTOMATIC,
 						 _sasl_interact, &sasl_ctx, result,
 						 &mech, &msgid);
 		ldap_msgfree(result);	/* We always need to free the old message */
-		if (ret >= 0) MOD_ROPTIONAL(RDEBUG3, DEBUG3, "Continuing SASL mech %s...", mech);
 
+		/*
+		 *	If LDAP parse result indicates there was an error
+		 *	then we're done.
+		 */
 		status = rlm_ldap_result(inst, conn, msgid, identity, &result, error, extra);
+		switch (status) {
+		case LDAP_PROC_SUCCESS:
+		case LDAP_PROC_CONTINUE:
+			break;
+
+		default:
+			goto done;
+		}
+
+		/*
+		 *	If ldap_sasl_interactive_bind indicates
+		 *	it didn't want to continue, then we're also done.
+		 */
+		if (ret != LDAP_SASL_BIND_IN_PROGRESS) break;
+
+		/*
+		 *	...otherwise, the bind is still in progress.
+		 */
+		MOD_ROPTIONAL(RDEBUG3, DEBUG3, "Continuing SASL mech %s...", mech);
+
 		/*
 		 *	Write the servers response to the debug log
 		 */
@@ -145,7 +168,8 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				ldap_memfree(srv_cred);
 			}
 		}
-	} while (status == LDAP_PROC_CONTINUE);
+	}
+done:
 	ldap_msgfree(result);
 
 	return status;
