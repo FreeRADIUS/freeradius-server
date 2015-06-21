@@ -49,6 +49,6 @@ countryName		= FR
 stateOrProvinceName	= Radius
 localityName		= Somewhere
 organizationName	= Example Inc.
-emailAddress		= admin@example.com
+emailAddress		= admin@example.org
 commonName		= "Example Server Certificate"
 
