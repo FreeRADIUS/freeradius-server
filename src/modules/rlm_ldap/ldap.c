@@ -443,7 +443,7 @@ char const *rlm_ldap_error_str(ldap_handle_t const *conn)
  *
  * @param[in] inst of LDAP module.
  * @param[in] conn Current connection.
- * @param[in] msgid returned from last operation.
+ * @param[in] msgid returned from last operation. May be -1 if no result processing is required.
  * @param[in] dn Last search or bind DN.
  * @param[out] result Where to write result, if NULL result will be freed.
  * @param[out] error Where to write the error string, may be NULL, must not be freed.
@@ -456,7 +456,7 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 {
 	ldap_rcode_t status = LDAP_PROC_SUCCESS;
 
-	int lib_errno = LDAP_SUCCESS;	// errno returned by the library.
+	int lib_errno = -1;		// errno returned by the library.
 	int srv_errno = LDAP_SUCCESS;	// errno in the result message.
 
 	char *part_dn = NULL;		// Partial DN match.
@@ -505,11 +505,13 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 	 *	Now retrieve the result and check for errors
 	 *	ldap_result returns -1 on failure, and 0 on timeout
 	 */
-	lib_errno = ldap_result(conn->handle, msgid, 1, &tv, result);
-	if (lib_errno == 0) {
-		lib_errno = LDAP_TIMEOUT;
+	if (msgid >= 0) {
+		lib_errno = ldap_result(conn->handle, msgid, 1, &tv, result);
+		if (lib_errno == 0) {
+			lib_errno = LDAP_TIMEOUT;
 
-		goto process_error;
+			goto process_error;
+		}
 	}
 
 	if (lib_errno == -1) {
