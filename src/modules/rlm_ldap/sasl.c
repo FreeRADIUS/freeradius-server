@@ -16,7 +16,6 @@
 
 #include "ldap.h"
 
-#ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
 /**
  * $Id$
  * @file sasl.c
@@ -174,4 +173,3 @@ done:
 
 	return status;
 }
-#endif /* HAVE_LDAP_SASL_INTERACTIVE_BIND */
