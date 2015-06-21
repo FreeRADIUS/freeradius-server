@@ -19,7 +19,7 @@ default_crl_days	= 30
 default_md		= sha256
 preserve		= no
 policy			= policy_match
-crlDistributionPoints	= URI:http://www.example.com/example_ca.crl
+crlDistributionPoints	= URI:http://www.example.org/example_ca.crl
 
 [ policy_match ]
 countryName		= match
@@ -51,12 +51,12 @@ countryName		= FR
 stateOrProvinceName	= Radius
 localityName		= Somewhere
 organizationName	= Example Inc.
-emailAddress		= admin@example.com
+emailAddress		= admin@example.org
 commonName		= "Example Certificate Authority"
 
 [v3_ca]
 subjectKeyIdentifier	= hash
 authorityKeyIdentifier	= keyid:always,issuer:always
 basicConstraints	= CA:true
-crlDistributionPoints	= URI:http://www.example.com/example_ca.crl
+crlDistributionPoints	= URI:http://www.example.org/example_ca.crl
 
