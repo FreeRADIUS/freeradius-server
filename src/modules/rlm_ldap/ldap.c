@@ -456,7 +456,7 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 {
 	ldap_rcode_t status = LDAP_PROC_SUCCESS;
 
-	int lib_errno = -1;		// errno returned by the library.
+	int lib_errno = LDAP_SUCCESS;	// errno returned by the library.
 	int srv_errno = LDAP_SUCCESS;	// errno in the result message.
 
 	char *part_dn = NULL;		// Partial DN match.
@@ -473,14 +473,11 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 
 	char const *tmp_err;		// Temporary error pointer storage if we weren't provided with one.
 
-	if (!error) {
-		error = &tmp_err;
-	}
+	if (!error) error = &tmp_err;
 	*error = NULL;
 
-	if (extra) {
-		*extra = NULL;
-	}
+	if (extra) *extra = NULL;
+	*result = NULL;
 
 	/*
 	 *	We always need the result, but our caller may not
@@ -490,13 +487,12 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 		freeit = true;
 	}
 
-	*result = NULL;
-
 	/*
 	 *	Check if there was an error sending the request
 	 */
 	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER, &lib_errno);
 	if (lib_errno != LDAP_SUCCESS) goto process_error;
+	if (msgid < 0) return LDAP_SUCCESS;	/* No msgid and no error, return now */
 
 	memset(&tv, 0, sizeof(tv));
 	tv.tv_sec = inst->res_timeout;
@@ -505,13 +501,11 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 	 *	Now retrieve the result and check for errors
 	 *	ldap_result returns -1 on failure, and 0 on timeout
 	 */
-	if (msgid >= 0) {
-		lib_errno = ldap_result(conn->handle, msgid, 1, &tv, result);
-		if (lib_errno == 0) {
-			lib_errno = LDAP_TIMEOUT;
+	lib_errno = ldap_result(conn->handle, msgid, 1, &tv, result);
+	if (lib_errno == 0) {
+		lib_errno = LDAP_TIMEOUT;
 
-			goto process_error;
-		}
+		goto process_error;
 	}
 
 	if (lib_errno == -1) {
