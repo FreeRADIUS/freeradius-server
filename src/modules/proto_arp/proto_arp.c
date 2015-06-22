@@ -236,7 +236,6 @@ static void arp_socket_free(rad_listen_t *this)
 	this->data = NULL;
 }
 
-
 static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	arp_socket_t *sock = this->data;

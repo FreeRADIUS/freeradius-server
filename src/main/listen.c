@@ -356,6 +356,10 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 static int listen_bind(rad_listen_t *this);
 
+#ifndef SO_BINDTODEVICE
+static int init_pcap(rad_listen_t *this);
+#endif
+
 
 /*
  *	Process and reply to a server-status request.
@@ -1202,7 +1206,8 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	cp = cf_pair_find(cs, "broadcast");
 	if (cp) {
-#ifndef SO_BROADCAST
+// Testing SO_BROADCAST only makes sence if using sockets (i.e. if SO_BINDTODEVICE is available)
+#if defined(SO_BINDTODEVICE) && !defined(SO_BROADCAST)
 		cf_log_err_cs(cs,
 			   "System does not support broadcast sockets.  Delete this line from the configuration file");
 		return -1;
@@ -1226,18 +1231,30 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		sock->broadcast = (strcmp(value, "yes") == 0);
 #endif
 	}
+
+#ifndef SO_BINDTODEVICE
+	if (sock->interface) {
+		if (init_pcap(this) < 0) {
+			cf_log_err_cs(cs,
+				   "Error initializing pcap.");
+			return -1;
+		}
+	} else
+#endif
 #endif
 
-	/*
-	 *	And bind it to the port.
-	 */
-	if (listen_bind(this) < 0) {
-		char buffer[128];
-		cf_log_err_cs(cs,
-			   "Error binding to port for %s port %d",
-			   ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
-			   sock->my_port);
-		return -1;
+	{
+		/*
+		 *	And bind it to the port.
+		 */
+		if (listen_bind(this) < 0) {
+			char buffer[128];
+			cf_log_err_cs(cs,
+				   "Error binding to port for %s port %d",
+				   ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
+				   sock->my_port);
+			return -1;
+		}
 	}
 
 #ifdef WITH_PROXY
@@ -2265,6 +2282,56 @@ static fr_protocol_t master_listen[MAX_LISTENER] = {
 	NO_LISTENER		/* bfd */
 };
 
+#ifndef SO_BINDTODEVICE
+/** Initialize PCAP library based on listen section
+ *
+ * @param this listen section
+ * @return
+ *	- 0 if successful
+ *	- -1 if failed
+ */
+static int init_pcap(rad_listen_t *this)
+{
+	listen_socket_t *sock = this->data;
+	char const * pcap_filter;
+
+	sock->pcap = fr_pcap_init(this, sock->interface, PCAP_INTERFACE_IN_OUT);
+
+	if (!sock->pcap) {
+		ERROR("Failed creating pcap for interface %s", sock->interface);
+		return -1;
+	}
+
+	if (check_config) return 0;
+
+	rad_suid_up();
+	if (fr_pcap_open(sock->pcap) < 0) {
+		ERROR("Failed opening interface %s: %s", sock->interface, fr_strerror());
+		return -1;
+	}
+	rad_suid_down();
+
+	pcap_filter = sock->pcap_filter_builder(this);
+
+	if (!pcap_filter) {
+		ERROR("Failed building filter for interface %s: %s",
+			sock->interface, fr_strerror());
+		return -1;
+	}
+
+	if (fr_pcap_apply_filter(sock->pcap, pcap_filter) < 0) {
+		ERROR("Failed setting filter for interface %s: %s",
+			sock->interface, fr_strerror());
+		return -1;
+	} else {
+		DEBUG("Using PCAP filter '%s'", pcap_filter);
+	}
+
+	this->fd = sock->pcap->fd;
+
+	return 0;
+}
+#endif
 
 /*
  *	Binds a listener to a socket.

@@ -68,7 +68,7 @@ typedef struct dhcp_socket_t {
 	bool		suppress_responses;
 	RADCLIENT	dhcp_client;
 	char const	*src_interface;
-	fr_ipaddr_t     src_ipaddr;
+	fr_ipaddr_t	src_ipaddr;
 } dhcp_socket_t;
 
 #ifdef WITH_UDPFROMTO
@@ -137,7 +137,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 		return -1;
 	}
 
-	return fr_dhcp_send(request->packet);
+	return fr_dhcp_send_socket(request->packet);
 }
 
 
@@ -247,7 +247,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		return -1;
 	}
 
-	return fr_dhcp_send(request->packet);
+	return fr_dhcp_send_socket(request->packet);
 }
 #else  /* WITH_UDPFROMTO */
 static int dhcprelay_process_server_reply(UNUSED REQUEST *request)
@@ -591,7 +591,7 @@ static int dhcp_process(REQUEST *request)
 	}
 #else
 	if (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != ntohl(INADDR_NONE)) {
-		RDEBUG("DHCP: Request will be unicast to the unicast source IP address");
+		RDEBUG("DHCP: Reply will be unicast to the unicast source IP address");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 	} else {
 		RDEBUG("DHCP: Reply will be broadcast as this system does not support ARP updates");
@@ -602,13 +602,38 @@ static int dhcp_process(REQUEST *request)
 	return 1;
 }
 
+#ifndef SO_BINDTODEVICE
+/** Build PCAP filter string to pass to libpcap based on listen section
+ * Will be called by init_pcap.
+ *
+ * @param this listen section
+ * @return PCAP filter string
+ */
+static const char * dhcp_pcap_filter_builder(rad_listen_t *this)
+{
+	dhcp_socket_t *sock = this->data;
+	char * buf;
+	char ip[16];
+	ip_ntoh(&sock->lsock.my_ipaddr, ip, sizeof(ip));
+
+	buf = talloc_typed_asprintf(this, "udp and port %d and (dst host %s %s)",
+			sock->lsock.my_port, ip, sock->lsock.broadcast ? "or dst host 255.255.255.255" : "");
+
+	return buf;
+}
+#endif
+
 static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int rcode;
 	int on = 1;
-	dhcp_socket_t *sock;
+	dhcp_socket_t *sock = this->data;
 	RADCLIENT *client;
 	CONF_PAIR *cp;
+
+#ifndef SO_BINDTODEVICE
+	sock->lsock.pcap_filter_builder = dhcp_pcap_filter_builder;
+#endif
 
 	/*
 	 *	Set if before parsing, so the user can forcibly turn
@@ -621,27 +646,20 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (check_config) return 0;
 
-	sock = this->data;
-
 	if (!sock->lsock.interface) {
 		WARN("No \"interface\" setting is defined.  Only unicast DHCP will work");
 	}
 
-	/*
-	 *	See whether or not we enable broadcast packets.
-	 */
-	if (sock->broadcast) {
-		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-			ERROR("Can't set broadcast option: %s\n",
+#ifndef SO_BINDTODEVICE
+	// Only call setsockopt if not using PCAP
+	if (!sock->lsock.pcap)
+#endif
+	{
+		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+			ERROR("Can't set re-use addres option: %s\n",
 			       fr_syserror(errno));
 			return -1;
 		}
-	}
-
-	if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-		ERROR("Can't set re-use addres option: %s\n",
-		       fr_syserror(errno));
-		return -1;
 	}
 
 	/*
@@ -704,15 +722,22 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 static int dhcp_socket_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET	*packet;
-	dhcp_socket_t	*sock;
+	dhcp_socket_t	*sock = listener->data;
 
-	packet = fr_dhcp_recv(listener->fd);
+#ifndef SO_BINDTODEVICE
+	if (sock->lsock.pcap) {
+		packet = fr_dhcp_recv_pcap(sock->lsock.pcap);
+	} else
+#endif
+	{
+		packet = fr_dhcp_recv_socket(listener->fd);
+	}
+
 	if (!packet) {
 		ERROR("%s", fr_strerror());
 		return 0;
 	}
 
-	sock = listener->data;
 	if (!request_receive(NULL, listener, packet, &sock->dhcp_client, dhcp_process)) {
 		rad_free(&packet);
 		return 0;
@@ -727,7 +752,7 @@ static int dhcp_socket_recv(rad_listen_t *listener)
  */
 static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 {
-	dhcp_socket_t	*sock;
+	dhcp_socket_t	*sock = listener->data;
 
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == dhcp_socket_send);
@@ -739,10 +764,32 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 		return -1;
 	}
 
-	sock = listener->data;
 	if (sock->suppress_responses) return 0;
 
-	return fr_dhcp_send(request->reply);
+#ifndef SO_BINDTODEVICE
+	if (sock->lsock.pcap) {
+		/* set ethernet destination address to DHCP-Client-Hardware-Address in request. */
+		u_char dhmac[ETHER_HDR_LEN] = { 0 };
+		bool found = 0;
+		VALUE_PAIR *vp;
+		if ((vp = pairfind(request->packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+			if (vp->data.length == sizeof(vp->vp_ether)) {
+				memcpy(dhmac, vp->vp_ether, vp->data.length);
+				found = 1;
+			}
+		}
+
+		if (!found) {
+			DEBUG("DHCP-Client-Hardware-Address not found in request: ERROR\n");
+			return -1;
+		}
+
+		return fr_dhcp_send_pcap(sock->lsock.pcap, dhmac, request->reply);
+	} else
+#endif
+	{
+		return fr_dhcp_send_socket(request->reply);
+	}
 }
 
 

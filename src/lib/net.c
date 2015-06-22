@@ -145,6 +145,55 @@ done:
 	return p - data;
 }
 
+/** Check UDP header is valid
+ *
+ * @param data Pointer to the start of the UDP header
+ * @param remaining bits of received packet
+ * @param ip pointer to IP header structure
+ * @return
+ * 0 if UDP payload lenght and checksum are correct
+ * !0 if UDP payload length or checksum are incorrect
+ */
+ int fr_upd_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const * ip)
+ {
+	int ret = 0;
+	udp_header_t const	*udp;
+
+    /*
+	 *	UDP header validation.
+	 */
+	udp = (udp_header_t const *)data;
+	uint16_t udp_len;
+	ssize_t diff;
+	uint16_t expected;
+
+	udp_len = ntohs(udp->len);
+	diff = udp_len - remaining;
+	/* Truncated data */
+	if (diff > 0) {
+		fr_strerror_printf("packet too small by %zi bytes, UDP header + Payload should be %hu bytes",
+			diff, udp_len);
+		return -1;
+	}
+	/* Trailing data */
+	else if (diff < 0) {
+		fr_strerror_printf("packet too big by %zi bytes, UDP header + Payload should be %hu bytes",
+			diff * -1, udp_len);
+		return -1;
+	}
+
+	expected = fr_udp_checksum((uint8_t const *) udp, ntohs(udp->len), udp->checksum,
+				   ip->ip_src, ip->ip_dst);
+	if (udp->checksum != expected) {
+		fr_strerror_printf("DHCP: UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx\n",
+			ntohs(udp->checksum), ntohs(expected));
+		/* Not a fatal error */
+		ret = 1;
+	}
+
+	return ret;
+ }
+
 /** Calculate UDP checksum
  *
  * Zero out UDP checksum in UDP header before calling #fr_udp_checksum to get 'expected' checksum.

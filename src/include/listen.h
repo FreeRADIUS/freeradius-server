@@ -15,6 +15,9 @@
  */
 #ifndef LISTEN_H
 #define LISTEN_H
+
+#include <freeradius-devel/pcap.h>
+
 /**
  * $Id$
  *
@@ -96,6 +99,8 @@ struct rad_listen {
 #endif
 };
 
+typedef const char* (*rad_pcap_filter_builder)(rad_listen_t *);
+
 /*
  *	This shouldn't really be exposed...
  */
@@ -107,6 +112,13 @@ typedef struct listen_socket_t {
 	uint16_t	my_port;
 
 	char const	*interface;
+
+// PCAP only required if SO_BINDTODEVICE not available.
+#ifndef SO_BINDTODEVICE
+	fr_pcap_t	*pcap;
+	rad_pcap_filter_builder pcap_filter_builder;
+#endif
+
 #ifdef SO_BROADCAST
 	int		broadcast;
 #endif
@@ -148,4 +160,3 @@ typedef struct listen_socket_t {
 	RADCLIENT_LIST	*clients;
 } listen_socket_t;
 #endif /* LISTEN_H */
-

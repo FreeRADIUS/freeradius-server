@@ -27,6 +27,8 @@
  */
 RCSIDH(dhcp_h, "$Id$")
 
+#include <pcap.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,8 +36,12 @@ extern "C" {
 /*
  *	Not for production use.
  */
-RADIUS_PACKET *fr_dhcp_recv(int sockfd);
-int fr_dhcp_send(RADIUS_PACKET *packet);
+RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd);
+int fr_dhcp_send_socket(RADIUS_PACKET *packet);
+
+typedef struct fr_pcap fr_pcap_t;
+RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap);
+int fr_dhcp_send_pcap(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *packet);
 
 int fr_dhcp_add_arp_entry(int fd, char const *interface, VALUE_PAIR *hwvp, VALUE_PAIR *clvp);
 
