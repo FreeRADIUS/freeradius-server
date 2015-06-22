@@ -129,6 +129,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 						 _sasl_interact, &sasl_ctx, result,
 						 &mech, &msgid);
 		ldap_msgfree(result);	/* We always need to free the old message */
+		result = NULL;
 
 		/*
 		 *	If ldap_sasl_interactive_bind indicates it didn't want
