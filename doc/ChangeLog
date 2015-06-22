@@ -10,6 +10,8 @@ FreeRADIUS 2.2.8 Wednesday 22 Apr 2015 14:00:00 EST, urgency=medium
 	* Print out correct filenames in debug mode
 	* Allow post-auth section to return "reject".  This turns
 	  the response into Access-Reject.
+	* Set X509_V_FLAG_CRL_CHECK_ALL, and add "check_all_crl"
+	  to eap.conf.  Fixes oCert CVE-2015-4680.
 
 FreeRADIUS 2.2.7 Wednesday 22 Apr 2015 14:00:00 EST, urgency=medium
 	Feature improvements
