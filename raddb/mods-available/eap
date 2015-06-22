@@ -269,9 +269,13 @@ eap {
 		#  1) Copy CA certificates and CRLs to same directory.
 		#  2) Execute 'c_rehash <CA certs&CRLs Directory>'.
 		#    'c_rehash' is OpenSSL's command.
-		#  3) uncomment the line below.
+		#  3) uncomment the lines below.
 		#  5) Restart radiusd
 	#	check_crl = yes
+
+		# Check if intermediate CAs have been revoked.
+	#	check_all_crl = yes
+
 		ca_path = ${cadir}
 
 		#

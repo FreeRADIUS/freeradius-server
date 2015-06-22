@@ -999,6 +999,9 @@ static CONF_PARSER tls_server_config[] = {
 	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, fragment_size), "1024" },
 	{ "include_length", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, include_length), "yes" },
 	{ "check_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_crl), "no" },
+#ifdef X509_V_FLAG_CRL_CHECK_ALL
+	{ "check_all_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_all_crl), "no" },
+#endif
 	{ "allow_expired_crl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, allow_expired_crl), NULL },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, check_cert_cn), NULL },
 	{ "cipher_list", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, cipher_list), NULL },
@@ -2104,6 +2107,10 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 	if (conf->check_crl)
 		X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK);
 #endif
+#ifdef X509_V_FLAG_CRL_CHECK_ALL
+	if (conf->check_all_crl)
+		X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK_ALL);
+#endif
 	return store;
 }
 #endif	/* HAVE_OPENSSL_OCSP_H */
@@ -2591,6 +2598,11 @@ post_ca:
 	    		return NULL;
 		}
 		X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
+
+#ifdef X509_V_FLAG_CRL_CHECK_ALL
+		if (conf->check_all_crl)
+			X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK_ALL);
+#endif
 	}
 #endif
 
