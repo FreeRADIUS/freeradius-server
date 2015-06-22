@@ -136,7 +136,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 		 *
 		 *	Calling ldap_result here, results in a timeout in some
 		 *	cases, so we need to figure out whether the bind was
-		 *	successful without the help of rlm_ldap_result.
+		 *	successful without the help of ldap_result.
 		 */
 		if (ret != LDAP_SASL_BIND_IN_PROGRESS) {
 			status = rlm_ldap_result(inst, conn, -1, identity, NULL, error, extra);
