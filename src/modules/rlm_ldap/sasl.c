@@ -128,8 +128,6 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 						 NULL, NULL, LDAP_SASL_AUTOMATIC,
 						 _sasl_interact, &sasl_ctx, result,
 						 &mech, &msgid);
-		ldap_msgfree(result);	/* We always need to free the old message */
-		result = NULL;
 
 		/*
 		 *	If ldap_sasl_interactive_bind indicates it didn't want
@@ -141,8 +139,10 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 		 */
 		if (ret != LDAP_SASL_BIND_IN_PROGRESS) {
 			status = rlm_ldap_result(inst, conn, -1, identity, NULL, error, extra);
-			break;
+			break;		/* Old result gets freed on after exit */
 		}
+
+		ldap_msgfree(result);	/* We always need to free the old message */
 
 		/*
 		 *	If LDAP parse result indicates there was an error
