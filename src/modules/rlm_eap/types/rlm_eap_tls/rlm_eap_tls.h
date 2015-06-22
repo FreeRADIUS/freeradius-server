@@ -59,6 +59,7 @@ typedef struct eap_tls_conf {
 	 */
 	int		fragment_size;
 	int		check_crl;
+	int		check_all_crl;
 	int		allow_expired_crl;
 	char		*check_cert_cn;
 	char		*cipher_list;
