@@ -348,6 +348,7 @@ struct fr_tls_server_conf_t {
 	 */
 	uint32_t	fragment_size;
 	bool		check_crl;
+	bool		check_all_crl;
 	bool		allow_expired_crl;
 	char const	*check_cert_cn;
 	char const	*cipher_list;
