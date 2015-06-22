@@ -477,7 +477,7 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 	*error = NULL;
 
 	if (extra) *extra = NULL;
-	*result = NULL;
+	if (result) *result = NULL;
 
 	/*
 	 *	We always need the result, but our caller may not
