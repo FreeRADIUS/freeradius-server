@@ -469,7 +469,7 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 
 	struct timeval tv;		// Holds timeout values.
 
-	LDAPMessage *tmp_msg;		// Temporary message pointer storage if we weren't provided with one.
+	LDAPMessage *tmp_msg = NULL;	// Temporary message pointer storage if we weren't provided with one.
 
 	char const *tmp_err;		// Temporary error pointer storage if we weren't provided with one.
 
