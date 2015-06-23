@@ -152,6 +152,14 @@
  */
 int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 {
+	/*
+	 *	The OpenLDAP guys didn't declare the formatOID parameter to
+	 *	ldap_create_session_tracking_control as const *sigh*.
+	 */
+	static char 		username_oid[] = LDAP_CONTROL_X_SESSION_TRACKING_USERNAME;
+	static char 		acctsessionid_oid[] = LDAP_CONTROL_X_SESSION_TRACKING_RADIUS_ACCT_SESSION_ID;
+	static char 		acctmultisessionid_oid[] = LDAP_CONTROL_X_SESSION_TRACKING_RADIUS_ACCT_MULTI_SESSION_ID;
+
 	int ret;
 
 	char			ipaddress[INET6_ADDRSTRLEN];
@@ -199,7 +207,7 @@ int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 
 		ret = ldap_create_session_tracking_control(conn->handle, ipaddress,
 							   hostname,
-							   LDAP_CONTROL_X_SESSION_TRACKING_USERNAME,
+							   username_oid,
 							   &tracking_id,
 							   &username_control);
 		if (ret != LDAP_SUCCESS) {
@@ -218,7 +226,7 @@ int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 
 		ret = ldap_create_session_tracking_control(conn->handle, ipaddress,
 							   hostname,
-							   LDAP_CONTROL_X_SESSION_TRACKING_RADIUS_ACCT_SESSION_ID,
+							   acctsessionid_oid,
 							   &tracking_id,
 							   &acctsessionid_control);
 		if (ret != LDAP_SUCCESS) {
@@ -233,7 +241,7 @@ int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 
 		ret = ldap_create_session_tracking_control(conn->handle, ipaddress,
 							   hostname,
-							   LDAP_CONTROL_X_SESSION_TRACKING_RADIUS_ACCT_MULTI_SESSION_ID,
+							   acctmultisessionid_oid,
 							   &tracking_id,
 							   &acctmultisessionid_control);
 		if (ret != LDAP_SUCCESS) {
