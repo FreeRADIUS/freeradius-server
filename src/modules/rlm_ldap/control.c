@@ -79,14 +79,15 @@
  *	- 0 on success.
  *	- -1 on failure (exceeded maximum controls).
  */
- int rlm_ldap_control_add_server(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit)
+int rlm_ldap_control_add_server(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit)
 {
 	if ((size_t)conn->serverctrls_cnt >= ((sizeof(conn->serverctrls) / sizeof(conn->serverctrls[0])) - 1)) {
 		return -1;
 	}
 
 	conn->serverctrls[conn->serverctrls_cnt].control = ctrl;
-	conn->serverctrls[conn->serverctrls_cnt++].freeit = freeit;
+	conn->serverctrls[conn->serverctrls_cnt].freeit = freeit;
+	conn->serverctrls_cnt++;
 
 	return 0;
 }
@@ -102,12 +103,15 @@
  *	- 0 on success.
  *	- -1 on failure (exceeded maximum controls).
  */
- int rlm_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit)
+int rlm_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit)
 {
-	if ((size_t)conn->clientctrls_cnt >= ((sizeof(conn->clientctrls) / sizeof(conn->clientctrls[0])) - 1)) return -1;
+	if ((size_t)conn->clientctrls_cnt >= ((sizeof(conn->clientctrls) / sizeof(conn->clientctrls[0])) - 1)) {
+		return -1;
+	}
 
 	conn->clientctrls[conn->clientctrls_cnt].control = ctrl;
-	conn->clientctrls[conn->clientctrls_cnt++].freeit = freeit;
+	conn->clientctrls[conn->clientctrls_cnt].freeit = freeit;
+	conn->clientctrls_cnt++;
 
 	return 0;
 }
@@ -253,15 +257,24 @@ int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 
 	if ((conn->serverctrls_cnt + 3) >= LDAP_MAX_CONTROLS) {
 		REDEBUG("Insufficient space to add session tracking controls");
-		return -1;
+		goto error;
 	}
 
-	if (username_control &&
-	    (rlm_ldap_control_add_server(conn, username_control, true) < 0)) return -1;
-	if (acctsessionid_control &&
-	    (rlm_ldap_control_add_server(conn, acctsessionid_control, true) < 0)) return -1;
-	if (acctmultisessionid_control &&
-	    (rlm_ldap_control_add_server(conn, acctmultisessionid_control, true) < 0)) return -1;
+	if (username_control && (rlm_ldap_control_add_server(conn, username_control, true) < 0)) goto error;
+
+	if (acctsessionid_control && (rlm_ldap_control_add_server(conn, acctsessionid_control, true) < 0)) {
+		conn->serverctrls_cnt--;
+		conn->serverctrls[conn->serverctrls_cnt].control = NULL;
+		goto error;
+	}
+
+	if (acctmultisessionid_control && (rlm_ldap_control_add_server(conn, acctmultisessionid_control, true) < 0)) {
+		conn->serverctrls_cnt--;
+		conn->serverctrls[conn->serverctrls_cnt].control = NULL;
+		conn->serverctrls_cnt--;
+		conn->serverctrls[conn->serverctrls_cnt].control = NULL;
+		goto error;
+	}
 
 	return 0;
 }
