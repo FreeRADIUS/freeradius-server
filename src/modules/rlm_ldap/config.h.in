@@ -1,5 +1,9 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define to 1 if you have the `ldap_create_session_tracking_control'
+   function. */
+#undef HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL
+
 /* Define to 1 if you have the `ldap_create_sort_control' function. */
 #undef HAVE_LDAP_CREATE_SORT_CONTROL
 

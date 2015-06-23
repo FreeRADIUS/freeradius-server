@@ -25,6 +25,27 @@
 #include "config.h"
 
 /*
+ *	There's a typo in libldap's ldap.h which was fixed by
+ *	Howard Chu in 19aeb1cd. This typo had the function defined
+ *	as ldap_create_session_tracking_control but declared as
+ *	ldap_create_session_tracking.
+ *
+ *	We fix this, by adding the correct declaration here.
+ */
+#ifdef LDAP_CONTROL_X_SESSION_TRACKING
+#  ifndef HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL
+LDAP_F( int )
+ldap_create_session_tracking_control LDAP_P((
+        LDAP            *ld,
+        char            *sessionSourceIp,
+        char            *sessionSourceName,
+        char            *formatOID,
+        struct berval   *sessionTrackingIdentifier,
+        LDAPControl     **ctrlp ));
+#  endif
+#endif
+
+/*
  *	Ensure the have the ldap_create_sort_keylist()
  *	function too, else we can't use ldap_create_sort_control()
  */
