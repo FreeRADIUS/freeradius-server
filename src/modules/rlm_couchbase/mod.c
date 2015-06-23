@@ -69,7 +69,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	rlm_couchbase_handle_t *chandle = NULL;     /* connection handle pointer */
 	cookie_t *cookie = NULL;                    /* couchbase cookie */
 	lcb_t cb_inst;                              /* couchbase connection instance */
-	lcb_error_t cb_error = LCB_SUCCESS;         /* couchbase error status */
+	lcb_error_t cb_error;			/* couchbase error status */
 
 	/* create instance */
 	cb_error = couchbase_init_connection(&cb_inst, inst->server, inst->bucket, inst->password);
