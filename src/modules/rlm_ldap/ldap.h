@@ -69,6 +69,8 @@
 
 #define MOD_PREFIX			"rlm_ldap"	//!< The name of the module.
 
+#define LDAP_MAX_CONTROLS		10		//!< Maximum number of client/server controls.
+							//!< Used to allocate static arrays of control pointers.
 #define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and
 							//!< FreeRADIUS attributes.
 #define LDAP_MAP_RESERVED		4		//!< Number of additional items to allocate in expanded
@@ -86,6 +88,8 @@
 #define LDAP_MAX_DN_STR_LEN		1024		//!< Maximum length of an xlat expanded DN.
 
 #define LDAP_VIRTUAL_DN_ATTR		"dn"		//!< 'Virtual' attribute which maps to the DN of the object.
+
+typedef struct ldap_instance rlm_ldap_t;
 
 typedef struct ldap_acct_section {
 	CONF_SECTION	*cs;				//!< Section configuration.
@@ -105,7 +109,38 @@ typedef struct ldap_sasl_dynamic {
 	vp_tmpl_t	*realm;				//!< Kerberos realm.
 } ldap_sasl_dynamic;
 
-typedef struct ldap_instance {
+typedef struct rlm_ldap_control {
+	LDAPControl 	*control;			//!< LDAP control.
+	bool		freeit;				//!< Whether the control should be freed after
+							//!< we've finished using it.
+} rlm_ldap_control_t;
+
+/** Tracks the state of a libldap connection handle
+ *
+ */
+typedef struct ldap_handle {
+	LDAP		*handle;			//!< libldap handle.
+	bool		rebound;			//!< Whether the connection has been rebound to something
+							//!< other than the admin user.
+	bool		referred;			//!< Whether the connection is now established a server
+							//!< other than the configured one.
+
+	rlm_ldap_control_t serverctrls[LDAP_MAX_CONTROLS + 1];	//!< Server controls to use for all operations with
+								//!< this handle.
+	rlm_ldap_control_t clientctrls[LDAP_MAX_CONTROLS + 1];	//!< Client controls to use for all operations with
+								//!< this handle.
+	int		serverctrls_cnt;		//!< Number of server controls associated with the handle.
+	int		clientctrls_cnt;		//!< Number of client controls associated with the handle.
+
+	rlm_ldap_t	*inst;				//!< rlm_ldap configuration.
+} ldap_handle_t;
+
+/*
+ *	control.h defines inline functions for adding controls to connections.
+ */
+#include "control.h"
+
+struct ldap_instance {
 	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
 	fr_connection_pool_t *pool;			//!< Connection pool instance.
 
@@ -255,6 +290,11 @@ typedef struct ldap_instance {
 	/*
 	 *	Options
 	 */
+#ifdef LDAP_CONTROL_X_SESSION_TRACKING
+	bool		session_tracking;		//!< Whether we add session tracking controls, which help
+							//!< identify the autz or acct session the commands were
+							//!< issued for.
+#endif
 	uint32_t  	net_timeout;			//!< How long we wait for new connections to the LDAP server
 							//!< to be established.
 	uint32_t	res_timeout;			//!< How long we wait for a result from the server.
@@ -286,19 +326,7 @@ typedef struct ldap_instance {
 #endif
 
 	LDAP		*handle;			//!< Hack for OpenLDAP libldap global initialisation.
-} rlm_ldap_t;
-
-/** Tracks the state of a libldap connection handle
- *
- */
-typedef struct ldap_handle {
-	LDAP		*handle;			//!< libldap handle.
-	bool		rebound;			//!< Whether the connection has been rebound to something
-							//!< other than the admin user.
-	bool		referred;			//!< Whether the connection is now established a server
-							//!< other than the configured one.
-	rlm_ldap_t	*inst;				//!< rlm_ldap configuration.
-} ldap_handle_t;
+};
 
 /** Result of expanding the RHS of a set of maps
  *
@@ -385,7 +413,8 @@ size_t rlm_ldap_normalise_dn(char *out, char const *in);
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
 ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			   char const *password, ldap_sasl *sasl, bool retry);
+			   char const *password, ldap_sasl *sasl, bool retry,
+			   LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 char const *rlm_ldap_error_str(ldap_handle_t const *conn);
 
@@ -395,7 +424,8 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 			     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-			     char const *dn, LDAPMod *mods[]);
+			     char const *dn, LDAPMod *mods[],
+			     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode);
@@ -453,6 +483,23 @@ int rlm_ldap_map_do(rlm_ldap_t const *inst, REQUEST *request, LDAP *handle,
 int  rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *cs);
 
 /*
+ *	control.c - Connection based client/server controls
+ */
+void rlm_ldap_control_merge(LDAPControl *serverctrls_out[LDAP_MAX_CONTROLS],
+			    LDAPControl *clientctrls_out[LDAP_MAX_CONTROLS],
+			    ldap_handle_t *conn,
+			    LDAPControl *serverctrls_in[],
+			    LDAPControl *clientctrls_in[]);
+
+int rlm_ldap_control_add_server(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit);
+
+int rlm_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit);
+
+void rlm_ldap_control_clear(ldap_handle_t *conn);
+
+int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request);
+
+/*
  *	edir.c - Magic extensions for Novell
  */
 int nmasldap_get_password(LDAP *ld, char const *dn, char *password, size_t *len);
@@ -465,5 +512,6 @@ char const *edir_errstr(int code);
 ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				       ldap_handle_t *pconn, char const *dn,
 				       char const *password, ldap_sasl *sasl,
+				       LDAPControl **serverctrls, LDAPControl **clientctrls,
 				       char const **error, char **error_extra);
 #endif

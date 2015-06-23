@@ -429,6 +429,17 @@ ldap {
 		chase_referrals = yes
 		rebind = yes
 
+		#
+		#  If 'yes', then include draft-wahl-ldap-session tracking
+		#  controls.
+		#
+		#  These encode the NAS-IP-Address/NAS-IPv6-Address,
+		#  User-Name, Acct-Session-ID, Acct-Multi-Session-ID
+		#  as session tracking controls, in applicable LDAP operations.
+		#  Default 'no'.
+		#
+#		session_tracking = yes
+
 		#  Seconds to wait for LDAP query to finish. default: 20
 		res_timeout = 10
 

@@ -681,10 +681,18 @@ process_error:
  * @param[in] password of the user, may be NULL if no password is specified.
  * @param[in] sasl mechanism to use for bind, and additional parameters.
  * @param[in] retry if the server is down.
+ * @param[in] serverctrls Search controls to pass to the server.  Only used for SASL binds.  May be NULL.
+ * @param[in] clientctrls Search controls for sasl_bind.  Only used for SASL binds. May be NULL.
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			   char const *password, ldap_sasl *sasl, bool retry)
+			   char const *password, ldap_sasl *sasl, bool retry,
+#ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
+			   LDAPControl **serverctrls, LDAPControl **clientctrls
+#else
+			   UNUSED LDAPControl **serverctrls, UNUSED LDAPControl **clientctrls
+#endif
+			   )
 {
 	ldap_rcode_t		status = LDAP_PROC_ERROR;
 
@@ -716,7 +724,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 #ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
 		if (sasl && sasl->mech) {
 			status = rlm_ldap_sasl_interactive(inst, request, *pconn, dn, password, sasl,
-							   &error, &extra);
+							   serverctrls, clientctrls, &error, &extra);
 		} else
 #endif
 		{
@@ -828,6 +836,11 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 
 	int 		i;
 
+	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
+	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
+
+	rlm_ldap_control_merge(our_serverctrls, our_clientctrls, *pconn, serverctrls, clientctrls);
+
 	rad_assert(*pconn && (*pconn)->handle);
 
 	/*
@@ -842,7 +855,8 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 	 */
 	if ((*pconn)->rebound) {
 		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
-				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true);
+				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true,
+				       NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -873,7 +887,7 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 	 */
 	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
 		(void) ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs,
-				       0, serverctrls, clientctrls, &tv, 0, &msgid);
+				       0, our_serverctrls, our_clientctrls, &tv, 0, &msgid);
 
 		LDAP_DBG_REQ("Waiting for search result...");
 		status = rlm_ldap_result(inst, *pconn, msgid, dn, &our_result, &error, &extra);
@@ -963,10 +977,13 @@ finish:
  * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
  * @param[in] dn of the object to modify.
  * @param[in] mods to make, see 'man ldap_modify' for more information.
+ * @param[in] serverctrls Search controls to pass to the server.  May be NULL.
+ * @param[in] clientctrls Search controls for ldap_modify.  May be NULL.
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
  */
 ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-			     char const *dn, LDAPMod *mods[])
+			     char const *dn, LDAPMod *mods[],
+			     LDAPControl **serverctrls, LDAPControl **clientctrls)
 {
 	ldap_rcode_t	status = LDAP_PROC_ERROR;
 
@@ -977,6 +994,11 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 
 	int 		i;
 
+	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
+	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
+
+	rlm_ldap_control_merge(our_serverctrls, our_clientctrls, *pconn, serverctrls, clientctrls);
+
 	rad_assert(*pconn && (*pconn)->handle);
 
 	/*
@@ -984,7 +1006,8 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 	 */
 	if ((*pconn)->rebound) {
 		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
-				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true);
+				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true,
+				       NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -1000,7 +1023,7 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 	 */
 	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
 		RDEBUG2("Modifying object with DN \"%s\"", dn);
-		(void) ldap_modify_ext((*pconn)->handle, dn, mods, NULL, NULL, &msgid);
+		(void) ldap_modify_ext((*pconn)->handle, dn, mods, our_serverctrls, our_clientctrls, &msgid);
 
 		RDEBUG2("Waiting for modify result...");
 		status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
@@ -1108,7 +1131,8 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	 */
 	if ((*pconn)->rebound) {
 		status = rlm_ldap_bind(inst, request, pconn, (*pconn)->inst->admin_identity,
-				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true);
+				       (*pconn)->inst->admin_password, &(*pconn)->inst->admin_sasl, true,
+				       NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			*rcode = RLM_MODULE_FAIL;
 			return NULL;
@@ -1317,7 +1341,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 	DEBUG("rlm_ldap (%s): Rebinding to URL %s", conn->inst->name, url);
 
 	status = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
-			       &(conn->inst->admin_sasl), false);
+			       &(conn->inst->admin_sasl), false, NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 
@@ -1340,13 +1364,20 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 static int _mod_conn_free(ldap_handle_t *conn)
 {
 	if (conn->handle) {
-		DEBUG3("rlm_ldap: Closing libldap handle %p", conn->handle);
 #ifdef HAVE_LDAP_UNBIND_EXT_S
-		ldap_unbind_ext_s(conn->handle, NULL, NULL);
+		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
+		LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
+
+		rlm_ldap_control_merge(our_serverctrls, our_clientctrls, conn, NULL, NULL);
+
+		DEBUG3("rlm_ldap: Closing libldap handle %p", conn->handle);
+		ldap_unbind_ext_s(conn->handle, our_serverctrls, our_clientctrls);
 #else
+		DEBUG3("rlm_ldap: Closing libldap handle %p", conn->handle);
 		ldap_unbind_s(conn->handle);
 #endif
 	}
+	rlm_ldap_control_clear(conn);
 
 	return 0;
 }
@@ -1456,15 +1487,15 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	do_ldap_option(LDAP_OPT_PROTOCOL_VERSION, "ldap_version", &ldap_version);
 
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive idle", &(inst->keepalive_idle));
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_IDLE, "keepalive_idle", &(inst->keepalive_idle));
 #endif
 
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive probes", &(inst->keepalive_probes));
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_PROBES, "keepalive_probes", &(inst->keepalive_probes));
 #endif
 
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
-	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive interval", &(inst->keepalive_interval));
+	do_ldap_option(LDAP_OPT_X_KEEPALIVE_INTERVAL, "keepalive_interval", &(inst->keepalive_interval));
 #endif
 
 #ifdef HAVE_LDAP_START_TLS_S
@@ -1527,7 +1558,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 #endif /* HAVE_LDAP_START_TLS_S */
 
 	status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
-			       &(conn->inst->admin_sasl), false);
+			       &(conn->inst->admin_sasl), false, NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) {
 		goto error;
 	}
@@ -1547,9 +1578,33 @@ error:
  * @param inst rlm_ldap configuration.
  * @param request Current request (may be NULL).
  */
-ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, UNUSED REQUEST *request)
+
+ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst,
+#ifdef LDAP_CONTROL_X_SESSION_TRACKING
+			    REQUEST *request
+#else
+			    UNUSED REQUEST *request
+#endif
+			    )
 {
-	return fr_connection_get(inst->pool);
+	ldap_handle_t *conn;
+
+	conn = fr_connection_get(inst->pool);
+
+#ifdef LDAP_CONTROL_X_SESSION_TRACKING
+	/*
+	 *	Add optional session tracking controls,
+	 *	that contain values of some attributes
+	 *	in the request.
+	 */
+	if ((conn != NULL) & (request != NULL) & inst->session_tracking) {
+		if (rlm_ldap_control_add_session_tracking(conn, request) < 0) {
+			fr_connection_release(inst->pool, conn);
+			return NULL;
+		}
+	}
+#endif
+	return conn;
 }
 
 /** Frees an LDAP socket back to the connection pool
@@ -1566,6 +1621,11 @@ void mod_conn_release(rlm_ldap_t const *inst, ldap_handle_t *conn)
 	 *	Could have already been free'd due to a previous error.
 	 */
 	if (!conn) return;
+
+	/*
+	 *	Clear any client/server controls associated with the connection.
+	 */
+	rlm_ldap_control_clear(conn);
 
 	/*
 	 *	We chased a referral to another server.

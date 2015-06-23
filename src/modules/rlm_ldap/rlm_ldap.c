@@ -189,6 +189,10 @@ static CONF_PARSER option_config[] = {
 
 	{ "rebind", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, rebind), NULL },
 
+#ifdef LDAP_CONTROL_X_SESSION_TRACKING
+	{ "session_tracking", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, session_tracking), "no" },
+#endif
+
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/* timeout on network activity */
 	{ "net_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ldap_t, net_timeout), "10" },
@@ -1375,7 +1379,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 	conn->rebound = true;
 	status = rlm_ldap_bind(inst, request, &conn, dn, request->password->vp_strvalue,
-			       conn->inst->user_sasl.mech ? &sasl : NULL, true);
+			       conn->inst->user_sasl.mech ? &sasl : NULL, true, NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		rcode = RLM_MODULE_OK;
@@ -1615,7 +1619,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			 *	Bind as the user
 			 */
 			conn->rebound = true;
-			status = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue, NULL, true);
+			status = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue, NULL, true, NULL, NULL);
 			switch (status) {
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;
@@ -1916,7 +1920,7 @@ static rlm_rcode_t user_modify(rlm_ldap_t *inst, REQUEST *request, ldap_acct_sec
 		goto error;
 	}
 
-	status = rlm_ldap_modify(inst, request, &conn, dn, modify);
+	status = rlm_ldap_modify(inst, request, &conn, dn, modify, NULL, NULL);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		break;

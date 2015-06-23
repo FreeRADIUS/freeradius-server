@@ -137,7 +137,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 	 */
 	if (conn->rebound) {
 		status = rlm_ldap_bind(inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
-				       &(conn->inst->admin_sasl), true);
+				       &(conn->inst->admin_sasl), true, NULL, NULL);
 		if (status != LDAP_PROC_SUCCESS) {
 			ret = -1;
 			goto finish;

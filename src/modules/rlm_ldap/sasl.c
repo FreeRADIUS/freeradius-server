@@ -103,6 +103,7 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
 ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				       ldap_handle_t *conn, char const *identity,
 				       char const *password, ldap_sasl *sasl,
+				       LDAPControl **serverctrls, LDAPControl **clientctrls,
 				       char const **error, char **extra)
 {
 	ldap_rcode_t		status;
@@ -111,6 +112,11 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 	char const		*mech;
 	LDAPMessage		*result = NULL;
 	rlm_ldap_sasl_ctx_t	sasl_ctx;		/* SASL defaults */
+
+	LDAPControl		*our_serverctrls[LDAP_MAX_CONTROLSS];
+	LDAPControl		*our_clientctrls[LDAP_MAX_CONTROLSS];
+
+	rlm_ldap_control_merge(our_serverctrls, our_clientctrls, conn, serverctrls, clientctrls)
 
 	/* rlm_ldap_result may not be called */
 	if (error) *error = NULL;
@@ -125,7 +131,8 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 	MOD_ROPTIONAL(RDEBUG2, DEBUG2, "Starting SASL mech(s): %s", sasl->mech);
 	for (;;) {
 		ret = ldap_sasl_interactive_bind(conn->handle, NULL, sasl->mech,
-						 NULL, NULL, LDAP_SASL_AUTOMATIC,
+						 our_serverctrls, our_clientctrls,
+						 LDAP_SASL_AUTOMATIC,
 						 _sasl_interact, &sasl_ctx, result,
 						 &mech, &msgid);
 
