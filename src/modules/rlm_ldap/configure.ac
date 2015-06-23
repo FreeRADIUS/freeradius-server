@@ -97,6 +97,7 @@ if test x$with_[]modname != xno; then
 			ldap_free_sort_keylist \
 			ldap_create_session_tracking_control
 		)
+		AC_CHECK_DECLS([ldap_create_session_tracking_control])
 		AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
 			AC_TRY_COMPILE([
 				#include <lber.h>

@@ -33,7 +33,7 @@
  *	We fix this, by adding the correct declaration here.
  */
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
-#  ifndef HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL
+#  ifndef HAVE_DECL_LDAP_CREATE_SESSION_TRACKING_CONTROL
 LDAP_F( int )
 ldap_create_session_tracking_control LDAP_P((
         LDAP            *ld,
