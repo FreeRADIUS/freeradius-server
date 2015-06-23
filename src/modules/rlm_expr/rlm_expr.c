@@ -1498,7 +1498,7 @@ static bool parse_pad(REQUEST *request, char const *fmt,
 	if (!vpt) return false;
 
 	slen = tmpl_from_attr_substr(vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
-	if (slen < 0) {
+	if (slen <= 0) {
 		talloc_free(vpt);
 		RDEBUG("Failed expanding string: %s", fr_strerror());
 		return false;
