@@ -417,7 +417,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 */
 	flags.compare = 0;
 	if ((dict_addattr(inst->limit_name, -1, 0, PW_TYPE_INTEGER64, flags) < 0) ||
-	    !(da = dict_attrbyname(inst->limit_name))) {
+	    !dict_attrbyname(inst->limit_name)) {
 		cf_log_err_cs(conf, "Failed to create check attribute %s: %s", inst->limit_name, fr_strerror());
 		return -1;
 	}
