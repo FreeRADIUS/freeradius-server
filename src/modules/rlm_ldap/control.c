@@ -160,7 +160,7 @@ int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 	static char 		acctsessionid_oid[] = LDAP_CONTROL_X_SESSION_TRACKING_RADIUS_ACCT_SESSION_ID;
 	static char 		acctmultisessionid_oid[] = LDAP_CONTROL_X_SESSION_TRACKING_RADIUS_ACCT_MULTI_SESSION_ID;
 
-	int ret;
+	int			ret;
 
 	char			ipaddress[INET6_ADDRSTRLEN];
 	char			*username = NULL;
