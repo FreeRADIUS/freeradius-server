@@ -36,7 +36,7 @@ CREATE TABLE radacct (
   calledstationid text,
   callingstationid text,
   servicetype text,
-  terminatecause text,
+  acctterminatecause text,
   framedprotocol text,
   framedipaddress text,
   PRIMARY KEY (acctuniqueid)
@@ -71,7 +71,7 @@ CREATE TABLE radcheck (
   attribute text,
   op text,
   value text,
-  PRIMARY KEY (username, attribute)
+  PRIMARY KEY ((username), id, attribute)
 );
 
 CREATE TABLE radreply (
@@ -80,7 +80,7 @@ CREATE TABLE radreply (
   attribute text,
   op text,
   value text,
-  PRIMARY KEY (username, attribute)
+  PRIMARY KEY ((username), id, attribute)
 );
 
 CREATE TABLE radgroupcheck (
@@ -89,7 +89,7 @@ CREATE TABLE radgroupcheck (
   attribute text,
   op text,
   value text,
-  PRIMARY KEY (groupname, attribute)
+  PRIMARY KEY ((groupname), id, attribute)
 );
 
 CREATE TABLE radgroupreply (
@@ -98,7 +98,7 @@ CREATE TABLE radgroupreply (
   attribute text,
   op text,
   value text,
-  PRIMARY KEY (groupname, attribute)
+  PRIMARY KEY ((groupname), id, attribute)
 );
 
 CREATE TABLE radusergroup (
