@@ -96,6 +96,8 @@ static int _sasl_interact(UNUSED LDAP *handle, UNUSED unsigned flags, void *ctx,
  * @param[in] identity of the user.
  * @param[in] password of the user.
  * @param[in] sasl mechanism to use for bind, and additional parameters.
+ * @param[in] serverctrls Search controls to pass to the server.  May be NULL.
+ * @param[in] clientctrls Search controls for ldap_sasl_interactive.  May be NULL.
  * @param[out] error message resulting from bind.
  * @param[out] extra information about the error.
  * @return One of the LDAP_PROC_* (#ldap_rcode_t) values.
@@ -113,10 +115,10 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 	LDAPMessage		*result = NULL;
 	rlm_ldap_sasl_ctx_t	sasl_ctx;		/* SASL defaults */
 
-	LDAPControl		*our_serverctrls[LDAP_MAX_CONTROLSS];
-	LDAPControl		*our_clientctrls[LDAP_MAX_CONTROLSS];
+	LDAPControl		*our_serverctrls[LDAP_MAX_CONTROLS];
+	LDAPControl		*our_clientctrls[LDAP_MAX_CONTROLS];
 
-	rlm_ldap_control_merge(our_serverctrls, our_clientctrls, conn, serverctrls, clientctrls)
+	rlm_ldap_control_merge(our_serverctrls, our_clientctrls, conn, serverctrls, clientctrls);
 
 	/* rlm_ldap_result may not be called */
 	if (error) *error = NULL;

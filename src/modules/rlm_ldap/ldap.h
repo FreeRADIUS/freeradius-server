@@ -135,11 +135,6 @@ typedef struct ldap_handle {
 	rlm_ldap_t	*inst;				//!< rlm_ldap configuration.
 } ldap_handle_t;
 
-/*
- *	control.h defines inline functions for adding controls to connections.
- */
-#include "control.h"
-
 struct ldap_instance {
 	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
 	fr_connection_pool_t *pool;			//!< Connection pool instance.
