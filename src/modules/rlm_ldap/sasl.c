@@ -113,8 +113,8 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 	rlm_ldap_sasl_ctx_t	sasl_ctx;		/* SASL defaults */
 
 	/* rlm_ldap_result may not be called */
-	*error = NULL;
-	*extra = NULL;
+	if (error) *error = NULL;
+	if (extra) *extra = NULL;
 
 	sasl_ctx.inst = inst;
 	sasl_ctx.request = request;

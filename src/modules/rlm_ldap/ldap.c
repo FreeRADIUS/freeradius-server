@@ -945,9 +945,7 @@ finish:
 	 *	it to where our caller said.
 	 */
 	if (!result) {
-		if (our_result) {
-			ldap_msgfree(our_result);
-		}
+		if (our_result) ldap_msgfree(our_result);
 	} else {
 		*result = our_result;
 	}
@@ -1015,7 +1013,6 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 				RWDEBUG("Modify failed: %s. Got new socket, retrying...", error);
 
 				talloc_free(extra); /* don't leak debug info */
-
 				continue;
 			}
 

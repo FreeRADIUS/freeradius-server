@@ -143,7 +143,7 @@ typedef struct ldap_instance {
 	/*
 	 *	RADIUS attribute to LDAP attribute maps
 	 */
-	vp_map_t *user_map; 			//!< Attribute map applied to users and profiles.
+	vp_map_t	*user_map; 			//!< Attribute map applied to users and profiles.
 
 	/*
 	 *	User object attributes and filters
