@@ -94,6 +94,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	  single quotes.
 	* Set X509_V_FLAG_CRL_CHECK_ALL, and add "check_all_crl"
 	  to eap.conf.  Fixes oCert CVE-2015-4680.
+	* rlm_expr now errors out correctly on malformed attribute
+	  references instead of triggering an assert.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
