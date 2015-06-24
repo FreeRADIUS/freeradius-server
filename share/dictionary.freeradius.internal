@@ -83,7 +83,7 @@ ATTRIBUTE	Replicate-To-Realm			1049	string internal
 ATTRIBUTE	Acct-Session-Start-Time			1050	date internal
 ATTRIBUTE	Acct-Unique-Session-Id			1051	string internal
 ATTRIBUTE	Client-IP-Address			1052	ipaddr internal,virtual
-ATTRIBUTE	Ldap-UserDn				1053	string internal
+ATTRIBUTE	LDAP-UserDN				1053	string internal
 ATTRIBUTE	NS-MTA-MD5-Password			1054	string internal
 ATTRIBUTE	SQL-User-Name				1055	string internal
 ATTRIBUTE	LM-Password				1057	octets internal
