@@ -1383,6 +1383,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	CONF_PAIR *cp = NULL;
 	fr_ipaddr_t *ipaddr;
 	char buffer[8192];
+	CONF_ITEM *c_item = &cs->item;
 
 	if (!cs) return -1;
 
@@ -1402,7 +1403,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	 *	Everything except templates must have a base type.
 	 */
 	if (!(type & 0xff) && !tmpl) {
-		cf_log_err(&(cs->item), "Configuration item '%s' must have a data type", name);
+		cf_log_err(c_item, "Configuration item '%s' must have a data type", name);
 		return -1;
 	}
 
@@ -1426,6 +1427,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		CONF_PAIR *next = cp;
 		value = cp->value;
 		cp->parsed = true;
+		c_item = &cp->item;
 
 		/*
 		 *	@fixme We should actually validate
@@ -1439,11 +1441,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	if (!value) {
 		if (required) {
 		is_required:
-			if (!cp) {
-				cf_log_err(&(cs->item), "Configuration item '%s' must have a value", name);
-			} else {
-				cf_log_err(&(cp->item), "Configuration item '%s' must have a value", name);
-			}
+			cf_log_err(c_item, "Configuration item '%s' must have a value", name);
+
 			return -1;
 		}
 		return rcode;
@@ -1451,18 +1450,16 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 
 	if ((value[0] == '\0') && cant_be_empty) {
 	cant_be_empty:
-		if (!cp) {
-			cf_log_err(&(cs->item), "Configuration item '%s' must not be empty (zero length)", name);
-			if (!required) cf_log_err(&(cs->item), "Comment item to silence this message");
-		} else {
-			cf_log_err(&(cp->item), "Configuration item '%s' must not be empty (zero length)", name);
-			if (!required) cf_log_err(&(cp->item), "Comment item to silence this message");
-		}
+		cf_log_err(c_item, "Configuration item '%s' must not be empty (zero length)", name);
+
+		if (!required)
+			cf_log_err(c_item, "Comment item to silence this message");
+
 		return -1;
 	}
 
 	if (deprecated) {
-		cf_log_err(&(cs->item), "Configuration item \"%s\" is deprecated", name);
+		cf_log_err(c_item, "Configuration item \"%s\" is deprecated", name);
 
 		return -2;
 	}
