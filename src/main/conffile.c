@@ -305,7 +305,6 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	CONF_DATA *cd;
 	CONF_SECTION *top;
 	rbtree_t *tree;
-	int fd;
 	FILE *fp;
 
 	top = cf_top_section(cs);
@@ -321,8 +320,6 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 		return NULL;
 	}
 
-	fd = fileno(fp);
-
 	file = talloc(tree, cf_file_t);
 	if (!file) {
 		fclose(fp);
@@ -333,7 +330,7 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	file->cs = cs;
 	file->input = true;
 
-	if (fstat(fd, &file->buf) == 0) {
+	if (stat(filename, &file->buf) < 0) {
 #ifdef S_IWOTH
 		if ((file->buf.st_mode & S_IWOTH) != 0) {
 			fclose(fp);
@@ -373,7 +370,6 @@ static bool cf_file_input(CONF_SECTION *cs, char const *filename)
 	if (!cd) return false;
 
 	tree = cd->data;
-
 	file = talloc(tree, cf_file_t);
 	if (!file) return false;
 
