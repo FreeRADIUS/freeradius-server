@@ -142,6 +142,7 @@ char const *fr_syserror(int num)
 	}
 
 	if (!num) {
+		free(buffer);
 		return "No error";
 	}
 
