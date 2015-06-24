@@ -1053,7 +1053,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/*
 	 *	Authenticate, and return.
 	 */
-	RDEBUG("Taking 'known good' password from %s", vp->da->name);
 	rc = auth_func(inst, request, vp);
 
 	if (rc == RLM_MODULE_REJECT) {
