@@ -390,6 +390,7 @@ static bool cf_file_input(CONF_SECTION *cs, char const *filename)
 	if ((file->buf.st_mode & S_IWOTH) != 0) {
 		ERROR("Configuration file %s is globally writable.  "
 		      "Refusing to start due to insecure configuration.", filename);
+		talloc_free(file);
 		return false;
 	}
 #endif
