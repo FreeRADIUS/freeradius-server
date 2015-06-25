@@ -381,8 +381,7 @@ static bool cf_file_input(CONF_SECTION *cs, char const *filename)
 	file->input = true;
 
 	if (stat(filename, &file->buf) < 0) {
-		ERROR("Unable to open file \"%s\": %s",
-		      filename, fr_strerror());
+		ERROR("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
 		talloc_free(file);
 		return false;
 	}
