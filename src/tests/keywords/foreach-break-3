@@ -1,0 +1,44 @@
+#
+#  PRE: foreach foreach-break
+#
+
+update request {
+	Calling-Station-Id := "8"
+}
+
+update control {
+	&Calling-Station-Id := "0"
+	&Calling-Station-Id += "1"
+	&Calling-Station-Id += "2"
+	&Calling-Station-Id += "3"
+	&Calling-Station-Id += "4"
+	&Calling-Station-Id += "5"
+	&Calling-Station-Id += "6"
+	&Calling-Station-Id += "7"
+	&Calling-Station-Id += "8"
+	&Calling-Station-Id += "9"
+	&Calling-Station-Id += "a"
+	&Calling-Station-Id += "b"
+	&Calling-Station-Id += "c"
+	&Calling-Station-Id += "d"
+	&Calling-Station-Id += "e"
+	&Calling-Station-Id += "f"
+	&Calling-Station-Id += "g"
+}
+
+foreach &control:Calling-Station-Id {
+	if (&request:Calling-Station-Id == "%{Foreach-Variable-0}") {
+		update reply {
+			Filter-Id := "filter"
+		}
+
+		break
+	}
+	elsif ("%{Foreach-Variable-0}" == '9') {
+		update reply {
+			Filter-Id := "fail-9"
+		}
+
+		reject
+	}
+}

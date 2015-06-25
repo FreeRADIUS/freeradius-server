@@ -736,10 +736,12 @@ redo:
 			}
 
 			/*
-			 *	We've unwound to the enclosing
-			 *	"foreach".  Stop the unwinding.
+			 *	We've been asked to unwind to the
+			 *	enclosing "foreach".  We're here, so
+			 *	we can stop unwinding.
 			 */
-			if (next->unwind == MOD_FOREACH) {
+			if (next->unwind == MOD_BREAK) {
+				entry->unwind = 0;
 				break;
 			}
 
@@ -1124,7 +1126,6 @@ calculate_result:
 	 */
 	if (entry->unwind == MOD_BREAK) {
 		RDEBUG2("# unwind to enclosing foreach");
-		entry->unwind = 0;
 		goto finish;
 	}
 
