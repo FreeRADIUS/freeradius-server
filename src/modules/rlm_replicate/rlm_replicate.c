@@ -174,9 +174,12 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 			}
 
 			packet->id++;
-			talloc_free(packet->data);
-			packet->data = NULL;
-			packet->data_len = 0;
+
+			if (packet->data) {
+				talloc_free(packet->data);
+				packet->data = NULL;
+				packet->data_len = 0;
+			}
 		}
 
 		/*
