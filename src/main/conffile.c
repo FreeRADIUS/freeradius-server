@@ -336,9 +336,11 @@ static FILE *cf_file_open(CONF_SECTION *cs, char const *filename)
 	if (stat(filename, &file->buf) < 0) {
 #ifdef S_IWOTH
 		if ((file->buf.st_mode & S_IWOTH) != 0) {
-			fclose(fp);
 			ERROR("Configuration file %s is globally writable.  "
 			      "Refusing to start due to insecure configuration.", filename);
+
+			fclose(fp);
+			talloc_free(file);
 			return NULL;
 		}
 #endif
