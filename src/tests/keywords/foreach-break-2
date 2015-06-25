@@ -38,6 +38,9 @@ foreach control:Tmp-String-0 {
 		break
 	}
 	elsif ("%{Foreach-Variable-0}" == '9') {
+		update reply {
+			Filter-Id := "fail-9"
+		}
 		reject
 	}
 }
