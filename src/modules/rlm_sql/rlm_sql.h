@@ -91,6 +91,8 @@ typedef struct sql_config {
 	char const		*query_user;			//!< xlat expansion used to specify the user
 								//!< to use as the subject of queries.
 
+	char const		*group_attr;			//!< Name of the group attribute.
+
 	char const		*default_profile;		//!< Default profile to use if no other
 								//!< profiles were configured.
 
@@ -233,7 +235,7 @@ struct sql_inst {
 	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
 
 	char const		*name;			//!< Module instance name.
-	DICT_ATTR const		*group_da;
+	DICT_ATTR const		*group_da;		//!< Group dictionary attribute.
 };
 
 typedef struct sql_grouplist {

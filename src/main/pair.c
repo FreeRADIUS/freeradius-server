@@ -356,7 +356,7 @@ int paircompare_register_byname(char const *name, DICT_ATTR const *from,
 	da = dict_attrbyname(name);
 	if (da) {
 		if (!da->flags.compare) {
-			fr_strerror_printf("Attribute '%s' already exists.", name);
+			fr_strerror_printf("Attribute '%s' already exists", name);
 			return -1;
 		}
 	} else if (from) {

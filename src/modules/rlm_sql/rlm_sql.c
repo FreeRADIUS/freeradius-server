@@ -92,6 +92,7 @@ static const CONF_PARSER module_config[] = {
 	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, do_clients), "no" },
 	{ "delete_stale_sessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, delete_stale_sessions), "yes" },
 	{ "sql_user_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, query_user), "" },
+	{ "group_attr", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, group_attr), NULL },
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, logfile), NULL },
 	{ "default_user_profile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, default_profile), "" },
 	{ "client_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_query), "SELECT id,nasname,shortname,type,secret FROM nas" },
@@ -1019,31 +1020,28 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	     inst->config->sql_driver_name, inst->module->name);
 
 	if (inst->config->groupmemb_query) {
-		if (cf_section_name2(conf)) {
-			char buffer[256];
+		char buffer[256];
 
+		char const *group_attr;
+
+		if (inst->config->group_attr) {
+			group_attr = inst->config->group_attr;
+		} else if (cf_section_name2(conf)) {
 			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", inst->name);
-
-			if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0),
-							false, sql_groupcmp, inst) < 0) {
-				ERROR("Error registering group comparison: %s", fr_strerror());
-				return -1;
-			}
-
-			inst->group_da = dict_attrbyname(buffer);
-
-			/*
-			 *	We're the default instance
-			 */
+			group_attr = buffer;
 		} else {
-			if (paircompare_register_byname("SQL-Group", dict_attrbyvalue(PW_USER_NAME, 0),
-							false, sql_groupcmp, inst) < 0) {
-				ERROR("Error registering group comparison: %s", fr_strerror());
-				return -1;
-			}
-
-			inst->group_da = dict_attrbyname("SQL-Group");
+			group_attr = "SQL-Group";
 		}
+
+		/*
+		 *	Checks if attribute already exists.
+		 */
+		if (paircompare_register_byname(group_attr, dict_attrbyvalue(PW_USER_NAME, 0),
+						false, sql_groupcmp, inst) < 0) {
+			ERROR("Error registering group comparison: %s", fr_strerror());
+			return -1;
+		}
+		inst->group_da = dict_attrbyname(group_attr);
 	}
 
 	/*
