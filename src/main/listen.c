@@ -1017,7 +1017,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		rcode = cf_item_parse(cs, "proto", FR_ITEM_POINTER(PW_TYPE_STRING, &proto), "udp");
 		if (rcode < 0) return -1;
 
-		if (strcmp(proto, "udp") == 0) {
+		if (!proto || strcmp(proto, "udp") == 0) {
 			sock->proto = IPPROTO_UDP;
 
 		} else if (strcmp(proto, "tcp") == 0) {
