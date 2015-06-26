@@ -102,7 +102,8 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
  *	format, whereas RFC 4514 indicates that some chars in DNs, may be escaped simply
  *	with a backslash..
  *
- * Will unescape any special characters in strings, or \<hex><hex> sequences.
+ * Will unescape any special characters in strings, or @verbatim \<hex><hex> @endverbatim
+ * sequences.
  *
  * @param request The current request.
  * @param out Pointer to output buffer.
