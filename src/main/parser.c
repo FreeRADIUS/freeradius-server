@@ -58,7 +58,7 @@ size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *in)
 
 next:
 	if (!c) {
-		buffer[0] = '\0';
+		p[0] = '\0';
 		return 0;
 	}
 
