@@ -1247,7 +1247,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	 *	Disable it.
 	 */
 	if (argc == 0) {
-		talloc_free(debug_condition);
+		TALLOC_FREE(debug_condition);
 		debug_condition = NULL;
 		return CMD_OK;
 	}
@@ -1321,7 +1321,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 		ERROR("%s", p);
 		ERROR("%s^ %s", spaces, error);
 
-		cprintf(listener, "Parse error in condition \"%s\": %s\n", p, error);
+		cprintf_error(listener, "Parse error in condition \"%s\": %s\n", p, error);
 
 		talloc_free(spaces);
 		talloc_free(text);
@@ -1334,7 +1334,7 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	 *	This is thread-safe because the condition is evaluated
 	 *	in the main server thread, along with this code.
 	 */
-	talloc_free(debug_condition);
+	TALLOC_FREE(debug_condition);
 	debug_condition = new_condition;
 
 	return CMD_OK;
@@ -1345,7 +1345,7 @@ static int command_show_debug_condition(rad_listen_t *listener,
 {
 	char buffer[1024];
 
-	if (debug_condition) {
+	if (!debug_condition) {
 		cprintf(listener, "\n");
 		return CMD_OK;
 	}
