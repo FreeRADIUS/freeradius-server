@@ -195,7 +195,7 @@ sql {
 	client_table = "nas"
 
 	# The group attribute specific to this instance of rlm_sql
-	group_attr = "${.:instance}-${.:name}-Group"
+	group_attribute = "${.:instance}-${.:name}-Group"
 
 	# Read database-specific queries
 	#

@@ -92,7 +92,7 @@ static const CONF_PARSER module_config[] = {
 	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, do_clients), "no" },
 	{ "delete_stale_sessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, delete_stale_sessions), "yes" },
 	{ "sql_user_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, query_user), "" },
-	{ "group_attr", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, group_attr), NULL },
+	{ "group_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, group_attribute), NULL },
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, logfile), NULL },
 	{ "default_user_profile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, default_profile), "" },
 	{ "client_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_query), "SELECT id,nasname,shortname,type,secret FROM nas" },
@@ -1022,26 +1022,26 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	if (inst->config->groupmemb_query) {
 		char buffer[256];
 
-		char const *group_attr;
+		char const *group_attribute;
 
-		if (inst->config->group_attr) {
-			group_attr = inst->config->group_attr;
+		if (inst->config->group_attribute) {
+			group_attribute = inst->config->group_attribute;
 		} else if (cf_section_name2(conf)) {
 			snprintf(buffer, sizeof(buffer), "%s-SQL-Group", inst->name);
-			group_attr = buffer;
+			group_attribute = buffer;
 		} else {
-			group_attr = "SQL-Group";
+			group_attribute = "SQL-Group";
 		}
 
 		/*
 		 *	Checks if attribute already exists.
 		 */
-		if (paircompare_register_byname(group_attr, dict_attrbyvalue(PW_USER_NAME, 0),
+		if (paircompare_register_byname(group_attribute, dict_attrbyvalue(PW_USER_NAME, 0),
 						false, sql_groupcmp, inst) < 0) {
 			ERROR("Error registering group comparison: %s", fr_strerror());
 			return -1;
 		}
-		inst->group_da = dict_attrbyname(group_attr);
+		inst->group_da = dict_attrbyname(group_attribute);
 	}
 
 	/*
