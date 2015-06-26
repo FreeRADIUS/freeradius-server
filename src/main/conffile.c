@@ -1535,6 +1535,20 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	}
 		break;
 
+	case PW_TYPE_BYTE:
+	{
+		unsigned long v = strtoul(value, 0, 0);
+
+		if (v > UINT8_MAX) {
+			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", value,
+				   name, UINT8_MAX);
+			return -1;
+		}
+		*(uint8_t *)data = (uint8_t) v;
+		cf_log_info(cs, "%.*s\t%s = %u", cs->depth, parse_spaces, name, *(uint8_t *)data);
+	}
+		break;
+
 	case PW_TYPE_SHORT:
 	{
 		unsigned long v = strtoul(value, 0, 0);
