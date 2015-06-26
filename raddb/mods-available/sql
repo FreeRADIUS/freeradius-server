@@ -230,6 +230,18 @@ sql {
 	# Table to keep radius client info
 	client_table = "nas"
 
+	#
+	# The group attribute specific to this instance of rlm_sql
+	#
+
+	# This entry should be used for additional instances (sql foo {})
+	# of the SQL module.
+#	group_attr = "${.:instance}-SQL-Group"
+
+	# This entry should be used for the default instance (sql {})
+	# of the SQL module.
+	group_attr = "SQL-Group"
+
 	# Read database-specific queries
 	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }
