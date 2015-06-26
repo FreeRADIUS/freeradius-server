@@ -91,7 +91,7 @@ typedef struct sql_config {
 	char const		*query_user;			//!< xlat expansion used to specify the user
 								//!< to use as the subject of queries.
 
-	char const		*group_attr;			//!< Name of the group attribute.
+	char const		*group_attribute;		//!< Name of the group attribute.
 
 	char const		*default_profile;		//!< Default profile to use if no other
 								//!< profiles were configured.
