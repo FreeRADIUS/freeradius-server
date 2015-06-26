@@ -422,6 +422,8 @@ extern FR_NAME_NUMBER const ldap_tls_require_cert[];
  */
 size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
 
+size_t rlm_ldap_unescape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
+
 bool rlm_ldap_is_dn(char const *in, size_t inlen);
 
 size_t rlm_ldap_normalise_dn(char *out, char const *in);

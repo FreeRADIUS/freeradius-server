@@ -257,9 +257,14 @@ static const CONF_PARSER module_config[] = {
 	{NULL, -1, 0, NULL, NULL}
 };
 
-static ssize_t ldapquote_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t ldap_escape_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
 	return rlm_ldap_escape_func(request, out, freespace, fmt, NULL);
+}
+
+static ssize_t ldap_unescape_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+{
+	return rlm_ldap_unescape_func(request, out, freespace, fmt, NULL);
 }
 
 /** Expand an LDAP URL into a query, and return a string result from that query.
@@ -766,7 +771,10 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	}
 
 	xlat_register(inst->name, ldap_xlat, rlm_ldap_escape_func, inst);
-	xlat_register("ldapquote", ldapquote_xlat, NULL, inst);
+	xlat_register("ldapquote", ldap_escape_xlat, NULL, inst);	/* Deprecated */
+
+	xlat_register("ldap_escape", ldap_escape_xlat, NULL, inst);
+	xlat_register("ldap_unescape", ldap_unescape_xlat, NULL, inst);
 	map_proc_register(inst, inst->name, mod_map_proc, NULL, NULL, 0);
 
 	return 0;

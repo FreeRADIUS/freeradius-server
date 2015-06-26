@@ -33,6 +33,9 @@
 
 #include "ldap.h"
 
+static const char specials[] = ",+\"\\<>;*=()";
+static const char hextab[] = "0123456789abcdef";
+
 /** Converts "bad" strings into ones which are safe for LDAP
  *
  * @note RFC 4515 says filter strings can only use the @verbatim \<hex><hex> @endverbatim
@@ -54,8 +57,7 @@
  */
 size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
-	static char const encode[] = ",+\"\\<>;*=()";
-	static char const hextab[] = "0123456789abcdef";
+
 	size_t left = outlen;
 
 	if (*in && ((*in == ' ') || (*in == '#'))) goto encode;
@@ -64,7 +66,7 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
 		/*
 		 *	Encode unsafe characters.
 		 */
-		if (memchr(encode, *in, sizeof(encode) - 1)) {
+		if (memchr(specials, *in, sizeof(specials) - 1)) {
 		encode:
 			/*
 			 *	Only 3 or less bytes available.
@@ -93,6 +95,59 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
 
 	return outlen - left;
 }
+
+/** Converts escaped DNs and filter strings into normal
+ *
+ * @note RFC 4515 says filter strings can only use the @verbatim \<hex><hex> @endverbatim
+ *	format, whereas RFC 4514 indicates that some chars in DNs, may be escaped simply
+ *	with a backslash..
+ *
+ * Will unescape any special characters in strings, or \<hex><hex> sequences.
+ *
+ * @param request The current request.
+ * @param out Pointer to output buffer.
+ * @param outlen Size of the output buffer.
+ * @param in Escaped string string.
+ * @param arg Any additional arguments (unused).
+ */
+size_t rlm_ldap_unescape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+{
+	char const *p;
+	char *c1, *c2, c3;
+	size_t	freespace = outlen;
+
+	if (outlen <= 1) return 0;
+
+	p = in;
+	while (*p && (--freespace > 0)) {
+		if (*p != '\\') {
+		next:
+			*out++ = *p++;
+			continue;
+		}
+
+		p++;
+
+		/* It's an escaped special, just remove the slash */
+		if (memchr(specials, *in, sizeof(specials) - 1)) {
+			*out++ = *p++;
+			continue;
+		}
+
+		/* Is a = char */
+		if (!(c1 = memchr(hextab, tolower(p[0]), 16)) ||
+		    !(c2 = memchr(hextab, tolower(p[1]), 16))) goto next;
+		c3 = ((c1 - hextab) << 4) + (c2 - hextab);
+
+		*out++ = c3;
+		p += 2;
+	}
+
+	*out = '\0';
+
+	return outlen - freespace;
+}
+
 
 /** Check whether a string looks like a DN
  *
