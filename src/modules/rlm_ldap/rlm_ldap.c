@@ -151,6 +151,7 @@ static CONF_PARSER group_config[] = {
 	{ "cacheable_name", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, cacheable_group_name), "no" },
 	{ "cacheable_dn", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, cacheable_group_dn), "no" },
 	{ "cache_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, cache_attribute), NULL },
+	{ "group_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, group_attribute), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -717,40 +718,29 @@ static int parse_sub_section(rlm_ldap_t *inst, CONF_SECTION *parent, ldap_acct_s
  */
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	rlm_ldap_t *inst = instance;
+	rlm_ldap_t	*inst = instance;
+	char		buffer[256];
+	char const	*group_attribute;
 
 	inst->name = cf_section_name2(conf);
-	if (!inst->name) {
-		inst->name = cf_section_name1(conf);
-	}
+	if (!inst->name) inst->name = cf_section_name1(conf);
 
-	/*
-	 *	Group comparison checks.
-	 */
-	if (cf_section_name2(conf)) {
-		char buffer[256];
-
+	if (inst->group_attribute) {
+		group_attribute = inst->group_attribute;
+	} else if (cf_section_name2(conf)) {
 		snprintf(buffer, sizeof(buffer), "%s-LDAP-Group", inst->name);
-
-		if (paircompare_register_byname(buffer, dict_attrbyvalue(PW_USER_NAME, 0), false, rlm_ldap_groupcmp, inst) < 0) {
-			LDAP_ERR("Error registering group comparison: %s", fr_strerror());
-			goto error;
-		}
-
-		inst->group_da = dict_attrbyname(buffer);
-
-		/*
-		 *	We're the default instance
-		 */
+		group_attribute = buffer;
 	} else {
-		if (paircompare_register_byname("LDAP-Group", dict_attrbyvalue(PW_USER_NAME, 0),
-						false, rlm_ldap_groupcmp, inst) < 0) {
-			LDAP_ERR("Error registering group comparison: %s", fr_strerror());
-			goto error;
-		}
-
-		inst->group_da = dict_attrbyname("LDAP-Group");
+		group_attribute = "LDAP-Group";
 	}
+
+	if (paircompare_register_byname(group_attribute, dict_attrbyvalue(PW_USER_NAME, 0),
+					false, rlm_ldap_groupcmp, inst) < 0) {
+		LDAP_ERR("Error registering group comparison: %s", fr_strerror());
+		goto error;
+	}
+
+	inst->group_da = dict_attrbyname(group_attribute);
 
 	/*
 	 *	Setup the cache attribute

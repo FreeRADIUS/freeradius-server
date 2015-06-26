@@ -245,6 +245,9 @@ struct ldap_instance {
 	DICT_ATTR const	*cache_da;			//!< The DA associated with this specific instance of the
 							//!< rlm_ldap module.
 
+	char const	*group_attribute;		//!< Sets the attribute we use when comparing group
+							//!< group memberships.
+
 	DICT_ATTR const	*group_da;			//!< The DA associated with this specific instance of the
 							//!< rlm_ldap module.
 

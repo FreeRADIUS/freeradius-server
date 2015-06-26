@@ -275,6 +275,10 @@ ldap {
 		#  custom attribute.  This can help if multiple module instances
 		#  are used in fail-over.
 #		cache_attribute = 'LDAP-Cached-Membership'
+
+		#  Override the normal group comparison attribute name
+		#  (<inst>-LDAP-Group or LDAP-Group if using the default instance) .
+#		group_attribute = "${.:instance}-${.:name}-Group"
 	}
 
 	#
