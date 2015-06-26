@@ -721,7 +721,7 @@ int main(int argc, char **argv)
 	retry:
 		len = run_command(sockfd, line, buffer, sizeof(buffer));
 		if (len < 0) {
-			if (!quiet) fprintf(stderr, "Reconnecting...");
+			if (!quiet) fprintf(stderr, "... reconnecting ...\n");
 
 			if (do_connect(&sockfd, file, server) < 0) {
 				exit(1);
