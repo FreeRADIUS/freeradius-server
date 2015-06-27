@@ -764,7 +764,7 @@ build_vector:
 		if (inst->tcp.timeout.tv_sec || inst->tcp.timeout.tv_usec) timeout = &inst->tcp.timeout;
 
 	do_write:
-		num = fr_connection_get_num(inst->pool);
+		num = fr_connection_pool_get_num(inst->pool);
 		conn = fr_connection_get(inst->pool);
 		if (!conn) {
 			rcode = RLM_MODULE_FAIL;

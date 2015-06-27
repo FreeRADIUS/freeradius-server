@@ -74,31 +74,50 @@ typedef void *(*fr_connection_create_t)(TALLOC_CTX *ctx, void *opaque);
  */
 typedef int (*fr_connection_alive_t)(void *opaque, void *connection);
 
-fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
-						     void *opaque,
-						     fr_connection_create_t c,
-						     fr_connection_alive_t a,
-						     char const *prefix);
+/*
+ *	Pool allocation/initialisation
+ */
+fr_connection_pool_t	*fr_connection_pool_init(TALLOC_CTX *ctx,
+						 CONF_SECTION *cs,
+						 void *opaque,
+						 fr_connection_create_t c,
+						 fr_connection_alive_t a,
+						 char const *log_prefix,
+						 char const *trigger_prefix);
 
-fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
-					      CONF_SECTION *cs,
-					      void *opaque,
-					      fr_connection_create_t c,
-					      fr_connection_alive_t a,
-					      char const *log_prefix,
-					      char const *trigger_prefix);
+fr_connection_pool_t	*fr_connection_pool_module_init(CONF_SECTION *module,
+							void *opaque,
+							fr_connection_create_t c,
+							fr_connection_alive_t a,
+							char const *prefix);
 
-fr_connection_pool_t *fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_pool_t *pool, void *opaque);
-int fr_connection_pool_reconnect(fr_connection_pool_t *pool);
+fr_connection_pool_t	*fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_pool_t *pool, void *opaque);
 
-void fr_connection_pool_free(fr_connection_pool_t *pool);
 
-void *fr_connection_get(fr_connection_pool_t *pool);
-int fr_connection_get_num(fr_connection_pool_t *pool);
-void *fr_connection_get_opaque(fr_connection_pool_t *pool);
-void fr_connection_release(fr_connection_pool_t *pool, void *conn);
-void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn);
-int fr_connection_del(fr_connection_pool_t *pool, void *conn);
+/*
+ *	Pool getters
+ */
+int	fr_connection_pool_get_num(fr_connection_pool_t *pool);
+
+void	*fr_connection_pool_get_opaque(fr_connection_pool_t *pool);
+
+/*
+ *	Pool management
+ */
+int	fr_connection_pool_reconnect(fr_connection_pool_t *pool);
+
+void	fr_connection_pool_free(fr_connection_pool_t *pool);
+
+/*
+ *	Connection lifecycle
+ */
+void	*fr_connection_get(fr_connection_pool_t *pool);
+
+void	fr_connection_release(fr_connection_pool_t *pool, void *conn);
+
+void	*fr_connection_reconnect(fr_connection_pool_t *pool, void *conn);
+
+int	fr_connection_close_internal(fr_connection_pool_t *pool, void *conn);
 
 #ifdef __cplusplus
 }
