@@ -56,7 +56,7 @@ RCSID("$Id$")
 #include <freeradius-devel/sha1.h>
 
 /*
- * given a radius request with many attribues in the EAP-SIM range, build
+ * given a radius request with many attributes in the EAP-SIM range, build
  * them all into a single EAP-SIM body.
  *
  */
