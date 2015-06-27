@@ -1095,7 +1095,7 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 	/*
 	 *	The callback should either return -1 to signify operations error,
 	 *	-2 when it can't find the attribute or list being referenced, or
-	 *	0 to signify success. It may return "sucess", but still have no
+	 *	0 to signify success. It may return "success", but still have no
 	 *	VPs to work with.
 	 */
 	if (map->rhs->type != TMPL_TYPE_NULL) {
