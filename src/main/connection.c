@@ -1247,6 +1247,10 @@ int fr_connection_pool_get_num(fr_connection_pool_t *pool)
 
 /** Get the opaque data associated with a pool
  *
+ * @note returned pointer is left non-const intentionally. It's up to the caller
+ *	to ensure that if it makes modifications to the opaque data, there are
+ *	no side effects.
+ *
  * @param pool to retrieve opaque data for.
  * @return the opaque data for the pool.
  */
