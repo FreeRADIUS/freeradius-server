@@ -772,6 +772,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 
 /** Get a connection from the connection pool
  *
+ * @note Must be called with the mutex free.
+ *
  * @param[in,out] pool to reserve the connection from.
  * @param[in] spawn whether to spawn a new connection
  * @return
