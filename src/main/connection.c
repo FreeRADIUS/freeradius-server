@@ -65,6 +65,9 @@ struct fr_connection {
 	bool		in_use;			//!< Whether the connection is currently reserved.
 
 	int		heap;			//!< For the next connection heap.
+
+	bool		needs_reconnecting;	//!< Reconnect this connection before use.
+
 #ifdef PTHREAD_DEBUG
 	pthread_t	pthread_id;		//!< When 'in_use == true'.
 #endif
@@ -164,6 +167,8 @@ static const CONF_PARSER connection_config[] = {
 	{ "spread", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
+
+static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn);
 
 /** Removes a connection from the connection list
  *
@@ -461,6 +466,66 @@ static void fr_connection_close(fr_connection_pool_t *pool, fr_connection_t *thi
 	rad_assert(pool->num > 0);
 	pool->num--;
 	talloc_free(this);
+}
+
+
+/** Reconnect a suspected inviable connection
+ *
+ * @note Must be called with the mutex held, will not release mutex.
+ *
+ * @see fr_connection_get
+ * @param[in,out] pool to reconnect the connection in.
+ * @param[in,out] conn to reconnect.
+ * @return new connection handle if successful else NULL.
+ */
+static fr_connection_t *fr_connection_reconnect_internal(fr_connection_pool_t *pool, fr_connection_t *conn)
+{
+	void		*new_conn;
+	uint64_t	conn_number;
+	TALLOC_CTX	*ctx;
+
+	conn_number = conn->number;
+
+	/*
+	 *	Destroy any handles associated with the fr_connection_t
+	 */
+	talloc_free_children(conn);
+
+	DEBUG("%s: Reconnecting (%" PRIu64 ")", pool->log_prefix, conn_number);
+
+	/*
+	 *	Allocate a new top level ctx for the create callback
+	 *	to hang its memory off of.
+	 */
+	ctx = talloc_init("fr_connection_ctx");
+	if (!ctx) return NULL;
+	fr_link_talloc_ctx_free(conn, ctx);
+
+	new_conn = pool->create(ctx, pool->opaque);
+	if (!new_conn) {
+		/*
+		 *	We can't create a new connection, so close the current one.
+		 */
+		fr_connection_close(pool, conn);
+
+		/*
+		 *	Maybe there's a connection which is unused and
+		 *	available.  If so, return it.
+		 */
+		new_conn = fr_connection_get_internal(pool, false);
+		if (new_conn) return new_conn;
+
+		RATE_LIMIT(ERROR("%s: Failed to reconnect (%" PRIu64 "), no free connections are available",
+				 pool->log_prefix, conn_number));
+
+		return NULL;
+	}
+
+	fr_connection_exec_trigger(pool, "close");
+	conn->connection = new_conn;
+	conn->needs_reconnecting = false;
+
+	return new_conn;
 }
 
 /** Find a connection handle in the connection list
@@ -918,6 +983,60 @@ fr_connection_pool_t *fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_poo
 				       pool->alive, pool->log_prefix, pool->trigger_prefix);
 }
 
+/** Mark connections for reconnection, and spawn at least 'start' connections
+ *
+ * This intended to be called on a connection pool that's in use, to have it reflect
+ * a configuration change, or because the administrator knows that all connections
+ * in the pool are inviable and need to be reconnected.
+ *
+ * @param[in] pool to reconnect.
+ * @return
+ *	-  0 On success.
+ *	- -1 If we couldn't create start connections, this may be ignored
+ *	     depending on the context in which this function is being called.
+ */
+int fr_connection_pool_reconnect(fr_connection_pool_t *pool)
+{
+	uint32_t	i;
+	fr_connection_t	*this;
+	time_t		now;
+
+	/*
+	 *	Mark all connections in the pool as requiring
+	 *	reconnection.
+	 */
+	pthread_mutex_lock(&pool->mutex);
+	for (this = pool->head; this; this = this->next) this->needs_reconnecting = true;
+
+	/*
+	 *	We want to ensure at least 'start' connections
+	 *	have been reconnected. We can't call reconnect
+	 *	because, we might get the same connection each
+	 *	time we reserve one, so we close 'start'
+	 *	connections, and then attempt to spawn them again.
+	 */
+	for (i = 0; i < pool->start; i++) {
+		this = fr_heap_peek(pool->heap);
+		if (!this) break;	/* There wasn't 'start' connections available */
+
+		fr_connection_close(pool, this);
+	}
+	pthread_mutex_unlock(&pool->mutex);
+
+	now = time(NULL);
+
+	/*
+	 *	Now attempt to spawn 'start' connections.
+	 */
+	for (i = 0; i < pool->start; i++) {
+		this = fr_connection_spawn(pool, now, false);
+		if (!this) return -1;
+	}
+
+	return 0;
+}
+
+
 /** Check whether a connection needs to be removed from the pool
  *
  * Will verify that the connection is within idle_timeout, max_uses, and
@@ -1170,6 +1289,18 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	 *	heap and use it.
 	 */
 	if (this) {
+		/*
+		 *	Unless it needs reconnecting, in which
+		 *	case attempt to reconnect it.
+		 */
+		if (this->needs_reconnecting && !(this = fr_connection_reconnect_internal(pool, this))) {
+			pthread_mutex_unlock(&pool->mutex);
+
+			ERROR("%s: Connection was marked for reconnection, but re-establishing connection failed",
+			      pool->log_prefix);
+
+			return NULL;
+		}
 		fr_heap_extract(pool->heap, this);
 		goto do_return;
 	}
@@ -1346,10 +1477,8 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
  */
 void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 {
-	void *new_conn;
-	fr_connection_t *this;
-	uint64_t conn_number;
-	TALLOC_CTX *ctx;
+	void		*new_conn;
+	fr_connection_t	*this;
 
 	if (!pool || !conn) return NULL;
 
@@ -1359,48 +1488,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	this = fr_connection_find(pool, conn);
 	if (!this) return NULL;
 
-
-	conn_number = this->number;
-
-	/*
-	 *	Destroy any handles associated with the fr_connection_t
-	 */
-	talloc_free_children(this);
-
-	DEBUG("%s: Reconnecting (%" PRIu64 ")", pool->log_prefix, conn_number);
-
-	/*
-	 *	Allocate a new top level ctx for the create callback
-	 *	to hang its memory off of.
-	 */
-	ctx = talloc_init("fr_connection_ctx");
-	if (!ctx) return NULL;
-	fr_link_talloc_ctx_free(this, ctx);
-
-	new_conn = pool->create(ctx, pool->opaque);
-	if (!new_conn) {
-		/*
-		 *	We can't create a new connection, so close
-		 *	this one.
-		 */
-		fr_connection_close(pool, this);
-
-		/*
-		 *	Maybe there's a connection which is unused and
-		 *	available.  If so, return it.
-		 */
-		pthread_mutex_unlock(&pool->mutex);
-		new_conn = fr_connection_get_internal(pool, false);
-		if (new_conn) return new_conn;
-
-		RATE_LIMIT(ERROR("%s: Failed to reconnect (%" PRIu64 "), no free connections are available",
-				 pool->log_prefix, conn_number));
-
-		return NULL;
-	}
-
-	fr_connection_exec_trigger(pool, "close");
-	this->connection = new_conn;
+	new_conn = fr_connection_reconnect_internal(pool, this);
 	pthread_mutex_unlock(&pool->mutex);
 
 	return new_conn;
