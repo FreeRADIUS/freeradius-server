@@ -1166,7 +1166,7 @@ bool is_whitespace(char const *value)
  *
  * @return
  *	- true if the entirety of the string is number chars.
- *	- false if string contains none number chars.
+ *	- false if string contains no number chars.
  */
 bool is_integer(char const *value)
 {
@@ -1180,8 +1180,8 @@ bool is_integer(char const *value)
 /** Check whether the string is all zeros
  *
  * @return
- *	- true if the entirety of the string is are zeros.
- *	- false if string contains none zeros.
+ *	- true if the entirety of the string is all zeros.
+ *	- false if string contains no zeros.
  */
 bool is_zero(char const *value)
 {
