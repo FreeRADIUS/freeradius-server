@@ -1,7 +1,8 @@
-#
+>#
 #  Add the module tests to the overall dependencies
 #
-tests.modules: tests.unit tests.keywords tests.auth
+
+TESTS.MODULES_FILES :=
 
 # If module requires test server, make sure TEST_SERVER of <MODULE>_TEST_SERVER variables are defined
 # If TEST_SERVER is defined, define <MODULE>_TEST_SERVER for all modules that have CHECK_MODULE_TEST_CAN_BE_RUN
@@ -124,6 +125,7 @@ endef
 define MODULE_TEST_TARGET
 ${1}.test: $(patsubst %.unlang,%,$(subst src,$(BUILD_DIR),$(filter src/tests/modules/${1}/%,$(MODULE_UNLANG))))
 
+TESTS.MODULES_FILES += $(patsubst %.unlang,%,$(subst src,$(BUILD_DIR),$(filter src/tests/modules/${1}/%,$(MODULE_UNLANG))))
 endef
 
 #
@@ -137,6 +139,8 @@ $(foreach x,$(MODULE_ATTRS_NEEDS),$(eval $(call MODULE_COPY_ATTR,$(subst src/,,$
 
 $(foreach x,$(MODULE_UNLANG),$(eval $(call MODULE_FILE_TARGET,$(patsubst %.unlang,%,$(subst src/,,$x)))))
 $(foreach x,$(MODULE_TESTS),$(eval $(call MODULE_TEST_TARGET,$x)))
+
+$(TESTS.MODULES_FILES): $(TESTS.AUTH_FILES)
 
 .PHONY: clean.modules.test
 clean.modules.test:
