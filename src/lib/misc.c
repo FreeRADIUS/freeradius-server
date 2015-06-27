@@ -830,7 +830,7 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
  * @param out Where to write result.
  * @param af To search for in preference.
  * @param hostname to search for.
- * @param fallback to the other adress family, if no records matching af, found.
+ * @param fallback to the other address family, if no records matching af, found.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
