@@ -12,7 +12,7 @@ VENDOR		Arbor				9694
 
 BEGIN-VENDOR	Arbor
 
-# Arbor-Privilege-Level = "sytem_admin or system_analyst or system_user"
+# Arbor-Privilege-Level = "system_admin or system_analyst or system_user"
 
 ATTRIBUTE	Arbor-Privilege-Level			1	string
 
