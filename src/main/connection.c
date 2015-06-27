@@ -48,29 +48,25 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool);
  * @see fr_connection_pool_t
  */
 struct fr_connection {
-	fr_connection_t	*prev;		//!< Previous connection in list.
-	fr_connection_t	*next;		//!< Next connection in list.
+	fr_connection_t	*prev;			//!< Previous connection in list.
+	fr_connection_t	*next;			//!< Next connection in list.
 
-	time_t		created;	//!< Time connection was created.
-	struct timeval 	last_reserved;	//!< Last time the connection was
-					//!< reserved.
+	time_t		created;		//!< Time connection was created.
+	struct timeval 	last_reserved;		//!< Last time the connection was reserved.
 
-	struct timeval	last_released;  //!< Time the connection was released.
+	struct timeval	last_released;  	//!< Time the connection was released.
 
-	uint32_t	num_uses;	//!< Number of times the connection
-					//!< has been reserved.
-	uint64_t	number;		//!< Unique ID assigned when the
-					//!< connection is created, these will
-					//!< monotonically increase over the
-					//!< lifetime of the connection pool.
-	void		*connection;	//!< Pointer to whatever the module
-					//!< uses for a connection handle.
-	bool		in_use;		//!< Whether the connection is currently
-					//!< reserved.
+	uint32_t	num_uses;		//!< Number of times the connection has been reserved.
+	uint64_t	number;			//!< Unique ID assigned when the connection is created,
+						//!< these will monotonically increase over the
+						//!< lifetime of the connection pool.
+	void		*connection;		//!< Pointer to whatever the module uses for a connection
+						//!< handle.
+	bool		in_use;			//!< Whether the connection is currently reserved.
 
-	int		heap;		//! For the next connection heap
+	int		heap;			//!< For the next connection heap.
 #ifdef PTHREAD_DEBUG
-	pthread_t	pthread_id;	//!< When 'in_use == true'
+	pthread_t	pthread_id;		//!< When 'in_use == true'.
 #endif
 };
 
@@ -84,91 +80,69 @@ struct fr_connection {
  * @see fr_connection
  */
 struct fr_connection_pool_t {
-	int		ref;		//!< Reference counter to prevent connection
-					//!< pool being freed multiple times.
-	uint32_t       	start;		//!< Number of initial connections
-	uint32_t       	min;		//!< Minimum number of concurrent
-					//!< connections to keep open.
-	uint32_t       	max;		//!< Maximum number of concurrent
-					//!< connections to allow.
-	uint32_t       	spare;		//!< Number of spare connections to try
-	uint32_t	pending;	//!< Number of pending open connections
-	uint32_t       	retry_delay;	//!< seconds to delay re-open
-					//!< after a failed open.
-	uint32_t       	cleanup_interval; //!< Initial timer for how
-					  //!< often we sweep the pool
-					  //!< for free connections.
-					  //!< (0 is infinite).
-	int		delay_interval;  //!< When we next do a
-					//!< cleanup.  Initialized to
-					//!< cleanup_interval, and increase
-					//!< from there based on the delay.
-	int		next_delay;     //!< The next delay time.
-					//!< cleanup.  Initialized to
-					//!< cleanup_interval, and decays
-					//!< from there.
-	uint64_t	max_uses;	//!< Maximum number of times a
-					//!< connection can be used before being
-					//!< closed.
-	uint32_t	lifetime;	//!< How long a connection can be open
-					//!< before being closed (irrespective
-					//!< of whether it's idle or not).
-	uint32_t       	idle_timeout;	//!< How long a connection can be idle
-					//!< before being closed.
+	int		ref;			//!< Reference counter to prevent connection
+						//!< pool being freed multiple times.
+	uint32_t       	start;			//!< Number of initial connections.
+	uint32_t       	min;			//!< Minimum number of concurrent connections to keep open.
+	uint32_t       	max;			//!< Maximum number of concurrent connections to allow.
+	uint32_t       	spare;			//!< Number of spare connections to try.
+	uint32_t	pending;		//!< Number of pending open connections.
+	uint32_t       	retry_delay;		//!< seconds to delay re-open after a failed open.
+	uint32_t       	cleanup_interval; 	//!< Initial timer for how often we sweep the pool
+						//!< for free connections. (0 is infinite).
+	int		delay_interval;		//!< When we next do a cleanup.  Initialized to
+						//!< cleanup_interval, and increase from there based
+						//!< on the delay.
+	int		next_delay;    	 	//!< The next delay time.  cleanup.  Initialized to
+						//!< cleanup_interval, and decays from there.
+	uint64_t	max_uses;		//!< Maximum number of times a connection can be used
+						//!< before being closed.
+	uint32_t	lifetime;		//!< How long a connection can be open before being
+						//!< closed (irrespective of whether it's idle or not).
+	uint32_t       	idle_timeout;		//!< How long a connection can be idle before
+						//!< being closed.
 
-	bool		spread;		//!< If true we spread requests over
-					//!< the connections, using the connection
-					//!< released longest ago, first.
+	bool		spread;			//!< If true we spread requests over the connections,
+						//!< using the connection released longest ago, first.
 
-	time_t		last_checked;	//!< Last time we pruned the connection
-					//!< pool.
-	time_t		last_spawned;	//!< Last time we spawned a connection.
-	time_t		last_failed;	//!< Last time we tried to spawn a
-					//!< a connection but failed.
-	time_t		last_throttled; //!< Last time we refused to spawn a
-					//!< connection because the last
-					//!< connection failed, or we were
-					//!< already spawning a connection.
-	time_t		last_at_max;	//!< Last time we hit the maximum number
-					//!< of allowed connections.
+	time_t		last_checked;		//!< Last time we pruned the connection pool.
+	time_t		last_spawned;		//!< Last time we spawned a connection.
+	time_t		last_failed;		//!< Last time we tried to spawn a connection but failed.
+	time_t		last_throttled;		//!< Last time we refused to spawn a connection because
+						//!< the last connection failed, or we were already spawning
+						//!< a connection.
+	time_t		last_at_max;		//!< Last time we hit the maximum number of allowed
+						//!< connections.
 
-	uint32_t	max_pending;	//!< Max number of connections to open
+	uint32_t	max_pending;		//!< Max number of connections to open
 
-	uint64_t	count;		//!< Number of connections spawned over
-					//!< the lifetime of the pool.
-	uint32_t       	num;		//!< Number of connections in the pool.
-	uint32_t	active;	 	//!< Number of currently reserved connections.
+	uint64_t	count;			//!< Number of connections spawned over the lifetime
+						//!< of the pool.
+	uint32_t       	num;			//!< Number of connections in the pool.
+	uint32_t	active;	 		//!< Number of currently reserved connections.
 
-	fr_heap_t	*heap;		//!< For the next connection heap
+	fr_heap_t	*heap;			//!< For the next connection heap
 
-	fr_connection_t	*head;		//!< Start of the connection list.
-	fr_connection_t *tail;		//!< End of the connection list.
+	fr_connection_t	*head;			//!< Start of the connection list.
+	fr_connection_t *tail;			//!< End of the connection list.
 
 #ifdef HAVE_PTHREAD_H
-	pthread_mutex_t	mutex;		//!< Mutex used to keep consistent state
-					//!< when making modifications in
-					//!< threaded mode.
+	pthread_mutex_t	mutex;			//!< Mutex used to keep consistent state when making
+						//!< modifications in threaded mode.
 #endif
 
-	CONF_SECTION	*cs;		//!< Configuration section holding
-					//!< the section of parsed config file
-					//!< that relates to this pool.
-	void		*opaque;	//!< Pointer to context data that will
-					//!< be passed to callbacks.
+	CONF_SECTION	*cs;			//!< Configuration section holding the section of parsed
+						//!< config file that relates to this pool.
+	void		*opaque;		//!< Pointer to context data that will be passed to callbacks.
 
-	char const	*log_prefix;	//!< Log prefix to prepend to all log
-					//!< messages created by the connection
-					//!< pool code.
+	char const	*log_prefix;		//!< Log prefix to prepend to all log messages created
+						//!< by the connection pool code.
 
-	char const	*trigger_prefix;	//!< Prefix to prepend to
-						//!< names of all triggers
-						//!< fired by the connection
-						//!< pool code.
+	char const	*trigger_prefix;	//!< Prefix to prepend to names of all triggers
+						//!< fired by the connection pool code.
 
-	fr_connection_create_t	create;	//!< Function used to create new
-					//!< connections.
-	fr_connection_alive_t	alive;	//!< Function used to check status
-					//!< of connections.
+	fr_connection_create_t	create;		//!< Function used to create new connections.
+	fr_connection_alive_t	alive;		//!< Function used to check status of connections.
 };
 
 #ifndef HAVE_PTHREAD_H
