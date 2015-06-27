@@ -97,7 +97,7 @@ static bool dump_core;					//!< Whether we should drop a core on fatal signals.
 
 static int fr_fault_log_fd = STDERR_FILENO;		//!< Where to write debug output.
 
-fr_debug_state_t fr_debug_state = DEBUG_STATE_UNKNOWN;	//!< Whether were attached to by a debugger.
+fr_debug_state_t fr_debug_state = DEBUG_STATE_UNKNOWN;	//!< Whether we're attached to by a debugger.
 
 #ifdef HAVE_SYS_RESOURCE_H
 static struct rlimit core_limits;
