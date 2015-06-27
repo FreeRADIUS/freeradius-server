@@ -261,7 +261,7 @@ lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie)
 
 	/* get statistics */
 	if ((error = lcb_server_stats(instance, cookie, 1, commands)) == LCB_SUCCESS) {
-		/* enter event look on sucess */
+		/* enter event look on success */
 		lcb_wait(instance);
 	}
 
