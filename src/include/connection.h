@@ -89,6 +89,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 					      char const *trigger_prefix);
 
 fr_connection_pool_t *fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_pool_t *pool, void *opaque);
+int fr_connection_pool_reconnect(fr_connection_pool_t *pool);
 
 void fr_connection_pool_free(fr_connection_pool_t *pool);
 
