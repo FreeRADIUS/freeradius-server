@@ -43,7 +43,7 @@ EOF
 #
 #  Print out only one user,
 #
-#  Or specifiy printing in hours, minutes, or seconds (default)
+#  Or specify printing in hours, minutes, or seconds (default)
 #
 GetOptions ('user=s'  => \$user,
 	    'match=s' => \$match,
