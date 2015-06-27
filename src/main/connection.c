@@ -1490,7 +1490,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
  *	- 0 If the connection could not be found.
  *	- 1 if the connection was deleted.
  */
-int fr_connection_close_internal(fr_connection_pool_t *pool, void *conn)
+int fr_connection_close(fr_connection_pool_t *pool, void *conn)
 {
 	fr_connection_t *this;
 
