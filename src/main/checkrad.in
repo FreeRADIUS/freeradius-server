@@ -1318,7 +1318,7 @@ sub mikrotik_telnet {
   $t->waitfor('/\[.*@.*\] > /');
 
   # It is not possible to get the line numbers etc.
-  # Thus we cant support if simultaneus-use is over 1
+  # Thus we cant support if simultaneous-use is over 1
   # At least I was using pppoe so it wasnt possible.
   $t->print('ppp active print column name detail');
 
