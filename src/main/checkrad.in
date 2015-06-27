@@ -976,7 +976,7 @@ sub cyclades_snmp {
 #
 
 #       This routine modified by Dan Halverson <danh@tbc.net>
-#       to suport additional versions of Hiper Arc
+#       to support additional versions of Hiper Arc
 #
 
 $usrm	 = '.iso.org.dod.internet.private.enterprises.429';
