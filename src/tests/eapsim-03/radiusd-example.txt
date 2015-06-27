@@ -734,8 +734,8 @@ modules {
 	#            Field marked as '*' is key field. That is, the parameter
 	#            with this name from the request is used to search for
 	#            the record from passwd file
-	#            Attribute marked as '=' is added to reply_itmes instead
-	#            of default configure_itmes
+	#            Attribute marked as '=' is added to reply_items instead
+	#            of default configure_items
 	#	     Attribute marked as '~' is added to request_items
 	#
 	#            Field marked as ',' may contain a comma separated list
