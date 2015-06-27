@@ -356,7 +356,7 @@ int gettimeofday (struct timeval *tv, void *tz);
 #endif
 
 /*
- *	Work around diffrent ctime_r styles
+ *	Work around different ctime_r styles
  */
 #if defined(CTIMERSTYLE) && (CTIMERSTYLE == SOLARISSTYLE)
 #  define CTIME_R(a,b,c) ctime_r(a,b,c)
