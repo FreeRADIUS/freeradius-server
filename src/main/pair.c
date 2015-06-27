@@ -315,7 +315,7 @@ int radius_find_compare(DICT_ATTR const *attribute)
  * @param attribute to find comparison function for.
  * @param from reference to compare with
  * @return
- *	- true if the comparison callback require a matching attribue in the request.
+ *	- true if the comparison callback require a matching attribute in the request.
  *	- false.
  */
 static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
