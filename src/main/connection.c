@@ -146,8 +146,8 @@ struct fr_connection_pool_t {
 };
 
 #ifndef HAVE_PTHREAD_H
-#define pthread_mutex_lock(_x)
-#define pthread_mutex_unlock(_x)
+#  define pthread_mutex_lock(_x)
+#  define pthread_mutex_unlock(_x)
 #endif
 
 static const CONF_PARSER connection_config[] = {
@@ -172,8 +172,7 @@ static const CONF_PARSER connection_config[] = {
  * @param[in,out] pool to modify.
  * @param[in] this Connection to delete.
  */
-static void fr_connection_unlink(fr_connection_pool_t *pool,
-				 fr_connection_t *this)
+static void fr_connection_unlink(fr_connection_pool_t *pool, fr_connection_t *this)
 {
 	if (this->prev) {
 		rad_assert(pool->head != this);
@@ -200,8 +199,7 @@ static void fr_connection_unlink(fr_connection_pool_t *pool,
  * @param[in,out] pool to modify.
  * @param[in] this Connection to add.
  */
-static void fr_connection_link_head(fr_connection_pool_t *pool,
-				    fr_connection_t *this)
+static void fr_connection_link_head(fr_connection_pool_t *pool, fr_connection_t *this)
 {
 	rad_assert(pool != NULL);
 	rad_assert(this != NULL);
@@ -228,8 +226,7 @@ static void fr_connection_link_head(fr_connection_pool_t *pool,
  * @param[in] pool to send trigger for.
  * @param[in] name_suffix trigger name suffix.
  */
-static void fr_connection_exec_trigger(fr_connection_pool_t *pool,
-					char const *name_suffix)
+static void fr_connection_exec_trigger(fr_connection_pool_t *pool, char const *name_suffix)
 {
 	char name[64];
 	rad_assert(pool != NULL);
@@ -251,8 +248,7 @@ static void fr_connection_exec_trigger(fr_connection_pool_t *pool,
  * @param[in] in_use whether the new connection should be "in_use" or not
  * @return the new connection struct or NULL on error.
  */
-static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
-					    time_t now, bool in_use)
+static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t now, bool in_use)
 {
 	uint64_t	number;
 	uint32_t	max_pending;
@@ -268,9 +264,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	 *	opening connections, don't open multiple connections until
 	 *	we successfully open at least one.
 	 */
-	if ((pool->num == 0) && pool->pending && pool->last_failed) {
-		return NULL;
-	}
+	if ((pool->num == 0) && pool->pending && pool->last_failed) return NULL;
 
 	pthread_mutex_lock(&pool->mutex);
 	rad_assert(pool->num <= pool->max);
@@ -394,9 +388,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	 *	The connection pool is starting up.  Insert the
 	 *	connection into the heap.
 	 */
-	if (!in_use) {
-		fr_heap_insert(pool->heap, this);
-	}
+	if (!in_use) fr_heap_insert(pool->heap, this);
 
 	fr_connection_link_head(pool, this);
 
@@ -439,8 +431,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
  * @param[in,out] pool to modify.
  * @param[in,out] this Connection to delete.
  */
-static void fr_connection_close(fr_connection_pool_t *pool,
-				fr_connection_t *this)
+static void fr_connection_close(fr_connection_pool_t *pool, fr_connection_t *this)
 {
 	/*
 	 *	If it's in use, release it.
@@ -849,8 +840,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	}
 
 	pool->log_prefix = log_prefix ? talloc_typed_strdup(pool, log_prefix) : "core";
-	pool->trigger_prefix = trigger_prefix ?
-					talloc_typed_strdup(pool, trigger_prefix) : "";
+	pool->trigger_prefix = trigger_prefix ? talloc_typed_strdup(pool, trigger_prefix) : "";
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_init(&pool->mutex, NULL);
@@ -1160,7 +1150,6 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	do {
 		this = fr_heap_peek(pool->heap);
 		if (!this) break;
-
 	} while (!fr_connection_manage(pool, this, now));
 
 	/*
@@ -1320,8 +1309,12 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
  * and a function higher up the stack doesn't attempt to use a now invalid
  * connection handle.
  *
+ * @note Will free any talloced memory hung off the context of the connection,
+ *	being reconnected.
+ *
  * @warning After calling reconnect the caller *MUST NOT* attempt to use
- * the old handle in any other operations, as its memory will have been freed.
+ *	the old handle in any other operations, as its memory will have been
+ *	freed.
  *
  * @see fr_connection_get
  * @param[in,out] pool to reconnect the connection in.
