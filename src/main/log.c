@@ -821,7 +821,7 @@ void radlog_request_error(log_type_t type, log_lvl_t lvl, REQUEST *request, char
 	va_end(ap);
 }
 
-/** Write the string being parsed, and a marker showing where the parse error ocurred
+/** Write the string being parsed, and a marker showing where the parse error occurred
  *
  * @param type the log category.
  * @param lvl of debugging this message should be logged at.
