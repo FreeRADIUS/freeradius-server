@@ -95,8 +95,6 @@ fr_connection_pool_t	*fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_poo
  */
 int	fr_connection_pool_get_num(fr_connection_pool_t *pool);
 
-void	*fr_connection_pool_get_opaque(fr_connection_pool_t *pool);
-
 /*
  *	Pool management
  */

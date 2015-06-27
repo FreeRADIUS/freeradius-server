@@ -1247,20 +1247,6 @@ int fr_connection_pool_get_num(fr_connection_pool_t *pool)
 	return pool->num;
 }
 
-/** Get the opaque data associated with a pool
- *
- * @note returned pointer is left non-const intentionally. It's up to the caller
- *	to ensure that if it makes modifications to the opaque data, there are
- *	no side effects.
- *
- * @param pool to retrieve opaque data for.
- * @return the opaque data for the pool.
- */
-void *fr_connection_pool_get_opaque(fr_connection_pool_t *pool)
-{
-	return pool->opaque;
-}
-
 /** Mark connections for reconnection, and spawn at least 'start' connections
  *
  * This intended to be called on a connection pool that's in use, to have it reflect
@@ -1284,8 +1270,6 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool)
 	 *	reconnection.
 	 */
 	pthread_mutex_lock(&pool->mutex);
-	for (this = pool->head; this; this = this->next) this->needs_reconnecting = true;
-
 	/*
 	 *	We want to ensure at least 'start' connections
 	 *	have been reconnected. We can't call reconnect
@@ -1299,6 +1283,8 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool)
 
 		fr_connection_close_internal(pool, this);
 	}
+	for (this = pool->head; this; this = this->next) this->needs_reconnecting = true;
+
 	pthread_mutex_unlock(&pool->mutex);
 
 	now = time(NULL);
