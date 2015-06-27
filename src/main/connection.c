@@ -117,7 +117,7 @@ struct fr_connection_pool_t {
 	time_t		last_at_max;		//!< Last time we hit the maximum number of allowed
 						//!< connections.
 
-	uint32_t	max_pending;		//!< Max number of connections to open
+	uint32_t	max_pending;		//!< Max number of connections to open.
 
 	uint64_t	count;			//!< Number of connections spawned over the lifetime
 						//!< of the pool.
@@ -1360,6 +1360,10 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
 	rad_assert(pool->head == NULL);
 	rad_assert(pool->tail == NULL);
 	rad_assert(pool->num == 0);
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_destroy(&pool->mutex);
+#endif
 
 	talloc_free(pool);
 }
