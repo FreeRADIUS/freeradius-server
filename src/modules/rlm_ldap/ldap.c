@@ -710,7 +710,7 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 	 *	For sanity, for when no connections are viable,
 	 *	and we can't make a new one.
 	 */
-	num = retry ? fr_connection_get_num(inst->pool) : 0;
+	num = retry ? fr_connection_pool_get_num(inst->pool) : 0;
 	for (i = num; i >= 0; i--) {
 #ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
 		if (sasl && sasl->mech) {
@@ -870,7 +870,7 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 	 *	For sanity, for when no connections are viable,
 	 *	and we can't make a new one.
 	 */
-	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
+	for (i = fr_connection_pool_get_num(inst->pool); i >= 0; i--) {
 		(void) ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs,
 				       0, serverctrls, clientctrls, &tv, 0, &msgid);
 
@@ -997,7 +997,7 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 	 *	For sanity, for when no connections are viable,
 	 *	and we can't make a new one.
 	 */
-	for (i = fr_connection_get_num(inst->pool); i >= 0; i--) {
+	for (i = fr_connection_pool_get_num(inst->pool); i >= 0; i--) {
 		RDEBUG2("Modifying object with DN \"%s\"", dn);
 		(void) ldap_modify_ext((*pconn)->handle, dn, mods, NULL, NULL, &msgid);
 
@@ -1577,7 +1577,7 @@ void mod_conn_release(rlm_ldap_t const *inst, ldap_handle_t *conn)
 	 *	Instead, we let the next caller do the rebind.
 	 */
 	if (conn->referred) {
-		fr_connection_del(inst->pool, conn);
+		fr_connection_close_internal(inst->pool, conn);
 		return;
 	}
 

@@ -346,7 +346,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
 	/*
 	 *  inst->pool may be NULL is this function is called by mod_conn_create.
 	 */
-	count = inst->pool ? fr_connection_get_num(inst->pool) : 0;
+	count = inst->pool ? fr_connection_pool_get_num(inst->pool) : 0;
 
 	/*
 	 *  Here we try with each of the existing connections, then try to create
@@ -446,7 +446,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_hand
 	/*
 	 *  inst->pool may be NULL is this function is called by mod_conn_create.
 	 */
-	count = inst->pool ? fr_connection_get_num(inst->pool) : 0;
+	count = inst->pool ? fr_connection_pool_get_num(inst->pool) : 0;
 
 	/*
 	 *  For sanity, for when no connections are viable, and we can't make a new one
