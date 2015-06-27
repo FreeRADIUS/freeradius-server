@@ -672,7 +672,7 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	pool = cf_data_find(cs, CONNECTION_POOL_CF_KEY);
 	if (!pool) {
 		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", log_prefix, parent_name(cs));
-		pool = fr_connection_pool_init(module, cs, opaque, c, a, log_prefix, trigger_prefix);
+		pool = fr_connection_pool_init(cs, cs, opaque, c, a, log_prefix, trigger_prefix);
 		if (!pool) return NULL;
 
 		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
@@ -731,7 +731,6 @@ static int last_released_cmp(void const *one, void const *two)
 	return 0;
 }
 
-
 /** Create a new connection pool
  *
  * Allocates structures used by the connection pool, initialises the various
@@ -742,7 +741,7 @@ static int last_released_cmp(void const *one, void const *two)
  *
  * @note Will call the 'start' trigger.
  *
- * @param[in] parent section.
+ * @param[in] ctx Context to link pool's destruction to.
  * @param[in] cs pool section.
  * @param[in] opaque data pointer to pass to callbacks.
  * @param[in] c Callback to create new connections.
@@ -751,7 +750,7 @@ static int last_released_cmp(void const *one, void const *two)
  * @param[in] trigger_prefix prefix to prepend to all trigger names.
  * @return A new connection pool or NULL on error.
  */
-fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
+fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 					      CONF_SECTION *cs,
 					      void *opaque,
 					      fr_connection_create_t c,
@@ -764,7 +763,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	fr_connection_t *this;
 	time_t now;
 
-	if (!parent || !cs || !opaque || !c) return NULL;
+	if (!cs || !opaque || !c) return NULL;
 
 	now = time(NULL);
 
@@ -780,7 +779,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	 *	Ensure the pool is freed at the same time
 	 *	as its parent.
 	 */
-	if (fr_link_talloc_ctx_free(cs, pool) < 0) {
+	if (fr_link_talloc_ctx_free(ctx, pool) < 0) {
 		talloc_free(pool);
 
 		return NULL;
@@ -904,6 +903,20 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	return pool;
 }
 
+/** Allocate a new pool using an existing one as a template
+ *
+ * @param ctx to allocate new pool in.
+ * @param pool to copy.
+ * @param opaque data to pass to connection function.
+ * @return
+ *	- New connection pool.
+ *	- NULL on error.
+ */
+fr_connection_pool_t *fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_pool_t *pool, void *opaque)
+{
+	return fr_connection_pool_init(ctx, pool->cs, opaque, pool->create,
+				       pool->alive, pool->log_prefix, pool->trigger_prefix);
+}
 
 /** Check whether a connection needs to be removed from the pool
  *
@@ -1243,6 +1256,16 @@ void *fr_connection_get(fr_connection_pool_t *pool)
 int fr_connection_get_num(fr_connection_pool_t *pool)
 {
 	return pool->num;
+}
+
+/** Get the opaque data associated with a pool
+ *
+ * @param pool to retrieve opaque data for.
+ * @return the opaque data for the pool.
+ */
+void *fr_connection_get_opaque(fr_connection_pool_t *pool)
+{
+	return pool->opaque;
 }
 
 /** Release a connection
