@@ -36,21 +36,17 @@ struct fr_fifo_t {
 };
 
 
-fr_fifo_t *fr_fifo_create(int max, fr_fifo_free_t freeNode)
+fr_fifo_t *fr_fifo_create(TALLOC_CTX *ctx, int max, fr_fifo_free_t freeNode)
 {
 	fr_fifo_t *fi;
 
 	if ((max < 2) || (max > (1024 * 1024))) return NULL;
 
-	fi = malloc(sizeof(*fi) + (sizeof(fi->data[0])*max));
+	fi = talloc_zero_size(ctx, (sizeof(*fi) + (sizeof(fi->data[0])*max)));
 	if (!fi) return NULL;
-
-	memset(fi, 0, sizeof(*fi));
+	talloc_set_type(fi, fr_fifo_t);
 
 	fi->max = max;
-	fi->first = 0;
-	fi->last = 0;
-	fi->num = 0;
 	fi->freeNode = freeNode;
 
 	return fi;
@@ -77,7 +73,7 @@ void fr_fifo_free(fr_fifo_t *fi)
 	}
 
 	memset(fi, 0, sizeof(*fi));
-	free(fi);
+	talloc_free(fi);
 }
 
 int fr_fifo_push(fr_fifo_t *fi, void *data)
@@ -137,7 +133,7 @@ int main(int argc, char **argv)
 	int i, j, array[MAX];
 	fr_fifo_t *fi;
 
-	fi = fr_fifo_create(MAX, NULL);
+	fi = fr_fifo_create(NULL, MAX, NULL);
 	if (!fi) fr_exit(1);
 
 	for (j = 0; j < 5; j++) {

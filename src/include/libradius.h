@@ -913,7 +913,7 @@ int		rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *co
  */
 typedef struct	fr_fifo_t fr_fifo_t;
 typedef void (*fr_fifo_free_t)(void *);
-fr_fifo_t	*fr_fifo_create(int max_entries, fr_fifo_free_t freeNode);
+fr_fifo_t	*fr_fifo_create(TALLOC_CTX *ctx, int max_entries, fr_fifo_free_t freeNode);
 void		fr_fifo_free(fr_fifo_t *fi);
 int		fr_fifo_push(fr_fifo_t *fi, void *data);
 void		*fr_fifo_pop(fr_fifo_t *fi);

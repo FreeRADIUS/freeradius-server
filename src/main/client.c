@@ -71,7 +71,7 @@ void client_free(RADCLIENT *client)
 		time_t now;
 
 		if (!deleted_clients) {
-			deleted_clients = fr_fifo_create(1024, (void (*)(void *))client_free);
+			deleted_clients = fr_fifo_create(NULL, 1024, (void (*)(void *))client_free);
 			if (!deleted_clients) return; /* MEMLEAK */
 		}
 
