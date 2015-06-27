@@ -1729,7 +1729,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		/*
-		 *	xlat expansion isn't support here
+		 *	xlat expansion isn't supported here
 		 */
 		if (vp->type == VT_XLAT) {
 			vp->type = VT_DATA;
