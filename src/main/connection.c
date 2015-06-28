@@ -1205,6 +1205,7 @@ int fr_connection_pool_get_num(fr_connection_pool_t *pool)
  *
  * This can be called at any time during the pool's lifecycle.
  *
+ * @param pool to set reconnect callback for.
  * @param reconnect callback to call when reconnecting pool's connections.
  */
 void fr_connection_pool_set_reconnect(fr_connection_pool_t *pool, fr_connection_pool_reconnect_t reconnect)
