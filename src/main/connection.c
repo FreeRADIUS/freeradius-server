@@ -124,6 +124,8 @@ struct fr_connection_pool_t {
 	uint32_t       	num;			//!< Number of connections in the pool.
 	uint32_t	active;	 		//!< Number of currently reserved connections.
 
+	bool		reconnecting;		//!< We are currently reconnecting the pool.
+
 	fr_heap_t	*heap;			//!< For the next connection heap
 
 	fr_connection_t	*head;			//!< Start of the connection list.
@@ -132,6 +134,10 @@ struct fr_connection_pool_t {
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	mutex;			//!< Mutex used to keep consistent state when making
 						//!< modifications in threaded mode.
+	pthread_cond_t	done_spawn;		//!< Threads that need to ensure no spawning is in progress,
+						//!< should block on this condition if pending != 0.
+	pthread_cond_t	done_reconnecting;	//!< Before calling the create callback, threads should
+						//!< block on this condition if reconnecting == true.
 #endif
 
 	CONF_SECTION	*cs;			//!< Configuration section holding the section of parsed
@@ -146,11 +152,14 @@ struct fr_connection_pool_t {
 
 	fr_connection_create_t	create;		//!< Function used to create new connections.
 	fr_connection_alive_t	alive;		//!< Function used to check status of connections.
+	fr_connection_pool_reconnect_t reconnect;	//!< Called during connection pool reconnect.
 };
 
 #ifndef HAVE_PTHREAD_H
 #  define pthread_mutex_lock(_x)
 #  define pthread_mutex_unlock(_x)
+#  define pthread_cond_broadcast(_x)
+#  define pthread_cond_wait(_x, _y)
 #endif
 
 static const CONF_PARSER connection_config[] = {
@@ -167,8 +176,6 @@ static const CONF_PARSER connection_config[] = {
 	{ "spread", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
-
-static fr_connection_t *fr_connection_reconnect_internal(fr_connection_pool_t *pool, fr_connection_t *conn);
 
 /** Order connections by reserved most recently
  */
@@ -401,6 +408,12 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	number = pool->count++;
 
 	/*
+	 *	Don't starve out the thread trying to reconnect
+	 *	the pool, by continuously opening new connections.
+	 */
+	while (pool->reconnecting) pthread_cond_wait(&pool->done_reconnecting, &pool->mutex);
+
+	/*
 	 *	Unlock the mutex while we try to open a new
 	 *	connection.  If there are issues with the back-end,
 	 *	opening a new connection may take a LONG time.  In
@@ -439,6 +452,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 		pthread_mutex_lock(&pool->mutex);
 		pool->max_pending = 1;
 		pool->pending--;
+
+		pthread_cond_broadcast(&pool->done_spawn);
 		pthread_mutex_unlock(&pool->mutex);
 
 		talloc_free(ctx);
@@ -454,6 +469,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 
 	this = talloc_zero(pool, fr_connection_t);
 	if (!this) {
+		pthread_cond_broadcast(&pool->done_spawn);
 		pthread_mutex_unlock(&pool->mutex);
 		talloc_free(ctx);
 
@@ -498,6 +514,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	pool->next_delay = pool->cleanup_interval;
 	pool->last_failed = 0;
 
+	pthread_cond_broadcast(&pool->done_spawn);
 	pthread_mutex_unlock(&pool->mutex);
 
 	fr_connection_exec_trigger(pool, "open");
@@ -981,6 +998,8 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_init(&pool->mutex, NULL);
+	pthread_cond_init(&pool->done_spawn, NULL);
+	pthread_cond_init(&pool->done_reconnecting, NULL);
 #endif
 
 	DEBUG("%s: Initialising connection pool", pool->log_prefix);
@@ -1182,21 +1201,20 @@ int fr_connection_pool_get_num(fr_connection_pool_t *pool)
 	return pool->num;
 }
 
-/** Get the opaque data associated with a pool
+/** Set a reconnection callback for the connection pool
  *
- * @note returned pointer is left non-const intentionally. It's up to the caller
- *	to ensure that if it makes modifications to the opaque data, there are
- *	no side effects.
+ * This can be called at any time during the pool's lifecycle.
  *
- * @param pool to retrieve opaque data for.
- * @return the opaque data for the pool.
+ * @param reconnect callback to call when reconnecting pool's connections.
  */
-void *fr_connection_pool_get_opaque(fr_connection_pool_t *pool)
+void fr_connection_pool_set_reconnect(fr_connection_pool_t *pool, fr_connection_pool_reconnect_t reconnect)
 {
-	return pool->opaque;
+	pool->reconnect = reconnect;
 }
 
 /** Mark connections for reconnection, and spawn at least 'start' connections
+ *
+ * @note This call may block whilst waiting for pending connection attempts to complete.
  *
  * This intended to be called on a connection pool that's in use, to have it reflect
  * a configuration change, or because the administrator knows that all connections
@@ -1214,12 +1232,22 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool)
 	fr_connection_t	*this;
 	time_t		now;
 
-	/*
-	 *	Mark all connections in the pool as requiring
-	 *	reconnection.
-	 */
 	pthread_mutex_lock(&pool->mutex);
-	for (this = pool->head; this; this = this->next) this->needs_reconnecting = true;
+
+	/*
+	 *	Pause new spawn attempts (we release the mutex
+	 *	during our cond wait).
+	 */
+	pool->reconnecting = true;
+
+#ifdef HAVE_PTHREAD_H
+	/*
+	 *	When the loop exits, we'll hold the lock for the pool,
+	 *	and we're guaranteed the connection create callback
+	 *	will not be using the opaque data.
+	 */
+	while (pool->pending) pthread_cond_wait(&pool->done_spawn, &pool->mutex);
+#endif
 
 	/*
 	 *	We want to ensure at least 'start' connections
@@ -1234,7 +1262,31 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool)
 
 		fr_connection_close_internal(pool, this);
 	}
+
+	/*
+	 *	Mark all remaining connections in the pool as
+	 *	requiring reconnection.
+	 */
+	for (this = pool->head; this; this = this->next) this->needs_reconnecting = true;
+
+	/*
+	 *	Call the reconnect callback (if one's set)
+	 *	This may modify the opaque data associated
+	 *	with the pool.
+	 */
+	if (pool->reconnect) pool->reconnect(pool->opaque);
+
+#ifdef HAVE_PTHREAD_H
+	/*
+	 *	Allow new spawn attempts, and wakeup any threads
+	 *	waiting to spawn new connections.
+	 */
+	pool->reconnecting = false;
+	pthread_cond_broadcast(&pool->done_reconnecting);
 	pthread_mutex_unlock(&pool->mutex);
+#endif
+
+	fr_connection_exec_trigger(pool, "reconnect");
 
 	now = time(NULL);
 
@@ -1298,6 +1350,8 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&pool->mutex);
+	pthread_cond_destroy(&pool->done_spawn);
+	pthread_cond_destroy(&pool->done_reconnecting);
 #endif
 
 	talloc_free(pool);

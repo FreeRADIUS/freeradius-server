@@ -35,6 +35,19 @@ extern "C" {
 
 typedef struct fr_connection_pool_t fr_connection_pool_t;
 
+/** Alter the opaque data of a connection pool during reconnection event
+ *
+ * This function will be called whenever we have been signalled to
+ * reconnect all the connections in a pool.
+ *
+ * It is called at a point where we have determined that no connection
+ * spawning is in progress, so it is safe to modify any pointers or
+ * memory associated with the opaque data.
+ *
+ * @param[in,out] opaque pointer passed to fr_connection_pool_init.
+ */
+typedef void (*fr_connection_pool_reconnect_t)(void *opaque);
+
 /** Create a new connection handle
  *
  * This function will be called whenever the connection pool manager needs
@@ -95,11 +108,11 @@ fr_connection_pool_t	*fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_poo
 
 
 /*
- *	Pool getters
+ *	Pool get/set
  */
 int	fr_connection_pool_get_num(fr_connection_pool_t *pool);
 
-void	*fr_connection_pool_get_opaque(fr_connection_pool_t *pool);
+void	fr_connection_pool_set_reconnect(fr_connection_pool_t *pool, fr_connection_pool_reconnect_t reconnect);
 
 /*
  *	Pool management
