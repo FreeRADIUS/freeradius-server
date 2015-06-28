@@ -1415,7 +1415,7 @@ int fr_blocking(UNUSED int fd)
  * @note Should only be used on nonblocking file descriptors.
  * @note Socket should likely be closed on timeout.
  * @note iovec may be modified in such a way that it's not re-usable.
- * @note Leaves errno set to the last error that ocurred.
+ * @note Leaves errno set to the last error that occurred.
  *
  * @param fd to write to.
  * @param vector to write.
