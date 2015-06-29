@@ -909,6 +909,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	int i, j, count, from_count, to_count, tailto;
 	VALUE_PAIR *vp, *next, **last;
 	VALUE_PAIR **from_list, **to_list;
+	VALUE_PAIR *append, **append_tail;
 	int *edited = NULL;
 
 	/*
@@ -938,6 +939,9 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 
 	for (vp = *to; vp != NULL; vp = vp->next) count++;
 	to_list = rad_malloc(sizeof(*to_list) * count);
+
+	append = NULL;
+	append_tail = &append;
 
 	/*
 	 *	Move the lists to the arrays, and break the list
@@ -976,7 +980,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		 *	is empty, and we're supposed to replace or
 		 *	"add if not existing".
 		 */
-		if (from_list[i]->operator == T_OP_ADD) goto append;
+		if (from_list[i]->operator == T_OP_ADD) goto do_append;
 
 		found = FALSE;
 		for (j = 0; j < to_count; j++) {
@@ -1118,11 +1122,13 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			    (from_list[i]->operator == T_OP_LE) ||
 			    (from_list[i]->operator == T_OP_GE) ||
 			    (from_list[i]->operator == T_OP_SET)) {
-			append:
+			do_append:
 				RDEBUG4("::: APPENDING %s FROM %d TO %d",
 				       from_list[i]->name, i, tailto);
-				to_list[tailto++] = from_list[i];
+				*append_tail = from_list[i];
+				from_list[i]->operator = T_OP_EQ;
 				from_list[i] = NULL;
+				append_tail = &(*append_tail)->next;
 			}
 		}
 	}
@@ -1162,6 +1168,12 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		*last = to_list[i];
 		last = &(*last)->next;
 	}
+
+	/*
+	 *	And finally add in the attributes we're appending to
+	 *	the tail of the "to" list.
+	 */
+	*last = append;
 
 	rad_assert(request != NULL);
 	rad_assert(request->packet != NULL);
