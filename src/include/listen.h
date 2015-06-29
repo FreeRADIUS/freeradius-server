@@ -113,15 +113,11 @@ typedef struct listen_socket_t {
 
 	char const	*interface;
 
-// PCAP only required if SO_BINDTODEVICE not available.
-#ifndef SO_BINDTODEVICE
 	fr_pcap_t	*pcap;
+	fr_pcap_type_t pcap_type;
 	rad_pcap_filter_builder pcap_filter_builder;
-#endif
 
-#ifdef SO_BROADCAST
 	int		broadcast;
-#endif
 	time_t		rate_time;
 	uint32_t	rate_pps_old;
 	uint32_t	rate_pps_now;

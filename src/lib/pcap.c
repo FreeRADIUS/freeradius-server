@@ -35,6 +35,7 @@
 
 #include <freeradius-devel/pcap.h>
 #include <freeradius-devel/net.h>
+#include <freeradius-devel/rad_assert.h>
 
 /** Talloc destructor to free pcap resources associated with a handle.
  *
@@ -108,7 +109,14 @@ int fr_pcap_if_link_layer(char *errbuff, pcap_if_t *dev)
  */
 fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 {
-	fr_pcap_t *this = talloc_zero(ctx, fr_pcap_t);
+	fr_pcap_t *this;
+
+	if (!fr_assert(type >= PCAP_INTERFACE_IN && type <= PCAP_INTERFACE_IN_OUT)) {
+		fr_strerror_printf("Invalid PCAP type: %d", type);
+		return NULL;
+	}
+
+	this = talloc_zero(ctx, fr_pcap_t);
 	if (!this) {
 		return NULL;
 	}
