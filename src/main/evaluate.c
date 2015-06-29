@@ -765,6 +765,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp, *next, **last;
 	VALUE_PAIR **from_list, **to_list;
+	VALUE_PAIR *append, **append_tail;
 	VALUE_PAIR *to_copy;
 	bool *edited = NULL;
 	REQUEST *fixup = NULL;
@@ -799,6 +800,9 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 
 	for (vp = fr_cursor_init(&cursor, to); vp; vp = fr_cursor_next(&cursor)) count++;
 	to_list = talloc_array(request, VALUE_PAIR *, count);
+
+	append = NULL;
+	append_tail = &append;
 
 	/*
 	 *	Move the lists to the arrays, and break the list
@@ -840,7 +844,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 		 *	is empty, and we're supposed to replace or
 		 *	"add if not existing".
 		 */
-		if (from_list[i]->op == T_OP_ADD) goto append;
+		if (from_list[i]->op == T_OP_ADD) goto do_append;
 
 		found = false;
 		for (j = 0; j < to_count; j++) {
@@ -982,11 +986,13 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			    (from_list[i]->op == T_OP_LE) ||
 			    (from_list[i]->op == T_OP_GE) ||
 			    (from_list[i]->op == T_OP_SET)) {
-			append:
+			do_append:
 				RDEBUG4("::: APPENDING %s FROM %d TO %d",
 				       from_list[i]->da->name, i, tailto);
-				to_list[tailto++] = from_list[i];
+				*append_tail = from_list[i];
+				from_list[i]->op = T_OP_EQ;
 				from_list[i] = NULL;
+				append_tail = &(*append_tail)->next;
 			}
 		}
 	}
@@ -1014,10 +1020,6 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	} else if (request->parent && (to == &request->parent->packet->vps)) {
 		fixup = request->parent;
 	}
-	if (fixup) {
-		fixup->username = NULL;
-		fixup->password = NULL;
-	}
 
 	for (i = 0; i < tailto; i++) {
 		if (!to_list[i]) continue;
@@ -1034,12 +1036,27 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 		 */
 		vp->op = T_OP_EQ;
 
-		/*
-		 *	Fix dumb cache issues
-		 */
-		if (fixup && !vp->da->vendor) {
-			if ((vp->da->attr == PW_USER_NAME) &&
-			    !fixup->username) {
+		*last = vp;
+		last = &(*last)->next;
+	}
+
+	/*
+	 *	And finally add in the attributes we're appending to
+	 *	the tail of the "to" list.
+	 */
+	*last = append;
+
+	/*
+	 *	Fix dumb cache issues
+	 */
+	if (fixup) {
+		fixup->username = NULL;
+		fixup->password = NULL;
+
+		for (vp = fixup->packet->vps; vp != NULL; vp = vp->next) {
+			if (vp->da->vendor) continue;
+
+			if ((vp->da->attr == PW_USER_NAME) && !fixup->username) {
 				fixup->username = vp;
 
 			} else if (vp->da->attr == PW_STRIPPED_USER_NAME) {
@@ -1049,9 +1066,6 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 				fixup->password = vp;
 			}
 		}
-
-		*last = vp;
-		last = &(*last)->next;
 	}
 
 	rad_assert(request->packet != NULL);
