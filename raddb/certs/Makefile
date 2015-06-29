@@ -9,7 +9,7 @@
 #
 ######################################################################
 
-DH_KEY_SIZE	= 1024
+DH_KEY_SIZE	= 2048
 
 #
 #  Set the passwords
@@ -46,7 +46,7 @@ passwords.mk: server.cnf ca.cnf client.cnf
 #
 ######################################################################
 dh:
-	openssl dhparam -out dh $(DH_KEY_SIZE)
+	openssl gendh -out dh -2 $(DH_KEY_SIZE)
 
 ######################################################################
 #
