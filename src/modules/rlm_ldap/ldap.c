@@ -743,11 +743,7 @@ process_error:
  */
 ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
 			   char const *password, ldap_sasl *sasl, bool retry,
-#ifdef HAVE_LDAP_SASL_INTERACTIVE_BIND
 			   LDAPControl **serverctrls, LDAPControl **clientctrls
-#else
-			   UNUSED LDAPControl **serverctrls, UNUSED LDAPControl **clientctrls
-#endif
 			   )
 {
 	ldap_rcode_t		status = LDAP_PROC_ERROR;
@@ -784,15 +780,16 @@ ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle
 		} else
 #endif
 		{
-			msgid = ldap_bind((*pconn)->handle, dn, password, LDAP_AUTH_SIMPLE);
+			int ret;
+			struct berval cred;
+			cred.bv_val = (char *)password;
+			cred.bv_len = talloc_array_length(password) - 1;
 
+			ret = ldap_sasl_bind((*pconn)->handle, dn, LDAP_SASL_SIMPLE, &cred,
+					     serverctrls, clientctrls, &msgid);
 			/* We got a valid message ID */
-			if (msgid >= 0) {
-				if (request) {
-					RDEBUG2("Waiting for bind result...");
-				} else {
-					DEBUG2("rlm_ldap (%s): Waiting for bind result...", inst->name);
-				}
+			if ((ret == 0) && (msgid >= 0)) {
+				MOD_ROPTIONAL(RDEBUG2, DEBUG2, "Waiting for bind result...");
 			}
 
 			status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
