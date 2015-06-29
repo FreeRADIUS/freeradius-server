@@ -2101,8 +2101,8 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET 
 	/* fill in UDP layer (L4) */
 	udp_header_t *uh = (udp_header_t *) (dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE);
 
-	uh->src = htons(68);
-	uh->dst = htons(67);
+	uh->src = htons(packet->src_port);
+	uh->dst = htons(packet->dst_port);
 	u_int16_t l4_len = (UDP_HDR_SIZE + packet->data_len);
 	uh->len = htons(l4_len);
 	uh->checksum = 0; /* UDP checksum will be done after dhcp header */
@@ -2245,14 +2245,6 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	/* c. Check UDP layer data (L4) */
 	udp_src_port = ntohs(udp_hdr->src);
 	udp_dst_port = ntohs(udp_hdr->dst);
-
-	/*
-	 *	A DHCP server will always respond to port 68 (to a
-	 *	client) or 67 (to a relay).  Just check that both
-	 *	ports are 67 or 68.
-	 */
-	if (udp_src_port != 67 && udp_src_port != 68) DISCARD_RP("UDP src port (%d) != DHCP (67 or 68)", udp_src_port);
-	if (udp_dst_port != 67 && udp_dst_port != 68) DISCARD_RP("UDP dst port (%d) != DHCP (67 or 68)", udp_dst_port);
 
 	/* d. Check DHCP layer data */
 	dhcp_data_len = data_len - data_offset;
