@@ -777,8 +777,10 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp, *next, **last;
 	VALUE_PAIR **from_list, **to_list;
+	VALUE_PAIR *to_copy;
 	bool *edited = NULL;
 	REQUEST *fixup = NULL;
+	TALLOC_CTX *ctx;
 
 	if (!request) return;
 
@@ -822,7 +824,9 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	}
 
 	to_count = 0;
-	for (vp = *to; vp != NULL; vp = next) {
+	ctx = talloc_parent(*to);
+	to_copy = paircopy(ctx, *to);
+	for (vp = to_copy; vp != NULL; vp = next) {
 		next = vp->next;
 		to_list[to_count++] = vp;
 		vp->next = NULL;
@@ -1014,7 +1018,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	/*
 	 *	Re-chain the "to" list.
 	 */
-	*to = NULL;
+	pairfree(to);
 	last = to;
 
 	if (to == &request->packet->vps) {
