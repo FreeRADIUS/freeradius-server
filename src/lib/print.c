@@ -468,6 +468,10 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quot
 {
 	VERIFY_VP(vp);
 
+	if (vp->type == VT_XLAT) {
+		return snprintf(out, outlen, "%c%s%c", quote, vp->value.xlat, quote);
+	}
+
 	return value_data_prints(out, outlen, vp->da->type, vp->da, &vp->data, quote);
 }
 
