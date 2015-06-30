@@ -852,7 +852,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		value = cf_pair_value(cp);
 
-#if defined(HAVE_LDAP_URL_PARSE) && defined(HAVE_LDAP_IS_LDAP_URL) && defined(LDAP_URL_DESC2STR)
+#if defined(HAVE_LDAP_URL_PARSE) && defined(HAVE_LDAP_IS_LDAP_URL) && defined(HAVE_LDAP_URL_DESC2STR)
 		/*
 		 *	Split original server value out into URI, server and port
 		 *	so whatever initialization function we use later will have
@@ -879,10 +879,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				goto ldap_url_error;
 			}
 
-			if (ldap_url->lud_scope >= 0) {
+			if (ldap_url->lud_scope != 0) {
 				cf_log_err_cs(conf, "Scope cannot be specified via server URL");
 				goto ldap_url_error;
 			}
+			ldap_url->lud_scope = -1;	/* Otherwise LDAP adds ?base */
 
 			/* We allow extensions */
 
@@ -920,7 +921,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 					goto ldap_url_error;
 				}
 				inst->server = talloc_asprintf_append(inst->server, "%s ", url);
-				LDAP_FREE(url);
+				free(url);
 			}
 #  else
 			/*
