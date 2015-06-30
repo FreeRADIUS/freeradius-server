@@ -57,6 +57,6 @@ commonName		= "Example Certificate Authority"
 [v3_ca]
 subjectKeyIdentifier	= hash
 authorityKeyIdentifier	= keyid:always,issuer:always
-basicConstraints	= CA:true
+basicConstraints	= critical,CA:true
 crlDistributionPoints	= URI:http://www.example.org/example_ca.crl
 
