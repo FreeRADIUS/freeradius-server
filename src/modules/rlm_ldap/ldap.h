@@ -25,6 +25,14 @@
 #include "config.h"
 
 /*
+ *	Framework on OSX doesn't export the symbols but leaves
+ *	the macro defined *sigh*.
+ */
+#ifndef HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL
+#  undef LDAP_CONTROL_X_SESSION_TRACKING
+#endif
+
+/*
  *	There's a typo in libldap's ldap.h which was fixed by
  *	Howard Chu in 19aeb1cd. This typo had the function defined
  *	as ldap_create_session_tracking_control but declared as
