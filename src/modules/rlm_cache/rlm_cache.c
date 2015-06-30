@@ -901,7 +901,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->handle = lt_dlopenext(inst->config.driver_name);
 	if (!inst->handle) {
-		cf_log_err_cs(conf, "Could not link driver %s: %s", inst->config.driver_name, dlerror());
+		cf_log_err_cs(conf, "Could not link driver %s: %s", inst->config.driver_name, fr_strerror());
 		cf_log_err_cs(conf, "Make sure it (and all its dependent libraries!) are in the search path"
 			      "of your system's ld");
 		return -1;

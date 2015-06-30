@@ -142,10 +142,10 @@ static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 
 lt_dlhandle lt_dlopenext(char const *name)
 {
-	int flags = RTLD_NOW;
-	void *handle;
-	char buffer[2048];
-	char *env;
+	int	flags = RTLD_NOW;
+	void	*handle;
+	char	buffer[2048];
+	char	*env;
 
 #ifdef RTLD_GLOBAL
 	if (strcmp(name, "rlm_perl") == 0) {
@@ -163,31 +163,42 @@ lt_dlhandle lt_dlopenext(char const *name)
 	/*
 	 *	Prefer loading our libraries by absolute path.
 	 */
-	snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
+	if (radlib_dir) {
+		char *error;
 
-	DEBUG4("Loading library using absolute path \"%s\"", name);
+		snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
 
-	handle = dlopen(buffer, flags);
-	if (handle) return handle;
+		DEBUG4("Loading library using absolute path \"%s\"", buffer);
 
-	/*
-	 *	Because dlopen produces really shitty and inaccurate error messages
-	 */
-	if (access(name, R_OK) < 0) switch (errno) {
-	case EACCES:
-		WARN("Library file found, but we don't have permission to read it");
-		break;
+		handle = dlopen(buffer, flags);
+		if (handle) return handle;
+		error = dlerror();
 
-	case ENOENT:
-		DEBUG4("Library file not found");
-		break;
+		fr_strerror_printf("%s", error);
+		DEBUG4("Failed with error: %s", error);
 
-	default:
-		DEBUG4("Issue accessing library file: %s", fr_syserror(errno));
-		break;
+		/*
+		 *	Because dlopen (on OSX at least) produces really
+		 *	shitty and inaccurate error messages
+		 */
+		if (access(buffer, R_OK) < 0) {
+			switch (errno) {
+			case EACCES:
+				WARN("Library file found, but we don't have permission to read it");
+				break;
+
+			case ENOENT:
+				DEBUG4("Library file not found");
+				break;
+
+			default:
+				DEBUG4("Issue accessing library file: %s", fr_syserror(errno));
+				break;
+			}
+		}
 	}
 
-	DEBUG4("Falling back to linker search path(s)");
+	DEBUG4("Loading library using linker search path(s)");
 	if (DEBUG_ENABLED4) {
 #ifdef __APPLE__
 
@@ -222,7 +233,21 @@ lt_dlhandle lt_dlopenext(char const *name)
 	 */
 	strlcat(buffer, LT_SHREXT, sizeof(buffer));
 
-	return dlopen(buffer, flags);
+	handle = dlopen(buffer, flags);
+	if (!handle) {
+		char *error = dlerror();
+
+		DEBUG4("Failed with error: %s", error);
+		/*
+		 *	Don't overwrite the previous message
+		 *	It's likely to contain a better error.
+		 */
+		if (!radlib_dir) {
+			fr_strerror_printf("%s", dlerror());
+		}
+		return NULL;
+	}
+	return handle;
 }
 
 void *lt_dlsym(lt_dlhandle handle, char const *symbol)
@@ -470,7 +495,7 @@ static module_entry_t *module_dlopen(CONF_SECTION *cs, char const *module_name)
 	 */
 	handle = lt_dlopenext(module_name);
 	if (!handle) {
-		cf_log_err_cs(cs, "Failed to link to module '%s': %s", module_name, dlerror());
+		cf_log_err_cs(cs, "Failed to link to module '%s': %s", module_name, fr_strerror());
 		return NULL;
 	}
 
