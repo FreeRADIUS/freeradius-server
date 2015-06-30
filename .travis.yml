@@ -8,6 +8,8 @@ env:
     - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
     - SQL_MYSQL_TEST_SERVER="127.0.0.1"
     - SQL_POSTGRESQL_TEST_SERVER="127.0.0.1"
+    - LDAP_TEST_SERVER="127.0.0.1"
+    - LDAP_TEST_SERVER_PORT="3890"
     - secure: "H+uQeyOgsIyXtIPPG2VzAG8S/8KYGHlHaWhdiNuz1LM3SMcEKoPqG6o/P+HO8HVvYnA6nelyGuEryV90UfuwGY9YC6A/pqPQvx/gXSso63Zt66XSaiZjulCSm9OV8EB3wyWF7VSQ/ZHcn+L01hIlsQXTqLprMaC33cM0FYPr9fY="
   matrix:
     - DO_BUILD=yes LIBS_OPTIONAL=no LIBS_SHARED=yes BUILD_CFLAGS="-DWITH_EVAL_DEBUG"
@@ -74,6 +76,8 @@ addons:
       - libwbclient-dev
       - libykclient-dev
       - libyubikey-dev
+      - slapd
+      - ldap-utils
   postgresql: "9.4"
 before_install:
   - $CC --version

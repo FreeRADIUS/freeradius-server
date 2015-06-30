@@ -45,3 +45,4 @@ fi
 echo "Setting up fixtures"
 ./scripts/travis/postgresql-setup.sh
 ./scripts/travis/mysql-setup.sh
+./scripts/travis/ldap-setup.sh
