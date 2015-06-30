@@ -94,7 +94,10 @@ if test x$with_[]modname != xno; then
 			ldap_set_rebind_proc \
 			ldap_create_sort_control \
 			ldap_create_sort_keylist \
-			ldap_free_sort_keylist
+			ldap_free_sort_keylist \
+			ldap_url_parse \
+			ldap_is_ldap_url \
+			ldap_url_desc2str
 		)
 		AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
 			AC_TRY_COMPILE([

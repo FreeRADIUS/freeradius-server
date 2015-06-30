@@ -852,6 +852,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		value = cf_pair_value(cp);
 
+#if defined(HAVE_LDAP_URL_PARSE) && defined(HAVE_LDAP_IS_LDAP_URL) && defined(LDAP_URL_DESC2STR)
 		/*
 		 *	Split original server value out into URI, server and port
 		 *	so whatever initialization function we use later will have
@@ -859,65 +860,87 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 */
 		if (ldap_is_ldap_url(value)) {
 			LDAPURLDesc	*ldap_url;
-			int		port = -1;
+			int		default_port = LDAP_PORT;
 
 			if (ldap_url_parse(value, &ldap_url)){
 				cf_log_err_cs(conf, "Parsing LDAP URL \"%s\" failed", value);
+			ldap_url_error:
+				ldap_free_urldesc(ldap_url);
 				return -1;
 			}
 
-#ifndef HAVE_LDAP_INITIALIZE
+			if (ldap_url->lud_dn) {
+				cf_log_err_cs(conf, "Base DN cannot be specified via server URL");
+				goto ldap_url_error;
+			}
+
+			if (ldap_url->lud_attrs && ldap_url->lud_attrs[0]) {
+				cf_log_err_cs(conf, "Attribute list cannot be specified via server URL");
+				goto ldap_url_error;
+			}
+
+			if (ldap_url->lud_scope >= 0) {
+				cf_log_err_cs(conf, "Scope cannot be specified via server URL");
+				goto ldap_url_error;
+			}
+
+			/* We allow extensions */
+
+#  ifdef HAVE_LDAP_INITIALIZE
+			{
+				char *url;
+
+				/*
+				 *	Figure out the default port from the URL
+				 */
+				if (ldap_url->lud_scheme && (strcmp(ldap_url->lud_scheme, "ldaps") == 0)) {
+					if (inst->start_tls == true) {
+						cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
+							      "with 'start_tls'");
+						goto ldap_url_error;
+					}
+					default_port = LDAPS_PORT;
+				}
+
+				/*
+				 *	Configured port overrides URL port
+				 */
+				if (inst->port) ldap_url->lud_port = inst->port;
+
+				/*
+				 *	If there's no URL port, then set it to the default
+				 *	this is so debugging messages show explicitly
+				 *	the port we're connecting to.
+				 */
+				if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
+
+				url = ldap_url_desc2str(ldap_url);
+				if (!url) {
+					cf_log_err_cs(conf, "Failed recombining URL components");
+					goto ldap_url_error;
+				}
+				inst->server = talloc_asprintf_append(inst->server, "%s ", url);
+				LDAP_FREE(url);
+			}
+#  else
 			/*
 			 *	No LDAP initialize function.  Can't specify a scheme.
 			 */
 			if (ldap_url->lud_scheme &&
-			    (strcmp(ldap_url->lud_scheme, "ldaps") == 0) ||
+			    ((strcmp(ldap_url->lud_scheme, "ldaps") == 0) ||
 			    (strcmp(ldap_url->lud_scheme, "ldapi") == 0) ||
-			    (strcmp(ldap_url->lud_scheme, "cldap") == 0)) {
+			    (strcmp(ldap_url->lud_scheme, "cldap") == 0))) {
 				cf_log_err_cs(conf, "%s is not supported by linked libldap",
 					      ldap_url->lud_scheme);
 				return -1;
 			}
 
-#else
-			/*
-			 *	Figure out the port from the URL
-			 */
-			if (ldap_url->lud_scheme) {
-				if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
-					if (inst->start_tls == true) {
-						cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
-							      "with 'start_tls'");
-						return -1;
-					}
-
-					port = inst->port ? inst->port : LDAPS_PORT;
-
-				} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
-					port = 0;
-
-				} else if (strcmp(ldap_url->lud_scheme, "cldap") == 0) {
-					port = inst->port ? inst->port : LDAP_PORT;
-				} /* else don't set the port */
-			}	  /* else don't set the port */
-#endif
-			if (port < 0) port = inst->port ? inst->port : LDAP_PORT;
-
-
-			if (ldap_url->lud_port > 0) port = ldap_url->lud_port;
-
-#ifdef HAVE_LDAP_INITIALIZE
-			inst->server = talloc_asprintf_append(inst->server, "%s://%s",
-							      ldap_url->lud_scheme ? ldap_url->lud_scheme : "ldap",
-							      ldap_url->lud_host ? ldap_url->lud_host : "");
-			if (port) inst->server = talloc_asprintf_append(inst->server, ":%i", port);
-			inst->server = talloc_strdup_append(inst->server, " ");
-#else
+			default_port = inst->port ? inst->port : LDAP_PORT;
 			inst->server = talloc_asprintf_append(inst->server, "%s",
 							      ldap_url->lud_host ? ldap_url->lud_host : "localhost");
-			if (port) inst->server = talloc_asprintf_append(inst->server, ":%i", port);
+			if (default_port) inst->server = talloc_asprintf_append(inst->server, ":%i", default_port);
 			inst->server = talloc_strdup_append(inst->server, " ");
-#endif
+#  endif
 			/*
 			 *	@todo We could set a few other top level
 			 *	directives using the URL, like base_dn
@@ -927,7 +950,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		/*
 		 *	We need to construct an LDAP URI
 		 */
-		} else {
+		} else
+#endif	/* HAVE_LDAP_URL_PARSE && HAVE_LDAP_IS_LDAP_URL && LDAP_URL_DESC2STR */
+		/*
+		 *	If it's not an URL, or we don't have the functions necessary
+		 *	to break apart the URL and recombine it, then just treat
+		 *	server as a hostname.
+		 */
+		{
 #ifdef HAVE_LDAP_INITIALIZE
 			char	const *p;
 			char	*q;
