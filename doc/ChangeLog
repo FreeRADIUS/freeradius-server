@@ -97,6 +97,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* rlm_expr now errors out correctly on malformed attribute
 	  references instead of triggering an assert.
 	* Make "break" work in "foreach" loops
+	* Re-urlencode the path portion of ldapi:// urls before
+	  passing it to ldap_initialise.
 
 FreeRADIUS 3.0.8 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	Feature improvements
