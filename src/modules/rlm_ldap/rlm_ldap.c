@@ -966,22 +966,27 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 			port = inst->port;
 
+			/*
+			 *	We don't support URLs if the library didn't provide
+			 *	URL parsing functions.
+			 */
+			if (strchr(value, '/')) {
+			bad_server_fmt:
+				cf_log_err_cp(cp, "Invalid server value, must be in format <server>[:<port>]");
+				return -1;
+			}
+
 			p = strrchr(value, ':');
 			if (p) {
 				port = (int)strtol((p + 1), &q, 10);
-				if ((p == value) || ((p + 1) == q) || (*q != '\0')) {
-					cf_log_err_cp(cp, "Invalid server, must be in <server>[:<port>] format");
-					return -1;
-				}
+				if ((p == value) || ((p + 1) == q) || (*q != '\0')) goto bad_server_fmt;
 				len = p - value;
 			} else {
 				len = strlen(value);
 			}
-
 			if (port == 0) port = LDAP_PORT;
 
-			inst->server = talloc_asprintf_append(inst->server, "ldap://%.*s:%i ",
-							      (int) len, value, port);
+			inst->server = talloc_asprintf_append(inst->server, "ldap://%.*s:%i ", (int) len, value, port);
 #else
 			/*
 			 *	ldap_init takes port, which can be overridden by :port so
