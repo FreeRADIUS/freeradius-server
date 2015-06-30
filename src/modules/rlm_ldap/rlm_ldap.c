@@ -1054,9 +1054,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 				if (default_port > 0) {
 					/*
-					 *	Configured port overrides URL port
+					 *	URL port overrides configured port.
 					 */
-					if (inst->port) ldap_url->lud_port = inst->port;
+					if (!ldap_url->lud_port) ldap_url->lud_port = inst->port;
 
 					/*
 					 *	If there's no URL port, then set it to the default
@@ -1064,7 +1064,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 					 *	the port we're connecting to.
 					 */
 					if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
-
 				}
 
 				url = ldap_url_desc2str(ldap_url);
@@ -1088,7 +1087,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				return -1;
 			}
 
-			default_port = inst->port ? inst->port : LDAP_PORT;
+			default_port = ldap_url->lud_port;
+			if (!default_port) inst->port ? inst->port : LDAP_PORT;
 			inst->server = talloc_asprintf_append(inst->server, "%s",
 							      ldap_url->lud_host ? ldap_url->lud_host : "localhost");
 			if (default_port) inst->server = talloc_asprintf_append(inst->server, ":%i", default_port);
