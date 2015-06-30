@@ -902,8 +902,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 							goto ldap_url_error;
 						}
 						default_port = LDAPS_PORT;
+
 					} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
-						default_port = -1;
+						default_port = -1; /* Unix socket, no port */
 					}
 				}
 
@@ -942,12 +943,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				return -1;
 			}
 
-			default_port = ldap_url->lud_port;
-			if (!default_port) inst->port ? inst->port : LDAP_PORT;
-			inst->server = talloc_asprintf_append(inst->server, "%s",
-							      ldap_url->lud_host ? ldap_url->lud_host : "localhost");
-			if (default_port) inst->server = talloc_asprintf_append(inst->server, ":%i", default_port);
-			inst->server = talloc_strdup_append(inst->server, " ");
+			/*
+			 *	URL port over-rides the configured
+			 *	port.  But if there's no configured
+			 *	port, we use the hard-coded default.
+			 */
+			if (!ldap_url->lud_port) ldap_url->lud_port = inst->port;
+			if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
+
+			inst->server = talloc_asprintf_append(inst->server, "%s:%i ",
+							      ldap_url->lud_host ? ldap_url->lud_host : "localhost",
+							      ldap_url->lud_port);
 #  endif
 			/*
 			 *	@todo We could set a few other top level
