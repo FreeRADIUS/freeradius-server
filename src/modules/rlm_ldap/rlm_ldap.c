@@ -1039,26 +1039,33 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				/*
 				 *	Figure out the default port from the URL
 				 */
-				if (ldap_url->lud_scheme && (strcmp(ldap_url->lud_scheme, "ldaps") == 0)) {
-					if (inst->start_tls == true) {
-						cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
-							      "with 'start_tls'");
-						goto ldap_url_error;
+				if (ldap_url->lud_scheme) {
+					if (strcmp(ldap_url->lud_scheme, "ldaps") == 0) {
+						if (inst->start_tls == true) {
+							cf_log_err_cs(conf, "ldaps:// scheme is not compatible "
+								      "with 'start_tls'");
+							goto ldap_url_error;
+						}
+						default_port = LDAPS_PORT;
+					} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
+						default_port = -1;
 					}
-					default_port = LDAPS_PORT;
 				}
 
-				/*
-				 *	Configured port overrides URL port
-				 */
-				if (inst->port) ldap_url->lud_port = inst->port;
+				if (default_port > 0) {
+					/*
+					 *	Configured port overrides URL port
+					 */
+					if (inst->port) ldap_url->lud_port = inst->port;
 
-				/*
-				 *	If there's no URL port, then set it to the default
-				 *	this is so debugging messages show explicitly
-				 *	the port we're connecting to.
-				 */
-				if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
+					/*
+					 *	If there's no URL port, then set it to the default
+					 *	this is so debugging messages show explicitly
+					 *	the port we're connecting to.
+					 */
+					if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
+
+				}
 
 				url = ldap_url_desc2str(ldap_url);
 				if (!url) {
