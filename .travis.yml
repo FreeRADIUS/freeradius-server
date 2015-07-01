@@ -5,6 +5,8 @@ compiler:
 sudo: false
 env:
   global:
+    - LDAP_TEST_SERVER="127.0.0.1"
+    - LDAP_TEST_SERVER_PORT="3890"
     - PANIC_ACTION="gdb -batch -x raddb/panic.gdb %e %p 1>&0 2>&0"
     - SQL_MYSQL_TEST_SERVER="127.0.0.1"
     - SQL_POSTGRESQL_TEST_SERVER="127.0.0.1"
@@ -74,6 +76,8 @@ addons:
       - libwbclient-dev
       - libykclient-dev
       - libyubikey-dev
+      - slapd
+      - ldap-utils
   postgresql: "9.4"
 before_install:
   - $CC --version
