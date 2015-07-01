@@ -997,7 +997,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		value = cf_pair_value(cp);
 
-#if defined(HAVE_LDAP_URL_PARSE) && defined(HAVE_LDAP_IS_LDAP_URL) && defined(HAVE_LDAP_URL_DESC2STR)
+#ifdef LDAP_CAN_PARSE_URLS
 		/*
 		 *	Split original server value out into URI, server and port
 		 *	so whatever initialization function we use later will have
@@ -1005,7 +1005,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 */
 		if (ldap_is_ldap_url(value)) {
 			LDAPURLDesc	*ldap_url;
+			bool		set_port_maybe = true;
 			int		default_port = LDAP_PORT;
+			char		*p;
 
 			if (ldap_url_parse(value, &ldap_url)){
 				cf_log_err_cs(conf, "Parsing LDAP URL \"%s\" failed", value);
@@ -1024,11 +1026,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				goto ldap_url_error;
 			}
 
-			if (ldap_url->lud_scope != 0) {
+			/*
+			 *	ldap_url_parse sets this to base by default.
+			 */
+			if (ldap_url->lud_scope != LDAP_SCOPE_BASE) {
 				cf_log_err_cs(conf, "Scope cannot be specified via server URL");
 				goto ldap_url_error;
 			}
 			ldap_url->lud_scope = -1;	/* Otherwise LDAP adds ?base */
+
+			/*
+			 *	The public ldap_url_parse function sets the default
+			 *	port, so we have to discover whether a port was
+			 *	included ourselves.
+			 */
+			if ((p = strchr(value, ']')) && (p[1] == ':')) {			/* IPv6 */
+				set_port_maybe = false;
+			} else if ((p = strchr(value, ':')) && (p = strchr(p + 1, ':'))) {	/* IPv4 */
+				set_port_maybe = false;
+			}
 
 			/* We allow extensions */
 
@@ -1049,15 +1065,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 						default_port = LDAPS_PORT;
 
 					} else if (strcmp(ldap_url->lud_scheme, "ldapi") == 0) {
-						default_port = -1; /* Unix socket, no port */
+						set_port_maybe = false; /* Unix socket, no port */
 					}
 				}
 
-				if (default_port > 0) {
+				if (set_port_maybe) {
 					/*
 					 *	URL port overrides configured port.
 					 */
-					if (!ldap_url->lud_port) ldap_url->lud_port = inst->port;
+					ldap_url->lud_port = inst->port;
 
 					/*
 					 *	If there's no URL port, then set it to the default
@@ -1093,8 +1109,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 *	port.  But if there's no configured
 			 *	port, we use the hard-coded default.
 			 */
-			if (!ldap_url->lud_port) ldap_url->lud_port = inst->port;
-			if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
+			if (set_port_maybe) {
+				ldap_url->lud_port = inst->port;
+				if (!ldap_url->lud_port) ldap_url->lud_port = default_port;
+			}
 
 			inst->server = talloc_asprintf_append(inst->server, "%s:%i ",
 							      ldap_url->lud_host ? ldap_url->lud_host : "localhost",
@@ -1131,7 +1149,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 */
 			if (strchr(value, '/')) {
 			bad_server_fmt:
+#ifdef LDAP_CAN_PARSE_URLS
+				cf_log_err_cp(cp, "Invalid server value, must be in format <server>[:<port>] or "
+					      "an ldap URI (ldap|cldap|ldaps|ldapi)://<server>:<port>");
+#else
 				cf_log_err_cp(cp, "Invalid server value, must be in format <server>[:<port>]");
+#endif
 				return -1;
 			}
 
