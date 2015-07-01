@@ -67,6 +67,10 @@
 #  define LDAP_CONST
 #endif
 
+#if defined(HAVE_LDAP_URL_PARSE) && defined(HAVE_LDAP_IS_LDAP_URL) && defined(HAVE_LDAP_URL_DESC2STR)
+#  define LDAP_CAN_PARSE_URLS
+#endif
+
 #define MOD_PREFIX			"rlm_ldap"	//!< The name of the module.
 
 #define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and
