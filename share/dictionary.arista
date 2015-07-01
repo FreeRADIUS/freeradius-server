@@ -1,0 +1,14 @@
+# -*- text -*-
+# Copyright (C) 2015 The FreeRADIUS Server project and contributors
+##############################################################################
+#
+#	Arista VSAs
+#
+##############################################################################
+
+VENDOR		Arista				30065
+BEGIN-VENDOR	Arista
+
+ATTRIBUTE	Arista-AVPair			1	string
+
+END-VENDOR   Arista
