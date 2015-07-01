@@ -139,6 +139,7 @@ $INCLUDE dictionary.alvarion
 $INCLUDE dictionary.apc
 $INCLUDE dictionary.aptilo
 $INCLUDE dictionary.arbor
+$INCLUDE dictionary.arista
 $INCLUDE dictionary.aruba
 $INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
