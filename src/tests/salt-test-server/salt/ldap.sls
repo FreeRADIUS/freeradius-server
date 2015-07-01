@@ -22,16 +22,28 @@ ldap-utils:
         - source: salt://ldap/base.ldif
 
 # Copy ldif file for FreeRADIUS schema
-/root/schema_freeradius.ldif:
+/root/freeradius.ldif:
     file.managed:
-        - source: salt://ldap/schema_freeradius.ldif
+        - source: salt://ldap/freeradius.ldif
+
+# Copy ldif file for FreeRADIUS clients schema
+/root/freeradius-clients.ldif:
+    file.managed:
+        - source: salt://ldap/freeradius-clients.ldif
 
 # Add FreeRADIUS schema
 add_fr_schema:
     cmd.run:
-        - name: "ldapadd -Y EXTERNAL -H ldapi:/// -f /root/schema_freeradius.ldif"
+        - name: "ldapadd -Y EXTERNAL -H ldapi:/// -f /root/freeradius.ldif"
         - cwd: /root/
         - unless: "/usr/bin/ldapsearch -Y EXTERNAL -H ldapi:/// -b cn={4}radius,cn=schema,cn=config -s base"
+
+# Add FreeRADIUS clients schema
+add_fr_clients_schema:
+    cmd.run:
+        - name: "ldapadd -Y EXTERNAL -H ldapi:/// -f /root/freeradius-clients.ldif"
+        - cwd: /root/
+        - unless: "/usr/bin/ldapsearch -Y EXTERNAL -H ldapi:/// -b cn={5}radiusclient,cn=schema,cn=config -s base"
 
 # Create base structure in LDAP
 build_base_structure:
@@ -39,4 +51,3 @@ build_base_structure:
         - name: "/usr/bin/ldapadd -Y EXTERNAL -H ldapi:/// -f /root/base.ldif"
         - cwd: /root/
         - unless: "/usr/bin/ldapsearch -Y EXTERNAL -H ldapi:/// -b dc=example,dc=com -s base"
-

@@ -82,3 +82,25 @@ radiusIdleTimeout: 3600
 radiusAttribute: reply:Session-Timeout := 7200
 radiusAttribute: control:NAS-IP-Address := 1.2.3.4
 radiusProfileDN: cn=profile1,ou=profiles,dc=example,dc=com
+
+dn: ou=clients,dc=example,dc=com
+objectClass: organizationalUnit
+ou: clients
+
+dn: radiusClientIdentifier=1.1.1.1,ou=clients,dc=example,dc=com
+objectClass: radiusClient
+radiusClientIdentifier: 1.1.1.1
+radiusClientSecret: secret123
+radiusClientShortname: client1
+radiusClientType: other
+radiusClientRequireMa: FALSE
+radiusClientComment: Test client
+
+dn: radiusClientIdentifier=2.2.2.2,ou=clients,dc=example,dc=com
+objectClass: radiusClient
+radiusClientIdentifier: 2.2.2.2
+radiusClientSecret: 123secret
+radiusClientShortname: client2
+radiusClientType: cisco
+radiusClientRequireMa: TRUE
+radiusClientComment: Another test client
