@@ -155,7 +155,8 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	const char *attribute, *element;    /* attribute and element names */
 
 	/* find map section */
-	cs = cf_section_sub_find(conf, "update");
+	cs = cf_section_sub_find(conf, "map");
+	if (!cs) cf_section_sub_find(conf, "update");
 
 	/* check section */
 	if (!cs) {
