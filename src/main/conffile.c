@@ -380,7 +380,18 @@ static bool cf_file_input(CONF_SECTION *cs, char const *filename)
 	file->input = true;
 
 	if (stat(filename, &file->buf) < 0) {
-		ERROR("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
+		char user[64];
+		char group[64];
+		const char *err_msg;
+
+		err_msg = fr_syserror(errno);
+
+		rad_prints_uid(NULL, user, sizeof(user), geteuid());
+		rad_prints_gid(NULL, group, sizeof(group), getegid());
+
+		ERROR("Unable to open file \"%s\": %s (runs as user=%s, group=%s)",
+				filename, err_msg, user, group);
+
 		talloc_free(file);
 		return false;
 	}
