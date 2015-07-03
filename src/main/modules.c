@@ -109,7 +109,11 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
  */
 static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 {
+	Dl_info dl_info;
+	dladdr(module, &dl_info);
+
 	if (MAGIC_PREFIX(module->magic) != MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER)) {
+		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
 		cf_log_err_cs(cs, "Application and rlm_%s magic number (prefix) mismatch."
 			      "  application: %x module: %x", module->name,
 			      MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER),
@@ -118,6 +122,7 @@ static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 	}
 
 	if (MAGIC_VERSION(module->magic) != MAGIC_VERSION(RADIUSD_MAGIC_NUMBER)) {
+		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
 		cf_log_err_cs(cs, "Application and rlm_%s magic number (version) mismatch."
 			      "  application: %lx module: %lx", module->name,
 			      (unsigned long) MAGIC_VERSION(RADIUSD_MAGIC_NUMBER),
@@ -126,6 +131,7 @@ static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 	}
 
 	if (MAGIC_COMMIT(module->magic) != MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER)) {
+		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
 		cf_log_err_cs(cs, "Application and rlm_%s magic number (commit) mismatch."
 			      "  application: %lx module: %lx", module->name,
 			      (unsigned long) MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER),
