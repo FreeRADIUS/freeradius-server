@@ -1,0 +1,81 @@
+#
+#  Run the "ldap" module
+#
+ldap
+
+if ("%{getclient:1.1.1.1.secret}" != "secret123") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{getclient:1.1.1.1.shortname}" != "client1") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{getclient:1.1.1.1.nas_type}" != "other") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{getclient:1.1.1.1.require_message_authenticator}" != "FALSE") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{getclient:1.1.1.1.proto}" != "udp") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{getclient:1.1.1.1.login}" != "foo") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{getclient:1.1.1.1.password}" != "bar") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{getclient:2.2.2.2.secret}" != "123secret") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{getclient:2.2.2.2.shortname}" != "client2") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{getclient:2.2.2.2.nas_type}" != "cisco") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{getclient:2.2.2.2.require_message_authenticator}" != "TRUE") {
+        test_fail
+}
+else {
+        test_pass
+}
