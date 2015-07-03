@@ -1466,7 +1466,8 @@ AC_CHECK_FUNCS( \
   openat \
   mkdirat \
   unlinkat \
-  bindat
+  bindat \
+  dladdr
 )
 
 AC_TYPE_SIGNAL
