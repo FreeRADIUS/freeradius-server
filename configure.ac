@@ -794,6 +794,13 @@ dnl #
 AC_CHECK_LIB(dl, dlopen)
 
 dnl #
+dnl #  Check if we have dladdr()
+dnl #
+if test "x$ac_cv_func_dladdr" = "xyes"; then
+  AC_DEFINE(HAVE_DLADDR, [1], [define if you have dladdr()])
+fi
+
+dnl #
 dnl #  Check if we need -lsocket
 dnl #
 AC_CHECK_LIB(socket, getsockname)
