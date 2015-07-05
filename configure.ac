@@ -796,7 +796,7 @@ else
 fi
 
 dnl #
-dnl #  Check if we need -lsocket
+dnl #  Check if we have -ldl
 dnl #
 AC_CHECK_LIB(dl, dlopen)
 
