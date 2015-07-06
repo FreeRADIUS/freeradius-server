@@ -127,10 +127,16 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 	 *	Create an array of LDAP attributes to feed to rlm_ldap_search.
 	 */
 	attrs = talloc_array(inst, char const *, count);
-	if (rlm_ldap_client_get_attrs(attrs, &idx, map) < 0) return -1;
+	if (rlm_ldap_client_get_attrs(attrs, &idx, map) < 0) {
+		ret = -1;
+		goto finish;
+	}
 
 	conn = mod_conn_get(inst, NULL);
-	if (!conn) return -1;
+	if (!conn) {
+		ret = -1;
+		goto finish;
+	}
 
 	/*
 	 *	Perform all searches as the admin user.
@@ -246,7 +252,7 @@ int rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTIO
 	} while ((entry = ldap_next_entry(conn->handle, entry)));
 
 finish:
-	talloc_free(attrs);
+	if (attrs) talloc_free(attrs);
 	if (dn) ldap_memfree(dn);
 	if (result) ldap_msgfree(result);
 
