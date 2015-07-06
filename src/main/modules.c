@@ -98,6 +98,32 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
 #  define LT_SHREXT ".so"
 #endif
 
+/*
+ * Return the Pathname of shared object that contains address
+ */
+static const char CC_HINT(nonnull) *dl_get_pathname(module_t const *addr_module) {
+#ifdef HAVE_DLADDR
+	static module_t const *addr_cached = NULL;
+	static Dl_info dl_info;
+
+	rad_assert(addr_module != NULL);
+	rad_assert(addr_module->name != NULL);
+
+	if (addr_cached != addr_module) {
+		if (!dladdr(addr_module, &dl_info)) {
+			ERROR("Failed to call dladdr() to module %s, error='%s'", addr_module->name, dlerror());
+			return NULL;
+		}
+		addr_cached = addr_module;
+	}
+
+	return dl_info.dli_fname;
+#else
+	(void)addr_module;
+	return NULL;
+#endif
+}
+
 /** Check if the magic number in the module matches the one in the library
  *
  * This is used to detect potential ABI issues caused by running with modules which
@@ -109,15 +135,9 @@ const section_type_value_t section_type_value[MOD_COUNT] = {
  */
 static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 {
-#ifdef HAVE_DLADDR
-	Dl_info dl_info;
-	dladdr(module, &dl_info);
-#endif
-
 	if (MAGIC_PREFIX(module->magic) != MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER)) {
-#ifdef HAVE_DLADDR
-		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
-#endif
+		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_get_pathname(module));
+
 		cf_log_err_cs(cs, "Application and rlm_%s magic number (prefix) mismatch."
 			      "  application: %x module: %x", module->name,
 			      MAGIC_PREFIX(RADIUSD_MAGIC_NUMBER),
@@ -126,9 +146,8 @@ static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 	}
 
 	if (MAGIC_VERSION(module->magic) != MAGIC_VERSION(RADIUSD_MAGIC_NUMBER)) {
-#ifdef HAVE_DLADDR
-		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
-#endif
+		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_get_pathname(module));
+
 		cf_log_err_cs(cs, "Application and rlm_%s magic number (version) mismatch."
 			      "  application: %lx module: %lx", module->name,
 			      (unsigned long) MAGIC_VERSION(RADIUSD_MAGIC_NUMBER),
@@ -137,9 +156,8 @@ static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 	}
 
 	if (MAGIC_COMMIT(module->magic) != MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER)) {
-#ifdef HAVE_DLADDR
-		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_info.dli_fname);
-#endif
+		cf_log_err_cs(cs, "Failed loading module rlm_%s from file %s", module->name, dl_get_pathname(module));
+
 		cf_log_err_cs(cs, "Application and rlm_%s magic number (commit) mismatch."
 			      "  application: %lx module: %lx", module->name,
 			      (unsigned long) MAGIC_COMMIT(RADIUSD_MAGIC_NUMBER),
@@ -470,7 +488,6 @@ int modules_free(void)
 
 	return 0;
 }
-
 
 /*
  *	dlopen() a module.
