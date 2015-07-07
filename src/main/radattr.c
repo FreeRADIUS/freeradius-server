@@ -894,6 +894,17 @@ static void process_file(const char *root_dir, char const *filename)
 	if (fp != stdin) fclose(fp);
 }
 
+static void NEVER_RETURNS usage(void)
+{
+	fprintf(stderr, "usage: radattr [OPTS] filename\n");
+	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
+	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
+	fprintf(stderr, "  -x                     Debugging mode.\n");
+	fprintf(stderr, "  -M                     Show program version information.\n");
+
+	exit(1);
+}
+
 int main(int argc, char *argv[])
 {
 	int c;
@@ -910,11 +921,13 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	while ((c = getopt(argc, argv, "d:D:xM")) != EOF) switch (c) {
+	while ((c = getopt(argc, argv, "d:D:xMh")) != EOF) switch (c) {
 		case 'd':
+			if (!optarg) usage();
 			radius_dir = optarg;
 			break;
 		case 'D':
+			if (!optarg) usage();
 			dict_dir = optarg;
 			break;
 		case 'x':
@@ -924,9 +937,9 @@ int main(int argc, char *argv[])
 		case 'M':
 			report = true;
 			break;
+		case 'h':
 		default:
-			fprintf(stderr, "usage: radattr [OPTS] filename\n");
-			exit(1);
+			usage();
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);
