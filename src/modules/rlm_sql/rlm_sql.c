@@ -79,6 +79,19 @@ static const CONF_PARSER postauth_config[] = {
 	{NULL, -1, 0, NULL, NULL}
 };
 
+/**
+ * Client Configuration (SQL fields)
+ */
+static const CONF_PARSER default_client[] = {
+	{ "id", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_id), "clientFromSQL" },
+	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_ipaddr), "nasname" },
+	{ "shortname", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_shortname), "shortname" },
+	{ "nas_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_nas_type), "type" },
+	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_secret), "secret" },
+	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_virtual_server), "server" },
+	{NULL, -1, 0, NULL, NULL}     /* end the list */
+};
+
 static const CONF_PARSER module_config[] = {
 	{ "driver", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_driver_name), "rlm_sql_null" },
 	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_server), "" },	/* Must be zero length so drivers can determine if it was set */
@@ -90,6 +103,7 @@ static const CONF_PARSER module_config[] = {
 	{ "read_profiles", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, read_profiles), "yes" },
 	{ "readclients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, do_clients), NULL },
 	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, do_clients), "no" },
+	{ "default_client", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) default_client },
 	{ "deletestalesessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, rlm_sql_config_t, delete_stale_sessions), NULL },
 	{ "delete_stale_sessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, delete_stale_sessions), "yes" },
 	{ "sql_user_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, query_user), "" },
@@ -138,7 +152,7 @@ static sql_fall_through_t fall_through(VALUE_PAIR *vp)
 /*
  *	Yucky prototype.
  */
-static int generate_sql_clients(rlm_sql_t *inst);
+static int generate_sql_clients(rlm_sql_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map);
 static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
 
 /*
@@ -269,12 +283,85 @@ finish:
 	return ret;
 }
 
-static int generate_sql_clients(rlm_sql_t *inst)
+/**
+ * Retrieve the position of 'field_name' when match with 'col_names[pos]'
+ */
+typedef struct rows_data_t {
+	rlm_sql_handle_t *handle;
+	int num_fields;
+	const char **col_names;
+} rows_data_t;
+
+static const char *get_client_value_fromtable(rows_data_t *rd, CONF_PAIR const *cp) {
+	rlm_sql_handle_t *handle = rd->handle;
+	const char *field_attr = cf_pair_attr(cp);
+	const char *field_name = cf_pair_value(cp);
+	ssize_t pos = 0;
+
+	if (!field_attr || !*field_attr) {
+		WARN("rlm_sql (%s): The client attr '%s' isn't not known", handle->inst->name, field_attr);
+		return NULL;
+	}
+
+	for (pos = 0; pos < rd->num_fields; pos++) {
+		if (!strcasecmp(rd->col_names[pos], field_name)) return handle->row[pos];
+	}
+
+	WARN("rlm_sql (%s): The client attr '%s' -> '%s' not found in the query result",
+		 handle->inst->name, field_attr, field_name);
+
+	return NULL;
+}
+
+/**
+ * Handle client value processing for client_map_section()
+ *
+ * @param  out  Character output
+ * @param  cp   Configuration pair
+ * @param  data The client data
+ * @return      Returns 0 on success, -1 on error.
+ */
+static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
+{
+	rows_data_t *rd = data;
+	rlm_sql_t *inst = rd->handle->inst;
+	const char *field_value;
+
+	*out = NULL;
+
+	field_value = get_client_value_fromtable(rd, cp);
+	if (!field_value) {
+		ERROR("rlm_sql (%s): The field '%s' isn't not known for get_client_value_fromtable()",
+					inst->name, cf_pair_value(cp));
+		return -1;
+	}
+
+	if (*field_value != '\0') {
+		*out = talloc_strdup(NULL, field_value);
+		if (!*out) return -1;
+	}
+
+	return 0;
+}
+
+/*
+ * @param[in] inst rlm_sql configuration.
+ * @param[in] tmpl to use as the base for the new client.
+ * @param[in] map to load client attribute/SQL attribute mappings from.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int generate_sql_clients(rlm_sql_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map)
 {
 	rlm_sql_handle_t *handle;
 	rlm_sql_row_t row;
-	unsigned int i = 0;
-	RADCLIENT *c;
+	unsigned int cnt = 0;
+	char client_id[128];
+	RADCLIENT *client;
+	CONF_PAIR	*cp;
+	int retval = -1;
+	rows_data_t rd;
 
 	DEBUG("rlm_sql (%s): Processing generate_sql_clients",
 	      inst->name);
@@ -282,14 +369,29 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	DEBUG("rlm_sql (%s) in generate_sql_clients: query is %s",
 	      inst->name, inst->config->client_query);
 
-	handle = fr_connection_get(inst->pool);
+	rd.handle = handle = fr_connection_get(inst->pool);
 	if (!handle) return -1;
 
-	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) return -1;
+	if (rlm_sql_select_query(inst, NULL, &handle, inst->config->client_query) != RLM_SQL_OK) {
+		goto finish;
+	}
+
+	rd.num_fields = (inst->module->sql_num_fields)(handle, inst->config);
+	if (rd.num_fields < 1) {
+		WARN("rlm_sql: There are no rows affected by query. has values?");
+		goto finish;
+	}
+
+	if ((inst->module->sql_fields)(&rd.col_names, handle, inst->config) != RLM_SQL_OK) {
+		ERROR("rlm_sql: Can't get columns names");
+		goto finish;
+	}
 
 	while ((rlm_sql_fetch_row(inst, NULL, &handle) == 0) && (row = handle->row)) {
-		char *server = NULL;
-		i++;
+		CONF_SECTION *cs;
+		const char *server = NULL;
+		const char *id = NULL;
+		cnt++;
 
 		/*
 		 *  The return data for each row MUST be in the following order:
@@ -302,59 +404,94 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		 *  5. Virtual Server (optional)
 		 */
 		if (!row[0]){
-			ERROR("rlm_sql (%s): No row id found on pass %d",inst->name,i);
+			ERROR("rlm_sql (%s): No row id found on pass %d", inst->name, cnt);
 			continue;
 		}
 		if (!row[1]){
-			ERROR("rlm_sql (%s): No nasname found for row %s",inst->name,row[0]);
+			ERROR("rlm_sql (%s): No nasname found for row %s", inst->name, row[0]);
 			continue;
 		}
 		if (!row[2]){
-			ERROR("rlm_sql (%s): No short name found for row %s",inst->name,row[0]);
+			ERROR("rlm_sql (%s): No short name found for row %s", inst->name, row[0]);
 			continue;
 		}
 		if (!row[4]){
-			ERROR("rlm_sql (%s): No secret found for row %s",inst->name,row[0]);
+			ERROR("rlm_sql (%s): No secret found for row %s", inst->name, row[0]);
 			continue;
 		}
 
-		if (((inst->module->sql_num_fields)(handle, inst->config) > 5) && (row[5] != NULL) && *row[5]) {
-			server = row[5];
-		}
+		if (row[5] != NULL && *row[5]) server = row[5];
 
 		DEBUG("rlm_sql (%s): Adding client %s (%s) to %s clients list",
 		      inst->name,
 		      row[1], row[2], server ? server : "global");
 
-		/* FIXME: We should really pass a proper ctx */
-		c = client_afrom_query(NULL,
-				      row[1],	/* identifier */
-				      row[4],	/* secret */
-				      row[2],	/* shortname */
-				      row[3],	/* type */
-				      server,	/* server */
-				      false);	/* require message authenticator */
-		if (!c) {
+		cp = cf_pair_find(map, "id");
+		if (cp) {
+			id = cf_pair_value(cp);
+		} else {
+			id = row[0];
+		}
+
+		snprintf(client_id, sizeof(client_id), "%s_%s", inst->config->client_id, id);
+
+		/*
+		 *	Iterate over mapping sections
+		 */
+		cs = tmpl ? cf_section_dup(NULL, tmpl, "client", client_id, true) :
+				cf_section_alloc(NULL, "client", client_id);
+		if (!cs) {
+			ERROR("rlm_sql: failed to alloc client section while loading clients");
+			retval = -1;
+			goto finish;
+		}
+
+		if (client_map_section(cs, map, _get_client_value, &rd) < 0) {
+			DEBUG("rlm_sql: Problems with client_map_section()");
+			talloc_free(cs);
+			retval = -1;
+			goto finish;
+		}
+
+		client = client_afrom_cs(NULL, cs, false, false);
+		if (!client) {
+			DEBUG("rlm_sql: failed to allocate client");
+			talloc_free(cs);
+			retval = -1;
+			goto finish;
+		}
+
+		/*
+		* Client parents the CONF_SECTION which defined it.
+		*/
+		talloc_steal(client, cs);
+
+		if (!client) {
 			continue;
 		}
 
-		if (!client_add(NULL, c)) {
-			WARN("Failed to add client, possible duplicate?");
-
-			client_free(c);
+		if (!client_add(NULL, client)) {
+			WARN("rlm_sql: Failed to add client, possible duplicate?");
+			client_free(client);
 			continue;
 		}
 
-		DEBUG("rlm_sql (%s): Client \"%s\" (%s) added", c->longname, c->shortname,
+		DEBUG("rlm_sql (%s): Client \"%s\" (%s) added", client->longname, client->shortname,
 		      inst->name);
+
+		retval = 0;
 	}
 
+finish:
+
 	(inst->module->sql_finish_select_query)(handle, inst->config);
-	fr_connection_release(inst->pool, handle);
 
-	return 0;
+	if (handle) {
+		fr_connection_release(inst->pool, handle);
+	}
+
+	return retval;
 }
-
 
 /*
  *	Translate the SQL queries.
@@ -997,8 +1134,30 @@ do { \
 	if (!inst->pool) return -1;
 
 	if (inst->config->do_clients) {
-		if (generate_sql_clients(inst) == -1){
-			ERROR("Failed to load clients from SQL");
+		CONF_SECTION *cs, *map, *tmpl = NULL;
+
+		INFO("rlm_sql (%s): Attempting to load the clients from database", inst->name);
+
+		cs = cf_section_sub_find(inst->cs, "client");
+		if (!cs) {
+			WARN("Don't exist 'client' section, loading 'default_client'");
+			cs = cf_section_sub_find(inst->cs, "default_client");
+			if (!cs) {
+				cf_log_err_cs(conf, "Told to load clients but no 'client' section found");
+				return -1;
+			}
+		}
+
+		map = cf_section_sub_find(cs, "attribute");
+		if (!map) {
+			cf_log_err_cs(cs, "Told to load clients but no 'attribute' section found");
+			return -1;
+		}
+
+		tmpl = cf_section_sub_find(cs, "template");
+
+		if (generate_sql_clients(inst, tmpl, map) < 0) {
+			cf_log_err_cs(cs, "Failed to load clients from SQL");
 			return -1;
 		}
 	}

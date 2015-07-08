@@ -231,6 +231,45 @@ sql {
 	client_table = "nas"
 
 	#
+	# Table to keep radius client info
+	#
+	client {
+#		id = "myid"
+
+		#  Sets default values (not obtained from SQL) for new client entries
+		#
+		template {
+#			login				= 'test'
+#			password			= 'test'
+#			proto	 			= tcp
+#			require_message_authenticator	= yes
+
+			# Uncomment to add a home_server with the same
+			# attributes as the client.
+#			coa_server {
+#				response_window = 2.0
+#			}
+		}
+
+		#  Client attribute mappings are in the format:
+		#      <client attribute> = <table field name>
+		#
+		#  The following attributes are required:
+		#    * ipaddr - Client IP Address.
+		#    * secret - RADIUS shared secret.
+		#
+		#  All other attributes usually supported in a client
+		#  definition are also supported here.
+		attribute {
+			ipaddr		= "nasname"
+			shortname	= "shortname"
+			nas_type	= "type"
+			secret		= "secret"
+			virtual_server	= "server"
+		}
+	}
+
+	#
 	# The group attribute specific to this instance of rlm_sql
 	#
 
