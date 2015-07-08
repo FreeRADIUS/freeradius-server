@@ -380,7 +380,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request,
 
 	fr_cursor_init(&list_cursor, list);
 
-	RDEBUG("Adding cacheable group memberships");
+	RDEBUG("Adding cacheable user object memberships");
 	RINDENT();
 	if (RDEBUG_ENABLED) {
 		for (vp = fr_cursor_first(&groups_cursor);
@@ -474,6 +474,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 		goto finish;
 	}
 
+	RDEBUG("Adding cacheable group object memberships");
 	do {
 		if (inst->cacheable_group_dn) {
 			dn = ldap_get_dn((*pconn)->handle, entry);
@@ -488,7 +489,9 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 			MEM(vp = pairmake_config(inst->cache_da->name, NULL, T_OP_ADD));
 			pairstrcpy(vp, dn);
 
-			RDEBUG("Added control:%s with value \"%s\"", inst->cache_da->name, dn);
+			RINDENT();
+			RDEBUG("&control:%s += \"%s\"", inst->cache_da->name, dn);
+			REXDENT();
 			ldap_memfree(dn);
 		}
 
@@ -501,8 +504,10 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request
 			MEM(vp = pairmake_config(inst->cache_da->name, NULL, T_OP_ADD));
 			pairbstrncpy(vp, values[0]->bv_val, values[0]->bv_len);
 
-			RDEBUG("Added control:%s with value \"%.*s\"", inst->cache_da->name,
+			RINDENT();
+			RDEBUG("&control:%s += \"%.*s\"", inst->cache_da->name,
 			       (int)values[0]->bv_len, values[0]->bv_val);
+			REXDENT();
 
 			ldap_value_free_len(values);
 		}
