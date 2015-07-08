@@ -2682,8 +2682,6 @@ static int _listener_free(rad_listen_t *this)
 		rad_assert(talloc_parent(sock) == this);
 		rad_assert(sock->ev == NULL);
 
-		rad_assert(!sock->packet || (talloc_parent(sock->packet) == sock));
-
 		/*
 		 *	Remove the child from the parent tree.
 		 */

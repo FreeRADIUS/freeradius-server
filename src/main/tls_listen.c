@@ -139,9 +139,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		sock->packet->dst_ipaddr = sock->my_ipaddr;
 		sock->packet->dst_port = sock->my_port;
 
-		if (sock->request) {
-			sock->request->packet = talloc_steal(sock->request, sock->packet);
-		}
+		if (sock->request) sock->request->packet = talloc_steal(sock->request, sock->packet);
 	}
 
 	/*
@@ -325,11 +323,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 	FR_STATS_INC(auth, total_requests);
 
-	/*
-	 *	Re-parent the packet to nothing.
-	 */
-	(void) talloc_steal(NULL, packet);
-
 	return 1;
 }
 
@@ -351,7 +344,8 @@ int dual_tls_recv(rad_listen_t *listener)
 	rad_assert(sock->ssn != NULL);
 	rad_assert(client != NULL);
 
-	packet = sock->packet;
+	packet = talloc_steal(NULL, sock->packet);
+	sock->packet = NULL;
 
 	/*
 	 *	Some sanity checks, based on the packet code.
@@ -387,7 +381,7 @@ int dual_tls_recv(rad_listen_t *listener)
 		if (!main_config.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
 			WARN("Ignoring Status-Server request due to security configuration");
-			rad_free(&sock->packet);
+			rad_free(&packet);
 			return 0;
 		}
 		fun = rad_status_server;
@@ -399,17 +393,15 @@ int dual_tls_recv(rad_listen_t *listener)
 
 		DEBUG("Invalid packet code %d sent from client %s port %d : IGNORED",
 		      packet->code, client->shortname, packet->src_port);
-		rad_free(&sock->packet);
+		rad_free(&packet);
 		return 0;
 	} /* switch over packet types */
 
 	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
-		rad_free(&sock->packet);
+		rad_free(&packet);
 		return 0;
 	}
-
-	sock->packet = NULL;	/* we have no need for more partial reads */
 
 	return 1;
 }
