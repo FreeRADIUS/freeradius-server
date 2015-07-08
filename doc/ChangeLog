@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
+FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Make "pool" configurations more consistent, and
 	  update documentation for them.
@@ -50,6 +50,10 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* More DHCP encoding / decoding unit tests.
 	* rlm_replicate can now be listed in the "accounting" section.
 	* Better sqlite debugging output.
+	* Remove "required" option from many sql_ippool directives.
+	* Set default CA "basic constraints" to "critical".  Fixes #1073
+	* Updates to help / man pages from Jorge Pereira.
+	* Added more tests.
 
 	Bug fixes
 	* Be more careful about unused config item warnings
@@ -97,6 +101,8 @@ FreeRADIUS 3.0.9 Wed 22 Apr 2015 13:30:00 EDT urgency=medium
 	* rlm_expr now errors out correctly on malformed attribute
 	  references instead of triggering an assert.
 	* Make "break" work in "foreach" loops
+	* Allow dynamic expansions to work again in the "hints" file.
+	* Correct minor typos in comments and examples from Alan Buxy.
 	* Re-urlencode the path portion of ldapi:// urls before
 	  passing it to ldap_initialise.
 
