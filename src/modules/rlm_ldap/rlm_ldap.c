@@ -1401,9 +1401,7 @@ static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request
 	}
 
 	RDEBUG("Processing profile attributes");
-	RINDENT();
 	if (rlm_ldap_map_do(inst, request, handle, expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
-	REXDENT();
 
 free_result:
 	ldap_msgfree(result);
@@ -1628,9 +1626,7 @@ skip_edir:
 
 	if (inst->user_map || inst->valuepair_attr) {
 		RDEBUG("Processing user attributes");
-		RINDENT();
 		if (rlm_ldap_map_do(inst, request, conn->handle, &expanded, entry) > 0) rcode = RLM_MODULE_UPDATED;
-		REXDENT();
 		rlm_ldap_check_reply(inst, request);
 	}
 
