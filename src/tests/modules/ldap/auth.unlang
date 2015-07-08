@@ -58,14 +58,6 @@ if ("%{pairs:reply:}" == "") {
         test_fail
 }
 
-
-if (LDAP-Group == "foo") {
-        test_pass
-}
-else {
-        test_fail
-}
-
 ldap.post-auth
 
 update {
