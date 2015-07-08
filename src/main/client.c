@@ -573,6 +573,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	     cs = cf_subsection_find_next(section, cs, "client")) {
 		c = client_afrom_cs(cs, cs, in_server, false);
 		if (!c) {
+			client_list_free(clients);
 			return NULL;
 		}
 
