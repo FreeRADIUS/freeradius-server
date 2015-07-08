@@ -188,6 +188,8 @@ static CONF_PARSER option_config[] = {
 
 	{ "chase_referrals", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, chase_referrals), NULL },
 
+	{ "use_referral_credentials", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, use_referral_credentials), "no" },
+
 	{ "rebind", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, rebind), NULL },
 
 #ifdef LDAP_CONTROL_X_SESSION_TRACKING
@@ -904,6 +906,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->userobj_sort_by) {
 		cf_log_err_cs(conf, "Configuration item 'sort_by' not supported.  "
 			      "Linked libldap does not provide ldap_create_sort_control function");
+		goto error;
+	}
+#endif
+
+#ifndef HAVE_LDAP_URL_PARSE
+	if (inst->use_referral_credentials) {
+		cf_log_err_cs(conf, "Configuration item 'use_referral_credentials' not supported.  "
+			      "Linked libldap does not support URL parsing");
 		goto error;
 	}
 #endif

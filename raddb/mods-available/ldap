@@ -434,6 +434,13 @@ ldap {
 		rebind = yes
 
 		#
+		#  On rebind, use the credentials from the rebind url instead
+		#  of admin credentials used during the initial bind.
+		#  Default 'no'
+		#
+		use_referral_credentials = no
+
+		#
 		#  If 'yes', then include draft-wahl-ldap-session tracking
 		#  controls.
 		#

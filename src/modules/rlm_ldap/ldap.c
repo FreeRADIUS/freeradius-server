@@ -36,6 +36,13 @@
 static const char specials[] = ",+\"\\<>;*=()";
 static const char hextab[] = "0123456789abcdef";
 
+FR_NAME_NUMBER const ldap_supported_extensions[] = {
+	{ "bindname",	LDAP_DEREF_NEVER	},
+	{ "x-bindpw",	LDAP_DEREF_SEARCHING	},
+
+	{  NULL , -1 }
+};
+
 /** Converts "bad" strings into ones which are safe for LDAP
  *
  * @note RFC 4515 says filter strings can only use the @verbatim \<hex><hex> @endverbatim
@@ -1383,25 +1390,98 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t request, UNUSED ber_int_t msgid,
 			   void *ctx)
 {
-	ldap_rcode_t status;
-	ldap_handle_t *conn = talloc_get_type_abort(ctx, ldap_handle_t);
+	ldap_rcode_t	status;
+	ldap_handle_t	*conn = talloc_get_type_abort(ctx, ldap_handle_t);
+	rlm_ldap_t	*inst = conn->inst;
 
-	int ldap_errno;
+	char const	*admin_identity = NULL;
+	char const	*admin_password = NULL;
+
+	int		ldap_errno;
 
 	conn->referred = true;
 	conn->rebound = true;	/* not really, but oh well... */
 	rad_assert(handle == conn->handle);
 
-	DEBUG("rlm_ldap (%s): Rebinding to URL %s", conn->inst->name, url);
+	DEBUG("rlm_ldap (%s): Rebinding to URL %s", inst->name, url);
 
-	status = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->admin_identity, conn->inst->admin_password,
-			       &(conn->inst->admin_sasl), false, NULL, NULL);
+#  ifdef HAVE_LDAP_URL_PARSE
+	/*
+	 *	Use bindname and x-bindpw extensions to get the bind credentials
+	 *	SASL mech is inherited from the module that defined the connection
+	 *	pool.
+	 */
+	if (!inst->use_referral_credentials) {
+		LDAPURLDesc	*ldap_url;
+		int		ret;
+		char		**ext;
+
+		ret = ldap_url_parse(url, &ldap_url);
+		if (ret != LDAP_SUCCESS) {
+			ERROR("rlm_ldap (%s): Failed parsing LDAP URL \"%s\": %s",
+			      inst->name, url, ldap_err2string(ret));
+			return -1;
+		}
+
+		for (ext = ldap_url->lud_exts; *ext; ext++) {
+			char const *p;
+			bool critical = false;
+
+			p = *ext;
+
+			if (*p == '!') {
+				critical = true;
+				p++;
+			}
+
+			/*
+			 *	LDAP Parse URL unescapes the extensions for us
+			 */
+			switch (fr_substr2int(ldap_supported_extensions, p, LDAP_EXT_UNSUPPORTED, -1)) {
+			case LDAP_EXT_BINDNAME:
+				p = strchr(p, '=');
+				if (!p) {
+				bad_ext:
+					ERROR("rlm_ldap (%s): Failed parsing extension \"%s\": "
+					      "No attribute/value delimiter '='", inst->name, *ext);
+					ldap_free_urldesc(ldap_url);
+					return LDAP_OTHER;
+				}
+				admin_identity = p + 1;
+				break;
+
+			case LDAP_EXT_BINDPW:
+				p = strchr(p, '=');
+				if (!p) goto bad_ext;
+				admin_password = p + 1;
+				break;
+
+			default:
+				if (critical) {
+					ERROR("rlm_ldap (%s): Failed parsing critical extension \"%s\": "
+					      "Not supported by rlm_ldap", inst->name, *ext);
+					ldap_free_urldesc(ldap_url);
+					return LDAP_OTHER;
+				}
+				DEBUG2("rlm_ldap (%s): Skipping unsupported extension \"%s\"", inst->name, *ext);
+				continue;
+			}
+		}
+		ldap_free_urldesc(ldap_url);
+	} else
+#  endif
+	{
+		admin_identity = inst->admin_identity;
+		admin_password = inst->admin_password;
+	}
+
+	status = rlm_ldap_bind(inst, NULL, &conn, admin_identity, admin_password,
+			       &inst->admin_sasl, false, NULL, NULL);
 	if (status != LDAP_PROC_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 
 		return ldap_errno;
 	}
-
 
 	return LDAP_SUCCESS;
 }

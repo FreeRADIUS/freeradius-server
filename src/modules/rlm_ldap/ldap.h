@@ -122,6 +122,15 @@ ldap_create_session_tracking_control LDAP_P((
 
 #define LDAP_VIRTUAL_DN_ATTR		"dn"		//!< 'Virtual' attribute which maps to the DN of the object.
 
+
+typedef enum {
+	LDAP_EXT_UNSUPPORTED,				//!< Unsupported extension.
+	LDAP_EXT_BINDNAME,				//!< Specifies the user DN or name for an LDAP bind.
+	LDAP_EXT_BINDPW,				//!< Specifies the password for an LDAP bind.
+} ldap_supported_extension;
+
+extern FR_NAME_NUMBER const ldap_supported_extensions[];
+
 typedef struct ldap_instance rlm_ldap_t;
 
 typedef struct ldap_acct_section {
@@ -189,6 +198,8 @@ struct ldap_instance {
 							//!< or point in the tree, follow it, establishing new
 							//!< connections and binding where necessary.
 	bool		chase_referrals_unset;		//!< If true, use the OpenLDAP defaults for chase_referrals.
+
+	bool		use_referral_credentials;	//!< If true use credentials from the referral URL.
 
 	bool		rebind;				//!< Controls whether we set an ldad_rebind_proc function
 							//!< and so determines if we can bind to other servers whilst
