@@ -1134,55 +1134,6 @@ done_coa:
 	return c;
 }
 
-/** Add a client from a result set (SQL)
- *
- * @todo This function should die. SQL should use client_afrom_cs.
- *
- * @param ctx Talloc context.
- * @param identifier Client IP Address / IPv4 subnet / IPv6 subnet / FQDN.
- * @param secret Client secret.
- * @param shortname Client friendly name.
- * @param type NAS-Type.
- * @param server Virtual-Server to associate clients with.
- * @param require_ma If true all packets from client must include a message-authenticator.
- * @return The new client, or NULL on error.
- */
-RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char const *secret,
-			      char const *shortname, char const *type, char const *server, bool require_ma)
-{
-	RADCLIENT *c;
-	char buffer[128];
-
-	rad_assert(identifier);
-	rad_assert(secret);
-
-	c = talloc_zero(ctx, RADCLIENT);
-
-	if (fr_pton(&c->ipaddr, identifier, -1, AF_UNSPEC, true) < 0) {
-		ERROR("%s", fr_strerror());
-		talloc_free(c);
-
-		return NULL;
-	}
-
-#ifdef WITH_DYNAMIC_CLIENTS
-	c->dynamic = true;
-#endif
-	ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
-	c->longname = talloc_typed_strdup(c, buffer);
-
-	/*
-	 *	Other values (secret, shortname, nas_type, virtual_server)
-	 */
-	c->secret = talloc_typed_strdup(c, secret);
-	if (shortname) c->shortname = talloc_typed_strdup(c, shortname);
-	if (type) c->nas_type = talloc_typed_strdup(c, type);
-	if (server) c->server = talloc_typed_strdup(c, server);
-	c->message_authenticator = require_ma;
-
-	return c;
-}
-
 /** Create a new client, consuming all attributes in the control list of the request
  *
  * @param clients list to add new client to.
