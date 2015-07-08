@@ -309,7 +309,6 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 	rlm_ldap_result_t	result;
 	char const		*name;
 
-	RINDENT();
 	for (map = expanded->maps; map != NULL; map = map->next) {
 		int ret;
 
@@ -347,7 +346,7 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 	next:
 		ldap_value_free_len(result.values);
 	}
-	REXDENT();
+
 
 	/*
 	 *	Retrieve any valuepair attributes from the result, these are generic values specifying
@@ -360,7 +359,6 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 		values = ldap_get_values_len(handle, entry, inst->valuepair_attr);
 		count = ldap_count_values_len(values);
 
-		RINDENT();
 		for (i = 0; i < count; i++) {
 			vp_map_t *attr;
 			char *value;
@@ -383,7 +381,6 @@ int rlm_ldap_map_do(const rlm_ldap_t *inst, REQUEST *request, LDAP *handle,
 			talloc_free(attr);
 			talloc_free(value);
 		}
-		REXDENT();
 		ldap_value_free_len(values);
 	}
 
