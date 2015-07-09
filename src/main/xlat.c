@@ -1334,6 +1334,8 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		} else {
 			*error = fr_strerror();
 		}
+
+		talloc_free(node);
 		return slen - (p - fmt);
 	}
 
