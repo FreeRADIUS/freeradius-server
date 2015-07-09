@@ -1,3 +1,8 @@
+FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
+	Feature improvements
+
+	Bug fixes
+
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Make "pool" configurations more consistent, and
