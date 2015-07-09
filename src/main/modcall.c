@@ -3215,13 +3215,33 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 	 */
 	if (map->lhs->type == TMPL_TYPE_XLAT) {
 		/*
-		 *	Don't compile the LHS to an attribute
-		 *	reference for now.  When we do that, we've got
-		 *	to check the RHS for type-specific data, and
-		 *	parse it to a TMPL_TYPE_DATA.
+		 *	Compile the LHS to an attribute reference only
+		 *	if the RHS is a literal.
+		 *
+		 *	@todo v3.1: allow anything anywhere.
 		 */
-		if (!pass2_xlat_compile(map->ci, &map->lhs, false, NULL)) {
-			return false;
+		if (map->rhs->type != TMPL_TYPE_LITERAL) {
+			if (!pass2_xlat_compile(map->ci, &map->lhs, false, NULL)) {
+				return false;
+			}
+		} else {
+			if (!pass2_xlat_compile(map->ci, &map->lhs, true, NULL)) {
+				return false;
+			}
+
+			/*
+			 *	LHS was converted.  We now go convert
+			 *	the RHS to a type-specific thing.
+			 */
+			if (map->lhs->type == TMPL_TYPE_ATTR) {
+				if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type,
+						       map->lhs->tmpl_da) < 0) {
+					cf_log_err(map->ci, "Failed to parse data type %s from string: %s",
+						   fr_int2str(dict_attr_types, map->lhs->tmpl_da->type, "<UNKNOWN>"),
+						   map->rhs->name);
+					return false;
+				}
+			}
 		}
 	}
 
