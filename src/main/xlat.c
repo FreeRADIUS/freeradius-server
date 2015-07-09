@@ -1368,7 +1368,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		*error = "No matching closing brace";
 		return -1;	/* second character of format string */
 	}
-	p++;
+	*p++ = '\0';
 	*head = node;
 	rad_assert(node->next == NULL);
 
