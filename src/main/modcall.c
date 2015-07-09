@@ -3454,7 +3454,7 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 		 *
 		 *	@todo v3.1: allow anything anywhere.
 		 */
-		if (map->rhs->type != TMPL_TYPE_LITERAL) {
+		if ((map->rhs->type != TMPL_TYPE_LITERAL) || !map->rhs->len) {
 			if (!pass2_xlat_compile(map->ci, &map->lhs, false, NULL)) {
 				return false;
 			}
