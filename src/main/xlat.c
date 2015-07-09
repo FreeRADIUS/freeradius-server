@@ -2540,7 +2540,7 @@ vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 {
 	vp_tmpl_t *vpt;
 
-	if (node->next || (node->type != XLAT_ATTRIBUTE)) return NULL;
+	if (node->next || (node->type != XLAT_ATTRIBUTE) || (node->attr.type != TMPL_TYPE_ATTR)) return NULL;
 
 	/*
 	 *   Concat means something completely different as an attribute reference
