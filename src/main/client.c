@@ -559,6 +559,8 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 	     cs = cf_subsection_find_next(section, cs, "client")) {
 		c = client_afrom_cs(cs, cs, in_server, false);
 		if (!c) {
+		error:
+			client_free(c);
 			client_list_free(clients);
 			return NULL;
 		}
@@ -570,10 +572,7 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
 		 */
 		if (tls_required != c->tls_required) {
 			cf_log_err_cs(cs, "Client does not have the same TLS configuration as the listener");
-		error:
-			client_free(c);
-			client_list_free(clients);
-			return NULL;
+			goto error;
 		}
 #endif
 
