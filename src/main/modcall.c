@@ -3124,11 +3124,27 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 	return true;
 }
 
-static bool pass2_callback(UNUSED void *ctx, fr_cond_t *c)
+static bool pass2_callback(void *ctx, fr_cond_t *c)
 {
 	vp_map_t *map;
 	vp_tmpl_t *vpt;
 
+	/*
+	 *	These don't get optimized.
+	 */
+	if ((c->type == COND_TYPE_TRUE) ||
+	    (c->type == COND_TYPE_FALSE)) {
+		return true;
+	}
+
+	/*
+	 *	Call children.
+	 */
+	if (c->type == COND_TYPE_CHILD) return pass2_callback(ctx, c->data.child);
+
+	/*
+	 *	A few simple checks here.
+	 */
 	if (c->type == COND_TYPE_EXISTS) {
 		if (c->data.vpt->type == TMPL_TYPE_XLAT) {
 			return pass2_xlat_compile(c->ci, &c->data.vpt, true, NULL);
