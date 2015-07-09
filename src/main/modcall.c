@@ -3398,17 +3398,9 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 	}
 
 	/*
-	 *	Maps have a paircompare fixup applied to them.
-	 *	Others get ignored.
+	 *	And tons of complicated checks.
 	 */
-	if (c->pass2_fixup == PASS2_FIXUP_NONE) {
-		if (c->type == COND_TYPE_MAP) {
-			map = c->data.map;
-			goto check_paircmp;
-		}
-
-		return true;
-	}
+	rad_assert(c->type == COND_TYPE_MAP);
 
 	map = c->data.map;	/* shorter */
 
@@ -3446,7 +3438,6 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 		c->pass2_fixup = PASS2_FIXUP_NONE;
 	}
 
-check_paircmp:
 	/*
 	 *	Just in case someone adds a new fixup later.
 	 */
