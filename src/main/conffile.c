@@ -1872,6 +1872,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 					   variables[i + 1].name);
 			}
 
+			if ((ret == -2) && check_config) continue;
+
 			goto error;
 		}
 	} /* for all variables in the configuration section */
