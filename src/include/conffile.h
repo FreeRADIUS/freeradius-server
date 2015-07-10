@@ -160,6 +160,8 @@ do {\
 	}\
 } while (0)
 
+extern bool 			check_config;
+
 /** Defines a #CONF_PAIR to C data type mapping
  *
  * Is typically used to define mappings between module sections, and module instance structs.

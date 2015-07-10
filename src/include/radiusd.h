@@ -552,7 +552,6 @@ void	thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 /* main_config.c */
 /* Define a global config structure */
 extern bool			log_dates_utc;
-extern bool 			check_config;
 extern main_config_t		main_config;
 extern bool			event_loop_started;
 

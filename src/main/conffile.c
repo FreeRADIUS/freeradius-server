@@ -42,6 +42,8 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+bool check_config = false;
+
 typedef enum conf_property {
 	CONF_PROPERTY_INVALID = 0,
 	CONF_PROPERTY_NAME,
