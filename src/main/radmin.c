@@ -79,8 +79,6 @@ static char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
  */
 main_config_t main_config;
 
-bool check_config = false;
-
 static bool echo = false;
 static char const *secret = "testing123";
 
