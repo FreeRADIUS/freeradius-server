@@ -1595,7 +1595,7 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 
 		case T_OP_SET:
 			if (map->rhs->type == TMPL_TYPE_EXEC) {
-				WARN("%s[%d] Please change ':=' to '=' for list assignment",
+				WARN("%s[%d]: Please change ':=' to '=' for list assignment",
 				     cf_pair_filename(cp), cf_pair_lineno(cp));
 			}
 
@@ -3033,13 +3033,13 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool conve
 			if (cf_item_is_pair(ci)) {
 				CONF_PAIR *cp = cf_item_to_pair(ci);
 
-				WARN("%s[%d] Please change %%{%s} to &%s",
+				WARN("%s[%d]: Please change %%{%s} to &%s",
 				       cf_pair_filename(cp), cf_pair_lineno(cp),
 				       attr->name, attr->name);
 			} else {
 				CONF_SECTION *cs = cf_item_to_section(ci);
 
-				WARN("%s[%d] Please change %%{%s} to &%s",
+				WARN("%s[%d]: Please change %%{%s} to &%s",
 				       cf_section_filename(cs), cf_section_lineno(cs),
 				       attr->name, attr->name);
 			}
@@ -3568,9 +3568,9 @@ bool modcall_pass2(modcallable *mc)
 			if ((g->vpt->type == TMPL_TYPE_ATTR) &&
 			    (c->name[0] != '&')) {
 				WARN("%s[%d]: Please change %s to &%s",
-				       cf_section_filename(g->cs),
-				       cf_section_lineno(g->cs),
-				       c->name, c->name);
+				     cf_section_filename(g->cs),
+				     cf_section_lineno(g->cs),
+				     c->name, c->name);
 			}
 
 		do_children:
