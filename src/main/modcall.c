@@ -1644,7 +1644,8 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 
 		} else {
 			/*
-			 *
+			 *	RHS is hex, try to parse it as
+			 *	type-specific data.
 			 */
 			if (map->lhs->auto_converted &&
 			    (map->rhs->name[0] == '0') && (map->rhs->name[1] == 'x') &&
@@ -3033,13 +3034,13 @@ static bool pass2_xlat_compile(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool conve
 			if (cf_item_is_pair(ci)) {
 				CONF_PAIR *cp = cf_item_to_pair(ci);
 
-				WARN("%s[%d]: Please change %%{%s} to &%s",
+				WARN("%s[%d]: Please change \"%%{%s}\" to &%s",
 				       cf_pair_filename(cp), cf_pair_lineno(cp),
 				       attr->name, attr->name);
 			} else {
 				CONF_SECTION *cs = cf_item_to_section(ci);
 
-				WARN("%s[%d]: Please change %%{%s} to &%s",
+				WARN("%s[%d]: Please change \"%%{%s}\" to &%s",
 				       cf_section_filename(cs), cf_section_lineno(cs),
 				       attr->name, attr->name);
 			}
@@ -3220,7 +3221,7 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 		 *
 		 *	@todo v3.1: allow anything anywhere.
 		 */
-		if ((map->rhs->type != TMPL_TYPE_LITERAL) || !map->rhs->len) {
+		if (map->rhs->type != TMPL_TYPE_LITERAL) {
 			if (!pass2_xlat_compile(map->ci, &map->lhs, false, NULL)) {
 				return false;
 			}
@@ -3230,16 +3231,71 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 			}
 
 			/*
-			 *	LHS was converted.  We now go convert
-			 *	the RHS to a type-specific thing.
+			 *	Attribute compared to a literal gets
+			 *	the literal cast to the data type of
+			 *	the attribute.
+			 *
+			 *	The code in parser.c did this for
+			 *
+			 *		&Attr == data
+			 *
+			 *	But now we've just converted "%{Attr}"
+			 *	to &Attr, so we've got to do it again.
 			 */
-			if (map->lhs->type == TMPL_TYPE_ATTR) {
-				if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type,
-						       map->lhs->tmpl_da) < 0) {
-					cf_log_err(map->ci, "Failed to parse data type %s from string: %s",
-						   fr_int2str(dict_attr_types, map->lhs->tmpl_da->type, "<UNKNOWN>"),
-						   map->rhs->name);
-					return false;
+			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
+			    (map->rhs->type == TMPL_TYPE_LITERAL)) {
+				/*
+				 *	RHS is hex, try to parse it as
+				 *	type-specific data.
+				 */
+				if (map->lhs->auto_converted &&
+				    (map->rhs->name[0] == '0') && (map->rhs->name[1] == 'x') &&
+				    (map->rhs->len > 2) && ((map->rhs->len & 0x01) == 0)) {
+					vpt = map->rhs;
+					map->rhs = NULL;
+
+					if (!map_cast_from_hex(map, T_BARE_WORD, vpt->name)) {
+						map->rhs = vpt;
+						cf_log_err(map->ci, "%s", fr_strerror());
+						return -1;
+					}
+					talloc_free(vpt);
+
+				} else if ((map->rhs->len > 0) ||
+					   (map->op != T_OP_CMP_EQ) ||
+					   (map->lhs->tmpl_da->type == PW_TYPE_STRING) ||
+					   (map->lhs->tmpl_da->type == PW_TYPE_OCTETS)) {
+
+					if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) {
+						cf_log_err(map->ci, "Failed to parse data type %s from string: %s",
+							   fr_int2str(dict_attr_types, map->lhs->tmpl_da->type, "<UNKNOWN>"),
+							   map->rhs->name);
+						return false;
+					} /* else the cast was successful */
+
+				} else {	/* RHS is empty, it's just a check for empty / non-empty string */
+					vpt = talloc_steal(c, map->lhs);
+					map->lhs = NULL;
+					talloc_free(c->data.map);
+
+					/*
+					 *	"%{Foo}" == '' ---> !Foo
+					 *	"%{Foo}" != '' ---> Foo
+					 */
+					c->type = COND_TYPE_EXISTS;
+					c->data.vpt = vpt;
+					c->negate = !c->negate;
+
+					WARN("%s[%d]: Please change (\"%%{%s}\" %s '') to %c&%s",
+					     cf_section_filename(cf_item_to_section(c->ci)),
+					     cf_section_lineno(cf_item_to_section(c->ci)),
+					     vpt->name, c->negate ? "==" : "!=",
+					     c->negate ? '!' : ' ', vpt->name);
+
+					/*
+					 *	No more RHS, so we can't do more optimizations
+					 */
+					return true;
 				}
 			}
 		}
