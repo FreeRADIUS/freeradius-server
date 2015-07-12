@@ -403,7 +403,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	return 0;
 }
 
-/** Simple wrapper to decide whether an IP value is v4 or v6 and call the appropriate parser.
+/** Simple wrapper to decide whether an IP value is v4 or v6 and call the appropriate parser
  *
  * @param out Where to write the ip address value.
  * @param value to parse.
@@ -411,7 +411,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a
  *	hostname.
  * @return
- *	- 0 if ip address was parsed successfully
+ *	- 0 if ip address was parsed successfully.
  *	- -1 on failure.
  */
 int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
