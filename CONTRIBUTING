@@ -9,8 +9,7 @@
   via GitHub.  If you follow these guidelines, it is very likely that your question, bug report or pull
   request will be acted on, and in a timely manor.
 
-  If you choose to ignore these guidelines your issue will likely be closed with a link to this document,
-  and locked.
+  If you choose to ignore these guidelines the response will be a link to this document.
 
 
 1.GITHUB ISSUE TRACKER
@@ -38,7 +37,7 @@
   to reproduce your issue.
 
   The ChangeLog (https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/doc/ChangeLog) for the
-  active branch may also be used to determine if your issue has already been addressed.
+  current stable branch may also be used to determine if your issue has already been addressed.
   The ChangeLog is updated as fixes are made to the server code, and usually reflects the state of the
   Git HEAD.
 
@@ -56,7 +55,7 @@
 
   If you're developing a new feature, module, or writing large amounts of code to fix a defect, contact
   a member of the FreeRADIUS development team first.  For simpler one or two line fixes, go ahead and
-  open a pull-request immediately, the worst that'll happen is that we'll fix it in a different way.
+  open a pull-request immediately.
 
   The dev team can be contacted via the devel mailing list (http://freeradius.org/list/devel.html),
   or via GitHub by using the GitHub issue tracker.
