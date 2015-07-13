@@ -5,6 +5,9 @@
  *
  */
 
+/** Internal data types used within libfreeradius
+ *
+ */
 typedef enum {
 	PW_TYPE_INVALID = 0,			//!< Invalid (uninitialised) attribute type.
 	PW_TYPE_STRING,				//!< String of printable characters.
@@ -34,6 +37,9 @@ typedef enum {
 	PW_TYPE_MAX				//!< Number of defined data types.
 } PW_TYPE;
 
+/** RADIUS packet codes
+ *
+ */
 typedef enum {
 	PW_CODE_UNDEFINED		= 0,	//!< Packet code has not been set
 	PW_CODE_ACCESS_REQUEST		= 1,	//!< RFC2865 - Access-Request
