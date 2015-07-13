@@ -55,6 +55,7 @@
   Github will automatically link your issue to other pre-existing issues when it encounters a #<num>
   string.
 
+
 4.PULL REQUESTS AND CODING STANDARDS
 
   If you're developing a new feature, module, or writing large amounts of code to fix a defect, contact
