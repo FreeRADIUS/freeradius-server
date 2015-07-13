@@ -1334,6 +1334,24 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  * @note The dflt value will only be used if no matching #CONF_PAIR is found. Empty strings will not
  *	 result in the dflt value being used.
  *
+ * **PW_TYPE to data type mappings**
+ * | PW_TYPE                 | Data type          | Dynamically allocated  |
+ * | ----------------------- | ------------------ | ---------------------- |
+ * | PW_TYPE_TMPL            | ``vp_tmpl_t``      | Yes                    |
+ * | PW_TYPE_BOOLEAN         | ``bool``           | No                     |
+ * | PW_TYPE_INTEGER         | ``uint32_t``       | No                     |
+ * | PW_TYPE_SHORT           | ``uint16_t``       | No                     |
+ * | PW_TYPE_INTEGER64       | ``uint64_t``       | No                     |
+ * | PW_TYPE_SIGNED          | ``int32_t``        | No                     |
+ * | PW_TYPE_STRING          | ``char const *``   | Yes                    |
+ * | PW_TYPE_IPV4_ADDR       | ``fr_ipaddr_t``    | No                     |
+ * | PW_TYPE_IPV4_PREFIX     | ``fr_ipaddr_t``    | No                     |
+ * | PW_TYPE_IPV6_ADDR       | ``fr_ipaddr_t``    | No                     |
+ * | PW_TYPE_IPV6_PREFIX     | ``fr_ipaddr_t``    | No                     |
+ * | PW_TYPE_COMBO_IP_ADDR   | ``fr_ipaddr_t``    | No                     |
+ * | PW_TYPE_COMBO_IP_PREFIX | ``fr_ipaddr_t``    | No                     |
+ * | PW_TYPE_TIMEVAL         | ``struct timeval`` | No                     |
+ *
  * @param cs to search for matching #CONF_PAIR in.
  * @param name of #CONF_PAIR to search for.
  * @param type Data type to parse #CONF_PAIR value as.
@@ -1350,6 +1368,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  *	- ``data`` #PW_TYPE_IPV4_ADDR		- @copybrief PW_TYPE_IPV4_ADDR (IPv4 address with prefix 32).
  *	- ``data`` #PW_TYPE_IPV4_PREFIX		- @copybrief PW_TYPE_IPV4_PREFIX (IPv4 address with variable prefix).
  *	- ``data`` #PW_TYPE_IPV6_ADDR		- @copybrief PW_TYPE_IPV6_ADDR (IPv6 address with prefix 128).
+ *	- ``data`` #PW_TYPE_IPV6_PREFIX		- @copybrief PW_TYPE_IPV6_PREFIX (IPv6 address with variable prefix).
  *	- ``data`` #PW_TYPE_COMBO_IP_ADDR 	- @copybrief PW_TYPE_COMBO_IP_ADDR (IPv4/IPv6 address with
  						  prefix 32/128).
  *	- ``data`` #PW_TYPE_COMBO_IP_PREFIX	- @copybrief PW_TYPE_COMBO_IP_PREFIX (IPv4/IPv6 address with
