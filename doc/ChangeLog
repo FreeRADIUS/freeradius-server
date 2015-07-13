@@ -1,7 +1,10 @@
 FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
+	* Do more optimization of unlang policies.  This makes
+	  run-time check a bit faster.
 
 	Bug fixes
+	* When using -C, don't error out if the configuration uses
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
