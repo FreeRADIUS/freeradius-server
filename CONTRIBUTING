@@ -1,0 +1,95 @@
+0.INTRODUCTION
+
+  The FreeRADIUS project wouldn't exist without contributions from a significant number of developers.
+
+  We greatly value all comments, defect reports, patches/pull-requests, but must balance individual
+  contributor's desires and practices against what's required for the project to operate efficiently.
+
+  This document describes best practices when interacting with members of the FreeRADIUS project team
+  via GitHub.  If you follow these guidelines, it is very likely that your question, bug report or pull
+  request will be acted on, and in a timely manor.
+
+  If you choose to ignore these guidelines your issue will likely be closed with a link to this document,
+  and locked.
+
+
+1.GITHUB ISSUE TRACKER
+
+  The GitHub issue tracker is for non-security related defect reports, feature requests, and
+  pull-requests ONLY.
+
+  It is not for support requests or questions regarding configuration/operation of the server, they
+  belong on the users mailing list:
+
+    http://freeradius.org/list/users.html
+
+  Raising support requests or questions as issues will result in them being closed and locked.  If you
+  continue to raise these questions as issues you will be banned from the FreeRADIUS project's GitHub
+  repositories.
+
+  Security issues should be reported to security@freeradius.org, especially if they can be remotely
+  exploited.  This ensures that patches can be developed before the exploit is made public.
+
+
+2.BEFORE REPORTING A DEFECT
+
+  Verify it's still present in the Git HEAD.  Checkout the appropriate branch for the version of the
+  server you're working with as listed here (http://doc.freeradius.org), build the server, and attempt
+  to reproduce your issue.
+
+  The ChangeLog (https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/doc/ChangeLog) for the
+  active branch may also be used to determine if your issue has already been addressed.
+  The ChangeLog is updated as fixes are made to the server code, and usually reflects the state of the
+  Git HEAD.
+
+  Do not report non-security defects for EOL branches (as listed on doc.freeradius.org), they will be
+  closed and locked.
+
+
+3.CONTENTS OF A DEFECT REPORT
+
+  See doc/bugs (https://github.com/FreeRADIUS/freeradius-server/blob/master/doc/bugs) for information
+  on what to include, and how to obtain it.
+
+
+4.PULL REQUESTS AND CODING STANDARDS
+
+  If you're developing a new feature, module, or writing large amounts of code to fix a defect, contact
+  a member of the FreeRADIUS development team first.  For simpler one or two line fixes, go ahead and
+  open a pull-request immediately, the worst that'll happen is that we'll fix it in a different way.
+
+  The dev team can be contacted via the devel mailing list (http://freeradius.org/list/devel.html),
+  or via GitHub by using the GitHub issue tracker.
+
+  Contacting the dev team gives us the opportunity to offer feedback.  We may have a solution to your
+  problem that doesn't require additional code, or may have ideas as to how your problem can be solved
+  in a way that will better fit with the longterm vision for the server.
+
+  Once you've got the go ahead, read through the coding standards document:
+
+    http://wiki.freeradius.org/contributing/coding-standards
+
+  ...and start writing code.  You may also wish to utilise the doxygen site:
+
+    http://doc.freeradius.org
+
+  The doxygen site contains the complete reference of all API functions with doxygen headers, as well
+  as structs, and callback declarations.  doc.freeradius.org is updated within one minute of each commit
+  to the master branch of the main freeradius-server repo.
+
+
+5.CONTINUOUS INTEGRATION TESTS
+
+  If possible include test cases in your pull-requests.
+
+  There are currently three test frameworks for different elements of the server:
+
+    Unit tests   - src/tests/unit/*.txt            - Tests for conditions and protocol encoders/decoders.
+    Module tests - src/tests/modules/<module name> - Tests for module functionality.
+    Unlang tests - src/tests/unlang/<test series>  - Tests for unlang keywords and functions.
+
+  See README.* docs in the directories above for basic information on writing test cases.  The easiest
+  way to write new tests is to use the existing tests as examples.
+
+  Tests are run via Travis for each pull-request, and on every commit by a developer with repository
+  access.
