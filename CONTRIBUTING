@@ -9,7 +9,7 @@
   via GitHub.  If you follow these guidelines, it is very likely that your question, bug report or pull
   request will be acted on, and in a timely manor.
 
-  If you choose to ignore these guidelines the response will be a link to this document.
+  If you choose to ignore these guidelines our response will be a link to this document.
 
 
 1.GITHUB ISSUE TRACKER
@@ -80,6 +80,12 @@
   The doxygen site contains the complete reference of all API functions with doxygen headers, as well
   as structs, and callback declarations.  doc.freeradius.org is updated within one minute of each commit
   to the master branch of the main freeradius-server repo.
+
+  This document was written to be displayed automatically on the GitHub issue tracker, so Git/GitHub
+  knowledge is assumed.  If you're wondering what the heck a pull-request is, this document may be of
+  some use:
+
+    http://wiki.freeradius.org/contributing/GitHub
 
 
 5.CONTINUOUS INTEGRATION TESTS
