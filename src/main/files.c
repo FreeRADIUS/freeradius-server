@@ -208,7 +208,7 @@ parse_again:
 			 */
 			rad_assert(check_tmp == NULL);
 			rad_assert(reply_tmp == NULL);
-			parsecode = userparse(ctx, ptr, &check_tmp);
+			parsecode = fr_pair_list_afrom_str(ctx, ptr, &check_tmp);
 			if (parsecode == T_INVALID) {
 				pairlist_free(&pl);
 				ERROR("%s[%d]: Parse error (check) for entry %s: %s",
@@ -285,7 +285,7 @@ parse_again:
 		 *	Parse the reply values.  If there's a trailing
 		 *	comma, keep parsing the reply values.
 		 */
-		parsecode = userparse(ctx, buffer, &reply_tmp);
+		parsecode = fr_pair_list_afrom_str(ctx, buffer, &reply_tmp);
 		if (parsecode == T_COMMA) {
 			continue;
 		}
@@ -309,8 +309,8 @@ parse_again:
 		 */
 		MEM(t = talloc_zero(ctx, PAIR_LIST));
 
-		if (check_tmp) pairsteal(t, check_tmp);
-		if (reply_tmp) pairsteal(t, reply_tmp);
+		if (check_tmp) fr_pair_steal(t, check_tmp);
+		if (reply_tmp) fr_pair_steal(t, reply_tmp);
 
 		t->check = check_tmp;
 		t->reply = reply_tmp;

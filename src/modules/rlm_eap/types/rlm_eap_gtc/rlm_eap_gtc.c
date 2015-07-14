@@ -172,7 +172,7 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler)
 		/*
 		 *	For now, do cleartext password authentication.
 		 */
-		vp = pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 		if (!vp) {
 			REDEBUG2("Cleartext-Password is required for authentication");
 			eap_ds->request->code = PW_EAP_FAILURE;
@@ -204,9 +204,9 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler)
 		 *	If there was a User-Password in the request,
 		 *	why the heck are they using EAP-GTC?
 		 */
-		pairdelete(&request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+		fr_pair_delete_by_num(&request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 
-		vp = pairmake_packet("User-Password", NULL, T_OP_EQ);
+		vp = pair_make_packet("User-Password", NULL, T_OP_EQ);
 		if (!vp) {
 			return 0;
 		}

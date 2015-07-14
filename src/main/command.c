@@ -1772,7 +1772,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
-	ret = readvp2(NULL, &vp, fp, &filedone);
+	ret = fr_pair_list_afrom_file(NULL, &vp, fp, &filedone);
 	fclose(fp);
 	if (ret < 0) {
 		cprintf_error(listener, "Failed reading attributes from %s: %s\n",

@@ -437,10 +437,10 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 		talloc_free(attr);
 	}
 
-	vp = pairalloc(ctx, da);
+	vp = fr_pair_afrom_da(ctx, da);
 	rad_assert(vp);
 
-	if (pairparsevalue(vp, str, talloc_array_length(str) - 1) < 0) {
+	if (fr_pair_value_from_str(vp, str, talloc_array_length(str) - 1) < 0) {
 		char *escaped;
 
 		escaped = fr_aprints(vp, str, talloc_array_length(str) - 1, '\'');

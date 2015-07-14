@@ -172,7 +172,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) == NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) == NULL) {
 		RDEBUG("No Accounting-Status-Type record");
 		return RLM_MODULE_NOOP;
 	}
@@ -195,10 +195,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		int check1 = 0;
 		int check2 = 0;
 
-		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME, 0, TAG_ANY))
+		if ((vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_SESSION_TIME, 0, TAG_ANY))
 		     == NULL || vp->vp_date == 0)
 			check1 = 1;
-		if ((vp = pairfind(request->packet->vps, PW_ACCT_SESSION_ID, 0, TAG_ANY))
+		if ((vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_SESSION_ID, 0, TAG_ANY))
 		     != NULL && vp->vp_length == 8 &&
 		     memcmp(vp->vp_strvalue, "00000000", 8) == 0)
 			check2 = 1;
@@ -637,11 +637,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *requ
 	/*
 	 *	Setup some stuff, like for MPP detection.
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL) {
 		ipno = vp->vp_ipaddr;
 	}
 
-	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL) {
 		call_num = vp->vp_strvalue;
 	}
 

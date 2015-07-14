@@ -162,10 +162,10 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 			fake = request_alloc_fake(request);
 			rad_assert(!fake->packet->vps);
 
-			fake->packet->vps = paircopy(fake->packet, request->packet->vps);
+			fake->packet->vps = fr_pair_list_copy(fake->packet, request->packet->vps);
 
 			/* set the virtual server to use */
-			if ((vp = pairfind(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
+			if ((vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 				fake->server = vp->vp_strvalue;
 			} else {
 				fake->server = inst->virtual_server;
@@ -175,7 +175,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 			rad_virtual_server(fake);
 
 			/* copy the reply vps back to our reply */
-			pairfilter(request->reply, &request->reply->vps,
+			fr_pair_list_move_by_num(request->reply, &request->reply->vps,
 				  &fake->reply->vps, 0, 0, TAG_ANY);
 
 			/* reject if virtual server didn't return accept */

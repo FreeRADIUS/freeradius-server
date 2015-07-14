@@ -247,7 +247,7 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 	 *	The EAP module creates it's own State attribute, so we
 	 *	want to use that one in preference to one we create.
 	 */
-	vp = pairfind(packet->vps, PW_STATE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
 
 	/*
 	 *	If possible, base the new one off of the old one.
@@ -308,9 +308,9 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
 
 	} else {
-		vp = paircreate(packet, PW_STATE, 0);
-		pairmemcpy(vp, entry->state, sizeof(entry->state));
-		pairadd(&packet->vps, vp);
+		vp = fr_pair_afrom_num(packet, PW_STATE, 0);
+		fr_pair_value_memcpy(vp, entry->state, sizeof(entry->state));
+		fr_pair_add(&packet->vps, vp);
 	}
 
 	if (!rbtree_insert(state->tree, entry)) {
@@ -347,7 +347,7 @@ static state_entry_t *state_entry_find(fr_state_t *state, RADIUS_PACKET *packet)
 	VALUE_PAIR *vp;
 	state_entry_t *entry, my_entry;
 
-	vp = pairfind(packet->vps, PW_STATE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!vp) return NULL;
 
 	if (vp->vp_length != sizeof(my_entry.state)) return NULL;
@@ -372,7 +372,7 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 	state_entry_t *entry;
 	fr_state_t *state = global_state;
 
-	pairfree(&request->state);
+	fr_pair_list_free(&request->state);
 	request->state = NULL;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
@@ -400,7 +400,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	/*
 	 *	No State, don't do anything.
 	 */
-	if (!pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY)) {
+	if (!fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) {
 		RDEBUG3("session-state: No State attribute");
 		return;
 	}
@@ -413,7 +413,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	 *	isn't thread-safe.
 	 */
 	if (entry) {
-		pairfilter(request, &request->state, &entry->vps, 0, 0, TAG_ANY);
+		fr_pair_list_move_by_num(request, &request->state, &entry->vps, 0, 0, TAG_ANY);
 		RDEBUG2("session-state: Found cached attributes");
 		rdebug_pair_list(L_DBG_LVL_1, request, request->state, NULL);
 
@@ -464,7 +464,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	 *	This has to be done in a mutex lock, because talloc
 	 *	isn't thread-safe.
 	 */
-	pairfilter(entry, &entry->vps, &request->state, 0, 0, TAG_ANY);
+	fr_pair_list_move_by_num(entry, &entry->vps, &request->state, 0, 0, TAG_ANY);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	rad_assert(request->state == NULL);

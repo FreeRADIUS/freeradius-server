@@ -628,7 +628,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 	vp_cursor_t cursor;
 
 	RINDENT();
-	pairsort(vps, attrtagcmp);
+	fr_pair_list_sort(vps, fr_pair_cmp_by_da_tag);
 	for (vp = fr_cursor_init(&cursor, vps);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
@@ -721,7 +721,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 	if (SvOK(sv)) {
 		STRLEN len;
 		val = SvPV(sv, len);
-		vp = pairmake(ctx, vps, key, NULL, op);
+		vp = fr_pair_make(ctx, vps, key, NULL, op);
 		if (!vp) {
 		fail:
 			REDEBUG("Failed to create pair %s:%s %s %s", list_name, key,
@@ -731,15 +731,15 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 
 		switch (vp->da->type) {
 		case PW_TYPE_STRING:
-			pairbstrncpy(vp, val, len);
+			fr_pair_value_bstrncpy(vp, val, len);
 			break;
 
 		case PW_TYPE_OCTETS:
-			pairmemcpy(vp, (uint8_t const *)val, len);
+			fr_pair_value_memcpy(vp, (uint8_t const *)val, len);
 			break;
 
 		default:
-			if (pairparsevalue(vp, val, len) < 0) goto fail;
+			if (fr_pair_value_from_str(vp, val, len) < 0) goto fail;
 		}
 
 		RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens, op, "<INVALID>"),
@@ -886,27 +886,27 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 
 		vp = NULL;
 		if ((get_hv_content(request->packet, request, rad_request_hv, &vp, "RAD_REQUEST", "request")) == 0) {
-			pairfree(&request->packet->vps);
+			fr_pair_list_free(&request->packet->vps);
 			request->packet->vps = vp;
 			vp = NULL;
 
 			/*
 			 *	Update cached copies
 			 */
-			request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-			request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+			request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+			request->password = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 			if (!request->password)
-				request->password = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+				request->password = fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 		}
 
 		if ((get_hv_content(request->reply, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) == 0) {
-			pairfree(&request->reply->vps);
+			fr_pair_list_free(&request->reply->vps);
 			request->reply->vps = vp;
 			vp = NULL;
 		}
 
 		if ((get_hv_content(request, request, rad_config_hv, &vp, "RAD_CONFIG", "control")) == 0) {
-			pairfree(&request->config);
+			fr_pair_list_free(&request->config);
 			request->config = vp;
 			vp = NULL;
 		}
@@ -915,7 +915,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		if (request->proxy &&
 		    (get_hv_content(request->proxy, request, rad_request_proxy_hv, &vp,
 		    		    "RAD_REQUEST_PROXY", "proxy-request") == 0)) {
-			pairfree(&request->proxy->vps);
+			fr_pair_list_free(&request->proxy->vps);
 			request->proxy->vps = vp;
 			vp = NULL;
 		}
@@ -923,7 +923,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		if (request->proxy_reply &&
 		    (get_hv_content(request->proxy_reply, request, rad_request_proxy_reply_hv, &vp,
 		    		    "RAD_REQUEST_PROXY_REPLY", "proxy-reply") == 0)) {
-			pairfree(&request->proxy_reply->vps);
+			fr_pair_list_free(&request->proxy_reply->vps);
 			request->proxy_reply->vps = vp;
 			vp = NULL;
 		}
@@ -965,7 +965,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	VALUE_PAIR	*pair;
 	int 		acctstatustype=0;
 
-	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL) {
+	if ((pair = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL) {
 		acctstatustype = pair->vp_integer;
 	} else {
 		RDEBUG("Invalid Accounting Packet");

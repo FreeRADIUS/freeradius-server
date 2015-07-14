@@ -2321,7 +2321,7 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 		 *	attribute is the one hacked through
 		 *	the 'hints' file.
 		 */
-		request->proxy->vps = paircopy(request->proxy,
+		request->proxy->vps = fr_pair_list_copy(request->proxy,
 					       request->packet->vps);
 	}
 
@@ -2342,8 +2342,8 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	 *	unless one already exists.
 	 */
 	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
-	    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
-		pairmake(request->proxy, &request->proxy->vps,
+	    !fr_pair_find_by_num(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
+		fr_pair_make(request->proxy, &request->proxy->vps,
 			 "Message-Authenticator", "0x00",
 			 T_OP_SET);
 	}
@@ -2414,7 +2414,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		break;
 
 	case HOME_POOL_KEYED_BALANCE:
-		if ((vp = pairfind(request->config, PW_LOAD_BALANCE_KEY, 0, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_num(request->config, PW_LOAD_BALANCE_KEY, 0, TAG_ANY)) != NULL) {
 			hash = fr_hash(vp->vp_strvalue, vp->vp_length);
 			start = hash % pool->num_home_servers;
 			break;

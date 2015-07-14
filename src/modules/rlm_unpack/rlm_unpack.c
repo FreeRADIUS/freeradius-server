@@ -150,7 +150,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 		goto nothing;
 	}
 
-	cast = pairalloc(request, da);
+	cast = fr_pair_afrom_da(request, da);
 	if (!cast) goto nothing;
 
 	memcpy(&(cast->data), input + offset, dict_attr_sizes[type][0]);

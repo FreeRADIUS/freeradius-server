@@ -1340,9 +1340,9 @@ static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
 				continue;
 			}
 
-			new = pairalloc(talloc_parent(vp), vp->da);
+			new = fr_pair_afrom_da(talloc_parent(vp), vp->da);
 			if (!new) {
-				pairfree(&head);
+				fr_pair_list_free(&head);
 				return -1;
 			}
 			new->tag = vp->tag;
@@ -1354,7 +1354,7 @@ static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
 
 				buff = talloc_array(new, uint8_t, q - p);
 				memcpy(buff, p, q - p);
-				pairmemsteal(new, buff);
+				fr_pair_value_memsteal(new, buff);
 			}
 				break;
 
@@ -1365,7 +1365,7 @@ static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
 				buff = talloc_array(new, char, (q - p) + 1);
 				memcpy(buff, p, q - p);
 				buff[q - p] = '\0';
-				pairstrsteal(new, (char *)buff);
+				fr_pair_value_strsteal(new, (char *)buff);
 			}
 				break;
 

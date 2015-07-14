@@ -513,7 +513,7 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 			    VALUE_PAIR **reply_pairs);
 int radius_find_compare(DICT_ATTR const *attribute);
-VALUE_PAIR	*radius_paircreate(TALLOC_CTX *ctx, VALUE_PAIR **vps, unsigned int attribute, unsigned int vendor);
+VALUE_PAIR	*radius_pair_create(TALLOC_CTX *ctx, VALUE_PAIR **vps, unsigned int attribute, unsigned int vendor);
 
 void module_failure_msg(REQUEST *request, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap) CC_HINT(format (printf, 2, 0));
@@ -529,9 +529,9 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
  * @param _b value
  * @param _c op
  */
-#define pairmake_packet(_a, _b, _c) pairmake(request->packet, &request->packet->vps, _a, _b, _c)
-#define pairmake_reply(_a, _b, _c) pairmake(request->reply, &request->reply->vps, _a, _b, _c)
-#define pairmake_config(_a, _b, _c) pairmake(request, &request->config, _a, _b, _c)
+#define pair_make_packet(_a, _b, _c) fr_pair_make(request->packet, &request->packet->vps, _a, _b, _c)
+#define pair_make_reply(_a, _b, _c) fr_pair_make(request->reply, &request->reply->vps, _a, _b, _c)
+#define pair_make_config(_a, _b, _c) fr_pair_make(request, &request->config, _a, _b, _c)
 
 /* threads.c */
 int	thread_pool_init(CONF_SECTION *cs, bool *spawn_flag);

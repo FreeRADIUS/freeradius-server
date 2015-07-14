@@ -333,7 +333,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	char		xlat_str[MAX_STRING_LEN];
 	int		ret;
 
-	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
 		return RLM_MODULE_INVALID;
@@ -456,7 +456,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *  Check if Pool-Name attribute exists. If it exists check our name and
 	 *  run only if they match
 	 */
-	vp = pairfind(request->config, PW_POOL_NAME, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_POOL_NAME, 0, TAG_ANY);
 	if (vp != NULL){
 		if (!inst->name || (strcmp(inst->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
@@ -468,7 +468,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *  Find the caller id
 	 */
-	vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY);
 	if (vp != NULL) {
 		cli = vp->vp_strvalue;
 	}
@@ -551,7 +551,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *  If there is a Framed-IP-Address (or Dhcp-Your-IP-Address)
 	 *  attribute in the reply, check for override
 	 */
-	if (pairfind(request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY) != NULL) {
 		RDEBUG("Found IP address attribute in reply attribute list");
 		if (!inst->override) {
 			RDEBUG("override is set to no. Return NOOP");
@@ -559,7 +559,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		}
 
 		RDEBUG("Override supplied IP address");
-		pairdelete(&request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY);
+		fr_pair_delete_by_num(&request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY);
 	}
 
 	/*
@@ -712,14 +712,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		free(key_datum.dptr);
 		entry.active = 1;
 		entry.timestamp = request->timestamp;
-		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_num(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY)) != NULL) {
 			entry.timeout = (time_t) vp->vp_integer;
 #ifdef WITH_DHCP
 			if (dhcp) {
-				vp = radius_paircreate(request->reply, &request->reply->vps,
+				vp = radius_pair_create(request->reply, &request->reply->vps,
 						       PW_DHCP_IP_ADDRESS_LEASE_TIME, DHCP_MAGIC_VENDOR);
 				vp->vp_integer = entry.timeout;
-				pairdelete(&request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
+				fr_pair_delete_by_num(&request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
 			}
 #endif
 		} else {
@@ -767,7 +767,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		pthread_mutex_unlock(&inst->op_mutex);
 
 		RDEBUG("Allocated ip %s to client key: %s",ip_ntoa(str,entry.ipaddr),hex_str);
-		vp = radius_paircreate(request->reply, &request->reply->vps,
+		vp = radius_pair_create(request->reply, &request->reply->vps,
 				       attr_ipaddr, vendor_ipaddr);
 		vp->vp_ipaddr = entry.ipaddr;
 
@@ -775,8 +775,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		 *	If there is no Framed-Netmask attribute in the
 		 *	reply, add one
 		 */
-		if (pairfind(request->reply->vps, attr_ipmask, vendor_ipaddr, TAG_ANY) == NULL) {
-			vp = radius_paircreate(request->reply, &request->reply->vps,
+		if (fr_pair_find_by_num(request->reply->vps, attr_ipmask, vendor_ipaddr, TAG_ANY) == NULL) {
+			vp = radius_pair_create(request->reply, &request->reply->vps,
 					       attr_ipmask, vendor_ipaddr);
 			vp->vp_ipaddr = ntohl(inst->netmask);
 		}

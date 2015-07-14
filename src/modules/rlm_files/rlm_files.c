@@ -73,7 +73,7 @@ typedef struct rlm_files_t {
 static int fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
+	tmp = fr_pair_find_by_num(vp, PW_FALL_THROUGH, 0, TAG_ANY);
 
 	return tmp ? tmp->vp_integer : 0;
 }
@@ -409,13 +409,13 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			default_pl = default_pl->next;
 		}
 
-		check_tmp = paircopy(request, pl->check);
+		check_tmp = fr_pair_list_copy(request, pl->check);
 		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (radius_xlat_do(request, vp) < 0) {
 				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
-				pairfree(&check_tmp);
+				fr_pair_list_free(&check_tmp);
 				continue;
 			}
 		}
@@ -425,10 +425,10 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			found = true;
 
 			/* ctx may be reply or proxy */
-			reply_tmp = paircopy(reply_packet, pl->reply);
+			reply_tmp = fr_pair_list_copy(reply_packet, pl->reply);
 			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
-			pairmove(request, &request->config, &check_tmp);
-			pairfree(&check_tmp);
+			fr_pair_list_move(request, &request->config, &check_tmp);
+			fr_pair_list_free(&check_tmp);
 
 			/*
 			 *	Fallthrough?
@@ -441,7 +441,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 	/*
 	 *	Remove server internal parameters.
 	 */
-	pairdelete(&reply_packet->vps, PW_FALL_THROUGH, 0, TAG_ANY);
+	fr_pair_delete_by_num(&reply_packet->vps, PW_FALL_THROUGH, 0, TAG_ANY);
 
 	/*
 	 *	See if we succeeded.

@@ -671,7 +671,7 @@ static void process_file(const char *root_dir, char const *filename)
 				p += 7;
 			}
 
-			if (userparse(NULL, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
 				strlcpy(output, fr_strerror(), sizeof(output));
 				continue;
 			}
@@ -691,7 +691,7 @@ static void process_file(const char *root_dir, char const *filename)
 				if (len == 0) break;
 			}
 
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			outlen = attr - data;
 			goto print_hex;
 		}
@@ -716,7 +716,7 @@ static void process_file(const char *root_dir, char const *filename)
 				vp = NULL;
 				my_len = rad_attr2vp(NULL, NULL, NULL, NULL, attr, len, &vp);
 				if (my_len < 0) {
-					pairfree(&head);
+					fr_pair_list_free(&head);
 					break;
 				}
 
@@ -753,7 +753,7 @@ static void process_file(const char *root_dir, char const *filename)
 					}
 				}
 
-				pairfree(&head);
+				fr_pair_list_free(&head);
 			} else if (my_len < 0) {
 				strlcpy(output, fr_strerror(), sizeof(output));
 
@@ -775,7 +775,7 @@ static void process_file(const char *root_dir, char const *filename)
 				p += 12;
 			}
 
-			if (userparse(NULL, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
 				strlcpy(output, fr_strerror(), sizeof(output));
 				continue;
 			}
@@ -797,7 +797,7 @@ static void process_file(const char *root_dir, char const *filename)
 				attr += len;
 			};
 
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			outlen = attr - data;
 			goto print_hex;
 		}
@@ -837,7 +837,7 @@ static void process_file(const char *root_dir, char const *filename)
 					}
 				}
 
-				pairfree(&head);
+				fr_pair_list_free(&head);
 			} else if (my_len < 0) {
 				strlcpy(output, fr_strerror(), sizeof(output));
 
@@ -850,7 +850,7 @@ static void process_file(const char *root_dir, char const *filename)
 		if (strncmp(p, "attribute ", 10) == 0) {
 			p += 10;
 
-			if (userparse(NULL, p, &head) != T_EOL) {
+			if (fr_pair_list_afrom_str(NULL, p, &head) != T_EOL) {
 				strlcpy(output, fr_strerror(), sizeof(output));
 				continue;
 			}

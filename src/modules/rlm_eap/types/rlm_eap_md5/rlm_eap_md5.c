@@ -114,7 +114,7 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 	rad_assert(handler->request != NULL);
 	rad_assert(handler->stage == PROCESS);
 
-	password = pairfind(handler->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	password = fr_pair_find_by_num(handler->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
 		RDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
 		return 0;

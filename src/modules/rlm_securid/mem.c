@@ -132,7 +132,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = pairmake_reply("State", session->state, T_OP_EQ);
+	state = pair_make_reply("State", session->state, T_OP_EQ);
 	if (!state) return -1;
 	state->vp_length = SECURID_STATE_LEN;
 
@@ -164,7 +164,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request, SECURID_SESSIO
 	pthread_mutex_unlock(&(inst->session_mutex));
 
 	if (!status) {
-		pairfree(&state);
+		fr_pair_list_free(&state);
 		ERROR("rlm_securid: Failed to store session");
 		return -1;
 	}
@@ -192,7 +192,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	/*
 	 *	We key the sessions off of the 'state' attribute
 	 */
-	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	state = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!state) {
 		return NULL;
 	}

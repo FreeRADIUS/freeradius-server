@@ -120,12 +120,12 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 
 /*************************************************************************
  *
- *	Function: sql_userparse
+ *	Function: sql_fr_pair_list_afrom_str
  *
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int sql_userparse(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **head, rlm_sql_row_t row)
+int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **head, rlm_sql_row_t row)
 {
 	VALUE_PAIR *vp;
 	char const *ptr, *value;
@@ -204,21 +204,21 @@ int sql_userparse(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **head, rlm_sql_
 	/*
 	 *	Create the pair
 	 */
-	vp = pairmake(ctx, NULL, row[2], NULL, operator);
+	vp = fr_pair_make(ctx, NULL, row[2], NULL, operator);
 	if (!vp) {
 		REDEBUG("Failed to create the pair: %s", fr_strerror());
 		return -1;
 	}
 
 	if (do_xlat) {
-		if (pairmark_xlat(vp, value) < 0) {
+		if (fr_pair_mark_xlat(vp, value) < 0) {
 			REDEBUG("Error marking pair for xlat");
 
 			talloc_free(vp);
 			return -1;
 		}
 	} else {
-		if (pairparsevalue(vp, value, -1) < 0) {
+		if (fr_pair_value_from_str(vp, value, -1) < 0) {
 			REDEBUG("Error parsing value: %s", fr_strerror());
 
 			talloc_free(vp);
@@ -229,7 +229,7 @@ int sql_userparse(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **head, rlm_sql_
 	/*
 	 *	Add the pair into the packet
 	 */
-	pairadd(head, vp);
+	fr_pair_add(head, vp);
 	return 0;
 }
 
@@ -515,7 +515,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_ha
 
 	while (rlm_sql_fetch_row(&row, inst, request, handle) == 0) {
 		if (!row) break;
-		if (sql_userparse(ctx, request, pair, row) != 0) {
+		if (sql_fr_pair_list_afrom_str(ctx, request, pair, row) != 0) {
 			REDEBUG("Error parsing user data from database result");
 
 			(inst->module->sql_finish_select_query)(*handle, inst->config);

@@ -57,7 +57,7 @@ static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *rep
 
 	if (check_item->op == T_OP_SET) return;
 
-	compare = paircmp(check_item, reply_item);
+	compare = fr_pair_cmp(check_item, reply_item);
 	if (compare < 0) {
 		REDEBUG("Comparison failed: %s", fr_strerror());
 	}
@@ -164,7 +164,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 	if (!inst->key) {
 		VALUE_PAIR	*namepair;
 
-		namepair = pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY);
+		namepair = fr_pair_find_by_num(request->packet->vps, PW_REALM, 0, TAG_ANY);
 		if (!namepair) {
 			return (RLM_MODULE_NOOP);
 		}
@@ -227,7 +227,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 			 *    the output list without checking it.
 			 */
 			if (check_item->op == T_OP_SET ) {
-				vp = paircopyvp(packet, check_item);
+				vp = fr_pair_copy(packet, check_item);
 				if (!vp) {
 					goto error;
 				}
@@ -280,7 +280,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 				if (!pass) {
 					RDEBUG3("Attribute \"%s\" allowed by relaxed mode", input_item->da->name);
 				}
-				vp = paircopyvp(packet, input_item);
+				vp = fr_pair_copy(packet, input_item);
 				if (!vp) {
 					goto error;
 				}
@@ -305,21 +305,21 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 	/*
 	 *	Replace the existing request list with our filtered one
 	 */
-	pairfree(&packet->vps);
+	fr_pair_list_free(&packet->vps);
 	packet->vps = output;
 
 	if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
-		request->username = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
+		request->username = fr_pair_find_by_num(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 		if (!request->username) {
-			request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+			request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		}
-		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+		request->password = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 	}
 
 	return RLM_MODULE_UPDATED;
 
 	error:
-	pairfree(&output);
+	fr_pair_list_free(&output);
 	return RLM_MODULE_FAIL;
 }
 

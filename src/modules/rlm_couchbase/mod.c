@@ -275,10 +275,10 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQUEST *request)
 {
 	json_object *jobj, *jval, *jop;     /* json object pointers */
-	TALLOC_CTX *ctx;                    /* talloc context for pairmake */
-	VALUE_PAIR *vp, **ptr;              /* value pair and value pair pointer for pairmake */
+	TALLOC_CTX *ctx;                    /* talloc context for fr_pair_make */
+	VALUE_PAIR *vp, **ptr;              /* value pair and value pair pointer for fr_pair_make */
 
-	/* assign ctx and vps for pairmake based on section */
+	/* assign ctx and vps for fr_pair_make based on section */
 	if (strcmp(section, "config") == 0) {
 		ctx = request;
 		ptr = &(request->config);
@@ -287,7 +287,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 		ptr = &(request->reply->vps);
 	} else {
 		/* log error - this shouldn't happen */
-		RERROR("invalid section passed for pairmake");
+		RERROR("invalid section passed for fr_pair_make");
 		/* return */
 		return NULL;
 	}
@@ -325,7 +325,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 					/* debugging */
 					RDEBUG("adding '%s' attribute to '%s' section", attribute, section);
 					/* add pair */
-					vp = pairmake(ctx, ptr, attribute, json_object_get_string(jval),
+					vp = fr_pair_make(ctx, ptr, attribute, json_object_get_string(jval),
 						fr_str2int(fr_tokens, json_object_get_string(jop), 0));
 					/* check pair */
 					if (!vp) {
@@ -490,7 +490,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	}
 
 	/* get current event timestamp */
-	if ((vp = pairfind(vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY)) != NULL) {
 		/* get seconds value from attribute */
 		ts = vp->vp_date;
 	} else {
@@ -504,7 +504,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	memset(value, 0, sizeof(value));
 
 	/* get elapsed session time */
-	if ((vp = pairfind(vps, PW_ACCT_SESSION_TIME, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(vps, PW_ACCT_SESSION_TIME, 0, TAG_ANY)) != NULL) {
 		/* calculate diff */
 		ts = (ts - vp->vp_integer);
 		/* calculate start time */

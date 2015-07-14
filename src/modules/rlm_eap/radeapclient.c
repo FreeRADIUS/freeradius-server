@@ -467,13 +467,13 @@ static int rc_load_input(TALLOC_CTX *ctx, char const *filename, rc_input_vps_lis
 		input_num ++;
 		MEM(request = talloc_zero(ctx, rc_input_vps_t));
 
-		if (readvp2(request, &request->vps_in, file_in, &file_done) < 0) {
+		if (fr_pair_list_afrom_file(request, &request->vps_in, file_in, &file_done) < 0) {
 			ERROR("Error parsing entry %u from input: %s", input_num, input);
 			talloc_free(request);
 			break;
 		}
 		if (NULL == request->vps_in) {
-			/* Last line might be empty, in this case readvp2 will return a NULL vps pointer. Silently ignore this. */
+			/* Last line might be empty, in this case fr_pair_list_afrom_file will return a NULL vps pointer. Silently ignore this. */
 			talloc_free(request);
 			break;
 		}
@@ -602,9 +602,9 @@ static int rc_init_packet(rc_transaction_t *trans)
 			vp->da = da;
 
 			/*
-			 *	Re-do pairmemsteal ourselves,
+			 *	Re-do fr_pair_value_memsteal ourselves,
 			 *	because we play games with
-			 *	vp->da, and pairmemsteal goes
+			 *	vp->da, and fr_pair_value_memsteal goes
 			 *	to GREAT lengths to sanitize
 			 *	and fix and change and
 			 *	double-check the various
@@ -694,9 +694,9 @@ static void rc_build_eap_context(rc_transaction_t *trans)
 		 *	of challenge the server will issue.
 		 */
 		VALUE_PAIR *vp;
-		vp = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
-		if (!vp) vp = pairfind(packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
-		if (!vp) vp = pairfind(packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(packet->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+		if (!vp) vp = fr_pair_find_by_num(packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+		if (!vp) vp = fr_pair_find_by_num(packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 		if (vp) {
 			strlcpy(trans->eap_context->password, vp->vp_strvalue, sizeof(trans->eap_context->password));
 		}
@@ -730,7 +730,7 @@ static rc_transaction_t *rc_init_transaction(TALLOC_CTX *ctx)
 	trans->packet = packet;
 
 	/* Fill in the packet value pairs. */
-	packet->vps = paircopy(packet, vps_entry->vps_in);
+	packet->vps = fr_pair_list_copy(packet, vps_entry->vps_in);
 
 	/* Initialize the transaction packet. */
 	if (!rc_init_packet(trans)) {
@@ -788,8 +788,8 @@ static void rc_cleanresp(RADIUS_PACKET *resp)
 	 * maybe should just copy things we care about, or keep
 	 * a copy of the original input and start from there again?
 	 */
-	pairdelete(&resp->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-	pairdelete(&resp->vps, PW_EAP_TYPE_BASE+PW_EAP_IDENTITY, 0, TAG_ANY);
+	fr_pair_delete_by_num(&resp->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+	fr_pair_delete_by_num(&resp->vps, PW_EAP_TYPE_BASE+PW_EAP_IDENTITY, 0, TAG_ANY);
 
 	for (vp = fr_cursor_init(&cursor, &resp->vps);
 	     vp;
@@ -821,7 +821,7 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	/* form new response clear of any EAP stuff */
 	rc_cleanresp(rep);
 
-	if ((vp = pairfind(req->vps, PW_EAP_SIM_VERSION_LIST, 0, TAG_ANY)) == NULL) {
+	if ((vp = fr_pair_find_by_num(req->vps, PW_EAP_SIM_VERSION_LIST, 0, TAG_ANY)) == NULL) {
 		ERROR("illegal start message has no VERSION_LIST");
 		return 0;
 	}
@@ -880,9 +880,9 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	 * anyway we like, but it is illegal to have more than one
 	 * present.
 	 */
-	anyidreq_vp = pairfind(req->vps, PW_EAP_SIM_ANY_ID_REQ, 0, TAG_ANY);
-	fullauthidreq_vp = pairfind(req->vps, PW_EAP_SIM_FULLAUTH_ID_REQ, 0, TAG_ANY);
-	permanentidreq_vp = pairfind(req->vps, PW_EAP_SIM_PERMANENT_ID_REQ, 0, TAG_ANY);
+	anyidreq_vp = fr_pair_find_by_num(req->vps, PW_EAP_SIM_ANY_ID_REQ, 0, TAG_ANY);
+	fullauthidreq_vp = fr_pair_find_by_num(req->vps, PW_EAP_SIM_FULLAUTH_ID_REQ, 0, TAG_ANY);
+	permanentidreq_vp = fr_pair_find_by_num(req->vps, PW_EAP_SIM_PERMANENT_ID_REQ, 0, TAG_ANY);
 
 	if (!fullauthidreq_vp ||
 	    anyidreq_vp != NULL ||
@@ -897,9 +897,9 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 	/* okay, we have just any_id_req there, so fill in response */
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
-	newvp = paircreate(rep, PW_EAP_SIM_SUBTYPE, 0);
+	newvp = fr_pair_afrom_num(rep, PW_EAP_SIM_SUBTYPE, 0);
 	newvp->vp_integer = EAPSIM_START;
-	pairreplace(&(rep->vps), newvp);
+	fr_pair_replace(&(rep->vps), newvp);
 
 	/* insert selected version into response. */
 	{
@@ -907,9 +907,9 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 
 		no_versions = htons(selectedversion);
 
-		newvp = paircreate(rep, PW_EAP_SIM_SELECTED_VERSION, 0);
-		pairmemcpy(newvp, (uint8_t *) &no_versions, 2);
-		pairreplace(&(rep->vps), newvp);
+		newvp = fr_pair_afrom_num(rep, PW_EAP_SIM_SELECTED_VERSION, 0);
+		fr_pair_value_memcpy(newvp, (uint8_t *) &no_versions, 2);
+		fr_pair_replace(&(rep->vps), newvp);
 
 		/* record the selected version */
 		memcpy(eap_context->eap.sim.keys.versionselect, &no_versions, 2);
@@ -928,13 +928,13 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 		nonce[2]=fr_rand();
 		nonce[3]=fr_rand();
 
-		newvp = paircreate(rep, PW_EAP_SIM_NONCE_MT, 0);
+		newvp = fr_pair_afrom_num(rep, PW_EAP_SIM_NONCE_MT, 0);
 
 		p = talloc_zero_array(newvp, uint8_t, 18); /* 18 = 16 bytes of nonce + padding */
 		memcpy(&p[2], nonce, 16);
-		pairmemsteal(newvp, p);
+		fr_pair_value_memsteal(newvp, p);
 
-		pairreplace(&(rep->vps), newvp);
+		fr_pair_replace(&(rep->vps), newvp);
 
 		/* also keep a copy of the nonce! */
 		memcpy(eap_context->eap.sim.keys.nonce_mt, nonce, 16);
@@ -948,22 +948,22 @@ static int rc_process_eap_start(rc_eap_context_t *eap_context,
 		/*
 		 * insert the identity here.
 		 */
-		vp = pairfind(rep->vps, PW_USER_NAME, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(rep->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp)
 		{
 			ERROR("eap-sim: We need to have a User-Name attribute!");
 			return 0;
 		}
-		newvp = paircreate(rep, PW_EAP_SIM_IDENTITY, 0);
+		newvp = fr_pair_afrom_num(rep, PW_EAP_SIM_IDENTITY, 0);
 
 		idlen = strlen(vp->vp_strvalue);
 		p = talloc_zero_array(newvp, uint8_t, idlen + 2);
 		no_idlen = htons(idlen);
 		memcpy(p, &no_idlen, 2);
 		memcpy(p + 2, vp->vp_strvalue, idlen);
-		pairmemsteal(newvp, p);
+		fr_pair_value_memsteal(newvp, p);
 
-		pairreplace(&(rep->vps), newvp);
+		fr_pair_replace(&(rep->vps), newvp);
 
 		/* record it */
 		memcpy(eap_context->eap.sim.keys.identity, vp->vp_strvalue, idlen);
@@ -991,8 +991,8 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	uint8_t calcmac[EAPSIM_CALCMAC_SIZE];
 
 	/* look for the AT_MAC and the challenge data */
-	mac = pairfind(req->vps, PW_EAP_SIM_MAC, 0, TAG_ANY);
-	randvp = pairfind(req->vps, PW_EAP_SIM_RAND, 0, TAG_ANY);
+	mac = fr_pair_find_by_num(req->vps, PW_EAP_SIM_MAC, 0, TAG_ANY);
+	randvp = fr_pair_find_by_num(req->vps, PW_EAP_SIM_RAND, 0, TAG_ANY);
 	if (!mac || !randvp) {
 		ERROR("Challenge message needs to contain RAND and MAC");
 		return 0;
@@ -1010,9 +1010,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		randcfg[1] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE];
 		randcfg[2] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE*2];
 
-		randcfgvp[0] = pairfind(rep->vps, PW_EAP_SIM_RAND1, 0, TAG_ANY);
-		randcfgvp[1] = pairfind(rep->vps, PW_EAP_SIM_RAND2, 0, TAG_ANY);
-		randcfgvp[2] = pairfind(rep->vps, PW_EAP_SIM_RAND3, 0, TAG_ANY);
+		randcfgvp[0] = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_RAND1, 0, TAG_ANY);
+		randcfgvp[1] = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_RAND2, 0, TAG_ANY);
+		randcfgvp[2] = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_RAND3, 0, TAG_ANY);
 
 		if (!randcfgvp[0] ||
 		    !randcfgvp[1] ||
@@ -1048,9 +1048,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	 * Really, they should be calculated from the RAND!
 	 *
 	 */
-	sres1 = pairfind(rep->vps, PW_EAP_SIM_SRES1, 0, TAG_ANY);
-	sres2 = pairfind(rep->vps, PW_EAP_SIM_SRES2, 0, TAG_ANY);
-	sres3 = pairfind(rep->vps, PW_EAP_SIM_SRES3, 0, TAG_ANY);
+	sres1 = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_SRES1, 0, TAG_ANY);
+	sres2 = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_SRES2, 0, TAG_ANY);
+	sres3 = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_SRES3, 0, TAG_ANY);
 
 	if (!sres1 ||
 	    !sres2 ||
@@ -1062,9 +1062,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	memcpy(eap_context->eap.sim.keys.sres[1], sres2->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[1]));
 	memcpy(eap_context->eap.sim.keys.sres[2], sres3->vp_strvalue, sizeof(eap_context->eap.sim.keys.sres[2]));
 
-	Kc1 = pairfind(rep->vps, PW_EAP_SIM_KC1, 0, TAG_ANY);
-	Kc2 = pairfind(rep->vps, PW_EAP_SIM_KC2, 0, TAG_ANY);
-	Kc3 = pairfind(rep->vps, PW_EAP_SIM_KC3, 0, TAG_ANY);
+	Kc1 = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_KC1, 0, TAG_ANY);
+	Kc2 = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_KC2, 0, TAG_ANY);
+	Kc3 = fr_pair_find_by_num(rep->vps, PW_EAP_SIM_KC3, 0, TAG_ANY);
 
 	if (!Kc1 ||
 	    !Kc2 ||
@@ -1103,9 +1103,9 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 	rc_cleanresp(rep);
 
 	/* mark the subtype as being EAP-SIM/Response/Start */
-	newvp = paircreate(rep, PW_EAP_SIM_SUBTYPE, 0);
+	newvp = fr_pair_afrom_num(rep, PW_EAP_SIM_SUBTYPE, 0);
 	newvp->vp_integer = EAPSIM_CHALLENGE;
-	pairreplace(&(rep->vps), newvp);
+	fr_pair_replace(&(rep->vps), newvp);
 
 	{
 		uint8_t *p;
@@ -1113,21 +1113,21 @@ static int rc_process_eap_challenge(rc_eap_context_t *eap_context,
 		 * fill the SIM_MAC with a field that will in fact get appended
 		 * to the packet before the MAC is calculated
 		 */
-		newvp = paircreate(rep, PW_EAP_SIM_MAC, 0);
+		newvp = fr_pair_afrom_num(rep, PW_EAP_SIM_MAC, 0);
 
 		p = talloc_zero_array(newvp, uint8_t, EAPSIM_SRES_SIZE*3);
 		memcpy(p+EAPSIM_SRES_SIZE * 0, sres1->vp_strvalue, EAPSIM_SRES_SIZE);
 		memcpy(p+EAPSIM_SRES_SIZE * 1, sres2->vp_strvalue, EAPSIM_SRES_SIZE);
 		memcpy(p+EAPSIM_SRES_SIZE * 2, sres3->vp_strvalue, EAPSIM_SRES_SIZE);
-		pairmemsteal(newvp, p);
+		fr_pair_value_memsteal(newvp, p);
 
-		pairreplace(&(rep->vps), newvp);
+		fr_pair_replace(&(rep->vps), newvp);
 	}
 
-	newvp = paircreate(rep, PW_EAP_SIM_KEY, 0);
-	pairmemcpy(newvp, eap_context->eap.sim.keys.K_aut, EAPSIM_AUTH_SIZE);
+	newvp = fr_pair_afrom_num(rep, PW_EAP_SIM_KEY, 0);
+	fr_pair_value_memcpy(newvp, eap_context->eap.sim.keys.K_aut, EAPSIM_AUTH_SIZE);
 
-	pairreplace(&(rep->vps), newvp);
+	fr_pair_replace(&(rep->vps), newvp);
 
 	return 1;
 }
@@ -1145,12 +1145,12 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	char statenamebuf[32], subtypenamebuf[32];
 	int rcode_eap;
 
-	if ((radstate = paircopy_by_num(NULL, req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
+	if ((radstate = fr_pair_list_copy_by_num(NULL, req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
 	{
 		return 0;
 	}
 
-	if ((eapid = paircopy_by_num(NULL, req->vps, PW_EAP_ID, 0, TAG_ANY)) == NULL)
+	if ((eapid = fr_pair_list_copy_by_num(NULL, req->vps, PW_EAP_ID, 0, TAG_ANY)) == NULL)
 	{
 		return 0;
 	}
@@ -1159,12 +1159,12 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	 * ourselves to be in EAP-SIM-Start state if there is none.
 	 */
 
-	if ((statevp = pairfind(resp->vps, PW_EAP_SIM_STATE, 0, TAG_ANY)) == NULL)
+	if ((statevp = fr_pair_find_by_num(resp->vps, PW_EAP_SIM_STATE, 0, TAG_ANY)) == NULL)
 	{
 		/* must be initial request */
-		statevp = paircreate(resp, PW_EAP_SIM_STATE, 0);
+		statevp = fr_pair_afrom_num(resp, PW_EAP_SIM_STATE, 0);
 		statevp->vp_integer = EAPSIM_CLIENT_INIT;
-		pairreplace(&(resp->vps), statevp);
+		fr_pair_replace(&(resp->vps), statevp);
 	}
 	state = statevp->vp_integer;
 
@@ -1173,7 +1173,7 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	 */
 	rc_unmap_eapsim_types(req);
 
-	if ((vp = pairfind(req->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY)) == NULL)
+	if ((vp = fr_pair_find_by_num(req->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY)) == NULL)
 	{
 		return 0;
 	}
@@ -1235,13 +1235,13 @@ static int rc_respond_eap_sim(rc_eap_context_t *eap_context,
 	newstate = EAPSIM_CLIENT_START; // (1)
 
 	/* copy the eap state object in */
-	pairreplace(&(resp->vps), eapid);
+	fr_pair_replace(&(resp->vps), eapid);
 
 	/* update state info, and send new packet */
 	rc_map_eapsim_types(resp);
 
 	/* copy the radius state object in */
-	pairreplace(&(resp->vps), radstate);
+	fr_pair_replace(&(resp->vps), radstate);
 
 	statevp->vp_integer = newstate;
 	return 1;
@@ -1259,20 +1259,20 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 
 	rc_cleanresp(rep);
 
-	if ((state = paircopy_by_num(NULL, req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
+	if ((state = fr_pair_list_copy_by_num(NULL, req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
 	{
 		ERROR("no state attribute found");
 		return 0;
 	}
 
-	if ((id = paircopy_by_num(NULL, req->vps, PW_EAP_ID, 0, TAG_ANY)) == NULL)
+	if ((id = fr_pair_list_copy_by_num(NULL, req->vps, PW_EAP_ID, 0, TAG_ANY)) == NULL)
 	{
 		ERROR("no EAP-ID attribute found");
 		return 0;
 	}
 	identifier = id->vp_integer;
 
-	if ((vp = pairfind(req->vps, PW_EAP_TYPE_BASE+PW_EAP_MD5, 0, TAG_ANY)) == NULL)
+	if ((vp = fr_pair_find_by_num(req->vps, PW_EAP_TYPE_BASE+PW_EAP_MD5, 0, TAG_ANY)) == NULL)
 	{
 		ERROR("no EAP-MD5 attribute found");
 		return 0;
@@ -1304,21 +1304,21 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 		uint8_t *p;
 		uint8_t lg_response;
 
-		vp = paircreate(rep, PW_EAP_TYPE_BASE+PW_EAP_MD5, 0);
+		vp = fr_pair_afrom_num(rep, PW_EAP_TYPE_BASE+PW_EAP_MD5, 0);
 		vp->vp_length = 17;
 
 		p = talloc_zero_array(vp, uint8_t, 17);
 		lg_response = 16;
 		memcpy(p, &lg_response, 1);
 		memcpy(p + 1, response, 16);
-		pairmemsteal(vp, p);
+		fr_pair_value_memsteal(vp, p);
 	}
-	pairreplace(&(rep->vps), vp);
+	fr_pair_replace(&(rep->vps), vp);
 
-	pairreplace(&(rep->vps), id);
+	fr_pair_replace(&(rep->vps), id);
 
 	/* copy the state object in */
-	pairreplace(&(rep->vps), state);
+	fr_pair_replace(&(rep->vps), state);
 
 	return 1;
 }
@@ -1640,7 +1640,7 @@ eap_done:
 		STATS_INC(nb_fail);
 		goto packet_done;
 	}
-	vp = pairfind(trans->reply->vps, PW_EAP_CODE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(trans->reply->vps, PW_EAP_CODE, 0, TAG_ANY);
 	if ( (!vp) || (vp->vp_integer != 3) ) {
 		DEBUG("EAP transaction finished, but reply does not contain EAP-Code = Success");
 		STATS_INC(nb_fail);
@@ -2433,14 +2433,14 @@ static int rc_map_eap_methods(RADIUS_PACKET *req)
 
 	eap_packet_t *pt_ep = talloc_zero(req, eap_packet_t);
 
-	vp = pairfind(req->vps, PW_EAP_ID, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(req->vps, PW_EAP_ID, 0, TAG_ANY);
 	if (!vp) {
 		id = ((int)getpid() & 0xff);
 	} else {
 		id = vp->vp_integer;
 	}
 
-	vp = pairfind(req->vps, PW_EAP_CODE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(req->vps, PW_EAP_CODE, 0, TAG_ANY);
 	if (!vp) {
 		eapcode = PW_EAP_REQUEST;
 	} else {
@@ -2481,7 +2481,7 @@ static int rc_map_eap_methods(RADIUS_PACKET *req)
 		 */
 
 		/* nuke any existing EAP-Messages */
-		pairdelete(&req->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		fr_pair_delete_by_num(&req->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		pt_ep->code = eapcode;
 		pt_ep->id = id;
@@ -2516,13 +2516,13 @@ static void rc_unmap_eap_methods(RADIUS_PACKET *rep)
 		return;
 	}
 	/* create EAP-ID and EAP-CODE attributes to start */
-	eap1 = paircreate(rep, PW_EAP_ID, 0);
+	eap1 = fr_pair_afrom_num(rep, PW_EAP_ID, 0);
 	eap1->vp_integer = e->id;
-	pairadd(&(rep->vps), eap1);
+	fr_pair_add(&(rep->vps), eap1);
 
-	eap1 = paircreate(rep, PW_EAP_CODE, 0);
+	eap1 = fr_pair_afrom_num(rep, PW_EAP_CODE, 0);
 	eap1->vp_integer = e->code;
-	pairadd(&(rep->vps), eap1);
+	fr_pair_add(&(rep->vps), eap1);
 
 	switch (e->code) {
 	default:
@@ -2558,10 +2558,10 @@ static void rc_unmap_eap_methods(RADIUS_PACKET *rep)
 			len = MAX_STRING_LEN;
 		}
 
-		eap1 = paircreate(rep, type, 0);
-		pairmemcpy(eap1, e->data + 1, len);
+		eap1 = fr_pair_afrom_num(rep, type, 0);
+		fr_pair_value_memcpy(eap1, e->data + 1, len);
 
-		pairadd(&(rep->vps), eap1);
+		fr_pair_add(&(rep->vps), eap1);
 		break;
 	}
 
@@ -2592,7 +2592,7 @@ static int rc_unmap_eapsim_types(RADIUS_PACKET *r)
 	uint8_t *eap_data;
 	int rcode_unmap;
 
-	esvp = pairfind(r->vps, PW_EAP_TYPE_BASE+PW_EAP_SIM, 0, TAG_ANY);
+	esvp = fr_pair_find_by_num(r->vps, PW_EAP_TYPE_BASE+PW_EAP_SIM, 0, TAG_ANY);
 	if (!esvp) {
 		ERROR("eap: EAP-Sim attribute not found");
 		return 0;

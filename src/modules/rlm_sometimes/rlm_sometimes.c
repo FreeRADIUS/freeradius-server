@@ -95,7 +95,7 @@ static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet, RADIU
 	/*
 	 *	Hash based on the given key.  Usually User-Name.
 	 */
-	vp = pair_find_by_da(packet->vps, inst->da, TAG_ANY);
+	vp = fr_pair_find_by_da(packet->vps, inst->da, TAG_ANY);
 	if (!vp) return RLM_MODULE_NOOP;
 
 	hash = fr_hash(&vp->data, vp->vp_length);

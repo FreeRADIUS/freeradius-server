@@ -114,9 +114,9 @@ static int CC_HINT(nonnull) mod_process(UNUSED void *instance, eap_handler_t *ha
 	 *	The password is never sent over the wire.
 	 *	Always get the configured password, for each user.
 	 */
-	password = pairfind(handler->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	password = fr_pair_find_by_num(handler->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
-		password = pairfind(handler->request->config, PW_NT_PASSWORD, 0, TAG_ANY);
+		password = fr_pair_find_by_num(handler->request->config, PW_NT_PASSWORD, 0, TAG_ANY);
 	}
 
 	if (!password) {

@@ -221,7 +221,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	 *	The admin can dynamically change the MTU.
 	 */
 	session->mtu = inst->fragment_size;
-	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(handler->request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
 
 	/*
 	 *	session->mtu is *our* MTU.  We need to subtract off the EAP
@@ -426,7 +426,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			RDEBUG("pwd unable to create fake request!");
 			return 0;
 		}
-		fake->username = pairmake_packet("User-Name", NULL, T_OP_EQ);
+		fake->username = pair_make_packet("User-Name", NULL, T_OP_EQ);
 		if (!fake->username) {
 			RDEBUG("pwd unanable to create value pair for username!");
 			talloc_free(fake);
@@ -437,9 +437,9 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		memcpy(p, session->peer_id, session->peer_id_len);
 		p[fake->username->vp_length] = '\0';
 
-		pairadd(&fake->packet->vps, fake->username);
+		fr_pair_add(&fake->packet->vps, fake->username);
 
-		if ((vp = pairfind(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 			fake->server = vp->vp_strvalue;
 		} else if (inst->virtual_server) {
 			fake->server = inst->virtual_server;
@@ -475,7 +475,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 
-		if ((pw = pairfind(fake->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
+		if ((pw = fr_pair_find_by_num(fake->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
 			DEBUG2("failed to find password for %s to do pwd authentication",
 			session->peer_id);
 			talloc_free(fake);

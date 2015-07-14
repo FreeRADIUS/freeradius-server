@@ -553,7 +553,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 		MEM(norm = talloc_memdup(check, check->vp_strvalue, talloc_array_length(check->vp_strvalue)));
 		rlm_ldap_normalise_dn(norm, check->vp_strvalue);
-		pairstrsteal(check, norm);
+		fr_pair_value_strsteal(check, norm);
 	}
 	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
 		switch (rlm_ldap_check_cached(inst, request, check)) {
@@ -1655,7 +1655,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
+	if (fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
 		goto skip_edir;
 	}
 
@@ -1681,8 +1681,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		/*
 		 *	Add Cleartext-Password attribute to the request
 		 */
-		vp = radius_paircreate(request, &request->config, PW_CLEARTEXT_PASSWORD, 0);
-		pairstrcpy(vp, password);
+		vp = radius_pair_create(request, &request->config, PW_CLEARTEXT_PASSWORD, 0);
+		fr_pair_value_strcpy(vp, password);
 		vp->vp_length = pass_size;
 
 		if (RDEBUG_ENABLED3) {

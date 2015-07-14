@@ -221,7 +221,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 		}
 
 		debug_pair(vp);
-		pairadd(&request->packet->vps, vp);
+		fr_pair_add(&request->packet->vps, vp);
 	}
 
 	return 0;

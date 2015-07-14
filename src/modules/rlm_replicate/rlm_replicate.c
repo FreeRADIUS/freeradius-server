@@ -60,7 +60,7 @@ static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pa
 	 *	Don't assume the list actually contains any attributes.
 	 */
 	if (*vps) {
-		packet->vps = paircopy(packet, *vps);
+		packet->vps = fr_pair_list_copy(packet, *vps);
 		if (!packet->vps) {
 			rcode = RLM_MODULE_FAIL;
 			goto error;
@@ -71,10 +71,10 @@ static rlm_rcode_t rlm_replicate_alloc(RADIUS_PACKET **out, REQUEST *request, pa
 	 *	For CHAP, create the CHAP-Challenge if it doesn't exist.
 	 */
 	if ((code == PW_CODE_ACCESS_REQUEST) &&
-	    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
-	    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
-		vp = radius_paircreate(packet, &packet->vps, PW_CHAP_CHALLENGE, 0);
-		pairmemcpy(vp, request->packet->vector, AUTH_VECTOR_LEN);
+	    (fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
+	    (fr_pair_find_by_num(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
+		vp = radius_pair_create(packet, &packet->vps, PW_CHAP_CHALLENGE, 0);
+		fr_pair_value_memcpy(vp, request->packet->vector, AUTH_VECTOR_LEN);
 	}
 
 	*out = packet;

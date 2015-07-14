@@ -793,8 +793,8 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 
-	if (handler->certs) pairadd(&request->packet->vps,
-				    paircopy(request->packet, handler->certs));
+	if (handler->certs) fr_pair_add(&request->packet->vps,
+				    fr_pair_list_copy(request->packet, handler->certs));
 
 	/*
 	 *	This case is when SSL generates Alert then we
@@ -954,11 +954,11 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 					 */
 					if (!handler->certs) {
 						rdebug_pair(L_DBG_LVL_2, request, vp, "request:");
-						pairadd(&request->packet->vps, paircopyvp(request->packet, vp));
+						fr_pair_add(&request->packet->vps, fr_pair_copy(request->packet, vp));
 					}
 				} else {
 					rdebug_pair(L_DBG_LVL_2, request, vp, "reply:");
-					pairadd(&request->reply->vps, paircopyvp(request->reply, vp));
+					fr_pair_add(&request->reply->vps, fr_pair_copy(request->reply, vp));
 				}
 			}
 			REXDENT();

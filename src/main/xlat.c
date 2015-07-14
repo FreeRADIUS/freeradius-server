@@ -1931,15 +1931,15 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	 *	various VP functions.
 	 */
 	case PW_PACKET_AUTHENTICATION_VECTOR:
-		virtual = pairalloc(ctx, vpt->tmpl_da);
-		pairmemcpy(virtual, packet->vector, sizeof(packet->vector));
+		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
+		fr_pair_value_memcpy(virtual, packet->vector, sizeof(packet->vector));
 		vp = virtual;
 		break;
 
 	case PW_CLIENT_IP_ADDRESS:
 	case PW_PACKET_SRC_IP_ADDRESS:
 		if (packet->src_ipaddr.af == AF_INET) {
-			virtual = pairalloc(ctx, vpt->tmpl_da);
+			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 			virtual->vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 			vp = virtual;
 		}
@@ -1947,7 +1947,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 
 	case PW_PACKET_DST_IP_ADDRESS:
 		if (packet->dst_ipaddr.af == AF_INET) {
-			virtual = pairalloc(ctx, vpt->tmpl_da);
+			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 			virtual->vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 			vp = virtual;
 		}
@@ -1955,7 +1955,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 
 	case PW_PACKET_SRC_IPV6_ADDRESS:
 		if (packet->src_ipaddr.af == AF_INET6) {
-			virtual = pairalloc(ctx, vpt->tmpl_da);
+			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 			memcpy(&virtual->vp_ipv6addr,
 			       &packet->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
@@ -1965,7 +1965,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 
 	case PW_PACKET_DST_IPV6_ADDRESS:
 		if (packet->dst_ipaddr.af == AF_INET6) {
-			virtual = pairalloc(ctx, vpt->tmpl_da);
+			virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 			memcpy(&virtual->vp_ipv6addr,
 			       &packet->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
@@ -1974,13 +1974,13 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		break;
 
 	case PW_PACKET_SRC_PORT:
-		virtual = pairalloc(ctx, vpt->tmpl_da);
+		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 		virtual->vp_integer = packet->src_port;
 		vp = virtual;
 		break;
 
 	case PW_PACKET_DST_PORT:
-		virtual = pairalloc(ctx, vpt->tmpl_da);
+		virtual = fr_pair_afrom_da(ctx, vpt->tmpl_da);
 		virtual->vp_integer = packet->dst_port;
 		vp = virtual;
 		break;

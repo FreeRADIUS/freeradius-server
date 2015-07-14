@@ -197,7 +197,7 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 		return;
 	}
 
-	vp = paircreate(packet, PW_EAP_SESSION_ID, 0);
+	vp = fr_pair_afrom_num(packet, PW_EAP_SESSION_ID, 0);
 	if (!vp) return;
 
 	vp->vp_length = 1 + 2 * SSL3_RANDOM_SIZE;
@@ -208,5 +208,5 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	memcpy(p + 1 + SSL3_RANDOM_SIZE,
 	       s->s3->server_random, SSL3_RANDOM_SIZE);
 	vp->vp_octets = p;
-	pairadd(&packet->vps, vp);
+	fr_pair_add(&packet->vps, vp);
 }

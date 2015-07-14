@@ -33,7 +33,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 		return RLM_MODULE_FAIL;
 	}
 
-	key = pair_find_by_da(request->config, da, TAG_ANY);
+	key = fr_pair_find_by_da(request->config, da, TAG_ANY);
 	if (!key) {
 		REDEBUG("Yubikey-Key attribute not found in control list, can't decrypt OTP data");
 		return RLM_MODULE_INVALID;
@@ -73,18 +73,18 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	/*
 	 *	Private ID used for validation purposes
 	 */
-	vp = pairmake(request, &request->packet->vps, "Yubikey-Private-ID", NULL, T_OP_SET);
+	vp = fr_pair_make(request, &request->packet->vps, "Yubikey-Private-ID", NULL, T_OP_SET);
 	if (!vp) {
 		REDEBUG("Failed creating Yubikey-Private-ID");
 
 		return RLM_MODULE_FAIL;
 	}
-	pairmemcpy(vp, token.uid, YUBIKEY_UID_SIZE);
+	fr_pair_value_memcpy(vp, token.uid, YUBIKEY_UID_SIZE);
 
 	/*
 	 *	Token timestamp
 	 */
-	vp = pairmake(request, &request->packet->vps, "Yubikey-Timestamp", NULL, T_OP_SET);
+	vp = fr_pair_make(request, &request->packet->vps, "Yubikey-Timestamp", NULL, T_OP_SET);
 	if (!vp) {
 		REDEBUG("Failed creating Yubikey-Timestamp");
 
@@ -96,7 +96,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	/*
 	 *	Token random
 	 */
-	vp = pairmake(request, &request->packet->vps, "Yubikey-Random", NULL, T_OP_SET);
+	vp = fr_pair_make(request, &request->packet->vps, "Yubikey-Random", NULL, T_OP_SET);
 	if (!vp) {
 		REDEBUG("Failed creating Yubikey-Random");
 
@@ -109,7 +109,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	 *	Combine the two counter fields together so we can do
 	 *	replay attack checks.
 	 */
-	vp = pairmake(request, &request->packet->vps, "Yubikey-Counter", NULL, T_OP_SET);
+	vp = fr_pair_make(request, &request->packet->vps, "Yubikey-Counter", NULL, T_OP_SET);
 	if (!vp) {
 		REDEBUG("Failed creating Yubikey-Counter");
 
@@ -121,7 +121,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	/*
 	 *	Now we check for replay attacks
 	 */
-	vp = pair_find_by_da(request->config, da, TAG_ANY);
+	vp = fr_pair_find_by_da(request->config, da, TAG_ANY);
 	if (!vp) {
 		RWDEBUG("Yubikey-Counter not found in control list, skipping replay attack checks");
 		return RLM_MODULE_OK;

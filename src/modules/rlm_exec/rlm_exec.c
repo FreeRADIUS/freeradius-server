@@ -351,9 +351,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 	 *	If we're not waiting, then there are no output pairs.
 	 */
 	if (inst->output) {
-		pairmove(request, output_pairs, &answer);
+		fr_pair_list_move(request, output_pairs, &answer);
 	}
-	pairfree(&answer);
+	fr_pair_list_free(&answer);
 
 	return rcode;
 }
@@ -374,10 +374,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	bool		we_wait = false;
 	VALUE_PAIR	*vp, *tmp;
 
-	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->reply->vps, PW_EXEC_PROGRAM, 0, TAG_ANY);
 	if (vp) {
 		we_wait = false;
-	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0, TAG_ANY)) != NULL) {
+	} else if ((vp = fr_pair_find_by_num(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0, TAG_ANY)) != NULL) {
 		we_wait = true;
 	}
 	if (!vp) {
@@ -397,8 +397,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *	Always add the value-pairs to the reply.
 	 */
-	pairmove(request->reply, &request->reply->vps, &tmp);
-	pairfree(&tmp);
+	fr_pair_list_move(request->reply, &request->reply->vps, &tmp);
+	fr_pair_list_free(&tmp);
 
 	finish:
 	switch (rcode) {
@@ -437,10 +437,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		return mod_exec_dispatch(instance, request);
 	}
 
-	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->reply->vps, PW_EXEC_PROGRAM, 0, TAG_ANY);
 	if (vp) {
 		we_wait = true;
-	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0, TAG_ANY)) != NULL) {
+	} else if ((vp = fr_pair_find_by_num(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0, TAG_ANY)) != NULL) {
 		we_wait = false;
 	}
 	if (!vp) {

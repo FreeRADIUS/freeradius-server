@@ -35,12 +35,12 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/hmac.h>
 
 /*
- * Generate the State attribute, suitable for passing to pairmake().
+ * Generate the State attribute, suitable for passing to fr_pair_make().
  * 'challenge' must be a null terminated string, and be sized at least
  * as large as indicated in the function definition.
  *
  * Returns 0 on success, non-zero otherwise.  For successful returns,
- * 'rad_state' (suitable for passing to pairmake()) and 'raw_state',
+ * 'rad_state' (suitable for passing to fr_pair_make()) and 'raw_state',
  * if non-NULL, will be filled in.
  *
  * In the simplest implementation, we would just use the challenge as state.
