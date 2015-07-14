@@ -36,34 +36,34 @@ typedef struct rlm_files_t {
 	char const *key;
 
 	char const *filename;
-	fr_hash_table_t *common;
+	rbtree_t *common;
 
 	/* autz */
 	char const *usersfile;
-	fr_hash_table_t *users;
+	rbtree_t *users;
 
 
 	/* authenticate */
 	char const *auth_usersfile;
-	fr_hash_table_t *auth_users;
+	rbtree_t *auth_users;
 
 	/* preacct */
 	char const *acctusersfile;
-	fr_hash_table_t *acctusers;
+	rbtree_t *acctusers;
 
 #ifdef WITH_PROXY
 	/* pre-proxy */
 	char const *preproxy_usersfile;
-	fr_hash_table_t *preproxy_users;
+	rbtree_t *preproxy_users;
 
 	/* post-proxy */
 	char const *postproxy_usersfile;
-	fr_hash_table_t *postproxy_users;
+	rbtree_t *postproxy_users;
 #endif
 
 	/* post-authenticate */
 	char const *postauth_usersfile;
-	fr_hash_table_t *postauth_users;
+	rbtree_t *postauth_users;
 } rlm_files_t;
 
 
@@ -94,35 +94,22 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static uint32_t pairlist_hash(void const *data)
-{
-	return fr_hash_string(((PAIR_LIST const *)data)->name);
-}
-
 static int pairlist_cmp(void const *a, void const *b)
 {
 	return strcmp(((PAIR_LIST const *)a)->name,
 		      ((PAIR_LIST const *)b)->name);
 }
 
-static void my_pairlist_free(void *data)
-{
-	PAIR_LIST *pl = data;
-
-	pairlist_free(&pl);
-}
-
-
-static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t **pht, char const *compat_mode_str)
+static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree, char const *compat_mode_str)
 {
 	int rcode;
 	PAIR_LIST *users = NULL;
 	PAIR_LIST *entry, *next;
-	fr_hash_table_t *ht, *tailht;
-	int order = 0;
+	PAIR_LIST *user_list, *default_list, **default_tail;
+	rbtree_t *tree;
 
 	if (!filename) {
-		*pht = NULL;
+		*ptree = NULL;
 		return 0;
 	}
 
@@ -246,82 +233,82 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 
 			entry = entry->next;
 		}
-
 	}
 
-	ht = fr_hash_table_create(pairlist_hash, pairlist_cmp,
-				    my_pairlist_free);
-	if (!ht) {
+	tree = rbtree_create(ctx, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
+	if (!tree) {
 		pairlist_free(&users);
 		return -1;
 	}
 
-	tailht = fr_hash_table_create(pairlist_hash, pairlist_cmp,
-					NULL);
-	if (!tailht) {
-		fr_hash_table_free(ht);
-		pairlist_free(&users);
-		return -1;
-	}
+	default_list = NULL;
+	default_tail = &default_list;
 
 	/*
-	 *	Now that we've read it in, put the entries into a hash
-	 *	for faster access.
+	 *	We've read the entries in linearly, but putting them
+	 *	into an indexed data structure would be much faster.
+	 *	Let's go fix that now.
 	 */
 	for (entry = users; entry != NULL; entry = next) {
-		PAIR_LIST *tail;
-
+		/*
+		 *	Remove this entry from the input list.
+		 */
 		next = entry->next;
 		entry->next = NULL;
+		(void) talloc_steal(tree, entry);
 
 		/*
-		 *	Insert it into the hash table, and remember
-		 *	the tail of the linked list.
+		 *	DEFAULT entries get their own list.
 		 */
-		tail = fr_hash_table_finddata(tailht, entry);
-		if (!tail) {
+		if (strcmp(entry->name, "DEFAULT") == 0) {
+			if (!default_list) {
+				default_list = entry;
+
+				/*
+				 *	Insert the first DEFAULT into the tree.
+				 */
+				if (!rbtree_insert(tree, entry)) {
+				error:
+					pairlist_free(&entry);
+					pairlist_free(&next);
+					rbtree_free(tree);
+					return -1;
+				}
+
+			} else {
+				/*
+				 *	Tack this entry onto the tail
+				 *	of the DEFAULT list.
+				 */
+				*default_tail = entry;
+			}
+
+			default_tail = &entry->next;
+			continue;
+		}
+
+		/*
+		 *	Not DEFAULT, must be a normal user.
+		 */
+		user_list = rbtree_finddata(tree, entry);
+		if (!user_list) {
 			/*
-			 *	Insert it into the head & tail.
+			 *	Insert the first one.
 			 */
-			if (!fr_hash_table_insert(ht, entry) ||
-			    !fr_hash_table_insert(tailht, entry)) {
-				pairlist_free(&next);
-				fr_hash_table_free(ht);
-				fr_hash_table_free(tailht);
-				return -1;
-			}
+			if (!rbtree_insert(tree, entry)) goto error;
 		} else {
-			tail->next = entry;
-			if (!fr_hash_table_replace(tailht, entry)) {
-				pairlist_free(&next);
-				fr_hash_table_free(ht);
-				fr_hash_table_free(tailht);
-				return -1;
-			}
+			/*
+			 *	Find the tail of this list, and add it
+			 *	there.
+			 */
+			while (user_list->next) user_list = user_list->next;
+
+			user_list->next = entry;
 		}
 	}
 
-	fr_hash_table_free(tailht);
-	*pht = ht;
+	*ptree = tree;
 
-	return 0;
-}
-
-/*
- *	Clean up.
- */
-static int mod_detach(void *instance)
-{
-	rlm_files_t *inst = instance;
-	fr_hash_table_free(inst->common);
-	fr_hash_table_free(inst->users);
-	fr_hash_table_free(inst->acctusers);
-#ifdef WITH_PROXY
-	fr_hash_table_free(inst->preproxy_users);
-	fr_hash_table_free(inst->postproxy_users);
-#endif
-	fr_hash_table_free(inst->auth_users);
-	fr_hash_table_free(inst->postauth_users);
 	return 0;
 }
 
@@ -335,7 +322,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	rlm_files_t *inst = instance;
 
 #undef READFILE
-#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y, inst->compat_mode) != 0) { ERROR("Failed reading %s", inst->_x); mod_detach(inst);return -1;} } while (0)
+#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y, inst->compat_mode) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
 
 	READFILE(filename, common);
 	READFILE(usersfile, users);
@@ -355,7 +342,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 /*
  *	Common code called by everything below.
  */
-static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *filename, fr_hash_table_t *ht,
+static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *filename, rbtree_t *tree,
 			       RADIUS_PACKET *request_packet, RADIUS_PACKET *reply_packet)
 {
 	char const	*name, *match;
@@ -382,12 +369,12 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 		name = len ? buffer : "NONE";
 	}
 
-	if (!ht) return RLM_MODULE_NOOP;
+	if (!tree) return RLM_MODULE_NOOP;
 
 	my_pl.name = name;
-	user_pl = fr_hash_table_finddata(ht, &my_pl);
+	user_pl = rbtree_finddata(tree, &my_pl);
 	my_pl.name = "DEFAULT";
-	default_pl = fr_hash_table_finddata(ht, &my_pl);
+	default_pl = rbtree_finddata(tree, &my_pl);
 
 	/*
 	 *	Find the entry for the user.
@@ -396,6 +383,10 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 		vp_cursor_t cursor;
 		VALUE_PAIR *vp;
 		PAIR_LIST const *pl;
+
+		/*
+		 *	Figure out which entry to match on.
+		 */
 
 		if (!default_pl && user_pl) {
 			pl = user_pl;
@@ -541,7 +532,6 @@ module_t rlm_files = {
 	.inst_size	= sizeof(rlm_files_t),
 	.config		= module_config,
 	.instantiate	= mod_instantiate,
-	.detach		= mod_detach,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate,
 		[MOD_AUTHORIZE]		= mod_authorize,
