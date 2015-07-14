@@ -73,7 +73,11 @@
 
     http://wiki.freeradius.org/contributing/coding-standards
 
-  ...and start writing code.  You may also wish to utilise the doxygen site:
+  If you're creating a new module you may wish to read the module creation guide:
+
+    http://wiki.freeradius.org/contributing/Modules3
+
+  You may also wish to utilise the doxygen site to review code documentation:
 
     http://doc.freeradius.org
 
@@ -81,9 +85,9 @@
   as structs, and callback declarations.  doc.freeradius.org is updated within one minute of each commit
   to the master branch of the main freeradius-server repo.
 
-  This document was written to be displayed automatically on the GitHub issue tracker, so Git/GitHub
-  knowledge is assumed.  If you're wondering what the heck a pull-request is, this document may be of
-  some use:
+  Finally, this file was written to be displayed automatically on the GitHub issue tracker, so
+  Git/GitHub knowledge is assumed.  If you're wondering what the heck a pull-request is, this
+  document may be of some use:
 
     http://wiki.freeradius.org/contributing/GitHub
 
