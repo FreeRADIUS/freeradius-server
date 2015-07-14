@@ -88,7 +88,7 @@ static const CONF_PARSER module_config[] = {
 #endif
 	{ "auth_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile), NULL },
 	{ "postauth_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile), NULL },
-	{ "compat", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_files_t, compat_mode), "cistron" },
+	{ "compat", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_files_t, compat_mode), NULL },
 	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_files_t, key), NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -136,11 +136,11 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 	 *	or if we're in compat_mode.
 	 */
 	if ((rad_debug_lvl) ||
-	    (strcmp(compat_mode_str, "cistron") == 0)) {
+	    (compat_mode_str && (strcmp(compat_mode_str, "cistron") == 0))) {
 		VALUE_PAIR *vp;
 		bool compat_mode = false;
 
-		if (strcmp(compat_mode_str, "cistron") == 0) {
+		if (compat_mode_str && (strcmp(compat_mode_str, "cistron") == 0)) {
 			compat_mode = true;
 		}
 
