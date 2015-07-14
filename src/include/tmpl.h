@@ -122,7 +122,6 @@ typedef struct pair_list {
 	VALUE_PAIR		*check;
 	VALUE_PAIR		*reply;
 	int			lineno;
-	int			order;
 	struct pair_list	*next;
 } PAIR_LIST;
 
