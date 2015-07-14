@@ -89,7 +89,7 @@ int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int compl
 	PAIR_LIST *pl = NULL, *t;
 	PAIR_LIST **last = &pl;
 	int lineno = 0;
-	int old_lineno = 0;
+	int entry_lineno = 0;
 	FR_TOKEN parsecode;
 #ifdef HAVE_REGEX_H
 	VALUE_PAIR *vp;
@@ -149,7 +149,7 @@ parse_again:
 			 */		      
 			ptr = buffer;
 			getword(&ptr, entry, sizeof(entry), false);
-			old_lineno = lineno;
+			entry_lineno = lineno;
 
 			/*
 			 *	Include another file if we see
@@ -276,7 +276,7 @@ parse_again:
 			talloc_free(check_tmp);
 			talloc_free(reply_tmp);
 			ERROR("%s[%d]: Invalid comma after the reply attributes.  Please delete it.",
-			      file, old_lineno);
+			      file, lineno);
 			fclose(fp);
 			return -1;
 		}
@@ -287,7 +287,6 @@ parse_again:
 		 */
 		parsecode = userparse(ctx, buffer, &reply_tmp);
 		if (parsecode == T_COMMA) {
-			old_lineno = lineno;
 			continue;
 		}
 
@@ -315,7 +314,7 @@ parse_again:
 
 		t->check = check_tmp;
 		t->reply = reply_tmp;
-		t->lineno = old_lineno;
+		t->lineno = entry_lineno;
 		check_tmp = NULL;
 		reply_tmp = NULL;
 
