@@ -189,7 +189,7 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 	 *
 	 *	Something has gone very wrong if the User-Name doesn't exist.
 	 */
-	username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+	username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 
 	RDEBUG("Username for TNC connection: %s", username->vp_strvalue);
 
@@ -305,17 +305,17 @@ static int mod_process(UNUSED void *instance, eap_handler_t *handler)
 
 	case TNC_CONNECTION_STATE_ACCESS_NONE:
 		code = PW_EAP_FAILURE;
-		pairmake_config("TNC-Status", "None", T_OP_SET);
+		pair_make_config("TNC-Status", "None", T_OP_SET);
 		break;
 
 	case TNC_CONNECTION_STATE_ACCESS_ALLOWED:
 		code = PW_EAP_SUCCESS;
-		pairmake_config("TNC-Status", "Access", T_OP_SET);
+		pair_make_config("TNC-Status", "Access", T_OP_SET);
 		break;
 
 	case TNC_CONNECTION_STATE_ACCESS_ISOLATED:
 		code = PW_EAP_SUCCESS;
-		pairmake_config("TNC-Status", "Isolate", T_OP_SET);
+		pair_make_config("TNC-Status", "Isolate", T_OP_SET);
 		break;
 
 	default:

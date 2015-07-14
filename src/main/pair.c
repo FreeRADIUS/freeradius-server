@@ -514,7 +514,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 				WARN("Are you sure you don't mean Cleartext-Password?");
 				WARN("See \"man rlm_pap\" for more information");
 			}
-			if (pairfind(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
+			if (fr_pair_find_by_num(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
 				continue;
 			}
 			break;
@@ -627,7 +627,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	return result;
 }
 
-/** Expands an attribute marked with pairmark_xlat
+/** Expands an attribute marked with fr_pair_mark_xlat
  *
  * Writes the new value to the vp.
  *
@@ -659,11 +659,11 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 	 *	then we just want to copy the new value in unmolested.
 	 */
 	if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
-		pairstrsteal(vp, expanded);
+		fr_pair_value_strsteal(vp, expanded);
 		return 0;
 	}
 
-	if (pairparsevalue(vp, expanded, -1) < 0){
+	if (fr_pair_value_from_str(vp, expanded, -1) < 0){
 		talloc_free(expanded);
 		return -2;
 	}
@@ -685,19 +685,19 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
  * @param[in] vendor number.
  * @return a new VLAUE_PAIR or causes server to exit on error.
  */
-VALUE_PAIR *radius_paircreate(TALLOC_CTX *ctx, VALUE_PAIR **vps,
+VALUE_PAIR *radius_pair_create(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 			      unsigned int attribute, unsigned int vendor)
 {
 	VALUE_PAIR *vp;
 
-	vp = paircreate(ctx, attribute, vendor);
+	vp = fr_pair_afrom_num(ctx, attribute, vendor);
 	if (!vp) {
 		ERROR("No memory!");
 		rad_assert("No memory" == NULL);
 		fr_exit_now(1);
 	}
 
-	if (vps) pairadd(vps, vp);
+	if (vps) fr_pair_add(vps, vp);
 
 	return vp;
 }
@@ -870,11 +870,11 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 	p = talloc_vasprintf(request, fmt, aq);
 	va_end(aq);
 
-	MEM(vp = pairmake_packet("Module-Failure-Message", NULL, T_OP_ADD));
+	MEM(vp = pair_make_packet("Module-Failure-Message", NULL, T_OP_ADD));
 	if (request->module && (request->module[0] != '\0')) {
-		pairsprintf(vp, "%s: %s", request->module, p);
+		fr_pair_value_sprintf(vp, "%s: %s", request->module, p);
 	} else {
-		pairsprintf(vp, "%s", p);
+		fr_pair_value_sprintf(vp, "%s", p);
 	}
 	talloc_free(p);
 }

@@ -710,7 +710,7 @@ redo:
 		 *	If we don't remove the request data, something could call
 		 *	the xlat outside of a foreach loop and trigger a segv.
 		 */
-		pairfree(&vps);
+		fr_pair_list_free(&vps);
 		request_data_get(request, (void *)radius_get_vp, foreach_depth);
 
 		rad_assert(next != NULL);
@@ -3423,7 +3423,7 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 
 	/*
 	 *	Mark it as requiring a paircompare() call, instead of
-	 *	paircmp().
+	 *	fr_pair_cmp().
 	 */
 	c->pass2_fixup = PASS2_PAIRCOMPARE;
 

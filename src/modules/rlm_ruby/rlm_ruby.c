@@ -153,7 +153,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 
 					char const *s1, *s2;
 
-					/* pairmake() will convert and find any
+					/* fr_pair_make() will convert and find any
 					 * errors in the pair.
 					 */
 
@@ -165,7 +165,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 						       function_name, s1, s2);
 
 						/* xxx Might need to support other T_OP */
-						vp = pairmake(ctx, vpp, s1, s2, T_OP_EQ);
+						vp = fr_pair_make(ctx, vpp, s1, s2, T_OP_EQ);
 						if (vp != NULL) {
 							DEBUG("%s: s1, s2 OK", function_name);
 						} else {

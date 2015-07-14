@@ -170,7 +170,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 * EAP-TLS-Require-Client-Cert attribute will override
 	 * the require_client_cert configuration option.
 	 */
-	vp = pairfind(handler->request->config, PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(handler->request->config, PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_integer ? true : false;
 	} else {
@@ -254,7 +254,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			if (t->accept_vps) {
 				RDEBUG2("Using saved attributes from the original Access-Accept");
 				rdebug_pair_list(L_DBG_LVL_2, request, t->accept_vps, NULL);
-				pairfilter(handler->request->reply,
+				fr_pair_list_move_by_num(handler->request->reply,
 					   &handler->request->reply->vps,
 					   &t->accept_vps, 0, 0, TAG_ANY);
 			} else if (t->use_tunneled_reply) {

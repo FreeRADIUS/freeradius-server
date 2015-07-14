@@ -185,7 +185,7 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		 */
 		if (tmpl_cast_in_place(map->rhs, map->lhs->tmpl_da->type, map->lhs->tmpl_da) < 0) goto error;
 
-		vp = pairalloc(c, map->lhs->tmpl_da);
+		vp = fr_pair_afrom_da(c, map->lhs->tmpl_da);
 		len = value_data_copy(vp, &vp->data, map->rhs->tmpl_data_type,
 				      &map->rhs->tmpl_data_value, map->rhs->tmpl_data_length);
 		if (len < 0) goto error;

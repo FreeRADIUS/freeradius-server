@@ -238,7 +238,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	inst = (rlm_eap_t *) instance;
 
-	if (!pairfind(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY)) {
+	if (!fr_pair_find_by_num(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY)) {
 		REDEBUG("You set 'Auth-Type = EAP' for a request that does "
 			"not contain an EAP-Message attribute!");
 		return RLM_MODULE_INVALID;
@@ -324,11 +324,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	Some simple sanity checks.  These should really
 		 *	be handled by the radius library...
 		 */
-		vp = pairfind(request->proxy->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->proxy->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 		if (vp) {
-			vp = pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+			vp = fr_pair_find_by_num(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 			if (!vp) {
-				pairmake(request->proxy,
+				fr_pair_make(request->proxy,
 					 &request->proxy->vps,
 					 "Message-Authenticator",
 					 NULL, T_OP_EQ);
@@ -340,7 +340,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	set to 127.0.0.1 for tunneled requests, and
 		 *	we don't want to tell the world that...
 		 */
-		pairdelete(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO, VENDORPEC_FREERADIUS, TAG_ANY);
+		fr_pair_delete_by_num(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO, VENDORPEC_FREERADIUS, TAG_ANY);
 
 		RDEBUG2("Tunneled session will be proxied.  Not doing EAP");
 		return RLM_MODULE_HANDLED;
@@ -408,10 +408,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		/*
 		 *	Doesn't exist, add it in.
 		 */
-		vp = pairfind(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp) {
-			vp = paircopyvp(request->reply, request->username);
-			pairadd(&request->reply->vps, vp);
+			vp = fr_pair_copy(request->reply, request->username);
+			fr_pair_add(&request->reply->vps, vp);
 		}
 
 		/*
@@ -487,9 +487,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	each EAP sub-module to look for handler->request->username,
 	 *	and to get excited if it doesn't appear.
 	 */
-	vp = pairfind(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
 	if ((!vp) || (vp->vp_integer != PW_AUTH_TYPE_REJECT)) {
-		vp = pairmake_config("Auth-Type", inst->xlat_name, T_OP_EQ);
+		vp = pair_make_config("Auth-Type", inst->xlat_name, T_OP_EQ);
 		if (!vp) {
 			RDEBUG2("Failed to create Auth-Type %s: %s\n",
 				inst->xlat_name, fr_strerror());
@@ -587,9 +587,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 			/*
 			 *	Doesn't exist, add it in.
 			 */
-			vp = pairfind(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
+			vp = fr_pair_find_by_num(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 			if (!vp) {
-				pairmake_reply("User-Name",
+				pair_make_reply("User-Name",
 					       request->username->vp_strvalue,
 					       T_OP_EQ);
 			}
@@ -668,7 +668,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 	rad_tunnel_pwencode(p + 17, &len,
 			    request->client->secret,
 			    request->packet->vector);
-	pairstrsteal(vp, p);
+	fr_pair_value_strsteal(vp, p);
 
 	return RLM_MODULE_UPDATED;
 }
@@ -684,16 +684,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 * Only build a failure message if something previously rejected the request
 	 */
-	vp = pairfind(request->config, PW_POST_AUTH_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_POST_AUTH_TYPE, 0, TAG_ANY);
 
 	if (!vp || (vp->vp_integer != PW_POST_AUTH_TYPE_REJECT)) return RLM_MODULE_NOOP;
 
-	if (!pairfind(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY)) {
+	if (!fr_pair_find_by_num(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY)) {
 		RDEBUG2("Request didn't contain an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
 
-	if (pairfind(request->reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY)) {
+	if (fr_pair_find_by_num(request->reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY)) {
 		RDEBUG2("Reply already contained an EAP-Message, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
@@ -718,9 +718,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 * Make sure there's a message authenticator attribute in the response
 	 * RADIUS protocol code will calculate the correct value later...
 	 */
-	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
-		pairmake_reply("Message-Authenticator", "0x00", T_OP_EQ);
+		pair_make_reply("Message-Authenticator", "0x00", T_OP_EQ);
 	}
 
 	return RLM_MODULE_UPDATED;

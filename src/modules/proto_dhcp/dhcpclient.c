@@ -141,7 +141,7 @@ static int request_init(char const *filename)
 	/*
 	 *	Read the VP's.
 	 */
-	if (readvp2(NULL, &request->vps, fp, &filedone) < 0) {
+	if (fr_pair_list_afrom_file(NULL, &request->vps, fp, &filedone) < 0) {
 		fr_perror("dhcpclient");
 		rad_free(&request);
 		if (fp != stdin) fclose(fp);
@@ -360,8 +360,8 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd, struct sockaddr_ll *p_l
 			if (!reply_p) reply_p = cur_reply_p;
 			
 			if (cur_reply_p->code == PW_DHCP_OFFER) {
-				VALUE_PAIR *vp1 = pairfind(cur_reply_p->vps, 54,  DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-DHCP-Server-Identifier */
-				VALUE_PAIR *vp2 = pairfind(cur_reply_p->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Your-IP-address */
+				VALUE_PAIR *vp1 = fr_pair_find_by_num(cur_reply_p->vps, 54,  DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-DHCP-Server-Identifier */
+				VALUE_PAIR *vp2 = fr_pair_find_by_num(cur_reply_p->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Your-IP-address */
 				
 				if (vp1 && vp2) {
 					nb_offer ++;

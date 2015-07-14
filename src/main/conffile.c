@@ -3121,12 +3121,12 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	     (pair->rhs_type == T_BACK_QUOTED_STRING))) {
 		VALUE_PAIR *vp;
 
-		vp = pairmake(pair, NULL, pair->attr, NULL, pair->op);
+		vp = fr_pair_make(pair, NULL, pair->attr, NULL, pair->op);
 		if (!vp) {
 			return NULL;
 		}
 
-		if (pairmark_xlat(vp, pair->value) < 0) {
+		if (fr_pair_mark_xlat(vp, pair->value) < 0) {
 			talloc_free(vp);
 
 			return NULL;
@@ -3135,7 +3135,7 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 		return vp;
 	}
 
-	return pairmake(pair, NULL, pair->attr, pair->value, pair->op);
+	return fr_pair_make(pair, NULL, pair->attr, pair->value, pair->op);
 }
 
 /*

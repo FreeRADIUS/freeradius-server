@@ -97,10 +97,10 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 			decoded++;
 		}
 
-		pairmove(request->packet, &(request->packet->vps), &head);
+		fr_pair_list_move(request->packet, &(request->packet->vps), &head);
 
 		/* Free any unmoved pairs */
-		pairfree(&head);
+		fr_pair_list_free(&head);
 	}
 
 	snprintf(out, freespace, "%i", decoded);

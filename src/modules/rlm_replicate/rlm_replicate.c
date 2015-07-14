@@ -146,7 +146,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 			 *	attributes.
 			 */
 			if (*vps) {
-				packet->vps = paircopy(packet, *vps);
+				packet->vps = fr_pair_list_copy(packet, *vps);
 				if (!packet->vps) {
 					rcode = RLM_MODULE_FAIL;
 					goto done;
@@ -158,10 +158,10 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request, pair_lists_
 			 *	it doesn't exist.
 			 */
 			if ((code == PW_CODE_ACCESS_REQUEST) &&
-			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
-			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
+			    (fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
+			    (fr_pair_find_by_num(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
 				uint8_t *p;
-				vp = radius_paircreate(packet, &packet->vps, PW_CHAP_CHALLENGE, 0);
+				vp = radius_pair_create(packet, &packet->vps, PW_CHAP_CHALLENGE, 0);
 				vp->length = AUTH_VECTOR_LEN;
 				vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
 				memcpy(p, request->packet->vector, AUTH_VECTOR_LEN);

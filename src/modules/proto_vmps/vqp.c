@@ -422,7 +422,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	if (packet->data_len < VQP_HDR_LEN) return -1;
 
 	fr_cursor_init(&cursor, &packet->vps);
-	vp = paircreate(packet, PW_VQP_PACKET_TYPE, 0);
+	vp = fr_pair_afrom_num(packet, PW_VQP_PACKET_TYPE, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -431,7 +431,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	debug_pair(vp);
 	fr_cursor_insert(&cursor, vp);
 
-	vp = paircreate(packet, PW_VQP_ERROR_CODE, 0);
+	vp = fr_pair_afrom_num(packet, PW_VQP_ERROR_CODE, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -440,7 +440,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	debug_pair(vp);
 	fr_cursor_insert(&cursor, vp);
 
-	vp = paircreate(packet, PW_VQP_SEQUENCE_NUMBER, 0);
+	vp = fr_pair_afrom_num(packet, PW_VQP_SEQUENCE_NUMBER, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -468,9 +468,9 @@ int vqp_decode(RADIUS_PACKET *packet)
 		 *	Hack to get the dictionaries to work correctly.
 		 */
 		attribute |= 0x2000;
-		vp = paircreate(packet, attribute, 0);
+		vp = fr_pair_afrom_num(packet, attribute, 0);
 		if (!vp) {
-			pairfree(&packet->vps);
+			fr_pair_list_free(&packet->vps);
 
 			fr_strerror_printf("No memory");
 			return -1;
@@ -503,9 +503,9 @@ int vqp_decode(RADIUS_PACKET *packet)
 		default:
 		case PW_TYPE_OCTETS:
 			if (length < 1024) {
-				pairmemcpy(vp, ptr, length);
+				fr_pair_value_memcpy(vp, ptr, length);
 			} else {
-				pairmemcpy(vp, ptr, 1024);
+				fr_pair_value_memcpy(vp, ptr, 1024);
 			}
 			break;
 
@@ -568,7 +568,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	if (packet->data) return 0;
 
-	vp = pairfind(packet->vps, PW_VQP_PACKET_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, PW_VQP_PACKET_TYPE, 0, TAG_ANY);
 	if (!vp) {
 		fr_strerror_printf("Failed to find VQP-Packet-Type in response packet");
 		return -1;
@@ -583,7 +583,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	length = VQP_HDR_LEN;
 	memset(vps, 0, sizeof(vps));
 
-	vp = pairfind(packet->vps, PW_VQP_ERROR_CODE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, PW_VQP_ERROR_CODE, 0, TAG_ANY);
 
 	/*
 	 *	FIXME: Map attributes from calling-station-Id, etc.
@@ -598,7 +598,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if (!vp) for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
 		if (!contents[code][i]) break;
 
-		vps[i] = pairfind(packet->vps, contents[code][i] | 0x2000, 0, TAG_ANY);
+		vps[i] = fr_pair_find_by_num(packet->vps, contents[code][i] | 0x2000, 0, TAG_ANY);
 
 		/*
 		 *	FIXME: Print the name...

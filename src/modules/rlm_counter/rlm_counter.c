@@ -161,7 +161,7 @@ static int counter_cmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
 	/*
 	 *	Find the key attribute.
 	 */
-	key_vp = pair_find_by_da(request, inst->key_attr, TAG_ANY);
+	key_vp = fr_pair_find_by_da(request, inst->key_attr, TAG_ANY);
 	if (!key_vp) {
 		return RLM_MODULE_NOOP;
 	}
@@ -542,7 +542,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	int acctstatustype = 0;
 	time_t diff;
 
-	if ((key_vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL)
+	if ((key_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL)
 		acctstatustype = key_vp->vp_integer;
 	else {
 		DEBUG("rlm_counter: Could not find account status type in packet");
@@ -552,7 +552,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		DEBUG("rlm_counter: We only run on Accounting-Stop packets");
 		return RLM_MODULE_NOOP;
 	}
-	uniqueid_vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0, TAG_ANY);
+	uniqueid_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0, TAG_ANY);
 	if (uniqueid_vp != NULL)
 		DEBUG("rlm_counter: Packet Unique ID = '%s'",uniqueid_vp->vp_strvalue);
 
@@ -574,7 +574,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 * Check if we need to watch out for a specific service-type. If yes then check it
 	 */
 	if (inst->service_type != NULL) {
-		if ((proto_vp = pairfind(request->packet->vps, PW_SERVICE_TYPE, 0, TAG_ANY)) == NULL) {
+		if ((proto_vp = fr_pair_find_by_num(request->packet->vps, PW_SERVICE_TYPE, 0, TAG_ANY)) == NULL) {
 			DEBUG("rlm_counter: Could not find Service-Type attribute in the request. Returning NOOP");
 			return RLM_MODULE_NOOP;
 		}
@@ -587,7 +587,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 * Check if request->timestamp - {Acct-Delay-Time} < last_reset
 	 * If yes reject the packet since it is very old
 	 */
-	key_vp = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
+	key_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 	if (key_vp != NULL) {
 		if ((key_vp->vp_integer != 0) && (request->timestamp - (time_t) key_vp->vp_integer) < inst->last_reset) {
 			DEBUG("rlm_counter: This packet is too old. Returning NOOP");
@@ -602,7 +602,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 *	The REAL username, after stripping.
 	 */
 	key_vp = (inst->key_attr->attr == PW_USER_NAME) ? request->username :
-					pair_find_by_da(request->packet->vps, inst->key_attr, TAG_ANY);
+					fr_pair_find_by_da(request->packet->vps, inst->key_attr, TAG_ANY);
 	if (!key_vp) {
 		DEBUG("rlm_counter: Could not find the key-attribute in the request. Returning NOOP");
 		return RLM_MODULE_NOOP;
@@ -611,7 +611,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	/*
 	 *	Look for the attribute to use as a counter.
 	 */
-	count_vp = pair_find_by_da(request->packet->vps, inst->count_attr, TAG_ANY);
+	count_vp = fr_pair_find_by_da(request->packet->vps, inst->count_attr, TAG_ANY);
 	if (!count_vp) {
 		DEBUG("rlm_counter: Could not find the count_attribute in the request");
 		return RLM_MODULE_NOOP;
@@ -732,7 +732,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 */
 	DEBUG2("rlm_counter: Entering module authorize code");
 	key_vp = (inst->key_attr->attr == PW_USER_NAME) ? request->username :
-		 pair_find_by_da(request->packet->vps, inst->key_attr, TAG_ANY);
+		 fr_pair_find_by_da(request->packet->vps, inst->key_attr, TAG_ANY);
 	if (!key_vp) {
 		DEBUG2("rlm_counter: Could not find Key value pair");
 		return rcode;
@@ -741,7 +741,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *      Look for the check item
 	 */
-	if ((check_vp = pair_find_by_da(request->config, inst->check_attr, TAG_ANY)) == NULL) {
+	if ((check_vp = fr_pair_find_by_da(request->config, inst->check_attr, TAG_ANY)) == NULL) {
 		DEBUG2("rlm_counter: Could not find Check item value pair");
 		return rcode;
 	}
@@ -808,23 +808,23 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 				res += check_vp->vp_integer;
 			}
 
-			reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
+			reply_item = fr_pair_find_by_num(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
 			if (reply_item) {
 				if (reply_item->vp_integer > res) {
 					reply_item->vp_integer = res;
 				}
 			} else {
-				reply_item = radius_paircreate(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
+				reply_item = radius_pair_create(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
 				reply_item->vp_integer = res;
 			}
 		} else if (inst->reply_attr) {
-			reply_item = pair_find_by_da(request->reply->vps, inst->reply_attr, TAG_ANY);
+			reply_item = fr_pair_find_by_da(request->reply->vps, inst->reply_attr, TAG_ANY);
 			if (reply_item) {
 				if (reply_item->vp_integer > res) {
 					reply_item->vp_integer = res;
 				}
 			} else {
-				reply_item = radius_paircreate(request->reply, &request->reply->vps, inst->reply_attr->attr,
+				reply_item = radius_pair_create(request->reply, &request->reply->vps, inst->reply_attr->attr,
 							       inst->reply_attr->vendor);
 				reply_item->vp_integer = res;
 			}
@@ -841,7 +841,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 * User is denied access, send back a reply message
 		*/
 		sprintf(msg, "Your maximum %s usage time has been reached", inst->reset);
-		pairmake_reply("Reply-Message", msg, T_OP_EQ);
+		pair_make_reply("Reply-Message", msg, T_OP_EQ);
 
 		REDEBUG("Maximum %s usage time reached", inst->reset);
 		rcode = RLM_MODULE_REJECT;

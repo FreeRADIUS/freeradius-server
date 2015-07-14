@@ -410,7 +410,7 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 	cursor->current = before;		/* current jumps back one, but this is usually desirable */
 
 fixup:
-	vp->next = NULL;			/* limit scope of pairfree() */
+	vp->next = NULL;			/* limit scope of fr_pair_list_free() */
 
 	/*
 	 *	Fixup cursor->found if we removed the VP it was referring to

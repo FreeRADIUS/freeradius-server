@@ -362,10 +362,10 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	memset (&cookie, 0, sizeof(cookie));
 
 	/* See if the request overrides the community*/
-	vp = pairfind(request->packet->vps, PW_UKERNA_TR_COI, VENDORPEC_UKERNA, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_UKERNA_TR_COI, VENDORPEC_UKERNA, TAG_ANY);
 	if (vp)
 		community = vp->vp_strvalue;
-	else pairmake_packet("Trust-Router-COI", community, T_OP_SET);
+	else pair_make_packet("Trust-Router-COI", community, T_OP_SET);
 
 	cookie.fr_realm_name = talloc_asprintf(NULL,
 					       "%s%%%s",
@@ -401,8 +401,8 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 		DEBUG2("TID response is error, rc = %d: %s.\n", cookie.result,
 		       cookie.err_msg?cookie.err_msg:"(NO ERROR TEXT)");
 		if (cookie.err_msg) 
-			pairmake_reply("Reply-Message", cookie.err_msg, T_OP_SET);
-		pairmake_reply("Error-Cause", "502", T_OP_SET); /*proxy unroutable*/
+			pair_make_reply("Reply-Message", cookie.err_msg, T_OP_SET);
+		pair_make_reply("Error-Cause", "502", T_OP_SET); /*proxy unroutable*/
 	}
 
 cleanup:

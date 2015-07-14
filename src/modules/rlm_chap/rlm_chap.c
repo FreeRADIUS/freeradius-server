@@ -29,11 +29,11 @@ RCSID("$Id$")
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
-	if (!pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) {
+	if (!fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) {
 		return RLM_MODULE_NOOP;
 	}
 
-	if (pairfind(request->config, PW_AUTH_TYPE, 0, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY) != NULL) {
 		RWDEBUG2("&control:Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
@@ -41,7 +41,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	RINDENT();
 	RDEBUG("&control:Auth-Type := CHAP");
 	REXDENT();
-	pairmake_config("Auth-Type", "CHAP", T_OP_EQ);
+	pair_make_config("Auth-Type", "CHAP", T_OP_EQ);
 
 	return RLM_MODULE_OK;
 }
@@ -63,7 +63,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		return RLM_MODULE_INVALID;
 	}
 
-	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+	chap = fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	if (!chap) {
 		REDEBUG("You set '&control:Auth-Type = CHAP' for a request that "
 			"does not contain a CHAP-Password attribute!");
@@ -80,9 +80,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		return RLM_MODULE_INVALID;
 	}
 
-	password = pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	password = fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (password == NULL) {
-		if (pairfind(request->config, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
+		if (fr_pair_find_by_num(request->config, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			REDEBUG("!!! Please update your configuration so that the \"known !!!");
 			REDEBUG("!!! good\" cleartext password is in Cleartext-Password,  !!!");
@@ -107,7 +107,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		RDEBUG3("Comparing with \"known good\" &control:Cleartext-Password value \"%s\"",
 			password->vp_strvalue);
 
-		vp = pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
 		if (vp) {
 			RDEBUG2("Using challenge from &request:CHAP-Challenge");
 			p = vp->vp_octets;

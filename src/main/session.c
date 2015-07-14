@@ -51,14 +51,14 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 
 	/* Hold your breath */
 #define PAIR(n,v,e) do { \
-		if(!(vp = paircreate(stopreq->packet,n, 0))) {	\
+		if(!(vp = fr_pair_afrom_num(stopreq->packet,n, 0))) {	\
 			talloc_free(stopreq); \
 			ERROR("no memory"); \
-			pairfree(&(stopreq->packet->vps)); \
+			fr_pair_list_free(&(stopreq->packet->vps)); \
 			return 0; \
 		} \
 		vp->e = v; \
-		pairadd(&(stopreq->packet->vps), vp); \
+		fr_pair_add(&(stopreq->packet->vps), vp); \
 	} while(0)
 
 #define INTPAIR(n,v) PAIR(n,v,vp_integer)
@@ -66,14 +66,14 @@ int session_zap(REQUEST *request, uint32_t nasaddr, uint32_t nas_port,
 #define IPPAIR(n,v) PAIR(n,v,vp_ipaddr)
 
 #define STRINGPAIR(n,v) do { \
-	  if(!(vp = paircreate(stopreq->packet,n, 0))) {	\
+	  if(!(vp = fr_pair_afrom_num(stopreq->packet,n, 0))) {	\
 		talloc_free(stopreq); \
 		ERROR("no memory"); \
-		pairfree(&(stopreq->packet->vps)); \
+		fr_pair_list_free(&(stopreq->packet->vps)); \
 		return 0; \
 	} \
-	pairstrcpy(vp, v);	\
-	pairadd(&(stopreq->packet->vps), vp); \
+	fr_pair_value_strcpy(vp, v);	\
+	fr_pair_add(&(stopreq->packet->vps), vp); \
 	} while(0)
 
 	INTPAIR(PW_ACCT_STATUS_TYPE, PW_STATUS_STOP);

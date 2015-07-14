@@ -119,7 +119,7 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 {
 	VALUE_PAIR *vp;
 
-	vp = pairfind(request->config, PW_CACHE_MERGE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_CACHE_MERGE, 0, TAG_ANY);
 	if (vp && (vp->vp_integer == 0)) {
 		RDEBUG2("Told not to merge entry into request");
 		return;
@@ -129,31 +129,31 @@ static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rl
 
 	if (c->packet && request->packet) {
 		rdebug_pair_list(L_DBG_LVL_2, request, c->packet, "&request:");
-		radius_pairmove(request, &request->packet->vps, paircopy(request->packet, c->packet), false);
+		radius_pairmove(request, &request->packet->vps, fr_pair_list_copy(request->packet, c->packet), false);
 	}
 
 	if (c->reply && request->reply) {
 		rdebug_pair_list(L_DBG_LVL_2, request, c->reply, "&reply:");
-		radius_pairmove(request, &request->reply->vps, paircopy(request->reply, c->reply), false);
+		radius_pairmove(request, &request->reply->vps, fr_pair_list_copy(request->reply, c->reply), false);
 	}
 
 	if (c->control) {
 		rdebug_pair_list(L_DBG_LVL_2, request, c->control, "&control:");
-		radius_pairmove(request, &request->config, paircopy(request, c->control), false);
+		radius_pairmove(request, &request->config, fr_pair_list_copy(request, c->control), false);
 	}
 
 	if (c->state) {
 		rdebug_pair_list(L_DBG_LVL_2, request, c->state, "&session-state:");
-		radius_pairmove(request, &request->state, paircopy(request->state, c->state), false);
+		radius_pairmove(request, &request->state, fr_pair_list_copy(request->state, c->state), false);
 	}
 
 	if (inst->stats) {
 		rad_assert(request->packet != NULL);
-		vp = pairfind(request->packet->vps, PW_CACHE_ENTRY_HITS, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, PW_CACHE_ENTRY_HITS, 0, TAG_ANY);
 		if (!vp) {
-			vp = paircreate(request->packet, PW_CACHE_ENTRY_HITS, 0);
+			vp = fr_pair_afrom_num(request->packet, PW_CACHE_ENTRY_HITS, 0);
 			rad_assert(vp != NULL);
-			pairadd(&request->packet->vps, vp);
+			fr_pair_add(&request->packet->vps, vp);
 		}
 		vp->vp_integer = c->hits;
 	}
@@ -333,7 +333,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = pairfind(request->config, PW_CACHE_MERGE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_CACHE_MERGE, 0, TAG_ANY);
 	if (vp && (vp->vp_integer == 0)) merge = false;
 
 	if (merge) cache_merge(inst, request, c);
@@ -458,7 +458,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *reques
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
-	vp = pairfind(request->config, PW_CACHE_STATUS_ONLY, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_CACHE_STATUS_ONLY, 0, TAG_ANY);
 	if (vp && vp->vp_integer) {
 		rcode = c ? RLM_MODULE_OK:
 			    RLM_MODULE_NOTFOUND;
@@ -470,7 +470,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *reques
 	 *	A TTL of 0 means "delete from the cache".
 	 *	A TTL < 0 means "delete from the cache and recreate the entry".
 	 */
-	vp = pairfind(request->config, PW_CACHE_TTL, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_CACHE_TTL, 0, TAG_ANY);
 	if (vp) ttl = vp->vp_signed;
 
 	/*
@@ -516,7 +516,7 @@ insert:
 	 *	If Cache-Read-Only == yes, then we only allow already cached entries
 	 *	to be merged into the request
 	 */
-	vp = pairfind(request->config, PW_CACHE_READ_ONLY, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_CACHE_READ_ONLY, 0, TAG_ANY);
 	if (vp && vp->vp_integer) {
 		rcode = RLM_MODULE_NOTFOUND;
 		goto finish;
@@ -622,7 +622,7 @@ static ssize_t cache_xlat(void *instance, REQUEST *request,
 		goto finish;
 	}
 
-	vp = pairfind(vps, target->attr, target->vendor, TAG_ANY);
+	vp = fr_pair_find_by_num(vps, target->attr, target->vendor, TAG_ANY);
 	if (!vp) {
 		RDEBUG("No instance of this attribute has been cached");
 		*out = '\0';

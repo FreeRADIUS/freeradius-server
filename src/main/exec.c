@@ -580,9 +580,9 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 	if (output_pairs) {
 		/*
 		 *	HACK: Replace '\n' with ',' so that
-		 *	userparse() can parse the buffer in
+		 *	fr_pair_list_afrom_str() can parse the buffer in
 		 *	one go (the proper way would be to
-		 *	fix userparse(), but oh well).
+		 *	fix fr_pair_list_afrom_str(), but oh well).
 		 */
 		for (p = answer; *p; p++) {
 			if (*p == '\n') {
@@ -602,7 +602,7 @@ int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **
 			answer[--len] = '\0';
 		}
 
-		if (userparse(ctx, answer, output_pairs) == T_INVALID) {
+		if (fr_pair_list_afrom_str(ctx, answer, output_pairs) == T_INVALID) {
 			RERROR("Failed parsing output from: %s: %s", cmd, fr_strerror());
 			strlcpy(out, answer, len);
 			ret = -1;

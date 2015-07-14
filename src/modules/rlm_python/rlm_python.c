@@ -343,7 +343,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		}
 		s1 = PyString_AsString(pStr1);
 		s2 = PyString_AsString(pStr2);
-		vp = pairmake(ctx, vps, s1, s2, op);
+		vp = fr_pair_make(ctx, vps, s1, s2, op);
 		if (vp != NULL) {
 			DEBUG("rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
 		} else {

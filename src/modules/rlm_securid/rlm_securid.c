@@ -513,11 +513,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		/* reply with Access-challenge message code (11) */
 
 		/* Generate Prompt attribute */
-		vp = paircreate(request->reply, PW_PROMPT, 0);
+		vp = fr_pair_afrom_num(request->reply, PW_PROMPT, 0);
 
 		rad_assert(vp != NULL);
 		vp->vp_integer = 0; /* no echo */
-		pairadd(&request->reply->vps, vp);
+		fr_pair_add(&request->reply->vps, vp);
 
 		/* Mark the packet as a Acceess-Challenge Packet */
 		request->reply->code = PW_CODE_ACCESS_CHALLENGE;
@@ -533,7 +533,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		break;
 	}
 
-	if (*buffer) pairmake_reply("Reply-Message", buffer, T_OP_EQ);
+	if (*buffer) pair_make_reply("Reply-Message", buffer, T_OP_EQ);
 
 	return rcode;
 }

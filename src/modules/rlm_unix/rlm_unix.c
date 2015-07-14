@@ -315,7 +315,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	if (encrypted_pass[0] == 0)
 		return RLM_MODULE_NOOP;
 
-	vp = pairmake_config("Crypt-Password", encrypted_pass, T_OP_SET);
+	vp = pair_make_config("Crypt-Password", encrypted_pass, T_OP_SET);
 	if (!vp) return RLM_MODULE_FAIL;
 
 	return RLM_MODULE_UPDATED;
@@ -390,7 +390,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY))==NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY))==NULL) {
 		RDEBUG("no Accounting-Status-Type attribute in request");
 		return RLM_MODULE_NOOP;
 	}
@@ -407,7 +407,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 *	We're only interested in accounting messages
 	 *	with a username in it.
 	 */
-	if (pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY) == NULL)
+	if (fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY) == NULL)
 		return RLM_MODULE_NOOP;
 
 	t = request->timestamp;

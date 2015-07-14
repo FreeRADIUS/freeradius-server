@@ -90,7 +90,7 @@ static int _eap_handler_free(eap_handler_t *handler)
 	handler->opaque = NULL;
 	handler->free_opaque = NULL;
 
-	if (handler->certs) pairfree(&handler->certs);
+	if (handler->certs) fr_pair_list_free(&handler->certs);
 
 	/*
 	 *	Give helpful debug messages if:
@@ -273,7 +273,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = pairmake_reply("State", NULL, T_OP_EQ);
+	state = pair_make_reply("State", NULL, T_OP_EQ);
 	if (!state) return 0;
 
 	/*
@@ -326,7 +326,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	handler->state[5] = handler->eap_id ^ handler->state[1];
 	handler->state[6] = handler->type ^ handler->state[2];
 
-	pairmemcpy(state, handler->state, sizeof(handler->state));
+	fr_pair_value_memcpy(state, handler->state, sizeof(handler->state));
 
 	/*
 	 *	Big-time failure.
@@ -362,7 +362,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	PTHREAD_MUTEX_UNLOCK(&(inst->session_mutex));
 
 	if (status <= 0) {
-		pairdelete(&request->reply->vps, PW_STATE, 0, TAG_ANY);
+		fr_pair_delete_by_num(&request->reply->vps, PW_STATE, 0, TAG_ANY);
 
 		if (status < 0) {
 			static time_t last_logged = 0;
@@ -405,7 +405,7 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	 *	We key the sessions off of the 'state' attribute, so it
 	 *	must exist.
 	 */
-	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	state = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!state ||
 	    (state->vp_length != EAP_STATE_LEN)) {
 		return NULL;

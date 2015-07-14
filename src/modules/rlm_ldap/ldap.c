@@ -1094,7 +1094,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	 *	If the caller isn't looking for the result we can just return the current userdn value.
 	 */
 	if (!force) {
-		vp = pairfind(request->config, PW_LDAP_USERDN, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->config, PW_LDAP_USERDN, 0, TAG_ANY);
 		if (vp) {
 			RDEBUG("Using user DN from request \"%s\"", vp->vp_strvalue);
 			*rcode = RLM_MODULE_OK;
@@ -1198,7 +1198,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	rlm_ldap_normalise_dn(dn, dn);
 
 	/*
-	 *	We can't use pairmake here to copy the value into the
+	 *	We can't use fr_pair_make here to copy the value into the
 	 *	attribute, as the dn must be copied into the attribute
 	 *	verbatim (without de-escaping).
 	 *
@@ -1206,9 +1206,9 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	 *	we pass the string back to libldap we must not alter it.
 	 */
 	RDEBUG("User object found at DN \"%s\"", dn);
-	vp = pairmake(request, &request->config, "LDAP-UserDN", NULL, T_OP_EQ);
+	vp = fr_pair_make(request, &request->config, "LDAP-UserDN", NULL, T_OP_EQ);
 	if (vp) {
-		pairstrcpy(vp, dn);
+		fr_pair_value_strcpy(vp, dn);
 		*rcode = RLM_MODULE_OK;
 	}
 
@@ -1277,11 +1277,11 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 	*	an LDAP attribute and a password reference attribute in the control list.
 	*/
 	if (inst->expect_password && (rad_debug_lvl > 1)) {
-		if (!pairfind(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) &&
-		    !pairfind(request->config, PW_NT_PASSWORD, 0, TAG_ANY) &&
-		    !pairfind(request->config, PW_USER_PASSWORD, 0, TAG_ANY) &&
-		    !pairfind(request->config, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
-		    !pairfind(request->config, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
+		if (!fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) &&
+		    !fr_pair_find_by_num(request->config, PW_NT_PASSWORD, 0, TAG_ANY) &&
+		    !fr_pair_find_by_num(request->config, PW_USER_PASSWORD, 0, TAG_ANY) &&
+		    !fr_pair_find_by_num(request->config, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
+		    !fr_pair_find_by_num(request->config, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
 			RWDEBUG("No \"known good\" password added. Ensure the admin user has permission to "
 				"read the password attribute");
 			RWDEBUG("PAP authentication will *NOT* work with Active Directory (if that is what you "

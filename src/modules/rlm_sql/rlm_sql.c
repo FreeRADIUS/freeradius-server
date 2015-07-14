@@ -130,7 +130,7 @@ static const CONF_PARSER module_config[] = {
 static sql_fall_through_t fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
+	tmp = fr_pair_find_by_num(vp, PW_FALL_THROUGH, 0, TAG_ANY);
 
 	return tmp ? tmp->vp_integer : FALL_THROUGH_DEFAULT;
 }
@@ -495,13 +495,13 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 		return -1;
 	}
 
-	vp = pairalloc(request->packet, inst->sql_user);
+	vp = fr_pair_afrom_da(request->packet, inst->sql_user);
 	if (!vp) {
 		talloc_free(expanded);
 		return -1;
 	}
 
-	pairstrsteal(vp, expanded);
+	fr_pair_value_strsteal(vp, expanded);
 	RDEBUG2("SQL-User-Name set to '%s'", vp->vp_strvalue);
 	vp->op = T_OP_SET;
 	radius_pairmove(request, &request->packet->vps, vp, false);	/* needs to be pair move else op is not respected */
@@ -512,7 +512,7 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 /*
  *	Do a set/unset user, so it's a bit clearer what's going on.
  */
-#define sql_unset_user(_i, _r) pairdelete(&_r->packet->vps, _i->sql_user->attr, _i->sql_user->vendor, TAG_ANY)
+#define sql_unset_user(_i, _r) fr_pair_delete_by_num(&_r->packet->vps, _i->sql_user->attr, _i->sql_user->vendor, TAG_ANY)
 
 static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST *request,
 			     rlm_sql_grouplist_t **phead)
@@ -669,7 +669,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	 *	Add the Sql-Group attribute to the request list so we know
 	 *	which group we're retrieving attributes for
 	 */
-	sql_group = pairmake_packet(inst->group_da->name, NULL, T_OP_EQ);
+	sql_group = pair_make_packet(inst->group_da->name, NULL, T_OP_EQ);
 	if (!sql_group) {
 		REDEBUG("Error creating %s attribute", inst->group_da->name);
 		rcode = RLM_MODULE_FAIL;
@@ -680,7 +680,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	do {
 	next:
 		rad_assert(entry != NULL);
-		pairstrcpy(sql_group, entry->name);
+		fr_pair_value_strcpy(sql_group, entry->name);
 
 		if (inst->config->authorize_group_check_query) {
 			vp_cursor_t cursor;
@@ -710,7 +710,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			 */
 			if ((rows > 0) &&
 			    (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0)) {
-				pairfree(&check_tmp);
+				fr_pair_list_free(&check_tmp);
 				entry = entry->next;
 
 				if (!entry) break;
@@ -776,7 +776,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 
 finish:
 	talloc_free(head);
-	pairdelete(&request->packet->vps, inst->group_da->attr, 0, TAG_ANY);
+	fr_pair_delete_by_num(&request->packet->vps, inst->group_da->attr, 0, TAG_ANY);
 
 	return rcode;
 }
@@ -1085,7 +1085,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		RDEBUG2("User found in radcheck table");
 		user_found = true;
 		if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) != 0) {
-			pairfree(&check_tmp);
+			fr_pair_list_free(&check_tmp);
 			check_tmp = NULL;
 			goto skipreply;
 		}
@@ -1189,7 +1189,7 @@ skipreply:
 		 *  Check for a default_profile or for a User-Profile.
 		 */
 		RDEBUG3("... falling-through to profile processing");
-		user_profile = pairfind(request->config, PW_USER_PROFILE, 0, TAG_ANY);
+		user_profile = fr_pair_find_by_num(request->config, PW_USER_PROFILE, 0, TAG_ANY);
 
 		char const *profile = user_profile ?
 				      user_profile->vp_strvalue :
@@ -1248,8 +1248,8 @@ release:
 	return rcode;
 
 error:
-	pairfree(&check_tmp);
-	pairfree(&reply_tmp);
+	fr_pair_list_free(&check_tmp);
+	fr_pair_list_free(&reply_tmp);
 	sql_unset_user(inst, request);
 
 	fr_connection_release(inst->pool, handle);
@@ -1552,11 +1552,11 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 	 */
 	request->simul_count = 0;
 
-	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL) {
 		ipno = vp->vp_ipaddr;
 	}
 
-	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL) {
 		call_num = vp->vp_strvalue;
 	}
 

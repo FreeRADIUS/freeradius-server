@@ -340,7 +340,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	rlm_sqlhpwippool_t *inst = (rlm_sqlhpwippool_t *) instance;
 
 	/* if IP is already there, then nothing to do */
-	vp = pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY);
 	if (vp) {
 		nvp_log(__LINE__, inst, L_DBG,
 			"mod_post_auth(): IP address "
@@ -349,7 +349,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	}
 
 	/* if no pool name, we don't need to do anything */
-	vp = pairfind(request->reply->vps, ASN_IP_POOL_NAME, VENDORPEC_ASN, TAG_ANY);
+	vp = fr_pair_find_by_num(request->reply->vps, ASN_IP_POOL_NAME, VENDORPEC_ASN, TAG_ANY);
 	if (vp) {
 		pname = vp->vp_strvalue;
 		nvp_log(__LINE__, inst, L_DBG,
@@ -363,7 +363,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	}
 
 	/* if no NAS IP address, assign 0 */
-	vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
 	if (vp) {
 		nasip = ntohl(vp->vp_ipaddr);
 	}
@@ -636,7 +636,7 @@ end_gid:
 	}
 
 	/* add IP address to reply packet */
-	vp = radius_paircreate(request->reply, &request->reply->vps,
+	vp = radius_pair_create(request->reply, &request->reply->vps,
 			       PW_FRAMED_IP_ADDRESS, 0);
 	vp->vp_ipaddr = ip.s_addr;
 
@@ -658,7 +658,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	rlm_sqlhpwippool_t *inst = (rlm_sqlhpwippool_t *) instance;
 
 	/* if no unique session ID, don't even try */
-	vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0, TAG_ANY);
 	if (vp) {
 		sessid = vp->vp_strvalue;
 	}
@@ -668,7 +668,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		return RLM_MODULE_FAIL;
 	}
 
-	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (vp) {
 		acct_type = vp->vp_integer;
 	}
@@ -698,7 +698,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	switch (acct_type) {
 	case PW_STATUS_START:
 	case PW_STATUS_ALIVE:
-		vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY);
 		if (!vp) {
 			nvp_log(__LINE__, inst, L_ERR, "mod_accounting(): no framed IP");
 			fr_connection_release(inst->sql_inst->pool, sqlsock);
@@ -738,7 +738,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 
 	case PW_STATUS_ACCOUNTING_OFF:
 	case PW_STATUS_ACCOUNTING_ON:
-		vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
 		if (!vp) {
 			nvp_log(__LINE__, inst, L_ERR, "mod_accounting(): no NAS IP");
 			fr_connection_release(inst->sql_inst->pool, sqlsock);

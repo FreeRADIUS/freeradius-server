@@ -2874,13 +2874,13 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 		if (ptr[0] != attr) break;
 	}
 
-	vp = pairalloc(ctx, da);
+	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
 
 	vp->vp_length = total;
 	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
 	if (!p) {
-		pairfree(&vp);
+		fr_pair_list_free(&vp);
 		return -1;
 	}
 
@@ -2938,13 +2938,13 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 			my_vendor = da->vendor;
 
 			if (!dict_attr_child(da, &my_attr, &my_vendor)) {
-				pairfree(&head);
+				fr_pair_list_free(&head);
 				return -1;
 			}
 
 			child = dict_unknown_afrom_fields(ctx, my_attr, my_vendor);
 			if (!child) {
-				pairfree(&head);
+				fr_pair_list_free(&head);
 				return -1;
 			}
 		}
@@ -2952,7 +2952,7 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 		tlv_len = data2vp(ctx, packet, original, secret, child,
 				  data + 2, data[1] - 2, data[1] - 2, tail);
 		if (tlv_len < 0) {
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			return -1;
 		}
 		if (*tail) tail = &((*tail)->next);
@@ -3318,7 +3318,7 @@ create_attrs:
 		vsa_len = data2vp_vsa(ctx, packet, original, secret, dv,
 				      data, attrlen, tail);
 		if (vsa_len < 0) {
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			fr_strerror_printf("Internal sanity check %d", __LINE__);
 			return -1;
 		}
@@ -3732,7 +3732,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	information, decode the actual data.
 	 */
  alloc_cui:
-	vp = pairalloc(ctx, da);
+	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) return -1;
 
 	vp->vp_length = datalen;
@@ -3747,7 +3747,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		break;
 
 	case PW_TYPE_OCTETS:
-		pairmemcpy(vp, data, vp->vp_length);
+		fr_pair_value_memcpy(vp, data, vp->vp_length);
 		break;
 
 	case PW_TYPE_ABINARY:
@@ -3836,7 +3836,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		break;
 
 	default:
-		pairfree(&vp);
+		fr_pair_list_free(&vp);
 		fr_strerror_printf("Internal sanity check %d", __LINE__);
 		return -1;
 	}
@@ -4054,7 +4054,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		my_len = rad_attr2vp(packet, packet, original, secret,
 				     ptr, packet_length, &vp);
 		if (my_len < 0) {
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			return -1;
 		}
 
@@ -4075,7 +4075,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		    (num_attributes > fr_max_attributes)) {
 			char host_ipaddr[128];
 
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
@@ -4476,7 +4476,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 	 *	Use Chap-Challenge pair if present,
 	 *	Request Authenticator otherwise.
 	 */
-	challenge = pairfind(packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
+	challenge = fr_pair_find_by_num(packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
 	if (challenge) {
 		memcpy(ptr, challenge->vp_strvalue, challenge->vp_length);
 		i += challenge->vp_length;
@@ -4658,7 +4658,7 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 
 	VERIFY_PACKET(radius_packet);
 
-	pairfree(&radius_packet->vps);
+	fr_pair_list_free(&radius_packet->vps);
 
 	talloc_free(radius_packet);
 	*radius_packet_ptr = NULL;
@@ -4691,7 +4691,7 @@ RADIUS_PACKET *rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in)
 	out->data = NULL;
 	out->data_len = 0;
 
-	out->vps = paircopy(out, in->vps);
+	out->vps = fr_pair_list_copy(out, in->vps);
 	out->offset = 0;
 
 	return out;

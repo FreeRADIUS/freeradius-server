@@ -361,7 +361,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 		VALUE_PAIR *vp;
 
 		for (i = 0; i < conf->list_da_num; i++) {
-			vp = pair_find_by_da(packet->vps, conf->list_da[i], TAG_ANY);
+			vp = fr_pair_find_by_da(packet->vps, conf->list_da[i], TAG_ANY);
 			if (vp && (vp->vp_length > 0)) {
 				if (conf->list_da[i]->type == PW_TYPE_STRING) {
 					*p++ = '"';
@@ -484,7 +484,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 			char vector[(AUTH_VECTOR_LEN * 2) + 1];
 
 			if (packet->vps) {
-				pairsort(&packet->vps, attrtagcmp);
+				fr_pair_list_sort(&packet->vps, fr_pair_cmp_by_da_tag);
 				vp_printlist(fr_log_fp, packet->vps);
 			}
 
@@ -782,9 +782,9 @@ static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, DICT
 		}
 
 		do {
-			copy = paircopyvp(ctx, match);
+			copy = fr_pair_copy(ctx, match);
 			if (!copy) {
-				pairfree(out);
+				fr_pair_list_free(out);
 				return -1;
 			}
 			fr_cursor_insert(&out_cursor, copy);
@@ -1218,8 +1218,8 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 			 *	Now verify the packet passes the attribute filter
 			 */
 			if (conf->filter_response_vps) {
-				pairsort(&current->vps, attrtagcmp);
-				if (!pairvalidate_relaxed(NULL, conf->filter_response_vps, current->vps)) {
+				fr_pair_list_sort(&current->vps, fr_pair_cmp_by_da_tag);
+				if (!fr_pair_validate_relaxed(NULL, conf->filter_response_vps, current->vps)) {
 					goto drop_response;
 				}
 			}
@@ -1317,7 +1317,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				return;
 			}
 
-			pairsort(&current->vps, attrtagcmp);
+			fr_pair_list_sort(&current->vps, fr_pair_cmp_by_da_tag);
 		}
 
 		/*
@@ -1389,7 +1389,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 		 *	Now verify the packet passes the attribute filter
 		 */
 		if (conf->filter_request_vps) {
-			if (!pairvalidate_relaxed(NULL, conf->filter_request_vps, current->vps)) {
+			if (!fr_pair_validate_relaxed(NULL, conf->filter_request_vps, current->vps)) {
 				goto drop_request;
 			}
 		}
@@ -1443,7 +1443,7 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				for (vp = fr_cursor_init(&cursor, &search.link_vps);
 				     vp;
 				     vp = fr_cursor_next(&cursor)) {
-					pairsteal(original, search.link_vps);
+					fr_pair_steal(original, search.link_vps);
 				}
 				original->link_vps = search.link_vps;
 
@@ -1670,7 +1670,7 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	rcode = fr_ipaddr_cmp(&a->expect->dst_ipaddr, &b->expect->dst_ipaddr);
 	if (rcode != 0) return rcode;
 
-	return pairlistcmp(a->link_vps, b->link_vps);
+	return fr_pair_list_cmp(a->link_vps, b->link_vps);
 }
 
 static int rs_build_dict_list(DICT_ATTR const **out, size_t len, char *list)
@@ -1714,7 +1714,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	VALUE_PAIR *vp;
 	FR_TOKEN code;
 
-	code = userparse(conf, filter, out);
+	code = fr_pair_list_afrom_str(conf, filter, out);
 	if (code == T_INVALID) {
 		ERROR("Invalid RADIUS filter \"%s\" (%s)", filter, fr_strerror());
 		return -1;
@@ -1741,7 +1741,7 @@ static int rs_build_filter(VALUE_PAIR **out, char const *filter)
 	/*
 	 *	This allows efficient list comparisons later
 	 */
-	pairsort(out, attrtagcmp);
+	fr_pair_list_sort(out, fr_pair_cmp_by_da_tag);
 
 	return 0;
 }

@@ -526,7 +526,7 @@ static void addresult (TALLOC_CTX *ctx, rlm_passwd_t *inst, REQUEST *request,
 	for (i = 0; i < inst->nfields; i++) {
 		if (inst->pwdfmt->field[i] && *inst->pwdfmt->field[i] && pw->field[i] && i != inst->keyfield  && inst->pwdfmt->listflag[i] == when) {
 			if ( !inst->ignore_empty || pw->field[i][0] != 0 ) { /* if value in key/value pair is not empty */
-				vp = pairmake(ctx, vps, inst->pwdfmt->field[i], pw->field[i], T_OP_EQ);
+				vp = fr_pair_make(ctx, vps, inst->pwdfmt->field[i], pw->field[i], T_OP_EQ);
 				if (vp) {
 					RDEBUG("Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
 				}
@@ -544,7 +544,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 	struct mypasswd * pw, *last_found;
 	vp_cursor_t cursor;
 
-	key = pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
+	key = fr_pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
 	if (!key) {
 		return RLM_MODULE_NOTFOUND;
 	}

@@ -1715,7 +1715,7 @@ static int do_proxy(REQUEST *request)
 		return 0;
 	}
 
-	vp = pairfind(request->config, PW_HOME_SERVER_POOL, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_POOL, 0, TAG_ANY);
 
 	if (vp) {
 		if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
@@ -1730,8 +1730,8 @@ static int do_proxy(REQUEST *request)
 	/*
 	 *	We have a destination IP address.  It will (later) proxied.
 	 */
-	vp = pairfind(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY);
-	if (!vp) vp = pairfind(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY);
+	if (!vp) vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY);
 
 	if (!vp) return 0;
 
@@ -1777,10 +1777,10 @@ int rad_coa_recv(REQUEST *request)
 		 *	with Service-Type = Authorize-Only, it MUST
 		 *	have a State attribute in it.
 		 */
-		vp = pairfind(request->packet->vps, PW_SERVICE_TYPE, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, PW_SERVICE_TYPE, 0, TAG_ANY);
 		if (request->packet->code == PW_CODE_COA_REQUEST) {
 			if (vp && (vp->vp_integer == 17)) {
-				vp = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
+				vp = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
 				if (!vp || (vp->vp_length == 0)) {
 					REDEBUG("CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
 					request->reply->code = PW_CODE_COA_NAK;
@@ -1834,8 +1834,8 @@ int rad_coa_recv(REQUEST *request)
 	 *	Copy State from the request to the reply.
 	 *	See RFC 5176 Section 3.3.
 	 */
-	vp = paircopy_by_num(request->reply, request->packet->vps, PW_STATE, 0, TAG_ANY);
-	if (vp) pairadd(&request->reply->vps, vp);
+	vp = fr_pair_list_copy_by_num(request->reply, request->packet->vps, PW_STATE, 0, TAG_ANY);
+	if (vp) fr_pair_add(&request->reply->vps, vp);
 
 	/*
 	 *	We may want to over-ride the reply.
@@ -2147,7 +2147,7 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 		const char *identity = SSL_get_psk_identity(sock->ssn->ssl);
 		if (identity) {
 			RDEBUG("Retrieved psk identity: %s", identity);
-			pairmake_packet("TLS-PSK-Identity", identity, T_OP_SET);
+			pair_make_packet("TLS-PSK-Identity", identity, T_OP_SET);
 		}
 #endif
 	}

@@ -135,7 +135,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		VALUE_PAIR *vp;
 
 		auth_type_found = 0;
-		vp = pairfind(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
 		if (vp) {
 			auth_type_found = 1;
 			if (strcmp(vp->vp_strvalue, inst->name)) {
@@ -145,7 +145,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 	/* The State attribute will be present if this is a response. */
-	if (pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY) != NULL) {
 		DEBUG("rlm_otp: autz: Found response to Access-Challenge");
 
 		return RLM_MODULE_OK;
@@ -178,7 +178,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	if (inst->allow_sync && !inst->allow_async) {
 		/* This is the token sync response. */
 		if (!auth_type_found) {
-			pairmake_config("Auth-Type", inst->name, T_OP_EQ);
+			pair_make_config("Auth-Type", inst->name, T_OP_EQ);
 		}
 
 		return RLM_MODULE_OK;
@@ -214,13 +214,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		len = otp_gen_state(gen_state, challenge, inst->challenge_len,
 				    0, now, inst->hmac_key);
 
-		vp = paircreate(request->reply, PW_STATE, 0);
+		vp = fr_pair_afrom_num(request->reply, PW_STATE, 0);
 		if (!vp) {
 			return RLM_MODULE_FAIL;
 		}
 
-		pairmemcpy(vp, (uint8_t const *) gen_state, len);
-		pairadd(&request->reply->vps, vp);
+		fr_pair_value_memcpy(vp, (uint8_t const *) gen_state, len);
+		fr_pair_add(&request->reply->vps, vp);
 	}
 
 	/*
@@ -236,15 +236,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 *	First add the internal OTP challenge attribute to
 		 *	the reply list.
 		 */
-		vp = paircreate(request->reply, PW_OTP_CHALLENGE, 0);
+		vp = fr_pair_afrom_num(request->reply, PW_OTP_CHALLENGE, 0);
 		if (!vp) {
 			return RLM_MODULE_FAIL;
 		}
 
-		pairstrcpy(vp, challenge);
+		fr_pair_value_strcpy(vp, challenge);
 		vp->op = T_OP_SET;
 
-		pairadd(&request->reply->vps, vp);
+		fr_pair_add(&request->reply->vps, vp);
 
 		/*
 		 *	Then add the message to the user to they known
@@ -256,7 +256,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			return RLM_MODULE_FAIL;
 		}
 
-		vp = paircreate(request->reply, PW_REPLY_MESSAGE, 0);
+		vp = fr_pair_afrom_num(request->reply, PW_REPLY_MESSAGE, 0);
 		if (!vp) {
 			talloc_free(expanded);
 			return RLM_MODULE_FAIL;
@@ -268,7 +268,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		vp->op = T_OP_SET;
 		vp->type = VT_DATA;
 
-		pairadd(&request->reply->vps, vp);
+		fr_pair_add(&request->reply->vps, vp);
 	}
 
 	/*
@@ -280,7 +280,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	DEBUG("rlm_otp: Sending Access-Challenge");
 
 	if (!auth_type_found) {
-		pairmake_config("Auth-Type", inst->name, T_OP_EQ);
+		pair_make_config("Auth-Type", inst->name, T_OP_EQ);
 	}
 
 	return RLM_MODULE_HANDLED;
@@ -325,7 +325,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/*
 	 *	Retrieve the challenge (from State attribute).
 	 */
-	vp = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (vp) {
 		char	gen_state[OTP_MAX_RADSTATE_LEN]; //!< State as hexits
 		uint8_t	bin_state[OTP_MAX_RADSTATE_LEN];

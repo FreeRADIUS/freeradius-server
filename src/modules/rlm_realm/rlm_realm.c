@@ -107,7 +107,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *      it already ( via another rlm_realm instance ) and should return.
 	 */
 
-	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL ) {
+	if (fr_pair_find_by_num(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL ) {
 		RDEBUG2("Request already has destination realm set.  Ignoring");
 		return RLM_MODULE_NOOP;
 	}
@@ -201,7 +201,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *
 		 */
 		if (request->username->da->attr != PW_STRIPPED_USER_NAME) {
-			vp = radius_paircreate(request->packet, &request->packet->vps,
+			vp = radius_pair_create(request->packet, &request->packet->vps,
 					       PW_STRIPPED_USER_NAME, 0);
 			RDEBUG2("Adding Stripped-User-Name = \"%s\"", username);
 		} else {
@@ -209,7 +209,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 			RDEBUG2("Setting Stripped-User-Name = \"%s\"", username);
 		}
 
-		pairstrcpy(vp, username);
+		fr_pair_value_strcpy(vp, username);
 		request->username = vp;
 	}
 
@@ -222,7 +222,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	entered.
 	 */
 	if (realm->name[0] != '~') realmname = realm->name;
-	pairmake_packet("Realm", realmname, T_OP_EQ);
+	pair_make_packet("Realm", realmname, T_OP_EQ);
 	RDEBUG2("Adding Realm = \"%s\"", realmname);
 
 	talloc_free(namebuf);
@@ -284,7 +284,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *      that has already proxied the request, we don't need to do
 	 *      it again.
 	 */
-	vp = pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_PROXIED_TO, 0, TAG_ANY);
 	if (vp && (request->packet->src_ipaddr.af == AF_INET)) {
 		int i;
 		fr_ipaddr_t my_ipaddr;
@@ -413,7 +413,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 */
 	RDEBUG2("Preparing to proxy authentication request to realm \"%s\"\n",
 	       realm->name);
-	pairmake_config("Proxy-To-Realm", realm->name, T_OP_EQ);
+	pair_make_config("Proxy-To-Realm", realm->name, T_OP_EQ);
 
 	return RLM_MODULE_UPDATED; /* try the next module */
 }
@@ -445,7 +445,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request
 	 */
 	RDEBUG2("Preparing to proxy accounting request to realm \"%s\"\n",
 	       realm->name);
-	pairmake_config("Proxy-To-Realm", realm->name, T_OP_EQ);
+	pair_make_config("Proxy-To-Realm", realm->name, T_OP_EQ);
 
 	return RLM_MODULE_UPDATED; /* try the next module */
 }
@@ -460,12 +460,12 @@ static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	REALM *realm;
 
-	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL) {
 		RDEBUG2("Request already has destination realm set.  Ignoring");
 		return RLM_MODULE_NOOP;
 	}
 
-	vp = pairfind(request->packet->vps, PW_OPERATOR_NAME, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_OPERATOR_NAME, 0, TAG_ANY);
 	if (!vp) return RLM_MODULE_NOOP;
 
 	/*
@@ -496,7 +496,7 @@ static rlm_rcode_t mod_realm_recv_coa(UNUSED void *instance, REQUEST *request)
 	 */
 	RDEBUG2("Preparing to proxy authentication request to realm \"%s\"\n",
 	       realm->name);
-	pairmake_config("Proxy-To-Realm", realm->name, T_OP_EQ);
+	pair_make_config("Proxy-To-Realm", realm->name, T_OP_EQ);
 
 	return RLM_MODULE_UPDATED; /* try the next module */
 }

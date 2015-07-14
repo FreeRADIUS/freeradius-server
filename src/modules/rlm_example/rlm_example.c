@@ -114,7 +114,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	/*
 	 *  Look for the 'state' attribute.
 	 */
-	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	state = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (state != NULL) {
 		RDEBUG("Found reply to access challenge");
 		return RLM_MODULE_OK;
@@ -123,8 +123,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	/*
 	 *  Create the challenge, and add it to the reply.
 	 */
-	pairmake_reply("Reply-Message", "This is a challenge", T_OP_EQ);
-	pairmake_reply("State", "0", T_OP_EQ);
+	pair_make_reply("Reply-Message", "This is a challenge", T_OP_EQ);
+	pair_make_reply("State", "0", T_OP_EQ);
 
 	/*
 	 *  Mark the packet as an Access-Challenge packet.
