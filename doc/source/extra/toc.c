@@ -54,18 +54,31 @@ git checkout v3.0.x
 @endcode
 - Web: http://github.com/FreeRADIUS/freeradius-server/tree/v3.0.x
 
-@subsection branch_2xx 2.x.x long-term support branch
+@subsection branch_2xx 2.x.x EOL branch
 
-@note This branch is now permanently feature frozen. New features or modules 
+@note This branch is now permanently feature frozen. New features or modules
       should be submitted against the v3.1.x branch.
 
 @code
-git clone git@github.com:FreeRADIUS/freeradius-server.git 
+git clone git@github.com:FreeRADIUS/freeradius-server.git
 cd freeradius-server
 git fetch origin v2.x.x:v2.x.x
 git checkout v2.x.x
 @endcode
 - Web: http://github.com/FreeRADIUS/freeradius-server/tree/v2.x.x
+
+@subsection branch_1xx 1.1.x EOL branch
+
+@note This branch is now permanently feature frozen. New features or modules
+      should be submitted against the v3.1.x branch.
+
+@code
+git clone git@github.com:FreeRADIUS/freeradius-server.git
+cd freeradius-server
+git fetch origin v2.x.x:v2.x.x
+git checkout v2.x.x
+@endcode
+- Web: http://github.com/FreeRADIUS/freeradius-server/tree/v1.1.x
 
 @section main_website Website
 
