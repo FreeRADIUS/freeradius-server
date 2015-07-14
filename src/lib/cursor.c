@@ -53,8 +53,6 @@ inline static VALUE_PAIR *fr_cursor_update(vp_cursor_t *cursor, VALUE_PAIR *vp)
 
 /** Setup a cursor to iterate over attribute pairs
  *
- * @addtogroup module_safe
- *
  * @param cursor Where to initialise the cursor (uses existing structure).
  * @param const_vp to start from.
  * @return the attribute pointed to by vp.
@@ -91,8 +89,6 @@ VALUE_PAIR *fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *const_vp)
 
 /** Copy a cursor
  *
- * @addtogroup module_safe
- *
  * @param in Cursor to copy.
  * @param out Where to copy the cursor to.
  */
@@ -102,8 +98,6 @@ void fr_cursor_copy(vp_cursor_t *out, vp_cursor_t *in)
 }
 
 /** Rewind cursor to the start of the list
- *
- * @addtogroup module_safe
  *
  * @param cursor to operate on.
  * @return the VALUE_PAIR at the start of the list.
@@ -125,8 +119,6 @@ VALUE_PAIR *fr_cursor_first(vp_cursor_t *cursor)
 }
 
 /** Wind cursor to the last pair in the list
- *
- * @addtogroup module_safe
  *
  * @param cursor to operate on.
  * @return the VALUE_PAIR at the end of the list.
@@ -151,8 +143,6 @@ VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
  * NULL, the search will start with the current attribute. Subsequent calls to
  * fr_cursor_next_by_* functions will start the search from the previously
  * matched attribute.
- *
- * @addtogroup module_safe
  *
  * @param cursor to operate on.
  * @param attr number to match.
@@ -190,8 +180,6 @@ VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsign
  *
  * @note DICT_ATTR pointers are compared, not the attribute numbers and vendors.
  *
- * @addtogroup module_safe
- *
  * @param cursor to operate on.
  * @param da to match.
  * @param tag to match. Either a tag number or TAG_ANY to match any tagged or
@@ -218,8 +206,6 @@ VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_
 }
 
 /** Advanced the cursor to the next VALUE_PAIR
- *
- * @addtogroup module_safe
  *
  * @param cursor to operate on.
  * @return the next VALUE_PAIR, or NULL if no more VALUE_PAIRS in the collection.
@@ -250,8 +236,6 @@ VALUE_PAIR *fr_cursor_next(vp_cursor_t *cursor)
 
 /** Return the next VALUE_PAIR without advancing the cursor
  *
- * @addtogroup module_safe
- *
  * @param cursor to operate on.
  * @return the next VALUE_PAIR, or NULL if no more VALUE_PAIRS in the collection.
  */
@@ -261,8 +245,6 @@ VALUE_PAIR *fr_cursor_next_peek(vp_cursor_t *cursor)
 }
 
 /** Return the VALUE_PAIR the cursor current points to
- *
- * @addtogroup module_safe
  *
  * @param cursor to operate on.
  * @return the VALUE_PAIR the cursor currently points to.
@@ -280,8 +262,6 @@ VALUE_PAIR *fr_cursor_current(vp_cursor_t *cursor)
  *	 to this attribute, if it's the first one in the list.
  *
  * Insert a VALUE_PAIR at the end of the list.
- *
- * @addtogroup module_safe
  *
  * @param cursor to operate on.
  * @param vp to insert.
@@ -356,8 +336,6 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
  *
  * Add multiple VALUE_PAIR from add to cursor.
  *
- * @addtogroup module_safe
- *
  * @param cursor to insert VALUE_PAIRs with
  * @param add one or more VALUE_PAIRs (may be NULL, which results in noop).
  */
@@ -394,8 +372,6 @@ void fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
         }
    }
  @endcode
- *
- * @addtogroup module_safe
  *
  * @param cursor to remove the current pair from.
  * @return NULL on error, else the VALUE_PAIR that was just removed.
@@ -451,8 +427,6 @@ fixup:
 /** Replace the current pair
  *
  * @todo this is really inefficient and should be fixed...
- *
- * @addtogroup module_safe
  *
  * @param cursor to replace the current pair in.
  * @param new VALUE_PAIR to insert.
