@@ -273,7 +273,6 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 
 		next = entry->next;
 		entry->next = NULL;
-		entry->order = order++;
 
 		/*
 		 *	Insert it into the hash table, and remember
@@ -408,7 +407,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			match = "DEFAULT";
 			default_pl = default_pl->next;
 
-		} else if (user_pl->order < default_pl->order) {
+		} else if (user_pl->lineno < default_pl->lineno) {
 			pl = user_pl;
 			match = name;
 			user_pl = user_pl->next;
