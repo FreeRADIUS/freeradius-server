@@ -2,9 +2,16 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Do more optimization of unlang policies.  This makes
 	  run-time check a bit faster.
+	* Re-name most of the functions in src/lib.  Third-party
+	  module authors will have to do the same.
+	* More documentation on contributing and how to write
+	  modules.
 
 	Bug fixes
 	* When using -C, don't error out if the configuration uses
+	  deprecated items.
+	* Fix rlm_files so that there are no collisions when loading
+	  10's of 1000's of users.
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
