@@ -220,7 +220,7 @@ static const signed char b64[0x100] = {
  *	- true if c is a character from the Base64 alphabet.
  *	- false if character is not in the Base64 alphabet.
  */
-int fr_isbase64(char c)
+bool fr_is_base64(char c)
 {
 	return b64[us(c)] >= 0;
 }
@@ -257,7 +257,7 @@ ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inl
 	}
 
 	while (inlen >= 2) {
-		if (!fr_isbase64(in[0]) || !fr_isbase64(in[1])) {
+		if (!fr_is_base64(in[0]) || !fr_is_base64(in[1])) {
 			break;
 		}
 
@@ -268,7 +268,7 @@ ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inl
 		if (in[2] == '=') {
 			if ((inlen != 4) || (in[3] != '=')) break;
 		} else {
-			if (!fr_isbase64(in[2])) break;
+			if (!fr_is_base64(in[2])) break;
 
 			*p++ = ((b64[us(in[1])] << 4) & 0xf0) | (b64[us(in[2])] >> 2);
 
@@ -277,7 +277,7 @@ ssize_t fr_base64_decode(uint8_t *out, size_t outlen, char const *in, size_t inl
 			if (in[3] == '=') {
 				if (inlen != 4) break;
 			} else {
-				if (!fr_isbase64(in[3])) break;
+				if (!fr_is_base64(in[3])) break;
 
 				*p++ = ((b64[us(in[2])] << 6) & 0xc0) | b64[us(in[3])];
 			}
