@@ -770,13 +770,13 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 #ifndef SO_BINDTODEVICE
 	if (sock->lsock.pcap) {
 		/* set ethernet destination address to DHCP-Client-Hardware-Address in request. */
-		u_char dhmac[ETHER_HDR_LEN] = { 0 };
-		bool found = 0;
+		uint8_t dhmac[ETHER_HDR_LEN] = { 0 };
+		bool found = false;
 		VALUE_PAIR *vp;
-		if ((vp = pairfind(request->packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+		if ((vp = fr_pair_find_by_num(request->packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
 			if (vp->data.length == sizeof(vp->vp_ether)) {
 				memcpy(dhmac, vp->vp_ether, vp->data.length);
-				found = 1;
+				found = true;
 			}
 		}
 

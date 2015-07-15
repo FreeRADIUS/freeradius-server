@@ -673,7 +673,7 @@ static int inet_pton6(char const *src, unsigned char *dst)
 {
 	static char const xdigits_l[] = "0123456789abcdef",
 			  xdigits_u[] = "0123456789ABCDEF";
-	u_char tmp[IN6ADDRSZ], *tp, *endp, *colonp;
+	uint8_t tmp[IN6ADDRSZ], *tp, *endp, *colonp;
 	char const *xdigits, *curtok;
 	int ch, saw_xdigit;
 	u_int val;
@@ -711,8 +711,8 @@ static int inet_pton6(char const *src, unsigned char *dst)
 			}
 			if (tp + INT16SZ > endp)
 				return (0);
-			*tp++ = (u_char) (val >> 8) & 0xff;
-			*tp++ = (u_char) val & 0xff;
+			*tp++ = (uint8_t) (val >> 8) & 0xff;
+			*tp++ = (uint8_t) val & 0xff;
 			saw_xdigit = 0;
 			val = 0;
 			continue;
@@ -728,8 +728,8 @@ static int inet_pton6(char const *src, unsigned char *dst)
 	if (saw_xdigit) {
 		if (tp + INT16SZ > endp)
 			return (0);
-		*tp++ = (u_char) (val >> 8) & 0xff;
-		*tp++ = (u_char) val & 0xff;
+		*tp++ = (uint8_t) (val >> 8) & 0xff;
+		*tp++ = (uint8_t) val & 0xff;
 	}
 	if (colonp != NULL) {
 		/*

@@ -56,7 +56,6 @@ static int _free_pcap(fr_pcap_t *pcap) {
 				close(pcap->fd);
 			}
 		}
-
 		break;
 
 	case PCAP_FILE_OUT:
@@ -65,8 +64,8 @@ static int _free_pcap(fr_pcap_t *pcap) {
 			pcap_dump_flush(pcap->dumper);
 			pcap_dump_close(pcap->dumper);
 		}
-
 		break;
+
 	case PCAP_INVALID:
 		break;
 	}
@@ -131,11 +130,14 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 
 /** Get MAC address for given interface
  *
- * @param ifname to get MAC for.
- * @param macaddr to write MAC address to
- * @return 0 if successful or -1 on error.
+ * @param[out] macaddr to write MAC address to.
+ * @param[in] ifname to get MAC for.
+ * @return
+ *	- 0 on success.
+ *	- -1 on error.
  */
-int fr_mac_addr(char *ifname, uint8_t *macaddr) {
+int fr_pcap_mac_addr(uint8_t *macaddr, char *ifname)
+{
 #ifndef SIOCGIFHWADDR
 	struct ifaddrs *ifap, *ifaptr;
 	unsigned char *ptr;
@@ -150,8 +152,6 @@ int fr_mac_addr(char *ifname, uint8_t *macaddr) {
 		}
 		freeifaddrs(ifap);
 		return (ifaptr != NULL ? 0 : -1);
-	} else {
-		return -1;
 	}
 	return -1;
 #else
@@ -175,7 +175,6 @@ int fr_mac_addr(char *ifname, uint8_t *macaddr) {
 		memcpy(macaddr, (uint8_t *)ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
 		return 0;
 	}
-
 	return -1;
 #endif
 }
@@ -195,7 +194,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 	case PCAP_INTERFACE_IN:
 	case PCAP_INTERFACE_IN_OUT:
 	{
-		if (fr_mac_addr(pcap->name, (uint8_t *)&pcap->ether_addr) != 0) {
+		if (fr_pcap_mac_addr((uint8_t *)&pcap->ether_addr, pcap->name) != 0) {
 			fr_strerror_printf("Couldn't get MAC address for interface %s", pcap->name);
 			return -1;
 		}
@@ -232,7 +231,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		 *	Alternative functions for libpcap < 1.0
 		 */
 		pcap->handle = pcap_open_live(pcap->name, SNAPLEN, pcap->promiscuous, PCAP_NONBLOCK_TIMEOUT,
-										pcap->errbuf);
+					      pcap->errbuf);
 		if (!pcap->handle) {
 			fr_strerror_printf("%s", pcap->errbuf);
 			return -1;
@@ -346,8 +345,8 @@ int fr_pcap_open(fr_pcap_t *pcap)
  */
 int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 {
-	bpf_u_int32 mask = 0;				/* Our netmask */
-	bpf_u_int32 net = 0;				/* Our IP */
+	bpf_u_int32 mask = 0;		/* Our netmask */
+	bpf_u_int32 net = 0;		/* Our IP */
 	struct bpf_program fp;
 
 	/*
@@ -408,21 +407,21 @@ char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 	}
 
 	for (pcap_p = pcap;
-		pcap_p;
-		pcap_p = pcap_p->next) {
+	     pcap_p;
+	     pcap_p = pcap_p->next) {
 		len += talloc_array_length(pcap_p->name);	// Talloc array length includes the \0
 	}
 
 	if (!len) {
-		null:
+	null:
 		return talloc_zero_array(ctx, char, 1);
 	}
 
 	left = len + 1;
 	buff = p = talloc_zero_array(ctx, char, left);
 	for (pcap_p = pcap;
-		 pcap_p;
-		 pcap_p = pcap_p->next) {
+	     pcap_p;
+	     pcap_p = pcap_p->next) {
 		wrote = snprintf(p, left, "%s%c", pcap_p->name, c);
 		left -= wrote;
 		p += wrote;
