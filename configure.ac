@@ -1045,7 +1045,8 @@ AC_CHECK_HEADERS( \
   siad.h \
   features.h \
   limits.h \
-  sys/event.h
+  sys/event.h \
+  linux/if_packet.h
 )
 
 dnl #

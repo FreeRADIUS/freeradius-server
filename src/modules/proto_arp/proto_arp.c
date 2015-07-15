@@ -29,8 +29,7 @@
 #include <net/if_arp.h>
 
 typedef struct arp_socket_t {
-	char const     	*interface;
-	fr_pcap_t	*pcap;
+	listen_socket_t	lsock;
 	uint64_t	counter;
 	RADCLIENT	client;
 } arp_socket_t;
@@ -97,7 +96,7 @@ static int arp_socket_recv(rad_listen_t *listener)
 {
 	int ret;
 	arp_socket_t *sock = listener->data;
-	pcap_t *handle = sock->pcap->handle;
+	pcap_t *handle = sock->lsock.pcap->handle;
 
 	const uint8_t *data;
 	struct pcap_pkthdr *header;
@@ -107,13 +106,17 @@ static int arp_socket_recv(rad_listen_t *listener)
 	RADIUS_PACKET *packet;
 
 	ret = pcap_next_ex(handle, &header, &data);
-	if (ret == 0) return 0; /* no packet */
+	if (ret == 0) {
+		DEBUG("No packet retrieved from pcap.");
+		return 0; /* no packet */
+	}
+
 	if (ret < 0) {
 		ERROR("Error requesting next packet, got (%i): %s", ret, pcap_geterr(handle));
 		return 0;
 	}
 
-	link_len = fr_link_layer_offset(data, header->caplen, sock->pcap->link_layer);
+	link_len = fr_link_layer_offset(data, header->caplen, sock->lsock.pcap->link_layer);
 	if (link_len < 0) {
 		ERROR("Failed determining link layer header offset: %s", fr_strerror());
 		return 0;
@@ -130,7 +133,8 @@ static int arp_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	arp = (arp_over_ether_t const *) data + link_len;
+	data += link_len;
+	arp = (arp_over_ether_t const *) data;
 
 	if (ntohs(arp->htype) != ARPHRD_ETHER) return 0;
 
@@ -145,10 +149,10 @@ static int arp_socket_recv(rad_listen_t *listener)
 
 	packet->dst_port = 1;	/* so it's not a "fake" request */
 	packet->data_len = header->caplen - link_len;
-	packet->data = talloc_memdup(packet, data + link_len, packet->data_len);
+	packet->data = talloc_memdup(packet, arp, packet->data_len);
 	talloc_set_type(packet->data, uint8_t);
 
-	DEBUG("ARP received on interface %s", sock->interface);
+	DEBUG("ARP received on interface %s", sock->lsock.interface);
 
 	if (!request_receive(NULL, listener, packet, &sock->client, arp_process)) {
 		rad_free(&packet);
@@ -236,50 +240,42 @@ static void arp_socket_free(rad_listen_t *this)
 	this->data = NULL;
 }
 
+/** Build PCAP filter string to pass to libpcap
+ * Will be called by init_pcap.
+ *
+ * @param this listen section (not used)
+ * @return PCAP filter string
+ */
+static const char * arp_pcap_filter_builder(UNUSED rad_listen_t *this)
+{
+	return "arp";
+}
 
 static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
+	int rcode;
 	arp_socket_t *sock = this->data;
-	char const *value;
-	CONF_PAIR *cp;
 	RADCLIENT *client;
+	CONF_PAIR	*cp = NULL;
 
-	cp = cf_pair_find(cs, "interface");
-	if (!cp) {
+	sock->lsock.pcap_filter_builder = arp_pcap_filter_builder;
+	sock->lsock.pcap_type = PCAP_INTERFACE_IN;
+
+	this->nodup = true;	/* don't check for duplicates */
+
+	/* Add ipaddress to conf section as it is not required by ARP config */
+	cp = cf_pair_alloc(cs, "ipv4addr", "0.0.0.0", T_OP_SET, T_BARE_WORD, T_BARE_WORD);
+	cf_pair_add(cs, cp);
+
+	rcode = common_socket_parse(cs, this);
+	if (rcode != 0) return rcode;
+
+	if (!sock->lsock.interface) {
 		cf_log_err_cs(cs, "'interface' is required for arp");
 		return -1;
 	}
 
-	value = cf_pair_value(cp);
-	if (!value) {
-		cf_log_err_cs(cs, "No interface name given");
-		return -1;
-	}
-	sock->interface = value;
-
-	sock->pcap = fr_pcap_init(cs, sock->interface, PCAP_INTERFACE_IN);
-	if (!sock->pcap) {
-		cf_log_err_cs(cs, "Failed creating pcap for interface %s", value);
-		return -1;
-	}
-
 	if (check_config) return 0;
-
-	rad_suid_up();
-	if (fr_pcap_open(sock->pcap) < 0) {
-		cf_log_err_cs(cs, "Failed opening interface %s: %s", value, fr_strerror());
-		return -1;
-	}
-	rad_suid_down();
-
-	if (fr_pcap_apply_filter(sock->pcap, "arp") < 0) {
-		cf_log_err_cs(cs, "Failed setting filter for interface %s: %s",
-			      value, fr_strerror());
-		return -1;
-	}
-
-	this->fd = sock->pcap->fd;
-	this->nodup = true;	/* don't check for duplicates */
 
 	/*
 	 *	The server core is still RADIUS, and needs a client.
@@ -290,7 +286,7 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->ipaddr.af = AF_INET;
 	client->ipaddr.ipaddr.ip4addr.s_addr = INADDR_NONE;
 	client->ipaddr.prefix = 0;
-	client->longname = client->shortname = sock->interface;
+	client->longname = client->shortname = sock->lsock.interface;
 	client->secret = client->shortname;
 	client->nas_type = talloc_typed_strdup(sock, "none");
 
@@ -301,7 +297,7 @@ static int arp_socket_print(const rad_listen_t *this, char *buffer, size_t bufsi
 {
 	arp_socket_t *sock = this->data;
 
-	snprintf(buffer, bufsize, "arp interface %s", sock->interface);
+	snprintf(buffer, bufsize, "arp interface %s", sock->lsock.interface);
 
 	return 1;
 }

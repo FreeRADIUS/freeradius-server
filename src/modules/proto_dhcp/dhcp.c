@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/udpfromto.h>
 #include <freeradius-devel/dhcp.h>
 #include <freeradius-devel/net.h>
+#include <freeradius-devel/pcap.h>
 
 #ifndef __MINGW32__
 #include <sys/ioctl.h>
@@ -60,14 +61,14 @@ RCSID("$Id$")
 				     } \
 				} while(0)
 
-#ifdef HAVE_LINUX_IF_PACKET_H
+#define ETH_TYPE_IP    0x0800
 #define ETH_HDR_SIZE   14
 #define IP_HDR_SIZE    20
 #define UDP_HDR_SIZE   8
 #define ETH_ADDR_LEN   6
-#define ETH_TYPE_IP    0x0800
 #define ETH_P_ALL      0x0003
 
+#ifdef HAVE_LINUX_IF_PACKET_H
 static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 /* Discard raw packets which we are not interested in. Allow to trace why we discard. */
@@ -81,6 +82,9 @@ static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 	return NULL; \
 }
 #endif
+
+static RADIUS_PACKET * fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipaddr_t src_ipaddr,
+									uint16_t src_port, fr_ipaddr_t dst_ipaddr, uint16_t dst_port);
 
 typedef struct dhcp_packet_t {
 	uint8_t		opcode;
@@ -165,13 +169,13 @@ static int dhcp_header_sizes[] = {
 #define DHCP_FILE_FIELD	  (1)
 #define DHCP_SNAME_FIELD  (2)
 
-static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
+static uint8_t const *dhcp_get_option(dhcp_packet_t const *packet, size_t packet_size,
 				unsigned int option)
 {
 	int overload = 0;
 	int field = DHCP_OPTION_FIELD;
 	size_t where, size;
-	uint8_t *data;
+	uint8_t const *data;
 
 	where = 0;
 	size = packet_size - offsetof(dhcp_packet_t, options);
@@ -209,13 +213,13 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 		 */
 		if ((where + 2) > size) {
 			fr_strerror_printf("Options overflow field at %u",
-					   (unsigned int) (data - (uint8_t *) packet));
+					   (unsigned int) (data - (uint8_t const *) packet));
 			return NULL;
 		}
 
 		if ((where + 2 + data[1]) > size) {
 			fr_strerror_printf("Option length overflows field at %u",
-					   (unsigned int) (data - (uint8_t *) packet));
+					   (unsigned int) (data - (uint8_t const *) packet));
 			return NULL;
 		}
 
@@ -232,126 +236,174 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 	return NULL;
 }
 
-/*
- *	DHCPv4 is only for IPv4.  Broadcast only works if udpfromto is
- *	defined.
+/** Receive DHCP packet using socket
+ *
+ * @param sockfd handle
+ * @return
+ *	- pointer to RADIUS_PACKET if successful.
+ *	- NULL if failed.
  */
-RADIUS_PACKET *fr_dhcp_recv(int sockfd)
+RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd)
 {
-	uint32_t		magic;
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_src;
 	socklen_t		sizeof_dst;
-	RADIUS_PACKET		*packet;
-	uint16_t		port;
-	uint8_t			*code;
+	RADIUS_PACKET	*packet;
+	uint8_t			*data;
 	ssize_t			data_len;
+	fr_ipaddr_t		src_ipaddr, dst_ipaddr;
+	uint16_t		src_port, dst_port;
 
-	packet = rad_alloc(NULL, false);
-	if (!packet) {
-		fr_strerror_printf("Failed allocating packet");
-		return NULL;
-	}
-
-	packet->data = talloc_zero_array(packet, uint8_t, MAX_PACKET_SIZE);
-	if (!packet->data) {
+	data = talloc_zero_array(NULL, uint8_t, MAX_PACKET_SIZE);
+	if (!data) {
 		fr_strerror_printf("Out of memory");
-		rad_free(&packet);
 		return NULL;
 	}
 
-	packet->sockfd = sockfd;
 	sizeof_src = sizeof(src);
 #ifdef WITH_UDPFROMTO
 	sizeof_dst = sizeof(dst);
-	data_len = recvfromto(sockfd, packet->data, MAX_PACKET_SIZE, 0,
+	data_len = recvfromto(sockfd, data, MAX_PACKET_SIZE, 0,
 			      (struct sockaddr *)&src, &sizeof_src,
 			      (struct sockaddr *)&dst, &sizeof_dst);
 #else
-	data_len = recvfrom(sockfd, packet->data, MAX_PACKET_SIZE, 0,
+	data_len = recvfrom(sockfd, data, MAX_PACKET_SIZE, 0,
 			    (struct sockaddr *)&src, &sizeof_src);
 #endif
 
+	sizeof_dst = sizeof(dst);
+
+	#ifndef WITH_UDPFROMTO
+	/*
+	*	This should never fail...
+	*/
+	if (getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst) < 0) {
+		fr_strerror_printf("getsockname failed: %s", fr_syserror(errno));
+		talloc_free(data);
+		return NULL;
+	}
+	#endif
+
+	fr_sockaddr2ipaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
+	fr_sockaddr2ipaddr(&src, sizeof_src, &src_ipaddr, &src_port);
+
 	if (data_len <= 0) {
 		fr_strerror_printf("Failed reading DHCP socket: %s", fr_syserror(errno));
-		rad_free(&packet);
+		talloc_free(data);
 		return NULL;
 	}
 
-	packet->data_len = data_len;
-	if (packet->data_len < MIN_PACKET_SIZE) {
+	packet = fr_dhcp_packet_ok(data, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
+	if (packet) {
+		talloc_steal(packet, data);
+		packet->data = data;
+		packet->sockfd = sockfd;
+		return packet;
+	}
+
+	return NULL;
+}
+
+/** Check reveived DHCP request is valid and build RADIUS_PACKET structure if it is.
+ *
+ * @param data pointer to received packet
+ * @param data_len length of received data
+ * @param src_ipaddr source ip address
+ * @param src_port source port address
+ * @param dst_ipaddr destination ip address
+ * @param dst_port destination port address
+ *
+ * @return
+ *	- RADIUS_PACKET pointer if valid
+ *	- NULL if invalid
+ */
+RADIUS_PACKET * fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipaddr_t src_ipaddr,
+									uint16_t src_port, fr_ipaddr_t dst_ipaddr, uint16_t dst_port) {
+	uint32_t		magic;
+	uint8_t const	*code;
+	int				pkt_id;
+	RADIUS_PACKET *	packet;
+
+	if (data_len < MIN_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too small (%zu < %d)",
-				   packet->data_len, MIN_PACKET_SIZE);
-		rad_free(&packet);
+				   data_len, MIN_PACKET_SIZE);
 		return NULL;
 	}
 
-	if (packet->data_len > MAX_PACKET_SIZE) {
+	if (data_len > MAX_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too large (%zx > %d)",
-				   packet->data_len, MAX_PACKET_SIZE);
-		rad_free(&packet);
+				   data_len, MAX_PACKET_SIZE);
 		return NULL;
 	}
 
-	if (packet->data[1] != 1) {
+	if (data[1] != 1) {
 		fr_strerror_printf("DHCP can only receive ethernet requests, not type %02x",
-		      packet->data[1]);
-		rad_free(&packet);
+				data[1]);
 		return NULL;
 	}
 
-	if (packet->data[2] != 6) {
+	if (data[2] != 6) {
 		fr_strerror_printf("Ethernet HW length is wrong length %d",
-			packet->data[2]);
-		rad_free(&packet);
+				data[2]);
 		return NULL;
 	}
 
-	memcpy(&magic, packet->data + 236, 4);
+	memcpy(&magic, data + 236, 4);
 	magic = ntohl(magic);
 	if (magic != DHCP_OPTION_MAGIC_NUMBER) {
 		fr_strerror_printf("Cannot do BOOTP");
-		rad_free(&packet);
 		return NULL;
 	}
 
 	/*
 	 *	Create unique keys for the packet.
 	 */
-	memcpy(&magic, packet->data + 4, 4);
-	packet->id = ntohl(magic);
+	memcpy(&magic, data + 4, 4);
+	pkt_id = ntohl(magic);
 
-	code = dhcp_get_option((dhcp_packet_t *) packet->data,
-			       packet->data_len, 53);
+	code = dhcp_get_option((dhcp_packet_t const *) data, data_len, 53);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
-		rad_free(&packet);
 		return NULL;
 	}
 
 	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 8)) {
 		fr_strerror_printf("Unknown value for message-type option");
-		rad_free(&packet);
 		return NULL;
 	}
 
+	/* Now that checks are done, allocate packet */
+	packet = rad_alloc(NULL, false);
+	if (!packet) {
+		fr_strerror_printf("Failed allocating packet");
+		return NULL;
+	}
+
+	packet->data_len = data_len;
 	packet->code = code[2] | PW_DHCP_OFFSET;
+	packet->id = pkt_id;
+
+	packet->dst_port = dst_port;
+	packet->src_port = src_port;
+
+	packet->src_ipaddr = src_ipaddr;
+	packet->dst_ipaddr = dst_ipaddr;
 
 	/*
 	 *	Create a unique vector from the MAC address and the
 	 *	DHCP opcode.  This is a hack for the RADIUS
 	 *	infrastructure in the rest of the server.
 	 *
-	 *	Note: packet->data[2] == 6, which is smaller than
+	 *	Note: data[2] == 6, which is smaller than
 	 *	sizeof(packet->vector)
 	 *
 	 *	FIXME:  Look for client-identifier in packet,
 	 *      and use that, too?
 	 */
 	memset(packet->vector, 0, sizeof(packet->vector));
-	memcpy(packet->vector, packet->data + 28, packet->data[2]);
-	packet->vector[packet->data[2]] = packet->code & 0xff;
+	memcpy(packet->vector, data + 28, data[2]);
+	packet->vector[data[2]] = packet->code & 0xff;
 
 	/*
 	 *	FIXME: for DISCOVER / REQUEST: src_port == dst_port + 1
@@ -365,25 +417,6 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	/*
 	 *	FIXME: More checks, like DHCP packet type?
 	 */
-
-	sizeof_dst = sizeof(dst);
-
-#ifndef WITH_UDPFROMTO
-	/*
-	 *	This should never fail...
-	 */
-	if (getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst) < 0) {
-		fr_strerror_printf("getsockname failed: %s", fr_syserror(errno));
-		rad_free(&packet);
-		return NULL;
-	}
-#endif
-
-	fr_sockaddr2ipaddr(&dst, sizeof_dst, &packet->dst_ipaddr, &port);
-	packet->dst_port = port;
-
-	fr_sockaddr2ipaddr(&src, sizeof_src, &packet->src_ipaddr, &port);
-	packet->src_port = port;
 
 	if (fr_debug_lvl > 1) {
 		char type_buf[64];
@@ -400,24 +433,149 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 
 		DEBUG("Received %s of Id %08x from %s:%d to %s:%d\n",
 		       name, (unsigned int) packet->id,
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
+		       inet_ntop(src_ipaddr.af,
+				 &src_ipaddr.ipaddr,
 				 src_ip_buf, sizeof(src_ip_buf)),
-		       packet->src_port,
-		       inet_ntop(packet->dst_ipaddr.af,
-				 &packet->dst_ipaddr.ipaddr,
+		       src_port,
+		       inet_ntop(dst_ipaddr.af,
+				 &dst_ipaddr.ipaddr,
 				 dst_ip_buf, sizeof(dst_ip_buf)),
-		       packet->dst_port);
+		       dst_port);
 	}
 
 	return packet;
 }
 
-
-/*
- *	Send a DHCP packet.
+/** Receive DHCP packet using PCAP
+ *
+ * @param pcap handle
+ * @return
+ *	- pointer to RADIUS_PACKET if successful.
+ *	- NULL if failed.
  */
-int fr_dhcp_send(RADIUS_PACKET *packet)
+RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap)
+{
+	int ret;
+
+	uint8_t const	*data;
+	ssize_t			data_len;
+	fr_ipaddr_t		src_ipaddr, dst_ipaddr;
+	uint16_t		src_port, dst_port;
+	struct pcap_pkthdr *header;
+	ssize_t link_len, len;
+	char * strerr;
+	RADIUS_PACKET		*packet;
+
+	/*
+	*	Pointers into the packet data we just received
+	*/
+	uint8_t const		*p;
+
+	ip_header_t const	*ip = NULL;		/* The IP header */
+	udp_header_t const	*udp;			/* The UDP header */
+	uint8_t			version;		/* IP header version */
+
+	ret = pcap_next_ex(pcap->handle, &header, &data);
+	if (ret == 0) {
+		DEBUG("DHCP: No packet received");
+		return 0; /* no packet */
+	}
+	if (ret < 0) {
+		fr_strerror_printf("Error requesting next packet, got (%i): %s\n", ret, pcap_geterr(pcap->handle));
+		return 0;
+	}
+
+	link_len = fr_link_layer_offset(data, header->caplen, pcap->link_layer);
+	if (link_len < 0) {
+		/* fr_strerror & fr_strerror_printf use the same underlying buffer, so use intermediate variable */
+		strerr = (char *)talloc_size(pcap, strlen(fr_strerror()) + 1);
+		strcpy(strerr, fr_strerror());
+		fr_strerror_printf("Failed determining link layer header offset: %s\n", strerr);
+		talloc_free(strerr);
+		return 0;
+	}
+
+	p = data;
+
+	// Skip ethernet header
+	p += link_len;
+
+	version = (p[0] & 0xf0) >> 4;
+	switch (version) {
+	case 4:
+		ip = (ip_header_t const *)p;
+		len = (0x0f & ip->ip_vhl) * 4;	/* ip_hl specifies length in 32bit words */
+		p += len;
+		break;
+
+	case 6:
+		DEBUG("DHCP: IPv6 not supported\n");
+		return NULL;
+
+	default:
+		DEBUG("DHCP: IP version invalid %i\n", version);
+		return NULL;
+	}
+
+	/* Check IPv4 layer data (L3) */
+	if (ip->ip_p != IPPROTO_UDP) {
+		DEBUG("DHCP: IP protocol (%d) != UDP", ip->ip_p);
+		return NULL;
+	}
+
+	/*
+	 *	End of variable length bits, do basic check now to see if packet looks long enough
+	 */
+
+	len = (p - data) + UDP_HDR_SIZE;	/* length value */
+	if ((size_t) len > header->caplen) {
+		DEBUG("DHCP: Payload (%d) smaller than required for layers 2+3+4", (int)len);
+		return NULL;
+	}
+
+	/*
+	 *	UDP header validation.
+	 */
+	ret = fr_upd_header_check(p, (header->caplen - (p - data)), ip);
+	if (ret < 0) {
+		DEBUG("DHCP: %s", fr_strerror());
+		return NULL;
+	} else if (ret > 0) {
+		/* Not a fatal error */
+		DEBUG("DHCP: %s", fr_strerror());
+	}
+
+	udp = (udp_header_t const *)p;
+	p += sizeof(udp_header_t);
+
+	data_len = ntohs(udp->len);
+
+	dst_port = ntohs(udp->dst);
+	src_port = ntohs(udp->src);
+
+	src_ipaddr.af = AF_INET;
+	src_ipaddr.ipaddr.ip4addr = ip->ip_src;
+	dst_ipaddr.af = AF_INET;
+	dst_ipaddr.ipaddr.ip4addr = ip->ip_dst;
+
+	packet = fr_dhcp_packet_ok(p, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
+	if (packet) {
+		packet->data = talloc_memdup(packet, p, packet->data_len);
+		return packet;
+	}
+
+	return NULL;
+}
+
+
+/** Send DHCP packet using socket
+ *
+ * @param packet to send
+ * @return
+ *	- > 0 if successful.
+ *	- <= 0 if failed.
+ */
+int fr_dhcp_send_socket(RADIUS_PACKET *packet)
 {
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_dst;
@@ -480,6 +638,102 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 			  (struct sockaddr *)&src, sizeof_src,
 			  (struct sockaddr *)&dst, sizeof_dst);
 #endif
+}
+
+/** Send DHCP packet using PCAP
+ *
+ * @param pcap handle
+ * @param dst_ether_addr MAC address to send packet to
+ * @param packet to send
+ * @return
+ *	- 1 if successful.
+ *	- 0 if failed.
+ */
+int fr_dhcp_send_pcap(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *packet)
+{
+	int ret;
+	u_char dhcp_packet[1518] = { 0 };
+	ethernet_header_t * ethhdr;
+	ip_header_t * iph;
+	udp_header_t *uh;
+	dhcp_packet_t *dhpointer;
+	/* Pointer to the current position in the frame */
+	u_char * end = dhcp_packet;
+	u_int16_t l4_len;
+
+	/* fill in Ethernet layer (L2) */
+	ethhdr = (struct ethernet_header *)dhcp_packet;
+	memcpy(ethhdr->ether_dst, dst_ether_addr, ETH_ADDR_LEN);
+	memcpy(ethhdr->ether_src, pcap->ether_addr, ETH_ADDR_LEN);
+	ethhdr->ether_type = htons(ETH_TYPE_IP);
+	end += ETH_ADDR_LEN + ETH_ADDR_LEN + sizeof(ethhdr->ether_type);
+
+	/* fill in IP layer (L3) */
+	iph = (struct ip_header *)(end);
+	iph->ip_vhl = IP_VHL(4, 5);
+	iph->ip_tos = 0;
+	iph->ip_len = htons(IP_HDR_SIZE +  UDP_HDR_SIZE + packet->data_len);
+	iph->ip_id = 0;
+	iph->ip_off = 0;
+	iph->ip_ttl = 64;
+	iph->ip_p = 17;
+	iph->ip_sum = 0; /* Filled later */
+
+	iph->ip_src.s_addr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+	iph->ip_dst.s_addr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+
+	/* IP header checksum */
+	iph->ip_sum = fr_iph_checksum((uint8_t const *)iph, 5);
+	end += IP_HDR_SIZE;
+
+	/* fill in UDP layer (L4) */
+	uh = (udp_header_t *) (end);
+
+	uh->src = htons(packet->src_port);
+	uh->dst = htons(packet->dst_port);
+	l4_len = (UDP_HDR_SIZE + packet->data_len);
+	uh->len = htons(l4_len);
+	uh->checksum = 0; /* UDP checksum will be done after dhcp header */
+	end += UDP_HDR_SIZE;
+
+	/* DHCP layer (L7) */
+	dhpointer = (dhcp_packet_t *)(end);
+	/* just copy what FreeRADIUS has encoded for us. */
+	memcpy(dhpointer, packet->data, packet->data_len);
+
+	/* UDP checksum is done here */
+	uh->checksum = fr_udp_checksum((uint8_t const *)uh, ntohs(uh->len), uh->checksum,
+					packet->src_ipaddr.ipaddr.ip4addr, packet->dst_ipaddr.ipaddr.ip4addr);
+
+	if (fr_debug_lvl > 1) {
+		char type_buf[64];
+		char const *name = type_buf;
+		char src_ip_buf[INET6_ADDRSTRLEN];
+		char dst_ip_buf[INET6_ADDRSTRLEN];
+
+		if ((packet->code >= PW_DHCP_DISCOVER) &&
+		    (packet->code <= PW_DHCP_INFORM)) {
+			name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
+		} else {
+			snprintf(type_buf, sizeof(type_buf), "%d",
+			    packet->code - PW_DHCP_OFFSET);
+		}
+
+		DEBUG(
+		"Sending %s Id %08x from %s:%d to %s:%d\n",
+		   name, (unsigned int) packet->id,
+		   inet_ntop(packet->src_ipaddr.af, &packet->src_ipaddr.ipaddr, src_ip_buf, sizeof(src_ip_buf)), packet->src_port,
+		   inet_ntop(packet->dst_ipaddr.af, &packet->dst_ipaddr.ipaddr, dst_ip_buf, sizeof(dst_ip_buf)), packet->dst_port);
+	}
+
+	ret = pcap_inject(pcap->handle, dhcp_packet, (end - dhcp_packet + packet->data_len));
+
+	if (ret < 0) {
+		fr_strerror_printf("DHCP: Error sending packet with pcap: %d, %s\n", ret, pcap_geterr(pcap->handle));
+		return 0;
+	}
+
+	return 1;
 }
 
 static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *p, size_t alen);
@@ -1264,7 +1518,7 @@ static ssize_t fr_dhcp_vp2data_tlv(uint8_t *out, ssize_t outlen, vp_cursor_t *cu
 	attr = 0;
 	opt_len = NULL;
 	p = out;
-	
+
 	for (vp = fr_cursor_current(cursor);
 	     vp && vp->da->flags.is_tlv && (SUBOPTION_PARENT(vp->da->attr) == parent);
 	     vp = fr_cursor_next(cursor)) {
@@ -1847,8 +2101,8 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET 
 	/* fill in UDP layer (L4) */
 	udp_header_t *uh = (udp_header_t *) (dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE);
 
-	uh->src = htons(68);
-	uh->dst = htons(67);
+	uh->src = htons(packet->src_port);
+	uh->dst = htons(packet->dst_port);
 	u_int16_t l4_len = (UDP_HDR_SIZE + packet->data_len);
 	uh->len = htons(l4_len);
 	uh->checksum = 0; /* UDP checksum will be done after dhcp header */
@@ -1991,14 +2245,6 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	/* c. Check UDP layer data (L4) */
 	udp_src_port = ntohs(udp_hdr->src);
 	udp_dst_port = ntohs(udp_hdr->dst);
-
-	/*
-	 *	A DHCP server will always respond to port 68 (to a
-	 *	client) or 67 (to a relay).  Just check that both
-	 *	ports are 67 or 68.
-	 */
-	if (udp_src_port != 67 && udp_src_port != 68) DISCARD_RP("UDP src port (%d) != DHCP (67 or 68)", udp_src_port);
-	if (udp_dst_port != 67 && udp_dst_port != 68) DISCARD_RP("UDP dst port (%d) != DHCP (67 or 68)", udp_dst_port);
 
 	/* d. Check DHCP layer data */
 	dhcp_data_len = data_len - data_offset;

@@ -24,18 +24,18 @@
 #ifdef HAVE_LIBPCAP
 
 #include <sys/ioctl.h>
+#include <sys/types.h>
+
+#ifndef SIOCGIFHWADDR
+  #include <net/if_dl.h>
+  #include <ifaddrs.h>
+#else
+  #include <net/if.h>
+#endif
+
 #include <freeradius-devel/pcap.h>
-
-const FR_NAME_NUMBER pcap_types[] = {
-	{ "interface",	PCAP_INTERFACE_IN },
-	{ "file",	PCAP_FILE_IN },
-	{ "stdio",	PCAP_STDIO_IN },
-	{ "interface",	PCAP_INTERFACE_OUT },
-	{ "file",	PCAP_FILE_OUT },
-	{ "stdio",	PCAP_STDIO_OUT },
-
-	{ NULL, 0}
-};
+#include <freeradius-devel/net.h>
+#include <freeradius-devel/rad_assert.h>
 
 /** Talloc destructor to free pcap resources associated with a handle.
  *
@@ -46,6 +46,7 @@ static int _free_pcap(fr_pcap_t *pcap) {
 	switch (pcap->type) {
 	case PCAP_INTERFACE_IN:
 	case PCAP_INTERFACE_OUT:
+	case PCAP_INTERFACE_IN_OUT:
 	case PCAP_FILE_IN:
 	case PCAP_STDIO_IN:
 		if (pcap->handle) {
@@ -108,7 +109,14 @@ int fr_pcap_if_link_layer(char *errbuff, pcap_if_t *dev)
  */
 fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 {
-	fr_pcap_t *this = talloc_zero(ctx, fr_pcap_t);
+	fr_pcap_t *this;
+
+	if (!fr_assert(type >= PCAP_INTERFACE_IN && type <= PCAP_INTERFACE_IN_OUT)) {
+		fr_strerror_printf("Invalid PCAP type: %d", type);
+		return NULL;
+	}
+
+	this = talloc_zero(ctx, fr_pcap_t);
 	if (!this) {
 		return NULL;
 	}
@@ -119,6 +127,57 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 	this->link_layer = -1;
 
 	return this;
+}
+
+/** Get MAC address for given interface
+ *
+ * @param ifname to get MAC for.
+ * @param macaddr to write MAC address to
+ * @return 0 if successful or -1 on error.
+ */
+int fr_mac_addr(char *ifname, uint8_t *macaddr) {
+#ifndef SIOCGIFHWADDR
+	struct ifaddrs *ifap, *ifaptr;
+	unsigned char *ptr;
+
+	if (getifaddrs(&ifap) == 0) {
+		for (ifaptr = ifap; ifaptr != NULL; ifaptr = (ifaptr)->ifa_next) {
+			if (!strcmp((ifaptr)->ifa_name, ifname) && (((ifaptr)->ifa_addr)->sa_family == AF_LINK)) {
+				ptr = (uint8_t *)LLADDR((struct sockaddr_dl *)(ifaptr)->ifa_addr);
+				memcpy(macaddr, ptr, ETHER_ADDR_LEN);
+				break;
+			}
+		}
+		freeifaddrs(ifap);
+		return (ifaptr != NULL ? 0 : -1);
+	} else {
+		return -1;
+	}
+	return -1;
+#else
+	int fd, ret;
+	struct ifreq ifr;
+
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+
+	if (fd < 0) {
+		return -1;
+	}
+
+	ifr.ifr_addr.sa_family = AF_INET;
+	strncpy(ifr.ifr_name, ifname , IFNAMSIZ-1);
+
+	ret = ioctl(fd, SIOCGIFHWADDR, &ifr);
+
+	close(fd);
+
+	if (ret == 0) {
+		memcpy(macaddr, (uint8_t *)ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
+		return 0;
+	}
+
+	return -1;
+#endif
 }
 
 /** Open a PCAP handle abstraction
@@ -134,7 +193,13 @@ int fr_pcap_open(fr_pcap_t *pcap)
 	switch (pcap->type) {
 	case PCAP_INTERFACE_OUT:
 	case PCAP_INTERFACE_IN:
+	case PCAP_INTERFACE_IN_OUT:
 	{
+		if (fr_mac_addr(pcap->name, (uint8_t *)&pcap->ether_addr) != 0) {
+			fr_strerror_printf("Couldn't get MAC address for interface %s", pcap->name);
+			return -1;
+		}
+
 #if defined(HAVE_PCAP_CREATE) && defined(HAVE_PCAP_ACTIVATE)
 		pcap->handle = pcap_create(pcap->name, pcap->errbuf);
 		if (!pcap->handle) {
@@ -167,7 +232,7 @@ int fr_pcap_open(fr_pcap_t *pcap)
 		 *	Alternative functions for libpcap < 1.0
 		 */
 		pcap->handle = pcap_open_live(pcap->name, SNAPLEN, pcap->promiscuous, PCAP_NONBLOCK_TIMEOUT,
-					      pcap->errbuf);
+										pcap->errbuf);
 		if (!pcap->handle) {
 			fr_strerror_printf("%s", pcap->errbuf);
 			return -1;
@@ -301,7 +366,7 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 	}
 #endif
 
-	if (pcap->type == PCAP_INTERFACE_IN) {
+	if (pcap->type == PCAP_INTERFACE_IN || pcap->type == PCAP_INTERFACE_IN_OUT) {
 		if (pcap_lookupnet(pcap->name, &net, &mask, pcap->errbuf) < 0) {
 			fr_strerror_printf("Failed getting IP for interface \"%s\", using defaults: %s",
 					   pcap->name, pcap->errbuf);
@@ -323,6 +388,15 @@ int fr_pcap_apply_filter(fr_pcap_t *pcap, char const *expression)
 	return 0;
 }
 
+/** Retrieve list of interface names that will be used for capture.
+ * Only used for debugging.
+ *
+ * @param ctx talloc context for allicating string.
+ * @param pcap handle list.
+ * @param c separator to use for list.
+ * @return
+ *	- string buffer.
+ */
 char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 {
 	fr_pcap_t *pcap_p;
@@ -334,8 +408,8 @@ char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 	}
 
 	for (pcap_p = pcap;
-	     pcap_p;
-	     pcap_p = pcap_p->next) {
+		pcap_p;
+		pcap_p = pcap_p->next) {
 		len += talloc_array_length(pcap_p->name);	// Talloc array length includes the \0
 	}
 
@@ -347,8 +421,8 @@ char *fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *pcap, char c)
 	left = len + 1;
 	buff = p = talloc_zero_array(ctx, char, left);
 	for (pcap_p = pcap;
-	     pcap_p;
-	     pcap_p = pcap_p->next) {
+		 pcap_p;
+		 pcap_p = pcap_p->next) {
 		wrote = snprintf(p, left, "%s%c", pcap_p->name, c);
 		left -= wrote;
 		p += wrote;
