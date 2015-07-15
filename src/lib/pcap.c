@@ -42,7 +42,8 @@
  * @param pcap to free.
  * @return 0
  */
-static int _free_pcap(fr_pcap_t *pcap) {
+static int _free_pcap(fr_pcap_t *pcap)
+{
 	switch (pcap->type) {
 	case PCAP_INTERFACE_IN:
 	case PCAP_INTERFACE_OUT:
@@ -116,9 +117,7 @@ fr_pcap_t *fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type)
 	}
 
 	this = talloc_zero(ctx, fr_pcap_t);
-	if (!this) {
-		return NULL;
-	}
+	if (!this) return NULL;
 
 	talloc_set_destructor(this, _free_pcap);
 	this->name = talloc_typed_strdup(this, name);

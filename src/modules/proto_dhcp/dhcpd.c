@@ -609,10 +609,10 @@ static int dhcp_process(REQUEST *request)
  * @param this listen section
  * @return PCAP filter string
  */
-static const char * dhcp_pcap_filter_builder(rad_listen_t *this)
+static const char *dhcp_pcap_filter_build(rad_listen_t *this)
 {
 	dhcp_socket_t *sock = this->data;
-	char * buf;
+	char *buf;
 	char ip[16];
 	ip_ntoh(&sock->lsock.my_ipaddr, ip, sizeof(ip));
 
@@ -632,7 +632,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	CONF_PAIR *cp;
 
 #ifndef SO_BINDTODEVICE
-	sock->lsock.pcap_filter_builder = dhcp_pcap_filter_builder;
+	sock->lsock.pcap_filter_builder = dhcp_pcap_filter_build;
 	sock->lsock.pcap_type = PCAP_INTERFACE_IN_OUT;
 #endif
 
