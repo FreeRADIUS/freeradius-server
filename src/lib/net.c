@@ -154,7 +154,7 @@ done:
  * 0 if UDP payload lenght and checksum are correct
  * !0 if UDP payload length or checksum are incorrect
  */
- int fr_upd_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const * ip)
+ int fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const * ip)
  {
 	int ret = 0;
 	udp_header_t const	*udp;

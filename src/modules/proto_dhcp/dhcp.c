@@ -536,7 +536,7 @@ RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap)
 	/*
 	 *	UDP header validation.
 	 */
-	ret = fr_upd_header_check(p, (header->caplen - (p - data)), ip);
+	ret = fr_udp_header_check(p, (header->caplen - (p - data)), ip);
 	if (ret < 0) {
 		DEBUG("DHCP: %s", fr_strerror());
 		return NULL;
