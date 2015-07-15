@@ -716,7 +716,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	 *	a connection. Avoids spurious log messages.
 	 */
 	if (spawn) {
-		INFO("%s: %i of %u connections in use.  Need more spares", pool->log_prefix, pool->active, pool->num);
+		INFO("%s: Need %i more connections to reach %i spares",
+		     pool->log_prefix, spawn, pool->spare);
 		pthread_mutex_unlock(&pool->mutex);
 		fr_connection_spawn(pool, now, false); /* ignore return code */
 		pthread_mutex_lock(&pool->mutex);
