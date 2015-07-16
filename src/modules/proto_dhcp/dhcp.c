@@ -1367,6 +1367,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 	uint32_t lvalue;
+	uint16_t	svalue;
 	size_t dhcp_size;
 	ssize_t len;
 #ifndef NDEBUG
@@ -1476,15 +1477,15 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Number-of-Seconds */
 	if ((vp = fr_pair_find_by_num(packet->vps, 261, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		lvalue = htonl(vp->vp_integer);
-		memcpy(p, &lvalue, 2);
+		svalue = htons(vp->vp_short);
+		memcpy(p, &svalue, 2);
 	}
 	p += 2;
 
 	/* DHCP-Flags */
 	if ((vp = fr_pair_find_by_num(packet->vps, 262, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		lvalue = htons(vp->vp_integer);
-		memcpy(p, &lvalue, 2);
+		svalue = htons(vp->vp_short);
+		memcpy(p, &svalue, 2);
 	}
 	p += 2;
 
