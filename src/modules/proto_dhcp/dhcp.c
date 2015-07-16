@@ -1452,21 +1452,21 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* DHCP-Hardware-Type */
 	if ((vp = fr_pair_find_by_num(packet->vps, 257, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		*p++ = vp->vp_integer & 0xFF;
+		*p++ = vp->vp_byte;
 	} else {
 		*p++ = 1;		/* hardware type = ethernet */
 	}
 
 	/* DHCP-Hardware-Address-Length */
 	if ((vp = fr_pair_find_by_num(packet->vps, 258, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		*p++ = vp->vp_integer & 0xFF;
+		*p++ = vp->vp_byte;
 	} else {
 		*p++ = 6;		/* 6 bytes of ethernet */
 	}
 
 	/* DHCP-Hop-Count */
 	if ((vp = fr_pair_find_by_num(packet->vps, 259, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		*p = vp->vp_integer & 0xff;
+		*p = vp->vp_byte;
 	}
 	p++;
 
