@@ -222,7 +222,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	entered.
 	 */
 	if (realm->name[0] != '~') realmname = realm->name;
-	pair_make_packet("Realm", realmname, T_OP_EQ);
+	pair_make_request("Realm", realmname, T_OP_EQ);
 	RDEBUG2("Adding Realm = \"%s\"", realmname);
 
 	talloc_free(namebuf);

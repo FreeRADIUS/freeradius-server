@@ -2147,7 +2147,7 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 		const char *identity = SSL_get_psk_identity(sock->ssn->ssl);
 		if (identity) {
 			RDEBUG("Retrieved psk identity: %s", identity);
-			pair_make_packet("TLS-PSK-Identity", identity, T_OP_SET);
+			pair_make_request("TLS-PSK-Identity", identity, T_OP_SET);
 		}
 #endif
 	}

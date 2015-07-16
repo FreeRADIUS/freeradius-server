@@ -984,7 +984,7 @@ ntlm_auth_err:
 		 *  The new NT hash - this should be preferred over the
 		 *  cleartext password as it avoids unicode hassles.
 		 */
-		new_hash = pair_make_packet("MS-CHAP-New-NT-Password", NULL, T_OP_EQ);
+		new_hash = pair_make_request("MS-CHAP-New-NT-Password", NULL, T_OP_EQ);
 		new_hash->vp_length = NT_DIGEST_LENGTH;
 		new_hash->vp_octets = q = talloc_array(new_hash, uint8_t, new_hash->vp_length);
 		fr_md4_calc(q, p, passlen);
@@ -1006,7 +1006,7 @@ ntlm_auth_err:
 		 *
 		 *  First pass: get the length of the converted string.
 		 */
-		new_pass = pair_make_packet("MS-CHAP-New-Cleartext-Password", NULL, T_OP_EQ);
+		new_pass = pair_make_request("MS-CHAP-New-Cleartext-Password", NULL, T_OP_EQ);
 		new_pass->vp_length = 0;
 
 		i = 0;

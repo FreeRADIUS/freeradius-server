@@ -206,7 +206,7 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler)
 		 */
 		fr_pair_delete_by_num(&request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 
-		vp = pair_make_packet("User-Password", NULL, T_OP_EQ);
+		vp = pair_make_request("User-Password", NULL, T_OP_EQ);
 		if (!vp) {
 			return 0;
 		}

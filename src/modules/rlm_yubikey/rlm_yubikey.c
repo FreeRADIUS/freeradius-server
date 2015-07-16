@@ -275,7 +275,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			 *	Insert a new request attribute just containing the OTP
 			 *	portion.
 			 */
-			vp = pair_make_packet("Yubikey-OTP", otp, T_OP_SET);
+			vp = pair_make_request("Yubikey-OTP", otp, T_OP_SET);
 			if (!vp) {
 				REDEBUG("Failed creating 'Yubikey-OTP' attribute");
 				return RLM_MODULE_FAIL;

@@ -162,35 +162,35 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
 			}
 			data_len -= 18;
 
-			vp = pair_make_packet("SoH-MS-Machine-OS-vendor", "Microsoft", T_OP_EQ);
+			vp = pair_make_request("SoH-MS-Machine-OS-vendor", "Microsoft", T_OP_EQ);
 			if (!vp) return 0;
 
-			vp = pair_make_packet("SoH-MS-Machine-OS-version", NULL, T_OP_EQ);
-			if (!vp) return 0;
-
-			vp->vp_integer = soh_pull_be_32(p); p+=4;
-
-			vp = pair_make_packet("SoH-MS-Machine-OS-release", NULL, T_OP_EQ);
+			vp = pair_make_request("SoH-MS-Machine-OS-version", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
 			vp->vp_integer = soh_pull_be_32(p); p+=4;
 
-			vp = pair_make_packet("SoH-MS-Machine-OS-build", NULL, T_OP_EQ);
+			vp = pair_make_request("SoH-MS-Machine-OS-release", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
 			vp->vp_integer = soh_pull_be_32(p); p+=4;
 
-			vp = pair_make_packet("SoH-MS-Machine-SP-version", NULL, T_OP_EQ);
+			vp = pair_make_request("SoH-MS-Machine-OS-build", NULL, T_OP_EQ);
+			if (!vp) return 0;
+
+			vp->vp_integer = soh_pull_be_32(p); p+=4;
+
+			vp = pair_make_request("SoH-MS-Machine-SP-version", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
 			vp->vp_integer = soh_pull_be_16(p); p+=2;
 
-			vp = pair_make_packet("SoH-MS-Machine-SP-release", NULL, T_OP_EQ);
+			vp = pair_make_request("SoH-MS-Machine-SP-release", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
 			vp->vp_integer = soh_pull_be_16(p); p+=2;
 
-			vp = pair_make_packet("SoH-MS-Machine-Processor", NULL, T_OP_EQ);
+			vp = pair_make_request("SoH-MS-Machine-Processor", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
 			vp->vp_integer = soh_pull_be_16(p); p+=2;
@@ -245,7 +245,7 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
 			t = soh_pull_be_16(p);
 			p += 2;
 
-			vp = pair_make_packet("SoH-MS-Machine-Name", NULL, T_OP_EQ);
+			vp = pair_make_request("SoH-MS-Machine-Name", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
 			vp->vp_strvalue = q = talloc_array(vp, char, t);
@@ -265,7 +265,7 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
 			 * 24 bytes opaque binary which we might, in future, have
 			 * to echo back to the client in a final SoHR
 			 */
-			vp = pair_make_packet("SoH-MS-Correlation-Id", NULL, T_OP_EQ);
+			vp = pair_make_request("SoH-MS-Correlation-Id", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
 			fr_pair_value_memcpy(vp, p, 24);
@@ -294,7 +294,7 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
 			 * 1 byte product type (client=1 domain_controller=2 server=3)
 			 */
 			p += 4;
-			vp = pair_make_packet("SoH-MS-Machine-Role", NULL, T_OP_EQ);
+			vp = pair_make_request("SoH-MS-Machine-Role", NULL, T_OP_EQ);
 			if (!vp) return 0;
 
 			vp->vp_integer = *p;
@@ -543,7 +543,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 
 				RDEBUG2("SoH Health-Class-Status microsoft DWORD=%08x", hcstatus);
 
-				vp = pair_make_packet("SoH-MS-Windows-Health-Status", NULL, T_OP_EQ);
+				vp = pair_make_request("SoH-MS-Windows-Health-Status", NULL, T_OP_EQ);
 				if (!vp) return 0;
 
 				switch (curr_hc) {
@@ -659,7 +659,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 					break;
 				}
 			} else {
-				vp = pair_make_packet("SoH-MS-Health-Other", NULL, T_OP_EQ);
+				vp = pair_make_request("SoH-MS-Health-Other", NULL, T_OP_EQ);
 				if (!vp) return 0;
 
 				/* FIXME: what to do with the payload? */

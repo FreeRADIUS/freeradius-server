@@ -518,7 +518,7 @@ int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char con
  * @param _b value
  * @param _c op
  */
-#define pair_make_packet(_a, _b, _c) fr_pair_make(request->packet, &request->packet->vps, _a, _b, _c)
+#define pair_make_request(_a, _b, _c) fr_pair_make(request->packet, &request->packet->vps, _a, _b, _c)
 #define pair_make_reply(_a, _b, _c) fr_pair_make(request->reply, &request->reply->vps, _a, _b, _c)
 #define pair_make_config(_a, _b, _c) fr_pair_make(request, &request->config, _a, _b, _c)
 

@@ -426,7 +426,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			RDEBUG("pwd unable to create fake request!");
 			return 0;
 		}
-		fake->username = pair_make_packet("User-Name", NULL, T_OP_EQ);
+		fake->username = pair_make_request("User-Name", NULL, T_OP_EQ);
 		if (!fake->username) {
 			RDEBUG("pwd unanable to create value pair for username!");
 			talloc_free(fake);

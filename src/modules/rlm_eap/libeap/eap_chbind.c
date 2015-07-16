@@ -166,7 +166,7 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 
 	/* Set-up the fake request */
 	fake = request_alloc_fake(request);
-	pair_make_packet("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
+	pair_make_request("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 
 	/* Add the username to the fake request */
 	if (chbind->username) {
