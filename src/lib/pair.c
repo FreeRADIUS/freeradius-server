@@ -1211,9 +1211,9 @@ static VALUE_PAIR *fr_pair_from_unkown(VALUE_PAIR *vp, DICT_ATTR const *da)
  * @param op to assign to new valuepair.
  * @return new #VALUE_PAIR or NULL on error.
  */
-static VALUE_PAIR *fr_pair_make_any(TALLOC_CTX *ctx,
-				char const *attribute, char const *value,
-				FR_TOKEN op)
+static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
+					char const *attribute, char const *value,
+					FR_TOKEN op)
 {
 	VALUE_PAIR	*vp;
 	DICT_ATTR const *da;
@@ -1342,7 +1342,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 */
 	da = dict_attrbyname(attrname);
 	if (!da) {
-		vp = fr_pair_make_any(ctx, attrname, value, op);
+		vp = fr_pair_make_unknown(ctx, attrname, value, op);
 		if (vp && vps) fr_pair_add(vps, vp);
 		return vp;
 	}
