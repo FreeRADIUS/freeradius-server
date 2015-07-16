@@ -609,7 +609,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	Invalid.
 		 */
 		if ((len & 0x01) != 0) {
-			fr_strerror_printf("Length of Hex String is not even, got %zu bytes", ret);
+			fr_strerror_printf("Length of Hex String is not even, got %zu bytes", len);
 			return -1;
 		}
 
