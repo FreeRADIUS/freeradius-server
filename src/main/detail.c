@@ -1122,7 +1122,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	FR_INTEGER_BOUND_CHECK("load_factor", data->load_factor, <=, 100);
 
 	FR_INTEGER_BOUND_CHECK("poll_interval", data->poll_interval, >=, 1);
-	FR_INTEGER_BOUND_CHECK("poll_interval", data->poll_interval, <=, 60);
+	FR_INTEGER_BOUND_CHECK("poll_interval", data->poll_interval, <=, 300);
 
 	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, >=, 4);
 	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, <=, 3600);
