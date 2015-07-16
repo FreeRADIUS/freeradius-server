@@ -681,6 +681,15 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		    (ps->src_port != request->src_port)) continue;
 
 		/*
+		 *	We don't care about the source IP, but this
+		 *	socket is link local, and the requested
+		 *	destination is not link local.  Ignore it.
+		 */
+		if (src_any && (ps->src_ipaddr.af == AF_INET) &&	
+		    (((ps->src_ipaddr.ipaddr.ip4addr.s_addr >> 24) & 0xff) == 127) &&
+		    (((request->dst_ipaddr.ipaddr.ip4addr.s_addr >> 24) & 0xff) != 127)) continue;
+
+		/*
 		 *	We're sourcing from *, and they asked for a
 		 *	specific source address: ignore it.
 		 */
