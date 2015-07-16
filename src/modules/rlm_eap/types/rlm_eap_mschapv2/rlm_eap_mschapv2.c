@@ -415,11 +415,11 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 
 			RDEBUG2("Password change packet received");
 
-			challenge = pair_make_packet("MS-CHAP-Challenge", NULL, T_OP_EQ);
+			challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
 			if (!challenge) return 0;
 			fr_pair_value_memcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
-			cpw = pair_make_packet("MS-CHAP2-CPW", NULL, T_OP_EQ);
+			cpw = pair_make_request("MS-CHAP2-CPW", NULL, T_OP_EQ);
 			cpw->vp_length = 68;
 
 			cpw->vp_octets = p = talloc_array(cpw, uint8_t, cpw->vp_length);
@@ -436,7 +436,7 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 				int to_copy = 516 - copied;
 				if (to_copy > 243) to_copy = 243;
 
-				nt_enc = pair_make_packet("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
+				nt_enc = pair_make_request("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
 				nt_enc->vp_length = 4 + to_copy;
 
 				nt_enc->vp_octets = p = talloc_array(nt_enc, uint8_t, nt_enc->vp_length);
@@ -561,11 +561,11 @@ failure:
 	 *	to pass to the 'mschap' module.  This is a little wonky,
 	 *	but it works.
 	 */
-	challenge = pair_make_packet("MS-CHAP-Challenge", NULL, T_OP_EQ);
+	challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
 	if (!challenge) return 0;
 	fr_pair_value_memcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
-	response = pair_make_packet("MS-CHAP2-Response", NULL, T_OP_EQ);
+	response = pair_make_request("MS-CHAP2-Response", NULL, T_OP_EQ);
 	if (!response) return 0;
 	response->vp_length = MSCHAPV2_RESPONSE_LEN;
 	response->vp_octets = p = talloc_array(response, uint8_t, response->vp_length);
@@ -574,7 +574,7 @@ failure:
 	p[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 	memcpy(p + 2, &eap_ds->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
 
-	name = pair_make_packet("MS-CHAP-User-Name", NULL, T_OP_EQ);
+	name = pair_make_request("MS-CHAP-User-Name", NULL, T_OP_EQ);
 	if (!name) return 0;
 
 	/*

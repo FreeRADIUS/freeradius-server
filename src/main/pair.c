@@ -885,7 +885,7 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 	p = talloc_vasprintf(request, fmt, aq);
 	va_end(aq);
 
-	MEM(vp = pair_make_packet("Module-Failure-Message", NULL, T_OP_ADD));
+	MEM(vp = pair_make_request("Module-Failure-Message", NULL, T_OP_ADD));
 	if (request->module && (request->module[0] != '\0')) {
 		fr_pair_value_sprintf(vp, "%s: %s", request->module, p);
 	} else {

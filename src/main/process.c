@@ -2920,7 +2920,7 @@ do_home:
 	/*
 	 *	Remember that we sent the request to a Realm.
 	 */
-	if (realmname) pair_make_packet("Realm", realmname, T_OP_EQ);
+	if (realmname) pair_make_request("Realm", realmname, T_OP_EQ);
 
 	/*
 	 *	Strip the name, if told to.

@@ -168,7 +168,7 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 			return 0;
 		}
 
-		vp = pair_make_packet("TLS-PSK-Identity", identity, T_OP_SET);
+		vp = pair_make_request("TLS-PSK-Identity", identity, T_OP_SET);
 		if (!vp) return 0;
 
 		hex_len = radius_xlat(buffer, sizeof(buffer), request, conf->psk_query,
@@ -2067,7 +2067,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 			fclose(fp);
 
-			if (!pair_make_packet("TLS-Client-Cert-Filename",
+			if (!pair_make_request("TLS-Client-Cert-Filename",
 					     filename, T_OP_SET)) {
 				RDEBUG("Failed creating TLS-Client-Cert-Filename");
 
@@ -3041,7 +3041,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		/*
 		 *	Mark the request as resumed.
 		 */
-		pair_make_packet("EAP-Session-Resumed", "1", T_OP_SET);
+		pair_make_request("EAP-Session-Resumed", "1", T_OP_SET);
 	}
 
 	return 0;

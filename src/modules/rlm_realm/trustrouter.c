@@ -365,7 +365,7 @@ REALM *tr_query_realm(REQUEST *request, char const *realm,
 	vp = fr_pair_find_by_num(request->packet->vps, PW_UKERNA_TR_COI, VENDORPEC_UKERNA, TAG_ANY);
 	if (vp)
 		community = vp->vp_strvalue;
-	else pair_make_packet("Trust-Router-COI", community, T_OP_SET);
+	else pair_make_request("Trust-Router-COI", community, T_OP_SET);
 
 	cookie.fr_realm_name = talloc_asprintf(NULL,
 					       "%s%%%s",

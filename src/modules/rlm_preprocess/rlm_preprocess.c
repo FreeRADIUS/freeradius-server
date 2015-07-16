@@ -147,7 +147,7 @@ static void cisco_vsa_hack(REQUEST *request)
 			gettoken(&p, newattr, sizeof(newattr), false);
 
 			if (dict_attrbyname(newattr) != NULL) {
-				pair_make_packet(newattr, ptr + 1, T_OP_EQ);
+				pair_make_request(newattr, ptr + 1, T_OP_EQ);
 			}
 		} else {	/* h322-foo-bar = "h323-foo-bar = baz" */
 			/*
