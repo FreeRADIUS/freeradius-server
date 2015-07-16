@@ -1073,7 +1073,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 				/*
 				 *	Reply should be broadcast.
 				 */
-				if (vp) vp->vp_integer |= 0x8000;
+				if (vp) vp->vp_short |= 0x8000;
 				packet->data[10] |= 0x80;
 			}
 		}
