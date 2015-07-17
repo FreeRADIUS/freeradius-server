@@ -61,10 +61,12 @@ RCSID("$Id$")
 				     } \
 				} while(0)
 
+#ifdef HAVE_PCAP_H
 #define ETH_TYPE_IP    0x0800
 #define IP_HDR_SIZE    20
 #define UDP_HDR_SIZE   8
 #define ETH_ADDR_LEN   6
+#endif
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
@@ -440,6 +442,7 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 	return packet;
 }
 
+#ifdef HAVE_PCAP_H
 /** Receive DHCP packet using PCAP
  *
  * @param pcap handle
@@ -554,7 +557,7 @@ RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap)
 
 	return NULL;
 }
-
+#endif	/* HAVE_PCAP_H */
 
 /** Send DHCP packet using socket
  *
@@ -622,6 +625,7 @@ int fr_dhcp_send_socket(RADIUS_PACKET *packet)
 #endif
 }
 
+#ifdef HAVE_PCAP_H
 /** Send DHCP packet using PCAP
  *
  * @param pcap handle
@@ -716,6 +720,7 @@ int fr_dhcp_send_pcap(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *p
 
 	return 0;
 }
+#endif	/* HAVE_PCAP_H */
 
 static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *p, size_t alen);
 
