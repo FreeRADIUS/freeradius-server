@@ -355,8 +355,10 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 }
 
 static int listen_bind(rad_listen_t *this);
-int init_pcap(rad_listen_t *this);
 
+#ifdef HAVE_LIBPCAP
+static int init_pcap(rad_listen_t *this);
+#endif
 
 /*
  *	Process and reply to a server-status request.
@@ -1230,6 +1232,8 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 #endif
 
+
+#ifdef HAVE_LIBPCAP
 	/* Only use libpcap if pcap_type has a value. Otherwise, use socket with SO_BINDTODEVICE */
 	if (sock->interface && sock->pcap_type) {
 		if (init_pcap(this) < 0) {
@@ -1237,7 +1241,8 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				   "Error initializing pcap.");
 			return -1;
 		}
-	} else {
+	} else
+#endif
 		/*
 		 *	And bind it to the port.
 		 */
@@ -1249,7 +1254,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				   sock->my_port);
 			return -1;
 		}
-	}
+	
 
 #ifdef WITH_PROXY
 	/*
@@ -2276,6 +2281,8 @@ static fr_protocol_t master_listen[MAX_LISTENER] = {
 	NO_LISTENER		/* bfd */
 };
 
+
+#ifdef HAVE_LIBPCAP
 /** Initialize PCAP library based on listen section
  *
  * @param this listen section
@@ -2283,7 +2290,7 @@ static fr_protocol_t master_listen[MAX_LISTENER] = {
  *	- 0 if successful
  *	- -1 if failed
  */
-int init_pcap(rad_listen_t *this)
+static int init_pcap(rad_listen_t *this)
 {
 	listen_socket_t *sock = this->data;
 	char const * pcap_filter;
@@ -2324,6 +2331,8 @@ int init_pcap(rad_listen_t *this)
 
 	return 0;
 }
+#endif
+
 
 /*
  *	Binds a listener to a socket.

@@ -54,7 +54,9 @@ static fr_ipaddr_t client_ipaddr;
 static uint16_t client_port = 0;
 
 static int sockfd;
+#ifdef HAVE_LIBPCAP
 static fr_pcap_t *pcap;
+#endif
 #define ETH_ADDR_LEN   6
 static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
@@ -357,7 +359,11 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd, RADIUS_PACKET *request_
 #ifdef HAVE_LINUX_IF_PACKET_H
 			cur_reply_p = fr_dhcp_recv_raw_packet(lsockfd, p_ll, request_p);
 #else
+#ifdef HAVE_LIBPCAP
 			cur_reply_p = fr_dhcp_recv_pcap(pcap);
+#else
+#error Need <if/packet.h> or <pcap.h>
+#endif
 #endif
 		} else {
 			// Not all implementations of select clear the timer
@@ -475,7 +481,7 @@ static void send_with_socket(void)
 	}
 }
 
-#ifndef HAVE_LINUX_IF_PACKET_H
+#ifdef HAVE_LIBPCAP
 static void send_with_pcap(void)
 {
 	pcap = fr_pcap_init(NULL, iface, PCAP_INTERFACE_IN_OUT);
@@ -517,7 +523,7 @@ static void send_with_pcap(void)
 		fr_exit_now(1);
 	}
 }
-#endif
+#endif	/* HAVE_LIBPCAP */
 
 int main(int argc, char **argv)
 {
@@ -728,7 +734,7 @@ int main(int argc, char **argv)
 	}
 	if (fr_debug_lvl) print_hex(request);
 
-#ifndef HAVE_LINUX_IF_PACKET_H
+#ifdef HAVE_LIBPCAP
 	if (raw_mode) {
 		send_with_pcap();
 	} else

@@ -99,7 +99,9 @@ struct rad_listen {
 #endif
 };
 
+#ifdef HAVE_LIBPCAP
 typedef const char* (*rad_pcap_filter_builder)(rad_listen_t *);
+#endif
 
 /*
  *	This shouldn't really be exposed...
@@ -113,9 +115,11 @@ typedef struct listen_socket_t {
 
 	char const	*interface;
 
+#ifdef HAVE_LIBPCAP	
 	fr_pcap_t	*pcap;
 	fr_pcap_type_t pcap_type;
 	rad_pcap_filter_builder pcap_filter_builder;
+#endif
 
 	int		broadcast;
 	time_t		rate_time;
