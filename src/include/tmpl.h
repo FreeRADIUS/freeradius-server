@@ -304,6 +304,43 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
 	} \
 }
 
+/** Determine the correct context and list head
+ *
+ * Used in conjunction with the fr_cursor functions to determine the correct list
+ * and TALLOC_CTX for inserting VALUE_PAIRs.
+ *
+ * Example:
+ @code{.c}
+   TALLOC_CTX *ctx;
+   VALUE_PAIR **list;
+   value_data_t value;
+
+   radius_list_and_ctx(ctx, list, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
+   if (!list) return -1; // error
+
+   value.strvalue = talloc_strdup(NULL, "my new username");
+   value.length = talloc_array_length(value.strvalue) - 1;
+
+   if (fr_pair_update_by_num(ctx, list, PW_USERNAME, 0, TAG_ANY, PW_TYPE_STRING, &value) < 0) return -1; // error
+ @endcode
+ *
+ * @param _ctx new #VALUE_PAIR s should be allocated in for the specified list.
+ * @param _head of the #VALUE_PAIR list.
+ * @param _request The current request.
+ * @param _ref to resolve.
+ * @param _list to resolve.
+ */
+#define RADIUS_LIST_AND_CTX(_ctx, _head, _request, _ref, _list) \
+do {\
+	REQUEST *_rctx = _request; \
+	if ((radius_request(&_rctx, _ref) < 0) || \
+	    !(_head = radius_list(_rctx, _list)) || \
+	    !(_ctx = radius_list_ctx(_rctx, _list))) {\
+		_ctx = NULL; \
+		_head = NULL; \
+	}\
+} while (0)
+
 VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);
 
 RADIUS_PACKET		*radius_packet(REQUEST *request, pair_lists_t list_name);

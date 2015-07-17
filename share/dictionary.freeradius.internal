@@ -265,6 +265,7 @@ ATTRIBUTE	FreeRADIUS-Response-Delay-USec		1155	integer internal
 
 ATTRIBUTE	REST-HTTP-Header			1160	string internal
 ATTRIBUTE	REST-HTTP-Body				1161	string internal
+ATTRIBUTE	REST-HTTP-Status-Code			1162	integer internal
 
 ATTRIBUTE	Cache-Expires				1170	date internal
 ATTRIBUTE	Cache-Created				1171	date internal

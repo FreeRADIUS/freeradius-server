@@ -89,8 +89,8 @@ static const CONF_PARSER module_config[] = {
 static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, void *handle, REQUEST *request,
 			    char const *username, char const *password)
 {
-	ssize_t uri_len;
-	char *uri = NULL;
+	ssize_t	uri_len;
+	char	*uri = NULL;
 
 	int ret;
 
@@ -120,6 +120,33 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 	 */
 	ret = rest_request_perform(instance, section, request, handle);
 	if (ret < 0) return -1;
+
+	{
+		TALLOC_CTX	*ctx;
+		VALUE_PAIR	**list;
+		int		code;
+		value_data_t	value;
+
+		code = rest_get_handle_code(handle);
+
+		RINDENT();
+		RDEBUG2("&reply:REST-HTTP-Code := %i", code);
+		REXDENT();
+
+		value.length = sizeof(value.integer);
+		value.integer = code;
+
+		/*
+		 *	Find the reply list, and appropriate context in the
+		 *	current request.
+		 */
+		RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REPLY);
+		if (!list || (fr_pair_update_by_num(ctx, list, PW_REST_HTTP_STATUS_CODE, 0,
+						    TAG_ANY, PW_TYPE_INTEGER, &value) < 0)) {
+			REDEBUG("Failed updating &reply:REST-HTTP-Code");
+			return -1;
+		}
+	}
 
 	return 0;
 }

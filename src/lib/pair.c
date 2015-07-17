@@ -322,6 +322,47 @@ void fr_pair_replace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	*prev = replace;
 }
 
+/** Create a new VALUE_PAIR or replace the value of the first pair in the specified list
+ *
+ * @note Any buffers associated with value, will be stolen to the context of the
+ *	VALUE_PAIR we create, or find.
+ *
+ * @param[in] ctx to allocate new #VALUE_PAIR in.
+ * @param[in,out] list in search and insert into it.
+ * @param[in] attr Number of attribute to update.
+ * @param[in] vendor of attribute to update.
+ * @param[in] tag of attribute to update.
+ * @param[in] type of value.
+ * @param[in] value to set.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
+			  unsigned int attr, unsigned int vendor, int8_t tag,
+			  PW_TYPE type, value_data_t *value)
+{
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+
+	(void)fr_cursor_init(&cursor, list);
+	vp = fr_cursor_next_by_num(&cursor, attr, vendor, tag);
+	if (vp) {
+		VERIFY_VP(vp);
+		if (value_data_steal(vp, &vp->data, type, value) < 0) return -1;
+		return 0;
+	}
+
+	vp = fr_pair_afrom_num(ctx, attr, vendor);
+	if (!vp) return -1;
+	vp->tag = tag;
+	if (value_data_steal(vp, &vp->data, type, value) < 0) return -1;
+
+	fr_cursor_insert(&cursor, vp);
+
+	return 0;
+}
+
 int8_t fr_pair_cmp_by_da_tag(void const *a, void const *b)
 {
 	VALUE_PAIR const *my_a = a;
