@@ -1155,6 +1155,16 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		} else {
 			buffer[0] = '\0';
 		}
+
+		/*
+		 *	Globbing cannot be done across directories.
+		 */
+		if ((strchr(buffer, '*') != NULL) ||
+		    (strchr(buffer, '[') != NULL)) {
+			cf_log_err_cs(cs, "Wildcard directories are not supported");
+			return -1;
+		}
+
 		strlcat(buffer, "detail.work",
 			sizeof(buffer) - strlen(buffer));
 
