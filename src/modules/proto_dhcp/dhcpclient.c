@@ -56,9 +56,9 @@ static uint16_t client_port = 0;
 static int sockfd;
 #ifdef HAVE_LIBPCAP
 static fr_pcap_t *pcap;
-#endif
 #define ETH_ADDR_LEN   6
 static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
+#endif
 
 static char *iface = NULL;
 static int iface_ind = -1;
@@ -319,11 +319,12 @@ static void print_hex(RADIUS_PACKET *packet)
  *	A real client would pick one of the proposed replies.
  *	We'll just return the first eligible reply, and display the others.
  */
+#if defined(HAVE_LINUX_IF_PACKET_H) || defined (HAVE_LIBPCAP)
+static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 #ifdef HAVE_LINUX_IF_PACKET_H
-static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *request_p)
-#else
-static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd, RADIUS_PACKET *request_p)
+					    struct sockaddr_ll *p_ll,
 #endif
+					    RADIUS_PACKET *request_p)
 {
 	struct timeval tval;
 	RADIUS_PACKET *reply_p = NULL;
@@ -418,6 +419,7 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd, RADIUS_PACKET *request_
 
 	return reply_p;
 }
+#endif	/* <if/packet.h> or <pcap.h> */
 
 static void send_with_socket(void)
 {
