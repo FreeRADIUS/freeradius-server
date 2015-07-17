@@ -91,8 +91,8 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 {
 	ssize_t uri_len;
 	char *uri = NULL;
-
 	int ret;
+	VALUE_PAIR *vp;
 
 	RDEBUG("Expanding URI components");
 
@@ -119,6 +119,17 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 	 *  HTTP body data into a single contiguous buffer.
 	 */
 	ret = rest_request_perform(instance, section, request, handle);
+
+	/*
+	 * Set a REST-HTTP-Code with the last code of http request.
+	 */
+	vp = fr_pair_afrom_num(request->packet, PW_REST_HTTP_CODE, 0);
+	if (vp) {
+		vp->vp_integer = rest_get_handle_code(handle);
+		RDEBUG2("Adding REST-HTTP-Code = %d", vp->vp_integer);
+		fr_pair_add(&request->packet->vps, vp);
+	}
+
 	if (ret < 0) return -1;
 
 	return 0;

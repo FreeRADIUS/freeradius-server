@@ -6,6 +6,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  module authors will have to do the same.
 	* More documentation on contributing and how to write
 	  modules.
+	* Added 'REST-HTTP-Code' in rlm_rest.
 
 	Bug fixes
 	* When using -C, don't error out if the configuration uses
