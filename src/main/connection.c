@@ -104,6 +104,8 @@ struct fr_connection_pool_t {
 						//!< closed (irrespective of whether it's idle or not).
 	uint32_t       	idle_timeout;		//!< How long a connection can be idle before
 						//!< being closed.
+	struct timeval	connect_timeout;	//!< New connection timeout, enforced by the create
+						//!< callback.
 
 	bool		spread;			//!< If true we spread requests over the connections,
 						//!< using the connection released longest ago, first.
@@ -172,6 +174,7 @@ static const CONF_PARSER connection_config[] = {
 	{ "cleanup_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), NULL},
 	{ "cleanup_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), "30" },
 	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, idle_timeout), "60" },
+	{ "connect_timeout", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, fr_connection_pool_t, connect_timeout), "3.0" },
 	{ "retry_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, retry_delay), "1" },
 	{ "spread", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), "no" },
 	{ NULL, -1, 0, NULL, NULL }
@@ -1194,7 +1197,7 @@ fr_connection_pool_t *fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_poo
 
 /** Get the number of connections currently in the pool
  *
- * @param pool to count connections for.
+ * @param[in] pool to count connections for.
  * @return the number of connections in the pool
  */
 int fr_connection_pool_get_num(fr_connection_pool_t *pool)
@@ -1202,11 +1205,21 @@ int fr_connection_pool_get_num(fr_connection_pool_t *pool)
 	return pool->num;
 }
 
+/** Connection pool get timeout
+ *
+ * @param[in] pool to get connection timeout for.
+ * @return the connection timeout configured for the pool.
+ */
+struct timeval const *fr_connection_pool_get_timeout(fr_connection_pool_t *pool)
+{
+	return &pool->connect_timeout;
+}
+
 /** Set a reconnection callback for the connection pool
  *
  * This can be called at any time during the pool's lifecycle.
  *
- * @param pool to set reconnect callback for.
+ * @param[in] pool to set reconnect callback for.
  * @param reconnect callback to call when reconnecting pool's connections.
  */
 void fr_connection_pool_set_reconnect(fr_connection_pool_t *pool, fr_connection_pool_reconnect_t reconnect)

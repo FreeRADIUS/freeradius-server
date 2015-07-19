@@ -66,11 +66,13 @@ typedef void (*fr_connection_pool_reconnect_t)(void *opaque);
  *
  * @param[in,out] ctx to allocate memory in.
  * @param[in] opaque pointer passed to fr_connection_pool_init.
+ * @param[in] timeout The maximum time in ms the function has to complete
+ *	the connection.  Should be enforced by the function.
  * @return
  *	- NULL on error.
  *	- A connection handle on success.
  */
-typedef void *(*fr_connection_create_t)(TALLOC_CTX *ctx, void *opaque);
+typedef void *(*fr_connection_create_t)(TALLOC_CTX *ctx, void *opaque, struct timeval const *timeout);
 
 /** Check a connection handle is still viable
  *
@@ -111,6 +113,8 @@ fr_connection_pool_t	*fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_poo
  *	Pool get/set
  */
 int	fr_connection_pool_get_num(fr_connection_pool_t *pool);
+
+struct timeval const *fr_connection_pool_get_timeout(fr_connection_pool_t *pool);
 
 void	fr_connection_pool_set_reconnect(fr_connection_pool_t *pool, fr_connection_pool_reconnect_t reconnect);
 
