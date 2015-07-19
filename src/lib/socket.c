@@ -42,14 +42,14 @@
    if (sockfd < 0) {
    	fr_perror();
    	exit(1);
-}
+   }
    if ((errno == EINPROGRESS) && (fr_socket_wait_for_connect(sockfd, timeout) < 0)) {
    error:
    	fr_perror();
    	close(sockfd);
    	goto error;
-}
-//Optionally, if blocking operation is required
+   }
+   //Optionally, if blocking operation is required
    if (fr_blocking(sockfd) < 0) goto error;
  @endcode
  *
@@ -352,9 +352,10 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint1
  *	- -2 on timeout.
  *	- -3 on select error.
  */
-int fr_socket_wait_for_connect(int sockfd, struct timeval *timeout)
+int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 {
 	int	ret;
+	struct	timeval tv = *timeout;
 	fd_set	error_set;
 	fd_set	write_set;	/* POSIX says sockets are open when they become writeable */
 
@@ -366,7 +367,7 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval *timeout)
 
 	/* Don't let signals mess up the select */
 	do {
-		ret = select(sockfd + 1, NULL, &write_set, &error_set, timeout);
+		ret = select(sockfd + 1, NULL, &write_set, &error_set, &tv);
 	} while ((ret == -1) && (errno == EINTR));
 
 	switch (ret) {
