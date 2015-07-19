@@ -153,7 +153,7 @@ typedef struct rlm_rest_t {
 	struct timeval		connect_timeout_tv;	//!< Connection timeout timeval.
 	long			connect_timeout;	//!< Connection timeout ms.
 
-	fr_connection_pool_t	*conn_pool;	//!< Pointer to the connection pool.
+	fr_connection_pool_t	*pool;		//!< Pointer to the connection pool.
 
 	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
 	rlm_rest_section_t	authenticate;	//!< Configuration specific to authentication.
