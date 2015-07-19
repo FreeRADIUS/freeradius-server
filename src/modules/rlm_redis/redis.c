@@ -405,14 +405,14 @@ static int _redis_conn_free(redis_conn_t *conn)
  *	- New #redis_conn_t on success.
  *	- NULL on failure.
  */
-void *fr_redis_conn_create(TALLOC_CTX *ctx, void *instance)
+void *fr_redis_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
 	redis_conn_conf_t	*inst = instance;
 	redis_conn_t		*conn = NULL;
 	redisContext		*handle;
 	redisReply		*reply = NULL;
 
-	handle = redisConnect(inst->hostname, inst->port);
+	handle = redisConnectWithTimeout(inst->hostname, inst->port, *timeout);
 	if ((handle != NULL) && handle->err) {
 		ERROR("%s: Connection failed: %s", inst->prefix, handle->errstr);
 		redisFree(handle);

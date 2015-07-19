@@ -64,7 +64,7 @@ static int _mod_conn_free(rlm_sql_handle_t *conn)
 	return 0;
 }
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
 	int rcode;
 	rlm_sql_t *inst = instance;
@@ -97,7 +97,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	 */
 	talloc_set_destructor(handle, _mod_conn_free);
 
-	rcode = (inst->module->sql_socket_init)(handle, inst->config);
+	rcode = (inst->module->sql_socket_init)(handle, inst->config, timeout);
 	if (rcode != 0) {
 	fail:
 		exec_trigger(NULL, inst->cs, "modules.sql.fail", true);

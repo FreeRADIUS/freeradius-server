@@ -198,7 +198,7 @@ static CONF_PARSER option_config[] = {
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
 	/* timeout on network activity */
-	{ "net_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ldap_t, net_timeout), "10" },
+	{ "net_timeout", FR_CONF_DEPRECATED(PW_TYPE_INTEGER, rlm_ldap_t, NULL), "10" },
 #endif
 
 	/* timeout for search results */

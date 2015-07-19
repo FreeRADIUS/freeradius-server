@@ -114,7 +114,7 @@ static int _mod_conn_free(rlm_krb5_handle_t *conn) {
  * by libkrb5 and that it does connection caching associated with contexts, so it's
  * worth using a connection pool to preserve connections when workers die.
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval const *timeout)
 {
 	rlm_krb5_t *inst = instance;
 	rlm_krb5_handle_t *conn;

@@ -447,7 +447,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 *	about other threads opening new connections, as we
 	 *	already have no free connections.
 	 */
-	conn = pool->create(ctx, pool->opaque);
+	conn = pool->create(ctx, pool->opaque, &pool->connect_timeout);
 	if (!conn) {
 		ERROR("%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, number);
 

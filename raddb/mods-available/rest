@@ -41,11 +41,6 @@ rest {
 	connect_uri = "http://127.0.0.1/"
 
 	#
-	#  How long before new connection attempts timeout, defaults to 4.0 seconds.
-	#
-#	connect_timeout = 4.0
-
-	#
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#  For example if you list rest in the authorize section of a virtual server,
@@ -218,6 +213,10 @@ rest {
 		#  idle timeout (in seconds).  A connection which is
 		#  unused for this length of time will be closed.
 		idle_timeout = 60
+
+		#  Connection timeout (in seconds).  The maximum amount of
+		#  time to wait for a new connection to be established.
+		connect_timeout = 3.0
 
 		#  NOTE: All configuration settings are enforced.  If a
 		#  connection is closed because of "idle_timeout",

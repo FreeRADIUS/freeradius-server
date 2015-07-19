@@ -70,12 +70,13 @@ static int _sql_socket_destructor(rlm_sql_iodbc_conn_t *conn)
 	return 0;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
 {
 
 	rlm_sql_iodbc_conn_t *conn;
 	SQLRETURN rcode;
 	sql_log_entry_t entry;
+	uint32_t timeout_ms = FR_TIMEVAL_TO_MS(timeout);
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_iodbc_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
@@ -88,14 +89,16 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		return RLM_SQL_ERROR;
 	}
 
-	rcode = SQLAllocConnect(conn->env_handle,
-				&conn->dbc_handle);
+	rcode = SQLAllocConnect(conn->env_handle, &conn->dbc_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
 		ERROR("rlm_sql_iodbc: SQLAllocConnect failed");
 		if (sql_error(NULL, &entry, 1, handle, config) > 0) ERROR("rlm_sql_iodbc: %s", entry.msg);
 
 		return RLM_SQL_ERROR;
 	}
+
+	/* Set the connection timeout */
+	SQLSetConnectAttr(conn->dbc_handle, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
 
 	/*
 	 *	The iodbc API doesn't qualify arguments as const even when they should be.

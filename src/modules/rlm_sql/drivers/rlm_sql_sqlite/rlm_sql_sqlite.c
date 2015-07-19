@@ -523,7 +523,8 @@ static void _sql_greatest(sqlite3_context *ctx, int num_values, sqlite3_value **
 	sqlite3_result_int64(ctx, max);
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int CC_HINT(nonnull) sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+					    UNUSED struct timeval const *timeout)
 {
 	rlm_sql_sqlite_conn_t *conn;
 	rlm_sql_sqlite_config_t *driver = config->driver;

@@ -139,7 +139,8 @@ static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
 	return 0;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+				   UNUSED struct timeval const *timeout)
 {
 	char errbuff[512];
 

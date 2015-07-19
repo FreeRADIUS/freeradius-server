@@ -674,9 +674,10 @@ static int _sql_socket_destructor(rlm_sql_freetds_conn_t *conn)
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
 {
 	rlm_sql_freetds_conn_t *conn;
+	unsigned int timeout_ms = FR_TIMEVAL_TO_MS(timeout);
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_freetds_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
@@ -696,6 +697,12 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 */
 	if (ct_init(conn->context, CS_VERSION_100) != CS_SUCCEED) {
 		ERROR("rlm_sql_freetds: unable to initialize Client-Library");
+
+		goto error;
+	}
+
+	if (ct_config(conn->context, CS_GET, CS_LOGIN_TIMEOUT, (CS_VOID *)&timeout_ms, CS_UNUSED, NULL) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: Setting connection timeout failed");
 
 		goto error;
 	}

@@ -49,27 +49,20 @@ static int _mod_conn_free(int *fdp)
 	return 0;
 }
 
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
 	int fd;
-	struct sockaddr_un sa;
 	rlm_smsotp_t *inst = instance;
-	socklen_t socklen = sizeof(sa);
 	int *fdp;
 
-	sa.sun_family = AF_UNIX;
-	strlcpy(sa.sun_path, inst->socket, sizeof(sa.sun_path));
-
-	fd = socket(PF_UNIX, SOCK_STREAM, 0);
+	fd = fr_socket_client_unix(inst->socket, false);
 	if (fd < 0) {
-		ERROR("Failed opening SMSOTP file %s: %s",
-		       inst->socket, fr_syserror(errno));
+		ERROR("Failed opening SMSOTP file %s: %s", inst->socket, fr_syserror(errno));
 		return NULL;
 	}
 
-	if (connect(fd, (struct sockaddr *) &sa, socklen) < -1) {
-		ERROR("Failed connecting to SMSOTP file %s: %s",
-		       inst->socket, fr_syserror(errno));
+	if (fr_socket_wait_for_connect(fd, timeout) < 0) {
+		ERROR("Failed connecting to SMSOTP file %s: %s", inst->socket, fr_syserror(errno));
 		return NULL;
 	}
 

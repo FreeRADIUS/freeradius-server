@@ -83,7 +83,7 @@ typedef struct rlm_couchbase_handle_t {
 } rlm_couchbase_handle_t;
 
 /* define functions */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
 int mod_conn_alive(UNUSED void *instance, void *handle);
 

@@ -460,12 +460,6 @@ ldap {
 		#  LDAP_OPT_TIMELIMIT is set to this value.
 		srv_timelimit = 3
 
-		#  Seconds to wait for response of the server. (network
-		#  failures) default: 10
-		#
-		#  LDAP_OPT_NETWORK_TIMEOUT is set to this value.
-		net_timeout = 1
-
 		#  LDAP_OPT_X_KEEPALIVE_IDLE
 		idle = 60
 
@@ -577,6 +571,11 @@ ldap {
 		#  Idle timeout (in seconds).  A connection which is
 		#  unused for this length of time will be closed.
 		idle_timeout = 60
+
+		#  Connection timeout (in seconds).  The maximum amount of
+		#  time to wait for a new connection to be established.
+		#  Sets LDAP_OPT_NETWORK_TIMEOUT in libldap.
+		connect_timeout = 3.0
 
 		#  NOTE: All configuration settings are enforced.  If a
 		#  connection is closed because of 'idle_timeout',

@@ -60,7 +60,7 @@ typedef struct redis_socket_conf {
 /*
  *	Connection pool functions
  */
-void	*fr_redis_conn_create(TALLOC_CTX *ctx, void *instance);
+void	*fr_redis_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeval);
 
 /*
  *	Command and resulting parsing

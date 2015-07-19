@@ -59,9 +59,10 @@ static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
 {
 	SQLRETURN retval;
+	uint32_t timeout_ms = FR_TIMEVAL_TO_MS(timeout);
 	rlm_sql_db2_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_db2_conn_t));
@@ -70,6 +71,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	/* Allocate handles */
 	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(conn->env_handle));
 	SQLAllocHandle(SQL_HANDLE_DBC, conn->env_handle, &(conn->dbc_handle));
+
+	/* Set the connection timeout */
+	SQLSetConnectAttr(conn->dbc_handle, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
 
 	/*
 	 *	The db2 API doesn't qualify arguments as const even when they should be.

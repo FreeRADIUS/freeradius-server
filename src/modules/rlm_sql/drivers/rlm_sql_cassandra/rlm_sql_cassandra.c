@@ -421,8 +421,6 @@ do {\
 	DO_CASS_OPTION("sql_server", cass_cluster_set_contact_points(cluster, config->sql_server));
 	if (config->sql_port) DO_CASS_OPTION("sql_port", cass_cluster_set_port(cluster, config->sql_port));
 	/* Can't fail */
-	if (config->connect_timeout_ms) cass_cluster_set_connect_timeout(cluster, config->connect_timeout_ms);
-	/* Can't fail */
 	if (config->query_timeout) cass_cluster_set_request_timeout(cluster, config->query_timeout * 1000);
 	/* Can't fail */
 	if (config->sql_login && config->sql_password) cass_cluster_set_credentials(cluster, config->sql_login,
@@ -616,7 +614,7 @@ static int _sql_socket_destructor(rlm_sql_cassandra_conn_t *conn)
 	return 0;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
 {
 	rlm_sql_cassandra_conn_t	*conn;
 	rlm_sql_cassandra_config_t	*driver = config->driver;
@@ -637,6 +635,12 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		pthread_mutex_lock(&driver->connect_mutex);
 #endif
 		if (!driver->done_connect_keyspace) {
+			/*
+			 *	Easier to do this here instead of mod_instantiate
+			 *	as we don't have a pointer to the pool.
+			 */
+			cass_cluster_set_connect_timeout(driver->cluster, FR_TIMEVAL_TO_MS(timeout));
+
 			DEBUG2("rlm_sql_cassandra: Connecting to Cassandra cluster");
 			future = cass_session_connect_keyspace(driver->session, driver->cluster, config->sql_db);
 			ret = cass_future_error_code(future);

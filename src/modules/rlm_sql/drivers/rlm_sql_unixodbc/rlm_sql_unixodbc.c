@@ -62,10 +62,12 @@ static int _sql_socket_destructor(rlm_sql_unixodbc_conn_t *conn)
 	return 0;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+				   struct timeval const *timeout)
 {
 	rlm_sql_unixodbc_conn_t *conn;
 	long err_handle;
+	uint32_t timeout_ms = FR_TIMEVAL_TO_MS(timeout);
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_unixodbc_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
@@ -89,6 +91,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		ERROR("rlm_sql_unixodbc: Can't allocate connection handle");
 		return RLM_SQL_ERROR;
 	}
+
+	/* Set the connection timeout */
+	SQLSetConnectAttr(conn->dbc, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
 
 	/* 3. Connect to the datasource */
 	{

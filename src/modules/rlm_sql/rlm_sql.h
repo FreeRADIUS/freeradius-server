@@ -131,9 +131,6 @@ typedef struct sql_config {
 
 	char const		*connect_query;			//!< Query executed after establishing
 								//!< new connection.
-	struct timeval		connect_timeout_tv;		//!< Connection timeout timeval.
-	uint32_t		connect_timeout_ms;		//!< Connection timeout ms.
-	uint32_t		connect_timeout_s;		//!< Connection timeout in seconds.
 
 	void			*driver;			//!< Where drivers should write a
 								//!< pointer to their configurations.
@@ -195,7 +192,8 @@ typedef struct rlm_sql_module_t {
 	int		flags;
 
 	sql_rcode_t (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);
-	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+				       struct timeval const *timeout);
 
 	sql_rcode_t (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
 	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
@@ -243,7 +241,7 @@ typedef struct sql_grouplist {
 	struct sql_grouplist	*next;
 } rlm_sql_grouplist_t;
 
-void		*mod_conn_create(TALLOC_CTX *ctx, void *instance);
+void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 int		sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **first_pair, rlm_sql_row_t row);
 int		sql_read_realms(rlm_sql_handle_t *handle);
 int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);

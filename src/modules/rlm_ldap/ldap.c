@@ -1520,12 +1520,11 @@ static int _mod_conn_free(ldap_handle_t *conn)
  *
  * Create a new ldap connection and allocate memory for a new rlm_handle_t
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
 	ldap_rcode_t status;
 
 	int ldap_errno, ldap_version;
-	struct timeval tv;
 
 	rlm_ldap_t *inst = instance;
 	ldap_handle_t *conn;
@@ -1607,12 +1606,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	}
 
 #ifdef LDAP_OPT_NETWORK_TIMEOUT
-	if (inst->net_timeout) {
-		memset(&tv, 0, sizeof(tv));
-		tv.tv_sec = inst->net_timeout;
-
-		do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout", &tv);
-	}
+	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "pool.connect_timeout", &timeout);
 #endif
 
 	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &(inst->srv_timelimit));

@@ -90,4 +90,4 @@ typedef struct rlm_krb5_t {
 char const *rlm_krb5_error(krb5_context context, krb5_error_code code);
 #endif
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);

@@ -150,9 +150,6 @@ typedef struct rlm_rest_t {
 	char const		*connect_uri;	//!< URI we attempt to connect to, to pre-establish
 						//!< TCP connections.
 
-	struct timeval		connect_timeout_tv;	//!< Connection timeout timeval.
-	long			connect_timeout;	//!< Connection timeout ms.
-
 	fr_connection_pool_t	*pool;		//!< Pointer to the connection pool.
 
 	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
@@ -255,7 +252,7 @@ int rest_init(rlm_rest_t *instance);
 
 void rest_cleanup(void);
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
 int mod_conn_alive(void *instance, void *handle);
 

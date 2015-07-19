@@ -70,7 +70,8 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance,
 	const void *cookie, lcb_error_t error, const lcb_http_resp_t *resp);
 
 /* create a couchbase instance and connect to the cluster */
-lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass);
+lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass,
+				      struct timeval const *timeout);
 
 /* get server statistics */
 lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie);

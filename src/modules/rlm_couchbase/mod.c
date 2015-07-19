@@ -61,20 +61,22 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
  *
  * @param  ctx      The connection parent context.
  * @param  instance The module instance.
+ * @param  timeout  Maximum time to establish the connection.
  * @return
  *	- New connection handle.
  *	- NULL on error.
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
 	rlm_couchbase_t *inst = instance;           /* module instance pointer */
 	rlm_couchbase_handle_t *chandle = NULL;     /* connection handle pointer */
 	cookie_t *cookie = NULL;                    /* couchbase cookie */
 	lcb_t cb_inst;                              /* couchbase connection instance */
-	lcb_error_t cb_error;			/* couchbase error status */
+	lcb_error_t cb_error;			    /* couchbase error status */
 
 	/* create instance */
-	cb_error = couchbase_init_connection(&cb_inst, inst->server, inst->bucket, inst->password);
+	cb_error = couchbase_init_connection(&cb_inst, inst->server, inst->bucket, inst->password,
+					     FR_TIMEVAL_TO_MS(timeout));
 
 	/* check couchbase instance */
 	if (cb_error != LCB_SUCCESS) {

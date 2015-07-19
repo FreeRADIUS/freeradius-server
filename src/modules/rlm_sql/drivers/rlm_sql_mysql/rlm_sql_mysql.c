@@ -164,10 +164,11 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	return 0;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
 {
 	rlm_sql_mysql_conn_t *conn;
 	rlm_sql_mysql_config_t *driver = config->driver;
+	unsigned int connect_timeout = timeout->tv_usec;
 	unsigned long sql_flags;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_mysql_conn_t));
@@ -203,8 +204,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 #endif
 
 #if (MYSQL_VERSION_ID >= 50000)
+	mysql_options(&(conn->db), MYSQL_OPT_CONNECT_TIMEOUT, &connect_timeout);
+
 	if (config->query_timeout) {
-		unsigned int connect_timeout = config->query_timeout;
 		unsigned int read_timeout = config->query_timeout;
 		unsigned int write_timeout = config->query_timeout;
 
@@ -226,7 +228,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		 *	Connect timeout is actually connect timeout (according to the
 		 *	docs) there are no automatic retries.
 		 */
-		mysql_options(&(conn->db), MYSQL_OPT_CONNECT_TIMEOUT, &connect_timeout);
 		mysql_options(&(conn->db), MYSQL_OPT_READ_TIMEOUT, &read_timeout);
 		mysql_options(&(conn->db), MYSQL_OPT_WRITE_TIMEOUT, &write_timeout);
 	}

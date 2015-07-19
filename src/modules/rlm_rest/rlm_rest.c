@@ -81,7 +81,7 @@ static const CONF_PARSER section_config[] = {
 
 static const CONF_PARSER module_config[] = {
 	{ "connect_uri", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_t, connect_uri), NULL },
-	{ "connect_timeout", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_rest_t, connect_timeout_tv), "4.0" },
+	{ "connect_timeout", FR_CONF_DEPRECATED(PW_TYPE_TIMEVAL, rlm_rest_t, connect_timeout), NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -861,9 +861,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (rest_init(inst) < 0) {
 		return -1;
 	}
-
-	inst->connect_timeout = ((inst->connect_timeout_tv.tv_usec * 1000) +
-				 (inst->connect_timeout_tv.tv_sec / 1000));
 	inst->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, mod_conn_alive, NULL);
 	if (!inst->pool) return -1;
 

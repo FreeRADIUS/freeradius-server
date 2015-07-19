@@ -209,17 +209,14 @@ static int _mod_conn_free(linelog_conn_t *conn)
 	return 0;
 }
 
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
 	linelog_instance_t	*inst = instance;
 	linelog_conn_t		*conn;
 	int			sockfd = -1;
-	struct timeval		*timeout = NULL;
 
 	switch (inst->log_dst) {
 	case LINELOG_DST_UNIX:
-		if (inst->unix.timeout.tv_sec || inst->unix.timeout.tv_usec) timeout = &inst->unix.timeout;
-
 		DEBUG2("rlm_linelog (%s): Opening UNIX socket at \"%s\"", inst->name, inst->unix.path);
 		sockfd = fr_socket_client_unix(inst->unix.path, true);
 		if (sockfd < 0) {
@@ -229,8 +226,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 		break;
 
 	case LINELOG_DST_TCP:
-		if (inst->tcp.timeout.tv_sec || inst->tcp.timeout.tv_usec) timeout = &inst->tcp.timeout;
-
 		if (DEBUG_ENABLED2) {
 			char buff[INET6_ADDRSTRLEN + 4]; /* IPv6 + /<d><d><d> */
 
@@ -247,8 +242,6 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 		break;
 
 	case LINELOG_DST_UDP:
-		if (inst->udp.timeout.tv_sec || inst->udp.timeout.tv_usec) timeout = &inst->udp.timeout;
-
 		if (DEBUG_ENABLED2) {
 			char buff[INET6_ADDRSTRLEN + 4]; /* IPv6 + /<d><d><d> */
 
@@ -275,7 +268,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	}
 
 	if (errno == EINPROGRESS) {
-		if (timeout) {
+		if (FR_TIMEVAL_TO_MS(timeout)) {
 			DEBUG2("rlm_linelog (%s): Waiting for connection to complete...", inst->name);
 		} else {
 			DEBUG2("rlm_linelog (%s): Blocking until connection complete...", inst->name);
@@ -291,7 +284,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	/*
 	 *	Set blocking operation as we have no timeout set
 	 */
-	if (!timeout && (fr_blocking(sockfd) < 0)) {
+	if (!FR_TIMEVAL_TO_MS(timeout) && (fr_blocking(sockfd) < 0)) {
 		ERROR("rlm_linelog (%s): Failed setting nonblock flag on fd", inst->name);
 		close(sockfd);
 		return NULL;

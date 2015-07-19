@@ -337,8 +337,6 @@ struct ldap_instance {
 							//!< identify the autz or acct session the commands were
 							//!< issued for.
 #endif
-	uint32_t  	net_timeout;			//!< How long we wait for new connections to the LDAP server
-							//!< to be established.
 	uint32_t	res_timeout;			//!< How long we wait for a result from the server.
 	uint32_t	srv_timelimit;			//!< How long the server should spent on a single request
 							//!< (also bounded by value on the server).
@@ -487,7 +485,7 @@ ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, 
 
 char *rlm_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
 ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
 
