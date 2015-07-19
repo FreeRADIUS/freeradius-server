@@ -1357,7 +1357,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  * @param type Data type to parse #CONF_PAIR value as.
  *	Should be one of the following ``data`` types, and one or more of the following ``flag`` types or'd together:
  *	- ``data`` #PW_TYPE_TMPL 		- @copybrief PW_TYPE_TMPL
- 					  	  Feeds the value into #tmpl_afrom_str. Value can be
+ *					  	  Feeds the value into #tmpl_afrom_str. Value can be
  *					  	  obtained when processing requests, with #tmpl_expand or #tmpl_aexpand.
  *	- ``data`` #PW_TYPE_BOOLEAN		- @copybrief PW_TYPE_BOOLEAN
  *	- ``data`` #PW_TYPE_INTEGER		- @copybrief PW_TYPE_INTEGER
@@ -1370,7 +1370,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  *	- ``data`` #PW_TYPE_IPV6_ADDR		- @copybrief PW_TYPE_IPV6_ADDR (IPv6 address with prefix 128).
  *	- ``data`` #PW_TYPE_IPV6_PREFIX		- @copybrief PW_TYPE_IPV6_PREFIX (IPv6 address with variable prefix).
  *	- ``data`` #PW_TYPE_COMBO_IP_ADDR 	- @copybrief PW_TYPE_COMBO_IP_ADDR (IPv4/IPv6 address with
- 						  prefix 32/128).
+ *						  prefix 32/128).
  *	- ``data`` #PW_TYPE_COMBO_IP_PREFIX	- @copybrief PW_TYPE_COMBO_IP_PREFIX (IPv4/IPv6 address with
  *						  variable prefix).
  *	- ``data`` #PW_TYPE_TIMEVAL		- @copybrief PW_TYPE_TIMEVAL
@@ -1413,7 +1413,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	 *	Everything except templates must have a base type.
 	 */
 	if (!(type & 0xff) && !tmpl) {
-		cf_log_err(c_item, "Configuration item '%s' must have a data type", name);
+		cf_log_err(c_item, "Configuration item \"%s\" must have a data type", name);
 		return -1;
 	}
 
@@ -1459,7 +1459,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	if (!value) {
 		if (required) {
 		is_required:
-			cf_log_err(c_item, "Configuration item '%s' must have a value", name);
+			cf_log_err(c_item, "Configuration item \"%s\" must have a value", name);
 
 			return -1;
 		}
@@ -1468,10 +1468,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 
 	if ((value[0] == '\0') && cant_be_empty) {
 	cant_be_empty:
-		cf_log_err(c_item, "Configuration item '%s' must not be empty (zero length)", name);
-
-		if (!required)
-			cf_log_err(c_item, "Comment item to silence this message");
+		cf_log_err(c_item, "Configuration item \"%s\" must not be empty (zero length)", name);
+		if (!required) cf_log_err(c_item, "Comment item to silence this message");
 
 		return -1;
 	}
