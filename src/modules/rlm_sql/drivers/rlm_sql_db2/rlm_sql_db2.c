@@ -40,8 +40,8 @@ RCSID("$Id$")
 #include "rlm_sql.h"
 
 typedef struct rlm_sql_conn {
-	SQLHANDLE hdbc;
-	SQLHANDLE henv;
+	SQLHANDLE dbc_handle;
+	SQLHANDLE env_handle;
 	SQLHANDLE stmt;
 } rlm_sql_db2_conn_t;
 
@@ -49,12 +49,12 @@ static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
 {
 	DEBUG2("rlm_sql_db2: Socket destructor called, closing socket");
 
-	if (conn->hdbc) {
-		SQLDisconnect(conn->hdbc);
-		SQLFreeHandle(SQL_HANDLE_DBC, conn->hdbc);
+	if (conn->dbc_handle) {
+		SQLDisconnect(conn->dbc_handle);
+		SQLFreeHandle(SQL_HANDLE_DBC, conn->dbc_handle);
 	}
 
-	if (conn->henv) SQLFreeHandle(SQL_HANDLE_ENV, conn->henv);
+	if (conn->env_handle) SQLFreeHandle(SQL_HANDLE_ENV, conn->env_handle);
 
 	return RLM_SQL_OK;
 }
@@ -67,9 +67,9 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_db2_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
-	/* allocate handles */
-	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(conn->henv));
-	SQLAllocHandle(SQL_HANDLE_DBC, conn->henv, &(conn->hdbc));
+	/* Allocate handles */
+	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(conn->env_handle));
+	SQLAllocHandle(SQL_HANDLE_DBC, conn->env_handle, &(conn->dbc_handle));
 
 	/*
 	 *	The db2 API doesn't qualify arguments as const even when they should be.
@@ -81,7 +81,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		memcpy(&login, &config->sql_login, sizeof(login));
 		memcpy(&password, &config->sql_password, sizeof(password));
 
-		retval = SQLConnect(conn->hdbc,
+		retval = SQLConnect(conn->dbc_handle,
 				    server, SQL_NTS,
 				    login,  SQL_NTS,
 				    password, SQL_NTS);
@@ -104,7 +104,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	conn = handle->conn;
 
 	/* allocate handle for statement */
-	SQLAllocHandle(SQL_HANDLE_STMT, conn->hdbc, &(conn->stmt));
+	SQLAllocHandle(SQL_HANDLE_STMT, conn->dbc_handle, &(conn->stmt));
 
 	/* execute query */
 	{
