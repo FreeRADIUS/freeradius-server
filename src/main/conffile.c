@@ -1428,6 +1428,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	 *	section, use the default value.
 	 */
 	if (!cp) {
+		if (deprecated) return 0;	/* Don't set the default value */
+
 		rcode = 1;
 		value = dflt;
 	/*
@@ -1445,6 +1447,12 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		 */
 		if (multi) while ((next = cf_pair_find_next(cs, next, name))) {
 			next->parsed = true;
+		}
+
+		if (deprecated) {
+			cf_log_err(c_item, "Configuration item \"%s\" is deprecated", name);
+
+			return -2;
 		}
 	}
 
@@ -1468,11 +1476,6 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		return -1;
 	}
 
-	if (deprecated) {
-		cf_log_err(c_item, "Configuration item \"%s\" is deprecated", name);
-
-		return -2;
-	}
 
 	/*
 	 *	Process a value as a LITERAL template.  Once all of
