@@ -221,11 +221,11 @@ typedef struct rest_custom_data {
 /** Flags to control the conversion of JSON values to VALUE_PAIRs.
  *
  * These fields are set when parsing the expanded format for value pairs in
- * JSON, and control how json_fr_pair_make_leaf and json_fr_pair_make convert the JSON
+ * JSON, and control how json_pair_make_leaf and json_pair_make convert the JSON
  * value, and move the new VALUE_PAIR into an attribute list.
  *
- * @see json_fr_pair_make
- * @see json_fr_pair_make_leaf
+ * @see json_pair_make
+ * @see json_pair_make_leaf
  */
 typedef struct json_flags {
 	int do_xlat;		//!< If true value will be expanded with xlat.
@@ -1175,7 +1175,7 @@ static int rest_decode_post(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section
  *	- #VALUE_PAIR just created.
  *	- NULL on error.
  */
-static VALUE_PAIR *json_fr_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
+static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_rest_section_t *section,
 				      TALLOC_CTX *ctx, REQUEST *request, DICT_ATTR const *da,
 				      json_flags_t *flags, json_object *leaf)
 {
@@ -1293,7 +1293,7 @@ static VALUE_PAIR *json_fr_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rl
  *	- Number of attributes created.
  *	- < 0 on error.
  */
-static int json_fr_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
+static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			 REQUEST *request, json_object *object, UNUSED int level, int max)
 {
 	struct lh_entry *entry;
@@ -1455,11 +1455,11 @@ static int json_fr_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 				continue;
 
 				/*
-				vp = json_fr_pair_make(instance, section,
+				vp = json_pair_make(instance, section,
 						   request, value,
 						   level + 1, max_attrs);*/
 			} else {
-				vp = json_fr_pair_make_leaf(instance, section, ctx, request,
+				vp = json_pair_make_leaf(instance, section, ctx, request,
 							dst.tmpl_da, &flags, element);
 				if (!vp) continue;
 			}
@@ -1478,12 +1478,12 @@ static int json_fr_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 /** Converts JSON response into VALUE_PAIRs and adds them to the request.
  *
  * Converts the raw JSON string into a json-c object tree and passes it to
- * json_fr_pair_make. After the tree has been parsed json_object_put is called
+ * json_pair_make. After the tree has been parsed json_object_put is called
  * which decrements the reference count of the root node by one, and frees
  * the entire tree.
  *
  * @see rest_encode_json
- * @see json_fr_pair_make
+ * @see json_pair_make
  *
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
@@ -1516,7 +1516,7 @@ static int rest_decode_json(rlm_rest_t *instance, rlm_rest_section_t *section,
 		return -1;
 	}
 
-	ret = json_fr_pair_make(instance, section, request, json, 0, REST_BODY_MAX_ATTRS);
+	ret = json_pair_make(instance, section, request, json, 0, REST_BODY_MAX_ATTRS);
 
 	/*
 	 *  Decrement reference count for root object, should free entire JSON tree.
