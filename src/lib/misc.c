@@ -447,6 +447,83 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
 	return fr_pton4(out, value, inlen, false, false);
 }
 
+/** Parses IPv4/6 address + port, to fr_ipaddr_t and integer
+ *
+ * @param[out] out Where to write the ip address value.
+ * @param[out] port_out Where to write the port (0 if no port found).
+ * @param[in] value to parse.
+ * @param[in] inlen Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] resolve If true and value doesn't look like an IP address, try and resolve value as a
+ *	hostname.
+ */
+int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_t inlen, bool resolve)
+{
+	char const	*p = value, *q;
+	char		*end;
+	unsigned long	port;
+	char		buffer[6];
+	size_t		len;
+
+	*port_out = 0;
+
+	len = (inlen >= 0) ? (size_t)inlen : strlen(value);
+
+	if (*p == '[') {
+		if (!(q = memchr(p + 1, ']', len - 1))) {
+			fr_strerror_printf("Missing closing ']' for IPv6 address");
+			return -1;
+		}
+
+		if (fr_pton6(out, p, (q - p) + 1, false, false) < 0) return -1;
+
+		if (q[1] == ':') {
+			q++;
+			goto do_port;
+		}
+
+		return 0;
+	}
+
+	/*
+	 *	IPv4 or host, with no port
+	 */
+	q = memchr(p, ':', len);
+	if (!q) {
+		if (fr_pton(out, p, len, resolve) < 0) return -1;
+		return 0;
+	}
+
+	/*
+	 *	IPv4 or host, with port
+	 */
+	if (fr_pton(out, p, (q - p), true) < 0) return -1;
+do_port:
+	/*
+	 *	Valid ports are a maximum of 5 digits, so if the
+	 *	input length indicates there are more than 5 chars
+	 *	after the ':' then there's an issue.
+	 */
+	if (inlen > ((q + sizeof(buffer)) - value)) {
+	error:
+		fr_strerror_printf("IP string contains trailing garbage after port delimiter");
+		return -1;
+	}
+
+	p = q + 1;			/* Move to first digit */
+
+	strlcpy(buffer, p, (len - (p - value)) + 1);
+	port = strtoul(buffer, &end, 10);
+	if (*end != '\0') goto error;	/* Trailing garbage after integer */
+
+	if ((port > UINT16_MAX) || (port == 0)) {
+		fr_strerror_printf("Port %lu outside valid port range 1-" STRINGIFY(UINT16_MAX), port);
+		return -1;
+	}
+	*port_out = port;
+
+	return 0;
+}
+
 int fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr)
 {
 	char buffer[INET6_ADDRSTRLEN];
