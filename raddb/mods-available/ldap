@@ -488,13 +488,16 @@ ldap {
 #		private_key_file = /path/to/radius.key
 #		random_file = /dev/urandom
 
-		#  Certificate Verification requirements.  Can be:
-		#    'never' (don't even bother trying)
-		#    'allow' (try, but don't fail if the certificate
-		#		can't be verified)
-		#    'demand' (fail if the certificate doesn't verify.)
-		#
-		#  The default is 'allow'
+ 		#  Certificate Verification requirements.  Can be:
+		#    'never' (do not even bother trying)
+ 		#    'allow' (try, but don't fail if the certificate
+		#		cannot be verified)
+		#    'demand' (fail if the certificate does not verify)
+		#    'hard'  (similar to 'demand' but fails if TLS 
+		#             cannot negotiate)
+ 		#
+		#  The default is 'demand'
+
 #		require_cert	= 'demand'
 	}
 
