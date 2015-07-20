@@ -685,7 +685,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		 *	socket is link local, and the requested
 		 *	destination is not link local.  Ignore it.
 		 */
-		if (src_any && (ps->src_ipaddr.af == AF_INET) &&	
+		if (src_any && (ps->src_ipaddr.af == AF_INET) &&
 		    (((ps->src_ipaddr.ipaddr.ip4addr.s_addr >> 24) & 0xff) == 127) &&
 		    (((request->dst_ipaddr.ipaddr.ip4addr.s_addr >> 24) & 0xff) != 127)) continue;
 
@@ -939,31 +939,39 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		fprintf(fp, "%s %s Id %i from %s:%i to %s:%i length %zu\n",
+		fprintf(fp, "%s %s Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
 		        received ? "Received" : "Sent",
 		        fr_packet_codes[packet->code],
 		        packet->id,
+		        packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 		        inet_ntop(packet->src_ipaddr.af,
 				  &packet->src_ipaddr.ipaddr,
 				  src_ipaddr, sizeof(src_ipaddr)),
+			packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->src_port,
+		        packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
 		        inet_ntop(packet->dst_ipaddr.af,
 				  &packet->dst_ipaddr.ipaddr,
 				  dst_ipaddr, sizeof(dst_ipaddr)),
+		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->dst_port,
 		        packet->data_len);
 	} else {
-		fprintf(fp, "%s code %u Id %i from %s:%i to %s:%i length %zu\n",
+		fprintf(fp, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
 		        received ? "Received" : "Sent",
 		        packet->code,
 		        packet->id,
+		        packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 		        inet_ntop(packet->src_ipaddr.af,
 				  &packet->src_ipaddr.ipaddr,
 				  src_ipaddr, sizeof(src_ipaddr)),
+		        packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->src_port,
+		        packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
 		        inet_ntop(packet->dst_ipaddr.af,
 				  &packet->dst_ipaddr.ipaddr,
 				  dst_ipaddr, sizeof(dst_ipaddr)),
+		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->dst_port,
 		        packet->data_len);
 	}
