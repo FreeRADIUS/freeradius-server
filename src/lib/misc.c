@@ -407,28 +407,29 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 
 /** Simple wrapper to decide whether an IP value is v4 or v6 and call the appropriate parser
  *
- * @param out Where to write the ip address value.
- * @param value to parse.
- * @param inlen Length of value, if value is \0 terminated inlen may be -1.
- * @param resolve If true and value doesn't look like an IP address, try and resolve value as a
+ * @param[out] out Where to write the ip address value.
+ * @param[in] value to parse.
+ * @param[in] inlen Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] resolve If true and value doesn't look like an IP address, try and resolve value as a
  *	hostname.
+ * @param[in] af If the address type is not obvious from the format, and resolve is true, the DNS
+ *	record (A or AAAA) we require.  Also controls which parser we pass the address to if
+ *	we have no idea what it is.
  * @return
  *	- 0 if ip address was parsed successfully.
  *	- -1 on failure.
  */
-int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
+int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve)
 {
 	size_t len, i;
 
 	len = (inlen >= 0) ? (size_t)inlen : strlen(value);
 	for (i = 0; i < len; i++) switch (value[i]) {
 	/*
-	 *	Chars illegal in domain names and IPv4 addresses.
+	 *	':' is illegal in domain names and IPv4 addresses.
 	 *	Must be v6 and cannot be a domain.
 	 */
 	case ':':
-	case '[':
-	case ']':
 		return fr_pton6(out, value, inlen, false, false);
 
 	/*
@@ -448,7 +449,20 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
 				fr_strerror_printf("Not IPv4/6 address, and asked not to resolve");
 				return -1;
 			}
-			return fr_pton4(out, value, inlen, true, true);
+			switch (af) {
+			case AF_UNSPEC:
+				return fr_pton4(out, value, inlen, resolve, true);
+
+			case AF_INET:
+				return fr_pton4(out, value, inlen, resolve, false);
+
+			case AF_INET6:
+				return fr_pton6(out, value, inlen, resolve, false);
+
+			default:
+				fr_strerror_printf("Invalid address family %i", af);
+				return -1;
+			}
 		}
 		break;
 	}
@@ -466,10 +480,13 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
  * @param[out] port_out Where to write the port (0 if no port found).
  * @param[in] value to parse.
  * @param[in] inlen Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] af If the address type is not obvious from the format, and resolve is true, the DNS
+ *	record (A or AAAA) we require.  Also controls which parser we pass the address to if
+ *	we have no idea what it is.
  * @param[in] resolve If true and value doesn't look like an IP address, try and resolve value as a
  *	hostname.
  */
-int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_t inlen, bool resolve)
+int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_t inlen, int af, bool resolve)
 {
 	char const	*p = value, *q;
 	char		*end;
@@ -487,7 +504,10 @@ int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_
 			return -1;
 		}
 
-		if (fr_pton6(out, p, (q - p) + 1, false, false) < 0) return -1;
+		/*
+		 *	inet_pton doesn't like the address being wrapped in []
+		 */
+		if (fr_pton6(out, p + 1, (q - p) - 1, false, false) < 0) return -1;
 
 		if (q[1] == ':') {
 			q++;
@@ -498,18 +518,15 @@ int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_
 	}
 
 	/*
-	 *	IPv4 or host, with no port
+	 *	Host, IPv4 or IPv6 with no port
 	 */
 	q = memchr(p, ':', len);
-	if (!q) {
-		if (fr_pton(out, p, len, resolve) < 0) return -1;
-		return 0;
-	}
+	if (!q || !memchr(p, '.', len)) return fr_pton(out, p, len, af, resolve);
 
 	/*
 	 *	IPv4 or host, with port
 	 */
-	if (fr_pton(out, p, (q - p), true) < 0) return -1;
+	if (fr_pton(out, p, (q - p), af, resolve) < 0) return -1;
 do_port:
 	/*
 	 *	Valid ports are a maximum of 5 digits, so if the

@@ -1685,7 +1685,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	case PW_TYPE_COMBO_IP_PREFIX:
 		ipaddr = data;
 
-		if (fr_pton(ipaddr, value, -1, true) < 0) {
+		if (fr_pton(ipaddr, value, -1, AF_UNSPEC, true) < 0) {
 			ERROR("%s", fr_strerror());
 			return -1;
 		}
