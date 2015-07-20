@@ -1152,16 +1152,16 @@ packet_done:
 
 int main(int argc, char **argv)
 {
-	int c;
-	char const *radius_dir = RADDBDIR;
-	char const *dict_dir = DICTDIR;
-	char filesecret[256];
-	FILE *fp;
-	int do_summary = false;
-	int persec = 0;
-	int parallel = 1;
+	int		c;
+	char		const *radius_dir = RADDBDIR;
+	char		const *dict_dir = DICTDIR;
+	char		filesecret[256];
+	FILE		*fp;
+	int		do_summary = false;
+	int		persec = 0;
+	int		parallel = 1;
 	rc_request_t	*this;
-	int force_af = AF_UNSPEC;
+	int		force_af = AF_UNSPEC;
 
 	/*
 	 *	It's easier having two sets of flags to set the
@@ -1387,44 +1387,11 @@ int main(int argc, char **argv)
 	/*
 	 *	Resolve hostname.
 	 */
-	if (force_af == AF_UNSPEC) force_af = AF_INET;
-	server_ipaddr.af = force_af;
 	if (strcmp(argv[1], "-") != 0) {
-		char *p;
-		char const *hostname = argv[1];
-		char const *portname = argv[1];
-		char buffer[256];
-
-		if (*argv[1] == '[') { /* IPv6 URL encoded */
-			p = strchr(argv[1], ']');
-			if ((size_t) (p - argv[1]) >= sizeof(buffer)) {
-				usage();
-			}
-
-			memcpy(buffer, argv[1] + 1, p - argv[1] - 1);
-			buffer[p - argv[1] - 1] = '\0';
-
-			hostname = buffer;
-			portname = p + 1;
-
-		}
-		p = strchr(portname, ':');
-		if (p && (strchr(p + 1, ':') == NULL)) {
-			*p = '\0';
-			portname = p + 1;
-		} else {
-			portname = NULL;
-		}
-
-		if (ip_hton(&server_ipaddr, force_af, hostname, false) < 0) {
-			ERROR("Failed to find IP address for host %s: %s", hostname, strerror(errno));
+		if (fr_pton_port(&server_ipaddr, &server_port, argv[1], -1, force_af, true) < 0) {
+			ERROR("%s", fr_strerror());
 			exit(1);
 		}
-
-		/*
-		 *	Strip port from hostname if needed.
-		 */
-		if (portname) server_port = atoi(portname);
 
 		/*
 		 *	Work backwards from the port to determine the packet type
