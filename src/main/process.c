@@ -416,31 +416,39 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		RDEBUG("%s %s Id %i from %s:%i to %s:%i length %zu",
+		RDEBUG("%s %s Id %i from %s%s%s:%i to %s%s%s:%i length %zu",
 		       received ? "Received" : "Sent",
 		       fr_packet_codes[packet->code],
 		       packet->id,
+		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
 				 src_ipaddr, sizeof(src_ipaddr)),
+		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->src_port,
+		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
 		       inet_ntop(packet->dst_ipaddr.af,
 				 &packet->dst_ipaddr.ipaddr,
 				 dst_ipaddr, sizeof(dst_ipaddr)),
+		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->dst_port,
 		       packet->data_len);
 	} else {
-		RDEBUG("%s code %i Id %i from %s:%i to %s:%i length %zu",
+		RDEBUG("%s code %u Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
 		       received ? "Received" : "Sent",
 		       packet->code,
 		       packet->id,
+		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
 				 src_ipaddr, sizeof(src_ipaddr)),
+		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->src_port,
+		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
 		       inet_ntop(packet->dst_ipaddr.af,
 				 &packet->dst_ipaddr.ipaddr,
 				 dst_ipaddr, sizeof(dst_ipaddr)),
+		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->dst_port,
 		       packet->data_len);
 	}
