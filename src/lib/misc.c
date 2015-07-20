@@ -1003,7 +1003,10 @@ int ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 	rcode = fr_sockaddr2ipaddr((struct sockaddr_storage *)ai->ai_addr,
 				   ai->ai_addrlen, out, NULL);
 	freeaddrinfo(res);
-	if (!rcode) return -1;
+	if (!rcode) {
+		fr_strerror_printf("Failed converting sockaddr to ipaddr");
+		return -1;
+	}
 
 	return 0;
 }
