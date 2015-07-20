@@ -56,3 +56,6 @@
 
 /* Build the server with support for Novell eDir Universal Password */
 #undef WITH_EDIR
+
+/* Build the server with support for SASL binds */
+#undef WITH_SASL

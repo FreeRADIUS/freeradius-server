@@ -741,7 +741,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 	}
 
-#ifndef HAVE_LDAP_SASL_INTERACTIVE_BIND
+#ifndef WITH_SASL
 	if (inst->user_sasl.mech) {
 		cf_log_err_cs(conf, "Configuration item 'user.sasl.mech' not supported.  "
 			      "Linked libldap does not provide ldap_sasl_bind function");
