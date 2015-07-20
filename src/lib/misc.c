@@ -226,6 +226,7 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 		}
 		memcpy(buffer, value, inlen);
 		buffer[inlen] = '\0';
+		value = buffer;
 	}
 
 	p = strchr(value, '/');
@@ -329,6 +330,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 		}
 		memcpy(buffer, value, inlen);
 		buffer[inlen] = '\0';
+		value = buffer;
 	}
 
 	p = strchr(value, '/');
@@ -429,7 +431,10 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
 		 *	Use A record in preference to AAAA record.
 		 */
 		if ((value[i] < '0') || (value[i] > '9')) {
-			if (!resolve) return -1;
+			if (!resolve) {
+				fr_strerror_printf("Not IPv4/6 address, and asked not to resolve");
+				return -1;
+			}
 			return fr_pton4(out, value, inlen, true, true);
 		}
 		break;
