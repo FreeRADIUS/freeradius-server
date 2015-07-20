@@ -6,6 +6,7 @@ AC_DEFUN(modname,[rlm_ldap])
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+SASL=
 if test x$with_[]modname != xno; then
 
 	dnl ############################################################
@@ -110,6 +111,17 @@ if test x$with_[]modname != xno; then
 		])
 	fi
 
+	dnl ############################################################
+	dnl # Check for SASL support
+	dnl ############################################################
+	FR_SMART_CHECK_INCLUDE([sasl/sasl.h])
+	if test "x$ac_cv_header_sasl_sasl_h" = "xyes"; then
+	  if test x"$ac_cv_func_ldap_sasl_interactive_bind" = "xyes"; then
+	    AC_DEFINE(WITH_SASL, 1, [Build the server with support for SASL binds])
+	    SASL=sasl.c
+	  fi
+	fi
+
 	targetname=modname
 else
 	targetname=
@@ -137,12 +149,6 @@ AC_DEFINE_UNQUOTED(LDAP_SET_REBIND_PROC_ARGS, ${ac_cv_ldap_set_rebind_proc}, [Nu
 
 mod_ldflags=$SMART_LIBS
 mod_cflags="$SMART_CPPFLAGS"
-
-if test x"$ac_cv_func_ldap_sasl_interactive_bind" = "xyes"; then
-	SASL=sasl.c
-else
-	SASL=
-fi
 
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
