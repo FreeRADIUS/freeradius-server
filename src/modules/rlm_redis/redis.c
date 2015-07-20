@@ -401,6 +401,7 @@ static int _redis_conn_free(redis_conn_t *conn)
  *
  * @param ctx to allocate connection structure in. Will be freed at the same time as the pool.
  * @param instance data of type #redis_conn_conf_t. Holds parameters for establishing new connection.
+ * @param timeout Maximum time to take establishing the connection.
  * @return
  *	- New #redis_conn_t on success.
  *	- NULL on failure.
