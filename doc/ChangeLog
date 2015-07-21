@@ -18,6 +18,9 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  in square brackets '[]'.
 	* Check for sasl/sasl.h when building rlm_ldap, and disable
 	  SASL functionality if unavailable.
+	* Fix issue which caused a non \0 terminated buffer to be
+	  assigned to attributes if the value being assigned contained
+	  an invalid escape sequence.
 	  
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
