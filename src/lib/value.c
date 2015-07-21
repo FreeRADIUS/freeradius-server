@@ -442,19 +442,18 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	switch (*src_type) {
 	case PW_TYPE_STRING:
 	{
-		char		*p;
+		char		*p, *buff;
 		char const	*q;
 		int		x;
 
-		dst->strvalue = p = talloc_array(ctx, char, len + 1);
-		memcpy(p, src, len);
-		p[len] = '\0';
+		buff = p = talloc_bstrndup(ctx, src, len);
 
 		/*
 		 *	No de-quoting.  Just copy the string.
 		 */
 		if (!quote) {
 			ret = len;
+			dst->strvalue = buff;
 			goto finish;
 		}
 
@@ -466,7 +465,7 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		if (quote == '\'') {
 			q = p;
 
-			while (q < (dst->strvalue + len)) {
+			while (q < (buff + len)) {
 				/*
 				 *	The quotation character is escaped.
 				 */
@@ -494,8 +493,10 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 			}
 
 			*p = '\0';
-			ret = p - dst->strvalue;
-			dst->ptr = talloc_realloc(ctx, dst->ptr, char, ret + 1);
+			ret = p - buff;
+
+			/* Shrink the buffer to the correct size */
+			dst->strvalue = talloc_realloc(ctx, buff, char, ret + 1);
 			goto finish;
 		}
 
@@ -504,11 +505,12 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	escaping.
 		 */
 		q = p;
-		while (q < (dst->strvalue + len)) {
+		while (q < (buff + len)) {
 			char c = *q++;
 
-			if ((c == '\\') && (q >= (dst->strvalue + len))) {
+			if ((c == '\\') && (q >= (buff + len))) {
 				fr_strerror_printf("Invalid escape at end of string");
+				talloc_free(buff);
 				return -1;
 			}
 
@@ -574,8 +576,8 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		}
 
 		*p = '\0';
-		ret = p - dst->strvalue;
-		dst->ptr = talloc_realloc(ctx, dst->ptr, char, ret + 1);
+		ret = p - buff;
+		dst->strvalue = talloc_realloc(ctx, buff, char, ret + 1);
 	}
 		goto finish;
 
