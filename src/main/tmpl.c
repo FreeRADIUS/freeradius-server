@@ -1073,7 +1073,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 
 	parse:
 		if (do_unescape) {
-			value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, quote);
+			if (value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, quote) < 0) return 0;
 
 			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
 			talloc_free(data.ptr);
