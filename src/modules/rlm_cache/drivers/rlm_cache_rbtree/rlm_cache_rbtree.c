@@ -284,7 +284,11 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
 	int ret;
 
 	ret = fr_heap_extract(driver->heap, c);
-	rad_assert(ret == 1);	/* must be in the tree */
+	rad_assert(ret == 1);
+	if (ret != 1) {					/* Need this check if we're not building with asserts */
+		RERROR("Entry not in heap");
+		return CACHE_ERROR;
+	}
 
 	if (!fr_heap_insert(driver->heap, c)) {
 		rbtree_deletebydata(driver->cache, c);	/* make sure we don't leak entries... */
