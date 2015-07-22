@@ -493,10 +493,11 @@ ldap {
  		#    'allow' (try, but don't fail if the certificate
 		#		cannot be verified)
 		#    'demand' (fail if the certificate does not verify)
-		#    'hard'  (similar to 'demand' but fails if TLS 
+		#    'hard'  (similar to 'demand' but fails if TLS
 		#             cannot negotiate)
  		#
-		#  The default is 'demand'
+		#  The default is libldap's default, which varies based
+		#  on the contents of ldap.conf.
 
 #		require_cert	= 'demand'
 	}
