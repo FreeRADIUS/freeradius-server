@@ -255,8 +255,8 @@ This plugin provides Oracle support for the FreeRADIUS server project.
 Summary: Redis support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: hiredis
-BuildRequires: hiredis-devel
+Requires: hiredis >= 0.10
+BuildRequires: hiredis-devel >= 0.10
 
 %description redis
 This plugin provides Redis support for the FreeRADIUS server project.
