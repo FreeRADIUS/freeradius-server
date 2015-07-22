@@ -313,6 +313,9 @@ ATTRIBUTE	Alc-AA-Group-Partition-Isa-Id		156	string
 # Application-Assurance Radius Peer Information
 ATTRIBUTE	Alc-AA-Peer-Identifier			157	string
 
+# A local configured filter policy can be extended with shared dynamic filter entries
+ATTRIBUTE 	Alc-Nas-Filter-Rule-Shared		158	string
+
 # Relative Session-Timeout
 ATTRIBUTE	Alc-Relative-Session-Timeout		160	integer
 
