@@ -1884,6 +1884,31 @@ int fr_get_time(char const *date_str, time_t *date)
 	return 0;
 }
 
+#define USEC 1000000
+/** Subtract one timeval from another
+ *
+ * @param[out] out Where to write difference.
+ * @param[in] end Time closest to the present.
+ * @param[in] start Time furthest in the past.
+ */
+void fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct timeval const *start)
+{
+	out->tv_sec = end->tv_sec - start->tv_sec;
+	if (out->tv_sec > 0) {
+		out->tv_sec--;
+		out->tv_usec = USEC;
+	} else {
+		out->tv_usec = 0;
+	}
+	out->tv_usec += end->tv_usec;
+	out->tv_usec -= start->tv_usec;
+
+	if (out->tv_usec >= USEC) {
+		out->tv_usec -= USEC;
+		out->tv_sec++;
+	}
+}
+
 /** Compares two pointers
  *
  * @param a first pointer to compare.
