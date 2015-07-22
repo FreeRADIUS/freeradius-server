@@ -162,8 +162,7 @@ do {\
 	}\
 } while (0)
 
-#define FR_TIMEVAL_TO_MS(_x) ((_x) ? (((_x)->tv_usec * 1000) + ((_x)->tv_sec / 1000)) : -1)
-
+#define FR_TIMEVAL_TO_MS(_x) (((_x)->tv_usec * 1000) + ((_x)->tv_sec / 1000))
 extern bool 			check_config;
 
 /** Defines a #CONF_PAIR to C data type mapping
