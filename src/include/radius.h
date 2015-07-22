@@ -130,6 +130,7 @@ typedef enum {
 #define PW_NAS_PROMPT_USER		7
 #define PW_AUTHENTICATE_ONLY		8
 #define PW_CALLBACK_NAS_PROMPT		9
+#define PW_AUTHORIZE_ONLY		17
 
 /*	Framed Protocols	*/
 
