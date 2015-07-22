@@ -33,7 +33,7 @@
 2.BEFORE REPORTING A DEFECT
 
   Verify it's still present in the Git HEAD.  Checkout the appropriate branch for the version of the
-  server you're working with as listed here (http://doc.freeradius.org), build the server, and attempt
+  server you're working with, as listed here (http://doc.freeradius.org), build the server, and attempt
   to reproduce your issue.
 
   The ChangeLog (https://github.com/FreeRADIUS/freeradius-server/blob/v3.0.x/doc/ChangeLog) for the
@@ -41,8 +41,8 @@
   The ChangeLog is updated as fixes are made to the server code, and usually reflects the state of the
   Git HEAD.
 
-  Do not report non-security defects for EOL branches (as listed on doc.freeradius.org), they will be
-  closed and locked.
+  Do not report non-security defects for EOL branches (as listed on doc.freeradius.org), or old releases
+  they will be closed and locked.
 
 
 3.CONTENTS OF A DEFECT REPORT
