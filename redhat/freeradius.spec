@@ -693,6 +693,9 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool/sqlite/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/sqlite/*
+# cassandra
+%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/cassandra
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/cassandra/*
 # ruby
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/ruby
