@@ -320,6 +320,10 @@ ATTRIBUTE	Alc-AA-Group-Partition-Isa-Id		156	string
 # Application-Assurance Radius Peer Information
 ATTRIBUTE	Alc-AA-Peer-Identifier			157	string
 
+# They represent a per host customization of a generic filter policy: only
+# traffic to/from the subscriber host will match against these entries
+ATTRIBUTE 	Alc-Ascend-Data-Filter-Host-Spec		159	 string
+
 # Relative Session-Timeout
 ATTRIBUTE	Alc-Relative-Session-Timeout		160	integer
 
