@@ -67,7 +67,8 @@ static int iface_ind = -1;
 struct sockaddr_ll ll;	/* Socket address structure */
 #endif
 
-#define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
+#undef DEBUG
+#define DEBUG(fmt, ...)		if (fr_debug_lvl && fr_log_fp) fprintf(fr_log_fp, fmt "\n", ## __VA_ARGS__)
 
 static bool raw_mode = false;
 
@@ -319,9 +320,9 @@ static void print_hex(RADIUS_PACKET *packet)
  *	A real client would pick one of the proposed replies.
  *	We'll just return the first eligible reply, and display the others.
  */
-#if defined(HAVE_LINUX_IF_PACKET_H) || defined (HAVE_LIBPCAP)
+#if defined(HAVE_LINUX_IF_PACKET_H) || defined(HAVE_LIBPCAP)
 static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
-#ifdef HAVE_LINUX_IF_PACKET_H
+#if defined(HAVE_LINUX_IF_PACKET_H) && !defined(HAVE_LIBPCAP)
 					    struct sockaddr_ll *p_ll,
 #endif
 					    RADIUS_PACKET *request_p)
@@ -357,15 +358,16 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 		if ( retval > 0 && FD_ISSET(lsockfd, &read_fd)) {
 			/* There is something to read on our socket */
 
-#ifdef HAVE_LINUX_IF_PACKET_H
-			cur_reply_p = fr_dhcp_recv_raw_packet(lsockfd, p_ll, request_p);
-#else
 #ifdef HAVE_LIBPCAP
 			cur_reply_p = fr_dhcp_recv_pcap(pcap);
 #else
-#error Need <if/packet.h> or <pcap.h>
+# ifdef HAVE_LINUX_IF_PACKET_H
+			cur_reply_p = fr_dhcp_recv_raw_packet(lsockfd, p_ll, request_p);
+# else
+#  error Need <if/packet.h> or <pcap.h>
+# endif
 #endif
-#endif
+
 		} else {
 			// Not all implementations of select clear the timer
 			timerclear(&tval);
@@ -404,13 +406,13 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 
 	/* display offer(s) received */
 	if (nb_offer > 0 ) {
-		DEBUG("Received %d DHCP Offer(s):\n", nb_offer);
+		DEBUG("Received %d DHCP Offer(s):", nb_offer);
 		int i;
 		for (i=0; i<nb_reply; i++) {
 			char server_addr_buf[INET6_ADDRSTRLEN];
 			char offered_addr_buf[INET6_ADDRSTRLEN];
 
-			DEBUG("IP address: %s offered by DHCP server: %s\n",
+			DEBUG("IP address: %s offered by DHCP server: %s",
 				inet_ntop(AF_INET, &offer_list[i].offered_addr, offered_addr_buf, sizeof(offered_addr_buf)),
 				inet_ntop(AF_INET, &offer_list[i].server_addr, server_addr_buf, sizeof(server_addr_buf))
 			);
@@ -423,7 +425,7 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 
 static void send_with_socket(void)
 {
-#ifdef HAVE_LINUX_IF_PACKET_H
+#if defined(HAVE_LINUX_IF_PACKET_H) && !defined(HAVE_LIBPCAP)
 	if (raw_mode) {
 		sockfd = fr_socket_packet(iface_ind, &ll);
 	} else
@@ -449,7 +451,7 @@ static void send_with_socket(void)
 
 	request->sockfd = sockfd;
 
-#ifdef HAVE_LINUX_IF_PACKET_H
+#if defined(HAVE_LINUX_IF_PACKET_H) && !defined(HAVE_LIBPCAP)
 	if (raw_mode) {
 		if (fr_dhcp_send_raw_packet(sockfd, &ll, request) < 0) {
 			fprintf(stderr, "dhcpclient: failed sending (fr_dhcp_send_raw_packet): %s\n",

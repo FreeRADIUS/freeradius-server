@@ -2132,7 +2132,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_P
 /*
  *	print an ethernet address in a buffer
  */
-char *ether_addr_print(const uint8_t *addr, char *buf)
+static char *ether_addr_print(const uint8_t *addr, char *buf)
 {
 	sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
 	return buf;
