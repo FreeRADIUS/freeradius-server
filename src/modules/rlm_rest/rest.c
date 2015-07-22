@@ -1980,7 +1980,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	rlm_rest_handle_t	*randle	= handle;
 	rlm_rest_curl_context_t	*ctx = randle->ctx;
 	CURL			*candle = randle->handle;
-	struct timeval const	*timeout;
+	struct timeval		timeout;
 
 	http_auth_type_t	auth = section->auth;
 
@@ -2010,8 +2010,8 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
 	if (!ctx->headers) goto error_header;
 
-	timeout = fr_connection_pool_get_timeout(instance->pool);
-	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(timeout));
+	timeout = fr_connection_pool_timeout(instance->pool);
+	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(&timeout));
 	SET_OPTION(CURLOPT_TIMEOUT_MS, section->timeout);
 
 #ifdef CURLOPT_PROTOCOLS
