@@ -1396,10 +1396,10 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  * @param data Pointer to a global variable, or pointer to a field in the struct being populated with values.
  * @param dflt value to use, if no #CONF_PAIR is found.
  * @return
- *	- -1 on failure.
- *	- -2 if deprecated.
- *	- 0 on success (correctly parsed).
  *	- 1 if default value was used.
+ *	- 0 on success.
+ *	- -1 on error.
+ *	- -2 if deprecated.
  */
 int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt)
 {
@@ -1841,24 +1841,29 @@ static void cf_section_parse_warn(CONF_SECTION *cs)
 	}
 }
 
-/*
- *	Parse a configuration section into user-supplied variables.
+/** Parse a configuration section into user-supplied variables
+ *
+ * @param cs to parse.
+ * @param base pointer to a struct to fill with data.  Any buffers will also be talloced
+ *	using this parent as a pointer.
+ * @param variables mappings between struct fields and #CONF_ITEM s.
+ * @return
+ *	- 0 on success.
+ *	- -1 on general error.
+ *	- -2 if a deprecated #CONF_ITEM was found.
  */
-int cf_section_parse(CONF_SECTION *cs, void *base,
-		     CONF_PARSER const *variables)
+int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 {
-	int ret;
+	int ret = 0;
 	int i;
 	void *data;
 
 	cs->variables = variables; /* this doesn't hurt anything */
 
 	if (!cs->name2) {
-		cf_log_info(cs, "%.*s%s {", cs->depth, parse_spaces,
-		       cs->name1);
+		cf_log_info(cs, "%.*s%s {", cs->depth, parse_spaces, cs->name1);
 	} else {
-		cf_log_info(cs, "%.*s%s %s {", cs->depth, parse_spaces,
-		       cs->name1, cs->name2);
+		cf_log_info(cs, "%.*s%s %s {", cs->depth, parse_spaces, cs->name1, cs->name2);
 	}
 
 	cf_section_parse_init(cs, base, variables);
@@ -1880,11 +1885,13 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			 */
 			if (!variables[i].dflt || !subcs) {
 				ERROR("Internal sanity check 1 failed in cf_section_parse %s", variables[i].name);
-				goto error;
+				ret = -1;
+				goto finish;
 			}
 
-			if (cf_section_parse(subcs, (uint8_t *)base + variables[i].offset,
-					     (CONF_PARSER const *) variables[i].dflt) < 0) goto error;
+			ret = cf_section_parse(subcs, (uint8_t *)base + variables[i].offset,
+					       (CONF_PARSER const *) variables[i].dflt);
+			if (ret < 0) goto finish;
 			continue;
 		} /* else it's a CONF_PAIR */
 
@@ -1893,25 +1900,33 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		} else if (base) {
 			data = ((char *)base) + variables[i].offset;
 		} else {
-			DEBUG2("Internal sanity check 2 failed in cf_section_parse");
-			goto error;
+			ERROR("Internal sanity check 2 failed in cf_section_parse");
+			ret = -1;
+			goto finish;
 		}
 
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
 		ret = cf_item_parse(cs, variables[i].name, variables[i].type, data, variables[i].dflt);
-		if (ret < 0) {
-			/*
-			 *	Be nice, and print the name of the new config item.
-			 */
-			if ((ret == -2) && (variables[i + 1].offset == variables[i].offset) &&
+		switch (ret) {
+		case 1:		/* Used default */
+			ret = 0;
+			break;
+
+		case 0:		/* OK */
+			break;
+
+		case -1:	/* Parse error */
+			goto finish;
+
+		case -2:	/* Deprecated CONF ITEM */
+			if ((variables[i + 1].offset == variables[i].offset) &&
 			    (variables[i + 1].data == variables[i].data)) {
 				cf_log_err(&(cs->item), "Replace \"%s\" with \"%s\"", variables[i].name,
 					   variables[i + 1].name);
 			}
-
-			goto error;
+			goto finish;
 		}
 	} /* for all variables in the configuration section */
 
@@ -1921,15 +1936,12 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	 */
 	if (rad_debug_lvl >= 3) cf_section_parse_warn(cs);
 
-	cf_log_info(cs, "%.*s}", cs->depth, parse_spaces);
-
 	cs->base = base;
 
-	return 0;
-
- error:
 	cf_log_info(cs, "%.*s}", cs->depth, parse_spaces);
-	return -1;
+
+finish:
+	return ret;
 }
 
 
