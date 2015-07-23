@@ -251,9 +251,7 @@ lt_dlhandle lt_dlopenext(char const *name)
 		 *	Don't overwrite the previous message
 		 *	It's likely to contain a better error.
 		 */
-		if (!radlib_dir) {
-			fr_strerror_printf("%s", dlerror());
-		}
+		if (!radlib_dir) fr_strerror_printf("%s", dlerror());
 		return NULL;
 	}
 	return handle;
@@ -642,7 +640,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 		talloc_free(node);
 		return NULL;
 	}
-	
+
 	cf_log_module(cs, "Loading module \"%s\" from file %s", node->name,
 		      cf_section_filename(cs));
 
@@ -741,7 +739,7 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 		 */
 		if ((node->entry->module->instantiate)(node->cs, node->insthandle) < 0) {
 			cf_log_err_cs(node->cs, "Instantiation failed for module \"%s\"", node->name);
-		
+
 			return NULL;
 		}
 	}
@@ -759,7 +757,7 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 		 *	Initialize the mutex.
 		 */
 		pthread_mutex_init(node->mutex, NULL);
-	}	
+	}
 #endif
 
 	node->instantiated = true;
