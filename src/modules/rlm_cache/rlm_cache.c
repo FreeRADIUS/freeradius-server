@@ -262,6 +262,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 static rlm_rcode_t cache_expire(rlm_cache_t *inst, REQUEST *request,
 				rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
 {
+	RDEBUG("Expiring cache entry");
 	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_inst, request,
 					      *handle, key, key_len)) {
 	case CACHE_RECONNECT:
