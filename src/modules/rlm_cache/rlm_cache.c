@@ -631,7 +631,6 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	/*
 	 *	Expire the entry if told to, and we either don't know whether
 	 *	it exists, or we know it does.
-	 *
 	 */
 	if (expire && ((exists == -1) || (exists == 1))) {
 		rad_assert(!set_ttl);

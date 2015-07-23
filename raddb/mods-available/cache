@@ -142,7 +142,8 @@ cache {
 	#      the new value (and reset the expiry timer).
 	#    - Setting a Cache-TTL of < 0 means expire the existing entry
 	#      and create a new one with TTL set to Cache-TTL * -1.
-	#    - Setting a Cache-TTL of 0 means expire the existing entry.
+	#    - Setting a Cache-TTL of 0 means expire the existing entry
+	#      and create a new one.
 	#
 	#  &control:Cache-Status-Only - If present and set to 'yes' will
 	#  prevent a new entry from being created, and existing entries from
