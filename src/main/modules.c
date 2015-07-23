@@ -256,9 +256,7 @@ lt_dlhandle lt_dlopenext(char const *name)
 		 *	Don't overwrite the previous message
 		 *	It's likely to contain a better error.
 		 */
-		if (!radlib_dir) {
-			fr_strerror_printf("%s", dlerror());
-		}
+		if (!radlib_dir) fr_strerror_printf("%s", dlerror());
 		return NULL;
 	}
 	return handle;
