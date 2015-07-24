@@ -260,7 +260,6 @@ static cache_status_t cache_entry_insert(rlm_cache_config_t const *config, void 
 	 *	Allow overwriting
 	 */
 	if (!rbtree_insert(driver->cache, my_c)) {
-		RDEBUG2("OVERWRITING OVERWRITING OVERWRITING");
 		status = cache_entry_expire(config, driver_inst, request, handle, c->key, c->key_len);
 		if (status != CACHE_OK) rad_assert(0);
 

@@ -591,9 +591,9 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	vp = fr_pair_find_by_num(request->config, PW_CACHE_TTL, 0, TAG_ANY);
 	if (vp) {
 		if (vp->vp_signed == 0) {
-			expire = true;		/* Only expire if we're not inserting */
+			expire = true;
 		} else if (vp->vp_signed < 0) {
-			expire = true;		/* Only expire if we're not inserting */
+			expire = true;
 			ttl = -(vp->vp_signed);
 		/* Updating the TTL */
 		} else {
@@ -686,12 +686,35 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	}
 
 	/*
+	 *	We can only alter the TTL on an entry if it exists.
+	 */
+	if (set_ttl && (exists == 1)) {
+		rad_assert(c);
+
+		c->expires = request->timestamp + ttl;
+
+		switch (cache_set_ttl(inst, request, &handle, c)) {
+		case RLM_MODULE_FAIL:
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_OK:
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			goto finish;
+
+		default:
+			rad_assert(0);
+		}
+	}
+
+	/*
 	 *	Inserts are upserts, so we don't care about the
 	 *	entry state, just that we're not meant to be
 	 *	setting the TTL, which precludes performing an
 	 *	insert.
 	 */
-	if (insert && !set_ttl) {
+	if (insert) {
 		switch (cache_insert(inst, request, &handle, key, key_len, ttl)) {
 		case RLM_MODULE_FAIL:
 			rcode = RLM_MODULE_FAIL;
@@ -712,28 +735,6 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 		goto finish;
 	}
 
-	/*
-	 *	We can only alter the TTL on an entry if it exists.
-	 */
-	if (set_ttl && (exists == 1)) {
-		rad_assert(c);
-
-		c->expires = request->timestamp + ttl;
-
-		switch (cache_set_ttl(inst, request, &handle, c)) {
-		case RLM_MODULE_FAIL:
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
-
-		case RLM_MODULE_NOTFOUND:
-		case RLM_MODULE_OK:
-			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
-			break;
-
-		default:
-			rad_assert(0);
-		}
-	}
 
 finish:
 	cache_free(inst, &c);
