@@ -591,10 +591,11 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	vp = fr_pair_find_by_num(request->config, PW_CACHE_TTL, 0, TAG_ANY);
 	if (vp) {
 		if (vp->vp_signed == 0) {
-			expire = true;
+			expire = true;		/* Only expire if we're not inserting */
 		} else if (vp->vp_signed < 0) {
-			expire = true;
+			expire = true;		/* Only expire if we're not inserting */
 			ttl = -(vp->vp_signed);
+		/* Updating the TTL */
 		} else {
 			set_ttl = true;
 			ttl = vp->vp_signed;
@@ -632,8 +633,11 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	/*
 	 *	Expire the entry if told to, and we either don't know whether
 	 *	it exists, or we know it does.
+	 *
+	 *	We only expire if we're not inserting, as driver insert methods
+	 *	should perform upserts.
 	 */
-	if (expire && ((exists == -1) || (exists == 1))) {
+	if (expire && !insert && ((exists == -1) || (exists == 1))) {
 		rad_assert(!set_ttl);
 		switch (cache_expire(inst, request, &handle, key, key_len)) {
 		case RLM_MODULE_FAIL:
@@ -682,10 +686,12 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	}
 
 	/*
-	 *	We can only insert if an entry doesn't already
-	 *	exist in the cache.
+	 *	Inserts are upserts, so we don't care about the
+	 *	entry state, just that we're not meant to be
+	 *	setting the TTL, which precludes performing an
+	 *	insert.
 	 */
-	if (insert && (exists == 0)) {
+	if (insert && !set_ttl) {
 		switch (cache_insert(inst, request, &handle, key, key_len, ttl)) {
 		case RLM_MODULE_FAIL:
 			rcode = RLM_MODULE_FAIL;

@@ -7,7 +7,7 @@ update {
 
 
 #
-#  Basic store and retrieve
+# 0.  Basic store and retrieve
 #
 update control {
 	&control:Tmp-String-1 := 'cache me'
@@ -21,7 +21,7 @@ else {
 	test_pass
 }
 
-# Check the module didn't perform a merge
+# 1. Check the module didn't perform a merge
 if (&request:Tmp-String-1) {
 	test_fail
 }
@@ -29,7 +29,7 @@ else {
 	test_pass
 }
 
-# Check status-only works correctly (should return ok and consume attribute)
+# 2. Check status-only works correctly (should return ok and consume attribute)
 update control {
 	Cache-Status-Only := 'yes'
 }
@@ -41,6 +41,7 @@ else {
 	test_pass
 }
 
+# 3.
 if (&control:Cache-Status-Only) {
 	test_fail
 }
@@ -48,7 +49,7 @@ else {
 	test_pass
 }
 
-# Retrieve the entry (should be copied to request list)
+# 4. Retrieve the entry (should be copied to request list)
 cache
 if (!updated) {
 	test_fail
@@ -57,6 +58,7 @@ else {
 	test_pass
 }
 
+# 5.
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
@@ -64,7 +66,7 @@ else {
 	test_pass
 }
 
-# Retrieving the entry should not expire it
+# 6. Retrieving the entry should not expire it
 update request {
 	Tmp-String-1 !* ANY
 }
@@ -77,6 +79,7 @@ else {
 	test_pass
 }
 
+# 7.
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
@@ -84,7 +87,7 @@ else {
 	test_pass
 }
 
-# Force expiry of the entry
+# 8. Force expiry of the entry
 update control {
 	Cache-Allow-Merge := no
 	Cache-Allow-Insert := no
@@ -98,7 +101,7 @@ else {
 	test_pass
 }
 
-# Check status-only works correctly (should return notfound and consume attribute)
+# 9. Check status-only works correctly (should return notfound and consume attribute)
 update control {
 	Cache-Status-Only := 'yes'
 }
@@ -110,6 +113,7 @@ else {
 	test_pass
 }
 
+# 10.
 if (&control:Cache-Status-Only) {
 	test_fail
 }
@@ -117,7 +121,7 @@ else {
 	test_pass
 }
 
-# Check merge-only works correctly (should return notfound and consume attribute)
+# 11. Check merge-only works correctly (should return notfound and consume attribute)
 update control {
 	Cache-Allow-Merge := 'yes'
 	Cache-Allow-Insert := 'no'
@@ -130,6 +134,7 @@ else {
 	test_pass
 }
 
+# 12.
 if (&control:Cache-Allow-Merge) {
 	test_fail
 }
@@ -137,7 +142,7 @@ else {
 	test_pass
 }
 
-# ...and check the entry wasn't recreated
+# 13. ...and check the entry wasn't recreated
 update control {
 	Cache-Status-Only := 'yes'
 }
@@ -149,7 +154,7 @@ else {
 	test_pass
 }
 
-# This should still allow the creation of a new entry
+# 14. This should still allow the creation of a new entry
 update control {
 	Cache-TTL := -1
 }
@@ -161,6 +166,7 @@ else {
 	test_pass
 }
 
+# 15.
 cache
 if (!updated) {
 	test_fail
@@ -169,6 +175,7 @@ else {
 	test_pass
 }
 
+# 16.
 if (&Cache-TTL) {
 	test_fail
 }
@@ -176,6 +183,7 @@ else {
 	test_pass
 }
 
+# 17.
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
@@ -187,7 +195,7 @@ update control {
 	Tmp-String-1 := 'cache me2'
 }
 
-# Updating the Cache-TTL shouldn't make things go boom (we can't really check if it works)
+# 18. Updating the Cache-TTL shouldn't make things go boom (we can't really check if it works)
 update control {
 	Cache-TTL := 30
 }
@@ -199,7 +207,7 @@ else {
 	test_pass
 }
 
-# Request Tmp-String-1 shouldn't have been updated yet
+# 19. Request Tmp-String-1 shouldn't have been updated yet
 if (&request:Tmp-String-1 == &control:Tmp-String-1) {
 	test_fail
 }
@@ -207,7 +215,7 @@ else {
 	test_pass
 }
 
-# Check that a new entry is created
+# 20. Check that a new entry is created
 update control {
 	Cache-TTL := -1
 }
@@ -219,7 +227,7 @@ else {
 	test_pass
 }
 
-# Request Tmp-String-1 still shouldn't have been updated yet
+# 21. Request Tmp-String-1 still shouldn't have been updated yet
 if (&request:Tmp-String-1 == &control:Tmp-String-1) {
 	test_fail
 }
@@ -227,6 +235,7 @@ else {
 	test_pass
 }
 
+# 22.
 cache
 if (!updated) {
 	test_fail
@@ -235,7 +244,7 @@ else {
 	test_pass
 }
 
-# Request Tmp-String-1 should now have been updated
+# 23. Request Tmp-String-1 should now have been updated
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
@@ -243,7 +252,7 @@ else {
 	test_pass
 }
 
-# Check Cache-Merge = yes works as expected (should update current request)
+# 24. Check Cache-Merge = yes works as expected (should update current request)
 update control {
 	Tmp-String-1 := 'cache me3'
 	Cache-TTL := -1
@@ -257,7 +266,7 @@ else {
 	test_pass
 }
 
-# Request Tmp-String-1 should now have been updated
+# 25. Request Tmp-String-1 should now have been updated
 if (&request:Tmp-String-1 != &control:Tmp-String-1) {
 	test_fail
 }
@@ -265,7 +274,7 @@ else {
 	test_pass
 }
 
-# Check Cache-Entry-Hits is updated as we expect
+# 26. Check Cache-Entry-Hits is updated as we expect
 if (&request:Cache-Entry-Hits != 0) {
 	test_fail
 }
@@ -274,7 +283,6 @@ else {
 }
 
 cache
-
 if (&request:Cache-Entry-Hits != 1) {
 	test_fail
 }
