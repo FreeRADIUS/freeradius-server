@@ -188,18 +188,20 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 
 	switch (handler->stage) {
 	case INITIATE:
-		if (!module->type->session_init(module->instance, handler)) {
+		if (!handler->process(module->instance, handler)) {
 			rcode = 0;
 			break;
 		}
+
 		handler->stage = PROCESS;
+		handler->process = module->type->process;
 		break;
 
 	case PROCESS:
 		/*
 		 *   The called function updates the EAP reply packet.
 		 */
-		if (!module->type->process(module->instance, handler)) {
+		if (!handler->process(module->instance, handler)) {
 			rcode = 0;
 		}
 		break;
@@ -396,6 +398,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		rad_assert(inst->methods[next]);
 
 		handler->stage = INITIATE;
+		handler->process = inst->methods[next]->type->session_init;
 		handler->type = next;
 
 		if (eap_module_call(inst->methods[next], handler) == 0) {

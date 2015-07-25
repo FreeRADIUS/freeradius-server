@@ -122,6 +122,8 @@ struct _eap_handler {
 
 	eap_stage_t    	stage;
 
+	eap_process_t	process;
+
 	int		trips;
 
 	bool		tls;
