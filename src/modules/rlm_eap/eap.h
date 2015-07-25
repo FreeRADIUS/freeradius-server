@@ -60,6 +60,12 @@ typedef enum eap_stage_t {
 	PROCESS
 } eap_stage_t;
 
+typedef struct _eap_handler eap_handler_t;
+
+/*
+ *	Function to process EAP packets.
+ */
+typedef int (*eap_process_t)(void *instance, eap_handler_t *handler);
 
 /*
  * eap_handler_t is the interface for any EAP-Type.
@@ -90,7 +96,7 @@ typedef enum eap_stage_t {
  * status   = finished/onhold/..
  */
 #define EAP_STATE_LEN (AUTH_VECTOR_LEN)
-typedef struct _eap_handler {
+struct _eap_handler {
 	struct _eap_handler *prev, *next;
 	uint8_t		state[EAP_STATE_LEN];
 	fr_ipaddr_t	src_ipaddr;
@@ -121,7 +127,7 @@ typedef struct _eap_handler {
 	bool		tls;
 	bool		finished;
 	VALUE_PAIR	*certs;
-} eap_handler_t;
+};
 
 /*
  * Interface to call EAP sub mdoules
@@ -130,8 +136,9 @@ typedef struct rlm_eap_module {
 	char const *name;						//!< The name of the sub-module
 									//!< (without rlm_ prefix).
 	int (*instantiate)(CONF_SECTION *conf, void **instance);	//!< Create a new submodule instance.
-	int (*session_init)(void *instance, eap_handler_t *handler);	//!< Initialise a new EAP session.
-	int (*process)(void *instance, eap_handler_t *handler);		//!< Continue an EAP session.
+	eap_process_t	session_init;					//!< Initialise a new EAP session.
+	eap_process_t	process;					//!< Continue an EAP session.
+
 	int (*detach)(void *instance);					//!< Destroy a submodule instance.
 } rlm_eap_module_t;
 
