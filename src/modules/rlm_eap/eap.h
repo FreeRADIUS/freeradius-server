@@ -55,10 +55,10 @@ typedef struct eap_ds {
  * of operations defined,
  * apart from attach & detach for each EAP-Type.
  */
-typedef enum operation_t {
+typedef enum eap_stage_t {
 	INITIATE = 0,
 	PROCESS
-} operation_t;
+} eap_stage_t;
 
 
 /*
@@ -114,7 +114,7 @@ typedef struct _eap_handler {
 
 	int		status;
 
-	int		stage;
+	eap_stage_t    	stage;
 
 	int		trips;
 
