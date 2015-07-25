@@ -366,6 +366,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	}
 
 	RDEBUG2("Peer sent packet with method EAP %s (%d)", eap_type2name(type->num), type->num);
+
 	/*
 	 *	Figure out what to do.
 	 */
@@ -434,28 +435,27 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		/*
 		 *	Key off of the configured sub-modules.
 		 */
-		default:
-			/*
-			 *	We haven't configured it, it doesn't exit.
-			 */
-			if (!inst->methods[type->num]) {
-				REDEBUG2("Client asked for unsupported method %s (%d)",
-					 eap_type2name(type->num),
-					 type->num);
+	default:
+		/*
+		 *	We haven't configured it, it doesn't exit.
+		 */
+		if (!inst->methods[type->num]) {
+			REDEBUG2("Client asked for unsupported method %s (%d)",
+				 eap_type2name(type->num),
+				 type->num);
 
-				return EAP_INVALID;
-			}
+			return EAP_INVALID;
+		}
 
-			rad_assert(handler->stage == PROCESS);
-			handler->type = type->num;
-			if (eap_module_call(inst->methods[type->num],
-					    handler) == 0) {
-				REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
-					 eap_type2name(type->num),
-					 type->num);
+		rad_assert(handler->stage == PROCESS);
+		handler->type = type->num;
+		if (eap_module_call(inst->methods[type->num], handler) == 0) {
+			REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
+				 eap_type2name(type->num),
+				 type->num);
 
-				return EAP_INVALID;
-			}
+			return EAP_INVALID;
+		}
 		break;
 	}
 
