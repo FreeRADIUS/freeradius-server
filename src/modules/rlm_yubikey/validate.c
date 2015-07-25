@@ -34,7 +34,7 @@ static int _mod_conn_free(ykclient_handle_t **yandle)
  * @see fr_connection_create_t
  * @see connection.c
  */
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct const timeval *timeout)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval const *timeout)
 {
 	rlm_yubikey_t *inst = instance;
 	ykclient_rc status;
