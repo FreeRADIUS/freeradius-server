@@ -78,11 +78,6 @@ static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_handler_
 
 	REDEBUG2("Successfully initiated");
 
-	/*
-	 *	The next stage to process the packet.
-	 */
-	handler->stage = PROCESS;
-
 	talloc_free(reply);
 	return 1;
 }

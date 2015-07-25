@@ -463,7 +463,6 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	}
 
 	handler->opaque = ess;
-	handler->stage = PROCESS;
 
 	/*
 	 *	Save the keying material, because it could change on a subsequent retrieval.

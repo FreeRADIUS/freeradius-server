@@ -118,11 +118,6 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	}
 	if (status == 0) return 0;
 
-	/*
-	 *	The next stage to process the packet.
-	 */
-	handler->stage = PROCESS;
-
 	return 1;
 }
 

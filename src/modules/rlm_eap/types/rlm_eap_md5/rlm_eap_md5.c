@@ -93,7 +93,6 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	 *	stored in 'handler->eap_ds', which will be given back
 	 *	to us...
 	 */
-	handler->stage = PROCESS;
 
 	return 1;
 }

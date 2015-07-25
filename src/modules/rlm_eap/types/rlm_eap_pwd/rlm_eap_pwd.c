@@ -258,8 +258,6 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	packet->prep = EAP_PWD_PREP_NONE;
 	memcpy(packet->identity, inst->server_id, session->out_len - sizeof(pwd_id_packet_t) );
 
-	handler->stage = PROCESS;
-
 	return send_pwd_request(session, handler->eap_ds);
 }
 

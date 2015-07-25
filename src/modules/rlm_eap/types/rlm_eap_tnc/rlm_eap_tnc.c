@@ -230,15 +230,6 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 	talloc_free(handler->eap_ds->request->type.data);
 	handler->eap_ds->request->type.data = eap_tnc_request;
 
-	/*
-	 *	We don't need to authorize the user at this point.
-	 *
-	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'handler->eap_ds', which will be given back
-	 *	to us...
-	 */
-	handler->stage = PROCESS;
-
 	return 1;
 }
 
