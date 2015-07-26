@@ -177,7 +177,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 
 	if (!inst || !handler) {
 		ERROR("rlm_eap_pwd: Initiate, NULL data provided");
-		return -1;
+		return 0;
 	}
 
 	/*
@@ -185,7 +185,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	*/
 	if (!inst->server_id) {
 		ERROR("rlm_eap_pwd: Server ID is not configured");
-		return -1;
+		return 0;
 	}
 	switch (inst->group) {
 	case 19:
@@ -197,10 +197,10 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 
 	default:
 		ERROR("rlm_eap_pwd: Group is not supported");
-		return -1;
+		return 0;
 	}
 
-	if ((session = talloc_zero(handler, pwd_session_t)) == NULL) return -1;
+	if ((session = talloc_zero(handler, pwd_session_t)) == NULL) return 0;
 	talloc_set_destructor(session, _free_pwd_session);
 	/*
 	 * set things up so they can be free'd reliably
@@ -246,7 +246,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	 */
 	session->out_len = sizeof(pwd_id_packet_t) + strlen(inst->server_id);
 	if ((session->out = talloc_zero_array(session, uint8_t, session->out_len)) == NULL) {
-		return -1;
+		return 0;
 	}
 
 	packet = (pwd_id_packet_t *)session->out;
