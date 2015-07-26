@@ -186,32 +186,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 
 	request->module = module->type->name;
 
-	switch (handler->stage) {
-	case INITIATE:
-		if (!handler->process(module->instance, handler)) {
-			rcode = 0;
-			break;
-		}
-
-		handler->stage = PROCESS;
-		handler->process = module->type->process;
-		break;
-
-	case PROCESS:
-		/*
-		 *   The called function updates the EAP reply packet.
-		 */
-		if (!handler->process(module->instance, handler)) {
-			rcode = 0;
-		}
-		break;
-
-	default:
-		/* Should never enter here */
-		RDEBUG("Internal sanity check failed on EAP");
-		rcode = 0;
-		break;
-	}
+	rcode = handler->process(module->instance, handler);
 
 	request->module = caller;
 	return rcode;
@@ -398,7 +373,6 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		rad_assert(next < PW_EAP_MAX_TYPES);
 		rad_assert(inst->methods[next]);
 
-		handler->stage = INITIATE;
 		handler->process = inst->methods[next]->type->session_init;
 		handler->type = next;
 
@@ -447,7 +421,6 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			return EAP_INVALID;
 		}
 
-		rad_assert(handler->stage == PROCESS);
 		handler->type = type->num;
 		if (eap_module_call(inst->methods[type->num], handler) == 0) {
 			REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",

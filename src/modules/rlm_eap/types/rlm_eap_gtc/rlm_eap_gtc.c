@@ -140,7 +140,6 @@ static int mod_process(void *instance, eap_handler_t *handler)
 	/*
 	 *	Get the Cleartext-Password for this user.
 	 */
-	rad_assert(handler->stage == PROCESS);
 
 	/*
 	 *	Sanity check the response.  We need at least one byte

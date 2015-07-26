@@ -50,15 +50,6 @@ typedef struct eap_ds {
 	int		set_request_id;
 } EAP_DS;
 
-/*
- * Currently there are only 2 types
- * of operations defined,
- * apart from attach & detach for each EAP-Type.
- */
-typedef enum eap_stage_t {
-	INITIATE = 0,
-	PROCESS
-} eap_stage_t;
 
 typedef struct _eap_handler eap_handler_t;
 
@@ -119,8 +110,6 @@ struct _eap_handler {
 	void		*inst_holder;
 
 	int		status;
-
-	eap_stage_t    	stage;
 
 	eap_process_t	process;
 

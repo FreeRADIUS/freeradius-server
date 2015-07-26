@@ -383,8 +383,6 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
 	REQUEST *request = handler->request;
 
-	rad_assert(handler->stage == PROCESS);
-
 	data = (mschapv2_opaque_t *) handler->opaque;
 
 	/*

@@ -114,7 +114,6 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 	 *	Get the Cleartext-Password for this user.
 	 */
 	rad_assert(handler->request != NULL);
-	rad_assert(handler->stage == PROCESS);
 
 	password = fr_pair_find_by_num(handler->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
