@@ -210,6 +210,8 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler,
 }
 
 
+static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
@@ -282,6 +284,7 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 	 *	stored in 'handler->eap_ds', which will be given back
 	 *	to us...
 	 */
+	handler->process = mod_process;
 
 	return 1;
 }

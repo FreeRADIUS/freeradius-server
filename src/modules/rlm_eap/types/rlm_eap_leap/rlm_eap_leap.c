@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 #include "eap_leap.h"
 
+static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
 
 /*
  * send an initial eap-leap request
@@ -79,10 +80,13 @@ static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_handler_
 	REDEBUG2("Successfully initiated");
 
 	talloc_free(reply);
+
+	handler->process = mod_process;
+
 	return 1;
 }
 
-static int CC_HINT(nonnull) mod_process(UNUSED void *instance, eap_handler_t *handler)
+static int mod_process(UNUSED void *instance, eap_handler_t *handler)
 {
 	int		rcode;
 	REQUEST 	*request = handler->request;

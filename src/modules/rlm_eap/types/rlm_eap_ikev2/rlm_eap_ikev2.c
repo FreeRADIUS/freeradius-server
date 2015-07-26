@@ -302,6 +302,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
+static int mod_process(void *instance, eap_handler_t *handler);
+
 /** Initiate the EAP-ikev2 session by sending a challenge to the peer.
  *
  */
@@ -359,6 +361,8 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 		}
 		free(out);
 	}
+
+	handler->process = mod_process;
 
 	return 1;
 }

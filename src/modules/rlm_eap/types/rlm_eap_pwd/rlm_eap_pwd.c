@@ -168,6 +168,8 @@ static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 	return 1;
 }
 
+static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+
 static int mod_session_init (void *instance, eap_handler_t *handler)
 {
 	pwd_session_t *session;
@@ -258,7 +260,11 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	packet->prep = EAP_PWD_PREP_NONE;
 	memcpy(packet->identity, inst->server_id, session->out_len - sizeof(pwd_id_packet_t) );
 
-	return send_pwd_request(session, handler->eap_ds);
+	if (!send_pwd_request(session, handler->eap_ds)) return 0;
+
+	handler->process = mod_process;
+
+	return 1;
 }
 
 static int mod_process(void *arg, eap_handler_t *handler)

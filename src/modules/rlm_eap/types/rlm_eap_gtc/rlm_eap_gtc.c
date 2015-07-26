@@ -49,6 +49,7 @@ static CONF_PARSER module_config[] = {
 };
 
 
+static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
 
 /*
  *	Attach the module.
@@ -120,6 +121,7 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 	 *	stored in 'handler->eap_ds', which will be given back
 	 *	to us...
 	 */
+	handler->process = mod_process;
 
 	return 1;
 }
@@ -128,7 +130,7 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler)
+static int mod_process(void *instance, eap_handler_t *handler)
 {
 	VALUE_PAIR *vp;
 	EAP_DS *eap_ds = handler->eap_ds;

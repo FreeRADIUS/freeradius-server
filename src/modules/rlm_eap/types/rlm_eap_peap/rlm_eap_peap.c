@@ -137,6 +137,8 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	return t;
 }
 
+static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
@@ -209,6 +211,8 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 		RDEBUG2("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 	if (status == 0) return 0;
+
+	handler->process = mod_process;
 
 	return 1;
 }

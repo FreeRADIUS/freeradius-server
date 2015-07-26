@@ -446,6 +446,9 @@ static void eap_sim_stateenter(eap_handler_t *handler,
 	eap_sim_compose(handler);
 }
 
+
+static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+
 /*
  *	Initiate the EAP-SIM session by starting the state machine
  *      and initiating the state.
@@ -480,6 +483,8 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	ess->sim_id = (n & 0xff);
 
 	eap_sim_stateenter(handler, ess, EAPSIM_SERVER_START);
+
+	handler->process = mod_process;
 
 	return 1;
 }

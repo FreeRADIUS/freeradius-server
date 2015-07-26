@@ -31,6 +31,8 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/md5.h>
 
+static int mod_process(UNUSED void *arg, eap_handler_t *handler);
+
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
@@ -93,6 +95,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	 *	stored in 'handler->eap_ds', which will be given back
 	 *	to us...
 	 */
+	handler->process = mod_process;
 
 	return 1;
 }
