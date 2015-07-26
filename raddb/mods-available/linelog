@@ -103,8 +103,14 @@ linelog {
 	#  needed to configure one "linelog" module for each log message.
 
 	#
-	#  Reference the Packet-Type (Access-Request, etc.)  If it doesn't
-	#  exist, reference the "format" entry, above.
+	#  Reference the Packet-Type (Access-Accept, etc.)  If it doesn't
+	#  exist, reference the "defaukt" entry.
+	#
+	#  This is for "linelog" being used in the post-auth section
+	#  If you want to use it in "authorize", you need to change
+	#  the reference to "messages.%{%{Packet-Type}:-default}",
+	#  and then add the appropriate messages.
+	#
 	reference = "messages.%{%{reply:Packet-Type}:-default}"
 
 	#
