@@ -2825,7 +2825,6 @@ static int request_will_proxy(REQUEST *request)
 		 */
 	} else if (((vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY)) != NULL) ||
 		   ((vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY)) != NULL)) {
-		VALUE_PAIR *port;
 		uint16_t dst_port;
 		fr_ipaddr_t dst_ipaddr;
 
@@ -2841,8 +2840,8 @@ static int request_will_proxy(REQUEST *request)
 			dst_ipaddr.prefix = 128;
 		}
 
-		port = fr_pair_find_by_num(request->config, PW_PACKET_DST_PORT, 0, TAG_ANY);
-		if (!port) {
+		vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_PORT, 0, TAG_ANY);
+		if (!vp) {
 			if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
 				dst_port = PW_AUTH_UDP_PORT;
 
