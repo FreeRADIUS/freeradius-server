@@ -786,7 +786,9 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 
 	if (!pool) return NULL;
 
+#ifdef HAVE_PTHREAD_H
 	if (spawn) pthread_mutex_lock(&pool->mutex);
+#endif
 
 	now = time(NULL);
 
@@ -805,10 +807,6 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	 *	heap and use it.
 	 */
 	if (this) {
-		/*
-		 *	The conection is either fine, or was
-		 *	successfully reconnected.
-		 */
 		fr_heap_extract(pool->heap, this);
 		goto do_return;
 	}
@@ -864,7 +862,9 @@ do_return:
 	this->pthread_id = pthread_self();
 #endif
 
+#ifdef HAVE_PTHREAD_H
 	if (spawn) pthread_mutex_unlock(&pool->mutex);
+#endif
 
 	DEBUG("%s: Reserved connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
