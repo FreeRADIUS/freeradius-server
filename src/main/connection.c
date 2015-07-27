@@ -166,8 +166,6 @@ static const CONF_PARSER connection_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static fr_connection_t *fr_connection_reconnect_internal(fr_connection_pool_t *pool, fr_connection_t *conn);
-
 /** Order connections by reserved most recently
  */
 static int last_reserved_cmp(void const *one, void const *two)
