@@ -1297,6 +1297,7 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool)
 	 *	reconnection.
 	 */
 	pthread_mutex_lock(&pool->mutex);
+
 	/*
 	 *	We want to ensure at least 'start' connections
 	 *	have been reconnected. We can't call reconnect
@@ -1310,6 +1311,10 @@ int fr_connection_pool_reconnect(fr_connection_pool_t *pool)
 
 		fr_connection_close_internal(pool, this);
 	}
+
+	/*
+	 *	Mark all of the remaining connections as "needs reconnecting".
+	 */
 	for (this = pool->head; this; this = this->next) this->needs_reconnecting = true;
 
 	pthread_mutex_unlock(&pool->mutex);
