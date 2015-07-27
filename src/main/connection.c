@@ -777,19 +777,18 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
  *
  * @param[in,out] pool to reserve the connection from.
  * @param[in] spawn whether to spawn a new connection
- * @param[in] lock whether to lock the pool
  * @return
  *	- A pointer to the connection handle.
  *	- NULL on error.
  */
-static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn, bool lock)
+static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 {
 	time_t now;
 	fr_connection_t *this;
 
 	if (!pool) return NULL;
 
-	if (lock) pthread_mutex_lock(&pool->mutex);
+	if (spawn) pthread_mutex_lock(&pool->mutex);
 
 	now = time(NULL);
 
@@ -818,7 +817,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn, 
 		 *	connection.
 		 */
 		if (this->needs_reconnecting) {
-			if (!lock) return NULL;
+			if (!spawn) return NULL;
 
 			this = fr_connection_reconnect_internal(pool, this);
 			if (!this) {
@@ -844,10 +843,8 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn, 
 	 *	here.
 	 */
 	if (!spawn) {
-		rad_assert(lock == false);
 		return NULL;
 	}
-	rad_assert(lock == true);
 
 	/*
 	 *	We don't have a connection.  Try to open a new one.
@@ -865,7 +862,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn, 
 			pool->last_at_max = now;
 		}
 
-		if (lock) pthread_mutex_unlock(&pool->mutex);
+		if (spawn) pthread_mutex_unlock(&pool->mutex);
 
 		if (!RATE_LIMIT_ENABLED || complain) {
 			ERROR("%s: No connections available and at max connection limit", pool->log_prefix);
@@ -893,7 +890,7 @@ do_return:
 	this->pthread_id = pthread_self();
 #endif
 
-	if (lock) pthread_mutex_unlock(&pool->mutex);
+	if (spawn) pthread_mutex_unlock(&pool->mutex);
 
 	DEBUG("%s: Reserved connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
@@ -943,7 +940,7 @@ static fr_connection_t *fr_connection_reconnect_internal(fr_connection_pool_t *p
 		 *	Maybe there's a connection which is unused and
 		 *	available.  If so, return it.
 		 */
-		new_conn = fr_connection_get_internal(pool, false, true);
+		new_conn = fr_connection_get_internal(pool, false);
 		if (new_conn) return new_conn;
 
 		RATE_LIMIT(ERROR("%s: Failed to reconnect (%" PRIu64 "), no free connections are available",
@@ -1407,7 +1404,7 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
  */
 void *fr_connection_get(fr_connection_pool_t *pool)
 {
-	return fr_connection_get_internal(pool, true, true);
+	return fr_connection_get_internal(pool, true);
 }
 
 /** Release a connection
