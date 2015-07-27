@@ -836,8 +836,8 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 			pool->last_at_max = now;
 		}
 
-		if (spawn) pthread_mutex_unlock(&pool->mutex);
-
+		pthread_mutex_unlock(&pool->mutex);
+		
 		if (!RATE_LIMIT_ENABLED || complain) {
 			ERROR("%s: No connections available and at max connection limit", pool->log_prefix);
 		}
