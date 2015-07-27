@@ -777,18 +777,19 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
  *
  * @param[in,out] pool to reserve the connection from.
  * @param[in] spawn whether to spawn a new connection
+ * @param[in] lock whether to lock the pool
  * @return
  *	- A pointer to the connection handle.
  *	- NULL on error.
  */
-static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
+static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn, bool lock)
 {
 	time_t now;
 	fr_connection_t *this;
 
 	if (!pool) return NULL;
 
-	pthread_mutex_lock(&pool->mutex);
+	if (lock) pthread_mutex_lock(&pool->mutex);
 
 	now = time(NULL);
 
@@ -808,20 +809,45 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	 */
 	if (this) {
 		/*
-		 *	Unless it needs reconnecting, in which
-		 *	case attempt to reconnect it.
+		 *	The connection needs reconnecting.  Do so,
+		 *	unless we're recursing through
+		 *	fr_connection_reconnect_internal().
+		 *
+		 *	We don't want one attempt to walk through the
+		 *	entire pool, trying to re-connect every single
+		 *	connection.
 		 */
-		if (this->needs_reconnecting && !(this = fr_connection_reconnect_internal(pool, this))) {
-			pthread_mutex_unlock(&pool->mutex);
+		if (this->needs_reconnecting) {
+			if (!lock) return NULL;
 
-			ERROR("%s: Connection was marked for reconnection, but re-establishing connection failed",
-			      pool->log_prefix);
+			this = fr_connection_reconnect_internal(pool, this);
+			if (!this) {
+				pthread_mutex_unlock(&pool->mutex);
 
-			return NULL;
+				ERROR("%s: Connection was marked for reconnection, but re-establishing connection failed",
+				      pool->log_prefix);
+				return NULL;
+			}
 		}
+
+		/*
+		 *	The conection is either fine, or was
+		 *	successfully reconnected.
+		 */
 		fr_heap_extract(pool->heap, this);
 		goto do_return;
 	}
+
+	/*
+	 *	We were asked to avoid spawning a new connection, by
+	 *	fr_connection_reconnect_internal().  So we just return
+	 *	here.
+	 */
+	if (!spawn) {
+		rad_assert(lock == false);
+		return NULL;
+	}
+	rad_assert(lock == true);
 
 	/*
 	 *	We don't have a connection.  Try to open a new one.
@@ -839,7 +865,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 			pool->last_at_max = now;
 		}
 
-		pthread_mutex_unlock(&pool->mutex);
+		if (lock) pthread_mutex_unlock(&pool->mutex);
 
 		if (!RATE_LIMIT_ENABLED || complain) {
 			ERROR("%s: No connections available and at max connection limit", pool->log_prefix);
@@ -850,12 +876,11 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 
 	pthread_mutex_unlock(&pool->mutex);
 
-	if (!spawn) return NULL;
-
 	DEBUG("%s: %i of %u connections in use.  You  may need to increase \"spare\"", pool->log_prefix,
 	      pool->active, pool->num);
 	this = fr_connection_spawn(pool, now, true); /* MY connection! */
 	if (!this) return NULL;
+
 	pthread_mutex_lock(&pool->mutex);
 
 do_return:
@@ -867,7 +892,8 @@ do_return:
 #ifdef PTHREAD_DEBUG
 	this->pthread_id = pthread_self();
 #endif
-	pthread_mutex_unlock(&pool->mutex);
+
+	if (lock) pthread_mutex_unlock(&pool->mutex);
 
 	DEBUG("%s: Reserved connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
@@ -917,7 +943,7 @@ static fr_connection_t *fr_connection_reconnect_internal(fr_connection_pool_t *p
 		 *	Maybe there's a connection which is unused and
 		 *	available.  If so, return it.
 		 */
-		new_conn = fr_connection_get_internal(pool, false);
+		new_conn = fr_connection_get_internal(pool, false, true);
 		if (new_conn) return new_conn;
 
 		RATE_LIMIT(ERROR("%s: Failed to reconnect (%" PRIu64 "), no free connections are available",
@@ -1376,7 +1402,7 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
  */
 void *fr_connection_get(fr_connection_pool_t *pool)
 {
-	return fr_connection_get_internal(pool, true);
+	return fr_connection_get_internal(pool, true, true);
 }
 
 /** Release a connection
