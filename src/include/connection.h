@@ -98,8 +98,6 @@ int	fr_connection_pool_get_num(fr_connection_pool_t *pool);
 /*
  *	Pool management
  */
-int	fr_connection_pool_reconnect(fr_connection_pool_t *pool);
-
 void	fr_connection_pool_free(fr_connection_pool_t *pool);
 
 /*

@@ -818,9 +818,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	 *	fr_connection_reconnect_internal().  So we just return
 	 *	here.
 	 */
-	if (!spawn) {
-		return NULL;
-	}
+	if (!spawn) return NULL;
 
 	/*
 	 *	We don't have a connection.  Try to open a new one.
