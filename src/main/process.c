@@ -813,12 +813,23 @@ static void request_cleanup_delay_init(REQUEST *request)
 	 *	client.  Everything else just gets cleaned up
 	 *	immediately.
 	 */
-	if (!(request->packet->code == PW_CODE_ACCESS_REQUEST)
-#ifdef WITH_COA
-	    || (request->packet->code == PW_CODE_COA_REQUEST)
-	    || (request->packet->code == PW_CODE_DISCONNECT_REQUEST)
+	if (request->packet->dst_port == 0) goto done;
+
+	/*
+	 *	Accounting packets shouldn't be retransmitted.  They
+	 *	should always be updated with Acct-Delay-Time.
+	 */
+#ifdef WITH_ACCOUNTING
+	if (request->packet->code == PW_CODE_ACCOUNTING_REQUEST) goto done;
 #endif
-		) goto done;
+
+#ifdef WITH_DHCP
+	if (request->listener->type == RAD_LISTEN_DHCP) goto done;
+#endif
+
+#ifdef WITH_VMPS
+	if (request->listener->type == RAD_LISTEN_VQP) goto done;
+#endif
 
 	if (!request->root->cleanup_delay) goto done;
 
