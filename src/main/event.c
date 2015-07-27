@@ -51,7 +51,6 @@ extern char *debug_condition;
 static fr_event_list_t	*el = NULL;
 static fr_packet_list_t	*pl = NULL;
 static int			request_num_counter = 0;
-static struct timeval		now;
 time_t				fr_start_time;
 static int			have_children;
 static int			just_started = TRUE;
@@ -456,6 +455,7 @@ static int insert_into_proxy_hash(REQUEST *request, int retransmit)
 static void wait_for_proxy_id_to_expire(void *ctx)
 {
 	REQUEST *request = ctx;
+	struct timeval now;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
 	rad_assert(request->proxy != NULL);
@@ -649,9 +649,12 @@ void revive_home_server(void *ctx)
 {
 	home_server *home = ctx;
 	char buffer[128];
+	struct timeval now;
 
 	home->state = HOME_STATE_ALIVE;
 	home->currently_outstanding = 0;
+
+	gettimeofday(&now, NULL);
 	home->revive_time = now;
 
 	/*
@@ -695,6 +698,7 @@ static void received_response_to_ping(REQUEST *request)
 {
 	home_server *home;
 	char buffer[128];
+	struct timeval now;
 
 	rad_assert(request->home_server != NULL);
 
@@ -732,6 +736,8 @@ static void received_response_to_ping(REQUEST *request)
 
 	home->state = HOME_STATE_ALIVE;
 	home->currently_outstanding = 0;
+
+	gettimeofday(&now, NULL);
 	home->revive_time = now;
 
 	if (!fr_event_delete(el, &home->ev)) {
@@ -802,7 +808,7 @@ static void ping_home_server(void *ctx)
 				"Acct-Session-Id", "00000000", T_OP_SET);
 		vp = radius_pairmake(request, &request->proxy->vps,
 				     "Event-Timestamp", "0", T_OP_SET);
-		vp->vp_date = now.tv_sec;
+		vp->vp_date = request->when.tv_sec;
 #else
 		rad_assert("Internal sanity check failed");
 #endif
@@ -891,7 +897,7 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 static void check_for_zombie_home_server(REQUEST *request)
 {
 	home_server *home;
-	struct timeval when;
+	struct timeval now, when;
 
 	home = request->home_server;
 
@@ -918,6 +924,8 @@ static int virtual_server_handler(UNUSED REQUEST *request)
 
 static void proxy_fallback_handler(REQUEST *request)
 {
+	struct timeval now;
+
 	/*
 	 *	A proper time is required for wait_a_bit.
 	 */
@@ -1011,6 +1019,8 @@ static int null_handler(UNUSED REQUEST *request)
 
 static void post_proxy_fail_handler(REQUEST *request)
 {
+	struct timeval now;
+
 	/*
 	 *	A proper time is required for wait_a_bit.
 	 */
@@ -1066,6 +1076,7 @@ static void post_proxy_fail_handler(REQUEST *request)
 static void no_response_to_proxied_request(void *ctx)
 {
 	REQUEST *request = ctx;
+       	struct timeval now;
 	time_t start;
 	home_server *home;
 	char buffer[128];
@@ -1145,6 +1156,7 @@ static void no_response_to_proxied_request(void *ctx)
 	 *	where the proxy still sends packets to an unresponsive
 	 *	home server.
 	 */
+	fr_event_now(el, &now);
 	start = now.tv_sec - ((home->zombie_period + 3) / 4);
 	if (home->last_packet >= start) {
 		return;
@@ -1177,7 +1189,7 @@ static void no_response_to_proxied_request(void *ctx)
 
 static void wait_a_bit(void *ctx)
 {
-	struct timeval when;
+	struct timeval now, when;
 	REQUEST *request = ctx;
 	fr_event_callback_t callback = NULL;
 
@@ -1401,7 +1413,7 @@ static int update_event_timestamp(RADIUS_PACKET *packet, time_t when)
 static void retransmit_coa_request(void *ctx)
 {
 	int delay, frac;
-	struct timeval mrd;
+	struct timeval now, mrd;
 	REQUEST *request = ctx;
 
 	rad_assert(request->magic == REQUEST_MAGIC);
@@ -3093,6 +3105,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 {
 	char		buffer[128];
 	REQUEST		*request;
+	struct timeval	now;
 
 	/*
 	 *	Also removes from the proxy hash if responses == requests
@@ -3517,7 +3530,7 @@ static void event_poll_detail(void *ctx)
 	RAD_REQUEST_FUNP fun;
 	REQUEST *request;
 	rad_listen_t *this = ctx;
-	struct timeval when;
+	struct timeval now, when;
 	listen_detail_t *detail = this->data;
 
 	rad_assert(this->type == RAD_LISTEN_DETAIL);
