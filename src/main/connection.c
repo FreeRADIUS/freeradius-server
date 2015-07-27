@@ -66,8 +66,6 @@ struct fr_connection {
 
 	int		heap;			//!< For the next connection heap.
 
-	bool		needs_reconnecting;	//!< Reconnect this connection before use.
-
 #ifdef PTHREAD_DEBUG
 	pthread_t	pthread_id;		//!< When 'in_use == true'.
 #endif
@@ -808,28 +806,6 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	 */
 	if (this) {
 		/*
-		 *	The connection needs reconnecting.  Do so,
-		 *	unless we're recursing through
-		 *	fr_connection_reconnect_internal().
-		 *
-		 *	We don't want one attempt to walk through the
-		 *	entire pool, trying to re-connect every single
-		 *	connection.
-		 */
-		if (this->needs_reconnecting) {
-			if (!spawn) return NULL;
-
-			this = fr_connection_reconnect_internal(pool, this);
-			if (!this) {
-				pthread_mutex_unlock(&pool->mutex);
-
-				ERROR("%s: Connection was marked for reconnection, but re-establishing connection failed",
-				      pool->log_prefix);
-				return NULL;
-			}
-		}
-
-		/*
 		 *	The conection is either fine, or was
 		 *	successfully reconnected.
 		 */
@@ -951,7 +927,6 @@ static fr_connection_t *fr_connection_reconnect_internal(fr_connection_pool_t *p
 
 	fr_connection_exec_trigger(pool, "close");
 	conn->connection = new_conn;
-	conn->needs_reconnecting = false;
 
 	return new_conn;
 }
@@ -1271,63 +1246,6 @@ int fr_connection_pool_get_num(fr_connection_pool_t *pool)
 	return pool->num;
 }
 
-/** Mark connections for reconnection, and spawn at least 'start' connections
- *
- * This intended to be called on a connection pool that's in use, to have it reflect
- * a configuration change, or because the administrator knows that all connections
- * in the pool are inviable and need to be reconnected.
- *
- * @param[in] pool to reconnect.
- * @return
- *	-  0 On success.
- *	- -1 If we couldn't create start connections, this may be ignored
- *	     depending on the context in which this function is being called.
- */
-int fr_connection_pool_reconnect(fr_connection_pool_t *pool)
-{
-	uint32_t	i;
-	fr_connection_t	*this;
-	time_t		now;
-
-	/*
-	 *	Mark all connections in the pool as requiring
-	 *	reconnection.
-	 */
-	pthread_mutex_lock(&pool->mutex);
-
-	/*
-	 *	We want to ensure at least 'start' connections
-	 *	have been reconnected. We can't call reconnect
-	 *	because, we might get the same connection each
-	 *	time we reserve one, so we close 'start'
-	 *	connections, and then attempt to spawn them again.
-	 */
-	for (i = 0; i < pool->start; i++) {
-		this = fr_heap_peek(pool->heap);
-		if (!this) break;	/* There wasn't 'start' connections available */
-
-		fr_connection_close_internal(pool, this);
-	}
-
-	/*
-	 *	Mark all of the remaining connections as "needs reconnecting".
-	 */
-	for (this = pool->head; this; this = this->next) this->needs_reconnecting = true;
-
-	pthread_mutex_unlock(&pool->mutex);
-
-	now = time(NULL);
-
-	/*
-	 *	Now attempt to spawn 'start' connections.
-	 */
-	for (i = 0; i < pool->start; i++) {
-		this = fr_connection_spawn(pool, now, false);
-		if (!this) return -1;
-	}
-
-	return 0;
-}
 
 /** Delete a connection pool
  *
