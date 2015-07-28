@@ -23,6 +23,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Fix issue which caused a non \0 terminated buffer to be
 	  assigned to attributes if the value being assigned contained
 	  an invalid escape sequence.
+	* Fix deadlock when reconnecting connections in the connection
+	  pool.
 	  
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
