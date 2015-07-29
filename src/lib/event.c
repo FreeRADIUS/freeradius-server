@@ -386,8 +386,16 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		 *	We want to read from the FD.
 		 */
 		EV_SET(&evset, fd, EVFILT_READ, EV_ADD | EV_ENABLE, 0, 0, &el->readers[j]);
-		if (kevent(el->kq, &evset, 1, NULL, 0, NULL) < 0) {
+		if (kevent(el->kq, &evset, 1, &evset, 1, NULL) < 0) {
 			fr_strerror_printf("Failed inserting event for FD %i: %s", fd, fr_syserror(errno));
+			return 0;
+		}
+
+		if (evset.flags & EV_ERROR) {    /* report errors */
+			int num = (int)evset.data;
+
+			fr_strerror_printf("The 'kevent' return error for FD %i: %s (%d)\n",
+					fd, fr_syserror(num), num);
 			return 0;
 		}
 
