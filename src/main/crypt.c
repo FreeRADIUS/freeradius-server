@@ -34,8 +34,16 @@ RCSID("$Id$")
  */
 static bool fr_crypt_init = false;
 static pthread_mutex_t fr_crypt_mutex;
-#endif
 
+/*
+ *  This is easier than ifdef's throughout the code.
+ */
+#	define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#	define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+#else
+#	define PTHREAD_MUTEX_LOCK(_x)
+#	define PTHREAD_MUTEX_UNLOCK(_x)
+#endif
 
 /*
  * performs a crypt password check in an thread-safe way.
@@ -72,9 +80,7 @@ int fr_crypt_check(char const *key, char const *crypted)
 		cmp = strcmp(crypted, passwd);
 	}
 
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_unlock(&fr_crypt_mutex);
-#endif
+	PTHREAD_MUTEX_UNLOCK(&fr_crypt_mutex);
 
 	/*
 	 *	Error.

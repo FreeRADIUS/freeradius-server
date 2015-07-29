@@ -42,6 +42,17 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/ocsp.h>
 #endif
 
+/*
+ * This is easier than ifdef's throughout the code.
+ */
+#ifdef HAVE_PTHREAD_H
+#	define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#	define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+#else
+#	define PTHREAD_MUTEX_LOCK(_x)
+#	define PTHREAD_MUTEX_UNLOCK(_x)
+#endif
+
 static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 {
 	size_t i;

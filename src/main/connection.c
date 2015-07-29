@@ -146,9 +146,12 @@ struct fr_connection_pool_t {
 	fr_connection_alive_t	alive;		//!< Function used to check status of connections.
 };
 
-#ifndef HAVE_PTHREAD_H
-#  define pthread_mutex_lock(_x)
-#  define pthread_mutex_unlock(_x)
+#ifdef HAVE_PTHREAD_H
+#	define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#	define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+#else
+#	define PTHREAD_MUTEX_LOCK(_x)
+#	define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
 static const CONF_PARSER connection_config[] = {
@@ -289,7 +292,7 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
 
 	if (!pool || !conn) return NULL;
 
-	pthread_mutex_lock(&pool->mutex);
+	PTHREAD_MUTEX_LOCK(&pool->mutex);
 
 	/*
 	 *	FIXME: This loop could be avoided if we passed a 'void
@@ -310,7 +313,7 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
 		}
 	}
 
-	pthread_mutex_unlock(&pool->mutex);
+	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 	return NULL;
 }
 
@@ -347,14 +350,14 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 */
 	if ((pool->num == 0) && pool->pending && pool->last_failed) return NULL;
 
-	pthread_mutex_lock(&pool->mutex);
+	PTHREAD_MUTEX_LOCK(&pool->mutex);
 	rad_assert(pool->num <= pool->max);
 
 	/*
 	 *	Don't spawn too many connections at the same time.
 	 */
 	if ((pool->num + pool->pending) >= pool->max) {
-		pthread_mutex_unlock(&pool->mutex);
+		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
 		ERROR("%s: Cannot open new connection, already at max", pool->log_prefix);
 		return NULL;
@@ -373,7 +376,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 			pool->last_throttled = now;
 		}
 
-		pthread_mutex_unlock(&pool->mutex);
+		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
 		if (!RATE_LIMIT_ENABLED || complain) {
 			ERROR("%s: Last connection attempt failed, waiting %d seconds before retrying",
@@ -387,7 +390,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 *	We limit the rate of new connections after a failed attempt.
 	 */
 	if (pool->pending > pool->max_pending) {
-		pthread_mutex_unlock(&pool->mutex);
+		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 		RATE_LIMIT(WARN("%s: Cannot open a new connection due to rate limit after failure",
 				pool->log_prefix));
 		return NULL;
@@ -403,7 +406,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 *	that case, we want the other connections to continue
 	 *	to be used.
 	 */
-	pthread_mutex_unlock(&pool->mutex);
+	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
 	/*
 	 *	The true value for max_pending is the smaller of
@@ -432,10 +435,10 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 		ERROR("%s: Opening connection failed (%" PRIu64 ")", pool->log_prefix, number);
 
 		pool->last_failed = now;
-		pthread_mutex_lock(&pool->mutex);
+		PTHREAD_MUTEX_LOCK(&pool->mutex);
 		pool->max_pending = 1;
 		pool->pending--;
-		pthread_mutex_unlock(&pool->mutex);
+		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
 		talloc_free(ctx);
 
@@ -446,11 +449,11 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	 *	And lock the mutex again while we link the new
 	 *	connection back into the pool.
 	 */
-	pthread_mutex_lock(&pool->mutex);
+	PTHREAD_MUTEX_LOCK(&pool->mutex);
 
 	this = talloc_zero(pool, fr_connection_t);
 	if (!this) {
-		pthread_mutex_unlock(&pool->mutex);
+		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 		talloc_free(ctx);
 
 		return NULL;
@@ -494,7 +497,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 	pool->next_delay = pool->cleanup_interval;
 	pool->last_failed = 0;
 
-	pthread_mutex_unlock(&pool->mutex);
+	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
 	fr_connection_exec_trigger(pool, "open");
 
@@ -622,7 +625,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	fr_connection_t *this, *next;
 
 	if (pool->last_checked == now) {
-		pthread_mutex_unlock(&pool->mutex);
+		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 		return 1;
 	}
 
@@ -714,9 +717,9 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	if (spawn) {
 		INFO("%s: Need %i more connections to reach %i spares",
 		     pool->log_prefix, spawn, pool->spare);
-		pthread_mutex_unlock(&pool->mutex);
+		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 		fr_connection_spawn(pool, now, false); /* ignore return code */
-		pthread_mutex_lock(&pool->mutex);
+		PTHREAD_MUTEX_LOCK(&pool->mutex);
 	}
 
 	/*
@@ -762,7 +765,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 	}
 
 	pool->last_checked = now;
-	pthread_mutex_unlock(&pool->mutex);
+	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
 	return 1;
 }
@@ -785,7 +788,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 	if (!pool) return NULL;
 
 #ifdef HAVE_PTHREAD_H
-	if (spawn) pthread_mutex_lock(&pool->mutex);
+	if (spawn) PTHREAD_MUTEX_LOCK(&pool->mutex);
 #endif
 
 	now = time(NULL);
@@ -832,7 +835,7 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 			pool->last_at_max = now;
 		}
 
-		pthread_mutex_unlock(&pool->mutex);
+		PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 		
 		if (!RATE_LIMIT_ENABLED || complain) {
 			ERROR("%s: No connections available and at max connection limit", pool->log_prefix);
@@ -841,14 +844,14 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 		return NULL;
 	}
 
-	pthread_mutex_unlock(&pool->mutex);
+	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
 	DEBUG("%s: %i of %u connections in use.  You  may need to increase \"spare\"", pool->log_prefix,
 	      pool->active, pool->num);
 	this = fr_connection_spawn(pool, now, true); /* MY connection! */
 	if (!this) return NULL;
 
-	pthread_mutex_lock(&pool->mutex);
+	PTHREAD_MUTEX_LOCK(&pool->mutex);
 
 do_return:
 	pool->active++;
@@ -861,7 +864,7 @@ do_return:
 #endif
 
 #ifdef HAVE_PTHREAD_H
-	if (spawn) pthread_mutex_unlock(&pool->mutex);
+	if (spawn) PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 #endif
 
 	DEBUG("%s: Reserved connection (%" PRIu64 ")", pool->log_prefix, this->number);
@@ -1270,7 +1273,7 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
 
 	DEBUG("%s: Removing connection pool", pool->log_prefix);
 
-	pthread_mutex_lock(&pool->mutex);
+	PTHREAD_MUTEX_LOCK(&pool->mutex);
 
 	/*
 	 *	Don't loop over the list.  Just keep removing the head
@@ -1411,7 +1414,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	if (!this) return NULL;
 
 	new_conn = fr_connection_reconnect_internal(pool, this);
-	pthread_mutex_unlock(&pool->mutex);
+	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
 	return new_conn;
 }
