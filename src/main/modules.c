@@ -801,7 +801,7 @@ example inst {
  *	- 1 on success with local section.
  *	- -1 on failure.
  */
-int find_module_sibling_section(CONF_SECTION **out, CONF_SECTION *module, char const *name)
+int module_sibling_section_find(CONF_SECTION **out, CONF_SECTION *module, char const *name)
 {
 	static bool loop = true;	/* not used, we just need a valid pointer to quiet static analysis */
 

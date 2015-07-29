@@ -1091,7 +1091,7 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	/*
 	 *	Get sibling's pool config section
 	 */
-	ret = find_module_sibling_section(&cs, module, "pool");
+	ret = module_sibling_section_find(&cs, module, "pool");
 	switch (ret) {
 	case -1:
 		return NULL;
