@@ -1012,8 +1012,7 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 #ifndef HAVE_PTHREAD_H
 void realm_pool_free(home_pool_t *pool)
 {
-	if (!event_loop_started) return;
-	if (!realm_config->dynamic) return;
+	if (!event_loop_started || !realm_config->dynamic) return;
 
 	talloc_free(pool);
 }
