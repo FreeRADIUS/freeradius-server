@@ -637,26 +637,30 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	 *	We only expire if we're not inserting, as driver insert methods
 	 *	should perform upserts.
 	 */
-	if (expire && !insert && ((exists == -1) || (exists == 1))) {
-		rad_assert(!set_ttl);
-		switch (cache_expire(inst, request, &handle, key, key_len)) {
-		case RLM_MODULE_FAIL:
-			rcode = RLM_MODULE_FAIL;
-			goto finish;
+	if (expire && ((exists == -1) || (exists == 1))) {
+		if (!insert) {
+			rad_assert(!set_ttl);
+			switch (cache_expire(inst, request, &handle, key, key_len)) {
+			case RLM_MODULE_FAIL:
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
 
-		case RLM_MODULE_OK:
-			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_OK;
-			break;
+			case RLM_MODULE_OK:
+				if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_OK;
+				break;
 
-		case RLM_MODULE_NOTFOUND:
-			if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_NOTFOUND;
-			break;
+			case RLM_MODULE_NOTFOUND:
+				if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_NOTFOUND;
+				break;
 
-		default:
-			rad_assert(0);
+			default:
+				rad_assert(0);
+				break;
+			}
+			/* If it previously existed, it doesn't now */
 		}
-		rad_assert(handle);
-		exists = 0;	/* If it previously existed, it doesn't now */
+		/* Otherwise use insert to overwrite */
+		exists = 0;
 	}
 
 	/*
@@ -714,7 +718,7 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	 *	setting the TTL, which precludes performing an
 	 *	insert.
 	 */
-	if (insert) {
+	if (insert && (exists == 0)) {
 		switch (cache_insert(inst, request, &handle, key, key_len, ttl)) {
 		case RLM_MODULE_FAIL:
 			rcode = RLM_MODULE_FAIL;
