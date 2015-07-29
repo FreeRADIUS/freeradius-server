@@ -27,9 +27,9 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 
 struct fr_fifo_t {
-	int num;
-	int first, last;
-	int max;
+	unsigned int num;
+	unsigned int first, last;
+	unsigned int max;
 	fr_fifo_free_t freeNode;
 
 	void *data[1];
@@ -54,13 +54,13 @@ fr_fifo_t *fr_fifo_create(TALLOC_CTX *ctx, int max, fr_fifo_free_t freeNode)
 
 void fr_fifo_free(fr_fifo_t *fi)
 {
-	int i;
+	unsigned int i;
 
 	if (!fi) return;
 
 	if (fi->freeNode) {
 		for (i = 0 ; i < fi->num; i++) {
-			int element;
+			unsigned int element;
 
 			element = i + fi->first;
 			if (element > fi->max) {
@@ -112,7 +112,7 @@ void *fr_fifo_peek(fr_fifo_t *fi)
 	return fi->data[fi->first];
 }
 
-int fr_fifo_num_elements(fr_fifo_t *fi)
+unsigned int fr_fifo_num_elements(fr_fifo_t *fi)
 {
 	if (!fi) return 0;
 
