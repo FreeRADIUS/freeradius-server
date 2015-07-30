@@ -260,7 +260,7 @@ static void fr_connection_exec_trigger(fr_connection_pool_t *pool, char const *n
 	char name[64];
 	rad_assert(pool != NULL);
 	rad_assert(name_suffix != NULL);
-	snprintf(name, sizeof(name), "%s%s", pool->trigger_prefix, name_suffix);
+	snprintf(name, sizeof(name), "%s.%s", pool->trigger_prefix, name_suffix);
 	exec_trigger(NULL, pool->cs, name, true);
 }
 
@@ -1081,7 +1081,7 @@ fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
 	cs_name2 = cf_section_name2(module);
 	if (!cs_name2) cs_name2 = cs_name1;
 
-	snprintf(trigger_prefix, sizeof(trigger_prefix), "modules.%s.", cs_name1);
+	snprintf(trigger_prefix, sizeof(trigger_prefix), "modules.%s.pool", cs_name1);
 
 	if (!log_prefix) {
 		snprintf(buff, sizeof(buff), "rlm_%s (%s)", cs_name1, cs_name2);
