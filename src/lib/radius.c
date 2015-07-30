@@ -974,13 +974,15 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 			make_tunnel_passwd(ptr + lvalue, &len, data, len,
 					   room - lvalue,
 					   secret, original->vector);
+			len += lvalue;
 			break;
 		case PW_CODE_ACCOUNTING_REQUEST:
 		case PW_CODE_DISCONNECT_REQUEST:
 		case PW_CODE_COA_REQUEST:
 			ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
-			make_tunnel_passwd(ptr + 1, &len, data, len - 1, room,
+			make_tunnel_passwd(ptr + 1, &len, data, len, room - 1,
 					   secret, packet->vector);
+			len += lvalue;
 			break;
 		}
 		break;

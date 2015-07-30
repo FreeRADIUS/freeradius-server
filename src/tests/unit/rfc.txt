@@ -135,6 +135,7 @@ data Framed-IPv6-Prefix = 11:22:33:44:55:66:77:88/128
 attribute Framed-IPv6-Prefix = *
 data Framed-IPv6-Prefix = ::/128
 
+$INCLUDE tunnel.txt
 $INCLUDE errors.txt
 $INCLUDE extended.txt
 $INCLUDE lucent.txt
