@@ -1404,15 +1404,25 @@ static void time_free(void *data)
 	free(data);
 }
 
-void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench)
+/** Execute a trigger - call an executable to process an event
+ *
+ * @param request The current request.
+ * @param cs to search for triggers in.  If not NULL, only the portion after the last '.'
+ *	in name is used for the trigger.  If cs is NULL, the entire name is used to find
+ *	the trigger in the global trigger section.
+ * @param name the path relative to the global trigger section ending in the trigger name
+ *	e.g. module.ldap.pool.start.
+ * @param quench whether to rate limit triggers.
+ */
+void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, bool quench)
 {
-	CONF_SECTION *subcs;
-	CONF_ITEM *ci;
-	CONF_PAIR *cp;
-	char const *attr;
-	char const *value;
-	VALUE_PAIR *vp;
-	bool alloc = false;
+	CONF_SECTION	*subcs;
+	CONF_ITEM	*ci;
+	CONF_PAIR	*cp;
+	char const	*attr;
+	char const	*value;
+	VALUE_PAIR	*vp;
+	bool		alloc = false;
 
 	/*
 	 *	Use global "trigger" section if no local config is given.
