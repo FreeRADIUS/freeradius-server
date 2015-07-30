@@ -66,6 +66,24 @@ static ssize_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
 	return 0;
 }
 
+static RADIUS_PACKET my_original = {
+	.sockfd = -1,
+	.id = 0,
+	.code = PW_CODE_ACCESS_REQUEST,
+	.vector = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f },
+};
+
+
+static RADIUS_PACKET my_packet = {
+	.sockfd = -1,
+	.id = 0,
+	.code = PW_CODE_ACCESS_ACCEPT,
+	.vector = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f },
+};
+
+
+static char *my_secret = "testing123";
+
 /*
  *	End of hacks for xlat
  *
@@ -679,7 +697,7 @@ static void process_file(const char *root_dir, char const *filename)
 			attr = data;
 			vp = head;
 			while (vp) {
-				len = rad_vp2attr(NULL, NULL, NULL, (VALUE_PAIR const **)(void **)&vp,
+				len = rad_vp2attr(&my_packet, &my_original, my_secret, (VALUE_PAIR const **)(void **)&vp,
 						  attr, data + sizeof(data) - attr);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
@@ -714,7 +732,7 @@ static void process_file(const char *root_dir, char const *filename)
 			my_len = 0;
 			while (len > 0) {
 				vp = NULL;
-				my_len = rad_attr2vp(NULL, NULL, NULL, NULL, attr, len, &vp);
+				my_len = rad_attr2vp(NULL, &my_packet, &my_original, my_secret, attr, len, &vp);
 				if (my_len < 0) {
 					fr_pair_list_free(&head);
 					break;
