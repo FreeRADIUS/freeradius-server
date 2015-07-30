@@ -1617,6 +1617,7 @@ size_t value_data_prints(char *out, size_t outlen,
 	DICT_VALUE	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 	char const	*a = NULL;
+	char		*p = out;
 	time_t		t;
 	struct tm	s_tm;
 	unsigned int	i;
@@ -1628,6 +1629,8 @@ size_t value_data_prints(char *out, size_t outlen,
 
 	*out = '\0';
 
+	p = out;
+
 	switch (type) {
 	case PW_TYPE_STRING:
 
@@ -1637,22 +1640,23 @@ size_t value_data_prints(char *out, size_t outlen,
 		if (quote) {
 			if (freespace < 3) return data->length + 2;
 
-			*out++ = quote;
+			*p++ = quote;
 			freespace--;
 
-			len = fr_prints(out, freespace, data->strvalue, data->length, quote);
+			len = fr_prints(p, freespace, data->strvalue, data->length, quote);
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
+				/* Use out not p as we're operating on the entire buffer */
 				out[outlen - 2] = (char) quote;
 				out[outlen - 1] = '\0';
 				return len + 2;
 			}
-			out += len;
+			p += len;
 			freespace -= len;
 
-			*out++ = (char) quote;
+			*p++ = (char) quote;
 			freespace--;
-			*out = '\0';
+			*p = '\0';
 
 			return len + 2;
 		}
@@ -1770,7 +1774,7 @@ print_int:
 
 		a = inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
 		if (a) {
-			char *p = buf;
+			p = buf;
 
 			len = strlen(buf);
 			p += len;
@@ -1790,7 +1794,7 @@ print_int:
 
 		a = inet_ntop(AF_INET, &addr, buf, sizeof(buf));
 		if (a) {
-			char *p = buf;
+			p = buf;
 
 			len = strlen(buf);
 			p += len;
