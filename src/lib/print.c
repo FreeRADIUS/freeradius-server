@@ -26,30 +26,35 @@ RCSID("$Id$")
 
 #include	<ctype.h>
 
-/*
- *	Checks for utf-8, taken from:
+/** Checks for utf-8, taken from http://www.w3.org/International/questions/qa-forms-utf-8
  *
- *  http://www.w3.org/International/questions/qa-forms-utf-8
- *
- *	Note that we don't care about the length of the input string,
- *	because '\0' is an invalid UTF-8 character.
+ * @param str input string.
+ * @param inlen length of input string.  May be -1 if str is \0 terminated.
  */
-int fr_utf8_char(uint8_t const *str)
+int fr_utf8_char(uint8_t const *str, ssize_t inlen)
 {
+	if (inlen == 0) return 0;
+
+	if (inlen < 0) inlen = 4;	/* longest char */
+
 	if (*str < 0x20) return 0;
 
-	if (*str <= 0x7e) return 1; /* 1 */
+	if (*str <= 0x7e) return 1;	/* 1 */
 
 	if (*str <= 0xc1) return 0;
 
-	if ((str[0] >= 0xc2) &&	/* 2 */
+	if (inlen < 2) return 0;
+
+	if ((str[0] >= 0xc2) &&		/* 2 */
 	    (str[0] <= 0xdf) &&
 	    (str[1] >= 0x80) &&
 	    (str[1] <= 0xbf)) {
 		return 2;
 	}
 
-	if ((str[0] == 0xe0) &&	/* 3 */
+	if (inlen < 3) return 0;
+
+	if ((str[0] == 0xe0) &&		/* 3 */
 	    (str[1] >= 0xa0) &&
 	    (str[1] <= 0xbf) &&
 	    (str[2] >= 0x80) &&
@@ -57,7 +62,7 @@ int fr_utf8_char(uint8_t const *str)
 		return 3;
 	}
 
-	if ((str[0] >= 0xe1) &&	/* 4a */
+	if ((str[0] >= 0xe1) &&		/* 4a */
 	    (str[0] <= 0xec) &&
 	    (str[1] >= 0x80) &&
 	    (str[1] <= 0xbf) &&
@@ -66,7 +71,7 @@ int fr_utf8_char(uint8_t const *str)
 		return 3;
 	}
 
-	if ((str[0] >= 0xee) &&	/* 4b */
+	if ((str[0] >= 0xee) &&		/* 4b */
 	    (str[0] <= 0xef) &&
 	    (str[1] >= 0x80) &&
 	    (str[1] <= 0xbf) &&
@@ -75,7 +80,7 @@ int fr_utf8_char(uint8_t const *str)
 		return 3;
 	}
 
-	if ((str[0] == 0xed) &&	/* 5 */
+	if ((str[0] == 0xed) &&		/* 5 */
 	    (str[1] >= 0x80) &&
 	    (str[1] <= 0x9f) &&
 	    (str[2] >= 0x80) &&
@@ -83,7 +88,9 @@ int fr_utf8_char(uint8_t const *str)
 		return 3;
 	}
 
-	if ((str[0] == 0xf0) &&	/* 6 */
+	if (inlen < 4) return 0;
+
+	if ((str[0] == 0xf0) &&		/* 6 */
 	    (str[1] >= 0x90) &&
 	    (str[1] <= 0xbf) &&
 	    (str[2] >= 0x80) &&
@@ -93,7 +100,7 @@ int fr_utf8_char(uint8_t const *str)
 		return 4;
 	}
 
-	if ((str[0] >= 0xf1) &&	/* 6 */
+	if ((str[0] >= 0xf1) &&		/* 6 */
 	    (str[1] <= 0xf3) &&
 	    (str[1] >= 0x80) &&
 	    (str[1] <= 0xbf) &&
@@ -105,7 +112,7 @@ int fr_utf8_char(uint8_t const *str)
 	}
 
 
-	if ((str[0] == 0xf4) &&	/* 7 */
+	if ((str[0] == 0xf4) &&		/* 7 */
 	    (str[1] >= 0x80) &&
 	    (str[1] <= 0x8f) &&
 	    (str[2] >= 0x80) &&
@@ -132,14 +139,14 @@ char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
 {
 	int cchr;
 
-	cchr = fr_utf8_char((uint8_t const *)chr);
+	cchr = fr_utf8_char((uint8_t const *)chr, -1);
 	if (cchr == 0) cchr = 1;
 	if (chr_len) *chr_len = cchr;
 
 	while (*str) {
 		int schr;
 
-		schr = fr_utf8_char((uint8_t const *) str);
+		schr = fr_utf8_char((uint8_t const *) str, -1);
 		if (schr == 0) schr = 1;
 		if (schr != cchr) goto next;
 
@@ -288,7 +295,7 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 		 *	things.  Single quoted strings don't.
 		 */
 		if (quote != '\'') {
-			utf8 = fr_utf8_char(p);
+			utf8 = fr_utf8_char(p, inlen);
 			if (utf8 == 0) {
 				if (freespace < 5) break; /* \ + <o><o><o> + \0 */
 				snprintf(out, freespace, "\\%03o", *p);
@@ -395,7 +402,7 @@ size_t fr_prints_len(char const *in, ssize_t inlen, char quote)
 		}
 
 		if (quote != '\'') {
-			utf8 = fr_utf8_char(p);
+			utf8 = fr_utf8_char(p, inlen);
 			if (utf8 == 0) {
 				outlen += 4;
 				p++;

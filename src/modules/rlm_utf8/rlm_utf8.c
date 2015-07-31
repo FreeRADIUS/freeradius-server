@@ -41,7 +41,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED void *instance, REQUES
 		if (vp->da->type != PW_TYPE_STRING) continue;
 
 		for (i = 0; i < vp->vp_length; i += len) {
-			len = fr_utf8_char(&vp->vp_octets[i]);
+			len = fr_utf8_char(&vp->vp_octets[i], -1);
 			if (len == 0) return RLM_MODULE_FAIL;
 		}
 	}

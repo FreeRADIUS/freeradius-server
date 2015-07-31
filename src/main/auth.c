@@ -606,7 +606,7 @@ authenticate:
 				while (*p) {
 					int size;
 
-					size = fr_utf8_char(p);
+					size = fr_utf8_char(p, -1);
 					if (!size) {
 						RWDEBUG("Unprintable characters in the password.  Double-check the "
 							"shared secret on the server and the NAS!");

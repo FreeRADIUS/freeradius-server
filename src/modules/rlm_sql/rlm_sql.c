@@ -371,7 +371,7 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 		/*
 		 *	Allow all multi-byte UTF8 characters.
 		 */
-		utf8_len = fr_utf8_char((uint8_t const *) in);
+		utf8_len = fr_utf8_char((uint8_t const *) in, -1);
 		if (utf8_len > 1) {
 			if (outlen <= utf8_len) break;
 
