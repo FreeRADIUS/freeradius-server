@@ -101,26 +101,6 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		return -1;
 	}
 
-	db_string = strchr(config->sql_db, '=') ?
-		talloc_typed_strdup(driver, config->sql_db) :
-		talloc_typed_asprintf(driver, "dbname='%s'", config->sql_db);
-
-	if (config->sql_server[0] != '\0') {
-		db_string = talloc_asprintf_append(db_string, " host='%s'", config->sql_server);
-	}
-
-	if (config->sql_port) {
-		db_string = talloc_asprintf_append(db_string, " port=%i", config->sql_port);
-	}
-
-	if (config->sql_login[0] != '\0') {
-		db_string = talloc_asprintf_append(db_string, " user='%s'", config->sql_login);
-	}
-
-	if (config->sql_password[0] != '\0') {
-		db_string = talloc_asprintf_append(db_string, " password='%s'", config->sql_password);
-	}
-
 	/*
 	 *	Allow the user to set their own, or disable it
 	 */
@@ -135,7 +115,63 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 		snprintf(application_name, sizeof(application_name),
 			 "FreeRADIUS " RADIUSD_VERSION_STRING " - %s (%s)", progname, name);
-		db_string = talloc_asprintf_append(db_string, " application_name='%s'", application_name);
+	}
+
+	/*
+	 *	Old style database name
+	 *
+	 *	Append options if they were set in the config
+	 */
+	if (!strchr(config->sql_db, '=')) {
+		db_string = talloc_typed_asprintf(driver, "dbname='%s'", config->sql_db);
+
+		if (config->sql_server[0] != '\0') {
+			db_string = talloc_asprintf_append(db_string, " host='%s'", config->sql_server);
+		}
+
+		if (config->sql_port) {
+			db_string = talloc_asprintf_append(db_string, " port=%i", config->sql_port);
+		}
+
+		if (config->sql_login[0] != '\0') {
+			db_string = talloc_asprintf_append(db_string, " user='%s'", config->sql_login);
+		}
+
+		if (config->sql_password[0] != '\0') {
+			db_string = talloc_asprintf_append(db_string, " password='%s'", config->sql_password);
+		}
+
+		if (driver->send_application_name) {
+			db_string = talloc_asprintf_append(db_string, " application_name='%s'", application_name);
+		}
+
+	/*
+	 *	New style parameter string
+	 *
+	 *	Only append options where are not already present
+	 */
+	} else {
+		db_string = talloc_typed_strdup(driver, config->sql_db);
+
+		if ((config->sql_server[0] != '\0') && !strstr(db_string, "host=")) {
+			db_string = talloc_asprintf_append(db_string, " host='%s'", config->sql_server);
+		}
+
+		if (config->sql_port && !strstr(db_string, "port=")) {
+			db_string = talloc_asprintf_append(db_string, " port=%i", config->sql_port);
+		}
+
+		if ((config->sql_login[0] != '\0') && !strstr(db_string, "user=")) {
+			db_string = talloc_asprintf_append(db_string, " user='%s'", config->sql_login);
+		}
+
+		if ((config->sql_password[0] != '\0') && !strstr(db_string, "password=")) {
+			db_string = talloc_asprintf_append(db_string, " password='%s'", config->sql_password);
+		}
+
+		if (driver->send_application_name && !strstr(db_string, "application_name=")) {
+			db_string = talloc_asprintf_append(db_string, " application_name='%s'", application_name);
+		}
 	}
 	driver->db_string = db_string;
 
