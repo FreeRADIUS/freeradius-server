@@ -148,7 +148,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	/*
 	 *	New style parameter string
 	 *
-	 *	Only append options where are not already present
+	 *	Only append options when not already present
 	 */
 	} else {
 		db_string = talloc_typed_strdup(driver, config->sql_db);
