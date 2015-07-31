@@ -82,7 +82,7 @@ static RADIUS_PACKET my_packet = {
 };
 
 
-static char *my_secret = "testing123";
+static char const *my_secret = "testing123";
 
 /*
  *	End of hacks for xlat
