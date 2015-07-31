@@ -4,7 +4,7 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= redis.c cluster.c
+SOURCES		:= redis.c crc16.c cluster.c
 
 SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
