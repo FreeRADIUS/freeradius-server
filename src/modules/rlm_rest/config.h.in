@@ -3,8 +3,14 @@
 /* Build with JSON support from json-c */
 #undef HAVE_JSON
 
+/* json.h is at json-c/json.h relative to include dir */
+#undef HAVE_JSONMC_JSON_H
+
 /* Define to 1 if you have the `json_c_version' function. */
 #undef HAVE_JSON_C_VERSION
+
+/* json.h is at json/json.h relative to include dir */
+#undef HAVE_JSON_JSON_H
 
 /* Define to 1 if you have the `json_type_to_name' function. */
 #undef HAVE_JSON_TYPE_TO_NAME
