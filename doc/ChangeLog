@@ -25,6 +25,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  an invalid escape sequence.
 	* Fix deadlock when reconnecting connections in the connection
 	  pool.
+	* Fix potential overrun in functions that used fr_utf8_char
+	  with a none nul terminated buffer.
 	  
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
