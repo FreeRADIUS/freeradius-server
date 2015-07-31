@@ -28,17 +28,15 @@ RCSIDH(other_h, "$Id$")
 #include <freeradius-devel/connection.h>
 #include "config.h"
 
-#ifdef HAVE_JSON_JSONH
-#define HAVE_JSON
-#endif
-
 #define CURL_NO_OLDIES 1
 #include <curl/curl.h>
 
-#if defined(HAVE_JSONMC_JSON_H)
-#  include <json-c/json.h>
-#elif defined(HAVE_JSON_JSON_H)
-#  include <json/json.h>
+#ifdef HAVE_JSON
+#  if defined(HAVE_JSONMC_JSON_H)
+#    include <json-c/json.h>
+#  elif defined(HAVE_JSON_JSON_H)
+#    include <json/json.h>
+#  endif
 #endif
 
 #define REST_URI_MAX_LEN		2048
