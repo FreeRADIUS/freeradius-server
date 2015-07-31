@@ -34,14 +34,15 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include "../rlm_redis/redis.h"
+#include "../rlm_redis/cluster.h"
 
 typedef struct rlm_rediswho {
-	redis_conn_conf_t	*server;	//!< Connection parameters for the Redis server.
+	fr_redis_conf_t		*conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
 	char const		*name;		//!< Instance name.
 	CONF_SECTION		*cs;
-	fr_connection_pool_t	*pool;		//!< Connection pool.
+	fr_redis_cluster_t	*cluster;	//!< Pool O pools
 
 	int			expiry_time;	//!< Expiry time in seconds if no updates are received for a user
 
@@ -53,13 +54,9 @@ typedef struct rlm_rediswho {
 } rlm_rediswho_t;
 
 static CONF_PARSER module_config[] = {
-	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, redis_conn_conf_t, hostname), NULL },
-	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, redis_conn_conf_t, port), "6379" },
-	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, redis_conn_conf_t, database), "0" },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, redis_conn_conf_t, password), NULL },
+	REDIS_COMMON_CONFIG,
 
 	{ "trim_count", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), "-1" },
-
 	{ "insert", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, insert), NULL },
 	{ "trim", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rediswho_t, trim), NULL }, /* required only if trim_count > 0 */
 	{ "expire", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, expire), NULL },
@@ -70,39 +67,54 @@ static CONF_PARSER module_config[] = {
 /*
  *	Query the database executing a command with no result rows
  */
-static int rediswho_command(UNUSED rlm_rediswho_t *inst, REQUEST *request, char const *fmt, redis_conn_t **conn_p)
+static int rediswho_command(rlm_rediswho_t *inst, REQUEST *request, char const *fmt)
 {
-	redisReply	*reply;
-	int		ret = -1;
+	fr_redis_conn_t		*conn;
 
-	int		argc;
-	char const	*argv[MAX_REDIS_ARGS];
-	char		argv_buf[MAX_REDIS_COMMAND_LEN];
+	int 			ret = -1;
+
+	fr_redis_cluster_state_t	state;
+	fr_redis_rcode_t		status;
+	redisReply		*reply = NULL;
+	int			s_ret;
+
+	uint8_t	const		*key = NULL;
+	size_t			key_len = 0;
+
+	int			argc;
+	char const		*argv[MAX_REDIS_ARGS];
+	char			argv_buf[MAX_REDIS_COMMAND_LEN];
 
 	if (!fmt || !*fmt) return 0;
 
 	argc = rad_expand_xlat(request, fmt, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
  	if (argc < 0) return -1;
 
-	reply = redisCommandArgv((*conn_p)->handle, argc, argv, NULL);
-	switch (fr_redis_command_status(*conn_p, reply)) {
-	case 0:
-		break;
+	/*
+	 *	If we've got multiple arguments, the second one is usually the key.
+	 *	The Redis docs say commands should be analysed first to get key
+	 *	positions, but this involves sending them to the server, which is
+	 *	just as expensive as sending them to the wrong server and receiving
+	 *	a redirect.
+	 */
+	if (argc > 1) {
+		key = (uint8_t const *)argv[1];
+	 	key_len = strlen((char const *)key);
+	}
 
-	default:
-		rad_assert(0);
-		/* FALL-THROUGH */
-
-	case -1:
-		RERROR("Command failed: %s", fr_strerror());
-		freeReplyObject(reply);
-		return -1;
-
-	case -2:
-		RERROR("Connection error: %s.  Reconnecting", fr_strerror());
+	for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request, key, key_len, false);
+	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
+	     s_ret = fr_redis_cluster_state_next(&state, &conn, inst->cluster, request, status, &reply)) {
+		reply = redisCommandArgv(conn->handle, argc, argv, NULL);
+		status = fr_redis_command_status(conn, reply);
+	}
+	if (s_ret != REDIS_RCODE_SUCCESS) {
+		RERROR("Failed inserting accounting data");
+		fr_redis_reply_free(reply);
 		return -1;
 	}
 
+	rad_assert(reply);	/* clang scan */
 	switch (reply->type) {
 	case REDIS_REPLY_INTEGER:
 		RDEBUG2("Query response %lld", reply->integer);
@@ -116,7 +128,7 @@ static int rediswho_command(UNUSED rlm_rediswho_t *inst, REQUEST *request, char 
 	default:
 		break;
 	}
-	freeReplyObject(reply);
+	fr_redis_reply_free(reply);
 
 	return ret;
 }
@@ -125,8 +137,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_rediswho_t *inst = instance;
 
-	inst->pool = fr_connection_pool_module_init(conf, inst->server, fr_redis_conn_create, NULL, NULL);
-	if (!inst->pool) return -1;
+	inst->cluster = fr_redis_cluster_alloc(inst, conf, inst->conf);
+	if (!inst->cluster) return -1;
 
 	return 0;
 }
@@ -140,24 +152,23 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	inst->cs = conf;
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) inst->name = cf_section_name1(conf);
-	inst->server->prefix = talloc_asprintf(inst, "rlm_rediswho (%s)", inst->name);
 
 	return 0;
 }
 
-static rlm_rcode_t mod_accounting_all(rlm_rediswho_t *inst, REQUEST *request, redis_conn_t **conn_p)
+static rlm_rcode_t mod_accounting_all(rlm_rediswho_t *inst, REQUEST *request)
 {
 	int ret;
 
-	ret = rediswho_command(inst, request, inst->insert, conn_p);
+	ret = rediswho_command(inst, request, inst->insert);
 	if (ret < 0) return RLM_MODULE_FAIL;
 
 	/* Only trim if necessary */
 	if ((inst->trim_count >= 0) && (ret > inst->trim_count)) {
-		if (rediswho_command(inst, request, inst->trim, conn_p) < 0) return RLM_MODULE_FAIL;
+		if (rediswho_command(inst, request, inst->trim) < 0) return RLM_MODULE_FAIL;
 	}
 
-	if (rediswho_command(inst, request, inst->expire, conn_p) < 0) return RLM_MODULE_FAIL;
+	if (rediswho_command(inst, request, inst->expire) < 0) return RLM_MODULE_FAIL;
 	return RLM_MODULE_OK;
 }
 
@@ -168,8 +179,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	VALUE_PAIR	*vp;
 	DICT_VALUE	*dv;
 	CONF_SECTION	*cs;
-
-	redis_conn_t	*conn;
 
 	vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (!vp) {
@@ -189,12 +198,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		return RLM_MODULE_NOOP;
 	}
 
-	conn = fr_connection_get(inst->pool);
-	if (!conn) return RLM_MODULE_FAIL;
-
-	rcode = mod_accounting_all(inst, request, &conn);
-
-	fr_connection_release(inst->pool, conn);
+	rcode = mod_accounting_all(inst, request);
 
 	return rcode;
 }

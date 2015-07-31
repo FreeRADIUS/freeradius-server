@@ -26,7 +26,7 @@
 #include "redis.h"
 #include <freeradius-devel/rad_assert.h>
 
-const FR_NAME_NUMBER redis_reply_types[] = {
+FR_NAME_NUMBER const redis_reply_types[] = {
 	{ "string",	REDIS_REPLY_STRING },
 	{ "integer",	REDIS_REPLY_INTEGER },
 	{ "array",	REDIS_REPLY_ARRAY },
@@ -36,16 +36,43 @@ const FR_NAME_NUMBER redis_reply_types[] = {
 	{ NULL,		-1 }
 };
 
+FR_NAME_NUMBER const redis_rcodes[] = {
+	{ "try again",	REDIS_RCODE_TRY_AGAIN },
+	{ "move",	REDIS_RCODE_MOVE },
+	{ "ask",	REDIS_RCODE_ASK },
+	{ "success",	REDIS_RCODE_SUCCESS },
+	{ "error",	REDIS_RCODE_ERROR },
+	{ "reconnect",	REDIS_RCODE_RECONNECT },
+	{ NULL,		-1 }
+};
+
+/** Print the version of libhiredis the server was built against
+ *
+ */
+void fr_redis_version_print(void)
+{
+	static bool version_done;
+
+	if (!version_done) {
+		version_done = true;
+
+		INFO("*: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
+	}
+}
+
 /** Check the reply for errors
  *
  * @param conn used to issue the command.
  * @param reply to process.
  * @return
- *	- 0 if no errors.
- *	- -1 on command/server error.
- *	- -2 on connection error (probably needs reconnecting)
+ *	- REDIS_RCODE_TRY_AGAIN - If the operation should be retries.
+ *	- REDIS_RCODE_MOVED  	- If the key has been permanently moved.
+ *	- REDIS_RCODE_ASK	- If the key has been temporarily moved.
+ *	- REDIS_RCODE_SUCCESS   - if no errors.
+ *	- REDIS_RCODE_ERROR     - on command/server error.
+ *	- REDIS_RCODE_RECONNECT - on connection error (probably needs reconnecting)
  */
-int fr_redis_command_status(redis_conn_t *conn, redisReply *reply)
+fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *reply)
 {
 	size_t i = 0;
 
@@ -57,21 +84,30 @@ int fr_redis_command_status(redis_conn_t *conn, redisReply *reply)
 	case REDIS_ERR_EOF:
 	case REDIS_ERR_OTHER:
 		fr_strerror_printf("Connection error: %s", conn->handle->errstr);
-		return -2;
+		return REDIS_RCODE_RECONNECT;
 
 	default:
 	case REDIS_ERR_PROTOCOL:
 		fr_strerror_printf("Command error: %s", conn->handle->errstr);
-		return -1;
+		return REDIS_RCODE_ERROR;
 	}
 
 	if (reply) switch (reply->type) {
 	case REDIS_REPLY_STATUS:
-		return 0;
+		return REDIS_RCODE_SUCCESS;
 
 	case REDIS_REPLY_ERROR:
 		fr_strerror_printf("Server error: %s", reply->str);
-		return -1;
+		if (strncmp(REDIS_ERROR_MOVED_STR, reply->str, sizeof(REDIS_ERROR_MOVED_STR) - 1) == 0) {
+			return REDIS_RCODE_MOVE;
+		}
+		if (strncmp(REDIS_ERROR_ASK_STR, reply->str, sizeof(REDIS_ERROR_ASK_STR) - 1) == 0) {
+			return REDIS_RCODE_ASK;
+		}
+		if (strncmp(REDIS_ERROR_TRY_AGAIN_STR, reply->str, sizeof(REDIS_ERROR_TRY_AGAIN_STR) - 1) == 0) {
+			return REDIS_RCODE_TRY_AGAIN;
+		}
+		return REDIS_RCODE_ERROR;
 
 	/*
 	 *	Recurse to check for nested errors
@@ -86,7 +122,7 @@ int fr_redis_command_status(redis_conn_t *conn, redisReply *reply)
 	default:
 		break;
 	}
-	return 0;
+	return REDIS_RCODE_SUCCESS;
 }
 
 /** Print the response data in a useful treelike form
@@ -96,7 +132,7 @@ int fr_redis_command_status(redis_conn_t *conn, redisReply *reply)
  * @param request The current request.
  * @param idx Response number.
  */
-void fr_redis_response_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, int idx)
+void fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, int idx)
 {
 	size_t i = 0;
 
@@ -127,7 +163,7 @@ void fr_redis_response_print(log_lvl_t lvl, redisReply *reply, REQUEST *request,
 		RDEBUGX(lvl, "(%i) array[%zu]", idx, reply->elements);
 		for (i = 0; i < reply->elements; i++) {
 			RINDENT();
-			fr_redis_response_print(lvl, reply->element[i], request, i);
+			fr_redis_reply_print(lvl, reply->element[i], request, i);
 			REXDENT();
 		}
 		break;
@@ -385,123 +421,4 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	out_len[1] = strlen(out[1]);
 
 	return 0;
-}
-
-/** Callback for freeing a REDIS connection
- *
- */
-static int _redis_conn_free(redis_conn_t *conn)
-{
-	redisFree(conn->handle);
-
-	return 0;
-}
-
-/** Create a new connection to the REDIS directory
- *
- * @param ctx to allocate connection structure in. Will be freed at the same time as the pool.
- * @param instance data of type #redis_conn_conf_t. Holds parameters for establishing new connection.
- * @param timeout Maximum time to take establishing the connection.
- * @return
- *	- New #redis_conn_t on success.
- *	- NULL on failure.
- */
-void *fr_redis_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
-{
-	redis_conn_conf_t	*inst = instance;
-	redis_conn_t		*conn = NULL;
-	redisContext		*handle;
-	redisReply		*reply = NULL;
-
-	handle = redisConnectWithTimeout(inst->hostname, inst->port, *timeout);
-	if ((handle != NULL) && handle->err) {
-		ERROR("%s: Connection failed: %s", inst->prefix, handle->errstr);
-		redisFree(handle);
-		return NULL;
-	}
-	else if (!handle) {
-		ERROR("%s: Connection failed", inst->prefix);
-		return NULL;
-	}
-
-	if (inst->password) {
-		DEBUG3("%s: Executing: AUTH %s", inst->prefix, inst->password);
-		reply = redisCommand(handle, "AUTH %s", inst->password);
-		if (!reply) {
-			ERROR("%s: Failed AUTH(enticating): %s", inst->prefix, handle->errstr);
-		error:
-			if (reply) freeReplyObject(reply);
-			redisFree(handle);
-			return NULL;
-		}
-
-		switch (reply->type) {
-		case REDIS_REPLY_STATUS:
-			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("%s: Failed AUTH(enticating): %s", inst->prefix, reply->str);
-				goto error;
-			}
-			freeReplyObject(reply);
-			break;	/* else it's OK */
-
-		case REDIS_REPLY_ERROR:
-			ERROR("%s: Failed AUTH(enticating): %s", inst->prefix, reply->str);
-			goto error;
-
-		default:
-			ERROR("%s: Unexpected reply of type %s to AUTH", inst->prefix,
-			      fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
-			goto error;
-		}
-	}
-
-	if (inst->database) {
-		DEBUG3("%s: Executing: SELECT %i", inst->prefix, inst->database);
-		reply = redisCommand(handle, "SELECT %i", inst->database);
-		if (!reply) {
-			ERROR("%s: Failed SELECT(ing) database %i: %s", inst->prefix, inst->database, handle->errstr);
-			goto error;
-		}
-
-		switch (reply->type) {
-		case REDIS_REPLY_STATUS:
-			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("%s: Failed SELECT(ing) database %i: %s", inst->prefix,
-				      inst->database, reply->str);
-				goto error;
-			}
-			freeReplyObject(reply);
-			break;	/* else it's OK */
-
-		case REDIS_REPLY_ERROR:
-			ERROR("%s: Failed SELECT(ing) database %i: %s", inst->prefix,
-			      inst->database, reply->str);
-			goto error;
-
-		default:
-			ERROR("%s: Unexpected reply of type %s, to SELECT", inst->prefix,
-			      fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
-			goto error;
-		}
-	}
-
-	conn = talloc_zero(ctx, redis_conn_t);
-	conn->handle = handle;
-	talloc_set_destructor(conn, _redis_conn_free);
-
-	return conn;
-}
-
-/** Print the version of libhiredis the server was built against
- *
- */
-void fr_redis_version_print(void)
-{
-	static bool version_done;
-
-	if (!version_done) {
-		version_done = true;
-
-		INFO("*: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
-	}
 }

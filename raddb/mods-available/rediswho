@@ -8,6 +8,22 @@
 #  This module tracks the last set of login sessions for a user.
 #
 rediswho {
+	#
+	#  If using Redis cluster, multiple 'bootstrap' servers may be
+	#  listed here (as separate config items). These will be contacted
+	#  in turn until one provides us with a valid map for the cluster.
+	#  Server strings may contain unique ports e.g.:
+	#
+	#    server = '127.0.0.1:30001'
+	#    server = '[::1]:30002'
+	#
+	#  Instantiation failure behaviour is controlled by pool.start as
+	#  with every other module, but with clustering, the pool section
+	#  determines limits for each node in the cluster, not the cluster
+	#  as a whole.
+	#
+	server = 127.0.0.1
+
 	#  How many sessions to keep track of per user.
 	#  If there are more than this number, older sessions are deleted.
 	trim_count = 15

@@ -26,37 +26,22 @@
 
 #include "../../rlm_cache.h"
 #include "../../../rlm_redis/redis.h"
+#include "../../../rlm_redis/cluster.h"
+
+static CONF_PARSER driver_config[] = {
+	REDIS_COMMON_CONFIG,
+	{ NULL, -1, 0, NULL, NULL}
+};
 
 typedef struct rlm_cache_redis {
-	redis_conn_conf_t	server;		//!< Connection parameters for the Redis server.
+	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
 						//!< Must be first field in this struct.
 
 	vp_tmpl_t		created_attr;	//!< LHS of the Cache-Created map.
 	vp_tmpl_t		expires_attr;	//!< LHS of the Cache-Expires map.
 
-	fr_connection_pool_t	*pool;
+	fr_redis_cluster_t	*cluster;
 } rlm_cache_redis_t;
-
-static const CONF_PARSER driver_config[] = {
-	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, redis_conn_conf_t, hostname), NULL },
-	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, redis_conn_conf_t, port), "6379" },
-	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, redis_conn_conf_t, database), "0" },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, redis_conn_conf_t, password), NULL },
-
-	{NULL, -1, 0, NULL, NULL}
-};
-
-/** Cleanup a rlm_cache_redis instance
- *
- * @param driver to free.
- * @return 0
- */
-static int _mod_detach(rlm_cache_redis_t *driver)
-{
-	fr_connection_pool_free(driver->pool);
-
-	return 0;
-}
 
 /** Create a new rlm_cache_redis instance
  *
@@ -71,15 +56,13 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 
 	fr_redis_version_print();
 
-	talloc_set_destructor(driver, _mod_detach);
-
 	if (cf_section_parse(conf, driver, driver_config) < 0) return -1;
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
 
-	driver->pool = fr_connection_pool_module_init(conf, &driver->server, fr_redis_conn_create, NULL, buffer);
-	if (!driver->pool) {
-		ERROR("rlm_cache_redis: Connection pool failure");
+	driver->cluster = fr_redis_cluster_alloc(driver, conf, &driver->conf);
+	if (!driver->cluster) {
+		ERROR("rlm_cache_redis: Cluster failure");
 		return -1;
 	}
 
@@ -111,59 +94,59 @@ static void cache_entry_free(rlm_cache_entry_t *c)
  * @copydetails cache_entry_find_t
  */
 static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
-				       UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
-				       REQUEST *request, void *handle, uint8_t const *key, size_t key_len)
+				       UNUSED rlm_cache_config_t const *config, void *driver_inst,
+				       REQUEST *request, UNUSED void *handle, uint8_t const *key, size_t key_len)
 {
-	redis_conn_t		*randle = talloc_get_type_abort(handle, redis_conn_t);
+	rlm_cache_redis_t		*driver = driver_inst;
+	size_t				i;
 
-	size_t			i;
+	fr_redis_cluster_state_t	state;
+	fr_redis_conn_t			*conn;
+	fr_redis_rcode_t		status;
+	redisReply			*reply = NULL;
+	int				s_ret;
 
-	redisReply		*reply;
-	vp_map_t		*head = NULL, **last = &head;
+	vp_map_t			*head = NULL, **last = &head;
 #ifdef HAVE_TALLOC_POOLED_OBJECT
-	size_t			pool_size = 0;
+	size_t				pool_size = 0;
 #endif
-	rlm_cache_entry_t	*c;
+	rlm_cache_entry_t		*c;
 
-	/*
-	 *	Grab all the data for this hash, should return an array
-	 *	of alternating keys/values which we then convert into maps.
-	 */
-	if (RDEBUG_ENABLED3) {
-		char *p;
+	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, key, key_len, false);
+	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
+	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
+		/*
+		 *	Grab all the data for this hash, should return an array
+		 *	of alternating keys/values which we then convert into maps.
+		 */
+		if (RDEBUG_ENABLED3) {
+			char *p;
 
-		p = fr_aprints(NULL, (char const *)key, key_len, '"');
-		RDEBUG3("LRANGE %s 0 -1", key);
-		talloc_free(p);
-	}
-	reply = redisCommand(randle->handle, "LRANGE %b 0 -1", key, key_len);
-	switch (fr_redis_command_status(randle, reply)) {
-	case 0:
-		if (reply->type != REDIS_REPLY_ARRAY) {
-			REDEBUG("Bad result type, expected array, got %s",
-				fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
-			freeReplyObject(reply);
-			return CACHE_ERROR;
+			p = fr_aprints(NULL, (char const *)key, key_len, '"');
+			RDEBUG3("LRANGE %s 0 -1", key);
+			talloc_free(p);
 		}
-		break;
-
-	default:
-		rad_assert(0);
-		/* FALL-THROUGH */
-
-	case -1:
-		RERROR("Failed retrieving entry: %s", fr_strerror());
-		freeReplyObject(reply);
-		return CACHE_ERROR;
-
-	case -2:
-		RERROR("Connection error: %s.  Asking for handle to be reconnected..", fr_strerror());
-		/* No replies to free on connection errors */
-		return CACHE_RECONNECT;
+		reply = redisCommand(conn->handle, "LRANGE %b 0 -1", key, key_len);
+		status = fr_redis_command_status(conn, reply);
 	}
+	if (s_ret != REDIS_RCODE_SUCCESS) {
+		RERROR("Failed retrieving entry");
+		fr_redis_reply_free(reply);
+		return CACHE_ERROR;
+	}
+	rad_assert(reply);	/* clang scan */
+
+	if (reply->type != REDIS_REPLY_ARRAY) {
+		REDEBUG("Bad result type, expected array, got %s",
+			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+		fr_redis_reply_free(reply);
+		return CACHE_ERROR;
+	}
+
+	RDEBUG3("Entry contains %zu elements", reply->elements);
 
 	if (reply->elements == 0) {
-		freeReplyObject(reply);
+		fr_redis_reply_free(reply);
 		return CACHE_MISS;
 	}
 
@@ -171,7 +154,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		REDEBUG("Invalid number of reply elements (%zu).  "
 			"Reply must contain triplets of keys operators and values",
 			reply->elements);
-		freeReplyObject(reply);
+		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
 	}
 
@@ -201,12 +184,12 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		if (fr_redis_reply_to_map(c, last, request,
 					  reply->element[i], reply->element[i + 1], reply->element[i + 2]) < 0) {
 			talloc_free(c);
-			freeReplyObject(reply);
+			fr_redis_reply_free(reply);
 			return CACHE_ERROR;
 		}
 		last = &(*last)->next;
 	}
-	freeReplyObject(reply);
+	fr_redis_reply_free(reply);
 
 	/*
 	 *	Pull out the cache created date
@@ -248,13 +231,18 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
  * @copydetails cache_entry_insert_t
  */
 static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config, void *driver_inst,
-					 REQUEST *request, void *handle, const rlm_cache_entry_t *c)
+					 REQUEST *request, UNUSED void *handle, const rlm_cache_entry_t *c)
 {
 	rlm_cache_redis_t	*driver = driver_inst;
-	redis_conn_t		*randle = talloc_get_type_abort(handle, redis_conn_t);
 	TALLOC_CTX		*pool;
 
 	vp_map_t		*map;
+
+	fr_redis_conn_t		*conn;
+	fr_redis_cluster_state_t	state;
+	fr_redis_rcode_t	status;
+	redisReply		*reply = NULL;
+	int			s_ret;
 
 	static char const	command[] = "RPUSH";
 	char const		**argv;
@@ -262,10 +250,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	char const		**argv_p;
 	size_t			*argv_len_p;
 
-	cache_status_t		rcode = CACHE_OK;
-
 	int			pipelined = 0;	/* How many commands pending in the pipeline */
-	redisReply		*reply = NULL;
 
 	char			*p;
 	int			cnt, i;
@@ -312,7 +297,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	 *
 	 * @todo We should really calculate this using some sort of moving average.
 	 */
-	pool = talloc_pool(randle, 1024);
+	pool = talloc_pool(request, 1024);
 	if (!pool) return CACHE_ERROR;
 
 	argv_p = argv = talloc_array(pool, char const *, (cnt * 3)+ 2);
@@ -339,203 +324,154 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	RDEBUG3("Pipelining commands");
 	RINDENT();
-	/*
-	 *	Start the transaction, as we need to set an expiry time too.
-	 */
-	if (c->expires > 0) {
-		RDEBUG3("MULTI");
-		if (redisAppendCommand(randle->handle, "MULTI") != REDIS_OK) {
-		append_error:
-			REXDENT();
-			RERROR("Failed appending Redis command to output buffer: %s", randle->handle->errstr);
-			talloc_free(pool);
-			return CACHE_ERROR;
+
+	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, c->key, c->key_len, false);
+	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
+	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
+	     	status = REDIS_RCODE_SUCCESS;
+
+		/*
+		 *	Start the transaction, as we need to set an expiry time too.
+		 */
+		if (c->expires > 0) {
+			RDEBUG3("MULTI");
+			if (redisAppendCommand(conn->handle, "MULTI") != REDIS_OK) {
+			append_error:
+				REXDENT();
+				RERROR("Failed appending Redis command to output buffer: %s", conn->handle->errstr);
+				talloc_free(pool);
+				return CACHE_ERROR;
+			}
+			pipelined++;
 		}
-		pipelined++;
-	}
 
-	if (RDEBUG_ENABLED3) {
-		p = fr_aprints(request, (char const *)c->key, c->key_len, '\0');
-		RDEBUG3("DEL \"%s\"", p);
-		talloc_free(p);
-
-	}
-	if (redisAppendCommand(randle->handle, "DEL %b", c->key, c->key_len) != REDIS_OK) goto append_error;
-	pipelined++;
-
-	if (RDEBUG_ENABLED3) {
-		RDEBUG3("argv command");
-		RINDENT();
-		for (i = 0; i < (int)talloc_array_length(argv); i++) {
-			p = fr_aprints(request, argv[i], argv_len[i], '\0');
-			RDEBUG3("%s", p);
+		if (RDEBUG_ENABLED3) {
+			p = fr_aprints(request, (char const *)c->key, c->key_len, '\0');
+			RDEBUG3("DEL \"%s\"", p);
 			talloc_free(p);
+
+		}
+
+		if (redisAppendCommand(conn->handle, "DEL %b", c->key, c->key_len) != REDIS_OK) goto append_error;
+		pipelined++;
+
+		if (RDEBUG_ENABLED3) {
+			RDEBUG3("argv command");
+			RINDENT();
+			for (i = 0; i < (int)talloc_array_length(argv); i++) {
+				p = fr_aprints(request, argv[i], argv_len[i], '\0');
+				RDEBUG3("%s", p);
+				talloc_free(p);
+			}
+			REXDENT();
+		}
+		redisAppendCommandArgv(conn->handle, talloc_array_length(argv), argv, argv_len);
+		pipelined++;
+
+		/*
+		 *	Set the expiry time and close out the transaction.
+		 */
+		if (c->expires > 0) {
+			if (RDEBUG_ENABLED3) {
+				p = fr_aprints(request, (char const *)c->key, c->key_len, '\"');
+				RDEBUG3("EXPIREAT \"%s\" %li", p, (long)c->expires);
+				talloc_free(p);
+			}
+			if (redisAppendCommand(conn->handle, "EXPIREAT %b %i", c->key,
+					       c->key_len, c->expires) != REDIS_OK) goto append_error;
+			pipelined++;
+			RDEBUG3("EXEC");
+			if (redisAppendCommand(conn->handle, "EXEC") != REDIS_OK) goto append_error;
+			pipelined++;
+		}
+		REXDENT();
+		talloc_free_children(pool);	/* May have to repeat the command */
+
+		/*
+		 *	Looks like hiredis may leak memory if we pass in a NULL reply argument
+		 *	so we always get the reply, and free it if it wasn't needed.
+		 */
+		RDEBUG3("Command results");
+		RINDENT();
+		for (i = 0; i < pipelined; i++) {
+			bool maybe_more = false;
+
+			/*
+			 *	we don't need to check the return code here,
+			 *	as it's also stored in the conn->handle.
+			 */
+			reply = NULL;
+			if (redisGetReply(conn->handle, (void **)&reply) == REDIS_OK) maybe_more = true;
+			status = fr_redis_command_status(conn, reply);
+			/*
+			 *	Bail out of processing responses,
+			 *	free the remaining ones (leaving this one intact)
+			 *	pass control back to the cluster code.
+			 */
+			if (maybe_more && (status != REDIS_RCODE_SUCCESS)) {
+				while (++i < pipelined) {
+					redisReply *to_clear;
+
+					if (redisGetReply(conn->handle, (void **)&to_clear) != REDIS_OK) break;
+					fr_redis_reply_free(to_clear);
+				}
+				break;
+			}
+
+			fr_redis_reply_print(L_DBG_LVL_3, reply, request, i);
+
+			fr_redis_reply_free(reply);
+			reply = NULL;
 		}
 		REXDENT();
 	}
-	redisAppendCommandArgv(randle->handle, talloc_array_length(argv), argv, argv_len);
-	pipelined++;
-
-	/*
-	 *	Set the expiry time and close out the transaction.
-	 */
-	if (c->expires > 0) {
-		if (RDEBUG_ENABLED3) {
-			p = fr_aprints(request, (char const *)c->key, c->key_len, '\"');
-			RDEBUG3("EXPIREAT \"%s\" %li", p, (long)c->expires);
-			talloc_free(p);
-		}
-		if (redisAppendCommand(randle->handle, "EXPIREAT %b %i", c->key,
-				       c->key_len, c->expires) != REDIS_OK) goto append_error;
-		pipelined++;
-		RDEBUG3("EXEC");
-		if (redisAppendCommand(randle->handle, "EXEC") != REDIS_OK) goto append_error;
-		pipelined++;
-	}
-	REXDENT();
+	fr_redis_reply_free(reply);
 	talloc_free(pool);
-
-	/*
-	 *	Looks like hiredis may leak memory if we pass in a NULL reply argument
-	 *	so we always get the reply, and free it if it wasn't needed.
-	 */
-	RDEBUG3("Command results");
-	RINDENT();
-	for (i = 0; i < pipelined; i++) {
-		redisGetReply(randle->handle, (void **)&reply);
-		fr_redis_response_print(L_DBG_LVL_3, reply, request, i);
-		switch (fr_redis_command_status(randle, reply)) {
-		case 0:
-			break;
-
-		default:
-			rad_assert(0);
-			/* FALL-THROUGH */
-
-		case -1:
-			rcode = CACHE_ERROR;
-			break;
-
-		case -2:
-			rcode = CACHE_RECONNECT;
-			break;
-		}
-		freeReplyObject(reply);
-		reply = NULL;
+	if (s_ret != REDIS_RCODE_SUCCESS) {
+		RERROR("Failed inserting entry");
+		return CACHE_ERROR;
 	}
-	switch (rcode) {
-	case CACHE_ERROR:
-		RERROR("Failed storing entry");
-		break;
-
-	case CACHE_RECONNECT:
-		REDEBUG2("Asking for handle to be reconnected...");
-		break;
-
-	default:
-		break;
-	}
-	REXDENT();
-
-	return rcode;
+	return CACHE_OK;
 }
 
 /** Call delete the cache entry from redis
  *
  * @copydetails cache_entry_expire_t
  */
-static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
-					 REQUEST *request, void *handle,  uint8_t const *key, size_t key_len)
+static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, void *driver_inst,
+					 REQUEST *request, UNUSED void *handle,  uint8_t const *key, size_t key_len)
 {
-	redis_conn_t	*randle = talloc_get_type_abort(handle, redis_conn_t);
-	redisReply	*reply;
+	rlm_cache_redis_t		*driver = driver_inst;
+	fr_redis_cluster_state_t	state;
+	fr_redis_conn_t			*conn;
+	fr_redis_rcode_t			status;
+	redisReply			*reply = NULL;
+	int				s_ret;
 
-	reply = redisCommand(randle->handle, "DEL %b", key, key_len);
-	switch (fr_redis_command_status(randle, reply)) {
-	case 0:
-		if (reply->type == REDIS_REPLY_INTEGER) {
-			if (reply->integer) {
-				freeReplyObject(reply);
-				return CACHE_OK;
-			}
-
-			freeReplyObject(reply);
-			return CACHE_MISS;
-		}
-
-		REDEBUG("Bad result type, expected integer, got %s",
-			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
-		freeReplyObject(reply);
+	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, key, key_len, false);
+	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
+	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
+	     	reply = redisCommand(conn->handle, "DEL %b", key, key_len);
+	     	status = fr_redis_command_status(conn, reply);
+	}
+	if (s_ret != REDIS_RCODE_SUCCESS) {
+		RERROR("Failed expiring entry");
+		fr_redis_reply_free(reply);
 		return CACHE_ERROR;
-
-	default:
-		rad_assert(0);
-		/* FALL-THROUGH */
-
-	case -1:
-		RERROR("Failed expiring entry: %s", fr_strerror());
-		freeReplyObject(reply);
-		return CACHE_ERROR;
-
-	case -2:
-		RERROR("Connection error: %s.  Asking for handle to be reconnected..", fr_strerror());
-		/* No replies to free on connection errors */
-		return CACHE_RECONNECT;
 	}
-}
 
-/** Get a redis handle
- *
- * @copydetails cache_acquire_t
- */
-static int mod_conn_get(void **handle, UNUSED rlm_cache_config_t const *config, void *driver_inst,
-			UNUSED REQUEST *request)
-{
-	rlm_cache_redis_t	*driver = driver_inst;
-	rlm_cache_handle_t	*randle;
-
-	*handle = NULL;
-
-	randle = fr_connection_get(driver->pool);
-	if (!randle) {
-		*handle = NULL;
-		return -1;
+	rad_assert(reply);	/* clang scan */
+	if (reply->type == REDIS_REPLY_INTEGER) {
+		fr_redis_reply_free(reply);
+		if (reply->integer) return CACHE_OK;	/* Affected */
+		return CACHE_MISS;
 	}
-	*handle = randle;
 
-	return 0;
-}
+	REDEBUG("Bad result type, expected integer, got %s",
+		fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+	fr_redis_reply_free(reply);
 
-/** Release a redis handle
- *
- * @copydetails cache_release_t
- */
-static void mod_conn_release(UNUSED rlm_cache_config_t const *config, void *driver_inst,
-			     UNUSED REQUEST *request, void *handle)
-{
-	rlm_cache_redis_t *driver = driver_inst;
-
-	fr_connection_release(driver->pool, handle);
-}
-
-/** Reconnect a redis handle
- *
- * @copydetails cache_reconnect_t
- */
-static int mod_conn_reconnect(void **handle, UNUSED rlm_cache_config_t const *config, void *driver_inst,
-			      UNUSED REQUEST *request)
-{
-	rlm_cache_redis_t *driver = driver_inst;
-	rlm_cache_handle_t *randle;
-
-	randle = fr_connection_reconnect(driver->pool, *handle);
-	if (!randle) {
-		*handle = NULL;
-		return -1;
-	}
-	*handle = randle;
-
-	return 0;
+	return CACHE_ERROR;
 }
 
 extern cache_driver_t rlm_cache_redis;
@@ -548,8 +484,4 @@ cache_driver_t rlm_cache_redis = {
 	.find		= cache_entry_find,
 	.insert		= cache_entry_insert,
 	.expire		= cache_entry_expire,
-
-	.acquire	= mod_conn_get,
-	.release	= mod_conn_release,
-	.reconnect	= mod_conn_reconnect
 };
