@@ -1256,7 +1256,7 @@ bool is_whitespace(char const *value)
  	size_t	i;
 
  	for (i = 0; i < len; i++) {
- 		clen = fr_utf8_char(p);
+ 		clen = fr_utf8_char(p, len - i);
  		if (clen == 0) return false;
  		i += (size_t)clen;
  		p += clen;

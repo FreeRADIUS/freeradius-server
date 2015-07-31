@@ -307,7 +307,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 			if ((*p != 0x0a) && (*p != 0x0d) && (*p != '\t')) break;
 			cl = 1;
 		} else {
-			cl = fr_utf8_char((uint8_t *) p);
+			cl = fr_utf8_char((uint8_t *) p, -1);
 			if (!cl) break;
 		}
 	}

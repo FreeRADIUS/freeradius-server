@@ -448,7 +448,7 @@ int vradlog(log_type_t type, char const *msg, va_list ap)
 			continue;
 
 		default:
-			clen = fr_utf8_char(p);
+			clen = fr_utf8_char(p, -1);
 			if (!clen) {
 				*p = '?';
 				continue;
