@@ -31,7 +31,7 @@ RCSIDH(token_h, "$Id$")
 extern "C" {
 #endif
 
-typedef enum fr_token_t {
+typedef enum fr_token {
 	T_INVALID = 0,			/* invalid token */
 	T_EOL,				/* end of line */
 	T_LCBRACE,			/* { */
