@@ -398,8 +398,8 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 		if (evset.flags & EV_ERROR) {    /* report errors */
 			int num = (int)evset.data;
 
-			fr_strerror_printf("The 'kevent' return error for FD %i: %s (%d)\n",
-					fd, fr_syserror(num), num);
+			fr_strerror_printf("Kevent returned error for FD %i: %s (%d)",
+					   fd, fr_syserror(num), num);
 			return 0;
 		}
 
