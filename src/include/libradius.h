@@ -250,33 +250,33 @@ typedef struct dict_vendor {
  */
 typedef struct value_data {
 	union {
-		char const	        *strvalue;			//!< Pointer to UTF-8 string.
-		uint8_t const		*octets;			//!< Pointer to binary string.
-		uint32_t		integer;			//!< 32bit unsigned integer.
-		struct in_addr		ipaddr;				//!< IPv4 Address.
-		uint32_t		date;				//!< Date (32bit Unix timestamp).
+		char const	        *strvalue;		//!< Pointer to UTF-8 string.
+		uint8_t const		*octets;		//!< Pointer to binary string.
+		uint32_t		integer;		//!< 32bit unsigned integer.
+		struct in_addr		ipaddr;			//!< IPv4 Address.
+		uint32_t		date;			//!< Date (32bit Unix timestamp).
 		size_t			filter[32/sizeof(size_t)];	//!< Ascend binary format a packed data
 									//!< structure.
 
-		uint8_t			ifid[8];			//!< IPv6 interface ID (should be struct?).
-		struct in6_addr		ipv6addr;			//!< IPv6 Address.
-		uint8_t			ipv6prefix[18];			//!< IPv6 prefix (should be struct?).
+		uint8_t			ifid[8];		//!< IPv6 interface ID (should be struct?).
+		struct in6_addr		ipv6addr;		//!< IPv6 Address.
+		uint8_t			ipv6prefix[18];		//!< IPv6 prefix (should be struct?).
 
-		uint8_t			byte;				//!< 8bit unsigned integer.
-		uint16_t		ushort;				//!< 16bit unsigned integer.
+		uint8_t			byte;			//!< 8bit unsigned integer.
+		uint16_t		ushort;			//!< 16bit unsigned integer.
 
-		uint8_t			ether[6];			//!< Ethernet (MAC) address.
+		uint8_t			ether[6];		//!< Ethernet (MAC) address.
 
-		int32_t			sinteger;			//!< 32bit signed integer.
-		uint64_t		integer64;			//!< 64bit unsigned integer.
+		int32_t			sinteger;		//!< 32bit signed integer.
+		uint64_t		integer64;		//!< 64bit unsigned integer.
 
-		uint8_t			ipv4prefix[6];			//!< IPv4 prefix (should be struct?).
+		uint8_t			ipv4prefix[6];		//!< IPv4 prefix (should be struct?).
 
-		void			*ptr;				//!< generic pointer.
+		void			*ptr;			//!< generic pointer.
 	};
 
-	size_t length;
 } value_data_t;
+	size_t		length;					//!< Length of value data.
 
 /** The type of value a VALUE_PAIR contains
  *
