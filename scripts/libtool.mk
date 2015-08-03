@@ -98,7 +98,7 @@ define ADD_TARGET_RULE.la
 	    @$(ECHO) LINK $${${1}_BUILD}/${1}
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
-		$${${1}_PRLIBS}
+                $${${1}_PRLIBS}
 	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
@@ -135,7 +135,8 @@ define ADD_RELINK_RULE.la
     $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PRLIBS}
 	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${RELINK}${1} $${RELINK_FLAGS} $${LDFLAGS} \
-                $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS}
+                $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
+                $${${1}_PRLIBS}
 	    $(Q)$${${1}_POSTMAKE}
 
 endef
