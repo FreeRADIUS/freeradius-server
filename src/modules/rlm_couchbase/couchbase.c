@@ -197,12 +197,10 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, co
  * @return           Couchbase error object.
  */
 lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass,
-				      struct timeval const *timeout)
+				      lcb_uint32_t timeout)
 {
 	lcb_error_t error;                      /* couchbase command return */
 	struct lcb_create_st options;           /* init create struct */
-
-	lcb_uint32_t timeout_ms = FR_TIMEVAL_TO_MS(timeout);
 
 	/* init options */
 	memset(&options, 0, sizeof(options));
@@ -221,7 +219,7 @@ lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const c
 	error = lcb_create(instance, &options);
 	if (error != LCB_SUCCESS) return error;
 
-	error = lcb_cntl(*instance, LCB_CNTL_SET, LCB_CNTL_CONFIGURATION_TIMEOUT, &timeout_ms);
+	error = lcb_cntl(*instance, LCB_CNTL_SET, LCB_CNTL_CONFIGURATION_TIMEOUT, &timeout);
 	if (error != LCB_SUCCESS) return error;
 
 	/* initiate connection */

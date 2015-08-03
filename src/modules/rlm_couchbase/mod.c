@@ -29,7 +29,6 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 
 #include <libcouchbase/couchbase.h>
-#include <json.h>
 
 #include "mod.h"
 #include "couchbase.h"
@@ -156,9 +155,14 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	CONF_PAIR *cp;                      /* conig pair */
 	const char *attribute, *element;    /* attribute and element names */
 
-	/* find map section */
-	cs = cf_section_sub_find(conf, "map");
-	if (!cs) cf_section_sub_find(conf, "update");
+	/* find update section */
+	cs = cf_section_sub_find(conf, "update");
+
+	/* backwards compatibility */
+	if (!cs) {
+		cs = cf_section_sub_find(conf, "map");
+		WARN("rlm_couchbase: found deprecated 'map' section - please change to 'update'");
+	}
 
 	/* check section */
 	if (!cs) {
@@ -174,7 +178,7 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	for (ci = cf_item_find_next(cs, NULL); ci != NULL; ci = cf_item_find_next(cs, ci)) {
 		/* validate item */
 		if (!cf_item_is_pair(ci)) {
-			ERROR("rlm_couchbase: failed to parse invalid item in 'map' section");
+			ERROR("rlm_couchbase: failed to parse invalid item in 'update' section");
 			/* free map */
 			if (inst->map) {
 				json_object_put(inst->map);
