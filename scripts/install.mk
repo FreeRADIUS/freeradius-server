@@ -23,6 +23,17 @@
 #   replacing the line after the "mkdir"
 #
 
+#
+#  You can watch what it's doing by:
+#
+#	$ VERBOSE=1 make ... args ...
+#
+ifeq "${VERBOSE}" ""
+    Q=@
+else
+    Q=
+endif
+
 # ADD_INSTALL_RULE.exe - Parameterized "function" that adds a new rule
 #   and phony target for installing an executable.
 #
@@ -37,9 +48,9 @@ define ADD_INSTALL_RULE.exe
     # Install executable ${1}
     $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/${1}
 	@$(ECHO) INSTALL ${1}
-	@$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
-	@$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/bin/${1} $${${1}_INSTALLDIR}/
-	@$${${1}_POSTINSTALL}
+	$(Q)$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
+	$(Q)$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/bin/${1} $${${1}_INSTALLDIR}/
+	$(Q)$${${1}_POSTINSTALL}
 
 endef
 
@@ -57,9 +68,9 @@ define ADD_INSTALL_RULE.a
     # Install static library ${1}
     $${${1}_INSTALLDIR}/$(notdir ${1}): ${1}
 	@$(ECHO) INSTALL ${1}
-	@$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
-	@$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/lib/${1} $${${1}_INSTALLDIR}/
-	@$${${1}_POSTINSTALL}
+	$(Q)$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
+	$(Q)$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/lib/${1} $${${1}_INSTALLDIR}/
+	$(Q)$${${1}_POSTINSTALL}
 
 endef
 
@@ -80,9 +91,9 @@ define ADD_INSTALL_RULE.la
     # Install libtool library ${1}
     $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/${1}
 	@$(ECHO) INSTALL ${1}
-	@$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
-	@$${PROGRAM_INSTALL} -c -m 755 $${RELINK_FLAGS_MIN} $${BUILD_DIR}/lib/${1} $${${1}_INSTALLDIR}/
-	@$${${1}_POSTINSTALL}
+	$(Q)$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
+	$(Q)$${PROGRAM_INSTALL} -c -m 755 $${RELINK_FLAGS_MIN} $${BUILD_DIR}/lib/${1} $${${1}_INSTALLDIR}/
+	$(Q)$${${1}_POSTINSTALL}
 
 endef
 
@@ -101,8 +112,8 @@ define ADD_INSTALL_RULE.man
     # Install manual page ${1}
     ${2}/$(notdir ${1}): ${1}
 	@$(ECHO) INSTALL $(notdir ${1})
-	@[ -d ${2} ] || $${PROGRAM_INSTALL} -d -m 755 ${2}
-	@$${PROGRAM_INSTALL} -c -m 644 ${1} ${2}/
+	$(Q)[ -d ${2} ] || $${PROGRAM_INSTALL} -d -m 755 ${2}
+	$(Q)$${PROGRAM_INSTALL} -c -m 644 ${1} ${2}/
 
 endef
 
@@ -118,7 +129,7 @@ define ADD_INSTALL_TARGET
         ifeq "$${TGT_INSTALLDIR}" ".."
             TGT_INSTALLDIR := $${bindir}
         endif
-    else 
+    else
         ifeq "$${TGT_INSTALLDIR}" ".."
             TGT_INSTALLDIR := $${libdir}
         endif
@@ -203,7 +214,7 @@ endif
 # We also want to uninstall only when there are "install_foo" targets.
 .PHONY: uninstall
 uninstall:
-	@rm -f ${ALL_INSTALL} ./.no_such_file
+	$(Q)rm -f ${ALL_INSTALL} ./.no_such_file
 
 # Wrapper around INSTALL
 ifeq "${PROGRAM_INSTALL}" ""
@@ -225,5 +236,5 @@ install: install_ERROR
 .PHONY: install_ERROR
 install_ERROR:
 	@$(ECHO) Please define INSTALL in order to enable the installation rules.
-	@exit 1
+	$(Q)exit 1
 endif
