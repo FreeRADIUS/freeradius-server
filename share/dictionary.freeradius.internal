@@ -502,11 +502,22 @@ ATTRIBUTE	Tmp-Integer64-7				1878	integer64 internal
 ATTRIBUTE	Tmp-Integer64-8				1879	integer64 internal
 ATTRIBUTE	Tmp-Integer64-9				1880	integer64 internal
 
+ATTRIBUTE	Tmp-Signed-0				1881	signed internal
+ATTRIBUTE	Tmp-Signed-1				1882	signed internal
+ATTRIBUTE	Tmp-Signed-2				1883	signed internal
+ATTRIBUTE	Tmp-Signed-3				1884	signed internal
+ATTRIBUTE	Tmp-Signed-4				1885	signed internal
+ATTRIBUTE	Tmp-Signed-5				1886	signed internal
+ATTRIBUTE	Tmp-Signed-6				1887	signed internal
+ATTRIBUTE	Tmp-Signed-7				1888	signed internal
+ATTRIBUTE	Tmp-Signed-8				1889	signed internal
+ATTRIBUTE	Tmp-Signed-9				1890	signed internal
+
 #
 #  Mostly for testing
 #
-ATTRIBUTE	Tmp-String-Tagged-0			1881	string has_tag,internal
-ATTRIBUTE	Tmp-String-Tagged-1			1882	string has_tag,internal
+ATTRIBUTE	Tmp-String-Tagged-0			1891	string has_tag,internal
+ATTRIBUTE	Tmp-String-Tagged-1			1892	string has_tag,internal
 
 #
 #  These attributes shouldn't be used anywhere.  They are defined here
