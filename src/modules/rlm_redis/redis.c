@@ -196,6 +196,8 @@ int fr_redis_reply_to_value_data(TALLOC_CTX *ctx, value_data_t *out, redisReply 
 	value_data_t	in;
 	PW_TYPE		src_type = 0;
 
+	memset(&in, 0, sizeof(in));
+
 	switch (reply->type) {
 	case REDIS_REPLY_NIL:
 		return 1;
