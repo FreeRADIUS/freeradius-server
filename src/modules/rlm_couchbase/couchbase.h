@@ -30,7 +30,8 @@
 RCSIDH(couchbase_h, "$Id$")
 
 #include <libcouchbase/couchbase.h>
-#include <json.h>
+
+#include "jsonc_missing.h"
 
 /** Information relating to the parsing of Couchbase document payloads
  *

@@ -70,13 +70,19 @@ if test x$with_[]modname != xno; then
 	dnl ############################################################
 
 	have_json="yes"
-
-	smart_prefix="json-c json"
 	smart_try_dir="$jsonc_include_dir"
-	FR_SMART_CHECK_INCLUDE([json.h])
-	if test "x$ac_cv_header_json_h" != "xyes"; then
-		have_json="no"
-		AC_MSG_WARN([json-c headers not found. Use --with-jsonc-include-dir=<path>.])
+	FR_SMART_CHECK_INCLUDE([json/json.h])
+	if test "x$ac_cv_header_json_json_h" != "xyes"; then
+		FR_SMART_CHECK_INCLUDE([json-c/json.h])
+		if test "x$ac_cv_header_jsonmc_json_h" != "xyes"; then
+			have_json="no"
+			AC_MSG_WARN([json-c headers not found. Use --with-jsonc-include-dir=<path>.])
+			fail="$fail json.h"
+		else
+			AC_DEFINE([HAVE_JSONMC_JSON_H],[1],[json.h is at json-c/json.h relative to include dir])
+		fi
+	else
+		AC_DEFINE([HAVE_JSON_JSON_H],[1],[json.h is at json/json.h relative to include dir])
 	fi
 
 	dnl ############################################################
