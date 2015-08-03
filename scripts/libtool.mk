@@ -13,6 +13,17 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#
+#  You can watch what it's doing by:
+#
+#	$ VERBOSE=1 make ... args ...
+#
+ifeq "${VERBOSE}" ""
+    Q=@
+else
+    Q=
+endif
+
 # Add these rules only when LIBTOOL is being used.
 ifneq "${LIBTOOL}" ""
 
@@ -83,12 +94,12 @@ define ADD_TARGET_RULE.la
 
     # Create libtool library ${1}
     $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PRLIBS}
-	    @$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
+	    $(Q)$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
 	    @$(ECHO) LINK $${${1}_BUILD}/${1}
-	    @$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
+	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
 		$${${1}_PRLIBS}
-	    @$${${1}_POSTMAKE}
+	    $(Q)$${${1}_POSTMAKE}
 
     ifneq "${ANALYZE.c}" ""
         scan.${1}: $${${1}_PLISTS}
@@ -105,11 +116,11 @@ define ADD_RELINK_RULE.exe
 
     # used to fix up RPATH for ${1} on install.
     $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PRBIN} $${${1}_R_PRLIBS}
-	    @$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
-	    @$${${1}_LINKER} -o $${${1}_BUILD}/$${RELINK}${1} $${RELINK_FLAGS} $${LDFLAGS} \
+	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
+	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${RELINK}${1} $${RELINK_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_R_PRLIBS} \
                 $${LDLIBS} $${${1}_LDLIBS}
-	    @$${${1}_POSTMAKE}
+	    $(Q)$${${1}_POSTMAKE}
 endef
 
 # ADD_RELINK_RULE.la - Parametric "function" that adds a rule to relink
@@ -122,10 +133,10 @@ define ADD_RELINK_RULE.la
 
     # used to fix up RPATH for ${1} on install.
     $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PRLIBS}
-	    @$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
-	    @$${${1}_LINKER} -o $${${1}_BUILD}/$${RELINK}${1} $${RELINK_FLAGS} $${LDFLAGS} \
+	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
+	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${RELINK}${1} $${RELINK_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS}
-	    @$${${1}_POSTMAKE}
+	    $(Q)$${${1}_POSTMAKE}
 
 endef
 
