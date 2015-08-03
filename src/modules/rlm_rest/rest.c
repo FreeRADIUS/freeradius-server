@@ -1296,7 +1296,6 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_r
 static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			 REQUEST *request, json_object *object, UNUSED int level, int max)
 {
-	struct lh_entry *entry;
 	int max_attrs = max;
 
 	if (!fr_json_object_is_type(object, json_type_object)) {
@@ -1314,14 +1313,10 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 	/*
 	 *	Process VP container
 	 */
-	for (entry = json_object_get_object(object)->head;
-	     entry;
-	     entry = entry->next) {
+	json_object_object_foreach(object, name, value) {
 		int i = 0, elements;
-		struct json_object *value, *element, *tmp;
+		struct json_object *element, *tmp;
 		TALLOC_CTX *ctx;
-
-		char const *name = (char const *)entry->k;
 
 		json_flags_t flags = {
 			.op = T_OP_SET,
@@ -1334,9 +1329,6 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 		VALUE_PAIR **vps, *vp = NULL;
 
 		memset(&dst, 0, sizeof(dst));
-
-		/* Fix the compiler warnings regarding const... */
-		memcpy(&value, &entry->v, sizeof(value));
 
 		/*
 		 *  Resolve attribute name to a dictionary entry and pairlist.
@@ -1380,8 +1372,7 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			/*
 			 *  Process operator if present.
 			 */
-			tmp = json_object_object_get(value, "op");
-			if (tmp) {
+			if (json_object_object_get_ex(value, "op", &tmp)) {
 				flags.op = fr_str2int(fr_tokens, json_object_get_string(tmp), 0);
 				if (!flags.op) {
 					RWDEBUG("Invalid operator value \"%s\", skipping...",
@@ -1393,24 +1384,21 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			/*
 			 *  Process optional do_xlat bool.
 			 */
-			tmp = json_object_object_get(value, "do_xlat");
-			if (tmp) {
+			if (json_object_object_get_ex(value, "do_xlat", &tmp)) {
 				flags.do_xlat = json_object_get_boolean(tmp);
 			}
 
 			/*
 			 *  Process optional is_json bool.
 			 */
-			tmp = json_object_object_get(value, "is_json");
-			if (tmp) {
+			if (json_object_object_get_ex(value, "is_json", &tmp)) {
 				flags.is_json = json_object_get_boolean(tmp);
 			}
 
 			/*
 			 *  Value key must be present if were using the expanded syntax.
 			 */
-			value = json_object_object_get(value, "value");
-			if (!value) {
+			if (!json_object_object_get_ex(value, "value", &tmp)) {
 				RWDEBUG("Value key missing, skipping...");
 				continue;
 			}
