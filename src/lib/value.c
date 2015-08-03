@@ -111,6 +111,10 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 		CHECK(integer64);
 		break;
 
+	case PW_TYPE_DECIMAL:
+		CHECK(decimal);
+		break;
+
 	case PW_TYPE_ETHERNET:
 		compare = memcmp(a->ether, b->ether, sizeof(a->ether));
 		break;
@@ -1378,7 +1382,7 @@ int value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const 
 {
 	switch (src_type) {
 	default:
-		memcpy(dst, src, sizeof(*src));
+		memcpy(dst, src, sizeof(*dst));
 		break;
 
 	case PW_TYPE_STRING:
@@ -1416,12 +1420,18 @@ int value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const
 
 	case PW_TYPE_STRING:
 		dst->strvalue = talloc_steal(ctx, src->strvalue);
-		if (!dst->strvalue) return -1;
+		if (!dst->strvalue) {
+			fr_strerror_printf("Failed stealing string buffer");
+			return -1;
+		}
 		break;
 
 	case PW_TYPE_OCTETS:
 		dst->octets = talloc_steal(ctx, src->octets);
-		if (!dst->octets) return -1;
+		if (!dst->octets) {
+			fr_strerror_printf("Failed stealing octets buffer");
+			return -1;
+		}
 		break;
 	}
 	dst->length = src->length;
@@ -1574,6 +1584,10 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 
 	case PW_TYPE_BOOLEAN:
 		p = talloc_typed_strdup(ctx, data->byte ? "yes" : "no");
+		break;
+
+	case PW_TYPE_DECIMAL:
+		p = talloc_typed_asprintf(ctx, "%g", data->decimal);
 		break;
 
 	/*
@@ -1808,6 +1822,9 @@ print_int:
 				data->ether[0], data->ether[1],
 				data->ether[2], data->ether[3],
 				data->ether[4], data->ether[5]);
+
+	case PW_TYPE_DECIMAL:
+		return snprintf(out, outlen, "%g", data->decimal);
 
 	/*
 	 *	Don't add default here

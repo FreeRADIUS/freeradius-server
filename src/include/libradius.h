@@ -270,8 +270,11 @@ struct value_data {
 
 		int32_t			sinteger;		//!< 32bit signed integer.
 		uint64_t		integer64;		//!< 64bit unsigned integer.
+		double			decimal;		//!< Double precision float.
 
 		uint8_t			ipv4prefix[6];		//!< IPv4 prefix (should be struct?).
+
+		bool			boolean;		//!< A truth value.
 
 		void			*ptr;			//!< generic pointer.
 	};
@@ -369,6 +372,7 @@ typedef struct value_pair_raw {
 #define vp_signed	data.sinteger
 #define vp_integer64	data.integer64
 #define vp_ipv4prefix	data.ipv4prefix
+#define vp_decimal	data.decimal
 
 #define vp_length	data.length
 
