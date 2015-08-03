@@ -1,0 +1,57 @@
+# -*- text -*-
+#
+#  $Id$
+#
+# JSON module registers a map function to allow mapping fields from JSON
+# structures to attributes.
+#
+# The path through the JSON object is specified with fr jpath, which is
+# the FreeRADIUS implementation of the jpath grammar described here:
+#
+#	http://goessner.net/articles/JsonPath/
+#
+# rlm_json currently implements a subset of the grammar described by the
+# above implementation.
+#
+# Selectors currently implemented are:
+#   - $          Root node (only valid at the start of the path).
+#   - @          Current node (only valid at the start of the path).
+#   - .<name>    A field within an object.
+#   - [<idx>]    Index within an array.
+#   - [<start>:<end>[:<step>]]  A slice within an array (identical to the Python syntax).
+#   - [<idx>,<start>:<end>]     Multiple indexes/slices within an array.
+#   - .*         All the children of the current node
+#
+# Automatic casting will occur between JSON and attribute types where possible.
+#
+# FreeRADIUS does not currently have a signed64 or floating point type, to map
+# large signed numbers and JSON doubles to.  These may instead be written to
+# string type attributes.
+#
+# Assignment of JSON objects/arrays to strings is supported, in which case the
+# JSON serialized form of the object/array is used.
+#
+# If a jpath matches multiple nodes, unless the map includes the += operator
+# only the first node's value will be used.
+# If the map uses += then multiple instances of the attribute will be created,
+# each holding a different node value.
+#
+# Simple example:
+# {
+#	"user": "bob",
+#	"account number": 7124503,
+#	"groups": {
+#		"admin",
+#		"networks",
+#		"bob"
+#	}
+#
+# }
+#
+# map json "%{rest:GET http://example.org/api/user/%{User-Name}" {
+#	&Tmp-Integer-0 	:= '$.account number'
+#	&Group		+= '$.groups.*"
+# }
+json {
+
+}

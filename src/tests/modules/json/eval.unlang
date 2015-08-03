@@ -1,0 +1,540 @@
+#
+#	Evaluation tests
+#
+
+update request {
+	Tmp-String-0 := "{\"foo\":\"bar\"}"
+}
+
+# 0. Simple field access
+map json &Tmp-String-0 {
+	&Tmp-String-1 := '$.foo'
+}
+
+if (&Tmp-String-1 == 'bar') {
+	test_pass
+} else {
+	test_fail
+}
+
+update request {
+	&Tmp-String-0 := "\
+	{\
+		\"my_array\": [0, 1, 2, 3, 4, 5], \
+		\"my_object\": { \
+			\"foo\": \"bar\", \
+			\"num\" : 42 \
+		}, \
+		\"num\": 99, \
+		\"double\": 5.9, \
+		\"null\": null, \
+		\"bool_true\": true, \
+		\"bool_false\": false \
+	}"
+}
+
+update request {
+	&Tmp-String-1 !* ANY
+}
+
+# Check conversion of all JSON types to strings
+map json &Tmp-String-0 {
+	&Tmp-String-1 += '$.*'
+}
+
+# 1. Array type
+if (&Tmp-String-1[0] == '[ 0, 1, 2, 3, 4, 5 ]') {
+	test_pass
+} else {
+	test_fail
+}
+
+# 2. Object type
+if (&Tmp-String-1[1] == '{ "foo": "bar", "num": 42 }') {
+	test_pass
+} else {
+	test_fail
+}
+
+# 3. Integer type
+if (&Tmp-String-1[2] == '99') {
+	test_pass
+} else {
+	test_fail
+}
+
+# 4. Double type
+if (&Tmp-String-1[3] == '5.9') {
+	test_pass
+} else {
+	test_fail
+}
+
+# 5. null type
+if (&Tmp-String-1[4] == 'null') {
+	test_pass
+} else {
+	test_fail
+}
+
+# 6. Boolean true
+if (&Tmp-String-1[5] == 'yes') {
+	test_pass
+} else {
+	test_fail
+}
+
+# 7. Boolean false
+if (&Tmp-String-1[6] == 'no') {
+	test_pass
+} else {
+	test_fail
+}
+
+update request {
+	&Tmp-String-1 !* ANY
+}
+
+#
+# Now check array slicing operates correctly
+#
+
+# 8. String form
+map json &Tmp-String-0 {
+	&Tmp-String-1 := '$.my_array'
+}
+if (&Tmp-String-1 == '[ 0, 1, 2, 3, 4, 5 ]') {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-String-1 !* ANY
+}
+
+# 9. Simple index
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 := '$.my_array[0]'
+}
+if (&Tmp-Integer-0 == 0) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 10. End of the array
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 := '$.my_array[5]'	# Past the end of the array (should be skipped)
+}
+if (&Tmp-Integer-0 == 5) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 11. Past end of the array
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 := '$.my_array[6]'	# Past the end of the array (should be skipped)
+}
+if (!&Tmp-Integer-0) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 12. Simple slice
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[0:2]'	# A single value
+}
+if ((&Tmp-Integer-0[0] == 0) && (&Tmp-Integer-0[1] == 1)) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 13. Slice with negative start
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[-1:6]'	# A single value (last eelement of the array)
+}
+if (&Tmp-Integer-0 == 5) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 14. Slice with negative start and negative end
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[-1:-3]'	# Start after end (should be skipped)
+}
+if (!&Tmp-Integer-0) {
+	test_pass
+} else {
+	test_fail
+}
+
+# 15. Slice with start and negative end
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[1:-3]'
+}
+if ((&Tmp-Integer-0[0] == 1) && (&Tmp-Integer-0[1] == 2)) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 16. Slice with start, end and negative step
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[4:2:-1]'
+}
+if ((&Tmp-Integer-0[0] == 4) && (&Tmp-Integer-0[1] == 3)) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 17. Slice with start, end (inverted) and negative step
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[2:4:-1]'
+}
+if (!&Tmp-Integer-0) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 18. Slice with start, end and positive step
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[2:4:1]'
+}
+if ((&Tmp-Integer-0[0] == 2) && (&Tmp-Integer-0[1] == 3)) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 19. Slice with start, end and positive step > 1
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[1:5:2]'
+}
+if ((&Tmp-Integer-0[0] == 1) && (&Tmp-Integer-0[1] == 3)) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 20. Slice with start, end and positive step > end of array
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[1:5:4]'
+}
+if ((&Tmp-Integer-0[0] == 1) && !&Tmp-Integer-0[1]) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 21. Slice with start, end and positive step > end of array
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[5:1:-4]'
+}
+if ((&Tmp-Integer-0[0] == 5) && !&Tmp-Integer-0[1]) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 22. No start/end 3 step
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[::3]'
+}
+if ((&Tmp-Integer-0[0] == 0) && (&Tmp-Integer-0[1] == 3) && !&Tmp-Integer-0[2]) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 23. No start/end 3 step
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[::-3]'
+}
+if ((&Tmp-Integer-0[0] == 5) && (&Tmp-Integer-0[1] == 2) && !&Tmp-Integer-0[2]) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 24. No end 3 step
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[3::-3]'
+}
+if ((&Tmp-Integer-0[0] == 3) && (&Tmp-Integer-0[1] == 0) && !&Tmp-Integer-0[2]) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 25. End 0, 3 step
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[3:0:-3]'
+}
+if ((&Tmp-Integer-0[0] == 3) && !&Tmp-Integer-0[1]) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 26. End 0, 3 step
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += '$.my_array[0::-3]'
+}
+if ((&Tmp-Integer-0[0] == 0) && !&Tmp-Integer-0[1]) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 27. Everything two levels deep
+map json &Tmp-String-0 {
+	&Tmp-String-1 += '$.*.*'
+}
+
+if ((&Tmp-String-1[0] == '0') && \
+    (&Tmp-String-1[1] == '1') && \
+    (&Tmp-String-1[2] == '2') && \
+    (&Tmp-String-1[3] == '3') && \
+    (&Tmp-String-1[4] == '4') && \
+    (&Tmp-String-1[5] == '5') && \
+    (&Tmp-String-1[6] == 'bar') && \
+    (&Tmp-String-1[7] == '42')) {
+	test_pass
+} else {
+	test_fail
+}
+
+update request {
+	&Tmp-String-1 !* ANY
+}
+
+# 28. Everything three levels deep (nothing)
+map json &Tmp-String-0 {
+	&Tmp-String-1 += '$.*.*.*'
+}
+
+if (!&Tmp-String-1) {
+	test_pass
+} else {
+	test_fail
+}
+
+# 29. Array access on a field (nothing)
+map json &Tmp-String-0 {
+	&Tmp-String-1 += '$.my_object[0]'
+}
+
+if (!&Tmp-String-1) {
+	test_pass
+} else {
+	test_fail
+}
+
+# 30. Non-existent field
+map json &Tmp-String-0 {
+	&Tmp-String-1 += '$.my_object.my_other_object'
+}
+
+if (!&Tmp-String-1) {
+	test_pass
+} else {
+	test_fail
+}
+
+# Some big numbers in nested arrays
+update request {
+	&Tmp-String-0 := "\
+	[\
+		9223372036854775807, \
+		-9223372036854775807, \
+		18446744073709551615, \
+		[ \
+			2147483647, \
+			-2147483647, \
+			4294967295, \
+		] \
+	]"
+}
+
+# 31. Unsigned 32bit integers (are supported)
+# Fails due to overflow with json-c < 0.10
+redundant {
+	group {
+		map json &Tmp-String-0 {
+			&Tmp-Integer-0 := '$[3][2]'
+		}
+	}
+	noop
+}
+if (noop || (&Tmp-Integer-0 == 4294967295)) {
+	test_pass
+} else {
+	test_fail
+}
+
+# 32. Unsigned 32bit integers (are supported)
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 := '$[3][0]'
+}
+if (&Tmp-Integer-0 == 2147483647) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 33. Multiple array indicies
+map json &Tmp-String-0 {
+	&Tmp-Signed-0 += '$[3][0,1]'
+}
+if ((&Tmp-Signed-0[0] == 2147483647) && (&Tmp-signed-0[1] == -2147483647)) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Signed-0 !* ANY
+}
+
+# 34. Path containing dynamic expansion
+update request {
+	Tmp-Integer-2 := 0
+}
+map json &Tmp-String-0 {
+	&Tmp-Integer-0 += "$[3][%{Tmp-Integer-2}]"
+}
+if (&Tmp-Integer-0 == 2147483647) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-Integer-0 !* ANY
+}
+
+# 35 An expanded field name with bad chars
+update request {
+	&Tmp-String-0 := "\
+	{\
+		\"foo.bar\": \"baz\" \
+	}"
+	&Tmp-String-2 := 'foo.bar'
+}
+map json &Tmp-String-0 {
+	&Tmp-String-1 := "$.%{Tmp-String-2}"
+}
+
+if (&Tmp-String-1 == 'baz') {
+	test_pass
+} else {
+	test_fail
+}
+
+# Disabled until a json-c >= 0.10 is available in travis
+## xx. Unsigned 64bit integers
+#map json &Tmp-String-0 {
+#	&Tmp-Integer64-0 := '$[0]'
+#}
+#if (&Tmp-Integer64-0 == 9223372036854775807) {
+#	test_pass
+#} else {
+#	test_fail
+#}
+#update request {
+#	&Tmp-Integer64-0 !* ANY
+#}
+#
+## xx. Signed 64bit integers (not supported)
+#redundant {
+#	group {
+#		map json &Tmp-String-0 {
+#			&Tmp-Integer64-0 := '$[1]'
+#		}
+#	}
+#	ok
+#}
+#if (!fail && !&Tmp-Integer64-0) {
+#	test_pass
+#} else {
+#	test_fail
+#}
+#update request {
+#	&Tmp-Integer64-0 !* ANY
+#}
+#
+## xx. Signed 64bit integers (not supported)
+#redundant {
+#	group {
+#		map json &Tmp-String-0 {
+#			&Tmp-Integer64-0 := '$[1]'
+#		}
+#	}
+#	ok
+#}
+#if (!fail && !&Tmp-Integer64-0) {
+#	test_pass
+#} else {
+#	test_fail
+#}
+#update request {
+#	&Tmp-Integer64-0 !* ANY
+#}
