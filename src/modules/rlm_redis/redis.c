@@ -215,17 +215,17 @@ int fr_redis_reply_to_value_data(TALLOC_CTX *ctx, value_data_t *out, redisReply 
 			in.sinteger = (int32_t) reply->integer;
 			in.length = sizeof(in.sinteger);
 		}
-		else if (reply->integer > INT32_MAX) {	/* 64bit unsigned (supported) */
+		else if (reply->integer > UINT32_MAX) {	/* 64bit unsigned (supported) */
 			src_type = PW_TYPE_INTEGER64;
 			in.integer64 = (uint64_t) reply->integer;
 			in.length = sizeof(in.integer64);
 		}
-		else if (reply->integer > INT16_MAX) {	/* 32bit unsigned (supported) */
+		else if (reply->integer > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			src_type = PW_TYPE_INTEGER;
 			in.integer = (uint32_t) reply->integer;
 			in.length = sizeof(in.integer);
 		}
-		else if (reply->integer > INT8_MAX) {	/* 16bit unsigned (supported) */
+		else if (reply->integer > UINT8_MAX) {	/* 16bit unsigned (supported) */
 			src_type = PW_TYPE_SHORT;
 			in.ushort = (uint16_t) reply->integer;
 			in.length = sizeof(in.ushort);
