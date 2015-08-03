@@ -253,10 +253,9 @@ lt_dlhandle lt_dlopenext(char const *name)
 
 		DEBUG4("Failed with error: %s", error);
 		/*
-		 *	Don't overwrite the previous message
-		 *	It's likely to contain a better error.
+		 *	Append the error
 		 */
-		if (!radlib_dir) fr_strerror_printf("%s", dlerror());
+		fr_strerror_printf("%s: %s", fr_strerror(), error);
 		return NULL;
 	}
 	return handle;
