@@ -32,11 +32,10 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 #include <libcouchbase/couchbase.h>
-#include <json.h>
+#include "../rlm_json/json.h"
 
 #include "mod.h"
 #include "couchbase.h"
-#include "jsonc_missing.h"
 
 /**
  * Client Configuration
@@ -570,7 +569,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	}
 
 	/* check for valid row value */
-	if (!jrows || !json_object_is_type(jrows, json_type_array)) {
+	if (!jrows || !fr_json_object_is_type(jrows, json_type_array)) {
 		/* log error */
 		RERROR("no valid rows returned from view: %s", vpath);
 		/* set return */
