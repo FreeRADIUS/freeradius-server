@@ -18,7 +18,7 @@
  * $Id$
  *
  * @brief Function prototypes for missing functions in older json-c libraries.
- * @file jsonc_missing.h
+ * @file json_missing.h
  *
  * @author Aaron Hurt <ahurt@anbcs.com>
  * @copyright 2013-2014 The FreeRADIUS Server Project.
@@ -28,10 +28,33 @@
 #define _jsonc_missing_h_
 
 RCSIDH(jsonc_missing_h, "$Id$")
-
-#include <json.h>
-
 #include "config.h"
+#ifdef HAVE_JSON
+#  if defined(HAVE_JSONMC_JSON_H)
+#    include <json-c/json.h>
+#  elif defined(HAVE_JSON_JSON_H)
+#    include <json/json.h>
+#  else
+#    error "Need json-c headers"
+#  endif
+
+/*
+ *	Fixes for idiocy in older versions of json-c
+ */
+
+/*
+ *	null JSON values are represented as NULL pointers by JSON-C
+ *
+ *	Which would be ok, except functions such as json_object_get_type
+ *	and json_object_is_type* SEGV when passed a NULL pointer.
+ *
+ *	There's a json_type_null in the type enum, but for some reason
+ *	it's not used.  Newer versions of json-c don't have this issue.
+ *	Old versions of json-c SEGV when passed a null JSON object.
+ *
+ */
+#define fr_json_object_get_type(_obj) ((_obj) ? json_object_get_type(_obj) : json_type_null)
+#define fr_json_object_is_type(_obj, _type) ((_obj) ? json_object_is_type(_obj, _type) : (_type == json_type_null))
 
 #ifndef HAVE_JSON_C_VERSION
 const char *json_c_version(void);
@@ -57,6 +80,13 @@ const char *json_tokener_error_desc(enum json_tokener_error jerr);
 enum json_tokener_error json_tokener_get_error(json_tokener *tok);
 #endif
 
+/*
+ *	Versions < 0.10 didn't support 64bit integers
+ */
+#ifndef HAVE_JSON_OBJECT_GET_INT64
+#define json_object_get_int64 (int64_t)json_object_get_int
+#endif
+
 /* correct poor const handling within json-c library */
 #ifdef json_object_object_foreach
 #  undef json_object_object_foreach
@@ -73,7 +103,7 @@ enum json_tokener_error json_tokener_get_error(json_tokener *tok);
 		val = (struct json_object *)ctn.data; }; entry; }); \
 		entry = entry->next)
 #else /* ANSI C or MSC */
-#  define json_object_object_foreach(obj,key,val) \
+#  define json_object_object_foreach(obj, key, val) \
 	char *key = NULL; \
 	struct json_object *val = NULL; \
 	struct lh_entry *entry; \
@@ -82,4 +112,5 @@ enum json_tokener_error json_tokener_get_error(json_tokener *tok);
 		(entry ? (key = (char *)entry->k, ctn.cdata = entry->v, \
 		val = (struct json_object *)ctn.data, entry) : 0); entry = entry->next)
 #endif /* defined(__GNUC__) && !defined(__STRICT_ANSI__) */
+#endif
 #endif /* _jsonc_missing_h_ */

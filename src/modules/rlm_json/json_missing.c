@@ -18,17 +18,15 @@
  * $Id$
  *
  * @brief Workarounds for missing functions in older json-c libraries.
- * @file jsonc_missing.c
+ * @file json_missing.c
  *
  * @author Aaron Hurt <ahurt@anbcs.com>
  * @copyright 2013-2014 The FreeRADIUS Server Project.
  */
-
 RCSID("$Id$")
 
 #include <string.h>
-
-#include "jsonc_missing.h"
+#include "json_missing.h"
 
 #ifndef HAVE_JSON_C_VERSION
 	const char *json_c_version(void) {
@@ -38,9 +36,9 @@ RCSID("$Id$")
 
 #ifndef HAVE_JSON_OBJECT_GET_STRING_LEN
 int json_object_get_string_len(json_object *obj) {
-	if (json_object_get_type(obj) != json_type_string)
+	if (fr_json_object_get_type(obj) != json_type_string)
 		return 0;
-	return (int)strlen(json_object_to_json_string(obj));
+	return (int)strlen(json_object_get_string(obj));
 }
 #endif
 
@@ -51,7 +49,7 @@ int json_object_object_get_ex(struct json_object *jso, const char *key, struct j
 	if ((jso == NULL) || (key == NULL)) return 0;
 	if (value != NULL) *value = NULL;
 
-	switch (json_object_get_type(jso)) {
+	switch (fr_json_object_get_type(jso)) {
 	case json_type_object:
 		jobj = json_object_object_get(jso, key);
 		if (jobj == NULL) return 0;

@@ -1185,7 +1185,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_r
 
 	VALUE_PAIR *vp;
 
-	if (json_object_is_type(leaf, json_type_null)) {
+	if (fr_json_object_is_type(leaf, json_type_null)) {
 		RDEBUG3("Got null value for attribute \"%s\", skipping...", da->name);
 
 		return NULL;
@@ -1296,10 +1296,9 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_r
 static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			 REQUEST *request, json_object *object, UNUSED int level, int max)
 {
-	struct lh_entry *entry;
 	int max_attrs = max;
 
-	if (!json_object_is_type(object, json_type_object)) {
+	if (!fr_json_object_is_type(object, json_type_object)) {
 #ifdef HAVE_JSON_TYPE_TO_NAME
 		REDEBUG("Can't process VP container, expected JSON object"
 			"got \"%s\", skipping...",
@@ -1314,14 +1313,10 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 	/*
 	 *	Process VP container
 	 */
-	for (entry = json_object_get_object(object)->head;
-	     entry;
-	     entry = entry->next) {
+	json_object_object_foreach(object, name, value) {
 		int i = 0, elements;
-		struct json_object *value, *element, *tmp;
+		struct json_object *element, *tmp;
 		TALLOC_CTX *ctx;
-
-		char const *name = (char const *)entry->k;
 
 		json_flags_t flags = {
 			.op = T_OP_SET,
@@ -1334,9 +1329,6 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 		VALUE_PAIR **vps, *vp = NULL;
 
 		memset(&dst, 0, sizeof(dst));
-
-		/* Fix the compiler warnings regarding const... */
-		memcpy(&value, &entry->v, sizeof(value));
 
 		/*
 		 *  Resolve attribute name to a dictionary entry and pairlist.
@@ -1376,12 +1368,11 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 		 *	  - {}	Nested Valuepair
 		 *	  - *	Integer or string value
 		 */
-		if (json_object_is_type(value, json_type_object)) {
+		if (fr_json_object_is_type(value, json_type_object)) {
 			/*
 			 *  Process operator if present.
 			 */
-			tmp = json_object_object_get(value, "op");
-			if (tmp) {
+			if (json_object_object_get_ex(value, "op", &tmp)) {
 				flags.op = fr_str2int(fr_tokens, json_object_get_string(tmp), 0);
 				if (!flags.op) {
 					RWDEBUG("Invalid operator value \"%s\", skipping...",
@@ -1393,24 +1384,21 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			/*
 			 *  Process optional do_xlat bool.
 			 */
-			tmp = json_object_object_get(value, "do_xlat");
-			if (tmp) {
+			if (json_object_object_get_ex(value, "do_xlat", &tmp)) {
 				flags.do_xlat = json_object_get_boolean(tmp);
 			}
 
 			/*
 			 *  Process optional is_json bool.
 			 */
-			tmp = json_object_object_get(value, "is_json");
-			if (tmp) {
+			if (json_object_object_get_ex(value, "is_json", &tmp)) {
 				flags.is_json = json_object_get_boolean(tmp);
 			}
 
 			/*
 			 *  Value key must be present if were using the expanded syntax.
 			 */
-			value = json_object_object_get(value, "value");
-			if (!value) {
+			if (!json_object_object_get_ex(value, "value", &tmp)) {
 				RWDEBUG("Value key missing, skipping...");
 				continue;
 			}
@@ -1419,7 +1407,7 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 		/*
 		 *  Setup fr_pair_make / recursion loop.
 		 */
-		if (!flags.is_json && json_object_is_type(value, json_type_array)) {
+		if (!flags.is_json && fr_json_object_is_type(value, json_type_array)) {
 			elements = json_object_array_length(value);
 			if (!elements) {
 				RWDEBUG("Zero length value array, skipping...");
@@ -1448,7 +1436,7 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 				flags.op = T_OP_ADD;
 			}
 
-			if (json_object_is_type(element, json_type_object) && !flags.is_json) {
+			if (fr_json_object_is_type(element, json_type_object) && !flags.is_json) {
 				/* TODO: Insert nested VP into VP structure...*/
 				RWDEBUG("Found nested VP, these are not yet supported, skipping...");
 

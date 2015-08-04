@@ -31,13 +31,10 @@ RCSIDH(other_h, "$Id$")
 #define CURL_NO_OLDIES 1
 #include <curl/curl.h>
 
-#ifdef HAVE_JSON
-#  if defined(HAVE_JSONMC_JSON_H)
-#    include <json-c/json.h>
-#  elif defined(HAVE_JSON_JSON_H)
-#    include <json/json.h>
-#  endif
-#endif
+/*
+ *	The common JSON library (also tells us if we have json-c)
+ */
+#include "../rlm_json/json.h"
 
 #define REST_URI_MAX_LEN		2048
 #define REST_BODY_MAX_LEN		8192
@@ -278,9 +275,9 @@ void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle);
 void rest_request_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section,
 			  void *handle);
 
-#define rest_get_handle_code(handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)handle)->ctx)->response.code)
+#define rest_get_handle_code(_handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)_handle)->ctx)->response.code)
 
-#define rest_get_handle_type(handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)handle)->ctx)->response.type)
+#define rest_get_handle_type(_handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)_handle)->ctx)->response.type)
 
 size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle);
 

@@ -1,13 +1,27 @@
-TARGETNAME	:= @targetname@
+#  This needs to be cleared explicitly, as the libfreeradius-json.mk
+#  might not always be available, and the TARGETNAME from the previous
+#  target may stick around.
+TARGETNAME=
+-include $(top_builddir)/src/modules/rlm_json/libfreeradius-json.mk
+#  Unset target so we don't build if couchbase is unavailable
+TARGET:=
 
+#  Check the targetname defined by libfreeradius-json.mk
+#  to verify we have json-c and the libfreeradius-json library.
 ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
+  TARGETNAME	:= @targetname@
+
+  #  Check the targetname from the local configure script
+  ifneq "$(TARGETNAME)" ""
+    TARGET		:= $(TARGETNAME).a
+  endif
 endif
 
-SOURCES		:= $(TARGETNAME).c mod.c jsonc_missing.c couchbase.c
+SOURCES		:= $(TARGETNAME).c mod.c couchbase.c
 
 SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
+TGT_PREREQS	:= libfreeradius-json.a
 
 # TODO: create man page
 #MAN		:= rlm_couchbase.8
