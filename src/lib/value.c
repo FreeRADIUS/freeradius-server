@@ -1133,6 +1133,45 @@ ssize_t value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	}
 
 	/*
+	 *	We can cast integers less that < INT_MAX to signed
+	 */
+	if (dst_type == PW_TYPE_SIGNED) {
+		switch (src_type) {
+		case PW_TYPE_BYTE:
+			dst->sinteger = src->byte;
+			break;
+
+		case PW_TYPE_SHORT:
+			dst->sinteger = src->ushort;
+			break;
+
+		case PW_TYPE_INTEGER:
+			if (src->integer > INT_MAX) {
+				fr_strerror_printf("Invalid cast: From integer to signed.  integer value %u is larger "
+						   "than max signed int and would overflow", src->integer);
+				return -1;
+			}
+			dst->sinteger = (int)src->integer;
+			break;
+
+		case PW_TYPE_INTEGER64:
+			if (src->integer > INT_MAX) {
+				fr_strerror_printf("Invalid cast: From integer64 to signed.  integer64 value %" PRIu64
+						   " is larger than max signed int and would overflow", src->integer64);
+				return -1;
+			}
+			dst->sinteger = (int)src->integer64;
+			break;
+
+		case PW_TYPE_OCTETS:
+			goto do_octets;
+
+		default:
+			goto invalid_cast;
+		}
+		goto fixed_length;
+	}
+	/*
 	 *	Conversions between IPv4 addresses, IPv6 addresses, IPv4 prefixes and IPv6 prefixes
 	 *
 	 *	For prefix to ipaddress conversions, we assume that the host portion has already
