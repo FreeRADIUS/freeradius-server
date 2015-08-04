@@ -61,12 +61,12 @@ RCSID("$Id$")
 				     } \
 				} while(0)
 
-#ifdef HAVE_PCAP_H
 #define ETH_TYPE_IP    0x0800
+#define ETH_P_ALL      0x0003
+#define ETH_HDR_SIZE   14
 #define IP_HDR_SIZE    20
 #define UDP_HDR_SIZE   8
 #define ETH_ADDR_LEN   6
-#endif
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
@@ -2049,6 +2049,7 @@ int fr_socket_packet(int iface_index, struct sockaddr_ll *link_layer)
  */
 int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_PACKET *packet)
 {
+	uint8_t			dhcp_packet[1518] = { 0 };
 	ethernet_header_t	*eth_hdr = (ethernet_header_t *)dhcp_packet;
 	ip_header_t		*ip_hdr = (ip_header_t *)(dhcp_packet + ETH_HDR_SIZE);
 	udp_header_t		*udp_hdr = (udp_header_t *) (dhcp_packet + ETH_HDR_SIZE + IP_HDR_SIZE);
@@ -2056,12 +2057,11 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_P
 
 	uint16_t		l4_len = (UDP_HDR_SIZE + packet->data_len);
 	VALUE_PAIR		*vp;
-	uint8_t			dhcp_packet[1518] = { 0 };
 
 	/* set ethernet source address to our MAC address (DHCP-Client-Hardware-Address). */
 	uint8_t dhmac[ETH_ADDR_LEN] = { 0 };
 	if ((vp = fr_pair_find_by_num(packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
-		if (vp->length == sizeof(vp->vp_ether)) memcpy(dhmac, vp->vp_ether, vp->length);
+		if (vp->vp_length == sizeof(vp->vp_ether)) memcpy(dhmac, vp->vp_ether, vp->vp_length);
 	}
 
 	/* fill in Ethernet layer (L2) */
@@ -2086,7 +2086,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_P
 	ip_hdr->ip_dst.s_addr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 
 	/* IP header checksum */
-	ip_hdr->ip_sum = fr_iph_checksum((uint8_t const *)iph, 5);
+	ip_hdr->ip_sum = fr_iph_checksum((uint8_t const *)ip_hdr, 5);
 
 	udp_hdr->src = htons(packet->src_port);
 	udp_hdr->dst = htons(packet->dst_port);
@@ -2132,7 +2132,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_P
 /*
  *	print an ethernet address in a buffer
  */
-char *ether_addr_print(const uint8_t *addr, char *buf)
+static char *ether_addr_print(const uint8_t *addr, char *buf)
 {
 	sprintf(buf, "%02x:%02x:%02x:%02x:%02x:%02x", addr[0], addr[1], addr[2], addr[3], addr[4], addr[5]);
 	return buf;
@@ -2148,7 +2148,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 {
 	VALUE_PAIR		*vp;
 	RADIUS_PACKET		*packet;
-	uint8_t			*code;
+	uint8_t const	*code;
 	uint32_t		magic, xid;
 	ssize_t			data_len;
 
@@ -2160,9 +2160,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	uint16_t		udp_src_port;
 	uint16_t		udp_dst_port;
 	size_t			dhcp_data_len;
-	int			retval;
 	socklen_t		sock_len;
-	fd_set 			read_fd;
 
 	packet = rad_alloc(NULL, false);
 	if (!packet) {
@@ -2202,7 +2200,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	 */
 	if ((memcmp(&eth_bcast, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0) &&
 	    (vp = fr_pair_find_by_num(request->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY)) &&
-	    (vp->length == sizeof(vp->vp_ether)) && (memcmp(vp->vp_ether, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0)) {
+	    (vp->vp_length == sizeof(vp->vp_ether)) && (memcmp(vp->vp_ether, &eth_hdr->ether_dst, ETH_ADDR_LEN) != 0)) {
 		char eth_dest[17 + 1];
 		char eth_req_src[17 + 1];
 
@@ -2215,7 +2213,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	/*
 	 *	Ethernet is OK.  Now look at IP.
 	 */
-	ip_hdr = (struct ip_hdr *)(raw_packet + ETH_HDR_SIZE);
+	ip_hdr = (ip_header_t *)(raw_packet + ETH_HDR_SIZE);
 
 	/*
 	 *	Check IPv4 layer data (L3)
@@ -2244,9 +2242,9 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 	 */
 	dhcp_data_len = data_len - data_offset;
 
-	if (dhcp_data_len < MIN_PACKET_SIZE) DISCARD_RP("DHCP packet is too small (%d < %d)",
+	if (dhcp_data_len < MIN_PACKET_SIZE) DISCARD_RP("DHCP packet is too small (%zd < %d)",
 							dhcp_data_len, MIN_PACKET_SIZE);
-	if (dhcp_data_len > MAX_PACKET_SIZE) DISCARD_RP("DHCP packet is too large (%d > %d)",
+	if (dhcp_data_len > MAX_PACKET_SIZE) DISCARD_RP("DHCP packet is too large (%zd > %d)",
 							dhcp_data_len, MAX_PACKET_SIZE);
 
 	dhcp_hdr = (dhcp_packet_t *)(raw_packet + ETH_HDR_SIZE + IP_HDR_SIZE + UDP_HDR_SIZE);
