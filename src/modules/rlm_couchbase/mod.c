@@ -264,7 +264,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 	/* get config payload */
 	if (json_object_object_get_ex(json, section, &jobj)) {
 		/* make sure we have the correct type */
-		if (!json_object_is_type(jobj, json_type_object)) {
+		if ((jobj == NULL) || !json_object_is_type(jobj, json_type_object)) {
 			/* log error */
 			RERROR("invalid json type for '%s' section - sections must be json objects", section);
 			/* reuturn */
@@ -273,7 +273,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 		/* loop through object */
 		json_object_object_foreach(jobj, attribute, json_vp) {
 			/* check for appropriate type in value and op */
-			if (!json_object_is_type(json_vp, json_type_object)) {
+			if ((jobj == NULL) || !json_object_is_type(json_vp, json_type_object)) {
 				/* log error */
 				RERROR("invalid json type for '%s' attribute - attributes must be json objects",
 				       attribute);
@@ -286,6 +286,8 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 			/* create pair from json object */
 			if (json_object_object_get_ex(json_vp, "value", &jval) &&
 				json_object_object_get_ex(json_vp, "op", &jop)) {
+				/* check for null before getting type */
+				if (jval == NULL) return NULL;
 				/* make correct pairs based on json object type */
 				switch (json_object_get_type(jval)) {
 				case json_type_double:
@@ -617,7 +619,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	DEBUG3("rlm_couchbase: jrows == %s", json_object_to_json_string(jrows));
 
 	/* check for valid row value */
-	if (!json_object_is_type(jrows, json_type_array) || json_object_array_length(jrows) < 1) {
+	if ((jrows == NULL) || !json_object_is_type(jrows, json_type_array) || json_object_array_length(jrows) < 1) {
 		/* log error */
 		ERROR("rlm_couchbase: no valid rows returned from view: %s", vpath);
 		/* set return */
