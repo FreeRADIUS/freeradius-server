@@ -40,7 +40,7 @@ RCSID("$Id$")
 int json_object_get_string_len(json_object *obj) {
 	if (json_object_get_type(obj) != json_type_string)
 		return 0;
-	return (int)strlen(json_object_to_json_string(obj));
+	return (int)strlen(json_object_get_string(obj));
 }
 #endif
 
