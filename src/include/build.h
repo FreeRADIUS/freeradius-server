@@ -39,7 +39,7 @@ extern "C" {
 /*
  *	Mark variables as unused
  */
-#define UNUSED_VAR(_x) ((void)x)
+#define UNUSED_VAR(_x) ((void)_x)
 
 /*
  *	struct field size

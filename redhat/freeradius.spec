@@ -283,7 +283,7 @@ This plugin provides Oracle support for the FreeRADIUS server project.
 Summary: Redis support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: libfreeradius-redis = %{version}-%{release}
+Requires: freeradius-libfreeradius-redis = %{version}
 
 %description redis
 This plugin provides Redis support for the FreeRADIUS server project.
@@ -292,7 +292,7 @@ This plugin provides Redis support for the FreeRADIUS server project.
 Summary: REST support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: libfreeradius-json = %{version}-%{release}
+Requires: freeradius-libfreeradius-json = %{version}
 
 %description rest
 This plugin provides the ability to interact with REST APIs for the FreeRADIUS server project.
