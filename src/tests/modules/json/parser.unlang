@@ -268,21 +268,21 @@ if ("%{jpathvalidate:$..foo[0]}" == '9:$..foo[0]') {
 	test_fail
 }
 
-# 37. Expect success - Recursive descent followed by wildcard
+# 38. Expect success - Recursive descent followed by wildcard
 if ("%{jpathvalidate:$..*}" == '4:$..*') {
 	test_pass
 } else {
 	test_fail
 }
 
-# 38. Expect failure - Filter expressions NYI
+# 39. Expect failure - Filter expressions NYI
 if ("%{jpathvalidate:$.foo[?@.bar = baz]}" == '6:Filter expressions not yet implemented') {
 	test_pass
 } else {
 	test_fail
 }
 
-# 39. Expect failure - Expressions NYI
+# 40. Expect failure - Expressions NYI
 if ("%{jpathvalidate:$.foo[(@.bar = baz)]}" == '6:Expressions not yet implemented') {
 	test_pass
 } else {
