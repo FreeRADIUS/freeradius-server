@@ -409,7 +409,16 @@ char *fr_jpath_aprints(TALLOC_CTX *ctx, fr_jpath_node_t const *head)
 		break;
 
 	case JPATH_SELECTOR_RECURSIVE_DESCENT:
-		p = talloc_strdup_append_buffer(p, "..");
+		if (node->next) switch (node->next->selector->type) {
+		case JPATH_SELECTOR_SLICE:
+		case JPATH_SELECTOR_INDEX:
+			p = talloc_strdup_append_buffer(p, "..");
+			break;
+
+		default:
+			p = talloc_strdup_append_buffer(p, ".");
+			break;
+		}
 		break;
 
 	case JPATH_SELECTOR_INVALID:
@@ -819,14 +828,23 @@ do { \
 					p++;
 					goto error;
 				}
-#if 0
 				node->selector->type = JPATH_SELECTOR_RECURSIVE_DESCENT;
-				p++;
-				continue;
-#else
-				fr_strerror_printf("Recursive descent not yet implemented");
-				goto error;
-#endif
+
+				if ((p + 1) == end) {
+					fr_strerror_printf("Path may not end in recursive descent");
+					goto error;
+				}
+
+				/*
+				 *	If and only if, the next char is the beginning
+				 *	of a selector, advance the pointer.
+				 *
+				 *	Otherwise we leave it pointing to the second '.'
+				 *	allowing .* and .<field>
+				 */
+				 if (p[1] == '[') p++;
+				 continue;
+
 			case '*':
 				node->selector->type = JPATH_SELECTOR_WILDCARD;
 				p++;
