@@ -1728,7 +1728,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	{
 		cluster_key_slot_t *key_slot;
 
-		RDEBUG2("%s", fr_strerror());
+		RERROR("%s", fr_strerror());
 
 		fr_connection_close(state->node->pool, *conn);	/* He's dead jim */
 
