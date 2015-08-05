@@ -471,7 +471,7 @@ update request {
 	&Tmp-Integer-0 !* ANY
 }
 
-# 35 An expanded field name with bad chars
+# 35. An expanded field name with bad chars
 update request {
 	&Tmp-String-0 := "\
 	{\
@@ -487,6 +487,74 @@ if (&Tmp-String-1 == 'baz') {
 	test_pass
 } else {
 	test_fail
+}
+update request {
+	&Tmp-String-1 !* ANY
+}
+
+update request {
+	&Tmp-String-0 := "\
+	{\
+		\"my_array\": [0, 1, 2, 3, 4, 5], \
+		\"my_object\": { \
+			\"foo\": \"bar\", \
+			\"num\" : 42, \
+			\"my_deep_object\": { \
+				\"foo\": \"baz\", \
+				\"num\": 99, \
+				\"bool\": true\
+			}, \
+			\"my_cats\": [\
+				\"fluffy\", \
+				\"scratchy\", \
+				\"flat\" \
+			], \
+		}, \
+		\"my_cats\": [\
+			\"spikey\", \
+			\"clawy\", \
+			\"woofy\" \
+		], \
+	}"
+}
+
+# 36. Recursive descent with field match
+map json &Tmp-String-0 {
+	&Tmp-String-1 += '$..bool'
+}
+if (("%{Tmp-String-1[#]}" == 1) && (Tmp-String-1 == 'yes')) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-String-1 !* ANY
+}
+
+# 37. Recursive descent with element match (2nd element in each array)
+map json &Tmp-String-0 {
+	&Tmp-String-1 += '$..[1]'
+}
+if (("%{Tmp-String-1[#]}" == 3) && (&Tmp-String-1[0] == '1') && (&Tmp-String-1[1] == 'scratchy') && (&Tmp-String-1[2] == 'clawy')) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-String-1 !* ANY
+}
+
+# 38. Recursive descent with field then element match
+map json &Tmp-String-0 {
+	&Tmp-String-1 += '$..my_cats[2]'
+}
+if (("%{Tmp-String-1[#]}" == 2) && (&Tmp-String-1[0] == 'flat') && (&Tmp-String-1[1] == 'woofy')) {
+	test_pass
+} else {
+	test_fail
+}
+update request {
+	&Tmp-String-1 !* ANY
 }
 
 # Disabled until a json-c >= 0.10 is available in travis

@@ -14,13 +14,14 @@
 # above implementation.
 #
 # Selectors currently implemented are:
-#   - $          Root node (only valid at the start of the path).
-#   - @          Current node (only valid at the start of the path).
-#   - .<name>    A field within an object.
-#   - [<idx>]    Index within an array.
+#   - $                         Root node (only valid at the start of the path).
+#   - @                         Current node (only valid at the start of the path).
+#   - .<name>                   A field within an object.
+#   - [<idx>]                   Index within an array.
 #   - [<start>:<end>[:<step>]]  A slice within an array (identical to the Python syntax).
 #   - [<idx>,<start>:<end>]     Multiple indexes/slices within an array.
-#   - .*         All the children of the current node
+#   - .*                        All the children of the current node.
+#   - ..                        Recursive descent.
 #
 # Automatic casting will occur between JSON and attribute types where possible.
 #

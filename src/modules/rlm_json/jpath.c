@@ -266,9 +266,70 @@ static int jpath_evaluate(TALLOC_CTX *ctx, value_data_t ***tail,
 		} else return 0;
 	}
 
+	/*
+	 *  @todo Brute force it more efficiently.
+	 */
+	case JPATH_SELECTOR_RECURSIVE_DESCENT:
+	{
+		int i;
+
+		if (fr_json_object_is_type(object, json_type_array)) {
+			struct array_list *array_obj;
+
+			/*
+			 *	Descend into each element of the array
+			 */
+			array_obj = json_object_get_array(object);
+			for (i = 0; i < array_obj->length; i++) {
+				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
+						     array_obj->array[i], node);
+				if (ret < 0) return ret;
+				if (ret == 1) child_matched = true;
+			}
+
+			/*
+			 *	On the way back up, evaluate the object's fields
+			 */
+			ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
+					     object, node->next);
+			if (ret < 0) return ret;
+			if (ret == 1) child_matched = true;
+
+			return child_matched ? 1 : 0;
+		} else if (fr_json_object_is_type(object, json_type_object)) {
+			/*
+			 *	Descend into each field of the object
+			 */
+			json_object_object_foreach(object, field_name, field_value) {
+				rad_assert(field_name);
+				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
+						     field_value, node);
+				if (ret < 0) return ret;
+				if (ret == 1) child_matched = true;
+			}
+
+			/*
+			 *	On the way back up, evaluate the object's fields
+			 */
+			ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
+					     object, node->next);
+			if (ret < 0) return ret;
+			if (ret == 1) child_matched = true;
+
+			return child_matched ? 1 : 0;
+		}
+
+		/*
+		 *	Descend down to the level of the leaf
+		 *
+		 *	Parser guarantees that the recursive descent operator
+		 *	is never the last in a jpath sequence.
+		 */
+		return jpath_evaluate(ctx, tail, dst_type, dst_enumv, object, node->next);
+	}
+
 	case JPATH_SELECTOR_FILTER_EXPRESSION:
 	case JPATH_SELECTOR_EXPRESSION:
-	case JPATH_SELECTOR_RECURSIVE_DESCENT:
 	case JPATH_SELECTOR_INVALID:
 	case JPATH_SELECTOR_ROOT:
 	case JPATH_SELECTOR_CURRENT:
@@ -884,3 +945,4 @@ do { \
 
 	return p - in;
 }
+

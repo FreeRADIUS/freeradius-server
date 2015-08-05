@@ -261,6 +261,13 @@ if ("%{jpathvalidate:$..[0]}" == '6:$..[0]') {
 	test_fail
 }
 
+# 37. Expect success - Recursive descent followed by two selectors
+if ("%{jpathvalidate:$..foo[0]}" == '9:$..foo[0]') {
+	test_pass
+} else {
+	test_fail
+}
+
 # 37. Expect success - Recursive descent followed by wildcard
 if ("%{jpathvalidate:$..*}" == '4:$..*') {
 	test_pass
