@@ -274,7 +274,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	request->packet = rad_recv(NULL, listener->fd, 0x02); /* MSG_PEEK */
 	if (!request->packet) {				/* badly formed, etc */
 		talloc_free(request);
-		ERROR("Receive - %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		goto unknown;
 	}
 	(void) talloc_steal(request, request->packet);
@@ -1254,7 +1254,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				   sock->my_port);
 			return -1;
 		}
-	
+
 
 #ifdef WITH_PROXY
 	/*
@@ -1455,7 +1455,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	FR_STATS_INC(auth, total_requests);
 
 	if (rcode < 20) {	/* RADIUS_HDR_LEN */
-		ERROR("Receive - %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		FR_STATS_INC(auth, total_malformed_requests);
 		return 0;
 	}
@@ -1487,7 +1487,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	packet = rad_recv(NULL, listener->fd, 1); /* require message authenticator */
 	if (!packet) {
 		FR_STATS_INC(auth, total_malformed_requests);
-		ERROR("Receive - %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;
 	}
 
@@ -1641,7 +1641,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	FR_STATS_INC(acct, total_requests);
 
 	if (rcode < 20) {	/* RADIUS_HDR_LEN */
-		ERROR("Receive - %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		FR_STATS_INC(acct, total_malformed_requests);
 		return 0;
 	}
@@ -1698,7 +1698,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	packet = rad_recv(ctx, listener->fd, 0);
 	if (!packet) {
 		FR_STATS_INC(acct, total_malformed_requests);
-		ERROR("Receive - %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		talloc_free(ctx);
 		return 0;
 	}
@@ -1917,7 +1917,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	if (rcode < 0) return 0;
 
 	if (rcode < 20) {	/* RADIUS_HDR_LEN */
-		ERROR("Receive - %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		FR_STATS_INC(coa, total_malformed_requests);
 		return 0;
 	}
@@ -1967,7 +1967,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	packet = rad_recv(ctx, listener->fd, client->message_authenticator);
 	if (!packet) {
 		FR_STATS_INC(coa, total_malformed_requests);
-		ERROR("Receive - %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		talloc_free(ctx);
 		return 0;
 	}
@@ -1994,7 +1994,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 
 	packet = rad_recv(NULL, listener->fd, 0);
 	if (!packet) {
-		ERROR("Receive - %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		return 0;
 	}
 
