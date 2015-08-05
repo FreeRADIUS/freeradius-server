@@ -457,13 +457,21 @@ static int cluster_map_apply(fr_redis_cluster_t *cluster, redisReply *reply)
 	uint8_t		rollback[UINT8_MAX];		// Set of nodes to re-add to the queue on failure.
 	bool		active[UINT8_MAX];		// Set of nodes active in the new cluster map.
 
-#define SET_ADDR(_addr, _map) \
+#ifndef NDEBUG
+#  define SET_ADDR(_addr, _map) \
 do { \
 	int _ret; \
 	_ret = fr_pton(&_addr.ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, false);\
 	rad_assert(_ret == 0);\
 	_addr.port = _map->element[1]->integer; \
 } while (0)
+#else
+#  define SET_ADDR(_addr, _map) \
+do { \
+	fr_pton(&_addr.ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, false);\
+	_addr.port = _map->element[1]->integer; \
+} while (0)
+#endif
 
 #define SET_INACTIVE(_node) \
 do { \

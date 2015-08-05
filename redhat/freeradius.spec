@@ -131,15 +131,13 @@ of the server, and let you decide if they satisfy your needs.
 Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
 
-%package ldap
-Summary: LDAP support for FreeRADIUS
-Group: System Environment/Daemons
+%package json
+Summary: JSON support for FreeRADIUS
 Requires: %{name} = %{version}-%{release}
-Requires: openldap
-BuildRequires: openldap-devel
+Requires: libfreeradius-json = %{version}-%{release}
 
-%description ldap
-This plugin provides LDAP support for the FreeRADIUS server project.
+%description json
+This plugin provides JSON tree mapping, and JSON string escaping for the FreeRADIUS server project.
 
 %package krb5
 Summary: Kerberos 5 support for FreeRADIUS
@@ -150,6 +148,36 @@ BuildRequires: krb5-devel
 
 %description krb5
 This plugin provides Kerberos 5 support for the FreeRADIUS server project.
+
+%package ldap
+Summary: LDAP support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: openldap
+BuildRequires: openldap-devel
+
+%description ldap
+This plugin provides LDAP support for the FreeRADIUS server project.
+
+%package libfreeradius-json
+Summary: Internal support library for FreeRADIUS modules using json-c
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: json-c >= 0.10
+BuildRequires: json-c-devel >= 0.10
+
+%description libfreeradius-json
+Internal support library for FreeRADIUS modules using json-c, required by all modules that use json-c.
+
+%package libfreeradius-redis
+Summary: Internal support library for FreeRADIUS modules using hiredis
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: hiredis >= 0.10
+BuildRequires: hiredis-devel >= 0.10
+
+%description libfreeradius-redis
+Internal support library for FreeRADIUS modules using hiredis, required by all modules that use hiredis.
 
 %package perl
 Summary: Perl support for FreeRADIUS
@@ -255,8 +283,7 @@ This plugin provides Oracle support for the FreeRADIUS server project.
 Summary: Redis support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: hiredis >= 0.10
-BuildRequires: hiredis-devel >= 0.10
+Requires: libfreeradius-redis = %{version}-%{release}
 
 %description redis
 This plugin provides Redis support for the FreeRADIUS server project.
@@ -265,11 +292,10 @@ This plugin provides Redis support for the FreeRADIUS server project.
 Summary: REST support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: json-c >= 0.10
-BuildRequires: json-c-devel >= 0.10
+Requires: libfreeradius-json = %{version}-%{release}
 
 %description rest
-This plugin provides REST support for the FreeRADIUS server project.
+This plugin provides the ability to interact with REST APIs for the FreeRADIUS server project.
 
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %package ruby
@@ -733,6 +759,18 @@ fi
 %doc %{_mandir}/man8/radsqlrelay.8.gz
 %doc %{_mandir}/man8/rlm_ippool_tool.8.gz
 
+%files json
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_json.so
+
+%files libfreeradius-json
+%defattr(-,root,root)
+%{_libdir}/freeradius/libfreeradius-json.so
+
+%files libfreeradius-redis
+%defattr(-,root,root)
+%{_libdir}/freeradius/libfreeradius-redis.so
+
 %files krb5
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_krb5.so
@@ -767,7 +805,6 @@ fi
 
 %files redis
 %defattr(-,root,root)
-%{_libdir}/freeradius/libfreeradius-redis.so
 %{_libdir}/freeradius/rlm_redis.so
 %{_libdir}/freeradius/rlm_rediswho.so
 %{_libdir}/freeradius/rlm_cache_redis.so

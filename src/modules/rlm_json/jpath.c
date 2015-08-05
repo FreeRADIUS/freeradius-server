@@ -256,7 +256,11 @@ static int jpath_evaluate(TALLOC_CTX *ctx, value_data_t ***tail,
 			return child_matched ? 1 : 0;
 		} else if (fr_json_object_is_type(object, json_type_object)) {
 			json_object_object_foreach(object, field_name, field_value) {
+#ifndef NDEBUG
 				rad_assert(field_name);
+#else
+				UNUSED_VAR(field_name);
+#endif
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     field_value, node->next);
 				if (ret < 0) return ret;
@@ -301,7 +305,11 @@ static int jpath_evaluate(TALLOC_CTX *ctx, value_data_t ***tail,
 			 *	Descend into each field of the object
 			 */
 			json_object_object_foreach(object, field_name, field_value) {
+#ifndef NDEBUG
 				rad_assert(field_name);
+#else
+				UNUSED_VAR(field_name);
+#endif
 				ret = jpath_evaluate(ctx, tail, dst_type, dst_enumv,
 						     field_value, node);
 				if (ret < 0) return ret;
