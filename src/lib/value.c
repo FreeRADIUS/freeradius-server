@@ -119,17 +119,18 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 		compare = memcmp(a->ether, b->ether, sizeof(a->ether));
 		break;
 
-	case PW_TYPE_IPV4_ADDR: {
-			uint32_t a_int, b_int;
+	case PW_TYPE_IPV4_ADDR:
+	{
+		uint32_t a_int, b_int;
 
-			a_int = ntohl(a->ipaddr.s_addr);
-			b_int = ntohl(b->ipaddr.s_addr);
-			if (a_int < b_int) {
-				compare = -1;
-			} else if (a_int > b_int) {
-				compare = +1;
-			}
+		a_int = ntohl(a->ipaddr.s_addr);
+		b_int = ntohl(b->ipaddr.s_addr);
+		if (a_int < b_int) {
+			compare = -1;
+		} else if (a_int > b_int) {
+			compare = +1;
 		}
+	}
 		break;
 
 	case PW_TYPE_IPV6_ADDR:
