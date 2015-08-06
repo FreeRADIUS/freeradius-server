@@ -370,9 +370,13 @@ static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster
 	 *	Node has never been used before, needs a pool allocated for it.
 	 */
 	if (!node->pool) {
+		char buffer[256];
+
+		snprintf(buffer, sizeof(buffer), "%s [%i]", cluster->conf->prefix, node->id);
+
 		node->addr = node->pending_addr;
 		node->pool = fr_connection_pool_init(cluster, cf_section_sub_find(cluster->module, "pool"), node,
-						     fr_redis_cluster_conn_create, NULL, cluster->conf->prefix, NULL);
+						     fr_redis_cluster_conn_create, NULL, buffer, NULL);
 		if (!node->pool) return CLUSTER_OP_FAILED;
 		fr_connection_pool_reconnect_func(node->pool, _cluster_node_conf_apply);
 		return CLUSTER_OP_SUCCESS;
@@ -1291,14 +1295,14 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 			continue;
 		}
 
-		RDEBUG2("Executing command: PING");
+		RDEBUG2("[%i] Executing command: PING", node->id);
 		/*
 		 *	Try 'pinging' the node
 		 */
 		reply = redisCommand(conn->handle, "PING");
 		rcode = fr_redis_command_status(conn, reply);
 		if (rcode != REDIS_RCODE_SUCCESS) {
-			RERROR("PING failed to node %i %s:%i: %s", node->id, node->name,
+			RERROR("[%i] PING failed to %s:%i: %s", node->id, node->name,
 			       node->addr.port, fr_strerror());
 
 			if (rcode == REDIS_RCODE_RECONNECT) {
@@ -1311,7 +1315,7 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 		}
 
 		if (reply->type != REDIS_REPLY_STATUS) {
-			RERROR("Bad PING response from node %i %s:%i, expected status got %s",
+			RERROR("[%i] Bad PING response from %s:%i, expected status got %s",
 			       node->id, node->name, node->addr.port,
 			       fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 			fr_connection_release(node->pool, conn);
@@ -1319,7 +1323,7 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 			goto next;
 		}
 
-		RDEBUG2("Got response: %s", reply->str);
+		RDEBUG2("[%i] Got response: %s", node->id, reply->str);
 		fr_redis_reply_free(reply);
 
 		*live_node = node;
@@ -1363,23 +1367,23 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 	redisContext		*handle;
 	redisReply		*reply = NULL;
 
-	DEBUG2("%s: Connecting node %i to %s:%i",  node->conf->prefix, node->id, node->name, node->addr.port);
+	DEBUG2("%s [%i]: Connecting node to %s:%i",  node->conf->prefix, node->id, node->name, node->addr.port);
 
 	handle = redisConnectWithTimeout(node->name, node->addr.port, *timeout);
 	if ((handle != NULL) && handle->err) {
-		ERROR("%s: Node %i: Connection failed: %s", node->conf->prefix, node->id, handle->errstr);
+		ERROR("%s [%i]: Connection failed: %s", node->conf->prefix, node->id, handle->errstr);
 		redisFree(handle);
 		return NULL;
 	} else if (!handle) {
-		ERROR("%s: Node %i: Connection failed", node->conf->prefix, node->id);
+		ERROR("%s [%i]: Connection failed", node->conf->prefix, node->id);
 		return NULL;
 	}
 
 	if (node->conf->password) {
-		DEBUG3("%s: Node %i: Executing: AUTH %s", node->conf->prefix, node->id, node->conf->password);
+		DEBUG3("%s [%i]: Executing: AUTH %s", node->conf->prefix, node->id, node->conf->password);
 		reply = redisCommand(handle, "AUTH %s", node->conf->password);
 		if (!reply) {
-			ERROR("%s: Node %i: Failed authenticating: %s", node->conf->prefix, node->id, handle->errstr);
+			ERROR("%s [%i]: Failed authenticating: %s", node->conf->prefix, node->id, handle->errstr);
 		error:
 			if (reply) fr_redis_reply_free(reply);
 			redisFree(handle);
@@ -1389,7 +1393,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
 			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("%s: Node %i: Failed authenticating: %s", node->conf->prefix,
+				ERROR("%s [%i]: Failed authenticating: %s", node->conf->prefix,
 				      node->id, reply->str);
 				goto error;
 			}
@@ -1397,21 +1401,21 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 			break;	/* else it's OK */
 
 		case REDIS_REPLY_ERROR:
-			ERROR("%s: Node %i: Failed authenticating: %s", node->conf->prefix, node->id, reply->str);
+			ERROR("%s [%i]: Failed authenticating: %s", node->conf->prefix, node->id, reply->str);
 			goto error;
 
 		default:
-			ERROR("%s: Node %i: Unexpected reply of type %s to AUTH", node->conf->prefix, node->id,
+			ERROR("%s [%i]: Unexpected reply of type %s to AUTH", node->conf->prefix, node->id,
 			      fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 			goto error;
 		}
 	}
 
 	if (node->conf->database) {
-		DEBUG3("%s: Node %i: Executing: SELECT %i", node->conf->prefix, node->id, node->conf->database);
+		DEBUG3("%s [%i]: Executing: SELECT %i", node->conf->prefix, node->id, node->conf->database);
 		reply = redisCommand(handle, "SELECT %i", node->conf->database);
 		if (!reply) {
-			ERROR("%s: Node %i: Failed selecting database %i: %s", node->conf->prefix, node->id,
+			ERROR("%s [%i]: Failed selecting database %i: %s", node->conf->prefix, node->id,
 			      node->conf->database, handle->errstr);
 			goto error;
 		}
@@ -1419,7 +1423,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
 			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("%s: Node %i: Failed selecting database %i: %s", node->conf->prefix, node->id,
+				ERROR("%s [%i]: Failed selecting database %i: %s", node->conf->prefix, node->id,
 				      node->conf->database, reply->str);
 				goto error;
 			}
@@ -1427,12 +1431,12 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 			break;	/* else it's OK */
 
 		case REDIS_REPLY_ERROR:
-			ERROR("%s: Node %i: Failed selecting database %i: %s", node->conf->prefix, node->id,
+			ERROR("%s [%i]: Failed selecting database %i: %s", node->conf->prefix, node->id,
 			      node->conf->database, reply->str);
 			goto error;
 
 		default:
-			ERROR("%s: Node %i: Unexpected reply of type %s, to SELECT", node->conf->prefix, node->id,
+			ERROR("%s [%i]: Unexpected reply of type %s, to SELECT", node->conf->prefix, node->id,
 			      fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 			goto error;
 		}
@@ -1572,7 +1576,7 @@ again:
 			node = &cluster->node[node_id];
 			*conn = fr_connection_get(node->pool);
 			if (!*conn) {
-				RDEBUG2("No connections available for node %i (key slot %zu slave %i)",
+				RDEBUG2("[%i] No connections available (key slot %zu slave %i)",
 					node->id, key_slot - cluster->key_slot, (first + i) % key_slot->slave_num);
 				cluster->remap_needed = true;
 				continue;	/* Continue until we find a live pool */
@@ -1592,7 +1596,7 @@ again:
 	node = &cluster->node[key_slot->master];
 	*conn = fr_connection_get(node->pool);
 	if (!*conn) {
-		RDEBUG2("No connections available for node %i (key slot %zu master)",
+		RDEBUG2("[%i] No connections available (key slot %zu master)",
 			node->id, key_slot - cluster->key_slot);
 		cluster->remap_needed = true;
 
@@ -1608,14 +1612,14 @@ finish:
 			fr_connection_release(node->pool, *conn);
 			goto again;	/* New map, try again */
 		}
-		RDEBUG2("%s: %s", cluster->conf->prefix, fr_strerror());
+		RDEBUG2("%s", fr_strerror());
 	}
 
 	state->node = node;
 	state->key = key;
 	state->key_len = key_len;
 
-	RDEBUG2(">>> Using cluster node %i %s:%i", state->node->id, state->node->name, state->node->addr.port);
+	RDEBUG2("[%i] >>> Using cluster node %s:%i", state->node->id, state->node->name, state->node->addr.port);
 
 	return REDIS_RCODE_TRY_AGAIN;
 }
@@ -1662,13 +1666,13 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	rad_assert(state && state->node && state->node->pool);
 	rad_assert(conn && *conn);
 
- 	RDEBUG2("<<< Command returned: %s", fr_int2str(redis_rcodes, status, "<UNKNOWN>"));
+ 	RDEBUG2("[%i] <<< Command returned: %s", state->node->id, fr_int2str(redis_rcodes, status, "<UNKNOWN>"));
 
 	/*
 	 *	Caller indicated we should close the connection
 	 */
 	if (state->close_conn) {
-		RDEBUG2("Connection no longer viable, closing it");
+		RDEBUG2("[%i] Connection no longer viable, closing it", state->node->id);
 		fr_connection_close(state->node->pool, *conn);
 		*conn = NULL;
 		state->close_conn = false;
@@ -1689,9 +1693,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		 *	Remap the cluster. On success, will clear the
 		 *	remap_needed flag.
 		 */
-		if (cluster_remap(request, cluster, *conn) != CLUSTER_OP_SUCCESS) {
-			RDEBUG2("%s: %s", cluster->conf->prefix, fr_strerror());
-		}
+		if (cluster_remap(request, cluster, *conn) != CLUSTER_OP_SUCCESS) RDEBUG2("%s", fr_strerror());
 	}
 
 	/*
@@ -1708,7 +1710,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 *	Command error, not fixable.
 	 */
 	case REDIS_RCODE_ERROR:
-		REDEBUG("Command failed: %s", fr_strerror());
+		REDEBUG("[%i] Command failed: %s", state->node->id, fr_strerror());
 		fr_connection_release(state->node->pool, *conn);
 		*conn = NULL;
 		return REDIS_RCODE_ERROR;
@@ -1718,7 +1720,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 */
 	case REDIS_RCODE_TRY_AGAIN:
 		if (state->retries++ >= cluster->conf->max_retries) {
-			REDEBUG("Hit maximum retry attempts");
+			REDEBUG("[%i] Hit maximum retry attempts", state->node->id);
 			fr_connection_release(state->node->pool, *conn);
 			*conn = NULL;
 			return REDIS_RCODE_ERROR;
@@ -1743,13 +1745,13 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	{
 		cluster_key_slot_t *key_slot;
 
-		RERROR("Error communicating with node %i %s:%i: %s", state->node->id, state->node->name,
+		RERROR("[%i] Failed communicating with %s:%i: %s", state->node->id, state->node->name,
 		       state->node->addr.port, fr_strerror());
 
 		fr_connection_close(state->node->pool, *conn);	/* He's dead jim */
 
 		if (state->reconnects++ > state->in_pool) {
-			REDEBUG("Hit maximum reconnect attempts for node %i", state->node->id);
+			REDEBUG("[%i] Hit maximum reconnect attempts", state->node->id);
 			cluster->remap_needed = true;
 			return REDIS_RCODE_RECONNECT;
 		}
@@ -1762,7 +1764,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 		*conn = fr_connection_get(state->node->pool);
 		if (!*conn) {
-			REDEBUG("No connections available for node %i %s:%i", state->node->id, state->node->name,
+			REDEBUG("[%i] No connections available for %s:%i", state->node->id, state->node->name,
 				state->node->addr.port);
 			return REDIS_RCODE_RECONNECT;
 		}
@@ -1788,21 +1790,21 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 		fr_connection_release(state->node->pool, *conn);	/* Always release the old connection */
 
-		RDEBUG("Processing redirect \"%s\"", (*reply)->str);
+		RDEBUG("[%i] Processing redirect \"%s\"", state->node->id, (*reply)->str);
 		if (state->redirects++ >= cluster->conf->max_redirects) {
-			REDEBUG("Reached max_redirects (%i)", state->redirects);
+			REDEBUG("[%i] Reached max_redirects (%i)", state->node->id, state->redirects);
 			return REDIS_RCODE_ERROR;
 		}
 
 		switch (cluster_redirect(&new, cluster, *reply)) {
 		case CLUSTER_OP_SUCCESS:
 			if (new == state->node) {
-				REDEBUG("Node %i %s:%i issued redirect to itself", state->node->id,
+				REDEBUG("[%i] %s:%i issued redirect to itself", state->node->id,
 					state->node->name, state->node->addr.port);
 				return REDIS_RCODE_ERROR;
 			}
 
-			RDEBUG("Redirected from node %i %s:%i to node %i %s:%i", state->node->id, state->node->name,
+			RDEBUG("[%i] Redirected from %s:%i to [%i] %s:%i", state->node->id, state->node->name,
 			       state->node->addr.port, new->id, new->name, new->addr.port);
 			state->node = new;
 
@@ -1829,7 +1831,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	}
 
 try_again:
-	RDEBUG2(">>> Using cluster node %i %s:%i", state->node->id, state->node->name, state->node->addr.port);
+	RDEBUG2("[%i] >>> Using cluster node %s:%i", state->node->id, state->node->name, state->node->addr.port);
 
 	fr_redis_reply_free(*reply);
 	*reply = NULL;

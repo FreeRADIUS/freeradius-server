@@ -56,7 +56,7 @@ void fr_redis_version_print(void)
 	if (!version_done) {
 		version_done = true;
 
-		INFO("*: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
+		INFO("libfreeradius-redis: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
 	}
 }
 
