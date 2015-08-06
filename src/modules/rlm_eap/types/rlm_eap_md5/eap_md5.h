@@ -16,7 +16,7 @@ RCSIDH(eap_md5_h, "$Id$")
 
 /*
  ****
- * EAP - MD5 doesnot specify code, id & length but chap specifies them,
+ * EAP - MD5 does not specify code, id & length but chap specifies them,
  *	for generalization purpose, complete header should be sent
  *	and not just value_size, value and name.
  *	future implementation.
