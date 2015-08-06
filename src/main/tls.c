@@ -1377,12 +1377,18 @@ error:
 }
 
 #ifdef HAVE_OPENSSL_OCSP_H
-/*
- * This function extracts the OCSP Responder URL
- * from an existing x509 certificate.
+/** Extract components of OCSP responser URL from a certificate
+ *
+ * @param[in] cert to extract URL from.
+ * @param[out] host_out Portion of the URL (must be freed with free()).
+ * @param[out] port_out Port portion of the URL (must be freed with free()).
+ * @param[out] path_out Path portion of the URL (must be freed with free()).
+ * @param[out] is_https Whether the responder should be contacted using https.
+ * @return
+ *	- 0 if no valid URL is contained in the certificate.
+ *	- 1 if a URL was found and parsed.
  */
-static int ocsp_parse_cert_url(X509 *cert, char **phost, char **pport,
-			       char **ppath, int *pssl)
+static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out, char **path_out, int *is_https)
 {
 	int			i;
 
@@ -1393,26 +1399,47 @@ static int ocsp_parse_cert_url(X509 *cert, char **phost, char **pport,
 
 	for (i = 0; i < sk_ACCESS_DESCRIPTION_num(aia); i++) {
 		ad = sk_ACCESS_DESCRIPTION_value(aia, i);
-		if (OBJ_obj2nid(ad->method) == NID_ad_OCSP) {
-			if (ad->location->type == GEN_URI) {
-			  if(OCSP_parse_url((char *) ad->location->d.ia5->data,
-						  phost, pport, ppath, pssl))
-					return 1;
-			}
-		}
+		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
+		if (ad->location->type == GEN_URI) continue;
+
+		if (OCSP_parse_url((char *) ad->location->d.ia5->data, host_out,
+				   port_out, path_out, is_https)) return 1;
 	}
 	return 0;
 }
+
+/** Drain errors from an OpenSSL bio and print them to the error log
+ *
+ * @param _macro Logging macro e.g. RDEBUG.
+ * @param _prefix Prefix, should be "" if not used.
+ * @param _queue OpenSSL BIO.
+ */
+#define SSL_DRAIN_LOG_QUEUE(_macro, _prefix, _queue) \
+do {\
+	char const *_p, *_q; \
+	size_t _len; \
+	ERR_print_errors(_queue); \
+	_len = BIO_get_mem_data(_queue, &_p); \
+	if (_p && _len) for (_q = strchr(_p, '\n'); _q; _p = _q + 1, _q = strchr(_p, '\n')) { \
+		_macro(_prefix "%.*s", (int)(_q - _p), _p); \
+	} \
+} while (0)
+
+/* Maximum leeway in validity period: default 5 minutes */
+#define MAX_VALIDITY_PERIOD     (5 * 60)
+
+typedef enum {
+	OCSP_STATUS_FAILED	= 0,
+	OCSP_STATUS_OK		= 1,
+	OCSP_STATUS_SKIPPED	= 2,
+} ocsp_status_t;
 
 /*
  * This function sends a OCSP request to a defined OCSP responder
  * and checks the OCSP response for correctness.
  */
-
-/* Maximum leeway in validity period: default 5 minutes */
-#define MAX_VALIDITY_PERIOD     (5 * 60)
-
-static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
+static int ocsp_check(REQUEST *request, X509_STORE *store,
+		      X509 *issuer_cert, X509 *client_cert,
 		      fr_tls_server_conf_t *conf)
 {
 	OCSP_CERTID	*certid;
@@ -1422,13 +1449,13 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	char		*host = NULL;
 	char		*port = NULL;
 	char		*path = NULL;
-	char		hostheader[1024];
+	char		host_header[1024];
 	int		use_ssl = -1;
-	long		nsec = MAX_VALIDITY_PERIOD, maxage = -1;
-	BIO		*cbio, *bio_out;
-	int		ocsp_ok = 0;
-	int		status;
-	ASN1_GENERALIZEDTIME *rev, *thisupd, *nextupd;
+	long		this_fudge = MAX_VALIDITY_PERIOD, this_max_age = -1;
+	BIO		*conn, *ssl_log = NULL;
+	int		ocsp_status = 0;
+	ocsp_status_t	status;
+	ASN1_GENERALIZEDTIME *rev, *this_update, *next_update;
 	int		reason;
 #if OPENSSL_VERSION_NUMBER >= 0x1000003f
 	OCSP_REQ_CTX	*ctx;
@@ -1438,7 +1465,12 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 #endif
 
 	/*
-	 * Create OCSP Request
+	 *	Setup logging for this OCSP operation
+	 */
+	ssl_log = BIO_new(BIO_s_mem());
+
+	/*
+	 *	Create OCSP Request
 	 */
 	certid = OCSP_cert_to_id(NULL, client_cert, issuer_cert);
 	req = OCSP_REQUEST_new();
@@ -1461,71 +1493,61 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	}
 
 	if (!host || !port || !path) {
-		RWDEBUG("ocsp: Host / port / path missing.  Not doing OCSP");
-		ocsp_ok = 2;
-		goto ocsp_skip;
+		RWDEBUG("ocsp: Host or port or path missing.  Not doing OCSP");
+		goto skipped;
 	}
 
 	RDEBUG2("ocsp: Using responder URL \"http://%s:%s%s\"", host, port, path);
 
 	/* Check host and port length are sane, then create Host: HTTP header */
-	if ((strlen(host) + strlen(port) + 2) > sizeof(hostheader)) {
+	if ((strlen(host) + strlen(port) + 2) > sizeof(host_header)) {
 		RWDEBUG("ocsp: Host and port too long");
-		goto ocsp_skip;
+		goto skipped;
 	}
-	snprintf(hostheader, sizeof(hostheader), "%s:%s", host, port);
+	snprintf(host_header, sizeof(host_header), "%s:%s", host, port);
 
 	/* Setup BIO socket to OCSP responder */
-	cbio = BIO_new_connect(host);
+	conn = BIO_new_connect(host);
+	BIO_set_conn_port(conn, port);
 
-	bio_out = NULL;
-	if (rad_debug_lvl) {
-		if (default_log.dst == L_DST_STDOUT) {
-			bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
-		} else if (default_log.dst == L_DST_STDERR) {
-			bio_out = BIO_new_fp(stderr, BIO_NOCLOSE);
-		}
-	}
-
-	BIO_set_conn_port(cbio, port);
 #if OPENSSL_VERSION_NUMBER < 0x1000003f
-	BIO_do_connect(cbio);
+	BIO_do_connect(conn);
 
 	/* Send OCSP request and wait for response */
-	resp = OCSP_sendreq_bio(cbio, path, req);
+	resp = OCSP_sendreq_bio(conn, path, req);
 	if (!resp) {
 		REDEBUG("ocsp: Couldn't get OCSP response");
-		ocsp_ok = 2;
-		goto ocsp_end;
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto finish;
 	}
 #else
-	if (conf->ocsp_timeout)
-		BIO_set_nbio(cbio, 1);
+	if (conf->ocsp_timeout) BIO_set_nbio(conn, 1);
 
-	rc = BIO_do_connect(cbio);
-	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(cbio))) {
+	rc = BIO_do_connect(conn);
+	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(conn))) {
 		REDEBUG("ocsp: Couldn't connect to OCSP responder");
-		ocsp_ok = 2;
-		goto ocsp_end;
+		SSL_DRAIN_LOG_QUEUE(REDEBUG, "ocsp: ", ssl_log);
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto finish;
 	}
 
-	ctx = OCSP_sendreq_new(cbio, path, NULL, -1);
+	ctx = OCSP_sendreq_new(conn, path, NULL, -1);
 	if (!ctx) {
 		REDEBUG("ocsp: Couldn't create OCSP request");
-		ocsp_ok = 2;
-		goto ocsp_end;
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto finish;
 	}
 
-	if (!OCSP_REQ_CTX_add1_header(ctx, "Host", hostheader)) {
+	if (!OCSP_REQ_CTX_add1_header(ctx, "Host", host_header)) {
 		REDEBUG("ocsp: Couldn't set Host header");
-		ocsp_ok = 2;
-		goto ocsp_end;
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto finish;
 	}
 
 	if (!OCSP_REQ_CTX_set1_req(ctx, req)) {
 		REDEBUG("ocsp: Couldn't add data to OCSP request");
-		ocsp_ok = 2;
-		goto ocsp_end;
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto finish;
 	}
 
 	gettimeofday(&when, NULL);
@@ -1535,23 +1557,23 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 		rc = OCSP_sendreq_nbio(&resp, ctx);
 		if (conf->ocsp_timeout) {
 			gettimeofday(&now, NULL);
-			if (!timercmp(&now, &when, <))
-				break;
+			if (!timercmp(&now, &when, <)) break;
 		}
-	} while ((rc == -1) && BIO_should_retry(cbio));
+	} while ((rc == -1) && BIO_should_retry(conn));
 
-	if (conf->ocsp_timeout && (rc == -1) && BIO_should_retry(cbio)) {
+	if (conf->ocsp_timeout && (rc == -1) && BIO_should_retry(conn)) {
 		REDEBUG("ocsp: Response timed out");
-		ocsp_ok = 2;
-		goto ocsp_end;
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto finish;
 	}
 
 	OCSP_REQ_CTX_free(ctx);
 
 	if (rc == 0) {
 		REDEBUG("ocsp: Couldn't get OCSP response");
-		ocsp_ok = 2;
-		goto ocsp_end;
+		SSL_DRAIN_LOG_QUEUE(REDEBUG, "ocsp: ", ssl_log);
+		ocsp_status = OCSP_STATUS_SKIPPED;
+		goto finish;
 	}
 #endif
 
@@ -1559,47 +1581,67 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	status = OCSP_response_status(resp);
 	if (status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
 		REDEBUG("ocsp: Response status: %s", OCSP_response_status_str(status));
-		goto ocsp_end;
+		goto finish;
 	}
 	bresp = OCSP_response_get1_basic(resp);
 	if (conf->ocsp_use_nonce && OCSP_check_nonce(req, bresp)!=1) {
 		REDEBUG("ocsp: Response has wrong nonce value");
-		goto ocsp_end;
+		goto finish;
 	}
 	if (OCSP_basic_verify(bresp, NULL, store, 0)!=1){
 		REDEBUG("ocsp: Couldn't verify OCSP basic response");
-		goto ocsp_end;
+		goto finish;
 	}
 
 	/*	Verify OCSP cert status */
-	if (!OCSP_resp_find_status(bresp, certid, &status, &reason, &rev, &thisupd, &nextupd)) {
+	if (!OCSP_resp_find_status(bresp, certid, (int *)&status, &reason, &rev, &this_update, &next_update)) {
 		REDEBUG("ocsp: No Status found");
-		goto ocsp_end;
+		goto finish;
 	}
 
-	if (!OCSP_check_validity(thisupd, nextupd, nsec, maxage)) {
-		if (bio_out) {
-			BIO_puts(bio_out, "WARNING: Status times invalid.\n");
-			ERR_print_errors(bio_out);
-		}
-		goto ocsp_end;
+	/*
+	 *	Here we check the fields 'thisUpdate' and 'nextUpdate'
+	 *	from the OCSP response against the server's time.
+	 *
+	 *	this_fudge is the number of seconds +- between the current
+	 *	time and this_update.
+	 *
+	 *	The default for this_fudge is 300, defined by MAX_VALIDITY_PERIOD.
+	 */
+	if (!OCSP_check_validity(this_update, next_update, this_fudge, this_max_age)) {
+		/*
+		 *	We want this to show up in the global log
+		 *	so someone will fix it...
+		 */
+		RATE_LIMIT(RERROR("ocsp: Delta +/- between OCSP response time and our time is greater than %li "
+				  "seconds.  Check servers are synchronised to a common time source",
+				  this_fudge));
+		SSL_DRAIN_LOG_QUEUE(REDEBUG, "ocsp: ", ssl_log);
+		goto finish;
 	}
 
-	if (bio_out) {
-		BIO_puts(bio_out, "\tThis Update: ");
-		ASN1_GENERALIZEDTIME_print(bio_out, thisupd);
-		BIO_puts(bio_out, "\n");
-		if (nextupd) {
-			BIO_puts(bio_out, "\tNext Update: ");
-			ASN1_GENERALIZEDTIME_print(bio_out, nextupd);
-			BIO_puts(bio_out, "\n");
-		}
+	/*
+	 *	Print any messages we may have accumulated
+	 */
+	SSL_DRAIN_LOG_QUEUE(RDEBUG, "ocsp: ", ssl_log);
+	if (RDEBUG_ENABLED) {
+		RDEBUG2("ocsp: OCSP response valid from:");
+		ASN1_GENERALIZEDTIME_print(ssl_log, this_update);
+		RINDENT();
+		SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
+		REXDENT();
+
+		RDEBUG2("ocsp: New information available at:");
+		ASN1_GENERALIZEDTIME_print(ssl_log, next_update);
+		RINDENT();
+		SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
+		REXDENT();
 	}
 
 	switch (status) {
 	case V_OCSP_CERTSTATUS_GOOD:
 		RDEBUG2("ocsp: Cert status: good");
-		ocsp_ok = 1;
+		ocsp_status = OCSP_STATUS_OK;
 		break;
 
 	default:
@@ -1607,48 +1649,50 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 		REDEBUG("ocsp: Cert status: %s", OCSP_cert_status_str(status));
 		if (reason != -1) REDEBUG("ocsp: Reason: %s", OCSP_crl_reason_str(reason));
 
-		if (bio_out) {
-			BIO_puts(bio_out, "\tRevocation Time: ");
-			ASN1_GENERALIZEDTIME_print(bio_out, rev);
-			BIO_puts(bio_out, "\n");
+		/*
+		 *	Print any messages we may have accumulated
+		 */
+		SSL_DRAIN_LOG_QUEUE(RDEBUG, "ocsp: ", ssl_log);
+		if (RDEBUG_ENABLED) {
+			RDEBUG2("ocsp: Revocation time:");
+			ASN1_GENERALIZEDTIME_print(ssl_log, rev);
+			RINDENT();
+			SSL_DRAIN_LOG_QUEUE(RDEBUG2, "", ssl_log);
+			REXDENT();
 		}
 		break;
 	}
 
-ocsp_end:
+finish:
 	/* Free OCSP Stuff */
 	OCSP_REQUEST_free(req);
 	OCSP_RESPONSE_free(resp);
 	free(host);
 	free(port);
 	free(path);
-	BIO_free_all(cbio);
-	if (bio_out) BIO_free(bio_out);
+	BIO_free_all(conn);
+	BIO_free(ssl_log);
 	OCSP_BASICRESP_free(bresp);
 
- ocsp_skip:
-	switch (ocsp_ok) {
-	case 1:
+	switch (ocsp_status) {
+	case OCSP_STATUS_OK:
 		RDEBUG2("ocsp: Certificate is valid");
-		break;
+		return OCSP_STATUS_OK;
 
-	case 2:
+	case OCSP_STATUS_SKIPPED:
+	skipped:
 		if (conf->ocsp_softfail) {
 			RWDEBUG("ocsp: Unable to check certificate, assuming it's valid");
 			RWDEBUG("ocsp: This may be insecure");
-			ocsp_ok = 1;
-		} else {
-			REDEBUG("ocsp: Unable to check certificate, failing");
-			ocsp_ok = 0;
+			return OCSP_STATUS_OK;
 		}
-		break;
+		REDEBUG("ocsp: Unable to check certificate, failing");
+		return OCSP_STATUS_FAILED;
 
 	default:
-		REDEBUG("ocsp: Certificate has been expired/revoked");
-		break;
+		REDEBUG("ocsp: Failed to validate certificate");
+		return ocsp_status;
 	}
-
-	return ocsp_ok;
 }
 #endif	/* HAVE_OPENSSL_OCSP_H */
 
