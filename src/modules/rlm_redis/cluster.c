@@ -221,6 +221,8 @@ typedef struct cluster_node_conf {
  * Passed as opaque data to pools which open connection to nodes.
  */
 typedef struct fr_redis_cluster_node {
+	char			name[INET6_ADDRSTRLEN];	//!< Buffer to hold IP + port
+						//!< text for debug messages.
 	bool			active;		//!< Whether this node is in the active node set.
 	uint8_t			id;		//!< Node ID (index in node array).
 
@@ -349,7 +351,20 @@ static void _cluster_node_conf_apply(void *opaque)
  */
 static cluster_rcode_t cluster_node_connect(fr_redis_cluster_t *cluster, cluster_node_t *node)
 {
+	char const *p;
+
 	rad_assert(node->pending_addr.ipaddr.af);
+
+	/*
+	 *	Write out the IP address and Port in string form
+	 */
+	p = inet_ntop(node->pending_addr.ipaddr.af, &node->pending_addr.ipaddr.ipaddr,
+		      node->name, sizeof(node->name));
+#ifndef NDEBUG
+	rad_assert(p);
+#else
+	UNUSED_VAR(p);
+#endif
 
 	/*
 	 *	Node has never been used before, needs a pool allocated for it.
@@ -1132,8 +1147,6 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 	cluster_nodes_live_t	*live;
 	struct timeval		now;
 
-	char			buffer[INET6_ADDRSTRLEN];
-
 	RDEBUG2("Searching for live cluster nodes");
 
 	if (rbtree_num_elements(cluster->used_nodes) == 1) {
@@ -1252,9 +1265,8 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 		RDEBUG2("Selected node %i (using random value %i)", node->id, find);
 		conn = fr_connection_get(node->pool);
 		if (!conn) {
-			RERROR("No connections available to node %i (%s:%i)", node->id,
-			       inet_ntop(node->addr.ipaddr.af, &node->addr.ipaddr.ipaddr,
-				    	 buffer, sizeof(buffer)), node->addr.port);
+			RERROR("No connections available to node %i %s:%i", node->id,
+			       node->name, node->addr.port);
 		next:
 			if (pivot == live->next) {
 				live->next--;
@@ -1272,10 +1284,8 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 		reply = redisCommand(conn->handle, "PING");
 		rcode = fr_redis_command_status(conn, reply);
 		if (rcode != REDIS_RCODE_SUCCESS) {
-			RERROR("PING failed to node %i (%s:%i): %s", node->id,
-			       inet_ntop(node->addr.ipaddr.af, &node->addr.ipaddr.ipaddr,
-			       		 buffer, sizeof(buffer)), node->addr.port,
-			       fr_strerror());
+			RERROR("PING failed to node %i %s:%i: %s", node->id, node->name,
+			       node->addr.port, fr_strerror());
 
 			if (rcode == REDIS_RCODE_RECONNECT) {
 				fr_connection_close(node->pool, conn);
@@ -1287,10 +1297,8 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 		}
 
 		if (reply->type != REDIS_REPLY_STATUS) {
-			RERROR("Bad PING response from node %i (%s:%i), expected status got %s",
-			       node->id,
-			       inet_ntop(node->addr.ipaddr.af, &node->addr.ipaddr.ipaddr,
-			       		 buffer, sizeof(buffer)), node->addr.port,
+			RERROR("Bad PING response from node %i %s:%i, expected status got %s",
+			       node->id, node->name, node->addr.port,
 			       fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
 			fr_connection_release(node->pool, conn);
 			fr_redis_reply_free(reply);
@@ -1340,15 +1348,10 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
 	fr_redis_conn_t		*conn = NULL;
 	redisContext		*handle;
 	redisReply		*reply = NULL;
-	char			buffer[INET6_ADDRSTRLEN];
-	char const		*hostname;
 
-	hostname = inet_ntop(node->addr.ipaddr.af, &node->addr.ipaddr.ipaddr, buffer, sizeof(buffer));
-	rad_assert(hostname);	/* addr.ipaddr is probably corrupt */
+	DEBUG2("%s: Connecting node %i to %s:%i",  node->conf->prefix, node->id, node->name, node->addr.port);
 
-	DEBUG2("%s: Node %i: Connecting to %s:%i",  node->conf->prefix, node->id, hostname, node->addr.port);
-
-	handle = redisConnectWithTimeout(hostname, node->addr.port, *timeout);
+	handle = redisConnectWithTimeout(node->name, node->addr.port, *timeout);
 	if ((handle != NULL) && handle->err) {
 		ERROR("%s: Node %i: Connection failed: %s", node->conf->prefix, node->id, handle->errstr);
 		redisFree(handle);
@@ -1526,7 +1529,6 @@ fr_redis_rcode_t fr_redis_cluster_state_init(fr_redis_cluster_state_t *state, fr
 	cluster_key_slot_t	*key_slot;
 	uint8_t			first, i;
 	int			used_nodes;
-	char			buffer[INET6_ADDRSTRLEN];
 
 	rad_assert(cluster);
 	rad_assert(state);
@@ -1599,9 +1601,7 @@ finish:
 	state->key = key;
 	state->key_len = key_len;
 
-	RDEBUG2(">>> Using cluster node %i (%s:%i)", state->node->id,
-		inet_ntop(state->node->addr.ipaddr.af, &state->node->addr.ipaddr.ipaddr, buffer, sizeof(buffer)),
-		state->node->addr.port);
+	RDEBUG2(">>> Using cluster node %i %s:%i", state->node->id, state->node->name, state->node->addr.port);
 
 	return REDIS_RCODE_TRY_AGAIN;
 }
@@ -1645,7 +1645,6 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 					     fr_redis_cluster_t *cluster, REQUEST *request,
 					     fr_redis_rcode_t status, redisReply **reply)
 {
-	char buffer[INET6_ADDRSTRLEN];
 	rad_assert(state && state->node && state->node->pool);
 	rad_assert(conn && *conn);
 
@@ -1730,7 +1729,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	{
 		cluster_key_slot_t *key_slot;
 
-		RERROR("%s", fr_strerror());
+		RERROR("Error communicating with node %i %s:%i: %s", state->node->id, state->node->name,
+		       state->node->addr.port, fr_strerror());
 
 		fr_connection_close(state->node->pool, *conn);	/* He's dead jim */
 
@@ -1748,13 +1748,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 
 		*conn = fr_connection_get(state->node->pool);
 		if (!*conn) {
-			char const *hostname;
-
-			hostname = inet_ntop(state->node->addr.ipaddr.af, &state->node->addr.ipaddr.ipaddr,
-					     buffer, sizeof(buffer));
-			rad_assert(hostname);	/* addr.ipaddr is probably corrupt */
-
-			REDEBUG("No connections available for node %i %s:%i", state->node->id, hostname,
+			REDEBUG("No connections available for node %i %s:%i", state->node->id, state->node->name,
 				state->node->addr.port);
 			return REDIS_RCODE_RECONNECT;
 		}
@@ -1789,11 +1783,13 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		switch (cluster_redirect(&new, cluster, *reply)) {
 		case CLUSTER_OP_SUCCESS:
 			if (new == state->node) {
-				REDEBUG("Node %i issued redirect to itself", state->node->id);
+				REDEBUG("Node %i %s:%i issued redirect to itself", state->node->id,
+					state->node->name, state->node->addr.port);
 				return REDIS_RCODE_ERROR;
 			}
 
-			RDEBUG("Redirected from node %i to node %i", state->node->id, new->id);
+			RDEBUG("Redirected from node %i %s:%i to node %i %s:%i", state->node->id, state->node->name,
+			       state->node->addr.port, new->id, new->name, new->addr.port);
 			state->node = new;
 
 			*conn = fr_connection_get(state->node->pool);
@@ -1819,9 +1815,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	}
 
 try_again:
-	RDEBUG2(">>> Using cluster node %i (%s:%i)", state->node->id,
-		inet_ntop(state->node->addr.ipaddr.af, &state->node->addr.ipaddr.ipaddr, buffer, sizeof(buffer)),
-		state->node->addr.port);
+	RDEBUG2(">>> Using cluster node %i %s:%i", state->node->id, state->node->name, state->node->addr.port);
 
 	fr_redis_reply_free(*reply);
 	*reply = NULL;
@@ -1930,8 +1924,6 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 
 	CONF_SECTION		*mycs;
 	char const		*cs_name1, *cs_name2;
-
-	char			buffer[INET6_ADDRSTRLEN];
 
 	CONF_PAIR		*cp;
 	int			af = AF_UNSPEC;		/* AF of first server */
@@ -2056,13 +2048,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 		if (!node->pending_addr.port) node->pending_addr.port = conf->port;
 
 		if (cluster_node_connect(cluster, node) < 0) {
-			char const *hostname;
-
-			hostname = inet_ntop(node->pending_addr.ipaddr.af, &node->pending_addr.ipaddr.ipaddr,
-				       	     buffer, sizeof(buffer)),
-			rad_assert(hostname);	/* addr.ipaddr is probably corrupt */
-
-			WARN("%s: Connecting to %s:%i failed", conf->prefix, hostname, node->pending_addr.port);
+			WARN("%s: Connecting to %s:%i failed", conf->prefix, node->name, node->pending_addr.port);
 			continue;
 		}
 
