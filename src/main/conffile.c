@@ -1403,14 +1403,14 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  */
 int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt)
 {
-	int rcode;
-	bool deprecated, required, attribute, secret, file_input, cant_be_empty, tmpl, multi;
-	char **q;
-	char const *value;
-	CONF_PAIR *cp = NULL;
-	fr_ipaddr_t *ipaddr;
-	char buffer[8192];
-	CONF_ITEM *c_item = &cs->item;
+	int		rcode;
+	bool		deprecated, required, attribute, secret, file_input, cant_be_empty, tmpl, multi;
+	char		**q;
+	char const	*value;
+	CONF_PAIR	*cp = NULL;
+	fr_ipaddr_t	*ipaddr;
+	char		buffer[8192];
+	CONF_ITEM	*c_item = &cs->item;
 
 	if (!cs) return -1;
 
@@ -1616,7 +1616,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 						    cs, buffer, sizeof(buffer),
 						    value, NULL);
 			if (!value) {
-				cf_log_err(&(cs->item),"Failed expanding variable %s", name);
+				cf_log_err(&(cs->item), "Failed expanding variable %s", name);
 				return -1;
 			}
 		}
@@ -1664,7 +1664,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		ipaddr = data;
 
 		if (fr_pton4(ipaddr, value, -1, true, false) < 0) {
-			ERROR("%s", fr_strerror());
+			cf_log_err(&(cp->item), "%s", fr_strerror());
 			return -1;
 		}
 		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
@@ -1675,7 +1675,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		ipaddr = data;
 
 		if (fr_pton6(ipaddr, value, -1, true, false) < 0) {
-			ERROR("%s", fr_strerror());
+			cf_log_err(&(cp->item), "%s", fr_strerror());
 			return -1;
 		}
 		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
@@ -1686,7 +1686,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		ipaddr = data;
 
 		if (fr_pton(ipaddr, value, -1, AF_UNSPEC, true) < 0) {
-			ERROR("%s", fr_strerror());
+			cf_log_err(&(cp->item), "%s", fr_strerror());
 			return -1;
 		}
 		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
@@ -1715,8 +1715,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		rad_assert(type > PW_TYPE_INVALID);
 		rad_assert(type < PW_TYPE_MAX);
 
-		ERROR("type '%s' is not supported in the configuration files",
-		       fr_int2str(dict_attr_types, type, "?Unknown?"));
+		cf_log_err(&(cp->item), "type '%s' is not supported in the configuration files",
+			   fr_int2str(dict_attr_types, type, "?Unknown?"));
 		return -1;
 	} /* switch over variable type */
 
