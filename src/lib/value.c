@@ -150,18 +150,13 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 		break;
 
 	/*
-	 *	Na of the types below should be in the REQUEST
+	 *	These should be handled at some point
 	 */
-	case PW_TYPE_INVALID:		/* We should never see these */
+	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_COMBO_IP_ADDR:		/* This should have been converted into IPADDR/IPV6ADDR */
 	case PW_TYPE_COMBO_IP_PREFIX:		/* This should have been converted into IPADDR/IPV6ADDR */
-	case PW_TYPE_TLV:
-	case PW_TYPE_EXTENDED:
-	case PW_TYPE_LONG_EXTENDED:
-	case PW_TYPE_EVS:
-	case PW_TYPE_VSA:
-	case PW_TYPE_TIMEVAL:
-	case PW_TYPE_MAX:
+	case PW_TYPE_STRUCTURAL:
+	case PW_TYPE_BAD:
 		fr_assert(0);	/* unknown type */
 		return -2;
 
@@ -171,11 +166,8 @@ int value_data_cmp(PW_TYPE a_type, value_data_t const *a,
 	 */
 	}
 
-	if (compare > 0) {
-		return 1;
-	} else if (compare < 0) {
-		return -1;
-	}
+	if (compare > 0) return 1;
+	if (compare < 0) return -1;
 	return 0;
 }
 
@@ -409,6 +401,40 @@ int value_data_cmp_op(FR_TOKEN op,
 		return 0;
 	}
 }
+
+/** Match all fixed length types in case statements
+ *
+ * @note This should be used for switch statements in printing and casting
+ *	functions that need to deal with all types representing values
+ */
+#define PW_TYPE_BOUNDED \
+	     PW_TYPE_BYTE: \
+	case PW_TYPE_SHORT: \
+	case PW_TYPE_INTEGER: \
+	case PW_TYPE_INTEGER64: \
+	case PW_TYPE_DATE: \
+	case PW_TYPE_IFID: \
+	case PW_TYPE_ETHERNET: \
+	case PW_TYPE_COMBO_IP_ADDR: \
+	case PW_TYPE_COMBO_IP_PREFIX: \
+	case PW_TYPE_SIGNED: \
+	case PW_TYPE_TIMEVAL: \
+	case PW_TYPE_BOOLEAN: \
+	case PW_TYPE_DECIMAL
+
+/** Match all variable length types in case statements
+ *
+ * @note This should be used for switch statements in printing and casting
+ *	functions that need to deal with all types representing values
+ */
+#define PW_TYPE_UNBOUNDED \
+	     PW_TYPE_STRING: \
+	case PW_TYPE_OCTETS: \
+	case PW_TYPE_ABINARY: \
+	case PW_TYPE_IPV4_ADDR: \
+	case PW_TYPE_IPV4_PREFIX: \
+	case PW_TYPE_IPV6_ADDR: \
+	case PW_TYPE_IPV6_PREFIX
 
 static char const hextab[] = "0123456789abcdef";
 
@@ -651,11 +677,6 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	 	goto do_octets;
 #endif
 
-	/* don't use this! */
-	case PW_TYPE_TLV:
-		fr_strerror_printf("Cannot parse TLV");
-		return -1;
-
 	case PW_TYPE_IPV4_ADDR:
 	{
 		fr_ipaddr_t addr;
@@ -718,8 +739,16 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	}
 		goto finish;
 
-	default:
+	/*
+	 *	Dealt with below
+	 */
+	case PW_TYPE_BOUNDED:
 		break;
+
+	case PW_TYPE_STRUCTURAL_EXCEPT_VSA:
+	case PW_TYPE_BAD:
+		fr_strerror_printf("Invalid type %d", *src_type);
+		return -1;
 	}
 
 	/*
@@ -951,10 +980,26 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		dst->sinteger = (int32_t)strtol(src, NULL, 10);
 		break;
 
-	/*
-	 *  Anything else.
-	 */
-	default:
+	case PW_TYPE_BOOLEAN:
+	case PW_TYPE_COMBO_IP_PREFIX:
+	case PW_TYPE_TIMEVAL:
+		break;
+
+	case PW_TYPE_DECIMAL:
+	{
+		double i;
+
+		if (sscanf(src, "%lf", &i) != 1) {
+			fr_strerror_printf("Failed parsing \"%s\" as double", src);
+			return -1;
+		}
+		dst->decimal = i;
+	}
+		break;
+
+	case PW_TYPE_UNBOUNDED:		/* Should have been dealt with above */
+	case PW_TYPE_STRUCTURAL:	/* Listed again to suppress compiler warnings */
+	case PW_TYPE_BAD:
 		fr_strerror_printf("Unknown attribute type %d", *src_type);
 		return -1;
 	}

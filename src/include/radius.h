@@ -38,6 +38,30 @@ typedef enum {
 	PW_TYPE_MAX				//!< Number of defined data types.
 } PW_TYPE;
 
+#define PW_TYPE_BAD \
+	     PW_TYPE_MAX: \
+	case PW_TYPE_INVALID
+
+/** Stupid hack for things which produce special error messages for VSAs
+ *
+ * @note This should be used for switch statements in printing and casting
+ *	functions that need to deal with all types representing values
+ */
+#define PW_TYPE_STRUCTURAL_EXCEPT_VSA \
+	     PW_TYPE_EXTENDED: \
+	case PW_TYPE_LONG_EXTENDED: \
+	case PW_TYPE_EVS: \
+	case PW_TYPE_TLV
+
+/** Match all non value types in case statements
+ *
+ * @note This should be used for switch statements in printing and casting
+ *	functions that need to deal with all types representing values
+ */
+#define PW_TYPE_STRUCTURAL \
+	PW_TYPE_STRUCTURAL_EXCEPT_VSA: \
+     	case PW_TYPE_VSA
+
 /** RADIUS packet codes
  *
  */
