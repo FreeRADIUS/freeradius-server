@@ -451,7 +451,7 @@ static cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_slot, clust
 /** Apply a cluster map received from a cluster node
  *
  * @note Errors may be retrieved with fr_strerror().
- * @note Must be called with the cluster mutex free.
+ * @note Must be called with the cluster mutex held.
  *
  * @param[in,out] cluster to apply map to.
  * @param[in] reply from #cluster_map_get.
@@ -461,7 +461,7 @@ static cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_slot, clust
   *	- CLUSTER_OP_NO_CONNECTION connection failure.
  *	- CLUSTER_OP_BAD_INPUT if the map didn't provide nodes for all keyslots.
  */
-static int cluster_map_apply(fr_redis_cluster_t *cluster, redisReply *reply)
+static cluster_rcode_t cluster_map_apply(fr_redis_cluster_t *cluster, redisReply *reply)
 {
 	size_t		i;
 	uint8_t		r = 0;
@@ -508,8 +508,6 @@ do { \
 
 	memset(&rollback, 0, sizeof(rollback));
 	memset(active, 0, sizeof(active));
-
-	pthread_mutex_lock(&cluster->mutex);
 
 	cluster->remapping = true;
 
@@ -563,7 +561,6 @@ do { \
 			cluster->last_updated = time(NULL);
 			/* Re-insert new nodes back into the free_nodes queue */
 			for (i = 0; i < r; r++) SET_INACTIVE(&cluster->node[rollback[r]]);
-			pthread_mutex_unlock(&cluster->mutex);
 			return rcode;
 		}
 
@@ -687,7 +684,6 @@ do { \
 	rad_assert(rbtree_num_elements(cluster->used_nodes) == total);
 	rad_assert(((talloc_array_length(cluster->node) - 1) - rbtree_num_elements(cluster->used_nodes)) ==
 		   fr_fifo_num_elements(cluster->free_nodes));
-	pthread_mutex_unlock(&cluster->mutex);
 
 	return CLUSTER_OP_SUCCESS;
 }
@@ -927,12 +923,14 @@ static cluster_rcode_t cluster_remap(REQUEST *request, fr_redis_cluster_t *clust
 	 *	remapped it's unlikely that it needs remapping again.
 	 */
 	if (cluster->remapping) {
+	in_progress:
 		RDEBUG("Cluster remapping in progress, ignoring remap request");
 		return CLUSTER_OP_IGNORED;
 	}
 
 	now = time(NULL);
 	if (now == cluster->last_updated) {
+	too_soon:
 		RDEBUG("Cluster was updated less than a second ago, ignoring remap request");
 		return CLUSTER_OP_IGNORED;
 	}
@@ -980,11 +978,27 @@ static cluster_rcode_t cluster_remap(REQUEST *request, fr_redis_cluster_t *clust
 		REXDENT();
 	}
 
-	if (cluster_map_apply(cluster, map) < 0) {
-		fr_redis_reply_free(map);
-		return CLUSTER_OP_FAILED;
+	/*
+	 *	Check again that the cluster isn't being
+	 *	remapped, or was remapped too recently,
+	 *	now we hold the mutex and the state of
+	 *	those variables is synchronized.
+	 */
+	pthread_mutex_lock(&cluster->mutex);
+	if (cluster->remapping) {
+		pthread_mutex_unlock(&cluster->mutex);
+		goto in_progress;
 	}
-	cluster->remap_needed = false;	/* Change on successful remap */
+	if (now == cluster->last_updated) {
+		pthread_mutex_unlock(&cluster->mutex);
+		goto too_soon;
+	}
+	ret = cluster_map_apply(cluster, map);
+	if (ret == CLUSTER_OP_SUCCESS) cluster->remap_needed = false;	/* Change on successful remap */
+	pthread_mutex_unlock(&cluster->mutex);
+
+	fr_redis_reply_free(map);	/* Free the map */
+	if (ret < 0) return CLUSTER_OP_FAILED;
 
 	return CLUSTER_OP_SUCCESS;
 }
@@ -1735,7 +1749,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		fr_connection_close(state->node->pool, *conn);	/* He's dead jim */
 
 		if (state->reconnects++ > state->in_pool) {
-			REDEBUG("Hit maximum reconnect attempts");
+			REDEBUG("Hit maximum reconnect attempts for node %i", state->node->id);
 			cluster->remap_needed = true;
 			return REDIS_RCODE_RECONNECT;
 		}
