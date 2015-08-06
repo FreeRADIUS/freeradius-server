@@ -18,7 +18,7 @@ RCSIDH(eap_leap_h, "$Id$")
 
 /*
  ****
- * EAP - LEAP doesnot specify code, id & length but chap specifies them,
+ * EAP - LEAP does not specify code, id & length but chap specifies them,
  *	for generalization purpose, complete header should be sent
  *	and not just value_size, value and name.
  *	future implementation.
