@@ -1909,6 +1909,48 @@ void fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct 
 	}
 }
 
+/** Create timeval from a string
+ *
+ * @param[out] out Where to write timeval.
+ * @param[in] in String to parse.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_timeval_from_str(struct timeval *out, char const *in)
+{
+	int	sec;
+	char	*end;
+	struct	timeval tv;
+
+	sec = strtoul(in, &end, 10);
+	tv.tv_sec = sec;
+	tv.tv_usec = 0;
+	if (*end == '.') {
+		size_t len;
+
+		len = strlen(end + 1);
+
+		if (len > 6) {
+			fr_strerror_printf("Too much precision for timeval");
+			return -1;
+		}
+
+		/*
+		 *	If they write "0.1", that means
+		 *	"10000" microseconds.
+		 */
+		sec = strtoul(end + 1, NULL, 10);
+		while (len < 6) {
+			sec *= 10;
+			len++;
+		}
+		tv.tv_usec = sec;
+	}
+	*out = tv;
+	return 0;
+}
+
 /** Compares two pointers
  *
  * @param a first pointer to compare.

@@ -1692,40 +1692,18 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		if (fr_item_validate_ipaddr(cs, name, type, value, ipaddr) < 0) return -1;
 		break;
 
-	case PW_TYPE_TIMEVAL: {
-		int sec;
-		char *end;
+	case PW_TYPE_TIMEVAL:
+	{
 		struct timeval tv;
 
-		sec = strtoul(value, &end, 10);
-		tv.tv_sec = sec;
-		tv.tv_usec = 0;
-		if (*end == '.') {
-			size_t len;
-
-			len = strlen(end + 1);
-
-			if (len > 6) {
-				ERROR("Too much precision for timeval");
-				return -1;
-			}
-
-			/*
-			 *	If they write "0.1", that means
-			 *	"10000" microseconds.
-			 */
-			sec = strtoul(end + 1, NULL, 10);
-			while (len < 6) {
-				sec *= 10;
-				len++;
-			}
-
-			tv.tv_usec = sec;
+		if (fr_timeval_from_str(&tv, name) < 0) {
+			cf_log_err(&(cp->item), "%s", fr_strerror());
+			return -1;
 		}
 		cf_log_info(cs, "%.*s\t%s = %d.%06d",
 			    cs->depth, parse_spaces, name, (int) tv.tv_sec, (int) tv.tv_usec);
 		memcpy(data, &tv, sizeof(tv));
-		}
+	}
 		break;
 
 	default:
