@@ -1588,7 +1588,10 @@ finish:
 	 *	Something set the remap_needed flag, and we have a live connection
 	 */
 	if (cluster->remap_needed) {
-		if (cluster_remap(request, cluster, *conn) == CLUSTER_OP_SUCCESS) goto again;	/* New map, try again */
+		if (cluster_remap(request, cluster, *conn) == CLUSTER_OP_SUCCESS) {
+			fr_connection_release(node->pool, *conn);
+			goto again;	/* New map, try again */
+		}
 		RDEBUG2("%s: %s", cluster->conf->prefix, fr_strerror());
 	}
 
@@ -1599,7 +1602,6 @@ finish:
 	RDEBUG2(">>> Using cluster node %i (%s:%i)", state->node->id,
 		inet_ntop(state->node->addr.ipaddr.af, &state->node->addr.ipaddr.ipaddr, buffer, sizeof(buffer)),
 		state->node->addr.port);
-
 
 	return REDIS_RCODE_TRY_AGAIN;
 }
