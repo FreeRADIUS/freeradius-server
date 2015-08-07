@@ -280,7 +280,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				 *	Bad format.  Create a "raw"
 				 *	attribute.
 				 */
-		raw:
+			raw:
 				if (vp) fr_pair_list_free(&vp);
 				da = dict_unknown_afrom_fields(packet, attr, vendor);
 				if (!da) return NULL;
@@ -350,7 +350,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 
 		case PW_TYPE_STRING:
 			fr_pair_value_bstrncpy(vp, data, size);
-			vp->vp_length = strlen(vp->vp_strvalue); /* embedded zeros are NOT allowed */
+			vp->vp_length = size;
 			break;
 
 			/*
