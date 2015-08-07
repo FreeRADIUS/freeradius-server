@@ -60,5 +60,7 @@ ssize_t		fr_jpath_parse(TALLOC_CTX *ctx, fr_jpath_node_t **head, char const *in,
 /* json.c */
 int		fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object *object,
 					     PW_TYPE dst_type, DICT_ATTR const *dst_enumv);
+
+size_t    	fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp);
 #endif
 #endif /* _FR_JSON_H */

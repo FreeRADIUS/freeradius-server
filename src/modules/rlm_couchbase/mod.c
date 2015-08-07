@@ -372,7 +372,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 /** Convert value pairs to json objects
  *
  * Take the passed value pair and convert it to a json-c JSON object.
- * This code is heavily based on the vp_prints_value_json() function
+ * This code is heavily based on the fr_json_from_pair() function
  * from src/lib/print.c.
  *
  * @param  request The request object.

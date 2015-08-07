@@ -775,7 +775,7 @@ static size_t rest_encode_json(void *out, size_t size, size_t nmemb, void *userd
 				 *  write that out.
 				 */
 				attr_space = fr_cursor_next_peek(&ctx->cursor) ? freespace - 1 : freespace;
-				len = vp_prints_value_json(p, attr_space + 1, vp);
+				len = fr_json_from_pair(p, attr_space + 1, vp);
 				if (is_truncated(len, attr_space + 1)) goto no_space;
 
 				/*
