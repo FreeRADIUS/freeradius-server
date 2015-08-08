@@ -1160,6 +1160,7 @@ static bool cache_process(REQUEST *request, char const *session_cache_server, in
 	 *	Run it through the appropriate virtual server.
 	 */
 	request->server = session_cache_server;
+	request->module = "cache";
 
 	/*
 	 *	FIXME: check the return code, and fail the TLS session
