@@ -291,6 +291,12 @@ int rad_virtual_server(REQUEST UNUSED *request)
   abort();
 }
 
+rlm_rcode_t process_authorize(UNUSED int type, UNUSED REQUEST *request)
+{
+  /*We're not the server so we cannot do this*/
+  abort();
+}
+
 /** Set the global radius config directory.
  *
  *  (copied from main/mainconfig.c)
