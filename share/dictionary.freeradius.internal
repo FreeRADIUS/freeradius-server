@@ -281,7 +281,6 @@ ATTRIBUTE	Cache-Read-Only				1176	integer internal
 
 ATTRIBUTE	Cache-Allow-Insert			1177	integer	internal
 
-
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
 
@@ -583,10 +582,11 @@ ATTRIBUTE	TLS-PSK-Identity			1933	string internal
 # 1940 - 1949: reserved for TLS session caching
 ATTRIBUTE	TLS-Session-Identity			1940	octets	internal
 ATTRIBUTE	TLS-Session-Cache-Action		1941	integer	internal
+VALUE	TLS-Session-Cache-Action	Read			1
+VALUE	TLS-Session-Cache-Action	Write			2
+VALUE	TLS-Session-Cache-Action	Delete			3
 
-VALUE TLS-Session-Cache-Action Read 1
-VALUE TLS-Session-Cache-Action Write 2
-VALUE TLS-Session-Cache-Action Delete 3
+ATTRIBUTE	TLS-Session-Data			1942	octets	internal
 
 #
 #	Range:	1950-2099

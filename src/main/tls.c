@@ -1184,16 +1184,60 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 {
 	fr_tls_server_conf_t	*conf;
 	REQUEST			*request;
+	size_t			len, rcode;
+	uint8_t			*p, *data = NULL;
+	VALUE_PAIR		*vp;
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 
 	get_session_key(request, sess->session_id, sess->session_id_length, CACHE_ACTION_WRITE);
 
+	/* find out what length data we need */
+	len = i2d_SSL_SESSION(sess, NULL);
+	if (len < 1) {
+		/* something went wrong */
+		RWDEBUG("Session serialisation failed, couldn't determine required buffer length");
+		return 0;
+	}
+
+	/* alloc and convert to ASN.1 */
+	data = talloc_array(NULL, uint8_t, len);
+	if (!data) {
+		RWDEBUG("Session serialisation failed, couldn't allocate buffer (%zd bytes)", len);
+		return 0;
+	}
+
+	/* openssl mutates &p */
+	p = data;
+	rcode = i2d_SSL_SESSION(sess, &p);
+	if (rcode != len) {
+		RWDEBUG("Session serialisation failed");
+		goto error;
+	}
+
+	/*
+	 *	Put the SSL data into an attribute.
+	 */
+	vp = fr_pair_afrom_num(request, PW_TLS_SESSION_DATA, 0);
+	if (!vp) goto error;
+
+	fr_pair_value_memsteal(vp, data);
+	fr_pair_add(&request->config, vp);
+	data = NULL;
+
 	/*
 	 *	Call the virtual server to write the session
 	 */
 	cache_process(request, conf->session_cache_server);
+
+	/*
+	 *	Ensure that the session data can't be used by anyone else.
+	 */
+	fr_pair_delete_by_num(&request->config, PW_TLS_SESSION_DATA, 0, TAG_ANY);
+
+error:
+	if (data) talloc_free(data);
 
 	return 0;
 }
