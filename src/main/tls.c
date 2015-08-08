@@ -27,6 +27,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/process.h>
+#include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_SYS_STAT_H
@@ -955,6 +956,7 @@ static CONF_PARSER cache_config[] = {
 
 	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, session_cache_size), "255" },
 	{ "persist_dir", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_path), NULL },
+	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_server), NULL },
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
@@ -1117,10 +1119,151 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 
 
 /*
- *	Print debugging messages, and free data.
+ *	See values for TLS-Session-Cache-Action
  */
+#define CACHE_ACTION_READ (1)
+#define CACHE_ACTION_WRITE (2)
+#define CACHE_ACTION_DELETE (3)
+
+/*
+ *	Create a RADIUS attribute in the REQUEST containing the session key.
+ */
+static bool get_session_key(REQUEST *request, uint8_t *data, size_t len, int action)
+{
+	VALUE_PAIR *vp;
+
+	vp = fr_pair_afrom_num(request, PW_TLS_SESSION_IDENTITY, 0);
+	if (!vp) return false;
+
+	fr_pair_value_memcpy(vp, data, len);
+	fr_pair_add(&request->config, vp);
+
+	vp = fr_pair_afrom_num(request, PW_TLS_SESSION_CACHE_ACTION, 0);
+	if (!vp) return false;
+
+	vp->vp_integer = action;
+	fr_pair_add(&request->config, vp);
+
+	return true;
+}
+
+static bool cache_process(REQUEST *request, char const *session_cache_server)
+{
+	/*
+	 *	Save the current status of the request.
+	 */
+	char const *server = request->server;
+	char const *module = request->module;
+	char const *component = request->component;
+
+	/*
+	 *	Run it through the appropriate virtual server.
+	 */
+	request->server = session_cache_server;
+
+	/*
+	 *	FIXME: check the return code, and fail the TLS session
+	 *	if we couldn't do anything.  Or do we really care?
+	 */
+	process_authorize(0, request);
+
+	/*
+	 *	Restore the original status of the request.
+	 */
+	request->server = server;
+	request->module = module;
+	request->component = component;
+
+	return true;
+}
+
+/*
+ *	Write a newly created session to the cache.
+ */
+static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
+{
+	fr_tls_server_conf_t	*conf;
+	REQUEST			*request;
+
+	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+
+	get_session_key(request, sess->session_id, sess->session_id_length, CACHE_ACTION_WRITE);
+
+	/*
+	 *	Call the virtual server to write the session
+	 */
+	cache_process(request, conf->session_cache_server);
+
+	return 0;
+}
+
+
+/*
+ *	Read a resumed session from the cache.
+ */
+static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *data, int inlen, int *copy)
+{
+	fr_tls_server_conf_t	*conf;
+	REQUEST			*request;
+
+	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
+	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
+
+	get_session_key(request, data, inlen, CACHE_ACTION_READ);
+
+	*copy = 0;
+
+	/*
+	 *	Call the virtual server to read the session
+	 */
+	cache_process(request, conf->session_cache_server);
+
+	return NULL;
+}
+
+/*
+ *	Delete a session from the cache.
+ */
+static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
+{
+	fr_tls_server_conf_t	*conf;
+	REQUEST			*request;
+
+	conf = SSL_CTX_get_app_data(ctx);
+
+	/*
+	 *	We need a fake request for the virtual server, but we
+	 *	don't have a parent request to base it on.  So just
+	 *	invent one.
+	 */
+	request = request_alloc(NULL);
+	request->packet = rad_alloc(request, false);
+	request->reply = rad_alloc(request, false);
+
+	get_session_key(request, sess->session_id, sess->session_id_length, CACHE_ACTION_DELETE);
+
+	/*
+	 *	Call the virtual server to delete the session
+	 */
+	cache_process(request, conf->session_cache_server);
+
+	/*
+	 *	Delete the fake request we created.
+	 */
+	talloc_free(request);
+}
+
 #define MAX_SESSION_SIZE (256)
 
+/*
+ *	Old session caching code
+ */
+
+
+/*
+ *	Print debugging messages, and free data.
+ */
 static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 {
 	size_t			size;
@@ -2642,6 +2785,12 @@ post_ca:
 	 *	Callbacks, etc. for session resumption.
 	 */
 	if (conf->session_cache_enable) {
+		if (conf->session_cache_server) {
+			SSL_CTX_sess_set_new_cb(ctx, cache_write_session);
+			SSL_CTX_sess_set_get_cb(ctx, cache_read_session);
+			SSL_CTX_sess_set_remove_cb(ctx, cache_delete_session);
+		} else
+
 		/*
 		 *	Cache sessions on disk if requested.
 		 */
