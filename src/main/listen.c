@@ -1990,6 +1990,9 @@ static int coa_socket_recv(rad_listen_t *listener)
 static int proxy_socket_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET	*packet;
+#ifdef WITH_TCP
+	listen_socket_t *sock;
+#endif
 	char		buffer[128];
 
 	packet = rad_recv(NULL, listener->fd, 0);
@@ -2032,6 +2035,11 @@ static int proxy_socket_recv(rad_listen_t *listener)
 		rad_free(&packet);
 		return 0;
 	}
+
+#ifdef WITH_TCP
+	sock = listener->data;
+	packet->proto = sock->proto;
+#endif
 
 	if (!request_proxy_reply(packet)) {
 #ifdef WITH_STATS
