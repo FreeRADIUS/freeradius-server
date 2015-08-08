@@ -580,8 +580,16 @@ ATTRIBUTE	TLS-PSK-Identity			1933	string internal
 
 # 1934 - 1939: reserved for future cert attributes
 
+# 1940 - 1949: reserved for TLS session caching
+ATTRIBUTE	TLS-Session-Identity			1940	octets	internal
+ATTRIBUTE	TLS-Session-Cache-Action		1941	integer	internal
+
+VALUE TLS-Session-Cache-Action Read 1
+VALUE TLS-Session-Cache-Action Write 2
+VALUE TLS-Session-Cache-Action Delete 3
+
 #
-#	Range:	1940-2099
+#	Range:	1950-2099
 #		Free
 #
 #	Range:	2100-2199
