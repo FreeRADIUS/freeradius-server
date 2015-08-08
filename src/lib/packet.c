@@ -47,6 +47,14 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	if (a->id < b->id) return -1;
 	if (a->id > b->id) return +1;
 
+	if (a->sockfd < b->sockfd) return -1;
+	if (a->sockfd > b->sockfd) return +1;
+
+#ifdef WITH_TCP
+	if (a->proto < b->proto) return -1;
+	if (a->proto > b->proto) return +1;
+#endif
+
 	/*
 	 *	Source ports are pretty much random.
 	 */
@@ -74,9 +82,6 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	 *	pretty much redundant.
 	 */
 	rcode = (int) a->dst_port - (int) b->dst_port;
-	if (rcode != 0) return rcode;
-
-	rcode = a->sockfd - b->sockfd;
 	return rcode;
 }
 
@@ -528,12 +533,23 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 	my_request.sockfd = reply->sockfd;
 	my_request.id = reply->id;
 
-	if (ps->src_any) {
-		my_request.src_ipaddr = ps->src_ipaddr;
-	} else {
+#ifdef WITH_TCP
+	/*
+	 *	TCP sockets are always bound to the correct src/dst IP/port
+	 */
+	if (ps->proto == IPPROTO_TCP) {
 		my_request.src_ipaddr = reply->dst_ipaddr;
+		my_request.src_port = reply->dst_port;
+	} else
+#endif
+	{
+		if (ps->src_any) {
+			my_request.src_ipaddr = ps->src_ipaddr;
+		} else {
+			my_request.src_ipaddr = reply->dst_ipaddr;
+		}
+		my_request.src_port = ps->src_port;
 	}
-	my_request.src_port = ps->src_port;
 
 	my_request.dst_ipaddr = reply->src_ipaddr;
 	my_request.dst_port = reply->src_port;
