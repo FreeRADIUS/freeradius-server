@@ -117,6 +117,9 @@ void fr_request_from_reply(RADIUS_PACKET *request,
 {
 	request->sockfd = reply->sockfd;
 	request->id = reply->id;
+#ifdef WITH_TCP
+	request->proto = reply->proto;
+#endif
 	request->src_port = reply->dst_port;
 	request->dst_port = reply->src_port;
 	request->src_ipaddr = reply->dst_ipaddr;
@@ -554,6 +557,9 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 	my_request.dst_ipaddr = reply->src_ipaddr;
 	my_request.dst_port = reply->src_port;
 
+#ifdef WITH_TCP
+	my_request.proto = reply->proto;
+#endif
 	request = &my_request;
 
 	return rbtree_finddata(pl->tree, &request);
@@ -927,6 +933,9 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 		 */
 
 		pl->last_recv = start;
+#ifdef WITH_TCP
+		packet->proto = pl->sockets[start].proto;
+#endif
 		return packet;
 	} while (start != pl->last_recv);
 
