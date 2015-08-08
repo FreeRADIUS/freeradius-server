@@ -1250,6 +1250,9 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *data, int inlen,
 {
 	fr_tls_server_conf_t	*conf;
 	REQUEST			*request;
+	uint8_t	const		*p;
+	VALUE_PAIR		*vp;
+	SSL_SESSION		*sess;
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
@@ -1263,7 +1266,26 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *data, int inlen,
 	 */
 	cache_process(request, conf->session_cache_server);
 
-	return NULL;
+	vp = fr_pair_find_by_num(request->config, PW_TLS_SESSION_DATA, 0, TAG_ANY);
+	if (!vp) {
+		RWDEBUG("No cached session found");
+		return NULL;
+	}
+
+	/* openssl mutates &p */
+	p = vp->vp_octets;
+	sess = d2i_SSL_SESSION(NULL, (unsigned char const **)(void **) &p, vp->vp_length);
+	if (!sess) {
+		RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
+		return NULL;
+	}
+
+	/*
+	 *	Ensure that the session data can't be used by anyone else.
+	 */
+	fr_pair_delete_by_num(&request->config, PW_TLS_SESSION_DATA, 0, TAG_ANY);
+
+	return sess;
 }
 
 /*
