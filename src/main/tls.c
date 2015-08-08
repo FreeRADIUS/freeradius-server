@@ -1275,7 +1275,7 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *data, int inlen,
 
 	/* openssl mutates &p */
 	p = vp->vp_octets;
-	sess = d2i_SSL_SESSION(NULL, (unsigned char const **)(void **) &p, vp->vp_length);
+	sess = d2i_SSL_SESSION(NULL, &p, vp->vp_length);
 	if (!sess) {
 		RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
