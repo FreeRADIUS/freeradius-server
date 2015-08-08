@@ -1147,7 +1147,7 @@ static bool get_session_key(REQUEST *request, uint8_t *data, size_t len, int act
 	return true;
 }
 
-static bool cache_process(REQUEST *request, char const *session_cache_server)
+static bool cache_process(REQUEST *request, char const *session_cache_server, int autz_type)
 {
 	/*
 	 *	Save the current status of the request.
@@ -1165,7 +1165,7 @@ static bool cache_process(REQUEST *request, char const *session_cache_server)
 	 *	FIXME: check the return code, and fail the TLS session
 	 *	if we couldn't do anything.  Or do we really care?
 	 */
-	process_authorize(0, request);
+	process_authorize(autz_type + 1000, request);
 
 	/*
 	 *	Restore the original status of the request.
@@ -1229,7 +1229,7 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	/*
 	 *	Call the virtual server to write the session
 	 */
-	cache_process(request, conf->session_cache_server);
+	cache_process(request, conf->session_cache_server, CACHE_ACTION_WRITE);
 
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
@@ -1264,7 +1264,7 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *data, int inlen,
 	/*
 	 *	Call the virtual server to read the session
 	 */
-	cache_process(request, conf->session_cache_server);
+	cache_process(request, conf->session_cache_server, CACHE_ACTION_READ);
 
 	vp = fr_pair_find_by_num(request->config, PW_TLS_SESSION_DATA, 0, TAG_ANY);
 	if (!vp) {
@@ -1312,7 +1312,7 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 	/*
 	 *	Call the virtual server to delete the session
 	 */
-	cache_process(request, conf->session_cache_server);
+	cache_process(request, conf->session_cache_server, CACHE_ACTION_DELETE);
 
 	/*
 	 *	Delete the fake request we created.
@@ -3448,4 +3448,3 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 	}
 }
 #endif	/* WITH_TLS */
-
