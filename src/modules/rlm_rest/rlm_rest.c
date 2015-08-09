@@ -236,7 +236,7 @@ static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *	Simple xlat to read text data from a URL
  */
 static ssize_t rest_xlat(void *instance, REQUEST *request,
-			 char const *fmt, char **out, size_t freespace)
+			 char const *fmt, char **out, UNUSED size_t freespace)
 {
 	rlm_rest_t	*inst = instance;
 	void		*handle;
@@ -247,6 +247,8 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	char const	*p = fmt, *q;
 	char const	*body;
 	http_method_t	method;
+
+	rad_assert(*out == NULL);
 
 	/* There are no configurable parameters other than the URI */
 	rlm_rest_section_t section = {
@@ -349,15 +351,9 @@ error:
 	}
 
 	len = rest_get_handle_data(&body, handle);
-	if ((size_t) len >= freespace) {
-		REDEBUG("Insufficient space to write HTTP response, needed %zu bytes, have %zu bytes", len + 1,
-			freespace);
-		outlen = -1;
-		goto finish;
-	}
 	if (len > 0) {
+		*out = talloc_bstrndup(request, body, len);
 		outlen = len;
-		strlcpy(*out, body, len + 1);	/* strlcpy takes the size of the buffer */
 	}
 
 finish:
@@ -819,7 +815,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the rest xlat function
 	 */
-	xlat_register(inst->xlat_name, rest_xlat, XLAT_DEFAULT_BUF_LEN, rest_uri_escape, inst);
+	xlat_register(inst->xlat_name, rest_xlat, 0, rest_uri_escape, inst);
 	xlat_register("jsonquote", jsonquote_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 
 	return 0;
