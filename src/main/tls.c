@@ -1251,7 +1251,8 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *data, int inlen,
 {
 	fr_tls_server_conf_t	*conf;
 	REQUEST			*request;
-	uint8_t	const		*p;
+	uint8_t			*p;
+	uint8_t const		*q;
 	VALUE_PAIR		*vp;
 	SSL_SESSION		*sess;
 
@@ -1273,9 +1274,10 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *data, int inlen,
 		return NULL;
 	}
 
-	/* openssl mutates &p */
-	p = vp->vp_octets;
-	sess = d2i_SSL_SESSION(NULL, &p, vp->vp_length);
+	/* openssl mutates &p, and has different 'const' from vp_octets */
+	q = vp->vp_octets;
+	memcpy(&p, &q, sizeof(p));
+	sess = d2i_SSL_SESSION(NULL, (const unsigned char **) &p, vp->vp_length);
 	if (!sess) {
 		RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
