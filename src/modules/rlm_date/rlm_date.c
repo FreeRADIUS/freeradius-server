@@ -40,17 +40,14 @@ static const CONF_PARSER module_config[] = {
 };
 
 DIAG_OFF(format-nonliteral)
-static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
 {
 	rlm_date_t *inst = instance;
 	time_t date = 0;
 	struct tm tminfo;
 	VALUE_PAIR *vp;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	switch (vp->da->type) {
 	/*
@@ -71,7 +68,7 @@ static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *f
 			REDEBUG("Failed converting time string to localtime");
 			goto error;
 		}
-		return strftime(out, outlen, inst->fmt, &tminfo);
+		return strftime(*out, outlen, inst->fmt, &tminfo);
 
 	/*
 	 *	These are 'from' types, i.e. we'll convert the input string
@@ -89,14 +86,13 @@ static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *f
 			REDEBUG("Failed converting parsed time into unix time");
 
 		}
-		return snprintf(out, outlen, "%" PRIu64, (uint64_t) date);
+		return snprintf(*out, outlen, "%" PRIu64, (uint64_t) date);
 
 	default:
 		REDEBUG("Can't convert type %s into date", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
 	}
 
-	error:
-	*out = '\0';
+error:
 	return -1;
 }
 DIAG_ON(format-nonliteral)

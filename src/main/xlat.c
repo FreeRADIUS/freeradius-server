@@ -97,35 +97,33 @@ static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for forea
  *
  */
 static ssize_t xlat_strlen(UNUSED void *instance, UNUSED REQUEST *request,
-			   char const *fmt, char *out, size_t outlen)
+			   char const *fmt, char **out, size_t outlen)
 {
-	snprintf(out, outlen, "%u", (unsigned int) strlen(fmt));
-	return strlen(out);
+	snprintf(*out, outlen, "%u", (unsigned int) strlen(fmt));
+	return strlen(*out);
 }
 
 /** Print the size of the attribute in bytes.
  *
  */
 static ssize_t xlat_length(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char *out, size_t outlen)
+			   char const *fmt, char **out, size_t outlen)
 {
 	VALUE_PAIR *vp;
+
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	snprintf(out, outlen, "%zu", vp->vp_length);
-	return strlen(out);
+	snprintf(*out, outlen, "%zu", vp->vp_length);
+	return strlen(*out);
 }
 
 /** Print data as integer, not as VALUE.
  *
  */
 static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
-			    char const *fmt, char *out, size_t outlen)
+			    char const *fmt, char **out, size_t outlen)
 {
 	VALUE_PAIR 	*vp;
 
@@ -134,10 +132,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
@@ -148,36 +143,36 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 
 		if (vp->vp_length > 4) {
 			memcpy(&int64, vp->vp_octets, vp->vp_length);
-			return snprintf(out, outlen, "%" PRIu64, htonll(int64));
+			return snprintf(*out, outlen, "%" PRIu64, htonll(int64));
 		}
 
 		memcpy(&int32, vp->vp_octets, vp->vp_length);
-		return snprintf(out, outlen, "%i", htonl(int32));
+		return snprintf(*out, outlen, "%i", htonl(int32));
 
 	case PW_TYPE_INTEGER64:
-		return snprintf(out, outlen, "%" PRIu64, vp->vp_integer64);
+		return snprintf(*out, outlen, "%" PRIu64, vp->vp_integer64);
 
 	/*
 	 *	IP addresses are treated specially, as parsing functions assume the value
 	 *	is bigendian and will convert it for us.
 	 */
 	case PW_TYPE_IPV4_ADDR:
-		return snprintf(out, outlen, "%u", htonl(vp->vp_ipaddr));
+		return snprintf(*out, outlen, "%u", htonl(vp->vp_ipaddr));
 
 	case PW_TYPE_IPV4_PREFIX:
-		return snprintf(out, outlen, "%u", htonl((*(uint32_t *)(vp->vp_ipv4prefix + 2))));
+		return snprintf(*out, outlen, "%u", htonl((*(uint32_t *)(vp->vp_ipv4prefix + 2))));
 
 	case PW_TYPE_INTEGER:
-		return snprintf(out, outlen, "%u", vp->vp_integer);
+		return snprintf(*out, outlen, "%u", vp->vp_integer);
 
 	case PW_TYPE_DATE:
-		return snprintf(out, outlen, "%u", vp->vp_date);
+		return snprintf(*out, outlen, "%u", vp->vp_date);
 
 	case PW_TYPE_BYTE:
-		return snprintf(out, outlen, "%u", (unsigned int) vp->vp_byte);
+		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_byte);
 
 	case PW_TYPE_SHORT:
-		return snprintf(out, outlen, "%u", (unsigned int) vp->vp_short);
+		return snprintf(*out, outlen, "%u", (unsigned int) vp->vp_short);
 
 	/*
 	 *	Ethernet is weird... It's network related, so we assume to it should be
@@ -185,16 +180,16 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	 */
 	case PW_TYPE_ETHERNET:
 		memcpy(&int64, vp->vp_ether, vp->vp_length);
-		return snprintf(out, outlen, "%" PRIu64, htonll(int64));
+		return snprintf(*out, outlen, "%" PRIu64, htonll(int64));
 
 	case PW_TYPE_SIGNED:
-		return snprintf(out, outlen, "%i", vp->vp_signed);
+		return snprintf(*out, outlen, "%i", vp->vp_signed);
 
 	case PW_TYPE_IPV6_ADDR:
-		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
+		return fr_prints_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
 
 	case PW_TYPE_IPV6_PREFIX:
-		return fr_prints_uint128(out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6prefix[2]));
+		return fr_prints_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6prefix[2]));
 
 	default:
 		break;
@@ -202,7 +197,6 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 
 	REDEBUG("Type '%s' of length %zu cannot be converted to integer",
 		fr_int2str(dict_attr_types, vp->da->type, "???"), vp->vp_length);
-	*out = '\0';
 
 	return -1;
 }
@@ -211,7 +205,7 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
  *
  */
 static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
-			char const *fmt, char *out, size_t outlen)
+			char const *fmt, char **out, size_t outlen)
 {
 	size_t i;
 	VALUE_PAIR *vp;
@@ -224,7 +218,6 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
 	error:
-		*out = '\0';
 		return -1;
 	}
 
@@ -258,7 +251,7 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	}
 
 	for (i = 0; i < len; i++) {
-		snprintf(out + 2*i, 3, "%02x", p[i]);
+		snprintf((*out) + (2 * i), 3, "%02x", p[i]);
 	}
 	rad_const_free(buff);
 
@@ -269,47 +262,35 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
  *
  */
 static ssize_t xlat_tag(UNUSED void *instance, REQUEST *request,
-		        char const *fmt, char *out, size_t outlen)
+		        char const *fmt, char **out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	if (!vp->da->flags.has_tag || !TAG_VALID(vp->tag)) {
-		*out = '\0';
-		return 0;
-	}
+	if (!vp->da->flags.has_tag || !TAG_VALID(vp->tag)) return 0;
 
-	return snprintf(out, outlen, "%u", vp->tag);
+	return snprintf(*out, outlen, "%u", vp->tag);
 }
 
 /** Return the vendor of an attribute reference
  *
  */
 static ssize_t xlat_vendor(UNUSED void *instance, REQUEST *request,
-		           char const *fmt, char *out, size_t outlen)
+		           char const *fmt, char **out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 	DICT_VENDOR *vendor;
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	vendor = dict_vendorbyvalue(vp->da->vendor);
-	if (!vendor) {
-		*out = '\0';
-		return 0;
-	}
-	strlcpy(out, vendor->name, outlen);
+	if (!vendor) return 0;
+	strlcpy(*out, vendor->name, outlen);
 
 	return vendor->length;
 }
@@ -318,35 +299,29 @@ static ssize_t xlat_vendor(UNUSED void *instance, REQUEST *request,
  *
  */
 static ssize_t xlat_vendor_num(UNUSED void *instance, REQUEST *request,
-		               char const *fmt, char *out, size_t outlen)
+		               char const *fmt, char **out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	return snprintf(out, outlen, "%i", vp->da->vendor);
+	return snprintf(*out, outlen, "%i", vp->da->vendor);
 }
 
 /** Return the attribute name of an attribute reference
  *
  */
 static ssize_t xlat_attr(UNUSED void *instance, REQUEST *request,
-			 char const *fmt, char *out, size_t outlen)
+			 char const *fmt, char **out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
-	strlcpy(out, vp->da->name, outlen);
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
+	strlcpy(*out, vp->da->name, outlen);
 
 	return strlen(vp->da->name);
 }
@@ -355,18 +330,15 @@ static ssize_t xlat_attr(UNUSED void *instance, REQUEST *request,
  *
  */
 static ssize_t xlat_attr_num(UNUSED void *instance, REQUEST *request,
-		             char const *fmt, char *out, size_t outlen)
+		             char const *fmt, char **out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	return snprintf(out, outlen, "%i", vp->da->attr);
+	return snprintf(*out, outlen, "%i", vp->da->attr);
 }
 
 /** Print out attribute info
@@ -380,17 +352,14 @@ static ssize_t xlat_attr_num(UNUSED void *instance, REQUEST *request,
  * This expands to a zero length string.
  */
 static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char const *fmt,
-			       char *out, UNUSED size_t outlen)
+			       UNUSED char **out, UNUSED size_t outlen)
 {
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
 
 	vp_tmpl_t vpt;
 
-	if (!RDEBUG_ENABLED2) {
-		*out = '\0';
-		return -1;
-	}
+	if (!RDEBUG_ENABLED2) return -1;
 
 	while (isspace((int) *fmt)) fmt++;
 
@@ -487,8 +456,6 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 			type++;
 		}
 	}
-
-	*out = '\0';
 	return 0;
 }
 
@@ -500,7 +467,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
  * Useful for processing generic attributes from LDAP.
  */
 static ssize_t xlat_map(UNUSED void *instance, REQUEST *request,
-			char const *fmt, char *out, size_t outlen)
+			char const *fmt, char **out, size_t outlen)
 {
 	vp_map_t *map = NULL;
 	int ret;
@@ -516,33 +483,30 @@ static ssize_t xlat_map(UNUSED void *instance, REQUEST *request,
 	ret = map_to_request(request, map, map_to_vp, NULL);
 	REXDENT();
 	talloc_free(map);
-	if (ret < 0) return strlcpy(out, "0", outlen);
+	if (ret < 0) return strlcpy(*out, "0", outlen);
 
-	return strlcpy(out, "1", outlen);
+	return strlcpy(*out, "1", outlen);
 }
 
 /** Prints the current module processing the request
  *
  */
 static ssize_t xlat_module(UNUSED void *instance, REQUEST *request,
-			   UNUSED char const *fmt, char *out, size_t outlen)
+			   UNUSED char const *fmt, char **out, size_t outlen)
 {
-	strlcpy(out, request->module, outlen);
+	strlcpy(*out, request->module, outlen);
 
-	return strlen(out);
+	return strlen(*out);
 }
 
 #if defined(HAVE_REGEX) && defined(HAVE_PCRE)
 static ssize_t xlat_regex(UNUSED void *instance, REQUEST *request,
-			  char const *fmt, char *out, size_t outlen)
+			  char const *fmt, char **out, size_t outlen)
 {
 	char *p;
 	size_t len;
 
-	if (regex_request_to_sub_named(request, &p, request, fmt) < 0) {
-		*out = '\0';
-		return 0;
-	}
+	if (regex_request_to_sub_named(request, &p, request, fmt) < 0) return 0;
 
 	len = talloc_array_length(p);
 	if (len > outlen) {
@@ -550,7 +514,7 @@ static ssize_t xlat_regex(UNUSED void *instance, REQUEST *request,
 		       len, outlen);
 		return -1;
 	}
-	strlcpy(out, p, outlen);
+	strlcpy(*out, p, outlen);
 
 	return len - 1; /* - \0 */
 }
@@ -562,7 +526,7 @@ static ssize_t xlat_regex(UNUSED void *instance, REQUEST *request,
  * @see modcall()
  */
 static ssize_t xlat_foreach(void *instance, REQUEST *request,
-			    UNUSED char const *fmt, char *out, size_t outlen)
+			    UNUSED char const *fmt, char **out, size_t outlen)
 {
 	VALUE_PAIR	**pvp;
 	size_t		len;
@@ -571,12 +535,9 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 	 *	See modcall, "FOREACH" for how this works.
 	 */
 	pvp = (VALUE_PAIR **) request_data_reference(request, (void *)radius_get_vp, *(int*) instance);
-	if (!pvp || !*pvp) {
-		*out = '\0';
-		return 0;
-	}
+	if (!pvp || !*pvp) return 0;
 
-	len = vp_prints_value(out, outlen, *pvp, 0);
+	len = vp_prints_value(*out, outlen, *pvp, 0);
 	if (is_truncated(len, outlen)) {
 		RDEBUG("Insufficient buffer space to write foreach value");
 		return -1;
@@ -593,7 +554,7 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
  * expand to "\n\n\n"
  */
 static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char *out, size_t outlen)
+			   char const *fmt, char **out, size_t outlen)
 {
 	size_t len;
 	ssize_t ret;
@@ -604,7 +565,6 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	if (outlen < 3) {
 	nothing:
-		*out = '\0';
 		return 0;
 	}
 
@@ -617,15 +577,15 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-		len = fr_prints(out, outlen, (char const *) p, vp->vp_length, '"');
+		len = fr_prints(*out, outlen, (char const *) p, vp->vp_length, '"');
 		break;
 
 	case PW_TYPE_STRING:
-		len = strlcpy(out, vp->vp_strvalue, outlen);
+		len = strlcpy(*out, vp->vp_strvalue, outlen);
 		break;
 
 	default:
-		len = fr_prints(out, outlen, (char const *) p, ret, '\0');
+		len = fr_prints(*out, outlen, (char const *) p, ret, '\0');
 		break;
 	}
 
@@ -636,7 +596,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
  *
  */
 static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
-			char const *fmt, char *out, size_t outlen)
+			char const *fmt, char **out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 
@@ -644,13 +604,12 @@ static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 
 	if (outlen < 3) {
 	nothing:
-		*out = '\0';
 		return 0;
 	}
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) goto nothing;
 
-	return radius_xlat(out, outlen, request, vp->vp_strvalue, NULL, NULL);
+	return radius_xlat(*out, outlen, request, vp->vp_strvalue, NULL, NULL);
 }
 
 /** Dynamically change the debugging level for the current request
@@ -658,14 +617,14 @@ static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
  * Example %{debug:3}
  */
 static ssize_t xlat_debug(UNUSED void *instance, REQUEST *request,
-			  char const *fmt, char *out, size_t outlen)
+			  char const *fmt, char **out, size_t outlen)
 {
 	int level = 0;
 
 	/*
 	 *  Expand to previous (or current) level
 	 */
-	snprintf(out, outlen, "%d", request->log.lvl);
+	snprintf(*out, outlen, "%d", request->log.lvl);
 
 	/*
 	 *  Assume we just want to get the current value and NOT set it to 0
@@ -685,7 +644,7 @@ static ssize_t xlat_debug(UNUSED void *instance, REQUEST *request,
 	}
 
 	done:
-	return strlen(out);
+	return strlen(*out);
 }
 
 /*
@@ -907,13 +866,14 @@ typedef struct xlat_redundant_t {
 
 
 static ssize_t xlat_redundant(void *instance, REQUEST *request,
-			      char const *fmt, char *out, size_t outlen)
+			      char const *fmt, char **out, size_t outlen)
 {
 	xlat_redundant_t *xr = instance;
 	CONF_ITEM *ci;
 	char const *name;
 	xlat_t *xlat;
 
+	rad_assert((*out == NULL) && (outlen == 0));	/* Caller must not have allocated buf */
 	rad_assert(xr->type == XLAT_REDUNDANT);
 
 	/*
@@ -932,21 +892,31 @@ static ssize_t xlat_redundant(void *instance, REQUEST *request,
 		xlat = xlat_find(name);
 		if (!xlat) continue;
 
-		rcode = xlat->func(xlat->instance, request, fmt, out, outlen);
-		if (rcode <= 0) continue;
+		if (xlat->buf_len > 0) {
+			*out = talloc_array(request, char, xlat->buf_len);
+			*out[0] = '\0';	/* Be sure the string is \0 terminated */
+		} else {
+			*out = NULL;
+		}
+
+		rcode = xlat->func(xlat->instance, request, fmt, out, xlat->buf_len);
+		if (rcode <= 0) {
+			TALLOC_FREE(*out);
+			continue;
+		}
 		return rcode;
 	}
 
 	/*
 	 *	Everything failed.  Oh well.
 	 */
-	*out  = 0;
+	*out = NULL;
 	return 0;
 }
 
 
 static ssize_t xlat_load_balance(void *instance, REQUEST *request,
-			      char const *fmt, char *out, size_t outlen)
+				 char const *fmt, char **out, size_t outlen)
 {
 	uint32_t count = 0;
 	xlat_redundant_t *xr = instance;
@@ -954,6 +924,8 @@ static ssize_t xlat_load_balance(void *instance, REQUEST *request,
 	CONF_ITEM *found = NULL;
 	char const *name;
 	xlat_t *xlat;
+
+	rad_assert((*out == NULL) && (outlen == 0));	/* Caller must not have allocated buf */
 
 	/*
 	 *	Choose a child at random.
@@ -977,13 +949,23 @@ static ssize_t xlat_load_balance(void *instance, REQUEST *request,
 	 *	Plain load balancing: do one child, and only one child.
 	 */
 	if (xr->type == XLAT_LOAD_BALANCE) {
+		ssize_t slen;
 		name = cf_pair_attr(cf_item_to_pair(found));
 		rad_assert(name != NULL);
 
 		xlat = xlat_find(name);
 		if (!xlat) return -1;
 
-		return xlat->func(xlat->instance, request, fmt, out, outlen);
+		if (xlat->buf_len > 0) {
+			*out = talloc_array(request, char, xlat->buf_len);
+			*out[0] = '\0';	/* Be sure the string is \0 terminated */
+		} else {
+			*out = NULL;
+		}
+		slen = xlat->func(xlat->instance, request, fmt, out, xlat->buf_len);
+		if (slen <= 0) TALLOC_FREE(*out);
+
+		return slen;
 	}
 
 	rad_assert(xr->type == XLAT_REDUNDANT_LOAD_BALANCE);
@@ -1001,8 +983,15 @@ static ssize_t xlat_load_balance(void *instance, REQUEST *request,
 		if (xlat) {
 			ssize_t rcode;
 
-			rcode = xlat->func(xlat->instance, request, fmt, out, outlen);
+			if (xlat->buf_len > 0) {
+				*out = talloc_array(request, char, xlat->buf_len);
+				*out[0] = '\0';	/* Be sure the string is \0 terminated */
+			} else {
+				*out = NULL;
+			}
+			rcode = xlat->func(xlat->instance, request, fmt, out, xlat->buf_len);
 			if (rcode > 0) return rcode;
+			TALLOC_FREE(*out);
 		}
 
 		/*
@@ -2225,8 +2214,12 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	case XLAT_VIRTUAL:
 		XLAT_DEBUG("xlat_aprint VIRTUAL");
-		str = talloc_array(ctx, char, 2048); /* FIXME: have the module call talloc_typed_asprintf */
-		rcode = node->xlat->func(node->xlat->instance, request, NULL, str, 2048);
+
+		if (node->xlat->buf_len > 0) {
+			str = talloc_array(request, char, node->xlat->buf_len);
+			str[0] = '\0';	/* Be sure the string is \0 terminated */
+		}
+		rcode = node->xlat->func(node->xlat->instance, request, NULL, &str, node->xlat->buf_len);
 		if (rcode < 0) {
 			talloc_free(str);
 			return NULL;
@@ -2298,10 +2291,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			*q = '\0';
 		}
 
-		str = talloc_array(ctx, char, 2048); /* FIXME: have the module call talloc_typed_asprintf */
-		*str = '\0';	/* Be sure the string is NULL terminated, we now only free on error */
-
-		rcode = node->xlat->func(node->xlat->instance, request, child, str, 2048);
+		if (node->xlat->buf_len > 0) {
+			str = talloc_array(request, char, node->xlat->buf_len);
+			str[0] = '\0';	/* Be sure the string is \0 terminated */
+		}
+		rcode = node->xlat->func(node->xlat->instance, request, child, &str, node->xlat->buf_len);
 		talloc_free(child);
 		if (rcode < 0) {
 			talloc_free(str);

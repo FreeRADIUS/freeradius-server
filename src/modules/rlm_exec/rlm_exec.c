@@ -154,7 +154,7 @@ static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t 
 /*
  *	Do xlat of strings.
  */
-static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
 {
 	int		result;
 	rlm_exec_t	*inst = instance;
@@ -163,7 +163,6 @@ static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char
 
 	if (!inst->wait) {
 		REDEBUG("'wait' must be enabled to use exec xlat");
-		*out = '\0';
 		return -1;
 	}
 
@@ -171,7 +170,6 @@ static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) {
 			REDEBUG("Failed to find input pairs for xlat");
-			*out = '\0';
 			return -1;
 		}
 	}
@@ -180,18 +178,15 @@ static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 */
-	result = radius_exec_program(request, out, outlen, NULL, request, fmt,  input_pairs ? *input_pairs : NULL,
+	result = radius_exec_program(request, *out, outlen, NULL, request, fmt,  input_pairs ? *input_pairs : NULL,
 				     inst->wait, inst->shell_escape, inst->timeout);
-	if (result != 0) {
-		out[0] = '\0';
-		return -1;
-	}
+	if (result != 0) return -1;
 
-	for (p = out; *p != '\0'; p++) {
+	for (p = *out; *p != '\0'; p++) {
 		if (*p < ' ') *p = ' ';
 	}
 
-	return strlen(out);
+	return strlen(*out);
 }
 
 /*

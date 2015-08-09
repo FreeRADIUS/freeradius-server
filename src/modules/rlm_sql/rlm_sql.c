@@ -146,7 +146,7 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *i
  *  for inserts, updates and deletes the number of rows affected will be
  *  returned instead.
  */
-static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, char *out, size_t freespace)
+static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, char **out, size_t freespace)
 {
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
@@ -213,7 +213,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 			goto finish;
 		}
 
-		memcpy(out, buffer, len + 1); /* we did bounds checking above */
+		memcpy(*out, buffer, len + 1); /* we did bounds checking above */
 		ret = len;
 
 		(inst->module->sql_finish_query)(handle, inst->config);
@@ -255,7 +255,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		goto finish;
 	}
 
-	strlcpy(out, row[0], freespace);
+	strlcpy(*out, row[0], freespace);
 	ret = len;
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);

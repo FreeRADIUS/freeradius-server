@@ -35,8 +35,8 @@ extern "C" {
 
 typedef struct xlat_exp xlat_exp_t;
 
-typedef size_t (*xlat_escape_t)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
-typedef ssize_t (*xlat_func_t)(void *instance, REQUEST *, char const *, char *, size_t);
+typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
+typedef ssize_t (*xlat_func_t)(void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen);
 
 ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_t escape,
 		    void *escape_ctx)

@@ -38,7 +38,7 @@ typedef struct rlm_soh_t {
 /*
  * Not sure how to make this useful yet...
  */
-static ssize_t soh_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen) {
+static ssize_t soh_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen) {
 
 	VALUE_PAIR* vp[6];
 	char const *osname;
@@ -62,7 +62,7 @@ static ssize_t soh_xlat(UNUSED void *instance, REQUEST *request, char const *fmt
 
 		if (vp[0] && vp[0]->vp_integer == VENDORPEC_MICROSOFT) {
 			if (!vp[1]) {
-				snprintf(out, outlen, "Windows unknown");
+				snprintf(*out, outlen, "Windows unknown");
 			} else {
 				switch (vp[1]->vp_integer) {
 				case 7:
@@ -81,14 +81,13 @@ static ssize_t soh_xlat(UNUSED void *instance, REQUEST *request, char const *fmt
 					osname = "Other";
 					break;
 				}
-				snprintf(out, outlen, "Windows %s %d.%d.%d sp %d.%d", osname, vp[1]->vp_integer,
-						vp[2] ? vp[2]->vp_integer : 0,
-						vp[3] ? vp[3]->vp_integer : 0,
-						vp[4] ? vp[4]->vp_integer : 0,
-						vp[5] ? vp[5]->vp_integer : 0
-					);
+				snprintf(*out, outlen, "Windows %s %d.%d.%d sp %d.%d", osname, vp[1]->vp_integer,
+					 vp[2] ? vp[2]->vp_integer : 0,
+					 vp[3] ? vp[3]->vp_integer : 0,
+					 vp[4] ? vp[4]->vp_integer : 0,
+					 vp[5] ? vp[5]->vp_integer : 0);
 			}
-			return strlen(out);
+			return strlen(*out);
 		}
 	}
 

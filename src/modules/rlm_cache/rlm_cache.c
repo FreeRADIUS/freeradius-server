@@ -769,9 +769,9 @@ finish:
 /** Allow single attribute values to be retrieved from the cache
  *
  */
-static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 			  CC_HINT(nonnull);
-static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 {
 	rlm_cache_entry_t 	*c = NULL;
 	rlm_cache_t		*inst = instance;
@@ -804,7 +804,6 @@ static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, cha
 		break;
 
 	case RLM_MODULE_NOTFOUND:	/* not found */
-		*out = '\0';
 		return 0;
 
 	default:
@@ -816,7 +815,7 @@ static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, cha
 		    (map->lhs->tmpl_tag != target.tmpl_tag) ||
 		    (map->lhs->tmpl_list != target.tmpl_list)) continue;
 
-		ret = value_data_prints(out, freespace, map->rhs->tmpl_data_type,
+		ret = value_data_prints(*out, freespace, map->rhs->tmpl_data_type,
 					map->lhs->tmpl_da, &map->rhs->tmpl_data_value, '\0');
 		if (is_truncated(slen, freespace)) {
 			REDEBUG("Insufficient buffer space to write cached value");
@@ -829,10 +828,7 @@ static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, cha
 	/*
 	 *	Check if we found a matching map
 	 */
-	if (!map) {
-		*out = '\0';
-		return 0;
-	}
+	if (!map) return 0;
 
 finish:
 	cache_free(inst, &c);

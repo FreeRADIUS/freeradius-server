@@ -147,7 +147,7 @@ static int pdb_decode_acct_ctrl(char const *p)
  *	attributes.
  */
 static ssize_t mschap_xlat(void *instance, REQUEST *request,
-			   char const *fmt, char *out, size_t outlen)
+			   char const *fmt, char **out, size_t outlen)
 {
 	size_t		i, data_len;
 	uint8_t const  	*data = NULL;
@@ -345,7 +345,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			p = strchr(user_name->vp_strvalue, '.');
 			if (!p) {
 				RDEBUG2("setting NT-Domain to same as machine name");
-				strlcpy(out, user_name->vp_strvalue + 5, outlen);
+				strlcpy(*out, user_name->vp_strvalue + 5, outlen);
 			} else {
 				p++;	/* skip the period */
 				q = strchr(p, '.');
@@ -354,7 +354,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 				 * only if another period was found
 				 */
 				if (q) *q = '\0';
-				strlcpy(out, p, outlen);
+				strlcpy(*out, p, outlen);
 				if (q) *q = '.';
 			}
 		} else {
@@ -368,11 +368,11 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			 *	Hack.  This is simpler than the alternatives.
 			 */
 			*p = '\0';
-			strlcpy(out, user_name->vp_strvalue, outlen);
+			strlcpy(*out, user_name->vp_strvalue, outlen);
 			*p = '\\';
 		}
 
-		return strlen(out);
+		return strlen(*out);
 
 	/*
 	 *	Pull the User-Name out of the User-Name...
@@ -409,10 +409,9 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			 * only if a period was found
 			 */
 			if (q) {
-				snprintf(out, outlen, "%.*s$",
-					 (int) (q - p), p);
+				snprintf(*out, outlen, "%.*s$", (int) (q - p), p);
 			} else {
-				snprintf(out, outlen, "%s$", p);
+				snprintf(*out, outlen, "%s$", p);
 			}
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
@@ -421,10 +420,10 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			} else {
 				p = user_name->vp_strvalue; /* use the whole User-Name */
 			}
-			strlcpy(out, p, outlen);
+			strlcpy(*out, p, outlen);
 		}
 
-		return strlen(out);
+		return strlen(*out);
 
 	/*
 	 * Return the NT-Hash of the passed string
@@ -444,9 +443,9 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 			return -1;
 		}
 
-		fr_bin2hex(out, buffer, NT_DIGEST_LENGTH);
-		out[32] = '\0';
-		RDEBUG("NT-Hash of \"known-good\" password: %s", out);
+		fr_bin2hex(*out, buffer, NT_DIGEST_LENGTH);
+		*out[32] = '\0';
+		RDEBUG("NT-Hash of \"known-good\" password: %s", *out);
 		return 32;
 
 	/*
@@ -462,9 +461,9 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		while (isspace(*p)) p++;
 
 		smbdes_lmpwdhash(p, buffer);
-		fr_bin2hex(out, buffer, LM_DIGEST_LENGTH);
-		out[32] = '\0';
-		RDEBUG("LM-Hash of %s = %s", p, out);
+		fr_bin2hex(*out, buffer, LM_DIGEST_LENGTH);
+		*out[32] = '\0';
+		RDEBUG("LM-Hash of %s = %s", p, *out);
 		return 32;
 	} else {
 		REDEBUG("Unknown expansion string '%s'", fmt);
@@ -492,9 +491,9 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 	 *
 	 */
 	for (i = 0; i < data_len; i++) {
-		sprintf(out + (2 * i), "%02x", data[i]);
+		sprintf((*out) + (2 * i), "%02x", data[i]);
 	}
-	out[data_len * 2] = '\0';
+	*out[data_len * 2] = '\0';
 
 	return data_len * 2;
 }

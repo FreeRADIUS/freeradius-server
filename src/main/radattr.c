@@ -61,7 +61,7 @@ pid_t rad_waitpid(pid_t pid, int *status)
 }
 
 static ssize_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
-			 UNUSED char const *fmt, UNUSED char *out, UNUSED size_t outlen)
+			 UNUSED char const *fmt, UNUSED char **out, UNUSED size_t outlen)
 {
 	return 0;
 }

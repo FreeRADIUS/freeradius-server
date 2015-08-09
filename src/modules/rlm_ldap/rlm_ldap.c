@@ -260,20 +260,20 @@ static const CONF_PARSER module_config[] = {
 	{NULL, -1, 0, NULL, NULL}
 };
 
-static ssize_t ldap_escape_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t ldap_escape_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 {
-	return rlm_ldap_escape_func(request, out, freespace, fmt, NULL);
+	return rlm_ldap_escape_func(request, *out, freespace, fmt, NULL);
 }
 
-static ssize_t ldap_unescape_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t ldap_unescape_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 {
-	return rlm_ldap_unescape_func(request, out, freespace, fmt, NULL);
+	return rlm_ldap_unescape_func(request, *out, freespace, fmt, NULL);
 }
 
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  */
-static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 {
 	ldap_rcode_t		status;
 	size_t			len = 0;
@@ -349,7 +349,7 @@ static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char
 
 	if (values[0]->bv_len >= freespace) goto free_values;
 
-	memcpy(out, values[0]->bv_val, values[0]->bv_len + 1);	/* +1 as strlcpy expects buffer size */
+	memcpy(*out, values[0]->bv_val, values[0]->bv_len + 1);	/* +1 as strlcpy expects buffer size */
 	len = values[0]->bv_len;
 
 free_values:

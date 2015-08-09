@@ -328,7 +328,7 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
 /*
  *	Xlat for %{config:section.subsection.attribute}
  */
-static ssize_t xlat_config(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_config(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
 {
 	char const *value;
 	CONF_PAIR *cp;
@@ -338,15 +338,12 @@ static ssize_t xlat_config(UNUSED void *instance, REQUEST *request, char const *
 	/*
 	 *	Expand it safely.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), request, fmt, config_escape_func, NULL) < 0) {
-		return 0;
-	}
+	if (radius_xlat(buffer, sizeof(buffer), request, fmt, config_escape_func, NULL) < 0) return 0;
 
 	ci = cf_reference_item(request->root->config,
 			       request->root->config, buffer);
 	if (!ci || !cf_item_is_pair(ci)) {
 		REDEBUG("Config item \"%s\" does not exist", fmt);
-		*out = '\0';
 		return -1;
 	}
 
@@ -358,56 +355,47 @@ static ssize_t xlat_config(UNUSED void *instance, REQUEST *request, char const *
 	 *  If 'outlen' is too small, then the output is chopped to fit.
 	 */
 	value = cf_pair_value(cp);
-	if (!value) {
-		out[0] = '\0';
-		return 0;
-	}
+	if (!value) return 0;
 
-	if (outlen > strlen(value)) {
-		outlen = strlen(value) + 1;
-	}
+	if (outlen > strlen(value)) outlen = strlen(value) + 1;
 
-	strlcpy(out, value, outlen);
+	strlcpy(*out, value, outlen);
 
-	return strlen(out);
+	return strlen(*out);
 }
 
 
 /*
  *	Xlat for %{client:foo}
  */
-static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
 {
 	char const *value = NULL;
 	CONF_PAIR *cp;
 
-	if (!fmt || !out || (outlen < 1)) return 0;
-
 	if (!request->client) {
 		RWDEBUG("No client associated with this request");
-		*out = '\0';
 		return 0;
 	}
 
 	cp = cf_pair_find(request->client->cs, fmt);
 	if (!cp || !(value = cf_pair_value(cp))) {
 		if (strcmp(fmt, "shortname") == 0) {
-			strlcpy(out, request->client->shortname, outlen);
-			return strlen(out);
+			strlcpy(*out, request->client->shortname, outlen);
+			return strlen(*out);
 		}
-		*out = '\0';
 		return 0;
 	}
 
-	strlcpy(out, value, outlen);
+	strlcpy(*out, value, outlen);
 
-	return strlen(out);
+	return strlen(*out);
 }
 
 /*
  *	Xlat for %{getclient:<ipaddr>.foo}
  */
-static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
 {
 	char const *value = NULL;
 	char buffer[INET6_ADDRSTRLEN], *q;
@@ -415,8 +403,6 @@ static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char cons
 	fr_ipaddr_t ip;
 	CONF_PAIR *cp;
 	RADCLIENT *client = NULL;
-
-	if (!fmt || !out || (outlen < 1)) return 0;
 
 	q = strrchr(p, '.');
 	if (!q || (q == p) || (((size_t)(q - p)) > sizeof(buffer))) {
@@ -435,25 +421,22 @@ static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char cons
 	client = client_find(NULL, &ip, IPPROTO_IP);
 	if (!client) {
 		RDEBUG("No client found with IP \"%s\"", buffer);
-		*out = '\0';
 		return 0;
 	}
 
 	cp = cf_pair_find(client->cs, fmt);
 	if (!cp || !(value = cf_pair_value(cp))) {
 		if (strcmp(fmt, "shortname") == 0) {
-			strlcpy(out, request->client->shortname, outlen);
-			return strlen(out);
+			strlcpy(*out, request->client->shortname, outlen);
+			return strlen(*out);
 		}
-		*out = '\0';
 		return 0;
 	}
 
-	strlcpy(out, value, outlen);
-	return strlen(out);
+	strlcpy(*out, value, outlen);
+	return strlen(*out);
 
 error:
-	*out = '\0';
 	return -1;
 }
 

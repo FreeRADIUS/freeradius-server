@@ -416,7 +416,7 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
  *	%{poke:sql.foo=bar}
  */
 static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
-			 char const *fmt, char *out, size_t outlen)
+			 char const *fmt, char **out, size_t outlen)
 {
 	int i;
 	void *data, *base;
@@ -432,8 +432,7 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 	rad_assert(request != NULL);
 	rad_assert(fmt != NULL);
 	rad_assert(out != NULL);
-
-	*out = '\0';
+	rad_assert(*out);
 
 	modules = cf_section_sub_find(request->root->config, "modules");
 	if (!modules) return 0;
@@ -477,7 +476,7 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 	 *	Copy the old value to the output buffer, that way
 	 *	tests can restore it later, if they need to.
 	 */
-	len = strlcpy(out, cf_pair_value(cp), outlen);
+	len = strlcpy(*out, cf_pair_value(cp), outlen);
 
 	if (cf_pair_replace(mi->cs, cp, q) < 0) {
 		RDEBUG("Failed replacing pair");

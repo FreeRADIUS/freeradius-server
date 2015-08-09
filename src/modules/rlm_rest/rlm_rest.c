@@ -157,77 +157,78 @@ static void rlm_rest_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section, 
 }
 
 static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
-			      char const *fmt, char *out, size_t outlen)
+			      char const *fmt, char **out, size_t outlen)
 {
 	char const *p;
+	char *out_p = *out;
 	size_t freespace = outlen;
 	size_t len;
 
 	for (p = fmt; *p != '\0'; p++) {
 		/* Indicate truncation */
 		if (freespace < 3) {
-			*out = '\0';
+			*out_p = '\0';
 			return outlen + 1;
 		}
 
 		if (*p == '"') {
-			*out++ = '\\';
-			*out++ = '"';
+			*out_p++ = '\\';
+			*out_p++ = '"';
 			freespace -= 2;
 		} else if (*p == '\\') {
-			*out++ = '\\';
-			*out++ = '\\';
+			*out_p++ = '\\';
+			*out_p++ = '\\';
 			freespace -= 2;
 		} else if (*p == '/') {
-			*out++ = '\\';
-			*out++ = '/';
+			*out_p++ = '\\';
+			*out_p++ = '/';
 			freespace -= 2;
 		} else if (*p >= ' ') {
-			*out++ = *p;
+			*out_p++ = *p;
 			freespace--;
 		/*
 		 *	Unprintable chars
 		 */
 		} else {
-			*out++ = '\\';
+			*out_p++ = '\\';
 			freespace--;
 
 			switch (*p) {
 			case '\b':
-				*out++ = 'b';
+				*out_p++ = 'b';
 				freespace--;
 				break;
 
 			case '\f':
-				*out++ = 'f';
+				*out_p++ = 'f';
 				freespace--;
 				break;
 
 			case '\n':
-				*out++ = 'b';
+				*out_p++ = 'b';
 				freespace--;
 				break;
 
 			case '\r':
-				*out++ = 'r';
+				*out_p++ = 'r';
 				freespace--;
 				break;
 
 			case '\t':
-				*out++ = 't';
+				*out_p++ = 't';
 				freespace--;
 				break;
 
 			default:
-				len = snprintf(out, freespace, "u%04X", *p);
+				len = snprintf(out_p, freespace, "u%04X", *p);
 				if (is_truncated(len, freespace)) return (outlen - freespace) + len;
-				out += len;
+				out_p += len;
 				freespace -= len;
 			}
 		}
 	}
 
-	*out = '\0';
+	*out_p = '\0';
 
 	return outlen - freespace;
 }
@@ -235,7 +236,7 @@ static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *	Simple xlat to read text data from a URL
  */
 static ssize_t rest_xlat(void *instance, REQUEST *request,
-			 char const *fmt, char *out, size_t freespace)
+			 char const *fmt, char **out, size_t freespace)
 {
 	rlm_rest_t	*inst = instance;
 	void		*handle;
@@ -256,7 +257,6 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 		.require_auth = false,
 		.force_to = HTTP_BODY_PLAIN
 	};
-	*out = '\0';
 
 	rad_assert(fmt);
 
@@ -357,7 +357,7 @@ error:
 	}
 	if (len > 0) {
 		outlen = len;
-		strlcpy(out, body, len + 1);	/* strlcpy takes the size of the buffer */
+		strlcpy(*out, body, len + 1);	/* strlcpy takes the size of the buffer */
 	}
 
 finish:

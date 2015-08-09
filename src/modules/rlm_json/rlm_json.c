@@ -61,7 +61,7 @@ typedef struct rlm_json_jpath_to_eval {
  * @param freespace How big out is.
  * @return number of bytes written to out.
  */
-static ssize_t jpath_validate(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t jpath_validate(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 {
 	fr_jpath_node_t *head;
 	ssize_t slen, ret;
@@ -70,12 +70,12 @@ static ssize_t jpath_validate(UNUSED void *instance, REQUEST *request, char cons
 	slen = fr_jpath_parse(request, &head, fmt, strlen(fmt));
 	if (slen <= 0) {
 		rad_assert(head == NULL);
-		return snprintf(out, freespace, "%zu:%s", -(slen), fr_strerror());
+		return snprintf(*out, freespace, "%zu:%s", -(slen), fr_strerror());
 	}
 	rad_assert(talloc_get_type_abort(head, fr_jpath_node_t));
 
 	jpath_str = fr_jpath_aprints(request, head);
-	ret = snprintf(out, freespace, "%zu:%s", slen, jpath_str);
+	ret = snprintf(*out, freespace, "%zu:%s", slen, jpath_str);
 	talloc_free(head);
 	talloc_free(jpath_str);
 

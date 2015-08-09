@@ -88,7 +88,7 @@ static const CONF_PARSER mod_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static ssize_t xlat_idna(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t xlat_idna(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 {
 	rlm_idn_t *inst = instance;
 	char *idna = NULL;
@@ -125,7 +125,7 @@ static ssize_t xlat_idna(void *instance, REQUEST *request, char const *fmt, char
 
 	}
 
-	strlcpy(out, idna, freespace);
+	strlcpy(*out, idna, freespace);
 	free(idna);
 
 	return len;

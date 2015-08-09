@@ -210,7 +210,7 @@ static int ub_common_fail(REQUEST *request, char const *tag, struct ub_result *u
 	return 0;
 }
 
-static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 {
 	rlm_unbound_t *inst = instance;
 	struct ub_result **ubres;
@@ -236,13 +236,13 @@ static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char *o
 			goto error1;
 		}
 
-		if (!inet_ntop(AF_INET, (*ubres)->data[0], out, freespace)) {
+		if (!inet_ntop(AF_INET, (*ubres)->data[0], *out, freespace)) {
 			goto error1;
 		};
 
 		ub_resolve_free(*ubres);
 		talloc_free(ubres);
-		return strlen(out);
+		return strlen(*out);
 	}
 
 	RWDEBUG("rlm_unbound (%s): no result", inst->xlat_a_name);
@@ -255,7 +255,7 @@ static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char *o
 	return -1;
 }
 
-static ssize_t xlat_aaaa(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t xlat_aaaa(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 {
 	rlm_unbound_t *inst = instance;
 	struct ub_result **ubres;
@@ -280,12 +280,12 @@ static ssize_t xlat_aaaa(void *instance, REQUEST *request, char const *fmt, char
 		if (ub_common_fail(request, inst->xlat_aaaa_name, *ubres)) {
 			goto error1;
 		}
-		if (!inet_ntop(AF_INET6, (*ubres)->data[0], out, freespace)) {
+		if (!inet_ntop(AF_INET6, (*ubres)->data[0], *out, freespace)) {
 			goto error1;
 		};
 		ub_resolve_free(*ubres);
 		talloc_free(ubres);
-		return strlen(out);
+		return strlen(*out);
 	}
 
 	RWDEBUG("rlm_unbound (%s): no result", inst->xlat_aaaa_name);
@@ -298,7 +298,7 @@ error0:
 	return -1;
 }
 
-static ssize_t xlat_ptr(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t xlat_ptr(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 {
 	rlm_unbound_t *inst = instance;
 	struct ub_result **ubres;
@@ -324,12 +324,12 @@ static ssize_t xlat_ptr(void *instance, REQUEST *request, char const *fmt, char 
 		if (ub_common_fail(request, inst->xlat_ptr_name, *ubres)) {
 			goto error1;
 		}
-		if (rrlabels_tostr(out, (*ubres)->data[0], freespace) < 0) {
+		if (rrlabels_tostr(*out, (*ubres)->data[0], freespace) < 0) {
 			goto error1;
 		}
 		ub_resolve_free(*ubres);
 		talloc_free(ubres);
-		return strlen(out);
+		return strlen(*out);
 	}
 
 	RWDEBUG("rlm_unbound (%s): no result", inst->xlat_ptr_name);
