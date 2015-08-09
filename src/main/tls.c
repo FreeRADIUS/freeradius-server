@@ -1117,38 +1117,72 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	return 0;
 }
 
-
-/*
- *	See values for TLS-Session-Cache-Action
+/** Macros that match the hardcoded values of the TLS-Session-Cache-Attribute
  */
-#define CACHE_ACTION_READ (1)
-#define CACHE_ACTION_WRITE (2)
-#define CACHE_ACTION_DELETE (3)
+typedef enum {
+	CACHE_ACTION_READ = 1,		//!< Retrieve session data from the cache.
+	CACHE_ACTION_WRITE = 2,		//!< Write session data to the cache.
+	CACHE_ACTION_DELETE = 3,	//!< Delete session data from the cache.
+} tls_cache_action_t;
 
-/*
- *	Create a RADIUS attribute in the REQUEST containing the session key.
+/** Add attributes identifying the TLS session to be acted upon, and the action to be performed
+ *
+ * Adds the following attributes to the request:
+ *
+ *	- &control:TLS-Session-Identity
+ *	- &control:TLS-Session-Cache-Action
+ *
+ * Session identity will contain the binary session key used to create, retrieve
+ * and delete cache entries related to the SSL session.
+ *
+ * Session-Cache-Action will contain the action to be performed.  This is then
+ * utilised by unlang policy (in a virtual server called with these attributes)
+ * to perform different actions.
+ *
+ * @todo Add attribute representing session validity period.
+ * @todo Move adding TLS-Session-Cache-Action to cache_process and remove it again after calling
+ *	the virtual server.
+ *
+ * @param[in] request The current request.
+ * @param[in] key Identifier for the session.
+ * @param[in] key_len Length of the key.
+ * @param[in] action being performed (written to &control:TLS-Session-Cache-Action).
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static bool get_session_key(REQUEST *request, uint8_t *data, size_t len, int action)
+static int cache_key_add(REQUEST *request, uint8_t *key, size_t key_len, tls_cache_action_t action)
 {
 	VALUE_PAIR *vp;
 
 	vp = fr_pair_afrom_num(request, PW_TLS_SESSION_IDENTITY, 0);
-	if (!vp) return false;
+	if (!vp) return -1;
 
-	fr_pair_value_memcpy(vp, data, len);
+	fr_pair_value_memcpy(vp, key, key_len);
 	fr_pair_add(&request->config, vp);
 
 	vp = fr_pair_afrom_num(request, PW_TLS_SESSION_CACHE_ACTION, 0);
-	if (!vp) return false;
+	if (!vp) return -1;
 
 	vp->vp_integer = action;
 	fr_pair_add(&request->config, vp);
 
-	return true;
+	return 0;
 }
 
-static bool cache_process(REQUEST *request, char const *session_cache_server, int autz_type)
+/** Execute the virtual server configured to perform cache actions
+ *
+ * @param[in] request The current request.
+ * @param[in] session_cache_server Name of the session cache server.
+ * @param[in] autz_type The authorize sub-section to execute.
+ * @return
+ *	- 0 on success (virtual sever returned #RLM_MODULE_OK or #RLM_MODULE_UPDATED).
+ *	- -1 on failure.
+ */
+static int cache_process(REQUEST *request, char const *session_cache_server, int autz_type)
 {
+	int ret;
+
 	/*
 	 *	Save the current status of the request.
 	 */
@@ -1162,11 +1196,16 @@ static bool cache_process(REQUEST *request, char const *session_cache_server, in
 	request->server = session_cache_server;
 	request->module = "cache";
 
-	/*
-	 *	FIXME: check the return code, and fail the TLS session
-	 *	if we couldn't do anything.  Or do we really care?
-	 */
-	process_authorize(autz_type + 1000, request);
+	switch (process_authorize(autz_type + 1000, request)) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		ret = 0;
+		break;
+
+	default:
+		ret = -1;
+		break;
+	}
 
 	/*
 	 *	Restore the original status of the request.
@@ -1175,11 +1214,15 @@ static bool cache_process(REQUEST *request, char const *session_cache_server, in
 	request->module = module;
 	request->component = component;
 
-	return true;
+	return ret;
 }
 
-/*
- *	Write a newly created session to the cache.
+/** Write a newly created session to the cache
+ *
+ * @param[in] ssl session state.
+ * @param[in] sess to serialise and write to the cache.
+ * @return 0.  What we return is not used by OpenSSL to indicate success or failure,
+ *	but to indicate whether it should free its copy of the session data.
  */
 static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 {
@@ -1192,7 +1235,10 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 
-	get_session_key(request, sess->session_id, sess->session_id_length, CACHE_ACTION_WRITE);
+	if (cache_key_add(request, sess->session_id, sess->session_id_length, CACHE_ACTION_WRITE) < 0) {
+		RWDEBUG("Failed adding session key to the request");
+		return 0;
+	}
 
 	/* find out what length data we need */
 	len = i2d_SSL_SESSION(sess, NULL);
@@ -1230,7 +1276,9 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	/*
 	 *	Call the virtual server to write the session
 	 */
-	cache_process(request, conf->session_cache_server, CACHE_ACTION_WRITE);
+	if (cache_process(request, conf->session_cache_server, CACHE_ACTION_WRITE) < 0) {
+		RWDEBUG("Failed storing session data");
+	}
 
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
@@ -1243,11 +1291,19 @@ error:
 	return 0;
 }
 
-
-/*
- *	Read a resumed session from the cache.
+/** Read session data from the cache
+ *
+ * @param[in] ssl session state.
+ * @param[in] key to retrieve session data for.
+ * @param[in] key_len The length of the key.
+ * @param[out] copy Indicates whether OpenSSL should increment the reference
+ *	count on SSL_SESSION to prevent it being automatically freed.  We always
+ *	set this to 0.
+ * @return
+ *	- Deserialised session data on success.
+ *	- NULL on error.
  */
-static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *data, int inlen, int *copy)
+static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len, int *copy)
 {
 	fr_tls_server_conf_t	*conf;
 	REQUEST			*request;
@@ -1259,14 +1315,20 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *data, int inlen,
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 
-	get_session_key(request, data, inlen, CACHE_ACTION_READ);
+	if (cache_key_add(request, key, key_len, CACHE_ACTION_READ) < 0) {
+		RWDEBUG("Failed adding session key to the request");
+		return NULL;
+	}
 
 	*copy = 0;
 
 	/*
 	 *	Call the virtual server to read the session
 	 */
-	cache_process(request, conf->session_cache_server, CACHE_ACTION_READ);
+	if (cache_process(request, conf->session_cache_server, CACHE_ACTION_READ) < 0) {
+		RWDEBUG("Failed acquiring session data");
+		return NULL;
+	}
 
 	vp = fr_pair_find_by_num(request->config, PW_TLS_SESSION_DATA, 0, TAG_ANY);
 	if (!vp) {
@@ -1291,8 +1353,10 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *data, int inlen,
 	return sess;
 }
 
-/*
- *	Delete a session from the cache.
+/** Delete session data from the cache
+ *
+ * @param[in] ctx Current ssl context.
+ * @param[in] sess to be deleted.
  */
 static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 {
@@ -1310,13 +1374,20 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 	request->packet = rad_alloc(request, false);
 	request->reply = rad_alloc(request, false);
 
-	get_session_key(request, sess->session_id, sess->session_id_length, CACHE_ACTION_DELETE);
+	if (cache_key_add(request, sess->session_id, sess->session_id_length, CACHE_ACTION_DELETE) < 0) {
+		RWDEBUG("Failed adding session key to the request");
+	error:
+		talloc_free(request);
+		return;
+	}
 
 	/*
 	 *	Call the virtual server to delete the session
 	 */
-	cache_process(request, conf->session_cache_server, CACHE_ACTION_DELETE);
-
+	if (cache_process(request, conf->session_cache_server, CACHE_ACTION_DELETE) < 0) {
+		RWDEBUG("Failed deleting session data");
+		goto error;
+	}
 	/*
 	 *	Delete the fake request we created.
 	 */
