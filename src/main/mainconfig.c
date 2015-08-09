@@ -971,9 +971,9 @@ do {\
 	/*
 	 *  Register the %{config:section.subsection} xlat function.
 	 */
-	xlat_register("config", xlat_config, NULL, NULL);
-	xlat_register("client", xlat_client, NULL, NULL);
-	xlat_register("getclient", xlat_getclient, NULL, NULL);
+	xlat_register("config", xlat_config, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
+	xlat_register("client", xlat_client, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
+	xlat_register("getclient", xlat_getclient, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
 
 	/*
 	 *  Go update our behaviour, based on the configuration

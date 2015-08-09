@@ -980,7 +980,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (xlat_register("test", xlat_test, NULL, NULL) < 0) {
+	if (xlat_register("test", xlat_test, XLAT_DEFAULT_BUF_LEN, NULL, NULL) < 0) {
 		fprintf(stderr, "Failed registering xlat");
 		return 1;
 	}

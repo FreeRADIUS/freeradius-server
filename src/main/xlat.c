@@ -38,7 +38,8 @@ typedef struct xlat_t {
 	int			length;			//!< Length of name.
 	void			*instance;		//!< Module instance passed to xlat and escape functions.
 	xlat_func_t		func;			//!< xlat function.
-	xlat_escape_t	escape;			//!< Escape function to apply to dynamic input to func.
+	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
+	xlat_escape_t		escape;			//!< Escape function to apply to dynamic input to func.
 	bool			internal;		//!< If true, cannot be redefined.
 } xlat_t;
 
@@ -721,13 +722,15 @@ static xlat_t *xlat_find(char const *name)
  *
  * @param[in] name xlat name.
  * @param[in] func xlat function to be called.
+ * @param[in] buf_len Size of the output buffer to allocate when calling the function.
+ *	May be 0 if the function allocates its own buffer.
  * @param[in] escape function to sanitize any sub expansions passed to the xlat function.
  * @param[in] instance of module that's registering the xlat function.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int xlat_register(char const *name, xlat_func_t func, xlat_escape_t escape, void *instance)
+int xlat_register(char const *name, xlat_func_t func, size_t buf_len, xlat_escape_t escape, void *instance)
 {
 	xlat_t	*c;
 	xlat_t	my_xlat;
@@ -758,14 +761,14 @@ int xlat_register(char const *name, xlat_func_t func, xlat_escape_t escape, void
 #ifdef WITH_UNLANG
 		for (i = 0; xlat_foreach_names[i] != NULL; i++) {
 			xlat_register(xlat_foreach_names[i],
-				      xlat_foreach, NULL, &xlat_inst[i]);
+				      xlat_foreach, XLAT_DEFAULT_BUF_LEN, NULL, &xlat_inst[i]);
 			c = xlat_find(xlat_foreach_names[i]);
 			rad_assert(c != NULL);
 			c->internal = true;
 		}
 #endif
 
-#define XLAT_REGISTER(_x) xlat_register(STRINGIFY(_x), xlat_ ## _x, NULL, NULL); \
+#define XLAT_REGISTER(_x) xlat_register(STRINGIFY(_x), xlat_ ## _x, XLAT_DEFAULT_BUF_LEN, NULL, NULL); \
 		c = xlat_find(STRINGIFY(_x)); \
 		rad_assert(c != NULL); \
 		c->internal = true
@@ -788,7 +791,7 @@ int xlat_register(char const *name, xlat_func_t func, xlat_escape_t escape, void
 		XLAT_REGISTER(regex);
 #endif
 
-		xlat_register("debug", xlat_debug, NULL, &xlat_inst[0]);
+		xlat_register("debug", xlat_debug, XLAT_DEFAULT_BUF_LEN, NULL, &xlat_inst[0]);
 		c = xlat_find("debug");
 		rad_assert(c != NULL);
 		c->internal = true;
@@ -807,6 +810,7 @@ int xlat_register(char const *name, xlat_func_t func, xlat_escape_t escape, void
 		}
 
 		c->func = func;
+		c->buf_len = buf_len;
 		c->escape = escape;
 		c->instance = instance;
 		return 0;
@@ -818,6 +822,7 @@ int xlat_register(char const *name, xlat_func_t func, xlat_escape_t escape, void
 	c = talloc_zero(xlat_root, xlat_t);
 
 	c->func = func;
+	c->buf_len = buf_len;
 	c->escape = escape;
 	strlcpy(c->name, name, sizeof(c->name));
 	c->length = strlen(c->name);
@@ -1046,7 +1051,7 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 	 *	Get the number of children for load balancing.
 	 */
 	if (xr->type == XLAT_REDUNDANT) {
-		if (xlat_register(name2, xlat_redundant, NULL, xr) < 0) {
+		if (xlat_register(name2, xlat_redundant, 0, NULL, xr) < 0) {
 			talloc_free(xr);
 			return false;
 		}
@@ -1067,7 +1072,7 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 			xr->count++;
 		}
 
-		if (xlat_register(name2, xlat_load_balance, NULL, xr) < 0) {
+		if (xlat_register(name2, xlat_load_balance, 0, NULL, xr) < 0) {
 			talloc_free(xr);
 			return false;
 		}

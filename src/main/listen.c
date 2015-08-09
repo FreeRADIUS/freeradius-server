@@ -3566,7 +3566,7 @@ add_sockets:
 	 */
 	if (!*head) return -1;
 
-	xlat_register("listen", xlat_listen, NULL, NULL);
+	xlat_register("listen", xlat_listen, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
 
 	return 0;
 }

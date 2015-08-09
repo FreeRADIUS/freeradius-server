@@ -297,7 +297,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 
 static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 {
-	xlat_register("jpathvalidate", jpath_validate, NULL, instance);
+	xlat_register("jpathvalidate", jpath_validate, XLAT_DEFAULT_BUF_LEN, NULL, instance);
 
 	if (map_proc_register(instance, "json", mod_map_proc, NULL,
 			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t)) < 0) return -1;

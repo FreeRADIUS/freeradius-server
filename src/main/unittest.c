@@ -774,7 +774,7 @@ int main(int argc, char *argv[])
 	tls_global_init();
 #endif
 
-	if (xlat_register("poke", xlat_poke, NULL, NULL) < 0) {
+	if (xlat_register("poke", xlat_poke, XLAT_DEFAULT_BUF_LEN, NULL, NULL) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}

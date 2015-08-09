@@ -1047,7 +1047,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat_register(inst->name, sql_xlat, sql_escape_func, inst);
+	xlat_register(inst->name, sql_xlat, XLAT_DEFAULT_BUF_LEN, sql_escape_func, inst);
 
 	/*
 	 *	Register the SQL map processor function

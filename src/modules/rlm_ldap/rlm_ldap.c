@@ -762,11 +762,11 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}
 
-	xlat_register(inst->name, ldap_xlat, rlm_ldap_escape_func, inst);
-	xlat_register("ldapquote", ldap_escape_xlat, NULL, inst);	/* Deprecated */
+	xlat_register(inst->name, ldap_xlat, XLAT_DEFAULT_BUF_LEN, rlm_ldap_escape_func, inst);
+	xlat_register("ldapquote", ldap_escape_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);	/* Deprecated */
 
-	xlat_register("ldap_escape", ldap_escape_xlat, NULL, inst);
-	xlat_register("ldap_unescape", ldap_unescape_xlat, NULL, inst);
+	xlat_register("ldap_escape", ldap_escape_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("ldap_unescape", ldap_unescape_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 	map_proc_register(inst, inst->name, mod_map_proc, NULL, NULL, 0);
 
 	return 0;

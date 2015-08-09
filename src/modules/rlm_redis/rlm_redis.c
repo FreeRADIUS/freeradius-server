@@ -314,7 +314,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	if (!inst->name) inst->name = cf_section_name1(conf);
 	inst->conf.prefix = talloc_asprintf(inst, "rlm_redis (%s)", inst->name);
 
-	xlat_register(inst->name, redis_xlat, NULL, inst);
+	xlat_register(inst->name, redis_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 
 	return 0;
 }

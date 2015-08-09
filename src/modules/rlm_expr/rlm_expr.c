@@ -1651,34 +1651,34 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	xlat_register(inst->xlat_name, expr_xlat, NULL, inst);
+	xlat_register(inst->xlat_name, expr_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 
-	xlat_register("rand", rand_xlat, NULL, inst);
-	xlat_register("randstr", randstr_xlat, NULL, inst);
-	xlat_register("urlquote", urlquote_xlat, NULL, inst);
-	xlat_register("urlunquote", urlunquote_xlat, NULL, inst);
-	xlat_register("escape", escape_xlat, NULL, inst);
-	xlat_register("unescape", unescape_xlat, NULL, inst);
-	xlat_register("tolower", lc_xlat, NULL, inst);
-	xlat_register("toupper", uc_xlat, NULL, inst);
-	xlat_register("md5", md5_xlat, NULL, inst);
-	xlat_register("sha1", sha1_xlat, NULL, inst);
+	xlat_register("rand", rand_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("randstr", randstr_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("urlquote", urlquote_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("urlunquote", urlunquote_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("escape", escape_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("unescape", unescape_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("tolower", lc_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("toupper", uc_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("md5", md5_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("sha1", sha1_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 #ifdef HAVE_OPENSSL_EVP_H
-	xlat_register("sha256", sha256_xlat, NULL, inst);
-	xlat_register("sha512", sha512_xlat, NULL, inst);
+	xlat_register("sha256", sha256_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("sha512", sha512_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 #endif
-	xlat_register("hmacmd5", hmac_md5_xlat, NULL, inst);
-	xlat_register("hmacsha1", hmac_sha1_xlat, NULL, inst);
-	xlat_register("pairs", pairs_xlat, NULL, inst);
+	xlat_register("hmacmd5", hmac_md5_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("hmacsha1", hmac_sha1_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("pairs", pairs_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 
-	xlat_register("base64", base64_xlat, NULL, inst);
-	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);
+	xlat_register("base64", base64_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("base64tohex", base64_to_hex_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 
-	xlat_register("explode", explode_xlat, NULL, inst);
+	xlat_register("explode", explode_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 
-	xlat_register("nexttime", next_time_xlat, NULL, inst);
-	xlat_register("lpad", lpad_xlat, NULL, inst);
-	xlat_register("rpad", rpad_xlat, NULL, inst);
+	xlat_register("nexttime", next_time_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("lpad", lpad_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register("rpad", rpad_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 
 	/*
 	 *	Initialize various paircompare functions

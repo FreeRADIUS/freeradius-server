@@ -57,7 +57,9 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head, char const 
 
 size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 
-int		xlat_register(char const *module, xlat_func_t func, xlat_escape_t escape,
+#define XLAT_DEFAULT_BUF_LEN	2048
+
+int		xlat_register(char const *module, xlat_func_t func, size_t buf_len, xlat_escape_t escape,
 			      void *instance);
 void		xlat_unregister(char const *module, xlat_func_t func, void *instance);
 void		xlat_unregister_module(void *instance);

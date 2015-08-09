@@ -143,7 +143,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	inst->xlat_name = xlat_name;
 
-	xlat_register(inst->xlat_name, xlat_idna, NULL, inst);
+	xlat_register(inst->xlat_name, xlat_idna, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 
 	return 0;
 }
