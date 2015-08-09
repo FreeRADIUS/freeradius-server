@@ -288,7 +288,7 @@ reply_parse:
 	case REDIS_REPLY_STRING:
 		len = (((size_t)reply->len) >= freespace) ? freespace - 1: (size_t) reply->len;
 		memcpy(*out, reply->str, len);
-		*out[len] = '\0';
+		(*out)[len] = '\0';
 		ret = reply->len;
 		break;
 

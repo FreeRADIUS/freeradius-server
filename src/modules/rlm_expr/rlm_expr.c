@@ -1580,7 +1580,7 @@ static ssize_t rpad_xlat(UNUSED void *instance, REQUEST *request,
 	 *	We have to pad with "fill" characters.
 	 */
 	memset((*out) + len, fill, pad - len);
-	*out[pad] = '\0';
+	(*out)[pad] = '\0';
 
 	return pad;
 }

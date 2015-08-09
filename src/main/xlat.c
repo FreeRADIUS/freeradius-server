@@ -894,7 +894,7 @@ static ssize_t xlat_redundant(void *instance, REQUEST *request,
 
 		if (xlat->buf_len > 0) {
 			*out = talloc_array(request, char, xlat->buf_len);
-			*out[0] = '\0';	/* Be sure the string is \0 terminated */
+			**out = '\0';	/* Be sure the string is \0 terminated */
 		} else {
 			*out = NULL;
 		}
@@ -958,7 +958,7 @@ static ssize_t xlat_load_balance(void *instance, REQUEST *request,
 
 		if (xlat->buf_len > 0) {
 			*out = talloc_array(request, char, xlat->buf_len);
-			*out[0] = '\0';	/* Be sure the string is \0 terminated */
+			**out = '\0';	/* Be sure the string is \0 terminated */
 		} else {
 			*out = NULL;
 		}
@@ -985,7 +985,7 @@ static ssize_t xlat_load_balance(void *instance, REQUEST *request,
 
 			if (xlat->buf_len > 0) {
 				*out = talloc_array(request, char, xlat->buf_len);
-				*out[0] = '\0';	/* Be sure the string is \0 terminated */
+				**out = '\0';	/* Be sure the string is \0 terminated */
 			} else {
 				*out = NULL;
 			}
@@ -2457,7 +2457,7 @@ static ssize_t xlat_expand_struct(char **out, size_t outlen, REQUEST *request, x
 	len = xlat_process(&buff, request, node, escape, escape_ctx);
 	if ((len < 0) || !buff) {
 		rad_assert(buff == NULL);
-		if (*out) *out[0] = '\0';
+		if (*out) **out = '\0';
 		return len;
 	}
 
@@ -2506,7 +2506,7 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 	len = xlat_tokenize_request(request, fmt, &node);
 	if (len == 0) {
 		if (*out) {
-			*out[0] = '\0';
+			**out = '\0';
 		} else {
 			*out = talloc_zero_array(request, char, 1);
 		}
@@ -2514,7 +2514,7 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 	}
 
 	if (len < 0) {
-		if (*out) *out[0] = '\0';
+		if (*out) **out = '\0';
 		return -1;
 	}
 

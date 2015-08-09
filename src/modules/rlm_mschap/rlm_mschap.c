@@ -444,7 +444,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 		}
 
 		fr_bin2hex(*out, buffer, NT_DIGEST_LENGTH);
-		*out[32] = '\0';
+		(*out)[32] = '\0';
 		RDEBUG("NT-Hash of \"known-good\" password: %s", *out);
 		return 32;
 
@@ -462,7 +462,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 
 		smbdes_lmpwdhash(p, buffer);
 		fr_bin2hex(*out, buffer, LM_DIGEST_LENGTH);
-		*out[32] = '\0';
+		(*out)[32] = '\0';
 		RDEBUG("LM-Hash of %s = %s", p, *out);
 		return 32;
 	} else {
@@ -493,7 +493,7 @@ static ssize_t mschap_xlat(void *instance, REQUEST *request,
 	for (i = 0; i < data_len; i++) {
 		sprintf((*out) + (2 * i), "%02x", data[i]);
 	}
-	*out[data_len * 2] = '\0';
+	(*out)[data_len * 2] = '\0';
 
 	return data_len * 2;
 }
