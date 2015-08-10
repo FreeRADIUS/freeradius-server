@@ -826,7 +826,6 @@ static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, cha
 	 */
 	if (!map) return 0;
 
-finish:
 	cache_free(inst, &c);
 	cache_release(inst, request, &handle);
 
