@@ -139,21 +139,19 @@ static sql_fall_through_t fall_through(VALUE_PAIR *vp)
 static int generate_sql_clients(rlm_sql_t *inst);
 static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
 
-/*
- *			SQL xlat function
+/** Execute an arbitrary SQL query
  *
  *  For selects the first value of the first column will be returned,
  *  for inserts, updates and deletes the number of rows affected will be
  *  returned instead.
  */
-static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, char **out, size_t freespace)
+static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, char **out, UNUSED size_t freespace)
 {
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
 	rlm_sql_t		*inst = instance;
 	sql_rcode_t		rcode;
 	ssize_t			ret = 0;
-	size_t			len = 0;
 
 	/*
 	 *	Add SQL-User-Name attribute just in case it is needed
@@ -175,7 +173,6 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	    (strncasecmp(query, "update", 6) == 0) ||
 	    (strncasecmp(query, "delete", 6) == 0)) {
 		int numaffected;
-		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
 
 		rcode = rlm_sql_query(inst, request, &handle, query);
 		if (rcode != RLM_SQL_OK) {
@@ -193,28 +190,8 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 			goto finish;
 		}
 
-		/*
-		 *	Don't chop the returned number if freespace is
-		 *	too small.  This hack is necessary because
-		 *	some implementations of snprintf return the
-		 *	size of the written data, and others return
-		 *	the size of the data they *would* have written
-		 *	if the output buffer was large enough.
-		 */
-		snprintf(buffer, sizeof(buffer), "%d", numaffected);
-
-		len = strlen(buffer);
-		if (len >= freespace){
-			RDEBUG("rlm_sql (%s): Can't write result, insufficient string space", inst->name);
-
-			(inst->module->sql_finish_query)(handle, inst->config);
-
-			ret = -1;
-			goto finish;
-		}
-
-		memcpy(*out, buffer, len + 1); /* we did bounds checking above */
-		ret = len;
+		MEM(*out = talloc_asprintf(request, "%d", numaffected));
+		ret = talloc_array_length(*out) - 1;
 
 		(inst->module->sql_finish_query)(handle, inst->config);
 
@@ -246,17 +223,8 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		goto finish;
 	}
 
-	len = strlen(row[0]);
-	if (len >= freespace){
-		RDEBUG("Insufficient string space");
-		(inst->module->sql_finish_select_query)(handle, inst->config);
-
-		ret = -1;
-		goto finish;
-	}
-
-	strlcpy(*out, row[0], freespace);
-	ret = len;
+	*out = talloc_bstrndup(request, row[0], strlen(row[0]));
+	ret = talloc_array_length(*out) - 1;
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 
@@ -1047,7 +1015,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat_register(inst->name, sql_xlat, XLAT_DEFAULT_BUF_LEN, sql_escape_func, inst);
+	xlat_register(inst->name, sql_xlat, 0, sql_escape_func, inst);
 
 	/*
 	 *	Register the SQL map processor function
