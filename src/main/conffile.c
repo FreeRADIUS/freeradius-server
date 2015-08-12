@@ -1696,7 +1696,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	{
 		struct timeval tv;
 
-		if (fr_timeval_from_str(&tv, name) < 0) {
+		if (fr_timeval_from_str(&tv, value) < 0) {
 			cf_log_err(&(cp->item), "%s", fr_strerror());
 			return -1;
 		}
