@@ -7,7 +7,8 @@ Documentation=man:radiusd(8) man:radiusd.conf(5) http://wiki.freeradius.org/ htt
 EnvironmentFile=-/etc/sysconfig/radiusd
 ExecStartPre=/usr/sbin/radiusd $FREERADIUS_OPTIONS -Cxm -lstdout
 ExecStart=/usr/sbin/radiusd $FREERADIUS_OPTIONS -fm
-Restart=on-abnormal
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
