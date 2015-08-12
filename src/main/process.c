@@ -2417,7 +2417,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 	if (!proxy_p) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		PROXY("No outstanding request was found for reply from host %s port %d - ID %u",
+		PROXY("No outstanding request was found for %s packet from host %s port %d - ID %u",
+		       fr_packet_codes[packet->code],
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
