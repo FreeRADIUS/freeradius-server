@@ -1924,6 +1924,10 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 	struct	timeval tv;
 
 	sec = strtoul(in, &end, 10);
+	if (in == end) {
+		fr_strerror_printf("Failed parsing \"%s\" as decimal", in);
+		return -1;
+	}
 	tv.tv_sec = sec;
 	tv.tv_usec = 0;
 	if (*end == '.') {
@@ -1940,7 +1944,11 @@ int fr_timeval_from_str(struct timeval *out, char const *in)
 		 *	If they write "0.1", that means
 		 *	"10000" microseconds.
 		 */
-		sec = strtoul(end + 1, NULL, 10);
+		sec = strtoul(end + 1, &end, 10);
+		if (in == end) {
+			fr_strerror_printf("Failed parsing fractional component \"%s\" of decimal ", in);
+			return -1;
+		}
 		while (len < 6) {
 			sec *= 10;
 			len++;
