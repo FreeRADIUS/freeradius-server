@@ -419,9 +419,6 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 			}
 
 			fr_redis_reply_print(L_DBG_LVL_3, reply, request, i);
-
-			fr_redis_reply_free(reply);
-			reply = NULL;
 		}
 		REXDENT();
 	}
