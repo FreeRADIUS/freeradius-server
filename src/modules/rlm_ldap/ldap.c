@@ -1254,7 +1254,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 			RINDENT();
 			for (entry = ldap_first_entry((*pconn)->handle, *result);
 			     entry;
-			     entry = ldap_next_entry((*pconn)->handle, NULL)) {
+			     entry = ldap_next_entry((*pconn)->handle, entry)) {
 				dn = ldap_get_dn((*pconn)->handle, entry);
 				REDEBUG("%s", dn);
 				ldap_memfree(dn);
