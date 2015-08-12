@@ -1019,6 +1019,13 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	}
 
 	/*
+	 *	Some libraries treat 0.0 as infinite timeout, others treat it
+	 *	as instantaneous timeout.  Solve the inconsistency by making
+	 *	the smallest allowable timeout 100ms.
+	 */
+	FR_TIMEVAL_BOUND_CHECK("connect_timeout", &pool->connect_timeout, >=, 0, 100000);
+
+	/*
 	 *	Don't open any connections.  Instead, force the limits
 	 *	to only 1 connection.
 	 *
