@@ -300,8 +300,8 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	pool = talloc_pool(request, 1024);
 	if (!pool) return CACHE_ERROR;
 
-	argv_p = argv = talloc_array(pool, char const *, (cnt * 3)+ 2);
-	argv_len_p = argv_len = talloc_array(pool, size_t, (cnt * 3) + 2);
+	argv_p = argv = talloc_array(pool, char const *, (cnt * 3) + 2);	/* pair = 3 + cmd + key */
+	argv_len_p = argv_len = talloc_array(pool, size_t, (cnt * 3) + 2);	/* pair = 3 + cmd + key */
 
 	*argv_p++ = command;
 	*argv_len_p++ = sizeof(command) - 1;
