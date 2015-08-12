@@ -385,7 +385,6 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 			pipelined++;
 		}
 		REXDENT();
-		talloc_free_children(pool);	/* May have to repeat the command */
 
 		/*
 		 *	Looks like hiredis may leak memory if we pass in a NULL reply argument
