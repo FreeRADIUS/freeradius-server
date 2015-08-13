@@ -241,7 +241,7 @@ eap {
 		#  write to files in its configuration
 		#  directory.
 		#
-#		random_file = /dev/urandom
+	#	random_file = /dev/urandom
 
 		#
 		#  This can never exceed the size of a RADIUS
@@ -373,7 +373,7 @@ eap {
 			#  across server restart so you MUST set the "name" if you want to
 			#  persist sessions (see below).
 			#
-#                       name = "EAP module"
+		#	name = "EAP module"
 
 			#
 			#  Lifetime of the cached entries, in hours. The sessions will be
