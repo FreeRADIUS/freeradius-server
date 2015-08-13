@@ -130,7 +130,7 @@ int rlm_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool fre
 
 	for (i = 0; i < conn->serverctrls_cnt; i++) {
 		if (conn->serverctrls[i].freeit) ldap_control_free(conn->serverctrls[i].control);
-		conn->clientctrls[i].freeit = false;
+		conn->serverctrls[i].freeit = false;
 		conn->serverctrls[i].control = NULL;
 	}
 	conn->serverctrls_cnt = 0;
