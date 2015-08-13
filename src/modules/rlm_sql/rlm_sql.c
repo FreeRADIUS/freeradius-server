@@ -436,8 +436,6 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		char *server = NULL;
 		i++;
 
-		if (!row) break;
-
 		/*
 		 *  The return data for each row MUST be in the following order:
 		 *
