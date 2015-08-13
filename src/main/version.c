@@ -73,7 +73,7 @@ int ssl_check_consistency(void)
 	 *	1.0.0 and only allow moving backwards within a patch
 	 *	series.
 	 */
-	if (ssl_built & 0xf00000000) {
+	if (ssl_built & 0xf0000000) {
 		if ((ssl_built & 0xfffff000) != (ssl_linked & 0xfffff000) ||
 		    (ssl_built & 0x00000ff0) > (ssl_linked & 0x00000ff0)) goto mismatch;
 	/*
