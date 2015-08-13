@@ -564,7 +564,7 @@ do { \
 			cluster->remapping = false;
 			cluster->last_updated = time(NULL);
 			/* Re-insert new nodes back into the free_nodes queue */
-			for (i = 0; i < r; r++) SET_INACTIVE(&cluster->node[rollback[r]]);
+			for (i = 0; i < r; i++) SET_INACTIVE(&cluster->node[rollback[i]]);
 			return rcode;
 		}
 

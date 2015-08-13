@@ -130,9 +130,8 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 	 *	Process the response for READWRITE
 	 */
 	reply = NULL;
-	redisGetReply(conn->handle, (void **)&reply);
 	status = fr_redis_command_status(conn, reply);
-	if (status != REDIS_RCODE_SUCCESS) {
+	if ((redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) || (status != REDIS_RCODE_SUCCESS)) {
 		REDEBUG("Setting READWRITE failed");
 
 		fr_redis_reply_free(*reply_out);
