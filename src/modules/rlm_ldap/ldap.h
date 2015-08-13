@@ -527,8 +527,10 @@ int  rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTI
 /*
  *	control.c - Connection based client/server controls
  */
-void rlm_ldap_control_merge(LDAPControl *serverctrls_out[LDAP_MAX_CONTROLS],
-			    LDAPControl *clientctrls_out[LDAP_MAX_CONTROLS],
+void rlm_ldap_control_merge(LDAPControl *serverctrls_out[],
+			    LDAPControl *clientctrls_out[],
+			    size_t serverctrls_len,
+			    size_t clientctrls_len,
 			    ldap_handle_t *conn,
 			    LDAPControl *serverctrls_in[],
 			    LDAPControl *clientctrls_in[]);

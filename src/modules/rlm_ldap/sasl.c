@@ -118,7 +118,10 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 	LDAPControl		*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl		*our_clientctrls[LDAP_MAX_CONTROLS];
 
-	rlm_ldap_control_merge(our_serverctrls, our_clientctrls, conn, serverctrls, clientctrls);
+	rlm_ldap_control_merge(our_serverctrls, our_clientctrls,
+			       sizeof(our_serverctrls) / sizeof(*our_serverctrls),
+			       sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			       conn, serverctrls, clientctrls);
 
 	/* rlm_ldap_result may not be called */
 	if (error) *error = NULL;

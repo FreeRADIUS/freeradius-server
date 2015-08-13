@@ -900,7 +900,10 @@ ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUE
 	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
 
-	rlm_ldap_control_merge(our_serverctrls, our_clientctrls, *pconn, serverctrls, clientctrls);
+	rlm_ldap_control_merge(our_serverctrls, our_clientctrls,
+			       sizeof(our_serverctrls) / sizeof(*our_serverctrls),
+			       sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			       *pconn, serverctrls, clientctrls);
 
 	rad_assert(*pconn && (*pconn)->handle);
 
@@ -1058,7 +1061,10 @@ ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_hand
 	LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
 	LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
 
-	rlm_ldap_control_merge(our_serverctrls, our_clientctrls, *pconn, serverctrls, clientctrls);
+	rlm_ldap_control_merge(our_serverctrls, our_clientctrls,
+			       sizeof(our_serverctrls) / sizeof(*our_serverctrls),
+			       sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+			       *pconn, serverctrls, clientctrls);
 
 	rad_assert(*pconn && (*pconn)->handle);
 
@@ -1502,7 +1508,10 @@ static int _mod_conn_free(ldap_handle_t *conn)
 		LDAPControl	*our_serverctrls[LDAP_MAX_CONTROLS];
 		LDAPControl	*our_clientctrls[LDAP_MAX_CONTROLS];
 
-		rlm_ldap_control_merge(our_serverctrls, our_clientctrls, conn, NULL, NULL);
+		rlm_ldap_control_merge(our_serverctrls, our_clientctrls,
+				       sizeof(our_serverctrls) / sizeof(*our_serverctrls),
+				       sizeof(our_clientctrls) / sizeof(*our_clientctrls),
+				       conn, NULL, NULL);
 
 		DEBUG3("rlm_ldap: Closing libldap handle %p", conn->handle);
 		ldap_unbind_ext_s(conn->handle, our_serverctrls, our_clientctrls);
