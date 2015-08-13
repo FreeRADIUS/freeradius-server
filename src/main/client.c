@@ -89,6 +89,8 @@ void client_free(RADCLIENT *client)
 		 *	from the queue and delete it.
 		 */
 		client = fr_fifo_peek(deleted_clients);
+		rad_assert(client != NULL);
+
 		if ((client->created + 120) >= now) return;
 
 		client = fr_fifo_pop(deleted_clients);
