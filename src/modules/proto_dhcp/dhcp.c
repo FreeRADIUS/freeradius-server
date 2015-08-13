@@ -272,9 +272,19 @@ RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd)
 			    (struct sockaddr *)&src, &sizeof_src);
 #endif
 
+	if (data_len <= 0) {
+		fr_strerror_printf("Failed reading data from DHCP socket: %s", fr_syserror(errno));
+		talloc_free(data);
+		return NULL;
+	}
+
+	if (!fr_assert(data_len <= (ssize_t)talloc_array_length(data))) {
+		talloc_free(data);	/* Bounds check for tainted scalar (Coverity) */
+		return NULL;
+	}
 	sizeof_dst = sizeof(dst);
 
-	#ifndef WITH_UDPFROMTO
+#ifndef WITH_UDPFROMTO
 	/*
 	*	This should never fail...
 	*/
@@ -283,16 +293,11 @@ RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd)
 		talloc_free(data);
 		return NULL;
 	}
-	#endif
+#endif
 
 	fr_sockaddr2ipaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
 	fr_sockaddr2ipaddr(&src, sizeof_src, &src_ipaddr, &src_port);
 
-	if (data_len <= 0) {
-		fr_strerror_printf("Failed reading DHCP socket: %s", fr_syserror(errno));
-		talloc_free(data);
-		return NULL;
-	}
 
 	packet = fr_dhcp_packet_ok(data, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
 	if (packet) {
