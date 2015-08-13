@@ -1584,7 +1584,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int inlen, 
 		char		filename[256];
 		unsigned char	*p;
 		struct		stat st;
-		VALUE_PAIR	*vps;
+		VALUE_PAIR	*vps = NULL;
 
 		/* read in the cached VPs from the .vps file */
 		len = snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path, FR_DIR_SEP, buffer);
