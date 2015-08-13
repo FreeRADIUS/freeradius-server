@@ -1778,7 +1778,9 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 *	trigger a cluster remap.
 	 */
 	case REDIS_RCODE_MOVE:
-		if (cluster_remap(request, cluster, *conn) != CLUSTER_OP_SUCCESS) RDEBUG2("%s", fr_strerror());
+		if (*conn && (cluster_remap(request, cluster, *conn) != CLUSTER_OP_SUCCESS)) {
+			RDEBUG2("%s", fr_strerror());
+		}
 		/* FALL-THROUGH */
 
 	/*
