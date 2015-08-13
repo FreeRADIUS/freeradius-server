@@ -119,13 +119,18 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	for(scs = cf_subsection_find_next(cs, NULL, NULL);
 	    scs != NULL;
 	    scs = cf_subsection_find_next(cs, scs, NULL)) {
-
 		char const *name;
 
 		name = cf_section_name1(scs);
 		if (!name)  continue;
 
 		if (!strcmp(name, TLS_CONFIG_SECTION))  continue;
+
+		/*
+		 *	Easier sometimes than commenting out blocks,
+		 *	or deleting blocks.
+		 */
+		if (!strcmp(name, "disable")) continue;
 
 		method = eap_name2type(name);
 		if (method == PW_EAP_INVALID) {
