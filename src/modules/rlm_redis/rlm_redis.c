@@ -72,7 +72,7 @@ typedef struct rlm_redis_t {
 static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **reply_out,
 				   REQUEST *request, fr_redis_conn_t *conn, int argc, char const **argv)
 {
-	bool			is_read_only = false, maybe_more = false;
+	bool			maybe_more = false;
 	redisReply		*reply;
 	fr_redis_rcode_t	status;
 
@@ -103,7 +103,6 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 		return -1;
 	}
 
-	is_read_only = true;
 	fr_redis_reply_free(reply);
 
 	/*
@@ -138,8 +137,7 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 		*reply_out = reply;
 		*status_out = status;
 
-		if (is_read_only) return -2;
-		return -1;
+		return -2;
 	}
 	return 0;
 }
