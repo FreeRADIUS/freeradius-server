@@ -1063,7 +1063,7 @@ static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
 
 		len -= sublen;
 		memmove(ptr + 255 + hdr_len, ptr + 255, sublen);
-		memcpy(ptr + 255, ptr, hdr_len);
+		memmove(ptr + 255, ptr, hdr_len);
 		ptr[1] += sublen;
 		if (vsa_offset) ptr[vsa_offset] += sublen;
 		ptr[flag_offset] |= 0x80;
