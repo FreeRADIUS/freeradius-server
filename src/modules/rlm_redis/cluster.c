@@ -457,6 +457,31 @@ static cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_slot, clust
  * @note Errors may be retrieved with fr_strerror().
  * @note Must be called with the cluster mutex held.
  *
+ * Key slot range structure
+ @verbatim
+   [0] -> key slot range 0
+       [0] -> key_slot_start
+       [1] -> key_slot_end
+       [2] -> master_node
+           [0] -> master 0 ip (string)
+           [1] -> master 0 port (number)
+       [3..n] -> slave_node(s)
+   [1] -> key slot range 1)
+       [0]  -> key_slot_start
+       [1] -> key_slot_end
+       [2] -> master_node
+           [0] -> master 1 ip (string)
+           [1] -> master 1 port (number)
+       [3..n] -> slave_node(s)
+   [n] -> key slot range n
+       [0] -> key_slot_start
+       [1] -> key_slot_end
+       [2] -> master_node
+           [0] -> master n ip (string)
+           [1] -> master n port (number)
+       [3..n] -> slave_node(s)
+ @endverbatim
+ *
  * @param[in,out] cluster to apply map to.
  * @param[in] reply from #cluster_map_get.
  * @return
@@ -469,7 +494,6 @@ static cluster_rcode_t cluster_map_apply(fr_redis_cluster_t *cluster, redisReply
 {
 	size_t		i;
 	uint8_t		r = 0;
-	uint32_t	total = reply->elements;
 
 	cluster_rcode_t	rcode;
 
@@ -609,7 +633,6 @@ do { \
 			found = spare;
 
 		next:
-			total++;
 			tmpl_slot.slave[slaves++] = found->id;
 
 			/* Hit the maximum number of slaves we allow */
@@ -685,7 +708,6 @@ do { \
 	/*
 	 *	Sanity checks
 	 */
-	rad_assert(rbtree_num_elements(cluster->used_nodes) == total);
 	rad_assert(((talloc_array_length(cluster->node) - 1) - rbtree_num_elements(cluster->used_nodes)) ==
 		   fr_fifo_num_elements(cluster->free_nodes));
 
@@ -1464,7 +1486,7 @@ void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timev
  * @return pointer to key slot key resolves to.
  */
 static cluster_key_slot_t *cluster_slot_by_key(fr_redis_cluster_t *cluster, REQUEST *request,
-						uint8_t const *key, size_t key_len)
+					       uint8_t const *key, size_t key_len)
 {
 	cluster_key_slot_t *key_slot;
 
