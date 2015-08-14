@@ -964,7 +964,7 @@ static cluster_rcode_t cluster_remap(REQUEST *request, fr_redis_cluster_t *clust
 	RINFO("Initiating cluster remap");
 
 	/*
-	 *	Remap the cluster
+	 *	Get new cluster information
 	 */
 	ret = cluster_map_get(&map, conn);
 	switch (ret) {
@@ -1139,6 +1139,90 @@ static int _cluster_pool_walk(void *context, void *data)
 	return 0;
 }
 
+/** Try to determine the health of a cluster node passively by examining its pool state
+ *
+ * Returns an integer value representing the likelihood that the pool is live.
+ * Range is between 1 and 11,000.
+ *
+ * If a weight of 1 is returned, connections from the pool should be checked
+ * (by pinging) before use.
+ *
+ * @param now The current time.
+ * @param state of the connection pool.
+ * @return
+ *	- 1 the pool is very likely to be bad.
+ *	- 2-11000 the pool is likely to be good, with a higher number
+ *	  indicating higher probability of liveness.
+ */
+static int cluster_node_pool_health(struct timeval const *now, fr_connection_pool_state_t const *state)
+{
+	struct timeval diff;
+	uint64_t diff_ms;
+
+	/*
+	 *	Failed spawn recently, probably bad
+	 */
+	if ((((time_t)now->tv_sec - state->last_failed) * 1000) < FAILED_PERIOD) return FAILED_WEIGHT;
+
+	/*
+	 *	Closed recently, probably bad
+	 */
+	fr_timeval_subtract(&diff, now, &state->last_closed);
+	diff_ms = FR_TIMEVAL_TO_MS(&diff);
+	if (diff_ms < CLOSED_PERIOD) return CLOSED_WEIGHT;
+
+	/*
+	 *	Released too long ago, don't know
+	 */
+	fr_timeval_subtract(&diff, now, &state->last_released);
+	diff_ms = FR_TIMEVAL_TO_MS(&diff);
+	if (diff_ms > RELEASED_PERIOD) return RELEASED_MIN_WEIGHT;
+
+	/*
+	 *	Released not long ago, might be ok.
+	 */
+	return RELEASED_MIN_WEIGHT + (RELEASED_PERIOD - diff_ms);
+}
+
+/** Issue a ping request against a cluster node
+ *
+ * Establishes whether the connection to the node we have is live.
+ *
+ * @param request The current request.
+ * @param conn the connection to ping on.
+ * @return
+ *	- CLUSTER_OP_BAD_INPUT if we got a bad response.
+ *	- CLUSTER_OP_SUCCESS on success.
+ *	- CLUSTER_OP_NO_CONNECTION on connection down.
+ */
+static cluster_rcode_t cluster_node_ping(REQUEST *request, cluster_node_t *node, fr_redis_conn_t *conn)
+{
+	redisReply		*reply;
+	fr_redis_rcode_t	rcode;
+
+	RDEBUG2("[%i] Executing command: PING", node->id);
+	reply = redisCommand(conn->handle, "PING");
+	rcode = fr_redis_command_status(conn, reply);
+	if (rcode != REDIS_RCODE_SUCCESS) {
+		RERROR("[%i] PING failed to %s:%i: %s", node->id, node->name,
+		       node->addr.port, fr_strerror());
+		fr_redis_reply_free(reply);
+		return CLUSTER_OP_NO_CONNECTION;
+	}
+
+	if (reply->type != REDIS_REPLY_STATUS) {
+		RERROR("[%i] Bad PING response from %s:%i, expected status got %s",
+		       node->id, node->name, node->addr.port,
+		       fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+		fr_redis_reply_free(reply);
+		return CLUSTER_OP_BAD_INPUT;
+	}
+
+	RDEBUG2("[%i] Got response: %s", node->id, reply->str);
+	fr_redis_reply_free(reply);
+	return CLUSTER_OP_SUCCESS;
+}
+
 /** Attempt to find a live pool in the cluster
  *
  * The intent here is to find pools/nodes where a connection was released the shortest
@@ -1213,62 +1297,18 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 	for (i = 0; (i < cluster->conf->max_alt) && live->next; i++) {
 		fr_redis_conn_t 	*conn;
 		cluster_node_t		*node;
-		redisReply		*reply;
-		fr_redis_rcode_t	rcode;
 		uint8_t			j;
 		int			first, last, pivot;	/* Must be signed for BS */
 		unsigned int		find, cumulative = 0;
 
 		RDEBUG3("(Re)assigning node weights:");
 		RINDENT();
-		/*
-		 *	(Re)assign the weights
-		 */
 		for (j = 0; j < live->next; j++) {
-			struct timeval diff;
-			uint64_t diff_ms;
+			int weight;
 
-			/*
-			 *	Failed spawn recently, probably bad
-			 */
-			if ((((time_t)now.tv_sec - live->node[j].pool_state->last_failed) * 1000) < FAILED_PERIOD) {
-				RDEBUG3("Node %i weight: " STRINGIFY(FAILED_WEIGHT), live->node[j].id);
-				cumulative += FAILED_WEIGHT;
-				live->node[j].cumulative = cumulative;
-				continue;
-			}
-
-			/*
-			 *	Closed recently, probably bad
-			 */
-			fr_timeval_subtract(&diff, &now, &live->node[j].pool_state->last_closed);
-			diff_ms = FR_TIMEVAL_TO_MS(&diff);
-			if (diff_ms < CLOSED_PERIOD) {
-				RDEBUG3("Node %i weight: " STRINGIFY(CLOSED_WEIGHT), live->node[j].id);
-				cumulative += CLOSED_WEIGHT;
-				live->node[j].cumulative = cumulative;
-				continue;
-			}
-
-			/*
-			 *	Released too long ago, don't know
-			 */
-			fr_timeval_subtract(&diff, &now, &live->node[j].pool_state->last_released);
-			diff_ms = FR_TIMEVAL_TO_MS(&diff);
-			if (diff_ms > RELEASED_PERIOD) {
-				RDEBUG3("Node %i weight: " STRINGIFY(RELEASED_MIN_WEIGHT), live->node[j].id);
-				cumulative += RELEASED_MIN_WEIGHT;
-				live->node[j].cumulative = cumulative;
-				continue;
-			}
-
-			/*
-			 *	Released not long ago, might be ok.
-			 */
-			cumulative += RELEASED_MIN_WEIGHT + (RELEASED_PERIOD - diff_ms);
-			RDEBUG3("Node %i weight: %" PRIu64, live->node[j].id,
-				(RELEASED_MIN_WEIGHT + (RELEASED_PERIOD - diff_ms)));
-			live->node[j].cumulative = cumulative;
+			weight = cluster_node_pool_health(&now, live->node[j].pool_state);
+			RDEBUG3("Node %i weight: %i", live->node[j].id, weight);
+			live->node[j].cumulative = (cumulative += weight);
 		}
 		REXDENT();
 
@@ -1296,8 +1336,8 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 		if (first > last) pivot = last + 1;
 
 		/*
-		 *	Resolve the index to the actual node
-		 *	We use IDs to save memory...
+		 *	Resolve the index to the actual node.  We use IDs
+		 *	to save memory...
 		 */
 		node = &cluster->node[live->node[pivot].id];
 		rad_assert(live->node[pivot].id == node->id);
@@ -1308,6 +1348,10 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 			RERROR("No connections available to node %i %s:%i", node->id,
 			       node->name, node->addr.port);
 		next:
+			/*
+			 *	Remove the node we just discovered was bad
+			 *	out of the set of nodes we're selecting over.
+			 */
 			if (pivot == live->next) {
 				live->next--;
 				continue;
@@ -1317,36 +1361,21 @@ static int cluster_node_find_live(cluster_node_t **live_node, fr_redis_conn_t **
 			continue;
 		}
 
-		RDEBUG2("[%i] Executing command: PING", node->id);
 		/*
-		 *	Try 'pinging' the node
+		 *	PING! PONG?
 		 */
-		reply = redisCommand(conn->handle, "PING");
-		rcode = fr_redis_command_status(conn, reply);
-		if (rcode != REDIS_RCODE_SUCCESS) {
-			RERROR("[%i] PING failed to %s:%i: %s", node->id, node->name,
-			       node->addr.port, fr_strerror());
+		switch (cluster_node_ping(request, node, conn)) {
+		case CLUSTER_OP_SUCCESS:
+			break;
 
-			if (rcode == REDIS_RCODE_RECONNECT) {
-				fr_connection_close(node->pool, conn);
-			} else {
-				fr_connection_release(node->pool, conn);
-			}
-			fr_redis_reply_free(reply);
+		case CLUSTER_OP_NO_CONNECTION:
+			fr_connection_close(node->pool, conn);
 			goto next;
-		}
 
-		if (reply->type != REDIS_REPLY_STATUS) {
-			RERROR("[%i] Bad PING response from %s:%i, expected status got %s",
-			       node->id, node->name, node->addr.port,
-			       fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+		default:
 			fr_connection_release(node->pool, conn);
-			fr_redis_reply_free(reply);
 			goto next;
 		}
-
-		RDEBUG2("[%i] Got response: %s", node->id, reply->str);
-		fr_redis_reply_free(reply);
 
 		*live_node = node;
 		*live_conn = conn;
