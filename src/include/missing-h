@@ -358,7 +358,7 @@ int gettimeofday (struct timeval *tv, void *tz);
 #ifndef HAVE_CLOCK_GETTIME
 enum {
 	CLOCK_REALTIME,
-	CLOCK_MONOTONIC,
+	CLOCK_MONOTONIC
 };
 int clock_gettime(int clk_id, struct timespec *t);
 #endif
