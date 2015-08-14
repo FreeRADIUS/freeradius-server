@@ -518,7 +518,11 @@ static void send_with_pcap(void)
 
 	if (!reply_expected) return;
 
-	reply = fr_dhcp_recv_raw_loop(pcap->fd, request);
+	reply = fr_dhcp_recv_raw_loop(pcap->fd,
+#ifdef HAVE_LINUX_IF_PACKET_H
+				      &ll,
+#endif 
+				      request);
 
 	if (!reply) {
 		fprintf(stderr, "dhcpclient: Error receiving reply\n");
