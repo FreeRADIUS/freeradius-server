@@ -91,7 +91,6 @@ int main(int argc, char *argv[])
 	int status;
 	int argval;
 	bool spawn_flag = true;
-	bool write_pid = false;
 	bool display_version = false;
 	int flag = 0;
 	int from_child[2] = {-1, -1};
@@ -222,7 +221,7 @@ int main(int argc, char *argv[])
 
 			case 'P':
 				/* Force the PID to be written, even in -f mode */
-				write_pid = true;
+				main_config.write_pid = true;
 				break;
 
 			case 's':	/* Single process mode */
@@ -330,6 +329,11 @@ int main(int argc, char *argv[])
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	tls_global_init();
 #endif
+
+	/*
+	 *  Write the PID always if we're running as a daemon.
+	 */
+	if (main_config.daemonize) main_config.write_pid = true;
 
 	/*
 	 *  Read the configuration files, BEFORE doing anything else.
@@ -524,14 +528,9 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
-	 *  Write the PID always if we're running as a daemon.
-	 */
-	if (main_config.daemonize) write_pid = true;
-
-	/*
 	 *  Write the PID after we've forked, so that we write the correct one.
 	 */
-	if (write_pid) {
+	if (main_config.write_pid) {
 		FILE *fp;
 
 		fp = fopen(main_config.pid_file, "w");

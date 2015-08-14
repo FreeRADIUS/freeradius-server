@@ -584,16 +584,15 @@ static int switch_users(CONF_SECTION *cs)
 #endif
 
 	/*
-	 *	If we did change from root to a normal user, do some
-	 *	more work.
+	 *	The directories for PID files and logs must exist.  We
+	 *	need to create them if we're told to write files to
+	 *	those directories.
 	 *
-	 *	Try to create the various output directories.  Because
-	 *	this creation is new in 3.0.9, it's a soft fail.
+	 *	Because this creation is new in 3.0.9, it's a soft
+	 *	fail.
 	 *
-	 *	And once we're done with all of the above work,
-	 *	permanently change the UID.
 	 */
-	if (do_suid) {
+	if (main_config.write_pid) {
 		char *my_dir;
 
 		my_dir = talloc_strdup(NULL, run_dir);
@@ -602,16 +601,24 @@ static int switch_users(CONF_SECTION *cs)
 			      my_dir, strerror(errno));
 		}
 		talloc_free(my_dir);
+	}
 
-		if (default_log.dst == L_DST_FILES) {
-			my_dir = talloc_strdup(NULL, radlog_dir);
-			if (rad_mkdir(my_dir, 0750, server_uid, server_gid) < 0) {
-				DEBUG("Failed to create logdir %s: %s",
-				      my_dir, strerror(errno));
-			}
-			talloc_free(my_dir);
+	if (default_log.dst == L_DST_FILES) {
+		char *my_dir;
+
+		my_dir = talloc_strdup(NULL, radlog_dir);
+		if (rad_mkdir(my_dir, 0750, server_uid, server_gid) < 0) {
+			DEBUG("Failed to create logdir %s: %s",
+			      my_dir, strerror(errno));
 		}
+		talloc_free(my_dir);
+	}
 
+	/*
+	 *	Once we're done with all of the privileged work,
+	 *	permanently change the UID.
+	 */
+	if (do_suid) {
 		rad_suid_set_down_uid(server_uid);
 		rad_suid_down();
 	}
