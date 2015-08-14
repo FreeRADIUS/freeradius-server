@@ -702,11 +702,11 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
  	}
 
 	{
-		int type = IPPROTO_UDP;
+		int proto = IPPROTO_UDP;
 
-		if (home->proto_str) type = fr_str2int(home_proto, home->proto_str, -1);
+		if (home->proto_str) proto = fr_str2int(home_proto, home->proto_str, -1);
 
-		switch (type) {
+		switch (proto) {
 		case IPPROTO_UDP:
 			home_servers_udp = true;
 			break;
@@ -728,7 +728,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			goto error;
 		}
 
-		home->proto = type;
+		home->proto = proto;
 	}
 
 	if (!home->server && rbtree_finddata(home_servers_byaddr, home)) {
