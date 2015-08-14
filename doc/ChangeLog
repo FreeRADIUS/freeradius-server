@@ -8,6 +8,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  modules.
 	* Write HTTP status code resulting from rlm_rest operations
 	  to reply:Rest-HTTP-Status-Code.
+	* Update radiusd.service for systemd.
 
 	Bug fixes
 	* When using -C, don't error out if the configuration uses
@@ -27,6 +28,11 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  pool.
 	* Fix potential overrun in functions that used fr_utf8_char
 	  with a none nul terminated buffer.
+	* Fix decoding issue for Tunnel-Password type attributes
+	  which were very long.
+	* Fix radclient issue with TCP sockets on FreeBSD.
+	* The server creates ${run_dir} and ${logdir} in daemon mode,
+	  when running as "root".
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
