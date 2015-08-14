@@ -167,16 +167,15 @@ static int dhcp_header_sizes[] = {
 /*
  *	Some clients silently ignore responses less than 300 bytes.
  */
-#define MIN_PACKET_SIZE (244)
-#define DEFAULT_PACKET_SIZE (300)
-#define MAX_PACKET_SIZE (1500 - 40)
+#define MIN_PACKET_SIZE		(244)
+#define DEFAULT_PACKET_SIZE	(300)
+#define MAX_PACKET_SIZE		(1500 - 40)
 
-#define DHCP_OPTION_FIELD (0)
-#define DHCP_FILE_FIELD	  (1)
-#define DHCP_SNAME_FIELD  (2)
+#define DHCP_OPTION_FIELD	(0)
+#define DHCP_FILE_FIELD	  	(1)
+#define DHCP_SNAME_FIELD  	(2)
 
-static uint8_t const *dhcp_get_option(dhcp_packet_t const *packet, size_t packet_size,
-				unsigned int option)
+static uint8_t const *dhcp_get_option(dhcp_packet_t const *packet, size_t packet_size, unsigned int option)
 {
 	int overload = 0;
 	int field = DHCP_OPTION_FIELD;
@@ -2221,8 +2220,8 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 
 		/* No match. */
 		DISCARD_RP("Ethernet destination (%s) is not broadcast and doesn't match request source (%s)",
-			ether_addr_print(eth_hdr->ether_dst, eth_dest),
-			ether_addr_print(vp->vp_ether, eth_req_src));
+			   ether_addr_print(eth_hdr->ether_dst, eth_dest),
+			   ether_addr_print(vp->vp_ether, eth_req_src));
 	}
 
 	/*
