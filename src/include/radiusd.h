@@ -168,6 +168,8 @@ typedef struct main_config {
 
 	uint32_t       	state_seed;			//!< magic for proxying
 
+	bool		write_pid;			//!< write the PID file
+
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
