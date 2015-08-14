@@ -8088,7 +8088,8 @@ for ac_header in \
   siad.h \
   features.h \
   limits.h \
-  sys/event.h
+  sys/event.h \
+  linux/if_packet.h
 
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
