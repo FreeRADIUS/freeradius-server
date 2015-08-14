@@ -1766,6 +1766,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 		if (!*conn) {
 			REDEBUG("[%i] No connections available for %s:%i", state->node->id, state->node->name,
 				state->node->addr.port);
+			cluster->remap_needed = true;
 			return REDIS_RCODE_RECONNECT;
 		}
 
