@@ -10014,6 +10014,7 @@ rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
 for ac_func in \
+  clock_getttime \
   getopt_long \
   fcntl \
   strsignal \

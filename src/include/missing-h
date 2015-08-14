@@ -355,6 +355,24 @@ struct tm *gmtime_r(time_t const *l_clock, struct tm *result);
 int gettimeofday (struct timeval *tv, void *tz);
 #endif
 
+#ifndef HAVE_CLOCK_GETTIME
+enum {
+	CLOCK_REALTIME,
+	CLOCK_MONOTONIC,
+};
+int clock_gettime(int clk_id, struct timespec *t);
+#endif
+
+/*
+ *	These are linux specific
+ */
+#ifndef CLOCK_REALTIME_COARSE
+#  define CLOCK_REALTIME_COARSE CLOCK_REALTIME
+#endif
+#ifndef CLOCK_MONOTONIC_COARSE
+#  define CLOCK_MONOTONIC_COARSE CLOCK_MONOTONIC
+#endif
+
 /*
  *	Work around different ctime_r styles
  */

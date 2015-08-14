@@ -27,6 +27,10 @@ RCSID("$Id$")
 
 #include	<ctype.h>
 
+#if !defined(HAVE_CLOCK_GETTIME) && defined(__MACH__)
+#  include <mach/mach_time.h>
+#endif
+
 #ifndef HAVE_CRYPT
 char *crypt(UNUSED char *key, char *salt)
 {
@@ -231,6 +235,51 @@ int gettimeofday (struct timeval *tv, UNUSED void *tz)
 	return (0);
 }
 #endif
+#endif
+
+#if !defined(HAVE_CLOCK_GETTIME) && defined(__MACH__)
+int clock_gettime(int clk_id, struct timespec *t)
+{
+	static mach_timebase_info_data_t timebase;
+	static bool done_init = false;
+
+#ifdef HAVE_PTHREAD_H
+	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+	if (!done_init) {
+#ifdef HAVE_PTHREAD_H
+		pthread_mutex_lock(&mutex);
+		if (!done_init) {
+#endif
+			mach_timebase_info(&timebase);
+#ifdef HAVE_PTHREAD_H
+			done_init = true;
+		}
+		pthread_mutex_unlock(&mutex);
+#endif
+	}
+
+	switch (clk_id) {
+	case CLOCK_REALTIME:
+		return -1;
+
+	case CLOCK_MONOTONIC:
+	{
+		uint64_t time;
+		time = mach_absolute_time();
+		double nseconds = ((double)time * (double)timebase.numer)/((double)timebase.denom);
+		double seconds = ((double)time * (double)timebase.numer)/((double)timebase.denom * 1e9);
+		t->tv_sec = seconds;
+		t->tv_nsec = nseconds;
+	}
+		return 0;
+
+	default:
+		errno = EINVAL;
+		return -1;
+	}
+}
 #endif
 
 #define NTP_EPOCH_OFFSET	2208988800ULL

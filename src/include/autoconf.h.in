@@ -54,6 +54,9 @@
 /* Define to 1 if you have the <sys/capability.h> header file. */
 #undef HAVE_CAPABILITY_H
 
+/* Define to 1 if you have the `clock_getttime' function. */
+#undef HAVE_CLOCK_GETTTIME
+
 /* Define to 1 if you have the `closefrom' function. */
 #undef HAVE_CLOSEFROM
 

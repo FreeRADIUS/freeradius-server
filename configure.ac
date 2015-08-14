@@ -1437,6 +1437,7 @@ dnl #  5. Checks for structures and functions
 dnl #
 dnl #############################################################
 AC_CHECK_FUNCS( \
+  clock_getttime \
   getopt_long \
   fcntl \
   strsignal \
