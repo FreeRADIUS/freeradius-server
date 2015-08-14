@@ -558,56 +558,52 @@ static void make_tunnel_passwd(uint8_t *output, size_t *outlen,
 {
 	FR_MD5_CTX context, old;
 	uint8_t	digest[AUTH_VECTOR_LEN];
-	uint8_t passwd[MAX_STRING_LEN + AUTH_VECTOR_LEN];
-	int	i, n;
-	int	len;
+	size_t	i, n;
+	size_t	encrypted_len;
 
 	/*
-	 *	Be paranoid.
+	 *	The password gets encoded with a 1-byte "length"
+	 *	field.  Ensure that it doesn't overflow.
 	 */
 	if (room > 253) room = 253;
 
 	/*
-	 *	Account for 2 bytes of the salt, and round the room
-	 *	available down to the nearest multiple of 16.  Then,
-	 *	subtract one from that to account for the length byte,
-	 *	and the resulting number is the upper bound on the data
-	 *	to copy.
-	 *
-	 *	We could short-cut this calculation just be forcing
-	 *	inlen to be no more than 239.  It would work for all
-	 *	VSA's, as we don't pack multiple VSA's into one
-	 *	attribute.
-	 *
-	 *	However, this calculation is more general, if a little
-	 *	complex.  And it will work in the future for all possible
-	 *	kinds of weird attribute packing.
+	 *	Limit the maximum size of the input password.  2 bytes
+	 *	are taken up by the salt, and one by the encoded
+	 *	"length" field.  Note that if we have a tag, the
+	 *	"room" will be 252 octets, not 253 octets.
 	 */
-	room -= 2;
-	room -= (room & 0x0f);
-	room--;
-
-	if (inlen > room) inlen = room;
+	if (inlen > (room - 3)) inlen = room - 3;
 
 	/*
-	 *	Length of the encrypted data is password length plus
-	 *	one byte for the length of the password.
+	 *	Length of the encrypted data is the clear-text
+	 *	password length plus one byte which encodes the length
+	 *	of the password.  We round up to the nearest encoding
+	 *	block.  Note that this can result in the encoding
+	 *	length being more than 253 octets.
 	 */
-	len = inlen + 1;
-	if ((len & 0x0f) != 0) {
-		len += 0x0f;
-		len &= ~0x0f;
+	encrypted_len = inlen + 1;
+	if ((encrypted_len & 0x0f) != 0) {
+		encrypted_len += 0x0f;
+		encrypted_len &= ~0x0f;
 	}
-	*outlen = len + 2;	/* account for the salt */
 
 	/*
-	 *	Copy the password over.
+	 *	We need 2 octets for the salt, followed by the actual
+	 *	encrypted data.
 	 */
-	memcpy(passwd + 3, input, inlen);
-	memset(passwd + 3 + inlen, 0, sizeof(passwd) - 3 - inlen);
+	if (encrypted_len > (room - 2)) encrypted_len = room - 2;
+
+	*outlen = encrypted_len + 2;	/* account for the salt */
 
 	/*
-	 *	Generate salt.  The RFC's say:
+	 *	Copy the password over, and zero-fill the remainder.
+	 */
+	memcpy(output + 3, input, inlen);
+	memset(output + 3 + inlen, 0, *outlen - 3 - inlen);
+
+	/*
+	 *	Generate salt.  The RFCs say:
 	 *
 	 *	The high bit of salt[0] must be set, each salt in a
 	 *	packet should be unique, and they should be random
@@ -615,32 +611,40 @@ static void make_tunnel_passwd(uint8_t *output, size_t *outlen,
 	 *	So, we set the high bit, add in a counter, and then
 	 *	add in some CSPRNG data.  should be OK..
 	 */
-	passwd[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
+	output[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) |
 		     (fr_rand() & 0x07));
-	passwd[1] = fr_rand();
-	passwd[2] = inlen;	/* length of the password string */
+	output[1] = fr_rand();
+	output[2] = inlen;	/* length of the password string */
 
 	fr_MD5Init(&context);
-	fr_MD5Update(&context, (const uint8_t *) secret, strlen(secret));
+	fr_MD5Update(&context, (uint8_t const *) secret, strlen(secret));
 	old = context;
 
 	fr_MD5Update(&context, vector, AUTH_VECTOR_LEN);
-	fr_MD5Update(&context, &passwd[0], 2);
+	fr_MD5Update(&context, &output[0], 2);
 
-	for (n = 0; n < len; n += AUTH_PASS_LEN) {
+	for (n = 0; n < encrypted_len; n += AUTH_PASS_LEN) {
+		size_t block_len;
+
 		if (n > 0) {
 			context = old;
 			fr_MD5Update(&context,
-				       passwd + 2 + n - AUTH_PASS_LEN,
+				       output + 2 + n - AUTH_PASS_LEN,
 				       AUTH_PASS_LEN);
 		}
 
 		fr_MD5Final(digest, &context);
-		for (i = 0; i < AUTH_PASS_LEN; i++) {
-			passwd[i + 2 + n] ^= digest[i];
+
+		if ((2 + n + AUTH_PASS_LEN) < room) {
+			block_len = AUTH_PASS_LEN;
+		} else {
+			block_len = room - 2 - n;
+		}
+
+		for (i = 0; i < block_len; i++) {
+			output[i + 2 + n] ^= digest[i];
 		}
 	}
-	memcpy(output, passwd, len + 2);
 }
 
 /*
@@ -3409,14 +3413,16 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 	FR_MD5_CTX  context, old;
 	uint8_t		digest[AUTH_VECTOR_LEN];
 	int		secretlen;
-	unsigned	i, n, len, reallen;
+	size_t		i, n, encrypted_len, reallen;
 
-	len = *pwlen;
+	encrypted_len = *pwlen;
+
+	fprintf(stderr, "HERE %d\n", __LINE__);
 
 	/*
 	 *	We need at least a salt.
 	 */
-	if (len < 2) {
+	if (encrypted_len < 2) {
 		fr_strerror_printf("tunnel password is too short");
 		return -1;
 	}
@@ -3431,13 +3437,15 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 	 *	more data.  So the 'data_len' field may be wrong,
 	 *	but that's ok...
 	 */
-	if (len <= 3) {
+	if (encrypted_len <= 3) {
 		passwd[0] = 0;
 		*pwlen = 0;
 		return 0;
 	}
 
-	len -= 2;		/* discount the salt */
+	encrypted_len -= 2;		/* discount the salt */
+
+	fprintf(stderr, "HERE %d\n", __LINE__);
 
 	/*
 	 *	Use the secret to setup the decryption digest
@@ -3445,7 +3453,7 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 	secretlen = strlen(secret);
 
 	fr_MD5Init(&context);
-	fr_MD5Update(&context, (const uint8_t *) secret, secretlen);
+	fr_MD5Update(&context, (uint8_t const *) secret, secretlen);
 	old = context;		/* save intermediate work */
 
 	/*
@@ -3456,11 +3464,23 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 	fr_MD5Update(&context, vector, AUTH_VECTOR_LEN);
 	fr_MD5Update(&context, passwd, 2);
 
+	fprintf(stderr, "HERE %d\n", __LINE__);
+
 	reallen = 0;
-	for (n = 0; n < len; n += AUTH_PASS_LEN) {
-		int base = 0;
+	for (n = 0; n < encrypted_len; n += AUTH_PASS_LEN) {
+		size_t base;
+		size_t block_len = AUTH_PASS_LEN;
+
+		/*
+		 *	Ensure we don't overflow the input on MD5
+		 */
+		if ((n + 2 + AUTH_PASS_LEN) > *pwlen) {
+			block_len = *pwlen - n - 2;
+		}
 
 		if (n == 0) {
+			base = 1;
+
 			fr_MD5Final(digest, &context);
 
 			context = old;
@@ -3471,30 +3491,26 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 			 *	'data_len' field.  Ensure it's sane.
 			 */
 			reallen = passwd[2] ^ digest[0];
-			if (reallen >= len) {
+			if (reallen > encrypted_len) {
 				fr_strerror_printf("tunnel password is too long for the attribute");
 				return -1;
 			}
 
-			fr_MD5Update(&context, passwd + 2, AUTH_PASS_LEN);
+			fr_MD5Update(&context, passwd + 2, block_len);
 
-			base = 1;
 		} else {
+			base = 0;
+
 			fr_MD5Final(digest, &context);
 
 			context = old;
-			fr_MD5Update(&context, passwd + n + 2, AUTH_PASS_LEN);
+			fr_MD5Update(&context, passwd + n + 2, block_len);
 		}
 
-		for (i = base; i < AUTH_PASS_LEN; i++) {
+		for (i = base; i < block_len; i++) {
 			passwd[n + i - 1] = passwd[n + i + 2] ^ digest[i];
 		}
 	}
-
-	/*
-	 *	See make_tunnel_password, above.
-	 */
-	if (reallen > 239) reallen = 239;
 
 	*pwlen = reallen;
 	passwd[reallen] = 0;
