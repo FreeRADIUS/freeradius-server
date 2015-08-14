@@ -578,6 +578,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	home->log_name = talloc_typed_strdup(home, home->name);
 	home->cs = cs;
 	home->state = HOME_STATE_UNKNOWN;
+	home->proto = IPPROTO_UDP;
 
 	/*
 	 *	Parse the configuration into the home server
