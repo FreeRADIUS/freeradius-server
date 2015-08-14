@@ -46,7 +46,7 @@ if [ `gem list redis -i` = 'false' ]; then
 fi
 
 # Again, not needed by travis, but useful for local testing
-if [ $1 = 'stop' ]; then
+if [ "$1" = 'stop' ]; then
     create-cluster stop
     create-cluster clean
 else
