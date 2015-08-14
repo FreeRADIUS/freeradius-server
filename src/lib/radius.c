@@ -190,6 +190,27 @@ void rad_print_hex(RADIUS_PACKET *packet)
 
 	if (!packet->data || !fr_log_fp) return;
 
+	fprintf(fr_log_fp, "  Socket:\t%d\n", packet->sockfd);
+#ifdef WITH_TCP
+	fprintf(fr_log_fp, "  Proto:\t%u\n", packet->proto);
+#endif
+
+	if (packet->src_ipaddr.af == AF_INET) {
+		char buffer[32];
+
+		fprintf(fr_log_fp, "  Src IP:\t%s\n",
+			inet_ntop(packet->src_ipaddr.af,
+				  &packet->src_ipaddr.ipaddr,
+				  buffer, sizeof(buffer)));
+		fprintf(fr_log_fp, "    port:\t%u\n", packet->src_port);
+
+		fprintf(fr_log_fp, "  Dst IP:\t%s\n",
+			inet_ntop(packet->dst_ipaddr.af,
+				  &packet->dst_ipaddr.ipaddr,
+				  buffer, sizeof(buffer)));
+		fprintf(fr_log_fp, "    port:\t%u\n", packet->dst_port);
+	}
+
 	fprintf(fr_log_fp, "  Code:\t\t%u\n", packet->data[0]);
 	fprintf(fr_log_fp, "  Id:\t\t%u\n", packet->data[1]);
 	fprintf(fr_log_fp, "  Length:\t%u\n", ((packet->data[2] << 8) |
