@@ -1189,6 +1189,7 @@ static int cluster_node_pool_health(struct timeval const *now, fr_connection_poo
  * Establishes whether the connection to the node we have is live.
  *
  * @param request The current request.
+ * @param node to ping.
  * @param conn the connection to ping on.
  * @return
  *	- CLUSTER_OP_BAD_INPUT if we got a bad response.
