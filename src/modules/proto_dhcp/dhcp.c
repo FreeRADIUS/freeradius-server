@@ -2162,7 +2162,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 {
 	VALUE_PAIR		*vp;
 	RADIUS_PACKET		*packet;
-	uint8_t			*code;
+	uint8_t const		*code;
 	uint32_t		magic, xid;
 	ssize_t			data_len;
 
