@@ -974,6 +974,9 @@ static int send_one_packet(rc_request_t *request)
 	 */
 	if (rad_send(request->packet, NULL, secret) < 0) {
 		REDEBUG("Failed to send packet for ID %d", request->packet->id);
+		deallocate_id(request);
+		request->done = true;
+		return -1;
 	}
 
 	fr_packet_header_print(fr_log_fp, request->packet, false);
@@ -1541,7 +1544,10 @@ int main(int argc, char **argv)
 				/*
 				 *	Send the current packet.
 				 */
-				send_one_packet(this);
+				if (send_one_packet(this) < 0) {
+					talloc_free(this);
+					break;
+				}
 
 				/*
 				 *	Wait a little before sending
