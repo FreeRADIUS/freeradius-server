@@ -638,13 +638,14 @@ void map_sort(vp_map_t **maps, fr_cmp_t cmp)
 
 /** Process map which has exec as a src
  *
- * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
- * has been broken out into it's own function.
+ * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections,
+ * and so has been broken out into it's own function.
  *
  * @param[in,out] ctx to allocate new #VALUE_PAIR (s) in.
  * @param[out] out Where to write the #VALUE_PAIR (s).
  * @param[in] request structure (used only for talloc).
- * @param[in] map the map. The LHS (dst) must be TMPL_TYPE_ATTR or TMPL_TYPE_LIST. The RHS (src) must be TMPL_TYPE_EXEC.
+ * @param[in] map the map. The LHS (dst) must be TMPL_TYPE_ATTR or TMPL_TYPE_LIST. The RHS (src)
+ *	must be TMPL_TYPE_EXEC.
  * @return -1 on failure, 0 on success.
  */
 static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map)
