@@ -1553,62 +1553,42 @@ int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
 
 /** Print uid to a string
  *
- * @note The reason for taking a fixed buffer is pure laziness.
- *	 It means the caller doesn't have to free the string.
- *
- * @note Will always \0 terminate the buffer, even on error.
- *
  * @param ctx TALLOC_CTX for temporary allocations.
- * @param out Where to write the uid string.
- * @param outlen length of output buffer.
  * @param uid to resolve.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int rad_prints_uid(TALLOC_CTX *ctx, char *out, size_t outlen, uid_t uid)
+char *rad_aprints_uid(TALLOC_CTX *ctx, uid_t uid)
 {
 	struct passwd *result;
+	char *out;
 
-	rad_assert(outlen > 0);
-
-	*out = '\0';
-
-	if (rad_getpwuid(ctx, &result, uid) < 0) return -1;
-	strlcpy(out, result->pw_name, outlen);
+	if (rad_getpwuid(ctx, &result, uid) < 0) return NULL;
+	out = talloc_strdup(ctx, result->pw_name);
 	talloc_free(result);
 
-	return 0;
+	return out;
 }
 
 /** Print gid to a string
  *
- * @note The reason for taking a fixed buffer is pure laziness.
- *	 It means the caller doesn't have to free the string.
- *
- * @note Will always \0 terminate the buffer, even on error.
- *
  * @param ctx TALLOC_CTX for temporary allocations.
- * @param out Where to write the uid string.
- * @param outlen length of output buffer.
  * @param gid to resolve.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int rad_prints_gid(TALLOC_CTX *ctx, char *out, size_t outlen, gid_t gid)
-{
+char *rad_aprints_gid(TALLOC_CTX *ctx, uid_t gid){
 	struct group *result;
+	char *out;
 
-	rad_assert(outlen > 0);
-
-	*out = '\0';
-
-	if (rad_getgrgid(ctx, &result, gid) < 0) return -1;
-	strlcpy(out, result->gr_name, outlen);
+	if (rad_getgrgid(ctx, &result, gid) < 0) return NULL;
+	out = talloc_strdup(ctx, result->gr_name);
 	talloc_free(result);
 
-	return 0;
+	return out;
+}
 }
 
 #ifdef HAVE_SETUID

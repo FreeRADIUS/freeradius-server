@@ -432,8 +432,8 @@ int		rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name);
 int		rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid);
 int		rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name);
 int		rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name);
-int		rad_prints_uid(TALLOC_CTX *ctx, char *out, size_t outlen, uid_t uid);
-int		rad_prints_gid(TALLOC_CTX *ctx, char *out, size_t outlen, gid_t gid);
+char		*rad_aprints_uid(TALLOC_CTX *ctx, uid_t uid);
+char		*rad_aprints_gid(TALLOC_CTX *ctx, gid_t gid);
 int		rad_seuid(uid_t uid);
 int		rad_segid(gid_t gid);
 
