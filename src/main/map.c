@@ -814,6 +814,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 			goto error;
 		}
 		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 		break;
 
@@ -838,6 +839,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 			goto error;
 		}
 		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 		break;
 
@@ -853,6 +855,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 			goto error;
 		}
 		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 		break;
 
@@ -901,6 +904,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 				}
 
 				new->op = map->op;
+				new->tag = map->lhs->tmpl_tag;
 				fr_cursor_insert(&to, new);
 			}
 			return 0;
@@ -913,6 +917,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		for (; vp; vp = fr_cursor_next(&from)) {
 			vp->da = map->lhs->tmpl_da;
 			vp->op = map->op;
+			vp->tag = map->lhs->tmpl_tag;
 		}
 		*out = found;
 	}
@@ -932,6 +937,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 
 		new->vp_length = len;
 		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 
 		VERIFY_MAP(map);
