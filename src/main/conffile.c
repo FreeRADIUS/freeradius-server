@@ -389,7 +389,8 @@ static bool cf_file_input(CONF_SECTION *cs, char const *filename)
 	file->input = true;
 
 	if (stat(filename, &file->buf) < 0) {
-		ERROR("Unable to open file \"%s\": %s", filename, fr_syserror(errno));
+		rad_file_error(errno);	/* Write error and euid/egid to error buff */
+		ERROR("Unable to open file \"%s\": %s", filename, fr_strerror());
 		talloc_free(file);
 		return false;
 	}

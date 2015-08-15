@@ -434,6 +434,7 @@ int		rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name);
 int		rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name);
 char		*rad_aprints_uid(TALLOC_CTX *ctx, uid_t uid);
 char		*rad_aprints_gid(TALLOC_CTX *ctx, gid_t gid);
+void		rad_file_error(int num);
 int		rad_seuid(uid_t uid);
 int		rad_segid(gid_t gid);
 

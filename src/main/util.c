@@ -1589,6 +1589,28 @@ char *rad_aprints_gid(TALLOC_CTX *ctx, uid_t gid){
 
 	return out;
 }
+
+/** Write a file access error to the fr_strerror buffer, including euid/egid
+ *
+ * @note retrieve error with fr_strerror()
+ *
+ * @param num Usually num, unless the error is returned by the function.
+ */
+void rad_file_error(int num)
+{
+	char const	*error;
+	struct passwd	*user = NULL;
+	struct group	*group = NULL;
+
+	error = fr_syserror(num);
+
+	if (rad_getpwuid(NULL, &user, geteuid()) < 0) goto finish;
+	if (rad_getgrgid(NULL, &group, getegid()) < 0) goto finish;
+
+	fr_strerror_printf("Effective user/group %s:%s: %s", user->pw_name, group->gr_name, error);
+finish:
+	talloc_free(user);
+	talloc_free(group);
 }
 
 #ifdef HAVE_SETUID
