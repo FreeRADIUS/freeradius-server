@@ -335,6 +335,11 @@ export CFLAGS="$RPM_OPT_FLAGS -fPIC"
 export CFLAGS="$RPM_OPT_FLAGS -fpic"
 %endif
 
+# Need to pass these explicitly for clang, else rpmbuilder bails when trying to extract debug info from
+# the libraries.  Guessing GCC does this by default.  Why use clang over gcc? The version of clang
+# which ships with RHEL 6 has basic C11 support, gcc doesn't.
+export LDFLAGS="-Wl,--build-id"
+
 %configure \
         --libdir=%{_libdir}/freeradius \
         --with-system-libtool \
