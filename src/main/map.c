@@ -700,6 +700,7 @@ static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, v
 		vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!vp) return -1;
 		vp->op = map->op;
+		vp->tag = map->lhs->tmpl_tag
 		if (fr_pair_value_from_str(vp, answer, -1) < 0) {
 			fr_pair_list_free(&vp);
 			return -2;
