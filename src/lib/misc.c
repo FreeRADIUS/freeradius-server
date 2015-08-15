@@ -1909,6 +1909,31 @@ void fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct 
 	}
 }
 
+#define NSEC 1000000000
+/** Subtract one timespec from another
+ *
+ * @param[out] out Where to write difference.
+ * @param[in] end Time closest to the present.
+ * @param[in] start Time furthest in the past.
+ */
+void fr_timespec_subtract(struct timespec *out, struct timespec const *end, struct timespec const *start)
+{
+	out->tv_sec = end->tv_sec - start->tv_sec;
+	if (out->tv_sec > 0) {
+		out->tv_sec--;
+		out->tv_nsec = NSEC;
+	} else {
+		out->tv_nsec = 0;
+	}
+	out->tv_nsec += end->tv_nsec;
+	out->tv_nsec -= start->tv_nsec;
+
+	if (out->tv_nsec >= NSEC) {
+		out->tv_nsec -= NSEC;
+		out->tv_sec++;
+	}
+}
+
 /** Create timeval from a string
  *
  * @param[out] out Where to write timeval.
