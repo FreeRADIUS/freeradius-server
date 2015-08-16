@@ -284,19 +284,24 @@ ldap {
 	#
 	#  User profiles. RADIUS profile objects contain sets of attributes
 	#  to insert into the request. These attributes are mapped using
-	#  the same mapping scheme applied to user objects.
+	#  the same mapping scheme applied to user objects (the update section above).
 	#
 	profile {
 		#  Filter for RADIUS profile objects
 #		filter = '(objectclass=radiusprofile)'
 
-		#  The default profile applied to all users.
+		#  The default profile.  This may be a DN or an attribute
+		#  reference.
+		#  To get old v2.2.x style behaviour, or to use the
+		#  &User-Profile attribute to specify the default profile,
+		#  set this to &control:User-Profile.
 #		default = 'cn=radprofile,dc=example,dc=org'
 
-		#  The list of profiles which are applied (after the default)
-		#  to all users.
-		#  The 'User-Profile' attribute in the control list
-		#  will override this setting at run-time.
+		#  The LDAP attribute containing profiles DNs to apply
+		#  in addition to the default profile above.  These are
+		#  retrieved from the user object, at the same time as the
+		#  attributes from the update section, are are applied
+		#  if authorization is successful.
 #		attribute = 'radiusProfileDn'
 	}
 
@@ -516,7 +521,6 @@ ldap {
 		#  on the contents of ldap.conf.
 #		require_cert	= 'demand'
 	}
-
 
 	#  As of version 3.0, the 'pool' section has replaced the
 	#  following configuration items:
