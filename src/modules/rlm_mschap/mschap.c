@@ -73,7 +73,7 @@ void mschap_challenge_hash(uint8_t const *peer_challenge,
 			    uint8_t const *auth_challenge,
 			    char const *user_name, uint8_t *challenge )
 {
-	fr_SHA1_CTX Context;
+	fr_sha1_ctx Context;
 	uint8_t hash[20];
 
 	fr_sha1_init(&Context);
@@ -96,7 +96,7 @@ void mschap_auth_response(char const *username,
 			  uint8_t const *peer_challenge, uint8_t const *auth_challenge,
 			  char *response)
 {
-	fr_SHA1_CTX Context;
+	fr_sha1_ctx Context;
 	static const uint8_t magic1[39] =
 	{0x4D, 0x61, 0x67, 0x69, 0x63, 0x20, 0x73, 0x65, 0x72, 0x76,
 	 0x65, 0x72, 0x20, 0x74, 0x6F, 0x20, 0x63, 0x6C, 0x69, 0x65,

@@ -1267,7 +1267,7 @@ static void mppe_GetMasterKey(uint8_t const *nt_hashhash,uint8_t const *nt_respo
 			      uint8_t *masterkey)
 {
        uint8_t digest[20];
-       fr_SHA1_CTX Context;
+       fr_sha1_ctx Context;
 
        fr_sha1_init(&Context);
        fr_sha1_update(&Context,nt_hashhash,NT_DIGEST_LENGTH);
@@ -1284,7 +1284,7 @@ static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
 {
        uint8_t digest[20];
        const uint8_t *s;
-       fr_SHA1_CTX Context;
+       fr_sha1_ctx Context;
 
        memset(digest,0,20);
 

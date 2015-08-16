@@ -104,7 +104,7 @@ static void calc_sha1_digest(uint8_t *buffer, uint8_t const *challenge,
 {
 	uint8_t buf[1024];
 	int i;
-	fr_SHA1_CTX context;
+	fr_sha1_ctx context;
 
 	memset(buf, 0, 1024);
 	memset(buf, 0x36, 64);

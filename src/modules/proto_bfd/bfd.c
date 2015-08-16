@@ -693,7 +693,7 @@ static int bfd_verify_md5(bfd_state_t *session, bfd_packet_t *bfd)
 
 static void bfd_calc_sha1(bfd_state_t *session, bfd_packet_t *bfd)
 {
-	fr_SHA1_CTX ctx;
+	fr_sha1_ctx ctx;
 	bfd_auth_sha1_t *sha1 = &bfd->auth.sha1;
 
 	rad_assert(session->secret_len <= sizeof(sha1->digest));

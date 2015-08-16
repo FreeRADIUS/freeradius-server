@@ -625,7 +625,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_smd5(rlm_pap_t *inst, REQUEST *requ
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	fr_SHA1_CTX sha1_context;
+	fr_sha1_ctx sha1_context;
 	uint8_t digest[128];
 
 	RDEBUG("Comparing with \"known-good\" SHA-Password");
@@ -653,7 +653,7 @@ static rlm_rcode_t CC_HINT(nonnull) pap_auth_sha(rlm_pap_t *inst, REQUEST *reque
 
 static rlm_rcode_t CC_HINT(nonnull) pap_auth_ssha(rlm_pap_t *inst, REQUEST *request, VALUE_PAIR *vp)
 {
-	fr_SHA1_CTX sha1_context;
+	fr_sha1_ctx sha1_context;
 	uint8_t digest[128];
 
 	RDEBUG("Comparing with \"known-good\" SSHA-Password");

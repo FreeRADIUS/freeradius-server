@@ -958,7 +958,7 @@ static ssize_t sha1_xlat(UNUSED void *instance, REQUEST *request,
 	uint8_t digest[20];
 	ssize_t i, len, inlen;
 	uint8_t const *p;
-	fr_SHA1_CTX ctx;
+	fr_sha1_ctx ctx;
 
 	inlen = xlat_fmt_to_ref(&p, request, fmt);
 	if (inlen < 0) return -1;
