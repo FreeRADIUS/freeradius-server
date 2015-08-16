@@ -577,7 +577,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 		      this->number);
 	do_delete:
 		if (pool->num <= pool->min) {
-			RATE_LIMIT(WARN("%s: You probably need to lower \"min\"", pool->log_prefix));
+			DEBUG("%s: You probably need to lower \"min\"", pool->log_prefix);
 		}
 		fr_connection_close_internal(pool, this);
 		return 0;
