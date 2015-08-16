@@ -1495,14 +1495,15 @@ finish:
 
 /** Search for and apply an LDAP profile
  *
- * LDAP profiles are mapped using the same attribute map as user objects, they're used to add common sets of attributes
- * to the request.
+ * LDAP profiles are mapped using the same attribute map as user objects, they're used to add common
+ * sets of attributes to the request.
  *
  * @param[in] inst rlm_ldap configuration.
  * @param[in] request Current request.
  * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
  * @param[in] dn of profile object to apply.
- * @param[in] expanded Structure containing a list of xlat expanded attribute names and mapping information.
+ * @param[in] expanded Structure containing a list of xlat expanded attribute names and mapping
+information.
  * @return One of the RLM_MODULE_* values.
  */
 static rlm_rcode_t rlm_ldap_map_profile(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
