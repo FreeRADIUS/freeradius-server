@@ -28,7 +28,7 @@ unsigned int sha1_data_problems = 0;
 void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_t text_len,
 		  uint8_t const *key, size_t key_len)
 {
-	fr_SHA1_CTX context;
+	fr_sha1_ctx context;
 	uint8_t k_ipad[65];    /* inner padding - key XORd with ipad */
 	uint8_t k_opad[65];    /* outer padding - key XORd with opad */
 	uint8_t tk[20];
@@ -36,7 +36,7 @@ void fr_hmac_sha1(uint8_t digest[SHA1_DIGEST_LENGTH], uint8_t const *text, size_
 	/* if key is longer than 64 bytes reset it to key=SHA1(key) */
 	if (key_len > 64) {
 
-		fr_SHA1_CTX      tctx;
+		fr_sha1_ctx      tctx;
 
 		fr_sha1_init(&tctx);
 		fr_sha1_update(&tctx, key, key_len);
