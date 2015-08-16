@@ -293,7 +293,7 @@ ldap {
 		#  set this to &control:User-Profile.
 #		default = 'cn=radprofile,dc=example,dc=org'
 
-		#  The LDAP attribute containing profiles DNs to apply
+		#  The LDAP attribute containing profile DNs to apply
 		#  in addition to the default profile above.  These are
 		#  retrieved from the user object, at the same time as the
 		#  attributes from the update section, are are applied
