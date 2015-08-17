@@ -211,7 +211,11 @@ void rad_print_hex(RADIUS_PACKET *packet)
 		fprintf(fr_log_fp, "    port:\t%u\n", packet->dst_port);
 	}
 
-	fprintf(fr_log_fp, "  Code:\t\t%u\n", packet->data[0]);
+	if (packet->data[0] < FR_MAX_PACKET_CODE) {
+		fprintf(fr_log_fp, "  Code:\t\t%s\n", fr_packet_codes[packet->data[0]]);
+	} else {
+		fprintf(fr_log_fp, "  Code:\t\t%u\n", packet->data[0]);
+	}
 	fprintf(fr_log_fp, "  Id:\t\t%u\n", packet->data[1]);
 	fprintf(fr_log_fp, "  Length:\t%u\n", ((packet->data[2] << 8) |
 				   (packet->data[3])));
