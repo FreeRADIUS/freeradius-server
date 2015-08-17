@@ -251,6 +251,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	size_t			*argv_len_p;
 
 	int			pipelined = 0;	/* How many commands pending in the pipeline */
+	redisReply		*replies[5];	/* Should have the same number of elements as pipelined commands */
 
 	char			*p;
 	int			cnt, i;
@@ -386,47 +387,24 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		}
 		REXDENT();
 
-		/*
-		 *	Looks like hiredis may leak memory if we pass in a NULL reply argument
-		 *	so we always get the reply, and free it if it wasn't needed.
-		 */
-		RDEBUG3("Command results");
-		RINDENT();
-		for (i = 0; i < pipelined; i++) {
-			bool maybe_more = false;
-
-			/*
-			 *	we don't need to check the return code here,
-			 *	as it's also stored in the conn->handle.
-			 */
-			reply = NULL;
-			if (redisGetReply(conn->handle, (void **)&reply) == REDIS_OK) maybe_more = true;
-			status = fr_redis_command_status(conn, reply);
-			/*
-			 *	Bail out of processing responses,
-			 *	free the remaining ones (leaving this one intact)
-			 *	pass control back to the cluster code.
-			 */
-			if (maybe_more && (status != REDIS_RCODE_SUCCESS)) {
-				while (++i < pipelined) {
-					redisReply *to_clear;
-
-					if (redisGetReply(conn->handle, (void **)&to_clear) != REDIS_OK) break;
-					fr_redis_reply_free(to_clear);
-				}
-				break;
-			}
-
-			fr_redis_reply_print(L_DBG_LVL_3, reply, request, i);
-		}
-		REXDENT();
+		status = fr_redis_cluster_pipeline_clear(replies, sizeof(replies) / sizeof(*replies), conn, pipelined);
+		reply = replies[0];
 	}
-	fr_redis_reply_free(reply);
 	talloc_free(pool);
+
 	if (s_ret != REDIS_RCODE_SUCCESS) {
 		RERROR("Failed inserting entry");
 		return CACHE_ERROR;
 	}
+
+	RDEBUG3("Command results");
+	RINDENT();
+	for (i = 0; i < pipelined; i++) {
+		fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);
+		fr_redis_reply_free(replies[i]);
+	}
+	REXDENT();
+
 	return CACHE_OK;
 }
 
