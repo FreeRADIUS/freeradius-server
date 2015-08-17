@@ -212,7 +212,7 @@ void rad_print_hex(RADIUS_PACKET *packet)
 	}
 
 	if (packet->data[0] < FR_MAX_PACKET_CODE) {
-		fprintf(fr_log_fp, "  Code:\t\t%s\n", fr_packet_codes[packet->data[0]]);
+		fprintf(fr_log_fp, "  Code:\t\t(%d) %s\n", packet->data[0], fr_packet_codes[packet->data[0]]);
 	} else {
 		fprintf(fr_log_fp, "  Code:\t\t%u\n", packet->data[0]);
 	}
