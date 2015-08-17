@@ -588,8 +588,17 @@ VALUE	TLS-Session-Cache-Action	Delete			3
 
 ATTRIBUTE	TLS-Session-Data			1942	octets	internal
 
+# Set and retrieved by EAP-TLS code
+ATTRIBUTE	TLS-OCSP-Cert-Valid			1943    integer internal
+VALUE	TLS-OCSP-Cert-Valid		skipped			2
+VALUE	TLS-OCSP-Cert-Valid		yes			1
+VALUE	TLS-OCSP-Cert-Valid		no			0
+
+# Number of seconds before new OCSP status information will be available
+ATTRIBUTE	TLS-OCSP-Next-Update			1944	integer internal
+
 #
-#	Range:	1950-2099
+#	Range:	1951-2099
 #		Free
 #
 #	Range:	2100-2199

@@ -1665,6 +1665,45 @@ error:
 }
 
 #ifdef HAVE_OPENSSL_OCSP_H
+/** Convert OpenSSL's ASN1_TIME to an epoch time
+ *
+ * @param asn1 The ASN1_TIME to convert.
+ * @return The ASN1_TIME converted to epoch time.
+ */
+static time_t ocsp_asn1time_to_epoch(ASN1_TIME const *asn1){
+	struct tm t;
+	const char *str = (const char *)asn1->data;
+	size_t i = 0;
+
+	memset(&t, 0, sizeof(t));
+
+	if (asn1->type == V_ASN1_UTCTIME) {/* two digit year */
+		t.tm_year = (str[i++] - '0') * 10;
+		t.tm_year += (str[i++] - '0');
+		if (t.tm_year < 70) t.tm_year += 100;
+	} else if (asn1->type == V_ASN1_GENERALIZEDTIME) {/* four digit year */
+		t.tm_year = (str[i++] - '0') * 1000;
+		t.tm_year += (str[i++] - '0') * 100;
+		t.tm_year += (str[i++] - '0') * 10;
+		t.tm_year += (str[i++] - '0');
+		t.tm_year -= 1900;
+	}
+
+	t.tm_mon = (str[i++] - '0') * 10;
+	t.tm_mon += (str[i++] - '0') - 1; // -1 since January is 0 not 1.
+	t.tm_mday = (str[i++] - '0') * 10;
+	t.tm_mday += (str[i++] - '0');
+	t.tm_hour = (str[i++] - '0') * 10;
+	t.tm_hour += (str[i++] - '0');
+	t.tm_min = (str[i++] - '0') * 10;
+	t.tm_min += (str[i++] - '0');
+	t.tm_sec = (str[i++] - '0') * 10;
+	t.tm_sec += (str[i++] - '0');
+
+	/* Apparently OpenSSL converts all timestamps to UTC? Maybe? */
+	return mktime(&t);
+}
+
 /** Extract components of OCSP responser URL from a certificate
  *
  * @param[in] cert to extract URL from.
@@ -1748,9 +1787,32 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 #if OPENSSL_VERSION_NUMBER >= 0x1000003f
 	OCSP_REQ_CTX	*ctx;
 	int		rc;
-	struct timeval	now;
 	struct timeval	when;
 #endif
+	struct timeval	now = { 0, 0 };
+	time_t		next;
+	VALUE_PAIR	*vp;
+
+	/*
+	 *	Allow us to cache the OCSP verified state externally
+	 */
+	vp = fr_pair_find_by_num(request->config, PW_TLS_OCSP_CERT_VALID, 0, TAG_ANY);
+	if (vp) switch (vp->vp_integer) {
+	case 0:	/* no */
+		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
+		return OCSP_STATUS_FAILED;
+
+	case 1: /* yes */
+		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = yes, forcing OCSP success");
+		return OCSP_STATUS_OK;
+
+	case 2: /* skipped */
+		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = skipped, skipping OCSP check");
+		return conf->ocsp_softfail ? OCSP_STATUS_OK : OCSP_STATUS_FAILED;
+
+	default:
+		break;
+	}
 
 	/*
 	 *	Setup logging for this OCSP operation
@@ -1926,6 +1988,20 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 		REXDENT();
 	}
 
+	/*
+	 *	Sometimes we already know what 'now' is depending
+	 *	on the code path, other times we don't.
+	 */
+	if (now.tv_sec == 0) gettimeofday(&now, NULL);
+	next = ocsp_asn1time_to_epoch(next_update);
+	if (now.tv_sec < next){
+		vp = pair_make_reply("TLS-OCSP-Next-Update", NULL, T_OP_SET);
+		vp->vp_integer = next - now.tv_sec;
+		rdebug_pair(L_DBG_LVL_2, request, vp, "ocsp");
+	} else {
+		RDEBUG2("ocsp: Update time is in the past.  Not adding &reply:TLS-OCSP-Next-Update");
+	}
+
 	switch (status) {
 	case V_OCSP_CERTSTATUS_GOOD:
 		RDEBUG2("ocsp: Cert status: good");
@@ -1965,10 +2041,14 @@ finish:
 	switch (ocsp_status) {
 	case OCSP_STATUS_OK:
 		RDEBUG2("ocsp: Certificate is valid");
+		vp = pair_make_reply("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
+		vp->vp_integer = 1;	/* yes */
 		return OCSP_STATUS_OK;
 
 	case OCSP_STATUS_SKIPPED:
 	skipped:
+		vp = pair_make_reply("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
+		vp->vp_integer = 2;	/* skipped */
 		if (conf->ocsp_softfail) {
 			RWDEBUG("ocsp: Unable to check certificate, assuming it's valid");
 			RWDEBUG("ocsp: This may be insecure");
@@ -1978,6 +2058,8 @@ finish:
 		return OCSP_STATUS_FAILED;
 
 	default:
+		vp = pair_make_reply("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
+		vp->vp_integer = 0;	/* no */
 		REDEBUG("ocsp: Failed to validate certificate");
 		return ocsp_status;
 	}

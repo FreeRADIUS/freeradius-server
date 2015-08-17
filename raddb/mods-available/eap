@@ -459,10 +459,36 @@ eap {
 
 		#
 		#  OCSP Configuration
-		#  Certificates can be verified against an OCSP
-		#  Responder. This makes it possible to immediately
-		#  revoke certificates without the distribution of
-		#  new Certificate Revocation Lists (CRLs).
+		#
+		#  Certificates can be verified against an OCSP Responder.
+		#  This makes it possible to immediately revoke certificates without
+		#  the distribution of new Certificate Revocation Lists (CRLs).
+		#
+		#  In addition to the configuration items below, the behaviour of
+		#  OCSP can be altered by runtime attributes.
+		#
+		#  If OCSP is enabled, the &reply:TLS-OCSP-Cert-Valid attribute will
+		#  be added after OCSP completes.  One of the following values will
+		#  be set:
+		#
+		#    - no      OCSP responder indicated the certificate is not valid.
+		#    - yes     OCSP responder indicated the certificate is valid.
+		#    - skipped OCSP checks were skipped.
+		#
+		#  If an OCSP check is performed, the &reply:TLS-OCSP-Next-Update
+		#  attribute will also be added.  The value of this will attribute
+		#  be the number of seconds until the certificate state need be refreshed.
+		#  This can be used as a Cache-TTL value if you wish to use the cache
+		#  module to store OCSP certificate validation status.
+		#
+		#  If when the OCSP check is performed, a &control:TLS-OCSP-Cert-Valid
+		#  attribute is present, its value will force the outcome of the OCSP
+		#  check, and the OCSP responder will not be contacted.
+		#  Values map to the following OCSP responses:
+		#
+		#    - no      Invalid.
+		#    - yes     Valid.
+		#    - skipped If softfail = yes value else invalid.
 		#
 		ocsp {
 			#
