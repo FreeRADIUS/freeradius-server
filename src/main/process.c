@@ -1558,6 +1558,10 @@ int request_receive(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PACKET *pack
 	{
 		sock = listener->data;
 		sock->last_packet = now.tv_sec;
+
+#ifdef WITH_TCP
+		packet->proto = sock->proto;
+#endif
 	}
 
 	/*
@@ -2114,7 +2118,6 @@ static void remove_from_proxy_hash_nl(REQUEST *request, bool yank)
 	 *	the mutex.  This guarantees that when another thread
 	 *	grabs the mutex, the "not in hash" flag is correct.
 	 */
-	RDEBUG3("proxy: request is no longer in proxy hash");
 }
 
 static void remove_from_proxy_hash(REQUEST *request)
@@ -3473,6 +3476,9 @@ static void ping_home_server(void *ctx)
 			    home->num_sent_pings);
 	}
 
+#ifdef WITH_TCP
+	request->proxy->proto = home->proto;
+#endif
 	request->proxy->src_ipaddr = home->src_ipaddr;
 	request->proxy->dst_ipaddr = home->ipaddr;
 	request->proxy->dst_port = home->port;
