@@ -70,7 +70,8 @@ void fr_redis_version_print(void)
  *	- REDIS_RCODE_ASK	- If the key has been temporarily moved.
  *	- REDIS_RCODE_SUCCESS   - if no errors.
  *	- REDIS_RCODE_ERROR     - on command/server error.
- *	- REDIS_RCODE_RECONNECT - on connection error (probably needs reconnecting)
+ *	- REDIS_RCODE_NO_SCRIPT - script specified by evalsha doesn't exist.
+ *	- REDIS_RCODE_RECONNECT - on connection error (probably needs reconnecting).
  */
 fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *reply)
 {
@@ -106,6 +107,9 @@ fr_redis_rcode_t fr_redis_command_status(fr_redis_conn_t *conn, redisReply *repl
 		}
 		if (strncmp(REDIS_ERROR_TRY_AGAIN_STR, reply->str, sizeof(REDIS_ERROR_TRY_AGAIN_STR) - 1) == 0) {
 			return REDIS_RCODE_TRY_AGAIN;
+		}
+		if (strncmp(REDIS_ERROR_NO_SCRIPT_STR, reply->str, sizeof(REDIS_ERROR_NO_SCRIPT_STR) - 1) == 0) {
+			return REDIS_RCODE_NO_SCRIPT;
 		}
 		return REDIS_RCODE_ERROR;
 

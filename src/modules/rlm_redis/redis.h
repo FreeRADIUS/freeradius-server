@@ -40,6 +40,7 @@ RCSIDH(redis_h, "$Id$")
 #define REDIS_ERROR_MOVED_STR		"MOVED"
 #define REDIS_ERROR_ASK_STR		"ASK"
 #define REDIS_ERROR_TRY_AGAIN_STR	"TRYAGAIN"
+#define REDIS_ERROR_NO_SCRIPT_STR	"NOSCRIPT"
 #define REDIS_DEFAULT_PORT		6379
 
 /** Wrap freeReplyObject so we consistently check for NULL pointers
@@ -71,6 +72,7 @@ typedef enum {
 						//!< with a new connection.
 	REDIS_RCODE_ASK = -4,			//!< Attempt operation on an alternative node.
 	REDIS_RCODE_MOVE = -5,			//!< Attempt operation on an alternative node with remap.
+	REDIS_RCODE_NO_SCRIPT = -6,		//!< Script doesn't exist.
 } fr_redis_rcode_t;
 
 /** Connection handle, holding a redis context
