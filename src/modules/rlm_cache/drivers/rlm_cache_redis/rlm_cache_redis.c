@@ -329,8 +329,6 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	for (s_ret = fr_redis_cluster_state_init(&state, &conn, driver->cluster, request, c->key, c->key_len, false);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
 	     s_ret = fr_redis_cluster_state_next(&state, &conn, driver->cluster, request, status, &reply)) {
-	     	status = REDIS_RCODE_SUCCESS;
-
 		/*
 		 *	Start the transaction, as we need to set an expiry time too.
 		 */
