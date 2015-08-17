@@ -30,23 +30,23 @@ RCSID("$Id$")
 #include <freeradius-devel/pcap.h>
 
 #ifndef __MINGW32__
-#include <sys/ioctl.h>
+#  include <sys/ioctl.h>
 #endif
 
 #ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
+#  include <sys/socket.h>
 #endif
 #ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
+#  include <sys/types.h>
 #endif
 
 #ifdef HAVE_LINUX_IF_PACKET_H
-#include <linux/if_packet.h>
-#include <linux/if_ether.h>
+#  include <linux/if_packet.h>
+#  include <linux/if_ether.h>
 #endif
 
 #ifndef __MINGW32__
-#include <net/if_arp.h>
+#  include <net/if_arp.h>
 #endif
 
 #define DHCP_CHADDR_LEN	(16)
@@ -56,7 +56,7 @@ RCSID("$Id$")
 #define DHCP_OPTION_MAGIC_NUMBER (0x63825363)
 
 #ifndef INADDR_BROADCAST
-#define INADDR_BROADCAST INADDR_NONE
+#  define INADDR_BROADCAST INADDR_NONE
 #endif
 
 /* @todo: this is a hack */
@@ -78,7 +78,7 @@ RCSID("$Id$")
 static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 /* Discard raw packets which we are not interested in. Allow to trace why we discard. */
-#define DISCARD_RP(...) { \
+#  define DISCARD_RP(...) { \
 	if (fr_debug_lvl > 2) { \
 		fprintf(stdout, "dhcpclient: discarding received packet: "); \
 		fprintf(stdout, ## __VA_ARGS__); \
