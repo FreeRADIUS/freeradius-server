@@ -853,7 +853,7 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 	VALUE_PAIR *vp;
 	va_list aq;
 
-	if (!fmt || !request->packet) {
+	if (!fmt || !request || !request->packet) {
 		return;
 	}
 
