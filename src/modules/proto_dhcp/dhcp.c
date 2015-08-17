@@ -66,15 +66,15 @@ RCSID("$Id$")
 				     } \
 				} while(0)
 
-#ifdef HAVE_PCAP_H
-#define ETH_TYPE_IP    0x0800
-#define IP_HDR_SIZE    20
-#define UDP_HDR_SIZE   8
-#define ETH_ADDR_LEN   6
+#if defined(HAVE_PCAP_H) || defined(HAVE_LINUX_IF_PACKET_H)
+#  define ETH_TYPE_IP    0x0800
+#  define IP_HDR_SIZE    20
+#  define UDP_HDR_SIZE   8
+#  define ETH_ADDR_LEN   6
 #endif
 
 #ifdef HAVE_LINUX_IF_PACKET_H
-#define ETH_HDR_SIZE   14
+#  define ETH_HDR_SIZE   14
 static uint8_t eth_bcast[ETH_ADDR_LEN] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 
 /* Discard raw packets which we are not interested in. Allow to trace why we discard. */
