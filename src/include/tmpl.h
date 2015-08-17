@@ -312,16 +312,16 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
  * Example:
  @code{.c}
    TALLOC_CTX *ctx;
-   VALUE_PAIR **list;
+   VALUE_PAIR **head;
    value_data_t value;
 
-   radius_list_and_ctx(ctx, list, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
+   RADIUS_LIST_AND_CTX(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
    if (!list) return -1; // error
 
    value.strvalue = talloc_strdup(NULL, "my new username");
    value.length = talloc_array_length(value.strvalue) - 1;
 
-   if (fr_pair_update_by_num(ctx, list, PW_USERNAME, 0, TAG_ANY, PW_TYPE_STRING, &value) < 0) return -1; // error
+   if (fr_pair_update_by_num(ctx, head, PW_USERNAME, 0, TAG_ANY, PW_TYPE_STRING, &value) < 0) return -1; // error
  @endcode
  *
  * @param _ctx new #VALUE_PAIR s should be allocated in for the specified list.
