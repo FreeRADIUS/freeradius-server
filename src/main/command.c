@@ -2050,7 +2050,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	 */
 	cf_pair_replace(mi->cs, cp, argv[2]);
 
-	rcode = cf_item_parse(mi->cs, argv[1], variables[i].type, data, argv[2]);
+	rcode = cf_item_parse(mi->cs, argv[1], variables[i].type, data, argv[2], T_DOUBLE_QUOTED_STRING);
 	if (rcode < 0) {
 		cprintf_error(listener, "Failed to parse value\n");
 		return 0;

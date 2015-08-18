@@ -226,9 +226,11 @@ typedef struct CONF_PARSER {
 						//!< When #type is set to #PW_TYPE_SUBSECTION, should be a pointer
 						//!< to the start of another array of #CONF_PARSER structs, forming
 						//!< the subsection.
+
+	FR_TOKEN	quote;			//!< Quoting around the default value.  Only used for templates.
 } CONF_PARSER;
 
-#define CONF_PARSER_TERMINATOR	{ NULL, -1, 0, NULL, NULL }
+#define CONF_PARSER_TERMINATOR	{ NULL, -1, 0, NULL, NULL, T_INVALID }
 
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
 			       FR_TOKEN op, FR_TOKEN lhs_type, FR_TOKEN rhs_type);
@@ -240,7 +242,8 @@ CONF_SECTION	*cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
-int		cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt);
+int		cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
+			      char const *dflt, FR_TOKEN dflt_quote);
 int		cf_section_parse(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 int		cf_section_parse_pass2(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);

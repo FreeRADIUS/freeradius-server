@@ -427,7 +427,7 @@ static ssize_t bfd_parse_secret(CONF_SECTION *cs, uint8_t secret[BFD_MAX_SECRET_
 	size_t len;
 	char const *value = NULL;
 
-	rcode = cf_item_parse(cs, "secret", FR_ITEM_POINTER(PW_TYPE_STRING, &value), NULL);
+	rcode = cf_item_parse(cs, "secret", FR_ITEM_POINTER(PW_TYPE_STRING, &value), NULL, T_INVALID);
 	if (rcode != 0) return 0;
 
 	len = strlen(value);
@@ -496,26 +496,26 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	/*
 	 *	Allow over-riding of variables per session.
 	 */
-	rcode = cf_item_parse(cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &flag), NULL);
+	rcode = cf_item_parse(cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &flag), NULL, T_INVALID);
 	if (rcode == 0) {
 		session->demand_mode = flag;
 	}
 
-	rcode = cf_item_parse(cs, "min_transmit_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL);
+	rcode = cf_item_parse(cs, "min_transmit_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL, T_INVALID);
 	if (rcode == 0) {
 		if (number < 100) number = 100;
 		if (number > 10000) number = 10000;
 
 		session->desired_min_tx_interval = number * 1000;
 	}
-	rcode = cf_item_parse(cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL);
+	rcode = cf_item_parse(cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL, T_INVALID);
 	if (rcode == 0) {
 		if (number < 100) number = 100;
 		if (number > 10000) number = 10000;
 
 		session->required_min_rx_interval = number * 1000;
 	}
-	rcode = cf_item_parse(cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL);
+	rcode = cf_item_parse(cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &number), NULL, T_INVALID);
 	if (rcode == 0) {
 		if (number == 0) number = 1;
 		if (number > 10) number = 10;
@@ -1549,14 +1549,14 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, uint16_t *po
 	 */
 	memset(ipaddr, 0, sizeof(*ipaddr));
 	ipaddr->ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, ipaddr), NULL);
+	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
 
 	if (rcode == 0) { /* successfully parsed IPv4 */
 		ipaddr->af = AF_INET;
 
 	} else {	/* maybe IPv6? */
-		rcode = cf_item_parse(cs, "ipv6addr", FR_ITEM_POINTER(PW_TYPE_IPV6_ADDR, ipaddr), NULL);
+		rcode = cf_item_parse(cs, "ipv6addr", FR_ITEM_POINTER(PW_TYPE_IPV6_ADDR, ipaddr), NULL, T_INVALID);
 		if (rcode < 0) return -1;
 
 		if (rcode == 1) {
@@ -1567,7 +1567,7 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, uint16_t *po
 		ipaddr->af = AF_INET6;
 	}
 
-	rcode = cf_item_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, port), "0");
+	rcode = cf_item_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, port), "0", T_INVALID);
 	if (rcode < 0) return -1;
 	return 0;
 }
@@ -1810,14 +1810,14 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	/* end of code copied from listen_init() */
 
-	cf_item_parse(cs, "min_transmit_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_tx_interval), "1000");
-	cf_item_parse(cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_rx_interval), "1000");
-	cf_item_parse(cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->max_timeouts), "3");
-	cf_item_parse(cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &sock->demand), "no");
-	cf_item_parse(cs, "auth_type", FR_ITEM_POINTER(PW_TYPE_STRING, &auth_type_str), NULL);
+	cf_item_parse(cs, "min_transmit_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_tx_interval), "1000", T_BARE_WORD);
+	cf_item_parse(cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_rx_interval), "1000", T_BARE_WORD);
+	cf_item_parse(cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->max_timeouts), "3", T_BARE_WORD);
+	cf_item_parse(cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &sock->demand), "no", T_DOUBLE_QUOTED_STRING);
+	cf_item_parse(cs, "auth_type", FR_ITEM_POINTER(PW_TYPE_STRING, &auth_type_str), NULL, T_INVALID);
 
 	if (!this->server) {
-		cf_item_parse(cs, "server", FR_ITEM_POINTER(PW_TYPE_STRING, &sock->server), NULL);
+		cf_item_parse(cs, "server", FR_ITEM_POINTER(PW_TYPE_STRING, &sock->server), NULL, T_INVALID);
 	} else {
 		sock->server = this->server;
 	}

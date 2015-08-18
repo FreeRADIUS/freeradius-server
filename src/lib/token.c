@@ -53,6 +53,43 @@ const FR_NAME_NUMBER fr_tokens[] = {
 	{ NULL, 0,		},
 };
 
+/** Convert tokens back to a quoting character
+ *
+ * None string types convert to '?' to screw ups can be identified easily
+ */
+const char fr_token_quote[] = {
+	'?',		/* invalid token */
+	'?',		/* end of line */
+	'?',		/* { */
+	'?',		/* } */
+	'?',		/* ( */
+	'?',		/* ) 		 5 */
+	'?',		/* , */
+	'?',		/* ; */
+
+	'?',		/* ++ */
+	'?',		/* += */
+	'?',		/* -=  		10 */
+	'?',		/* := */
+	'?',		/* = */
+	'?',		/* != */
+	'?',		/* >= */
+	'?',		/* > 		15 */
+	'?',		/* <= */
+	'?',		/* < */
+	'?',		/* =~ */
+	'?',		/* !~ */
+	'?',		/* =* 		20 */
+	'?',		/* !* */
+	'?',		/* == */
+	'?',				/* # */
+	'\0',		/* bare word */
+	'"',		/* "foo" 	25 */
+	'\'',		/* 'foo' */
+	'`',		/* `foo` */
+	'?'
+};
+
 const bool fr_assignment_op[] = {
 	false,		/* invalid token */
 	false,		/* end of line */

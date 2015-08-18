@@ -376,7 +376,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 				c_map->lhs = map->lhs;	/* lhs shouldn't be touched, so this is ok */
 			do_rhs:
 				MEM(c_map->rhs = tmpl_init(talloc(c_map, vp_tmpl_t),
-							   TMPL_TYPE_DATA, map->rhs->name, map->rhs->len));
+							   TMPL_TYPE_DATA, map->rhs->name, map->rhs->len, T_BARE_WORD));
 				if (value_data_copy(c_map->rhs, &c_map->rhs->tmpl_data_value,
 						    vp->da->type, &vp->data) < 0) {
 					REDEBUG("Failed copying attribute value");
@@ -387,7 +387,8 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 				}
 				c_map->rhs->tmpl_data_type = vp->da->type;
 				if (vp->da->type == PW_TYPE_STRING) {
-					c_map->rhs->quote = is_printable(vp->vp_strvalue, vp->vp_length) ? '\'' : '"';
+					c_map->rhs->quote = is_printable(vp->vp_strvalue, vp->vp_length) ?
+						T_SINGLE_QUOTED_STRING : T_DOUBLE_QUOTED_STRING;
 				}
 				break;
 
@@ -400,7 +401,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 				char attr[256];
 
 				MEM(c_map->lhs = tmpl_init(talloc(c_map, vp_tmpl_t),
-							   TMPL_TYPE_ATTR, map->lhs->name, map->lhs->len));
+							   TMPL_TYPE_ATTR, map->lhs->name, map->lhs->len, T_BARE_WORD));
 				c_map->lhs->tmpl_da = vp->da;
 				c_map->lhs->tmpl_tag = vp->tag;
 				c_map->lhs->tmpl_list = map->lhs->tmpl_list;

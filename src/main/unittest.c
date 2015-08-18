@@ -512,7 +512,8 @@ static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		ret = cf_item_parse(mi->cs, variables[i].name, variables[i].type, data, variables[i].dflt);
+		ret = cf_item_parse(mi->cs, variables[i].name, variables[i].type,
+				    data, variables[i].dflt, variables[i].quote);
 		if (ret < 0) {
 			DEBUG2("Failed inserting new value into module instance data");
 			goto fail;

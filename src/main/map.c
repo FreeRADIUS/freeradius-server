@@ -121,7 +121,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	 *	Set the RHS to the PARSED name, not the crap octet
 	 *	string which was input.
 	 */
-	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, NULL, 0);
+	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, NULL, 0, T_INVALID);
 	if (!map->rhs) goto free_vp;
 
 	map->rhs->tmpl_data_type = da->type;
@@ -129,19 +129,22 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	if (vp->da->flags.is_pointer) {
 		if (vp->da->type == PW_TYPE_STRING) {
 			map->rhs->tmpl_data_value.ptr = talloc_bstrndup(map->rhs, vp->data.ptr, vp->vp_length);
+			map->rhs->quote = T_SINGLE_QUOTED_STRING;
 		} else {
 			map->rhs->tmpl_data_value.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->vp_length);
+			map->rhs->quote = T_BARE_WORD;
 		}
 	} else {
 		memcpy(&map->rhs->tmpl_data_value, &vp->data, sizeof(map->rhs->tmpl_data_value));
+		map->rhs->quote = T_BARE_WORD;
 	}
-	map->rhs->name = vp_aprints_value(map->rhs, vp, '"');
+	map->rhs->name = vp_aprints_value(map->rhs, vp, fr_token_quote[map->rhs->quote]);
 	map->rhs->len = talloc_array_length(map->rhs->name) - 1;
 
 	/*
 	 *	Set the LHS to the REAL attribute name.
 	 */
-	vpt = tmpl_alloc(map, TMPL_TYPE_ATTR, map->lhs->tmpl_da->name, -1);
+	vpt = tmpl_alloc(map, TMPL_TYPE_ATTR, map->lhs->tmpl_da->name, -1, T_BARE_WORD);
 	memcpy(&vpt->data.attribute, &map->lhs->data.attribute, sizeof(vpt->data.attribute));
 	vpt->tmpl_da = da;
 
@@ -1542,18 +1545,18 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	 */
 	default:
 	case TMPL_TYPE_UNPARSED:
-		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
+		vp_prints_value(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
-		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
+		vp_prints_value(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
 	case TMPL_TYPE_DATA:
-		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
+		vp_prints_value(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 

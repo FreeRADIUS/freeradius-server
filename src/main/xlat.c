@@ -2547,7 +2547,7 @@ vp_tmpl_t *xlat_to_tmpl_attr(TALLOC_CTX *ctx, xlat_exp_t *node)
 	 */
 	if ((node->attr.tmpl_num == NUM_COUNT) || (node->attr.tmpl_num == NUM_ALL)) return NULL;
 
-	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, node->fmt, -1);
+	vpt = tmpl_alloc(ctx, TMPL_TYPE_ATTR, node->fmt, -1, T_BARE_WORD);
 	if (!vpt) return NULL;
 	memcpy(&vpt->data, &node->attr.data, sizeof(vpt->data));
 
@@ -2573,7 +2573,7 @@ xlat_exp_t *xlat_from_tmpl_attr(TALLOC_CTX *ctx, vp_tmpl_t *vpt)
 	node = talloc_zero(ctx, xlat_exp_t);
 	node->type = XLAT_ATTRIBUTE;
 	node->fmt = talloc_bstrndup(node, vpt->name, vpt->len);
-	tmpl_init(&node->attr, TMPL_TYPE_ATTR, node->fmt, talloc_array_length(node->fmt) - 1);
+	tmpl_init(&node->attr, TMPL_TYPE_ATTR, node->fmt, talloc_array_length(node->fmt) - 1, T_BARE_WORD);
 	memcpy(&node->attr.data, &vpt->data, sizeof(vpt->data));
 
 	return node;

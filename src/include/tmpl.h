@@ -186,12 +186,11 @@ typedef struct {
  */
 typedef struct vp_tmpl_t {
 	tmpl_type_t	type;		//!< What type of value tmpl refers to.
-	char const	*name;		//!< Original attribute ref string, or
-					//!< where this refers to a none FR
-					//!< attribute, just the string id for
-					//!< the attribute.
-	size_t		len;		//!< Name length.
-	char		quote;		//!< Quotation character for "name"
+
+	char const	*name;		//!< Raw string used to create the template.
+	size_t		len;		//!< Length of the raw string used to create the template.
+	FR_TOKEN	quote;		//!< What type of quoting was around the raw string.
+
 	bool		auto_converted; //!< Attr-26.9.1 --> Cisco-AVPair
 
 #ifdef HAVE_REGEX
@@ -296,6 +295,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
 	.name = "static", \
 	.len = sizeof("static"), \
 	.type = TMPL_TYPE_LIST, \
+	.quote = T_SINGLE_QUOTED_STRING, \
 	.data = { \
 		.attribute = { \
 			.request = _request, \
@@ -354,10 +354,10 @@ int			radius_request(REQUEST **request, request_refs_t name);
 size_t			radius_request_name(request_refs_t *out, char const *name, request_refs_t unknown);
 
 vp_tmpl_t		*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
-				   char const *name, ssize_t len);
+				   char const *name, ssize_t len, FR_TOKEN quote);
 
 vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
-				    ssize_t len);
+				    ssize_t len, FR_TOKEN quote);
 
 void			tmpl_from_da(vp_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
 				     request_refs_t request, pair_lists_t list);

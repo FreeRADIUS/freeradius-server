@@ -274,7 +274,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	/*
 	 *	Encode the entry created date
 	 */
-	tmpl_init(&created_value, TMPL_TYPE_DATA, "<TEMP>", 6);
+	tmpl_init(&created_value, TMPL_TYPE_DATA, "<TEMP>", 6, T_BARE_WORD);
 	created_value.tmpl_data_type = PW_TYPE_DATE;
 	created_value.tmpl_data_length = sizeof(created_value.tmpl_data_value.date);
 	created_value.tmpl_data_value.date = c->created;
@@ -285,7 +285,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 	 *	Although Redis objects expire on their own, we still need this
 	 *	to ignore entries that were created before the last epoch.
 	 */
-	tmpl_init(&expires_value, TMPL_TYPE_DATA, "<TEMP>", 6);
+	tmpl_init(&expires_value, TMPL_TYPE_DATA, "<TEMP>", 6, T_BARE_WORD);
 	expires_value.tmpl_data_type = PW_TYPE_DATE;
 	expires_value.tmpl_data_length = sizeof(expires_value.tmpl_data_value.date);
 	expires_value.tmpl_data_value.date = c->expires;

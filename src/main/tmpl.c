@@ -491,9 +491,10 @@ int radius_request(REQUEST **context, request_refs_t name)
  * @param[in] name of the #vp_tmpl_t.
  * @param[in] len The length of the buffer (or a substring of the buffer) pointed to by name.
  *	If < 0 strlen will be used to determine the length.
+ * @param[in] quote The type of quoting around the template name.
  * @return a pointer to the initialised #vp_tmpl_t. The same value as vpt.
  */
-vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t len)
+vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t len, FR_TOKEN quote)
 {
 	rad_assert(vpt);
 	rad_assert(type != TMPL_TYPE_UNKNOWN);
@@ -506,6 +507,7 @@ vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t
 		vpt->name = name;
 		vpt->len = len < 0 ? strlen(name) :
 				     (size_t) len;
+		vpt->quote = quote;
 	}
 	return vpt;
 }
@@ -518,9 +520,10 @@ vp_tmpl_t *tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type, char const *name, ssize_t
  *	by the #vp_tmpl_t).
  * @param[in] len The length of the buffer (or a substring of the buffer) pointed to by name.
  *	If < 0 strlen will be used to determine the length.
+ * @param[in] quote The type of quoting around the template name.
  * @return the newly allocated #vp_tmpl_t.
  */
-vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize_t len)
+vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize_t len, FR_TOKEN quote)
 {
 	vp_tmpl_t *vpt;
 
@@ -533,6 +536,7 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
 	if (name) {
 		vpt->name = talloc_bstrndup(vpt, name, len < 0 ? strlen(name) : (size_t)len);
 		vpt->len = talloc_array_length(vpt->name) - 1;
+		vpt->quote = quote;
 	}
 
 	return vpt;
@@ -567,7 +571,7 @@ void tmpl_from_da(vp_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
 
 	rad_assert(da);
 
-	tmpl_init(vpt, TMPL_TYPE_ATTR, name, sizeof(name));
+	tmpl_init(vpt, TMPL_TYPE_ATTR, name, sizeof(name), T_BARE_WORD);
 	vpt->tmpl_da = da;
 
 	vpt->tmpl_request = request;
@@ -596,7 +600,8 @@ int tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
 
 	vpt = talloc(ctx, vp_tmpl_t);
 	name = value_data_aprints(vpt, type, enumv, data, '\0');
-	tmpl_init(vpt, TMPL_TYPE_DATA, name, talloc_array_length(name));
+	tmpl_init(vpt, TMPL_TYPE_DATA, name, talloc_array_length(name),
+		  (type == PW_TYPE_STRING) ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
 
 	if (steal) {
 		if (value_data_steal(vpt, &vpt->tmpl_data_value, type, data) < 0) {
@@ -840,6 +845,7 @@ finish:
 	vpt->type = type;
 	vpt->name = name;
 	vpt->len = p - name;
+	vpt->quote = T_BARE_WORD;
 
 	/*
 	 *	Copy over the attribute definition, now we're
@@ -1042,7 +1048,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 
 			binlen = (inlen - 2) / 2;
 
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_DATA, in, inlen, type);
 			vpt->tmpl_data_value.ptr = talloc_array(vpt, uint8_t, binlen);
 			vpt->tmpl_data_length = binlen;
 			vpt->tmpl_data_type = PW_TYPE_OCTETS;
@@ -1075,12 +1081,11 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 		if (do_unescape) {
 			if (value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, quote) < 0) return 0;
 
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.strvalue, talloc_array_length(data.strvalue) - 1);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.strvalue, talloc_array_length(data.strvalue) - 1, type);
 			talloc_free(data.ptr);
 		} else {
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, in, inlen);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, in, inlen, type);
 		}
-		vpt->quote = quote;
 		slen = vpt->len;
 		break;
 
@@ -1112,22 +1117,23 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 		 *	literal.
 		 */
 		if (do_unescape) {
-			if (value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, '"') < 0) return -1;
+			if (value_data_from_str(ctx, &data, &data_type, NULL, in,
+						inlen, fr_token_quote[type]) < 0) return -1;
 			if (do_xlat) {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.strvalue,
-						 talloc_array_length(data.strvalue) - 1);
+						 talloc_array_length(data.strvalue) - 1, type);
 			} else {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.strvalue,
-						 talloc_array_length(data.strvalue) - 1);
-				vpt->quote = '"';
+						 talloc_array_length(data.strvalue) - 1, type);
+				vpt->quote = T_DOUBLE_QUOTED_STRING;
 			}
 			talloc_free(data.ptr);
 		} else {
 			if (do_xlat) {
-				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, in, inlen);
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, in, inlen, type);
 			} else {
-				vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, in, inlen);
-				vpt->quote = '"';
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, in, inlen, type);
+				vpt->quote = T_DOUBLE_QUOTED_STRING;
 			}
 		}
 		slen = vpt->len;
@@ -1135,18 +1141,19 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 
 	case T_BACK_QUOTED_STRING:
 		if (do_unescape) {
-			if (value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, '`') < 0) return -1;
+			if (value_data_from_str(ctx, &data, &data_type, NULL, in,
+						inlen, fr_token_quote[type]) < 0) return -1;
 
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, data.strvalue, talloc_array_length(data.strvalue) - 1);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, data.strvalue, talloc_array_length(data.strvalue) - 1, type);
 			talloc_free(data.ptr);
 		} else {
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, in, inlen);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_EXEC, in, inlen, type);
 		}
 		slen = vpt->len;
 		break;
 
 	case T_OP_REG_EQ: /* hack */
-		vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, in, inlen);
+		vpt = tmpl_alloc(ctx, TMPL_TYPE_REGEX, in, inlen, T_BARE_WORD);
 		slen = vpt->len;
 		break;
 
@@ -1154,11 +1161,11 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 		rad_assert(0);
 		return 0;	/* 0 is an error here too */
 	}
+	vpt->quote = type;
 
 	rad_assert((slen >= 0) && (vpt != NULL));
 
 	VERIFY_TMPL(vpt);
-
 	*out = vpt;
 
 	return slen;
@@ -1880,7 +1887,8 @@ do_literal:
 		break;
 
 	case TMPL_TYPE_DATA:
-		return value_data_prints(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_value, vpt->quote);
+		return value_data_prints(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_value,
+					 fr_token_quote[vpt->quote]);
 
 	default:
 		goto empty;
@@ -2206,6 +2214,22 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		fr_exit_now(1);
 	}
 
+	if (!vpt->name && (vpt->quote != T_INVALID)) {
+		char quote = vpt->quote > T_TOKEN_LAST ? '?' : fr_token_quote[vpt->quote];
+
+		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: Quote type '%c' (%i) was set for NULL name",
+			     file, line, quote, vpt->quote);
+		fr_assert(0);
+		fr_exit_now(1);
+	}
+
+	if (vpt->name && (vpt->quote == T_INVALID)) {
+		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: No quoting type was set for name \"%.*s\"",
+			     file, line, (int)vpt->len, vpt->name);
+		fr_assert(0);
+		fr_exit_now(1);
+	}
+
 	/*
 	 *  Do a memcmp of the bytes after where the space allocated for
 	 *  the union member should have ended and the end of the union.
@@ -2374,12 +2398,12 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		 */
 		switch (vpt->tmpl_data_type) {
 		case PW_TYPE_STRING:
-		if (vpt->tmpl_data.vp_strvalue[vpt->tmpl_data_length] != '\0') {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA char buffer not \\0 "
-				     "terminated", file, line);
-			fr_assert(0);
-			fr_exit_now(1);
-		}
+			if (vpt->tmpl_data.vp_strvalue[vpt->tmpl_data_length] != '\0') {
+				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_DATA char buffer not \\0 "
+					     "terminated", file, line);
+				fr_assert(0);
+				fr_exit_now(1);
+			}
 			break;
 
 		case PW_TYPE_TLV:

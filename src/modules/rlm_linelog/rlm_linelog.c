@@ -572,7 +572,7 @@ static rlm_rcode_t mod_do_linelog(void *instance, REQUEST *request)
 		tmpl_str = cf_pair_value(cp);
 		if (!tmpl_str || (tmpl_str[0] == '\0')) {
 			RDEBUG2("Path \"%s\" resolves to an empty config pair", p);
-			vpt_p = tmpl_init(&empty, TMPL_TYPE_UNPARSED, "", 0);
+			vpt_p = tmpl_init(&empty, TMPL_TYPE_UNPARSED, "", 0, T_DOUBLE_QUOTED_STRING);
 			goto build_vector;
 		}
 

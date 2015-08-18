@@ -893,7 +893,7 @@ redo:
 			len = tmpl_aexpand(request, &p, request, g->vpt, NULL, NULL);
 			if (len < 0) goto find_null_case;
 			data.strvalue = p;
-			tmpl_init(&vpt, TMPL_TYPE_UNPARSED, data.strvalue, len);
+			tmpl_init(&vpt, TMPL_TYPE_UNPARSED, data.strvalue, len, T_SINGLE_QUOTED_STRING);
 		}
 
 		/*
@@ -1648,7 +1648,7 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 
 		TALLOC_FREE(map->rhs);
 
-		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, NULL, 0);
+		map->rhs = tmpl_alloc(map, TMPL_TYPE_NULL, NULL, 0, T_INVALID);
 	}
 
 	/*

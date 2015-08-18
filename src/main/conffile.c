@@ -1396,18 +1396,23 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
  *	- ``flag`` #PW_TYPE_NOT_EMPTY		- @copybrief PW_TYPE_NOT_EMPTY
  * @param data Pointer to a global variable, or pointer to a field in the struct being populated with values.
  * @param dflt value to use, if no #CONF_PAIR is found.
+ * @param dflt_quote around the dflt value.
  * @return
  *	- 1 if default value was used.
  *	- 0 on success.
  *	- -1 on error.
  *	- -2 if deprecated.
  */
-int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt)
+int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
+		  char const *dflt, FR_TOKEN dflt_quote)
 {
 	int		rcode;
 	bool		deprecated, required, attribute, secret, file_input, cant_be_empty, tmpl, multi;
 	char		**q;
+
 	char const	*value;
+	FR_TOKEN	quote;
+
 	CONF_PAIR	*cp = NULL;
 	fr_ipaddr_t	*ipaddr;
 	char		buffer[8192];
@@ -1450,12 +1455,14 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 
 		rcode = 1;
 		value = dflt;
+		quote = dflt_quote;
 	/*
 	 *	Something matched, used the CONF_PAIR value.
 	 */
 	} else {
 		CONF_PAIR *next = cp;
 		value = cp->value;
+		quote = cp->rhs_type;
 		cp->parsed = true;
 		c_item = &cp->item;
 
@@ -1507,7 +1514,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		}
 
 		rad_assert(!attribute);
-		vpt = tmpl_alloc(cs, TMPL_TYPE_UNPARSED, value, strlen(value));
+		vpt = tmpl_alloc(cs, TMPL_TYPE_UNPARSED, value, strlen(value), quote);
 		*(vp_tmpl_t **)data = vpt;
 
 		return 0;
@@ -1887,7 +1894,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		ret = cf_item_parse(cs, variables[i].name, variables[i].type, data, variables[i].dflt);
+		ret = cf_item_parse(cs, variables[i].name, variables[i].type, data,
+				    variables[i].dflt, variables[i].quote);
 		switch (ret) {
 		case 1:		/* Used default */
 			ret = 0;
