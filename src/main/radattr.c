@@ -918,7 +918,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -x                     Debugging mode.\n");
-	fprintf(stderr, "  -M                     Show program version information.\n");
+	fprintf(stderr, "  -M                     Show talloc memory report.\n");
 
 	exit(1);
 }
@@ -941,11 +941,9 @@ int main(int argc, char *argv[])
 
 	while ((c = getopt(argc, argv, "d:D:xMh")) != EOF) switch (c) {
 		case 'd':
-			if (!optarg) usage();
 			radius_dir = optarg;
 			break;
 		case 'D':
-			if (!optarg) usage();
 			dict_dir = optarg;
 			break;
 		case 'x':
