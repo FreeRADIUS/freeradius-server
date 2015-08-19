@@ -1910,6 +1910,12 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 	} /* for all variables in the configuration section */
 
 	/*
+	 *	Ensure we have a proper terminator, type so we catch
+	 *	missing terminators reliably
+	 */
+	rad_assert(variables[i].type == -1);
+
+	/*
 	 *	Warn about items in the configuration which weren't
 	 *	checked during parsing.
 	 */

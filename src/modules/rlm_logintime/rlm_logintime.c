@@ -54,8 +54,7 @@ typedef struct rlm_logintime_t {
  */
 static const CONF_PARSER module_config[] = {
   { "minimum_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_logintime_t, min_time), "60" },
-
-  { NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 

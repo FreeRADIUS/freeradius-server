@@ -92,16 +92,14 @@ static CONF_PARSER tls_config[] = {
 	 *	MySQL Specific TLS attributes
 	 */
 	{ "cipher", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_mysql_config_t, tls_cipher), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER driver_config[] = {
 	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
 
 	{ "warnings", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_mysql_config_t, warnings_str), "auto" },
-
-	{NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 /* Prototypes */

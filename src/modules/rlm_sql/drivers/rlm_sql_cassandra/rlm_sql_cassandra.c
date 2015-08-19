@@ -207,8 +207,7 @@ static CONF_PARSER tls_config[] = {
 	{ "private_key_password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, rlm_sql_cassandra_config_t, tls_private_key_password), NULL },
 
 	{ "verify_cert", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, tls_verify_cert_str), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER driver_config[] = {
@@ -244,8 +243,7 @@ static const CONF_PARSER driver_config[] = {
 	{ "tcp_nodelay", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, tcp_nodelay), "no" },
 
 	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
-
-	{ NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 /** Log callback for libcassandra

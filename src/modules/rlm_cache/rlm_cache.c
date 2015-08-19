@@ -49,8 +49,7 @@ static const CONF_PARSER module_config[] = {
 	/* Should be a type which matches time_t, @fixme before 2038 */
 	{ "epoch", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_cache_config_t, epoch), "0" },
 	{ "add_stats", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_cache_config_t, stats), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 /** Get exclusive use of a handle to access the cache

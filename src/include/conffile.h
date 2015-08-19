@@ -177,7 +177,7 @@ extern bool check_config;
  @code{.c}
    static CONF_PARSER module_config[] = {
    	{ "example", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, example_instance_t, example), "default_value" },
-   	{ NULL, -1, 0, NULL, NULL }
+   	CONF_PARSER_TERMINATOR
    }
  @endcode
  *
@@ -185,7 +185,7 @@ extern bool check_config;
  @code{.c}
    static CONF_PARSER global_config[] = {
    	{ "example", FR_CONF_POINTER(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, &my_global), "default_value" },
-   	{ NULL, -1, 0, NULL, NULL }
+   	CONF_PARSER_TERMINATOR
    }
  @endcode
  *
@@ -213,6 +213,8 @@ typedef struct CONF_PARSER {
 						//!< to the start of another array of #CONF_PARSER structs, forming
 						//!< the subsection.
 } CONF_PARSER;
+
+#define CONF_PARSER_TERMINATOR	{ NULL, -1, 0, NULL, NULL }
 
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
 			       FR_TOKEN op, FR_TOKEN lhs_type, FR_TOKEN rhs_type);

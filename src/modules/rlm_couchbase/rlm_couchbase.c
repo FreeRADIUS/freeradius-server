@@ -42,7 +42,7 @@ RCSID("$Id$")
  */
 static const CONF_PARSER client_config[] = {
 	{ "view", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, client_view), "_design/client/_view/by_name" },
-	{NULL, -1, 0, NULL, NULL}     /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 /**
@@ -66,7 +66,7 @@ static const CONF_PARSER module_config[] = {
 	{ "simul_vkey", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, simul_vkey), "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}" },
 	{ "verify_simul", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_couchbase_t, verify_simul), NULL }, /* NULL defaults to "no" */
 #endif
-	{NULL, -1, 0, NULL, NULL}     /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 /** Initialize the rlm_couchbase module

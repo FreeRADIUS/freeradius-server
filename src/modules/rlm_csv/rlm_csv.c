@@ -70,8 +70,7 @@ static const CONF_PARSER module_config[] = {
 	{ "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, delimiter), "," },
 	{ "header", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, header), NULL },
 	{ "key_field", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, key), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static int csv_entry_cmp(void const *one, void const *two)

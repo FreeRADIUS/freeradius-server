@@ -40,8 +40,7 @@ typedef struct rlm_cache_memcached {
 
 static const CONF_PARSER driver_config[] = {
 	{ "options", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_cache_memcached_t, options), "--SERVER=localhost" },
-
-	{NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 /** Free a connection handle

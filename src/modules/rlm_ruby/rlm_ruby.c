@@ -88,7 +88,7 @@ typedef struct rlm_ruby_t {
 static const CONF_PARSER module_config[] = {
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, struct rlm_ruby_t, filename), NULL },
 	{ "module", FR_CONF_OFFSET(PW_TYPE_STRING, struct rlm_ruby_t, module_name), "Radiusd" },
-	{ NULL, -1, 0, NULL, NULL } /* end of module_config */
+	CONF_PARSER_TERMINATOR
 };
 
 

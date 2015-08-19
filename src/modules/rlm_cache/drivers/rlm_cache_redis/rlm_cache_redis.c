@@ -30,7 +30,7 @@
 
 static CONF_PARSER driver_config[] = {
 	REDIS_COMMON_CONFIG,
-	{ NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 typedef struct rlm_cache_redis {

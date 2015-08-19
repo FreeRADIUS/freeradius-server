@@ -41,7 +41,7 @@ RCSID("$Id$")
 static const CONF_PARSER validation_config[] = {
 	{ "client_id", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_yubikey_t, client_id), 0 },
 	{ "api_key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, rlm_yubikey_t, api_key), NULL },
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 #endif
 
@@ -53,7 +53,7 @@ static const CONF_PARSER module_config[] = {
 #ifdef HAVE_YKCLIENT
 	{ "validation", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) validation_config },
 #endif
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static char const modhextab[] = "cbdefghijklnrtuv";

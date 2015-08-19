@@ -41,7 +41,7 @@ RCSID("$Id$")
 
 static CONF_PARSER module_config[] = {
 	REDIS_COMMON_CONFIG,
-	{ NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 /** rlm_redis module instance

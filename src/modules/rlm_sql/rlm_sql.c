@@ -44,8 +44,7 @@ RCSID("$Id$")
  */
 static const CONF_PARSER query_config[] = {
 	{ "query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_MULTI, rlm_sql_config_t, accounting.query), NULL },
-
-	{NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -58,8 +57,7 @@ static const CONF_PARSER type_config[] = {
 	{ "start", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
 	{ "interim-update", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
 	{ "stop", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
-
-	{NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER acct_config[] = {
@@ -67,8 +65,7 @@ static const CONF_PARSER acct_config[] = {
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.logfile), NULL },
 
 	{ "type", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) type_config },
-
-	{NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER postauth_config[] = {
@@ -76,8 +73,7 @@ static const CONF_PARSER postauth_config[] = {
 	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, postauth.logfile), NULL },
 
 	{ "query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_MULTI, rlm_sql_config_t, postauth.query), NULL },
-
-	{NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER module_config[] = {
@@ -118,8 +114,7 @@ static const CONF_PARSER module_config[] = {
 	{ "accounting", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) acct_config },
 
 	{ "post-auth", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) postauth_config },
-
-	{NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 /*

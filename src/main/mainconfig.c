@@ -105,7 +105,7 @@ static const CONF_PARSER startup_log_config[] = {
 	{ "logdir", FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dir), "${localstatedir}/log"},
 	{ "file",  FR_CONF_POINTER(PW_TYPE_STRING, &main_config.log_file), "${logdir}/radius.log" },
 	{ "requests",  FR_CONF_POINTER(PW_TYPE_STRING | PW_TYPE_DEPRECATED, &default_log.file), NULL },
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -121,7 +121,7 @@ static const CONF_PARSER startup_server_config[] = {
 	{ "log_file",  FR_CONF_POINTER(PW_TYPE_STRING, &main_config.log_file), NULL },
 	{ "log_destination", FR_CONF_POINTER(PW_TYPE_STRING, &radlog_dest), NULL },
 	{ "use_utc", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &log_dates_utc), NULL },
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -142,8 +142,7 @@ static const CONF_PARSER log_config[] = {
 	{ "use_utc", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &log_dates_utc), NULL },
 	{ "msg_denied", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.denied_msg),
 	  "You are already logged in - access denied" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -158,8 +157,7 @@ static const CONF_PARSER security_config[] = {
 	{ "allow_vulnerable_openssl", FR_CONF_POINTER(PW_TYPE_STRING, &main_config.allow_vulnerable_openssl), "no"},
 #endif
 	{ "state_seed", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.state_seed), NULL},
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER resources[] = {
@@ -169,8 +167,7 @@ static const CONF_PARSER resources[] = {
 	 *	it exists.
 	 */
 	{ "talloc_pool_size", FR_CONF_POINTER(PW_TYPE_INTEGER, &main_config.talloc_pool_size), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER server_config[] = {
@@ -220,8 +217,7 @@ static const CONF_PARSER server_config[] = {
 	{ "log_stripped_names", FR_CONF_POINTER(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &log_stripped_names), NULL },
 
 	{  "security", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) security_config },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -245,8 +241,7 @@ static const CONF_PARSER bootstrap_security_config[] = {
 #endif
 	{ "chroot",  FR_CONF_POINTER(PW_TYPE_STRING, &chroot_dir), NULL },
 	{ "allow_core_dumps", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &allow_core_dumps), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER bootstrap_config[] = {
@@ -268,8 +263,7 @@ static const CONF_PARSER bootstrap_config[] = {
 #endif
 	{ "chroot",  FR_CONF_POINTER(PW_TYPE_STRING | PW_TYPE_DEPRECATED, &chroot_dir), NULL },
 	{ "allow_core_dumps", FR_CONF_POINTER(PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, &allow_core_dumps), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 

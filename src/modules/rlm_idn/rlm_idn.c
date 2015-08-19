@@ -84,8 +84,7 @@ static const CONF_PARSER mod_config[] = {
 
 	{ "allow_unassigned", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_idn_t, allow_unassigned), "no" },
 	{ "use_std3_ascii_rules", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_idn_t, use_std3_ascii_rules), "yes" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static ssize_t xlat_idna(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)

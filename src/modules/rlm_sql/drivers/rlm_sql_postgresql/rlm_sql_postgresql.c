@@ -71,8 +71,7 @@ typedef struct rlm_sql_postgres_conn {
 
 static CONF_PARSER driver_config[] = {
 	{ "send_application_name", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_postgres_config_t, send_application_name), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)

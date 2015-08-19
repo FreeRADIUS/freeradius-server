@@ -58,8 +58,7 @@ static CONF_PARSER module_config[] = {
   { "trust_router", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t,trust_router),  "none" },
   { "tr_port", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_realm_t,tr_port),  "0" },
 #endif
-
-  { NULL, -1, 0, NULL, NULL }    /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 /*

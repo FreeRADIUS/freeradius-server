@@ -65,8 +65,7 @@ typedef struct rlm_unix {
 
 static const CONF_PARSER module_config[] = {
 	{ "radwtmp", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_unix_t, radwtmp), "NULL" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 /*

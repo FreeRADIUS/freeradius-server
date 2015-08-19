@@ -129,37 +129,32 @@ static const CONF_PARSER file_config[] = {
 	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, linelog_instance_t, file.permissions), "0600" },
 	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, linelog_instance_t, file.group_str), NULL },
 	{ "escape_filenames", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, linelog_instance_t, file.escape), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER syslog_config[] = {
 	{ "facility", FR_CONF_OFFSET(PW_TYPE_STRING, linelog_instance_t, syslog.facility), NULL },
 	{ "severity", FR_CONF_OFFSET(PW_TYPE_STRING, linelog_instance_t, syslog.severity), "info" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER unix_config[] = {
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, linelog_instance_t, unix.path), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER udp_config[] = {
 	{ "server", FR_CONF_OFFSET(PW_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr), NULL },
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, linelog_net_t, port), NULL },
 	{ "timeout", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, linelog_net_t, timeout), "1000" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER tcp_config[] = {
 	{ "server", FR_CONF_OFFSET(PW_TYPE_COMBO_IP_ADDR, linelog_net_t, dst_ipaddr), NULL },
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, linelog_net_t, port), NULL },
 	{ "timeout", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, linelog_net_t, timeout), "1000" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -196,8 +191,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ "syslog_facility", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, linelog_instance_t, syslog.facility), NULL },
 	{ "syslog_severity", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, linelog_instance_t, syslog.severity), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 

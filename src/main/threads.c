@@ -200,7 +200,7 @@ static const CONF_PARSER thread_config[] = {
 	{ "auto_limit_acct", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &thread_pool.auto_limit_acct), NULL },
 #endif
 #endif
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 #endif
 

@@ -63,8 +63,7 @@ static const CONF_PARSER module_config[] = {
 	{ "packet_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_exec_t, packet_type), NULL },
 	{ "shell_escape", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_exec_t, shell_escape), "yes" },
 	{ "timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_exec_t, timeout), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static char const special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";

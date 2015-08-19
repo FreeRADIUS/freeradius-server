@@ -95,8 +95,7 @@ CONF_PARSER module_config[] = {
 
 	{ "fast_dh_exchange", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ikev2_t, enable_fast_dhex), "no" },
 	{ "enable_fast_reauth", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ikev2_t, enable_fast_reconnect), "yes" },
-
-	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static int set_mppe_keys(eap_handler_t *handler)
