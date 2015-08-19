@@ -43,7 +43,7 @@ extern log_lvl_t rad_debug_lvl;
 
 /* Linker hacks */
 
-rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
+rlm_rcode_t indexed_modcall(UNUSED rlm_components_t comp, UNUSED int idx, UNUSED REQUEST *request)
 {
 	return RLM_MODULE_OK;
 }
@@ -53,7 +53,7 @@ char const *get_radius_dir(void)
 	return NULL;
 }
 
-void *module_instantiate(CONF_SECTION *modules, char const *askedname)
+module_instance_t *module_instantiate(UNUSED CONF_SECTION *modules, UNUSED char const *askedname)
 {
 	return NULL;
 }
