@@ -1,0 +1,6 @@
+#
+#	This should be an xlat, not a direct assignment
+#
+update request {
+	Tmp-Integer-0 := &Filter-Id[#]	# ERROR
+}
