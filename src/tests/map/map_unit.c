@@ -40,19 +40,6 @@ RCSID("$Id$")
 extern log_lvl_t rad_debug_lvl;
 
 #include <sys/wait.h>
-pid_t rad_fork(void);
-pid_t rad_waitpid(pid_t pid, int *status);
-
-pid_t rad_fork(void)
-{
-	return fork();
-}
-
-pid_t rad_waitpid(pid_t pid, int *status)
-{
-	return waitpid(pid, status, 0);
-}
-
 
 static void NEVER_RETURNS usage(void)
 {
