@@ -2415,7 +2415,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 
 		if (vpt->tmpl_preg != NULL) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_REGEX "
-				     "preg field was not nULL", file, line);
+				     "preg field was not NULL", file, line);
 			fr_assert(0);
 			fr_exit_now(1);
 		}
