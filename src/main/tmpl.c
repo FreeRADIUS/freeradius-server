@@ -1869,7 +1869,7 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 			if (*p == '\'') break;
 			if (!dict_attr_allowed_chars[(int) *p]) break;
 		}
-		c = *p ? c = '"' : '\0';
+		c = *p ? '"' : '\0';
 
 do_literal:
 		if (outlen < 4) goto empty;	/* / + <c> + / + \0 */
