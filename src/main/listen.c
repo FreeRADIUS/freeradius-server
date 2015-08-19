@@ -3143,28 +3143,6 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	return this;
 }
 
-#ifdef WITH_PROXY
-static int is_loopback(fr_ipaddr_t const *ipaddr)
-{
-	/*
-	 *	We shouldn't proxy on loopback.
-	 */
-	if ((ipaddr->af == AF_INET) &&
-	    (ipaddr->ipaddr.ip4addr.s_addr == htonl(INADDR_LOOPBACK))) {
-		return 1;
-	}
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	if ((ipaddr->af == AF_INET6) &&
-	    (IN6_IS_ADDR_LINKLOCAL(&ipaddr->ipaddr.ip6addr))) {
-		return 1;
-	}
-#endif
-
-	return 0;
-}
-#endif
-
 
 #ifdef HAVE_PTHREAD_H
 /*
