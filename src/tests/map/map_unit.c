@@ -37,7 +37,6 @@ RCSID("$Id$")
 #include <assert.h>
 
 #include <freeradius-devel/log.h>
-extern log_lvl_t rad_debug_lvl;
 
 #include <sys/wait.h>
 
@@ -167,7 +166,6 @@ int main(int argc, char *argv[])
 			break;
 		case 'x':
 			fr_debug_lvl++;
-			rad_debug_lvl = fr_debug_lvl;
 			break;
 		case 'M':
 			report = true;
