@@ -50,11 +50,6 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	if (a->sockfd < b->sockfd) return -1;
 	if (a->sockfd > b->sockfd) return +1;
 
-#ifdef WITH_TCP
-	if (a->proto < b->proto) return -1;
-	if (a->proto > b->proto) return +1;
-#endif
-
 	/*
 	 *	Source ports are pretty much random.
 	 */
