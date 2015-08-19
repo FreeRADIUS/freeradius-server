@@ -285,6 +285,16 @@ int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		goto error;
 	}
 
+	/*
+	 *	We cannot assign a count to an attribute.  That must
+	 *	be done in an xlat.
+	 */
+	if ((map->rhs->type == TMPL_TYPE_ATTR) &&
+	    (map->rhs->tmpl_num == NUM_COUNT)) {
+		cf_log_err_cp(cp, "Cannot assign from a count");
+		goto error;
+	}
+
 	VERIFY_MAP(map);
 
 	*out = map;
