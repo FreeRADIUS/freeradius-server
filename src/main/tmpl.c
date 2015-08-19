@@ -1789,7 +1789,7 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 		if (vpt->tmpl_request == REQUEST_CURRENT) {
 			if (vpt->tmpl_list == PAIR_LIST_REQUEST) {
 				len = strlcpy(out_p, p, end - out_p);
-				RETURN_IF_TRUNCATED(out_p, len, (size_t)(end - out_p));
+				RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 				goto inst_and_tag;
 			}
 
@@ -1798,18 +1798,18 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 			 */
 			len = snprintf(out_p, end - out_p, "%s:%s",
 				       fr_int2str(pair_lists, vpt->tmpl_list, ""), p);
-			RETURN_IF_TRUNCATED(out_p, len, (size_t)(end - out_p));
+			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 			goto inst_and_tag;
 		}
 
 		len = snprintf(out_p, end - out_p, "%s.%s:%s", fr_int2str(request_refs, vpt->tmpl_request, ""),
 			       fr_int2str(pair_lists, vpt->tmpl_list, ""), p);
-		RETURN_IF_TRUNCATED(out_p, len, (size_t)(end - out_p));
+		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 
 	inst_and_tag:
 		if (vpt->tmpl_tag != TAG_ANY) {
 			len = snprintf(out_p, end - out_p, ":%d", vpt->tmpl_tag);
-			RETURN_IF_TRUNCATED(out_p, len, (size_t)(end - out_p));
+			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 		}
 
 		switch (vpt->tmpl_num) {
@@ -1832,7 +1832,7 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 			len = snprintf(out_p, end - out_p, "[%i]", vpt->tmpl_num);
 			break;
 		}
-		RETURN_IF_TRUNCATED(out_p, len, (size_t)(end - out_p));
+		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
 		goto finish;
 
 	/*
@@ -1843,7 +1843,7 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 		if (outlen < 4) goto empty;	/* / + <c> + / + \0 */
 		*out_p++ = '/';
 		len = fr_prints(out_p, (end - out_p) - 1, vpt->name, vpt->len, '\0');
-		RETURN_IF_TRUNCATED(out_p, len, ((size_t)(end - out_p)) - 1);
+		RETURN_IF_TRUNCATED(out_p, len, (end - out_p) - 1);
 		*out_p++ = '/';
 		goto finish;
 
@@ -1875,7 +1875,7 @@ do_literal:
 		if (outlen < 4) goto empty;	/* / + <c> + / + \0 */
 		if (c != '\0') *out_p++ = c;
 		len = fr_prints(out_p, (end - out_p) - ((c == '\0') ? 0 : 1), vpt->name, vpt->len, c);
-		RETURN_IF_TRUNCATED(out_p, len, ((size_t)(end - out_p)) - ((c == '\0') ? 0 : 1));
+		RETURN_IF_TRUNCATED(out_p, len, (end - out_p) - ((c == '\0') ? 0 : 1));
 		if (c != '\0') *out_p++ = c;
 		break;
 
