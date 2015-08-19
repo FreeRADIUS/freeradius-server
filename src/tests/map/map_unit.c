@@ -166,6 +166,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'x':
 			fr_debug_lvl++;
+			rad_debug_lvl = fr_debug_lvl;
 			break;
 		case 'M':
 			report = true;
