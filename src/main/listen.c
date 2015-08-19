@@ -2855,10 +2855,6 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 	 */
 	this->print(this, buffer, sizeof(buffer));
 
-	if (rad_debug_lvl >= 2) {
-		DEBUG("Opening new proxy socket '%s'", buffer);
-	}
-
 #ifdef WITH_TCP
 	sock->opened = sock->last_packet = now;
 
@@ -2881,7 +2877,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 
 	if (this->fd < 0) {
 		this->print(this, buffer,sizeof(buffer));
-		ERROR("Failed opening proxy socket '%s' : %s",
+		ERROR("Failed opening new proxy socket '%s' : %s",
 		      buffer, fr_strerror());
 		home->last_failed_open = now;
 		listen_free(&this);
@@ -2895,7 +2891,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		DEBUG("Trying SSL to port %d\n", home->port);
 		sock->ssn = tls_new_client_session(sock, home->tls, this->fd);
 		if (!sock->ssn) {
-			ERROR("Failed starting SSL to '%s'", buffer);
+			ERROR("Failed starting SSL to new proxy socket '%s'", buffer);
 			home->last_failed_open = now;
 			listen_free(&this);
 			return NULL;
@@ -2930,6 +2926,12 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			listen_free(&this);
 			return NULL;
 		}
+
+		this->print(this, buffer, sizeof(buffer));
+	}
+
+	if (rad_debug_lvl >= 2) {
+		DEBUG("Opened new proxy socket '%s'", buffer);
 	}
 
 	home->limit.num_connections++;
