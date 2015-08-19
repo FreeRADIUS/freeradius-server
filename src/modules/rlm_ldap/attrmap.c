@@ -174,7 +174,7 @@ int rlm_ldap_map_verify(vp_map_t *map, void *instance)
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		break;
 
 	case TMPL_TYPE_ATTR_UNDEFINED:

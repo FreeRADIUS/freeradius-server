@@ -245,7 +245,7 @@ static int csv_map_verify(UNUSED void *proc_inst, void *mod_inst, UNUSED vp_tmpl
 	for (map = maps;
 	     map != NULL;
 	     map = map->next) {
-		if (map->rhs->type != TMPL_TYPE_LITERAL) continue;
+		if (map->rhs->type != TMPL_TYPE_UNPARSED) continue;
 
 		if (fieldname2offset(inst, map->rhs->name) < 0) {
 			cf_log_err(map->ci, "Unknown field '%s'", map->rhs->name);
@@ -493,7 +493,7 @@ static rlm_rcode_t mod_map_proc(void *mod_inst, UNUSED void *proc_inst, REQUEST 
 		/*
 		 *	Avoid memory allocations if possible.
 		 */
-		if (map->rhs->type != TMPL_TYPE_LITERAL) {
+		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
 			if (tmpl_aexpand(request, &field_name, request, map->rhs, NULL, NULL) < 0) {
 				RDEBUG("Failed expanding RHS at %s", map->lhs->name);
 				return RLM_MODULE_FAIL;

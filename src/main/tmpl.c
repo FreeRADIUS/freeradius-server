@@ -34,7 +34,7 @@ RCSID("$Id$")
 /** Map #tmpl_type_t values to descriptive strings
  */
 FR_NAME_NUMBER const tmpl_names[] = {
-	{ "literal",		TMPL_TYPE_LITERAL 	},
+	{ "literal",		TMPL_TYPE_UNPARSED 	},
 	{ "xlat",		TMPL_TYPE_XLAT		},
 	{ "attr",		TMPL_TYPE_ATTR		},
 	{ "unknown attr",	TMPL_TYPE_ATTR_UNDEFINED	},
@@ -988,10 +988,10 @@ ssize_t tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
  * @param[in] type of quoting around value. May be one of:
  *	- #T_BARE_WORD - If string begins with ``&`` produces #TMPL_TYPE_ATTR,
  *	  #TMPL_TYPE_ATTR_UNDEFINED, #TMPL_TYPE_LIST or error.
- *	  If string does not begin with ``&`` produces #TMPL_TYPE_LITERAL,
+ *	  If string does not begin with ``&`` produces #TMPL_TYPE_UNPARSED,
  *	  #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
- *	- #T_SINGLE_QUOTED_STRING - Produces #TMPL_TYPE_LITERAL
- *	- #T_DOUBLE_QUOTED_STRING - Produces #TMPL_TYPE_XLAT or #TMPL_TYPE_LITERAL (if
+ *	- #T_SINGLE_QUOTED_STRING - Produces #TMPL_TYPE_UNPARSED
+ *	- #T_DOUBLE_QUOTED_STRING - Produces #TMPL_TYPE_XLAT or #TMPL_TYPE_UNPARSED (if
  *	  string doesn't contain ``%``).
  *	- #T_BACK_QUOTED_STRING - Produces #TMPL_TYPE_EXEC
  *	- #T_OP_REG_EQ - Produces #TMPL_TYPE_REGEX
@@ -1075,10 +1075,10 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 		if (do_unescape) {
 			if (value_data_from_str(ctx, &data, &data_type, NULL, in, inlen, quote) < 0) return 0;
 
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, data.strvalue, talloc_array_length(data.strvalue) - 1);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.strvalue, talloc_array_length(data.strvalue) - 1);
 			talloc_free(data.ptr);
 		} else {
-			vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, in, inlen);
+			vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, in, inlen);
 		}
 		vpt->quote = quote;
 		slen = vpt->len;
@@ -1117,7 +1117,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, data.strvalue,
 						 talloc_array_length(data.strvalue) - 1);
 			} else {
-				vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, data.strvalue,
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, data.strvalue,
 						 talloc_array_length(data.strvalue) - 1);
 				vpt->quote = '"';
 			}
@@ -1126,7 +1126,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 			if (do_xlat) {
 				vpt = tmpl_alloc(ctx, TMPL_TYPE_XLAT, in, inlen);
 			} else {
-				vpt = tmpl_alloc(ctx, TMPL_TYPE_LITERAL, in, inlen);
+				vpt = tmpl_alloc(ctx, TMPL_TYPE_UNPARSED, in, inlen);
 				vpt->quote = '"';
 			}
 		}
@@ -1167,7 +1167,7 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
 
 /** @name Cast or convert #vp_tmpl_t
  *
- * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_LITERAL to a #TMPL_TYPE_DATA of a
+ * #tmpl_cast_in_place can be used to convert #TMPL_TYPE_UNPARSED to a #TMPL_TYPE_DATA of a
  *  specified #PW_TYPE.
  *
  * #tmpl_cast_in_place_str does the same as #tmpl_cast_in_place, but will always convert to
@@ -1181,13 +1181,13 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
  * @{
  */
 
-/** Convert #vp_tmpl_t of type #TMPL_TYPE_LITERAL or #TMPL_TYPE_DATA to #TMPL_TYPE_DATA of type specified
+/** Convert #vp_tmpl_t of type #TMPL_TYPE_UNPARSED or #TMPL_TYPE_DATA to #TMPL_TYPE_DATA of type specified
  *
  * @note Conversion is done in place.
- * @note Irrespective of whether the #vp_tmpl_t was #TMPL_TYPE_LITERAL or #TMPL_TYPE_DATA,
+ * @note Irrespective of whether the #vp_tmpl_t was #TMPL_TYPE_UNPARSED or #TMPL_TYPE_DATA,
  *	on successful cast it will be #TMPL_TYPE_DATA.
  *
- * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_LITERAL
+ * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_UNPARSED
  *	or #TMPL_TYPE_DATA.
  * @param[in] type to cast to.
  * @param[in] enumv Enumerated dictionary values associated with a #DICT_ATTR.
@@ -1200,10 +1200,10 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 	VERIFY_TMPL(vpt);
 
 	rad_assert(vpt != NULL);
-	rad_assert((vpt->type == TMPL_TYPE_LITERAL) || (vpt->type == TMPL_TYPE_DATA));
+	rad_assert((vpt->type == TMPL_TYPE_UNPARSED) || (vpt->type == TMPL_TYPE_DATA));
 
 	switch (vpt->type) {
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		vpt->tmpl_data_type = type;
 
 		/*
@@ -1250,16 +1250,16 @@ int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
 	return 0;
 }
 
-/** Convert #vp_tmpl_t of type #TMPL_TYPE_LITERAL to #TMPL_TYPE_DATA of type #PW_TYPE_STRING
+/** Convert #vp_tmpl_t of type #TMPL_TYPE_UNPARSED to #TMPL_TYPE_DATA of type #PW_TYPE_STRING
  *
  * @note Conversion is done in place.
  *
- * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_LITERAL.
+ * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_UNPARSED.
  */
 void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
 {
 	rad_assert(vpt != NULL);
-	rad_assert(vpt->type == TMPL_TYPE_LITERAL);
+	rad_assert(vpt->type == TMPL_TYPE_UNPARSED);
 
 	vpt->tmpl_data.vp_strvalue = talloc_typed_strdup(vpt, vpt->name);
 	rad_assert(vpt->tmpl_data.vp_strvalue != NULL);
@@ -1276,7 +1276,7 @@ void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
  * @param out Where to write pointer to the new #VALUE_PAIR.
  * @param request The current #REQUEST.
  * @param vpt to cast. Must be one of the following types:
- *	- #TMPL_TYPE_LITERAL
+ *	- #TMPL_TYPE_UNPARSED
  *	- #TMPL_TYPE_EXEC
  *	- #TMPL_TYPE_XLAT
  *	- #TMPL_TYPE_XLAT_STRUCT
@@ -1385,12 +1385,12 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  * @param out Where to write a pointer to the string buffer. On return may point to buff if
  *	buff was used to store the value. Otherwise will point to a #value_data_t buffer,
  *	or the name of the template. To force copying to buff, out should be NULL.
- * @param buff Expansion buffer, may be NULL if out is not NULL, and processing #TMPL_TYPE_LITERAL
+ * @param buff Expansion buffer, may be NULL if out is not NULL, and processing #TMPL_TYPE_UNPARSED
  *	or string types.
  * @param bufflen Length of expansion buffer.
  * @param request Current request.
  * @param vpt to expand. Must be one of the following types:
- *	- #TMPL_TYPE_LITERAL
+ *	- #TMPL_TYPE_UNPARSED
  *	- #TMPL_TYPE_EXEC
  *	- #TMPL_TYPE_XLAT
  *	- #TMPL_TYPE_XLAT_STRUCT
@@ -1415,7 +1415,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 	if (out) *out = NULL;
 
 	switch (vpt->type) {
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		RDEBUG4("EXPAND TMPL LITERAL");
 
 		if (!out) {
@@ -1564,7 +1564,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
  * @param out Where to write pointer to the new buffer.
  * @param request Current request.
  * @param vpt to expand. Must be one of the following types:
- *	- #TMPL_TYPE_LITERAL
+ *	- #TMPL_TYPE_UNPARSED
  *	- #TMPL_TYPE_EXEC
  *	- #TMPL_TYPE_XLAT
  *	- #TMPL_TYPE_XLAT_STRUCT
@@ -1589,7 +1589,7 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 	*out = NULL;
 
 	switch (vpt->type) {
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		RDEBUG4("EXPAND TMPL LITERAL");
 		*out = talloc_bstrndup(ctx, vpt->name, vpt->len);
 		return vpt->len;
@@ -1856,7 +1856,7 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 		c = '`';
 		goto do_literal;
 
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		/*
 		 *	Nasty nasty hack that needs to be fixed.
 		 *
@@ -2224,9 +2224,9 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		}
 		break;
 
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		if (not_zeroed((uint8_t const *)&vpt->data, sizeof(vpt->data))) {
-			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_LITERAL "
+			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_UNPARSED "
 				     "has non-zero bytes in its data union", file, line);
 			fr_assert(0);
 			fr_exit_now(1);

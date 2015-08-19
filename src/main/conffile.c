@@ -1507,7 +1507,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		}
 
 		rad_assert(!attribute);
-		vpt = tmpl_alloc(cs, TMPL_TYPE_LITERAL, value, strlen(value));
+		vpt = tmpl_alloc(cs, TMPL_TYPE_UNPARSED, value, strlen(value));
 		*(vp_tmpl_t **)data = vpt;
 
 		return 0;
@@ -2063,7 +2063,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const *vari
 				cf_log_err(&cp->item, "Unknown attribute '%s'", vpt->tmpl_unknown_name);
 				return -1;
 
-			case TMPL_TYPE_LITERAL:
+			case TMPL_TYPE_UNPARSED:
 			case TMPL_TYPE_ATTR:
 			case TMPL_TYPE_LIST:
 			case TMPL_TYPE_DATA:

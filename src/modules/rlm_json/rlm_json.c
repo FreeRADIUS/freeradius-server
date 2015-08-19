@@ -113,7 +113,7 @@ static int mod_map_proc_instantiate(void *proc_inst, UNUSED void *mod_inst,
 #endif
 
 		switch (map->rhs->type) {
-		case TMPL_TYPE_LITERAL:
+		case TMPL_TYPE_UNPARSED:
 			p = map->rhs->name;
 			slen = fr_jpath_parse(cache, &cache->jpath, p, map->rhs->len);
 			if (slen <= 0) {
@@ -247,7 +247,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 		/*
 		 *	Cached types
 		 */
-		case TMPL_TYPE_LITERAL:
+		case TMPL_TYPE_UNPARSED:
 		case TMPL_TYPE_DATA:
 			to_eval.jpath = cache->jpath;
 

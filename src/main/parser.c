@@ -868,7 +868,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	The LHS is a literal which has been cast to a data type.
 				 *	Cast it to the appropriate data type.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_LITERAL) &&
+				if ((c->data.map->lhs->type == TMPL_TYPE_UNPARSED) &&
 				    (tmpl_cast_in_place(c->data.map->lhs, c->cast->type, c->cast) < 0)) {
 					*error = "Failed to parse field";
 					if (lhs) talloc_free(lhs);
@@ -882,7 +882,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	type.
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_DATA) &&
-				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
+				    (c->data.map->rhs->type == TMPL_TYPE_UNPARSED) &&
 				    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
 					return_rhs("Failed to parse field");
 				}
@@ -1035,7 +1035,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	The LHS has been cast to a data type, and the RHS is a
 				 *	literal.  Cast the RHS to the type of the cast.
 				 */
-				if (c->cast && (c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
+				if (c->cast && (c->data.map->rhs->type == TMPL_TYPE_UNPARSED) &&
 				    (tmpl_cast_in_place(c->data.map->rhs, c->cast->type, c->cast) < 0)) {
 					return_rhs("Failed to parse field");
 				}
@@ -1050,7 +1050,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	This allows Framed-IP-Address < 192.168.0.0./24
 				 */
 				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
-				    ((c->data.map->rhs->type == TMPL_TYPE_LITERAL) ||
+				    ((c->data.map->rhs->type == TMPL_TYPE_UNPARSED) ||
 				     (c->data.map->rhs->type == TMPL_TYPE_DATA))) {
 					PW_TYPE type;
 
@@ -1121,9 +1121,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				 *	and do no parsing until after all of the modules
 				 *	are loaded.  But that has issues, too.
 				 */
-				if ((c->data.map->lhs->type == TMPL_TYPE_LITERAL) &&
+				if ((c->data.map->lhs->type == TMPL_TYPE_UNPARSED) &&
 				    (lhs_type == T_BARE_WORD) &&
-				    (c->data.map->rhs->type == TMPL_TYPE_LITERAL)) {
+				    (c->data.map->rhs->type == TMPL_TYPE_UNPARSED)) {
 					int hyphens = 0;
 					bool may_be_attr = true;
 					size_t i;
@@ -1388,8 +1388,8 @@ done:
 		 *	We can do the evaluation here, so that it
 		 *	doesn't need to be done at run time
 		 */
-		if ((c->data.map->rhs->type == TMPL_TYPE_LITERAL) &&
-		    (c->data.map->lhs->type == TMPL_TYPE_LITERAL) &&
+		if ((c->data.map->rhs->type == TMPL_TYPE_UNPARSED) &&
+		    (c->data.map->lhs->type == TMPL_TYPE_UNPARSED) &&
 		    !c->pass2_fixup) {
 			int rcode;
 
@@ -1458,7 +1458,7 @@ done:
 			/*
 			 *	This must have been parsed into TMPL_TYPE_DATA.
 			 */
-			rad_assert(c->data.map->rhs->type != TMPL_TYPE_LITERAL);
+			rad_assert(c->data.map->rhs->type != TMPL_TYPE_UNPARSED);
 		}
 
 	} while (0);
@@ -1501,7 +1501,7 @@ done:
 			 *	Bare words must be module return
 			 *	codes.
 			 */
-		case TMPL_TYPE_LITERAL:
+		case TMPL_TYPE_UNPARSED:
 			if ((strcmp(c->data.vpt->name, "true") == 0) ||
 			    (strcmp(c->data.vpt->name, "1") == 0)) {
 				c->type = COND_TYPE_TRUE;

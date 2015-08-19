@@ -35,7 +35,7 @@
  * strings into VPTs. The main parsing function is #tmpl_afrom_str, which can produce
  * most types of VPTs. It uses the type of quoting (passed as an #FR_TOKEN) to determine
  * what type of VPT to parse the string as. For example a #T_DOUBLE_QUOTED_STRING will
- * produce either a #TMPL_TYPE_XLAT or a #TMPL_TYPE_LITERAL (depending if the string
+ * produce either a #TMPL_TYPE_XLAT or a #TMPL_TYPE_UNPARSED (depending if the string
  * contained a non-literal expansion).
  *
  * @see tmpl_afrom_str
@@ -129,7 +129,7 @@ typedef struct pair_list {
  */
 typedef enum tmpl_type {
 	TMPL_TYPE_UNKNOWN = 0,		//!< Uninitialised.
-	TMPL_TYPE_LITERAL,		//!< Literal string.
+	TMPL_TYPE_UNPARSED,		//!< Unparsed literal string.
 	TMPL_TYPE_XLAT,			//!< XLAT expansion.
 	TMPL_TYPE_ATTR,			//!< Dictionary attribute.
 	TMPL_TYPE_ATTR_UNDEFINED,	//!< Attribute not found in the global dictionary.
@@ -170,7 +170,7 @@ typedef struct {
  *
  * When used on the RHS it describes the value to assign to the attribute being created and
  * should be one of these types:
- * - #TMPL_TYPE_LITERAL
+ * - #TMPL_TYPE_UNPARSED
  * - #TMPL_TYPE_XLAT
  * - #TMPL_TYPE_ATTR
  * - #TMPL_TYPE_LIST

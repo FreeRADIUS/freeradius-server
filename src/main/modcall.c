@@ -893,7 +893,7 @@ redo:
 			len = tmpl_aexpand(request, &p, request, g->vpt, NULL, NULL);
 			if (len < 0) goto find_null_case;
 			data.strvalue = p;
-			tmpl_init(&vpt, TMPL_TYPE_LITERAL, data.strvalue, len);
+			tmpl_init(&vpt, TMPL_TYPE_UNPARSED, data.strvalue, len);
 		}
 
 		/*
@@ -1583,7 +1583,7 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 	}
 
 	switch (map->rhs->type) {
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
 	case TMPL_TYPE_ATTR:
@@ -1641,7 +1641,7 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	 *	We then free the template and alloc a NULL one instead.
 	 */
 	if (map->op == T_OP_CMP_FALSE) {
-	 	if ((map->rhs->type != TMPL_TYPE_LITERAL) || (strcmp(map->rhs->name, "ANY") != 0)) {
+	 	if ((map->rhs->type != TMPL_TYPE_UNPARSED) || (strcmp(map->rhs->name, "ANY") != 0)) {
 			WARN("%s[%d] Wildcard deletion MUST use '!* ANY'",
 			     cf_pair_filename(cp), cf_pair_lineno(cp));
 		}
@@ -1685,7 +1685,7 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 */
 	    	if (map->op != T_OP_CMP_FALSE) switch (map->rhs->type) {
 	    	case TMPL_TYPE_XLAT:
-	    	case TMPL_TYPE_LITERAL:
+	    	case TMPL_TYPE_UNPARSED:
 			cf_log_err(map->ci, "Can't copy value into list (we don't know which attribute to create)");
 			return -1;
 
@@ -1748,7 +1748,7 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	 *	Unless it's a unary operator in which case we
 	 *	ignore map->rhs.
 	 */
-	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_LITERAL)) {
+	if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->rhs->type == TMPL_TYPE_UNPARSED)) {
 		/*
 		 *	Convert it to the correct type.
 		 */
@@ -1852,7 +1852,7 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	 *	Limit the allowed template types.
 	 */
 	switch (vpt->type) {
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_ATTR_UNDEFINED:
@@ -3455,7 +3455,7 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 		 *
 		 *	@todo v3.1: allow anything anywhere.
 		 */
-		if (map->rhs->type != TMPL_TYPE_LITERAL) {
+		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
 			if (!pass2_xlat_compile(map->ci, &map->lhs, false, NULL)) {
 				return false;
 			}
@@ -3477,7 +3477,7 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 			 *	to &Attr, so we've got to do it again.
 			 */
 			if ((map->lhs->type == TMPL_TYPE_ATTR) &&
-			    (map->rhs->type == TMPL_TYPE_LITERAL)) {
+			    (map->rhs->type == TMPL_TYPE_UNPARSED)) {
 				/*
 				 *	RHS is hex, try to parse it as
 				 *	type-specific data.
@@ -3565,7 +3565,7 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 	/*
 	 *	Convert bare refs to %{Foreach-Variable-N}
 	 */
-	if ((map->lhs->type == TMPL_TYPE_LITERAL) &&
+	if ((map->lhs->type == TMPL_TYPE_UNPARSED) &&
 	    (strncmp(map->lhs->name, "Foreach-Variable-", 17) == 0)) {
 		char *fmt;
 		ssize_t slen;
@@ -3725,7 +3725,7 @@ static bool pass2_map_compile(modgroup *g)
 
 	case TMPL_TYPE_ATTR:
 	case TMPL_TYPE_EXEC:
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		break;
 
 	default:
@@ -3880,7 +3880,7 @@ bool modcall_pass2(modcallable *mc)
 			 *	we can parse it as an attribute,
 			 *	switch to using that.
 			 */
-			if (g->vpt->type == TMPL_TYPE_LITERAL) {
+			if (g->vpt->type == TMPL_TYPE_UNPARSED) {
 				vp_tmpl_t *vpt;
 
 				slen = tmpl_afrom_str(g->cs, &vpt, c->name, strlen(c->name), cf_section_name2_type(g->cs),
@@ -3952,7 +3952,7 @@ bool modcall_pass2(modcallable *mc)
 			/*
 			 *	Do type-specific checks on the case statement
 			 */
-			if (g->vpt->type == TMPL_TYPE_LITERAL) {
+			if (g->vpt->type == TMPL_TYPE_UNPARSED) {
 				modgroup *f;
 
 				f = mod_callabletogroup(mc->parent);

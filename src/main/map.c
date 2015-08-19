@@ -858,7 +858,7 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 		*out = new;
 		break;
 
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 
@@ -1508,7 +1508,7 @@ size_t map_prints(char *out, size_t outlen, vp_map_t const *map)
 
 	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
 	    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
-	    (map->rhs->type == TMPL_TYPE_LITERAL)) {
+	    (map->rhs->type == TMPL_TYPE_UNPARSED)) {
 		*(p++) = '\'';
 		len = tmpl_prints(p, (end - p) - 1, map->rhs, da);	/* -1 for proceeding '\'' */
 		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
@@ -1541,7 +1541,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	 *	Just print the value being assigned
 	 */
 	default:
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		vp_prints_value(buffer, sizeof(buffer), vp, map->rhs->quote);
 		value = buffer;
 		break;

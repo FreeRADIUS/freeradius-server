@@ -131,7 +131,7 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 			goto error;
 		}
 
-		if (map->rhs->type != TMPL_TYPE_LITERAL) {
+		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
 			fr_strerror_printf("Pair right hand side \"%s\" parsed as %s, needed literal.  "
 					   "Check serialized data quoting", map->rhs->name,
 					   fr_int2str(tmpl_names, map->rhs->type, "<INVALID>"));

@@ -86,7 +86,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
 	value_data_t data;
 
 	switch (vpt->type) {
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		modcode = fr_str2int(modreturn_table, vpt->name, RLM_MODULE_UNKNOWN);
 		if (modcode != RLM_MODULE_UNKNOWN) {
 			rcode = (modcode == modreturn);
@@ -513,7 +513,7 @@ do {\
 	 *	Expanded types start as strings, then get converted
 	 *	to the type of the attribute or the explicit cast.
 	 */
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
@@ -521,7 +521,7 @@ do {\
 		ssize_t ret;
 		value_data_t data;
 
-		if (map->rhs->type != TMPL_TYPE_LITERAL) {
+		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
 			char *p;
 
 			ret = tmpl_aexpand(request, &p, request, map->rhs, NULL, NULL);
@@ -547,7 +547,7 @@ do {\
 		CAST(rhs);
 
 		rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
-		if (map->rhs->type != TMPL_TYPE_LITERAL)talloc_free(data.ptr);
+		if (map->rhs->type != TMPL_TYPE_UNPARSED)talloc_free(data.ptr);
 
 		break;
 	}
@@ -639,7 +639,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 					      map->lhs->tmpl_data_type, NULL, &map->lhs->tmpl_data_value);
 		break;
 
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
@@ -647,7 +647,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		ssize_t ret;
 		value_data_t data;
 
-		if (map->lhs->type != TMPL_TYPE_LITERAL) {
+		if (map->lhs->type != TMPL_TYPE_UNPARSED) {
 			char *p;
 
 			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
@@ -664,7 +664,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		rad_assert(data.strvalue);
 
 		rcode = cond_normalise_and_cmp(request, c, PW_TYPE_STRING, NULL, &data);
-		if (map->lhs->type != TMPL_TYPE_LITERAL) talloc_free(data.ptr);
+		if (map->lhs->type != TMPL_TYPE_UNPARSED) talloc_free(data.ptr);
 	}
 		break;
 
