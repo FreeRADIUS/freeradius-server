@@ -1,0 +1,40 @@
+#
+# PRE: update
+#
+#  Remove all attributes in a list
+#
+update {
+	control:Cleartext-Password := 'hello'
+	reply:Filter-Id := 'filter'
+}
+
+update request {
+	Tmp-String-0 := 'foobarbaz'
+	Tmp-Integer-0 := 123456789
+	Tmp-IP-Address-0 := 192.0.2.1
+}
+
+if ((Tmp-String-0 != 'foobarbaz') || (Tmp-Integer-0 != 123456789) || (Tmp-IP-Address-0 != 192.0.2.1)) {
+	update {
+		reply:Filter-Id := 'fail'
+	}
+}
+
+# Remove all attributes in the control list
+update {
+	request: !* ANY
+}
+
+# All attributes should now of been removed
+if ((Tmp-String-0 && (Tmp-String-0 == 'foobarbaz')) || \
+    (Tmp-Integer-0 && (Tmp-Integer-0 == 123456789)) || \
+    (Tmp-IP-Address-0 && (Tmp-IP-Address-0 == 192.0.2.1))) {
+	update {
+		reply:Filter-Id := 'fail'
+	}
+}
+
+# This will of been removed too
+update request {
+	User-Password := 'hello'
+}

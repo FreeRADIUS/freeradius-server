@@ -1,0 +1,6 @@
+update request {
+	Filter-Id := "filter"
+	User-Name := "blah"
+
+	&reply:Filter-Id += &request:Filter-Id[*]
+}
