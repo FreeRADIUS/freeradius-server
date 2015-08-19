@@ -116,7 +116,7 @@ TESTS.KEYWORDS_FILES := $(addprefix $(BUILD_DIR)/tests/keywords/,$(KEYWORD_FILES
 #
 tests.keywords: $(TESTS.KEYWORDS_FILES)
 
-$(TESTS.KEYWORDS_FILES): $(TESTS.XLAT_FILES)
+$(TESTS.KEYWORDS_FILES): $(TESTS.XLAT_FILES) $(TESTS.MAP_FILES)
 
 .PHONY: clean.tests.keywords
 clean.tests.keywords:
