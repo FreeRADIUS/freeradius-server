@@ -98,7 +98,7 @@ int		map_to_request(REQUEST *request, vp_map_t const *map,
 
 bool		map_dst_valid(REQUEST *request, vp_map_t const *map);
 
-size_t		map_prints(char *buffer, size_t bufsize, vp_map_t const *map);
+size_t		map_prints(char *out, size_t outlen, vp_map_t const *map);
 
 void		map_debug_log(REQUEST *request, vp_map_t const *map,
 			      VALUE_PAIR const *vp) CC_HINT(nonnull(1, 2));

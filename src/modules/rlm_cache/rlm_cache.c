@@ -295,6 +295,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	VALUE_PAIR		*vp;
 	bool			merge = false;
 	rlm_cache_entry_t	*c;
+	size_t			len;
 
 	TALLOC_CTX		*pool;
 
@@ -379,6 +380,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 				if (value_data_copy(c_map->rhs, &c_map->rhs->tmpl_data_value,
 						    vp->da->type, &vp->data) < 0) {
 					REDEBUG("Failed copying attribute value");
+				error:
 					talloc_free(pool);
 					talloc_free(c);
 					return RLM_MODULE_FAIL;
@@ -409,7 +411,13 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 				 *	We need to rebuild the attribute name, to be the
 				 *	one we copied from the source list.
 				 */
-				c_map->lhs->len = tmpl_prints(attr, sizeof(attr), c_map->lhs, NULL);
+				len = tmpl_prints(attr, sizeof(attr), c_map->lhs, NULL);
+				if (is_truncated(len, sizeof(attr))) {
+					REDEBUG("Serialized attribute too long.  Must be < "
+						STRINGIFY(sizeof(attr)) " bytes, got %zu bytes", len);
+					goto error;
+				}
+				c_map->lhs->len = len;
 				c_map->lhs->name = talloc_strdup(map->lhs, attr);
 			}
 				goto do_rhs;

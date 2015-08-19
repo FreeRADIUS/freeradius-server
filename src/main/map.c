@@ -1469,38 +1469,39 @@ bool map_dst_valid(REQUEST *request, vp_map_t const *map)
 
 /**  Print a map to a string
  *
- * @param[out] buffer for the output string.
- * @param[in] bufsize of the buffer.
+ * @param[out] out Buffer to write string to.
+ * @param[in] outlen Size of the output buffer.
  * @param[in] map to print.
- * @return the size of the string printed.
+ * @return
+ *	- The number of bytes written to the out buffer.
+ *	- A number >= outlen if truncation has occurred.
  */
-size_t map_prints(char *buffer, size_t bufsize, vp_map_t const *map)
+size_t map_prints(char *out, size_t outlen, vp_map_t const *map)
 {
-	size_t len;
-	DICT_ATTR const *da = NULL;
-	char *p = buffer;
-	char *end = buffer + bufsize;
+	size_t		len;
+	DICT_ATTR const	*da = NULL;
+	char		*p = out;
+	char		*end = out + outlen;
 
 	VERIFY_MAP(map);
 
 	if (map->lhs->type == TMPL_TYPE_ATTR) da = map->lhs->tmpl_da;
 
-	len = tmpl_prints(buffer, bufsize, map->lhs, da);
-	p += len;
+	len = tmpl_prints(out, (end - p) - 1, map->lhs, da);		/* -1 for proceeding ' ' */
+	RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 
 	*(p++) = ' ';
-	strlcpy(p, fr_token_name(map->op), end - p);
-	p += strlen(p);
+	len = strlcpy(p, fr_token_name(map->op), (end - p) - 1);	/* -1 for proceeding ' ' */
+	RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 	*(p++) = ' ';
 
 	/*
 	 *	The RHS doesn't matter for many operators
 	 */
-	if ((map->op == T_OP_CMP_TRUE) ||
-	    (map->op == T_OP_CMP_FALSE)) {
-		strlcpy(p, "ANY", (end - p));
-		p += strlen(p);
-		return p - buffer;
+	if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
+		len = strlcpy(p, "ANY", (end - p));
+		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
+		return p - out;
 	}
 
 	rad_assert(map->rhs != NULL);
@@ -1509,16 +1510,16 @@ size_t map_prints(char *buffer, size_t bufsize, vp_map_t const *map)
 	    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
 	    (map->rhs->type == TMPL_TYPE_LITERAL)) {
 		*(p++) = '\'';
-		len = tmpl_prints(p, end - p, map->rhs, da);
-		p += len;
+		len = tmpl_prints(p, (end - p) - 1, map->rhs, da);	/* -1 for proceeding '\'' */
+		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 		*(p++) = '\'';
-		*p = '\0';
 	} else {
 		len = tmpl_prints(p, end - p, map->rhs, da);
-		p += len;
+		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 	}
 
-	return p - buffer;
+	*p = '\0';
+	return p - out;
 }
 
 /*
