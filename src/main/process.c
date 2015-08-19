@@ -4691,11 +4691,14 @@ static int event_new_fd(rad_listen_t *this)
 		rad_assert(sock != NULL);
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
+		} else {
+			INFO(" ... adding new socket %s", buffer);
+		}
 
 #ifdef WITH_PROXY
-		} else if (this->type == RAD_LISTEN_PROXY) {
+		if (!just_started && (this->type == RAD_LISTEN_PROXY)) {
 			home_server_t *home;
-
+			
 			home = sock->home;
 			if (!home || !home->limit.max_connections) {
 				INFO(" ... adding new socket %s", buffer);
@@ -4705,8 +4708,6 @@ static int event_new_fd(rad_listen_t *this)
 			}
 
 #endif
-		} else {
-			INFO(" ... adding new socket %s", buffer);
 		}
 
 		switch (this->type) {
@@ -5176,6 +5177,119 @@ static int packet_entry_cmp(void const *one, void const *two)
 	return fr_packet_cmp(*a, *b);
 }
 
+#ifdef WITH_PROXY
+/*
+ *	They haven't defined a proxy listener.  Automatically
+ *	add one for them, with the correct address family.
+ */
+static void create_default_proxy_listener(int af)
+{
+	uint16_t	port = 0;
+	home_server_t	home;
+	listen_socket_t *sock;
+	rad_listen_t	*this;
+
+	memset(&home, 0, sizeof(home));
+
+	/*
+	 *	Open a default UDP port
+	 */
+	home.proto = IPPROTO_UDP;
+	port = 0;
+
+	/*
+	 *	Set the address family.
+	 */
+	home.src_ipaddr.af = af;
+	home.ipaddr.af = af;
+
+	/*
+	 *	Get the correct listener.
+	 */
+	this = proxy_new_listener(proxy_ctx, &home, port);
+	if (!this) {
+		fr_exit_now(1);
+	}
+
+	sock = this->data;
+	if (!fr_packet_list_socket_add(proxy_list, this->fd,
+				       sock->proto,
+				       &sock->other_ipaddr, sock->other_port,
+				       this)) {
+		ERROR("Failed adding proxy socket");
+		fr_exit_now(1);
+	}
+
+	/*
+	 *	Insert the FD into list of FDs to listen on.
+	 */
+	radius_update_listener(this);
+}
+
+/*
+ *	See if we automatically need to open a proxy socket.
+ */
+static void check_proxy(rad_listen_t *head)
+{
+	bool		defined_proxy;
+	bool		has_v4, has_v6;
+	rad_listen_t	*this;
+
+	if (check_config) return;
+	if (!main_config.proxy_requests) return;
+	if (!head) return;
+	if (!home_servers_udp) return;
+
+	/*
+	 *	We passed "-i" on the command line.  Use that address
+	 *	family for the proxy socket.
+	 */
+	if (main_config.myip.af != AF_UNSPEC) {
+		create_default_proxy_listener(main_config.myip.af);
+		return;
+	}
+
+	defined_proxy = has_v4 = has_v6 = false;
+
+	/*
+	 *	Figure out if we need to open a proxy socket, and if
+	 *	so, which one.
+	 */
+	for (this = head; this != NULL; this = this->next) {
+		listen_socket_t *sock;
+
+		switch (this->type) {
+		case RAD_LISTEN_PROXY:
+			defined_proxy = true;
+			break;
+
+		case RAD_LISTEN_AUTH:
+#ifdef WITH_ACCT
+		case RAD_LISTEN_ACCT:
+#endif
+#ifdef WITH_COA
+		case RAD_LISTEN_COA:
+#endif
+			sock = this->data;
+			if (sock->my_ipaddr.af == AF_INET) has_v4 = true;
+			if (sock->my_ipaddr.af == AF_INET6) has_v6 = true;
+			break;
+			
+		default:
+			break;
+		}
+	}
+
+	/*
+	 *	Assume they know what they're doing.
+	 */
+	if (defined_proxy) return;
+
+	if (has_v4) create_default_proxy_listener(AF_INET);
+
+	if (has_v6) create_default_proxy_listener(AF_INET6);
+}
+#endif
 
 int radius_event_start(CONF_SECTION *cs, bool have_children)
 {
@@ -5301,6 +5415,10 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	}
 
 	main_config.listen = head;
+
+#ifdef WITH_PROXY
+	check_proxy(head);
+#endif
 
 	/*
 	 *	At this point, no one has any business *ever* going

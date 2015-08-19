@@ -2875,7 +2875,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		this->print(this, buffer, sizeof(buffer));
 	}
 
-	if (rad_debug_lvl >= 2) {
+	if (rad_debug_lvl >= 3) {
 		DEBUG("Opened new proxy socket '%s'", buffer);
 	}
 
@@ -3097,9 +3097,6 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_flag)
 	rad_listen_t	*this;
 	fr_ipaddr_t	server_ipaddr;
 	uint16_t	auth_port = 0;
-#ifdef WITH_PROXY
-	bool		defined_proxy = false;
-#endif
 
 	/*
 	 *	We shouldn't be called with a pre-existing list.
@@ -3316,13 +3313,6 @@ add_sockets:
 	 *	add them to the event list.
 	 */
 	for (this = *head; this != NULL; this = this->next) {
-#ifdef WITH_PROXY
-		if (this->type == RAD_LISTEN_PROXY) {
-			defined_proxy = true;
-		}
-
-#endif
-
 #ifdef WITH_TLS
 		if (!check_config && !spawn_flag && this->tls) {
 			cf_log_err_cs(this->cs, "Threading must be enabled for TLS sockets to function properly");
@@ -3371,57 +3361,6 @@ add_sockets:
 
 		}
 	}
-
-#ifdef WITH_TCP
-	if (!home_servers_udp) defined_proxy = true;
-#endif
-
-	/*
-	 *	If we're proxying requests, open the proxy FD.
-	 *	Otherwise, don't do anything.
-	 */
-#ifdef WITH_PROXY
-	if ((main_config.proxy_requests == true) &&
-	    !check_config &&
-	    (*head != NULL) && !defined_proxy) {
-		uint16_t	port = 0;
-		home_server_t	home;
-
-		memset(&home, 0, sizeof(home));
-
-		/*
-		 *	Open a default UDP port
-		 */
-		home.proto = IPPROTO_UDP;
-		home.src_ipaddr = server_ipaddr;
-		port = 0;
-
-		/*
-		 *	Address is still unspecified, use IPv4.
-		 */
-		if (home.src_ipaddr.af == AF_UNSPEC) {
-			home.src_ipaddr.af = AF_INET;
-			/* everything else is already set to zero */
-		}
-
-		home.ipaddr.af = home.src_ipaddr.af;
-		/* everything else is already set to zero */
-
-		/*
-		 *	It's OK to allocate a UDP listener from the
-		 *	main config.  The listener will never be
-		 *	deleted until the server stops and the config
-		 *	is freed.
-		 */
-		this = proxy_new_listener(config, &home, port);
-		if (!this) {
-			listen_free(head);
-			return -1;
-		}
-
-		radius_update_listener(this);
-	}
-#endif
 
 	/*
 	 *	Haven't defined any sockets.  Die.
