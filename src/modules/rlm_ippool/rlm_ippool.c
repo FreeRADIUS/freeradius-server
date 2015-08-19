@@ -128,8 +128,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ "maximum-timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_ippool_t, max_timeout), NULL },
 	{ "maximum_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ippool_t, max_timeout), "0" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 /*

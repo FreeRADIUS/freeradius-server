@@ -50,8 +50,7 @@ static const CONF_PARSER module_config[] = {
 	{ "boolean", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_test_t, boolean), "no" },
 	{ "string", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_test_t, string), NULL },
 	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_test_t, ipaddr), "*" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,

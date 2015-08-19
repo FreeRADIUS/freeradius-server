@@ -116,8 +116,7 @@ static const CONF_PARSER module_config[] = {
 	{ "func_start_accounting", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_perl_t, func_start_accounting), NULL },
 
 	{ "func_stop_accounting", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_perl_t, func_stop_accounting), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 /*

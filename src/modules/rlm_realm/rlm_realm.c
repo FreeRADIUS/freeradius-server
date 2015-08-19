@@ -47,19 +47,17 @@ typedef struct rlm_realm_t {
 } rlm_realm_t;
 
 static CONF_PARSER module_config[] = {
-  { "format", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, format_string), "suffix" },
-  { "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, delim), "@" },
-  { "ignore_default", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, ignore_default), "no" },
-  { "ignore_null", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, ignore_null), "no" },
-
+	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, format_string), "suffix" },
+	{ "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t, delim), "@" },
+	{ "ignore_default", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, ignore_default), "no" },
+	{ "ignore_null", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_realm_t, ignore_null), "no" },
 #ifdef HAVE_TRUST_ROUTER_TR_DH_H
-  { "default_community", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t,default_community),  "none" },
-  { "rp_realm", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t,rp_realm),  "none" },
-  { "trust_router", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t,trust_router),  "none" },
-  { "tr_port", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_realm_t,tr_port),  "0" },
+	{ "default_community", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t,default_community),  "none" },
+	{ "rp_realm", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t,rp_realm),  "none" },
+	{ "trust_router", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_realm_t,trust_router),  "none" },
+	{ "tr_port", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_realm_t,tr_port),  "0" },
 #endif
-
-  { NULL, -1, 0, NULL, NULL }    /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 /*

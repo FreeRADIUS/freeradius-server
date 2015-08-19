@@ -36,8 +36,7 @@ static const CONF_PARSER module_config[] = {
 	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, REDIS_INST, port), "6379" },
 	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, REDIS_INST, database), "0" },
 	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, REDIS_INST, password), NULL },
-
-	{ NULL, -1, 0, NULL, NULL} /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static int _mod_conn_free(REDISSOCK *dissocket)

@@ -100,8 +100,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ "reply-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_sqlcounter_t, reply_name), NULL },
 	{ "reply_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_sqlcounter_t, reply_name), "Session-Timeout" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static int find_next_reset(rlm_sqlcounter_t *inst, time_t timeval)

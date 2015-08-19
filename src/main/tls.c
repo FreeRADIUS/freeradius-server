@@ -954,13 +954,13 @@ static CONF_PARSER cache_config[] = {
 
 	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, session_cache_size), "255" },
 	{ "persist_dir", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_path), NULL },
-	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER verify_config[] = {
 	{ "tmpdir", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, verify_tmp_dir), NULL },
 	{ "client", FR_CONF_OFFSET(PW_TYPE_STRING, fr_tls_server_conf_t, verify_client_cert_cmd), NULL },
-	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -971,7 +971,7 @@ static CONF_PARSER ocsp_config[] = {
 	{ "use_nonce", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_use_nonce), "yes" },
 	{ "timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, ocsp_timeout), "yes" },
 	{ "softfail", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_softfail), "no" },
-	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 #endif
 
@@ -1033,8 +1033,7 @@ static CONF_PARSER tls_server_config[] = {
 #ifdef HAVE_OPENSSL_OCSP_H
 	{ "ocsp", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) ocsp_config },
 #endif
-
-	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -1076,8 +1075,7 @@ static CONF_PARSER tls_client_config[] = {
 #ifdef SSL_OP_NO_TLSv1_2
 	{ "disable_tlsv1_2", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_tlsv1_2), NULL },
 #endif
-
-	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 

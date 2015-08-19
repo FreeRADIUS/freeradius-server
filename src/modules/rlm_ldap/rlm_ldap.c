@@ -74,16 +74,14 @@ static CONF_PARSER sasl_mech_dynamic[] = {
 	{ "mech", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL | PW_TYPE_NOT_EMPTY, ldap_sasl_dynamic, mech), NULL },
 	{ "proxy", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, ldap_sasl_dynamic, proxy), NULL },
 	{ "realm", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, ldap_sasl_dynamic, realm), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER sasl_mech_static[] = {
 	{ "mech", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, ldap_sasl, mech), NULL },
 	{ "proxy", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_sasl, proxy), NULL },
 	{ "realm", FR_CONF_OFFSET(PW_TYPE_STRING, ldap_sasl, realm), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -113,8 +111,7 @@ static CONF_PARSER tls_config[] = {
 	 */
 	{ "start_tls", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, start_tls), "no" },
 	{ "require_cert", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, tls_require_cert_str), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -122,8 +119,7 @@ static CONF_PARSER profile_config[] = {
 	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, rlm_ldap_t, profile_filter), "(&)" },	//!< Correct filter for when the DN is known.
 	{ "attribute", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, profile_attr), NULL },
 	{ "default", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_TMPL, rlm_ldap_t, default_profile), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -140,8 +136,7 @@ static CONF_PARSER user_config[] = {
 
 	/* Should be deprecated */
 	{ "sasl", FR_CONF_OFFSET(PW_TYPE_SUBSECTION, rlm_ldap_t, user_sasl), (void const *) sasl_mech_dynamic },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -158,16 +153,14 @@ static CONF_PARSER group_config[] = {
 	{ "cacheable_name", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, cacheable_group_name), "no" },
 	{ "cacheable_dn", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ldap_t, cacheable_group_dn), "no" },
 	{ "cache_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, cache_attribute), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static CONF_PARSER client_config[] = {
 	{ "filter", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, clientobj_filter), NULL },
 	{ "scope", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, clientobj_scope_str), "sub" },
 	{ "base_dn", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_ldap_t, clientobj_base_dn), "" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -175,8 +168,7 @@ static CONF_PARSER client_config[] = {
  */
 static const CONF_PARSER acct_section_config[] = {
 	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, ldap_acct_section_t, reference), "." },
-
-	{NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -216,8 +208,7 @@ static CONF_PARSER option_config[] = {
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
 	{ "interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ldap_t, keepalive_interval), "30" },
 #endif
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -256,8 +247,7 @@ static const CONF_PARSER module_config[] = {
 	{ "options", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) option_config },
 
 	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
-
-	{NULL, -1, 0, NULL, NULL}
+	CONF_PARSER_TERMINATOR
 };
 
 static ssize_t ldapquote_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)

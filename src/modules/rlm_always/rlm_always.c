@@ -49,8 +49,7 @@ static const CONF_PARSER module_config[] = {
 	{ "rcode", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_always_t, rcode_str), "fail" },
 	{ "simulcount", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_always_t, simulcount), "0" },
 	{ "mpp", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_always_t, mpp), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)

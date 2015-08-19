@@ -43,8 +43,7 @@ static CONF_PARSER tls_config[] = {
 	{ "random_file", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, tls_random_file), NULL },
 	{ "check_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, tls_check_cert), "yes" },
 	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, tls_check_cert_cn), "yes" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -75,15 +74,13 @@ static const CONF_PARSER section_config[] = {
 
 	/* TLS Parameters */
 	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER module_config[] = {
 	{ "connect_uri", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_t, connect_uri), NULL },
 	{ "connect_timeout", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_rest_t, connect_timeout_tv), "4.0" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, void *handle, REQUEST *request,

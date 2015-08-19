@@ -106,7 +106,7 @@ static const CONF_PARSER command_config[] = {
 	{ "gid", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, gid_name), NULL },
 	{ "mode", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, mode_name), NULL },
 	{ "peercred", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_command_socket_t, peercred), "yes" },
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static FR_NAME_NUMBER mode_names[] = {

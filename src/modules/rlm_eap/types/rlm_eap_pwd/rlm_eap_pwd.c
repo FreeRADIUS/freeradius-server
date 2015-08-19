@@ -46,7 +46,7 @@ static CONF_PARSER pwd_module_config[] = {
 	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, eap_pwd_t, fragment_size), "1020" },
 	{ "server_id", FR_CONF_OFFSET(PW_TYPE_STRING, eap_pwd_t, server_id), NULL },
 	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, eap_pwd_t, virtual_server), NULL },
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static int mod_detach (void *arg)

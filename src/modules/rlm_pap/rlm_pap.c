@@ -64,7 +64,7 @@ typedef struct rlm_pap_t {
  */
 static const CONF_PARSER module_config[] = {
 	{ "normalise", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_pap_t, normify), "yes" },
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 

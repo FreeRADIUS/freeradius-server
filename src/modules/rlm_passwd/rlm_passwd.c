@@ -402,8 +402,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ "hashsize", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_passwd_t, hash_size), NULL },
 	{ "hash_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_passwd_t, hash_size), "100" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)

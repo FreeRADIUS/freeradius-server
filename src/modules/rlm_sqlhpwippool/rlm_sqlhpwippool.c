@@ -77,7 +77,7 @@ static CONF_PARSER module_config[] = {
 	{ "no_free_fail", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlhpwippool_t, no_free_fail), "yes" },
 	{ "free_after", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlhpwippool_t, free_after), "300" },
 	{ "sync_after", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlhpwippool_t, sync_after), "25" },
-	{ NULL, -1, 0, NULL, NULL } /* end */
+	CONF_PARSER_TERMINATOR
 };
 
 int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl, char const *fmt, ...) CC_HINT(format (printf, 4, 5));

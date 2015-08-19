@@ -54,8 +54,7 @@ static const CONF_PARSER module_config[] = {
 	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_sometimes_t, key), "User-Name" },
 	{ "start", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sometimes_t, start), "0" },
 	{ "end", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sometimes_t, end), "127" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)

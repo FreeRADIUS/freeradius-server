@@ -40,8 +40,7 @@ static CONF_PARSER module_config[] = {
 
 	{ "send_error", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, send_error), "no" },
 	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_mschapv2_t, identity), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 

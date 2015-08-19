@@ -102,8 +102,7 @@ static CONF_PARSER module_config[] = {
 #undef A
 
 	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 static struct {

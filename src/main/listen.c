@@ -920,8 +920,7 @@ static CONF_PARSER performance_config[] = {
 	{ "synchronous", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rad_listen_t, synchronous), NULL },
 
 	{ "workers", FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, workers), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -933,8 +932,7 @@ static CONF_PARSER limit_config[] = {
 	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.lifetime), "0" },
 	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.idle_timeout), STRINGIFY(30) },
 #endif
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 

@@ -34,7 +34,7 @@ RCSID("$Id$")
 static const CONF_PARSER module_config[] = {
 	{ "keytab", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_krb5_t, keytabname), NULL },
 	{ "service_principal", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_krb5_t, service_princ), NULL },
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static int mod_detach(void *instance)

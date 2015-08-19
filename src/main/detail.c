@@ -1082,8 +1082,7 @@ static const CONF_PARSER detail_config[] = {
 	{ "retry_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, retry_interval), STRINGIFY(30) },
 	{ "one_shot", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, one_shot), "no" },
 	{ "track", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, track), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 /*

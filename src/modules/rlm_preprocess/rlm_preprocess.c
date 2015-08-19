@@ -57,7 +57,7 @@ static const CONF_PARSER module_config[] = {
 #if 0
 	{ "with_cablelabs_vsa_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_cablelabs_vsa_hack), NULL },
 #endif
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 /*

@@ -135,8 +135,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ "cache-size", FR_CONF_OFFSET(PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, rlm_counter_t, cache_size), NULL },
 	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_counter_t, cache_size), "1000" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 

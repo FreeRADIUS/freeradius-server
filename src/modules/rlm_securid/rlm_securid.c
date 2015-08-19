@@ -44,7 +44,7 @@ static const CONF_PARSER module_config[] = {
 	{ "max_sessions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_securid_t, max_sessions), "2048" },
 	{ "max_trips_per_session", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_securid_t, max_trips_per_session), NULL },
 	{ "max_round_trips", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_securid_t, max_trips_per_session), "6" },
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 

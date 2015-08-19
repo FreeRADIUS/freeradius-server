@@ -49,7 +49,7 @@ static const CONF_PARSER module_config[] = {
 	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_attr_filter_t, filename), NULL },
 	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_attr_filter_t, key), "%{Realm}" },
 	{ "relaxed", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_attr_filter_t, relaxed), "no" },
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *reply_item, int *pass, int *fail)

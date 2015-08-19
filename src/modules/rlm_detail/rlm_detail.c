@@ -81,7 +81,7 @@ static const CONF_PARSER module_config[] = {
 	{ "locking", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_detail_t, locking), "no" },
 	{ "escape_filenames", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_detail_t, escape), "no" },
 	{ "log_packet_header", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_detail_t, log_srcdst), "no" },
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 

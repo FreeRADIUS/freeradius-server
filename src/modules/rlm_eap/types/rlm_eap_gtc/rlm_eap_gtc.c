@@ -42,10 +42,8 @@ typedef struct rlm_eap_gtc_t {
 
 static CONF_PARSER module_config[] = {
 	{ "challenge", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_gtc_t, challenge), "Password: " },
-
 	{ "auth_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_gtc_t, auth_type_name), "PAP" },
-
-	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 
