@@ -447,7 +447,7 @@ size_t		fr_prints_len(char const *in, ssize_t inlen, char quote);
 char		*fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
 
 #define		is_truncated(_ret, _max) ((_ret) >= (size_t)(_max))
-#define		truncate_len(_ret, _max) (((_ret) >= (size_t)(_max)) ? ((_max) - 1) : _ret)
+#define		truncate_len(_ret, _max) (((_ret) >= (size_t)(_max)) ? (((size_t)(_max)) - 1) : _ret)
 
 /** Boilerplate for checking truncation
  *
