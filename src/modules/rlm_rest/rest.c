@@ -36,6 +36,18 @@ RCSID("$Id$")
 
 #include "rest.h"
 
+/*
+ * This is a workaround to backward versions.
+ */
+#if defined(HAVE_JSON) && !defined(JSON_C_MINOR_VERSION) /* The versions less then 10, don't declare the 'JSON_C_MINOR_VERSION'*/
+int json_object_object_get_ex(struct json_object* jso, const char *key, struct json_object **value);
+int json_object_object_get_ex(struct json_object* jso, const char *key, struct json_object **value) {
+	*value = json_object_object_get(jso, key);
+
+	return (*value != NULL);
+}
+#endif
+
 /** Table of encoder/decoder support.
  *
  * Indexes in this table match the http_body_type_t enum, and should be
@@ -1365,8 +1377,7 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			/*
 			 *  Process operator if present.
 			 */
-			tmp = json_object_object_get(value, "op");
-			if (tmp) {
+			if (json_object_object_get_ex(value, "op", &tmp)) {
 				flags.op = fr_str2int(fr_tokens, json_object_get_string(tmp), 0);
 				if (!flags.op) {
 					RWDEBUG("Invalid operator value \"%s\", skipping...",
@@ -1378,24 +1389,21 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			/*
 			 *  Process optional do_xlat bool.
 			 */
-			tmp = json_object_object_get(value, "do_xlat");
-			if (tmp) {
+			if (json_object_object_get_ex(value, "do_xlat", &tmp)) {
 				flags.do_xlat = json_object_get_boolean(tmp);
 			}
 
 			/*
 			 *  Process optional is_json bool.
 			 */
-			tmp = json_object_object_get(value, "is_json");
-			if (tmp) {
+			if (json_object_object_get_ex(value, "is_json", &tmp)) {
 				flags.is_json = json_object_get_boolean(tmp);
 			}
 
 			/*
 			 *  Value key must be present if were using the expanded syntax.
 			 */
-			value = json_object_object_get(value, "value");
-			if (!value) {
+			if (!json_object_object_get_ex(value, "value", &value)) {
 				RWDEBUG("Value key missing, skipping...");
 				continue;
 			}
