@@ -43,6 +43,18 @@ extern log_lvl_t rad_debug_lvl;
 
 /* Linker hacks */
 
+#ifdef HAVE_PTHREAD_H
+pid_t rad_fork(void)
+{
+	return fork();
+}
+
+pid_t rad_waitpid(pid_t pid, int *status)
+{
+	return waitpid(pid, status, 0);
+}
+#endif
+
 rlm_rcode_t indexed_modcall(UNUSED rlm_components_t comp, UNUSED int idx, UNUSED REQUEST *request)
 {
 	return RLM_MODULE_OK;
