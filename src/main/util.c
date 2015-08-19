@@ -1169,8 +1169,8 @@ void rad_mode_to_oct(char out[5], mode_t mode)
  */
 int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 {
-	static size_t len;
-	uint8_t *buff;
+	static size_t len = 0;
+	uint8_t *buff = NULL;
 	int ret;
 
 	*out = NULL;
@@ -1234,8 +1234,8 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
  */
 int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 {
-	static size_t len;
-	uint8_t *buff;
+	static size_t len = 0;
+	uint8_t *buff = NULL;
 	int ret;
 
 	*out = NULL;
@@ -1253,7 +1253,7 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
 #else
-		sc_len = 1024;
+		len = 1024;
 #endif
 	}
 
@@ -1299,8 +1299,8 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
  */
 int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 {
-	static size_t len;
-	uint8_t *buff;
+	static size_t len = 0;
+	uint8_t *buff = NULL;
 	int ret;
 
 	*out = NULL;
@@ -1318,7 +1318,7 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 		if (sc_len <= 0) sc_len = 1024;
 		len = (size_t)sc_len;
 #else
-		sc_len = 1024;
+		len = 1024;
 #endif
 	}
 
@@ -1364,8 +1364,8 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
  */
 int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 {
-	static size_t len;
-	uint8_t *buff;
+	static size_t len = 0;
+	uint8_t *buff = NULL;
 	int ret;
 
 	*out = NULL;
