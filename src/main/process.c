@@ -5303,9 +5303,9 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	main_config.listen = head;
 
 	/*
-	*	At this point, no one has any business *ever* going
-	*	back to root uid.
-	*/
+	 *	At this point, no one has any business *ever* going
+	 *	back to root uid.
+	 */
 	rad_suid_down_permanent();
 
 	return 1;
