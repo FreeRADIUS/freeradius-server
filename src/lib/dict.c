@@ -1939,12 +1939,8 @@ static int process_vendor(char const* fn, int const line, char **argv,
 
 	/* Create a new VENDOR entry for the list */
 	if (dict_addvendor(argv[0], value) < 0) {
-		char buffer[256];
-
-		strlcpy(buffer, fr_strerror(), sizeof(buffer));
-
 		fr_strerror_printf("dict_init: %s[%d]: %s",
-			   fn, line, buffer);
+			   fn, line, fr_strerror());
 		return -1;
 	}
 
