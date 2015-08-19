@@ -41,6 +41,25 @@ extern log_lvl_t rad_debug_lvl;
 
 #include <sys/wait.h>
 
+/* Linker hacks */
+
+rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
+{
+	return RLM_MODULE_OK;
+}
+
+char const *get_radius_dir(void)
+{
+	return NULL;
+}
+
+void *module_instantiate(CONF_SECTION *modules, char const *askedname)
+{
+	return NULL;
+}
+
+/* Linker hacks */
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "usage: map_unit [OPTS] filename ...\n");
