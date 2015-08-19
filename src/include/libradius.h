@@ -446,8 +446,29 @@ size_t		fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char 
 size_t		fr_prints_len(char const *in, ssize_t inlen, char quote);
 char		*fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
 
-#define		is_truncated(_ret, _max) ((_ret) >= (_max))
-#define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? ((_max) - 1) : _ret)
+#define		is_truncated(_ret, _max) ((_ret) >= (size_t)(_max))
+#define		truncate_len(_ret, _max) (((_ret) >= (size_t)(_max)) ? ((_max) - 1) : _ret)
+
+/** Boilerplate for checking truncation
+ *
+ * If truncation has occurred, advance _p as far as possible without
+ * overrunning the output buffer, and \0 terminate.  Then return the length
+ * of the buffer we would have needed to write the full value.
+ *
+ * If truncation has not occurred, advance _p by whatever the copy or print
+ * function returned.
+ */
+#define RETURN_IF_TRUNCATED(_p, _ret, _max) \
+do { \
+	if (is_truncated(_ret, _max)) { \
+		size_t _r = (_p - out) + _ret; \
+		_p += truncate_len(_ret, _max); \
+		*_p = '\0'; \
+		return _r; \
+	} \
+	_p += _ret; \
+} while (0)
+
 size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
 
 

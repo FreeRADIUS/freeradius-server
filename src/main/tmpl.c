@@ -1736,197 +1736,159 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
  *
  * @param[out] out Where to write the presentation format #vp_tmpl_t string.
  * @param[in] outlen Size of output buffer.
- * @param[in] vpt to print
+ * @param[in] vpt to print.
  * @param[in] values Used for integer attributes only. #DICT_ATTR to use when mapping integer
  *	values to strings.
- * @return the size of the string written to the output buffer.
+ * @return
+ *	- The number of bytes written to the out buffer.
+ *	- A number >= outlen if truncation has occurred.
  */
 size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR const *values)
 {
-	size_t len;
-	char c;
-	char const *p;
-	char *q = out;
+	size_t		len;
+	char const	*p;
+	char		c;
+	char		*out_p = out, *end = out_p + outlen;
 
-	if (!vpt) {
+	if (!vpt || (outlen < 3)) {
+	empty:
 		*out = '\0';
 		return 0;
 	}
-
 	VERIFY_TMPL(vpt);
 
-	switch (vpt->type) {
-	default:
-		return 0;
+	out[outlen - 1] = '\0';	/* Always terminate for safety */
 
+	switch (vpt->type) {
+	case TMPL_TYPE_LIST:
+		*out_p++ = '&';
+
+		/*
+		 *	Don't add &current.
+		 */
+		if (vpt->tmpl_request == REQUEST_CURRENT) {
+			len = snprintf(out_p, end - out_p, "%s", fr_int2str(pair_lists, vpt->tmpl_list, ""));
+			RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+			goto inst_and_tag;
+		}
+
+		len = snprintf(out_p, end - out_p, "%s.%s", fr_int2str(request_refs, vpt->tmpl_request, ""),
+			       fr_int2str(pair_lists, vpt->tmpl_list, ""));
+		RETURN_IF_TRUNCATED(out_p, len, end - out_p);
+		goto inst_and_tag;
+
+	case TMPL_TYPE_ATTR_UNDEFINED:
+	case TMPL_TYPE_ATTR:
+		*out_p++ = '&';
+
+		p = vpt->type == TMPL_TYPE_ATTR ? vpt->tmpl_da->name : vpt->tmpl_unknown_name;
+
+		/*
+		 *	Don't add &current.
+		 */
+		if (vpt->tmpl_request == REQUEST_CURRENT) {
+			if (vpt->tmpl_list == PAIR_LIST_REQUEST) {
+				len = strlcpy(out_p, p, end - out_p);
+				RETURN_IF_TRUNCATED(out_p, len, (size_t)(end - out_p));
+				goto inst_and_tag;
+			}
+
+			/*
+			 *	Don't add &request:
+			 */
+			len = snprintf(out_p, end - out_p, "%s:%s",
+				       fr_int2str(pair_lists, vpt->tmpl_list, ""), p);
+			RETURN_IF_TRUNCATED(out_p, len, (size_t)(end - out_p));
+			goto inst_and_tag;
+		}
+
+		len = snprintf(out_p, end - out_p, "%s.%s:%s", fr_int2str(request_refs, vpt->tmpl_request, ""),
+			       fr_int2str(pair_lists, vpt->tmpl_list, ""), p);
+		RETURN_IF_TRUNCATED(out_p, len, (size_t)(end - out_p));
+
+	inst_and_tag:
+		if (vpt->tmpl_tag != TAG_ANY) {
+			len = snprintf(out_p, end - out_p, ":%d", vpt->tmpl_tag);
+			RETURN_IF_TRUNCATED(out_p, len, (size_t)(end - out_p));
+		}
+
+		switch (vpt->tmpl_num) {
+		case NUM_ANY:
+			goto finish;
+
+		case NUM_ALL:
+			len = snprintf(out_p, end - out_p, "[*]");
+			break;
+
+		case NUM_COUNT:
+			len = snprintf(out_p, end - out_p, "[#]");
+			break;
+
+		case NUM_LAST:
+			len = snprintf(out_p, end - out_p, "[n]");
+			break;
+
+		default:
+			len = snprintf(out_p, end - out_p, "[%i]", vpt->tmpl_num);
+			break;
+		}
+		RETURN_IF_TRUNCATED(out_p, len, (size_t)(end - out_p));
+		goto finish;
+
+	/*
+	 *	Regexes have their own set of escaping rules
+	 */
 	case TMPL_TYPE_REGEX:
 	case TMPL_TYPE_REGEX_STRUCT:
-		c = '/';
-		break;
+		if (outlen < 4) goto empty;	/* / + <c> + / + \0 */
+		*out_p++ = '/';
+		len = fr_prints(out_p, (end - out_p) - 1, vpt->name, vpt->len, '\0');
+		RETURN_IF_TRUNCATED(out_p, len, ((size_t)(end - out_p)) - 1);
+		*out_p++ = '/';
+		goto finish;
 
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
 		c = '"';
-		break;
-	case TMPL_TYPE_LITERAL:	/* single-quoted or bare word */
+		goto do_literal;
+
+	case TMPL_TYPE_EXEC:
+		c = '`';
+		goto do_literal;
+
+	case TMPL_TYPE_LITERAL:
 		/*
-		 *	Hack
+		 *	Nasty nasty hack that needs to be fixed.
+		 *
+		 *	Determines what quoting to use around strings based on their content.
+		 *	Should use vpt->quote, but that's not always set correctly
+		 *	at the moment.
 		 */
 		for (p = vpt->name; *p != '\0'; p++) {
 			if (*p == ' ') break;
 			if (*p == '\'') break;
 			if (!dict_attr_allowed_chars[(int) *p]) break;
 		}
+		c = *p ? c = '"' : '\0';
 
-		if (!*p) {
-			strlcpy(out, vpt->name, outlen);
-			return strlen(out);
-		}
-
-		c = vpt->quote;
+do_literal:
+		if (outlen < 4) goto empty;	/* / + <c> + / + \0 */
+		if (c != '\0') *out_p++ = c;
+		len = fr_prints(out_p, (end - out_p) - ((c == '\0') ? 0 : 1), vpt->name, vpt->len, c);
+		RETURN_IF_TRUNCATED(out_p, len, ((size_t)(end - out_p)) - ((c == '\0') ? 0 : 1));
+		if (c != '\0') *out_p++ = c;
 		break;
-
-	case TMPL_TYPE_EXEC:
-		c = '`';
-		break;
-
-	case TMPL_TYPE_LIST:
-		out[0] = '&';
-		if (vpt->tmpl_request == REQUEST_CURRENT) {
-			snprintf(out + 1, outlen - 1, "%s",
-				 fr_int2str(pair_lists, vpt->tmpl_list, ""));
-		} else {
-			snprintf(out + 1, outlen - 1, "%s.%s",
-				 fr_int2str(request_refs, vpt->tmpl_request, ""),
-				 fr_int2str(pair_lists, vpt->tmpl_list, ""));
-		}
-		len = strlen(out);
-		goto attr_inst_tag;
-
-	case TMPL_TYPE_ATTR:
-		out[0] = '&';
-		if (vpt->tmpl_request == REQUEST_CURRENT) {
-			if (vpt->tmpl_list == PAIR_LIST_REQUEST) {
-				strlcpy(out + 1, vpt->tmpl_da->name, outlen - 1);
-			} else {
-				snprintf(out + 1, outlen - 1, "%s:%s",
-					 fr_int2str(pair_lists, vpt->tmpl_list, ""),
-					 vpt->tmpl_da->name);
-			}
-
-		} else {
-			snprintf(out + 1, outlen - 1, "%s.%s:%s",
-				 fr_int2str(request_refs, vpt->tmpl_request, ""),
-				 fr_int2str(pair_lists, vpt->tmpl_list, ""),
-				 vpt->tmpl_da->name);
-		}
-
-		len = strlen(out);
-
-	attr_inst_tag:
-		if ((vpt->tmpl_tag == TAG_ANY) && (vpt->tmpl_num == NUM_ANY)) return len;
-
-		q = out + len;
-		outlen -= len;
-
-		if (vpt->tmpl_tag != TAG_ANY) {
-			snprintf(q, outlen, ":%d", vpt->tmpl_tag);
-			len = strlen(q);
-			q += len;
-			outlen -= len;
-		}
-
-		switch (vpt->tmpl_num) {
-		case NUM_ANY:
-			break;
-
-		case NUM_ALL:
-			snprintf(q, outlen, "[*]");
-			len = strlen(q);
-			q += len;
-			break;
-
-		case NUM_COUNT:
-			snprintf(q, outlen, "[#]");
-			len = strlen(q);
-			q += len;
-			break;
-
-		case NUM_LAST:
-			snprintf(q, outlen, "[n]");
-			len = strlen(q);
-			q += len;
-			break;
-
-		default:
-			snprintf(q, outlen, "[%i]", vpt->tmpl_num);
-			len = strlen(q);
-			q += len;
-			break;
-		}
-
-		return (q - out);
-
-	case TMPL_TYPE_ATTR_UNDEFINED:
-		out[0] = '&';
-		if (vpt->tmpl_request == REQUEST_CURRENT) {
-			if (vpt->tmpl_list == PAIR_LIST_REQUEST) {
-				strlcpy(out + 1, vpt->tmpl_unknown_name, outlen - 1);
-			} else {
-				snprintf(out + 1, outlen - 1, "%s:%s",
-					 fr_int2str(pair_lists, vpt->tmpl_list, ""),
-					 vpt->tmpl_unknown_name);
-			}
-
-		} else {
-			snprintf(out + 1, outlen - 1, "%s.%s:%s",
-				 fr_int2str(request_refs, vpt->tmpl_request, ""),
-				 fr_int2str(pair_lists, vpt->tmpl_list, ""),
-				 vpt->tmpl_unknown_name);
-		}
-
-		len = strlen(out);
-
-		if (vpt->tmpl_num == NUM_ANY) {
-			return len;
-		}
-
-		q = out + len;
-		outlen -= len;
-
-		if (vpt->tmpl_num != NUM_ANY) {
-			snprintf(q, outlen, "[%i]", vpt->tmpl_num);
-			len = strlen(q);
-			q += len;
-		}
-
-		return (q - out);
 
 	case TMPL_TYPE_DATA:
 		return value_data_prints(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_value, vpt->quote);
+
+	default:
+		goto empty;
 	}
 
-	if (outlen <= 3) {
-		*out = '\0';
-		return 0;
-	}
-
-	*(q++) = c;
-
-	/*
-	 *	Print it with appropriate escaping
-	 */
-	if (c == '/') {
-		len = fr_prints(q, outlen - 3, vpt->name, vpt->len, '\0');
-	} else {
-		len = fr_prints(q, outlen - 3, vpt->name, vpt->len, c);
-	}
-
-	q += len;
-	*(q++) = c;
-	*q = '\0';
-
-	return q - out;
+finish:
+	*out_p = '\0';
+	return (out_p - out);
 }
 
 /** Initialise a #vp_cursor_t to the #VALUE_PAIR specified by a #vp_tmpl_t
