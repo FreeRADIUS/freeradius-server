@@ -873,7 +873,7 @@ done:
 /*
  *	Enforce max_request_time.
  */
-static void request_max_time(REQUEST *request)
+static bool request_max_time(REQUEST *request)
 {
 	struct timeval now, when;
 	rad_assert(request->magic == REQUEST_MAGIC);
@@ -896,7 +896,7 @@ static void request_max_time(REQUEST *request)
 	if (request->child_state == REQUEST_DONE) {
 	done:
 		request_done(request, FR_ACTION_DONE);
-		return;
+		return true;
 	}
 
 	/*
@@ -939,6 +939,7 @@ static void request_max_time(REQUEST *request)
 	tv_add(&when, request->delay);
 	request->delay += request->delay >> 1;
 	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+	return false;
 }
 
 static void request_queue_or_run(REQUEST *request,
@@ -1474,7 +1475,7 @@ static void request_running(REQUEST *request, int action)
 	switch (action) {
 	case FR_ACTION_TIMER:
 		COA_SEPARATE;
-		request_max_time(request);
+		(void) request_max_time(request);
 		break;
 
 	case FR_ACTION_DUP:
@@ -2637,7 +2638,7 @@ static void proxy_no_reply(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_TIMER:
-		request_max_time(request);
+		(void) request_max_time(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
@@ -2686,7 +2687,7 @@ static void proxy_running(REQUEST *request, int action)
 		break;
 
 	case FR_ACTION_TIMER:
-		request_max_time(request);
+		(void) request_max_time(request);
 		break;
 
 	case FR_ACTION_RUN:
@@ -4338,18 +4339,16 @@ static void coa_wait_for_reply(REQUEST *request, int action)
 	ASSERT_MASTER;
 	CHECK_FOR_STOP;
 
+	if (request->parent) coa_separate(request);
+
 	switch (action) {
 	case FR_ACTION_TIMER:
-		request_max_time(request);
-
-		if (request->parent) coa_separate(request);
+		if (request_max_time(request)) break;
 
 		coa_retransmit(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY:
-		if (request->parent) coa_separate(request);
-
 		request_queue_or_run(request, coa_running);
 		break;
 
@@ -4415,7 +4414,7 @@ static void coa_no_reply(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		request_max_time(request);
+		(void) request_max_time(request);
 		break;
 
 	case FR_ACTION_PROXY_REPLY: /* too late! */
@@ -4464,7 +4463,7 @@ static void coa_running(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		request_max_time(request);
+		(void) request_max_time(request);
 		break;
 
 	case FR_ACTION_RUN:
