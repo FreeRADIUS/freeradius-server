@@ -1,0 +1,78 @@
+######################################################################
+#
+#  This virtual server controls caching of TLS sessions.
+#
+#  When a TLS session is used, the server will automatically create
+#  the following attributes in the request list.  These attributes
+#  are the the ones for the *server* certificate.
+#
+#	       TLS-Cert-Serial
+#	       TLS-Cert-Expiration
+#	       TLS-Cert-Subject
+#	       TLS-Cert-Issuer
+#	       TLS-Cert-Common-Name
+#	       TLS-Cert-Subject-Alt-Name-Email
+#
+#  If a client certificate is required (e.g. EAP-TLS or sometimes PEAP / TTLS),
+#  the following attributes are also created in the request list:
+#
+#	       TLS-Client-Cert-Serial
+#	       TLS-Client-Cert-Expiration
+#	       TLS-Client-Cert-Subject
+#	       TLS-Client-Cert-Issuer
+#	       TLS-Client-Cert-Common-Name
+#	       TLS-Client-Cert-Subject-Alt-Name-Email
+#
+#
+#	$Id$
+#
+######################################################################
+server tls-cache {
+
+#
+#  Only the "authorize" section is needed.
+#  Only the listed Autz-Types are used.
+#  Everything else in the virtual server is ignored.
+#
+#  The attribute &control:TLS-Session-Identity is set to the identity
+#  of the session to read / write / delete from the cache.  This
+#  identity is an opaque blob.
+#
+authorize {
+
+	#
+	#  This section is run whenever the server needs to read an
+	#  entry from the TLS session cache.
+	#
+	#  It should read the attribute &control:TLS-Session-Data
+	#  from the cache, along with any other attributes which
+	#  were in the cache
+	#
+	Autz-Type Cache-Read {
+
+
+	}
+
+	#
+	#  This section is run whenever the server needs to write an
+	#  entry to the TLS session cache.
+	#
+	#  It should write the attribute &control:TLS-Session-Data
+	#  to the cache, along with any other attributes which
+	#  need to be cached.
+	#
+	Autz-Type Cache-Write {
+
+
+	}
+
+	#
+	#  This section is run whenever the server needs to delete an
+	#  entry from the TLS session cache.
+	#
+	Autz-Type Cache-Delete {
+
+
+	}
+}
+}
