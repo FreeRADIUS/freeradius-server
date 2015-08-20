@@ -72,11 +72,11 @@ typedef struct rlm_sqlhpwippool_t {
 /* char *name, int type,
  * size_t offset, void *data, char *dflt */
 static CONF_PARSER module_config[] = {
-	{ "sql_module_instance", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlhpwippool_t, sql_module_instance), "sql" },
-	{ "db_name", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sqlhpwippool_t, db_name), "netvim" },
-	{ "no_free_fail", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sqlhpwippool_t, no_free_fail), "yes" },
-	{ "free_after", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlhpwippool_t, free_after), "300" },
-	{ "sync_after", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sqlhpwippool_t, sync_after), "25" },
+	{ FR_CONF_OFFSET("sql_module_instance", PW_TYPE_STRING, rlm_sqlhpwippool_t, sql_module_instance), .dflt = "sql" },
+	{ FR_CONF_OFFSET("db_name", PW_TYPE_STRING, rlm_sqlhpwippool_t, db_name), .dflt = "netvim" },
+	{ FR_CONF_OFFSET("no_free_fail", PW_TYPE_BOOLEAN, rlm_sqlhpwippool_t, no_free_fail), .dflt = "yes" },
+	{ FR_CONF_OFFSET("free_after", PW_TYPE_INTEGER, rlm_sqlhpwippool_t, free_after), .dflt = "300" },
+	{ FR_CONF_OFFSET("sync_after", PW_TYPE_INTEGER, rlm_sqlhpwippool_t, sync_after), .dflt = "25" },
 	CONF_PARSER_TERMINATOR
 };
 

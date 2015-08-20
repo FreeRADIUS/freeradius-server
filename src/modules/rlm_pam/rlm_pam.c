@@ -52,7 +52,7 @@ typedef struct rlm_pam_t {
 } rlm_pam_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "pam_auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_pam_t, pam_auth_name), "radiusd" },
+	{ FR_CONF_OFFSET("pam_auth", PW_TYPE_STRING, rlm_pam_t, pam_auth_name), .dflt = "radiusd" },
 	CONF_PARSER_TERMINATOR
 };
 

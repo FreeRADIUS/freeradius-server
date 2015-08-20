@@ -46,10 +46,10 @@ typedef struct rlm_test_t {
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-	{ "integer", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_test_t, value), "1" },
-	{ "boolean", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_test_t, boolean), "no" },
-	{ "string", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_test_t, string), NULL },
-	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_test_t, ipaddr), "*" },
+	{ FR_CONF_OFFSET("integer", PW_TYPE_INTEGER, rlm_test_t, value), .dflt = "1" },
+	{ FR_CONF_OFFSET("boolean", PW_TYPE_BOOLEAN, rlm_test_t, boolean), .dflt = "no" },
+	{ FR_CONF_OFFSET("string", PW_TYPE_STRING, rlm_test_t, string) },
+	{ FR_CONF_OFFSET("ipaddr", PW_TYPE_IPV4_ADDR, rlm_test_t, ipaddr), .dflt = "*" },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -56,10 +56,10 @@ typedef struct rlm_rediswho {
 static CONF_PARSER module_config[] = {
 	REDIS_COMMON_CONFIG,
 
-	{ "trim_count", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), "-1" },
-	{ "insert", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, insert), NULL },
-	{ "trim", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rediswho_t, trim), NULL }, /* required only if trim_count > 0 */
-	{ "expire", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, expire), NULL },
+	{ FR_CONF_OFFSET("trim_count", PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), .dflt = "-1" },
+	{ FR_CONF_OFFSET("insert", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, insert) },
+	{ FR_CONF_OFFSET("trim", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
+	{ FR_CONF_OFFSET("expire", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, expire) },
 	CONF_PARSER_TERMINATOR
 };
 

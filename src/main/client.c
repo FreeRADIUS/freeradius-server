@@ -485,43 +485,43 @@ static char const *hs_proto = NULL;
 
 #ifdef WITH_TCP
 static CONF_PARSER limit_config[] = {
-	{ "max_connections", FR_CONF_OFFSET(PW_TYPE_INTEGER, RADCLIENT, limit.max_connections),   "16" },
+	{ FR_CONF_OFFSET("max_connections", PW_TYPE_INTEGER, RADCLIENT, limit.max_connections), .dflt = "16" },
 
-	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, RADCLIENT, limit.lifetime),   "0" },
+	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, RADCLIENT, limit.lifetime), .dflt = "0" },
 
-	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, RADCLIENT, limit.idle_timeout), "30" },
+	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, RADCLIENT, limit.idle_timeout), .dflt = "30" },
 	CONF_PARSER_TERMINATOR
 };
 #endif
 
 static const CONF_PARSER client_config[] = {
-	{ "ipaddr", FR_CONF_POINTER(PW_TYPE_COMBO_IP_PREFIX, &cl_ipaddr), NULL },
-	{ "ipv4addr", FR_CONF_POINTER(PW_TYPE_IPV4_PREFIX, &cl_ipaddr), NULL },
-	{ "ipv6addr", FR_CONF_POINTER(PW_TYPE_IPV6_PREFIX, &cl_ipaddr), NULL },
+	{ FR_CONF_POINTER("ipaddr", PW_TYPE_COMBO_IP_PREFIX, &cl_ipaddr) },
+	{ FR_CONF_POINTER("ipv4addr", PW_TYPE_IPV4_PREFIX, &cl_ipaddr) },
+	{ FR_CONF_POINTER("ipv6addr", PW_TYPE_IPV6_PREFIX, &cl_ipaddr) },
 
-	{ "src_ipaddr", FR_CONF_POINTER(PW_TYPE_STRING, &cl_srcipaddr), NULL },
+	{ FR_CONF_POINTER("src_ipaddr", PW_TYPE_STRING, &cl_srcipaddr) },
 
-	{ "require_message_authenticator",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, message_authenticator), "no" },
+	{ FR_CONF_OFFSET("require_message_authenticator", PW_TYPE_BOOLEAN, RADCLIENT, message_authenticator), .dflt = "no" },
 
-	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, RADCLIENT, secret), NULL },
-	{ "shortname", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), NULL },
+	{ FR_CONF_OFFSET("secret", PW_TYPE_STRING | PW_TYPE_SECRET, RADCLIENT, secret) },
+	{ FR_CONF_OFFSET("shortname", PW_TYPE_STRING, RADCLIENT, shortname) },
 
-	{ "nas_type", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, nas_type), NULL },
+	{ FR_CONF_OFFSET("nas_type", PW_TYPE_STRING, RADCLIENT, nas_type) },
 
-	{ "login", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, login), NULL },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, password), NULL },
-	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, server), NULL },
-	{ "response_window", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, RADCLIENT, response_window), NULL },
+	{ FR_CONF_OFFSET("login", PW_TYPE_STRING, RADCLIENT, login) },
+	{ FR_CONF_OFFSET("password", PW_TYPE_STRING, RADCLIENT, password) },
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, RADCLIENT, server) },
+	{ FR_CONF_OFFSET("response_window", PW_TYPE_TIMEVAL, RADCLIENT, response_window) },
 
 #ifdef WITH_TCP
-	{ "proto", FR_CONF_POINTER(PW_TYPE_STRING, &hs_proto), NULL },
-	{ "limit", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) limit_config },
+	{ FR_CONF_POINTER("proto", PW_TYPE_STRING, &hs_proto) },
+	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) limit_config },
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
-	{ "dynamic_clients", FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, client_server), NULL },
-	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, RADCLIENT, lifetime), NULL },
-	{ "rate_limit", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, rate_limit), NULL },
+	{ FR_CONF_OFFSET("dynamic_clients", PW_TYPE_STRING, RADCLIENT, client_server) },
+	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, RADCLIENT, lifetime) },
+	{ FR_CONF_OFFSET("rate_limit", PW_TYPE_BOOLEAN, RADCLIENT, rate_limit) },
 #endif
 	CONF_PARSER_TERMINATOR
 };
@@ -689,19 +689,19 @@ RADCLIENT_LIST *client_list_parse_section(CONF_SECTION *section, UNUSED bool tls
  *	We overload this structure a lot.
  */
 static const CONF_PARSER dynamic_config[] = {
-	{ "FreeRADIUS-Client-IP-Address", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, RADCLIENT, ipaddr), NULL },
-	{ "FreeRADIUS-Client-IPv6-Address", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, RADCLIENT, ipaddr), NULL },
-	{ "FreeRADIUS-Client-IP-Prefix", FR_CONF_OFFSET(PW_TYPE_IPV4_PREFIX, RADCLIENT, ipaddr), NULL },
-	{ "FreeRADIUS-Client-IPv6-Prefix", FR_CONF_OFFSET(PW_TYPE_IPV6_PREFIX, RADCLIENT, ipaddr), NULL },
-	{ "FreeRADIUS-Client-Src-IP-Address", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, RADCLIENT, src_ipaddr), NULL },
-	{ "FreeRADIUS-Client-Src-IPv6-Address", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, RADCLIENT, src_ipaddr), NULL },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-IP-Address", PW_TYPE_IPV4_ADDR, RADCLIENT, ipaddr) },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-IPv6-Address", PW_TYPE_IPV6_ADDR, RADCLIENT, ipaddr) },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-IP-Prefix", PW_TYPE_IPV4_PREFIX, RADCLIENT, ipaddr) },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-IPv6-Prefix", PW_TYPE_IPV6_PREFIX, RADCLIENT, ipaddr) },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-Src-IP-Address", PW_TYPE_IPV4_ADDR, RADCLIENT, src_ipaddr) },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-Src-IPv6-Address", PW_TYPE_IPV6_ADDR, RADCLIENT, src_ipaddr) },
 
-	{ "FreeRADIUS-Client-Require-MA", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, RADCLIENT, message_authenticator), NULL },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-Require-MA", PW_TYPE_BOOLEAN, RADCLIENT, message_authenticator) },
 
-	{ "FreeRADIUS-Client-Secret",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, secret), "" },
-	{ "FreeRADIUS-Client-Shortname",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, shortname), "" },
-	{ "FreeRADIUS-Client-NAS-Type",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, nas_type), NULL },
-	{ "FreeRADIUS-Client-Virtual-Server",  FR_CONF_OFFSET(PW_TYPE_STRING, RADCLIENT, server), NULL },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-Secret", PW_TYPE_STRING, RADCLIENT, secret), .dflt = "" },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-Shortname", PW_TYPE_STRING, RADCLIENT, shortname), .dflt = "" },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-NAS-Type", PW_TYPE_STRING, RADCLIENT, nas_type) },
+	{ FR_CONF_OFFSET("FreeRADIUS-Client-Virtual-Server", PW_TYPE_STRING, RADCLIENT, server) },
 	CONF_PARSER_TERMINATOR
 };
 

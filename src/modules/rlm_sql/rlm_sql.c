@@ -43,7 +43,7 @@ RCSID("$Id$")
  *	So we can do pass2 xlat checks on the queries.
  */
 static const CONF_PARSER query_config[] = {
-	{ "query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_MULTI, rlm_sql_config_t, accounting.query), NULL },
+	{ FR_CONF_OFFSET("query", PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_MULTI, rlm_sql_config_t, accounting.query) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -52,68 +52,68 @@ static const CONF_PARSER query_config[] = {
  *	helps the average case.
  */
 static const CONF_PARSER type_config[] = {
-	{ "accounting-on", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
-	{ "accounting-off", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
-	{ "start", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
-	{ "interim-update", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
-	{ "stop", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) query_config },
+	{ FR_CONF_POINTER("accounting-on", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) query_config },
+	{ FR_CONF_POINTER("accounting-off", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) query_config },
+	{ FR_CONF_POINTER("start", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) query_config },
+	{ FR_CONF_POINTER("interim-update", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) query_config },
+	{ FR_CONF_POINTER("stop", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) query_config },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER acct_config[] = {
-	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.reference), ".query" },
-	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.logfile), NULL },
+	{ FR_CONF_OFFSET("reference", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.reference), .dflt = ".query" },
+	{ FR_CONF_OFFSET("logfile", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, accounting.logfile) },
 
-	{ "type", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) type_config },
+	{ FR_CONF_POINTER("type", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) type_config },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER postauth_config[] = {
-	{ "reference", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, postauth.reference), ".query" },
-	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, postauth.logfile), NULL },
+	{ FR_CONF_OFFSET("reference", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, postauth.reference), .dflt = ".query" },
+	{ FR_CONF_OFFSET("logfile", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, postauth.logfile) },
 
-	{ "query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_MULTI, rlm_sql_config_t, postauth.query), NULL },
+	{ FR_CONF_OFFSET("query", PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_MULTI, rlm_sql_config_t, postauth.query) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER module_config[] = {
-	{ "driver", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_driver_name), "rlm_sql_null" },
-	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_server), "" },	/* Must be zero length so drivers can determine if it was set */
-	{ "port", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_config_t, sql_port), "0" },
-	{ "login", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_login), "" },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, rlm_sql_config_t, sql_password), "" },
-	{ "radius_db", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, sql_db), "radius" },
-	{ "read_groups", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, read_groups), "yes" },
-	{ "read_profiles", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, read_profiles), "yes" },
-	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, do_clients), "no" },
-	{ "delete_stale_sessions", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_config_t, delete_stale_sessions), "yes" },
-	{ "sql_user_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, query_user), "" },
-	{ "group_attribute", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, group_attribute), NULL },
-	{ "logfile", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, logfile), NULL },
-	{ "default_user_profile", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, default_profile), "" },
-	{ "client_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, client_query), "SELECT id,nasname,shortname,type,secret FROM nas" },
-	{ "open_query", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, connect_query), NULL },
+	{ FR_CONF_OFFSET("driver", PW_TYPE_STRING, rlm_sql_config_t, sql_driver_name), .dflt = "rlm_sql_null" },
+	{ FR_CONF_OFFSET("server", PW_TYPE_STRING, rlm_sql_config_t, sql_server), .dflt = "" },	/* Must be zero length so drivers can determine if it was set */
+	{ FR_CONF_OFFSET("port", PW_TYPE_INTEGER, rlm_sql_config_t, sql_port), .dflt = "0" },
+	{ FR_CONF_OFFSET("login", PW_TYPE_STRING, rlm_sql_config_t, sql_login), .dflt = "" },
+	{ FR_CONF_OFFSET("password", PW_TYPE_STRING | PW_TYPE_SECRET, rlm_sql_config_t, sql_password), .dflt = "" },
+	{ FR_CONF_OFFSET("radius_db", PW_TYPE_STRING, rlm_sql_config_t, sql_db), .dflt = "radius" },
+	{ FR_CONF_OFFSET("read_groups", PW_TYPE_BOOLEAN, rlm_sql_config_t, read_groups), .dflt = "yes" },
+	{ FR_CONF_OFFSET("read_profiles", PW_TYPE_BOOLEAN, rlm_sql_config_t, read_profiles), .dflt = "yes" },
+	{ FR_CONF_OFFSET("read_clients", PW_TYPE_BOOLEAN, rlm_sql_config_t, do_clients), .dflt = "no" },
+	{ FR_CONF_OFFSET("delete_stale_sessions", PW_TYPE_BOOLEAN, rlm_sql_config_t, delete_stale_sessions), .dflt = "yes" },
+	{ FR_CONF_OFFSET("sql_user_name", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, query_user), .dflt = "" },
+	{ FR_CONF_OFFSET("group_attribute", PW_TYPE_STRING, rlm_sql_config_t, group_attribute) },
+	{ FR_CONF_OFFSET("logfile", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_sql_config_t, logfile) },
+	{ FR_CONF_OFFSET("default_user_profile", PW_TYPE_STRING, rlm_sql_config_t, default_profile), .dflt = "" },
+	{ FR_CONF_OFFSET("client_query", PW_TYPE_STRING, rlm_sql_config_t, client_query), .dflt = "SELECT id,nasname,shortname,type,secret FROM nas" },
+	{ FR_CONF_OFFSET("open_query", PW_TYPE_STRING, rlm_sql_config_t, connect_query) },
 
-	{ "authorize_check_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_check_query), NULL },
-	{ "authorize_reply_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_reply_query), NULL },
+	{ FR_CONF_OFFSET("authorize_check_query", PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_check_query) },
+	{ FR_CONF_OFFSET("authorize_reply_query", PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_reply_query) },
 
-	{ "authorize_group_check_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_group_check_query), NULL },
-	{ "authorize_group_reply_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_group_reply_query), NULL },
-	{ "group_membership_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, groupmemb_query), NULL },
+	{ FR_CONF_OFFSET("authorize_group_check_query", PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_group_check_query) },
+	{ FR_CONF_OFFSET("authorize_group_reply_query", PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, authorize_group_reply_query) },
+	{ FR_CONF_OFFSET("group_membership_query", PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, groupmemb_query) },
 #ifdef WITH_SESSION_MGMT
-	{ "simul_count_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, simul_count_query), NULL },
-	{ "simul_verify_query", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, simul_verify_query), NULL },
+	{ FR_CONF_OFFSET("simul_count_query", PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, simul_count_query) },
+	{ FR_CONF_OFFSET("simul_verify_query", PW_TYPE_STRING | PW_TYPE_XLAT | PW_TYPE_NOT_EMPTY, rlm_sql_config_t, simul_verify_query) },
 #endif
-	{ "safe_characters", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_config_t, allowed_chars), "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
+	{ FR_CONF_OFFSET("safe_characters", PW_TYPE_STRING, rlm_sql_config_t, allowed_chars), .dflt = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /" },
 
 	/*
 	 *	This only works for a few drivers.
 	 */
-	{ "query_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_config_t, query_timeout), NULL },
+	{ FR_CONF_OFFSET("query_timeout", PW_TYPE_INTEGER, rlm_sql_config_t, query_timeout) },
 
-	{ "accounting", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) acct_config },
+	{ FR_CONF_POINTER("accounting", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) acct_config },
 
-	{ "post-auth", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) postauth_config },
+	{ FR_CONF_POINTER("post-auth", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) postauth_config },
 	CONF_PARSER_TERMINATOR
 };
 

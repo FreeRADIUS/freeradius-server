@@ -187,62 +187,62 @@ static const FR_NAME_NUMBER verify_cert_table[] = {
 };
 
 static CONF_PARSER load_balance_dc_aware_config[] = {
-	{ "local_dc", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, lbdc_local_dc), NULL },
-	{ "hosts_per_remote_dc" , FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, lbdc_hosts_per_remote_dc), "0" },
-	{ "allow_remote_dcs_for_local_cl", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, lbdc_allow_remote_dcs_for_local_cl), "no" }
+	{ FR_CONF_OFFSET("local_dc", PW_TYPE_STRING, rlm_sql_cassandra_config_t, lbdc_local_dc) },
+	{ FR_CONF_OFFSET("hosts_per_remote_dc", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, lbdc_hosts_per_remote_dc), .dflt = "0" },
+	{ FR_CONF_OFFSET("allow_remote_dcs_for_local_cl", PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, lbdc_allow_remote_dcs_for_local_cl), .dflt = "no" }
 };
 
 static CONF_PARSER latency_aware_routing_config[] = {
-	{ "exclusion_threshold", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_exclusion_threshold), "2.0" },
-	{ "scale", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_scale), "0.1" },
-	{ "retry_period", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_retry_period), "10" },
-	{ "update_rate", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_update_rate), "0.1" },
-	{ "min_measured", FR_CONF_OFFSET(PW_TYPE_INTEGER64, rlm_sql_cassandra_config_t, lar_min_measured), "50" }
+	{ FR_CONF_OFFSET("exclusion_threshold", PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_exclusion_threshold), .dflt = "2.0" },
+	{ FR_CONF_OFFSET("scale", PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_scale), .dflt = "0.1" },
+	{ FR_CONF_OFFSET("retry_period", PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_retry_period), .dflt = "10" },
+	{ FR_CONF_OFFSET("update_rate", PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, lar_update_rate), .dflt = "0.1" },
+	{ FR_CONF_OFFSET("min_measured", PW_TYPE_INTEGER64, rlm_sql_cassandra_config_t, lar_min_measured), .dflt = "50" }
 };
 
 static CONF_PARSER tls_config[] = {
-	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_ca_file), NULL },
-	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_certificate_file), NULL },
-	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_private_key_file), NULL },
-	{ "private_key_password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, rlm_sql_cassandra_config_t, tls_private_key_password), NULL },
+	{ FR_CONF_OFFSET("ca_file", PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("certificate_file", PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_FILE_INPUT, rlm_sql_cassandra_config_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("private_key_password", PW_TYPE_STRING | PW_TYPE_SECRET, rlm_sql_cassandra_config_t, tls_private_key_password) },
 
-	{ "verify_cert", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, tls_verify_cert_str), NULL },
+	{ FR_CONF_OFFSET("verify_cert", PW_TYPE_STRING, rlm_sql_cassandra_config_t, tls_verify_cert_str) },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER driver_config[] = {
-	{ "consistency", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sql_cassandra_config_t, consistency_str), "quorum" },
+	{ FR_CONF_OFFSET("consistency", PW_TYPE_STRING, rlm_sql_cassandra_config_t, consistency_str), .dflt = "quorum" },
 
-	{ "protocol_version", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, protocol_version), NULL },
+	{ FR_CONF_OFFSET("protocol_version", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, protocol_version) },
 
-	{ "connections_per_host", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, connections_per_host), NULL },
-	{ "connections_per_host_max", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, connections_per_host_max), NULL },
+	{ FR_CONF_OFFSET("connections_per_host", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, connections_per_host) },
+	{ FR_CONF_OFFSET("connections_per_host_max", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, connections_per_host_max) },
 
-	{ "io_threads", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, io_threads), NULL },
-	{ "io_queue_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, io_queue_size), NULL },
-	{ "io_flush_requests_max", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, io_flush_requests_max), NULL },
+	{ FR_CONF_OFFSET("io_threads", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, io_threads) },
+	{ FR_CONF_OFFSET("io_queue_size", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, io_queue_size) },
+	{ FR_CONF_OFFSET("io_flush_requests_max", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, io_flush_requests_max) },
 
-	{ "pending_requests_high", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, pending_requests_high), NULL },
-	{ "pending_requests_low", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, pending_requests_low), NULL },
-	{ "write_bytes_high", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, write_bytes_high), NULL },
-	{ "write_bytes_low", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, write_bytes_low), NULL },
+	{ FR_CONF_OFFSET("pending_requests_high", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, pending_requests_high) },
+	{ FR_CONF_OFFSET("pending_requests_low", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, pending_requests_low) },
+	{ FR_CONF_OFFSET("write_bytes_high", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, write_bytes_high) },
+	{ FR_CONF_OFFSET("write_bytes_low", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, write_bytes_low) },
 
-	{ "event_queue_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, event_queue_size), NULL },
+	{ FR_CONF_OFFSET("event_queue_size", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, event_queue_size) },
 
-	{ "spawn_threshold", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, spawn_threshold), NULL },
-	{ "spawn_max", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, spawn_max), NULL },
-	{ "spawn_retry_delay", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, spawn_retry_delay), NULL },
+	{ FR_CONF_OFFSET("spawn_threshold", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, spawn_threshold) },
+	{ FR_CONF_OFFSET("spawn_max", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, spawn_max) },
+	{ FR_CONF_OFFSET("spawn_retry_delay", PW_TYPE_TIMEVAL, rlm_sql_cassandra_config_t, spawn_retry_delay) },
 
-	{ "load_balance_dc_aware", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) load_balance_dc_aware_config },
-	{ "load_balance_round_robin", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, load_balance_round_robin), "no" },
+	{ FR_CONF_POINTER("load_balance_dc_aware", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) load_balance_dc_aware_config },
+	{ FR_CONF_OFFSET("load_balance_round_robin", PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, load_balance_round_robin), .dflt = "no" },
 
-	{ "token_aware_routing", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, token_aware_routing), "yes" },
-	{ "latency_aware_routing", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) latency_aware_routing_config },
+	{ FR_CONF_OFFSET("token_aware_routing", PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, token_aware_routing), .dflt = "yes" },
+	{ FR_CONF_POINTER("latency_aware_routing", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) latency_aware_routing_config },
 
-	{ "tcp_keepalive", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, tcp_keepalive), NULL },
-	{ "tcp_nodelay", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, tcp_nodelay), "no" },
+	{ FR_CONF_OFFSET("tcp_keepalive", PW_TYPE_INTEGER, rlm_sql_cassandra_config_t, tcp_keepalive) },
+	{ FR_CONF_OFFSET("tcp_nodelay", PW_TYPE_BOOLEAN, rlm_sql_cassandra_config_t, tcp_nodelay), .dflt = "no" },
 
-	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
+	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) tls_config },
 	CONF_PARSER_TERMINATOR
 };
 

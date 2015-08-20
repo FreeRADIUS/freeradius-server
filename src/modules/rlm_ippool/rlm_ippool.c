@@ -105,23 +105,23 @@ typedef struct ippool_key {
 } ippool_key;
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_ippool_t, filename), NULL },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_ippool_t, filename) },
 
-	{ "ip_index", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_ippool_t, ip_index), NULL },
+	{ FR_CONF_OFFSET("ip_index", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_ippool_t, ip_index) },
 
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_ippool_t, key), "%{NAS-IP-Address} %{NAS-Port}" },
+	{ FR_CONF_OFFSET("key", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_ippool_t, key), .dflt = "%{NAS-IP-Address} %{NAS-Port}" },
 
-	{ "range_start", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_start_addr), "0" },
+	{ FR_CONF_OFFSET("range_start", PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_start_addr), .dflt = "0" },
 
-	{ "range_stop", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_stop_addr), "0" },
+	{ FR_CONF_OFFSET("range_stop", PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_stop_addr), .dflt = "0" },
 
-	{ "netmask", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_ippool_t, netmask_addr), "0" },
+	{ FR_CONF_OFFSET("netmask", PW_TYPE_IPV4_ADDR, rlm_ippool_t, netmask_addr), .dflt = "0" },
 
-	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ippool_t, cache_size), "1000" },
+	{ FR_CONF_OFFSET("cache_size", PW_TYPE_INTEGER, rlm_ippool_t, cache_size), .dflt = "1000" },
 
-	{ "override", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ippool_t, override), "no" },
+	{ FR_CONF_OFFSET("override", PW_TYPE_BOOLEAN, rlm_ippool_t, override), .dflt = "no" },
 
-	{ "maximum_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ippool_t, max_timeout), "0" },
+	{ FR_CONF_OFFSET("maximum_timeout", PW_TYPE_INTEGER, rlm_ippool_t, max_timeout), .dflt = "0" },
 	CONF_PARSER_TERMINATOR
 };
 

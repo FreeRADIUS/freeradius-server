@@ -99,17 +99,17 @@ static rbtree_t	*home_pools_byname = NULL;
  *  Map the proxy server configuration parameters to variables.
  */
 static const CONF_PARSER proxy_config[] = {
-	{ "retry_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, retry_delay), STRINGIFY(RETRY_DELAY)  },
+	{ FR_CONF_OFFSET("retry_delay", PW_TYPE_INTEGER, realm_config_t, retry_delay), .dflt = STRINGIFY(RETRY_DELAY) },
 
-	{ "retry_count", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, retry_count), STRINGIFY(RETRY_COUNT)  },
+	{ FR_CONF_OFFSET("retry_count", PW_TYPE_INTEGER, realm_config_t, retry_count), .dflt = STRINGIFY(RETRY_COUNT) },
 
-	{ "default_fallback", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, fallback), "no" },
+	{ FR_CONF_OFFSET("default_fallback", PW_TYPE_BOOLEAN, realm_config_t, fallback), .dflt = "no" },
 
-	{ "dynamic", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, dynamic), NULL },
+	{ FR_CONF_OFFSET("dynamic", PW_TYPE_BOOLEAN, realm_config_t, dynamic) },
 
-	{ "dead_time", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, dead_time), STRINGIFY(DEAD_TIME)  },
+	{ FR_CONF_OFFSET("dead_time", PW_TYPE_INTEGER, realm_config_t, dead_time), .dflt = STRINGIFY(DEAD_TIME) },
 
-	{ "wake_all_if_all_dead", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, wake_all_if_all_dead), "no" },
+	{ FR_CONF_OFFSET("wake_all_if_all_dead", PW_TYPE_BOOLEAN, realm_config_t, wake_all_if_all_dead), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -281,70 +281,70 @@ void realms_free(void)
 
 #ifdef WITH_PROXY
 static CONF_PARSER limit_config[] = {
-	{ "max_connections", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_connections), "16" },
-	{ "max_requests", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_requests), "0" },
-	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.lifetime), "0" },
-	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.idle_timeout), "0" },
+	{ FR_CONF_OFFSET("max_connections", PW_TYPE_INTEGER, home_server_t, limit.max_connections), .dflt = "16" },
+	{ FR_CONF_OFFSET("max_requests", PW_TYPE_INTEGER, home_server_t, limit.max_requests), .dflt = "0" },
+	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, home_server_t, limit.lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, home_server_t, limit.idle_timeout), .dflt = "0" },
 	CONF_PARSER_TERMINATOR
 };
 
 #ifdef WITH_COA
 static CONF_PARSER home_server_coa[] = {
-	{ "irt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_irt), STRINGIFY(2) },
-	{ "mrt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_mrt), STRINGIFY(16) },
-	{ "mrc",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_mrc), STRINGIFY(5) },
-	{ "mrd",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_mrd), STRINGIFY(30) },
+	{ FR_CONF_OFFSET("irt", PW_TYPE_INTEGER, home_server_t, coa_irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("mrt", PW_TYPE_INTEGER, home_server_t, coa_mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("mrc", PW_TYPE_INTEGER, home_server_t, coa_mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("mrd", PW_TYPE_INTEGER, home_server_t, coa_mrd), .dflt = STRINGIFY(30) },
 	CONF_PARSER_TERMINATOR
 };
 #endif
 
 static CONF_PARSER home_server_config[] = {
-	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr), NULL },
-	{ "ipv4addr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, home_server_t, ipaddr), NULL },
-	{ "ipv6addr", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, home_server_t, ipaddr), NULL },
-	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, server), NULL },
+	{ FR_CONF_OFFSET("ipaddr", PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipv4addr", PW_TYPE_IPV4_ADDR, home_server_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipv6addr", PW_TYPE_IPV6_ADDR, home_server_t, ipaddr) },
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, server) },
 
-	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, home_server_t, port), "0" },
+	{ FR_CONF_OFFSET("port", PW_TYPE_SHORT, home_server_t, port), .dflt = "0" },
 
-	{ "type", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, type_str), NULL },
+	{ FR_CONF_OFFSET("type", PW_TYPE_STRING, home_server_t, type_str) },
 
 #ifdef WITH_TCP
-	{ "proto", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, proto_str), NULL },
+	{ FR_CONF_OFFSET("proto", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, proto_str) },
 #endif
 
-	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, home_server_t, secret), NULL },
+	{ FR_CONF_OFFSET("secret", PW_TYPE_STRING | PW_TYPE_SECRET, home_server_t, secret) },
 
-	{ "src_ipaddr", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, src_ipaddr_str), NULL },
+	{ FR_CONF_OFFSET("src_ipaddr", PW_TYPE_STRING, home_server_t, src_ipaddr_str) },
 
-	{ "response_window", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, home_server_t, response_window), "30" },
-	{ "response_timeouts", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_response_timeouts), "1" },
-	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_outstanding), "65536" },
+	{ FR_CONF_OFFSET("response_window", PW_TYPE_TIMEVAL, home_server_t, response_window), .dflt = "30" },
+	{ FR_CONF_OFFSET("response_timeouts", PW_TYPE_INTEGER, home_server_t, max_response_timeouts), .dflt = "1" },
+	{ FR_CONF_OFFSET("max_outstanding", PW_TYPE_INTEGER, home_server_t, max_outstanding), .dflt = "65536" },
 
-	{ "zombie_period", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, zombie_period), "40" },
+	{ FR_CONF_OFFSET("zombie_period", PW_TYPE_INTEGER, home_server_t, zombie_period), .dflt = "40" },
 
-	{ "status_check",  FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_check_str), "none" },
-	{ "ping_check", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_check_str), NULL },
+	{ FR_CONF_OFFSET("status_check", PW_TYPE_STRING, home_server_t, ping_check_str), .dflt = "none" },
+	{ FR_CONF_OFFSET("ping_check", PW_TYPE_STRING, home_server_t, ping_check_str) },
 
-	{ "ping_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), "30" },
-	{ "check_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), NULL },
+	{ FR_CONF_OFFSET("ping_interval", PW_TYPE_INTEGER, home_server_t, ping_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("check_interval", PW_TYPE_INTEGER, home_server_t, ping_interval) },
 
-	{ "check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), "4" },
-	{ "status_check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), NULL },
+	{ FR_CONF_OFFSET("check_timeout", PW_TYPE_INTEGER, home_server_t, ping_timeout), .dflt = "4" },
+	{ FR_CONF_OFFSET("status_check_timeout", PW_TYPE_INTEGER, home_server_t, ping_timeout) },
 
-	{ "num_answers_to_alive", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, num_pings_to_alive), "3" },
-	{ "revive_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, revive_interval), "300" },
+	{ FR_CONF_OFFSET("num_answers_to_alive", PW_TYPE_INTEGER, home_server_t, num_pings_to_alive), .dflt = "3" },
+	{ FR_CONF_OFFSET("revive_interval", PW_TYPE_INTEGER, home_server_t, revive_interval), .dflt = "300" },
 
-	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name), NULL },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password), NULL },
+	{ FR_CONF_OFFSET("username", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name) },
+	{ FR_CONF_OFFSET("password", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password) },
 
 #ifdef WITH_STATS
-	{ "historic_average_window", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ema.window), NULL },
+	{ FR_CONF_OFFSET("historic_average_window", PW_TYPE_INTEGER, home_server_t, ema.window) },
 #endif
 
-	{ "limit", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) limit_config },
+	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) limit_config },
 
 #ifdef WITH_COA
-	{ "coa", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) home_server_coa },
+	{ FR_CONF_POINTER("coa", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) home_server_coa },
 #endif
 	CONF_PARSER_TERMINATOR
 };

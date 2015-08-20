@@ -36,10 +36,10 @@ typedef struct rlm_eap_mschapv2_t {
 } rlm_eap_mschapv2_t;
 
 static CONF_PARSER module_config[] = {
-	{ "with_ntdomain_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, with_ntdomain_hack), "no" },
+	{ FR_CONF_OFFSET("with_ntdomain_hack", PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, with_ntdomain_hack), .dflt = "no" },
 
-	{ "send_error", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, send_error), "no" },
-	{ "identity", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_mschapv2_t, identity), NULL },
+	{ FR_CONF_OFFSET("send_error", PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, send_error), .dflt = "no" },
+	{ FR_CONF_OFFSET("identity", PW_TYPE_STRING, rlm_eap_mschapv2_t, identity) },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -81,8 +81,8 @@ typedef struct rlm_python_t {
  */
 static CONF_PARSER module_config[] = {
 
-#define A(x) { "mod_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.module_name), NULL }, \
-	{ "func_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.function_name), NULL },
+#define A(x) { FR_CONF_OFFSET("mod_" #x, PW_TYPE_STRING, rlm_python_t, x.module_name) }, \
+	{ FR_CONF_OFFSET("func_" #x, PW_TYPE_STRING, rlm_python_t, x.function_name) },
 
 	A(instantiate)
 	A(authorize)
@@ -101,7 +101,7 @@ static CONF_PARSER module_config[] = {
 
 #undef A
 
-	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
+	{ FR_CONF_OFFSET("python_path", PW_TYPE_STRING, rlm_python_t, python_path) },
 	CONF_PARSER_TERMINATOR
 };
 

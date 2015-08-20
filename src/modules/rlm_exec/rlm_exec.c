@@ -56,13 +56,13 @@ typedef struct rlm_exec_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "wait", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_exec_t, wait), "yes" },
-	{ "program", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_exec_t, program), NULL },
-	{ "input_pairs", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_exec_t, input), NULL },
-	{ "output_pairs", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_exec_t, output), NULL },
-	{ "packet_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_exec_t, packet_type), NULL },
-	{ "shell_escape", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_exec_t, shell_escape), "yes" },
-	{ "timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_exec_t, timeout), NULL },
+	{ FR_CONF_OFFSET("wait", PW_TYPE_BOOLEAN, rlm_exec_t, wait), .dflt = "yes" },
+	{ FR_CONF_OFFSET("program", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_exec_t, program) },
+	{ FR_CONF_OFFSET("input_pairs", PW_TYPE_STRING, rlm_exec_t, input) },
+	{ FR_CONF_OFFSET("output_pairs", PW_TYPE_STRING, rlm_exec_t, output) },
+	{ FR_CONF_OFFSET("packet_type", PW_TYPE_STRING, rlm_exec_t, packet_type) },
+	{ FR_CONF_OFFSET("shell_escape", PW_TYPE_BOOLEAN, rlm_exec_t, shell_escape), .dflt = "yes" },
+	{ FR_CONF_OFFSET("timeout", PW_TYPE_INTEGER, rlm_exec_t, timeout) },
 	CONF_PARSER_TERMINATOR
 };
 

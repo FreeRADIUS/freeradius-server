@@ -66,10 +66,10 @@ typedef struct rlm_csv_entry_t {
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, filename), NULL },
-	{ "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, delimiter), "," },
-	{ "header", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, header), NULL },
-	{ "key_field", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, key), NULL },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, filename) },
+	{ FR_CONF_OFFSET("delimiter", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, delimiter), .dflt = "," },
+	{ FR_CONF_OFFSET("header", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, header) },
+	{ FR_CONF_OFFSET("key_field", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_NOT_EMPTY, rlm_csv_t, key) },
 	CONF_PARSER_TERMINATOR
 };
 

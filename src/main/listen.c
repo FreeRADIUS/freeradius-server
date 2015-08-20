@@ -914,22 +914,22 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 }
 
 static CONF_PARSER performance_config[] = {
-	{ "skip_duplicate_checks", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rad_listen_t, nodup), NULL },
+	{ FR_CONF_OFFSET("skip_duplicate_checks", PW_TYPE_BOOLEAN, rad_listen_t, nodup) },
 
-	{ "synchronous", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rad_listen_t, synchronous), NULL },
+	{ FR_CONF_OFFSET("synchronous", PW_TYPE_BOOLEAN, rad_listen_t, synchronous) },
 
-	{ "workers", FR_CONF_OFFSET(PW_TYPE_INTEGER, rad_listen_t, workers), NULL },
+	{ FR_CONF_OFFSET("workers", PW_TYPE_INTEGER, rad_listen_t, workers) },
 	CONF_PARSER_TERMINATOR
 };
 
 
 static CONF_PARSER limit_config[] = {
-	{ "max_pps", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, max_rate), NULL },
+	{ FR_CONF_OFFSET("max_pps", PW_TYPE_INTEGER, listen_socket_t, max_rate) },
 
 #ifdef WITH_TCP
-	{ "max_connections", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.max_connections), "16" },
-	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.lifetime), "0" },
-	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_socket_t, limit.idle_timeout), STRINGIFY(30) },
+	{ FR_CONF_OFFSET("max_connections", PW_TYPE_INTEGER, listen_socket_t, limit.max_connections), .dflt = "16" },
+	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, listen_socket_t, limit.lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, listen_socket_t, limit.idle_timeout), .dflt = STRINGIFY(30) },
 #endif
 	CONF_PARSER_TERMINATOR
 };

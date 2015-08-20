@@ -91,7 +91,7 @@ typedef struct rlm_perl_t {
 			offsetof(rlm_perl_t,func_##_x), NULL, STRINGIFY(_x)}
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_perl_t, module), NULL },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_perl_t, module) },
 
 	RLM_PERL_CONF(authorize),
 	RLM_PERL_CONF(authenticate),
@@ -110,11 +110,11 @@ static const CONF_PARSER module_config[] = {
 	RLM_PERL_CONF(recv_coa),
 	RLM_PERL_CONF(send_coa),
 #endif
-	{ "perl_flags", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_perl_t, perl_flags), NULL },
+	{ FR_CONF_OFFSET("perl_flags", PW_TYPE_STRING, rlm_perl_t, perl_flags) },
 
-	{ "func_start_accounting", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_perl_t, func_start_accounting), NULL },
+	{ FR_CONF_OFFSET("func_start_accounting", PW_TYPE_STRING, rlm_perl_t, func_start_accounting) },
 
-	{ "func_stop_accounting", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_perl_t, func_stop_accounting), NULL },
+	{ FR_CONF_OFFSET("func_stop_accounting", PW_TYPE_STRING, rlm_perl_t, func_stop_accounting) },
 	CONF_PARSER_TERMINATOR
 };
 

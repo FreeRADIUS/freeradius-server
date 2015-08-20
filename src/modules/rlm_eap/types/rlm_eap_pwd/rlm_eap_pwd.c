@@ -42,10 +42,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define MSK_EMSK_LEN    (2*MPPE_KEY_LEN)
 
 static CONF_PARSER pwd_module_config[] = {
-	{ "group", FR_CONF_OFFSET(PW_TYPE_INTEGER, eap_pwd_t, group), "19" },
-	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, eap_pwd_t, fragment_size), "1020" },
-	{ "server_id", FR_CONF_OFFSET(PW_TYPE_STRING, eap_pwd_t, server_id), NULL },
-	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, eap_pwd_t, virtual_server), NULL },
+	{ FR_CONF_OFFSET("group", PW_TYPE_INTEGER, eap_pwd_t, group), .dflt = "19" },
+	{ FR_CONF_OFFSET("fragment_size", PW_TYPE_INTEGER, eap_pwd_t, fragment_size), .dflt = "1020" },
+	{ FR_CONF_OFFSET("server_id", PW_TYPE_STRING, eap_pwd_t, server_id) },
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, eap_pwd_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
 

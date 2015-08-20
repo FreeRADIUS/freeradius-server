@@ -75,13 +75,13 @@ typedef struct rlm_eap_ttls_t {
 
 
 static CONF_PARSER module_config[] = {
-	{ "tls", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ttls_t, tls_conf_name), NULL },
-	{ "default_eap_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ttls_t, default_method_name), "md5" },
-	{ "copy_request_to_tunnel", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ttls_t, copy_request_to_tunnel), "no" },
-	{ "use_tunneled_reply", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ttls_t, use_tunneled_reply), "no" },
-	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ttls_t, virtual_server), NULL },
-	{ "include_length", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ttls_t, include_length), "yes" },
-	{ "require_client_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ttls_t, req_client_cert), "no" },
+	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_ttls_t, tls_conf_name) },
+	{ FR_CONF_OFFSET("default_eap_type", PW_TYPE_STRING, rlm_eap_ttls_t, default_method_name), .dflt = "md5" },
+	{ FR_CONF_OFFSET("copy_request_to_tunnel", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, copy_request_to_tunnel), .dflt = "no" },
+	{ FR_CONF_OFFSET("use_tunneled_reply", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, use_tunneled_reply), .dflt = "no" },
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, rlm_eap_ttls_t, virtual_server) },
+	{ FR_CONF_OFFSET("include_length", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, include_length), .dflt = "yes" },
+	{ FR_CONF_OFFSET("require_client_cert", PW_TYPE_BOOLEAN, rlm_eap_ttls_t, req_client_cert), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

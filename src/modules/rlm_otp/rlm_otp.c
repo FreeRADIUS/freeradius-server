@@ -37,17 +37,17 @@ static int ninstance = 0;	//!< Number of instances, for global init.
 
 /* A mapping of configuration file names to internal variables. */
 static const CONF_PARSER module_config[] = {
-	{ "otpd_rp", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_otp_t, otpd_rp), OTP_OTPD_RP  },
-	{ "challenge_prompt", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_otp_t, chal_prompt), OTP_CHALLENGE_PROMPT  },
-	{ "challenge_length", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_otp_t, challenge_len), "6" },
-	{ "challenge_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_otp_t, challenge_delay), "30" },
-	{ "allow_sync", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_otp_t, allow_sync), "yes" },
-	{ "allow_async", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_otp_t, allow_async), "no" },
+	{ FR_CONF_OFFSET("otpd_rp", PW_TYPE_STRING, rlm_otp_t, otpd_rp), .dflt = OTP_OTPD_RP },
+	{ FR_CONF_OFFSET("challenge_prompt", PW_TYPE_STRING, rlm_otp_t, chal_prompt), .dflt = OTP_CHALLENGE_PROMPT },
+	{ FR_CONF_OFFSET("challenge_length", PW_TYPE_INTEGER, rlm_otp_t, challenge_len), .dflt = "6" },
+	{ FR_CONF_OFFSET("challenge_delay", PW_TYPE_INTEGER, rlm_otp_t, challenge_delay), .dflt = "30" },
+	{ FR_CONF_OFFSET("allow_sync", PW_TYPE_BOOLEAN, rlm_otp_t, allow_sync), .dflt = "yes" },
+	{ FR_CONF_OFFSET("allow_async", PW_TYPE_BOOLEAN, rlm_otp_t, allow_async), .dflt = "no" },
 
-	{ "mschapv2_mppe", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_otp_t, mschapv2_mppe_policy), "2" },
-	{ "mschapv2_mppe_bits", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_otp_t, mschapv2_mppe_types), "2" },
-	{ "mschap_mppe", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_otp_t, mschap_mppe_policy), "2" },
-	{ "mschap_mppe_bits", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_otp_t, mschap_mppe_types), "2" },
+	{ FR_CONF_OFFSET("mschapv2_mppe", PW_TYPE_INTEGER, rlm_otp_t, mschapv2_mppe_policy), .dflt = "2" },
+	{ FR_CONF_OFFSET("mschapv2_mppe_bits", PW_TYPE_INTEGER, rlm_otp_t, mschapv2_mppe_types), .dflt = "2" },
+	{ FR_CONF_OFFSET("mschap_mppe", PW_TYPE_INTEGER, rlm_otp_t, mschap_mppe_policy), .dflt = "2" },
+	{ FR_CONF_OFFSET("mschap_mppe_bits", PW_TYPE_INTEGER, rlm_otp_t, mschap_mppe_types), .dflt = "2" },
 	CONF_PARSER_TERMINATOR
 };
 

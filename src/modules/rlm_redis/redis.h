@@ -104,13 +104,13 @@ typedef struct redis_common_conf {
 } fr_redis_conf_t;
 
 #define REDIS_COMMON_CONFIG \
-	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, fr_redis_conf_t, hostname), NULL }, \
-	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, fr_redis_conf_t, port), "6379" }, \
-	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_redis_conf_t, database), "0" }, \
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, fr_redis_conf_t, password), NULL }, \
-	{ "max_nodes", FR_CONF_OFFSET(PW_TYPE_BYTE, fr_redis_conf_t, max_nodes), "20" }, \
-	{ "max_alt", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_redis_conf_t, max_alt), "3" }, \
-	{ "max_redirects", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_redis_conf_t, max_redirects), "2" }
+	{ FR_CONF_OFFSET("server", PW_TYPE_STRING | PW_TYPE_REQUIRED, fr_redis_conf_t, hostname) }, \
+	{ FR_CONF_OFFSET("port", PW_TYPE_SHORT, fr_redis_conf_t, port), .dflt = "6379" }, \
+	{ FR_CONF_OFFSET("database", PW_TYPE_INTEGER, fr_redis_conf_t, database), .dflt = "0" }, \
+	{ FR_CONF_OFFSET("password", PW_TYPE_STRING | PW_TYPE_SECRET, fr_redis_conf_t, password) }, \
+	{ FR_CONF_OFFSET("max_nodes", PW_TYPE_BYTE, fr_redis_conf_t, max_nodes), .dflt = "20" }, \
+	{ FR_CONF_OFFSET("max_alt", PW_TYPE_INTEGER, fr_redis_conf_t, max_alt), .dflt = "3" }, \
+	{ FR_CONF_OFFSET("max_redirects", PW_TYPE_INTEGER, fr_redis_conf_t, max_redirects), .dflt = "2" }
 
 void		fr_redis_version_print(void);
 

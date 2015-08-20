@@ -35,7 +35,7 @@ typedef struct rlm_date_t {
 } rlm_date_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_date_t, fmt), "%b %e %Y %H:%M:%S %Z" },
+	{ FR_CONF_OFFSET("format", PW_TYPE_STRING, rlm_date_t, fmt), .dflt = "%b %e %Y %H:%M:%S %Z" },
 	CONF_PARSER_TERMINATOR
 };
 

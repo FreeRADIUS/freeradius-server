@@ -45,9 +45,9 @@ typedef struct rlm_attr_filter {
 } rlm_attr_filter_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_attr_filter_t, filename), NULL },
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_attr_filter_t, key), "%{Realm}" },
-	{ "relaxed", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_attr_filter_t, relaxed), "no" },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_attr_filter_t, filename) },
+	{ FR_CONF_OFFSET("key", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_attr_filter_t, key), .dflt = "%{Realm}" },
+	{ FR_CONF_OFFSET("relaxed", PW_TYPE_BOOLEAN, rlm_attr_filter_t, relaxed), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

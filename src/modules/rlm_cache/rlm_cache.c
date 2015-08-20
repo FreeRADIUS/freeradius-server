@@ -41,14 +41,14 @@ RCSID("$Id$")
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "driver", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_cache_config_t, driver_name), "rlm_cache_rbtree" },
-	{ "key", FR_CONF_OFFSET(PW_TYPE_TMPL | PW_TYPE_REQUIRED, rlm_cache_config_t, key), NULL },
-	{ "ttl", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_config_t, ttl), "500" },
-	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_config_t, max_entries), "0" },
+	{ FR_CONF_OFFSET("driver", PW_TYPE_STRING, rlm_cache_config_t, driver_name), .dflt = "rlm_cache_rbtree" },
+	{ FR_CONF_OFFSET("key", PW_TYPE_TMPL | PW_TYPE_REQUIRED, rlm_cache_config_t, key) },
+	{ FR_CONF_OFFSET("ttl", PW_TYPE_INTEGER, rlm_cache_config_t, ttl), .dflt = "500" },
+	{ FR_CONF_OFFSET("max_entries", PW_TYPE_INTEGER, rlm_cache_config_t, max_entries), .dflt = "0" },
 
 	/* Should be a type which matches time_t, @fixme before 2038 */
-	{ "epoch", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_cache_config_t, epoch), "0" },
-	{ "add_stats", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_cache_config_t, stats), "no" },
+	{ FR_CONF_OFFSET("epoch", PW_TYPE_SIGNED, rlm_cache_config_t, epoch), .dflt = "0" },
+	{ FR_CONF_OFFSET("add_stats", PW_TYPE_BOOLEAN, rlm_cache_config_t, stats), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

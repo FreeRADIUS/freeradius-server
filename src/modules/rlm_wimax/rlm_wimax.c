@@ -49,7 +49,7 @@ typedef struct rlm_wimax_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "delete_mppe_keys", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_wimax_t, delete_mppe_keys), "no" },
+  { FR_CONF_OFFSET("delete_mppe_keys", PW_TYPE_BOOLEAN, rlm_wimax_t, delete_mppe_keys), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

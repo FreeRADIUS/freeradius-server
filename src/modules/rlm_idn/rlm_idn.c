@@ -82,8 +82,8 @@ static const CONF_PARSER mod_config[] = {
 	 *	be used.
 	 */
 
-	{ "allow_unassigned", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_idn_t, allow_unassigned), "no" },
-	{ "use_std3_ascii_rules", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_idn_t, use_std3_ascii_rules), "yes" },
+	{ FR_CONF_OFFSET("allow_unassigned", PW_TYPE_BOOLEAN, rlm_idn_t, allow_unassigned), .dflt = "no" },
+	{ FR_CONF_OFFSET("use_std3_ascii_rules", PW_TYPE_BOOLEAN, rlm_idn_t, use_std3_ascii_rules), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -58,12 +58,12 @@ typedef struct rlm_radutmp_t {
 } rlm_radutmp_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_radutmp_t, filename), RADUTMP  },
-	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_radutmp_t, username), "%{User-Name}" },
-	{ "case_sensitive", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_radutmp_t, case_sensitive), "yes" },
-	{ "check_with_nas", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_radutmp_t, check_nas), "yes" },
-	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_radutmp_t, permission), "0644" },
-	{ "caller_id", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_radutmp_t, caller_id_ok), "no" },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_radutmp_t, filename), .dflt = RADUTMP },
+	{ FR_CONF_OFFSET("username", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_radutmp_t, username), .dflt = "%{User-Name}" },
+	{ FR_CONF_OFFSET("case_sensitive", PW_TYPE_BOOLEAN, rlm_radutmp_t, case_sensitive), .dflt = "yes" },
+	{ FR_CONF_OFFSET("check_with_nas", PW_TYPE_BOOLEAN, rlm_radutmp_t, check_nas), .dflt = "yes" },
+	{ FR_CONF_OFFSET("permissions", PW_TYPE_INTEGER, rlm_radutmp_t, permission), .dflt = "0644" },
+	{ FR_CONF_OFFSET("caller_id", PW_TYPE_BOOLEAN, rlm_radutmp_t, caller_id_ok), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

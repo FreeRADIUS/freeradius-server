@@ -32,8 +32,8 @@ RCSID("$Id$")
 #include "krb5.h"
 
 static const CONF_PARSER module_config[] = {
-	{ "keytab", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_krb5_t, keytabname), NULL },
-	{ "service_principal", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_krb5_t, service_princ), NULL },
+	{ FR_CONF_OFFSET("keytab", PW_TYPE_STRING, rlm_krb5_t, keytabname) },
+	{ FR_CONF_OFFSET("service_principal", PW_TYPE_STRING, rlm_krb5_t, service_princ) },
 	CONF_PARSER_TERMINATOR
 };
 

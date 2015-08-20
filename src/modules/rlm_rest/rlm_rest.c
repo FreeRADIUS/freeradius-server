@@ -35,14 +35,14 @@ RCSID("$Id$")
  *	TLS Configuration
  */
 static CONF_PARSER tls_config[] = {
-	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_file), NULL },
-	{ "ca_path", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_path), NULL },
-	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_certificate_file), NULL },
-	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_private_key_file), NULL },
-	{ "private_key_password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, rlm_rest_section_t, tls_private_key_password), NULL },
-	{ "random_file", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, tls_random_file), NULL },
-	{ "check_cert", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, tls_check_cert), "yes" },
-	{ "check_cert_cn", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, tls_check_cert_cn), "yes" },
+	{ FR_CONF_OFFSET("ca_file", PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("ca_path", PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_ca_path) },
+	{ FR_CONF_OFFSET("certificate_file", PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_FILE_INPUT, rlm_rest_section_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("private_key_password", PW_TYPE_STRING | PW_TYPE_SECRET, rlm_rest_section_t, tls_private_key_password) },
+	{ FR_CONF_OFFSET("random_file", PW_TYPE_STRING, rlm_rest_section_t, tls_random_file) },
+	{ FR_CONF_OFFSET("check_cert", PW_TYPE_BOOLEAN, rlm_rest_section_t, tls_check_cert), .dflt = "yes" },
+	{ FR_CONF_OFFSET("check_cert_cn", PW_TYPE_BOOLEAN, rlm_rest_section_t, tls_check_cert_cn), .dflt = "yes" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -56,30 +56,30 @@ static CONF_PARSER tls_config[] = {
  *	buffer over-flows.
  */
 static const CONF_PARSER section_config[] = {
-	{ "uri", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, uri), ""   },
-	{ "method", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, method_str), "GET" },
-	{ "body", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, body_str), "none" },
-	{ "data", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data), NULL },
-	{ "force_to", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, force_to_str), NULL },
+	{ FR_CONF_OFFSET("uri", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, uri), .dflt = "" },
+	{ FR_CONF_OFFSET("method", PW_TYPE_STRING, rlm_rest_section_t, method_str), .dflt = "GET" },
+	{ FR_CONF_OFFSET("body", PW_TYPE_STRING, rlm_rest_section_t, body_str), .dflt = "none" },
+	{ FR_CONF_OFFSET("data", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data) },
+	{ FR_CONF_OFFSET("force_to", PW_TYPE_STRING, rlm_rest_section_t, force_to_str) },
 
 	/* User authentication */
-	{ "auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_section_t, auth_str), "none" },
-	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, username), NULL },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, password), NULL },
-	{ "require_auth", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_rest_section_t, require_auth), "no" },
+	{ FR_CONF_OFFSET("auth", PW_TYPE_STRING, rlm_rest_section_t, auth_str), .dflt = "none" },
+	{ FR_CONF_OFFSET("username", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, username) },
+	{ FR_CONF_OFFSET("password", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, password) },
+	{ FR_CONF_OFFSET("require_auth", PW_TYPE_BOOLEAN, rlm_rest_section_t, require_auth), .dflt = "no" },
 
 	/* Transfer configuration */
-	{ "timeout", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, rlm_rest_section_t, timeout_tv), "4.0" },
-	{ "chunk", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_rest_section_t, chunk), "0" },
+	{ FR_CONF_OFFSET("timeout", PW_TYPE_TIMEVAL, rlm_rest_section_t, timeout_tv), .dflt = "4.0" },
+	{ FR_CONF_OFFSET("chunk", PW_TYPE_INTEGER, rlm_rest_section_t, chunk), .dflt = "0" },
 
 	/* TLS Parameters */
-	{ "tls", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) tls_config },
+	{ FR_CONF_POINTER("tls", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) tls_config },
 	CONF_PARSER_TERMINATOR
 };
 
 static const CONF_PARSER module_config[] = {
-	{ "connect_uri", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_rest_t, connect_uri), NULL },
-	{ "connect_timeout", FR_CONF_DEPRECATED(PW_TYPE_TIMEVAL, rlm_rest_t, connect_timeout), NULL },
+	{ FR_CONF_OFFSET("connect_uri", PW_TYPE_STRING, rlm_rest_t, connect_uri) },
+	{ FR_CONF_DEPRECATED("connect_timeout", PW_TYPE_TIMEVAL, rlm_rest_t, connect_timeout) },
 	CONF_PARSER_TERMINATOR
 };
 

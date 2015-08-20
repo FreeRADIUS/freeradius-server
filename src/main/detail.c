@@ -1079,13 +1079,13 @@ static void *detail_handler_thread(void *arg)
 
 
 static const CONF_PARSER detail_config[] = {
-	{ "detail", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, listen_detail_t, filename), NULL },
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, listen_detail_t, filename), NULL },
-	{ "load_factor", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, load_factor), STRINGIFY(10) },
-	{ "poll_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, poll_interval), STRINGIFY(1) },
-	{ "retry_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, retry_interval), STRINGIFY(30) },
-	{ "one_shot", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, one_shot), "no" },
-	{ "track", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, track), "no" },
+	{ FR_CONF_OFFSET("detail", PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, listen_detail_t, filename) },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, listen_detail_t, filename) },
+	{ FR_CONF_OFFSET("load_factor", PW_TYPE_INTEGER, listen_detail_t, load_factor), .dflt = STRINGIFY(10) },
+	{ FR_CONF_OFFSET("poll_interval", PW_TYPE_INTEGER, listen_detail_t, poll_interval), .dflt = STRINGIFY(1) },
+	{ FR_CONF_OFFSET("retry_interval", PW_TYPE_INTEGER, listen_detail_t, retry_interval), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("one_shot", PW_TYPE_BOOLEAN, listen_detail_t, one_shot), .dflt = "no" },
+	{ FR_CONF_OFFSET("track", PW_TYPE_BOOLEAN, listen_detail_t, track), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

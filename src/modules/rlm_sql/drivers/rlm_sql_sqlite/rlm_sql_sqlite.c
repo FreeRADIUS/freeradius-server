@@ -60,8 +60,8 @@ typedef struct rlm_sql_sqlite_config {
 } rlm_sql_sqlite_config_t;
 
 static const CONF_PARSER driver_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_sql_sqlite_config_t, filename), NULL },
-	{ "busy_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sql_sqlite_config_t, busy_timeout), "200" },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_sql_sqlite_config_t, filename) },
+	{ FR_CONF_OFFSET("busy_timeout", PW_TYPE_INTEGER, rlm_sql_sqlite_config_t, busy_timeout), .dflt = "200" },
 	CONF_PARSER_TERMINATOR
 };
 

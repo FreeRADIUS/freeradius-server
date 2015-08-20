@@ -150,18 +150,18 @@ struct fr_connection_pool_t {
 #endif
 
 static const CONF_PARSER connection_config[] = {
-	{ "start", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, start), "5" },
-	{ "min", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, min), "5" },
-	{ "max", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, max), "10" },
-	{ "spare", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, spare), "3" },
-	{ "uses", FR_CONF_OFFSET(PW_TYPE_INTEGER64, fr_connection_pool_t, max_uses), "0" },
-	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, lifetime), "0" },
-	{ "cleanup_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), NULL},
-	{ "cleanup_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), "30" },
-	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, idle_timeout), "60" },
-	{ "connect_timeout", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, fr_connection_pool_t, connect_timeout), "3.0" },
-	{ "retry_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_connection_pool_t, retry_delay), "1" },
-	{ "spread", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), "no" },
+	{ FR_CONF_OFFSET("start", PW_TYPE_INTEGER, fr_connection_pool_t, start), .dflt = "5" },
+	{ FR_CONF_OFFSET("min", PW_TYPE_INTEGER, fr_connection_pool_t, min), .dflt = "5" },
+	{ FR_CONF_OFFSET("max", PW_TYPE_INTEGER, fr_connection_pool_t, max), .dflt = "10" },
+	{ FR_CONF_OFFSET("spare", PW_TYPE_INTEGER, fr_connection_pool_t, spare), .dflt = "3" },
+	{ FR_CONF_OFFSET("uses", PW_TYPE_INTEGER64, fr_connection_pool_t, max_uses), .dflt = "0" },
+	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, fr_connection_pool_t, lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("cleanup_delay", PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval) },
+	{ FR_CONF_OFFSET("cleanup_interval", PW_TYPE_INTEGER, fr_connection_pool_t, cleanup_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, fr_connection_pool_t, idle_timeout), .dflt = "60" },
+	{ FR_CONF_OFFSET("connect_timeout", PW_TYPE_TIMEVAL, fr_connection_pool_t, connect_timeout), .dflt = "3.0" },
+	{ FR_CONF_OFFSET("retry_delay", PW_TYPE_INTEGER, fr_connection_pool_t, retry_delay), .dflt = "1" },
+	{ FR_CONF_OFFSET("spread", PW_TYPE_BOOLEAN, fr_connection_pool_t, spread), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 

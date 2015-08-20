@@ -99,16 +99,30 @@ typedef struct timeval _timeval_t;
 		(conf_type_invalid) 0\
 	)))))))))))))))))))))
 
-#  define FR_CONF_OFFSET(_t, _s, _f)	_t, FR_CONF_TYPE_CHECK((_t), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f)), NULL
-#  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
-#  define FR_ITEM_POINTER(_t, _p)	_t, FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
+#  define FR_CONF_OFFSET(_n, _t, _s, _f) \
+	.name = _n, \
+	.type = _t, \
+	.offset = FR_CONF_TYPE_CHECK((_t), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f))
+#  define FR_CONF_POINTER(_n, _t, _p) \
+	.name = _n, \
+	.type = _t, \
+	.data = FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
+#  define FR_ITEM_POINTER(_t, _p) _t, FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
 #else
-#  define FR_CONF_OFFSET(_t, _s, _f)	_t, offsetof(_s, _f), NULL
-#  define FR_CONF_POINTER(_t, _p)	_t, 0, _p
-#  define FR_ITEM_POINTER(_t, _p)	_t, _p
+#  define FR_CONF_OFFSET(_n, _t, _s, _f) \
+	.name = _n, \
+	.type = _t, \
+	.offset = offsetof(_s, _f)
+#  define FR_CONF_POINTER(_n, _t, _p) \
+	.name = _n, \
+	.type = _t, \
+	.data = _p
+#  define FR_ITEM_POINTER(_t, _p) .type = _t, .data = _p
 #endif
 
-#define FR_CONF_DEPRECATED(_t, _p, _f) (_t) | PW_TYPE_DEPRECATED, 0, NULL
+#define FR_CONF_DEPRECATED(_n, _t, _p, _f) \
+	.name = _n, \
+	.type = (_t) | PW_TYPE_DEPRECATED
 
 /*
  *  Instead of putting the information into a configuration structure,
@@ -176,7 +190,7 @@ extern bool check_config;
  * Example with #FR_CONF_OFFSET :
  @code{.c}
    static CONF_PARSER module_config[] = {
-   	{ "example", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, example_instance_t, example), "default_value" },
+   	{ FR_CONF_OFFSET("example", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, example_instance_t, example), .dflt = "default_value" },
    	CONF_PARSER_TERMINATOR
    }
  @endcode
@@ -184,7 +198,7 @@ extern bool check_config;
  * Example with #FR_CONF_POINTER :
  @code{.c}
    static CONF_PARSER global_config[] = {
-   	{ "example", FR_CONF_POINTER(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, &my_global), "default_value" },
+   	{ FR_CONF_POINTER("example", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, &my_global), .dflt = "default_value" },
    	CONF_PARSER_TERMINATOR
    }
  @endcode

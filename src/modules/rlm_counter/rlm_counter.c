@@ -114,21 +114,21 @@ typedef struct rad_counter {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_counter_t, filename), NULL },
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, key_name), NULL },
-	{ "reset", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, reset), NULL },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_counter_t, filename) },
+	{ FR_CONF_OFFSET("key", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, key_name) },
+	{ FR_CONF_OFFSET("reset", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, reset) },
 
-	{ "count_attribute", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, count_attribute), NULL },
+	{ FR_CONF_OFFSET("count_attribute", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, count_attribute) },
 
-	{ "counter_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, counter_name), NULL },
+	{ FR_CONF_OFFSET("counter_name", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, counter_name) },
 
-	{ "check_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, check_name), NULL },
+	{ FR_CONF_OFFSET("check_name", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, check_name) },
 
-	{ "reply_name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, reply_name), NULL },
+	{ FR_CONF_OFFSET("reply_name", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, reply_name) },
 
-	{ "allowed_service_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_counter_t, service_type), NULL },
+	{ FR_CONF_OFFSET("allowed_service_type", PW_TYPE_STRING, rlm_counter_t, service_type) },
 
-	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_counter_t, cache_size), "1000" },
+	{ FR_CONF_OFFSET("cache_size", PW_TYPE_INTEGER, rlm_counter_t, cache_size), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
 };
 

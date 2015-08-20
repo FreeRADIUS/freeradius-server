@@ -41,7 +41,7 @@ RCSID("$Id$")
  * Client Configuration
  */
 static const CONF_PARSER client_config[] = {
-	{ "view", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, client_view), "_design/client/_view/by_name" },
+	{ FR_CONF_OFFSET("view", PW_TYPE_STRING, rlm_couchbase_t, client_view), .dflt = "_design/client/_view/by_name" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -49,22 +49,22 @@ static const CONF_PARSER client_config[] = {
  * Module Configuration
  */
 static const CONF_PARSER module_config[] = {
-	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_couchbase_t, server_raw), NULL },
-	{ "bucket", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_couchbase_t, bucket), NULL },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, password), NULL },
+	{ FR_CONF_OFFSET("server", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_couchbase_t, server_raw) },
+	{ FR_CONF_OFFSET("bucket", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_couchbase_t, bucket) },
+	{ FR_CONF_OFFSET("password", PW_TYPE_STRING, rlm_couchbase_t, password) },
 #ifdef WITH_ACCOUNTING
-	{ "acct_key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, acct_key), "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}" },
-	{ "doctype", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, doctype), "radacct" },
-	{ "expire", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_couchbase_t, expire), 0 },
+	{ FR_CONF_OFFSET("acct_key", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, acct_key), .dflt = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}" },
+	{ FR_CONF_OFFSET("doctype", PW_TYPE_STRING, rlm_couchbase_t, doctype), .dflt = "radacct" },
+	{ FR_CONF_OFFSET("expire", PW_TYPE_INTEGER, rlm_couchbase_t, expire), .dflt = 0 },
 #endif
-	{ "user_key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, user_key), "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}" },
-	{ "read_clients", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_couchbase_t, read_clients), NULL }, /* NULL defaults to "no" */
-	{ "client", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) client_config },
+	{ FR_CONF_OFFSET("user_key", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, user_key), .dflt = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}" },
+	{ FR_CONF_OFFSET("read_clients", PW_TYPE_BOOLEAN, rlm_couchbase_t, read_clients) }, /* NULL defaults to "no" */
+	{ FR_CONF_POINTER("client", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) client_config },
 #ifdef WITH_SESSION_MGMT
-	{ "check_simul", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_couchbase_t, check_simul), NULL }, /* NULL defaults to "no" */
-	{ "simul_view", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_couchbase_t, simul_view), "_design/acct/_view/by_user" },
-	{ "simul_vkey", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, simul_vkey), "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}" },
-	{ "verify_simul", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_couchbase_t, verify_simul), NULL }, /* NULL defaults to "no" */
+	{ FR_CONF_OFFSET("check_simul", PW_TYPE_BOOLEAN, rlm_couchbase_t, check_simul) }, /* NULL defaults to "no" */
+	{ FR_CONF_OFFSET("simul_view", PW_TYPE_STRING, rlm_couchbase_t, simul_view), .dflt = "_design/acct/_view/by_user" },
+	{ FR_CONF_OFFSET("simul_vkey", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, simul_vkey), .dflt = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}" },
+	{ FR_CONF_OFFSET("verify_simul", PW_TYPE_BOOLEAN, rlm_couchbase_t, verify_simul) }, /* NULL defaults to "no" */
 #endif
 	CONF_PARSER_TERMINATOR
 };

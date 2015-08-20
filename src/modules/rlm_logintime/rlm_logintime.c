@@ -53,7 +53,7 @@ typedef struct rlm_logintime_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "minimum_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_logintime_t, min_time), "60" },
+  { FR_CONF_OFFSET("minimum_timeout", PW_TYPE_INTEGER, rlm_logintime_t, min_time), .dflt = "60" },
 	CONF_PARSER_TERMINATOR
 };
 

@@ -70,7 +70,7 @@ typedef struct rlm_sql_postgres_conn {
 } rlm_sql_postgres_conn_t;
 
 static CONF_PARSER driver_config[] = {
-	{ "send_application_name", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_sql_postgres_config_t, send_application_name), "no" },
+	{ FR_CONF_OFFSET("send_application_name", PW_TYPE_BOOLEAN, rlm_sql_postgres_config_t, send_application_name), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
 
