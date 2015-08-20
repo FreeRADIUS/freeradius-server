@@ -1808,6 +1808,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = skipped, skipping OCSP check");
 		return conf->ocsp_softfail ? OCSP_STATUS_OK : OCSP_STATUS_FAILED;
 
+	case 3: /* unknown */
 	default:
 		break;
 	}

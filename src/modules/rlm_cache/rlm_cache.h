@@ -186,7 +186,7 @@ typedef cache_status_t	(*cache_entry_insert_t)(rlm_cache_config_t const *config,
  * @param[in] key_len the length of the key string.
  * @return
  *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
- *	- #CACHE_ERROR - If the entry couldn't be expire.
+ *	- #CACHE_ERROR - If the entry couldn't be expired.
  *	- #CACHE_OK - If the entry was expired.
  *	- #CACHE_MISS - If the entry didn't exist, so couldn't be expired.
  */

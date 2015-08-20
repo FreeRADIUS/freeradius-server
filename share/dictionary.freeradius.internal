@@ -590,6 +590,7 @@ ATTRIBUTE	TLS-Session-Data			1942	octets	internal
 
 # Set and retrieved by EAP-TLS code
 ATTRIBUTE	TLS-OCSP-Cert-Valid			1943    integer internal
+VALUE	TLS-OCSP-Cert-Valid		unknown			3
 VALUE	TLS-OCSP-Cert-Valid		skipped			2
 VALUE	TLS-OCSP-Cert-Valid		yes			1
 VALUE	TLS-OCSP-Cert-Valid		no			0
