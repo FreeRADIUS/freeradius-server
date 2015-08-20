@@ -2407,6 +2407,28 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	return 1;
 }
 
+static void mark_home_server_alive(REQUEST *request, home_server_t *home)
+{
+	char buffer[128];
+
+	home->state = HOME_STATE_ALIVE;
+	home->response_timeouts = 0;
+	exec_trigger(request, home->cs, "home_server.alive", false);
+	home->currently_outstanding = 0;
+	home->num_sent_pings = 0;
+	home->num_received_pings = 0;
+	gettimeofday(&home->revive_time, NULL);
+
+	fr_event_delete(el, &home->ev);
+
+	RPROXY("Marking home server %s port %d alive",
+	       inet_ntop(request->proxy->dst_ipaddr.af,
+			 &request->proxy->dst_ipaddr.ipaddr,
+			 buffer, sizeof(buffer)),
+	       request->proxy->dst_port);
+}
+
+
 int request_proxy_reply(RADIUS_PACKET *packet)
 {
 	RADIUS_PACKET **proxy_p;
@@ -2550,8 +2572,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	packets for a while, just mark it alive.
 	 */
 	if (request->home_server->state == HOME_STATE_UNKNOWN) {
-		request->home_server->state = HOME_STATE_ALIVE;
-		request->home_server->response_timeouts = 0;
+		mark_home_server_alive(request, request->home_server);
 	}
 
 	/*
@@ -3344,21 +3365,7 @@ static void request_ping(REQUEST *request, int action)
 		 *	Mark it alive and delete any outstanding
 		 *	pings.
 		 */
-		home->state = HOME_STATE_ALIVE;
-		home->response_timeouts = 0;
-		exec_trigger(request, home->cs, "home_server.alive", false);
-		home->currently_outstanding = 0;
-		home->num_sent_pings = 0;
-		home->num_received_pings = 0;
-		gettimeofday(&home->revive_time, NULL);
-
-		fr_event_delete(el, &home->ev);
-
-		RPROXY("Marking home server %s port %d alive",
-		       inet_ntop(request->proxy->dst_ipaddr.af,
-				 &request->proxy->dst_ipaddr.ipaddr,
-				 buffer, sizeof(buffer)),
-		       request->proxy->dst_port);
+		mark_home_server_alive(request, home);
 		break;
 
 	default:
