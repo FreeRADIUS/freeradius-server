@@ -345,7 +345,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *
 	 *	FIXME: Also do it every N sessions?
 	 */
-	if (conf->session_cache_enable &&
+	if (conf->session_cache_enable && !conf->session_cache_server &&
 	    ((conf->session_last_flushed + ((int)conf->session_timeout * 1800)) <= request->timestamp)){
 		RDEBUG2("Flushing SSL sessions (of #%ld)", SSL_CTX_sess_number(conf->ctx));
 
@@ -951,12 +951,15 @@ void tls_session_information(tls_session_t *tls_session)
 static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("enable", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, session_cache_enable), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, fr_tls_server_conf_t, session_timeout), .dflt = "24" },
+
 	{ FR_CONF_OFFSET("name", PW_TYPE_STRING, fr_tls_server_conf_t, session_id_name) },
 
-	{ FR_CONF_OFFSET("max_entries", PW_TYPE_INTEGER, fr_tls_server_conf_t, session_cache_size), .dflt = "255" },
-	{ FR_CONF_OFFSET("persist_dir", PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_path) },
 	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_server) },
+
+	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, session_timeout), .dflt = "24" },
+	{ FR_CONF_OFFSET("max_entries", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, session_cache_size), .dflt = "255" },
+	{ FR_CONF_OFFSET("persist_dir", PW_TYPE_STRING | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, session_cache_path) },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -3088,36 +3091,44 @@ post_ca:
 	 */
 	if (conf->session_cache_enable) {
 		/*
-		 *	Create a unique context Id per EAP-TLS configuration.
+		 *	If a virtual server is caching the TLS
+		 *	sessions, then don't use the internal cache.
 		 */
-		if (conf->session_id_name) {
-			snprintf(conf->session_context_id, sizeof(conf->session_context_id),
-				 "FR eap %s", conf->session_id_name);
-		} else {
-			snprintf(conf->session_context_id, sizeof(conf->session_context_id),
-				 "FR eap %p", conf);
+		if (conf->session_cache_server) {
+			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_NO_INTERNAL);
+
+		} else {	/* persist_dir, or in-memory cache. */
+			/*
+			 *	Create a unique context Id per EAP-TLS configuration.
+			 */
+			if (conf->session_id_name) {
+				snprintf(conf->session_context_id, sizeof(conf->session_context_id),
+					 "FR eap %s", conf->session_id_name);
+			} else {
+				snprintf(conf->session_context_id, sizeof(conf->session_context_id),
+					 "FR eap %p", conf);
+			}
+
+			/*
+			 *	Cache it, and DON'T auto-clear it.
+			 */
+			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_AUTO_CLEAR);
+
+			SSL_CTX_set_session_id_context(ctx,
+						       (unsigned char *) conf->session_context_id,
+						       (unsigned int) strlen(conf->session_context_id));
+
+			/*
+			 *	Our timeout is in hours, this is in seconds.
+			 */
+			SSL_CTX_set_timeout(ctx, conf->session_timeout * 3600);
+
+			/*
+			 *	Set the maximum number of entries in the
+			 *	session cache.
+			 */
+			SSL_CTX_sess_set_cache_size(ctx, conf->session_cache_size);
 		}
-
-		/*
-		 *	Cache it, and DON'T auto-clear it.
-		 */
-		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_AUTO_CLEAR);
-
-		SSL_CTX_set_session_id_context(ctx,
-					       (unsigned char *) conf->session_context_id,
-					       (unsigned int) strlen(conf->session_context_id));
-
-		/*
-		 *	Our timeout is in hours, this is in seconds.
-		 */
-		SSL_CTX_set_timeout(ctx, conf->session_timeout * 3600);
-
-		/*
-		 *	Set the maximum number of entries in the
-		 *	session cache.
-		 */
-		SSL_CTX_sess_set_cache_size(ctx, conf->session_cache_size);
-
 	} else {
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 	}

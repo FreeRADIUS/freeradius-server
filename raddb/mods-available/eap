@@ -365,46 +365,16 @@ eap {
 			#
 			enable = yes
 
+			#  As of 3.1, the following configuration options are deprecated:
 			#
-			#  Internal "name" of the session cache. Used to distinguish which
-			#  TLS context sessions belong to.
+			#	persist_dir
+			#	lifetime
+			#	max_entries
 			#
-			#  The server will generate a random value if unset. This will change
-			#  across server restart so you MUST set the "name" if you want to
-			#  persist sessions (see below).
+			#  You should use the "virtual_server" directive instead.
+			#  See raddb/sites-available/tls-cache for details.
 			#
-#                       name = "EAP module"
-
-			#
-			#  Lifetime of the cached entries, in hours. The sessions will be
-			#  deleted/invalidated after this time.
-			#
-			lifetime = 24 # hours
-
-			#
-			#  The maximum number of entries in the
-			#  cache.  Set to "0" for "infinite".
-			#
-			#  This could be set to the number of users
-			#  who are logged in... which can be a LOT.
-			#
-			max_entries = 255
-
-			#
-			#  Simple directory-based storage of sessions.
-			#  Two files per session will be written, the SSL
-			#  state and the cached VPs. This will persist session
-			#  across server restarts.
-			#
-			#  The server will need write perms, and the directory
-			#  should be secured from anyone else. You might want
-			#  a script to remove old files from here periodically:
-			#
-			#    find ${logdir}/tlscache -mtime +2 -exec rm -f {} \;
-			#
-			#  This feature REQUIRES "name" option be set above.
-			#
-			#persist_dir = "${logdir}/tlscache"
+	#		virtual_server = tls-cache
 		}
 
 		#
