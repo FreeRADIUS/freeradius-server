@@ -2593,10 +2593,12 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 #endif
 
 	/*
-	 *	We've received a reply.  If we hadn't been sending it
-	 *	packets for a while, just mark it alive.
+	 *	If we hadn't been sending the home server packets for
+	 *	a while, just mark it alive.  Or, if it was zombie,
+	 *	it's now responded, and is therefore alive.
 	 */
-	if (request->home_server->state == HOME_STATE_UNKNOWN) {
+	if ((request->home_server->state == HOME_STATE_UNKNOWN) ||
+	    (request->home_server->state == HOME_STATE_ZOMBIE)) {
 		mark_home_server_alive(request, request->home_server);
 	}
 
