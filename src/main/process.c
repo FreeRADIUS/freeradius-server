@@ -3450,6 +3450,12 @@ static void ping_home_server(void *ctx)
 		return;
 	}
 
+	/*
+	 *	Skip Status-Server checks if the NAS is retransmitting
+	 *	packets.  If it responds to one of the normal packets,
+	 *	it will be marked "alive".
+	 */
+	if ((home->last_packet_sent + home->ping_timeout) >= now.tv_sec) goto reset_timer;
 
 	request = request_alloc(NULL);
 	if (!request) return;
@@ -3551,6 +3557,7 @@ static void ping_home_server(void *ctx)
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 
+reset_timer:
 	/*
 	 *	Add +/- 2s of jitter, as suggested in RFC 3539
 	 *	and in the Issues and Fixes draft.
