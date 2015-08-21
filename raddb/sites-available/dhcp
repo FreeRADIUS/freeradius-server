@@ -3,6 +3,16 @@
 #
 #	This is a virtual server that handles DHCP.
 #
+#  See raddb/mods-available/dhcp_sqlippool for the IP Pool configuration.
+#
+#  See raddb/policy.d/dhcp_sqlippool for the "glue" code that allows
+#  the RADIUS based "sqlippool" module to be used for DHCP.
+#
+#  See raddb/mods-config/sql/ippool/ for the schemas.
+#
+#  See raddb/sites-available/dhcp for instructions on how to configure
+#  the DHCP server.
+#
 #	$Id$
 #
 ######################################################################

@@ -1,8 +1,16 @@
-##  Configuration for DHCP to use SQL IP Pools.
-##
-##  See sqlippool.conf for common configuration explanation
-##
-##  $Id$
+#  Configuration for DHCP to use SQL IP Pools.
+#
+#  See raddb/mods-available/sqlippool for common configuration explanation
+#
+#  See raddb/policy.d/dhcp_sqlippool for the "glue" code that allows
+#  the RADIUS based "sqlippool" module to be used for DHCP.
+#
+#  See raddb/mods-config/sql/ippool/ for the schemas.
+#
+#  See raddb/sites-available/dhcp for instructions on how to configure
+#  the DHCP server.
+#
+#  $Id$
 
 sqlippool dhcp_sqlippool {
 	sql_module_instance = "sql"
