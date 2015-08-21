@@ -47,9 +47,6 @@ typedef struct rlm_rediswho_t {
 	 *	How many session updates to keep track of per user
 	 */
 	int trim_count;
-	char const *insert;
-	char const *trim;
-	char const *expire;
 } rlm_rediswho_t;
 
 static CONF_PARSER module_config[] = {
@@ -59,9 +56,6 @@ static CONF_PARSER module_config[] = {
 	{ "trim-count", FR_CONF_OFFSET(PW_TYPE_SIGNED | PW_TYPE_DEPRECATED, rlm_rediswho_t, trim_count), NULL },
 	{ "trim_count", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), "-1" },
 
-	{ "insert", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, insert), NULL },
-	{ "trim", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rediswho_t, trim), NULL }, /* required only if trim_count > 0 */
-	{ "expire", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, expire), NULL },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -143,24 +137,27 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 }
 
 static int mod_accounting_all(REDISSOCK **dissocket_p,
-			      rlm_rediswho_t *inst, REQUEST *request)
+				   rlm_rediswho_t *inst, REQUEST *request,
+				   char const *insert,
+				   char const *trim,
+				   char const *expire)
 {
 	int result;
 
-	result = rediswho_command(inst->insert, dissocket_p, inst, request);
+	result = rediswho_command(insert, dissocket_p, inst, request);
 	if (result < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
 	/* Only trim if necessary */
 	if (inst->trim_count >= 0 && result > inst->trim_count) {
-		if (rediswho_command(inst->trim, dissocket_p,
+		if (rediswho_command(trim, dissocket_p,
 				     inst, request) < 0) {
 			return RLM_MODULE_FAIL;
 		}
 	}
 
-	if (rediswho_command(inst->expire, dissocket_p, inst, request) < 0) {
+	if (rediswho_command(expire, dissocket_p, inst, request) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
@@ -173,6 +170,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void * instance, REQUEST * re
 	VALUE_PAIR * vp;
 	DICT_VALUE *dv;
 	CONF_SECTION *cs;
+	char const *insert, *trim, *expire;
 	rlm_rediswho_t *inst = (rlm_rediswho_t *) instance;
 	REDISSOCK *dissocket;
 
@@ -197,7 +195,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void * instance, REQUEST * re
 	dissocket = fr_connection_get(inst->redis_inst->pool);
 	if (!dissocket) return RLM_MODULE_FAIL;
 
-	rcode = mod_accounting_all(&dissocket, inst, request);
+	/*
+	 *	FIXME: pre-parse these into PW_TYPE_XLAT
+	 */
+	insert = cf_pair_value(cf_pair_find(cs, "insert"));
+	trim = cf_pair_value(cf_pair_find(cs, "trim"));
+	expire = cf_pair_value(cf_pair_find(cs, "expire"));
+
+	rcode = mod_accounting_all(&dissocket, inst, request,
+					insert,
+					trim,
+					expire);
 
 	if (dissocket) fr_connection_release(inst->redis_inst->pool, dissocket);
 
