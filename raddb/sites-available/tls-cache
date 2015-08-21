@@ -54,8 +54,10 @@ authorize {
 	#  and will just cause the server to emit a warning.
 	#
 	Autz-Type Session-Cache-Read {
-
-
+		update control {
+			Cache-Allow-Insert := no
+		}
+		cache_tls_session
 	}
 
 	#
@@ -72,8 +74,10 @@ authorize {
 	#  and will just cause the server to emit a warning.
 	#
 	Autz-Type Session-Cache-Write {
-
-
+		update control {
+			Cache-TTL := 0
+		}
+		cache_tls_session
 	}
 
 	#
@@ -86,24 +90,34 @@ authorize {
 	#  and will just cause the server to emit a warning.
 	#
 	Autz-Type Session-Cache-Delete {
-
+		update control {
+			Cache-TTL := 0
+		}
+		cache_tls_session
 	}
 
 	#
 	#  This section is run after certificate attributes are added
 	#  to the request list, and before performing OCSP validation.
 	#
+	#  It should read the attribute &control:TLS-OCSP-Cert-Valid
+	#  from the cache.
+	#
 	#  On success it should return 'ok', 'updated', 'noop' or 'notfound'
 	#  To force OCSP validation failure, it should return 'reject'.
 	#
 	Autz-Type OCSP-Cache-Read {
-
+		update control {
+			Cache-Allow-Insert := no
+		}
+		cache_ocsp_session
 	}
 
 	#
 	#  This section is run after OCSP validation has completed.
 	#
-	#  The result of the validation is stored in &reply:TLS-OCSP-Cert-Valid
+	#  It should write the attribute &reply:TLS-OCSP-Cert-Valid
+	#  to the cache.
 	#
 	#  On success it should return 'ok' or 'updated'.
 	#
@@ -111,7 +125,10 @@ authorize {
 	#  and will just cause the server to emit a warning.
 	#
 	Autz-Type OCSP-Cache-Write {
-
+		update control {
+			Cache-TTL := "%{expr:&TLS-OCSP-Next-Update * -1}"
+		}
+		cache_ocsp_session
 	}
 }
 }
