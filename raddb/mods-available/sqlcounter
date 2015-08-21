@@ -31,22 +31,22 @@
 #		%%b	unix time value of beginning of reset period
 #		%%e	unix time value of end of reset period
 #
-#  The 'check_name' parameter is the name of the 'check'
+#  The 'counter_name' parameter is the name of the 'check'
 #  attribute to use to access the counter in the 'users' file
 #  or SQL radcheck or radcheckgroup tables.
 #
-#  DEFAULT  Max-Daily-Session > 3600, Auth-Type = Reject
+#  DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
 #      Reply-Message = "You've used up more than one hour today"
 #
 sqlcounter dailycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 
-	counter_name = Daily-Session-Time
-	check_name = Max-Daily-Session
-	reply_name = Session-Timeout
+	counter_name = &Daily-Session-Time
+	check_name = &control:Max-Daily-Session
+	reply_name = &reply:Session-Timeout
+	key = &User-Name
 
-	key = User-Name
 	reset = daily
 
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
@@ -56,10 +56,11 @@ sqlcounter monthlycounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 
-	counter_name = Monthly-Session-Time
-	check_name = Max-Monthly-Session
-	reply_name = Session-Timeout
-	key = User-Name
+	counter_name = &Monthly-Session-Time
+	check_name = &control:Max-Monthly-Session
+	reply_name = &reply:Session-Timeout
+	key = &User-Name
+
 	reset = monthly
 
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
@@ -69,9 +70,10 @@ sqlcounter noresetcounter {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 
-	counter_name = Max-All-Session-Time
-	check_name = Max-All-Session
-	key = User-Name
+	counter_name = &Max-All-Session-Time
+	check_name = &control:Max-All-Session
+	key = &User-Name
+
 	reset = never
 
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf
@@ -86,9 +88,10 @@ sqlcounter expire_on_login {
 	sql_module_instance = sql
 	dialect = ${modules.sql.dialect}
 
-	counter_name = Expire-After-Initial-Login
-	check_name = Expire-After
-	key = User-Name
+	counter_name = &Expire-After-Initial-Login
+	check_name = &control:Expire-After
+	key = &User-Name
+
 	reset = never
 
 	$INCLUDE ${modconfdir}/sql/counter/${dialect}/${.:instance}.conf

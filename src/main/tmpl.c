@@ -2141,13 +2141,14 @@ int tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_tmpl_t
 
 /** Returns the first VP matching a #vp_tmpl_t
  *
- * @param out where to write the retrieved vp.
- * @param request The current #REQUEST.
- * @param vpt specifying the #VALUE_PAIR type/tag to find.
+ * @param[out] out where to write the retrieved vp.
+ * @param[in] request The current #REQUEST.
+ * @param[in] vpt specifying the #VALUE_PAIR type/tag to find.
  *	Must be one of the following types:
  *	- #TMPL_TYPE_LIST
  *	- #TMPL_TYPE_ATTR
  * @return
+ *	- 0 on success (found matching #VALUE_PAIR).
  *	- -1 if no matching #VALUE_PAIR could be found.
  *	- -2 if list could not be found (doesn't exist in current #REQUEST).
  *	- -3 if context could not be found (no parent #REQUEST available).
@@ -2165,6 +2166,56 @@ int tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt)
 	if (out) *out = vp;
 
 	return err;
+}
+
+/** Returns the first VP matching a #vp_tmpl_t, or if no VPs match, creates a new one.
+ *
+ * @param[out] out where to write the retrieved or created vp.
+ * @param[in] request The current #REQUEST.
+ * @param[in] vpt specifying the #VALUE_PAIR type/tag to retrieve or create.  Must be #TMPL_TYPE_ATTR.
+ * @return
+ *	- 1 on success a pair was created.
+ *	- 0 on success a pair was found.
+ *	- -1 if a new #VALUE_PAIR couldn't be found or created.
+ *	- -2 if list could not be found (doesn't exist in current #REQUEST).
+ *	- -3 if context could not be found (no parent #REQUEST available).
+ */
+int tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt)
+{
+	vp_cursor_t	cursor;
+	VALUE_PAIR	*vp;
+	int		err;
+
+	VERIFY_TMPL(vpt);
+	rad_assert(vpt->type == TMPL_TYPE_ATTR);
+
+	*out = NULL;
+
+	vp = tmpl_cursor_init(&err, &cursor, request, vpt);
+	switch (err) {
+	case 0:
+		*out = vp;
+		return 0;
+
+	case -1:
+	{
+		TALLOC_CTX	*ctx;
+		VALUE_PAIR	**head;
+
+		RADIUS_LIST_AND_CTX(ctx, head, request, vpt->tmpl_request, vpt->tmpl_list);
+
+		vp = fr_pair_afrom_da(ctx, vpt->tmpl_da);
+		if (!vp) {
+			REDEBUG("Failed allocating attribute %s", vpt->tmpl_da->name);
+			return -1;
+		}
+		*out = vp;
+	}
+		return 0;
+
+	default:
+		return err;
+	}
 }
 /* @} **/
 

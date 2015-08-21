@@ -8,5 +8,6 @@
 #
 # It is based on the "always" module.
 sometimes {
+	key = &User-Name
 	rcode = fail
 }

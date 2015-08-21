@@ -34,7 +34,7 @@ typedef enum {
 	PW_TYPE_TIMEVAL,			//!< Time value (struct timeval), only for config items.
 	PW_TYPE_BOOLEAN,			//!< A truth value.
 	PW_TYPE_COMBO_IP_PREFIX,		//!< WiMAX IPv4 or IPv6 address prefix depending on length.
-	PW_TYPE_DECIMAL,				//!< Double precision floating point.
+	PW_TYPE_DECIMAL,			//!< Double precision floating point.
 	PW_TYPE_MAX				//!< Number of defined data types.
 } PW_TYPE;
 

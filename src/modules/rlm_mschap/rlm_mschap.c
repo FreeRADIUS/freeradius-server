@@ -554,8 +554,8 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_POINTER("passchange", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) passchange_config },
 	{ FR_CONF_OFFSET("allow_retry", PW_TYPE_BOOLEAN, rlm_mschap_t, allow_retry), .dflt = "yes" },
 	{ FR_CONF_OFFSET("retry_msg", PW_TYPE_STRING, rlm_mschap_t, retry_msg) },
-	{ FR_CONF_OFFSET("winbind_username", PW_TYPE_STRING | PW_TYPE_TMPL, rlm_mschap_t, wb_username) },
-	{ FR_CONF_OFFSET("winbind_domain", PW_TYPE_STRING | PW_TYPE_TMPL, rlm_mschap_t, wb_domain) },
+	{ FR_CONF_OFFSET("winbind_username", PW_TYPE_TMPL, rlm_mschap_t, wb_username) },
+	{ FR_CONF_OFFSET("winbind_domain", PW_TYPE_TMPL, rlm_mschap_t, wb_domain) },
 #ifdef __APPLE__
 	{ FR_CONF_OFFSET("use_open_directory", PW_TYPE_BOOLEAN, rlm_mschap_t, open_directory), .dflt = "yes" },
 #endif

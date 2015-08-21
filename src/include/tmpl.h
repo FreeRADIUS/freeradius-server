@@ -412,6 +412,8 @@ int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 
 int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt);
 
+int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt);
+
 int			tmpl_define_unknown_attr(vp_tmpl_t *vpt);
 
 #ifdef __cplusplus

@@ -73,9 +73,9 @@ static FR_NAME_NUMBER const ldap_dereference[] = {
 };
 
 static CONF_PARSER sasl_mech_dynamic[] = {
-	{ FR_CONF_OFFSET("mech", PW_TYPE_STRING | PW_TYPE_TMPL | PW_TYPE_NOT_EMPTY, ldap_sasl_dynamic, mech) },
-	{ FR_CONF_OFFSET("proxy", PW_TYPE_STRING | PW_TYPE_TMPL, ldap_sasl_dynamic, proxy) },
-	{ FR_CONF_OFFSET("realm", PW_TYPE_STRING | PW_TYPE_TMPL, ldap_sasl_dynamic, realm) },
+	{ FR_CONF_OFFSET("mech", PW_TYPE_TMPL | PW_TYPE_NOT_EMPTY, ldap_sasl_dynamic, mech) },
+	{ FR_CONF_OFFSET("proxy", PW_TYPE_TMPL, ldap_sasl_dynamic, proxy) },
+	{ FR_CONF_OFFSET("realm", PW_TYPE_TMPL, ldap_sasl_dynamic, realm) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -113,9 +113,9 @@ static CONF_PARSER tls_config[] = {
 
 
 static CONF_PARSER profile_config[] = {
-	{ FR_CONF_OFFSET("filter", PW_TYPE_STRING | PW_TYPE_TMPL, rlm_ldap_t, profile_filter), .dflt = "(&)", .quote = T_SINGLE_QUOTED_STRING },	//!< Correct filter for when the DN is known.
+	{ FR_CONF_OFFSET("filter", PW_TYPE_TMPL, rlm_ldap_t, profile_filter), .dflt = "(&)", .quote = T_SINGLE_QUOTED_STRING },	//!< Correct filter for when the DN is known.
 	{ FR_CONF_OFFSET("attribute", PW_TYPE_STRING, rlm_ldap_t, profile_attr) },
-	{ FR_CONF_OFFSET("default", PW_TYPE_STRING | PW_TYPE_TMPL, rlm_ldap_t, default_profile) },
+	{ FR_CONF_OFFSET("default", PW_TYPE_TMPL, rlm_ldap_t, default_profile) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -123,9 +123,9 @@ static CONF_PARSER profile_config[] = {
  *	User configuration
  */
 static CONF_PARSER user_config[] = {
-	{ FR_CONF_OFFSET("filter", PW_TYPE_STRING | PW_TYPE_TMPL, rlm_ldap_t, userobj_filter) },
+	{ FR_CONF_OFFSET("filter", PW_TYPE_TMPL, rlm_ldap_t, userobj_filter) },
 	{ FR_CONF_OFFSET("scope", PW_TYPE_STRING, rlm_ldap_t, userobj_scope_str), .dflt = "sub" },
-	{ FR_CONF_OFFSET("base_dn", PW_TYPE_STRING | PW_TYPE_TMPL, rlm_ldap_t, userobj_base_dn), .dflt = "", .quote = T_SINGLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("base_dn", PW_TYPE_TMPL, rlm_ldap_t, userobj_base_dn), .dflt = "", .quote = T_SINGLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("sort_by", PW_TYPE_STRING, rlm_ldap_t, userobj_sort_by) },
 
 	{ FR_CONF_OFFSET("access_attribute", PW_TYPE_STRING, rlm_ldap_t, userobj_access_attr) },
@@ -142,7 +142,7 @@ static CONF_PARSER user_config[] = {
 static CONF_PARSER group_config[] = {
 	{ FR_CONF_OFFSET("filter", PW_TYPE_STRING, rlm_ldap_t, groupobj_filter) },
 	{ FR_CONF_OFFSET("scope", PW_TYPE_STRING, rlm_ldap_t, groupobj_scope_str), .dflt = "sub" },
-	{ FR_CONF_OFFSET("base_dn", PW_TYPE_STRING | PW_TYPE_TMPL, rlm_ldap_t, groupobj_base_dn), .dflt = "", .quote = T_SINGLE_QUOTED_STRING },
+	{ FR_CONF_OFFSET("base_dn", PW_TYPE_TMPL, rlm_ldap_t, groupobj_base_dn), .dflt = "", .quote = T_SINGLE_QUOTED_STRING },
 
 	{ FR_CONF_OFFSET("name_attribute", PW_TYPE_STRING, rlm_ldap_t, groupobj_name_attr), .dflt = "cn" },
 	{ FR_CONF_OFFSET("membership_attribute", PW_TYPE_STRING, rlm_ldap_t, userobj_membership_attr) },

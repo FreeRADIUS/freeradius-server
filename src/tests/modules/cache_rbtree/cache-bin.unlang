@@ -11,13 +11,14 @@ update {
 	Tmp-String-1 := "foo\000bar\000baz"
 }
 
-# Sanity check
+# 0. Sanity check
 if (&Tmp-String-1 == "foo\000bar\000baz") {
     test_pass
 } else {
     test_fail
 }
 
+# 1. Store the entry
 cache_bin_key_octets
 if (ok) {
     test_pass
@@ -26,13 +27,13 @@ else {
     test_fail
 }
 
-
 # Now add a second entry, with the value diverging after the first null byte
 update {
 	Tmp-Octets-0 := 0xaa00bb00cc00ee00
 	Tmp-String-1 := "bar\000baz"
 }
 
+# 2. Should create a *new* entry and not update the existing one
 cache_bin_key_octets
 if (ok) {
     test_pass

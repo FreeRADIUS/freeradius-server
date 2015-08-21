@@ -2437,6 +2437,8 @@ static int listen_bind(rad_listen_t *this)
 		return 0;
 	}
 
+	rad_assert(sock->my_ipaddr.af);
+
 	/*
 	 *	Copy fr_socket() here, as we may need to bind to a device.
 	 */

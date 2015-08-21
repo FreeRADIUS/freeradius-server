@@ -47,10 +47,6 @@ RCSID("$Id$")
 #define GDBM_COUNTER_OPTS (GDBM_SYNCOPT)
 #endif
 
-#ifndef HAVE_GDBM_FDESC
-#define gdbm_fdesc(foo) (-1)
-#endif
-
 #define UNIQUEID_MAX_LEN 32
 
 /*
@@ -63,28 +59,21 @@ RCSID("$Id$")
 typedef struct rlm_counter_t {
 	char const *filename;		/* name of the database file */
 	char const *reset;		/* daily, weekly, monthly, never or user defined */
-	char const *key_name;		/* User-Name */
-	char const *count_attribute;	/* Acct-Session-Time */
-	char const *counter_name;	/* Daily-Session-Time */
-	char const *check_name;		/* Daily-Max-Session */
-	char const *reply_name;		/* Session-Timeout */
-	char const *service_type;	/* Service-Type to search for */
 
 	uint32_t cache_size;
-	uint32_t service_val;
 
-	DICT_ATTR const *key_attr;
-	DICT_ATTR const *count_attr;
-	DICT_ATTR const *check_attr;
-	DICT_ATTR const *reply_attr;
-	DICT_ATTR const *dict_attr;		/* attribute number for the counter. */
+	vp_tmpl_t *paircmp_attr;	/* Attribute to register paircmp to allow counter checking */
+	vp_tmpl_t *key_attr;		/* User-Name */
+	vp_tmpl_t *count_attr;		/* Acct-Session-Time */
+	vp_tmpl_t *limit_attr;		/* Daily-Max-Session */
+	vp_tmpl_t *reply_attr;		/* Session-Timeout */
 
-	time_t reset_time;	/* The time of the next reset. */
-	time_t last_reset;	/* The time of the last reset. */
+	time_t reset_time;		/* The time of the next reset. */
+	time_t last_reset;		/* The time of the last reset. */
 
-	GDBM_FILE gdbm;		/* The gdbm file handle */
+	GDBM_FILE gdbm;			/* The gdbm file handle */
 #ifdef HAVE_PTHREAD_H
-	pthread_mutex_t mutex;	/* A mutex to lock the gdbm file for only one reader/writer */
+	pthread_mutex_t mutex;		/* A mutex to lock the gdbm file for only one reader/writer */
 #endif
 } rlm_counter_t;
 
@@ -100,8 +89,8 @@ typedef struct rlm_counter_t {
 #endif
 
 typedef struct rad_counter {
-	unsigned int user_counter;
-	char uniqueid[UNIQUEID_MAX_LEN];
+	uint64_t	user_counter;
+	char		uniqueid[UNIQUEID_MAX_LEN];
 } rad_counter;
 
 /*
@@ -115,18 +104,15 @@ typedef struct rad_counter {
  */
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_counter_t, filename) },
-	{ FR_CONF_OFFSET("key", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, key_name) },
 	{ FR_CONF_OFFSET("reset", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, reset) },
 
-	{ FR_CONF_OFFSET("count_attribute", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, count_attribute) },
+	{ FR_CONF_OFFSET("key", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_counter_t, key_attr) },
 
-	{ FR_CONF_OFFSET("counter_name", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, counter_name) },
+	{ FR_CONF_OFFSET("count_attribute", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_counter_t, count_attr) },
 
-	{ FR_CONF_OFFSET("check_name", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_counter_t, check_name) },
-
-	{ FR_CONF_OFFSET("reply_name", PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_counter_t, reply_name) },
-
-	{ FR_CONF_OFFSET("allowed_service_type", PW_TYPE_STRING, rlm_counter_t, service_type) },
+	{ FR_CONF_OFFSET("counter_name", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_counter_t, paircmp_attr) },
+	{ FR_CONF_OFFSET("check_name", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_counter_t, limit_attr) },
+	{ FR_CONF_OFFSET("reply_name", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_counter_t, reply_attr) },
 
 	{ FR_CONF_OFFSET("cache_size", PW_TYPE_INTEGER, rlm_counter_t, cache_size), .dflt = "1000" },
 	CONF_PARSER_TERMINATOR
@@ -142,21 +128,24 @@ static const CONF_PARSER module_config[] = {
 /*
  *	See if the counter matches.
  */
-static int counter_cmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
+static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req, VALUE_PAIR *check,
 		       UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	rlm_counter_t *inst = instance;
-	datum key_datum;
-	datum count_datum;
-	VALUE_PAIR *key_vp;
-	rad_counter counter;
+	rlm_counter_t	*inst = instance;
+	datum		key_datum;
+	datum		count_datum;
+	VALUE_PAIR	*key_vp;
+	rad_counter	counter;
 
 	/*
-	 *	Find the key attribute.
+	 *      Look for the key.  User-Name is special.  It means
+	 *      The REAL username, after stripping.
 	 */
-	key_vp = fr_pair_find_by_da(request, inst->key_attr, TAG_ANY);
-	if (!key_vp) {
-		return RLM_MODULE_NOOP;
+	if ((inst->key_attr->tmpl_list == PAIR_LIST_REQUEST) &&
+	    (inst->key_attr->tmpl_da->vendor == 0) && (inst->key_attr->tmpl_da->attr == PW_USER_NAME)) {
+		key_vp = request->username;
+	} else {
+		tmpl_find_vp(&key_vp, request, inst->key_attr);
 	}
 
 	ASSIGN(key_datum.dptr,key_vp->vp_strvalue);
@@ -164,15 +153,12 @@ static int counter_cmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
 
 	count_datum = gdbm_fetch(inst->gdbm, key_datum);
 
-	if (!count_datum.dptr) {
-		return -1;
-	}
+	if (!count_datum.dptr) return -1;
 	memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
 	free(count_datum.dptr);
 
-	return counter.user_counter - check->vp_integer;
+	return counter.user_counter - check->vp_integer64;
 }
-
 
 static rlm_rcode_t add_defaults(rlm_counter_t *inst)
 {
@@ -251,21 +237,21 @@ static rlm_rcode_t reset_db(rlm_counter_t *inst)
 
 static int find_next_reset(rlm_counter_t *inst, time_t timeval)
 {
-	int ret = 0;
-	size_t len;
-	unsigned int num = 1;
-	char last = '\0';
-	struct tm *tm, s_tm;
-	char sCurrentTime[40], sNextTime[40];
+	int		ret = 0;
+	size_t		len;
+	unsigned int	num = 1;
+	char		last = '\0';
+	struct tm	*tm, s_tm;
+	char		sCurrentTime[40], sNextTime[40];
 
 	tm = localtime_r(&timeval, &s_tm);
 	len = strftime(sCurrentTime, sizeof(sCurrentTime), "%Y-%m-%d %H:%M:%S", tm);
 	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
-	if (!inst->reset)
-		return -1;
-	if (isdigit((int) inst->reset[0])) {
+	rad_assert(inst->reset != NULL);
+
+	if (isdigit((int) inst->reset[0])){
 		len = strlen(inst->reset);
 		if (len == 0)
 			return -1;
@@ -303,12 +289,10 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
 	} else if (strcmp(inst->reset, "never") == 0) {
 		inst->reset_time = 0;
 	} else {
-		ERROR("rlm_counter: Unknown reset timer \"%s\"",
-			inst->reset);
 		return -1;
 	}
 
-	len = strftime(sNextTime, sizeof(sNextTime), "%Y-%m-%d %H:%M:%S", tm);
+	len = strftime(sNextTime, sizeof(sNextTime),"%Y-%m-%d %H:%M:%S",tm);
 	if (len == 0) *sNextTime = '\0';
 	DEBUG2("rlm_counter: Current Time: %" PRId64 " [%s], Next reset %" PRId64 " [%s]",
 	       (int64_t) timeval, sCurrentTime, (int64_t) inst->reset_time, sNextTime);
@@ -316,55 +300,306 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
 	return ret;
 }
 
-
-static int mod_bootstrap(CONF_SECTION *conf, void *instance)
+/*
+ *	Write accounting information to this modules database.
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
 {
-	rlm_counter_t *inst = instance;
-	ATTR_FLAGS flags;
-	DICT_ATTR const *da;
+	rlm_counter_t	*inst = instance;
+	datum		key_datum;
+	datum		count_datum;
+	VALUE_PAIR	*key_vp, *limit, *uniqueid_vp;
+	rad_counter	counter;
+	int		ret;
+	int		acctstatustype = 0;
+	time_t		diff;
 
-	memset(&flags, 0, sizeof(flags));
-	flags.compare = 1;	/* ugly hack */
-	da = dict_attrbyname(inst->counter_name);
-	if (da && (da->type != PW_TYPE_INTEGER)) {
-		cf_log_err_cs(conf, "Counter attribute %s MUST be integer", inst->counter_name);
-		return -1;
+	if ((key_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL)
+		acctstatustype = key_vp->vp_integer;
+	else {
+		RDEBUG2("Could not find account status type in packet");
+		return RLM_MODULE_NOOP;
 	}
-
-	if (!da && (dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER, flags) < 0)) {
-		cf_log_err_cs(conf, "Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
-		return -1;
+	if (acctstatustype != PW_STATUS_STOP) {
+		RDEBUG2("We only run on Accounting-Stop packets");
+		return RLM_MODULE_NOOP;
 	}
-
-	if (paircompare_register_byname(inst->counter_name, NULL, true, counter_cmp, inst) < 0) {
-		cf_log_err_cs(conf, "Failed to create counter attribute %s: %s", inst->counter_name, fr_strerror());
-		return -1;
-	}
-
-
-	da = dict_attrbyname(inst->counter_name);
-	if (!da) {
-		cf_log_err_cs(conf, "Failed to find counter attribute %s", inst->counter_name);
-		return -1;
-	}
-	inst->dict_attr = da;
+	uniqueid_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0, TAG_ANY);
+	if (uniqueid_vp != NULL) RDEBUG2("Packet Unique ID = '%s'", uniqueid_vp->vp_strvalue);
 
 	/*
-	 *	Create a new attribute for the check item.
+	 *	Before doing anything else, see if we have to reset
+	 *	the counters.
 	 */
-	flags.compare = 0;
-	if (dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
-		cf_log_err_cs(conf, "Failed to create check attribute %s: %s", inst->counter_name, fr_strerror());
-		return -1;
+	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
+		rlm_rcode_t rcode;
 
+		RDEBUG2("Time to reset the database");
+		inst->last_reset = inst->reset_time;
+		find_next_reset(inst, request->timestamp);
+
+		pthread_mutex_lock(&inst->mutex);
+		rcode = reset_db(inst);
+		pthread_mutex_unlock(&inst->mutex);
+
+		if (rcode != RLM_MODULE_OK) return rcode;
 	}
 
-	da = dict_attrbyname(inst->check_name);
-	if (!da) {
-		cf_log_err_cs(conf, "Failed to find check attribute %s", inst->counter_name);
-		return -1;
+	/*
+	 * Check if request->timestamp - {Acct-Delay-Time} < last_reset
+	 * If yes reject the packet since it is very old
+	 */
+	key_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
+	if (key_vp != NULL) {
+		if ((key_vp->vp_integer != 0) && (request->timestamp - (time_t) key_vp->vp_integer) < inst->last_reset) {
+			RDEBUG2("This packet is too old. Returning NOOP");
+			return RLM_MODULE_NOOP;
+		}
 	}
-	inst->check_attr = da;
+
+	/*
+	 *      Look for the key.  User-Name is special.  It means
+	 *      The REAL username, after stripping.
+	 */
+	if ((inst->key_attr->tmpl_list == PAIR_LIST_REQUEST) &&
+	    (inst->key_attr->tmpl_da->vendor == 0) && (inst->key_attr->tmpl_da->attr == PW_USER_NAME)) {
+		key_vp = request->username;
+	} else {
+		tmpl_find_vp(&key_vp, request, inst->key_attr);
+	}
+	if (!key_vp) {
+		RWDEBUG2("Couldn't find key attribute, %s, doing nothing...", inst->key_attr->tmpl_da->name);
+		return RLM_MODULE_NOOP;
+	}
+
+	if (tmpl_find_vp(&limit, request, inst->limit_attr) < 0) {
+		RWDEBUG2("Couldn't find limit attribute, %s, doing nothing...", inst->limit_attr->name);
+		return RLM_MODULE_NOOP;
+	}
+
+	ASSIGN(key_datum.dptr, key_vp->vp_strvalue);
+	key_datum.dsize = key_vp->vp_length;
+
+	RDEBUG2("Searching the database for key '%s'", key_vp->vp_strvalue);
+	pthread_mutex_lock(&inst->mutex);
+	count_datum = gdbm_fetch(inst->gdbm, key_datum);
+	if (!count_datum.dptr) {
+		RDEBUG2("Could not find the requested key in the database");
+		counter.user_counter = 0;
+		if (uniqueid_vp != NULL)
+			strlcpy(counter.uniqueid, uniqueid_vp->vp_strvalue, sizeof(counter.uniqueid));
+		else
+			memset((char *)counter.uniqueid, 0, UNIQUEID_MAX_LEN);
+	} else {
+		memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
+		free(count_datum.dptr);
+
+		RDEBUG2("Counter unique ID is \"%s\"",counter.uniqueid);
+		if (uniqueid_vp) {
+			if (strncmp(uniqueid_vp->vp_strvalue,counter.uniqueid, UNIQUEID_MAX_LEN - 1) == 0) {
+				RDEBUG2("Unique IDs for user match. Droping the request");
+				pthread_mutex_unlock(&inst->mutex);
+				return RLM_MODULE_NOOP;
+			}
+			strlcpy(counter.uniqueid, uniqueid_vp->vp_strvalue, sizeof(counter.uniqueid));
+		}
+		RDEBUG2("Existing counter value is %" PRIu64, counter.user_counter);
+	}
+
+	if ((inst->count_attr->tmpl_da->vendor == 0) && (inst->count_attr->tmpl_da->attr == PW_ACCT_SESSION_TIME)) {
+		/*
+		 *	If session time < diff then the user got in after the
+		 *	last reset. So add his session time, otherwise add the
+		 *	diff.
+		 *
+		 *	That way if he logged in at 23:00 and we reset the
+		 *	daily counter at 24:00 and he logged out at 01:00
+		 *	then we will only count one hour (the one in the new
+		 *	day). That is the right thing
+		 */
+		if (request->timestamp >= inst->last_reset) {
+			diff = request->timestamp - inst->last_reset;
+			counter.user_counter += (limit->vp_integer64 < (uint64_t)diff) ?
+				limit->vp_integer64 : (uint64_t)diff;
+		}
+	} else if (limit->da->type == PW_TYPE_INTEGER64) {
+		/*
+		 *	Integers get counted, without worrying about
+		 *	reset dates.
+		 */
+		counter.user_counter += limit->vp_integer64;
+	}
+
+	RDEBUG2("New counter value is %" PRIu64, counter.user_counter);
+	count_datum.dptr = (char *) &counter;
+	count_datum.dsize = sizeof(rad_counter);
+
+	ret = gdbm_store(inst->gdbm, key_datum, count_datum, GDBM_REPLACE);
+	pthread_mutex_unlock(&inst->mutex);
+	if (ret < 0) {
+		REDEBUG("Failed storing data to %s: %s", inst->filename, gdbm_strerror(gdbm_errno));
+		return RLM_MODULE_FAIL;
+	}
+	RDEBUG2("New value stored successfully");
+
+	return RLM_MODULE_OK;
+}
+
+/*
+ *	Find the named user in this modules database.  Create the set
+ *	of attribute-value pairs to check and reply with for this user
+ *	from the database. The authentication code only needs to check
+ *	the password, the rest is done here.
+ */
+static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
+{
+	rlm_counter_t	*inst = instance;
+	rlm_rcode_t	rcode = RLM_MODULE_NOOP;
+	datum		key_datum;
+	datum		count_datum;
+	rad_counter	counter;
+	VALUE_PAIR	*key_vp, *limit;
+	VALUE_PAIR	*reply_item;
+	char		msg[128];
+	uint64_t	res;
+	int		ret;
+
+	/*
+	 *	Before doing anything else, see if we have to reset
+	 *	the counters.
+	 */
+	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
+		inst->last_reset = inst->reset_time;
+		find_next_reset(inst,request->timestamp);
+
+		pthread_mutex_lock(&inst->mutex);
+		rcode = reset_db(inst);
+		pthread_mutex_unlock(&inst->mutex);
+
+		if (rcode != RLM_MODULE_OK) return rcode;
+	}
+
+	/*
+	 *      Look for the key.  User-Name is special.  It means
+	 *      The REAL username, after stripping.
+	 */
+	if ((inst->key_attr->tmpl_list == PAIR_LIST_REQUEST) &&
+	    (inst->key_attr->tmpl_da->vendor == 0) && (inst->key_attr->tmpl_da->attr == PW_USER_NAME)) {
+		key_vp = request->username;
+	} else {
+		tmpl_find_vp(&key_vp, request, inst->key_attr);
+	}
+	if (!key_vp) {
+		RWDEBUG2("Couldn't find key attribute, %s, doing nothing...", inst->key_attr->tmpl_da->name);
+		return RLM_MODULE_NOOP;
+	}
+
+	if (tmpl_find_vp(&limit, request, inst->limit_attr) < 0) {
+		RWDEBUG2("Couldn't find limit attribute, %s, doing nothing...", inst->limit_attr->name);
+		return RLM_MODULE_NOOP;
+	}
+
+	ASSIGN(key_datum.dptr, key_vp->vp_strvalue);
+	key_datum.dsize = key_vp->vp_length;
+
+	/*
+	 *	Init to be sure
+	 */
+	counter.user_counter = 0;
+
+	RDEBUG2("Searching the database for key '%s'",key_vp->vp_strvalue);
+
+	pthread_mutex_lock(&inst->mutex);
+	count_datum = gdbm_fetch(inst->gdbm, key_datum);
+	pthread_mutex_unlock(&inst->mutex);
+
+	if (count_datum.dptr) {
+		RDEBUG2("Key Found");
+		memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
+		free(count_datum.dptr);
+	} else {
+		RDEBUG2("Could not find the requested key in the database");
+	}
+
+	/*
+	 *	Check if check item > counter
+	 */
+	if (limit->vp_integer64 <= counter.user_counter) {
+		/* User is denied access, send back a reply message */
+		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
+		pair_make_reply("Reply-Message", msg, T_OP_EQ);
+
+		REDEBUG2("Maximum %s usage time reached", inst->reset);
+		REDEBUG2("Rejecting user, %s value (%" PRIu64 ") is less than counter value (%" PRIu64 ")",
+			 inst->limit_attr->name, limit->vp_integer64, counter.user_counter);
+
+		return RLM_MODULE_REJECT;
+	}
+
+	res = limit->vp_integer64 - counter.user_counter;
+	RDEBUG2("Allowing user, %s value (%" PRIu64 ") is greater than counter value (%" PRIu64 ")",
+		inst->limit_attr->name, limit->vp_integer64, counter.user_counter);
+
+	/*
+	 *	We are assuming that simultaneous-use=1. But
+	 *	even if that does not happen then our user
+	 *	could login at max for 2*max-usage-time Is
+	 *	that acceptable?
+	 */
+	if (inst->reply_attr) {
+		/*
+		 *	If we are near a reset then add the next
+		 *	limit, so that the user will not need to login
+		 *	again.  Do this only for Session-Timeout.
+		 */
+		if (((inst->reply_attr->tmpl_da->vendor == 0) &&
+		     (inst->reply_attr->tmpl_da->attr == PW_SESSION_TIMEOUT)) &&
+		    inst->reset_time && (res >= (uint64_t)(inst->reset_time - request->timestamp))) {
+			uint64_t to_reset = inst->reset_time - request->timestamp;
+
+			RDEBUG2("Time remaining (%" PRIu64 "s) is greater than time to reset (%" PRIu64 "s).  "
+				"Adding %" PRIu64 "s to reply value", to_reset, res, to_reset);
+			res = to_reset + limit->vp_integer;
+		}
+
+		/*
+		 *	Limit the reply attribute to the minimum of the existing value, or this new one.
+		 */
+		ret = tmpl_find_or_add_vp(&reply_item, request, inst->reply_attr);
+		switch (ret) {
+		case 1:		/* new */
+			break;
+
+		case 0:		/* found */
+			if (reply_item->vp_integer64 <= res) {
+				RDEBUG2("Leaving existing %s value of %" PRIu64, inst->reply_attr->name,
+					reply_item->vp_integer64);
+				return RLM_MODULE_OK;
+			}
+			break;
+
+		case -1:	/* alloc failed */
+			REDEBUG("Error allocating attribute %s", inst->reply_attr->name);
+			return RLM_MODULE_FAIL;
+
+		default:	/* request or list unavailable */
+			RDEBUG2("List or request context not available for %s, skipping...", inst->reply_attr->name);
+			return RLM_MODULE_OK;
+		}
+		reply_item->vp_integer64 = res;
+		rdebug_pair(L_DBG_LVL_2, request, reply_item, NULL);
+
+		return RLM_MODULE_UPDATED;
+	}
+	return RLM_MODULE_OK;
+}
+
+static int mod_detach(void *instance)
+{
+	rlm_counter_t *inst = instance;
+
+	if (inst->gdbm) gdbm_close(inst->gdbm);
+	pthread_mutex_destroy(&inst->mutex);
 
 	return 0;
 }
@@ -379,63 +614,21 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
-	rlm_counter_t *inst = instance;
-	DICT_ATTR const *da;
-	DICT_VALUE *dval;
-	time_t now;
-	int cache_size;
-	int ret;
-	datum key_datum;
-	datum time_datum;
-	char const *default1 = "DEFAULT1";
-	char const *default2 = "DEFAULT2";
+	rlm_counter_t	*inst = instance;
+	time_t		now;
+	int		cache_size;
+	int		ret;
+	datum		key_datum;
+	datum		time_datum;
+	char const	*default1 = "DEFAULT1";
+	char const	*default2 = "DEFAULT2";
 
 	cache_size = inst->cache_size;
 
-	da = dict_attrbyname(inst->key_name);
-	rad_assert(da != NULL);
-	inst->key_attr = da;
-
 	/*
-	 *	Discover the attribute number of the counter.
-	 */
-	da = dict_attrbyname(inst->count_attribute);
-	rad_assert(da != NULL);
-	inst->count_attr = da;
-
-	/*
-	 * Discover the attribute number of the reply attribute.
-	 */
-	if (inst->reply_name != NULL) {
-		da = dict_attrbyname(inst->reply_name);
-		if (!da) {
-			cf_log_err_cs(conf, "No such attribute %s", inst->reply_name);
-			return -1;
-		}
-		if (da->type != PW_TYPE_INTEGER) {
-			cf_log_err_cs(conf, "Reply attribute' %s' is not of type integer", inst->reply_name);
-			return -1;
-		}
-		inst->reply_attr = da;
-	} else {
-		inst->reply_attr = NULL;
-	}
-
-	/*
-	 * Find the attribute for the allowed protocol
-	 */
-	if (inst->service_type != NULL) {
-		if ((dval = dict_valbyname(PW_SERVICE_TYPE, 0, inst->service_type)) == NULL) {
-			ERROR("rlm_counter: Failed to find attribute number for %s", inst->service_type);
-			return -1;
-		}
-		inst->service_val = dval->value;
-	}
-
-	/*
-	 * Find when to reset the database.
+	 *	Find when to reset the database.
 	 */
 	rad_assert(inst->reset && *inst->reset);
 	now = time(NULL);
@@ -447,9 +640,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
+	/*
+	 *	Work around stupid const issues
+	 */
 	{
 		char *filename;
-
 		memcpy(&filename, &inst->filename, sizeof(filename));
 		inst->gdbm = gdbm_open(filename, sizeof(int), GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
 	}
@@ -473,7 +668,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *
 	 * If DEFAULT1 and DEFAULT2 do not exist (new database) we add them to the database
 	 */
-
 	memcpy(&key_datum.dptr, &default1, sizeof(key_datum.dptr));
 	key_datum.dsize = strlen(key_datum.dptr);
 
@@ -513,348 +707,87 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/*
-	 * Init the mutex
+	 *	Init the mutex
 	 */
 	pthread_mutex_init(&inst->mutex, NULL);
 
 	return 0;
 }
 
-/*
- *	Write accounting information to this modules database.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *request)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	rlm_counter_t *inst = instance;
-	datum key_datum;
-	datum count_datum;
-	VALUE_PAIR *key_vp, *count_vp, *proto_vp, *uniqueid_vp;
-	rad_counter counter;
-	rlm_rcode_t rcode;
-	int ret;
-	int acctstatustype = 0;
-	time_t diff;
+	rlm_counter_t	*inst = instance;
+	ATTR_FLAGS	flags;
 
-	if ((key_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL)
-		acctstatustype = key_vp->vp_integer;
-	else {
-		DEBUG("rlm_counter: Could not find account status type in packet");
-		return RLM_MODULE_NOOP;
-	}
-	if (acctstatustype != PW_STATUS_STOP) {
-		DEBUG("rlm_counter: We only run on Accounting-Stop packets");
-		return RLM_MODULE_NOOP;
-	}
-	uniqueid_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0, TAG_ANY);
-	if (uniqueid_vp != NULL)
-		DEBUG("rlm_counter: Packet Unique ID = '%s'",uniqueid_vp->vp_strvalue);
+	memset(&flags, 0, sizeof(flags));
+	flags.compare = 1;	/* ugly hack */
 
 	/*
-	 *	Before doing anything else, see if we have to reset
-	 *	the counters.
+	 *	Create a new attribute for the counter.
 	 */
-	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
-		DEBUG("rlm_counter: Time to reset the database");
-		inst->last_reset = inst->reset_time;
-		find_next_reset(inst,request->timestamp);
-		pthread_mutex_lock(&inst->mutex);
-		rcode = reset_db(inst);
-		pthread_mutex_unlock(&inst->mutex);
-		if (rcode != RLM_MODULE_OK)
-			return rcode;
-	}
-	/*
-	 * Check if we need to watch out for a specific service-type. If yes then check it
-	 */
-	if (inst->service_type != NULL) {
-		if ((proto_vp = fr_pair_find_by_num(request->packet->vps, PW_SERVICE_TYPE, 0, TAG_ANY)) == NULL) {
-			DEBUG("rlm_counter: Could not find Service-Type attribute in the request. Returning NOOP");
-			return RLM_MODULE_NOOP;
+	rad_assert(inst->paircmp_attr);
+	switch (inst->paircmp_attr->type) {
+	case TMPL_TYPE_ATTR:
+		if (inst->paircmp_attr->tmpl_da->type != PW_TYPE_INTEGER64) {
+			cf_log_err_cs(conf, "Counter attribute %s MUST be integer64",
+				      inst->paircmp_attr->tmpl_da->name);
+			return -1;
 		}
-		if ((unsigned)proto_vp->vp_integer != inst->service_val) {
-			DEBUG("rlm_counter: This Service-Type is not allowed. Returning NOOP");
-			return RLM_MODULE_NOOP;
+		if (paircompare_register_byname(inst->paircmp_attr->tmpl_da->name, NULL, true,
+						counter_cmp, inst) < 0) {
+			cf_log_err_cs(conf, "Failed registering counter attribute %s: %s",
+				      inst->paircmp_attr->tmpl_da->name, fr_strerror());
+			return -1;
 		}
-	}
-	/*
-	 * Check if request->timestamp - {Acct-Delay-Time} < last_reset
-	 * If yes reject the packet since it is very old
-	 */
-	key_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
-	if (key_vp != NULL) {
-		if ((key_vp->vp_integer != 0) && (request->timestamp - (time_t) key_vp->vp_integer) < inst->last_reset) {
-			DEBUG("rlm_counter: This packet is too old. Returning NOOP");
-			return RLM_MODULE_NOOP;
+		break;
+
+	case TMPL_TYPE_ATTR_UNDEFINED:
+		if (dict_addattr(inst->paircmp_attr->tmpl_unknown_name, -1, 0, PW_TYPE_INTEGER64, flags) < 0) {
+			cf_log_err_cs(conf, "Failed to create counter attribute %s: %s",
+				      inst->paircmp_attr->tmpl_unknown_name, fr_strerror());
+			return -1;
 		}
-	}
-
-
-
-	/*
-	 *	Look for the key.  User-Name is special.  It means
-	 *	The REAL username, after stripping.
-	 */
-	key_vp = (inst->key_attr->attr == PW_USER_NAME) ? request->username :
-					fr_pair_find_by_da(request->packet->vps, inst->key_attr, TAG_ANY);
-	if (!key_vp) {
-		DEBUG("rlm_counter: Could not find the key-attribute in the request. Returning NOOP");
-		return RLM_MODULE_NOOP;
-	}
-
-	/*
-	 *	Look for the attribute to use as a counter.
-	 */
-	count_vp = fr_pair_find_by_da(request->packet->vps, inst->count_attr, TAG_ANY);
-	if (!count_vp) {
-		DEBUG("rlm_counter: Could not find the count_attribute in the request");
-		return RLM_MODULE_NOOP;
-	}
-
-	ASSIGN(key_datum.dptr, key_vp->vp_strvalue);
-	key_datum.dsize = key_vp->vp_length;
-
-	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->vp_strvalue);
-	pthread_mutex_lock(&inst->mutex);
-	count_datum = gdbm_fetch(inst->gdbm, key_datum);
-	if (!count_datum.dptr) {
-		DEBUG("rlm_counter: Could not find the requested key in the database");
-		counter.user_counter = 0;
-		if (uniqueid_vp != NULL)
-			strlcpy(counter.uniqueid,uniqueid_vp->vp_strvalue, sizeof(counter.uniqueid));
-		else
-			memset((char *)counter.uniqueid,0,UNIQUEID_MAX_LEN);
-	} else {
-		DEBUG("rlm_counter: Key found");
-		memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
-		free(count_datum.dptr);
-		DEBUG("rlm_counter: Counter Unique ID = '%s'",counter.uniqueid);
-		if (uniqueid_vp != NULL) {
-			if (strncmp(uniqueid_vp->vp_strvalue,counter.uniqueid, UNIQUEID_MAX_LEN - 1) == 0) {
-				DEBUG("rlm_counter: Unique IDs for user match. Droping the request");
-				pthread_mutex_unlock(&inst->mutex);
-				return RLM_MODULE_NOOP;
-			}
-			strlcpy(counter.uniqueid,uniqueid_vp->vp_strvalue, sizeof(counter.uniqueid));
+		if (paircompare_register_byname(inst->paircmp_attr->tmpl_unknown_name, NULL, true,
+						counter_cmp, inst) < 0) {
+			cf_log_err_cs(conf, "Failed registering counter attribute %s: %s",
+				      inst->paircmp_attr->tmpl_unknown_name, fr_strerror());
+			return -1;
 		}
-		DEBUG("rlm_counter: User=%s, Counter=%d.",request->username->vp_strvalue,counter.user_counter);
+		break;
+
+	default:
+		rad_assert(0);
+		return -1;
 	}
 
-	if (inst->count_attr->attr == PW_ACCT_SESSION_TIME) {
-		/*
-		 *	If session time < diff then the user got in after the
-		 *	last reset. So add his session time, otherwise add the
-		 *	diff.
-		 *
-		 *	That way if he logged in at 23:00 and we reset the
-		 *	daily counter at 24:00 and he logged out at 01:00
-		 *	then we will only count one hour (the one in the new
-		 *	day). That is the right thing
-		 */
-		diff = request->timestamp - inst->last_reset;
-		counter.user_counter += ((time_t) count_vp->vp_integer < diff) ? count_vp->vp_integer : diff;
 
-	} else if (count_vp->da->type == PW_TYPE_INTEGER) {
-		/*
-		 *	Integers get counted, without worrying about
-		 *	reset dates.
-		 */
-		counter.user_counter += count_vp->vp_integer;
-
-	} else {
-		/*
-		 *	The attribute is NOT an integer, just count once
-		 *	more that we've seen it.
-		 */
-		counter.user_counter++;
-	}
-
-	DEBUG("rlm_counter: User=%s, New Counter=%d.",request->username->vp_strvalue,counter.user_counter);
-	count_datum.dptr = (char *) &counter;
-	count_datum.dsize = sizeof(rad_counter);
-
-	DEBUG("rlm_counter: Storing new value in database");
-	ret = gdbm_store(inst->gdbm, key_datum, count_datum, GDBM_REPLACE);
-	pthread_mutex_unlock(&inst->mutex);
-	if (ret < 0) {
-		ERROR("rlm_counter: Failed storing data to %s: %s", inst->filename, gdbm_strerror(gdbm_errno));
-		return RLM_MODULE_FAIL;
-	}
-	DEBUG("rlm_counter: New value stored successfully");
-
-	return RLM_MODULE_OK;
-}
-
-/*
- *	Find the named user in this modules database.  Create the set
- *	of attribute-value pairs to check and reply with for this user
- *	from the database. The authentication code only needs to check
- *	the password, the rest is done here.
- */
-static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *request)
-{
-	rlm_counter_t *inst = instance;
-	rlm_rcode_t rcode = RLM_MODULE_NOOP;
-	datum key_datum;
-	datum count_datum;
-	rad_counter counter;
-	VALUE_PAIR *key_vp, *check_vp;
-	VALUE_PAIR *reply_item;
-	char msg[128];
+	flags.compare = 0;
 
 	/*
-	 *	Before doing anything else, see if we have to reset
-	 *	the counters.
+	 *	Create a new attribute for the limit attribute.
 	 */
-	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
-		rlm_rcode_t rcode2;
-
-		inst->last_reset = inst->reset_time;
-		find_next_reset(inst,request->timestamp);
-		pthread_mutex_lock(&inst->mutex);
-		rcode2 = reset_db(inst);
-		pthread_mutex_unlock(&inst->mutex);
-		if (rcode2 != RLM_MODULE_OK) {
-			return rcode2;
+	rad_assert(inst->limit_attr);
+	switch (inst->limit_attr->type) {
+	case TMPL_TYPE_ATTR:
+		if (inst->limit_attr->tmpl_da->type != PW_TYPE_INTEGER64) {
+			cf_log_err_cs(conf, "Limit attribute %s MUST be integer64",
+				      inst->limit_attr->tmpl_da->name);
+			return -1;
 		}
-	}
+		break;
 
-
-	/*
-	 *      Look for the key.  User-Name is special.  It means
-	 *      The REAL username, after stripping.
-	 */
-	DEBUG2("rlm_counter: Entering module authorize code");
-	key_vp = (inst->key_attr->attr == PW_USER_NAME) ? request->username :
-		 fr_pair_find_by_da(request->packet->vps, inst->key_attr, TAG_ANY);
-	if (!key_vp) {
-		DEBUG2("rlm_counter: Could not find Key value pair");
-		return rcode;
-	}
-
-	/*
-	 *      Look for the check item
-	 */
-	if ((check_vp = fr_pair_find_by_da(request->config, inst->check_attr, TAG_ANY)) == NULL) {
-		DEBUG2("rlm_counter: Could not find Check item value pair");
-		return rcode;
-	}
-
-	ASSIGN(key_datum.dptr, key_vp->vp_strvalue);
-	key_datum.dsize = key_vp->vp_length;
-
-
-	/*
-	 * Init to be sure
-	 */
-
-	counter.user_counter = 0;
-
-	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->vp_strvalue);
-	pthread_mutex_lock(&inst->mutex);
-	count_datum = gdbm_fetch(inst->gdbm, key_datum);
-	pthread_mutex_unlock(&inst->mutex);
-	if (count_datum.dptr != NULL) {
-		DEBUG("rlm_counter: Key Found");
-		memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
-		free(count_datum.dptr);
-	}
-	else
-		DEBUG("rlm_counter: Could not find the requested key in the database");
-
-	/*
-	 * Check if check item > counter
-	 */
-	DEBUG("rlm_counter: Check item = %d, Count = %d",check_vp->vp_integer,counter.user_counter);
-	if (check_vp->vp_integer > counter.user_counter) {
-		unsigned int res;
-
-		res = check_vp->vp_integer - counter.user_counter;
-
-		DEBUG("rlm_counter: res is greater than zero");
-		if (inst->count_attr->attr == PW_ACCT_SESSION_TIME) {
-			/*
-			 * Do the following only if the count attribute is
-			 * AcctSessionTime
-			 */
-
-			/*
-			*	We are assuming that simultaneous-use=1. But
-			*	even if that does not happen then our user
-			*	could login at max for 2*max-usage-time Is
-			*	that acceptable?
-			*/
-
-			/*
-			*	User is allowed, but set Session-Timeout.
-			*	Stolen from main/auth.c
-			*/
-
-			/*
-			*	If we are near a reset then add the next
-			*	limit, so that the user will not need to
-			*	login again
-			*	Before that set the return value to the time
-			*	remaining to next reset
-			*/
-			if (inst->reset_time && (res >= (inst->reset_time - request->timestamp))) {
-				res = inst->reset_time - request->timestamp;
-				res += check_vp->vp_integer;
-			}
-
-			reply_item = fr_pair_find_by_num(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
-			if (reply_item) {
-				if (reply_item->vp_integer > res) {
-					reply_item->vp_integer = res;
-				}
-			} else {
-				reply_item = radius_pair_create(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
-				reply_item->vp_integer = res;
-			}
-		} else if (inst->reply_attr) {
-			reply_item = fr_pair_find_by_da(request->reply->vps, inst->reply_attr, TAG_ANY);
-			if (reply_item) {
-				if (reply_item->vp_integer > res) {
-					reply_item->vp_integer = res;
-				}
-			} else {
-				reply_item = radius_pair_create(request->reply, &request->reply->vps, inst->reply_attr->attr,
-							       inst->reply_attr->vendor);
-				reply_item->vp_integer = res;
-			}
+	case TMPL_TYPE_ATTR_UNDEFINED:
+		if (dict_addattr(inst->limit_attr->tmpl_unknown_name, -1, 0, PW_TYPE_INTEGER64, flags) < 0) {
+			cf_log_err_cs(conf, "Failed to create limit attribute %s: %s",
+				      inst->limit_attr->tmpl_unknown_name, fr_strerror());
+			return -1;
 		}
+		break;
 
-		rcode = RLM_MODULE_OK;
-
-		DEBUG2("rlm_counter: (Check item - counter) is greater than zero");
-		DEBUG2("rlm_counter: Authorized user %s, check_item=%d, counter=%d",
-				key_vp->vp_strvalue,check_vp->vp_integer,counter.user_counter);
-		DEBUG2("rlm_counter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d", key_vp->vp_strvalue,res);
-	} else {
-		/*
-		 * User is denied access, send back a reply message
-		*/
-		sprintf(msg, "Your maximum %s usage time has been reached", inst->reset);
-		pair_make_reply("Reply-Message", msg, T_OP_EQ);
-
-		REDEBUG("Maximum %s usage time reached", inst->reset);
-		rcode = RLM_MODULE_REJECT;
-
-		DEBUG2("rlm_counter: Rejected user %s, check_item=%d, counter=%d",
-				key_vp->vp_strvalue,check_vp->vp_integer,counter.user_counter);
+	default:
+		rad_assert(0);
+		return -1;
 	}
-
-	return rcode;
-}
-
-static int mod_detach(void *instance)
-{
-	rlm_counter_t *inst = instance;
-
-	if (inst->gdbm) {
-		gdbm_close(inst->gdbm);
-	}
-
-	pthread_mutex_destroy(&inst->mutex);
 
 	return 0;
 }

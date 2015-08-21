@@ -898,6 +898,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->cs = conf;
 
+	rad_assert(inst->config.key);
+
 	/*
 	 *	Sanity check for crazy people.
 	 */

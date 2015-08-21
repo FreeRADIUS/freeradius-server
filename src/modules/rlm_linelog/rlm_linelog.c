@@ -170,8 +170,8 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("destination", PW_TYPE_STRING | PW_TYPE_REQUIRED, linelog_instance_t, log_dst_str) },
 
 	{ FR_CONF_OFFSET("delimiter", PW_TYPE_STRING, linelog_instance_t, delimiter), .dflt = "\n" },
-	{ FR_CONF_OFFSET("format", PW_TYPE_STRING | PW_TYPE_TMPL, linelog_instance_t, log_src) },
-	{ FR_CONF_OFFSET("reference", PW_TYPE_STRING | PW_TYPE_TMPL, linelog_instance_t, log_ref) },
+	{ FR_CONF_OFFSET("format", PW_TYPE_TMPL, linelog_instance_t, log_src) },
+	{ FR_CONF_OFFSET("reference", PW_TYPE_TMPL, linelog_instance_t, log_ref) },
 
 	/*
 	 *	Log destinations
