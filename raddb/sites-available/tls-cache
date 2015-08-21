@@ -68,7 +68,7 @@ authorize {
 	#
 	#  On success it should return 'ok' or 'updated'.
 	#
-	#  Currently the return code has no real effect on session processing
+	#  The return code has no real effect on session processing
 	#  and will just cause the server to emit a warning.
 	#
 	Autz-Type Session-Cache-Write {
@@ -107,7 +107,7 @@ authorize {
 	#
 	#  On success it should return 'ok' or 'updated'.
 	#
-	#  Currently the return code has no real effect on session processing
+	#  The return code has no real effect on session processing
 	#  and will just cause the server to emit a warning.
 	#
 	Autz-Type OCSP-Cache-Write {
