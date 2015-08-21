@@ -1380,6 +1380,8 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  * @param vpt specifying undefined attribute to add. ``tmpl_da`` pointer will be
  *	updated to point to the #DICT_ATTR inserted into the dictionary.
  *	Lists and requests will be preserved.
+ * @param type to define undefined attribute as.
+ * @param flags to define undefined attribute with.
  * @return
  *	- 1 noop (did nothing) - Not possible to convert tmpl.
  *	- 0 on success.
