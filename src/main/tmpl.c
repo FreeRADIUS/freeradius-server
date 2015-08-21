@@ -1347,6 +1347,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
  * @param vpt to add. ``tmpl_da`` pointer will be updated to point to the
  *	#DICT_ATTR inserted into the dictionary.
  * @return
+ *	- 1 noop (did nothing) - Not possible to convert tmpl.
  *	- 0 on success.
  *	- -1 on failure.
  */
@@ -1354,17 +1355,72 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 {
 	DICT_ATTR const *da;
 
-	if (!vpt) return -1;
+	if (!vpt) return 1;
 
 	VERIFY_TMPL(vpt);
 
-	if (vpt->type != TMPL_TYPE_ATTR) return 0;
+	if (vpt->type != TMPL_TYPE_ATTR) return 1;
 
-	if (!vpt->tmpl_da->flags.is_unknown) return 0;
+	if (!vpt->tmpl_da->flags.is_unknown) return 1;
 
 	da = dict_unknown_add(vpt->tmpl_da);
 	if (!da) return -1;
 	vpt->tmpl_da = da;
+
+	return 0;
+}
+
+/** Add an undefined #DICT_ATTR specified by a #vp_tmpl_t to the main dictionary
+ *
+ * @note dict_addattr will not return an error if the attribute already exists
+ *	meaning that multiple #vp_tmpl_t specifying the same attribute can be
+ *	passed to this function to be fixed up, so long as the type and flags
+ *	are identical.
+ *
+ * @param vpt specifying undefined attribute to add. ``tmpl_da`` pointer will be
+ *	updated to point to the #DICT_ATTR inserted into the dictionary.
+ *	Lists and requests will be preserved.
+ * @return
+ *	- 1 noop (did nothing) - Not possible to convert tmpl.
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *flags)
+{
+	DICT_ATTR const *da;
+
+	if (!vpt) return -1;
+
+	VERIFY_TMPL(vpt);
+
+	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
+
+	if (dict_addattr(vpt->tmpl_unknown_name, -1, 0, type, *flags) < 0) return -1;
+	da = dict_attrbyname(vpt->tmpl_unknown_name);
+	if (!da) return -1;
+
+	if (type != da->type) {
+		fr_strerror_printf("Attribute %s of type %s already defined with type %s",
+				   da->name, fr_int2str(dict_attr_types, type, "<UNKNOWN>"),
+				   fr_int2str(dict_attr_types, da->type, "<UNKNOWN>"));
+		return -1;
+	}
+
+	if (memcmp(flags, &da->flags, sizeof(*flags)) != 0) {
+		fr_strerror_printf("Attribute %s already defined with different flags", da->name);
+		return -1;
+	}
+
+#ifndef NDEBUG
+	/*
+	 *	Clear existing data (so we don't trip TMPL_VERIFY);
+	 */
+	memset(&vpt->data.attribute.unknown, 0, sizeof(vpt->data.attribute.unknown));
+#endif
+
+	vpt->tmpl_da = da;
+	vpt->type = TMPL_TYPE_ATTR;
+
 	return 0;
 }
 /* @} **/

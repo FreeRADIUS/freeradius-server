@@ -416,6 +416,7 @@ int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *v
 
 int			tmpl_define_unknown_attr(vp_tmpl_t *vpt);
 
+int			tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *flags);
 #ifdef __cplusplus
 }
 #endif

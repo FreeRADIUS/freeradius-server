@@ -339,7 +339,7 @@ static size_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t *inst, R
 /*
  *	See if the counter matches.
  */
-static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req , VALUE_PAIR *check,
+static int counter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req , VALUE_PAIR *check,
 			  UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_sqlcounter_t *inst = instance;
@@ -575,73 +575,40 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	rlm_sqlcounter_t	*inst = instance;
 	ATTR_FLAGS		flags;
 
-	memset(&flags, 0, sizeof(flags));
-	flags.compare = 1;	/* ugly hack */
-
 	/*
 	 *	Create a new attribute for the counter.
 	 */
 	rad_assert(inst->paircmp_attr);
-	switch (inst->paircmp_attr->type) {
-	case TMPL_TYPE_ATTR:
-		if (inst->paircmp_attr->tmpl_da->type != PW_TYPE_INTEGER64) {
-			cf_log_err_cs(conf, "Counter attribute %s MUST be integer64",
-				      inst->paircmp_attr->tmpl_da->name);
-			return -1;
-		}
-		if (paircompare_register_byname(inst->paircmp_attr->tmpl_da->name, NULL, true,
-						sqlcounter_cmp, inst) < 0) {
-			cf_log_err_cs(conf, "Failed registering counter attribute %s: %s",
-				      inst->paircmp_attr->tmpl_da->name, fr_strerror());
-			return -1;
-		}
-		break;
+	rad_assert(inst->limit_attr);
 
-	case TMPL_TYPE_ATTR_UNDEFINED:
-		if (dict_addattr(inst->paircmp_attr->tmpl_unknown_name, -1, 0, PW_TYPE_INTEGER64, flags) < 0) {
-			cf_log_err_cs(conf, "Failed to create counter attribute %s: %s",
-				      inst->paircmp_attr->tmpl_unknown_name, fr_strerror());
-			return -1;
-		}
-		if (paircompare_register_byname(inst->paircmp_attr->tmpl_unknown_name, NULL, true,
-						sqlcounter_cmp, inst) < 0) {
-			cf_log_err_cs(conf, "Failed registering counter attribute %s: %s",
-				      inst->paircmp_attr->tmpl_unknown_name, fr_strerror());
-			return -1;
-		}
-		break;
-
-	default:
-		rad_assert(0);
+	memset(&flags, 0, sizeof(flags));
+	flags.compare = 1;	/* ugly hack */
+	if (tmpl_define_undefined_attr(inst->paircmp_attr, PW_TYPE_INTEGER64, &flags) < 0) {
+		cf_log_err_cs(conf, "Failed defining counter attribute: %s", fr_strerror());
 		return -1;
 	}
 
-
 	flags.compare = 0;
+	if (tmpl_define_undefined_attr(inst->limit_attr, PW_TYPE_INTEGER64, &flags) < 0) {
+		cf_log_err_cs(conf, "Failed defining check attribute: %s", fr_strerror());
+		return -1;
+	}
 
-	/*
-	 *	Create a new attribute for the limit attribute.
-	 */
-	rad_assert(inst->limit_attr);
-	switch (inst->limit_attr->type) {
-	case TMPL_TYPE_ATTR:
-		if (inst->limit_attr->tmpl_da->type != PW_TYPE_INTEGER64) {
-			cf_log_err_cs(conf, "Limit attribute %s MUST be integer64",
-				      inst->limit_attr->tmpl_da->name);
-			return -1;
-		}
-		break;
+	if (inst->paircmp_attr->tmpl_da->type != PW_TYPE_INTEGER64) {
+		cf_log_err_cs(conf, "Counter attribute %s MUST be integer64",
+			      inst->paircmp_attr->tmpl_da->name);
+		return -1;
+	}
+	if (paircompare_register_byname(inst->paircmp_attr->tmpl_da->name, NULL, true,
+					counter_cmp, inst) < 0) {
+		cf_log_err_cs(conf, "Failed registering comparison function for counter attribute %s: %s",
+			      inst->paircmp_attr->tmpl_da->name, fr_strerror());
+		return -1;
+	}
 
-	case TMPL_TYPE_ATTR_UNDEFINED:
-		if (dict_addattr(inst->limit_attr->tmpl_unknown_name, -1, 0, PW_TYPE_INTEGER64, flags) < 0) {
-			cf_log_err_cs(conf, "Failed to create limit attribute %s: %s",
-				      inst->limit_attr->tmpl_unknown_name, fr_strerror());
-			return -1;
-		}
-		break;
-
-	default:
-		rad_assert(0);
+	if (inst->limit_attr->tmpl_da->type != PW_TYPE_INTEGER64) {
+		cf_log_err_cs(conf, "Check attribute %s MUST be integer64",
+			      inst->limit_attr->tmpl_da->name);
 		return -1;
 	}
 
