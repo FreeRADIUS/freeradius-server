@@ -92,6 +92,7 @@ authorize {
 	Autz-Type Session-Cache-Delete {
 		update control {
 			Cache-TTL := 0
+			Cache-Allow-Insert := no
 		}
 		cache_tls_session
 	}
