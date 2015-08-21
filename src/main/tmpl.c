@@ -648,9 +648,13 @@ int tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
  *	cannot be used to search for a #VALUE_PAIR in a #REQUEST.
  * @param[in] allow_undefined If true, we don't generate a parse error on unknown attributes.
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR_UNDEFINED #vp_tmpl_t
- *	will be produced.
- * @return <= 0 on error (offset as negative integer), > 0 on success
- *	(number of bytes parsed).
+ *	will be produced.  A #vp_tmpl_t of this type can be passed to
+ *	#tmpl_define_undefined_attr which will add the attribute to the global dictionary,
+ *	and fixup the #vp_tmpl_t, changing it to a #TMPL_TYPE_ATTR with a pointer to the
+ *	new #DICT_ATTR.
+ * @return
+ *	- <= 0 on error (parse failure offset as negative integer).
+ *	- > 0 on success (number of bytes parsed).
  *
  * @see REMARKER to produce pretty error markers from the return value.
  */
@@ -856,7 +860,7 @@ finish:
 		vpt->tmpl_da = (DICT_ATTR *)&vpt->data.attribute.unknown.da;
 	}
 
-	VERIFY_TMPL(vpt);
+	VERIFY_TMPL(vpt);	/* Because we want to ensure we produced something sane */
 
 	return vpt->len;
 }
