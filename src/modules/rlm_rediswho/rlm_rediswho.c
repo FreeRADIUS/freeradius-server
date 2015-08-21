@@ -53,13 +53,26 @@ typedef struct rlm_rediswho {
 	char const		*expire;	//!< Command for expiring entries.
 } rlm_rediswho_t;
 
+static CONF_PARSER section_config[] = {
+	{ FR_CONF_OFFSET("insert", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, insert) },
+	{ FR_CONF_OFFSET("trim", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
+	{ FR_CONF_OFFSET("expire", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, expire) },
+	CONF_PARSER_TERMINATOR
+};
+
 static CONF_PARSER module_config[] = {
 	REDIS_COMMON_CONFIG,
 
 	{ FR_CONF_OFFSET("trim_count", PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), .dflt = "-1" },
-	{ FR_CONF_OFFSET("insert", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, insert) },
-	{ FR_CONF_OFFSET("trim", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rediswho_t, trim) }, /* required only if trim_count > 0 */
-	{ FR_CONF_OFFSET("expire", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, expire) },
+
+	/*
+	 *	These all smash the same variables, because we don't care about them right now.
+	 *	In 3.1, we should have a way of saying "parse a set of sub-sections according to a template"
+	 */
+	{ FR_CONF_POINTER("Start", PW_TYPE_SUBSECTION, NULL), .dflt = section_config },
+	{ FR_CONF_POINTER("Interim-Update", PW_TYPE_SUBSECTION, NULL), .dflt = section_config },
+	{ FR_CONF_POINTER("Stop", PW_TYPE_SUBSECTION, NULL), .dflt = section_config },
+
 	CONF_PARSER_TERMINATOR
 };
 
@@ -155,19 +168,22 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	return 0;
 }
 
-static rlm_rcode_t mod_accounting_all(rlm_rediswho_t *inst, REQUEST *request)
+static rlm_rcode_t mod_accounting_all(rlm_rediswho_t *inst, REQUEST *request,
+				      char const *insert,
+				      char const *trim,
+				      char const *expire)
 {
 	int ret;
 
-	ret = rediswho_command(inst, request, inst->insert);
+	ret = rediswho_command(inst, request, insert);
 	if (ret < 0) return RLM_MODULE_FAIL;
 
 	/* Only trim if necessary */
 	if ((inst->trim_count >= 0) && (ret > inst->trim_count)) {
-		if (rediswho_command(inst, request, inst->trim) < 0) return RLM_MODULE_FAIL;
+		if (rediswho_command(inst, request, trim) < 0) return RLM_MODULE_FAIL;
 	}
 
-	if (rediswho_command(inst, request, inst->expire) < 0) return RLM_MODULE_FAIL;
+	if (rediswho_command(inst, request, expire) < 0) return RLM_MODULE_FAIL;
 	return RLM_MODULE_OK;
 }
 
@@ -178,6 +194,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	VALUE_PAIR	*vp;
 	DICT_VALUE	*dv;
 	CONF_SECTION	*cs;
+	char const	*insert, *trim, *expire;
 
 	vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (!vp) {
@@ -197,7 +214,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		return RLM_MODULE_NOOP;
 	}
 
-	rcode = mod_accounting_all(inst, request);
+	insert = cf_pair_value(cf_pair_find(cs, "insert"));
+	trim = cf_pair_value(cf_pair_find(cs, "trim"));
+	expire = cf_pair_value(cf_pair_find(cs, "expire"));
+
+	rcode = mod_accounting_all(inst, request, insert, trim, expire);
 
 	return rcode;
 }
