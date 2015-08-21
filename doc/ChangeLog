@@ -13,6 +13,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  auth / acct / coa packets.
 	* Create debian packages for DHCP.  Fixes #1125.
 	* Add more tests for "update" section parsing.
+	* Update "man" pages.
+	* Update attributes for Alcatel 7750
 
 	Bug fixes
 	* When using -C, don't error out if the configuration uses
