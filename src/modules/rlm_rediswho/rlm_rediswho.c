@@ -47,7 +47,23 @@ typedef struct rlm_rediswho_t {
 	 *	How many session updates to keep track of per user
 	 */
 	int trim_count;
+
+	/*
+	 *	These are used only for parsing.  They aren't used at run-time.
+	 */
+	char const *insert;
+	char const *trim;
+	char const *expire;
+
 } rlm_rediswho_t;
+
+static CONF_PARSER section_config[] = {
+	{ "insert", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, insert), NULL },
+	{ "trim", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rediswho_t, trim), NULL }, /* required only if trim_count > 0 */
+	{ "expire", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_rediswho_t, expire), NULL },
+
+	CONF_PARSER_TERMINATOR
+};
 
 static CONF_PARSER module_config[] = {
 	{ "redis-instance-name", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_rediswho_t, redis_instance_name), NULL },
@@ -55,6 +71,14 @@ static CONF_PARSER module_config[] = {
 
 	{ "trim-count", FR_CONF_OFFSET(PW_TYPE_SIGNED | PW_TYPE_DEPRECATED, rlm_rediswho_t, trim_count), NULL },
 	{ "trim_count", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_rediswho_t, trim_count), "-1" },
+
+	/*
+	 *	These all smash the same variables, because we don't care about them right now.
+	 *	In 3.1, we should have a way of saying "parse a set of sub-sections according to a template"
+	 */
+	{  "Start", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), section_config },
+	{  "Interim-Update", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), section_config },
+	{  "Stop", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), section_config },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -195,9 +219,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void * instance, REQUEST * re
 	dissocket = fr_connection_get(inst->redis_inst->pool);
 	if (!dissocket) return RLM_MODULE_FAIL;
 
-	/*
-	 *	FIXME: pre-parse these into PW_TYPE_XLAT
-	 */
 	insert = cf_pair_value(cf_pair_find(cs, "insert"));
 	trim = cf_pair_value(cf_pair_find(cs, "trim"));
 	expire = cf_pair_value(cf_pair_find(cs, "expire"));
