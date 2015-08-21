@@ -41,6 +41,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  when running as "root".
 	* Handle tags when using maps.  Fixes #1191.
 	* Fix crash when CoA packets time out.
+	* Fix parse error in rediswho
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
