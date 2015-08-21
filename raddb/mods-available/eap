@@ -374,7 +374,7 @@ eap {
 			#  You should use the "virtual_server" directive instead.
 			#  See raddb/sites-available/tls-cache for details.
 			#
-	#		virtual_server = tls-cache
+	#		virtual_server = 'tls-cache'
 		}
 
 		#
@@ -455,6 +455,19 @@ eap {
 			#  also disables ocsp checking
 			#
 			enable = no
+
+			#
+			#  OCSP checks are performed immediately after the complete
+			#  certificate is received from the supplicant, and directly
+			#  after the attributes from that certificate are inserted
+			#  into the request.
+			#
+			#  In order to retrieve cached OCSP states, a virtual server
+			#  must be defined here.
+			#
+			#  See raddb/sites-available/tls-cache for details.
+			#
+#			virtual_server = 'tls-cache'
 
 			#
 			#  The OCSP Responder URL can be automatically

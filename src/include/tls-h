@@ -372,6 +372,7 @@ struct fr_tls_server_conf_t {
 	 * OCSP Configuration
 	 */
 	bool		ocsp_enable;
+	char const	*ocsp_cache_server;
 	bool		ocsp_override_url;
 	char const	*ocsp_url;
 	bool		ocsp_use_nonce;

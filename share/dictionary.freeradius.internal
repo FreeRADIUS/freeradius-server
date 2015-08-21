@@ -690,9 +690,11 @@ VALUE	Auth-Type			MS-CHAP-V2		1034
 #	Authorization type, too.
 #
 VALUE	Autz-Type			Local			1
-VALUE	Autz-Type			Cache-Read		1001
-VALUE	Autz-Type			Cache-Write		1002
-VALUE	Autz-Type			Cache-Delete		1003
+VALUE	Autz-Type			Session-Cache-Read	1001
+VALUE	Autz-Type			Session-Cache-Write	1002
+VALUE	Autz-Type			Session-Cache-Delete	1003
+VALUE	Autz-Type			OCSP-Cache-Read		1004
+VALUE	Autz-Type			OCSP-Cache-Write	1005
 
 #
 #	And accounting

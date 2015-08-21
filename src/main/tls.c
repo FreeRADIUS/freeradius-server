@@ -972,6 +972,9 @@ static CONF_PARSER verify_config[] = {
 #ifdef HAVE_OPENSSL_OCSP_H
 static CONF_PARSER ocsp_config[] = {
 	{ FR_CONF_OFFSET("enable", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_enable), .dflt = "no" },
+
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, fr_tls_server_conf_t, ocsp_cache_server) },
+
 	{ FR_CONF_OFFSET("override_cert_url", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_override_url), .dflt = "no" },
 	{ FR_CONF_OFFSET("url", PW_TYPE_STRING, fr_tls_server_conf_t, ocsp_url) },
 	{ FR_CONF_OFFSET("use_nonce", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, ocsp_use_nonce), .dflt = "yes" },
@@ -1121,9 +1124,11 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 /** Macros that match the hardcoded values of the TLS-Session-Cache-Attribute
  */
 typedef enum {
-	CACHE_ACTION_READ = 1,		//!< Retrieve session data from the cache.
-	CACHE_ACTION_WRITE = 2,		//!< Write session data to the cache.
-	CACHE_ACTION_DELETE = 3,	//!< Delete session data from the cache.
+	CACHE_ACTION_SESSION_READ = 1,		//!< Retrieve session data from the cache.
+	CACHE_ACTION_SESSION_WRITE = 2,		//!< Write session data to the cache.
+	CACHE_ACTION_SESSION_DELETE = 3,	//!< Delete session data from the cache.
+	CACHE_ACTION_OCSP_READ = 4,		//!< Read cached OCSP status.
+	CACHE_ACTION_OCSP_WRITE = 5		//!< Write OCSP status.
 } tls_cache_action_t;
 
 /** Add attributes identifying the TLS session to be acted upon, and the action to be performed
@@ -1177,15 +1182,13 @@ static int cache_key_add(REQUEST *request, uint8_t *key, size_t key_len, tls_cac
 /** Execute the virtual server configured to perform cache actions
  *
  * @param[in] request The current request.
- * @param[in] session_cache_server Name of the session cache server.
+ * @param[in] virtual_server Name of the virtual server to execute.
  * @param[in] autz_type The authorize sub-section to execute.
- * @return
- *	- 0 on success (virtual sever returned #RLM_MODULE_OK or #RLM_MODULE_UPDATED).
- *	- -1 on failure.
+ * @return the rcode from the virtual server.
  */
-static int cache_process(REQUEST *request, char const *session_cache_server, int autz_type)
+static rlm_rcode_t cache_process(REQUEST *request, char const *virtual_server, int autz_type)
 {
-	int ret;
+	rlm_rcode_t rcode;
 
 	/*
 	 *	Save the current status of the request.
@@ -1197,19 +1200,10 @@ static int cache_process(REQUEST *request, char const *session_cache_server, int
 	/*
 	 *	Run it through the appropriate virtual server.
 	 */
-	request->server = session_cache_server;
+	request->server = virtual_server;
 	request->module = "cache";
 
-	switch (process_authorize(autz_type + 1000, request)) {
-	case RLM_MODULE_OK:
-	case RLM_MODULE_UPDATED:
-		ret = 0;
-		break;
-
-	default:
-		ret = -1;
-		break;
-	}
+	rcode = process_authorize(autz_type + 1000, request);
 
 	/*
 	 *	Restore the original status of the request.
@@ -1220,7 +1214,7 @@ static int cache_process(REQUEST *request, char const *session_cache_server, int
 
 	fr_pair_delete_by_num(&request->config, PW_TLS_SESSION_CACHE_ACTION, 0, TAG_ANY);
 
-	return ret;
+	return rcode;
 }
 
 /** Write a newly created session to the cache
@@ -1241,7 +1235,7 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 
-	if (cache_key_add(request, sess->session_id, sess->session_id_length, CACHE_ACTION_WRITE) < 0) {
+	if (cache_key_add(request, sess->session_id, sess->session_id_length, CACHE_ACTION_SESSION_WRITE) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 		return 0;
 	}
@@ -1282,8 +1276,14 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	/*
 	 *	Call the virtual server to write the session
 	 */
-	if (cache_process(request, conf->session_cache_server, CACHE_ACTION_WRITE) < 0) {
+	switch (cache_process(request, conf->session_cache_server, CACHE_ACTION_SESSION_WRITE)) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		break;
+
+	default:
 		RWDEBUG("Failed storing session data");
+		break;
 	}
 
 	/*
@@ -1321,7 +1321,7 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 
-	if (cache_key_add(request, key, key_len, CACHE_ACTION_READ) < 0) {
+	if (cache_key_add(request, key, key_len, CACHE_ACTION_SESSION_READ) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 		return NULL;
 	}
@@ -1331,9 +1331,14 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len
 	/*
 	 *	Call the virtual server to read the session
 	 */
-	if (cache_process(request, conf->session_cache_server, CACHE_ACTION_READ) < 0) {
-		RWDEBUG("Failed acquiring session data");
+	switch (cache_process(request, conf->session_cache_server, CACHE_ACTION_SESSION_READ)) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
 		return NULL;
+
+	default:
+		RWDEBUG("Failed acquiring session data");
+		break;
 	}
 
 	vp = fr_pair_find_by_num(request->config, PW_TLS_SESSION_DATA, 0, TAG_ANY);
@@ -1380,7 +1385,7 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 	request->packet = rad_alloc(request, false);
 	request->reply = rad_alloc(request, false);
 
-	if (cache_key_add(request, sess->session_id, sess->session_id_length, CACHE_ACTION_DELETE) < 0) {
+	if (cache_key_add(request, sess->session_id, sess->session_id_length, CACHE_ACTION_SESSION_DELETE) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 	error:
 		talloc_free(request);
@@ -1390,10 +1395,18 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 	/*
 	 *	Call the virtual server to delete the session
 	 */
-	if (cache_process(request, conf->session_cache_server, CACHE_ACTION_DELETE) < 0) {
+	switch (cache_process(request, conf->session_cache_server, CACHE_ACTION_SESSION_DELETE)) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+	case RLM_MODULE_NOTFOUND:
+	case RLM_MODULE_NOOP:
+		break;
+
+	default:
 		RWDEBUG("Failed deleting session data");
 		goto error;
 	}
+
 	/*
 	 *	Delete the fake request we created.
 	 */
@@ -1794,6 +1807,27 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	time_t		next;
 	VALUE_PAIR	*vp;
 
+	if (conf->ocsp_cache_server) switch (cache_process(request, conf->ocsp_cache_server,
+							   CACHE_ACTION_OCSP_READ)) {
+	case RLM_MODULE_REJECT:
+		REDEBUG("Told to force OCSP validation failure by virtual server");
+		return OCSP_STATUS_FAILED;
+
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+	/*
+	 *	These are fine for OCSP too, we dont' *expect* to always
+	 *	have a cached OCSP status.
+	 */
+	case RLM_MODULE_NOTFOUND:
+	case RLM_MODULE_NOOP:
+		break;
+
+	default:
+		RWDEBUG("Failed retrieving cached OCSP status");
+		break;
+	}
+
 	/*
 	 *	Allow us to cache the OCSP verified state externally
 	 */
@@ -2045,7 +2079,8 @@ finish:
 		RDEBUG2("ocsp: Certificate is valid");
 		vp = pair_make_reply("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
 		vp->vp_integer = 1;	/* yes */
-		return OCSP_STATUS_OK;
+		ocsp_status = OCSP_STATUS_OK;
+		break;
 
 	case OCSP_STATUS_SKIPPED:
 	skipped:
@@ -2054,17 +2089,31 @@ finish:
 		if (conf->ocsp_softfail) {
 			RWDEBUG("ocsp: Unable to check certificate, assuming it's valid");
 			RWDEBUG("ocsp: This may be insecure");
-			return OCSP_STATUS_OK;
+			ocsp_status = OCSP_STATUS_OK;
+		} else {
+			REDEBUG("ocsp: Unable to check certificate, failing");
+			ocsp_status = OCSP_STATUS_FAILED;
 		}
-		REDEBUG("ocsp: Unable to check certificate, failing");
-		return OCSP_STATUS_FAILED;
+		break;
 
 	default:
 		vp = pair_make_reply("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
 		vp->vp_integer = 0;	/* no */
 		REDEBUG("ocsp: Failed to validate certificate");
-		return ocsp_status;
+		break;
 	}
+
+	if (conf->ocsp_cache_server) switch (cache_process(request, conf->ocsp_cache_server, CACHE_ACTION_OCSP_WRITE)) {
+	case RLM_MODULE_OK:
+	case RLM_MODULE_UPDATED:
+		break;
+
+	default:
+		RWDEBUG("Failed writing cached OCSP status");
+		break;
+	}
+
+	return ocsp_status;
 }
 #endif	/* HAVE_OPENSSL_OCSP_H */
 
