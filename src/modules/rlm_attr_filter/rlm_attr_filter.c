@@ -39,14 +39,14 @@ RCSID("$Id$")
  */
 typedef struct rlm_attr_filter {
 	char const	*filename;
-	char const	*key;
+	vp_tmpl_t	*key;
 	bool		relaxed;
 	PAIR_LIST	*attrs;
 } rlm_attr_filter_t;
 
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_attr_filter_t, filename) },
-	{ FR_CONF_OFFSET("key", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_attr_filter_t, key), .dflt = "%{Realm}" },
+	{ FR_CONF_OFFSET("key", PW_TYPE_TMPL, rlm_attr_filter_t, key), .dflt = "&Realm", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("relaxed", PW_TYPE_BOOLEAN, rlm_attr_filter_t, relaxed), .dflt = "no" },
 	CONF_PARSER_TERMINATOR
 };
@@ -158,28 +158,15 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 	int		pass, fail = 0;
 	char const	*keyname = NULL;
 	char		buffer[256];
+	ssize_t		slen;
 
 	if (!packet) return RLM_MODULE_NOOP;
 
-	if (!inst->key) {
-		VALUE_PAIR	*namepair;
-
-		namepair = fr_pair_find_by_num(request->packet->vps, PW_REALM, 0, TAG_ANY);
-		if (!namepair) {
-			return (RLM_MODULE_NOOP);
-		}
-		keyname = namepair->vp_strvalue;
-	} else {
-		int len;
-
-		len = radius_xlat(buffer, sizeof(buffer), request, inst->key, NULL, NULL);
-		if (len < 0) {
-			return RLM_MODULE_FAIL;
-		}
-		if (len == 0) {
-			return RLM_MODULE_NOOP;
-		}
-		keyname = buffer;
+	slen = tmpl_expand(&keyname, buffer, sizeof(buffer), request, inst->key, NULL, NULL);
+	if (slen < 0) return RLM_MODULE_FAIL;
+	if ((keyname == buffer) && is_truncated((size_t)slen, sizeof(buffer))) {
+		REDEBUG("Key too long, expected < " STRINGIFY(sizeof(buffer)) " bytes, got %zi bytes", slen);
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
