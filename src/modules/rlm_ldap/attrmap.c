@@ -199,7 +199,7 @@ int rlm_ldap_map_verify(vp_map_t *map, void *instance)
 
 	default:
 		cf_log_err(map->ci, "Operator \"%s\" not allowed for LDAP mappings",
-			   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		return -1;
 	}
 

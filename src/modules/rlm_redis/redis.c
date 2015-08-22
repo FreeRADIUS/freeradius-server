@@ -319,7 +319,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 		goto error;
 	}
 
-	map->op = fr_str2int(fr_tokens, op->str, T_INVALID);
+	map->op = fr_str2int(fr_tokens_table, op->str, T_INVALID);
 	if (map->op == T_INVALID) {
 		REDEBUG("Invalid operator \"%s\"", op->str);
 		goto error;
@@ -428,7 +428,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 
 	out[0] = key;
 	out_len[0] = key_len;
-	out[1] = fr_int2str(fr_tokens, map->op, NULL);
+	out[1] = fr_int2str(fr_tokens_table, map->op, NULL);
 	out_len[1] = strlen(out[1]);
 
 	return 0;

@@ -724,7 +724,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 		if (!vp) {
 		fail:
 			REDEBUG("Failed to create pair %s:%s %s %s", list_name, key,
-				fr_int2str(fr_tokens, op, "<INVALID>"), val);
+				fr_int2str(fr_tokens_table, op, "<INVALID>"), val);
 			return -1;
 		}
 
@@ -741,7 +741,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vps, char 
 			if (fr_pair_value_from_str(vp, val, len) < 0) goto fail;
 		}
 
-		RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens, op, "<INVALID>"),
+		RDEBUG("&%s:%s %s $%s{'%s'} -> '%s'", list_name, key, fr_int2str(fr_tokens_table, op, "<INVALID>"),
 		       hash_name, key, val);
 		return 0;
 	}

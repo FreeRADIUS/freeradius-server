@@ -332,7 +332,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 					RDEBUG("adding '%s' attribute to '%s' section", attribute, section);
 					/* add pair */
 					vp = fr_pair_make(ctx, ptr, attribute, json_object_get_string(jval),
-						fr_str2int(fr_tokens, json_object_get_string(jop), 0));
+						fr_str2int(fr_tokens_table, json_object_get_string(jop), 0));
 					/* check pair */
 					if (!vp) {
 						RERROR("could not build value pair for '%s' attribute (%s)",

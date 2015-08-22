@@ -3007,7 +3007,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		default:
 			ERROR("%s[%d]: Parse error after \"%s\": unexpected token \"%s\"",
-			      filename, *lineno, buf1, fr_int2str(fr_tokens, t2, "<INVALID>"));
+			      filename, *lineno, buf1, fr_int2str(fr_tokens_table, t2, "<INVALID>"));
 
 			return -1;
 		}

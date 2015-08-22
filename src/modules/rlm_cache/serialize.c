@@ -79,7 +79,7 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 		if (!value) goto error;
 
 		to_store = talloc_asprintf_append_buffer(to_store, "%s %s %s\n", attr,
-							 fr_int2str(fr_tokens, map->op, "<INVALID>"),
+							 fr_int2str(fr_tokens_table, map->op, "<INVALID>"),
 							 value);
 		if (!to_store) goto error;
 	}

@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-const FR_NAME_NUMBER fr_tokens[] = {
+const FR_NAME_NUMBER fr_tokens_table[] = {
 	{ "=~", T_OP_REG_EQ,	}, /* order is important! */
 	{ "!~", T_OP_REG_NE,	},
 	{ "{",	T_LCBRACE,	},
@@ -52,6 +52,42 @@ const FR_NAME_NUMBER fr_tokens[] = {
 	{ ";",	T_SEMICOLON,	},
 	{ NULL, 0,		},
 };
+
+
+/*
+ *  This is a hack, and has to be kept in sync with tokens.h
+ */
+char const *fr_tokens[] = {
+	"?",			/* T_INVALID */
+	"EOL",			/* T_EOL */
+	"{",
+	"}",
+	"(",
+	")",
+	",",
+	";",
+	"++",
+	"+=",
+	"-=",
+	":=",
+	"=",
+	"!=",
+	">=",
+	">",
+	"<=",
+	"<",
+	"=~",
+	"!~",
+	"=*",
+	"!*",
+	"==",
+	"#",
+	"<BARE-WORD>",
+	"<\"STRING\">",
+	"<'STRING'>",
+	"<`STRING`>"
+};
+
 
 /** Convert tokens back to a quoting character
  *
@@ -359,7 +395,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
  */
 int getword(char const **ptr, char *buf, int buflen, bool unescape)
 {
-	return getthing(ptr, buf, buflen, false, fr_tokens, unescape) == T_EOL ? 0 : 1;
+	return getthing(ptr, buf, buflen, false, fr_tokens_table, unescape) == T_EOL ? 0 : 1;
 }
 
 
@@ -368,7 +404,7 @@ int getword(char const **ptr, char *buf, int buflen, bool unescape)
  */
 FR_TOKEN gettoken(char const **ptr, char *buf, int buflen, bool unescape)
 {
-	return getthing(ptr, buf, buflen, true, fr_tokens, unescape);
+	return getthing(ptr, buf, buflen, true, fr_tokens_table, unescape);
 }
 
 /*
@@ -379,7 +415,7 @@ FR_TOKEN getop(char const **ptr)
 	char op[3];
 	FR_TOKEN rcode;
 
-	rcode = getthing(ptr, op, sizeof(op), true, fr_tokens, false);
+	rcode = getthing(ptr, op, sizeof(op), true, fr_tokens_table, false);
 	if (!fr_assignment_op[rcode] && !fr_equality_op[rcode]) {
 		fr_strerror_printf("Expected operator");
 		return T_INVALID;
@@ -406,7 +442,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 		return gettoken(ptr, buf, buflen, unescape);
 	}
 
-	return getthing(ptr, buf, buflen, 0, fr_tokens, unescape);
+	return getthing(ptr, buf, buflen, 0, fr_tokens_table, unescape);
 }
 
 /*
@@ -483,5 +519,5 @@ char const *fr_int2str(FR_NAME_NUMBER const *table, int number,
 
 char const *fr_token_name(int token)
 {
-	return fr_int2str(fr_tokens, token, "???");
+	return fr_int2str(fr_tokens_table, token, "???");
 }

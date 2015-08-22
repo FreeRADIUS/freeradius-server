@@ -232,7 +232,7 @@ typedef struct json_flags {
 	int is_json;		//!< If true value will be inserted as raw JSON
 				// (multiple values not supported).
 	FR_TOKEN op;		//!< The operator that determines how the new VP
-				// is processed. @see fr_tokens
+				// is processed. @see fr_tokens_table
 } json_flags_t;
 #endif
 
@@ -1280,7 +1280,7 @@ static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t *instance, UNUSED rlm_r
  * second and subsequent values in multivalued attributes. This does not work
  * between multiple attribute declarations.
  *
- * @see fr_tokens
+ * @see fr_tokens_table
  *
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
@@ -1373,7 +1373,7 @@ static int json_pair_make(rlm_rest_t *instance, rlm_rest_section_t *section,
 			 *  Process operator if present.
 			 */
 			if (json_object_object_get_ex(value, "op", &tmp)) {
-				flags.op = fr_str2int(fr_tokens, json_object_get_string(tmp), 0);
+				flags.op = fr_str2int(fr_tokens_table, json_object_get_string(tmp), 0);
 				if (!flags.op) {
 					RWDEBUG("Invalid operator value \"%s\", skipping...",
 						json_object_get_string(tmp));

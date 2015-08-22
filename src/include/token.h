@@ -72,7 +72,8 @@ typedef struct FR_NAME_NUMBER {
 	int		number;
 } FR_NAME_NUMBER;
 
-extern const FR_NAME_NUMBER fr_tokens[];
+extern const FR_NAME_NUMBER fr_tokens_table[];
+extern const char *fr_tokens[];
 extern const char fr_token_quote[];
 extern const bool fr_assignment_op[];
 extern const bool fr_equality_op[];

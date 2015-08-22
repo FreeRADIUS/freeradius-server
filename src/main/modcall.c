@@ -1559,13 +1559,13 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
 			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
 			     cf_pair_filename(cp), cf_pair_lineno(cp),
-			     map->lhs->name, fr_int2str(fr_tokens, map->op, "<INVALID>"));
+			     map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
 		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
 			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
 			     cf_pair_filename(cp), cf_pair_lineno(cp),
-			     fr_int2str(fr_tokens, map->op, "<INVALID>"), map->rhs->name);
+			     fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
 	}
 
@@ -1598,7 +1598,7 @@ static int modcall_fixup_map(vp_map_t *map, UNUSED void *ctx)
 	if (!fr_assignment_op[map->op] && !fr_equality_op[map->op]) {
 		cf_log_err(map->ci, "Invalid operator \"%s\" in map section.  "
 			   "Only assignment or filter operators are allowed",
-			   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		return -1;
 	}
 
@@ -1625,13 +1625,13 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		if ((map->lhs->type == TMPL_TYPE_ATTR) && (map->lhs->name[0] != '&')) {
 			WARN("%s[%d]: Please change attribute reference to '&%s %s ...'",
 			     cf_pair_filename(cp), cf_pair_lineno(cp),
-			     map->lhs->name, fr_int2str(fr_tokens, map->op, "<INVALID>"));
+			     map->lhs->name, fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		}
 
 		if ((map->rhs->type == TMPL_TYPE_ATTR) && (map->rhs->name[0] != '&')) {
 			WARN("%s[%d]: Please change attribute reference to '... %s &%s'",
 			     cf_pair_filename(cp), cf_pair_lineno(cp),
-			     fr_int2str(fr_tokens, map->op, "<INVALID>"), map->rhs->name);
+			     fr_int2str(fr_tokens_table, map->op, "<INVALID>"), map->rhs->name);
 		}
 	}
 
@@ -1670,7 +1670,7 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 	if ((map->lhs->type == TMPL_TYPE_ATTR) && (!fr_assignment_op[map->op] && !fr_equality_op[map->op])) {
 		cf_log_err(map->ci, "Invalid operator \"%s\" in update section.  "
 			   "Only assignment or filter operators are allowed",
-			   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+			   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 		return -1;
 	}
 
@@ -1730,7 +1730,7 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 
 		default:
 			cf_log_err(map->ci, "Operator \"%s\" not allowed for list assignment",
-				   fr_int2str(fr_tokens, map->op, "<INVALID>"));
+				   fr_int2str(fr_tokens_table, map->op, "<INVALID>"));
 			return -1;
 		}
 	}

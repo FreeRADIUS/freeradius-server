@@ -383,13 +383,13 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
 				vp->da->name,
 				vp->tag,
-				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
+				fr_int2str(fr_tokens_table, vp->op, "<INVALID>"),
 				value);
 		} else {
 			RIDEBUG2("&%s:%s %s %s",
 				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
 				vp->da->name,
-				fr_int2str(fr_tokens, vp->op, "<INVALID>"),
+				fr_int2str(fr_tokens_table, vp->op, "<INVALID>"),
 				value);
 		}
 		talloc_free(value);

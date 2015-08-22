@@ -1401,7 +1401,7 @@ done:
 			} else {
 				DEBUG3("OPTIMIZING (%s %s %s) --> FALSE",
 				       c->data.map->lhs->name,
-				       fr_int2str(fr_tokens, c->data.map->op, "??"),
+				       fr_int2str(fr_tokens_table, c->data.map->op, "??"),
 				       c->data.map->rhs->name);
 				c->type = COND_TYPE_FALSE;
 			}

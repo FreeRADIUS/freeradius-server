@@ -469,20 +469,6 @@ do { \
 	_p += _ret; \
 } while (0)
 
-size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
-
-
-char     	*vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
-
-size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
-size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
-void		vp_print(FILE *, VALUE_PAIR const *);
-void		vp_printlist(FILE *, VALUE_PAIR const *);
-char		*vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type);
-
-char		*vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
-#define		fprint_attr_val vp_print
-
 /*
  *	Dictionary functions.
  */
@@ -696,6 +682,21 @@ void		fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src);
 void		fr_pair_value_strcpy(VALUE_PAIR *vp, char const * src);
 void		fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const * src, size_t len);
 void		fr_pair_value_sprintf(VALUE_PAIR *vp, char const * fmt, ...) CC_HINT(format (printf, 2, 3));
+
+/* Printing function */
+size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
+
+
+char     	*vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+
+size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
+size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
+void		vp_print(FILE *, VALUE_PAIR const *);
+void		vp_printlist(FILE *, VALUE_PAIR const *);
+char		*vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type);
+
+char		*vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+#define		fprint_attr_val vp_print
 
 /* Hacky raw pair thing that needs to go away */
 FR_TOKEN 	fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw);
