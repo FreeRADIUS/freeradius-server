@@ -53,17 +53,17 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("bucket", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_couchbase_t, bucket) },
 	{ FR_CONF_OFFSET("password", PW_TYPE_STRING, rlm_couchbase_t, password) },
 #ifdef WITH_ACCOUNTING
-	{ FR_CONF_OFFSET("acct_key", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, acct_key), .dflt = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}" },
+	{ FR_CONF_OFFSET("acct_key", PW_TYPE_TMPL, rlm_couchbase_t, acct_key), .dflt = "radacct_%{%{Acct-Unique-Session-Id}:-%{Acct-Session-Id}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("doctype", PW_TYPE_STRING, rlm_couchbase_t, doctype), .dflt = "radacct" },
 	{ FR_CONF_OFFSET("expire", PW_TYPE_INTEGER, rlm_couchbase_t, expire), .dflt = 0 },
 #endif
-	{ FR_CONF_OFFSET("user_key", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, user_key), .dflt = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}" },
+	{ FR_CONF_OFFSET("user_key", PW_TYPE_TMPL, rlm_couchbase_t, user_key), .dflt = "raduser_%{md5:%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("read_clients", PW_TYPE_BOOLEAN, rlm_couchbase_t, read_clients) }, /* NULL defaults to "no" */
 	{ FR_CONF_POINTER("client", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) client_config },
 #ifdef WITH_SESSION_MGMT
 	{ FR_CONF_OFFSET("check_simul", PW_TYPE_BOOLEAN, rlm_couchbase_t, check_simul) }, /* NULL defaults to "no" */
 	{ FR_CONF_OFFSET("simul_view", PW_TYPE_STRING, rlm_couchbase_t, simul_view), .dflt = "_design/acct/_view/by_user" },
-	{ FR_CONF_OFFSET("simul_vkey", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_couchbase_t, simul_vkey), .dflt = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}" },
+	{ FR_CONF_OFFSET("simul_vkey", PW_TYPE_TMPL, rlm_couchbase_t, simul_vkey), .dflt = "%{tolower:%{%{Stripped-User-Name}:-%{User-Name}}}",  .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("verify_simul", PW_TYPE_BOOLEAN, rlm_couchbase_t, verify_simul) }, /* NULL defaults to "no" */
 #endif
 	CONF_PARSER_TERMINATOR
@@ -188,18 +188,20 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_couchbase_t *inst = instance;       /* our module instance */
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
-	char dockey[MAX_KEY_SIZE];              /* our document key */
+	char buffer[MAX_KEY_SIZE];
+	char const *dockey;            		/* our document key */
 	lcb_error_t cb_error = LCB_SUCCESS;     /* couchbase error holder */
 	rlm_rcode_t rcode = RLM_MODULE_OK;      /* return code */
+	ssize_t slen;
 
 	/* assert packet as not null */
 	rad_assert(request->packet != NULL);
 
 	/* attempt to build document key */
-	if (radius_xlat(dockey, sizeof(dockey), request, inst->user_key, NULL, NULL) < 0) {
-		/* log error */
-		RERROR("could not find user key attribute (%s) in packet", inst->user_key);
-		/* return */
+	slen = tmpl_expand(&dockey, buffer, sizeof(buffer), request, inst->user_key, NULL, NULL);
+	if (slen < 0) return RLM_MODULE_FAIL;
+	if ((dockey == buffer) && is_truncated((size_t)slen, sizeof(buffer))) {
+		REDEBUG("Key too long, expected < " STRINGIFY(sizeof(buffer)) " bytes, got %zi bytes", slen);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -274,12 +276,14 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	rlm_couchbase_handle_t *handle = NULL;  /* connection pool handle */
 	rlm_rcode_t rcode = RLM_MODULE_OK;      /* return code */
 	VALUE_PAIR *vp;                         /* radius value pair linked list */
-	char dockey[MAX_KEY_SIZE];              /* our document key */
+	char buffer[MAX_KEY_SIZE];
+	char const *dockey;			/* our document key */
 	char document[MAX_VALUE_SIZE];          /* our document body */
 	char element[MAX_KEY_SIZE];             /* mapped radius attribute to element name */
 	int status = 0;                         /* account status type */
 	int docfound = 0;                       /* document found toggle */
 	lcb_error_t cb_error = LCB_SUCCESS;     /* couchbase error holder */
+	ssize_t slen;
 
 	/* assert packet as not null */
 	rad_assert(request->packet != NULL);
@@ -316,11 +320,14 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	cookie_t *cookie = handle->cookie;
 
 	/* attempt to build document key */
-	if (radius_xlat(dockey, sizeof(dockey), request, inst->acct_key, NULL, NULL) < 0) {
-		/* log error */
-		RERROR("could not find accounting key attribute (%s) in packet", inst->acct_key);
-		/* set return */
-		rcode = RLM_MODULE_NOOP;
+	slen = tmpl_expand(&dockey, buffer, sizeof(buffer), request, inst->acct_key, NULL, NULL);
+	if (slen < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto finish;
+	}
+	if ((dockey == buffer) && is_truncated((size_t)slen, sizeof(buffer))) {
+		REDEBUG("Key too long, expected < " STRINGIFY(sizeof(buffer)) " bytes, got %zi bytes", slen);
+		rcode = RLM_MODULE_FAIL;
 		/* return */
 		goto finish;
 	}
@@ -458,7 +465,10 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	rlm_couchbase_t *inst = instance;      /* our module instance */
 	rlm_rcode_t rcode = RLM_MODULE_OK;     /* return code */
 	rlm_couchbase_handle_t *handle = NULL; /* connection pool handle */
-	char vpath[256], vkey[MAX_KEY_SIZE];   /* view path and query key */
+	char vpath[256];
+
+	char buffer[MAX_KEY_SIZE];
+	char const *vkey;                      /* view path and query key */
 	char docid[MAX_KEY_SIZE];              /* document id returned from view */
 	char error[512];                       /* view error return */
 	int idx = 0;                           /* row array index counter */
@@ -477,6 +487,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 	uint32_t framed_ip_addr = 0;           /* framed ip address from accounting document */
 	char framed_proto = 0;                 /* framed proto from accounting document */
 	int session_time = 0;                  /* session time from accounting document */
+	ssize_t slen;
 
 	/* do nothing if this is not enabled */
 	if (inst->check_simul != true) {
@@ -490,11 +501,10 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request) {
 		return RLM_MODULE_INVALID;
 	}
 
-	/* attempt to build view key */
-	if (radius_xlat(vkey, sizeof(vkey), request, inst->simul_vkey, NULL, NULL) < 0) {
-		/* log error */
-		RERROR("could not find simultaneous use view key attribute (%s) in packet", inst->simul_vkey);
-		/* return */
+	slen = tmpl_expand(&vkey, buffer, sizeof(buffer), request, inst->simul_vkey, NULL, NULL);
+	if (slen < 0) return RLM_MODULE_FAIL;
+	if ((vkey == buffer) && is_truncated((size_t)slen, sizeof(buffer))) {
+		REDEBUG("Key too long, expected < " STRINGIFY(sizeof(buffer)) " bytes, got %zi bytes", slen);
 		return RLM_MODULE_FAIL;
 	}
 

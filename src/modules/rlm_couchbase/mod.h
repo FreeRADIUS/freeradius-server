@@ -45,7 +45,7 @@ RCSIDH(mod_h, "$Id$")
  * This struct contains the core module configuration.
  */
 typedef struct rlm_couchbase_t {
-	char const		*acct_key;		//!< Accounting document key.
+	vp_tmpl_t		*acct_key;		//!< Accounting document key.
 	char const		*doctype;		//!< Value of accounting 'docType' element name.
 	uint32_t		expire;			//!< Accounting document expire time in seconds.
 
@@ -54,7 +54,7 @@ typedef struct rlm_couchbase_t {
 	char const		*bucket;         	//!< Couchbase bucket.
 	char const		*password;       	//!< Couchbase bucket password.
 
-	const char		*user_key;       	//!< User document key.
+	vp_tmpl_t		*user_key;       	//!< User document key.
 
 	bool			read_clients;		//!< Toggle for loading client records.
 	const char		*client_view;    	//!< Couchbase view that returns client documents.
@@ -63,7 +63,7 @@ typedef struct rlm_couchbase_t {
 	const char		*simul_view;     	//!< Couchbase view that returns accounting documents.
 
 	bool			verify_simul;		//!< Toggle to enable user login state verification.
-	const char		*simul_vkey;		//!< The query key to be used with simul_view.
+	vp_tmpl_t		*simul_vkey;		//!< The query key to be used with simul_view.
 	bool			delete_stale_sessions;	//!< Toggle to trigger zapping of stale sessions.
 
 	json_object		*map;           	//!< Json object to hold user defined attribute map.
