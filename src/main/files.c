@@ -45,13 +45,13 @@ static void debug_pair_list(PAIR_LIST *pl)
 		printf("** Check:\n");
 		for(vp = pl->check; vp; vp = vp->next) {
 			printf("    ");
-			fprint_attr_val(stdout, vp);
+			fr_pair_fprint(stdout, vp);
 			printf("\n");
 		}
 		printf("** Reply:\n");
 		for(vp = pl->reply; vp; vp = vp->next) {
 			printf("    ");
-			fprint_attr_val(stdout, vp);
+			fr_pair_fprint(stdout, vp);
 			printf("\n");
 		}
 		pl = pl->next;

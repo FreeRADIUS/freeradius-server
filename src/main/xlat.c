@@ -377,7 +377,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		FR_NAME_NUMBER const *type;
 		char *value;
 
-		value = vp_aprints_value(vp, vp, '\'');
+		value = fr_pair_value_aprints(vp, vp, '\'');
 		if (vp->da->flags.has_tag) {
 			RIDEBUG2("&%s:%s:%i %s %s",
 				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
@@ -537,7 +537,7 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 	pvp = (VALUE_PAIR **) request_data_reference(request, (void *)radius_get_vp, *(int*) instance);
 	if (!pvp || !*pvp) return 0;
 
-	len = vp_prints_value(*out, outlen, *pvp, 0);
+	len = fr_pair_value_prints(*out, outlen, *pvp, 0);
 	if (is_truncated(len, outlen)) {
 		RDEBUG("Insufficient buffer space to write foreach value");
 		return -1;
@@ -1889,7 +1889,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	packet = radius_packet(request, vpt->tmpl_list);
 	if (!packet) {
 		if (return_null) return NULL;
-		return vp_aprints_type(ctx, vpt->tmpl_da->type);
+		return fr_pair_type_prints(ctx, vpt->tmpl_da->type);
 	}
 
 	vp = NULL;
@@ -2039,11 +2039,11 @@ do_print:
 		char *p, *q;
 
 		if (!fr_cursor_current(&cursor)) return NULL;
-		p = vp_aprints_value(ctx, vp, quote);
+		p = fr_pair_value_aprints(ctx, vp, quote);
 		if (!p) return NULL;
 
 		while ((vp = tmpl_cursor_next(&cursor, vpt)) != NULL) {
-			q = vp_aprints_value(ctx, vp, quote);
+			q = fr_pair_value_aprints(ctx, vp, quote);
 			if (!q) return NULL;
 			p = talloc_strdup_append(p, ",");
 			p = talloc_strdup_append(p, q);
@@ -2063,11 +2063,11 @@ do_print:
 
 	if (!vp) {
 		if (return_null) return NULL;
-		return vp_aprints_type(ctx, vpt->tmpl_da->type);
+		return fr_pair_type_prints(ctx, vpt->tmpl_da->type);
 	}
 
 print:
-	ret = vp_aprints_value(ctx, vp, quote);
+	ret = fr_pair_value_aprints(ctx, vp, quote);
 
 finish:
 	talloc_free(virtual);

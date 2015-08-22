@@ -332,7 +332,7 @@ static REQUEST *request_setup(FILE *fp)
 				rad_assert(0);
 			}
 
-			vp_print(fr_log_fp, vp);
+			fr_pair_fprint(fr_log_fp, vp);
 		}
 		fflush(fr_log_fp);
 	}
@@ -404,7 +404,7 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 			rad_assert(0);
 		}
 
-		vp_print(fp, vp);
+		fr_pair_fprint(fp, vp);
 	}
 	fflush(fp);
 }

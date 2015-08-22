@@ -377,7 +377,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 					s--;
 					if (s <= 0) return;
 				} else {
-					len = vp_prints_value(p, s, vp, 0);
+					len = fr_pair_value_prints(p, s, vp, 0);
 					p += len;
 					s -= len;
 					if (s <= 0) return;
@@ -485,7 +485,7 @@ static void rs_packet_print_fancy(uint64_t count, rs_status_t status, fr_pcap_t 
 
 			if (packet->vps) {
 				fr_pair_list_sort(&packet->vps, fr_pair_cmp_by_da_tag);
-				vp_printlist(fr_log_fp, packet->vps);
+				fr_pair_list_fprint(fr_log_fp, packet->vps);
 			}
 
 			fr_bin2hex(vector, packet->vector, AUTH_VECTOR_LEN);
@@ -2435,7 +2435,7 @@ int main(int argc, char *argv[])
 
 		if (conf->filter_request_vps){
 			DEBUG2("  RADIUS request filter   :");
-			vp_printlist(fr_log_fp, conf->filter_request_vps);
+			fr_pair_list_fprint(fr_log_fp, conf->filter_request_vps);
 		}
 
 		if (conf->filter_response_code) {
@@ -2444,7 +2444,7 @@ int main(int argc, char *argv[])
 
 		if (conf->filter_response_vps){
 			DEBUG2("  RADIUS response filter  :");
-			vp_printlist(fr_log_fp, conf->filter_response_vps);
+			fr_pair_list_fprint(fr_log_fp, conf->filter_response_vps);
 		}
 	}
 

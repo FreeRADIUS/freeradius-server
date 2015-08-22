@@ -200,7 +200,7 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	vp_cursor_t cursor;
 
-	char buf[BUF_SIZE]; /* same size as vp_print buffer */
+	char buf[BUF_SIZE]; /* same size as fr_pair_fprint buffer */
 
 	VALUE_PAIR *vp;
 	VALUE rb_request, rb_result, rb_reply_items, rb_config, rbString1, rbString2;
@@ -236,14 +236,14 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 		     vp = fr_cursor_next(&cursor)) {
 			VALUE tmp = rb_ary_new2(2);
 
-			/* The name. logic from vp_prints, lib/print.c */
+			/* The name. logic from fr_pair_prints, lib/print.c */
 			if (vp->da->flags.has_tag) {
 				snprintf(buf, BUF_SIZE, "%s:%d", vp->da->name, vp->tag);
 			} else {
 				strlcpy(buf, vp->da->name, sizeof(buf));
 			}
 			rbString1 = rb_str_new2(buf);
-			vp_prints_value(buf, sizeof (buf), vp, '"');
+			fr_pair_value_prints(buf, sizeof (buf), vp, '"');
 			rbString2 = rb_str_new2(buf);
 
 			rb_ary_push(tmp, rbString1);

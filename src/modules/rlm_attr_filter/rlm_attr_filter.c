@@ -71,8 +71,8 @@ static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *rep
 	if (RDEBUG_ENABLED3) {
 		char rule[1024], pair[1024];
 
-		vp_prints(rule, sizeof(rule), check_item);
-		vp_prints(pair, sizeof(pair), reply_item);
+		fr_pair_prints(rule, sizeof(rule), check_item);
+		fr_pair_prints(pair, sizeof(pair), reply_item);
 		RDEBUG3("%s %s %s", pair, compare == 1 ? "allowed by" : "disallowed by", rule);
 	}
 

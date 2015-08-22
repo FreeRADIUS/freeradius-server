@@ -900,7 +900,7 @@ int fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
 						   -slen, a->da->name, fr_strerror());
 				return -1;
 			}
-			value = vp_aprints(NULL, b, '\0');
+			value = fr_pair_aprints(NULL, b, '\0');
 			if (!value) {
 				talloc_free(preg);
 				return -1;
@@ -1109,8 +1109,8 @@ void fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 	}
 
 
-	value = vp_aprints(ctx, list, '"');
-	str = vp_aprints(ctx, filter, '"');
+	value = fr_pair_aprints(ctx, list, '"');
+	str = fr_pair_aprints(ctx, filter, '"');
 
 	fr_strerror_printf("Attribute value \"%s\" didn't match filter: %s", value, str);
 
@@ -2014,7 +2014,7 @@ char *fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
  *	- Length of data written to out.
  *	- Value >= outlen on truncation.
  */
-size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote)
+size_t fr_pair_value_prints(char *out, size_t outlen, VALUE_PAIR const *vp, char quote)
 {
 	VERIFY_VP(vp);
 
@@ -2032,14 +2032,14 @@ size_t vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quot
  * @param[in] quote the quotation character
  * @return a talloced buffer with the attribute operator and value.
  */
-char *vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
+char *fr_pair_value_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	VERIFY_VP(vp);
 
 	return value_data_aprints(ctx, vp->da->type, vp->da, &vp->data, quote);
 }
 
-char *vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type)
+char *fr_pair_type_prints(TALLOC_CTX *ctx, PW_TYPE type)
 {
 	switch (type) {
 	case PW_TYPE_STRING :
@@ -2098,7 +2098,7 @@ char *vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type)
  *	- Length of data written to out.
  *	- value >= outlen on truncation.
  */
-size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
+size_t fr_pair_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
 	char const	*token = NULL;
 	size_t		len, freespace = outlen;
@@ -2126,7 +2126,7 @@ size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 	out += len;
 	freespace -= len;
 
-	len = vp_prints_value(out, freespace, vp, '"');
+	len = fr_pair_value_prints(out, freespace, vp, '"');
 	if (is_truncated(len, freespace)) return (outlen - freespace) + len;
 	freespace -= len;
 
@@ -2141,7 +2141,7 @@ size_t vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
  * @param fp to output to.
  * @param vp to print.
  */
-void vp_print(FILE *fp, VALUE_PAIR const *vp)
+void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
 {
 	char	buf[1024];
 	char	*p = buf;
@@ -2150,7 +2150,7 @@ void vp_print(FILE *fp, VALUE_PAIR const *vp)
 	VERIFY_VP(vp);
 
 	*p++ = '\t';
-	len = vp_prints(p, sizeof(buf) - 1, vp);
+	len = fr_pair_prints(p, sizeof(buf) - 1, vp);
 	if (!len) {
 		return;
 	}
@@ -2175,7 +2175,7 @@ void vp_print(FILE *fp, VALUE_PAIR const *vp)
  * @param fp to output to.
  * @param const_vp to print.
  */
-void vp_printlist(FILE *fp, VALUE_PAIR const *const_vp)
+void fr_pair_list_fprint(FILE *fp, VALUE_PAIR const *const_vp)
 {
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
@@ -2183,7 +2183,7 @@ void vp_printlist(FILE *fp, VALUE_PAIR const *const_vp)
 	memcpy(&vp, &const_vp, sizeof(vp)); /* const work-arounds */
 
 	for (vp = fr_cursor_init(&cursor, &vp); vp; vp = fr_cursor_next(&cursor)) {
-		vp_print(fp, vp);
+		fr_pair_fprint(fp, vp);
 	}
 }
 
@@ -2200,7 +2200,7 @@ void vp_printlist(FILE *fp, VALUE_PAIR const *const_vp)
  * @param[in] quote the quotation character
  * @return a talloced buffer with the attribute operator and value.
  */
-char *vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
+char *fr_pair_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 {
 	char const	*token = NULL;
 	char 		*str, *value;
@@ -2215,7 +2215,7 @@ char *vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
 		token = "<INVALID-TOKEN>";
 	}
 
-	value = vp_aprints_value(ctx, vp, quote);
+	value = fr_pair_value_aprints(ctx, vp, quote);
 
 	if (vp->da->flags.has_tag) {
 		if (quote && (vp->da->type == PW_TYPE_STRING)) {

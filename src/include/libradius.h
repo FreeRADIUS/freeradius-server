@@ -139,7 +139,7 @@ typedef void (*sig_t)(int);
 #endif
 
 #  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \
-					vp_print(fr_log_fp, vp); \
+					fr_pair_fprint(fr_log_fp, vp); \
 				     } \
 				} while(0)
 
@@ -676,27 +676,23 @@ void		fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **fr
 
 /* Value manipulation */
 int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t len);
-void		fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const * src, size_t len);
+void		fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t len);
 void		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src);
-void		fr_pair_value_strcpy(VALUE_PAIR *vp, char const * src);
-void		fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const * src, size_t len);
-void		fr_pair_value_sprintf(VALUE_PAIR *vp, char const * fmt, ...) CC_HINT(format (printf, 2, 3));
+void		fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src);
+void		fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len);
+void		fr_pair_value_sprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
-/* Printing function */
-size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
+/* Printing functions */
+size_t   	fr_pair_value_prints(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
+char     	*fr_pair_value_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+size_t    	fr_pair_value_prints_json(char *out, size_t outlen, VALUE_PAIR const *vp);
 
-
-char     	*vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
-
-size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
-size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
-void		vp_print(FILE *, VALUE_PAIR const *);
-void		vp_printlist(FILE *, VALUE_PAIR const *);
-char		*vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type);
-
-char		*vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
-#define		fprint_attr_val vp_print
+size_t		fr_pair_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
+void		fr_pair_fprint(FILE *, VALUE_PAIR const *vp);
+void		fr_pair_list_fprint(FILE *, VALUE_PAIR const *vp);
+char		*fr_pair_type_prints(TALLOC_CTX *ctx, PW_TYPE type);
+char		*fr_pair_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
 /* Hacky raw pair thing that needs to go away */
 FR_TOKEN 	fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw);

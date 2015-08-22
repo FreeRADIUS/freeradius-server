@@ -763,7 +763,7 @@ static void process_file(const char *root_dir, char const *filename)
 				for (vp = fr_cursor_init(&cursor, &head);
 				     vp;
 				     vp = fr_cursor_next(&cursor)) {
-					vp_prints(p, sizeof(output) - (p - output), vp);
+					fr_pair_prints(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
 
 					if (vp->next) {strcpy(p, ", ");
@@ -847,7 +847,7 @@ static void process_file(const char *root_dir, char const *filename)
 				for (vp = fr_cursor_init(&cursor, &head);
 				     vp;
 				     vp = fr_cursor_next(&cursor)) {
-					vp_prints(p, sizeof(output) - (p - output), vp);
+					fr_pair_prints(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
 
 					if (vp->next) {strcpy(p, ", ");
@@ -873,7 +873,7 @@ static void process_file(const char *root_dir, char const *filename)
 				continue;
 			}
 
-			vp_prints(output, sizeof(output), head);
+			fr_pair_prints(output, sizeof(output), head);
 			continue;
 		}
 

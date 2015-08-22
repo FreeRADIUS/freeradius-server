@@ -85,13 +85,13 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		if (check->da->type == PW_TYPE_STRING) {
 			expr_p = check->vp_strvalue;
 		} else {
-			expr_p = expr = vp_aprints_value(check, check, '\0');
+			expr_p = expr = fr_pair_value_aprints(check, check, '\0');
 		}
 
 		if (vp->da->type == PW_TYPE_STRING) {
 			value_p = vp->vp_strvalue;
 		} else {
-			value_p = value = vp_aprints_value(vp, vp, '\0');
+			value_p = value = fr_pair_value_aprints(vp, vp, '\0');
 		}
 
 		if (!expr_p || !value_p) {
@@ -723,7 +723,7 @@ void debug_pair(VALUE_PAIR *vp)
 {
 	if (!vp || !rad_debug_lvl || !fr_log_fp) return;
 
-	vp_print(fr_log_fp, vp);
+	fr_pair_fprint(fr_log_fp, vp);
 }
 
 /** Print a single valuepair to stderr or error log.
@@ -740,7 +740,7 @@ void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
-	vp_prints(buffer, sizeof(buffer), vp);
+	fr_pair_prints(buffer, sizeof(buffer), vp);
 	RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 }
 
@@ -765,7 +765,7 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
 	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 
-		vp_prints(buffer, sizeof(buffer), vp);
+		fr_pair_prints(buffer, sizeof(buffer), vp);
 		RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 	}
 	REXDENT();
@@ -792,7 +792,7 @@ void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp)
 		VERIFY_VP(vp);
 		if ((vp->da->vendor == 0) &&
 		    ((vp->da->attr & 0xFFFF) > 0xff)) continue;
-		vp_prints(buffer, sizeof(buffer), vp);
+		fr_pair_prints(buffer, sizeof(buffer), vp);
 		RDEBUGX(level, "%s", buffer);
 	}
 	REXDENT();

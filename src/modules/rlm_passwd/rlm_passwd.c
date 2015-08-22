@@ -550,7 +550,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */
-		vp_prints_value(buffer, sizeof(buffer), i, 0);
+		fr_pair_value_prints(buffer, sizeof(buffer), i, 0);
 		if (!(pw = get_pw_nam(buffer, inst->ht, &last_found)) ) {
 			continue;
 		}

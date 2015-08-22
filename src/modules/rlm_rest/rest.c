@@ -562,7 +562,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		/*
 		 *  Write out single attribute string.
 		 */
-		len = vp_prints_value(p, freespace, vp, 0);
+		len = fr_pair_value_prints(p, freespace, vp, 0);
 		if (is_truncated(len, freespace)) goto no_space;
 
 		RINDENT();

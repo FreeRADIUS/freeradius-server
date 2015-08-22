@@ -1544,7 +1544,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 			slen = vp->vp_length;
 		} else {
 			if (out) *out = buff;
-			slen = vp_prints_value(buff, bufflen, vp, '\0');
+			slen = fr_pair_value_prints(buff, bufflen, vp, '\0');
 		}
 	}
 		break;
@@ -1725,7 +1725,7 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 			break;
 
 		default:
-			*out = vp_aprints_value(ctx, vp, '\0');
+			*out = fr_pair_value_aprints(ctx, vp, '\0');
 			if (!*out) return -1;
 			slen = talloc_array_length(*out) - 1;
 			break;

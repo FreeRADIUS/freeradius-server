@@ -711,7 +711,7 @@ redo:
 			if (fr_debug_lvl >= 2) {
 				char buffer[1024];
 
-				vp_prints_value(buffer, sizeof(buffer), vp, '"');
+				fr_pair_value_prints(buffer, sizeof(buffer), vp, '"');
 				RDEBUG2("# Foreach-Variable-%d = %s", foreach_depth, buffer);
 			}
 #endif

@@ -311,7 +311,7 @@ static size_t sqlcounter_expand(char *out, int outlen, rlm_sqlcounter_t *inst, R
 				WARN("Please replace '%%k' with '%%{${key}}'");
 				tmpl_find_vp(&vp, request, inst->key_attr);
 				if (vp) {
-					vp_prints_value(q, freespace, vp, '"');
+					fr_pair_value_prints(q, freespace, vp, '"');
 					q += strlen(q);
 				}
 				p++;

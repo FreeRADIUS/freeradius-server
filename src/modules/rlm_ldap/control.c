@@ -192,7 +192,7 @@ int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 		if (vp->da->vendor == 0) switch (vp->da->attr) {
 		case PW_NAS_IP_ADDRESS:
 		case PW_NAS_IPV6_ADDRESS:
-			vp_prints_value(ipaddress, sizeof(ipaddress), vp, '\0');
+			fr_pair_value_prints(ipaddress, sizeof(ipaddress), vp, '\0');
 			break;
 
 		case PW_USER_NAME:

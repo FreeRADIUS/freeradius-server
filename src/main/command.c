@@ -1623,7 +1623,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 		for (vp = fr_cursor_init(&cursor, &request->reply->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			vp_prints(buffer, sizeof(buffer), vp);
+			fr_pair_prints(buffer, sizeof(buffer), vp);
 			fprintf(fp, "%s\n", buffer);
 			RDEBUG("%s", buffer);
 		}
@@ -1826,7 +1826,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			vp_prints(buffer, sizeof(buffer), vp);
+			fr_pair_prints(buffer, sizeof(buffer), vp);
 			DEBUG("\t%s", buffer);
 		}
 

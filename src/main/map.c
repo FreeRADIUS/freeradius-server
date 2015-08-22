@@ -138,7 +138,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 		memcpy(&map->rhs->tmpl_data_value, &vp->data, sizeof(map->rhs->tmpl_data_value));
 		map->rhs->quote = T_BARE_WORD;
 	}
-	map->rhs->name = vp_aprints_value(map->rhs, vp, fr_token_quote[map->rhs->quote]);
+	map->rhs->name = fr_pair_value_aprints(map->rhs, vp, fr_token_quote[map->rhs->quote]);
 	map->rhs->len = talloc_array_length(map->rhs->name) - 1;
 
 	/*
@@ -990,8 +990,8 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 #define DEBUG_OVERWRITE(_old, _new) \
 do {\
 	if (RDEBUG_ENABLED3) {\
-		char *old = vp_aprints_value(request, _old, '"');\
-		char *new = vp_aprints_value(request, _new, '"');\
+		char *old = fr_pair_value_aprints(request, _old, '"');\
+		char *new = fr_pair_value_aprints(request, _new, '"');\
 		RINDENT();\
 		RDEBUG3("--> overwriting '%s' with '%s'", old, new);\
 		REXDENT();\
@@ -1557,18 +1557,18 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	 */
 	default:
 	case TMPL_TYPE_UNPARSED:
-		vp_prints_value(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
+		fr_pair_value_prints(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
-		vp_prints_value(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
+		fr_pair_value_prints(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
 	case TMPL_TYPE_DATA:
-		vp_prints_value(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
+		fr_pair_value_prints(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
@@ -1599,7 +1599,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 */
 		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
 									 vp->vp_length) ? '\'' : '"';
-		vp_prints_value(buffer, sizeof(buffer), vp, quote);
+		fr_pair_value_prints(buffer, sizeof(buffer), vp, quote);
 		tmpl_prints(attr, sizeof(attr), &vpt, vp->da);
 		value = talloc_typed_asprintf(request, "%s -> %s", attr, buffer);
 	}
@@ -1616,7 +1616,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 */
 		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
 									 vp->vp_length) ? '\'' : '"';
-		vp_prints_value(buffer, sizeof(buffer), vp, quote);
+		fr_pair_value_prints(buffer, sizeof(buffer), vp, quote);
 		value = talloc_typed_asprintf(request, "%.*s -> %s", (int)map->rhs->len, map->rhs->name, buffer);
 	}
 		break;

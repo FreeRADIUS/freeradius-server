@@ -364,7 +364,7 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	PyObject *pStr = NULL;
 	char buf[1024];
 
-	/* Look at the vp_print_name? */
+	/* Look at the fr_pair_fprint_name? */
 
 	if (vp->da->flags.has_tag)
 		pStr = PyString_FromFormat("%s:%d", vp->da->name, vp->tag);
@@ -376,7 +376,7 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 
 	PyTuple_SET_ITEM(pPair, 0, pStr);
 
-	vp_prints_value(buf, sizeof(buf), vp, '"');
+	fr_pair_value_prints(buf, sizeof(buf), vp, '"');
 
 	if ((pStr = PyString_FromString(buf)) == NULL)
 		goto failed;

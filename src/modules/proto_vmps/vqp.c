@@ -31,7 +31,7 @@ RCSID("$Id$")
 
 /* @todo: this is a hack */
 #  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \
-					vp_print(fr_log_fp, vp); \
+					fr_pair_fprint(fr_log_fp, vp); \
 				     } \
 				} while(0)
 /*

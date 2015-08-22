@@ -1427,7 +1427,7 @@ static int rc_send_one_packet(rc_transaction_t *trans, RADIUS_PACKET **packet_p)
 	trans->tries ++;
 
 	if (fr_debug_lvl > 0) fr_packet_header_print(fr_log_fp, packet, false);
-	if (fr_debug_lvl > 0) vp_printlist(fr_log_fp, packet->vps);
+	if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, packet->vps);
 
 	return 1;
 }
@@ -1596,7 +1596,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 	DEBUG("Transaction: %u, received packet (id: %u).", trans->id, trans->reply->id);
 
 	if (fr_debug_lvl > 0) fr_packet_header_print(fr_log_fp, trans->reply, true);
-	if (fr_debug_lvl > 0) vp_printlist(fr_log_fp, trans->reply->vps);
+	if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, trans->reply->vps);
 
 	if (!trans->eap_context) {
 		goto packet_done;

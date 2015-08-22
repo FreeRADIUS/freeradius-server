@@ -47,13 +47,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		*      why they're being rejected.
 		*/
 		if (((time_t) check_item->vp_date) <= request->timestamp) {
-			vp_prints_value(date, sizeof(date), check_item, 0);
+			fr_pair_value_prints(date, sizeof(date), check_item, 0);
 			REDEBUG("Account expired at '%s'", date);
 
 			return RLM_MODULE_USERLOCK;
 		} else {
 			if (RDEBUG_ENABLED) {
-				vp_prints_value(date, sizeof(date), check_item, 0);
+				fr_pair_value_prints(date, sizeof(date), check_item, 0);
 				RDEBUG("Account will expire at '%s'", date);
 			}
 		}

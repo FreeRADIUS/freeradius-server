@@ -602,7 +602,7 @@ static void perl_vp_to_svpvn_element(REQUEST *request, AV *av, VALUE_PAIR const 
 		break;
 
 	default:
-		len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
+		len = fr_pair_value_prints(buffer, sizeof(buffer), vp, 0);
 		RDEBUG("$%s{'%s'}[%i] = &%s:%s -> '%s'", hash_name, vp->da->name, *i,
 		       list_name, vp->da->name, buffer);
 		av_push(av, newSVpvn(buffer, truncate_len(len, sizeof(buffer))));
@@ -694,7 +694,7 @@ static void perl_store_vps(UNUSED TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR 
 			break;
 
 		default:
-			len = vp_prints_value(buffer, sizeof(buffer), vp, 0);
+			len = fr_pair_value_prints(buffer, sizeof(buffer), vp, 0);
 			RDEBUG("$%s{'%s'} = &%s:%s -> '%s'", hash_name, vp->da->name,
 			       list_name, vp->da->name, buffer);
 			(void)hv_store(rad_hv, name, strlen(name),

@@ -177,7 +177,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			}
 
 			n = strlen(buffer);
-			vp_prints_value(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
+			fr_pair_value_prints(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
 
 			DEBUG3("export %s", buffer);
 			envp[envlen++] = talloc_strdup(input_ctx, buffer);

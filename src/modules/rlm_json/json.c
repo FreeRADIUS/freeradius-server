@@ -235,7 +235,7 @@ size_t fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp)
 		break;
 
 	default:
-		len = vp_prints_value(out, freespace, vp, 0);
+		len = fr_pair_value_prints(out, freespace, vp, 0);
 		if (is_truncated(len, freespace)) return (outlen - freespace) + len;
 		out += len;
 		freespace -= len;

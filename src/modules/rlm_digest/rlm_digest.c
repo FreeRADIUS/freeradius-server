@@ -155,7 +155,7 @@ static int digest_fix(REQUEST *request)
 			q[attrlen - 2] = '\0';
 
 			if ((rad_debug_lvl > 1) && fr_log_fp) {
-				vp_print(fr_log_fp, sub);
+				fr_pair_fprint(fr_log_fp, sub);
 			}
 
 			/*

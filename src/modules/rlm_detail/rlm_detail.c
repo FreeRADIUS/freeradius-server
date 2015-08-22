@@ -195,7 +195,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	Wrapper for VPs allocated on the stack.
  */
-static void detail_vp_print(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacked)
+static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacked)
 {
 	VALUE_PAIR *vp;
 
@@ -204,7 +204,7 @@ static void detail_vp_print(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacke
 
 	memcpy(vp, stacked, sizeof(*vp));
 	vp->op = T_OP_EQ;
-	vp_print(out, vp);
+	fr_pair_fprint(out, vp);
 	talloc_free(vp);
 }
 
@@ -278,16 +278,16 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 			break;
 		}
 
-		detail_vp_print(request, out, &src_vp);
-		detail_vp_print(request, out, &dst_vp);
+		detail_fr_pair_fprint(request, out, &src_vp);
+		detail_fr_pair_fprint(request, out, &dst_vp);
 
 		src_vp.da = dict_attrbyvalue(PW_PACKET_SRC_PORT, 0);
 		src_vp.vp_integer = packet->src_port;
 		dst_vp.da = dict_attrbyvalue(PW_PACKET_DST_PORT, 0);
 		dst_vp.vp_integer = packet->dst_port;
 
-		detail_vp_print(request, out, &src_vp);
-		detail_vp_print(request, out, &dst_vp);
+		detail_fr_pair_fprint(request, out, &src_vp);
+		detail_fr_pair_fprint(request, out, &dst_vp);
 	}
 
 	{
@@ -310,7 +310,7 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 			 */
 			op = vp->op;
 			vp->op = T_OP_EQ;
-			vp_print(out, vp);
+			fr_pair_fprint(out, vp);
 			vp->op = op;
 		}
 	}

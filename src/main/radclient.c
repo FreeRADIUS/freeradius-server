@@ -979,7 +979,7 @@ static int send_one_packet(rc_request_t *request)
 	}
 
 	fr_packet_header_print(fr_log_fp, request->packet, false);
-	if (fr_debug_lvl > 0) vp_printlist(fr_log_fp, request->packet->vps);
+	if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, request->packet->vps);
 
 	return 0;
 }
@@ -1089,7 +1089,7 @@ static int recv_one_packet(int wait_time)
 	}
 
 	fr_packet_header_print(fr_log_fp, request->reply, true);
-	if (fr_debug_lvl > 0) vp_printlist(fr_log_fp, request->reply->vps);
+	if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, request->reply->vps);
 
 	/*
 	 *	Increment counters...
