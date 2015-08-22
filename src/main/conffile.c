@@ -1395,7 +1395,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const varia
 		 *	Figure out which data we need to fix.
 		 */
 		data = variables[i].data; /* prefer this. */
-		if (!data) data = ((char *)base) + variables[i].offset;
+		if (!data && base) data = ((char *)base) + variables[i].offset;
 		if (!data) continue;
 
 		/*
@@ -1646,7 +1646,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	 *	section, add a default pair from the default value.
 	 */
 	if (!cp) {
-		int lineno;
+		int lineno = 0;
 		char const *expanded;
 
 		if (deprecated) return 0;		/* Don't set the default value if this is deprecated */
