@@ -704,7 +704,7 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth, fr_cond_t c
 #ifdef WITH_EVAL_DEBUG
 	char buffer[1024];
 
-	fr_cond_sprint(buffer, sizeof(buffer), c);
+	fr_cond_snprint(buffer, sizeof(buffer), c);
 	EVAL_DEBUG("%s", buffer);
 #endif
 

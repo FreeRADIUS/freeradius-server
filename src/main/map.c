@@ -138,7 +138,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 		memcpy(&map->rhs->tmpl_data_value, &vp->data, sizeof(map->rhs->tmpl_data_value));
 		map->rhs->quote = T_BARE_WORD;
 	}
-	map->rhs->name = fr_pair_value_aprints(map->rhs, vp, fr_token_quote[map->rhs->quote]);
+	map->rhs->name = fr_pair_value_asprint(map->rhs, vp, fr_token_quote[map->rhs->quote]);
 	map->rhs->len = talloc_array_length(map->rhs->name) - 1;
 
 	/*
@@ -990,8 +990,8 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 #define DEBUG_OVERWRITE(_old, _new) \
 do {\
 	if (RDEBUG_ENABLED3) {\
-		char *old = fr_pair_value_aprints(request, _old, '"');\
-		char *new = fr_pair_value_aprints(request, _new, '"');\
+		char *old = fr_pair_value_asprint(request, _old, '"');\
+		char *new = fr_pair_value_asprint(request, _new, '"');\
 		RINDENT();\
 		RDEBUG3("--> overwriting '%s' with '%s'", old, new);\
 		REXDENT();\
@@ -1491,7 +1491,7 @@ bool map_dst_valid(REQUEST *request, vp_map_t const *map)
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t map_prints(char *out, size_t outlen, vp_map_t const *map)
+size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 {
 	size_t		len;
 	DICT_ATTR const	*da = NULL;
@@ -1502,7 +1502,7 @@ size_t map_prints(char *out, size_t outlen, vp_map_t const *map)
 
 	if (map->lhs->type == TMPL_TYPE_ATTR) da = map->lhs->tmpl_da;
 
-	len = tmpl_prints(out, (end - p) - 1, map->lhs, da);		/* -1 for proceeding ' ' */
+	len = tmpl_snprint(out, (end - p) - 1, map->lhs, da);		/* -1 for proceeding ' ' */
 	RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 
 	*(p++) = ' ';
@@ -1525,11 +1525,11 @@ size_t map_prints(char *out, size_t outlen, vp_map_t const *map)
 	    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
 	    (map->rhs->type == TMPL_TYPE_UNPARSED)) {
 		*(p++) = '\'';
-		len = tmpl_prints(p, (end - p) - 1, map->rhs, da);	/* -1 for proceeding '\'' */
+		len = tmpl_snprint(p, (end - p) - 1, map->rhs, da);	/* -1 for proceeding '\'' */
 		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 		*(p++) = '\'';
 	} else {
-		len = tmpl_prints(p, end - p, map->rhs, da);
+		len = tmpl_snprint(p, end - p, map->rhs, da);
 		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 	}
 
@@ -1557,24 +1557,24 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 	 */
 	default:
 	case TMPL_TYPE_UNPARSED:
-		fr_pair_value_prints(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
+		fr_pair_value_snprint(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
-		fr_pair_value_prints(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
+		fr_pair_value_snprint(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
 	case TMPL_TYPE_DATA:
-		fr_pair_value_prints(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
+		fr_pair_value_snprint(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
 	/*
 	 *	For the lists, we can't use the original name, and have to
-	 *	rebuild it using tmpl_prints, for each attribute we're
+	 *	rebuild it using tmpl_snprint, for each attribute we're
 	 *	copying.
 	 */
 	case TMPL_TYPE_LIST:
@@ -1599,8 +1599,8 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 */
 		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
 									 vp->vp_length) ? '\'' : '"';
-		fr_pair_value_prints(buffer, sizeof(buffer), vp, quote);
-		tmpl_prints(attr, sizeof(attr), &vpt, vp->da);
+		fr_pair_value_snprint(buffer, sizeof(buffer), vp, quote);
+		tmpl_snprint(attr, sizeof(attr), &vpt, vp->da);
 		value = talloc_typed_asprintf(request, "%s -> %s", attr, buffer);
 	}
 		break;
@@ -1616,7 +1616,7 @@ void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 		 */
 		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
 									 vp->vp_length) ? '\'' : '"';
-		fr_pair_value_prints(buffer, sizeof(buffer), vp, quote);
+		fr_pair_value_snprint(buffer, sizeof(buffer), vp, quote);
 		value = talloc_typed_asprintf(request, "%.*s -> %s", (int)map->rhs->len, map->rhs->name, buffer);
 	}
 		break;

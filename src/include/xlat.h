@@ -55,7 +55,7 @@ ssize_t radius_axlat_struct(char **out, REQUEST *request, xlat_exp_t const *xlat
 
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head, char const **error);
 
-size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
+size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 
 #define XLAT_DEFAULT_BUF_LEN	2048
 

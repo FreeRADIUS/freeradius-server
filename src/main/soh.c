@@ -555,39 +555,39 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 					s = "security-updates";
 					switch (hcstatus) {
 					case 0xff0005:
-						fr_pair_value_sprintf(vp, "%s ok all-installed", s);
+						fr_pair_value_snprintf(vp, "%s ok all-installed", s);
 						break;
 
 					case 0xff0006:
-						fr_pair_value_sprintf(vp, "%s warn some-missing", s);
+						fr_pair_value_snprintf(vp, "%s warn some-missing", s);
 						break;
 
 					case 0xff0008:
-						fr_pair_value_sprintf(vp, "%s warn never-started", s);
+						fr_pair_value_snprintf(vp, "%s warn never-started", s);
 						break;
 
 					case 0xc0ff000c:
-						fr_pair_value_sprintf(vp, "%s error no-wsus-srv", s);
+						fr_pair_value_snprintf(vp, "%s error no-wsus-srv", s);
 						break;
 
 					case 0xc0ff000d:
-						fr_pair_value_sprintf(vp, "%s error no-wsus-clid", s);
+						fr_pair_value_snprintf(vp, "%s error no-wsus-clid", s);
 						break;
 
 					case 0xc0ff000e:
-						fr_pair_value_sprintf(vp, "%s warn wsus-disabled", s);
+						fr_pair_value_snprintf(vp, "%s warn wsus-disabled", s);
 						break;
 
 					case 0xc0ff000f:
-						fr_pair_value_sprintf(vp, "%s error comm-failure", s);
+						fr_pair_value_snprintf(vp, "%s error comm-failure", s);
 						break;
 
 					case 0xc0ff0010:
-						fr_pair_value_sprintf(vp, "%s warn needs-reboot", s);
+						fr_pair_value_snprintf(vp, "%s warn needs-reboot", s);
 						break;
 
 					default:
-						fr_pair_value_sprintf(vp, "%s error %08x", s, hcstatus);
+						fr_pair_value_snprintf(vp, "%s error %08x", s, hcstatus);
 						break;
 					}
 					break;
@@ -597,35 +597,35 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 					s = "auto-updates";
 					switch (hcstatus) {
 					case 1:
-						fr_pair_value_sprintf(vp, "%s warn disabled", s);
+						fr_pair_value_snprintf(vp, "%s warn disabled", s);
 						break;
 
 					case 2:
-						fr_pair_value_sprintf(vp, "%s ok action=check-only", s);
+						fr_pair_value_snprintf(vp, "%s ok action=check-only", s);
 						break;
 
 					case 3:
-						fr_pair_value_sprintf(vp, "%s ok action=download", s);
+						fr_pair_value_snprintf(vp, "%s ok action=download", s);
 						break;
 
 					case 4:
-						fr_pair_value_sprintf(vp, "%s ok action=install", s);
+						fr_pair_value_snprintf(vp, "%s ok action=install", s);
 						break;
 
 					case 5:
-						fr_pair_value_sprintf(vp, "%s warn unconfigured", s);
+						fr_pair_value_snprintf(vp, "%s warn unconfigured", s);
 						break;
 
 					case 0xc0ff0003:
-						fr_pair_value_sprintf(vp, "%s warn service-down", s);
+						fr_pair_value_snprintf(vp, "%s warn service-down", s);
 						break;
 
 					case 0xc0ff0018:
-						fr_pair_value_sprintf(vp, "%s warn never-started", s);
+						fr_pair_value_snprintf(vp, "%s warn never-started", s);
 						break;
 
 					default:
-						fr_pair_value_sprintf(vp, "%s error %08x", s, hcstatus);
+						fr_pair_value_snprintf(vp, "%s error %08x", s, hcstatus);
 						break;
 					}
 					break;
@@ -642,12 +642,12 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 							 */
 							t = clientstatus2str(hcstatus);
 							if (t) {
-								fr_pair_value_sprintf(vp, "%s error %s", s, t);
+								fr_pair_value_snprintf(vp, "%s error %s", s, t);
 							} else {
-								fr_pair_value_sprintf(vp, "%s error %08x", s, hcstatus);
+								fr_pair_value_snprintf(vp, "%s error %08x", s, hcstatus);
 							}
 						} else {
-							fr_pair_value_sprintf(vp,
+							fr_pair_value_snprintf(vp,
 									"%s ok snoozed=%i microsoft=%i up2date=%i enabled=%i",
 									s,
 									hcstatus & 0x8 ? 1 : 0,
@@ -657,7 +657,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 									);
 						}
 					} else {
-						fr_pair_value_sprintf(vp, "%i unknown %08x", curr_hc, hcstatus);
+						fr_pair_value_snprintf(vp, "%i unknown %08x", curr_hc, hcstatus);
 					}
 					break;
 				}
@@ -666,7 +666,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 				if (!vp) return 0;
 
 				/* FIXME: what to do with the payload? */
-				fr_pair_value_sprintf(vp, "%08x/%i ?", curr_shid, curr_shid_c);
+				fr_pair_value_snprintf(vp, "%08x/%i ?", curr_shid, curr_shid_c);
 			}
 			break;
 

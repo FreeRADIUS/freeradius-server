@@ -408,7 +408,7 @@ int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, value_data_t **out,
  * @param head of the node list.
  * @return the string representation of the node list.
  */
-char *fr_jpath_aprints(TALLOC_CTX *ctx, fr_jpath_node_t const *head)
+char *fr_jpath_asprint(TALLOC_CTX *ctx, fr_jpath_node_t const *head)
 {
 	fr_jpath_node_t const *node;
 	jpath_selector_t *selector;

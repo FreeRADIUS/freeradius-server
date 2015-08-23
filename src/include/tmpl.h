@@ -393,7 +393,7 @@ void			tmpl_cast_in_place_str(vp_tmpl_t *vpt);
 int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 					vp_tmpl_t const *vpt, DICT_ATTR const *cast);
 
-size_t			tmpl_prints(char *buffer, size_t bufsize, vp_tmpl_t const *vpt,
+size_t			tmpl_snprint(char *buffer, size_t bufsize, vp_tmpl_t const *vpt,
 				    DICT_ATTR const *values);
 
 ssize_t			tmpl_expand(char const **out, char *buff, size_t outlen, REQUEST *request,

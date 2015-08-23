@@ -1559,7 +1559,7 @@ int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
  *	- 0 on success.
  *	- -1 on failure.
  */
-char *rad_aprints_uid(TALLOC_CTX *ctx, uid_t uid)
+char *rad_asprint_uid(TALLOC_CTX *ctx, uid_t uid)
 {
 	struct passwd *result;
 	char *out;
@@ -1579,7 +1579,7 @@ char *rad_aprints_uid(TALLOC_CTX *ctx, uid_t uid)
  *	- 0 on success.
  *	- -1 on failure.
  */
-char *rad_aprints_gid(TALLOC_CTX *ctx, uid_t gid){
+char *rad_asprint_gid(TALLOC_CTX *ctx, uid_t gid){
 	struct group *result;
 	char *out;
 

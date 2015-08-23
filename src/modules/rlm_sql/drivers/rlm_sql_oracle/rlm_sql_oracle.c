@@ -69,7 +69,7 @@ typedef struct rlm_sql_oracle_conn_t {
  *	- 0 on success.
  *	- -1 if there was no error.
  */
-static int sql_prints_error(char *out, size_t outlen, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static int sql_snprint_error(char *out, size_t outlen, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	sb4			errcode = 0;
 	rlm_sql_oracle_conn_t	*conn = handle->conn;
@@ -104,7 +104,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 
 	rad_assert(outlen > 0);
 
-	ret = sql_prints_error(errbuff, sizeof(errbuff), handle, config);
+	ret = sql_snprint_error(errbuff, sizeof(errbuff), handle, config);
 	if (ret < 0) return 0;
 
 	out[0].type = L_ERR;
@@ -117,7 +117,7 @@ static int sql_check_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	char errbuff[512];
 
-	if (sql_prints_error(errbuff, sizeof(errbuff), handle, config) < 0) goto unknown;
+	if (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) < 0) goto unknown;
 
 	if (strstr(errbuff, "ORA-03113") || strstr(errbuff, "ORA-03114")) {
 		ERROR("rlm_sql_oracle: OCI_SERVER_NOT_CONNECTED");
@@ -172,7 +172,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 */
 	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->query, OCI_HTYPE_STMT, 0, NULL)) {
 		ERROR("rlm_sql_oracle: Couldn't init Oracle query handles: %s",
-		      sql_prints_error(errbuff, sizeof(errbuff), handle, config) ? errbuff : "unknown");
+		      sql_snprint_error(errbuff, sizeof(errbuff), handle, config) ? errbuff : "unknown");
 
 		return RLM_SQL_ERROR;
 	}
@@ -185,7 +185,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		     (OraText const *)config->sql_password, strlen(config->sql_password),
 		     (OraText const *)config->sql_db, strlen(config->sql_db))) {
 		ERROR("rlm_sql_oracle: Oracle logon failed: '%s'",
-		      sql_prints_error(errbuff, sizeof(errbuff), handle, config) ? errbuff : "unknown");
+		      sql_snprint_error(errbuff, sizeof(errbuff), handle, config) ? errbuff : "unknown");
 
 		return RLM_SQL_ERROR;
 	}

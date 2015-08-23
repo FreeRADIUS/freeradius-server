@@ -186,10 +186,10 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		return snprintf(*out, outlen, "%i", vp->vp_signed);
 
 	case PW_TYPE_IPV6_ADDR:
-		return fr_prints_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
+		return fr_snprint_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6addr));
 
 	case PW_TYPE_IPV6_PREFIX:
-		return fr_prints_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6prefix[2]));
+		return fr_snprint_uint128(*out, outlen, ntohlll(*(uint128_t const *) &vp->vp_ipv6prefix[2]));
 
 	default:
 		break;
@@ -377,7 +377,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 		FR_NAME_NUMBER const *type;
 		char *value;
 
-		value = fr_pair_value_aprints(vp, vp, '\'');
+		value = fr_pair_value_asprint(vp, vp, '\'');
 		if (vp->da->flags.has_tag) {
 			RIDEBUG2("&%s:%s:%i %s %s",
 				fr_int2str(pair_lists, vpt.tmpl_list, "<INVALID>"),
@@ -440,7 +440,7 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
 				goto next_type;
 			}
 
-			value = value_data_aprints(dst, type->number, NULL, dst, '\'');
+			value = value_data_asprint(dst, type->number, NULL, dst, '\'');
 			if (!value) goto next_type;
 
 			if ((pad = (11 - strlen(type->name))) < 0) {
@@ -537,7 +537,7 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 	pvp = (VALUE_PAIR **) request_data_reference(request, (void *)radius_get_vp, *(int*) instance);
 	if (!pvp || !*pvp) return 0;
 
-	len = fr_pair_value_prints(*out, outlen, *pvp, 0);
+	len = fr_pair_value_snprint(*out, outlen, *pvp, 0);
 	if (is_truncated(len, outlen)) {
 		RDEBUG("Insufficient buffer space to write foreach value");
 		return -1;
@@ -577,7 +577,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-		len = fr_prints(*out, outlen, (char const *) p, vp->vp_length, '"');
+		len = fr_snprint(*out, outlen, (char const *) p, vp->vp_length, '"');
 		break;
 
 	case PW_TYPE_STRING:
@@ -585,7 +585,7 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 		break;
 
 	default:
-		len = fr_prints(*out, outlen, (char const *) p, ret, '\0');
+		len = fr_snprint(*out, outlen, (char const *) p, ret, '\0');
 		break;
 	}
 
@@ -1610,7 +1610,7 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 	}
 }
 
-size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
+size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 {
 	size_t len;
 	char *p, *end;
@@ -1702,7 +1702,7 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			p += strlen(p);
 			*(p++) = ':';
 			rad_assert(node->child != NULL);
-			len = xlat_sprint(p, end - p, node->child);
+			len = xlat_snprint(p, end - p, node->child);
 			p += len;
 			*(p++) = '}';
 			break;
@@ -1711,13 +1711,13 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			*(p++) = '%';
 			*(p++) = '{';
 
-			len = xlat_sprint(p, end - p, node->child);
+			len = xlat_snprint(p, end - p, node->child);
 			p += len;
 
 			*(p++) = ':';
 			*(p++) = '-';
 
-			len = xlat_sprint(p, end - p, node->alternate);
+			len = xlat_snprint(p, end - p, node->alternate);
 			p += len;
 
 			*(p++) = '}';
@@ -1889,7 +1889,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 	packet = radius_packet(request, vpt->tmpl_list);
 	if (!packet) {
 		if (return_null) return NULL;
-		return fr_pair_type_prints(ctx, vpt->tmpl_da->type);
+		return fr_pair_type_snprint(ctx, vpt->tmpl_da->type);
 	}
 
 	vp = NULL;
@@ -2039,11 +2039,11 @@ do_print:
 		char *p, *q;
 
 		if (!fr_cursor_current(&cursor)) return NULL;
-		p = fr_pair_value_aprints(ctx, vp, quote);
+		p = fr_pair_value_asprint(ctx, vp, quote);
 		if (!p) return NULL;
 
 		while ((vp = tmpl_cursor_next(&cursor, vpt)) != NULL) {
-			q = fr_pair_value_aprints(ctx, vp, quote);
+			q = fr_pair_value_asprint(ctx, vp, quote);
 			if (!q) return NULL;
 			p = talloc_strdup_append(p, ",");
 			p = talloc_strdup_append(p, q);
@@ -2063,11 +2063,11 @@ do_print:
 
 	if (!vp) {
 		if (return_null) return NULL;
-		return fr_pair_type_prints(ctx, vpt->tmpl_da->type);
+		return fr_pair_type_snprint(ctx, vpt->tmpl_da->type);
 	}
 
 print:
-	ret = fr_pair_value_aprints(ctx, vp, quote);
+	ret = fr_pair_value_asprint(ctx, vp, quote);
 
 finish:
 	talloc_free(virtual);
@@ -2249,7 +2249,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 *
 		 *	The OUTPUT of xlat is a printable string.  The INPUT might not be...
 		 *
-		 *	This is really the reverse of fr_prints().
+		 *	This is really the reverse of fr_snprint().
 		 */
 		if (*child) {
 			PW_TYPE type;

@@ -236,14 +236,14 @@ static rlm_rcode_t CC_HINT(nonnull (4)) do_ruby(REQUEST *request, unsigned long 
 		     vp = fr_cursor_next(&cursor)) {
 			VALUE tmp = rb_ary_new2(2);
 
-			/* The name. logic from fr_pair_prints, lib/print.c */
+			/* The name. logic from fr_pair_snprint, lib/print.c */
 			if (vp->da->flags.has_tag) {
 				snprintf(buf, BUF_SIZE, "%s:%d", vp->da->name, vp->tag);
 			} else {
 				strlcpy(buf, vp->da->name, sizeof(buf));
 			}
 			rbString1 = rb_str_new2(buf);
-			fr_pair_value_prints(buf, sizeof (buf), vp, '"');
+			fr_pair_value_snprint(buf, sizeof (buf), vp, '"');
 			rbString2 = rb_str_new2(buf);
 
 			rb_ary_push(tmp, rbString1);

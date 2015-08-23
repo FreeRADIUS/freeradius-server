@@ -253,7 +253,7 @@ static int _sql_map_proc_get_value(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *r
 	if (fr_pair_value_from_str(vp, value, strlen(value)) < 0) {
 		char *escaped;
 
-		escaped = fr_aprints(vp, value, talloc_array_length(value), '"');
+		escaped = fr_asprint(vp, value, talloc_array_length(value), '"');
 		REDEBUG("Failed parsing value \"%s\" for attribute %s: %s", escaped,
 			map->lhs->tmpl_da->name, fr_strerror());
 		talloc_free(vp);

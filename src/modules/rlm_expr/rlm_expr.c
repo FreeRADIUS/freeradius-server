@@ -1145,7 +1145,7 @@ static ssize_t pairs_xlat(UNUSED void *instance, REQUEST *request,
 	     	FR_TOKEN op = vp->op;
 
 	     	vp->op = T_OP_EQ;
-		len = fr_pair_prints(p, freespace, vp);
+		len = fr_pair_snprint(p, freespace, vp);
 		vp->op = op;
 
 		if (is_truncated(len, freespace)) {

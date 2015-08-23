@@ -122,7 +122,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
 		if (RDEBUG_ENABLED3) {
 			char *p;
 
-			p = fr_aprints(NULL, (char const *)key, key_len, '"');
+			p = fr_asprint(NULL, (char const *)key, key_len, '"');
 			RDEBUG3("LRANGE %s 0 -1", key);
 			talloc_free(p);
 		}
@@ -345,7 +345,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		}
 
 		if (RDEBUG_ENABLED3) {
-			p = fr_aprints(request, (char const *)c->key, c->key_len, '\0');
+			p = fr_asprint(request, (char const *)c->key, c->key_len, '\0');
 			RDEBUG3("DEL \"%s\"", p);
 			talloc_free(p);
 
@@ -358,7 +358,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 			RDEBUG3("argv command");
 			RINDENT();
 			for (i = 0; i < (int)talloc_array_length(argv); i++) {
-				p = fr_aprints(request, argv[i], argv_len[i], '\0');
+				p = fr_asprint(request, argv[i], argv_len[i], '\0');
 				RDEBUG3("%s", p);
 				talloc_free(p);
 			}
@@ -372,7 +372,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		 */
 		if (c->expires > 0) {
 			if (RDEBUG_ENABLED3) {
-				p = fr_aprints(request, (char const *)c->key, c->key_len, '\"');
+				p = fr_asprint(request, (char const *)c->key, c->key_len, '\"');
 				RDEBUG3("EXPIREAT \"%s\" %li", p, (long)c->expires);
 				talloc_free(p);
 			}

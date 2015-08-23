@@ -3026,7 +3026,7 @@ do_home:
 	 *	doesn't need it.
 	 */
 	vp = radius_pair_create(request->proxy, &request->proxy->vps, PW_PROXY_STATE, 0);
-	fr_pair_value_sprintf(vp, "%u", request->packet->id);
+	fr_pair_value_snprintf(vp, "%u", request->packet->id);
 
 	/*
 	 *	Should be done BEFORE inserting into proxy hash, as
@@ -3513,7 +3513,7 @@ static void ping_home_server(void *ctx)
 	vp = fr_pair_make(request->proxy, &request->proxy->vps,
 		      "NAS-Identifier", "", T_OP_SET);
 	if (vp) {
-		fr_pair_value_sprintf(vp, "Status Check %u. Are you alive?",
+		fr_pair_value_snprintf(vp, "Status Check %u. Are you alive?",
 			    home->num_sent_pings);
 	}
 

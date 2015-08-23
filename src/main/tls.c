@@ -3469,7 +3469,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 						/*
 						 *	Write this one.
 						 */
-						fr_pair_prints(buf, sizeof(buf), vp);
+						fr_pair_snprint(buf, sizeof(buf), vp);
 						fputs(buf, vp_file);
 						prev = vp;
 					}

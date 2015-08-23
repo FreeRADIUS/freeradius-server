@@ -194,7 +194,7 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 	/*
 	 *	Plugin is ASCII only and no '/'
 	 */
-	fr_prints(value->identifier.plugin, sizeof(value->identifier.plugin),
+	fr_snprint(value->identifier.plugin, sizeof(value->identifier.plugin),
 		  conf->stats.prefix, strlen(conf->stats.prefix), '\0');
 	for (p = value->identifier.plugin; *p; ++p) {
 		if ((*p == '-') || (*p == '/'))*p = '_';
@@ -203,7 +203,7 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 	/*
 	 *	Plugin instance is ASCII only (assuming printable only) and no '/'
 	 */
-	fr_prints(value->identifier.plugin_instance, sizeof(value->identifier.plugin_instance),
+	fr_snprint(value->identifier.plugin_instance, sizeof(value->identifier.plugin_instance),
 		  plugin_instance, strlen(plugin_instance), '\0');
 	for (p = value->identifier.plugin_instance; *p; ++p) {
 		if ((*p == '-') || (*p == '/')) *p = '_';
@@ -212,13 +212,13 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 	/*
 	 *	Type is ASCII only (assuming printable only) and no '/' or '-'
 	 */
-	fr_prints(value->identifier.type, sizeof(value->identifier.type),
+	fr_snprint(value->identifier.type, sizeof(value->identifier.type),
 		  type, strlen(type), '\0');
 	for (p = value->identifier.type; *p; ++p) {
 		if ((*p == '-') || (*p == '/')) *p = '_';
 	}
 
-	fr_prints(value->identifier.type_instance, sizeof(value->identifier.type_instance),
+	fr_snprint(value->identifier.type_instance, sizeof(value->identifier.type_instance),
 		  type_instance, strlen(type_instance), '\0');
 	for (p = value->identifier.type_instance; *p; ++p) {
 		if ((*p == '-') || (*p == '/')) *p = '_';

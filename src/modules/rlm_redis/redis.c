@@ -307,7 +307,7 @@ int fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out, REQUEST *request,
 	if (RDEBUG_ENABLED3) {
 		char *p;
 
-		p = fr_aprints(NULL, value->str, value->len, '"');
+		p = fr_asprint(NULL, value->str, value->len, '"');
 		RDEBUG3("Got value : %s", p);
 		talloc_free(p);
 	}
@@ -389,7 +389,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 	rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 	rad_assert(map->rhs->type == TMPL_TYPE_DATA);
 
-	key_len = tmpl_prints(key_buf, sizeof(key_buf), map->lhs, map->lhs->tmpl_da);
+	key_len = tmpl_snprint(key_buf, sizeof(key_buf), map->lhs, map->lhs->tmpl_da);
 	if (is_truncated(key_len, sizeof(key_buf))) {
 		fr_strerror_printf("Key too long.  Must be < " STRINGIFY(sizeof(key_buf)) " "
 				   "bytes, got %zu bytes", key_len);
@@ -413,7 +413,7 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 		char	value[256];
 		size_t	len;
 
-		len = value_data_prints(value, sizeof(value), map->rhs->tmpl_data_type, map->lhs->tmpl_da,
+		len = value_data_snprint(value, sizeof(value), map->rhs->tmpl_data_type, map->lhs->tmpl_da,
 					&map->rhs->tmpl_data_value, '\0');
 		new = talloc_bstrndup(pool, value, len);
 		if (!new) {

@@ -637,7 +637,7 @@ build_vector:
 				break;
 
 			default:
-				p = fr_pair_value_aprints(vector, vp, '\0');
+				p = fr_pair_value_asprint(vector, vp, '\0');
 				vector[i].iov_base = p;
 				vector[i].iov_len = talloc_array_length(p) - 1;
 				break;

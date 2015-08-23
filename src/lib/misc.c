@@ -1668,7 +1668,7 @@ ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inle
  * @param outlen size of out.
  * @param num 128 bit integer.
  */
-size_t fr_prints_uint128(char *out, size_t outlen, uint128_t const num)
+size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 {
 	char buff[128 / 3 + 1 + 1];
 	uint64_t n[2];

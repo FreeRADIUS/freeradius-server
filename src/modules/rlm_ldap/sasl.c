@@ -184,7 +184,7 @@ ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 			if (ldap_parse_sasl_bind_result(conn->handle, result, &srv_cred, 0) == 0) {
 				char *escaped;
 
-				escaped = fr_aprints(request, srv_cred->bv_val, srv_cred->bv_len, '\0');
+				escaped = fr_asprint(request, srv_cred->bv_val, srv_cred->bv_len, '\0');
 				MOD_ROPTIONAL(RDEBUG3, DEBUG3, "SASL response  : %s", escaped);
 
 				talloc_free(escaped);

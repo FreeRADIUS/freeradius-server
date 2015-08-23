@@ -273,8 +273,8 @@ redo:
 		if (RDEBUG_ENABLED3) {
 			char *old_value, *new_value;
 
-			old_value = fr_pair_value_aprints(request, vp, '\'');
-			new_value = fr_pair_value_aprints(request, new, '\'');
+			old_value = fr_pair_value_asprint(request, vp, '\'');
+			new_value = fr_pair_value_asprint(request, new, '\'');
 			RDEBUG3("Converted: %s = '%s' -> %s = '%s'", vp->da->name, old_value, new->da->name, new_value);
 			talloc_free(old_value);
 			talloc_free(new_value);

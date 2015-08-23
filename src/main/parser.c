@@ -47,7 +47,7 @@ static const FR_NAME_NUMBER allowed_return_codes[] = {
  *	This file shouldn't use any functions from the server core.
  */
 
-size_t fr_cond_sprint(char *out, size_t outlen, fr_cond_t const *in)
+size_t fr_cond_snprint(char *out, size_t outlen, fr_cond_t const *in)
 {
 	size_t		len;
 	char		*p = out;
@@ -75,7 +75,7 @@ next:
 			p += len;
 		}
 
-		len = tmpl_prints(p, end - p, c->data.vpt, NULL);
+		len = tmpl_snprint(p, end - p, c->data.vpt, NULL);
 		RETURN_IF_TRUNCATED(p, len, end - p);
 		break;
 
@@ -89,7 +89,7 @@ next:
 			RETURN_IF_TRUNCATED(p, len, end - p);
 		}
 
-		len = map_prints(p, end - p, c->data.map);
+		len = map_snprint(p, end - p, c->data.map);
 		RETURN_IF_TRUNCATED(p, len, end - p);
 #if 0
 		*(p++) = ']';
@@ -99,7 +99,7 @@ next:
 	case COND_TYPE_CHILD:
 		rad_assert(c->data.child != NULL);
 		*(p++) = '(';
-		len = fr_cond_sprint(p, (end - p) - 1, c->data.child);	/* -1 for proceeding ')' */
+		len = fr_cond_snprint(p, (end - p) - 1, c->data.child);	/* -1 for proceeding ')' */
 		RETURN_IF_TRUNCATED(p, len, end - p);
 		*(p++) = ')';
 		break;

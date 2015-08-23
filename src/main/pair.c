@@ -85,13 +85,13 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		if (check->da->type == PW_TYPE_STRING) {
 			expr_p = check->vp_strvalue;
 		} else {
-			expr_p = expr = fr_pair_value_aprints(check, check, '\0');
+			expr_p = expr = fr_pair_value_asprint(check, check, '\0');
 		}
 
 		if (vp->da->type == PW_TYPE_STRING) {
 			value_p = vp->vp_strvalue;
 		} else {
-			value_p = value = fr_pair_value_aprints(vp, vp, '\0');
+			value_p = value = fr_pair_value_asprint(vp, vp, '\0');
 		}
 
 		if (!expr_p || !value_p) {
@@ -740,7 +740,7 @@ void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
-	fr_pair_prints(buffer, sizeof(buffer), vp);
+	fr_pair_snprint(buffer, sizeof(buffer), vp);
 	RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 }
 
@@ -765,7 +765,7 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
 	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 
-		fr_pair_prints(buffer, sizeof(buffer), vp);
+		fr_pair_snprint(buffer, sizeof(buffer), vp);
 		RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 	}
 	REXDENT();
@@ -792,7 +792,7 @@ void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp)
 		VERIFY_VP(vp);
 		if ((vp->da->vendor == 0) &&
 		    ((vp->da->attr & 0xFFFF) > 0xff)) continue;
-		fr_pair_prints(buffer, sizeof(buffer), vp);
+		fr_pair_snprint(buffer, sizeof(buffer), vp);
 		RDEBUGX(level, "%s", buffer);
 	}
 	REXDENT();
@@ -887,9 +887,9 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 
 	MEM(vp = pair_make_request("Module-Failure-Message", NULL, T_OP_ADD));
 	if (request->module && (request->module[0] != '\0')) {
-		fr_pair_value_sprintf(vp, "%s: %s", request->module, p);
+		fr_pair_value_snprintf(vp, "%s: %s", request->module, p);
 	} else {
-		fr_pair_value_sprintf(vp, "%s", p);
+		fr_pair_value_snprintf(vp, "%s", p);
 	}
 	talloc_free(p);
 }

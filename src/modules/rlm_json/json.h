@@ -53,7 +53,7 @@ int		fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, value_data_t **out,
 				       PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
 				       json_object *root, fr_jpath_node_t const *jpath);
 
-char		*fr_jpath_aprints(TALLOC_CTX *ctx, fr_jpath_node_t const *head);
+char		*fr_jpath_asprint(TALLOC_CTX *ctx, fr_jpath_node_t const *head);
 
 ssize_t		fr_jpath_parse(TALLOC_CTX *ctx, fr_jpath_node_t **head, char const *in, size_t inlen);
 

@@ -146,7 +146,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_en
 		if (map_to_request(request, map, map_to_vp, NULL) < 0) {
 			char buffer[1024];
 
-			map_prints(buffer, sizeof(buffer), map);
+			map_snprint(buffer, sizeof(buffer), map);
 			REXDENT();
 			RDEBUG("Skipping %s", buffer);
 			RINDENT();
@@ -203,7 +203,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 			if (RDEBUG_ENABLED2) {
 				char *p;
 
-				p = fr_aprints(request, (char const *)key, key_len, '"');
+				p = fr_asprint(request, (char const *)key, key_len, '"');
 				RDEBUG("No cache entry found for \"%s\"", p);
 				talloc_free(p);
 			}
@@ -226,7 +226,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 		if (RDEBUG_ENABLED2) {
 			char *p;
 
-			p = fr_aprints(request, (char const *)key, key_len, '"');
+			p = fr_asprint(request, (char const *)key, key_len, '"');
 			RDEBUG2("Found entry for \"%s\", but it expired %li seconds ago.  Removing it", p,
 				request->timestamp - c->expires);
 			talloc_free(p);
@@ -240,7 +240,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 	if (RDEBUG_ENABLED2) {
 		char *p;
 
-		p = fr_aprints(request, (char const *)key, key_len, '"');
+		p = fr_asprint(request, (char const *)key, key_len, '"');
 		RDEBUG2("Found entry for \"%s\"", p);
 		talloc_free(p);
 	}
@@ -412,7 +412,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 				 *	We need to rebuild the attribute name, to be the
 				 *	one we copied from the source list.
 				 */
-				len = tmpl_prints(attr, sizeof(attr), c_map->lhs, NULL);
+				len = tmpl_snprint(attr, sizeof(attr), c_map->lhs, NULL);
 				if (is_truncated(len, sizeof(attr))) {
 					REDEBUG("Serialized attribute too long.  Must be < "
 						STRINGIFY(sizeof(attr)) " bytes, got %zu bytes", len);
@@ -823,7 +823,7 @@ static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, cha
 		    (map->lhs->tmpl_tag != target.tmpl_tag) ||
 		    (map->lhs->tmpl_list != target.tmpl_list)) continue;
 
-		*out = value_data_aprints(request, map->rhs->tmpl_data_type, map->lhs->tmpl_da,
+		*out = value_data_asprint(request, map->rhs->tmpl_data_type, map->lhs->tmpl_da,
 					  &map->rhs->tmpl_data_value, '\0');
 		ret = talloc_array_length(*out) - 1;
 		break;

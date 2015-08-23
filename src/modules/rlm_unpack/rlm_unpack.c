@@ -177,7 +177,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 		break;
 	}
 
-	len = fr_pair_value_prints(*out, outlen, cast, 0);
+	len = fr_pair_value_snprint(*out, outlen, cast, 0);
 	talloc_free(cast);
 	if (is_truncated(len, outlen)) {
 		REDEBUG("Insufficient buffer space to unpack data");

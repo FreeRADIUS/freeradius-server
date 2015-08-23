@@ -67,14 +67,14 @@ int cache_serialize(TALLOC_CTX *ctx, char **out, rlm_cache_entry_t const *c)
 		char	*value;
 		size_t	len;
 
-		len = tmpl_prints(attr, sizeof(attr), map->lhs, map->lhs->tmpl_da);
+		len = tmpl_snprint(attr, sizeof(attr), map->lhs, map->lhs->tmpl_da);
 		if (is_truncated(len, sizeof(attr))) {
 			fr_strerror_printf("Serialized attribute too long.  Must be < " STRINGIFY(sizeof(attr)) " "
 					   "bytes, got %zu bytes", len);
 			goto error;
 		}
 
-		value = value_data_aprints(value_pool, map->rhs->tmpl_data_type,
+		value = value_data_asprint(value_pool, map->rhs->tmpl_data_type,
 					   map->lhs->tmpl_da, &map->rhs->tmpl_data_value, '\'');
 		if (!value) goto error;
 

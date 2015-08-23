@@ -711,7 +711,7 @@ redo:
 			if (fr_debug_lvl >= 2) {
 				char buffer[1024];
 
-				fr_pair_value_prints(buffer, sizeof(buffer), vp, '"');
+				fr_pair_value_snprint(buffer, sizeof(buffer), vp, '"');
 				RDEBUG2("# Foreach-Variable-%d = %s", foreach_depth, buffer);
 			}
 #endif
@@ -1906,9 +1906,9 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 		break;
 	}
 
-	quoted_len = fr_prints_len(tmpl_str, tmpl_len, quote);
+	quoted_len = fr_snprint_len(tmpl_str, tmpl_len, quote);
 	quoted_str = talloc_array(csingle, char, quoted_len);
-	fr_prints(quoted_str, quoted_len, tmpl_str, tmpl_len, quote);
+	fr_snprint(quoted_str, quoted_len, tmpl_str, tmpl_len, quote);
 
 	csingle->name = talloc_asprintf(csingle, "map %s %s", name2, quoted_str);
 	csingle->type = MOD_MAP;
@@ -4125,7 +4125,7 @@ void modcall_debug(modcallable *mc, int depth)
 
 		print_map:
 			for (map = g->map; map != NULL; map = map->next) {
-				map_prints(buffer, sizeof(buffer), map);
+				map_snprint(buffer, sizeof(buffer), map);
 				DEBUG("%.*s%s", depth + 1, modcall_spaces, buffer);
 			}
 
@@ -4143,7 +4143,7 @@ void modcall_debug(modcallable *mc, int depth)
 		case MOD_IF:
 		case MOD_ELSIF:
 			g = mod_callabletogroup(this);
-			fr_cond_sprint(buffer, sizeof(buffer), g->cond);
+			fr_cond_snprint(buffer, sizeof(buffer), g->cond);
 			DEBUG("%.*s%s (%s) {", depth, modcall_spaces,
 				unlang_keyword[this->type], buffer);
 			modcall_debug(g->children, depth + 1);
@@ -4153,7 +4153,7 @@ void modcall_debug(modcallable *mc, int depth)
 		case MOD_SWITCH:
 		case MOD_CASE:
 			g = mod_callabletogroup(this);
-			tmpl_prints(buffer, sizeof(buffer), g->vpt, NULL);
+			tmpl_snprint(buffer, sizeof(buffer), g->vpt, NULL);
 			DEBUG("%.*s%s %s {", depth, modcall_spaces,
 				unlang_keyword[this->type], buffer);
 			modcall_debug(g->children, depth + 1);

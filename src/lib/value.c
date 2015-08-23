@@ -1086,7 +1086,7 @@ int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 	 *	Serialise a value_data_t
 	 */
 	if (dst_type == PW_TYPE_STRING) {
-		dst->strvalue = value_data_aprints(ctx, src_type, src_enumv, src, '\0');
+		dst->strvalue = value_data_asprint(ctx, src_type, src_enumv, src, '\0');
 		dst->length = talloc_array_length(dst->strvalue) - 1;
 		return 0;
 	}
@@ -1527,7 +1527,7 @@ int value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const
 /** Print one attribute value to a string
  *
  */
-char *value_data_aprints(TALLOC_CTX *ctx,
+char *value_data_asprint(TALLOC_CTX *ctx,
 			 PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data, char quote)
 {
 	char *p = NULL;
@@ -1546,11 +1546,11 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 		}
 
 		/* Gets us the size of the buffer we need to alloc */
-		len = fr_prints_len(data->strvalue, data->length, quote);
+		len = fr_snprint_len(data->strvalue, data->length, quote);
 		p = talloc_array(ctx, char, len);
 		if (!p) return NULL;
 
-		ret = fr_prints(p, len, data->strvalue, data->length, quote);
+		ret = fr_snprint(p, len, data->strvalue, data->length, quote);
 		if (!fr_assert(ret == (len - 1))) {
 			talloc_free(p);
 			return NULL;
@@ -1641,7 +1641,7 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 		char buff[INET_ADDRSTRLEN  + 4]; // + /prefix
 
 		buff[0] = '\0';
-		value_data_prints(buff, sizeof(buff), type, enumv, data, '\0');
+		value_data_snprint(buff, sizeof(buff), type, enumv, data, '\0');
 
 		p = talloc_typed_strdup(ctx, buff);
 	}
@@ -1653,7 +1653,7 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 		char buff[INET6_ADDRSTRLEN + 4]; // + /prefix
 
 		buff[0] = '\0';
-		value_data_prints(buff, sizeof(buff), type, enumv, data, '\0');
+		value_data_snprint(buff, sizeof(buff), type, enumv, data, '\0');
 
 		p = talloc_typed_strdup(ctx, buff);
 	}
@@ -1710,7 +1710,7 @@ char *value_data_aprints(TALLOC_CTX *ctx,
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t value_data_prints(char *out, size_t outlen,
+size_t value_data_snprint(char *out, size_t outlen,
 			 PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data, char quote)
 {
 	DICT_VALUE	*v;
@@ -1742,7 +1742,7 @@ size_t value_data_prints(char *out, size_t outlen,
 			*p++ = quote;
 			freespace--;
 
-			len = fr_prints(p, freespace, data->strvalue, data->length, quote);
+			len = fr_snprint(p, freespace, data->strvalue, data->length, quote);
 			/* always terminate the quoted string with another quote */
 			if (len >= (freespace - 1)) {
 				/* Use out not p as we're operating on the entire buffer */
@@ -1760,7 +1760,7 @@ size_t value_data_prints(char *out, size_t outlen,
 			return len + 2;
 		}
 
-		return fr_prints(out, outlen, data->strvalue, data->length, quote);
+		return fr_snprint(out, outlen, data->strvalue, data->length, quote);
 
 	case PW_TYPE_INTEGER:
 		i = data->integer;

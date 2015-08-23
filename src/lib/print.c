@@ -176,7 +176,7 @@ char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char quote)
+size_t fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	int		utf8 = 0;
@@ -184,7 +184,7 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 
 	/*
 	 *	IF YOU MODIFY THIS FUNCTION, YOU MUST MAKE
-	 *	EQUIVALENT MODIFICATIONS TO fr_prints_len
+	 *	EQUIVALENT MODIFICATIONS TO fr_snprint_len
 	 */
 
 	/* Can't '\0' terminate */
@@ -328,7 +328,7 @@ finish:
 	return outlen - freespace;
 }
 
-/** Find the length of the buffer required to fully escape a string with fr_prints
+/** Find the length of the buffer required to fully escape a string with fr_snprint
  *
  * Were assuming here that's it's cheaper to figure out the length and do one
  * alloc than repeatedly expand the buffer when we find extra chars which need
@@ -339,7 +339,7 @@ finish:
  * @param[in] quote the quotation character.
  * @return the size of buffer required to hold the escaped string including the NULL byte.
  */
-size_t fr_prints_len(char const *in, ssize_t inlen, char quote)
+size_t fr_snprint_len(char const *in, ssize_t inlen, char quote)
 {
 	uint8_t const	*p = (uint8_t const *) in;
 	size_t		outlen = 1;	/* Need one byte for \0 */

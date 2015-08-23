@@ -562,7 +562,7 @@ static size_t rest_encode_post(void *out, size_t size, size_t nmemb, void *userd
 		/*
 		 *  Write out single attribute string.
 		 */
-		len = fr_pair_value_prints(p, freespace, vp, 0);
+		len = fr_pair_value_snprint(p, freespace, vp, 0);
 		if (is_truncated(len, freespace)) goto no_space;
 
 		RINDENT();
@@ -1713,7 +1713,7 @@ malformed:
 	{
 		char escaped[1024];
 
-		fr_prints(escaped, sizeof(escaped), (char *) in, t, '\0');
+		fr_snprint(escaped, sizeof(escaped), (char *) in, t, '\0');
 
 		REDEBUG("Received %zu bytes of response data: %s", t, escaped);
 		ctx->code = -1;

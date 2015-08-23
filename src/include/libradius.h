@@ -442,9 +442,9 @@ int		fr_check_lib_magic(uint64_t magic);
  */
 int		fr_utf8_char(uint8_t const *str, ssize_t inlen);
 char const     	*fr_utf8_strchr(int *chr_len, char const *str, char const *chr);
-size_t		fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char quote);
-size_t		fr_prints_len(char const *in, ssize_t inlen, char quote);
-char		*fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
+size_t		fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char quote);
+size_t		fr_snprint_len(char const *in, ssize_t inlen, char quote);
+char		*fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
 
 #define		is_truncated(_ret, _max) ((_ret) >= (size_t)(_max))
 #define		truncate_len(_ret, _max) (((_ret) >= (size_t)(_max)) ? (((size_t)(_max)) - 1) : _ret)
@@ -681,18 +681,18 @@ void		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src);
 void		fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src);
 void		fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src);
 void		fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len);
-void		fr_pair_value_sprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+void		fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
 
 /* Printing functions */
-size_t   	fr_pair_value_prints(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
-char     	*fr_pair_value_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
-size_t    	fr_pair_value_prints_json(char *out, size_t outlen, VALUE_PAIR const *vp);
+size_t   	fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
+char     	*fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+size_t    	fr_pair_value_snprint_json(char *out, size_t outlen, VALUE_PAIR const *vp);
 
-size_t		fr_pair_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
+size_t		fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp);
 void		fr_pair_fprint(FILE *, VALUE_PAIR const *vp);
 void		fr_pair_list_fprint(FILE *, VALUE_PAIR const *vp);
-char		*fr_pair_type_prints(TALLOC_CTX *ctx, PW_TYPE type);
-char		*fr_pair_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+char		*fr_pair_type_snprint(TALLOC_CTX *ctx, PW_TYPE type);
+char		*fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
 
 /* Hacky raw pair thing that needs to go away */
 FR_TOKEN 	fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw);
@@ -716,13 +716,13 @@ int		value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 
 int		value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type, const value_data_t *src);
 
-size_t		value_data_prints(char *out, size_t outlen,
+size_t		value_data_snprint(char *out, size_t outlen,
 				  PW_TYPE type, DICT_ATTR const *enumv,
 				  value_data_t const *data, char quote);
 
 int		value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type, value_data_t const *src);
 
-char		*value_data_aprints(TALLOC_CTX *ctx,
+char		*value_data_asprint(TALLOC_CTX *ctx,
 				    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
 				    char quote);
 
@@ -789,7 +789,7 @@ int		fr_blocking(int fd);
 ssize_t		fr_writev(int fd, struct iovec[], int iovcnt, struct timeval *timeout);
 
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
-size_t		fr_prints_uint128(char *out, size_t outlen, uint128_t const num);
+size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
 int		fr_get_time(char const *date_str, time_t *date);
 void		fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct timeval const *start);
 void		fr_timespec_subtract(struct timespec *out, struct timespec const *end, struct timespec const *start);

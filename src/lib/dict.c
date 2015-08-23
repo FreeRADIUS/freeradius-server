@@ -625,7 +625,7 @@ int dict_valid_name(char const *name)
 		if (!dict_attr_allowed_chars[*p]) {
 			char buff[5];
 
-			fr_prints(buff, sizeof(buff), (char const *)p, 1, '\'');
+			fr_snprint(buff, sizeof(buff), (char const *)p, 1, '\'');
 			fr_strerror_printf("Invalid character '%s' in attribute", buff);
 
 			return -(p - (uint8_t const *)name);

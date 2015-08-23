@@ -216,7 +216,7 @@ static void rs_time_print(char *out, size_t len, struct timeval const *t)
 	}
 }
 
-static size_t rs_prints_csv(char *out, size_t outlen, char const *in, size_t inlen)
+static size_t rs_snprint_csv(char *out, size_t outlen, char const *in, size_t inlen)
 {
 	char const	*start = out;
 	uint8_t const	*str = (uint8_t const *) in;
@@ -368,7 +368,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 					s--;
 					if (s <= 0) return;
 
-					len = rs_prints_csv(p, s, vp->vp_strvalue, vp->vp_length);
+					len = rs_snprint_csv(p, s, vp->vp_strvalue, vp->vp_length);
 					p += len;
 					s -= len;
 					if (s <= 0) return;
@@ -377,7 +377,7 @@ static void rs_packet_print_csv(uint64_t count, rs_status_t status, fr_pcap_t *h
 					s--;
 					if (s <= 0) return;
 				} else {
-					len = fr_pair_value_prints(p, s, vp, 0);
+					len = fr_pair_value_snprint(p, s, vp, 0);
 					p += len;
 					s -= len;
 					if (s <= 0) return;

@@ -599,7 +599,7 @@ int tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
 	vp_tmpl_t *vpt;
 
 	vpt = talloc(ctx, vp_tmpl_t);
-	name = value_data_aprints(vpt, type, enumv, data, '\0');
+	name = value_data_asprint(vpt, type, enumv, data, '\0');
 	tmpl_init(vpt, TMPL_TYPE_DATA, name, talloc_array_length(name),
 		  (type == PW_TYPE_STRING) ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD);
 
@@ -1448,7 +1448,7 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *f
  * the #vp_tmpl_t, avoiding unecessary string copies.
  *
  * @note This function is used where raw string values are needed, which may mean the string
- *	returned may be binary data or contain unprintable chars. #fr_prints or #fr_aprints should
+ *	returned may be binary data or contain unprintable chars. #fr_snprint or #fr_asprint should
  *	be used before using these values in debug statements. #is_printable can be used to check
  *	if the string only contains printable chars.
  *
@@ -1544,7 +1544,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 			slen = vp->vp_length;
 		} else {
 			if (out) *out = buff;
-			slen = fr_pair_value_prints(buff, bufflen, vp, '\0');
+			slen = fr_pair_value_snprint(buff, bufflen, vp, '\0');
 		}
 	}
 		break;
@@ -1561,7 +1561,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
 			/**
 			 *  @todo tmpl_expand should accept an enumv da from the lhs of the map.
 			 */
-			slen = value_data_prints(buff, bufflen, vpt->tmpl_data_type, NULL, &vpt->tmpl_data_value, '\0');
+			slen = value_data_snprint(buff, bufflen, vpt->tmpl_data_type, NULL, &vpt->tmpl_data_value, '\0');
 		}
 	}
 		break;
@@ -1623,7 +1623,7 @@ ssize_t tmpl_expand(char const **out, char *buff, size_t bufflen, REQUEST *reque
  * existing buffer.
  *
  * @note This function is used where raw string values are needed, which may mean the string
- *	returned may be binary data or contain unprintable chars. #fr_prints or #fr_aprints should
+ *	returned may be binary data or contain unprintable chars. #fr_snprint or #fr_asprint should
  *	be used before using these values in debug statements. #is_printable can be used to check
  *	if the string only contains printable chars.
  *
@@ -1725,7 +1725,7 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 			break;
 
 		default:
-			*out = fr_pair_value_aprints(ctx, vp, '\0');
+			*out = fr_pair_value_asprint(ctx, vp, '\0');
 			if (!*out) return -1;
 			slen = talloc_array_length(*out) - 1;
 			break;
@@ -1751,7 +1751,7 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 			break;
 
 		default:
-			*out = value_data_aprints(ctx, vpt->tmpl_data_type, NULL, &vpt->tmpl_data_value, '\0');
+			*out = value_data_asprint(ctx, vpt->tmpl_data_type, NULL, &vpt->tmpl_data_value, '\0');
 			if (!*out) return -1;
 			slen = talloc_array_length(*out) - 1;
 			break;
@@ -1813,7 +1813,7 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR const *values)
+size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR const *values)
 {
 	size_t		len;
 	char const	*p;
@@ -1912,7 +1912,7 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 	case TMPL_TYPE_REGEX_STRUCT:
 		if (outlen < 4) goto empty;	/* / + <c> + / + \0 */
 		*out_p++ = '/';
-		len = fr_prints(out_p, (end - out_p) - 1, vpt->name, vpt->len, '\0');
+		len = fr_snprint(out_p, (end - out_p) - 1, vpt->name, vpt->len, '\0');
 		RETURN_IF_TRUNCATED(out_p, len, (end - out_p) - 1);
 		*out_p++ = '/';
 		goto finish;
@@ -1944,13 +1944,13 @@ size_t tmpl_prints(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR con
 do_literal:
 		if (outlen < 4) goto empty;	/* / + <c> + / + \0 */
 		if (c != '\0') *out_p++ = c;
-		len = fr_prints(out_p, (end - out_p) - ((c == '\0') ? 0 : 1), vpt->name, vpt->len, c);
+		len = fr_snprint(out_p, (end - out_p) - ((c == '\0') ? 0 : 1), vpt->name, vpt->len, c);
 		RETURN_IF_TRUNCATED(out_p, len, (end - out_p) - ((c == '\0') ? 0 : 1));
 		if (c != '\0') *out_p++ = c;
 		break;
 
 	case TMPL_TYPE_DATA:
-		return value_data_prints(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_value,
+		return value_data_snprint(out, outlen, vpt->tmpl_data_type, values, &vpt->tmpl_data_value,
 					 fr_token_quote[vpt->quote]);
 
 	default:

@@ -74,7 +74,7 @@ static ssize_t jpath_validate(UNUSED void *instance, REQUEST *request, char cons
 	}
 	rad_assert(talloc_get_type_abort(head, fr_jpath_node_t));
 
-	jpath_str = fr_jpath_aprints(request, head);
+	jpath_str = fr_jpath_asprint(request, head);
 	ret = snprintf(*out, freespace, "%zu:%s", slen, jpath_str);
 	talloc_free(head);
 	talloc_free(jpath_str);

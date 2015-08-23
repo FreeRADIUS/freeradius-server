@@ -546,7 +546,7 @@ static void parse_condition(char const *input, char *output, size_t outlen)
 		return;
 	}
 
-	fr_cond_sprint(output, outlen, cond);
+	fr_cond_snprint(output, outlen, cond);
 
 	talloc_free(cond);
 }
@@ -569,7 +569,7 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 		return;
 	}
 
-	xlat_sprint(output, outlen, head);
+	xlat_snprint(output, outlen, head);
 	talloc_free(fmt);
 }
 
@@ -763,7 +763,7 @@ static void process_file(const char *root_dir, char const *filename)
 				for (vp = fr_cursor_init(&cursor, &head);
 				     vp;
 				     vp = fr_cursor_next(&cursor)) {
-					fr_pair_prints(p, sizeof(output) - (p - output), vp);
+					fr_pair_snprint(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
 
 					if (vp->next) {strcpy(p, ", ");
@@ -847,7 +847,7 @@ static void process_file(const char *root_dir, char const *filename)
 				for (vp = fr_cursor_init(&cursor, &head);
 				     vp;
 				     vp = fr_cursor_next(&cursor)) {
-					fr_pair_prints(p, sizeof(output) - (p - output), vp);
+					fr_pair_snprint(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
 
 					if (vp->next) {strcpy(p, ", ");
@@ -873,7 +873,7 @@ static void process_file(const char *root_dir, char const *filename)
 				continue;
 			}
 
-			fr_pair_prints(output, sizeof(output), head);
+			fr_pair_snprint(output, sizeof(output), head);
 			continue;
 		}
 

@@ -316,7 +316,7 @@ static void sql_set_last_error(rlm_sql_cassandra_conn_t *conn, char const *messa
 {
 	talloc_free_children(conn->log_ctx);
 
-	conn->last_error.msg = fr_aprints(conn->log_ctx, message, len, '\0');
+	conn->last_error.msg = fr_asprint(conn->log_ctx, message, len, '\0');
 	conn->last_error.type = L_ERR;
 }
 

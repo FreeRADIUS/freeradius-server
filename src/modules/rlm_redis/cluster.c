@@ -1536,7 +1536,7 @@ static cluster_key_slot_t *cluster_slot_by_key(fr_redis_cluster_t *cluster, REQU
 		if (RDEBUG_ENABLED2) {
 			char *p;
 
-			p = fr_aprints(request, (char const *)key, key_len, '"');
+			p = fr_asprint(request, (char const *)key, key_len, '"');
 			RDEBUG2("Key \"%s\" -> slot %zu", p, key_slot - cluster->key_slot);
 			talloc_free(p);
 		}

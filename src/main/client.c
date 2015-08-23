@@ -1234,7 +1234,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		/*
 		 *	Freed at the same time as the vp.
 		 */
-		strvalue = fr_pair_value_aprints(vp, vp, '\'');
+		strvalue = fr_pair_value_asprint(vp, vp, '\'');
 
 		switch (dynamic_config[i].type) {
 		case PW_TYPE_IPV4_ADDR:
@@ -1377,7 +1377,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		do {
 			char *value;
 
-			value = fr_pair_value_aprints(vp, vp, '\'');
+			value = fr_pair_value_asprint(vp, vp, '\'');
 			if (!value) {
 				ERROR("Failed stringifying value of &control:%s", vp->da->name);
 				goto error;

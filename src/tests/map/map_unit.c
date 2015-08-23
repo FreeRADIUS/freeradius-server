@@ -132,7 +132,7 @@ static int process_file(char const *filename)
 	}
 
 	for (map = head; map != NULL; map = map->next) {
-		map_prints(buffer + 1, sizeof(buffer) - 1, map);
+		map_snprint(buffer + 1, sizeof(buffer) - 1, map);
 		puts(buffer);
 	}
 	printf("}\n");
