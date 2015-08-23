@@ -3298,6 +3298,12 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
+	if (conf->session_cache_server &&
+	    !cf_section_sub_find_name2(main_config.config, "server", conf->session_cache_server)) {
+		ERROR(LOG_PREFIX ": No such virtual server '%s'", conf->session_cache_server);
+		goto error;
+	}
+
 	/*
 	 *	Cache conf in cs in case we're asked to parse this again.
 	 */
