@@ -76,6 +76,7 @@ authorize {
 	Autz-Type Session-Cache-Write {
 		update control {
 			Cache-TTL := 0
+			Cache-Allow-Merge := no
 		}
 		cache_tls_session
 	}
@@ -93,6 +94,7 @@ authorize {
 		update control {
 			Cache-TTL := 0
 			Cache-Allow-Insert := no
+			Cache-Allow-Merge := no
 		}
 		cache_tls_session
 	}
@@ -111,7 +113,7 @@ authorize {
 		update control {
 			Cache-Allow-Insert := no
 		}
-		cache_ocsp_session
+		cache_ocsp
 	}
 
 	#
@@ -127,9 +129,10 @@ authorize {
 	#
 	Autz-Type OCSP-Cache-Write {
 		update control {
-			Cache-TTL := "%{expr:&TLS-OCSP-Next-Update * -1}"
+			Cache-TTL := "%{expr:&reply:TLS-OCSP-Next-Update * -1}"
+			Cache-Allow-Merge := no
 		}
-		cache_ocsp_session
+		cache_ocsp
 	}
 }
 }
