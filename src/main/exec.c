@@ -101,7 +101,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 	char		argv_buf[4096];
 #define MAX_ENVP 1024
 	char		*envp[MAX_ENVP];
-	int		envlen = 0;
+	size_t		envlen = 0;
 	TALLOC_CTX	*input_ctx = NULL;
 
 	/*
@@ -158,7 +158,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	and will remain locked in the child.
 		 */
 		for (vp = fr_cursor_init(&cursor, &input_pairs);
-		     vp;
+		     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
 		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
@@ -181,22 +181,13 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 
 			DEBUG3("export %s", buffer);
 			envp[envlen++] = talloc_strdup(input_ctx, buffer);
-
-			/*
-			 *	Don't add too many attributes.
-			 */
-			if (envlen == (MAX_ENVP - 1)) break;
 		}
 
 		fr_cursor_init(&cursor, radius_list(request, PAIR_LIST_CONTROL));
-		while ((vp = fr_cursor_next_by_num(&cursor, PW_EXEC_EXPORT, 0, TAG_ANY))) {
+		while ((envlen < ((sizeof(envp) / sizeof(*envp)) - 1)) &&
+		       (vp = fr_cursor_next_by_num(&cursor, PW_EXEC_EXPORT, 0, TAG_ANY))) {
 			DEBUG3("export %s", vp->vp_strvalue);
 			memcpy(&envp[envlen++], &vp->vp_strvalue, sizeof(*envp));
-
-			/*
-			 *	Don't add too many attributes.
-			 */
-			if (envlen == (MAX_ENVP - 1)) break;
 		}
 
 		/*
