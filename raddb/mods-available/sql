@@ -97,14 +97,6 @@ sql {
 	# issues with authorization queries.
 #	logfile = ${logdir}/sqllog.sql
 
-	#  As of version 3.0, the "pool" section has replaced the
-	#  following configuration items:
-	#
-	#  num_sql_socks
-	#  connect_failure_retry_delay
-	#  lifetime
-	#  max_queries
-
 	#  Set the maximum query duration for rlm_sql_mysql and 
 	#  rlm_sql_cassandra.
 #	query_timeout = 5
