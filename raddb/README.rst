@@ -30,6 +30,36 @@ modifications will be required.
 Use of attributes in xlats e.g. ``%{User-Name}`` remains unchanged.
 There is no plan to require prefixes here.
 
+Connection timeouts
+-------------------
+
+In versions <= v3.0.x the config items for configuring connection
+timeouts were either confusingly named, or completely absent in
+the case of many contributed modules.
+
+In v3.1.x connection timeouts can be configured universally for
+all modules with the ``connect_timeout`` config item of the
+module's ``pool {}`` section.
+
+The following modules should honour ``connect_timeout``:
+
+- rlm_smsotp
+- rlm_rest
+- rlm_linelog (network connections only)
+- rlm_ldap
+- rlm_couchbase
+- rlm_cache_memcached
+- rlm_redis_* (all the redis modules)
+- rlm_sql_cassandra
+- rlm_sql_db2
+- rlm_sql_freetds
+- rlm_sql_iodbc
+- rlm_sql_mysql
+- rlm_sql_unixodbc
+
+Some modules such as rlm_sql_postgresql can have their timeout set via an alternative
+configuration item (db_string in the case of postgresql).
+
 Changed Modules
 ---------------
 
