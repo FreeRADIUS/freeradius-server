@@ -58,7 +58,7 @@ The following modules should honour ``connect_timeout``:
 - rlm_sql_unixodbc
 
 Some modules such as rlm_sql_postgresql can have their timeout set via an alternative
-configuration item (db_string in the case of postgresql).
+configuration item (``radius_db`` in the case of postgresql).
 
 Changed Modules
 ---------------
