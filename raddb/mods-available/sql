@@ -105,6 +105,10 @@ sql {
 	#  lifetime
 	#  max_queries
 
+	#  Set the maximum query duration for rlm_sql_mysql and 
+	#  rlm_sql_cassandra.
+#	query_timeout = 5
+
 	#
 	# The connection pool is new for 3.0, and will be used in many
 	# modules, for all kinds of connection-related activity.
