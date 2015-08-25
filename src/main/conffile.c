@@ -1624,17 +1624,18 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	rad_assert(!tmpl || !dflt || (dflt_quote != T_INVALID));	/* We ALWAYS need a quoting type for templates */
 	rad_assert(!(type & PW_TYPE_ATTRIBUTE) || tmpl);		/* Attribute flag only valid for templates */
 
-	if (attribute) required = true;
 	if (required) cant_be_empty = true;		/* May want to review this in the future... */
+
+	type &= 0xff;					/* normal types are small */
 
 	/*
 	 *	Everything except templates must have a base type.
 	 */
-	if (!(type & 0xff) && !tmpl) {
+	if (!type && !tmpl) {
 		cf_log_err(c_item, "Configuration item \"%s\" must have a data type", name);
 		return -1;
 	}
-	type &= 0xff;					/* normal types are small */
+
 
 	/*
 	 *	See if there's a pair in the config that matches
