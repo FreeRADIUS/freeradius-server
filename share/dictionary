@@ -146,6 +146,7 @@ $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.bluecoat
+$INCLUDE dictionary.boingo
 $INCLUDE dictionary.broadsoft
 $INCLUDE dictionary.brocade
 $INCLUDE dictionary.bskyb
