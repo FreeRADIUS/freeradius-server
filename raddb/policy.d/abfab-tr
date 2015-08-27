@@ -56,11 +56,11 @@ abfab_channel_bindings {
 		reject
 	}
 
-	if (GSS-Acceptor-Host-Name && outer.request:GSS-Acceptor-Host-Name != GSS-Acceptor-Host-Name ) {
+	if (GSS-Acceptor-Host-Name && outer.request:GSS-Acceptor-Host-Name != GSS-Acceptor-Host-Name) {
 		reject
 	}
 
-	if (GSS-Acceptor-Realm-Name && outer.request:GSS-Acceptor-Realm-Name != GSS-Acceptor-Realm-Name ) {
+	if (GSS-Acceptor-Realm-Name && outer.request:GSS-Acceptor-Realm-Name != GSS-Acceptor-Realm-Name) {
 		reject
 	}
 
