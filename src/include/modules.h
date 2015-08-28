@@ -30,6 +30,7 @@ RCSIDH(modules_h, "$Id$")
 
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/features.h>
+#include <freeradius-devel/connection.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -145,23 +146,41 @@ typedef struct module_t {
 	packetmethod		methods[MOD_COUNT];	//!< Pointers to the various section functions.
 } module_t;
 
-int modules_init(CONF_SECTION *);
-int modules_free(void);
-int modules_hup(CONF_SECTION *modules);
-rlm_rcode_t process_authorize(int type, REQUEST *request);
-rlm_rcode_t process_authenticate(int type, REQUEST *request);
-rlm_rcode_t module_preacct(REQUEST *request);
-rlm_rcode_t process_accounting(int type, REQUEST *request);
-int process_checksimul(int type, REQUEST *request, int maxsimul);
-rlm_rcode_t process_pre_proxy(int type, REQUEST *request);
-rlm_rcode_t process_post_proxy(int type, REQUEST *request);
-rlm_rcode_t process_post_auth(int type, REQUEST *request);
+
+/*
+ *	Share connection pool instances between modules
+ */
+fr_connection_pool_t	*module_connection_pool_init(CONF_SECTION *module,
+						     void *opaque,
+						     fr_connection_create_t c,
+						     fr_connection_alive_t a,
+						     char const *prefix);
+
+/*
+ *	Create free and destroy module instances
+ */
+int		modules_init(CONF_SECTION *);
+int		modules_free(void);
+int		modules_hup(CONF_SECTION *modules);
+
+/*
+ *	Call various module sections
+ */
+rlm_rcode_t	process_authorize(int type, REQUEST *request);
+rlm_rcode_t	process_authenticate(int type, REQUEST *request);
+rlm_rcode_t	module_preacct(REQUEST *request);
+rlm_rcode_t	process_accounting(int type, REQUEST *request);
+int		process_checksimul(int type, REQUEST *request, int maxsimul);
+rlm_rcode_t	process_pre_proxy(int type, REQUEST *request);
+rlm_rcode_t	process_post_proxy(int type, REQUEST *request);
+rlm_rcode_t	process_post_auth(int type, REQUEST *request);
+
 #ifdef WITH_COA
-rlm_rcode_t process_recv_coa(int type, REQUEST *request);
-rlm_rcode_t process_send_coa(int type, REQUEST *request);
-#define MODULE_NULL_COA_FUNCS ,NULL,NULL
+rlm_rcode_t 	process_recv_coa(int type, REQUEST *request);
+rlm_rcode_t	process_send_coa(int type, REQUEST *request);
+#  define MODULE_NULL_COA_FUNCS ,NULL,NULL
 #else
-#define MODULE_NULL_COA_FUNCS
+#  define MODULE_NULL_COA_FUNCS
 #endif
 
 rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request);

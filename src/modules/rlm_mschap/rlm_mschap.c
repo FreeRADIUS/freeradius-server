@@ -605,7 +605,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #ifdef WITH_AUTH_WINBIND
 		inst->method = AUTH_WBCLIENT;
 
-		inst->wb_pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, NULL);
+		inst->wb_pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL);
 		if (!inst->wb_pool) {
 			cf_log_err_cs(conf, "Unable to initialise winbind connection pool");
 			return -1;

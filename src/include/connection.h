@@ -124,12 +124,6 @@ fr_connection_pool_t	*fr_connection_pool_init(TALLOC_CTX *ctx,
 						 char const *log_prefix,
 						 char const *trigger_prefix);
 
-fr_connection_pool_t	*fr_connection_pool_module_init(CONF_SECTION *module,
-							void *opaque,
-							fr_connection_create_t c,
-							fr_connection_alive_t a,
-							char const *prefix);
-
 fr_connection_pool_t	*fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_pool_t *pool, void *opaque);
 
 
@@ -139,6 +133,8 @@ fr_connection_pool_t	*fr_connection_pool_copy(TALLOC_CTX *ctx, fr_connection_poo
 struct timeval fr_connection_pool_timeout(fr_connection_pool_t *pool);
 
 void const *fr_connection_pool_opaque(fr_connection_pool_t *pool);
+
+void fr_connection_pool_ref(fr_connection_pool_t *pool);
 
 fr_connection_pool_state_t const *fr_connection_pool_state(fr_connection_pool_t *pool);
 

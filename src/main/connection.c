@@ -1058,122 +1058,6 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	return pool;
 }
 
-/** Initialise a module specific connection pool
- *
- * @see fr_connection_pool_init
- *
- * @param[in] module section.
- * @param[in] opaque data pointer to pass to callbacks.
- * @param[in] c Callback to create new connections.
- * @param[in] a Callback to check the status of connections.
- * @param[in] log_prefix override, if NULL will be set automatically from the module CONF_SECTION.
- * @return
- *	- New connection pool.
- *	- NULL on error.
- */
-fr_connection_pool_t *fr_connection_pool_module_init(CONF_SECTION *module,
-						     void *opaque,
-						     fr_connection_create_t c,
-						     fr_connection_alive_t a,
-						     char const *log_prefix)
-{
-	CONF_SECTION *cs, *mycs;
-	char buff[128];
-	char trigger_prefix[64];
-
-	fr_connection_pool_t *pool;
-	char const *cs_name1, *cs_name2;
-
-	int ret;
-
-#define CONNECTION_POOL_CF_KEY "connection_pool"
-#define parent_name(_x) cf_section_name(cf_item_parent(cf_section_to_item(_x)))
-
-	cs_name1 = cf_section_name1(module);
-	cs_name2 = cf_section_name2(module);
-	if (!cs_name2) cs_name2 = cs_name1;
-
-	snprintf(trigger_prefix, sizeof(trigger_prefix), "modules.%s.pool", cs_name1);
-
-	if (!log_prefix) {
-		snprintf(buff, sizeof(buff), "rlm_%s (%s)", cs_name1, cs_name2);
-		log_prefix = buff;
-	}
-
-	/*
-	 *	Get sibling's pool config section
-	 */
-	ret = module_sibling_section_find(&cs, module, "pool");
-	switch (ret) {
-	case -1:
-		return NULL;
-
-	case 1:
-		DEBUG4("%s: Using pool section from \"%s\"", log_prefix, parent_name(cs));
-		break;
-
-	case 0:
-		DEBUG4("%s: Using local pool section", log_prefix);
-		break;
-	}
-
-	/*
-	 *	Get our pool config section
-	 */
-	mycs = cf_section_sub_find(module, "pool");
-	if (!mycs) {
-		DEBUG4("%s: Adding pool section to config item \"%s\" to store pool references", log_prefix,
-		       cf_section_name(module));
-
-		mycs = cf_section_alloc(module, "pool", NULL);
-		cf_section_add(module, mycs);
-	}
-
-	/*
-	 *	Sibling didn't have a pool config section
-	 *	Use our own local pool.
-	 */
-	if (!cs) {
-		DEBUG4("%s: \"%s.pool\" section not found, using \"%s.pool\"", log_prefix,
-		       parent_name(cs), parent_name(mycs));
-		cs = mycs;
-	}
-
-	/*
-	 *	If fr_connection_pool_init has already been called
-	 *	for this config section, reuse the previous instance.
-	 *
-	 *	This allows modules to pass in the config sections
-	 *	they would like to use the connection pool from.
-	 */
-	pool = cf_data_find(cs, CONNECTION_POOL_CF_KEY);
-	if (!pool) {
-		DEBUG4("%s: No pool reference found for config item \"%s.pool\"", log_prefix, parent_name(cs));
-		pool = fr_connection_pool_init(cs, cs, opaque, c, a, log_prefix, trigger_prefix);
-		if (!pool) return NULL;
-
-		DEBUG4("%s: Adding pool reference %p to config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
-		cf_data_add(cs, CONNECTION_POOL_CF_KEY, pool, NULL);
-		return pool;
-	}
-	pool->ref++;
-
-	DEBUG4("%s: Found pool reference %p in config item \"%s.pool\"", log_prefix, pool, parent_name(cs));
-
-	/*
-	 *	We're reusing pool data add it to our local config
-	 *	section. This allows other modules to transitively
-	 *	re-use a pool through this module.
-	 */
-	if (mycs != cs) {
-		DEBUG4("%s: Copying pool reference %p from config item \"%s.pool\" to config item \"%s.pool\"",
-		       log_prefix, pool, parent_name(cs), parent_name(mycs));
-		cf_data_add(mycs, CONNECTION_POOL_CF_KEY, pool, NULL);
-	}
-
-	return pool;
-}
-
 /** Allocate a new pool using an existing one as a template
  *
  * @param ctx to allocate new pool in.
@@ -1217,6 +1101,15 @@ struct timeval fr_connection_pool_timeout(fr_connection_pool_t *pool)
 void const *fr_connection_pool_opaque(fr_connection_pool_t *pool)
 {
 	return pool->opaque;
+}
+
+/** Increment pool reference by one.
+ *
+ * @param[in] pool to increment reference counter for.
+ */
+void fr_connection_pool_ref(fr_connection_pool_t *pool)
+{
+	pool->ref++;
 }
 
 /** Set a reconnection callback for the connection pool

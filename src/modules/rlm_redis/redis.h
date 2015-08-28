@@ -83,7 +83,7 @@ typedef struct redis_conn {
 
 /** Configuration parameters for a redis connection
  *
- * @note should be passed as instance data to #fr_connection_pool_module_init.
+ * @note should be passed as instance data to #module_connection_pool_init.
  */
 typedef struct redis_common_conf {
 	char const		*prefix;	//!< Logging prefix for errors in #fr_redis_cluster_conn_create.

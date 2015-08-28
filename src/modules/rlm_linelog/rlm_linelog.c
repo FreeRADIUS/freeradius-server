@@ -398,20 +398,20 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		cf_log_err_cs(conf, "Unix sockets are not supported on this sytem");
 		return -1;
 #else
-		inst->pool = fr_connection_pool_module_init(cf_section_sub_find(conf, "unix"),
+		inst->pool = module_connection_pool_init(cf_section_sub_find(conf, "unix"),
 							    inst, mod_conn_create, NULL, prefix);
 		if (!inst->pool) return -1;
 #endif
 		break;
 
 	case LINELOG_DST_UDP:
-		inst->pool = fr_connection_pool_module_init(cf_section_sub_find(conf, "udp"),
+		inst->pool = module_connection_pool_init(cf_section_sub_find(conf, "udp"),
 							    inst, mod_conn_create, NULL, prefix);
 		if (!inst->pool) return -1;
 		break;
 
 	case LINELOG_DST_TCP:
-		inst->pool = fr_connection_pool_module_init(cf_section_sub_find(conf, "tcp"),
+		inst->pool = module_connection_pool_init(cf_section_sub_find(conf, "tcp"),
 							    inst, mod_conn_create, NULL, prefix);
 		if (!inst->pool) return -1;
 		break;

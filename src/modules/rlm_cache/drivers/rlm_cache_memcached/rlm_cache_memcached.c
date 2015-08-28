@@ -24,6 +24,7 @@
 #include <libmemcached/memcached.h>
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include "../../rlm_cache.h"
@@ -131,7 +132,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 
 	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
 
-	driver->pool = fr_connection_pool_module_init(conf, driver, mod_conn_create, NULL, buffer);
+	driver->pool = module_connection_pool_init(conf, driver, mod_conn_create, NULL, buffer);
 	if (!driver->pool) return -1;
 
 	fr_link_talloc_ctx_free(driver, driver->pool);	/* Ensure pool is freed */
