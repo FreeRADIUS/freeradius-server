@@ -62,12 +62,6 @@ typedef struct fr_redis_cluster_state {
 void *fr_redis_cluster_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
 /*
- *	Process response from pipelined command.
- */
-fr_redis_rcode_t fr_redis_cluster_pipeline_clear(redisReply *out[], size_t out_len,
-						 fr_redis_conn_t *conn, int pipelined);
-
-/*
  *	Reserve/release connections, follow redirects, reconnect
  *	connections implement retry delays.
  */

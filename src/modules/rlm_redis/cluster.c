@@ -1548,93 +1548,6 @@ static cluster_key_slot_t *cluster_slot_by_key(fr_redis_cluster_t *cluster, REQU
 	return &cluster->key_slot[0];
 }
 
-/** Simplifies handling of pipelined commands with Redis cluster
- *
- * Retrieve all available pipelined responses, and write them to the array.
- *
- * On encountering an error, all previously retrieved responses are freed, and the reply
- * containing the error is written to the first element of out. All responses after the
- * error are also freed.
- *
- * If the number of responses != pipelined, that's also an error, a very serious one,
- * probably in libhiredis.  We can't really do much here apart from error out.
- *
- * @param[out] out Where to write the replies from pipelined commands.
- *	Will contain exactly 1 element on error, else the number passed in pipelined.
- * @param[in] out_len number of elements in out.
- * @param[in] conn the pipelined commands were issued on.
- * @param[in] pipelined Number of pipelined commands we sent to the server.
- * @return
- *	- #REDIS_RCODE_SUCCESS on success.
- *	- #REDIS_RCODE_ERROR on command/response mismatch or command error.
- *	- REDIS_RCODE_* on other errors;
- */
-fr_redis_rcode_t fr_redis_cluster_pipeline_clear(redisReply *out[], size_t out_len,
-						 fr_redis_conn_t *conn, int pipelined)
-{
-	int			i;
-	redisReply		**out_p = out;
-	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
-	redisReply		*reply = NULL;
-
-	rad_assert(out_len >= (size_t)pipelined);
-
-#ifdef NDEBUG
-	if (pipelined > out_len) {
-		for (i = 0; i < (size_t)pipelined; i++) {
-			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) break;
-			fr_redis_free_reply(reply);
-		}
-
-		fr_strerror_printf("Too many pipelined commands");
-		out[0] = NULL;
-		return REDIS_RCODE_ERROR;
-	}
-#endif
-
-	for (i = 0; i < pipelined; i++) {
-		bool maybe_more = false;
-
-		/*
-		 *	we don't need to check the return code here,
-		 *	as it's also stored in the conn->handle.
-		 */
-		reply = NULL;	/* redisGetReply doesn't NULLify reply on error *sigh* */
-		if (redisGetReply(conn->handle, (void **)&reply) == REDIS_OK) maybe_more = true;
-		status = fr_redis_command_status(conn, reply);
-		*out_p++ = reply;
-
-		/*
-		 *	Bail out of processing responses,
-		 *	free the remaining ones (leaving this one intact)
-		 *	pass control back to the cluster code.
-		 */
-		if (maybe_more && (status != REDIS_RCODE_SUCCESS)) {
-			int j;
-		error:
-			for (j = 0; j < i; j++) fr_redis_reply_free(out[i]);
-			for (j = i + 1; j < pipelined; j++) {
-				redisReply *to_clear;
-
-				if (redisGetReply(conn->handle, (void **)&to_clear) != REDIS_OK) break;
-				fr_redis_reply_free(to_clear);
-			}
-
-
-			out[0] = reply;
-			return status;
-		}
-	}
-
-	if (i != pipelined) {
-		fr_strerror_printf("Expected %i responses, got %i", pipelined, i);
-		status = REDIS_RCODE_ERROR;
-		goto error;
-	}
-
-	return status;
-}
-
 /** Resolve a key to a pool, and reserve a connection in that pool
  *
  * This should be used with #fr_redis_cluster_state_next, and #fr_redis_command_status, to
@@ -1758,7 +1671,7 @@ finish:
 	state->key = key;
 	state->key_len = key_len;
 
-	RDEBUG2("[%i] >>> Using cluster node %s:%i", state->node->id, state->node->name, state->node->addr.port);
+	RDEBUG2("[%i] >>> Sending command(s) to %s:%i", state->node->id, state->node->name, state->node->addr.port);
 
 	return REDIS_RCODE_TRY_AGAIN;
 }
@@ -1805,7 +1718,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	rad_assert(state && state->node && state->node->pool);
 	rad_assert(conn && *conn);
 
- 	RDEBUG2("[%i] <<< Command returned: %s", state->node->id, fr_int2str(redis_rcodes, status, "<UNKNOWN>"));
+ 	RDEBUG2("[%i] <<< Returned: %s", state->node->id, fr_int2str(redis_rcodes, status, "<UNKNOWN>"));
 
 	/*
 	 *	Caller indicated we should close the connection
@@ -1974,7 +1887,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	}
 
 try_again:
-	RDEBUG2("[%i] >>> Using cluster node %s:%i", state->node->id, state->node->name, state->node->addr.port);
+	RDEBUG2("[%i] >>> Sending command(s) to %s:%i", state->node->id, state->node->name, state->node->addr.port);
 
 	fr_redis_reply_free(*reply);
 	*reply = NULL;

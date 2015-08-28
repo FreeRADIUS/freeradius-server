@@ -104,7 +104,7 @@ typedef struct redis_common_conf {
 } fr_redis_conf_t;
 
 #define REDIS_COMMON_CONFIG \
-	{ FR_CONF_OFFSET("server", PW_TYPE_STRING | PW_TYPE_REQUIRED, fr_redis_conf_t, hostname) }, \
+	{ FR_CONF_OFFSET("server", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_MULTI, fr_redis_conf_t, hostname) }, \
 	{ FR_CONF_OFFSET("port", PW_TYPE_SHORT, fr_redis_conf_t, port), .dflt = "6379" }, \
 	{ FR_CONF_OFFSET("database", PW_TYPE_INTEGER, fr_redis_conf_t, database), .dflt = "0" }, \
 	{ FR_CONF_OFFSET("password", PW_TYPE_STRING | PW_TYPE_SECRET, fr_redis_conf_t, password) }, \
@@ -128,4 +128,19 @@ int		fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out,
 				      REQUEST *request, redisReply *key, redisReply *op, redisReply *value);
 
 int		fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], vp_map_t *map);
+
+/*
+ *	Process response from pipelined command.
+ */
+size_t fr_redis_pipeline_result(fr_redis_rcode_t *rcode, redisReply *out[], size_t out_len,
+				fr_redis_conn_t *conn, int pipelined);
+
+#define fr_redis_pipeline_free(_r, _n) \
+do {\
+	size_t _i; \
+	for (_i = 0; _i < _n; _i++) {\
+		fr_redis_reply_free(_r[_i]); \
+		_r[_i] = NULL; \
+	} \
+} while (0)
 #endif /* LIBFREERADIUS_REDIS_H */

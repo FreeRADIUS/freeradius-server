@@ -433,3 +433,103 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
 
 	return 0;
 }
+
+/** Simplifies handling of pipelined commands with Redis cluster
+ *
+ * Retrieve all available pipelined responses, and write them to the array.
+ *
+ * On encountering an error, all previously retrieved responses are freed, and the reply
+ * containing the error is written to the first element of out. All responses after the
+ * error are also freed.
+ *
+ * If the number of responses != pipelined, that's also an error, a very serious one,
+ * in libhiredis or Redis.  We can't really do much here apart from error out.
+ *
+ * @param[out] rcode Status of the first errored response, or REDIS_RCODE_SUCCESS
+ *	if all responses were processed.
+ * @param[out] out Where to write the replies from pipelined commands.
+ *	Will contain exactly 1 element on error, else the number passed in pipelined.
+ * @param[in] out_len number of elements in out.
+ * @param[in] conn the pipelined commands were issued on.
+ * @param[in] pipelined Number of pipelined commands we sent to the server.
+ * @return
+ *	- #REDIS_RCODE_SUCCESS on success.
+ *	- #REDIS_RCODE_ERROR on command/response mismatch or command error.
+ *	- REDIS_RCODE_* on other errors;
+ */
+size_t fr_redis_pipeline_result(fr_redis_rcode_t *rcode, redisReply *out[], size_t out_len,
+				fr_redis_conn_t *conn, int pipelined)
+{
+	size_t			i;
+	redisReply		**out_p = out;
+	fr_redis_rcode_t	status = REDIS_RCODE_SUCCESS;
+	redisReply		*reply = NULL;
+
+	rad_assert(out_len >= (size_t)pipelined);
+
+#ifdef NDEBUG
+	if (pipelined > out_len) {
+		for (i = 0; i < (size_t)pipelined; i++) {
+			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) break;
+			fr_redis_free_reply(reply);
+		}
+
+		fr_strerror_printf("Too many pipelined commands");
+		out[0] = NULL;
+		return REDIS_RCODE_ERROR;
+	}
+#endif
+
+	for (i = 0; i < (size_t)pipelined; i++) {
+		bool maybe_more = false;
+
+		/*
+		 *	we don't need to check the return code here,
+		 *	as it's also stored in the conn->handle.
+		 */
+		reply = NULL;	/* redisGetReply doesn't NULLify reply on error *sigh* */
+		if (redisGetReply(conn->handle, (void **)&reply) == REDIS_OK) maybe_more = true;
+		status = fr_redis_command_status(conn, reply);
+		*out_p++ = reply;
+
+		/*
+		 *	Bail out of processing responses,
+		 *	free the remaining ones (leaving this one intact)
+		 *	pass control back to the cluster code.
+		 */
+		if (maybe_more && (status != REDIS_RCODE_SUCCESS)) {
+			size_t j;
+		error:
+			/*
+			 *	Free everything that came before the bad reply
+			 */
+			for (j = 0; j < i; j++) {
+				fr_redis_reply_free(out[j]);
+				out[j] = NULL;
+			}
+
+			/*
+			 *	...and drain the rest of the pipelined responses
+			 */
+			for (j = i + 1; j < (size_t)pipelined; j++) {
+				redisReply *to_clear;
+
+				if (redisGetReply(conn->handle, (void **)&to_clear) != REDIS_OK) break;
+				fr_redis_reply_free(to_clear);
+			}
+
+			out[0] = reply;
+			if (rcode) *rcode = status;
+			return reply ? 1 : 0;
+		}
+	}
+
+	if (i != (size_t)pipelined) {
+		fr_strerror_printf("Expected %i responses, got %zu", pipelined, i);
+		status = REDIS_RCODE_ERROR;
+		goto error;
+	}
+
+	if (rcode) *rcode = status;
+	return i;
+}

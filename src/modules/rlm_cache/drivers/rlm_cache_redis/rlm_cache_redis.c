@@ -252,9 +252,10 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	int			pipelined = 0;	/* How many commands pending in the pipeline */
 	redisReply		*replies[5];	/* Should have the same number of elements as pipelined commands */
+	size_t			reply_num = 0, i;
 
 	char			*p;
-	int			cnt, i;
+	int			cnt;
 
 	vp_tmpl_t		expires_value;
 	vp_map_t		expires = {
@@ -357,7 +358,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		if (RDEBUG_ENABLED3) {
 			RDEBUG3("argv command");
 			RINDENT();
-			for (i = 0; i < (int)talloc_array_length(argv); i++) {
+			for (i = 0; i < talloc_array_length(argv); i++) {
 				p = fr_asprint(request, argv[i], argv_len[i], '\0');
 				RDEBUG3("%s", p);
 				talloc_free(p);
@@ -385,7 +386,8 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 		}
 		REXDENT();
 
-		status = fr_redis_cluster_pipeline_clear(replies, sizeof(replies) / sizeof(*replies), conn, pipelined);
+		reply_num = fr_redis_pipeline_result(&status, replies, sizeof(replies) / sizeof(*replies),
+						     conn, pipelined);
 		reply = replies[0];
 	}
 	talloc_free(pool);
@@ -397,7 +399,7 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config
 
 	RDEBUG3("Command results");
 	RINDENT();
-	for (i = 0; i < pipelined; i++) {
+	for (i = 0; i < reply_num; i++) {
 		fr_redis_reply_print(L_DBG_LVL_3, replies[i], request, i);
 		fr_redis_reply_free(replies[i]);
 	}
