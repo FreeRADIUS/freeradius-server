@@ -412,8 +412,33 @@ void ntp2timeval(struct timeval *tv, char const *ntp);
 #    define uint128_t __uint128_t
 #    define int128_t __int128_t
 #  else
-typedef struct uint128_t { uint8_t v[16]; } uint128_t;
-typedef struct int128_t { uint8_t v[16]; } int128_t;
+typedef struct uint128_t {
+	union {
+		uint8_t v[16];
+		struct {
+#ifdef FR_LITTLE_ENDIAN
+			uint64_t l;
+			uint64_t h;
+#else
+			uint64_t h;
+			uint64_t l;
+#endif
+		};
+	}
+} uint128_t;
+typedef struct int128_t {
+	union {
+		uint8_t v[16];
+		struct {
+#ifdef FR_LITTLE_ENDIAN
+			uint64_t l;
+			int64_t h;
+#else
+			int64_t h;
+			uint64_t l;
+#endif
+		};
+	} int128_t;
 #  endif
 #else
 #  define HAVE_128BIT_INTEGERS
@@ -443,7 +468,7 @@ uint128_t ntohlll(uint128_t num);
 #  else
 #    define ntohlll(x) (x)
 #  endif
-#  define htonlll(x) htohlll(x)
+#  define htonlll(x) ntohlll(x)
 #endif
 
 #ifndef HAVE_SIG_T
