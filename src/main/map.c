@@ -941,7 +941,6 @@ int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t cons
 	case TMPL_TYPE_DATA:
 		rad_assert(map->lhs->tmpl_da);
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
-		rad_assert(map->lhs->tmpl_da->type == map->rhs->tmpl_data_type);
 
 		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
