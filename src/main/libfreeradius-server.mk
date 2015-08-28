@@ -1,6 +1,7 @@
 TARGET	:= libfreeradius-server.a
 
-SOURCES	:= conffile.c \
+SOURCES	:=	conffile.c \
+		connection.c \
 		evaluate.c \
 		exec.c \
 		exfile.c \

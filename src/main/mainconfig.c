@@ -940,6 +940,7 @@ do {\
 	 */
 	rad_assert(main_config.config == NULL);
 	root_config = main_config.config = cs;
+	exec_trigger_set_conf(cs);
 
 	DEBUG2("%s: #### Loading Realms and Home Servers ####", main_config.name);
 	if (!realms_init(cs)) {

@@ -1,7 +1,7 @@
 TARGET	:= unittest
 SOURCES := acct.c auth.c client.c crypt.c files.c \
 		  mainconfig.c modules.c modcall.c \
-		  unittest.c soh.c state.c connection.c \
+		  unittest.c soh.c state.c \
 		  session.c threads.c version.c  \
 		  realms.c
 
