@@ -227,15 +227,14 @@ static int eapmessage_verify(REQUEST *request,
 			RDEBUG2("Identity - ");
 			return 1;
 		}
-		RDEBUG2("Identity - %*s",
-		       data_len - 1, data + 1);
+		RDEBUG2("Identity - %*s", data_len - 1, data + 1);
 		return 1;
 
-		/*
-		 *	If the first byte of the packet is
-		 *	EAP-Response, and the EAP data is a TLV,
-		 *	then it looks OK...
-		 */
+	/*
+	 *	If the first byte of the packet is
+	 *	EAP-Response, and the EAP data is a TLV,
+	 *	then it looks OK...
+	 */
 	case PW_EAP_RESPONSE:
 		if (eap_packet->data[0] == PW_EAP_TLV) {
 			RDEBUG2("Received EAP-TLV response");
@@ -245,14 +244,13 @@ static int eapmessage_verify(REQUEST *request,
 		break;
 
 
-		/*
-		 *	We normally do Microsoft MS-CHAPv2 (26), versus
-		 *	Cisco MS-CHAPv2 (29).
-		 */
+	/*
+	 *	We normally do Microsoft MS-CHAPv2 (26), versus
+	 *	Cisco MS-CHAPv2 (29).
+	 */
 	case PW_EAP_MSCHAPV2:
 	default:
-		RDEBUG2("EAP method %s (%d)", eap_type2name(eap_method),
-			eap_method);
+		RDEBUG2("EAP method %s (%d)", eap_type2name(eap_method), eap_method);
 		return 1;
 	}
 
