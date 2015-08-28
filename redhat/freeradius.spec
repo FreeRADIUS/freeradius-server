@@ -763,6 +763,7 @@ fi
 %doc %{_mandir}/man1/radzap.1.gz
 %doc %{_mandir}/man8/radsqlrelay.8.gz
 %doc %{_mandir}/man8/rlm_ippool_tool.8.gz
+%doc %{_mandir}/man8/rlm_redis_ippool_tool.8.gz
 
 %files json
 %defattr(-,root,root)
@@ -813,6 +814,7 @@ fi
 %{_libdir}/freeradius/rlm_redis.so
 %{_libdir}/freeradius/rlm_rediswho.so
 %{_libdir}/freeradius/rlm_cache_redis.so
+%{_libdir}/freeradius/rlm_redis_ippool.so
 
 %files rest
 %defattr(-,root,root)
