@@ -98,6 +98,7 @@ static const FR_NAME_NUMBER request_types[] = {
 	{ "decline",  PW_DHCP_DECLINE },
 	{ "release",  PW_DHCP_RELEASE },
 	{ "inform",   PW_DHCP_INFORM },
+	{ "lease_query",  PW_DHCP_LEASE_QUERY },
 	{ "auto",     PW_CODE_UNDEFINED },
 	{ NULL, 0}
 };
@@ -668,7 +669,7 @@ int main(int argc, char **argv)
 			packet_code = atoi(argv[2]);
 		}
 	}
-	if (server_port == 0) server_port = 67;
+	if (!server_port) server_port = 67;
 
 	request_init(filename);
 
@@ -695,16 +696,19 @@ int main(int argc, char **argv)
 	}
 
 	/*
+	 *	Always true for DHCP
+	 */
+	client_port = server_port + 1;
+
+	/*
 	 *	Bind to the first specified IP address and port.
 	 *	This means we ignore later ones.
 	 */
 	if (request->src_ipaddr.af == AF_UNSPEC) {
 		memset(&client_ipaddr, 0, sizeof(client_ipaddr));
 		client_ipaddr.af = server_ipaddr.af;
-		client_port = 0;
 	} else {
 		client_ipaddr = request->src_ipaddr;
-		client_port = request->src_port;
 	}
 
 	/* set "raw mode" if an interface is specified and if destination IP address is the broadcast address. */

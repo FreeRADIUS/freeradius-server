@@ -381,8 +381,8 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 		return NULL;
 	}
 
-	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 11)) {
-		fr_strerror_printf("Unknown value for message-type option");
+	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 15)) {
+		fr_strerror_printf("Unknown value %d for message-type option", code[2]);
 		return NULL;
 	}
 
@@ -437,7 +437,7 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 		char		src_ip_buf[256], dst_ip_buf[256];
 
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
-		    (packet->code <= (1024 + 11))) {
+		    (packet->code <= (1024 + 15))) {
 			name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
 		} else {
 			snprintf(type_buf, sizeof(type_buf), "%d", packet->code - PW_DHCP_OFFSET);
@@ -612,7 +612,7 @@ int fr_dhcp_send_socket(RADIUS_PACKET *packet)
 		char		dst_ip_buf[INET6_ADDRSTRLEN];
 
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
-		    (packet->code <= (1024 + 11))) {
+		    (packet->code <= (1024 + 15))) {
 			name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
 		} else {
 			snprintf(type_buf, sizeof(type_buf), "%d", packet->code - PW_DHCP_OFFSET);
@@ -1223,7 +1223,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			/*
 			 *	Skip chaddr if it doesn't exist.
 			 */
-			if ((packet->data[1] == 0) || (packet->data[2] == 2)) continue;
+			if ((packet->data[1] == 0) || (packet->data[2] == 0)) continue;
 
 			if ((packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
 				DICT_ATTR const *da = dict_unknown_afrom_fields(packet, vp->da->attr, vp->da->vendor);
@@ -1670,7 +1670,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 #ifndef NDEBUG
 	if ((packet->code >= PW_DHCP_DISCOVER) &&
-	    (packet->code <= (1024 + 11))) {
+	    (packet->code <= (1024 + 15))) {
 		name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
 	} else {
 		name = "<INVALID>";
@@ -2140,7 +2140,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_P
 		char		dst_ip_buf[INET6_ADDRSTRLEN];
 
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
-		    (packet->code <= (1024 + 11))) {
+		    (packet->code <= (1024 + 15))) {
 			name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
 		} else {
 			snprintf(type_buf, sizeof(type_buf), "%d", packet->code - PW_DHCP_OFFSET);
@@ -2343,7 +2343,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *link_laye
 		char		src_ip_buf[256], dst_ip_buf[256];
 
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
-		    (packet->code <= (1024 + 11))) {
+		    (packet->code <= (1024 + 15))) {
 			name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
 		} else {
 			snprintf(type_buf, sizeof(type_buf), "%d", packet->code - PW_DHCP_OFFSET);
