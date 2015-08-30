@@ -64,6 +64,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 #define PW_DHCP_NAK		(1024 + 6)
 #define PW_DHCP_RELEASE		(1024 + 7)
 #define PW_DHCP_INFORM		(1024 + 8)
+#define PW_DHCP_LEASE_QUERY    	(1024 + 10)
 
 #define DHCP_MAGIC_VENDOR (54)
 
