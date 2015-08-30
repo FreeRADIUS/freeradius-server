@@ -142,6 +142,12 @@ static char const *dhcp_message_types[] = {
 	"DHCP-Release",
 	"DHCP-Inform",
 	"DHCP-Force-Renew",
+	"DHCP-Lease-Query",
+	"DHCP-Lease-Unassigned",
+	"DHCP-Lease-Unknown",
+	"DHCP-Lease-Active",
+	"DHCP-Bulk-Lease-Query",
+	"DHCP-Lease-Query-Done"
 };
 
 static int dhcp_header_sizes[] = {
@@ -294,14 +300,14 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 		return NULL;
 	}
 
-	if (packet->data[1] != 1) {
+	if (packet->data[1] > 1) {
 		fr_strerror_printf("DHCP can only receive ethernet requests, not type %02x",
 		      packet->data[1]);
 		rad_free(&packet);
 		return NULL;
 	}
 
-	if (packet->data[2] != 6) {
+	if ((packet->data[2] != 0) && (packet->data[2] != 6)) {
 		fr_strerror_printf("Ethernet HW length is wrong length %d",
 			packet->data[2]);
 		rad_free(&packet);
@@ -330,7 +336,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 		return NULL;
 	}
 
-	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 8)) {
+	if ((code[1] < 1) || (code[2] == 0) || (code[2] > 11)) {
 		fr_strerror_printf("Unknown value for message-type option");
 		rad_free(&packet);
 		return NULL;
@@ -391,7 +397,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 		char src_ip_buf[256], dst_ip_buf[256];
 
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
-		    (packet->code <= PW_DHCP_INFORM)) {
+		    (packet->code <= (1024 + 11))) {
 			name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
 		} else {
 			snprintf(type_buf, sizeof(type_buf), "%d",
@@ -446,7 +452,7 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 		char dst_ip_buf[INET6_ADDRSTRLEN];
 
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
-		    (packet->code <= PW_DHCP_INFORM)) {
+		    (packet->code <= (1024 + 11))) {
 			name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
 		} else {
 			snprintf(type_buf, sizeof(type_buf), "%d",
@@ -934,7 +940,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		fprintf(fr_log_fp, "\n");
 	}
 
-	if (packet->data[1] != 1) {
+	if (packet->data[1] > 1) {
 		fr_strerror_printf("Packet is not Ethernet: %u",
 		      packet->data[1]);
 		return -1;
@@ -956,15 +962,22 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		}
 
 		/*
-		 *	If chaddr does != 6 bytes it's probably not ethernet, and we should store
+		 *	If chaddr != 6 bytes it's probably not ethernet, and we should store
 		 *	it as an opaque type (octets).
 		 */
-		if ((i == 11) && (packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
-			DICT_ATTR const *da = dict_unknown_afrom_fields(packet, vp->da->attr, vp->da->vendor);
-			if (!da) {
-				return -1;
+		if (i == 11) {
+			/*
+			 *	Skip chaddr if it doesn't exist.
+			 */
+			if ((packet->data[1] == 0) || (packet->data[2] == 2)) continue;
+
+			if ((packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
+				DICT_ATTR const *da = dict_unknown_afrom_fields(packet, vp->da->attr, vp->da->vendor);
+				if (!da) {
+					return -1;
+				}
+				vp->da = da;
 			}
-			vp->da = da;
 		}
 
 		switch (vp->da->type) {
@@ -1001,6 +1014,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 
 		case PW_TYPE_OCTETS:
+			if (packet->data[2] == 0) break;
+
 			fr_pair_value_memcpy(vp, p, packet->data[2]);
 			break;
 
@@ -1395,7 +1410,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 #ifndef NDEBUG
 	if ((packet->code >= PW_DHCP_DISCOVER) &&
-	    (packet->code <= PW_DHCP_INFORM)) {
+	    (packet->code <= (1024 + 11))) {
 		name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
 	} else {
 		name = "?Unknown?";
@@ -1864,7 +1879,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET 
 		char dst_ip_buf[INET6_ADDRSTRLEN];
 
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
-		    (packet->code <= PW_DHCP_INFORM)) {
+		    (packet->code <= (1024 + 11))) {
 			name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
 		} else {
 			snprintf(type_buf, sizeof(type_buf), "%d",
@@ -2067,7 +2082,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 		char src_ip_buf[256], dst_ip_buf[256];
 
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
-		    (packet->code <= PW_DHCP_INFORM)) {
+		    (packet->code <= (1024 + 11))) {
 			name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
 		} else {
 			snprintf(type_buf, sizeof(type_buf), "%d", packet->code - PW_DHCP_OFFSET);
