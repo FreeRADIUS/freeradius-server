@@ -63,7 +63,8 @@ typedef enum conf_type {
 	CONF_ITEM_SECTION,
 	CONF_ITEM_DATA,
 #ifdef WITH_CONF_WRITE
-	CONF_ITEM_COMMENT
+	CONF_ITEM_COMMENT,
+	CONF_ITEM_INCLUDE
 #endif
 } CONF_ITEM_TYPE;
 
@@ -134,6 +135,11 @@ typedef struct conf_comment {
 	CONF_ITEM	item;
 	char const	*comment;
 } CONF_COMMENT;
+
+typedef struct conf_include {
+	CONF_ITEM	item;
+	char const	*filename;
+} CONF_INCLUDE;
 #endif
 
 typedef struct cf_file_t {
@@ -595,15 +601,7 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 
 	new->parsed = cp->parsed;
 	new->item.lineno = cp->item.lineno;
-
-	/*
-	 *	Avoid mallocs if possible.
-	 */
-	if (!cp->item.filename || (strcmp(parent->item.filename, cp->item.filename) == 0)) {
-		new->item.filename = parent->item.filename;
-	} else {
-		new->item.filename = talloc_strdup(new, cp->item.filename);
-	}
+	new->item.filename = cp->item.filename;
 
 	return new;
 }
@@ -715,12 +713,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 	}
 
 	new->item.lineno = cs->item.lineno;
-
-	if (!cs->item.filename || (parent && (strcmp(parent->item.filename, cs->item.filename) == 0))) {
-		new->item.filename = parent->item.filename;
-	} else {
-		new->item.filename = talloc_strdup(new, cs->item.filename);
-	}
+	new->item.filename = cs->item.filename;
 
 	for (ci = cs->children; ci; ci = ci->next) {
 		switch (ci->type) {
@@ -748,6 +741,7 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 		case CONF_ITEM_DATA: /* Skip data */
 #ifdef WITH_CONF_WRITE
 		case CONF_ITEM_COMMENT:
+		case CONF_ITEM_INCLUDE:
 #endif
 			break;
 
@@ -2018,8 +2012,8 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base, CONF_PARSER cons
 				subcs = cf_section_alloc(cs, variables[i].name, NULL);
 				if (!subcs) return;
 
-				subcs->item.filename = cs->item.filename;
-				subcs->item.lineno = cs->item.lineno;
+				subcs->item.filename = "<internal>";
+				subcs->item.lineno = 0;
 				cf_item_add(cs, &(subcs->item));
 			}
 
@@ -2319,14 +2313,14 @@ static bool invalid_location(CONF_SECTION *this, char const *name, char const *f
 }
 
 #ifdef WITH_CONF_WRITE
-static void cf_comment_add(CONF_SECTION *cs, char const *filename, int lineno, char const *ptr)
+static void cf_comment_add(CONF_SECTION *cs, int lineno, char const *ptr)
 {
 	CONF_COMMENT *cc;
 
 	cc = talloc_zero(cs, CONF_COMMENT);
 	cc->item.type = CONF_ITEM_COMMENT;
 	cc->item.parent = cs;
-	cc->item.filename = filename;
+	cc->item.filename = cs->item.filename;
 	cc->item.lineno = lineno;
 	cc->comment = talloc_typed_strdup(cc, ptr);
 
@@ -2415,7 +2409,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	This is where all of the comments are handled
 			 */
 			if (*ptr == '#') {
-				cf_comment_add(this, filename, *lineno, ptr + 1);
+				cf_comment_add(this, *lineno, ptr + 1);
 			}
 #endif
 
@@ -2620,6 +2614,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 						 value, dp->d_name);
 					if ((stat(buf2, &stat_buf) != 0) ||
 					    S_ISDIR(stat_buf.st_mode)) continue;
+
 					/*
 					 *	Read the file into the current
 					 *	configuration section.
@@ -2874,7 +2869,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				      filename, *lineno);
 				return -1;
 			}
-			css->item.filename = talloc_strdup(css, filename);
+			css->item.filename = filename;
 			css->item.lineno = *lineno;
 			css->name2_type = T_BARE_WORD;
 
@@ -3040,7 +3035,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Allocate a CONF_COMMENT, and add it to the list of children.
 			 */
 			if ((t3 == T_HASH) && (*ptr >= ' ')) {
-				cf_comment_add(this, filename, *lineno, ptr);
+				cf_comment_add(this, *lineno, ptr);
 			}
 #endif
 
@@ -3149,6 +3144,21 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 
 	if (!cs->item.filename) cs->item.filename = filename;
 
+#ifdef WITH_CONF_WRITE
+	/*
+	 *	Instruct the parser that we've started to include a
+	 *	file at this point.
+	 */
+	{
+		CONF_INCLUDE *cn;
+
+		cn = talloc(cs, CONF_INCLUDE);
+		cn->item.type = CONF_ITEM_INCLUDE;
+		cn->filename = filename;
+		cf_item_add(cs, &(cn->item));
+	}
+#endif
+
 	/*
 	 *	Read the section.  It's OK to have EOF without a
 	 *	matching close brace.
@@ -3157,6 +3167,22 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 		fclose(fp);
 		return -1;
 	}
+
+#ifdef WITH_CONF_WRITE
+	/*
+	 *	Instruct the parser that we've finished including a
+	 *	file at this point.
+	 */
+	{
+		CONF_INCLUDE *cn;
+
+		cn = talloc(cs, CONF_INCLUDE);
+		cn->item.type = CONF_ITEM_INCLUDE;
+		cn->filename = NULL;
+		cf_item_add(cs, &(cn->item));
+	}
+#endif
+
 
 	fclose(fp);
 	return 0;
@@ -3997,17 +4023,63 @@ static size_t cf_pair_write(FILE *fp, CONF_PAIR *cp)
 	return 1;		/* FIXME */
 }
 
-size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
+
+static FILE *cf_file_write(CONF_SECTION *cs, char const *filename)
+{
+	FILE *fp;
+	char *p;
+	char const *q;
+	char buffer[8192];
+
+	q = filename;
+	if ((q[0] == '.') && (q[1] == '/')) q += 2;
+
+	snprintf(buffer, sizeof(buffer), "%s/%s", main_config.write_dir, q);
+
+	p = strrchr(buffer, '/');
+	*p = '\0';
+	if ((rad_mkdir(buffer, 0700, -1, -1) < 0) &&
+	    (errno != EEXIST)) {
+		cf_log_err_cs(cs, "Failed creating directory %s: %s",
+			      buffer, strerror(errno));
+		return NULL;
+	}
+
+	/*
+	 *	And again, because rad_mkdir() butchers the buffer.
+	 */
+	snprintf(buffer, sizeof(buffer), "%s/%s", main_config.write_dir, q);
+
+	fp = fopen(buffer, "a");
+	if (!fp) {
+		cf_log_err_cs(cs, "Failed creating file %s: %s",
+			      buffer, strerror(errno));
+		return NULL;
+	}
+
+	return fp;
+}
+
+size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 {
 	bool prev = false;
 	CONF_ITEM *ci;
+	FILE *fp = NULL;
+	int fp_max = 0;
+	FILE *array[32];
 
 	/*
-	 *	Skip printing the "main" config section.  It's
-	 *	automatically generated, so the user doesn't need to
-	 *	see it.
+	 *	Default to writing to the FP we're given.
 	 */
-	if (depth >= 0) {
+	fp = in_fp;
+	array[0] = fp;
+	fp_max = 0;
+
+	/*
+	 *	If we have somewhere to print, then print the section
+	 *	name1, etc.
+	 */
+	if (fp) {
 		fwrite(parse_tabs, depth, 1, fp);
 		cf_string_write(fp, cs->name1, strlen(cs->name1), T_BARE_WORD);
 
@@ -4038,20 +4110,26 @@ size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 		fputs(" {\n", fp);
 	}
 
-	if (strcmp(cs->name1, "update") == 0) {
-		vp_map_t *map;
-
-		map = cf_data_find(cs, "update");
-		// print out the individual map elements
-	} else
-
+	/*
+	 *	Loop over the children.  Either recursing, or opening
+	 *	a new file.
+	 */
 	for (ci = cs->children; ci; ci = ci->next) {
 		switch (ci->type) {
 		case CONF_ITEM_SECTION:
+			if (!fp) continue;
+
 			cf_section_write(fp, cf_item_to_section(ci), depth + 1);
 			break;
 
 		case CONF_ITEM_PAIR:
+			if (!fp) continue;
+
+			/*
+			 *	Ignore internal things.
+			 */
+			if (!ci->filename || (ci->filename[0] == '<')) break;
+
 			fwrite(parse_tabs, depth + 1, 1, fp);
 			cf_pair_write(fp, cf_item_to_pair(ci));
 			if (!prev) fputs("\n", fp);
@@ -4059,9 +4137,42 @@ size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 			break;
 
 		case CONF_ITEM_COMMENT:
+			rad_assert(fp != NULL);
+
 			prev = false;
 			fwrite(parse_tabs, depth + 1, 1, fp);
 			fprintf(fp, "#%s", ((CONF_COMMENT *)ci)->comment);
+			break;
+
+		case CONF_ITEM_INCLUDE:
+			/*
+			 *	Filename == open the new filename and use that.
+			 *
+			 *	NULL == close the previous filename
+			 */
+			if (((CONF_INCLUDE *) ci)->filename) {
+				if (fp) {
+					fprintf(fp, "$INCLUDE %s\n", ((CONF_INCLUDE *)ci)->filename);
+				}
+
+				fp = cf_file_write(cs, ((CONF_INCLUDE *) ci)->filename);
+				if (!fp) return 0;
+
+				fp_max++;
+				array[fp_max] = fp;
+				fprintf(fp, "# FP_MAX %d\n", fp_max);
+
+			} else {
+				/*
+				 *	We're done the current file.
+				 */
+				rad_assert(fp != NULL);
+				rad_assert(fp_max > 0);
+				fclose(fp);
+
+				fp_max--;
+				fp = array[fp_max];
+			}
 			break;
 
 		default:
@@ -4069,7 +4180,7 @@ size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 		}
 	}
 
-	if (depth >= 0) {
+	if (fp) {
 		fwrite(parse_tabs, depth, 1, fp);
 		fputs("}\n\n", fp);
 	}

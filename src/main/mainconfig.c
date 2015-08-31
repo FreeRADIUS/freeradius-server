@@ -141,6 +141,9 @@ static const CONF_PARSER log_config[] = {
 	{ FR_CONF_POINTER("colourise", PW_TYPE_BOOLEAN, &do_colourise) },
 	{ FR_CONF_POINTER("use_utc", PW_TYPE_BOOLEAN, &log_dates_utc) },
 	{ FR_CONF_POINTER("msg_denied", PW_TYPE_STRING, &main_config.denied_msg), .dflt = "You are already logged in - access denied" },
+#ifdef WITH_CONF_WRITE
+	{ FR_CONF_POINTER("write_dir", PW_TYPE_STRING, &main_config.write_dir), .dflt = NULL },
+#endif
 	CONF_PARSER_TERMINATOR
 };
 
@@ -979,13 +982,8 @@ do {\
 	}
 
 #ifdef WITH_CONF_WRITE
-	{
-		FILE *fp;
-
-		fp = fopen("./out", "w+");
-
-		cf_section_write(fp, cs, -1);
-		fclose(fp);
+	if (main_config.write_dir) {
+		cf_section_write(NULL, cs, -1);
 	}
 #endif
 

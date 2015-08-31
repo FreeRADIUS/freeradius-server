@@ -173,6 +173,10 @@ typedef struct main_config {
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 	char const	*allow_vulnerable_openssl;	//!< The CVE number of the last security issue acknowledged.
 #endif
+
+#ifdef WITH_CONF_WRITE
+	char const	*write_dir;			//!< where the normalized config is written
+#endif
 } main_config_t;
 
 #if defined(WITH_VERIFY_PTR)
