@@ -3945,7 +3945,7 @@ FR_TOKEN cf_section_argv_type(CONF_SECTION const *cs, int argc)
 	return cs->argv_type[argc];
 }
 
-
+#ifdef WITH_CONF_WRITE
 static char const parse_tabs[] = "																																																																																																																																																																																																								";
 
 static ssize_t cf_string_write(FILE *fp, char const *string, size_t len, FR_TOKEN t)
@@ -4076,3 +4076,4 @@ size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
 
 	return 1;
 }
+#endif	/* WITH_CONF_WRITE */
