@@ -862,7 +862,7 @@ do { \
 			is_active = now.tv_sec <= leases[i]->next_event;
 			if (leases[i]->next_event) {
 				strftime(time_buff, sizeof(time_buff), "%b %e %Y %H:%M:%S %Z",
-					 localtime_r(leases[i]->next_event, &tm));
+					 localtime_r(&(leases[i]->next_event), &tm));
 			} else {
 				time_buff[0] = '\0';
 			}
