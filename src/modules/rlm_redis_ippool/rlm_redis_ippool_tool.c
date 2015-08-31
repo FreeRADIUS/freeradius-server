@@ -856,7 +856,9 @@ do { \
 			char	*gateway_id = NULL;
 			bool	is_active;
 
-			talloc_get_type_abort(leases[i], ippool_tool_lease_t);
+#ifndef NDEBUG
+			leases[i] = talloc_get_type_abort(leases[i], ippool_tool_lease_t);
+#endif
 
 			gettimeofday(&now, NULL);
 			is_active = now.tv_sec <= leases[i]->next_event;
