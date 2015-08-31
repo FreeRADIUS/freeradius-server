@@ -811,7 +811,6 @@ static void process_file(const char *root_dir, char const *filename)
 						vp->da->name, fr_strerror());
 					exit(1);
 				}
-				if (len > 0) debug_pair(vp);
 				attr += len;
 			};
 
