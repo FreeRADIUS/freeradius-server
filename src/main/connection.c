@@ -584,11 +584,11 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 	if (this->in_use) return 1;
 
 	if (this->needs_reconnecting) {
-		DEBUG("%s: Closing expired connection (%" PRIu64 "): Needs reconnecting", pool->log_prefix,
+		DEBUG2("%s: Closing expired connection (%" PRIu64 "): Needs reconnecting", pool->log_prefix,
 		      this->number);
 	do_delete:
 		if (pool->state.num <= pool->min) {
-			DEBUG("%s: You probably need to lower \"min\"", pool->log_prefix);
+			DEBUG2("%s: You probably need to lower \"min\"", pool->log_prefix);
 		}
 		fr_connection_close_internal(pool, this);
 		return 0;
@@ -596,14 +596,14 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 
 	if ((pool->max_uses > 0) &&
 	    (this->num_uses >= pool->max_uses)) {
-		DEBUG("%s: Closing expired connection (%" PRIu64 "): Hit max_uses limit", pool->log_prefix,
+		DEBUG2("%s: Closing expired connection (%" PRIu64 "): Hit max_uses limit", pool->log_prefix,
 		      this->number);
 		goto do_delete;
 	}
 
 	if ((pool->lifetime > 0) &&
 	    ((this->created + pool->lifetime) < now)) {
-		DEBUG("%s: Closing expired connection (%" PRIu64 "): Hit lifetime limit",
+		DEBUG2("%s: Closing expired connection (%" PRIu64 "): Hit lifetime limit",
 		      pool->log_prefix, this->number);
 		goto do_delete;
 	}
@@ -853,8 +853,8 @@ static void *fr_connection_get_internal(fr_connection_pool_t *pool, bool spawn)
 
 	if (!spawn) return NULL;
 
-	DEBUG("%s: %i of %u connections in use.  You  may need to increase \"spare\"", pool->log_prefix,
-	      pool->state.active, pool->state.num);
+	DEBUG2("%s: %i of %u connections in use.  You  may need to increase \"spare\"", pool->log_prefix,
+	       pool->state.active, pool->state.num);
 	this = fr_connection_spawn(pool, now, true); /* MY connection! */
 	if (!this) return NULL;
 	PTHREAD_MUTEX_LOCK(&pool->mutex);
@@ -870,7 +870,7 @@ do_return:
 #endif
 	PTHREAD_MUTEX_UNLOCK(&pool->mutex);
 
-	DEBUG("%s: Reserved connection (%" PRIu64 ")", pool->log_prefix, this->number);
+	DEBUG2("%s: Reserved connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
 	return this->connection;
 }
@@ -993,7 +993,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	pthread_cond_init(&pool->done_reconnecting, NULL);
 #endif
 
-	DEBUG("%s: Initialising connection pool", pool->log_prefix);
+	DEBUG2("%s: Initialising connection pool", pool->log_prefix);
 
 	if (cf_section_parse(cs, pool, connection_config) < 0) goto error;
 
@@ -1238,7 +1238,7 @@ void fr_connection_pool_free(fr_connection_pool_t *pool)
 		return;
 	}
 
-	DEBUG("%s: Removing connection pool", pool->log_prefix);
+	DEBUG2("%s: Removing connection pool", pool->log_prefix);
 
 	PTHREAD_MUTEX_LOCK(&pool->mutex);
 
@@ -1330,7 +1330,7 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 	rad_assert(pool->state.active != 0);
 	pool->state.active--;
 
-	DEBUG("%s: Released connection (%" PRIu64 ")", pool->log_prefix, this->number);
+	DEBUG2("%s: Released connection (%" PRIu64 ")", pool->log_prefix, this->number);
 
 	/*
 	 *	We mirror the "spawn on get" functionality by having
