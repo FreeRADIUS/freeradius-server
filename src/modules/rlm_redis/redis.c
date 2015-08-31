@@ -471,7 +471,7 @@ size_t fr_redis_pipeline_result(fr_redis_rcode_t *rcode, redisReply *out[], size
 	if (pipelined > out_len) {
 		for (i = 0; i < (size_t)pipelined; i++) {
 			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) break;
-			fr_redis_free_reply(reply);
+			fr_redis_reply_free(reply);
 		}
 
 		fr_strerror_printf("Too many pipelined commands");
