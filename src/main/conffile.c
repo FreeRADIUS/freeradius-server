@@ -130,18 +130,17 @@ struct conf_part {
 	CONF_PARSER const *variables;
 };
 
-#ifdef WITH_CONF_WRITE
-typedef struct conf_comment {
-	CONF_ITEM	item;
-	char const	*comment;
-} CONF_COMMENT;
-
 typedef enum conf_include_type {
 	CONF_INCLUDE_FILE,
 	CONF_INCLUDE_DIR,
 	CONF_INCLUDE_FROMDIR,
 } CONF_INCLUDE_TYPE;
 
+#ifdef WITH_CONF_WRITE
+typedef struct conf_comment {
+	CONF_ITEM	item;
+	char const	*comment;
+} CONF_COMMENT;
 
 typedef struct conf_include {
 	CONF_ITEM	item;
