@@ -1545,6 +1545,13 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	/* DHCP-Client-Hardware-Address */
 	if ((vp = fr_pair_find_by_num(packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
 		if (vp->vp_length == sizeof(vp->vp_ether)) {
+			/*
+			 *	Ensure that we mark the packet as being Ethernet.
+			 *	This is mainly for DHCP-Lease-Query responses.
+			 */
+			packet->data[1] = 1;
+			packet->data[2] = 6;
+
 			memcpy(p, vp->vp_ether, vp->vp_length);
 		} /* else ignore it */
 	}
