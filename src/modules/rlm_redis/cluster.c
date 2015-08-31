@@ -438,7 +438,7 @@ static cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_slot, clust
 	}
 	p++;			/* Skip the ' ' */
 
-	if (fr_pton_port(&ipaddr, &port, p, redirect->len - (p - redirect->str), AF_UNSPEC, false) < 0) {
+	if (fr_pton_port(&ipaddr, &port, p, redirect->len - (p - redirect->str), AF_UNSPEC, false, true) < 0) {
 		return CLUSTER_OP_BAD_INPUT;
 	}
 	rad_assert(ipaddr.af);
@@ -504,14 +504,14 @@ static cluster_rcode_t cluster_map_apply(fr_redis_cluster_t *cluster, redisReply
 #  define SET_ADDR(_addr, _map) \
 do { \
 	int _ret; \
-	_ret = fr_pton(&_addr.ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, false);\
+	_ret = fr_pton(&_addr.ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, false, true);\
 	rad_assert(_ret == 0);\
 	_addr.port = _map->element[1]->integer; \
 } while (0)
 #else
 #  define SET_ADDR(_addr, _map) \
 do { \
-	fr_pton(&_addr.ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, false);\
+	fr_pton(&_addr.ipaddr, _map->element[0]->str, _map->element[0]->len, AF_UNSPEC, false, true);\
 	_addr.port = _map->element[1]->integer; \
 } while (0)
 #endif
@@ -750,7 +750,7 @@ static int cluster_map_node_validate(redisReply *node, int map_idx, int node_idx
 		return CLUSTER_OP_BAD_INPUT;
 	}
 
-	if (fr_pton(&ipaddr, node->element[0]->str, node->element[0]->len, AF_UNSPEC, false) < 0) {
+	if (fr_pton(&ipaddr, node->element[0]->str, node->element[0]->len, AF_UNSPEC, false, true) < 0) {
 		return CLUSTER_OP_BAD_INPUT;
 	}
 
@@ -2113,7 +2113,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 
 		server = cf_pair_value(cp);
 		if (fr_pton_port(&node->pending_addr.ipaddr, &node->pending_addr.port, server,
-				 talloc_array_length(server) - 1, af, true) < 0) {
+				 talloc_array_length(server) - 1, af, true, true) < 0) {
 			ERROR("%s: Failed parsing server \"%s\": %s", conf->prefix, server, fr_strerror());
 			goto error;
 		}

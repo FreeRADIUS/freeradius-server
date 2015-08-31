@@ -187,7 +187,7 @@ static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, cha
 			return -1;
 		}
 
-		if (fr_pton_port(&ipaddr, &port, p, q - p, AF_UNSPEC, true) < 0) {
+		if (fr_pton_port(&ipaddr, &port, p, q - p, AF_UNSPEC, true, true) < 0) {
 			REDEBUG("Failed parsing node address: %s", fr_strerror());
 			return -1;
 		}

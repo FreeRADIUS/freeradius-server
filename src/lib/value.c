@@ -681,7 +681,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton4(&addr, src, src_len, fr_hostname_lookups, false) < 0) return -1;
+		if (fr_pton4(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
 
 		/*
 		 *	We allow v4 addresses to have a /32 suffix as some databases (PostgreSQL)
@@ -701,7 +701,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton4(&addr, src, src_len, fr_hostname_lookups, false) < 0) return -1;
+		if (fr_pton4(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
 
 		dst->ipv4prefix[1] = addr.prefix;
 		memcpy(&dst->ipv4prefix[2], &addr.ipaddr.ip4addr.s_addr, sizeof(dst->ipv4prefix) - 2);
@@ -712,7 +712,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton6(&addr, src, src_len, fr_hostname_lookups, false) < 0) return -1;
+		if (fr_pton6(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
 
 		/*
 		 *	We allow v6 addresses to have a /128 suffix as some databases (PostgreSQL)
@@ -732,7 +732,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton6(&addr, src, src_len, fr_hostname_lookups, false) < 0) return -1;
+		if (fr_pton6(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
 
 		dst->ipv6prefix[1] = addr.prefix;
 		memcpy(&dst->ipv6prefix[2], addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6prefix) - 2);

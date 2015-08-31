@@ -1390,7 +1390,7 @@ int main(int argc, char **argv)
 	 *	Resolve hostname.
 	 */
 	if (strcmp(argv[1], "-") != 0) {
-		if (fr_pton_port(&server_ipaddr, &server_port, argv[1], -1, force_af, true) < 0) {
+		if (fr_pton_port(&server_ipaddr, &server_port, argv[1], -1, force_af, true, true) < 0) {
 			ERROR("%s", fr_strerror());
 			exit(1);
 		}

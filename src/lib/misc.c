@@ -211,11 +211,12 @@ char const *ip_ntoa(char *buffer, uint32_t ipaddr)
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv6 resolution if no A records can be found.
+ * @param mask If true, set address bits to zero.
  * @return
  *	- 0 if ip address was parsed successfully
  *	- -1 on failure.
  */
-int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
+int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask)
 {
 	char *p;
 	unsigned int prefix;
@@ -300,7 +301,7 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 		return -1;
 	}
 
-	if (prefix < 32) {
+	if (mask && (prefix < 32)) {
 		out->ipaddr.ip4addr = fr_inaddr_mask(&out->ipaddr.ip4addr, prefix);
 	}
 
@@ -317,11 +318,12 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv4 resolution if no AAAA records can be found.
+ * @param mask If true, set address bits to zero.
  * @return
  *	- 0 if ip address was parsed successfully.
  *	- -1 on failure.
  */
-int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
+int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask)
 {
 	char const *p;
 	unsigned int prefix;
@@ -392,7 +394,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 		return -1;
 	}
 
-	if (prefix < 128) {
+	if (mask && (prefix < 128)) {
 		struct in6_addr addr;
 
 		addr = fr_in6addr_mask(&out->ipaddr.ip6addr, prefix);
@@ -415,11 +417,12 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
  * @param[in] af If the address type is not obvious from the format, and resolve is true, the DNS
  *	record (A or AAAA) we require.  Also controls which parser we pass the address to if
  *	we have no idea what it is.
+ * @param[in] mask If true, set address bits to zero.
  * @return
  *	- 0 if ip address was parsed successfully.
  *	- -1 on failure.
  */
-int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve)
+int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve, bool mask)
 {
 	size_t len, i;
 
@@ -430,7 +433,7 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool res
 	 *	Must be v6 and cannot be a domain.
 	 */
 	case ':':
-		return fr_pton6(out, value, inlen, false, false);
+		return fr_pton6(out, value, inlen, false, false, mask);
 
 	/*
 	 *	Chars which don't really tell us anything
@@ -451,13 +454,13 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool res
 			}
 			switch (af) {
 			case AF_UNSPEC:
-				return fr_pton4(out, value, inlen, resolve, true);
+				return fr_pton4(out, value, inlen, resolve, true, mask);
 
 			case AF_INET:
-				return fr_pton4(out, value, inlen, resolve, false);
+				return fr_pton4(out, value, inlen, resolve, false, mask);
 
 			case AF_INET6:
-				return fr_pton6(out, value, inlen, resolve, false);
+				return fr_pton6(out, value, inlen, resolve, false, mask);
 
 			default:
 				fr_strerror_printf("Invalid address family %i", af);
@@ -471,7 +474,7 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool res
  	 *	All chars were in the IPv4 set [0-9/.], must be an IPv4
  	 *	address.
  	 */
-	return fr_pton4(out, value, inlen, false, false);
+	return fr_pton4(out, value, inlen, false, false, mask);
 }
 
 /** Parses IPv4/6 address + port, to fr_ipaddr_t and integer
@@ -485,8 +488,10 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool res
  *	we have no idea what it is.
  * @param[in] resolve If true and value doesn't look like an IP address, try and resolve value as a
  *	hostname.
+ * @param[in] mask If true, set address bits to zero.
  */
-int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_t inlen, int af, bool resolve)
+int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value,
+		 ssize_t inlen, int af, bool resolve, bool mask)
 {
 	char const	*p = value, *q;
 	char		*end;
@@ -507,7 +512,7 @@ int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_
 		/*
 		 *	inet_pton doesn't like the address being wrapped in []
 		 */
-		if (fr_pton6(out, p + 1, (q - p) - 1, false, false) < 0) return -1;
+		if (fr_pton6(out, p + 1, (q - p) - 1, false, false, mask) < 0) return -1;
 
 		if (q[1] == ':') {
 			q++;
@@ -521,12 +526,12 @@ int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_
 	 *	Host, IPv4 or IPv6 with no port
 	 */
 	q = memchr(p, ':', len);
-	if (!q || !memchr(p, '.', len)) return fr_pton(out, p, len, af, resolve);
+	if (!q || !memchr(p, '.', len)) return fr_pton(out, p, len, af, resolve, mask);
 
 	/*
 	 *	IPv4 or host, with port
 	 */
-	if (fr_pton(out, p, (q - p), af, resolve) < 0) return -1;
+	if (fr_pton(out, p, (q - p), af, resolve, mask) < 0) return -1;
 do_port:
 	/*
 	 *	Valid ports are a maximum of 5 digits, so if the

@@ -1900,7 +1900,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	case PW_TYPE_IPV4_PREFIX:
 		ipaddr = data;
 
-		if (fr_pton4(ipaddr, cp->value, -1, true, false) < 0) {
+		if (fr_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
 			cf_log_err(&(cp->item), "%s", fr_strerror());
 			rcode = -1;
 			goto error;
@@ -1916,7 +1916,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	case PW_TYPE_IPV6_PREFIX:
 		ipaddr = data;
 
-		if (fr_pton6(ipaddr, cp->value, -1, true, false) < 0) {
+		if (fr_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
 			cf_log_err(&(cp->item), "%s", fr_strerror());
 			rcode = -1;
 			goto error;
@@ -1932,7 +1932,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	case PW_TYPE_COMBO_IP_PREFIX:
 		ipaddr = data;
 
-		if (fr_pton(ipaddr, cp->value, -1, AF_UNSPEC, true) < 0) {
+		if (fr_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
 			cf_log_err(&(cp->item), "%s", fr_strerror());
 			rcode = -1;
 			goto error;
