@@ -607,11 +607,11 @@ static int dhcp_process(REQUEST *request)
  */
 #ifndef SO_BINDTODEVICE
 #ifdef HAVE_PCAP_H
-#define PCAP_REPLACE (1)
+#define PCAP_RAW_SOCKETS (1)
 #endif
 #endif
 
-#ifdef PCAP_REPLACE
+#ifdef PCAP_RAW_SOCKETS
 /** Build PCAP filter string to pass to libpcap based on listen section
  * Will be called by init_pcap.
  *
@@ -640,7 +640,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	RADCLIENT *client;
 	CONF_PAIR *cp;
 
-#ifdef PCAP_REPLACE
+#ifdef PCAP_RAW_SOCKETS
 	sock->lsock.pcap_filter_builder = dhcp_pcap_filter_build;
 	sock->lsock.pcap_type = PCAP_INTERFACE_IN_OUT;
 #endif
@@ -660,7 +660,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		WARN("No \"interface\" setting is defined.  Only unicast DHCP will work");
 	}
 
-#ifdef PCAP_REPLACE
+#ifdef PCAP_RAW_SOCKETS
 	// Only call setsockopt if not using PCAP
 	if (!sock->lsock.pcap)
 #endif
@@ -734,7 +734,7 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 	RADIUS_PACKET	*packet;
 	dhcp_socket_t	*sock = listener->data;
 
-#ifdef PCAP_REPLACE
+#ifdef PCAP_RAW_SOCKETS
 	if (sock->lsock.pcap) {
 		packet = fr_dhcp_recv_pcap(sock->lsock.pcap);
 	} else
@@ -776,7 +776,7 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 
 	if (sock->suppress_responses) return 0;
 
-#ifdef PCAP_REPLACE
+#ifdef PCAP_RAW_SOCKETS
 	if (sock->lsock.pcap) {
 		/* set ethernet destination address to DHCP-Client-Hardware-Address in request. */
 		uint8_t dhmac[ETHER_HDR_LEN] = { 0 };
