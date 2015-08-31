@@ -136,9 +136,17 @@ typedef struct conf_comment {
 	char const	*comment;
 } CONF_COMMENT;
 
+typedef enum conf_include_type {
+	CONF_INCLUDE_FILE,
+	CONF_INCLUDE_DIR,
+	CONF_INCLUDE_FROMDIR,
+} CONF_INCLUDE_TYPE;
+
+
 typedef struct conf_include {
 	CONF_ITEM	item;
 	char const	*filename;
+	CONF_INCLUDE_TYPE file_type;
 } CONF_INCLUDE;
 #endif
 
@@ -162,7 +170,7 @@ static char const 	*cf_expand_variables(char const *cf, int *lineno,
 					     char *output, size_t outsize,
 					     char const *input, bool *soft_fail);
 
-static int cf_file_include(CONF_SECTION *cs, char const *filename_in);
+static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLUDE_TYPE file_type);
 
 
 
@@ -2327,6 +2335,21 @@ static void cf_comment_add(CONF_SECTION *cs, int lineno, char const *ptr)
 
 	cf_item_add(cs, &(cc->item));
 }
+
+static void cf_include_add(CONF_SECTION *cs, char const *filename, CONF_INCLUDE_TYPE file_type)
+{
+	CONF_INCLUDE *cc;
+
+	cc = talloc_zero(cs, CONF_INCLUDE);
+	cc->item.type = CONF_ITEM_INCLUDE;
+	cc->item.parent = cs;
+	cc->item.filename = cs->item.filename;
+	cc->item.lineno = 0;
+	cc->filename = talloc_typed_strdup(cc, filename);
+	cc->file_type = file_type;
+
+	cf_item_add(cs, &(cc->item));
+}
 #endif
 
 
@@ -2564,6 +2587,16 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				struct stat stat_buf;
 
 				DEBUG2("including files in directory %s", value );
+
+#ifdef WITH_CONF_WRITE
+				/*
+				 *	We print this out, but don't
+				 *	actually open a file based on
+				 *	it.
+				 */
+				cf_include_add(this, value, CONF_INCLUDE_DIR);
+#endif
+
 #ifdef S_IWOTH
 				/*
 				 *	Security checks.
@@ -2619,12 +2652,13 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					 *	Read the file into the current
 					 *	configuration section.
 					 */
-					if (cf_file_include(this, buf2) < 0) {
+					if (cf_file_include(this, buf2, CONF_INCLUDE_FROMDIR) < 0) {
 						closedir(dir);
 						return -1;
 					}
 				}
 				closedir(dir);
+
 			}  else
 #endif
 			{ /* it was a normal file */
@@ -2637,7 +2671,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					}
 				}
 
-				if (cf_file_include(this, value) < 0) {
+				if (cf_file_include(this, value, CONF_INCLUDE_FILE) < 0) {
 					return -1;
 				}
 			}
@@ -3126,7 +3160,11 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 /*
  *	Include one config file in another.
  */
-static int cf_file_include(CONF_SECTION *cs, char const *filename_in)
+static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
+#ifndef WITH_CONF_WRITE
+			   UNUSED
+#endif
+			   CONF_INCLUDE_TYPE file_type)
 {
 	FILE		*fp;
 	int		lineno = 0;
@@ -3149,14 +3187,7 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 	 *	Instruct the parser that we've started to include a
 	 *	file at this point.
 	 */
-	{
-		CONF_INCLUDE *cn;
-
-		cn = talloc(cs, CONF_INCLUDE);
-		cn->item.type = CONF_ITEM_INCLUDE;
-		cn->filename = filename;
-		cf_item_add(cs, &(cn->item));
-	}
+	cf_include_add(cs, filename, file_type);
 #endif
 
 	/*
@@ -3173,16 +3204,8 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in)
 	 *	Instruct the parser that we've finished including a
 	 *	file at this point.
 	 */
-	{
-		CONF_INCLUDE *cn;
-
-		cn = talloc(cs, CONF_INCLUDE);
-		cn->item.type = CONF_ITEM_INCLUDE;
-		cn->filename = NULL;
-		cf_item_add(cs, &(cn->item));
-	}
+	cf_include_add(cs, NULL, file_type);
 #endif
-
 
 	fclose(fp);
 	return 0;
@@ -3253,7 +3276,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	cf_data_add_internal(cs, "filename", tree, NULL, 0);
 
-	if (cf_file_include(cs, filename) < 0) return -1;
+	if (cf_file_include(cs, filename, CONF_INCLUDE_FILE) < 0) return -1;
 
 	/*
 	 *	Now that we've read the file, go back through it and
@@ -4151,17 +4174,32 @@ size_t cf_section_write(FILE *in_fp, CONF_SECTION *cs, int depth)
 			 *	NULL == close the previous filename
 			 */
 			if (((CONF_INCLUDE *) ci)->filename) {
-				if (fp) {
+				CONF_INCLUDE *cc = (CONF_INCLUDE *) ci;
+
+				/*
+				 *	Print out
+				 *
+				 *	$INCLUDE foo.conf
+				 *	$INCLUDE foo/
+				 *
+				 *	but not the files included from the last one.
+				 */
+				if (fp && (cc->file_type != CONF_INCLUDE_FROMDIR)) {
 					fprintf(fp, "$INCLUDE %s\n", ((CONF_INCLUDE *)ci)->filename);
 				}
 
-				fp = cf_file_write(cs, ((CONF_INCLUDE *) ci)->filename);
-				if (!fp) return 0;
+				/*
+				 *	If it's a file, we write the
+				 *	file.  We ignore the
+				 *	directories.  They're just for printing.
+				 */
+				if (cc->file_type != CONF_INCLUDE_DIR) {
+					fp = cf_file_write(cs, ((CONF_INCLUDE *) ci)->filename);
+					if (!fp) return 0;
 
-				fp_max++;
-				array[fp_max] = fp;
-				fprintf(fp, "# FP_MAX %d\n", fp_max);
-
+					fp_max++;
+					array[fp_max] = fp;
+				}
 			} else {
 				/*
 				 *	We're done the current file.
