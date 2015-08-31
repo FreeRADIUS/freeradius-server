@@ -253,7 +253,7 @@ int version_add_feature(CONF_SECTION *cs, char const *name, bool enabled)
 		CONF_PAIR *cp;
 
 		cp = cf_pair_alloc(cs, name, enabled ? "yes" : "no",
-				   T_OP_SET, T_BARE_WORD, T_BARE_WORD);
+				   T_OP_EQ, T_BARE_WORD, T_BARE_WORD);
 		if (!cp) return -1;
 		cf_pair_add(cs, cp);
 	}
@@ -290,7 +290,7 @@ int version_add_number(CONF_SECTION *cs, char const *name, char const *version)
 	if (!old) {
 		CONF_PAIR *cp;
 
-		cp = cf_pair_alloc(cs, name, version, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+		cp = cf_pair_alloc(cs, name, version, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 		if (!cp) return -1;
 
 		cf_pair_add(cs, cp);

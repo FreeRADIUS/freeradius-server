@@ -307,6 +307,9 @@ void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
 CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 			     CONF_SECTION *outercs,
 			     char const *ptr);
+#ifdef WITH_CONF_WRITE
+size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);
+#endif
 
 #define CF_FILE_NONE   (0)
 #define CF_FILE_ERROR  (1)

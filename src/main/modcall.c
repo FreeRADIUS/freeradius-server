@@ -1979,6 +1979,10 @@ static modcallable *do_compile_modupdate(modcallable *parent, rlm_components_t c
 	g->cs = cs;
 	g->map = talloc_steal(g, head);
 
+#ifdef WITH_CONF_WRITE
+	cf_data_add(cs, "update", g->map, NULL); /* for output normalization */
+#endif
+
 	return csingle;
 }
 

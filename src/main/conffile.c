@@ -61,7 +61,10 @@ typedef enum conf_type {
 	CONF_ITEM_INVALID = 0,
 	CONF_ITEM_PAIR,
 	CONF_ITEM_SECTION,
-	CONF_ITEM_DATA
+	CONF_ITEM_DATA,
+#ifdef WITH_CONF_WRITE
+	CONF_ITEM_COMMENT
+#endif
 } CONF_ITEM_TYPE;
 
 struct conf_item {
@@ -78,6 +81,9 @@ struct conf_item {
 struct conf_pair {
 	CONF_ITEM	item;
 	char const	*attr;		//!< Attribute name
+#ifdef WITH_CONF_WRITE
+	char const	*orig_value;	/* original value */
+#endif
 	char const	*value;		//!< Attribute value
 	FR_TOKEN	op;		//!< Operator e.g. =, :=
 	FR_TOKEN	lhs_type;	//!< Name quoting style T_(DOUBLE|SINGLE|BACK)_QUOTE_STRING or T_BARE_WORD.
@@ -122,6 +128,13 @@ struct conf_part {
 
 	CONF_PARSER const *variables;
 };
+
+#ifdef WITH_CONF_WRITE
+typedef struct conf_comment {
+	CONF_ITEM	item;
+	char const	*comment;
+} CONF_COMMENT;
+#endif
 
 typedef struct cf_file_t {
 	char const	*filename;
@@ -551,6 +564,9 @@ CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *val
 	}
 
 	if (value) {
+#ifdef WITH_CONF_WRITE
+		cp->orig_value = talloc_typed_strdup(cp, value);
+#endif
 		cp->value = talloc_typed_strdup(cp, value);
 		if (!cp->value) goto error;
 	}
@@ -730,6 +746,9 @@ CONF_SECTION *cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 			break;
 
 		case CONF_ITEM_DATA: /* Skip data */
+#ifdef WITH_CONF_WRITE
+		case CONF_ITEM_COMMENT:
+#endif
 			break;
 
 		case CONF_ITEM_INVALID:
@@ -1677,10 +1696,18 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		 *	If no default quote was set, determine it from the type
 		 */
 		if (dflt_quote == T_INVALID) {
-			dflt_quote = (type == PW_TYPE_STRING) ? T_DOUBLE_QUOTED_STRING : T_BARE_WORD;
+			dflt_quote = T_BARE_WORD;
+
+			if (type == PW_TYPE_STRING) {
+				dflt_quote = T_DOUBLE_QUOTED_STRING;
+
+			} else if ((type == PW_TYPE_FILE_INPUT) || /* may have spaces */
+				   (type == PW_TYPE_FILE_OUTPUT)) {
+				dflt_quote = T_DOUBLE_QUOTED_STRING;
+			}
 		}
 
-		dflt_cp = cf_pair_alloc(cs, name, expanded, T_OP_SET, T_BARE_WORD, dflt_quote);
+		dflt_cp = cf_pair_alloc(cs, name, expanded, T_OP_EQ, T_BARE_WORD, dflt_quote);
 		if (!dflt_cp) return -1;
 
 		dflt_cp->parsed = true;
@@ -2291,6 +2318,23 @@ static bool invalid_location(CONF_SECTION *this, char const *name, char const *f
 	return false;
 }
 
+#ifdef WITH_CONF_WRITE
+static void cf_comment_add(CONF_SECTION *cs, char const *filename, int lineno, char const *ptr)
+{
+	CONF_COMMENT *cc;
+
+	cc = talloc_zero(cs, CONF_COMMENT);
+	cc->item.type = CONF_ITEM_COMMENT;
+	cc->item.parent = cs;
+	cc->item.filename = filename;
+	cc->item.lineno = lineno;
+	cc->comment = talloc_typed_strdup(cc, ptr);
+
+
+	cf_item_add(cs, &(cc->item));
+}
+#endif
+
 
 /*
  *	Read a part of the config file.
@@ -2303,6 +2347,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	CONF_PAIR *cpn;
 	char const *ptr;
 	char const *value;
+#ifdef WITH_CONF_WRITE
+	char const *orig_value = NULL;
+#endif
 	char buf[8192];
 	char buf1[8192];
 	char buf2[8192];
@@ -2362,6 +2409,15 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			ptr = buf;
 			while (*ptr && isspace((int) *ptr)) ptr++;
+
+#ifdef WITH_CONF_WRITE
+			/*
+			 *	This is where all of the comments are handled
+			 */
+			if (*ptr == '#') {
+				cf_comment_add(this, filename, *lineno, ptr + 1);
+			}
+#endif
 
 			if (!*ptr || (*ptr == '#')) continue;
 
@@ -2423,8 +2479,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 			t2 = gettoken(&ptr, buf2, sizeof(buf2), true);
 			switch (t2) {
-			case T_EOL:
 			case T_HASH:
+				fprintf(stdout, "HASH %s\n", ptr);
+			case T_EOL:
 				goto do_bare_word;
 
 			default:
@@ -2681,6 +2738,15 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			*p = '\0';
 
 			/*
+			 *	Nuke trailing spaces.  This hack
+			 *	really belongs in the parser.
+			 */
+			while ((p > ptr) && (isspace((int) p[-1]))) {
+				p--;
+				*p = '\0';
+			}
+
+			/*
 			 *	If there's a ${...}.  If so, expand it.
 			 */
 			if (strchr(ptr, '$') != NULL) {
@@ -2828,8 +2894,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		 */
 		t2 = gettoken(&ptr, buf2, sizeof(buf2), false);
 		switch (t2) {
-		case T_EOL:
 		case T_HASH:
+			fprintf(stdout, "HASH %s\n", ptr);
+		case T_EOL:
 		case T_COMMA:
 		do_bare_word:
 			t3 = t2;
@@ -2905,6 +2972,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			case T_BARE_WORD:
 			case T_DOUBLE_QUOTED_STRING:
 			case T_BACK_QUOTED_STRING:
+#ifdef WITH_CONF_WRITE
+				orig_value = buf3;
+#endif
 				value = cf_expand_variables(filename, lineno, this, buf4, sizeof(buf4), buf3, &soft_fail);
 				if (!value) {
 					if (!soft_fail) return -1;
@@ -2920,8 +2990,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				}
 				break;
 
-			case T_EOL:
 			case T_HASH:
+				fprintf(stdout, "HASH %s\n", ptr);
+			case T_EOL:
 				value = NULL;
 				break;
 
@@ -2941,6 +3012,10 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			cpn->pass2 = pass2;
 			cf_item_add(this, &(cpn->item));
 
+#ifdef WITH_CONF_WRITE
+			if (orig_value) cpn->orig_value = talloc_typed_strdup(cpn, orig_value);
+			orig_value = NULL;
+#endif
 			/*
 			 *	Require a comma, unless there's a comment.
 			 */
@@ -2955,6 +3030,20 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	module # stuff!
 			 *	foo = bar # other stuff
 			 */
+#ifdef WITH_CONF_WRITE
+			if (*ptr == '#') {
+				t3 = T_HASH;
+				ptr++;
+			}
+
+			/*
+			 *	Allocate a CONF_COMMENT, and add it to the list of children.
+			 */
+			if ((t3 == T_HASH) && (*ptr >= ' ')) {
+				cf_comment_add(this, filename, *lineno, ptr);
+			}
+#endif
+
 			if ((t3 == T_HASH) || (t3 == T_COMMA) || (t3 == T_EOL) || (*ptr == '#')) continue;
 
 			if (!*ptr || (*ptr == '}')) break;
@@ -3123,7 +3212,7 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 	CONF_PAIR *cp;
 	rbtree_t *tree;
 
-	cp = cf_pair_alloc(cs, "confdir", filename, T_OP_SET, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+	cp = cf_pair_alloc(cs, "confdir", filename, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 	if (!cp) return -1;
 
 	p = strrchr(cp->value, FR_DIR_SEP);
@@ -3854,4 +3943,136 @@ FR_TOKEN cf_section_argv_type(CONF_SECTION const *cs, int argc)
 	if (!cs || !cs->argv_type || (argc < 0) || (argc > cs->argc)) return T_INVALID;
 
 	return cs->argv_type[argc];
+}
+
+
+static char const parse_tabs[] = "																																																																																																																																																																																																								";
+
+static ssize_t cf_string_write(FILE *fp, char const *string, size_t len, FR_TOKEN t)
+{
+	size_t outlen;
+	char c;
+	char buffer[2048];
+
+	switch (t) {
+	default:
+		c = '\0';
+		break;
+
+	case T_DOUBLE_QUOTED_STRING:
+		c = '"';
+		break;
+
+	case T_SINGLE_QUOTED_STRING:
+		c = '\'';
+		break;
+
+	case T_BACK_QUOTED_STRING:
+		c = '`';
+		break;
+	}
+
+	if (c) fprintf(fp, "%c", c);
+
+	outlen = fr_snprint(buffer, sizeof(buffer), string, len, c);
+	fwrite(buffer, outlen, 1, fp);
+
+	if (c) fprintf(fp, "%c", c);
+	return 1;
+}
+
+
+static size_t cf_pair_write(FILE *fp, CONF_PAIR *cp)
+{
+	if (!cp->value) {
+		fprintf(fp, "%s\n", cp->attr);
+		return 0;
+	}
+
+	cf_string_write(fp, cp->attr, strlen(cp->attr), cp->lhs_type);
+	fprintf(fp, " %s ", fr_int2str(fr_tokens_table, cp->op, "<INVALID>"));
+	cf_string_write(fp, cp->orig_value, strlen(cp->orig_value), cp->rhs_type);
+	fprintf(fp, "\n");
+
+	return 1;		/* FIXME */
+}
+
+size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth)
+{
+	bool prev = false;
+	CONF_ITEM *ci;
+
+	/*
+	 *	Skip printing the "main" config section.  It's
+	 *	automatically generated, so the user doesn't need to
+	 *	see it.
+	 */
+	if (depth >= 0) {
+		fwrite(parse_tabs, depth, 1, fp);
+		cf_string_write(fp, cs->name1, strlen(cs->name1), T_BARE_WORD);
+
+		/*
+		 *	FIXME: check for "if" or "elsif".  And if so, print
+		 *	out the parsed condition, instead of the input text
+		 *
+		 *	cf_data_find(cs, "if");
+		 */
+
+		if (cs->name2) {
+			fr_cond_t *c;
+
+			fputs(" ", fp);
+
+			c = cf_data_find(cs, "if");
+			if (c) {
+				char buffer[1024];
+
+				fr_cond_snprint(buffer, sizeof(buffer), c);
+				fprintf(fp, "(%s)", buffer);
+
+			} else {	/* dump the string as-is */
+				cf_string_write(fp, cs->name2, strlen(cs->name2), cs->name2_type);
+			}
+		}
+
+		fputs(" {\n", fp);
+	}
+
+	if (strcmp(cs->name1, "update") == 0) {
+		vp_map_t *map;
+
+		map = cf_data_find(cs, "update");
+		// print out the individual map elements
+	} else
+
+	for (ci = cs->children; ci; ci = ci->next) {
+		switch (ci->type) {
+		case CONF_ITEM_SECTION:
+			cf_section_write(fp, cf_item_to_section(ci), depth + 1);
+			break;
+
+		case CONF_ITEM_PAIR:
+			fwrite(parse_tabs, depth + 1, 1, fp);
+			cf_pair_write(fp, cf_item_to_pair(ci));
+			if (!prev) fputs("\n", fp);
+			prev = true;
+			break;
+
+		case CONF_ITEM_COMMENT:
+			prev = false;
+			fwrite(parse_tabs, depth + 1, 1, fp);
+			fprintf(fp, "#%s", ((CONF_COMMENT *)ci)->comment);
+			break;
+
+		default:
+			break;
+		}
+	}
+
+	if (depth >= 0) {
+		fwrite(parse_tabs, depth, 1, fp);
+		fputs("}\n\n", fp);
+	}
+
+	return 1;
 }

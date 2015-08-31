@@ -978,6 +978,17 @@ do {\
 		}
 	}
 
+#ifdef WITH_CONF_WRITE
+	{
+		FILE *fp;
+
+		fp = fopen("./out", "w+");
+
+		cf_section_write(fp, cs, -1);
+		fclose(fp);
+	}
+#endif
+
 	cc = talloc_zero(NULL, cached_config_t);
 	if (!cc) return -1;
 
