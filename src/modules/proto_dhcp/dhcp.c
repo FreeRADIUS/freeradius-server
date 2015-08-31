@@ -1371,6 +1371,7 @@ ssize_t fr_dhcp_encode_option(UNUSED TALLOC_CTX *ctx, uint8_t *out, size_t outle
 		p += len;
 		*opt_len += len;
 		freespace -= len;
+		debug_pair(vp);
 
 	} while ((vp = fr_cursor_current(cursor)) && previous && (previous == vp->da) && vp->da->flags.array);
 
@@ -1685,7 +1686,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	while ((vp = fr_cursor_current(&cursor))) {
 		len = fr_dhcp_encode_option(packet, p, packet->data_len - (p - packet->data), &cursor);
 		if (len < 0) break;
-		if (len > 0) debug_pair(vp);
 		p += len;
 	};
 
