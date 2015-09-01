@@ -311,7 +311,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 */
 #ifdef WITH_DETAIL
 	} else if ((request->listener->type == RAD_LISTEN_DETAIL) &&
-		   !fr_inaddr_any(&request->packet->src_ipaddr)) {
+		   !fr_is_inaddr_any(&request->packet->src_ipaddr)) {
 		int i;
 
 		/*

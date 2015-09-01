@@ -207,7 +207,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	 *	of 0.0.0.0/32 - which would require the src IP of
 	 *	the client to be all zeros.
 	 */
-	if (fr_inaddr_any(&client->ipaddr) == 1) switch (client->ipaddr.af) {
+	if (fr_is_inaddr_any(&client->ipaddr) == 1) switch (client->ipaddr.af) {
 	case AF_INET:
 		if (client->ipaddr.prefix == 32) client->ipaddr.prefix = 0;
 		break;

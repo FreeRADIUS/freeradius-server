@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b);
-int fr_inaddr_any(fr_ipaddr_t *ipaddr);
+int fr_is_inaddr_any(fr_ipaddr_t *ipaddr);
 void fr_request_from_reply(RADIUS_PACKET *request,
 			     RADIUS_PACKET const *reply);
 int fr_socket(fr_ipaddr_t *ipaddr, uint16_t port);

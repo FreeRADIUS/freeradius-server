@@ -80,7 +80,15 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	return rcode;
 }
 
-int fr_inaddr_any(fr_ipaddr_t *ipaddr)
+/** Determine if an address is the INADDR_ANY address for its address family
+ *
+ * @param ipaddr to check.
+ * @return
+ *	- 0 if it's not.
+ *	- 1 if it is.
+ *	- -1 on error.
+ */
+int fr_is_inaddr_any(fr_ipaddr_t *ipaddr)
 {
 
 	if (ipaddr->af == AF_INET) {
@@ -417,10 +425,10 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	ps->dst_ipaddr = *dst_ipaddr;
 	ps->dst_port = dst_port;
 
-	ps->src_any = fr_inaddr_any(&ps->src_ipaddr);
+	ps->src_any = fr_is_inaddr_any(&ps->src_ipaddr);
 	if (ps->src_any < 0) return false;
 
-	ps->dst_any = fr_inaddr_any(&ps->dst_ipaddr);
+	ps->dst_any = fr_is_inaddr_any(&ps->dst_ipaddr);
 	if (ps->dst_any < 0) return false;
 
 	/*
@@ -621,7 +629,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		request->src_ipaddr.af = request->dst_ipaddr.af;
 	}
 
-	src_any = fr_inaddr_any(&request->src_ipaddr);
+	src_any = fr_is_inaddr_any(&request->src_ipaddr);
 	if (src_any < 0) {
 		fr_strerror_printf("Can't check src_ipaddr");
 		return false;
@@ -630,7 +638,7 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	/*
 	 *	MUST specify a destination address.
 	 */
-	if (fr_inaddr_any(&request->dst_ipaddr) != 0) {
+	if (fr_is_inaddr_any(&request->dst_ipaddr) != 0) {
 		fr_strerror_printf("Must specify a dst_ipaddr");
 		return false;
 	}

@@ -588,7 +588,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	 *	It has an IP address, it must be a remote server.
 	 */
 	if (cf_pair_find(cs, "ipaddr") || cf_pair_find(cs, "ipv4addr") || cf_pair_find(cs, "ipv6addr")) {
-		if (fr_inaddr_any(&home->ipaddr) == 1) {
+		if (fr_is_inaddr_any(&home->ipaddr) == 1) {
 			cf_log_err_cs(cs, "Wildcard '*' addresses are not permitted for home servers");
 			goto error;
 		}

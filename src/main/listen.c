@@ -3530,7 +3530,7 @@ rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, i
 
 		if (sock->my_port != port) continue;
 		if (sock->proto != proto) continue;
-		if (!fr_inaddr_any(&sock->my_ipaddr)) continue;
+		if (!fr_is_inaddr_any(&sock->my_ipaddr)) continue;
 
 		return this;
 	}
