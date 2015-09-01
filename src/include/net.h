@@ -139,5 +139,5 @@ ssize_t		fr_link_layer_offset(uint8_t const *data, size_t len, int link_layer);
 uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 	struct in_addr const src_addr, struct in_addr const dst_addr);
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
-uint16_t	fr_iph_checksum(uint8_t const *data, uint8_t ihl);
+uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
 #endif /* FR_NET_H */

@@ -358,7 +358,7 @@ RADIUS_PACKET *fr_dhcp_packet_ok(uint8_t const *data, ssize_t data_len, fr_ipadd
 		fr_strerror_printf("DHCP can only process ethernet requests, not type %02x", data[1]);
 		return NULL;
 	}
-	
+
 	if ((data[2] != 0) && (data[2] != 6)) {
 		fr_strerror_printf("Ethernet HW length incorrect.  Expected 6 got %d", data[2]);
 		return NULL;
@@ -691,7 +691,7 @@ int fr_dhcp_send_pcap(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *p
 	ip_hdr->ip_dst.s_addr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 
 	/* IP header checksum */
-	ip_hdr->ip_sum = fr_iph_checksum((uint8_t const *)ip_hdr, 5);
+	ip_hdr->ip_sum = fr_ip_header_checksum((uint8_t const *)ip_hdr, 5);
 	end += IP_HDR_SIZE;
 
 	/* fill in UDP layer (L4) */
@@ -2124,7 +2124,7 @@ int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *link_layer, RADIUS_P
 	ip_hdr->ip_dst.s_addr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 
 	/* IP header checksum */
-	ip_hdr->ip_sum = fr_iph_checksum((uint8_t const *)ip_hdr, 5);
+	ip_hdr->ip_sum = fr_ip_header_checksum((uint8_t const *)ip_hdr, 5);
 
 	udp_hdr->src = htons(packet->src_port);
 	udp_hdr->dst = htons(packet->dst_port);
