@@ -273,6 +273,7 @@ int fr_ipaddr_from_interface(fr_ipaddr_t *out, int af, char const *name)
 	fr_ipaddr_t		ipaddr;
 
 	memset(&if_req, 0, sizeof(if_req));
+	memset(out, 0, sizeof(*out));
 
 	/*
 	 *	Set the interface we're resolving, and the address family.
