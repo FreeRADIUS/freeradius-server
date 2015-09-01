@@ -695,6 +695,9 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		sock->src_interface = talloc_typed_strdup(sock, sock->lsock.interface);
 	}
 
+	/*
+	 *	Set the source IP address explicitly.
+	 */
 	cp = cf_pair_find(cs, "src_ipaddr");
 	if (cp) {
 		memset(&sock->src_ipaddr, 0, sizeof(sock->src_ipaddr));
@@ -703,7 +706,29 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		if (rcode < 0) return -1;
 
 		sock->src_ipaddr.af = AF_INET;
+	/*
+	 *	Or by looking up the IP address associated with the
+	 *	src_interface or interface (if we're binding to INADDR_ANY).
+	 */
+	} else if (fr_is_inaddr_any(&sock->lsock.my_ipaddr) && sock->src_interface) {
+		char buffer[INET_ADDRSTRLEN];
+
+		if (fr_ipaddr_from_interface(&sock->src_ipaddr, AF_INET, sock->src_interface) < 0) {
+			WARN("Failed resolving interface %s to IP address: %s", sock->src_interface, fr_strerror());
+			WARN("Will continue, but source address must be set within the DHCP virtual server");
+			goto src_addr_is_bound_addr;
+		}
+		rad_assert(sock->src_ipaddr.af == AF_INET);
+
+		if (DEBUG_ENABLED2) {
+			inet_ntop(sock->src_ipaddr.af, &(sock->src_ipaddr.ipaddr), buffer, sizeof(buffer));
+			DEBUG2("Setting src_ipaddr to %s (address of %s)", buffer, sock->src_interface);
+		}
+	/*
+	 *	Or by using the address we're bound to
+	 */
 	} else {
+	src_addr_is_bound_addr:
 		memcpy(&sock->src_ipaddr, &sock->lsock.my_ipaddr, sizeof(sock->src_ipaddr));
 	}
 

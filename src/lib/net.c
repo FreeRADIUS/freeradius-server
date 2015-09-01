@@ -21,8 +21,12 @@
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2014-2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
- #include <freeradius-devel/libradius.h>
- #include <freeradius-devel/net.h>
+#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/net.h>
+
+#include <sys/socket.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
 
 /** Check whether fr_link_layer_offset can process a link_layer
  *
@@ -257,3 +261,54 @@ uint16_t fr_ip_header_checksum(uint8_t const *data, uint8_t ihl)
 	sum += (sum >> 16);
 	return ((uint16_t) ~sum);
 }
+
+#ifdef SIOCGIFADDR
+/** Resolve an interface to an ipaddress
+ *
+ */
+int fr_ipaddr_from_interface(fr_ipaddr_t *out, int af, char const *name)
+{
+	int			fd;
+	struct ifreq		if_req;
+	fr_ipaddr_t		ipaddr;
+
+	memset(&if_req, 0, sizeof(if_req));
+
+	/*
+	 *	Set the interface we're resolving, and the address family.
+	 */
+	if_req.ifr_addr.sa_family = af;
+	strlcpy(if_req.ifr_name, name, sizeof(if_req.ifr_name));
+
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0) {
+		fr_strerror_printf("Failed opening temporary socket for SIOCGIFADDR: %s", fr_syserror(errno));
+	error:
+		close(fd);
+		return -1;
+	}
+	if (ioctl(fd, SIOCGIFADDR, &if_req) < 0) {
+		fr_strerror_printf("Failed determining address for interface %s: %s", name, fr_syserror(errno));
+		goto error;
+	}
+	close(fd);
+
+	/*
+	 *	There's nothing in the ifreq struct that gives us the length
+	 *	of the sockaddr struct, so we just use sizeof here.
+	 *	sockaddr2ipaddr uses the address family anyway, so we should
+	 *	be OK.
+	 */
+	if (fr_sockaddr2ipaddr((struct sockaddr_storage *)&if_req.ifr_addr,
+			       sizeof(if_req.ifr_addr), &ipaddr, NULL) == 0) goto error;
+	*out = ipaddr;
+
+	return 0;
+}
+#else
+int fr_ipaddr_from_interface(fr_ipaddr_t *out, UNUSED int af, UNUSED char const *name)
+{
+	fr_strerror_printf("No support for SIOCGIFADDR, can't determine IP address of %s", name);
+	return -1;
+}
+#endif
