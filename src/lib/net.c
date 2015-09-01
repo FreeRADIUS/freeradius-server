@@ -291,7 +291,6 @@ int fr_ipaddr_from_interface(fr_ipaddr_t *out, int af, char const *name)
 		fr_strerror_printf("Failed determining address for interface %s: %s", name, fr_syserror(errno));
 		goto error;
 	}
-	close(fd);
 
 	/*
 	 *	There's nothing in the ifreq struct that gives us the length
@@ -302,6 +301,8 @@ int fr_ipaddr_from_interface(fr_ipaddr_t *out, int af, char const *name)
 	if (fr_sockaddr2ipaddr((struct sockaddr_storage *)&if_req.ifr_addr,
 			       sizeof(if_req.ifr_addr), &ipaddr, NULL) == 0) goto error;
 	*out = ipaddr;
+
+	close(fd);
 
 	return 0;
 }
