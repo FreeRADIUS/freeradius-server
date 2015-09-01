@@ -990,9 +990,14 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (rcode != 0) rcode = cf_item_parse(cs, "ipv6addr",
 					      FR_ITEM_POINTER(PW_TYPE_IPV6_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
+	/*
+	 *	Default to IPv4 INADDR_ANY
+	 */
 	if (rcode != 0) {
-		cf_log_err_cs(cs, "No address specified in listen section");
-		return -1;
+		memset(&ipaddr, 0, sizeof(ipaddr));
+		ipaddr.af = INADDR_ANY;
+		ipaddr.prefix = 32;
+		ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
 	}
 
 	rcode = cf_item_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &listen_port), "0", T_BARE_WORD);
