@@ -652,7 +652,6 @@ static const char *dhcp_pcap_filter_build(rad_listen_t *this)
 static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int rcode;
-	int on = 1;
 	dhcp_socket_t *sock = this->data;
 	RADCLIENT *client;
 	CONF_PAIR *cp;
@@ -673,23 +672,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (check_config) return 0;
 
-	if (!sock->lsock.interface) {
-		WARN("No \"interface\" setting is defined.  Only unicast DHCP will work");
-	}
-
-#ifdef PCAP_RAW_SOCKETS
-	// Only call setsockopt if not using PCAP
-	if (!sock->lsock.pcap)
-#endif
-	{
-		DEBUG4("[FD %i] Enabling SO_REUSEADDR -- setsockopt(%i, SOL_SOCKET, SO_REUSEADDR, %p (%i), %zu)",
-		       this->fd, this->fd, &on, on, sizeof(on));
-
-		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-			ERROR("Can't set re-use addres option: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
+	if (!sock->lsock.interface) WARN("No \"interface\" setting is defined.  Only unicast DHCP will work");
 
 	/*
 	 *	Undocumented extension for testing without

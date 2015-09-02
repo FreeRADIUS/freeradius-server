@@ -2510,8 +2510,8 @@ static int listen_bind(rad_listen_t *this)
 #endif
 	}
 
-#ifdef WITH_TCP
-	if (sock->proto == IPPROTO_TCP) {
+#if defined(WITH_TCP) || defined(WITH_DHCP)
+	if ((sock->proto == IPPROTO_TCP) || (this->type == RAD_LISTEN_DHCP)) {
 		int on = 1;
 
 		DEBUG4("[FD %i] Enabling SO_REUSEADDR -- setsockopt(%i, SOL_SOCKET, SO_REUSEADDR, %p (%i), %zu)",
