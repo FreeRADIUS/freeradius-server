@@ -1105,8 +1105,18 @@ void main_config_hup(void)
 		return;
 	}
 
-	if (rcode == CF_FILE_MODULE) {
-		INFO("HUP - Files loaded by a module have changed.");
+	/*
+	 *	No config files have changed.
+	 */
+	if ((rcode & CF_FILE_CONFIG) == 0) {
+		if ((rcode & CF_FILE_MODULE) != 0) {
+			INFO("HUP - Files loaded by a module have changed.");
+
+			/*
+			 *	FIXME: reload the module.
+			 */
+
+		}
 		return;
 	}
 
