@@ -510,8 +510,7 @@ RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
  *	This presumes that the reply has dst_ipaddr && dst_port set up
  *	correctly (i.e. real IP, or "*").
  */
-RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
-					      RADIUS_PACKET *reply)
+RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl, RADIUS_PACKET *reply)
 {
 	RADIUS_PACKET my_request, *request;
 	fr_packet_socket_t *ps;
