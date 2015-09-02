@@ -1,4 +1,4 @@
-SUBMAKEFILES := rbmonkey.mk unit/all.mk map/all.mk xlat/all.mk keywords/all.mk auth/all.mk modules/all.mk
+SUBMAKEFILES := rbmonkey.mk unit/all.mk map/all.mk xlat/all.mk keywords/all.mk auth/all.mk modules/all.mk daemon/all.mk
 
 #
 #  Include all of the autoconf definitions into the Make variable space
