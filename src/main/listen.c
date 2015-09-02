@@ -82,7 +82,7 @@ static fr_protocol_t master_listen[MAX_LISTENER];
 /*
  *	Xlat for %{listen:foo}
  */
-static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
+ssize_t xlat_listen(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
 {
 	char const *value = NULL;
 	CONF_PAIR *cp;
@@ -3454,8 +3454,6 @@ add_sockets:
 	 *	Haven't defined any sockets.  Die.
 	 */
 	if (!*head) return -1;
-
-	xlat_register("listen", xlat_listen, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
 
 	return 0;
 }

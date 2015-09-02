@@ -956,11 +956,17 @@ do {\
 	}
 
 	/*
-	 *  Register the %{config:section.subsection} xlat function.
+	 *	Register the %{config:section.subsection} xlat function.
 	 */
 	xlat_register("config", xlat_config, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
+
+	/*
+	 *	...and the client and listen xlats which need to be
+	 *	defined before we start parsing the config.
+	 */
 	xlat_register("client", xlat_client, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
 	xlat_register("getclient", xlat_getclient, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
+	xlat_register("listen", xlat_listen, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
 
 	/*
 	 *  Go update our behaviour, based on the configuration
