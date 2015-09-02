@@ -76,13 +76,6 @@ static const FR_NAME_NUMBER home_ping_check[] = {
 	{ NULL, 0 }
 };
 
-static const FR_NAME_NUMBER home_proto[] = {
-	{ "UDP",		IPPROTO_UDP },
-	{ "TCP",		IPPROTO_TCP },
-	{ NULL, 0 }
-};
-
-
 static realm_config_t *realm_config = NULL;
 
 #ifdef WITH_PROXY
@@ -506,7 +499,7 @@ bool realm_home_server_add(home_server_t *home)
 			      home->name ? home->name : "",
 			      home->name ? ")" : "",
 			      buffer,
-			      fr_int2str(home_proto, home->proto, "<INVALID>"),
+			      fr_int2str(fr_net_ip_proto_table, home->proto, "<INVALID>"),
 #ifdef WITH_TLS
 			      home->tls ? "+tls" : "",
 #else
@@ -703,7 +696,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	{
 		int proto = IPPROTO_UDP;
 
-		if (home->proto_str) proto = fr_str2int(home_proto, home->proto_str, -1);
+		if (home->proto_str) proto = fr_str2int(fr_net_ip_proto_table, home->proto_str, -1);
 
 		switch (proto) {
 		case IPPROTO_UDP:

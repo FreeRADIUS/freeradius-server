@@ -134,6 +134,10 @@ typedef struct radius_packet_t {
 	uint8_t		data[];
 } radius_packet_t;
 
+extern FR_NAME_NUMBER const fr_net_ip_proto_table[];
+extern FR_NAME_NUMBER const fr_net_sock_type_table[];
+extern FR_NAME_NUMBER const fr_net_af_table[];
+
 bool		fr_link_layer_supported(int link_layer);
 ssize_t		fr_link_layer_offset(uint8_t const *data, size_t len, int link_layer);
 uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,

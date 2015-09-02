@@ -28,6 +28,33 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 
+/** Strings for L4 protocols
+ *
+ */
+FR_NAME_NUMBER const fr_net_ip_proto_table[] = {
+	{ "UDP",	IPPROTO_UDP },
+	{ "TCP",	IPPROTO_TCP },
+	{ NULL, 0 }
+};
+
+/** Strings for socket types
+ *
+ */
+FR_NAME_NUMBER const fr_net_sock_type_table[] = {
+	{ "UDP",	SOCK_DGRAM },
+	{ "TCP",	SOCK_STREAM },
+	{ NULL, 0 }
+};
+
+/** Strings for address families
+ *
+ */
+FR_NAME_NUMBER const fr_net_af_table[] = {
+	{ "IPv4",	AF_INET },
+	{ "IPv6",	AF_INET6 },
+	{ NULL, 0 }
+};
+
 /** Check whether fr_link_layer_offset can process a link_layer
  *
  * @param link_layer to check.

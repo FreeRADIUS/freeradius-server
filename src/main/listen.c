@@ -2417,6 +2417,10 @@ static int listen_bind(rad_listen_t *this)
 
 	rad_assert(sock->my_ipaddr.af);
 
+	DEBUG4("[FD XX] Opening socket -- socket(%s, %s, 0)",
+	       fr_int2str(fr_net_af_table, sock->my_ipaddr.af, "<UNKNOWN>"),
+	       fr_int2str(fr_net_sock_type_table, sock_type, "<UNKNOWN>"));
+
 	/*
 	 *	Copy fr_socket() here, as we may need to bind to a device.
 	 */
@@ -2437,6 +2441,8 @@ static int listen_bind(rad_listen_t *this)
 	 */
 	rcode = fcntl(this->fd, F_GETFD);
 	if (rcode >= 0) {
+		DEBUG4("[FD %i] Preventing inheritance -- fcntl(%i, F_SETFD, %i | FD_CLOEXEC)",
+		       this->fd, this->fd, rcode);
 		if (fcntl(this->fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
 			close(this->fd);
 			ERROR("Failed setting close on exec: %s", fr_syserror(errno));
@@ -2454,6 +2460,9 @@ static int listen_bind(rad_listen_t *this)
 
 		memset(&ifreq, 0, sizeof(ifreq));
 		strlcpy(ifreq.ifr_name, sock->interface, sizeof(ifreq.ifr_name));
+
+		DEBUG4("[FD %i] Binding to interface %s -- setsockopt(%i, SOL_SOCKET, SO_BINDTODEVICE, %p, %zu)",
+		       this->fd, sock->interface, this->fd, &ifreq, sizeof(ifreq));
 
 		rad_suid_up();
 		rcode = setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
@@ -2479,6 +2488,7 @@ static int listen_bind(rad_listen_t *this)
 		if (sock->my_ipaddr.af == AF_INET6) {
 			if (sock->my_ipaddr.scope == 0) {
 				sock->my_ipaddr.scope = if_nametoindex(sock->interface);
+				DEBUG4("[FD %i] IPv6 scope resolves to %u", this->fd, sock->my_ipaddr.scope);
 				if (sock->my_ipaddr.scope == 0) {
 					close(this->fd);
 					ERROR("Failed finding interface %s: %s", sock->interface, fr_syserror(errno));
@@ -2504,6 +2514,8 @@ static int listen_bind(rad_listen_t *this)
 	if (sock->proto == IPPROTO_TCP) {
 		int on = 1;
 
+		DEBUG4("[FD %i] Enabling SO_REUSEADDR %s -- setsockopt(%i, SOL_SOCKET, SO_REUSEADDR, %p (%i), %zu)",
+		       this->fd, sock->interface, this->fd, &on, on, sizeof(on));
 		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
 			close(this->fd);
 			ERROR("Failed to reuse address: %s", fr_syserror(errno));
@@ -2517,6 +2529,7 @@ static int listen_bind(rad_listen_t *this)
 #endif
 
 #ifdef WITH_UDPFROMTO
+	DEBUG4("[FD %i] Enabling IPV6_RECVPKTINFO/IP_PKTINFO -- udpfromto_init(%i)", this->fd, this->fd);
 	/*
 	 *	Initialize udpfromto for all sockets.
 	 */
@@ -2573,8 +2586,10 @@ static int listen_bind(rad_listen_t *this)
 		 *	flag is zero.
 		 */
 		flag = IP_PMTUDISC_DONT;
-		if (setsockopt(this->fd, IPPROTO_IP, IP_MTU_DISCOVER,
-			       &flag, sizeof(flag)) < 0) {
+
+		DEBUG4("[FD %i] Disabling PMTU discovery -- setsockopt(%i, IPPROTO_IP, IP_MTU_DISCOVER, "
+		       "%p (IP_PMTUDISC_DONT), %zu)", this->fd, this->fd, &flag, sizeof(flag));
+		if (setsockopt(this->fd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
 			ERROR("Failed disabling PMTU discovery: %s", fr_syserror(errno));
 
 			close(this->fd);
@@ -2587,8 +2602,10 @@ static int listen_bind(rad_listen_t *this)
 		 *	Ensure that the "don't fragment" flag is zero.
 		 */
 		flag = 0;
-		if (setsockopt(this->fd, IPPROTO_IP, IP_DONTFRAG,
-			       &flag, sizeof(flag)) < 0) {
+
+		DEBUG4("[FD %i] Allowing IP fragmentation -- setsockopt(%i, IPPROTO_IP, IP_DONTFRAG, "
+		       "%p (%u), %zu)", this->fd, this->fd, &flag, flag, sizeof(flag));
+		if (setsockopt(this->fd, IPPROTO_IP, IP_DONTFRAG, &flag, sizeof(flag)) < 0) {
 			ERROR("Failed setting don't fragment flag: %s", fr_syserror(errno));
 
 			close(this->fd);
@@ -2601,6 +2618,8 @@ static int listen_bind(rad_listen_t *this)
 	if (sock->broadcast) {
 		int on = 1;
 
+		DEBUG4("[FD %i] Enabling SO_BROADCAST -- setsockopt(%i, IPPROTO_IP, SO_BROADCAST, "
+		       "%p (%u), %zu)", this->fd, this->fd, &on, on, sizeof(on));
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
 			ERROR("Can't set broadcast option: %s", fr_syserror(errno));
 			return -1;
@@ -2612,11 +2631,31 @@ static int listen_bind(rad_listen_t *this)
 	 *	May be binding to priviledged ports.
 	 */
 	if (sock->my_port != 0) {
+		if (DEBUG_ENABLED4) {
+			if (salocal.ss_family == AF_INET) {
+				char		   	buffer[INET_ADDRSTRLEN];
+				struct sockaddr_in	*addr = (struct sockaddr_in *)&salocal;
+
+				inet_ntop(addr->sin_family, &addr->sin_addr, buffer, sizeof(buffer));
+				DEBUG4("[FD %i] Binding to address %s port %u -- bind(%i, SOL_SOCKET, "
+				       "SO_BINDTODEVICE, %p, %u)", this->fd, buffer, ntohs(addr->sin_port),
+				       this->fd, &salocal, salen);
+			} else if (salocal.ss_family == AF_INET6) {
+				char		   	buffer[INET6_ADDRSTRLEN];
+				struct sockaddr_in6	*addr = (struct sockaddr_in6 *)&salocal;
+
+				inet_ntop(addr->sin6_family, &addr->sin6_addr, buffer, sizeof(buffer));
+				DEBUG4("[FD %i] Binding to address %s port %u -- bind(%i, SOL_SOCKET, "
+				       "SO_BINDTODEVICE, %p, %u)", this->fd, buffer, ntohs(addr->sin6_port),
+				       this->fd, &salocal, salen);
+			}
+		}
 		rad_suid_up();
-		rcode = bind(this->fd, (struct sockaddr *) &salocal, salen);
+		rcode = bind(this->fd, (struct sockaddr *)&salocal, salen);
 		rad_suid_down();
 		if (rcode < 0) {
 			char buffer[256];
+
 			close(this->fd);
 
 			this->print(this, buffer, sizeof(buffer));
@@ -2634,8 +2673,7 @@ static int listen_bind(rad_listen_t *this)
 			socklen_t		sizeof_src = sizeof(src);
 
 			memset(&src, 0, sizeof_src);
-			if (getsockname(this->fd, (struct sockaddr *) &src,
-					&sizeof_src) < 0) {
+			if (getsockname(this->fd, (struct sockaddr *) &src, &sizeof_src) < 0) {
 				ERROR("Failed getting socket name: %s", fr_syserror(errno));
 				return -1;
 			}
@@ -2661,10 +2699,10 @@ static int listen_bind(rad_listen_t *this)
 		    && (this->type == RAD_LISTEN_PROXY) && !this->tls
 #  endif
 			) {
+			DEBUG4("[FD %i] Setting nonblock -- fr_nonblock(%i)", this->fd, this->fd);
 			if (fr_nonblock(this->fd) < 0) {
 				close(this->fd);
-				ERROR("Failed setting non-blocking on socket: %s",
-				      fr_syserror(errno));
+				ERROR("Failed setting non-blocking on socket: %s", fr_syserror(errno));
 				return -1;
 			}
 		}
@@ -2675,6 +2713,7 @@ static int listen_bind(rad_listen_t *this)
 #  ifdef WITH_PROXY
 		if (this->type != RAD_LISTEN_PROXY)
 #  endif
+		DEBUG4("[FD %i] Listening -- listen(%i, 8)", this->fd, this->fd);
 		if (listen(this->fd, 8) < 0) {
 			close(this->fd);
 			ERROR("Failed in listen(): %s", fr_syserror(errno));
