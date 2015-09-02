@@ -2357,6 +2357,17 @@ static int listen_bind(rad_listen_t *this)
 			break;
 #endif
 
+#ifdef WITH_DHCP
+		case RAD_LISTEN_DHCP:
+			svp = getservbyname ("bootps", "udp");
+			if (svp != NULL) {
+				sock->my_port = ntohs(svp->s_port);
+			} else {
+				sock->my_port = 67;
+			}
+			break;
+#endif
+
 		default:
 			WARN("Internal sanity check failed in binding to socket.  Ignoring problem");
 			return -1;
