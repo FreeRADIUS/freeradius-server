@@ -433,28 +433,10 @@ static int file_callback(void *ctx, void *data)
 	 *	The file changed, we'll need to re-read it.
 	 */
 	if (buf.st_mtime != file->buf.st_mtime) {
-		/*
-		 *	Set none -> whatever
-		 */
-		if (*rcode == CF_FILE_NONE) {
-			if (!file->input) {
-				*rcode = CF_FILE_CONFIG;
-				return 1;
-			}
-
-			*rcode = CF_FILE_MODULE;
-			return 0;
-
-		}
-
-		/*
-		 *	A module WAS changed, but now we discover that
-		 *	a main config file has changed.  We might as
-		 *	well re-load everything.
-		 */
-		if ((*rcode == CF_FILE_MODULE) && !file->input) {
-			*rcode = CF_FILE_CONFIG;
-			return 1;
+		if (!file->input) {
+			*rcode |= CF_FILE_CONFIG;
+		} else {
+			*rcode |= CF_FILE_MODULE;
 		}
 	}
 
