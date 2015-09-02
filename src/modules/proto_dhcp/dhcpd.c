@@ -620,16 +620,32 @@ static int dhcp_process(REQUEST *request)
  */
 static const char *dhcp_pcap_filter_build(rad_listen_t *this)
 {
-	dhcp_socket_t *sock = this->data;
-	char *buf;
-	char ip[16];
+	dhcp_socket_t	*sock = this->data;
+	char		*filter;
 
-	ip_ntoh(&sock->lsock.my_ipaddr, ip, sizeof(ip));
-	buf = talloc_typed_asprintf(this, "udp and port %d and (dst host %s%s)",
-				    sock->lsock.my_port,
-				    ip, sock->lsock.broadcast ? " or dst host 255.255.255.255" : "");
+	/*
+	 *	Set the port filter
+	 */
+	filter = talloc_strdup(this, "(udp and dst port ");
+	if (sock->lsock.my_port) {
+		filter = talloc_asprintf_append_buffer(filter, "%u)",  sock->lsock.my_port);
+	} else {
+		filter = talloc_strdup_append_buffer(filter, "bootps)");
+	}
 
-	return buf;
+	if (!fr_is_inaddr_any(&sock->lsock.my_ipaddr)) {
+		char buffer[INET_ADDRSTRLEN];
+		ip_ntoh(&sock->lsock.my_ipaddr, buffer, sizeof(buffer));
+
+		if (sock->lsock.broadcast) {
+			filter = talloc_asprintf_append_buffer(filter, " and (dst host %s or dst host 255.255.255.255)",
+							       buffer);
+		} else {
+			filter = talloc_asprintf_append_buffer(filter, " and dst host %s", buffer);
+		}
+	}
+
+	return filter;
 }
 #endif
 
