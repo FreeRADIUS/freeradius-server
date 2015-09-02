@@ -58,16 +58,14 @@ $(BUILD_DIR)/tests/daemon/:
 #  If the tmux session isn't running, that's OK, too.
 #
 $(BUILD_DIR)/tests/daemon/radiusd.version: $(TESTBINDIR)/radiusd
+	@tmux -L $(TMUX_KEY) send-key C-c 2>/dev/null || true
 	@tmux -L $(TMUX_KEY) kill-server 2>/dev/null || true
+	@rm -f $(BUILD_DIR)/tests/daemon/radiusd.log
 	@touch $@
 
 #
 #  The output log file is created by running the server.
 #
-#  It's marked "phony" so that Make will always run the commands to
-#  start the TMUX session, even if the log file already exists.
-#
-.PHONY: $(BUILD_DIR)/tests/daemon/radiusd.log
 $(BUILD_DIR)/tests/daemon/radiusd.log: $(BUILD_DIR)/tests/daemon/radiusd.version
 	@rm -f $@
 	@tmux -L $(TMUX_KEY) new-session -d './$(TESTBIN)/radiusd -i 127.0.0.1 -p $(TMUX_PORT) -fxx -d ./raddb -D share -l $@'
@@ -75,14 +73,17 @@ $(BUILD_DIR)/tests/daemon/radiusd.log: $(BUILD_DIR)/tests/daemon/radiusd.version
 radiusd.start: $(BUILD_DIR)/tests/daemon/radiusd.log
 
 #
-#  Killing the server doesn't kill the child process <sigh>
+#  Killing the TMUX session doesn't kill the child process <sigh>
 #  So we kill the radiusd daemon first, then kill the session.
 #
 #  We don't care if the session is running or not, either.
+#
+#  We delete the log file, because it's a clean exit.
 #
 .PHONY: radiusd.stop
 radiusd.stop:
 	@tmux -L $(TMUX_KEY) send-key C-c 2>/dev/null || true
 	@tmux -L $(TMUX_KEY) kill-server 2>/dev/null || true
+	@rm -f $(BUILD_DIR)/tests/daemon/radiusd.log
 
 endif
