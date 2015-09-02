@@ -205,7 +205,7 @@ static bool uint128_eq(uint128_t a, uint128_t b) {
 static uint128_t uint128_gen_mask(uint8_t bits)
 {
 	if (bits >= 128) return ~(uint128_t)0x00;
-	return (1 << bits) - 1;
+	return (((uint128_t)1) << bits) - 1;
 }
 #define uint128_lshift(_num, _bits) (_num << _bits)
 #define uint128_band(_a, _b) (_a & _b)
