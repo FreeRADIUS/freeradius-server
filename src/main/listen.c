@@ -2637,17 +2637,15 @@ static int listen_bind(rad_listen_t *this)
 				struct sockaddr_in	*addr = (struct sockaddr_in *)&salocal;
 
 				inet_ntop(addr->sin_family, &addr->sin_addr, buffer, sizeof(buffer));
-				DEBUG4("[FD %i] Binding to address %s port %u -- bind(%i, SOL_SOCKET, "
-				       "SO_BINDTODEVICE, %p, %u)", this->fd, buffer, ntohs(addr->sin_port),
-				       this->fd, &salocal, salen);
+				DEBUG4("[FD %i] Binding to address %s port %u -- bind(%i, %p, %u)",
+				       this->fd, buffer, ntohs(addr->sin_port), this->fd, &salocal, salen);
 			} else if (salocal.ss_family == AF_INET6) {
 				char		   	buffer[INET6_ADDRSTRLEN];
 				struct sockaddr_in6	*addr = (struct sockaddr_in6 *)&salocal;
 
 				inet_ntop(addr->sin6_family, &addr->sin6_addr, buffer, sizeof(buffer));
-				DEBUG4("[FD %i] Binding to address %s port %u -- bind(%i, SOL_SOCKET, "
-				       "SO_BINDTODEVICE, %p, %u)", this->fd, buffer, ntohs(addr->sin6_port),
-				       this->fd, &salocal, salen);
+				DEBUG4("[FD %i] Binding to address %s port %u -- bind(%i, %p, %u)",
+				       this->fd, buffer, ntohs(addr->sin6_port), this->fd, &salocal, salen);
 			}
 		}
 		rad_suid_up();
