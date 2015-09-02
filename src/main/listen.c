@@ -2435,7 +2435,7 @@ static int listen_bind(rad_listen_t *this)
 	/*
 	 *	Copy fr_socket() here, as we may need to bind to a device.
 	 */
-	this->fd = socket(sock->my_ipaddr.af, sock_type, 0);
+	this->fd = socket(sock->my_ipaddr.af, sock_type, sock->proto);
 	if (this->fd < 0) {
 		char buffer[256];
 
