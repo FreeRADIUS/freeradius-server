@@ -642,6 +642,16 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 		rcode = RLM_MODULE_OK;
 
 		/*
+		 *	Always delete MPPE keys & encryption policy
+		 *	from the tunneled reply.  These never get sent
+		 *	back to the user.
+		 */
+		fr_pair_delete_by_num(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
+
+		/*
 		 *	MS-CHAP2-Success means that we do NOT return
 		 *	an Access-Accept, but instead tunnel that
 		 *	attribute to the client, and keep going with
@@ -657,15 +667,6 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 			t->authenticated = true;
 
 			/*
-			 *	Delete MPPE keys & encryption policy.  We don't
-			 *	want these here.
-			 */
-			fr_pair_delete_by_num(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
-
-			/*
 			 *	Use the tunneled reply, but not now.
 			 */
 			if (t->use_tunneled_reply) {
@@ -678,7 +679,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 		} else { /* no MS-CHAP2-Success */
 			/*
 			 *	Can only have EAP-Message if there's
-			 *	no MS-CHAP2-Success.  (FIXME: EAP-MSCHAP?)
+			 *	no MS-CHAP2-Success.
 			 *
 			 *	We also do NOT tunnel the EAP-Success
 			 *	attribute back to the client, as the client
