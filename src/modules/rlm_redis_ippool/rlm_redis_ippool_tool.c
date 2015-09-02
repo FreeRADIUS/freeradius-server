@@ -746,6 +746,7 @@ do { \
 
 	case 'f':
 		if (cf_file_read(conf->cs, optarg) < 0) exit(1);
+		break;
 
 	default:
 		usage(1);
