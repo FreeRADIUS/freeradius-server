@@ -934,6 +934,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 
 		case IPPOOL_RCODE_EXPIRED:
 			REDEBUG("IP address lease already expired at time of renewal");
+			return RLM_MODULE_INVALID;
 
 		case IPPOOL_RCODE_DEVICE_MISMATCH:
 			REDEBUG("IP address lease allocated to another device");
