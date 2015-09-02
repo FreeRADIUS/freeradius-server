@@ -80,9 +80,8 @@ static fr_protocol_t master_listen[];
 /*
  *	Xlat for %{listen:foo}
  */
-static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char *out,
-			   size_t outlen)
+ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
+		    char const *fmt, char *out, size_t outlen)
 {
 	char const *value = NULL;
 	CONF_PAIR *cp;
@@ -3367,8 +3366,11 @@ add_sockets:
 	 */
 	if (!*head) return -1;
 
+<<<<<<< HEAD
 	xlat_register("listen", xlat_listen, NULL, NULL);
 
+=======
+>>>>>>> d376ada... Register the listen xlat in mainconfig not listen_init
 	return 0;
 }
 
