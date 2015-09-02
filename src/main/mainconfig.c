@@ -1086,7 +1086,10 @@ void main_config_hup(void)
 	int rcode;
 	cached_config_t *cc;
 	CONF_SECTION *cs;
+	time_t when;
 	char buffer[1024];
+
+	static time_t last_hup = 0;
 
 	/*
 	 *	Re-open the log file.  If we can't, then keep logging
@@ -1096,6 +1099,16 @@ void main_config_hup(void)
 	 *	because it makes that function MUCH simpler.
 	 */
 	hup_logfile();
+
+	/*
+	 *	Only check the config files every few seconds.
+	 */
+	when = time(NULL);
+	if ((last_hup + 2) >= when) {
+		INFO("HUP - Last HUP was too recent.  Ignoring");
+		return;
+	}
+	last_hup = when;
 
 	rcode = cf_file_changed(cs_cache->cs);
 	if (rcode == CF_FILE_NONE) {

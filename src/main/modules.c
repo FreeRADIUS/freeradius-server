@@ -761,6 +761,7 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 #endif
 
 	node->instantiated = true;
+	node->last_hup = time(NULL); /* don't let us load it, then immediately hup it */
 
 	return node;
 }
@@ -1517,6 +1518,12 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 	    ((node->entry->module->type & RLM_TYPE_HUP_SAFE) == 0)) {
 		return 1;
 	}
+
+	/*
+	 *	Silently ignore multiple HUPs within a short time period.
+	 */
+	if ((node->last_hup + 2) >= when) return 1;
+	node->last_hup = when;
 
 	cf_log_module(cs, "Trying to reload module \"%s\"", node->name);
 
