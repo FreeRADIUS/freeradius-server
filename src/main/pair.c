@@ -113,14 +113,17 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			goto regex_error;
 		}
 
-		ret = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, rxmatch, &nmatch);
-		if (ret < 0) {
+		slen = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, rxmatch, &nmatch);
+		if (slen < 0) {
 			RERROR("%s", fr_strerror());
 
 			return -2;
 		}
 
 		if (check->op == T_OP_REG_EQ) {
+			/*
+			 *	Add in %{0}. %{1}, etc.
+			 */
 			regex_sub_to_request(request, &preg, value_p, talloc_array_length(value_p) - 1,
 					     rxmatch, nmatch);
 			ret = (slen == 1) ? 0 : -1;
@@ -569,7 +572,6 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		if (check_item->op == T_OP_CMP_FALSE) {
 			return -1;
 		}
-
 
 		/*
 		 *	We've got to xlat the string before doing
