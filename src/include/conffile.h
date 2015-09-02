@@ -292,7 +292,7 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 #define CF_FILE_ERROR  (1)
 #define CF_FILE_CONFIG (1 << 2)
 #define CF_FILE_MODULE (1 << 3)
-int cf_file_changed(CONF_SECTION *cs);
+int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback);
 
 extern CONF_SECTION *root_config;
 extern bool cf_new_escape;

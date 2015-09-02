@@ -412,20 +412,27 @@ static bool cf_file_input(CONF_SECTION *cs, char const *filename)
 }
 
 
+typedef struct cf_file_callback_t {
+	int		rcode;
+	rb_walker_t	callback;
+	CONF_SECTION	*modules;
+} cf_file_callback_t;
+
+
 /*
  *	Return 0 for keep going, 1 for stop.
  */
 static int file_callback(void *ctx, void *data)
 {
-	int *rcode = ctx;
-	struct stat buf;
+	cf_file_callback_t *cb = ctx;
 	cf_file_t *file = data;
+	struct stat buf;
 
 	/*
 	 *	The file doesn't exist or we can no longer read it.
 	 */
 	if (stat(file->filename, &buf) < 0) {
-		*rcode = CF_FILE_ERROR;
+		cb->rcode = CF_FILE_ERROR;
 		return 1;
 	}
 
@@ -434,9 +441,10 @@ static int file_callback(void *ctx, void *data)
 	 */
 	if (buf.st_mtime != file->buf.st_mtime) {
 		if (!file->input) {
-			*rcode |= CF_FILE_CONFIG;
+			cb->rcode |= CF_FILE_CONFIG;
 		} else {
-			*rcode |= CF_FILE_MODULE;
+			(void) cb->callback(cb->modules, file->cs);
+			cb->rcode |= CF_FILE_MODULE;
 		}
 	}
 
@@ -447,11 +455,11 @@ static int file_callback(void *ctx, void *data)
 /*
  *	See if any of the files have changed.
  */
-int cf_file_changed(CONF_SECTION *cs)
+int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback)
 {
-	int rcode;
 	CONF_DATA *cd;
 	CONF_SECTION *top;
+	cf_file_callback_t cb;
 	rbtree_t *tree;
 
 	top = cf_top_section(cs);
@@ -460,10 +468,13 @@ int cf_file_changed(CONF_SECTION *cs)
 
 	tree = cd->data;
 
-	rcode = CF_FILE_NONE;
-	(void) rbtree_walk(tree, RBTREE_IN_ORDER, file_callback, &rcode);
+	cb.rcode = CF_FILE_NONE;
+	cb.callback = callback;
+	cb.modules = cf_section_sub_find(cs, "modules");
 
-	return rcode;
+	(void) rbtree_walk(tree, RBTREE_IN_ORDER, file_callback, &cb);
+
+	return cb.rcode;
 }
 
 static int _cf_section_free(CONF_SECTION *cs)
