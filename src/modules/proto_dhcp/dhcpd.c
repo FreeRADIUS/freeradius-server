@@ -623,10 +623,11 @@ static const char *dhcp_pcap_filter_build(rad_listen_t *this)
 	dhcp_socket_t *sock = this->data;
 	char *buf;
 	char ip[16];
-	ip_ntoh(&sock->lsock.my_ipaddr, ip, sizeof(ip));
 
-	buf = talloc_typed_asprintf(this, "udp and port %d and (dst host %s %s)",
-			sock->lsock.my_port, ip, sock->lsock.broadcast ? "or dst host 255.255.255.255" : "");
+	ip_ntoh(&sock->lsock.my_ipaddr, ip, sizeof(ip));
+	buf = talloc_typed_asprintf(this, "udp and port %d and (dst host %s%s)",
+				    sock->lsock.my_port,
+				    ip, sock->lsock.broadcast ? " or dst host 255.255.255.255" : "");
 
 	return buf;
 }
