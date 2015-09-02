@@ -78,35 +78,6 @@ static int command_write_magic(int newfd, listen_socket_t *sock);
 static fr_protocol_t master_listen[];
 
 /*
- *	Xlat for %{listen:foo}
- */
-ssize_t xlat_listen(UNUSED void *instance, REQUEST *request,
-		    char const *fmt, char *out, size_t outlen)
-{
-	char const *value = NULL;
-	CONF_PAIR *cp;
-
-	if (!fmt || !out || (outlen < 1)) return 0;
-
-	if (!request->listener) {
-		RWDEBUG("No listener associated with this request");
-		*out = '\0';
-		return 0;
-	}
-
-	cp = cf_pair_find(request->listener->cs, fmt);
-	if (!cp || !(value = cf_pair_value(cp))) {
-		RDEBUG("Listener does not contain config item \"%s\"", fmt);
-		*out = '\0';
-		return 0;
-	}
-
-	strlcpy(out, value, outlen);
-
-	return strlen(out);
-}
-
-/*
  *	Find a per-socket client.
  */
 RADCLIENT *client_listener_find(rad_listen_t *listener,
@@ -3377,11 +3348,6 @@ add_sockets:
 	 */
 	if (!*head) return -1;
 
-<<<<<<< HEAD
-	xlat_register("listen", xlat_listen, NULL, NULL);
-
-=======
->>>>>>> d376ada... Register the listen xlat in mainconfig not listen_init
 	return 0;
 }
 
