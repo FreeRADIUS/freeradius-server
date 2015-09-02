@@ -436,6 +436,31 @@ error:
 	return -1;
 }
 
+/*
+ *	Xlat for %{listen:foo}
+ */
+static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
+{
+	char const *value = NULL;
+	CONF_PAIR *cp;
+
+	if (!request->listener) {
+		RWDEBUG("No listener associated with this request");
+		return 0;
+	}
+
+	cp = cf_pair_find(request->listener->cs, fmt);
+	if (!cp || !(value = cf_pair_value(cp))) {
+		RDEBUG("Listener does not contain config item \"%s\"", fmt);
+		return 0;
+	}
+
+	strlcpy(*out, value, outlen);
+
+	return strlen(*out);
+}
+
+
 #ifdef HAVE_SETUID
 /*
  *  Do chroot, if requested.

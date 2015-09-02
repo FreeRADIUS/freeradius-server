@@ -570,7 +570,6 @@ void main_config_hup(void);
 void hup_logfile(void);
 
 /* listen.c */
-ssize_t xlat_listen(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen);
 void listen_free(rad_listen_t **head);
 int listen_init(CONF_SECTION *cs, rad_listen_t **head, bool spawn_flag);
 rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t src_port);

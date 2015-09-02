@@ -80,30 +80,6 @@ static int last_listener = RAD_LISTEN_MAX;
 static fr_protocol_t master_listen[MAX_LISTENER];
 
 /*
- *	Xlat for %{listen:foo}
- */
-ssize_t xlat_listen(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
-{
-	char const *value = NULL;
-	CONF_PAIR *cp;
-
-	if (!request->listener) {
-		RWDEBUG("No listener associated with this request");
-		return 0;
-	}
-
-	cp = cf_pair_find(request->listener->cs, fmt);
-	if (!cp || !(value = cf_pair_value(cp))) {
-		RDEBUG("Listener does not contain config item \"%s\"", fmt);
-		return 0;
-	}
-
-	strlcpy(*out, value, outlen);
-
-	return strlen(*out);
-}
-
-/*
  *	Find a per-socket client.
  */
 RADCLIENT *client_listener_find(rad_listen_t *listener,
