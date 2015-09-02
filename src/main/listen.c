@@ -1002,8 +1002,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		} else if (strcmp(proto, "tcp") == 0) {
 			sock->proto = IPPROTO_TCP;
 		} else {
-			cf_log_err_cs(cs,
-				   "Unknown proto name \"%s\"", proto);
+			cf_log_err_cs(cs, "Unknown proto name \"%s\"", proto);
 			return -1;
 		}
 
@@ -1014,22 +1013,19 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 #  ifdef WITH_PROXY
 		if ((this->type == RAD_LISTEN_PROXY) &&
 		    (sock->proto != IPPROTO_UDP)) {
-			cf_log_err_cs(cs,
-				   "Proxy listeners can only listen on proto = udp");
+			cf_log_err_cs(cs, "Proxy listeners can only listen on proto = udp");
 			return -1;
 		}
 #  endif	/* WITH_PROXY */
 
 #  ifdef WITH_TLS
 		tls = cf_section_sub_find(cs, "tls");
-
 		if (tls) {
 			/*
 			 *	Don't allow TLS configurations for UDP sockets.
 			 */
 			if (sock->proto != IPPROTO_TCP) {
-				cf_log_err_cs(cs,
-					      "TLS transport is not available for UDP sockets");
+				cf_log_err_cs(cs, "TLS transport is not available for UDP sockets");
 				return -1;
 			}
 
@@ -2357,7 +2353,7 @@ static int listen_bind(rad_listen_t *this)
 
 		switch (this->type) {
 		case RAD_LISTEN_AUTH:
-			svp = getservbyname ("radius", proto_for_port);
+			svp = getservbyname("radius", proto_for_port);
 			if (svp != NULL) {
 				sock->my_port = ntohs(svp->s_port);
 			} else {
@@ -2367,7 +2363,7 @@ static int listen_bind(rad_listen_t *this)
 
 #ifdef WITH_ACCOUNTING
 		case RAD_LISTEN_ACCT:
-			svp = getservbyname ("radacct", proto_for_port);
+			svp = getservbyname("radacct", proto_for_port);
 			if (svp != NULL) {
 				sock->my_port = ntohs(svp->s_port);
 			} else {
@@ -2396,7 +2392,7 @@ static int listen_bind(rad_listen_t *this)
 
 #ifdef WITH_COA
 		case RAD_LISTEN_COA:
-			svp = getservbyname ("radius-dynauth", "udp");
+			svp = getservbyname("radius-dynauth", "udp");
 			if (svp != NULL) {
 				sock->my_port = ntohs(svp->s_port);
 			} else {
@@ -2460,13 +2456,11 @@ static int listen_bind(rad_listen_t *this)
 		strlcpy(ifreq.ifr_name, sock->interface, sizeof(ifreq.ifr_name));
 
 		rad_suid_up();
-		rcode = setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
-				   (char *)&ifreq, sizeof(ifreq));
+		rcode = setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
 		rad_suid_down();
 		if (rcode < 0) {
 			close(this->fd);
-			ERROR("Failed binding to interface %s: %s",
-			       sock->interface, fr_syserror(errno));
+			ERROR("Failed binding to interface %s: %s", sock->interface, fr_syserror(errno));
 			return -1;
 		} /* else it worked. */
 #else

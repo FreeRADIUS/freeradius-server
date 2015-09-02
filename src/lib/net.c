@@ -163,7 +163,7 @@ done:
 	int ret = 0;
 	udp_header_t const	*udp;
 
-    /*
+	/*
 	 *	UDP header validation.
 	 */
 	udp = (udp_header_t const *)data;
