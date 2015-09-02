@@ -2395,10 +2395,16 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		}
 
 		break;
-	default:
-		raw->quote = quote;
 
+	case T_SINGLE_QUOTED_STRING:
+	case T_BACK_QUOTED_STRING:
+	case T_BARE_WORD:
+		raw->quote = quote;
 		break;
+
+	default:
+		fr_strerror_printf("Failed to find expected value on right hand side");
+		return T_INVALID;
 	}
 
 	return ret;
