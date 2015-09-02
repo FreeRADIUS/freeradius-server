@@ -49,6 +49,7 @@ typedef struct module_instance_t {
 	pthread_mutex_t		*mutex;
 #endif
 	CONF_SECTION		*cs;
+	time_t			last_hup;
 	bool			instantiated;
 	bool			force;
 	rlm_rcode_t		code;
