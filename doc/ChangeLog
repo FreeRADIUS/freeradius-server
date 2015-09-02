@@ -45,7 +45,9 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Handle tags when using maps.  Fixes #1191.
 	* Fix crash when CoA packets time out.
 	* Fix parse error in rediswho
-	* Fix regex support in SQL radcheck and "users" file.
+	* Fix regex support in SQL radcheck the "users" file and radsniff.
+	* Register listen xlat earlier, so that it's available when the
+	  virtual servers are being parsed.
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
