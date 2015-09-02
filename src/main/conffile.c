@@ -2496,7 +2496,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			t2 = gettoken(&ptr, buf2, sizeof(buf2), true);
 			switch (t2) {
 			case T_HASH:
-				fprintf(stdout, "HASH %s\n", ptr);
 			case T_EOL:
 				goto do_bare_word;
 
@@ -2923,7 +2922,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		t2 = gettoken(&ptr, buf2, sizeof(buf2), false);
 		switch (t2) {
 		case T_HASH:
-			fprintf(stdout, "HASH %s\n", ptr);
 		case T_EOL:
 		case T_COMMA:
 		do_bare_word:
@@ -3019,7 +3017,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				break;
 
 			case T_HASH:
-				fprintf(stdout, "HASH %s\n", ptr);
 			case T_EOL:
 				value = NULL;
 				break;
