@@ -315,7 +315,7 @@ size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);
 #define CF_FILE_ERROR  (1)
 #define CF_FILE_CONFIG (1 << 2)
 #define CF_FILE_MODULE (1 << 3)
-int cf_file_changed(CONF_SECTION *cs);
+int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback);
 
 extern CONF_SECTION *root_config;
 

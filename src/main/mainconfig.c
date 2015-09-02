@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
@@ -1078,6 +1079,43 @@ void hup_logfile(void)
 	}
 }
 
+static int hup_callback(void *ctx, void *data)
+{
+	CONF_SECTION *modules = ctx;
+	CONF_SECTION *cs = data;
+	CONF_SECTION *parent;
+	char const *name;
+	module_instance_t *mi;
+
+	/*
+	 *	Files may be defined in sub-sections of a module
+	 *	config.  Walk up the tree until we find the module
+	 *	definition.
+	 */
+	parent = cf_item_parent(cf_section_to_item(cs));
+	while (parent != modules) {
+		cs = parent;
+		parent = cf_item_parent(cf_section_to_item(cs));
+
+		/*
+		 *	Something went wrong.  Oh well...
+		 */
+		if (!parent) return 0;
+	}
+
+	name = cf_section_name2(cs);
+	if (!name) name = cf_section_name1(cs);
+
+	mi = module_find(modules, name);
+	if (!mi) return 0;
+
+	if ((mi->entry->module->type & RLM_TYPE_HUP_SAFE) == 0) return 0;
+
+	if (!module_hup_module(mi->cs, mi, time(NULL))) return 0;
+
+	return 0;
+}
+
 void main_config_hup(void)
 {
 	int rcode;
@@ -1107,7 +1145,7 @@ void main_config_hup(void)
 	}
 	last_hup = when;
 
-	rcode = cf_file_changed(cs_cache->cs);
+	rcode = cf_file_changed(cs_cache->cs, hup_callback);
 	if (rcode == CF_FILE_NONE) {
 		INFO("HUP - No files changed.  Ignoring");
 		return;
