@@ -682,8 +682,8 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (!sock->lsock.pcap)
 #endif
 	{
-		DEBUG4("[FD %i] Enabling SO_REUSEADDR %s -- setsockopt(%i, SOL_SOCKET, SO_REUSEADDR, %p (%i), %zu)",
-		       this->fd, sock->interface, this->fd, &on, on, sizeof(on));
+		DEBUG4("[FD %i] Enabling SO_REUSEADDR -- setsockopt(%i, SOL_SOCKET, SO_REUSEADDR, %p (%i), %zu)",
+		       this->fd, this->fd, &on, on, sizeof(on));
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
 			ERROR("Can't set re-use addres option: %s", fr_syserror(errno));

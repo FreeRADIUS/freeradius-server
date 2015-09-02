@@ -2514,8 +2514,8 @@ static int listen_bind(rad_listen_t *this)
 	if (sock->proto == IPPROTO_TCP) {
 		int on = 1;
 
-		DEBUG4("[FD %i] Enabling SO_REUSEADDR %s -- setsockopt(%i, SOL_SOCKET, SO_REUSEADDR, %p (%i), %zu)",
-		       this->fd, sock->interface, this->fd, &on, on, sizeof(on));
+		DEBUG4("[FD %i] Enabling SO_REUSEADDR -- setsockopt(%i, SOL_SOCKET, SO_REUSEADDR, %p (%i), %zu)",
+		       this->fd, this->fd, &on, on, sizeof(on));
 		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
 			close(this->fd);
 			ERROR("Failed to reuse address: %s", fr_syserror(errno));
