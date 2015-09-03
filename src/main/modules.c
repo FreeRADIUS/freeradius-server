@@ -781,7 +781,7 @@ module_instance_t *module_instantiate_method(CONF_SECTION *modules, char const *
 	/*
 	 *	Find out which method is being used.
 	 */
-	p = strrchr(name, ".");
+	p = strrchr(name, '.');
 	if (!p) return NULL;
 
 	p++;
