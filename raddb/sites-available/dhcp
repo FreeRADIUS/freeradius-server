@@ -246,6 +246,72 @@ dhcp DHCP-Release {
 }
 
 
+dhcp DHCP-Lease-Query {
+	#  The thing being queried for is implicit
+	#  in the packets.
+
+	# has MAC, asking for IP, etc.
+	if (&DHCP-Client-Hardware-Address) {
+		# look up MAC in database
+	}
+
+	# has IP, asking for MAC, etc.
+	elsif (&DHCP-Your-IP-Address) {
+		# look up IP in database
+	}
+
+	# has host name, asking for IP, MAC, etc.
+	elsif (&DHCP-Client-Identifier) {
+		# look up identifier in database
+	}
+	else {
+		update reply {
+			&DHCP-Message-Type = DHCP-Lease-Unknown
+		}
+
+		ok
+
+		# stop processing
+		return
+	}
+
+	#
+	#  We presume that the database lookup returns "notfound"
+	#  if it can't find anything.
+	#
+	if (notfound) {
+		update reply {
+			&DHCP-Message-Type = DHCP-Lease-Unknown
+		}
+		ok
+		return
+	}
+
+	#
+	#	Add more logic here.  Is the lease inactive?
+	#	If so, respond with DHCP-Lease-Unassigned.
+	#
+	#	Otherwise, respond with DHCP-Lease-Active
+	#
+
+	#
+	#	Also be sure to return ALL information about
+	#	the lease.
+	#
+
+	#
+	#	The reply types are:
+	#
+	#	DHCP-Lease-Unknown
+	#	DHCP-Lease-Active
+	#	DHCP-Lease-Unassigned
+	#
+	update reply {
+		&DHCP-Message-Type = DHCP-Lease-Unassigned
+	}
+
+}
+
 }
 
 ######################################################################
