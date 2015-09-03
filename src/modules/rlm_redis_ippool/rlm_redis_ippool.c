@@ -124,18 +124,7 @@ static CONF_PARSER module_config[] = {
 static char lua_alloc_cmd[] =
 	"local ip" EOL
 	"local ip_key" EOL
-	"local device" EOL
-	"local gateway" EOL
-	/*
-	 *	Redis doesn't accept Nil Bulk strings, so we have to send
-	 *	empty string instead *sigh*.
-	 */
-	"if ARGV[4] ~= '' then" EOL
-	"  device = ARGV[4]" EOL
-	"end" EOL
-	"if ARGV[5] ~= '' then" EOL
-	"  gateway = ARGV[5]" EOL
-	"end" EOL
+	"local found" EOL
 
 	/*
 	 *	Get the IP address the expired the longest time ago.
@@ -147,12 +136,14 @@ static char lua_alloc_cmd[] =
 	"if ip[2] >= ARGV[2] then" EOL
 	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL
 	"end" EOL
-	"ip_key = '{' .. ARGV[1] .. '}:' .. ip[1]" EOL
-	"if device or gateway then" EOL
-	"  redis.call('HMSET', ip_key, 'device', device, 'gateway', gateway)" EOL
-	"end" EOL
 	"redis.call('ZADD', KEYS[1], ARGV[3], ip[1])" EOL
-	"return { " STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", ip[1], redis.call('HGET', ip_key, 'range') }" EOL;
+
+	/*
+	 *	Set the device/gateway keys
+	 */
+	"ip_key = '{' .. ARGV[1] .. '}:' .. ip[1]" EOL
+	"redis.call('HMSET', ip_key, 'device', ARGV[4], 'gateway', ARGV[5])" EOL
+	"return { " STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", ip[1], redis.call('HGET', ARGV[1], 'range')}" EOL;
 static char lua_alloc_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
 
 /** Lua script for updating leases
