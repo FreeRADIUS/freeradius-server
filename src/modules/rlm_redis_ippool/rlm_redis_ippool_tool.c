@@ -62,7 +62,8 @@ typedef enum ippool_tool_action {
 /** net and prefix associated with an action
  *
  */
-typedef struct ippool_tool_net {
+typedef struct ippool_tool_operation {
+	char const		*range;		//!< Range identifier.
 	fr_ipaddr_t		net;		//!< Base network address.
 	uint8_t			prefix;		//!< Prefix - The bits between the address mask, and the prefix
 						//!< form the addresses to be modified in the pool.
@@ -72,10 +73,12 @@ typedef struct ippool_tool_net {
 typedef struct ippool_tool_lease {
 	fr_ipaddr_t		ipaddr;		//!< Prefix or address.
 	time_t			next_event;	//!< Last state change.
-	uint8_t	const		*device_id;	//!< Last device id.
-	size_t			device_id_len;
-	uint8_t const		*gateway_id;	//!< Last gateway id.
-	size_t			gateway_id_len;
+	uint8_t const		*range;		//!< Range the lease belongs to.
+	size_t			range_len;
+	uint8_t	const		*device;	//!< Last device id.
+	size_t			device_len;
+	uint8_t const		*gateway;	//!< Last gateway id.
+	size_t			gateway_len;
 } ippool_tool_lease_t;
 
 static CONF_PARSER redis_config[] = {
@@ -94,15 +97,16 @@ typedef struct ippool_tool {
 } ippool_tool_t;
 
 typedef int (*redis_ippool_queue_t)(redis_driver_conf_t *inst, fr_redis_conn_t *conn,
-				    uint8_t const *key_prefix, size_t key_prefix_len, fr_ipaddr_t *ipaddr,
-				    uint8_t prefix);
+				    uint8_t const *key_prefix, size_t key_prefix_len,
+				    uint8_t const *range, size_t range_len,
+				    fr_ipaddr_t *ipaddr, uint8_t prefix);
 
 typedef int (*redis_ippool_process_t)(void *out, fr_ipaddr_t const *ipaddr, redisReply const *reply);
 
 static char const *name;
 
 static void NEVER_RETURNS usage(int ret) {
-	INFO("Usage: %s [[-a|-r|-c] -p] [options] <server[:port]> <pool>", name);
+	INFO("Usage: %s [[-a|-r|-c] -p] [options] <server[:port]> <pool> [<range>]", name);
 	INFO("Pool management:");
 	INFO("  -a <addr>[/<cidr>]     Add addresses/prefixes to the pool");
 	INFO("  -r <addr>[/<cidr>]     Remove addresses/prefixes in this range");
@@ -290,7 +294,9 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix)
  *
  * @return the number of new addresses added.
  */
-static int driver_do_lease(void *out, void *instance, uint8_t const *key_prefix, size_t key_prefix_len,
+static int driver_do_lease(void *out, void *instance,
+			   uint8_t const *key_prefix, size_t key_prefix_len,
+			   uint8_t const *range, size_t range_len,
 			   fr_ipaddr_t const *net, uint8_t prefix,
 			   redis_ippool_queue_t enqueue, redis_ippool_process_t process)
 {
@@ -333,7 +339,8 @@ static int driver_do_lease(void *out, void *instance, uint8_t const *key_prefix,
 			for (i = 0; (i < MAX_PIPELINED) && more; i++, more = ipaddr_next(&ipaddr, prefix)) {
 				int enqueued;
 
-				enqueued = enqueue(inst, conn, key_prefix, key_prefix_len, &ipaddr, prefix);
+				enqueued = enqueue(inst, conn, key_prefix, key_prefix_len,
+						   range, range_len, &ipaddr, prefix);
 				if (enqueued < 0) break;
 				pipelined += enqueued;
 			}
@@ -370,7 +377,6 @@ static int driver_do_lease(void *out, void *instance, uint8_t const *key_prefix,
 	return 0;
 }
 
-
 /** Enqueue commands to retrieve lease information
  *
  */
@@ -386,7 +392,7 @@ static int _driver_show_lease_process(void *out, fr_ipaddr_t const *ipaddr, redi
 	 *	The exec command is the only one that produces an array.
 	 */
 	if (reply->type != REDIS_REPLY_ARRAY) return -1;
-	if (reply->elements < 3) return -1;
+	if (reply->elements < 4) return -1;
 
 	if (reply->element[0]->type != REDIS_REPLY_STRING) return -1;
 	lease = talloc_zero(*modified, ippool_tool_lease_t);
@@ -394,12 +400,16 @@ static int _driver_show_lease_process(void *out, fr_ipaddr_t const *ipaddr, redi
 	lease->next_event = (time_t)strtoull(reply->element[0]->str, NULL, 10);
 
 	if (reply->element[1]->type == REDIS_REPLY_STRING) {
-		lease->device_id = talloc_memdup(lease, reply->element[1]->str, reply->element[1]->len);
-		lease->device_id_len = reply->element[1]->len;
+		lease->device = talloc_memdup(lease, reply->element[1]->str, reply->element[1]->len);
+		lease->device_len = reply->element[1]->len;
 	}
 	if (reply->element[2]->type == REDIS_REPLY_STRING) {
-		lease->gateway_id = talloc_memdup(lease, reply->element[2]->str, reply->element[2]->len);
-		lease->gateway_id_len = reply->element[2]->len;
+		lease->gateway = talloc_memdup(lease, reply->element[2]->str, reply->element[2]->len);
+		lease->gateway_len = reply->element[2]->len;
+	}
+	if (reply->element[3]->type == REDIS_REPLY_STRING) {
+		lease->range = talloc_memdup(lease, reply->element[3]->str, reply->element[3]->len);
+		lease->range_len = reply->element[3]->len;
 	}
 	existing = talloc_array_length(*modified);
 	*modified = talloc_realloc(NULL, *modified, ippool_tool_lease_t *, existing + 1);
@@ -413,6 +423,7 @@ static int _driver_show_lease_process(void *out, fr_ipaddr_t const *ipaddr, redi
  */
 static int _driver_show_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 				      uint8_t const *key_prefix, size_t key_prefix_len,
+				      UNUSED uint8_t const *range, UNUSED size_t range_len,
 				      fr_ipaddr_t *ipaddr, uint8_t prefix)
 {
 	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
@@ -429,19 +440,25 @@ static int _driver_show_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis
 	DEBUG("Retrieving lease info for %s from pool %s", ip_buff, key_prefix);
 	redisAppendCommand(conn->handle, "MULTI");
 	redisAppendCommand(conn->handle, "ZSCORE %b %s", key, key_p - key, ip_buff);
-	redisAppendCommand(conn->handle, "HGET %b device_id", ip_key, ip_key_p - ip_key);
-	redisAppendCommand(conn->handle, "HGET %b gateway_id", ip_key, ip_key_p - ip_key);
+	redisAppendCommand(conn->handle, "HGET %b device", ip_key, ip_key_p - ip_key);
+	redisAppendCommand(conn->handle, "HGET %b gateway", ip_key, ip_key_p - ip_key);
+	redisAppendCommand(conn->handle, "HGET %b range", ip_key, ip_key_p - ip_key);
 	redisAppendCommand(conn->handle, "EXEC");
-	return 5;
+	return 6;
 }
 
 /** Show information about leases
  *
  */
-static inline int driver_show_lease(void *out, void *instance, uint8_t const *key_prefix, size_t key_prefix_len,
+static inline int driver_show_lease(void *out, void *instance,
+				    uint8_t const *key_prefix, size_t key_prefix_len,
+				    uint8_t const *range, size_t range_len,
 				    fr_ipaddr_t const *net, uint8_t prefix)
 {
-	return driver_do_lease(out, instance, key_prefix, key_prefix_len, net, prefix,
+	return driver_do_lease(out, instance,
+			       key_prefix, key_prefix_len,
+			       range, range_len,
+			       net, prefix,
 			       _driver_show_lease_enqueue, _driver_show_lease_process);
 }
 
@@ -467,6 +484,7 @@ static int _driver_release_lease_process(void *out, UNUSED fr_ipaddr_t const *ip
  */
 static int _driver_release_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 					 uint8_t const *key_prefix, size_t key_prefix_len,
+					 UNUSED uint8_t const *range, UNUSED size_t range_len,
 					 fr_ipaddr_t *ipaddr, uint8_t prefix)
 {
 	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
@@ -485,10 +503,15 @@ static int _driver_release_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_re
 /** Release a range of leases
  *
  */
-static inline int driver_release_lease(void *out, void *instance, uint8_t const *key_prefix, size_t key_prefix_len,
+static inline int driver_release_lease(void *out, void *instance,
+				       uint8_t const *key_prefix, size_t key_prefix_len,
+				       uint8_t const *range, size_t range_len,
 				       fr_ipaddr_t const *net, uint8_t prefix)
 {
-	return driver_do_lease(out, instance, key_prefix, key_prefix_len, net, prefix,
+	return driver_do_lease(out, instance,
+			       key_prefix, key_prefix_len,
+			       range, range_len,
+			       net, prefix,
 			       _driver_release_lease_enqueue, _driver_release_lease_process);
 }
 
@@ -520,14 +543,15 @@ static int _driver_remove_lease_process(void *out, UNUSED fr_ipaddr_t const *ipa
  */
 static int _driver_remove_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 					uint8_t const *key_prefix, size_t key_prefix_len,
+					UNUSED uint8_t const *range, UNUSED size_t range_len,
 					fr_ipaddr_t *ipaddr, uint8_t prefix)
 {
-	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
-	uint8_t		*key_p = key;
-	char		ip_buff[INET6_ADDRSTRLEN + 4];
+	uint8_t	key[IPPOOL_MAX_POOL_KEY_SIZE];
+	uint8_t	*key_p = key;
+	char	ip_buff[INET6_ADDRSTRLEN + 4];
 
-	uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
-	uint8_t		*ip_key_p = ip_key;
+	uint8_t	ip_key[IPPOOL_MAX_IP_KEY_SIZE];
+	uint8_t	*ip_key_p = ip_key;
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
@@ -544,10 +568,15 @@ static int _driver_remove_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_red
 /** Remove a range of leases
  *
  */
-static int driver_remove_lease(void *out, void *instance, uint8_t const *key_prefix, size_t key_prefix_len,
+static int driver_remove_lease(void *out, void *instance,
+			       uint8_t const *key_prefix, size_t key_prefix_len,
+			       uint8_t const *range, size_t range_len,
 			       fr_ipaddr_t const *net, uint8_t prefix)
 {
-	return driver_do_lease(out, instance, key_prefix, key_prefix_len, net, prefix,
+	return driver_do_lease(out, instance,
+			       key_prefix, key_prefix_len,
+			       range, range_len,
+			       net, prefix,
 			       _driver_remove_lease_enqueue, _driver_remove_lease_process);
 }
 
@@ -564,9 +593,11 @@ static int _driver_add_lease_process(void *out, UNUSED fr_ipaddr_t const *ipaddr
 	 *	Existing addresses won't be included in this
 	 *	count.
 	 */
-	if (reply->type != REDIS_REPLY_INTEGER) return -1;
+	if (reply->type != REDIS_REPLY_ARRAY) return -1;
 
-	*modified += reply->integer;
+	if ((reply->elements > 0) && (reply->element[0]->type == REDIS_REPLY_INTEGER)) {
+		*modified += reply->element[0]->integer;
+	}
 	return 0;
 }
 
@@ -575,27 +606,40 @@ static int _driver_add_lease_process(void *out, UNUSED fr_ipaddr_t const *ipaddr
  */
 static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_conn_t *conn,
 				     uint8_t const *key_prefix, size_t key_prefix_len,
+				     uint8_t const *range, size_t range_len,
 				     fr_ipaddr_t *ipaddr, uint8_t prefix)
 {
 	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t		*key_p = key;
 	char		ip_buff[INET6_ADDRSTRLEN + 4];
 
+	uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
+	uint8_t		*ip_key_p = ip_key;
+
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
+	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
 	DEBUG("Adding %s to pool %s", ip_buff, key_prefix);
+	redisAppendCommand(conn->handle, "MULTI");
 	redisAppendCommand(conn->handle, "ZADD %b NX %u %s", key, key_p - key, 0, ip_buff);
-	return 1;
+	redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
+	redisAppendCommand(conn->handle, "EXEC");
+	return 4;
 }
 
 /** Add a range of prefixes
  *
  */
-static int driver_add_lease(void *out, void *instance, uint8_t const *key_prefix, size_t key_prefix_len,
+static int driver_add_lease(void *out, void *instance, uint8_t
+			    const *key_prefix, size_t key_prefix_len,
+	                    uint8_t const *range, size_t range_len,
 	                    fr_ipaddr_t const *net, uint8_t prefix)
 {
-	return driver_do_lease(out, instance, key_prefix, key_prefix_len, net, prefix,
+	return driver_do_lease(out, instance,
+			       key_prefix, key_prefix_len,
+			       range, range_len,
+			       net, prefix,
 			       _driver_add_lease_enqueue, _driver_add_lease_process);
 }
 
@@ -635,7 +679,7 @@ int main(int argc, char *argv[])
 
 	int				opt;
 
-	char const			*pool;
+	char const			*pool_arg, *range_arg = NULL;
 	bool				do_export = false, print_stats = false;
 	char				*do_import = NULL;
 
@@ -758,7 +802,7 @@ do { \
 		ERROR("Need server and pool name");
 		usage(64);
 	}
-	if (argc > 2) usage(64);
+	if (argc > 3) usage(64);
 
 	cp = cf_pair_alloc(conf->cs, "server", argv[0], T_OP_EQ, T_BARE_WORD, T_DOUBLE_QUOTED_STRING);
 	if (!cp) {
@@ -766,7 +810,8 @@ do { \
 		exit(1);
 	}
 	cf_pair_add(conf->cs, cp);
-	pool = argv[1];
+	pool_arg = argv[1];
+	if (argc >= 3) range_arg = argv[2];
 
 	if (p == nets) {
 		ERROR("Nothing to do!");
@@ -804,8 +849,10 @@ do { \
 	{
 		uint64_t count = 0;
 
-		if (driver_add_lease(&count, conf->driver, (uint8_t const *)pool,
-				     strlen(pool), &p->net, p->prefix) < 0) {
+		if (driver_add_lease(&count, conf->driver,
+				     (uint8_t const *)pool_arg, strlen(pool_arg),
+				     (uint8_t const *)range_arg, range_arg ? strlen(range_arg) : 0,
+				     &p->net, p->prefix) < 0) {
 			exit(1);
 		}
 		INFO("Added %" PRIu64 " addresses/prefixes", count);
@@ -816,8 +863,10 @@ do { \
 	{
 		uint64_t count = 0;
 
-		if (driver_remove_lease(&count, conf->driver, (uint8_t const *)pool,
-					strlen(pool), &p->net, p->prefix) < 0) {
+		if (driver_remove_lease(&count, conf->driver,
+					(uint8_t const *)pool_arg, strlen(pool_arg),
+					(uint8_t const *)range_arg, range_arg ? strlen(range_arg) : 0,
+					&p->net, p->prefix) < 0) {
 			exit(1);
 		}
 		INFO("Removed %" PRIu64 " addresses/prefixes", count);
@@ -828,8 +877,10 @@ do { \
 	{
 		uint64_t count = 0;
 
-		if (driver_release_lease(&count, conf->driver, (uint8_t const *)pool,
-					 strlen(pool), &p->net, p->prefix) < 0) {
+		if (driver_release_lease(&count, conf->driver,
+					 (uint8_t const *)pool_arg, strlen(pool_arg),
+					 (uint8_t const *)range_arg, range_arg ? strlen(range_arg) : 0,
+					 &p->net, p->prefix) < 0) {
 			exit(1);
 		}
 		INFO("Released %" PRIu64 " addresses/prefixes", count);
@@ -841,8 +892,10 @@ do { \
 		ippool_tool_lease_t **leases = NULL;
 		size_t len, i;
 
-		if (driver_show_lease(&leases, conf->driver, (uint8_t const *)pool,
-				      strlen(pool), &p->net, p->prefix) < 0) {
+		if (driver_show_lease(&leases, conf->driver,
+				      (uint8_t const *)pool_arg, strlen(pool_arg),
+				      (uint8_t const *)range_arg, range_arg ? strlen(range_arg) : 0,
+				      &p->net, p->prefix) < 0) {
 			exit(1);
 		}
 
@@ -853,8 +906,9 @@ do { \
 			char	time_buff[30];
 			struct	tm tm;
 			struct	timeval now;
-			char	*device_id = NULL;
-			char	*gateway_id = NULL;
+			char	*device = NULL;
+			char	*gateway = NULL;
+			char	*range = NULL;
 			bool	is_active;
 
 #ifndef NDEBUG
@@ -871,23 +925,33 @@ do { \
 			}
 			IPPOOL_SPRINT_IP(ip_buff, &(leases[i]->ipaddr), leases[i]->ipaddr.prefix);
 
+			if (leases[i]->range) {
+				range = fr_asprint(leases, (char const *)leases[i]->range,
+						   leases[i]->range_len, '\0');
+			}
+
 			INFO("--");
+			if (range) INFO("range           : %s", range);
 			INFO("address/prefix  : %s", ip_buff);
 			INFO("active          : %s", is_active ? "yes" : "no");
 
-			if (leases[i]->device_id) fr_asprint(conf, (char const *)leases[i]->device_id,
-							     leases[i]->device_id_len, '\0');
-			if (leases[i]->gateway_id) fr_asprint(conf, (char const *)leases[i]->gateway_id,
-							      leases[i]->gateway_id_len, '\0');
+			if (leases[i]->device) {
+				device = fr_asprint(leases, (char const *)leases[i]->device,
+						    leases[i]->device_len, '\0');
+			}
+			if (leases[i]->gateway) {
+				gateway = fr_asprint(leases, (char const *)leases[i]->gateway,
+						     leases[i]->gateway_len, '\0');
+			}
 			if (is_active) {
 				INFO("lease expires   : %s", time_buff);
 				if (*time_buff) INFO("lease expired   : %s", time_buff);
-				if (device_id) INFO("device id       : %s", device_id);
-				if (gateway_id) INFO("gateway id      : %s", gateway_id);
+				if (device) INFO("device id       : %s", device);
+				if (gateway) INFO("gateway id      : %s", gateway);
 			} else {
 				if (*time_buff) INFO("lease expired   : %s", time_buff);
-				if (device_id) INFO("last device id  : %s", device_id);
-				if (gateway_id) INFO("last gateway id : %s", gateway_id);
+				if (device) INFO("last device id  : %s", device);
+				if (gateway) INFO("last gateway id : %s", gateway);
 			}
 		}
 		talloc_free(leases);

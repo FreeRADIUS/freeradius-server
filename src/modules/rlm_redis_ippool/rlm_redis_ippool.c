@@ -65,8 +65,9 @@ typedef struct rlm_redis_ippool {
 						//!< NAS-Identifier or the actual Option 82 gateway.
 						//!< Used for bulk lease cleanups.
 
-	vp_tmpl_t		*renew_attr;	//!< IPv4 attribute and destination.
-	vp_tmpl_t		*reply_attr;	//!< IPv6 attribute and destination.
+	vp_tmpl_t		*renew_attr;	//!< Attribute to read the IP for renewal from.
+	vp_tmpl_t		*reply_attr;	//!< IP attribute and destination.
+	vp_tmpl_t		*range_attr;	//!< Attribute to write the range ID to.
 
 	bool			ipv4_integer;	//!< Whether IPv4 addresses should be cast to integers,
 						//!< for renew operations.
@@ -91,8 +92,9 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("wait_num", PW_TYPE_INTEGER, rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", PW_TYPE_TIMEVAL, rlm_redis_ippool_t, wait_timeout) },
 
-	{ FR_CONF_OFFSET("renew_attr", PW_TYPE_TMPL, rlm_redis_ippool_t, renew_attr), .dflt = "&DHCP-Client-IP-Address", .quote = T_BARE_WORD },
-	{ FR_CONF_OFFSET("reply_attr", PW_TYPE_TMPL, rlm_redis_ippool_t, reply_attr), .dflt = "&reply:DHCP-Your-IP-Address", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("renew_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, renew_attr), .dflt = "&DHCP-Client-IP-Address", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("reply_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, reply_attr), .dflt = "&reply:DHCP-Your-IP-Address", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("range_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, range_attr), .dflt = "&reply:Pool-Range", .quote = T_BARE_WORD },
 
 	{ FR_CONF_OFFSET("ipv4_integer", PW_TYPE_BOOLEAN, rlm_redis_ippool_t, ipv4_integer) },
 
@@ -114,20 +116,25 @@ static CONF_PARSER module_config[] = {
  * - ARGV[3] Expiry time (seconds since epoch).
  * - ARGV[4] (optional) Client identifier.
  * - ARGV[5] (optional) Gateway identifier.
+ *
+ * Returns { <rcode>[, <ip>[, <range>]] }
+ * - IPPOOL_RCODE_SUCCESS lease updated..
+ * - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
  */
 static char lua_alloc_cmd[] =
 	"local ip" EOL
-	"local device_id" EOL
-	"local gateway_id" EOL
+	"local ip_key" EOL
+	"local device" EOL
+	"local gateway" EOL
 	/*
 	 *	Redis doesn't accept Nil Bulk strings, so we have to send
 	 *	empty string instead *sigh*.
 	 */
 	"if ARGV[4] ~= '' then" EOL
-	"  device_id = ARGV[4]" EOL
+	"  device = ARGV[4]" EOL
 	"end" EOL
 	"if ARGV[5] ~= '' then" EOL
-	"  gateway_id = ARGV[5]" EOL
+	"  gateway = ARGV[5]" EOL
 	"end" EOL
 
 	/*
@@ -135,16 +142,17 @@ static char lua_alloc_cmd[] =
 	 */
 	"ip = redis.call('ZREVRANGE', KEYS[1], -1, -1, 'WITHSCORES')" EOL
 	"if not ip or not ip[1] then" EOL
-	"  return nil" EOL
+	"    return {" STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL
 	"end" EOL
 	"if ip[2] >= ARGV[2] then" EOL
-	"  return nil" EOL
+	"    return {" STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL
 	"end" EOL
-	"if device_id or gateway_id then" EOL
-	"  redis.call('HMSET', '{' .. ARGV[1] .. '}:' .. ip[1], 'device_id', device_id, 'gateway_id', gateway_id)" EOL
+	"ip_key = '{' .. ARGV[1] .. '}:' .. ip[1]" EOL
+	"if device or gateway then" EOL
+	"  redis.call('HMSET', ip_key, 'device', device, 'gateway', gateway)" EOL
 	"end" EOL
 	"redis.call('ZADD', KEYS[1], ARGV[3], ip[1])" EOL
-	"return ip[1]" EOL;
+	"return { " STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", ip[1], redis.call('HGET', ip_key, 'range') }" EOL;
 static char lua_alloc_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
 
 /** Lua script for updating leases
@@ -157,45 +165,50 @@ static char lua_alloc_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
  * - ARGV[5] (optional) Client identifier.
  * - ARGV[6] (optional) Gateway identifier.
  *
- * Returns
- * - 0 lease updated.
- * - -1 lease not found in pool.
- * - -2 lease has already expired.
- * - -3 lease was allocated to a different client.
+ * Returns array { <rcode>[, <range>] }
+ * - IPPOOL_RCODE_SUCCESS lease updated..
+ * - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
+ * - IPPOOL_RCODE_EXPIRED lease has already expired.
+ * - IPPOOL_RCODE_DEVICE_MISMATCH lease was allocated to a different client.
  */
 static char lua_update_cmd[] =
-	"local device_id" EOL
-	"local gateway_id" EOL
+	"local device" EOL
+	"local gateway" EOL
 	"local ret" EOL
+	"local found" EOL
 	/*
 	 *	Redis doesn't accept Nil Bulk strings, so we have to send
 	 *	empty string instead *sigh*.
 	 */
 	"if ARGV[5] ~= '' then" EOL
-	"  device_id = ARGV[5]" EOL
+	"  device = ARGV[5]" EOL
 	"end" EOL
 	"if ARGV[6] ~= '' then" EOL
-	"  gateway_id = ARGV[6]" EOL
+	"  gateway = ARGV[6]" EOL
 	"end" EOL
+	/*
+	 *	Get the lease data.
+	 */
+	"found = redis.call('HMGET', ARGV[1], 'range', 'device')" EOL
+
 	/*
 	 *	We either need to know that the IP was last allocated to the
 	 *	same device, or that the lease on the IP has NOT expired.
 	 */
-	"if device_id then" EOL
-	"  local found = redis.call('HGET', ARGV[1], 'device_id')" EOL
-	"  if not found then" EOL
-	"    return " STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) EOL
+	"if device then" EOL
+	"  if not found[1] then" EOL
+	"    return {" STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL
 	"  end" EOL
-	"  if found ~= device_id then" EOL
-	"    return " STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) EOL
+	"  if found[2] ~= device then" EOL
+	"    return {" STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) ", found[2]}" EOL
 	"  end" EOL
 	"else" EOL
 	"  ret = redis.call('ZSCORE', KEYS[1], ARGV[4])" EOL
 	"  if not ret then" EOL
-	"    return " STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) EOL
+	"    return {" STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL
 	"  end" EOL
 	"  if ret < ARGV[2] then" EOL
-	"    return " STRINGIFY(_IPPOOL_RCODE_EXPIRED) EOL
+	"    return {" STRINGIFY(_IPPOOL_RCODE_EXPIRED) "}" EOL
 	"  end" EOL
 	"end" EOL
 	/*
@@ -205,10 +218,10 @@ static char lua_update_cmd[] =
 	/*
 	 *	At this point we know the IP exists
 	 */
-	"if gateway_id then" EOL
-	"  redis.call('HSET', ARGV[1], 'gateway_id', gateway_id)" EOL
+	"if gateway then" EOL
+	"  redis.call('HSET', ARGV[1], 'gateway', gateway)" EOL
 	"end" EOL
-	"return " STRINGIFY(_IPPOOL_RCODE_SUCCESS) EOL;
+	"return { " STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", found[1] }"EOL;
 static char lua_update_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
 
 /** Lua script for releasing leases
@@ -221,23 +234,25 @@ static char lua_update_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
  *
  * Sets the expiry time to be NOW() - 1 to maximise time between
  * IP address allocations.
- * - 0 lease updated.
- * - -1 lease not found in pool.
- * - -3 lease was allocated to a different client.
+ *
+ * Returns
+ * - IPPOOL_RCODE_SUCCESS lease updated..
+ * - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
+ * - IPPOOL_RCODE_DEVICE_MISMATCH lease was allocated to a different client..
  */
 static char lua_release_cmd[] =
-	"local device_id" EOL
+	"local device" EOL
 	"local ret" EOL
 	"if ARGV[4] ~= '' then" EOL
-	"  device_id = ARGV[4]" EOL
+	"  device = ARGV[4]" EOL
 	"end" EOL
 	/*
 	 *	Check that the device releasing was the one
 	 *	the IP address is allocated to.
 	 */
-	"if device_id then" EOL
-	"  local found = redis.call('HGET', ARGV[1], 'device_id')" EOL
-	"  if found and found ~= device_id then" EOL
+	"if device then" EOL
+	"  local found = redis.call('HGET', ARGV[1], 'device')" EOL
+	"  if found and found ~= device then" EOL
 	"    return " STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) EOL
 	"  end" EOL
 	"end" EOL
@@ -523,8 +538,11 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t *inst, REQUEST *r
 	fr_redis_rcode_t		status;
 	ippool_rcode_t			ret = IPPOOL_RCODE_SUCCESS;
 
-	vp_tmpl_t			rhs = { .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING };
-	vp_map_t			map = { .lhs = inst->reply_attr, .op = T_OP_SET, .rhs = &rhs,};
+	vp_tmpl_t			ip_rhs = { .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING };
+	vp_map_t			ip_map = { .lhs = inst->reply_attr, .op = T_OP_SET, .rhs = &ip_rhs,};
+
+	vp_tmpl_t			range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
+	vp_map_t			range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
 
 	gettimeofday(&now, NULL);
 
@@ -553,64 +571,116 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t *inst, REQUEST *r
 	}
 
 	rad_assert(reply);
-	switch (reply->type) {
+	if (reply->type != REDIS_REPLY_ARRAY) {
+		REDEBUG("Expected result to be array got \"%s\"",
+			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+		ret = IPPOOL_RCODE_FAIL;
+		goto finish;
+	}
+
+	if (reply->elements == 0) {
+		REDEBUG("Got empty result array");
+		ret = IPPOOL_RCODE_FAIL;
+		goto finish;
+	}
+
 	/*
-	 *	Can't have 128bit numbers (yet) so these are always IPv4
+	 *	Process return code
 	 */
-	case REDIS_REPLY_INTEGER:
-	{
+	if (reply->elements > 0) {
+		if (reply->element[0]->type != REDIS_REPLY_INTEGER) {
+			REDEBUG("Server returned unexpected type \"%s\" for rcode element (result[0])",
+				fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+			ret = IPPOOL_RCODE_FAIL;
+			goto finish;
+		}
+		ret = reply->element[0]->integer;
+		if (ret < 0) goto finish;
+	}
+
+	/*
+	 *	Process IP address
+	 */
+	if (reply->elements > 1) {
+		switch (reply->element[1]->type) {
 		/*
 		 *	Destination attribute may not be IPv4, in which case
 		 *	we want to pre-convert the integer value to an IPv4
 		 *	address before casting it once more to the type of
 		 *	the destination attribute.
 		 */
-		if (map.lhs->tmpl_da->type != PW_TYPE_IPV4_ADDR) {
-			value_data_t tmp;
+		case REDIS_REPLY_INTEGER:
+		{
+			if (ip_map.lhs->tmpl_da->type != PW_TYPE_IPV4_ADDR) {
+				value_data_t tmp;
 
-			memset(&tmp, 0, sizeof(tmp));
+				memset(&tmp, 0, sizeof(tmp));
 
-			tmp.integer = ntohl((uint32_t)reply->integer);
-			tmp.length = sizeof(map.rhs->tmpl_data_value.integer);
+				tmp.integer = ntohl((uint32_t)reply->element[1]->integer);
+				tmp.length = sizeof(ip_map.rhs->tmpl_data_value.integer);
 
-			if (value_data_cast(NULL, &map.rhs->tmpl_data_value, PW_TYPE_IPV4_ADDR,
-					    NULL, PW_TYPE_INTEGER, NULL, &tmp)) {
-				REDEBUG("Failed converting integer to IPv4 address: %s", fr_strerror());
+				if (value_data_cast(NULL, &ip_map.rhs->tmpl_data_value, PW_TYPE_IPV4_ADDR,
+						    NULL, PW_TYPE_INTEGER, NULL, &tmp)) {
+					REDEBUG("Failed converting integer to IPv4 address: %s", fr_strerror());
+					ret = IPPOOL_RCODE_FAIL;
+					goto finish;
+				}
+			} else {
+				ip_map.rhs->tmpl_data_value.integer = ntohl((uint32_t)reply->element[1]->integer);
+				ip_map.rhs->tmpl_data_length = sizeof(ip_map.rhs->tmpl_data_value.integer);
+				ip_map.rhs->tmpl_data_type = PW_TYPE_INTEGER;
+			}
+		}
+			goto do_ip_map;
+
+		case REDIS_REPLY_STRING:
+			ip_map.rhs->tmpl_data_value.strvalue = reply->element[1]->str;
+			ip_map.rhs->tmpl_data_length = reply->element[1]->len;
+			ip_map.rhs->tmpl_data_type = PW_TYPE_STRING;
+
+		do_ip_map:
+			if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) {
 				ret = IPPOOL_RCODE_FAIL;
 				goto finish;
 			}
-		} else {
-			map.rhs->tmpl_data_value.integer = ntohl((uint32_t)reply->integer);
-			map.rhs->tmpl_data_length = sizeof(map.rhs->tmpl_data_value.integer);
-			map.rhs->tmpl_data_type = PW_TYPE_INTEGER;
+			break;
+
+		default:
+			REDEBUG("Server returned unexpected type \"%s\" for IP element (result[1])",
+				fr_int2str(redis_reply_types, reply->element[1]->type, "<UNKNOWN>"));
+			ret = IPPOOL_RCODE_FAIL;
+			goto finish;
 		}
-	}
-		break;
-
-	case REDIS_REPLY_STRING:
-		map.rhs->tmpl_data_value.strvalue = reply->str;
-		map.rhs->tmpl_data_length = reply->len;
-		map.rhs->tmpl_data_type = PW_TYPE_STRING;
-		break;
-
-	case REDIS_REPLY_NIL:
-		RWDEBUG("No free IP addresses available in pool \"%s\"", key_prefix);
-		ret = IPPOOL_RCODE_POOL_EMPTY;
-		goto finish;
-
-	case REDIS_REPLY_STATUS:
-	default:
-		REDEBUG("Server returned non-value type \"%s\"",
-			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
-		fr_redis_reply_print(L_DBG_LVL_2, reply, request, 0);
-		ret = IPPOOL_RCODE_FAIL;
-		goto finish;
 	}
 
 	/*
-	 *	Ahhh abstraction...
+	 *	Process Range identifier
 	 */
-	if (map.lhs) ret = map_to_request(request, &map, map_to_vp, NULL);
+	if (reply->elements > 2) {
+		switch (reply->element[2]->type) {
+		/*
+		 *	Add range ID to request
+		 */
+		case REDIS_REPLY_STRING:
+			range_map.rhs->tmpl_data_value.strvalue = reply->element[2]->str;
+			range_map.rhs->tmpl_data_length = reply->element[2]->len;
+			range_map.rhs->tmpl_data_type = PW_TYPE_STRING;
+			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
+				ret = IPPOOL_RCODE_FAIL;
+				goto finish;
+			}
+			break;
+
+		case REDIS_REPLY_NIL:
+			break;
+
+		default:
+			REDEBUG("Server returned unexpected type \"%s\" for range element (result[1])",
+				fr_int2str(redis_reply_types, reply->element[2]->type, "<UNKNOWN>"));
+			ret = IPPOOL_RCODE_FAIL;
+			goto finish;
+		}
+	}
 
 finish:
 	fr_redis_reply_free(reply);
@@ -642,6 +712,17 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *req
 	value_data_t			*ip = NULL;
 	value_data_t			ip_value;
 	PW_TYPE				ip_value_type;
+
+	vp_tmpl_t			range_rhs = {
+						.name = "", .type = TMPL_TYPE_DATA,
+						.tmpl_data_type = PW_TYPE_STRING,
+						.quote = T_DOUBLE_QUOTED_STRING
+					};
+	vp_map_t			range_map = {
+						.lhs = inst->range_attr,
+						.op = T_OP_SET,
+						.rhs = &range_rhs
+					};
 
 	ip_value_type = (ip_vp->da->type == PW_TYPE_IPV4_ADDR) && inst->ipv4_integer ? PW_TYPE_INTEGER : PW_TYPE_STRING;
 
@@ -705,18 +786,60 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *req
 		goto finish;
 	}
 
-	switch (reply->type) {
-	case REDIS_REPLY_INTEGER:
-		ret = reply->integer;	/* Update script uses the same set of rcodes */
-		break;
-
-	case REDIS_REPLY_STATUS:
-	default:
-		REDEBUG("Server returned non-value type \"%s\"",
+	if (reply->type != REDIS_REPLY_ARRAY) {
+		REDEBUG("Expected result to be array got \"%s\"",
 			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
-		fr_redis_reply_print(L_DBG_LVL_2, reply, request, 0);
 		ret = IPPOOL_RCODE_FAIL;
-		break;
+		goto finish;
+	}
+
+	if (reply->elements == 0) {
+		REDEBUG("Got empty result array");
+		ret = IPPOOL_RCODE_FAIL;
+		goto finish;
+	}
+
+	/*
+	 *	Process return code
+	 */
+	if (reply->elements > 0) {
+		if (reply->element[0]->type != REDIS_REPLY_INTEGER) {
+			REDEBUG("Server returned unexpected type \"%s\" for rcode element (result[0])",
+				fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+			ret = IPPOOL_RCODE_FAIL;
+			goto finish;
+		}
+		ret = reply->element[0]->integer;
+		if (ret < 0) goto finish;
+	}
+
+	/*
+	 *	Process Range identifier
+	 */
+	if (reply->elements > 1) {
+		switch (reply->element[1]->type) {
+		/*
+		 *	Add range ID to request
+		 */
+		case REDIS_REPLY_STRING:
+			range_map.rhs->tmpl_data_value.strvalue = reply->element[1]->str;
+			range_map.rhs->tmpl_data_length = reply->element[1]->len;
+			range_map.rhs->tmpl_data_type = PW_TYPE_STRING;
+			if (map_to_request(request, &range_map, map_to_vp, NULL) < 0) {
+				ret = IPPOOL_RCODE_FAIL;
+				goto finish;
+			}
+			break;
+
+		case REDIS_REPLY_NIL:
+			break;
+
+		default:
+			REDEBUG("Server returned unexpected type \"%s\" for range element (result[1])",
+				fr_int2str(redis_reply_types, reply->element[0]->type, "<UNKNOWN>"));
+			ret = IPPOOL_RCODE_FAIL;
+			goto finish;
+		}
 	}
 
 finish:

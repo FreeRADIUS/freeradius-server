@@ -104,6 +104,7 @@ ATTRIBUTE	Digest-User-Name			1072	string internal
 ATTRIBUTE	Pool-Name				1073	string internal
 
 ATTRIBUTE	Pool-Action				1074	integer internal
+ATTRIBUTE	Pool-Range				1075	string internal
 
 VALUE	Pool-Action			Allocate		1
 # Renew == Update (they're the same action)

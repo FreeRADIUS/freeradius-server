@@ -1718,6 +1718,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	rad_assert(state && state->node && state->node->pool);
 	rad_assert(conn && *conn);
 
+	if (*reply) fr_redis_reply_print(L_DBG_LVL_3, *reply, request, 0);
+
  	RDEBUG2("[%i] <<< Returned: %s", state->node->id, fr_int2str(redis_rcodes, status, "<UNKNOWN>"));
 
 	/*
