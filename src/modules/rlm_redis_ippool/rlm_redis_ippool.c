@@ -92,7 +92,7 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("wait_num", PW_TYPE_INTEGER, rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", PW_TYPE_TIMEVAL, rlm_redis_ippool_t, wait_timeout) },
 
-	{ FR_CONF_OFFSET("renew_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, renew_attr), .dflt = "&DHCP-Client-IP-Address", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("renew_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, renew_attr), .dflt = "&DHCP-Requested-IP-Address", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("reply_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, reply_attr), .dflt = "&reply:DHCP-Your-IP-Address", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("range_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, range_attr), .dflt = "&reply:Pool-Range", .quote = T_BARE_WORD },
 
