@@ -112,9 +112,9 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 
 		slen = regex_exec(preg, value_p, talloc_array_length(value_p) - 1, rxmatch, &nmatch);
 		if (slen < 0) {
-			RERROR("%s", fr_strerror());
+			RERROR("regex_exec(): %s", fr_strerror());
 
-			return -2;
+			goto regex_error;
 		}
 
 		if (check->op == T_OP_REG_EQ) {
