@@ -223,11 +223,12 @@ static uint128_t uint128_gen_mask(uint8_t bits)
  *
  * @param[in,out] ipaddr to increment.
  * @param[in] prefix Length of the prefix.
+ * @param[in] ex_broadcast whether we should include the upper broadcast address.
  * @return
  *	- true if the prefix bits are not high (continue).
  *	- false if the prefix bits are high (stop).
  */
-static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix)
+static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix, bool ex_broadcast)
 {
 	/*
 	 *	Single IP addresses
@@ -235,6 +236,8 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix)
 	if (prefix == ipaddr->prefix) return false;
 
 	rad_assert(prefix > ipaddr->prefix);
+
+	if (ex_broadcast && (ipaddr->prefix >= (IPADDR_LEN(ipaddr->af) - 1))) return false;
 
 	switch (ipaddr->af) {
 	default:
@@ -244,7 +247,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix)
 
 	case AF_INET6:
 	{
-		uint128_t ip, p_mask, p_curr;
+		uint128_t ip, p_mask;
 
 		rad_assert((prefix > 0) && (prefix <= 128));
 
@@ -255,13 +258,19 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix)
 
 		/* Generate a mask that covers the prefix bits */
 		p_mask = uint128_gen_mask(prefix - ipaddr->prefix) << (128 - prefix);
-		p_curr = uint128_band(ip, p_mask);
 
-		/* Stopping condition - all prefix bits high (and busy attempting to locate maltesers) */
-		if (uint128_eq(p_mask, p_curr)) return false;
+		if (ex_broadcast) {
+			/* Increment the prefix */
+			ip = uint128_add(ip, uint128_lshift((uint128_t)1, (128 - prefix)));
+			/* Stopping condition - all prefix bits high */
+			if (uint128_eq(uint128_band(ip, p_mask), p_mask)) return false;
+		} else {
+			/* Stopping condition - all prefix bits high */
+			if (uint128_eq(uint128_band(ip, p_mask), p_mask)) return false;
+			/* Increment the prefix */
+			ip = uint128_add(ip, uint128_lshift((uint128_t)1, (128 - prefix)));
+		}
 
-		/* Increment the prefix */
-		ip = uint128_add(ip, uint128_lshift((uint128_t)1, (128 - prefix)));
 		ip = htonlll(ip);
 		memcpy(&ipaddr->ipaddr.ip6addr.s6_addr, &ip, sizeof(ipaddr->ipaddr.ip6addr.s6_addr));
 		return true;
@@ -269,7 +278,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix)
 
 	case AF_INET:
 	{
-		uint32_t ip, p_mask, p_curr;
+		uint32_t ip, p_mask;
 
 		rad_assert((prefix > 0) && (prefix <= 32));
 
@@ -277,13 +286,19 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix)
 
 		/* Generate a mask that covers the prefix bits */
 		p_mask = uint32_gen_mask(prefix - ipaddr->prefix) << (32 - prefix);
-		p_curr = ip & p_mask;
 
-		/* Stopping condition (all prefix bits high) */
-		if (p_curr == p_mask) return false;
+		if (ex_broadcast) {
+			/* Increment the prefix */
+			ip += 1 << (32 - prefix);
+			/* Stopping condition (all prefix bits high) */
+			if ((ip & p_mask) == p_mask) return false;
+		} else {
+			/* Stopping condition (all prefix bits high) */
+			if ((ip & p_mask) == p_mask) return false;
+			/* Increment the prefix */
+			ip += 1 << (32 - prefix);
+		}
 
-		/* Increment the prefix */
-		ip += 1 << (32 - prefix);
 		ipaddr->ipaddr.ip4addr.s_addr = htonl(ip);
 		return true;
 	}
@@ -333,10 +348,7 @@ static int driver_do_lease(void *out, void *instance,
 			 */
 			if (s_ret == REDIS_RCODE_TRY_AGAIN) ipaddr = acked;
 
-			/*
-			 *	Iterate over all possible prefixes (or IP addresses)
-			 */
-			for (i = 0; (i < MAX_PIPELINED) && more; i++, more = ipaddr_next(&ipaddr, prefix)) {
+			for (i = 0; (i < MAX_PIPELINED) && more; i++, more = ipaddr_next(&ipaddr, prefix, true)) {
 				int enqueued;
 
 				enqueued = enqueue(inst, conn, key_prefix, key_prefix_len,
@@ -367,7 +379,7 @@ static int driver_do_lease(void *out, void *instance,
 
 				ret = process(out, &to_process, replies[i]);
 				if (ret < 0) continue;
-				ipaddr_next(&to_process, prefix);
+				ipaddr_next(&to_process, prefix, true);
 			}
 		}
 		fr_redis_pipeline_free(replies, reply_cnt);
