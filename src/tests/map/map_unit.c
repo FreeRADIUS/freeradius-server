@@ -69,6 +69,11 @@ module_instance_t *module_instantiate(UNUSED CONF_SECTION *modules, UNUSED char 
 	return NULL;
 }
 
+module_instance_t *module_instantiate_method(UNUSED CONF_SECTION *modules, UNUSED char const *name, UNUSED rlm_components_t *method)
+{
+	return NULL;
+}
+
 /* Linker hacks */
 
 static void NEVER_RETURNS usage(void)
