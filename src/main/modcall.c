@@ -2537,63 +2537,17 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 *	modules belongs in raddb/mods-available/,
 		 *	which isn't loaded into the "modules" section.
 		 */
-		if (cf_section_sub_find_name2(modules, NULL, realname)) {
-			this = module_instantiate(modules, realname);
-			if (this) goto allocate_csingle;
-
-			/*
-			 *
-			 */
-			if (realname != modrefname) {
-				return NULL;
-			}
-
-		} else {
-			/*
-			 *	We were asked to MAYBE load it and it
-			 *	doesn't exist.  Return a soft error.
-			 */
-			if (realname != modrefname) {
-				*modname = modrefname;
-				return NULL;
-			}
-		}
-	}
-
-	/*
-	 *	No module found by that name.  Maybe we're calling
-	 *	module.method
-	 */
-	p = strrchr(modrefname, '.');
-	if (p) {
-		rlm_components_t i;
-		p++;
+		this = module_instantiate_method(modules, realname, &method);
+		if (this) goto allocate_csingle;
 
 		/*
-		 *	Find the component.
+		 *	We were asked to MAYBE load it and it
+		 *	doesn't exist.  Return a soft error.
 		 */
-		for (i = MOD_AUTHENTICATE;
-		     i < MOD_COUNT;
-		     i++) {
-			if (strcmp(p, comp2str[i]) == 0) {
-				char buffer[256];
-
-				strlcpy(buffer, modrefname, sizeof(buffer));
-				buffer[p - modrefname - 1] = '\0';
-				component = i;
-
-				this = module_instantiate(modules, buffer);
-				if (this) {
-					method = i;
-					goto allocate_csingle;
-				}
-			}
+		if (realname != modrefname) {
+			*modname = modrefname;
+			return NULL;
 		}
-
-		/*
-		 *	FIXME: check for "module", and give error "no
-		 *	such component" when we don't find the method.
-		 */
 	}
 
 	/*

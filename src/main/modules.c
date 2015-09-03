@@ -699,7 +699,6 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *askedname)
  *
  */
 module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedname)
-
 {
 	module_instance_t *node;
 
@@ -765,6 +764,52 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 
 	return node;
 }
+
+
+module_instance_t *module_instantiate_method(CONF_SECTION *modules, char const *name, rlm_components_t *method)
+{
+	char *p;
+	rlm_components_t i;
+	module_instance_t *mi;
+
+	/*
+	 *	Don't change "method" if it's just "module" name.
+	 */
+	mi = module_instantiate(modules, name);
+	if (mi) return mi;
+
+	/*
+	 *	Find out which method is being used.
+	 */
+	p = strrchr(name, ".");
+	if (!p) return NULL;
+
+	p++;
+
+	/*
+	 *	Find the component.
+	 */
+	for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
+		if (strcmp(p, section_type_value[i].section) == 0) {
+			char buffer[256];
+
+			strlcpy(buffer, name, sizeof(buffer));
+			buffer[p - name - 1] = '\0';
+
+			mi = module_instantiate(modules, buffer);
+			if (mi) {
+				if (method) *method = i;
+				return mi;
+			}
+		}
+	}
+
+	/*
+	 *	Not found.
+	 */
+	return NULL;
+}
+
 
 /** Resolve polymorphic item's from a module's CONF_SECTION to a subsection in another module
  *
@@ -1900,7 +1945,6 @@ int modules_init(CONF_SECTION *config)
 		for (ci=cf_item_find_next(cs, NULL);
 		     ci != NULL;
 		     ci=cf_item_find_next(cs, ci)) {
-
 			/*
 			 *	Skip sections and "other" stuff.
 			 *	Sections will be handled later, if
@@ -1968,7 +2012,10 @@ int modules_init(CONF_SECTION *config)
 							return -1;
 						}
 
-						module = module_instantiate(modules, cf_pair_attr(cp));
+						/*
+						 *	Allow "foo.authorize" in subsections.
+						 */
+						module = module_instantiate_method(modules, cf_pair_attr(cp), NULL);
 						if (!module) {
 							return -1;
 						}
