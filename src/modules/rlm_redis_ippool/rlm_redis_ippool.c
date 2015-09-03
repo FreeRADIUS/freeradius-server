@@ -142,10 +142,10 @@ static char lua_alloc_cmd[] =
 	 */
 	"ip = redis.call('ZREVRANGE', KEYS[1], -1, -1, 'WITHSCORES')" EOL
 	"if not ip or not ip[1] then" EOL
-	"    return {" STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL
+	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL
 	"end" EOL
 	"if ip[2] >= ARGV[2] then" EOL
-	"    return {" STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL
+	"    return {" STRINGIFY(_IPPOOL_RCODE_POOL_EMPTY) "}" EOL
 	"end" EOL
 	"ip_key = '{' .. ARGV[1] .. '}:' .. ip[1]" EOL
 	"if device or gateway then" EOL
