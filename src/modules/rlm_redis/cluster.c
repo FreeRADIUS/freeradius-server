@@ -409,7 +409,7 @@ static cluster_rcode_t cluster_node_conf_from_redirect(uint16_t *key_slot, clust
 	uint16_t	port;
 	fr_ipaddr_t	ipaddr;
 
-	rad_assert(redirect->type == REDIS_REPLY_ERROR);
+	rad_assert(redirect && (redirect->type == REDIS_REPLY_ERROR));
 
 	p = redirect->str;
 	if (strncmp(REDIS_ERROR_MOVED_STR, redirect->str, sizeof(REDIS_ERROR_MOVED_STR) - 1) == 0) {
@@ -1834,6 +1834,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 *	trigger a cluster remap.
 	 */
 	case REDIS_RCODE_MOVE:
+		rad_assert(*reply);
+
 		if (*conn && (cluster_remap(request, cluster, *conn) != CLUSTER_OP_SUCCESS)) {
 			RDEBUG2("%s", fr_strerror());
 		}
@@ -1845,6 +1847,8 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	case REDIS_RCODE_ASK:
 	{
 		cluster_node_t *new;
+
+		rad_assert(*reply);
 
 		fr_connection_release(state->node->pool, *conn);	/* Always release the old connection */
 
