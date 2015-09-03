@@ -117,7 +117,7 @@ static CONF_PARSER module_config[] = {
  * - ARGV[4] (optional) Client identifier.
  * - ARGV[5] (optional) Gateway identifier.
  *
- * Returns { <rcode>[, <ip>[, <range>]] }
+ * Returns @verbatim { <rcode>[, <ip>[, <range>]] } @endverbatim
  * - IPPOOL_RCODE_SUCCESS lease updated..
  * - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
  */
@@ -156,7 +156,7 @@ static char lua_alloc_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
  * - ARGV[5] (optional) Client identifier.
  * - ARGV[6] (optional) Gateway identifier.
  *
- * Returns array { <rcode>[, <range>] }
+ * Returns @verbatim array { <rcode>[, <range>] } @endverbatim
  * - IPPOOL_RCODE_SUCCESS lease updated..
  * - IPPOOL_RCODE_NOT_FOUND lease not found in pool.
  * - IPPOOL_RCODE_EXPIRED lease has already expired.
