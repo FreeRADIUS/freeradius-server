@@ -799,7 +799,7 @@ module_instance_t *module_instantiate_method(CONF_SECTION *modules, char const *
 			strlcpy(buffer, name, sizeof(buffer));
 			buffer[p - name - 1] = '\0';
 
-			mi = module_find(modules, name);
+			mi = module_find(modules, buffer);
 			if (mi) {
 				if (method) *method = i;
 				return module_instantiate(modules, buffer);
