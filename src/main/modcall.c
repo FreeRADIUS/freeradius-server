@@ -2389,6 +2389,86 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 
 
 /*
+ *	Load a named module from "instantiate" or "policy".
+ *
+ *	If it's "foo.method", look for "foo", and return "method" as the method
+ *	we wish to use, instead of the input component.
+ */
+static CONF_SECTION *virtual_module_find_cs(char const *virtual_name, char const *method_name,
+					    rlm_components_t *pcomponent)
+{
+	CONF_SECTION *cs, *subcs;
+	rlm_components_t method = *pcomponent;
+	char buffer[256];
+
+	/*
+	 *	Turn the method name into a method enum.
+	 */
+	if (method_name) {
+		rlm_components_t i;
+
+		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
+			if (strcmp(comp2str[i], method_name)) break;
+		}
+
+		if (i == MOD_COUNT) return NULL;
+	}
+
+	/*
+	 *	Look for "foo" in the "instantiate" section.  If we
+	 *	find it, AND there's no method name, we've found the
+	 *	right thing.
+	 *
+	 *	Return it to the caller, with the updated method.
+	 */
+	cs = cf_section_find("instantiate");
+	if (cs) {
+		/*
+		 *	Found "foo".  Load it as "foo", or "foo.method".
+		 */
+		subcs = cf_section_sub_find_name2(cs, NULL, virtual_name);
+		if (subcs) {
+			*pcomponent = method;
+			return subcs;
+		}
+	}
+
+	/*
+	 *	Look for it in "policy".
+	 *
+	 *	If there's no policy section, we can't do anything else.
+	 */
+	cs = cf_section_find("policy");
+	if (!cs) return NULL;
+
+	/*
+	 *	"foo.authorize" means "load policy "foo" as method "authorize".
+	 *
+	 *	And bail out if there's no policy "foo".
+	 */
+	if (method_name) {
+		subcs = cf_section_sub_find_name2(cs, NULL, virtual_name);
+		if (subcs) *pcomponent = method;
+
+		return subcs;
+	}
+
+	/*
+	 *	"foo" means "look for foo.component" first, to allow
+	 *	method overrides.  If that's not found, just look for
+	 *	a policy "foo".
+	 *
+	 */
+	snprintf(buffer, sizeof(buffer), "%s.%s",
+		 virtual_name, comp2str[method]);
+	subcs = cf_section_sub_find_name2(cs, NULL, buffer);
+	if (subcs) return subcs;
+
+	return cf_section_sub_find_name2(cs, NULL, virtual_name);
+}
+
+
+/*
  *	Compile one entry of a module call.
  */
 static modcallable *do_compile_modsingle(modcallable *parent,
@@ -2665,27 +2745,22 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *	instantiate { ... name { ...} ... }
 	 *	policy { ... name { .. } .. }
 	 *	policy { ... name.method { .. } .. }
+	 *
+	 *	The only difference between things in "instantiate"
+	 *	and "policy" is that "instantiate" will cause modules
+	 *	to be instantiated in a particular order.
 	 */
 	subcs = NULL;
-	cs = cf_section_find("instantiate");
-	if (cs) subcs = cf_section_sub_find_name2(cs, NULL,
-						  modrefname);
-	if (!subcs &&
-	    (cs = cf_section_find("policy")) != NULL) {
+	p = strrchr(modrefname, '.');
+	if (!p) {
+		subcs = virtual_module_find_cs(modrefname, NULL, &method);
+	} else {
 		char buffer[256];
 
-		snprintf(buffer, sizeof(buffer), "%s.%s",
-			 modrefname, comp2str[component]);
+		strlcpy(buffer, modrefname, sizeof(buffer));
+		buffer[p - modrefname] = '\0';
 
-		/*
-		 *	Prefer name.section, then name.
-		 */
-		subcs = cf_section_sub_find_name2(cs, NULL,
-							  buffer);
-		if (!subcs) {
-			subcs = cf_section_sub_find_name2(cs, NULL,
-							  modrefname);
-		}
+		subcs = virtual_module_find_cs(buffer, buffer + (p - modrefname) + 1, &method);
 	}
 
 	/*
@@ -2722,7 +2797,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 */
 		if (cf_section_name2(subcs)) {
 			csingle = do_compile_modsingle(parent,
-						       component,
+						       method,
 						       cf_section_to_item(subcs),
 						       grouptype,
 						       modname);
@@ -2737,7 +2812,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			 *	group foo { ...
 			 */
 			csingle = do_compile_modgroup(parent,
-						      component,
+						      method,
 						      subcs,
 						      GROUPTYPE_SIMPLE,
 						      grouptype, MOD_GROUP);
