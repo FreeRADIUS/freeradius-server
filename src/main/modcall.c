@@ -2167,10 +2167,12 @@ static CONF_SECTION *virtual_module_find_cs(char const *virtual_name, char const
 		rlm_components_t i;
 
 		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-			if (strcmp(comp2str[i], method_name)) break;
+			if (strcmp(comp2str[i], method_name) == 0) break;
 		}
 
 		if (i == MOD_COUNT) return NULL;
+
+		method = i;
 	}
 
 	/*
