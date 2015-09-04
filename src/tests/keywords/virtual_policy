@@ -1,0 +1,15 @@
+# PRE: update if foreach
+#
+#  Virtual policies
+#
+
+
+#
+#  Both of these should parse.
+#
+virtual_policy
+virtual_policy.post-auth
+
+update reply {
+	Filter-Id := 'filter'
+}
