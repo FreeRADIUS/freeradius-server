@@ -707,7 +707,7 @@ module_instance_t *module_instantiate(CONF_SECTION *modules, char const *askedna
 	 */
 	node = module_find(modules, askedname);
 	if (!node) {
-		ERROR("Cannot find a configuration entry for module \"%s\"", askedname);
+		ERROR("Cannot find module \"%s\"", askedname);
 		return NULL;
 	}
 
@@ -773,10 +773,13 @@ module_instance_t *module_instantiate_method(CONF_SECTION *modules, char const *
 	module_instance_t *mi;
 
 	/*
-	 *	Don't change "method" if it's just "module" name.
+	 *	If the module exists, ensure it's instantiated.
+	 *
+	 *	Doing it this way avoids complaints from
+	 *	module_instantiate()
 	 */
-	mi = module_instantiate(modules, name);
-	if (mi) return mi;
+	mi = module_find(modules, name);
+	if (mi) return module_instantiate(modules, name);
 
 	/*
 	 *	Find out which method is being used.
@@ -796,10 +799,10 @@ module_instance_t *module_instantiate_method(CONF_SECTION *modules, char const *
 			strlcpy(buffer, name, sizeof(buffer));
 			buffer[p - name - 1] = '\0';
 
-			mi = module_instantiate(modules, buffer);
+			mi = module_find(modules, name);
 			if (mi) {
 				if (method) *method = i;
-				return mi;
+				return module_instantiate(modules, buffer);
 			}
 		}
 	}
