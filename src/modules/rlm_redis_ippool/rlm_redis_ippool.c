@@ -704,16 +704,8 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *req
 	value_data_t			ip_value;
 	PW_TYPE				ip_value_type;
 
-	vp_tmpl_t			range_rhs = {
-						.name = "", .type = TMPL_TYPE_DATA,
-						.tmpl_data_type = PW_TYPE_STRING,
-						.quote = T_DOUBLE_QUOTED_STRING
-					};
-	vp_map_t			range_map = {
-						.lhs = inst->range_attr,
-						.op = T_OP_SET,
-						.rhs = &range_rhs
-					};
+	vp_tmpl_t			range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
+	vp_map_t			range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
 
 	ip_value_type = (ip_vp->da->type == PW_TYPE_IPV4_ADDR) && inst->ipv4_integer ? PW_TYPE_INTEGER : PW_TYPE_STRING;
 
@@ -1006,9 +998,11 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 					      device_id, device_id_len,
 					      gateway_id, gateway_id_len, (uint32_t)expires)) {
 		case IPPOOL_RCODE_SUCCESS:
+			RDEBUG2("IP address lease allocated");
 			return RLM_MODULE_UPDATED;
 
 		case IPPOOL_RCODE_POOL_EMPTY:
+			RWDEBUG("Pool contains no free addresses");
 			return RLM_MODULE_NOTFOUND;
 
 		default:
