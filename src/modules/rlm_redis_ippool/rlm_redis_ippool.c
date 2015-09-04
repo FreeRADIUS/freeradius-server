@@ -520,20 +520,20 @@ static ippool_rcode_t redis_ippool_allocate(rlm_redis_ippool_t *inst, REQUEST *r
 					       uint8_t const *gateway_id, size_t gateway_id_len,
 					       uint32_t expires)
 {
-	struct				timeval now;
-	redisReply			*reply = NULL;
+	struct			timeval now;
+	redisReply		*reply = NULL;
 
-	uint8_t				key[IPPOOL_MAX_POOL_KEY_SIZE];
-	uint8_t				*key_p = key;
+	uint8_t			key[IPPOOL_MAX_POOL_KEY_SIZE];
+	uint8_t			*key_p = key;
 
-	fr_redis_rcode_t		status;
-	ippool_rcode_t			ret = IPPOOL_RCODE_SUCCESS;
+	fr_redis_rcode_t	status;
+	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	vp_tmpl_t			ip_rhs = { .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING };
-	vp_map_t			ip_map = { .lhs = inst->reply_attr, .op = T_OP_SET, .rhs = &ip_rhs,};
+	vp_tmpl_t		ip_rhs = { .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING };
+	vp_map_t		ip_map = { .lhs = inst->reply_attr, .op = T_OP_SET, .rhs = &ip_rhs,};
 
-	vp_tmpl_t			range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
-	vp_map_t			range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
+	vp_tmpl_t		range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
+	vp_map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
 
 	gettimeofday(&now, NULL);
 
@@ -688,24 +688,24 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *req
 					  uint8_t const *gateway_id, size_t gateway_id_len,
 					  uint32_t expires)
 {
-	struct				timeval now;
-	redisReply			*reply = NULL;
+	struct			timeval now;
+	redisReply		*reply = NULL;
 
-	uint8_t				key[IPPOOL_MAX_POOL_KEY_SIZE];
-	uint8_t				*key_p = key;
+	uint8_t			key[IPPOOL_MAX_POOL_KEY_SIZE];
+	uint8_t			*key_p = key;
 
-	uint8_t				ip_key[IPPOOL_MAX_IP_KEY_SIZE];
-	uint8_t				*ip_key_p = ip_key;
+	uint8_t			ip_key[IPPOOL_MAX_IP_KEY_SIZE];
+	uint8_t			*ip_key_p = ip_key;
 
-	fr_redis_rcode_t		status;
-	ippool_rcode_t			ret = IPPOOL_RCODE_SUCCESS;
+	fr_redis_rcode_t	status;
+	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	value_data_t			*ip = NULL;
-	value_data_t			ip_value;
-	PW_TYPE				ip_value_type;
+	value_data_t		*ip = NULL;
+	value_data_t		ip_value;
+	PW_TYPE			ip_value_type;
 
-	vp_tmpl_t			range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
-	vp_map_t			range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
+	vp_tmpl_t		range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
+	vp_map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
 
 	ip_value_type = (ip_vp->da->type == PW_TYPE_IPV4_ADDR) && inst->ipv4_integer ? PW_TYPE_INTEGER : PW_TYPE_STRING;
 
@@ -843,21 +843,21 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t *inst, REQUEST *re
 					   VALUE_PAIR *ip_vp,
 					   uint8_t const *device_id, size_t device_id_len)
 {
-	struct				timeval now;
-	redisReply			*reply = NULL;
+	struct			timeval now;
+	redisReply		*reply = NULL;
 
-	uint8_t				key[IPPOOL_MAX_POOL_KEY_SIZE];
-	uint8_t				*key_p = key;
+	uint8_t			key[IPPOOL_MAX_POOL_KEY_SIZE];
+	uint8_t			*key_p = key;
 
-	uint8_t				ip_key[IPPOOL_MAX_IP_KEY_SIZE];
-	uint8_t				*ip_key_p = ip_key;
+	uint8_t			ip_key[IPPOOL_MAX_IP_KEY_SIZE];
+	uint8_t			*ip_key_p = ip_key;
 
-	fr_redis_rcode_t		status;
-	ippool_rcode_t			ret = IPPOOL_RCODE_SUCCESS;
+	fr_redis_rcode_t	status;
+	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	value_data_t			*ip = NULL;
-	value_data_t			ip_value;
-	PW_TYPE				ip_value_type = inst->ipv4_integer ? PW_TYPE_INTEGER : PW_TYPE_STRING;
+	value_data_t		*ip = NULL;
+	value_data_t		ip_value;
+	PW_TYPE			ip_value_type = inst->ipv4_integer ? PW_TYPE_INTEGER : PW_TYPE_STRING;
 
 	/*
 	 *	This speed up is likely specific to Redis
