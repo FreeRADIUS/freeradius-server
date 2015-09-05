@@ -1448,7 +1448,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			ssize_t slen;
 			xlat_exp_t *next;
 
-			if (!p[1] || !strchr("%dlmntDGHISTYv", p[1])) {
+			if (!p[1] || !strchr("%}dlmntDGHISTYv", p[1])) {
 				talloc_free(node);
 				*error = "Invalid variable expansion";
 				p++;
@@ -1458,17 +1458,21 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			next = talloc_zero(node, xlat_exp_t);
 			next->len = 1;
 
-			if (p[1] == '%') {
-				next->fmt = talloc_typed_strdup(next, "%");
+			switch (p[1]) {
+			case '%':
+			case '}':
+				next->fmt = talloc_strndup(next, p + 1, 1);
 
-				XLAT_DEBUG("LITERAL-PERCENT <-- %s", next->fmt);
+				XLAT_DEBUG("LITERAL-ESCAPED <-- %s", next->fmt);
 				next->type = XLAT_LITERAL;
+				break;
 
-			} else {
+			default:
 				next->fmt = p + 1;
 
 				XLAT_DEBUG("PERCENT <-- %c", *next->fmt);
 				next->type = XLAT_PERCENT;
+				break;
 			}
 
 			node->next = next;
