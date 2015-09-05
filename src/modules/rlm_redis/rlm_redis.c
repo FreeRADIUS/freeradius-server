@@ -212,7 +212,14 @@ static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, cha
 			return -1;
 		}
 
-		RDEBUG2("Executing command: %s", p);
+		RDEBUG2("Executing command: %s", argv[0]);
+		if (argc > 1) {
+			RDEBUG2("With argments");
+			RINDENT();
+			for (int i = 1; i < argc; i++) RDEBUG2("[%i] %s", i, argv[i]);
+			REXDENT();
+		}
+
 		if (!read_only) {
 			reply = redisCommandArgv(conn->handle, argc, argv, NULL);
 			status = fr_redis_command_status(conn, reply);
@@ -261,7 +268,13 @@ static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, cha
 	for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request, key, key_len, read_only);
 	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
 	     s_ret = fr_redis_cluster_state_next(&state, &conn, inst->cluster, request, status, &reply)) {
-		RDEBUG2("Executing command: %s", p);
+		RDEBUG2("Executing command: %s", argv[0]);
+		if (argc > 1) {
+			RDEBUG2("With arguments");
+			RINDENT();
+			for (int i = 1; i < argc; i++) RDEBUG2("[%i] %s", i, argv[i]);
+			REXDENT();
+		}
 		if (!read_only) {
 			reply = redisCommandArgv(conn->handle, argc, argv, NULL);
 			status = fr_redis_command_status(conn, reply);
