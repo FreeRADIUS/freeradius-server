@@ -2471,20 +2471,28 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 		if (((ptr[0] == '%') && (ptr[1] == '{')) ||
 		    (ptr[0] == '`')) {
-			int hack;
+			ssize_t slen;
 
 			if (ptr[0] == '%') {
-				hack = rad_copy_variable(buf1, ptr);
+				slen = rad_copy_variable(buf1, ptr);
 			} else {
-				hack = rad_copy_string(buf1, ptr);
+				slen = rad_copy_string(buf1, ptr);
 			}
-			if (hack < 0) {
-				ERROR("%s[%d]: Invalid expansion: %s",
-				       filename, *lineno, ptr);
+			if (slen <= 0) {
+				char *spaces, *text;
+
+				fr_canonicalize_error(current, &spaces, &text, slen, ptr);
+
+				ERROR("%s[%d]: %s", filename, *lineno, text);
+				ERROR("%s[%d]: %s^ Invalid expansion", filename, *lineno, spaces);
+
+				talloc_free(spaces);
+				talloc_free(text);
+
 				return -1;
 			}
 
-			ptr += hack;
+			ptr += slen;
 
 			t2 = gettoken(&ptr, buf2, sizeof(buf2), true);
 			switch (t2) {
