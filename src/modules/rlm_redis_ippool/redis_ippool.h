@@ -57,15 +57,17 @@ typedef enum {
 } ippool_action_t;
 
 #define IPPOOL_MAX_KEY_PREFIX_SIZE	128
-#define IPPOOL_POOL_KEY_SUFFIX		"pool"
+#define IPPOOL_POOL_KEY			"pool"
+#define IPPOOL_ADDRESS_KEY		"ip"
+#define IPPOOL_DEVICE_KEY		"device"
 
 /** {prefix}:pool
  */
-#define IPPOOL_MAX_POOL_KEY_SIZE	1 + IPPOOL_MAX_KEY_PREFIX_SIZE + 1 + 1 + sizeof(IPPOOL_POOL_KEY_SUFFIX) + 2
+#define IPPOOL_MAX_POOL_KEY_SIZE	IPPOOL_MAX_KEY_PREFIX_SIZE + (sizeof("{}:" IPPOOL_POOL_KEY) - 1) + 2
 
 /** {prefix}:ipaddr/prefix
  */
-#define IPPOOL_MAX_IP_KEY_SIZE		1 + IPPOOL_MAX_KEY_PREFIX_SIZE + 1 + 1 + INET6_ADDRSTRLEN + 4
+#define IPPOOL_MAX_IP_KEY_SIZE		IPPOOL_MAX_KEY_PREFIX_SIZE + (sizeof("{}:" IPPOOL_ADDRESS_KEY ":") - 1) + INET6_ADDRSTRLEN + 4
 
 /** Wrap the prefix in {} and add the pool suffix
  *
@@ -77,8 +79,8 @@ do { \
 	_p += _key_len; \
 	*_p++ = '}'; \
 	*_p++ = ':'; \
-	memcpy(_p, IPPOOL_POOL_KEY_SUFFIX, sizeof(IPPOOL_POOL_KEY_SUFFIX) - 1); \
-	_p +=  sizeof(IPPOOL_POOL_KEY_SUFFIX) - 1; \
+	memcpy(_p, IPPOOL_POOL_KEY, sizeof(IPPOOL_POOL_KEY) - 1); \
+	_p +=  sizeof(IPPOOL_POOL_KEY) - 1; \
 } while (0)
 
 /** Build the IP key {prefix}:ip
@@ -90,8 +92,13 @@ do { \
 	*_p++ = '{'; \
 	memcpy(_p, _key, _key_len); \
 	_p += _key_len; \
-	*_p++ = '}'; \
-	*_p++ = ':'; \
+	_slen = strlcpy((char *)_p, "}:"IPPOOL_ADDRESS_KEY":", sizeof(_buff) - (_p - _buff)); \
+	if (is_truncated((size_t)_slen, sizeof(_buff) - (_p - _buff))) { \
+		REDEBUG("IP key too long"); \
+		ret = IPPOOL_RCODE_FAIL; \
+		goto finish; \
+	} \
+	_p += (size_t)_slen;\
 	_slen = fr_pair_value_snprint((char *)_p, sizeof(_buff) - (_p - _buff), _ip, '\0'); \
 	if (is_truncated((size_t)_slen, sizeof(_buff) - (_p - _buff))) { \
 		REDEBUG("IP key too long"); \
@@ -100,17 +107,6 @@ do { \
 	} \
 	_p += (size_t)_slen;\
 } while (0)
-
-#define IPPOOL_BUILD_IP_KEY_FROM_STR(_buff, _p, _key, _key_len, _ip_str) \
-do { \
-	*_p++ = '{'; \
-	memcpy(_p, _key, _key_len); \
-	_p += _key_len; \
-	*_p++ = '}'; \
-	*_p++ = ':'; \
-	_p += strlcpy((char *)_p, _ip_str, sizeof(_buff) - (_p - _buff)); \
-} while (0)
-
 
 /** If the prefix is as wide as the AF data size then print it without CIDR notation.
  *

@@ -63,5 +63,10 @@ src/main/radattr
 src/modules/lib/
 warnings.txt
 
+# Redis setup script output
+nodes*.conf
+dump*.rdb
+appendonly*.aof
+
 # Analyzer output
-/*.plist
+*.plist

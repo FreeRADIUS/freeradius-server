@@ -103,6 +103,22 @@ typedef int (*redis_ippool_queue_t)(redis_driver_conf_t *inst, fr_redis_conn_t *
 
 typedef int (*redis_ippool_process_t)(void *out, fr_ipaddr_t const *ipaddr, redisReply const *reply);
 
+#define IPPOOL_BUILD_IP_KEY_FROM_STR(_buff, _p, _key, _key_len, _ip_str) \
+do { \
+	ssize_t _slen; \
+	*_p++ = '{'; \
+	memcpy(_p, _key, _key_len); \
+	_p += _key_len; \
+	_slen = strlcpy((char *)_p, "}:"IPPOOL_ADDRESS_KEY":", sizeof(_buff) - (_p - _buff)); \
+	if (is_truncated((size_t)_slen, sizeof(_buff) - (_p - _buff))) { \
+		ERROR("IP key too long"); \
+		return 0;\
+	} \
+	_p += (size_t)_slen;\
+	_p += strlcpy((char *)_p, _ip_str, sizeof(_buff) - (_p - _buff)); \
+} while (0)
+
+
 static char const *name;
 
 static void NEVER_RETURNS usage(int ret) {
@@ -632,7 +648,7 @@ static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
-	DEBUG("Adding %s to pool %s", ip_buff, key_prefix);
+	DEBUG("Adding %s to pool %.*s (%i)", ip_buff, key_p - key, key, key_p - key);
 	redisAppendCommand(conn->handle, "MULTI");
 	redisAppendCommand(conn->handle, "ZADD %b NX %u %s", key, key_p - key, 0, ip_buff);
 	redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
