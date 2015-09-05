@@ -88,3 +88,7 @@ foreach &control:Tmp-Integer-0 {
 		test_fail
 	}
 }
+
+update request {
+	Module-Failure-Message !* ANY
+}
