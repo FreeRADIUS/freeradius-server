@@ -1449,10 +1449,10 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			xlat_exp_t *next;
 
 			if (!p[1] || !strchr("%dlmntDGHISTYv", p[1])) {
-					talloc_free(node);
-					*error = "Invalid variable expansion";
-					p++;
-					return - (p - fmt);
+				talloc_free(node);
+				*error = "Invalid variable expansion";
+				p++;
+				return - (p - fmt);
 			}
 
 			next = talloc_zero(node, xlat_exp_t);
