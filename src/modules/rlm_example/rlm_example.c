@@ -69,10 +69,6 @@ static int rlm_example_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE
  *	configured instance of the module.  e.g. set up connections
  *	to external databases, read configuration files, set up
  *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
