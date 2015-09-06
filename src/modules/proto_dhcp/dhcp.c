@@ -1552,6 +1552,7 @@ static ssize_t fr_dhcp_vp2data_tlv(uint8_t *out, ssize_t outlen, vp_cursor_t *cu
 			return -1;
 		}
 
+		debug_pair(vp);
 		*opt_len += len;
 		p += len;
 	};
@@ -1616,6 +1617,7 @@ ssize_t fr_dhcp_encode_option(UNUSED TALLOC_CTX *ctx, uint8_t *out, size_t outle
 
 		} else {
 			len = fr_dhcp_vp2data(p, freespace, vp);
+			if (len >= 0) debug_pair(vp);
 			fr_cursor_next(cursor);
 			previous = vp->da;
 		}
@@ -1631,7 +1633,6 @@ ssize_t fr_dhcp_encode_option(UNUSED TALLOC_CTX *ctx, uint8_t *out, size_t outle
 		p += len;
 		*opt_len += len;
 		freespace -= len;
-		debug_pair(vp);
 
 	} while ((vp = fr_cursor_current(cursor)) && previous && (previous == vp->da) && vp->da->flags.array);
 
@@ -1930,7 +1931,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	p[1] = 1;
 	p[2] = packet->code - PW_DHCP_OFFSET;
 	p += 3;
-
 
 	/*
 	 *  Pre-sort attributes into contiguous blocks so that fr_dhcp_encode_option
