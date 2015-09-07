@@ -62,40 +62,40 @@ typedef int (*rad_listen_encode_t)(rad_listen_t *, REQUEST *);
 typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
 
 struct rad_listen {
-	rad_listen_t *next; /* should be rbtree stuff */
+	rad_listen_t		*next; /* should be rbtree stuff */
 
 	/*
 	 *	For normal sockets.
 	 */
-	RAD_LISTEN_TYPE	type;
-	int		fd;
-	char const	*server;
-	int		status;
+	RAD_LISTEN_TYPE		type;
+	int			fd;
+	char const		*server;
+	int			status;
 #ifdef WITH_TCP
-	int		count;
-	bool		dual;
-	rbtree_t	*children;
-	rad_listen_t	*parent;
+	int			count;
+	bool			dual;
+	rbtree_t		*children;
+	rad_listen_t		*parent;
 #endif
-	bool		nodup;
-	bool		synchronous;
-	uint32_t	workers;
+	bool			nodup;
+	bool			synchronous;
+	uint32_t		workers;
 
 #ifdef WITH_TLS
-	fr_tls_server_conf_t *tls;
+	fr_tls_server_conf_t	*tls;
 #endif
 
-	rad_listen_recv_t recv;
-	rad_listen_send_t send;
-	rad_listen_encode_t encode;
-	rad_listen_decode_t decode;
-	rad_listen_print_t print;
+	rad_listen_recv_t	recv;
+	rad_listen_send_t	send;
+	rad_listen_encode_t	encode;
+	rad_listen_decode_t	decode;
+	rad_listen_print_t	print;
 
-	CONF_SECTION const *cs;
-	void		*data;
+	CONF_SECTION const	*cs;
+	void			*data;
 
 #ifdef WITH_STATS
-	fr_stats_t	stats;
+	fr_stats_t		stats;
 #endif
 };
 
@@ -115,7 +115,7 @@ typedef struct listen_socket_t {
 
 	char const	*interface;
 
-#ifdef HAVE_LIBPCAP	
+#ifdef HAVE_LIBPCAP
 	fr_pcap_t	*pcap;
 	fr_pcap_type_t pcap_type;
 	rad_pcap_filter_builder pcap_filter_builder;
