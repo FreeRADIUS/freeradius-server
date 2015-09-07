@@ -134,7 +134,7 @@ attributes Selecting a particular configuration Authentication methods
 %package json
 Summary: JSON support for FreeRADIUS
 Requires: %{name} = %{version}-%{release}
-Requires: libfreeradius-json = %{version}-%{release}
+Requires: freeradius-libfreeradius-json = %{version}-%{release}
 
 %description json
 This plugin provides JSON tree mapping, and JSON string escaping for the FreeRADIUS server project.
