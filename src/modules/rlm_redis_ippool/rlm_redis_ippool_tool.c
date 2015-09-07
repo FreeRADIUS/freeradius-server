@@ -63,7 +63,12 @@ typedef enum ippool_tool_action {
  *
  */
 typedef struct ippool_tool_operation {
-	char const		*range;		//!< Range identifier.
+	uint8_t const		*pool;
+	size_t			pool_len;
+
+	uint8_t const		*range;		//!< Range identifier.
+	size_t			range_len;
+
 	fr_ipaddr_t		net;		//!< Base network address.
 	uint8_t			prefix;		//!< Prefix - The bits between the address mask, and the prefix
 						//!< form the addresses to be modified in the pool.
@@ -325,10 +330,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix, bool ex_broadcast)
  *
  * @return the number of new addresses added.
  */
-static int driver_do_lease(void *out, void *instance,
-			   uint8_t const *key_prefix, size_t key_prefix_len,
-			   uint8_t const *range, size_t range_len,
-			   fr_ipaddr_t const *net, uint8_t prefix,
+static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t const *op,
 			   redis_ippool_queue_t enqueue, redis_ippool_process_t process)
 {
 	redis_driver_conf_t		*inst = talloc_get_type_abort(instance, redis_driver_conf_t);
@@ -340,7 +342,7 @@ static int driver_do_lease(void *out, void *instance,
 	fr_redis_cluster_state_t	state;
 	fr_redis_rcode_t		status;
 
-	fr_ipaddr_t			ipaddr = *net, acked;
+	fr_ipaddr_t			ipaddr = op->net, acked;
 	int				s_ret = REDIS_RCODE_SUCCESS;
 	REQUEST				*request = request_alloc(inst);
 	redisReply			**replies = NULL;
@@ -351,8 +353,8 @@ static int driver_do_lease(void *out, void *instance,
 
 		/* Record our progress */
 		acked = ipaddr;
-		for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request, key_prefix,
-							 key_prefix_len, false);
+		for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request,
+							 op->pool, op->pool_len, false);
 		     s_ret == REDIS_RCODE_TRY_AGAIN;
 		     s_ret = fr_redis_cluster_state_next(&state, &conn, inst->cluster, request, status, &replies[0])) {
 		     	int	pipelined = 0;
@@ -364,11 +366,11 @@ static int driver_do_lease(void *out, void *instance,
 			 */
 			if (s_ret == REDIS_RCODE_TRY_AGAIN) ipaddr = acked;
 
-			for (i = 0; (i < MAX_PIPELINED) && more; i++, more = ipaddr_next(&ipaddr, prefix, true)) {
+			for (i = 0; (i < MAX_PIPELINED) && more; i++, more = ipaddr_next(&ipaddr, op->prefix, true)) {
 				int enqueued;
 
-				enqueued = enqueue(inst, conn, key_prefix, key_prefix_len,
-						   range, range_len, &ipaddr, prefix);
+				enqueued = enqueue(inst, conn, op->pool, op->pool_len,
+						   op->range, op->range_len, &ipaddr, op->prefix);
 				if (enqueued < 0) break;
 				pipelined += enqueued;
 			}
@@ -395,7 +397,7 @@ static int driver_do_lease(void *out, void *instance,
 
 				ret = process(out, &to_process, replies[i]);
 				if (ret < 0) continue;
-				ipaddr_next(&to_process, prefix, true);
+				ipaddr_next(&to_process, op->prefix, true);
 			}
 		}
 		fr_redis_pipeline_free(replies, reply_cnt);
@@ -478,16 +480,9 @@ static int _driver_show_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis
 /** Show information about leases
  *
  */
-static inline int driver_show_lease(void *out, void *instance,
-				    uint8_t const *key_prefix, size_t key_prefix_len,
-				    uint8_t const *range, size_t range_len,
-				    fr_ipaddr_t const *net, uint8_t prefix)
+static inline int driver_show_lease(void *out, void *instance, ippool_tool_operation_t const *op)
 {
-	return driver_do_lease(out, instance,
-			       key_prefix, key_prefix_len,
-			       range, range_len,
-			       net, prefix,
-			       _driver_show_lease_enqueue, _driver_show_lease_process);
+	return driver_do_lease(out, instance, op, _driver_show_lease_enqueue, _driver_show_lease_process);
 }
 
 /** Count the number of leases we released
@@ -531,15 +526,9 @@ static int _driver_release_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_re
 /** Release a range of leases
  *
  */
-static inline int driver_release_lease(void *out, void *instance,
-				       uint8_t const *key_prefix, size_t key_prefix_len,
-				       uint8_t const *range, size_t range_len,
-				       fr_ipaddr_t const *net, uint8_t prefix)
+static inline int driver_release_lease(void *out, void *instance, ippool_tool_operation_t const *op)
 {
-	return driver_do_lease(out, instance,
-			       key_prefix, key_prefix_len,
-			       range, range_len,
-			       net, prefix,
+	return driver_do_lease(out, instance, op,
 			       _driver_release_lease_enqueue, _driver_release_lease_process);
 }
 
@@ -596,15 +585,9 @@ static int _driver_remove_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_red
 /** Remove a range of leases
  *
  */
-static int driver_remove_lease(void *out, void *instance,
-			       uint8_t const *key_prefix, size_t key_prefix_len,
-			       uint8_t const *range, size_t range_len,
-			       fr_ipaddr_t const *net, uint8_t prefix)
+static int driver_remove_lease(void *out, void *instance, ippool_tool_operation_t const *op)
 {
-	return driver_do_lease(out, instance,
-			       key_prefix, key_prefix_len,
-			       range, range_len,
-			       net, prefix,
+	return driver_do_lease(out, instance, op,
 			       _driver_remove_lease_enqueue, _driver_remove_lease_process);
 }
 
@@ -648,7 +631,7 @@ static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
 	IPPOOL_BUILD_IP_KEY_FROM_STR(ip_key, ip_key_p, key_prefix, key_prefix_len, ip_buff);
 
-	DEBUG("Adding %s to pool %.*s (%i)", ip_buff, key_p - key, key, key_p - key);
+	DEBUG("Adding %s to pool %.*s (%zu)", ip_buff, (int)(key_p - key), key, key_p - key);
 	redisAppendCommand(conn->handle, "MULTI");
 	redisAppendCommand(conn->handle, "ZADD %b NX %u %s", key, key_p - key, 0, ip_buff);
 	redisAppendCommand(conn->handle, "HSET %b range %b", ip_key, ip_key_p - ip_key, range, range_len);
@@ -659,16 +642,9 @@ static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_
 /** Add a range of prefixes
  *
  */
-static int driver_add_lease(void *out, void *instance, uint8_t
-			    const *key_prefix, size_t key_prefix_len,
-	                    uint8_t const *range, size_t range_len,
-	                    fr_ipaddr_t const *net, uint8_t prefix)
+static int driver_add_lease(void *out, void *instance, ippool_tool_operation_t const *op)
 {
-	return driver_do_lease(out, instance,
-			       key_prefix, key_prefix_len,
-			       range, range_len,
-			       net, prefix,
-			       _driver_add_lease_enqueue, _driver_add_lease_process);
+	return driver_do_lease(out, instance, op, _driver_add_lease_enqueue, _driver_add_lease_process);
 }
 
 /** Driver initialization function
@@ -702,8 +678,8 @@ static int driver_init(TALLOC_CTX *ctx, CONF_SECTION *conf, void **instance)
 
 int main(int argc, char *argv[])
 {
-	static ippool_tool_operation_t	nets[128];
-	ippool_tool_operation_t		*p = nets, *end = nets + (sizeof(nets) / sizeof(*nets));
+	static ippool_tool_operation_t	ops[128];
+	ippool_tool_operation_t		*p = ops, *end = ops + (sizeof(ops) / sizeof(*ops));
 
 	int				opt;
 
@@ -726,8 +702,8 @@ int main(int argc, char *argv[])
 
 #define ADD_ACTION(_action) \
 do { \
-	if ((size_t)(p - nets) >= sizeof(nets)) { \
-		ERROR("Too many actions, max is " STRINGIFY(sizeof(nets))); \
+	if ((size_t)(p - ops) >= sizeof(ops)) { \
+		ERROR("Too many actions, max is " STRINGIFY(sizeof(ops))); \
 		usage(64); \
 	} \
 	if (fr_pton(&p->net, optarg, -1, AF_UNSPEC, false, false) < 0) { \
@@ -763,7 +739,7 @@ do { \
 		uint8_t prefix;
 		char *q;
 
-		if (p == nets) {
+		if (p == ops) {
 			ERROR("Prefix may only be specified after a pool management action");
 			usage(64);
 		}
@@ -841,7 +817,7 @@ do { \
 	pool_arg = argv[1];
 	if (argc >= 3) range_arg = argv[2];
 
-	if (p == nets) {
+	if (p == ops) {
 		ERROR("Nothing to do!");
 		exit(1);
 	}
@@ -872,15 +848,26 @@ do { \
 
 	if (driver_init(conf, conf->cs, &conf->driver) < 0) exit(1);
 
-	for (p = nets; (p < end) && (p->net.af != AF_UNSPEC); p++) switch (p->action) {
+	/*
+	 *	Fixup the operations without specific pools or ranges
+	 */
+	for (p = ops; (p < end) && (p->net.af != AF_UNSPEC); p++) {
+		if (!p->pool) {
+			p->pool = (uint8_t const *)pool_arg;
+			p->pool_len = strlen(pool_arg);
+		}
+		if (!p->range) {
+			p->range = (uint8_t const *)range_arg;
+			p->range_len = strlen(range_arg);
+		}
+	}
+
+	for (p = ops; (p < end) && (p->net.af != AF_UNSPEC); p++) switch (p->action) {
 	case IPPOOL_TOOL_ADD:
 	{
 		uint64_t count = 0;
 
-		if (driver_add_lease(&count, conf->driver,
-				     (uint8_t const *)pool_arg, strlen(pool_arg),
-				     (uint8_t const *)range_arg, range_arg ? strlen(range_arg) : 0,
-				     &p->net, p->prefix) < 0) {
+		if (driver_add_lease(&count, conf->driver, p) < 0) {
 			exit(1);
 		}
 		INFO("Added %" PRIu64 " addresses/prefixes", count);
@@ -891,10 +878,7 @@ do { \
 	{
 		uint64_t count = 0;
 
-		if (driver_remove_lease(&count, conf->driver,
-					(uint8_t const *)pool_arg, strlen(pool_arg),
-					(uint8_t const *)range_arg, range_arg ? strlen(range_arg) : 0,
-					&p->net, p->prefix) < 0) {
+		if (driver_remove_lease(&count, conf->driver, p) < 0) {
 			exit(1);
 		}
 		INFO("Removed %" PRIu64 " addresses/prefixes", count);
@@ -905,10 +889,7 @@ do { \
 	{
 		uint64_t count = 0;
 
-		if (driver_release_lease(&count, conf->driver,
-					 (uint8_t const *)pool_arg, strlen(pool_arg),
-					 (uint8_t const *)range_arg, range_arg ? strlen(range_arg) : 0,
-					 &p->net, p->prefix) < 0) {
+		if (driver_release_lease(&count, conf->driver, p) < 0) {
 			exit(1);
 		}
 		INFO("Released %" PRIu64 " addresses/prefixes", count);
@@ -920,10 +901,7 @@ do { \
 		ippool_tool_lease_t **leases = NULL;
 		size_t len, i;
 
-		if (driver_show_lease(&leases, conf->driver,
-				      (uint8_t const *)pool_arg, strlen(pool_arg),
-				      (uint8_t const *)range_arg, range_arg ? strlen(range_arg) : 0,
-				      &p->net, p->prefix) < 0) {
+		if (driver_show_lease(&leases, conf->driver, p) < 0) {
 			exit(1);
 		}
 
