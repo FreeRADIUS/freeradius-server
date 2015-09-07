@@ -59,17 +59,20 @@ typedef enum ippool_tool_action {
 	IPPOOL_TOOL_SHOW
 } ippool_tool_action_t;
 
-/** net and prefix associated with an action
+/** A single pool operation
  *
  */
 typedef struct ippool_tool_operation {
-	uint8_t const		*pool;
-	size_t			pool_len;
+	char const		*name;		//!< Original range or CIDR string.
+
+	uint8_t const		*pool;		//!< Pool identifier.
+	size_t			pool_len;	//!< Length of the pool identifier.
 
 	uint8_t const		*range;		//!< Range identifier.
-	size_t			range_len;
+	size_t			range_len;	//!< Length of the range identifier.
 
-	fr_ipaddr_t		net;		//!< Base network address.
+	fr_ipaddr_t		start;		//!< Start address.
+	fr_ipaddr_t		end;		//!< End address.
 	uint8_t			prefix;		//!< Prefix - The bits between the address mask, and the prefix
 						//!< form the addresses to be modified in the pool.
 	ippool_tool_action_t	action;		//!< What to do to the leases described by net/prefix.
@@ -129,10 +132,10 @@ static char const *name;
 static void NEVER_RETURNS usage(int ret) {
 	INFO("Usage: %s [[-a|-r|-c] -p] [options] <server[:port]> <pool> [<range>]", name);
 	INFO("Pool management:");
-	INFO("  -a <addr>[/<cidr>]     Add addresses/prefixes to the pool");
-	INFO("  -r <addr>[/<cidr>]     Remove addresses/prefixes in this range");
-	INFO("  -c <addr>[/<cidr>]     Release addresses/prefixes in this range");
-	INFO("  -s <addr>[/<cidr>]     Show addresses/prefix in this range");
+	INFO("  -a <addr>              Add addresses/prefixes to the pool");
+	INFO("  -r <addr>              Remove addresses/prefixes in this range");
+	INFO("  -c <addr>              Release addresses/prefixes in this range");
+	INFO("  -s <addr>              Show addresses/prefix in this range");
 	INFO("  -p <prefix_len>        Length of prefix to allocate (defaults to 32/128)");
 //	INFO("  -i <file>              Import entries from ISC lease file [NYI]");
 	INFO(" ");	/* -Werror=format-zero-length */
@@ -144,8 +147,11 @@ static void NEVER_RETURNS usage(int ret) {
 	INFO("  -h                     Print this help message and exit");
 	INFO("  -x                     Increase the verbosity level");
 //	INFO("  -o <attr>=<value>      Set option, these are specific to the backends [NYI]");
-	INFO("  -f <file>              Load options from a FreeRADIUS style config file");
-
+	INFO("  -f <file>              Load options from a FreeRADIUS (radisud) format config file");
+	INFO(" ");
+	INFO("<addr> is range \"127.0.0.1-127.0.0.254\" or CIDR network \"127.0.0.1/24\"");
+	INFO("CIDR host bits set start address, e.g. 127.0.0.200/24 -> 127.0.0.200-127.0.0.254");
+	INFO("CIDR /32 or /128 excludes upper broadcast address");
 	exit(ret);
 }
 
@@ -212,6 +218,23 @@ static uint128_t uint128_add(uint128 a, uint128 b)
     	return { .l = a.l + b.l, .h = a.h + b.h + tmp };
 }
 
+/** Subtract one 128bit integer from another
+ *
+ * @author Jacob F. W
+ * @note copied from http://www.codeproject.com/Tips/617214/UInt-Addition-Subtraction
+ */
+static uint128_t uint128_sub(uint128 a, uint128 b)
+{
+	uint128_t ret;
+	uint64_t c;
+
+    	ret.l = a.l - b.l;
+    	c = (((ret.l & b.l) & 1) + (b.l >> 1) + (ret.l >> 1)) >> 63;
+    	ret.h = a.h - (b.h + c);
+
+    	return ret;
+}
+
 /** Perform bitwise & of two 128bit unsigned integers
  *
  */
@@ -220,11 +243,30 @@ static uint128_t uint128_band(uint128_t a, uint128_t b)
 	return { .l = a.l & b.l, .h = a.h & b.h };
 }
 
+/** Perform bitwise | of two 128bit unsigned integers
+ *
+ */
+static uint128_t uint128_bor(uint128_t a, uint128_t b)
+{
+	return { .l = a.l | b.l, .h = a.h | b.h };
+}
+
 /** Return whether the integers are equal
  *
  */
-static bool uint128_eq(uint128_t a, uint128_t b) {
+static bool uint128_eq(uint128_t a, uint128_t b)
+{
 	return (a.h == b.h) && (a.l == b.l);
+}
+
+/** Return whether one integer is greater than the other
+ *
+ */
+static bool uint128_gt(uint128_t a, uint128_t b)
+{
+	if (a.h < b.h) return false;
+	if (a.h > b.h) return true;
+	return (a.l > b.l);
 }
 #else
 static uint128_t uint128_gen_mask(uint8_t bits)
@@ -233,9 +275,12 @@ static uint128_t uint128_gen_mask(uint8_t bits)
 	return (((uint128_t)1) << bits) - 1;
 }
 #define uint128_lshift(_num, _bits) (_num << _bits)
-#define uint128_band(_a, _b) (_a & _b)
+//#define uint128_band(_a, _b) (_a & _b)
+#define uint128_bor(_a, _b) (_a | _b)
 #define uint128_eq(_a, _b) (_a == _b)
+#define uint128_gt(_a, _b) (_a > _b)
 #define uint128_add(_a, _b) (_a + _b)
+#define uint128_sub(_a, _b) (_a - _b)
 #endif
 
 /** Iterate over range of IP addresses
@@ -243,23 +288,14 @@ static uint128_t uint128_gen_mask(uint8_t bits)
  * Mutates the ipaddr passed in, adding one to the prefix bits on each call.
  *
  * @param[in,out] ipaddr to increment.
+ * @param[in] end ipaddr to stop at.
  * @param[in] prefix Length of the prefix.
- * @param[in] ex_broadcast whether we should include the upper broadcast address.
  * @return
  *	- true if the prefix bits are not high (continue).
  *	- false if the prefix bits are high (stop).
  */
-static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix, bool ex_broadcast)
+static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t prefix)
 {
-	/*
-	 *	Single IP addresses
-	 */
-	if (prefix == ipaddr->prefix) return false;
-
-	rad_assert(prefix > ipaddr->prefix);
-
-	if (ex_broadcast && (ipaddr->prefix >= (IPADDR_LEN(ipaddr->af) - 1))) return false;
-
 	switch (ipaddr->af) {
 	default:
 	case AF_UNSPEC:
@@ -268,59 +304,42 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, uint8_t prefix, bool ex_broadcast)
 
 	case AF_INET6:
 	{
-		uint128_t ip, p_mask;
+		uint128_t ip_curr, ip_end;
 
 		rad_assert((prefix > 0) && (prefix <= 128));
 
 		/* Don't be tempted to cast */
-		memcpy(&ip, ipaddr->ipaddr.ip6addr.s6_addr, sizeof(ip));
+		memcpy(&ip_curr, ipaddr->ipaddr.ip6addr.s6_addr, sizeof(ip_curr));
+		memcpy(&ip_end, end->ipaddr.ip6addr.s6_addr, sizeof(ip_curr));
 
-		ip = ntohlll(ip);
+		ip_curr = ntohlll(ip_curr);
+		ip_end = ntohlll(ip_end);
 
-		/* Generate a mask that covers the prefix bits */
-		p_mask = uint128_gen_mask(prefix - ipaddr->prefix) << (128 - prefix);
+		/* We're done */
+		if (uint128_eq(ip_curr, ip_end)) return false;
 
-		if (ex_broadcast) {
-			/* Increment the prefix */
-			ip = uint128_add(ip, uint128_lshift((uint128_t)1, (128 - prefix)));
-			/* Stopping condition - all prefix bits high */
-			if (uint128_eq(uint128_band(ip, p_mask), p_mask)) return false;
-		} else {
-			/* Stopping condition - all prefix bits high */
-			if (uint128_eq(uint128_band(ip, p_mask), p_mask)) return false;
-			/* Increment the prefix */
-			ip = uint128_add(ip, uint128_lshift((uint128_t)1, (128 - prefix)));
-		}
-
-		ip = htonlll(ip);
-		memcpy(&ipaddr->ipaddr.ip6addr.s6_addr, &ip, sizeof(ipaddr->ipaddr.ip6addr.s6_addr));
+		/* Increment the prefix */
+		ip_curr = uint128_add(ip_curr, uint128_lshift((uint128_t)1, (128 - prefix)));
+		ip_curr = htonlll(ip_curr);
+		memcpy(&ipaddr->ipaddr.ip6addr.s6_addr, &ip_curr, sizeof(ipaddr->ipaddr.ip6addr.s6_addr));
 		return true;
 	}
 
 	case AF_INET:
 	{
-		uint32_t ip, p_mask;
+		uint32_t ip_curr, ip_end;
 
 		rad_assert((prefix > 0) && (prefix <= 32));
 
-		ip = ntohl(ipaddr->ipaddr.ip4addr.s_addr);
+		ip_curr = ntohl(ipaddr->ipaddr.ip4addr.s_addr);
+		ip_end = ntohl(end->ipaddr.ip4addr.s_addr);
 
-		/* Generate a mask that covers the prefix bits */
-		p_mask = uint32_gen_mask(prefix - ipaddr->prefix) << (32 - prefix);
+		/* We're done */
+		if (ip_curr == ip_end) return false;
 
-		if (ex_broadcast) {
-			/* Increment the prefix */
-			ip += 1 << (32 - prefix);
-			/* Stopping condition (all prefix bits high) */
-			if ((ip & p_mask) == p_mask) return false;
-		} else {
-			/* Stopping condition (all prefix bits high) */
-			if ((ip & p_mask) == p_mask) return false;
-			/* Increment the prefix */
-			ip += 1 << (32 - prefix);
-		}
-
-		ipaddr->ipaddr.ip4addr.s_addr = htonl(ip);
+		/* Increment the prefix */
+		ip_curr += 1 << (32 - prefix);
+		ipaddr->ipaddr.ip4addr.s_addr = htonl(ip_curr);
 		return true;
 	}
 	}
@@ -342,7 +361,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 	fr_redis_cluster_state_t	state;
 	fr_redis_rcode_t		status;
 
-	fr_ipaddr_t			ipaddr = op->net, acked;
+	fr_ipaddr_t			ipaddr = op->start, acked;
 	int				s_ret = REDIS_RCODE_SUCCESS;
 	REQUEST				*request = request_alloc(inst);
 	redisReply			**replies = NULL;
@@ -366,7 +385,8 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 			 */
 			if (s_ret == REDIS_RCODE_TRY_AGAIN) ipaddr = acked;
 
-			for (i = 0; (i < MAX_PIPELINED) && more; i++, more = ipaddr_next(&ipaddr, op->prefix, true)) {
+			for (i = 0; (i < MAX_PIPELINED) && more; i++, more = ipaddr_next(&ipaddr, &op->end,
+											 op->prefix)) {
 				int enqueued;
 
 				enqueued = enqueue(inst, conn, op->pool, op->pool_len,
@@ -397,7 +417,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 
 				ret = process(out, &to_process, replies[i]);
 				if (ret < 0) continue;
-				ipaddr_next(&to_process, op->prefix, true);
+				ipaddr_next(&to_process, &op->end, op->prefix);
 			}
 		}
 		fr_redis_pipeline_free(replies, reply_cnt);
@@ -676,6 +696,173 @@ static int driver_init(TALLOC_CTX *ctx, CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
+/** Convert an IP range or CIDR mask to a start and stop address
+ *
+ * @param[out] start_out Where to write the start address.
+ * @param[out] end_out Where to write the end address.
+ * @param[in] ip_str Unparsed IP string.
+ * @param[in] prefix length of prefixes we'll be allocating.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char const *ip_str, uint8_t prefix)
+{
+	fr_ipaddr_t	start, end;
+	bool		ex_broadcast;
+	char const	*p;
+
+	p = strchr(ip_str, '-');
+	if (p) {
+		char	start_buff[INET6_ADDRSTRLEN + 4];
+		char	end_buff[INET6_ADDRSTRLEN + 4];
+		size_t	len;
+
+		if ((size_t)(p - ip_str) >= sizeof(start_buff)) {
+			ERROR("Start address too long");
+			return -1;
+		}
+
+		len = strlcpy(start_buff, ip_str, (p - ip_str) + 1);
+		rad_assert(!is_truncated(len, sizeof(start_buff)));
+
+		len = strlcpy(end_buff, p + 1, sizeof(end_buff));
+		if (is_truncated(len, sizeof(end_buff))) {
+			ERROR("End address too long");
+			return -1;
+		}
+
+		if (fr_pton(&start, start_buff, -1, AF_UNSPEC, false, true) < 0) {
+			ERROR("Failed parsing \"%s\" as start address: %s", start_buff, fr_strerror());
+			return -1;
+		}
+
+		if (fr_pton(&end, end_buff, -1, AF_UNSPEC, false, true) < 0) {
+			ERROR("Failed parsing \"%s\" end address: %s", end_buff, fr_strerror());
+			return -1;
+		}
+
+		if (start.af != end.af) {
+			ERROR("Start and end address must be of the same address family");
+			return -1;
+		}
+
+		if (!prefix) prefix = IPADDR_LEN(start.af);
+
+		/*
+		 *	IPv6 addresses
+		 */
+		if (start.af == AF_INET6) {
+			uint128_t start_int, end_int;
+
+			memcpy(&start_int, start.ipaddr.ip6addr.s6_addr, sizeof(start_int));
+			memcpy(&end_int, end.ipaddr.ip6addr.s6_addr, sizeof(end_int));
+			if (uint128_gt(ntohlll(start_int), ntohlll(end_int))) {
+				ERROR("End address must be greater than or equal to start address");
+				return -1;
+			}
+		/*
+		 *	IPv4 addresses
+		 */
+		} else {
+			if (ntohl((uint32_t)(start.ipaddr.ip4addr.s_addr)) >
+			    ntohl((uint32_t)(end.ipaddr.ip4addr.s_addr))) {
+			 	ERROR("End address must be greater than or equal to start address");
+			 	return -1;
+			}
+		}
+
+		/*
+		 *	Mask start and end so we can do prefix ranges too
+		 */
+		fr_ipaddr_mask(&start, prefix);
+		fr_ipaddr_mask(&end, prefix);
+		start.prefix = prefix;
+		end.prefix = prefix;
+
+		*start_out = start;
+		*end_out = end;
+
+		return 0;
+	}
+
+	if (fr_pton(&start, ip_str, -1, AF_UNSPEC, false, false) < 0) {
+		ERROR("Failed parsing \"%s\" as IPv4/v6 subnet", ip_str);
+		return -1;
+	}
+
+	if (!prefix) prefix = IPADDR_LEN(start.af);
+
+	if (prefix < start.prefix) {
+		ERROR("-p must be greater than or equal to /<mask> (%u)", start.prefix);
+		return -1;
+	}
+	if (prefix > IPADDR_LEN(start.af)) {
+		ERROR("-p must be less than or equal to address length (%u)", IPADDR_LEN(start.af));
+		return -1;
+	}
+
+	if ((prefix - start.prefix) > 64) {
+		ERROR("-p must be less than or equal to %u", start.prefix + 64);
+		return -1;
+	}
+
+	/*
+	 *	Exclude the broadcast address only if we're dealing with IP addresses
+	 *	if we're allocating prefixes we don't need to.
+	 */
+	ex_broadcast = IPADDR_LEN(start.af) == prefix;
+
+	/*
+	 *	Excluding broadcast, 31/32 or 127/128 start/end are the same
+	 */
+	if (ex_broadcast && (start.prefix >= (IPADDR_LEN(start.af) - 1))) {
+		*start_out = start;
+		*end_out = start;
+	}
+
+	/*
+	 *	Set various fields (we only overwrite the IP later)
+	 */
+	end = start;
+
+	if (start.af == AF_INET6) {
+		uint128_t ip, p_mask;
+
+		rad_assert((prefix > 0) && (prefix <= 128));
+
+		/* Don't be tempted to cast */
+		memcpy(&ip, start.ipaddr.ip6addr.s6_addr, sizeof(ip));
+		ip = ntohlll(ip);
+
+		/* Generate a mask that covers the prefix bits, and sets them high */
+		p_mask = uint128_gen_mask(prefix - start.prefix) << (128 - prefix);
+		ip = htonlll(uint128_bor(p_mask, ip));
+
+		/* Decrement by one */
+		if (ex_broadcast) ip = uint128_sub(ip, 1);
+		memcpy(&end.ipaddr.ip6addr.s6_addr, &ip, sizeof(end.ipaddr.ip6addr.s6_addr));
+	} else {
+		uint32_t ip;
+
+		rad_assert((prefix > 0) && (prefix <= 32));
+
+		ip = ntohl(start.ipaddr.ip4addr.s_addr);
+
+		/* Generate a mask that covers the prefix bits and sets them high */
+		ip |= uint32_gen_mask(prefix - start.prefix) << (32 - prefix);
+
+		/* Decrement by one */
+		if (ex_broadcast) ip--;
+		end.ipaddr.ip4addr.s_addr = htonl(ip);
+	}
+
+	*start_out = start;
+	*end_out = end;
+
+	return 0;
+}
+
 int main(int argc, char *argv[])
 {
 	static ippool_tool_operation_t	ops[128];
@@ -706,12 +893,8 @@ do { \
 		ERROR("Too many actions, max is " STRINGIFY(sizeof(ops))); \
 		usage(64); \
 	} \
-	if (fr_pton(&p->net, optarg, -1, AF_UNSPEC, false, false) < 0) { \
-		ERROR("Failed parsing -a %s as IPv4/v6 subnet", optarg); \
-		usage(64); \
-	} \
 	p->action = _action; \
-	p->prefix = IPADDR_LEN(p->net.af); \
+	p->name = optarg; \
 	p++; \
 } while (0);
 
@@ -736,7 +919,6 @@ do { \
 	case 'p':
 	{
 		unsigned long tmp;
-		uint8_t prefix;
 		char *q;
 
 		if (p == ops) {
@@ -750,22 +932,7 @@ do { \
 
 		}
 
-		prefix = (uint8_t)tmp & 0xff;
-
-		if (prefix < (p - 1)->net.prefix) {
-			ERROR("-p must be greater than or equal to /<mask> (%u)", (p - 1)->net.prefix);
-			usage(64);
-		}
-		if (prefix > IPADDR_LEN((p - 1)->net.af)) {
-			ERROR("-p must be less than or equal to address length (%u)", IPADDR_LEN((p - 1)->net.af));
-			usage(64);
-		}
-		(p - 1)->prefix = prefix;
-
-		if ((prefix - (p - 1)->prefix) > 64) {
-			ERROR("-p must be less than or equal to %u", (p - 1)->prefix + 64);
-			usage(64);
-		}
+		(p - 1)->prefix = (uint8_t)tmp & 0xff;
 	}
 		break;
 
@@ -846,12 +1013,20 @@ do { \
 		cf_pair_add(pool_cs, cp);
 	}
 
-	if (driver_init(conf, conf->cs, &conf->driver) < 0) exit(1);
+	if (driver_init(conf, conf->cs, &conf->driver) < 0) {
+		ERROR("Driver initialisation failed");
+		exit(1);
+	}
 
 	/*
 	 *	Fixup the operations without specific pools or ranges
+	 *	and parse the IP ranges.
 	 */
-	for (p = ops; (p < end) && (p->net.af != AF_UNSPEC); p++) {
+	end = p;
+	for (p = ops; p < end; p++) {
+		if (parse_ip_range(&p->start, &p->end, p->name, p->prefix) < 0) usage(64);
+		if (!p->prefix) p->prefix = IPADDR_LEN(p->start.af);
+
 		if (!p->pool) {
 			p->pool = (uint8_t const *)pool_arg;
 			p->pool_len = strlen(pool_arg);
@@ -862,7 +1037,7 @@ do { \
 		}
 	}
 
-	for (p = ops; (p < end) && (p->net.af != AF_UNSPEC); p++) switch (p->action) {
+	for (p = ops; (p < end) && (p->start.af != AF_UNSPEC); p++) switch (p->action) {
 	case IPPOOL_TOOL_ADD:
 	{
 		uint64_t count = 0;
