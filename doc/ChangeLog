@@ -1,7 +1,7 @@
 FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Do more optimization of unlang policies.  This makes
-	  run-time check a bit faster.
+	  run-time a bit faster.
 	* Re-name most of the functions in src/lib.  Third-party
 	  module authors will have to do the same.
 	* More documentation on contributing and how to write
@@ -38,7 +38,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Fix deadlock when reconnecting connections in the connection
 	  pool.
 	* Fix potential overrun in functions that used fr_utf8_char
-	  with a none nul terminated buffer.
+	  with a non nul terminated buffer.
 	* Fix decoding issue for Tunnel-Password type attributes
 	  which were very long.
 	* Fix radclient issue with TCP sockets on FreeBSD.
