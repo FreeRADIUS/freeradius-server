@@ -118,6 +118,7 @@ fr_protocol_t proto_vmps = {
 	.recv		= vqp_socket_recv,
 	.send		= vqp_socket_send,
 	.print		= common_socket_print,
+	.debug		= common_packet_debug,
 	.encode		= vqp_socket_encode,
 	.decode		= vqp_socket_decode
 };

@@ -62,15 +62,28 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
  *	This is a horrible hack.
  */
 #define PW_DHCP_OFFSET		(1024)
-#define PW_DHCP_DISCOVER	(1024 + 1)
-#define PW_DHCP_OFFER		(1024 + 2)
-#define PW_DHCP_REQUEST		(1024 + 3)
-#define PW_DHCP_DECLINE		(1024 + 4)
-#define PW_DHCP_ACK		(1024 + 5)
-#define PW_DHCP_NAK		(1024 + 6)
-#define PW_DHCP_RELEASE		(1024 + 7)
-#define PW_DHCP_INFORM		(1024 + 8)
-#define PW_DHCP_LEASE_QUERY    	(1024 + 10)
+
+typedef enum {
+	PW_DHCP_DISCOVER = (PW_DHCP_OFFSET + 1),
+	PW_DHCP_OFFER =	(PW_DHCP_OFFSET + 2),
+	PW_DHCP_REQUEST	= (PW_DHCP_OFFSET+ 3),
+	PW_DHCP_DECLINE	= (PW_DHCP_OFFSET + 4),
+	PW_DHCP_ACK = (PW_DHCP_OFFSET + 5),
+	PW_DHCP_NAK = (PW_DHCP_OFFSET + 6),
+	PW_DHCP_RELEASE = (PW_DHCP_OFFSET + 7),
+	PW_DHCP_INFORM = (PW_DHCP_OFFSET + 8),
+	PW_DHCP_FORCE_RENEW = (PW_DHCP_OFFSET + 9),
+	PW_DHCP_LEASE_QUERY = (PW_DHCP_OFFSET + 10),
+	PW_DHCP_LEASE_UNASSIGNED = (PW_DHCP_OFFSET + 11),
+	PW_DHCP_LEASE_UNKNOWN = (PW_DHCP_OFFSET + 12),
+	PW_DHCP_LEASE_ACTIVE = (PW_DHCP_OFFSET + 13),
+	PW_DHCP_BULK_LEASE_QUERY = (PW_DHCP_OFFSET + 14),
+	PW_DHCP_LEASE_QUERY_DONE = (PW_DHCP_OFFSET + 15),
+	PW_DHCP_MAX = (PW_DHCP_OFFSET + 16)
+} fr_dhcp_codes_t;
+
+extern char const *dhcp_header_names[];
+extern char const *dhcp_message_types[];
 
 #define DHCP_MAGIC_VENDOR (54)
 

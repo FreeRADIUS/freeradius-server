@@ -215,25 +215,6 @@ static RADIUS_PACKET *request_init(char const *filename)
 	return request;
 }
 
-static char const *dhcp_header_names[] = {
-	"DHCP-Opcode",
-	"DHCP-Hardware-Type",
-	"DHCP-Hardware-Address-Length",
-	"DHCP-Hop-Count",
-	"DHCP-Transaction-Id",
-	"DHCP-Number-of-Seconds",
-	"DHCP-Flags",
-	"DHCP-Client-IP-Address",
-	"DHCP-Your-IP-Address",
-	"DHCP-Server-IP-Address",
-	"DHCP-Gateway-IP-Address",
-	"DHCP-Client-Hardware-Address",
-	"DHCP-Server-Host-Name",
-	"DHCP-Boot-Filename",
-
-	NULL
-};
-
 static int dhcp_header_sizes[] = {
 	1, 1, 1, 1,
 	4, 2, 2, 4,

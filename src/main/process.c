@@ -398,69 +398,6 @@ static void tv_add(struct timeval *tv, int usec_delay)
 	}
 }
 
-/*
- *	Debug the packet if requested.
- */
-static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, bool received)
-{
-	char src_ipaddr[128];
-	char dst_ipaddr[128];
-
-	if (!packet) return;
-	if (!RDEBUG_ENABLED) return;
-
-	/*
-	 *	Client-specific debugging re-prints the input
-	 *	packet into the client log.
-	 *
-	 *	This really belongs in a utility library
-	 */
-	if (is_radius_code(packet->code)) {
-		RDEBUG("%s %s Id %i from %s%s%s:%i to %s%s%s:%i length %zu",
-		       received ? "Received" : "Sent",
-		       fr_packet_codes[packet->code],
-		       packet->id,
-		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
-				 src_ipaddr, sizeof(src_ipaddr)),
-		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->src_port,
-		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       inet_ntop(packet->dst_ipaddr.af,
-				 &packet->dst_ipaddr.ipaddr,
-				 dst_ipaddr, sizeof(dst_ipaddr)),
-		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->dst_port,
-		       packet->data_len);
-	} else {
-		RDEBUG("%s code %u Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
-		       received ? "Received" : "Sent",
-		       packet->code,
-		       packet->id,
-		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
-				 src_ipaddr, sizeof(src_ipaddr)),
-		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->src_port,
-		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       inet_ntop(packet->dst_ipaddr.af,
-				 &packet->dst_ipaddr.ipaddr,
-				 dst_ipaddr, sizeof(dst_ipaddr)),
-		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->dst_port,
-		       packet->data_len);
-	}
-
-	if (received) {
-		rdebug_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
-	} else {
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, packet->vps);
-	}
-}
-
-
 /***********************************************************************
  *
  *	Start of RADIUS server state machine.
@@ -1180,7 +1117,7 @@ static void request_response_delay(REQUEST *request, int action)
 		} /* else it's time to send the reject */
 
 		RDEBUG2("Sending delayed response");
-		debug_packet(request, request->reply, false);
+		request->listener->debug(request, request->reply, false);
 		request->listener->send(request->listener, request);
 
 		/*
@@ -1232,7 +1169,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 		}
 #endif
 
-		debug_packet(request, request->packet, true);
+		request->listener->debug(request, request->packet, true);
 	} else {
 		rcode = 0;
 	}
@@ -1375,7 +1312,7 @@ static void request_finish(REQUEST *request, int action)
 		 *	But only print the reply if there is one.
 		 */
 		if (request->reply->code != 0) {
-			debug_packet(request, request->reply, false);
+			request->listener->debug(request, request->reply, false);
 		}
 
 		request->listener->send(request->listener, request);
@@ -1445,7 +1382,7 @@ static void request_finish(REQUEST *request, int action)
 		 *	Don't print a reply if there's none to send.
 		 */
 		if (request->reply->code != 0) {
-			debug_packet(request, request->reply, false);
+			request->listener->debug(request, request->reply, false);
 			request->listener->send(request->listener, request);
 		}
 
@@ -2362,7 +2299,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 		 */
 		if (request->proxy_listener) {
 			rcode = request->proxy_listener->decode(request->proxy_listener, request);
-			debug_packet(request, reply, true);
+			request->proxy_listener->debug(request, reply, true);
 
 			/*
 			 *	Pro-actively remove it from the proxy hash.
@@ -3226,7 +3163,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *	Encode the packet before we do anything else.
 	 */
 	request->proxy_listener->encode(request->proxy_listener, request);
-	debug_packet(request, request->proxy, false);
+	request->proxy_listener->debug(request, request->proxy, false);
 
 	/*
 	 *	Set the state function, then the state, no child, and
@@ -3562,9 +3499,8 @@ static void ping_home_server(void *ctx)
 	home->num_sent_pings++;
 
 	rad_assert(request->proxy_listener != NULL);
-	debug_packet(request, request->proxy, false);
-	request->proxy_listener->send(request->proxy_listener,
-				      request);
+	request->proxy_listener->debug(request, request->proxy, false);
+	request->proxy_listener->send(request->proxy_listener, request);
 
 reset_timer:
 	/*
@@ -3847,7 +3783,7 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		FR_STATS_TYPE_INC(home->stats.total_requests);
 		home->last_packet_sent = now.tv_sec;
 		request->proxy_retransmit = now;
-		debug_packet(request, request->proxy, false);
+		request->proxy_listener->debug(request, request->proxy, false);
 		request->proxy_listener->send(request->proxy_listener, request);
 		break;
 
@@ -4202,7 +4138,7 @@ static void request_coa_originate(REQUEST *request)
 	 *	Encode the packet before we do anything else.
 	 */
 	coa->proxy_listener->encode(coa->proxy_listener, coa);
-	debug_packet(coa, coa->proxy, false);
+	coa->proxy_listener->debug(coa, coa->proxy, false);
 
 #ifdef DEBUG_STATE_MACHINE
 	if (rad_debug_lvl) printf("(%u) ********\tSTATE %s C-%s -> C-%s\t********\n", request->number, __FUNCTION__,
@@ -4738,7 +4674,7 @@ static int event_new_fd(rad_listen_t *this)
 #ifdef WITH_PROXY
 		if (!just_started && (this->type == RAD_LISTEN_PROXY)) {
 			home_server_t *home;
-			
+
 			home = sock->home;
 			if (!home || !home->limit.max_connections) {
 				INFO(" ... adding new socket %s", buffer);
@@ -5314,7 +5250,7 @@ static void check_proxy(rad_listen_t *head)
 			if (sock->my_ipaddr.af == AF_INET) has_v4 = true;
 			if (sock->my_ipaddr.af == AF_INET6) has_v6 = true;
 			break;
-			
+
 		default:
 			break;
 		}

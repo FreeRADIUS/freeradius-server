@@ -889,6 +889,67 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 	return 1;
 }
 
+/*
+ *	Debug the packet if requested.
+ */
+void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
+{
+	char src_ipaddr[128];
+	char dst_ipaddr[128];
+
+	if (!packet) return;
+	if (!RDEBUG_ENABLED) return;
+
+	/*
+	 *	Client-specific debugging re-prints the input
+	 *	packet into the client log.
+	 *
+	 *	This really belongs in a utility library
+	 */
+	if (is_radius_code(packet->code)) {
+		RDEBUG("%s %s Id %i from %s%s%s:%i to %s%s%s:%i length %zu",
+		       received ? "Received" : "Sent",
+		       fr_packet_codes[packet->code],
+		       packet->id,
+		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 src_ipaddr, sizeof(src_ipaddr)),
+		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->src_port,
+		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
+		       inet_ntop(packet->dst_ipaddr.af,
+				 &packet->dst_ipaddr.ipaddr,
+				 dst_ipaddr, sizeof(dst_ipaddr)),
+		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->dst_port,
+		       packet->data_len);
+	} else {
+		RDEBUG("%s code %u Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
+		       received ? "Received" : "Sent",
+		       packet->code,
+		       packet->id,
+		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 src_ipaddr, sizeof(src_ipaddr)),
+		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->src_port,
+		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
+		       inet_ntop(packet->dst_ipaddr.af,
+				 &packet->dst_ipaddr.ipaddr,
+				 dst_ipaddr, sizeof(dst_ipaddr)),
+		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->dst_port,
+		       packet->data_len);
+	}
+
+	if (received) {
+		rdebug_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+	} else {
+		rdebug_proto_pair_list(L_DBG_LVL_1, request, packet->vps);
+	}
+}
 static CONF_PARSER performance_config[] = {
 	{ FR_CONF_OFFSET("skip_duplicate_checks", PW_TYPE_BOOLEAN, rad_listen_t, nodup) },
 
@@ -2194,7 +2255,7 @@ static fr_protocol_t master_listen[MAX_LISTENER] = {
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
 	  stats_socket_recv, auth_socket_send,
-	  common_socket_print, client_socket_encode, client_socket_decode },
+	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
 #else
 	NO_LISTENER,
 #endif
@@ -2204,7 +2265,7 @@ static fr_protocol_t master_listen[MAX_LISTENER] = {
 	{ RLM_MODULE_INIT, "proxy", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, common_socket_free,
 	  proxy_socket_recv, proxy_socket_send,
-	  common_socket_print, proxy_socket_encode, proxy_socket_decode },
+	  common_socket_print, common_packet_debug, proxy_socket_encode, proxy_socket_decode },
 #else
 	NO_LISTENER,
 #endif
@@ -2213,14 +2274,14 @@ static fr_protocol_t master_listen[MAX_LISTENER] = {
 	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, common_socket_free,
 	  auth_socket_recv, auth_socket_send,
-	  common_socket_print, client_socket_encode, client_socket_decode },
+	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
 
 #ifdef WITH_ACCOUNTING
 	/* accounting */
 	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, common_socket_free,
 	  acct_socket_recv, acct_socket_send,
-	  common_socket_print, client_socket_encode, client_socket_decode},
+	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode},
 #else
 	NO_LISTENER,
 #endif
@@ -2230,7 +2291,7 @@ static fr_protocol_t master_listen[MAX_LISTENER] = {
 	{ RLM_MODULE_INIT, "detail", sizeof(listen_detail_t), NULL,
 	  detail_parse, detail_free,
 	  detail_recv, detail_send,
-	  detail_print, detail_encode, detail_decode },
+	  detail_print, common_packet_debug, detail_encode, detail_decode },
 #else
 	NO_LISTENER,
 #endif
@@ -2244,7 +2305,7 @@ static fr_protocol_t master_listen[MAX_LISTENER] = {
 	{ RLM_MODULE_INIT, "control", sizeof(fr_command_socket_t), NULL,
 	  command_socket_parse, command_socket_free,
 	  command_domain_accept, command_domain_send,
-	  command_socket_print, command_socket_encode, command_socket_decode },
+	  command_socket_print, common_packet_debug, command_socket_encode, command_socket_decode },
 #else
 	NO_LISTENER,
 #endif
@@ -2254,7 +2315,7 @@ static fr_protocol_t master_listen[MAX_LISTENER] = {
 	{ RLM_MODULE_INIT, "coa", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
 	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
-	  common_socket_print, client_socket_encode, client_socket_decode },
+	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
 #else
 	NO_LISTENER,
 #endif
@@ -2823,6 +2884,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 	this->recv = master_listen[this->type].recv;
 	this->send = master_listen[this->type].send;
 	this->print = master_listen[this->type].print;
+	this->debug = master_listen[this->type].debug;
 	this->encode = master_listen[this->type].encode;
 	this->decode = master_listen[this->type].decode;
 

@@ -58,6 +58,7 @@ typedef struct rad_listen rad_listen_t;
 typedef int (*rad_listen_recv_t)(rad_listen_t *);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
 typedef int (*rad_listen_print_t)(rad_listen_t const *, char *, size_t);
+typedef void (*rad_listen_debug_t)(REQUEST *, RADIUS_PACKET *, bool received);
 typedef int (*rad_listen_encode_t)(rad_listen_t *, REQUEST *);
 typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
 
@@ -89,6 +90,7 @@ struct rad_listen {
 	rad_listen_send_t	send;
 	rad_listen_encode_t	encode;
 	rad_listen_decode_t	decode;
+	rad_listen_debug_t	debug;
 	rad_listen_print_t	print;
 
 	CONF_SECTION const	*cs;

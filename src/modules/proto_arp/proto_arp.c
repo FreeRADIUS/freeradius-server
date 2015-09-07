@@ -312,6 +312,7 @@ fr_protocol_t proto_arp = {
 	.recv		= arp_socket_recv,
 	.send		= arp_socket_send,
 	.print		= arp_socket_print,
+	.debug		= common_packet_debug,
 	.encode		= arp_socket_encode,
 	.decode		= arp_socket_decode
 };

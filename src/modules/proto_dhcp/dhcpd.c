@@ -838,6 +838,67 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 	}
 }
 
+/*
+ *	Debug the packet if requested.
+ */
+static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
+{
+	char src_ipaddr[128];
+	char dst_ipaddr[128];
+
+	if (!packet) return;
+	if (!RDEBUG_ENABLED) return;
+
+	/*
+	 *	Client-specific debugging re-prints the input
+	 *	packet into the client log.
+	 *
+	 *	This really belongs in a utility library
+	 */
+	if ((packet->code > PW_DHCP_OFFSET) && (packet->code < PW_DHCP_MAX)) {
+		RDEBUG("%s %s Id %08x from %s%s%s:%i to %s%s%s:%i length %zu",
+		       received ? "Received" : "Sent",
+		       dhcp_message_types[packet->code - PW_DHCP_OFFSET],
+		       packet->id,
+		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 src_ipaddr, sizeof(src_ipaddr)),
+		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->src_port,
+		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
+		       inet_ntop(packet->dst_ipaddr.af,
+				 &packet->dst_ipaddr.ipaddr,
+				 dst_ipaddr, sizeof(dst_ipaddr)),
+		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->dst_port,
+		       packet->data_len);
+	} else {
+		RDEBUG("%s code %u Id %08x from %s%s%s:%i to %s%s%s:%i length %zu\n",
+		       received ? "Received" : "Sent",
+		       packet->code,
+		       packet->id,
+		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
+		       inet_ntop(packet->src_ipaddr.af,
+				 &packet->src_ipaddr.ipaddr,
+				 src_ipaddr, sizeof(src_ipaddr)),
+		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->src_port,
+		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
+		       inet_ntop(packet->dst_ipaddr.af,
+				 &packet->dst_ipaddr.ipaddr,
+				 dst_ipaddr, sizeof(dst_ipaddr)),
+		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
+		       packet->dst_port,
+		       packet->data_len);
+	}
+
+	if (received) {
+		rdebug_pair_list(L_DBG_LVL_1, request, packet->vps, NULL);
+	} else {
+		rdebug_proto_pair_list(L_DBG_LVL_1, request, packet->vps);
+	}
+}
 
 static int dhcp_socket_encode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
 {
@@ -860,6 +921,7 @@ fr_protocol_t proto_dhcp = {
 	.recv		= dhcp_socket_recv,
 	.send		= dhcp_socket_send,
 	.print		= common_socket_print,
+	.debug		= dhcp_packet_debug,
 	.encode		= dhcp_socket_encode,
 	.decode		= dhcp_socket_decode
 };

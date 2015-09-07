@@ -1912,6 +1912,7 @@ fr_protocol_t proto_bfd = {
 	.recv		= bfd_socket_recv,
 	.send		= bfd_socket_send,
 	.print		= bfd_socket_print,
+	.debug		= common_packet_debug,
 	.encode		= bfd_socket_encode,
 	.decode		= bfd_socket_decode
 };
