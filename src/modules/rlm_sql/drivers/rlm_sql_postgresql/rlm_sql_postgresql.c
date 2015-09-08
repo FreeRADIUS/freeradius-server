@@ -505,6 +505,22 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	return conn->affected_rows;
 }
 
+static size_t sql_escape_string(rlm_sql_handle_t *handle,
+			UNUSED rlm_sql_config_t *config, char *out, size_t outlen,
+			char const *in, UNUSED void *arg)
+{
+	int err;
+	size_t qlen;
+	rlm_sql_postgres_conn_t *conn = handle->conn;
+
+	/* Check for potential buffer overflow */
+	qlen = strlen(in);
+	if ((qlen * 2 + 1) > outlen) return 0;
+	qlen = PQescapeStringConn(conn->db, out, in, qlen, &err);
+	if (err) return 0;
+	return qlen;
+}
+
 /* Exported to rlm_sql */
 extern rlm_sql_module_t rlm_sql_postgresql;
 rlm_sql_module_t rlm_sql_postgresql = {
@@ -520,5 +536,6 @@ rlm_sql_module_t rlm_sql_postgresql = {
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_free_result,
 	.sql_finish_select_query	= sql_free_result,
-	.sql_affected_rows		= sql_affected_rows
+	.sql_affected_rows		= sql_affected_rows,
+	.sql_escape_string		= sql_escape_string
 };

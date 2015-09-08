@@ -710,6 +710,19 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	return mysql_affected_rows(conn->sock);
 }
 
+static size_t sql_escape_string(rlm_sql_handle_t *handle,
+			UNUSED rlm_sql_config_t *config, char *out, size_t outlen,
+			char const *in, UNUSED void *arg)
+{
+	size_t qlen;
+	rlm_sql_mysql_conn_t *conn = handle->conn;
+
+	/* Check for potential buffer overflow */
+	qlen = strlen(in);
+	if ((qlen * 2 + 1) > outlen) return 0;
+	return mysql_real_escape_string(conn->sock, out, in, qlen);
+}
+
 
 /* Exported to rlm_sql */
 extern rlm_sql_module_t rlm_sql_mysql;
@@ -729,5 +742,6 @@ rlm_sql_module_t rlm_sql_mysql = {
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,
-	.sql_finish_select_query	= sql_finish_query
+	.sql_finish_select_query	= sql_finish_query,
+	.sql_escape_string		= sql_escape_string
 };
