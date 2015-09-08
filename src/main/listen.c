@@ -2244,8 +2244,7 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 #include "command.c"
 
-#define NO_LISTENER { 0, "undefined", 0, NULL, \
-	  NULL, NULL, NULL, NULL, NULL, NULL, NULL}
+#define NO_LISTENER { .name = "undefined", }
 
 /*
  *	Handle up to 256 different protocols.
