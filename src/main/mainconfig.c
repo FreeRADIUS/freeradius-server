@@ -41,8 +41,12 @@ RCSID("$Id$")
 #endif
 
 main_config_t		main_config;				//!< Main server configuration.
+
 extern fr_cond_t	*debug_condition;
+extern fr_log_t		debug_log;
+
 fr_cond_t		*debug_condition = NULL;			//!< Condition used to mark packets up for checking.
+fr_log_t		debug_log = { .fd = -1, .dst = L_DST_NULL };
 bool			event_loop_started = false;		//!< Whether the main event loop has been started yet.
 
 typedef struct cached_config_t {

@@ -49,6 +49,8 @@ RCSID("$Id$")
 log_lvl_t	rad_debug_lvl = 0;		//!< Global debugging level
 static bool	rate_limit = true;		//!< Whether repeated log entries should be rate limited
 
+extern fr_log_t debug_log; /* in mainconfig.c */
+
 /** Maps log categories to message prefixes
  */
 static const FR_NAME_NUMBER levels[] = {
@@ -218,7 +220,6 @@ fr_log_t default_log = {
 	.fd = STDOUT_FILENO,
 	.dst = L_DST_STDOUT,
 	.file = NULL,
-	.debug_file = NULL,
 };
 
 static int stderr_fd = -1;	//!< The original unmolested stderr file descriptor
@@ -652,7 +653,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		 *	otherwise leave it as the default log file.
 		 */
 #ifdef WITH_COMMAND_SOCKET
-		filename = default_log.debug_file;
+		filename = debug_log.file;
 		if (!filename)
 #endif
 		{

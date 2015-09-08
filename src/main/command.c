@@ -1201,6 +1201,8 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 }
 
 static char debug_log_file_buffer[1024];
+extern fr_cond_t *debug_condition;
+extern fr_log_t debug_log;
 
 static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 {
@@ -1213,7 +1215,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 		cprintf_error(listener, "Cannot direct debug logs to absolute path.\n");
 	}
 
-	default_log.debug_file = NULL;
+	debug_log.file = NULL;
 
 	if (argc == 0) return CMD_OK;
 
@@ -1229,12 +1231,11 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 	snprintf(debug_log_file_buffer, sizeof(debug_log_file_buffer),
 		 "%s/%s", radlog_dir, argv[0]);
 
-	default_log.debug_file = &debug_log_file_buffer[0];
+	debug_log.file = &debug_log_file_buffer[0];
 
 	return CMD_OK;
 }
 
-extern fr_cond_t *debug_condition;
 static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[])
 {
 	int i;
@@ -1360,9 +1361,9 @@ static int command_show_debug_condition(rad_listen_t *listener,
 static int command_show_debug_file(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
-	if (!default_log.debug_file) return CMD_FAIL;
+	if (!debug_log.file) return CMD_FAIL;
 
-	cprintf(listener, "%s\n", default_log.debug_file);
+	cprintf(listener, "%s\n", debug_log.file);
 	return CMD_OK;
 }
 
