@@ -192,7 +192,7 @@ void rad_print_hex(RADIUS_PACKET *packet)
 
 	fprintf(fr_log_fp, "  Socket:\t%d\n", packet->sockfd);
 #ifdef WITH_TCP
-	fprintf(fr_log_fp, "  Proto:\t%u\n", packet->proto);
+	fprintf(fr_log_fp, "  Proto:\t%d\n", packet->proto);
 #endif
 
 	if (packet->src_ipaddr.af == AF_INET) {
