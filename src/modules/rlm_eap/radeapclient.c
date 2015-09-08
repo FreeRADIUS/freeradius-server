@@ -2172,7 +2172,6 @@ int main(int argc, char **argv)
 		.fd = STDOUT_FILENO,
 		.dst = L_DST_STDOUT,
 		.file = NULL,
-		.debug_file = NULL,
 	};
 
 	/*
