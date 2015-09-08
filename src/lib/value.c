@@ -600,7 +600,6 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 			goto finish;
 		}
 
-	do_octets:
 		len -= 2;
 
 		/*
@@ -625,12 +624,25 @@ ssize_t value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		if ((len > 1) && (strncasecmp(src, "0x", 2) == 0)) goto do_octets;
+		if ((len > 1) && (strncasecmp(src, "0x", 2) == 0)) {
+			ssize_t bin;
 
-		if (ascend_parse_filter(dst, src, len) < 0 ) {
-			/* Allow ascend_parse_filter's strerror to bubble up */
-			return -1;
+			if (len > ((sizeof(dst->filter) + 1) * 2)) {
+				fr_strerror_printf("Hex data is too large for ascend filter");
+				return -1;
+			}
+
+			bin = fr_hex2bin((uint8_t *) &dst->filter, ret, src + 2, len);
+			if (bin < ret) {
+				memset(((uint8_t *) &dst->filter) + bin, 0, ret - bin);
+			}
+		} else {
+			if (ascend_parse_filter(dst, src, len) < 0 ) {
+				/* Allow ascend_parse_filter's strerror to bubble up */
+				return -1;
+			}
 		}
+
 		ret = sizeof(dst->filter);
 		goto finish;
 #else
