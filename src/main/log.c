@@ -49,8 +49,6 @@ RCSID("$Id$")
 log_lvl_t	rad_debug_lvl = 0;		//!< Global debugging level
 static bool	rate_limit = true;		//!< Whether repeated log entries should be rate limited
 
-extern fr_log_t debug_log; /* in mainconfig.c */
-
 /** Maps log categories to message prefixes
  */
 static const FR_NAME_NUMBER levels[] = {
@@ -643,22 +641,29 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 	 *	Debug messages get treated specially.
 	 */
 	if ((type & L_DBG) != 0) {
-
 		if (!radlog_debug_enabled(type, lvl, request)) {
 			return;
 		}
 
-		/*
-		 *	Use the debug output file, if specified,
-		 *	otherwise leave it as the default log file.
-		 */
 #ifdef WITH_COMMAND_SOCKET
-		filename = debug_log.file;
-		if (!filename)
-#endif
-		{
-			filename = default_log.file;
+		/*
+		 *	If we're debugging to a file, then use that.
+		 *
+		 *	@todo: have vradlog() take a fr_log_t*, so
+		 *	that we can cache the opened descriptor, and
+		 *	we don't need to re-open it on every log
+		 *	message.
+		 */
+		if (request->log.output &&
+		    (request->log.output->dst == L_DST_FILES)) {
+			filename = request->log.output->file;
+
+			fp = fopen(request->log.output->file, "a");
+			if (!fp) return;
+
+			goto print_msg;
 		}
+#endif
 	}
 
 	if (filename) {
@@ -690,6 +695,7 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		fp = fopen(buffer, "a");
 	}
 
+print_msg:
 	/*
 	 *  If we don't copy the original ap we get a segfault from vasprintf. This is apparently
 	 *  due to ap sometimes being implemented with a stack offset which is invalidated if

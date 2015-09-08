@@ -297,6 +297,7 @@ struct rad_request {
 
 		uint8_t		indent;		//!< By how much to indent log messages. uin8_t so it's obvious
 						//!< when a request has been exdented too much.
+		fr_log_t	*output;	//!< Output log destination.  Over-rides the global one.
 	} log;
 
 	uint32_t		options;	//!< mainly for proxying EAP-MSCHAPv2.

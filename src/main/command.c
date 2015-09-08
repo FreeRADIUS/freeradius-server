@@ -1213,11 +1213,19 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 
 	if ((argc > 0) && (strchr(argv[0], FR_DIR_SEP) != NULL)) {
 		cprintf_error(listener, "Cannot direct debug logs to absolute path.\n");
+		return -1;
 	}
 
-	debug_log.file = NULL;
+	if (argc == 0) {
+		debug_log.dst = L_DST_NULL;
+		debug_log.file = NULL;
+		return CMD_OK;
+	}
 
-	if (argc == 0) return CMD_OK;
+	/*
+	 *	Disable logging while we're mucking with the buffer.
+	 */
+	debug_log.dst = L_DST_NULL;
 
 	/*
 	 *	This looks weird, but it's here to avoid locking
@@ -1232,6 +1240,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 		 "%s/%s", radlog_dir, argv[0]);
 
 	debug_log.file = &debug_log_file_buffer[0];
+	debug_log.dst = L_DST_FILES;
 
 	return CMD_OK;
 }
