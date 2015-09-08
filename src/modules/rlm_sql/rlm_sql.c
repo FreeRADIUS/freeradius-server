@@ -606,6 +606,31 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 }
 
 /*
+ *	Call driver-specific string escaping function.
+ *
+ *	This gets called only if the driver provides its own sql_escape_string
+ *	method.
+ */
+static size_t sql_string_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
+			      char const *in, void *arg)
+{
+	rlm_sql_handle_t *handle = NULL;
+	size_t rc;
+	rlm_sql_t *inst = arg;
+
+	handle = fr_connection_get(inst->pool);
+	if (!handle) {
+		out[0] = '\0';
+		return 0;
+	}
+
+	rc = inst->module->sql_escape_string(handle, inst->config, out, outlen, in, arg);
+	fr_connection_release(inst->pool, handle);
+	out[rc] = '\0';
+	return rc;
+}
+
+/*
  *	Set the SQL user name.
  *
  *	We don't call the escape function here. The resulting string
@@ -1077,6 +1102,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->sql_set_user		= sql_set_user;
 	inst->sql_escape_func		= sql_escape_func;
+	inst->sql_string_escape_func	= sql_escape_func;
 	inst->sql_query			= rlm_sql_query;
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
@@ -1106,6 +1132,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		if (inst->module->mod_instantiate(cs, inst->config) < 0) {
 			return -1;
 		}
+	}
+
+	if (inst->module->sql_escape_string) {
+		inst->sql_string_escape_func = sql_string_escape_func;
 	}
 
 	inst->ef = exfile_init(inst, 64, 30, true);
