@@ -1813,7 +1813,7 @@ print_int:
 
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
-		print_abinary(buf, sizeof(buf), (uint8_t const *) data->filter, len, quote);
+		print_abinary(buf, sizeof(buf), (uint8_t const *) data->filter, inlen, quote);
 		a = buf;
 		len = strlen(buf);
 		break;
