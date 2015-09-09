@@ -1417,8 +1417,8 @@ static void request_finish(REQUEST *request, int action)
 	/*
 	 *	Send the reply.
 	 */
-	if (request->response_delay.tv_sec == 0) {
-		rad_assert(request->response_delay.tv_usec == 0);
+	if ((request->response_delay.tv_sec == 0) &&
+	    (request->response_delay.tv_usec == 0)) {
 
 		/*
 		 *	Don't print a reply if there's none to send.
