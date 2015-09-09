@@ -12,6 +12,9 @@ FreeRADIUS 2.2.8 Thursday 09 Jul 2015 11:00:00 EDT, urgency=medium
 	  the response into Access-Reject.
 	* Set X509_V_FLAG_CRL_CHECK_ALL, and add "check_all_crl"
 	  to eap.conf.  Fixes oCert CVE-2015-4680.
+	* Update EAP-TTLS for TLSv1.2
+	* Always delete MS-MPPE-* from the TTLS inner tunnel.
+	  This allows TTLS / EAP-MSCHAPv2 to work.
 
 FreeRADIUS 2.2.7 Wednesday 22 Apr 2015 14:00:00 EST, urgency=medium
 	Feature improvements
