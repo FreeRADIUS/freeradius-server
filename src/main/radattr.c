@@ -930,6 +930,7 @@ int main(int argc, char *argv[])
 	bool report = false;
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
+	int *inst = &c;
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -977,7 +978,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (xlat_register("test", xlat_test, XLAT_DEFAULT_BUF_LEN, NULL, "") < 0) {
+	if (xlat_register("test", xlat_test, XLAT_DEFAULT_BUF_LEN, NULL, inst) < 0) {
 		fprintf(stderr, "Failed registering xlat");
 		return 1;
 	}
