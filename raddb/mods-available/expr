@@ -53,13 +53,88 @@
 
 #
 #  The module also registers a few paircompare functions, and
-#  many string manipulation functions, which should really be
-#  documented here.
+#  many string manipulation functions, including:
+#
+#  rand		get random number from 0 to n-1
+#		"%{rand:10}" == "9"
+#
+#  randstr	get random string built from character classes:
+#			c lowercase letters
+#			C uppercase letters
+#			n numbers
+#			a alphanumeric
+#			! punctuation
+#			. alphanumeric + punctuation
+#			s alphanumeric + "./"
+#			o characters suitable for OTP (easily confused removed)
+#			h binary data as lowercase hex
+#			H binary data as uppercase hex
+#
+#		"%{randstr:CCCC!!cccnnn}" == "IPFL>{saf874"
+#		"%{randstr:oooooooo}" == "rfVzyA4y"
+#		"%{randstr:hhhh}" == "68d60de3"
+#
+#  urlquote	quote special characters in URI
+#		"%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
+#
+#  urlunquote	unquote URL special characters
+#		"%{urlunquote:http%%3A%%47%%47example.org%%47}" == "http://example.org/"
+#
+#  escape	escape string similar to rlm_sql safe_characters
+#		"%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" 
+#
+#  unescape	reverse of escape
+#		"%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>"
+#
+#  tolower	convert to lowercase
+#		"%{tolower:Bar}" == "bar"
+#
+#  toupper	convert to uppercase
+#		"%{toupper:Foo}" == "FOO"
+#
+#  md5		get md5sum hash
+#		"%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
+#		
+#  sha1		get sha1 hash
+#		"%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+#
+#  sha256	get sha256 hash
+#		"%{sha256:foo}" == "2c26b46b68ffc68ff99b453c1d30413413422d706..."
+#
+#  sha512	get sha512 hash
+#		"%{sha512:foo}" == "f7fbba6e0636f890e56fbbf3283e524c6fa3204ae29838..."
+#
+#  hmacmd5	generate HMAC-MD5 of string
+#		"%{hmacmd5:foo bar}" == "31b6db9e5eb4addb42f1a6ca07367adc"
+#
+#  hmacsha1	generate HMAC-SHA1 of string
+#		"%{hmacsha1:foo bar}" == "85d155c55ed286a300bd1cf124de08d87e914f3a"
+#
+#  pairs	serialize attributes as comma-delimited string
+#		"%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar', ..."
+#
+#  base64	encode string as base64
+#		"%{base64:foo}" == "Zm9v"
+#
+#  base64tohex	convert base64 to hex
+#		"%{base64tohex:Zm9v}" == "666f6f"
+#
+#  explode	split an attribute into multiple new attributes based on a delimiter
+#		"%{explode:&ref <delim>}"
+#
+#  nexttime	calculate number of seconds until next n hour(s), day(s), week(s), year(s)
+#		if it were 16:18, %{nexttime:1h} would expand to 2520
+#
+#  lpad		left-pad a string
+#		if User-Name is "foo": "%{lpad:&User-Name 6 x}" == "xxxfoo"
+#
+#  rpad		right-pad a string
+#		if User-Name is "foo": "%{lpad:&User-Name 5 -}" == "foo--"
 #
 
 expr {
 	#
-	# Characters that will not be encoded by the %{encode}
+	# Characters that will not be encoded by the %{escape}
 	# xlat function.
 	#
 	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /äéöüàâæçèéêëîïôœùûüaÿÄÉÖÜßÀÂÆÇÈÉÊËÎÏÔŒÙÛÜŸ"
