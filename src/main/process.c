@@ -46,7 +46,6 @@ RCSID("$Id$")
 
 extern pid_t radius_pid;
 extern fr_cond_t *debug_condition;
-extern fr_log_t debug_log;
 
 static bool spawn_flag = false;
 static bool just_started = true;
@@ -1133,6 +1132,8 @@ static void request_response_delay(REQUEST *request, int action)
 	}
 }
 
+
+extern fr_log_t debug_log;
 
 static int request_pre_handler(REQUEST *request, UNUSED int action)
 {
