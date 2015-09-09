@@ -28,6 +28,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include "eap_tls.h"
 #include <openssl/hmac.h>
 
+
+#if OPENSSL_VERSION_NUMBER < 0x10001000L
 /*
  * TLS PRF from RFC 2246
  */
@@ -96,6 +98,7 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 		out[i] ^= buf[i];
 	}
 }
+#endif
 
 #define EAPTLS_MPPE_KEY_LEN     32
 
