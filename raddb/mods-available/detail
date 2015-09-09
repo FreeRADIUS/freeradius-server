@@ -17,7 +17,7 @@ detail {
 	#  through a 'log rotation'
 	#
 	#  If your detail files are large, you may also want
-	#  to add a ':%H' (see doc/variables.txt) to the end
+	#  to add a ':%H' (see doc/configuration/variables.txt) to the end
 	#  of it, to create a new detail file every hour, e.g.:
 	#
 	#   ..../detail-%Y%m%d:%H
