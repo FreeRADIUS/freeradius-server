@@ -174,8 +174,8 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 	}
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	SSL_export_keying_material(s, buffer, size, EAPTLS_PRF_CHALLENGE,
-				   sizeof(EAPTLS_PRF_CHALLENGE) - 1, NULL, 0, 0);
+	SSL_export_keying_material(s, buffer, size, FR_TLS_PRF_CHALLENGE,
+				   sizeof(FR_TLS_PRF_CHALLENGE) - 1, NULL, 0, 0);
 #else
 	memcpy(p, FR_TLS_PRF_CHALLENGE, sizeof(FR_TLS_PRF_CHALLENGE)-1);
 	p += sizeof(FR_TLS_PRF_CHALLENGE)-1;
