@@ -46,6 +46,7 @@ RCSID("$Id$")
 
 extern pid_t radius_pid;
 extern fr_cond_t *debug_condition;
+extern fr_log_t debug_log;
 
 static bool spawn_flag = false;
 static bool just_started = true;
@@ -1163,8 +1164,6 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 			 *	Ignore parse errors.
 			 */
 			if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition)) {
-				extern fr_log_t debug_log;
-
 				request->log.lvl = L_DBG_LVL_2;
 				request->log.func = vradlog_request;
 				request->log.output = &debug_log;
