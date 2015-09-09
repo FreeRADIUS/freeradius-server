@@ -2449,7 +2449,7 @@ static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * cons
 
 /** Replace %whatever in a string.
  *
- * See 'doc/variables.txt' for more information.
+ * See 'doc/configuration/variables.txt' for more information.
  *
  * @param[out] out Where to write pointer to output buffer.
  * @param[in] outlen Size of out.
@@ -2498,7 +2498,7 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 
 /** Replace %whatever in a string.
  *
- * See 'doc/variables.txt' for more information.
+ * See 'doc/configuration/variables.txt' for more information.
  *
  * @param[out] out Where to write pointer to output buffer.
  * @param[in] outlen Size of out.
