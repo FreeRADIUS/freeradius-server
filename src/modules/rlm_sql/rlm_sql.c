@@ -618,7 +618,7 @@ static size_t sql_string_escape_func(UNUSED REQUEST *request, char *out,
 	rlm_sql_handle_t *handle = arg;
 	rlm_sql_t *inst = handle->inst;
 
-	rc = inst->module->sql_escape_string(handle, inst->config, out, outlen, in, arg);
+	rc = inst->module->sql_escape_string(handle, inst->config, out, outlen, in);
 	out[rc] = '\0';
 	return rc;
 }
