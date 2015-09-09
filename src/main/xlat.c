@@ -1280,6 +1280,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 *	Check for empty expressions %{}
 	 */
 	if ((*q == '}') && (q == p)) {
+		talloc_free(node);
 		*error = "Empty expression is invalid";
 		return -(p - fmt);
 	}
@@ -1344,6 +1345,12 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 */
 	if (node->attr.type == TMPL_TYPE_ATTR_UNDEFINED) {
 		node->xlat = xlat_find(node->attr.tmpl_unknown_name);
+		if (node->xlat && node->xlat->instance && !node->xlat->internal) {
+			talloc_free(node);
+			*error = "Missing content in expansion";
+			return -(p - fmt) - slen;
+		}
+
 		if (node->xlat) {
 			node->type = XLAT_VIRTUAL;
 			node->fmt = node->attr.tmpl_unknown_name;

@@ -135,3 +135,8 @@ data "%t\tfoo"
 xlat "%t\t%{Client-IP-Address}"
 data "%t\t%{Client-IP-Address}"
 
+xlat "foo %{test}"
+data ERROR offset 11 'Missing content in expansion'
+
+xlat "foo %{test:foo}"
+data "foo %{test:foo}"
