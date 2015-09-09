@@ -1,0 +1,81 @@
+redis_ippool {
+	#
+	#  Note all configuration items at this level (above the redis block)
+	#  are polymorphic, meaning xlats, attribute references, literal values
+	#  and execs may be specified.
+	#
+	#  For example pool_name could be pool_name = 'my_test_pool' if only a
+	#  single pool were being used.
+
+	#
+	#  Name of the pool to allocate leases from.
+	#
+	pool_name = &control:Pool-Name
+
+	#
+	#  How long a lease is reserved for after making an offer to the DHCP client
+	#  if no value is provided, the value from lease_time is used for initial
+	#  allocations.  No value should be provided for PPP/VPNs, this is mainly for
+	#  the DORA flow in DHCP.
+	#
+	offer_time = 30
+
+	#
+	#  How long a lease is allocated for
+	#
+	lease_time = 3600
+
+	#
+	#  The device identifier, usually the Mac-Address but could be a combination
+	#  of attributes, a user-name or a certificate serial number (if the number
+	#  of sessions were limited to one per user/serial).
+	#
+	device = &DHCP-Client-Hardware-Address
+
+	#
+	#  The IP address being renewed or released
+	#
+	ip_address = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}"
+
+	#
+	#  List and attribute where the allocated address is written to.
+	#
+	reply_attr = &reply:DHCP-Your-IP-Address
+
+	#
+	#  List and attribute where the Pool-Range ID (if set) is written to.
+	#
+	#  The idea of the Pool-Range is that it provides a key into other datastores
+	#  or caches, which store the additional options associated with the range an
+	#  IP address belongs to.
+	#
+	#  There may be multiple ranges of IP address contained within any given pool,
+	#  which is why this is provided in addition to the pool name.
+	#
+	range_attr = &reply:Pool-Range
+
+	#
+	#  If set - the list and attribute to write the remaining lease time to.
+	#  This can be populated on alloc, or renew, if an IP address was available
+	#  for the alloc.
+	#
+	expiry_attr = &reply:DHCP-IP-Address-Lease-Time
+
+	#
+	#  Redis connection settings - Identical to all other Redis based modules.
+	#
+	redis {
+		server = localhost
+
+		pool {
+			start = 0
+			min = ${thread[pool].min_spare_servers}
+			max = ${thread[pool].max_servers}
+			spare = ${thread[pool].max_spare_servers}
+			uses = 0
+			lifetime = 0
+			retry_delay = 30
+			idle_timeout = 60
+		}
+	}
+}

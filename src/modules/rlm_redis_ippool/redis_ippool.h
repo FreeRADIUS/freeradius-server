@@ -69,6 +69,9 @@ typedef enum {
  */
 #define IPPOOL_MAX_IP_KEY_SIZE		IPPOOL_MAX_KEY_PREFIX_SIZE + (sizeof("{}:" IPPOOL_ADDRESS_KEY ":") - 1) + INET6_ADDRSTRLEN + 4
 
+
+#define IPADDR_LEN(_af) ((_af == AF_UNSPEC) ? 0 : ((_af == AF_INET6) ? 128 : 32))
+
 /** Wrap the prefix in {} and add the pool suffix
  *
  */

@@ -65,7 +65,7 @@ typedef struct rlm_redis_ippool {
 						//!< NAS-Identifier or the actual Option 82 gateway.
 						//!< Used for bulk lease cleanups.
 
-	vp_tmpl_t		*renew_attr;	//!< Attribute to read the IP for renewal from.
+	vp_tmpl_t		*ip_address;	//!< Attribute to read the IP for renewal from.
 	vp_tmpl_t		*reply_attr;	//!< IP attribute and destination.
 	vp_tmpl_t		*range_attr;	//!< Attribute to write the range ID to.
 	vp_tmpl_t		*expiry_attr;	//!< Time at which the lease will expire.
@@ -93,7 +93,7 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("wait_num", PW_TYPE_INTEGER, rlm_redis_ippool_t, wait_num) },
 	{ FR_CONF_OFFSET("wait_timeout", PW_TYPE_TIMEVAL, rlm_redis_ippool_t, wait_timeout) },
 
-	{ FR_CONF_OFFSET("renew_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, renew_attr), .dflt = "&DHCP-Requested-IP-Address", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("ip_address", PW_TYPE_TMPL | PW_TYPE_REQUIRED, rlm_redis_ippool_t, ip_address), .dflt = "%{%{DHCP-Requested-IP-Address}:-%{DHCP-Client-IP-Address}}", .quote = T_DOUBLE_QUOTED_STRING },
 	{ FR_CONF_OFFSET("reply_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, reply_attr), .dflt = "&reply:DHCP-Your-IP-Address", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("range_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE | PW_TYPE_REQUIRED, rlm_redis_ippool_t, range_attr), .dflt = "&reply:Pool-Range", .quote = T_BARE_WORD },
 	{ FR_CONF_OFFSET("expiry_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_redis_ippool_t, expiry_attr) },
@@ -345,17 +345,16 @@ static inline ssize_t ippool_pool_name(uint8_t out[], size_t outlen, rlm_redis_i
 static void ippool_action_print(REQUEST *request, ippool_action_t action,
 				log_lvl_t lvl,
 				uint8_t const *key_prefix, size_t key_prefix_len,
-				VALUE_PAIR const *ip_vp,
+				char const *ip_str,
 				uint8_t const *device_id, size_t device_id_len,
 				uint8_t const *gateway_id, size_t gateway_id_len,
 				uint32_t expires)
 {
-	char *key_prefix_str, *ip_str = NULL, *device_str = NULL, *gateway_str = NULL;
+	char *key_prefix_str, *device_str = NULL, *gateway_str = NULL;
 
 	key_prefix_str = fr_asprint(request, (char const *)key_prefix, key_prefix_len, '"');
 	if (gateway_id) gateway_str = fr_asprint(request, (char const *)gateway_id, gateway_id_len, '"');
 	if (device_id) device_str = fr_asprint(request, (char const *)device_id, device_id_len, '"');
-	if (ip_vp) ip_str = fr_pair_value_asprint(request, ip_vp, '\0');
 
 	switch (action) {
 	case POOL_ACTION_ALLOCATE:
@@ -394,7 +393,6 @@ static void ippool_action_print(REQUEST *request, ippool_action_t action,
 	 *	Ordering is important, needs to be LIFO
 	 *	for proper talloc pool re-use.
 	 */
-	talloc_free(ip_str);
 	talloc_free(key_prefix_str);
 	talloc_free(device_str);
 	talloc_free(gateway_str);
@@ -758,7 +756,7 @@ finish:
  */
 static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *request,
 					  uint8_t const *key_prefix, size_t key_prefix_len,
-					  VALUE_PAIR *ip_vp,
+					  fr_ipaddr_t *ip,
 					  uint8_t const *device_id, size_t device_id_len,
 					  uint8_t const *gateway_id, size_t gateway_id_len,
 					  uint32_t expires)
@@ -769,30 +767,8 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *req
 	fr_redis_rcode_t	status;
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	value_data_t		*ip = NULL;
-	value_data_t		ip_value;
-	PW_TYPE			ip_value_type;
-
 	vp_tmpl_t		range_rhs = { .name = "", .type = TMPL_TYPE_DATA, .tmpl_data_type = PW_TYPE_STRING, .quote = T_DOUBLE_QUOTED_STRING };
 	vp_map_t		range_map = { .lhs = inst->range_attr, .op = T_OP_SET, .rhs = &range_rhs };
-
-	ip_value_type = (ip_vp->da->type == PW_TYPE_IPV4_ADDR) && inst->ipv4_integer ? PW_TYPE_INTEGER : PW_TYPE_STRING;
-
-	/*
-	 *	This speed up is likely specific to Redis
-	 */
-	if (ip_vp->da->type != ip_value_type) {
-		memset(&ip_value, 0, sizeof(ip_value));
-		if (value_data_cast(request, &ip_value, ip_value_type,
-				    NULL, ip_vp->da->type, ip_vp->da, &ip_vp->data)) {
-			REDEBUG("Failed converting %s to required type: %s", ip_vp->da->name, fr_strerror());
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
-		}
-		ip = &ip_value;
-	} else {
-		ip = &ip_vp->data;
-	}
 
 	gettimeofday(&now, NULL);
 
@@ -802,7 +778,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *req
 	if (!device_id) device_id = (uint8_t const *)"";
 	if (!gateway_id) gateway_id = (uint8_t const *)"";
 
-	if (ip_value_type == PW_TYPE_INTEGER) {
+	if ((ip->af == AF_INET) && inst->ipv4_integer) {
 		status = ippool_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
 				       inst->wait_num, FR_TIMEVAL_TO_MS(&inst->wait_timeout),
@@ -811,10 +787,13 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *req
 				       lua_update_digest,
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec, expires,
-				       htonl(ip->integer),
+				       htonl(ip->ipaddr.ip4addr.s_addr),
 				       device_id, device_id_len,
 				       gateway_id, gateway_id_len);
 	} else {
+		char ip_buff[INET6_ADDRSTRLEN + 4];
+
+		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
 		status = ippool_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
 				       inst->wait_num, FR_TIMEVAL_TO_MS(&inst->wait_timeout),
@@ -823,7 +802,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *req
 				       lua_update_digest,
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec, expires,
-				       ip->strvalue,
+				       ip_buff,
 				       device_id, device_id_len,
 				       gateway_id, gateway_id_len);
 	}
@@ -912,10 +891,6 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *req
 	}
 
 finish:
-	/*
-	 *	Free our temporary IP string
-	 */
-	if ((ip_value_type == PW_TYPE_STRING) && (ip != &ip_vp->data)) rad_const_free(ip_value.strvalue);
 	fr_redis_reply_free(reply);
 
 	return ret;
@@ -926,7 +901,7 @@ finish:
  */
 static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t *inst, REQUEST *request,
 					   uint8_t const *key_prefix, size_t key_prefix_len,
-					   VALUE_PAIR *ip_vp,
+					   fr_ipaddr_t *ip,
 					   uint8_t const *device_id, size_t device_id_len)
 {
 	struct			timeval now;
@@ -935,26 +910,6 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t *inst, REQUEST *re
 	fr_redis_rcode_t	status;
 	ippool_rcode_t		ret = IPPOOL_RCODE_SUCCESS;
 
-	value_data_t		*ip = NULL;
-	value_data_t		ip_value;
-	PW_TYPE			ip_value_type = inst->ipv4_integer ? PW_TYPE_INTEGER : PW_TYPE_STRING;
-
-	/*
-	 *	This speed up is likely specific to Redis
-	 */
-	if (ip_vp->da->type != ip_value_type) {
-		memset(&ip_value, 0, sizeof(ip_value));
-		if (value_data_cast(request, &ip_value, ip_value_type,
-				    NULL, ip_vp->da->type, ip_vp->da, &ip_vp->data)) {
-			REDEBUG("Failed converting %s to required type: %s", ip_vp->da->name, fr_strerror());
-			ret = IPPOOL_RCODE_FAIL;
-			goto finish;
-		}
-		ip = &ip_value;
-	} else {
-		ip = &ip_vp->data;
-	}
-
 	gettimeofday(&now, NULL);
 
 	/*
@@ -962,7 +917,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t *inst, REQUEST *re
 	 */
 	if (!device_id) device_id = (uint8_t const *)"";
 
-	if (ip_value_type == PW_TYPE_INTEGER) {
+	if ((ip->af == AF_INET) && inst->ipv4_integer) {
 		status = ippool_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
 				       inst->wait_num, FR_TIMEVAL_TO_MS(&inst->wait_timeout),
@@ -971,9 +926,12 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t *inst, REQUEST *re
 				       lua_release_digest,
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec,
-				       htonl(ip->integer),
+				       htonl(ip->ipaddr.ip4addr.s_addr),
 				       device_id, device_id_len);
 	} else {
+		char ip_buff[INET6_ADDRSTRLEN + 4];
+
+		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
 		status = ippool_script(&reply, request, inst->cluster,
 				       key_prefix, key_prefix_len,
 				       inst->wait_num, FR_TIMEVAL_TO_MS(&inst->wait_timeout),
@@ -982,7 +940,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t *inst, REQUEST *re
 				       lua_release_digest,
 				       key_prefix, key_prefix_len,
 				       (unsigned int)now.tv_sec,
-				       ip->strvalue,
+				       ip_buff,
 				       device_id, device_id_len);
 	}
 	if (status != REDIS_RCODE_SUCCESS) {
@@ -1016,10 +974,6 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t *inst, REQUEST *re
 	if (ret < 0) goto finish;
 
 finish:
-	/*
-	 *	Free our temporary IP string
-	 */
-	if ((ip_value_type == PW_TYPE_STRING) && (ip != &ip_vp->data)) rad_const_free(ip_value.strvalue);
 	fr_redis_reply_free(reply);
 
 	return ret;
@@ -1031,7 +985,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 	uint8_t		*device_id = NULL, *gateway_id = NULL;
 	size_t		key_prefix_len, device_id_len = 0, gateway_id_len = 0;
 	ssize_t		slen;
-	VALUE_PAIR	*ip;
+	fr_ipaddr_t	ip;
 	char		expires_buff[20];
 	char const	*expires_str;
 	unsigned long	expires = 0;
@@ -1096,6 +1050,10 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 		}
 
 	case POOL_ACTION_UPDATE:
+	{
+		char		ip_buff[INET6_ADDRSTRLEN + 4];
+		char const	*ip_str;
+
 		if (tmpl_expand(&expires_str, expires_buff, sizeof(expires_buff),
 				request, inst->lease_time, NULL, NULL) < 0) {
 			REDEBUG("Failed expanding lease_time (%s)", inst->lease_time->name);
@@ -1108,15 +1066,20 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 			return RLM_MODULE_FAIL;
 		}
 
-		if (tmpl_find_vp(&ip, request, inst->renew_attr) < 0) {
-			REDEBUG("Failed expanding renew_attr (%s)", inst->renew_attr->name);
+		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->ip_address, NULL, NULL) < 0) {
+			REDEBUG("Failed expanding ip_address");
+			return RLM_MODULE_FAIL;
+		}
+
+		if (fr_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
+			REDEBUG("%s", fr_strerror());
 			return RLM_MODULE_FAIL;
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len,
-				    ip, device_id, device_id_len, gateway_id, gateway_id_len, expires);
+				    ip_str, device_id, device_id_len, gateway_id, gateway_id_len, expires);
 		switch (redis_ippool_update(inst, request, key_prefix, key_prefix_len,
-					    ip, device_id, device_id_len,
+					    &ip, device_id, device_id_len,
 					    gateway_id, gateway_id_len, (uint32_t)expires)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("IP address lease updated");
@@ -1137,17 +1100,27 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 		default:
 			return RLM_MODULE_FAIL;
 		}
+	}
 
 	case POOL_ACTION_RELEASE:
-		if (tmpl_find_vp(&ip, request, inst->renew_attr) < 0)  {
-			REDEBUG("Failed expanding renew_attr (%s)", inst->renew_attr->name);
+	{
+		char		ip_buff[INET6_ADDRSTRLEN + 4];
+		char const	*ip_str;
+
+		if (tmpl_expand(&ip_str, ip_buff, sizeof(ip_buff), request, inst->ip_address, NULL, NULL) < 0) {
+			REDEBUG("Failed expanding ip_address (%s)", inst->ip_address->name);
+			return RLM_MODULE_FAIL;
+		}
+
+		if (fr_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
+			REDEBUG("%s", fr_strerror());
 			return RLM_MODULE_FAIL;
 		}
 
 		ippool_action_print(request, action, L_DBG_LVL_2, key_prefix, key_prefix_len,
-				    ip, device_id, device_id_len, gateway_id, gateway_id_len, 0);
+				    ip_str, device_id, device_id_len, gateway_id, gateway_id_len, 0);
 		switch (redis_ippool_release(inst, request, key_prefix, key_prefix_len,
-					     ip, device_id, device_id_len)) {
+					     &ip, device_id, device_id_len)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("IP address released");
 			return RLM_MODULE_UPDATED;
@@ -1163,6 +1136,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 		default:
 			return RLM_MODULE_FAIL;
 		}
+	}
 
 	case POOL_ACTION_BULK_RELEASE:
 		RDEBUG2("Bulk release not yet implemented");
@@ -1261,7 +1235,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rlm_redis_ippool_t *inst = instance;
 
 	rad_assert(inst->reply_attr->type == TMPL_TYPE_ATTR);
-	rad_assert(inst->renew_attr->type == TMPL_TYPE_ATTR);
 	rad_assert(subcs);
 
 	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf);

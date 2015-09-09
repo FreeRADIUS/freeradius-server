@@ -32,7 +32,6 @@ RCSID("$Id$")
 #include "cluster.h"
 #include "redis_ippool.h"
 
-#define IPADDR_LEN(_af) ((_af == AF_UNSPEC) ? 0 : ((_af == AF_INET6) ? 128 : 32))
 #define MAX_PIPELINED 1000
 
 #include <sys/wait.h>
