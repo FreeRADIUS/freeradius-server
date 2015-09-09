@@ -68,7 +68,7 @@ detail {
 	#  format (see "man ctime" for details).
 	#
 	#  The header can be customised by editing this
-	#  string.  See "doc/variables.txt" for a description
+	#  string.  See "doc/configuration/variables.txt" for a description
 	#  of what can be put here.
 	#
 	header = "%t"
