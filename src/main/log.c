@@ -656,8 +656,6 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 		 */
 		if (request->log.output &&
 		    (request->log.output->dst == L_DST_FILES)) {
-			filename = request->log.output->file;
-
 			fp = fopen(request->log.output->file, "a");
 			if (!fp) return;
 
