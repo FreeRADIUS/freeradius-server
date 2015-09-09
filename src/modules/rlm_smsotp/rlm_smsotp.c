@@ -230,7 +230,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 		(void) read_all(fdp, buffer, sizeof(buffer));
 
-		/* end the sesssion */
+		/* end the session */
 		WRITE_ALL(fdp, "quit\n", 5);
 
 		RDEBUG("answer is %s", buffer);
@@ -250,7 +250,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 	(void) read_all(fdp, buffer, sizeof(buffer));
 
-	/* end the sesssion */
+	/* end the session */
 	WRITE_ALL(fdp, "quit\n", 5);
 
 	RDEBUG("Unique ID is %s", buffer);
