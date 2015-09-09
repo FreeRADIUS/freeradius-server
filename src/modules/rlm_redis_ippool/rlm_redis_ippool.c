@@ -125,7 +125,6 @@ static CONF_PARSER module_config[] = {
 static char lua_alloc_cmd[] =
 	"local ip" EOL
 	"local exists" EOL
-	"local found" EOL
 
 	"local pool_key" EOL
 	"local address_key" EOL
@@ -137,11 +136,19 @@ static char lua_alloc_cmd[] =
 	/*
 	 *	Check to see if the client already has a lease,
 	 *	and if it does return that.
+	 *
+	 *	The additional sanity checks are to allow for the record
+	 *	of device/ip binding to persist for longer than the lease.
 	 */
 	"exists = redis.call('GET', device_key);" EOL
 	"if exists then" EOL
-	"  address_key = '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. exists" EOL
-	"  return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, redis.call('HGET', address_key, 'range'), tonumber(redis.call('ZSCORE', pool_key, exists) - ARGV[1]) }" EOL
+	"  local expires_in = tonumber(redis.call('ZSCORE', pool_key, exists) - ARGV[1])" EOL
+	"  if expires_in > 0 then" EOL
+	"    ip = redis.call('HMGET', '{' .. KEYS[1] .. '}:"IPPOOL_ADDRESS_KEY":' .. exists, 'device', 'range')" EOL
+	"    if ip and (ip[1] == ARGV[3]) then" EOL
+	"      return {" STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", exists, ip[2], expires_in }" EOL
+	"    end" EOL
+	"  end" EOL
 	"end" EOL
 
 	/*
