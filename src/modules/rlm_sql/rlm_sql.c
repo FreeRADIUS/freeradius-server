@@ -701,7 +701,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 	entry = *phead = NULL;
 
 	if (!inst->config->groupmemb_query || !*inst->config->groupmemb_query) return 0;
-	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, sql_escape_func, inst) < 0) return -1;
+	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, inst->sql_string_escape_func, *handle) < 0) return -1;
 
 	ret = rlm_sql_select_query(inst, request, handle, expanded);
 	talloc_free(expanded);
@@ -862,7 +862,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			 *	Expand the group query
 			 */
 			if (radius_axlat(&expanded, request, inst->config->authorize_group_check_query,
-					 sql_escape_func, inst) < 0) {
+					 inst->sql_string_escape_func, *handle) < 0) {
 				REDEBUG("Error generating query");
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
@@ -912,7 +912,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			 *	Now get the reply pairs since the paircompare matched
 			 */
 			if (radius_axlat(&expanded, request, inst->config->authorize_group_reply_query,
-					 sql_escape_func, inst) < 0) {
+					 inst->sql_string_escape_func, *handle) < 0) {
 				REDEBUG("Error generating query");
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
@@ -1227,7 +1227,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		VALUE_PAIR *vp;
 
 		if (radius_axlat(&expanded, request, inst->config->authorize_check_query,
-				 sql_escape_func, inst) < 0) {
+				 inst->sql_string_escape_func, handle) < 0) {
 			REDEBUG("Error generating query");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
@@ -1275,7 +1275,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 *	Now get the reply pairs since the paircompare matched
 		 */
 		if (radius_axlat(&expanded, request, inst->config->authorize_reply_query,
-				 sql_escape_func, inst) < 0) {
+				 inst->sql_string_escape_func, handle) < 0) {
 			REDEBUG("Error generating query");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
@@ -1501,7 +1501,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 			goto finish;
 		}
 
-		if (radius_axlat(&expanded, request, value, sql_escape_func, inst) < 0) {
+		if (radius_axlat(&expanded, request, value, inst->sql_string_escape_func, handle) < 0) {
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
@@ -1651,15 +1651,15 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 		return RLM_MODULE_FAIL;
 	}
 
-	if (radius_axlat(&expanded, request, inst->config->simul_count_query, sql_escape_func, inst) < 0) {
+	/* initialize the sql socket */
+	handle = fr_connection_get(inst->pool);
+	if (!handle) {
 		sql_unset_user(inst, request);
 		return RLM_MODULE_FAIL;
 	}
 
-	/* initialize the sql socket */
-	handle = fr_connection_get(inst->pool);
-	if (!handle) {
-		talloc_free(expanded);
+	if (radius_axlat(&expanded, request, inst->config->simul_count_query, inst->sql_string_escape_func, handle) < 0) {
+		fr_connection_release(inst->pool, handle);
 		sql_unset_user(inst, request);
 		return RLM_MODULE_FAIL;
 	}
@@ -1699,7 +1699,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 		goto finish;
 	}
 
-	if (radius_axlat(&expanded, request, inst->config->simul_verify_query, sql_escape_func, inst) < 0) {
+	if (radius_axlat(&expanded, request, inst->config->simul_verify_query, inst->sql_string_escape_func, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
 
 		goto finish;
