@@ -421,7 +421,7 @@ static int driver_do_lease(void *out, void *instance, ippool_tool_operation_t co
 			}
 		}
 		fr_redis_pipeline_free(replies, reply_cnt);
-		talloc_free(replies);
+		TALLOC_FREE(replies);
 	}
 
 	return 0;
@@ -819,6 +819,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 	if (ex_broadcast && (start.prefix >= (IPADDR_LEN(start.af) - 1))) {
 		*start_out = start;
 		*end_out = start;
+		return 0;
 	}
 
 	/*
