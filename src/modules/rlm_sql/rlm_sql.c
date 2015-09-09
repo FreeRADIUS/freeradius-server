@@ -611,23 +611,31 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
  *	This gets called only if the driver provides its own sql_escape_string
  *	method.
  */
-static size_t sql_string_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
-			      char const *in, void *arg)
+static size_t sql_string_escape_func(UNUSED REQUEST *request, char *out,
+			size_t outlen, char const *in, void *arg)
 {
-	rlm_sql_handle_t *handle = NULL;
 	size_t rc;
-	rlm_sql_t *inst = arg;
-
-	handle = fr_connection_get(inst->pool);
-	if (!handle) {
-		out[0] = '\0';
-		return 0;
-	}
+	rlm_sql_handle_t *handle = arg;
+	rlm_sql_t *inst = handle->inst;
 
 	rc = inst->module->sql_escape_string(handle, inst->config, out, outlen, in, arg);
-	fr_connection_release(inst->pool, handle);
 	out[rc] = '\0';
 	return rc;
+}
+
+/*
+ *	Call default string escaping function.
+ *
+ *	This gets called only if the driver doesn't provide its own sql_escape_string
+ *	method. It is needed here because we pass rlm_sql_handle_t in arg instead of
+ *	rlm_sql_t instance.
+ */
+static size_t sql_string_escape_default_func(REQUEST *request, char *out,
+			size_t outlen, char const *in, void *arg)
+{
+	rlm_sql_handle_t *handle = arg;
+
+	return sql_escape_func(request, out, outlen, in, handle->inst);
 }
 
 /*
@@ -1102,7 +1110,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->sql_set_user		= sql_set_user;
 	inst->sql_escape_func		= sql_escape_func;
-	inst->sql_string_escape_func	= sql_escape_func;
+	inst->sql_string_escape_func	= sql_string_escape_default_func;
 	inst->sql_query			= rlm_sql_query;
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
