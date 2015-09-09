@@ -1400,7 +1400,9 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 				*error = "Invalid escape at end of string";
 				return -(p - fmt);
 			}
+
 			p += 2;
+			node->len += 2;
 			continue;
 		}
 
@@ -2469,6 +2471,7 @@ static ssize_t xlat_expand_struct(char **out, size_t outlen, REQUEST *request, x
 	}
 
 	len = strlen(buff);
+
 	/*
 	 *	If out doesn't point to an existing buffer
 	 *	copy the pointer to our buffer over.

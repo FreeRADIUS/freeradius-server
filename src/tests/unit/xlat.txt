@@ -128,3 +128,10 @@ data /([A-Z0-9\-]*)_%{Calling-Station-Id}/
 
 xlat %{length:1 + 2
 data ERROR offset 14 'Missing closing brace at end of string'
+
+xlat "%t\tfoo"
+data "%t\tfoo"
+
+xlat "%t\t%{Client-IP-Address}"
+data "%t\t%{Client-IP-Address}"
+
