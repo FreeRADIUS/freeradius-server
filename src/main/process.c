@@ -1400,6 +1400,27 @@ static void request_finish(REQUEST *request, int action)
 	    (request->root->reject_delay.tv_sec > 0)) {
 		request->response_delay = request->root->reject_delay;
 
+		vp = fr_pair_find_by_num(request->reply->vps, PW_FREERADIUS_RESPONSE_DELAY, 0, TAG_ANY);
+		if (vp) {
+			if (vp->vp_integer <= 10) {
+				request->response_delay.tv_sec = vp->vp_integer;
+			} else {
+				request->response_delay.tv_sec = 10;
+			}
+			request->response_delay.tv_usec = 0;
+		} else {
+			vp = fr_pair_find_by_num(request->reply->vps, PW_FREERADIUS_RESPONSE_DELAY_USEC, 0, TAG_ANY);
+			if (vp) {
+				if (vp->vp_integer <= 10 * USEC) {
+					request->response_delay.tv_sec = vp->vp_integer / USEC;
+					request->response_delay.tv_usec = vp->vp_integer % USEC;
+				} else {
+					request->response_delay.tv_sec = 10;
+					request->response_delay.tv_usec = 0;
+				}
+			}
+		}
+
 #ifdef WITH_PROXY
 		/*
 		 *	If we timed out a proxy packet, don't delay
