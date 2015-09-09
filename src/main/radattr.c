@@ -928,6 +928,7 @@ int main(int argc, char *argv[])
 	bool report = false;
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
+	int *inst = &c;
 
 	cf_new_escape = true;	/* fix the tests */
 
@@ -977,7 +978,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (xlat_register("test", xlat_test, NULL, "") < 0) {
+	if (xlat_register("test", xlat_test, NULL, inst) < 0) {
 		fprintf(stderr, "Failed registering xlat");
 		return 1;
 	}
