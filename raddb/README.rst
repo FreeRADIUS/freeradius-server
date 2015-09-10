@@ -63,7 +63,7 @@ configuration item (``radius_db`` in the case of postgresql).
 Changed Modules
 ---------------
 
-The following modules exhibit changed changed behaviour.
+The following modules exhibit changed behaviour.
 
 
 rlm_sqlcounter and rlm_counter
