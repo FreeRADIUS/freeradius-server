@@ -1160,8 +1160,6 @@ static void request_response_delay(REQUEST *request, int action)
 	case FR_ACTION_TIMER:
 		fr_event_now(el, &now);
 
-		rad_assert(request->response_delay.tv_sec > 0);
-
 		/*
 		 *	See if it's time to send the reply.  If not,
 		 *	we wait some more.
@@ -1401,6 +1399,27 @@ static void request_finish(REQUEST *request, int action)
 	if ((request->reply->code == PW_CODE_ACCESS_REJECT) &&
 	    (request->root->reject_delay.tv_sec > 0)) {
 		request->response_delay = request->root->reject_delay;
+
+		vp = fr_pair_find_by_num(request->reply->vps, PW_FREERADIUS_RESPONSE_DELAY, 0, TAG_ANY);
+		if (vp) {
+			if (vp->vp_integer <= 10) {
+				request->response_delay.tv_sec = vp->vp_integer;
+			} else {
+				request->response_delay.tv_sec = 10;
+			}
+			request->response_delay.tv_usec = 0;
+		} else {
+			vp = fr_pair_find_by_num(request->reply->vps, PW_FREERADIUS_RESPONSE_DELAY_USEC, 0, TAG_ANY);
+			if (vp) {
+				if (vp->vp_integer <= 10 * USEC) {
+					request->response_delay.tv_sec = vp->vp_integer / USEC;
+					request->response_delay.tv_usec = vp->vp_integer % USEC;
+				} else {
+					request->response_delay.tv_sec = 10;
+					request->response_delay.tv_usec = 0;
+				}
+			}
+		}
 
 #ifdef WITH_PROXY
 		/*
