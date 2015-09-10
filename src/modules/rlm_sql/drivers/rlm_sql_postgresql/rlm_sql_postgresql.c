@@ -505,22 +505,26 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	return conn->affected_rows;
 }
 
-static size_t sql_escape_string(rlm_sql_handle_t *handle,
-			UNUSED rlm_sql_config_t *config, char *out, size_t outlen,
-			char const *in)
+static size_t sql_escape_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
 {
-	int err;
-	size_t qlen;
-	rlm_sql_postgres_conn_t *conn = handle->conn;
+	size_t			inlen, ret;
+	rlm_sql_handle_t	*handle = talloc_get_type_abort(arg, rlm_sql_handle_t);
+	rlm_sql_postgres_conn_t	*conn = handle->conn;
+	int			err;
 
 	/* Check for potential buffer overflow */
-	qlen = strlen(in);
-	if ((qlen * 2 + 1) > outlen) return 0;
+	inlen = strlen(in);
+	if ((inlen * 2 + 1) > outlen) return 0;
 	/* Prevent integer overflow */
-	if ((qlen * 2 + 1) <= qlen) return 0;
-	qlen = PQescapeStringConn(conn->db, out, in, qlen, &err);
-	if (err) return 0;
-	return qlen;
+	if ((inlen * 2 + 1) <= inlen) return 0;
+
+	ret = PQescapeStringConn(conn->db, out, in, inlen, &err);
+	if (err) {
+		REDEBUG("Error escaping string \"%s\": %s", in, PQerrorMessage(conn->db));
+		return 0;
+	}
+
+	return ret;
 }
 
 /* Exported to rlm_sql */
@@ -539,5 +543,5 @@ rlm_sql_module_t rlm_sql_postgresql = {
 	.sql_finish_query		= sql_free_result,
 	.sql_finish_select_query	= sql_free_result,
 	.sql_affected_rows		= sql_affected_rows,
-	.sql_escape_string		= sql_escape_string
+	.sql_escape_func		= sql_escape_func
 };

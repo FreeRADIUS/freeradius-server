@@ -495,15 +495,14 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	return 0;
 }
 
-
-/*
- *	Translate the SQL queries.
+/** xlat escape function for drivers which do not provide their own
+ *
  */
-static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
-			      char const *in, void *arg)
+static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
 {
-	rlm_sql_t *inst = arg;
-	size_t len = 0;
+	rlm_sql_handle_t	*handle = arg;
+	rlm_sql_t		*inst = handle->inst;
+	size_t			len = 0;
 
 	while (in[0]) {
 		size_t utf8_len;
@@ -605,37 +604,26 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 	return len;
 }
 
-/*
- *	Call driver-specific string escaping function.
+/** Passed as the escape function to map_proc and sql xlat methods
  *
- *	This gets called only if the driver provides its own sql_escape_string
- *	method.
+ * The variant reserves a connection for the escape functions to use, and releases it after
+ * escaping is complete.
  */
-static size_t sql_string_escape_func(UNUSED REQUEST *request, char *out,
-			size_t outlen, char const *in, void *arg)
+static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outlen, char const *in, void *arg)
 {
-	size_t rc;
-	rlm_sql_handle_t *handle = arg;
-	rlm_sql_t *inst = handle->inst;
+	size_t			ret;
+	rlm_sql_t		*inst = talloc_get_type_abort(arg, rlm_sql_t);
+	rlm_sql_handle_t	*handle;
 
-	rc = inst->module->sql_escape_string(handle, inst->config, out, outlen, in);
-	out[rc] = '\0';
-	return rc;
-}
+	handle = fr_connection_get(inst->pool);
+	if (!handle) {
+		out[0] = '\0';
+		return 0;
+	}
+	ret = inst->sql_escape_func(request, out, outlen, in, handle);
+	fr_connection_release(inst->pool, handle);
 
-/*
- *	Call default string escaping function.
- *
- *	This gets called only if the driver doesn't provide its own sql_escape_string
- *	method. It is needed here because we pass rlm_sql_handle_t in arg instead of
- *	rlm_sql_t instance.
- */
-static size_t sql_string_escape_default_func(REQUEST *request, char *out,
-			size_t outlen, char const *in, void *arg)
-{
-	rlm_sql_handle_t *handle = arg;
-
-	return sql_escape_func(request, out, outlen, in, handle->inst);
+	return ret;
 }
 
 /*
@@ -701,7 +689,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t **handle, REQUEST
 	entry = *phead = NULL;
 
 	if (!inst->config->groupmemb_query || !*inst->config->groupmemb_query) return 0;
-	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, inst->sql_string_escape_func, *handle) < 0) return -1;
+	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, inst->sql_escape_func, *handle) < 0) return -1;
 
 	ret = rlm_sql_select_query(inst, request, handle, expanded);
 	talloc_free(expanded);
@@ -862,7 +850,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			 *	Expand the group query
 			 */
 			if (radius_axlat(&expanded, request, inst->config->authorize_group_check_query,
-					 inst->sql_string_escape_func, *handle) < 0) {
+					 inst->sql_escape_func, *handle) < 0) {
 				REDEBUG("Error generating query");
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
@@ -912,7 +900,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 			 *	Now get the reply pairs since the paircompare matched
 			 */
 			if (radius_axlat(&expanded, request, inst->config->authorize_group_reply_query,
-					 inst->sql_string_escape_func, *handle) < 0) {
+					 inst->sql_escape_func, *handle) < 0) {
 				REDEBUG("Error generating query");
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
@@ -1041,12 +1029,12 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the SQL xlat function
 	 */
-	xlat_register(inst->name, sql_xlat, 0, sql_escape_func, inst);
+	xlat_register(inst->name, sql_xlat, 0, sql_escape_for_xlat_func, inst);
 
 	/*
 	 *	Register the SQL map processor function
 	 */
-	if (inst->module->sql_fields) map_proc_register(inst, inst->name, mod_map_proc, sql_escape_func, NULL, 0);
+	if (inst->module->sql_fields) map_proc_register(inst, inst->name, mod_map_proc, sql_escape_for_xlat_func, NULL, 0);
 
 	return 0;
 }
@@ -1109,8 +1097,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
 	 */
 	inst->sql_set_user		= sql_set_user;
-	inst->sql_escape_func		= sql_escape_func;
-	inst->sql_string_escape_func	= sql_string_escape_default_func;
 	inst->sql_query			= rlm_sql_query;
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
@@ -1142,9 +1128,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 	}
 
-	if (inst->module->sql_escape_string) {
-		inst->sql_string_escape_func = sql_string_escape_func;
-	}
+	/*
+	 *	Either use the module specific escape function
+	 *	or our default one.
+	 */
+	inst->sql_escape_func = inst->module->sql_escape_func ?
+				inst->module->sql_escape_func :
+				sql_escape_func;
 
 	inst->ef = exfile_init(inst, 64, 30, true);
 	if (!inst->ef) {
@@ -1227,7 +1217,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		VALUE_PAIR *vp;
 
 		if (radius_axlat(&expanded, request, inst->config->authorize_check_query,
-				 inst->sql_string_escape_func, handle) < 0) {
+				 inst->sql_escape_func, handle) < 0) {
 			REDEBUG("Error generating query");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
@@ -1275,7 +1265,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 *	Now get the reply pairs since the paircompare matched
 		 */
 		if (radius_axlat(&expanded, request, inst->config->authorize_reply_query,
-				 inst->sql_string_escape_func, handle) < 0) {
+				 inst->sql_escape_func, handle) < 0) {
 			REDEBUG("Error generating query");
 			rcode = RLM_MODULE_FAIL;
 			goto error;
@@ -1501,7 +1491,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 			goto finish;
 		}
 
-		if (radius_axlat(&expanded, request, value, inst->sql_string_escape_func, handle) < 0) {
+		if (radius_axlat(&expanded, request, value, inst->sql_escape_func, handle) < 0) {
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
@@ -1658,7 +1648,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 		return RLM_MODULE_FAIL;
 	}
 
-	if (radius_axlat(&expanded, request, inst->config->simul_count_query, inst->sql_string_escape_func, handle) < 0) {
+	if (radius_axlat(&expanded, request, inst->config->simul_count_query, inst->sql_escape_func, handle) < 0) {
 		fr_connection_release(inst->pool, handle);
 		sql_unset_user(inst, request);
 		return RLM_MODULE_FAIL;
@@ -1699,7 +1689,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 		goto finish;
 	}
 
-	if (radius_axlat(&expanded, request, inst->config->simul_verify_query, inst->sql_string_escape_func, handle) < 0) {
+	if (radius_axlat(&expanded, request, inst->config->simul_verify_query, inst->sql_escape_func, handle) < 0) {
 		rcode = RLM_MODULE_FAIL;
 
 		goto finish;

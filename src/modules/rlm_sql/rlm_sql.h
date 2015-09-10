@@ -212,7 +212,7 @@ typedef struct rlm_sql_module_t {
 	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-	size_t (*sql_escape_string)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *out, size_t outlen, char const *in);
+	xlat_escape_t	sql_escape_func;
 } rlm_sql_module_t;
 
 struct sql_inst {
@@ -229,8 +229,7 @@ struct sql_inst {
 	rlm_sql_module_t	*module;
 
 	int (*sql_set_user)(rlm_sql_t *inst, REQUEST *request, char const *username);
-	size_t (*sql_escape_func)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
-	size_t (*sql_string_escape_func)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
+	xlat_escape_t sql_escape_func;
 	sql_rcode_t (*sql_query)(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
 	sql_rcode_t (*sql_select_query)(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
 	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
