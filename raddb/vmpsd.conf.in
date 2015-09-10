@@ -37,7 +37,7 @@
 #
 #	The per-request variables are of the form %{Attribute-Name}, and
 #	are taken from the values of the attribute in the incoming
-#	request.  See 'doc/variables.txt' for more information.
+#	request.  See 'doc/configuration/variables.rst' for more information.
 
 #
 #  Standard includes, etc.
