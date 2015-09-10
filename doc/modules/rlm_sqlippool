@@ -28,7 +28,7 @@ the same pool, and addresses do not need to be concurrent.
 
 We are currently using the variable definitions of the xlat module, so
 before editing the sqlippool.conf file, please go and read the
-variables.txt in the freeradius/doc directory. It will help you alot!..
+variables.rst in the doc/configuration directory. It will help you alot!..
 
 As you may noticed, there is a pool-key variable in the config file which
 allows you to select which attribute is unique according to your NAS setup.
