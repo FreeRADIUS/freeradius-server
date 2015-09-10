@@ -17,7 +17,7 @@ detail {
 	#  through a 'log rotation'
 	#
 	#  If your detail files are large, you may also want
-	#  to add a ':%H' (see doc/configuration/variables.txt) to the end
+	#  to add a ':%H' (see doc/configuration/variables.rst) to the end
 	#  of it, to create a new detail file every hour, e.g.:
 	#
 	#   ..../detail-%Y%m%d:%H
@@ -68,7 +68,7 @@ detail {
 	#  format (see "man ctime" for details).
 	#
 	#  The header can be customised by editing this
-	#  string.  See "doc/configuration/variables.txt" for a description
+	#  string.  See "doc/configuration/variables.rst" for a description
 	#  of what can be put here.
 	#
 	header = "%t"
