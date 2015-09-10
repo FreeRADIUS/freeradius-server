@@ -60,7 +60,7 @@ static int iface_ind = -1;
 struct sockaddr_ll ll;	/* Socket address structure */
 #endif
 
-#define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
+#define DEBUG(fmt, ...) if (fr_debug_lvl && fr_log_fp) fr_printf_log(fmt "\n", ## __VA_ARGS__);
 
 static bool raw_mode = false;
 
@@ -309,8 +309,8 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 	/* Loop waiting for DHCP replies until timer expires */
 	while (timerisset(&tval)) {
 		if ((!reply_p) || (cur_reply_p)) { // only debug at start and each time we get a valid DHCP reply on raw socket
-			DEBUG("Waiting for%sDHCP replies for: %d.%06d",
-				(nb_reply>0)?" additional ":" ", (int)tval.tv_sec, (int)tval.tv_usec);
+			DEBUG("Waiting for %s DHCP replies for: %d.%06d",
+			      (nb_reply>0)?" additional ":" ", (int)tval.tv_sec, (int)tval.tv_usec);
 		}
 
 		cur_reply_p = NULL;
@@ -373,13 +373,13 @@ static RADIUS_PACKET *fr_dhcp_recv_raw_loop(int lsockfd,
 
 	/* display offer(s) received */
 	if (nb_offer > 0 ) {
-		DEBUG("Received %d DHCP Offer(s):\n", nb_offer);
+		DEBUG("Received %d DHCP Offer(s):", nb_offer);
 		int i;
 		for (i = 0; i < nb_reply; i++) {
 			char server_addr_buf[INET6_ADDRSTRLEN];
 			char offered_addr_buf[INET6_ADDRSTRLEN];
 
-			DEBUG("IP address: %s offered by DHCP server: %s\n",
+			DEBUG("IP address: %s offered by DHCP server: %s",
 			      inet_ntop(AF_INET, &offer_list[i].offered_addr,
 			      		offered_addr_buf, sizeof(offered_addr_buf)),
 			      inet_ntop(AF_INET, &offer_list[i].server_addr,
