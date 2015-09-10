@@ -129,7 +129,7 @@
 #		if User-Name is "foo": "%{lpad:&User-Name 6 x}" == "xxxfoo"
 #
 #  rpad		right-pad a string
-#		if User-Name is "foo": "%{lpad:&User-Name 5 -}" == "foo--"
+#		if User-Name is "foo": "%{rpad:&User-Name 5 -}" == "foo--"
 #
 
 expr {
