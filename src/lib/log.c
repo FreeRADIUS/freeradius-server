@@ -169,8 +169,8 @@ char const *fr_syserror(int num)
 	/*
 	 *	XSI-Compliant version
 	 */
-#if !defined(HAVE_FEATURES_H) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 500) && ! _GNU_SOURCE)
-	if ((ret = strerror_r(num, buffer, (size_t) FR_STRERROR_BUFSIZE) != 0)) {
+#if !defined(HAVE_FEATURES_H) || !defined(__GLIBC__) || ((_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 500) && ! _GNU_SOURCE)
+	if ((ret = strerror_r(num, buffer, (size_t)FR_STRERROR_BUFSIZE) != 0)) {
 #  ifndef NDEBUG
 		fprintf(stderr, "strerror_r() failed to write error for errno %i to buffer %p (%zu bytes), "
 			"returned %i: %s\n", num, buffer, (size_t) FR_STRERROR_BUFSIZE, ret, strerror(ret));
@@ -187,7 +187,7 @@ char const *fr_syserror(int num)
 #else
 	{
 		char const *p;
-		p = strerror_r(num, buffer, (size_t) FR_STRERROR_BUFSIZE);
+		p = strerror_r(num, buffer, (size_t)FR_STRERROR_BUFSIZE);
 		if (!p) {
 #  ifndef NDEBUG
 			fprintf(stderr, "strerror_r() failed to write error for errno %i to buffer %p "
