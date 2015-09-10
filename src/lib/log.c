@@ -173,7 +173,7 @@ char const *fr_syserror(int num)
 	if ((ret = strerror_r(num, buffer, (size_t)FR_STRERROR_BUFSIZE) != 0)) {
 #  ifndef NDEBUG
 		fprintf(stderr, "strerror_r() failed to write error for errno %i to buffer %p (%zu bytes), "
-			"returned %i: %s\n", num, buffer, (size_t) FR_STRERROR_BUFSIZE, ret, strerror(ret));
+			"returned %i: %s\n", num, buffer, (size_t)FR_STRERROR_BUFSIZE, ret, strerror(ret));
 #  endif
 		buffer[0] = '\0';
 	}
@@ -191,7 +191,7 @@ char const *fr_syserror(int num)
 		if (!p) {
 #  ifndef NDEBUG
 			fprintf(stderr, "strerror_r() failed to write error for errno %i to buffer %p "
-				"(%zu bytes): %s\n", num, buffer, (size_t) FR_STRERROR_BUFSIZE, strerror(errno));
+				"(%zu bytes): %s\n", num, buffer, (size_t)FR_STRERROR_BUFSIZE, strerror(errno));
 #  endif
 			buffer[0] = '\0';
 			return buffer;
