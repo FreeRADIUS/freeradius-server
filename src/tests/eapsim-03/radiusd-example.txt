@@ -22,7 +22,7 @@
 #
 #	The per-request variables are of the form %{Attribute-Name}, and
 #	are taken from the values of the attribute in the incoming
-#	request.  See 'doc/variables.txt' for more information.
+#	request.  See 'doc/configuration/variables.rst' for more information.
 
 prefix = /elros/mcr/root
 exec_prefix = ${prefix}
@@ -888,7 +888,7 @@ modules {
 		#  through a 'log rotation'
 		#
 		#  If your detail files are large, you may also want
-		#  to add a ':%H' (see doc/variables.txt) to the end
+		#  to add a ':%H' (see doc/configuration/variables.rst) to the end
 		#  of it, to create a new detail file every hour, e.g.:
 		#
 		#   ..../detail-%Y%m%d:%H
@@ -1104,7 +1104,7 @@ modules {
 	#
 	#  The RADIUS attributes from the user request will be placed
 	#  into environment variables of the executed program, as
-	#  described in 'doc/variables.txt'
+	#  described in 'doc/configuration/variables.rst'
 	#
 	exec {
 		wait = yes
