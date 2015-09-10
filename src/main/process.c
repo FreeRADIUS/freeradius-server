@@ -1097,8 +1097,6 @@ static void request_response_delay(REQUEST *request, int action)
 	case FR_ACTION_TIMER:
 		fr_event_now(el, &now);
 
-		rad_assert(request->response_delay.tv_sec > 0);
-
 		/*
 		 *	See if it's time to send the reply.  If not,
 		 *	we wait some more.
