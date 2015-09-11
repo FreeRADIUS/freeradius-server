@@ -1,6 +1,6 @@
 BUGS
 
-0.INTRODUCTION
+0. INTRODUCTION
 
   The FreeRADIUS web site is at <URL: http://www.freeradius.org>, and
   most information referenced in this document can be found there.
@@ -10,7 +10,8 @@ BUGS
   development list to discuss it. If you're the type who know little about
   how to code, then this is the place for you!
 
-1.YOU FOUND A BUG
+
+1. YOU FOUND A BUG
 
   Where the server terminates ungracefully due to a bus error, 
   segmentation violation, or other memory error, you should create 
@@ -31,9 +32,10 @@ BUGS
   Please make sure to READ and RESPECT the house-rules. You will get much
   better response and much faster if you do!
 
-2.CORE DUMPS
 
-  If the server, or one of the accompyaning programs core dumps, then
+2. CORE DUMPS
+
+  If the server, or one of the accompanying programs core dumps, then
   you should rebuild the server as follows:
 
   $ ./configure --enable-developer
@@ -56,6 +58,11 @@ BUGS
 
   and follow the instructions in section 4, below.
 
+  You can also enable the "panic_action" given in raddb/radiusd.conf.
+  See the comments in that file for more details about automatically
+  collecting gdb debugging information when the server crashes.
+
+
 3. DEBUGGING A LIVE SERVER
 
   If you can't get a core dump, or the problem doesn't result in a
@@ -77,7 +84,7 @@ BUGS
   (gdb) set args ...
 
   Where the "..." are the command-line arguments you normally pass to
-  radiusd.  Fo debugging, you probably want to do:
+  radiusd.  For debugging, you probably want to do:
 
   (gdb) set args -f
 
@@ -91,6 +98,7 @@ BUGS
   (gdb)
 
   And follow the instructions in section 4, below.
+
 
 4. OBTAINING USEFUL INFORMATION
 
@@ -125,6 +133,7 @@ BUGS
 
   You should provide the issue number in any mail sent to the user's list.
 
+
 5. VALGRIND
 
   On Linux systems, "valgrind" is a useful tool that can catch certain
@@ -138,27 +147,27 @@ $ valgrind --tool=memcheck --leak-check=full radiusd -Xm
   inside of the FreeRADIUS source should be brought to our attention.
 
 
-6. Running with "screen"
+6. RUNNING WITH "SCREEN"
 
   If the bug is a crash of the server, and it takes a long time for the
   crash to happen, perform the following steps:
 
- * log in as root
- * open a screen session (http://blogamundo.net/code/screen/)
-   $ screen bash
- * make sure FreeRADIUS is not running
- * make sure you have all the debug symbols about, or a debugable
-   version of the server installed
- * configure screen to log to a file; 'Ctrl-A H'
- * type 'gdb /path/to/radius'  (or /path/to/freeradius on Debian)
- * at the (gdb) prompt, type 'run -X'
- * detach from screen 'Ctrl-A D'
- * when you notice FreeRADIUS has died, reconnect to your screen session
-   $ screen -D -r
- * at the (gdb) prompt type 'where' or for *lots* of info try
-   'thread apply all bt full'
- * tell screen to stop logging, 'Ctrl-A H'
- * logout from screen
+  * log in as root
+  * open a screen session (https://www.gnu.org/software/screen/)
+    $ screen bash
+  * make sure FreeRADIUS is not running
+  * make sure you have all the debug symbols about, or a debugable
+    version of the server installed
+  * configure screen to log to a file; 'Ctrl-A H'
+  * type 'gdb /path/to/radius'  (or /path/to/freeradius on Debian)
+  * at the (gdb) prompt, type 'run -X'
+  * detach from screen 'Ctrl-A D'
+  * when you notice FreeRADIUS has died, reconnect to your screen session
+    $ screen -D -r
+  * at the (gdb) prompt type 'where' or for *lots* of info try
+    'thread apply all bt full'
+  * tell screen to stop logging, 'Ctrl-A H'
+  * logout from screen
 
 --
 
