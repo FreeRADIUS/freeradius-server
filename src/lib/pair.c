@@ -1778,6 +1778,7 @@ static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, 
  *	If attribute 0 and vendor 0  will match (and therefore copy) all
  *	attributes.
  * @param[in] vendor to match.
+ * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  */
 void fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 			      unsigned int attr, unsigned int vendor, int8_t tag)
