@@ -223,6 +223,7 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 		client_fd = fr_socket_client_unix(path, false);
 		if (client_fd >= 0) {
 			fr_strerror_printf("Control socket '%s' is already in use", path);
+			close(client_fd);
 			close(sockfd);
 			return -1;
 		}
