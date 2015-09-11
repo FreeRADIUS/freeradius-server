@@ -416,8 +416,9 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	 */
 	if (entry) {
 		RDEBUG2("Restoring &session-state");
-		fr_pair_list_move_by_num(request, &request->state, &entry->vps, 0, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(request, &request->state, &entry->vps, 0, 0, TAG_ANY);
 		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
+
 	} else {
 		RDEBUG3("No &session-state attributes to restore");
 	}
@@ -465,7 +466,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	 *	This has to be done in a mutex lock, because talloc
 	 *	isn't thread-safe.
 	 */
-	fr_pair_list_move_by_num(entry, &entry->vps, &request->state, 0, 0, TAG_ANY);
+	fr_pair_list_mcopy_by_num(entry, &entry->vps, &request->state, 0, 0, TAG_ANY);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	rad_assert(request->state == NULL);

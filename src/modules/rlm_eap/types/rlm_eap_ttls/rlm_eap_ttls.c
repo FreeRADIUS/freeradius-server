@@ -240,8 +240,8 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 			if (t->accept_vps) {
 				RDEBUG2("Using saved attributes from the original Access-Accept");
 				rdebug_pair_list(L_DBG_LVL_2, request, t->accept_vps, NULL);
-				fr_pair_list_move_by_num(eap_session->request->reply,
-					   &eap_session->request->reply->vps,
+				fr_pair_list_mcopy_by_num(eap_session->request->reply,
+							  &eap_session->request->reply->vps,
 					   &t->accept_vps, 0, 0, TAG_ANY);
 			} else if (t->use_tunneled_reply) {
 				RDEBUG2("No saved attributes in the original Access-Accept");

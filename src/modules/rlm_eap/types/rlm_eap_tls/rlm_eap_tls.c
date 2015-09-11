@@ -180,7 +180,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 			rad_virtual_server(fake);
 
 			/* copy the reply vps back to our reply */
-			fr_pair_list_move_by_num(request->reply, &request->reply->vps,
+			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps,
 				  &fake->reply->vps, 0, 0, TAG_ANY);
 
 			/* reject if virtual server didn't return accept */

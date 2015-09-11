@@ -309,15 +309,15 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		if (peap->soh_reply_vps) {
 			RDEBUG2("Using saved attributes from the SoH reply");
 			rdebug_pair_list(L_DBG_LVL_2, request, peap->soh_reply_vps, NULL);
-			fr_pair_list_move_by_num(eap_session->request->reply,
-				  &eap_session->request->reply->vps,
+			fr_pair_list_mcopy_by_num(eap_session->request->reply,
+						  &eap_session->request->reply->vps,
 				  &peap->soh_reply_vps, 0, 0, TAG_ANY);
 		}
 		if (peap->accept_vps) {
 			RDEBUG2("Using saved attributes from the original Access-Accept");
 			rdebug_pair_list(L_DBG_LVL_2, request, peap->accept_vps, NULL);
-			fr_pair_list_move_by_num(eap_session->request->reply,
-				  &eap_session->request->reply->vps,
+			fr_pair_list_mcopy_by_num(eap_session->request->reply,
+						  &eap_session->request->reply->vps,
 				  &peap->accept_vps, 0, 0, TAG_ANY);
 		} else if (peap->use_tunneled_reply) {
 			RDEBUG2("No saved attributes in the original Access-Accept");
