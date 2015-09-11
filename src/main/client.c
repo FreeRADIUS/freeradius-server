@@ -950,7 +950,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 			goto error;
 		}
 #endif
-		if (fr_pton(&c->ipaddr, name2, 0, true, true) < 0) {
+		if (fr_pton(&c->ipaddr, name2, -1, AF_UNSPEC, true) < 0) {
 			cf_log_err_cs(cs, "Failed parsing client name \"%s\" as ip address or hostname: %s", name2,
 				      fr_strerror());
 			goto error;
