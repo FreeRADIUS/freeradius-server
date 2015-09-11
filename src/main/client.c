@@ -940,9 +940,24 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 	 *	No "ipaddr" or "ipv6addr", use old-style "client <ipaddr> {" syntax.
 	 */
 	} else {
-		cf_log_err_cs(cs, "No 'ipaddr' or 'ipv4addr' or 'ipv6addr' configuration "
-			      "directive found in client %s", name2);
-		goto error;
+		WARN("No 'ipaddr' or 'ipv4addr' or 'ipv6addr' field found in client %s. "
+		     "Please fix your configuration", name2);
+		WARN("Support for old-style clients will be removed in a future release");
+
+#ifdef WITH_TCP
+		if (cf_pair_find(cs, "proto") != NULL) {
+			cf_log_err_cs(cs, "Cannot use 'proto' inside of old-style client definition");
+			goto error;
+		}
+#endif
+		if (fr_pton(&c->ipaddr, name2, 0, true, true) < 0) {
+			cf_log_err_cs(cs, "Failed parsing client name \"%s\" as ip address or hostname: %s", name2,
+				      fr_strerror());
+			goto error;
+		}
+
+		c->longname = talloc_typed_strdup(c, name2);
+		if (!c->shortname) c->shortname = talloc_typed_strdup(c, c->longname);
 	}
 
 	c->proto = IPPROTO_UDP;
