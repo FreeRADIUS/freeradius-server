@@ -82,7 +82,7 @@ typedef enum {
 /*
  *	Structure of a DEC/Intel/Xerox or 802.3 Ethernet header.
  */
-typedef struct ethernet_header {
+typedef struct CC_HINT(__packed__) ethernet_header {
 	uint8_t		ether_dst[ETHER_ADDR_LEN];
 	uint8_t		ether_src[ETHER_ADDR_LEN];
 	uint16_t	ether_type;
@@ -91,7 +91,7 @@ typedef struct ethernet_header {
 /*
  *	Structure of an internet header, naked of options.
  */
-typedef struct ip_header {
+typedef struct CC_HINT(__packed__) ip_header {
 	uint8_t		ip_vhl;		//!< Header length, version.
 
 	uint8_t		ip_tos;		//!< Type of service.
@@ -105,7 +105,7 @@ typedef struct ip_header {
 	struct in_addr	ip_src, ip_dst;	//!< Src and Dst address
 } ip_header_t;
 
-typedef struct ip_header6 {
+typedef struct CC_HINT(__packed__) ip_header6 {
 	uint32_t	ip_vtcfl;	//!< Version, traffic class, flow label.
 	uint16_t	ip_len;		//!< Payload length
 
@@ -119,14 +119,14 @@ typedef struct ip_header6 {
  *	UDP protocol header.
  *	Per RFC 768, September, 1981.
  */
-typedef struct udp_header {
+typedef struct CC_HINT(__packed__) udp_header {
 	uint16_t	src;		//!< Source port.
 	uint16_t	dst;		//!< Destination port.
 	uint16_t	len;		//!< UDP length.
 	uint16_t	checksum;	//!< UDP checksum.
 } udp_header_t;
 
-typedef struct radius_packet_t {
+typedef struct CC_HINT(__packed__) radius_packet_t {
 	uint8_t		code;
 	uint8_t		id;
 	uint8_t		length[2];
