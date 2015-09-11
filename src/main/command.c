@@ -228,8 +228,7 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 		}
 
 		if (unlink(path) < 0) {
-		       fr_strerror_printf("Failed to delete %s: %s",
-			     path, fr_syserror(errno));
+		       fr_strerror_printf("Failed to delete %s: %s", path, fr_syserror(errno));
 		       close(sockfd);
 		       return -1;
 		}
