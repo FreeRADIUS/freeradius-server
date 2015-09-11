@@ -75,7 +75,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 #ifdef HAVE_REGEX
 	if ((check->op == T_OP_REG_EQ) || (check->op == T_OP_REG_NE)) {
 		ssize_t		slen;
-		regex_t		*preg;
+		regex_t		*preg = NULL;
 		regmatch_t	rxmatch[REQUEST_MAX_REGEX + 1];	/* +1 for %{0} (whole match) capture group */
 		size_t		nmatch = sizeof(rxmatch) / sizeof(regmatch_t);
 
@@ -98,6 +98,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			REDEBUG("Error stringifying operand for regular expression");
 
 		regex_error:
+			if (preg) talloc_free(preg);
 			talloc_free(expr);
 			talloc_free(value);
 			return -2;
