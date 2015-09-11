@@ -632,7 +632,9 @@ void		fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const * src, size_t len);
 void		fr_pair_value_sprintf(VALUE_PAIR *vp, char const * fmt, ...) CC_HINT(format (printf, 2, 3));
 void		fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-			   unsigned int attr, unsigned int vendor, int8_t tag);
+					 unsigned int attr, unsigned int vendor, int8_t tag);
+void		fr_pair_list_mcopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
+					  unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR	*fr_pair_afrom_ip_str(TALLOC_CTX *ctx, char const *value,
 			     DICT_ATTR *ipv4, DICT_ATTR *ipv6, DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix);
 int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t len);
