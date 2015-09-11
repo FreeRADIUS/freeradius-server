@@ -197,6 +197,8 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 		 *	FIXME: Check the enclosing directory?
 		 */
 	} else {		/* it exists */
+		int client_fd;
+
 		if (!S_ISREG(buf.st_mode)
 #ifdef S_ISSOCK
 		    && !S_ISSOCK(buf.st_mode)
@@ -212,6 +214,17 @@ static int fr_server_domain_socket_peercred(char const *path, uid_t UNUSED uid, 
 		 */
 		if (buf.st_uid != geteuid()) {
 			fr_strerror_printf("We do not own %s", path);
+			close(sockfd);
+			return -1;
+		}
+
+		/*
+		 *	Check if a server is already listening on the
+		 *	socket?
+		 */
+		client_fd = fr_socket_client_unix(path, false);
+		if (client_fd >= 0) {
+			fr_strerror_printf("Control socket '%s' is already in use", path);
 			close(sockfd);
 			return -1;
 		}
