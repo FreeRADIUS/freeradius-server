@@ -397,9 +397,18 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	/*
 	 *	This has to be done in a mutex lock, because talloc
 	 *	isn't thread-safe.
+	 *
+	 *	We also COPY the VPs instead of moving them.  This is
+	 *	because moving does a talloc_steal(), which keeps the
+	 *	parent context around.
 	 */
 	if (entry) {
-		fr_pair_list_move_by_num(request, &request->state, &entry->vps, 0, 0, TAG_ANY);
+		VALUE_PAIR *vps;
+
+		vps = fr_pair_list_copy_by_num(request, entry->vps, 0, 0, TAG_ANY);
+		fr_pair_list_move(request, &request->state, &vps);
+		fr_pair_list_free(&entry->vps);
+
 		RDEBUG2("session-state: Found cached attributes");
 		rdebug_pair_list(L_DBG_LVL_1, request, request->state, NULL);
 
@@ -449,8 +458,13 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	/*
 	 *	This has to be done in a mutex lock, because talloc
 	 *	isn't thread-safe.
+	 *
+	 *	We also COPY the VPs instead of moving them.  This is
+	 *	because moving does a talloc_steal(), which keeps the
+	 *	parent context around.
 	 */
-	fr_pair_list_move_by_num(entry, &entry->vps, &request->state, 0, 0, TAG_ANY);
+	entry->vps = fr_pair_list_copy_by_num(request, request->state, 0, 0, TAG_ANY);
+	fr_pair_list_free(&request->state);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	rad_assert(request->state == NULL);
