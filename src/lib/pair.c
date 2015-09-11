@@ -1633,8 +1633,6 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  * Move pairs of a matching attribute number, vendor number and tag from the
  * the input list to the output list.
  *
- * @note pairs which are moved have their parent changed to ctx.
- *
  * @note fr_pair_list_free should be called on the head of the old list to free unmoved
 	 attributes (if they're no longer needed).
  *
@@ -1647,11 +1645,13 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  *	attributes.
  * @param[in] vendor to match.
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
+ * @param[in] move if set to "true", VPs are moved.  If set to "false", VPs are copied, and the old one deleted.
  */
-void fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-			      unsigned int attr, unsigned int vendor, int8_t tag)
+static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
+					      unsigned int attr, unsigned int vendor, int8_t tag,
+					      bool move)
 {
-	VALUE_PAIR *to_tail, *i, *next;
+	VALUE_PAIR *to_tail, *i, *next, *this;
 	VALUE_PAIR *iprev = NULL;
 
 	/*
@@ -1735,18 +1735,84 @@ void fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **fro
 		else
 			*from = next;
 
+		if (move) {
+			this = i;
+		} else {
+			this = fr_pair_copy(ctx, i);
+		}
+
 		/*
 		 *	Add the attribute to the "to" list.
 		 */
 		if (to_tail)
-			to_tail->next = i;
+			to_tail->next = this;
 		else
-			*to = i;
-		to_tail = i;
-		i->next = NULL;
-		fr_pair_steal(ctx, i);
+			*to = this;
+		to_tail = this;
+		this->next = NULL;
+
+		if (move) {
+			fr_pair_steal(ctx, i);
+		} else {
+			talloc_free(i);
+		}
 	}
 }
+
+
+/** Move matching pairs between VALUE_PAIR lists
+ *
+ * Move pairs of a matching attribute number, vendor number and tag from the
+ * the input list to the output list.
+ *
+ * @note pairs which are moved have their parent changed to ctx.
+ *
+ * @note fr_pair_list_free should be called on the head of the old list to free unmoved
+	 attributes (if they're no longer needed).
+ *
+ * @param[in] ctx for talloc
+ * @param[in,out] to destination list.
+ * @param[in,out] from source list.
+ * @param[in] attr to match. If attribute PW_VENDOR_SPECIFIC and vendor 0,
+ *	will match (and therefore copy) only VSAs.
+ *	If attribute 0 and vendor 0  will match (and therefore copy) all
+ *	attributes.
+ * @param[in] vendor to match.
+ */
+void fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
+			      unsigned int attr, unsigned int vendor, int8_t tag)
+{
+	fr_pair_list_move_by_num_internal(ctx, to, from, attr, vendor, tag, true);
+}
+
+
+/** Copy / delete matching pairs between VALUE_PAIR lists
+ *
+ * Move pairs of a matching attribute number, vendor number and tag from the
+ * the input list to the output list.  Like fr_pair_list_move_by_num(), but
+ * instead does copy / delete.
+ *
+ * @note The pair is NOT reparented.  It is copied and deleted.
+ *
+ * @note fr_pair_list_free should be called on the head of the old list to free unmoved
+	 attributes (if they're no longer needed).
+ *
+ * @param[in] ctx for talloc
+ * @param[in,out] to destination list.
+ * @param[in,out] from source list.
+ * @param[in] attr to match. If attribute PW_VENDOR_SPECIFIC and vendor 0,
+ *	will match (and therefore copy) only VSAs.
+ *	If attribute 0 and vendor 0  will match (and therefore copy) all
+ *	attributes.
+ * @param[in] vendor to match.
+ * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
+ */
+void fr_pair_list_mcopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
+			      unsigned int attr, unsigned int vendor, int8_t tag)
+{
+	fr_pair_list_move_by_num_internal(ctx, to, from, attr, vendor, tag, false);
+}
+
 
 /** Convert string value to native attribute value
  *
