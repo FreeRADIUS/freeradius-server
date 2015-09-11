@@ -660,7 +660,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 		 *	packet, and we will send EAP-Success.
 		 */
 		vp = NULL;
-		fr_pair_list_move_by_num(tls_session, &vp, &reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (vp) {
 			RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
 			rcode = RLM_MODULE_HANDLED;
@@ -671,7 +671,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 			 */
 			if (t->use_tunneled_reply) {
 				rad_assert(!t->accept_vps);
-				fr_pair_list_move_by_num(t, &t->accept_vps, &reply->vps,
+				fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps,
 					  0, 0, TAG_ANY);
 				rad_assert(!reply->vps);
 			}
@@ -686,12 +686,12 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 			 *	can figure it out, from the non-tunneled
 			 *	EAP-Success packet.
 			 */
-			fr_pair_list_move_by_num(tls_session, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+			fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 			fr_pair_list_free(&vp);
 		}
 
 		/* move channel binding responses; we need to send them */
-		fr_pair_list_move_by_num(tls_session, &vp, &reply->vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY);
+		fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY);
 		if (fr_pair_find_by_num(vp, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY) != NULL) {
 			t->authenticated = true;
 			/*
@@ -699,7 +699,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 			 */
 			if (t->use_tunneled_reply) {
 				rad_assert(!t->accept_vps);
-				fr_pair_list_move_by_num(t, &t->accept_vps, &reply->vps,
+				fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps,
 					  0, 0, TAG_ANY);
 				rad_assert(!reply->vps);
 			}
@@ -727,7 +727,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 		 */
 		if (t->use_tunneled_reply) {
 			fr_pair_delete_by_num(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
-			fr_pair_list_move_by_num(request->reply, &request->reply->vps,
+			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps,
 				  &reply->vps, 0, 0, TAG_ANY);
 		}
 		break;
@@ -753,7 +753,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 		 *	Get rid of the old State, too.
 		 */
 		fr_pair_list_free(&t->state);
-		fr_pair_list_move_by_num(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	We should really be a bit smarter about this,
@@ -763,7 +763,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 		 *	method works in 99.9% of the situations.
 		 */
 		vp = NULL;
-		fr_pair_list_move_by_num(t, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		/*
 		 *	There MUST be a Reply-Message in the challenge,
@@ -773,10 +773,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 		 *	we MUST create one, with an empty string as
 		 *	it's value.
 		 */
-		fr_pair_list_move_by_num(t, &vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
 
 		/* also move chbind messages, if any */
-		fr_pair_list_move_by_num(t, &vp, &reply->vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA,
+		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA,
 			  TAG_ANY);
 
 		/*
@@ -1217,7 +1217,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			fr_pair_list_move_by_num(request, &request->config,
+			fr_pair_list_mcopy_by_num(request, &request->config,
 				  &fake->config,
 				  PW_PROXY_TO_REALM, 0, TAG_ANY);
 

@@ -253,7 +253,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 			if (t->accept_vps) {
 				RDEBUG2("Using saved attributes from the original Access-Accept");
 				rdebug_pair_list(L_DBG_LVL_2, request, t->accept_vps, NULL);
-				fr_pair_list_move_by_num(handler->request->reply,
+				fr_pair_list_mcopy_by_num(handler->request->reply,
 					   &handler->request->reply->vps,
 					   &t->accept_vps, 0, 0, TAG_ANY);
 			} else if (t->use_tunneled_reply) {

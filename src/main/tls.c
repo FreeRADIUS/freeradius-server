@@ -1336,7 +1336,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int len, in
 		}
 
 		/* move the cached VPs into the session */
-		fr_pair_list_move_by_num(talloc_ctx, &vps, &pairlist->reply, 0, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(talloc_ctx, &vps, &pairlist->reply, 0, 0, TAG_ANY);
 
 		SSL_SESSION_set_ex_data(sess, fr_tls_ex_index_vps, vps);
 		RWDEBUG("Successfully restored session %s", buffer);

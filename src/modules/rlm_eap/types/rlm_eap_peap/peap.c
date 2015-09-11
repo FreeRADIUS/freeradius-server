@@ -458,7 +458,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 			fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 
 			fr_pair_list_free(&t->accept_vps); /* for proxying MS-CHAP2 */
-			fr_pair_list_move_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
+			fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
 			rad_assert(!reply->vps);
 		}
 		break;
@@ -479,7 +479,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 		 *	Get rid of the old State, too.
 		 */
 		fr_pair_list_free(&t->state);
-		fr_pair_list_move_by_num(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	PEAP takes only EAP-Message attributes inside
@@ -487,7 +487,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
-		fr_pair_list_move_by_num(t, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		/*
 		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
@@ -506,7 +506,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 			fr_pair_delete_by_num(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 
 			rad_assert(!t->accept_vps);
-			fr_pair_list_move_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
+			fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
 			rad_assert(!reply->vps);
 		}
 
@@ -823,7 +823,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 		/* save the SoH VPs */
 		rad_assert(!t->soh_reply_vps);
-		fr_pair_list_move_by_num(t, &t->soh_reply_vps, &fake->reply->vps, 0, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &t->soh_reply_vps, &fake->reply->vps, 0, 0, TAG_ANY);
 		rad_assert(!fake->reply->vps);
 		talloc_free(fake);
 
@@ -1092,7 +1092,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			fr_pair_list_move_by_num(request, &request->config,
+			fr_pair_list_mcopy_by_num(request, &request->config,
 				   &fake->config,
 				   PW_PROXY_TO_REALM, 0, TAG_ANY);
 
