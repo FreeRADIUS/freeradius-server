@@ -2812,9 +2812,18 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 
 			rad_assert(p->tail != NULL);
 
+			/*
+			 *	We're in the process of compiling the
+			 *	section, so the parent's tail is the
+			 *	previous "if" statement.
+			 */
 			f = mod_callabletogroup(p->tail);
-			rad_assert((f->mc.type == MOD_IF) ||
-				   (f->mc.type == MOD_ELSIF));
+			if ((f->mc.type != MOD_IF) &&
+			    (f->mc.type != MOD_ELSIF)) {
+				cf_log_err_cs(g->cs, "Invalid location for 'elsif'.  There is no preceding 'if' statement");
+				talloc_free(g);
+				return NULL;
+			}
 
 			/*
 			 *	If we took the previous condition, we
@@ -2844,8 +2853,12 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 			rad_assert(p->tail != NULL);
 
 			f = mod_callabletogroup(p->tail);
-			rad_assert((f->mc.type == MOD_IF) ||
-				   (f->mc.type == MOD_ELSIF));
+			if ((f->mc.type != MOD_IF) &&
+			    (f->mc.type != MOD_ELSIF)) {
+				cf_log_err_cs(g->cs, "Invalid location for 'else'.  There is no preceding 'if' statement");
+				talloc_free(g);
+				return NULL;
+			}
 
 			/*
 			 *	If we took the previous condition, we

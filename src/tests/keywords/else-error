@@ -1,0 +1,14 @@
+#
+#  PRE: update if
+#
+#  "else" has to be preceded by an "if" or "elsif"
+#
+if (1) {
+	update reply {
+		Filter-Id := "filter"
+	}
+
+	else {	# ERROR
+	     ok
+	}
+}
