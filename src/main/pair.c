@@ -95,7 +95,7 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 			REDEBUG("Error stringifying operand for regular expression");
 
 		regex_error:
-			if (preg) talloc_free(preg);
+			talloc_free(preg);
 			talloc_free(expr);
 			talloc_free(value);
 			return -2;
