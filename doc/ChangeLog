@@ -52,6 +52,10 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  virtual servers are being parsed.
 	* Parse Ascend-Data-Filter when given as "0x..."
 	* Print Ascend-Data-Filter correctly.  Add test cases for both.
+	* Allow old-style clients again.  They will be disallowed for
+	  3.1.0 and following.
+	* Complain instead of crash when "else" and "elsif" are in
+	  the wrong place.
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
