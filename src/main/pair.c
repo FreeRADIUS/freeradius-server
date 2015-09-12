@@ -780,7 +780,7 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
  * @param[in] request to read logging params from.
  * @param[in] vp to print.
  */
-void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp)
+void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
 	vp_cursor_t cursor;
 	char buffer[256];
@@ -796,7 +796,7 @@ void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp)
 		if ((vp->da->vendor == 0) &&
 		    ((vp->da->attr & 0xFFFF) > 0xff)) continue;
 		fr_pair_snprint(buffer, sizeof(buffer), vp);
-		RDEBUGX(level, "%s", buffer);
+		RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 	}
 	REXDENT();
 }

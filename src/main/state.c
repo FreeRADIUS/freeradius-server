@@ -414,9 +414,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	 */
 	if (entry) {
 		fr_pair_list_move_by_num(request, &request->state, &entry->vps, 0, 0, TAG_ANY);
-		RDEBUG2("session-state: Found cached attributes");
-		rdebug_pair_list(L_DBG_LVL_1, request, request->state, NULL);
-
+		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 	} else {
 		RDEBUG2("session-state: No cached attributes");
 	}
@@ -444,7 +442,7 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	}
 
 	RDEBUG2("session-state: Saving cached attributes");
-	rdebug_pair_list(L_DBG_LVL_1, request, request->state, NULL);
+	rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
