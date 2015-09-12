@@ -41,6 +41,11 @@ rest {
 	connect_uri = "http://127.0.0.1/"
 
 	#
+	#  Proxy server used for connect requests.
+	#
+#	connect_proxy = "socks://127.0.0.1"
+
+	#
 	#  The following config items can be used in each of the sections.
 	#  The sections themselves reflect the sections in the server.
 	#  For example if you list rest in the authorize section of a virtual server,
@@ -48,6 +53,8 @@ rest {
 	#
 	#  The following config items may be listed in any of the sections:
 	#    uri          - to send the request to.
+	#    proxy        - the request via this server, supports socks/http/https uri
+	#                   and :port.
 	#    method       - HTTP method to use, one of 'get', 'post', 'put', 'patch',
 	#                   'delete' or any custom HTTP method.
 	#    body         - The format of the HTTP body sent to the remote server.
