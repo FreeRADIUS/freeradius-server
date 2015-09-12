@@ -3426,11 +3426,10 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		vp = fr_pair_list_copy_by_num(talloc_ctx, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
 		if (vp) fr_pair_add(&vps, vp);
 
-		cert_vps = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, fr_tls_ex_index_cert_vps);
-
 		/*
-		 *	Hmm... the cert_vps should probably be session data.
+		 *	Remove me in FreeRADIUS 3.2/4.0 - Duplicate functionality to session-state
 		 */
+		cert_vps = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, fr_tls_ex_index_cert_vps);
 		if (cert_vps) {
 			/*
 			 *	@todo: some go into reply, others into
@@ -3612,8 +3611,11 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 *	Add the certificates to intermediate packets, so that
 	 *	the inner tunnel policies can use them.
 	 */
-	cert_vps = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, fr_tls_ex_index_cert_vps);
 
+	/*
+	 *	Remove me in FreeRADIUS 3.2/4.0 - Duplicate functionality to session-state
+	 */
+	cert_vps = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, fr_tls_ex_index_cert_vps);
 	if (cert_vps) fr_pair_add(&request->packet->vps, fr_pair_list_copy(request->packet, *cert_vps));
 
 	return FR_TLS_OK;

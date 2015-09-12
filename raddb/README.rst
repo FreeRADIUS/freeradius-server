@@ -94,7 +94,7 @@ In v3.1.x they must now be specified as::
   counter_name		= &Daily-Session-Time
   check_name		= &control:Max-Daily-Session
   reply_name		= &reply:Session-Timeout
-  key			      = &User-Name
+  key                   = &User-Name
 
 Just adding the '&' prefix is not sufficient.  Attributes must be qualified
 with the list to search in, or add to.
@@ -120,9 +120,26 @@ v3.1.x as the width of the counter was changed from 32bits to 64bits.
 rlm_sql_mysql
 ~~~~~~~~~~~~~
 
-Now calls ``mysql_real_escape_string`` and no longer produces ``=<hexit><hexit>`` escape sequences in expanded values.  The ``safe_characters`` config item will have no effect when used with this driver.
+Now calls ``mysql_real_escape_string`` and no longer produces
+``=<hexit><hexit>`` escape sequences in expanded values.
+The ``safe_characters`` config item will have no effect when used with
+this driver.
 
 rlm_sql_postgresql
 ~~~~~~~~~~~~~~~~~~
 
-Now calls ``PQescapeStringConn`` and no longer produces ``=<hexit><hexit>`` escape sequences in expanded values.  The ``safe_characters`` config item will have no effect when used with this driver.
+Now calls ``PQescapeStringConn`` and no longer produces ``=<hexit><hexit>``
+escape sequences in expanded values.  The ``safe_characters`` config item will
+have no effect when used with this driver.
+
+rlm_sql_eap
+~~~~~~~~~~~
+
+All certificate attributes are available in the ``&session-state:`` list,
+immediately after they're parsed from their ASN1 form.
+
+This is the only way to access them in the OCSP virtual server.
+
+In a future release (3.2 or 4.0), they will no longer be added to the
+``&request:`` list.  You are advised to update any references during the
+upgrade to 3.1 ``s/TLS-Cert-/session-state:TLS-Cert-/``.
