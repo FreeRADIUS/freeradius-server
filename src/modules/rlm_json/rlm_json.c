@@ -233,6 +233,11 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 
 	rlm_json_jpath_to_eval_t	to_eval;
 
+	if ((talloc_array_length(src) - 1) == 0) {
+		REDEBUG("Zero length string is not valid JSON data");
+		return RLM_MODULE_FAIL;
+	}
+
 	tok = json_tokener_new();
 	to_eval.root = json_tokener_parse_ex(tok, src, (int)(talloc_array_length(src) - 1));
 	if (!to_eval.root) {
