@@ -20,6 +20,9 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  See raddb/sites-available/dhcp
 	* On HUP, check all modules for config files which have
 	  changed.  And only re-load those modules.
+	* Allow FreeRADIUS-Response-Delay(-USec) to be set for
+	  RADIUS packets.  Patch from Herwin Weststrate.
+	* Documentation fixes from Alan Buxey and Matthew Newton.
 
 	Bug fixes
 	* When using -C, don't error out if the configuration uses
@@ -56,6 +59,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  3.1.0 and following.
 	* Complain instead of crash when "else" and "elsif" are in
 	  the wrong place.
+	* Clean up memory more aggressively.  This lowers the
+	  maximum memory used, most typically for EAP-TLS methods.
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
