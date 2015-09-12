@@ -153,7 +153,7 @@ typedef struct listen_socket_t {
 #ifdef WITH_TLS
 	tls_session_t	*ssn;
 	REQUEST		*request; /* horrible hacks */
-	VALUE_PAIR	*certs;
+	VALUE_PAIR	*cert_vps;
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t mutex;
 #endif

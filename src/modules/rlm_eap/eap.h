@@ -117,7 +117,7 @@ struct _eap_handler {
 
 	bool		tls;
 	bool		finished;
-	VALUE_PAIR	*certs;
+	VALUE_PAIR	*cert_vps;
 };
 
 /*

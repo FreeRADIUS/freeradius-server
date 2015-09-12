@@ -90,7 +90,7 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	 */
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_HANDLER, (void *)handler);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
-	SSL_set_ex_data(ssn->ssl, fr_tls_ex_index_certs, (void *)&(handler->certs));
+	SSL_set_ex_data(ssn->ssl, fr_tls_ex_index_cert_vps, (void *)&(handler->cert_vps));
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(handler->identity));
 #ifdef HAVE_OPENSSL_OCSP_H
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
@@ -793,8 +793,8 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 
-	if (handler->certs) fr_pair_add(&request->packet->vps,
-				    fr_pair_list_copy(request->packet, handler->certs));
+	if (handler->cert_vps) fr_pair_add(&request->packet->vps,
+				    fr_pair_list_copy(request->packet, handler->cert_vps));
 
 	/*
 	 *	This case is when SSL generates Alert then we
@@ -933,9 +933,9 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 
 			/*
 			 *	The cbtls_get_session() function doesn't have
-			 *	access to sock->certs or handler->certs, which
+			 *	access to sock->cert_vps or handler->cert_vps, which
 			 *	is where the certificates normally live.  So
-			 *	the certs are all in the VPS list here, and
+			 *	the cert_vps are all in the VPS list here, and
 			 *	have to be manually extracted.
 			 */
 			RINDENT();
@@ -952,12 +952,12 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 					/*
 					 *	Certs already exist.  Don't re-add them.
 					 */
-					if (!handler->certs) {
-						rdebug_pair(L_DBG_LVL_2, request, vp, "request:");
+					if (!handler->cert_vps) {
+						rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
 						fr_pair_add(&request->packet->vps, fr_pair_copy(request->packet, vp));
 					}
 				} else {
-					rdebug_pair(L_DBG_LVL_2, request, vp, "reply:");
+					rdebug_pair(L_DBG_LVL_2, request, vp, "&reply:");
 					fr_pair_add(&request->reply->vps, fr_pair_copy(request->reply, vp));
 				}
 			}
