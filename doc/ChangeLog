@@ -25,8 +25,6 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Documentation fixes from Alan Buxey and Matthew Newton.
 
 	Bug fixes
-	* When using -C, don't error out if the configuration uses
-	  deprecated items.
 	* Fix rlm_files so that there are no collisions when loading
 	  10's of 1000's of users.
 	* Fix radclient to use our internal v4/v6 parsing functions.
@@ -45,8 +43,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Fix decoding issue for Tunnel-Password type attributes
 	  which were very long.
 	* Fix radclient issue with TCP sockets on FreeBSD.
-	* The server creates ${run_dir} and ${logdir} in daemon mode,
-	  when running as "root".
+	* The server now creates ${run_dir} and ${logdir} directories
+	  in daemon mode, when running as "root".
 	* Handle tags when using maps.  Fixes #1191.
 	* Fix crash when CoA packets time out.
 	* Fix parse error in rediswho
@@ -60,7 +58,9 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Complain instead of crash when "else" and "elsif" are in
 	  the wrong place.
 	* Clean up memory more aggressively.  This lowers the
-	  maximum memory used, most typically for EAP-TLS methods.
+	  maximum memory used, most typically for TLS based EAP methods.
+	* Prevent the server from unlinking the control socket of an
+	  already running instance.
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
