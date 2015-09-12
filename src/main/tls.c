@@ -2233,7 +2233,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	sn = X509_get_serialNumber(client_cert);
 
 	RDEBUG2("Creating attributes from certificate OIDs");
-	RINDENT();
 
 	/*
 	 *	For this next bit, we create the attributes *only* if
@@ -2250,8 +2249,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			sprintf(p, "%02x", (unsigned int)sn->data[i]);
 			p += 2;
 		}
-		vp = fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
-		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
 	}
 
 
@@ -2264,8 +2262,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	    (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
-		vp = fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
-		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
 	}
 
 	/*
@@ -2276,16 +2273,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			  sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
 	if (cert_vps && identity && (lookup <= 1) && subject[0]) {
-		vp = fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
-		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
 	if (cert_vps && identity && (lookup <= 1) && issuer[0]) {
-		vp = fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
-		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
 	}
 
 	/*
@@ -2295,8 +2290,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
 	if (cert_vps && identity && (lookup <= 1) && common_name[0] && subject[0]) {
-		vp = fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
-		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+		fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
 	}
 
 	/*
@@ -2316,33 +2310,32 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				switch (name->type) {
 #ifdef GEN_EMAIL
 				case GEN_EMAIL:
-					vp = fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
-						      (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
-					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+					fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
+						     (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
 					break;
 #endif	/* GEN_EMAIL */
 #ifdef GEN_DNS
 				case GEN_DNS:
-					vp = fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SAN_DNS][lookup],
-						      (char *) ASN1_STRING_data(name->d.dNSName), T_OP_SET);
-					rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+					fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SAN_DNS][lookup],
+						     (char *) ASN1_STRING_data(name->d.dNSName), T_OP_SET);
 					break;
 #endif	/* GEN_DNS */
 #ifdef GEN_OTHERNAME
 				case GEN_OTHERNAME:
 					/* look for a MS UPN */
-					if (NID_ms_upn == OBJ_obj2nid(name->d.otherName->type_id)) {
-					    /* we've got a UPN - Must be ASN1-encoded UTF8 string */
-					    if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
-						    vp = fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SAN_UPN][lookup],
-								  (char *) ASN1_STRING_data(name->d.otherName->value->value.utf8string), T_OP_SET);
-						    rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+					if (NID_ms_upn != OBJ_obj2nid(name->d.otherName->type_id)) break;
+
+					/* we've got a UPN - Must be ASN1-encoded UTF8 string */
+					if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
+						fr_pair_make(talloc_ctx, cert_vps,
+							     cert_attr_names[FR_TLS_SAN_UPN][lookup],
+							     (char *)ASN1_STRING_data(
+								name->d.otherName->value->value.utf8string),
+							     T_OP_SET);
 						break;
-					    } else {
-						RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)");
-						break;
-					    }
 					}
+
+					RWARN("Invalid UPN in Subject Alt Name (should be UTF-8)");
 					break;
 #endif	/* GEN_OTHERNAME */
 				default:
@@ -2351,8 +2344,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				}
 			}
 		}
-		if (names != NULL)
-			sk_GENERAL_NAME_free(names);
+		if (names != NULL) sk_GENERAL_NAME_free(names);
 	}
 
 	/*
@@ -2419,20 +2411,22 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				RDEBUG3("Skipping %s += '%s'.  Please check that both the "
 					"attribute and value are defined in the dictionaries",
 					attribute, value);
-			} else {
-				/*
-				 *	rdebug_pair_list indents (so pre REXDENT())
-				 */
-				REXDENT();
-				rdebug_pair_list(L_DBG_LVL_2, request, vp, NULL);
-				RINDENT();
 			}
 		}
 
 		BIO_free_all(out);
 	}
 
-	REXDENT();
+	/*
+	 *	Add a copy of the cert_vps to session state.
+	 */
+	if (cert_vps) {
+		/*
+		 *	Print out all the pairs we have so far
+		 */
+		rdebug_pair_list(L_DBG_LVL_2, request, *cert_vps, "&session-state:");
+		fr_pair_add(&request->state, fr_pair_list_copy(request, *cert_vps));
+	}
 
 	switch (ctx->error) {
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
@@ -2492,17 +2486,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 		} /* check_cert_cn */
 
-#ifdef HAVE_OPENSSL_OCSP_H
-		if (my_ok && conf->ocsp_enable){
-			RDEBUG2("Starting OCSP Request");
-			if (X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) {
-				RERROR("Couldn't get issuer_cert for %s", common_name);
-			} else {
-				my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
-			}
-		}
-#endif
-
 		while (conf->verify_client_cert_cmd) {
 			char filename[256];
 			int fd;
@@ -2554,7 +2537,22 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			break;
 		}
 
-
+#ifdef HAVE_OPENSSL_OCSP_H
+		/*
+		 *	Do OCSP last, so we have the complete set of attributes
+		 *	available for the virtual server.
+		 *
+		 *	Fixme: Do we want to store the matching TLS-Client-cert-Filename?
+		 */
+		if (my_ok && conf->ocsp_enable){
+			RDEBUG2("Starting OCSP Request");
+			if (X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert) != 1) {
+				RERROR("Couldn't get issuer_cert for %s", common_name);
+			} else {
+				my_ok = ocsp_check(request, ocsp_store, issuer_cert, client_cert, conf);
+			}
+		}
+#endif
 	} /* depth == 0 */
 
 	if (RDEBUG_ENABLED3) {
