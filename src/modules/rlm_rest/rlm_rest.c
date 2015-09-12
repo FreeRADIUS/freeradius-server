@@ -57,6 +57,7 @@ static CONF_PARSER tls_config[] = {
  */
 static const CONF_PARSER section_config[] = {
 	{ FR_CONF_OFFSET("uri", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, uri), .dflt = "" },
+	{ FR_CONF_OFFSET("proxy", PW_TYPE_STRING, rlm_rest_section_t, proxy) },
 	{ FR_CONF_OFFSET("method", PW_TYPE_STRING, rlm_rest_section_t, method_str), .dflt = "GET" },
 	{ FR_CONF_OFFSET("body", PW_TYPE_STRING, rlm_rest_section_t, body_str), .dflt = "none" },
 	{ FR_CONF_OFFSET("data", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_rest_section_t, data) },
@@ -80,6 +81,7 @@ static const CONF_PARSER section_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("connect_uri", PW_TYPE_STRING, rlm_rest_t, connect_uri) },
 	{ FR_CONF_DEPRECATED("connect_timeout", PW_TYPE_TIMEVAL, rlm_rest_t, connect_timeout) },
+	{ FR_CONF_OFFSET("connect_proxy", PW_TYPE_STRING, rlm_rest_t, connect_proxy) },
 	CONF_PARSER_TERMINATOR
 };
 

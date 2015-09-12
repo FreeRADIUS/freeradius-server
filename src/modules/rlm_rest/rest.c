@@ -359,6 +359,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *tim
 		SET_OPTION(CURLOPT_CONNECT_ONLY, 1);
 		SET_OPTION(CURLOPT_URL, inst->connect_uri);
 		SET_OPTION(CURLOPT_NOSIGNAL, 1);
+		if (inst->connect_proxy) SET_OPTION(CURLOPT_PROXY, inst->connect_proxy);
 
 		DEBUG("rlm_rest (%s): Connecting to \"%s\"", inst->xlat_name, inst->connect_uri);
 
@@ -1990,6 +1991,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	 *	Setup any header options and generic headers.
 	 */
 	SET_OPTION(CURLOPT_URL, uri);
+	if (section->proxy) SET_OPTION(CURLOPT_PROXY, section->proxy);
 	SET_OPTION(CURLOPT_NOSIGNAL, 1);
 	SET_OPTION(CURLOPT_USERAGENT, "FreeRADIUS " RADIUSD_VERSION_STRING);
 

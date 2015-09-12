@@ -106,6 +106,8 @@ typedef struct rlm_rest_section_t {
 	char const		*name;		//!< Section name.
 	char const		*uri;		//!< URI to send HTTP request to.
 
+	char const		*proxy;		//!< Send request via this proxy.
+
 	char const		*method_str;	//!< The string version of the HTTP method.
 	http_method_t		method;		//!< What HTTP method should be used, GET, POST etc...
 
@@ -146,6 +148,8 @@ typedef struct rlm_rest_t {
 
 	char const		*connect_uri;	//!< URI we attempt to connect to, to pre-establish
 						//!< TCP connections.
+
+	char const		*connect_proxy;	//!< Send request via this proxy.
 
 	fr_connection_pool_t	*pool;		//!< Pointer to the connection pool.
 
