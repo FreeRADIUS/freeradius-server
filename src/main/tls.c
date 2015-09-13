@@ -2184,7 +2184,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	ASN1_INTEGER	*sn = NULL;
 	ASN1_TIME	*asn_time = NULL;
-	VALUE_PAIR	**cert_vps = NULL;
+	VALUE_PAIR	*cert_vps = NULL;
 	vp_cursor_t	cursor;
 
 	char **identity;
@@ -2231,7 +2231,7 @@ do { \
 	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	rad_assert(request != NULL);
 
-	fr_cursor_init(&cursor, cert_vps);
+	fr_cursor_init(&cursor, &cert_vps);
 
 	identity = (char **)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -2254,8 +2254,7 @@ do { \
 	 *	have a user identity.  i.e. we don't create the
 	 *	attributes for RadSec connections.
 	 */
-	if (cert_vps && identity &&
-	    (lookup <= 1) && sn && ((size_t) sn->length < (sizeof(buf) / 2))) {
+	if (identity && (lookup <= 1) && sn && ((size_t) sn->length < (sizeof(buf) / 2))) {
 		char *p = buf;
 		int i;
 
@@ -2272,8 +2271,7 @@ do { \
 	 */
 	buf[0] = '\0';
 	asn_time = X509_get_notAfter(client_cert);
-	if (cert_vps && identity && (lookup <= 1) && asn_time &&
-	    (asn_time->length < (int) sizeof(buf))) {
+	if (identity && (lookup <= 1) && asn_time && (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
 		ADD_CERT_ATTR(cert_attr_names[FR_TLS_EXPIRATION][lookup], buf);
@@ -2286,14 +2284,14 @@ do { \
 	X509_NAME_oneline(X509_get_subject_name(client_cert), subject,
 			  sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
-	if (cert_vps && identity && (lookup <= 1) && subject[0]) {
+	if (identity && (lookup <= 1) && subject[0]) {
 		ADD_CERT_ATTR(cert_attr_names[FR_TLS_SUBJECT][lookup], subject);
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
-	if (cert_vps && identity && (lookup <= 1) && issuer[0]) {
+	if (identity && (lookup <= 1) && issuer[0]) {
 		ADD_CERT_ATTR(cert_attr_names[FR_TLS_ISSUER][lookup], issuer);
 	}
 
@@ -2303,7 +2301,7 @@ do { \
 	X509_NAME_get_text_by_NID(X509_get_subject_name(client_cert),
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
-	if (cert_vps && identity && (lookup <= 1) && common_name[0] && subject[0]) {
+	if (identity && (lookup <= 1) && common_name[0] && subject[0]) {
 		ADD_CERT_ATTR(cert_attr_names[FR_TLS_CN][lookup], common_name);
 	}
 
@@ -2311,7 +2309,7 @@ do { \
 	 *	Get the RFC822 Subject Alternative Name
 	 */
 	loc = X509_get_ext_by_NID(client_cert, NID_subject_alt_name, 0);
-	if (cert_vps && (lookup <= 1) && (loc >= 0)) {
+	if ((lookup <= 1) && (loc >= 0)) {
 		X509_EXTENSION *ext = NULL;
 		GENERAL_NAMES *names = NULL;
 		int i;
@@ -2386,7 +2384,7 @@ do { \
 	 *	Grab the X509 extensions, and create attributes out of them.
 	 *	For laziness, we re-use the OpenSSL names
 	 */
-	if (cert_vps && (sk_X509_EXTENSION_num(ext_list) > 0)) {
+	if (sk_X509_EXTENSION_num(ext_list) > 0) {
 		int i, len;
 		char *p;
 		BIO *out;
@@ -2438,14 +2436,14 @@ do { \
 		/*
 		 *	Print out all the pairs we have so far
 		 */
-		rdebug_pair_list(L_DBG_LVL_2, request, *cert_vps, "&session-state:");
-		fr_pair_add(&request->state, fr_pair_list_copy(request, *cert_vps));
+		rdebug_pair_list(L_DBG_LVL_2, request, cert_vps, "&session-state:");
+		fr_pair_add(&request->state, fr_pair_list_copy(request, cert_vps));
 
 		/*
 		 *	Add them to any previously acquired certificate attributes
 		 */
 		fr_cursor_init(&merge, (VALUE_PAIR **)SSL_get_ex_data(ssl, fr_tls_ex_index_cert_vps));
-		fr_cursor_merge(&merge, *cert_vps);
+		fr_cursor_merge(&merge, cert_vps);
 	}
 
 	switch (ctx->error) {
