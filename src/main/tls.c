@@ -2077,14 +2077,14 @@ finish:
 	switch (ocsp_status) {
 	case OCSP_STATUS_OK:
 		RDEBUG2("ocsp: Certificate is valid");
-		vp = pair_make_reply("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
+		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
 		vp->vp_integer = 1;	/* yes */
 		ocsp_status = OCSP_STATUS_OK;
 		break;
 
 	case OCSP_STATUS_SKIPPED:
 	skipped:
-		vp = pair_make_reply("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
+		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
 		vp->vp_integer = 2;	/* skipped */
 		if (conf->ocsp_softfail) {
 			RWDEBUG("ocsp: Unable to check certificate, assuming it's valid");
@@ -2097,7 +2097,7 @@ finish:
 		break;
 
 	default:
-		vp = pair_make_reply("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
+		vp = pair_make_request("TLS-OCSP-Cert-Valid", NULL, T_OP_SET);
 		vp->vp_integer = 0;	/* no */
 		REDEBUG("ocsp: Failed to validate certificate");
 		break;
