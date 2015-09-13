@@ -65,6 +65,13 @@ Changed Modules
 
 The following modules exhibit changed behaviour.
 
+rlm_rest
+~~~~~~~~
+
+``REST-HTTP-Code`` is now inserted into the ``&request:`` list instead of the ``&reply:``
+list, to be compliant with the list _usage guidelines.
+
+.. _usage: http://wiki.freeradius.org/contributing/List-Usage
 
 rlm_sqlcounter and rlm_counter
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
