@@ -316,7 +316,6 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request);
 #define FR_TLS_EX_INDEX_SSN	 (15)
 #define FR_TLS_EX_INDEX_TALLOC	 (16)
 
-extern int fr_tls_ex_index_cert_vps;
 extern int fr_tls_ex_index_vps;
 
 /* configured values goes right here */

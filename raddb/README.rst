@@ -65,6 +65,17 @@ Changed Modules
 
 The following modules exhibit changed behaviour.
 
+rlm_eap
+~~~~~~~
+
+All certificate attributes are available in the ``&session-state:`` list,
+immediately after they're parsed from their ASN1 form.
+
+They will no longer be added to the ``&request:`` list.  You are advised to
+update any references during the upgrade to 3.1
+``s/TLS-Cert-/session-state:TLS-Cert-/``.
+
+
 rlm_rest
 ~~~~~~~~
 
@@ -138,15 +149,3 @@ rlm_sql_postgresql
 Now calls ``PQescapeStringConn`` and no longer produces ``=<hexit><hexit>``
 escape sequences in expanded values.  The ``safe_characters`` config item will
 have no effect when used with this driver.
-
-rlm_sql_eap
-~~~~~~~~~~~
-
-All certificate attributes are available in the ``&session-state:`` list,
-immediately after they're parsed from their ASN1 form.
-
-This is the only way to access them in the OCSP virtual server.
-
-In a future release (3.2 or 4.0), they will no longer be added to the
-``&request:`` list.  You are advised to update any references during the
-upgrade to 3.1 ``s/TLS-Cert-/session-state:TLS-Cert-/``.

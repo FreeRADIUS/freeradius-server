@@ -104,7 +104,6 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
  * needs to be dynamic so we can supply a "free" function
  */
 int fr_tls_ex_index_vps = -1;
-int fr_tls_ex_index_cert_vps = -1;
 
 /* Session */
 static void 		session_close(tls_session_t *ssn);
@@ -2193,14 +2192,13 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509		*issuer_cert;
 #endif
 	VALUE_PAIR	*vp;
-	TALLOC_CTX	*talloc_ctx;
 
 	REQUEST		*request;
 
 #define ADD_CERT_ATTR(_name, _value) \
 do { \
 	VALUE_PAIR *_vp; \
-	_vp = fr_pair_make(talloc_ctx, NULL, _name, _value, T_OP_SET); \
+	_vp = fr_pair_make(request, NULL, _name, _value, T_OP_SET); \
 	if (_vp) { \
 		fr_cursor_insert(&cursor, _vp); \
 	} else { \
@@ -2221,8 +2219,8 @@ do { \
 	if ((lookup > 1) && !my_ok) lookup = 1;
 
 	/*
-	 * Retrieve the pointer to the SSL of the connection currently treated
-	 * and the application specific data stored into the SSL object.
+	 *	Retrieve the pointer to the SSL of the connection currently treated
+	 *	and the application specific data stored into the SSL object.
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
@@ -2237,8 +2235,6 @@ do { \
 #ifdef HAVE_OPENSSL_OCSP_H
 	ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_STORE);
 #endif
-
-	talloc_ctx = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TALLOC);
 
 	/*
 	 *	Get the Serial Number
@@ -2415,7 +2411,7 @@ do { \
 
 			value[len] = '\0';
 
-			vp = fr_pair_make(talloc_ctx, NULL, attribute, value, T_OP_ADD);
+			vp = fr_pair_make(request, NULL, attribute, value, T_OP_ADD);
 			if (!vp) {
 				RDEBUG3("Skipping %s += '%s'.  Please check that both the "
 					"attribute and value are defined in the dictionaries",
@@ -2432,18 +2428,11 @@ do { \
 	 *	Add a copy of the cert_vps to session state.
 	 */
 	if (cert_vps) {
-		vp_cursor_t merge;
 		/*
 		 *	Print out all the pairs we have so far
 		 */
 		rdebug_pair_list(L_DBG_LVL_2, request, cert_vps, "&session-state:");
-		fr_pair_add(&request->state, fr_pair_list_copy(request, cert_vps));
-
-		/*
-		 *	Add them to any previously acquired certificate attributes
-		 */
-		fr_cursor_init(&merge, (VALUE_PAIR **)SSL_get_ex_data(ssl, fr_tls_ex_index_cert_vps));
-		fr_cursor_merge(&merge, cert_vps);
+		fr_pair_add(&request->state, cert_vps);
 	}
 
 	switch (ctx->error) {
@@ -2671,18 +2660,6 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
 	DEBUG2(LOG_PREFIX ": Freeing cached session VPs");
 
 	fr_pair_list_free(&vp);
-}
-
-static void sess_free_cert_vps(UNUSED void *parent, void *data_ptr,
-				UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
-				UNUSED long argl, UNUSED void *argp)
-{
-	VALUE_PAIR **cert_vps = data_ptr;
-	if (!cert_vps) return;
-
-	DEBUG2(LOG_PREFIX ": Freeing cached session Certificates");
-
-	fr_pair_list_free(cert_vps);
 }
 
 /** Add all the default ciphers and message digests reate our context.
@@ -3415,7 +3392,6 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 */
 	} else if (!SSL_session_reused(ssn->ssl)) {
 		size_t size;
-		VALUE_PAIR **cert_vps;
 		char buffer[2 * MAX_SESSION_SIZE + 1];
 
 		size = ssn->ssl->session->session_id_length;
@@ -3437,23 +3413,6 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		vp = fr_pair_list_copy_by_num(talloc_ctx, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
 		if (vp) fr_pair_add(&vps, vp);
-
-		/*
-		 *	Remove me in FreeRADIUS 3.2/4.0 - Duplicate functionality to session-state
-		 */
-		cert_vps = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, fr_tls_ex_index_cert_vps);
-		if (cert_vps) {
-			/*
-			 *	@todo: some go into reply, others into
-			 *	request
-			 */
-			fr_pair_add(&vps, fr_pair_list_copy(talloc_ctx, *cert_vps));
-
-			/*
-			 *	Save the cert_vps in the packet, so that we can see them.
-			 */
-			fr_pair_add(&request->packet->vps, fr_pair_list_copy(request->packet, *cert_vps));
-		}
 
 		if (vps) {
 			SSL_SESSION_set_ex_data(ssn->ssl->session, fr_tls_ex_index_vps, vps);
@@ -3560,7 +3519,6 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 
 {
 	int err;
-	VALUE_PAIR **cert_vps;
 
 	/*
 	 *	Decrypt the complete record.
@@ -3618,17 +3576,6 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 *	Passed all checks, successfully decrypted data
 	 */
 	ssn->clean_out.used = err;
-
-	/*
-	 *	Add the certificates to intermediate packets, so that
-	 *	the inner tunnel policies can use them.
-	 */
-
-	/*
-	 *	Remove me in FreeRADIUS 3.2/4.0 - Duplicate functionality to session-state
-	 */
-	cert_vps = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, fr_tls_ex_index_cert_vps);
-	if (cert_vps) fr_pair_add(&request->packet->vps, fr_pair_list_copy(request->packet, *cert_vps));
 
 	return FR_TLS_OK;
 }
