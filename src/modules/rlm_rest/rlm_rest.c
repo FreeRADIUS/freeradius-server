@@ -129,7 +129,7 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 		code = rest_get_handle_code(handle);
 
 		RINDENT();
-		RDEBUG2("&reply:REST-HTTP-Code := %i", code);
+		RDEBUG2("&REST-HTTP-Code := %i", code);
 		REXDENT();
 
 		value.length = sizeof(value.integer);
@@ -139,10 +139,10 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 		 *	Find the reply list, and appropriate context in the
 		 *	current request.
 		 */
-		RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REPLY);
+		RADIUS_LIST_AND_CTX(ctx, list, request, REQUEST_CURRENT, PAIR_LIST_REQUEST);
 		if (!list || (fr_pair_update_by_num(ctx, list, PW_REST_HTTP_STATUS_CODE, 0,
 						    TAG_ANY, PW_TYPE_INTEGER, &value) < 0)) {
-			REDEBUG("Failed updating &reply:REST-HTTP-Code");
+			REDEBUG("Failed updating &REST-HTTP-Code");
 			return -1;
 		}
 	}
