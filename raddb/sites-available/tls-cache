@@ -64,7 +64,7 @@ authorize {
 	#  This section is run whenever the server needs to write an
 	#  entry to the TLS session cache.
 	#
-	#  It should write the attribute &control:TLS-Session-Data
+	#  It should write the attribute &TLS-Session-Data
 	#  to the cache, along with any other attributes which
 	#  need to be cached.
 	#

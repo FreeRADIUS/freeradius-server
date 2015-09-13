@@ -1265,11 +1265,12 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	/*
 	 *	Put the SSL data into an attribute.
 	 */
-	vp = fr_pair_afrom_num(request, PW_TLS_SESSION_DATA, 0);
+	vp = fr_pair_afrom_num(request->packet, PW_TLS_SESSION_DATA, 0);
 	if (!vp) goto error;
 
 	fr_pair_value_memsteal(vp, data);
-	fr_pair_add(&request->config, vp);
+	rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
+	fr_pair_add(&request->packet->vps, vp);
 	data = NULL;
 
 	/*
