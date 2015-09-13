@@ -1443,6 +1443,13 @@ static void request_finish(REQUEST *request, int action)
 		 *	Don't print a reply if there's none to send.
 		 */
 		if (request->reply->code != 0) {
+			if (rad_debug_lvl && request->state &&
+			    (request->reply->code == PW_CODE_ACCESS_ACCEPT)) {
+				if (!fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) {
+					RWDEBUG2("Unused attributes found in &session-state:");
+				}
+			}
+
 			debug_packet(request, request->reply, false);
 			request->listener->send(request->listener, request);
 		}
