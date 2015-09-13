@@ -1728,10 +1728,12 @@ static time_t ocsp_asn1time_to_epoch(ASN1_TIME const *asn1){
  * @return
  *	- 0 if no valid URL is contained in the certificate.
  *	- 1 if a URL was found and parsed.
+ *	- -1 if at least one URL was found, but none could be parsed.
  */
 static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out, char **path_out, int *is_https)
 {
 	int			i;
+	bool			found_uri = false;
 
 	AUTHORITY_INFO_ACCESS	*aia;
 	ACCESS_DESCRIPTION	*ad;
@@ -1742,11 +1744,12 @@ static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out, cha
 		ad = sk_ACCESS_DESCRIPTION_value(aia, i);
 		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
 		if (ad->location->type == GEN_URI) continue;
+		found_uri = false;
 
 		if (OCSP_parse_url((char *) ad->location->d.ia5->data, host_out,
 				   port_out, path_out, is_https)) return 1;
 	}
-	return 0;
+	return found_uri ? -1 : 0;
 }
 
 /** Drain errors from an OpenSSL bio and print them to the error log
@@ -1871,16 +1874,34 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	if (conf->ocsp_override_url) {
 		char *url;
 
+	use_ocsp_url:
 		memcpy(&url, &conf->ocsp_url, sizeof(url));
 		/* Reading the libssl src, they do a strdup on the URL, so it could of been const *sigh* */
 		OCSP_parse_url(url, &host, &port, &path, &use_ssl);
+		if (!host || !port || !path) {
+			RWDEBUG("ocsp: Host or port or path missing from configured URL \"%s\".  Not doing OCSP", url);
+			goto skipped;
+		}
 	} else {
-		ocsp_parse_cert_url(client_cert, &host, &port, &path, &use_ssl);
-	}
+		int ret;
 
-	if (!host || !port || !path) {
-		RWDEBUG("ocsp: Host or port or path missing.  Not doing OCSP");
-		goto skipped;
+		ret = ocsp_parse_cert_url(client_cert, &host, &port, &path, &use_ssl);
+		switch (ret) {
+		case -1:
+			RWDEBUG("ocsp: Invalid URL in certificate.  Not doing OCSP");
+			break;
+
+		case 0:
+			if (conf->ocsp_url) {
+				RWDEBUG("ocsp: No OCSP URL in certificate, falling back to configured URL");
+				goto use_ocsp_url;
+			}
+			RWDEBUG("ocsp: No OCSP URL in certificate.  Not doing OCSP");
+			break;
+
+		case 1:
+			break;
+		}
 	}
 
 	RDEBUG2("ocsp: Using responder URL \"http://%s:%s%s\"", host, port, path);
