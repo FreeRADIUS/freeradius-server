@@ -1900,6 +1900,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 			break;
 
 		case 1:
+			rad_assert(host, port, path);
 			break;
 		}
 	}
