@@ -401,7 +401,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	 *	No State, don't do anything.
 	 */
 	if (!fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY)) {
-		RDEBUG3("session-state: No State attribute");
+		RDEBUG3("No &request:State attribute, can't restore &session-state");
 		return;
 	}
 
@@ -413,10 +413,11 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	 *	isn't thread-safe.
 	 */
 	if (entry) {
+		RDEBUG2("Restoring &session-state");
 		fr_pair_list_move_by_num(request, &request->state, &entry->vps, 0, 0, TAG_ANY);
 		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 	} else {
-		RDEBUG2("session-state: No cached attributes");
+		RDEBUG3("No &session-state attributes to restore");
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
@@ -437,11 +438,11 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	fr_state_t *state = global_state;
 
 	if (!request->state) {
-		RDEBUG3("session-state: Nothing to cache");
+		RDEBUG3("No &session-state attributes to store");
 		return true;
 	}
 
-	RDEBUG2("session-state: Saving cached attributes");
+	RDEBUG2("Saving &session-state");
 	rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
