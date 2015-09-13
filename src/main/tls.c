@@ -1744,7 +1744,7 @@ static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out, cha
 		ad = sk_ACCESS_DESCRIPTION_value(aia, i);
 		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
 		if (ad->location->type == GEN_URI) continue;
-		found_uri = false;
+		found_uri = true;
 
 		if (OCSP_parse_url((char *) ad->location->d.ia5->data, host_out,
 				   port_out, path_out, is_https)) return 1;
