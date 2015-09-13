@@ -2262,7 +2262,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		/*
 		 *	Smash \n --> CR.
 		 *
-		 *	The OUTPUT of xlat is a printable string.  The INPUT might not be...
+		 *	The OUTPUT of xlat is a "raw" string.  The INPUT is a printable string.
 		 *
 		 *	This is really the reverse of fr_prints().
 		 */
