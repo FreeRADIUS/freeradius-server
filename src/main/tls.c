@@ -2366,6 +2366,7 @@ do { \
 		char const *p = X509_verify_cert_error_string(err);
 		RERROR("SSL says error %d : %s", err, p);
 		REXDENT();
+		fr_pair_list_free(&cert_vps);
 		return my_ok;
 	}
 
