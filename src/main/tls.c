@@ -2184,7 +2184,9 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	ASN1_INTEGER	*sn = NULL;
 	ASN1_TIME	*asn_time = NULL;
-	VALUE_PAIR	**cert_vps;
+	VALUE_PAIR	**cert_vps = NULL;
+	vp_cursor_t	cursor;
+
 	char **identity;
 #ifdef HAVE_OPENSSL_OCSP_H
 	X509_STORE	*ocsp_store = NULL;
@@ -2194,6 +2196,17 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	TALLOC_CTX	*talloc_ctx;
 
 	REQUEST		*request;
+
+#define ADD_CERT_ATTR(_name, _value) \
+do { \
+	VALUE_PAIR *_vp; \
+	_vp = fr_pair_make(talloc_ctx, NULL, _name, _value, T_OP_SET); \
+	if (_vp) { \
+		fr_cursor_insert(&cursor, _vp); \
+	} else { \
+		RWDEBUG("Failed creating attribute %s: %s", _name, fr_strerror()); \
+	} \
+} while (0)
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
@@ -2217,7 +2230,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	rad_assert(request != NULL);
-	cert_vps = (VALUE_PAIR **)SSL_get_ex_data(ssl, fr_tls_ex_index_cert_vps);
+
+	fr_cursor_init(&cursor, cert_vps);
 
 	identity = (char **)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_IDENTITY);
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -2249,7 +2263,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			sprintf(p, "%02x", (unsigned int)sn->data[i]);
 			p += 2;
 		}
-		fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
+		ADD_CERT_ATTR(cert_attr_names[FR_TLS_SERIAL][lookup], buf);
 	}
 
 
@@ -2262,7 +2276,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	    (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
-		fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
+		ADD_CERT_ATTR(cert_attr_names[FR_TLS_EXPIRATION][lookup], buf);
 	}
 
 	/*
@@ -2273,14 +2287,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			  sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
 	if (cert_vps && identity && (lookup <= 1) && subject[0]) {
-		fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
+		ADD_CERT_ATTR(cert_attr_names[FR_TLS_SUBJECT][lookup], subject);
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
 	if (cert_vps && identity && (lookup <= 1) && issuer[0]) {
-		fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
+		ADD_CERT_ATTR(cert_attr_names[FR_TLS_ISSUER][lookup], issuer);
 	}
 
 	/*
@@ -2290,7 +2304,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
 	if (cert_vps && identity && (lookup <= 1) && common_name[0] && subject[0]) {
-		fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
+		ADD_CERT_ATTR(cert_attr_names[FR_TLS_CN][lookup], common_name);
 	}
 
 	/*
@@ -2310,14 +2324,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				switch (name->type) {
 #ifdef GEN_EMAIL
 				case GEN_EMAIL:
-					fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
-						     (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
+					ADD_CERT_ATTR(cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
+						      (char *) ASN1_STRING_data(name->d.rfc822Name));
 					break;
 #endif	/* GEN_EMAIL */
 #ifdef GEN_DNS
 				case GEN_DNS:
-					fr_pair_make(talloc_ctx, cert_vps, cert_attr_names[FR_TLS_SAN_DNS][lookup],
-						     (char *) ASN1_STRING_data(name->d.dNSName), T_OP_SET);
+					ADD_CERT_ATTR(cert_attr_names[FR_TLS_SAN_DNS][lookup],
+						      (char *) ASN1_STRING_data(name->d.dNSName));
 					break;
 #endif	/* GEN_DNS */
 #ifdef GEN_OTHERNAME
@@ -2327,11 +2341,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 					/* we've got a UPN - Must be ASN1-encoded UTF8 string */
 					if (name->d.otherName->value->type == V_ASN1_UTF8STRING) {
-						fr_pair_make(talloc_ctx, cert_vps,
-							     cert_attr_names[FR_TLS_SAN_UPN][lookup],
-							     (char *)ASN1_STRING_data(
-								name->d.otherName->value->value.utf8string),
-							     T_OP_SET);
+						ADD_CERT_ATTR(cert_attr_names[FR_TLS_SAN_UPN][lookup],
+							      (char *) name->d.otherName->value->value.utf8string);
 						break;
 					}
 
@@ -2406,11 +2417,13 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 			value[len] = '\0';
 
-			vp = fr_pair_make(talloc_ctx, cert_vps, attribute, value, T_OP_ADD);
+			vp = fr_pair_make(talloc_ctx, NULL, attribute, value, T_OP_ADD);
 			if (!vp) {
 				RDEBUG3("Skipping %s += '%s'.  Please check that both the "
 					"attribute and value are defined in the dictionaries",
 					attribute, value);
+			} else {
+				fr_cursor_insert(&cursor, vp);
 			}
 		}
 
@@ -2421,11 +2434,18 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 *	Add a copy of the cert_vps to session state.
 	 */
 	if (cert_vps) {
+		vp_cursor_t merge;
 		/*
 		 *	Print out all the pairs we have so far
 		 */
 		rdebug_pair_list(L_DBG_LVL_2, request, *cert_vps, "&session-state:");
 		fr_pair_add(&request->state, fr_pair_list_copy(request, *cert_vps));
+
+		/*
+		 *	Add them to any previously acquired certificate attributes
+		 */
+		fr_cursor_init(&merge, (VALUE_PAIR **)SSL_get_ex_data(ssl, fr_tls_ex_index_cert_vps));
+		fr_cursor_merge(&merge, *cert_vps);
 	}
 
 	switch (ctx->error) {
