@@ -779,6 +779,7 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
  * @param[in] level Debug level (1-4).
  * @param[in] request to read logging params from.
  * @param[in] vp to print.
+ * @param[in] prefix (optional).
  */
 void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *prefix)
 {
