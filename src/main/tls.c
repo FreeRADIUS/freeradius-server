@@ -1350,14 +1350,24 @@ err:
 }
 
 #ifdef HAVE_OPENSSL_OCSP_H
-/*
- * This function extracts the OCSP Responder URL
- * from an existing x509 certificate.
+
+/** Extract components of OCSP responser URL from a certificate
+ *
+ * @param[in] cert to extract URL from.
+ * @param[out] host_out Portion of the URL (must be freed with free()).
+ * @param[out] port_out Port portion of the URL (must be freed with free()).
+ * @param[out] path_out Path portion of the URL (must be freed with free()).
+ * @param[out] is_https Whether the responder should be contacted using https.
+ * @return
+ *	- 0 if no valid URL is contained in the certificate.
+ *	- 1 if a URL was found and parsed.
+ *	- -1 if at least one URL was found, but none could be parsed.
  */
-static int ocsp_parse_cert_url(X509 *cert, char **phost, char **pport,
-			       char **ppath, int *pssl)
+static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out,
+			       char **path_out, int *is_http)
 {
 	int			i;
+	bool			found_uri = false;
 
 	AUTHORITY_INFO_ACCESS	*aia;
 	ACCESS_DESCRIPTION	*ad;
@@ -1366,15 +1376,14 @@ static int ocsp_parse_cert_url(X509 *cert, char **phost, char **pport,
 
 	for (i = 0; i < sk_ACCESS_DESCRIPTION_num(aia); i++) {
 		ad = sk_ACCESS_DESCRIPTION_value(aia, i);
-		if (OBJ_obj2nid(ad->method) == NID_ad_OCSP) {
-			if (ad->location->type == GEN_URI) {
-			  if(OCSP_parse_url((char *) ad->location->d.ia5->data,
-						  phost, pport, ppath, pssl))
-					return 1;
-			}
-		}
+		if (OBJ_obj2nid(ad->method) != NID_ad_OCSP) continue;
+		if (ad->location->type != GEN_URI) continue;
+		found_uri = true;
+
+		if (OCSP_parse_url((char *) ad->location->d.ia5->data, host_out,
+				   port_out, path_out, is_https)) return 1;
 	}
-	return 0;
+	return found_uri ? -1 : 0;
 }
 
 /*
@@ -1426,17 +1435,34 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 	if (conf->ocsp_override_url) {
 		char *url;
 
+	use_ocsp_url:
 		memcpy(&url, &conf->ocsp_url, sizeof(url));
 		/* Reading the libssl src, they do a strdup on the URL, so it could of been const *sigh* */
 		OCSP_parse_url(url, &host, &port, &path, &use_ssl);
+		if (!host || !port || !path) {
+			RWDEBUG("ocsp: Host or port or path missing from configured URL \"%s\".  Not doing OCSP", url);
+			goto skipped;
+		}
 	} else {
-		ocsp_parse_cert_url(client_cert, &host, &port, &path, &use_ssl);
-	}
+		int ret;
 
-	if (!host || !port || !path) {
-		RWDEBUG("ocsp: Host / port / path missing.  Not doing OCSP");
-		ocsp_ok = 2;
-		goto ocsp_skip;
+		ret = ocsp_parse_cert_url(client_cert, &host, &port, &path, &use_ssl);
+		switch (ret) {
+		case -1:
+			RWDEBUG("ocsp: Invalid URL in certificate.  Not doing OCSP");
+			break;
+
+		case 0:
+			if (conf->ocsp_url) {
+				RWDEBUG("ocsp: No OCSP URL in certificate, falling back to configured URL");
+				goto use_ocsp_url;
+			}
+			RWDEBUG("ocsp: No OCSP URL in certificate.  Not doing OCSP");
+			break;
+
+		case 1:
+			break;
+		}
 	}
 
 	RDEBUG2("ocsp: Using responder URL \"http://%s:%s%s\"", host, port, path);
