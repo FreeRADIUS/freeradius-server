@@ -7,7 +7,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* More documentation on contributing and how to write
 	  modules.
 	* Write HTTP status code resulting from rlm_rest operations
-	  to reply:Rest-HTTP-Status-Code.
+	  to &request:Rest-HTTP-Status-Code.
 	* Update radiusd.service for systemd.
 	* Open IPv6 proxy socket if the server is listening on IPV6
 	  auth / acct / coa packets.
@@ -61,6 +61,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  maximum memory used, most typically for TLS based EAP methods.
 	* Prevent the server from unlinking the control socket of an
 	  already running instance.
+	* Fallback to using the configured OCSP URL if one exists, and
+	  no URL is provided in the certificate.
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
