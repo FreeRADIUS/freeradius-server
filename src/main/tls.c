@@ -1458,7 +1458,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 				goto use_ocsp_url;
 			}
 			RWDEBUG("ocsp: No OCSP URL in certificate.  Not doing OCSP");
-			break;
+			goto skipped;
 
 		case 1:
 			break;
