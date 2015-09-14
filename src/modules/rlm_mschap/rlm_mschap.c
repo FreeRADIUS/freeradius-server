@@ -1960,14 +1960,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			 *	practice it doesn't work.
 			 *	Instead, we should send nthashhash
 			 *
-			 *	This is an error on RFC 2548.
+			 *	This is an error in RFC 2548.
 			 */
 			/*
 			 *	do_mschap cares to zero nthashhash if NT hash
 			 *	is not available.
 			 */
 			memcpy(mppe_sendkey + 8, nthashhash, NT_DIGEST_LENGTH);
-			mppe_add_reply(request, "MS-CHAP-MPPE-Keys", mppe_sendkey, 32);
+			mppe_add_reply(request, "MS-CHAP-MPPE-Keys", mppe_sendkey, 24);
 		} else if (chap == 2) {
 			RDEBUG2("Adding MS-CHAPv2 MPPE keys");
 			mppe_chap2_gen_keys128(nthashhash, response->vp_octets + 26, mppe_sendkey, mppe_recvkey);
