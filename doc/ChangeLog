@@ -6,8 +6,6 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  module authors will have to do the same.
 	* More documentation on contributing and how to write
 	  modules.
-	* Write HTTP status code resulting from rlm_rest operations
-	  to &request:Rest-HTTP-Status-Code.
 	* Update radiusd.service for systemd.
 	* Open IPv6 proxy socket if the server is listening on IPV6
 	  auth / acct / coa packets.
