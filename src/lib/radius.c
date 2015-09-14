@@ -3514,16 +3514,25 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 			buffer[253] = '\0';
 
 			/*
-			 *	Take off trailing zeros from the END.
-			 *	This allows passwords to have zeros in
-			 *	the middle of a field.
-			 *
-			 *	However, if the password has a zero at
-			 *	the end, it will get mashed by this
-			 *	code.  There's really no way around
-			 *	that.
+			 *	MS-CHAP-MPPE-Keys are 24 octets, and
+			 *	encrypted.  Since it's binary, we can't
+			 *	look for trailing zeros.
 			 */
-			while ((datalen > 0) && (buffer[datalen - 1] == '\0')) datalen--;
+			if (da->flags.length && (datalen > da->flags.length)) {
+				datalen = da->flags.length;
+			} else {
+				/*
+				 *	Take off trailing zeros from the END.
+				 *	This allows passwords to have zeros in
+				 *	the middle of a field.
+				 *
+				 *	However, if the password has a zero at
+				 *	the end, it will get mashed by this
+				 *	code.  There's really no way around
+				 *	that.
+				 */
+				while ((datalen > 0) && (buffer[datalen - 1] == '\0')) datalen--;
+			}
 			break;
 
 		/*
