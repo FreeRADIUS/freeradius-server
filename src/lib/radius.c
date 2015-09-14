@@ -3518,8 +3518,10 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 			 *	encrypted.  Since it's binary, we can't
 			 *	look for trailing zeros.
 			 */
-			if (da->flags.length && (datalen > da->flags.length)) {
-				datalen = da->flags.length;
+			if (da->flags.length) {
+				if (datalen > da->flags.length) {
+					datalen = da->flags.length;
+				} /* else leave datalen alone */
 			} else {
 				/*
 				 *	Take off trailing zeros from the END.
