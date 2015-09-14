@@ -1364,7 +1364,7 @@ err:
  *	- -1 if at least one URL was found, but none could be parsed.
  */
 static int ocsp_parse_cert_url(X509 *cert, char **host_out, char **port_out,
-			       char **path_out, int *is_http)
+			       char **path_out, int *is_https)
 {
 	int			i;
 	bool			found_uri = false;
