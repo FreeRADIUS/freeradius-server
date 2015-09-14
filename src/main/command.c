@@ -466,6 +466,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	 */
 	} else {
 		int ret;
+		int client_fd;
 
 		ret = fstat(dir_fd, &st);
 		if (ret < 0) {
@@ -516,7 +517,19 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 					   "permissions are %s (%s)", str_need, oct_need, str_have, oct_have);
 			goto error;
 		}
+
+		/*
+		 *	Check if a server is already listening on the
+		 *	socket?
+		 */
+		client_fd = fr_socket_client_unix(path, false);
+		if (client_fd >= 0) {
+			fr_strerror_printf("Control socket '%s' is already in use", path);
+			close(client_fd);
+			return -1;
+		}
 	}
+
 	name = strrchr(path, FR_DIR_SEP);
 	if (!name) {
 		fr_strerror_printf("Can't determine socket name");
