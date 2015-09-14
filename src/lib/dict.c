@@ -723,19 +723,8 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	}
 
 	/*
-	 *	Allow for generic pointers
+	 *	Do various sanity checks.
 	 */
-	switch (type) {
-	default:
-		break;
-
-	case PW_TYPE_STRING:
-	case PW_TYPE_OCTETS:
-	case PW_TYPE_TLV:
-		flags.is_pointer = true;
-		break;
-	}
-
 	if (attr < 0) {
 		fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (less than zero)");
 		return -1;
@@ -761,6 +750,118 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 			     (flags.encrypt != FLAG_ENCRYPT_NONE))) {
 		fr_strerror_printf("The \"concat\" flag cannot be used with any other flag");
 		return -1;
+	}
+
+	if (flags.length && (type != PW_TYPE_OCTETS)) {
+		fr_strerror_printf("The \"length\" flag can only be set for attributes of type \"octets\"");
+		return -1;
+	}
+
+	if (flags.length && (flags.has_tag || flags.array || flags.is_tlv || flags.has_tlv ||
+			     flags.concat || flags.evs || flags.extended || flags.long_extended ||
+			     (flags.encrypt > FLAG_ENCRYPT_USER_PASSWORD))) {
+		fr_strerror_printf("The \"length\" flag cannot be used with any other flag");
+		return -1;
+	}
+
+	/*
+	 *	Force "length" for data types of fixed length;
+	 */
+	switch (type) {
+	case PW_TYPE_BYTE:
+		flags.length = 1;
+		break;
+
+	case PW_TYPE_SHORT:
+		flags.length = 2;
+		break;
+
+	case PW_TYPE_DATE:
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_SIGNED:
+		flags.length = 4;
+		break;
+
+	case PW_TYPE_INTEGER64:
+		flags.length = 8;
+		break;
+
+	case PW_TYPE_ETHERNET:
+		flags.length = 6;
+		break;
+
+	case PW_TYPE_IFID:
+		flags.length = 8;
+		break;
+
+	case PW_TYPE_IPV6_ADDR:
+		flags.length = 16;
+		break;
+
+	case PW_TYPE_EXTENDED:
+		if ((vendor != 0) || (attr < 241)) {
+			fr_strerror_printf("Attributes of type \"extended\" MUST be "
+					   "RFC attributes with value >= 241.");
+			return -1;
+		}
+
+		flags.length = 0;
+		flags.extended = 1;
+		break;
+
+	case PW_TYPE_LONG_EXTENDED:
+		if ((vendor != 0) || (attr < 241)) {
+			fr_strerror_printf("Attributes of type \"long-extended\" MUST "
+					   "be RFC attributes with value >= 241.");
+			return -1;
+		}
+
+		flags.length = 0;
+		flags.extended = 1;
+		flags.long_extended = 1;
+		break;
+
+	case PW_TYPE_EVS:
+		if (attr != PW_VENDOR_SPECIFIC) {
+			fr_strerror_printf("Attributes of type \"evs\" MUST have "
+					   "attribute code 26.");
+			return -1;
+		}
+
+		flags.length = 0;
+		flags.extended = 1;
+		flags.evs = 1;
+		break;
+
+	case PW_TYPE_STRING:
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_TLV:
+		flags.is_pointer = true;
+		break;
+
+	default:
+		break;
+	}
+
+	/*
+	 *	Stupid hacks for MS-CHAP-MPPE-Keys.  The User-Password
+	 *	encryption method has no provisions for encoding the
+	 *	length of the data.  For User-Password, the data is
+	 *	(presumably) all printable non-zero data.  For
+	 *	MS-CHAP-MPPE-Keys, the data is binary crap.  So... we
+	 *	MUST specify a length in the dictionary.
+	 */
+	if ((flags.encrypt == FLAG_ENCRYPT_USER_PASSWORD) && (type != PW_TYPE_STRING)) {
+		if (type != PW_TYPE_OCTETS) {
+			fr_strerror_printf("The \"encrypt=1\" flag cannot be used with non-string data types");
+			return -1;
+		}
+
+		if (flags.length == 0) {
+			fr_strerror_printf("The \"encrypt=1\" flag MUST be used with an explicit length for 'octets' data types");
+			return -1;
+		}
 	}
 
 	if ((vendor & (FR_MAX_VENDOR -1)) != 0) {
@@ -1322,7 +1423,7 @@ static int process_attribute(char const* fn, int const line,
 	unsigned int    vendor = 0;
 	unsigned int	value;
 	int		type;
-	unsigned int	length = 0;
+	unsigned int	length;
 	ATTR_FLAGS	flags;
 	char		*p;
 
@@ -1421,84 +1522,14 @@ static int process_attribute(char const* fn, int const line,
 			fr_strerror_printf("dict_init: %s[%d]: invalid length", fn, line);
 			return -1;
 		}
+
+		flags.length = length;
 	}
 
 	/*
-	 *	Only look up the vendor if the string
-	 *	is non-empty.
+	 *	Parse options.
 	 */
-	if (argc < 4) {
-		/*
-		 *	Force "length" for data types of fixed length;
-		 */
-		switch (type) {
-		case PW_TYPE_BYTE:
-			length = 1;
-			break;
-
-		case PW_TYPE_SHORT:
-			length = 2;
-			break;
-
-		case PW_TYPE_DATE:
-		case PW_TYPE_IPV4_ADDR:
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_SIGNED:
-			length = 4;
-			break;
-
-		case PW_TYPE_INTEGER64:
-			length = 8;
-			break;
-
-		case PW_TYPE_ETHERNET:
-			length = 6;
-			break;
-
-		case PW_TYPE_IFID:
-			length = 8;
-			break;
-
-		case PW_TYPE_IPV6_ADDR:
-			length = 16;
-			break;
-
-		case PW_TYPE_EXTENDED:
-			if ((vendor != 0) || (value < 241)) {
-				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"extended\" MUST be "
-						   "RFC attributes with value >= 241.", fn, line);
-				return -1;
-			}
-			flags.extended = 1;
-			break;
-
-		case PW_TYPE_LONG_EXTENDED:
-			if ((vendor != 0) || (value < 241)) {
-				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"long-extended\" MUST "
-						   "be RFC attributes with value >= 241.", fn, line);
-				return -1;
-			}
-			flags.extended = 1;
-			flags.long_extended = 1;
-			break;
-
-		case PW_TYPE_EVS:
-			flags.extended = 1;
-			flags.evs = 1;
-			if (value != PW_VENDOR_SPECIFIC) {
-				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"evs\" MUST have "
-						   "attribute code 26.", fn, line);
-				return -1;
-			}
-			break;
-
-		default:
-			break;
-		}
-
-		flags.length = length;
-
-	} else {		/* argc == 4: we have options */
+	if (argc >= 4) {
 		char *key, *next, *last;
 
 		/*
@@ -1506,11 +1537,6 @@ static int process_attribute(char const* fn, int const line,
 		 */
 		if (flags.extended) {
 			fr_strerror_printf("dict_init: %s[%d]: Extended attributes cannot use flags", fn, line);
-			return -1;
-		}
-
-		if (length != 0) {
-			fr_strerror_printf("dict_init: %s[%d]: length cannot be used with options", fn, line);
 			return -1;
 		}
 
