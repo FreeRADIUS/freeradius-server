@@ -2720,6 +2720,8 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (this->fd < 0) {
 		ERROR("Failed creating control socket \"%s\": %s", sock->path, fr_strerror());
+		if (sock->copy) talloc_free(sock->copy);
+		sock->copy = NULL;
 		return -1;
 	}
 
