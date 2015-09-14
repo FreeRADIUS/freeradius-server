@@ -542,7 +542,6 @@ fi
 %{_libdir}/freeradius/rlm_always.so
 %{_libdir}/freeradius/rlm_attr_filter.so
 %{_libdir}/freeradius/rlm_cache.so
-%{_libdir}/freeradius/rlm_cache_memcached.so
 %{_libdir}/freeradius/rlm_cache_rbtree.so
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_counter.so
@@ -561,12 +560,10 @@ fi
 %{_libdir}/freeradius/rlm_eap_sim.so
 %{_libdir}/freeradius/rlm_eap_tls.so
 %{_libdir}/freeradius/rlm_eap_ttls.so
-%{_libdir}/freeradius/rlm_example.so
 %{_libdir}/freeradius/rlm_exec.so
 %{_libdir}/freeradius/rlm_expiration.so
 %{_libdir}/freeradius/rlm_expr.so
 %{_libdir}/freeradius/rlm_files.so
-%{_libdir}/freeradius/rlm_idn.so
 %{_libdir}/freeradius/rlm_ippool.so
 %{_libdir}/freeradius/rlm_linelog.so
 %{_libdir}/freeradius/rlm_logintime.so
@@ -579,7 +576,6 @@ fi
 %{_libdir}/freeradius/rlm_radutmp.so
 %{_libdir}/freeradius/rlm_realm.so
 %{_libdir}/freeradius/rlm_replicate.so
-%{_libdir}/freeradius/rlm_smsotp.so
 %{_libdir}/freeradius/rlm_soh.so
 %{_libdir}/freeradius/rlm_sometimes.so
 %{_libdir}/freeradius/rlm_sql.so
