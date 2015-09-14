@@ -1441,7 +1441,8 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 		OCSP_parse_url(url, &host, &port, &path, &use_ssl);
 		if (!host || !port || !path) {
 			RWDEBUG("ocsp: Host or port or path missing from configured URL \"%s\".  Not doing OCSP", url);
-			goto skipped;
+			ocsp_ok = 2;
+			goto ocsp_ok;
 		}
 	} else {
 		int ret;
@@ -1458,7 +1459,8 @@ static int ocsp_check(REQUEST *request, X509_STORE *store, X509 *issuer_cert, X5
 				goto use_ocsp_url;
 			}
 			RWDEBUG("ocsp: No OCSP URL in certificate.  Not doing OCSP");
-			goto skipped;
+			ocsp_ok = 2;
+			goto ocsp_ok;
 
 		case 1:
 			break;
