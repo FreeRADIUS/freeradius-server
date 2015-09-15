@@ -2055,7 +2055,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	if (now.tv_sec < next){
 		vp = pair_make_reply("TLS-OCSP-Next-Update", NULL, T_OP_SET);
 		vp->vp_integer = next - now.tv_sec;
-		rdebug_pair(L_DBG_LVL_2, request, vp, "ocsp");
+		rdebug_pair(L_DBG_LVL_2, request, vp, "ocsp:");
 	} else {
 		RDEBUG2("ocsp: Update time is in the past.  Not adding &reply:TLS-OCSP-Next-Update");
 	}
