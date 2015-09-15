@@ -759,7 +759,7 @@ int main_config_init(void)
 	 *
 	 *	Which should be enough for many configurations.
 	 */
-	main_config.talloc_pool_size = 32 * 1024; /* default */
+	main_config.talloc_pool_size = 8 * 1024; /* default */
 
 	/*
 	 *	Read the distribution dictionaries first, then
@@ -953,7 +953,7 @@ do {\
 
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
 
-	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, 16 * 1024);
+	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, 8 * 1024);
 	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, 1024 * 1024);
 
 	/*
