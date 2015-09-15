@@ -169,7 +169,7 @@ static char const 	*cf_expand_variables(char const *cf, int *lineno,
 					     char *output, size_t outsize,
 					     char const *input, bool *soft_fail);
 
-static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLUDE_TYPE file_type);
+static int cf_file_include(CONF_SECTION *cs, char const *filename_in, CONF_INCLUDE_TYPE file_type, char *buff[7]);
 
 
 
@@ -2349,7 +2349,7 @@ static void cf_include_add(CONF_SECTION *cs, char const *filename, CONF_INCLUDE_
  *	Read a part of the config file.
  */
 static int cf_section_read(char const *filename, int *lineno, FILE *fp,
-			   CONF_SECTION *current)
+			   CONF_SECTION *current, char *buff[7])
 
 {
 	CONF_SECTION	*this, *css;
@@ -2360,9 +2360,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char const	*orig_value = NULL;
 #endif
 
-	char		**buff;
-	char		**buff_p;
-
 	FR_TOKEN	t1 = T_INVALID, t2, t3;
 	bool		has_spaces = false;
 	bool		pass2;
@@ -2371,13 +2368,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 
 	this = current;		/* add items here */
 
-	/*
-	 *	Allocate temporary buffers on the heap (so we don't use *all* the stack space)
-	 */
-	buff = talloc_array(NULL, char *, 7);
-	for (buff_p = &buff[0]; buff_p < (buff + talloc_array_length(buff)); buff_p++) {
-		*buff_p = talloc_array(buff, char, 8192);
-	}
 	cbuff = buff[0];
 
 	/*
@@ -2404,7 +2394,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		if ((cbuff + len + 1) >= (buff[0] + talloc_array_length(buff[0]))) {
 			ERROR("%s[%d]: Line too long", filename, *lineno);
 		error:
-			talloc_free(buff);
 			return -1;
 		}
 
@@ -2586,8 +2575,11 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				DIR		*dir;
 				struct dirent	*dp;
 				struct stat stat_buf;
+				char *my_directory;
 
-				DEBUG2("including files in directory %s", value );
+				my_directory = talloc_strdup(this, value);
+
+				DEBUG2("including files in directory %s", my_directory);
 
 #ifdef WITH_CONF_WRITE
 				/*
@@ -2595,31 +2587,34 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				 *	actually open a file based on
 				 *	it.
 				 */
-				cf_include_add(this, value, CONF_INCLUDE_DIR);
+				cf_include_add(this, my_directory, CONF_INCLUDE_DIR);
 #endif
 
 #ifdef S_IWOTH
 				/*
 				 *	Security checks.
 				 */
-				if (stat(value, &stat_buf) < 0) {
+				if (stat(my_directory, &stat_buf) < 0) {
 					ERROR("%s[%d]: Failed reading directory %s: %s",
 					       filename, *lineno,
-					       value, fr_syserror(errno));
+					       my_directory, fr_syserror(errno));
+					talloc_free(my_directory);
 					goto error;
 				}
 
 				if ((stat_buf.st_mode & S_IWOTH) != 0) {
 					ERROR("%s[%d]: Directory %s is globally writable.  Refusing to start due to "
-					      "insecure configuration", filename, *lineno, value);
+					      "insecure configuration", filename, *lineno, my_directory);
+					talloc_free(my_directory);
 					goto error;
 				}
 #endif
-				dir = opendir(value);
+				dir = opendir(my_directory);
 				if (!dir) {
 					ERROR("%s[%d]: Error reading directory %s: %s",
 					      filename, *lineno, value,
 					      fr_syserror(errno));
+					talloc_free(my_directory);
 					goto error;
 				}
 
@@ -2644,8 +2639,9 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					}
 					if (*p != '\0') continue;
 
+
 					snprintf(buff[2], talloc_array_length(buff[2]), "%s%s",
-						 value, dp->d_name);
+						 my_directory, dp->d_name);
 					if ((stat(buff[2], &stat_buf) != 0) ||
 					    S_ISDIR(stat_buf.st_mode)) continue;
 
@@ -2653,12 +2649,13 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					 *	Read the file into the current
 					 *	configuration section.
 					 */
-					if (cf_file_include(this, buff[2], CONF_INCLUDE_FROMDIR) < 0) {
+					if (cf_file_include(this, buff[2], CONF_INCLUDE_FROMDIR, buff) < 0) {
 						closedir(dir);
 						goto error;
 					}
 				}
 				closedir(dir);
+				talloc_free(my_directory);
 
 			}  else
 #endif
@@ -2672,7 +2669,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 					}
 				}
 
-				if (cf_file_include(this, value, CONF_INCLUDE_FILE) < 0) goto error;
+				if (cf_file_include(this, value, CONF_INCLUDE_FILE, buff) < 0) goto error;
 			}
 			continue;
 		} /* we were in an include */
@@ -3167,7 +3164,6 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		goto error;
 	}
 
-	talloc_free(buff);
 	return 0;
 }
 
@@ -3178,7 +3174,7 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
 #ifndef WITH_CONF_WRITE
 			   UNUSED
 #endif
-			   CONF_INCLUDE_TYPE file_type)
+			   CONF_INCLUDE_TYPE file_type, char *buff[7])
 {
 	FILE		*fp;
 	int		lineno = 0;
@@ -3208,7 +3204,7 @@ static int cf_file_include(CONF_SECTION *cs, char const *filename_in,
 	 *	Read the section.  It's OK to have EOF without a
 	 *	matching close brace.
 	 */
-	if (cf_section_read(filename, &lineno, fp, cs) < 0) {
+	if (cf_section_read(filename, &lineno, fp, cs, buff) < 0) {
 		fclose(fp);
 		return -1;
 	}
@@ -3271,9 +3267,11 @@ static int cf_section_pass2(CONF_SECTION *cs)
  */
 int cf_file_read(CONF_SECTION *cs, char const *filename)
 {
+	int i;
 	char *p;
 	CONF_PAIR *cp;
 	rbtree_t *tree;
+	char **buff;
 
 	cp = cf_pair_alloc(cs, "confdir", filename, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
 	if (!cp) return -1;
@@ -3290,7 +3288,20 @@ int cf_file_read(CONF_SECTION *cs, char const *filename)
 
 	cf_data_add_internal(cs, "filename", tree, NULL, 0);
 
-	if (cf_file_include(cs, filename, CONF_INCLUDE_FILE) < 0) return -1;
+	/*
+	 *	Allocate temporary buffers on the heap (so we don't use *all* the stack space)
+	 */
+	buff = talloc_array(cs, char *, 7);
+	for (i = 0; i < 7; i++) {
+		buff[i] = talloc_array(buff, char, 8192);
+	}
+
+	if (cf_file_include(cs, filename, CONF_INCLUDE_FILE, buff) < 0) {
+		talloc_free(buff);
+		return -1;
+	}
+
+	talloc_free(buff);
 
 	/*
 	 *	Now that we've read the file, go back through it and
