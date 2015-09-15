@@ -1799,7 +1799,7 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 
 #ifdef WITH_UNLANG
 static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t component,
-				      CONF_SECTION *cs, char const *name2)
+				      CONF_SECTION *cs, char const *name2, int grouptype)
 {
 	int rcode;
 	modgroup *g;
@@ -1916,7 +1916,7 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 
 	talloc_free(quoted_str);
 
-	memcpy(csingle->actions, defaultactions[component][GROUPTYPE_SIMPLE],
+	memcpy(csingle->actions, defaultactions[component][grouptype],
 	       sizeof(csingle->actions));
 
 	g->grouptype = GROUPTYPE_SIMPLE;
@@ -2610,7 +2610,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = name2;
 
 			return do_compile_modmap(parent, component, cs,
-						 name2);
+						 name2, grouptype);
 
 		} else 	if (strcmp(modrefname, "switch") == 0) {
 			*modname = name2;

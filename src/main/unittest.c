@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/map_proc.h>
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -631,6 +632,12 @@ static bool do_xlats(char const *filename, FILE *fp)
 }
 
 
+static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, UNUSED void *proc_inst, UNUSED REQUEST *request,
+			      	UNUSED char const *src, UNUSED vp_map_t const *maps)
+{
+	return RLM_MODULE_FAIL;
+}
+
 /*
  *	The main guy.
  */
@@ -778,6 +785,13 @@ int main(int argc, char *argv[])
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
+
+	if (map_proc_register(NULL, "test-fail", mod_map_proc, NULL,
+			      NULL, 0) < 0) {
+		rcode = EXIT_FAILURE;
+		goto finish;
+	}
+
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (main_config_init() < 0) {
