@@ -1062,7 +1062,6 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	 */
 	if (rcode == 0) memcpy(out->filter, &filter, sizeof(filter));
 	talloc_free(p);
-	printf("%i", rcode);
 
 	return rcode;
 }
