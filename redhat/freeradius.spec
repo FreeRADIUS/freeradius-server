@@ -61,7 +61,6 @@ BuildRequires: readline-devel
 BuildRequires: libpcap-devel
 BuildRequires: libtalloc-devel
 BuildRequires: libcurl-devel
-BuildRequires: libmemcached-devel
 
 Requires(pre): shadow-utils glibc-common
 Requires(post): /sbin/chkconfig
@@ -544,7 +543,6 @@ fi
 %{_libdir}/freeradius/rlm_attr_filter.so
 %{_libdir}/freeradius/rlm_cache.so
 %{_libdir}/freeradius/rlm_cache_rbtree.so
-%{_libdir}/freeradius/rlm_cache_memcached.so
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_counter.so
 %{_libdir}/freeradius/rlm_cram.so
