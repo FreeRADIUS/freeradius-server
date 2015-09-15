@@ -77,13 +77,6 @@ const char *json_tokener_error_desc(enum json_tokener_error jerr);
 enum json_tokener_error json_tokener_get_error(json_tokener *tok);
 #endif
 
-/*
- *	Versions < 0.10 didn't support 64bit integers
- */
-#ifndef HAVE_JSON_OBJECT_GET_INT64
-#define json_object_get_int64 (int64_t)json_object_get_int
-#endif
-
 /* correct poor const handling within json-c library */
 #ifdef json_object_object_foreach
 #  undef json_object_object_foreach

@@ -62,29 +62,37 @@ int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object
 
 	case json_type_int:
 	{
+#ifdef HAVE_JSON_OBJECT_GET_INT64
 		int64_t num;
-
+#else
+		int32_t num;
+#endif
 #ifndef HAVE_JSON_OBJECT_GET_INT64
 		if (dst_type == PW_TYPE_INTEGER64) {
 			fr_strerror_printf("64bit integers are not supported by linked json-c.  "
-					   "Upgrade to json-c >= 0.10 to use this feature");
+					   "Upgrade to json-c > 0.10 to use this feature");
 			return -1;
 		}
 #endif
 
+#ifndef HAVE_JSON_OBJECT_GET_INT64
+		num = json_object_get_int(object);
+#else
 		num = json_object_get_int64(object);
-		if (num < INT32_MIN) {	/* 64bit signed (not supported)*/
+		if (num < INT32_MIN) {		/* 64bit signed (not supported)*/
 			fr_strerror_printf("Signed 64bit integers are not supported");
 			return -1;
 		}
-		if (num < 0) {		/* 32bit signed (supported) */
-			src_type = PW_TYPE_SIGNED;
-			in.sinteger = (int32_t) num;
-			in.length = sizeof(in.sinteger);
-		} else if (num > UINT32_MAX) {	/* 64bit unsigned (supported) */
+		if (num > UINT32_MAX) {		/* 64bit unsigned (supported) */
 			src_type = PW_TYPE_INTEGER64;
 			in.integer64 = (uint64_t) num;
 			in.length = sizeof(in.integer64);
+		} else
+#endif
+		if (num < 0) {			/* 32bit signed (supported) */
+			src_type = PW_TYPE_SIGNED;
+			in.sinteger = num;
+			in.length = sizeof(in.sinteger);
 		} else if (num > UINT16_MAX) {	/* 32bit unsigned (supported) */
 			src_type = PW_TYPE_INTEGER;
 			in.integer = (uint32_t) num;
