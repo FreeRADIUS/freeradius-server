@@ -2146,15 +2146,20 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 	return 1;
 }
 
-
-/*
- *	Load a named module from "instantiate" or "policy".
+/** Load a named module from "instantiate" or "policy".
  *
- *	If it's "foo.method", look for "foo", and return "method" as the method
- *	we wish to use, instead of the input component.
+ * If it's "foo.method", look for "foo", and return "method" as the method
+ * we wish to use, instead of the input component.
+ *
+ * @param[out] pcomponent Where to write the method we found, if any.  If no method is specified
+ *	will be set to MOD_COUNT.
+ * @param[in] real_name Complete name string e.g. foo.authorize.
+ * @param[in] virtual_name Virtual module name e.g. foo.
+ * @param[in] method_name Method override (may be NULL) or the method name e.g. authorize.
+ * @return the CONF_SECTION specifying the virtual module.
  */
-static CONF_SECTION *virtual_module_find_cs(char const *real_name, char const *virtual_name, char const *method_name,
-					    rlm_components_t *pcomponent)
+static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
+					    char const *real_name, char const *virtual_name, char const *method_name)
 {
 	CONF_SECTION *cs, *subcs;
 	rlm_components_t method = *pcomponent;
@@ -2514,14 +2519,14 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	subcs = NULL;
 	p = strrchr(modrefname, '.');
 	if (!p) {
-		subcs = virtual_module_find_cs(modrefname, modrefname, NULL, &method);
+		subcs = virtual_module_find_cs(&method, modrefname, modrefname, NULL);
 	} else {
 		char buffer[256];
 
 		strlcpy(buffer, modrefname, sizeof(buffer));
 		buffer[p - modrefname] = '\0';
 
-		subcs = virtual_module_find_cs(modrefname, buffer, buffer + (p - modrefname) + 1, &method);
+		subcs = virtual_module_find_cs(&method, modrefname, buffer, buffer + (p - modrefname) + 1);
 	}
 
 	/*
