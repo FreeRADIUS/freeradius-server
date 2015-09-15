@@ -1,6 +1,7 @@
 %bcond_with rlm_yubikey
 #%bcond_with experimental_modules
 
+%{!?_with_rlm_cache_memcached: %global _without_rlm_cache_memcached --without-rlm_cache_memcached}
 %{!?_with_rlm_eap_pwd: %global _without_rlm_eap_pwd --without-rlm_eap_pwd}
 %{!?_with_rlm_eap_tnc: %global _without_rlm_eap_tnc --without-rlm_eap_tnc}
 %{!?_with_rlm_yubikey: %global _without_rlm_yubikey --without-rlm_yubikey}
@@ -103,6 +104,18 @@ done when adding or deleting new users.
 # CentOS defines debug package by default. Only define it if not already defined
 %if 0%{!?_enable_debug_packages:1}
 %debug_package
+%endif
+
+%if %{?_with_rlm_cache_memcached:1}%{?!_with_rlm_cache_memcached:0}
+%package memcached
+Summary: Memcached support for freeRADIUS
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: libmemcached
+BuildRequires: libmemcached-devel
+
+%description memcached
+Adds support for rlm_memcached as a cache driver.
 %endif
 
 %package config
@@ -381,6 +394,8 @@ export LDFLAGS="-Wl,--build-id"
         %{?_without_rlm_sql_freetds} \
         %{?_with_rlm_ruby} \
         %{?_without_rlm_ruby}
+        %{?_with_rlm_cache_memcached} \
+        %{?_without_rlm_cache_memcached} \
 #        --with-modules="rlm_wimax" \
 
 %if "%{_lib}" == "lib64"
@@ -776,6 +791,12 @@ fi
 %files libfreeradius-redis
 %defattr(-,root,root)
 %{_libdir}/freeradius/libfreeradius-redis.so
+
+%if %{?_with_rlm_cache_memcached:1}%{!?_with_rlm_cache_memcached:0}
+%files memcached
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_cache_memcached.so
+%endif
 
 %files krb5
 %defattr(-,root,root)
