@@ -1771,7 +1771,6 @@ int rad_coa_recv(REQUEST *request)
 		case RLM_MODULE_REJECT:
 		case RLM_MODULE_USERLOCK:
 		default:
-			request->reply->code = nak;
 			break;
 
 		case RLM_MODULE_HANDLED:
@@ -1781,11 +1780,14 @@ int rad_coa_recv(REQUEST *request)
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			if (do_proxy(request)) return RLM_MODULE_OK;
-			request->reply->code = ack;
+			if (do_proxy(request)) {
+			    request->reply->code = ack;
+			    return RLM_MODULE_OK;
+			}
 			break;
 		}
 
+		request->reply->code = nak;
 	}
 
 #ifdef WITH_PROXY

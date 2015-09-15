@@ -23,6 +23,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Documentation fixes from Alan Buxey and Matthew Newton.
 
 	Bug fixes
+	* Fix home-server, It should return CoA-NAK when the Home-Server-Pool
+	  is invalid.
 	* Fix rlm_files so that there are no collisions when loading
 	  10's of 1000's of users.
 	* Fix radclient to use our internal v4/v6 parsing functions.
