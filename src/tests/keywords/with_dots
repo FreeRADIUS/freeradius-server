@@ -1,0 +1,19 @@
+#
+#  PRE: update
+#
+
+#
+#  Ensure that policies can have dots.
+#
+#  The main problem is that conf section references
+#  also have dots in them...
+#
+with.dots
+
+update control {
+       Cleartext-Password := 'hello'
+}
+
+update reply {
+       Filter-Id := "filter"
+}

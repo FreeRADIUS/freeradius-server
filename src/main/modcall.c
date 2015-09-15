@@ -2394,7 +2394,7 @@ static int all_children_are_modules(CONF_SECTION *cs, char const *name)
  *	If it's "foo.method", look for "foo", and return "method" as the method
  *	we wish to use, instead of the input component.
  */
-static CONF_SECTION *virtual_module_find_cs(char const *virtual_name, char const *method_name,
+static CONF_SECTION *virtual_module_find_cs(char const *real_name, char const *virtual_name, char const *method_name,
 					    rlm_components_t *pcomponent)
 {
 	CONF_SECTION *cs, *subcs;
@@ -2411,9 +2411,12 @@ static CONF_SECTION *virtual_module_find_cs(char const *virtual_name, char const
 			if (strcmp(comp2str[i], method_name) == 0) break;
 		}
 
-		if (i == MOD_COUNT) return NULL;
-
-		method = i;
+		if (i != MOD_COUNT) {
+			method = i;
+		} else {
+			method_name = NULL;
+			virtual_name = real_name;
+		}
 	}
 
 	/*
@@ -2755,14 +2758,14 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	subcs = NULL;
 	p = strrchr(modrefname, '.');
 	if (!p) {
-		subcs = virtual_module_find_cs(modrefname, NULL, &method);
+		subcs = virtual_module_find_cs(modrefname, modrefname, NULL, &method);
 	} else {
 		char buffer[256];
 
 		strlcpy(buffer, modrefname, sizeof(buffer));
 		buffer[p - modrefname] = '\0';
 
-		subcs = virtual_module_find_cs(buffer, buffer + (p - modrefname) + 1, &method);
+		subcs = virtual_module_find_cs(modrefname, buffer, buffer + (p - modrefname) + 1, &method);
 	}
 
 	/*
