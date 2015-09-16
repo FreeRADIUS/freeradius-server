@@ -1,0 +1,23 @@
+#
+#  PRE: update switch
+#
+update control {
+       Cleartext-Password := 'hello'
+}
+
+#
+#  Virtual attribute references get mashed to xlats
+#
+switch &Packet-Type {
+	case Access-Request {
+		update reply {
+			Filter-Id := "filter"
+		}
+	}
+
+	case {
+		update reply {
+			Filter-Id := "fail"
+		}
+	}
+}

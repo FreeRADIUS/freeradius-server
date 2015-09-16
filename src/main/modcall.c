@@ -3928,6 +3928,14 @@ bool modcall_pass2(modcallable *mc)
 			}
 
 			/*
+			 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
+			 */
+			if ((g->vpt->type == TMPL_TYPE_ATTR) && g->vpt->tmpl_da->flags.virtual) {
+				g->vpt->tmpl_xlat = xlat_from_tmpl_attr(g->vpt, g->vpt);
+				g->vpt->type = TMPL_TYPE_XLAT_STRUCT;
+			}
+
+			/*
 			 *	We may have: switch Foo-Bar {
 			 *
 			 *	where Foo-Bar is an attribute defined
