@@ -61,6 +61,10 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  already running instance.
 	* Fallback to using the configured OCSP URL if one exists, and
 	  no URL is provided in the certificate.
+	* Return CoA-NAK if proxying CoA fails.  Based on patch from
+	 Jorge Pereira.
+	* Lower peak memory usage by decreasing size of internal
+	  memory pools.
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
