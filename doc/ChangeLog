@@ -65,6 +65,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	 Jorge Pereira.
 	* Lower peak memory usage by decreasing size of internal
 	  memory pools.
+	* Allow virtual attributes in "switch".  Fixes #1240.
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
