@@ -853,6 +853,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 		if (!we_are_master()) {
 			NO_CHILD_THREAD;
 			request->child_state = REQUEST_CLEANUP_DELAY;
+			return;
 		}
 
 		/*
