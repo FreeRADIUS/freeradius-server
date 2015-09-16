@@ -786,16 +786,20 @@ static void request_cleanup_delay_init(REQUEST *request)
 		if (rad_debug_lvl) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
 #endif
 		request->process = request_cleanup_delay;
-		request->child_state = REQUEST_CLEANUP_DELAY;
+
+		if (!we_are_master()) {
+			NO_CHILD_THREAD;
+			request->child_state = REQUEST_CLEANUP_DELAY;
+		}
 
 		/*
 		 *	Update this if we can, otherwise let the timers pick it up.
 		 */
-		if (we_are_master()) {
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-		} else {
-			NO_CHILD_THREAD;
-		}
+		request->child_state = REQUEST_CLEANUP_DELAY;
+#ifdef HAVE_PTHREAD_H
+		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+#endif
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 	}
 
