@@ -792,6 +792,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 			NO_CHILD_THREAD;
 			request->module = "<REQUEST_CLEANUP_DELAY>";
 			request->child_state = REQUEST_CLEANUP_DELAY;
+			return;
 		}
 
 		/*
