@@ -1245,6 +1245,11 @@ static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
 	char const *p = fmt;
 	char delim;
 
+	/*
+	 *  Trim whitespace
+	 */
+	while (isspace(*p) && p++);
+
 	slen = tmpl_from_attr_substr(&vpt, p, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
 	if (slen <= 0) {
 		REDEBUG("%s", fr_strerror());
