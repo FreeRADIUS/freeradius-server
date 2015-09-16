@@ -1689,7 +1689,7 @@ static int do_proxy(REQUEST *request)
 		if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
 			REDEBUG2("Cannot proxy to unknown pool %s",
 				 vp->vp_strvalue);
-			return 0;
+			return -1;
 		}
 
 		return 1;
@@ -1713,6 +1713,7 @@ int rad_coa_recv(REQUEST *request)
 {
 	int rcode = RLM_MODULE_OK;
 	int ack, nak;
+	int proxy_status;
 	VALUE_PAIR *vp;
 
 	/*
@@ -1781,8 +1782,14 @@ int rad_coa_recv(REQUEST *request)
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
-			if (do_proxy(request)) return RLM_MODULE_OK;
-			request->reply->code = ack;
+			proxy_status = do_proxy(request);
+			if (proxy_status == 1) return RLM_MODULE_OK;
+
+			if (proxy_status < 0) {
+				request->reply->code = nak;
+			} else {
+				request->reply->code = ack;
+			}
 			break;
 		}
 
