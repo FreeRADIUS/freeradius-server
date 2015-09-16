@@ -39,7 +39,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Fix potential overrun in functions that used fr_utf8_char
 	  with a non nul terminated buffer.
 	* Fix decoding issue for Tunnel-Password type attributes
-	  which were very long.
+	  which were very long.  Found by Denis Andzakovic.
 	* Fix radclient issue with TCP sockets on FreeBSD.
 	* The server now creates ${run_dir} and ${logdir} directories
 	  in daemon mode, when running as "root".
