@@ -894,7 +894,7 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 	}
 
 	if (received) {
-		rdebug_pair_list(L_DBG_LVL_2, request, packet->vps, "&request");
+		rdebug_pair_list(L_DBG_LVL_2, request, packet->vps, "&request:");
 	} else {
 		rdebug_proto_pair_list(L_DBG_LVL_2, request, packet->vps, "&reply:");
 	}
