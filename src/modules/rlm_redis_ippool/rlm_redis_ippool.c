@@ -1085,9 +1085,14 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 			RDEBUG2("IP address lease updated");
 			return RLM_MODULE_UPDATED;
 
+		/*
+		 *	It's useful to be able to identify the 'not found' case
+		 *	as we can relay to a server where the IP address might
+		 *	be found.  This extremely useful for migrations.
+		 */
 		case IPPOOL_RCODE_NOT_FOUND:
 			REDEBUG("IP address is not a member of the specified pool");
-			return RLM_MODULE_INVALID;
+			return RLM_MODULE_NOTFOUND;
 
 		case IPPOOL_RCODE_EXPIRED:
 			REDEBUG("IP address lease already expired at time of renewal");
@@ -1125,9 +1130,14 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 			RDEBUG2("IP address released");
 			return RLM_MODULE_UPDATED;
 
+		/*
+		 *	It's useful to be able to identify the 'not found' case
+		 *	as we can relay to a server where the IP address might
+		 *	be found.  This extremely useful for migrations.
+		 */
 		case IPPOOL_RCODE_NOT_FOUND:
 			REDEBUG("IP address is not a member of the specified pool");
-			return RLM_MODULE_INVALID;
+			return RLM_MODULE_NOTFOUND;
 
 		case IPPOOL_RCODE_DEVICE_MISMATCH:
 			REDEBUG("IP address lease allocated to another device");
