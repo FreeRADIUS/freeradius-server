@@ -12,6 +12,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Create debian packages for DHCP.  Fixes #1125.
 	* Add more tests for "update" section parsing.
 	* Update "man" pages.
+	* Update "logrotate" script.
 	* Update attributes for Alcatel 7750
 	* Add dictionary for Boingo Wi-Fi
 	* Add support for DHCP lease queries.
