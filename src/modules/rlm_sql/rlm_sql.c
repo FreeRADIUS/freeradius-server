@@ -272,7 +272,6 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	rlm_sql_handle_t *handle;
 	rlm_sql_row_t row;
 	unsigned int i = 0;
-	int ret = 0;
 	RADCLIENT *c;
 
 	DEBUG("rlm_sql (%s): Processing generate_sql_clients",
@@ -341,8 +340,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 			WARN("Failed to add client, possible duplicate?");
 
 			client_free(c);
-			ret = -1;
-			break;
+			continue;
 		}
 
 		DEBUG("rlm_sql (%s): Client \"%s\" (%s) added", c->longname, c->shortname,
@@ -352,7 +350,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 	fr_connection_release(inst->pool, handle);
 
-	return ret;
+	return 0;
 }
 
 
