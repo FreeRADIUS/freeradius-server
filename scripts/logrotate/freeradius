@@ -18,9 +18,7 @@ notifempty
 #  The main server log
 #
 /var/log/radius/radius.log {
-	postrotate
-	/sbin/killall -HUP radiusd
-	endscript
+	copytruncate
 }
 
 #
