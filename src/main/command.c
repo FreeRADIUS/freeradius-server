@@ -2865,10 +2865,19 @@ static void print_help(rad_listen_t *listener, int argc, char *argv[],
 {
 	int i;
 
+	/* this should never happen, but if it does then just return gracefully */
+	if (!table) return;
+
 	for (i = 0; table[i].command != NULL; i++) {
 		if (argc > 0) {
 			if (strcmp(table[i].command, argv[0]) == 0) {
-				print_help(listener, argc - 1, argv + 1, table[i].table, recursive);
+				if (table[i].table) {
+					print_help(listener, argc - 1, argv + 1, table[i].table, recursive);
+				} else {
+					if (table[i].help) {
+						cprintf(listener, "%s\n", table[i].help);
+					}
+				}
 				return;
 			}
 
