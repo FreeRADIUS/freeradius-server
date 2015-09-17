@@ -67,8 +67,6 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Lower peak memory usage by decreasing size of internal
 	  memory pools.
 	* Allow virtual attributes in "switch".  Fixes #1240.
-	* Refuse to start when reading invalid clients from SQL.
-	  Patch from Jorge Pereira..
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
