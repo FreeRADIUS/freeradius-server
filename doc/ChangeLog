@@ -12,7 +12,6 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Create debian packages for DHCP.  Fixes #1125.
 	* Add more tests for "update" section parsing.
 	* Update "man" pages.
-	* Update "logrotate" script.
 	* Update attributes for Alcatel 7750
 	* Add dictionary for Boingo Wi-Fi
 	* Add support for DHCP lease queries.
@@ -22,6 +21,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Allow FreeRADIUS-Response-Delay(-USec) to be set for
 	  RADIUS packets.  Patch from Herwin Weststrate.
 	* Documentation fixes from Alan Buxey and Matthew Newton.
+	* Update "logrotate" script.
 
 	Bug fixes
 	* Fix rlm_files so that there are no collisions when loading
@@ -67,6 +67,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Lower peak memory usage by decreasing size of internal
 	  memory pools.
 	* Allow virtual attributes in "switch".  Fixes #1240.
+	* Refuse to start when reading invalid clients from SQL.
+	  Patch from Jorge Pereira..
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
