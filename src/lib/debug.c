@@ -437,7 +437,7 @@ fr_bt_marker_t *fr_backtrace_attach(UNUSED fr_cbuff_t **cbuff, UNUSED TALLOC_CTX
 
 static int _panic_on_free(UNUSED char *foo)
 {
-	fr_fault(SIGUSR1);
+	fr_fault(SIGABRT);
 	return -1;	/* this should make the free fail */
 }
 
@@ -626,7 +626,7 @@ static int fr_fault_check_permissions(void)
  *
  * @param sig caught
  */
-void fr_fault(int sig)
+NEVER_RETURNS void fr_fault(int sig)
 {
 	char cmd[sizeof(panic_action) + 20];
 	char *out = cmd;
@@ -642,11 +642,8 @@ void fr_fault(int sig)
 	 *	as it may interfere with the operation of the debugger.
 	 *	If something calls us directly we just raise the signal and let
 	 *	the debugger handle it how it wants.
-	 *
-	 *	The only exception are SIGUSR1 and SIGUSR2 which print out various
-	 *	debugging info, and should be allowed to continue.
 	 */
-	if ((fr_debug_state == DEBUG_STATE_ATTACHED) && (sig != SIGUSR1) && (sig != SIGUSR2)) {
+	if (fr_debug_state == DEBUG_STATE_ATTACHED) {
 		FR_FAULT_LOG("RAISING SIGNAL: %s", strsignal(sig));
 		raise(sig);
 		goto finish;
@@ -752,11 +749,6 @@ void fr_fault(int sig)
 	FR_FAULT_LOG("Panic action exited with %i", code);
 
 finish:
-#ifdef SIGUSR1
-	if (sig == SIGUSR1) {
-		return;
-	}
-#endif
 	fr_exit_now(1);
 }
 
@@ -865,16 +857,6 @@ int fr_log_talloc_report(TALLOC_CTX *ctx)
 	return 0;
 }
 
-/** Signal handler to print out a talloc memory report
- *
- * @param sig caught
- */
-static void _fr_fault_mem_report(int sig)
-{
-	FR_FAULT_LOG("CAUGHT SIGNAL: %s", strsignal(sig));
-
-	if (fr_log_talloc_report(NULL) < 0) fr_perror("memreport");
-}
 
 static int _fr_disable_null_tracking(UNUSED bool *p)
 {
@@ -1001,13 +983,6 @@ int fr_fault_setup(char const *cmd, char const *program)
 		case DEBUG_STATE_ATTACHED:
 			break;
 		}
-#ifdef SIGUSR1
-		if (fr_set_signal(SIGUSR1, fr_fault) < 0) return -1;
-#endif
-
-#ifdef SIGUSR2
-		if (fr_set_signal(SIGUSR2, _fr_fault_mem_report) < 0) return -1;
-#endif
 
 		/*
 		 *  Needed for memory reports
@@ -1111,8 +1086,8 @@ bool fr_assert_cond(char const *file, int line, char const *expr, bool cond)
 {
 	if (!cond) {
 		FR_FAULT_LOG("SOFT ASSERT FAILED %s[%u]: %s", file, line, expr);
-#if !defined(NDEBUG) && defined(SIGUSR1)
-		fr_fault(SIGUSR1);
+#if !defined(NDEBUG)
+		fr_fault(SIGABRT);
 #endif
 		return false;
 	}
