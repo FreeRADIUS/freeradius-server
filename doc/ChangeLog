@@ -22,6 +22,10 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  RADIUS packets.  Patch from Herwin Weststrate.
 	* Documentation fixes from Alan Buxey and Matthew Newton.
 	* Update "logrotate" script.
+	* Added more RFCs to doc/rfc for new standards implemented
+	  by FreeRADIUS.
+	* Don't crash when doing "radmin -e "help hup".
+	  Patch from Matthew Newton.
 
 	Bug fixes
 	* Fix rlm_files so that there are no collisions when loading
