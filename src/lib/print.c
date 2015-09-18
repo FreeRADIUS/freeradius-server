@@ -166,11 +166,11 @@ char const *fr_utf8_strchr(int *chr_len, char const *str, char const *chr)
  * @note Will always \0 terminate unless outlen == 0.
  *
  * @param[in] in string to escape.
- * @param[in] inlen length of string to escape (lets us deal with embedded NULLs)
+ * @param[in] inlen length of string to escape (lets us deal with embedded NULs)
  * @param[out] out where to write the escaped string.
  * @param[out] outlen the length of the buffer pointed to by out.
  * @param[in] quote the quotation character
- * @return the number of bytes written to the out buffer, or a number >= outlen if truncation has occurred.
+ * @return the number of bytes it WOULD HAVE written to the buffer, not including the trailing NUL
  */
 size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char quote)
 {
@@ -181,7 +181,7 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
 
 	/* No input, so no output... */
 	if (!in) {
-		if (out) *out = '\0';
+		if (out && outlen) *out = '\0';
 		return 0;
 	}
 
@@ -362,7 +362,7 @@ size_t fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char q
  * @param in string to calculate the escaped length for.
  * @param inlen length of the input string, if < 0 strlen will be used to check the length.
  * @param[in] quote the quotation character.
- * @return the size of buffer required to hold the escaped string including the NULL byte.
+ * @return the size of buffer required to hold the escaped string including the NUL byte.
  */
 size_t fr_prints_len(char const *in, ssize_t inlen, char quote)
 {
