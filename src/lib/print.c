@@ -185,7 +185,7 @@ size_t fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char 
 
 	/* No input, so no output... */
 	if (!in) {
-		if (out) *out = '\0';
+		if (out && outlen) *out = '\0';
 		return 0;
 	}
 
