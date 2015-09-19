@@ -1,5 +1,5 @@
 Source: freeradius
-Build-Depends: debhelper (>= 7.4),
+Build-Depends: debhelper (>= 9),
  quilt,
  dpkg-dev (>= 1.13.19),
  autotools-dev,
@@ -20,7 +20,6 @@ Build-Depends: debhelper (>= 7.4),
  libsasl2-dev,
  libsqlite3-dev,
  libssl-dev,
- libsasl2-dev,
  libtalloc-dev,
  libwbclient-dev,
  libyubikey-dev,
@@ -29,7 +28,7 @@ Section: net
 Priority: optional
 Maintainer: Josip Rodin <joy-packages@debian.org>
 Uploaders: Stephen Gran <sgran@debian.org>, Mark Hymers <mhy@debian.org>
-Standards-Version: 3.8.3
+Standards-Version: 3.9.6
 Homepage: http://www.freeradius.org/
 
 Package: freeradius
