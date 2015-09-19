@@ -1,3 +1,13 @@
+Description: Name substitutions
+ Substitute 'freeradius' for 'radiusd' as the daemon name and 'freerad' for 
+ 'radius' as the user and group name
+Author: Alan DeKok <aland@freeradius.org>,
+ Adrien Demarez,
+ Arran Cudbard-Bell <a.cudbardb@freeradius.org>,
+ Matthew Newton, Fajar Arief Nugraha <github@fajar.net>
+Origin: https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/debian/patches/radiusd-to-freeradius.diff
+Last-Update: 2014-05-19
+
 --- a/Make.inc.in
 +++ b/Make.inc.in
 @@ -94,7 +94,7 @@
