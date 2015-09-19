@@ -102,6 +102,10 @@ sql {
 	# If you're using postgresql this can also be used instead of the connection info parameters
 #	radius_db = "dbname=radius host=localhost user=radius password=raddpass"
 
+        # Postgreql doesn't take tls{} options in its module config like mysql does - if you want to
+        # use SSL connections then use this form of connection info parameter
+#	radius_db = "host=localhost port=5432 dbname=radius user=radius password=raddpass sslmode=verify-full sslcert=/etc/ssl/client.crt sslkey=/etc/ssl/client.key sslrootcert=/etc/ssl/ca.crt" 
+
 	# If you want both stop and start records logged to the
 	# same SQL table, leave this as is.  If you want them in
 	# different tables, put the start table in acct_table1
