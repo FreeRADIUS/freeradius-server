@@ -33,6 +33,7 @@ char const	*radiusd_version_short = RADIUSD_VERSION_STRING;
 #ifdef HAVE_OPENSSL_CRYPTO_H
 #  include <openssl/crypto.h>
 #  include <openssl/opensslv.h>
+#  include <openssl/engine.h>
 
 static long ssl_built = OPENSSL_VERSION_NUMBER;
 
@@ -506,7 +507,13 @@ void version_print(void)
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 
+	tls_global_init();
+
 	if (DEBUG_ENABLED2) {
+#ifdef WITH_TLS
+		ENGINE *engine;
+		char const *engine_id;
+#endif
 		int max = 0, len;
 
 		MEM(features = cf_section_alloc(NULL, "feature", NULL));
@@ -531,6 +538,14 @@ void version_print(void)
 			if (max < len) max = len;
 		}
 
+#ifdef WITH_TLS
+		for (engine = ENGINE_get_first();
+		     engine;
+		     engine = ENGINE_get_next(engine)) {
+			len = strlen(ENGINE_get_id(engine) + 1);
+			if (max < len) max = len;
+		}
+#endif
 
 		for (ci = cf_item_find_next(features, NULL);
 		     ci;
@@ -547,7 +562,6 @@ void version_print(void)
 		talloc_free(features);
 
 		DEBUG3("Server core libs:");
-
 		for (ci = cf_item_find_next(versions, NULL);
 		     ci;
 		     ci = cf_item_find_next(versions, ci)) {
@@ -559,6 +573,18 @@ void version_print(void)
 			DEBUG3("  %s%.*s : %s", attr,
 			       (int)(max - talloc_array_length(attr)), spaces,  cf_pair_value(cp));
 		}
+
+#ifdef WITH_TLS
+		DEBUG3("OpenSSL engines:");
+		for (engine = ENGINE_get_first();
+		     engine;
+		     engine = ENGINE_get_next(engine)) {
+			engine_id = ENGINE_get_id(engine);
+
+			DEBUG3("  %s%.*s : %s", engine_id, (int)(max - (strlen(engine_id) + 1)), spaces,
+			       ENGINE_get_name(engine));
+		}
+#endif
 
 		talloc_free(versions);
 

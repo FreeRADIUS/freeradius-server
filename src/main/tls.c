@@ -82,6 +82,10 @@ static libssl_defect_t libssl_defects[] =
 };
 #endif /* ENABLE_OPENSSL_VERSION_CHECK */
 
+#ifdef WITH_TLS
+static bool tls_done_init = false;
+#endif
+
 FR_NAME_NUMBER const fr_tls_status_table[] = {
 	{ "invalid",			FR_TLS_INVALID },
 	{ "request",			FR_TLS_REQUEST },
@@ -2707,9 +2711,15 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
  */
 void tls_global_init(void)
 {
-	SSL_load_error_strings();	/* readable error messages (examples show call before library_init) */
-	SSL_library_init();		/* initialize library */
-	OpenSSL_add_all_algorithms();	/* required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
+	ENGINE *rand_engine;
+
+	if (tls_done_init) return;
+
+	SSL_load_error_strings();	/* Readable error messages (examples show call before library_init) */
+	SSL_library_init();		/* Initialize library */
+	OpenSSL_add_all_algorithms();	/* Required for SHA2 in OpenSSL < 0.9.8o and 1.0.0.a */
+	ENGINE_load_builtin_engines();	/* Needed to load AES-NI engine (also loads rdrand, boo) */
+
 	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
 	 *	initialized by default.  It's needed for WiMAX
@@ -2719,6 +2729,17 @@ void tls_global_init(void)
 	EVP_add_digest(EVP_sha256());
 #endif
 	OPENSSL_config(NULL);
+
+	/*
+	 *	Mirror the paranoia found elsewhere on the net,
+	 *	and disable rdrand as the default random number
+	 *	generator.
+	 */
+	rand_engine = ENGINE_get_default_RAND();
+	if (rand_engine && (strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0)) ENGINE_unregister_RAND(rand_engine);
+	ENGINE_register_all_complete();
+
+	tls_done_init = true;
 }
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
@@ -2774,6 +2795,8 @@ void tls_global_cleanup(void)
 	ERR_free_strings();
 	EVP_cleanup();
 	CRYPTO_cleanup_all_ex_data();
+
+	tls_done_init = false;
 }
 
 /** Create SSL context
