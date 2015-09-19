@@ -68,6 +68,11 @@ sql {
 #	}
 #
 #	postgresql {
+#
+#		# unlike MySQL, which has a tls{} connection configuration, postgresql
+#		# uses its connection parameters - see the radius_db option below in
+#		# this file
+#
 #		# Send application_name to the postgres server
 #		# Only supported in PG 9.0 and greater. Defaults to no.
 #		send_application_name = yes
