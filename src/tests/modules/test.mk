@@ -104,7 +104,7 @@ endef
 #
 define MODULE_COPY_ATTR
 $(BUILD_DIR)/${1}: src/tests/modules/default-input.attrs
-	mkdir -p $$(@D)
+	@mkdir -p $$(@D)
 	@cp $$< $$@
 endef
 
