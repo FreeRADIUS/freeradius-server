@@ -982,7 +982,7 @@ finish:
 static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool_action_t action)
 {
 	uint8_t		key_prefix[IPPOOL_MAX_KEY_PREFIX_SIZE], device_id_buff[256], gateway_id_buff[256];
-	uint8_t		*device_id = NULL, *gateway_id = NULL;
+	uint8_t const	*device_id = NULL, *gateway_id = NULL;
 	size_t		key_prefix_len, device_id_len = 0, gateway_id_len = 0;
 	ssize_t		slen;
 	fr_ipaddr_t	ip;

@@ -1313,7 +1313,7 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len
 {
 	fr_tls_server_conf_t	*conf;
 	REQUEST			*request;
-	uint8_t			*p;
+	unsigned char const	**p;
 	uint8_t const		*q;
 	VALUE_PAIR		*vp;
 	SSL_SESSION		*sess;
@@ -1347,10 +1347,10 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len
 		return NULL;
 	}
 
-	/* openssl mutates &p, and has different 'const' from vp_octets */
-	q = vp->vp_octets;
-	memcpy(&p, &q, sizeof(p));
-	sess = d2i_SSL_SESSION(NULL, (unsigned char const **)(void **) &p, vp->vp_length);
+	q = vp->vp_octets;	/* openssl will mutate q, so we can't use vp_octets directly */
+	p = (unsigned char const **)&q;
+
+	sess = d2i_SSL_SESSION(NULL, p, vp->vp_length);
 	if (!sess) {
 		RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
@@ -1593,12 +1593,16 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int inlen, 
 	talloc_ctx = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TALLOC);
 
 	{
-		int		rv, fd, todo;
-		size_t		len;
-		char		filename[256];
-		unsigned char	*p;
-		struct		stat st;
-		VALUE_PAIR	*vps = NULL;
+		int			rv, fd, todo;
+		size_t			len;
+		char			filename[256];
+
+		unsigned char const	**o;
+		unsigned char		**p;
+		uint8_t			*q;
+
+		struct			stat st;
+		VALUE_PAIR		*vps = NULL;
 
 		/* read in the cached VPs from the .vps file */
 		len = snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path, FR_DIR_SEP, buffer);
@@ -1641,24 +1645,34 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int inlen, 
 			goto error;
 		}
 
-		p = sess_data;
+		q = sess_data;
 		todo = st.st_size;
 		while (todo > 0) {
-			rv = read(fd, p, todo);
+			rv = read(fd, q, todo);
 			if (rv < 1) {
 				RWDEBUG("Could not read from persisted session: %s", fr_syserror(errno));
 				close(fd);
 				goto error;
 			}
 			todo -= rv;
-			p += rv;
+			q += rv;
 		}
 		close(fd);
 
-		/* openssl mutates &p */
-		p = sess_data;
-		sess = d2i_SSL_SESSION(NULL, (unsigned char const **)(void **) &p, st.st_size);
-
+		/*
+		 *	OpenSSL mutates what's passed in, so we assign sess_data to q,
+		 *	so the value of q gets mutated, and not the value of sess_data.
+		 *
+		 *	We then need a pointer to hold &q, but it can't be const, because
+		 *	clang complains about lack of consting in nested pointer types.
+		 *
+		 *	So we memcpy the value of that pointer, to one that
+		 *	does have a const, which we then pass into d2i_SSL_SESSION *sigh*.
+		 */
+		q = sess_data;
+		p = &q;
+		memcpy(&o, &p, sizeof(o));
+		sess = d2i_SSL_SESSION(NULL, o, st.st_size);
 		if (!sess) {
 			RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
 			goto error;

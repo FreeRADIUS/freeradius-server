@@ -345,8 +345,6 @@ int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 	*out = NULL;
 	tail = out;
 
-	if (!cs) return 0;
-
 	/*
 	 *	The first map has cs as the parent.
 	 *	The rest have the previous map as the parent.

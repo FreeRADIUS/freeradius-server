@@ -2418,7 +2418,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		}
 
 		if (vpt->tmpl_da->flags.is_unknown) {
-			if (vpt->tmpl_da != (DICT_ATTR *)&vpt->data.attribute.unknown.da) {
+			if (vpt->tmpl_da != (DICT_ATTR const *)&vpt->data.attribute.unknown.da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "da is marked as unknown, but does not point to the template's "
 					     "unknown da buffer", file, line);
