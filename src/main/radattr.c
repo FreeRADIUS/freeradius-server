@@ -695,7 +695,12 @@ static void process_file(const char *root_dir, char const *filename)
 			attr = data;
 			vp = head;
 			while (vp) {
-				len = rad_vp2attr(&my_packet, &my_original, my_secret, (VALUE_PAIR const **)(void **)&vp,
+				VALUE_PAIR **pvp = &vp;
+				VALUE_PAIR const **qvp;
+
+				memcpy(&qvp, &pvp, sizeof(pvp));
+
+				len = rad_vp2attr(&my_packet, &my_original, my_secret, qvp,
 						  attr, data + sizeof(data) - attr);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",

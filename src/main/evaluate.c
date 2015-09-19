@@ -771,8 +771,6 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	REQUEST *fixup = NULL;
 	TALLOC_CTX *ctx;
 
-	if (!request) return;
-
 	/*
 	 *	Set up arrays for editing, to remove some of the
 	 *	O(N^2) dependencies.  This also makes it easier to

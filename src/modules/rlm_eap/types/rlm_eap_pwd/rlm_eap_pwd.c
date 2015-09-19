@@ -281,7 +281,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	BIGNUM *x = NULL, *y = NULL;
 	char *p;
 
-	if (!handler || ((eap_ds = handler->eap_ds) == NULL) || !inst) return 0;
+	if (((eap_ds = handler->eap_ds) == NULL) || !inst) return 0;
 
 	session = (pwd_session_t *)handler->opaque;
 	request = handler->request;

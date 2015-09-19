@@ -52,7 +52,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 	tDataBuffer	     	*tDataBuff	= NULL;
 	tDirNodeReference       nodeRef		= 0;
 	long		    	status		= eDSNoErr;
-	char			*what		= NULL;
+	char const		*what		= NULL;
 	char			*status_name	= NULL;
 	tContextData	    	context		= 0;
 	uint32_t	   	nodeCount	= 0;
@@ -63,9 +63,9 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 	tDataList	       *pRecType	= NULL;
 	tDataList	       *pAttrType	= NULL;
 	uint32_t	   	recCount	= 0;
-	tRecordEntry	    *pRecEntry	= NULL;
+	tRecordEntry	    	*pRecEntry	= NULL;
 	tAttributeListRef       attrListRef	= 0;
-	char		    *pUserLocation	= NULL;
+	char		    	*pUserLocation	= NULL;
 	tAttributeValueListRef  valueRef	= 0;
 	tDataList	       *pUserNode	= NULL;
 	rlm_rcode_t		result		= RLM_MODULE_FAIL;
