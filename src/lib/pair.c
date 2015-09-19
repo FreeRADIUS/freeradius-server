@@ -212,7 +212,7 @@ void fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
 	}
 }
 
-static VALUE_PAIR *fr_pair_from_unkown(VALUE_PAIR *vp, DICT_ATTR const *da)
+static VALUE_PAIR *fr_pair_from_unknown(VALUE_PAIR *vp, DICT_ATTR const *da)
 {
 	ssize_t len;
 	VALUE_PAIR *vp2;
@@ -315,7 +315,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	 */
 	da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
 	if (da) {
-		return fr_pair_from_unkown(vp, da);
+		return fr_pair_from_unknown(vp, da);
 	}
 
 	return vp;
