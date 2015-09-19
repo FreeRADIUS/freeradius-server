@@ -37,7 +37,7 @@ Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depe
 Provides: radius-server
 Recommends: freeradius-utils
 Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
-Description: a high-performance and highly configurable RADIUS server
+Description: high-performance and highly configurable RADIUS server
  FreeRADIUS is a high-performance RADIUS server with support for:
   - Many vendor-specific attributes.
   - Proxying and replicating requests by any criteria.
@@ -60,8 +60,8 @@ Architecture: any
 Depends: freeradius-common (>= 3), ${misc:Depends}
 Breaks: freeradius-config
 Description: FreeRADIUS default config files
-  This package should be used as a base for a site local packages
-  to configure the FreeRADIUS server.
+ This package should be used as a base for a site local packages
+ to configure the FreeRADIUS server.
 
 Package: freeradius-utils
 Architecture: any
