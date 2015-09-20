@@ -507,8 +507,6 @@ void version_print(void)
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 
-	tls_global_init();
-
 	if (DEBUG_ENABLED2) {
 #ifdef WITH_TLS
 		ENGINE *engine;

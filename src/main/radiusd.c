@@ -300,6 +300,14 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
+	 *  Must be called before display_version to ensure relevant engines are loaded.
+	 */
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	tls_global_init();
+#endif
+
+	/*
 	 *  Better here, so it doesn't matter whether we get passed -xv or -vx.
 	 */
 	if (display_version) {
@@ -322,13 +330,6 @@ int main(int argc, char *argv[])
 	 *  (in main_config_init()).
 	 */
 	fr_store_debug_state();
-
-	/*
-	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
-	 */
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	tls_global_init();
-#endif
 
 	/*
 	 *  Write the PID always if we're running as a daemon.
