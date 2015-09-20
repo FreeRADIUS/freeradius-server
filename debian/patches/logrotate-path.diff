@@ -1,3 +1,8 @@
+Description: Fixing logrotate script 
+Author: Jorge Pereira <jpereira@gnome.org>
+Origin: https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/debian/patches/logrotate-path.diff
+Last-Update: 2015-09-17
+
 diff a/scripts/logrotate/freeradius b/scripts/logrotate/freeradius
 --- a/scripts/logrotate/freeradius
 +++ b/scripts/logrotate/freeradius
@@ -10,16 +15,13 @@ diff a/scripts/logrotate/freeradius b/scripts/logrotate/freeradius
  #
  
  #
-@@ -17,30 +17,30 @@ notifempty
+@@ -17,26 +17,26 @@ notifempty
  #
  #  The main server log
  #
 -/var/log/radius/radius.log {
 +/var/log/freeradius/radius.log {
- 	postrotate
--	/sbin/killall -HUP radiusd
-+	/etc/init.d/freeradius reload
- 	endscript
+ 	copytruncate
  }
  
  #
