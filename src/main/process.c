@@ -1451,6 +1451,8 @@ static void request_finish(REQUEST *request, int action)
  */
 static void request_running(REQUEST *request, int action)
 {
+	int ret;
+
 	VERIFY_REQUEST(request);
 
 	TRACE_STATE_MACHINE;
@@ -1481,7 +1483,10 @@ static void request_running(REQUEST *request, int action)
 		}
 
 		rad_assert(request->handle != NULL);
-		request->handle(request);
+		ret = request->handle(request);
+		if (ret < 0) {
+			RWDEBUG("State function returned error (%i): %s", ret, fr_strerror());
+		}
 
 #ifdef WITH_PROXY
 		/*
@@ -1717,7 +1722,7 @@ skip_dup:
 		request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		request->password = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 
-		fun(request);
+		if (fun(request) < 0) REDEBUG("Error processing request: %s", fr_strerror());
 
 		if (request->reply->code != 0) {
 			request->listener->send(request->listener, request);

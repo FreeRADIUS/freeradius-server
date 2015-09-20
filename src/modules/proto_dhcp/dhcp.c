@@ -552,11 +552,12 @@ RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap)
  *
  * @param packet to send
  * @return
- *	- > 0 if successful.
- *	- <= 0 if failed.
+ *	- >= 0 if successful.
+ *	- < 0 if failed.
  */
 int fr_dhcp_send_socket(RADIUS_PACKET *packet)
 {
+	int ret;
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_dst;
 #ifdef WITH_UDPFROMTO
@@ -572,16 +573,21 @@ int fr_dhcp_send_socket(RADIUS_PACKET *packet)
 		return -1;
 	}
 
+	errno = 0;
+
 #ifndef WITH_UDPFROMTO
 	/*
 	 *	Assume that the packet is encoded before sending it.
 	 */
-	return sendto(packet->sockfd, packet->data, packet->data_len, 0, (struct sockaddr *)&dst, sizeof_dst);
+	ret = sendto(packet->sockfd, packet->data, packet->data_len, 0, (struct sockaddr *)&dst, sizeof_dst);
 #else
 
-	return sendfromto(packet->sockfd, packet->data, packet->data_len, 0, (struct sockaddr *)&src, sizeof_src,
-			  (struct sockaddr *)&dst, sizeof_dst);
+	ret = sendfromto(packet->sockfd, packet->data, packet->data_len, 0, (struct sockaddr *)&src, sizeof_src,
+			 (struct sockaddr *)&dst, sizeof_dst);
 #endif
+	if ((ret < 0) && errno) fr_strerror_printf("dhcp_send_socket: %s", fr_syserror(errno));
+
+	return ret;
 }
 
 #ifdef HAVE_PCAP_H
