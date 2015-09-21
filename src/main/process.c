@@ -614,6 +614,7 @@ static void request_done(REQUEST *request, int action)
 	 */
 	if (!we_are_master()) {
 		NO_CHILD_THREAD;
+		request->module = "<REQUEST_DONE>";
 		request->child_state = REQUEST_DONE;
 		return;
 	}
@@ -852,6 +853,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 
 		if (!we_are_master()) {
 			NO_CHILD_THREAD;
+			request->module = "<REQUEST_CLEANUP_DELAY>";
 			request->child_state = REQUEST_CLEANUP_DELAY;
 			return;
 		}
@@ -1342,6 +1344,7 @@ static void request_finish(REQUEST *request, int action)
 	if (request->packet->dst_port == 0) {
 		RDEBUG("Finished internally proxied request.");
 		NO_CHILD_THREAD;
+		request->module = "<REQUEST_DONE>";
 		request->child_state = REQUEST_DONE;
 		return;
 	}
@@ -1479,6 +1482,7 @@ static void request_finish(REQUEST *request, int action)
 		request->module = "<delay>";
 		request->process = request_response_delay;
 		NO_CHILD_THREAD;
+		request->module = "<REQUEST_RESPONSE_DELAY>";
 		request->child_state = REQUEST_RESPONSE_DELAY;
 	}
 }
@@ -1523,6 +1527,7 @@ static void request_running(REQUEST *request, int action)
 #endif
 
 			NO_CHILD_THREAD;
+			request->module = "<REQUEST_DONE>";
 			request->child_state = REQUEST_DONE;
 			break;
 		}
@@ -1821,9 +1826,6 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 			       request->number, __FUNCTION__,
 			       child_state_names[request->child_state],
 			       child_state_names[REQUEST_RUNNING]);
-#endif
-#ifdef HAVE_PTHREAD_H
-	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 	request->handle = fun;
 	NO_CHILD_THREAD;
@@ -3237,9 +3239,14 @@ static int request_proxy(REQUEST *request, int retransmit)
 	/*
 	 *	Set the state function, then the state, no child, and
 	 *	send the packet.
+	 *
+	 *	The order here is different from other state changes
+	 *	due to race conditions with replies from the home
+	 *	server.
 	 */
 	request->process = proxy_wait_for_reply;
 	request->child_state = REQUEST_PROXIED;
+	request->module = "<REQUEST_PROXIED>";
 	NO_CHILD_THREAD;
 
 	/*
