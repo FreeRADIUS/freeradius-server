@@ -308,7 +308,7 @@ HOW DO I USE IT (FAQ/Examples)
    Once EAP-Identity response is received by the server, based on the
    default_eap_type, the server will send a new request (MD5-Challenge
    request incase of md5, TLS-START request incase of tls) to the supplicant.
-   If the supplicant is rfc2284 compliant and doesnot support the
+   If the supplicant is rfc2284 compliant and does not support the
    EAP-Type sent by the server then it sends EAP-Acknowledge with the
    supported EAP-Type. If this EAP-Type is supported by the server then it
    will send the respective EAP-request.
