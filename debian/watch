@@ -1,0 +1,9 @@
+version=3
+
+opts=pasv,\
+pgpsigurlmangle=s/$/.sig/,\
+repacksuffix=+dfsg,\
+dversionmangle=s/\+git$//,\
+uversionmangle=s/(\d)[_\.\-\+]?((RC|rc|pre|dev|beta|alpha)\d*)$/$1~$2/\
+  ftp://ftp.freeradius.org/pub/freeradius/freeradius-server-(.+)\.tar\.gz
+
