@@ -503,7 +503,7 @@ bool realm_home_server_add(home_server_t *home)
 		inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer));
 
 		cf_log_err_cs(home->cs, "Duplicate home server address%s%s%s: %s:%s%s/%i",
-			      home->name ? " (already in use by" : "",
+			      home->name ? " (already in use by " : "",
 			      home->name ? home->name : "",
 			      home->name ? ")" : "",
 			      buffer,
