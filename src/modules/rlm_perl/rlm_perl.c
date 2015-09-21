@@ -766,6 +766,7 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 	HV		*rad_check_hv;
 	HV		*rad_config_hv;
 	HV		*rad_request_hv;
+	HV		*rad_state_hv;
 #ifdef WITH_PROXY
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
@@ -803,11 +804,13 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		rad_check_hv = get_hv("RAD_CHECK", 1);
 		rad_config_hv = get_hv("RAD_CONFIG", 1);
 		rad_request_hv = get_hv("RAD_REQUEST", 1);
+		rad_state_hv = get_hv("RAD_STATE", 1);
 
 		perl_store_vps(request->packet, request, &request->packet->vps, rad_request_hv, "RAD_REQUEST", "request");
 		perl_store_vps(request->reply, request, &request->reply->vps, rad_reply_hv, "RAD_REPLY", "reply");
 		perl_store_vps(request, request, &request->config, rad_check_hv, "RAD_CHECK", "control");
 		perl_store_vps(request, request, &request->config, rad_config_hv, "RAD_CONFIG", "control");
+		perl_store_vps(request, request, &request->state, rad_state_hv, "RAD_STATE", "session-state");
 
 #ifdef WITH_PROXY
 		rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
@@ -883,6 +886,12 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 		if ((get_hv_content(request, request, rad_check_hv, &vp, "RAD_CHECK", "control")) == 0) {
 			fr_pair_list_free(&request->config);
 			request->config = vp;
+			vp = NULL;
+		}
+
+		if ((get_hv_content(request, request, rad_state_hv, &vp, "RAD_STATE", "session-state")) == 0) {
+			fr_pair_list_free(&request->state);
+			request->state = vp;
 			vp = NULL;
 		}
 
