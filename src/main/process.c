@@ -285,6 +285,12 @@ static bool we_are_master(void)
 #  define ASSERT_MASTER
 #endif
 
+/*
+ *	Make state transitions simpler.
+ */
+#define FINAL_STATE(_x) NO_CHILD_THREAD; request->component = "<core>"; request->module = "<" #_x ">"; request->child_state = _x
+
+
 static int event_new_fd(rad_listen_t *this);
 
 /*
@@ -550,9 +556,7 @@ static void request_done(REQUEST *request, int action)
 	 *	and wait for the master thread timer to clean us up.
 	 */
 	if (!we_are_master()) {
-		NO_CHILD_THREAD;
-		request->module = "<REQUEST_DONE>";
-		request->child_state = REQUEST_DONE;
+		FINAL_STATE(REQUEST_DONE);
 		return;
 	}
 #endif
@@ -789,9 +793,7 @@ static void request_cleanup_delay_init(REQUEST *request)
 		request->process = request_cleanup_delay;
 
 		if (!we_are_master()) {
-			NO_CHILD_THREAD;
-			request->module = "<REQUEST_CLEANUP_DELAY>";
-			request->child_state = REQUEST_CLEANUP_DELAY;
+			FINAL_STATE(REQUEST_CLEANUP_DELAY);
 			return;
 		}
 
@@ -1304,9 +1306,7 @@ static void request_finish(REQUEST *request, int action)
 	 */
 	if (request->packet->dst_port == 0) {
 		RDEBUG("Finished internally proxied request.");
-		NO_CHILD_THREAD;
-		request->module = "<REQUEST_DONE>";
-		request->child_state = REQUEST_DONE;
+		FINAL_STATE(REQUEST_DONE);
 		return;
 	}
 
@@ -1418,9 +1418,6 @@ static void request_finish(REQUEST *request, int action)
 
 	done:
 		RDEBUG2("Finished request");
-		request->component = "<core>";
-		request->module = "<done>";
-
 		request_cleanup_delay_init(request);
 
 	} else {
@@ -1432,12 +1429,9 @@ static void request_finish(REQUEST *request, int action)
 		RDEBUG2("Delaying response for %d.%06d seconds",
 			(int) request->response_delay.tv_sec, (int) request->response_delay.tv_usec);
 		request->listener->encode(request->listener, request);
-		request->component = "<core>";
-		request->module = "<delay>";
 		request->process = request_response_delay;
-		NO_CHILD_THREAD;
-		request->module = "<REQUEST_RESPONSE_DELAY>";
-		request->child_state = REQUEST_RESPONSE_DELAY;
+
+		FINAL_STATE(REQUEST_RESPONSE_DELAY);
 	}
 }
 
@@ -1481,10 +1475,7 @@ static void request_running(REQUEST *request, int action)
 					       child_state_names[request->child_state],
 					       child_state_names[REQUEST_DONE]);
 #endif
-
-			NO_CHILD_THREAD;
-			request->module = "<REQUEST_DONE>";
-			request->child_state = REQUEST_DONE;
+			FINAL_STATE(REQUEST_DONE);
 			break;
 		}
 
@@ -3209,6 +3200,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 */
 	request->process = proxy_wait_for_reply;
 	request->child_state = REQUEST_PROXIED;
+	request->component = "<core>";
 	request->module = "<REQUEST_PROXIED>";
 	NO_CHILD_THREAD;
 
