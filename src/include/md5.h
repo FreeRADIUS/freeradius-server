@@ -26,8 +26,8 @@ RCSIDH(md5_h, "$Id$")
 
 #  include <string.h>
 
-#ifdef HAVE_OPENSSL_MD5_H
-#  include <openssl/md5.h>
+#ifdef HAVE_OPENSSL_EVP_H
+#  include <openssl/evp.h>
 #endif
 
 #ifdef __cplusplus
@@ -38,7 +38,7 @@ extern "C" {
 #  define MD5_DIGEST_LENGTH 16
 #endif
 
-#ifndef HAVE_OPENSSL_MD5_H
+#ifndef HAVE_OPENSSL_EVP_H
 /*
  * The MD5 code used here and in md5.c was originally retrieved from:
  *   http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.h?rev=1.1
@@ -68,13 +68,15 @@ void	fr_md5_final(uint8_t out[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 void	fr_md5_transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
 	CC_BOUNDED(__size__, 1, 4, 4)
 	CC_BOUNDED(__minbytes__, 2, MD5_BLOCK_LENGTH);
-#else  /* HAVE_OPENSSL_MD5_H */
+#else  /* HAVE_OPENSSL_EVP_H */
 USES_APPLE_DEPRECATED_API
-#  define FR_MD5_CTX		MD5_CTX
-#  define fr_md5_init		MD5_Init
-#  define fr_md5_update		MD5_Update
-#  define fr_md5_final		MD5_Final
-#  define fr_md5_transform	MD5_Transform
+#  define FR_MD5_CTX			EVP_MD_CTX
+#  define fr_md5_init(_ctx) do { \
+	EVP_MD_CTX_init(_ctx);\
+	EVP_DigestInit(_ctx, EVP_md5());\
+} while (0)
+#  define fr_md5_update			EVP_DigestUpdate
+#  define fr_md5_final(_out, _ctx)	EVP_DigestFinal(_ctx, _out, NULL)
 #endif
 
 /* hmac.c */
