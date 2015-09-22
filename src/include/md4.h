@@ -79,7 +79,7 @@ USES_APPLE_DEPRECATED_API
 	EVP_DigestInit(_ctx, EVP_md4());\
 } while (0)
 #  define fr_md4_update			EVP_DigestUpdate
-#  define fr_md4_final(_out, _ctx)	EVP_DigestFinal(_ctx, _out, NULL)
+#  define fr_md4_final(_out, _ctx)	EVP_DigestFinal_ex(_ctx, _out, NULL)
 #endif
 
 /* md4.c */
