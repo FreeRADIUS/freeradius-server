@@ -1764,11 +1764,18 @@ skip_edir:
 		values = ldap_get_values_len(conn->handle, entry, inst->profile_attr);
 		if (values != NULL) {
 			for (i = 0; values[i] != NULL; i++) {
+				rlm_rcode_t ret;
 				char *value;
 
 				value = rlm_ldap_berval_to_string(request, values[i]);
-				rlm_ldap_map_profile(inst, request, &conn, value, &expanded);
+				ret = rlm_ldap_map_profile(inst, request, &conn, value, &expanded);
 				talloc_free(value);
+				if (ret == RLM_MODULE_FAIL) {
+					ldap_value_free_len(values);
+					rcode = ret;
+					goto finish;
+				}
+
 			}
 			ldap_value_free_len(values);
 		}
