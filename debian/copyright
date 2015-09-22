@@ -1,61 +1,99 @@
-This package was debianized by Chad Miller <cmiller@debian.org> on
-Fri, 24 Nov 2000 16:25:57 -0500.
-The packaging was rearranged by Paul Hampson <Paul.Hampson@anu.edu.au> on
-Sun,  4 May 2003 03:51:20 +1000
-The packaging was revamped by Stephen Gran <sgran@debian.org> on
-Sat, 15 Mar 2008 16:26:51 +0000.
+Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: FreeRADIUS server
+Source: https://github.com/FreeRADIUS/freeradius-server
+Files-Excluded: doc/rfc/*
+Comment: This is a DEP-5 machine readable version of the debian/copyright file
+ shipped with earlier versions of FreeRADIUS. It is not yet comprehensive. See
+ individual files for their copyright and license.
+ http://dep.debian.net/deps/dep5/
 
-It was downloaded from http://www.freeradius.org/
+Files: *
+Copyright: 2000-2014, The FreeRADIUS Server Project
+ 1997-1999, Cistron Internet Services B.V.
+License: GPL-2+
 
-Copyright: 
+Files:debian/*
+Copyright: 2008, Stephen Gran <sgran@debian.org>
+License: GPL-2+
+Comment: This package was debianized by Chad Miller <cmiller@debian.org> on
+ Fri, 24 Nov 2000 16:25:57 -0500.
+ The packaging was rearranged by Paul Hampson <Paul.Hampson@anu.edu.au> on
+ Sun,  4 May 2003 03:51:20 +1000
+ The packaging was revamped by Stephen Gran <sgran@debian.org> on
+ Sat, 15 Mar 2008 16:26:51 +0000.
+ It was downloaded from http://www.freeradius.org/
 
-Copyright (C) 2000-2014 The FreeRADIUS Server Project
-Copyright (C) 1997-1999 Cistron Internet Services B.V.
+Files: src/*
+Copyright: 2000-2014, The FreeRADIUS Server Project
+ 1997-1999, Cistron Internet Services B.V.
+License: GPL-2+ with OpenSSL exception
 
-License:
+Files: src/lib/*
+Copyright: See individual files
+License: LGPL-2.1+
+ This library is free software; you can redistribute it and/or
+ modify it under the terms of the GNU Lesser General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later version.
+ .
+ On Debian systems, the complete text of the GNU Lesser General Public
+ License can be found in /usr/share/common-licenses/LGPL-2.1.
 
-Except for /usr/lib/freeradius/libradius*, this package is licensed
-under the GNU GPL version 2.
+License: GPL-2+
+ This program is free software; you can redistribute it
+ and/or modify it under the terms of the GNU General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later
+ version.
+ .
+ This program is distributed in the hope that it will be
+ useful, but WITHOUT ANY WARRANTY; without even the implied
+ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ PURPOSE.  See the GNU General Public License for more
+ details.
+ .
+ You should have received a copy of the GNU General Public
+ License along with this package; if not, write to the Free
+ Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+ Boston, MA  02110-1301 USA
+ .
+ On Debian systems, the full text of the GNU General Public
+ License version 2 can be found in the file
+ `/usr/share/common-licenses/GPL-2'.
 
-This program is free software; you can redistribute it and/or modify it under
-the terms of the GNU General Public License as published by the Free Software
-Foundation; either version 2 of the License, or (at your option) any later
-version.
+License: GPL-2+ with OpenSSL exception
+ This program is free software; you can redistribute it
+ and/or modify it under the terms of the GNU General Public
+ License as published by the Free Software Foundation; either
+ version 2 of the License, or (at your option) any later
+ version.
+ .
+ In addition, as a special exception, the author of this
+ program gives permission to link the code of its
+ release with the OpenSSL project's "OpenSSL" library (or
+ with modified versions of it that use the same license as
+ the "OpenSSL" library), and distribute the linked
+ executables. You must obey the GNU General Public
+ License in all respects for all of the code used other
+ than "OpenSSL".  If you modify this file, you may extend
+ this exception to your version of the file, but you are
+ not obligated to do so.  If you do not wish to do so,
+ delete this exception statement from your version.
+ .
+ This program is distributed in the hope that it will be
+ useful, but WITHOUT ANY WARRANTY; without even the implied
+ warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+ PURPOSE.  See the GNU General Public License for more
+ details.
+ .
+ You should have received a copy of the GNU General Public
+ License along with this package; if not, write to the Free
+ Software Foundation, Inc., 51 Franklin St, Fifth Floor,
+ Boston, MA  02110-1301 USA
+ .
+ On Debian systems, the full text of the GNU General Public
+ License version 2 can be found in the file
+ `/usr/share/common-licenses/GPL-2'.
 
-On Debian systems, the complete text of the GNU General Public License can be
-found in /usr/share/common-licenses/GPL-2 file.
 
---
 
-/usr/lib/freeradius/libradius* is under the GNU LGPL version 2.
-
-This library is free software; you can redistribute it and/or
-modify it under the terms of the GNU Lesser General Public
-License as published by the Free Software Foundation; either
-version 2 of the License, or (at your option) any later version.
-
-On Debian systems, the complete text of the GNU Lesser General Public
-License can be found in /usr/share/common-licenses/LGPL.
-
---
-
-src/LICENSE.openssl includes a modification to the main LICENSE file,
-which is GPLv2. It applies only to the files in the "src" directory.
-(That directory contains the source code which has links to OpenSSL
-and from which the Debian binaries are produced.)
-
-In addition, as a special exception, the copyright holders give
-permission to link the code of this program with the OpenSSL library,
-and distribute linked combinations including the two.
-You must obey the GNU General Public License in all respects
-for all of the code used other than OpenSSL.  If you modify
-file(s) with this exception, you may extend this exception to your
-version of the file(s), but you are not obligated to do so.  If you
-do not wish to do so, delete this exception statement from your
-version.  If you delete this exception statement from all source
-files in the program, then also delete it here.
-
---
-
-The Debian packaging is (C) 2008, Stephen Gran <sgran@debian.org> and
-is licensed under the GPL, see /usr/share/common-licenses/GPL.
