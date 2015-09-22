@@ -288,7 +288,7 @@ static bool we_are_master(void)
 /*
  *	Make state transitions simpler.
  */
-#define FINAL_STATE(_x) NO_CHILD_THREAD; request->component = "<core>"; request->module = "<" #_x ">"; request->child_state = _x
+#define FINAL_STATE(_x) NO_CHILD_THREAD; request->component = "<" #_x ">"; request->module = ""; request->child_state = _x
 
 
 static int event_new_fd(rad_listen_t *this);
@@ -3237,8 +3237,8 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 */
 	request->process = proxy_wait_for_reply;
 	request->child_state = REQUEST_PROXIED;
-	request->component = "<core>";
-	request->module = "<REQUEST_PROXIED>";
+	request->component = "<REQUEST_PROXIED>";
+	request->module = "";
 	NO_CHILD_THREAD;
 
 	/*
