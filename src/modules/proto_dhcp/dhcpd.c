@@ -751,11 +751,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			rad_assert(sock->src_ipaddr.af == AF_INET);
 		} else {
 		src_addr_is_bound_addr:
-			memset(&sock->src_ipaddr, 0, sizeof(sock->src_ipaddr));
-			memcpy(&sock->src_ipaddr.ipaddr.ip4addr.s_addr,
-			       &sock->lsock.my_ipaddr, sizeof(sock->src_ipaddr.ipaddr.ip4addr.s_addr));
-			sock->src_ipaddr.af = AF_INET;
-			sock->src_ipaddr.prefix = 32;
+			sock->src_ipaddr = sock->lsock.my_ipaddr;
 		}
 
 		/*
