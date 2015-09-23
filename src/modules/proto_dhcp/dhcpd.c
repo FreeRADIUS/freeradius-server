@@ -761,6 +761,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 *	DHCP-DHCP-Server-Identifier.
 		 */
 		inet_ntop(sock->src_ipaddr.af, &sock->src_ipaddr, buffer, sizeof(buffer));
+		DEBUG2("Adding src_ipaddr = \"%s\"", buffer);
 		cp = cf_pair_alloc(cs, "src_ipaddr", buffer, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 		cf_pair_add(cs, cp);
 		if (rcode < 0) return -1;
