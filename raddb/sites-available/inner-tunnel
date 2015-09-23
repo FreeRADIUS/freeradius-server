@@ -134,8 +134,8 @@ authorize {
 	#
 	#  If you are using /etc/smbpasswd, and are also doing
 	#  mschap authentication, the un-comment this line, and
-	#  configure the 'etc_smbpasswd' module, above.
-#	etc_smbpasswd
+	#  enable the "smbpasswd" module.
+#	smbpasswd
 
 	#
 	#  The ldap module reads passwords from the LDAP database.
