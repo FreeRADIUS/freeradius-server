@@ -3208,6 +3208,16 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 			if (!pass2_fixup_undefined(c->ci, c->data.vpt)) return false;
 			c->pass2_fixup = PASS2_FIXUP_NONE;
 		}
+
+		/*
+		 *	Convert virtual &Attr-Foo to "%{Attr-Foo}"
+		 */
+		vpt = c->data.vpt;
+		if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.virtual) {
+			vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
+			vpt->type = TMPL_TYPE_XLAT_STRUCT;
+		}
+
 		return true;
 	}
 
