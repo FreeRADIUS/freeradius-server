@@ -129,11 +129,11 @@ do { \
 static char const *name;
 
 static void NEVER_RETURNS usage(int ret) {
-	INFO("Usage: %s [[-a|-r|-c] -p] [options] <server[:port]> <pool> [<range>]", name);
+	INFO("Usage: %s [[-a|-d|-r] -p] [options] <server[:port]> <pool> [<range>]", name);
 	INFO("Pool management:");
 	INFO("  -a <addr>              Add addresses/prefixes to the pool");
-	INFO("  -r <addr>              Remove addresses/prefixes in this range");
-	INFO("  -c <addr>              Release addresses/prefixes in this range");
+	INFO("  -d <addr>              Delete addresses/prefixes in this range");
+	INFO("  -r <addr>              Release addresses/prefixes in this range");
 	INFO("  -s <addr>              Show addresses/prefix in this range");
 	INFO("  -p <prefix_len>        Length of prefix to allocate (defaults to 32/128)");
 //	INFO("  -i <file>              Import entries from ISC lease file [NYI]");
@@ -898,17 +898,17 @@ do { \
 	p++; \
 } while (0);
 
-	while ((opt = getopt(argc, argv, "a:r:c:s:p:ihxo:f:")) != EOF)
+	while ((opt = getopt(argc, argv, "a:d:r:s:p:ihxo:f:")) != EOF)
 	switch (opt) {
 	case 'a':
 		ADD_ACTION(IPPOOL_TOOL_ADD);
 		break;
 
-	case 'r':
+	case 'd':
 		ADD_ACTION(IPPOOL_TOOL_REMOVE);
 		break;
 
-	case 'c':
+	case 'r':
 		ADD_ACTION(IPPOOL_TOOL_RELEASE);
 		break;
 
