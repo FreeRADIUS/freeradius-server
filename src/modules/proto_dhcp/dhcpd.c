@@ -755,16 +755,21 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 
 		/*
-		 *	Magic defaults FTW.
-		 *
-		 *	This lets %{config:} work as expected, if we want to set
-		 *	DHCP-DHCP-Server-Identifier.
+		 *	If src is not INADDR_ANY add a configuration item
 		 */
-		inet_ntop(sock->src_ipaddr.af, &sock->src_ipaddr, buffer, sizeof(buffer));
-		DEBUG2("Adding src_ipaddr = \"%s\"", buffer);
-		cp = cf_pair_alloc(cs, "src_ipaddr", buffer, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
-		cf_pair_add(cs, cp);
-		if (rcode < 0) return -1;
+		if (!fr_is_inaddr_any(&sock->src_ipaddr)) {
+			/*
+			 *	Magic defaults FTW.
+			 *
+			 *	This lets %{config:} work as expected, if we want to set
+			 *	DHCP-DHCP-Server-Identifier.
+			 */
+			inet_ntop(sock->src_ipaddr.af, &sock->src_ipaddr, buffer, sizeof(buffer));
+			DEBUG2("Adding src_ipaddr = \"%s\"", buffer);
+			cp = cf_pair_alloc(cs, "src_ipaddr", buffer, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
+			cf_pair_add(cs, cp);
+			if (rcode < 0) return -1;
+		}
 	}
 
 	/*
