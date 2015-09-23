@@ -1,0 +1,16 @@
+#
+#  PRE: update if
+#
+update control {
+       Cleartext-Password := 'hello'
+}
+
+update request {
+	Tmp-String-0 := "<UNKNOWN-CLIENT>"
+}
+
+if (&Tmp-String-0 == &Client-Shortname) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}

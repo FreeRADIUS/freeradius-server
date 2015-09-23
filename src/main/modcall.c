@@ -3438,6 +3438,15 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 	}
 
 	/*
+	 *	Convert RHS to expansions, too.
+	 */
+	vpt = c->data.map->rhs;
+	if ((vpt->type == TMPL_TYPE_ATTR) && vpt->tmpl_da->flags.virtual) {
+		vpt->tmpl_xlat = xlat_from_tmpl_attr(vpt, vpt);
+		vpt->type = TMPL_TYPE_XLAT_STRUCT;
+	}
+
+	/*
 	 *	@todo v3.1: do the same thing for the RHS...
 	 */
 
@@ -3787,6 +3796,14 @@ bool modcall_pass2(modcallable *mc)
 						return false;
 					}
 				}
+			}
+
+			/*
+			 *	Virtual attribute fixes for "case" statements, too.
+			 */
+			if ((g->vpt->type == TMPL_TYPE_ATTR) && g->vpt->tmpl_da->flags.virtual) {
+				g->vpt->tmpl_xlat = xlat_from_tmpl_attr(g->vpt, g->vpt);
+				g->vpt->type = TMPL_TYPE_XLAT_STRUCT;
 			}
 
 			if (!modcall_pass2(g->children)) return false;
