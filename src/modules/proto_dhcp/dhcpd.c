@@ -472,7 +472,8 @@ static int dhcp_process(REQUEST *request)
 	/*
 	 *	The request was unicast (via a relay)
 	 */
-	} else if (request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_BROADCAST)) {
+	} else if (request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_BROADCAST) &&
+		   request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_ANY)) {
 		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 	/*
 	 *	The listener was bound to an IP address, or we determined
