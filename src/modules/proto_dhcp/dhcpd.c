@@ -449,22 +449,35 @@ static int dhcp_process(REQUEST *request)
 	 */
 	request->reply->dst_ipaddr.af = AF_INET;
 	request->reply->src_ipaddr.af = AF_INET;
-	request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->src_ipaddr.ipaddr.ip4addr.s_addr;
 	request->reply->src_ipaddr.prefix = 32;
 
 	/*
-	 *	They didn't set a proper src_ipaddr, but we want to
-	 *	send the packet with a source IP.  If there's a server
-	 *	identifier, use it.
+	 *	Packet-Src-IP-Address has highest precedence
 	 */
-	if (request->reply->src_ipaddr.ipaddr.ip4addr.s_addr == INADDR_ANY) {
-		vp = fr_pair_find_by_num(request->reply->vps, PW_PACKET_SRC_IP_ADDRESS, 0, TAG_ANY);
-		if (!vp) vp = fr_pair_find_by_num(request->reply->vps, 54, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-DHCP-Server-Identifier */
-		if (vp) {
-			request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-		}
+	vp = fr_pair_find_by_num(request->reply->vps, PW_PACKET_SRC_IP_ADDRESS, 0, TAG_ANY);
+	if (vp) {
+		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+	/*
+	 *	The request was unicast (via a relay)
+	 */
+	} else if (request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_BROADCAST)) {
+		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+	/*
+	 *	The listener was bound to an IP address, or we determined
+	 *	the address automatically, as it was the only address bound
+	 *	to the interface, and we bound to the interface.
+	 */
+	} else if (sock->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_ANY)) {
+		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->src_ipaddr.ipaddr.ip4addr.s_addr;
+	/*
+	 *	There's a Server-Identification attribute
+	 */
+	} else if ((vp = fr_pair_find_by_num(request->reply->vps, 54, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+	} else {
+		REDEBUG("Unable to determine correct src_ipaddr for response");
+		return -1;
 	}
-
 	request->reply->dst_port = request->packet->src_port;
 	request->reply->src_port = request->packet->dst_port;
 
