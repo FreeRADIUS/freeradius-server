@@ -725,20 +725,23 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	src_interface or interface (if we're binding to INADDR_ANY).
 	 */
 	} else {
-		char		buffer[INET_ADDRSTRLEN];
-		fr_ipaddr_t	ipaddr;
+		char buffer[INET_ADDRSTRLEN];
 
 		if (fr_is_inaddr_any(&sock->lsock.my_ipaddr) && sock->src_interface) {
-			if (fr_ipaddr_from_interface(&ipaddr, AF_INET, sock->src_interface) < 0) {
+			if (fr_ipaddr_from_interface(&sock->src_ipaddr, AF_INET, sock->src_interface) < 0) {
 				WARN("Failed resolving interface %s to IP address: %s", sock->src_interface,
 				     fr_strerror());
 				WARN("Will continue, but source address must be set within the DHCP virtual server");
 				goto src_addr_is_bound_addr;
 			}
-			rad_assert(ipaddr.af == AF_INET);
+			rad_assert(sock->src_ipaddr.af == AF_INET);
 		} else {
 		src_addr_is_bound_addr:
-			memcpy(&ipaddr, &sock->lsock.my_ipaddr, sizeof(ipaddr));
+			memset(&sock->src_ipaddr, 0, sizeof(sock->src_ipaddr));
+			memcpy(&sock->src_ipaddr.ipaddr.ip4addr.s_addr,
+			       &sock->lsock.my_ipaddr, sizeof(sock->src_ipaddr.ipaddr.ip4addr.s_addr));
+			sock->src_ipaddr.af = AF_INET;
+			sock->src_ipaddr.prefix = 32;
 		}
 
 		/*
@@ -747,11 +750,9 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 *	This lets %{config:} work as expected, if we want to set
 		 *	DHCP-DHCP-Server-Identifier.
 		 */
-		inet_ntop(ipaddr.af, &ipaddr.ipaddr, buffer, sizeof(buffer));
+		inet_ntop(sock->src_ipaddr.af, &sock->src_ipaddr, buffer, sizeof(buffer));
 		cp = cf_pair_alloc(cs, "src_ipaddr", buffer, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
 		cf_pair_add(cs, cp);
-		rcode = cf_item_parse(cs, "src_ipaddr", FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, &sock->src_ipaddr),
-				      NULL, T_INVALID);
 		if (rcode < 0) return -1;
 	}
 
