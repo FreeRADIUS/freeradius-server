@@ -102,7 +102,7 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("expiry_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_redis_ippool_t, expiry_attr) },
 
 	{ FR_CONF_OFFSET("ipv4_integer", PW_TYPE_BOOLEAN, rlm_redis_ippool_t, ipv4_integer) },
-	{ FR_CONF_OFFSET("copy_on_update", PW_TYPE_BOOLEAN, rlm_redis_ippool_t, ipv4_integer), .dflt = "yes", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("copy_on_update", PW_TYPE_BOOLEAN, rlm_redis_ippool_t, copy_on_update), .dflt = "yes", .quote = T_BARE_WORD },
 
 	/*
 	 *	Split out to allow conversion to universal ippool module with
