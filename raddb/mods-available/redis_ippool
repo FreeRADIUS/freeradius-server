@@ -67,6 +67,7 @@ redis_ippool {
 	#  we need to send back DHCP-Your-IP-Address in ACKs.
 	#
 	copy_on_update = yes
+
 	#
 	#  Redis connection settings - Identical to all other Redis based modules.
 	#
