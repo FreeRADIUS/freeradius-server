@@ -14,9 +14,7 @@ update request {
 	Tmp-String-0 := `./build/bin/rlm_redis_ippool_tool -a 192.168.0.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.0.0`
 }
 
-#
-#  Check allocation
-#
+# 1. Check allocation
 redis_ippool
 if (updated) {
 	test_pass
@@ -24,40 +22,33 @@ if (updated) {
 	test_fail
 }
 
+# 2.
 if (&reply:DHCP-Your-IP-Address == 192.168.0.1) {
 	test_pass
 } else {
 	test_fail
 }
 
-#
-#  Check the expiry attribute is present and correct
-#
+# 3. Check the expiry attribute is present and correct
 if (&reply:DHCP-IP-Address-Lease-Time == 30) {
 	test_pass
 } else {
 	test_fail
 }
 
-#
-#  Verify the gateway was set
-#
+# 4. Verify the gateway was set
 if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{reply:DHCP-Your-IP-Address} gateway}" == '127.0.0.1') {
 	test_pass
 } else {
 	test_fail
 }
 
-#
-#  Add another IP addresses
-#
+# 5. Add another IP addresses
 update request {
 	Tmp-String-0 := `./build/bin/rlm_redis_ippool_tool -a 192.168.1.1/32 $ENV{REDIS_IPPOOL_TEST_SERVER}:30001 %{control:Pool-Name} 192.168.1.0`
 }
 
-#
-#  Verify that the lease time is extended
-#
+# 6. Verify that the lease time is extended
 update {
 	&request:DHCP-Requested-IP-Address := &reply:DHCP-Your-IP-Address
 	&request:NAS-IP-Address := 127.0.0.2
@@ -70,76 +61,64 @@ if (updated) {
 	test_fail
 }
 
-#
-#  Lease time should now be 60 seconds
-#
+# 7. Lease time should now be 60 seconds
 if (&reply:DHCP-IP-Address-Lease-Time == 60) {
 	test_pass
 } else {
 	test_fail
 }
 
-#
-#  Check ZSCORE reflects that
-#
+# 8. Check ZSCORE reflects that
 if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:DHCP-Your-IP-Address}'} - %l}" > 50) {
 	test_pass
 } else {
 	test_fail
 }
 
+# 9.
 if ("%{expr:%{redis:ZSCORE '{%{control:Pool-Name}%}:pool' '%{reply:DHCP-Your-IP-Address}'} - %l}" < 70) {
 	test_pass
 } else {
 	test_fail
 }
 
-#
-#  Verify the lease is still associated with the device
-#
+# 10. Verify the lease is still associated with the device
 if (&reply:DHCP-Your-IP-Address == "%{redis:GET '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}") {
 	test_pass
 } else {
 	test_fail
 }
 
-#
-#  and that the device object will expire a suitable number of seconds into the future
-#
+# 11. And that the device object will expire a suitable number of seconds into the future
 if ("%{redis:TTL '{%{control:Pool-Name}%}:device:%{Calling-Station-ID}'}" == 60) {
 	test_pass
 } else {
 	test_fail
 }
 
-#
-#  Verify the gateway was updated
-#
+# 12. Verify the gateway was updated
 if ("%{redis:HGET {%{control:Pool-Name}%}:ip:%{request:DHCP-Requested-IP-Address} gateway}" == '127.0.0.2') {
 	test_pass
 } else {
 	test_fail
 }
 
-#
-#  and that the range attribute was set
-#
+# 13. and that the range attribute was set
 if (&reply:Pool-Range && (&reply:Pool-Range == '192.168.0.0')) {
 	test_pass
 } else {
 	test_fail
 }
 
-#
-#  Change the ip address to one that doesn't exist in the pool and check we *can't* update it
-#
+# Change the ip address to one that doesn't exist in the pool and check we *can't* update it
 update request {
 	&request:DHCP-Requested-IP-Address := 192.168.3.1
 }
 redis_ippool {
 	invalid = 1
 }
-if (invalid) {
+# 14.
+if (notfound) {
 	test_pass
 } else {
 	test_fail
@@ -148,9 +127,7 @@ update request {
 	&request:DHCP-Requested-IP-Address := 192.168.0.1
 }
 
-#
-#  Now change the calling station ID and check that we *can't* update the lease
-#
+# 15. Now change the calling station ID and check that we *can't* update the lease
 update request {
 	&Calling-Station-ID := 'naughty'
 }
@@ -163,9 +140,7 @@ if (invalid) {
 	test_fail
 }
 
-#
-#  Verify the lease is still associated with the previous device
-#
+# 16. Verify the lease is still associated with the previous device
 if (&reply:DHCP-Your-IP-Address == "%{redis:GET '{%{control:Pool-Name}%}:device:00:11:22:33:44:55'}") {
 	test_pass
 } else {
