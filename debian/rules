@@ -29,7 +29,7 @@ logdir          = /var/log/$(package)
 pkgdocdir       = /usr/share/doc/$(package)
 raddbdir        = /etc/$(package)
 
-modulelist=krb5 ldap sql_mysql sql_iodbc sql_postgresql rest dhcp
+modulelist=krb5 ldap sql_mysql sql_iodbc sql_postgresql rest dhcp redis
 pkgs=$(shell dh_listpackages)
 
 # This has to be exported to make some magic below work.
@@ -96,6 +96,7 @@ endif
 		--without-rlm_eap_tnc \
 		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
 		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
+		--with-iodbc-include-dir='/usr/include/iodbc' \
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
 		--without-rlm_sql_unixodbc
