@@ -34,7 +34,7 @@ use warnings;
 use Data::Dumper;
 
 # Bring the global hashes into the package scope
-our (%RAD_REQUEST, %RAD_REPLY, %RAD_CONFIG);
+our (%RAD_REQUEST, %RAD_REPLY, %RAD_CONFIG, %RAD_STATE);
 
 # This is hash wich hold original request from radius
 #my %RAD_REQUEST;
@@ -42,6 +42,8 @@ our (%RAD_REQUEST, %RAD_REPLY, %RAD_CONFIG);
 #my %RAD_REPLY;
 #This is for config items (was %RAD_CHECK in earlier versions)
 #my %RAD_CONFIG;
+# This is the session-sate
+#my %RAD_STATE;
 # This is configuration items from "config" perl module configuration section
 #my %RAD_PERLCONF;
 
