@@ -133,7 +133,7 @@ authorize {
 
 	#
 	#  If you are using /etc/smbpasswd, and are also doing
-	#  mschap authentication, the un-comment this line, and
+	#  mschap authentication, then un-comment this line, and
 	#  enable the "smbpasswd" module.
 #	smbpasswd
 
@@ -182,6 +182,8 @@ authorize {
 #  The common reasons to set the Auth-Type attribute by hand
 #  is to either forcibly reject the user, or forcibly accept him.
 #
+#  NB You cannot forcibly accept an EAP authentication!
+
 authenticate {
 	#
 	#  PAP authentication, when a back-end database listed
@@ -210,11 +212,11 @@ authenticate {
 	#  Pluggable Authentication Modules.
 #	pam
 
-	# Uncomment it if you want to use ldap for authentication
+	#  Uncomment it if you want to use ldap for authentication
 	#
-	# Note that this means "check plain-text password against
-	# the ldap database", which means that EAP won't work,
-	# as it does not supply a plain-text password.
+	#  Note that this means "check plain-text password against
+	#  the ldap database", which means that EAP won't work,
+	#  as it does not supply a plain-text password.
 	#
 	#  We do NOT recommend using this.  LDAP servers are databases.
 	#  They are NOT authentication servers.  FreeRADIUS is an
