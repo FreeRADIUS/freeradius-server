@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#define MAX_QUERY_LEN 1024
+#define MAX_QUERY_LEN 2048
 
 /*
  *	Note: When your counter spans more than 1 period (ie 3 months
