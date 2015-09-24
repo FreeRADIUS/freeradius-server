@@ -73,6 +73,9 @@ typedef struct rlm_redis_ippool {
 	bool			ipv4_integer;	//!< Whether IPv4 addresses should be cast to integers,
 						//!< for renew operations.
 
+	bool			copy_on_update; //!< Copy the address provided by ip_address to the
+						//!< reply_attr if updates are successful.
+
 	fr_redis_cluster_t	*cluster;	//!< Redis cluster.
 } rlm_redis_ippool_t;
 
@@ -99,6 +102,7 @@ static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("expiry_attr", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_redis_ippool_t, expiry_attr) },
 
 	{ FR_CONF_OFFSET("ipv4_integer", PW_TYPE_BOOLEAN, rlm_redis_ippool_t, ipv4_integer) },
+	{ FR_CONF_OFFSET("copy_on_update", PW_TYPE_BOOLEAN, rlm_redis_ippool_t, ipv4_integer), .dflt = "yes", .quote = T_BARE_WORD },
 
 	/*
 	 *	Split out to allow conversion to universal ippool module with
@@ -1083,6 +1087,28 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 					    gateway_id, gateway_id_len, (uint32_t)expires)) {
 		case IPPOOL_RCODE_SUCCESS:
 			RDEBUG2("IP address lease updated");
+
+			/*
+			 *	Copy over the input IP address to the reply attribute
+			 */
+			if (inst->copy_on_update) {
+				vp_tmpl_t ip_rhs = {
+					.name = "",
+					.type = TMPL_TYPE_DATA,
+					.quote = T_BARE_WORD,
+				};
+				vp_map_t ip_map = {
+					.lhs = inst->reply_attr,
+					.op = T_OP_SET,
+					.rhs = &ip_rhs
+				};
+
+				ip_rhs.tmpl_data_length = strlen(ip_str);
+				ip_rhs.tmpl_data_value.strvalue = ip_str;
+				ip_rhs.tmpl_data_type = PW_TYPE_STRING;
+
+				if (map_to_request(request, &ip_map, map_to_vp, NULL) < 0) return RLM_MODULE_FAIL;
+			}
 			return RLM_MODULE_UPDATED;
 
 		/*
@@ -1251,7 +1277,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->cluster) return -1;
 
 	/*
-	 *	Pre-Compute the SHA hashes of the Lua scripts
+	 *	Pre-Compute the SHA1 hashes of the Lua scripts
 	 */
 	if (!done_hash) {
 		fr_sha1_ctx	sha1_ctx;

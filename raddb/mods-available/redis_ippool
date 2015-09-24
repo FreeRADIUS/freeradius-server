@@ -62,6 +62,12 @@ redis_ippool {
 	expiry_attr = &reply:DHCP-IP-Address-Lease-Time
 
 	#
+	#  If true - Copy the value of ip_address to the attribute specified by
+	#  reply_attr when performing an update/renew.  This is needed for DHCP where
+	#  we need to send back DHCP-Your-IP-Address in ACKs.
+	#
+	copy_on_update = yes
+	#
 	#  Redis connection settings - Identical to all other Redis based modules.
 	#
 	redis {
