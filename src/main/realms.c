@@ -1686,7 +1686,13 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 		}
 	}
 
-	if (secret) cf_log_info(cs, "\tsecret = %s", secret);
+	if (secret) {
+		if (rad_debug_lvl <= 2) {
+			cf_log_info(cs, "\tsecret = <<< secret >>>");
+		} else {
+			cf_log_info(cs, "\tsecret = %s", secret);
+		}
+	}
 
 	return 1;
 
