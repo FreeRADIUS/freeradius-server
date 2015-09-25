@@ -162,6 +162,10 @@ int const fr_attr_shift[MAX_TLV_NEST + 1] = { 0, 8, 16, 24, 29 };
 
 int const fr_attr_mask[MAX_TLV_NEST + 1] = { 0xff, 0xff, 0xff, 0x1f, 0x07 };
 
+/*
+ *	attr & fr_attr_parent_mask[i] == Nth parent of attr
+ */
+static unsigned int const fr_attr_parent_mask[MAX_TLV_NEST + 1] = { 0, 0x000000ff, 0x0000ffff, 0x00ffffff, 0x1fffffff };
 
 /*
  *	Create the hash of the name.
@@ -1407,15 +1411,65 @@ int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
  */
 static DICT_ATTR const *dict_parent(unsigned int attr, unsigned int vendor)
 {
-	if (vendor < FR_MAX_VENDOR) {
-		return dict_attrbyvalue(attr & 0xff, vendor);
+	int i;
+	unsigned int base_vendor;
+
+	/*
+	 *	RFC attributes can't be of type "tlv".
+	 */
+	if (!vendor) return NULL;
+
+	base_vendor = vendor & (FR_MAX_VENDOR - 1);
+
+	/*
+	 *	It's a real vendor.
+	 */
+	if (base_vendor != 0) {
+		DICT_VENDOR const *dv;
+
+		dv = dict_vendorbyvalue(base_vendor);
+		if (!dv) return NULL;
+
+		/*
+		 *	Only standard format attributes can be of type "tlv",
+		 *	Except for DHCP.  <sigh>
+		 */
+		if ((vendor != 54) && ((dv->type != 1) || (dv->length != 1))) return NULL;
+
+		for (i = MAX_TLV_NEST; i > 0; i--) {
+			unsigned int parent;
+
+			parent = attr & fr_attr_parent_mask[i];
+
+			if (parent != attr) return dict_attrbyvalue(parent, vendor); /* not base_vendor */
+		}
+
+		/*
+		 *	It was a top-level VSA.  There's no parent.
+		 *	We COULD return the appropriate enclosing VSA
+		 *	(26, or 241.26, etc.) but that's not what we
+		 *	want.
+		 */
+		return NULL;
 	}
 
-	if (attr < 256) {
-		return dict_attrbyvalue((vendor / FR_MAX_VENDOR) & 0xff, 0);
+	/*
+	 *	It's an extended attribute.  Return the base Extended-Attr-X
+	 */
+	if (attr < 256) return dict_attrbyvalue((vendor / FR_MAX_VENDOR) & 0xff, 0);
+
+
+	/*
+	 *	Figure out which attribute it is.
+	 */
+	for (i = MAX_TLV_NEST; i > 0; i--) {
+		unsigned int parent;
+
+		parent = attr & fr_attr_parent_mask[i];
+		if (parent != attr) return dict_attrbyvalue(parent, vendor); /* not base_vendor */
 	}
 
-	return dict_attrbyvalue(attr & 0xff, vendor);
+	return NULL;
 }
 
 
@@ -1719,7 +1773,7 @@ static int process_attribute(char const* fn, int const line,
 		}
 
 		/*
-		 *
+		 *	Shift the value left.
 		 */
 		value <<= fr_attr_shift[tlv_depth];
 		value |= block_tlv->attr;
