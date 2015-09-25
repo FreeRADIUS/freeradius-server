@@ -637,8 +637,6 @@ uint32_t fr_redis_version_num(char const *version)
 		fr_strerror_printf("Trailing garbage in Redis version \"%s\"", q);
 		return 0;
 	}
-	ret &= num;
-	p = q + 1;
 
-	return num;
+	return ret & num;
 }
