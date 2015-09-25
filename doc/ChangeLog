@@ -26,6 +26,10 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  by FreeRADIUS.
 	* Don't crash when doing "radmin -e "help hup".
 	  Patch from Matthew Newton.
+	* The dictionary parser now does more sanity checks, which
+	  prevents run-time problems with invalid attributes.
+	* Update debian packages.  Patches from Christopher Hoskin.
+	* Add "session-state" to Perl.  Patch from Herwin Weststrate.
 
 	Bug fixes
 	* Fix rlm_files so that there are no collisions when loading
@@ -70,7 +74,14 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	 Jorge Pereira.
 	* Lower peak memory usage by decreasing size of internal
 	  memory pools.
-	* Allow virtual attributes in "switch".  Fixes #1240.
+	* The control socket is now left in place if a second copy
+	  of the server is accidentally started.
+	* Allow virtual attributes in "switch", "case", etc.
+	  Fixes #1240 and #1265.
+	* Many spell check / typo fixes in comments and example
+	  configuration files.
+	* Better handle multiple DHCP listeners.
+	* Don't print secrets for old-style realms.  Fixes #1267.
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
