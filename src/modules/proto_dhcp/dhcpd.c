@@ -292,10 +292,10 @@ static const uint32_t attrnums[] = {
 
 static int dhcp_process(REQUEST *request)
 {
-	int rcode;
-	unsigned int i;
-	VALUE_PAIR *vp;
-	dhcp_socket_t *sock;
+	int		rcode;
+	unsigned int	i;
+	VALUE_PAIR	*vp;
+	dhcp_socket_t	*sock;
 
 	/*
 	 *	If there's a giaddr, save it as the Relay-IP-Address
@@ -798,6 +798,10 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET	*packet;
 	dhcp_socket_t	*sock = listener->data;
+	RADCLIENT	*client = &sock->dhcp_client;
+
+	FR_STATS_INC(auth, total_requests);
+	FR_STATS_TYPE_INC(client->auth.total_requests);
 
 #ifdef PCAP_RAW_SOCKETS
 	if (sock->lsock.pcap) {
@@ -809,11 +813,13 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 	}
 
 	if (!packet) {
+		FR_STATS_INC(auth, total_malformed_requests);
 		ERROR("%s", fr_strerror());
 		return 0;
 	}
 
 	if (!request_receive(NULL, listener, packet, &sock->dhcp_client, dhcp_process)) {
+		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
