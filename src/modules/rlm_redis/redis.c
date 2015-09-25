@@ -457,8 +457,8 @@ int fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[
  *	- #REDIS_RCODE_ERROR on command/response mismatch or command error.
  *	- REDIS_RCODE_* on other errors;
  */
-size_t fr_redis_pipeline_result(fr_redis_rcode_t *rcode, redisReply *out[], size_t out_len,
-				fr_redis_conn_t *conn, int pipelined)
+fr_redis_rcode_t fr_redis_pipeline_result(fr_redis_rcode_t *rcode, redisReply *out[], size_t out_len,
+					  fr_redis_conn_t *conn, int pipelined)
 {
 	size_t			i;
 	redisReply		**out_p = out;

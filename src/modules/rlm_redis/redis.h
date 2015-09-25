@@ -132,8 +132,8 @@ int		fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len
 /*
  *	Process response from pipelined command.
  */
-size_t fr_redis_pipeline_result(fr_redis_rcode_t *rcode, redisReply *out[], size_t out_len,
-				fr_redis_conn_t *conn, int pipelined);
+fr_redis_rcode_t	fr_redis_pipeline_result(fr_redis_rcode_t *rcode, redisReply *out[], size_t out_len,
+						 fr_redis_conn_t *conn, int pipelined);
 
 #define fr_redis_pipeline_free(_r, _n) \
 do {\
