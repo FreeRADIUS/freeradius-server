@@ -533,3 +533,112 @@ fr_redis_rcode_t fr_redis_pipeline_result(fr_redis_rcode_t *rcode, redisReply *o
 	if (rcode) *rcode = status;
 	return i;
 }
+
+/** Get the version of Redis running on the remote server
+ *
+ * This can be useful for some modules, as it allows adaptive behaviour, or early termination.
+ *
+ * @param[out] out Where to write the version string.
+ * @param[in] out_len Length of the version string buffer.
+ * @param[in] conn Used to query the version string.
+ * @return
+ *	- #REDIS_RCODE_SUCCESS on success.
+ *	- #REDIS_RCODE_ERROR on command/response mismatch or command error.
+ *	- REDIS_RCODE_* on other errors;
+ */
+fr_redis_rcode_t fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t *conn)
+{
+	redisReply		*reply;
+	fr_redis_rcode_t	status;
+	char			*p, *q;
+
+	rad_assert(out_len > 0);
+	out[0] = '\0';
+
+	reply = redisCommand(conn->handle, "INFO SERVER");
+	status = fr_redis_command_status(conn, reply);
+	if (status != REDIS_RCODE_SUCCESS) return status;
+
+	if (reply->type != REDIS_REPLY_STRING) {
+		fr_strerror_printf("Bad value type, expected string or integer, got %s",
+				   fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+	error:
+		fr_redis_reply_free(reply);
+		return REDIS_RCODE_ERROR;
+	}
+
+	p = strstr(reply->str, "redis_version:");
+	if (!p) {
+		fr_strerror_printf("Response did not contain version string");
+		goto error;
+	}
+
+	p = strchr(p, ':');
+	rad_assert(p);
+	p++;
+
+	q = strstr(p, "\r\n");
+	if (!q) q = p + strlen(p);
+
+	if ((size_t)(q - p) >= out_len) {
+		fr_strerror_printf("Version string %zu bytes, expected < %zu bytes", q - p, out_len);
+		goto error;
+	}
+	strlcpy(out, p, (q - p) + 1);
+
+	return REDIS_RCODE_SUCCESS;
+}
+
+/** Convert version string into a 32bit unsigned integer for comparisons
+ *
+ * @param[in] version string to parse.
+ * @return 32bit unsigned integer representing the version string.
+ */
+uint32_t fr_redis_version_num(char const *version)
+{
+	unsigned long num;
+	uint32_t ret;
+	char const *p = version;
+	char *q;
+
+	num = strtoul(p, &q, 10);
+	if (num > UINT8_MAX) {
+		fr_strerror_printf("Major version number %lu greater than " STRINGIFY(UINT8_MAX), num);
+		return 0;
+	}
+
+	if ((p == q) || (q[0] != '.')) {
+		fr_strerror_printf("Trailing garbage in Redis version \"%s\"", q);
+		return 0;
+	}
+	ret = num << 24;
+	p = q + 1;
+
+	num = strtoul(p, &q, 10);
+	if (num > UINT8_MAX) {
+		fr_strerror_printf("Minor version number %lu greater than " STRINGIFY(UINT8_MAX), num);
+		return 0;
+	}
+
+	if ((p == q) || (q[0] != '.')) {
+		fr_strerror_printf("Trailing garbage in Redis version \"%s\"", q);
+		return 0;
+	}
+	ret &= num << 16;
+	p = q + 1;
+
+	num = strtoul(p, &q, 10);
+	if (num > UINT16_MAX) {
+		fr_strerror_printf("Minor version number %lu greater than " STRINGIFY(UINT16_MAX), num);
+		return 0;
+	}
+
+	if ((p == q) || (q[0] != '\0')) {
+		fr_strerror_printf("Trailing garbage in Redis version \"%s\"", q);
+		return 0;
+	}
+	ret &= num;
+	p = q + 1;
+
+	return num;
+}

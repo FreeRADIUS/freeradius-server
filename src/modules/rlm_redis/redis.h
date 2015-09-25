@@ -119,15 +119,19 @@ void		fr_redis_version_print(void);
  */
 fr_redis_rcode_t	fr_redis_command_status(fr_redis_conn_t *conn, redisReply *reply);
 
-void		fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, int idx);
+void			fr_redis_reply_print(log_lvl_t lvl, redisReply *reply, REQUEST *request, int idx);
 
-int		fr_redis_reply_to_value_data(TALLOC_CTX *ctx, value_data_t *out, redisReply *reply,
-					     PW_TYPE dst_type, DICT_ATTR const *dst_enumv);
+int			fr_redis_reply_to_value_data(TALLOC_CTX *ctx, value_data_t *out, redisReply *reply,
+						     PW_TYPE dst_type, DICT_ATTR const *dst_enumv);
 
-int		fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out,
-				      REQUEST *request, redisReply *key, redisReply *op, redisReply *value);
+int			fr_redis_reply_to_map(TALLOC_CTX *ctx, vp_map_t **out,
+					      REQUEST *request, redisReply *key, redisReply *op, redisReply *value);
 
-int		fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], vp_map_t *map);
+int			fr_redis_tuple_from_map(TALLOC_CTX *pool, char const *out[], size_t out_len[], vp_map_t *map);
+
+fr_redis_rcode_t	fr_redis_get_version(char *out, size_t out_len, fr_redis_conn_t *conn);
+
+uint32_t		fr_redis_version_num(char const *version);
 
 /*
  *	Process response from pipelined command.
