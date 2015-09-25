@@ -777,7 +777,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 *	Otherwise, dict_parent() has taken us from an Extended sub-attribute to
 		 *	a *the* Extended attribute, whish isn't what we want here.
 		 */
-		if ((vendor == parent->vendor) && (parent->type != PW_TYPE_TLV)) {
+		if (!flags.internal && (vendor == parent->vendor) && (parent->type != PW_TYPE_TLV)) {
 			fr_strerror_printf("dict_addattr: Attribute %s has parent attribute %s which is not of type 'tlv'",
 					   name, parent->name);
 			return -1;
