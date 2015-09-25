@@ -1276,6 +1276,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->cluster = fr_redis_cluster_alloc(inst, subcs, &inst->conf);
 	if (!inst->cluster) return -1;
 
+	if (!fr_redis_cluster_min_version(inst->cluster, "3.0.2")) {
+		ERROR("%s", fr_strerror());
+		return -1;
+	}
+
 	/*
 	 *	Pre-Compute the SHA1 hashes of the Lua scripts
 	 */

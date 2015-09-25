@@ -1981,6 +1981,65 @@ static int _fr_redis_cluster_free(fr_redis_cluster_t *cluster)
 }
 #endif
 
+/** Walk all used pools checking their versions
+ *
+ * @param context Where to write the node we found.
+ * @param data node to check.
+ * @return
+ *	- 0 continue walking.
+ *	- -1 found suitable node.
+ */
+static int _cluster_version_walk(void *context, void *data)
+{
+	char const 		*min_version = context;
+	cluster_node_t		*node = data;
+	fr_redis_conn_t		*conn;
+	int			ret;
+	char			buffer[40];
+
+	conn = fr_connection_get(node->pool);
+	if (!conn) return 0;
+
+	/*
+	 *	We don't care if we can't get the version
+	 *	as we don't want to prevent the server from
+	 *	starting if start == 0.
+	 */
+	ret = fr_redis_get_version(buffer, sizeof(buffer), conn);
+	fr_connection_release(node->pool, conn);
+	if (ret < 0) return 0;
+
+	if (fr_redis_version_num(buffer) < fr_redis_version_num(min_version)) {
+		fr_strerror_printf("Redis node %s:%i (currently v%s) needs update to >= v%s",
+				   node->name, node->addr.port, buffer, min_version);
+		return -1;
+	}
+
+	return 0;
+}
+
+/** Check if members of the cluster are above a certain version
+ *
+ * @param cluster to perform check on.
+ * @return
+ *	- true if all contactable members are above min_version.
+ *	- false if at least one member if not above minimum version
+ *	  (use #fr_strerror to retrieve node information).
+ */
+bool fr_redis_cluster_min_version(fr_redis_cluster_t *cluster, char const *min_version)
+{
+	int ret;
+	char *p;
+
+	memcpy(&p, &min_version, sizeof(p));
+
+	pthread_mutex_lock(&cluster->mutex);
+	ret = rbtree_walk(cluster->used_nodes, RBTREE_IN_ORDER, _cluster_version_walk, p);
+	pthread_mutex_unlock(&cluster->mutex);
+
+	return ret < 0 ? false : true;
+}
+
 /** Allocate and initialise a new cluster structure
  *
  * This holds all the data necessary to manage a pool of pools for a specific redis cluster.
