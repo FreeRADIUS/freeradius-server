@@ -372,14 +372,21 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	}
 
 	/*
+	 *	Convert AF.  If unknown, discard packet.
+	 */
+	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, src_port)) {
+		FR_DEBUG_STRERROR_PRINTF("Unkown address family");
+		rad_recv_discard(sockfd);
+
+		return 1;
+	}
+
+	/*
 	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < 4) {
 		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zu bytes", data_len);
-		rad_recv_discard(sockfd);
-
-		return 1;
-
+		goto invalid;
 	} else {		/* we got 4 bytes of data. */
 		/*
 		 *	See how long the packet says it is.
@@ -393,9 +400,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 		if (packet_len < RADIUS_HDR_LEN) {
 			FR_DEBUG_STRERROR_PRINTF("Expected at least " STRINGIFY(RADIUS_HDR_LEN)  " bytes of packet "
 					   	 "data, got %zu bytes", packet_len);
-			rad_recv_discard(sockfd);
-
-			return 1;
+			goto invalid;
 
 			/*
 			 *	Enforce RFC requirements, for sanity.
@@ -404,20 +409,8 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 		} else if (packet_len > MAX_PACKET_LEN) {
 			FR_DEBUG_STRERROR_PRINTF("Length field value too large, expected maximum of "
 					   	 STRINGIFY(MAX_PACKET_LEN) " bytes, got %zu bytes", packet_len);
-			rad_recv_discard(sockfd);
-
-			return 1;
+			goto invalid;
 		}
-	}
-
-	/*
-	 *	Convert AF.  If unknown, discard packet.
-	 */
-	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, src_port)) {
-		FR_DEBUG_STRERROR_PRINTF("Unkown address family");
-		rad_recv_discard(sockfd);
-
-		return 1;
 	}
 
 	*code = header[0];
@@ -427,6 +420,16 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	 *	size could still be smaller.
 	 */
 	return packet_len;
+
+invalid:
+
+	FR_DEBUG_STRERROR_PRINTF("Invalid data from %s:  %s",
+				fr_inet_ntop(src_ipaddr->af, &src_ipaddr->ipaddr),
+				fr_strerror());
+
+	rad_recv_discard(sockfd);
+
+	return 1;
 }
 
 
