@@ -364,11 +364,20 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src = sizeof(src);
 
-	data_len = recvfrom(sockfd, header, sizeof(header), MSG_PEEK,
-			    (struct sockaddr *)&src, &sizeof_src);
+	data_len = recvfrom(sockfd, header, sizeof(header), MSG_PEEK, (struct sockaddr *)&src, &sizeof_src);
 	if (data_len < 0) {
 		if ((errno == EAGAIN) || (errno == EINTR)) return 0;
 		return -1;
+	}
+
+	/*
+	 *	Convert AF.  If unknown, discard packet.
+	 */
+	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, src_port)) {
+		FR_DEBUG_STRERROR_PRINTF("Unkown address family");
+		rad_recv_discard(sockfd);
+
+		return 1;
 	}
 
 	/*
@@ -376,48 +385,38 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	 */
 	if (data_len < 4) {
 		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zu bytes", data_len);
+invalid:
+		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s:  %s",
+					 fr_inet_ntop(src_ipaddr->af, &src_ipaddr->ipaddr),
+					 fr_strerror());
 		rad_recv_discard(sockfd);
 
 		return 1;
-
-	} else {		/* we got 4 bytes of data. */
-		/*
-		 *	See how long the packet says it is.
-		 */
-		packet_len = (header[2] * 256) + header[3];
-
-		/*
-		 *	The length in the packet says it's less than
-		 *	a RADIUS header length: discard it.
-		 */
-		if (packet_len < RADIUS_HDR_LEN) {
-			FR_DEBUG_STRERROR_PRINTF("Expected at least " STRINGIFY(RADIUS_HDR_LEN)  " bytes of packet "
-					   	 "data, got %zu bytes", packet_len);
-			rad_recv_discard(sockfd);
-
-			return 1;
-
-			/*
-			 *	Enforce RFC requirements, for sanity.
-			 *	Anything after 4k will be discarded.
-			 */
-		} else if (packet_len > MAX_PACKET_LEN) {
-			FR_DEBUG_STRERROR_PRINTF("Length field value too large, expected maximum of "
-					   	 STRINGIFY(MAX_PACKET_LEN) " bytes, got %zu bytes", packet_len);
-			rad_recv_discard(sockfd);
-
-			return 1;
-		}
 	}
 
 	/*
-	 *	Convert AF.  If unknown, discard packet.
+	 *	See how long the packet says it is.
 	 */
-	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, src_port)) {
-		FR_DEBUG_STRERROR_PRINTF("Unknown address family");
-		rad_recv_discard(sockfd);
+	packet_len = (header[2] * 256) + header[3];
 
-		return 1;
+	/*
+	 *	The length in the packet says it's less than
+	 *	a RADIUS header length: discard it.
+	 */
+	if (packet_len < RADIUS_HDR_LEN) {
+		FR_DEBUG_STRERROR_PRINTF("Expected at least " STRINGIFY(RADIUS_HDR_LEN)  " bytes of packet "
+					 "data, got %zu bytes", packet_len);
+		goto invalid;
+	}
+
+	/*
+	 *	Enforce RFC requirements, for sanity.
+	 *	Anything after 4k will be discarded.
+	 */
+	if (packet_len > MAX_PACKET_LEN) {
+		FR_DEBUG_STRERROR_PRINTF("Length field value too large, expected maximum of "
+					 STRINGIFY(MAX_PACKET_LEN) " bytes, got %zu bytes", packet_len);
+		goto invalid;
 	}
 
 	*code = header[0];
