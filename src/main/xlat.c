@@ -36,11 +36,12 @@ RCSID("$Id$")
 typedef struct xlat_t {
 	char			name[MAX_STRING_LEN];	//!< Name of the xlat expansion.
 	int			length;			//!< Length of name.
-	void			*instance;		//!< Module instance passed to xlat and escape functions.
-	void			*xlat_inst;		//!< xlat instance.
+	void			*mod_inst;		//!< Module instance passed to xlat and escape functions.
 	xlat_func_t		func;			//!< xlat function.
-	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
 	xlat_escape_t		escape;			//!< Escape function to apply to dynamic input to func.
+	xlat_instantiate_t	instantiate;		//!< Instantiation function.
+	size_t			inst_size;		//!< Length of instance data to pre-allocate.
+	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
 	bool			internal;		//!< If true, cannot be redefined.
 } xlat_t;
 
@@ -697,17 +698,22 @@ static xlat_t *xlat_find(char const *name)
 
 /** Register an xlat function.
  *
+ * @param[in] mod_inst Instance of module that's registering the xlat function.
  * @param[in] name xlat name.
  * @param[in] func xlat function to be called.
+ * @param[in] escape function to sanitize any sub expansions passed to the xlat function.
+ * @param[in] instantiate function to pre-parse any xlat specific data.
+ * @param[in] inst_size sizeof() this xlat's instance data.
  * @param[in] buf_len Size of the output buffer to allocate when calling the function.
  *	May be 0 if the function allocates its own buffer.
- * @param[in] escape function to sanitize any sub expansions passed to the xlat function.
- * @param[in] instance of module that's registering the xlat function.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int xlat_register(char const *name, xlat_func_t func, size_t buf_len, xlat_escape_t escape, void *instance)
+int xlat_register(void *mod_inst, char const *name,
+		  xlat_func_t func, xlat_escape_t escape,
+		  xlat_instantiate_t instantiate, size_t inst_size,
+		  size_t buf_len)
 {
 	xlat_t	*c;
 	xlat_t	my_xlat;
@@ -737,15 +743,14 @@ int xlat_register(char const *name, xlat_func_t func, size_t buf_len, xlat_escap
 
 #ifdef WITH_UNLANG
 		for (i = 0; xlat_foreach_names[i] != NULL; i++) {
-			xlat_register(xlat_foreach_names[i],
-				      xlat_foreach, XLAT_DEFAULT_BUF_LEN, NULL, &xlat_foreach_inst[i]);
+			xlat_register(&xlat_foreach_inst[i], xlat_foreach_names[i], xlat_foreach, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 			c = xlat_find(xlat_foreach_names[i]);
 			rad_assert(c != NULL);
 			c->internal = true;
 		}
 #endif
 
-#define XLAT_REGISTER(_x) xlat_register(STRINGIFY(_x), xlat_ ## _x, XLAT_DEFAULT_BUF_LEN, NULL, NULL); \
+#define XLAT_REGISTER(_x) xlat_register(NULL, STRINGIFY(_x), xlat_ ## _x, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN); \
 		c = xlat_find(STRINGIFY(_x)); \
 		rad_assert(c != NULL); \
 		c->internal = true
@@ -768,7 +773,7 @@ int xlat_register(char const *name, xlat_func_t func, size_t buf_len, xlat_escap
 		XLAT_REGISTER(regex);
 #endif
 
-		xlat_register("debug", xlat_debug, XLAT_DEFAULT_BUF_LEN, NULL, &xlat_foreach_inst[0]);
+		xlat_register(&xlat_foreach_inst[0], "debug", xlat_debug, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 		c = xlat_find("debug");
 		rad_assert(c != NULL);
 		c->internal = true;
@@ -789,7 +794,9 @@ int xlat_register(char const *name, xlat_func_t func, size_t buf_len, xlat_escap
 		c->func = func;
 		c->buf_len = buf_len;
 		c->escape = escape;
-		c->instance = instance;
+		c->mod_inst = mod_inst;
+		c->instantiate = instantiate;
+		c->inst_size = inst_size;
 		return 0;
 	}
 
@@ -803,7 +810,9 @@ int xlat_register(char const *name, xlat_func_t func, size_t buf_len, xlat_escap
 	c->escape = escape;
 	strlcpy(c->name, name, sizeof(c->name));
 	c->length = strlen(c->name);
-	c->instance = instance;
+	c->mod_inst = mod_inst;
+	c->instantiate = instantiate;
+	c->inst_size = inst_size;
 
 	DEBUG3("xlat_register: %s", c->name);
 
@@ -830,11 +839,11 @@ int xlat_register(char const *name, xlat_func_t func, size_t buf_len, xlat_escap
  * We can only have one function to call per name, so the passing of "func"
  * here is extraneous.
  *
+ * @param[in] mod_inst data.
  * @param[in] name xlat to unregister.
  * @param[in] func unused.
- * @param[in] instance data.
  */
-void xlat_unregister(char const *name, UNUSED xlat_func_t func, void *instance)
+void xlat_unregister(void *mod_inst, char const *name, UNUSED xlat_func_t func)
 {
 	xlat_t	*c;
 	xlat_t		my_xlat;
@@ -847,16 +856,16 @@ void xlat_unregister(char const *name, UNUSED xlat_func_t func, void *instance)
 	c = rbtree_finddata(xlat_root, &my_xlat);
 	if (!c) return;
 
-	if (c->instance != instance) return;
+	if (c->mod_inst != mod_inst) return;
 
 	rbtree_deletebydata(xlat_root, c);
 }
 
-static int xlat_unregister_callback(void *instance, void *data)
+static int xlat_unregister_callback(void *mod_inst, void *data)
 {
 	xlat_t *c = (xlat_t *) data;
 
-	if (c->instance != instance) return 0; /* keep walking */
+	if (c->mod_inst != mod_inst) return 0; /* keep walking */
 
 	return 2;		/* delete it */
 }
@@ -918,7 +927,7 @@ static ssize_t xlat_redundant(char **out, size_t outlen,
 			*out = NULL;
 		}
 
-		rcode = xlat->func(out, xlat->buf_len, xlat->instance, NULL, request, fmt);
+		rcode = xlat->func(out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
 		if (rcode <= 0) {
 			TALLOC_FREE(*out);
 			continue;
@@ -982,7 +991,7 @@ static ssize_t xlat_load_balance(char **out, size_t outlen,
 		} else {
 			*out = NULL;
 		}
-		slen = xlat->func(out, xlat->buf_len, xlat->instance, NULL, request, fmt);
+		slen = xlat->func(out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
 		if (slen <= 0) TALLOC_FREE(*out);
 
 		return slen;
@@ -1009,7 +1018,7 @@ static ssize_t xlat_load_balance(char **out, size_t outlen,
 			} else {
 				*out = NULL;
 			}
-			rcode = xlat->func(out, xlat->buf_len, xlat->instance, NULL, request, fmt);
+			rcode = xlat->func(out, xlat->buf_len, xlat->mod_inst, NULL, request, fmt);
 			if (rcode > 0) return rcode;
 			TALLOC_FREE(*out);
 		}
@@ -1060,7 +1069,7 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 	 *	Get the number of children for load balancing.
 	 */
 	if (xr->type == XLAT_REDUNDANT) {
-		if (xlat_register(name2, xlat_redundant, 0, NULL, xr) < 0) {
+		if (xlat_register(xr, name2, xlat_redundant, NULL, NULL, 0, 0) < 0) {
 			talloc_free(xr);
 			return false;
 		}
@@ -1081,7 +1090,7 @@ bool xlat_register_redundant(CONF_SECTION *cs)
 			xr->count++;
 		}
 
-		if (xlat_register(name2, xlat_load_balance, 0, NULL, xr) < 0) {
+		if (xlat_register(xr, name2, xlat_load_balance, NULL, NULL, 0, 0) < 0) {
 			talloc_free(xr);
 			return false;
 		}
@@ -1359,7 +1368,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 */
 	if (node->attr.type == TMPL_TYPE_ATTR_UNDEFINED) {
 		node->xlat = xlat_find(node->attr.tmpl_unknown_name);
-		if (node->xlat && node->xlat->instance && !node->xlat->internal) {
+		if (node->xlat && node->xlat->mod_inst && !node->xlat->internal) {
 			talloc_free(node);
 			*error = "Missing content in expansion";
 			return -(p - fmt) - slen;
@@ -2252,7 +2261,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str = talloc_array(request, char, node->xlat->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
-		rcode = node->xlat->func(&str, node->xlat->buf_len, node->xlat->instance, NULL, request, NULL);
+		rcode = node->xlat->func(&str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, NULL);
 		if (rcode < 0) {
 			talloc_free(str);
 			return NULL;
@@ -2265,7 +2274,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		XLAT_DEBUG("xlat_aprint MODULE");
 
 		if (node->child) {
-			if (xlat_process(&child, request, node->child, node->xlat->escape, node->xlat->instance) == 0) {
+			if (xlat_process(&child, request, node->child, node->xlat->escape, node->xlat->mod_inst) == 0) {
 				return NULL;
 			}
 
@@ -2328,7 +2337,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str = talloc_array(request, char, node->xlat->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
-		rcode = node->xlat->func(&str, node->xlat->buf_len, node->xlat->instance, NULL, request, child);
+		rcode = node->xlat->func(&str, node->xlat->buf_len, node->xlat->mod_inst, NULL, request, child);
 		talloc_free(child);
 		if (rcode < 0) {
 			talloc_free(str);

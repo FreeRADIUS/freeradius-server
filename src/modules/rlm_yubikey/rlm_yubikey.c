@@ -143,7 +143,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 	if (!cf_section_name2(conf)) return 0;
 
-	xlat_register("modhextohex", modhex_to_hex_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register(inst, "modhextohex", modhex_to_hex_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

@@ -149,8 +149,8 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 	rlm_dhcp_t *inst = instance;
 	DICT_ATTR const *da;
 
-	xlat_register("dhcp_options", dhcp_options_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
-	xlat_register("dhcp", dhcp_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register(inst, "dhcp_options", dhcp_options_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
+	xlat_register(inst, "dhcp", dhcp_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	/*
 	 *	Fixup dictionary entry for DHCP-Paramter-Request-List adding all the options

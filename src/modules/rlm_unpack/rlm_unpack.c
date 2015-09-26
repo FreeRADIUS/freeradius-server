@@ -196,7 +196,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	if (cf_section_name2(conf)) return 0;
 
-	xlat_register("unpack", unpack_xlat, XLAT_DEFAULT_BUF_LEN, NULL, instance);
+	xlat_register(instance, "unpack", unpack_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

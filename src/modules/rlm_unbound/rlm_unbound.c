@@ -412,9 +412,9 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	MEM(inst->xlat_aaaa_name = talloc_typed_asprintf(inst, "%s-aaaa", inst->name));
 	MEM(inst->xlat_ptr_name = talloc_typed_asprintf(inst, "%s-ptr", inst->name));
 
-	if (xlat_register(inst->xlat_a_name, xlat_a, XLAT_DEFAULT_BUF_LEN, NULL, inst) ||
-	    xlat_register(inst->xlat_aaaa_name, xlat_aaaa, XLAT_DEFAULT_BUF_LEN, NULL, inst) ||
-	    xlat_register(inst->xlat_ptr_name, xlat_ptr, XLAT_DEFAULT_BUF_LEN, NULL, inst)) {
+	if (xlat_register(inst, inst->xlat_a_name, xlat_a, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) ||
+	    xlat_register(inst, inst->xlat_aaaa_name, xlat_aaaa, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) ||
+	    xlat_register(inst, inst->xlat_ptr_name, xlat_ptr, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN)) {
 		cf_log_err_cs(conf, "Failed registering xlats");
 		return -1;
 	}

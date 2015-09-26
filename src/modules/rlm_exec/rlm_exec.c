@@ -211,7 +211,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		inst->bare = 1;
 	}
 
-	xlat_register(inst->xlat_name, exec_xlat, XLAT_DEFAULT_BUF_LEN, rlm_exec_shell_escape, inst);
+	xlat_register(inst, inst->xlat_name, exec_xlat, rlm_exec_shell_escape, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	if (inst->input) {
 		p = inst->input;

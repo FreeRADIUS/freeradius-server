@@ -816,8 +816,8 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the rest xlat function
 	 */
-	xlat_register(inst->xlat_name, rest_xlat, 0, rest_uri_escape, inst);
-	xlat_register("jsonquote", jsonquote_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register(inst, inst->xlat_name, rest_xlat, rest_uri_escape, NULL, 0, 0);
+	xlat_register(inst, "jsonquote", jsonquote_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

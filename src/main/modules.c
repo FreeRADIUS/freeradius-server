@@ -425,7 +425,7 @@ static void module_instance_free(void *data)
 	 */
 	paircompare_unregister_instance(module->insthandle);
 
-	xlat_unregister(module->name, NULL, module->insthandle);
+	xlat_unregister(module->insthandle, module->name, NULL);
 	/*
 	 *	Remove all xlat's registered to module instance.
 	 */

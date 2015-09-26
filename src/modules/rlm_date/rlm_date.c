@@ -108,7 +108,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	xlat_register(inst->xlat_name, xlat_date_convert, XLAT_DEFAULT_BUF_LEN, NULL, inst);
+	xlat_register(inst, inst->xlat_name, xlat_date_convert, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	return 0;
 }

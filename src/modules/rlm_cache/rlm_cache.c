@@ -886,7 +886,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat_register(inst->config.name, cache_xlat, 0, NULL, inst);
+	xlat_register(inst, inst->config.name, cache_xlat, NULL, NULL, 0, 0);
 
 	return 0;
 }

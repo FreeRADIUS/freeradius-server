@@ -41,10 +41,10 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
  *
  * Should write the result of expanding the fmt string to the output buffer.
  *
- * If a buf_len > 0 was provided to #xlat_register, out will point to a talloced
+ * If a outlen > 0 was provided to #xlat_register, out will point to a talloced
  * buffer of that size, which the result should be written to.
  *
- * If buf_len was 0, then the function should allocate its own buffer, in the
+ * If outlen is 0, then the function should allocate its own buffer, in the
  * context of the request.
  *
  * @param[in,out] out Where to write either a pointer to a new buffer, or data to an existing buffer.
@@ -57,6 +57,17 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
 typedef ssize_t (*xlat_func_t)(char **out, size_t outlen,
 			       void const *mod_inst, void const *xlat_inst,
 			       REQUEST *request, char const *fmt);
+
+/** Allocate new instance data for an xlat instance
+ *
+ * @param[out] xlat_inst Structure to populate. Allocated by #map_proc_instantiate.
+ * @param[in] mod_inst Module instance that registered the #xlat_func_t.
+ * @param[in] fmt string to base instantiation around.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int (*xlat_instantiate_t)(void *xlat_inst, void *mod_inst, char const *fmt);
 
 ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_t escape,
 		    void *escape_ctx)
@@ -79,9 +90,12 @@ size_t xlat_snprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 
 #define XLAT_DEFAULT_BUF_LEN	2048
 
-int		xlat_register(char const *module, xlat_func_t func, size_t buf_len, xlat_escape_t escape,
-			      void *instance);
-void		xlat_unregister(char const *module, xlat_func_t func, void *instance);
+int		xlat_register(void *mod_inst, char const *name,
+			      xlat_func_t func, xlat_escape_t escape,
+			      xlat_instantiate_t instantiate, size_t inst_size,
+			      size_t buf_len);
+
+void		xlat_unregister(void *mod_inst, char const *name, xlat_func_t func);
 void		xlat_unregister_module(void *instance);
 bool		xlat_register_redundant(CONF_SECTION *cs);
 ssize_t		xlat_fmt_to_ref(uint8_t const **out, REQUEST *request, char const *fmt);

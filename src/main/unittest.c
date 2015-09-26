@@ -782,13 +782,12 @@ int main(int argc, char *argv[])
 	tls_global_init();
 #endif
 
-	if (xlat_register("poke", xlat_poke, XLAT_DEFAULT_BUF_LEN, NULL, NULL) < 0) {
+	if (xlat_register(NULL, "poke", xlat_poke, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
 
-	if (map_proc_register(NULL, "test-fail", mod_map_proc, NULL,
-			      NULL, 0) < 0) {
+	if (map_proc_register(NULL, "test-fail", mod_map_proc, NULL,  NULL, 0) < 0) {
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
@@ -947,7 +946,7 @@ finish:
 	 */
 	modules_free();
 
-	xlat_unregister("poke", xlat_poke, NULL);
+	xlat_unregister(NULL, "poke", xlat_poke);
 
 	xlat_free();		/* modules may have xlat's */
 
