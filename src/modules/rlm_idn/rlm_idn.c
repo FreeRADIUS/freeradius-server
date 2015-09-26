@@ -87,7 +87,9 @@ static const CONF_PARSER mod_config[] = {
 	CONF_PARSER_TERMINATOR
 };
 
-static ssize_t xlat_idna(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
+static ssize_t xlat_idna(char **out, size_t outlen,
+			 void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 	rlm_idn_t *inst = instance;
 	char *idna = NULL;

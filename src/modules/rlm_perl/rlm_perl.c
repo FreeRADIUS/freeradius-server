@@ -307,15 +307,19 @@ static void xs_init(pTHX)
 /*
  *	The xlat function
  */
-static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
+static ssize_t perl_xlat(char **out, size_t outlen,
+			 void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 
-	rlm_perl_t	*inst = (rlm_perl_t *) instance;
+	rlm_perl_t	*inst;
 	char		*tmp;
 	char const	*p, *q;
 	int		count;
 	size_t		ret = 0;
 	STRLEN		n_a;
+
+	memcpy(&inst, &mod_inst, sizeof(inst));
 
 #ifdef USE_ITHREADS
 	PerlInterpreter *interp;
@@ -372,10 +376,10 @@ static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char
 			(void)POPs;
 		} else if (count > 0) {
 			tmp = POPp;
-			strlcpy(*out, tmp, freespace);
+			strlcpy(*out, tmp, outlen);
 			ret = strlen(*out);
 
-			RDEBUG("Len is %zu , out is %s freespace is %zu", ret, *out, freespace);
+			RDEBUG("Len is %zu , out is %s freespace is %zu", ret, *out, outlen);
 		}
 
 		PUTBACK ;

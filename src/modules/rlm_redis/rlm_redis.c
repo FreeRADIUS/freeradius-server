@@ -142,9 +142,11 @@ static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **re
 	return 0;
 }
 
-static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
+static ssize_t redis_xlat(char **out, size_t outlen,
+			  void const *mod_inst, UNUSED void const *xlat_inst,
+			  REQUEST *request, char const *fmt)
 {
-	rlm_redis_t		*inst = instance;
+	rlm_redis_t const	*inst = mod_inst;
 	fr_redis_conn_t		*conn;
 
 	bool			read_only = false;
@@ -291,12 +293,12 @@ reply_parse:
 	rad_assert(reply);	/* clang scan */
 	switch (reply->type) {
 	case REDIS_REPLY_INTEGER:
-		ret = snprintf(*out, freespace, "%lld", reply->integer);
+		ret = snprintf(*out, outlen, "%lld", reply->integer);
 		break;
 
 	case REDIS_REPLY_STATUS:
 	case REDIS_REPLY_STRING:
-		len = (((size_t)reply->len) >= freespace) ? freespace - 1: (size_t) reply->len;
+		len = (((size_t)reply->len) >= outlen) ? outlen - 1: (size_t) reply->len;
 		memcpy(*out, reply->str, len);
 		(*out)[len] = '\0';
 		ret = reply->len;

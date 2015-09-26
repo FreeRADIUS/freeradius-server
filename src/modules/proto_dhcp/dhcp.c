@@ -452,7 +452,7 @@ RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap)
 	 */
 	uint8_t const		*p;
 
-	ip_header_t const		*ip = NULL;	/* The IP header */
+	ip_header_t const	*ip = NULL;	/* The IP header */
 	udp_header_t const	*udp;		/* The UDP header */
 	uint8_t			version;	/* IP header version */
 

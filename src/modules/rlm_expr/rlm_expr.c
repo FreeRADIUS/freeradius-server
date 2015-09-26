@@ -486,8 +486,9 @@ redo:
 /*
  *  Do xlat of strings!
  */
-static ssize_t expr_xlat(UNUSED void *instance, REQUEST *request, char const *fmt,
-			 char **out, size_t outlen)
+static ssize_t expr_xlat(char **out, size_t outlen,
+			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 	int64_t		result;
 	char const 	*p;
@@ -510,8 +511,9 @@ static ssize_t expr_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 /** Generate a random integer value
  *
  */
-static ssize_t rand_xlat(UNUSED void *instance, UNUSED REQUEST *request, char const *fmt,
-			 char **out, size_t outlen)
+static ssize_t rand_xlat(char **out, size_t outlen,
+			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			 UNUSED REQUEST *request, char const *fmt)
 {
 	int64_t		result;
 
@@ -535,8 +537,9 @@ static ssize_t rand_xlat(UNUSED void *instance, UNUSED REQUEST *request, char co
  *  Build strings of random chars, useful for generating tokens and passcodes
  *  Format similar to String::Random.
  */
-static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *reout_puest,
-			    char const *fmt, char **out, size_t outlen)
+static ssize_t randstr_xlat(char **out, size_t outlen,
+			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			    UNUSED REQUEST *request, char const *fmt)
 {
 	char const 	*p;
 	char		*out_p = *out;
@@ -682,8 +685,9 @@ static ssize_t randstr_xlat(UNUSED void *instance, UNUSED REQUEST *reout_puest,
  *
  * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
  */
-static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
-			     char const *fmt, char **out, size_t outlen)
+static ssize_t urlquote_xlat(char **out, size_t outlen,
+			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			     UNUSED REQUEST *request, char const *fmt)
 {
 	char const 	*p;
 	char		*out_p = *out;
@@ -730,8 +734,9 @@ static ssize_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * Remember to escape % with %% in strings, else xlat will try to parse it.
  */
-static ssize_t urlunquote_xlat(UNUSED void *instance, REQUEST *request,
-			       char const *fmt, char **out, size_t outlen)
+static ssize_t urlunquote_xlat(char **out, size_t outlen,
+			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			       UNUSED REQUEST *request, char const *fmt)
 {
 	char const *p;
 	char *out_p = *out;
@@ -767,10 +772,11 @@ static ssize_t urlunquote_xlat(UNUSED void *instance, REQUEST *request,
  *
  * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60/img=62" @endverbatim
  */
-static ssize_t escape_xlat(void *instance, UNUSED REQUEST *request,
-			   char const *fmt, char **out, size_t outlen)
+static ssize_t escape_xlat(char **out, size_t outlen,
+			   void const *mod_inst, UNUSED void const *xlat_inst,
+			   UNUSED REQUEST *request, char const *fmt)
 {
-	rlm_expr_t *inst = instance;
+	rlm_expr_t const *inst = mod_inst;
 	char const *p = fmt;
 	char *out_p = *out;
 	size_t freespace = outlen;
@@ -833,8 +839,9 @@ static ssize_t escape_xlat(void *instance, UNUSED REQUEST *request,
  *
  * @verbatim Example: "%{unescape:=60img=62foo.jpg=60/img=62}" == "<img>foo.jpg</img>" @endverbatim
  */
-static ssize_t unescape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
-			     char const *fmt, char **out, size_t outlen)
+static ssize_t unescape_xlat(char **out, size_t outlen,
+			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			     UNUSED REQUEST *request, char const *fmt)
 {
 	char const *p;
 	char *out_p = *out;
@@ -873,8 +880,9 @@ static ssize_t unescape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * Probably only works for ASCII
  */
-static ssize_t lc_xlat(UNUSED void *instance, UNUSED REQUEST *request,
-		       char const *fmt, char **out, size_t outlen)
+static ssize_t lc_xlat(char **out, size_t outlen,
+		       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+		       UNUSED REQUEST *request, char const *fmt)
 {
 	char *q;
 	char const *p;
@@ -898,8 +906,9 @@ static ssize_t lc_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * Probably only works for ASCII
  */
-static ssize_t uc_xlat(UNUSED void *instance, UNUSED REQUEST *request,
-		       char const *fmt, char **out, size_t outlen)
+static ssize_t uc_xlat(char **out, size_t outlen,
+		       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+		       UNUSED REQUEST *request, char const *fmt)
 {
 	char *q;
 	char const *p;
@@ -921,8 +930,9 @@ static ssize_t uc_xlat(UNUSED void *instance, UNUSED REQUEST *request,
  *
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
-static ssize_t md5_xlat(UNUSED void *instance, REQUEST *request,
-			char const *fmt, char **out, size_t outlen)
+static ssize_t md5_xlat(char **out, size_t outlen,
+			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			REQUEST *request, char const *fmt)
 {
 	uint8_t digest[16];
 	ssize_t i, len, inlen;
@@ -952,8 +962,9 @@ static ssize_t md5_xlat(UNUSED void *instance, REQUEST *request,
  *
  * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
-static ssize_t sha1_xlat(UNUSED void *instance, REQUEST *request,
-			 char const *fmt, char **out, size_t outlen)
+static ssize_t sha1_xlat(char **out, size_t outlen,
+			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 	uint8_t digest[20];
 	ssize_t i, len, inlen;
@@ -984,8 +995,9 @@ static ssize_t sha1_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{sha256:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
  */
 #ifdef HAVE_OPENSSL_EVP_H
-static ssize_t evp_md_xlat(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char **out, size_t outlen, EVP_MD const *md)
+static ssize_t evp_md_xlat(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, char const *fmt, EVP_MD const *md)
 {
 	uint8_t digest[EVP_MAX_MD_SIZE];
 	unsigned int digestlen, i, len;
@@ -1016,9 +1028,11 @@ static ssize_t evp_md_xlat(UNUSED void *instance, REQUEST *request,
 }
 
 #  define EVP_MD_XLAT(_md) \
-static ssize_t _md##_xlat(void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)\
+static ssize_t _md##_xlat(char **out, size_t outlen,\
+			  UNUSED void const *mod_inst, void const *xlat_inst,\
+			  REQUEST *request, char const *fmt)\
 {\
-	return evp_md_xlat(instance, request, fmt, out, outlen, EVP_##_md());\
+	return evp_md_xlat(out, outlen, mod_inst, xlat_inst, request, fmt, EVP_##_md());\
 }
 
 EVP_MD_XLAT(sha256)
@@ -1029,8 +1043,9 @@ EVP_MD_XLAT(sha512)
  *
  * Example: "%{hmacmd5:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_md5_xlat(UNUSED void *instance, REQUEST *request,
-			     char const *fmt, char **out, size_t outlen)
+static ssize_t hmac_md5_xlat(char **out, size_t outlen,
+			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			     REQUEST *request, char const *fmt)
 {
 	uint8_t const *data, *key;
 	char const *p;
@@ -1075,8 +1090,9 @@ static ssize_t hmac_md5_xlat(UNUSED void *instance, REQUEST *request,
  *
  * Example: "%{hmacsha1:foo bar}" == "Zm9v"
  */
-static ssize_t hmac_sha1_xlat(UNUSED void *instance, REQUEST *request,
-			      char const *fmt, char **out, size_t outlen)
+static ssize_t hmac_sha1_xlat(char **out, size_t outlen,
+			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			      REQUEST *request, char const *fmt)
 {
 	uint8_t const *data, *key;
 	char const *p;
@@ -1124,8 +1140,9 @@ static ssize_t hmac_sha1_xlat(UNUSED void *instance, REQUEST *request,
  *
  * Example: "%{pairs:request:}" == "User-Name = 'foo', User-Password = 'bar'"
  */
-static ssize_t pairs_xlat(UNUSED void *instance, REQUEST *request,
-			  char const *fmt, char **out, size_t outlen)
+static ssize_t pairs_xlat(char **out, size_t outlen,
+			  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			  REQUEST *request, char const *fmt)
 {
 	vp_tmpl_t vpt;
 	vp_cursor_t cursor;
@@ -1178,8 +1195,9 @@ static ssize_t pairs_xlat(UNUSED void *instance, REQUEST *request,
  *
  * Example: "%{base64:foo}" == "Zm9v"
  */
-static ssize_t base64_xlat(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char **out, size_t outlen)
+static ssize_t base64_xlat(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, char const *fmt)
 {
 	ssize_t inlen;
 	uint8_t const *p;
@@ -1205,8 +1223,9 @@ static ssize_t base64_xlat(UNUSED void *instance, REQUEST *request,
  *
  * Example: "%{base64tohex:Zm9v}" == "666f6f"
  */
-static ssize_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
-				  char const *fmt, char **out, size_t outlen)
+static ssize_t base64_to_hex_xlat(char **out, size_t outlen,
+				  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+				  REQUEST *request, char const *fmt)
 {
 	uint8_t decbuf[1024];
 
@@ -1234,8 +1253,9 @@ static ssize_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
  *
  * Example: "%{explode:&ref <delim>}"
  */
-static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
-			    char const *fmt, char **out, size_t outlen)
+static ssize_t explode_xlat(char **out, size_t outlen,
+			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			    REQUEST *request, char const *fmt)
 {
 	vp_tmpl_t vpt;
 	vp_cursor_t cursor, to_merge;
@@ -1370,8 +1390,9 @@ static ssize_t explode_xlat(UNUSED void *instance, REQUEST *request,
  * some jitter, unless the desired effect is every subscriber on the network
  * re-authenticating at the same time.
  */
-static ssize_t next_time_xlat(UNUSED void *instance, REQUEST *request,
-		    	      char const *fmt, char **out, size_t outlen)
+static ssize_t next_time_xlat(char **out, size_t outlen,
+			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			      REQUEST *request, char const *fmt)
 {
 	long		num;
 
@@ -1441,8 +1462,8 @@ static ssize_t next_time_xlat(UNUSED void *instance, REQUEST *request,
  *	Parse the 3 arguments to lpad / rpad.
  */
 static bool parse_pad(REQUEST *request, char const *fmt,
-		       vp_tmpl_t **pvpt, size_t *plength,
-		       char *fill)
+		      vp_tmpl_t **pvpt, size_t *plength,
+		      char *fill)
 {
 	ssize_t slen;
 	unsigned long length;
@@ -1518,8 +1539,9 @@ static bool parse_pad(REQUEST *request, char const *fmt,
  *
  *  %{lpad:&Attribute-Name length 'x'}
  */
-static ssize_t lpad_xlat(UNUSED void *instance, REQUEST *request,
-			 char const *fmt, char **out, size_t outlen)
+static ssize_t lpad_xlat(char **out, size_t outlen,
+			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 	char fill;
 	size_t pad;
@@ -1557,8 +1579,9 @@ static ssize_t lpad_xlat(UNUSED void *instance, REQUEST *request,
  *
  *  %{rpad:&Attribute-Name length 'x'}
  */
-static ssize_t rpad_xlat(UNUSED void *instance, REQUEST *request,
-			 char const *fmt, char **out, size_t outlen)
+static ssize_t rpad_xlat(char **out, size_t outlen,
+			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 	char		fill;
 	size_t		pad;

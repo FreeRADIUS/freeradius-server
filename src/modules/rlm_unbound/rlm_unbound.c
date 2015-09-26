@@ -210,7 +210,9 @@ static int ub_common_fail(REQUEST *request, char const *tag, struct ub_result *u
 	return 0;
 }
 
-static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
+static ssize_t xlat_a(char **out, size_t outlen,
+		      void const *mod_inst, UNUSED void const *xlat_inst,
+		      REQUEST *request, char const *fmt)
 {
 	rlm_unbound_t *inst = instance;
 	struct ub_result **ubres;
@@ -255,7 +257,9 @@ static ssize_t xlat_a(void *instance, REQUEST *request, char const *fmt, char **
 	return -1;
 }
 
-static ssize_t xlat_aaaa(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
+static ssize_t xlat_aaaa(char **out, size_t outlen,
+			 void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 	rlm_unbound_t *inst = instance;
 	struct ub_result **ubres;
@@ -298,7 +302,9 @@ error0:
 	return -1;
 }
 
-static ssize_t xlat_ptr(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
+static ssize_t xlat_ptr(char **out, size_t outlen,
+			void const *mod_inst, UNUSED void const *xlat_inst,
+			REQUEST *request, char const *fmt)
 {
 	rlm_unbound_t *inst = instance;
 	struct ub_result **ubres;

@@ -37,6 +37,7 @@ typedef struct xlat_t {
 	char			name[MAX_STRING_LEN];	//!< Name of the xlat expansion.
 	int			length;			//!< Length of name.
 	void			*instance;		//!< Module instance passed to xlat and escape functions.
+	void			*xlat_inst;		//!< xlat instance.
 	xlat_func_t		func;			//!< xlat function.
 	size_t			buf_len;		//!< Length of output buffer to pre-allocate.
 	xlat_escape_t		escape;			//!< Escape function to apply to dynamic input to func.
@@ -91,13 +92,14 @@ static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 #endif
 
 
-static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
+static int xlat_foreach_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };	/* up to 10 for foreach */
 
 /** Print length of its RHS.
  *
  */
-static ssize_t xlat_strlen(UNUSED void *instance, UNUSED REQUEST *request,
-			   char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_strlen(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   UNUSED REQUEST *request, char const *fmt)
 {
 	snprintf(*out, outlen, "%u", (unsigned int) strlen(fmt));
 	return strlen(*out);
@@ -106,8 +108,9 @@ static ssize_t xlat_strlen(UNUSED void *instance, UNUSED REQUEST *request,
 /** Print the size of the attribute in bytes.
  *
  */
-static ssize_t xlat_length(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_length(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 
@@ -122,8 +125,9 @@ static ssize_t xlat_length(UNUSED void *instance, REQUEST *request,
 /** Print data as integer, not as VALUE.
  *
  */
-static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
-			    char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_integer(char **out, size_t outlen,
+			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			    REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR 	*vp;
 
@@ -204,8 +208,9 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 /** Print data as hex, not as VALUE.
  *
  */
-static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
-			char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_hex(char **out, size_t outlen,
+			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			REQUEST *request, char const *fmt)
 {
 	size_t i;
 	VALUE_PAIR *vp;
@@ -261,8 +266,9 @@ static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
 /** Return the tag of an attribute reference
  *
  */
-static ssize_t xlat_tag(UNUSED void *instance, REQUEST *request,
-		        char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_tag(char **out, size_t outlen,
+			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 
@@ -278,8 +284,9 @@ static ssize_t xlat_tag(UNUSED void *instance, REQUEST *request,
 /** Return the vendor of an attribute reference
  *
  */
-static ssize_t xlat_vendor(UNUSED void *instance, REQUEST *request,
-		           char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_vendor(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 	DICT_VENDOR *vendor;
@@ -298,8 +305,9 @@ static ssize_t xlat_vendor(UNUSED void *instance, REQUEST *request,
 /** Return the vendor number of an attribute reference
  *
  */
-static ssize_t xlat_vendor_num(UNUSED void *instance, REQUEST *request,
-		               char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_vendor_num(char **out, size_t outlen,
+			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			       REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 
@@ -313,8 +321,9 @@ static ssize_t xlat_vendor_num(UNUSED void *instance, REQUEST *request,
 /** Return the attribute name of an attribute reference
  *
  */
-static ssize_t xlat_attr(UNUSED void *instance, REQUEST *request,
-			 char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_attr(char **out, size_t outlen,
+			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 
@@ -329,8 +338,9 @@ static ssize_t xlat_attr(UNUSED void *instance, REQUEST *request,
 /** Return the attribute number of an attribute reference
  *
  */
-static ssize_t xlat_attr_num(UNUSED void *instance, REQUEST *request,
-		             char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_attr_num(char **out, size_t outlen,
+			     UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			     REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 
@@ -351,8 +361,9 @@ static ssize_t xlat_attr_num(UNUSED void *instance, REQUEST *request,
  *
  * This expands to a zero length string.
  */
-static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char const *fmt,
-			       UNUSED char **out, UNUSED size_t outlen)
+static ssize_t xlat_debug_attr(UNUSED char **out, UNUSED size_t outlen,
+			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			       REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 	vp_cursor_t cursor;
@@ -466,8 +477,9 @@ static ssize_t xlat_debug_attr(UNUSED void *instance, REQUEST *request, char con
  * Allows sets of modifications to be cached and then applied.
  * Useful for processing generic attributes from LDAP.
  */
-static ssize_t xlat_map(UNUSED void *instance, REQUEST *request,
-			char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_map(char **out, size_t outlen,
+			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			REQUEST *request, char const *fmt)
 {
 	vp_map_t *map = NULL;
 	int ret;
@@ -491,8 +503,9 @@ static ssize_t xlat_map(UNUSED void *instance, REQUEST *request,
 /** Prints the current module processing the request
  *
  */
-static ssize_t xlat_module(UNUSED void *instance, REQUEST *request,
-			   UNUSED char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_module(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, UNUSED char const *fmt)
 {
 	strlcpy(*out, request->module, outlen);
 
@@ -500,8 +513,9 @@ static ssize_t xlat_module(UNUSED void *instance, REQUEST *request,
 }
 
 #if defined(HAVE_REGEX) && defined(HAVE_PCRE)
-static ssize_t xlat_regex(UNUSED void *instance, REQUEST *request,
-			  char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_regex(char **out, size_t outlen,
+			  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			  REQUEST *request, char const *fmt)
 {
 	char *p;
 	size_t len;
@@ -525,8 +539,9 @@ static ssize_t xlat_regex(UNUSED void *instance, REQUEST *request,
  *
  * @see modcall()
  */
-static ssize_t xlat_foreach(void *instance, REQUEST *request,
-			    UNUSED char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_foreach(char **out, size_t outlen,
+			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			    REQUEST *request, UNUSED char const *fmt)
 {
 	VALUE_PAIR	**pvp;
 	size_t		len;
@@ -534,7 +549,7 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
 	/*
 	 *	See modcall, "FOREACH" for how this works.
 	 */
-	pvp = (VALUE_PAIR **) request_data_reference(request, (void *)radius_get_vp, *(int*) instance);
+	pvp = (VALUE_PAIR **) request_data_reference(request, (void *)radius_get_vp, *(int const *) mod_inst);
 	if (!pvp || !*pvp) return 0;
 
 	len = fr_pair_value_snprint(*out, outlen, *pvp, 0);
@@ -553,8 +568,9 @@ static ssize_t xlat_foreach(void *instance, REQUEST *request,
  * be printed as 0x0a0a0a. The xlat "%{string:Foo}" will instead
  * expand to "\n\n\n"
  */
-static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_string(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, char const *fmt)
 {
 	size_t len;
 	ssize_t ret;
@@ -595,8 +611,9 @@ static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
 /** xlat expand string attribute value
  *
  */
-static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
-			char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_xlat(char **out, size_t outlen,
+			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
 
@@ -616,8 +633,9 @@ static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
  *
  * Example %{debug:3}
  */
-static ssize_t xlat_debug(UNUSED void *instance, REQUEST *request,
-			  char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_debug(char **out, size_t outlen,
+			  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			  REQUEST *request, char const *fmt)
 {
 	int level = 0;
 
@@ -720,7 +738,7 @@ int xlat_register(char const *name, xlat_func_t func, size_t buf_len, xlat_escap
 #ifdef WITH_UNLANG
 		for (i = 0; xlat_foreach_names[i] != NULL; i++) {
 			xlat_register(xlat_foreach_names[i],
-				      xlat_foreach, XLAT_DEFAULT_BUF_LEN, NULL, &xlat_inst[i]);
+				      xlat_foreach, XLAT_DEFAULT_BUF_LEN, NULL, &xlat_foreach_inst[i]);
 			c = xlat_find(xlat_foreach_names[i]);
 			rad_assert(c != NULL);
 			c->internal = true;
@@ -750,7 +768,7 @@ int xlat_register(char const *name, xlat_func_t func, size_t buf_len, xlat_escap
 		XLAT_REGISTER(regex);
 #endif
 
-		xlat_register("debug", xlat_debug, XLAT_DEFAULT_BUF_LEN, NULL, &xlat_inst[0]);
+		xlat_register("debug", xlat_debug, XLAT_DEFAULT_BUF_LEN, NULL, &xlat_foreach_inst[0]);
 		c = xlat_find("debug");
 		rad_assert(c != NULL);
 		c->internal = true;
@@ -865,10 +883,11 @@ typedef struct xlat_redundant_t {
 } xlat_redundant_t;
 
 
-static ssize_t xlat_redundant(void *instance, REQUEST *request,
-			      char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_redundant(char **out, size_t outlen,
+			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			      REQUEST *request, char const *fmt)
 {
-	xlat_redundant_t *xr = instance;
+	xlat_redundant_t const *xr = mod_inst;
 	CONF_ITEM *ci;
 	char const *name;
 	xlat_t *xlat;
@@ -899,7 +918,7 @@ static ssize_t xlat_redundant(void *instance, REQUEST *request,
 			*out = NULL;
 		}
 
-		rcode = xlat->func(xlat->instance, request, fmt, out, xlat->buf_len);
+		rcode = xlat->func(out, xlat->buf_len, xlat->instance, NULL, request, fmt);
 		if (rcode <= 0) {
 			TALLOC_FREE(*out);
 			continue;
@@ -915,11 +934,12 @@ static ssize_t xlat_redundant(void *instance, REQUEST *request,
 }
 
 
-static ssize_t xlat_load_balance(void *instance, REQUEST *request,
-				 char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_load_balance(char **out, size_t outlen,
+				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+				 REQUEST *request, char const *fmt)
 {
 	uint32_t count = 0;
-	xlat_redundant_t *xr = instance;
+	xlat_redundant_t const *xr = mod_inst;
 	CONF_ITEM *ci;
 	CONF_ITEM *found = NULL;
 	char const *name;
@@ -962,7 +982,7 @@ static ssize_t xlat_load_balance(void *instance, REQUEST *request,
 		} else {
 			*out = NULL;
 		}
-		slen = xlat->func(xlat->instance, request, fmt, out, xlat->buf_len);
+		slen = xlat->func(out, xlat->buf_len, xlat->instance, NULL, request, fmt);
 		if (slen <= 0) TALLOC_FREE(*out);
 
 		return slen;
@@ -989,7 +1009,7 @@ static ssize_t xlat_load_balance(void *instance, REQUEST *request,
 			} else {
 				*out = NULL;
 			}
-			rcode = xlat->func(xlat->instance, request, fmt, out, xlat->buf_len);
+			rcode = xlat->func(out, xlat->buf_len, xlat->instance, NULL, request, fmt);
 			if (rcode > 0) return rcode;
 			TALLOC_FREE(*out);
 		}
@@ -2232,7 +2252,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str = talloc_array(request, char, node->xlat->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
-		rcode = node->xlat->func(node->xlat->instance, request, NULL, &str, node->xlat->buf_len);
+		rcode = node->xlat->func(&str, node->xlat->buf_len, node->xlat->instance, NULL, request, NULL);
 		if (rcode < 0) {
 			talloc_free(str);
 			return NULL;
@@ -2308,7 +2328,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			str = talloc_array(request, char, node->xlat->buf_len);
 			str[0] = '\0';	/* Be sure the string is \0 terminated */
 		}
-		rcode = node->xlat->func(node->xlat->instance, request, child, &str, node->xlat->buf_len);
+		rcode = node->xlat->func(&str, node->xlat->buf_len, node->xlat->instance, NULL, request, child);
 		talloc_free(child);
 		if (rcode < 0) {
 			talloc_free(str);

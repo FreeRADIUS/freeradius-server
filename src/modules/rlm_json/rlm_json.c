@@ -54,14 +54,17 @@ typedef struct rlm_json_jpath_to_eval {
 
 /** Determine if a jpath expression is valid
  *
- * @param instance data.
+ * @param mod_inst data.
+ * @param xlat_inst data.
+ * @param out Where to write the output (in the format @verbatim<bytes parsed>[:error]@endverbatim).
+ * @param outlen How big out is.
  * @param request The current request.
  * @param fmt jpath expression to parse.
- * @param out Where to write the output (in the format @verbatim<bytes parsed>[:error]@endverbatim).
- * @param freespace How big out is.
  * @return number of bytes written to out.
  */
-static ssize_t jpath_validate(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
+static ssize_t jpath_validate_xlat(char **out, size_t outlen,
+			    	   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+				   REQUEST *request, char const *fmt)
 {
 	fr_jpath_node_t *head;
 	ssize_t slen, ret;
@@ -70,12 +73,12 @@ static ssize_t jpath_validate(UNUSED void *instance, REQUEST *request, char cons
 	slen = fr_jpath_parse(request, &head, fmt, strlen(fmt));
 	if (slen <= 0) {
 		rad_assert(head == NULL);
-		return snprintf(*out, freespace, "%zu:%s", -(slen), fr_strerror());
+		return snprintf(*out, outlen, "%zu:%s", -(slen), fr_strerror());
 	}
 	rad_assert(talloc_get_type_abort(head, fr_jpath_node_t));
 
 	jpath_str = fr_jpath_asprint(request, head);
-	ret = snprintf(*out, freespace, "%zu:%s", slen, jpath_str);
+	ret = snprintf(*out, outlen, "%zu:%s", slen, jpath_str);
 	talloc_free(head);
 	talloc_free(jpath_str);
 
@@ -302,7 +305,7 @@ static rlm_rcode_t mod_map_proc(UNUSED void *mod_inst, void *proc_inst, REQUEST 
 
 static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 {
-	xlat_register("jpathvalidate", jpath_validate, XLAT_DEFAULT_BUF_LEN, NULL, instance);
+	xlat_register("jpathvalidate", jpath_validate_xlat, XLAT_DEFAULT_BUF_LEN, NULL, instance);
 
 	if (map_proc_register(instance, "json", mod_map_proc, NULL,
 			      mod_map_proc_instantiate, sizeof(rlm_json_jpath_cache_t)) < 0) return -1;

@@ -150,13 +150,14 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section, v
 	return 0;
 }
 
-static void rlm_rest_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section, void *handle)
+static void rlm_rest_cleanup(rlm_rest_t const *instance, rlm_rest_section_t *section, void *handle)
 {
 	rest_request_cleanup(instance, section, handle);
 }
 
-static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
-			      char const *fmt, char **out, size_t outlen)
+static ssize_t jsonquote_xlat(char **out, size_t outlen,
+			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			      UNUSED REQUEST *request, char const *fmt)
 {
 	char const *p;
 	char *out_p = *out;
@@ -234,18 +235,19 @@ static ssize_t jsonquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 /*
  *	Simple xlat to read text data from a URL
  */
-static ssize_t rest_xlat(void *instance, REQUEST *request,
-			 char const *fmt, char **out, UNUSED size_t freespace)
+static ssize_t rest_xlat(char **out, UNUSED size_t outlen,
+			 void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
-	rlm_rest_t	*inst = instance;
-	void		*handle;
-	int		hcode;
-	int		ret;
-	ssize_t		len, outlen = 0;
-	char		*uri = NULL;
-	char const	*p = fmt, *q;
-	char const	*body;
-	http_method_t	method;
+	rlm_rest_t const	*inst = mod_inst;
+	void			*handle;
+	int			hcode;
+	int			ret;
+	ssize_t			len, slen = 0;
+	char			*uri = NULL;
+	char const		*p = fmt, *q;
+	char const		*body;
+	http_method_t		method;
 
 	rad_assert(*out == NULL);
 
@@ -284,9 +286,9 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	 *  Unescape parts of xlat'd URI, this allows REST servers to be specified by
 	 *  request attributes.
 	 */
-	len = rest_uri_host_unescape(&uri, instance, request, handle, p);
+	len = rest_uri_host_unescape(&uri, mod_inst, request, handle, p);
 	if (len <= 0) {
-		outlen = -1;
+		slen = -1;
 		goto finish;
 	}
 
@@ -307,7 +309,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	 *
 	 *  @todo We could extract the User-Name and password from the URL string.
 	 */
-	ret = rest_request_config(instance, &section, request, handle, section.method, section.body,
+	ret = rest_request_config(mod_inst, &section, request, handle, section.method, section.body,
 				  uri, NULL, NULL);
 	talloc_free(uri);
 	if (ret < 0) return -1;
@@ -316,7 +318,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	 *  Send the CURL request, pre-parse headers, aggregate incoming
 	 *  HTTP body data into a single contiguous buffer.
 	 */
-	ret = rest_request_perform(instance, &section, request, handle);
+	ret = rest_request_perform(mod_inst, &section, request, handle);
 	if (ret < 0) return -1;
 
 	hcode = rest_get_handle_code(handle);
@@ -326,7 +328,7 @@ static ssize_t rest_xlat(void *instance, REQUEST *request,
 	case 403:
 	case 401:
 	{
-		outlen = -1;
+		slen = -1;
 error:
 		rest_response_error(request, handle);
 		goto finish;
@@ -341,10 +343,10 @@ error:
 		if ((hcode >= 200) && (hcode < 300)) {
 			break;
 		} else if (hcode < 500) {
-			outlen = -2;
+			slen = -2;
 			goto error;
 		} else {
-			outlen = -1;
+			slen = -1;
 			goto error;
 		}
 	}
@@ -352,15 +354,15 @@ error:
 	len = rest_get_handle_data(&body, handle);
 	if (len > 0) {
 		*out = talloc_bstrndup(request, body, len);
-		outlen = len;
+		slen = len;
 	}
 
 finish:
-	rlm_rest_cleanup(instance, &section, handle);
+	rlm_rest_cleanup(mod_inst, &section, handle);
 
 	fr_connection_release(inst->pool, handle);
 
-	return outlen;
+	return slen;
 }
 
 /*

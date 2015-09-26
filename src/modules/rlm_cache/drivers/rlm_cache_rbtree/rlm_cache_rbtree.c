@@ -314,7 +314,7 @@ static cache_status_t cache_entry_set_ttl(UNUSED rlm_cache_config_t const *confi
  *
  * @copydetails cache_entry_count_t
  */
-static uint32_t cache_entry_count(UNUSED rlm_cache_config_t *config, void *driver_inst,
+static uint32_t cache_entry_count(UNUSED rlm_cache_config_t const *config, void *driver_inst,
 				  REQUEST *request, void *handle)
 {
 	rlm_cache_rbtree_t *driver = driver_inst;

@@ -36,7 +36,26 @@ extern "C" {
 typedef struct xlat_exp xlat_exp_t;
 
 typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char const *in, void *arg);
-typedef ssize_t (*xlat_func_t)(void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen);
+
+/** xlat callback function
+ *
+ * Should write the result of expanding the fmt string to the output buffer.
+ *
+ * If a buf_len > 0 was provided to #xlat_register, out will point to a talloced
+ * buffer of that size, which the result should be written to.
+ *
+ * If buf_len was 0, then the function should allocate its own buffer, in the
+ * context of the request.
+ *
+ * @param[in] mod_inst Instance data provided by the module that registered the xlat.
+ * @param[in] xlat_inst Instance data created by the xlat instantiation function.
+ * @param[in,out] out Where to write either a pointer to a new buffer, or data to an existing buffer.
+ * @param[in] request The current request.
+ * @param[in] fmt string to expand.
+ */
+typedef ssize_t (*xlat_func_t)(char **out, size_t outlen,
+			       void const *mod_inst, void const *xlat_inst,
+			       REQUEST *request, char const *fmt);
 
 ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, xlat_escape_t escape,
 		    void *escape_ctx)

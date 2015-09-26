@@ -48,8 +48,9 @@ typedef struct rlm_dhcp_t {
 /*
  *	Allow single attribute values to be retrieved from the dhcp.
  */
-static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
-				 char const *fmt, char **out, size_t freespace)
+static ssize_t dhcp_options_xlat(char **out, size_t outlen,
+			   	 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   	 REQUEST *request, char const *fmt)
 {
 	vp_cursor_t	cursor, src_cursor;
 	vp_tmpl_t	src;
@@ -102,12 +103,14 @@ static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 		fr_pair_list_free(&head);
 	}
 
-	snprintf(*out, freespace, "%i", decoded);
+	snprintf(*out, outlen, "%i", decoded);
 
 	return strlen(*out);
 }
 
-static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
+static ssize_t dhcp_xlat(char **out, size_t outlen,
+			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
@@ -127,9 +130,9 @@ static ssize_t dhcp_xlat(UNUSED void *instance, REQUEST *request, char const *fm
 		return -1;
 	}
 
-	if ((size_t)((len * 2) + 1) > freespace) {
+	if ((size_t)((len * 2) + 1) > outlen) {
 		REDEBUG("DHCP option encoding failed: Output buffer exhausted, needed %zd bytes, have %zd bytes",
-			(len * 2) + 1, freespace);
+			(len * 2) + 1, outlen);
 
 		return -1;
 	}

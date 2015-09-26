@@ -246,7 +246,7 @@ int sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **h
  *	- #RLM_SQL_OK on success.
  *	- other #sql_rcode_t constants on error.
  */
-sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle)
+sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle)
 {
 	sql_rcode_t ret;
 
@@ -277,7 +277,7 @@ sql_rcode_t rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *requ
  * @param handle Handle to retrieve errors for.
  * @param force_debug Force all errors to be logged as debug messages.
  */
-void rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug)
+void rlm_sql_print_error(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug)
 {
 	char const	*driver;
 	sql_log_entry_t	log[20];
@@ -334,7 +334,7 @@ void rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *ha
  *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
  *	- #RLM_SQL_ALT_QUERY on constraints violation.
  */
-sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
+sql_rcode_t rlm_sql_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 	int i, count;
@@ -435,7 +435,7 @@ sql_rcode_t rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **
  *	- #RLM_SQL_RECONNECT if a new handle is required (also sets *handle = NULL).
  *	- #RLM_SQL_QUERY_INVALID, #RLM_SQL_ERROR on invalid query or connection error.
  */
-sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle,  char const *query)
+sql_rcode_t rlm_sql_select_query(rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle,  char const *query)
 {
 	int ret = RLM_SQL_ERROR;
 	int i, count;
@@ -501,7 +501,7 @@ sql_rcode_t rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_hand
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle,
+int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle,
 		  VALUE_PAIR **pair, char const *query)
 {
 	rlm_sql_row_t	row;
@@ -532,7 +532,7 @@ int sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_ha
 /*
  *	Log the query to a file.
  */
-void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
+void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request,
 		       sql_acct_section_t *section, char const *query)
 {
 	int fd;

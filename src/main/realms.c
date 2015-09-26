@@ -214,11 +214,15 @@ static size_t CC_HINT(nonnull) xlat_cs(CONF_SECTION *cs, char const *fmt, char *
 }
 
 
-/*
- *	Xlat for %{home_server:foo}
+/** xlat for %{home_server:foo}
+ *
  */
-static ssize_t CC_HINT(nonnull) xlat_home_server(UNUSED void *instance, REQUEST *request,
-						 char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_home_server(char **out, size_t outlen,
+				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+				REQUEST *request, char const *fmt) CC_HINT(nonnull);
+static ssize_t xlat_home_server(char **out, size_t outlen,
+				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+				REQUEST *request, char const *fmt)
 {
 	if (!request->home_server) {
 		RWDEBUG("No home_server associated with this request");
@@ -229,11 +233,15 @@ static ssize_t CC_HINT(nonnull) xlat_home_server(UNUSED void *instance, REQUEST 
 }
 
 
-/*
- *	Xlat for %{home_server_pool:foo}
+/** xlat for %{home_server_pool:foo}
+ *
  */
-static ssize_t CC_HINT(nonnull) xlat_server_pool(UNUSED void *instance, REQUEST *request,
-						 char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_server_pool(char **out, size_t outlen,
+				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+				REQUEST *request, char const *fmt) CC_HINT(nonnull);
+static ssize_t xlat_server_pool(char **out, size_t outlen,
+				UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+				REQUEST *request, char const *fmt)
 {
 	if (!request->home_pool) {
 		RWDEBUG("No home_pool associated with this request");

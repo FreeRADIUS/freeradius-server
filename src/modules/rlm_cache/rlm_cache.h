@@ -228,7 +228,7 @@ typedef cache_status_t	(*cache_entry_set_ttl_t)(rlm_cache_config_t const *config
  *	#cache_acquire_t callback was provided.
  * @return number of entries in the cache.
  */
-typedef uint32_t	(*cache_entry_count_t)(rlm_cache_config_t *config, void *driver_inst,
+typedef uint32_t	(*cache_entry_count_t)(rlm_cache_config_t const *config, void *driver_inst,
 					       REQUEST *request, void *handle);
 
 /** Acquire a handle to access the cache

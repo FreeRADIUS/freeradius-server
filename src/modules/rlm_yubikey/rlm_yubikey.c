@@ -106,7 +106,9 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
  *
  * Example: "%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
  */
-static ssize_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
+static ssize_t modhex_to_hex_xlat(char **out, size_t outlen,
+			  	  UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			  	  REQUEST *request, char const *fmt)
 {
 	ssize_t len;
 

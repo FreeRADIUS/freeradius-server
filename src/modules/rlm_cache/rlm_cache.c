@@ -55,7 +55,7 @@ static const CONF_PARSER module_config[] = {
 /** Get exclusive use of a handle to access the cache
  *
  */
-static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *request)
+static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t const *inst, REQUEST *request)
 {
 	if (!inst->driver->acquire) return 0;
 
@@ -65,7 +65,7 @@ static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *r
 /** Release a handle we previously acquired
  *
  */
-static void cache_release(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
+static void cache_release(rlm_cache_t const *inst, REQUEST *request, rlm_cache_handle_t **handle)
 {
 	if (!inst->driver->release) return;
 	if (!handle || !*handle) return;
@@ -77,7 +77,7 @@ static void cache_release(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_
 /** Reconnect an suspected inviable handle
  *
  */
-static int cache_reconnect(rlm_cache_handle_t **handle, rlm_cache_t *inst, REQUEST *request)
+static int cache_reconnect(rlm_cache_handle_t **handle, rlm_cache_t const *inst, REQUEST *request)
 {
 	rad_assert(inst->driver->reconnect);
 
@@ -92,7 +92,7 @@ static int cache_reconnect(rlm_cache_handle_t **handle, rlm_cache_t *inst, REQUE
  *  If the driver doesn't specify a custom allocation function, the cache
  *  entry is talloced in the NULL ctx.
  */
-static rlm_cache_entry_t *cache_alloc(rlm_cache_t *inst, REQUEST *request)
+static rlm_cache_entry_t *cache_alloc(rlm_cache_t const *inst, REQUEST *request)
 {
 	if (inst->driver->alloc) return inst->driver->alloc(&inst->config, inst->driver_inst, request);
 
@@ -113,7 +113,7 @@ static rlm_cache_entry_t *cache_alloc(rlm_cache_t *inst, REQUEST *request)
  * @param[in] inst Module instance.
  * @param[in,out] c Cache entry to free.
  */
-static void cache_free(rlm_cache_t *inst, rlm_cache_entry_t **c)
+static void cache_free(rlm_cache_t const *inst, rlm_cache_entry_t **c)
 {
 	if (!c || !*c || !inst->driver->free) return;
 
@@ -127,8 +127,8 @@ static void cache_free(rlm_cache_t *inst, rlm_cache_entry_t **c)
  *	- #RLM_MODULE_OK if no entries were merged.
  *	- #RLM_MODULE_UPDATED if entries were merged.
  */
-static rlm_rcode_t cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c) CC_HINT(nonnull);
-static rlm_rcode_t cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c)
+static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_cache_entry_t *c) CC_HINT(nonnull);
+static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_cache_entry_t *c)
 {
 	VALUE_PAIR	*vp;
 	vp_map_t	*map;
@@ -179,7 +179,7 @@ static rlm_rcode_t cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_en
  *	- #RLM_MODULE_FAIL on failure.
  *	- #RLM_MODULE_NOTFOUND on cache miss.
  */
-static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
+static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, REQUEST *request,
 			      rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
 {
 	cache_status_t ret;
@@ -258,7 +258,7 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
  *	- #RLM_MODULE_NOTFOUND if no entry existed.
  *	- #RLM_MODULE_FAIL on failure.
  */
-static rlm_rcode_t cache_expire(rlm_cache_t *inst, REQUEST *request,
+static rlm_rcode_t cache_expire(rlm_cache_t const *inst, REQUEST *request,
 				rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
 {
 	RDEBUG("Expiring cache entry");
@@ -286,7 +286,7 @@ static rlm_rcode_t cache_expire(rlm_cache_t *inst, REQUEST *request,
  *	- #RLM_MODULE_UPDATED if we merged the cache entry.
  *	- #RLM_MODULE_FAIL on failure.
  */
-static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
+static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_cache_handle_t **handle,
 				uint8_t const *key, size_t key_len, int ttl)
 {
 	vp_map_t		const *map;
@@ -469,7 +469,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
  *	- #RLM_MODULE_OK on success.
  *	- #RLM_MODULE_FAIL on failure.
  */
-static rlm_rcode_t cache_set_ttl(rlm_cache_t *inst, REQUEST *request,
+static rlm_rcode_t cache_set_ttl(rlm_cache_t const *inst, REQUEST *request,
 				 rlm_cache_handle_t **handle, rlm_cache_entry_t *c)
 {
 	/*
@@ -777,12 +777,15 @@ finish:
 /** Allow single attribute values to be retrieved from the cache
  *
  */
-static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char **out, UNUSED size_t freespace)
-			  CC_HINT(nonnull);
-static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char **out, UNUSED size_t freespace)
+static ssize_t cache_xlat(char **out, UNUSED size_t freespace,
+			  void const *mod_inst, UNUSED void const *xlat_inst,
+			  REQUEST *request, char const *fmt) CC_HINT(nonnull);
+static ssize_t cache_xlat(char **out, UNUSED size_t freespace,
+			  void const *mod_inst, UNUSED void const *xlat_inst,
+			  REQUEST *request, char const *fmt)
 {
 	rlm_cache_entry_t 	*c = NULL;
-	rlm_cache_t		*inst = instance;
+	rlm_cache_t const	*inst = mod_inst;
 	rlm_cache_handle_t	*handle = NULL;
 
 	size_t			slen;
@@ -805,9 +808,9 @@ static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, cha
 		return -1;
 	}
 
-	if (cache_acquire(&handle, inst, request) < 0) return -1;
+	if (cache_acquire(&handle, mod_inst, request) < 0) return -1;
 
-	switch (cache_find(&c, inst, request, handle, key, key_len)) {
+	switch (cache_find(&c, mod_inst, request, handle, key, key_len)) {
 	case RLM_MODULE_OK:		/* found */
 		break;
 
@@ -834,8 +837,8 @@ static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, cha
 	 */
 	if (!map) return 0;
 
-	cache_free(inst, &c);
-	cache_release(inst, request, &handle);
+	cache_free(mod_inst, &c);
+	cache_release(mod_inst, request, &handle);
 
 	return ret;
 }

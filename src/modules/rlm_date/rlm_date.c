@@ -40,9 +40,11 @@ static const CONF_PARSER module_config[] = {
 };
 
 DIAG_OFF(format-nonliteral)
-static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_date_convert(char **out, size_t outlen,
+				 void const *mod_inst, UNUSED void const *xlat_inst,
+				 REQUEST *request, char const *fmt)
 {
-	rlm_date_t *inst = instance;
+	rlm_date_t const *inst = mod_inst;
 	time_t date = 0;
 	struct tm tminfo;
 	VALUE_PAIR *vp;

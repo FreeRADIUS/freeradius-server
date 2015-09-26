@@ -146,15 +146,16 @@ static int pdb_decode_acct_ctrl(char const *p)
  *	Pulls NT-Response, LM-Response, or Challenge from MSCHAP
  *	attributes.
  */
-static ssize_t mschap_xlat(void *instance, REQUEST *request,
-			   char const *fmt, char **out, size_t outlen)
+static ssize_t mschap_xlat(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, char const *fmt)
 {
-	size_t		i, data_len;
-	uint8_t const  	*data = NULL;
-	uint8_t		buffer[32];
-	VALUE_PAIR	*user_name;
-	VALUE_PAIR	*chap_challenge, *response;
-	rlm_mschap_t	*inst = instance;
+	size_t			i, data_len;
+	uint8_t const  		*data = NULL;
+	uint8_t			buffer[32];
+	VALUE_PAIR		*user_name;
+	VALUE_PAIR		*chap_challenge, *response;
+	rlm_mschap_t const	*inst = mod_inst;
 
 	response = NULL;
 

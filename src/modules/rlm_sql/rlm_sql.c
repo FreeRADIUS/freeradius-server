@@ -140,11 +140,13 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *i
  *  for inserts, updates and deletes the number of rows affected will be
  *  returned instead.
  */
-static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, char **out, UNUSED size_t freespace)
+static ssize_t sql_xlat(char **out, UNUSED size_t outlen,
+			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			REQUEST *request, char const *fmt)
 {
 	rlm_sql_handle_t	*handle = NULL;
 	rlm_sql_row_t		row;
-	rlm_sql_t		*inst = instance;
+	rlm_sql_t const		*inst = mod_inst;
 	sql_rcode_t		rcode;
 	ssize_t			ret = 0;
 
@@ -158,18 +160,18 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 	handle = fr_connection_get(inst->pool);	/* connection pool should produce error */
 	if (!handle) return 0;
 
-	rlm_sql_query_log(inst, request, NULL, query);
+	rlm_sql_query_log(inst, request, NULL, fmt);
 
 	/*
 	 *	If the query starts with any of the following prefixes,
 	 *	then return the number of rows affected
 	 */
-	if ((strncasecmp(query, "insert", 6) == 0) ||
-	    (strncasecmp(query, "update", 6) == 0) ||
-	    (strncasecmp(query, "delete", 6) == 0)) {
+	if ((strncasecmp(fmt, "insert", 6) == 0) ||
+	    (strncasecmp(fmt, "update", 6) == 0) ||
+	    (strncasecmp(fmt, "delete", 6) == 0)) {
 		int numaffected;
 
-		rcode = rlm_sql_query(inst, request, &handle, query);
+		rcode = rlm_sql_query(inst, request, &handle, fmt);
 		if (rcode != RLM_SQL_OK) {
 		query_error:
 			RERROR("SQL query failed: %s", fr_int2str(sql_rcode_table, rcode, "<INVALID>"));
@@ -193,7 +195,7 @@ static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, cha
 		goto finish;
 	} /* else it's a SELECT statement */
 
-	rcode = rlm_sql_select_query(inst, request, &handle, query);
+	rcode = rlm_sql_select_query(inst, request, &handle, fmt);
 	if (rcode != RLM_SQL_OK) goto query_error;
 
 	rcode = rlm_sql_fetch_row(&row, inst, request, &handle);
@@ -636,7 +638,7 @@ static size_t sql_escape_for_xlat_func(REQUEST *request, char *out, size_t outle
  *	escape it twice. (it will make things wrong if we have an
  *	escape candidate character in the username)
  */
-int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
+int sql_set_user(rlm_sql_t const *inst, REQUEST *request, char const *username)
 {
 	char *expanded = NULL;
 	VALUE_PAIR *vp = NULL;

@@ -329,7 +329,9 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
 /*
  *	Xlat for %{config:section.subsection.attribute}
  */
-static ssize_t xlat_config(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_config(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, char const *fmt)
 {
 	char const *value;
 	CONF_PAIR *cp;
@@ -369,7 +371,9 @@ static ssize_t xlat_config(UNUSED void *instance, REQUEST *request, char const *
 /*
  *	Xlat for %{client:foo}
  */
-static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_client(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, char const *fmt)
 {
 	char const *value = NULL;
 	CONF_PAIR *cp;
@@ -396,7 +400,9 @@ static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *
 /*
  *	Xlat for %{getclient:<ipaddr>.foo}
  */
-static ssize_t xlat_getclient(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_getclient(char **out, size_t outlen,
+			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			      REQUEST *request, char const *fmt)
 {
 	char const *value = NULL;
 	char buffer[INET6_ADDRSTRLEN], *q;
@@ -444,7 +450,9 @@ error:
 /*
  *	Xlat for %{listen:foo}
  */
-static ssize_t xlat_listen(UNUSED void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_listen(char **out, size_t outlen,
+			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   REQUEST *request, char const *fmt)
 {
 	char const *value = NULL;
 	CONF_PAIR *cp;

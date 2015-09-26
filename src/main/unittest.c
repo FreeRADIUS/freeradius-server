@@ -416,8 +416,9 @@ static void print_packet(FILE *fp, RADIUS_PACKET *packet)
 /*
  *	%{poke:sql.foo=bar}
  */
-static ssize_t xlat_poke(UNUSED void *instance, REQUEST *request,
-			 char const *fmt, char **out, size_t outlen)
+static ssize_t xlat_poke(char **out, size_t outlen,
+			 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			 REQUEST *request, char const *fmt)
 {
 	int i;
 	void *data, *base;
