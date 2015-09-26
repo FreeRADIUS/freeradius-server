@@ -386,7 +386,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	if (data_len < 4) {
 		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zu bytes", data_len);
 invalid:
-		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s:  %s",
+		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s: %s",
 					 fr_inet_ntop(src_ipaddr->af, &src_ipaddr->ipaddr),
 					 fr_strerror());
 		rad_recv_discard(sockfd);
