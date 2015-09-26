@@ -2021,6 +2021,8 @@ static int _cluster_version_walk(void *context, void *data)
 /** Check if members of the cluster are above a certain version
  *
  * @param cluster to perform check on.
+ * @param min_version that must be found on each node for the check to succeed.
+ *	Must be in the format @verbatim <major>.<minor>.<release> @endverbatim.
  * @return
  *	- true if all contactable members are above min_version.
  *	- false if at least one member if not above minimum version
