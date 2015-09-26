@@ -801,6 +801,9 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 	dhcp_socket_t	*sock = listener->data;
 	RADCLIENT	*client = &sock->dhcp_client;
 
+#ifdef __clang_analyzer__
+	rad_assert(client);
+#endif
 	FR_STATS_INC(auth, total_requests);
 	FR_STATS_TYPE_INC(client->auth.total_requests);
 

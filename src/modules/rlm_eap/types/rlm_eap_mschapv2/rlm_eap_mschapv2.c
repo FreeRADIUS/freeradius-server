@@ -93,6 +93,8 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler,
 	EAP_DS *eap_ds = handler->eap_ds;
 	REQUEST *request = handler->request;
 
+	rad_assert(inst);
+
 	eap_ds->request->code = PW_EAP_REQUEST;
 	eap_ds->request->type.num = PW_EAP_MSCHAPV2;
 
