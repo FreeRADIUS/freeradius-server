@@ -80,10 +80,10 @@ void fr_strerror_printf(char const *fmt, ...)
 	}
 
 	/*
-	 *	NULL has a special meaning, setting the new byte to false.
+	 *	NULL has a special meaning, setting the new bit to false.
 	 */
 	if (!fmt) {
-		buffer[FR_STRERROR_BUFSIZE * 2] = '\0';
+		buffer[FR_STRERROR_BUFSIZE * 2] &= 0x06;
 		return;
 	}
 
@@ -92,15 +92,15 @@ void fr_strerror_printf(char const *fmt, ...)
 	 *	Alternate where we write the message, so we can do:
 	 *	fr_strerror_printf("Additional error: %s", fr_strerror());
 	 */
-	switch (buffer[FR_STRERROR_BUFSIZE * 2]) {
+	switch (buffer[FR_STRERROR_BUFSIZE * 2] & 0x06) {
 	default:
 		vsnprintf(buffer + FR_STRERROR_BUFSIZE, FR_STRERROR_BUFSIZE, fmt, ap);
-		buffer[FR_STRERROR_BUFSIZE * 2] = '\2';			/* Flip the 'new' byte to true */
+		buffer[FR_STRERROR_BUFSIZE * 2] = 0x05;			/* Flip the 'new' bit to true */
 		break;
 
-	case '\2':
+	case 0x04:
 		vsnprintf(buffer, FR_STRERROR_BUFSIZE, fmt, ap);
-		buffer[FR_STRERROR_BUFSIZE * 2] = '\1';			/* Flip the 'new' byte to true */
+		buffer[FR_STRERROR_BUFSIZE * 2] = 0x03;			/* Flip the 'new' bit to true */
 		break;
 	}
 	va_end(ap);
@@ -123,12 +123,12 @@ char const *fr_strerror(void)
 	default:
 		return "";
 
-	case '\1':
-		buffer[FR_STRERROR_BUFSIZE * 2] = '\0';		/* Flip the 'new' byte to false */
+	case 0x03:
+		buffer[FR_STRERROR_BUFSIZE * 2] &= 0x06;		/* Flip the 'new' bit to false */
 		return buffer;
 
-	case '\2':
-		buffer[FR_STRERROR_BUFSIZE * 2] = '\0';		/* Flip the 'new' byte to false */
+	case 0x05:
+		buffer[FR_STRERROR_BUFSIZE * 2] &= 0x06;		/* Flip the 'new' bit to false */
 		return buffer + FR_STRERROR_BUFSIZE;
 	}
 }
