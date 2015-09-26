@@ -47,9 +47,10 @@ typedef size_t (*xlat_escape_t)(REQUEST *request, char *out, size_t outlen, char
  * If buf_len was 0, then the function should allocate its own buffer, in the
  * context of the request.
  *
+ * @param[in,out] out Where to write either a pointer to a new buffer, or data to an existing buffer.
+ * @param[in] outlen Length of pre-allocated buffer, or 0 if function should allocate its own buffer.
  * @param[in] mod_inst Instance data provided by the module that registered the xlat.
  * @param[in] xlat_inst Instance data created by the xlat instantiation function.
- * @param[in,out] out Where to write either a pointer to a new buffer, or data to an existing buffer.
  * @param[in] request The current request.
  * @param[in] fmt string to expand.
  */
