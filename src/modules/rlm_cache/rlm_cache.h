@@ -26,7 +26,7 @@ RCSIDH(cache_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>
 
-typedef struct cache_module cache_module_t;
+typedef struct cache_driver cache_driver_t;
 
 typedef void rlm_cache_handle_t;
 
@@ -39,6 +39,21 @@ typedef enum {
 	CACHE_MISS	= 1				//!< Cache entry notfound
 } cache_status_t;
 
+/** Configuration for the rlm_cache module
+ *
+ * This is separate from the #rlm_cache_t struct, to limit driver's visibility of
+ * rlm_cache instance data.
+ */
+typedef struct rlm_cache_config_t {
+	char const		*name;			//!< Name of xlat function to register.
+	char const		*driver_name;		//!< Driver name.
+	vp_tmpl_t		*key;			//!< What to expand to get the value of the key.
+	uint32_t		ttl;			//!< How long an entry is valid for.
+	uint32_t		max_entries;		//!< Maximum entries allowed.
+	int32_t			epoch;			//!< Time after which entries are considered valid.
+	bool			stats;			//!< Generate statistics.
+} rlm_cache_config_t;
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -47,65 +62,239 @@ typedef enum {
  *	be used as the instance handle.
  */
 typedef struct rlm_cache_t {
-	char const		*xlat_name;		//!< Name of xlat function to register.
+	rlm_cache_config_t	config;			//!< Must come first because of icky hacks.
 
-	char const		*driver_name;		//!< Datastore name
-	void			*handle;		//!< Datastore handle.
-	cache_module_t		*module;		//!< Datastore
-	void			*driver;		//!< Driver module instance data.
+	void			*handle;		//!< Driver handle.
+	cache_driver_t		*driver;		//!< Driver.
+	void			*driver_inst;		//!< Driver instance data.
 
-	char const		*key;
-	uint32_t		ttl;			//!< How long an entry is valid for.
-	uint32_t		max_entries;		//!< Maximum entries allowed.
-	int32_t			epoch;			//!< Time after which entries are considered valid.
-	bool			stats;			//!< Generate statistics.
-
-	value_pair_map_t	*maps;			//!< Attribute map applied to users.
+	vp_map_t		*maps;			//!< Attribute map applied to users.
 							//!< and profiles.
 	CONF_SECTION		*cs;
 } rlm_cache_t;
 
 typedef struct rlm_cache_entry_t {
-	char const		*key;			//!< Key used to identify entry.
+	uint8_t const		*key;			//!< Key used to identify entry.
+	size_t			key_len;		//!< Length of key data.
 	long long int		hits;			//!< How many times the entry has been retrieved.
 	time_t			created;		//!< When the entry was created.
 	time_t			expires;		//!< When the entry expires.
 
-	VALUE_PAIR		*control;		//!< Cached control list.
-	VALUE_PAIR		*packet;		//!< Cached request list.
-	VALUE_PAIR		*reply;			//!< Cached reply list.
+	vp_map_t		*maps;			//!< Head of the maps list.
 } rlm_cache_entry_t;
 
-typedef int			(*mod_instantiate_t)(CONF_SECTION *conf, rlm_cache_t *inst);
-typedef rlm_cache_entry_t	*(*cache_entry_alloc_t)(rlm_cache_t *inst, REQUEST *request);
-typedef void			(*cache_entry_free_t)(rlm_cache_entry_t *c);
+/** Instantiate a driver
+ *
+ * Function to handle any driver specific instantiation.
+ *
+ * @param conf section holding driver specific #CONF_PAIR (s).
+ * @param config of the rlm_cache module.  Should not be modified.
+ * @param driver_inst A uint8_t array of inst_size if inst_size > 0, else NULL.
+ *	Drivers should add their own cleanup function to this chunk using talloc_set_destructor.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int		(*cache_instantiate_t)(CONF_SECTION *conf, rlm_cache_config_t const *config, void *driver_inst);
 
-typedef cache_status_t		(*cache_entry_find_t)(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
-						      rlm_cache_handle_t **handle, char const *key);
-typedef cache_status_t		(*cache_entry_insert_t)(rlm_cache_t *inst, REQUEST *request,
-							rlm_cache_handle_t **handle, rlm_cache_entry_t *c);
-typedef cache_status_t		(*cache_entry_expire_t)(rlm_cache_t *inst, REQUEST *request,
-							rlm_cache_handle_t **handle, rlm_cache_entry_t *entry);
-typedef uint32_t		(*cache_entry_count_t)(rlm_cache_t *inst, REQUEST *request,
-						       rlm_cache_handle_t **handle);
+/** Allocate a new cache entry
+ *
+ */
+typedef rlm_cache_entry_t *(*cache_entry_alloc_t)(rlm_cache_config_t const *conf, void *driver_inst, REQUEST *request);
 
-typedef int			(*cache_acquire_t)(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *request);
-typedef void			(*cache_release_t)(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle);
-typedef int			(*cache_reconnect_t)(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle);
+/** Free a cache entry
+ *
+ * @note This callback is optional, but the driver assume responsibility for freeing the
+ *	cache_entry_t on #cache_entry_expire_t.
+ *
+ * If the driver does not need to keep a local copy of the cache entry, it should provide
+ * a callback to free the memory previously allocated for the cache entry by
+ * #cache_entry_find_t or by rlm_cache.
+ *
+ * @param c entry to free.
+ */
+typedef void		(*cache_entry_free_t)(rlm_cache_entry_t *c);
 
-struct cache_module {
-	char const		*name;			//!< Driver name.
+/** Retrieve an entry from the cache
+ *
+ * If a cache entry is found, but the cache entry needs to be deserialized, the driver
+ * is expected to allocate an appropriately sized #rlm_cache_entry_t, perform the deserialisation,
+ * and write a pointer to the new entry to out, returning #CACHE_OK.
+ *
+ * If the #rlm_cache_handle_t is inviable, the driver should return #CACHE_RECONNECT, to have
+ * it reinitialised/reconnected.
+ *
+ * @param[out] out Where to write a pointer to the retrieved entry (if there was one).
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] driver_inst Driver specific instance data.
+ * @param[in] request The current request.
+ * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
+ *	#cache_acquire_t callback was provided.
+ * @param[in] key to use to lookup cache entry
+ * @param[in] key_len the length of the key string.
+ * @return
+ *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
+ *	- #CACHE_ERROR - If the lookup couldn't be completed.
+ *	- #CACHE_OK - Lookup was successful.
+ *	- #CACHE_MISS - No cached entry was found.
+ */
+typedef cache_status_t	(*cache_entry_find_t)(rlm_cache_entry_t **out, rlm_cache_config_t const *config,
+					      void *driver_inst, REQUEST *request, void *handle,
+					      uint8_t const *key, size_t key_len);
 
-	mod_instantiate_t	mod_instantiate;	//!< (optional) Instantiate a driver.
-	cache_entry_alloc_t	alloc;			//!< (optional) Allocate a new entry.
-	cache_entry_free_t	free;			//!< (optional) Free memory used by an entry.
+/** Insert an entry into the cache
+ *
+ * Serialize (if necessary) the entry passed to us, and write it to the cache with
+ * the key c->key.
+ *
+ * The cache entry should not be freed by the driver, irrespective of success or failure.
+ * If the entry needs to be freed after insertion because a local copy should not be kept,
+ * the driver should provide a #cache_entry_free_t callback.
+ *
+ * If the #rlm_cache_handle_t is inviable, the driver should return #CACHE_RECONNECT, to have
+ * it reinitialised/reconnected.
+ *
+ * @note This callback is not optional.
+ *
+ * @note This callback *must* overwrite existing cache entries on insert.
+ *
+ * @param config for this instance of the rlm_cache module.
+ * @param driver_inst Driver specific instance data.
+ * @param request The current request.
+ * @param handle the driver gave us when we called #cache_acquire_t, or NULL if no
+ *	#cache_acquire_t callback was provided.
+ * @param c to insert.
+ * @return
+ *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
+ *	- #CACHE_ERROR - If the insert couldn't be completed.
+ *	- #CACHE_OK - If the insert was successful.
+ */
+typedef cache_status_t	(*cache_entry_insert_t)(rlm_cache_config_t const *config, void *driver_inst,
+						REQUEST *request, void *handle,
+						rlm_cache_entry_t const *c);
 
-	cache_entry_find_t	find;			//!< Retrieve an existing cache entry.
-	cache_entry_insert_t	insert;			//!< Add a new entry.
-	cache_entry_expire_t	expire;			//!< Remove an old entry.
-	cache_entry_count_t	count;			//!< Number of entries.
+/** Remove an entry from the cache
+ *
+ * @note This callback is not optional.
+ *
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] driver_inst Driver specific instance data.
+ * @param[in] request The current request.
+ * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
+ *	#cache_acquire_t callback was provided.
+ * @param[in] key of entry to expire.
+ * @param[in] key_len the length of the key string.
+ * @return
+ *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
+ *	- #CACHE_ERROR - If the entry couldn't be expired.
+ *	- #CACHE_OK - If the entry was expired.
+ *	- #CACHE_MISS - If the entry didn't exist, so couldn't be expired.
+ */
+typedef cache_status_t	(*cache_entry_expire_t)(rlm_cache_config_t const *config, void *driver_inst,
+						REQUEST *request, void *handle,
+						uint8_t const *key, size_t key_len);
 
-	cache_acquire_t		acquire;		//!< (optional) Get a lock or connection handle.
-	cache_release_t		release;		//!< (optional) Release the lock or connection handle.
-	cache_reconnect_t	reconnect;		//!< (optional) Reconnect a handle.
+/** Update the ttl of an entry in the cace
+ *
+ * @note This callback optional. If it's not specified the cache code will expire and
+ *	 recreate the entry with a new TTL.
+ *
+ * If the #rlm_cache_handle_t is inviable, the driver should return #CACHE_RECONNECT, to have
+ * it reinitialised/reconnected.
+ *
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] driver_inst Driver specific instance data.
+ * @param[in] request The current request.
+ * @param[in] handle the driver gave us when we called #cache_acquire_t, or NULL if no
+ *	#cache_acquire_t callback was provided.
+ * @param[in] c to update the TTL of. c->ttl will have been set to the new value.
+ * @return
+ *	- #CACHE_RECONNECT - If handle needs to be reinitialised/reconnected.
+ *	- #CACHE_ERROR - If the entry TTL couldn't be updated.
+ *	- #CACHE_OK - If the entry's TTL was updated.
+ */
+typedef cache_status_t	(*cache_entry_set_ttl_t)(rlm_cache_config_t const *config, void *driver_inst,
+						 REQUEST *request, void *handle,
+						 rlm_cache_entry_t *c);
+
+/** Get the number of entries in the cache
+ *
+ * @note This callback is optional. Though max_entries will not be enforced if it is not provided.
+ *
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] driver_inst Driver specific instance data.
+ * @param[in] request The current request.
+ * @param handle the driver gave us when we called #cache_acquire_t, or NULL if no
+ *	#cache_acquire_t callback was provided.
+ * @return number of entries in the cache.
+ */
+typedef uint32_t	(*cache_entry_count_t)(rlm_cache_config_t *config, void *driver_inst,
+					       REQUEST *request, void *handle);
+
+/** Acquire a handle to access the cache
+ *
+ * @note This callback is optional. If it's not provided the handle argument to other callbacks
+ *	will be NULL.
+ *
+ * @param[out] handle Where to write pointer to handle to access the cache with.
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] driver_inst Driver specific instance data.
+ * @param[in] request The current request.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int		(*cache_acquire_t)(void **handle, rlm_cache_config_t const *config, void *driver_inst,
+					   REQUEST *request);
+
+/** Release a previously acquired handle
+ *
+ * @note This callback is optional.
+ *
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] driver_inst Driver specific instance data.
+ * @param[in] request The current request.
+ * @param[in] handle to release.
+ */
+typedef void		(*cache_release_t)(rlm_cache_config_t const *config, void *driver_inst, REQUEST *request,
+					   rlm_cache_handle_t *handle);
+
+/** Reconnect a previously acquired handle
+ *
+ * @note This callback is optional.
+ *
+ * @param[in,out] handle to reinitialise/reconnect.
+ * @param[in] config for this instance of the rlm_cache module.
+ * @param[in] driver_inst Driver specific instance data.
+ * @param[in] request The current request.
+
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+typedef int		(*cache_reconnect_t)(rlm_cache_handle_t **handle, rlm_cache_config_t const *config,
+					     void *driver_inst, REQUEST *request);
+
+struct cache_driver {
+	char const			*name;			//!< Driver name.
+
+	cache_instantiate_t		instantiate;		//!< (optional) Instantiate a driver.
+	cache_entry_alloc_t		alloc;			//!< (optional) Allocate a new entry.
+	cache_entry_free_t		free;			//!< (optional) Free memory used by an entry.
+
+	cache_entry_find_t		find;			//!< Retrieve an existing cache entry.
+	cache_entry_insert_t		insert;			//!< Add a new entry.
+	cache_entry_expire_t		expire;			//!< Remove an old entry.
+	cache_entry_set_ttl_t		set_ttl;		//!< (Optional) Update the TTL of an entry.
+	cache_entry_count_t		count;			//!< (Optional) Number of entries currently in
+								//!< the cache.
+
+	cache_acquire_t			acquire;		//!< (optional) Acquire exclusive access to a resource
+								//!< used to retrieve the cache entry.
+	cache_release_t			release;		//!< (optional) Release access to resource acquired
+								//!< with acquire callback.
+	cache_reconnect_t		reconnect;		//!< (optional) Re-initialise resource.
+
+	size_t				inst_size;		//!< How many bytes should be allocated for the driver's
+								//!< instance data.
 };

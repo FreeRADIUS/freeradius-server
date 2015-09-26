@@ -52,6 +52,7 @@ function show_help
     echo "  -H <host>[:port]          Send test packets to specified host and port (defaults to 127.0.0.1)"
     echo "  -v                        Verbose mode."
     echo "  -p <number>               Run tests in parallel (defaults to 20)."
+    echo "  -s <secret>               Shared secret."
     if [ ! -z "$role_types" ]; then
         echo "  -c <cluster>              Specify cluster type one of ($cluster_types)."
         echo "  -r <type>                 Specify server role one of ($role_types)."
@@ -92,7 +93,7 @@ cluster_types=$(echo $cluster_dirs | sed 's/\s/ /g')
 
 role_types=
 for i in $cluster_dirs; do
-    for j in $(find "$TESTDIR/$i/" -mindepth 1 -maxdepth 1 -type d); do
+    for j in $(find "$TESTDIR/$(basename $i)/" -mindepth 1 -maxdepth 1 -type d); do
         role=$(basename "$j")
         if [ "$role_types" == '' ]; then
             role_types="$role"
@@ -110,7 +111,7 @@ else
     role_types=$(echo $role_types | sed 's/\s/ /g')     # Change \n back to spaces
 fi
 
-while getopts "h?H:vc:r:p:" opt; do
+while getopts "h?H:vc:r:s:p:" opt; do
     case "$opt" in
     h|\?)
         show_help
@@ -149,6 +150,10 @@ while getopts "h?H:vc:r:p:" opt; do
             exit 64
         fi
         role="$OPTARG"
+        ;;
+
+    s)
+        secret="$OPTARG"
         ;;
 
     p)

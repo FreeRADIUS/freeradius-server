@@ -29,10 +29,9 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 
 #include <libcouchbase/couchbase.h>
-#include <json.h>
+#include "../rlm_json/json.h"
 
 #include "couchbase.h"
-#include "jsonc_missing.h"
 
 /** Couchbase callback for cluster statistics requests
  *
@@ -190,12 +189,14 @@ void couchbase_http_data_callback(lcb_http_request_t request, lcb_t instance, co
  * This function forces synchronous operation and will wait for a connection or timeout.
  *
  * @param instance Empty (un-allocated) Couchbase instance object.
- * @param host     The Couchbase server or list of servers.
- * @param bucket   The Couchbase bucket to associate with the instance.
- * @param pass     The Couchbase bucket password (NULL if none).
- * @return          Couchbase error object.
+ * @param host       The Couchbase server or list of servers.
+ * @param bucket     The Couchbase bucket to associate with the instance.
+ * @param pass       The Couchbase bucket password (NULL if none).
+ * @param timeout    Maximum time to wait for obtaining the initial configuration.
+ * @return           Couchbase error object.
  */
-lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass)
+lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const char *bucket, const char *pass,
+				      lcb_uint32_t timeout)
 {
 	lcb_error_t error;                      /* couchbase command return */
 	struct lcb_create_st options;           /* init create struct */
@@ -214,27 +215,25 @@ lcb_error_t couchbase_init_connection(lcb_t *instance, const char *host, const c
 	}
 
 	/* create couchbase connection instance */
-	if ((error = lcb_create(instance, &options)) != LCB_SUCCESS) {
-		/* return error */
-		return error;
-	}
+	error = lcb_create(instance, &options);
+	if (error != LCB_SUCCESS) return error;
+
+	error = lcb_cntl(*instance, LCB_CNTL_SET, LCB_CNTL_CONFIGURATION_TIMEOUT, &timeout);
+	if (error != LCB_SUCCESS) return error;
 
 	/* initiate connection */
-	if ((error = lcb_connect(*instance)) == LCB_SUCCESS) {
-		/* set general method callbacks */
-		lcb_set_stat_callback(*instance, couchbase_stat_callback);
-		lcb_set_store_callback(*instance, couchbase_store_callback);
-		lcb_set_get_callback(*instance, couchbase_get_callback);
-		lcb_set_http_data_callback(*instance, couchbase_http_data_callback);
-		/* wait on connection */
-		lcb_wait(*instance);
-	} else {
-		/* return error */
-		return error;
-	}
+	error = lcb_connect(*instance);
+	if (error != LCB_SUCCESS) return error;
 
-	/* return instance */
-	return error;
+	/* set general method callbacks */
+	lcb_set_stat_callback(*instance, couchbase_stat_callback);
+	lcb_set_store_callback(*instance, couchbase_store_callback);
+	lcb_set_get_callback(*instance, couchbase_get_callback);
+	lcb_set_http_data_callback(*instance, couchbase_http_data_callback);
+	/* wait on connection */
+	lcb_wait(*instance);
+
+	return LCB_SUCCESS;
 }
 
 /** Request Couchbase server statistics
@@ -261,7 +260,7 @@ lcb_error_t couchbase_server_stats(lcb_t instance, const void *cookie)
 
 	/* get statistics */
 	if ((error = lcb_server_stats(instance, cookie, 1, commands)) == LCB_SUCCESS) {
-		/* enter event look on sucess */
+		/* enter event look on success */
 		lcb_wait(instance);
 	}
 

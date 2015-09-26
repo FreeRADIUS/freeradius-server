@@ -35,7 +35,6 @@ int fr_inaddr_any(fr_ipaddr_t *ipaddr);
 void fr_request_from_reply(RADIUS_PACKET *request,
 			     RADIUS_PACKET const *reply);
 int fr_socket(fr_ipaddr_t *ipaddr, uint16_t port);
-int fr_nonblock(int fd);
 
 typedef struct fr_packet_list_t fr_packet_list_t;
 

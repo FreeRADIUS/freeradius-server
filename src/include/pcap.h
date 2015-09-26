@@ -3,9 +3,8 @@
 #ifdef HAVE_LIBPCAP
 /*
  *   This program is is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version.
+ *   it under the terms of the GNU General Public License, version 2 of the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -60,10 +59,9 @@ typedef enum {
 	PCAP_STDIO_IN,
 	PCAP_INTERFACE_OUT,
 	PCAP_FILE_OUT,
-	PCAP_STDIO_OUT
+	PCAP_STDIO_OUT,
+	PCAP_INTERFACE_IN_OUT
 } fr_pcap_type_t;
-
-extern const FR_NAME_NUMBER pcap_types[];
 
 /*
  *	Internal pcap structures
@@ -73,6 +71,8 @@ struct fr_pcap {
 	char			errbuf[PCAP_ERRBUF_SIZE];	//!< Last error on this interface.
 	fr_pcap_type_t		type;				//!< What type of handle this is.
 	char			*name;				//!< Name of file or interface.
+	uint8_t			ether_addr[ETHER_ADDR_LEN];	//!< The MAC address of the interface
+
 	bool			promiscuous;			//!< Whether the interface is in promiscuous mode.
 								//!< Only valid for live capture handles.
 	int			buffer_pkts;			//!< How big to make the PCAP ring buffer.
@@ -95,5 +95,6 @@ fr_pcap_t	*fr_pcap_init(TALLOC_CTX *ctx, char const *name, fr_pcap_type_t type);
 int		fr_pcap_open(fr_pcap_t *handle);
 int		fr_pcap_apply_filter(fr_pcap_t *handle, char const *expression);
 char		*fr_pcap_device_names(TALLOC_CTX *ctx, fr_pcap_t *handle, char c);
+int		fr_pcap_mac_addr(uint8_t *macaddr, char *ifname);
 #endif
 #endif

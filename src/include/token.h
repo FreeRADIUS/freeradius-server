@@ -31,7 +31,7 @@ RCSIDH(token_h, "$Id$")
 extern "C" {
 #endif
 
-typedef enum fr_token_t {
+typedef enum fr_token {
 	T_INVALID = 0,			/* invalid token */
 	T_EOL,				/* end of line */
 	T_LCBRACE,			/* { */
@@ -72,7 +72,9 @@ typedef struct FR_NAME_NUMBER {
 	int		number;
 } FR_NAME_NUMBER;
 
-extern const FR_NAME_NUMBER fr_tokens[];
+extern const FR_NAME_NUMBER fr_tokens_table[];
+extern const char *fr_tokens[];
+extern const char fr_token_quote[];
 extern const bool fr_assignment_op[];
 extern const bool fr_equality_op[];
 extern const bool fr_str_tok[];

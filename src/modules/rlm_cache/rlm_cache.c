@@ -41,38 +41,47 @@ RCSID("$Id$")
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "driver", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_cache_t, driver_name), "rlm_cache_rbtree" },
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_cache_t, key), NULL },
-	{ "ttl", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, ttl), "500" },
-	{ "max_entries", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_cache_t, max_entries), "0" },
+	{ FR_CONF_OFFSET("driver", PW_TYPE_STRING, rlm_cache_config_t, driver_name), .dflt = "rlm_cache_rbtree" },
+	{ FR_CONF_OFFSET("key", PW_TYPE_TMPL | PW_TYPE_REQUIRED, rlm_cache_config_t, key) },
+	{ FR_CONF_OFFSET("ttl", PW_TYPE_INTEGER, rlm_cache_config_t, ttl), .dflt = "500" },
+	{ FR_CONF_OFFSET("max_entries", PW_TYPE_INTEGER, rlm_cache_config_t, max_entries), .dflt = "0" },
 
 	/* Should be a type which matches time_t, @fixme before 2038 */
-	{ "epoch", FR_CONF_OFFSET(PW_TYPE_SIGNED, rlm_cache_t, epoch), "0" },
-	{ "add_stats", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_cache_t, stats), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("epoch", PW_TYPE_SIGNED, rlm_cache_config_t, epoch), .dflt = "0" },
+	{ FR_CONF_OFFSET("add_stats", PW_TYPE_BOOLEAN, rlm_cache_config_t, stats), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
 };
 
+/** Get exclusive use of a handle to access the cache
+ *
+ */
 static int cache_acquire(rlm_cache_handle_t **out, rlm_cache_t *inst, REQUEST *request)
 {
-	if (!inst->module->acquire) return 0;
+	if (!inst->driver->acquire) return 0;
 
-	return inst->module->acquire(out, inst, request);
+	return inst->driver->acquire(out, &inst->config, inst->driver_inst, request);
 }
 
+/** Release a handle we previously acquired
+ *
+ */
 static void cache_release(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
 {
-	if (!inst->module->release) return;
+	if (!inst->driver->release) return;
 	if (!handle || !*handle) return;
 
-	inst->module->release(inst, request, handle);
+	inst->driver->release(&inst->config, inst->driver_inst, request, *handle);
+	*handle = NULL;
 }
 
-static int cache_reconnect(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle)
+/** Reconnect an suspected inviable handle
+ *
+ */
+static int cache_reconnect(rlm_cache_handle_t **handle, rlm_cache_t *inst, REQUEST *request)
 {
-	rad_assert(inst->module->reconnect);
+	rad_assert(inst->driver->reconnect);
 
-	return inst->module->reconnect(inst, request, handle);
+	return inst->driver->reconnect(handle, &inst->config, inst->driver_inst, request);
 }
 
 /** Allocate a cache entry
@@ -85,7 +94,7 @@ static int cache_reconnect(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle
  */
 static rlm_cache_entry_t *cache_alloc(rlm_cache_t *inst, REQUEST *request)
 {
-	if (inst->module->alloc) return inst->module->alloc(inst, request);
+	if (inst->driver->alloc) return inst->driver->alloc(&inst->config, inst->driver_inst, request);
 
 	return talloc_zero(NULL, rlm_cache_entry_t);
 }
@@ -101,66 +110,77 @@ static rlm_cache_entry_t *cache_alloc(rlm_cache_t *inst, REQUEST *request)
  * Some drivers (like rlm_cache_rbtree) don't register a free function.
  * This means that the cache entry never needs to be explicitly freed.
  *
- * @param c Cache entry to free.
- * @param inst Module instance.
+ * @param[in] inst Module instance.
+ * @param[in,out] c Cache entry to free.
  */
 static void cache_free(rlm_cache_t *inst, rlm_cache_entry_t **c)
 {
-	if (!c || !*c || !inst->module->free) return;
+	if (!c || !*c || !inst->driver->free) return;
 
-	inst->module->free(*c);
+	inst->driver->free(*c);
 	*c = NULL;
 }
 
-/*
- *	Merge a cached entry into a REQUEST.
+/** Merge a cached entry into a #REQUEST
+ *
+ * @return
+ *	- #RLM_MODULE_OK if no entries were merged.
+ *	- #RLM_MODULE_UPDATED if entries were merged.
  */
-static void CC_HINT(nonnull) cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c)
+static rlm_rcode_t cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c) CC_HINT(nonnull);
+static rlm_rcode_t cache_merge(rlm_cache_t *inst, REQUEST *request, rlm_cache_entry_t *c)
 {
-	VALUE_PAIR *vp;
-
-	vp = pairfind(request->config_items, PW_CACHE_MERGE, 0, TAG_ANY);
-	if (vp && (vp->vp_integer == 0)) {
-		RDEBUG2("Told not to merge entry into request");
-		return;
-	}
+	VALUE_PAIR	*vp;
+	vp_map_t	*map;
+	int		merged = 0;
 
 	RDEBUG2("Merging cache entry into request");
+	RINDENT();
+	for (map = c->maps; map; map = map->next) {
+		/*
+		 *	The only reason that the application of a map entry
+		 *	can fail, is if the destination list or request
+		 *	isn't valid. For now we don't consider this fatal
+		 *	and continue merging the rest of the maps.
+		 */
+		if (map_to_request(request, map, map_to_vp, NULL) < 0) {
+			char buffer[1024];
 
-	if (c->control) {
-		rdebug_pair_list(L_DBG_LVL_2, request, c->control, "&control:");
-		radius_pairmove(request, &request->config_items, paircopy(request, c->control), false);
+			map_snprint(buffer, sizeof(buffer), map);
+			REXDENT();
+			RDEBUG("Skipping %s", buffer);
+			RINDENT();
+			continue;
+		}
+		merged++;
 	}
+	REXDENT();
 
-	if (c->packet && request->packet) {
-		rdebug_pair_list(L_DBG_LVL_2, request, c->packet, "&request:");
-		radius_pairmove(request, &request->packet->vps, paircopy(request->packet, c->packet), false);
-	}
-
-	if (c->reply && request->reply) {
-		rdebug_pair_list(L_DBG_LVL_2, request, c->reply, "&reply:");
-		radius_pairmove(request, &request->reply->vps, paircopy(request->reply, c->reply), false);
-	}
-
-	if (inst->stats) {
+	if (inst->config.stats) {
 		rad_assert(request->packet != NULL);
-		vp = pairfind(request->packet->vps, PW_CACHE_ENTRY_HITS, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, PW_CACHE_ENTRY_HITS, 0, TAG_ANY);
 		if (!vp) {
-			vp = paircreate(request->packet, PW_CACHE_ENTRY_HITS, 0);
+			vp = fr_pair_afrom_num(request->packet, PW_CACHE_ENTRY_HITS, 0);
 			rad_assert(vp != NULL);
-			pairadd(&request->packet->vps, vp);
+			fr_pair_add(&request->packet->vps, vp);
 		}
 		vp->vp_integer = c->hits;
 	}
-}
 
+	return merged > 0 ?
+		RLM_MODULE_UPDATED :
+		RLM_MODULE_OK;
+}
 
 /** Find a cached entry.
  *
- * @return RLM_MODULE_OK on success, RLM_MODULE_FAIL on failure, RLM_MODULE_NOTFOUND if notfound.
+ * @return
+ *	- #RLM_MODULE_OK on cache hit.
+ *	- #RLM_MODULE_FAIL on failure.
+ *	- #RLM_MODULE_NOTFOUND on cache miss.
  */
 static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUEST *request,
-			      rlm_cache_handle_t **handle, char const *key)
+			      rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
 {
 	cache_status_t ret;
 
@@ -169,18 +189,24 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 	*out = NULL;
 
 	for (;;) {
-		ret = inst->module->find(&c, inst, request, handle, key);
+		ret = inst->driver->find(&c, &inst->config, inst->driver_inst, request, *handle, key, key_len);
 		switch (ret) {
 		case CACHE_RECONNECT:
 			RDEBUG("Reconnecting...");
-			if (cache_reconnect(inst, request, handle) == 0) continue;
+			if (cache_reconnect(handle, inst, request) == 0) continue;
 			return RLM_MODULE_FAIL;
 
 		case CACHE_OK:
 			break;
 
 		case CACHE_MISS:
-			RDEBUG("No cache entry found for \"%s\"", key);
+			if (RDEBUG_ENABLED2) {
+				char *p;
+
+				p = fr_asprint(request, (char const *)key, key_len, '"');
+				RDEBUG("No cache entry found for \"%s\"", p);
+				talloc_free(p);
+			}
 			return RLM_MODULE_NOTFOUND;
 
 		/* FALL-THROUGH */
@@ -196,15 +222,28 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 	 *	Yes, but it expired, OR the "forget all" epoch has
 	 *	passed.  Delete it, and pretend it doesn't exist.
 	 */
-	if ((c->expires < request->timestamp) || (c->created < inst->epoch)) {
-		RDEBUG("Removing expired entry");
+	if ((c->expires < request->timestamp) || (c->created < inst->config.epoch)) {
+		if (RDEBUG_ENABLED2) {
+			char *p;
 
-		inst->module->expire(inst, request, handle, c);
+			p = fr_asprint(request, (char const *)key, key_len, '"');
+			RDEBUG2("Found entry for \"%s\", but it expired %li seconds ago.  Removing it", p,
+				request->timestamp - c->expires);
+			talloc_free(p);
+		}
+
+		inst->driver->expire(&inst->config, inst->driver_inst, request, handle, c->key, c->key_len);
 		cache_free(inst, &c);
 		return RLM_MODULE_NOTFOUND;	/* Couldn't find a non-expired entry */
 	}
 
-	RDEBUG("Found entry for \"%s\"", key);
+	if (RDEBUG_ENABLED2) {
+		char *p;
+
+		p = fr_asprint(request, (char const *)key, key_len, '"');
+		RDEBUG2("Found entry for \"%s\"", p);
+		talloc_free(p);
+	}
 
 	c->hits++;
 	*out = c;
@@ -214,73 +253,93 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t *inst, REQUES
 
 /** Expire a cache entry (removing it from the datastore)
  *
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_NOTFOUND if no entry existed.
+ *	- #RLM_MODULE_FAIL on failure.
  */
-static void cache_expire(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle, rlm_cache_entry_t **c)
+static rlm_rcode_t cache_expire(rlm_cache_t *inst, REQUEST *request,
+				rlm_cache_handle_t **handle, uint8_t const *key, size_t key_len)
 {
-	rad_assert(*c);
-
-	for (;;) switch (inst->module->expire(inst, request, handle, *c)) {
+	RDEBUG("Expiring cache entry");
+	for (;;) switch (inst->driver->expire(&inst->config, inst->driver_inst, request,
+					      *handle, key, key_len)) {
 	case CACHE_RECONNECT:
-		if (cache_reconnect(inst, request, handle) == 0) continue;
+		if (cache_reconnect(handle, inst, request) == 0) continue;
 
 	/* FALL-THROUGH */
 	default:
-		cache_free(inst, c);
-		*c = NULL;
-		return;
+		return RLM_MODULE_FAIL;
+
+	case CACHE_OK:
+		return RLM_MODULE_OK;
+
+	case CACHE_MISS:
+		return RLM_MODULE_NOTFOUND;
 	}
 }
 
-/** Create and insert a cache entry.
+/** Create and insert a cache entry
  *
- * @return RLM_MODULE_OK on success, RLM_MODULE_UPDATED if we merged the cache entry and RLM_MODULE_FAIL on failure.
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_UPDATED if we merged the cache entry.
+ *	- #RLM_MODULE_FAIL on failure.
  */
 static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
-				char const *key, int ttl)
+				uint8_t const *key, size_t key_len, int ttl)
 {
-	VALUE_PAIR *vp, *to_cache;
-	vp_cursor_t src_list, cached_request, cached_reply, cached_control;
+	vp_map_t		const *map;
+	vp_map_t		**last, *c_map;
 
-	value_pair_map_t const *map;
+	VALUE_PAIR		*vp;
+	bool			merge = false;
+	rlm_cache_entry_t	*c;
+	size_t			len;
 
-	bool merge = false;
-	rlm_cache_entry_t *c;
+	TALLOC_CTX		*pool;
 
-	if ((inst->max_entries > 0) && inst->module->count &&
-	    (inst->module->count(inst, request, handle) > inst->max_entries)) {
-		RWDEBUG("Cache is full: %d entries", inst->max_entries);
+	if ((inst->config.max_entries > 0) && inst->driver->count &&
+	    (inst->driver->count(&inst->config, inst->driver_inst, request, handle) > inst->config.max_entries)) {
+		RWDEBUG("Cache is full: %d entries", inst->config.max_entries);
 		return RLM_MODULE_FAIL;
 	}
 
 	c = cache_alloc(inst, request);
 	if (!c) return RLM_MODULE_FAIL;
 
-	c->key = talloc_typed_strdup(c, key);
+	c->key = talloc_memdup(c, key, key_len);
+	c->key_len = key_len;
 	c->created = c->expires = request->timestamp;
 	c->expires += ttl;
 
+	last = &c->maps;
+
 	RDEBUG("Creating new cache entry");
 
-	fr_cursor_init(&cached_request, &c->packet);
-	fr_cursor_init(&cached_reply, &c->reply);
-	fr_cursor_init(&cached_control, &c->control);
-
+	/*
+	 *	Alloc a pool so we don't have excessive mallocs when
+	 *	gathering VALUE_PAIRs to cache.
+	 */
+	pool = talloc_pool(NULL, 1024);
 	for (map = inst->maps; map != NULL; map = map->next) {
+		VALUE_PAIR	*to_cache = NULL;
+		vp_cursor_t	cursor;
+
 		rad_assert(map->lhs && map->rhs);
 
-		if (map_to_vp(&to_cache, request, map, NULL) < 0) {
+		/*
+		 *	Calling map_to_vp gives us exactly the same result,
+		 *	as if this were an update section.
+		 */
+		if (map_to_vp(pool, &to_cache, request, map, NULL) < 0) {
 			RDEBUG("Skipping %s", map->rhs->name);
 			continue;
 		}
 
-		/*
-		 *	Reparent the VPs map_to_vp may return multiple.
-		 */
-		for (vp = fr_cursor_init(&src_list, &to_cache);
+		for (vp = fr_cursor_init(&cursor, &to_cache);
 		     vp;
-		     vp = fr_cursor_next(&src_list)) {
-			VERIFY_VP(vp);
-
+		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Prevent people from accidentally caching
 			 *	cache control attributes.
@@ -301,33 +360,83 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 			RINDENT();
 			if (RDEBUG_ENABLED2) map_debug_log(request, map, vp);
 			REXDENT();
-			(void) talloc_steal(c, vp);
 
-			vp->op = map->op;
+			MEM(c_map = talloc_zero(c, vp_map_t));
+			c_map->op = map->op;
 
-			switch (map->lhs->tmpl_list) {
-			case PAIR_LIST_REQUEST:
-				fr_cursor_insert(&cached_request, vp);
+			/*
+			 *	Now we turn the VALUE_PAIRs into maps.
+			 */
+			switch (map->lhs->type) {
+			/*
+			 *	Attributes are easy, reuse the LHS, and create a new
+			 *	RHS with the value_data_t from the VALUE_PAIR.
+			 */
+			case TMPL_TYPE_ATTR:
+				c_map->lhs = map->lhs;	/* lhs shouldn't be touched, so this is ok */
+			do_rhs:
+				MEM(c_map->rhs = tmpl_init(talloc(c_map, vp_tmpl_t),
+							   TMPL_TYPE_DATA, map->rhs->name, map->rhs->len, T_BARE_WORD));
+				if (value_data_copy(c_map->rhs, &c_map->rhs->tmpl_data_value,
+						    vp->da->type, &vp->data) < 0) {
+					REDEBUG("Failed copying attribute value");
+				error:
+					talloc_free(pool);
+					talloc_free(c);
+					return RLM_MODULE_FAIL;
+				}
+				c_map->rhs->tmpl_data_type = vp->da->type;
+				if (vp->da->type == PW_TYPE_STRING) {
+					c_map->rhs->quote = is_printable(vp->vp_strvalue, vp->vp_length) ?
+						T_SINGLE_QUOTED_STRING : T_DOUBLE_QUOTED_STRING;
+				}
 				break;
 
-			case PAIR_LIST_REPLY:
-				fr_cursor_insert(&cached_reply, vp);
-				break;
+			/*
+			 *	Lists are weird... We need to fudge a new LHS template,
+			 *	which is a combination of the LHS list and the attribute.
+			 */
+			case TMPL_TYPE_LIST:
+			{
+				char attr[256];
 
-			case PAIR_LIST_CONTROL:
-				fr_cursor_insert(&cached_control, vp);
-				break;
+				MEM(c_map->lhs = tmpl_init(talloc(c_map, vp_tmpl_t),
+							   TMPL_TYPE_ATTR, map->lhs->name, map->lhs->len, T_BARE_WORD));
+				c_map->lhs->tmpl_da = vp->da;
+				c_map->lhs->tmpl_tag = vp->tag;
+				c_map->lhs->tmpl_list = map->lhs->tmpl_list;
+				c_map->lhs->tmpl_num = map->lhs->tmpl_num;
+				c_map->lhs->tmpl_request = map->lhs->tmpl_request;
+
+				/*
+				 *	We need to rebuild the attribute name, to be the
+				 *	one we copied from the source list.
+				 */
+				len = tmpl_snprint(attr, sizeof(attr), c_map->lhs, NULL);
+				if (is_truncated(len, sizeof(attr))) {
+					REDEBUG("Serialized attribute too long.  Must be < "
+						STRINGIFY(sizeof(attr)) " bytes, got %zu bytes", len);
+					goto error;
+				}
+				c_map->lhs->len = len;
+				c_map->lhs->name = talloc_strdup(map->lhs, attr);
+			}
+				goto do_rhs;
 
 			default:
-				rad_assert(0);	/* should have been caught by validation */
+				rad_assert(0);
 			}
+			*last = c_map;
+			last = &(*last)->next;
 		}
+		talloc_free_children(pool); /* reset pool state */
 	}
+	talloc_free(pool);
 
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_MERGE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_CACHE_MERGE, 0, TAG_ANY);
 	if (vp && (vp->vp_integer > 0)) merge = true;
 
 	if (merge) cache_merge(inst, request, c);
@@ -335,10 +444,10 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	for (;;) {
 		cache_status_t ret;
 
-		ret = inst->module->insert(inst, request, handle, c);
+		ret = inst->driver->insert(&inst->config, inst->driver_inst, request, *handle, c);
 		switch (ret) {
 		case CACHE_RECONNECT:
-			if (cache_reconnect(inst, request, handle) == 0) continue;
+			if (cache_reconnect(handle, inst, request) == 0) continue;
 			return RLM_MODULE_FAIL;
 
 		case CACHE_OK:
@@ -354,157 +463,290 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 	}
 }
 
+/** Update the TTL of an entry
+ *
+ * @return
+ *	- #RLM_MODULE_OK on success.
+ *	- #RLM_MODULE_FAIL on failure.
+ */
+static rlm_rcode_t cache_set_ttl(rlm_cache_t *inst, REQUEST *request,
+				 rlm_cache_handle_t **handle, rlm_cache_entry_t *c)
+{
+	/*
+	 *	Call the driver's insert method to overwrite the old entry
+	 */
+	if (!inst->driver->set_ttl) for (;;) {
+		cache_status_t ret;
+
+		ret = inst->driver->insert(&inst->config, inst->driver_inst, request, *handle, c);
+		switch (ret) {
+		case CACHE_RECONNECT:
+			if (cache_reconnect(handle, inst, request) == 0) continue;
+			return RLM_MODULE_FAIL;
+
+		case CACHE_OK:
+			RDEBUG("Updated entry TTL");
+			return RLM_MODULE_OK;
+
+		default:
+			return RLM_MODULE_FAIL;
+		}
+	}
+
+	/*
+	 *	Or call the set ttl method if the driver can do this more
+	 *	efficiently.
+	 */
+	for (;;) {
+		cache_status_t ret;
+
+		ret = inst->driver->set_ttl(&inst->config, inst->driver_inst, request, *handle, c);
+		switch (ret) {
+		case CACHE_RECONNECT:
+			if (cache_reconnect(handle, inst, request) == 0) continue;
+			return RLM_MODULE_FAIL;
+
+		case CACHE_OK:
+			RDEBUG("Updated entry TTL");
+			return RLM_MODULE_OK;
+
+		default:
+			return RLM_MODULE_FAIL;
+		}
+	}
+}
+
 /** Verify that a map in the cache section makes sense
  *
  */
-static int cache_verify(value_pair_map_t *map, void *ctx)
+static int cache_verify(vp_map_t *map, void *ctx)
 {
 	if (modcall_fixup_update(map, ctx) < 0) return -1;
 
 	if ((map->lhs->type != TMPL_TYPE_ATTR) &&
 	    (map->lhs->type != TMPL_TYPE_LIST)) {
-		cf_log_err(map->ci, "Left operand must be an attribute ref or a list");
+		cf_log_err(map->ci, "Destination must be an attribute ref or a list");
 		return -1;
-	}
-
-	switch (map->rhs->type) {
-	case TMPL_TYPE_EXEC:
-		cf_log_err(map->ci, "Exec values are not allowed");
-		return -1;
-	/*
-	 *	Only =, :=, += and -= operators are supported for
-	 *	cache entries.
-	 */
-	case TMPL_TYPE_LITERAL:
-	case TMPL_TYPE_XLAT:
-	case TMPL_TYPE_ATTR:
-		switch (map->op) {
-		case T_OP_SET:
-		case T_OP_EQ:
-		case T_OP_SUB:
-		case T_OP_ADD:
-			break;
-
-		default:
-			cf_log_err(map->ci, "Operator \"%s\" not allowed for %s values",
-				   fr_int2str(fr_tokens, map->op, "<INVALID>"),
-				   fr_int2str(tmpl_names, map->rhs->type, "<INVALID>"));
-			return -1;
-		}
-	default:
-		break;
 	}
 
 	return 0;
 }
 
-/*
- *	Do caching checks.  Since we can update ANY VP list, we do
- *	exactly the same thing for all sections (autz / auth / etc.)
+/** Do caching checks
  *
- *	If you want to cache something different in different sections,
- *	configure another cache module.
+ * Since we can update ANY VP list, we do exactly the same thing for all sections
+ * (autz / auth / etc.)
+ *
+ * If you want to cache something different in different sections, configure
+ * another cache module.
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_cache_it(void *instance, REQUEST *request)
+static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request) CC_HINT(nonnull);
+static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 {
-	rlm_cache_entry_t *c;
-	rlm_cache_t *inst = instance;
+	rlm_cache_entry_t	*c = NULL;
+	rlm_cache_t		*inst = instance;
 
-	rlm_cache_handle_t *handle;
+	rlm_cache_handle_t	*handle;
 
-	vp_cursor_t cursor;
-	VALUE_PAIR *vp;
-	char buffer[1024];
-	rlm_rcode_t rcode;
+	vp_cursor_t		cursor;
+	VALUE_PAIR		*vp;
 
-	int ttl = inst->ttl;
+	bool			merge = true, insert = true, expire = false, set_ttl = false;
+	int			exists = -1;
 
-	if (radius_xlat(buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) return RLM_MODULE_FAIL;
+	uint8_t			buffer[1024];
+	uint8_t const		*key;
+	ssize_t			key_len;
+	rlm_rcode_t		rcode = RLM_MODULE_NOOP;
 
-	if (buffer[0] == '\0') {
+	int			ttl = inst->config.ttl;
+
+	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
+			      request, inst->config.key, NULL, NULL);
+	if (key_len < 0) return RLM_MODULE_FAIL;
+
+	if (key_len == 0) {
 		REDEBUG("Zero length key string is invalid");
 		return RLM_MODULE_INVALID;
 	}
-
-	if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
-
-	rcode = cache_find(&c, inst, request, &handle, buffer);
-	if (rcode == RLM_MODULE_FAIL) goto finish;
-	rad_assert(handle);
 
 	/*
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_STATUS_ONLY, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_CACHE_STATUS_ONLY, 0, TAG_ANY);
 	if (vp && vp->vp_integer) {
+		if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
+
+		rcode = cache_find(&c, inst, request, &handle, key, key_len);
+		if (rcode == RLM_MODULE_FAIL) goto finish;
+		rad_assert(handle);
+
 		rcode = c ? RLM_MODULE_OK:
 			    RLM_MODULE_NOTFOUND;
 		goto finish;
 	}
 
 	/*
-	 *	Update the expiry time based on the TTL.
-	 *	A TTL of 0 means "delete from the cache".
-	 *	A TTL < 0 means "delete from the cache and recreate the entry".
+	 *	Figure out what operation we're doing
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_TTL, 0, TAG_ANY);
-	if (vp) ttl = vp->vp_signed;
+	vp = fr_pair_find_by_num(request->config, PW_CACHE_ALLOW_MERGE, 0, TAG_ANY);
+	if (vp) merge = (bool)vp->vp_integer;
 
-	/*
-	 *	If there's no existing cache entry, go and create a new one.
-	 */
-	if (!c) {
-		if (ttl <= 0) ttl = inst->ttl;
-		goto insert;
-	}
+	vp = fr_pair_find_by_num(request->config, PW_CACHE_ALLOW_INSERT, 0, TAG_ANY);
+	if (vp) insert = (bool)vp->vp_integer;
 
-	/*
-	 *	Expire the entry if requested to do so
-	 */
+	vp = fr_pair_find_by_num(request->config, PW_CACHE_TTL, 0, TAG_ANY);
 	if (vp) {
-		if (ttl == 0) {
-			cache_expire(inst, request, &handle, &c);
-			RDEBUG("Forcing expiry of entry");
-			rcode = RLM_MODULE_OK;
-			goto finish;
+		if (vp->vp_signed == 0) {
+			expire = true;
+		} else if (vp->vp_signed < 0) {
+			expire = true;
+			ttl = -(vp->vp_signed);
+		/* Updating the TTL */
+		} else {
+			set_ttl = true;
+			ttl = vp->vp_signed;
 		}
+	}
 
-		if (ttl < 0) {
-			RDEBUG("Forcing expiry of existing entry");
-			cache_expire(inst, request, &handle, &c);
-			ttl *= -1;
-			goto insert;
+	if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
+
+	/*
+	 *	Retrieve the cache entry and merge it with the current request
+	 *	recording whether the entry existed.
+	 */
+	if (merge) {
+		rcode = cache_find(&c, inst, request, &handle, key, key_len);
+		switch (rcode) {
+		case RLM_MODULE_FAIL:
+			goto finish;
+
+		case RLM_MODULE_OK:
+			rcode = cache_merge(inst, request, c);
+			exists = 1;
+			break;
+
+		case RLM_MODULE_NOTFOUND:
+			rcode = RLM_MODULE_NOTFOUND;
+			exists = 0;
+			break;
+
+		default:
+			rad_assert(0);
 		}
-		c->expires = request->timestamp + ttl;
-		RDEBUG("Setting TTL to %d", ttl);
+		rad_assert(handle);
 	}
 
 	/*
-	 *	Cache entry was still valid, so we merge it into the request
-	 *	and return. No need to add a new entry.
+	 *	Expire the entry if told to, and we either don't know whether
+	 *	it exists, or we know it does.
+	 *
+	 *	We only expire if we're not inserting, as driver insert methods
+	 *	should perform upserts.
 	 */
-	cache_merge(inst, request, c);
-	rcode = RLM_MODULE_UPDATED;
+	if (expire && ((exists == -1) || (exists == 1))) {
+		if (!insert) {
+			rad_assert(!set_ttl);
+			switch (cache_expire(inst, request, &handle, key, key_len)) {
+			case RLM_MODULE_FAIL:
+				rcode = RLM_MODULE_FAIL;
+				goto finish;
 
-	goto finish;
+			case RLM_MODULE_OK:
+				if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_OK;
+				break;
 
-insert:
+			case RLM_MODULE_NOTFOUND:
+				if (rcode == RLM_MODULE_NOOP) rcode = RLM_MODULE_NOTFOUND;
+				break;
+
+			default:
+				rad_assert(0);
+				break;
+			}
+			/* If it previously existed, it doesn't now */
+		}
+		/* Otherwise use insert to overwrite */
+		exists = 0;
+	}
+
 	/*
-	 *	If Cache-Read-Only == yes, then we only allow already cached entries
-	 *	to be merged into the request
+	 *	If we still don't know whether it exists or not
+	 *	and we need to do an insert or set_ttl operation
+	 *	determine that now.
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_READ_ONLY, 0, TAG_ANY);
-	if (vp && vp->vp_integer) {
-		rcode = RLM_MODULE_NOTFOUND;
+	if ((exists < 0) && (insert || set_ttl)) {
+		switch (cache_find(&c, inst, request, &handle, key, key_len)) {
+		case RLM_MODULE_FAIL:
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case RLM_MODULE_OK:
+			exists = 1;
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			break;
+
+		case RLM_MODULE_NOTFOUND:
+			exists = 0;
+			break;
+
+		default:
+			rad_assert(0);
+		}
+		rad_assert(handle);
+	}
+
+	/*
+	 *	We can only alter the TTL on an entry if it exists.
+	 */
+	if (set_ttl && (exists == 1)) {
+		rad_assert(c);
+
+		c->expires = request->timestamp + ttl;
+
+		switch (cache_set_ttl(inst, request, &handle, c)) {
+		case RLM_MODULE_FAIL:
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_OK:
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			goto finish;
+
+		default:
+			rad_assert(0);
+		}
+	}
+
+	/*
+	 *	Inserts are upserts, so we don't care about the
+	 *	entry state, just that we're not meant to be
+	 *	setting the TTL, which precludes performing an
+	 *	insert.
+	 */
+	if (insert && (exists == 0)) {
+		switch (cache_insert(inst, request, &handle, key, key_len, ttl)) {
+		case RLM_MODULE_FAIL:
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+
+		case RLM_MODULE_OK:
+			if (rcode != RLM_MODULE_UPDATED) rcode = RLM_MODULE_OK;
+			break;
+
+		case RLM_MODULE_UPDATED:
+			rcode = RLM_MODULE_UPDATED;
+			break;
+
+		default:
+			rad_assert(0);
+		}
+		rad_assert(handle);
 		goto finish;
 	}
 
-	/*
-	 *	Create a new entry.
-	 */
-	rcode = cache_insert(inst, request, &handle, buffer, ttl);
-	rad_assert(handle);
 
 finish:
 	cache_free(inst, &c);
@@ -513,14 +755,16 @@ finish:
 	/*
 	 *	Clear control attributes
 	 */
-	for (vp = fr_cursor_init(&cursor, &request->config_items);
+	for (vp = fr_cursor_init(&cursor, &request->config);
 	     vp;
 	     vp = fr_cursor_next(&cursor)) {
 		if (vp->da->vendor == 0) switch (vp->da->attr) {
 		case PW_CACHE_TTL:
 		case PW_CACHE_STATUS_ONLY:
-		case PW_CACHE_READ_ONLY:
+		case PW_CACHE_ALLOW_MERGE:
+		case PW_CACHE_ALLOW_INSERT:
 		case PW_CACHE_MERGE:
+			RDEBUG2("Removing &control:%s", vp->da->name);
 			vp = fr_cursor_remove(&cursor);
 			talloc_free(vp);
 			break;
@@ -530,96 +774,74 @@ finish:
 	return rcode;
 }
 
-static ssize_t CC_HINT(nonnull) cache_xlat(void *instance, REQUEST *request,
-					   char const *fmt, char *out, size_t freespace);
-
-/*
- *	Allow single attribute values to be retrieved from the cache.
+/** Allow single attribute values to be retrieved from the cache
+ *
  */
-static ssize_t cache_xlat(void *instance, REQUEST *request,
-			  char const *fmt, char *out, size_t freespace)
+static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char **out, UNUSED size_t freespace)
+			  CC_HINT(nonnull);
+static ssize_t cache_xlat(void *instance, REQUEST *request, char const *fmt, char **out, UNUSED size_t freespace)
 {
 	rlm_cache_entry_t 	*c = NULL;
 	rlm_cache_t		*inst = instance;
 	rlm_cache_handle_t	*handle = NULL;
 
-	VALUE_PAIR		*vp, *vps;
-	pair_lists_t		list;
-	DICT_ATTR const		*target;
-	char const		*p = fmt;
-	size_t			len;
-	int			ret = 0;
+	size_t			slen;
+	ssize_t			ret = 0;
 
-	p += radius_list_name(&list, p, PAIR_LIST_REQUEST);
-	if (list == PAIR_LIST_UNKNOWN) {
-		REDEBUG("Unknown list qualifier in \"%s\"", fmt);
-		ret = -1;
-		goto finish;
-	}
+	uint8_t			buffer[1024];
+	uint8_t const		*key;
+	ssize_t			key_len;
 
-	target = dict_attrbyname(p);
-	if (!target) {
-		REDEBUG("Unknown attribute \"%s\"", p);
+	vp_tmpl_t		target;
+	vp_map_t		*map = NULL;
+
+	key_len = tmpl_expand((char const **)&key, (char *)buffer, sizeof(buffer),
+			      request, inst->config.key, NULL, NULL);
+	if (key_len < 0) return -1;
+
+	slen = tmpl_from_attr_substr(&target, fmt, REQUEST_CURRENT, PAIR_LIST_REQUEST, false, false);
+	if (slen <= 0) {
+		REDEBUG("%s", fr_strerror());
 		return -1;
 	}
 
 	if (cache_acquire(&handle, inst, request) < 0) return -1;
 
-	switch (cache_find(&c, inst, request, handle, fmt)) {
+	switch (cache_find(&c, inst, request, handle, key, key_len)) {
 	case RLM_MODULE_OK:		/* found */
 		break;
 
 	case RLM_MODULE_NOTFOUND:	/* not found */
-		*out = '\0';
 		return 0;
 
 	default:
 		return -1;
 	}
 
-	switch (list) {
-	case PAIR_LIST_REQUEST:
-		vps = c->packet;
-		break;
+	for (map = c->maps; map; map = map->next) {
+		if ((map->lhs->tmpl_da != target.tmpl_da) ||
+		    (map->lhs->tmpl_tag != target.tmpl_tag) ||
+		    (map->lhs->tmpl_list != target.tmpl_list)) continue;
 
-	case PAIR_LIST_REPLY:
-		vps = c->reply;
+		*out = value_data_asprint(request, map->rhs->tmpl_data_type, map->lhs->tmpl_da,
+					  &map->rhs->tmpl_data_value, '\0');
+		ret = talloc_array_length(*out) - 1;
 		break;
-
-	case PAIR_LIST_CONTROL:
-		vps = c->control;
-		break;
-
-	default:
-		REDEBUG("Unsupported list \"%s\"", fr_int2str(pair_lists, list, "<UNKNOWN>"));
-		ret = -1;
-		goto finish;
 	}
 
-	vp = pairfind(vps, target->attr, target->vendor, TAG_ANY);
-	if (!vp) {
-		RDEBUG("No instance of this attribute has been cached");
-		*out = '\0';
-		goto finish;
-	}
+	/*
+	 *	Check if we found a matching map
+	 */
+	if (!map) return 0;
 
-	len = vp_prints_value(out, freespace, vp, 0);
-	if (is_truncated(len, freespace)) {
-		REDEBUG("Insufficient buffer space to write cached value");
-		ret = -1;
-		goto finish;
-	}
-
-finish:
 	cache_free(inst, &c);
 	cache_release(inst, request, &handle);
 
 	return ret;
 }
 
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
+/** Free any memory allocated under the instance
+ *
  */
 static int mod_detach(void *instance)
 {
@@ -646,67 +868,80 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-/*
- *	Instantiate the module.
+/** Register module xlats
+ *
  */
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_cache_t *inst = instance;
-	CONF_SECTION *update;
 
 	inst->cs = conf;
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	inst->config.name = cf_section_name2(conf);
+	if (!inst->config.name) inst->config.name = cf_section_name1(conf);
 
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat_register(inst->xlat_name, cache_xlat, NULL, inst);
+	xlat_register(inst->config.name, cache_xlat, 0, NULL, inst);
+
+	return 0;
+}
+
+/** Create a new rlm_cache_instance
+ *
+ */
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
+{
+	rlm_cache_t	*inst = instance;
+	CONF_SECTION	*update;
+
+	inst->cs = conf;
+
+	rad_assert(inst->config.key);
 
 	/*
 	 *	Sanity check for crazy people.
 	 */
-	if (strncmp(inst->driver_name, "rlm_cache_", 8) != 0) {
-		ERROR("rlm_cache (%s): \"%s\" is NOT an Cache driver!", inst->xlat_name, inst->driver_name);
+	if (strncmp(inst->config.driver_name, "rlm_cache_", 8) != 0) {
+		cf_log_err_cs(conf, "\"%s\" is NOT an Cache driver!", inst->config.driver_name);
 		return -1;
 	}
 
 	/*
 	 *	Load the appropriate driver for our database
 	 */
-	inst->handle = lt_dlopenext(inst->driver_name);
+	inst->handle = lt_dlopenext(inst->config.driver_name);
 	if (!inst->handle) {
-		ERROR("rlm_cache (%s): Could not link driver %s: %s", inst->xlat_name, inst->driver_name, dlerror());
-		ERROR("rlm_cache (%s): Make sure it (and all its dependent libraries!) are in the search path"
-		      "of your system's ld", inst->xlat_name);
+		cf_log_err_cs(conf, "Could not link driver %s: %s", inst->config.driver_name, fr_strerror());
+		cf_log_err_cs(conf, "Make sure it (and all its dependent libraries!) are in the search path"
+			      "of your system's ld");
 		return -1;
 	}
 
-	inst->module = (cache_module_t *) dlsym(inst->handle, inst->driver_name);
-	if (!inst->module) {
-		ERROR("rlm_cache (%s): Could not link symbol %s: %s", inst->xlat_name, inst->driver_name, dlerror());
+	inst->driver = (cache_driver_t *) dlsym(inst->handle, inst->config.driver_name);
+	if (!inst->driver) {
+		cf_log_err_cs(conf, "Could not link symbol %s: %s", inst->config.driver_name, dlerror());
 		return -1;
 	}
 
-	INFO("rlm_cache (%s): Driver %s (module %s) loaded and linked", inst->xlat_name,
-	     inst->driver_name, inst->module->name);
+	DEBUG("rlm_cache (%s): Driver %s loaded and linked", inst->config.name, inst->driver->name);
 
 	/*
 	 *	Non optional fields and callbacks
 	 */
-	rad_assert(inst->module->name);
-	rad_assert(inst->module->find);
-	rad_assert(inst->module->insert);
-	rad_assert(inst->module->expire);
+	rad_assert(inst->driver->name);
+	rad_assert(inst->driver->find);
+	rad_assert(inst->driver->insert);
+	rad_assert(inst->driver->expire);
 
-	if (inst->module->mod_instantiate) {
+	if (inst->driver->instantiate) {
 		CONF_SECTION *cs;
 		char const *name;
 
-		name = strrchr(inst->driver_name, '_');
+		name = strrchr(inst->config.driver_name, '_');
 		if (!name) {
-			name = inst->driver_name;
+			name = inst->config.driver_name;
 		} else {
 			name++;
 		}
@@ -723,17 +958,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 *	Should write its instance data in inst->driver,
 		 *	and parent it off of inst.
 		 */
-		if (inst->module->mod_instantiate(cs, inst) < 0) return -1;
+		if (inst->driver->inst_size) MEM(inst->driver_inst = talloc_zero_array(inst, uint8_t,
+										       inst->driver->inst_size));
+		if (inst->driver->instantiate(cs, &inst->config, inst->driver_inst) < 0) return -1;
 	}
 
-	rad_assert(inst->key && *inst->key);
-
-	if (inst->ttl == 0) {
+	if (inst->config.ttl == 0) {
 		cf_log_err_cs(conf, "Must set 'ttl' to non-zero");
 		return -1;
 	}
 
-	if (inst->epoch != 0) {
+	if (inst->config.epoch != 0) {
 		cf_log_err_cs(conf, "Must not set 'epoch' in the configuration files");
 		return -1;
 	}
@@ -772,21 +1007,19 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 extern module_t rlm_cache;
 module_t rlm_cache = {
-	RLM_MODULE_INIT,
-	"cache",
-	0,				/* type */
-	sizeof(rlm_cache_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		NULL,			/* authentication */
-		mod_cache_it,		/* authorization */
-		mod_cache_it,		/* preaccounting */
-		mod_cache_it,		/* accounting */
-		NULL,			/* checksimul */
-		mod_cache_it,	      	/* pre-proxy */
-		mod_cache_it,	       	/* post-proxy */
-		mod_cache_it,		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "cache",
+	.inst_size	= sizeof(rlm_cache_t),
+	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_cache_it,
+		[MOD_PREACCT]		= mod_cache_it,
+		[MOD_ACCOUNTING]	= mod_cache_it,
+		[MOD_PRE_PROXY]		= mod_cache_it,
+		[MOD_POST_PROXY]	= mod_cache_it,
+		[MOD_POST_AUTH]		= mod_cache_it
 	},
 };

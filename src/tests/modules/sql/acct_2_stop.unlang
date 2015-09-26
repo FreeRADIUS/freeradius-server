@@ -1,0 +1,40 @@
+#
+#  PRE: acct_1_update
+#
+sql.accounting
+if (ok) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+update {
+	Tmp-Integer-0 := "%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000002'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 1)) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+update {
+	Tmp-Integer-0 := "%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000002'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 120)) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+update {
+	Tmp-String-0 := "%{sql:SELECT AcctTerminateCause FROM radacct WHERE AcctSessionId = '00000002'}"
+}
+if (!&Tmp-String-0 || (&Tmp-String-0 != 'User-Request')) {
+	test_fail
+}
+else {
+	test_pass
+}

@@ -6,8 +6,7 @@
  *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version. either
+ *   License as published by the Free Software Foundation; either
  *   version 2.1 of the License, or (at your option) any later version.
  *
  *   This library is distributed in the hope that it will be useful,
@@ -27,6 +26,10 @@ RCSID("$Id$")
 #include	<freeradius-devel/libradius.h>
 
 #include	<ctype.h>
+
+#if !defined(HAVE_CLOCK_GETTIME) && defined(__MACH__)
+#  include <mach/mach_time.h>
+#endif
 
 #ifndef HAVE_CRYPT
 char *crypt(UNUSED char *key, char *salt)
@@ -234,6 +237,51 @@ int gettimeofday (struct timeval *tv, UNUSED void *tz)
 #endif
 #endif
 
+#if !defined(HAVE_CLOCK_GETTIME) && defined(__MACH__)
+int clock_gettime(int clk_id, struct timespec *t)
+{
+	static mach_timebase_info_data_t timebase;
+	static bool done_init = false;
+
+#ifdef HAVE_PTHREAD_H
+	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+	if (!done_init) {
+#ifdef HAVE_PTHREAD_H
+		pthread_mutex_lock(&mutex);
+		if (!done_init) {
+#endif
+			mach_timebase_info(&timebase);
+#ifdef HAVE_PTHREAD_H
+			done_init = true;
+		}
+		pthread_mutex_unlock(&mutex);
+#endif
+	}
+
+	switch (clk_id) {
+	case CLOCK_REALTIME:
+		return -1;
+
+	case CLOCK_MONOTONIC:
+	{
+		uint64_t time;
+		time = mach_absolute_time();
+		double nseconds = ((double)time * (double)timebase.numer)/((double)timebase.denom);
+		double seconds = ((double)time * (double)timebase.numer)/((double)timebase.denom * 1e9);
+		t->tv_sec = seconds;
+		t->tv_nsec = nseconds;
+	}
+		return 0;
+
+	default:
+		errno = EINVAL;
+		return -1;
+	}
+}
+#endif
+
 #define NTP_EPOCH_OFFSET	2208988800ULL
 
 /*
@@ -301,7 +349,9 @@ uint128_t ntohlll(uint128_t const num)
  *
  * @param[in] t The talloc context to hang the result off.
  * @param[in] p The string you want to duplicate.
- * @return The duplicated string, NULL on error.
+ * @return
+ *	- Duplicated string.
+ *	- NULL on error.
  */
 char *talloc_typed_strdup(void const *t, char const *p)
 {
@@ -322,7 +372,9 @@ char *talloc_typed_strdup(void const *t, char const *p)
  *
  * @param[in] t The talloc context to hang the result off.
  * @param[in] fmt The format string.
- * @return The formatted string, NULL on error.
+ * @return
+ *	- Formatted string.
+ *	- NULL on error.
  */
 char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
 {
@@ -337,3 +389,23 @@ char *talloc_typed_asprintf(void const *t, char const *fmt, ...)
 
 	return n;
 }
+
+/** Binary safe strndup function
+ *
+ * @param[in] t The talloc context o allocate new buffer in.
+ * @param[in] in String to dup, may contain embedded '\0'.
+ * @param[in] inlen Number of bytes to dup.
+ * @return duped string.
+ */
+char *talloc_bstrndup(void const *t, char const *in, size_t inlen)
+{
+	char *p;
+
+	p = talloc_array(t, char, inlen + 1);
+	if (!p) return NULL;
+	memcpy(p, in, inlen);
+	p[inlen] = '\0';
+
+	return p;
+}
+

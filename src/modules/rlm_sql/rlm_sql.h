@@ -83,13 +83,15 @@ typedef struct sql_acct_section {
 typedef struct sql_config {
 	char const 		*sql_driver_name;		//!< SQL driver module name e.g. rlm_sql_sqlite.
 	char const 		*sql_server;			//!< Server to connect to.
-	char const 		*sql_port;			//!< Port to connect to.
+	uint32_t 		sql_port;			//!< Port to connect to.
 	char const 		*sql_login;			//!< Login credentials to use.
 	char const 		*sql_password;			//!< Login password to use.
 	char const 		*sql_db;			//!< Database to run queries against.
 
 	char const		*query_user;			//!< xlat expansion used to specify the user
 								//!< to use as the subject of queries.
+
+	char const		*group_attribute;		//!< Name of the group attribute.
 
 	char const		*default_profile;		//!< Default profile to use if no other
 								//!< profiles were configured.
@@ -129,9 +131,6 @@ typedef struct sql_config {
 
 	char const		*connect_query;			//!< Query executed after establishing
 								//!< new connection.
-	struct timeval		connect_timeout_tv;		//!< Connection timeout timeval.
-	uint32_t		connect_timeout_ms;		//!< Connection timeout ms.
-	uint32_t		connect_timeout_s;		//!< Connection timeout in seconds.
 
 	void			*driver;			//!< Where drivers should write a
 								//!< pointer to their configurations.
@@ -165,12 +164,36 @@ extern const FR_NAME_NUMBER sql_rcode_table[];
 #define RLM_SQL_RCODE_FLAGS_ALT_QUERY	1			//!< Can distinguish between other errors and those
 								//!< resulting from a unique key violation.
 
+/** Retrieve errors from the last query operation
+ *
+ * @note Buffers allocated in the context provided will be automatically freed. The driver
+ *	should not free these buffers explicitly.
+ * @note If the driver uses its own buffers to aggregate messages, they should be cleared
+ *	on sql_query_finish, and after each call to sql_error, to prevent the same messages
+ *	being printed multiple times.
+ *
+ * @param[in,out] ctx to allocate any buffers required. If static buffers are provided by the
+ *	driver they need not be strduped, just write the pointer to those buffers to the .msg
+ *	field of a sql_log_entry_t element.
+ * @param[out] out a pre-allocated array of log entries to fill. Need not be NULL terminated.
+ * @param[in] outlen Number of log entries available for populating. Do not write to index
+ *	out[outlen] or higher.
+ * @param[in] handle to retrieve errors from.
+ * @param[in] config of the SQL instance.
+ * @return
+ *	0  - If no error messages are available.
+ *	>0 - Number of log entries
+ */
+typedef size_t (*sql_error_t)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen, rlm_sql_handle_t *handle,
+			      rlm_sql_config_t *config);
+
 typedef struct rlm_sql_module_t {
 	char const	*name;
 	int		flags;
 
 	sql_rcode_t (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);
-	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	sql_rcode_t (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+				       struct timeval const *timeout);
 
 	sql_rcode_t (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
 	sql_rcode_t (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query);
@@ -184,8 +207,7 @@ typedef struct rlm_sql_module_t {
 	sql_rcode_t (*sql_fields)(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_free_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-	size_t (*sql_error)(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
-			    rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	sql_error_t	sql_error;				//!< Get any errors from the previous query.
 
 	sql_rcode_t (*sql_finish_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	sql_rcode_t (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
@@ -201,8 +223,8 @@ struct sql_inst {
 							//!< dictionary attribute.
 	exfile_t		*ef;
 
-	void *handle;
-	rlm_sql_module_t *module;
+	void			*handle;
+	rlm_sql_module_t	*module;
 
 	int (*sql_set_user)(rlm_sql_t *inst, REQUEST *request, char const *username);
 	size_t (*sql_escape_func)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
@@ -211,6 +233,7 @@ struct sql_inst {
 	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
 
 	char const		*name;			//!< Module instance name.
+	DICT_ATTR const		*group_da;		//!< Group dictionary attribute.
 };
 
 typedef struct sql_grouplist {
@@ -218,16 +241,15 @@ typedef struct sql_grouplist {
 	struct sql_grouplist	*next;
 } rlm_sql_grouplist_t;
 
-void		*mod_conn_create(TALLOC_CTX *ctx, void *instance);
-int		sql_userparse(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **first_pair, rlm_sql_row_t row);
+void		*mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
+int		sql_fr_pair_list_afrom_str(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **first_pair, rlm_sql_row_t row);
 int		sql_read_realms(rlm_sql_handle_t *handle);
 int		sql_getvpdata(TALLOC_CTX *ctx, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char const *query);
-int		sql_read_naslist(rlm_sql_handle_t *handle);
 int		sql_read_clients(rlm_sql_handle_t *handle);
 int		sql_dict_init(rlm_sql_handle_t *handle);
-void 		CC_HINT(nonnull (1, 2, 4)) rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t *section, char const *query);
-sql_rcode_t	CC_HINT(nonnull (1, 3, 4)) rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
-sql_rcode_t	CC_HINT(nonnull (1, 3, 4)) rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query);
+void 		rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t *section, char const *query) CC_HINT(nonnull (1, 2, 4));
+sql_rcode_t	rlm_sql_select_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
+sql_rcode_t	rlm_sql_query(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle, char const *query) CC_HINT(nonnull (1, 3, 4));
 int		rlm_sql_fetch_row(rlm_sql_row_t *out, rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t **handle);
 void		rlm_sql_print_error(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *handle, bool force_debug);
 int		sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username);

@@ -72,7 +72,9 @@ static void _copy_double_to_double(UNUSED rs_t *conf, rs_stats_value_tmpl_t *tmp
  * @param type_instance the name of the counter/guage within the collection e.g. latency.
  * @param stats structure to derive statistics from.
  * @param values Value templates used to populate lcc_value_list.
- * @return a new rs_stats_tmpl_t on success or NULL on failure.
+ * @return
+ *	- New #rs_stats_tmpl_t on success.
+ *	- NULL on failure.
  */
 static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 					       char const *plugin_instance,
@@ -192,7 +194,7 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 	/*
 	 *	Plugin is ASCII only and no '/'
 	 */
-	fr_prints(value->identifier.plugin, sizeof(value->identifier.plugin),
+	fr_snprint(value->identifier.plugin, sizeof(value->identifier.plugin),
 		  conf->stats.prefix, strlen(conf->stats.prefix), '\0');
 	for (p = value->identifier.plugin; *p; ++p) {
 		if ((*p == '-') || (*p == '/'))*p = '_';
@@ -201,7 +203,7 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 	/*
 	 *	Plugin instance is ASCII only (assuming printable only) and no '/'
 	 */
-	fr_prints(value->identifier.plugin_instance, sizeof(value->identifier.plugin_instance),
+	fr_snprint(value->identifier.plugin_instance, sizeof(value->identifier.plugin_instance),
 		  plugin_instance, strlen(plugin_instance), '\0');
 	for (p = value->identifier.plugin_instance; *p; ++p) {
 		if ((*p == '-') || (*p == '/')) *p = '_';
@@ -210,13 +212,13 @@ static rs_stats_tmpl_t *rs_stats_collectd_init(TALLOC_CTX *ctx, rs_t *conf,
 	/*
 	 *	Type is ASCII only (assuming printable only) and no '/' or '-'
 	 */
-	fr_prints(value->identifier.type, sizeof(value->identifier.type),
+	fr_snprint(value->identifier.type, sizeof(value->identifier.type),
 		  type, strlen(type), '\0');
 	for (p = value->identifier.type; *p; ++p) {
 		if ((*p == '-') || (*p == '/')) *p = '_';
 	}
 
-	fr_prints(value->identifier.type_instance, sizeof(value->identifier.type_instance),
+	fr_snprint(value->identifier.type_instance, sizeof(value->identifier.type_instance),
 		  type_instance, strlen(type_instance), '\0');
 	for (p = value->identifier.type_instance; *p; ++p) {
 		if ((*p == '-') || (*p == '/')) *p = '_';
@@ -336,7 +338,9 @@ void rs_stats_collectd_do_stats(rs_t *conf, rs_stats_tmpl_t *tmpls, struct timev
 /** Connect to a collectd server for stats output
  *
  * @param[in,out] conf radsniff configuration, we write the generated handle here.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success
+ *	- -1 on failure.
  */
 int rs_stats_collectd_open(rs_t *conf)
 {
@@ -364,7 +368,9 @@ int rs_stats_collectd_open(rs_t *conf)
 /** Close connection
  *
  * @param[in,out] conf radsniff configuration.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rs_stats_collectd_close(rs_t *conf)
 {

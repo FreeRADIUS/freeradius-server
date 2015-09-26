@@ -102,12 +102,10 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 /*
  *	Generate keys according to RFC 2716 and add to reply
  */
-void eaptls_gen_mppe_keys(REQUEST *request, SSL *s,
-			  char const *prf_label)
+void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 {
-	unsigned char out[4*EAPTLS_MPPE_KEY_LEN], buf[4*EAPTLS_MPPE_KEY_LEN];
-	unsigned char seed[64 + 2*SSL3_RANDOM_SIZE];
-	unsigned char *p = seed;
+	uint8_t out[4 * EAPTLS_MPPE_KEY_LEN];
+	uint8_t *p;
 	size_t prf_size;
 
 	if (!s->s3) {
@@ -117,18 +115,32 @@ void eaptls_gen_mppe_keys(REQUEST *request, SSL *s,
 
 	prf_size = strlen(prf_label);
 
-	memcpy(p, prf_label, prf_size);
-	p += prf_size;
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+	if (SSL_export_keying_material(s, out, sizeof(out), prf_label, prf_size, NULL, 0, 0) != 1) {
+		ERROR("Failed generating keying material");
+		return;
+	}
+#else
+	{
+		uint8_t seed[64 + (2 * SSL3_RANDOM_SIZE)];
+		uint8_t buf[4 * EAPTLS_MPPE_KEY_LEN];
 
-	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
-	p += SSL3_RANDOM_SIZE;
-	prf_size += SSL3_RANDOM_SIZE;
+		p = seed;
 
-	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
-	prf_size += SSL3_RANDOM_SIZE;
+		memcpy(p, prf_label, prf_size);
+		p += prf_size;
 
-	PRF(s->session->master_key, s->session->master_key_length,
-	    seed, prf_size, out, buf, sizeof(out));
+		memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
+		p += SSL3_RANDOM_SIZE;
+		prf_size += SSL3_RANDOM_SIZE;
+
+		memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
+		prf_size += SSL3_RANDOM_SIZE;
+
+		PRF(s->session->master_key, s->session->master_key_length,
+		    seed, prf_size, out, buf, sizeof(out));
+	}
+#endif
 
 	p = out;
 	eap_add_reply(request, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
@@ -185,7 +197,7 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 		return;
 	}
 
-	vp = paircreate(packet, PW_EAP_SESSION_ID, 0);
+	vp = fr_pair_afrom_num(packet, PW_EAP_SESSION_ID, 0);
 	if (!vp) return;
 
 	vp->vp_length = 1 + 2 * SSL3_RANDOM_SIZE;
@@ -196,5 +208,5 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	memcpy(p + 1 + SSL3_RANDOM_SIZE,
 	       s->s3->server_random, SSL3_RANDOM_SIZE);
 	vp->vp_octets = p;
-	pairadd(&packet->vps, vp);
+	fr_pair_add(&packet->vps, vp);
 }

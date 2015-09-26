@@ -1,0 +1,22 @@
+#
+#  Test vectors for DHCP attributes
+#
+
+encode-dhcp DHCP-Subnet-Mask = 255.255.0.0
+data 01 04 ff ff 00 00
+
+decode-dhcp -
+data DHCP-Subnet-Mask = 255.255.0.0
+
+#
+#  A long one... with a weird DHCP-specific vendor ID.
+#
+decode-dhcp 3501013d0701001ceaadac1e37070103060f2c2e2f3c094d5346545f495054565232011c4c41424f4c54322065746820312f312f30312f30312f31302f312f3209120000197f0d050b4c4142373336304f4c5432
+data DHCP-Message-Type = DHCP-Discover, DHCP-Client-Identifier = 0x01001ceaadac1e, DHCP-Parameter-Request-List = DHCP-Subnet-Mask, DHCP-Parameter-Request-List = DHCP-Router-Address, DHCP-Parameter-Request-List = DHCP-Domain-Name-Server, DHCP-Parameter-Request-List = DHCP-Domain-Name, DHCP-Parameter-Request-List = DHCP-NETBIOS-Name-Servers, DHCP-Parameter-Request-List = DHCP-NETBIOS-Node-Type, DHCP-Parameter-Request-List = DHCP-NETBIOS, DHCP-Vendor-Class-Identifier = 0x4d5346545f49505456, DHCP-Relay-Circuit-Id = 0x4c41424f4c54322065746820312f312f30312f30312f31302f312f32, DHCP-Vendor-Specific-Information = 0x0000197f0d050b4c4142373336304f4c5432
+
+
+encode-dhcp DHCP-Agent-Circuit-Id = 0xabcdef, DHCP-Relay-Remote-Id = 0x010203040506
+data 52 0d 01 03 ab cd ef 02 06 01 02 03 04 05 06
+
+decode-dhcp -
+data DHCP-Relay-Circuit-Id = 0xabcdef, DHCP-Relay-Remote-Id = 0x010203040506

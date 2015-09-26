@@ -42,7 +42,7 @@
 /* Define if we have a binary safe regular expression library */
 #undef HAVE_BINSAFE_REGEX
 
-/* Define if the compiler supports __builtin_types_compatible_p */
+/* Define if the compiler supports __builtin_bswap64 */
 #undef HAVE_BUILTIN_BSWAP_64
 
 /* Define if the compiler supports __builtin_choose_expr */
@@ -53,6 +53,9 @@
 
 /* Define to 1 if you have the <sys/capability.h> header file. */
 #undef HAVE_CAPABILITY_H
+
+/* Define to 1 if you have the `clock_gettime' function. */
+#undef HAVE_CLOCK_GETTIME
 
 /* Define to 1 if you have the `closefrom' function. */
 #undef HAVE_CLOSEFROM
@@ -76,6 +79,9 @@
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
    */
 #undef HAVE_DIRENT_H
+
+/* Define to 1 if you have the `dladdr' function. */
+#undef HAVE_DLADDR
 
 /* Define to 1 if you have the <dlfcn.h> header file. */
 #undef HAVE_DLFCN_H
@@ -191,6 +197,9 @@
 /* Define to 1 if you have the `resolv' library (-lresolv). */
 #undef HAVE_LIBRESOLV
 
+/* Define to 1 if you have the `rt' library (-lrt). */
+#undef HAVE_LIBRT
+
 /* Define to 1 if you have the `socket' library (-lsocket). */
 #undef HAVE_LIBSOCKET
 
@@ -202,6 +211,9 @@
 
 /* Define to 1 if you have the <limits.h> header file. */
 #undef HAVE_LIMITS_H
+
+/* Define to 1 if you have the <linux/if_packet.h> header file. */
+#undef HAVE_LINUX_IF_PACKET_H
 
 /* Define to 1 if you have the `localtime_r' function. */
 #undef HAVE_LOCALTIME_R
@@ -457,7 +469,10 @@
 /* Define to 1 if you have the <sys/wait.h> header file. */
 #undef HAVE_SYS_WAIT_H
 
-/* Define to 1 if you have the function talloc_set_memlimit. */
+/* Define to 1 if you have the `talloc_pooled_object' function. */
+#undef HAVE_TALLOC_POOLED_OBJECT
+
+/* Define to 1 if you have the `talloc_set_memlimit' function. */
 #undef HAVE_TALLOC_SET_MEMLIMIT
 
 /* 128 bit unsigned integer */

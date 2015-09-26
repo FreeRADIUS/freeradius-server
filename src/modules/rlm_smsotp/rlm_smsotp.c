@@ -36,11 +36,10 @@ typedef struct rlm_smsotp_t {
 } rlm_smsotp_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "socket", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_smsotp_t, socket), "/var/run/smsotp_socket" },
-	{ "challenge_message", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_smsotp_t, challenge), "Enter Mobile PIN" },
-	{ "challenge_type", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_smsotp_t, authtype), "smsotp-reply" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("socket", PW_TYPE_STRING, rlm_smsotp_t, socket), .dflt = "/var/run/smsotp_socket" },
+	{ FR_CONF_OFFSET("challenge_message", PW_TYPE_STRING, rlm_smsotp_t, challenge), .dflt = "Enter Mobile PIN" },
+	{ FR_CONF_OFFSET("challenge_type", PW_TYPE_STRING, rlm_smsotp_t, authtype), .dflt = "smsotp-reply" },
+	CONF_PARSER_TERMINATOR
 };
 
 static int _mod_conn_free(int *fdp)
@@ -49,27 +48,20 @@ static int _mod_conn_free(int *fdp)
 	return 0;
 }
 
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
 	int fd;
-	struct sockaddr_un sa;
 	rlm_smsotp_t *inst = instance;
-	socklen_t socklen = sizeof(sa);
 	int *fdp;
 
-	sa.sun_family = AF_UNIX;
-	strlcpy(sa.sun_path, inst->socket, sizeof(sa.sun_path));
-
-	fd = socket(PF_UNIX, SOCK_STREAM, 0);
+	fd = fr_socket_client_unix(inst->socket, false);
 	if (fd < 0) {
-		ERROR("Failed opening SMSOTP file %s: %s",
-		       inst->socket, fr_syserror(errno));
+		ERROR("Failed opening SMSOTP file %s: %s", inst->socket, fr_syserror(errno));
 		return NULL;
 	}
 
-	if (connect(fd, (struct sockaddr *) &sa, socklen) < -1) {
-		ERROR("Failed connecting to SMSOTP file %s: %s",
-		       inst->socket, fr_syserror(errno));
+	if (fr_socket_wait_for_connect(fd, timeout) < 0) {
+		ERROR("Failed connecting to SMSOTP file %s: %s", inst->socket, fr_syserror(errno));
 		return NULL;
 	}
 
@@ -173,7 +165,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, NULL);
+	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, NULL);
 	if (!inst->pool) {
 		return -1;
 	}
@@ -208,7 +200,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *  Look for the 'state' attribute.
 	 */
 #define WRITE_ALL(_a,_b,_c) if (write_all(_a,_b,_c) < 0) goto done;
-	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	state = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (state) {
 		RDEBUG("Found reply to access challenge");
 
@@ -272,8 +264,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Create the challenge, and add it to the reply.
 	 */
 
-	pairmake_reply("Reply-Message", inst->challenge, T_OP_EQ);
-	pairmake_reply("State", buffer, T_OP_EQ);
+	pair_make_reply("Reply-Message", inst->challenge, T_OP_EQ);
+	pair_make_reply("State", buffer, T_OP_EQ);
 
 	/*
 	 *  Mark the packet as an Access-Challenge packet.
@@ -304,12 +296,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *  Look for the 'state' attribute.
 	 */
-	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	state = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (state != NULL) {
 		DEBUG("rlm_smsotp: Found reply to access challenge (AUTZ), Adding Auth-Type '%s'",inst->authtype);
 
-		pairdelete(&request->config_items, PW_AUTH_TYPE, 0, TAG_ANY); /* delete old auth-type */
-		pairmake_config("Auth-Type", inst->authtype, T_OP_SET);
+		fr_pair_delete_by_num(&request->config, PW_AUTH_TYPE, 0, TAG_ANY); /* delete old auth-type */
+		pair_make_config("Auth-Type", inst->authtype, T_OP_SET);
 	}
 
 	return RLM_MODULE_OK;
@@ -327,21 +319,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
  */
 extern module_t rlm_smsotp;
 module_t rlm_smsotp = {
-	RLM_MODULE_INIT,
-	"smsotp",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_smsotp_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_authenticate,	/* authentication */
-		mod_authorize,	/* authorization */
-		NULL,	/* preaccounting */
-		NULL,	/* accounting */
-		NULL,	/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "smsotp",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_smsotp_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize
 	},
 };

@@ -36,7 +36,7 @@ RCSID("$Id$")
 
 void eapsim_calculate_keys(struct eapsim_keys *ek)
 {
-	fr_SHA1_CTX context;
+	fr_sha1_ctx context;
 	uint8_t fk[160];
 	unsigned char buf[256];
 	unsigned char *p;

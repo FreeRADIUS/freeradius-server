@@ -32,7 +32,8 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t*);
 
 static const void *fake = "fake";
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
+				   UNUSED struct timeval const *timeout)
 {
 	memcpy(&handle->conn, &fake, sizeof(handle->conn));
 	return 0;
@@ -40,11 +41,6 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 
 static sql_rcode_t sql_query(UNUSED rlm_sql_handle_t * handle,
 			     UNUSED rlm_sql_config_t *config, UNUSED char const *query)
-{
-	return 0;
-}
-
-static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
@@ -65,9 +61,11 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_
 	return 0;
 }
 
-static sql_rcode_t sql_fetch_row(UNUSED rlm_sql_row_t *out, UNUSED rlm_sql_handle_t *handle,
+static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, UNUSED rlm_sql_handle_t *handle,
 				 UNUSED rlm_sql_config_t *config)
 {
+	*out = NULL;
+
 	return 0;
 }
 
@@ -107,7 +105,6 @@ rlm_sql_module_t rlm_sql_null = {
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
-	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
 	.sql_fetch_row			= sql_fetch_row,

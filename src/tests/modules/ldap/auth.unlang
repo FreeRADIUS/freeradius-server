@@ -1,0 +1,72 @@
+#
+#  Run the "ldap" module
+#
+ldap
+
+if (&control:NAS-IP-Address != 1.2.3.4) {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if (&control:Reply-Message != "Hello world") {
+        test_fail
+}
+else {
+        test_pass
+}
+
+# Cmp operator means Framed-IP-Address is ignored
+if (&control:Framed-IP-Address) {
+        test_fail
+}
+else {
+        test_pass
+}
+
+# IP netmask defined in profile1 should overwrite radprofile value.
+if (&reply:Framed-IP-Netmask != 255.255.0.0) {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if (&reply:Acct-Interim-Interval != 1800) {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if (&reply:Idle-Timeout != 3600) {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if (&reply:Session-Timeout != 7200) {
+        test_fail
+}
+else {
+        test_pass
+}
+
+if ("%{pairs:reply:}" == "") {
+        test_fail
+}
+
+ldap.post-auth
+
+update {
+        Tmp-String-0 := "%{ldap:ldap://$ENV{TEST_SERVER}/uid=john,ou=people,dc=example,dc=com?description}"
+}
+
+if (&Tmp-String-0 != "User %{User-Name} authenticated") {
+	test_fail
+}
+else {
+	test_pass
+}

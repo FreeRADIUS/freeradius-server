@@ -45,12 +45,12 @@ static char const *eol = "\n";
 static int showname = -1;
 static int showptype = 0;
 static int showcid = 0;
-log_lvl_t debug_flag = 0;
 char const *progname = "radwho";
 char const *radlog_dir = NULL;
 
 static char const *radutmp_file = NULL;
-static char const *raddb_dir = NULL;
+static char const *raddb_dir = RADDBDIR;
+static char const *dict_dir = DICTDIR;
 
 char const *radacct_dir = NULL;
 char const *radlib_dir = NULL;
@@ -60,7 +60,7 @@ bool log_stripped_names;
 /*
  *	Global, for log.c to use.
  */
-struct main_config_t main_config;
+main_config_t main_config;
 
 #include <sys/wait.h>
 pid_t rad_fork(void)
@@ -80,8 +80,8 @@ static struct radutmp_config_t {
 } radutmpconfig;
 
 static const CONF_PARSER module_config[] = {
-  { "filename", FR_CONF_POINTER(PW_TYPE_FILE_INPUT, &radutmpconfig.radutmp_fn), RADUTMP },
-  { NULL, -1, 0, NULL, NULL }
+  { FR_CONF_POINTER("filename", PW_TYPE_FILE_INPUT, &radutmpconfig.radutmp_fn), .dflt = RADUTMP },
+  CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -89,7 +89,7 @@ static const CONF_PARSER module_config[] = {
  */
 static char *fullname(char *username)
 {
-#ifdef HAVE_PWD_Hx
+#ifdef HAVE_PWD_H
 	struct passwd *pwd;
 	char *s;
 
@@ -225,9 +225,12 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	while((c = getopt(argc, argv, "d:fF:nN:sSipP:crRu:U:Z")) != EOF) switch (c) {
+	while((c = getopt(argc, argv, "d:D:fF:nN:sSipP:crRu:U:Z")) != EOF) switch (c) {
 		case 'd':
 			raddb_dir = optarg;
+			break;
+		case 'D':
+			dict_dir = optarg;
 			break;
 		case 'F':
 			radutmp_file = optarg;
@@ -293,6 +296,17 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
+	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+		fr_perror("radwho");
+		return 1;
+	}
+
+	if (dict_read(raddb_dir, RADIUS_DICTIONARY) == -1) {
+		fr_perror("radwho");
+		return 1;
+	}
+	fr_strerror();	/* Clear the error buffer */
+
 	/*
 	 *	Be safe.
 	 */
@@ -328,6 +342,7 @@ int main(int argc, char **argv)
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", raddb_dir);
 	if (cf_file_read(maincs, buffer) < 0) {
 		fprintf(stderr, "%s: Error reading or parsing radiusd.conf\n", argv[0]);
+		talloc_free(maincs);
 		exit(1);
 	}
 
@@ -427,10 +442,10 @@ int main(int argc, char **argv)
 			memcpy(nasname, rt.login, sizeof(rt.login));
 			nasname[sizeof(rt.login)] = '\0';
 
-			fr_prints(buffer, sizeof(buffer), nasname, -1, '"');
+			fr_snprint(buffer, sizeof(buffer), nasname, -1, '"');
 			printf("User-Name = \"%s\"\n", buffer);
 
-			fr_prints(buffer, sizeof(buffer), session_id, -1, '"');
+			fr_snprint(buffer, sizeof(buffer), session_id, -1, '"');
 			printf("Acct-Session-Id = \"%s\"\n", buffer);
 
 			if (zap) printf("Acct-Status-Type = Stop\n");
@@ -474,7 +489,7 @@ int main(int argc, char **argv)
 				       sizeof(rt.caller_id));
 				nasname[sizeof(rt.caller_id)] = '\0';
 
-				fr_prints(buffer, sizeof(buffer), nasname, -1, '"');
+				fr_snprint(buffer, sizeof(buffer), nasname, -1, '"');
 				printf("Calling-Station-Id = \"%s\"\n", buffer);
 			}
 

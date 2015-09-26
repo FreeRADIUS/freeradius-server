@@ -1,7 +1,30 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
+/* Define to 1 if you have the declaration of
+   `ldap_create_session_tracking_control', and to 0 if you don't. */
+#undef HAVE_DECL_LDAP_CREATE_SESSION_TRACKING_CONTROL
+
+/* Define to 1 if you have the <inttypes.h> header file. */
+#undef HAVE_INTTYPES_H
+
+/* Define to 1 if you have the `ldap_create_session_tracking_control'
+   function. */
+#undef HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL
+
+/* Define to 1 if you have the `ldap_create_sort_control' function. */
+#undef HAVE_LDAP_CREATE_SORT_CONTROL
+
+/* Define to 1 if you have the `ldap_create_sort_keylist' function. */
+#undef HAVE_LDAP_CREATE_SORT_KEYLIST
+
+/* Define to 1 if you have the `ldap_free_sort_keylist' function. */
+#undef HAVE_LDAP_FREE_SORT_KEYLIST
+
 /* Define to 1 if you have the `ldap_initialize' function. */
 #undef HAVE_LDAP_INITIALIZE
+
+/* Define to 1 if you have the `ldap_is_ldap_url' function. */
+#undef HAVE_LDAP_IS_LDAP_URL
 
 /* Define to 1 if you have the `ldap_sasl_interactive_bind' function. */
 #undef HAVE_LDAP_SASL_INTERACTIVE_BIND
@@ -14,6 +37,36 @@
 
 /* Define to 1 if you have the `ldap_unbind_ext_s' function. */
 #undef HAVE_LDAP_UNBIND_EXT_S
+
+/* Define to 1 if you have the `ldap_url_desc2str' function. */
+#undef HAVE_LDAP_URL_DESC2STR
+
+/* Define to 1 if you have the `ldap_url_parse' function. */
+#undef HAVE_LDAP_URL_PARSE
+
+/* Define to 1 if you have the <memory.h> header file. */
+#undef HAVE_MEMORY_H
+
+/* Define to 1 if you have the <stdint.h> header file. */
+#undef HAVE_STDINT_H
+
+/* Define to 1 if you have the <stdlib.h> header file. */
+#undef HAVE_STDLIB_H
+
+/* Define to 1 if you have the <strings.h> header file. */
+#undef HAVE_STRINGS_H
+
+/* Define to 1 if you have the <string.h> header file. */
+#undef HAVE_STRING_H
+
+/* Define to 1 if you have the <sys/stat.h> header file. */
+#undef HAVE_SYS_STAT_H
+
+/* Define to 1 if you have the <sys/types.h> header file. */
+#undef HAVE_SYS_TYPES_H
+
+/* Define to 1 if you have the <unistd.h> header file. */
+#undef HAVE_UNISTD_H
 
 /* Number of arguments the rebind procedure takes */
 #undef LDAP_SET_REBIND_PROC_ARGS
@@ -36,5 +89,11 @@
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
 
+/* Define to 1 if you have the ANSI C header files. */
+#undef STDC_HEADERS
+
 /* Build the server with support for Novell eDir Universal Password */
 #undef WITH_EDIR
+
+/* Build the server with support for SASL binds */
+#undef WITH_SASL

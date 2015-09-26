@@ -31,7 +31,7 @@ RCSIDH(eap_methods_h, "$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-/* Field length and other arbitrary things */
+/* Code (1) + Identifier (1) + Length (2) */
 #define EAP_HEADER_LEN 		4
 
 typedef enum eap_code {
@@ -101,6 +101,8 @@ typedef enum eap_method {
 	PW_EAP_MAX_TYPES		/* 54 - for validation */
 } eap_type_t;
 
+#define PW_EAP_EXPANDED_TYPE	(254)
+
 typedef enum eap_rcode {
 	EAP_NOTFOUND,    	//!< EAP handler data not found.
 	EAP_FOUND,       	//!< EAP handler data found, continue.
@@ -114,8 +116,7 @@ typedef enum eap_rcode {
 
 extern const FR_NAME_NUMBER eap_rcode_table[];
 
-/*
- * EAP-Type specific data.
+/** EAP-Type specific data
  */
 typedef struct eap_type_data {
 	eap_type_t	num;
@@ -123,8 +124,7 @@ typedef struct eap_type_data {
 	uint8_t		*data;
 } eap_type_data_t;
 
-/*
- * Structure to hold EAP data.
+/** Structure to hold EAP data
  *
  * length = code + id + length + type + type.data
  *	=  1   +  1 +   2    +  1   +  X
@@ -138,8 +138,7 @@ typedef struct eap_packet {
 	uint8_t		*packet;
 } eap_packet_t;
 
-/*
- * Structure to represent packet format of eap *on wire*
+/** Structure to represent packet format of eap *on wire*
  */
 typedef struct eap_packet_raw {
 	uint8_t		code;

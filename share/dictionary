@@ -113,6 +113,7 @@ $INCLUDE dictionary.rfc6930
 $INCLUDE dictionary.rfc7055
 $INCLUDE dictionary.rfc7155
 $INCLUDE dictionary.rfc7268
+$INCLUDE dictionary.rfc7499
 
 #
 #	Mostly values which have been allocated by IANA under
@@ -136,13 +137,16 @@ $INCLUDE dictionary.alcatel-lucent.aaa
 $INCLUDE dictionary.alteon
 $INCLUDE dictionary.alvarion
 $INCLUDE dictionary.apc
+$INCLUDE dictionary.aptilo
 $INCLUDE dictionary.arbor
+$INCLUDE dictionary.arista
 $INCLUDE dictionary.aruba
 $INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.bluecoat
+$INCLUDE dictionary.boingo
 $INCLUDE dictionary.broadsoft
 $INCLUDE dictionary.brocade
 $INCLUDE dictionary.bskyb
@@ -268,6 +272,7 @@ $INCLUDE dictionary.versanet
 $INCLUDE dictionary.waverider
 $INCLUDE dictionary.walabi
 $INCLUDE dictionary.wichorus
+$INCLUDE dictionary.wifialliance
 $INCLUDE dictionary.wimax
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia

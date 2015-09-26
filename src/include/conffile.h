@@ -99,14 +99,30 @@ typedef struct timeval _timeval_t;
 		(conf_type_invalid) 0\
 	)))))))))))))))))))))
 
-#  define FR_CONF_OFFSET(_t, _s, _f)	_t, FR_CONF_TYPE_CHECK((_t), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f)), NULL
-#  define FR_CONF_POINTER(_t, _p)	_t, 0, FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
-#  define FR_ITEM_POINTER(_t, _p)	_t, FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
+#  define FR_CONF_OFFSET(_n, _t, _s, _f) \
+	.name = _n, \
+	.type = _t, \
+	.offset = FR_CONF_TYPE_CHECK((_t), __typeof__(&(((_s *)NULL)->_f)), offsetof(_s, _f))
+#  define FR_CONF_POINTER(_n, _t, _p) \
+	.name = _n, \
+	.type = _t, \
+	.data = FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
+#  define FR_ITEM_POINTER(_t, _p) _t, FR_CONF_TYPE_CHECK((_t), __typeof__(_p), _p)
 #else
-#  define FR_CONF_OFFSET(_t, _s, _f)	_t, offsetof(_s, _f), NULL
-#  define FR_CONF_POINTER(_t, _p)	_t, 0, _p
-#  define FR_ITEM_POINTER(_t, _p)	_t, _p
+#  define FR_CONF_OFFSET(_n, _t, _s, _f) \
+	.name = _n, \
+	.type = _t, \
+	.offset = offsetof(_s, _f)
+#  define FR_CONF_POINTER(_n, _t, _p) \
+	.name = _n, \
+	.type = _t, \
+	.data = _p
+#  define FR_ITEM_POINTER(_t, _p) .type = _t, .data = _p
 #endif
+
+#define FR_CONF_DEPRECATED(_n, _t, _p, _f) \
+	.name = _n, \
+	.type = (_t) | PW_TYPE_DEPRECATED
 
 /*
  *  Instead of putting the information into a configuration structure,
@@ -120,7 +136,7 @@ typedef struct timeval _timeval_t;
  * These flags should be or'd with another PW_TYPE_* value to create validation
  * rules for the #cf_item_parse function.
  *
- * @note File PW_TYPE_FILE_* ypes have a base type of string, so they're validated
+ * @note File PW_TYPE_FILE_* types have a base type of string, so they're validated
  *	 correctly by the config parser.
  * @{
  */
@@ -160,6 +176,10 @@ do {\
 	}\
 } while (0)
 
+#define FR_TIMEVAL_TO_MS(_x) (((_x)->tv_usec / 1000) + ((_x)->tv_sec * (uint64_t)1000))
+#define FR_TIMESPEC_TO_MS(_x) (((_x)->tv_usec / 1000000) + ((_x)->tv_sec * (uint64_t)1000))
+extern bool check_config;
+
 /** Defines a #CONF_PAIR to C data type mapping
  *
  * Is typically used to define mappings between module sections, and module instance structs.
@@ -170,16 +190,16 @@ do {\
  * Example with #FR_CONF_OFFSET :
  @code{.c}
    static CONF_PARSER module_config[] = {
-   	{ "example", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, example_instance_t, example), "default_value" },
-   	{ NULL, -1, 0, NULL, NULL }
+   	{ FR_CONF_OFFSET("example", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, example_instance_t, example), .dflt = "default_value" },
+   	CONF_PARSER_TERMINATOR
    }
  @endcode
  *
  * Example with #FR_CONF_POINTER :
  @code{.c}
    static CONF_PARSER global_config[] = {
-   	{ "example", FR_CONF_POINTER(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, &my_global), "default_value" },
-   	{ NULL, -1, 0, NULL, NULL }
+   	{ FR_CONF_POINTER("example", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, &my_global), .dflt = "default_value" },
+   	CONF_PARSER_TERMINATOR
    }
  @endcode
  *
@@ -206,7 +226,11 @@ typedef struct CONF_PARSER {
 						//!< When #type is set to #PW_TYPE_SUBSECTION, should be a pointer
 						//!< to the start of another array of #CONF_PARSER structs, forming
 						//!< the subsection.
+
+	FR_TOKEN	quote;			//!< Quoting around the default value.  Only used for templates.
 } CONF_PARSER;
+
+#define CONF_PARSER_TERMINATOR	{ NULL, -1, 0, NULL, NULL, T_INVALID }
 
 CONF_PAIR	*cf_pair_alloc(CONF_SECTION *parent, char const *attr, char const *value,
 			       FR_TOKEN op, FR_TOKEN lhs_type, FR_TOKEN rhs_type);
@@ -218,13 +242,13 @@ CONF_SECTION	*cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
-int		cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data, char const *dflt);
+int		cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
+			      char const *dflt, FR_TOKEN dflt_quote);
 int		cf_section_parse(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 int		cf_section_parse_pass2(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);
 int		cf_file_read(CONF_SECTION *cs, char const *file);
 void		cf_file_free(CONF_SECTION *cs);
-int		cf_file_include(CONF_SECTION *cs, char const *file);
 
 CONF_PAIR	*cf_pair_find(CONF_SECTION const *, char const *name);
 CONF_PAIR	*cf_pair_find_next(CONF_SECTION const *, CONF_PAIR const *, char const *name);
@@ -249,7 +273,9 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 char const *cf_section_name1(CONF_SECTION const *cs);
 char const *cf_section_name2(CONF_SECTION const *cs);
 char const *cf_section_name(CONF_SECTION const *cs);
+char const *cf_section_argv(CONF_SECTION const *cs, int argc);
 FR_TOKEN cf_section_name2_type(CONF_SECTION const *cs);
+FR_TOKEN cf_section_argv_type(CONF_SECTION const *cs, int argc);
 int dump_config(CONF_SECTION const *cs);
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION const *section,
 				      CONF_SECTION const *subsection,
@@ -281,6 +307,12 @@ void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci);
 CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 			     CONF_SECTION *outercs,
 			     char const *ptr);
+
+#define CF_FILE_NONE   (0)
+#define CF_FILE_ERROR  (1)
+#define CF_FILE_CONFIG (2)
+#define CF_FILE_MODULE (3)
+int cf_file_changed(CONF_SECTION *cs);
 
 extern CONF_SECTION *root_config;
 

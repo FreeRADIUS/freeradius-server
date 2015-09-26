@@ -28,6 +28,7 @@ RCSID("$Id$")
 
 #include "eap_leap.h"
 
+static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
 
 /*
  * send an initial eap-leap request
@@ -78,16 +79,14 @@ static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_handler_
 
 	REDEBUG2("Successfully initiated");
 
-	/*
-	 *	The next stage to process the packet.
-	 */
-	handler->stage = PROCESS;
-
 	talloc_free(reply);
+
+	handler->process = mod_process;
+
 	return 1;
 }
 
-static int CC_HINT(nonnull) mod_process(UNUSED void *instance, eap_handler_t *handler)
+static int mod_process(UNUSED void *instance, eap_handler_t *handler)
 {
 	int		rcode;
 	REQUEST 	*request = handler->request;
@@ -114,9 +113,9 @@ static int CC_HINT(nonnull) mod_process(UNUSED void *instance, eap_handler_t *ha
 	 *	The password is never sent over the wire.
 	 *	Always get the configured password, for each user.
 	 */
-	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	password = fr_pair_find_by_num(handler->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
-		password = pairfind(handler->request->config_items, PW_NT_PASSWORD, 0, TAG_ANY);
+		password = fr_pair_find_by_num(handler->request->config, PW_NT_PASSWORD, 0, TAG_ANY);
 	}
 
 	if (!password) {

@@ -1,0 +1,87 @@
+#
+#  We can't look at the data here, because the encoded Tunnel-Password has a 2 byte
+#  random salt
+#
+encode Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxabc"
+decode -
+data Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxabc"
+
+encode Tunnel-Password:0 = "0"
+decode -
+data Tunnel-Password:0 = "0"
+
+encode Tunnel-Password:0 = "01"
+decode -
+data Tunnel-Password:0 = "01"
+
+encode Tunnel-Password:0 = "012"
+decode -
+data Tunnel-Password:0 = "012"
+
+encode Tunnel-Password:0 = "0123"
+decode -
+data Tunnel-Password:0 = "0123"
+
+encode Tunnel-Password:0 = "01234"
+decode -
+data Tunnel-Password:0 = "01234"
+
+encode Tunnel-Password:0 = "012345"
+decode -
+data Tunnel-Password:0 = "012345"
+
+encode Tunnel-Password:0 = "0123456"
+decode -
+data Tunnel-Password:0 = "0123456"
+
+encode Tunnel-Password:0 = "01234567"
+decode -
+data Tunnel-Password:0 = "01234567"
+
+encode Tunnel-Password:0 = "012345678"
+decode -
+data Tunnel-Password:0 = "012345678"
+
+encode Tunnel-Password:0 = "0123456789"
+decode -
+data Tunnel-Password:0 = "0123456789"
+
+encode Tunnel-Password:0 = "0123456789a"
+decode -
+data Tunnel-Password:0 = "0123456789a"
+
+encode Tunnel-Password:0 = "0123456789ab"
+decode -
+data Tunnel-Password:0 = "0123456789ab"
+
+encode Tunnel-Password:0 = "0123456789abc"
+decode -
+data Tunnel-Password:0 = "0123456789abc"
+
+encode Tunnel-Password:0 = "0123456789abcd"
+decode -
+data Tunnel-Password:0 = "0123456789abcd"
+
+encode Tunnel-Password:0 = "0123456789abcde"
+decode -
+data Tunnel-Password:0 = "0123456789abcde"
+
+encode Tunnel-Password:0 = "0123456789abcdef"
+decode -
+data Tunnel-Password:0 = "0123456789abcdef"
+
+#
+#  We can't look at the data here, because the encoded Tunnel-Password has a 2 byte
+#  random salt
+#
+encode Tunnel-Password:0 := "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+decode -
+data Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+#
+#  1 octet for the tag.  2 octets for salt.  One octet for encrypted length.
+#  249 octets left for real data.
+#
+encode Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789ab"
+decode -
+data Tunnel-Password:0 = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx123456789"

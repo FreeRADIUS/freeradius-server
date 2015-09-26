@@ -1,0 +1,209 @@
+#
+#  PRE: cache-logic
+#
+
+#
+#  Series of tests to check for binary safe operation of the cache module
+#  both keys and values should be binary safe.
+#
+update {
+	Tmp-Octets-0 := 0xaa00bb00cc00dd00
+	Tmp-String-1 := "foo\000bar\000baz"
+}
+
+# 0. Sanity check
+if (&Tmp-String-1 == "foo\000bar\000baz") {
+    test_pass
+} else {
+    test_fail
+}
+
+# 1. Store the entry
+cache_bin_key_octets
+if (ok) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+# Now add a second entry, with the value diverging after the first null byte
+update {
+	Tmp-Octets-0 := 0xaa00bb00cc00ee00
+	Tmp-String-1 := "bar\000baz"
+}
+
+# 2. Should create a *new* entry and not update the existing one
+cache_bin_key_octets
+if (ok) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+update {
+    Tmp-String-1 !* ANY
+}
+
+# If the key is binary safe, we should now be able to retrieve the first entry
+# if it's not, the above test will likely fail, or we'll get the second entry.
+update {
+  	Tmp-Octets-0 := 0xaa00bb00cc00dd00
+}
+
+cache_bin_key_octets
+if (updated) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+if ("%{length:&Tmp-String-1}" == 11) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+if (&Tmp-String-1 == "foo\000bar\000baz") {
+    test_pass
+}
+else {
+    test_fail
+}
+
+update {
+    Tmp-String-1 !* ANY
+}
+
+# Now try and get the second entry
+update {
+  	Tmp-Octets-0 := 0xaa00bb00cc00ee00
+}
+
+cache_bin_key_octets
+if (updated) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+if ("%{length:&Tmp-String-1}" == 7) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+if (&Tmp-String-1 == "bar\000baz") {
+    test_pass
+}
+else {
+    test_fail
+}
+
+update {
+    Tmp-String-1 !* ANY
+}
+
+
+#
+#  We should also be able to use any fixed length data type as a key
+#  though there are no guarantees this will be portable.
+#
+update {
+	Tmp-IP-Address-0 := 192.168.0.1
+	Tmp-String-1 := "foo\000bar\000baz"
+}
+
+cache_bin_key_ipaddr
+if (ok) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+
+# Now add a second entry
+update {
+    Tmp-IP-Address-0:= 192.168.0.2
+	Tmp-String-1 := "bar\000baz"
+}
+
+cache_bin_key_ipaddr
+if (ok) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+update {
+    Tmp-String-1 !* ANY
+}
+
+# Now retrieve the first entry
+update {
+	Tmp-IP-Address-0 := 192.168.0.1
+}
+
+cache_bin_key_ipaddr
+if (updated) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+if ("%{length:&Tmp-String-1}" == 11) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+if (&Tmp-String-1 == "foo\000bar\000baz") {
+    test_pass
+}
+else {
+    test_fail
+}
+
+update {
+    Tmp-String-1 !* ANY
+}
+
+# Now try and get the second entry
+update {
+	Tmp-IP-Address-0 := 192.168.0.2
+}
+
+cache_bin_key_ipaddr
+if (updated) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+if ("%{length:&Tmp-String-1}" == 7) {
+    test_pass
+}
+else {
+    test_fail
+}
+
+if (&Tmp-String-1 == "bar\000baz") {
+    test_pass
+}
+else {
+    test_fail
+}
+
+update {
+    Tmp-String-1 !* ANY
+}

@@ -80,8 +80,9 @@ const FR_NAME_NUMBER eap_rcode_table[] = {
  * Converts a name into an IANA EAP type.
  *
  * @param name to convert.
- * @return The IANA EAP type or PW_EAP_INVALID if the name doesn't match any
- * known types.
+ * @return
+ *	- IANA EAP type.
+ *	- #PW_EAP_INVALID if the name doesn't match any known types.
  */
 eap_type_t eap_name2type(char const *name)
 {
@@ -199,11 +200,11 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	}
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
-	pairdelete(&(packet->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
+	fr_pair_delete_by_num(&(packet->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
 
 	vp = eap_packet2vp(packet, eap_packet);
 	if (!vp) return RLM_MODULE_INVALID;
-	pairadd(&(packet->vps), vp);
+	fr_pair_add(&(packet->vps), vp);
 
 	/*
 	 *	EAP-Message is always associated with
@@ -212,13 +213,13 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	 *	Don't add a Message-Authenticator if it's already
 	 *	there.
 	 */
-	vp = pairfind(packet->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(packet, PW_MESSAGE_AUTHENTICATOR, 0);
+		vp = fr_pair_afrom_num(packet, PW_MESSAGE_AUTHENTICATOR, 0);
 		vp->vp_length = AUTH_VECTOR_LEN;
 		vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->vp_length);
 
-		pairadd(&(packet->vps), vp);
+		fr_pair_add(&(packet->vps), vp);
 	}
 
 	/* Set request reply code, but only if it's not already set. */
@@ -270,12 +271,12 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 		size = total;
 		if (size > 253) size = 253;
 
-		vp = paircreate(packet, PW_EAP_MESSAGE, 0);
+		vp = fr_pair_afrom_num(packet, PW_EAP_MESSAGE, 0);
 		if (!vp) {
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			return NULL;
 		}
-		pairmemcpy(vp, ptr, size);
+		fr_pair_value_memcpy(vp, ptr, size);
 
 		fr_cursor_insert(&out, vp);
 
@@ -306,7 +307,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	first = pairfind(vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+	first = fr_pair_find_by_num(vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	if (!first) {
 		fr_strerror_printf("EAP-Message not found");
 		return NULL;
@@ -390,12 +391,12 @@ void eap_add_reply(REQUEST *request,
 {
 	VALUE_PAIR *vp;
 
-	vp = pairmake_reply(name, NULL, T_OP_EQ);
+	vp = pair_make_reply(name, NULL, T_OP_EQ);
 	if (!vp) {
 		REDEBUG("Did not create attribute %s: %s\n",
 			name, fr_strerror());
 		return;
 	}
 
-	pairmemcpy(vp, value, len);
+	fr_pair_value_memcpy(vp, value, len);
 }

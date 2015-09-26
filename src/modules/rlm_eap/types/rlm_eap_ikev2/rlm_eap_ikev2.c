@@ -77,26 +77,25 @@ typedef struct rlm_eap_ikev2 {
 } rlm_eap_ikev2_t;
 
 CONF_PARSER module_config[] = {
-	{ "ca_file", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ikev2_t, tls_ca_file), NULL  },
-	{ "private_key_file", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ikev2_t, tls_private_key_file), NULL  },
-	{ "private_key_password", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ikev2_t, tls_private_key_password), NULL  },
-	{ "certificate_file", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ikev2_t, tls_certificate_file), NULL  },
-	{ "crl_file", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ikev2_t, tls_crl), NULL  },
+	{ FR_CONF_OFFSET("ca_file", PW_TYPE_STRING, rlm_eap_ikev2_t, tls_ca_file) },
+	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_STRING, rlm_eap_ikev2_t, tls_private_key_file) },
+	{ FR_CONF_OFFSET("private_key_password", PW_TYPE_STRING, rlm_eap_ikev2_t, tls_private_key_password) },
+	{ FR_CONF_OFFSET("certificate_file", PW_TYPE_STRING, rlm_eap_ikev2_t, tls_certificate_file) },
+	{ FR_CONF_OFFSET("crl_file", PW_TYPE_STRING, rlm_eap_ikev2_t, tls_crl) },
 
-	{ "id", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ikev2_t, id), NULL  },
-	{ "fragment_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_ikev2_t, max_fragment_size), IKEv2_DEFAULT_MAX_FRAGMENT_SIZE_STR },
-	{ "dh_counter_max", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_ikev2_t, dh_counter_max), IKEv2_DEFAULT_DH_COUNTER_MAX_STR },
-	{ "default_authtype", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ikev2_t, default_auth_type), "both" },
-	{ "usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_eap_ikev2_t, users_file_name),"${confdir}/users" },
-	{ "server_authtype", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ikev2_t, server_auth_type), "secret" },
-	{ "idtype", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_eap_ikev2_t, server_id_type), IKEv2_DEFAULT_IDTYPE_STR },
-	{ "certreq", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ikev2_t, send_cert_request), "no" },
-	{ "fast_timer_expire", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_eap_ikev2_t, fast_expire), "900" },
+	{ FR_CONF_OFFSET("id", PW_TYPE_STRING, rlm_eap_ikev2_t, id) },
+	{ FR_CONF_OFFSET("fragment_size", PW_TYPE_INTEGER, rlm_eap_ikev2_t, max_fragment_size), .dflt = IKEv2_DEFAULT_MAX_FRAGMENT_SIZE_STR },
+	{ FR_CONF_OFFSET("dh_counter_max", PW_TYPE_INTEGER, rlm_eap_ikev2_t, dh_counter_max), .dflt = IKEv2_DEFAULT_DH_COUNTER_MAX_STR },
+	{ FR_CONF_OFFSET("default_authtype", PW_TYPE_STRING, rlm_eap_ikev2_t, default_auth_type), .dflt = "both" },
+	{ FR_CONF_OFFSET("usersfile", PW_TYPE_FILE_INPUT, rlm_eap_ikev2_t, users_file_name), .dflt = "${confdir}/users" },
+	{ FR_CONF_OFFSET("server_authtype", PW_TYPE_STRING, rlm_eap_ikev2_t, server_auth_type), .dflt = "secret" },
+	{ FR_CONF_OFFSET("idtype", PW_TYPE_STRING, rlm_eap_ikev2_t, server_id_type), .dflt = IKEv2_DEFAULT_IDTYPE_STR },
+	{ FR_CONF_OFFSET("certreq", PW_TYPE_BOOLEAN, rlm_eap_ikev2_t, send_cert_request), .dflt = "no" },
+	{ FR_CONF_OFFSET("fast_timer_expire", PW_TYPE_INTEGER, rlm_eap_ikev2_t, fast_expire), .dflt = "900" },
 
-	{ "fast_dh_exchange", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ikev2_t, enable_fast_dhex), "no" },
-	{ "enable_fast_reauth", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_ikev2_t, enable_fast_reconnect), "yes" },
-
-	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
+	{ FR_CONF_OFFSET("fast_dh_exchange", PW_TYPE_BOOLEAN, rlm_eap_ikev2_t, enable_fast_dhex), .dflt = "no" },
+	{ FR_CONF_OFFSET("enable_fast_reauth", PW_TYPE_BOOLEAN, rlm_eap_ikev2_t, enable_fast_reconnect), .dflt = "yes" },
+	CONF_PARSER_TERMINATOR
 };
 
 static int set_mppe_keys(eap_handler_t *handler)
@@ -302,6 +301,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
+static int mod_process(void *instance, eap_handler_t *handler);
+
 /** Initiate the EAP-ikev2 session by sending a challenge to the peer.
  *
  */
@@ -360,14 +361,8 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 		free(out);
 	}
 
-	/*
-	 *	We don't need to authorize the user at this point.
-	 *
-	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'handler->eap_ds', which will be given back
-	 *	to us...
-	 */
-	handler->stage = PROCESS;
+	handler->process = mod_process;
+
 	return 1;
 }
 

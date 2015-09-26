@@ -32,9 +32,7 @@ RCSIDH(mod_h, "$Id$")
 #include <freeradius-devel/radiusd.h>
 
 #include <libcouchbase/couchbase.h>
-#include <json.h>
-
-#include "jsonc_missing.h"
+#include "../rlm_json/json.h"
 
 /* maximum size of a stored value */
 #define MAX_VALUE_SIZE 20480
@@ -47,7 +45,7 @@ RCSIDH(mod_h, "$Id$")
  * This struct contains the core module configuration.
  */
 typedef struct rlm_couchbase_t {
-	char const		*acct_key;		//!< Accounting document key.
+	vp_tmpl_t		*acct_key;		//!< Accounting document key.
 	char const		*doctype;		//!< Value of accounting 'docType' element name.
 	uint32_t		expire;			//!< Accounting document expire time in seconds.
 
@@ -56,7 +54,7 @@ typedef struct rlm_couchbase_t {
 	char const		*bucket;         	//!< Couchbase bucket.
 	char const		*password;       	//!< Couchbase bucket password.
 
-	const char		*user_key;       	//!< User document key.
+	vp_tmpl_t		*user_key;       	//!< User document key.
 
 	bool			read_clients;		//!< Toggle for loading client records.
 	const char		*client_view;    	//!< Couchbase view that returns client documents.
@@ -65,7 +63,7 @@ typedef struct rlm_couchbase_t {
 	const char		*simul_view;     	//!< Couchbase view that returns accounting documents.
 
 	bool			verify_simul;		//!< Toggle to enable user login state verification.
-	const char		*simul_vkey;		//!< The query key to be used with simul_view.
+	vp_tmpl_t		*simul_vkey;		//!< The query key to be used with simul_view.
 	bool			delete_stale_sessions;	//!< Toggle to trigger zapping of stale sessions.
 
 	json_object		*map;           	//!< Json object to hold user defined attribute map.
@@ -83,7 +81,7 @@ typedef struct rlm_couchbase_handle_t {
 } rlm_couchbase_handle_t;
 
 /* define functions */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
 int mod_conn_alive(UNUSED void *instance, void *handle);
 

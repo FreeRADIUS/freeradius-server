@@ -46,7 +46,9 @@ static long ssl_built = OPENSSL_VERSION_NUMBER;
  * Startup check for whether the linked version of OpenSSL matches the
  * version the server was built against.
  *
- * @return 0 if ok, else -1
+ * @return
+ *	- 0 if ok.
+ *	- -1 if not ok.
  */
 int ssl_check_consistency(void)
 {
@@ -71,7 +73,7 @@ int ssl_check_consistency(void)
 	 *	1.0.0 and only allow moving backwards within a patch
 	 *	series.
 	 */
-	if (ssl_built & 0xf00000000) {
+	if (ssl_built & 0xf0000000) {
 		if ((ssl_built & 0xfffff000) != (ssl_linked & 0xfffff000) ||
 		    (ssl_built & 0x00000ff0) > (ssl_linked & 0x00000ff0)) goto mismatch;
 	/*
@@ -196,7 +198,11 @@ char const *ssl_version()
 /** Check if the application linking to the library has the correct magic number
  *
  * @param magic number as defined by RADIUSD_MAGIC_NUMBER
- * @returns 0 on success, -1 on prefix mismatch, -2 on version mismatch -3 on commit mismatch.
+ * @returns
+ *	- 0 on success.
+ *	- -1 on prefix mismatch.
+ *	- -2 on version mismatch.
+ *	- -3 on commit mismatch.
  */
 int rad_check_lib_magic(uint64_t magic)
 {
@@ -235,7 +241,9 @@ int rad_check_lib_magic(uint64_t magic)
  * @param cs to add feature pair to.
  * @param name of feature.
  * @param enabled Whether the feature is present/enabled.
- * @return 0 on success else -1.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int version_add_feature(CONF_SECTION *cs, char const *name, bool enabled)
 {
@@ -268,7 +276,9 @@ int version_add_feature(CONF_SECTION *cs, char const *name, bool enabled)
  * @param cs to add feature pair to.
  * @param name of library or feature.
  * @param version Humanly readable version text.
- * @return 0 on success else -1.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int version_add_number(CONF_SECTION *cs, char const *name, char const *version)
 {

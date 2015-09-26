@@ -1,8 +1,7 @@
 /*
  *   This program is is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version.
+ *   it under the terms of the GNU General Public License, version 2 of the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -28,7 +27,9 @@
 /** Check whether fr_link_layer_offset can process a link_layer
  *
  * @param link_layer to check.
- * @return true if supported, else false.
+ * @return
+ *	- true if supported.
+ *	- false if not supported.
  */
 bool fr_link_layer_supported(int link_layer)
 {
@@ -60,7 +61,9 @@ bool fr_link_layer_supported(int link_layer)
  * @param data start of packet data.
  * @param len caplen.
  * @param link_layer value returned from pcap_linktype.
- * @return the length of the header, or -1 on error.
+ * @return
+ *	- Length of the header.
+ *	- -1 on failure.
  */
 ssize_t fr_link_layer_offset(uint8_t const *data, size_t len, int link_layer)
 {
@@ -142,9 +145,58 @@ done:
 	return p - data;
 }
 
+/** Check UDP header is valid
+ *
+ * @param data Pointer to the start of the UDP header
+ * @param remaining bits of received packet
+ * @param ip pointer to IP header structure
+ * @return
+ * 0 if UDP payload lenght and checksum are correct
+ * !0 if UDP payload length or checksum are incorrect
+ */
+ int fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const * ip)
+ {
+	int ret = 0;
+	udp_header_t const	*udp;
+
+    /*
+	 *	UDP header validation.
+	 */
+	udp = (udp_header_t const *)data;
+	uint16_t udp_len;
+	ssize_t diff;
+	uint16_t expected;
+
+	udp_len = ntohs(udp->len);
+	diff = udp_len - remaining;
+	/* Truncated data */
+	if (diff > 0) {
+		fr_strerror_printf("packet too small by %zi bytes, UDP header + Payload should be %hu bytes",
+			diff, udp_len);
+		return -1;
+	}
+	/* Trailing data */
+	else if (diff < 0) {
+		fr_strerror_printf("packet too big by %zi bytes, UDP header + Payload should be %hu bytes",
+			diff * -1, udp_len);
+		return -1;
+	}
+
+	expected = fr_udp_checksum((uint8_t const *) udp, ntohs(udp->len), udp->checksum,
+				   ip->ip_src, ip->ip_dst);
+	if (udp->checksum != expected) {
+		fr_strerror_printf("DHCP: UDP checksum invalid, packet: 0x%04hx calculated: 0x%04hx\n",
+			ntohs(udp->checksum), ntohs(expected));
+		/* Not a fatal error */
+		ret = 1;
+	}
+
+	return ret;
+ }
+
 /** Calculate UDP checksum
  *
- * Zero out UDP checksum in UDP header before calling fr_udp_checksum to get 'expected' checksum.
+ * Zero out UDP checksum in UDP header before calling #fr_udp_checksum to get 'expected' checksum.
  *
  * @param data Pointer to the start of the UDP header
  * @param len value of udp length field in host byte order. Must be validated to make
@@ -152,7 +204,9 @@ done:
  * @param checksum current checksum, leave as 0 to just enable validation.
  * @param src_addr in network byte order.
  * @param dst_addr in network byte order.
- * @return 0 if the checksum is correct, else another number.
+ * @return
+ *	- 0 if the checksum is correct.
+ *	- !0 if checksum is incorrect.
  */
 uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 struct in_addr const src_addr, struct in_addr const dst_addr)
@@ -172,19 +226,12 @@ uint16_t fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 	sum += htons(IPPROTO_UDP);
 	sum += htons(len);
 
-	for (i = len; i > 1; i -= 2) {
-		sum += *p++;
-	}
-
-	if (i) {
-		sum += (0xff & *(uint8_t const *)p) << 8;
-	}
+	for (i = len; i > 1; i -= 2) sum += *p++;
+	if (i) sum += (0xff & *(uint8_t const *)p) << 8;
 
 	sum -= checksum;
 
-	while (sum >> 16) {
-		sum = (sum & 0xffff) + (sum >> 16);
-	}
+	while (sum >> 16) sum = (sum & 0xffff) + (sum >> 16);
 
 	return ((uint16_t) ~sum);
 }

@@ -42,19 +42,22 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/ocsp.h>
 #endif
 
+/*
+ * This is easier than ifdef's throughout the code.
+ */
 #ifdef HAVE_PTHREAD_H
-#define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+#	define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#	define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
 #else
-#define PTHREAD_MUTEX_LOCK(_x)
-#define PTHREAD_MUTEX_UNLOCK(_x)
+#	define PTHREAD_MUTEX_LOCK(_x)
+#	define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
 static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 {
 	size_t i;
 
-	if (debug_flag < 3) return;
+	if (rad_debug_lvl < 3) return;
 
 	printf("%s %d\n", msg, (int) data_len);
 	if (data_len > 256) data_len = 256;
@@ -139,9 +142,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		sock->packet->dst_ipaddr = sock->my_ipaddr;
 		sock->packet->dst_port = sock->my_port;
 
-		if (sock->request) {
-			sock->request->packet = talloc_steal(sock->request, sock->packet);
-		}
+		if (sock->request) sock->request->packet = talloc_steal(sock->request, sock->packet);
 	}
 
 	/*
@@ -175,7 +176,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		}
 
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
-		SSL_set_ex_data(sock->ssn->ssl, fr_tls_ex_index_certs, (void *)&request->packet->vps);
+		SSL_set_ex_data(sock->ssn->ssl, fr_tls_ex_index_certs, (void *) &sock->certs);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_TALLOC, sock->parent);
 
 		doing_init = true;
@@ -276,7 +277,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 */
 	if ((sock->ssn->clean_out.used < 20) ||
 	    (((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]) != (int) sock->ssn->clean_out.used)) {
-		RDEBUG("Received bad packet: Length %d contents %d",
+		RDEBUG("Received bad packet: Length %zd contents %d",
 		       sock->ssn->clean_out.used,
 		       (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]);
 		goto do_close;
@@ -290,7 +291,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
 	if (!rad_packet_ok(packet, 0, NULL)) {
-		RDEBUG("Received bad packet: %s", fr_strerror());
+		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
 		DEBUG("Closing TLS socket from client");
 		PTHREAD_MUTEX_LOCK(&sock->mutex);
 		tls_socket_close(listener);
@@ -301,7 +302,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Copied from src/lib/radius.c, rad_recv();
 	 */
-	if (fr_debug_flag) {
+	if (fr_debug_lvl) {
 		char host_ipaddr[128];
 
 		if (is_radius_code(packet->code)) {
@@ -325,11 +326,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 
 	FR_STATS_INC(auth, total_requests);
 
-	/*
-	 *	Re-parent the packet to nothing.
-	 */
-	(void) talloc_steal(NULL, packet);
-
 	return 1;
 }
 
@@ -351,7 +347,8 @@ int dual_tls_recv(rad_listen_t *listener)
 	rad_assert(sock->ssn != NULL);
 	rad_assert(client != NULL);
 
-	packet = sock->packet;
+	packet = talloc_steal(NULL, sock->packet);
+	sock->packet = NULL;
 
 	/*
 	 *	Some sanity checks, based on the packet code.
@@ -387,7 +384,7 @@ int dual_tls_recv(rad_listen_t *listener)
 		if (!main_config.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
 			WARN("Ignoring Status-Server request due to security configuration");
-			rad_free(&sock->packet);
+			rad_free(&packet);
 			return 0;
 		}
 		fun = rad_status_server;
@@ -399,17 +396,15 @@ int dual_tls_recv(rad_listen_t *listener)
 
 		DEBUG("Invalid packet code %d sent from client %s port %d : IGNORED",
 		      packet->code, client->shortname, packet->src_port);
-		rad_free(&sock->packet);
+		rad_free(&packet);
 		return 0;
 	} /* switch over packet types */
 
 	if (!request_receive(NULL, listener, packet, client, fun)) {
 		FR_STATS_INC(auth, total_packets_dropped);
-		rad_free(&sock->packet);
+		rad_free(&packet);
 		return 0;
 	}
-
-	sock->packet = NULL;	/* we have no need for more partial reads */
 
 	return 1;
 }
@@ -508,7 +503,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	 *	Get the maximum size of data to receive.
 	 */
 	if (!sock->data) sock->data = talloc_array(sock, uint8_t,
-						   sock->ssn->offset);
+						   sock->ssn->mtu);
 
 	data = sock->data;
 
@@ -558,7 +553,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 		 *	FIXME: allocate a RADIUS_PACKET, and set
 		 *	"data" to be as large as necessary.
 		 */
-		if (length > sock->ssn->offset) {
+		if (length > sock->ssn->mtu) {
 			INFO("Received packet will be too large! Set \"fragment_size = %u\"",
 			     (data[2] << 8) | data[3]);
 			goto do_close;

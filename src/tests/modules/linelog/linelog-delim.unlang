@@ -1,6 +1,3 @@
-#
-#  Run the "files" module
-#
 update control {
 	Exec-Export := 'PATH="$ENV{PATH}:/bin:/usr/bin:/opt/bin:/usr/local/bin"'
 }

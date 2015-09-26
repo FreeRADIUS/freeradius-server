@@ -81,6 +81,10 @@ if test x$with_[]modname != xno; then
 	dnl # Check for libmemcached libraries
 	dnl ############################################################
 
+    dnl # Check if libpthread is available. Should add -lpthread
+    dnl # to CFLAGS when checking for memcached.
+    FR_SMART_CHECK_LIB([pthread], [pthread_once])
+
 	smart_try_dir="$libmemcached_lib_dir"
 	dnl # Use a libmemcached specific function which is only
 	dnl # available in newer versions.

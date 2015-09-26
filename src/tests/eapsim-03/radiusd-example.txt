@@ -141,7 +141,7 @@ max_request_time = 30
 #  cached reply.
 #
 #  If this value is set too low, then duplicate requests from the NAS
-#  MAY NOT be detected, and will instead be handled as seperate requests.
+#  MAY NOT be detected, and will instead be handled as separate requests.
 #
 #  If this value is set too high, then the server will cache too many
 #  requests, and some new requests may get blocked.  (See 'max_requests'.)
@@ -734,8 +734,8 @@ modules {
 	#            Field marked as '*' is key field. That is, the parameter
 	#            with this name from the request is used to search for
 	#            the record from passwd file
-	#            Attribute marked as '=' is added to reply_itmes instead
-	#            of default configure_itmes
+	#            Attribute marked as '=' is added to reply_items instead
+	#            of default configure_items
 	#	     Attribute marked as '~' is added to request_items
 	#
 	#            Field marked as ',' may contain a comma separated list

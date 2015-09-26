@@ -49,22 +49,22 @@ extern "C" {
 typedef struct fr_tls_server_conf_t fr_tls_server_conf_t;
 
 typedef enum {
-	FR_TLS_INVALID = 0,	  	/* invalid, don't reply */
-	FR_TLS_REQUEST,       		/* request, ok to send, invalid to receive */
-	FR_TLS_RESPONSE,       		/* response, ok to receive, invalid to send */
-	FR_TLS_SUCCESS,       		/* success, send success */
-	FR_TLS_FAIL,       		/* fail, send fail */
-	FR_TLS_NOOP,       		/* noop, continue */
+	FR_TLS_INVALID = 0,	  		//!< Invalid, don't reply.
+	FR_TLS_REQUEST,       			//!< Request, ok to send, invalid to receive.
+	FR_TLS_RESPONSE,       			//!< Response, ok to receive, invalid to send.
+	FR_TLS_SUCCESS,       			//!< Success, send success.
+	FR_TLS_FAIL,       			//!< Fail, send fail.
+	FR_TLS_NOOP,       			//!< Noop, continue.
 
-	FR_TLS_START,       		/* start, ok to send, invalid to receive */
-	FR_TLS_OK, 		 	/* ok, continue */
-	FR_TLS_ACK,       		/* acknowledge, continue */
-	FR_TLS_FIRST_FRAGMENT,    	/* first fragment */
-	FR_TLS_MORE_FRAGMENTS,    	/* more fragments, to send/receive */
-	FR_TLS_LENGTH_INCLUDED,	  	/* length included */
-	FR_TLS_MORE_FRAGMENTS_WITH_LENGTH,   /* more fragments with length */
-	FR_TLS_HANDLED	  		/* tls code has handled it */
+	FR_TLS_START,       			//!< Start, ok to send, invalid to receive.
+	FR_TLS_OK, 		 		//!< Ok, continue.
+	FR_TLS_ACK,       			//!< Acknowledge, continue.
+	FR_TLS_FIRST_FRAGMENT,    		//!< First fragment.
+	FR_TLS_MORE_FRAGMENTS,    		//!< More fragments, to send/receive.
+	FR_TLS_LENGTH_INCLUDED,	  		//!< Length included.
+	FR_TLS_HANDLED	  			//!< TLS code has handled it.
 } fr_tls_status_t;
+extern FR_NAME_NUMBER const fr_tls_status_table[];
 
 #define MAX_RECORD_SIZE 16384
 
@@ -88,36 +88,26 @@ typedef enum {
  * 	or configure TLS not to exceed MAX_RECORD_SIZE.
  */
 typedef struct _record_t {
-	unsigned char data[MAX_RECORD_SIZE];
-	unsigned int  used;
+	uint8_t data[MAX_RECORD_SIZE];
+	size_t  used;
 } record_t;
 
 typedef struct _tls_info_t {
-	unsigned char	origin;
-	unsigned char	content_type;
-	unsigned char	handshake_type;
-	unsigned char	alert_level;
-	unsigned char	alert_description;
+	int		origin;
+	int		content_type;
+	uint8_t		handshake_type;
+	uint8_t		alert_level;
+	uint8_t		alert_description;
+	bool		initialized;
+
 	char 		info_description[256];
 	size_t		record_len;
 	int		version;
-	char		initialized;
 } tls_info_t;
 
-/*
- * tls_session_t Structure gets stored as opaque in eap_handler_t
- * This contains EAP-REQUEST specific data
- * (ie FR_TLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
+/** Contains EAP-REQUEST specific data (ie FR_TLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
  *
- * clean_in  - data that needs to be sent but only after it is soiled.
- * dirty_in  - data EAP server receives.
- * clean_out - data that is cleaned after receiving.
- * dirty_out - data EAP server sends.
- * offset    - current fragment size transmitted
- * fragment  - Flag, In fragment mode or not.
- * tls_msg_len - Actual/Total TLS message length.
- * length_flag - A flag to include length in every TLS Data/Alert packet
- * 					if set to no then only the first fragment contains length
+ * The tls_session_t Structure gets stored as opaque in eap_handler_t
  */
 typedef struct _tls_session_t {
 	SSL_CTX		*ctx;
@@ -126,41 +116,43 @@ typedef struct _tls_session_t {
 
 	BIO 		*into_ssl;
 	BIO 		*from_ssl;
-	record_t 	clean_in;
-	record_t 	clean_out;
-	record_t 	dirty_in;
-	record_t 	dirty_out;
+	record_t 	clean_in;			//!< Data that needs to be sent but only after it is soiled.
+	record_t 	clean_out;			//!< Data that is cleaned after receiving.
+	record_t 	dirty_in;			//!< Data EAP server receives.
+	record_t 	dirty_out;			//!< Data EAP server sends.
 
 	void 		(*record_init)(record_t *buf);
 	void 		(*record_close)(record_t *buf);
-	unsigned int 	(*record_plus)(record_t *buf, void const *ptr,
-				       unsigned int size);
-	unsigned int 	(*record_minus)(record_t *buf, void *ptr,
-					unsigned int size);
+	unsigned int 	(*record_plus)(record_t *buf, void const *ptr, unsigned int size);
+	unsigned int 	(*record_minus)(record_t *buf, void *ptr, unsigned int size);
 
-	bool		invalid_hb_used;
+	bool		invalid_hb_used;		//!< Whether heartbleed attack was detected.
 
 	/*
-	 * Framed-MTU attribute in RADIUS,
-	 * if present, can also be used to set this
+	 *	Framed-MTU attribute in RADIUS, if present, can also be used to set this
 	 */
-	unsigned int 	offset;
-	unsigned int 	tls_msg_len;
-	int 		fragment;
-	int		length_flag;
+	size_t 		mtu;				//!< Current fragment size transmitted.
+	size_t		tls_msg_len;			//!< Actual/Total TLS message length.
+	bool		fragment;			//!< Flag, In fragment mode or not.
+	bool		length_flag;			//!< A flag to include length in every TLS Data/Alert packet.
+							//!< If set to no then only the first fragment contains length.
 	int		peap_flag;
 
+	bool		tls_record_transfer_started;	//!< Whether a record transfer from the peer is currently
+							//!< in progress.
+	size_t		tls_record_in_total_len;	//!< How long the peer indicated the complete tls record
+							//!< would be.
+	size_t		tls_record_in_recvd_len;	//!< How much of the record we've received so far.
+
 	/*
-	 *	Used by TTLS & PEAP to keep track of other per-session
-	 *	data.
+	 *	Used by TTLS & PEAP to keep track of other per-session data.
 	 */
 	void 		*opaque;
 	void 		(*free_opaque)(void *opaque);
 
 	char const	*prf_label;
-	int		allow_session_resumption;
+	bool		allow_session_resumption;	//!< Whether session resumption is allowed.
 } tls_session_t;
-
 
 /*
  *	RFC 2716, Section 4.2:
@@ -325,6 +317,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request);
 #define FR_TLS_EX_INDEX_TALLOC	 (16)
 
 extern int fr_tls_ex_index_certs;
+extern int fr_tls_ex_index_vps;
 
 /* configured values goes right here */
 struct fr_tls_server_conf_t {
@@ -346,6 +339,7 @@ struct fr_tls_server_conf_t {
 	uint32_t	verify_depth;
 	bool		file_type;
 	bool		include_length;
+	bool		disable_tlsv1;
 	bool		disable_tlsv1_1;
 	bool		disable_tlsv1_2;
 
@@ -354,6 +348,7 @@ struct fr_tls_server_conf_t {
 	 */
 	uint32_t	fragment_size;
 	bool		check_crl;
+	bool		check_all_crl;
 	bool		allow_expired_crl;
 	char const	*check_cert_cn;
 	char const	*cipher_list;
@@ -364,6 +359,7 @@ struct fr_tls_server_conf_t {
 	uint32_t     	session_cache_size;
 	char const	*session_id_name;
 	char const	*session_cache_path;
+	char const	*session_cache_server;
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 	time_t		session_last_flushed;
 
@@ -376,6 +372,7 @@ struct fr_tls_server_conf_t {
 	 * OCSP Configuration
 	 */
 	bool		ocsp_enable;
+	char const	*ocsp_cache_server;
 	bool		ocsp_override_url;
 	char const	*ocsp_url;
 	bool		ocsp_use_nonce;

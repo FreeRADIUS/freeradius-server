@@ -213,7 +213,7 @@ again:
 
 	 *
 	 */
-	rbtree_walk(t, RBTREE_DELETE_ORDER, filter_cb, &thresh);
+	(void) rbtree_walk(t, RBTREE_DELETE_ORDER, filter_cb, &thresh);
 	i = rbcount(t);
 	fprintf(stderr,"After delete rbcount is %i.\n", i);
 	if (i < 0) { return i; }

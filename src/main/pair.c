@@ -52,8 +52,11 @@ static struct cmp *cmp;
  * @param request Current request.
  * @param check rvalue, and operator.
  * @param vp lvalue.
- * @return 0 if check and vp are equal, -1 if vp value is less than check value, 1 is vp value is more than check
- *	value, -2 on error.
+ * @return
+ *	- 0 if check and vp are equal
+ *	- -1 if vp value is less than check value.
+ *	- 1 is vp value is more than check value.
+ *	- -2 on error.
  */
 #ifdef HAVE_REGEX
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
@@ -82,13 +85,13 @@ int radius_compare_vps(UNUSED REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *v
 		if (check->da->type == PW_TYPE_STRING) {
 			expr_p = check->vp_strvalue;
 		} else {
-			expr_p = expr = vp_aprints_value(check, check, '\0');
+			expr_p = expr = fr_pair_value_asprint(check, check, '\0');
 		}
 
 		if (vp->da->type == PW_TYPE_STRING) {
 			value_p = vp->vp_strvalue;
 		} else {
-			value_p = value = vp_aprints_value(vp, vp, '\0');
+			value_p = value = fr_pair_value_asprint(vp, vp, '\0');
 		}
 
 		if (!expr_p || !value_p) {
@@ -250,8 +253,10 @@ finish:
  * @param check item to compare.
  * @param check_pairs list.
  * @param reply_pairs list.
- * @return 0 if check and vp are equal, -1 if vp value is less than check value, 1 is vp value is more than check
- *	value.
+ * @return
+ *	- 0 if check and vp are equal.
+ *	- -1 if vp value is less than check value.
+ *	- 1 is vp value is more than check value.
  */
 int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
@@ -287,7 +292,9 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
  *
  * @todo this should probably take DA's.
  * @param attribute to find comparison function for.
- * @return true if a comparison function was found, else false.
+ * @return
+ *	- true if a comparison function was found
+ *	- false.
  */
 int radius_find_compare(DICT_ATTR const *attribute)
 {
@@ -307,7 +314,9 @@ int radius_find_compare(DICT_ATTR const *attribute)
  *
  * @param attribute to find comparison function for.
  * @param from reference to compare with
- * @return true if the comparison callback require a matching attribue in the request, else false.
+ * @return
+ *	- true if the comparison callback require a matching attribute in the request.
+ *	- false.
  */
 static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
 {
@@ -324,14 +333,59 @@ static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
 	return false;
 }
 
+/** Register a function as compare function
+ *
+ * @param name the attribute comparison to register
+ * @param from the attribute we want to compare with. Normally this is the same as attribute.
+ *	If null call the comparison function on every attributes in the request if first_only is
+ *	false.
+ * @param first_only will decide if we loop over the request attributes or stop on the first one.
+ * @param func comparison function.
+ * @param instance argument to comparison function.
+ * @return 0
+ */
+int paircompare_register_byname(char const *name, DICT_ATTR const *from,
+				bool first_only, RAD_COMPARE_FUNC func, void *instance)
+{
+	ATTR_FLAGS flags;
+	DICT_ATTR const *da;
+
+	memset(&flags, 0, sizeof(flags));
+	flags.compare = 1;
+
+	da = dict_attrbyname(name);
+	if (da) {
+		if (!da->flags.compare) {
+			fr_strerror_printf("Attribute '%s' already exists", name);
+			return -1;
+		}
+	} else if (from) {
+		if (dict_addattr(name, -1, 0, from->type, flags) < 0) {
+			fr_strerror_printf("Failed creating attribute '%s'", name);
+			return -1;
+		}
+
+		da = dict_attrbyname(name);
+		if (!da) {
+			fr_strerror_printf("Failed finding attribute '%s'", name);
+			return -1;
+		}
+
+		DEBUG("Creating attribute %s", name);
+	}
+
+	return paircompare_register(da, from, first_only, func, instance);
+}
+
 /** Register a function as compare function.
  *
  * @param attribute to register comparison function for.
  * @param from the attribute we want to compare with. Normally this is the same as attribute.
- *  If null call the comparison function on every attributes in the request if first_only is false
- * @param first_only will decide if we loop over the request attributes or stop on the first one
- * @param func comparison function
- * @param instance argument to comparison function
+ *	If null call the comparison function on every attributes in the request if first_only is
+ *	false.
+ * @param first_only will decide if we loop over the request attributes or stop on the first one.
+ * @param func comparison function.
+ * @param instance argument to comparison function.
  * @return 0
  */
 int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
@@ -471,7 +525,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 				WARN("Are you sure you don't mean Cleartext-Password?");
 				WARN("See \"man rlm_pap\" for more information");
 			}
-			if (pairfind(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
+			if (fr_pair_find_by_num(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
 				continue;
 			}
 			break;
@@ -533,7 +587,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		case T_OP_EQ:
 		default:
 			RWDEBUG("Invalid operator '%s' for item %s: reverting to '=='",
-				fr_int2str(fr_tokens, check_item->op, "<INVALID>"), check_item->da->name);
+				fr_int2str(fr_tokens_table, check_item->op, "<INVALID>"), check_item->da->name);
 			/* FALL-THROUGH */
 		case T_OP_CMP_TRUE:
 		case T_OP_CMP_FALSE:
@@ -584,14 +638,16 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	return result;
 }
 
-/** Expands an attribute marked with pairmark_xlat
+/** Expands an attribute marked with fr_pair_mark_xlat
  *
  * Writes the new value to the vp.
  *
  * @param request Current request.
  * @param vp to expand.
- * @return 0 if successful else -1 (on xlat failure) or -2 (on parse failure).
- *	On failure pair will still no longer be marked for xlat expansion.
+ * @return On failure pair will still no longer be marked for xlat expansion.
+ *	- 0 if successful.
+ *	- -1 On xlat failure.
+ *	- -2 On parse failure.
  */
 int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 {
@@ -616,11 +672,11 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 	 *	then we just want to copy the new value in unmolested.
 	 */
 	if ((vp->op == T_OP_REG_EQ) || (vp->op == T_OP_REG_NE)) {
-		pairstrsteal(vp, expanded);
+		fr_pair_value_strsteal(vp, expanded);
 		return 0;
 	}
 
-	if (pairparsevalue(vp, expanded, -1) < 0){
+	if (fr_pair_value_from_str(vp, expanded, -1) < 0){
 		talloc_free(expanded);
 		return -2;
 	}
@@ -630,31 +686,31 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 	return 0;
 }
 
-/** Create a VALUE_PAIR and add it to a list of VALUE_PAIR s
+/** Create a #VALUE_PAIR and add it to a list of #VALUE_PAIR s
  *
  * @note This function ALWAYS returns. If we're OOM, then it causes the
  * @note server to exit, so you don't need to check the return value.
  *
  * @param[in] ctx for talloc
- * @param[out] vps List to add new VALUE_PAIR to, if NULL will just
- *	return VALUE_PAIR.
+ * @param[out] vps List to add new #VALUE_PAIR to, if NULL will just
+ *	return #VALUE_PAIR.
  * @param[in] attribute number.
  * @param[in] vendor number.
- * @return a new VLAUE_PAIR or causes server to exit on error.
+ * @return a new #VALUE_PAIR or causes server to exit on error.
  */
-VALUE_PAIR *radius_paircreate(TALLOC_CTX *ctx, VALUE_PAIR **vps,
+VALUE_PAIR *radius_pair_create(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 			      unsigned int attribute, unsigned int vendor)
 {
 	VALUE_PAIR *vp;
 
-	vp = paircreate(ctx, attribute, vendor);
+	vp = fr_pair_afrom_num(ctx, attribute, vendor);
 	if (!vp) {
 		ERROR("No memory!");
 		rad_assert("No memory" == NULL);
 		fr_exit_now(1);
 	}
 
-	if (vps) pairadd(vps, vp);
+	if (vps) fr_pair_add(vps, vp);
 
 	return vp;
 }
@@ -665,9 +721,9 @@ VALUE_PAIR *radius_paircreate(TALLOC_CTX *ctx, VALUE_PAIR **vps,
  */
 void debug_pair(VALUE_PAIR *vp)
 {
-	if (!vp || !debug_flag || !fr_log_fp) return;
+	if (!vp || !rad_debug_lvl || !fr_log_fp) return;
 
-	vp_print(fr_log_fp, vp);
+	fr_pair_fprint(fr_log_fp, vp);
 }
 
 /** Print a single valuepair to stderr or error log.
@@ -684,7 +740,7 @@ void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *
 
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
-	vp_prints(buffer, sizeof(buffer), vp);
+	fr_pair_snprint(buffer, sizeof(buffer), vp);
 	RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 }
 
@@ -709,7 +765,7 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
 	     vp = fr_cursor_next(&cursor)) {
 		VERIFY_VP(vp);
 
-		vp_prints(buffer, sizeof(buffer), vp);
+		fr_pair_snprint(buffer, sizeof(buffer), vp);
 		RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
 	}
 	REXDENT();
@@ -736,7 +792,7 @@ void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp)
 		VERIFY_VP(vp);
 		if ((vp->da->vendor == 0) &&
 		    ((vp->da->attr & 0xFFFF) > 0xff)) continue;
-		vp_prints(buffer, sizeof(buffer), vp);
+		fr_pair_snprint(buffer, sizeof(buffer), vp);
 		RDEBUGX(level, "%s", buffer);
 	}
 	REXDENT();
@@ -744,12 +800,13 @@ void rdebug_proto_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp)
 
 /** Return a VP from the specified request.
  *
- * @param out where to write the pointer to the resolved VP.
- *	Will be NULL if the attribute couldn't be resolved.
+ * @param out where to write the pointer to the resolved VP. Will be NULL if the attribute couldn't
+ *	be resolved.
  * @param request current request.
  * @param name attribute name including qualifiers.
- * @return -4 if either the attribute or qualifier were invalid, and the same error codes as tmpl_find_vp for other
- *	error conditions.
+ * @return
+ *	- -4 if either the attribute or qualifier were invalid.
+ *	- The same error codes as #tmpl_find_vp for other error conditions.
  */
 int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 {
@@ -770,12 +827,13 @@ int radius_get_vp(VALUE_PAIR **out, REQUEST *request, char const *name)
 /** Copy VP(s) from the specified request.
  *
  * @param ctx to alloc new VALUE_PAIRs in.
- * @param out where to write the pointer to the copied VP.
- *	Will be NULL if the attribute couldn't be resolved.
+ * @param out where to write the pointer to the copied VP. Will be NULL if the attribute couldn't be
+ *	resolved.
  * @param request current request.
  * @param name attribute name including qualifiers.
- * @return -4 if either the attribute or qualifier were invalid, and the same error codes as tmpl_find_vp for other
- *	error conditions.
+ * @return
+ *	- -4 if either the attribute or qualifier were invalid.
+ *	- The same error codes as #tmpl_find_vp for other error conditions.
  */
 int radius_copy_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, char const *name)
 {
@@ -810,7 +868,7 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 	VALUE_PAIR *vp;
 	va_list aq;
 
-	if (!fmt || !request->packet) {
+	if (!fmt || !request || !request->packet) {
 		return;
 	}
 
@@ -827,11 +885,11 @@ void vmodule_failure_msg(REQUEST *request, char const *fmt, va_list ap)
 	p = talloc_vasprintf(request, fmt, aq);
 	va_end(aq);
 
-	MEM(vp = pairmake_packet("Module-Failure-Message", NULL, T_OP_ADD));
+	MEM(vp = pair_make_request("Module-Failure-Message", NULL, T_OP_ADD));
 	if (request->module && (request->module[0] != '\0')) {
-		pairsprintf(vp, "%s: %s", request->module, p);
+		fr_pair_value_snprintf(vp, "%s: %s", request->module, p);
 	} else {
-		pairsprintf(vp, "%s", p);
+		fr_pair_value_snprintf(vp, "%s", p);
 	}
 	talloc_free(p);
 }

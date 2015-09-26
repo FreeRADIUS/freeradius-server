@@ -1,6 +1,7 @@
 usr/bin/rlm_ippool_tool
 usr/bin/smbencrypt
 usr/bin/radclient
+usr/bin/radeapclient
 usr/bin/radwho
 usr/bin/radsniff
 usr/bin/radlast

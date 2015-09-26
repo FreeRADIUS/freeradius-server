@@ -70,13 +70,12 @@
 #
 counter daily {
 	filename = ${db_dir}/db.daily
-	key = User-Name
-	count_attribute = Acct-Session-Time
+	key = &User-Name
+	count_attribute = &Acct-Session-Time
 	reset = daily
-	counter_name = Daily-Session-Time
-	check_name = Max-Daily-Session
-	reply_name = Session-Timeout
-	allowed_service_type = Framed-User
+	counter_name = &Daily-Session-Time
+	check_name = &control:Max-Daily-Session
+	reply_name = &reply:Session-Timeout
 	cache_size = 5000
 }
 

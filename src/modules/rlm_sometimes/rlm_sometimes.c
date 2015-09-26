@@ -36,8 +36,7 @@ typedef struct rlm_sometimes_t {
 	rlm_rcode_t	rcode;
 	uint32_t	start;
 	uint32_t	end;
-	char const	*key;
-	DICT_ATTR const	*da;
+	vp_tmpl_t	*key;
 } rlm_sometimes_t;
 
 /*
@@ -50,12 +49,11 @@ typedef struct rlm_sometimes_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "rcode", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_sometimes_t, rcode_str), "fail" },
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_ATTRIBUTE, rlm_sometimes_t, key), "User-Name" },
-	{ "start", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sometimes_t, start), "0" },
-	{ "end", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_sometimes_t, end), "127" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("rcode", PW_TYPE_STRING, rlm_sometimes_t, rcode_str), .dflt = "fail" },
+	{ FR_CONF_OFFSET("key", PW_TYPE_TMPL | PW_TYPE_ATTRIBUTE, rlm_sometimes_t, key), .dflt = "&User-Name", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("start", PW_TYPE_INTEGER, rlm_sometimes_t, start), .dflt = "0" },
+	{ FR_CONF_OFFSET("end", PW_TYPE_INTEGER, rlm_sometimes_t, end), .dflt = "127" },
+	CONF_PARSER_TERMINATOR
 };
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
@@ -71,21 +69,18 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	inst->da = dict_attrbyname(inst->key);
-	rad_assert(inst->da);
-
 	return 0;
 }
 
 /*
  *	A lie!  It always returns!
  */
-static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
+static rlm_rcode_t sometimes_return(void *instance, REQUEST *request, RADIUS_PACKET *packet, RADIUS_PACKET *reply)
 {
-	uint32_t hash;
-	uint32_t value;
+	uint32_t	hash;
+	uint32_t	value;
 	rlm_sometimes_t *inst = instance;
-	VALUE_PAIR *vp;
+	VALUE_PAIR	*vp;
 
 	/*
 	 *	Set it to NOOP and the module will always do nothing
@@ -95,7 +90,7 @@ static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet, RADIU
 	/*
 	 *	Hash based on the given key.  Usually User-Name.
 	 */
-	vp = pair_find_by_da(packet->vps, inst->da, TAG_ANY);
+	tmpl_find_vp(&vp, request, inst->key);
 	if (!vp) return RLM_MODULE_NOOP;
 
 	hash = fr_hash(&vp->data, vp->vp_length);
@@ -142,12 +137,12 @@ static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet, RADIU
 
 static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_packet(void *instance, REQUEST *request)
 {
-	return sometimes_return(instance, request->packet, request->reply);
+	return sometimes_return(instance, request, request->packet, request->reply);
 }
 
 static rlm_rcode_t CC_HINT(nonnull) mod_sometimes_reply(void *instance, REQUEST *request)
 {
-	return sometimes_return(instance, request->reply, NULL);
+	return sometimes_return(instance, request, request->reply, NULL);
 }
 
 #ifdef WITH_PROXY
@@ -155,43 +150,38 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(void *instance, REQUEST *reque
 {
 	if (!request->proxy) return RLM_MODULE_NOOP;
 
-	return sometimes_return(instance, request->proxy, request->proxy_reply);
+	return sometimes_return(instance, request, request->proxy, request->proxy_reply);
 }
 
 static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *request)
 {
 	if (!request->proxy_reply) return RLM_MODULE_NOOP;
 
-	return sometimes_return(instance, request->proxy_reply, NULL);
+	return sometimes_return(instance, request, request->proxy_reply, NULL);
 }
 #endif
 
 extern module_t rlm_sometimes;
 module_t rlm_sometimes = {
-	RLM_MODULE_INIT,
-	"sometimes",
-	RLM_TYPE_HUP_SAFE,   	/* needed for radmin */
-	sizeof(rlm_sometimes_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_sometimes_packet,	/* authentication */
-		mod_sometimes_packet,	/* authorization */
-		mod_sometimes_packet,	/* preaccounting */
-		mod_sometimes_packet,	/* accounting */
-		NULL,
+	.magic		= RLM_MODULE_INIT,
+	.name		= "sometimes",
+	.type		= RLM_TYPE_HUP_SAFE,   	/* needed for radmin */
+	.inst_size	= sizeof(rlm_sometimes_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_sometimes_packet,
+		[MOD_AUTHORIZE]		= mod_sometimes_packet,
+		[MOD_PREACCT]		= mod_sometimes_packet,
+		[MOD_ACCOUNTING]	= mod_sometimes_packet,
 #ifdef WITH_PROXY
-		mod_pre_proxy,		/* pre-proxy */
-		mod_post_proxy,		/* post-proxy */
-#else
-		NULL, NULL,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
-		mod_sometimes_reply	/* post-auth */
+		[MOD_POST_AUTH]		= mod_sometimes_reply,
 #ifdef WITH_COA
-		,
-		mod_sometimes_packet,	/* recv-coa */
-		mod_sometimes_reply	/* send-coa */
+		[MOD_RECV_COA]		= mod_sometimes_packet,
+		[MOD_SEND_COA]		= mod_sometimes_reply,
 #endif
 	},
 };

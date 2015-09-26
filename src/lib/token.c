@@ -6,8 +6,7 @@
  *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version. either
+ *   License as published by the Free Software Foundation; either
  *   version 2.1 of the License, or (at your option) any later version.
  *
  *   This library is distributed in the hope that it will be useful,
@@ -28,7 +27,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-const FR_NAME_NUMBER fr_tokens[] = {
+const FR_NAME_NUMBER fr_tokens_table[] = {
 	{ "=~", T_OP_REG_EQ,	}, /* order is important! */
 	{ "!~", T_OP_REG_NE,	},
 	{ "{",	T_LCBRACE,	},
@@ -54,6 +53,79 @@ const FR_NAME_NUMBER fr_tokens[] = {
 	{ NULL, 0,		},
 };
 
+
+/*
+ *  This is a hack, and has to be kept in sync with tokens.h
+ */
+char const *fr_tokens[] = {
+	"?",			/* T_INVALID */
+	"EOL",			/* T_EOL */
+	"{",
+	"}",
+	"(",
+	")",
+	",",
+	";",
+	"++",
+	"+=",
+	"-=",
+	":=",
+	"=",
+	"!=",
+	">=",
+	">",
+	"<=",
+	"<",
+	"=~",
+	"!~",
+	"=*",
+	"!*",
+	"==",
+	"#",
+	"<BARE-WORD>",
+	"<\"STRING\">",
+	"<'STRING'>",
+	"<`STRING`>"
+};
+
+
+/** Convert tokens back to a quoting character
+ *
+ * None string types convert to '?' to screw ups can be identified easily
+ */
+const char fr_token_quote[] = {
+	'?',		/* invalid token */
+	'?',		/* end of line */
+	'?',		/* { */
+	'?',		/* } */
+	'?',		/* ( */
+	'?',		/* ) 		 5 */
+	'?',		/* , */
+	'?',		/* ; */
+
+	'?',		/* ++ */
+	'?',		/* += */
+	'?',		/* -=  		10 */
+	'?',		/* := */
+	'?',		/* = */
+	'?',		/* != */
+	'?',		/* >= */
+	'?',		/* > 		15 */
+	'?',		/* <= */
+	'?',		/* < */
+	'?',		/* =~ */
+	'?',		/* !~ */
+	'?',		/* =* 		20 */
+	'?',		/* !* */
+	'?',		/* == */
+	'?',				/* # */
+	'\0',		/* bare word */
+	'"',		/* "foo" 	25 */
+	'\'',		/* 'foo' */
+	'`',		/* `foo` */
+	'?'
+};
+
 const bool fr_assignment_op[] = {
 	false,		/* invalid token */
 	false,		/* end of line */
@@ -70,14 +142,14 @@ const bool fr_assignment_op[] = {
 	true,		/* := */
 	true,		/* = */
 	false,		/* != */
-	true,		/* >= */
-	true,		/* > 		15 */
-	true,		/* <= */
-	true,		/* < */
+	false,		/* >= */
+	false,		/* > 		15 */
+	false,		/* <= */
+	false,		/* < */
 	false,		/* =~ */
 	false,		/* !~ */
 	false,		/* =* 		20 */
-	true,		/* !* */
+	false,		/* !* */
 	false,		/* == */
 	false,				/* # */
 	false,		/* bare word */
@@ -323,7 +395,7 @@ static FR_TOKEN getthing(char const **ptr, char *buf, int buflen, bool tok,
  */
 int getword(char const **ptr, char *buf, int buflen, bool unescape)
 {
-	return getthing(ptr, buf, buflen, false, fr_tokens, unescape) == T_EOL ? 0 : 1;
+	return getthing(ptr, buf, buflen, false, fr_tokens_table, unescape) == T_EOL ? 0 : 1;
 }
 
 
@@ -332,7 +404,7 @@ int getword(char const **ptr, char *buf, int buflen, bool unescape)
  */
 FR_TOKEN gettoken(char const **ptr, char *buf, int buflen, bool unescape)
 {
-	return getthing(ptr, buf, buflen, true, fr_tokens, unescape);
+	return getthing(ptr, buf, buflen, true, fr_tokens_table, unescape);
 }
 
 /*
@@ -343,7 +415,7 @@ FR_TOKEN getop(char const **ptr)
 	char op[3];
 	FR_TOKEN rcode;
 
-	rcode = getthing(ptr, op, sizeof(op), true, fr_tokens, false);
+	rcode = getthing(ptr, op, sizeof(op), true, fr_tokens_table, false);
 	if (!fr_assignment_op[rcode] && !fr_equality_op[rcode]) {
 		fr_strerror_printf("Expected operator");
 		return T_INVALID;
@@ -370,7 +442,7 @@ FR_TOKEN getstring(char const **ptr, char *buf, int buflen, bool unescape)
 		return gettoken(ptr, buf, buflen, unescape);
 	}
 
-	return getthing(ptr, buf, buflen, 0, fr_tokens, unescape);
+	return getthing(ptr, buf, buflen, 0, fr_tokens_table, unescape);
 }
 
 /*
@@ -447,5 +519,5 @@ char const *fr_int2str(FR_NAME_NUMBER const *table, int number,
 
 char const *fr_token_name(int token)
 {
-	return fr_int2str(fr_tokens, token, "???");
+	return fr_int2str(fr_tokens_table, token, "???");
 }

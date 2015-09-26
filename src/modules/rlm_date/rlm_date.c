@@ -35,22 +35,19 @@ typedef struct rlm_date_t {
 } rlm_date_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_date_t, fmt), "%b %e %Y %H:%M:%S %Z" },
-	{NULL, -1, 0, NULL, NULL}
+	{ FR_CONF_OFFSET("format", PW_TYPE_STRING, rlm_date_t, fmt), .dflt = "%b %e %Y %H:%M:%S %Z" },
+	CONF_PARSER_TERMINATOR
 };
 
 DIAG_OFF(format-nonliteral)
-static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *fmt, char **out, size_t outlen)
 {
 	rlm_date_t *inst = instance;
 	time_t date = 0;
 	struct tm tminfo;
 	VALUE_PAIR *vp;
 
-	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) {
-		*out = '\0';
-		return 0;
-	}
+	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
 	switch (vp->da->type) {
 	/*
@@ -71,7 +68,7 @@ static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *f
 			REDEBUG("Failed converting time string to localtime");
 			goto error;
 		}
-		return strftime(out, outlen, inst->fmt, &tminfo);
+		return strftime(*out, outlen, inst->fmt, &tminfo);
 
 	/*
 	 *	These are 'from' types, i.e. we'll convert the input string
@@ -89,19 +86,18 @@ static ssize_t xlat_date_convert(void *instance, REQUEST *request, char const *f
 			REDEBUG("Failed converting parsed time into unix time");
 
 		}
-		return snprintf(out, outlen, "%" PRIu64, (uint64_t) date);
+		return snprintf(*out, outlen, "%" PRIu64, (uint64_t) date);
 
 	default:
 		REDEBUG("Can't convert type %s into date", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
 	}
 
-	error:
-	*out = '\0';
+error:
 	return -1;
 }
 DIAG_ON(format-nonliteral)
 
-static int mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_date_t *inst = instance;
 
@@ -110,25 +106,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	xlat_register(inst->xlat_name, xlat_date_convert, NULL, inst);
+	xlat_register(inst->xlat_name, xlat_date_convert, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 
 	return 0;
 }
 
 extern module_t rlm_date;
 module_t rlm_date = {
-	RLM_MODULE_INIT,
-	"date",				/* Name */
-	0,   	/* type */
-	sizeof(rlm_date_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		NULL,			/* authorization */
-		NULL,			/* pre-accounting */
-		NULL			/* accounting */
-	},
+	.magic		= RLM_MODULE_INIT,
+	.name		= "date",
+	.inst_size	= sizeof(rlm_date_t),
+	.config		= module_config,
+	.bootstrap	= mod_bootstrap
 };
 

@@ -11,6 +11,7 @@ Build-Depends: debhelper (>= 7.4),
  libjson-c-dev | libjson0-dev,
  libkrb5-dev,
  libldap2-dev,
+ libhiredis-dev,
  libpam0g-dev,
  libpcap-dev,
  libperl-dev,
@@ -20,7 +21,9 @@ Build-Depends: debhelper (>= 7.4),
  libsasl2-dev,
  libsqlite3-dev,
  libssl-dev,
+ libsasl2-dev,
  libtalloc-dev,
+ libwbclient-dev,
  libyubikey-dev,
  python-dev
 Section: net
@@ -56,7 +59,7 @@ Description: FreeRADIUS common files
 
 Package: freeradius-config
 Architecture: any
-Depends: freeradius-common (>= 3), ${misc:Depends}
+Depends: freeradius-common (>= 3), ${misc:Depends}, make
 Breaks: freeradius-config
 Description: FreeRADIUS default config files
   This package should be used as a base for a site local packages
@@ -99,6 +102,13 @@ Description: FreeRADIUS shared library development files
  .
  This package contains the development headers and static library version.
 
+Package: freeradius-dhcp
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: DHCP module for FreeRADIUS server
+ The FreeRADIUS server can act as a DHCP server, and this module
+ is necessary for that.
+
 Package: freeradius-krb5
 Architecture: any
 Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
@@ -119,6 +129,13 @@ Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, $
 Description: REST module for FreeRADIUS server
  The FreeRADIUS server can make calls to remote web APIs, and this module
  is necessary for that.
+
+Package: freeradius-redis
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: redis module for FreeRADIUS server
+ The FreeRADIUS server can communicate with the redis K/V store. This package
+ installs both the rlm_redis module, and the rlm_cache_redis driver.
 
 Package: freeradius-postgresql
 Architecture: any

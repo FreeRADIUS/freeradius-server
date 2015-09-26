@@ -370,7 +370,7 @@ int main(void){
 }
 
 #else  /* TEST */
-struct passwd_instance {
+typedef struct rlm_passwd_t {
 	struct hashtable	*ht;
 	struct mypasswd		*pwdfmt;
 	char const		*filename;
@@ -384,22 +384,21 @@ struct passwd_instance {
 	uint32_t		listable;
 	DICT_ATTR const		*keyattr;
 	bool			ignore_empty;
-};
+} rlm_passwd_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, struct passwd_instance, filename), NULL },
-	{ "format", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, struct passwd_instance, format), NULL },
-	{ "delimiter", FR_CONF_OFFSET(PW_TYPE_STRING, struct passwd_instance, delimiter), ":" },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_passwd_t, filename) },
+	{ FR_CONF_OFFSET("format", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_passwd_t, format) },
+	{ FR_CONF_OFFSET("delimiter", PW_TYPE_STRING, rlm_passwd_t, delimiter), .dflt = ":" },
 
-	{ "ignore_nislike", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, ignore_nislike), "yes" },
+	{ FR_CONF_OFFSET("ignore_nislike", PW_TYPE_BOOLEAN, rlm_passwd_t, ignore_nislike), .dflt = "yes" },
 
-	{ "ignore_empty",  FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, ignore_empty), "yes" },
+	{ FR_CONF_OFFSET("ignore_empty", PW_TYPE_BOOLEAN, rlm_passwd_t, ignore_empty), .dflt = "yes" },
 
-	{ "allow_multiple_keys", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, struct passwd_instance, allow_multiple), "no" },
+	{ FR_CONF_OFFSET("allow_multiple_keys", PW_TYPE_BOOLEAN, rlm_passwd_t, allow_multiple), .dflt = "no" },
 
-	{ "hash_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, struct passwd_instance, hash_size), "100" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	{ FR_CONF_OFFSET("hash_size", PW_TYPE_INTEGER, rlm_passwd_t, hash_size), .dflt = "100" },
+	CONF_PARSER_TERMINATOR
 };
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
@@ -410,7 +409,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	size_t len;
 	int i;
 	DICT_ATTR const * da;
-	struct passwd_instance *inst = instance;
+	rlm_passwd_t *inst = instance;
 
 	rad_assert(inst->filename && *inst->filename);
 	rad_assert(inst->format && *inst->format);
@@ -503,7 +502,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 }
 
 static int mod_detach (void *instance) {
-#define inst ((struct passwd_instance *)instance)
+#define inst ((rlm_passwd_t *)instance)
 	if(inst->ht) {
 		release_ht(inst->ht);
 		inst->ht = NULL;
@@ -513,7 +512,7 @@ static int mod_detach (void *instance) {
 #undef inst
 }
 
-static void addresult (TALLOC_CTX *ctx, struct passwd_instance *inst, REQUEST *request,
+static void addresult (TALLOC_CTX *ctx, rlm_passwd_t *inst, REQUEST *request,
 		       VALUE_PAIR **vps, struct mypasswd * pw, char when, char const *listname)
 {
 	uint32_t i;
@@ -522,7 +521,7 @@ static void addresult (TALLOC_CTX *ctx, struct passwd_instance *inst, REQUEST *r
 	for (i = 0; i < inst->nfields; i++) {
 		if (inst->pwdfmt->field[i] && *inst->pwdfmt->field[i] && pw->field[i] && i != inst->keyfield  && inst->pwdfmt->listflag[i] == when) {
 			if ( !inst->ignore_empty || pw->field[i][0] != 0 ) { /* if value in key/value pair is not empty */
-				vp = pairmake(ctx, vps, inst->pwdfmt->field[i], pw->field[i], T_OP_EQ);
+				vp = fr_pair_make(ctx, vps, inst->pwdfmt->field[i], pw->field[i], T_OP_EQ);
 				if (vp) {
 					RDEBUG("Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
 				}
@@ -534,13 +533,13 @@ static void addresult (TALLOC_CTX *ctx, struct passwd_instance *inst, REQUEST *r
 
 static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *request)
 {
-#define inst ((struct passwd_instance *)instance)
+#define inst ((rlm_passwd_t *)instance)
 	char buffer[1024];
 	VALUE_PAIR *key, *i;
 	struct mypasswd * pw, *last_found;
 	vp_cursor_t cursor;
 
-	key = pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
+	key = fr_pair_find_by_da(request->packet->vps, inst->keyattr, TAG_ANY);
 	if (!key) {
 		return RLM_MODULE_NOTFOUND;
 	}
@@ -551,12 +550,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */
-		vp_prints_value(buffer, sizeof(buffer), i, 0);
+		fr_pair_value_snprint(buffer, sizeof(buffer), i, 0);
 		if (!(pw = get_pw_nam(buffer, inst->ht, &last_found)) ) {
 			continue;
 		}
 		do {
-			addresult(request, inst, request, &request->config_items, pw, 0, "config_items");
+			addresult(request, inst, request, &request->config, pw, 0, "config");
 			addresult(request->reply, inst, request, &request->reply->vps, pw, 1, "reply_items");
 			addresult(request->packet, inst, request, &request->packet->vps, pw, 2, "request_items");
 		} while ((pw = get_next(buffer, inst->ht, &last_found)));
@@ -573,25 +572,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_passwd_map(void *instance, REQUEST *requ
 
 extern module_t rlm_passwd;
 module_t rlm_passwd = {
-	RLM_MODULE_INIT,
-	"passwd",
-	RLM_TYPE_HUP_SAFE,   	/* type */
-	sizeof(struct passwd_instance),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		NULL,			/* authentication */
-		mod_passwd_map,		/* authorization */
-		NULL,			/* pre-accounting */
-		mod_passwd_map,		/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		mod_passwd_map	       	/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "passwd",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_passwd_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_passwd_map,
+		[MOD_ACCOUNTING]	= mod_passwd_map,
+		[MOD_POST_AUTH]		= mod_passwd_map,
+		[MOD_PRE_PROXY]		= mod_passwd_map,
+		[MOD_POST_PROXY]  	= mod_passwd_map,
 #ifdef WITH_COA
-		, mod_passwd_map,
-		mod_passwd_map
+		[MOD_RECV_COA]		= mod_passwd_map,
+		[MOD_SEND_COA]		= mod_passwd_map
 #endif
 	},
 };

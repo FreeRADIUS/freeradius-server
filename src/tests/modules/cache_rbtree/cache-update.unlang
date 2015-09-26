@@ -1,0 +1,138 @@
+#
+#  PRE: cache-logic
+#
+update {
+	&request:Tmp-String-0 := 'testkey'
+
+	# Reply attributes
+	&reply:Reply-Message := 'hello'
+	&reply:Reply-Message += 'goodbye'
+
+	&reply:Tmp-String-Tagged-0:1 := 'tagged1'
+	&reply:Tmp-String-Tagged-0:2 := 'tagged2'
+
+	# Request attributes
+	&Tmp-String-Tagged-0:1 := 'tagged1'
+	&Tmp-Integer-0 += 10
+	&Tmp-Integer-0 += 20
+	&Tmp-Integer-0 += 30
+}
+
+#
+#  Basic store and retrieve
+#
+update control {
+	&control:Tmp-String-1 := 'cache me'
+}
+
+cache_update
+if (!ok) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+# Merge
+cache_update
+if (updated) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+# session-state should now contain all the reply attributes
+if ("%{session-state:[#]}" == 4) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&session-state:Reply-Message[0] == 'hello') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&session-state:Reply-Message[1] == 'goodbye') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&session-state:Tmp-String-Tagged-0:1 == 'tagged1') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&session-state:Tmp-String-Tagged-0:2 == 'tagged2') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+# Tmp-String-1 should hold the result of the exec
+if (&Tmp-String-1 == 'echo test') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+# Literal values should be foo, rad, baz
+if ("%{Tmp-String-2[#]}" == 3) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&Tmp-String-2[0] == 'foo') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+debug_request
+
+if (&Tmp-String-2[1] == 'rab') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&Tmp-String-2[2] == 'baz') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+# Test some tag copying
+if (&Tmp-String-Tagged-0:10 == 'foo') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&Tmp-String-Tagged-0:11 == 'tagged1') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+# Clear out the reply list
+update {
+    &reply: !* ANY
+}

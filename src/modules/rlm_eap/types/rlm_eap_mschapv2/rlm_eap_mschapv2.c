@@ -32,23 +32,24 @@ RCSID("$Id$")
 typedef struct rlm_eap_mschapv2_t {
 	bool with_ntdomain_hack;
 	bool send_error;
+	char const *identity;
 } rlm_eap_mschapv2_t;
 
 static CONF_PARSER module_config[] = {
-	{ "with_ntdomain_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, with_ntdomain_hack), "no" },
+	{ FR_CONF_OFFSET("with_ntdomain_hack", PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, with_ntdomain_hack), .dflt = "no" },
 
-	{ "send_error", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, send_error), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("send_error", PW_TYPE_BOOLEAN, rlm_eap_mschapv2_t, send_error), .dflt = "no" },
+	{ FR_CONF_OFFSET("identity", PW_TYPE_STRING, rlm_eap_mschapv2_t, identity) },
+	CONF_PARSER_TERMINATOR
 };
 
 
 static void fix_mppe_keys(eap_handler_t *handler, mschapv2_opaque_t *data)
 {
-	pairfilter(data, &data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
-	pairfilter(data, &data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
-	pairfilter(data, &data->mppe_keys, &handler->request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
-	pairfilter(data, &data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_list_move_by_num(data, &data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_list_move_by_num(data, &data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_list_move_by_num(data, &data->mppe_keys, &handler->request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_list_move_by_num(data, &data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 }
 
 /*
@@ -68,6 +69,15 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+	if (inst->identity && (strlen(inst->identity) > 255)) {
+		cf_log_err_cs(cs, "identity is too long");
+		return -1;
+	}
+
+	if (!inst->identity) {
+		inst->identity = talloc_asprintf(inst, "freeradius-%s", RADIUSD_VERSION_STRING);
+	}
+
 	return 0;
 }
 
@@ -75,7 +85,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 /*
  *	Compose the response.
  */
-static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
+static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler, VALUE_PAIR *reply)
 {
 	uint8_t *ptr;
 	int16_t length;
@@ -103,11 +113,12 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 *  |                             Challenge...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |                             Name...
+		 *  |                             Server Name...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
-		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(handler->identity);
+		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(inst->identity);
 		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
+
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
@@ -131,7 +142,8 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *	Copy the Challenge, success, or error over.
 		 */
 		memcpy(ptr, reply->vp_octets, reply->vp_length);
-		memcpy((ptr + reply->vp_length), handler->identity, strlen(handler->identity));
+
+		memcpy((ptr + reply->vp_length), inst->identity, strlen(inst->identity));
 		break;
 
 	case PW_MSCHAP2_SUCCESS:
@@ -197,10 +209,12 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 }
 
 
+static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
+static int mod_session_init(void *instance, eap_handler_t *handler)
 {
 	int		i;
 	VALUE_PAIR	*challenge;
@@ -208,8 +222,9 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	REQUEST		*request = handler->request;
 	uint8_t 	*p;
 	bool		created_challenge = false;
+	rlm_eap_mschapv2_t *inst = instance;
 
-	challenge = pairfind(request->config_items, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
+	challenge = fr_pair_find_by_num(request->config, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
 	if (challenge && (challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("control:MS-CHAP-Challenge is incorrect length.  Ignoring it.");
 		challenge = NULL;
@@ -217,7 +232,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 
 	if (!challenge) {
 		created_challenge = true;
-		challenge = pairmake(handler, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
+		challenge = fr_pair_make(handler, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
 
 		/*
 		 *	Get a random challenge.
@@ -250,8 +265,8 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmschapv2_compose(handler, challenge);
-	if (created_challenge) pairfree(&challenge);
+	eapmschapv2_compose(inst, handler, challenge);
+	if (created_challenge) fr_pair_list_free(&challenge);
 
 #ifdef WITH_PROXY
 	/*
@@ -268,7 +283,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	 *	stored in 'handler->eap_ds', which will be given back
 	 *	to us...
 	 */
-	handler->stage = PROCESS;
+	handler->process = mod_process;
 
 	return 1;
 }
@@ -303,7 +318,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 		 *	Move the attribute, so it doesn't go into
 		 *	the reply.
 		 */
-		pairfilter(data, &response, &request->reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_list_move_by_num(data, &response, &request->reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		break;
 
 	default:
@@ -324,7 +339,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	 *	Done doing EAP proxy stuff.
 	 */
 	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-	eapmschapv2_compose(handler, response);
+	eapmschapv2_compose(NULL, handler, response);
 	data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
 	/*
@@ -339,14 +354,14 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	 *	access-accept e.g. vlan, etc. This lets the PEAP
 	 *	use_tunneled_reply code work
 	 */
-	data->reply = paircopy(data, request->reply->vps);
+	data->reply = fr_pair_list_copy(data, request->reply->vps);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,
 	 *	so we re-write the ACK to a challenge.  Yuck.
 	 */
 	request->reply->code = PW_CODE_ACCESS_CHALLENGE;
-	pairfree(&response);
+	fr_pair_list_free(&response);
 
 	return 1;
 }
@@ -366,8 +381,6 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 	VALUE_PAIR *challenge, *response, *name;
 	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
 	REQUEST *request = handler->request;
-
-	rad_assert(handler->stage == PROCESS);
 
 	data = (mschapv2_opaque_t *) handler->opaque;
 
@@ -401,11 +414,11 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 
 			RDEBUG2("Password change packet received");
 
-			challenge = pairmake_packet("MS-CHAP-Challenge", NULL, T_OP_EQ);
+			challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
 			if (!challenge) return 0;
-			pairmemcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
+			fr_pair_value_memcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
-			cpw = pairmake_packet("MS-CHAP2-CPW", NULL, T_OP_EQ);
+			cpw = pair_make_request("MS-CHAP2-CPW", NULL, T_OP_EQ);
 			cpw->vp_length = 68;
 
 			cpw->vp_octets = p = talloc_array(cpw, uint8_t, cpw->vp_length);
@@ -422,7 +435,7 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
 				int to_copy = 516 - copied;
 				if (to_copy > 243) to_copy = 243;
 
-				nt_enc = pairmake_packet("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
+				nt_enc = pair_make_request("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
 				nt_enc->vp_length = 4 + to_copy;
 
 				nt_enc->vp_octets = p = talloc_array(nt_enc, uint8_t, nt_enc->vp_length);
@@ -469,7 +482,7 @@ failure:
 		case PW_EAP_MSCHAPV2_SUCCESS:
 			eap_ds->request->code = PW_EAP_SUCCESS;
 
-			pairfilter(request->reply, &request->reply->vps, &data->mppe_keys, 0, 0, TAG_ANY);
+			fr_pair_list_move_by_num(request->reply, &request->reply->vps, &data->mppe_keys, 0, 0, TAG_ANY);
 			/* FALL-THROUGH */
 
 		case PW_EAP_MSCHAPV2_ACK:
@@ -479,7 +492,7 @@ failure:
 			 */
 			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-			pairfilter(request->reply, &request->reply->vps, &data->reply, 0, 0, TAG_ANY);
+			fr_pair_list_move_by_num(request->reply, &request->reply->vps, &data->reply, 0, 0, TAG_ANY);
 			return 1;
 		}
 		REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
@@ -547,11 +560,11 @@ failure:
 	 *	to pass to the 'mschap' module.  This is a little wonky,
 	 *	but it works.
 	 */
-	challenge = pairmake_packet("MS-CHAP-Challenge", NULL, T_OP_EQ);
+	challenge = pair_make_request("MS-CHAP-Challenge", NULL, T_OP_EQ);
 	if (!challenge) return 0;
-	pairmemcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
+	fr_pair_value_memcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
-	response = pairmake_packet("MS-CHAP2-Response", NULL, T_OP_EQ);
+	response = pair_make_request("MS-CHAP2-Response", NULL, T_OP_EQ);
 	if (!response) return 0;
 	response->vp_length = MSCHAPV2_RESPONSE_LEN;
 	response->vp_octets = p = talloc_array(response, uint8_t, response->vp_length);
@@ -560,7 +573,7 @@ failure:
 	p[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 	memcpy(p + 2, &eap_ds->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
 
-	name = pairmake_packet("MS-CHAP-User-Name", NULL, T_OP_EQ);
+	name = pair_make_request("MS-CHAP-User-Name", NULL, T_OP_EQ);
 	if (!name) return 0;
 
 	/*
@@ -617,7 +630,7 @@ packet_ready:
 		 *	the State attribute back, before passing
 		 *	the handler & request back into the tunnel.
 		 */
-		pairdelete(&request->packet->vps, PW_STATE, 0, TAG_ANY);
+		fr_pair_delete_by_num(&request->packet->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	Fix the User-Name when proxying, to strip off
@@ -626,7 +639,7 @@ packet_ready:
 		 *	in the user name, THEN discard the user name.
 		 */
 		if (inst->with_ntdomain_hack &&
-		    ((challenge = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY)) != NULL) &&
+		    ((challenge = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY)) != NULL) &&
 		    ((username = strchr(challenge->vp_strvalue, '\\')) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
@@ -634,7 +647,7 @@ packet_ready:
 			 *	FIXME: Put it into MS-CHAP-Domain?
 			 */
 			username++; /* skip the \\ */
-			pairstrcpy(challenge, username);
+			fr_pair_value_strcpy(challenge, username);
 		}
 
 		/*
@@ -649,7 +662,7 @@ packet_ready:
 	/*
 	 *	This is a wild & crazy hack.
 	 */
-	rcode = process_authenticate(PW_AUTHTYPE_MS_CHAP, request);
+	rcode = process_authenticate(PW_AUTH_TYPE_MS_CHAP, request);
 
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
@@ -663,10 +676,10 @@ packet_ready:
 	 */
 	response = NULL;
 	if (rcode == RLM_MODULE_OK) {
-		pairfilter(data, &response, &request->reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_list_move_by_num(data, &response, &request->reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
 	} else if (inst->send_error) {
-		pairfilter(data, &response, &request->reply->vps, PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_list_move_by_num(data, &response, &request->reply->vps, PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (response) {
 			int n,err,retry;
 			char buf[34];
@@ -708,8 +721,8 @@ packet_ready:
 	 *	Compose the response (whatever it is),
 	 *	and return it to the over-lying EAP module.
 	 */
-	eapmschapv2_compose(handler, response);
-	pairfree(&response);
+	eapmschapv2_compose(inst, handler, response);
+	fr_pair_list_free(&response);
 
 	return 1;
 }

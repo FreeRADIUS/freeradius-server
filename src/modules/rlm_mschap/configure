@@ -638,6 +638,9 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_winbind_include_dir
+with_winbind_lib_dir
+with_winbind_dir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1251,6 +1254,15 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-winbind-include-dir=DIR
+                          Directory where the winbind includes may be found
+  --with-winbind-lib-dir=DIR
+                          Directory where the winbind libraries may be found
+  --with-winbind-dir=DIR  Base directory where winbind is installed
+
 Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
@@ -1415,6 +1427,52 @@ fi
   as_fn_set_status $ac_retval
 
 } # ac_fn_c_try_cpp
+
+# ac_fn_c_try_link LINENO
+# -----------------------
+# Try to link conftest.$ac_ext, and return whether this succeeded.
+ac_fn_c_try_link ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  rm -f conftest.$ac_objext conftest$ac_exeext
+  if { { ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:${as_lineno-$LINENO}: $ac_try_echo\""
+$as_echo "$ac_try_echo"; } >&5
+  (eval "$ac_link") 2>conftest.err
+  ac_status=$?
+  if test -s conftest.err; then
+    grep -v '^ *+' conftest.err >conftest.er1
+    cat conftest.er1 >&5
+    mv -f conftest.er1 conftest.err
+  fi
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 test -x conftest$ac_exeext
+       }; then :
+  ac_retval=0
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_retval=1
+fi
+  # Delete the IPA/IPO (Inter Procedural Analysis/Optimization) information
+  # created by the PGI compiler (conftest_ipa8_conftest.oo), as it would
+  # interfere with the next link command; also delete a directory that is
+  # left behind by Apple's compiler.  We do this before executing the actions.
+  rm -rf conftest.dSYM conftest_ipa8_conftest.oo
+  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
+  as_fn_set_status $ac_retval
+
+} # ac_fn_c_try_link
 cat >config.log <<_ACEOF
 This file contains any messages produced by compilers while
 running configure, to aid debugging if configure makes a mistake.
@@ -1772,7 +1830,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 if test x$with_rlm_mschap != xno; then
 
-	ac_ext=c
+    ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2561,7 +2619,7 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-	ac_ext=c
+    ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2699,6 +2757,61 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
+
+        winbind_include_dir=
+
+# Check whether --with-winbind-include-dir was given.
+if test "${with_winbind_include_dir+set}" = set; then :
+  withval=$with_winbind_include_dir; case "$withval" in
+	    no)
+		as_fn_error $? "Need winbind-include-dir" "$LINENO" 5
+		;;
+	    yes)
+		;;
+	    *)
+		winbind_include_dir="$withval"
+		;;
+	esac
+fi
+
+
+        winbind_lib_dir=
+
+# Check whether --with-winbind-lib-dir was given.
+if test "${with_winbind_lib_dir+set}" = set; then :
+  withval=$with_winbind_lib_dir; case "$withval" in
+	    no)
+		as_fn_error $? "Need winbind-lib-dir" "$LINENO" 5
+		;;
+	    yes)
+		;;
+	    *)
+		winbind_lib_dir="$withval"
+		;;
+	esac
+fi
+
+
+
+# Check whether --with-winbind-dir was given.
+if test "${with_winbind_dir+set}" = set; then :
+  withval=$with_winbind_dir; case "$withval" in
+	    no)
+		as_fn_error $? "Need winbind-dir" "$LINENO" 5
+		;;
+	    yes)
+		;;
+	    *)
+		winbind_lib_dir="$withval/lib"
+		winbind_include_dir="$withval/include"
+		;;
+	esac
+fi
+
+
+
+
+    mschap_sources=
 
 
 
@@ -2926,17 +3039,444 @@ fi
 
 smart_prefix=
 
-	if test "x$ac_cv_header_membership_h" = "xyes"; then
+    if test "x$ac_cv_header_membership_h" = "xyes"; then
 
 $as_echo "#define HAVE_MEMBERSHIP_H 1" >>confdefs.h
 
-		mschap_sources="opendir.c"
-		mod_ldflags="-framework DirectoryService"
-	fi
-	targetname=rlm_mschap
+        mschap_sources="$mschap_sources opendir.c"
+        mod_ldflags="-framework DirectoryService"
+    fi
+
+    smart_try_dir="$winbind_include_dir"
+
+
+ac_safe=`echo "wbclient.h" | sed 'y%./+-%__pm%'`
+old_CPPFLAGS="$CPPFLAGS"
+smart_include=
+smart_include_dir="/usr/local/include /opt/include"
+
+_smart_try_dir=
+_smart_include_dir=
+
+for _prefix in $smart_prefix ""; do
+  for _dir in $smart_try_dir; do
+    _smart_try_dir="${_smart_try_dir} ${_dir}/${_prefix}"
+  done
+
+  for _dir in $smart_include_dir; do
+    _smart_include_dir="${_smart_include_dir} ${_dir}/${_prefix}"
+  done
+done
+
+if test "x$_smart_try_dir" != "x"; then
+  for try in $_smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wbclient.h in $try" >&5
+$as_echo_n "checking for wbclient.h in $try... " >&6; }
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+					#include <stdbool.h>
+		    #include <wbclient.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
 else
-	targetname=
-	echo \*\*\* module rlm_mschap is disabled.
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+  CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" = "x"; then
+  for _prefix in $smart_prefix; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ${_prefix}/wbclient.h" >&5
+$as_echo_n "checking for ${_prefix}/wbclient.h... " >&6; }
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+					#include <stdbool.h>
+		    #include <wbclient.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem ${_prefix}/"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+fi
+
+if test "x$smart_include" = "x"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wbclient.h" >&5
+$as_echo_n "checking for wbclient.h... " >&6; }
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+					#include <stdbool.h>
+		    #include <wbclient.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include=" "
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+
+if test "x$smart_include" = "x"; then
+
+  for prefix in $smart_prefix; do
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file="${_prefix}/${1}"
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+  done
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=wbclient.h
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$_smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "_smart_include_dir=\"\$_smart_include_dir $DIRS\""
+
+
+  for try in $_smart_include_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wbclient.h in $try" >&5
+$as_echo_n "checking for wbclient.h in $try... " >&6; }
+    CPPFLAGS="-isystem $try $old_CPPFLAGS"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <stdint.h>
+					#include <stdbool.h>
+		    #include <wbclient.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-isystem $try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+  CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_include" != "x"; then
+  eval "ac_cv_header_$ac_safe=yes"
+  CPPFLAGS="$smart_include $old_CPPFLAGS"
+  SMART_CPPFLAGS="$smart_include $SMART_CPPFLAGS"
+fi
+
+smart_prefix=
+
+    if test "x$ac_cv_header_wbclient_h" != "xyes"; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: wbclient.h not found. Use --with-winbind-include-dir=<path>." >&5
+$as_echo "$as_me: WARNING: wbclient.h not found. Use --with-winbind-include-dir=<path>." >&2;}
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&5
+$as_echo "$as_me: WARNING: silently building without support for direct authentication via winbind. requires: libwbclient" >&2;}
+    fi
+
+
+    smart_try_dir="$winbind_lib_dir"
+
+
+sm_lib_safe=`echo "wbclient" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "wbcCtxAuthenticateUserEx" | sed 'y%./+-%__p_%'`
+
+old_LIBS="$LIBS"
+old_CPPFLAGS="$CPPFLAGS"
+smart_lib=
+smart_ldflags=
+smart_lib_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wbcCtxAuthenticateUserEx in -lwbclient in $try" >&5
+$as_echo_n "checking for wbcCtxAuthenticateUserEx in -lwbclient in $try... " >&6; }
+    LIBS="-lwbclient $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char wbcCtxAuthenticateUserEx();
+int
+main ()
+{
+wbcCtxAuthenticateUserEx()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		 smart_lib="-lwbclient"
+		 smart_ldflags="-L$try -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wbcCtxAuthenticateUserEx in -lwbclient" >&5
+$as_echo_n "checking for wbcCtxAuthenticateUserEx in -lwbclient... " >&6; }
+  LIBS="-lwbclient $old_LIBS"
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char wbcCtxAuthenticateUserEx();
+int
+main ()
+{
+wbcCtxAuthenticateUserEx()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+	        smart_lib="-lwbclient"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  LIBS="$old_LIBS"
+fi
+
+if test "x$smart_lib" = "x"; then
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libwbclient${libltdl_cv_shlibext}
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=libwbclient.a
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_lib_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
+
+
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for wbcCtxAuthenticateUserEx in -lwbclient in $try" >&5
+$as_echo_n "checking for wbcCtxAuthenticateUserEx in -lwbclient in $try... " >&6; }
+    LIBS="-lwbclient $old_LIBS"
+    CPPFLAGS="-L$try -Wl,-rpath,$try $old_CPPFLAGS"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+extern char wbcCtxAuthenticateUserEx();
+int
+main ()
+{
+wbcCtxAuthenticateUserEx()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+
+		  smart_lib="-lwbclient"
+		  smart_ldflags="-L$try -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+  done
+  LIBS="$old_LIBS"
+  CPPFLAGS="$old_CPPFLAGS"
+fi
+
+if test "x$smart_lib" != "x"; then
+  eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
+  LIBS="$smart_ldflags $smart_lib $old_LIBS"
+  SMART_LIBS="$smart_ldflags $smart_lib $SMART_LIBS"
+fi
+
+    if test "x$ac_cv_lib_wbclient_wbcCtxAuthenticateUserEx" != "xyes"; then
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: winbind libraries not found. Use --with-winbind-lib-dir=<path>." >&5
+$as_echo "$as_me: WARNING: winbind libraries not found. Use --with-winbind-lib-dir=<path>." >&2;}
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&5
+$as_echo "$as_me: WARNING: Samba must be version 4.2.1 or higher to use this feature." >&2;}
+    elif test "x$ac_cv_header_wbclient_h" = "xyes"; then
+      mschap_sources="$mschap_sources auth_wbclient.c"
+
+$as_echo "#define WITH_AUTH_WINBIND 1" >>confdefs.h
+
+    fi
+
+    targetname=rlm_mschap
+else
+    targetname=
+    echo \*\*\* module rlm_mschap is disabled.
 fi
 
 if test x"$fail" != x""; then
@@ -2951,6 +3491,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_mschap requires: $fail." >&2;};
 	fi
 fi
 
+mod_ldflags="$mod_ldflags $SMART_LIBS"
+mod_cflags="$SMART_CPPFLAGS"
 
 
 

@@ -66,6 +66,7 @@ name = radiusd
 #  Location of config and logfiles.
 confdir = ${raddbdir}
 modconfdir = ${confdir}/mods-config
+modenableddir = ${confdir}/mods-enabled
 certdir = ${confdir}/certs
 cadir   = ${confdir}/certs
 run_dir = ${localstatedir}/run/${name}
@@ -208,7 +209,7 @@ cleanup_delay = 5
 #
 #  Useful range of values: 256 to infinity
 #
-max_requests = 1024
+max_requests = 16384
 
 #  hostname_lookups: Log the names of clients or just their IP addresses
 #  e.g., www.freeradius.org (on) or 206.47.27.232 (off).

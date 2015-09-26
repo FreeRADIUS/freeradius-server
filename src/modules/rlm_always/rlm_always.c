@@ -46,11 +46,10 @@ typedef struct rlm_always_t {
  *	A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER module_config[] = {
-	{ "rcode", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_always_t, rcode_str), "fail" },
-	{ "simulcount", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_always_t, simulcount), "0" },
-	{ "mpp", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_always_t, mpp), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("rcode", PW_TYPE_STRING, rlm_always_t, rcode_str), .dflt = "fail" },
+	{ FR_CONF_OFFSET("simulcount", PW_TYPE_INTEGER, rlm_always_t, simulcount), .dflt = "0" },
+	{ FR_CONF_OFFSET("mpp", PW_TYPE_BOOLEAN, rlm_always_t, mpp), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
 };
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
@@ -126,30 +125,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_checksimul(void *instance, REQUEST *requ
 
 extern module_t rlm_always;
 module_t rlm_always = {
-	RLM_MODULE_INIT,
-	"always",
-	RLM_TYPE_HUP_SAFE,	   	/* needed for radmin */
-	sizeof(rlm_always_t),		/* config size */
-	module_config,			/* configuration */
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_always_return,		/* authentication */
-		mod_always_return,		/* authorization */
-		mod_always_return,		/* preaccounting */
-		mod_always_return,		/* accounting */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "always",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_always_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_always_return,
+		[MOD_AUTHORIZE]		= mod_always_return,
+		[MOD_PREACCT]		= mod_always_return,
+		[MOD_ACCOUNTING]	= mod_always_return,
 #ifdef WITH_SESSION_MGMT
-		mod_checksimul,	/* checksimul */
-#else
-		NULL,
+		[MOD_SESSION]		= mod_checksimul,
 #endif
-		mod_always_return,	       	/* pre-proxy */
-		mod_always_return,		/* post-proxy */
-		mod_always_return		/* post-auth */
+		[MOD_PRE_PROXY]		= mod_always_return,
+		[MOD_POST_PROXY]	= mod_always_return,
+		[MOD_POST_AUTH]		= mod_always_return,
 #ifdef WITH_COA
-		,
-		mod_always_return,		/* recv-coa */
-		mod_always_return		/* send-coa */
+		[MOD_RECV_COA]		= mod_always_return,
+		[MOD_SEND_COA]		= mod_always_return
 #endif
 	},
 };

@@ -33,6 +33,20 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+#if 0
+static void map_dump(REQUEST *request, vp_map_t const *map)
+{
+	RDEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
+	       fr_int2str(tmpl_names, map->lhs->type, "???"),
+	       fr_int2str(tmpl_names, map->rhs->type, "???"));
+
+	if (map->rhs) {
+		RDEBUG(">>> MAP NAMES %s %s", map->lhs->name, map->rhs->name);
+	}
+}
+#endif
+
+
 /** re-parse a map where the lhs is an unknown attribute.
  *
  *
@@ -40,11 +54,13 @@ RCSID("$Id$")
  * @param rhs_type quotation type around rhs.
  * @param rhs string to re-parse.
  */
-bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs)
+bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 {
 	size_t len;
 	ssize_t rlen;
 	uint8_t *ptr;
+	char const *p;
+	pair_lists_t list;
 
 	DICT_ATTR const *da;
 	VALUE_PAIR *vp;
@@ -92,7 +108,7 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 
 	if ((size_t) rlen < len) {
 	free_vp:
-		pairfree(&vp);
+		fr_pair_list_free(&vp);
 		return false;
 	}
 
@@ -105,36 +121,62 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
 	 *	Set the RHS to the PARSED name, not the crap octet
 	 *	string which was input.
 	 */
-	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, NULL, 0);
+	map->rhs = tmpl_alloc(map, TMPL_TYPE_DATA, NULL, 0, T_INVALID);
 	if (!map->rhs) goto free_vp;
 
 	map->rhs->tmpl_data_type = da->type;
 	map->rhs->tmpl_data_length = vp->vp_length;
 	if (vp->da->flags.is_pointer) {
-		map->rhs->tmpl_data_value.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->vp_length);
+		if (vp->da->type == PW_TYPE_STRING) {
+			map->rhs->tmpl_data_value.ptr = talloc_bstrndup(map->rhs, vp->data.ptr, vp->vp_length);
+			map->rhs->quote = T_SINGLE_QUOTED_STRING;
+		} else {
+			map->rhs->tmpl_data_value.ptr = talloc_memdup(map->rhs, vp->data.ptr, vp->vp_length);
+			map->rhs->quote = T_BARE_WORD;
+		}
 	} else {
 		memcpy(&map->rhs->tmpl_data_value, &vp->data, sizeof(map->rhs->tmpl_data_value));
+		map->rhs->quote = T_BARE_WORD;
 	}
-	map->rhs->name = vp_aprints_value(map->rhs, vp, '"');
+	map->rhs->name = fr_pair_value_asprint(map->rhs, vp, fr_token_quote[map->rhs->quote]);
+	map->rhs->len = talloc_array_length(map->rhs->name) - 1;
 
 	/*
 	 *	Set the LHS to the REAL attribute name.
 	 */
-	vpt = tmpl_alloc(map, TMPL_TYPE_ATTR, map->lhs->tmpl_da->name, -1);
+	vpt = tmpl_alloc(map, TMPL_TYPE_ATTR, map->lhs->tmpl_da->name, -1, T_BARE_WORD);
 	memcpy(&vpt->data.attribute, &map->lhs->data.attribute, sizeof(vpt->data.attribute));
 	vpt->tmpl_da = da;
+
+	/*
+	 *	Be sure to keep the "&control:" or "control:" prefix.
+	 *	If it's there, we re-generate it from whatever was in
+	 *	the original name, including the '&'.
+	 */
+	p = map->lhs->name;
+	if (*p == '&') p++;
+	len = radius_list_name(&list, p, PAIR_LIST_UNKNOWN);
+
+	if (list != PAIR_LIST_UNKNOWN) {
+		rad_const_free(vpt->name);
+
+		vpt->name = talloc_asprintf(vpt, "%.*s:%s",
+					    (int) len, map->lhs->name,
+					    map->lhs->tmpl_da->name);
+		vpt->len = strlen(vpt->name);
+	}
 
 	talloc_free(map->lhs);
 	map->lhs = vpt;
 
-	pairfree(&vp);
+	fr_pair_list_free(&vp);
 
 	VERIFY_MAP(map);
 
 	return true;
 }
 
-/** Convert CONFIG_PAIR (which may contain refs) to value_pair_map_t.
+/** Convert CONFIG_PAIR (which may contain refs) to vp_map_t.
  *
  * Treats the left operand as an attribute reference
  * @verbatim<request>.<list>.<attribute>@endverbatim
@@ -146,7 +188,7 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
  * Return must be freed with talloc_free
  *
  * @param[in] ctx for talloc.
- * @param[in] out Where to write the pointer to the new value_pair_map_struct.
+ * @param[in] out Where to write the pointer to the new #vp_map_t.
  * @param[in] cp to convert to map.
  * @param[in] dst_request_def The default request to insert unqualified
  *	attributes into.
@@ -156,13 +198,15 @@ bool map_cast_from_hex(value_pair_map_t *map, FR_TOKEN rhs_type, char const *rhs
  *	references in.
  * @param[in] src_list_def The default list to resolve unqualified attributes
  *	in.
- * @return value_pair_map_t if successful or NULL on error.
+ * @return
+ *	- #vp_map_t if successful.
+ *	- NULL on error.
  */
-int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
+int map_afrom_cp(TALLOC_CTX *ctx, vp_map_t **out, CONF_PAIR *cp,
 		 request_refs_t dst_request_def, pair_lists_t dst_list_def,
 		 request_refs_t src_request_def, pair_lists_t src_list_def)
 {
-	value_pair_map_t *map;
+	vp_map_t *map;
 	char const *attr, *value;
 	ssize_t slen;
 	FR_TOKEN type;
@@ -171,7 +215,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 
 	if (!cp) return -1;
 
-	map = talloc_zero(ctx, value_pair_map_t);
+	map = talloc_zero(ctx, vp_map_t);
 	map->op = cf_pair_operator(cp);
 	map->ci = cf_pair_to_item(cp);
 
@@ -219,6 +263,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 				      map->lhs->name, fr_strerror());
 			goto error;
 		}
+
 		break;
 	}
 
@@ -227,7 +272,7 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	 */
 	type = cf_pair_value_type(cp);
 
-	if ((type == T_BARE_WORD) && (value[0] == '0') && (tolower((int)value[1] == 'x')) &&
+	if ((type == T_BARE_WORD) && (value[0] == '0') && (tolower((int)value[1]) == 'x') &&
 		map_cast_from_hex(map, type, value)) {
 		/* do nothing */
 	} else {
@@ -240,6 +285,16 @@ int map_afrom_cp(TALLOC_CTX *ctx, value_pair_map_t **out, CONF_PAIR *cp,
 	}
 	if (!map->rhs) {
 		cf_log_err_cp(cp, "%s", fr_strerror());
+		goto error;
+	}
+
+	/*
+	 *	We cannot assign a count to an attribute.  That must
+	 *	be done in an xlat.
+	 */
+	if ((map->rhs->type == TMPL_TYPE_ATTR) &&
+	    (map->rhs->tmpl_num == NUM_COUNT)) {
+		cf_log_err_cp(cp, "Cannot assign from a count");
 		goto error;
 	}
 
@@ -267,9 +322,11 @@ error:
  * @param[in] validate map using this callback (may be NULL).
  * @param[in] ctx to pass to callback.
  * @param[in] max number of mappings to process.
- * @return -1 on error, else 0.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
+int map_afrom_cs(vp_map_t **out, CONF_SECTION *cs,
 		 pair_lists_t dst_list_def, pair_lists_t src_list_def,
 		 map_validate_t validate, void *ctx,
 		 unsigned int max)
@@ -282,7 +339,7 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 	CONF_PAIR *cp;
 
 	unsigned int total = 0;
-	value_pair_map_t **tail, *map;
+	vp_map_t **tail, *map;
 	TALLOC_CTX *parent;
 
 	*out = NULL;
@@ -298,8 +355,11 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 
 	ci = cf_section_to_item(cs);
 
+	/*
+	 *	Check the destination list for "update" sections.
+	 */
 	cs_list = p = cf_section_name2(cs);
-	if (cs_list) {
+	if (cs_list && (strcmp(cf_section_name1(cs), "update") == 0)) {
 		p += radius_request_name(&request_def, p, REQUEST_CURRENT);
 		if (request_def == REQUEST_UNKNOWN) {
 			cf_log_err(ci, "Default request specified in mapping section is invalid");
@@ -319,7 +379,9 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 	     ci = cf_item_find_next(cs, ci)) {
 		if (total++ == max) {
 			cf_log_err(ci, "Map size exceeded");
-			goto error;
+		error:
+			TALLOC_FREE(*out);
+			return -1;
 		}
 
 		if (!cf_item_is_pair(ci)) {
@@ -344,13 +406,10 @@ int map_afrom_cs(value_pair_map_t **out, CONF_SECTION *cs,
 	}
 
 	return 0;
-error:
-	TALLOC_FREE(*out);
-	return -1;
+
 }
 
-
-/** Convert strings to value_pair_map_t
+/** Convert strings to #vp_map_t
  *
  * Treatment of operands depends on quotation, barewords are treated
  * as attribute references, double quoted values are treated as
@@ -366,17 +425,13 @@ error:
  * @param[in] op the operation to perform
  * @param[in] rhs of the operation
  * @param[in] rhs_type type of the RHS string
- * @param[in] dst_request_def The default request to insert unqualified
- *	attributes into.
- * @param[in] dst_list_def The default list to insert unqualified attributes
- *	into.
- * @param[in] src_request_def The default request to resolve attribute
- *	references in.
- * @param[in] src_list_def The default list to resolve unqualified attributes
- *	in.
- * @return value_pair_map_t if successful or NULL on error.
+ * @param[in] dst_request_def The default request to insert unqualified attributes into.
+ * @param[in] dst_list_def The default list to insert unqualified attributes into.
+ * @param[in] src_request_def The default request to resolve attribute references in.
+ * @param[in] src_list_def The default list to resolve unqualified attributes in.
+ * @return #vp_map_t if successful or NULL on error.
  */
-int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, FR_TOKEN lhs_type,
+int map_afrom_fields(TALLOC_CTX *ctx, vp_map_t **out, char const *lhs, FR_TOKEN lhs_type,
 		     FR_TOKEN op, char const *rhs, FR_TOKEN rhs_type,
 		     request_refs_t dst_request_def,
 		     pair_lists_t dst_list_def,
@@ -384,9 +439,9 @@ int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, F
 		     pair_lists_t src_list_def)
 {
 	ssize_t slen;
-	value_pair_map_t *map;
+	vp_map_t *map;
 
-	map = talloc_zero(ctx, value_pair_map_t);
+	map = talloc_zero(ctx, vp_map_t);
 
 	slen = tmpl_afrom_str(map, &map->lhs, lhs, strlen(lhs), lhs_type, dst_request_def, dst_list_def, true);
 	if (slen < 0) {
@@ -416,7 +471,7 @@ int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, F
 /** Convert a value pair string to valuepair map
  *
  * Takes a valuepair string with list and request qualifiers and converts it into a
- * value_pair_map_t.
+ * #vp_map_t.
  *
  * @param ctx where to allocate the map.
  * @param out Where to write the new map (must be freed with talloc_free()).
@@ -425,9 +480,11 @@ int map_afrom_fields(TALLOC_CTX *ctx, value_pair_map_t **out, char const *lhs, F
  * @param dst_list_def to use if attribute isn't qualified.
  * @param src_request_def to use if attribute isn't qualified.
  * @param src_list_def to use if attribute isn't qualified.
- * @return 0 on success, < 0 on error.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on error.
  */
-int map_afrom_attr_str(TALLOC_CTX *ctx, value_pair_map_t **out, char const *vp_str,
+int map_afrom_attr_str(TALLOC_CTX *ctx, vp_map_t **out, char const *vp_str,
 		       request_refs_t dst_request_def, pair_lists_t dst_list_def,
 		       request_refs_t src_request_def, pair_lists_t src_list_def)
 {
@@ -435,7 +492,7 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, value_pair_map_t **out, char const *vp_s
 	FR_TOKEN quote;
 
 	VALUE_PAIR_RAW raw;
-	value_pair_map_t *map = NULL;
+	vp_map_t *map = NULL;
 
 	quote = gettoken(&p, raw.l_opand, sizeof(raw.l_opand), false);
 	switch (quote) {
@@ -474,17 +531,141 @@ int map_afrom_attr_str(TALLOC_CTX *ctx, value_pair_map_t **out, char const *vp_s
 	return 0;
 }
 
+/** Compare map where LHS is #TMPL_TYPE_ATTR
+ *
+ * Compares maps by lhs->tmpl_da, lhs->tmpl_tag, lhs->tmpl_num
+ *
+ * @note both map->lhs must be #TMPL_TYPE_ATTR.
+ *
+ * @param a first map.
+ * @param b second map.
+ */
+int8_t map_cmp_by_lhs_attr(void const *a, void const *b)
+{
+	vp_tmpl_t const *my_a = ((vp_map_t const *)a)->lhs;
+	vp_tmpl_t const *my_b = ((vp_map_t const *)b)->lhs;
+
+	VERIFY_TMPL(my_a);
+	VERIFY_TMPL(my_b);
+
+	uint8_t cmp;
+
+	rad_assert(my_a->type == TMPL_TYPE_ATTR);
+	rad_assert(my_b->type == TMPL_TYPE_ATTR);
+
+	cmp = fr_pointer_cmp(my_a->tmpl_da, my_b->tmpl_da);
+	if (cmp != 0) return cmp;
+
+	if (my_a->tmpl_tag < my_b->tmpl_tag) return -1;
+
+	if (my_a->tmpl_tag > my_b->tmpl_tag) return 1;
+
+	if (my_a->tmpl_num < my_b->tmpl_num) return -1;
+
+	if (my_a->tmpl_num > my_b->tmpl_num) return 1;
+
+	return 0;
+}
+
+static void map_sort_split(vp_map_t *source, vp_map_t **front, vp_map_t **back)
+{
+	vp_map_t *fast;
+	vp_map_t *slow;
+
+	/*
+	 *	Stopping condition - no more elements left to split
+	 */
+	if (!source || !source->next) {
+		*front = source;
+		*back = NULL;
+
+		return;
+	}
+
+	/*
+	 *	Fast advances twice as fast as slow, so when it gets to the end,
+	 *	slow will point to the middle of the linked list.
+	 */
+	slow = source;
+	fast = source->next;
+
+	while (fast) {
+		fast = fast->next;
+		if (fast) {
+			slow = slow->next;
+			fast = fast->next;
+		}
+	}
+
+	*front = source;
+	*back = slow->next;
+	slow->next = NULL;
+}
+
+static vp_map_t *map_sort_merge(vp_map_t *a, vp_map_t *b, fr_cmp_t cmp)
+{
+	vp_map_t *result = NULL;
+
+	if (!a) return b;
+	if (!b) return a;
+
+	/*
+	 *	Compare things in the maps
+	 */
+	if (cmp(a, b) <= 0) {
+		result = a;
+		result->next = map_sort_merge(a->next, b, cmp);
+	} else {
+		result = b;
+		result->next = map_sort_merge(a, b->next, cmp);
+	}
+
+	return result;
+}
+
+/** Sort a linked list of #vp_map_t using merge sort
+ *
+ * @param[in,out] maps List of #vp_map_t to sort.
+ * @param[in] cmp to sort with
+ */
+void map_sort(vp_map_t **maps, fr_cmp_t cmp)
+{
+	vp_map_t *head = *maps;
+	vp_map_t *a;
+	vp_map_t *b;
+
+	/*
+	 *	If there's 0-1 elements it must already be sorted.
+	 */
+	if (!head || !head->next) {
+		return;
+	}
+
+	map_sort_split(head, &a, &b);	/* Split into sublists */
+	map_sort(&a, cmp);		/* Traverse left */
+	map_sort(&b, cmp);		/* Traverse right */
+
+	/*
+	 *	merge the two sorted lists together
+	 */
+	*maps = map_sort_merge(a, b, cmp);
+}
+
 /** Process map which has exec as a src
  *
  * Evaluate maps which specify exec as a src. This may be used by various sorts of update sections, and so
  * has been broken out into it's own function.
  *
- * @param[out] out Where to write the VALUE_PAIR(s).
+ * @param[in,out] ctx to allocate new #VALUE_PAIR (s) in.
+ * @param[out] out Where to write the #VALUE_PAIR (s).
  * @param[in] request structure (used only for talloc).
- * @param[in] map the map. The LHS (dst) must be TMPL_TYPE_ATTR or TMPL_TYPE_LIST. The RHS (src) must be TMPL_TYPE_EXEC.
- * @return -1 on failure, 0 on success.
+ * @param[in] map the map. The LHS (dst) must be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
+ *	The RHS (src) must be #TMPL_TYPE_EXEC.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map)
+static int map_exec_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map)
 {
 	int result;
 	char *expanded = NULL;
@@ -508,9 +689,10 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t c
 	 *	Automagically switch output type depending on our destination
 	 *	If dst is a list, then we create attributes from the output of the program
 	 *	if dst is an attribute, then we create an attribute of that type and then
-	 *	call pairparsevalue on the output of the script.
+	 *	call fr_pair_value_from_str on the output of the script.
 	 */
-	result = radius_exec_program(answer, sizeof(answer), (map->lhs->type == TMPL_TYPE_LIST) ? &output_pairs : NULL,
+	result = radius_exec_program(ctx, answer, sizeof(answer),
+				     (map->lhs->type == TMPL_TYPE_LIST) ? &output_pairs : NULL,
 				     request, map->rhs->name, input_pairs ? *input_pairs : NULL,
 				     true, true, EXEC_TIMEOUT);
 	talloc_free(expanded);
@@ -532,11 +714,12 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t c
 	{
 		VALUE_PAIR *vp;
 
-		vp = pairalloc(request, map->lhs->tmpl_da);
+		vp = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!vp) return -1;
 		vp->op = map->op;
-		if (pairparsevalue(vp, answer, -1) < 0) {
-			pairfree(&vp);
+		vp->tag = map->lhs->tmpl_tag;
+		if (fr_pair_value_from_str(vp, answer, -1) < 0) {
+			fr_pair_list_free(&vp);
 			return -2;
 		}
 		*out = vp;
@@ -551,18 +734,20 @@ static int map_exec_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t c
 	return -1;
 }
 
-/** Convert a map to a VALUE_PAIR.
+/** Convert a map to a #VALUE_PAIR
  *
- * @param[out] out Where to write the VALUE_PAIR(s), which may be NULL if not found
- * @param[in] request structure (used only for talloc)
- * @param[in] map the map. The LHS (dst) has to be TMPL_TYPE_ATTR or TMPL_TYPE_LIST.
- * @param[in] ctx unused
- * @return 0 on success, -1 on failure
+ * @param[in,out] ctx to allocate #VALUE_PAIR (s) in.
+ * @param[out] out Where to write the #VALUE_PAIR (s), which may be NULL if not found
+ * @param[in] request The current request.
+ * @param[in] map the map. The LHS (dst) has to be #TMPL_TYPE_ATTR or #TMPL_TYPE_LIST.
+ * @param[in] uctx unused.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, UNUSED void *ctx)
+int map_to_vp(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, UNUSED void *uctx)
 {
 	int rcode = 0;
-	ssize_t len;
 	VALUE_PAIR *vp = NULL, *new, *found = NULL;
 	REQUEST *context = request;
 	vp_cursor_t cursor;
@@ -595,7 +780,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		}
 		if (!from) return 0;
 
-		found = paircopy(request, *from);
+		found = fr_pair_list_copy(ctx, *from);
 
 		/*
 		 *	List to list copy is empty if the src list has no attributes.
@@ -622,7 +807,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 		rad_assert(map->rhs->tmpl_xlat != NULL);
 
-		new = pairalloc(request, map->lhs->tmpl_da);
+		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
 		str = NULL;
@@ -640,13 +825,14 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		RDEBUG2("EXPAND %s", map->rhs->name);
 		RDEBUG2("   --> %s", str);
 
-		rcode = pairparsevalue(new, str, -1);
+		rcode = fr_pair_value_from_str(new, str, -1);
 		talloc_free(str);
 		if (rcode < 0) {
-			pairfree(&new);
+			fr_pair_list_free(&new);
 			goto error;
 		}
 		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 		break;
 
@@ -654,7 +840,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 
-		new = pairalloc(request, map->lhs->tmpl_da);
+		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
 		str = NULL;
@@ -664,28 +850,30 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 			goto error;
 		}
 
-		rcode = pairparsevalue(new, str, -1);
+		rcode = fr_pair_value_from_str(new, str, -1);
 		talloc_free(str);
 		if (rcode < 0) {
-			pairfree(&new);
+			fr_pair_list_free(&new);
 			goto error;
 		}
 		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 		break;
 
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 		rad_assert(map->lhs->tmpl_da);	/* We need to know which attribute to create */
 
-		new = pairalloc(request, map->lhs->tmpl_da);
+		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		if (pairparsevalue(new, map->rhs->name, -1) < 0) {
+		if (fr_pair_value_from_str(new, map->rhs->name, -1) < 0) {
 			rcode = 0;
 			goto error;
 		}
 		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 		break;
 
@@ -699,7 +887,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		/*
 		 * @todo should log error, and return -1 for v3.1 (causes update to fail)
 		 */
-		if (tmpl_copy_vps(request, &found, request, map->rhs) < 0) return 0;
+		if (tmpl_copy_vps(ctx, &found, request, map->rhs) < 0) return 0;
 
 		vp = fr_cursor_init(&from, &found);
 
@@ -713,19 +901,16 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 
 			(void) fr_cursor_init(&to, out);
 			for (; vp; vp = fr_cursor_next(&from)) {
-				new = pairalloc(request, map->lhs->tmpl_da);
+				new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 				if (!new) return -1;
 
-				len = value_data_cast(new, &new->data, new->da->type, new->da,
-						      vp->da->type, vp->da, &vp->data, vp->vp_length);
-				if (len < 0) {
+				if (value_data_cast(new, &new->data, new->da->type, new->da,
+						    vp->da->type, vp->da, &vp->data) < 0) {
 					REDEBUG("Attribute conversion failed: %s", fr_strerror());
-					pairfree(&found);
-					pairfree(&new);
+					fr_pair_list_free(&found);
+					fr_pair_list_free(&new);
 					return -1;
 				}
-
-				new->vp_length = len;
 				vp = fr_cursor_remove(&from);
 				talloc_free(vp);
 
@@ -734,6 +919,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 				}
 
 				new->op = map->op;
+				new->tag = map->lhs->tmpl_tag;
 				fr_cursor_insert(&to, new);
 			}
 			return 0;
@@ -746,6 +932,7 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 		for (; vp; vp = fr_cursor_next(&from)) {
 			vp->da = map->lhs->tmpl_da;
 			vp->op = map->op;
+			vp->tag = map->lhs->tmpl_tag;
 		}
 		*out = found;
 	}
@@ -754,17 +941,25 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 	case TMPL_TYPE_DATA:
 		rad_assert(map->lhs->tmpl_da);
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
-		rad_assert(map->lhs->tmpl_da->type == map->rhs->tmpl_data_type);
 
-		new = pairalloc(request, map->lhs->tmpl_da);
+		new = fr_pair_afrom_da(ctx, map->lhs->tmpl_da);
 		if (!new) return -1;
 
-		len = value_data_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value,
-				      map->rhs->tmpl_data_length);
-		if (len < 0) goto error;
-
-		new->vp_length = len;
+		if (map->lhs->tmpl_da->type == map->rhs->tmpl_data_type) {
+			if (value_data_copy(new, &new->data, new->da->type, &map->rhs->tmpl_data_value) < 0) {
+				rcode = -1;
+				goto error;
+			}
+		} else {
+			if (value_data_cast(new, &new->data, new->da->type, new->da, map->rhs->tmpl_data_type,
+					    NULL, &map->rhs->tmpl_data_value) < 0) {
+				REDEBUG("Implicit cast failed: %s", fr_strerror());
+				rcode = -1;
+				goto error;
+			}
+		}
 		new->op = map->op;
+		new->tag = map->lhs->tmpl_tag;
 		*out = new;
 
 		VERIFY_MAP(map);
@@ -778,13 +973,13 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 	 *	exec string is xlat expanded and arguments are shell escaped.
 	 */
 	case TMPL_TYPE_EXEC:
-		return map_exec_to_vp(out, request, map);
+		return map_exec_to_vp(ctx, out, request, map);
 
 	default:
 		rad_assert(0);	/* Should have been caught at parse time */
 
 	error:
-		pairfree(&vp);
+		fr_pair_list_free(&vp);
 		return rcode;
 	}
 
@@ -794,17 +989,19 @@ int map_to_vp(VALUE_PAIR **out, REQUEST *request, value_pair_map_t const *map, U
 #define DEBUG_OVERWRITE(_old, _new) \
 do {\
 	if (RDEBUG_ENABLED3) {\
-		char *old = vp_aprints_value(request, _old, '"');\
-		char *new = vp_aprints_value(request, _new, '"');\
-		RDEBUG3("Overwriting value \"%s\" with \"%s\"", old, new);\
+		char *old = fr_pair_value_asprint(request, _old, '"');\
+		char *new = fr_pair_value_asprint(request, _new, '"');\
+		RINDENT();\
+		RDEBUG3("--> overwriting '%s' with '%s'", old, new);\
+		REXDENT();\
 		talloc_free(old);\
 		talloc_free(new);\
 	}\
 } while (0)
 
-/** Convert value_pair_map_t to VALUE_PAIR(s) and add them to a REQUEST.
+/** Convert #vp_map_t to #VALUE_PAIR (s) and add them to a #REQUEST.
  *
- * Takes a single value_pair_map_t, resolves request and list identifiers
+ * Takes a single #vp_map_t, resolves request and list identifiers
  * to pointers in the current request, then attempts to retrieve module
  * specific value(s) using callback, and adds the resulting values to the
  * correct request/list.
@@ -812,11 +1009,14 @@ do {\
  * @param request The current request.
  * @param map specifying destination attribute and location and src identifier.
  * @param func to retrieve module specific values and convert them to
- *	VALUE_PAIRS.
+ *	#VALUE_PAIR.
  * @param ctx to be passed to func.
- * @return -1 if the operation failed, -2 in the source attribute wasn't valid, 0 on success.
+ * @return
+ *	- -1 if the operation failed.
+ *	- -2 in the source attribute wasn't valid.
+ *	- 0 on success.
  */
-int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_getvalue_t func, void *ctx)
+int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t func, void *ctx)
 {
 	int rcode = 0;
 	int num;
@@ -826,7 +1026,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	TALLOC_CTX *parent;
 	vp_cursor_t dst_list, src_list;
 
-	value_pair_map_t	exp_map;
+	vp_map_t	exp_map;
 	vp_tmpl_t	exp_lhs;
 
 	VERIFY_MAP(map);
@@ -908,7 +1108,10 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	 */
 	if (((map->lhs->tmpl_list == PAIR_LIST_COA) ||
 	     (map->lhs->tmpl_list == PAIR_LIST_DM)) && !request->coa) {
-		request_alloc_coa(context);
+		if (!request_alloc_coa(context)) {
+			REDEBUG("Failed to create a CoA/Disconnect Request message");
+			return -2;
+		}
 		context->coa->proxy->code = (map->lhs->tmpl_list == PAIR_LIST_COA) ?
 					    PW_CODE_COA_REQUEST :
 					    PW_CODE_DISCONNECT_REQUEST;
@@ -928,33 +1131,32 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	/*
 	 *	The callback should either return -1 to signify operations error,
 	 *	-2 when it can't find the attribute or list being referenced, or
-	 *	0 to signify success. It may return "sucess", but still have no
+	 *	0 to signify success. It may return "success", but still have no
 	 *	VPs to work with.
 	 */
 	if (map->rhs->type != TMPL_TYPE_NULL) {
-		rcode = func(&head, request, map, ctx);
+		rcode = func(parent, &head, request, map, ctx);
 		if (rcode < 0) {
 			rad_assert(!head);
 			return rcode;
 		}
 		if (!head) {
-			RDEBUG2("No attributes updated");
+			RDEBUG2("%.*s skipped: No values available", (int)map->lhs->len, map->lhs->name);
 			return rcode;
 		}
 	} else {
-		if (debug_flag) map_debug_log(request, map, NULL);
+		if (rad_debug_lvl) map_debug_log(request, map, NULL);
 	}
 
 	/*
-	 *	Reparent the VPs (func may return multiple)
+	 *	Print the VPs
 	 */
 	for (vp = fr_cursor_init(&src_list, &head);
 	     vp;
 	     vp = fr_cursor_next(&src_list)) {
 		VERIFY_VP(vp);
 
-		if (debug_flag) map_debug_log(request, map, vp);
-		pairsteal(parent, vp);
+		if (rad_debug_lvl) map_debug_log(request, map, vp);
 	}
 
 	/*
@@ -967,7 +1169,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 			rad_assert(!head);
 
 			/* Clear the entire dst list */
-			pairfree(list);
+			fr_pair_list_free(list);
 
 			if (map->lhs->tmpl_list == PAIR_LIST_REQUEST) {
 				context->username = NULL;
@@ -977,24 +1179,20 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 
 		case T_OP_SET:
 			if (map->rhs->type == TMPL_TYPE_LIST) {
-				pairfree(list);
+				fr_pair_list_free(list);
 				*list = head;
 				head = NULL;
 			} else {
 		case T_OP_EQ:
 				rad_assert(map->rhs->type == TMPL_TYPE_EXEC);
-				pairmove(parent, list, &head);
-				pairfree(&head);
+		case T_OP_ADD:
+				fr_pair_list_move(parent, list, &head);
+				fr_pair_list_free(&head);
 			}
 			goto finish;
 
-		case T_OP_ADD:
-			pairadd(list, head);
-			head = NULL;
-			goto finish;
-
 		default:
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			return -1;
 		}
 	}
@@ -1034,14 +1232,14 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 		 *	Wildcard: delete all of the matching ones, based on tag.
 		 */
 		if (map->lhs->tmpl_num == NUM_ANY) {
-			pairdelete(list, map->lhs->tmpl_da->attr, map->lhs->tmpl_da->vendor, map->lhs->tmpl_tag);
+			fr_pair_delete_by_num(list, map->lhs->tmpl_da->attr, map->lhs->tmpl_da->vendor, map->lhs->tmpl_tag);
 			dst = NULL;
 		/*
 		 *	We've found the Nth one.  Delete it, and only it.
 		 */
 		} else {
 			dst = fr_cursor_remove(&dst_list);
-			pairfree(&dst);
+			fr_pair_list_free(&dst);
 		}
 
 		/*
@@ -1063,7 +1261,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	case T_OP_SUB:
 		/* We didn't find any attributes earlier */
 		if (!dst) {
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			return 0;
 		}
 
@@ -1078,11 +1276,11 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 				rcode = radius_compare_vps(request, vp, dst);
 				if (rcode == 0) {
 					dst = fr_cursor_remove(&dst_list);
-					pairfree(&dst);
+					fr_pair_list_free(&dst);
 					found = true;
 				}
 			}
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			if (!found) return 0;
 			goto finish;
 		}
@@ -1100,12 +1298,12 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 				rcode = radius_compare_vps(request, vp, dst);
 				if (rcode == 0) {
 					dst = fr_cursor_remove(&dst_list);
-					pairfree(&dst);
+					fr_pair_list_free(&dst);
 					found = true;
 				}
 			}
 		}
-		pairfree(&head);
+		fr_pair_list_free(&head);
 		if (!found) return 0;
 		goto finish;
 	}
@@ -1128,7 +1326,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	case T_OP_EQ:
 		if (dst) {
 			RDEBUG3("Refusing to overwrite (use :=)");
-			pairfree(&head);
+			fr_pair_list_free(&head);
 			return 0;
 		}
 
@@ -1136,7 +1334,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 		fr_cursor_first(&src_list);
 		fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
 		/* Free any we didn't insert */
-		pairfree(&head);
+		fr_pair_list_free(&head);
 		break;
 
 	/*
@@ -1146,13 +1344,14 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 		/* Wind to last instance */
 		fr_cursor_last(&src_list);
 		if (dst) {
-			dst = fr_cursor_remove(&dst_list);
 			DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
-			pairfree(&dst);
+			dst = fr_cursor_replace(&dst_list, fr_cursor_remove(&src_list));
+			fr_pair_list_free(&dst);
+		} else {
+			fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
 		}
-		fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
 		/* Free any we didn't insert */
-		pairfree(&head);
+		fr_pair_list_free(&head);
 		break;
 
 	/*
@@ -1160,7 +1359,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 	 */
 	case T_OP_ADD:
 		/* Insert all the instances! (if multiple) */
-		pairadd(list, head);
+		fr_pair_add(list, head);
 		head = NULL;
 		break;
 
@@ -1197,7 +1396,7 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 			replace:
 				dst = fr_cursor_remove(&dst_list);
 				DEBUG_OVERWRITE(dst, fr_cursor_current(&src_list));
-				pairfree(&dst);
+				fr_pair_list_free(&dst);
 				fr_cursor_insert(&dst_list, fr_cursor_remove(&src_list));
 				found = true;
 				continue;
@@ -1211,11 +1410,11 @@ int map_to_request(REQUEST *request, value_pair_map_t const *map, radius_map_get
 				goto replace;
 
 			default:
-				pairfree(&head);
+				fr_pair_list_free(&head);
 				return -1;
 			}
 		}
-		pairfree(&head);
+		fr_pair_list_free(&head);
 		if (!found) return 0;
 
 		break;
@@ -1266,9 +1465,11 @@ finish:
  *
  * @param request The current request.
  * @param map to check.
- * @return true if the map resolves to a request and list else false.
+ * @return
+ *	- true if the map resolves to a request and list.
+ *	- false.
  */
-bool map_dst_valid(REQUEST *request, value_pair_map_t const *map)
+bool map_dst_valid(REQUEST *request, vp_map_t const *map)
 {
 	REQUEST *context = request;
 
@@ -1282,62 +1483,63 @@ bool map_dst_valid(REQUEST *request, value_pair_map_t const *map)
 
 /**  Print a map to a string
  *
- * @param[out] buffer for the output string
- * @param[in] bufsize of the buffer
- * @param[in] map to print
- * @return the size of the string printed
+ * @param[out] out Buffer to write string to.
+ * @param[in] outlen Size of the output buffer.
+ * @param[in] map to print.
+ * @return
+ *	- The number of bytes written to the out buffer.
+ *	- A number >= outlen if truncation has occurred.
  */
-size_t map_prints(char *buffer, size_t bufsize, value_pair_map_t const *map)
+size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 {
-	size_t len;
-	DICT_ATTR const *da = NULL;
-	char *p = buffer;
-	char *end = buffer + bufsize;
+	size_t		len;
+	DICT_ATTR const	*da = NULL;
+	char		*p = out;
+	char		*end = out + outlen;
 
 	VERIFY_MAP(map);
 
 	if (map->lhs->type == TMPL_TYPE_ATTR) da = map->lhs->tmpl_da;
 
-	len = tmpl_prints(buffer, bufsize, map->lhs, da);
-	p += len;
+	len = tmpl_snprint(out, (end - p) - 1, map->lhs, da);		/* -1 for proceeding ' ' */
+	RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 
 	*(p++) = ' ';
-	strlcpy(p, fr_token_name(map->op), end - p);
-	p += strlen(p);
+	len = strlcpy(p, fr_token_name(map->op), (end - p) - 1);	/* -1 for proceeding ' ' */
+	RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 	*(p++) = ' ';
 
 	/*
 	 *	The RHS doesn't matter for many operators
 	 */
-	if ((map->op == T_OP_CMP_TRUE) ||
-	    (map->op == T_OP_CMP_FALSE)) {
-		strlcpy(p, "ANY", (end - p));
-		p += strlen(p);
-		return p - buffer;
+	if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
+		len = strlcpy(p, "ANY", (end - p));
+		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
+		return p - out;
 	}
 
 	rad_assert(map->rhs != NULL);
 
 	if ((map->lhs->type == TMPL_TYPE_ATTR) &&
 	    (map->lhs->tmpl_da->type == PW_TYPE_STRING) &&
-	    (map->rhs->type == TMPL_TYPE_LITERAL)) {
+	    (map->rhs->type == TMPL_TYPE_UNPARSED)) {
 		*(p++) = '\'';
-		len = tmpl_prints(p, end - p, map->rhs, da);
-		p += len;
+		len = tmpl_snprint(p, (end - p) - 1, map->rhs, da);	/* -1 for proceeding '\'' */
+		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 		*(p++) = '\'';
-		*p = '\0';
 	} else {
-		len = tmpl_prints(p, end - p, map->rhs, da);
-		p += len;
+		len = tmpl_snprint(p, end - p, map->rhs, da);
+		RETURN_IF_TRUNCATED(p, len, (end - p) - 1);
 	}
 
-	return p - buffer;
+	*p = '\0';
+	return p - out;
 }
 
 /*
  *	Debug print a map / VP
  */
-void map_debug_log(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR const *vp)
+void map_debug_log(REQUEST *request, vp_map_t const *map, VALUE_PAIR const *vp)
 {
 	char *value;
 	char buffer[1024];
@@ -1353,43 +1555,69 @@ void map_debug_log(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR con
 	 *	Just print the value being assigned
 	 */
 	default:
-	case TMPL_TYPE_LITERAL:
-		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+	case TMPL_TYPE_UNPARSED:
+		fr_pair_value_snprint(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
-		vp_prints_value(buffer, sizeof(buffer), vp, '"');
+		fr_pair_value_snprint(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
 	case TMPL_TYPE_DATA:
-		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+		fr_pair_value_snprint(buffer, sizeof(buffer), vp, fr_token_quote[map->rhs->quote]);
 		value = buffer;
 		break;
 
 	/*
-	 *	Just printing the value doesn't make sense, but we still
-	 *	want to know what it was...
+	 *	For the lists, we can't use the original name, and have to
+	 *	rebuild it using tmpl_snprint, for each attribute we're
+	 *	copying.
 	 */
 	case TMPL_TYPE_LIST:
-		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
+	{
+		char		attr[256];
+		char		quote = '\0';
+		vp_tmpl_t	vpt;
+		/*
+		 *	Fudge a temporary tmpl that describes the attribute we're copying
+		 *	this is a combination of the original list tmpl, and values from
+		 *	the VALUE_PAIR. This way, we get tag info included.
+		 */
+		memcpy(&vpt, map->rhs, sizeof(vpt));
+		vpt.tmpl_da = vp->da;
+		vpt.tmpl_tag = vp->tag;
+		vpt.type = TMPL_TYPE_ATTR;
 
-		if (map->rhs->tmpl_request == REQUEST_OUTER) {
-			value = talloc_typed_asprintf(request, "&outer.%s:%s -> %s",
-						      fr_int2str(pair_lists, map->rhs->tmpl_list, "<INVALID>"),
-						      vp->da->name, buffer);
-		} else {
-			value = talloc_typed_asprintf(request, "&%s:%s -> %s",
-						      fr_int2str(pair_lists, map->rhs->tmpl_list, "<INVALID>"),
-						      vp->da->name, buffer);
-		}
+		/*
+		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
+		 *	around the list ref. The attribute value has no quoting, so we choose
+		 *	the quoting based on the data type, and whether it's printable.
+		 */
+		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
+									 vp->vp_length) ? '\'' : '"';
+		fr_pair_value_snprint(buffer, sizeof(buffer), vp, quote);
+		tmpl_snprint(attr, sizeof(attr), &vpt, vp->da);
+		value = talloc_typed_asprintf(request, "%s -> %s", attr, buffer);
+	}
 		break;
 
 	case TMPL_TYPE_ATTR:
-		vp_prints_value(buffer, sizeof(buffer), vp, '\'');
-		value = talloc_typed_asprintf(request, "&%s -> %s", map->rhs->tmpl_da->name, buffer);
+	{
+		char quote = '\0';
+
+		/*
+		 *	Not appropriate to use map->rhs->quote here, as that's the quoting
+		 *	around the attr ref. The attribute value has no quoting, so we choose
+		 *	the quoting based on the data type, and whether it's printable.
+		 */
+		if (vp->da->type == PW_TYPE_STRING) quote = is_printable(vp->vp_strvalue,
+									 vp->vp_length) ? '\'' : '"';
+		fr_pair_value_snprint(buffer, sizeof(buffer), vp, quote);
+		value = talloc_typed_asprintf(request, "%.*s -> %s", (int)map->rhs->len, map->rhs->name, buffer);
+	}
 		break;
 
 	case TMPL_TYPE_NULL:
@@ -1400,13 +1628,13 @@ void map_debug_log(REQUEST *request, value_pair_map_t const *map, VALUE_PAIR con
 
 	switch (map->lhs->type) {
 	case TMPL_TYPE_LIST:
-		RDEBUG("%s%s %s %s", map->lhs->name, vp ? vp->da->name : "",
-		       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
+		RDEBUG("%.*s:%s %s %s", (int)map->lhs->len, map->lhs->name, vp ? vp->da->name : "",
+		       fr_int2str(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), value);
 		break;
 
 	case TMPL_TYPE_ATTR:
-		RDEBUG("%s %s %s", map->lhs->name,
-		       fr_int2str(fr_tokens, vp ? vp->op : map->op, "<INVALID>"), value);
+		RDEBUG("%.*s %s %s", (int)map->lhs->len, map->lhs->name,
+		       fr_int2str(fr_tokens_table, vp ? vp->op : map->op, "<INVALID>"), value);
 		break;
 
 	default:

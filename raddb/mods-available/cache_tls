@@ -1,0 +1,29 @@
+cache cache_tls_session {
+	driver = "rlm_cache_rbtree"
+
+	#  The key used to index the cache.  It is dynamically expanded
+	#  at run time.
+	key = &control:TLS-Session-Identity
+
+	#  The TTL of cache entries, in seconds.  Entries older than this
+	#  will be expired.
+	#
+	#  This value should be between 10 and 86400.
+	ttl = 3600	# 60 mins
+
+	update {
+		&control:TLS-Session-Data := &control:TLS-Session-Data
+	}
+}
+
+cache cache_ocsp {
+	driver = "rlm_cache_rbtree"
+
+	#  The key used to index the cache.  It is dynamically expanded
+	#  at run time.
+	key = &control:TLS-Client-Cert-Serial
+
+	update {
+		&control:TLS-OCSP-Cert-Valid := &reply:TLS-OCSP-Cert-Valid
+	}
+}

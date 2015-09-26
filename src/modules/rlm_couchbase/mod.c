@@ -29,11 +29,10 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 
 #include <libcouchbase/couchbase.h>
-#include <json.h>
+#include "../rlm_json/json.h"
 
 #include "mod.h"
 #include "couchbase.h"
-#include "jsonc_missing.h"
 
 /** Delete a conneciton pool handle and free related resources
  *
@@ -41,7 +40,7 @@ RCSID("$Id$")
  * resources and closes the socket connection.
  *
  * @param  chandle The connection handle to destroy.
- * @return         Always returns 0 (success) in all conditions.
+ * @return 0.
  */
 static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
 {
@@ -61,18 +60,22 @@ static int _mod_conn_free(rlm_couchbase_handle_t *chandle)
  *
  * @param  ctx      The connection parent context.
  * @param  instance The module instance.
- * @return          The new connection handle or NULL on error.
+ * @param  timeout  Maximum time to establish the connection.
+ * @return
+ *	- New connection handle.
+ *	- NULL on error.
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
 	rlm_couchbase_t *inst = instance;           /* module instance pointer */
 	rlm_couchbase_handle_t *chandle = NULL;     /* connection handle pointer */
 	cookie_t *cookie = NULL;                    /* couchbase cookie */
 	lcb_t cb_inst;                              /* couchbase connection instance */
-	lcb_error_t cb_error = LCB_SUCCESS;         /* couchbase error status */
+	lcb_error_t cb_error;			    /* couchbase error status */
 
 	/* create instance */
-	cb_error = couchbase_init_connection(&cb_inst, inst->server, inst->bucket, inst->password);
+	cb_error = couchbase_init_connection(&cb_inst, inst->server, inst->bucket, inst->password,
+					     FR_TIMEVAL_TO_MS(timeout));
 
 	/* check couchbase instance */
 	if (cb_error != LCB_SUCCESS) {
@@ -111,7 +114,9 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
  *
  * @param  instance The module instance (currently unused).
  * @param  handle   The connection handle.
- * @return          Returns 0 on success (alive) and -1 on error (unavailable).
+ * @return
+ *	- 0 on success (alive).
+ *	- -1 on failure (unavailable).
  */
 int mod_conn_alive(UNUSED void *instance, void *handle)
 {
@@ -138,7 +143,9 @@ int mod_conn_alive(UNUSED void *instance, void *handle)
  *
  * @param  conf     Configuration section.
  * @param  instance The module instance.
- * @return          Returns 0 on success, -1 on error.
+ * @return
+ *	 - 0 on success.
+ *	- -1 on failure.
  */
 int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 {
@@ -148,12 +155,18 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	CONF_PAIR *cp;                      /* conig pair */
 	const char *attribute, *element;    /* attribute and element names */
 
-	/* find map section */
-	cs = cf_section_sub_find(conf, "map");
+	/* find update section */
+	cs = cf_section_sub_find(conf, "update");
+
+	/* backwards compatibility */
+	if (!cs) {
+		cs = cf_section_sub_find(conf, "map");
+		WARN("rlm_couchbase: found deprecated 'map' section - please change to 'update'");
+	}
 
 	/* check section */
 	if (!cs) {
-		ERROR("rlm_couchbase: failed to find 'map' section in config");
+		ERROR("rlm_couchbase: failed to find 'update' section in config");
 		/* fail */
 		return -1;
 	}
@@ -165,7 +178,7 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 	for (ci = cf_item_find_next(cs, NULL); ci != NULL; ci = cf_item_find_next(cs, ci)) {
 		/* validate item */
 		if (!cf_item_is_pair(ci)) {
-			ERROR("rlm_couchbase: failed to parse invalid item in 'map' section");
+			ERROR("rlm_couchbase: failed to parse invalid item in 'update' section");
 			/* free map */
 			if (inst->map) {
 				json_object_put(inst->map);
@@ -177,21 +190,21 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
 		/* get value pair from item */
 		cp = cf_item_to_pair(ci);
 
-		/* get pair name (element name) */
-		element = cf_pair_attr(cp);
+		/* get pair name (attribute name) */
+		attribute = cf_pair_attr(cp);
 
-		/* get pair value (attribute name) */
-		attribute = cf_pair_value(cp);
+		/* get pair value (element name) */
+		element = cf_pair_value(cp);
 
 		/* add pair name and value */
 		json_object_object_add(inst->map, attribute, json_object_new_string(element));
 
 		/* debugging */
-		DEBUG3("rlm_couchbase: added attribute '%s' to element '%s' map to object", attribute, element);
+		DEBUG3("rlm_couchbase: added attribute '%s' to element '%s' mapping", attribute, element);
 	}
 
 	/* debugging */
-	DEBUG3("rlm_couchbase: built attribute to element map %s", json_object_to_json_string(inst->map));
+	DEBUG3("rlm_couchbase: built attribute to element mapping %s", json_object_to_json_string(inst->map));
 
 	/* return */
 	return 0;
@@ -205,7 +218,9 @@ int mod_build_attribute_element_map(CONF_SECTION *conf, void *instance)
  * @param  name The character name of the requested attribute.
  * @param  map  The JSON object map to use for the lookup.
  * @param  buf  The buffer where the given element will be stored if found.
- * @return      Returns 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 {
@@ -266,19 +281,19 @@ int mod_attribute_to_element(const char *name, json_object *map, void *buf)
 void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQUEST *request)
 {
 	json_object *jobj, *jval, *jop;     /* json object pointers */
-	TALLOC_CTX *ctx;                    /* talloc context for pairmake */
-	VALUE_PAIR *vp, **ptr;              /* value pair and value pair pointer for pairmake */
+	TALLOC_CTX *ctx;                    /* talloc context for fr_pair_make */
+	VALUE_PAIR *vp, **ptr;              /* value pair and value pair pointer for fr_pair_make */
 
-	/* assign ctx and vps for pairmake based on section */
+	/* assign ctx and vps for fr_pair_make based on section */
 	if (strcmp(section, "config") == 0) {
 		ctx = request;
-		ptr = &(request->config_items);
+		ptr = &(request->config);
 	} else if (strcmp(section, "reply") == 0) {
 		ctx = request->reply;
 		ptr = &(request->reply->vps);
 	} else {
 		/* log error - this shouldn't happen */
-		RERROR("invalid section passed for pairmake");
+		RERROR("invalid section passed for fr_pair_make");
 		/* return */
 		return NULL;
 	}
@@ -286,7 +301,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 	/* get config payload */
 	if (json_object_object_get_ex(json, section, &jobj)) {
 		/* make sure we have the correct type */
-		if (!json_object_is_type(jobj, json_type_object)) {
+		if (!fr_json_object_is_type(jobj, json_type_object)) {
 			/* log error */
 			RERROR("invalid json type for '%s' section - sections must be json objects", section);
 			/* reuturn */
@@ -295,7 +310,7 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 		/* loop through object */
 		json_object_object_foreach(jobj, attribute, json_vp) {
 			/* check for appropriate type in value and op */
-			if (!json_object_is_type(json_vp, json_type_object)) {
+			if (!fr_json_object_is_type(json_vp, json_type_object)) {
 				/* log error */
 				RERROR("invalid json type for '%s' attribute - attributes must be json objects",
 				       attribute);
@@ -309,15 +324,15 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 			if (json_object_object_get_ex(json_vp, "value", &jval) &&
 				json_object_object_get_ex(json_vp, "op", &jop)) {
 				/* make correct pairs based on json object type */
-				switch (json_object_get_type(jval)) {
+				switch (fr_json_object_get_type(jval)) {
 				case json_type_double:
 				case json_type_int:
 				case json_type_string:
 					/* debugging */
 					RDEBUG("adding '%s' attribute to '%s' section", attribute, section);
 					/* add pair */
-					vp = pairmake(ctx, ptr, attribute, json_object_get_string(jval),
-						fr_str2int(fr_tokens, json_object_get_string(jop), 0));
+					vp = fr_pair_make(ctx, ptr, attribute, json_object_get_string(jval),
+						fr_str2int(fr_tokens_table, json_object_get_string(jop), 0));
 					/* check pair */
 					if (!vp) {
 						RERROR("could not build value pair for '%s' attribute (%s)",
@@ -357,12 +372,12 @@ void *mod_json_object_to_value_pairs(json_object *json, const char *section, REQ
 /** Convert value pairs to json objects
  *
  * Take the passed value pair and convert it to a json-c JSON object.
- * This code is heavily based on the vp_prints_value_json() function
+ * This code is heavily based on the fr_json_from_pair() function
  * from src/lib/print.c.
  *
  * @param  request The request object.
  * @param  vp      The value pair to convert.
- * @return         Returns a JSON object.
+ * @return A JSON object.
  */
 json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 {
@@ -441,7 +456,7 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
 		/* debug */
 		RDEBUG3("assigning unhandled '%s' as string", vp->da->name);
 		/* get standard value */
-		vp_prints_value(value, sizeof(value), vp, 0);
+		fr_pair_value_snprint(value, sizeof(value), vp, 0);
 		/* return string value from above */
 		return json_object_new_string(value);
 	}
@@ -454,7 +469,9 @@ json_object *mod_value_pair_to_json_object(REQUEST *request, VALUE_PAIR *vp)
  *
  * @param  json JSON object representation of an accounting document.
  * @param  vps  The value pairs associated with the current accounting request.
- * @return      Returns 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 {
@@ -479,7 +496,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	}
 
 	/* get current event timestamp */
-	if ((vp = pairfind(vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY)) != NULL) {
 		/* get seconds value from attribute */
 		ts = vp->vp_date;
 	} else {
@@ -493,7 +510,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	memset(value, 0, sizeof(value));
 
 	/* get elapsed session time */
-	if ((vp = pairfind(vps, PW_ACCT_SESSION_TIME, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(vps, PW_ACCT_SESSION_TIME, 0, TAG_ANY)) != NULL) {
 		/* calculate diff */
 		ts = (ts - vp->vp_integer);
 		/* calculate start time */
@@ -521,7 +538,9 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
  * @param  out  Character output
  * @param  cp   Configuration pair
  * @param  data The client data
- * @return      Returns 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
 {
@@ -551,7 +570,9 @@ static int _get_client_value(char **out, CONF_PAIR const *cp, void *data)
  * @param  inst The module instance.
  * @param  tmpl Default values for new clients.
  * @param  map  The client attribute configuration section.
- * @return      Returns 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SECTION *map)
 {
@@ -639,7 +660,7 @@ int mod_load_client_documents(rlm_couchbase_t *inst, CONF_SECTION *tmpl, CONF_SE
 	DEBUG3("rlm_couchbase: jrows == %s", json_object_to_json_string(jrows));
 
 	/* check for valid row value */
-	if (!json_object_is_type(jrows, json_type_array) || json_object_array_length(jrows) < 1) {
+	if (!fr_json_object_is_type(jrows, json_type_array) || json_object_array_length(jrows) < 1) {
 		/* log error */
 		ERROR("rlm_couchbase: no valid rows returned from view: %s", vpath);
 		/* set return */

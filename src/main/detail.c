@@ -201,6 +201,7 @@ static int detail_open(rad_listen_t *this)
 	 *	this file will be read && processed before the
 	 *	file globbing is done.
 	 */
+	data->fp = NULL;
 	data->work_fd = open(data->filename_work, O_RDWR);
 	if (data->work_fd < 0) {
 #ifndef HAVE_GLOB_H
@@ -256,7 +257,11 @@ static int detail_open(rad_listen_t *this)
 		 *	And try to open the filename.
 		 */
 		data->work_fd = open(data->filename_work, O_RDWR);
-		if (data->work_fd < 0) return 0;
+		if (data->work_fd < 0) {
+			ERROR("detail (%s): Failed opening %s: %s",
+			      data->name, data->filename_work, fr_syserror(errno));
+			return 0;
+		}
 #endif
 	} /* else detail.work existed, and we opened it */
 
@@ -456,12 +461,17 @@ open_file:
 			 *	try again.
 			 */
 			close(data->work_fd);
+			data->fp = NULL;
 			data->work_fd = -1;
 			data->state = STATE_UNOPENED;
 			return NULL;
 		}
 
-		data->fp = fdopen(data->work_fd, "r");
+		/*
+		 *	Only open for writing if we're
+		 *	marking requests as completed.
+		 */
+		data->fp = fdopen(data->work_fd, data->track ? "r+" : "r");
 		if (!data->fp) {
 			ERROR("detail (%s): FATAL: Failed to re-open detail file: %s",
 			      data->name, fr_syserror(errno));
@@ -573,19 +583,24 @@ open_file:
 		if (data->track) {
 			rad_assert(data->fp != NULL);
 
-			if ((fseek(data->fp, data->timestamp_offset, SEEK_SET) < 0) ||
-			    (fwrite("\tDone", 1, 5, data->fp) < 5)) {
-				WARN("detail (%s): Failed marking detail request as done: %s",
+			if (fseek(data->fp, data->timestamp_offset, SEEK_SET) < 0) {
+				WARN("detail (%s): Failed seeking to timestamp offset: %s",
+				     data->name, fr_syserror(errno));
+			} else if (fwrite("\tDone", 1, 5, data->fp) < 5) {
+				WARN("detail (%s): Failed marking request as done: %s",
+				     data->name, fr_syserror(errno));
+			} else if (fflush(data->fp) != 0) {
+				WARN("detail (%s): Failed flushing marked detail file to disk: %s",
 				     data->name, fr_syserror(errno));
 			}
-			fflush(data->fp);
+
 			if (fseek(data->fp, data->offset, SEEK_SET) < 0) {
 				WARN("detail (%s): Failed seeking to next detail request: %s",
 				     data->name, fr_syserror(errno));
 			}
 		}
 
-		pairfree(&data->vps);
+		fr_pair_list_free(&data->vps);
 		data->state = STATE_HEADER;
 		goto do_header;
 	}
@@ -605,7 +620,7 @@ open_file:
 		 *	FIXME: Maybe flag an error?
 		 */
 		if (!strchr(buffer, '\n')) {
-			pairfree(&data->vps);
+			fr_pair_list_free(&data->vps);
 			goto cleanup;
 		}
 
@@ -666,7 +681,7 @@ open_file:
 			if (ip_hton(&data->client_ip, AF_INET, value, false) < 0) {
 				ERROR("detail (%s): Failed parsing Client-IP-Address", data->name);
 
-				pairfree(&data->vps);
+				fr_pair_list_free(&data->vps);
 				goto cleanup;
 			}
 			continue;
@@ -681,7 +696,7 @@ open_file:
 			data->timestamp = atoi(value);
 			data->timestamp_offset = data->last_offset;
 
-			vp = paircreate(data, PW_PACKET_ORIGINAL_TIMESTAMP, 0);
+			vp = fr_pair_afrom_num(data, PW_PACKET_ORIGINAL_TIMESTAMP, 0);
 			if (vp) {
 				vp->vp_date = (uint32_t) data->timestamp;
 				vp->type = VT_DATA;
@@ -703,7 +718,7 @@ open_file:
 		 *	attributes like radsqlrelay does?
 		 */
 		vp = NULL;
-		if ((userparse(data, buffer, &vp) > 0) &&
+		if ((fr_pair_list_afrom_str(data, buffer, &vp) > 0) &&
 		    (vp != NULL)) {
 			fr_cursor_merge(&cursor, vp);
 		}
@@ -726,7 +741,7 @@ open_file:
  alloc_packet:
 	if (data->done_entry) {
 		DEBUG2("detail (%s): Skipping record for timestamp %lu", data->name, data->timestamp);
-		pairfree(&data->vps);
+		fr_pair_list_free(&data->vps);
 		data->state = STATE_HEADER;
 		goto do_header;
 	}
@@ -742,7 +757,7 @@ open_file:
 	if (data->state != STATE_QUEUED) {
 		ERROR("detail (%s): Truncated record: treating it as EOF for detail file %s",
 		      data->name, data->filename_work);
-		pairfree(&data->vps);
+		fr_pair_list_free(&data->vps);
 		goto cleanup;
 	}
 
@@ -776,10 +791,10 @@ open_file:
 	 *	Otherwise, it lets us re-send the original packet
 	 *	contents, unmolested.
 	 */
-	packet->vps = paircopy(packet, data->vps);
+	packet->vps = fr_pair_list_copy(packet, data->vps);
 
 	packet->code = PW_CODE_ACCOUNTING_REQUEST;
-	vp = pairfind(packet->vps, PW_PACKET_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, PW_PACKET_TYPE, 0, TAG_ANY);
 	if (vp) packet->code = vp->vp_integer;
 
 	gettimeofday(&packet->timestamp, NULL);
@@ -792,13 +807,13 @@ open_file:
 		packet->src_ipaddr = data->client_ip;
 	}
 
-	vp = pairfind(packet->vps, PW_PACKET_SRC_IP_ADDRESS, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, PW_PACKET_SRC_IP_ADDRESS, 0, TAG_ANY);
 	if (vp) {
 		packet->src_ipaddr.af = AF_INET;
 		packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		packet->src_ipaddr.prefix = 32;
 	} else {
-		vp = pairfind(packet->vps, PW_PACKET_SRC_IPV6_ADDRESS, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(packet->vps, PW_PACKET_SRC_IPV6_ADDRESS, 0, TAG_ANY);
 		if (vp) {
 			packet->src_ipaddr.af = AF_INET6;
 			memcpy(&packet->src_ipaddr.ipaddr.ip6addr,
@@ -807,13 +822,13 @@ open_file:
 		}
 	}
 
-	vp = pairfind(packet->vps, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY);
 	if (vp) {
 		packet->dst_ipaddr.af = AF_INET;
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		packet->dst_ipaddr.prefix = 32;
 	} else {
-		vp = pairfind(packet->vps, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(packet->vps, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY);
 		if (vp) {
 			packet->dst_ipaddr.af = AF_INET6;
 			memcpy(&packet->dst_ipaddr.ipaddr.ip6addr,
@@ -842,7 +857,7 @@ open_file:
 		 *	"Timestamp" field is when we wrote the packet to the
 		 *	detail file, which could have been much later.
 		 */
-		vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
 		if (vp) {
 			data->timestamp = vp->vp_integer;
 		}
@@ -851,11 +866,11 @@ open_file:
 		 *	Look for Acct-Delay-Time, and update
 		 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
 		 */
-		vp = pairfind(packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 		if (!vp) {
-			vp = paircreate(packet, PW_ACCT_DELAY_TIME, 0);
+			vp = fr_pair_afrom_num(packet, PW_ACCT_DELAY_TIME, 0);
 			rad_assert(vp != NULL);
-			pairadd(&packet->vps, vp);
+			fr_pair_add(&packet->vps, vp);
 		}
 		if (data->timestamp != 0) {
 			vp->vp_integer += time(NULL) - data->timestamp;
@@ -865,11 +880,11 @@ open_file:
 	/*
 	 *	Set the transmission count.
 	 */
-	vp = pairfind(packet->vps, PW_PACKET_TRANSMIT_COUNTER, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, PW_PACKET_TRANSMIT_COUNTER, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(packet, PW_PACKET_TRANSMIT_COUNTER, 0);
+		vp = fr_pair_afrom_num(packet, PW_PACKET_TRANSMIT_COUNTER, 0);
 		rad_assert(vp != NULL);
-		pairadd(&packet->vps, vp);
+		fr_pair_add(&packet->vps, vp);
 	}
 	vp->vp_integer = data->tries;
 
@@ -1064,16 +1079,14 @@ static void *detail_handler_thread(void *arg)
 
 
 static const CONF_PARSER detail_config[] = {
-	{ "detail", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, listen_detail_t, filename), NULL },
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, listen_detail_t, filename), NULL },
-	{ "load_factor", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, load_factor), STRINGIFY(10) },
-	{ "poll_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, poll_interval), STRINGIFY(1) },
-	{ "retry_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, retry_interval), STRINGIFY(30) },
-	{ "one_shot", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, one_shot), NULL },
-	{ "track", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, listen_detail_t, track), NULL },
-	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, listen_detail_t, load_factor), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("detail", PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, listen_detail_t, filename) },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, listen_detail_t, filename) },
+	{ FR_CONF_OFFSET("load_factor", PW_TYPE_INTEGER, listen_detail_t, load_factor), .dflt = STRINGIFY(10) },
+	{ FR_CONF_OFFSET("poll_interval", PW_TYPE_INTEGER, listen_detail_t, poll_interval), .dflt = STRINGIFY(1) },
+	{ FR_CONF_OFFSET("retry_interval", PW_TYPE_INTEGER, listen_detail_t, retry_interval), .dflt = STRINGIFY(30) },
+	{ FR_CONF_OFFSET("one_shot", PW_TYPE_BOOLEAN, listen_detail_t, one_shot), .dflt = "no" },
+	{ FR_CONF_OFFSET("track", PW_TYPE_BOOLEAN, listen_detail_t, track), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -1108,22 +1121,19 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
-	if ((data->load_factor < 1) || (data->load_factor > 100)) {
-		cf_log_err_cs(cs, "Load factor must be between 1 and 100");
-		return -1;
-	}
+	FR_INTEGER_BOUND_CHECK("load_factor", data->load_factor, >=, 1);
+	FR_INTEGER_BOUND_CHECK("load_factor", data->load_factor, <=, 100);
 
-	if ((data->poll_interval < 1) || (data->poll_interval > 20)) {
-		cf_log_err_cs(cs, "poll_interval must be between 1 and 20");
-		return -1;
-	}
-
-	if (check_config) return 0;
-
-	if (data->max_outstanding == 0) data->max_outstanding = 1;
+	FR_INTEGER_BOUND_CHECK("poll_interval", data->poll_interval, >=, 1);
+	FR_INTEGER_BOUND_CHECK("poll_interval", data->poll_interval, <=, 60);
 
 	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, >=, 4);
 	FR_INTEGER_BOUND_CHECK("retry_interval", data->retry_interval, <=, 3600);
+
+	/*
+	 *	Only checking the config.  Don't start threads or anything else.
+	 */
+	if (check_config) return 0;
 
 	/*
 	 *	If the filename is a glob, use "detail.work" as the
@@ -1144,6 +1154,16 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		} else {
 			buffer[0] = '\0';
 		}
+
+		/*
+		 *	Globbing cannot be done across directories.
+		 */
+		if ((strchr(buffer, '*') != NULL) ||
+		    (strchr(buffer, '[') != NULL)) {
+			cf_log_err_cs(cs, "Wildcard directories are not supported");
+			return -1;
+		}
+
 		strlcat(buffer, "detail.work",
 			sizeof(buffer) - strlen(buffer));
 

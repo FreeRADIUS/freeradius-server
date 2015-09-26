@@ -5,8 +5,7 @@
  *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version. either
+ *   License as published by the Free Software Foundation; either
  *   version 2.1 of the License, or (at your option) any later version.
  *
  *   This library is distributed in the hope that it will be useful,
@@ -30,6 +29,7 @@ RCSID("$Id$")
 #include <fcntl.h>
 #include <grp.h>
 #include <pwd.h>
+#include <sys/uio.h>
 
 #define FR_PUT_LE16(a, val)\
 	do {\
@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 bool	fr_dns_lookups = false;	    /* IP -> hostname lookups? */
 bool    fr_hostname_lookups = true; /* hostname -> IP lookups? */
-int	fr_debug_flag = 0;
+int	fr_debug_lvl = 0;
 
 static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",
@@ -95,12 +95,16 @@ static int _fr_disarm_talloc_ctx_free(bool **armed)
 
 /** Link a parent and a child context, so the child is freed before the parent
  *
- * @note This is not thread safe. Do not free parent before threads are joined, do not call from a child thread.
- * @note It's OK to free the child before threads are joined, but this will leak memory until the parent is freed.
+ * @note This is not thread safe. Do not free parent before threads are joined, do not call from a
+ *	child thread.
+ * @note It's OK to free the child before threads are joined, but this will leak memory until the
+ *	parent is freed.
  *
  * @param parent who's fate the child should share.
  * @param child bound to parent's lifecycle.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_link_talloc_ctx_free(TALLOC_CTX *parent, TALLOC_CTX *child)
 {
@@ -146,7 +150,9 @@ static void _fr_inet_ntop_free(void *arg)
  *
  * @param af address family, either AF_INET or AF_INET6.
  * @param src pointer to network address structure.
- * @return NULL on error, else pointer to ASCII buffer containing text version of address.
+ * @return
+ *	- NULL on error.
+ *	- Pointer to ASCII buffer containing text version of address on success.
  */
 char const *fr_inet_ntop(int af, void const *src)
 {
@@ -205,7 +211,9 @@ char const *ip_ntoa(char *buffer, uint32_t ipaddr)
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv6 resolution if no A records can be found.
- * @return 0 if ip address was parsed successfully, else -1 on error.
+ * @return
+ *	- 0 if ip address was parsed successfully
+ *	- -1 on failure.
  */
 int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
 {
@@ -226,6 +234,7 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 		}
 		memcpy(buffer, value, inlen);
 		buffer[inlen] = '\0';
+		value = buffer;
 	}
 
 	p = strchr(value, '/');
@@ -308,7 +317,9 @@ int fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv4 resolution if no AAAA records can be found.
- * @return 0 if ip address was parsed successfully, else -1 on error.
+ * @return
+ *	- 0 if ip address was parsed successfully.
+ *	- -1 on failure.
  */
 int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback)
 {
@@ -329,6 +340,7 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 		}
 		memcpy(buffer, value, inlen);
 		buffer[inlen] = '\0';
+		value = buffer;
 	}
 
 	p = strchr(value, '/');
@@ -393,27 +405,31 @@ int fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, b
 	return 0;
 }
 
-/** Simple wrapper to decide whether an IP value is v4 or v6 and call the appropriate parser.
+/** Simple wrapper to decide whether an IP value is v4 or v6 and call the appropriate parser
  *
- * @param out Where to write the ip address value.
- * @param value to parse.
- * @param inlen Length of value, if value is \0 terminated inlen may be -1.
- * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
- * @return 0 if ip address was parsed successfully, else -1 on error.
+ * @param[out] out Where to write the ip address value.
+ * @param[in] value to parse.
+ * @param[in] inlen Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] resolve If true and value doesn't look like an IP address, try and resolve value as a
+ *	hostname.
+ * @param[in] af If the address type is not obvious from the format, and resolve is true, the DNS
+ *	record (A or AAAA) we require.  Also controls which parser we pass the address to if
+ *	we have no idea what it is.
+ * @return
+ *	- 0 if ip address was parsed successfully.
+ *	- -1 on failure.
  */
-int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
+int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve)
 {
 	size_t len, i;
 
 	len = (inlen >= 0) ? (size_t)inlen : strlen(value);
 	for (i = 0; i < len; i++) switch (value[i]) {
 	/*
-	 *	Chars illegal in domain names and IPv4 addresses.
+	 *	':' is illegal in domain names and IPv4 addresses.
 	 *	Must be v6 and cannot be a domain.
 	 */
 	case ':':
-	case '[':
-	case ']':
 		return fr_pton6(out, value, inlen, false, false);
 
 	/*
@@ -429,8 +445,24 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
 		 *	Use A record in preference to AAAA record.
 		 */
 		if ((value[i] < '0') || (value[i] > '9')) {
-			if (!resolve) return -1;
-			return fr_pton4(out, value, inlen, true, true);
+			if (!resolve) {
+				fr_strerror_printf("Not IPv4/6 address, and asked not to resolve");
+				return -1;
+			}
+			switch (af) {
+			case AF_UNSPEC:
+				return fr_pton4(out, value, inlen, resolve, true);
+
+			case AF_INET:
+				return fr_pton4(out, value, inlen, resolve, false);
+
+			case AF_INET6:
+				return fr_pton6(out, value, inlen, resolve, false);
+
+			default:
+				fr_strerror_printf("Invalid address family %i", af);
+				return -1;
+			}
 		}
 		break;
 	}
@@ -440,6 +472,86 @@ int fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve)
  	 *	address.
  	 */
 	return fr_pton4(out, value, inlen, false, false);
+}
+
+/** Parses IPv4/6 address + port, to fr_ipaddr_t and integer
+ *
+ * @param[out] out Where to write the ip address value.
+ * @param[out] port_out Where to write the port (0 if no port found).
+ * @param[in] value to parse.
+ * @param[in] inlen Length of value, if value is \0 terminated inlen may be -1.
+ * @param[in] af If the address type is not obvious from the format, and resolve is true, the DNS
+ *	record (A or AAAA) we require.  Also controls which parser we pass the address to if
+ *	we have no idea what it is.
+ * @param[in] resolve If true and value doesn't look like an IP address, try and resolve value as a
+ *	hostname.
+ */
+int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_t inlen, int af, bool resolve)
+{
+	char const	*p = value, *q;
+	char		*end;
+	unsigned long	port;
+	char		buffer[6];
+	size_t		len;
+
+	*port_out = 0;
+
+	len = (inlen >= 0) ? (size_t)inlen : strlen(value);
+
+	if (*p == '[') {
+		if (!(q = memchr(p + 1, ']', len - 1))) {
+			fr_strerror_printf("Missing closing ']' for IPv6 address");
+			return -1;
+		}
+
+		/*
+		 *	inet_pton doesn't like the address being wrapped in []
+		 */
+		if (fr_pton6(out, p + 1, (q - p) - 1, false, false) < 0) return -1;
+
+		if (q[1] == ':') {
+			q++;
+			goto do_port;
+		}
+
+		return 0;
+	}
+
+	/*
+	 *	Host, IPv4 or IPv6 with no port
+	 */
+	q = memchr(p, ':', len);
+	if (!q || !memchr(p, '.', len)) return fr_pton(out, p, len, af, resolve);
+
+	/*
+	 *	IPv4 or host, with port
+	 */
+	if (fr_pton(out, p, (q - p), af, resolve) < 0) return -1;
+do_port:
+	/*
+	 *	Valid ports are a maximum of 5 digits, so if the
+	 *	input length indicates there are more than 5 chars
+	 *	after the ':' then there's an issue.
+	 */
+	if (inlen > ((q + sizeof(buffer)) - value)) {
+	error:
+		fr_strerror_printf("IP string contains trailing garbage after port delimiter");
+		return -1;
+	}
+
+	p = q + 1;			/* Move to first digit */
+
+	strlcpy(buffer, p, (len - (p - value)) + 1);
+	port = strtoul(buffer, &end, 10);
+	if (*end != '\0') goto error;	/* Trailing garbage after integer */
+
+	if ((port > UINT16_MAX) || (port == 0)) {
+		fr_strerror_printf("Port %lu outside valid port range 1-" STRINGIFY(UINT16_MAX), port);
+		return -1;
+	}
+	*port_out = port;
+
+	return 0;
 }
 
 int fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr)
@@ -643,24 +755,24 @@ static int inet_pton4(char const *src, struct in_addr *dst)
 
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
-/* int
- * inet_pton6(src, dst)
- *	convert presentation level address to network order binary form.
- * return:
- *	1 if `src' is a valid [RFC1884 2.2] address, else 0.
- * notice:
- *	(1) does not touch `dst' unless it's returning 1.
- *	(2) :: in a full address is silently ignored.
- * credit:
- *	inspired by Mark Andrews.
- * author:
- *	Paul Vixie, 1996.
+/** Convert presentation level address to network order binary form
+ *
+ * @note Does not touch dst unless it's returning 1.
+ * @note :: in a full address is silently ignored.
+ * @note Inspired by Mark Andrews.
+ * @author Paul Vixie, 1996.
+ *
+ * @param src presentation level address.
+ * @param dst where to write output address.
+ * @return
+ *	- 1 if `src' is a valid [RFC1884 2.2] address.
+ *	- 0 if `src' in not a valid [RFC1884 2.2] address.
  */
 static int inet_pton6(char const *src, unsigned char *dst)
 {
 	static char const xdigits_l[] = "0123456789abcdef",
 			  xdigits_u[] = "0123456789ABCDEF";
-	u_char tmp[IN6ADDRSZ], *tp, *endp, *colonp;
+	uint8_t tmp[IN6ADDRSZ], *tp, *endp, *colonp;
 	char const *xdigits, *curtok;
 	int ch, saw_xdigit;
 	u_int val;
@@ -698,8 +810,8 @@ static int inet_pton6(char const *src, unsigned char *dst)
 			}
 			if (tp + INT16SZ > endp)
 				return (0);
-			*tp++ = (u_char) (val >> 8) & 0xff;
-			*tp++ = (u_char) val & 0xff;
+			*tp++ = (uint8_t) (val >> 8) & 0xff;
+			*tp++ = (uint8_t) val & 0xff;
 			saw_xdigit = 0;
 			val = 0;
 			continue;
@@ -715,8 +827,8 @@ static int inet_pton6(char const *src, unsigned char *dst)
 	if (saw_xdigit) {
 		if (tp + INT16SZ > endp)
 			return (0);
-		*tp++ = (u_char) (val >> 8) & 0xff;
-		*tp++ = (u_char) val & 0xff;
+		*tp++ = (uint8_t) (val >> 8) & 0xff;
+		*tp++ = (uint8_t) val & 0xff;
 	}
 	if (colonp != NULL) {
 		/*
@@ -817,8 +929,10 @@ char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
  * @param out Where to write result.
  * @param af To search for in preference.
  * @param hostname to search for.
- * @param fallback to the other adress family, if no records matching af, found.
- * @return 0 on success, else -1 on failure.
+ * @param fallback to the other address family, if no records matching af, found.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 {
@@ -903,7 +1017,10 @@ int ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback)
 	rcode = fr_sockaddr2ipaddr((struct sockaddr_storage *)ai->ai_addr,
 				   ai->ai_addrlen, out, NULL);
 	freeaddrinfo(res);
-	if (!rcode) return -1;
+	if (!rcode) {
+		fr_strerror_printf("Failed converting sockaddr to ipaddr");
+		return -1;
+	}
 
 	return 0;
 }
@@ -1110,7 +1227,9 @@ uint32_t fr_strtoul(char const *value, char **end)
 
 /** Check whether the string is all whitespace
  *
- * @return true if the entirety of the string is whitespace, else false.
+ * @return
+ *	- true if the entirety of the string is whitespace.
+ *	- false if the string contains non whitespace.
  */
 bool is_whitespace(char const *value)
 {
@@ -1121,9 +1240,35 @@ bool is_whitespace(char const *value)
 	return true;
 }
 
+/** Check whether the string is made up of printable UTF8 chars
+ *
+ * @param value to check.
+ * @param len of value.
+ *
+ * @return
+ *	- true if the string is printable.
+ *	- false if the string contains non printable chars
+ */
+ bool is_printable(void const *value, size_t len)
+ {
+ 	uint8_t	const *p = value;
+ 	int	clen;
+ 	size_t	i;
+
+ 	for (i = 0; i < len; i++) {
+ 		clen = fr_utf8_char(p, len - i);
+ 		if (clen == 0) return false;
+ 		i += (size_t)clen;
+ 		p += clen;
+ 	}
+ 	return true;
+ }
+
 /** Check whether the string is all numbers
  *
- * @return true if the entirety of the string is are numebrs, else false.
+ * @return
+ *	- true if the entirety of the string is number chars.
+ *	- false if string contains no number chars.
  */
 bool is_integer(char const *value)
 {
@@ -1134,9 +1279,11 @@ bool is_integer(char const *value)
 	return true;
 }
 
-/** Check whether the string is allzeros
+/** Check whether the string is all zeros
  *
- * @return true if the entirety of the string is are numebrs, else false.
+ * @return
+ *	- true if the entirety of the string is all zeros.
+ *	- false if string contains no zeros.
  */
 bool is_zero(char const *value)
 {
@@ -1293,6 +1440,171 @@ int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 	return 1;
 }
 
+#ifdef O_NONBLOCK
+/** Set O_NONBLOCK on a socket
+ *
+ * @note O_NONBLOCK is POSIX.
+ *
+ * @param fd to set nonblocking flag on.
+ * @return
+ *	- Flags set on the socket.
+ *	- -1 on failure.
+ */
+int fr_nonblock(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, NULL);
+	if (flags < 0)  {
+		fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	flags |= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return flags;
+}
+
+/** Unset O_NONBLOCK on a socket
+ *
+ * @note O_NONBLOCK is POSIX.
+ *
+ * @param fd to set nonblocking flag on.
+ * @return
+ *	- Flags set on the socket.
+ *	- -1 on failure.
+ */
+int fr_blocking(int fd)
+{
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, NULL);
+	if (flags < 0)  {
+		fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	flags ^= O_NONBLOCK;
+	if (fcntl(fd, F_SETFL, flags) < 0) {
+		fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	return flags;
+}
+#else
+int fr_nonblock(UNUSED int fd)
+{
+	fr_strerror_printf("Non blocking sockets are not supported");
+	return -1;
+}
+int fr_blocking(UNUSED int fd)
+{
+	fr_strerror_printf("Non blocking sockets are not supported");
+	return -1;
+}
+#endif
+
+/** Write out a vector to a file descriptor
+ *
+ * Wraps writev, calling it as necessary. If timeout is not NULL,
+ * timeout is applied to each call that returns EAGAIN or EWOULDBLOCK
+ *
+ * @note Should only be used on nonblocking file descriptors.
+ * @note Socket should likely be closed on timeout.
+ * @note iovec may be modified in such a way that it's not re-usable.
+ * @note Leaves errno set to the last error that occurred.
+ *
+ * @param fd to write to.
+ * @param vector to write.
+ * @param iovcnt number of elements in iovec.
+ * @param timeout how long to wait for fd to become writeable before timing out.
+ * @return
+ *	- Number of bytes written.
+ *	- -1 on failure.
+ */
+ssize_t fr_writev(int fd, struct iovec vector[], int iovcnt, struct timeval *timeout)
+{
+	struct iovec *vector_p = vector;
+	ssize_t total = 0;
+
+	while (iovcnt > 0) {
+		ssize_t wrote;
+
+		wrote = writev(fd, vector_p, iovcnt);
+		if (wrote > 0) {
+			total += wrote;
+			while (wrote > 0) {
+				/*
+				 *	An entire vector element was written
+				 */
+				if (wrote >= (ssize_t)vector_p->iov_len) {
+					iovcnt--;
+					wrote -= vector_p->iov_len;
+					vector_p++;
+					continue;
+				}
+
+				/*
+				 *	Partial vector element was written
+				 */
+				vector_p->iov_len -= wrote;
+				vector_p->iov_base = ((char *)vector_p->iov_base) + wrote;
+				break;
+			}
+			continue;
+		} else if (wrote == 0) return total;
+
+		switch (errno) {
+		/* Write operation would block, use select() to implement a timeout */
+#if EWOULDBLOCK != EAGAIN
+		case EWOULDBLOCK:
+		case EAGAIN:
+#else
+		case EAGAIN:
+#endif
+		{
+			int	ret;
+			fd_set	write_set;
+
+			FD_ZERO(&write_set);
+			FD_SET(fd, &write_set);
+
+			/* Don't let signals mess up the select */
+			do {
+				ret = select(fd + 1, NULL, &write_set, NULL, timeout);
+			} while ((ret == -1) && (errno == EINTR));
+
+			/* Select returned 0 which means it reached the timeout */
+			if (ret == 0) {
+				fr_strerror_printf("Write timed out");
+				return -1;
+			}
+
+			/* Other select error */
+			if (ret < 0) {
+				fr_strerror_printf("Failed waiting on socket: %s", fr_syserror(errno));
+				return -1;
+			}
+
+			/* select said a file descriptor was ready for writing */
+			if (!fr_assert(FD_ISSET(fd, &write_set))) return -1;
+
+			break;
+		}
+
+		default:
+			return -1;
+		}
+	}
+
+	return total;
+}
+
 /** Convert UTF8 string to UCS2 encoding
  *
  * @note Borrowed from src/crypto/ms_funcs.c of wpa_supplicant project (http://hostap.epitest.fi/wpa_supplicant/)
@@ -1356,7 +1668,7 @@ ssize_t fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inle
  * @param outlen size of out.
  * @param num 128 bit integer.
  */
-size_t fr_prints_uint128(char *out, size_t outlen, uint128_t const num)
+size_t fr_snprint_uint128(char *out, size_t outlen, uint128_t const num)
 {
 	char buff[128 / 3 + 1 + 1];
 	uint64_t n[2];
@@ -1435,7 +1747,9 @@ static char *mystrtok(char **ptr, char const *sep)
  *
  * @param date_str input date string.
  * @param date time_t to write result to.
- * @return 0 on success or -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_get_time(char const *date_str, time_t *date)
 {
@@ -1560,7 +1874,7 @@ int fr_get_time(char const *date_str, time_t *date)
 	}
 
 	/*
-	 *  Returns -1 on error.
+	 *  Returns -1 on failure.
 	 */
 	t = mktime(tm);
 	if (t == (time_t) -1) return -1;
@@ -1570,11 +1884,114 @@ int fr_get_time(char const *date_str, time_t *date)
 	return 0;
 }
 
+#define USEC 1000000
+/** Subtract one timeval from another
+ *
+ * @param[out] out Where to write difference.
+ * @param[in] end Time closest to the present.
+ * @param[in] start Time furthest in the past.
+ */
+void fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct timeval const *start)
+{
+	out->tv_sec = end->tv_sec - start->tv_sec;
+	if (out->tv_sec > 0) {
+		out->tv_sec--;
+		out->tv_usec = USEC;
+	} else {
+		out->tv_usec = 0;
+	}
+	out->tv_usec += end->tv_usec;
+	out->tv_usec -= start->tv_usec;
+
+	if (out->tv_usec >= USEC) {
+		out->tv_usec -= USEC;
+		out->tv_sec++;
+	}
+}
+
+#define NSEC 1000000000
+/** Subtract one timespec from another
+ *
+ * @param[out] out Where to write difference.
+ * @param[in] end Time closest to the present.
+ * @param[in] start Time furthest in the past.
+ */
+void fr_timespec_subtract(struct timespec *out, struct timespec const *end, struct timespec const *start)
+{
+	out->tv_sec = end->tv_sec - start->tv_sec;
+	if (out->tv_sec > 0) {
+		out->tv_sec--;
+		out->tv_nsec = NSEC;
+	} else {
+		out->tv_nsec = 0;
+	}
+	out->tv_nsec += end->tv_nsec;
+	out->tv_nsec -= start->tv_nsec;
+
+	if (out->tv_nsec >= NSEC) {
+		out->tv_nsec -= NSEC;
+		out->tv_sec++;
+	}
+}
+
+/** Create timeval from a string
+ *
+ * @param[out] out Where to write timeval.
+ * @param[in] in String to parse.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_timeval_from_str(struct timeval *out, char const *in)
+{
+	int	sec;
+	char	*end;
+	struct	timeval tv;
+
+	sec = strtoul(in, &end, 10);
+	if (in == end) {
+		fr_strerror_printf("Failed parsing \"%s\" as decimal", in);
+		return -1;
+	}
+	tv.tv_sec = sec;
+	tv.tv_usec = 0;
+	if (*end == '.') {
+		size_t len;
+
+		len = strlen(end + 1);
+
+		if (len > 6) {
+			fr_strerror_printf("Too much precision for timeval");
+			return -1;
+		}
+
+		/*
+		 *	If they write "0.1", that means
+		 *	"10000" microseconds.
+		 */
+		sec = strtoul(end + 1, &end, 10);
+		if (in == end) {
+			fr_strerror_printf("Failed parsing fractional component \"%s\" of decimal ", in);
+			return -1;
+		}
+		while (len < 6) {
+			sec *= 10;
+			len++;
+		}
+		tv.tv_usec = sec;
+	}
+	*out = tv;
+	return 0;
+}
+
 /** Compares two pointers
  *
  * @param a first pointer to compare.
  * @param b second pointer to compare.
- * @return -1 if a < b, +1 if b > a, or 0 if both equal.
+ * @return
+ *	- -1 if a < b.
+ *	- +1 if b > a.
+ *	- 0 if both equal.
  */
 int8_t fr_pointer_cmp(void const *a, void const *b)
 {

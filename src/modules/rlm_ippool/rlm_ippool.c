@@ -105,25 +105,24 @@ typedef struct ippool_key {
 } ippool_key;
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_ippool_t, filename), NULL },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, rlm_ippool_t, filename) },
 
-	{ "ip_index", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_ippool_t, ip_index), NULL },
+	{ FR_CONF_OFFSET("ip_index", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_ippool_t, ip_index) },
 
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_ippool_t, key), "%{NAS-IP-Address} %{NAS-Port}" },
+	{ FR_CONF_OFFSET("key", PW_TYPE_STRING | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_ippool_t, key), .dflt = "%{NAS-IP-Address} %{NAS-Port}" },
 
-	{ "range_start", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_start_addr), "0" },
+	{ FR_CONF_OFFSET("range_start", PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_start_addr), .dflt = "0" },
 
-	{ "range_stop", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_stop_addr), "0" },
+	{ FR_CONF_OFFSET("range_stop", PW_TYPE_IPV4_ADDR, rlm_ippool_t, range_stop_addr), .dflt = "0" },
 
-	{ "netmask", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, rlm_ippool_t, netmask_addr), "0" },
+	{ FR_CONF_OFFSET("netmask", PW_TYPE_IPV4_ADDR, rlm_ippool_t, netmask_addr), .dflt = "0" },
 
-	{ "cache_size", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ippool_t, cache_size), "1000" },
+	{ FR_CONF_OFFSET("cache_size", PW_TYPE_INTEGER, rlm_ippool_t, cache_size), .dflt = "1000" },
 
-	{ "override", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_ippool_t, override), "no" },
+	{ FR_CONF_OFFSET("override", PW_TYPE_BOOLEAN, rlm_ippool_t, override), .dflt = "no" },
 
-	{ "maximum_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_ippool_t, max_timeout), "0" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	{ FR_CONF_OFFSET("maximum_timeout", PW_TYPE_INTEGER, rlm_ippool_t, max_timeout), .dflt = "0" },
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -333,7 +332,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	char		xlat_str[MAX_STRING_LEN];
 	int		ret;
 
-	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG2("Could not find account status type in packet");
 		return RLM_MODULE_INVALID;
@@ -456,7 +455,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *  Check if Pool-Name attribute exists. If it exists check our name and
 	 *  run only if they match
 	 */
-	vp = pairfind(request->config_items, PW_POOL_NAME, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_POOL_NAME, 0, TAG_ANY);
 	if (vp != NULL){
 		if (!inst->name || (strcmp(inst->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
@@ -468,7 +467,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *  Find the caller id
 	 */
-	vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY);
 	if (vp != NULL) {
 		cli = vp->vp_strvalue;
 	}
@@ -551,7 +550,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *  If there is a Framed-IP-Address (or Dhcp-Your-IP-Address)
 	 *  attribute in the reply, check for override
 	 */
-	if (pairfind(request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY) != NULL) {
 		RDEBUG("Found IP address attribute in reply attribute list");
 		if (!inst->override) {
 			RDEBUG("override is set to no. Return NOOP");
@@ -559,7 +558,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		}
 
 		RDEBUG("Override supplied IP address");
-		pairdelete(&request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY);
+		fr_pair_delete_by_num(&request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY);
 	}
 
 	/*
@@ -712,14 +711,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		free(key_datum.dptr);
 		entry.active = 1;
 		entry.timestamp = request->timestamp;
-		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_num(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY)) != NULL) {
 			entry.timeout = (time_t) vp->vp_integer;
 #ifdef WITH_DHCP
 			if (dhcp) {
-				vp = radius_paircreate(request->reply, &request->reply->vps,
+				vp = radius_pair_create(request->reply, &request->reply->vps,
 						       PW_DHCP_IP_ADDRESS_LEASE_TIME, DHCP_MAGIC_VENDOR);
 				vp->vp_integer = entry.timeout;
-				pairdelete(&request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
+				fr_pair_delete_by_num(&request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
 			}
 #endif
 		} else {
@@ -767,7 +766,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		pthread_mutex_unlock(&inst->op_mutex);
 
 		RDEBUG("Allocated ip %s to client key: %s",ip_ntoa(str,entry.ipaddr),hex_str);
-		vp = radius_paircreate(request->reply, &request->reply->vps,
+		vp = radius_pair_create(request->reply, &request->reply->vps,
 				       attr_ipaddr, vendor_ipaddr);
 		vp->vp_ipaddr = entry.ipaddr;
 
@@ -775,8 +774,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		 *	If there is no Framed-Netmask attribute in the
 		 *	reply, add one
 		 */
-		if (pairfind(request->reply->vps, attr_ipmask, vendor_ipaddr, TAG_ANY) == NULL) {
-			vp = radius_paircreate(request->reply, &request->reply->vps,
+		if (fr_pair_find_by_num(request->reply->vps, attr_ipmask, vendor_ipaddr, TAG_ANY) == NULL) {
+			vp = radius_pair_create(request->reply, &request->reply->vps,
 					       attr_ipmask, vendor_ipaddr);
 			vp->vp_ipaddr = ntohl(inst->netmask);
 		}
@@ -812,21 +811,16 @@ static int mod_detach(void *instance)
  */
 extern module_t rlm_ippool;
 module_t rlm_ippool = {
-	RLM_MODULE_INIT,
-	"ippool",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_ippool_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		NULL,			/* authentication */
-		NULL,		 	/* authorization */
-		NULL,			/* preaccounting */
-		mod_accounting,	/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		mod_post_auth		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "ippool",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_ippool_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+
+		[MOD_ACCOUNTING]	= mod_accounting,
+		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };

@@ -1,0 +1,76 @@
+#
+#  Check that conflicting unique IDs triggers failover to alternative query
+#
+
+#
+#  Clear out old data
+#
+update {
+	Tmp-String-0 := "%{sql:DELETE FROM radacct WHERE AcctSessionId = '00000003'}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+#
+#  Insert the Accounting-Request start
+#
+sql.accounting
+if (ok) {
+	test_pass
+}
+else {
+	test_fail
+}
+
+#
+#  Check the database has at least one row
+#
+update {
+	Tmp-Integer-0 := "%{sql:SELECT count(*) FROM radacct WHERE AcctSessionId = '00000003'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 1)) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+#
+#  Check acctsessiontime matches the value in the request
+#
+update {
+	Tmp-Integer-0 := "%{sql:SELECT acctsessiontime FROM radacct WHERE AcctSessionId = '00000003'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-Integer-0 != 0)) {
+	test_fail
+}
+else {
+	test_pass
+}
+
+#
+#  Change acctsessiontime and verify it's updated
+#
+update request {
+	Connect-Info = 'updated'
+}
+sql.accounting
+if (ok) {
+	test_pass
+}
+else {
+	test_fail
+}
+update {
+	Tmp-String-0 := "%{sql:SELECT connectinfo_start FROM radacct WHERE AcctSessionId = '00000003'}"
+}
+if (!&Tmp-Integer-0 || (&Tmp-String-0 != 'updated')) {
+	test_fail
+}
+else {
+	test_pass
+}

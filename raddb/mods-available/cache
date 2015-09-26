@@ -28,35 +28,75 @@ cache {
 	#    rlm_cache_memcached - A non persistent "webscale" distributed datastore.
 	#                          Useful if the cached data need to be shared between
 	#                          a cluster of RADIUS servers.
+	#    rlm_cache_redis     - A persistent "webscale" clustered, sharded, data store.
+	#			   Extremely fast, and a good candidate for sharing
+	#			   data such as EAP session blobs, between a cluster of
+	#			   servers.
 #	driver = "rlm_cache_rbtree"
 
-#
-#	Some drivers accept specific options, to set them a
-#	config section with the the name as the driver should be added
-#	to the cache instance.
-#
-#	Driver specific options are:
-#
+	#
+	#  Some drivers accept specific options, to set them a
+	#  config section with the the name as the driver should be added
+	#  to the cache instance.
+	#
+	#  Driver specific options are:
+	#
 #	memcached {
 #		# Memcached configuration options, as documented here:
 #		#    http://docs.libmemcached.org/libmemcached_configuration.html#memcached
 #		options = "--SERVER=localhost"
 #
 #		pool {
-#			start = 5
-#			min = 4
+#			start = ${thread[pool].start_servers}
+#			min = ${thread[pool].min_spare_servers}
 #			max = ${thread[pool].max_servers}
-#			spare = 3
+#			spare = ${thread[pool].max_spare_servers}
 #			uses = 0
 #			lifetime = 0
 #			idle_timeout = 60
 #		}
 #	}
 
+#	redis {
+#		#
+#		#  If using Redis cluster, multiple 'bootstrap' servers may be
+#		#  listed here (as separate config items). These will be contacted
+#		#  in turn until one provides us with a valid map for the cluster.
+#		#  Server strings may contain unique ports e.g.:
+#		#
+#		#    server = '127.0.0.1:30001'
+#		#    server = '[::1]:30002'
+#		#
+#		#  Instantiation failure behaviour is controlled by pool.start as
+#		#  with every other module, but with clustering, the pool section
+#		#  determines limits for each node in the cluster, not the cluster
+#		#  as a whole.
+#		#
+#		server = 127.0.0.1
+#
+#		#  Default port.
+#		port = 6379
+#
+#		#  Password to authenticate to the server.
+#		password = 'supersecret'
+#
+#		#  Database number to use.
+#		database = 0
+#
+#		pool {
+#			start = ${thread[pool].start_servers}
+#			min = ${thread[pool].min_spare_servers}
+#			max = ${thread[pool].max_servers}
+#			spare = ${thread[pool].max_spare_servers}
+#			uses = 0
+#			lifetime = 0
+#			idle_timeout = 60
+#		}
+#	}
 
 	#  The key used to index the cache.  It is dynamically expanded
 	#  at run time.
-	key = "%{User-Name}"
+	key = &User-Name
 
 	#  The TTL of cache entries, in seconds.  Entries older than this
 	#  will be expired.
@@ -91,16 +131,20 @@ cache {
 	#  represents the cache entry. see man unlang for more information
 	#  on update blocks.
 	#
+	#  Note: Only request, reply, control and session-state lists
+	#  are available in cache entries. Attempting to store attributes
+	#  in other lists will raise an error during config validation.
+	#
 	update {
-		# [outer.]<list>:<attribute> <op> <value>
+		# <list>:<attribute> <op> <value>
 
 		# Cache all instances of Reply-Message in the reply list
-		reply:Reply-Message += &reply:Reply-Message
+		&reply:Reply-Message := &reply:Reply-Message
 
 		# Add our own to show when the cache was last updated
-		reply:Reply-Message += "Cache last updated at %t"
+		&reply:Reply-Message := "Cache last updated at %t"
 
-		reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
+		&reply:Class := "%{randstr:ssssssssssssssssssssssssssssssss}"
 	}
 
 	#  This module supports a number of runtime configuration parameters
@@ -111,22 +155,30 @@ cache {
 	#    - Setting a Cache-TTL of > 0 means set the TTL of the entry to
 	#      the new value (and reset the expiry timer).
 	#    - Setting a Cache-TTL of < 0 means expire the existing entry
-	#      (without merging) and create a new one with TTL set to
-	#      value * -1.
+	#      and create a new one with TTL set to Cache-TTL * -1.
 	#    - Setting a Cache-TTL of 0 means expire the existing entry
-	#      (without merging) and don't create a new one.
+	#      and create a new one.
 	#
 	#  &control:Cache-Status-Only - If present and set to 'yes' will
 	#  prevent a new entry from being created, and existing entries from
 	#  being merged.  It will also alter the module's return codes.
 	#    - The module will return "ok" if a cache entry was found.
 	#    - The module will return "notfound" if no cache entry was found.
+	#  Note: If this is set to yes, no other cache control attributes will
+	#  be honoured, but they will still be cleared.
 	#
-	#  &control:Cache-Read-Only - If present and set to 'yes' will
-	#  prevent a new entry from being created, but will allow existing
-	#  entries to be merged.  It will also alter the module's return codes.
-	#    - The module will return "updated" if a cache entry was found.
-	#    - The module will return "notfound" if no cache was found.
+	#  &control:Cache-Allow-Insert - If present and set to 'no' will
+	#  prevent a new entry from being created. If not present or set
+	#  to 'yes', and no entry exists, a new one will be created.
+	#  This is evaluated after Cache-TTL, so expired entries may be
+	#  recreated.
+	#
+	#  &control:Cache-Allow-Merge - If present and set to 'no' will
+	#  prevent existing entries from being merged. If not present or
+	#  set to 'yes', and an entry exists (and is valid), it will be
+	#  merged with the current request.
+	#  This is evaluated before Cache-TTL, so entries being expired
+	#  may first be merged.
 	#
 	#  &control:Cache-Merge - If present and set to 'yes' will merge new
 	#  cache entries into the current request. Useful if results

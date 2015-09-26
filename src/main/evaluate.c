@@ -74,7 +74,10 @@ static bool all_digits(char const *string)
  * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] vpt the template to evaluate
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_tmpl_t const *vpt)
 {
@@ -83,7 +86,7 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
 	value_data_t data;
 
 	switch (vpt->type) {
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 		modcode = fr_str2int(modreturn_table, vpt->name, RLM_MODULE_UNKNOWN);
 		if (modcode != RLM_MODULE_UNKNOWN) {
 			rcode = (modcode == modreturn);
@@ -149,13 +152,16 @@ int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth, vp_t
 #ifdef HAVE_REGEX
 /** Perform a regular expressions comparison between two operands
  *
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
-		         PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
-		         PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
+		         PW_TYPE lhs_type, value_data_t const *lhs,
+		         PW_TYPE rhs_type, value_data_t const *rhs)
 {
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 
 	ssize_t		slen;
 	int		ret;
@@ -179,7 +185,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 	default:
 		rad_assert(rhs_type == PW_TYPE_STRING);
 		rad_assert(rhs->strvalue);
-		slen = regex_compile(request, &rreg, rhs->strvalue, rhs_len,
+		slen = regex_compile(request, &rreg, rhs->strvalue, rhs->length,
 				     map->rhs->tmpl_iflag, map->rhs->tmpl_mflag, true, true);
 		if (slen <= 0) {
 			REMARKER(rhs->strvalue, -slen, fr_strerror());
@@ -191,7 +197,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 		break;
 	}
 
-	ret = regex_exec(preg, lhs->strvalue, lhs_len, rxmatch, &nmatch);
+	ret = regex_exec(preg, lhs->strvalue, lhs->length, rxmatch, &nmatch);
 	switch (ret) {
 	case 0:
 		EVAL_DEBUG("CLEARING SUBCAPTURES");
@@ -200,7 +206,7 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 	case 1:
 		EVAL_DEBUG("SETTING SUBCAPTURES");
-		regex_sub_to_request(request, &preg, lhs->strvalue, lhs_len, rxmatch, nmatch);
+		regex_sub_to_request(request, &preg, lhs->strvalue, lhs->length, rxmatch, nmatch);
 		break;
 
 	case -1:
@@ -220,24 +226,24 @@ static int cond_do_regex(REQUEST *request, fr_cond_t const *c,
 
 #ifdef WITH_EVAL_DEBUG
 static void cond_print_operands(REQUEST *request,
-			   	PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
-			   	PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
+			   	PW_TYPE lhs_type, value_data_t const *lhs,
+			   	PW_TYPE rhs_type, value_data_t const *rhs)
 {
 	if (lhs) {
 		if (lhs_type == PW_TYPE_STRING) {
-			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->strvalue, lhs_len);
+			EVAL_DEBUG("LHS: \"%s\" (%zu)" , lhs->strvalue, lhs->length);
 		} else {
 			char *lhs_hex;
 
-			lhs_hex = talloc_array(request, char, (lhs_len * 2) + 1);
+			lhs_hex = talloc_array(request, char, (lhs->length * 2) + 1);
 
 			if (lhs_type == PW_TYPE_OCTETS) {
-				fr_bin2hex(lhs_hex, lhs->octets, lhs_len);
+				fr_bin2hex(lhs_hex, lhs->octets, lhs->length);
 			} else {
-				fr_bin2hex(lhs_hex, (uint8_t const *)lhs, lhs_len);
+				fr_bin2hex(lhs_hex, (uint8_t const *)lhs, lhs->length);
 			}
 
-			EVAL_DEBUG("LHS: 0x%s (%zu)", lhs_hex, lhs_len);
+			EVAL_DEBUG("LHS: 0x%s (%zu)", lhs_hex, lhs->length);
 
 			talloc_free(lhs_hex);
 		}
@@ -247,19 +253,19 @@ static void cond_print_operands(REQUEST *request,
 
 	if (rhs) {
 		if (rhs_type == PW_TYPE_STRING) {
-			EVAL_DEBUG("RHS: \"%s\" (%zu)" , rhs->strvalue, rhs_len);
+			EVAL_DEBUG("RHS: \"%s\" (%zu)" , rhs->strvalue, rhs->length);
 		} else {
 			char *rhs_hex;
 
-			rhs_hex = talloc_array(request, char, (rhs_len * 2) + 1);
+			rhs_hex = talloc_array(request, char, (rhs->length * 2) + 1);
 
 			if (rhs_type == PW_TYPE_OCTETS) {
-				fr_bin2hex(rhs_hex, rhs->octets, rhs_len);
+				fr_bin2hex(rhs_hex, rhs->octets, rhs->length);
 			} else {
-				fr_bin2hex(rhs_hex, (uint8_t const *)rhs, rhs_len);
+				fr_bin2hex(rhs_hex, (uint8_t const *)rhs, rhs->length);
 			}
 
-			EVAL_DEBUG("RHS: 0x%s (%zu)", rhs_hex, rhs_len);
+			EVAL_DEBUG("RHS: 0x%s (%zu)", rhs_hex, rhs->length);
 
 			talloc_free(rhs_hex);
 		}
@@ -274,18 +280,21 @@ static void cond_print_operands(REQUEST *request,
  * Deals with regular expression comparisons, virtual attribute
  * comparisons, and data comparisons.
  *
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
-			   PW_TYPE lhs_type, value_data_t const *lhs, size_t lhs_len,
-			   PW_TYPE rhs_type, value_data_t const *rhs, size_t rhs_len)
+			   PW_TYPE lhs_type, value_data_t const *lhs,
+			   PW_TYPE rhs_type, value_data_t const *rhs)
 {
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 	int rcode;
 
 #ifdef WITH_EVAL_DEBUG
 		EVAL_DEBUG("CMP OPERANDS");
-		cond_print_operands(request, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+		cond_print_operands(request, lhs_type, lhs, rhs_type, rhs);
 #endif
 
 #ifdef HAVE_REGEX
@@ -293,7 +302,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 	 *	Regex comparison
 	 */
 	if (map->op == T_OP_REG_EQ) {
-		rcode = cond_do_regex(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+		rcode = cond_do_regex(request, c, lhs_type, lhs, rhs_type, rhs);
 		goto finish;
 	}
 #endif
@@ -306,11 +315,10 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 		EVAL_DEBUG("CMP WITH PAIRCOMPARE");
 		rad_assert(map->lhs->type == TMPL_TYPE_ATTR);
 
-		vp = pairalloc(request, map->lhs->tmpl_da);
+		vp = fr_pair_afrom_da(request, map->lhs->tmpl_da);
 		vp->op = c->data.map->op;
 
-		value_data_copy(vp, &vp->data, rhs_type, rhs, rhs_len);
-		vp->vp_length = rhs_len;
+		value_data_copy(vp, &vp->data, rhs_type, rhs);
 
 		rcode = paircompare(request, request->packet->vps, vp, NULL);
 		rcode = (rcode == 0) ? 1 : 0;
@@ -326,7 +334,7 @@ static int cond_cmp_values(REQUEST *request, fr_cond_t const *c,
 	rad_assert(lhs_type == rhs_type);
 
 	EVAL_DEBUG("CMP WITH VALUE DATA");
-	rcode = value_data_cmp_op(map->op, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+	rcode = value_data_cmp_op(map->op, lhs_type, lhs, rhs_type, rhs);
 finish:
 	switch (rcode) {
 	case 0:
@@ -351,12 +359,16 @@ finish:
  *
  * If casting is successful, we call cond_cmp_values to do the comparison
  *
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
-static int cond_normalise_values(REQUEST *request, fr_cond_t const *c,
-				 PW_TYPE lhs_type, DICT_ATTR const *lhs_enumv, value_data_t const *lhs, size_t lhs_len)
+static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
+				  PW_TYPE lhs_type, DICT_ATTR const *lhs_enumv,
+				  value_data_t const *lhs)
 {
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 
 	DICT_ATTR const *cast = NULL;
 	PW_TYPE cast_type = PW_TYPE_INVALID;
@@ -365,8 +377,7 @@ static int cond_normalise_values(REQUEST *request, fr_cond_t const *c,
 
 	PW_TYPE rhs_type = PW_TYPE_INVALID;
 	DICT_ATTR const *rhs_enumv = NULL;
-	value_data_t const *rhs = NULL;
-	size_t rhs_len;
+	value_data_t *rhs = NULL;
 
 	value_data_t lhs_cast, rhs_cast;
 	void *lhs_cast_buff = NULL, *rhs_cast_buff = NULL;
@@ -382,19 +393,16 @@ static int cond_normalise_values(REQUEST *request, fr_cond_t const *c,
 #define CAST(_s) \
 do {\
 	if ((cast_type != PW_TYPE_INVALID) && (_s ## _type != PW_TYPE_INVALID) && (cast_type != _s ## _type)) {\
-		ssize_t r;\
 		EVAL_DEBUG("CASTING " #_s " FROM %s TO %s",\
 			   fr_int2str(dict_attr_types, _s ## _type, "<INVALID>"),\
 			   fr_int2str(dict_attr_types, cast_type, "<INVALID>"));\
-		r = value_data_cast(request, &_s ## _cast, cast_type, cast, _s ## _type, _s ## _enumv, _s, _s ## _len);\
-		if (r < 0) {\
+		if (value_data_cast(request, &_s ## _cast, cast_type, cast, _s ## _type, _s ## _enumv, _s) < 0) {\
 			REDEBUG("Failed casting " #_s " operand: %s", fr_strerror());\
 			rcode = -1;\
 			goto finish;\
 		}\
 		if (cast && cast->flags.is_pointer) _s ## _cast_buff = _s ## _cast.ptr;\
 		_s ## _type = cast_type;\
-		_s ## _len = (size_t)r;\
 		_s = &_s ## _cast;\
 	}\
 } while (0)
@@ -477,13 +485,12 @@ do {\
 			rhs_type = vp->da->type;
 			rhs_enumv = vp->da;
 			rhs = &vp->data;
-			rhs_len = vp->vp_length;
 
 			CHECK_INT_CAST(lhs, rhs);
 			CAST(lhs);
 			CAST(rhs);
 
-			rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+			rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
 			if (rcode != 0) break;
 
 			TALLOC_FREE(rhs_cast_buff);
@@ -494,20 +501,19 @@ do {\
 	case TMPL_TYPE_DATA:
 		rhs_type = map->rhs->tmpl_data_type;
 		rhs = &map->rhs->tmpl_data_value;
-		rhs_len = map->rhs->tmpl_data_length;
 
 		CHECK_INT_CAST(lhs, rhs);
 		CAST(lhs);
 		CAST(rhs);
 
-		rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
+		rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
 		break;
 
 	/*
 	 *	Expanded types start as strings, then get converted
 	 *	to the type of the attribute or the explicit cast.
 	 */
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
@@ -515,7 +521,7 @@ do {\
 		ssize_t ret;
 		value_data_t data;
 
-		if (map->rhs->type != TMPL_TYPE_LITERAL) {
+		if (map->rhs->type != TMPL_TYPE_UNPARSED) {
 			char *p;
 
 			ret = tmpl_aexpand(request, &p, request, map->rhs, NULL, NULL);
@@ -525,11 +531,11 @@ do {\
 				goto finish;
 			}
 			data.strvalue = p;
-			rhs_len = ret;
+			data.length = ret;
 
 		} else {
 			data.strvalue = map->rhs->name;
-			rhs_len = map->rhs->len;
+			data.length = map->rhs->len;
 		}
 		rad_assert(data.strvalue);
 
@@ -540,8 +546,8 @@ do {\
 		CAST(lhs);
 		CAST(rhs);
 
-		rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, rhs_type, rhs, rhs_len);
-		if (map->rhs->type != TMPL_TYPE_LITERAL)talloc_free(data.ptr);
+		rcode = cond_cmp_values(request, c, lhs_type, lhs, rhs_type, rhs);
+		if (map->rhs->type != TMPL_TYPE_UNPARSED)talloc_free(data.ptr);
 
 		break;
 	}
@@ -551,7 +557,7 @@ do {\
 	 */
 	case TMPL_TYPE_REGEX_STRUCT:
 		CAST(lhs);
-		rcode = cond_cmp_values(request, c, lhs_type, lhs, lhs_len, PW_TYPE_INVALID, NULL, 0);
+		rcode = cond_cmp_values(request, c, lhs_type, lhs, PW_TYPE_INVALID, NULL);
 		break;
 	/*
 	 *	Unsupported types (should have been parse errors)
@@ -579,13 +585,16 @@ finish:
  * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
- * @return -1 on error, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth, fr_cond_t const *c)
 {
 	int rcode = 0;
 
-	value_pair_map_t const *map = c->data.map;
+	vp_map_t const *map = c->data.map;
 
 	EVAL_DEBUG(">>> MAP TYPES LHS: %s, RHS: %s",
 		   fr_int2str(tmpl_names, map->lhs->type, "???"),
@@ -608,7 +617,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 #ifndef NDEBUG
 			rad_assert(radius_find_compare(map->lhs->tmpl_da)); /* expensive assert */
 #endif
-			rcode = cond_normalise_values(request, c, PW_TYPE_INVALID, NULL, NULL, 0);
+			rcode = cond_normalise_and_cmp(request, c, PW_TYPE_INVALID, NULL, NULL);
 			break;
 		}
 		for (vp = tmpl_cursor_init(&rcode, &cursor, request, map->lhs);
@@ -619,19 +628,18 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			 *	if we get at least one set of operands that
 			 *	evaluates to true.
 			 */
-	     		rcode = cond_normalise_values(request, c, vp->da->type, vp->da, &vp->data, vp->vp_length);
+	     		rcode = cond_normalise_and_cmp(request, c, vp->da->type, vp->da, &vp->data);
 	     		if (rcode != 0) break;
 		}
 	}
 		break;
 
 	case TMPL_TYPE_DATA:
-		rcode = cond_normalise_values(request, c,
-					      map->lhs->tmpl_data_type, NULL, &map->lhs->tmpl_data_value,
-					      map->lhs->tmpl_data_length);
+		rcode = cond_normalise_and_cmp(request, c,
+					      map->lhs->tmpl_data_type, NULL, &map->lhs->tmpl_data_value);
 		break;
 
-	case TMPL_TYPE_LITERAL:
+	case TMPL_TYPE_UNPARSED:
 	case TMPL_TYPE_EXEC:
 	case TMPL_TYPE_XLAT:
 	case TMPL_TYPE_XLAT_STRUCT:
@@ -639,7 +647,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		ssize_t ret;
 		value_data_t data;
 
-		if (map->lhs->type != TMPL_TYPE_LITERAL) {
+		if (map->lhs->type != TMPL_TYPE_UNPARSED) {
 			char *p;
 
 			ret = tmpl_aexpand(request, &p, request, map->lhs, NULL, NULL);
@@ -648,14 +656,15 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 				return ret;
 			}
 			data.strvalue = p;
+			data.length = (size_t)ret;
 		} else {
 			data.strvalue = map->lhs->name;
-			ret = map->lhs->len;
+			data.length = map->lhs->len;
 		}
 		rad_assert(data.strvalue);
 
-		rcode = cond_normalise_values(request, c, PW_TYPE_STRING, NULL, &data, ret);
-		if (map->lhs->type != TMPL_TYPE_LITERAL) talloc_free(data.ptr);
+		rcode = cond_normalise_and_cmp(request, c, PW_TYPE_STRING, NULL, &data);
+		if (map->lhs->type != TMPL_TYPE_UNPARSED) talloc_free(data.ptr);
 	}
 		break;
 
@@ -683,7 +692,11 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
  * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] c the condition to evaluate
- * @return -1 on failure, -2 on attribute not found, 0 for "no match", 1 for "match".
+ * @return
+ *	- -1 on failure.
+ *	- -2 on attribute not found.
+ *	- 0 for "no match".
+ *	- 1 for "match".
  */
 int radius_evaluate_cond(REQUEST *request, int modreturn, int depth, fr_cond_t const *c)
 {
@@ -691,7 +704,7 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth, fr_cond_t c
 #ifdef WITH_EVAL_DEBUG
 	char buffer[1024];
 
-	fr_cond_sprint(buffer, sizeof(buffer), c);
+	fr_cond_snprint(buffer, sizeof(buffer), c);
 	EVAL_DEBUG("%s", buffer);
 #endif
 
@@ -751,11 +764,11 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth, fr_cond_t c
 
 
 /*
- *	The pairmove() function in src/lib/valuepair.c does all sorts of
+ *	The fr_pair_list_move() function in src/lib/valuepair.c does all sorts of
  *	extra magic that we don't want here.
  *
  *	FIXME: integrate this with the code calling it, so that we
- *	only paircopy() those attributes that we're really going to
+ *	only fr_pair_list_copy() those attributes that we're really going to
  *	use.
  */
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool do_xlat)
@@ -764,8 +777,11 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp, *next, **last;
 	VALUE_PAIR **from_list, **to_list;
+	VALUE_PAIR *append, **append_tail;
+	VALUE_PAIR *to_copy;
 	bool *edited = NULL;
 	REQUEST *fixup = NULL;
+	TALLOC_CTX *ctx;
 
 	if (!request) return;
 
@@ -776,7 +792,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	 *
 	 *	It also means that the operators apply ONLY to the
 	 *	attributes in the original list.  With the previous
-	 *	implementation of pairmove(), adding two attributes
+	 *	implementation of fr_pair_list_move(), adding two attributes
 	 *	via "+=" and then "=" would mean that the second one
 	 *	wasn't added, because of the existence of the first
 	 *	one in the "to" list.  This implementation doesn't
@@ -785,7 +801,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	 *	Also, the previous implementation did NOT implement
 	 *	"-=" correctly.  If two of the same attributes existed
 	 *	in the "to" list, and you tried to subtract something
-	 *	matching the *second* value, then the pairdelete()
+	 *	matching the *second* value, then the fr_pair_delete_by_num()
 	 *	function was called, and the *all* attributes of that
 	 *	number were deleted.  With this implementation, only
 	 *	the matching attributes are deleted.
@@ -796,6 +812,9 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 
 	for (vp = fr_cursor_init(&cursor, to); vp; vp = fr_cursor_next(&cursor)) count++;
 	to_list = talloc_array(request, VALUE_PAIR *, count);
+
+	append = NULL;
+	append_tail = &append;
 
 	/*
 	 *	Move the lists to the arrays, and break the list
@@ -809,7 +828,9 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	}
 
 	to_count = 0;
-	for (vp = *to; vp != NULL; vp = next) {
+	ctx = talloc_parent(*to);
+	to_copy = fr_pair_list_copy(ctx, *to);
+	for (vp = to_copy; vp != NULL; vp = next) {
 		next = vp->next;
 		to_list[to_count++] = vp;
 		vp->next = NULL;
@@ -835,7 +856,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 		 *	is empty, and we're supposed to replace or
 		 *	"add if not existing".
 		 */
-		if (from_list[i]->op == T_OP_ADD) goto append;
+		if (from_list[i]->op == T_OP_ADD) goto do_append;
 
 		found = false;
 		for (j = 0; j < to_count; j++) {
@@ -863,7 +884,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			if (from_list[i]->op == T_OP_SET) {
 				RDEBUG4("::: OVERWRITING %s FROM %d TO %d",
 				       to_list[j]->da->name, i, j);
-				pairfree(&to_list[j]);
+				fr_pair_list_free(&to_list[j]);
 				to_list[j] = from_list[i];
 				from_list[i] = NULL;
 				edited[j] = true;
@@ -928,7 +949,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 					delete:
 						RDEBUG4("::: DELETING %s FROM %d TO %d",
 						       from_list[i]->da->name, i, j);
-						pairfree(&to_list[j]);
+						fr_pair_list_free(&to_list[j]);
 						to_list[j] = NULL;
 					}
 					break;
@@ -941,7 +962,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 					if (rcode > 0) {
 						RDEBUG4("::: REPLACING %s FROM %d TO %d",
 						       from_list[i]->da->name, i, j);
-						pairfree(&to_list[j]);
+						fr_pair_list_free(&to_list[j]);
 						to_list[j] = from_list[i];
 						from_list[i] = NULL;
 						edited[j] = true;
@@ -952,7 +973,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 					if (rcode < 0) {
 						RDEBUG4("::: REPLACING %s FROM %d TO %d",
 						       from_list[i]->da->name, i, j);
-						pairfree(&to_list[j]);
+						fr_pair_list_free(&to_list[j]);
 						to_list[j] = from_list[i];
 						from_list[i] = NULL;
 						edited[j] = true;
@@ -977,11 +998,13 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			    (from_list[i]->op == T_OP_LE) ||
 			    (from_list[i]->op == T_OP_GE) ||
 			    (from_list[i]->op == T_OP_SET)) {
-			append:
+			do_append:
 				RDEBUG4("::: APPENDING %s FROM %d TO %d",
 				       from_list[i]->da->name, i, tailto);
-				to_list[tailto++] = from_list[i];
+				*append_tail = from_list[i];
+				from_list[i]->op = T_OP_EQ;
 				from_list[i] = NULL;
+				append_tail = &(*append_tail)->next;
 			}
 		}
 	}
@@ -992,7 +1015,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	for (i = 0; i < from_count; i++) {
 		if (!from_list[i]) continue;
 
-		pairfree(&from_list[i]);
+		fr_pair_list_free(&from_list[i]);
 	}
 	talloc_free(from_list);
 
@@ -1001,17 +1024,13 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 	/*
 	 *	Re-chain the "to" list.
 	 */
-	*to = NULL;
+	fr_pair_list_free(to);
 	last = to;
 
 	if (to == &request->packet->vps) {
 		fixup = request;
 	} else if (request->parent && (to == &request->parent->packet->vps)) {
 		fixup = request->parent;
-	}
-	if (fixup) {
-		fixup->username = NULL;
-		fixup->password = NULL;
 	}
 
 	for (i = 0; i < tailto; i++) {
@@ -1029,12 +1048,27 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 		 */
 		vp->op = T_OP_EQ;
 
-		/*
-		 *	Fix dumb cache issues
-		 */
-		if (fixup && !vp->da->vendor) {
-			if ((vp->da->attr == PW_USER_NAME) &&
-			    !fixup->username) {
+		*last = vp;
+		last = &(*last)->next;
+	}
+
+	/*
+	 *	And finally add in the attributes we're appending to
+	 *	the tail of the "to" list.
+	 */
+	*last = append;
+
+	/*
+	 *	Fix dumb cache issues
+	 */
+	if (fixup) {
+		fixup->username = NULL;
+		fixup->password = NULL;
+
+		for (vp = fixup->packet->vps; vp != NULL; vp = vp->next) {
+			if (vp->da->vendor) continue;
+
+			if ((vp->da->attr == PW_USER_NAME) && !fixup->username) {
 				fixup->username = vp;
 
 			} else if (vp->da->attr == PW_STRIPPED_USER_NAME) {
@@ -1044,9 +1078,6 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 				fixup->password = vp;
 			}
 		}
-
-		*last = vp;
-		last = &(*last)->next;
 	}
 
 	rad_assert(request->packet != NULL);

@@ -112,6 +112,24 @@ AC_DEFUN([AX_CC_WDOCUMENTATION_FLAG],[
   ])
 ])
 
+AC_DEFUN([AX_CC_PTHREAD_FLAG],[
+  AC_CACHE_CHECK([for the compiler flag "-pthread"], [ax_cv_cc_pthread_flag],[
+
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -pthread"
+
+    AC_LANG_PUSH(C)
+    AC_TRY_COMPILE(
+      [],
+      [return 0;],
+      [ax_cv_cc_pthread_flag="yes"],
+      [ax_cv_cc_pthread_flag="no"])
+    AC_LANG_POP
+
+    CFLAGS="$CFLAGS_SAVED"
+  ])
+])
+
 dnl #
 dnl # Determine the number of system cores we have
 dnl #

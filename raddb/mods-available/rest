@@ -8,10 +8,10 @@ rest {
 #		ca_file	= ${certdir}/cacert.pem
 #		ca_path	= ${certdir}
 
-#		certificate_file	= /path/to/radius.crt
+#		certificate_file        = /path/to/radius.crt
 #		private_key_file	= /path/to/radius.key
 #		private_key_password	= "supersecret"
-#		random_file		= ${certdir}/random
+#		random_file		= /dev/urandom
 
 		#  Server certificate verification requirements.  Can be:
 		#    "no"  (don't even bother trying)
@@ -19,7 +19,7 @@ rest {
 		#	   trusted CAs)
 		#
 		#  The default is "yes"
-#		check_cert     = "yes"
+#		check_cert = yes
 
 		#  Server certificate CN verification requirements.  Can be:
 		#    "no"  (don't even bother trying)
@@ -27,7 +27,7 @@ rest {
 		#	   in the URI)
 		#
 		#  The default is "yes"
-#		check_cert_cn  = "yes"
+#		check_cert_cn = yes
 	}
 
 	#
@@ -39,11 +39,6 @@ rest {
 	#  comment out the configuration item below.
 	#
 	connect_uri = "http://127.0.0.1/"
-
-	#
-	#  How long before new connection attempts timeout, defaults to 4.0 seconds.
-	#
-#	connect_timeout = 4.0
 
 	#
 	#  The following config items can be used in each of the sections.
@@ -79,7 +74,66 @@ rest {
 	#
 	#  control:REST-HTTP-Header attributes will be consumed after each call
 	#  to the rest module, and each %{rest:} expansion.
+
 	#
+	#  Body encodings are the same for requests and responses
+	#
+	#  POST - All attributes and values are urlencoded
+	#  [outer.][<list>:]<attribute0>=<value0>&[outer.][<list>:]<attributeN>=<valueN>
+	#
+	#  JSON - All attributes and values are escaped according to the JSON specification
+	#  {
+	#      "<attribute0>":{
+	#          "type":"<type0>",
+	#          "value":[<value0>,<value1>,<valueN>]
+	#      },
+	#      "<attribute1>":{
+	#          "type":"<type1>",
+	#          "value":[...]
+	#      },
+	#      "<attributeN>":{
+	#          "type":"<typeN>",
+	#          "value":[...]
+	#      },
+	#  }
+	#
+	#  The response format adds three optional fields:
+	#  - do_xlat	If true, any values will be xlat expanded. Defaults to true.
+	#  - is_json	If true, any nested JSON data will be copied to the attribute
+	#               in string form. Defaults to true.
+	#  - op	        Controls how the attribute is inserted into the target list.
+	#               Defaults to ':='.
+	#  {
+	#      "<attribute0>":{
+	#          "is_json":<bool>,
+	#          "do_xlat":<bool>,
+	#          "op":"<operator>",
+	#          "value":[<value0>,<value1>,<valueN>]
+	#      },
+	#      "<attribute1>":"value",
+	#      "<attributeN>":[<value0>,<value1>,<valueN>]
+	#  }
+
+	#
+	#  Module return codes are determined by HTTP response codes. These vary depending on the
+	#  section.
+	#
+	#  If the body is processed and found to be malformed or unsupported fail will be returned.
+	#  If the body is processed and found to contain attribute updated will be returned,
+	#  except in the case of a 401 code.
+	#
+
+	#  Authorize/Authenticate
+	#
+	#  Code   Meaning       Process body  Module code
+	#  404    not found     no            notfound
+	#  410    gone          no            notfound
+	#  403    forbidden     no            userlock
+	#  401    unauthorized  yes           reject
+	#  204    no content    no            ok
+	#  2xx    successful    yes           ok/updated
+	#  5xx    server error  no            fail
+	#  xxx    -             no            invalid
 	authorize {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
 		method = 'get'
@@ -90,19 +144,22 @@ rest {
 		method = 'get'
 		tls = ${..tls}
 	}
+
+	#  Accounting/Post-auth
+	#
+	#  Code   Meaning       Process body  Module code
+	#  204    no content    no            ok
+	#  2xx    successful    yes           ok/updated
+	#  5xx    server error  no            fail
+	#  xxx    -             no            invalid
 	accounting {
-		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=accounting"
-		method = 'post'
-		tls = ${..tls}
-	}
-	session {
-		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=checksimul"
+		uri = "${..connect_uri}/user/%{User-Name}/sessions/%{Acct-Unique-Session-ID}"
 		method = 'post'
 		tls = ${..tls}
 	}
 	post-auth {
-		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=post-auth"
-		method = "post"
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?action=post-auth"
+		method = 'post'
 		tls = ${..tls}
 	}
 
@@ -111,50 +168,64 @@ rest {
 	#  modules, for all kinds of connection-related activity.
 	#
 	pool {
-		# Number of connections to start
+		#  Connections to create during module instantiation.
+		#  If the server cannot create specified number of
+		#  connections during instantiation it will exit.
+		#  Set to 0 to allow the server to start without the
+		#  web service being available.
 		start = ${thread[pool].start_servers}
 
-		# Minimum number of connections to keep open
+		#  Minimum number of connections to keep open
 		min = ${thread[pool].min_spare_servers}
 
-		# Maximum number of connections
+		#  Maximum number of connections
 		#
-		# If these connections are all in use and a new one
-		# is requested, the request will NOT get a connection.
+		#  If these connections are all in use and a new one
+		#  is requested, the request will NOT get a connection.
 		#
-		# NOTE: This should be greater than or equal to "min" above.
+		#  Setting 'max' to LESS than the number of threads means
+		#  that some threads may starve, and you will see errors
+		#  like 'No connections available and at max connection limit'
+		#
+		#  Setting 'max' to MORE than the number of threads means
+		#  that there are more connections than necessary.
 		max = ${thread[pool].max_servers}
 
-		# Spare connections to be left idle
+		#  Spare connections to be left idle
 		#
-		# NOTE: Idle connections WILL be closed if "idle_timeout"
-		# is set.  This should be less than or equal to "max" above.
+		#  NOTE: Idle connections WILL be closed if "idle_timeout"
+		#  is set.  This should be less than or equal to "max" above.
 		spare = ${thread[pool].max_spare_servers}
 
-		# Number of uses before the connection is closed
+		#  Number of uses before the connection is closed
 		#
-		# NOTE: A setting of 0 means infinite (no limit).
+		# 0 means "infinite"
 		uses = 0
 
-		# The lifetime (in seconds) of the connection
-		#
-		# NOTE: A setting of 0 means infinite (no limit).
+		#  The number of seconds to wait after the server tries
+		#  to open a connection, and fails.  During this time,
+		#  no new connections will be opened.
+		retry_delay = 30
+
+		#  The lifetime (in seconds) of the connection
 		lifetime = 0
 
-		# The idle timeout (in seconds).  A connection which is
-		# unused for this length of time will be closed.
-		#
-		# NOTE: A setting of 0 means infinite (no timeout).
+		#  idle timeout (in seconds).  A connection which is
+		#  unused for this length of time will be closed.
 		idle_timeout = 60
 
-		# NOTE: All configuration settings are enforced.  If a
-		# connection is closed because of "idle_timeout",
-		# "uses", or "lifetime", then the total number of
-		# connections MAY fall below "min".  When that
-		# happens, it will open a new connection.  It will
-		# also log a WARNING message.
+		#  Connection timeout (in seconds).  The maximum amount of
+		#  time to wait for a new connection to be established.
+		connect_timeout = 3.0
+
+		#  NOTE: All configuration settings are enforced.  If a
+		#  connection is closed because of "idle_timeout",
+		#  "uses", or "lifetime", then the total number of
+		#  connections MAY fall below "min".  When that
+		#  happens, it will open a new connection.  It will
+		#  also log a WARNING message.
 		#
-		# The solution is to either lower the "min" connections,
-		# or increase lifetime/idle_timeout.
+		#  The solution is to either lower the "min" connections,
+		#  or increase lifetime/idle_timeout.
 	}
 }

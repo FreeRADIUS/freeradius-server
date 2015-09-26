@@ -110,21 +110,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
  */
 extern module_t rlm_dynamic_clients;
 module_t rlm_dynamic_clients = {
-	RLM_MODULE_INIT,
-	"dynamic_clients",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	0,
-	NULL,				/* CONF_PARSER */
-	NULL,				/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize,	/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "dynamic_clients",
+	.type		= RLM_TYPE_THREAD_SAFE,		/* type */
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize
 	},
 };

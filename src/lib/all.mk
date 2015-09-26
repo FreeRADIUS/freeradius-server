@@ -30,6 +30,7 @@ SOURCES		:= cbuff.c \
 		   snprintf.c \
 		   strlcat.c \
 		   strlcpy.c \
+		   socket.c \
 		   token.c \
 		   udpfromto.c \
 		   value.c \

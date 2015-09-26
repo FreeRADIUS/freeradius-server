@@ -42,7 +42,7 @@ The path to the file.
 .IP format
 The format of the fields in the file, given as an example line from
 the file, with the content of the fields as the RADIUS attributes
-which the fields map to. The fields are seperated by the ':' character
+which the fields map to. The fields are separated by the ':' character
 in the configuration (no matter what is configured for the 'delimiter'
 option).
 .IP hash_size
@@ -98,7 +98,7 @@ format = "My-Group:::*,User-Name"
 .IP
 Parse a file similar to the /etc/group file.  An entry matches a
 request when the name in a User-Name attribute exists in the
-comma-seperated list of a line in the file.  When an entry matches, 
+comma-separated list of a line in the file.  When an entry matches, 
 a "My-Group" attribute will be created and added to the control
 items for the request.  The value of that attribute will be taken from
 the first field of the matching line in the file.

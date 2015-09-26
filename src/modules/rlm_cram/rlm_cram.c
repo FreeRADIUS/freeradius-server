@@ -104,7 +104,7 @@ static void calc_sha1_digest(uint8_t *buffer, uint8_t const *challenge,
 {
 	uint8_t buf[1024];
 	int i;
-	fr_SHA1_CTX context;
+	fr_sha1_ctx context;
 
 	memset(buf, 0, 1024);
 	memset(buf, 0x36, 64);
@@ -126,22 +126,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void * instance, REQ
 	VALUE_PAIR *authtype, *challenge, *response, *password;
 	uint8_t buffer[64];
 
-	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	password = fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if(!password) {
 		AUTH("rlm_cram: Cleartext-Password is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
-	authtype = pairfind(request->packet->vps, SM_AUTHTYPE, VENDORPEC_SM, TAG_ANY);
+	authtype = fr_pair_find_by_num(request->packet->vps, SM_AUTHTYPE, VENDORPEC_SM, TAG_ANY);
 	if(!authtype) {
 		AUTH("rlm_cram: Required attribute Sandy-Mail-Authtype missed");
 		return RLM_MODULE_INVALID;
 	}
-	challenge = pairfind(request->packet->vps, SM_CHALLENGE, VENDORPEC_SM, TAG_ANY);
+	challenge = fr_pair_find_by_num(request->packet->vps, SM_CHALLENGE, VENDORPEC_SM, TAG_ANY);
 	if(!challenge) {
 		AUTH("rlm_cram: Required attribute Sandy-Mail-Challenge missed");
 		return RLM_MODULE_INVALID;
 	}
-	response = pairfind(request->packet->vps, SM_RESPONSE, VENDORPEC_SM, TAG_ANY);
+	response = fr_pair_find_by_num(request->packet->vps, SM_RESPONSE, VENDORPEC_SM, TAG_ANY);
 	if(!response) {
 		AUTH("rlm_cram: Required attribute Sandy-Mail-Response missed");
 		return RLM_MODULE_INVALID;
@@ -189,21 +189,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void * instance, REQ
 
 extern module_t rlm_cram;
 module_t rlm_cram = {
-	RLM_MODULE_INIT,
-	"CRAM",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	0,
-	NULL,				/* CONF_PARSER */
-	NULL,				/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_authenticate,	/* authenticate */
-		NULL,			/* authorize */
-		NULL,			/* pre-accounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "cram",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate
 	},
 };

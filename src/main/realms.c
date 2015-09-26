@@ -99,19 +99,18 @@ static rbtree_t	*home_pools_byname = NULL;
  *  Map the proxy server configuration parameters to variables.
  */
 static const CONF_PARSER proxy_config[] = {
-	{ "retry_delay", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, retry_delay), STRINGIFY(RETRY_DELAY)  },
+	{ FR_CONF_OFFSET("retry_delay", PW_TYPE_INTEGER, realm_config_t, retry_delay), .dflt = STRINGIFY(RETRY_DELAY) },
 
-	{ "retry_count", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, retry_count), STRINGIFY(RETRY_COUNT)  },
+	{ FR_CONF_OFFSET("retry_count", PW_TYPE_INTEGER, realm_config_t, retry_count), .dflt = STRINGIFY(RETRY_COUNT) },
 
-	{ "default_fallback", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, fallback), "no" },
+	{ FR_CONF_OFFSET("default_fallback", PW_TYPE_BOOLEAN, realm_config_t, fallback), .dflt = "no" },
 
-	{ "dynamic", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, dynamic), NULL },
+	{ FR_CONF_OFFSET("dynamic", PW_TYPE_BOOLEAN, realm_config_t, dynamic) },
 
-	{ "dead_time", FR_CONF_OFFSET(PW_TYPE_INTEGER, realm_config_t, dead_time), STRINGIFY(DEAD_TIME)  },
+	{ FR_CONF_OFFSET("dead_time", PW_TYPE_INTEGER, realm_config_t, dead_time), .dflt = STRINGIFY(DEAD_TIME) },
 
-	{ "wake_all_if_all_dead", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, realm_config_t, wake_all_if_all_dead), "no" },
-
-	{ NULL, -1, 0, NULL, NULL }
+	{ FR_CONF_OFFSET("wake_all_if_all_dead", PW_TYPE_BOOLEAN, realm_config_t, wake_all_if_all_dead), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
 };
 #endif
 
@@ -226,16 +225,14 @@ static size_t CC_HINT(nonnull) xlat_cs(CONF_SECTION *cs, char const *fmt, char *
  *	Xlat for %{home_server:foo}
  */
 static ssize_t CC_HINT(nonnull) xlat_home_server(UNUSED void *instance, REQUEST *request,
-						 char const *fmt, char *out, size_t outlen)
+						 char const *fmt, char **out, size_t outlen)
 {
 	if (!request->home_server) {
 		RWDEBUG("No home_server associated with this request");
-
-		*out = '\0';
 		return 0;
 	}
 
-	return xlat_cs(request->home_server->cs, fmt, out, outlen);
+	return xlat_cs(request->home_server->cs, fmt, *out, outlen);
 }
 
 
@@ -243,16 +240,14 @@ static ssize_t CC_HINT(nonnull) xlat_home_server(UNUSED void *instance, REQUEST 
  *	Xlat for %{home_server_pool:foo}
  */
 static ssize_t CC_HINT(nonnull) xlat_server_pool(UNUSED void *instance, REQUEST *request,
-						 char const *fmt, char *out, size_t outlen)
+						 char const *fmt, char **out, size_t outlen)
 {
 	if (!request->home_pool) {
 		RWDEBUG("No home_pool associated with this request");
-
-		*out = '\0';
 		return 0;
 	}
 
-	return xlat_cs(request->home_pool->cs, fmt, out, outlen);
+	return xlat_cs(request->home_pool->cs, fmt, *out, outlen);
 }
 #endif
 
@@ -286,75 +281,72 @@ void realms_free(void)
 
 #ifdef WITH_PROXY
 static CONF_PARSER limit_config[] = {
-	{ "max_connections", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_connections), "16" },
-	{ "max_requests", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.max_requests), "0" },
-	{ "lifetime", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.lifetime), "0" },
-	{ "idle_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, limit.idle_timeout), "0" },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("max_connections", PW_TYPE_INTEGER, home_server_t, limit.max_connections), .dflt = "16" },
+	{ FR_CONF_OFFSET("max_requests", PW_TYPE_INTEGER, home_server_t, limit.max_requests), .dflt = "0" },
+	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, home_server_t, limit.lifetime), .dflt = "0" },
+	{ FR_CONF_OFFSET("idle_timeout", PW_TYPE_INTEGER, home_server_t, limit.idle_timeout), .dflt = "0" },
+	CONF_PARSER_TERMINATOR
 };
 
 #ifdef WITH_COA
 static CONF_PARSER home_server_coa[] = {
-	{ "irt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_irt), STRINGIFY(2) },
-	{ "mrt",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_mrt), STRINGIFY(16) },
-	{ "mrc",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_mrc), STRINGIFY(5) },
-	{ "mrd",  FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, coa_mrd), STRINGIFY(30) },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("irt", PW_TYPE_INTEGER, home_server_t, coa_irt), .dflt = STRINGIFY(2) },
+	{ FR_CONF_OFFSET("mrt", PW_TYPE_INTEGER, home_server_t, coa_mrt), .dflt = STRINGIFY(16) },
+	{ FR_CONF_OFFSET("mrc", PW_TYPE_INTEGER, home_server_t, coa_mrc), .dflt = STRINGIFY(5) },
+	{ FR_CONF_OFFSET("mrd", PW_TYPE_INTEGER, home_server_t, coa_mrd), .dflt = STRINGIFY(30) },
+	CONF_PARSER_TERMINATOR
 };
 #endif
 
 static CONF_PARSER home_server_config[] = {
-	{ "ipaddr", FR_CONF_OFFSET(PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr), NULL },
-	{ "ipv4addr", FR_CONF_OFFSET(PW_TYPE_IPV4_ADDR, home_server_t, ipaddr), NULL },
-	{ "ipv6addr", FR_CONF_OFFSET(PW_TYPE_IPV6_ADDR, home_server_t, ipaddr), NULL },
-	{ "virtual_server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, server), NULL },
+	{ FR_CONF_OFFSET("ipaddr", PW_TYPE_COMBO_IP_ADDR, home_server_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipv4addr", PW_TYPE_IPV4_ADDR, home_server_t, ipaddr) },
+	{ FR_CONF_OFFSET("ipv6addr", PW_TYPE_IPV6_ADDR, home_server_t, ipaddr) },
+	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, server) },
 
-	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, home_server_t, port), "0" },
+	{ FR_CONF_OFFSET("port", PW_TYPE_SHORT, home_server_t, port), .dflt = "0" },
 
-	{ "type", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, type_str), NULL },
+	{ FR_CONF_OFFSET("type", PW_TYPE_STRING, home_server_t, type_str) },
 
 #ifdef WITH_TCP
-	{ "proto", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, proto_str), NULL },
+	{ FR_CONF_OFFSET("proto", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, proto_str) },
 #endif
 
-	{ "secret", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, home_server_t, secret), NULL },
+	{ FR_CONF_OFFSET("secret", PW_TYPE_STRING | PW_TYPE_SECRET, home_server_t, secret) },
 
-	{ "src_ipaddr", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, src_ipaddr_str), NULL },
+	{ FR_CONF_OFFSET("src_ipaddr", PW_TYPE_STRING, home_server_t, src_ipaddr_str) },
 
-	{ "response_window", FR_CONF_OFFSET(PW_TYPE_TIMEVAL, home_server_t, response_window), "30" },
-	{ "response_timeouts", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_response_timeouts), "1" },
-	{ "max_outstanding", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, max_outstanding), "65536" },
+	{ FR_CONF_OFFSET("response_window", PW_TYPE_TIMEVAL, home_server_t, response_window), .dflt = "30" },
+	{ FR_CONF_OFFSET("response_timeouts", PW_TYPE_INTEGER, home_server_t, max_response_timeouts), .dflt = "1" },
+	{ FR_CONF_OFFSET("max_outstanding", PW_TYPE_INTEGER, home_server_t, max_outstanding), .dflt = "65536" },
 
-	{ "zombie_period", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, zombie_period), "40" },
+	{ FR_CONF_OFFSET("zombie_period", PW_TYPE_INTEGER, home_server_t, zombie_period), .dflt = "40" },
 
-	{ "status_check",  FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_check_str), "none" },
-	{ "ping_check", FR_CONF_OFFSET(PW_TYPE_STRING, home_server_t, ping_check_str), NULL },
+	{ FR_CONF_OFFSET("status_check", PW_TYPE_STRING, home_server_t, ping_check_str), .dflt = "none" },
+	{ FR_CONF_OFFSET("ping_check", PW_TYPE_STRING, home_server_t, ping_check_str) },
 
-	{ "ping_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), "30" },
-	{ "check_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_interval), NULL },
+	{ FR_CONF_OFFSET("ping_interval", PW_TYPE_INTEGER, home_server_t, ping_interval), .dflt = "30" },
+	{ FR_CONF_OFFSET("check_interval", PW_TYPE_INTEGER, home_server_t, ping_interval) },
 
-	{ "check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), "4" },
-	{ "status_check_timeout", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ping_timeout), NULL },
+	{ FR_CONF_OFFSET("check_timeout", PW_TYPE_INTEGER, home_server_t, ping_timeout), .dflt = "4" },
+	{ FR_CONF_OFFSET("status_check_timeout", PW_TYPE_INTEGER, home_server_t, ping_timeout) },
 
-	{ "num_answers_to_alive", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, num_pings_to_alive), "3" },
-	{ "revive_interval", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, revive_interval), "300" },
+	{ FR_CONF_OFFSET("num_answers_to_alive", PW_TYPE_INTEGER, home_server_t, num_pings_to_alive), .dflt = "3" },
+	{ FR_CONF_OFFSET("revive_interval", PW_TYPE_INTEGER, home_server_t, revive_interval), .dflt = "300" },
 
-	{ "username", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name), NULL },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password), NULL },
+	{ FR_CONF_OFFSET("username", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_name) },
+	{ FR_CONF_OFFSET("password", PW_TYPE_STRING | PW_TYPE_NOT_EMPTY, home_server_t, ping_user_password) },
 
 #ifdef WITH_STATS
-	{ "historic_average_window", FR_CONF_OFFSET(PW_TYPE_INTEGER, home_server_t, ema.window), NULL },
+	{ FR_CONF_OFFSET("historic_average_window", PW_TYPE_INTEGER, home_server_t, ema.window) },
 #endif
 
-	{ "limit", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) limit_config },
+	{ FR_CONF_POINTER("limit", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) limit_config },
 
 #ifdef WITH_COA
-	{ "coa", FR_CONF_POINTER(PW_TYPE_SUBSECTION, NULL), (void const *) home_server_coa },
+	{ FR_CONF_POINTER("coa", PW_TYPE_SUBSECTION, NULL), .dflt = (void const *) home_server_coa },
 #endif
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -449,7 +441,9 @@ void realm_home_server_sanitize(home_server_t *home, CONF_SECTION *cs)
  *
  * @param home server to add.
  * @param cs That defined the home server.
- * @return true on success else false.
+ * @return
+ *	- true on success.
+ *	- false on failure.
  */
 static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 {
@@ -482,7 +476,9 @@ static bool home_server_insert(home_server_t *home, CONF_SECTION *cs)
 /** Add an already allocate home_server_t to the various trees
  *
  * @param home server to add.
- * @return true on success, else false on error.
+ * @return
+ *	- true on success.
+ *	- false on error.
  */
 bool realm_home_server_add(home_server_t *home)
 {
@@ -491,7 +487,7 @@ bool realm_home_server_add(home_server_t *home)
 	 *	the server.
 	 */
 	if (event_loop_started && !realm_config->dynamic) {
-		ERROR("Failed to add dynamic home server, \"dynamic = true\" must be set in proxy.conf");
+		ERROR("Failed to add dynamic home server, \"dynamic = yes\" must be set in proxy.conf");
 		return false;
 	}
 
@@ -523,7 +519,16 @@ bool realm_home_server_add(home_server_t *home)
 
 	if (!home_server_insert(home, home->cs)) return false;
 
-	if (home->dual) {
+	/*
+	 *	Dual home servers cause us to auto-create an
+	 *	accounting server for UDP sockets, and leave
+	 *	everything alone for TLS sockets.
+	 */
+	if (home->dual
+#ifdef WITH_TLS
+	    && !home->tls
+#endif
+) {
 		home_server_t *home2 = talloc(talloc_parent(home), home_server_t);
 
 		memcpy(home2, home, sizeof(*home2));
@@ -531,6 +536,7 @@ bool realm_home_server_add(home_server_t *home)
 		home2->type = HOME_TYPE_ACCT;
 		home2->dual = true;
 		home2->port++;
+
 		home2->ping_user_password = NULL;
 		home2->cs = home->cs;
 		home2->parent_server = home->parent_server;
@@ -549,17 +555,18 @@ bool realm_home_server_add(home_server_t *home)
 	return true;
 }
 
-/** Alloc a new home server defined by a CONF_SECTION
+/** Alloc a new home server defined by a #CONF_SECTION
  *
  * @param ctx to allocate home_server_t in.
  * @param rc Realm config, may be NULL in which case the global realm_config will be used.
  * @param cs Configuration section containing home server parameters.
- * @return a new home_server_t alloced in the context of the realm_config, or NULL on error.
+ * @return
+ *	- New #home_server_t alloced in the context of the realm_config.
+ *	- NULL on error.
  */
 home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SECTION *cs)
 {
 	home_server_t	*home;
-
 	CONF_SECTION	*tls;
 
 	if (!rc) rc = realm_config; /* Use the global config */
@@ -569,6 +576,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	home->log_name = talloc_typed_strdup(home, home->name);
 	home->cs = cs;
 	home->state = HOME_STATE_UNKNOWN;
+	home->proto = IPPROTO_UDP;
 
 	/*
 	 *	Parse the configuration into the home server
@@ -633,15 +641,15 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 
  		if (home->type_str) type = fr_str2int(home_server_types, home->type_str, HOME_TYPE_INVALID);
 
+		home->type = type;
+
  		switch (type) {
  		case HOME_TYPE_AUTH_ACCT:
 			home->dual = true;
-			home->type = HOME_TYPE_AUTH;
 			break;
 
 		case HOME_TYPE_AUTH:
 		case HOME_TYPE_ACCT:
-			home->type = type;
 			break;
 
 #ifdef WITH_COA
@@ -650,7 +658,6 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 				cf_log_err_cs(cs, "Home servers of type \"coa\" cannot point to a virtual server");
 				goto error;
 			}
-			home->type = type;
 			break;
 #endif
 
@@ -694,11 +701,11 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
  	}
 
 	{
-		int type = IPPROTO_UDP;
+		int proto = IPPROTO_UDP;
 
-		if (home->proto_str) type = fr_str2int(home_proto, home->proto_str, -1);
+		if (home->proto_str) proto = fr_str2int(home_proto, home->proto_str, -1);
 
-		switch (type) {
+		switch (proto) {
 		case IPPROTO_UDP:
 			home_servers_udp = true;
 			break;
@@ -720,7 +727,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			goto error;
 		}
 
-		home->proto = type;
+		home->proto = proto;
 	}
 
 	if (!home->server && rbtree_finddata(home_servers_byaddr, home)) {
@@ -732,6 +739,12 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	 *	Check the TLS configuration.
 	 */
 	tls = cf_section_sub_find(cs, "tls");
+#ifndef WITH_TLS
+	if (tls) {
+		cf_log_err_cs(cs, "TLS transport is not available in this executable");
+		goto error;
+	}
+#endif
 
 	/*
 	 *	If were doing RADSEC (tls+tcp) the secret should default
@@ -750,14 +763,29 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 	}
 
 	/*
-	 *	If the home is not a virtual server, guess the port
-	 *	and look up the source ip address.
+	 *	Virtual servers have some TLS restrictions.
 	 */
-	if (!home->server) {
+	if (home->server) {
+		if (tls) {
+			cf_log_err_cs(cs, "Virtual home_servers cannot have a \"tls\" subsection");
+			goto error;
+		}
+	} else {
+		/*
+		 *	If the home is not a virtual server, guess the port
+		 *	and look up the source ip address.
+		 */
 		rad_assert(home->ipaddr.af != AF_UNSPEC);
 
+#ifdef WITH_TLS
+		if (tls && (home->proto != IPPROTO_TCP)) {
+			cf_log_err_cs(cs, "TLS transport is not available for UDP sockets");
+			goto error;
+		}
+#endif
+
 		/*
-		 *	Guess the port if we need to.
+		 *	Set the default port if necessary.
 		 */
 		if (home->port == 0) {
 			char buffer[INET6_ADDRSTRLEN + 3];
@@ -767,12 +795,17 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			 *	for both accounting and authentication, but for some
 			 *	bizarre reason for RADIUS over plain TCP we use separate
 			 *	ports 1812 and 1813.
-			 *
-			 *	Blame whoever wrote RFC 6613.
 			 */
+#ifdef WITH_TLS
 			if (tls) {
 				home->port = PW_RADIUS_TLS_PORT;
-			} else switch (home->type) {
+			} else
+#endif
+			switch (home->type) {
+			default:
+				rad_assert(0);
+				/* FALL-THROUGH */
+
 			case HOME_TYPE_AUTH:
 				home->port = PW_AUTH_UDP_PORT;
 				break;
@@ -784,9 +817,6 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			case HOME_TYPE_COA:
 				home->port = PW_COA_UDP_PORT;
 				break;
-
-			default:
-				rad_assert(0);
 			}
 
 			/*
@@ -818,17 +848,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			home->src_ipaddr.af = home->ipaddr.af;
 		}
 
-		if (tls && (home->proto != IPPROTO_TCP)) {
-			cf_log_err_cs(cs, "TLS transport is not available for UDP sockets");
-			goto error;
-		}
-
-#ifndef WITH_TLS
-		if (tls) {
-			cf_log_err_cs(cs, "TLS transport is not available in this executable");
-			goto error;
-		}
-#else
+#ifdef WITH_TLS
 		/*
 		 *	Parse the SSL client configuration.
 		 */
@@ -839,11 +859,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			}
 		}
 #endif
-
-	} else if (tls) {
-		cf_log_err_cs(cs, "Virtual home_servers cannot have a \"tls\" subsection");
-		goto error;
-	}
+	} /* end of parse home server */
 
 	realm_home_server_sanitize(home, cs);
 
@@ -861,10 +877,12 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
  *  - src_ipaddr
  *
  * @note new CONF_SECTION will be allocated in the context of the client, but the client
- *	CONF_SECTION will not be modified.
+ *	C#ONF_SECTION will not be modified.
  *
  * @param client CONF_SECTION to inherit values from.
- * @return a new server CONF_SCTION, or a pointer to the existing CONF_SECTION in the client.
+ * @return
+ *	- A new server #CONF_SECTION.
+ *	- A pointer to the existing #CONF_SECTION in the client.
  */
 CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
 {
@@ -967,6 +985,21 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 		return 1;
 	}
 
+	switch (server_type) {
+	case HOME_TYPE_AUTH:
+	case HOME_TYPE_ACCT:
+		myhome.type = HOME_TYPE_AUTH_ACCT;
+		home = rbtree_finddata(home_servers_byname, &myhome);
+		if (home) {
+			*phome = home;
+			return 1;
+		}
+		break;
+
+	default:
+		break;
+	}
+
 	cf_log_err_cp(cp, "Unknown home_server \"%s\".", name);
 	return 0;
 }
@@ -975,8 +1008,7 @@ static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 #ifndef HAVE_PTHREAD_H
 void realm_pool_free(home_pool_t *pool)
 {
-	if (!event_loop_started) return;
-	if (!realm_config->dynamic) return;
+	if (!event_loop_started || !realm_config->dynamic) return;
 
 	talloc_free(pool);
 }
@@ -1239,13 +1271,21 @@ static int server_pool_add(realm_config_t *rc,
 
 		home = rbtree_finddata(home_servers_byname, &myhome);
 		if (!home) {
-			DEBUG2("Internal sanity check failed");
-			goto error;
+			switch (server_type) {
+			case HOME_TYPE_AUTH:
+			case HOME_TYPE_ACCT:
+				myhome.type = HOME_TYPE_AUTH_ACCT;
+				home = rbtree_finddata(home_servers_byname, &myhome);
+				break;
+
+			default:
+				break;
+			}
 		}
 
-		if (0) {
-			WARN("Duplicate home server %s in server pool %s", home->name, pool->name);
-			continue;
+		if (!home) {
+			ERROR("Failed to find home server %s", value);
+			goto error;
 		}
 
 		if (do_print) cf_log_info(cs, "\thome_server = %s", home->name);
@@ -1902,7 +1942,6 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 
  error:
 	cf_log_info(cs, " } # realm %s", name2);
-	talloc_free(r);
 	return 0;
 }
 
@@ -2140,8 +2179,8 @@ int realms_init(CONF_SECTION *config)
 #endif
 
 #ifdef WITH_PROXY
-	xlat_register("home_server", xlat_home_server, NULL, NULL);
-	xlat_register("home_server_pool", xlat_server_pool, NULL, NULL);
+	xlat_register("home_server", xlat_home_server, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
+	xlat_register("home_server_pool", xlat_server_pool, XLAT_DEFAULT_BUF_LEN, NULL, NULL);
 #endif
 
 	realm_config = rc;
@@ -2274,7 +2313,7 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 		 *	attribute is the one hacked through
 		 *	the 'hints' file.
 		 */
-		request->proxy->vps = paircopy(request->proxy,
+		request->proxy->vps = fr_pair_list_copy(request->proxy,
 					       request->packet->vps);
 	}
 
@@ -2295,8 +2334,8 @@ void home_server_update_request(home_server_t *home, REQUEST *request)
 	 *	unless one already exists.
 	 */
 	if ((request->packet->code == PW_CODE_ACCESS_REQUEST) &&
-	    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
-		pairmake(request->proxy, &request->proxy->vps,
+	    !fr_pair_find_by_num(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
+		fr_pair_make(request->proxy, &request->proxy->vps,
 			 "Message-Authenticator", "0x00",
 			 T_OP_SET);
 	}
@@ -2367,7 +2406,7 @@ home_server_t *home_server_ldb(char const *realmname,
 		break;
 
 	case HOME_POOL_KEYED_BALANCE:
-		if ((vp = pairfind(request->config_items, PW_LOAD_BALANCE_KEY, 0, TAG_ANY)) != NULL) {
+		if ((vp = fr_pair_find_by_num(request->config, PW_LOAD_BALANCE_KEY, 0, TAG_ANY)) != NULL) {
 			hash = fr_hash(vp->vp_strvalue, vp->vp_length);
 			start = hash % pool->num_home_servers;
 			break;

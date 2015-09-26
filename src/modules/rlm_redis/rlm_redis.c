@@ -17,293 +17,322 @@
 /**
  * $Id$
  * @file rlm_redis.c
- * @brief Driver for the REDIS noSQL key value stores.
+ * @brief Driver for the Redis noSQL key value store.
  *
- * @copyright 2000,2006  The FreeRADIUS server project
- * @copyright 2011  TekSavvy Solutions <gabe@teksavvy.com>
+ * @author Gabriel Blanchard
+ *
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2011 TekSavvy Solutions <gabe@teksavvy.com>
+ * @copyright 2000,2006,2015  The FreeRADIUS server project
  */
 
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/rad_assert.h>
 
-#include "rlm_redis.h"
+#include "redis.h"
+#include "cluster.h"
 
-static const CONF_PARSER module_config[] = {
-	{ "server", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, REDIS_INST, hostname), NULL },
-	{ "port", FR_CONF_OFFSET(PW_TYPE_SHORT, REDIS_INST, port), "6379" },
-	{ "database", FR_CONF_OFFSET(PW_TYPE_INTEGER, REDIS_INST, database), "0" },
-	{ "password", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_SECRET, REDIS_INST, password), NULL },
+#define MAX_QUERY_LEN	4096			//!< Maximum command length.
+#define MAX_REDIS_ARGS	16			//!< Maximum number of arguments.
 
-	{ NULL, -1, 0, NULL, NULL} /* end the list */
+static CONF_PARSER module_config[] = {
+	REDIS_COMMON_CONFIG,
+	CONF_PARSER_TERMINATOR
 };
 
-static int _mod_conn_free(REDISSOCK *dissocket)
-{
-	redisFree(dissocket->conn);
+/** rlm_redis module instance
+ *
+ */
+typedef struct rlm_redis_t {
+	fr_redis_conf_t		conf;		//!< Connection parameters for the Redis server.
+						//!< Must be first field in this struct.
 
-	if (dissocket->reply) {
-		freeReplyObject(dissocket->reply);
-		dissocket->reply = NULL;
+	char const		*name;		//!< Instance name.
+
+	fr_redis_cluster_t	*cluster;	//!< Redis cluster.
+} rlm_redis_t;
+
+/** Change the state of a connection to READONLY execute a command and switch to READWRITE
+ *
+ * @param[out] status_out Where to write the status from the command.
+ * @param[out] reply_out Where to write the reply associated with the highest priority status.
+ * @param[in] request The current request.
+ * @param[in] conn to issue commands with.
+ * @param[in] argc Redis command argument count.
+ * @param[in] argv Redis command arguments.
+ * @return
+ *	- 0 success.
+ *	- -1 normal failure.
+ *	- -2 failure that may leave the connection in a READONLY state.
+ */
+static int redis_command_read_only(fr_redis_rcode_t *status_out, redisReply **reply_out,
+				   REQUEST *request, fr_redis_conn_t *conn, int argc, char const **argv)
+{
+	bool			maybe_more = false;
+	redisReply		*reply;
+	fr_redis_rcode_t	status;
+
+	*reply_out = NULL;
+
+	redisAppendCommand(conn->handle, "READONLY");
+	redisAppendCommandArgv(conn->handle, argc, argv, NULL);
+	redisAppendCommand(conn->handle, "READWRITE");
+
+	/*
+	 *	Process the response for READONLY
+	 */
+	reply = NULL;	/* Doesn't set reply to NULL on error *sigh* */
+	if (redisGetReply(conn->handle, (void **)&reply) == REDIS_OK) maybe_more = true;
+	status = fr_redis_command_status(conn, reply);
+	if (status != REDIS_RCODE_SUCCESS) {
+		REDEBUG("Setting READONLY failed");
+
+		*reply_out = reply;
+		*status_out = status;
+
+		if (maybe_more) {
+			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) return -1;
+			fr_redis_reply_free(reply);
+			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) return -1;
+			fr_redis_reply_free(reply);
+		}
+		return -1;
 	}
 
+	fr_redis_reply_free(reply);
+
+	/*
+	 *	Process the response for the command
+	 */
+	reply = NULL;
+	if (redisGetReply(conn->handle, (void **)&reply) == REDIS_OK) maybe_more = true;
+	status = fr_redis_command_status(conn, reply);
+	if (status != REDIS_RCODE_SUCCESS) {
+		*reply_out = reply;
+		*status_out = status;
+
+		if (maybe_more) {
+			if (redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) return -1;
+			fr_redis_reply_free(reply);
+		}
+		return -1;
+	}
+
+	*reply_out = reply;
+	*status_out = status;
+
+	/*
+	 *	Process the response for READWRITE
+	 */
+	reply = NULL;
+	status = fr_redis_command_status(conn, reply);
+	if ((redisGetReply(conn->handle, (void **)&reply) != REDIS_OK) || (status != REDIS_RCODE_SUCCESS)) {
+		REDEBUG("Setting READWRITE failed");
+
+		fr_redis_reply_free(*reply_out);
+		*reply_out = reply;
+		*status_out = status;
+
+		return -2;
+	}
 	return 0;
 }
 
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, char **out, size_t freespace)
 {
-	REDIS_INST *inst = instance;
-	REDISSOCK *dissocket = NULL;
-	redisContext *conn;
-	redisReply *reply = NULL;
-	char buffer[1024];
+	rlm_redis_t		*inst = instance;
+	fr_redis_conn_t		*conn;
 
-	conn = redisConnect(inst->hostname, inst->port);
-	if (conn->err) return NULL;
+	bool			read_only = false;
+	uint8_t	const		*key = NULL;
+	size_t			key_len = 0;
 
-	if (inst->password) {
-		snprintf(buffer, sizeof(buffer), "AUTH %s", inst->password);
+	fr_redis_cluster_state_t	state;
+	fr_redis_rcode_t		status;
+	redisReply		*reply = NULL;
+	int			s_ret;
 
-		reply = redisCommand(conn, buffer);
-		if (!reply) {
-			ERROR("rlm_redis (%s): Failed to run AUTH", inst->xlat_name);
+	size_t			len;
+	int			ret;
 
-		do_close:
-			if (reply) freeReplyObject(reply);
-			redisFree(conn);
-			return NULL;
+	char const		*p = fmt, *q;
+
+	int			argc;
+	char const		*argv[MAX_REDIS_ARGS];
+	char			argv_buf[MAX_QUERY_LEN];
+
+	if (p[0] == '-') {
+		p++;
+		read_only = true;
+	}
+
+	/*
+	 *	Hack to allow querying against a specific node for testing
+	 */
+	if (p[0] == '@') {
+		fr_ipaddr_t		ipaddr;
+		uint16_t		port;
+		fr_connection_pool_t	*pool;
+
+		RDEBUG3("Overriding node selection");
+
+		p++;
+		q = strchr(p, ' ');
+		if (!q) {
+			REDEBUG("Found node specifier but no command, format is [-][@<host>[:port]] <redis command>");
+			return -1;
 		}
 
+		if (fr_pton_port(&ipaddr, &port, p, q - p, AF_UNSPEC, true) < 0) {
+			REDEBUG("Failed parsing node address: %s", fr_strerror());
+			return -1;
+		}
 
-		switch (reply->type) {
-		case REDIS_REPLY_STATUS:
-			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("rlm_redis (%s): Failed authentication: reply %s",
-				       inst->xlat_name, reply->str);
-				goto do_close;
-			}
-			break;	/* else it's OK */
+		p = q + 1;
+
+		if (fr_redis_cluster_pool_by_node_addr(&pool, inst->cluster, &ipaddr, port, true) < 0) {
+			REDEBUG("Failed locating cluster node: %s", fr_strerror());
+			return -1;
+		}
+
+		conn = fr_connection_get(pool);
+		if (!conn) {
+			REDEBUG("No connections available for cluster node");
+			return -1;
+		}
+
+		argc = rad_expand_xlat(request, p, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
+		if (argc <= 0) {
+			REDEBUG("Invalid command: %s", p);
+			fr_connection_release(pool, conn);
+			return -1;
+		}
+
+		RDEBUG2("Executing command: %s", p);
+		if (!read_only) {
+			reply = redisCommandArgv(conn->handle, argc, argv, NULL);
+			status = fr_redis_command_status(conn, reply);
+		} else if (redis_command_read_only(&status, &reply, request, conn, argc, argv) == -2) {
+			goto close_conn;
+		}
+
+		switch (status) {
+		case REDIS_RCODE_SUCCESS:
+			goto reply_parse;
+
+		case REDIS_RCODE_RECONNECT:
+		close_conn:
+			fr_connection_close(pool, conn);
+			ret = -1;
+			goto finish;
 
 		default:
-			ERROR("rlm_redis (%s): Unexpected reply to AUTH",
-			       inst->xlat_name);
-			goto do_close;
+			fr_connection_release(pool, conn);
+			ret = -1;
+			goto finish;
 		}
 	}
 
-	if (inst->database) {
-		snprintf(buffer, sizeof(buffer), "SELECT %d", inst->database);
-
-		reply = redisCommand(conn, buffer);
-		if (!reply) {
-			ERROR("rlm_redis (%s): Failed to run SELECT",
-			       inst->xlat_name);
-			goto do_close;
-		}
-
-
-		switch (reply->type) {
-		case REDIS_REPLY_STATUS:
-			if (strcmp(reply->str, "OK") != 0) {
-				ERROR("rlm_redis (%s): Failed SELECT %d: reply %s",
-				       inst->xlat_name, inst->database,
-				       reply->str);
-				goto do_close;
-			}
-			break;	/* else it's OK */
-
-		default:
-			ERROR("rlm_redis (%s): Unexpected reply to SELECT",
-			       inst->xlat_name);
-			goto do_close;
-		}
+	/*
+	 *	Normal node selection and execution based on key
+	 */
+	argc = rad_expand_xlat(request, p, MAX_REDIS_ARGS, argv, false, sizeof(argv_buf), argv_buf);
+	if (argc <= 0) {
+		REDEBUG("Invalid command: %s", p);
+		ret = -1;
+		goto finish;
 	}
 
-	dissocket = talloc_zero(ctx, REDISSOCK);
-	dissocket->conn = conn;
-	talloc_set_destructor(dissocket, _mod_conn_free);
-
-	return dissocket;
-}
-
-static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
-{
-	REDIS_INST *inst = instance;
-	REDISSOCK *dissocket;
-	size_t ret = 0;
-	char *buffer_ptr;
-	char buffer[21];
-
-	dissocket = fr_connection_get(inst->pool);
-	if (!dissocket) return -1;
-
-	/* Query failed for some reason, release socket and return */
-	if (rlm_redis_query(&dissocket, inst, fmt, request) < 0) {
-		goto release;
+	/*
+	 *	If we've got multiple arguments, the second one is usually the key.
+	 *	The Redis docs say commands should be analysed first to get key
+	 *	positions, but this involves sending them to the server, which is
+	 *	just as expensive as sending them to the wrong server and receiving
+	 *	a redirect.
+	 */
+	if (argc > 1) {
+		key = (uint8_t const *)argv[1];
+	 	key_len = strlen((char const *)key);
+	}
+	for (s_ret = fr_redis_cluster_state_init(&state, &conn, inst->cluster, request, key, key_len, read_only);
+	     s_ret == REDIS_RCODE_TRY_AGAIN;	/* Continue */
+	     s_ret = fr_redis_cluster_state_next(&state, &conn, inst->cluster, request, status, &reply)) {
+		RDEBUG2("Executing command: %s", p);
+		if (!read_only) {
+			reply = redisCommandArgv(conn->handle, argc, argv, NULL);
+			status = fr_redis_command_status(conn, reply);
+		} else if (redis_command_read_only(&status, &reply, request, conn, argc, argv) == -2) {
+			state.close_conn = true;
+		}
+	}
+	if (s_ret != REDIS_RCODE_SUCCESS) {
+		ret = -1;
+		goto finish;
 	}
 
-	switch (dissocket->reply->type) {
+reply_parse:
+	rad_assert(reply);	/* clang scan */
+	switch (reply->type) {
 	case REDIS_REPLY_INTEGER:
-		buffer_ptr = buffer;
-		snprintf(buffer_ptr, sizeof(buffer), "%lld",
-			 dissocket->reply->integer);
-
-		ret = strlen(buffer_ptr);
+		ret = snprintf(*out, freespace, "%lld", reply->integer);
 		break;
 
 	case REDIS_REPLY_STATUS:
 	case REDIS_REPLY_STRING:
-		buffer_ptr = dissocket->reply->str;
-		ret = dissocket->reply->len;
+		len = (((size_t)reply->len) >= freespace) ? freespace - 1: (size_t) reply->len;
+		memcpy(*out, reply->str, len);
+		(*out)[len] = '\0';
+		ret = reply->len;
 		break;
 
 	default:
-		buffer_ptr = NULL;
+		REDEBUG("Server returned non-value type \"%s\"",
+			fr_int2str(redis_reply_types, reply->type, "<UNKNOWN>"));
+		ret = -1;
 		break;
 	}
 
-	if ((ret >= freespace) || (!buffer_ptr)) {
-		RDEBUG("rlm_redis (%s): Can't write result, insufficient space or unsupported result\n",
-		       inst->xlat_name);
-		ret = -1;
-		goto release;
-	}
-
-	strlcpy(out, buffer_ptr, freespace);
-
-release:
-	rlm_redis_finish_query(dissocket);
-	fr_connection_release(inst->pool, dissocket);
-
+finish:
+	fr_redis_reply_free(reply);
 	return ret;
 }
 
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
- */
-static int mod_detach(void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	REDIS_INST *inst = instance;
+	rlm_redis_t *inst = instance;
 
-	fr_connection_pool_delete(inst->pool);
+	fr_redis_version_print();
 
-	return 0;
-}
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
+	inst->conf.prefix = talloc_asprintf(inst, "rlm_redis (%s)", inst->name);
 
-/*
- *	Query the redis database
- */
-int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
-		    char const *query, REQUEST *request)
-{
-	REDISSOCK *dissocket;
-	int argc;
-	char *argv[MAX_REDIS_ARGS];
-	char argv_buf[MAX_QUERY_LEN];
+	xlat_register(inst->name, redis_xlat, XLAT_DEFAULT_BUF_LEN, NULL, inst);
 
-	if (!query || !*query || !inst || !dissocket_p) {
-		return -1;
-	}
-
-	argc = rad_expand_xlat(request, query, MAX_REDIS_ARGS, argv, false,
-				sizeof(argv_buf), argv_buf);
-	if (argc <= 0)
-		return -1;
-
-	dissocket = *dissocket_p;
-
-	DEBUG2("executing %s ...", argv[0]);
-	dissocket->reply = redisCommandArgv(dissocket->conn, argc, (char const **)(void **)argv, NULL);
-	if (!dissocket->reply) {
-		RERROR("%s", dissocket->conn->errstr);
-
-		dissocket = fr_connection_reconnect(inst->pool, dissocket);
-		if (!dissocket) {
-		error:
-			*dissocket_p = NULL;
-			return -1;
-		}
-
-		dissocket->reply = redisCommand(dissocket->conn, query);
-		if (!dissocket->reply) {
-			RERROR("Failed after re-connect");
-			fr_connection_del(inst->pool, dissocket);
-			goto error;
-		}
-
-		*dissocket_p = dissocket;
-	}
-
-	if (dissocket->reply->type == REDIS_REPLY_ERROR) {
-		RERROR("Query failed, %s", query);
-		return -1;
-	}
-
-	return 0;
-}
-
-/*
- *	Clear the redis reply object if any
- */
-int rlm_redis_finish_query(REDISSOCK *dissocket)
-{
-	if (!dissocket || !dissocket->reply) {
-		return -1;
-	}
-
-	freeReplyObject(dissocket->reply);
-	dissocket->reply = NULL;
 	return 0;
 }
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	static bool version_done;
+	rlm_redis_t *inst = instance;
 
-	REDIS_INST *inst = instance;
-
-	if (!version_done) {
-		version_done = true;
-
-		INFO("rlm_redis: libhiredis version: %i.%i.%i", HIREDIS_MAJOR, HIREDIS_MINOR, HIREDIS_PATCH);
-	}
-
-	inst->xlat_name = cf_section_name2(conf);
-
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
-
-	xlat_register(inst->xlat_name, redis_xlat, NULL, inst); /* FIXME! */
-
-	inst->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, NULL);
-	if (!inst->pool) {
-		return -1;
-	}
-
-	inst->redis_query = rlm_redis_query;
-	inst->redis_finish_query = rlm_redis_finish_query;
+	inst->cluster = fr_redis_cluster_alloc(inst, conf, &inst->conf);
+	if (!inst->cluster) return -1;
 
 	return 0;
 }
 
 extern module_t rlm_redis;
 module_t rlm_redis = {
-	RLM_MODULE_INIT,
-	"redis",
-	RLM_TYPE_THREAD_SAFE, /* type */
-	sizeof(REDIS_INST),	/* yuck */
-	module_config,
-	mod_instantiate, /* instantiation */
-	mod_detach, /* detach */
-	{
-		NULL, /* authentication */
-		NULL, /* authorization */
-		NULL, /* preaccounting */
-		NULL, /* accounting */
-		NULL, /* checksimul */
-		NULL, /* pre-proxy */
-		NULL, /* post-proxy */
-		NULL /* post-auth */
-	},
+	.magic		= RLM_MODULE_INIT,
+	.name		= "redis",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_redis_t),
+	.config		= module_config,
+	.bootstrap	= mod_bootstrap,
+	.instantiate	= mod_instantiate,
 };

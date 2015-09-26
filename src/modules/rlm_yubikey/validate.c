@@ -34,7 +34,7 @@ static int _mod_conn_free(ykclient_handle_t **yandle)
  * @see fr_connection_create_t
  * @see connection.c
  */
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval const *timeout)
 {
 	rlm_yubikey_t *inst = instance;
 	ykclient_rc status;
@@ -132,8 +132,8 @@ init:
 	}
 
 	snprintf(prefix, sizeof(prefix), "rlm_yubikey (%s)", inst->name);
-	inst->conn_pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, prefix);
-	if (!inst->conn_pool) {
+	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, NULL, prefix);
+	if (!inst->pool) {
 		ykclient_done(&inst->ykc);
 
 		return -1;
@@ -144,7 +144,7 @@ init:
 
 int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst)
 {
-	fr_connection_pool_delete(inst->conn_pool);
+	fr_connection_pool_free(inst->pool);
 	ykclient_done(&inst->ykc);
 	ykclient_global_done();
 
@@ -157,7 +157,7 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  char co
 	ykclient_rc status;
 	ykclient_handle_t *yandle;
 
-	yandle = fr_connection_get(inst->conn_pool);
+	yandle = fr_connection_get(inst->pool);
 	if (!yandle) return RLM_MODULE_FAIL;
 
 	/*
@@ -194,7 +194,7 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  char co
 		}
 	}
 
-	fr_connection_release(inst->conn_pool, yandle);
+	fr_connection_release(inst->pool, yandle);
 
 	return rcode;
 }

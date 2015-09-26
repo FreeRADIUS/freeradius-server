@@ -89,7 +89,7 @@ if (&request:Tmp-Integer-0[*] > &control:Tmp-Integer-1[*]) {
 }
 
 #
-#  Compiled reqex comparisons
+#  Compiled regex comparisons
 #
 if (&request:Tmp-String-1[*] !~ /PEONS$/) {
 	update reply {
@@ -110,7 +110,7 @@ if (&control:Tmp-String-1 =~ /DINKS$/) {
 }
 
 #
-#  Dynamic reqex comparisons
+#  Dynamic regex comparisons
 #
 if (&request:Tmp-String-1[*] !~ /%{Tmp-String-2[0]}$/) {
 	update reply {

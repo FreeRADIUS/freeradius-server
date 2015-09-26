@@ -40,8 +40,8 @@ RCSID("$Id$")
 #include "rlm_sql.h"
 
 typedef struct rlm_sql_conn {
-	SQLHANDLE hdbc;
-	SQLHANDLE henv;
+	SQLHANDLE dbc_handle;
+	SQLHANDLE env_handle;
 	SQLHANDLE stmt;
 } rlm_sql_db2_conn_t;
 
@@ -49,29 +49,31 @@ static int _sql_socket_destructor(rlm_sql_db2_conn_t *conn)
 {
 	DEBUG2("rlm_sql_db2: Socket destructor called, closing socket");
 
-	if (conn->hdbc) {
-		SQLDisconnect(conn->hdbc);
-		SQLFreeHandle(SQL_HANDLE_DBC, conn->hdbc);
+	if (conn->dbc_handle) {
+		SQLDisconnect(conn->dbc_handle);
+		SQLFreeHandle(SQL_HANDLE_DBC, conn->dbc_handle);
 	}
 
-	if (conn->henv) {
-		SQLFreeHandle(SQL_HANDLE_ENV, conn->henv);
-	}
+	if (conn->env_handle) SQLFreeHandle(SQL_HANDLE_ENV, conn->env_handle);
 
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
 {
 	SQLRETURN retval;
+	uint32_t timeout_ms = FR_TIMEVAL_TO_MS(timeout);
 	rlm_sql_db2_conn_t *conn;
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_db2_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
 
-	/* allocate handles */
-	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(conn->henv));
-	SQLAllocHandle(SQL_HANDLE_DBC, conn->henv, &(conn->hdbc));
+	/* Allocate handles */
+	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(conn->env_handle));
+	SQLAllocHandle(SQL_HANDLE_DBC, conn->env_handle, &(conn->dbc_handle));
+
+	/* Set the connection timeout */
+	SQLSetConnectAttr(conn->dbc_handle, SQL_ATTR_LOGIN_TIMEOUT, &timeout_ms, SQL_IS_UINTEGER);
 
 	/*
 	 *	The db2 API doesn't qualify arguments as const even when they should be.
@@ -83,7 +85,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		memcpy(&login, &config->sql_login, sizeof(login));
 		memcpy(&password, &config->sql_password, sizeof(password));
 
-		retval = SQLConnect(conn->hdbc,
+		retval = SQLConnect(conn->dbc_handle,
 				    server, SQL_NTS,
 				    login,  SQL_NTS,
 				    password, SQL_NTS);
@@ -106,7 +108,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	conn = handle->conn;
 
 	/* allocate handle for statement */
-	SQLAllocHandle(SQL_HANDLE_STMT, conn->hdbc, &(conn->stmt));
+	SQLAllocHandle(SQL_HANDLE_STMT, conn->dbc_handle, &(conn->stmt));
 
 	/* execute query */
 	{
@@ -116,7 +118,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		retval = SQLExecDirect(conn->stmt, db2_query, SQL_NTS);
 		if(retval != SQL_SUCCESS) {
 			/* XXX Check if retval means we should return RLM_SQL_RECONNECT */
-			ERROR("Could not execute statement \"%s\"\n", query);
+			ERROR("Could not execute statement \"%s\"", query);
 			return RLM_SQL_ERROR;
 		}
 	}
@@ -137,6 +139,44 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	conn = handle->conn;
 	SQLNumResultCols(conn->stmt, &c);
 	return c;
+}
+
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
+	rlm_sql_db2_conn_t *conn = handle->conn;
+
+	SQLSMALLINT	fields, len, i;
+
+	char const	**names;
+	char		field[128];
+
+	SQLNumResultCols(conn->stmt, &fields);
+	if (fields == 0) return RLM_SQL_ERROR;
+
+	MEM(names = talloc_array(handle, char const *, fields));
+
+	for (i = 0; i < fields; i++) {
+		char *p;
+
+		switch (SQLColAttribute(conn->stmt, i, SQL_DESC_BASE_COLUMN_NAME,
+					field, sizeof(field), &len, NULL)) {
+		case SQL_INVALID_HANDLE:
+		case SQL_ERROR:
+			ERROR("Failed retrieving field name at index %i", i);
+			talloc_free(names);
+			return RLM_SQL_ERROR;
+
+		default:
+			break;
+		}
+
+		MEM(p = talloc_array(names, char, (size_t)len + 1));
+		strlcpy(p, field, (size_t)len + 1);
+		names[i] = p;
+	}
+	*out = names;
+
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config)
@@ -203,7 +243,7 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  * @param outlen Length of out array.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return number of errors written to the sql_log_entry array.
+ * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -257,6 +297,7 @@ rlm_sql_module_t rlm_sql_db2 = {
 	.sql_select_query		= sql_select_query,
 	.sql_num_fields			= sql_num_fields,
 	.sql_affected_rows		= sql_affected_rows,
+	.sql_fields			= sql_fields,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,

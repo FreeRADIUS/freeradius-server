@@ -37,6 +37,11 @@ extern "C" {
 #endif
 
 /*
+ *	Mark variables as unused
+ */
+#define UNUSED_VAR(_x) ((void)_x)
+
+/*
  *	struct field size
  */
 #define SIZEOF_MEMBER(_t, _m) sizeof(((_t *)0)->_m)

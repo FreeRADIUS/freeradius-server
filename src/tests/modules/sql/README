@@ -1,0 +1,7 @@
+All SQL related tests should be defined here and the driver specific directory need only have links to the tests defined here.
+
+All User-Name attributes, Acct-Session-Id, and Acct-Multi-Session-Id attributes
+
+	MUST BE UNIQUE FOR EVERY TEST.
+
+Otherwise the tests will stomp on each other when run in parallel.

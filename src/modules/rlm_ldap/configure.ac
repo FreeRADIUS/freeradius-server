@@ -6,6 +6,7 @@ AC_DEFUN(modname,[rlm_ldap])
 fail=
 SMART_LIBS=
 SMART_CLFAGS=
+SASL=
 if test x$with_[]modname != xno; then
 
 	dnl ############################################################
@@ -92,7 +93,15 @@ if test x$with_[]modname != xno; then
 			ldap_start_tls_s \
 			ldap_initialize \
 			ldap_set_rebind_proc \
+			ldap_create_sort_control \
+			ldap_create_sort_keylist \
+			ldap_free_sort_keylist \
+			ldap_create_session_tracking_control \
+			ldap_url_parse \
+			ldap_is_ldap_url \
+			ldap_url_desc2str
 		)
+		AC_CHECK_DECLS([ldap_create_session_tracking_control])
 		AC_CACHE_CHECK(whether ldap_set_rebind_proc takes 3 arguments, ac_cv_ldap_set_rebind_proc, [
 			AC_TRY_COMPILE([
 				#include <lber.h>
@@ -100,6 +109,17 @@ if test x$with_[]modname != xno; then
 				[ac_cv_ldap_set_rebind_proc=3],
 				[ac_cv_ldap_set_rebind_proc=2])
 		])
+	fi
+
+	dnl ############################################################
+	dnl # Check for SASL support
+	dnl ############################################################
+	FR_SMART_CHECK_INCLUDE([sasl/sasl.h])
+	if test "x$ac_cv_header_sasl_sasl_h" = "xyes"; then
+	  if test x"$ac_cv_func_ldap_sasl_interactive_bind" = "xyes"; then
+	    AC_DEFINE(WITH_SASL, 1, [Build the server with support for SASL binds])
+	    SASL=sasl.c
+	  fi
 	fi
 
 	targetname=modname
@@ -129,8 +149,10 @@ AC_DEFINE_UNQUOTED(LDAP_SET_REBIND_PROC_ARGS, ${ac_cv_ldap_set_rebind_proc}, [Nu
 
 mod_ldflags=$SMART_LIBS
 mod_cflags="$SMART_CPPFLAGS"
+
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
+AC_SUBST(SASL)
 AC_SUBST(targetname)
 AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(all.mk)

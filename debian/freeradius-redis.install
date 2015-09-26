@@ -1,0 +1,4 @@
+usr/lib/freeradius/libfreeradius-redis*.so
+usr/lib/freeradius/rlm_redis*.so
+usr/lib/freeradius/rlm_rediswho*.so
+usr/lib/freeradius/rlm_cache_redis*.so

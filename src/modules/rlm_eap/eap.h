@@ -50,16 +50,13 @@ typedef struct eap_ds {
 	int		set_request_id;
 } EAP_DS;
 
-/*
- * Currently there are only 2 types
- * of operations defined,
- * apart from attach & detach for each EAP-Type.
- */
-typedef enum operation_t {
-	INITIATE = 0,
-	PROCESS
-} operation_t;
 
+typedef struct _eap_handler eap_handler_t;
+
+/*
+ *	Function to process EAP packets.
+ */
+typedef int (*eap_process_t)(void *instance, eap_handler_t *handler);
 
 /*
  * eap_handler_t is the interface for any EAP-Type.
@@ -77,7 +74,7 @@ typedef enum operation_t {
  * timestamp  = timestamp when this handler was last used.
  * identity = Identity, as obtained, from EAP-Identity response.
  * request = RADIUS request data structure
- * prev_eapds = Previous EAP request, for which eap_ds contains the response.
+ * prev_eap_ds = Previous EAP request, for which eap_ds contains the response.
  * eap_ds   = Current EAP response.
  * opaque   = EAP-Type holds some data that corresponds to the current
  *		EAP-request/response
@@ -90,7 +87,7 @@ typedef enum operation_t {
  * status   = finished/onhold/..
  */
 #define EAP_STATE_LEN (AUTH_VECTOR_LEN)
-typedef struct _eap_handler {
+struct _eap_handler {
 	struct _eap_handler *prev, *next;
 	uint8_t		state[EAP_STATE_LEN];
 	fr_ipaddr_t	src_ipaddr;
@@ -105,7 +102,7 @@ typedef struct _eap_handler {
 
 	char		*identity;	//!< User name from EAP-Identity
 
-	EAP_DS 		*prev_eapds;
+	EAP_DS 		*prev_eap_ds;
 	EAP_DS 		*eap_ds;
 
 	void 		*opaque;
@@ -114,14 +111,14 @@ typedef struct _eap_handler {
 
 	int		status;
 
-	int		stage;
+	eap_process_t	process;
 
 	int		trips;
 
-	int		tls;
-	int		finished;
+	bool		tls;
+	bool		finished;
 	VALUE_PAIR	*certs;
-} eap_handler_t;
+};
 
 /*
  * Interface to call EAP sub mdoules
@@ -130,8 +127,9 @@ typedef struct rlm_eap_module {
 	char const *name;						//!< The name of the sub-module
 									//!< (without rlm_ prefix).
 	int (*instantiate)(CONF_SECTION *conf, void **instance);	//!< Create a new submodule instance.
-	int (*session_init)(void *instance, eap_handler_t *handler);	//!< Initialise a new EAP session.
-	int (*process)(void *instance, eap_handler_t *handler);		//!< Continue an EAP session.
+	eap_process_t	session_init;					//!< Initialise a new EAP session.
+	eap_process_t	process;					//!< Continue an EAP session.
+
 	int (*detach)(void *instance);					//!< Destroy a submodule instance.
 } rlm_eap_module_t;
 

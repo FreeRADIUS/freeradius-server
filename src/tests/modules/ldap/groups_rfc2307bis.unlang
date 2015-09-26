@@ -1,0 +1,41 @@
+#
+#  Run the "ldap" module
+#
+ldap
+
+#
+#  Resolve using group name attribute
+#
+if (LDAP-Group == 'foo') {
+        test_pass
+}
+else {
+        test_fail
+}
+
+#
+#  Resolve using group DN
+#
+if (LDAP-Group == 'cn=foo,ou=groups,dc=example,dc=com') {
+        test_pass
+}
+else {
+        test_fail
+}
+
+#
+#  Check we have these values cached
+#
+if (&control:LDAP-Cached-Membership[*] == 'foo') {
+	test_pass
+}
+else {
+	test_fail
+}
+
+if (&control:LDAP-Cached-Membership[*] == 'cn=foo,ou=groups,dc=example,dc=com') {
+	test_pass
+}
+else {
+	test_fail
+}

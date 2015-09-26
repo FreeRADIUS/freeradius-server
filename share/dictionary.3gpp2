@@ -109,8 +109,16 @@ ATTRIBUTE	3GPP2-Reverse-DHHC-RC			87	integer
 ATTRIBUTE	3GPP2-Session-Termination-Capability	88	integer
 ATTRIBUTE	3GPP2-Allowed-Persistent-TFTs		89	integer
 
-# The next set of attributes contain sub-types
-ATTRIBUTE	3GPP2-Prepaid-Acct-Quota		90	octets
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota		90	tlv
+
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-QuotaIDentifier 90.1	integer
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeQuota	90.2	integer
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeQuotaOverflow 90.3	integer
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeThreshold 90.4	integer
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-VolumeThresholdOverflow 90.5	integer
+ATTRIBUTE	3GPP2-Prepaid-Acct-Quota-UpdateReason	90.8	short
+
+# The next two attributes contain sub-types
 ATTRIBUTE	3GPP2-Prepaid-acct-Capability		91	octets
 ATTRIBUTE	3GPP2-MIP-Lifetime			92	octets
 

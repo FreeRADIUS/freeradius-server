@@ -1,0 +1,13 @@
+# -*- text -*-
+#
+#  SQL driver configuration for PostgreSQL
+#
+#  Should be included inside of a SQL module's configuration section
+#
+# $Id$
+#
+postgresql {
+	# Send application_name to the postgres server
+	# Only supported in PG 9.0 and greater. Defaults to no.
+#	send_application_name = yes
+}

@@ -53,6 +53,9 @@ typedef int (*fr_command_func_t)(rad_listen_t *, int, char *argv[]);
 #define FR_READ  (1)
 #define FR_WRITE (2)
 
+#define CMD_FAIL FR_CHANNEL_FAIL
+#define CMD_OK   FR_CHANNEL_SUCCESS
+
 struct fr_command_table_t {
 	char const *command;
 	int mode;		/* read/write */
@@ -98,12 +101,12 @@ typedef struct fr_command_socket_t {
 } fr_command_socket_t;
 
 static const CONF_PARSER command_config[] = {
-	{ "socket", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, path), "${run_dir}/radiusd.sock" },
-	{ "uid", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, uid_name), NULL },
-	{ "gid", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, gid_name), NULL },
-	{ "mode", FR_CONF_OFFSET(PW_TYPE_STRING, fr_command_socket_t, mode_name), NULL },
-	{ "peercred", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_command_socket_t, peercred), "yes" },
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("socket", PW_TYPE_STRING, fr_command_socket_t, path), .dflt = "${run_dir}/radiusd.sock" },
+	{ FR_CONF_OFFSET("uid", PW_TYPE_STRING, fr_command_socket_t, uid_name) },
+	{ FR_CONF_OFFSET("gid", PW_TYPE_STRING, fr_command_socket_t, gid_name) },
+	{ FR_CONF_OFFSET("mode", PW_TYPE_STRING, fr_command_socket_t, mode_name) },
+	{ FR_CONF_OFFSET("peercred", PW_TYPE_BOOLEAN, fr_command_socket_t, peercred), .dflt = "yes" },
+	CONF_PARSER_TERMINATOR
 };
 
 static FR_NAME_NUMBER mode_names[] = {
@@ -142,7 +145,9 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
  * @param path to socket.
  * @param uid that should own the socket (linux only).
  * @param gid that should own the socket (linux only).
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 #ifdef __linux__
 static int fr_server_domain_socket_peercred(char const *path, uid_t uid, gid_t gid)
@@ -321,10 +326,12 @@ static int fr_server_domain_socket_perm(UNUSED char const *path, UNUSED uid_t ui
  * get the user to change them (which arguably isn't any safer, but releases us of
  * the responsibility).
  *
- * @note must be called without effective root permissions (fr_suid_down).
+ * @note must be called without effective root permissions (#fr_suid_down).
  *
  * @param path where domain socket should be created.
- * @return a file descriptor for the bound socket on success, -1 on failure.
+ * @return
+ *	- A file descriptor for the bound socket on success.
+ *	- -1 on failure.
  */
 static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 {
@@ -540,7 +547,6 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		if (uid != (uid_t)-1) rad_seuid(euid);
 		if (gid != (gid_t)-1) rad_segid(egid);
 		close(sock_fd);
-		sock_fd = -1;
 
 		goto error;
 	}
@@ -715,7 +721,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 
 	if (argc == 0) {
 		radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
-		return 1;
+		return CMD_OK;
 	}
 
 	/*
@@ -723,34 +729,34 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 	 */
 	if (strcmp(argv[0], "main.log") == 0) {
 		hup_logfile();
-		return 1;
+		return CMD_OK;
 	}
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
-	mi = find_module_instance(cs, argv[0], false);
+	mi = module_find(cs, argv[0]);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	if ((mi->entry->module->type & RLM_TYPE_HUP_SAFE) == 0) {
 		cprintf_error(listener, "Module %s cannot be hup'd\n",
 			argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	if (!module_hup_module(mi->cs, mi, time(NULL))) {
 		cprintf_error(listener, "Failed to reload module\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	snprintf(buffer, sizeof(buffer), "modules.%s.hup",
 		 cf_section_name1(mi->cs));
 	exec_trigger(NULL, mi->cs, buffer, true);
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static int command_terminate(UNUSED rad_listen_t *listener,
@@ -758,7 +764,7 @@ static int command_terminate(UNUSED rad_listen_t *listener,
 {
 	radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static int command_uptime(rad_listen_t *listener,
@@ -769,7 +775,7 @@ static int command_uptime(rad_listen_t *listener,
 	CTIME_R(&fr_start_time, buffer, sizeof(buffer));
 	cprintf(listener, "Up since %s", buffer); /* no \r\n */
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
@@ -780,21 +786,21 @@ static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
 
 	if (argc != 1) {
 		cprintf_error(listener, "No path was given\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	ci = cf_reference_item(main_config.config, main_config.config, argv[0]);
-	if (!ci) return 0;
+	if (!ci) return CMD_FAIL;
 
-	if (!cf_item_is_pair(ci)) return 0;
+	if (!cf_item_is_pair(ci)) return CMD_FAIL;
 
 	cp = cf_item_to_pair(ci);
 	value = cf_pair_value(cp);
-	if (!value) return 0;
+	if (!value) return CMD_FAIL;
 
 	cprintf(listener, "%s\n", value);
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
@@ -903,24 +909,24 @@ static int command_show_module_config(rad_listen_t *listener, int argc, char *ar
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
-	mi = find_module_instance(cs, argv[0], false);
+	mi = module_find(cs, argv[0]);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	cprint_conf_parser(listener, 0, mi->cs, mi->insthandle);
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
-static char const *method_names[RLM_COMPONENT_COUNT] = {
+static char const *method_names[MOD_COUNT] = {
 	"authenticate",
 	"authorize",
 	"preacct",
@@ -941,25 +947,25 @@ static int command_show_module_methods(rad_listen_t *listener, int argc, char *a
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
-	mi = find_module_instance(cs, argv[0], false);
+	mi = module_find(cs, argv[0]);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	mod = mi->entry->module;
 
-	for (i = 0; i < RLM_COMPONENT_COUNT; i++) {
+	for (i = 0; i < MOD_COUNT; i++) {
 		if (mod->methods[i]) cprintf(listener, "%s\n", method_names[i]);
 	}
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 
@@ -971,16 +977,16 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
-	mi = find_module_instance(cs, argv[0], false);
+	mi = module_find(cs, argv[0]);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	mod = mi->entry->module;
@@ -988,15 +994,10 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 	if ((mod->type & RLM_TYPE_THREAD_UNSAFE) != 0)
 		cprintf(listener, "thread-unsafe\n");
 
-
-	if ((mod->type & RLM_TYPE_CHECK_CONFIG_UNSAFE) != 0)
-		cprintf(listener, "no-check-config\n");
-
-
 	if ((mod->type & RLM_TYPE_HUP_SAFE) != 0)
 		cprintf(listener, "reload-on-hup\n");
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static int command_show_module_status(rad_listen_t *listener, int argc, char *argv[])
@@ -1006,16 +1007,16 @@ static int command_show_module_status(rad_listen_t *listener, int argc, char *ar
 
 	if (argc != 1) {
 		cprintf_error(listener, "No module name was given\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
-	mi = find_module_instance(cs, argv[0], false);
+	mi = module_find(cs, argv[0]);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	if (!mi->force) {
@@ -1025,7 +1026,7 @@ static int command_show_module_status(rad_listen_t *listener, int argc, char *ar
 	}
 
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 
@@ -1037,7 +1038,7 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	CONF_SECTION *cs, *subcs;
 
 	cs = cf_section_find("modules");
-	if (!cs) return 0;
+	if (!cs) return CMD_FAIL;
 
 	subcs = NULL;
 	while ((subcs = cf_subsection_find_next(cs, subcs, NULL)) != NULL) {
@@ -1047,19 +1048,19 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		module_instance_t *mi;
 
 		if (name2) {
-			mi = find_module_instance(cs, name2, false);
+			mi = module_find(cs, name2);
 			if (!mi) continue;
 
 			cprintf(listener, "%s (%s)\n", name2, name1);
 		} else {
-			mi = find_module_instance(cs, name1, false);
+			mi = module_find(cs, name1);
 			if (!mi) continue;
 
 			cprintf(listener, "%s\n", name1);
 		}
 	}
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 #ifdef WITH_PROXY
@@ -1085,6 +1086,9 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 		} else if (home->type == HOME_TYPE_ACCT) {
 			type = "acct";
+
+		} else if (home->type == HOME_TYPE_AUTH_ACCT) {
+			type = "auth+acct";
 
 #ifdef WITH_COA
 		} else if (home->type == HOME_TYPE_COA) {
@@ -1140,7 +1144,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 			home->currently_outstanding);
 	}
 
-	return 0;
+	return CMD_OK;
 }
 #endif
 
@@ -1166,14 +1170,14 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		}
 	}
 
-	return 0;
+	return CMD_OK;
 }
 
 
 static int command_show_version(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
 {
 	cprintf(listener, "%s\n", radiusd_version);
-	return 1;
+	return CMD_OK;
 }
 
 static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
@@ -1191,16 +1195,16 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 		return -1;
 	}
 
-	fr_debug_flag = debug_flag = number;
+	fr_debug_lvl = rad_debug_lvl = number;
 
-	return 0;
+	return CMD_OK;
 }
 
 static char debug_log_file_buffer[1024];
 
 static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 {
-	if (debug_flag && default_log.dst == L_DST_STDOUT) {
+	if (rad_debug_lvl && default_log.dst == L_DST_STDOUT) {
 		cprintf_error(listener, "Cannot redirect debug logs to a file when already in debugging mode.\n");
 		return -1;
 	}
@@ -1211,7 +1215,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 
 	default_log.debug_file = NULL;
 
-	if (argc == 0) return 0;
+	if (argc == 0) return CMD_OK;
 
 	/*
 	 *	This looks weird, but it's here to avoid locking
@@ -1227,7 +1231,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 
 	default_log.debug_file = &debug_log_file_buffer[0];
 
-	return 0;
+	return CMD_OK;
 }
 
 extern fr_cond_t *debug_condition;
@@ -1243,9 +1247,9 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	 *	Disable it.
 	 */
 	if (argc == 0) {
-		talloc_free(debug_condition);
+		TALLOC_FREE(debug_condition);
 		debug_condition = NULL;
-		return 0;
+		return CMD_OK;
 	}
 
 	if (!((argc == 1) &&
@@ -1317,11 +1321,11 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 		ERROR("%s", p);
 		ERROR("%s^ %s", spaces, error);
 
-		cprintf(listener, "Parse error in condition \"%s\": %s\n", p, error);
+		cprintf_error(listener, "Parse error in condition \"%s\": %s\n", p, error);
 
 		talloc_free(spaces);
 		talloc_free(text);
-		return 0;
+		return CMD_FAIL;
 	}
 
 	/*
@@ -1330,10 +1334,10 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	 *	This is thread-safe because the condition is evaluated
 	 *	in the main server thread, along with this code.
 	 */
-	talloc_free(debug_condition);
+	TALLOC_FREE(debug_condition);
 	debug_condition = new_condition;
 
-	return 0;
+	return CMD_OK;
 }
 
 static int command_show_debug_condition(rad_listen_t *listener,
@@ -1341,30 +1345,33 @@ static int command_show_debug_condition(rad_listen_t *listener,
 {
 	char buffer[1024];
 
-	if (!debug_condition) return 0;
+	if (!debug_condition) {
+		cprintf(listener, "\n");
+		return CMD_OK;
+	}
 
-	fr_cond_sprint(buffer, sizeof(buffer), debug_condition);
+	fr_cond_snprint(buffer, sizeof(buffer), debug_condition);
 
 	cprintf(listener, "%s\n", buffer);
-	return 0;
+	return CMD_OK;
 }
 
 
 static int command_show_debug_file(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
-	if (!default_log.debug_file) return 0;
+	if (!default_log.debug_file) return CMD_FAIL;
 
 	cprintf(listener, "%s\n", default_log.debug_file);
-	return 0;
+	return CMD_OK;
 }
 
 
 static int command_show_debug_level(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
-	cprintf(listener, "%d\n", debug_flag);
-	return 0;
+	cprintf(listener, "%d\n", rad_debug_lvl);
+	return CMD_OK;
 }
 
 
@@ -1509,12 +1516,12 @@ static int command_set_home_server_state(rad_listen_t *listener, int argc, char 
 
 	if (argc < 3) {
 		cprintf_error(listener, "Must specify <ipaddr> <port> [udp|tcp] <state>\n");
-		return 0;
+		return CMD_FAIL;
 	}
 
 	home = get_home_server(listener, argc, argv, &last);
 	if (!home) {
-		return 0;
+		return CMD_FAIL;
 	}
 
 	if (strcmp(argv[last], "alive") == 0) {
@@ -1528,10 +1535,10 @@ static int command_set_home_server_state(rad_listen_t *listener, int argc, char 
 
 	} else {
 		cprintf_error(listener, "Unknown state \"%s\"\n", argv[last]);
-		return 0;
+		return CMD_FAIL;
 	}
 
-	return 1;
+	return CMD_OK;
 }
 
 static int command_show_home_server_state(rad_listen_t *listener, int argc, char *argv[])
@@ -1539,9 +1546,7 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 	home_server_t *home;
 
 	home = get_home_server(listener, argc, argv, NULL);
-	if (!home) {
-		return 0;
-	}
+	if (!home) return CMD_FAIL;
 
 	switch (home->state) {
 	case HOME_STATE_ALIVE:
@@ -1565,7 +1570,7 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 		break;
 	}
 
-	return 1;
+	return CMD_OK;
 }
 #endif
 
@@ -1606,7 +1611,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 
 		fprintf(fp, "%s\n", what);
 
-		if (debug_flag) {
+		if (rad_debug_lvl) {
 			RDEBUG("Injected %s packet to host %s port 0 code=%d, id=%d", what,
 			       inet_ntop(request->reply->src_ipaddr.af,
 					 &request->reply->src_ipaddr.ipaddr,
@@ -1618,7 +1623,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 		for (vp = fr_cursor_init(&cursor, &request->reply->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			vp_prints(buffer, sizeof(buffer), vp);
+			fr_pair_snprint(buffer, sizeof(buffer), vp);
 			fprintf(fp, "%s\n", buffer);
 			RDEBUG("%s", buffer);
 		}
@@ -1690,7 +1695,7 @@ static int command_inject_to(rad_listen_t *listener, int argc, char *argv[])
 	sock->dst_ipaddr = data->my_ipaddr;
 	sock->dst_port = data->my_port;
 
-	return 1;
+	return CMD_OK;
 }
 
 static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
@@ -1723,7 +1728,7 @@ static int command_inject_from(rad_listen_t *listener, int argc, char *argv[])
 	}
 	sock->inject_client = client;
 
-	return 1;
+	return CMD_OK;
 }
 
 static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
@@ -1767,7 +1772,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
-	ret = readvp2(NULL, &vp, fp, &filedone);
+	ret = fr_pair_list_afrom_file(NULL, &vp, fp, &filedone);
 	fclose(fp);
 	if (ret < 0) {
 		cprintf_error(listener, "Failed reading attributes from %s: %s\n",
@@ -1810,7 +1815,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 #endif
 	}
 
-	if (debug_flag) {
+	if (rad_debug_lvl) {
 		DEBUG("Injecting %s packet from host %s port 0 code=%d, id=%d",
 				fr_packet_codes[packet->code],
 				inet_ntop(packet->src_ipaddr.af,
@@ -1821,7 +1826,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
-			vp_prints(buffer, sizeof(buffer), vp);
+			fr_pair_snprint(buffer, sizeof(buffer), vp);
 			DEBUG("\t%s", buffer);
 		}
 
@@ -1845,7 +1850,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 
 #endif
 
-	return 1;
+	return CMD_OK;
 }
 
 
@@ -1984,7 +1989,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	cs = cf_section_find("modules");
 	if (!cs) return 0;
 
-	mi = find_module_instance(cs, argv[0], false);
+	mi = module_find(cs, argv[0]);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
 		return 0;
@@ -2045,13 +2050,13 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	 */
 	cf_pair_replace(mi->cs, cp, argv[2]);
 
-	rcode = cf_item_parse(mi->cs, argv[1], variables[i].type, data, argv[2]);
+	rcode = cf_item_parse(mi->cs, argv[1], variables[i].type, data, argv[2], T_DOUBLE_QUOTED_STRING);
 	if (rcode < 0) {
 		cprintf_error(listener, "Failed to parse value\n");
 		return 0;
 	}
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 static int command_set_module_status(rad_listen_t *listener, int argc, char *argv[])
@@ -2067,7 +2072,7 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 	cs = cf_section_find("modules");
 	if (!cs) return 0;
 
-	mi = find_module_instance(cs, argv[0], false);
+	mi = module_find(cs, argv[0]);
 	if (!mi) {
 		cprintf_error(listener, "No such module \"%s\"\n", argv[0]);
 		return 0;
@@ -2094,7 +2099,7 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 		mi->force = true;
 	}
 
-	return 1;		/* success */
+	return CMD_OK;
 }
 
 #ifdef WITH_STATS
@@ -2151,7 +2156,7 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 			elapsed_names[i], stats->elapsed[i]);
 	}
 
-	return 1;
+	return CMD_OK;
 }
 
 
@@ -2171,10 +2176,42 @@ static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED c
 	cprintf(listener, "queue_pps_in\t\t" PU "\n", pps[0]);
 	cprintf(listener, "queue_pps_out\t\t" PU "\n", pps[1]);
 
-	return 1;
+	return CMD_OK;
 }
 #endif
 
+#ifndef NDEBUG
+static int command_stats_memory(rad_listen_t *listener, int argc, char *argv[])
+{
+
+	if (!main_config.debug_memory || !main_config.memory_report) {
+		cprintf(listener, "No memory debugging was enabled.\n");
+		return CMD_OK;
+	}
+
+	if (argc == 0) goto fail;
+
+	if (strcmp(argv[0], "total") == 0) {
+		cprintf(listener, "%zd\n", talloc_total_size(NULL));
+		return CMD_OK;
+	}
+
+	if (strcmp(argv[0], "blocks") == 0) {
+		cprintf(listener, "%zd\n", talloc_total_blocks(NULL));
+		return CMD_OK;
+	}
+
+	if (strcmp(argv[0], "full") == 0) {
+		cprintf(listener, "see stdout of the server for the full report.\n");
+		fr_log_talloc_report(NULL);
+		return CMD_OK;
+	}
+
+fail:
+	cprintf_error(listener, "Must use 'stats memory [blocks|full|total]'\n");
+	return CMD_FAIL;
+}
+#endif
 
 #ifdef WITH_DETAIL
 static FR_NAME_NUMBER state_names[] = {
@@ -2221,7 +2258,7 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 
 	if ((data->state == STATE_UNOPENED) ||
 	    (data->state == STATE_UNLOCKED)) {
-		return 1;
+		return CMD_OK;
 	}
 
 	/*
@@ -2232,7 +2269,7 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 		cprintf(listener, "tries\t0\n");
 		cprintf(listener, "offset\t0\n");
 		cprintf(listener, "size\t0\n");
-		return 1;
+		return CMD_OK;
 	}
 
 	cprintf(listener, "packets\t%d\n", data->packets);
@@ -2240,7 +2277,7 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 	cprintf(listener, "offset\t%u\n", (unsigned int) data->offset);
 	cprintf(listener, "size\t%u\n", (unsigned int) buf.st_size);
 
-	return 1;
+	return CMD_OK;
 }
 #endif
 
@@ -2271,14 +2308,12 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 	}
 
 	home = get_home_server(listener, argc, argv, NULL);
-	if (!home) {
-		return 0;
-	}
+	if (!home) return 0;
 
 	command_print_stats(listener, &home->stats,
 			    (home->type == HOME_TYPE_AUTH), 1);
 	cprintf(listener, "outstanding\t%d\n", home->currently_outstanding);
-	return 1;
+	return CMD_OK;
 }
 #endif
 
@@ -2312,9 +2347,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 		 *	Per-client statistics.
 		 */
 		client = get_client(listener, argc - 1, argv + 1);
-		if (!client) {
-			return 0;
-		}
+		if (!client) return 0;
 	}
 
 	if (strcmp(argv[0], "auth") == 0) {
@@ -2376,9 +2409,7 @@ static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 	rad_listen_t *sock;
 
 	sock = get_socket(listener, argc, argv, NULL);
-	if (!sock) {
-		return 0;
-	}
+	if (!sock) return 0;
 
 	if (sock->type != RAD_LISTEN_AUTH) auth = false;
 
@@ -2412,7 +2443,7 @@ static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[
 		return 0;
 	}
 
-	return 1;
+	return CMD_OK;
 }
 
 
@@ -2438,7 +2469,7 @@ static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 	 */
 	client->lifetime = 1;
 
-	return 1;
+	return CMD_OK;
 }
 
 
@@ -2544,6 +2575,12 @@ static fr_command_table_t command_table_stats[] = {
 	  "stats socket <ipaddr> <port> [udp|tcp] "
 	  "- show statistics for given socket",
 	  command_stats_socket, NULL },
+
+#ifndef NDEBUG
+	{ "memory", FR_READ,
+	  "stats memory [blocks|full|total] - show statistics on used memory",
+	  command_stats_memory, NULL },
+#endif
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
@@ -2914,9 +2951,8 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 				goto do_next;
 			}
 
-			len = 1;
 			status = table[i].func(listener, argc - 1, argv + 1);
-			break;
+			goto do_next;
 		}
 	}
 

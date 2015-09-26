@@ -13,6 +13,7 @@
 server abfab-idp {
 authorize {
         psk_authorize
+	abfab_client_check
 	filter_username
 	preprocess
 
@@ -51,6 +52,19 @@ authenticate {
 #  Once we KNOW that the user has been authenticated, there are
 #  additional steps we can take.
 post-auth {
+	#
+	#  For EAP-TTLS and PEAP, add the cached attributes to the reply.
+	#  The "session-state" attributes are automatically cached when
+	#  an Access-Challenge is sent, and automatically retrieved
+	#  when an Access-Request is received.
+	#
+	#  The session-state attributes are automatically deleted after
+	#  an Access-Reject or Access-Accept is sent.
+	#
+	update {
+		&reply: += &session-state:
+	}
+
 	#  Create the CUI value and add the attribute to Access-Accept.
 	#  Uncomment the line below if *returning* the CUI.
 #	cui
@@ -95,8 +109,12 @@ post-auth {
 
 		# Insert EAP-Failure message if the request was
 		# rejected by policy instead of because of an
-		# authentication failure
-		eap
+		# authentication failure And already has an EAP message
+		# For non-ABFAB, we insert the failure all the time, but for ABFAB
+		# It's more desirable to preserve reply-message when we can
+if &reply:Eap-Message {
+			eap
+			}
 
 		#  Remove reply message if the response contains an EAP-Message
 		remove_reply_message_if_eap
@@ -116,7 +134,6 @@ pre-proxy {
 	# No need to uncomment this if you have already enabled this in
 	# the authorize section.
 #	operator-name
-	abfab_pre_proxy
 
 	#  The client requests the CUI by sending a CUI attribute
 	#  containing one zero byte.
@@ -165,27 +182,5 @@ post-proxy {
 	#  reject the EAP request.
 	#
 	eap
-
-	#
-	#  If the server tries to proxy a request and fails, then the
-	#  request is processed through the modules in this section.
-	#
-	#  The main use of this section is to permit robust proxying
-	#  of accounting packets.  The server can be configured to
-	#  proxy accounting packets as part of normal processing.
-	#  Then, if the home server goes down, accounting packets can
-	#  be logged to a local "detail" file, for processing with
-	#  radrelay.  When the home server comes back up, radrelay
-	#  will read the detail file, and send the packets to the
-	#  home server.
-	#
-	#  With this configuration, the server always responds to
-	#  Accounting-Requests from the NAS, but only writes
-	#  accounting packets to disk if the home server is down.
-	#
-#	Post-Proxy-Type Fail {
-#			detail
-#	}
-}
 }
 

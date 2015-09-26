@@ -1,0 +1,138 @@
+######################################################################
+#
+#  This virtual server controls caching of TLS sessions.
+#
+#  When a TLS session is used, the server will automatically create
+#  the following attributes in the request list.  These attributes
+#  are the the ones for the *server* certificate.
+#
+#	       TLS-Cert-Serial
+#	       TLS-Cert-Expiration
+#	       TLS-Cert-Subject
+#	       TLS-Cert-Issuer
+#	       TLS-Cert-Common-Name
+#	       TLS-Cert-Subject-Alt-Name-Email
+#
+#  If a client certificate is required (e.g. EAP-TLS or sometimes PEAP / TTLS),
+#  the following attributes are also created in the request list:
+#
+#	       TLS-Client-Cert-Serial
+#	       TLS-Client-Cert-Expiration
+#	       TLS-Client-Cert-Subject
+#	       TLS-Client-Cert-Issuer
+#	       TLS-Client-Cert-Common-Name
+#	       TLS-Client-Cert-Subject-Alt-Name-Email
+#
+#
+#	$Id$
+#
+######################################################################
+server tls-cache {
+
+#
+#  Only the "authorize" section is needed.
+#  Only the listed Autz-Types are used.
+#  Everything else in the virtual server is ignored.
+#
+#  The attribute &control:TLS-Session-Identity is set to the identity
+#  of the session to read / write / delete from the cache.  This
+#  identity is an opaque blob.
+#
+authorize {
+
+	#
+	#  This section is run whenever the server needs to read an
+	#  entry from the TLS session cache.
+	#
+	#  It should read the attribute &control:TLS-Session-Data
+	#  from the cache, along with any other attributes which
+	#  were in the cache
+	#
+	#  On success it should return 'ok' or 'updated'.
+	#
+	#  The return code has no real effect on session processing
+	#  and will just cause the server to emit a warning.
+	#
+	Autz-Type Session-Cache-Read {
+		update control {
+			Cache-Allow-Insert := no
+		}
+		cache_tls_session
+	}
+
+	#
+	#  This section is run whenever the server needs to write an
+	#  entry to the TLS session cache.
+	#
+	#  It should write the attribute &control:TLS-Session-Data
+	#  to the cache, along with any other attributes which
+	#  need to be cached.
+	#
+	#  On success it should return 'ok' or 'updated'.
+	#
+	#  The return code has no real effect on session processing
+	#  and will just cause the server to emit a warning.
+	#
+	Autz-Type Session-Cache-Write {
+		update control {
+			Cache-TTL := 0
+			Cache-Allow-Merge := no
+		}
+		cache_tls_session
+	}
+
+	#
+	#  This section is run whenever the server needs to delete an
+	#  entry from the TLS session cache.
+	#
+	#  On success it should return 'ok', 'updated', 'noop' or 'notfound'
+	#
+	#  The return code has no real effect on session processing
+	#  and will just cause the server to emit a warning.
+	#
+	Autz-Type Session-Cache-Delete {
+		update control {
+			Cache-TTL := 0
+			Cache-Allow-Insert := no
+			Cache-Allow-Merge := no
+		}
+		cache_tls_session
+	}
+
+	#
+	#  This section is run after certificate attributes are added
+	#  to the request list, and before performing OCSP validation.
+	#
+	#  It should read the attribute &control:TLS-OCSP-Cert-Valid
+	#  from the cache.
+	#
+	#  On success it should return 'ok', 'updated', 'noop' or 'notfound'
+	#  To force OCSP validation failure, it should return 'reject'.
+	#
+	Autz-Type OCSP-Cache-Read {
+		update control {
+			Cache-Allow-Insert := no
+		}
+		cache_ocsp
+	}
+
+	#
+	#  This section is run after OCSP validation has completed.
+	#
+	#  It should write the attribute &reply:TLS-OCSP-Cert-Valid
+	#  to the cache.
+	#
+	#  On success it should return 'ok' or 'updated'.
+	#
+	#  The return code has no real effect on session processing
+	#  and will just cause the server to emit a warning.
+	#
+	Autz-Type OCSP-Cache-Write {
+		update control {
+			Cache-TTL := "%{expr:&reply:TLS-OCSP-Next-Update * -1}"
+			Cache-Allow-Merge := no
+		}
+		cache_ocsp
+	}
+}
+}

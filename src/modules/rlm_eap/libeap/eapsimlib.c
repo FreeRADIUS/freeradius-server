@@ -56,7 +56,7 @@ RCSID("$Id$")
 #include <freeradius-devel/sha1.h>
 
 /*
- * given a radius request with many attribues in the EAP-SIM range, build
+ * given a radius request with many attributes in the EAP-SIM range, build
  * them all into a single EAP-SIM body.
  *
  */
@@ -81,13 +81,13 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 * it might be too big for putting into an EAP-Type-SIM
 	 *
 	 */
-	subtype = (vp = pairfind(r->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY)) ?
+	subtype = (vp = fr_pair_find_by_num(r->vps, PW_EAP_SIM_SUBTYPE, 0, TAG_ANY)) ?
 		vp->vp_integer : EAPSIM_START;
 
-	id = (vp = pairfind(r->vps, PW_EAP_ID, 0, TAG_ANY)) ?
+	id = (vp = fr_pair_find_by_num(r->vps, PW_EAP_ID, 0, TAG_ANY)) ?
 		vp->vp_integer : ((int)getpid() & 0xff);
 
-	eapcode = (vp = pairfind(r->vps, PW_EAP_CODE, 0, TAG_ANY)) ?
+	eapcode = (vp = fr_pair_find_by_num(r->vps, PW_EAP_CODE, 0, TAG_ANY)) ?
 		vp->vp_integer : PW_EAP_REQUEST;
 
 	/*
@@ -222,7 +222,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 * then we should calculate the HMAC-SHA1 of the resulting EAP-SIM
 	 * packet, appended with the value of append.
 	 */
-	vp = pairfind(r->vps, PW_EAP_SIM_KEY, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(r->vps, PW_EAP_SIM_KEY, 0, TAG_ANY);
 	if(macspace != NULL && vp != NULL) {
 		unsigned char		*buffer;
 		eap_packet_raw_t	*hdr;
@@ -297,14 +297,14 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		return 0;
 	}
 
-	newvp = paircreate(r, PW_EAP_SIM_SUBTYPE, 0);
+	newvp = fr_pair_afrom_num(r, PW_EAP_SIM_SUBTYPE, 0);
 	if (!newvp) {
 		return 0;
 	}
 
 	newvp->vp_integer = attr[0];
 	newvp->vp_length = 1;
-	pairadd(&(r->vps), newvp);
+	fr_pair_add(&(r->vps), newvp);
 
 	attr     += 3;
 	attrlen  -= 3;
@@ -337,11 +337,11 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			       return 0;
 		}
 
-		newvp = paircreate(r, eapsim_attribute+PW_EAP_SIM_BASE, 0);
+		newvp = fr_pair_afrom_num(r, eapsim_attribute+PW_EAP_SIM_BASE, 0);
 		newvp->vp_length = eapsim_len-2;
 		newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->vp_length);
 		memcpy(p, &attr[2], eapsim_len-2);
-		pairadd(&(r->vps), newvp);
+		fr_pair_add(&(r->vps), newvp);
 		newvp = NULL;
 
 		/* advance pointers, decrement length */
@@ -367,7 +367,7 @@ int eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps, uint8_t key[EAPSIM_AUTH_S
 	int elen,len;
 	VALUE_PAIR *mac;
 
-	mac = pairfind(rvps, PW_EAP_SIM_MAC, 0, TAG_ANY);
+	mac = fr_pair_find_by_num(rvps, PW_EAP_SIM_MAC, 0, TAG_ANY);
 
 	if(!mac || mac->vp_length != 18) {
 		/* can't check a packet with no AT_MAC attribute */

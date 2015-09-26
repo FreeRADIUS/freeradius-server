@@ -42,7 +42,7 @@ If the incoming request matches NO entry, then the request is
 rejected.
 
 .SH CAVEATS
-The special username \fBDEFAULT\fP matches any usernames.
+The special keyword \fBDEFAULT\fP matches any usernames.
 
 The entries are processed in order, from the top of the \fBusers\fP file,
 on down.  If an entry contains the special item \fBFall-Through =
@@ -139,22 +139,6 @@ Not allowed as a reply item.
 .B "Attribute <= Value"
 As a check item, it matches if the request contains an attribute with
 a value less than, or equal to the one given.
-.br
-Not allowed as a reply item.
-
-.TP 0.5i
-.B "Attribute =~ Expression"
-As a check item, it matches if the request contains an attribute which
-matches the given regular expression.  This operator may only be
-applied to string attributes.
-.br
-Not allowed as a reply item.
-
-.TP 0.5i
-.B "Attribute !~ Expression"
-As a check item, it matches if the request contains an attribute which
-does not match the given regular expression.  This operator may only be
-applied to string attributes.
 .br
 Not allowed as a reply item.
 

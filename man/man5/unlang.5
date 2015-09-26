@@ -348,9 +348,6 @@ name in a list.  The "Attribute-Name" reference will return the first
 attribute.  Using an array offset allows the policy to refer to the
 second and subsequent attributes.
 
-If '#' is used in the NUM portion, it evaluates to the number of times
-the attribute appears in the request.
-
 If '*' is used in the NUM portion, it evaluates to all instances of
 the attribute in the request.
 
@@ -481,7 +478,7 @@ We recommend using attribute references instead of printing
 attributes to a string, e.g. (User-Name == "%{Filter-Id}").
 Attribute references will be faster and more efficient.
 
-The conditions will check only the first occurance of an attribute.
+The conditions will check only the first occurrence of an attribute.
 If there is more than one instance of an attribute, the following
 syntax should be used:
 
@@ -686,6 +683,27 @@ The hex value of the Attribute-Name, as a series of hex digits.
 e.g. If a request contains "Framed-IP-Address = 127.0.0.1", the expansion
 of %{hex:Framed-IP-Address} will yeild "0x7f000001".
 
+.IP %{Attribute-Name[#]}
+The number of instances of Attribute-Name.
+
+e.g. If a request contains "User-Name = bob", the expansion
+of %{User-Name[#]} will yeild "1".
+
+.IP %{Attribute-Name[*]}
+All values of Attribute-Name, concatenated together with ',' as the
+separator.
+
+.IP %{List-Name:[#]}
+The number of attributes in the named list.
+
+.IP %{List-Name:[*]}
+All values of attributes in the named-list, concatenated together with ','
+as the separator. Use the %{pairs:} xlat to get a list of attributes and
+values.
+
+e.g. If a response contains "Reply-Message = 'Hello', Reply-Message = 'bob'
+the expansion of "%{reply:Reply-Message[*]} will yield "Hello\\nbob"
+
 .SH ATTRIBUTE ASSIGNMENTS
 The attribute lists described above may be edited by listing one or
 more attributes in an "update" section.  Once the attributes have been
@@ -755,7 +773,7 @@ no attribute exists, it is added with the value given here, as with
 
 This operator is valid only for attributes of integer type.
 .IP !*
-Delete all occurances of the named attribute, no matter what the
+Delete all occurrences of the named attribute, no matter what the
 value.
 .RE
 .IP Values

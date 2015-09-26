@@ -1,81 +1,49 @@
 # -*- text -*-
-##
-## sql.conf -- SQL modules
-##
-##	$Id$
-
-######################################################################
 #
 #  Configuration for the SQL module
 #
 #  The database schemas and queries are located in subdirectories:
 #
-#	sql/<DB>/main/schema.sql	Schema
-#	sql/<DB>/main/queries.conf	Authorisation and Accounting queries
+#	sql/<driver>/main/schema.sql	Schema
+#	sql/<driver>/main/queries.conf	Authorisation and Accounting queries
 #
-#  Where "DB" is mysql, mssql, oracle, or postgresql.
+#  Driver specific configuration options are located in sql prefix config files
 #
+#       mods-available/sql_<driver>
 #
-
+#  Where "driver" is cassandra, db2, firebird, freetds, iodbc, null, mysql
+#  oracle, postgresql, sqlite, unixodbc.
+#
+# $Id$
+#
 sql {
-	# The sub-module to use to execute queries. This should match
-	# the database you're attempting to connect to.
-	#
-	#    * rlm_sql_mysql
-	#    * rlm_sql_mssql
-	#    * rlm_sql_oracle
-	#    * rlm_sql_postgresql
-	#    * rlm_sql_sqlite
-	#    * rlm_sql_null (log queries to disk)
-	#
-	driver = "rlm_sql_null"
-
-#
-#	Several drivers accept specific options, to set them, a
-#	config section with the the name as the driver should be added
-#	to the sql instance.
-#
-#	Driver specific options are:
-#
-#	sqlite {
-#		# Path to the sqlite database
-#		filename = "/tmp/freeradius.db"
-#
-#		# If the file above does not exist and bootstrap is set
-#		# a new database file will be created, and the SQL statements
-#		# contained within the file will be executed.
-#		bootstrap = "${modconfdir}/${..:name}/main/sqlite/schema.sql"
-# 	}
-#
-#	mysql {
-#		# If any of the files below are set, TLS encryption is enabled
-#		tls {
-#			ca_file = "/etc/ssl/certs/my_ca.crt"
-#			ca_path = "/etc/ssl/certs/"
-#			certificate_file = "/etc/ssl/certs/private/client.crt"
-#			private_key_file = "/etc/ssl/certs/private/client.key"
-#			cipher = "DHE-RSA-AES256-SHA:AES128-SHA"
-#		}
-#
-#		# If yes, (or auto and libmysqlclient reports warnings are
-#		# available), will retrieve and log additional warnings from
-#		# the server, if an error has occured. Defaults to 'auto'
-#		warnings = auto
-#	}
-#
-#	postgresql {
-#		# Send application_name to the postgres server
-#		# Only supported in PG 9.0 and greater. Defaults to no.
-#		send_application_name = yes
-#	}
-#
-
-	# The dialect of SQL you want to use, this should usually match
-	# the driver you selected above.
+	# The dialect of SQL you want to use
 	#
 	# If you're using rlm_sql_null, then it should be the type of
 	# database the logged queries are going to be executed against.
 	dialect = "sqlite"
+
+	# The sub-module to use to execute queries. This should match
+	# the database you're attempting to connect to.
+	#
+	#    * rlm_sql_cassandra
+	#    * rlm_sql_db2
+	#    * rlm_sql_firedbird
+	#    * rlm_sql_freetds (mssql)
+	#    * rlm_sql_iodbc
+	#    * rlm_sql_null (log queries to disk)
+	#    * rlm_sql_mysql
+	#    * rlm_sql_oracle
+	#    * rlm_sql_postgresql
+	#    * rlm_sql_sqlite
+	#    * rlm_sql_unixodbc
+	#
+	driver = "rlm_sql_${dialect}"
+
+	# Uncomment to include driver specific configuration file
+	# (if one exists)
+	# These config files contain driver specific options.
+#	$INCLUDE ${modenableddir}/${.:name}_${dialect}
 
 	# Connection info:
 	#
@@ -129,17 +97,13 @@ sql {
 	# issues with authorization queries.
 #	logfile = ${logdir}/sqllog.sql
 
-	#  As of version 3.0, the "pool" section has replaced the
-	#  following configuration items:
-	#
-	#  num_sql_socks
-	#  connect_failure_retry_delay
-	#  lifetime
-	#  max_queries
+	#  Set the maximum query duration for rlm_sql_mysql and 
+	#  rlm_sql_cassandra.
+#	query_timeout = 5
 
 	#
-	#  The connection pool is new for 3.0, and will be used in many
-	#  modules, for all kinds of connection-related activity.
+	# The connection pool is new for 3.0, and will be used in many
+	# modules, for all kinds of connection-related activity.
 	#
 	# When the server is not threaded, the connection pool
 	# limits are ignored, and only one connection is used.
@@ -162,59 +126,70 @@ sql {
 	#	}
 	#
 	pool {
-		# Number of connections to start
-		start = 5
+		#  Connections to create during module instantiation.
+		#  If the server cannot create specified number of
+		#  connections during instantiation it will exit.
+		#  Set to 0 to allow the server to start without the
+		#  database being available.
+		start = ${thread[pool].start_servers}
 
-		# Minimum number of connections to keep open
-		min = 4
+		#  Minimum number of connections to keep open
+		min = ${thread[pool].min_spare_servers}
 
-		# Maximum number of connections
+		#  Maximum number of connections
 		#
-		# If these connections are all in use and a new one
-		# is requested, the request will NOT get a connection.
+		#  If these connections are all in use and a new one
+		#  is requested, the request will NOT get a connection.
 		#
-		# Setting 'max' to LESS than the number of threads means
-		# that some threads may starve, and you will see errors
-		# like "No connections available and at max connection limit"
+		#  Setting 'max' to LESS than the number of threads means
+		#  that some threads may starve, and you will see errors
+		#  like 'No connections available and at max connection limit'
 		#
-		# Setting 'max' to MORE than the number of threads means
-		# that there are more connections than necessary.
-		#
+		#  Setting 'max' to MORE than the number of threads means
+		#  that there are more connections than necessary.
 		max = ${thread[pool].max_servers}
 
-		# Spare connections to be left idle
+		#  Spare connections to be left idle
 		#
-		# NOTE: Idle connections WILL be closed if "idle_timeout"
-		# is set.
-		spare = 3
+		#  NOTE: Idle connections WILL be closed if "idle_timeout"
+		#  is set.  This should be less than or equal to "max" above.
+		spare = ${thread[pool].max_spare_servers}
 
-		# Number of uses before the connection is closed
+		#  Number of uses before the connection is closed
 		#
-		# 0 means "infinite"
+		#  0 means "infinite"
 		uses = 0
+
+		#  The number of seconds to wait after the server tries
+		#  to open a connection, and fails.  During this time,
+		#  no new connections will be opened.
+		retry_delay = 30
 
 		# The lifetime (in seconds) of the connection
 		lifetime = 0
 
-		# idle timeout (in seconds).  A connection which is
-		# unused for this length of time will be closed.
+		#  idle timeout (in seconds).  A connection which is
+		#  unused for this length of time will be closed.
 		idle_timeout = 60
 
-		# The number of seconds to wait after the server tries
-		# to open a connection, and fails.  During this time,
-		# no new connections will be opened.
+		#  Connection timeout (in seconds).  The maximum amount of
+		#  time to wait for a new connection to be established.
+		#  Not supported by:
+		#    rlm_sql_firebird - Likely possible but no documentation.
+		#    rlm_sql_oracle - Not possible.
+		#    rlm_sql_postgresql - Should be set via the radius_db string instead.
 		#
-		retry_delay = 1
+		connect_timeout = 3.0
 
-		# NOTE: All configuration settings are enforced.  If a
-		# connection is closed because of "idle_timeout",
-		# "uses", or "lifetime", then the total number of
-		# connections MAY fall below "min".  When that
-		# happens, it will open a new connection.  It will
-		# also log a WARNING message.
+		#  NOTE: All configuration settings are enforced.  If a
+		#  connection is closed because of "idle_timeout",
+		#  "uses", or "lifetime", then the total number of
+		#  connections MAY fall below "min".  When that
+		#  happens, it will open a new connection.  It will
+		#  also log a WARNING message.
 		#
-		# The solution is to either lower the "min" connections,
-		# or increase lifetime/idle_timeout.
+		#  The solution is to either lower the "min" connections,
+		#  or increase lifetime/idle_timeout.
 	}
 
 	# Set to 'yes' to read radius clients from the database ('nas' table)
@@ -224,6 +199,13 @@ sql {
 	# Table to keep radius client info
 	client_table = "nas"
 
+	# The group attribute specific to this instance of rlm_sql
+	group_attribute = "${.:instance}-${.:name}-Group"
+
 	# Read database-specific queries
+	#
+	# Not all drivers ship with query.conf or schema.sql files.
+	# For those which don't, please create them and contribute
+	# them back to the project.
 	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }

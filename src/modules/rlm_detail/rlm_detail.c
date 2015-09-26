@@ -64,22 +64,22 @@ typedef struct detail_instance {
 
 	bool		escape;		//!< do filename escaping, yes / no
 
-	RADIUS_ESCAPE_STRING escape_func; //!< escape function
+	xlat_escape_t escape_func; //!< escape function
 
 	exfile_t    	*ef;		//!< Log file handler
 
 	fr_hash_table_t *ht;		//!< Holds suppressed attributes.
-} detail_instance_t;
+} rlm_detail_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, detail_instance_t, filename), "%A/%{Client-IP-Address}/detail" },
-	{ "header", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, detail_instance_t, header), "%t" },
-	{ "permissions", FR_CONF_OFFSET(PW_TYPE_INTEGER, detail_instance_t, perm), "0600" },
-	{ "group", FR_CONF_OFFSET(PW_TYPE_STRING, detail_instance_t, group), NULL },
-	{ "locking", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, locking), "no" },
-	{ "escape_filenames", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, escape), "no" },
-	{ "log_packet_header", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, detail_instance_t, log_srcdst), "no" },
-	{ NULL, -1, 0, NULL, NULL }
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED | PW_TYPE_XLAT, rlm_detail_t, filename), .dflt = "%A/%{Client-IP-Address}/detail" },
+	{ FR_CONF_OFFSET("header", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_detail_t, header), .dflt = "%t" },
+	{ FR_CONF_OFFSET("permissions", PW_TYPE_INTEGER, rlm_detail_t, perm), .dflt = "0600" },
+	{ FR_CONF_OFFSET("group", PW_TYPE_STRING, rlm_detail_t, group) },
+	{ FR_CONF_OFFSET("locking", PW_TYPE_BOOLEAN, rlm_detail_t, locking), .dflt = "no" },
+	{ FR_CONF_OFFSET("escape_filenames", PW_TYPE_BOOLEAN, rlm_detail_t, escape), .dflt = "no" },
+	{ FR_CONF_OFFSET("log_packet_header", PW_TYPE_BOOLEAN, rlm_detail_t, log_srcdst), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -88,7 +88,7 @@ static const CONF_PARSER module_config[] = {
  */
 static int mod_detach(void *instance)
 {
-	detail_instance_t *inst = instance;
+	rlm_detail_t *inst = instance;
 	if (inst->ht) fr_hash_table_free(inst->ht);
 	return 0;
 }
@@ -109,86 +109,11 @@ static int detail_cmp(void const *a, void const *b)
 }
 
 /*
- *	Ensure that the filename doesn't walk back up the tree.
- */
-static size_t fix_directories(UNUSED REQUEST *request, char *out, size_t outlen,
-			      char const *in, UNUSED void *arg)
-{
-	char const *q = in;
-	char *p = out;
-	size_t left = outlen;
-
-	while (*q) {
-		if (*q != '/') {
-			if (left < 2) break;
-
-			/*
-			 *	Smash control characters and spaces to
-			 *	something simpler.
-			 */
-			if (*q < ' ') {
-				*(p++) = '_';
-				continue;
-			}
-
-			*(p++) = *(q++);
-			left--;
-			continue;
-		}
-
-		/*
-		 *	For now, allow slashes in the expanded
-		 *	filename.  This allows the admin to set
-		 *	attributes which create sub-directories.
-		 *	Unfortunately, it also allows users to send
-		 *	attributes which *may* end up creating
-		 *	sub-directories.
-		 */
-		if (left < 2) break;
-		*(p++) = *(q++);
-
-		/*
-		 *	Get rid of ////../.././///.///..//
-		 */
-	redo:
-		/*
-		 *	Get rid of ////
-		 */
-		if (*q == '/') {
-			q++;
-			goto redo;
-		}
-
-		/*
-		 *	Get rid of /./././
-		 */
-		if ((q[0] == '.') &&
-		    (q[1] == '/')) {
-			q += 2;
-			goto redo;
-		}
-
-		/*
-		 *	Get rid of /../../../
-		 */
-		if ((q[0] == '.') && (q[1] == '.') &&
-		    (q[2] == '/')) {
-			q += 3;
-			goto redo;
-		}
-	}
-	*p = '\0';
-
-	return (p - out);
-}
-
-
-/*
  *	(Re-)read radiusd.conf into memory.
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	detail_instance_t *inst = instance;
+	rlm_detail_t *inst = instance;
 	CONF_SECTION	*cs;
 
 	inst->name = cf_section_name2(conf);
@@ -202,10 +127,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (inst->escape) {
 		inst->escape_func = rad_filename_escape;
 	} else {
-		inst->escape_func = fix_directories;
+		inst->escape_func = rad_filename_make_safe;
 	}
 
-	inst->ef = exfile_init(inst, 64, 30);
+	inst->ef = exfile_init(inst, 64, 30, inst->locking);
 	if (!inst->ef) {
 		cf_log_err_cs(conf, "Failed creating log file context");
 		return -1;
@@ -270,7 +195,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	Wrapper for VPs allocated on the stack.
  */
-static void detail_vp_print(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacked)
+static void detail_fr_pair_fprint(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacked)
 {
 	VALUE_PAIR *vp;
 
@@ -279,7 +204,7 @@ static void detail_vp_print(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacke
 
 	memcpy(vp, stacked, sizeof(*vp));
 	vp->op = T_OP_EQ;
-	vp_print(out, vp);
+	fr_pair_fprint(out, vp);
 	talloc_free(vp);
 }
 
@@ -292,7 +217,7 @@ static void detail_vp_print(TALLOC_CTX *ctx, FILE *out, VALUE_PAIR const *stacke
  * @param[in] packet associated with the request (request, reply, proxy-request, proxy-reply...).
  * @param[in] compat Write out entry in compatibility mode.
  */
-static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RADIUS_PACKET *packet, bool compat)
+static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_PACKET *packet, bool compat)
 {
 	VALUE_PAIR *vp;
 	char timestamp[256];
@@ -353,16 +278,16 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 			break;
 		}
 
-		detail_vp_print(request, out, &src_vp);
-		detail_vp_print(request, out, &dst_vp);
+		detail_fr_pair_fprint(request, out, &src_vp);
+		detail_fr_pair_fprint(request, out, &dst_vp);
 
 		src_vp.da = dict_attrbyvalue(PW_PACKET_SRC_PORT, 0);
 		src_vp.vp_integer = packet->src_port;
 		dst_vp.da = dict_attrbyvalue(PW_PACKET_DST_PORT, 0);
 		dst_vp.vp_integer = packet->dst_port;
 
-		detail_vp_print(request, out, &src_vp);
-		detail_vp_print(request, out, &dst_vp);
+		detail_fr_pair_fprint(request, out, &src_vp);
+		detail_fr_pair_fprint(request, out, &dst_vp);
 	}
 
 	{
@@ -385,7 +310,7 @@ static int detail_write(FILE *out, detail_instance_t *inst, REQUEST *request, RA
 			 */
 			op = vp->op;
 			vp->op = T_OP_EQ;
-			vp_print(out, vp);
+			fr_pair_fprint(out, vp);
 			vp->op = op;
 		}
 	}
@@ -426,7 +351,7 @@ static rlm_rcode_t CC_HINT(nonnull) detail_do(void *instance, REQUEST *request, 
 	char		*endptr;
 #endif
 
-	detail_instance_t *inst = instance;
+	rlm_detail_t *inst = instance;
 
 	/*
 	 *	Generate the path for the detail file.  Use the same
@@ -509,7 +434,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 {
 #ifdef WITH_DETAIL
 	if (request->listener->type == RAD_LISTEN_DETAIL &&
-	    strcmp(((detail_instance_t *)instance)->filename,
+	    strcmp(((rlm_detail_t *)instance)->filename,
 		   ((listen_detail_t *)request->listener->data)->filename) == 0) {
 		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file");
 		return RLM_MODULE_NOOP;
@@ -600,29 +525,25 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 /* globally exported name */
 extern module_t rlm_detail;
 module_t rlm_detail = {
-	RLM_MODULE_INIT,
-	"detail",
-	RLM_TYPE_HUP_SAFE,
-	sizeof(detail_instance_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize,		/* authorization */
-		NULL,			/* preaccounting */
-		mod_accounting,		/* accounting */
-		NULL,			/* checksimul */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "detail",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_detail_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_accounting,
+		[MOD_ACCOUNTING]	= mod_accounting,
 #ifdef WITH_PROXY
-		mod_pre_proxy,      	/* pre-proxy */
-		mod_post_proxy,		/* post-proxy */
-#else
-		NULL, NULL,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
-		mod_post_auth		/* post-auth */
+		[MOD_POST_AUTH]		= mod_post_auth,
 #ifdef WITH_COA
-		, mod_recv_coa,
-		mod_send_coa
+		[MOD_RECV_COA]		= mod_recv_coa,
+		[MOD_SEND_COA]		= mod_send_coa
 #endif
 	},
 };

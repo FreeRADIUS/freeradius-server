@@ -29,17 +29,19 @@ RCSID("$Id$")
 
 static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST *request)
 {
-	if (!pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) {
+	if (!fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) {
 		return RLM_MODULE_NOOP;
 	}
 
-	if (pairfind(request->config_items, PW_AUTHTYPE, 0, TAG_ANY) != NULL) {
-		RWDEBUG2("Auth-Type already set.  Not setting to CHAP");
+	if (fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY) != NULL) {
+		RWDEBUG2("&control:Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
 
-	RDEBUG("Setting 'Auth-Type := CHAP'");
-	pairmake_config("Auth-Type", "CHAP", T_OP_EQ);
+	RINDENT();
+	RDEBUG("&control:Auth-Type := CHAP");
+	REXDENT();
+	pair_make_config("Auth-Type", "CHAP", T_OP_EQ);
 
 	return RLM_MODULE_OK;
 }
@@ -54,38 +56,34 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 				     REQUEST *request)
 {
-	VALUE_PAIR *passwd_item, *chap;
+	VALUE_PAIR *password, *chap;
 	uint8_t pass_str[MAX_STRING_LEN];
 
 	if (!request->username) {
-		RWDEBUG("Attribute 'User-Name' is required for authentication.\n");
+		RWDEBUG("&request:User-Name attribute is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+	chap = fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	if (!chap) {
-		REDEBUG("You set 'Auth-Type = CHAP' for a request that does not contain a CHAP-Password attribute!");
+		REDEBUG("You set '&control:Auth-Type = CHAP' for a request that "
+			"does not contain a CHAP-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->vp_length == 0) {
-		REDEBUG("CHAP-Password is empty");
+		REDEBUG("&request:CHAP-Password is empty");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->vp_length != CHAP_VALUE_LENGTH + 1) {
-		REDEBUG("CHAP-Password has invalid length");
+		REDEBUG("&request:CHAP-Password has invalid length");
 		return RLM_MODULE_INVALID;
 	}
 
-	/*
-	 *	Don't print out the CHAP password here.  It's binary crap.
-	 */
-	RDEBUG("Login attempt by \"%s\" with CHAP password",
-		request->username->vp_strvalue);
-
-	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL){
-		if (pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
+	password = fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	if (password == NULL) {
+		if (fr_pair_find_by_num(request->config, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			REDEBUG("!!! Please update your configuration so that the \"known !!!");
 			REDEBUG("!!! good\" cleartext password is in Cleartext-Password,  !!!");
@@ -95,12 +93,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
 
-		REDEBUG("Cleartext password is required for authentication");
-		return RLM_MODULE_INVALID;
+		REDEBUG("&control:Cleartext-Password is required for authentication");
+		return RLM_MODULE_FAIL;
 	}
 
-	rad_chap_encode(request->packet, pass_str,
-			chap->vp_octets[0], passwd_item);
+	rad_chap_encode(request->packet, pass_str, chap->vp_octets[0], password);
 
 	if (RDEBUG_ENABLED3) {
 		uint8_t const *p;
@@ -108,13 +105,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 		VALUE_PAIR *vp;
 		char buffer[CHAP_VALUE_LENGTH * 2 + 1];
 
-		RDEBUG3("Comparing with \"known good\" Cleartext-Password \"%s\"", passwd_item->vp_strvalue);
+		RDEBUG3("Comparing with \"known good\" &control:Cleartext-Password value \"%s\"",
+			password->vp_strvalue);
 
-		vp = pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
 		if (vp) {
+			RDEBUG2("Using challenge from &request:CHAP-Challenge");
 			p = vp->vp_octets;
 			length = vp->vp_length;
 		} else {
+			RDEBUG2("Using challenge from authenticator field");
 			p = request->packet->vector;
 			length = sizeof(request->packet->vector);
 		}
@@ -133,14 +133,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 		RDEBUG2("Comparing with \"known good\" Cleartext-Password");
 	}
 
-	if (rad_digest_cmp(pass_str + 1, chap->vp_octets + 1,
-			   CHAP_VALUE_LENGTH) != 0) {
+	if (rad_digest_cmp(pass_str + 1, chap->vp_octets + 1, CHAP_VALUE_LENGTH) != 0) {
 		REDEBUG("Password comparison failed: password is incorrect");
 		return RLM_MODULE_REJECT;
 	}
 
-	RDEBUG("CHAP user \"%s\" authenticated successfully",
-	      request->username->vp_strvalue);
+	RDEBUG("CHAP user \"%s\" authenticated successfully", request->username->vp_strvalue);
 
 	return RLM_MODULE_OK;
 }
@@ -165,12 +163,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance,
 	 */
 	if (request->packet->code != PW_CODE_ACCESS_REQUEST) return RLM_MODULE_NOOP;
 
-	if (!pairfind(request->proxy->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) return RLM_MODULE_NOOP;
+	if (!fr_pair_find_by_num(request->proxy->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) return RLM_MODULE_NOOP;
 
-	vp = radius_paircreate(request, &request->proxy->vps, PW_CHAP_CHALLENGE, 0);
+	vp = radius_pair_create(request, &request->proxy->vps, PW_CHAP_CHALLENGE, 0);
 	if (!vp) return RLM_MODULE_FAIL;
 
-	pairmemcpy(vp, request->packet->vector, sizeof(request->packet->vector));
+	fr_pair_value_memcpy(vp, request->packet->vector, sizeof(request->packet->vector));
 
 	return RLM_MODULE_OK;
 }
@@ -187,21 +185,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_pre_proxy(UNUSED void *instance,
  */
 extern module_t rlm_chap;
 module_t rlm_chap = {
-	 RLM_MODULE_INIT,
-	"CHAP",
-	0,   	/* type */
-	 0,
-	 NULL,				/* CONF_PARSER */
-	NULL,				/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_authenticate,	/* authentication */
-		mod_authorize,	 	/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		mod_pre_proxy,	      	/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "chap",
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PRE_PROXY]		= mod_pre_proxy
 	},
 };

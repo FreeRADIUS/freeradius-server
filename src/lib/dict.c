@@ -5,8 +5,7 @@
  *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version. either
+ *   License as published by the Free Software Foundation; either
  *   version 2.1 of the License, or (at your option) any later version.
  *
  *   This library is distributed in the hope that it will be useful,
@@ -626,7 +625,7 @@ int dict_valid_name(char const *name)
 		if (!dict_attr_allowed_chars[*p]) {
 			char buff[5];
 
-			fr_prints(buff, sizeof(buff), (char const *)p, 1, '\'');
+			fr_snprint(buff, sizeof(buff), (char const *)p, 1, '\'');
 			fr_strerror_printf("Invalid character '%s' in attribute", buff);
 
 			return -(p - (uint8_t const *)name);
@@ -640,7 +639,9 @@ int dict_valid_name(char const *name)
  *
  * @todo we need to check length of none vendor attributes.
  *
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 ATTR_FLAGS flags)
@@ -1841,6 +1842,74 @@ static int process_value_alias(char const* fn, int const line, char **argv,
 }
 
 
+static int parse_format(char const *fn, int line, char const *format, int *pvalue, int *ptype, int *plength, bool *pcontinuation)
+{
+	char const *p;
+	int type, length;
+	bool continuation = false;
+
+	if (strncasecmp(format, "format=", 7) != 0) {
+		fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected \"format=\", got \"%s\"",
+				   fn, line, format);
+		return -1;
+	}
+
+	p = format + 7;
+	if ((strlen(p) < 3) ||
+	    !isdigit((int) p[0]) ||
+	    (p[1] != ',') ||
+	    !isdigit((int) p[2]) ||
+	    (p[3] && (p[3] != ','))) {
+		fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+				   fn, line, p);
+		return -1;
+	}
+
+	type = (int) (p[0] - '0');
+	length = (int) (p[2] - '0');
+
+	if ((type != 1) && (type != 2) && (type != 4)) {
+		fr_strerror_printf("dict_init: %s[%d]: invalid type value %d for VENDOR",
+				   fn, line, type);
+		return -1;
+	}
+
+	if ((length != 0) && (length != 1) && (length != 2)) {
+		fr_strerror_printf("dict_init: %s[%d]: invalid length value %d for VENDOR",
+				   fn, line, length);
+		return -1;
+	}
+
+	if (p[3] == ',') {
+		if (!p[4]) {
+			fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+					   fn, line, p);
+			return -1;
+		}
+
+		if ((p[4] != 'c') ||
+		    (p[5] != '\0')) {
+			fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+					   fn, line, p);
+			return -1;
+		}
+		continuation = true;
+
+		if ((*pvalue != VENDORPEC_WIMAX) ||
+		    (type != 1) || (length != 1)) {
+			fr_strerror_printf("dict_init: %s[%d]: Only WiMAX VSAs can have continuations",
+					   fn, line);
+			return -1;
+		}
+	}
+
+	*ptype = type;
+	*plength = length;
+	*pcontinuation = continuation;
+	return 0;
+}
+
+
 /*
  *	Process the VENDOR command
  */
@@ -1848,8 +1917,9 @@ static int process_vendor(char const* fn, int const line, char **argv,
 			  int argc)
 {
 	int		value;
+	int		type, length;
 	bool		continuation = false;
-	char const	*format = NULL;
+	DICT_VENDOR	*dv;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_printf( "dict_init: %s[%d] invalid VENDOR entry",
@@ -1869,103 +1939,45 @@ static int process_vendor(char const* fn, int const line, char **argv,
 
 	/* Create a new VENDOR entry for the list */
 	if (dict_addvendor(argv[0], value) < 0) {
-		char buffer[256];
-
-		strlcpy(buffer, fr_strerror(), sizeof(buffer));
-
 		fr_strerror_printf("dict_init: %s[%d]: %s",
-			   fn, line, buffer);
+			   fn, line, fr_strerror());
 		return -1;
 	}
 
 	/*
-	 *	Look for a format statement
+	 *	Look for a format statement.  Allow it to over-ride the hard-coded formats below.
 	 */
 	if (argc == 3) {
-		format = argv[2];
+		if (parse_format(fn, line, argv[2], &value, &type, &length, &continuation) < 0) {
+			return -1;
+		}
 
 	} else if (value == VENDORPEC_USR) { /* catch dictionary screw-ups */
-		format = "format=4,0";
+		type = 4;
+		length = 0;
 
 	} else if (value == VENDORPEC_LUCENT) {
-		format = "format=2,1";
+		type = 2;
+		length = 1;
 
 	} else if (value == VENDORPEC_STARENT) {
-		format = "format=2,2";
+		type = 2;
+		length = 2;
 
-	} /* else no fixups to do */
-
-	if (format) {
-		int type, length;
-		char const *p;
-		DICT_VENDOR *dv;
-
-		if (strncasecmp(format, "format=", 7) != 0) {
-			fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected \"format=\", got \"%s\"",
-				   fn, line, format);
-			return -1;
-		}
-
-		p = format + 7;
-		if ((strlen(p) < 3) ||
-		    !isdigit((int) p[0]) ||
-		    (p[1] != ',') ||
-		    !isdigit((int) p[2]) ||
-		    (p[3] && (p[3] != ','))) {
-			fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
-				   fn, line, p);
-			return -1;
-		}
-
-		type = (int) (p[0] - '0');
-		length = (int) (p[2] - '0');
-
-		if (p[3] == ',') {
-			if (!p[4]) {
-				fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
-				   fn, line, p);
-				return -1;
-			}
-
-			if ((p[4] != 'c') ||
-			    (p[5] != '\0')) {
-				fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
-					   fn, line, p);
-				return -1;
-			}
-			continuation = true;
-
-			if ((value != VENDORPEC_WIMAX) ||
-			    (type != 1) || (length != 1)) {
-				fr_strerror_printf("dict_init: %s[%d]: Only WiMAX VSAs can have continuations",
-					   fn, line);
-				return -1;
-			}
-		}
-
-		dv = dict_vendorbyvalue(value);
-		if (!dv) {
-			fr_strerror_printf("dict_init: %s[%d]: Failed adding format for VENDOR",
-				   fn, line);
-			return -1;
-		}
-
-		if ((type != 1) && (type != 2) && (type != 4)) {
-			fr_strerror_printf("dict_init: %s[%d]: invalid type value %d for VENDOR",
-				   fn, line, type);
-			return -1;
-		}
-
-		if ((length != 0) && (length != 1) && (length != 2)) {
-			fr_strerror_printf("dict_init: %s[%d]: invalid length value %d for VENDOR",
-				   fn, line, length);
-			return -1;
-		}
-
-		dv->type = type;
-		dv->length = length;
-		dv->flags = continuation;
+	} else {
+		type = length = 1;
 	}
+
+	dv = dict_vendorbyvalue(value);
+	if (!dv) {
+		fr_strerror_printf("dict_init: %s[%d]: Failed adding format for VENDOR",
+				   fn, line);
+		return -1;
+	}
+
+	dv->type = type;
+	dv->length = length;
+	dv->flags = continuation;
 
 	return 0;
 }
@@ -2372,7 +2384,7 @@ static int my_dict_init(char const *parent, char const *filename,
 				 *	attribute into the upper 8
 				 *	bits of the vendor ID
 				 */
-				block_vendor |= (da->attr & fr_attr_mask[0]) * FR_MAX_VENDOR;
+				block_vendor |= da->vendor;
 			}
 
 			continue;
@@ -2771,7 +2783,9 @@ DICT_ATTR const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int attr, u
  *
  * @param[in] da to initialise.
  * @param[in] name of attribute.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int dict_unknown_from_str(DICT_ATTR *da, char const *name)
 {
@@ -2979,7 +2993,9 @@ int dict_unknown_from_str(DICT_ATTR *da, char const *name)
  *
  * @param[in] ctx to alloc new attribute in.
  * @param[in] name of attribute.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 DICT_ATTR const *dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name)
 {
@@ -3013,7 +3029,9 @@ DICT_ATTR const *dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name)
  *
  * @param[out] da to initialise.
  * @param[in,out] name string start.
- * @return 0 on success or -1 on error;
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int dict_unknown_from_substr(DICT_ATTR *da, char const **name)
 {
@@ -3068,7 +3086,7 @@ DICT_ATTR const *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
  *
  * Used only for COMBO_IP
  *
- * @return The attribute, or NULL if not found
+ * @return The attribute, or NULL if not found.
  */
 DICT_ATTR const *dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type)
@@ -3217,7 +3235,9 @@ DICT_ATTR const *dict_attrbyname(char const *name)
  * NULL.
  *
  * @param[in,out] name string start.
- * @return NULL if no attributes matching the name could be found, else
+ * @return
+ *	- NULL if no attributes matching the name could be found.
+ *	- #DICT_ATTR found in the global dictionary.
  */
 DICT_ATTR const *dict_attrbyname_substr(char const **name)
 {
@@ -3356,11 +3376,12 @@ DICT_VENDOR *dict_vendorbyvalue(int vendorpec)
 
 /** Converts an unknown to a known by adding it to the internal dictionaries.
  *
- * Does not free old DICT_ATTR, that is left up to the caller.
+ * Does not free old #DICT_ATTR, that is left up to the caller.
  *
  * @param old unknown attribute to add.
- * @return existing DICT_ATTR if old was found in a dictionary, else the new entry in the dictionary
- * 	   representing old.
+ * @return
+ *	- Existing #DICT_ATTR if old was found in a dictionary.
+ *	- A new entry representing old.
  */
 DICT_ATTR const *dict_unknown_add(DICT_ATTR const *old)
 {

@@ -65,9 +65,11 @@ typedef struct rlm_sql_oracle_conn_t {
  * @param outlen The length of the error buffer.
  * @param handle sql handle.
  * @param config Instance config.
- * @return 0 on success, -1 if there was no error.
+ * @return
+ *	- 0 on success.
+ *	- -1 if there was no error.
  */
-static int sql_prints_error(char *out, size_t outlen, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static int sql_snprint_error(char *out, size_t outlen, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	sb4			errcode = 0;
 	rlm_sql_oracle_conn_t	*conn = handle->conn;
@@ -92,7 +94,7 @@ static int sql_prints_error(char *out, size_t outlen, rlm_sql_handle_t *handle, 
  * @param outlen Length of out array.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return number of errors written to the sql_log_entry array.
+ * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 		        rlm_sql_handle_t *handle, rlm_sql_config_t *config)
@@ -102,7 +104,7 @@ static size_t sql_error(TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 
 	rad_assert(outlen > 0);
 
-	ret = sql_prints_error(errbuff, sizeof(errbuff), handle, config);
+	ret = sql_snprint_error(errbuff, sizeof(errbuff), handle, config);
 	if (ret < 0) return 0;
 
 	out[0].type = L_ERR;
@@ -115,7 +117,7 @@ static int sql_check_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	char errbuff[512];
 
-	if (sql_prints_error(errbuff, sizeof(errbuff), handle, config) < 0) goto unknown;
+	if (sql_snprint_error(errbuff, sizeof(errbuff), handle, config) < 0) goto unknown;
 
 	if (strstr(errbuff, "ORA-03113") || strstr(errbuff, "ORA-03114")) {
 		ERROR("rlm_sql_oracle: OCI_SERVER_NOT_CONNECTED");
@@ -129,26 +131,16 @@ unknown:
 
 static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
 {
-	if (conn->ctx) {
-		OCILogoff(conn->ctx, conn->error);
-	}
-
-	if (conn->query) {
-		OCIHandleFree((dvoid *)conn->query, OCI_HTYPE_STMT);
-	}
-
-	if (conn->error) {
-		OCIHandleFree((dvoid *)conn->error, OCI_HTYPE_ERROR);
-	}
-
-	if (conn->env) {
-		OCIHandleFree((dvoid *)conn->env, OCI_HTYPE_ENV);
-	}
+	if (conn->ctx) OCILogoff(conn->ctx, conn->error);
+	if (conn->query) OCIHandleFree((dvoid *)conn->query, OCI_HTYPE_STMT);
+	if (conn->error) OCIHandleFree((dvoid *)conn->error, OCI_HTYPE_ERROR);
+	if (conn->env) OCIHandleFree((dvoid *)conn->env, OCI_HTYPE_ENV);
 
 	return 0;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+				   UNUSED struct timeval const *timeout)
 {
 	char errbuff[512];
 
@@ -180,7 +172,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 */
 	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->query, OCI_HTYPE_STMT, 0, NULL)) {
 		ERROR("rlm_sql_oracle: Couldn't init Oracle query handles: %s",
-		      sql_prints_error(errbuff, sizeof(errbuff), handle, config) ? errbuff : "unknown");
+		      sql_snprint_error(errbuff, sizeof(errbuff), handle, config) ? errbuff : "unknown");
 
 		return RLM_SQL_ERROR;
 	}
@@ -193,7 +185,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		     (OraText const *)config->sql_password, strlen(config->sql_password),
 		     (OraText const *)config->sql_db, strlen(config->sql_db))) {
 		ERROR("rlm_sql_oracle: Oracle logon failed: '%s'",
-		      sql_prints_error(errbuff, sizeof(errbuff), handle, config) ? errbuff : "unknown");
+		      sql_snprint_error(errbuff, sizeof(errbuff), handle, config) ? errbuff : "unknown");
 
 		return RLM_SQL_ERROR;
 	}
@@ -211,6 +203,47 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 		       conn->error)) return -1;
 
 	return count;
+}
+
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
+	rlm_sql_oracle_conn_t *conn = handle->conn;
+	int		fields, i, status;
+	char const	**names;
+	OCIParam	*param;
+
+	fields = sql_num_fields(handle, config);
+	if (fields <= 0) return RLM_SQL_ERROR;
+
+	MEM(names = talloc_array(handle, char const *, fields));
+
+	for (i = 0; i < fields; i++) {
+		OraText *pcol_name = NULL;
+		ub4 pcol_size = 0;
+
+		status = OCIParamGet(conn->query, OCI_HTYPE_STMT, conn->error, (dvoid **)&param, i + 1);
+		if (status != OCI_SUCCESS) {
+			ERROR("rlm_sql_oracle: OCIParamGet(OCI_HTYPE_STMT) failed in sql_fields()");
+		error:
+			talloc_free(names);
+
+			return RLM_SQL_ERROR;
+		}
+
+		status = OCIAttrGet((dvoid **)param, OCI_DTYPE_PARAM, &pcol_name, &pcol_size,
+				    OCI_ATTR_NAME, conn->error);
+		if (status != OCI_SUCCESS) {
+			ERROR("rlm_sql_oracle: OCIParamGet(OCI_ATTR_NAME) failed in sql_fields()");
+
+			goto error;
+		}
+
+		names[i] = (char const *)pcol_name;
+	}
+
+	*out = names;
+
+	return RLM_SQL_OK;
 }
 
 static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
@@ -383,12 +416,6 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	return RLM_SQL_ERROR;
 }
 
-static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle,UNUSED rlm_sql_config_t *config)
-{
-	/* Not needed for Oracle */
-	return 0;
-}
-
 static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
@@ -402,7 +429,6 @@ static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *confi
 
 static sql_rcode_t sql_fetch_row(rlm_sql_row_t *out, rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-
 	int status;
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
@@ -473,11 +499,11 @@ rlm_sql_module_t rlm_sql_oracle = {
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
-	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
+	.sql_fields			= sql_fields,
 	.sql_free_result		= sql_free_result,
 	.sql_error			= sql_error,
 	.sql_finish_query		= sql_finish_query,

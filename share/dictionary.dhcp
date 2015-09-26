@@ -245,7 +245,12 @@ ATTRIBUTE	DHCP-RADIUS-Attributes			82.7	octets
 
 # Horribly complicated
 ATTRIBUTE	DHCP-Authentication-Information		82.8	octets
-ATTRIBUTE	DHCP-Vendor-Specific-Information	82.9	vsa
+
+#
+#  We'll fix this later
+#
+ATTRIBUTE	DHCP-Vendor-Specific-Information	82.9	octets
+
 ATTRIBUTE	DHCP-Relay-Agent-Flags			82.10	byte
 ATTRIBUTE	DHCP-Server-Identifier-Override		82.11	ipaddr
 

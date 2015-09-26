@@ -24,6 +24,7 @@
 #include <libmemcached/memcached.h>
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include "../../rlm_cache.h"
@@ -39,9 +40,8 @@ typedef struct rlm_cache_memcached {
 } rlm_cache_memcached_t;
 
 static const CONF_PARSER driver_config[] = {
-	{ "options", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_cache_memcached_t, options), "--SERVER=localhost" },
-
-	{NULL, -1, 0, NULL, NULL}
+	{ FR_CONF_OFFSET("options", PW_TYPE_STRING | PW_TYPE_REQUIRED, rlm_cache_memcached_t, options), .dflt = "--SERVER=localhost" },
+	CONF_PARSER_TERMINATOR
 };
 
 /** Free a connection handle
@@ -57,13 +57,10 @@ static int _mod_conn_free(rlm_cache_memcached_handle_t *mandle)
 
 /** Create a new memcached handle
  *
- * @param ctx to allocate handle in.
- * @param instance data.
  */
-static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout)
 {
-	rlm_cache_t			*inst = instance;
-	rlm_cache_memcached_t		*driver = inst->driver;
+	rlm_cache_memcached_t		*driver = instance;
 	rlm_cache_memcached_handle_t	*mandle;
 
 	memcached_st			*sandle;
@@ -76,12 +73,20 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 		return NULL;
 	}
 
+	ret = memcached_behavior_set(sandle, MEMCACHED_BEHAVIOR_CONNECT_TIMEOUT, (uint64_t)FR_TIMEVAL_TO_MS(timeout));
+	if (ret != MEMCACHED_SUCCESS) {
+		ERROR("rlm_cache_memcached: Failed setting connection timeout: %s: %s", memcached_strerror(sandle, ret),
+		      memcached_last_error_message(sandle));
+	error:
+		memcached_free(sandle);
+		return NULL;
+	}
+
 	ret = memcached_version(sandle);
 	if (ret != MEMCACHED_SUCCESS) {
 		ERROR("rlm_cache_memcached: Failed getting server info: %s: %s", memcached_strerror(sandle, ret),
 		      memcached_last_error_message(sandle));
-		memcached_free(sandle);
-		return NULL;
+		goto error;
 	}
 
 	mandle = talloc_zero(ctx, rlm_cache_memcached_handle_t);
@@ -91,31 +96,19 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	return mandle;
 }
 
-/** Cleanup a rlm_cache_memcached instance
- *
- * @param driver to free.
- * @return 0
- */
-static int _mod_detach(rlm_cache_memcached_t *driver)
-{
-	fr_connection_pool_delete(driver->pool);
-	return 0;
-}
-
 /** Create a new rlm_cache_memcached instance
  *
- * @param conf memcached specific conf section.
- * @param inst main rlm_cache instance.
- * @return 0 on success, -1 on failure.
+ * @copydetails cache_instantiate_t
  */
-static int mod_instantiate(CONF_SECTION *conf, rlm_cache_t *inst)
+static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config, void *driver_inst)
 {
-	rlm_cache_memcached_t *driver;
-	memcached_return_t ret;
+	static bool		version_done;
 
-	char buffer[256];
+	rlm_cache_memcached_t	*driver = driver_inst;
+	memcached_return_t	ret;
 
-	static bool version_done;
+	char			buffer[256];
+
 
 	buffer[0] = '\0';
 
@@ -128,9 +121,6 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_t *inst)
 		INFO("rlm_cache_memcached: libmemcached version: %s", memcached_lib_version());
 	}
 
-	driver = talloc_zero(inst, rlm_cache_memcached_t);
-	talloc_set_destructor(driver, _mod_detach);
-
 	if (cf_section_parse(conf, driver, driver_config) < 0) return -1;
 
 	ret = libmemcached_check_configuration(driver->options, talloc_array_length(driver->options) -1,
@@ -140,18 +130,24 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_t *inst)
 		return -1;
 	}
 
-	inst->driver = driver;
+	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", config->name);
 
-	snprintf(buffer, sizeof(buffer), "rlm_cache (%s)", inst->xlat_name);
-
-	driver->pool = fr_connection_pool_module_init(conf, inst, mod_conn_create, NULL, buffer);
+	driver->pool = module_connection_pool_init(conf, driver, mod_conn_create, NULL, buffer);
 	if (!driver->pool) return -1;
 
-	if (inst->max_entries > 0) WARN("rlm_cache_memcached: max_entries is not supported by this driver");
+	fr_link_talloc_ctx_free(driver, driver->pool);	/* Ensure pool is freed */
 
+	if (config->max_entries > 0) {
+		ERROR("rlm_cache_memcached: max_entries is not supported by this driver");
+		return -1;
+	}
 	return 0;
 }
 
+/** Locate a cache entry in memcached
+ *
+ * @copydetails cache_entry_free_t
+ */
 static void cache_entry_free(rlm_cache_entry_t *c)
 {
 	talloc_free(c);
@@ -159,32 +155,28 @@ static void cache_entry_free(rlm_cache_entry_t *c)
 
 /** Locate a cache entry in memcached
  *
- * @param out Where to write the pointer to the cach entry.
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @param handle Pointer to memcached handle.
- * @param key to search for.
- * @return CACHE_OK on success CACHE_MISS if no entry found, CACHE_ERROR on error.
+ * @copydetails cache_entry_find_t
  */
-static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED rlm_cache_t *inst, REQUEST *request,
-				       rlm_cache_handle_t **handle, char const *key)
+static cache_status_t cache_entry_find(rlm_cache_entry_t **out,
+				       UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
+				       REQUEST *request, void *handle, uint8_t const *key, size_t key_len)
 {
-	rlm_cache_memcached_handle_t *mandle = *handle;
+	rlm_cache_memcached_handle_t *mandle = handle;
 
-	memcached_return_t mret;
-	size_t len;
-	int ret;
-	uint32_t flags;
+	memcached_return_t	mret;
+	size_t			len;
+	int			ret;
+	uint32_t		flags;
 
-	char *from_store;
+	char			*from_store;
 
-	rlm_cache_entry_t *c;
+	rlm_cache_entry_t	*c;
 
-	from_store = memcached_get(mandle->handle, key, strlen(key), &len, &flags, &mret);
+	from_store = memcached_get(mandle->handle, (char const *)key, key_len, &len, &flags, &mret);
 	if (!from_store) {
 		if (mret == MEMCACHED_NOTFOUND) return CACHE_MISS;
 
-		RERROR("Failed retrieving entry for key \"%s\": %s: %s", key, memcached_strerror(mandle->handle, mret),
+		RERROR("Failed retrieving entry: %s: %s", memcached_strerror(mandle->handle, mret),
 		       memcached_last_error_message(mandle->handle));
 
 		return CACHE_ERROR;
@@ -200,7 +192,7 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED rlm_cache
 		talloc_free(c);
 		return CACHE_ERROR;
 	}
-	c->key = talloc_strdup(c, key);
+	c->key = talloc_memdup(c, key, key_len);
 	*out = c;
 
 	return CACHE_OK;
@@ -208,16 +200,12 @@ static cache_status_t cache_entry_find(rlm_cache_entry_t **out, UNUSED rlm_cache
 
 /** Insert a new entry into the data store
  *
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @param handle Pointer to memcached handle.
- * @param c entry to insert.
- * @return CACHE_OK on success else CACHE_ERROR on error.
+ * @copydetails cache_entry_insert_t
  */
-static cache_status_t cache_entry_insert(UNUSED rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
-					 rlm_cache_entry_t *c)
+static cache_status_t cache_entry_insert(UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
+					 REQUEST *request, void *handle, const rlm_cache_entry_t *c)
 {
-	rlm_cache_memcached_handle_t *mandle = *handle;
+	rlm_cache_memcached_handle_t *mandle = handle;
 
 	memcached_return_t ret;
 
@@ -233,13 +221,12 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_t *inst, REQUEST *requ
 		return CACHE_ERROR;
 	}
 
-	ret = memcached_set(mandle->handle, c->key, talloc_array_length(c->key) - 1,
+	ret = memcached_set(mandle->handle, (char const *)c->key, c->key_len,
 		            to_store ? to_store : "",
 		            to_store ? talloc_array_length(to_store) - 1 : 0, c->expires, 0);
 	talloc_free(pool);
 	if (ret != MEMCACHED_SUCCESS) {
-		RERROR("Failed storing entry with key \"%s\": %s: %s", c->key,
-		       memcached_strerror(mandle->handle, ret),
+		RERROR("Failed storing entry: %s: %s", memcached_strerror(mandle->handle, ret),
 		       memcached_last_error_message(mandle->handle));
 
 		return CACHE_ERROR;
@@ -250,76 +237,71 @@ static cache_status_t cache_entry_insert(UNUSED rlm_cache_t *inst, REQUEST *requ
 
 /** Call delete the cache entry from memcached
  *
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @param handle Pointer to memcached handle.
- * @param c entry to expire.
- * @return CACHE_OK on success else CACHE_ERROR.
+ * @copydetails cache_entry_expire_t
  */
-static cache_status_t cache_entry_expire(UNUSED rlm_cache_t *inst, REQUEST *request, rlm_cache_handle_t **handle,
-					 rlm_cache_entry_t *c)
+static cache_status_t cache_entry_expire(UNUSED rlm_cache_config_t const *config, UNUSED void *driver_inst,
+					 REQUEST *request, void *handle, uint8_t const *key, size_t key_len)
 {
-	rlm_cache_memcached_handle_t *mandle = *handle;
+	rlm_cache_memcached_handle_t *mandle = handle;
 
 	memcached_return_t ret;
 
-	ret = memcached_delete(mandle->handle, c->key, talloc_array_length(c->key) - 1, 0);
-	if (ret != MEMCACHED_SUCCESS) {
-		RERROR("Failed deleting entry with key \"%s\": %s", c->key,
-		       memcached_last_error_message(mandle->handle));
+	ret = memcached_delete(mandle->handle, (char const *)key, key_len, 0);
+	switch (ret) {
+	case MEMCACHED_SUCCESS:
+		return CACHE_OK;
 
+	case MEMCACHED_DATA_DOES_NOT_EXIST:
+		return CACHE_MISS;
+
+	default:
+		RERROR("Failed deleting entry: %s", memcached_last_error_message(mandle->handle));
 		return CACHE_ERROR;
 	}
-
-	return CACHE_OK;
 }
 
 /** Get a memcached handle
  *
- * @param out Where to write the handle.
- * @param inst rlm_cache instance.
- * @param request The current request.
+ * @copydetails cache_acquire_t
  */
-static int mod_conn_get(rlm_cache_handle_t **out, rlm_cache_t *inst, UNUSED REQUEST *request)
+static int mod_conn_get(void **handle, UNUSED rlm_cache_config_t const *config, void *driver_inst,
+			UNUSED REQUEST *request)
 {
-	rlm_cache_memcached_t *driver = inst->driver;
+	rlm_cache_memcached_t *driver = driver_inst;
 	rlm_cache_handle_t *mandle;
 
-	*out = NULL;
+	*handle = NULL;
 
 	mandle = fr_connection_get(driver->pool);
 	if (!mandle) {
-		*out = NULL;
+		*handle = NULL;
 		return -1;
 	}
-	*out = mandle;
+	*handle = mandle;
 
 	return 0;
 }
 
-/** Release a socket
+/** Release a memcached handle
  *
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @param handle Pointer to the handle to release (will be set to NULL).
+ * @copydetails cache_release_t
  */
-static void mod_conn_release(rlm_cache_t *inst, UNUSED REQUEST *request, rlm_cache_handle_t **handle)
+static void mod_conn_release(UNUSED rlm_cache_config_t const *config, void *driver_inst,
+			     UNUSED REQUEST *request, rlm_cache_handle_t *handle)
 {
-	rlm_cache_memcached_t *driver = inst->driver;
+	rlm_cache_memcached_t *driver = driver_inst;
 
-	fr_connection_release(driver->pool, *handle);
-	*handle = NULL;
+	fr_connection_release(driver->pool, handle);
 }
 
-/** Reconnect a socket
+/** Reconnect a memcached handle
  *
- * @param inst main rlm_cache instance.
- * @param request The current request.
- * @param handle Pointer to the handle to reconnect (will be set to NULL if reconnection fails).
+ * @copydetails cache_reconnect_t
  */
-static int mod_conn_reconnect(rlm_cache_t *inst, UNUSED REQUEST *request, rlm_cache_handle_t **handle)
+static int mod_conn_reconnect(void **handle, UNUSED rlm_cache_config_t const *config, void *driver_inst,
+			      UNUSED REQUEST *request)
 {
-	rlm_cache_memcached_t *driver = inst->driver;
+	rlm_cache_memcached_t *driver = driver_inst;
 	rlm_cache_handle_t *mandle;
 
 	mandle = fr_connection_reconnect(driver->pool, *handle);
@@ -332,18 +314,18 @@ static int mod_conn_reconnect(rlm_cache_t *inst, UNUSED REQUEST *request, rlm_ca
 	return 0;
 }
 
-extern cache_module_t rlm_cache_memcached;
-cache_module_t rlm_cache_memcached = {
-	"rlm_cache_memcached",
-	mod_instantiate,
-	NULL,			/* alloc */
-	cache_entry_free,
-	cache_entry_find,
-	cache_entry_insert,
-	cache_entry_expire,
-	NULL,			/* count */
+extern cache_driver_t rlm_cache_memcached;
+cache_driver_t rlm_cache_memcached = {
+	.name		= "rlm_cache_memcached",
+	.instantiate	= mod_instantiate,
+	.inst_size	= sizeof(rlm_cache_memcached_t),
+	.free		= cache_entry_free,
 
-	mod_conn_get,
-	mod_conn_release,
-	mod_conn_reconnect
+	.find		= cache_entry_find,
+	.insert		= cache_entry_insert,
+	.expire		= cache_entry_expire,
+
+	.acquire	= mod_conn_get,
+	.release	= mod_conn_release,
+	.reconnect	= mod_conn_reconnect
 };

@@ -1843,7 +1843,7 @@ if test "${with_unixodbc_dir+set}" = set; then :
 fi
 
 
-		smart_try_dir="$unixodbc_lib_dir"
+		smart_try_dir="$unixodbc_lib_dir /usr/local/unixodbc/lib"
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -2812,7 +2812,7 @@ fi
 		fail="$fail libodbc"
 	fi
 
-		smart_try_dir="$unixodbc_include_dir"
+		smart_try_dir="$unixodbc_include_dir /usr/local/unixodbc/include"
 
 
 ac_safe=`echo "sql.h" | sed 'y%./+-%__pm%'`

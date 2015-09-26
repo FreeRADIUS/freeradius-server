@@ -5,8 +5,7 @@
  *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version. either
+ *   License as published by the Free Software Foundation; either
  *   version 2.1 of the License, or (at your option) any later version.
  *
  *   This library is distributed in the hope that it will be useful,
@@ -48,6 +47,9 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	if (a->id < b->id) return -1;
 	if (a->id > b->id) return +1;
 
+	if (a->sockfd < b->sockfd) return -1;
+	if (a->sockfd > b->sockfd) return +1;
+
 	/*
 	 *	Source ports are pretty much random.
 	 */
@@ -75,9 +77,6 @@ int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 	 *	pretty much redundant.
 	 */
 	rcode = (int) a->dst_port - (int) b->dst_port;
-	if (rcode != 0) return rcode;
-
-	rcode = a->sockfd - b->sockfd;
 	return rcode;
 }
 
@@ -113,37 +112,14 @@ void fr_request_from_reply(RADIUS_PACKET *request,
 {
 	request->sockfd = reply->sockfd;
 	request->id = reply->id;
+#ifdef WITH_TCP
+	request->proto = reply->proto;
+#endif
 	request->src_port = reply->dst_port;
 	request->dst_port = reply->src_port;
 	request->src_ipaddr = reply->dst_ipaddr;
 	request->dst_ipaddr = reply->src_ipaddr;
 }
-
-#ifdef O_NONBLOCK
-int fr_nonblock(int fd)
-{
-	int flags;
-
-	flags = fcntl(fd, F_GETFL, NULL);
-	if (flags < 0)  {
-		fr_strerror_printf("Failure getting socket flags: %s", fr_syserror(errno));
-		return -1;
-	}
-
-	flags |= O_NONBLOCK;
-	if (fcntl(fd, F_SETFL, flags) < 0) {
-		fr_strerror_printf("Failure setting socket flags: %s", fr_syserror(errno));
-		return -1;
-	}
-
-	return flags;
-}
-#else
-int fr_nonblock(UNUSED int fd)
-{
-	return 0;
-}
-#endif
 
 /*
  *	Open a socket on the given IP and port.
@@ -546,16 +522,30 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 	my_request.sockfd = reply->sockfd;
 	my_request.id = reply->id;
 
-	if (ps->src_any) {
-		my_request.src_ipaddr = ps->src_ipaddr;
-	} else {
+#ifdef WITH_TCP
+	/*
+	 *	TCP sockets are always bound to the correct src/dst IP/port
+	 */
+	if (ps->proto == IPPROTO_TCP) {
 		my_request.src_ipaddr = reply->dst_ipaddr;
+		my_request.src_port = reply->dst_port;
+	} else
+#endif
+	{
+		if (ps->src_any) {
+			my_request.src_ipaddr = ps->src_ipaddr;
+		} else {
+			my_request.src_ipaddr = reply->dst_ipaddr;
+		}
+		my_request.src_port = ps->src_port;
 	}
-	my_request.src_port = ps->src_port;
 
 	my_request.dst_ipaddr = reply->src_ipaddr;
 	my_request.dst_port = reply->src_port;
 
+#ifdef WITH_TCP
+	my_request.proto = reply->proto;
+#endif
 	request = &my_request;
 
 	return rbtree_finddata(pl->tree, &request);
@@ -706,6 +696,15 @@ bool fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		 */
 		if ((request->src_port != 0) &&
 		    (ps->src_port != request->src_port)) continue;
+
+		/*
+		 *	We don't care about the source IP, but this
+		 *	socket is link local, and the requested
+		 *	destination is not link local.  Ignore it.
+		 */
+		if (src_any && (ps->src_ipaddr.af == AF_INET) &&
+		    (((ps->src_ipaddr.ipaddr.ip4addr.s_addr >> 24) & 0xff) == 127) &&
+		    (((request->dst_ipaddr.ipaddr.ip4addr.s_addr >> 24) & 0xff) != 127)) continue;
 
 		/*
 		 *	We're sourcing from *, and they asked for a
@@ -914,6 +913,9 @@ RADIUS_PACKET *fr_packet_list_recv(fr_packet_list_t *pl, fd_set *set)
 		 */
 
 		pl->last_recv = start;
+#ifdef WITH_TCP
+		packet->proto = pl->sockets[start].proto;
+#endif
 		return packet;
 	} while (start != pl->last_recv);
 
@@ -957,31 +959,39 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		fprintf(fp, "%s %s Id %i from %s:%i to %s:%i length %zu\n",
+		fprintf(fp, "%s %s Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
 		        received ? "Received" : "Sent",
 		        fr_packet_codes[packet->code],
 		        packet->id,
+		        packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 		        inet_ntop(packet->src_ipaddr.af,
 				  &packet->src_ipaddr.ipaddr,
 				  src_ipaddr, sizeof(src_ipaddr)),
+			packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->src_port,
+		        packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
 		        inet_ntop(packet->dst_ipaddr.af,
 				  &packet->dst_ipaddr.ipaddr,
 				  dst_ipaddr, sizeof(dst_ipaddr)),
+		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->dst_port,
 		        packet->data_len);
 	} else {
-		fprintf(fp, "%s code %u Id %i from %s:%i to %s:%i length %zu\n",
+		fprintf(fp, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
 		        received ? "Received" : "Sent",
 		        packet->code,
 		        packet->id,
+		        packet->src_ipaddr.af == AF_INET6 ? "[" : "",
 		        inet_ntop(packet->src_ipaddr.af,
 				  &packet->src_ipaddr.ipaddr,
 				  src_ipaddr, sizeof(src_ipaddr)),
+		        packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->src_port,
+		        packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
 		        inet_ntop(packet->dst_ipaddr.af,
 				  &packet->dst_ipaddr.ipaddr,
 				  dst_ipaddr, sizeof(dst_ipaddr)),
+		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->dst_port,
 		        packet->data_len);
 	}

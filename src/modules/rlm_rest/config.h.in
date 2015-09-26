@@ -1,14 +1,5 @@
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Build with JSON support from json-c */
-#undef HAVE_JSON
-
-/* Define to 1 if you have the `json_c_version' function. */
-#undef HAVE_JSON_C_VERSION
-
-/* Define to 1 if you have the `json_type_to_name' function. */
-#undef HAVE_JSON_TYPE_TO_NAME
-
 /* Define to 1 if you have a functional curl library. */
 #undef HAVE_LIBCURL
 

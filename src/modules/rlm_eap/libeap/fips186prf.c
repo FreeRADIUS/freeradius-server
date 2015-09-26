@@ -99,7 +99,7 @@ static void onesixty_add_mod(onesixty *sum, onesixty *a, onesixty *b)
  */
 void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 {
-	fr_SHA1_CTX context;
+	fr_sha1_ctx context;
 	int j;
 	onesixty xval, xkey, w_0, w_1, sum, one;
 	uint8_t *f;

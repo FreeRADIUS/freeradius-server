@@ -45,6 +45,8 @@ RCSID("$Id$")
 
 #define MAX_ARGV (256)
 
+static CONF_SECTION *exec_trigger_main, *exec_trigger_subcs;
+
 #define USEC 1000000
 static void tv_sub(struct timeval *end, struct timeval *start,
 		   struct timeval *elapsed)
@@ -78,7 +80,9 @@ static void tv_sub(struct timeval *end, struct timeval *start,
  * @param input_pairs list of value pairs - these will be put into the environment variables
  *	of the child.
  * @param shell_escape values before passing them as arguments.
- * @return PID of the child process, -1 on error.
+ * @return
+ *	- PID of the child process.
+ *	- -1 on failure.
  */
 pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			   int *input_fd, int *output_fd,
@@ -94,14 +98,22 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 #endif
 	int		argc;
 	int		i;
-	char		*argv[MAX_ARGV];
+	char const	**argv_p;
+	char		*argv[MAX_ARGV], **argv_start = argv;
 	char		argv_buf[4096];
 #define MAX_ENVP 1024
 	char		*envp[MAX_ENVP];
-	int		envlen = 0;
+	size_t		envlen = 0;
 	TALLOC_CTX	*input_ctx = NULL;
 
-	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, true, sizeof(argv_buf), argv_buf);
+	/*
+	 *	Stupid array decomposition...
+	 *
+	 *	If we do memcpy(&argv_p, &argv, sizeof(argv_p)) src ends up being a char **
+	 *	pointing to the value of the first element.
+	 */
+	memcpy(&argv_p, &argv_start, sizeof(argv_p));
+	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv_p, true, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
 		ERROR("Invalid command '%s'", cmd);
 		return -1;
@@ -148,7 +160,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	and will remain locked in the child.
 		 */
 		for (vp = fr_cursor_init(&cursor, &input_pairs);
-		     vp;
+		     vp && (envlen < ((sizeof(envp) / sizeof(*envp)) - 1));
 		     vp = fr_cursor_next(&cursor)) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
@@ -167,22 +179,17 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 			}
 
 			n = strlen(buffer);
-			vp_prints_value(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
+			fr_pair_value_snprint(buffer + n, sizeof(buffer) - n, vp, shell_escape ? '"' : 0);
 
 			DEBUG3("export %s", buffer);
 			envp[envlen++] = talloc_strdup(input_ctx, buffer);
-
-			/*
-			 *	Don't add too many attributes.
-			 */
-			if (envlen == (MAX_ENVP - 1)) break;
 		}
 
 		fr_cursor_init(&cursor, radius_list(request, PAIR_LIST_CONTROL));
-		while ((vp = fr_cursor_next_by_num(&cursor, PW_EXEC_EXPORT, 0, TAG_ANY))) {
+		while ((envlen < ((sizeof(envp) / sizeof(*envp)) - 1)) &&
+		       (vp = fr_cursor_next_by_num(&cursor, PW_EXEC_EXPORT, 0, TAG_ANY))) {
 			DEBUG3("export %s", vp->vp_strvalue);
-			memcpy(&envp[envlen++], &(vp->vp_strvalue), sizeof(*envp));
-
+			memcpy(&envp[envlen++], &vp->vp_strvalue, sizeof(*envp));
 		}
 
 		/*
@@ -255,7 +262,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
 		 *	If we are debugging, then we want the error
 		 *	messages to go to the STDERR of the server.
 		 */
-		if (debug_flag == 0) {
+		if (rad_debug_lvl == 0) {
 			dup2(devnull, STDERR_FILENO);
 		}
 		close(devnull);
@@ -372,7 +379,9 @@ pid_t radius_start_program(char const *cmd, REQUEST *request, bool exec_wait,
  * @param timeout amount of time to wait, in seconds.
  * @param answer buffer to write into.
  * @param left length of buffer.
- * @return -1 on error, or length of output.
+ * @return
+ *	- -1 on failure.
+ *	- Length of output.
  */
 int radius_readfrom_program(int fd, pid_t pid, int timeout,
 			    char *answer, int left)
@@ -501,21 +510,25 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout,
 
 /** Execute a program.
  *
+ * @param[in,out] ctx to allocate new VALUE_PAIR (s) in.
  * @param[out] out buffer to append plaintext (non valuepair) output.
  * @param[in] outlen length of out buffer.
  * @param[out] output_pairs list of value pairs - Data on child's stdout will be parsed and
  *	added into this list of value pairs.
  * @param[in] request Current request (may be NULL).
- * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv part
- *	is xlat'ed.
- * @param[in] input_pairs list of value pairs - these will be available in the environment of the child.
+ * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv
+ *	part is xlat'ed.
+ * @param[in] input_pairs list of value pairs - these will be available in the environment of the
+ *	child.
  * @param[in] exec_wait set to 1 if you want to read from or write to child.
  * @param[in] shell_escape values before passing them as arguments.
  * @param[in] timeout amount of time to wait, in seconds.
-
- * @return 0 if exec_wait==0, exit code if exec_wait!=0, -1 on error.
+ * @return
+ *	- 0 if exec_wait==0.
+ *	- exit code if exec_wait!=0.
+ *	- -1 on failure.
  */
-int radius_exec_program(char *out, size_t outlen, VALUE_PAIR **output_pairs,
+int radius_exec_program(TALLOC_CTX *ctx, char *out, size_t outlen, VALUE_PAIR **output_pairs,
 			REQUEST *request, char const *cmd, VALUE_PAIR *input_pairs,
 			bool exec_wait, bool shell_escape, int timeout)
 
@@ -573,9 +586,9 @@ int radius_exec_program(char *out, size_t outlen, VALUE_PAIR **output_pairs,
 	if (output_pairs) {
 		/*
 		 *	HACK: Replace '\n' with ',' so that
-		 *	userparse() can parse the buffer in
+		 *	fr_pair_list_afrom_str() can parse the buffer in
 		 *	one go (the proper way would be to
-		 *	fix userparse(), but oh well).
+		 *	fix fr_pair_list_afrom_str(), but oh well).
 		 */
 		for (p = answer; *p; p++) {
 			if (*p == '\n') {
@@ -595,7 +608,7 @@ int radius_exec_program(char *out, size_t outlen, VALUE_PAIR **output_pairs,
 			answer[--len] = '\0';
 		}
 
-		if (userparse(request, answer, output_pairs) == T_INVALID) {
+		if (fr_pair_list_afrom_str(ctx, answer, output_pairs) == T_INVALID) {
 			RERROR("Failed parsing output from: %s: %s", cmd, fr_strerror());
 			strlcpy(out, answer, len);
 			ret = -1;
@@ -639,4 +652,142 @@ wait:
 #endif	/* __MINGW32__ */
 
 	return -1;
+}
+
+static void time_free(void *data)
+{
+	free(data);
+}
+
+/** Set the global trigger section exec_trigger will search in
+ *
+ * @note Triggers are used by the connection pool, which is used in the server library
+ *	which may not have the mainconfig available.  Additionally, utilities may want
+ *	to set their own root config sections.
+ *
+ * @param cs to use as global trigger section
+ */
+void exec_trigger_set_conf(CONF_SECTION *cs)
+{
+	exec_trigger_main = cs;
+	exec_trigger_subcs = cf_section_sub_find(cs, "trigger");
+}
+
+/** Execute a trigger - call an executable to process an event
+ *
+ * @param request The current request.
+ * @param cs to search for triggers in.  If not NULL, only the portion after the last '.'
+ *	in name is used for the trigger.  If cs is NULL, the entire name is used to find
+ *	the trigger in the global trigger section.
+ * @param name the path relative to the global trigger section ending in the trigger name
+ *	e.g. module.ldap.pool.start.
+ * @param quench whether to rate limit triggers.
+ */
+void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, bool quench)
+{
+	CONF_SECTION	*subcs;
+	CONF_ITEM	*ci;
+	CONF_PAIR	*cp;
+	char const	*attr;
+	char const	*value;
+	VALUE_PAIR	*vp;
+	bool		alloc = false;
+
+	/*
+	 *	Use global "trigger" section if no local config is given.
+	 */
+	if (!cs) {
+		cs = exec_trigger_main;
+		attr = name;
+	} else {
+		/*
+		 *	Try to use pair name, rather than reference.
+		 */
+		attr = strrchr(name, '.');
+		if (attr) {
+			attr++;
+		} else {
+			attr = name;
+		}
+	}
+
+	/*
+	 *	Find local "trigger" subsection.  If it isn't found,
+	 *	try using the global "trigger" section, and reset the
+	 *	reference to the full path, rather than the sub-path.
+	 */
+	subcs = cf_section_sub_find(cs, "trigger");
+	if (!subcs && exec_trigger_main && (cs != exec_trigger_main)) {
+		subcs = exec_trigger_subcs;
+		attr = name;
+	}
+	if (!subcs) return;
+
+	ci = cf_reference_item(subcs, exec_trigger_main, attr);
+	if (!ci) {
+		ERROR("No such item in trigger section: %s", attr);
+		return;
+	}
+
+	if (!cf_item_is_pair(ci)) {
+		ERROR("Trigger is not a configuration variable: %s", attr);
+		return;
+	}
+
+	cp = cf_item_to_pair(ci);
+	if (!cp) return;
+
+	value = cf_pair_value(cp);
+	if (!value) {
+		ERROR("Trigger has no value: %s", name);
+		return;
+	}
+
+	/*
+	 *	May be called for Status-Server packets.
+	 */
+	vp = NULL;
+	if (request && request->packet) vp = request->packet->vps;
+
+	/*
+	 *	Perform periodic quenching.
+	 */
+	if (quench) {
+		time_t *last_time;
+
+		last_time = cf_data_find(cs, value);
+		if (!last_time) {
+			last_time = rad_malloc(sizeof(*last_time));
+			*last_time = 0;
+
+			if (cf_data_add(cs, value, last_time, time_free) < 0) {
+				free(last_time);
+				last_time = NULL;
+			}
+		}
+
+		/*
+		 *	Send the quenched traps at most once per second.
+		 */
+		if (last_time) {
+			time_t now = time(NULL);
+			if (*last_time == now) return;
+
+			*last_time = now;
+		}
+	}
+
+	/*
+	 *	radius_exec_program always needs a request.
+	 */
+	if (!request) {
+		request = request_alloc(NULL);
+		alloc = true;
+	}
+
+	DEBUG("Trigger %s -> %s", name, value);
+
+	radius_exec_program(request, NULL, 0, NULL, request, value, vp, false, true, EXEC_TIMEOUT);
+
+	if (alloc) talloc_free(request);
 }

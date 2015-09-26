@@ -29,7 +29,11 @@ static uint64_t libmagic = RADIUSD_MAGIC_NUMBER;
 /** Check if the application linking to the library has the correct magic number
  *
  * @param magic number as defined by RADIUSD_MAGIC_NUMBER
- * @returns 0 on success, -1 on prefix mismatch, -2 on version mismatch -3 on commit mismatch.
+ * @returns
+ *	- 0 on success.
+ *	- -1 on prefix mismatch.
+ *	- -2 on version mismatch.
+ *	- -3 on commit mismatch.
  */
 int fr_check_lib_magic(uint64_t magic)
 {

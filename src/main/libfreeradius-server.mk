@@ -1,11 +1,13 @@
 TARGET	:= libfreeradius-server.a
 
 SOURCES	:=	conffile.c \
+		connection.c \
 		evaluate.c \
 		exec.c \
 		exfile.c \
 		log.c \
 		parser.c \
+		map_proc.c \
 		map.c \
 		regex.c \
 		tmpl.c \

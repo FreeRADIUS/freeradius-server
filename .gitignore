@@ -32,6 +32,9 @@
 *.project
 *.bbprojectd
 
+# Exuberant ctags
+tags
+
 # Local icon files
 icon.png
 

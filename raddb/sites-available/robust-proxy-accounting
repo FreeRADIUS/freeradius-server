@@ -61,23 +61,13 @@ home_server home2.example.com {
 	response_window = 6
 }
 
-#  (2) Define a virtual server to be used when both of the
-#  home servers are down.
-home_server acct_detail.example.com {
-	virtual_server = acct_detail.example.com
-}
-
-#  Put all of the servers into a pool.
+#  (2) Put all of the servers into a pool.
 home_server_pool acct_pool.example.com {
 	type = load-balance	# other types are OK, too.
 
 	home_server = home1.example.com
 	home_server = home2.example.com
 	# add more home_server's here.
-
-	# If all home servers are down, try a home server that
-	# is a local virtual server.
-	fallback = acct_detail.example.com
 
 	# for pre/post-proxy policies
 	virtual_server = home.example.com
@@ -92,16 +82,7 @@ realm acct_realm.example.com {
 #  (4) Define a detail file writer.
 #   See raddb/modules/detail.example.com
 
-#  (5) Define the virtual server to write the packets to the detail file
-#  This will be called when ALL home servers are down, because of the
-#  "fallback" configuration in the home server pool.
-server acct_detail.example.com {
-	accounting {
-		detail.example.com
-	}
-}
-
-#  (6) Define a virtual server to handle pre/post-proxy re-writing
+#  (5) Define a virtual server to handle pre/post-proxy re-writing
 server home.example.com {
 	pre-proxy {
 		#  Insert pre-proxy rules here
@@ -123,9 +104,18 @@ server home.example.com {
 		#  "detail" file, where it will be read, and sent to
 		#  another home server.
 		#
-		Post-Proxy-Type Fail {
+		Post-Proxy-Type Fail-Accounting {
 			detail.example.com
 		}
+
+		#
+		#  This section is run when there are problems
+		#  proxying Access-Request packets
+		#
+		Post-Proxy-Type Fail-Authentication {
+			# add policies here
+		}
+
 	}
 
 

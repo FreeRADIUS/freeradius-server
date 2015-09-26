@@ -54,7 +54,7 @@ typedef struct rlm_sql_freetds_conn {
  * @param context The FreeTDS library context.
  * @param conn DB connection handle.
  * @param emsgp Pointer to the error structure.
- * @return CS_CUCCEED
+ * @return CS_SUCCEED
  */
 static CS_RETCODE CS_PUBLIC clientmsg_callback(CS_CONTEXT *context, UNUSED CS_CONNECTION *conn, CS_CLIENTMSG *emsgp)
 {
@@ -324,6 +324,57 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
 	return num;
 }
 
+/*************************************************************************
+ *
+ *	Function: sql_fields
+ *
+ *	Purpose:  Return name of regular result columns.
+ *
+ *************************************************************************/
+static sql_rcode_t sql_fields(char const **out[], rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
+	rlm_sql_freetds_conn_t *conn = handle->conn;
+	CS_DATAFMT datafmt;
+	int fields, i;
+	char const **names;
+
+	/* Get number of elements in row result */
+	if (ct_res_info(conn->command, CS_NUMDATA, (CS_INT *)&fields, CS_UNUSED, NULL) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: sql_fields() Error retrieving column count");
+
+		return RLM_SQL_ERROR;
+	}
+
+	if (fields <= 0) return RLM_SQL_ERROR;
+
+	MEM(names = talloc_array(handle, char const *, fields));
+
+	for (i = 0; i < fields; i++) {
+		int col = i + 1;
+		char *p;
+
+		/*
+		** Get the column description.  ct_describe() fills the
+		** datafmt parameter with a description of the column.
+		*/
+		if (ct_describe(conn->command, col, &datafmt) != CS_SUCCEED) {
+			ERROR("rlm_sql_freetds: sql_fields() Problems with ct_describe(), column %d", col);
+			talloc_free(names);
+			return RLM_SQL_ERROR;
+		}
+
+		if (datafmt.namelen > 0) {
+			MEM(p = talloc_array(names, char, (size_t)datafmt.namelen + 1));
+			strlcpy(p, datafmt.name, (size_t)datafmt.namelen + 1);
+			names[i] = p;
+		}
+	}
+
+	*out = names;
+
+	return RLM_SQL_OK;
+}
+
 /** Retrieves any errors associated with the connection handle
  *
  * @note Caller will free any memory allocated in ctx.
@@ -333,7 +384,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
  * @param outlen Length of out array.
  * @param handle rlm_sql connection handle.
  * @param config rlm_sql config.
- * @return number of errors written to the sql_log_entry array.
+ * @return number of errors written to the #sql_log_entry_t array.
  */
 static size_t sql_error(UNUSED TALLOC_CTX *ctx, sql_log_entry_t out[], size_t outlen,
 			rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -497,14 +548,6 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
-{
-	/*
-	 *	Not needed for freetds, code that may have gone here iS in sql_select_query and sql_fetch_row
-	 */
-	return RLM_SQL_OK;
-}
-
 static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
@@ -631,9 +674,10 @@ static int _sql_socket_destructor(rlm_sql_freetds_conn_t *conn)
 	return RLM_SQL_OK;
 }
 
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config, struct timeval const *timeout)
 {
 	rlm_sql_freetds_conn_t *conn;
+	unsigned int timeout_ms = FR_TIMEVAL_TO_MS(timeout);
 
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_freetds_conn_t));
 	talloc_set_destructor(conn, _sql_socket_destructor);
@@ -653,6 +697,12 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 */
 	if (ct_init(conn->context, CS_VERSION_100) != CS_SUCCEED) {
 		ERROR("rlm_sql_freetds: unable to initialize Client-Library");
+
+		goto error;
+	}
+
+	if (ct_config(conn->context, CS_GET, CS_LOGIN_TIMEOUT, (CS_VOID *)&timeout_ms, CS_UNUSED, NULL) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: Setting connection timeout failed");
 
 		goto error;
 	}
@@ -759,9 +809,9 @@ rlm_sql_module_t rlm_sql_freetds = {
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
-	.sql_store_result		= sql_store_result,
 	.sql_num_fields			= sql_num_fields,
 	.sql_num_rows			= sql_num_rows,
+	.sql_fields			= sql_fields,
 	.sql_affected_rows		= sql_affected_rows,
 	.sql_fetch_row			= sql_fetch_row,
 	.sql_free_result		= sql_free_result,

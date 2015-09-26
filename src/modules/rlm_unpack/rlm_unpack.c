@@ -39,7 +39,7 @@ RCSID("$Id$")
  *  Expands Class, treating octet at offset 0 (bytes 0-3) as an "integer".
  */
 static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *fmt,
-			   char *out, size_t outlen)
+			   char **out, size_t outlen)
 {
 	char *data_name, *data_size, *data_type;
 	char *p;
@@ -68,7 +68,6 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 	error:
 		REDEBUG("Format string should be '<data> <offset> <type>' e.g. '&Class 1 integer'");
 	nothing:
-		*out = '\0';
 		return -1;
 	}
 
@@ -150,7 +149,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 		goto nothing;
 	}
 
-	cast = pairalloc(request, da);
+	cast = fr_pair_afrom_da(request, da);
 	if (!cast) goto nothing;
 
 	memcpy(&(cast->data), input + offset, dict_attr_sizes[type][0]);
@@ -178,7 +177,7 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 		break;
 	}
 
-	len = vp_prints_value(out, outlen, cast, 0);
+	len = fr_pair_value_snprint(*out, outlen, cast, 0);
 	talloc_free(cast);
 	if (is_truncated(len, outlen)) {
 		REDEBUG("Insufficient buffer space to unpack data");
@@ -192,9 +191,11 @@ static ssize_t unpack_xlat(UNUSED void *instance, REQUEST *request, char const *
 /*
  *	Register the xlats
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
-	xlat_register("unpack", unpack_xlat, NULL, instance);
+	if (cf_section_name2(conf)) return 0;
+
+	xlat_register("unpack", unpack_xlat, XLAT_DEFAULT_BUF_LEN, NULL, instance);
 
 	return 0;
 }
@@ -210,19 +211,8 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  */
 extern module_t rlm_unpack;
 module_t rlm_unpack = {
-	RLM_MODULE_INIT,
-	"unpack",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	0,
-	NULL,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		NULL,			/* authorization */
-		NULL, NULL, NULL,
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
-	},
+	.magic		= RLM_MODULE_INIT,
+	.name		= "unpack",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.bootstrap	= mod_bootstrap
 };

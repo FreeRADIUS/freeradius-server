@@ -40,11 +40,11 @@ typedef enum {
 
 
 static const CONF_PARSER module_config[] = {
-	{ "timer_expire", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_securid_t, timer_limit), "600" },
-	{ "max_sessions", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_securid_t, max_sessions), "2048" },
-	{ "max_trips_per_session", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_securid_t, max_trips_per_session), NULL },
-	{ "max_round_trips", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_securid_t, max_trips_per_session), "6" },
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("timer_expire", PW_TYPE_INTEGER, rlm_securid_t, timer_limit), .dflt = "600" },
+	{ FR_CONF_OFFSET("max_sessions", PW_TYPE_INTEGER, rlm_securid_t, max_sessions), .dflt = "2048" },
+	{ FR_CONF_OFFSET("max_trips_per_session", PW_TYPE_INTEGER, rlm_securid_t, max_trips_per_session) },
+	{ FR_CONF_OFFSET("max_round_trips", PW_TYPE_INTEGER, rlm_securid_t, max_trips_per_session), .dflt = "6" },
+	CONF_PARSER_TERMINATOR
 };
 
 
@@ -513,11 +513,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		/* reply with Access-challenge message code (11) */
 
 		/* Generate Prompt attribute */
-		vp = paircreate(request->reply, PW_PROMPT, 0);
+		vp = fr_pair_afrom_num(request->reply, PW_PROMPT, 0);
 
 		rad_assert(vp != NULL);
 		vp->vp_integer = 0; /* no echo */
-		pairadd(&request->reply->vps, vp);
+		fr_pair_add(&request->reply->vps, vp);
 
 		/* Mark the packet as a Acceess-Challenge Packet */
 		request->reply->code = PW_CODE_ACCESS_CHALLENGE;
@@ -533,7 +533,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		break;
 	}
 
-	if (*buffer) pairmake_reply("Reply-Message", buffer, T_OP_EQ);
+	if (*buffer) pair_make_reply("Reply-Message", buffer, T_OP_EQ);
 
 	return rcode;
 }
@@ -550,21 +550,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
  */
 extern module_t rlm_securid;
 module_t rlm_securid = {
-	RLM_MODULE_INIT,
-	"securid",
-	RLM_TYPE_HUP_SAFE,   	/* type */
-	sizeof(rlm_securid_t),
-	module_config,
-	mod_instantiate, 		/* instantiation */
-	mod_detach, 			/* detach */
-	{
-		mod_authenticate, 	/* authentication */
-		NULL, 			/* authorization */
-		NULL, 			/* preaccounting */
-		NULL, 			/* accounting */
-		NULL, 			/* checksimul */
-		NULL, 			/* pre-proxy */
-		NULL, 			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "securid",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_securid_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate
 	},
 };

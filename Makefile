@@ -43,7 +43,7 @@ $(BUILD_DIR)/tests/radiusd-c: raddb/test.conf ${BUILD_DIR}/bin/radiusd | build.r
 	@$(MAKE) -C raddb/certs
 	@printf "radiusd -C... "
 	@if ! ./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCMd ./raddb -n debug -D ./share -n test > $(BUILD_DIR)/tests/radiusd.config.log; then \
-		@rm -f raddb/test.conf; \
+		rm -f raddb/test.conf; \
 		cat $(BUILD_DIR)/tests/radiusd.config.log; \
 		echo "fail"; \
 		exit 1; \
@@ -64,7 +64,6 @@ travis-test: raddb/test.conf test
 	@$(MAKE) install
 	@perl -p -i -e 's/allow_vulnerable_openssl = no/allow_vulnerable_openssl = yes/' ${raddbdir}/radiusd.conf
 	@${sbindir}/radiusd -XC
-	@$(MAKE) deb
 endif
 
 #

@@ -19,7 +19,9 @@ radsniff - dump radius protocol
 .RB [ \-p
 .IR port ]
 .RB [ \-r
-.IR filter ]
+.IR request filter]
+.RB [ \-R
+.IR response filter ]
 .RB [ \-s
 .IR secret ]
 .RB [ \-S ]
@@ -52,8 +54,10 @@ Read packets from filename.
 Print packet headers only, not contents.
 .IP \-p\ \fIport\fP
 \tListen for packets on port.
-.IP \-r\ \fIfilter\fP
-RADIUS attribute filter.
+.IP \-r\ \fIresponse filter\fP
+RADIUS attribute request filter.
+.IP \-R\ \fIrequest filter\fP
+RADIUS attribute response filter.
 .IP \-s\ \fIsecret\fP
 RADIUS secret.
 .IP \-S

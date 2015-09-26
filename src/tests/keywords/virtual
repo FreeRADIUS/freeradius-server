@@ -1,0 +1,12 @@
+#
+#  PRE: update if
+#
+update control {
+       Cleartext-Password := 'hello'
+}
+
+if (request:Packet-Type == Access-Request) {
+	update reply {
+		Filter-Id := "filter"
+	}
+}

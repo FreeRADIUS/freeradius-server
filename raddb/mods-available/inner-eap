@@ -79,7 +79,7 @@ eap inner-eap {
 
 		#  Other needful things
 		dh_file = ${certdir}/dh
-		random_file = ${certdir}/random
+		random_file = /dev/urandom
 
 		#  CRL and OCSP things go here.  See the main "eap"
 		#  file for details.

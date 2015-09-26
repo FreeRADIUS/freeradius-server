@@ -34,8 +34,14 @@ extern "C" {
 /*
  *	Not for production use.
  */
-RADIUS_PACKET *fr_dhcp_recv(int sockfd);
-int fr_dhcp_send(RADIUS_PACKET *packet);
+RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd);
+int fr_dhcp_send_socket(RADIUS_PACKET *packet);
+
+#ifdef HAVE_PCAP_H
+typedef struct fr_pcap fr_pcap_t;
+RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap);
+int fr_dhcp_send_pcap(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *packet);
+#endif
 
 int fr_dhcp_add_arp_entry(int fd, char const *interface, VALUE_PAIR *hwvp, VALUE_PAIR *clvp);
 

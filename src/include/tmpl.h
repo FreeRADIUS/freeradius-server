@@ -35,7 +35,7 @@
  * strings into VPTs. The main parsing function is #tmpl_afrom_str, which can produce
  * most types of VPTs. It uses the type of quoting (passed as an #FR_TOKEN) to determine
  * what type of VPT to parse the string as. For example a #T_DOUBLE_QUOTED_STRING will
- * produce either a #TMPL_TYPE_XLAT or a #TMPL_TYPE_LITERAL (depending if the string
+ * produce either a #TMPL_TYPE_XLAT or a #TMPL_TYPE_UNPARSED (depending if the string
  * contained a non-literal expansion).
  *
  * @see tmpl_afrom_str
@@ -62,7 +62,7 @@
  * #tmpl_expand will return a pointer to the raw #VALUE_PAIR buffer. This can be very
  * useful when using the #PW_TYPE_TMPL type in #CONF_PARSER structs, as it allows the
  * user to determine whether they want the module to sanitise the value using presentation
- * format specific #RADIUS_ESCAPE_STRING function, or to operate on the raw value.
+ * format specific #xlat_escape_t function, or to operate on the raw value.
  *
  * @see tmpl_expand
  * @see tmpl_aexpand
@@ -122,16 +122,14 @@ typedef struct pair_list {
 	VALUE_PAIR		*check;
 	VALUE_PAIR		*reply;
 	int			lineno;
-	int			order;
 	struct pair_list	*next;
-	struct pair_list	*lastdefault;
 } PAIR_LIST;
 
 /** Types of #vp_tmpl_t
  */
 typedef enum tmpl_type {
 	TMPL_TYPE_UNKNOWN = 0,		//!< Uninitialised.
-	TMPL_TYPE_LITERAL,		//!< Literal string.
+	TMPL_TYPE_UNPARSED,		//!< Unparsed literal string.
 	TMPL_TYPE_XLAT,			//!< XLAT expansion.
 	TMPL_TYPE_ATTR,			//!< Dictionary attribute.
 	TMPL_TYPE_ATTR_UNDEFINED,	//!< Attribute not found in the global dictionary.
@@ -165,14 +163,14 @@ typedef struct {
  *
  * Is used as both the RHS and LHS of a map (both update, and conditional types)
  *
- * @section update_maps Use in update value_pair_map_t
+ * @section update_maps Use in update vp_map_t
  * When used on the LHS it describes an attribute to create and should be one of these types:
  * - #TMPL_TYPE_ATTR
  * - #TMPL_TYPE_LIST
  *
  * When used on the RHS it describes the value to assign to the attribute being created and
  * should be one of these types:
- * - #TMPL_TYPE_LITERAL
+ * - #TMPL_TYPE_UNPARSED
  * - #TMPL_TYPE_XLAT
  * - #TMPL_TYPE_ATTR
  * - #TMPL_TYPE_LIST
@@ -180,20 +178,20 @@ typedef struct {
  * - #TMPL_TYPE_DATA
  * - #TMPL_TYPE_XLAT_STRUCT (pre-parsed xlat)
  *
- * @section conditional_maps Use in conditional value_pair_map_t
+ * @section conditional_maps Use in conditional vp_map_t
  * When used as part of a condition it may be any of the RHS side types, as well as:
  * - #TMPL_TYPE_REGEX_STRUCT (pre-parsed regex)
  *
- * @see value_pair_map_t
+ * @see vp_map_t
  */
 typedef struct vp_tmpl_t {
 	tmpl_type_t	type;		//!< What type of value tmpl refers to.
-	char const	*name;		//!< Original attribute ref string, or
-					//!< where this refers to a none FR
-					//!< attribute, just the string id for
-					//!< the attribute.
-	size_t		len;		//!< Name length.
-	char		quote;		//!< Quotation character for "name"
+
+	char const	*name;		//!< Raw string used to create the template.
+	size_t		len;		//!< Length of the raw string used to create the template.
+	FR_TOKEN	quote;		//!< What type of quoting was around the raw string.
+
+	bool		auto_converted; //!< Attr-26.9.1 --> Cisco-AVPair
 
 #ifdef HAVE_REGEX
 	bool		iflag;		//!< regex - case insensitive (if operand is used in regex comparison)
@@ -212,7 +210,6 @@ typedef struct vp_tmpl_t {
 		 */
 		struct {
 			PW_TYPE			type;			 //!< Type of data.
-			size_t			length;			 //!< of the vpd data.
 			value_data_t		data;			 //!< Value data.
 		} literal;
 
@@ -250,7 +247,7 @@ typedef struct vp_tmpl_t {
  */
 #define tmpl_data		data.literal
 #define tmpl_data_type		data.literal.type
-#define tmpl_data_length	data.literal.length
+#define tmpl_data_length	data.literal.data.length
 #define tmpl_data_value		data.literal.data
 /* @} **/
 
@@ -298,6 +295,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
 	.name = "static", \
 	.len = sizeof("static"), \
 	.type = TMPL_TYPE_LIST, \
+	.quote = T_SINGLE_QUOTED_STRING, \
 	.data = { \
 		.attribute = { \
 			.request = _request, \
@@ -305,6 +303,43 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt);
 		} \
 	} \
 }
+
+/** Determine the correct context and list head
+ *
+ * Used in conjunction with the fr_cursor functions to determine the correct list
+ * and TALLOC_CTX for inserting VALUE_PAIRs.
+ *
+ * Example:
+ @code{.c}
+   TALLOC_CTX *ctx;
+   VALUE_PAIR **head;
+   value_data_t value;
+
+   RADIUS_LIST_AND_CTX(ctx, head, request, CURRENT_REQUEST, PAIR_LIST_REQUEST);
+   if (!list) return -1; // error
+
+   value.strvalue = talloc_strdup(NULL, "my new username");
+   value.length = talloc_array_length(value.strvalue) - 1;
+
+   if (fr_pair_update_by_num(ctx, head, PW_USERNAME, 0, TAG_ANY, PW_TYPE_STRING, &value) < 0) return -1; // error
+ @endcode
+ *
+ * @param _ctx new #VALUE_PAIR s should be allocated in for the specified list.
+ * @param _head of the #VALUE_PAIR list.
+ * @param _request The current request.
+ * @param _ref to resolve.
+ * @param _list to resolve.
+ */
+#define RADIUS_LIST_AND_CTX(_ctx, _head, _request, _ref, _list) \
+do {\
+	REQUEST *_rctx = _request; \
+	if ((radius_request(&_rctx, _ref) < 0) || \
+	    !(_head = radius_list(_rctx, _list)) || \
+	    !(_ctx = radius_list_ctx(_rctx, _list))) {\
+		_ctx = NULL; \
+		_head = NULL; \
+	}\
+} while (0)
 
 VALUE_PAIR		**radius_list(REQUEST *request, pair_lists_t list);
 
@@ -318,14 +353,17 @@ int			radius_request(REQUEST **request, request_refs_t name);
 
 size_t			radius_request_name(request_refs_t *out, char const *name, request_refs_t unknown);
 
-vp_tmpl_t	*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
-				   char const *name, ssize_t len);
+vp_tmpl_t		*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
+				   char const *name, ssize_t len, FR_TOKEN quote);
 
-vp_tmpl_t	*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
-				    ssize_t len);
+vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
+				    ssize_t len, FR_TOKEN quote);
 
 void			tmpl_from_da(vp_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
 				     request_refs_t request, pair_lists_t list);
+
+int			tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
+					      PW_TYPE type, DICT_ATTR const *enumv, bool steal);
 
 ssize_t			tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 					      request_refs_t request_def, pair_lists_t list_def,
@@ -335,6 +373,10 @@ ssize_t			tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
 					   request_refs_t request_def,
 					   pair_lists_t list_def,
 					   bool allow_unknown, bool allow_undefined);
+
+ssize_t			tmpl_afrom_attr_substr(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
+					       request_refs_t request_def, pair_lists_t list_def,
+					       bool allow_unknown, bool allow_undefined);
 
 ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name,
 					    request_refs_t request_def,
@@ -351,14 +393,14 @@ void			tmpl_cast_in_place_str(vp_tmpl_t *vpt);
 int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 					vp_tmpl_t const *vpt, DICT_ATTR const *cast);
 
-size_t			tmpl_prints(char *buffer, size_t bufsize, vp_tmpl_t const *vpt,
+size_t			tmpl_snprint(char *buffer, size_t bufsize, vp_tmpl_t const *vpt,
 				    DICT_ATTR const *values);
 
 ssize_t			tmpl_expand(char const **out, char *buff, size_t outlen, REQUEST *request,
-				    vp_tmpl_t const *vpt, RADIUS_ESCAPE_STRING escape, void *escape_ctx);
+				    vp_tmpl_t const *vpt, xlat_escape_t escape, void *escape_ctx);
 
 ssize_t			tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t const *vpt,
-				     RADIUS_ESCAPE_STRING escape, void *escape_ctx);
+				     xlat_escape_t escape, void *escape_ctx);
 
 VALUE_PAIR		*tmpl_cursor_init(int *err, vp_cursor_t *cursor, REQUEST *request,
 					  vp_tmpl_t const *vpt);
@@ -370,8 +412,11 @@ int			tmpl_copy_vps(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 
 int			tmpl_find_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt);
 
+int			tmpl_find_or_add_vp(VALUE_PAIR **out, REQUEST *request, vp_tmpl_t const *vpt);
+
 int			tmpl_define_unknown_attr(vp_tmpl_t *vpt);
 
+int			tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *flags);
 #ifdef __cplusplus
 }
 #endif

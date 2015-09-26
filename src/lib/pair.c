@@ -1,12 +1,11 @@
 /*
- * valuepair.c	Functions to handle VALUE_PAIRs
+ * pair.c	Functions to handle VALUE_PAIRs
  *
  * Version:	$Id$
  *
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version. either
+ *   License as published by the Free Software Foundation; either
  *   version 2.1 of the License, or (at your option) any later version.
  *
  *   This library is distributed in the hope that it will be useful,
@@ -35,7 +34,7 @@ RCSID("$Id$")
  * @param vp to free.
  * @return 0
  */
-static int _pairfree(VALUE_PAIR *vp) {
+static int _fr_pair_free(VALUE_PAIR *vp) {
 #ifndef NDEBUG
 	vp->vp_integer = FREE_MAGIC;
 #endif
@@ -50,11 +49,13 @@ static int _pairfree(VALUE_PAIR *vp) {
  *
  * Allocates a new attribute and a new dictionary attr if no DA is provided.
  *
- * @param[in] ctx for allocated memory, usually a pointer to a RADIUS_PACKET
- * @param[in] da Specifies the dictionary attribute to build the VP from.
- * @return a new value pair or NULL if an error occurred.
+ * @param[in] ctx for allocated memory, usually a pointer to a #RADIUS_PACKET
+ * @param[in] da Specifies the dictionary attribute to build the #VALUE_PAIR from.
+ * @return
+ *	- A new #VALUE_PAIR.
+ *	- NULL if an error occurred.
  */
-VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
+VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, DICT_ATTR const *da)
 {
 	VALUE_PAIR *vp;
 
@@ -79,28 +80,30 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 
 	vp->vp_length = da->flags.length;
 
-	talloc_set_destructor(vp, _pairfree);
+	talloc_set_destructor(vp, _fr_pair_free);
 
 	return vp;
 }
 
 /** Create a new valuepair
  *
- * If attr and vendor match a dictionary entry then a VP with that DICT_ATTR
+ * If attr and vendor match a dictionary entry then a VP with that #DICT_ATTR
  * will be returned.
  *
  * If attr or vendor are uknown will call dict_attruknown to create a dynamic
- * DICT_ATTR of PW_TYPE_OCTETS.
+ * #DICT_ATTR of #PW_TYPE_OCTETS.
  *
- * Which type of DICT_ATTR the VALUE_PAIR was created with can be determined by
+ * Which type of #DICT_ATTR the #VALUE_PAIR was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  *
- * @param[in] ctx for allocated memory, usually a pointer to a RADIUS_PACKET
+ * @param[in] ctx for allocated memory, usually a pointer to a #RADIUS_PACKET.
  * @param[in] attr number.
  * @param[in] vendor number.
- * @return the new valuepair or NULL on error.
+ * @return
+ *	- A new #VALUE_PAIR.
+ *	- NULL on error.
  */
-VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
+VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 {
 	DICT_ATTR const *da;
 
@@ -112,14 +115,445 @@ VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 		}
 	}
 
-	return pairalloc(ctx, da);
+	return fr_pair_afrom_da(ctx, da);
+}
+
+/** Copy a single valuepair
+ *
+ * Allocate a new valuepair and copy the da from the old vp.
+ *
+ * @param[in] ctx for talloc
+ * @param[in] vp to copy.
+ * @return
+ *	- A copy of the input VP.
+ *	- NULL on error.
+ */
+VALUE_PAIR *fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
+{
+	VALUE_PAIR *n;
+
+	if (!vp) return NULL;
+
+	VERIFY_VP(vp);
+
+	n = fr_pair_afrom_da(ctx, vp->da);
+	if (!n) return NULL;
+
+	memcpy(n, vp, sizeof(*n));
+
+	/*
+	 *	If the DA is unknown, steal "n" to "ctx".  This does
+	 *	nothing for "n", but will also copy the unknown "da".
+	 */
+	if (n->da->flags.is_unknown) {
+		fr_pair_steal(ctx, n);
+	}
+
+	n->next = NULL;
+
+	/*
+	 *	If it's an xlat, copy the raw string and return early,
+	 *	so we don't pre-expand or otherwise mangle the VALUE_PAIR.
+	 */
+	if (vp->type == VT_XLAT) {
+		n->xlat = talloc_typed_strdup(n, n->xlat);
+		return n;
+	}
+
+	switch (vp->da->type) {
+	case PW_TYPE_OCTETS:
+		n->vp_octets = NULL;	/* else fr_pair_value_memcpy will free vp's value */
+		fr_pair_value_memcpy(n, vp->vp_octets, n->vp_length);
+		break;
+
+	case PW_TYPE_STRING:
+		n->vp_strvalue = NULL;	/* else pairstrnpy will free vp's value */
+		fr_pair_value_bstrncpy(n, vp->vp_strvalue, n->vp_length);
+		break;
+
+	default:
+		break;
+	}
+
+	return n;
+}
+
+/** Steal one VP
+ *
+ * @param[in] ctx to move VALUE_PAIR into
+ * @param[in] vp VALUE_PAIR to move into the new context.
+ */
+void fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
+{
+	(void) talloc_steal(ctx, vp);
+
+	/*
+	 *	The DA may be unknown.  If we're stealing the VPs to a
+	 *	different context, copy the unknown DA.  We use the VP
+	 *	as a context here instead of "ctx", so that when the
+	 *	VP is freed, so is the DA.
+	 *
+	 *	Since we have no introspection into OTHER VPs using
+	 *	the same DA, we can't have multiple VPs use the same
+	 *	DA.  So we might as well tie it to this VP.
+	 */
+	if (vp->da->flags.is_unknown) {
+		DICT_ATTR *da;
+		char *p;
+		size_t size;
+
+		size = talloc_get_size(vp->da);
+
+		p = talloc_zero_array(vp, char, size);
+		da = (DICT_ATTR *) p;
+		talloc_set_type(p, DICT_ATTR);
+		memcpy(da, vp->da, size);
+		vp->da = da;
+	}
+}
+
+static VALUE_PAIR *fr_pair_from_unkown(VALUE_PAIR *vp, DICT_ATTR const *da)
+{
+	ssize_t len;
+	VALUE_PAIR *vp2;
+
+	len = data2vp(NULL, NULL, NULL, NULL, da,
+		      vp->vp_octets, vp->vp_length, vp->vp_length,
+		      &vp2);
+	if (len < 0) return vp; /* it's really unknown */
+
+	if (vp2->da->flags.is_unknown) {
+		fr_pair_list_free(&vp2);
+		return vp;
+	}
+
+	/*
+	 *	Didn't parse all of it.  Return the "unknown" one.
+	 *
+	 *	FIXME: it COULD have parsed 2 attributes and
+	 *	then not the third, so returning 2 "knowns"
+	 *	and 1 "unknown" is likely preferable.
+	 */
+	if ((size_t) len < vp->vp_length) {
+		fr_pair_list_free(&vp2);
+		return vp;
+	}
+
+	fr_pair_steal(talloc_parent(vp), vp2);
+	fr_pair_list_free(&vp);
+	return vp2;
+}
+
+/** Create a valuepair from an ASCII attribute and value
+ *
+ * Where the attribute name is in the form:
+ *  - Attr-%d
+ *  - Attr-%d.%d.%d...
+ *  - Vendor-%d-Attr-%d
+ *  - VendorName-Attr-%d
+ *
+ * @param ctx for talloc
+ * @param attribute name to parse.
+ * @param value to parse (must be a hex string).
+ * @param op to assign to new valuepair.
+ * @return new #VALUE_PAIR or NULL on error.
+ */
+static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
+					char const *attribute, char const *value,
+					FR_TOKEN op)
+{
+	VALUE_PAIR	*vp;
+	DICT_ATTR const *da;
+
+	uint8_t 	*data;
+	size_t		size;
+
+	da = dict_unknown_afrom_str(ctx, attribute);
+	if (!da) return NULL;
+
+	/*
+	 *	Unknown attributes MUST be of type 'octets'
+	 */
+	if (value && (strncasecmp(value, "0x", 2) != 0)) {
+		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
+				   "string, not \"%s\"", attribute, value);
+
+		dict_attr_free(&da);
+		return NULL;
+	}
+
+	/*
+	 *	We've now parsed the attribute properly, Let's create
+	 *	it.  This next stop also looks the attribute up in the
+	 *	dictionary, and creates the appropriate type for it.
+	 */
+	vp = fr_pair_afrom_da(ctx, da);
+	if (!vp) {
+		dict_attr_free(&da);
+		return NULL;
+	}
+
+	vp->op = (op == 0) ? T_OP_EQ : op;
+
+	if (!value) return vp;
+
+	size = strlen(value + 2);
+	vp->vp_length = size >> 1;
+	data = talloc_array(vp, uint8_t, vp->vp_length);
+
+	if (fr_hex2bin(data, vp->vp_length, value + 2, size) != vp->vp_length) {
+		fr_strerror_printf("Invalid hex string");
+		talloc_free(vp);
+		return NULL;
+	}
+
+	vp->vp_octets = data;
+	vp->type = VT_DATA;
+
+	/*
+	 *	Convert unknowns to knowns
+	 */
+	da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
+	if (da) {
+		return fr_pair_from_unkown(vp, da);
+	}
+
+	return vp;
+}
+
+/** Create a #VALUE_PAIR from ASCII strings
+ *
+ * Converts an attribute string identifier (with an optional tag qualifier)
+ * and value string into a #VALUE_PAIR.
+ *
+ * The string value is parsed according to the type of #VALUE_PAIR being created.
+ *
+ * @param[in] ctx for talloc.
+ * @param[in] vps list where the attribute will be added (optional)
+ * @param[in] attribute name.
+ * @param[in] value attribute value (may be NULL if value will be set later).
+ * @param[in] op to assign to new #VALUE_PAIR.
+ * @return a new #VALUE_PAIR.
+ */
+VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
+		     char const *attribute, char const *value, FR_TOKEN op)
+{
+	DICT_ATTR const *da;
+	VALUE_PAIR	*vp;
+	char		*tc, *ts;
+	int8_t		tag;
+	bool		found_tag;
+	char		buffer[256];
+	char const	*attrname = attribute;
+
+	/*
+	 *    Check for tags in 'Attribute:Tag' format.
+	 */
+	found_tag = false;
+	tag = TAG_ANY;
+
+	ts = strrchr(attribute, ':');
+	if (ts && !ts[1]) {
+		fr_strerror_printf("Invalid tag for attribute %s", attribute);
+		return NULL;
+	}
+
+	if (ts && ts[1]) {
+		strlcpy(buffer, attribute, sizeof(buffer));
+		attrname = buffer;
+		ts = strrchr(attrname, ':');
+		if (!ts) return NULL;
+
+		 /* Colon found with something behind it */
+		 if (ts[1] == '*' && ts[2] == 0) {
+			 /* Wildcard tag for check items */
+			 tag = TAG_ANY;
+			 *ts = '\0';
+		 } else if ((ts[1] >= '0') && (ts[1] <= '9')) {
+			 /* It's not a wild card tag */
+			 tag = strtol(ts + 1, &tc, 0);
+			 if (tc && !*tc && TAG_VALID_ZERO(tag))
+				 *ts = '\0';
+			 else tag = TAG_ANY;
+		 } else {
+			 fr_strerror_printf("Invalid tag for attribute %s", attribute);
+			 return NULL;
+		 }
+		 found_tag = true;
+	}
+
+	/*
+	 *	It's not found in the dictionary, so we use
+	 *	another method to create the attribute.
+	 */
+	da = dict_attrbyname(attrname);
+	if (!da) {
+		vp = fr_pair_make_unknown(ctx, attrname, value, op);
+		if (vp && vps) fr_pair_add(vps, vp);
+		return vp;
+	}
+
+	/*      Check for a tag in the 'Merit' format of:
+	 *      :Tag:Value.  Print an error if we already found
+	 *      a tag in the Attribute.
+	 */
+
+	if (value && (*value == ':' && da->flags.has_tag)) {
+		/* If we already found a tag, this is invalid */
+		if(found_tag) {
+			fr_strerror_printf("Duplicate tag %s for attribute %s",
+				   value, da->name);
+			DEBUG("Duplicate tag %s for attribute %s\n",
+				   value, da->name);
+			return NULL;
+		}
+		/* Colon found and attribute allows a tag */
+		if (value[1] == '*' && value[2] == ':') {
+		       /* Wildcard tag for check items */
+		       tag = TAG_ANY;
+		       value += 3;
+		} else {
+		       /* Real tag */
+		       tag = strtol(value + 1, &tc, 0);
+		       if (tc && *tc==':' && TAG_VALID_ZERO(tag))
+			    value = tc + 1;
+		       else tag = 0;
+		}
+	}
+
+	vp = fr_pair_afrom_da(ctx, da);
+	if (!vp) return NULL;
+	vp->op = (op == 0) ? T_OP_EQ : op;
+	vp->tag = tag;
+
+	switch (vp->op) {
+	case T_OP_CMP_TRUE:
+	case T_OP_CMP_FALSE:
+		vp->vp_strvalue = NULL;
+		vp->vp_length = 0;
+		value = NULL;	/* ignore it! */
+		break;
+
+		/*
+		 *	Regular expression comparison of integer attributes
+		 *	does a STRING comparison of the names of their
+		 *	integer attributes.
+		 */
+	case T_OP_REG_EQ:	/* =~ */
+	case T_OP_REG_NE:	/* !~ */
+	{
+#ifndef HAVE_REGEX
+		fr_strerror_printf("Regular expressions are not supported");
+		return NULL;
+#else
+		ssize_t slen;
+		regex_t *preg;
+
+		/*
+		 *	Someone else will fill in the value.
+		 */
+		if (!value) break;
+
+		talloc_free(vp);
+
+		slen = regex_compile(ctx, &preg, value, strlen(value), false, false, false, true);
+		if (slen <= 0) {
+			fr_strerror_printf("Error at offset %zu compiling regex for %s: %s", -slen,
+					   attribute, fr_strerror());
+			return NULL;
+		}
+		talloc_free(preg);
+
+		vp = fr_pair_make(ctx, NULL, attribute, NULL, op);
+		if (!vp) return NULL;
+
+		if (fr_pair_mark_xlat(vp, value) < 0) {
+			talloc_free(vp);
+			return NULL;
+		}
+
+		value = NULL;	/* ignore it */
+		break;
+#endif
+	}
+	default:
+		break;
+	}
+
+	/*
+	 *	We allow this for stupidity, but it's really a bad idea.
+	 */
+	if (vp->da->type == PW_TYPE_TLV) {
+		ssize_t len;
+		DICT_ATTR const *unknown;
+		VALUE_PAIR *head = NULL;
+		VALUE_PAIR **tail = &head;
+
+		if (!value) {
+			talloc_free(vp);
+			return NULL;
+		}
+
+		unknown = dict_unknown_afrom_fields(vp, vp->da->attr, vp->da->vendor);
+		if (!unknown) {
+			talloc_free(vp);
+			return NULL;
+		}
+
+		vp->da = unknown;
+
+		/*
+		 *	Parse it as an unknown type, i.e. octets.
+		 */
+		if (fr_pair_value_from_str(vp, value, -1) < 0) {
+			talloc_free(vp);
+			return NULL;
+		}
+
+		/*
+		 *	It's badly formatted.  Treat it as unknown.
+		 */
+		if (rad_tlv_ok(vp->vp_octets, vp->vp_length, 1, 1) < 0) {
+			goto do_add;
+		}
+
+		/*
+		 *	Decode the TLVs
+		 */
+		len = rad_data2vp_tlvs(ctx, NULL, NULL, NULL, da, vp->vp_octets,
+				       vp->vp_length, tail);
+		if (len < 0) {
+			goto do_add;
+		}
+
+		talloc_free(vp);
+		vp = head;
+		goto do_add;
+	}
+
+	/*
+	 *	FIXME: if (strcasecmp(attribute, vp->da->name) != 0)
+	 *	then the user MAY have typed in the attribute name
+	 *	as Vendor-%d-Attr-%d, and the value MAY be octets.
+	 *
+	 *	We probably want to fix fr_pair_value_from_str to accept
+	 *	octets as values for any attribute.
+	 */
+	if (value && (fr_pair_value_from_str(vp, value, -1) < 0)) {
+		talloc_free(vp);
+		return NULL;
+	}
+
+do_add:
+	if (vps) fr_pair_add(vps, vp);
+	return vp;
 }
 
 /** Free memory used by a valuepair list.
  *
  * @todo TLV: needs to free all dependents of each VP freed.
  */
-void pairfree(VALUE_PAIR **vps)
+void fr_pair_list_free(VALUE_PAIR **vps)
 {
 	VALUE_PAIR	*vp;
 	vp_cursor_t	cursor;
@@ -141,9 +575,11 @@ void pairfree(VALUE_PAIR **vps)
 /** Mark malformed or unrecognised attributed as unknown
  *
  * @param vp to change DICT_ATTR of.
- * @return 0 on success (or if already unknown) else -1 on error.
+ * @return
+ *	- 0 on success (or if already unknown).
+ *	- -1 on failure.
  */
-int pair2unknown(VALUE_PAIR *vp)
+int fr_pair_to_unknown(VALUE_PAIR *vp)
 {
 	DICT_ATTR const *da;
 
@@ -162,10 +598,43 @@ int pair2unknown(VALUE_PAIR *vp)
 	return 0;
 }
 
+/** Mark a valuepair for xlat expansion
+ *
+ * Copies xlat source (unprocessed) string to valuepair value, and sets value type.
+ *
+ * @param vp to mark for expansion.
+ * @param value to expand.
+ * @return
+ *	- 0 if marking succeeded.
+ *	- -1 if #VALUE_PAIR already had a value, or OOM.
+ */
+int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
+{
+	char *raw;
+
+	/*
+	 *	valuepair should not already have a value.
+	 */
+	if (vp->type != VT_NONE) {
+		return -1;
+	}
+
+	raw = talloc_typed_strdup(vp, value);
+	if (!raw) {
+		return -1;
+	}
+
+	vp->type = VT_XLAT;
+	vp->xlat = raw;
+	vp->vp_length = 0;
+
+	return 0;
+}
+
 /** Find the pair with the matching DAs
  *
  */
-VALUE_PAIR *pair_find_by_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
+VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
 {
 	vp_cursor_t 	cursor;
 
@@ -182,7 +651,7 @@ VALUE_PAIR *pair_find_by_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
  *
  * @todo should take DAs and do a pointer comparison.
  */
-VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag)
+VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	vp_cursor_t 	cursor;
 
@@ -195,36 +664,6 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int
 	return fr_cursor_next_by_num(&cursor, attr, vendor, tag);
 }
 
-/** Delete matching pairs
- *
- * Delete matching pairs from the attribute list.
- *
- * @param[in,out] first VP in list.
- * @param[in] attr to match.
- * @param[in] vendor to match.
- * @param[in] tag to match. TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
- *
- * @todo should take DAs and do a point comparison.
- */
-void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
-		int8_t tag)
-{
-	VALUE_PAIR *i, *next;
-	VALUE_PAIR **last = first;
-
-	for(i = *first; i; i = next) {
-		VERIFY_VP(i);
-		next = i->next;
-		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
-		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
-			*last = next;
-			talloc_free(i);
-		} else {
-			last = &i->next;
-		}
-	}
-}
-
 /** Add a VP to the end of the list.
  *
  * Locates the end of 'first', and links an additional VP 'add' at the end.
@@ -232,7 +671,7 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
  * @param[in] first VP in linked list. Will add new VP to the end of this list.
  * @param[in] add VP to add to list.
  */
-void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
+void fr_pair_add(VALUE_PAIR **first, VALUE_PAIR *add)
 {
 	VALUE_PAIR *i;
 
@@ -269,7 +708,7 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
  * @param[in,out] first VP in linked list. Will search and replace in this list.
  * @param[in] replace VP to replace.
  */
-void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
+void fr_pair_replace(VALUE_PAIR **first, VALUE_PAIR *replace)
 {
 	VALUE_PAIR *i, *next;
 	VALUE_PAIR **prev = first;
@@ -318,7 +757,77 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	*prev = replace;
 }
 
-int8_t attrtagcmp(void const *a, void const *b)
+/** Create a new VALUE_PAIR or replace the value of the first pair in the specified list
+ *
+ * @note Any buffers associated with value, will be stolen to the context of the
+ *	VALUE_PAIR we create, or find.
+ *
+ * @param[in] ctx to allocate new #VALUE_PAIR in.
+ * @param[in,out] list in search and insert into it.
+ * @param[in] attr Number of attribute to update.
+ * @param[in] vendor of attribute to update.
+ * @param[in] tag of attribute to update.
+ * @param[in] type of value.
+ * @param[in] value to set.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
+			  unsigned int attr, unsigned int vendor, int8_t tag,
+			  PW_TYPE type, value_data_t *value)
+{
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+
+	(void)fr_cursor_init(&cursor, list);
+	vp = fr_cursor_next_by_num(&cursor, attr, vendor, tag);
+	if (vp) {
+		VERIFY_VP(vp);
+		if (value_data_steal(vp, &vp->data, type, value) < 0) return -1;
+		return 0;
+	}
+
+	vp = fr_pair_afrom_num(ctx, attr, vendor);
+	if (!vp) return -1;
+	vp->tag = tag;
+	if (value_data_steal(vp, &vp->data, type, value) < 0) return -1;
+
+	fr_cursor_insert(&cursor, vp);
+
+	return 0;
+}
+
+/** Delete matching pairs
+ *
+ * Delete matching pairs from the attribute list.
+ *
+ * @param[in,out] first VP in list.
+ * @param[in] attr to match.
+ * @param[in] vendor to match.
+ * @param[in] tag to match. TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
+ *
+ * @todo should take DAs and do a point comparison.
+ */
+void fr_pair_delete_by_num(VALUE_PAIR **first, unsigned int attr, unsigned int vendor, int8_t tag)
+{
+	VALUE_PAIR *i, *next;
+	VALUE_PAIR **last = first;
+
+	for(i = *first; i; i = next) {
+		VERIFY_VP(i);
+		next = i->next;
+		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
+		    (!i->da->flags.has_tag || TAG_EQ(tag, i->tag))) {
+			*last = next;
+			talloc_free(i);
+		} else {
+			last = &i->next;
+		}
+	}
+}
+
+int8_t fr_pair_cmp_by_da_tag(void const *a, void const *b)
 {
 	VALUE_PAIR const *my_a = a;
 	VALUE_PAIR const *my_b = b;
@@ -338,7 +847,147 @@ int8_t attrtagcmp(void const *a, void const *b)
 	return 0;
 }
 
-static void pairsort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **back)
+/** Compare two pairs, using the operator from "a"
+ *
+ *	i.e. given two attributes, it does:
+ *
+ *	(b->data) (a->operator) (a->data)
+ *
+ *	e.g. "foo" != "bar"
+ *
+ * @param[in] a the first attribute
+ * @param[in] b the second attribute
+ * @return
+ *	- 1 if true.
+ *	- 0 if false.
+ *	- -1 on failure.
+ */
+int fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
+{
+	if (!a) return -1;
+
+	VERIFY_VP(a);
+	if (b) VERIFY_VP(b);
+
+	switch (a->op) {
+	case T_OP_CMP_TRUE:
+		return (b != NULL);
+
+	case T_OP_CMP_FALSE:
+		return (b == NULL);
+
+		/*
+		 *	a is a regex, compile it, print b to a string,
+		 *	and then do string comparisons.
+		 */
+	case T_OP_REG_EQ:
+	case T_OP_REG_NE:
+#ifndef HAVE_REGEX
+		return -1;
+#else
+		if (!b) return false;
+
+		{
+			ssize_t	slen;
+			regex_t	*preg;
+			char	*value;
+
+			if (!fr_assert(a->da->type == PW_TYPE_STRING)) return -1;
+
+			slen = regex_compile(NULL, &preg, a->vp_strvalue, a->vp_length, false, false, false, true);
+			if (slen <= 0) {
+				fr_strerror_printf("Error at offset %zu compiling regex for %s: %s",
+						   -slen, a->da->name, fr_strerror());
+				return -1;
+			}
+			value = fr_pair_asprint(NULL, b, '\0');
+			if (!value) {
+				talloc_free(preg);
+				return -1;
+			}
+
+			/*
+			 *	Don't care about substring matches, oh well...
+			 */
+			slen = regex_exec(preg, value, talloc_array_length(value) - 1, NULL, NULL);
+			talloc_free(preg);
+			talloc_free(value);
+
+			if (slen < 0) return -1;
+			if (a->op == T_OP_REG_EQ) return (int)slen;
+			return !slen;
+		}
+#endif
+
+	default:		/* we're OK */
+		if (!b) return false;
+		break;
+	}
+
+	return fr_pair_cmp_op(a->op, b, a);
+}
+
+/** Determine equality of two lists
+ *
+ * This is useful for comparing lists of attributes inserted into a binary tree.
+ *
+ * @param a first list of #VALUE_PAIR.
+ * @param b second list of #VALUE_PAIR.
+ * @return
+ *	- -1 if a < b.
+ *	- 0 if the two lists are equal.
+ *	- 1 if a > b.
+ *	- -2 on error.
+ */
+int fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
+{
+	vp_cursor_t a_cursor, b_cursor;
+	VALUE_PAIR *a_p, *b_p;
+	int ret;
+
+	for (a_p = fr_cursor_init(&a_cursor, &a), b_p = fr_cursor_init(&b_cursor, &b);
+	     a_p && b_p;
+	     a_p = fr_cursor_next(&a_cursor), b_p = fr_cursor_next(&b_cursor)) {
+		/* Same VP, no point doing expensive checks */
+		if (a_p == b_p) {
+			continue;
+		}
+
+		if (a_p->da < b_p->da) {
+			return -1;
+		}
+		if (a_p->da > b_p->da) {
+			return 1;
+		}
+
+		if (a_p->tag < b_p->tag) {
+			return -1;
+		}
+		if (a_p->tag > b_p->tag) {
+			return 1;
+		}
+
+		ret = value_data_cmp(a_p->da->type, &a_p->data,
+				     b_p->da->type, &b_p->data);
+		if (ret != 0) {
+			fr_assert(ret >= -1); 	/* Comparison error */
+			return ret;
+		}
+	}
+
+	if (!a_p && !b_p) {
+		return 0;
+	}
+
+	if (!a_p) {
+		return -1;
+	}
+
+	/* if(!b_p) */
+	return 1;
+}
+
+static void fr_pair_list_sort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **back)
 {
 	VALUE_PAIR *fast;
 	VALUE_PAIR *slow;
@@ -373,7 +1022,7 @@ static void pairsort_split(VALUE_PAIR *source, VALUE_PAIR **front, VALUE_PAIR **
 	slow->next = NULL;
 }
 
-static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_cmp_t cmp)
+static VALUE_PAIR *fr_pair_list_sort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_cmp_t cmp)
 {
 	VALUE_PAIR *result = NULL;
 
@@ -385,10 +1034,10 @@ static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_cmp_t cmp)
 	 */
 	if (cmp(a, b) <= 0) {
 		result = a;
-		result->next = pairsort_merge(a->next, b, cmp);
+		result->next = fr_pair_list_sort_merge(a->next, b, cmp);
 	} else {
 		result = b;
-		result->next = pairsort_merge(a, b->next, cmp);
+		result->next = fr_pair_list_sort_merge(a, b->next, cmp);
 	}
 
 	return result;
@@ -399,7 +1048,7 @@ static VALUE_PAIR *pairsort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_cmp_t cmp)
  * @param[in,out] vps List of VALUE_PAIRs to sort.
  * @param[in] cmp to sort with
  */
-void pairsort(VALUE_PAIR **vps, fr_cmp_t cmp)
+void fr_pair_list_sort(VALUE_PAIR **vps, fr_cmp_t cmp)
 {
 	VALUE_PAIR *head = *vps;
 	VALUE_PAIR *a;
@@ -412,14 +1061,14 @@ void pairsort(VALUE_PAIR **vps, fr_cmp_t cmp)
 		return;
 	}
 
-	pairsort_split(head, &a, &b);	/* Split into sublists */
-	pairsort(&a, cmp);		/* Traverse left */
-	pairsort(&b, cmp);		/* Traverse right */
+	fr_pair_list_sort_split(head, &a, &b);	/* Split into sublists */
+	fr_pair_list_sort(&a, cmp);		/* Traverse left */
+	fr_pair_list_sort(&b, cmp);		/* Traverse right */
 
 	/*
 	 *	merge the two sorted lists together
 	 */
-	*vps = pairsort_merge(a, b, cmp);
+	*vps = fr_pair_list_sort_merge(a, b, cmp);
 }
 
 /** Write an error to the library errorbuff detailing the mismatch
@@ -431,7 +1080,7 @@ void pairsort(VALUE_PAIR **vps, fr_cmp_t cmp)
  * @param ctx a hack until we have thread specific talloc contexts.
  * @param failed pair of attributes which didn't match.
  */
-void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
+void fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 {
 	VALUE_PAIR const *filter = failed[0];
 	VALUE_PAIR const *list = failed[1];
@@ -460,8 +1109,8 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 	}
 
 
-	value = vp_aprints_value(ctx, list, '"');
-	str = vp_aprints(ctx, filter, '"');
+	value = fr_pair_asprint(ctx, list, '"');
+	str = fr_pair_asprint(ctx, filter, '"');
 
 	fr_strerror_printf("Attribute value \"%s\" didn't match filter: %s", value, str);
 
@@ -471,7 +1120,7 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
 	return;
 }
 
-/** Uses paircmp to verify all VALUE_PAIRs in list match the filter defined by check
+/** Uses fr_pair_cmp to verify all VALUE_PAIRs in list match the filter defined by check
  *
  * @note will sort both filter and list in place.
  *
@@ -480,7 +1129,7 @@ void pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2])
  * @param filter attributes to check list against.
  * @param list attributes, probably a request or reply
  */
-bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list)
+bool fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list)
 {
 	vp_cursor_t filter_cursor;
 	vp_cursor_t list_cursor;
@@ -497,8 +1146,8 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 	 *
 	 *	@todo this should be removed one we have sets and lists
 	 */
-	pairsort(&filter, attrtagcmp);
-	pairsort(&list, attrtagcmp);
+	fr_pair_list_sort(&filter, fr_pair_cmp_by_da_tag);
+	fr_pair_list_sort(&list, fr_pair_cmp_by_da_tag);
 
 	check = fr_cursor_init(&filter_cursor, &filter);
 	match = fr_cursor_init(&list_cursor, &list);
@@ -522,7 +1171,7 @@ bool pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *l
 		 *	Note that the RFCs say that for attributes of
 		 *	the same type, order is important.
 		 */
-		if (paircmp(check, match) != 1) goto mismatch;
+		if (fr_pair_cmp(check, match) != 1) goto mismatch;
 
 		check = fr_cursor_next(&filter_cursor);
 		match = fr_cursor_next(&list_cursor);
@@ -538,7 +1187,7 @@ mismatch:
 	return false;
 }
 
-/** Uses paircmp to verify all VALUE_PAIRs in list match the filter defined by check
+/** Uses fr_pair_cmp to verify all VALUE_PAIRs in list match the filter defined by check
  *
  * @note will sort both filter and list in place.
  *
@@ -547,7 +1196,7 @@ mismatch:
  * @param filter attributes to check list against.
  * @param list attributes, probably a request or reply
  */
-bool pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list)
+bool fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list)
 {
 	vp_cursor_t filter_cursor;
 	vp_cursor_t list_cursor;
@@ -564,8 +1213,8 @@ bool pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE
 	 *
 	 *	@todo this should be removed one we have sets and lists
 	 */
-	pairsort(&filter, attrtagcmp);
-	pairsort(&list, attrtagcmp);
+	fr_pair_list_sort(&filter, fr_pair_cmp_by_da_tag);
+	fr_pair_list_sort(&list, fr_pair_cmp_by_da_tag);
 
 	fr_cursor_init(&list_cursor, &list);
 	for (check = fr_cursor_init(&filter_cursor, &filter);
@@ -598,7 +1247,7 @@ bool pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE
 			/*
 			 *	This attribute passed the filter
 			 */
-			if (!paircmp(check, match)) goto mismatch;
+			if (!fr_pair_cmp(check, match)) goto mismatch;
 		}
 	}
 
@@ -612,74 +1261,152 @@ mismatch:
 	return false;
 }
 
-/** Copy a single valuepair
+/** Read one line of attribute/value pairs into a list.
  *
- * Allocate a new valuepair and copy the da from the old vp.
+ * The line may specify multiple attributes separated by commas.
  *
- * @param[in] ctx for talloc
- * @param[in] vp to copy.
- * @return a copy of the input VP or NULL on error.
+ * @note If the function returns #T_INVALID, an error has occurred and
+ * @note the valuepair list should probably be freed.
+ *
+ * @param ctx for talloc
+ * @param buffer to read valuepairs from.
+ * @param list where the parsed VALUE_PAIRs will be appended.
+ * @return the last token parsed, or #T_INVALID
  */
-VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
+FR_TOKEN fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 {
-	VALUE_PAIR *n;
-
-	if (!vp) return NULL;
-
-	VERIFY_VP(vp);
-
-	n = pairalloc(ctx, vp->da);
-	if (!n) return NULL;
-
-	memcpy(n, vp, sizeof(*n));
+	VALUE_PAIR	*vp, *head, **tail;
+	char const	*p;
+	FR_TOKEN	last_token = T_INVALID;
+	VALUE_PAIR_RAW	raw;
 
 	/*
-	 *	If the DA is unknown, steal "n" to "ctx".  This does
-	 *	nothing for "n", but will also copy the unknown "da".
+	 *	We allow an empty line.
 	 */
-	if (n->da->flags.is_unknown) {
-		pairsteal(ctx, n);
+	if (buffer[0] == 0) {
+		return T_EOL;
 	}
 
-	n->next = NULL;
+	head = NULL;
+	tail = &head;
+
+	p = buffer;
+	do {
+		raw.l_opand[0] = '\0';
+		raw.r_opand[0] = '\0';
+
+		last_token = fr_pair_raw_from_str(&p, &raw);
+
+		/*
+		 *	JUST a hash.  Don't try to create a VP.
+		 *	Let the caller determine if an empty list is OK.
+		 */
+		if (last_token == T_HASH) {
+			last_token = T_EOL;
+			break;
+		}
+		if (last_token == T_INVALID) break;
+
+		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
+			vp = fr_pair_make(ctx, NULL, raw.l_opand, NULL, raw.op);
+			if (!vp) {
+				last_token = T_INVALID;
+				break;
+			}
+			if (fr_pair_mark_xlat(vp, raw.r_opand) < 0) {
+				talloc_free(vp);
+				last_token = T_INVALID;
+				break;
+			}
+		} else {
+			vp = fr_pair_make(ctx, NULL, raw.l_opand, raw.r_opand, raw.op);
+			if (!vp) {
+				last_token = T_INVALID;
+				break;
+			}
+		}
+
+		*tail = vp;
+		tail = &((*tail)->next);
+	} while (*p && (last_token == T_COMMA));
+
+	if (last_token == T_INVALID) {
+		fr_pair_list_free(&head);
+	} else {
+		fr_pair_add(list, head);
+	}
 
 	/*
-	 *	If it's an xlat, copy the raw string and return early,
-	 *	so we don't pre-expand or otherwise mangle the VALUE_PAIR.
+	 *	And return the last token which we read.
 	 */
-	if (vp->type == VT_XLAT) {
-		n->xlat = talloc_typed_strdup(n, n->xlat);
-		return n;
-	}
-
-	switch (vp->da->type) {
-	case PW_TYPE_TLV:
-	case PW_TYPE_OCTETS:
-		n->vp_octets = NULL;	/* else pairmemcpy will free vp's value */
-		pairmemcpy(n, vp->vp_octets, n->vp_length);
-		break;
-
-	case PW_TYPE_STRING:
-		n->vp_strvalue = NULL;	/* else pairstrnpy will free vp's value */
-		pairstrncpy(n, vp->vp_strvalue, n->vp_length);
-		break;
-
-	default:
-		break;
-	}
-
-	return n;
+	return last_token;
 }
 
-/** Copy a pairlist.
+/*
+ *	Read valuepairs from the fp up to End-Of-File.
+ */
+int fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone)
+{
+	char buf[8192];
+	FR_TOKEN last_token = T_EOL;
+
+	vp_cursor_t cursor;
+
+	VALUE_PAIR *vp = NULL;
+	fr_cursor_init(&cursor, out);
+
+	while (fgets(buf, sizeof(buf), fp) != NULL) {
+		/*
+		 *      If we get a '\n' by itself, we assume that's
+		 *      the end of that VP
+		 */
+		if (buf[0] == '\n') {
+			if (vp) {
+				*pfiledone = false;
+				return 0;
+			}
+			continue;
+		}
+
+		/*
+		 *	Comments get ignored
+		 */
+		if (buf[0] == '#') continue;
+
+		/*
+		 *	Read all of the attributes on the current line.
+		 */
+		vp = NULL;
+		last_token = fr_pair_list_afrom_str(ctx, buf, &vp);
+		if (!vp) {
+			if (last_token != T_EOL) goto error;
+			break;
+		}
+
+		fr_cursor_merge(&cursor, vp);
+		buf[0] = '\0';
+	}
+	*pfiledone = true;
+
+	return 0;
+
+error:
+	*pfiledone = false;
+	vp = fr_cursor_first(&cursor);
+	if (vp) fr_pair_list_free(&vp);
+
+	return -1;
+}
+
+/** Copy a pairlist
  *
  * Copy all pairs from 'from' regardless of tag, attribute or vendor.
  *
- * @param[in] ctx for new VALUE_PAIRs to be allocated in.
- * @param[in] from whence to copy VALUE_PAIRs.
- * @return the head of the new VALUE_PAIR list or NULL on error.
+ * @param[in] ctx for new #VALUE_PAIR (s) to be allocated in.
+ * @param[in] from whence to copy #VALUE_PAIR (s).
+ * @return the head of the new #VALUE_PAIR list or NULL on error.
  */
-VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
+VALUE_PAIR *fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR *from)
 {
 	vp_cursor_t src, dst;
 
@@ -690,12 +1417,12 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
 	     vp;
 	     vp = fr_cursor_next(&src)) {
 		VERIFY_VP(vp);
-		vp = paircopyvp(ctx, vp);
+		vp = fr_pair_copy(ctx, vp);
 		if (!vp) {
-			pairfree(&out);
+			fr_pair_list_free(&out);
 			return NULL;
 		}
-		fr_cursor_insert(&dst, vp); /* paircopy sets next pointer to NULL */
+		fr_cursor_insert(&dst, vp); /* fr_pair_list_copy sets next pointer to NULL */
 	}
 
 	return out;
@@ -707,13 +1434,14 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from)
  * the input list to a new list, and returns the head of this list.
  *
  * @param[in] ctx for talloc
- * @param[in] from whence to copy VALUE_PAIRs.
+ * @param[in] from whence to copy #VALUE_PAIR.
  * @param[in] attr to match, if 0 input list will not be filtered by attr.
  * @param[in] vendor to match.
- * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
- * @return the head of the new VALUE_PAIR list or NULL on error.
+ * @param[in] tag to match, #TAG_ANY matches any tag, #TAG_NONE matches tagless VPs.
+ * @return the head of the new #VALUE_PAIR list or NULL on error.
  */
-VALUE_PAIR *paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag)
+VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr,
+				     unsigned int vendor, int8_t tag)
 {
 	vp_cursor_t src, dst;
 
@@ -733,9 +1461,9 @@ VALUE_PAIR *paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr
 			continue;
 		}
 
-		vp = paircopyvp(ctx, vp);
+		vp = fr_pair_copy(ctx, vp);
 		if (!vp) {
-			pairfree(&out);
+			fr_pair_list_free(&out);
 			return NULL;
 		}
 		fr_cursor_insert(&dst, vp);
@@ -744,46 +1472,14 @@ VALUE_PAIR *paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr
 	return out;
 }
 
-/** Steal one VP
- *
- * @param[in] ctx to move VALUE_PAIR into
- * @param[in] vp VALUE_PAIR to move into the new context.
- */
-void pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
-{
-	(void) talloc_steal(ctx, vp);
 
-	/*
-	 *	The DA may be unknown.  If we're stealing the VPs to a
-	 *	different context, copy the unknown DA.  We use the VP
-	 *	as a context here instead of "ctx", so that when the
-	 *	VP is freed, so is the DA.
-	 *
-	 *	Since we have no introspection into OTHER VPs using
-	 *	the same DA, we can't have multiple VPs use the same
-	 *	DA.  So we might as well tie it to this VP.
-	 */
-	if (vp->da->flags.is_unknown) {
-		DICT_ATTR *da;
-		char *p;
-		size_t size;
-
-		size = talloc_get_size(vp->da);
-
-		p = talloc_zero_array(vp, char, size);
-		da = (DICT_ATTR *) p;
-		talloc_set_type(p, DICT_ATTR);
-		memcpy(da, vp->da, size);
-		vp->da = da;
-	}
-}
 
 /** Move pairs from source list to destination list respecting operator
  *
  * @note This function does some additional magic that's probably not needed
  *	 in most places. Consider using radius_pairmove in server code.
  *
- * @note pairfree should be called on the head of the source list to free
+ * @note fr_pair_list_free should be called on the head of the source list to free
  *	 unmoved attributes (if they're no longer needed).
  *
  * @note Does not respect tags when matching.
@@ -794,7 +1490,7 @@ void pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
  *
  * @see radius_pairmove
  */
-void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
+void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 {
 	VALUE_PAIR *i, *found;
 	VALUE_PAIR *head_new, **tail_new;
@@ -850,7 +1546,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	it doesn't already exist.
 		 */
 		case T_OP_EQ:
-			found = pair_find_by_da(*to, i->da, TAG_ANY);
+			found = fr_pair_find_by_da(*to, i->da, TAG_ANY);
 			if (!found) goto do_add;
 
 			tail_from = &(i->next);
@@ -861,15 +1557,15 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	of the same vendor/attr which already exists.
 		 */
 		case T_OP_SET:
-			found = pair_find_by_da(*to, i->da, TAG_ANY);
+			found = fr_pair_find_by_da(*to, i->da, TAG_ANY);
 			if (!found) goto do_add;
 
 			/*
-			 *	Do NOT call pairdelete() here,
+			 *	Do NOT call fr_pair_delete_by_num() here,
 			 *	due to issues with re-writing
 			 *	"request->username".
 			 *
-			 *	Everybody calls pairmove, and
+			 *	Everybody calls fr_pair_move, and
 			 *	expects it to work.  We can't
 			 *	update request->username here,
 			 *	so instead we over-write the
@@ -882,18 +1578,13 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 				found->next = j;
 				break;
 
-			case PW_TYPE_TLV:
-				pairmemsteal(found, i->vp_tlv);
-				i->vp_tlv = NULL;
-				break;
-
 			case PW_TYPE_OCTETS:
-				pairmemsteal(found, i->vp_octets);
+				fr_pair_value_memsteal(found, i->vp_octets);
 				i->vp_octets = NULL;
 				break;
 
 			case PW_TYPE_STRING:
-				pairstrsteal(found, i->vp_strvalue);
+				fr_pair_value_strsteal(found, i->vp_strvalue);
 				i->vp_strvalue = NULL;
 				found->tag = i->tag;
 				break;
@@ -903,7 +1594,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			 *	Delete *all* of the attributes
 			 *	of the same number.
 			 */
-			pairdelete(&found->next,
+			fr_pair_delete_by_num(&found->next,
 				   found->da->attr,
 				   found->da->vendor, TAG_ANY);
 
@@ -913,7 +1604,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			 */
 			*tail_from = i->next;
 			i->next = NULL;
-			pairfree(&i);
+			fr_pair_list_free(&i);
 			continue;
 
 		/*
@@ -925,7 +1616,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			*tail_from = i->next;
 			i->next = NULL;
 			*tail_new = i;
-			pairsteal(ctx, i);
+			fr_pair_steal(ctx, i);
 			tail_new = &(i->next);
 			continue;
 		}
@@ -934,7 +1625,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	/*
 	 *	Take the "new" list, and append it to the "to" list.
 	 */
-	pairadd(to, head_new);
+	fr_pair_add(to, head_new);
 }
 
 /** Move matching pairs between VALUE_PAIR lists
@@ -944,7 +1635,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  *
  * @note pairs which are moved have their parent changed to ctx.
  *
- * @note pairfree should be called on the head of the old list to free unmoved
+ * @note fr_pair_list_free should be called on the head of the old list to free unmoved
 	 attributes (if they're no longer needed).
  *
  * @param[in] ctx for talloc
@@ -957,7 +1648,8 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  * @param[in] vendor to match.
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  */
-void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor, int8_t tag)
+void fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
+			      unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	VALUE_PAIR *to_tail, *i, *next;
 	VALUE_PAIR *iprev = NULL;
@@ -978,7 +1670,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 
 	/*
 	 *	Attr/vendor of 0 means "move them all".
-	 *	It's better than "pairadd(foo,bar);bar=NULL"
+	 *	It's better than "fr_pair_add(foo,bar);bar=NULL"
 	 */
 	if ((vendor == 0) && (attr == 0)) {
 		if (*to) {
@@ -988,7 +1680,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 		}
 
 		for (i = *from; i; i = i->next) {
-			pairsteal(ctx, i);
+			fr_pair_steal(ctx, i);
 		}
 
 		*from = NULL;
@@ -1052,7 +1744,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 			*to = i;
 		to_tail = i;
 		i->next = NULL;
-		pairsteal(ctx, i);
+		fr_pair_steal(ctx, i);
 	}
 }
 
@@ -1062,11 +1754,12 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
  * @param value string to convert. Binary safe for variable length values if len is provided.
  * @param inlen may be < 0 in which case strlen(len) is used to determine length, else inline
  *	  should be the length of the string or sub string to parse.
- * @return 0 on success -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
+int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 {
-	ssize_t ret;
 	PW_TYPE type;
 	VERIFY_VP(vp);
 
@@ -1078,8 +1771,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	 *	We presume that the input data is from a double quoted
 	 *	string, and needs escaping
 	 */
-	ret = value_data_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"');
-	if (ret < 0) return -1;
+	if (value_data_from_str(vp, &vp->data, &type, vp->da, value, inlen, '"') < 0) return -1;
 
 	/*
 	 *	If we parsed to a different type than the DA associated with
@@ -1096,8 +1788,6 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 		}
 		vp->da = da;
 	}
-
-	vp->vp_length = ret;
 	vp->type = VT_DATA;
 
 	VERIFY_VP(vp);
@@ -1105,384 +1795,446 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value, size_t inlen)
 	return 0;
 }
 
-/** Use simple heuristics to create an VALUE_PAIR from an unknown address string
+/** Set the type of the VALUE_PAIR value buffer to match it's DICT_ATTR
  *
- * If a DICT_ATTR is not provided for the address type, parsing will fail with
- * and error.
- *
- * @param ctx to allocate VP in.
- * @param value IPv4/IPv6 address/prefix string.
- * @param ipv4 dictionary attribute to use for an IPv4 address.
- * @param ipv6 dictionary attribute to use for an IPv6 address.
- * @param ipv4_prefix dictionary attribute to use for an IPv4 prefix.
- * @param ipv6_prefix dictionary attribute to use for an IPv6 prefix.
- * @return NULL on error, or new VALUE_PAIR.
+ * @param vp to fixup.
  */
-VALUE_PAIR *pairmake_ip(TALLOC_CTX *ctx, char const *value, DICT_ATTR *ipv4, DICT_ATTR *ipv6,
-			DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix)
+static void fr_pair_value_set_type(VALUE_PAIR *vp)
 {
-	VALUE_PAIR *vp;
-	DICT_ATTR *da = NULL;
+	if (!vp->data.ptr) return;
 
-	if (!fr_assert(ipv4 || ipv6 || ipv4_prefix || ipv6_prefix)) {
-		return NULL;
+	switch (vp->da->type) {
+	case PW_TYPE_OCTETS:
+		talloc_set_type(vp->data.ptr, uint8_t);
+		return;
+
+	case PW_TYPE_STRING:
+		talloc_set_type(vp->data.ptr, char);
+		return;
+
+	default:
+		return;
 	}
-
-	/* No point in repeating the work of pairparsevalue */
-	if (strchr(value, ':')) {
-		if (strchr(value, '/')) {
-			da = ipv6_prefix;
-			goto finish;
-		}
-
-		da = ipv6;
-		goto finish;
-	}
-
-	if (strchr(value, '/')) {
-		da = ipv4_prefix;
-		goto finish;
-	}
-
-	if (ipv4) {
-		da = ipv4;
-		goto finish;
-	}
-
-	fr_strerror_printf("Invalid IP value specified, allowed types are %s%s%s%s",
-			   ipv4 ? "ipaddr " : "", ipv6 ? "ipv6addr " : "",
-			   ipv4_prefix ? "ipv4prefix " : "", ipv6_prefix ? "ipv6prefix" : "");
-
-finish:
-	vp = pairalloc(ctx, da);
-	if (!vp) return NULL;
-	if (pairparsevalue(vp, value, -1) < 0) {
-		talloc_free(vp);
-		return NULL;
-	}
-
-	return vp;
 }
 
-
-static VALUE_PAIR *pair_unknown2known(VALUE_PAIR *vp, DICT_ATTR const *da)
+/** Copy data into an "octets" data type.
+ *
+ * @param[in,out] vp to update
+ * @param[in] src data to copy
+ * @param[in] size of the data, may be 0 in which case previous value will be freed.
+ */
+void fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 {
-	ssize_t len;
-	VALUE_PAIR *vp2;
+	uint8_t *p = NULL, *q;
 
-	len = data2vp(NULL, NULL, NULL, NULL, da,
-		      vp->vp_octets, vp->vp_length, vp->vp_length,
-		      &vp2);
-	if (len < 0) return vp; /* it's really unknown */
+	VERIFY_VP(vp);
 
-	if (vp2->da->flags.is_unknown) {
-		pairfree(&vp2);
-		return vp;
+	if (size > 0) {
+		p = talloc_memdup(vp, src, size);
+		if (!p) return;
+		talloc_set_type(p, uint8_t);
 	}
 
-	/*
-	 *	Didn't parse all of it.  Return the "unknown" one.
-	 *
-	 *	FIXME: it COULD have parsed 2 attributes and
-	 *	then not the third, so returning 2 "knowns"
-	 *	and 1 "unknown" is likely preferable.
-	 */
-	if ((size_t) len < vp->vp_length) {
-		pairfree(&vp2);
-		return vp;
-	}
+	memcpy(&q, &vp->vp_octets, sizeof(q));
+	TALLOC_FREE(q);
 
-	pairsteal(talloc_parent(vp), vp2);
-	pairfree(&vp);
-	return vp2;
+	vp->vp_octets = p;
+	vp->vp_length = size;
+
+	if (size > 0) fr_pair_value_set_type(vp);
 }
 
-/** Create a valuepair from an ASCII attribute and value
+/** Reparent an allocated octet buffer to a VALUE_PAIR
  *
- * Where the attribute name is in the form:
- *  - Attr-%d
- *  - Attr-%d.%d.%d...
- *  - Vendor-%d-Attr-%d
- *  - VendorName-Attr-%d
- *
- * @param ctx for talloc
- * @param attribute name to parse.
- * @param value to parse (must be a hex string).
- * @param op to assign to new valuepair.
- * @return new valuepair or NULL on error.
+ * @param[in,out] vp to update
+ * @param[in] src buffer to steal.
  */
-static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
-				char const *attribute, char const *value,
-				FR_TOKEN op)
+void fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src)
 {
-	VALUE_PAIR	*vp;
-	DICT_ATTR const *da;
+	uint8_t *q;
 
-	uint8_t 	*data;
-	size_t		size;
+	VERIFY_VP(vp);
 
-	da = dict_unknown_afrom_str(ctx, attribute);
-	if (!da) return NULL;
+	memcpy(&q, &vp->vp_octets, sizeof(q));
+	talloc_free(q);
 
-	/*
-	 *	Unknown attributes MUST be of type 'octets'
-	 */
-	if (value && (strncasecmp(value, "0x", 2) != 0)) {
-		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
-				   "string, not \"%s\"", attribute, value);
+	vp->vp_octets = talloc_steal(vp, src);
+	vp->type = VT_DATA;
+	vp->vp_length = talloc_array_length(vp->vp_strvalue);
+	fr_pair_value_set_type(vp);
+}
 
-		dict_attr_free(&da);
-		return NULL;
-	}
+/** Reparent an allocated char buffer to a VALUE_PAIR
+ *
+ * @param[in,out] vp to update
+ * @param[in] src buffer to steal.
+ */
+void fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src)
+{
+	uint8_t *q;
 
-	/*
-	 *	We've now parsed the attribute properly, Let's create
-	 *	it.  This next stop also looks the attribute up in the
-	 *	dictionary, and creates the appropriate type for it.
-	 */
-	vp = pairalloc(ctx, da);
-	if (!vp) {
-		dict_attr_free(&da);
-		return NULL;
-	}
+	VERIFY_VP(vp);
 
-	vp->op = (op == 0) ? T_OP_EQ : op;
+	memcpy(&q, &vp->vp_octets, sizeof(q));
+	talloc_free(q);
 
-	if (!value) return vp;
+	vp->vp_strvalue = talloc_steal(vp, src);
+	vp->type = VT_DATA;
+	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
+	fr_pair_value_set_type(vp);
+}
 
-	size = strlen(value + 2);
-	vp->vp_length = size >> 1;
-	data = talloc_array(vp, uint8_t, vp->vp_length);
+/** Copy data into an "string" data type.
+ *
+ * @param[in,out] vp to update
+ * @param[in] src data to copy
+ */
+void fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src)
+{
+	char *p, *q;
 
-	if (fr_hex2bin(data, vp->vp_length, value + 2, size) != vp->vp_length) {
-		fr_strerror_printf("Invalid hex string");
-		talloc_free(vp);
-		return NULL;
-	}
+	VERIFY_VP(vp);
 
-	vp->vp_octets = data;
+	p = talloc_strdup(vp, src);
+
+	if (!p) return;
+
+	memcpy(&q, &vp->vp_strvalue, sizeof(q));
+	talloc_free(q);
+
+	vp->vp_strvalue = p;
+	vp->type = VT_DATA;
+	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
+	fr_pair_value_set_type(vp);
+}
+
+/** Copy data into an "string" data type.
+ *
+ * @note unlike the original strncpy, this function does not stop
+ *	if it finds \0 bytes embedded in the string.
+ *
+ * @param[in,out] vp to update.
+ * @param[in] src data to copy.
+ * @param[in] len of data to copy.
+ */
+void fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len)
+{
+	char *p, *q;
+
+	VERIFY_VP(vp);
+
+	p = talloc_array(vp, char, len + 1);
+	if (!p) return;
+
+	memcpy(p, src, len);	/* embdedded \0 safe */
+	p[len] = '\0';
+
+	memcpy(&q, &vp->vp_strvalue, sizeof(q));
+	talloc_free(q);
+
+	vp->vp_strvalue = p;
+	vp->type = VT_DATA;
+	vp->vp_length = len;
+	fr_pair_value_set_type(vp);
+}
+
+/** Print data into an "string" data type.
+ *
+ * @param[in,out] vp to update
+ * @param[in] fmt the format string
+ */
+void fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...)
+{
+	va_list ap;
+	char *p, *q;
+
+	VERIFY_VP(vp);
+
+	va_start(ap, fmt);
+	p = talloc_vasprintf(vp, fmt, ap);
+	va_end(ap);
+
+	if (!p) return;
+
+	memcpy(&q, &vp->vp_strvalue, sizeof(q));
+	talloc_free(q);
+
+	vp->vp_strvalue = p;
 	vp->type = VT_DATA;
 
-	/*
-	 *	Convert unknowns to knowns
-	 */
-	da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
-	if (da) {
-		return pair_unknown2known(vp, da);
-	}
-
-	return vp;
+	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
+	fr_pair_value_set_type(vp);
 }
 
 
-/** Create a VALUE_PAIR from ASCII strings
+
+/** Escape string that may contain binary data, and write it to a new buffer
  *
- * Converts an attribute string identifier (with an optional tag qualifier)
- * and value string into a VALUE_PAIR.
+ * This is useful in situations where we expect printable strings as input,
+ * but under some conditions may get binary data. A good example is libldap
+ * and the arrays of struct berval ldap_get_values_len returns.
  *
- * The string value is parsed according to the type of VALUE_PAIR being created.
- *
- * @param[in] ctx for talloc
- * @param[in] vps list where the attribute will be added (optional)
- * @param[in] attribute name.
- * @param[in] value attribute value (may be NULL if value will be set later).
- * @param[in] op to assign to new VALUE_PAIR.
- * @return a new VALUE_PAIR.
+ * @param[in] ctx To allocate new buffer in.
+ * @param[in] in String to escape.
+ * @param[in] inlen Length of string. Should be >= 0 if the data may contain
+ *	embedded \0s. Must be >= 0 if data may not be \0 terminated.
+ *	If < 0 inlen will be calculated using strlen.
+ * @param[in] quote the quotation character.
+ * @return new buffer holding the escaped string.
  */
-VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
-		     char const *attribute, char const *value, FR_TOKEN op)
+char *fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
 {
-	DICT_ATTR const *da;
-	VALUE_PAIR	*vp;
-	char		*tc, *ts;
-	int8_t		tag;
-	bool		found_tag;
-	char		buffer[256];
-	char const	*attrname = attribute;
+	size_t len, ret;
+	char *out;
 
+	len = fr_snprint_len(in, inlen, quote);
+
+	out = talloc_array(ctx, char, len);
+	ret = fr_snprint(out, len, in, inlen, quote);
 	/*
-	 *    Check for tags in 'Attribute:Tag' format.
+	 *	This is a fatal error, but fr_assert is the strongest
+	 *	assert we're allowed to use in library functions.
 	 */
-	found_tag = false;
-	tag = TAG_ANY;
-
-	ts = strrchr(attribute, ':');
-	if (ts && !ts[1]) {
-		fr_strerror_printf("Invalid tag for attribute %s", attribute);
+	if (!fr_assert(ret == (len - 1))) {
+		talloc_free(out);
 		return NULL;
 	}
 
-	if (ts && ts[1]) {
-		strlcpy(buffer, attribute, sizeof(buffer));
-		attrname = buffer;
-		ts = strrchr(attrname, ':');
-		if (!ts) return NULL;
+	return out;
+}
 
-		 /* Colon found with something behind it */
-		 if (ts[1] == '*' && ts[2] == 0) {
-			 /* Wildcard tag for check items */
-			 tag = TAG_ANY;
-			 *ts = '\0';
-		 } else if ((ts[1] >= '0') && (ts[1] <= '9')) {
-			 /* It's not a wild card tag */
-			 tag = strtol(ts + 1, &tc, 0);
-			 if (tc && !*tc && TAG_VALID_ZERO(tag))
-				 *ts = '\0';
-			 else tag = TAG_ANY;
-		 } else {
-			 fr_strerror_printf("Invalid tag for attribute %s", attribute);
-			 return NULL;
-		 }
-		 found_tag = true;
+/** Print the value of an attribute to a string
+ *
+ * @param[out] out Where to write the string.
+ * @param[in] outlen Size of outlen (must be at least 3 bytes).
+ * @param[in] vp to print.
+ * @param[in] quote Char to add before and after printed value, if 0 no char will be added, if < 0
+ *	raw string will be added.
+ * @return
+ *	- Length of data written to out.
+ *	- Value >= outlen on truncation.
+ */
+size_t fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, char quote)
+{
+	VERIFY_VP(vp);
+
+	if (vp->type == VT_XLAT) {
+		return snprintf(out, outlen, "%c%s%c", quote, vp->xlat, quote);
 	}
 
-	/*
-	 *	It's not found in the dictionary, so we use
-	 *	another method to create the attribute.
-	 */
-	da = dict_attrbyname(attrname);
-	if (!da) {
-		vp = pairmake_any(ctx, attrname, value, op);
-		if (vp && vps) pairadd(vps, vp);
-		return vp;
-	}
+	return value_data_snprint(out, outlen, vp->da->type, vp->da, &vp->data, quote);
+}
 
-	/*      Check for a tag in the 'Merit' format of:
-	 *      :Tag:Value.  Print an error if we already found
-	 *      a tag in the Attribute.
-	 */
+/** Print one attribute value to a string
+ *
+ * @param ctx to allocate string in.
+ * @param vp to print.
+ * @param[in] quote the quotation character
+ * @return a talloced buffer with the attribute operator and value.
+ */
+char *fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
+{
+	VERIFY_VP(vp);
 
-	if (value && (*value == ':' && da->flags.has_tag)) {
-		/* If we already found a tag, this is invalid */
-		if(found_tag) {
-			fr_strerror_printf("Duplicate tag %s for attribute %s",
-				   value, da->name);
-			DEBUG("Duplicate tag %s for attribute %s\n",
-				   value, da->name);
-			return NULL;
-		}
-		/* Colon found and attribute allows a tag */
-		if (value[1] == '*' && value[2] == ':') {
-		       /* Wildcard tag for check items */
-		       tag = TAG_ANY;
-		       value += 3;
-		} else {
-		       /* Real tag */
-		       tag = strtol(value + 1, &tc, 0);
-		       if (tc && *tc==':' && TAG_VALID_ZERO(tag))
-			    value = tc + 1;
-		       else tag = 0;
-		}
-	}
+	return value_data_asprint(ctx, vp->da->type, vp->da, &vp->data, quote);
+}
 
-	vp = pairalloc(ctx, da);
-	if (!vp) return NULL;
-	vp->op = (op == 0) ? T_OP_EQ : op;
-	vp->tag = tag;
+char *fr_pair_type_snprint(TALLOC_CTX *ctx, PW_TYPE type)
+{
+	switch (type) {
+	case PW_TYPE_STRING :
+		return talloc_typed_strdup(ctx, "_");
 
-	switch (vp->op) {
-	case T_OP_CMP_TRUE:
-	case T_OP_CMP_FALSE:
-		vp->vp_strvalue = NULL;
-		vp->vp_length = 0;
-		value = NULL;	/* ignore it! */
-		break;
+	case PW_TYPE_INTEGER64:
+	case PW_TYPE_SIGNED:
+	case PW_TYPE_BYTE:
+	case PW_TYPE_SHORT:
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_DATE :
+		return talloc_typed_strdup(ctx, "0");
 
-		/*
-		 *	Regular expression comparison of integer attributes
-		 *	does a STRING comparison of the names of their
-		 *	integer attributes.
-		 */
-	case T_OP_REG_EQ:	/* =~ */
-	case T_OP_REG_NE:	/* !~ */
-	{
-#ifndef HAVE_REGEX
-		fr_strerror_printf("Regular expressions are not supported");
-		return NULL;
-#else
-		ssize_t slen;
-		regex_t *preg;
+	case PW_TYPE_IPV4_ADDR :
+		return talloc_typed_strdup(ctx, "?.?.?.?");
 
-		/*
-		 *	Someone else will fill in the value.
-		 */
-		if (!value) break;
+	case PW_TYPE_IPV4_PREFIX:
+		return talloc_typed_strdup(ctx, "?.?.?.?/?");
 
-		talloc_free(vp);
+	case PW_TYPE_IPV6_ADDR:
+		return talloc_typed_strdup(ctx, "[:?:]");
 
-		slen = regex_compile(ctx, &preg, value, strlen(value), false, false, false, true);
-		if (slen <= 0) {
-			fr_strerror_printf("Error at offset %zu compiling regex for %s: %s", -slen,
-					   attribute, fr_strerror());
-			return NULL;
-		}
-		talloc_free(preg);
+	case PW_TYPE_IPV6_PREFIX:
+		return talloc_typed_strdup(ctx, "[:?:]/?");
 
-		vp = pairmake(ctx, NULL, attribute, NULL, op);
-		if (!vp) return NULL;
+	case PW_TYPE_OCTETS:
+		return talloc_typed_strdup(ctx, "??");
 
-		if (pairmark_xlat(vp, value) < 0) {
-			talloc_free(vp);
-			return NULL;
-		}
+	case PW_TYPE_ETHERNET:
+		return talloc_typed_strdup(ctx, "??:??:??:??:??:??:??:??");
 
-		value = NULL;	/* ignore it */
-		break;
+#ifdef WITH_ASCEND_BINARY
+	case PW_TYPE_ABINARY:
+		return talloc_typed_strdup(ctx, "??");
 #endif
-	}
-	default:
+
+	default :
 		break;
 	}
 
-	/*
-	 *	FIXME: if (strcasecmp(attribute, vp->da->name) != 0)
-	 *	then the user MAY have typed in the attribute name
-	 *	as Vendor-%d-Attr-%d, and the value MAY be octets.
-	 *
-	 *	We probably want to fix pairparsevalue to accept
-	 *	octets as values for any attribute.
-	 */
-	if (value && (pairparsevalue(vp, value, -1) < 0)) {
-		talloc_free(vp);
-		return NULL;
-	}
-
-	if (vps) pairadd(vps, vp);
-	return vp;
+	return talloc_typed_strdup(ctx, "<UNKNOWN-TYPE>");
 }
 
-/** Mark a valuepair for xlat expansion
+/** Print one attribute and value to a string
  *
- * Copies xlat source (unprocessed) string to valuepair value,
- * and sets value type.
+ * Print a VALUE_PAIR in the format:
+@verbatim
+	<attribute_name>[:tag] <op> <value>
+@endverbatim
+ * to a string.
  *
- * @param vp to mark for expansion.
- * @param value to expand.
- * @return 0 if marking succeeded or -1 if vp already had a value, or OOM.
+ * @param out Where to write the string.
+ * @param outlen Lenth of output buffer.
+ * @param vp to print.
+ * @return
+ *	- Length of data written to out.
+ *	- value >= outlen on truncation.
  */
-int pairmark_xlat(VALUE_PAIR *vp, char const *value)
+size_t fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
-	char *raw;
+	char const	*token = NULL;
+	size_t		len, freespace = outlen;
 
-	/*
-	 *	valuepair should not already have a value.
-	 */
-	if (vp->type != VT_NONE) {
-		return -1;
+	if (!out) return 0;
+
+	*out = '\0';
+	if (!vp || !vp->da) return 0;
+
+	VERIFY_VP(vp);
+
+	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
+		token = fr_tokens[vp->op];
+	} else {
+		token = "<INVALID-TOKEN>";
 	}
 
-	raw = talloc_typed_strdup(vp, value);
-	if (!raw) {
-		return -1;
+	if (vp->da->flags.has_tag && (vp->tag != TAG_ANY)) {
+		len = snprintf(out, freespace, "%s:%d %s ", vp->da->name, vp->tag, token);
+	} else {
+		len = snprintf(out, freespace, "%s %s ", vp->da->name, token);
 	}
 
-	vp->type = VT_XLAT;
-	vp->xlat = raw;
-	vp->vp_length = 0;
+	if (is_truncated(len, freespace)) return len;
+	out += len;
+	freespace -= len;
 
-	return 0;
+	len = fr_pair_value_snprint(out, freespace, vp, '"');
+	if (is_truncated(len, freespace)) return (outlen - freespace) + len;
+	freespace -= len;
+
+	return (outlen - freespace);
 }
 
+/** Print one attribute and value to FP
+ *
+ * Complete string with '\\t' and '\\n' is written to buffer before printing to
+ * avoid issues when running with multiple threads.
+ *
+ * @param fp to output to.
+ * @param vp to print.
+ */
+void fr_pair_fprint(FILE *fp, VALUE_PAIR const *vp)
+{
+	char	buf[1024];
+	char	*p = buf;
+	size_t	len;
+
+	VERIFY_VP(vp);
+
+	*p++ = '\t';
+	len = fr_pair_snprint(p, sizeof(buf) - 1, vp);
+	if (!len) {
+		return;
+	}
+	p += len;
+
+	/*
+	 *	Deal with truncation gracefully
+	 */
+	if (((size_t) (p - buf)) >= (sizeof(buf) - 2)) {
+		p = buf + (sizeof(buf) - 2);
+	}
+
+	*p++ = '\n';
+	*p = '\0';
+
+	fputs(buf, fp);
+}
+
+
+/** Print a list of attributes and enumv
+ *
+ * @param fp to output to.
+ * @param const_vp to print.
+ */
+void fr_pair_list_fprint(FILE *fp, VALUE_PAIR const *const_vp)
+{
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
+
+	memcpy(&vp, &const_vp, sizeof(vp)); /* const work-arounds */
+
+	for (vp = fr_cursor_init(&cursor, &vp); vp; vp = fr_cursor_next(&cursor)) {
+		fr_pair_fprint(fp, vp);
+	}
+}
+
+/** Print one attribute and value to a string
+ *
+ * Print a VALUE_PAIR in the format:
+@verbatim
+	<attribute_name>[:tag] <op> <value>
+@endverbatim
+ * to a string.
+ *
+ * @param ctx to allocate string in.
+ * @param vp to print.
+ * @param[in] quote the quotation character
+ * @return a talloced buffer with the attribute operator and value.
+ */
+char *fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote)
+{
+	char const	*token = NULL;
+	char 		*str, *value;
+
+	if (!vp || !vp->da) return 0;
+
+	VERIFY_VP(vp);
+
+	if ((vp->op > T_INVALID) && (vp->op < T_TOKEN_LAST)) {
+		token = fr_tokens[vp->op];
+	} else {
+		token = "<INVALID-TOKEN>";
+	}
+
+	value = fr_pair_value_asprint(ctx, vp, quote);
+
+	if (vp->da->flags.has_tag) {
+		if (quote && (vp->da->type == PW_TYPE_STRING)) {
+			str = talloc_asprintf(ctx, "%s:%d %s %c%s%c", vp->da->name, vp->tag, token, quote, value, quote);
+		} else {
+			str = talloc_asprintf(ctx, "%s:%d %s %s", vp->da->name, vp->tag, token, value);
+		}
+	} else {
+		if (quote && (vp->da->type == PW_TYPE_STRING)) {
+			str = talloc_asprintf(ctx, "%s %s %c%s%c", vp->da->name, token, quote, value, quote);
+		} else {
+			str = talloc_asprintf(ctx, "%s %s %s", vp->da->name, token, value);
+		}
+	}
+
+	talloc_free(value);
+
+	return str;
+}
 
 /** Read a single valuepair from a buffer, and advance the pointer
  *
@@ -1492,7 +2244,7 @@ int pairmark_xlat(VALUE_PAIR *vp, char const *value)
  * @param[out] raw The struct to write the raw VALUE_PAIR to.
  * @return the last token read.
  */
-FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
+FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 {
 	char const	*p;
 	char *q;
@@ -1652,453 +2404,11 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 	return ret;
 }
 
-/** Read one line of attribute/value pairs into a list.
- *
- * The line may specify multiple attributes separated by commas.
- *
- * @note If the function returns T_INVALID, an error has occurred and
- * @note the valuepair list should probably be freed.
- *
- * @param ctx for talloc
- * @param buffer to read valuepairs from.
- * @param list where the parsed VALUE_PAIRs will be appended.
- * @return the last token parsed, or T_INVALID
- */
-FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
-{
-	VALUE_PAIR	*vp, *head, **tail;
-	char const	*p;
-	FR_TOKEN	last_token = T_INVALID;
-	VALUE_PAIR_RAW	raw;
-
-	/*
-	 *	We allow an empty line.
-	 */
-	if (buffer[0] == 0) {
-		return T_EOL;
-	}
-
-	head = NULL;
-	tail = &head;
-
-	p = buffer;
-	do {
-		raw.l_opand[0] = '\0';
-		raw.r_opand[0] = '\0';
-
-		last_token = pairread(&p, &raw);
-
-		/*
-		 *	JUST a hash.  Don't try to create a VP.
-		 *	Let the caller determine if an empty list is OK.
-		 */
-		if (last_token == T_HASH) {
-			last_token = T_EOL;
-			break;
-		}
-		if (last_token == T_INVALID) break;
-
-		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
-			vp = pairmake(ctx, NULL, raw.l_opand, NULL, raw.op);
-			if (!vp) {
-				last_token = T_INVALID;
-				break;
-			}
-			if (pairmark_xlat(vp, raw.r_opand) < 0) {
-				talloc_free(vp);
-				last_token = T_INVALID;
-				break;
-			}
-		} else {
-			vp = pairmake(ctx, NULL, raw.l_opand, raw.r_opand, raw.op);
-			if (!vp) {
-				last_token = T_INVALID;
-				break;
-			}
-		}
-
-		*tail = vp;
-		tail = &((*tail)->next);
-	} while (*p && (last_token == T_COMMA));
-
-	if (last_token == T_INVALID) {
-		pairfree(&head);
-	} else {
-		pairadd(list, head);
-	}
-
-	/*
-	 *	And return the last token which we read.
-	 */
-	return last_token;
-}
-
-/*
- *	Read valuepairs from the fp up to End-Of-File.
- */
-int readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone)
-{
-	char buf[8192];
-	FR_TOKEN last_token = T_EOL;
-
-	vp_cursor_t cursor;
-
-	VALUE_PAIR *vp = NULL;
-	fr_cursor_init(&cursor, out);
-
-	while (fgets(buf, sizeof(buf), fp) != NULL) {
-		/*
-		 *      If we get a '\n' by itself, we assume that's
-		 *      the end of that VP
-		 */
-		if (buf[0] == '\n') {
-			if (vp) {
-				*pfiledone = false;
-				return 0;
-			}
-			continue;
-		}
-
-		/*
-		 *	Comments get ignored
-		 */
-		if (buf[0] == '#') continue;
-
-		/*
-		 *	Read all of the attributes on the current line.
-		 */
-		vp = NULL;
-		last_token = userparse(ctx, buf, &vp);
-		if (!vp) {
-			if (last_token != T_EOL) goto error;
-			break;
-		}
-
-		fr_cursor_merge(&cursor, vp);
-		buf[0] = '\0';
-	}
-	*pfiledone = true;
-
-	return 0;
-
-error:
-	*pfiledone = false;
-	vp = fr_cursor_first(&cursor);
-	if (vp) pairfree(&vp);
-
-	return -1;
-}
-
-/** Compare two pairs, using the operator from "a"
- *
- *	i.e. given two attributes, it does:
- *
- *	(b->data) (a->operator) (a->data)
- *
- *	e.g. "foo" != "bar"
- *
- * @param[in] a the first attribute
- * @param[in] b the second attribute
- * @return 1 if true, 0 if false, -1 on error.
- */
-int paircmp(VALUE_PAIR *a, VALUE_PAIR *b)
-{
-	if (!a) return -1;
-
-	VERIFY_VP(a);
-	if (b) VERIFY_VP(b);
-
-	switch (a->op) {
-	case T_OP_CMP_TRUE:
-		return (b != NULL);
-
-	case T_OP_CMP_FALSE:
-		return (b == NULL);
-
-		/*
-		 *	a is a regex, compile it, print b to a string,
-		 *	and then do string comparisons.
-		 */
-	case T_OP_REG_EQ:
-	case T_OP_REG_NE:
-#ifndef HAVE_REGEX
-		return -1;
-#else
-		if (!b) return false;
-
-		{
-			ssize_t	slen;
-			regex_t	*preg;
-			char	*value;
-
-			if (!fr_assert(a->da->type == PW_TYPE_STRING)) return -1;
-
-			slen = regex_compile(NULL, &preg, a->vp_strvalue, a->vp_length, false, false, false, true);
-			if (slen <= 0) {
-				fr_strerror_printf("Error at offset %zu compiling regex for %s: %s",
-						   -slen, a->da->name, fr_strerror());
-				return -1;
-			}
-			value = vp_aprints_value(NULL, b, '\0');
-			if (!value) {
-				talloc_free(preg);
-				return -1;
-			}
-
-			/*
-			 *	Don't care about substring matches, oh well...
-			 */
-			slen = regex_exec(preg, value, talloc_array_length(value) - 1, NULL, NULL);
-			talloc_free(preg);
-			talloc_free(value);
-
-			if (slen < 0) return -1;
-			if (a->op == T_OP_REG_EQ) return (int)slen;
-			return !slen;
-		}
-#endif
-
-	default:		/* we're OK */
-		if (!b) return false;
-		break;
-	}
-
-	return paircmp_op(a->op, b, a);
-}
-
-/** Determine equality of two lists
- *
- * This is useful for comparing lists of attributes inserted into a binary tree.
- *
- * @param a first list of VALUE_PAIRs.
- * @param b second list of VALUE_PAIRs.
- * @return -1 if a < b, 0 if the two lists are equal, 1 if a > b, -2 on error.
- */
-int pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b)
-{
-	vp_cursor_t a_cursor, b_cursor;
-	VALUE_PAIR *a_p, *b_p;
-	int ret;
-
-	for (a_p = fr_cursor_init(&a_cursor, &a), b_p = fr_cursor_init(&b_cursor, &b);
-	     a_p && b_p;
-	     a_p = fr_cursor_next(&a_cursor), b_p = fr_cursor_next(&b_cursor)) {
-		/* Same VP, no point doing expensive checks */
-		if (a_p == b_p) {
-			continue;
-		}
-
-		if (a_p->da < b_p->da) {
-			return -1;
-		}
-		if (a_p->da > b_p->da) {
-			return 1;
-		}
-
-		if (a_p->tag < b_p->tag) {
-			return -1;
-		}
-		if (a_p->tag > b_p->tag) {
-			return 1;
-		}
-
-		ret = value_data_cmp(a_p->da->type, &a_p->data, a_p->vp_length,
-				     b_p->da->type, &b_p->data, b_p->vp_length);
-		if (ret != 0) {
-			fr_assert(ret >= -1); 	/* Comparison error */
-			return ret;
-		}
-	}
-
-	if (!a_p && !b_p) {
-		return 0;
-	}
-
-	if (!a_p) {
-		return -1;
-	}
-
-	/* if(!b_p) */
-	return 1;
-}
-
-/** Set the type of the VALUE_PAIR value buffer to match it's DICT_ATTR
- *
- * @param vp to fixup.
- */
-static void pairtypeset(VALUE_PAIR *vp)
-{
-	if (!vp->data.ptr) return;
-
-	switch (vp->da->type) {
-	case PW_TYPE_OCTETS:
-	case PW_TYPE_TLV:
-		talloc_set_type(vp->data.ptr, uint8_t);
-		return;
-
-	case PW_TYPE_STRING:
-		talloc_set_type(vp->data.ptr, char);
-		return;
-
-	default:
-		return;
-	}
-}
-
-/** Copy data into an "octets" data type.
- *
- * @param[in,out] vp to update
- * @param[in] src data to copy
- * @param[in] size of the data, may be 0 in which case previous value will be freed.
- */
-void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
-{
-	uint8_t *p = NULL, *q;
-
-	VERIFY_VP(vp);
-
-	if (size > 0) {
-		p = talloc_memdup(vp, src, size);
-		if (!p) return;
-		talloc_set_type(p, uint8_t);
-	}
-
-	memcpy(&q, &vp->vp_octets, sizeof(q));
-	TALLOC_FREE(q);
-
-	vp->vp_octets = p;
-	vp->vp_length = size;
-
-	if (size > 0) pairtypeset(vp);
-}
-
-/** Reparent an allocated octet buffer to a VALUE_PAIR
- *
- * @param[in,out] vp to update
- * @param[in] src buffer to steal.
- */
-void pairmemsteal(VALUE_PAIR *vp, uint8_t const *src)
-{
-	uint8_t *q;
-
-	VERIFY_VP(vp);
-
-	memcpy(&q, &vp->vp_octets, sizeof(q));
-	talloc_free(q);
-
-	vp->vp_octets = talloc_steal(vp, src);
-	vp->type = VT_DATA;
-	vp->vp_length = talloc_array_length(vp->vp_strvalue);
-	pairtypeset(vp);
-}
-
-/** Reparent an allocated char buffer to a VALUE_PAIR
- *
- * @param[in,out] vp to update
- * @param[in] src buffer to steal.
- */
-void pairstrsteal(VALUE_PAIR *vp, char const *src)
-{
-	uint8_t *q;
-
-	VERIFY_VP(vp);
-
-	memcpy(&q, &vp->vp_octets, sizeof(q));
-	talloc_free(q);
-
-	vp->vp_strvalue = talloc_steal(vp, src);
-	vp->type = VT_DATA;
-	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
-	pairtypeset(vp);
-}
-
-/** Copy data into an "string" data type.
- *
- * @param[in,out] vp to update
- * @param[in] src data to copy
- */
-void pairstrcpy(VALUE_PAIR *vp, char const *src)
-{
-	char *p, *q;
-
-	VERIFY_VP(vp);
-
-	p = talloc_strdup(vp, src);
-
-	if (!p) return;
-
-	memcpy(&q, &vp->vp_strvalue, sizeof(q));
-	talloc_free(q);
-
-	vp->vp_strvalue = p;
-	vp->type = VT_DATA;
-	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
-	pairtypeset(vp);
-}
-
-/** Copy data into an "string" data type.
- *
- * @note unlike the original strncpy, this function does not stop
- *	if it finds \0 bytes embedded in the string.
- *
- * @param[in,out] vp to update.
- * @param[in] src data to copy.
- * @param[in] len of data to copy.
- */
-void pairstrncpy(VALUE_PAIR *vp, char const *src, size_t len)
-{
-	char *p, *q;
-
-	VERIFY_VP(vp);
-
-	p = talloc_array(vp, char, len + 1);
-	if (!p) return;
-
-	memcpy(p, src, len);	/* embdedded \0 safe */
-	p[len] = '\0';
-
-	memcpy(&q, &vp->vp_strvalue, sizeof(q));
-	talloc_free(q);
-
-	vp->vp_strvalue = p;
-	vp->type = VT_DATA;
-	vp->vp_length = len;
-	pairtypeset(vp);
-}
-
-/** Print data into an "string" data type.
- *
- * @param[in,out] vp to update
- * @param[in] fmt the format string
- */
-void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
-{
-	va_list ap;
-	char *p, *q;
-
-	VERIFY_VP(vp);
-
-	va_start(ap, fmt);
-	p = talloc_vasprintf(vp, fmt, ap);
-	va_end(ap);
-
-	if (!p) return;
-
-	memcpy(&q, &vp->vp_strvalue, sizeof(q));
-	talloc_free(q);
-
-	vp->vp_strvalue = p;
-	vp->type = VT_DATA;
-
-	vp->vp_length = talloc_array_length(vp->vp_strvalue) - 1;
-	pairtypeset(vp);
-}
-
 #ifdef WITH_VERIFY_PTR
 /*
  *	Verify a VALUE_PAIR
  */
-inline void fr_pair_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
+inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 {
 	if (!vp) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR pointer was NULL", file, line);
@@ -2116,7 +2426,6 @@ inline void fr_pair_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 
 	if (vp->data.ptr) switch (vp->da->type) {
 	case PW_TYPE_OCTETS:
-	case PW_TYPE_TLV:
 	{
 		size_t len;
 		TALLOC_CTX *parent;
@@ -2236,7 +2545,7 @@ inline void fr_pair_verify_vp(char const *file, int line, VALUE_PAIR const *vp)
 /*
  *	Verify a pair list
  */
-void fr_pair_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps)
+void fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;

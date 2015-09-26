@@ -7,13 +7,11 @@
 
 # experimental modules
 %bcond_with rlm_idn
-%bcond_with rlm_redis
 %bcond_with rlm_ruby
 %bcond_with rlm_sql_freetds
 %bcond_with rlm_sql_oracle
 %{?_with_rlm_idn: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_opendirectory: %global _with_experimental_modules --with-experimental-modules}
-%{?_with_rlm_redis: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_ruby: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_securid: %global _with_experimental_modules --with-experimental-modules}
 %{?_with_rlm_sql_freetds: %global _with_experimental_modules --with-experimental-modules}
@@ -22,8 +20,6 @@
 %if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
 %{!?_with_rlm_idn: %global _without_rlm_idn --without-rlm_idn}
 %{!?_with_rlm_opendirectory: %global _without_rlm_opendirectory --without-rlm_opendirectory}
-%{!?_with_rlm_redis: %global _without_rlm_redis --without-rlm_redis}
-%{!?_with_rlm_redis: %global _without_rlm_rediswho --without-rlm_rediswho}
 %{!?_with_rlm_ruby: %global _without_rlm_ruby --without-rlm_ruby}
 %{!?_with_rlm_securid: %global _without_rlm_securid --without-rlm_securid}
 %{!?_with_rlm_sql_freetds: %global _without_rlm_sql_freetds --without-rlm_sql_freetds}
@@ -39,7 +35,14 @@ Group: System Environment/Daemons
 URL: http://www.freeradius.org/
 
 Source0: ftp://ftp.freeradius.org/pub/radius/freeradius-server-%{version}.tar.bz2
+
+%if %{?_unitdir:1}%{!?_unitdir:0}
+Source100: radiusd.service
+%else
 Source100: freeradius-radiusd-init
+%define initddir %{?_initddir:%{_initddir}}%{!?_initddir:%{_initrddir}}
+%endif
+
 Source102: freeradius-logrotate
 Source103: freeradius-pam-conf
 
@@ -48,7 +51,6 @@ Obsoletes: freeradius-libs
 Obsoletes: freeradius < 3.1.0-1%{?dist}
 
 %define docdir %{_docdir}/freeradius-%{version}
-%define initddir %{?_initddir:%{_initddir}}%{!?_initddir:%{_initrddir}}
 
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
@@ -129,15 +131,13 @@ of the server, and let you decide if they satisfy your needs.
 Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
 
-%package ldap
-Summary: LDAP support for FreeRADIUS
-Group: System Environment/Daemons
+%package json
+Summary: JSON support for FreeRADIUS
 Requires: %{name} = %{version}-%{release}
-Requires: openldap
-BuildRequires: openldap-devel
+Requires: libfreeradius-json = %{version}-%{release}
 
-%description ldap
-This plugin provides LDAP support for the FreeRADIUS server project.
+%description json
+This plugin provides JSON tree mapping, and JSON string escaping for the FreeRADIUS server project.
 
 %package krb5
 Summary: Kerberos 5 support for FreeRADIUS
@@ -148,6 +148,36 @@ BuildRequires: krb5-devel
 
 %description krb5
 This plugin provides Kerberos 5 support for the FreeRADIUS server project.
+
+%package ldap
+Summary: LDAP support for FreeRADIUS
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: openldap
+BuildRequires: openldap-devel
+
+%description ldap
+This plugin provides LDAP support for the FreeRADIUS server project.
+
+%package libfreeradius-json
+Summary: Internal support library for FreeRADIUS modules using json-c
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: json-c >= 0.10
+BuildRequires: json-c-devel >= 0.10
+
+%description libfreeradius-json
+Internal support library for FreeRADIUS modules using json-c, required by all modules that use json-c.
+
+%package libfreeradius-redis
+Summary: Internal support library for FreeRADIUS modules using hiredis
+Group: System Environment/Daemons
+Requires: %{name} = %{version}-%{release}
+Requires: hiredis >= 0.10
+BuildRequires: hiredis-devel >= 0.10
+
+%description libfreeradius-redis
+Internal support library for FreeRADIUS modules using hiredis, required by all modules that use hiredis.
 
 %package perl
 Summary: Perl support for FreeRADIUS
@@ -249,27 +279,23 @@ This plugin provides Oracle support for the FreeRADIUS server project.
 %endif
 %endif
 
-%if %{?_with_rlm_redis:1}%{!?_with_rlm_redis:0}
 %package redis
 Summary: Redis support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: hiredis
-BuildRequires: hiredis-devel
+Requires: freeradius-libfreeradius-redis = %{version}
 
 %description redis
 This plugin provides Redis support for the FreeRADIUS server project.
-%endif
 
 %package rest
 Summary: REST support for FreeRADIUS
 Group: System Environment/Daemons
 Requires: %{name} = %{version}-%{release}
-Requires: json-c >= 0.10
-BuildRequires: json-c-devel >= 0.10
+Requires: freeradius-libfreeradius-json = %{version}
 
 %description rest
-This plugin provides REST support for the FreeRADIUS server project.
+This plugin provides the ability to interact with REST APIs for the FreeRADIUS server project.
 
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %package ruby
@@ -308,6 +334,11 @@ export CFLAGS="$RPM_OPT_FLAGS -fPIC"
 %else
 export CFLAGS="$RPM_OPT_FLAGS -fpic"
 %endif
+
+# Need to pass these explicitly for clang, else rpmbuilder bails when trying to extract debug info from
+# the libraries.  Guessing GCC does this by default.  Why use clang over gcc? The version of clang
+# which ships with RHEL 6 has basic C11 support, gcc doesn't.
+export LDFLAGS="-Wl,--build-id"
 
 %configure \
         --libdir=%{_libdir}/freeradius \
@@ -348,9 +379,6 @@ export CFLAGS="$RPM_OPT_FLAGS -fpic"
         %{?_without_rlm_securid} \
         %{?_with_rlm_sql_freetds} \
         %{?_without_rlm_sql_freetds} \
-        %{?_with_rlm_redis} \
-        %{?_without_rlm_redis} \
-        %{?_without_rlm_rediswho} \
         %{?_with_rlm_ruby} \
         %{?_without_rlm_ruby}
 #        --with-modules="rlm_wimax" \
@@ -377,7 +405,14 @@ perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
 mkdir -p $RPM_BUILD_ROOT/var/log/radius/radacct
 touch $RPM_BUILD_ROOT/var/log/radius/{radutmp,radius.log}
 
+# For systemd based systems, that define _unitdir, install the radiusd unit
+%if %{?_unitdir:1}%{!?_unitdir:0}
+install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{_unitdir}/radiusd.service
+# For SystemV install the init script
+%else
 install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{initddir}/radiusd
+%endif
+
 install -D -m 644 %{SOURCE102} $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/radiusd
 install -D -m 644 %{SOURCE103} $RPM_BUILD_ROOT/%{_sysconfdir}/pam.d/radiusd
 
@@ -453,7 +488,11 @@ exit 0
 
 %post
 if [ $1 = 1 ]; then
+%if %{?_unitdir:1}%{!?_unitdir:0}
+  /bin/systemctl enable radiusd
+%else
   /sbin/chkconfig --add radiusd
+%endif
 fi
 
 %post config
@@ -466,8 +505,11 @@ fi
 
 %preun
 if [ $1 = 0 ]; then
-  /sbin/service radiusd stop > /dev/null 2>&1
+%if %{?_unitdir:1}%{!?_unitdir:0}
+  /bin/systemctl disable radiusd
+%else
   /sbin/chkconfig --del radiusd
+%endif
 fi
 
 
@@ -482,7 +524,13 @@ fi
 %doc %{docdir}/
 %config(noreplace) %{_sysconfdir}/pam.d/radiusd
 %config(noreplace) %{_sysconfdir}/logrotate.d/radiusd
+
+%if %{?_unitdir:1}%{!?_unitdir:0}
+%{_unitdir}/radiusd.service
+%else
 %{initddir}/radiusd
+%endif
+
 %dir %attr(755,radiusd,radiusd) /var/lib/radiusd
 %dir %attr(755,radiusd,radiusd) /var/run/radiusd/
 # binaries
@@ -545,6 +593,7 @@ fi
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_counter.so
 %{_libdir}/freeradius/rlm_cram.so
+%{_libdir}/freeradius/rlm_csv.so
 %{_libdir}/freeradius/rlm_date.so
 %{_libdir}/freeradius/rlm_detail.so
 %{_libdir}/freeradius/rlm_dhcp.so
@@ -582,6 +631,7 @@ fi
 %{_libdir}/freeradius/rlm_sql_sqlite.so
 %{_libdir}/freeradius/rlm_sqlcounter.so
 %{_libdir}/freeradius/rlm_sqlippool.so
+%{_libdir}/freeradius/rlm_sqlhpwippool.so
 %{_libdir}/freeradius/rlm_unix.so
 %{_libdir}/freeradius/rlm_unpack.so
 %{_libdir}/freeradius/rlm_utf8.so
@@ -590,7 +640,6 @@ fi
 %if %{?_with_experimental_modules:1}%{!?_with_experimental_modules:0}
 %{_libdir}/freeradius/rlm_example.so
 %{_libdir}/freeradius/rlm_smsotp.so
-%{_libdir}/freeradius/rlm_sqlhpwippool.so
 %endif
 
 %files config
@@ -675,6 +724,9 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/ippool/sqlite/*
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/sqlite
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/sqlite/*
+# cassandra
+%dir %attr(750,root,radiusd) /etc/raddb/mods-config/sql/main/cassandra
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-config/sql/main/cassandra/*
 # ruby
 %if %{?_with_rlm_ruby:1}%{!?_with_rlm_ruby:0}
 %dir %attr(750,root,radiusd) /etc/raddb/mods-config/ruby
@@ -712,6 +764,18 @@ fi
 %doc %{_mandir}/man8/radsqlrelay.8.gz
 %doc %{_mandir}/man8/rlm_ippool_tool.8.gz
 
+%files json
+%defattr(-,root,root)
+%{_libdir}/freeradius/rlm_json.so
+
+%files libfreeradius-json
+%defattr(-,root,root)
+%{_libdir}/freeradius/libfreeradius-json.so
+
+%files libfreeradius-redis
+%defattr(-,root,root)
+%{_libdir}/freeradius/libfreeradius-redis.so
+
 %files krb5
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_krb5.so
@@ -744,12 +808,11 @@ fi
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_unixodbc.so
 
-%if %{?_with_rlm_redis:1}%{!?_with_rlm_redis:0}
 %files redis
 %defattr(-,root,root)
 %{_libdir}/freeradius/rlm_redis.so
 %{_libdir}/freeradius/rlm_rediswho.so
-%endif
+%{_libdir}/freeradius/rlm_cache_redis.so
 
 %files rest
 %defattr(-,root,root)

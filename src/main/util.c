@@ -200,7 +200,9 @@ void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
  * @param mode for new directories.
  * @param uid to set on new directories, may be -1 to use effective uid.
  * @param gid to set on new directories, may be -1 to use effective gid.
- * @return 0 on success, -1 on error. Error available as errno.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure. Error available as errno.
  */
 int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
 {
@@ -277,6 +279,86 @@ int rad_mkdir(char *dir, mode_t mode, uid_t uid, gid_t gid)
 	return rcode;
 }
 
+/** Ensures that a filename cannot walk up the directory structure
+ *
+ * Also sanitizes control chars.
+ *
+ * @param request Current request (may be NULL).
+ * @param out Output buffer.
+ * @param outlen Size of the output buffer.
+ * @param in string to escape.
+ * @param arg Context arguments (unused, should be NULL).
+ */
+size_t rad_filename_make_safe(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
+{
+	char const *q = in;
+	char *p = out;
+	size_t left = outlen;
+
+	while (*q) {
+		if (*q != '/') {
+			if (left < 2) break;
+
+			/*
+			 *	Smash control characters and spaces to
+			 *	something simpler.
+			 */
+			if (*q < ' ') {
+				*(p++) = '_';
+				continue;
+			}
+
+			*(p++) = *(q++);
+			left--;
+			continue;
+		}
+
+		/*
+		 *	For now, allow slashes in the expanded
+		 *	filename.  This allows the admin to set
+		 *	attributes which create sub-directories.
+		 *	Unfortunately, it also allows users to send
+		 *	attributes which *may* end up creating
+		 *	sub-directories.
+		 */
+		if (left < 2) break;
+		*(p++) = *(q++);
+
+		/*
+		 *	Get rid of ////../.././///.///..//
+		 */
+	redo:
+		/*
+		 *	Get rid of ////
+		 */
+		if (*q == '/') {
+			q++;
+			goto redo;
+		}
+
+		/*
+		 *	Get rid of /./././
+		 */
+		if ((q[0] == '.') &&
+		    (q[1] == '/')) {
+			q += 2;
+			goto redo;
+		}
+
+		/*
+		 *	Get rid of /../../../
+		 */
+		if ((q[0] == '.') && (q[1] == '.') &&
+		    (q[2] == '/')) {
+			q += 3;
+			goto redo;
+		}
+	}
+	*p = '\0';
+
+	return (p - out);
+}
+
 /** Escapes the raw string such that it should be safe to use as part of a file path
  *
  * This function is designed to produce a string that's still readable but portable
@@ -311,7 +393,7 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		/*
 		 *	Encode multibyte UTF8 chars
 		 */
-		utf8_len = fr_utf8_char((uint8_t const *) in);
+		utf8_len = fr_utf8_char((uint8_t const *) in, -1);
 		if (utf8_len > 1) {
 			if (freespace <= (utf8_len * 3)) break;
 
@@ -342,14 +424,13 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
 		if (((*in >= 'A') && (*in <= 'Z')) ||
 		    ((*in >= 'a') && (*in <= 'z')) ||
 		    ((*in >= '0') && (*in <= '9')) ||
-		    (*in == '_') || (*in == '.')) {
+		    (*in == '_')) {
 		    	if (freespace <= 1) break;
 
 		 	*out++ = *in++;
 		 	freespace--;
 		 	continue;
 		}
-
 		if (freespace <= 2) break;
 
 		/*
@@ -383,8 +464,9 @@ size_t rad_filename_escape(UNUSED REQUEST *request, char *out, size_t outlen, ch
  * @param outlen Length of the output buffer.
  * @param in Input filename.
  * @param inlen Length of input.
- * @return number of bytes written to output buffer, or offset where parse error
- *	occurred on failure.
+ * @return
+ *	- Number of bytes written to output buffer
+ *	- offset where parse error occurred on failure.
  */
 ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t inlen)
 {
@@ -397,7 +479,7 @@ ssize_t rad_filename_unescape(char *out, size_t outlen, char const *in, size_t i
 		if (((*p >= 'A') && (*p <= 'Z')) ||
 		    ((*p >= 'a') && (*p <= 'z')) ||
 		    ((*p >= '0') && (*p <= '9')) ||
-		    (*p == '_') || (*p == '.')) {
+		    (*p == '_')) {
 		 	*out++ = *p;
 		 	freespace--;
 		 	continue;
@@ -465,33 +547,45 @@ void rad_const_free(void const *ptr)
 	talloc_free(tmp);
 }
 
-char *rad_ajoin(TALLOC_CTX *ctx, char const **array, char c)
+/** talloc a buffer to hold the concatenated value of all elements of argv
+ *
+ * @param ctx to allocate buffer in.
+ * @param argv array of substrings.
+ * @param argc length of array.
+ * @param c separation character. Optional, may be '\0' for no separator.
+ * @return the concatenation of the elements of argv, separated by c.
+ */
+char *rad_ajoin(TALLOC_CTX *ctx, char const **argv, int argc, char c)
 {
-	char const **array_p;
 	char *buff, *p;
-	size_t len = 0, left, wrote;
+	int i;
+	size_t total = 0, freespace;
 
-	if (!*array) {
+	if (!*argv) {
 		goto null;
 	}
 
-	for (array_p = array; *array_p; array_p++) {
-		len += (strlen(*array_p) + 1);
-	}
-
-	if (!len) {
-		null:
+	for (i = 0; i < argc; i++) total += (strlen(argv[i]) + ((c == '\0') ? 0 : 1));
+	if (!total) {
+	null:
 		return talloc_zero_array(ctx, char, 1);
 	}
 
-	left = len + 1;
-	buff = p = talloc_zero_array(ctx, char, left);
-	for (array_p = array; *array_p; array_p++) {
-		wrote = snprintf(p, left, "%s%c", *array_p, c);
-		left -= wrote;
-		p += wrote;
+	if (c == '\0') total++;
+
+	freespace = total;
+	buff = p = talloc_array(ctx, char, total);
+	for (i = 0; i < argc; i++) {
+		size_t len;
+
+		len = strlcpy(p, argv[i], freespace);
+		p += len;
+		freespace -= len;
+
+		*p++ = c;
+		freespace--;
 	}
-	buff[len - 1] = '\0';
+	buff[total] = '\0';
 
 	return buff;
 }
@@ -520,13 +614,7 @@ static int _request_free(REQUEST *request)
 	rad_assert(!request->ev);
 
 #ifdef WITH_COA
-	if (request->coa) {
-		request->coa->parent = NULL;
-	}
-
-	if (request->parent && (request->parent->coa == request)) {
-		request->parent->coa = NULL;
-	}
+	rad_assert(request->coa == NULL);
 #endif
 
 #ifndef NDEBUG
@@ -560,11 +648,11 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 #ifdef WITH_PROXY
 	request->proxy_reply = NULL;
 #endif
-	request->config_items = NULL;
+	request->config = NULL;
 	request->username = NULL;
 	request->password = NULL;
 	request->timestamp = time(NULL);
-	request->log.lvl = debug_flag; /* Default to global debug level */
+	request->log.lvl = rad_debug_lvl; /* Default to global debug level */
 
 	request->module = "";
 	request->component = "<core>";
@@ -861,7 +949,7 @@ uint32_t rad_pps(uint32_t *past, uint32_t *present, time_t *then, struct timeval
  */
 
 int rad_expand_xlat(REQUEST *request, char const *cmd,
-		    int max_argc, char *argv[], bool can_fail,
+		    int max_argc, char const *argv[], bool can_fail,
 		    size_t argv_buflen, char *argv_buf)
 {
 	char const *from;
@@ -1101,7 +1189,7 @@ static void verify_packet(char const *file, int line, REQUEST *request, RADIUS_P
 	if (!packet->vps) return;
 
 #ifdef WITH_VERIFY_PTR
-	fr_pair_verify_list(file, line, packet, packet->vps);
+	fr_pair_list_verify(file, line, packet, packet->vps);
 #endif
 }
 /*
@@ -1118,8 +1206,8 @@ void verify_request(char const *file, int line, REQUEST *request)
 	(void) talloc_get_type_abort(request, REQUEST);
 
 #ifdef WITH_VERIFY_PTR
-	fr_pair_verify_list(file, line, request, request->config_items);
-	fr_pair_verify_list(file, line, request, request->state);
+	fr_pair_list_verify(file, line, request, request->config);
+	fr_pair_list_verify(file, line, request, request->state);
 #endif
 
 	if (request->packet) verify_packet(file, line, request, request->packet, "request");
@@ -1182,7 +1270,9 @@ void rad_mode_to_oct(char out[5], mode_t mode)
  * @param ctx to allocate passwd entry in.
  * @param out Where to write pointer to entry.
  * @param uid to resolve.
- * @return 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 {
@@ -1225,7 +1315,7 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
 		}
 	}
 
-	if (ret != 0) {
+	if ((ret != 0) || !*out) {
 		fr_strerror_printf("Failed resolving UID: %s", fr_syserror(ret));
 		talloc_free(buff);
 		errno = ret;
@@ -1247,7 +1337,9 @@ int rad_getpwuid(TALLOC_CTX *ctx, struct passwd **out, uid_t uid)
  * @param ctx to allocate passwd entry in.
  * @param out Where to write pointer to entry.
  * @param name to resolve.
- * @return 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 {
@@ -1290,7 +1382,7 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
 		}
 	}
 
-	if (ret != 0) {
+	if ((ret != 0) || !*out) {
 		fr_strerror_printf("Failed resolving UID: %s", fr_syserror(ret));
 		talloc_free(buff);
 		errno = ret;
@@ -1312,7 +1404,9 @@ int rad_getpwnam(TALLOC_CTX *ctx, struct passwd **out, char const *name)
  * @param ctx to allocate passwd entry in.
  * @param out Where to write pointer to entry.
  * @param gid to resolve.
- * @return 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 {
@@ -1355,7 +1449,7 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
 		}
 	}
 
-	if (ret != 0) {
+	if ((ret != 0) || !*out) {
 		fr_strerror_printf("Failed resolving GID: %s", fr_syserror(ret));
 		talloc_free(buff);
 		errno = ret;
@@ -1377,7 +1471,9 @@ int rad_getgrgid(TALLOC_CTX *ctx, struct group **out, gid_t gid)
  * @param ctx to allocate passwd entry in.
  * @param out Where to write pointer to entry.
  * @param name to resolve.
- * @return 0 on success, -1 on error.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 {
@@ -1420,7 +1516,7 @@ int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
 		}
 	}
 
-	if (ret != 0) {
+	if ((ret != 0) || !*out) {
 		fr_strerror_printf("Failed resolving GID: %s", fr_syserror(ret));
 		talloc_free(buff);
 		errno = ret;
@@ -1438,7 +1534,9 @@ int rad_getgrnam(TALLOC_CTX *ctx, struct group **out, char const *name)
  * @param ctx TALLOC_CTX for temporary allocations.
  * @param name of group.
  * @param out where to write gid.
- * @return 0 on success, -1 on error;
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
 {
@@ -1455,65 +1553,70 @@ int rad_getgid(TALLOC_CTX *ctx, gid_t *out, char const *name)
 
 /** Print uid to a string
  *
- * @note The reason for taking a fixed buffer is pure laziness.
- *	 It means the caller doesn't have to free the string.
- *
- * @note Will always \0 terminate the buffer, even on error.
- *
  * @param ctx TALLOC_CTX for temporary allocations.
- * @param out Where to write the uid string.
- * @param outlen length of output buffer.
  * @param uid to resolve.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int rad_prints_uid(TALLOC_CTX *ctx, char *out, size_t outlen, uid_t uid)
+char *rad_asprint_uid(TALLOC_CTX *ctx, uid_t uid)
 {
 	struct passwd *result;
+	char *out;
 
-	rad_assert(outlen > 0);
-
-	*out = '\0';
-
-	if (rad_getpwuid(ctx, &result, uid) < 0) return -1;
-	strlcpy(out, result->pw_name, outlen);
+	if (rad_getpwuid(ctx, &result, uid) < 0) return NULL;
+	out = talloc_strdup(ctx, result->pw_name);
 	talloc_free(result);
 
-	return 0;
+	return out;
 }
 
 /** Print gid to a string
  *
- * @note The reason for taking a fixed buffer is pure laziness.
- *	 It means the caller doesn't have to free the string.
- *
- * @note Will always \0 terminate the buffer, even on error.
- *
  * @param ctx TALLOC_CTX for temporary allocations.
- * @param out Where to write the uid string.
- * @param outlen length of output buffer.
  * @param gid to resolve.
- * @return 0 on success, -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
-int rad_prints_gid(TALLOC_CTX *ctx, char *out, size_t outlen, gid_t gid)
-{
+char *rad_asprint_gid(TALLOC_CTX *ctx, uid_t gid){
 	struct group *result;
+	char *out;
 
-	rad_assert(outlen > 0);
-
-	*out = '\0';
-
-	if (rad_getgrgid(ctx, &result, gid) < 0) return -1;
-	strlcpy(out, result->gr_name, outlen);
+	if (rad_getgrgid(ctx, &result, gid) < 0) return NULL;
+	out = talloc_strdup(ctx, result->gr_name);
 	talloc_free(result);
 
-	return 0;
+	return out;
+}
+
+/** Write a file access error to the fr_strerror buffer, including euid/egid
+ *
+ * @note retrieve error with fr_strerror()
+ *
+ * @param num Usually num, unless the error is returned by the function.
+ */
+void rad_file_error(int num)
+{
+	char const	*error;
+	struct passwd	*user = NULL;
+	struct group	*group = NULL;
+
+	error = fr_syserror(num);
+
+	if (rad_getpwuid(NULL, &user, geteuid()) < 0) goto finish;
+	if (rad_getgrgid(NULL, &group, getegid()) < 0) goto finish;
+
+	fr_strerror_printf("Effective user/group %s:%s: %s", user->pw_name, group->gr_name, error);
+finish:
+	talloc_free(user);
+	talloc_free(group);
 }
 
 #ifdef HAVE_SETUID
 static bool doing_setuid = false;
 static uid_t suid_down_uid = (uid_t)-1;
 
-#  if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
 /** Set the uid and gid used when dropping privileges
  *
  * @note if this function hasn't been called, rad_suid_down will have no effect.
@@ -1526,6 +1629,7 @@ void rad_suid_set_down_uid(uid_t uid)
 	doing_setuid = true;
 }
 
+#  if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
 void rad_suid_up(void)
 {
 	uid_t ruid, euid, suid;
@@ -1590,26 +1694,32 @@ void rad_suid_down_permanent(void)
 	fr_reset_dumpable();
 }
 #  else
-void rad_suid_set_down_uid(UNUSED uid_t uid)
-{
-}
 /*
  *	Much less secure...
  */
 void rad_suid_up(void)
 {
+	if (!doing_setuid) return;
+
+	if (seteuid(0) < 0) {
+		ERROR("Failed switching up to euid 0: %s", fr_syserror(errno));
+		fr_exit_now(1);
+	}
+
 }
 
 void rad_suid_down(void)
 {
 	if (!doing_setuid) return;
 
-	if (setuid(suid_down_uid) < 0) {
+	if (geteuid() == suid_down_uid) return;
+
+	if (seteuid(suid_down_uid) < 0) {
 		struct passwd *passwd;
 		char const *name;
 
 		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
-		ERROR("Failed switching to uid %s: %s", name, fr_syserror(errno));
+		ERROR("Failed switching to euid %s: %s", name, fr_syserror(errno));
 		talloc_free(passwd);
 		fr_exit_now(1);
 	}
@@ -1619,11 +1729,36 @@ void rad_suid_down(void)
 
 void rad_suid_down_permanent(void)
 {
+	if (!doing_setuid) return;
+
+	/*
+	 *	Already done.  Don't do anything else.
+	 */
+	if (getuid() == suid_down_uid) return;
+
+	/*
+	 *	We're root, but running as a normal user.  Fix that,
+	 *	so we can call setuid().
+	 */
+	if (geteuid() == suid_down_uid) {
+		rad_suid_up();
+	}
+
+	if (setuid(suid_down_uid) < 0) {
+		struct passwd *passwd;
+		char const *name;
+
+		name = (rad_getpwuid(NULL, &passwd, suid_down_uid) < 0) ? "unknown": passwd->pw_name;
+		ERROR("Failed switching permanently to uid %s: %s", name, fr_syserror(errno));
+		talloc_free(passwd);
+		fr_exit_now(1);
+	}
+
 	fr_reset_dumpable();
 }
 #  endif /* HAVE_SETRESUID && HAVE_GETRESUID */
 #else  /* HAVE_SETUID */
-void rad_suid_set_down_uid(UNUSED uid_t uid)
+void rad_suid_set_down_uid(uid_t uid)
 {
 }
 void rad_suid_up(void)
@@ -1642,7 +1777,9 @@ void rad_suid_down_permanent(void)
 /** Alter the effective user id
  *
  * @param uid to set
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_seuid(uid_t uid)
 {
@@ -1661,7 +1798,9 @@ int rad_seuid(uid_t uid)
 /** Alter the effective user id
  *
  * @param gid to set
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int rad_segid(gid_t gid)
 {

@@ -26,11 +26,14 @@
 
 RCSIDH(process_h, "$Id$")
 
+#include <freeradius-devel/clients.h>
+#include <freeradius-devel/listen.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef enum fr_saction_t {	/* server action */
+typedef enum fr_state_action_t {	/* server action */
 	FR_ACTION_INVALID = 0,
 	FR_ACTION_RUN,
 	FR_ACTION_DONE,
@@ -39,7 +42,13 @@ typedef enum fr_saction_t {	/* server action */
 #ifdef WITH_PROXY
 	FR_ACTION_PROXY_REPLY,
 #endif
-} fr_saction_t;
+} fr_state_action_t;
+
+/*
+ *  Function handler for requests.
+ */
+typedef	int (*RAD_REQUEST_FUNP)(REQUEST *);
+typedef	void (*fr_request_process_t)(REQUEST *, int);
 
 extern time_t fr_start_time;
 

@@ -62,7 +62,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	 *	Set the response code.  Default to "fail" if none was
 	 *	specified.
 	 */
-	vp = pairfind(request->config_items, PW_CHBIND_RESPONSE_CODE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, PW_CHBIND_RESPONSE_CODE, 0, TAG_ANY);
 	if (vp) {
 		ptr[0] = vp->vp_integer;
 	} else {
@@ -166,12 +166,12 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 
 	/* Set-up the fake request */
 	fake = request_alloc_fake(request);
-	pairmake_packet("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
+	pair_make_request("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 
 	/* Add the username to the fake request */
 	if (chbind->username) {
-		vp = paircopyvp(fake->packet, chbind->username);
-		pairadd(&fake->packet->vps, vp);
+		vp = fr_pair_copy(fake->packet, chbind->username);
+		fr_pair_add(&fake->packet->vps, vp);
 		fake->username = vp;
 	}
 
@@ -193,7 +193,7 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 				return PW_CODE_ACCESS_ACCEPT;
 			}
 			if (vp) {
-				pairadd(&fake->packet->vps, vp);
+				fr_pair_add(&fake->packet->vps, vp);
 			}
 			attr_data += attr_len;
 			data_len -= attr_len;
@@ -242,7 +242,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	chbind_packet_t *packet;
 	vp_cursor_t cursor;
 
-	first = pairfind(vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY);
+	first = fr_pair_find_by_num(vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY);
 	if (!first) return NULL;
 
 	/*
@@ -286,9 +286,9 @@ VALUE_PAIR *eap_chbind_packet2vp(REQUEST *request, chbind_packet_t *packet)
 
 	if (!packet) return NULL; /* don't produce garbage */
 
-	vp = paircreate(request->packet, PW_UKERNA_CHBIND, VENDORPEC_UKERNA);
+	vp = fr_pair_afrom_num(request->packet, PW_UKERNA_CHBIND, VENDORPEC_UKERNA);
 	if (!vp) return NULL;
-	pairmemcpy(vp, (uint8_t *) packet, talloc_array_length((uint8_t *)packet));
+	fr_pair_value_memcpy(vp, (uint8_t *) packet, talloc_array_length((uint8_t *)packet));
 
 	return vp;
 }

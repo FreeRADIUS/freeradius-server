@@ -1,0 +1,39 @@
+#
+#  Clear out old data
+#
+update {
+	Tmp-String-0 := "%{sql:DELETE FROM radcheck WHERE username = 'user_reject'}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+
+update {
+	Tmp-String-0 := "%{sql:INSERT INTO radcheck (username, attribute, op, value) VALUES ('user_reject', 'NAS-IP-Address', '==', '1.2.3.4')}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+
+update {
+	Tmp-String-0 := "%{sql:INSERT INTO radcheck (username, attribute, op, value) VALUES ('user_reject', 'Cleartext-Password', ':=', 'wrong-password')}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+
+update {
+	Tmp-String-0 := "%{sql:DELETE FROM radreply WHERE username = 'user_reject'}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+
+update {
+	Tmp-String-0 := "%{sql:INSERT INTO radreply (username, attribute, op, value) VALUES ('user_reject', 'Reply-Message', ':=', 'Authentication failed')}"
+}
+if (!&Tmp-String-0) {
+	test_fail
+}
+
+sql

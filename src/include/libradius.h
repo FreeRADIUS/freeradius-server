@@ -1,8 +1,7 @@
 /*
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version. either
+ *   License as published by the Free Software Foundation; either
  *   version 2.1 of the License, or (at your option) any later version.
  *
  *   This library is distributed in the hope that it will be useful,
@@ -112,8 +111,8 @@ typedef void (*sig_t)(int);
  *  Add if (_x->da) (void) talloc_get_type_abort(_x->da, DICT_ATTR);
  *  to the macro below when dictionaries are talloced.
  */
-#  define VERIFY_VP(_x)		fr_pair_verify_vp(__FILE__,  __LINE__, _x)
-#  define VERIFY_LIST(_x)	fr_pair_verify_list(__FILE__,  __LINE__, NULL, _x)
+#  define VERIFY_VP(_x)		fr_pair_verify(__FILE__,  __LINE__, _x)
+#  define VERIFY_LIST(_x)	fr_pair_list_verify(__FILE__,  __LINE__, NULL, _x)
 #  define VERIFY_PACKET(_x)	(void) talloc_get_type_abort(_x, RADIUS_PACKET)
 #else
 /*
@@ -136,11 +135,11 @@ typedef void (*sig_t)(int);
 #  define VENDORPEC_USR		429
 #  define VENDORPEC_LUCENT	4846
 #  define VENDORPEC_STARENT	8164
-#  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
+#  define DEBUG			if (fr_debug_lvl && fr_log_fp) fr_printf_log
 #endif
 
-#  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
-					vp_print(fr_log_fp, vp); \
+#  define debug_pair(vp)	do { if (fr_debug_lvl && fr_log_fp) { \
+					fr_pair_fprint(fr_log_fp, vp); \
 				     } \
 				} while(0)
 
@@ -189,6 +188,8 @@ typedef struct attr_flags {
 	unsigned int	is_pointer : 1;				//!< data is a pointer
 
 	unsigned int	virtual : 1;				//!< for dynamic expansion
+
+	unsigned int	compare : 1;				//!< has a paircompare registered
 
 	uint8_t		encrypt;      				//!< Ecryption method.
 	uint8_t		length;
@@ -247,36 +248,40 @@ typedef struct dict_vendor {
  *
  * PW_TYPE should be an enumeration of the values in this union.
  */
-typedef struct value_data {
+typedef struct value_data value_data_t;
+struct value_data {
 	union {
-		char const	        *strvalue;			//!< Pointer to UTF-8 string.
-		uint8_t const		*octets;			//!< Pointer to binary string.
-		uint32_t		integer;			//!< 32bit unsigned integer.
-		struct in_addr		ipaddr;				//!< IPv4 Address.
-		uint32_t		date;				//!< Date (32bit Unix timestamp).
+		char const	        *strvalue;		//!< Pointer to UTF-8 string.
+		uint8_t const		*octets;		//!< Pointer to binary string.
+		uint32_t		integer;		//!< 32bit unsigned integer.
+		struct in_addr		ipaddr;			//!< IPv4 Address.
+		uint32_t		date;			//!< Date (32bit Unix timestamp).
 		size_t			filter[32/sizeof(size_t)];	//!< Ascend binary format a packed data
 									//!< structure.
 
-		uint8_t			ifid[8];			//!< IPv6 interface ID (should be struct?).
-		struct in6_addr		ipv6addr;			//!< IPv6 Address.
-		uint8_t			ipv6prefix[18];			//!< IPv6 prefix (should be struct?).
+		uint8_t			ifid[8];		//!< IPv6 interface ID (should be struct?).
+		struct in6_addr		ipv6addr;		//!< IPv6 Address.
+		uint8_t			ipv6prefix[18];		//!< IPv6 prefix (should be struct?).
 
-		uint8_t			byte;				//!< 8bit unsigned integer.
-		uint16_t		ushort;				//!< 16bit unsigned integer.
+		uint8_t			byte;			//!< 8bit unsigned integer.
+		uint16_t		ushort;			//!< 16bit unsigned integer.
 
-		uint8_t			ether[6];			//!< Ethernet (MAC) address.
+		uint8_t			ether[6];		//!< Ethernet (MAC) address.
 
-		int32_t			sinteger;			//!< 32bit signed integer.
-		uint64_t		integer64;			//!< 64bit unsigned integer.
+		int32_t			sinteger;		//!< 32bit signed integer.
+		uint64_t		integer64;		//!< 64bit unsigned integer.
+		double			decimal;		//!< Double precision float.
 
-		uint8_t			ipv4prefix[6];			//!< IPv4 prefix (should be struct?).
+		uint8_t			ipv4prefix[6];		//!< IPv4 prefix (should be struct?).
 
-		uint8_t			*tlv;				//!< Nested TLV (should go away).
-		void			*ptr;				//!< generic pointer.
+		bool			boolean;		//!< A truth value.
+
+		void			*ptr;			//!< generic pointer.
 	};
 
-	size_t length;
-} value_data_t;
+	size_t		length;					//!< Length of value data.
+	value_data_t	*next;					//!< Next in a series of value_data.
+};
 
 /** The type of value a VALUE_PAIR contains
  *
@@ -367,7 +372,7 @@ typedef struct value_pair_raw {
 #define vp_signed	data.sinteger
 #define vp_integer64	data.integer64
 #define vp_ipv4prefix	data.ipv4prefix
-#define vp_tlv		data.tlv
+#define vp_decimal	data.decimal
 
 #define vp_length	data.length
 
@@ -435,32 +440,34 @@ int		fr_check_lib_magic(uint64_t magic);
 /*
  *	Printing functions.
  */
-int		fr_utf8_char(uint8_t const *str);
+int		fr_utf8_char(uint8_t const *str, ssize_t inlen);
 char const     	*fr_utf8_strchr(int *chr_len, char const *str, char const *chr);
-size_t		fr_prints(char *out, size_t outlen, char const *in, ssize_t inlen, char quote);
-size_t		fr_prints_len(char const *in, ssize_t inlen, char quote);
-char		*fr_aprints(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
+size_t		fr_snprint(char *out, size_t outlen, char const *in, ssize_t inlen, char quote);
+size_t		fr_snprint_len(char const *in, ssize_t inlen, char quote);
+char		*fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote);
 
-#define		is_truncated(_ret, _max) ((_ret) >= (_max))
-#define		truncate_len(_ret, _max) (((_ret) >= (_max)) ? ((_max) - 1) : _ret)
-size_t		vp_data_prints_value(char *out, size_t outlen,
-				     PW_TYPE type, DICT_ATTR const *enumv,
-				     value_data_t const *data, ssize_t inlen, char quote);
-size_t   	vp_prints_value(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
+#define		is_truncated(_ret, _max) ((_ret) >= (size_t)(_max))
+#define		truncate_len(_ret, _max) (((_ret) >= (size_t)(_max)) ? (((size_t)(_max)) - 1) : _ret)
 
-char		*vp_data_aprints_value(TALLOC_CTX *ctx,
-				       PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
-				       size_t inlen, char quote);
-char     	*vp_aprints_value(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
-
-size_t    	vp_prints_value_json(char *out, size_t outlen, VALUE_PAIR const *vp);
-size_t		vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
-void		vp_print(FILE *, VALUE_PAIR const *);
-void		vp_printlist(FILE *, VALUE_PAIR const *);
-char		*vp_aprints_type(TALLOC_CTX *ctx, PW_TYPE type);
-
-char		*vp_aprints(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
-#define		fprint_attr_val vp_print
+/** Boilerplate for checking truncation
+ *
+ * If truncation has occurred, advance _p as far as possible without
+ * overrunning the output buffer, and \0 terminate.  Then return the length
+ * of the buffer we would have needed to write the full value.
+ *
+ * If truncation has not occurred, advance _p by whatever the copy or print
+ * function returned.
+ */
+#define RETURN_IF_TRUNCATED(_p, _ret, _max) \
+do { \
+	if (is_truncated(_ret, _max)) { \
+		size_t _r = (_p - out) + _ret; \
+		_p += truncate_len(_ret, _max); \
+		*_p = '\0'; \
+		return _r; \
+	} \
+	_p += _ret; \
+} while (0)
 
 /*
  *	Dictionary functions.
@@ -564,6 +571,12 @@ ssize_t		rad_attr2vp(TALLOC_CTX *ctx,
 			    uint8_t const *data, size_t length,
 			    VALUE_PAIR **pvp);
 
+ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
+			 RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			 char const *secret, DICT_ATTR const *da,
+			 uint8_t const *start, size_t length,
+			 VALUE_PAIR **pvp);
+
 ssize_t		rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp);
 
 int		rad_vp2extended(RADIUS_PACKET const *packet,
@@ -588,23 +601,16 @@ int		rad_vp2attr(RADIUS_PACKET const *packet,
 			    RADIUS_PACKET const *original, char const *secret,
 			    VALUE_PAIR const **pvp, uint8_t *ptr, size_t room);
 
-/* pair.c */
-VALUE_PAIR	*pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da);
-VALUE_PAIR	*paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
-int		pair2unknown(VALUE_PAIR *vp);
-void		pairfree(VALUE_PAIR **);
-VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
-VALUE_PAIR	*pair_find_by_da(VALUE_PAIR *, DICT_ATTR const *da, int8_t tag);
-
-#define		fr_cursor_init(_x, _y)	_fr_cursor_init(_x,(VALUE_PAIR const * const *) _y)
-VALUE_PAIR	*_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *node);
+/*
+ *	cursor.c
+ */
+VALUE_PAIR	*fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *node);
 void		fr_cursor_copy(vp_cursor_t *out, vp_cursor_t *in);
 VALUE_PAIR	*fr_cursor_first(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_last(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag);
 
-VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_t tag)
-		CC_HINT(nonnull);
+VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_t tag) CC_HINT(nonnull);
 
 VALUE_PAIR	*fr_cursor_next(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_next_peek(vp_cursor_t *cursor);
@@ -613,67 +619,112 @@ void		fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp);
 void		fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *vp);
 VALUE_PAIR	*fr_cursor_remove(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
-void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
-void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
-void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
-int		paircmp(VALUE_PAIR *a, VALUE_PAIR *b);
-int		pairlistcmp(VALUE_PAIR *a, VALUE_PAIR *b);
 
-typedef int8_t (*fr_cmp_t)(void const *a, void const *b);
-int8_t		attrcmp(void const *a, void const *b);
-int8_t		attrtagcmp(void const *a, void const *b);
-void		pairsort(VALUE_PAIR **vps, fr_cmp_t cmp);
-void		pairvalidate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2]);
-bool		pairvalidate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
-bool 		pairvalidate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
-VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
-VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *from);
-VALUE_PAIR	*paircopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag);
-void		pairsteal(TALLOC_CTX *ctx, VALUE_PAIR *vp);
-void		pairmemcpy(VALUE_PAIR *vp, uint8_t const * src, size_t len);
-void		pairmemsteal(VALUE_PAIR *vp, uint8_t const *src);
-void		pairstrsteal(VALUE_PAIR *vp, char const *src);
-void		pairstrcpy(VALUE_PAIR *vp, char const * src);
-void		pairstrncpy(VALUE_PAIR *vp, char const * src, size_t len);
-void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...) CC_HINT(format (printf, 2, 3));
-void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
-void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-			   unsigned int attr, unsigned int vendor, int8_t tag);
-VALUE_PAIR	*pairmake_ip(TALLOC_CTX *ctx, char const *value,
-			     DICT_ATTR *ipv4, DICT_ATTR *ipv6, DICT_ATTR *ipv4_prefix, DICT_ATTR *ipv6_prefix);
-int		pairparsevalue(VALUE_PAIR *vp, char const *value, size_t len);
-VALUE_PAIR	*pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, char const *value, FR_TOKEN op);
-int 		pairmark_xlat(VALUE_PAIR *vp, char const *value);
-FR_TOKEN 	pairread(char const **ptr, VALUE_PAIR_RAW *raw);
-FR_TOKEN	userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
-int		readvp2(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
+/*
+ *	pair.c
+ */
 
+/* Allocation and management */
+VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, DICT_ATTR const *da);
+VALUE_PAIR	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
+VALUE_PAIR	*fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
+void		fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp);
+VALUE_PAIR	*fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, char const *value, FR_TOKEN op);
+void		fr_pair_list_free(VALUE_PAIR **);
+int		fr_pair_to_unknown(VALUE_PAIR *vp);
+int 		fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value);
+
+/* Searching and list modification */
+VALUE_PAIR	*fr_pair_find_by_da(VALUE_PAIR *, DICT_ATTR const *da, int8_t tag);
+VALUE_PAIR	*fr_pair_find_by_num(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
+void		fr_pair_add(VALUE_PAIR **, VALUE_PAIR *);
+void		fr_pair_replace(VALUE_PAIR **first, VALUE_PAIR *add);
+int		fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
+			  	      unsigned int attr, unsigned int vendor, int8_t tag,
+				      PW_TYPE type, value_data_t *value);
+void		fr_pair_delete_by_num(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
+
+/* Sorting */
+typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
 
 /** Compare two attributes using and operator.
  *
- * @return 1 if equal, 0 if not eaqual, -1 on error.
+ * @return
+ *	- 1 if equal.
+ *	- 0 if not equal.
+ *	- -1 on failure.
  */
-#define		paircmp_op(_op, _a, _b)	value_data_cmp_op(_op, _a->da->type, &_a->data, _a->vp_length, _b->da->type, &_b->data, _b->vp_length)
+#define		fr_pair_cmp_op(_op, _a, _b)	value_data_cmp_op(_op, _a->da->type, &_a->data, _b->da->type, &_b->data)
+int8_t		fr_pair_cmp_by_da_tag(void const *a, void const *b);
+int		fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b);
+int		fr_pair_list_cmp(VALUE_PAIR *a, VALUE_PAIR *b);
+void		fr_pair_list_sort(VALUE_PAIR **vps, fr_cmp_t cmp);
+
+/* Filtering */
+void		fr_pair_validate_debug(TALLOC_CTX *ctx, VALUE_PAIR const *failed[2]);
+bool		fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
+bool 		fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAIR *list);
+
+/* Lists */
+FR_TOKEN	fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
+int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
+VALUE_PAIR	*fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR *from);
+VALUE_PAIR	*fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag);
+void		fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
+void		fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
+			   unsigned int attr, unsigned int vendor, int8_t tag);
+
+/* Value manipulation */
+int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t len);
+void		fr_pair_value_memcpy(VALUE_PAIR *vp, uint8_t const *src, size_t len);
+void		fr_pair_value_memsteal(VALUE_PAIR *vp, uint8_t const *src);
+void		fr_pair_value_strsteal(VALUE_PAIR *vp, char const *src);
+void		fr_pair_value_strcpy(VALUE_PAIR *vp, char const *src);
+void		fr_pair_value_bstrncpy(VALUE_PAIR *vp, void const *src, size_t len);
+void		fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...) CC_HINT(format (printf, 2, 3));
+
+/* Printing functions */
+size_t   	fr_pair_value_snprint(char *out, size_t outlen, VALUE_PAIR const *vp, char quote);
+char     	*fr_pair_value_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+size_t    	fr_pair_value_snprint_json(char *out, size_t outlen, VALUE_PAIR const *vp);
+
+size_t		fr_pair_snprint(char *out, size_t outlen, VALUE_PAIR const *vp);
+void		fr_pair_fprint(FILE *, VALUE_PAIR const *vp);
+void		fr_pair_list_fprint(FILE *, VALUE_PAIR const *vp);
+char		*fr_pair_type_snprint(TALLOC_CTX *ctx, PW_TYPE type);
+char		*fr_pair_asprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp, char quote);
+
+/* Hacky raw pair thing that needs to go away */
+FR_TOKEN 	fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw);
 
 /* value.c */
-int		value_data_cmp(PW_TYPE a_type, value_data_t const *a, size_t a_len,
-			       PW_TYPE b_type, value_data_t const *b, size_t b_len);
+int		value_data_cmp(PW_TYPE a_type, value_data_t const *a,
+			       PW_TYPE b_type, value_data_t const *b);
 
 int		value_data_cmp_op(FR_TOKEN op,
-				  PW_TYPE a_type, value_data_t const *a, size_t a_len,
-				  PW_TYPE b_type, value_data_t const *b, size_t b_len);
+				  PW_TYPE a_type, value_data_t const *a,
+				  PW_TYPE b_type, value_data_t const *b);
 
-ssize_t		value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
+int		value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 				    PW_TYPE *src_type, DICT_ATTR const *src_enumv,
 				    char const *src, ssize_t src_len, char quote);
 
-ssize_t		value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
+int		value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
 				PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
 				PW_TYPE src_type, DICT_ATTR const *src_enumv,
-				value_data_t const *src, size_t src_len);
+				value_data_t const *src);
 
-ssize_t		value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type,
-				const value_data_t *src, size_t src_len);
+int		value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type, const value_data_t *src);
+
+size_t		value_data_snprint(char *out, size_t outlen,
+				  PW_TYPE type, DICT_ATTR const *enumv,
+				  value_data_t const *data, char quote);
+
+int		value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type, value_data_t const *src);
+
+char		*value_data_asprint(TALLOC_CTX *ctx,
+				    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
+				    char quote);
 
 /*
  *	Error functions.
@@ -686,7 +737,7 @@ char const	*fr_strerror(void);
 char const	*fr_syserror(int num);
 extern bool	fr_dns_lookups;	/* do IP -> hostname lookups? */
 extern bool	fr_hostname_lookups; /* do hostname -> IP lookups? */
-extern int	fr_debug_flag;	/* 0 = no debugging information */
+extern int	fr_debug_lvl;	/* 0 = no debugging information */
 extern uint32_t	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
@@ -704,7 +755,9 @@ char const	*fr_inet_ntop(int af, void const *src);
 char const 	*ip_ntoa(char *, uint32_t);
 int		fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback);
 int		fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback);
-int		fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve);
+int		fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve);
+int		fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_t inlen, int af,
+			     bool resolve);
 int		fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr);
 char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
 uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);
@@ -716,6 +769,7 @@ size_t		fr_bin2hex(char *hex, uint8_t const *bin, size_t inlen);
 size_t		fr_hex2bin(uint8_t *bin, size_t outlen, char const *hex, size_t inlen);
 uint32_t	fr_strtoul(char const *value, char **end);
 bool		is_whitespace(char const *value);
+bool		is_printable(void const *value, size_t len);
 bool		is_integer(char const *value);
 bool		is_zero(char const *value);
 
@@ -730,9 +784,16 @@ int		fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 				   struct sockaddr_storage *sa, socklen_t *salen);
 int		fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 				   fr_ipaddr_t *ipaddr, uint16_t *port);
+int		fr_nonblock(int fd);
+int		fr_blocking(int fd);
+ssize_t		fr_writev(int fd, struct iovec[], int iovcnt, struct timeval *timeout);
+
 ssize_t		fr_utf8_to_ucs2(uint8_t *out, size_t outlen, char const *in, size_t inlen);
-size_t		fr_prints_uint128(char *out, size_t outlen, uint128_t const num);
+size_t		fr_snprint_uint128(char *out, size_t outlen, uint128_t const num);
 int		fr_get_time(char const *date_str, time_t *date);
+void		fr_timeval_subtract(struct timeval *out, struct timeval const *end, struct timeval const *start);
+void		fr_timespec_subtract(struct timespec *out, struct timespec const *end, struct timespec const *start);
+int		fr_timeval_from_str(struct timeval *out, char const *in);
 int8_t		fr_pointer_cmp(void const *a, void const *b);
 void		fr_quick_sort(void const *to_sort[], int min_idx, int max_idx, fr_cmp_t cmp);
 /*
@@ -803,7 +864,9 @@ extern fr_debug_state_t fr_debug_state;
  * If the callback returns < 0, the main fault handler will not be called.
  *
  * @param signum signal raised.
- * @return 0 on success < 0 on failure.
+ * @return
+ *	- 0 on success.
+ *	- < 0 on failure.
  */
 typedef int (*fr_fault_cb_t)(int signum);
 typedef struct fr_bt_marker fr_bt_marker_t;
@@ -828,8 +891,8 @@ void		fr_fault_set_log_fd(int fd);
 void		fr_fault_log(char const *msg, ...) CC_HINT(format (printf, 1, 2));
 
 #  ifdef WITH_VERIFY_PTR
-void		fr_pair_verify_vp(char const *file, int line, VALUE_PAIR const *vp);
-void		fr_pair_verify_list(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps);
+void		fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp);
+void		fr_pair_list_verify(char const *file, int line, TALLOC_CTX *expected, VALUE_PAIR *vps);
 #  endif
 
 bool		fr_assert_cond(char const *file, int line, char const *expr, bool cond);
@@ -895,12 +958,20 @@ int		rbtree_walk(rbtree_t *tree, rb_order_t order, rb_walker_t compare, void *co
  */
 typedef struct	fr_fifo_t fr_fifo_t;
 typedef void (*fr_fifo_free_t)(void *);
-fr_fifo_t	*fr_fifo_create(int max_entries, fr_fifo_free_t freeNode);
+fr_fifo_t	*fr_fifo_create(TALLOC_CTX *ctx, int max_entries, fr_fifo_free_t freeNode);
 void		fr_fifo_free(fr_fifo_t *fi);
 int		fr_fifo_push(fr_fifo_t *fi, void *data);
 void		*fr_fifo_pop(fr_fifo_t *fi);
 void		*fr_fifo_peek(fr_fifo_t *fi);
-int		fr_fifo_num_elements(fr_fifo_t *fi);
+unsigned int	fr_fifo_num_elements(fr_fifo_t *fi);
+
+/*
+ *	socket.c
+ */
+int		fr_socket_client_unix(char const *path, bool async);
+int		fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async);
+int		fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async);
+int		fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout);
 
 #ifdef __cplusplus
 }

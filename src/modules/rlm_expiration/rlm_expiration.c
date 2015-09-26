@@ -36,7 +36,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 {
 	VALUE_PAIR *vp, *check_item = NULL;
 
-	check_item = pairfind(request->config_items, PW_EXPIRATION, 0, TAG_ANY);
+	check_item = fr_pair_find_by_num(request->config, PW_EXPIRATION, 0, TAG_ANY);
 	if (check_item != NULL) {
 		char date[50];
 		/*
@@ -47,13 +47,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		*      why they're being rejected.
 		*/
 		if (((time_t) check_item->vp_date) <= request->timestamp) {
-			vp_prints_value(date, sizeof(date), check_item, 0);
+			fr_pair_value_snprint(date, sizeof(date), check_item, 0);
 			REDEBUG("Account expired at '%s'", date);
 
 			return RLM_MODULE_USERLOCK;
 		} else {
 			if (RDEBUG_ENABLED) {
-				vp_prints_value(date, sizeof(date), check_item, 0);
+				fr_pair_value_snprint(date, sizeof(date), check_item, 0);
 				RDEBUG("Account will expire at '%s'", date);
 			}
 		}
@@ -62,9 +62,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		 *	Else the account hasn't expired, but it may do so
 		 *	in the future.  Set Session-Timeout.
 		 */
-		vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
 		if (!vp) {
-			vp = radius_paircreate(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
+			vp = radius_pair_create(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
 			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
 		} else if (vp->vp_date > ((uint32_t) (((time_t) check_item->vp_date) - request->timestamp))) {
 			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
@@ -122,21 +122,12 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  */
 extern module_t rlm_expiration;
 module_t rlm_expiration = {
-	RLM_MODULE_INIT,
-	"expiration",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	0,
-	NULL,
-	mod_instantiate,		/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,			/* authentication */
-		mod_authorize,		/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		mod_authorize  		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "expiration",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_POST_AUTH]		= mod_authorize
 	},
 };

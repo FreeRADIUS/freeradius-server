@@ -361,14 +361,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	uuid_clear(guid_sacl);
 
 	if (rad_getgid(request, &gid, kRadiusSACLName) < 0) {
+		RDEBUG("The SACL group \"%s\" does not exist on this system.", kRadiusSACLName);
+	} else {
 		err = mbr_gid_to_uuid(gid, guid_sacl);
 		if (err != 0) {
 			ERROR("rlm_opendirectory: The group \"%s\" does not have a GUID.", kRadiusSACLName);
 			return RLM_MODULE_FAIL;
 		}
-	}
-	else {
-		RDEBUG("The SACL group \"%s\" does not exist on this system.", kRadiusSACLName);
 	}
 
 	/* resolve client access list */
@@ -413,8 +412,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
 		RDEBUG("no access control groups, all users allowed");
-		if (pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY) == NULL) {
-			pairmake_config("Auth-Type", kAuthType, T_OP_EQ);
+		if (fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY) == NULL) {
+			pair_make_config("Auth-Type", kAuthType, T_OP_EQ);
 			RDEBUG("Setting Auth-Type = %s", kAuthType);
 		}
 		return RLM_MODULE_OK;
@@ -462,8 +461,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		}
 	}
 
-	if (pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY) == NULL) {
-		pairmake_config("Auth-Type", kAuthType, T_OP_EQ);
+	if (fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY) == NULL) {
+		pair_make_config("Auth-Type", kAuthType, T_OP_EQ);
 		RDEBUG("Setting Auth-Type = %s", kAuthType);
 	}
 
@@ -474,21 +473,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 /* globally exported name */
 extern module_t rlm_opendirectory;
 module_t rlm_opendirectory = {
-	RLM_MODULE_INIT,
-	"opendirectory",
-	RLM_TYPE_THREAD_SAFE,	/* type */
-	0,
-	NULL,			/* CONF_PARSER */
-	NULL,			/* instantiation */
-	NULL,			   	/* detach */
-	{
-		mod_authenticate, /* authentication */
-		mod_authorize,	/* authorization */
-		NULL,		/* preaccounting */
-		NULL,		/* accounting */
-		NULL,		/* checksimul */
-		NULL,		/* pre-proxy */
-		NULL,		/* post-proxy */
-		NULL		/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "opendirectory",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize
 	},
 };

@@ -28,16 +28,13 @@ RCSIDH(other_h, "$Id$")
 #include <freeradius-devel/connection.h>
 #include "config.h"
 
-#ifdef HAVE_JSON_JSONH
-#define HAVE_JSON
-#endif
-
 #define CURL_NO_OLDIES 1
 #include <curl/curl.h>
 
-#ifdef HAVE_JSON
-#include <json/json.h>
-#endif
+/*
+ *	The common JSON library (also tells us if we have json-c)
+ */
+#include "../rlm_json/json.h"
 
 #define REST_URI_MAX_LEN		2048
 #define REST_BODY_MAX_LEN		8192
@@ -150,10 +147,7 @@ typedef struct rlm_rest_t {
 	char const		*connect_uri;	//!< URI we attempt to connect to, to pre-establish
 						//!< TCP connections.
 
-	struct timeval		connect_timeout_tv;	//!< Connection timeout timeval.
-	long			connect_timeout;	//!< Connection timeout ms.
-
-	fr_connection_pool_t	*conn_pool;	//!< Pointer to the connection pool.
+	fr_connection_pool_t	*pool;		//!< Pointer to the connection pool.
 
 	rlm_rest_section_t	authorize;	//!< Configuration specific to authorisation.
 	rlm_rest_section_t	authenticate;	//!< Configuration specific to authentication.
@@ -255,7 +249,7 @@ int rest_init(rlm_rest_t *instance);
 
 void rest_cleanup(void);
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
 int mod_conn_alive(void *instance, void *handle);
 
@@ -281,9 +275,9 @@ void rest_response_error(REQUEST *request, rlm_rest_handle_t *handle);
 void rest_request_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section,
 			  void *handle);
 
-#define rest_get_handle_code(handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)handle)->ctx)->response.code)
+#define rest_get_handle_code(_handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)_handle)->ctx)->response.code)
 
-#define rest_get_handle_type(handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)handle)->ctx)->response.type)
+#define rest_get_handle_type(_handle)(((rlm_rest_curl_context_t*)((rlm_rest_handle_t*)_handle)->ctx)->response.type)
 
 size_t rest_get_handle_data(char const **out, rlm_rest_handle_t *handle);
 

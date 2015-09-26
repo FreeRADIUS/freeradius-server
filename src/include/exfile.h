@@ -1,8 +1,7 @@
 /*
  *   This library is free software; you can redistribute it and/or
  *   modify it under the terms of the GNU Lesser General Public
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version. either
+ *   License as published by the Free Software Foundation; either
  *   version 2.1 of the License, or (at your option) any later version.
  *
  *   This library is distributed in the hope that it will be useful,
@@ -36,7 +35,7 @@ extern "C" {
  */
 typedef struct exfile_t exfile_t;
 
-exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle);
+exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t entries, uint32_t idle, bool locking);
 int exfile_open(exfile_t *lf, char const *filename, mode_t permissions, bool append);
 int exfile_close(exfile_t *lf, int fd);
 int exfile_unlock(exfile_t *lf, int fd);

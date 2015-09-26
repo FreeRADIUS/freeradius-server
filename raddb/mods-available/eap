@@ -241,7 +241,7 @@ eap {
 		#  write to files in its configuration
 		#  directory.
 		#
-#		random_file = ${certdir}/random
+#		random_file = /dev/urandom
 
 		#
 		#  This can never exceed the size of a RADIUS
@@ -269,9 +269,13 @@ eap {
 		#  1) Copy CA certificates and CRLs to same directory.
 		#  2) Execute 'c_rehash <CA certs&CRLs Directory>'.
 		#    'c_rehash' is OpenSSL's command.
-		#  3) uncomment the line below.
+		#  3) uncomment the lines below.
 		#  5) Restart radiusd
 	#	check_crl = yes
+
+		# Check if intermediate CAs have been revoked.
+	#	check_all_crl = yes
+
 		ca_path = ${cadir}
 
 		#
@@ -348,65 +352,29 @@ eap {
 		#
 		cache {
 			#
-			#  Enable it.  The default is "no".
-			#  Deleting the entire "cache" subsection
-			#  also disables caching.
+			#  Enable it.  The default is "no". Deleting the entire "cache"
+			#  subsection also disables caching.
 			#
-			#  You can disallow resumption for a
-			#  particular user by adding the following
-			#  attribute to the control item list:
+			#  You can disallow resumption for a particular user by adding the
+			#  following attribute to the control item list:
 			#
-			#		Allow-Session-Resumption = No
+			#    Allow-Session-Resumption = No
 			#
-			#  If "enable = no" below, you CANNOT
-			#  enable resumption for just one user
-			#  by setting the above attribute to "yes".
+			#  If "enable = no" below, you CANNOT enable resumption for just one
+			#  user by setting the above attribute to "yes".
 			#
 			enable = yes
 
+			#  As of 3.1, the following configuration options are deprecated:
 			#
-			#  Lifetime of the cached entries, in hours.
-			#  The sessions will be deleted after this
-			#  time.
+			#	persist_dir
+			#	lifetime
+			#	max_entries
 			#
-			lifetime = 24 # hours
-
+			#  You should use the "virtual_server" directive instead.
+			#  See raddb/sites-available/tls-cache for details.
 			#
-			#  The maximum number of entries in the
-			#  cache.  Set to "0" for "infinite".
-			#
-			#  This could be set to the number of users
-			#  who are logged in... which can be a LOT.
-			#
-			max_entries = 255
-
-			#
-			#  Internal "name" of the session cache.
-			#  Used to distinguish which TLS context
-			#  sessions belong to.
-			#
-			#  The server will generate a random value
-			#  if unset. This will change across server
-			#  restart so you MUST set the "name" if you
-			#  want to persist sessions (see below).
-			#
-			#name = "EAP module"
-
-			#
-			#  Simple directory-based storage of sessions.
-			#  Two files per session will be written, the SSL
-			#  state and the cached VPs. This will persist session
-			#  across server restarts.
-			#
-			#  The server will need write perms, and the directory
-			#  should be secured from anyone else. You might want
-			#  a script to remove old files from here periodically:
-			#
-			#    find ${logdir}/tlscache -mtime +2 -exec rm -f {} \;
-			#
-			#  This feature REQUIRES "name" option be set above.
-			#
-			#persist_dir = "${logdir}/tlscache"
+	#		virtual_server = 'tls-cache'
 		}
 
 		#
@@ -449,10 +417,36 @@ eap {
 
 		#
 		#  OCSP Configuration
-		#  Certificates can be verified against an OCSP
-		#  Responder. This makes it possible to immediately
-		#  revoke certificates without the distribution of
-		#  new Certificate Revocation Lists (CRLs).
+		#
+		#  Certificates can be verified against an OCSP Responder.
+		#  This makes it possible to immediately revoke certificates without
+		#  the distribution of new Certificate Revocation Lists (CRLs).
+		#
+		#  In addition to the configuration items below, the behaviour of
+		#  OCSP can be altered by runtime attributes.
+		#
+		#  If OCSP is enabled, the &reply:TLS-OCSP-Cert-Valid attribute will
+		#  be added after OCSP completes.  One of the following values will
+		#  be set:
+		#
+		#    - no      OCSP responder indicated the certificate is not valid.
+		#    - yes     OCSP responder indicated the certificate is valid.
+		#    - skipped OCSP checks were skipped.
+		#
+		#  If an OCSP check is performed, the &reply:TLS-OCSP-Next-Update
+		#  attribute will also be added.  The value of this will attribute
+		#  be the number of seconds until the certificate state need be refreshed.
+		#  This can be used as a Cache-TTL value if you wish to use the cache
+		#  module to store OCSP certificate validation status.
+		#
+		#  If when the OCSP check is performed, a &control:TLS-OCSP-Cert-Valid
+		#  attribute is present, its value will force the outcome of the OCSP
+		#  check, and the OCSP responder will not be contacted.
+		#  Values map to the following OCSP responses:
+		#
+		#    - no      Invalid.
+		#    - yes     Valid.
+		#    - skipped If softfail = yes value else invalid.
 		#
 		ocsp {
 			#
@@ -461,6 +455,19 @@ eap {
 			#  also disables ocsp checking
 			#
 			enable = no
+
+			#
+			#  OCSP checks are performed immediately after the complete
+			#  certificate is received from the supplicant, and directly
+			#  after the attributes from that certificate are inserted
+			#  into the request.
+			#
+			#  In order to retrieve cached OCSP states, a virtual server
+			#  must be defined here.
+			#
+			#  See raddb/sites-available/tls-cache for details.
+			#
+#			virtual_server = 'tls-cache'
 
 			#
 			#  The OCSP Responder URL can be automatically
@@ -792,5 +799,11 @@ eap {
 		#  working.
 		#
 #		send_error = no
+
+		#  Server identifier to send back in the challenge.
+		#  This should generally be the host name of the
+		#  RADIUS server.  Or, some information to uniquely
+		#  identify it.
+#		identity = "FreeRADIUS"
 	}
 }

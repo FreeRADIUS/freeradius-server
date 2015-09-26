@@ -49,10 +49,12 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName,
 				  tDirNodeReference* userNodeRef, tDirReference dsRef)
 {
-	tDataBuffer	     *tDataBuff	= NULL;
+	tDataBuffer	     	*tDataBuff	= NULL;
 	tDirNodeReference       nodeRef		= 0;
-	long		    status		= eDSNoErr;
-	tContextData	    context		= 0;
+	long		    	status		= eDSNoErr;
+	char			*what		= NULL;
+	char			*status_name	= NULL;
+	tContextData	    	context		= 0;
 	uint32_t	   	nodeCount	= 0;
 	uint32_t		attrIndex	= 0;
 	tDataList	       *nodeName	= NULL;
@@ -75,7 +77,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 
 	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
 	if (!tDataBuff) {
-		ERROR("rlm_mschap: getUserNodeRef(): dsDataBufferAllocate() status = %ld", status);
+		RERROR("Failed allocating buffer");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -84,34 +86,27 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		status = dsFindDirNodes(dsRef, tDataBuff, NULL,
 					eDSAuthenticationSearchNodeName,
 					&nodeCount, &context);
-		if (status != eDSNoErr) {
-			ERROR("rlm_mschap: getUserNodeRef(): no node found? status = %ld", status);
-			result = RLM_MODULE_FAIL;
-			break;
-		}
+#define OPEN_DIR_ERROR(_x) do if (status != eDSNoErr) { \
+				what = _x; \
+				goto error; \
+			} while (0)
+
+		OPEN_DIR_ERROR("Failed to find directory");
+
 		if (nodeCount < 1) {
-			ERROR("rlm_mschap: getUserNodeRef(): nodeCount < 1, status = %ld", status);
-			result = RLM_MODULE_FAIL;
-			break;
+			what = "No directories found.";
+			goto error;
 		}
 
 		status = dsGetDirNodeName(dsRef, tDataBuff, 1, &nodeName);
-		if (status != eDSNoErr) {
-			ERROR("rlm_mschap: getUserNodeRef(): dsGetDirNodeName() status = %ld", status);
-			result = RLM_MODULE_FAIL;
-			break;
-		}
+		OPEN_DIR_ERROR("Failed getting directory name");
 
 		status = dsOpenDirNode(dsRef, nodeName, &nodeRef);
 		dsDataListDeallocate(dsRef, nodeName);
 		free(nodeName);
 		nodeName = NULL;
 
-		if (status != eDSNoErr) {
-			ERROR("rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);
-			result = RLM_MODULE_FAIL;
-			break;
-		}
+		OPEN_DIR_ERROR("Failed opening directory");
 
 		pRecName = dsBuildListFromStrings(dsRef, inUserName, NULL);
 		pRecType = dsBuildListFromStrings(dsRef, kDSStdRecordTypeUsers,
@@ -124,19 +119,16 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		status = dsGetRecordList(nodeRef, tDataBuff, pRecName,
 					 eDSExact, pRecType, pAttrType, 0,
 					 &recCount, &context);
-		if (status != eDSNoErr || recCount == 0) {
-			ERROR("rlm_mschap: getUserNodeRef(): dsGetRecordList() status = %ld, recCount=%u", status, recCount);
-			result = RLM_MODULE_FAIL;
-			break;
+		OPEN_DIR_ERROR("Failed getting record list");
+
+		if (recCount == 0) {
+			what = "No user records returned";
+			goto error;
 		}
 
 		status = dsGetRecordEntry(nodeRef, tDataBuff, 1,
 					  &attrListRef, &pRecEntry);
-		if (status != eDSNoErr) {
-			ERROR("rlm_mschap: getUserNodeRef(): dsGetRecordEntry() status = %ld", status);
-			result = RLM_MODULE_FAIL;
-			break;
-		}
+		OPEN_DIR_ERROR("Failed getting record entry");
 
 		for (attrIndex = 1; (attrIndex <= pRecEntry->fRecordAttributeCount) && (status == eDSNoErr); attrIndex++) {
 			status = dsGetAttributeEntry(nodeRef, tDataBuff, attrListRef, attrIndex, &valueRef, &pAttrEntry);
@@ -187,7 +179,7 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 
 		pUserNode = dsBuildFromPath(dsRef, pUserLocation, "/");
 		if (!pUserNode) {
-			ERROR("rlm_mschap: getUserNodeRef(): dsBuildFromPath() returned NULL");
+			RERROR("Failed building user from path");
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -197,7 +189,10 @@ static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **out
 		free(pUserNode);
 
 		if (status != eDSNoErr) {
-			ERROR("rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);
+		error:
+			status_name = dsCopyDirStatusName(status);
+			RERROR("%s: status = %s", what, status_name);
+			free(status_name);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -246,7 +241,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	uint32_t		uiLen		 = 0;
 	char			*username_string = NULL;
 	char			*shortUserName	 = NULL;
-	VALUE_PAIR		*response	 = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
+	VALUE_PAIR		*response	 = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 #ifndef NDEBUG
 	unsigned int t;
 #endif
@@ -260,7 +255,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	status = dsOpenDirService(&dsRef);
 	if (status != eDSNoErr) {
 		talloc_free(username_string);
-		ERROR("rlm_mschap: od_mschap_auth(): dsOpenDirService = %d", status);
+		RERROR("Failed opening directory service");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -410,8 +405,9 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 		dsCloseDirService(dsRef);
 
 	if (status != eDSNoErr) {
-		errno = EACCES;
-		ERROR("rlm_mschap: authentication failed %d", status); /* <-- returns -14091 (eDSAuthMethodNotSupported) -14090 */
+		char *status_name = dsCopyDirStatusName(status);
+		RERROR("rlm_mschap: authentication failed - status = %s", status_name);
+		free(status_name);
 		return RLM_MODULE_REJECT;
 	}
 

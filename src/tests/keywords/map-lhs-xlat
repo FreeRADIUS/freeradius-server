@@ -1,0 +1,11 @@
+#
+#  PRE: map-arg3-xlat
+#
+
+update request {
+	Tmp-String-0 := "reply:Filter-Id"
+}
+
+map csv "%{tolower:%{User-Name}}" {
+    "%{Tmp-String-0}" := 'field3'
+}

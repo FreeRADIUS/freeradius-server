@@ -46,7 +46,7 @@ typedef enum log_type {
 } log_type_t;
 
 typedef enum log_lvl {
-	L_DBG_LVL_MIN = -1,	//!< Hack for stupid GCC warnings (comparison with 0 always true)
+	L_DBG_LVL_DISABLE = -1,	//!< Don't print messages.
 	L_DBG_LVL_OFF = 0,	//!< No debug messages.
 	L_DBG_LVL_1,		//!< Highest priority debug messages (-x).
 	L_DBG_LVL_2,		//!< 2nd highest priority debug messages (-xx | -X).
@@ -130,14 +130,13 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
  *
  * @{
  */
-#define _SL(_l, _p, _f, ...)	if (debug_flag >= _p) radlog(_l, _f, ## __VA_ARGS__)
-#define AUTH(fmt, ...)		_SL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define ACCT(fmt, ...)		_SL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define PROXY(fmt, ...)		_SL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define AUTH(fmt, ...)		radlog(L_AUTH, fmt, ## __VA_ARGS__)
+#define ACCT(fmt, ...)		radlog(L_ACCT, fmt, ## __VA_ARGS__)
+#define PROXY(fmt, ...)		radlog(L_PROXY, fmt, ## __VA_ARGS__)
 
-#define INFO(fmt, ...)		_SL(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define WARN(fmt, ...)		_SL(L_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define ERROR(fmt, ...)		_SL(L_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define INFO(fmt, ...)		radlog(L_INFO,  fmt, ## __VA_ARGS__)
+#define WARN(fmt, ...)		radlog(L_WARN, fmt, ## __VA_ARGS__)
+#define ERROR(fmt, ...)		radlog(L_ERR, fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log global debug messages (DEBUG*)
@@ -166,10 +165,11 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
 #define DEBUG_ENABLED3		debug_enabled(L_DBG, L_DBG_LVL_3)			//!< True if global debug level 1-3 messages are enabled
 #define DEBUG_ENABLED4		debug_enabled(L_DBG, L_DBG_LVL_MAX)			//!< True if global debug level 1-4 messages are enabled
 
+#define _SL(_l, _p, _f, ...)	if (rad_debug_lvl >= _p) radlog(_l, _f, ## __VA_ARGS__)
 #define DEBUG(fmt, ...)		_SL(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
 #define DEBUG2(fmt, ...)	_SL(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 #define DEBUG3(fmt, ...)	_SL(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
-#define DEBUG4(fmt, ...)	 _SL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
+#define DEBUG4(fmt, ...)	_SL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
 /** @} */
 
 /** @name Log request-specific messages (R*)
@@ -234,16 +234,16 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
 #define RDEBUG_ENABLED4		radlog_debug_enabled(L_DBG, L_DBG_LVL_MAX, request)	//!< True if request debug level 1-4 messages are enabled
 
 #define RDEBUGX(_l, fmt, ...)	radlog_request(L_DBG, _l, request, fmt, ## __VA_ARGS__)
-#define RDEBUG(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
-#define RDEBUG2(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
-#define RDEBUG3(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__)
-#define RDEBUG4(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
+#define RDEBUG(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
+#define RDEBUG2(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
+#define RDEBUG3(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_3, request, fmt, ## __VA_ARGS__)
+#define RDEBUG4(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG, L_DBG_LVL_MAX, request, fmt, ## __VA_ARGS__)
 
 #define RIDEBUG(fmt, ...)	radlog_request(L_INFO, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
 #define RIDEBUG2(fmt, ...)	radlog_request(L_INFO, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
 
-#define RWDEBUG(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
-#define RWDEBUG2(fmt, ...)	if (debug_flag || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
+#define RWDEBUG(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
+#define RWDEBUG2(fmt, ...)	if (rad_debug_lvl || request->log.lvl) radlog_request(L_DBG_WARN, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
 
 #define REDEBUG(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_1, request, fmt, ## __VA_ARGS__)
 #define REDEBUG2(fmt, ...)	radlog_request_error(L_DBG_ERR, L_DBG_LVL_2, request, fmt, ## __VA_ARGS__)
@@ -329,12 +329,31 @@ void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t 
  * @param fmt printf style format string.
  * @param ... printf arguments.
  */
- #define ROPTIONAL(_l_request, _l_global, fmt, ...) \
+ #define MOD_ROPTIONAL(_l_request, _l_global, fmt, ...) \
 do {\
 	if (request) {\
 		_l_request(fmt, ## __VA_ARGS__);\
 	} else {\
 		_l_global(MOD_PREFIX " (%s): " fmt, inst->name, ## __VA_ARGS__);\
+ 	}\
+} while (0)
+
+/** Use different logging functions depending on whether request is NULL or not.
+ *
+ * This is useful for areas of code which are run on server startup, and when
+ * processing requests.
+ *
+ * @param _l_request The name of a R* logging macro e.g. RDEBUG3.
+ * @param _l_global The name of a global logging macro e.g. DEBUG3.
+ * @param fmt printf style format string.
+ * @param ... printf arguments.
+ */
+ #define ROPTIONAL(_l_request, _l_global, fmt, ...) \
+do {\
+	if (request) {\
+		_l_request(fmt, ## __VA_ARGS__);\
+	} else {\
+		_l_global(LOG_PREFIX ": " fmt, ## __VA_ARGS__);\
  	}\
 } while (0)
 

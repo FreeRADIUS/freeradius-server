@@ -41,7 +41,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED void *instance, REQUES
 		if (vp->da->type != PW_TYPE_STRING) continue;
 
 		for (i = 0; i < vp->vp_length; i += len) {
-			len = fr_utf8_char(&vp->vp_octets[i]);
+			len = fr_utf8_char(&vp->vp_octets[i], -1);
 			if (len == 0) return RLM_MODULE_FAIL;
 		}
 	}
@@ -60,25 +60,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_utf8_clean(UNUSED void *instance, REQUES
  */
 extern module_t rlm_utf8;
 module_t rlm_utf8 = {
-	RLM_MODULE_INIT,
-	"utf8",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	0,
-	NULL,				/* CONF_PARSER */
-	NULL,				/* instantiation */
-	NULL,				/* detach */
-	{
-		NULL,		 	/* authentication */
-		mod_utf8_clean,		/* authorization */
-		mod_utf8_clean,		/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "utf8",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_utf8_clean,
+		[MOD_PREACCT]		= mod_utf8_clean,
 #ifdef WITH_COA
-		, mod_utf8_clean,
-		NULL
+		[MOD_RECV_COA]		= mod_utf8_clean
 #endif
 	},
 };

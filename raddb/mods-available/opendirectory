@@ -8,6 +8,15 @@
 #
 #  There are no configuration entries for this module.
 #
+#  The MS-CHAP module will automatically talk to OpenDirectory, if the
+#  server is built on an OSX machine.  However, you must also set
+#  dsAttrTypeNative:apple-enabled-auth-mech attribute in the
+#  /config/dirserv OpenDirectory record.  You will probably also need
+#  to change the user passwords in order to re-generate the
+#  appropriate hashes.
+#
+#  See also https://discussions.apple.com/thread/6053980?tstart=0
+#
 opendirectory {
 
 }

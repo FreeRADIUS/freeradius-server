@@ -188,19 +188,19 @@ static void thread_pool_manage(time_t now);
  *	A mapping of configuration file names to internal integers
  */
 static const CONF_PARSER thread_config[] = {
-	{ "start_servers", FR_CONF_POINTER(PW_TYPE_INTEGER, &thread_pool.start_threads), "5" },
-	{ "max_servers", FR_CONF_POINTER(PW_TYPE_INTEGER, &thread_pool.max_threads), "32" },
-	{ "min_spare_servers", FR_CONF_POINTER(PW_TYPE_INTEGER, &thread_pool.min_spare_threads), "3" },
-	{ "max_spare_servers", FR_CONF_POINTER(PW_TYPE_INTEGER, &thread_pool.max_spare_threads), "10" },
-	{ "max_requests_per_server", FR_CONF_POINTER(PW_TYPE_INTEGER, &thread_pool.max_requests_per_thread), "0" },
-	{ "cleanup_delay", FR_CONF_POINTER(PW_TYPE_INTEGER, &thread_pool.cleanup_delay), "5" },
-	{ "max_queue_size", FR_CONF_POINTER(PW_TYPE_INTEGER, &thread_pool.max_queue_size), "65536" },
+	{ FR_CONF_POINTER("start_servers", PW_TYPE_INTEGER, &thread_pool.start_threads), .dflt = "5" },
+	{ FR_CONF_POINTER("max_servers", PW_TYPE_INTEGER, &thread_pool.max_threads), .dflt = "32" },
+	{ FR_CONF_POINTER("min_spare_servers", PW_TYPE_INTEGER, &thread_pool.min_spare_threads), .dflt = "3" },
+	{ FR_CONF_POINTER("max_spare_servers", PW_TYPE_INTEGER, &thread_pool.max_spare_threads), .dflt = "10" },
+	{ FR_CONF_POINTER("max_requests_per_server", PW_TYPE_INTEGER, &thread_pool.max_requests_per_thread), .dflt = "0" },
+	{ FR_CONF_POINTER("cleanup_delay", PW_TYPE_INTEGER, &thread_pool.cleanup_delay), .dflt = "5" },
+	{ FR_CONF_POINTER("max_queue_size", PW_TYPE_INTEGER, &thread_pool.max_queue_size), .dflt = "65536" },
 #ifdef WITH_STATS
 #ifdef WITH_ACCOUNTING
-	{ "auto_limit_acct", FR_CONF_POINTER(PW_TYPE_BOOLEAN, &thread_pool.auto_limit_acct), NULL },
+	{ FR_CONF_POINTER("auto_limit_acct", PW_TYPE_BOOLEAN, &thread_pool.auto_limit_acct) },
 #endif
 #endif
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 #endif
 
@@ -663,15 +663,15 @@ static void *request_handler_thread(void *arg)
 			VALUE_PAIR *vp;
 			REQUEST *request = self->request;
 
-			vp = radius_paircreate(request, &request->config_items,
+			vp = radius_pair_create(request, &request->config,
 					       181, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_integer = thread_pool.pps_in.pps;
 
-			vp = radius_paircreate(request, &request->config_items,
+			vp = radius_pair_create(request, &request->config,
 					       182, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_integer = thread_pool.pps_in.pps;
 
-			vp = radius_paircreate(request, &request->config_items,
+			vp = radius_pair_create(request, &request->config,
 					       183, VENDORPEC_FREERADIUS);
 			if (vp) {
 				vp->vp_integer = thread_pool.max_queue_size - thread_pool.num_queued;
@@ -1002,7 +1002,7 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 	 *	Allocate multiple fifos.
 	 */
 	for (i = 0; i < RAD_LISTEN_MAX; i++) {
-		thread_pool.fifo[i] = fr_fifo_create(thread_pool.max_queue_size, NULL);
+		thread_pool.fifo[i] = fr_fifo_create(NULL, thread_pool.max_queue_size, NULL);
 		if (!thread_pool.fifo[i]) {
 			ERROR("FATAL: Failed to set up request fifo");
 			return -1;
@@ -1162,7 +1162,7 @@ static void thread_pool_manage(time_t now)
 	 */
 	active_threads = thread_pool.active_threads;
 	spare = thread_pool.total_threads - active_threads;
-	if (debug_flag) {
+	if (rad_debug_lvl) {
 		static uint32_t old_total = 0;
 		static uint32_t old_active = 0;
 
@@ -1398,118 +1398,3 @@ void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
 	}
 }
 #endif /* HAVE_PTHREAD_H */
-
-static void time_free(void *data)
-{
-	free(data);
-}
-
-void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench)
-{
-	CONF_SECTION *subcs;
-	CONF_ITEM *ci;
-	CONF_PAIR *cp;
-	char const *attr;
-	char const *value;
-	VALUE_PAIR *vp;
-	bool alloc = false;
-
-	/*
-	 *	Use global "trigger" section if no local config is given.
-	 */
-	if (!cs) {
-		cs = main_config.config;
-		attr = name;
-	} else {
-		/*
-		 *	Try to use pair name, rather than reference.
-		 */
-		attr = strrchr(name, '.');
-		if (attr) {
-			attr++;
-		} else {
-			attr = name;
-		}
-	}
-
-	/*
-	 *	Find local "trigger" subsection.  If it isn't found,
-	 *	try using the global "trigger" section, and reset the
-	 *	reference to the full path, rather than the sub-path.
-	 */
-	subcs = cf_section_sub_find(cs, "trigger");
-	if (!subcs && (cs != main_config.config)) {
-		subcs = cf_section_sub_find(main_config.config, "trigger");
-		attr = name;
-	}
-
-	if (!subcs) return;
-
-	ci = cf_reference_item(subcs, main_config.config, attr);
-	if (!ci) {
-		ERROR("No such item in trigger section: %s", attr);
-		return;
-	}
-
-	if (!cf_item_is_pair(ci)) {
-		ERROR("Trigger is not a configuration variable: %s", attr);
-		return;
-	}
-
-	cp = cf_item_to_pair(ci);
-	if (!cp) return;
-
-	value = cf_pair_value(cp);
-	if (!value) {
-		ERROR("Trigger has no value: %s", name);
-		return;
-	}
-
-	/*
-	 *	May be called for Status-Server packets.
-	 */
-	vp = NULL;
-	if (request && request->packet) vp = request->packet->vps;
-
-	/*
-	 *	Perform periodic quenching.
-	 */
-	if (quench) {
-		time_t *last_time;
-
-		last_time = cf_data_find(cs, value);
-		if (!last_time) {
-			last_time = rad_malloc(sizeof(*last_time));
-			*last_time = 0;
-
-			if (cf_data_add(cs, value, last_time, time_free) < 0) {
-				free(last_time);
-				last_time = NULL;
-			}
-		}
-
-		/*
-		 *	Send the quenched traps at most once per second.
-		 */
-		if (last_time) {
-			time_t now = time(NULL);
-			if (*last_time == now) return;
-
-			*last_time = now;
-		}
-	}
-
-	/*
-	 *	radius_exec_program always needs a request.
-	 */
-	if (!request) {
-		request = request_alloc(NULL);
-		alloc = true;
-	}
-
-	DEBUG("Trigger %s -> %s", name, value);
-
-	radius_exec_program(NULL, 0, NULL, request, value, vp, false, true, EXEC_TIMEOUT);
-
-	if (alloc) talloc_free(request);
-}

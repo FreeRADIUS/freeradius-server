@@ -81,8 +81,8 @@ typedef struct rlm_python_t {
  */
 static CONF_PARSER module_config[] = {
 
-#define A(x) { "mod_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.module_name), NULL }, \
-	{ "func_" #x, FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, x.function_name), NULL },
+#define A(x) { FR_CONF_OFFSET("mod_" #x, PW_TYPE_STRING, rlm_python_t, x.module_name) }, \
+	{ FR_CONF_OFFSET("func_" #x, PW_TYPE_STRING, rlm_python_t, x.function_name) },
 
 	A(instantiate)
 	A(authorize)
@@ -101,9 +101,8 @@ static CONF_PARSER module_config[] = {
 
 #undef A
 
-	{ "python_path", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_python_t, python_path), NULL },
-
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ FR_CONF_OFFSET("python_path", PW_TYPE_STRING, rlm_python_t, python_path) },
+	CONF_PARSER_TERMINATOR
 };
 
 static struct {
@@ -343,7 +342,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		}
 		s1 = PyString_AsString(pStr1);
 		s2 = PyString_AsString(pStr2);
-		vp = pairmake(ctx, vps, s1, s2, op);
+		vp = fr_pair_make(ctx, vps, s1, s2, op);
 		if (vp != NULL) {
 			DEBUG("rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
 		} else {
@@ -365,7 +364,7 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	PyObject *pStr = NULL;
 	char buf[1024];
 
-	/* Look at the vp_print_name? */
+	/* Look at the fr_pair_fprint_name? */
 
 	if (vp->da->flags.has_tag)
 		pStr = PyString_FromFormat("%s:%d", vp->da->name, vp->tag);
@@ -377,7 +376,7 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 
 	PyTuple_SET_ITEM(pPair, 0, pStr);
 
-	vp_prints_value(buf, sizeof(buf), vp, '"');
+	fr_pair_value_snprint(buf, sizeof(buf), vp, '"');
 
 	if ((pStr = PyString_FromString(buf)) == NULL)
 		goto failed;
@@ -546,7 +545,7 @@ static rlm_rcode_t do_python(rlm_python_t *inst, REQUEST *request, PyObject *pFu
 		mod_vptuple(request->reply, &request->reply->vps,
 			    PyTuple_GET_ITEM(pRet, 1), funcname);
 		/* Config item tuple */
-		mod_vptuple(request, &request->config_items,
+		mod_vptuple(request, &request->config,
 			    PyTuple_GET_ITEM(pRet, 2), funcname);
 
 	} else if (PyInt_CheckExact(pRet)) {
@@ -747,25 +746,25 @@ A(send_coa)
  */
 extern module_t rlm_python;
 module_t rlm_python = {
-	RLM_MODULE_INIT,
-	"python",
-	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_python_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,
-	{
-		mod_authenticate,	/* authentication */
-		mod_authorize,	/* authorization */
-		mod_preacct,		/* preaccounting */
-		mod_accounting,	/* accounting */
-		mod_checksimul,	/* checksimul */
-		mod_pre_proxy,	/* pre-proxy */
-		mod_post_proxy,	/* post-proxy */
-		mod_post_auth	/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "python",
+	.type		= RLM_TYPE_THREAD_SAFE,
+	.inst_size	= sizeof(rlm_python_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.detach		= mod_detach,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_preacct,
+		[MOD_ACCOUNTING]	= mod_accounting,
+		[MOD_SESSION]		= mod_checksimul,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
+		[MOD_POST_AUTH]		= mod_post_auth,
 #ifdef WITH_COA
-		, mod_recv_coa,
-		mod_send_coa
+		[MOD_RECV_COA]		= mod_recv_coa,
+		[MOD_SEND_COA]		= mod_send_coa
 #endif
 	}
 };

@@ -4,8 +4,9 @@
  * @brief LDAP authorization and authentication module headers.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2015 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  * @copyright 2013 Network RADIUS SARL<info@networkradius.com>
- * @copyright 2013 The FreeRADIUS Server Project.
+ * @copyright 2013-2015 The FreeRADIUS Server Project.
  */
 #ifndef _RLM_LDAP_H
 #define _RLM_LDAP_H
@@ -22,6 +23,55 @@
 #include <lber.h>
 #include <ldap.h>
 #include "config.h"
+
+/*
+ *	Framework on OSX doesn't export the symbols but leaves
+ *	the macro defined *sigh*.
+ */
+#ifndef HAVE_LDAP_CREATE_SESSION_TRACKING_CONTROL
+#  undef LDAP_CONTROL_X_SESSION_TRACKING
+#endif
+
+/*
+ *	There's a typo in libldap's ldap.h which was fixed by
+ *	Howard Chu in 19aeb1cd. This typo had the function defined
+ *	as ldap_create_session_tracking_control but declared as
+ *	ldap_create_session_tracking.
+ *
+ *	We fix this, by adding the correct declaration here.
+ */
+#ifdef LDAP_CONTROL_X_SESSION_TRACKING
+#  if !defined(HAVE_DECL_LDAP_CREATE_SESSION_TRACKING_CONTROL) || (HAVE_DECL_LDAP_CREATE_SESSION_TRACKING_CONTROL == 0)
+LDAP_F( int )
+ldap_create_session_tracking_control LDAP_P((
+        LDAP            *ld,
+        char            *sessionSourceIp,
+        char            *sessionSourceName,
+        char            *formatOID,
+        struct berval   *sessionTrackingIdentifier,
+        LDAPControl     **ctrlp ));
+#  endif
+#endif
+
+/*
+ *	Ensure the have the ldap_create_sort_keylist()
+ *	function too, else we can't use ldap_create_sort_control()
+ */
+#if !defined(LDAP_CREATE_SORT_KEYLIST) || !defined(LDAP_FREE_SORT_KEYLIST)
+#  undef HAVE_LDAP_CREATE_SORT_CONTROL
+#endif
+
+/*
+ *	Because the LTB people define LDAP_VENDOR_VERSION_PATCH
+ *	as X, which precludes its use in printf statements *sigh*
+ *
+ *	Identifiers that are not macros, all evaluate to 0,
+ *	which is why this works.
+ */
+#if !defined(LDAP_VENDOR_VERSION_PATCH) || LDAP_VENDOR_VERSION_PATCH == 0
+#  undef LDAP_VENDOR_VERSION_PATCH
+#  define LDAP_VENDOR_VERSION_PATCH 0
+#endif
 
 /*
  *      For compatibility with other LDAP libraries
@@ -46,8 +96,14 @@
 #  define LDAP_CONST
 #endif
 
+#if defined(HAVE_LDAP_URL_PARSE) && defined(HAVE_LDAP_IS_LDAP_URL) && defined(HAVE_LDAP_URL_DESC2STR)
+#  define LDAP_CAN_PARSE_URLS
+#endif
+
 #define MOD_PREFIX			"rlm_ldap"	//!< The name of the module.
 
+#define LDAP_MAX_CONTROLS		10		//!< Maximum number of client/server controls.
+							//!< Used to allocate static arrays of control pointers.
 #define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and
 							//!< FreeRADIUS attributes.
 #define LDAP_MAP_RESERVED		4		//!< Number of additional items to allocate in expanded
@@ -64,25 +120,64 @@
 #define LDAP_MAX_FILTER_STR_LEN		1024		//!< Maximum length of an xlat expanded filter.
 #define LDAP_MAX_DN_STR_LEN		1024		//!< Maximum length of an xlat expanded DN.
 
-typedef struct ldap_acct_section {
-	CONF_SECTION		*cs;			//!< Section configuration.
+#define LDAP_VIRTUAL_DN_ATTR		"dn"		//!< 'Virtual' attribute which maps to the DN of the object.
 
-	char const		*reference;		//!< Configuration reference string.
+
+typedef enum {
+	LDAP_EXT_UNSUPPORTED,				//!< Unsupported extension.
+	LDAP_EXT_BINDNAME,				//!< Specifies the user DN or name for an LDAP bind.
+	LDAP_EXT_BINDPW,				//!< Specifies the password for an LDAP bind.
+} ldap_supported_extension;
+
+extern FR_NAME_NUMBER const ldap_supported_extensions[];
+
+typedef struct ldap_instance rlm_ldap_t;
+
+typedef struct ldap_acct_section {
+	CONF_SECTION	*cs;				//!< Section configuration.
+
+	char const	*reference;			//!< Configuration reference string.
 } ldap_acct_section_t;
 
 typedef struct ldap_sasl {
-	char const		*mech;			//!< SASL mech(s) to try.
-	char const		*proxy;			//!< Identity to proxy.
-	char const		*realm;			//!< Kerberos realm.
+	char const	*mech;				//!< SASL mech(s) to try.
+	char const	*proxy;				//!< Identity to proxy.
+	char const	*realm;				//!< Kerberos realm.
 } ldap_sasl;
 
 typedef struct ldap_sasl_dynamic {
-	vp_tmpl_t	*mech;			//!< SASL mech(s) to try.
-	vp_tmpl_t	*proxy;			//!< Identity to proxy.
-	vp_tmpl_t	*realm;			//!< Kerberos realm.
+	vp_tmpl_t	*mech;				//!< SASL mech(s) to try.
+	vp_tmpl_t	*proxy;				//!< Identity to proxy.
+	vp_tmpl_t	*realm;				//!< Kerberos realm.
 } ldap_sasl_dynamic;
 
-typedef struct ldap_instance {
+typedef struct rlm_ldap_control {
+	LDAPControl 	*control;			//!< LDAP control.
+	bool		freeit;				//!< Whether the control should be freed after
+							//!< we've finished using it.
+} rlm_ldap_control_t;
+
+/** Tracks the state of a libldap connection handle
+ *
+ */
+typedef struct ldap_handle {
+	LDAP		*handle;			//!< libldap handle.
+	bool		rebound;			//!< Whether the connection has been rebound to something
+							//!< other than the admin user.
+	bool		referred;			//!< Whether the connection is now established a server
+							//!< other than the configured one.
+
+	rlm_ldap_control_t serverctrls[LDAP_MAX_CONTROLS + 1];	//!< Server controls to use for all operations with
+								//!< this handle.
+	rlm_ldap_control_t clientctrls[LDAP_MAX_CONTROLS + 1];	//!< Client controls to use for all operations with
+								//!< this handle.
+	int		serverctrls_cnt;		//!< Number of server controls associated with the handle.
+	int		clientctrls_cnt;		//!< Number of client controls associated with the handle.
+
+	rlm_ldap_t	*inst;				//!< rlm_ldap configuration.
+} ldap_handle_t;
+
+struct ldap_instance {
 	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
 	fr_connection_pool_t *pool;			//!< Connection pool instance.
 
@@ -104,6 +199,8 @@ typedef struct ldap_instance {
 							//!< connections and binding where necessary.
 	bool		chase_referrals_unset;		//!< If true, use the OpenLDAP defaults for chase_referrals.
 
+	bool		use_referral_credentials;	//!< If true use credentials from the referral URL.
+
 	bool		rebind;				//!< Controls whether we set an ldad_rebind_proc function
 							//!< and so determines if we can bind to other servers whilst
 							//!< chasing referrals. If this is false, we will still chase
@@ -120,14 +217,17 @@ typedef struct ldap_instance {
 	/*
 	 *	RADIUS attribute to LDAP attribute maps
 	 */
-	value_pair_map_t *user_map; 			//!< Attribute map applied to users and profiles.
+	vp_map_t	*user_map; 			//!< Attribute map applied to users and profiles.
 
 	/*
 	 *	User object attributes and filters
 	 */
-	vp_tmpl_t *userobj_filter;		//!< Filter to retrieve only user objects.
-	vp_tmpl_t *userobj_base_dn;		//!< DN to search for users under.
+	vp_tmpl_t	*userobj_filter;		//!< Filter to retrieve only user objects.
+	vp_tmpl_t	*userobj_base_dn;		//!< DN to search for users under.
 	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
+	char const	*userobj_sort_by;		//!< List of attributes to sort by.
+	LDAPControl	*userobj_sort_ctrl;		//!< Server side sort control.
+
 	int		userobj_scope;			//!< Search scope.
 
 	char const	*userobj_membership_attr;	//!< Attribute that describes groups the user is a member of.
@@ -144,7 +244,7 @@ typedef struct ldap_instance {
 	 *	Group object attributes and filters
 	 */
 	char const	*groupobj_filter;		//!< Filter to retrieve only group objects.
-	vp_tmpl_t *groupobj_base_dn;		//!< DN to search for users under.
+	vp_tmpl_t	*groupobj_base_dn;		//!< DN to search for users under.
 	char const	*groupobj_scope_str;		//!< Scope (sub, one, base).
 	int		groupobj_scope;			//!< Search scope.
 
@@ -168,6 +268,9 @@ typedef struct ldap_instance {
 	DICT_ATTR const	*cache_da;			//!< The DA associated with this specific instance of the
 							//!< rlm_ldap module.
 
+	char const	*group_attribute;		//!< Sets the attribute we use when comparing group
+							//!< group memberships.
+
 	DICT_ATTR const	*group_da;			//!< The DA associated with this specific instance of the
 							//!< rlm_ldap module.
 
@@ -184,13 +287,13 @@ typedef struct ldap_instance {
 	/*
 	 *	Profiles
 	 */
-	vp_tmpl_t *default_profile;		//!< If this is set, we will search for a profile object
+	vp_tmpl_t	*default_profile;		//!< If this is set, we will search for a profile object
 							//!< with this name, and map any attributes it contains.
 							//!< No value should be set if profiles are not being used
 							//!< as there is an associated performance penalty.
 	char const	*profile_attr;			//!< Attribute that identifies profiles to apply. May appear
 							//!< in userobj or groupobj.
-	vp_tmpl_t *profile_filter;		//!< Filter to retrieve only retrieve group objects.
+	vp_tmpl_t	*profile_filter;		//!< Filter to retrieve only retrieve group objects.
 
 	/*
 	 *	Accounting
@@ -229,8 +332,11 @@ typedef struct ldap_instance {
 	/*
 	 *	Options
 	 */
-	uint32_t  	net_timeout;			//!< How long we wait for new connections to the LDAP server
-							//!< to be established.
+#ifdef LDAP_CONTROL_X_SESSION_TRACKING
+	bool		session_tracking;		//!< Whether we add session tracking controls, which help
+							//!< identify the autz or acct session the commands were
+							//!< issued for.
+#endif
 	uint32_t	res_timeout;			//!< How long we wait for a result from the server.
 	uint32_t	srv_timelimit;			//!< How long the server should spent on a single request
 							//!< (also bounded by value on the server).
@@ -260,30 +366,32 @@ typedef struct ldap_instance {
 #endif
 
 	LDAP		*handle;			//!< Hack for OpenLDAP libldap global initialisation.
-} ldap_instance_t;
+};
 
-typedef struct ldap_handle {
-	LDAP		*handle;			//!< LDAP LD handle.
-	int		rebound;			//!< Whether the connection has been rebound to something
-							//!< other than the admin user.
-	int		referred;			//!< Whether the connection is now established a server
-							//!< other than the configured one.
-	ldap_instance_t	*inst;				//!< rlm_ldap configuration.
-} ldap_handle_t;
+/** Result of expanding the RHS of a set of maps
+ *
+ * Used to store the array of attributes we'll be querying for.
+ */
+typedef struct rlm_ldap_map_exp {
+	vp_map_t const *maps;				//!< Head of list of maps we expanded the RHS of.
+	char const	*attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
+							//!< and NULL termination.
+	TALLOC_CTX	*ctx;				//!< Context to allocate new attributes in.
+	int		count;				//!< Index on next free element.
+} rlm_ldap_map_exp_t;
 
-typedef struct rlm_ldap_map_xlat {
-	value_pair_map_t const *maps;
-	char const *attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
-								     //!< and NULL termination.
-	int count;
-} rlm_ldap_map_xlat_t;
-
+/** Contains a collection of values
+ *
+ */
 typedef struct rlm_ldap_result {
 	struct berval	**values;			//!< libldap struct containing bv_val (char *)
 							//!< and length bv_len.
 	int		count;				//!< Number of values.
 } rlm_ldap_result_t;
 
+/** Codes returned by rlm_ldap internal functions
+ *
+ */
 typedef enum {
 	LDAP_PROC_CONTINUE = 1,				//!< Operation is in progress.
 	LDAP_PROC_SUCCESS = 0,				//!< Operation was successfull.
@@ -318,11 +426,11 @@ typedef enum {
 #define LDAP_DBG(fmt, ...) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
 #define LDAP_DBG_REQ(fmt, ...) do { if (request) {RDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
 
-#define LDAP_DBG2(fmt, ...) if (debug_flag >= L_DBG_LVL_2) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
-#define LDAP_DBG_REQ2(fmt, ...) do { if (request) {RDEBUG2(fmt, ##__VA_ARGS__);} else if (debug_flag >= L_DBG_LVL_2) {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
+#define LDAP_DBG2(fmt, ...) if (rad_debug_lvl >= L_DBG_LVL_2) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
+#define LDAP_DBG_REQ2(fmt, ...) do { if (request) {RDEBUG2(fmt, ##__VA_ARGS__);} else if (rad_debug_lvl >= L_DBG_LVL_2) {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
 
-#define LDAP_DBG3(fmt, ...) if (debug_flag >= L_DBG_LVL_3) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
-#define LDAP_DBG_REQ3(fmt, ...) do { if (request) {RDEBUG3(fmt, ##__VA_ARGS__);} else if (debug_flag >= L_DBG_LVL_3) {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
+#define LDAP_DBG3(fmt, ...) if (rad_debug_lvl >= L_DBG_LVL_3) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
+#define LDAP_DBG_REQ3(fmt, ...) do { if (request) {RDEBUG3(fmt, ##__VA_ARGS__);} else if (rad_debug_lvl >= L_DBG_LVL_3) {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
 
 #define LDAP_ERR(fmt, ...) ERROR("rlm_ldap (%s): " fmt, inst->name, ##__VA_ARGS__)
 #define LDAP_ERR_REQ(fmt, ...) do { if (request) {REDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_ERR(fmt, ##__VA_ARGS__);}} while (0)
@@ -338,81 +446,102 @@ extern FR_NAME_NUMBER const ldap_tls_require_cert[];
  */
 size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
 
+size_t rlm_ldap_unescape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg);
+
 bool rlm_ldap_is_dn(char const *in, size_t inlen);
 
 size_t rlm_ldap_normalise_dn(char *out, char const *in);
 
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen);
 
-ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
-			   char const *password, ldap_sasl *sasl, bool retry);
+ldap_rcode_t rlm_ldap_bind(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
+			   char const *password, ldap_sasl *sasl, bool retry,
+			   LDAPControl **serverctrls, LDAPControl **clientctrls);
 
 char const *rlm_ldap_error_str(ldap_handle_t const *conn);
 
-ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+ldap_rcode_t rlm_ldap_search(LDAPMessage **result, rlm_ldap_t const *inst, REQUEST *request,
+			     ldap_handle_t **pconn,
 			     char const *dn, int scope, char const *filter, char const * const *attrs,
-			     LDAPMessage **result);
+			     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-			     char const *dn, LDAPMod *mods[]);
+ldap_rcode_t rlm_ldap_modify(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+			     char const *dn, LDAPMod *mods[],
+			     LDAPControl **serverctrls, LDAPControl **clientctrls);
 
-char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			       char const *attrs[], bool force, LDAPMessage **result, rlm_rcode_t *rcode);
 
-rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t const *conn,
+rlm_rcode_t rlm_ldap_check_access(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t const *conn,
 				  LDAPMessage *entry);
 
-void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request);
+void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request);
 
 /*
  *	ldap.c - Callbacks for the connection pool API.
  */
-ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
+ldap_rcode_t rlm_ldap_result(rlm_ldap_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
 			     LDAPMessage **result, char const **error, char **extra);
 
 char *rlm_ldap_berval_to_string(TALLOC_CTX *ctx, struct berval const *in);
 
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance);
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval const *timeout);
 
-ldap_handle_t *mod_conn_get(ldap_instance_t const *inst, REQUEST *request);
+ldap_handle_t *mod_conn_get(rlm_ldap_t const *inst, REQUEST *request);
 
-void mod_conn_release(ldap_instance_t const *inst, ldap_handle_t *conn);
+void mod_conn_release(rlm_ldap_t const *inst, ldap_handle_t *conn);
 
 /*
  *	groups.c - Group membership functions.
  */
-rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+rlm_rcode_t rlm_ldap_cacheable_userobj(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 				       LDAPMessage *entry, char const *attr);
 
-rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn);
+rlm_rcode_t rlm_ldap_cacheable_groupobj(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn);
 
-rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+rlm_rcode_t rlm_ldap_check_groupobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 					    VALUE_PAIR *check);
 
-rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+rlm_rcode_t rlm_ldap_check_userobj_dynamic(rlm_ldap_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 					   char const *dn, VALUE_PAIR *check);
 
-rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request, VALUE_PAIR *check);
+rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALUE_PAIR *check);
 
 /*
  *	attrmap.c - Attribute mapping code.
  */
-int rlm_ldap_map_verify(value_pair_map_t *map, void *instance);
+int rlm_ldap_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request, vp_map_t const *map, void *uctx);
 
-void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded);
+int rlm_ldap_map_verify(vp_map_t *map, void *instance);
 
-int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_map_xlat_t *expanded);
+int rlm_ldap_map_expand(rlm_ldap_map_exp_t *expanded, REQUEST *request, vp_map_t const *maps);
 
-int rlm_ldap_map_do(ldap_instance_t const *inst, REQUEST *request, LDAP *handle,
-		    rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry);
-
-rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
-				 char const *profile, rlm_ldap_map_xlat_t const *expanded);
+int rlm_ldap_map_do(rlm_ldap_t const *inst, REQUEST *request, LDAP *handle,
+		    rlm_ldap_map_exp_t const *expanded, LDAPMessage *entry);
 
 /*
  *	clients.c - Dynamic clients (bulk load).
  */
-int  rlm_ldap_client_load(ldap_instance_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *cs);
+int  rlm_ldap_client_load(rlm_ldap_t const *inst, CONF_SECTION *tmpl, CONF_SECTION *cs);
+
+/*
+ *	control.c - Connection based client/server controls
+ */
+void rlm_ldap_control_merge(LDAPControl *serverctrls_out[],
+			    LDAPControl *clientctrls_out[],
+			    size_t serverctrls_len,
+			    size_t clientctrls_len,
+			    ldap_handle_t *conn,
+			    LDAPControl *serverctrls_in[],
+			    LDAPControl *clientctrls_in[]);
+
+int rlm_ldap_control_add_server(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit);
+
+int rlm_ldap_control_add_client(ldap_handle_t *conn, LDAPControl *ctrl, bool freeit);
+
+void rlm_ldap_control_clear(ldap_handle_t *conn);
+
+int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request);
 
 /*
  *	edir.c - Magic extensions for Novell
@@ -424,8 +553,9 @@ char const *edir_errstr(int code);
 /*
  *	sasl.s - SASL bind functions
  */
-ldap_rcode_t rlm_ldap_sasl_interactive(ldap_instance_t const *inst, REQUEST *request,
+ldap_rcode_t rlm_ldap_sasl_interactive(rlm_ldap_t const *inst, REQUEST *request,
 				       ldap_handle_t *pconn, char const *dn,
 				       char const *password, ldap_sasl *sasl,
-				       char const **error, char **extra);
+				       LDAPControl **serverctrls, LDAPControl **clientctrls,
+				       char const **error, char **error_extra);
 #endif

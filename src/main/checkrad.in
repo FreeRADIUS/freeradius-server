@@ -858,7 +858,7 @@ sub cyclades_telnet {
 	if ($pr->waitfor(Match => $pr_prompt) == 1) {
 		$pr->print('6');
 	} else {
-		print LOG "  Error: acessing menu option '6'.\n" if ($debug);
+		print LOG "  Error: accessing menu option '6'.\n" if ($debug);
 		$pr->close;
 		return 2;
 	}
@@ -868,7 +868,7 @@ sub cyclades_telnet {
 	if ($pr->waitfor(Match => $pr_prompt) == 1) {
 		@list = $pr->cmd(String => '8', Prompt => $endlist);
 	} else {
-		print LOG "  Error: acessing menu option '8'.\n" if ($debug);
+		print LOG "  Error: accessing menu option '8'.\n" if ($debug);
 		$pr->close;
 		return 2;
 	}
@@ -976,7 +976,7 @@ sub cyclades_snmp {
 #
 
 #       This routine modified by Dan Halverson <danh@tbc.net>
-#       to suport additional versions of Hiper Arc
+#       to support additional versions of Hiper Arc
 #
 
 $usrm	 = '.iso.org.dod.internet.private.enterprises.429';
@@ -1318,7 +1318,7 @@ sub mikrotik_telnet {
   $t->waitfor('/\[.*@.*\] > /');
 
   # It is not possible to get the line numbers etc.
-  # Thus we cant support if simultaneus-use is over 1
+  # Thus we cant support if simultaneous-use is over 1
   # At least I was using pppoe so it wasnt possible.
   $t->print('ppp active print column name detail');
 

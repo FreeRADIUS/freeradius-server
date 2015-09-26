@@ -81,6 +81,10 @@ smsotp {
 		# unused for this length of time will be closed.
 		idle_timeout = 60
 
+		#  Connection timeout (in seconds).  The maximum amount of
+		#  time to wait for a new connection to be established.
+		connect_timeout = 3.0
+
 		# NOTE: All configuration settings are enforced.  If a
 		# connection is closed because of "idle_timeout",
 		# "uses", or "lifetime", then the total number of

@@ -3,6 +3,16 @@
 #
 #	This is a virtual server that handles DHCP.
 #
+#  See raddb/mods-available/dhcp_sqlippool for the IP Pool configuration.
+#
+#  See raddb/policy.d/dhcp_sqlippool for the "glue" code that allows
+#  the RADIUS based "sqlippool" module to be used for DHCP.
+#
+#  See raddb/mods-config/sql/ippool/ for the schemas.
+#
+#  See raddb/sites-available/dhcp for instructions on how to configure
+#  the DHCP server.
+#
 #	$Id$
 #
 ######################################################################
@@ -26,23 +36,6 @@ server dhcp {
 #  If you have multiple interfaces, it is a good idea to bind the
 #  listen section to an interface.  You will also need one listen
 #  section per interface.
-#
-#  FreeBSD does *not* support binding sockets to interfaces.  Therefore,
-#  if you have multiple interfaces, broadcasts may go out of the wrong
-#  one, or even all interfaces.  The solution is to use the "setfib" command.
-#  If you have a network "10.10.0/24" on LAN1, you will need to do:
-#
-#  Pick any IP on the 10.10.0/24 network
-#	$ setfib 1 route add default 10.10.0.1
-#
-#  Edit /etc/rc.local, and add a line:
-#	setfib 1 /path/to/radiusd
-#
-#  The kern must be built with the following options:
-#	options    ROUTETABLES=2
-#  or any value larger than 2.
-#
-# The other only solution is to update FreeRADIUS to use BPF sockets.
 #
 listen {
 	#  This is a dhcp socket.

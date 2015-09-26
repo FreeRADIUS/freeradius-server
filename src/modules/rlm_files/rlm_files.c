@@ -36,34 +36,34 @@ typedef struct rlm_files_t {
 	char const *key;
 
 	char const *filename;
-	fr_hash_table_t *common;
+	rbtree_t *common;
 
 	/* autz */
 	char const *usersfile;
-	fr_hash_table_t *users;
+	rbtree_t *users;
 
 
 	/* authenticate */
 	char const *auth_usersfile;
-	fr_hash_table_t *auth_users;
+	rbtree_t *auth_users;
 
 	/* preacct */
 	char const *acctusersfile;
-	fr_hash_table_t *acctusers;
+	rbtree_t *acctusers;
 
 #ifdef WITH_PROXY
 	/* pre-proxy */
 	char const *preproxy_usersfile;
-	fr_hash_table_t *preproxy_users;
+	rbtree_t *preproxy_users;
 
 	/* post-proxy */
 	char const *postproxy_usersfile;
-	fr_hash_table_t *postproxy_users;
+	rbtree_t *postproxy_users;
 #endif
 
 	/* post-authenticate */
 	char const *postauth_usersfile;
-	fr_hash_table_t *postauth_users;
+	rbtree_t *postauth_users;
 } rlm_files_t;
 
 
@@ -73,31 +73,26 @@ typedef struct rlm_files_t {
 static int fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
+	tmp = fr_pair_find_by_num(vp, PW_FALL_THROUGH, 0, TAG_ANY);
 
 	return tmp ? tmp->vp_integer : 0;
 }
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, filename), NULL },
-	{ "usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, usersfile), NULL },
-	{ "acctusersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, acctusersfile), NULL },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT, rlm_files_t, filename) },
+	{ FR_CONF_OFFSET("usersfile", PW_TYPE_FILE_INPUT, rlm_files_t, usersfile) },
+	{ FR_CONF_OFFSET("acctusersfile", PW_TYPE_FILE_INPUT, rlm_files_t, acctusersfile) },
 #ifdef WITH_PROXY
-	{ "preproxy_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, preproxy_usersfile), NULL },
-	{ "postproxy_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, postproxy_usersfile), NULL },
+	{ FR_CONF_OFFSET("preproxy_usersfile", PW_TYPE_FILE_INPUT, rlm_files_t, preproxy_usersfile) },
+	{ FR_CONF_OFFSET("postproxy_usersfile", PW_TYPE_FILE_INPUT, rlm_files_t, postproxy_usersfile) },
 #endif
-	{ "auth_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile), NULL },
-	{ "postauth_usersfile", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile), NULL },
-	{ "compat", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_files_t, compat_mode), "cistron" },
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_files_t, key), NULL },
-	{ NULL, -1, 0, NULL, NULL }
+	{ FR_CONF_OFFSET("auth_usersfile", PW_TYPE_FILE_INPUT, rlm_files_t, auth_usersfile) },
+	{ FR_CONF_OFFSET("postauth_usersfile", PW_TYPE_FILE_INPUT, rlm_files_t, postauth_usersfile) },
+	{ FR_CONF_OFFSET("compat", PW_TYPE_STRING | PW_TYPE_DEPRECATED, rlm_files_t, compat_mode) },
+	{ FR_CONF_OFFSET("key", PW_TYPE_STRING | PW_TYPE_XLAT, rlm_files_t, key) },
+	CONF_PARSER_TERMINATOR
 };
 
-
-static uint32_t pairlist_hash(void const *data)
-{
-	return fr_hash_string(((PAIR_LIST const *)data)->name);
-}
 
 static int pairlist_cmp(void const *a, void const *b)
 {
@@ -105,24 +100,16 @@ static int pairlist_cmp(void const *a, void const *b)
 		      ((PAIR_LIST const *)b)->name);
 }
 
-static void my_pairlist_free(void *data)
-{
-	PAIR_LIST *pl = data;
-
-	pairlist_free(&pl);
-}
-
-
-static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t **pht, char const *compat_mode_str)
+static int getusersfile(TALLOC_CTX *ctx, char const *filename, rbtree_t **ptree, char const *compat_mode_str)
 {
 	int rcode;
 	PAIR_LIST *users = NULL;
 	PAIR_LIST *entry, *next;
-	fr_hash_table_t *ht, *tailht;
-	int order = 0;
+	PAIR_LIST *user_list, *default_list, **default_tail;
+	rbtree_t *tree;
 
 	if (!filename) {
-		*pht = NULL;
+		*ptree = NULL;
 		return 0;
 	}
 
@@ -135,12 +122,12 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 	 *	Walk through the 'users' file list, if we're debugging,
 	 *	or if we're in compat_mode.
 	 */
-	if ((debug_flag) ||
-	    (strcmp(compat_mode_str, "cistron") == 0)) {
+	if ((rad_debug_lvl) ||
+	    (compat_mode_str && (strcmp(compat_mode_str, "cistron") == 0))) {
 		VALUE_PAIR *vp;
 		bool compat_mode = false;
 
-		if (strcmp(compat_mode_str, "cistron") == 0) {
+		if (compat_mode_str && (strcmp(compat_mode_str, "cistron") == 0)) {
 			compat_mode = true;
 		}
 
@@ -246,83 +233,82 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 
 			entry = entry->next;
 		}
-
 	}
 
-	ht = fr_hash_table_create(pairlist_hash, pairlist_cmp,
-				    my_pairlist_free);
-	if (!ht) {
+	tree = rbtree_create(ctx, pairlist_cmp, NULL, RBTREE_FLAG_NONE);
+	if (!tree) {
 		pairlist_free(&users);
 		return -1;
 	}
 
-	tailht = fr_hash_table_create(pairlist_hash, pairlist_cmp,
-					NULL);
-	if (!tailht) {
-		fr_hash_table_free(ht);
-		pairlist_free(&users);
-		return -1;
-	}
+	default_list = NULL;
+	default_tail = &default_list;
 
 	/*
-	 *	Now that we've read it in, put the entries into a hash
-	 *	for faster access.
+	 *	We've read the entries in linearly, but putting them
+	 *	into an indexed data structure would be much faster.
+	 *	Let's go fix that now.
 	 */
 	for (entry = users; entry != NULL; entry = next) {
-		PAIR_LIST *tail;
-
+		/*
+		 *	Remove this entry from the input list.
+		 */
 		next = entry->next;
 		entry->next = NULL;
-		entry->order = order++;
+		(void) talloc_steal(tree, entry);
 
 		/*
-		 *	Insert it into the hash table, and remember
-		 *	the tail of the linked list.
+		 *	DEFAULT entries get their own list.
 		 */
-		tail = fr_hash_table_finddata(tailht, entry);
-		if (!tail) {
+		if (strcmp(entry->name, "DEFAULT") == 0) {
+			if (!default_list) {
+				default_list = entry;
+
+				/*
+				 *	Insert the first DEFAULT into the tree.
+				 */
+				if (!rbtree_insert(tree, entry)) {
+				error:
+					pairlist_free(&entry);
+					pairlist_free(&next);
+					rbtree_free(tree);
+					return -1;
+				}
+
+			} else {
+				/*
+				 *	Tack this entry onto the tail
+				 *	of the DEFAULT list.
+				 */
+				*default_tail = entry;
+			}
+
+			default_tail = &entry->next;
+			continue;
+		}
+
+		/*
+		 *	Not DEFAULT, must be a normal user.
+		 */
+		user_list = rbtree_finddata(tree, entry);
+		if (!user_list) {
 			/*
-			 *	Insert it into the head & tail.
+			 *	Insert the first one.
 			 */
-			if (!fr_hash_table_insert(ht, entry) ||
-			    !fr_hash_table_insert(tailht, entry)) {
-				pairlist_free(&next);
-				fr_hash_table_free(ht);
-				fr_hash_table_free(tailht);
-				return -1;
-			}
+			if (!rbtree_insert(tree, entry)) goto error;
 		} else {
-			tail->next = entry;
-			if (!fr_hash_table_replace(tailht, entry)) {
-				pairlist_free(&next);
-				fr_hash_table_free(ht);
-				fr_hash_table_free(tailht);
-				return -1;
-			}
+			/*
+			 *	Find the tail of this list, and add it
+			 *	there.
+			 */
+			while (user_list->next) user_list = user_list->next;
+
+			user_list->next = entry;
 		}
 	}
 
-	fr_hash_table_free(tailht);
-	*pht = ht;
+	*ptree = tree;
 
-	return 0;
-}
-
-/*
- *	Clean up.
- */
-static int mod_detach(void *instance)
-{
-	rlm_files_t *inst = instance;
-	fr_hash_table_free(inst->common);
-	fr_hash_table_free(inst->users);
-	fr_hash_table_free(inst->acctusers);
-#ifdef WITH_PROXY
-	fr_hash_table_free(inst->preproxy_users);
-	fr_hash_table_free(inst->postproxy_users);
-#endif
-	fr_hash_table_free(inst->auth_users);
-	fr_hash_table_free(inst->postauth_users);
 	return 0;
 }
 
@@ -336,7 +322,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	rlm_files_t *inst = instance;
 
 #undef READFILE
-#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y, inst->compat_mode) != 0) { ERROR("Failed reading %s", inst->_x); mod_detach(inst);return -1;} } while (0)
+#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y, inst->compat_mode) != 0) { ERROR("Failed reading %s", inst->_x); return -1;} } while (0)
 
 	READFILE(filename, common);
 	READFILE(usersfile, users);
@@ -356,7 +342,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 /*
  *	Common code called by everything below.
  */
-static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *filename, fr_hash_table_t *ht,
+static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *filename, rbtree_t *tree,
 			       RADIUS_PACKET *request_packet, RADIUS_PACKET *reply_packet)
 {
 	char const	*name, *match;
@@ -383,12 +369,12 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 		name = len ? buffer : "NONE";
 	}
 
-	if (!ht) return RLM_MODULE_NOOP;
+	if (!tree) return RLM_MODULE_NOOP;
 
 	my_pl.name = name;
-	user_pl = fr_hash_table_finddata(ht, &my_pl);
+	user_pl = rbtree_finddata(tree, &my_pl);
 	my_pl.name = "DEFAULT";
-	default_pl = fr_hash_table_finddata(ht, &my_pl);
+	default_pl = rbtree_finddata(tree, &my_pl);
 
 	/*
 	 *	Find the entry for the user.
@@ -397,6 +383,10 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 		vp_cursor_t cursor;
 		VALUE_PAIR *vp;
 		PAIR_LIST const *pl;
+
+		/*
+		 *	Figure out which entry to match on.
+		 */
 
 		if (!default_pl && user_pl) {
 			pl = user_pl;
@@ -408,7 +398,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			match = "DEFAULT";
 			default_pl = default_pl->next;
 
-		} else if (user_pl->order < default_pl->order) {
+		} else if (user_pl->lineno < default_pl->lineno) {
 			pl = user_pl;
 			match = name;
 			user_pl = user_pl->next;
@@ -419,13 +409,13 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			default_pl = default_pl->next;
 		}
 
-		check_tmp = paircopy(request, pl->check);
+		check_tmp = fr_pair_list_copy(request, pl->check);
 		for (vp = fr_cursor_init(&cursor, &check_tmp);
 		     vp;
 		     vp = fr_cursor_next(&cursor)) {
 			if (radius_xlat_do(request, vp) < 0) {
 				RWARN("Failed parsing expanded value for check item, skipping entry: %s", fr_strerror());
-				pairfree(&check_tmp);
+				fr_pair_list_free(&check_tmp);
 				continue;
 			}
 		}
@@ -435,10 +425,10 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 			found = true;
 
 			/* ctx may be reply or proxy */
-			reply_tmp = paircopy(reply_packet, pl->reply);
+			reply_tmp = fr_pair_list_copy(reply_packet, pl->reply);
 			radius_pairmove(request, &reply_packet->vps, reply_tmp, true);
-			pairmove(request, &request->config_items, &check_tmp);
-			pairfree(&check_tmp);
+			fr_pair_list_move(request, &request->config, &check_tmp);
+			fr_pair_list_free(&check_tmp);
 
 			/*
 			 *	Fallthrough?
@@ -451,7 +441,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request, char const *
 	/*
 	 *	Remove server internal parameters.
 	 */
-	pairdelete(&reply_packet->vps, PW_FALL_THROUGH, 0, TAG_ANY);
+	fr_pair_delete_by_num(&reply_packet->vps, PW_FALL_THROUGH, 0, TAG_ANY);
 
 	/*
 	 *	See if we succeeded.
@@ -482,7 +472,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 
 /*
  *	Pre-Accounting - read the acct_users file for check_items and
- *	config_items. Reply items are Not Recommended(TM) in acct_users,
+ *	config. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
 static rlm_rcode_t CC_HINT(nonnull) mod_preacct(void *instance, REQUEST *request)
@@ -536,26 +526,22 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 /* globally exported name */
 extern module_t rlm_files;
 module_t rlm_files = {
-	RLM_MODULE_INIT,
-	"files",
-	RLM_TYPE_HUP_SAFE,
-	sizeof(rlm_files_t),
-	module_config,
-	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
-	{
-		mod_authenticate,	/* authentication */
-		mod_authorize, 	/* authorization */
-		mod_preacct,		/* preaccounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "files",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_files_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate,
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_preacct,
+
 #ifdef WITH_PROXY
-		mod_pre_proxy,		/* pre-proxy */
-		mod_post_proxy,		/* post-proxy */
-#else
-		NULL, NULL,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
-		mod_post_auth		/* post-auth */
+		[MOD_POST_AUTH]		= mod_post_auth
 	},
 };
 

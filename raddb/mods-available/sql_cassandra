@@ -1,0 +1,148 @@
+# -*- text -*-
+#
+#  SQL driver configuration for Cassandra
+#
+#  Should be included inside of a SQL module's configuration section
+#
+# $Id$
+#
+cassandra {
+	# Consistency level, may be one of:
+	#
+	#   any          - A write must be written to the commit log and
+	#		   memtable on all replica nodes in the cluster for that partition.
+	#   one          - A write must be written to the commit log and
+	#		   memtable of at least one replica node.
+	#   two          - A write must be written to the commit log and memtable of at
+	#		   least two replica nodes.
+	#   three        - A write must be written to the commit log and memtable of at least
+	#		   three replica nodes.
+	#   quorum       - A write must be written to the commit log and memtable on a quorum
+	#		   of replica nodes.
+	#   all          - A write must be written to the commit log and memtable on all replica
+	#		   nodes in the cluster for that partition.
+	#   each_quorum  - Strong consistency. A write must be written to the commit log
+	#		   and memtable on a quorum of replica nodes in all data centers.
+	#   local_quorum - Strong consistency. A write must be written to the commit log and
+	#		   memtable on a quorum of replica nodes in the same data center as
+	#		   the coordinator node. Avoids latency of inter-data center communication.
+	#   local_one    - A write must be sent to, and successfully acknowledged by, at least one
+	#		   replica node in the local data center.
+	consistency = 'quorum'
+
+	# Protocol version (default 2).
+#	protocol_version = 2
+
+	# Number of connections to each server in each IO thread (default 1).
+#	connections_per_host = 1
+
+	# Maximum number of connections to each server in each IO thread (default 2).
+#	connections_per_host_max = 2
+
+	# Number of IO threads (default 1).
+#	io_threads = 1
+
+	# Size of the the fixed size queue that stores pending requests (default 4096).
+#	io_queue_size = 4096
+
+	# Maximum number of requests processed by an IO worker per flush.
+#	io_flush_requests_max = 128
+
+	# High water mark for the number of requests queued waiting for a connection in
+	# a connection pool. Disables writes to a host on an IO worker if the number of
+	# requests queued exceed this value (default 128 * mac_connections_per_host).
+#	pending_requests_high = 128
+
+	# Low water mark for the number of requests queued waiting for a connection
+	# in a connection pool. After exceeding high water mark requests, writes to a
+	# host will only resume once the number of requests fall below this value
+	# (default 64 * max_connections_per_host).
+#	pending_requests_low = 64
+
+	# High water mark for the number of bytes outstanding on a connection. Disables
+	# writes to a connection if the number of bytes queued exceed this value
+	# (default 65356).
+#	write_bytes_high = 65356
+
+	# Sets the low water mark for number of bytes outstanding on a connection.
+	# After exceeding high water mark bytes, writes will only resume once the number
+	# of bytes fall below this value (default 32768).
+#	write_bytes_low = 32768
+
+	# The size of the the fixed size queue that stores events (default 4096).
+#	event_queue_size = 4096
+
+	# How many requests need to be in flight before we spawn a new connection (default 100).
+#	spawn_threshold = 100
+
+	# How many connections can be spawned concurrently (default 2).
+#	spawn_max = 2
+
+	# Sets the amount of time to wait before attempting to reconnect (default 2.0).
+#	spawn_retry_delay = 2.0
+
+	# Use DC aware load balancing (enabled by default)
+	load_balance_dc_aware {
+		# Primary data centre to try first, must be set for other settings to be effective.
+#		local_dc = 'datacenter1'
+
+		# Number of hosts used at each remote dc (default 0).
+#		hosts_per_remote_dc = 0
+
+		# Allow remote hosts to be used in no local dc hosts are avaiable and the
+		# consistency level is 'local_one' or 'local_quorum' (default no).
+#		allow_remote_dcs_for_local_cl = no
+	}
+
+	#
+	#  Use latency aware request routing (default no, uncomment section to enable)
+	#
+#	latency_aware_routing {
+#		# Controls how much worse the latency must be compared to the
+#		# average latency of the best performing node before it penalized
+#		# (default 2.0).
+#		exclusion_threshold = 2.0
+#
+#		# Controls the weight given to older latencies when calculating the
+#		# average latency of a node. A bigger scale will give more weight to older
+#		# latency measurements (default 0.1).
+#		scale = 0.1
+#
+#		# The amount of time (in seconds) a node is penalized by the policy before being
+#		# given a second chance when the current average latency exceeds the calculated
+#		# threshold (exclusion_threshold * best_average_latency) (default 10).
+#		retry_period = 10
+#
+#		# The rate at which the best average latency is recomputed in seconds (default 0.1).
+#		update_rate = 0.1
+#
+#		# The minimum number of measurements per-host required to be considered by
+#		# the policy (default 50).
+#		min_measured = 50
+#	}
+
+	# How often to send TCP keepalive in seconds (default is 0 - disabled)
+#	tcp_keepalive = 0
+
+	# Disable the TCP naggle algorithm (default no)
+#	tcp_nodelay = no
+
+	#
+	#  Encrypt communications using TLS (default no, uncomment section to enable)
+	#
+#	tls {
+#		ca_file = '/etc/ssl/certs/my_ca.crt'
+#		certificate_file = '/etc/ssl/certs/private/client.crt'
+#		private_key_file = '/etc/ssl/certs/private/client.key'
+#		private_key_password = 'whatever'
+#
+#		# Whether we verify the server's certificate (default yes)
+#		#   identity - Verify the certificate, and ensure the CN of the
+#		#	       certificate matches the FQDN or IP address of the
+#		#	       server.
+#		#   yes      - Verify the certificate using ca_file
+#		#   no       - Don't verify the certificate.
+#		#
+#		verify_cert = no
+#	}
+}

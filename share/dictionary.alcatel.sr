@@ -313,6 +313,13 @@ ATTRIBUTE	Alc-AA-Group-Partition-Isa-Id		156	string
 # Application-Assurance Radius Peer Information
 ATTRIBUTE	Alc-AA-Peer-Identifier			157	string
 
+# A local configured filter policy can be extended with shared dynamic filter entries
+ATTRIBUTE 	Alc-Nas-Filter-Rule-Shared		158	string
+
+# They represent a per host customization of a generic filter policy: only
+# traffic to/from the subscriber host will match against these entries
+ATTRIBUTE 	Alc-Ascend-Data-Filter-Host-Spec		159	 string
+
 # Relative Session-Timeout
 ATTRIBUTE	Alc-Relative-Session-Timeout		160	integer
 
@@ -332,5 +339,26 @@ VALUE	Alc-Acct-Triggered-Reason	Delegated-IPv6-Prefix-up 8
 VALUE	Alc-Acct-Triggered-Reason	Delegated-IPv6-Prefix-down 9
 VALUE	Alc-Acct-Triggered-Reason	Framed-IPv6-Prefix-up	10
 VALUE	Alc-Acct-Triggered-Reason	Framed-IPv6-Prefix-down	11
+
+# Used when authenticating migrant hosts
+ATTRIBUTE   Alc-Wlan-Portal-Redirect                  172 string
+
+# If a migrant host is redirected, specifies the URL
+ATTRIBUTE   Alc-Wlan-Portal-Url                       173 string
+
+# Defines the lease-time in seconds for RADIUS proxy and create-host-CoA
+# scenarios only.
+ATTRIBUTE   Alc-Lease-Time                            174 integer
+
+# The URL to which traffic matching the host IPv4 filter entry with http-redirect
+# action is redirected to
+ATTRIBUTE   Alc-Portal-Url                            177 string
+
+# names longer than the allowed maximum are treated as host setup failures
+ATTRIBUTE   Alc-SLAAC-IPv6-Pool                       181 string
+
+# The VLAN is transparently taken from the UE’s Ethernet layer and can be reflected
+# in both authentication and accounting
+ATTRIBUTE   Alc-Wlan-SSID-VLAN                        206 string
 
 END-VENDOR	Alcatel-Lucent-Service-Router

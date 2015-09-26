@@ -69,18 +69,18 @@ char const *rlm_krb5_error(krb5_context context, krb5_error_code code)
 	msg = krb5_get_error_message(context, code);
 	if (msg) {
 		strlcpy(buffer, msg, KRB5_STRERROR_BUFSIZE);
-#ifdef HAVE_KRB5_FREE_ERROR_MESSAGE
+#  ifdef HAVE_KRB5_FREE_ERROR_MESSAGE
 		krb5_free_error_message(context, msg);
-#elif defined(HAVE_KRB5_FREE_ERROR_STRING)
+#  elif defined(HAVE_KRB5_FREE_ERROR_STRING)
 		{
 			char *free;
 
 			memcpy(&free, &msg, sizeof(free));
 			krb5_free_error_string(context, free);
 		}
-#else
-#  error "No way to free error strings, missing krb5_free_error_message() and krb5_free_error_string()"
-#endif
+#  else
+#    error "No way to free error strings, missing krb5_free_error_message() and krb5_free_error_string()"
+#  endif
 	} else {
 		strlcpy(buffer, "Unknown error", KRB5_STRERROR_BUFSIZE);
 	}
@@ -99,14 +99,10 @@ char const *rlm_krb5_error(krb5_context context, krb5_error_code code)
 static int _mod_conn_free(rlm_krb5_handle_t *conn) {
 	krb5_free_context(conn->context);
 
-	if (conn->keytab) {
-		krb5_kt_close(conn->context, conn->keytab);
-	}
+	if (conn->keytab) krb5_kt_close(conn->context, conn->keytab);
 
 #ifdef HEIMDAL_KRB5
-	if (conn->ccache) {
-		krb5_cc_destroy(conn->context, conn->ccache);
-	}
+	if (conn->ccache) krb5_cc_destroy(conn->context, conn->ccache);
 #endif
 
 	return 0;
@@ -118,7 +114,7 @@ static int _mod_conn_free(rlm_krb5_handle_t *conn) {
  * by libkrb5 and that it does connection caching associated with contexts, so it's
  * worth using a connection pool to preserve connections when workers die.
  */
-void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
+void *mod_conn_create(TALLOC_CTX *ctx, void *instance, UNUSED struct timeval const *timeout)
 {
 	rlm_krb5_t *inst = instance;
 	rlm_krb5_handle_t *conn;
@@ -158,9 +154,7 @@ void *mod_conn_create(TALLOC_CTX *ctx, void *instance)
 	krb5_verify_opt_set_keytab(&conn->options, conn->keytab);
 	krb5_verify_opt_set_secure(&conn->options, true);
 
-	if (inst->service) {
-		krb5_verify_opt_set_service(&conn->options, inst->service);
-	}
+	if (inst->service) krb5_verify_opt_set_service(&conn->options, inst->service);
 #else
 	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, true);
 #endif

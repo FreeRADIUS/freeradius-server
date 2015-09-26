@@ -1,8 +1,7 @@
 /*
  *   This program is is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or (at
- *   your option) any later version.
+ *   it under the terms of the GNU General Public License, version 2 of the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -34,7 +33,7 @@
  *
  * @param cursor to operate on.
  * @param vp to set current and found positions to.
- * @return value passed in as vp.
+ * @return value passed in as #VALUE_PAIR.
  */
 inline static VALUE_PAIR *fr_cursor_update(vp_cursor_t *cursor, VALUE_PAIR *vp)
 {
@@ -54,21 +53,21 @@ inline static VALUE_PAIR *fr_cursor_update(vp_cursor_t *cursor, VALUE_PAIR *vp)
 
 /** Setup a cursor to iterate over attribute pairs
  *
- * @note Don't call directly, use the fr_cursor_init macro instead.
- *
- * @addtogroup module_safe
- *
  * @param cursor Where to initialise the cursor (uses existing structure).
- * @param vp to start from.
+ * @param const_vp to start from.
  * @return the attribute pointed to by vp.
  */
-VALUE_PAIR *_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *vp)
+VALUE_PAIR *fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *const_vp)
 {
-	if (!vp || !cursor) {
+	VALUE_PAIR **vp;
+
+	if (!const_vp || !cursor) {
 		return NULL;
 	}
 
 	memset(cursor, 0, sizeof(*cursor));
+
+	memcpy(&vp, &const_vp, sizeof(vp)); /* stupid const hacks */
 
 	/*
 	 *  Useful check to see if uninitialised memory is pointed
@@ -90,8 +89,6 @@ VALUE_PAIR *_fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR const * const *vp)
 
 /** Copy a cursor
  *
- * @addtogroup module_safe
- *
  * @param in Cursor to copy.
  * @param out Where to copy the cursor to.
  */
@@ -102,10 +99,8 @@ void fr_cursor_copy(vp_cursor_t *out, vp_cursor_t *in)
 
 /** Rewind cursor to the start of the list
  *
- * @addtogroup module_safe
- *
  * @param cursor to operate on.
- * @return the VALUE_PAIR at the start of the list.
+ * @return #VALUE_PAIR at the start of the list.
  */
 VALUE_PAIR *fr_cursor_first(vp_cursor_t *cursor)
 {
@@ -125,10 +120,8 @@ VALUE_PAIR *fr_cursor_first(vp_cursor_t *cursor)
 
 /** Wind cursor to the last pair in the list
  *
- * @addtogroup module_safe
- *
  * @param cursor to operate on.
- * @return the VALUE_PAIR at the end of the list.
+ * @return #VALUE_PAIR at the end of the list.
  */
 VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
 {
@@ -151,14 +144,14 @@ VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
  * fr_cursor_next_by_* functions will start the search from the previously
  * matched attribute.
  *
- * @addtogroup module_safe
- *
  * @param cursor to operate on.
  * @param attr number to match.
  * @param vendor number to match (0 for none vendor attribute).
  * @param tag to match. Either a tag number or TAG_ANY to match any tagged or
  *	  untagged attribute, TAG_NONE to match attributes without tags.
- * @return the next matching VALUE_PAIR, or NULL if no VALUE_PAIRs match.
+ * @return
+ *	- The next matching #VALUE_PAIR.
+ *	- NULL if no #VALUE_PAIR (s) match.
  */
 VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag)
 {
@@ -189,13 +182,13 @@ VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsign
  *
  * @note DICT_ATTR pointers are compared, not the attribute numbers and vendors.
  *
- * @addtogroup module_safe
- *
  * @param cursor to operate on.
  * @param da to match.
  * @param tag to match. Either a tag number or TAG_ANY to match any tagged or
  *	  untagged attribute, TAG_NONE to match attributes without tags.
- * @return the next matching VALUE_PAIR, or NULL if no VALUE_PAIRs match.
+ * @return
+ *	- Next matching #VALUE_PAIR.
+ *	- NULL if no #VALUE_PAIR (s) match.
  */
 VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_t tag)
 {
@@ -218,10 +211,10 @@ VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_
 
 /** Advanced the cursor to the next VALUE_PAIR
  *
- * @addtogroup module_safe
- *
  * @param cursor to operate on.
- * @return the next VALUE_PAIR, or NULL if no more VALUE_PAIRS in the collection.
+ * @return
+ *	- Next #VALUE_PAIR.
+ *	- NULL if no more #VALUE_PAIR in the collection.
  */
 VALUE_PAIR *fr_cursor_next(vp_cursor_t *cursor)
 {
@@ -249,10 +242,10 @@ VALUE_PAIR *fr_cursor_next(vp_cursor_t *cursor)
 
 /** Return the next VALUE_PAIR without advancing the cursor
  *
- * @addtogroup module_safe
- *
  * @param cursor to operate on.
- * @return the next VALUE_PAIR, or NULL if no more VALUE_PAIRS in the collection.
+ * @return
+ *	- Next #VALUE_PAIR.
+ *	- NULL if no more #VALUE_PAIR are in the collection.
  */
 VALUE_PAIR *fr_cursor_next_peek(vp_cursor_t *cursor)
 {
@@ -261,10 +254,8 @@ VALUE_PAIR *fr_cursor_next_peek(vp_cursor_t *cursor)
 
 /** Return the VALUE_PAIR the cursor current points to
  *
- * @addtogroup module_safe
- *
  * @param cursor to operate on.
- * @return the VALUE_PAIR the cursor currently points to.
+ * @return the #VALUE_PAIR the cursor currently points to.
  */
 VALUE_PAIR *fr_cursor_current(vp_cursor_t *cursor)
 {
@@ -275,10 +266,10 @@ VALUE_PAIR *fr_cursor_current(vp_cursor_t *cursor)
 
 /** Insert a single VALUE_PAIR at the end of the list
  *
- * Insert a VALUE_PAIR at the end of the list, and advance the cursor
- * to the newly inserted attribute.
+ * @note Will not advance cursor position to new attribute, but will set cursor
+ *	 to this attribute, if it's the first one in the list.
  *
- * @addtogroup module_safe
+ * Insert a VALUE_PAIR at the end of the list.
  *
  * @param cursor to operate on.
  * @param vp to insert.
@@ -301,7 +292,6 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	/*
 	 *	Cursor was initialised with a pointer to a NULL value_pair
 	 */
-
 	if (!*cursor->first) {
 		*cursor->first = vp;
 		cursor->current = vp;
@@ -312,14 +302,15 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	/*
 	 *	We don't yet know where the last VALUE_PAIR is
 	 *
-	 *	Assume current is closer to the end of the list and use that if available.
+	 *	Assume current is closer to the end of the list and
+	 *	use that if available.
 	 */
 	if (!cursor->last) cursor->last = cursor->current ? cursor->current : *cursor->first;
 
 	VERIFY_VP(cursor->last);
 
 	/*
-	 *	Something outside of the cursor added another VALUE_PAIR
+	 *	Wind last to the end of the list.
 	 */
 	if (cursor->last->next) {
 		for (i = cursor->last; i; i = i->next) {
@@ -329,29 +320,29 @@ void fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp)
 	}
 
 	/*
-	 *	Either current was never set, or something iterated to the end of the
-	 *	attribute list.
+	 *	Either current was never set, or something iterated to the
+	 *	end of the attribute list. In both cases the newly inserted
+	 *	VALUE_PAIR should be set as the current VALUE_PAIR.
 	 */
-	if (!cursor->current) {
-		cursor->current = vp;
-	}
+	if (!cursor->current) cursor->current = vp;
 
 	/*
-	 *	If there's no next cursor, and the pair we just inserted has additional
-	 *	linked pairs, we need to set next to be the next VP in the list.
+	 *	Add the VALUE_PAIR to the end of the list
 	 */
-	if (!cursor->next) {
-		cursor->next = vp->next;
-	}
-
 	cursor->last->next = vp;
+	cursor->last = vp;	/* Wind it forward a little more */
+
+	/*
+	 *	If the next pointer was NULL, and the VALUE_PAIR
+	 *	just added has a next pointer value, set the cursor's next
+	 *	pointer to the VALUE_PAIR's next pointer.
+	 */
+	if (!cursor->next) cursor->next = cursor->current->next;
 }
 
 /** Merges multiple VALUE_PAIR into the cursor
  *
  * Add multiple VALUE_PAIR from add to cursor.
- *
- * @addtogroup module_safe
  *
  * @param cursor to insert VALUE_PAIRs with
  * @param add one or more VALUE_PAIRs (may be NULL, which results in noop).
@@ -376,31 +367,70 @@ void fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *add)
  *
  * @todo this is really inefficient and should be fixed...
  *
- * @addtogroup module_safe
+ * The current VP will be set to the one before the VP being removed,
+ * this is so the commonly used check and remove loop (below) works
+ * as expected.
+ @code {.c}
+   for (vp = fr_cursor_init(&cursor, head);
+        vp;
+        vp = fr_cursor_next(&cursor) {
+        if (<condition>) {
+            vp = fr_cursor_remove(&cursor);
+            talloc_free(vp);
+        }
+   }
+ @endcode
  *
  * @param cursor to remove the current pair from.
- * @return NULL on error, else the VALUE_PAIR that was just removed.
+ * @return
+ *	- #VALUE_PAIR we just replaced.
+ *	- NULL on error.
  */
 VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
 {
-	VALUE_PAIR *vp, **last;
+	VALUE_PAIR *vp, *before;
 
 	if (!fr_assert(cursor->first)) return NULL;	/* cursor must have been initialised */
 
 	vp = cursor->current;
 	if (!vp) return NULL;
 
-	last = cursor->first;
-	while (*last != vp) last = &(*last)->next;
+	/*
+	 *	Where VP is head of the list
+	 */
+	if (*(cursor->first) == vp) {
+		*(cursor->first) = vp->next;
+		cursor->current = vp->next;
+		cursor->next = vp->next ? vp->next->next : NULL;
+		goto fixup;
+	}
 
-	fr_cursor_next(cursor);   /* Advance the cursor past the one were about to delete */
+	/*
+	 *	Where VP is not head of the list
+	 */
+	before = *(cursor->first);
+	if (!before) return NULL;
 
-	*last = vp->next;
-	vp->next = NULL;
+	/*
+	 *	Find the VP immediately preceding the one being removed
+	 */
+	while (before->next != vp) before = before->next;
 
-	/* Fixup cursor->found if we removed the VP it was referring to */
-	if (vp == cursor->found) cursor->found = *last;
+	cursor->next = before->next = vp->next;	/* close the gap */
+	cursor->current = before;		/* current jumps back one, but this is usually desirable */
 
+fixup:
+	vp->next = NULL;			/* limit scope of fr_pair_list_free() */
+
+	/*
+	 *	Fixup cursor->found if we removed the VP it was referring to
+	 */
+	if (vp == cursor->found) cursor->found = cursor->current;
+
+	/*
+	 *	Fixup cursor->last if we removed the VP it was referring to
+	 */
+	if (vp == cursor->last) cursor->last = cursor->current;
 	return vp;
 }
 
@@ -408,11 +438,11 @@ VALUE_PAIR *fr_cursor_remove(vp_cursor_t *cursor)
  *
  * @todo this is really inefficient and should be fixed...
  *
- * @addtogroup module_safe
- *
  * @param cursor to replace the current pair in.
- * @param new VALUE_PAIR to insert.
- * @return NULL on error, else the VALUE_PAIR we just replaced.
+ * @param new #VALUE_PAIR to insert.
+ * @return
+ *	- #VALUE_PAIR we just replaced.
+ *	- NULL on error.
  */
 VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 {

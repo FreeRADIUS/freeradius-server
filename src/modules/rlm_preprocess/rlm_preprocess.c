@@ -45,19 +45,19 @@ typedef struct rlm_preprocess_t {
 } rlm_preprocess_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "huntgroups", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_preprocess_t, huntgroup_file), NULL },
-	{ "hints", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, rlm_preprocess_t, hints_file), NULL },
-	{ "with_ascend_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_ascend_hack), "no" },
-	{ "ascend_channels_per_line", FR_CONF_OFFSET(PW_TYPE_INTEGER, rlm_preprocess_t, ascend_channels_per_line), "23" },
+	{ FR_CONF_OFFSET("huntgroups", PW_TYPE_FILE_INPUT, rlm_preprocess_t, huntgroup_file) },
+	{ FR_CONF_OFFSET("hints", PW_TYPE_FILE_INPUT, rlm_preprocess_t, hints_file) },
+	{ FR_CONF_OFFSET("with_ascend_hack", PW_TYPE_BOOLEAN, rlm_preprocess_t, with_ascend_hack), .dflt = "no" },
+	{ FR_CONF_OFFSET("ascend_channels_per_line", PW_TYPE_INTEGER, rlm_preprocess_t, ascend_channels_per_line), .dflt = "23" },
 
-	{ "with_ntdomain_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_ntdomain_hack), "no" },
-	{ "with_specialix_jetstream_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_specialix_jetstream_hack), "no"  },
-	{ "with_cisco_vsa_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_cisco_vsa_hack), "no" },
-	{ "with_alvarion_vsa_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_alvarion_vsa_hack), "no" },
+	{ FR_CONF_OFFSET("with_ntdomain_hack", PW_TYPE_BOOLEAN, rlm_preprocess_t, with_ntdomain_hack), .dflt = "no" },
+	{ FR_CONF_OFFSET("with_specialix_jetstream_hack", PW_TYPE_BOOLEAN, rlm_preprocess_t, with_specialix_jetstream_hack), .dflt = "no" },
+	{ FR_CONF_OFFSET("with_cisco_vsa_hack", PW_TYPE_BOOLEAN, rlm_preprocess_t, with_cisco_vsa_hack), .dflt = "no" },
+	{ FR_CONF_OFFSET("with_alvarion_vsa_hack", PW_TYPE_BOOLEAN, rlm_preprocess_t, with_alvarion_vsa_hack), .dflt = "no" },
 #if 0
-	{ "with_cablelabs_vsa_hack", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_preprocess_t, with_cablelabs_vsa_hack), NULL },
+	{ FR_CONF_OFFSET("with_cablelabs_vsa_hack", PW_TYPE_BOOLEAN, rlm_preprocess_t, with_cablelabs_vsa_hack) },
 #endif
-	{ NULL, -1, 0, NULL, NULL }
+	CONF_PARSER_TERMINATOR
 };
 
 /*
@@ -66,7 +66,7 @@ static const CONF_PARSER module_config[] = {
 static int fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
+	tmp = fr_pair_find_by_num(vp, PW_FALL_THROUGH, 0, TAG_ANY);
 
 	return tmp ? tmp->vp_integer : 0;
 }
@@ -147,7 +147,7 @@ static void cisco_vsa_hack(REQUEST *request)
 			gettoken(&p, newattr, sizeof(newattr), false);
 
 			if (dict_attrbyname(newattr) != NULL) {
-				pairmake_packet(newattr, ptr + 1, T_OP_EQ);
+				pair_make_request(newattr, ptr + 1, T_OP_EQ);
 			}
 		} else {	/* h322-foo-bar = "h323-foo-bar = baz" */
 			/*
@@ -155,7 +155,7 @@ static void cisco_vsa_hack(REQUEST *request)
 			 *	value field, we use only the value on
 			 *	the right side of the '=' character.
 			 */
-			pairstrcpy(vp, ptr + 1);
+			fr_pair_value_strcpy(vp, ptr + 1);
 		}
 	}
 }
@@ -242,7 +242,7 @@ static void cablelabs_vsa_hack(VALUE_PAIR **list)
 {
 	VALUE_PAIR *ev;
 
-	ev = pairfind(*list, 1, 4491, TAG_ANY); /* Cablelabs-Event-Message */
+	ev = fr_pair_find_by_num(*list, 1, 4491, TAG_ANY); /* Cablelabs-Event-Message */
 	if (!ev) {
 		return;
 	}
@@ -269,7 +269,7 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	 *	If it isn't there, then we can't mangle the request.
 	 */
 	request_pairs = request->packet->vps;
-	namepair = pairfind(request_pairs, PW_USER_NAME, 0, TAG_ANY);
+	namepair = fr_pair_find_by_num(request_pairs, PW_USER_NAME, 0, TAG_ANY);
 	if (!namepair || (namepair->vp_length == 0)) {
 		return;
 	}
@@ -287,7 +287,7 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 		if ((ptr = strchr(namepair->vp_strvalue, '\\')) != NULL) {
 			strlcpy(newname, ptr + 1, sizeof(newname));
 			/* Same size */
-			pairstrcpy(namepair, newname);
+			fr_pair_value_strcpy(namepair, newname);
 		}
 	}
 
@@ -302,7 +302,7 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 		 */
 		if ((strlen(namepair->vp_strvalue) > 10) &&
 		    (namepair->vp_strvalue[10] == '/')) {
-			pairstrcpy(namepair, namepair->vp_strvalue + 11);
+			fr_pair_value_strcpy(namepair, namepair->vp_strvalue + 11);
 		}
 	}
 
@@ -310,9 +310,9 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	 *	Small check: if Framed-Protocol present but Service-Type
 	 *	is missing, add Service-Type = Framed-User.
 	 */
-	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL, 0, TAG_ANY) != NULL &&
-	    pairfind(request_pairs, PW_SERVICE_TYPE, 0, TAG_ANY) == NULL) {
-		tmp = radius_paircreate(request->packet, &request->packet->vps, PW_SERVICE_TYPE, 0);
+	if (fr_pair_find_by_num(request_pairs, PW_FRAMED_PROTOCOL, 0, TAG_ANY) != NULL &&
+	    fr_pair_find_by_num(request_pairs, PW_SERVICE_TYPE, 0, TAG_ANY) == NULL) {
+		tmp = radius_pair_create(request->packet, &request->packet->vps, PW_SERVICE_TYPE, 0);
 		tmp->vp_integer = PW_FRAMED_USER;
 	}
 
@@ -354,11 +354,11 @@ static int hunt_paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check)
 	for (check_item = fr_cursor_init(&cursor, &check);
 	     check_item && (result != 0);
 	     check_item = fr_cursor_next(&cursor)) {
-		/* FIXME: paircopy should be removed once VALUE_PAIRs are no longer in linked lists */
-		tmp = paircopyvp(request, check_item);
+		/* FIXME: fr_pair_list_copy should be removed once VALUE_PAIRs are no longer in linked lists */
+		tmp = fr_pair_copy(request, check_item);
 		tmp->op = check_item->op;
 		result = paircompare(req, request, check_item, NULL);
-		pairfree(&tmp);
+		fr_pair_list_free(&tmp);
 	}
 
 	return result;
@@ -386,7 +386,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	/*
 	 *	Check for valid input, zero length names not permitted
 	 */
-	name = (tmp = pairfind(request_pairs, PW_USER_NAME, 0, TAG_ANY)) ?
+	name = (tmp = fr_pair_find_by_num(request_pairs, PW_USER_NAME, 0, TAG_ANY)) ?
 		tmp->vp_strvalue : NULL;
 	if (!name || name[0] == 0) {
 		/*
@@ -407,11 +407,11 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 			 *	except PW_STRIP_USER_NAME and PW_FALL_THROUGH
 			 *	and xlat them.
 			 */
-			add = paircopy(request->packet, i->reply);
+			add = fr_pair_list_copy(request->packet, i->reply);
 			ft = fall_through(add);
 
-			pairdelete(&add, PW_STRIP_USER_NAME, 0, TAG_ANY);
-			pairdelete(&add, PW_FALL_THROUGH, 0, TAG_ANY);
+			fr_pair_delete_by_num(&add, PW_STRIP_USER_NAME, 0, TAG_ANY);
+			fr_pair_delete_by_num(&add, PW_FALL_THROUGH, 0, TAG_ANY);
 			radius_pairmove(request, &request->packet->vps, add, true);
 
 			updated = 1;
@@ -464,10 +464,10 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 			 *  We've matched the huntgroup, so add it in
 			 *  to the list of request pairs.
 			 */
-			vp = pairfind(request_pairs, PW_HUNTGROUP_NAME, 0, TAG_ANY);
+			vp = fr_pair_find_by_num(request_pairs, PW_HUNTGROUP_NAME, 0, TAG_ANY);
 			if (!vp) {
-				vp = radius_paircreate(request->packet, &request->packet->vps, PW_HUNTGROUP_NAME, 0);
-				pairstrcpy(vp, i->name);
+				vp = radius_pair_create(request->packet, &request->packet->vps, PW_HUNTGROUP_NAME, 0);
+				fr_pair_value_strcpy(vp, i->name);
 			}
 			r = RLM_MODULE_OK;
 		}
@@ -487,17 +487,17 @@ static int add_nas_attr(REQUEST *request)
 
 	switch (request->packet->src_ipaddr.af) {
 	case AF_INET:
-		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
+		nas = fr_pair_find_by_num(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
 		if (!nas) {
-			nas = radius_paircreate(request->packet, &request->packet->vps, PW_NAS_IP_ADDRESS, 0);
+			nas = radius_pair_create(request->packet, &request->packet->vps, PW_NAS_IP_ADDRESS, 0);
 			nas->vp_ipaddr = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 		}
 		break;
 
 	case AF_INET6:
-		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS, 0, TAG_ANY);
+		nas = fr_pair_find_by_num(request->packet->vps, PW_NAS_IPV6_ADDRESS, 0, TAG_ANY);
 		if (!nas) {
-			nas = radius_paircreate(request->packet, &request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
+			nas = radius_pair_create(request->packet, &request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
 			memcpy(&nas->vp_ipv6addr, &request->packet->src_ipaddr.ipaddr,
 			       sizeof(request->packet->src_ipaddr.ipaddr));
 		}
@@ -569,7 +569,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 *	in place, to go from Ascend's weird values to something
 		 *	approaching rationality.
 		 */
-		ascend_nasport_hack(pairfind(request->packet->vps, PW_NAS_PORT, 0, TAG_ANY),
+		ascend_nasport_hack(fr_pair_find_by_num(request->packet->vps, PW_NAS_PORT, 0, TAG_ANY),
 				    inst->ascend_channels_per_line);
 	}
 
@@ -601,9 +601,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	Add an event timestamp. Means Event-Timestamp can be used
 	 *	consistently instead of one letter expansions.
 	 */
-	vp = pairfind(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
 	if (!vp) {
-		vp = radius_paircreate(request->packet, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
+		vp = radius_pair_create(request->packet, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
 		vp->vp_date = request->packet->timestamp.tv_sec;
 	}
 
@@ -624,10 +624,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *      is PW_CHAP_CHALLENGE we need to add it so that other
 	 *	modules can use it as a normal attribute.
 	 */
-	if (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
-	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
-		vp = radius_paircreate(request->packet, &request->packet->vps, PW_CHAP_CHALLENGE, 0);
-		pairmemcpy(vp, request->packet->vector, AUTH_VECTOR_LEN);
+	if (fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
+	    fr_pair_find_by_num(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
+		vp = radius_pair_create(request->packet, &request->packet->vps, PW_CHAP_CHALLENGE, 0);
+		fr_pair_value_memcpy(vp, request->packet->vector, AUTH_VECTOR_LEN);
 	}
 
 	if ((r = huntgroup_access(request, inst->huntgroups)) != RLM_MODULE_OK) {
@@ -695,14 +695,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *r
 	 *	the server can use it, rather than various error-prone
 	 *	manual calculations.
 	 */
-	vp = pairfind(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
 	if (!vp) {
 		VALUE_PAIR *delay;
 
-		vp = radius_paircreate(request->packet, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
+		vp = radius_pair_create(request->packet, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
 		vp->vp_date = request->packet->timestamp.tv_sec;
 
-		delay = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
+		delay = fr_pair_find_by_num(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 		if (delay) {
 			if ((delay->vp_integer >= vp->vp_date) || (delay->vp_integer == UINT32_MAX)) {
 				RWARN("Ignoring invalid Acct-Delay-time of %u seconds", delay->vp_integer);
@@ -726,22 +726,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_preaccounting(void *instance, REQUEST *r
 /* globally exported name */
 extern module_t rlm_preprocess;
 module_t rlm_preprocess = {
-	RLM_MODULE_INIT,
-	"preprocess",
-	0,   		/* type */
-	sizeof(rlm_preprocess_t),
-	module_config,
-	mod_instantiate,			/* instantiation */
-	NULL,					/* detach */
-	{
-		NULL,				/* authentication */
-		mod_authorize,			/* authorization */
-		mod_preaccounting,		/* pre-accounting */
-		NULL,				/* accounting */
-		NULL,				/* checksimul */
-		NULL,				/* pre-proxy */
-		NULL,				/* post-proxy */
-		NULL				/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "preprocess",
+	.inst_size	= sizeof(rlm_preprocess_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_preaccounting
 	},
 };
 

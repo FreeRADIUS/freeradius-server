@@ -160,24 +160,27 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 	VALUE_PAIR *challenge, *reply;
 	uint8_t nthash[16];
 
-	challenge = paircreate(packet, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
+	fr_pair_delete_by_num(&packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_delete_by_num(&packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
+
+	challenge = fr_pair_afrom_num(packet, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
 	if (!challenge) {
 		return 0;
 	}
 
-	pairadd(request, challenge);
+	fr_pair_add(request, challenge);
 	challenge->vp_length = 8;
 	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->vp_length);
 	for (i = 0; i < challenge->vp_length; i++) {
 		p[i] = fr_rand();
 	}
 
-	reply = paircreate(packet, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
+	reply = fr_pair_afrom_num(packet, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
 	if (!reply) {
 		return 0;
 	}
 
-	pairadd(request, reply);
+	fr_pair_add(request, reply);
 	reply->vp_length = 50;
 	reply->vp_octets = p = talloc_array(reply, uint8_t, reply->vp_length);
 	memset(p, 0, reply->vp_length);
@@ -260,6 +263,30 @@ static PW_CODE radclient_get_code(uint16_t port)
 	return PW_CODE_UNDEFINED;
 }
 
+
+static bool already_hex(VALUE_PAIR *vp)
+{
+	size_t i;
+
+	if (!vp || (vp->da->type != PW_TYPE_OCTETS)) return true;
+
+	/*
+	 *	If it's 17 octets, it *might* be already encoded.
+	 *	Or, it might just be a 17-character password (maybe UTF-8)
+	 *	Check it for non-printable characters.  The odds of ALL
+	 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
+	 *	or 1/(2^51), which is pretty much zero.
+	 */
+	for (i = 0; i < vp->vp_length; i++) {
+		if (vp->vp_octets[i] < 32) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+
 /*
  *	Initialize a radclient data structure and add it to
  *	the global linked list.
@@ -336,7 +363,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		/*
 		 *	Read the request VP's.
 		 */
-		if (readvp2(request->packet, &request->packet->vps, packets, &packets_done) < 0) {
+		if (fr_pair_list_afrom_file(request->packet, &request->packet->vps, packets, &packets_done) < 0) {
 			char const *input;
 
 			if ((files->packets[0] == '-') && (files->packets[1] == '\0')) {
@@ -363,7 +390,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 		if (filters) {
 			bool filters_done;
 
-			if (readvp2(request, &request->filter, filters, &filters_done) < 0) {
+			if (fr_pair_list_afrom_file(request, &request->filter, filters, &filters_done) < 0) {
 				REDEBUG("Error parsing \"%s\"", files->filters);
 				goto error;
 			}
@@ -407,10 +434,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			/*
 			 *	This allows efficient list comparisons later
 			 */
-			pairsort(&request->filter, attrtagcmp);
+			fr_pair_list_sort(&request->filter, fr_pair_cmp_by_da_tag);
 		}
 
-		request->password[0] = '\0';
 		/*
 		 *	Process special attributes
 		 */
@@ -510,9 +536,9 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				vp->da = da;
 
 				/*
-				 *	Re-do pairmemsteal ourselves,
+				 *	Re-do fr_pair_value_memsteal ourselves,
 				 *	because we play games with
-				 *	vp->da, and pairmemsteal goes
+				 *	vp->da, and fr_pair_value_memsteal goes
 				 *	to GREAT lengths to sanitize
 				 *	and fix and change and
 				 *	double-check the various
@@ -528,13 +554,35 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 			}
 				break;
 
+				/*
+				 *	Cache this for later.
+				 */
+			case PW_CLEARTEXT_PASSWORD:
+				request->password = vp;
+				break;
+
 			/*
 			 *	Keep a copy of the the password attribute.
 			 */
-			case PW_USER_PASSWORD:
 			case PW_CHAP_PASSWORD:
+				/*
+				 *	If it's already hex, do nothing.
+				 */
+				if ((vp->vp_length == 17) &&
+				    (already_hex(vp))) break;
+
+				/*
+				 *	CHAP-Password is octets, so it may not be zero terminated.
+				 */
+				request->password = fr_pair_make(request->packet, &request->packet->vps, "Cleartext-Password",
+							     "", T_OP_EQ);
+				fr_pair_value_bstrncpy(request->password, vp->vp_strvalue, vp->vp_length);
+				break;
+
+			case PW_USER_PASSWORD:
 			case PW_MS_CHAP_PASSWORD:
-				strlcpy(request->password, vp->vp_strvalue, sizeof(request->password));
+				request->password = fr_pair_make(request->packet, &request->packet->vps, "Cleartext-Password",
+							     vp->vp_strvalue, T_OP_EQ);
 				break;
 
 			case PW_RADCLIENT_TEST_NAME:
@@ -806,9 +854,9 @@ static int send_one_packet(rc_request_t *request)
 
 #ifdef WITH_TCP
 			if (proto) {
-				mysockfd = fr_tcp_client_socket(NULL,
+				mysockfd = fr_socket_client_tcp(NULL,
 								&request->packet->dst_ipaddr,
-								request->packet->dst_port);
+								request->packet->dst_port, false);
 			} else
 #endif
 			mysockfd = fr_socket(&client_ipaddr, 0);
@@ -836,52 +884,21 @@ static int send_one_packet(rc_request_t *request)
 		 *	Update the password, so it can be encrypted with the
 		 *	new authentication vector.
 		 */
-		if (request->password[0] != '\0') {
+		if (request->password) {
 			VALUE_PAIR *vp;
 
-			if ((vp = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-				pairstrcpy(vp, request->password);
-			} else if ((vp = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-				bool already_hex = false;
+			if ((vp = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
+				fr_pair_value_strcpy(vp, request->password->vp_strvalue);
 
-				/*
-				 *	If it's 17 octets, it *might* be already encoded.
-				 *	Or, it might just be a 17-character password (maybe UTF-8)
-				 *	Check it for non-printable characters.  The odds of ALL
-				 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
-				 *	or 1/(2^51), which is pretty much zero.
-				 */
-				if (vp->vp_length == 17) {
-					for (i = 0; i < 17; i++) {
-						if (vp->vp_octets[i] < 32) {
-							already_hex = true;
-							break;
-						}
-					}
-				}
+			} else if ((vp = fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
+				uint8_t buffer[17];
 
-				/*
-				 *	Allow the user to specify ASCII or hex CHAP-Password
-				 */
-				if (!already_hex) {
-					uint8_t *p;
-					size_t len, len2;
+				rad_chap_encode(request->packet, buffer, fr_rand() & 0xff, request->password);
+				fr_pair_value_memcpy(vp, buffer, 17);
 
-					len = len2 = strlen(request->password);
-					if (len2 < 17) len2 = 17;
+			} else if (fr_pair_find_by_num(request->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY) != NULL) {
+				mschapv1_encode(request->packet, &request->packet->vps, request->password->vp_strvalue);
 
-					p = talloc_zero_array(vp, uint8_t, len2);
-
-					memcpy(p, request->password, len);
-
-					rad_chap_encode(request->packet,
-							p,
-							fr_rand() & 0xff, vp);
-					vp->vp_octets = p;
-					vp->vp_length = 17;
-				}
-			} else if (pairfind(request->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY) != NULL) {
-				mschapv1_encode(request->packet, &request->packet->vps, request->password);
 			} else {
 				DEBUG("WARNING: No password in the request");
 			}
@@ -956,10 +973,13 @@ static int send_one_packet(rc_request_t *request)
 	 */
 	if (rad_send(request->packet, NULL, secret) < 0) {
 		REDEBUG("Failed to send packet for ID %d", request->packet->id);
+		deallocate_id(request);
+		request->done = true;
+		return -1;
 	}
 
 	fr_packet_header_print(fr_log_fp, request->packet, false);
-	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, request->packet->vps);
+	if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, request->packet->vps);
 
 	return 0;
 }
@@ -1069,7 +1089,7 @@ static int recv_one_packet(int wait_time)
 	}
 
 	fr_packet_header_print(fr_log_fp, request->reply, true);
-	if (fr_debug_flag > 0) vp_printlist(fr_log_fp, request->reply->vps);
+	if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, request->reply->vps);
 
 	/*
 	 *	Increment counters...
@@ -1110,12 +1130,12 @@ static int recv_one_packet(int wait_time)
 	} else {
 		VALUE_PAIR const *failed[2];
 
-		pairsort(&request->reply->vps, attrtagcmp);
-		if (pairvalidate(failed, request->filter, request->reply->vps)) {
+		fr_pair_list_sort(&request->reply->vps, fr_pair_cmp_by_da_tag);
+		if (fr_pair_validate(failed, request->filter, request->reply->vps)) {
 			RDEBUG("%s: Response passed filter", request->name);
 			stats.passed++;
 		} else {
-			pairvalidate_debug(request, failed);
+			fr_pair_validate_debug(request, failed);
 			REDEBUG("%s: Response for failed filter", request->name);
 			stats.failed++;
 		}
@@ -1134,23 +1154,23 @@ packet_done:
 
 int main(int argc, char **argv)
 {
-	int c;
-	char const *radius_dir = RADDBDIR;
-	char const *dict_dir = DICTDIR;
-	char filesecret[256];
-	FILE *fp;
-	int do_summary = false;
-	int persec = 0;
-	int parallel = 1;
+	int		c;
+	char		const *radius_dir = RADDBDIR;
+	char		const *dict_dir = DICTDIR;
+	char		filesecret[256];
+	FILE		*fp;
+	int		do_summary = false;
+	int		persec = 0;
+	int		parallel = 1;
 	rc_request_t	*this;
-	int force_af = AF_UNSPEC;
+	int		force_af = AF_UNSPEC;
 
 	/*
 	 *	It's easier having two sets of flags to set the
 	 *	verbosity of library calls and the verbosity of
 	 *	radclient.
 	 */
-	fr_debug_flag = 0;
+	fr_debug_lvl = 0;
 	fr_log_fp = stdout;
 
 #ifndef NDEBUG
@@ -1315,11 +1335,12 @@ int main(int argc, char **argv)
 			break;
 
 		case 'v':
+			fr_debug_lvl = 1;
 			DEBUG("%s", radclient_version);
 			exit(0);
 
 		case 'x':
-			fr_debug_flag++;
+			fr_debug_lvl++;
 			break;
 
 		case 'h':
@@ -1368,44 +1389,11 @@ int main(int argc, char **argv)
 	/*
 	 *	Resolve hostname.
 	 */
-	if (force_af == AF_UNSPEC) force_af = AF_INET;
-	server_ipaddr.af = force_af;
 	if (strcmp(argv[1], "-") != 0) {
-		char *p;
-		char const *hostname = argv[1];
-		char const *portname = argv[1];
-		char buffer[256];
-
-		if (*argv[1] == '[') { /* IPv6 URL encoded */
-			p = strchr(argv[1], ']');
-			if ((size_t) (p - argv[1]) >= sizeof(buffer)) {
-				usage();
-			}
-
-			memcpy(buffer, argv[1] + 1, p - argv[1] - 1);
-			buffer[p - argv[1] - 1] = '\0';
-
-			hostname = buffer;
-			portname = p + 1;
-
-		}
-		p = strchr(portname, ':');
-		if (p && (strchr(p + 1, ':') == NULL)) {
-			*p = '\0';
-			portname = p + 1;
-		} else {
-			portname = NULL;
-		}
-
-		if (ip_hton(&server_ipaddr, force_af, hostname, false) < 0) {
-			ERROR("Failed to find IP address for host %s: %s", hostname, strerror(errno));
+		if (fr_pton_port(&server_ipaddr, &server_port, argv[1], -1, force_af, true) < 0) {
+			ERROR("%s", fr_strerror());
 			exit(1);
 		}
-
-		/*
-		 *	Strip port from hostname if needed.
-		 */
-		if (portname) server_port = atoi(portname);
 
 		/*
 		 *	Work backwards from the port to determine the packet type
@@ -1463,7 +1451,7 @@ int main(int argc, char **argv)
 
 #ifdef WITH_TCP
 	if (proto) {
-		sockfd = fr_tcp_client_socket(NULL, &server_ipaddr, server_port);
+		sockfd = fr_socket_client_tcp(NULL, &server_ipaddr, server_port, false);
 	} else
 #endif
 	sockfd = fr_socket(&client_ipaddr, client_port);
@@ -1555,7 +1543,10 @@ int main(int argc, char **argv)
 				/*
 				 *	Send the current packet.
 				 */
-				send_one_packet(this);
+				if (send_one_packet(this) < 0) {
+					talloc_free(this);
+					break;
+				}
 
 				/*
 				 *	Wait a little before sending

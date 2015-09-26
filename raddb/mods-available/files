@@ -21,7 +21,7 @@ files {
 
 	#  This is accepted for backwards compatibility
 	#  It will be removed in a future release.
-	usersfile = ${moddir}/authorize
+#	usersfile = ${moddir}/authorize
 
 	#  These are accepted for backwards compatibility.
 	#  They will be renamed in a future release.

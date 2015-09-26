@@ -1,0 +1,43 @@
+update request {
+	&Tmp-String-0 := 'foo'
+}
+
+switch "%{tolower:%{request:Tmp-String-0}}" {
+	case 'foo' {
+		update reply {
+			Filter-Id := "filter"
+		}
+	}
+
+	case '' {
+		update reply {
+			Filter-Id += "fail-empty-1"
+		}
+	}
+
+	case {
+		update reply {
+			Filter-Id += "fail-default-1"
+		}
+	}
+}
+
+switch "%{request:Tmp-String-0}" {
+	case 'foo' {
+		update reply {
+			Filter-Id := "filter"
+		}
+	}
+
+	case '' {
+		update reply {
+			Filter-Id += "fail-empty-2"
+		}
+	}
+
+	case {
+		update reply {
+			Filter-Id += "fail-default-2"
+		}
+	}
+}

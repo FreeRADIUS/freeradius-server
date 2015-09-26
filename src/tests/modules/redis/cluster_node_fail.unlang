@@ -1,0 +1,52 @@
+#
+#  Run the "redis" xlat
+#
+$INCLUDE cluster_reset.inc
+
+#  Hashes to Redis cluster node master 1
+if ("%{redis:SET b 'boom'}" == 'OK') {
+	test_pass
+} else {
+	test_fail
+}
+
+#  Leave some time (100ms) for the synchronisation
+update request {
+	Tmp-String-0 := `/bin/sleep 0.1`
+}
+
+#  Cause one of the redis cluster nodes to SEGV
+if ("%{redis:@$ENV{REDIS_TEST_SERVER}:30001 DEBUG SEGFAULT}" != '') {
+	test_fail
+} else {
+	test_pass
+}
+
+#  Forcefully failover the slave for that node
+if ("%{redis:@$ENV{REDIS_TEST_SERVER}:30004 CLUSTER FAILOVER TAKEOVER}" != 'OK') {
+	test_fail
+} else {
+	test_pass
+}
+
+if ("%{redis:GET b}" == 'boom') {
+	test_pass
+} else {
+	test_fail
+}
+
+#  Kill that one too
+if ("%{redis:@$ENV{REDIS_TEST_SERVER}:30004 DEBUG SEGFAULT}" != '') {
+	test_fail
+} else {
+	test_pass
+}
+
+# No alternatives...
+if ("%{redis:GET b}" == '') {
+	test_pass
+} else {
+	test_fail
+}
+
+

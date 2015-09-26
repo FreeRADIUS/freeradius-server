@@ -83,7 +83,7 @@ ATTRIBUTE	Replicate-To-Realm			1049	string internal
 ATTRIBUTE	Acct-Session-Start-Time			1050	date internal
 ATTRIBUTE	Acct-Unique-Session-Id			1051	string internal
 ATTRIBUTE	Client-IP-Address			1052	ipaddr internal,virtual
-ATTRIBUTE	Ldap-UserDn				1053	string internal
+ATTRIBUTE	LDAP-UserDN				1053	string internal
 ATTRIBUTE	NS-MTA-MD5-Password			1054	string internal
 ATTRIBUTE	SQL-User-Name				1055	string internal
 ATTRIBUTE	LM-Password				1057	octets internal
@@ -102,12 +102,12 @@ ATTRIBUTE	Digest-CNonce				1070	string internal
 ATTRIBUTE	Digest-Nonce-Count			1071	string internal
 ATTRIBUTE	Digest-User-Name			1072	string internal
 ATTRIBUTE	Pool-Name				1073	string internal
-ATTRIBUTE	Ldap-Group				1074	string internal
+# LDAP-Group is now dynamically created
 ATTRIBUTE	Module-Success-Message			1075	string internal
 ATTRIBUTE	Module-Failure-Message			1076	string internal
 #		X99-Fast		1077	integer internal
 ATTRIBUTE	Rewrite-Rule				1078	string internal
-ATTRIBUTE	Sql-Group				1079	string internal
+# SQL-Group is now dynamically created
 ATTRIBUTE	Response-Packet-Type			1080	integer internal,virtual
 ATTRIBUTE	Digest-HA1				1081	string internal
 ATTRIBUTE	MS-CHAP-Use-NTLM-Auth			1082	integer internal
@@ -133,6 +133,7 @@ ATTRIBUTE	Virtual-Server				1099	string internal,virtual
 ATTRIBUTE	Cleartext-Password			1100	string internal
 ATTRIBUTE	Password-With-Header			1101	string internal
 ATTRIBUTE	Inner-Tunnel-User-Name			1102	string internal
+
 #
 #	EAP-IKEv2 is experimental.
 #
@@ -176,11 +177,12 @@ VALUE	Module-Return-Code		updated			8
 ATTRIBUTE	Packet-Original-Timestamp		1109	date internal
 ATTRIBUTE	SQL-Table-Name				1110	string internal
 ATTRIBUTE	Home-Server-Pool			1111	string internal
+ATTRIBUTE	Attribute-Map				1112	string internal
 
 ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr internal
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr internal
-# The rest of the FreeRADIUS-Client-* attributes are at 1150...
 
+# The rest of the FreeRADIUS-Client-* attributes are at 1150...
 ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer internal
 
 VALUE	FreeRADIUS-Client-Require-MA	no			0
@@ -263,6 +265,7 @@ ATTRIBUTE	FreeRADIUS-Response-Delay-USec		1155	integer internal
 
 ATTRIBUTE	REST-HTTP-Header			1160	string internal
 ATTRIBUTE	REST-HTTP-Body				1161	string internal
+ATTRIBUTE	REST-HTTP-Status-Code			1162	integer internal
 
 ATTRIBUTE	Cache-Expires				1170	date internal
 ATTRIBUTE	Cache-Created				1171	date internal
@@ -270,7 +273,13 @@ ATTRIBUTE	Cache-TTL				1172	signed internal
 ATTRIBUTE	Cache-Status-Only			1173	integer internal
 ATTRIBUTE	Cache-Merge				1174	integer internal
 ATTRIBUTE	Cache-Entry-Hits			1175	integer internal
+
+ATTRIBUTE	Cache-Allow-Merge			1176	integer	internal
+
+# Old name (should be removed for 4.0)
 ATTRIBUTE	Cache-Read-Only				1176	integer internal
+
+ATTRIBUTE	Cache-Allow-Insert			1177	integer	internal
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
@@ -278,15 +287,18 @@ VALUE	Cache-Status-Only		yes			1
 VALUE	Cache-Merge			no			0
 VALUE	Cache-Merge			yes			1
 
-VALUE	Cache-Read-Only			no			0
-VALUE	Cache-Read-Only			yes			1
+VALUE	Cache-Allow-Merge		no			0
+VALUE	Cache-Allow-Merge		yes			1
 
-ATTRIBUTE	SSHA2-224-Password			1177	octets internal
-ATTRIBUTE	SSHA2-256-Password			1178	octets internal
-ATTRIBUTE	SSHA2-384-Password			1179	octets internal
-ATTRIBUTE	SSHA2-512-Password			1180	octets internal
+VALUE	Cache-Allow-Insert		no			0
+VALUE	Cache-Allow-Insert		yes			1
 
-ATTRIBUTE	Exec-Export				1181	string internal
+ATTRIBUTE	SSHA2-224-Password			1180	octets internal
+ATTRIBUTE	SSHA2-256-Password			1181	octets internal
+ATTRIBUTE	SSHA2-384-Password			1182	octets internal
+ATTRIBUTE	SSHA2-512-Password			1183	octets internal
+
+ATTRIBUTE	Exec-Export				1190	string internal
 
 #
 #	Range:	1200-1279
@@ -488,6 +500,24 @@ ATTRIBUTE	Tmp-Integer64-6				1877	integer64 internal
 ATTRIBUTE	Tmp-Integer64-7				1878	integer64 internal
 ATTRIBUTE	Tmp-Integer64-8				1879	integer64 internal
 ATTRIBUTE	Tmp-Integer64-9				1880	integer64 internal
+
+ATTRIBUTE	Tmp-Signed-0				1881	signed internal
+ATTRIBUTE	Tmp-Signed-1				1882	signed internal
+ATTRIBUTE	Tmp-Signed-2				1883	signed internal
+ATTRIBUTE	Tmp-Signed-3				1884	signed internal
+ATTRIBUTE	Tmp-Signed-4				1885	signed internal
+ATTRIBUTE	Tmp-Signed-5				1886	signed internal
+ATTRIBUTE	Tmp-Signed-6				1887	signed internal
+ATTRIBUTE	Tmp-Signed-7				1888	signed internal
+ATTRIBUTE	Tmp-Signed-8				1889	signed internal
+ATTRIBUTE	Tmp-Signed-9				1890	signed internal
+
+#
+#  Mostly for testing
+#
+ATTRIBUTE	Tmp-String-Tagged-0			1891	string has_tag,internal
+ATTRIBUTE	Tmp-String-Tagged-1			1892	string has_tag,internal
+
 #
 #  These attributes shouldn't be used anywhere.  They are defined here
 #  only for casting of values in conditional expressions.
@@ -549,8 +579,27 @@ ATTRIBUTE	TLS-PSK-Identity			1933	string internal
 
 # 1934 - 1939: reserved for future cert attributes
 
+# 1940 - 1949: reserved for TLS session caching
+ATTRIBUTE	TLS-Session-Identity			1940	octets	internal
+ATTRIBUTE	TLS-Session-Cache-Action		1941	integer	internal
+VALUE	TLS-Session-Cache-Action	Read			1
+VALUE	TLS-Session-Cache-Action	Write			2
+VALUE	TLS-Session-Cache-Action	Delete			3
+
+ATTRIBUTE	TLS-Session-Data			1942	octets	internal
+
+# Set and retrieved by EAP-TLS code
+ATTRIBUTE	TLS-OCSP-Cert-Valid			1943    integer internal
+VALUE	TLS-OCSP-Cert-Valid		unknown			3
+VALUE	TLS-OCSP-Cert-Valid		skipped			2
+VALUE	TLS-OCSP-Cert-Valid		yes			1
+VALUE	TLS-OCSP-Cert-Valid		no			0
+
+# Number of seconds before new OCSP status information will be available
+ATTRIBUTE	TLS-OCSP-Next-Update			1944	integer internal
+
 #
-#	Range:	1940-2099
+#	Range:	1951-2099
 #		Free
 #
 #	Range:	2100-2199
@@ -614,10 +663,9 @@ ATTRIBUTE	Radclient-Test-Name			2200	string internal
 VALUE	Auth-Type			Local			1
 VALUE	Auth-Type			System			2
 VALUE	Auth-Type			SecurID			3
-VALUE	Auth-Type			Crypt-Local		4
-VALUE	Auth-Type			Reject			5
-VALUE	Auth-Type			ActivCard		6
-VALUE	Auth-Type			EAP			7
+VALUE	Auth-Type			Reject			4
+VALUE	Auth-Type			ActivCard		5
+VALUE	Auth-Type			EAP			6
 
 #
 #	FreeRADIUS extensions (most originally from Cistron)
@@ -642,6 +690,11 @@ VALUE	Auth-Type			MS-CHAP-V2		1034
 #	Authorization type, too.
 #
 VALUE	Autz-Type			Local			1
+VALUE	Autz-Type			Session-Cache-Read	1001
+VALUE	Autz-Type			Session-Cache-Write	1002
+VALUE	Autz-Type			Session-Cache-Delete	1003
+VALUE	Autz-Type			OCSP-Cache-Read		1004
+VALUE	Autz-Type			OCSP-Cache-Write	1005
 
 #
 #	And accounting

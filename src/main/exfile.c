@@ -46,6 +46,7 @@ struct exfile_t {
 	pthread_mutex_t mutex;
 #endif
 	exfile_entry_t *entries;
+	bool		locking;
 };
 
 
@@ -60,6 +61,9 @@ struct exfile_t {
 #define PTHREAD_MUTEX_LOCK(_x)
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
+
+#define MAX_TRY_LOCK 4			//!< How many times we attempt to acquire a lock
+					//!< before giving up.
 
 static int _exfile_free(exfile_t *ef)
 {
@@ -88,9 +92,12 @@ static int _exfile_free(exfile_t *ef)
  * @param ctx The talloc context
  * @param max_entries Max file descriptors to cache, and manage locks for.
  * @param max_idle Maximum time a file descriptor can be idle before it's closed.
- * @return the new context, or NULL on error.
+ * @param locking whether or not to lock the files.
+ * @return
+ *	- new context.
+ *	- NULL on error.
  */
-exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle)
+exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle, bool locking)
 {
 	exfile_t *ef;
 
@@ -112,6 +119,7 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle)
 
 	ef->max_entries = max_entries;
 	ef->max_idle = max_idle;
+	ef->locking = locking;
 
 	talloc_set_destructor(ef, _exfile_free);
 
@@ -127,11 +135,13 @@ exfile_t *exfile_init(TALLOC_CTX *ctx, uint32_t max_entries, uint32_t max_idle)
  * @param filename the file to open.
  * @param permissions to use.
  * @param append If true seek to the end of the file.
- * @return an FD used to write to the file, or -1 on error.
+ * @return
+ *	- FD used to write to the file.
+ *	- -1 on failure.
  */
 int exfile_open(exfile_t *ef, char const *filename, mode_t permissions, bool append)
 {
-	uint32_t i;
+	uint32_t i, tries;
 	uint32_t hash;
 	time_t now = time(NULL);
 	struct stat st;
@@ -263,9 +273,34 @@ do_return:
 		return -1;
 	}
 
-	if (rad_lockfd(ef->entries[i].fd, 0) < 0) {
-		fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
-		goto error;
+	/*
+	 *	Try to lock it.  If we can't lock it, it's because
+	 *	some reader has re-named the file to "foo.work" and
+	 *	locked it.  So, we close the current file, re-open it,
+	 *	and try again/
+	 */
+	if (ef->locking) {
+		for (tries = 0; tries < MAX_TRY_LOCK; tries++) {
+			if (rad_lockfd_nonblock(ef->entries[i].fd, 0) >= 0) break;
+
+			if (errno != EAGAIN) {
+				fr_strerror_printf("Failed to lock file %s: %s", filename, strerror(errno));
+				goto error;
+			}
+
+			close(ef->entries[i].fd);
+			ef->entries[i].fd = open(filename, O_WRONLY | O_CREAT, permissions);
+			if (ef->entries[i].fd < 0) {
+				fr_strerror_printf("Failed to open file %s: %s",
+						   filename, strerror(errno));
+				goto error;
+			}
+		}
+
+		if (tries >= MAX_TRY_LOCK) {
+			fr_strerror_printf("Failed to lock file %s: too many tries", filename);
+			goto error;
+		}
 	}
 
 	/*
@@ -308,13 +343,15 @@ do_return:
 
 /** Close the log file.  Really just return it to the pool.
  *
- * When multithreaded, the FD is locked via a mutex.  This way we're
- * sure that no other thread is writing to the file.  This function
- * will unlock the mutex, so that other threads can write to the file.
+ * When multithreaded, the FD is locked via a mutex. This way we're sure that no other thread is
+ * writing to the file. This function will unlock the mutex, so that other threads can write to
+ * the file.
  *
- * @param ef The logfile context returned from exfile_init()
- * @param fd the FD to close (i.e. return to the pool)
- * @return 0 on success, or -1 on error
+ * @param ef The logfile context returned from #exfile_init.
+ * @param fd the FD to close (i.e. return to the pool).
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int exfile_close(exfile_t *ef, int fd)
 {
@@ -327,7 +364,7 @@ int exfile_close(exfile_t *ef, int fd)
 		 *	Unlock the bytes that we had previously locked.
 		 */
 		if (ef->entries[i].dup == fd) {
-			(void) rad_unlockfd(ef->entries[i].dup, 0);
+			if (ef->locking) (void) rad_unlockfd(ef->entries[i].dup, 0);
 			close(ef->entries[i].dup); /* releases the fcntl lock */
 			ef->entries[i].dup = -1;
 

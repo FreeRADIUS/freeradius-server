@@ -5,6 +5,9 @@
  *
  */
 
+/** Internal data types used within libfreeradius
+ *
+ */
 typedef enum {
 	PW_TYPE_INVALID = 0,			//!< Invalid (uninitialised) attribute type.
 	PW_TYPE_STRING,				//!< String of printable characters.
@@ -31,9 +34,37 @@ typedef enum {
 	PW_TYPE_TIMEVAL,			//!< Time value (struct timeval), only for config items.
 	PW_TYPE_BOOLEAN,			//!< A truth value.
 	PW_TYPE_COMBO_IP_PREFIX,		//!< WiMAX IPv4 or IPv6 address prefix depending on length.
+	PW_TYPE_DECIMAL,			//!< Double precision floating point.
 	PW_TYPE_MAX				//!< Number of defined data types.
 } PW_TYPE;
 
+#define PW_TYPE_BAD \
+	     PW_TYPE_MAX: \
+	case PW_TYPE_INVALID
+
+/** Stupid hack for things which produce special error messages for VSAs
+ *
+ * @note This should be used for switch statements in printing and casting
+ *	functions that need to deal with all types representing values
+ */
+#define PW_TYPE_STRUCTURAL_EXCEPT_VSA \
+	     PW_TYPE_EXTENDED: \
+	case PW_TYPE_LONG_EXTENDED: \
+	case PW_TYPE_EVS: \
+	case PW_TYPE_TLV
+
+/** Match all non value types in case statements
+ *
+ * @note This should be used for switch statements in printing and casting
+ *	functions that need to deal with all types representing values
+ */
+#define PW_TYPE_STRUCTURAL \
+	PW_TYPE_STRUCTURAL_EXCEPT_VSA: \
+     	case PW_TYPE_VSA
+
+/** RADIUS packet codes
+ *
+ */
 typedef enum {
 	PW_CODE_UNDEFINED		= 0,	//!< Packet code has not been set
 	PW_CODE_ACCESS_REQUEST		= 1,	//!< RFC2865 - Access-Request
@@ -99,13 +130,12 @@ typedef enum {
 #include <freeradius-devel/rfc7155.h>
 #include <freeradius-devel/rfc7268.h>
 
-
 /*
  *	All internal attributes are now defined in this file.
  */
 #include <freeradius-devel/attributes.h>
 
-#define PW_EXTENDED_ATTRIBUTE		192
+#include <freeradius-devel/vqp.h>
 
 #define PW_DIGEST_RESPONSE		206
 #define PW_DIGEST_ATTRIBUTES		207
@@ -125,53 +155,12 @@ typedef enum {
 #define PW_NAS_PROMPT_USER		7
 #define PW_AUTHENTICATE_ONLY		8
 #define PW_CALLBACK_NAS_PROMPT		9
+#define PW_AUTHORIZE_ONLY		17
 
 /*	Framed Protocols	*/
 
 #define PW_PPP				1
 #define PW_SLIP				2
-
-/*	Framed Routing Values	*/
-
-#define PW_NONE				0
-#define PW_BROADCAST			1
-#define PW_LISTEN			2
-#define PW_BROADCAST_LISTEN		3
-
-/*	Framed Compression Types	*/
-
-#define PW_VAN_JACOBSEN_TCP_IP		1
-
-/*	Login Services	*/
-
-#define PW_TELNET			0
-#define PW_RLOGIN			1
-#define PW_TCP_CLEAR			2
-#define PW_PORTMASTER			3
-
-/*	Authentication Level	*/
-
-#define PW_AUTHTYPE_LOCAL		0
-#define PW_AUTHTYPE_SYSTEM		1
-#define PW_AUTHTYPE_SECURID		2
-#define PW_AUTHTYPE_CRYPT		3
-#define PW_AUTHTYPE_REJECT		4
-#define PW_AUTHTYPE_ACTIVCARD		5
-#define PW_AUTHTYPE_EAP			6
-#define PW_AUTHTYPE_ACCEPT		254
-#define PW_AUTHTYPE_MS_CHAP		1028
-
-/* Post-auth types */
-#define PW_POSTAUTHTYPE_LOCAL		0
-#define PW_POSTAUTHTYPE_REJECT		1
-
-/*	Port Types		*/
-
-#define PW_NAS_PORT_ASYNC		0
-#define PW_NAS_PORT_SYNC		1
-#define PW_NAS_PORT_ISDN		2
-#define PW_NAS_PORT_ISDN_V120		3
-#define PW_NAS_PORT_ISDN_V110		4
 
 /*	Status Types	*/
 
@@ -208,32 +197,8 @@ typedef enum {
 #define PW_MSCHAP2_CPW			27
 
 /*
- *	Old nonsense.	Will be deleted ASAP
- */
-#define PW_AUTHTYPE			1000
-#define PW_AUTZTYPE			1011
-#define PW_ACCTTYPE			1012
-#define PW_SESSTYPE			1013
-#define PW_POSTAUTHTYPE			1014
-
-/*
- *	Cisco's VLAN Query Protocol.
- */
-#define PW_VQP_PACKET_TYPE		0x2b00
-#define PW_VQP_ERROR_CODE		0x2b01
-#define PW_VQP_SEQUENCE_NUMBER		0x2b02
-
-#define PW_VQP_CLIENT_IP_ADDRESS	0x2c01
-#define PW_VQP_PORT_NAME		0x2c02
-#define PW_VQP_VLAN_NAME		0x2c03
-#define PW_VQP_DOMAIN_NAME		0x2c04
-#define PW_VQP_ETHERNET_FRAME		0x2c05
-#define PW_VQP_MAC			0x2c06
-#define PW_VQP_UNKNOWN			0x2c07
-#define PW_VQP_COOKIE			0x2c08
-
-/*
  * JANET's code for transporting eap channel binding data over ttls
  */
 
 #define PW_UKERNA_CHBIND		135
+#define PW_UKERNA_TR_COI 136

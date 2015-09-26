@@ -52,8 +52,8 @@ typedef struct rlm_pam_t {
 } rlm_pam_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "pam_auth", FR_CONF_OFFSET(PW_TYPE_STRING, rlm_pam_t, pam_auth_name), "radiusd" },
-	{ NULL, -1, 0, NULL, NULL }
+	{ FR_CONF_OFFSET("pam_auth", PW_TYPE_STRING, rlm_pam_t, pam_auth_name), .dflt = "radiusd" },
+	CONF_PARSER_TERMINATOR
 };
 
 typedef struct rlm_pam_data_t {
@@ -131,7 +131,9 @@ static int pam_conv(int num_msg, struct pam_message const **msg, struct pam_resp
  * @param username User to authenticate.
  * @param passwd Password to authenticate with,
  * @param pamauth Type of PAM authentication.
- * @return 0 on success -1 on failure.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 static int do_pam(REQUEST *request, char const *username, char const *passwd, char const *pamauth)
 {
@@ -221,7 +223,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Let the 'users' file over-ride the PAM auth name string,
 	 *	for backwards compatibility.
 	 */
-	pair = pairfind(request->config_items, PW_PAM_AUTH, 0, TAG_ANY);
+	pair = fr_pair_find_by_num(request->config, PW_PAM_AUTH, 0, TAG_ANY);
 	if (pair) pam_auth_string = pair->vp_strvalue;
 
 	ret = do_pam(request, request->username->vp_strvalue, request->password->vp_strvalue, pam_auth_string);
@@ -232,22 +234,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 extern module_t rlm_pam;
 module_t rlm_pam = {
-	RLM_MODULE_INIT,
-	"pam",
-	RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
-	sizeof(rlm_pam_t),
-	module_config,
-	NULL,				/* instantiation */
-	NULL,				/* detach */
-	{
-		mod_authenticate,	/* authenticate */
-		NULL,			/* authorize */
-		NULL,			/* pre-accounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "pam",
+	.type		= RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
+	.inst_size	= sizeof(rlm_pam_t),
+	.config		= module_config,
+	.methods = {
+		[MOD_AUTHENTICATE]	= mod_authenticate
 	},
 };
 

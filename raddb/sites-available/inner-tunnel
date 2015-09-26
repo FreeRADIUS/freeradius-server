@@ -337,7 +337,7 @@ post-auth {
 		#  Let the outer session know which module failed, and why.
 		#
 		update outer.session-state {
-			Module-Failure-Message := &request:Module-Failure-Message
+			&Module-Failure-Message := &request:Module-Failure-Message
 		}
 	}
 }
@@ -394,28 +394,6 @@ post-proxy {
 	#  reject the EAP request.
 	#
 	eap
-
-	#
-	#  If the server tries to proxy a request and fails, then the
-	#  request is processed through the modules in this section.
-	#
-	#  The main use of this section is to permit robust proxying
-	#  of accounting packets.  The server can be configured to
-	#  proxy accounting packets as part of normal processing.
-	#  Then, if the home server goes down, accounting packets can
-	#  be logged to a local "detail" file, for processing with
-	#  radrelay.  When the home server comes back up, radrelay
-	#  will read the detail file, and send the packets to the
-	#  home server.
-	#
-	#  With this configuration, the server always responds to
-	#  Accounting-Requests from the NAS, but only writes
-	#  accounting packets to disk if the home server is down.
-	#
-#	Post-Proxy-Type Fail {
-#			detail
-#	}
-
 }
 
 } # inner-tunnel server block

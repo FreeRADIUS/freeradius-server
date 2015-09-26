@@ -30,13 +30,6 @@ RCSID("$Id$")
 #include <pwd.h>
 #include <grp.h>
 
-#ifdef HAVE_SYS_UN_H
-#  include <sys/un.h>
-#  ifndef SUN_LEN
-#    define SUN_LEN(su)  (sizeof(*(su)) - sizeof((su)->sun_path) + strlen((su)->sun_path))
-#  endif
-#endif
-
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
 #endif
@@ -84,10 +77,7 @@ static char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
  *	they're running inside of the server.  And we don't (yet)
  *	have a "libfreeradius-server", or "libfreeradius-util".
  */
-log_lvl_t debug_flag = 0;
-struct main_config_t main_config;
-
-bool check_config = false;
+main_config_t main_config;
 
 static bool echo = false;
 static char const *secret = "testing123";
@@ -122,53 +112,6 @@ static void NEVER_RETURNS usage(int status)
 	exit(status);
 }
 
-static int fr_domain_socket(char const *path)
-{
-	int sockfd = -1;
-#ifdef HAVE_SYS_UN_H
-	size_t len;
-	socklen_t socklen;
-	struct sockaddr_un saremote;
-
-	len = strlen(path);
-	if (len >= sizeof(saremote.sun_path)) {
-		fprintf(stderr, "%s: Path too long in filename\n", progname);
-		return -1;
-	}
-
-	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		fprintf(stderr, "%s: Failed creating socket: %s\n",
-			progname, fr_syserror(errno));
-		return -1;
-	}
-
-	saremote.sun_family = AF_UNIX;
-	memcpy(saremote.sun_path, path, len + 1); /* SUN_LEN does strlen */
-
-	socklen = SUN_LEN(&saremote);
-
-	if (connect(sockfd, (struct sockaddr *)&saremote, socklen) < 0) {
-		struct stat buf;
-
-		close(sockfd);
-		fprintf(stderr, "%s: Failed connecting to %s: %s\n",
-			progname, path, fr_syserror(errno));
-
-		/*
-		 *	The file doesn't exist.  Tell the user how to
-		 *	fix it.
-		 */
-		if ((stat(path, &buf) < 0) &&
-		    (errno == ENOENT)) {
-			fprintf(stderr, "  Perhaps you need to run the commands:\n\tcd /etc/raddb\n\tln -s sites-available/control-socket sites-enabled/control-socket\n  and then re-start the server?\n");
-		}
-
-		return -1;
-	}
-#endif
-	return sockfd;
-}
-
 static int client_socket(char const *server)
 {
 	int sockfd;
@@ -192,7 +135,7 @@ static int client_socket(char const *server)
 		exit(1);
 	}
 
-	sockfd = fr_tcp_client_socket(NULL, &ipaddr, port);
+	sockfd = fr_socket_client_tcp(NULL, &ipaddr, port, false);
 	if (sockfd < 0) {
 		fprintf(stderr, "%s: Failed opening socket %s: %s\n",
 			progname, server, fr_syserror(errno));
@@ -238,7 +181,7 @@ static ssize_t do_challenge(int sockfd)
 
 
 /*
- *	Returns -1 on error.  0 on connection failed.  +1 on OK.
+ *	Returns -1 on failure.  0 on connection failed.  +1 on OK.
  */
 static ssize_t run_command(int sockfd, char const *command,
 			   char *buffer, size_t bufsize)
@@ -277,8 +220,7 @@ static ssize_t run_command(int sockfd, char const *command,
 
 			memcpy(&status, buffer, sizeof(status));
 			status = ntohl(status);
-			// set the status from the data
-			return 1 + status;
+			return status;
 
 		default:
 			fprintf(stderr, "Unexpected response\n");
@@ -310,8 +252,18 @@ static int do_connect(int *out, char const *file, char const *server)
 		/*
 		 *	FIXME: Get destination from command line, if possible?
 		 */
-		sockfd = fr_domain_socket(file);
-		if (sockfd < 0) return -1;
+		sockfd = fr_socket_client_unix(file, false);
+		if (sockfd < 0) {
+			fr_perror("radmin");
+			if (errno == ENOENT) {
+					fprintf(stderr, "Perhaps you need to run the commands:");
+					fprintf(stderr, "\tcd /etc/raddb\n");
+					fprintf(stderr, "\tln -s sites-available/control-socket "
+						"sites-enabled/control-socket\n");
+					fprintf(stderr, "and then re-start the server?\n");
+			}
+			return -1;
+		}
 	} else {
 		sockfd = client_socket(server);
 	}
@@ -517,6 +469,7 @@ int main(int argc, char **argv)
 
 		if (cf_file_read(cs, buffer) < 0) {
 			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, buffer);
+			talloc_free(cs);
 			usage(1);
 		}
 
@@ -538,7 +491,8 @@ int main(int argc, char **argv)
 			/*
 			 *	Now find the socket name (sigh)
 			 */
-			rcode = cf_item_parse(subcs, "socket", FR_ITEM_POINTER(PW_TYPE_STRING, &file), NULL);
+			rcode = cf_item_parse(subcs, "socket",
+					      FR_ITEM_POINTER(PW_TYPE_STRING, &file), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'socket'\n", progname);
 				exit(1);
@@ -557,7 +511,8 @@ int main(int argc, char **argv)
 			/*
 			 *	Check UID and GID.
 			 */
-			rcode = cf_item_parse(subcs, "uid", FR_ITEM_POINTER(PW_TYPE_STRING, &uid_name), NULL);
+			rcode = cf_item_parse(subcs, "uid",
+					      FR_ITEM_POINTER(PW_TYPE_STRING, &uid_name), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'uid'\n", progname);
 				exit(1);
@@ -573,7 +528,8 @@ int main(int argc, char **argv)
 
 			if (uid != pwd->pw_uid) continue;
 
-			rcode = cf_item_parse(subcs, "gid", FR_ITEM_POINTER(PW_TYPE_STRING, &gid_name), NULL);
+			rcode = cf_item_parse(subcs, "gid",
+					      FR_ITEM_POINTER(PW_TYPE_STRING, &gid_name), NULL, T_DOUBLE_QUOTED_STRING);
 			if (rcode < 0) {
 				fprintf(stderr, "%s: Failed parsing listen section 'gid'\n", progname);
 				exit(1);
@@ -643,7 +599,7 @@ int main(int argc, char **argv)
 			len = run_command(sockfd, commands[i], buffer, sizeof(buffer));
 			if (len < 0) exit(1);
 
-			if (len == 1) exit_status = EXIT_FAILURE;
+			if (len == FR_CHANNEL_FAIL) exit_status = EXIT_FAILURE;
 		}
 		exit(exit_status);
 	}
@@ -766,7 +722,7 @@ int main(int argc, char **argv)
 	retry:
 		len = run_command(sockfd, line, buffer, sizeof(buffer));
 		if (len < 0) {
-			if (!quiet) fprintf(stderr, "Reconnecting...");
+			if (!quiet) fprintf(stderr, "... reconnecting ...\n");
 
 			if (do_connect(&sockfd, file, server) < 0) {
 				exit(1);
@@ -778,10 +734,10 @@ int main(int argc, char **argv)
 			fprintf(stderr, "Failed to connect to server\n");
 			exit(1);
 
-		} else if (len == 0) {
+		} else if (len == FR_CHANNEL_SUCCESS) {
 			break;
 
-		} else if (len == 1) {
+		} else if (len == FR_CHANNEL_FAIL) {
 			exit_status = EXIT_FAILURE;
 		}
 	}

@@ -1,0 +1,35 @@
+#
+#  Input packet
+#
+User-Name = 'john'
+NAS-Port = 17826193
+NAS-IP-Address = 192.0.2.10
+Framed-IP-Address = 198.51.100.59
+NAS-Identifier = 'nas.example.org'
+Acct-Status-Type = Start
+Acct-Delay-Time = 1
+Acct-Input-Octets = 0
+Acct-Output-Octets = 0
+Acct-Session-Id = '00000000'
+Acct-Unique-Session-Id = '00000000'
+Acct-Authentic = RADIUS
+Acct-Session-Time = 0
+Acct-Input-Packets = 0
+Acct-Output-Packets = 0
+Acct-Input-Gigawords = 0
+Acct-Output-Gigawords = 0
+Event-Timestamp = 'Feb  1 2015 08:28:58 WIB'
+NAS-Port-Type = Ethernet
+NAS-Port-Id = 'port 001'
+Service-Type = Framed-User
+Framed-Protocol = PPP
+Acct-Link-Count = 0
+Idle-Timeout = 0
+Session-Timeout = 604800
+Access-Loop-Encapsulation = 0x000000
+Proxy-State = 0x323531
+
+#
+#  Expected answer
+#
+Response-Packet-Type == Access-Accept

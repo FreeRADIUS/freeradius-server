@@ -111,11 +111,13 @@ static int vqp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 extern fr_protocol_t proto_vmps;
 fr_protocol_t proto_vmps = {
-	RLM_MODULE_INIT,
-	"vmps",
-	sizeof(listen_socket_t),
-	NULL,
-	common_socket_parse, NULL,
-	vqp_socket_recv, vqp_socket_send,
-	common_socket_print, vqp_socket_encode, vqp_socket_decode
+	.magic		= RLM_MODULE_INIT,
+	.name		= "vmps",
+	.inst_size	= sizeof(listen_socket_t),
+	.parse		= common_socket_parse,
+	.recv		= vqp_socket_recv,
+	.send		= vqp_socket_send,
+	.print		= common_socket_print,
+	.encode		= vqp_socket_encode,
+	.decode		= vqp_socket_decode
 };

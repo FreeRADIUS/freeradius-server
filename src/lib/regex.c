@@ -77,7 +77,9 @@ static void _pcre_free(void *to_free) {
  *	data.
  * @param runtime If false run the pattern through the PCRE JIT to convert it to machine code.
  *	This trades startup time (longer) for runtime performance (better).
- * @return >= 1 on success, <= 0 on error. Negative value is offset of parse error.
+ * @return
+ *	- >= 1 on success.
+ *	- <= 0 on error. Negative value is offset of parse error.
  */
 ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
 		      bool ignore_case, bool multiline, bool subcaptures, bool runtime)
@@ -168,7 +170,10 @@ static const FR_NAME_NUMBER regex_pcre_error_str[] = {
  * @param len Length of subject.
  * @param pmatch Array of match pointers.
  * @param nmatch How big the match array is. Updated to number of matches.
- * @return -1 on error, 0 on no match, 1 on match.
+ * @return
+ *	- -1 on failure.
+ *	- 0 on no match.
+ *	- 1 on match.
  */
 int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch[], size_t *nmatch)
 {
@@ -246,7 +251,9 @@ static int _regex_free(regex_t *preg)
  * @param subcaptures Whether to compile the regular expression to store subcapture
  *	data.
  * @param runtime Whether the compilation is being done at runtime.
- * @return >= 1 on success, <= 0 on error. Negative value is offset of parse error.
+ * @return
+ *	- >= 1 on success.
+ *	- <= 0 on error. Negative value is offset of parse error.
  *	With POSIX regex we only give the correct offset for embedded \0 errors.
  */
 ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_t len,
@@ -317,7 +324,10 @@ ssize_t regex_compile(TALLOC_CTX *ctx, regex_t **out, char const *pattern, size_
  * @param subject to match.
  * @param pmatch Array of match pointers.
  * @param nmatch How big the match array is. Updated to number of matches.
- * @return -1 on error, 0 on no match, 1 on match.
+ * @return
+ *	- -1 on failure.
+ *	- 0 on no match.
+ *	- 1 on match.
  */
 int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch[], size_t *nmatch)
 {
@@ -361,7 +371,7 @@ int regex_exec(regex_t *preg, char const *subject, size_t len, regmatch_t pmatch
 			regerror(ret, preg, errbuf, sizeof(errbuf));
 
 			fr_strerror_printf("regex evaluation failed: %s", errbuf);
-			*nmatch = 0;
+			if (nmatch) *nmatch = 0;
 			return -1;
 		}
 		return 0;

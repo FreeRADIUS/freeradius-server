@@ -1,0 +1,25 @@
+#
+# PRE: update
+#
+#  Test the map xlat
+#
+update {
+       control:Cleartext-Password := 'hello'
+       reply:Filter-Id := "filter"
+}
+
+update {
+	Tmp-String-0 := '&control:Tmp-String-0 := \'testing123\''
+}
+
+if ("%{map:%{Tmp-String-0}}" != 1) {
+    update reply {
+        Filter-Id += 'Fail 0'
+    }
+}
+
+if (&control:Tmp-String-0 != 'testing123') {
+    update reply {
+        Filter-Id += 'Fail 1'
+    }
+}

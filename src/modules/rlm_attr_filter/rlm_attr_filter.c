@@ -39,16 +39,16 @@ RCSID("$Id$")
  */
 typedef struct rlm_attr_filter {
 	char const	*filename;
-	char const	*key;
+	vp_tmpl_t	*key;
 	bool		relaxed;
 	PAIR_LIST	*attrs;
 } rlm_attr_filter_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_attr_filter_t, filename), NULL },
-	{ "key", FR_CONF_OFFSET(PW_TYPE_STRING | PW_TYPE_XLAT, rlm_attr_filter_t, key), "%{Realm}" },
-	{ "relaxed", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, rlm_attr_filter_t, relaxed), "no" },
-	{ NULL, -1, 0, NULL, NULL }
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED, rlm_attr_filter_t, filename) },
+	{ FR_CONF_OFFSET("key", PW_TYPE_TMPL, rlm_attr_filter_t, key), .dflt = "&Realm", .quote = T_BARE_WORD },
+	{ FR_CONF_OFFSET("relaxed", PW_TYPE_BOOLEAN, rlm_attr_filter_t, relaxed), .dflt = "no" },
+	CONF_PARSER_TERMINATOR
 };
 
 static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *reply_item, int *pass, int *fail)
@@ -57,7 +57,7 @@ static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *rep
 
 	if (check_item->op == T_OP_SET) return;
 
-	compare = paircmp(check_item, reply_item);
+	compare = fr_pair_cmp(check_item, reply_item);
 	if (compare < 0) {
 		REDEBUG("Comparison failed: %s", fr_strerror());
 	}
@@ -71,8 +71,8 @@ static void check_pair(REQUEST *request, VALUE_PAIR *check_item, VALUE_PAIR *rep
 	if (RDEBUG_ENABLED3) {
 		char rule[1024], pair[1024];
 
-		vp_prints(rule, sizeof(rule), check_item);
-		vp_prints(pair, sizeof(pair), reply_item);
+		fr_pair_snprint(rule, sizeof(rule), check_item);
+		fr_pair_snprint(pair, sizeof(pair), reply_item);
 		RDEBUG3("%s %s %s", pair, compare == 1 ? "allowed by" : "disallowed by", rule);
 	}
 
@@ -158,28 +158,15 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 	int		pass, fail = 0;
 	char const	*keyname = NULL;
 	char		buffer[256];
+	ssize_t		slen;
 
 	if (!packet) return RLM_MODULE_NOOP;
 
-	if (!inst->key) {
-		VALUE_PAIR	*namepair;
-
-		namepair = pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY);
-		if (!namepair) {
-			return (RLM_MODULE_NOOP);
-		}
-		keyname = namepair->vp_strvalue;
-	} else {
-		int len;
-
-		len = radius_xlat(buffer, sizeof(buffer), request, inst->key, NULL, NULL);
-		if (len < 0) {
-			return RLM_MODULE_FAIL;
-		}
-		if (len == 0) {
-			return RLM_MODULE_NOOP;
-		}
-		keyname = buffer;
+	slen = tmpl_expand(&keyname, buffer, sizeof(buffer), request, inst->key, NULL, NULL);
+	if (slen < 0) return RLM_MODULE_FAIL;
+	if ((keyname == buffer) && is_truncated((size_t)slen, sizeof(buffer))) {
+		REDEBUG("Key too long, expected < " STRINGIFY(sizeof(buffer)) " bytes, got %zi bytes", slen);
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
@@ -227,7 +214,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 			 *    the output list without checking it.
 			 */
 			if (check_item->op == T_OP_SET ) {
-				vp = paircopyvp(packet, check_item);
+				vp = fr_pair_copy(packet, check_item);
 				if (!vp) {
 					goto error;
 				}
@@ -280,7 +267,7 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 				if (!pass) {
 					RDEBUG3("Attribute \"%s\" allowed by relaxed mode", input_item->da->name);
 				}
-				vp = paircopyvp(packet, input_item);
+				vp = fr_pair_copy(packet, input_item);
 				if (!vp) {
 					goto error;
 				}
@@ -305,21 +292,21 @@ static rlm_rcode_t CC_HINT(nonnull(1,2)) attr_filter_common(void *instance, REQU
 	/*
 	 *	Replace the existing request list with our filtered one
 	 */
-	pairfree(&packet->vps);
+	fr_pair_list_free(&packet->vps);
 	packet->vps = output;
 
 	if (request->packet->code == PW_CODE_ACCESS_REQUEST) {
-		request->username = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
+		request->username = fr_pair_find_by_num(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 		if (!request->username) {
-			request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+			request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		}
-		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+		request->password = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 	}
 
 	return RLM_MODULE_UPDATED;
 
 	error:
-	pairfree(&output);
+	fr_pair_list_free(&output);
 	return RLM_MODULE_FAIL;
 }
 
@@ -347,30 +334,24 @@ RLM_AF_FUNC(send_coa, reply)
 /* globally exported name */
 extern module_t rlm_attr_filter;
 module_t rlm_attr_filter = {
-	RLM_MODULE_INIT,
-	"attr_filter",
-	RLM_TYPE_HUP_SAFE,   	/* type */
-	sizeof(rlm_attr_filter_t),
-	module_config,
-	mod_instantiate,	/* instantiation */
-	NULL,			/* detach */
-	{
-		NULL,		/* authentication */
-		mod_authorize,	/* authorization */
-		mod_preacct,	/* pre-acct */
-		mod_accounting,	/* accounting */
-		NULL,		/* checksimul */
+	.magic		= RLM_MODULE_INIT,
+	.name		= "attr_filter",
+	.type		= RLM_TYPE_HUP_SAFE,
+	.inst_size	= sizeof(rlm_attr_filter_t),
+	.config		= module_config,
+	.instantiate	= mod_instantiate,
+	.methods = {
+		[MOD_AUTHORIZE]		= mod_authorize,
+		[MOD_PREACCT]		= mod_preacct,
+		[MOD_ACCOUNTING]	= mod_accounting,
 #ifdef WITH_PROXY
-		mod_pre_proxy,	/* pre-proxy */
-		mod_post_proxy,	/* post-proxy */
-#else
-		NULL, NULL,
+		[MOD_PRE_PROXY]		= mod_pre_proxy,
+		[MOD_POST_PROXY]	= mod_post_proxy,
 #endif
-		mod_post_auth	/* post-auth */
+		[MOD_POST_AUTH]		= mod_post_auth,
 #ifdef WITH_COA
-		,
-		mod_recv_coa,
-		mod_send_coa
+		[MOD_RECV_COA]		= mod_recv_coa,
+		[MOD_SEND_COA]		= mod_send_coa
 #endif
 	},
 };

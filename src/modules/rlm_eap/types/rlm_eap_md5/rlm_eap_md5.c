@@ -31,6 +31,8 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/md5.h>
 
+static int mod_process(UNUSED void *arg, eap_handler_t *handler);
+
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
@@ -93,7 +95,7 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	 *	stored in 'handler->eap_ds', which will be given back
 	 *	to us...
 	 */
-	handler->stage = PROCESS;
+	handler->process = mod_process;
 
 	return 1;
 }
@@ -112,9 +114,8 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 	 *	Get the Cleartext-Password for this user.
 	 */
 	rad_assert(handler->request != NULL);
-	rad_assert(handler->stage == PROCESS);
 
-	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	password = fr_pair_find_by_num(handler->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
 		RDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
 		return 0;

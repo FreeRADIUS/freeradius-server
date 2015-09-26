@@ -1,0 +1,14 @@
+#
+#  Run the preprocess module
+#
+preprocess
+
+if (Calling-Station-Id == "bob@127.0.0.1") {
+	update reply {
+		Filter-Id := "success"
+	}
+}
+
+update control {
+	Cleartext-Password := "%{User-Name}"
+}
