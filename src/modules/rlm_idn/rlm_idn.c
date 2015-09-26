@@ -91,7 +91,7 @@ static ssize_t xlat_idna(char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
-	rlm_idn_t *inst = instance;
+	rlm_idn_t const *inst = mod_inst;
 	char *idna = NULL;
 	int res;
 	size_t len;
@@ -117,7 +117,7 @@ static ssize_t xlat_idna(char **out, size_t outlen,
 	len = strlen(idna);
 
 	/* 253 is max DNS length */
-	if (!((len < (freespace - 1)) && (len <= 253))) {
+	if (!((len < (outlen - 1)) && (len <= 253))) {
 		/* Never provide a truncated result, as it may be queried. */
 		REDEBUG("Conversion was truncated");
 
@@ -126,7 +126,7 @@ static ssize_t xlat_idna(char **out, size_t outlen,
 
 	}
 
-	strlcpy(*out, idna, freespace);
+	strlcpy(*out, idna, outlen);
 	free(idna);
 
 	return len;

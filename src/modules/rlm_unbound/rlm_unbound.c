@@ -148,14 +148,14 @@ static int rrlabels_tostr(char *out, char *rr, size_t left)
 	return offset;
 }
 
-static int ub_common_wait(rlm_unbound_t *inst, REQUEST *request, char const *tag, struct ub_result **ub, int async_id)
+static int ub_common_wait(rlm_unbound_t const *inst, REQUEST *request, char const *tag, struct ub_result **ub, int async_id)
 {
 	useconds_t iv, waited;
 
 	iv = inst->timeout > 64 ? 64000 : inst->timeout * 1000;
 	ub_process(inst->ub);
 
-	for (waited = 0; (void*)*ub == (void *)inst; waited += iv, iv *= 2) {
+	for (waited = 0; (void const *)*ub == (void const *)inst; waited += iv, iv *= 2) {
 
 		if (waited + iv > (useconds_t)inst->timeout * 1000) {
 			usleep(inst->timeout * 1000 - waited);
@@ -166,7 +166,7 @@ static int ub_common_wait(rlm_unbound_t *inst, REQUEST *request, char const *tag
 		usleep(iv);
 
 		/* Check if already handled by event loop */
-		if ((void *)*ub != (void *)inst) {
+		if ((void const *)*ub != (void const *)inst) {
 			break;
 		}
 
@@ -174,7 +174,7 @@ static int ub_common_wait(rlm_unbound_t *inst, REQUEST *request, char const *tag
 		ub_process(inst->ub);
 	}
 
-	if ((void *)*ub == (void *)inst) {
+	if ((void const *)*ub == (void const *)inst) {
 		int res;
 
 		RDEBUG("rlm_unbound (%s): DNS took too long", tag);
@@ -214,7 +214,7 @@ static ssize_t xlat_a(char **out, size_t outlen,
 		      void const *mod_inst, UNUSED void const *xlat_inst,
 		      REQUEST *request, char const *fmt)
 {
-	rlm_unbound_t *inst = instance;
+	rlm_unbound_t const *inst = mod_inst;
 	struct ub_result **ubres;
 	int async_id;
 	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
@@ -223,7 +223,7 @@ static ssize_t xlat_a(char **out, size_t outlen,
 	ubres = talloc(inst, struct ub_result *);
 
 	/* Used and thus impossible value from heap to designate incomplete */
-	*ubres = (void *)instance;
+	memcpy(ubres, &mod_inst, sizeof(*ubres));
 
 	fmt2 = talloc_typed_strdup(inst, fmt);
 	ub_resolve_async(inst->ub, fmt2, 1, 1, ubres, link_ubres, &async_id);
@@ -238,7 +238,7 @@ static ssize_t xlat_a(char **out, size_t outlen,
 			goto error1;
 		}
 
-		if (!inet_ntop(AF_INET, (*ubres)->data[0], *out, freespace)) {
+		if (!inet_ntop(AF_INET, (*ubres)->data[0], *out, outlen)) {
 			goto error1;
 		};
 
@@ -261,7 +261,7 @@ static ssize_t xlat_aaaa(char **out, size_t outlen,
 			 void const *mod_inst, UNUSED void const *xlat_inst,
 			 REQUEST *request, char const *fmt)
 {
-	rlm_unbound_t *inst = instance;
+	rlm_unbound_t const *inst = mod_inst;
 	struct ub_result **ubres;
 	int async_id;
 	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
@@ -270,7 +270,7 @@ static ssize_t xlat_aaaa(char **out, size_t outlen,
 	ubres = talloc(inst, struct ub_result *);
 
 	/* Used and thus impossible value from heap to designate incomplete */
-	*ubres = (void *)instance;
+	memcpy(ubres, &mod_inst, sizeof(*ubres));
 
 	fmt2 = talloc_typed_strdup(inst, fmt);
 	ub_resolve_async(inst->ub, fmt2, 28, 1, ubres, link_ubres, &async_id);
@@ -284,7 +284,7 @@ static ssize_t xlat_aaaa(char **out, size_t outlen,
 		if (ub_common_fail(request, inst->xlat_aaaa_name, *ubres)) {
 			goto error1;
 		}
-		if (!inet_ntop(AF_INET6, (*ubres)->data[0], *out, freespace)) {
+		if (!inet_ntop(AF_INET6, (*ubres)->data[0], *out, outlen)) {
 			goto error1;
 		};
 		ub_resolve_free(*ubres);
@@ -306,7 +306,7 @@ static ssize_t xlat_ptr(char **out, size_t outlen,
 			void const *mod_inst, UNUSED void const *xlat_inst,
 			REQUEST *request, char const *fmt)
 {
-	rlm_unbound_t *inst = instance;
+	rlm_unbound_t const *inst = mod_inst;
 	struct ub_result **ubres;
 	int async_id;
 	char *fmt2; /* For const warnings.  Keep till new libunbound ships. */
@@ -315,7 +315,7 @@ static ssize_t xlat_ptr(char **out, size_t outlen,
 	ubres = talloc(inst, struct ub_result *);
 
 	/* Used and thus impossible value from heap to designate incomplete */
-	*ubres = (void *)instance;
+	memcpy(ubres, &mod_inst, sizeof(*ubres));;
 
 	fmt2 = talloc_typed_strdup(inst, fmt);
 	ub_resolve_async(inst->ub, fmt2, 12, 1, ubres, link_ubres, &async_id);
@@ -330,7 +330,7 @@ static ssize_t xlat_ptr(char **out, size_t outlen,
 		if (ub_common_fail(request, inst->xlat_ptr_name, *ubres)) {
 			goto error1;
 		}
-		if (rrlabels_tostr(*out, (*ubres)->data[0], freespace) < 0) {
+		if (rrlabels_tostr(*out, (*ubres)->data[0], outlen) < 0) {
 			goto error1;
 		}
 		ub_resolve_free(*ubres);
