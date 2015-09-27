@@ -312,7 +312,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	    !fr_is_inaddr_any(src_ipaddr)) {
 		rcode = sendfromto(sockfd, data, data_len, flags,
 				   (struct sockaddr *)&src, sizeof_src,
-				   (struct sockaddr *)&dst, sizeof_dst);
+				   (struct sockaddr *)&dst, sizeof_dst, 0);
 		goto done;
 	}
 #endif

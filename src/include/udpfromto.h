@@ -22,7 +22,8 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	       int *if_index);
 int sendfromto(int s, void *buf, size_t len, int flags,
 	       struct sockaddr *from, socklen_t fromlen,
-	       struct sockaddr *to, socklen_t tolen);
+	       struct sockaddr *to, socklen_t tolen,
+	       int if_index);
 #endif
 
 #ifdef __cplusplus

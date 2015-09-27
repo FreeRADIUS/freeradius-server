@@ -114,7 +114,7 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
 	    (src_ipaddr->af != AF_UNSPEC)) {
 		return sendfromto(sockfd, data, data_len, flags,
 				  (struct sockaddr *)&src, sizeof_src,
-				  (struct sockaddr *)&dst, sizeof_dst);
+				  (struct sockaddr *)&dst, sizeof_dst, 0);
 	}
 #endif
 

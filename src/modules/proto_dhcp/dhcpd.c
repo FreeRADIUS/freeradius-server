@@ -487,7 +487,7 @@ static int dhcp_process(REQUEST *request)
 	 *	We built with udpfromto and have the if_index of the receiving
 	 *	interface, which we can now resolve to an IP address.
 	 */
-	} else if (request->packet->if_index >= 0) {
+	} else if (request->packet->if_index > 0) {
 		fr_ipaddr_t primary;
 
 		if (fr_ipaddr_from_ifindex(&primary, request->packet->sockfd, request->packet->dst_ipaddr.af,

@@ -159,7 +159,7 @@ int udpfromto_init(int s)
 
 /** Read a packet from a file descriptor, retrieving additional header information
  *
- * Abstracts away the complexity of using the complexity of using recvfrommsg().
+ * Abstracts away the complexity of using the complexity of using recvmsg().
  *
  * In addition to reading data from the file descriptor, the src and dst addresses
  * and the receiving interface index are retrieved.  This enables us to send
@@ -169,7 +169,7 @@ int udpfromto_init(int s)
  * @param[in] s The file descriptor to read from.
  * @param[out] buf Where to write the received datagram data.
  * @param[in] len of buf.
- * @param[in] flags passed unmolested to recvfrom.
+ * @param[in] flags passed unmolested to recvmsg.
  * @param[out] from Where to write the source address.
  * @param[in] fromlen Length of the structure pointed to by from.
  * @param[out] to Where to write the destination address.  If NULL recvmsg() will be used instead.
@@ -287,7 +287,7 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 
 	if (fromlen) *fromlen = msgh.msg_namelen;
 
-	if (if_index) *if_index = -1;
+	if (if_index) *if_index = 0;
 
 	/* Process auxiliary received data in msgh */
 	for (cmsg = CMSG_FIRSTHDR(&msgh);
@@ -331,9 +331,27 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	return err;
 }
 
+/** Send packet via a file descriptor, setting the src address and outbound interface
+ *
+ * Abstracts away the complexity of using the complexity of using sendmsg().
+ *
+ * @param[in] s The file descriptor to write to.
+ * @param[out] buf Where to read datagram data.
+ * @param[in] len of datagram data.
+ * @param[in] flags passed unmolested to sendmsg.
+ * @param[out] from The source address.
+ * @param[in] fromlen Length of the structure pointed to by from.
+ * @param[out] to The destination address.
+ * @param[in] tolen Length of the structure pointed to by to.
+ * @param[out] if_index The interface on which to send the datagram.  Only used if to
+ *	is not NULL.  If automatic interface selection is desired, value should be 0.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
 int sendfromto(int s, void *buf, size_t len, int flags,
 	       struct sockaddr *from, socklen_t fromlen,
-	       struct sockaddr *to, socklen_t tolen)
+	       struct sockaddr *to, socklen_t tolen, int if_index)
 {
 	struct msghdr msgh;
 	struct iovec iov;
@@ -432,6 +450,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		pkt = (struct in_pktinfo *) CMSG_DATA(cmsg);
 		memset(pkt, 0, sizeof(*pkt));
 		pkt->ipi_spec_dst = s4->sin_addr;
+		pkt->ipi_ifindex = if_index;
 #  endif
 
 #  ifdef IP_SENDSRCADDR
@@ -470,6 +489,7 @@ int sendfromto(int s, void *buf, size_t len, int flags,
 		pkt = (struct in6_pktinfo *) CMSG_DATA(cmsg);
 		memset(pkt, 0, sizeof(*pkt));
 		pkt->ipi6_addr = s6->sin6_addr;
+		pkt->ipi6_ifindex = if_index;
 	}
 #  endif	/* IPV6_PKTINFO */
 
@@ -555,7 +575,7 @@ int main(int argc, char **argv)
 
 	if ((n = sendfromto(server_socket, buf, n, 0,
 		(struct sockaddr *)&to, tl,
-		(struct sockaddr *)&from, fl)) < 0) {
+		(struct sockaddr *)&from, fl, 0)) < 0) {
 		perror("server: sendfromto");
 	}
 
