@@ -349,7 +349,12 @@ int fr_ipaddr_from_interface(UNUSED fr_ipaddr_t *out, UNUSED int af, UNUSED char
  */
 char *fr_ifname_from_ifindex(char out[IFNAMSIZ], int if_index)
 {
-#ifdef SIOCGIFNAME
+#ifdef HAVE_IF_INDEXTONAME
+	if (!if_indextoname(if_index, out)) {
+		fr_strerror_printf("Failed resolving interface index %i to name", if_index);
+		return NULL;
+	}
+#else
 	struct ifreq	if_req;
 	int		fd;
 
@@ -375,12 +380,7 @@ char *fr_ifname_from_ifindex(char out[IFNAMSIZ], int if_index)
 		goto error;
 	}
 	strlcpy(out, if_req.ifr_name, IFNAMSIZ);
-	close_fd(fd);
-#else
-	if (!if_indextoname(if_index, out)) {
-		fr_strerror_printf("Failed resolving interface index %i to name", if_index);
-		return NULL;
-	}
+	close(fd);
 #endif
 	return out;
 }
