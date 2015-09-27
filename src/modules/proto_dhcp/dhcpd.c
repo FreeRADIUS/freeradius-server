@@ -482,6 +482,7 @@ static int dhcp_process(REQUEST *request)
 	 */
 	} else if (sock->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_ANY)) {
 		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->src_ipaddr.ipaddr.ip4addr.s_addr;
+#ifdef WITH_IFINDEX_RESOLUTION
 	/*
 	 *	We built with udpfromto and have the if_index of the receiving
 	 *	interface, which we can now resolve to an IP address.
@@ -495,6 +496,7 @@ static int dhcp_process(REQUEST *request)
 			return -1;
 		}
 		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = primary.ipaddr.ip4addr.s_addr;
+#endif
 	/*
 	 *	There's a Server-Identification attribute
 	 */
@@ -897,6 +899,9 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 {
 	char src_ipaddr[INET6_ADDRSTRLEN];
 	char dst_ipaddr[INET6_ADDRSTRLEN];
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+	char if_name[IFNAMSIZ];
+#endif
 
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;
@@ -908,7 +913,11 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 	 *	This really belongs in a utility library
 	 */
 	if ((packet->code > PW_DHCP_OFFSET) && (packet->code < PW_DHCP_MAX)) {
-		RDEBUG("%s %s Id %08x from %s%s%s:%i to %s%s%s:%i length %zu",
+		RDEBUG("%s %s Id %08x from %s%s%s:%i to %s%s%s:%i "
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+		       "%s%s%s"
+#endif
+		       "length %zu",
 		       received ? "Received" : "Sent",
 		       dhcp_message_types[packet->code - PW_DHCP_OFFSET],
 		       packet->id,
@@ -924,9 +933,18 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 				 dst_ipaddr, sizeof(dst_ipaddr)),
 		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->dst_port,
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+		       received ? "via " : "",
+		       received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+		       received ? " " : "",
+#endif
 		       packet->data_len);
 	} else {
-		RDEBUG("%s code %u Id %08x from %s%s%s:%i to %s%s%s:%i length %zu\n",
+		RDEBUG("%s code %u Id %08x from %s%s%s:%i to %s%s%s:%i "
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+		       "%s%s%s"
+#endif
+		       "length %zu\n",
 		       received ? "Received" : "Sent",
 		       packet->code,
 		       packet->id,
@@ -942,6 +960,11 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 				 dst_ipaddr, sizeof(dst_ipaddr)),
 		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->dst_port,
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+		       received ? "via " : "",
+		       received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+		       received ? " " : "",
+#endif
 		       packet->data_len);
 	}
 

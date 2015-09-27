@@ -955,6 +955,9 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 {
 	char src_ipaddr[INET6_ADDRSTRLEN];
 	char dst_ipaddr[INET6_ADDRSTRLEN];
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+	char if_name[IFNAMSIZ];
+#endif
 
 	if (!fp) return;
 	if (!packet) return;
@@ -966,7 +969,11 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 	 *	This really belongs in a utility library
 	 */
 	if (is_radius_code(packet->code)) {
-		fprintf(fp, "%s %s Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
+		fprintf(fp, "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+		       "%s%s%s"
+#endif
+		       "length %zu\n",
 		        received ? "Received" : "Sent",
 		        fr_packet_codes[packet->code],
 		        packet->id,
@@ -982,9 +989,18 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 				  dst_ipaddr, sizeof(dst_ipaddr)),
 		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->dst_port,
-		        packet->data_len);
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+			received ? "via " : "",
+			received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+			received ? " " : "",
+#endif
+			packet->data_len);
 	} else {
-		fprintf(fp, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i length %zu\n",
+		fprintf(fp, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+		       "%s%s%s"
+#endif
+		       "length %zu\n",
 		        received ? "Received" : "Sent",
 		        packet->code,
 		        packet->id,
@@ -1000,6 +1016,11 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 				  dst_ipaddr, sizeof(dst_ipaddr)),
 		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->dst_port,
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+			received ? "via " : "",
+			received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+			received ? " " : "",
+#endif
 		        packet->data_len);
 	}
 }

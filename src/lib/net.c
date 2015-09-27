@@ -24,10 +24,6 @@
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/net.h>
 
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
-
 /** Strings for L4 protocols
  *
  */
@@ -342,7 +338,53 @@ int fr_ipaddr_from_interface(UNUSED fr_ipaddr_t *out, UNUSED int af, UNUSED char
 }
 #endif
 
-#if defined(SIOCGIFADDR) && (defined(SIOCGIFNAME) || defined(HAVE_IF_INDEXTONAME))
+#ifdef WITH_IFINDEX_RESOLUTION
+/** Resolve if_index to interface name
+ *
+ * @param[out] out Buffer to use to store the name, must be at least IFNAMSIZ bytes.
+ * @parma[in] if_index to resolve to name.
+ * @return
+ *	- NULL on error.
+ *	- a pointer to out on success.
+ */
+char *fr_ifname_from_ifindex(char out[IFNAMSIZ], int if_index)
+{
+#ifdef SIOCGIFNAME
+	struct ifreq	if_req;
+	int		fd;
+
+	memset(&if_req, 0, sizeof(if_req));
+	if_req.ifr_ifindex = if_index;
+
+	fd = socket(AF_INET, SOCK_DGRAM, 0);
+	if (fd < 0) {
+		fr_strerror_printf("Failed opening temporary socket for SIOCGIFADDR: %s", fr_syserror(errno));
+	error:
+		close(fd);
+		return NULL;
+	}
+
+	/*
+	 *	First we resolve the interface index to the interface name
+	 *	Which is pretty inefficient, but it seems the only way to
+	 *	identify interfaces for SIOCG* operations is with the interface
+	 *	name.
+	 */
+	if (ioctl(fd, SIOCGIFNAME, &if_req) < 0) {
+		fr_strerror_printf("Failed resolving interface index %i to name: %s", if_index, fr_syserror(errno));
+		goto error;
+	}
+	strlcpy(out, if_req.ifr_name, IFNAMSIZ);
+	close_fd(fd);
+#else
+	if (!if_indextoname(if_index, out)) {
+		fr_strerror_printf("Failed resolving interface index %i to name", if_index);
+		return NULL;
+	}
+#endif
+	return out;
+}
+
 /** Returns the primary IP address for a given interface index
  *
  * @note Intended to be used with udpfromto (recvfromto) to retrieve the
@@ -409,18 +451,5 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index)
 
 	return 0;
 }
-#else
-int fr_ipaddr_from_ifindex(UNUSED fr_ipaddr_t *out, UNUSED int fd, UNUSED int af, int if_index)
-{
-	fr_strerror_printf("No support for "
-#  if defined(SIOCGIFADDR)
-	"SIOCGIFNAME or if_indextoname"
-#  elif defined(SIOCGIFNAME)
-	"SIOCGIFADDR"
-#  else
-	"SIOCGIFADDR and SIOCGIFNAME"
 #endif
-	", can't determine IP address of interface %i", if_index);
-	return -1;
-}
-#endif
+
