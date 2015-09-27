@@ -1459,6 +1459,7 @@ AC_CHECK_FUNCS( \
   ctime_r \
   gmtime_r \
   strsep \
+  if_indextoname \
   inet_aton \
   inet_pton \
   inet_ntop \

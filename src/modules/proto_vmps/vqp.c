@@ -237,7 +237,7 @@ static ssize_t vqp_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	if (dst.ss_family == AF_INET) {
 		data_len = recvfromto(sockfd, packet->data, len, flags,
 				      (struct sockaddr *)&src, &sizeof_src,
-				      (struct sockaddr *)&dst, &sizeof_dst);
+				      (struct sockaddr *)&dst, &sizeof_dst, &packet->if_index);
 	} else
 #endif
 		/*

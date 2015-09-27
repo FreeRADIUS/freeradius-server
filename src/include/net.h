@@ -145,4 +145,5 @@ uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
 uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
 int		fr_ipaddr_from_interface(fr_ipaddr_t *out, int af, char const *name);
+int		fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index);
 #endif /* FR_NET_H */

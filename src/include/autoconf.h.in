@@ -152,6 +152,9 @@
 /* Define if the function (or macro) htonlll exists. */
 #undef HAVE_HTONLLL
 
+/* Define to 1 if you have the `if_indextoname' function. */
+#undef HAVE_IF_INDEXTONAME
+
 /* define if you have IN6_PKTINFO (Linux) */
 #undef HAVE_IN6_PKTINFO
 

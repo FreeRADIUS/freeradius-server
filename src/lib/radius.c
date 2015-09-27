@@ -504,7 +504,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 #ifdef WITH_UDPFROMTO
 	data_len = recvfromto(sockfd, packet->data, len, flags,
 			      (struct sockaddr *)&src, &sizeof_src,
-			      (struct sockaddr *)&dst, &sizeof_dst);
+			      (struct sockaddr *)&dst, &sizeof_dst, &packet->if_index);
 #else
 	data_len = recvfrom(sockfd, packet->data, len, flags,
 			    (struct sockaddr *)&src, &sizeof_src);

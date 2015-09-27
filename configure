@@ -10076,6 +10076,7 @@ for ac_func in \
   ctime_r \
   gmtime_r \
   strsep \
+  if_indextoname \
   inet_aton \
   inet_pton \
   inet_ntop \

@@ -483,6 +483,19 @@ static int dhcp_process(REQUEST *request)
 	} else if (sock->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_ANY)) {
 		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->src_ipaddr.ipaddr.ip4addr.s_addr;
 	/*
+	 *	We built with udpfromto and have the if_index of the receiving
+	 *	interface, which we can now resolve to an IP address.
+	 */
+	} else if (request->packet->if_index >= 0) {
+		fr_ipaddr_t primary;
+
+		if (fr_ipaddr_from_ifindex(&primary, request->packet->sockfd, request->packet->dst_ipaddr.af,
+					   request->packet->if_index) < 0) {
+			REDEBUG("Failed determining src_ipaddr from if_index: %s", fr_strerror());
+			return -1;
+		}
+		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = primary.ipaddr.ip4addr.s_addr;
+	/*
 	 *	There's a Server-Identification attribute
 	 */
 	} else if ((vp = fr_pair_find_by_num(request->reply->vps, 54, DHCP_MAGIC_VENDOR, TAG_ANY))) {
