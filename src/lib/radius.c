@@ -196,7 +196,7 @@ void rad_print_hex(RADIUS_PACKET *packet)
 #endif
 
 	if (packet->src_ipaddr.af == AF_INET) {
-		char buffer[32];
+		char buffer[INET6_ADDRSTRLEN];
 
 		fprintf(fr_log_fp, "  Src IP:\t%s\n",
 			inet_ntop(packet->src_ipaddr.af,
@@ -2307,7 +2307,7 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
 	size_t			totallen;
 	int			count;
 	radius_packet_t		*hdr;
-	char			host_ipaddr[128];
+	char			host_ipaddr[INET6_ADDRSTRLEN];
 	bool			require_ma = false;
 	bool			seen_ma = false;
 	uint32_t		num_attributes;
@@ -2714,7 +2714,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 	int		length;
 	int		attrlen;
 	int		rcode;
-	char		buffer[32];
+	char		buffer[INET6_ADDRSTRLEN];
 
 	if (!packet || !packet->data) return -1;
 
@@ -4129,7 +4129,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 */
 		if ((fr_max_attributes > 0) &&
 		    (num_attributes > fr_max_attributes)) {
-			char host_ipaddr[128];
+			char host_ipaddr[INET6_ADDRSTRLEN];
 
 			fr_pair_list_free(&head);
 			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",

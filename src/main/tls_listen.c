@@ -302,7 +302,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 *	Copied from src/lib/radius.c, rad_recv();
 	 */
 	if (fr_debug_lvl) {
-		char host_ipaddr[128];
+		char host_ipaddr[INET6_ADDRSTRLEN];
 
 		if (is_radius_code(packet->code)) {
 			RDEBUG("tls_recv: %s packet from host %s port %d, id=%d, length=%d",

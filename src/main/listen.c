@@ -108,7 +108,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 	client = client_find(clients, ipaddr, sock->proto);
 	if (!client) {
-		char name[256], buffer[128];
+		char name[256], buffer[INET6_ADDRSTRLEN];
 
 #ifdef WITH_DYNAMIC_CLIENTS
 	unknown:		/* used only for dynamic clients */
@@ -894,8 +894,8 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
  */
 void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 {
-	char src_ipaddr[128];
-	char dst_ipaddr[128];
+	char src_ipaddr[INET6_ADDRSTRLEN];
+	char dst_ipaddr[INET6_ADDRSTRLEN];
 
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;

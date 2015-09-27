@@ -953,8 +953,8 @@ uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl)
  */
 void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 {
-	char src_ipaddr[128];
-	char dst_ipaddr[128];
+	char src_ipaddr[INET6_ADDRSTRLEN];
+	char dst_ipaddr[INET6_ADDRSTRLEN];
 
 	if (!fp) return;
 	if (!packet) return;

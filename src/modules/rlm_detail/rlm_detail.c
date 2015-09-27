@@ -321,7 +321,7 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 	if (compat) {
 #ifdef WITH_PROXY
 		if (request->proxy) {
-			char proxy_buffer[128];
+			char proxy_buffer[INET6_ADDRSTRLEN];
 
 			inet_ntop(request->proxy->dst_ipaddr.af, &request->proxy->dst_ipaddr.ipaddr,
 				  proxy_buffer, sizeof(proxy_buffer));

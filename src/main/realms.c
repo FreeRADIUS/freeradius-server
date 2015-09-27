@@ -498,7 +498,7 @@ bool realm_home_server_add(home_server_t *home)
 	}
 
 	if (!home->server && (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
-		char buffer[INET6_ADDRSTRLEN + 3];
+		char buffer[INET6_ADDRSTRLEN];
 
 		inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr, buffer, sizeof(buffer));
 

@@ -895,8 +895,8 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
  */
 static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 {
-	char src_ipaddr[128];
-	char dst_ipaddr[128];
+	char src_ipaddr[INET6_ADDRSTRLEN];
+	char dst_ipaddr[INET6_ADDRSTRLEN];
 
 	if (!packet) return;
 	if (!RDEBUG_ENABLED) return;

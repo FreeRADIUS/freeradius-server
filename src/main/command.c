@@ -856,7 +856,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 	 */
 	if (variables) for (i = 0; variables[i].name != NULL; i++) {
 		void const *data;
-		char buffer[256];
+		char buffer[INET6_ADDRSTRLEN];
 
 		/*
 		 *	No base struct offset, data must be the pointer.
@@ -1096,7 +1096,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 	home_server_t *home;
 	char const *type, *state, *proto;
 
-	char buffer[256];
+	char buffer[INET6_ADDRSTRLEN];
 
 	for (i = 0; i < 256; i++) {
 		home = home_server_bynumber(i);
@@ -1853,11 +1853,11 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 
 	if (rad_debug_lvl) {
 		DEBUG("Injecting %s packet from host %s port 0 code=%d, id=%d",
-				fr_packet_codes[packet->code],
-				inet_ntop(packet->src_ipaddr.af,
-					  &packet->src_ipaddr.ipaddr,
-					  buffer, sizeof(buffer)),
-				packet->code, packet->id);
+		      fr_packet_codes[packet->code],
+		      inet_ntop(packet->src_ipaddr.af,
+				&packet->src_ipaddr.ipaddr,
+				buffer, sizeof(buffer)),
+		      packet->code, packet->id);
 
 		for (vp = fr_cursor_init(&cursor, &packet->vps);
 		     vp;

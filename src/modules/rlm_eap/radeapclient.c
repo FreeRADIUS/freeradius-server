@@ -1337,8 +1337,8 @@ static void rc_add_socket(fr_ipaddr_t *src_ipaddr, uint16_t src_port, fr_ipaddr_
 	int mysockfd;
 
 	/* Trace what we're doing. */
-	char src_addr[15+1] = "";
-	char dst_addr[15+1] = "";
+	char src_addr[INET6_ADDRSTRLEN] = "";
+	char dst_addr[INET6_ADDRSTRLEN] = "";
 	inet_ntop(AF_INET, &(src_ipaddr->ipaddr.ip4addr.s_addr), src_addr, sizeof(src_addr));
 	inet_ntop(AF_INET, &(dst_ipaddr->ipaddr.ip4addr.s_addr), dst_addr, sizeof(dst_addr));
 
@@ -1496,7 +1496,7 @@ static int rc_recv_one_packet(struct timeval *tv_wait_time)
 	RADIUS_PACKET *reply, **packet_p;
 	volatile int max_fd;
 	bool ongoing_trans = false;
-	char buffer[128];
+	char buffer[INET6_ADDRSTRLEN];
 
 	/* Wait for reply, timing out as necessary */
 	FD_ZERO(&set);

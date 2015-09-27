@@ -105,7 +105,7 @@ typedef struct linelog_instance_t {
 		gid_t			group;			//!< Resolved gid.
 		exfile_t		*ef;			//!< Exclusive file access handle.
 		bool			escape;			//!< Do filename escaping, yes / no.
-		xlat_escape_t	escape_func;		//!< Escape function.
+		xlat_escape_t		escape_func;		//!< Escape function.
 	} file;
 
 	struct {
