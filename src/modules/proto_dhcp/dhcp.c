@@ -263,7 +263,7 @@ RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd)
 	ssize_t			data_len;
 	fr_ipaddr_t		src_ipaddr, dst_ipaddr;
 	uint16_t		src_port, dst_port;
-	int			if_index;
+	int			if_index = -1;
 
 	data = talloc_zero_array(NULL, uint8_t, MAX_PACKET_SIZE);
 	if (!data) {
