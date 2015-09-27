@@ -396,18 +396,21 @@ typedef struct fr_ipaddr_t {
  *	data,data_len:	Used between rad_recv and rad_decode.
  */
 typedef struct radius_packet {
-	int			sockfd;
-	fr_ipaddr_t		src_ipaddr;
-	fr_ipaddr_t		dst_ipaddr;
-	uint16_t		src_port;
-	uint16_t		dst_port;
-	int			id;
-	unsigned int		code;
-	uint8_t			vector[AUTH_VECTOR_LEN];
-	struct timeval		timestamp;
-	uint8_t			*data;
-	size_t			data_len;
-	VALUE_PAIR		*vps;
+	int			sockfd;			//!< Socket this packet was read from.
+	fr_ipaddr_t		src_ipaddr;		//!< Src IP address of packet.
+	fr_ipaddr_t		dst_ipaddr;		//!< Dst IP address of packet.
+	uint16_t		src_port;		//!< Src port of packet.
+	uint16_t		dst_port;		//!< DST Port of packet.
+
+	int			id;			//!< Packet ID (used to link requests/responses).
+	unsigned int		code;			//!< Packet code (type).
+
+	uint8_t			vector[AUTH_VECTOR_LEN];//!< RADIUS authentication vector.
+
+	struct timeval		timestamp;		//!< When we received the packet.
+	uint8_t			*data;			//!< Packet data (body).
+	size_t			data_len;		//!< Length of packet data.
+	VALUE_PAIR		*vps;			//!< Result of decoding the packet into VALUE_PAIRs.
 	ssize_t			offset;
 #ifdef WITH_TCP
 	size_t			partial;
