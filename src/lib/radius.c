@@ -281,9 +281,9 @@ void rad_print_hex(RADIUS_PACKET *packet)
  */
 static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 #ifdef WITH_UDPFROMTO
-		      fr_ipaddr_t *src_ipaddr, uint16_t src_port,
+		      fr_ipaddr_t *src_ipaddr, uint16_t src_port, int if_index,
 #else
-		      UNUSED fr_ipaddr_t *src_ipaddr, UNUSED uint16_t src_port,
+		      UNUSED fr_ipaddr_t *src_ipaddr, UNUSED uint16_t src_port, UNUSED int if_index,
 #endif
 		      fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
 {
@@ -312,7 +312,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	    !fr_is_inaddr_any(src_ipaddr)) {
 		rcode = sendfromto(sockfd, data, data_len, flags,
 				   (struct sockaddr *)&src, sizeof_src,
-				   (struct sockaddr *)&dst, sizeof_dst, 0);
+				   (struct sockaddr *)&dst, sizeof_dst, if_index);
 		goto done;
 	}
 #endif
@@ -2095,7 +2095,7 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	 *	And send it on it's way.
 	 */
 	return rad_sendto(packet->sockfd, packet->data, packet->data_len, 0,
-			  &packet->src_ipaddr, packet->src_port,
+			  &packet->src_ipaddr, packet->src_port, packet->if_index,
 			  &packet->dst_ipaddr, packet->dst_port);
 }
 
@@ -4698,6 +4698,7 @@ RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 	reply->src_ipaddr = packet->dst_ipaddr;
 	reply->dst_port = packet->src_port;
 	reply->src_port = packet->dst_port;
+	reply->if_index = packet->if_index;
 	reply->id = packet->id;
 	reply->code = 0; /* UNKNOWN code */
 	memcpy(reply->vector, packet->vector,

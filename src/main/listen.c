@@ -931,9 +931,9 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
-		       received ? "via " : "",
-		       received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
-		       received ? " " : "",
+		       packet->if_index ? "via " : "",
+		       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+		       packet->if_index ? " " : "",
 #endif
 		       packet->data_len);
 	} else {
@@ -958,9 +958,9 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
-		       received ? "via " : "",
-		       received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
-		       received ? " " : "",
+		       packet->if_index ? "via " : "",
+		       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+		       packet->if_index ? " " : "",
 #endif
 		       packet->data_len);
 	}

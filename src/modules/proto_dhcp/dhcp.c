@@ -321,14 +321,14 @@ RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd)
 	return NULL;
 }
 
-/** Check reveived DHCP request is valid and build RADIUS_PACKET structure if it is.
+/** Check reveived DHCP request is valid and build RADIUS_PACKET structure if it is
  *
- * @param data pointer to received packet
- * @param data_len length of received data
- * @param src_ipaddr source ip address
- * @param src_port source port address
- * @param dst_ipaddr destination ip address
- * @param dst_port destination port address
+ * @param data pointer to received packet.
+ * @param data_len length of received data.
+ * @param src_ipaddr source ip address.
+ * @param src_port source port address.
+ * @param dst_ipaddr destination ip address.
+ * @param dst_port destination port address.
  *
  * @return
  *	- RADIUS_PACKET pointer if valid
@@ -585,7 +585,7 @@ int fr_dhcp_send_socket(RADIUS_PACKET *packet)
 #else
 
 	ret = sendfromto(packet->sockfd, packet->data, packet->data_len, 0, (struct sockaddr *)&src, sizeof_src,
-			 (struct sockaddr *)&dst, sizeof_dst, 0);
+			 (struct sockaddr *)&dst, sizeof_dst, packet->if_index);
 #endif
 	if ((ret < 0) && errno) fr_strerror_printf("dhcp_send_socket: %s", fr_syserror(errno));
 
@@ -1834,7 +1834,7 @@ int fr_dhcp_add_arp_entry(UNUSED int fd, UNUSED char const *interface,
  *	Open a packet interface raw socket.
  *	Bind it to the specified interface using a device independent physical layer address.
  */
-int fr_socket_packet(int iface_index, struct sockaddr_ll *link_layer)
+int fr_socket_packet(int if_index, struct sockaddr_ll *link_layer)
 {
 	int lsock_fd;
 
@@ -1853,7 +1853,7 @@ int fr_socket_packet(int iface_index, struct sockaddr_ll *link_layer)
 
 	link_layer->sll_family = AF_PACKET;
 	link_layer->sll_protocol = htons(ETH_P_ALL);
-	link_layer->sll_ifindex = iface_index;
+	link_layer->sll_ifindex = if_index;
 	link_layer->sll_hatype = ARPHRD_ETHER;
 	link_layer->sll_pkttype = PACKET_OTHERHOST;
 	link_layer->sll_halen = 6;

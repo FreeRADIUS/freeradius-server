@@ -468,6 +468,7 @@ static int dhcp_process(REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(request->reply->vps, PW_PACKET_SRC_IP_ADDRESS, 0, TAG_ANY);
 	if (vp) {
+		request->reply->if_index = 0;	/* Must be 0, we don't know the outbound if_index */
 		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 	/*
 	 *	The request was unicast (via a relay)
@@ -475,6 +476,7 @@ static int dhcp_process(REQUEST *request)
 	} else if (request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_BROADCAST) &&
 		   request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_ANY)) {
 		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
+		request->reply->if_index = request->packet->if_index;
 	/*
 	 *	The listener was bound to an IP address, or we determined
 	 *	the address automatically, as it was the only address bound
@@ -934,9 +936,9 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
-		       received ? "via " : "",
-		       received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
-		       received ? " " : "",
+		       packet->if_index ? "via " : "",
+		       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+		       packet->if_index ? " " : "",
 #endif
 		       packet->data_len);
 	} else {
@@ -961,9 +963,9 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		       packet->dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
-		       received ? "via " : "",
-		       received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
-		       received ? " " : "",
+		       packet->if_index ? "via " : "",
+		       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+		       packet->if_index ? " " : "",
 #endif
 		       packet->data_len);
 	}

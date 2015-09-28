@@ -116,7 +116,7 @@ int fr_is_inaddr_any(fr_ipaddr_t *ipaddr)
  *	Create a fake "request" from a reply, for later lookup.
  */
 void fr_request_from_reply(RADIUS_PACKET *request,
-			     RADIUS_PACKET const *reply)
+			   RADIUS_PACKET const *reply)
 {
 	request->sockfd = reply->sockfd;
 	request->id = reply->id;
@@ -127,6 +127,7 @@ void fr_request_from_reply(RADIUS_PACKET *request,
 	request->dst_port = reply->src_port;
 	request->src_ipaddr = reply->dst_ipaddr;
 	request->dst_ipaddr = reply->src_ipaddr;
+	request->if_index = reply->if_index;
 }
 
 /*
