@@ -9,6 +9,8 @@ FreeRADIUS 2.2.9 Thursday 09 Jul 2015 11:00:00 EDT, urgency=medium
 	* Update EAP-TTLS for TLSv1.2
 	* Always delete MS-MPPE-* from the TTLS inner tunnel.
 	  This allows TTLS / EAP-MSCHAPv2 to work.
+	* Don't fall through in empty "case" statements.
+	  Fixes #1274.
 
 FreeRADIUS 2.2.8 Thursday 09 Jul 2015 11:00:00 EDT, urgency=medium
 	Feature improvements
