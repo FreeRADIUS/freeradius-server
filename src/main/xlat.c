@@ -541,7 +541,7 @@ static ssize_t xlat_regex(char **out, size_t outlen,
  * @see modcall()
  */
 static ssize_t xlat_foreach(char **out, size_t outlen,
-			    UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			    void const *mod_inst, UNUSED void const *xlat_inst,
 			    REQUEST *request, UNUSED char const *fmt)
 {
 	VALUE_PAIR	**pvp;
@@ -893,7 +893,7 @@ typedef struct xlat_redundant_t {
 
 
 static ssize_t xlat_redundant(char **out, size_t outlen,
-			      UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			      void const *mod_inst, UNUSED void const *xlat_inst,
 			      REQUEST *request, char const *fmt)
 {
 	xlat_redundant_t const *xr = mod_inst;
@@ -944,7 +944,7 @@ static ssize_t xlat_redundant(char **out, size_t outlen,
 
 
 static ssize_t xlat_load_balance(char **out, size_t outlen,
-				 UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+				 void const *mod_inst, UNUSED void const *xlat_inst,
 				 REQUEST *request, char const *fmt)
 {
 	uint32_t count = 0;

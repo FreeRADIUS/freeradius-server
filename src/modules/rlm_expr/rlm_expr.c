@@ -736,7 +736,7 @@ static ssize_t urlquote_xlat(char **out, size_t outlen,
  */
 static ssize_t urlunquote_xlat(char **out, size_t outlen,
 			       UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
-			       UNUSED REQUEST *request, char const *fmt)
+			       REQUEST *request, char const *fmt)
 {
 	char const *p;
 	char *out_p = *out;
@@ -756,7 +756,7 @@ static ssize_t urlunquote_xlat(char **out, size_t outlen,
 		/* Don't need \0 check, as it won't be in the hextab */
 		if (!(c1 = memchr(hextab, tolower(*++p), 16)) ||
 		    !(c2 = memchr(hextab, tolower(*++p), 16))) {
-		   	REMARKER(fmt, p - fmt, "None hex char in % sequence");
+			REMARKER(fmt, p - fmt, "Non-hex char in % sequence");
 		   	return -1;
 		}
 		p++;
@@ -1029,7 +1029,7 @@ static ssize_t evp_md_xlat(char **out, size_t outlen,
 
 #  define EVP_MD_XLAT(_md) \
 static ssize_t _md##_xlat(char **out, size_t outlen,\
-			  UNUSED void const *mod_inst, void const *xlat_inst,\
+			  void const *mod_inst, void const *xlat_inst,\
 			  REQUEST *request, char const *fmt)\
 {\
 	return evp_md_xlat(out, outlen, mod_inst, xlat_inst, request, fmt, EVP_##_md());\

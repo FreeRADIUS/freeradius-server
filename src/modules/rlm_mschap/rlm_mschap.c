@@ -147,7 +147,7 @@ static int pdb_decode_acct_ctrl(char const *p)
  *	attributes.
  */
 static ssize_t mschap_xlat(char **out, size_t outlen,
-			   UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			   void const *mod_inst, UNUSED void const *xlat_inst,
 			   REQUEST *request, char const *fmt)
 {
 	size_t			i, data_len;
