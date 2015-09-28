@@ -141,7 +141,7 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *i
  *  returned instead.
  */
 static ssize_t sql_xlat(char **out, UNUSED size_t outlen,
-			UNUSED void const *mod_inst, UNUSED void const *xlat_inst,
+			void const *mod_inst, UNUSED void const *xlat_inst,
 			REQUEST *request, char const *fmt)
 {
 	rlm_sql_handle_t	*handle = NULL;
