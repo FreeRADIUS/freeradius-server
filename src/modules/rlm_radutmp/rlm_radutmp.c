@@ -293,8 +293,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 *	get the IP address.
 	 */
 	} else {
-		inet_ntop(AF_INET, &ut.nas_address, ip_name, sizeof(ip_name));
-		nas = ip_name;
+		nas = inet_ntop(AF_INET, &ut.nas_address, ip_name, sizeof(ip_name));
 	}
 
 	/*

@@ -141,12 +141,11 @@ int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
 	 */
 	cl = client_find_old(&ipaddr);
 	if (!cl) {
-		inet_ntop(ipaddr.af, &ipaddr.ipaddr, buffer, sizeof(buffer));
-
 		/*
 		 *  Unknown NAS, so trusting radutmp.
 		 */
-		DEBUG2("checkrad: Unknown NAS %s, not checking", buffer);
+		DEBUG2("checkrad: Unknown NAS %s, not checking",
+		       inet_ntop(ipaddr.af, &ipaddr.ipaddr, buffer, sizeof(buffer)));
 
 		return 1;
 	}
