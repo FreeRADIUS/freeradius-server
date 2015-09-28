@@ -643,6 +643,7 @@ char *fr_inet_ntop_prefix(char *out, size_t outlen, fr_ipaddr_t *addr)
  *
  * @param[out] out Where to write the resulting interface-id string.
  * @param[in] outlen of output buffer.
+ * @param[in] ifid to print.
  * @return a pointer to out.
  */
 char *fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid)
