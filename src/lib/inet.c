@@ -755,7 +755,7 @@ int fr_ipaddr_from_ifname(fr_ipaddr_t *out, int af, char const *name)
 	return 0;
 }
 #else
-int fr_ipaddr_from_ifname(UNUSED fr_ipaddr_t *out, UNUSED int af, UNUSED char const *name)
+int fr_ipaddr_from_ifname(UNUSED fr_ipaddr_t *out, UNUSED int af, char const *name)
 {
 	fr_strerror_printf("No support for SIOCGIFADDR, can't determine IP address of %s", name);
 	return -1;
