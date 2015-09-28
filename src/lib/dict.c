@@ -789,6 +789,35 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	}
 
 	/*
+	 *	Manually extended flags for extended attributes.  We
+	 *	can't expect the caller to know all of the details of the flags.
+	 */
+	if (vendor >= FR_MAX_VENDOR) {
+		DICT_ATTR const *da;
+
+		/*
+		 *	Trying to manually create an extended
+		 *	attribute, but the parent extended attribute
+		 *	doesn't exist?  That's an error.
+		 */
+		da = dict_attrbyvalue(vendor / FR_MAX_VENDOR, 0);
+		if (!da) {
+			fr_strerror_printf("Extended attributes must be defined from the extended space");
+			return -1;
+		}
+
+		flags.extended |= da->flags.extended;
+		flags.long_extended |= da->flags.long_extended;
+		flags.evs |= da->flags.evs;
+
+		/*
+		 *	There's still a real vendor.  Since it's an
+		 *	extended attribute, set the EVS flag.
+		 */
+		if ((vendor & (FR_MAX_VENDOR -1)) != 0) flags.evs = 1;
+	}
+
+	/*
 	 *	Additional checks for extended attributes.
 	 */
 	if (flags.extended || flags.long_extended || flags.evs) {
@@ -809,12 +838,6 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	if (flags.evs) {
 		if (!(flags.extended || flags.long_extended)) {
 			fr_strerror_printf("dict_addattr: Attributes of type \"evs\" MUST have a parent of type \"extended\"");
-			return -1;
-		}
-
-		/* VSAs cannot be of format EVS */
-		if ((vendor & (FR_MAX_VENDOR - 1)) != 0) {
-			fr_strerror_printf("dict_addattr: Attribute of type \"evs\" fails internal sanity check");
 			return -1;
 		}
 	}
@@ -1022,37 +1045,6 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		} /* else 256..65535 are allowed */
 
 		/*
-		 *	If the attribute is in the standard space, AND
-		 *	has a sub-type (e.g. 241.1 or 255.3), then its
-		 *	number is placed into the upper 8 bits of the
-		 *	vendor field.
-		 *
-		 *	This also happens for the new VSAs.
-		 *
-		 *	If we find it, then set the various flags
-		 *	based on what we see.
-		 */
-		if (vendor >= FR_MAX_VENDOR) {
-			if (!parent) {
-				fr_strerror_printf("dict_addattr: ATTRIBUTE refers to unknown parent attribute");
-				return -1;
-			}
-
-			/*
-			 *	Non-extended attributes can't have VSAs.
-			 */
-			if (!flags.extended &&
-			    ((vendor & (FR_MAX_VENDOR - 1)) != 0)) {
-				fr_strerror_printf("dict_addattr: ATTRIBUTE cannot be a VSA");
-				return -1;
-			}
-
-			if ((vendor & (FR_MAX_VENDOR - 1)) != 0) {
-				flags.evs = 1;
-			}
-		}
-
-		/*
 		 *	<sigh> Alvarion, being *again* a horribly
 		 *	broken vendor, has re-used the WiMAX format in
 		 *	their proprietary vendor space.  This re-use
@@ -1060,7 +1052,7 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 *	Alvarion dictionaries.
 		 */
 		flags.wimax = dv->flags;
-	}
+	} /* it's a VSA of some kind */
 
 	/*
 	 *	Create a new attribute for the list
