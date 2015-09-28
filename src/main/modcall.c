@@ -821,6 +821,11 @@ redo:
 		 *	MOD_GROUP.
 		 */
 		if (!g->children) {
+			if (c->type == MOD_CASE) {
+				result = RLM_MODULE_NOOP;
+				goto calculate_result;
+			}
+
 			RDEBUG2("%s { ... } # empty sub-section is ignored", c->name);
 			goto next_sibling;
 		}

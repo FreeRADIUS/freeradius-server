@@ -1,0 +1,23 @@
+# PRE: switch
+#
+update reply {
+	Filter-Id := "filter"
+}
+
+switch &reply:Filter-Id {
+	# deliberately empty
+	case "filter" {
+	}
+
+	case "fail" {
+		update reply {
+			Filter-Id := "fail"
+		}
+	}
+
+	case {
+		update reply {
+			Filter-Id := "default"
+		}
+	}
+}
