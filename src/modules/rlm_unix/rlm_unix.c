@@ -486,7 +486,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 */
 #ifdef UT_HOSTSIZE
 	if (framed_address) {
-		ip_ntoa(buf, framed_address);
+		inet_ntop(AF_INET, &framed_address, buf, sizeof(buf));
 		strlcpy(ut.ut_host, buf, sizeof(ut.ut_host));
 	}
 #endif

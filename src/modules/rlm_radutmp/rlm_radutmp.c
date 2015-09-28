@@ -156,7 +156,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	bool		port_seen = false;
 	int		off;
 	rlm_radutmp_t	*inst = instance;
-	char		ip_name[32]; /* 255.255.255.255 */
+	char		ip_name[INET_ADDRSTRLEN]; /* 255.255.255.255 */
 	char const	*nas;
 	NAS_PORT	*cache;
 	int		r;
@@ -293,7 +293,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 *	get the IP address.
 	 */
 	} else {
-		nas = ip_ntoa(ip_name, ut.nas_address);
+		inet_ntop(AF_INET, &ut.nas_address, ip_name, sizeof(ip_name));
+		nas = ip_name;
 	}
 
 	/*

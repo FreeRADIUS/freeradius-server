@@ -128,7 +128,7 @@ int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
 {
 	pid_t	pid, child_pid;
 	int	status;
-	char	address[16];
+	char	buffer[INET_ADDRSTRLEN];
 	char	port[11];
 	RADCLIENT *cl;
 	fr_ipaddr_t ipaddr;
@@ -141,7 +141,7 @@ int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
 	 */
 	cl = client_find_old(&ipaddr);
 	if (!cl) {
-		inet_ntop(AF_INET, &nasaddr, buffer, sizeof(buffer));
+		inet_ntop(ipaddr.af, &ipaddr.ipaddr, buffer, sizeof(buffer));
 
 		/*
 		 *  Unknown NAS, so trusting radutmp.
@@ -199,17 +199,17 @@ int rad_check_ts(uint32_t nasaddr, uint32_t nas_port, char const *user,
 	 */
 	closefrom(3);
 
-	ip_ntoa(address, nasaddr);
+	inet_ntop(ipaddr.af, &ipaddr.ipaddr, buffer, sizeof(buffer));
 	snprintf(port, 11, "%u", nas_port);
 
 #ifdef __EMX__
 	/* OS/2 can't directly execute scripts then we call the command
 	   processor to execute checkrad
 	*/
-	execl(getenv("COMSPEC"), "", "/C","checkrad", cl->nas_type, address, port,
+	execl(getenv("COMSPEC"), "", "/C","checkrad", cl->nas_type, buffer, port,
 		user, session_id, NULL);
 #else
-	execl(main_config.checkrad, "checkrad", cl->nas_type, address, port,
+	execl(main_config.checkrad, "checkrad", cl->nas_type, buffer, port,
 		user, session_id, NULL);
 #endif
 	ERROR("Check-TS: exec %s: %s", main_config.checkrad, fr_syserror(errno));

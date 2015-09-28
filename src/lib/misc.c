@@ -187,23 +187,6 @@ char const *fr_inet_ntop(int af, void const *src)
 	return inet_ntop(af, src, buffer, INET6_ADDRSTRLEN);
 }
 
-/*
- *	Return an IP address in standard dot notation
- *
- *	FIXME: DELETE THIS
- */
-char const *ip_ntoa(char *buffer, uint32_t ipaddr)
-{
-	ipaddr = ntohl(ipaddr);
-
-	sprintf(buffer, "%d.%d.%d.%d",
-		(ipaddr >> 24) & 0xff,
-		(ipaddr >> 16) & 0xff,
-		(ipaddr >>  8) & 0xff,
-		(ipaddr      ) & 0xff);
-	return buffer;
-}
-
 /** Parse an IPv4 address or IPv4 prefix in presentation format (and others)
  *
  * @param out Where to write the ip address value.

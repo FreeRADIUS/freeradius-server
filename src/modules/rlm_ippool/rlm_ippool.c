@@ -232,7 +232,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		 */
 		or_result = i | inst->netmask;
 		if (~inst->netmask != 0 && (or_result == inst->netmask || (~or_result == 0))) {
-			DEBUG("rlm_ippool: IP %s excluded", ip_ntoa(str, ntohl(i)));
+			int ni = ntohl(i);
+			inet_ntop(AF_INET, &ni, str, sizeof(str));
+			DEBUG("rlm_ippool: IP %s excluded", str);
 			continue;
 		}
 
@@ -385,7 +387,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
 	free(data_datum.dptr);
 
-	RDEBUG("Deallocated entry for ip: %s", ip_ntoa(str, entry.ipaddr));
+	inet_ntop(AF_INET, &entry.ipaddr, str, sizeof(str));
+	RDEBUG("Deallocated entry for ip: %s", str);
 	entry.active = 0;
 	entry.timestamp = 0;
 	entry.timeout = 0;
@@ -512,7 +515,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 
 		if (entry.active){
 			int ret;
-			RDEBUG("Found a stale entry for ip: %s",ip_ntoa(str,entry.ipaddr));
+
+			inet_ntop(AF_INET, &entry.ipaddr, str, sizeof(str));
+			RDEBUG("Found a stale entry for ip: %s", str);
 			entry.active = 0;
 			entry.timestamp = 0;
 			entry.timeout = 0;
@@ -765,9 +770,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		}
 		pthread_mutex_unlock(&inst->op_mutex);
 
-		RDEBUG("Allocated ip %s to client key: %s",ip_ntoa(str,entry.ipaddr),hex_str);
-		vp = radius_pair_create(request->reply, &request->reply->vps,
-				       attr_ipaddr, vendor_ipaddr);
+		inet_ntop(AF_INET, &entry.ipaddr, str, sizeof(str));
+		RDEBUG("Allocated ip %s to client key: %s", str, hex_str);
+		vp = radius_pair_create(request->reply, &request->reply->vps, attr_ipaddr, vendor_ipaddr);
 		vp->vp_ipaddr = entry.ipaddr;
 
 		/*

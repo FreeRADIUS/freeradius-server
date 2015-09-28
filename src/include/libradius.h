@@ -758,7 +758,6 @@ void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
 int		fr_set_signal(int sig, sig_t func);
 int		fr_link_talloc_ctx_free(TALLOC_CTX *parent, TALLOC_CTX *child);
 char const	*fr_inet_ntop(int af, void const *src);
-char const 	*ip_ntoa(char *, uint32_t);
 int		fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask);
 int		fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask);
 int		fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve, bool mask);
