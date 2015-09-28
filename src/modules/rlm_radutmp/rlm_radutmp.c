@@ -287,12 +287,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	} else if (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr == ut.nas_address) {		/* might be a client, might not be. */
 		nas = request->client->shortname;
 
+	/*
+	 *	The NAS isn't a client, it's behind
+	 *	a proxy server.  In that case, just
+	 *	get the IP address.
+	 */
 	} else {
-		/*
-		 *	The NAS isn't a client, it's behind
-		 *	a proxy server.  In that case, just
-		 *	get the IP address.
-		 */
 		nas = ip_ntoa(ip_name, ut.nas_address);
 	}
 

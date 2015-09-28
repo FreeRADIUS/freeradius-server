@@ -775,8 +775,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		 *	reply, add one
 		 */
 		if (fr_pair_find_by_num(request->reply->vps, attr_ipmask, vendor_ipaddr, TAG_ANY) == NULL) {
-			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       attr_ipmask, vendor_ipaddr);
+			vp = radius_pair_create(request->reply, &request->reply->vps, attr_ipmask, vendor_ipaddr);
 			vp->vp_ipaddr = ntohl(inst->netmask);
 		}
 
