@@ -915,59 +915,59 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 	 *	This really belongs in a utility library
 	 */
 	if ((packet->code > PW_DHCP_OFFSET) && (packet->code < PW_DHCP_MAX)) {
-		RDEBUG("%s %s Id %08x from %s%s%s:%i to %s%s%s:%i "
+		radlog_request(L_DBG, L_DBG_LVL_1, request, "%s %s Id %08x from %s%s%s:%i to %s%s%s:%i "
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
-		       "%s%s%s"
+			       "%s%s%s"
 #endif
-		       "length %zu",
-		       received ? "Received" : "Sent",
-		       dhcp_message_types[packet->code - PW_DHCP_OFFSET],
-		       packet->id,
-		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
-				 src_ipaddr, sizeof(src_ipaddr)),
-		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->src_port,
-		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       inet_ntop(packet->dst_ipaddr.af,
-				 &packet->dst_ipaddr.ipaddr,
-				 dst_ipaddr, sizeof(dst_ipaddr)),
-		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->dst_port,
+			       "length %zu",
+			       received ? "Received" : "Sent",
+			       dhcp_message_types[packet->code - PW_DHCP_OFFSET],
+			       packet->id,
+			       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
+			       inet_ntop(packet->src_ipaddr.af,
+					 &packet->src_ipaddr.ipaddr,
+					 src_ipaddr, sizeof(src_ipaddr)),
+			       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
+			       packet->src_port,
+			       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
+			       inet_ntop(packet->dst_ipaddr.af,
+					 &packet->dst_ipaddr.ipaddr,
+					 dst_ipaddr, sizeof(dst_ipaddr)),
+			       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
+			       packet->dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
-		       packet->if_index ? "via " : "",
-		       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
-		       packet->if_index ? " " : "",
+			       packet->if_index ? "via " : "",
+			       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+			       packet->if_index ? " " : "",
 #endif
-		       packet->data_len);
+			       packet->data_len);
 	} else {
-		RDEBUG("%s code %u Id %08x from %s%s%s:%i to %s%s%s:%i "
+		radlog_request(L_DBG, L_DBG_LVL_1, request, "%s code %u Id %08x from %s%s%s:%i to %s%s%s:%i "
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
-		       "%s%s%s"
+			       "%s%s%s"
 #endif
-		       "length %zu\n",
-		       received ? "Received" : "Sent",
-		       packet->code,
-		       packet->id,
-		       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-		       inet_ntop(packet->src_ipaddr.af,
-				 &packet->src_ipaddr.ipaddr,
-				 src_ipaddr, sizeof(src_ipaddr)),
-		       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->src_port,
-		       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-		       inet_ntop(packet->dst_ipaddr.af,
-				 &packet->dst_ipaddr.ipaddr,
-				 dst_ipaddr, sizeof(dst_ipaddr)),
-		       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
-		       packet->dst_port,
+			       "length %zu",
+			       received ? "Received" : "Sent",
+			       packet->code,
+			       packet->id,
+			       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
+			       inet_ntop(packet->src_ipaddr.af,
+					 &packet->src_ipaddr.ipaddr,
+					 src_ipaddr, sizeof(src_ipaddr)),
+			       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
+			       packet->src_port,
+			       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
+			       inet_ntop(packet->dst_ipaddr.af,
+					 &packet->dst_ipaddr.ipaddr,
+					 dst_ipaddr, sizeof(dst_ipaddr)),
+			       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
+			       packet->dst_port,
 #if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
-		       packet->if_index ? "via " : "",
-		       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
-		       packet->if_index ? " " : "",
+			       packet->if_index ? "via " : "",
+			       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
+			       packet->if_index ? " " : "",
 #endif
-		       packet->data_len);
+			       packet->data_len);
 	}
 
 	if (received) {
