@@ -424,7 +424,7 @@ typedef struct uint128_t {
 			uint64_t l;
 #endif
 		};
-	}
+	};
 } uint128_t;
 typedef struct int128_t {
 	union {
