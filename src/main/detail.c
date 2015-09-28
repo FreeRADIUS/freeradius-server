@@ -678,7 +678,7 @@ open_file:
 		 */
 		if (!strcasecmp(key, "Client-IP-Address")) {
 			data->client_ip.af = AF_INET;
-			if (ip_hton(&data->client_ip, AF_INET, value, false) < 0) {
+			if (fr_inet_hton(&data->client_ip, AF_INET, value, false) < 0) {
 				ERROR("detail (%s): Failed parsing Client-IP-Address", data->name);
 
 				fr_pair_list_free(&data->vps);

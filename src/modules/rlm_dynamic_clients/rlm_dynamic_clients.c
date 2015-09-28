@@ -74,7 +74,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance,
 	}
 
 	memcpy(buffer, value, length + 1);
-	ip_ntoh(&request->packet->src_ipaddr,
+	fr_inet_ntoh(&request->packet->src_ipaddr,
 		buffer + length, sizeof(buffer) - length - 1);
 
 	/*

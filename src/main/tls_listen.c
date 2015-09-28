@@ -659,7 +659,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 		ERROR("Invalid packet code %d sent to a proxy port "
 		       "from home server %s port %d - ID %d : IGNORED",
 		       packet->code,
-		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		       fr_inet_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
 		rad_free(&packet);
 		return 0;

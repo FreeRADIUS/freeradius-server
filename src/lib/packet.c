@@ -156,7 +156,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, uint16_t port)
 	}
 #endif
 
-	if (!fr_ipaddr2sockaddr(ipaddr, port, &salocal, &salen)) {
+	if (!fr_ipaddr_to_sockaddr(ipaddr, port, &salocal, &salen)) {
 		return sockfd;
 	}
 
@@ -417,7 +417,7 @@ bool fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 		return false;
 	}
 
-	if (!fr_sockaddr2ipaddr(&src, sizeof_src, &ps->src_ipaddr,
+	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, &ps->src_ipaddr,
 				&ps->src_port)) {
 		fr_strerror_printf("Failed to get IP");
 		return false;

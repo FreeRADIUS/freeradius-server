@@ -305,8 +305,8 @@ RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd)
 	}
 #endif
 
-	fr_sockaddr2ipaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
-	fr_sockaddr2ipaddr(&src, sizeof_src, &src_ipaddr, &src_port);
+	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
+	fr_ipaddr_from_sockaddr(&src, sizeof_src, &src_ipaddr, &src_port);
 
 
 	packet = fr_dhcp_packet_ok(data, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
@@ -566,10 +566,10 @@ int fr_dhcp_send_socket(RADIUS_PACKET *packet)
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src;
 
-	fr_ipaddr2sockaddr(&packet->src_ipaddr, packet->src_port, &src, &sizeof_src);
+	fr_ipaddr_to_sockaddr(&packet->src_ipaddr, packet->src_port, &src, &sizeof_src);
 #endif
 
-	fr_ipaddr2sockaddr(&packet->dst_ipaddr, packet->dst_port, &dst, &sizeof_dst);
+	fr_ipaddr_to_sockaddr(&packet->dst_ipaddr, packet->dst_port, &dst, &sizeof_dst);
 	if (packet->data_len == 0) {
 		fr_strerror_printf("No data to send");
 		return -1;

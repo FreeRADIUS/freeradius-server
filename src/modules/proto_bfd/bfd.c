@@ -560,7 +560,7 @@ static bfd_state_t *bfd_new_session(bfd_socket_t *sock, int sockfd,
 	session->local_ipaddr = sock->my_ipaddr;
 	session->local_port = sock->my_port;
 
-	fr_ipaddr2sockaddr(ipaddr, port,
+	fr_ipaddr_to_sockaddr(ipaddr, port,
 			   &session->remote_sockaddr, &session->salen);
 
 	if (!rbtree_insert(sock->session_tree, session)) {
@@ -1492,7 +1492,7 @@ static int bfd_socket_recv(rad_listen_t *listener)
 	/*
 	 *	We SHOULD use "your_disc", but what the heck.
 	 */
-	fr_sockaddr2ipaddr(&src, sizeof_src,
+	fr_ipaddr_from_sockaddr(&src, sizeof_src,
 			   &my_session.remote_ipaddr,
 			   &my_session.remote_port);
 
@@ -1761,7 +1761,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		/*
 		 *	Set up sockaddr stuff.
 		 */
-		if (!fr_ipaddr2sockaddr(&sock->my_ipaddr, sock->my_port, &salocal, &salen)) {
+		if (!fr_ipaddr_to_sockaddr(&sock->my_ipaddr, sock->my_port, &salocal, &salen)) {
 			close(this->fd);
 			return -1;
 		}
@@ -1794,7 +1794,7 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 				return -1;
 			}
 
-			if (!fr_sockaddr2ipaddr(&src, sizeof_src,
+			if (!fr_ipaddr_from_sockaddr(&src, sizeof_src,
 						&sock->my_ipaddr, &sock->my_port)) {
 				ERROR("Socket has unsupported address family");
 				return -1;
@@ -1889,7 +1889,7 @@ static int bfd_socket_print(const rad_listen_t *this, char *buffer, size_t bufsi
 	    (sock->my_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 		strlcpy(buffer, "*", bufsize);
 	} else {
-		ip_ntoh(&sock->my_ipaddr, buffer, bufsize);
+		fr_inet_ntoh(&sock->my_ipaddr, buffer, bufsize);
 	}
 	FORWARD;
 

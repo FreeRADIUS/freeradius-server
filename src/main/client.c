@@ -220,7 +220,7 @@ bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		rad_assert(0);
 	}
 
-	fr_ntop(buffer, sizeof(buffer), &client->ipaddr);
+	fr_inet_ntop_prefix(buffer, sizeof(buffer), &client->ipaddr);
 	DEBUG3("Adding client %s (%s) to prefix tree %i", buffer, client->longname, client->ipaddr.prefix);
 
 	/*
@@ -727,14 +727,14 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 	 */
 	if (master->server && (strcmp(master->server, c->server) != 0)) {
 		ERROR("Cannot add client %s/%i: Virtual server %s is not the same as the virtual server for the network",
-		      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->server);
+		      fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->server);
 
 		goto error;
 	}
 
 	if (!client_add(clients, c)) {
 		ERROR("Cannot add client %s/%i: Internal error",
-		      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix);
+		      fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix);
 
 		goto error;
 	}
@@ -748,7 +748,7 @@ bool client_add_dynamic(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c
 	c->longname = talloc_typed_strdup(c, c->shortname);
 
 	INFO("Adding client %s/%i with shared secret \"%s\"",
-	     ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->secret);
+	     fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->ipaddr.prefix, c->secret);
 
 	return true;
 
@@ -911,7 +911,7 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 		/*
 		 *	Set the long name to be the result of a reverse lookup on the IP address.
 		 */
-		ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+		fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer));
 		c->longname = talloc_typed_strdup(c, buffer);
 
 		/*
@@ -966,14 +966,14 @@ RADCLIENT *client_afrom_cs(TALLOC_CTX *ctx, CONF_SECTION *cs, bool in_server, bo
 #ifdef WITH_UDPFROMTO
 		switch (c->ipaddr.af) {
 		case AF_INET:
-			if (fr_pton4(&c->src_ipaddr, cl_srcipaddr, -1, true, false, true) < 0) {
+			if (fr_inet_pton4(&c->src_ipaddr, cl_srcipaddr, -1, true, false, true) < 0) {
 				cf_log_err_cs(cs, "Failed parsing src_ipaddr: %s", fr_strerror());
 				goto error;
 			}
 			break;
 
 		case AF_INET6:
-			if (fr_pton6(&c->src_ipaddr, cl_srcipaddr, -1, true, false, true) < 0) {
+			if (fr_inet_pton6(&c->src_ipaddr, cl_srcipaddr, -1, true, false, true) < 0) {
 				cf_log_err_cs(cs, "Failed parsing src_ipaddr: %s", fr_strerror());
 				goto error;
 			}
@@ -1142,7 +1142,7 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
 
 	c = talloc_zero(ctx, RADCLIENT);
 
-	if (fr_pton(&c->ipaddr, identifier, -1, AF_UNSPEC, true, true) < 0) {
+	if (fr_inet_pton(&c->ipaddr, identifier, -1, AF_UNSPEC, true, true) < 0) {
 		ERROR("%s", fr_strerror());
 		talloc_free(c);
 
@@ -1152,7 +1152,7 @@ RADCLIENT *client_afrom_query(TALLOC_CTX *ctx, char const *identifier, char cons
 #ifdef WITH_DYNAMIC_CLIENTS
 	c->dynamic = true;
 #endif
-	ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+	fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer));
 	c->longname = talloc_typed_strdup(c, buffer);
 
 	/*
@@ -1208,7 +1208,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		da = dict_attrbyname(dynamic_config[i].name);
 		if (!da) {
 			RERROR("Cannot add client %s: attribute \"%s\" is not in the dictionary",
-			       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
+			       fr_inet_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
 			       dynamic_config[i].name);
 		error:
 			REXDENT();
@@ -1225,7 +1225,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			if (!dynamic_config[i].dflt) continue;
 
 			RERROR("Cannot add client %s: Required attribute \"%s\" is missing",
-			       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
+			       fr_inet_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
 			       dynamic_config[i].name);
 			goto error;
 		}
@@ -1401,7 +1401,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 	if (c->ipaddr.af == AF_UNSPEC) {
 		RERROR("Cannot add client %s: No IP address was specified.",
-		       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
+		       fr_inet_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
 
 		goto error;
 	}
@@ -1420,15 +1420,15 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 			char buf2[128];
 
 			RERROR("Cannot add client %s: Not in specified subnet %s/%i",
-			       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
-			       ip_ntoh(&c->ipaddr, buf2, sizeof(buf2)), c->ipaddr.prefix);
+			       fr_inet_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),
+			       fr_inet_ntoh(&c->ipaddr, buf2, sizeof(buf2)), c->ipaddr.prefix);
 			goto error;
 		}
 	}
 
 	if (!c->secret || !*c->secret) {
 		RERROR("Cannot add client %s: No secret was specified",
-		       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
+		       fr_inet_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
 		goto error;
 	}
 
@@ -1438,7 +1438,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 
 	if ((c->src_ipaddr.af != AF_UNSPEC) && (c->src_ipaddr.af != c->ipaddr.af)) {
 		RERROR("Cannot add client %s: Client IP and src address are different IP version",
-		       ip_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
+		       fr_inet_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)));
 
 		goto error;
 	}
@@ -1487,7 +1487,7 @@ RADCLIENT *client_read(char const *filename, int in_server, int flag)
 	/*
 	 *	Additional validations
 	 */
-	ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+	fr_inet_ntoh(&c->ipaddr, buffer, sizeof(buffer));
 	if (strcmp(p, buffer) != 0) {
 		ERROR("Invalid client definition in %s: IP address %s does not match name %s", filename, buffer, p);
 		client_free(c);

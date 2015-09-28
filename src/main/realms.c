@@ -597,7 +597,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		if (!home->log_name) {
 			char buffer[INET6_ADDRSTRLEN + 3];
 
-			fr_ntop(buffer, sizeof(buffer), &home->ipaddr);
+			fr_inet_ntop_prefix(buffer, sizeof(buffer), &home->ipaddr);
 
 			home->log_name = talloc_asprintf(home, "%s:%i", buffer, home->port);
 		}
@@ -825,7 +825,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 			 */
 			rad_const_free(home->log_name);
 
-			fr_ntop(buffer, sizeof(buffer), &home->ipaddr);
+			fr_inet_ntop_prefix(buffer, sizeof(buffer), &home->ipaddr);
 
 			home->log_name = talloc_asprintf(home, "%s:%i", buffer, home->port);
 		}
@@ -836,7 +836,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	IP.
 		 */
 		if (home->src_ipaddr_str) {
-			if (ip_hton(&home->src_ipaddr, home->ipaddr.af, home->src_ipaddr_str, false) < 0) {
+			if (fr_inet_hton(&home->src_ipaddr, home->ipaddr.af, home->src_ipaddr_str, false) < 0) {
 				cf_log_err_cs(cs, "Failed parsing src_ipaddr");
 				goto error;
 			}
@@ -1462,7 +1462,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 		}
 
 		if (!server) {
-			if (ip_hton(&home->ipaddr, AF_UNSPEC, p, false) < 0) {
+			if (fr_inet_hton(&home->ipaddr, AF_UNSPEC, p, false) < 0) {
 				cf_log_err_cs(cs,
 					   "Failed looking up hostname %s.",
 					   p);

@@ -94,12 +94,12 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src;
 
-	if (!fr_ipaddr2sockaddr(src_ipaddr, 0, &src, &sizeof_src)) {
+	if (!fr_ipaddr_to_sockaddr(src_ipaddr, 0, &src, &sizeof_src)) {
 		return -1;   /* Unknown address family, Die Die Die! */
 	}
 #endif
 
-	if (!fr_ipaddr2sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst)) {
+	if (!fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst)) {
 		return -1;   /* Unknown address family, Die Die Die! */
 	}
 
@@ -249,12 +249,12 @@ static ssize_t vqp_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 		return data_len;
 	}
 
-	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, &port)) {
+	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port)) {
 		return -1;	/* Unknown address family, Die Die Die! */
 	}
 	*src_port = port;
 
-	fr_sockaddr2ipaddr(&dst, sizeof_dst, dst_ipaddr, &port);
+	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, dst_ipaddr, &port);
 	*dst_port = port;
 
 	/*

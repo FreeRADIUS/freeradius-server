@@ -731,12 +731,12 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 			return -1;
 		}
 
-		if (fr_pton(&start, start_buff, -1, AF_UNSPEC, false, true) < 0) {
+		if (fr_inet_pton(&start, start_buff, -1, AF_UNSPEC, false, true) < 0) {
 			ERROR("Failed parsing \"%s\" as start address: %s", start_buff, fr_strerror());
 			return -1;
 		}
 
-		if (fr_pton(&end, end_buff, -1, AF_UNSPEC, false, true) < 0) {
+		if (fr_inet_pton(&end, end_buff, -1, AF_UNSPEC, false, true) < 0) {
 			ERROR("Failed parsing \"%s\" end address: %s", end_buff, fr_strerror());
 			return -1;
 		}
@@ -785,7 +785,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		return 0;
 	}
 
-	if (fr_pton(&start, ip_str, -1, AF_UNSPEC, false, false) < 0) {
+	if (fr_inet_pton(&start, ip_str, -1, AF_UNSPEC, false, false) < 0) {
 		ERROR("Failed parsing \"%s\" as IPv4/v6 subnet", ip_str);
 		return -1;
 	}

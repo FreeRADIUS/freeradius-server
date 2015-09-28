@@ -693,7 +693,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton4(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
+		if (fr_inet_pton4(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
 
 		/*
 		 *	We allow v4 addresses to have a /32 suffix as some databases (PostgreSQL)
@@ -713,7 +713,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton4(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
+		if (fr_inet_pton4(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
 
 		dst->ipv4prefix[1] = addr.prefix;
 		memcpy(&dst->ipv4prefix[2], &addr.ipaddr.ip4addr.s_addr, sizeof(dst->ipv4prefix) - 2);
@@ -724,7 +724,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton6(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
+		if (fr_inet_pton6(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
 
 		/*
 		 *	We allow v6 addresses to have a /128 suffix as some databases (PostgreSQL)
@@ -744,7 +744,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 	{
 		fr_ipaddr_t addr;
 
-		if (fr_pton6(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
+		if (fr_inet_pton6(&addr, src, src_len, fr_hostname_lookups, false, true) < 0) return -1;
 
 		dst->ipv6prefix[1] = addr.prefix;
 		memcpy(&dst->ipv6prefix[2], addr.ipaddr.ip6addr.s6_addr, sizeof(dst->ipv6prefix) - 2);
@@ -910,7 +910,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		break;
 
 	case PW_TYPE_IFID:
-		if (ifid_aton(src, (void *) dst->ifid) == NULL) {
+		if (fr_inet_ifid_aton((void *) dst->ifid, src) == NULL) {
 			fr_strerror_printf("Failed to parse interface-id string \"%s\"", src);
 			return -1;
 		}
@@ -975,7 +975,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		} else {
 			fr_ipaddr_t ipaddr;
 
-			if (ip_hton(&ipaddr, AF_INET, src, false) < 0) {
+			if (fr_inet_hton(&ipaddr, AF_INET, src, false) < 0) {
 				fr_strerror_printf("Failed to find IPv4 address for %s", src);
 				return -1;
 			}
@@ -1865,7 +1865,7 @@ print_int:
 		return len;
 
 	case PW_TYPE_IFID:
-		a = ifid_ntoa(buf, sizeof(buf), data->ifid);
+		a = fr_inet_ifid_ntoa(buf, sizeof(buf), data->ifid);
 		len = strlen(buf);
 		break;
 

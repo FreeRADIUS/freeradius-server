@@ -81,6 +81,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/radius.h>
 #include <freeradius-devel/token.h>
 #include <freeradius-devel/hash.h>
+#include <freeradius-devel/inet.h>
 #include <freeradius-devel/regex.h>
 
 #ifdef SIZEOF_UNSIGNED_INT
@@ -375,16 +376,6 @@ typedef struct value_pair_raw {
 #define vp_decimal	data.decimal
 
 #define vp_length	data.length
-
-typedef struct fr_ipaddr_t {
-	int		af;	/* address family */
-	union {
-		struct in_addr	ip4addr;
-		struct in6_addr ip6addr; /* maybe defined in missing.h */
-	} ipaddr;
-	uint8_t		prefix;
-	uint32_t	scope;	/* for IPv6 */
-} fr_ipaddr_t;
 
 /*
  *	vector:		Request authenticator from access-request packet
@@ -757,15 +748,6 @@ void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
  */
 int		fr_set_signal(int sig, sig_t func);
 int		fr_link_talloc_ctx_free(TALLOC_CTX *parent, TALLOC_CTX *child);
-char const	*fr_inet_ntop(int af, void const *src);
-int		fr_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask);
-int		fr_pton6(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask);
-int		fr_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, bool resolve, bool mask);
-int		fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_t inlen, int af,
-			     bool resolve, bool mask);
-int		fr_ntop(char *out, size_t outlen, fr_ipaddr_t *addr);
-char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
-uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
@@ -778,17 +760,6 @@ bool		is_printable(void const *value, size_t len);
 bool		is_integer(char const *value);
 bool		is_zero(char const *value);
 
-int		fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
-
-int		ip_hton(fr_ipaddr_t *out, int af, char const *hostname, bool fallback);
-char const	*ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt);
-struct in_addr	fr_inaddr_mask(struct in_addr const *ipaddr, uint8_t prefix);
-struct in6_addr	fr_in6addr_mask(struct in6_addr const *ipaddr, uint8_t prefix);
-void		fr_ipaddr_mask(fr_ipaddr_t *addr, uint8_t prefix);
-int		fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
-				   struct sockaddr_storage *sa, socklen_t *salen);
-int		fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
-				   fr_ipaddr_t *ipaddr, uint16_t *port);
 int		fr_nonblock(int fd);
 int		fr_blocking(int fd);
 ssize_t		fr_writev(int fd, struct iovec[], int iovcnt, struct timeval *timeout);

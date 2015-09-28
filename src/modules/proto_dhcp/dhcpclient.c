@@ -472,7 +472,7 @@ static void send_with_pcap(RADIUS_PACKET *request)
 		fr_exit_now(1);
 	}
 
-	ip_ntoh(&request->src_ipaddr, ip, sizeof(ip));
+	fr_inet_ntoh(&request->src_ipaddr, ip, sizeof(ip));
 	sprintf(pcap_filter, "udp and dst port %d", request->src_port);
 
 	if (fr_pcap_apply_filter(pcap, pcap_filter) < 0) {
@@ -591,7 +591,7 @@ int main(int argc, char **argv)
 	 */
 	server_ipaddr.af = AF_INET;
 	if (strcmp(argv[1], "-") != 0) {
-		if (fr_pton_port(&server_ipaddr, &server_port, argv[1], strlen(argv[1]), AF_UNSPEC, true, true) < 0) {
+		if (fr_inet_pton_port(&server_ipaddr, &server_port, argv[1], strlen(argv[1]), AF_UNSPEC, true, true) < 0) {
 			fr_perror("dhcpclient");
 			fr_exit_now(1);
 		}

@@ -400,12 +400,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 	{
 		if (!rad_client) {
 			RDEBUG("The client record could not be found for host %s.",
-					ip_ntoh(&request->packet->src_ipaddr,
+					fr_inet_ntoh(&request->packet->src_ipaddr,
 						host_ipaddr, sizeof(host_ipaddr)));
 		}
 		else {
 			RDEBUG("The host %s does not have an access group.",
-					ip_ntoh(&request->packet->src_ipaddr,
+					fr_inet_ntoh(&request->packet->src_ipaddr,
 						host_ipaddr, sizeof(host_ipaddr)));
 		}
 	}

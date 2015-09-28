@@ -129,7 +129,7 @@ static int client_socket(char const *server)
 		*p = '\0';
 	}
 
-	if (ip_hton(&ipaddr, AF_INET, buffer, false) < 0) {
+	if (fr_inet_hton(&ipaddr, AF_INET, buffer, false) < 0) {
 		fprintf(stderr, "%s: Failed looking up host %s: %s\n",
 			progname, buffer, fr_syserror(errno));
 		exit(1);

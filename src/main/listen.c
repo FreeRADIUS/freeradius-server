@@ -57,8 +57,8 @@ static void print_packet(RADIUS_PACKET *packet)
 {
 	char src[256], dst[256];
 
-	ip_ntoh(&packet->src_ipaddr, src, sizeof(src));
-	ip_ntoh(&packet->dst_ipaddr, dst, sizeof(dst));
+	fr_inet_ntoh(&packet->src_ipaddr, src, sizeof(src));
+	fr_inet_ntoh(&packet->dst_ipaddr, dst, sizeof(dst));
 
 	fprintf(stderr, "ID %d: %s %d -> %s %d\n", packet->id,
 		src, packet->src_port, dst, packet->dst_port);
@@ -483,7 +483,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		char buffer[256];
 
 		ERROR("Invalid packet from %s port %d, closing socket: %s",
-		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		       fr_inet_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port, fr_strerror());
 	}
 
@@ -585,7 +585,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		return -1;
 	}
 
-	if (!fr_sockaddr2ipaddr(&src, salen, &src_ipaddr, &src_port)) {
+	if (!fr_ipaddr_from_sockaddr(&src, salen, &src_ipaddr, &src_port)) {
 		close(newfd);
 		DEBUG2(" ... unknown address family");
 		return 0;
@@ -793,7 +793,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 	 */
 	if (sock->client) {
 		ADDSTRING(" from client (");
-		ip_ntoh(&sock->other_ipaddr, buffer, bufsize);
+		fr_inet_ntoh(&sock->other_ipaddr, buffer, bufsize);
 		FORWARD;
 
 		ADDSTRING(", ");
@@ -805,7 +805,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 		    (sock->my_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 			strlcpy(buffer, "*", bufsize);
 		} else {
-			ip_ntoh(&sock->my_ipaddr, buffer, bufsize);
+			fr_inet_ntoh(&sock->my_ipaddr, buffer, bufsize);
 		}
 		FORWARD;
 
@@ -830,7 +830,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 	if ((sock->proto == IPPROTO_TCP) &&
 	    (this->type == RAD_LISTEN_PROXY)) {
 		ADDSTRING(" (");
-		ip_ntoh(&sock->my_ipaddr, buffer, bufsize);
+		fr_inet_ntoh(&sock->my_ipaddr, buffer, bufsize);
 		FORWARD;
 
 		ADDSTRING(", ");
@@ -842,7 +842,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 		    (sock->other_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 			strlcpy(buffer, "*", bufsize);
 		} else {
-			ip_ntoh(&sock->other_ipaddr, buffer, bufsize);
+			fr_inet_ntoh(&sock->other_ipaddr, buffer, bufsize);
 		}
 		FORWARD;
 
@@ -863,7 +863,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 	    (sock->my_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY))) {
 		strlcpy(buffer, "*", bufsize);
 	} else {
-		ip_ntoh(&sock->my_ipaddr, buffer, bufsize);
+		fr_inet_ntoh(&sock->my_ipaddr, buffer, bufsize);
 	}
 	FORWARD;
 
@@ -1229,7 +1229,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 				ERROR("We have been asked to listen on %s port %d, which is also listed as a "
 				       "home server.  This can create a proxy loop",
-				       ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)), sock->my_port);
+				       fr_inet_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)), sock->my_port);
 				return -1;
 		}
 #  endif
@@ -1307,7 +1307,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			char buffer[128];
 			cf_log_err_cs(cs,
 				   "Error binding to port for %s port %d",
-				   ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
+				   fr_inet_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
 				   sock->my_port);
 			return -1;
 		}
@@ -2089,7 +2089,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 		 */
 		ERROR("Invalid packet code %d sent to a proxy port from home server %s port %d - ID %d : IGNORED",
 		      packet->code,
-		      ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		      fr_inet_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		      packet->src_port, packet->id);
 #  ifdef WITH_STATS
 		listener->stats.total_unknown_types++;
@@ -2154,7 +2154,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 		ERROR("Invalid packet code %d sent to a proxy port "
 		       "from home server %s port %d - ID %d : IGNORED",
 		       packet->code,
-		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
+		       fr_inet_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port, packet->id);
 		rad_free(&packet);
 		return 0;
@@ -2642,7 +2642,7 @@ static int listen_bind(rad_listen_t *this)
 	/*
 	 *	Set up sockaddr stuff.
 	 */
-	if (!fr_ipaddr2sockaddr(&sock->my_ipaddr, sock->my_port, &salocal, &salen)) {
+	if (!fr_ipaddr_to_sockaddr(&sock->my_ipaddr, sock->my_port, &salocal, &salen)) {
 		close(this->fd);
 		return -1;
 	}
@@ -2775,7 +2775,7 @@ static int listen_bind(rad_listen_t *this)
 				return -1;
 			}
 
-			if (!fr_sockaddr2ipaddr(&src, sizeof_src,
+			if (!fr_ipaddr_from_sockaddr(&src, sizeof_src,
 						&sock->my_ipaddr, &sock->my_port)) {
 				ERROR("Socket has unsupported address family");
 				return -1;
@@ -3030,7 +3030,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 			return NULL;
 		}
 
-		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
+		if (!fr_ipaddr_from_sockaddr(&src, sizeof_src,
 					&sock->my_ipaddr, &sock->my_port)) {
 			ERROR("Socket has unsupported address family for '%s'", buffer);
 			home->last_failed_open = now;

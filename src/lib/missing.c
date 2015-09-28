@@ -341,6 +341,215 @@ uint128_t ntohlll(uint128_t const num)
 }
 #endif
 
+/*
+ *	Replacements in case we don't have inet_pton
+ */
+#ifndef HAVE_INET_PTON
+static int inet_pton4(char const *src, struct in_addr *dst)
+{
+	int octet;
+	unsigned int num;
+	char const *p, *off;
+	uint8_t tmp[4];
+	static char const digits[] = "0123456789";
+
+	octet = 0;
+	p = src;
+	while (1) {
+		num = 0;
+		while (*p && ((off = strchr(digits, *p)) != NULL)) {
+			num *= 10;
+			num += (off - digits);
+
+			if (num > 255) return 0;
+
+			p++;
+		}
+		if (!*p) break;
+
+		/*
+		 *	Not a digit, MUST be a dot, else we
+		 *	die.
+		 */
+		if (*p != '.') {
+			return 0;
+		}
+
+		tmp[octet++] = num;
+		p++;
+	}
+
+	/*
+	 *	End of the string.  At the fourth
+	 *	octet is OK, anything else is an
+	 *	error.
+	 */
+	if (octet != 3) {
+		return 0;
+	}
+	tmp[3] = num;
+
+	memcpy(dst, &tmp, sizeof(tmp));
+	return 1;
+}
+
+
+#  ifdef HAVE_STRUCT_SOCKADDR_IN6
+/** Convert presentation level address to network order binary form
+ *
+ * @note Does not touch dst unless it's returning 1.
+ * @note :: in a full address is silently ignored.
+ * @note Inspired by Mark Andrews.
+ * @author Paul Vixie, 1996.
+ *
+ * @param src presentation level address.
+ * @param dst where to write output address.
+ * @return
+ *	- 1 if `src' is a valid [RFC1884 2.2] address.
+ *	- 0 if `src' in not a valid [RFC1884 2.2] address.
+ */
+static int inet_pton6(char const *src, unsigned char *dst)
+{
+	static char const xdigits_l[] = "0123456789abcdef",
+			  xdigits_u[] = "0123456789ABCDEF";
+	uint8_t tmp[IN6ADDRSZ], *tp, *endp, *colonp;
+	char const *xdigits, *curtok;
+	int ch, saw_xdigit;
+	u_int val;
+
+	memset((tp = tmp), 0, IN6ADDRSZ);
+	endp = tp + IN6ADDRSZ;
+	colonp = NULL;
+	/* Leading :: requires some special handling. */
+	if (*src == ':')
+		if (*++src != ':')
+			return (0);
+	curtok = src;
+	saw_xdigit = 0;
+	val = 0;
+	while ((ch = *src++) != '\0') {
+		char const *pch;
+
+		if ((pch = strchr((xdigits = xdigits_l), ch)) == NULL)
+			pch = strchr((xdigits = xdigits_u), ch);
+		if (pch != NULL) {
+			val <<= 4;
+			val |= (pch - xdigits);
+			if (val > 0xffff)
+				return (0);
+			saw_xdigit = 1;
+			continue;
+		}
+		if (ch == ':') {
+			curtok = src;
+			if (!saw_xdigit) {
+				if (colonp)
+					return (0);
+				colonp = tp;
+				continue;
+			}
+			if (tp + INT16SZ > endp)
+				return (0);
+			*tp++ = (uint8_t) (val >> 8) & 0xff;
+			*tp++ = (uint8_t) val & 0xff;
+			saw_xdigit = 0;
+			val = 0;
+			continue;
+		}
+		if (ch == '.' && ((tp + INADDRSZ) <= endp) &&
+		    inet_pton4(curtok, (struct in_addr *) tp) > 0) {
+			tp += INADDRSZ;
+			saw_xdigit = 0;
+			break;	/* '\0' was seen by inet_pton4(). */
+		}
+		return (0);
+	}
+	if (saw_xdigit) {
+		if (tp + INT16SZ > endp)
+			return (0);
+		*tp++ = (uint8_t) (val >> 8) & 0xff;
+		*tp++ = (uint8_t) val & 0xff;
+	}
+	if (colonp != NULL) {
+		/*
+		 * Since some memmove()'s erroneously fail to handle
+		 * overlapping regions, we'll do the shift by hand.
+		 */
+		int const n = tp - colonp;
+		int i;
+
+		for (i = 1; i <= n; i++) {
+			endp[- i] = colonp[n - i];
+			colonp[n - i] = 0;
+		}
+		tp = endp;
+	}
+	if (tp != endp)
+		return (0);
+	/* bcopy(tmp, dst, IN6ADDRSZ); */
+	memcpy(dst, tmp, IN6ADDRSZ);
+	return (1);
+}
+#  endif
+
+/*
+ *	Utility function, so that the rest of the server doesn't
+ *	have ifdef's around IPv6 support
+ */
+int inet_pton(int af, char const *src, void *dst)
+{
+	if (af == AF_INET) return inet_pton4(src, dst);
+
+#  ifdef HAVE_STRUCT_SOCKADDR_IN6
+	if (af == AF_INET6) return inet_pton6(src, dst);
+#  endif
+	return -1;
+}
+#endif	/* HAVE_INET_PTON */
+
+#ifndef HAVE_INET_NTOP
+/*
+ *	Utility function, so that the rest of the server doesn't
+ *	have ifdef's around IPv6 support
+ */
+char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
+{
+	if (af == AF_INET) {
+		uint8_t const *ipaddr = src;
+
+		if (cnt <= INET_ADDRSTRLEN) return NULL;
+
+		snprintf(dst, cnt, "%d.%d.%d.%d",
+			 ipaddr[0], ipaddr[1],
+			 ipaddr[2], ipaddr[3]);
+		return dst;
+	}
+
+	/*
+	 *	If the system doesn't define this, we define it
+	 *	in missing.h
+	 */
+	if (af == AF_INET6) {
+		struct in6_addr const *ipaddr = src;
+
+		if (cnt <= INET6_ADDRSTRLEN) return NULL;
+
+		snprintf(dst, cnt, "%x:%x:%x:%x:%x:%x:%x:%x",
+			 (ipaddr->s6_addr[0] << 8) | ipaddr->s6_addr[1],
+			 (ipaddr->s6_addr[2] << 8) | ipaddr->s6_addr[3],
+			 (ipaddr->s6_addr[4] << 8) | ipaddr->s6_addr[5],
+			 (ipaddr->s6_addr[6] << 8) | ipaddr->s6_addr[7],
+			 (ipaddr->s6_addr[8] << 8) | ipaddr->s6_addr[9],
+			 (ipaddr->s6_addr[10] << 8) | ipaddr->s6_addr[11],
+			 (ipaddr->s6_addr[12] << 8) | ipaddr->s6_addr[13],
+			 (ipaddr->s6_addr[14] << 8) | ipaddr->s6_addr[15]);
+		return dst;
+	}
+
+	return NULL;		/* don't support IPv6 */
+}
+#endif
+
 /** Call talloc strdup, setting the type on the new chunk correctly
  *
  * For some bizarre reason the talloc string functions don't set the

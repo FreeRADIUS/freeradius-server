@@ -13,6 +13,7 @@ SOURCES		:= cbuff.c \
 		   hash.c \
 		   hmacmd5.c \
 		   hmacsha1.c \
+		   inet.c \
 		   isaac.c \
 		   log.c \
 		   misc.c \

@@ -24,10 +24,6 @@
  * @copyright 2014 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <net/if.h>
-
 /*
  *	If we don't have libpcap, we still need an enumeration of link layers.
  */
@@ -142,20 +138,10 @@ extern FR_NAME_NUMBER const fr_net_ip_proto_table[];
 extern FR_NAME_NUMBER const fr_net_sock_type_table[];
 extern FR_NAME_NUMBER const fr_net_af_table[];
 
-#  if defined(SIOCGIFADDR) && (defined(SIOCGIFNAME) || defined(HAVE_IF_INDEXTONAME))
-#    define WITH_IFINDEX_RESOLUTION
-#  endif
-
 bool		fr_link_layer_supported(int link_layer);
 ssize_t		fr_link_layer_offset(uint8_t const *data, size_t len, int link_layer);
 uint16_t	fr_udp_checksum(uint8_t const *data, uint16_t len, uint16_t checksum,
 			 	struct in_addr const src_addr, struct in_addr const dst_addr);
 int		fr_udp_header_check(uint8_t const *data, uint16_t remaining, ip_header_t const *ip);
 uint16_t	fr_ip_header_checksum(uint8_t const *data, uint8_t ihl);
-int		fr_ipaddr_from_interface(fr_ipaddr_t *out, int af, char const *name);
-
-#  ifdef WITH_IFINDEX_RESOLUTION
-char		*fr_ifname_from_ifindex(char out[IFNAMSIZ], int if_index);
-int		fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index);
-#  endif
 #endif /* FR_NET_H */

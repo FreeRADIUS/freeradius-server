@@ -183,7 +183,7 @@ int fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint1
 	 *	Allow the caller to bind us to a specific source IP.
 	 */
 	if (src_ipaddr && (src_ipaddr->af != AF_UNSPEC)) {
-		if (!fr_ipaddr2sockaddr(src_ipaddr, 0, &salocal, &salen)) {
+		if (!fr_ipaddr_to_sockaddr(src_ipaddr, 0, &salocal, &salen)) {
 			close(sockfd);
 			return -1;
 		}
@@ -195,7 +195,7 @@ int fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint1
 		}
 	}
 
-	if (!fr_ipaddr2sockaddr(dst_ipaddr, dst_port, &salocal, &salen)) {
+	if (!fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &salocal, &salen)) {
 		close(sockfd);
 		return -1;
 	}
@@ -289,7 +289,7 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint1
 	 *	Allow the caller to bind us to a specific source IP.
 	 */
 	if (src_ipaddr && (src_ipaddr->af != AF_UNSPEC)) {
-		if (!fr_ipaddr2sockaddr(src_ipaddr, 0, &salocal, &salen)) {
+		if (!fr_ipaddr_to_sockaddr(src_ipaddr, 0, &salocal, &salen)) {
 			close(sockfd);
 			return -1;
 		}
@@ -301,7 +301,7 @@ int fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint1
 		}
 	}
 
-	if (!fr_ipaddr2sockaddr(dst_ipaddr, dst_port, &salocal, &salen)) {
+	if (!fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &salocal, &salen)) {
 		close(sockfd);
 		return -1;
 	}

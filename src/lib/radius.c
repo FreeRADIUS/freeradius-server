@@ -25,15 +25,15 @@
 
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
+#include <freeradius-devel/libradius.h>
 
-#include	<freeradius-devel/md5.h>
+#include <freeradius-devel/md5.h>
 
-#include	<fcntl.h>
-#include	<ctype.h>
+#include <fcntl.h>
+#include <ctype.h>
 
 #ifdef WITH_UDPFROMTO
-#include	<freeradius-devel/udpfromto.h>
+#include <freeradius-devel/udpfromto.h>
 #endif
 
 /*
@@ -295,10 +295,10 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src;
 
-	fr_ipaddr2sockaddr(src_ipaddr, src_port, &src, &sizeof_src);
+	fr_ipaddr_to_sockaddr(src_ipaddr, src_port, &src, &sizeof_src);
 #endif
 
-	if (!fr_ipaddr2sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst)) {
+	if (!fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst)) {
 		return -1;
 	}
 
@@ -373,7 +373,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	/*
 	 *	Convert AF.  If unknown, discard packet.
 	 */
-	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, src_port)) {
+	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, src_port)) {
 		FR_DEBUG_STRERROR_PRINTF("Unkown address family");
 		rad_recv_discard(sockfd);
 
@@ -384,10 +384,12 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < 4) {
+		char buffer[INET6_ADDRSTRLEN];
+
 		FR_DEBUG_STRERROR_PRINTF("Expected at least 4 bytes of header data, got %zu bytes", data_len);
 invalid:
 		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s: %s",
-					 fr_inet_ntop(src_ipaddr->af, &src_ipaddr->ipaddr),
+					 inet_ntop(src_ipaddr->af, &src_ipaddr->ipaddr, buffer, sizeof(buffer)),
 					 fr_strerror());
 		rad_recv_discard(sockfd);
 
@@ -519,12 +521,12 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 		return data_len;
 	}
 
-	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, &port)) {
+	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port)) {
 		return -1;	/* Unknown address family, Die Die Die! */
 	}
 	*src_port = port;
 
-	fr_sockaddr2ipaddr(&dst, sizeof_dst, dst_ipaddr, &port);
+	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, dst_ipaddr, &port);
 	*dst_port = port;
 
 	/*

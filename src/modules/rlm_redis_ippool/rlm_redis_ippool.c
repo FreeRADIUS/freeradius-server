@@ -1075,7 +1075,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 			return RLM_MODULE_FAIL;
 		}
 
-		if (fr_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
+		if (fr_inet_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
 			REDEBUG("%s", fr_strerror());
 			return RLM_MODULE_FAIL;
 		}
@@ -1143,7 +1143,7 @@ static rlm_rcode_t mod_action(rlm_redis_ippool_t *inst, REQUEST *request, ippool
 			return RLM_MODULE_FAIL;
 		}
 
-		if (fr_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
+		if (fr_inet_pton(&ip, ip_str, -1, AF_UNSPEC, false, true) < 0) {
 			REDEBUG("%s", fr_strerror());
 			return RLM_MODULE_FAIL;
 		}

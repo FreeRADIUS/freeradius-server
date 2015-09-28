@@ -223,7 +223,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 		if (DEBUG_ENABLED2) {
 			char buff[INET6_ADDRSTRLEN + 4]; /* IPv6 + /<d><d><d> */
 
-			fr_ntop(buff, sizeof(buff), &inst->tcp.dst_ipaddr);
+			fr_inet_ntop_prefix(buff, sizeof(buff), &inst->tcp.dst_ipaddr);
 
 			DEBUG2("rlm_linelog (%s): Opening TCP connection to %s:%u", inst->name, buff, inst->tcp.port);
 		}
@@ -239,7 +239,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 		if (DEBUG_ENABLED2) {
 			char buff[INET6_ADDRSTRLEN + 4]; /* IPv6 + /<d><d><d> */
 
-			fr_ntop(buff, sizeof(buff), &inst->udp.dst_ipaddr);
+			fr_inet_ntop_prefix(buff, sizeof(buff), &inst->udp.dst_ipaddr);
 
 			DEBUG2("rlm_linelog (%s): Opening UDP connection to %s:%u", inst->name, buff, inst->udp.port);
 		}

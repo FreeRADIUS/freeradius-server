@@ -1317,7 +1317,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 		cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, name, value);
 	} else {
 		cf_log_info(cs, "%.*s\t%s = %s IPv%s address [%s]", cs->depth, parse_spaces, name, value,
-			    (ipaddr->af == AF_INET ? "4" : " 6"), ip_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
+			    (ipaddr->af == AF_INET ? "4" : " 6"), fr_inet_ntoh(ipaddr, ipbuf, sizeof(ipbuf)));
 	}
 
 	switch (type) {
@@ -1900,7 +1900,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	case PW_TYPE_IPV4_PREFIX:
 		ipaddr = data;
 
-		if (fr_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
+		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
 			cf_log_err(&(cp->item), "%s", fr_strerror());
 			rcode = -1;
 			goto error;
@@ -1916,7 +1916,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	case PW_TYPE_IPV6_PREFIX:
 		ipaddr = data;
 
-		if (fr_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
+		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
 			cf_log_err(&(cp->item), "%s", fr_strerror());
 			rcode = -1;
 			goto error;
@@ -1932,7 +1932,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 	case PW_TYPE_COMBO_IP_PREFIX:
 		ipaddr = data;
 
-		if (fr_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
+		if (fr_inet_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
 			cf_log_err(&(cp->item), "%s", fr_strerror());
 			rcode = -1;
 			goto error;

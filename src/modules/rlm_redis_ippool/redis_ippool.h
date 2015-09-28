@@ -121,7 +121,7 @@ do { \
 	} else { \
 		uint8_t _net = (_ip)->prefix; \
 		(_ip)->prefix = _prefix; \
-		fr_ntop(_buff, sizeof(_buff), _ip); \
+		fr_inet_ntop_prefix(_buff, sizeof(_buff), _ip); \
 		(_ip)->prefix = _net; \
 	} \
 } while (0)

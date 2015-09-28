@@ -1982,7 +1982,7 @@ static void rc_resolve_hostname(char *server_arg)
 			portname = NULL;
 		}
 
-		if (ip_hton(&server_ipaddr, force_af, hostname, false) < 0) {
+		if (fr_inet_hton(&server_ipaddr, force_af, hostname, false) < 0) {
 			ERROR("Failed to find IP address for host %s: %s", hostname, strerror(errno));
 			exit(1);
 		}

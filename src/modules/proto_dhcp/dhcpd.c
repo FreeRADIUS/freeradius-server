@@ -678,7 +678,7 @@ static const char *dhcp_pcap_filter_build(rad_listen_t *this)
 
 	if (!fr_is_inaddr_any(&sock->lsock.my_ipaddr)) {
 		char buffer[INET_ADDRSTRLEN];
-		ip_ntoh(&sock->lsock.my_ipaddr, buffer, sizeof(buffer));
+		fr_inet_ntoh(&sock->lsock.my_ipaddr, buffer, sizeof(buffer));
 
 		if (sock->lsock.broadcast) {
 			filter = talloc_asprintf_append_buffer(filter, " and (dst host %s or dst host 255.255.255.255)",
@@ -759,7 +759,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		char buffer[INET_ADDRSTRLEN];
 
 		if (fr_is_inaddr_any(&sock->lsock.my_ipaddr) && sock->src_interface) {
-			if (fr_ipaddr_from_interface(&sock->src_ipaddr, AF_INET, sock->src_interface) < 0) {
+			if (fr_ipaddr_from_ifname(&sock->src_ipaddr, AF_INET, sock->src_interface) < 0) {
 				WARN("Failed resolving interface %s to IP address: %s", sock->src_interface,
 				     fr_strerror());
 				WARN("Will continue, but source address must be set within the DHCP virtual server");
