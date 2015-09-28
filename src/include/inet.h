@@ -71,9 +71,9 @@ char	*fr_inet_ntop(char *out, size_t outlen, fr_ipaddr_t *addr);
 
 char	*fr_inet_ntop_prefix(char *out, size_t outlen, fr_ipaddr_t *addr);
 
-char	*fr_inet_ifid_ntoa(char *out, size_t outlen, uint8_t const *ifid);
+char	*fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid);
 
-uint8_t	*fr_inet_ifid_aton(uint8_t out[8], char const *ifid_str);
+uint8_t	*fr_inet_ifid_pton(uint8_t out[8], char const *ifid_str);
 
 /*
  *	if_index and if_name resolution

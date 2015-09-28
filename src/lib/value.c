@@ -910,7 +910,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		break;
 
 	case PW_TYPE_IFID:
-		if (fr_inet_ifid_aton((void *) dst->ifid, src) == NULL) {
+		if (fr_inet_ifid_pton((void *) dst->ifid, src) == NULL) {
 			fr_strerror_printf("Failed to parse interface-id string \"%s\"", src);
 			return -1;
 		}
@@ -1865,7 +1865,7 @@ print_int:
 		return len;
 
 	case PW_TYPE_IFID:
-		a = fr_inet_ifid_ntoa(buf, sizeof(buf), data->ifid);
+		a = fr_inet_ifid_ntop(buf, sizeof(buf), data->ifid);
 		len = strlen(buf);
 		break;
 

@@ -645,7 +645,7 @@ char *fr_inet_ntop_prefix(char *out, size_t outlen, fr_ipaddr_t *addr)
  * @param[in] outlen of output buffer.
  * @return a pointer to out.
  */
-char *fr_inet_ifid_ntoa(char *out, size_t outlen, uint8_t const *ifid)
+char *fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid)
 {
 	snprintf(out, outlen, "%x:%x:%x:%x",
 		 (ifid[0] << 8) + ifid[1], (ifid[2] << 8) + ifid[3],
@@ -659,7 +659,7 @@ char *fr_inet_ifid_ntoa(char *out, size_t outlen, uint8_t const *ifid)
  * @param[in] ifid_str to parse.
  * @return a pointer to out.
  */
-uint8_t *fr_inet_ifid_aton(uint8_t out[8], char const *ifid_str)
+uint8_t *fr_inet_ifid_pton(uint8_t out[8], char const *ifid_str)
 {
 	static char const xdigits[] = "0123456789abcdef";
 	char const *p, *pch;
