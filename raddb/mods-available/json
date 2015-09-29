@@ -5,13 +5,10 @@
 # JSON module registers a map function to allow mapping fields from JSON
 # structures to attributes.
 #
-# The path through the JSON object is specified with fr jpath, which is
-# the FreeRADIUS implementation of the jpath grammar described here:
+# The path through the JSON document's tree is specified with FR jpath, 
+# which is the FreeRADIUS implementation of the jpath grammar described here:
 #
-#	http://goessner.net/articles/JsonPath/
-#
-# rlm_json currently implements a subset of the grammar described by the
-# above implementation.
+#	  http://goessner.net/articles/JsonPath/
 #
 # Selectors currently implemented are:
 #   - $                         Root node (only valid at the start of the path).
