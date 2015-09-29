@@ -704,8 +704,14 @@ uint8_t *fr_inet_ifid_pton(uint8_t out[8], char const *ifid_str)
 }
 
 #ifdef SIOCGIFADDR
-/** Resolve an interface to an ipaddress
+/** Retrieve the primary IP address associated with an interface
  *
+ * @param[out] out The primary IP address associated with the named interface.
+ * @param[in] af of IP address to retrieve (AF_INET or AF_INET6).
+ * @param[in] name of interface.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int fr_ipaddr_from_ifname(fr_ipaddr_t *out, int af, char const *name)
 {
