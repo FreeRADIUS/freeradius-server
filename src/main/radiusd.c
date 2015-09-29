@@ -670,7 +670,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -h            Print this help message.\n");
 	fprintf(output, "  -i <ipaddr>   Listen on ipaddr ONLY.\n");
 	fprintf(output, "  -l <log_file> Logging output will be written to this file.\n");
-	fprintf(output, "  -m            On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
+	fprintf(output, "  -m            On SIGINT or SIGQUIT clean up all used memory instead of just exiting.\n");
 	fprintf(output, "  -n <name>     Read raddb/name.conf instead of raddb/radiusd.conf.\n");
 	fprintf(output, "  -p <port>     Listen on port ONLY.\n");
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
