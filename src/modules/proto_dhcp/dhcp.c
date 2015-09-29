@@ -308,7 +308,6 @@ RADIUS_PACKET *fr_dhcp_recv_socket(int sockfd)
 	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, &dst_ipaddr, &dst_port);
 	fr_ipaddr_from_sockaddr(&src, sizeof_src, &src_ipaddr, &src_port);
 
-
 	packet = fr_dhcp_packet_ok(data, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
 	if (packet) {
 		talloc_steal(packet, data);
