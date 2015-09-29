@@ -674,11 +674,11 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -n <name>     Read raddb/name.conf instead of raddb/radiusd.conf.\n");
 	fprintf(output, "  -p <port>     Listen on port ONLY.\n");
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
-	fprintf(output, "  -s            Do not spawn child processes to handle requests.\n");
+	fprintf(output, "  -s            Do not spawn child processes to handle requests (same as -ft).\n");
 	fprintf(output, "  -t            Disable threads.\n");
 	fprintf(output, "  -v            Print server version information.\n");
-	fprintf(output, "  -X            Turn on full debugging.\n");
-	fprintf(output, "  -x            Turn on additional debugging. (-xx gives more debugging).\n");
+	fprintf(output, "  -X            Turn on full debugging (similar to -tfxxl stdout).\n");
+	fprintf(output, "  -x            Turn on additional debugging (-xx gives more debugging).\n");
 	exit(status);
 }
 
