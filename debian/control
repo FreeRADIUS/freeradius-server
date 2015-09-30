@@ -23,6 +23,8 @@ Build-Depends: debhelper (>= 9),
  libtalloc-dev,
  libwbclient-dev,
  libyubikey-dev,
+ libmemcached-dev,
+ libhiredis-dev,
  python-dev
 Section: net
 Priority: optional
@@ -148,6 +150,20 @@ Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, $
 Description: iODBC module for FreeRADIUS server
  The FreeRADIUS server can use iODBC to access databases to authenticate users
  and do accounting, and this module is necessary for that.
+
+Package: freeradius-redis
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Redis module for FreeRADIUS server
+ This module is required to enable the FreeRADIUS server to access
+ Redis databases.
+
+Package: freeradius-memcached
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Memcached module for FreeRADIUS server
+ The FreeRADIUS server can cache data in memcached and this package
+ contains the required module.
 
 Package: freeradius-dbg
 Architecture: any
