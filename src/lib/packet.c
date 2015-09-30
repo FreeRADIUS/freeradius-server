@@ -227,7 +227,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, uint16_t port)
 
 	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		close(sockfd);
-		fr_strerror_printf("cannot bind socket: %s", fr_syserror(errno));
+		fr_strerror_printf("Cannot bind socket: %s", fr_syserror(errno));
 		return -1;
 	}
 
