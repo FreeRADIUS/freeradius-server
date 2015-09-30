@@ -10,7 +10,7 @@ Last-Update: 2014-05-19
 
 --- a/Make.inc.in
 +++ b/Make.inc.in
-@@ -94,7 +94,7 @@
+@@ -95,7 +95,7 @@
  
  LOGDIR		= ${logdir}
  RADDBDIR	= ${raddbdir}
@@ -30,7 +30,7 @@ Last-Update: 2014-05-19
  
  #  Location of config and logfiles.
  confdir = ${raddbdir}
-@@ -415,8 +415,8 @@
+@@ -416,8 +416,8 @@
  	#  member.  This can allow for some finer-grained access
  	#  controls.
  	#

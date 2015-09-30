@@ -15,7 +15,7 @@ diff a/scripts/logrotate/freeradius b/scripts/logrotate/freeradius
  #
  
  #
-@@ -17,26 +17,26 @@ notifempty
+@@ -17,28 +17,28 @@
  #
  #  The main server log
  #
@@ -48,7 +48,7 @@ diff a/scripts/logrotate/freeradius b/scripts/logrotate/freeradius
  	nocreate
  }
  
-@@ -51,6 +51,6 @@ notifempty
+@@ -49,6 +49,6 @@
  # (or similar) in radiusd.conf, without rotation.  If you go with the
  # second technique, you will need another cron job that removes old
  # detail files.  You do not need to comment out the below for method #2.
