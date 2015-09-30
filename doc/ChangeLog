@@ -71,7 +71,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Fallback to using the configured OCSP URL if one exists, and
 	  no URL is provided in the certificate.
 	* Return CoA-NAK if proxying CoA fails.  Based on patch from
-	 Jorge Pereira.
+	  Jorge Pereira.
 	* Lower peak memory usage by decreasing size of internal
 	  memory pools.
 	* The control socket is now left in place if a second copy
@@ -84,6 +84,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Don't print secrets for old-style realms.  Fixes #1267.
 	* Don't fall through in empty "case" statements.
 	  Fixes #1274.
+	* Always delete MS-MPPE-* from the TTLS inner tunnel. This allows
+	  TTLS / EAP-MSCHAPv2 to work. Fixes #1206.
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
