@@ -3,7 +3,7 @@
 #  This virtual server controls caching of TLS sessions.
 #
 #  When a TLS session is used, the server will automatically create
-#  the following attributes in the request list.  These attributes
+#  the following attributes in the control list.  These attributes
 #  are the the ones for the *server* certificate.
 #
 #	       TLS-Cert-Serial
@@ -14,7 +14,7 @@
 #	       TLS-Cert-Subject-Alt-Name-Email
 #
 #  If a client certificate is required (e.g. EAP-TLS or sometimes PEAP / TTLS),
-#  the following attributes are also created in the request list:
+#  the following attributes are also created in the control list:
 #
 #	       TLS-Client-Cert-Serial
 #	       TLS-Client-Cert-Expiration

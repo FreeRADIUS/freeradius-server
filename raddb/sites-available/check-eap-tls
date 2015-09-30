@@ -1,7 +1,8 @@
 # This virtual server allows EAP-TLS to reject access requests
 # based on some certificate attributes.
 #
-# Value-pairs that are available for checking include:
+#  Value-pairs that are available for checking include these
+#  attributes in the session-state list:
 #
 #   TLS-Client-Cert-Subject
 #   TLS-Client-Cert-Issuer
@@ -42,7 +43,7 @@ authorize {
 	# Check the client certificate matches a string, and reject otherwise
 	#
 
-#	if ("%{TLS-Client-Cert-Common-Name}" == 'client.example.com') {
+#	if ("%{session-state:TLS-Client-Cert-Common-Name}" == 'client.example.com') {
 #		update config {
 #			&Auth-Type := Accept
 #		}
@@ -60,7 +61,7 @@ authorize {
 	#
 	# Check the client certificate common name against the supplied User-Name
 	#
-#	if ("host/%{TLS-Client-Cert-Common-Name}" == &User-Name) {
+#	if ("host/%{session-state:TLS-Client-Cert-Common-Name}" == &User-Name) {
 #		update config {
 #			&Auth-Type := Accept
 #		}
