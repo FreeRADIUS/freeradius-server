@@ -57,7 +57,7 @@ Description: FreeRADIUS common files
 
 Package: freeradius-config
 Architecture: any
-Depends: freeradius-common (>= 3), ${misc:Depends}
+Depends: freeradius-common (>= 3), ${misc:Depends}, openssl
 Breaks: freeradius-config
 Description: FreeRADIUS default config files
  This package should be used as a base for a site local packages
