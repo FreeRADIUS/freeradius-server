@@ -715,7 +715,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->handle) {
 		cf_log_err_cs(conf, "Could not link driver %s: %s", inst->driver_name, dlerror());
 		cf_log_err_cs(conf, "Make sure it (and all its dependent libraries!) are in the search path"
-			      "of your system's ld");
+			      " of your system's ld");
 		return -1;
 	}
 

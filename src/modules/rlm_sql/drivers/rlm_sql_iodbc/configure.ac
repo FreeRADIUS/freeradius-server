@@ -64,7 +64,7 @@ if test x$with_[]modname != xno; then
 	fi
 
 	dnl Check for isql.h
-	smart_try_dir="$iodbc_include_dir /usr/local/iodbc/include"
+	smart_try_dir="$iodbc_include_dir /usr/include /usr/include/iodbc /usr/local/iodbc/include"
 	FR_SMART_CHECK_INCLUDE(isql.h)
 	if test "x$ac_cv_header_isql_h" != xyes; then
 		fail="$fail isql.h"

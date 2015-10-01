@@ -23,6 +23,9 @@ Build-Depends: debhelper (>= 9),
  libtalloc-dev,
  libwbclient-dev,
  libyubikey-dev,
+ libykclient-dev,
+ libmemcached-dev,
+ libhiredis-dev,
  python-dev
 Section: net
 Priority: optional
@@ -36,13 +39,14 @@ Architecture: any
 Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version}), ssl-cert, adduser
 Provides: radius-server
 Recommends: freeradius-utils
-Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
+Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5, snmp
 Description: high-performance and highly configurable RADIUS server
  FreeRADIUS is a high-performance RADIUS server with support for:
-  - Many vendor-specific attributes.
+  - Authentication by local files, SQL, Kerberos, LDAP, PAM, and more.
+  - Powerful policy configuration language.
   - Proxying and replicating requests by any criteria.
-  - Authentication on system passwd, SQL, Kerberos, LDAP, users file, or PAM.
-  - Multiple DEFAULT configurations.
+  - Support for many EAP types; TLS, PEAP, TTLS, etc.
+  - Many vendor-specific attributes.
   - Regexp matching in string attributes.
  and lots more.
 
@@ -57,7 +61,7 @@ Description: FreeRADIUS common files
 
 Package: freeradius-config
 Architecture: any
-Depends: freeradius-common (>= 3), ${misc:Depends}
+Depends: freeradius-common (>= 3), ${misc:Depends}, openssl
 Breaks: freeradius-config
 Description: FreeRADIUS default config files
  This package should be used as a base for a site local packages
@@ -148,6 +152,27 @@ Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, $
 Description: iODBC module for FreeRADIUS server
  The FreeRADIUS server can use iODBC to access databases to authenticate users
  and do accounting, and this module is necessary for that.
+
+Package: freeradius-redis
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Redis module for FreeRADIUS server
+ This module is required to enable the FreeRADIUS server to access
+ Redis databases.
+
+Package: freeradius-memcached
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Memcached module for FreeRADIUS server
+ The FreeRADIUS server can cache data in memcached and this package
+ contains the required module.
+
+Package: freeradius-yubikey
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Yubikey module for FreeRADIUS server
+ This package is required to add Yubikey functionality to the
+ FreeRADIUS server.
 
 Package: freeradius-dbg
 Architecture: any
