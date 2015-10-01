@@ -38,13 +38,14 @@ Architecture: any
 Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}, freeradius-common, freeradius-config, libfreeradius3 (= ${binary:Version}), ssl-cert, adduser
 Provides: radius-server
 Recommends: freeradius-utils
-Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
+Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5, snmp
 Description: high-performance and highly configurable RADIUS server
  FreeRADIUS is a high-performance RADIUS server with support for:
-  - Many vendor-specific attributes.
+  - Authentication by local files, SQL, Kerberos, LDAP, PAM, and more.
+  - Powerful policy configuration language.
   - Proxying and replicating requests by any criteria.
-  - Authentication on system passwd, SQL, Kerberos, LDAP, users file, or PAM.
-  - Multiple DEFAULT configurations.
+  - Support for many EAP types; TLS, PEAP, TTLS, etc.
+  - Many vendor-specific attributes.
   - Regexp matching in string attributes.
  and lots more.
 
