@@ -23,6 +23,7 @@ Build-Depends: debhelper (>= 9),
  libtalloc-dev,
  libwbclient-dev,
  libyubikey-dev,
+ libykclient-dev,
  libmemcached-dev,
  libhiredis-dev,
  python-dev
@@ -165,6 +166,13 @@ Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, $
 Description: Memcached module for FreeRADIUS server
  The FreeRADIUS server can cache data in memcached and this package
  contains the required module.
+
+Package: freeradius-yubikey
+Architecture: any
+Depends: freeradius (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}, ${dist:Depends}
+Description: Yubikey module for FreeRADIUS server
+ This package is required to add Yubikey functionality to the
+ FreeRADIUS server.
 
 Package: freeradius-dbg
 Architecture: any
