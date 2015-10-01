@@ -1,9 +1,5 @@
-Description: Fixing logrotate script 
-Author: Jorge Pereira <jpereira@gnome.org>
-Origin: https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/debian/patches/logrotate-path.diff
-Last-Update: 2015-09-17
-
-diff a/scripts/logrotate/freeradius b/scripts/logrotate/freeradius
+diff --git a/scripts/logrotate/freeradius b/scripts/logrotate/freeradius
+index cbeeb5f..bfb8220 100644
 --- a/scripts/logrotate/freeradius
 +++ b/scripts/logrotate/freeradius
 @@ -1,7 +1,7 @@
@@ -15,7 +11,7 @@ diff a/scripts/logrotate/freeradius b/scripts/logrotate/freeradius
  #
  
  #
-@@ -17,28 +17,28 @@
+@@ -17,28 +17,28 @@ notifempty
  #
  #  The main server log
  #
@@ -48,7 +44,7 @@ diff a/scripts/logrotate/freeradius b/scripts/logrotate/freeradius
  	nocreate
  }
  
-@@ -49,6 +49,6 @@
+@@ -49,6 +49,6 @@ notifempty
  # (or similar) in radiusd.conf, without rotation.  If you go with the
  # second technique, you will need another cron job that removes old
  # detail files.  You do not need to comment out the below for method #2.

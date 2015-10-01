@@ -1,7 +1,3 @@
-Description: Remove dhcp from default modules
-Origin: https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/debian/patches/disable-dhcp-bydefault.diff
-Author: Jorge Pereira <jpereira@gnome.org>
-Last-Update: 2015-07-15
 diff a/raddb/all.mk b/raddb/all.mk
 --- a/raddb/all.mk
 +++ b/raddb/all.mk

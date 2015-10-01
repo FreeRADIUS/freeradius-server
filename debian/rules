@@ -29,7 +29,7 @@ logdir          = /var/log/$(package)
 pkgdocdir       = /usr/share/doc/$(package)
 raddbdir        = /etc/$(package)
 
-modulelist=krb5 ldap sql_mysql sql_iodbc sql_postgresql rest dhcp redis
+modulelist=krb5 ldap sql_mysql sql_iodbc sql_postgresql dhcp redis rest yubikey
 pkgs=$(shell dh_listpackages)
 
 # This has to be exported to make some magic below work.
@@ -167,6 +167,9 @@ install-arch: build-arch-stamp
 	  dh_install --sourcedir=$(freeradius_dir) -p freeradius-$$pkg ; \
 	  rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_$$mod*.so ; \
 	done
+
+	dh_install --sourcedir=$(freeradius_dir) -p freeradius-memcached
+	rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_cache_memcached.so
 
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius-utils
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius

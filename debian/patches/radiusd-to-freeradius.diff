@@ -1,16 +1,8 @@
-Description: Name substitutions
- Substitute 'freeradius' for 'radiusd' as the daemon name and 'freerad' for 
- 'radius' as the user and group name
-Author: Alan DeKok <aland@freeradius.org>,
- Adrien Demarez,
- Arran Cudbard-Bell <a.cudbardb@freeradius.org>,
- Matthew Newton, Fajar Arief Nugraha <github@fajar.net>
-Origin: https://github.com/FreeRADIUS/freeradius-server/blob/v3.1.x/debian/patches/radiusd-to-freeradius.diff
-Last-Update: 2014-05-19
-
---- a/Make.inc.in
-+++ b/Make.inc.in
-@@ -95,7 +95,7 @@
+Index: freeradius-server/Make.inc.in
+===================================================================
+--- freeradius-server.orig/Make.inc.in
++++ freeradius-server/Make.inc.in
+@@ -95,7 +95,7 @@ LDFLAGS		= $(OPENSSL_LDFLAGS) $(TALLOC_L
  
  LOGDIR		= ${logdir}
  RADDBDIR	= ${raddbdir}
@@ -19,9 +11,11 @@ Last-Update: 2014-05-19
  SBINDIR		= ${sbindir}
  RADIR		= ${radacctdir}
  LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la $(TALLOC_LIBS)
---- a/raddb/radiusd.conf.in
-+++ b/raddb/radiusd.conf.in
-@@ -61,7 +61,7 @@
+Index: freeradius-server/raddb/radiusd.conf.in
+===================================================================
+--- freeradius-server.orig/raddb/radiusd.conf.in
++++ freeradius-server/raddb/radiusd.conf.in
+@@ -61,7 +61,7 @@ radacctdir = @radacctdir@
  
  #
  #  name of the running server.  See also the "-n" command-line option.
@@ -30,7 +24,7 @@ Last-Update: 2014-05-19
  
  #  Location of config and logfiles.
  confdir = ${raddbdir}
-@@ -416,8 +416,8 @@
+@@ -436,8 +436,8 @@ security {
  	#  member.  This can allow for some finer-grained access
  	#  controls.
  	#
@@ -41,8 +35,10 @@ Last-Update: 2014-05-19
  
  	#  Core dumps are a bad thing.  This should only be set to
  	#  'yes' if you're debugging a problem with the server.
---- a/scripts/monit/freeradius.monitrc
-+++ b/scripts/monit/freeradius.monitrc
+Index: freeradius-server/scripts/monit/freeradius.monitrc
+===================================================================
+--- freeradius-server.orig/scripts/monit/freeradius.monitrc
++++ freeradius-server/scripts/monit/freeradius.monitrc
 @@ -8,9 +8,9 @@
  #  Totalmem limit should be lowered to 200.0 if none of the 
  #  interpreted language modules or rlm_cache are being used.
