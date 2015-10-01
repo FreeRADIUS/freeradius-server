@@ -2812,7 +2812,7 @@ fi
 		fail="$fail libiodbc"
 	fi
 
-		smart_try_dir="$iodbc_include_dir /usr/local/iodbc/include"
+		smart_try_dir="$iodbc_include_dir /usr/include /usr/include/iodbc /usr/local/iodbc/include"
 
 
 ac_safe=`echo "isql.h" | sed 'y%./+-%__pm%'`
