@@ -63,7 +63,6 @@ include /usr/share/quilt/quilt.make
 
 config.status: configure
 	dh_testdir
-	dh_testroot
 
 ifeq (config.sub.dist,$(wildcard config.sub.dist))
 	rm config.sub
