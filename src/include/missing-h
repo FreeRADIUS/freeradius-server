@@ -438,7 +438,8 @@ typedef struct int128_t {
 			uint64_t l;
 #endif
 		};
-	} int128_t;
+	};
+} int128_t;
 #  endif
 #else
 #  define HAVE_128BIT_INTEGERS
