@@ -191,7 +191,7 @@ static uint128_t uint128_gen_mask(uint8_t bits)
  *
  * @note shift must be 127 bits or less.
  */
-static uint128_t uint128_lshift(uint128_t num, bits)
+static uint128_t uint128_lshift(uint128_t num, uint8_t bits)
 {
 	rad_assert(bits < 128);
 
@@ -211,7 +211,7 @@ static uint128_t uint128_lshift(uint128_t num, bits)
  * @author Jacob F. W
  * @note copied from http://www.codeproject.com/Tips/617214/UInt-Addition-Subtraction
  */
-static uint128_t uint128_add(uint128 a, uint128 b)
+static uint128_t uint128_add(uint128_t a, uint128_t b)
 {
     	uint64_t tmp = (((a.l & b.l) & 1) + (a.l >> 1) + (b.l >> 1)) >> 63;
     	return { .l = a.l + b.l, .h = a.h + b.h + tmp };
@@ -222,7 +222,7 @@ static uint128_t uint128_add(uint128 a, uint128 b)
  * @author Jacob F. W
  * @note copied from http://www.codeproject.com/Tips/617214/UInt-Addition-Subtraction
  */
-static uint128_t uint128_sub(uint128 a, uint128 b)
+static uint128_t uint128_sub(uint128_t a, uint128_t b)
 {
 	uint128_t ret;
 	uint64_t c;
