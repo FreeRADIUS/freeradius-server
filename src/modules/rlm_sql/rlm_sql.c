@@ -1024,10 +1024,15 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		 */
 		if (paircompare_register_byname(group_attribute, dict_attrbyvalue(PW_USER_NAME, 0),
 						false, sql_groupcmp, inst) < 0) {
-			ERROR("Error registering group comparison: %s", fr_strerror());
+			ERROR("Failed registering group comparison: %s", fr_strerror());
 			return -1;
 		}
+
 		inst->group_da = dict_attrbyname(group_attribute);
+		if (!inst->group_da) {
+			ERROR("Failed resolving group attribute \"%s\"", group_attribute);
+			return -1;
+		}
 	}
 
 	/*
