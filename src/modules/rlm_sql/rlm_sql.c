@@ -865,6 +865,11 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 			inst->group_da = dict_attrbyname("SQL-Group");
 		}
+
+		if (!inst->group_da) {
+			ERROR("Failed resolving group attribute");
+			return -1;
+		}
 	}
 
 	/*
