@@ -726,12 +726,15 @@ void tls_session_information(tls_session_t *tls_session)
 	case SSL2_VERSION:
 		str_version = "SSL 2.0 ";
 		break;
+
 	case SSL3_VERSION:
 		str_version = "SSL 3.0 ";
 		break;
+
 	case TLS1_VERSION:
 		str_version = "TLS 1.0 ";
 		break;
+
 #ifdef TLS1_1_VERSION
 	case TLS1_1_VERSION:
 		str_version = "TLS 1.1 ";
@@ -1009,7 +1012,6 @@ void tls_session_information(tls_session_t *tls_session)
 
 static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("enable", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, session_cache_enable), .dflt = "no" },
-
 
 	{ FR_CONF_OFFSET("name", PW_TYPE_STRING, fr_tls_server_conf_t, session_id_name) },
 

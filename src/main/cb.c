@@ -55,8 +55,25 @@ void cbtls_info(SSL const *s, int where, int ret)
 	if (where & SSL_CB_ALERT) {
 		if ((ret & 0xff) == SSL_AD_CLOSE_NOTIFY) return;
 
-		RERROR("TLS Alert %s:%s:%s", (where & SSL_CB_READ) ? "read": "write",
-		       SSL_alert_type_string_long(ret), SSL_alert_desc_string_long(ret));
+		if (where & SSL_CB_READ) {
+			RERROR("Client sent %s TLS alert: %s", SSL_alert_type_string_long(ret),
+			       SSL_alert_desc_string_long(ret));
+
+			/*
+			 *	Offer helpful advice... Should be expanded.
+			 */
+			switch (ret & 0xff) {
+			case TLS1_AD_UNKNOWN_CA:
+				RERROR("Verify client has copy of CA certificate, and trusts CA");
+				break;
+
+			default:
+				break;
+			}
+		} else {
+			RERROR("Sending client %s TLS alert: %s",  SSL_alert_type_string_long(ret),
+			       SSL_alert_desc_string_long(ret));
+		}
 		return;
 	}
 
