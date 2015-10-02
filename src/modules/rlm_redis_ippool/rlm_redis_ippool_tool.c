@@ -213,8 +213,11 @@ static uint128_t uint128_lshift(uint128_t num, uint8_t bits)
  */
 static uint128_t uint128_add(uint128_t a, uint128_t b)
 {
+	uint128_t ret;
 	uint64_t tmp = (((a.l & b.l) & 1) + (a.l >> 1) + (b.l >> 1)) >> 63;
-	return { .l = a.l + b.l, .h = a.h + b.h + tmp };
+	ret.l = a.l + b.l;
+	ret.h = a.h + b.h + tmp;
+	return ret;
 }
 
 /** Subtract one 128bit integer from another
@@ -239,7 +242,10 @@ static uint128_t uint128_sub(uint128_t a, uint128_t b)
  */
 static uint128_t uint128_band(uint128_t a, uint128_t b)
 {
-	return { .l = a.l & b.l, .h = a.h & b.h };
+	uint128_t ret;
+	ret.l = a.l & b.l;
+	ret.h = a.h & b.h;
+	return ret;
 }
 
 /** Perform bitwise | of two 128bit unsigned integers
@@ -247,7 +253,10 @@ static uint128_t uint128_band(uint128_t a, uint128_t b)
  */
 static uint128_t uint128_bor(uint128_t a, uint128_t b)
 {
-	return { .l = a.l | b.l, .h = a.h | b.h };
+	uint128_t ret;
+	ret.l = a.l | b.l;
+	ret.h = a.h + b.h;
+	return ret;
 }
 
 /** Return whether the integers are equal
