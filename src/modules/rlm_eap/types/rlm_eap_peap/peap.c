@@ -411,7 +411,7 @@ static int eappeap_check_tlv(REQUEST *request, uint8_t const *data,
  *	Use a reply packet to determine what to do.
  */
 static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t *tls_session,
-					  REQUEST *request, RADIUS_PACKET *reply)
+						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR *vp;
@@ -1004,11 +1004,13 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 */
 	rad_virtual_server(fake);
 
+	rad_assert(is_radius_code(fake->reply->code));
+
 	/*
 	 *	Note that we don't do *anything* with the reply
 	 *	attributes.
 	 */
-	RDEBUG2("Got tunneled reply code %d", fake->reply->code);
+	RDEBUG2("Got tunneled reply %s", fr_packet_codes[fake->reply->code]);
 	rdebug_pair_list(L_DBG_LVL_2, request, fake->reply->vps, NULL);
 
 	/*
@@ -1169,8 +1171,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 #ifdef WITH_PROXY
 	do_process:
 #endif
-		rcode = process_reply(handler, tls_session, request,
-				      fake->reply);
+		rcode = process_reply(handler, tls_session, request, fake->reply);
 		break;
 	}
 
