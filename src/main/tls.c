@@ -546,11 +546,11 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	if (!int_ssl_check(request, ssn->ssl, err, "SSL_read")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
-	if (SSL_is_init_finished(ssn->ssl)) RDEBUG2("SSL Connection Established");
-	if (SSL_in_init(ssn->ssl)) RDEBUG2("In SSL Handshake Phase");
-	if (SSL_in_before(ssn->ssl)) RDEBUG2("Before SSL Handshake Phase");
-	if (SSL_in_accept_init(ssn->ssl)) RDEBUG2("In SSL Accept mode");
-	if (SSL_in_connect_init(ssn->ssl)) RDEBUG2("In SSL Connect mode");
+	if (SSL_is_init_finished(ssn->ssl)) RDEBUG2("SSL connection established");
+	if (SSL_in_init(ssn->ssl)) RDEBUG2("In SSL handshake phase");
+	if (SSL_in_before(ssn->ssl)) RDEBUG2("Before SSL handshake phase");
+	if (SSL_in_accept_init(ssn->ssl)) RDEBUG2("In SSL accept mode");
+	if (SSL_in_connect_init(ssn->ssl)) RDEBUG2("In SSL connect mode");
 
 	err = BIO_ctrl_pending(ssn->from_ssl);
 	if (err > 0) {
@@ -758,185 +758,237 @@ void tls_session_information(tls_session_t *tls_session)
 		break;
 	}
 
-	if (tls_session->info.version == SSL3_VERSION ||
-	    tls_session->info.version == TLS1_VERSION) {
-		switch (tls_session->info.content_type) {
-		case SSL3_RT_CHANGE_CIPHER_SPEC:
-			str_content_type = "ChangeCipherSpec";
-			break;
+	/*
+	 *	TLS 1.0, 1.1, 1.2 content types are the same as SSLv3
+	 */
+	switch (tls_session->info.content_type) {
+	case SSL3_RT_CHANGE_CIPHER_SPEC:
+		str_content_type = "change_cipher_spec ";
+		break;
 
-		case SSL3_RT_ALERT:
-			str_content_type = "Alert";
-			break;
+	case SSL3_RT_ALERT:
+		str_content_type = "alert ";
+		break;
 
-		case SSL3_RT_HANDSHAKE:
-			str_content_type = "Handshake";
-			break;
+	case SSL3_RT_HANDSHAKE:
+		str_content_type = "handshake ";
+		break;
 
-		case SSL3_RT_APPLICATION_DATA:
-			str_content_type = "ApplicationData";
-			break;
+	case SSL3_RT_APPLICATION_DATA:
+		str_content_type = "application_data ";
+		break;
 
-		default:
-			str_content_type = "UnknownContentType";
-			break;
-		}
+	case TLS1_RT_HEARTBEAT:
+		str_content_type = "heartbeat ";
+		break;
 
-		if (tls_session->info.content_type == SSL3_RT_ALERT) {
-			str_details1 = ", ???";
+	case TLS1_RT_CRYPTO:
+		str_content_type = "crypto ";
+		break;
 
-			if (tls_session->info.record_len == 2) {
+	case TLS1_RT_CRYPTO_PREMASTER:
+		str_content_type = "crypto_premaster ";
+		break;
 
-				switch (tls_session->info.alert_level) {
-				case SSL3_AL_WARNING:
-					str_details1 = ", warning";
-					break;
-				case SSL3_AL_FATAL:
-					str_details1 = ", fatal";
-					break;
-				}
+	case TLS1_RT_CRYPTO_CLIENT_RANDOM:
+		str_content_type = "client_random ";
+		break;
 
-				str_details2 = " ???";
-				switch (tls_session->info.alert_description) {
-				case SSL3_AD_CLOSE_NOTIFY:
-					str_details2 = " close_notify";
-					break;
+	case TLS1_RT_CRYPTO_SERVER_RANDOM:
+		str_content_type = "server_random ";
+		break;
 
-				case SSL3_AD_UNEXPECTED_MESSAGE:
-					str_details2 = " unexpected_message";
-					break;
+	case TLS1_RT_CRYPTO_MASTER:
+		str_content_type = "crypto_master ";
+		break;
 
-				case SSL3_AD_BAD_RECORD_MAC:
-					str_details2 = " bad_record_mac";
-					break;
+	case TLS1_RT_CRYPTO_READ:
+		str_content_type = "crypto_read ";
+		break;
 
-				case TLS1_AD_DECRYPTION_FAILED:
-					str_details2 = " decryption_failed";
-					break;
+	case TLS1_RT_CRYPTO_WRITE:
+		str_content_type = "crypto_write ";
+		break;
 
-				case TLS1_AD_RECORD_OVERFLOW:
-					str_details2 = " record_overflow";
-					break;
+	case TLS1_RT_CRYPTO_MAC:
+		str_content_type = "crypto_mac ";
+		break;
 
-				case SSL3_AD_DECOMPRESSION_FAILURE:
-					str_details2 = " decompression_failure";
-					break;
+	case TLS1_RT_CRYPTO_KEY:
+		str_content_type = "crypto_key ";
+		break;
 
-				case SSL3_AD_HANDSHAKE_FAILURE:
-					str_details2 = " handshake_failure";
-					break;
+	case TLS1_RT_CRYPTO_IV:
+		str_content_type = "crypto_iv ";
+		break;
 
-				case SSL3_AD_BAD_CERTIFICATE:
-					str_details2 = " bad_certificate";
-					break;
+	case TLS1_RT_CRYPTO_FIXED_IV:
+		str_content_type = "crypto_fixed_iv ";
+		break;
 
-				case SSL3_AD_UNSUPPORTED_CERTIFICATE:
-					str_details2 = " unsupported_certificate";
-					break;
+	default:
+	{
+		char content_type[20];
+		snprintf(content_type, sizeof(content_type), "unknown %i", tls_session->info.content_type );
+		str_content_type = content_type;
+	}
+		break;
+	}
 
-				case SSL3_AD_CERTIFICATE_REVOKED:
-					str_details2 = " certificate_revoked";
-					break;
+	if (tls_session->info.content_type == SSL3_RT_ALERT) {
+		str_details1 = ", ???";
 
-				case SSL3_AD_CERTIFICATE_EXPIRED:
-					str_details2 = " certificate_expired";
-					break;
+		if (tls_session->info.record_len == 2) {
 
-				case SSL3_AD_CERTIFICATE_UNKNOWN:
-					str_details2 = " certificate_unknown";
-					break;
-
-				case SSL3_AD_ILLEGAL_PARAMETER:
-					str_details2 = " illegal_parameter";
-					break;
-
-				case TLS1_AD_UNKNOWN_CA:
-					str_details2 = " unknown_ca";
-					break;
-
-				case TLS1_AD_ACCESS_DENIED:
-					str_details2 = " access_denied";
-					break;
-
-				case TLS1_AD_DECODE_ERROR:
-					str_details2 = " decode_error";
-					break;
-
-				case TLS1_AD_DECRYPT_ERROR:
-					str_details2 = " decrypt_error";
-					break;
-
-				case TLS1_AD_EXPORT_RESTRICTION:
-					str_details2 = " export_restriction";
-					break;
-
-				case TLS1_AD_PROTOCOL_VERSION:
-					str_details2 = " protocol_version";
-					break;
-
-				case TLS1_AD_INSUFFICIENT_SECURITY:
-					str_details2 = " insufficient_security";
-					break;
-
-				case TLS1_AD_INTERNAL_ERROR:
-					str_details2 = " internal_error";
-					break;
-
-				case TLS1_AD_USER_CANCELLED:
-					str_details2 = " user_canceled";
-					break;
-
-				case TLS1_AD_NO_RENEGOTIATION:
-					str_details2 = " no_renegotiation";
-					break;
-				}
-			}
-		}
-
-		if (tls_session->info.content_type == SSL3_RT_HANDSHAKE) {
-			str_details1 = "???";
-
-			if (tls_session->info.record_len > 0) switch (tls_session->info.handshake_type) {
-			case SSL3_MT_HELLO_REQUEST:
-				str_details1 = ", HelloRequest";
+			switch (tls_session->info.alert_level) {
+			case SSL3_AL_WARNING:
+				str_details1 = ", warning";
 				break;
-
-			case SSL3_MT_CLIENT_HELLO:
-				str_details1 = ", ClientHello";
-				break;
-
-			case SSL3_MT_SERVER_HELLO:
-				str_details1 = ", ServerHello";
-				break;
-
-			case SSL3_MT_CERTIFICATE:
-				str_details1 = ", Certificate";
-				break;
-
-			case SSL3_MT_SERVER_KEY_EXCHANGE:
-				str_details1 = ", ServerKeyExchange";
-				break;
-
-			case SSL3_MT_CERTIFICATE_REQUEST:
-				str_details1 = ", CertificateRequest";
-				break;
-
-			case SSL3_MT_SERVER_DONE:
-				str_details1 = ", ServerHelloDone";
-				break;
-
-			case SSL3_MT_CERTIFICATE_VERIFY:
-				str_details1 = ", CertificateVerify";
-				break;
-
-			case SSL3_MT_CLIENT_KEY_EXCHANGE:
-				str_details1 = ", ClientKeyExchange";
-				break;
-
-			case SSL3_MT_FINISHED:
-				str_details1 = ", Finished";
+			case SSL3_AL_FATAL:
+				str_details1 = ", fatal";
 				break;
 			}
+
+			str_details2 = " ???";
+			switch (tls_session->info.alert_description) {
+			case SSL3_AD_CLOSE_NOTIFY:
+				str_details2 = " close_notify";
+				break;
+
+			case SSL3_AD_UNEXPECTED_MESSAGE:
+				str_details2 = " unexpected_message";
+				break;
+
+			case SSL3_AD_BAD_RECORD_MAC:
+				str_details2 = " bad_record_mac";
+				break;
+
+			case TLS1_AD_DECRYPTION_FAILED:
+				str_details2 = " decryption_failed";
+				break;
+
+			case TLS1_AD_RECORD_OVERFLOW:
+				str_details2 = " record_overflow";
+				break;
+
+			case SSL3_AD_DECOMPRESSION_FAILURE:
+				str_details2 = " decompression_failure";
+				break;
+
+			case SSL3_AD_HANDSHAKE_FAILURE:
+				str_details2 = " handshake_failure";
+				break;
+
+			case SSL3_AD_BAD_CERTIFICATE:
+				str_details2 = " bad_certificate";
+				break;
+
+			case SSL3_AD_UNSUPPORTED_CERTIFICATE:
+				str_details2 = " unsupported_certificate";
+				break;
+
+			case SSL3_AD_CERTIFICATE_REVOKED:
+				str_details2 = " certificate_revoked";
+				break;
+
+			case SSL3_AD_CERTIFICATE_EXPIRED:
+				str_details2 = " certificate_expired";
+				break;
+
+			case SSL3_AD_CERTIFICATE_UNKNOWN:
+				str_details2 = " certificate_unknown";
+				break;
+
+			case SSL3_AD_ILLEGAL_PARAMETER:
+				str_details2 = " illegal_parameter";
+				break;
+
+			case TLS1_AD_UNKNOWN_CA:
+				str_details2 = " unknown_ca";
+				break;
+
+			case TLS1_AD_ACCESS_DENIED:
+				str_details2 = " access_denied";
+				break;
+
+			case TLS1_AD_DECODE_ERROR:
+				str_details2 = " decode_error";
+				break;
+
+			case TLS1_AD_DECRYPT_ERROR:
+				str_details2 = " decrypt_error";
+				break;
+
+			case TLS1_AD_EXPORT_RESTRICTION:
+				str_details2 = " export_restriction";
+				break;
+
+			case TLS1_AD_PROTOCOL_VERSION:
+				str_details2 = " protocol_version";
+				break;
+
+			case TLS1_AD_INSUFFICIENT_SECURITY:
+				str_details2 = " insufficient_security";
+				break;
+
+			case TLS1_AD_INTERNAL_ERROR:
+				str_details2 = " internal_error";
+				break;
+
+			case TLS1_AD_USER_CANCELLED:
+				str_details2 = " user_canceled";
+				break;
+
+			case TLS1_AD_NO_RENEGOTIATION:
+				str_details2 = " no_renegotiation";
+				break;
+			}
+		}
+	}
+
+	if (tls_session->info.content_type == SSL3_RT_HANDSHAKE) {
+		str_details1 = "???";
+
+		if (tls_session->info.record_len > 0) switch (tls_session->info.handshake_type) {
+		case SSL3_MT_HELLO_REQUEST:
+			str_details1 = ", hello_request";
+			break;
+
+		case SSL3_MT_CLIENT_HELLO:
+			str_details1 = ", client_hello";
+			break;
+
+		case SSL3_MT_SERVER_HELLO:
+			str_details1 = ", server_hello";
+			break;
+
+		case SSL3_MT_CERTIFICATE:
+			str_details1 = ", certificate";
+			break;
+
+		case SSL3_MT_SERVER_KEY_EXCHANGE:
+			str_details1 = ", server_key_exchange";
+			break;
+
+		case SSL3_MT_CERTIFICATE_REQUEST:
+			str_details1 = ", certificate_request";
+			break;
+
+		case SSL3_MT_SERVER_DONE:
+			str_details1 = ", server_hello_done";
+			break;
+
+		case SSL3_MT_CERTIFICATE_VERIFY:
+			str_details1 = ", certificate_verify";
+			break;
+
+		case SSL3_MT_CLIENT_KEY_EXCHANGE:
+			str_details1 = ", client_key_exchange";
+			break;
+
+		case SSL3_MT_FINISHED:
+			str_details1 = ", finished";
+			break;
 		}
 	}
 

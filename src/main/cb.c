@@ -33,18 +33,22 @@ void cbtls_info(SSL const *s, int where, int ret)
 	REQUEST *request = SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 
 	if ((where & ~SSL_ST_MASK) & SSL_ST_CONNECT) {
-		str="TLS_connect";
+		str = "TLS Connect";
 	} else if (((where & ~SSL_ST_MASK)) & SSL_ST_ACCEPT) {
-		str="TLS_accept";
+		str = "TLS Accept";
 	} else {
-		str="(other)";
+		str = NULL;
 	}
 
 	state = SSL_state_string_long(s);
 	state = state ? state : "<none>";
 
 	if ((where & SSL_CB_LOOP) || (where & SSL_CB_HANDSHAKE_START) || (where & SSL_CB_HANDSHAKE_DONE)) {
-		RDEBUG2("%s: %s", str, state);
+		if (str) {
+			RDEBUG2("%s: %s", str, state);
+		} else {
+			RDEBUG2("%s", state);
+		}
 		return;
 	}
 
