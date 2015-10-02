@@ -91,7 +91,13 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 	state->info.origin = write_p;
 	state->info.content_type = content_type;
 	state->info.record_len = len;
-	state->info.version = msg_version;
+
+	/*
+	 *	We don't always get provided with the version in
+	 *	OpenSSL 1.0.2 (only for some messages).
+	 *	So only change on non-zero values.
+	 */
+	if (msg_version) state->info.version = msg_version;
 	state->info.initialized = true;
 
 	if (content_type == SSL3_RT_ALERT) {

@@ -749,8 +749,12 @@ void tls_session_information(tls_session_t *tls_session)
 #endif
 
 	default:
-		sprintf(buffer, "UNKNOWN TLS VERSION ?%04X?", tls_session->info.version);
-		str_version = buffer;
+		if (tls_session->info.version) {
+			sprintf(buffer, "UNKNOWN TLS VERSION 0x%04x", tls_session->info.version);
+			str_version = buffer;
+		} else {
+			str_version = "";
+		}
 		break;
 	}
 
@@ -938,7 +942,7 @@ void tls_session_information(tls_session_t *tls_session)
 
 	snprintf(tls_session->info.info_description,
 		 sizeof(tls_session->info.info_description),
-		 "%s %s%s [length %04lx]%s%s\n",
+		 "%s %s%s[length %lu]%s%s\n",
 		 str_write_p, str_version, str_content_type,
 		 (unsigned long)tls_session->info.record_len,
 		 str_details1, str_details2);
