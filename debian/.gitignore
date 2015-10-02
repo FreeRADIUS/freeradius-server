@@ -9,6 +9,9 @@ freeradius-postgresql
 freeradius-rest
 freeradius-utils
 freeradius-dhcp
+freeradius-memcached
+freeradius-redis
+freeradius-yubikey
 freeradius
 libfreeradius-dev
 libfreeradius3
