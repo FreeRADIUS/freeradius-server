@@ -854,7 +854,7 @@ void tls_session_information(tls_session_t *tls_session)
 	default:
 	{
 		char content_type[20];
-		snprintf(content_type, sizeof(content_type), "unknown %i", tls_session->info.content_type );
+		snprintf(content_type, sizeof(content_type), "unknown content type %i", tls_session->info.content_type );
 		str_content_type = content_type;
 	}
 		break;
