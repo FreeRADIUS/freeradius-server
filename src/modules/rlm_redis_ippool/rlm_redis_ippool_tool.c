@@ -845,7 +845,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		ip = ntohlll(ip);
 
 		/* Generate a mask that covers the prefix bits, and sets them high */
-		p_mask = uint128_gen_mask(prefix - start.prefix) << (128 - prefix);
+		p_mask = uint128_lshift(uint128_gen_mask(prefix - start.prefix), (128 - prefix));
 		ip = htonlll(uint128_bor(p_mask, ip));
 
 		/* Decrement by one */
