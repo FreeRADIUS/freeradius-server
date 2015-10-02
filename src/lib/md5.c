@@ -11,6 +11,8 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 
+
+
 /*
  *  FORCE MD5 TO USE OUR MD5 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD5.
@@ -32,7 +34,7 @@ void fr_md5_calc(uint8_t *out, uint8_t const *in, size_t inlen)
 	fr_md5_final(out, &ctx);
 }
 
-#ifndef HAVE_OPENSSL_MD5_H
+#ifndef HAVE_OPENSSL_EVP_H
 /*
  * This code implements the MD5 message-digest algorithm.
  * The algorithm is due to Ron Rivest.	This code was
