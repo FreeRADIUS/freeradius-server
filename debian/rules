@@ -171,7 +171,7 @@ install-arch: build-arch-stamp
 	rm -f $(freeradius_dir)/usr/lib/freeradius/rlm_cache_memcached.so
 
 	dh_install --sourcedir=$(freeradius_dir) -p freeradius-utils
-	dh_install --sourcedir=$(freeradius_dir) -p freeradius
+	dh_install --sourcedir=$(freeradius_dir) -p freeradius -Xusr/lib/freeradius/rlm_cache_redis.so
 
 	dh_strip -a --dbg-package=freeradius-dbg
 
