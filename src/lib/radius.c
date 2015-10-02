@@ -374,7 +374,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	 *	Convert AF.  If unknown, discard packet.
 	 */
 	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, src_port)) {
-		FR_DEBUG_STRERROR_PRINTF("Unkown address family");
+		FR_DEBUG_STRERROR_PRINTF("Unknown address family");
 		rad_recv_discard(sockfd);
 
 		return 1;

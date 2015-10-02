@@ -347,7 +347,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t *inst, REQUEST *request, rlm_cache_h
 			return RLM_MODULE_FAIL;
 
 		case CACHE_OK:
-			RDEBUG("Commited entry, TTL %d seconds", ttl);
+			RDEBUG("Committed entry, TTL %d seconds", ttl);
 			cache_free(inst, &c);
 			return RLM_MODULE_UPDATED;
 

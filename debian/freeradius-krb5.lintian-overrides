@@ -1,1 +1,3 @@
-freeradius-krb5: binary-or-shlib-defines-rpath
+# There's plenty in the description of this package to identify
+# what it does.
+freeradius-krb5: extended-description-is-probably-too-short

@@ -3621,7 +3621,7 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 	 */
 	start = now->tv_sec - ((home->zombie_period + 3) / 4);
 	if (home->last_packet_recv >= start) {
-		DEBUG("Recieved reply from home server %d seconds ago.  Might not be zombie.",
+		DEBUG("Received reply from home server %d seconds ago.  Might not be zombie.",
 		      (int) (now->tv_sec - home->last_packet_recv));
 		return;
 	}

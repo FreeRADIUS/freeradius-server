@@ -1,1 +1,5 @@
 freeradius-postgresql: binary-or-shlib-defines-rpath
+
+# There's plenty in the description of this package to identify
+# what it does.
+freeradius-postgresql: extended-description-is-probably-too-short
