@@ -966,9 +966,9 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	}
 
 	if (received) {
-		rdebug_pair_list(L_DBG_LVL_1, request, packet->vps, "&request:");
+		rdebug_pair_list(L_DBG_LVL_1, request, packet->vps, "");
 	} else {
-		rdebug_proto_pair_list(L_DBG_LVL_1, request, packet->vps, "&reply:");
+		rdebug_proto_pair_list(L_DBG_LVL_1, request, packet->vps, "");
 	}
 }
 static CONF_PARSER performance_config[] = {
