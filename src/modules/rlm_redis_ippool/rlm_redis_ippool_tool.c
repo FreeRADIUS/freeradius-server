@@ -276,6 +276,16 @@ static bool uint128_gt(uint128_t a, uint128_t b)
 	if (a.h > b.h) return true;
 	return (a.l > b.l);
 }
+
+/** Creates a new uint128_t from an uint64_t
+ *
+ */
+static uint128_t uint128_new(uint64_t l, uint64_t h) {
+	uint128_t ret;
+	ret.l = l;
+	ret.h = h;
+	return ret;
+}
 #else
 static uint128_t uint128_gen_mask(uint8_t bits)
 {
@@ -289,6 +299,7 @@ static uint128_t uint128_gen_mask(uint8_t bits)
 #define uint128_gt(_a, _b) (_a > _b)
 #define uint128_add(_a, _b) (_a + _b)
 #define uint128_sub(_a, _b) (_a - _b)
+#define uint128_new(_a, _b) ((uint128_t)_a | ((uint128_t)_b << 64))
 #endif
 
 /** Iterate over range of IP addresses
@@ -327,7 +338,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 		if (uint128_eq(ip_curr, ip_end)) return false;
 
 		/* Increment the prefix */
-		ip_curr = uint128_add(ip_curr, uint128_lshift((uint128_t)1, (128 - prefix)));
+		ip_curr = uint128_add(ip_curr, uint128_lshift(uint128_new(1, 0), (128 - prefix)));
 		ip_curr = htonlll(ip_curr);
 		memcpy(&ipaddr->ipaddr.ip6addr.s6_addr, &ip_curr, sizeof(ipaddr->ipaddr.ip6addr.s6_addr));
 		return true;
@@ -849,7 +860,7 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		ip = htonlll(uint128_bor(p_mask, ip));
 
 		/* Decrement by one */
-		if (ex_broadcast) ip = uint128_sub(ip, 1);
+		if (ex_broadcast) ip = uint128_sub(ip, uint128_new(1, 0));
 		memcpy(&end.ipaddr.ip6addr.s6_addr, &ip, sizeof(end.ipaddr.ip6addr.s6_addr));
 	} else {
 		uint32_t ip;
