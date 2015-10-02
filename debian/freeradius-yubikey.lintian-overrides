@@ -1,1 +1,3 @@
-freeradius-yubikey: binary-or-shlib-defines-rpath
+# There's plenty in the description of this package to identify
+# what it does.
+freeradius-yubikey: extended-description-is-probably-too-short

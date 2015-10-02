@@ -1,1 +1,3 @@
-libfreeradius3: binary-or-shlib-defines-rpath
+# There's plenty in the description of this package to identify
+# what it does.
+libfreeradius3: extended-description-is-probably-too-short
