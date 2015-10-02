@@ -35,16 +35,16 @@ ldap {
 	#
 	#  SASL parameters to use for admin binds
 	#
-	#  When we're prompted by the SASL library, these control
-	#  the responses given, as well as the identity and password
-	#  directives above.
+	#  When we're prompted by the SASL library, the config items in the SASL
+	#  section (in addition to the identity password config items above)
+	#  determine the responses given.
 	#
 	#  If any directive is commented out, a NULL response will be
 	#  provided to cyrus-sasl.
 	#
 	#  Unfortunately the only way to control Keberos here is through
 	#  environmental variables, as cyrus-sasl provides no API to
-	#  set the krb5 config directly.
+	#  set the kerberos (libkrb5) config directly.
 	#
 	#  Full documentation for MIT krb5 can be found here:
 	#
@@ -162,8 +162,9 @@ ldap {
 		#  the responses given.
 		#
 		#  Any of the config items below may be an attribute ref
-		#  or and expansion, so different SASL mechs, proxy IDs
-		#  and realms may be used for different users.
+		#  or and expansion.  This allows different SASL mechs,
+		#  proxy IDs and realms to be used for different users.
+		#
 		sasl {
 			# SASL mechanism
 #			mech = 'PLAIN'
