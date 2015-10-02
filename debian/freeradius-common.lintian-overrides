@@ -1,0 +1,7 @@
+# There's plenty in the description of this package to identify
+# what it does.
+freeradius-common: extended-description-is-probably-too-short
+
+# There are a lot of these that should probably be tidied up, but
+# it's not a great priority.
+freeradius-common: hyphen-used-as-minus-sign

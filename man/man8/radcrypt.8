@@ -22,13 +22,13 @@ will be 0 (Note this is the opposite of a normal successful shell status).
 
 .SH OPTIONS
 
-.IP "-d --des"
+.IP "\-d --des"
 Use a DES (Data Encryption Standard) hash (default).
 Ignored if performing a password check.
-.IP "-m --md5"
+.IP "\-m --md5"
 Use a MD5 (Message Digest 5) hash.
 Ignored if performing a password check.
-.IP "-c --check"
+.IP "\-c --check"
 Perform a validation check on a password hash to verify if it matches
 the plantext password.
 
@@ -36,7 +36,7 @@ the plantext password.
 .nf
 $ radcrypt foobar
 HaX0xn7Qy650Q
-$ radcrypt -c foobar HaX0xn7Qy650Q
+$ radcrypt \-c foobar HaX0xn7Qy650Q
 Password OK
 .fi
 .SH SEE ALSO
