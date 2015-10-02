@@ -191,7 +191,7 @@ static uint128_t uint128_gen_mask(uint8_t bits)
  *
  * @note shift must be 127 bits or less.
  */
-static uint128_t uint128_lshift(uint128_t num, bits)
+static uint128_t uint128_lshift(uint128_t num, uint8_t bits)
 {
 	rad_assert(bits < 128);
 
@@ -211,10 +211,13 @@ static uint128_t uint128_lshift(uint128_t num, bits)
  * @author Jacob F. W
  * @note copied from http://www.codeproject.com/Tips/617214/UInt-Addition-Subtraction
  */
-static uint128_t uint128_add(uint128 a, uint128 b)
+static uint128_t uint128_add(uint128_t a, uint128_t b)
 {
-    	uint64_t tmp = (((a.l & b.l) & 1) + (a.l >> 1) + (b.l >> 1)) >> 63;
-    	return { .l = a.l + b.l, .h = a.h + b.h + tmp };
+	uint128_t ret;
+	uint64_t tmp = (((a.l & b.l) & 1) + (a.l >> 1) + (b.l >> 1)) >> 63;
+	ret.l = a.l + b.l;
+	ret.h = a.h + b.h + tmp;
+	return ret;
 }
 
 /** Subtract one 128bit integer from another
@@ -222,16 +225,16 @@ static uint128_t uint128_add(uint128 a, uint128 b)
  * @author Jacob F. W
  * @note copied from http://www.codeproject.com/Tips/617214/UInt-Addition-Subtraction
  */
-static uint128_t uint128_sub(uint128 a, uint128 b)
+static uint128_t uint128_sub(uint128_t a, uint128_t b)
 {
 	uint128_t ret;
 	uint64_t c;
 
-    	ret.l = a.l - b.l;
-    	c = (((ret.l & b.l) & 1) + (b.l >> 1) + (ret.l >> 1)) >> 63;
-    	ret.h = a.h - (b.h + c);
+	ret.l = a.l - b.l;
+	c = (((ret.l & b.l) & 1) + (b.l >> 1) + (ret.l >> 1)) >> 63;
+	ret.h = a.h - (b.h + c);
 
-    	return ret;
+	return ret;
 }
 
 /** Perform bitwise & of two 128bit unsigned integers
@@ -239,7 +242,10 @@ static uint128_t uint128_sub(uint128 a, uint128 b)
  */
 static uint128_t uint128_band(uint128_t a, uint128_t b)
 {
-	return { .l = a.l & b.l, .h = a.h & b.h };
+	uint128_t ret;
+	ret.l = a.l & b.l;
+	ret.h = a.h & b.h;
+	return ret;
 }
 
 /** Perform bitwise | of two 128bit unsigned integers
@@ -247,7 +253,10 @@ static uint128_t uint128_band(uint128_t a, uint128_t b)
  */
 static uint128_t uint128_bor(uint128_t a, uint128_t b)
 {
-	return { .l = a.l | b.l, .h = a.h | b.h };
+	uint128_t ret;
+	ret.l = a.l | b.l;
+	ret.h = a.h + b.h;
+	return ret;
 }
 
 /** Return whether the integers are equal
@@ -267,6 +276,16 @@ static bool uint128_gt(uint128_t a, uint128_t b)
 	if (a.h > b.h) return true;
 	return (a.l > b.l);
 }
+
+/** Creates a new uint128_t from an uint64_t
+ *
+ */
+static uint128_t uint128_new(uint64_t l, uint64_t h) {
+	uint128_t ret;
+	ret.l = l;
+	ret.h = h;
+	return ret;
+}
 #else
 static uint128_t uint128_gen_mask(uint8_t bits)
 {
@@ -280,6 +299,7 @@ static uint128_t uint128_gen_mask(uint8_t bits)
 #define uint128_gt(_a, _b) (_a > _b)
 #define uint128_add(_a, _b) (_a + _b)
 #define uint128_sub(_a, _b) (_a - _b)
+#define uint128_new(_a, _b) ((uint128_t)_a | ((uint128_t)_b << 64))
 #endif
 
 /** Iterate over range of IP addresses
@@ -318,7 +338,7 @@ static bool ipaddr_next(fr_ipaddr_t *ipaddr, fr_ipaddr_t const *end, uint8_t pre
 		if (uint128_eq(ip_curr, ip_end)) return false;
 
 		/* Increment the prefix */
-		ip_curr = uint128_add(ip_curr, uint128_lshift((uint128_t)1, (128 - prefix)));
+		ip_curr = uint128_add(ip_curr, uint128_lshift(uint128_new(1, 0), (128 - prefix)));
 		ip_curr = htonlll(ip_curr);
 		memcpy(&ipaddr->ipaddr.ip6addr.s6_addr, &ip_curr, sizeof(ipaddr->ipaddr.ip6addr.s6_addr));
 		return true;
@@ -836,11 +856,11 @@ static int parse_ip_range(fr_ipaddr_t *start_out, fr_ipaddr_t *end_out, char con
 		ip = ntohlll(ip);
 
 		/* Generate a mask that covers the prefix bits, and sets them high */
-		p_mask = uint128_gen_mask(prefix - start.prefix) << (128 - prefix);
+		p_mask = uint128_lshift(uint128_gen_mask(prefix - start.prefix), (128 - prefix));
 		ip = htonlll(uint128_bor(p_mask, ip));
 
 		/* Decrement by one */
-		if (ex_broadcast) ip = uint128_sub(ip, 1);
+		if (ex_broadcast) ip = uint128_sub(ip, uint128_new(1, 0));
 		memcpy(&end.ipaddr.ip6addr.s6_addr, &ip, sizeof(end.ipaddr.ip6addr.s6_addr));
 	} else {
 		uint32_t ip;
