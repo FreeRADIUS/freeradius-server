@@ -213,8 +213,8 @@ static uint128_t uint128_lshift(uint128_t num, uint8_t bits)
  */
 static uint128_t uint128_add(uint128_t a, uint128_t b)
 {
-    	uint64_t tmp = (((a.l & b.l) & 1) + (a.l >> 1) + (b.l >> 1)) >> 63;
-    	return { .l = a.l + b.l, .h = a.h + b.h + tmp };
+	uint64_t tmp = (((a.l & b.l) & 1) + (a.l >> 1) + (b.l >> 1)) >> 63;
+	return { .l = a.l + b.l, .h = a.h + b.h + tmp };
 }
 
 /** Subtract one 128bit integer from another
@@ -227,11 +227,11 @@ static uint128_t uint128_sub(uint128_t a, uint128_t b)
 	uint128_t ret;
 	uint64_t c;
 
-    	ret.l = a.l - b.l;
-    	c = (((ret.l & b.l) & 1) + (b.l >> 1) + (ret.l >> 1)) >> 63;
-    	ret.h = a.h - (b.h + c);
+	ret.l = a.l - b.l;
+	c = (((ret.l & b.l) & 1) + (b.l >> 1) + (ret.l >> 1)) >> 63;
+	ret.h = a.h - (b.h + c);
 
-    	return ret;
+	return ret;
 }
 
 /** Perform bitwise & of two 128bit unsigned integers
