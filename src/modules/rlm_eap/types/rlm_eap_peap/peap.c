@@ -417,9 +417,18 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 	VALUE_PAIR *vp;
 	peap_tunnel_t *t = tls_session->opaque;
 
-	if ((rad_debug_lvl > 0) && fr_log_fp) {
-		RDEBUG("Got tunneled reply RADIUS code %d", reply->code);
-		rdebug_pair_list(L_DBG_LVL_1, request, reply->vps, NULL);
+	if (RDEBUG_ENABLED2) {
+
+		/*
+		 *	Note that we don't do *anything* with the reply
+		 *	attributes.
+		 */
+		if (is_radius_code(reply->code)) {
+			RDEBUG2("Got tunneled reply %s", fr_packet_codes[reply->code]);
+		} else {
+			RDEBUG2("Got tunneled reply code %i", reply->code);
+		}
+		rdebug_pair_list(L_DBG_LVL_2, request, reply->vps, NULL);
 	}
 
 	switch (reply->code) {
@@ -1001,15 +1010,6 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
 	rad_virtual_server(fake);
-
-	rad_assert(is_radius_code(fake->reply->code));
-
-	/*
-	 *	Note that we don't do *anything* with the reply
-	 *	attributes.
-	 */
-	RDEBUG2("Got tunneled reply %s", fr_packet_codes[fake->reply->code]);
-	rdebug_pair_list(L_DBG_LVL_2, request, fake->reply->vps, NULL);
 
 	/*
 	 *	Decide what to do with the reply.
