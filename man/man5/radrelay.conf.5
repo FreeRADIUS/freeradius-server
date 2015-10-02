@@ -12,7 +12,7 @@
 ..
 .TH radrelay.conf 5 "27 May 2005" "" "FreeRADIUS configuration file"
 .SH NAME
-radrelay.conf \- configuration file for the FreeRADIUS server "radrelay" personality
+radrelay.conf - configuration file for the FreeRADIUS server "radrelay" personality
 .SH DESCRIPTION
 The \fBradrelay.conf\fP file resides in the radius database directory,
 by default \fB/etc/raddb\fP.  It defines the global configuration for
@@ -41,7 +41,7 @@ another, so they both have the same set of accounting data.
 .SH "BUFFERING FOR HIGH-LOAD SERVERS"
 If the RADIUS server suddenly receives a many accounting packets,
 there may be insufficient CPU power to process them all in a timely
-manner.  This problem is especially noticable when the accounting
+manner.  This problem is especially noticeable when the accounting
 packets are going to a back-end database.
 
 Similarly, you may have one database that tracks "live" sessions, and
@@ -123,7 +123,7 @@ to another RADIUS server.
 
 Then, start the server via the following command:
 
-$ radiusd -n radrelay
+$ radiusd \-n radrelay
 
 The server should start up, read the detail file, and process
 accounting packets from it.

@@ -45,11 +45,11 @@ server will exit with a zero status code.
 Note that there are limitations to this check.  Due to the
 complexities involved in \fIalmost\fP starting a RADIUS server, these
 checks are necessarily incomplete.  The server can return a zero
-status code when run with -C, but may still exit with an error when
+status code when run with \-C, but may still exit with an error when
 run normally.
 
 See the output of 
-.B "radiusd -XC"
+.B "radiusd \-XC"
 for an informative list of which modules are checked for correct
 configuration, and which modules are skipped, and therefore not checked.
 .IP "\-d \fIconfig directory\fP"
@@ -96,13 +96,13 @@ Do not spawn threads.
 .IP \-v
 Print server version information and exit.
 .IP \-X
-Debugging mode.  Equivalent to "-sfxx -l stdout".  When trying to
-understand how the server works, ALWAYS run it with "radiusd -X".
+Debugging mode.  Equivalent to "\-sfxx \-l stdout".  When trying to
+understand how the server works, ALWAYS run it with "radiusd \-X".
 For production servers, use "raddebug"
 .IP \-x
 Finer-grained debug mode. In this mode the server will print details
 of every request on it's \fBstdout\fP output. You can specify this
-option multiple times (-x -x or -xx) to get more detailed output.
+option multiple times (\-x \-x or \-xx) to get more detailed output.
 .SH DEBUGGING
 The default configuration is set to work in the widest possible
 circumstances.  It requires minimal changes for your system.
@@ -113,7 +113,7 @@ guaranteed method of failure.  Instead, we STRONGLY RECOMMEND
 proceeding via the following steps:
 .PP
 1) Always run the server in debugging mode (
-.B radiusd -X
+.B radiusd \-X
 ) after making a configuration change.  We cannot emphasize this
 enough.  If you are not running the server in debugging mode, you
 \fIwill not\fP be able to see what is doing, and you \fIwill not\fP be
@@ -165,14 +165,14 @@ can be skipped.
 .br
 .br
 d) Start the server in debugging mode (
-.B radiusd -X
+.B radiusd \-X
 ), and start testing.
 .in -0.3i
 .PP
 5) Ask questions on the mailing list
 (freeradius-users@lists.freeradius.org).  When asking questions,
 include the output from debugging mode (
-.B radiusd -X
+.B radiusd \-X
 ).  This information will allow people to help you.  If you do not
 include it, the first response to your message will be "post the
 output of debug mode".
@@ -191,7 +191,7 @@ the case of a PPP connection.
 .PP
 The access server also sends login and logout records to the \fBradius\fP
 server so accounting can be done. These records are kept for each terminal
-server seperately in a file called \fBdetail\fP, and in the \fIwtmp\fP
+server separately in a file called \fBdetail\fP, and in the \fIwtmp\fP
 compatible logfile \fB/var/log/radwtmp\fP.
 .SH CONFIGURATION
 \fBRadiusd\fP uses a number of configuration files. Each file has it's
