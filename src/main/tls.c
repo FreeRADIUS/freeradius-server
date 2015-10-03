@@ -711,6 +711,7 @@ void tls_session_information(tls_session_t *tls_session)
 	char const *str_details1 = "", *str_details2= "";
 	REQUEST *request;
 	char buffer[32];
+	char content_type[20];
 
 	/*
 	 *	Don't print this out in the normal course of
@@ -852,11 +853,8 @@ void tls_session_information(tls_session_t *tls_session)
 #endif
 
 	default:
-	{
-		char content_type[20];
 		snprintf(content_type, sizeof(content_type), "unknown content type %i", tls_session->info.content_type );
 		str_content_type = content_type;
-	}
 		break;
 	}
 
