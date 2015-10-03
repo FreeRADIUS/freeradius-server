@@ -68,6 +68,7 @@ void	fr_md5_final(uint8_t out[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
 void	fr_md5_transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
 	CC_BOUNDED(__size__, 1, 4, 4)
 	CC_BOUNDED(__minbytes__, 2, MD5_BLOCK_LENGTH);
+#  define fr_md5_copy(_out, _in)	memcpy(_out, _in, sizeof(*_out))
 #else  /* HAVE_OPENSSL_EVP_H */
 USES_APPLE_DEPRECATED_API
 #  define FR_MD5_CTX			EVP_MD_CTX
@@ -77,6 +78,7 @@ USES_APPLE_DEPRECATED_API
 } while (0)
 #  define fr_md5_update			EVP_DigestUpdate
 #  define fr_md5_final(_out, _ctx)	EVP_DigestFinal_ex(_ctx, _out, NULL)
+#  define fr_md5_copy			EVP_MD_CTX_copy
 #endif
 
 /* hmac.c */
