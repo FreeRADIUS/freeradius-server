@@ -582,6 +582,14 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	rlm_sql_t *inst = instance;
 	rlm_sql_grouplist_t *head, *entry;
 
+	/*
+	 *	No group queries, don't do group comparisons.
+	 */
+	if (!inst->config->groupmemb_query) {
+		RWARN("Cannot do group comparison when group_membership_query is not set");
+		return 1;
+	}
+
 	RDEBUG("sql_groupcmp");
 
 	if (check->vp_length == 0){
@@ -643,6 +651,19 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 
 	rad_assert(request->packet != NULL);
 
+	if (!inst->config->groupmemb_query) {
+		RWARN("Cannot do check groups when group_membership_query is not set");
+
+	do_nothing:
+		*do_fall_through = FALL_THROUGH_DEFAULT;
+
+		/*
+		 *	Didn't add group attributes or allocate
+		 *	memory, so don't do anything else.
+		 */
+		return RLM_MODULE_NOTFOUND;
+	}
+
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
@@ -654,10 +675,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	}
 	if (rows == 0) {
 		RDEBUG2("User not found in any groups");
-		rcode = RLM_MODULE_NOTFOUND;
-		*do_fall_through = FALL_THROUGH_DEFAULT;
-
-		goto finish;
+		goto do_nothing;
 	}
 	rad_assert(head);
 
@@ -924,6 +942,12 @@ do { \
 		if (inst->config->authorize_group_reply_query) {
 			WARN("rlm_sql (%s): Ignoring authorize_group_check_query as group_membership_query "
 			     "is not configured", inst->name);
+		}
+
+		if (!inst->config->read_groups) {
+			WARN("rlm_sql (%s): Ignoring read_groups as group_membership_query "
+			     "is not configured", inst->name);
+			inst->config->read_groups = false;
 		}
 	} /* allow the group check / reply queries to be NULL */
 
