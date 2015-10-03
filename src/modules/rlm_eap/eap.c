@@ -817,7 +817,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 * ...in the inner-tunnel, to avoid expensive and unnecessary SQL/LDAP lookups
 	 */
 	if (eap_msg->vp_octets[4] == PW_EAP_IDENTITY) {
-		RDEBUG2("EAP-Identity reply, returning 'ok' so we can short-circuit the rest of authorize");
+		RDEBUG2("Peer sent EAP-Identity.  Returning 'ok' so we can short-circuit the rest of authorize");
 		return EAP_OK;
 	}
 
@@ -828,7 +828,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	use the State attribute to match this EAP-Message to
 	 *	an ongoing conversation.
 	 */
-	RDEBUG2("No EAP Start, assuming it's an on-going EAP conversation");
+	RDEBUG2("Continuing on-going EAP conversation");
 
 	return EAP_NOTFOUND;
 }

@@ -1194,7 +1194,8 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 		vp = fr_pair_list_copy(fake->packet, t->username);
 		fr_pair_add(&fake->packet->vps, vp);
 		fake->username = vp;
-		RDEBUG2("Setting User-Name to %s", fake->username->vp_strvalue);
+		RDEBUG2("Setting &request:User-Name from tunnel (protected) identity \"%s\"",
+			fake->username->vp_strvalue);
 	} else {
 		RDEBUG2("No tunnel username (SSL resumption?)");
 	}
