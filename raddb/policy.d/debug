@@ -17,6 +17,15 @@ debug_request {
 }
 
 #
+#  Outputs the contents of the coa list in debugging (-X) mode
+#
+debug_coa {
+	if("%{debug_attr:coa:}" == '') {
+		noop
+	}
+}
+
+#
 #  Outputs the contents of the reply list in debugging (-X) mode
 #
 debug_reply {
@@ -40,6 +49,7 @@ debug_session_state {
 debug_all {
 	debug_control
 	debug_request
+	debug_coa
 	debug_reply
 	debug_session_state
 }
