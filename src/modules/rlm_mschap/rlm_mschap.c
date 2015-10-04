@@ -1569,9 +1569,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		 * we then extract the response, add it into the request
 		 * then jump into mschap2 auth with the chal/resp
 		 */
-		uint8_t new_nt_encrypted[516], old_nt_encrypted[NT_DIGEST_LENGTH];
-		VALUE_PAIR *nt_enc=NULL;
-		int seq, new_nt_enc_len=0;
+		uint8_t		new_nt_encrypted[516], old_nt_encrypted[NT_DIGEST_LENGTH];
+		VALUE_PAIR	*nt_enc=NULL;
+		int		seq, new_nt_enc_len=0;
 
 		RDEBUG("MS-CHAPv2 password change request received");
 
@@ -1750,7 +1750,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 
 		chap = 1;
 
-	} else if ((response = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY)) != NULL) {
+	} else if ((response = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP2_RESPONSE,
+						   VENDORPEC_MICROSOFT, TAG_ANY)) != NULL) {
 		int mschap_result;
 		uint8_t	mschapv1_challenge[16];
 		VALUE_PAIR *name_attr, *response_name;
@@ -1850,12 +1851,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 
 		mschap_result = do_mschap(inst, request, nt_password, mschapv1_challenge,
 					  response->vp_octets + 26, nthashhash, auth_method);
-		if (mschap_result == -648)
-			goto password_expired;
+		if (mschap_result == -648) goto password_expired;
 
 		if (mschap_result < 0) {
-			int i;
-			char buffer[128];
+			int		i;
+			char		buffer[128];
 
 			REDEBUG("MS-CHAP2-Response is incorrect");
 
