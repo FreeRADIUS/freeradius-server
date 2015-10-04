@@ -689,7 +689,7 @@ packet_ready:
 			RDEBUG2("MSCHAP-Error: %s", response->vp_strvalue);
 
 			/*
-			 *	Pxarse the new challenge out of the
+			 *	Parse the new challenge out of the
 			 *	MS-CHAP-Error, so that if the client
 			 *	issues a re-try, we will know which
 			 *	challenge value that they used.
