@@ -1870,7 +1870,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 						 sizeof(buffer) - 12 - (i * 2), "%02x",
 						 fr_rand() & 0xff);
 				}
-				snprintf(buffer + 45, sizeof(buffer) - 45, " V=3 M=%s", inst->retry_msg);
+				/* E=691 R=d (9) + " C=" (3) + 32 hexits = 44 */
+				snprintf(buffer + 44, sizeof(buffer) - 44, " V=3 M=%s", inst->retry_msg);
 			}
 			mschap_add_reply(request, *response->vp_octets, "MS-CHAP-Error", buffer, strlen(buffer));
 			return RLM_MODULE_REJECT;
