@@ -87,6 +87,9 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Update EAP-TTLS so that MPPE keys are correctly calculated with TLSv1.2.
 	* Always delete MS-MPPE-* from the TTLS inner tunnel. This allows
 	  TTLS / EAP-MSCHAPv2 to work. Fixes #1206.
+	* Fix off by one error that caused some MSCHAP-Error messages to
+	  be sent without the password change version (V=3) and the textual
+	  message component (M=).
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
