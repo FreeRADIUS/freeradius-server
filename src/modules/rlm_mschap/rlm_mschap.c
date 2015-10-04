@@ -1408,7 +1408,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	VALUE_PAIR *username;
 	uint8_t nthashhash[NT_DIGEST_LENGTH];
 	char msch2resp[42];
-	uint8_t *p;
 	char const *username_string;
 	int chap = 0;
 	MSCHAP_AUTH_METHOD auth_method;
@@ -1494,6 +1493,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	 *	... or a Cleartext-Password, which we now transform into an NT-Password
 	 */
 	if (!nt_password) {
+		uint8_t *p;
+
 		if (password) {
 			RDEBUG2("Found Cleartext-Password, hashing to create NT-Password");
 			nt_password = pair_make_config("NT-Password", NULL, T_OP_EQ);
@@ -1550,6 +1551,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			if (!lm_password) {
 				RERROR("No memory");
 			} else {
+				uint8_t *p;
+
 				lm_password->vp_length = LM_DIGEST_LENGTH;
 				lm_password->vp_octets = p = talloc_array(lm_password, uint8_t, lm_password->vp_length);
 				smbdes_lmpwdhash(password->vp_strvalue, p);
@@ -1573,6 +1576,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		uint8_t		new_nt_encrypted[516], old_nt_encrypted[NT_DIGEST_LENGTH];
 		VALUE_PAIR	*nt_enc=NULL;
 		int		seq, new_nt_enc_len=0;
+		uint8_t		*p;
 
 		RDEBUG("MS-CHAPv2 password change request received");
 
@@ -1857,22 +1861,26 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		if (mschap_result < 0) {
 			int		i;
 			char		buffer[128];
+			char		*p, *end;
 
 			REDEBUG("MS-CHAP2-Response is incorrect");
 
 		do_error:
-			snprintf(buffer, sizeof(buffer), "E=691 R=%d", inst->allow_retry);
+			p = buffer;
+			end = buffer + sizeof(buffer);
 
-			if (inst->retry_msg) {
-				snprintf(buffer + 9, sizeof(buffer) - 9, " C=");
-				for (i = 0; i < 16; i++) {
-					snprintf(buffer + 12 + (i * 2),
-						 sizeof(buffer) - 12 - (i * 2), "%02x",
-						 fr_rand() & 0xff);
-				}
-				/* E=691 R=d (9) + " C=" (3) + 32 hexits = 44 */
-				snprintf(buffer + 44, sizeof(buffer) - 44, " V=3 M=%s", inst->retry_msg);
+			p += snprintf(buffer, sizeof(buffer), "E=691 R=%d C=", inst->allow_retry);
+			for (i = 0; (i < 16) && (p < end); i++) {
+				snprintf(p, end - p, "%02x", fr_rand() & 0xff);
+				p += 2;
 			}
+
+			/*
+			 *	We need at least the V field after the challenge, else some
+			 *	supplicants (wpa_supplicant) return parse errors.
+			 */
+			snprintf(p, end - p, " V=3 M=%s", inst->retry_msg ? inst->retry_msg : "Authentication failure");
+
 			mschap_add_reply(request, *response->vp_octets, "MS-CHAP-Error", buffer, strlen(buffer));
 			return RLM_MODULE_REJECT;
 		}
