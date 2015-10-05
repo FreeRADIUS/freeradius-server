@@ -1392,7 +1392,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	char		new_challenge[33], buffer[128];
 	char		*p;
 
-	if ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) || (mschap_result == -648)) {
+	if ((smb_ctrl && ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) != 0)) || (mschap_result == -648)) {
 		REDEBUG("Password has expired.  User should retry authentication");
 		error = 648;
 		retry = inst->allow_retry ? 1 : 0;
@@ -1411,8 +1411,8 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	 *	They're found, but they don't exist, so we
 	 *	return 'not found'.
 	 */
-	} else if (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
-		 ((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0)) {
+	} else if (smb_ctrl && (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
+				((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0))) {
 		REDEBUG("SMB-Account-Ctrl says that the account is disabled, or is not a normal "
 			"or workstation trust account");
 		error = 691;
@@ -1422,7 +1422,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	/*
 	 *	User is locked out.
 	 */
-	} else if ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0) {
+	} else if (smb_ctrl && ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0)) {
 		REDEBUG("SMB-Account-Ctrl says that the account is locked out");
 		error = 647;
 		retry = 0;
