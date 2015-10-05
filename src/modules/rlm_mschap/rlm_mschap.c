@@ -1408,7 +1408,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	uint8_t nthashhash[NT_DIGEST_LENGTH];
 	char msch2resp[42];
 	char const *username_string;
-	int chap = 0;
+	int mschap_version = 0;
 	MSCHAP_AUTH_METHOD auth_method;
 
 	/*
@@ -1752,7 +1752,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			goto do_error;
 		}
 
-		chap = 1;
+		mschap_version = 1;
 
 	} else if ((response = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP2_RESPONSE,
 						   VENDORPEC_MICROSOFT, TAG_ANY)) != NULL) {
@@ -1795,11 +1795,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		 *	packet.
 		 */
 		response_name = fr_pair_find_by_num(request->packet->vps, PW_MS_CHAP_USER_NAME, 0, TAG_ANY);
-		if (response_name) {
-			name_attr = response_name;
-		} else {
-			name_attr = username;
-		}
+		name_attr = response_name ? response_name : username;
 
 		/*
 		 *	with_ntdomain_hack moved here, too.
@@ -1907,7 +1903,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 				     challenge->vp_octets,	/* our challenge */
 				     msch2resp);		/* calculated MPPE key */
 		mschap_add_reply(request, *response->vp_octets, "MS-CHAP2-Success", msch2resp, 42);
-		chap = 2;
+		mschap_version = 2;
 
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
 		REDEBUG("You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
@@ -1949,12 +1945,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		uint8_t mppe_sendkey[34];
 		uint8_t mppe_recvkey[34];
 
-		if (chap == 1){
-			RDEBUG2("adding MS-CHAPv1 MPPE keys");
+		switch (mschap_version) {
+		case 1:
+			RDEBUG2("Adding MS-CHAPv1 MPPE keys");
 			memset(mppe_sendkey, 0, 32);
-			if (lm_password) {
-				memcpy(mppe_sendkey, lm_password->vp_octets, 8);
-			}
+			if (lm_password) memcpy(mppe_sendkey, lm_password->vp_octets, 8);
 
 			/*
 			 *	According to RFC 2548 we
@@ -1970,14 +1965,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 			 */
 			memcpy(mppe_sendkey + 8, nthashhash, NT_DIGEST_LENGTH);
 			mppe_add_reply(request, "MS-CHAP-MPPE-Keys", mppe_sendkey, 24);
-		} else if (chap == 2) {
+			break;
+
+		case 2:
 			RDEBUG2("Adding MS-CHAPv2 MPPE keys");
 			mppe_chap2_gen_keys128(nthashhash, response->vp_octets + 26, mppe_sendkey, mppe_recvkey);
 
 			mppe_add_reply(request, "MS-MPPE-Recv-Key", mppe_recvkey, 16);
 			mppe_add_reply(request, "MS-MPPE-Send-Key", mppe_sendkey, 16);
+			break;
 
+		default:
+			rad_assert(0);
+			break;
 		}
+
 		pair_make_reply("MS-MPPE-Encryption-Policy",
 			       (inst->require_encryption) ? "0x00000002":"0x00000001", T_OP_EQ);
 		pair_make_reply("MS-MPPE-Encryption-Types",
