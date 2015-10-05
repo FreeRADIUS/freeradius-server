@@ -1380,6 +1380,79 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
 	return RLM_MODULE_OK;
 }
 
+static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned char ident,
+				int mschap_result, int mschap_version, VALUE_PAIR *smb_ctrl)
+{
+	rlm_rcode_t	rcode = RLM_MODULE_OK;
+	int		error;
+	int		retry;
+	char const	*message;
+
+	int		i;
+	char		new_challenge[33], buffer[128];
+	char		*p;
+
+	if ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) || (mschap_result == -648)) {
+		REDEBUG("Password has expired.  User should retry authentication");
+		error = 648;
+		retry = inst->allow_retry ? 1 : 0;
+		message = "Password expired";
+		rcode = RLM_MODULE_REJECT;
+
+	} else if (mschap_result < 0) {
+		REDEBUG("MS-CHAP2-Response is incorrect");
+		error = 691;
+		retry = inst->allow_retry ? 1 : 0;
+		message = "Authentication failed";
+		rcode = RLM_MODULE_REJECT;
+	/*
+	 *	Account is disabled.
+	 *
+	 *	They're found, but they don't exist, so we
+	 *	return 'not found'.
+	 */
+	} else if (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
+		 ((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0)) {
+		REDEBUG("SMB-Account-Ctrl says that the account is disabled, or is not a normal "
+			"or workstation trust account");
+		error = 691;
+		retry = 1;
+		message = "Account disabled";
+		rcode = RLM_MODULE_NOTFOUND;
+	/*
+	 *	User is locked out.
+	 */
+	} else if ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0) {
+		REDEBUG("SMB-Account-Ctrl says that the account is locked out");
+		error = 647;
+		retry = 0;
+		message = "Account locked out";
+		rcode = RLM_MODULE_USERLOCK;
+	};
+
+	if (rcode == RLM_MODULE_OK) return RLM_MODULE_OK;
+
+	switch (mschap_version) {
+	case 1:
+		for (p = new_challenge, i = 0; i < 2; i++) p += snprintf(p, 9, "%08x", fr_rand());
+		snprintf(buffer, sizeof(buffer), "E=%i R=%i C=%s V=2",
+			 error, retry, new_challenge);
+		break;
+
+	case 2:
+		for (p = new_challenge, i = 0; i < 4; i++) p += snprintf(p, 9, "%08x", fr_rand());
+		snprintf(buffer, sizeof(buffer), "E=%i R=%i C=%s V=3 M=%s",
+			 error, retry, new_challenge, message);
+		break;
+
+	default:
+		rad_assert(0);
+	}
+	mschap_add_reply(request, ident, "MS-CHAP-Error", buffer, strlen(buffer));
+
+	return rcode;
+}
+
 /*
  *	mod_authenticate() - authenticate user based on given
  *	attributes and configuration.
@@ -1397,9 +1470,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void * instance, REQUEST *requ
  *	If MS-CHAP2 succeeds we MUST return
  *	PW_MSCHAP2_SUCCESS
  */
-static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *request)
+static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
-#define inst ((rlm_mschap_t *)instance)
+	rlm_mschap_t *inst = instance;
 	VALUE_PAIR *challenge = NULL;
 	VALUE_PAIR *response = NULL;
 	VALUE_PAIR *cpw = NULL;
@@ -1409,7 +1482,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	uint8_t nthashhash[NT_DIGEST_LENGTH];
 	char msch2resp[42];
 	char const *username_string;
-	int chap = 0;
+	int mschap_version = 0;
+	int mschap_result;
 	MSCHAP_AUTH_METHOD auth_method;
 
 	/*
@@ -1683,7 +1757,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		 *  change, add them into the request and then continue with
 		 *  the authentication
 		 */
-
 		response = radius_pair_create(request->packet, &request->packet->vps,
 					     PW_MSCHAP2_RESPONSE,
 					     VENDORPEC_MICROSOFT);
@@ -1712,7 +1785,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 	 *	MS-CHAP-Response, means MS-CHAPv1
 	 */
 	if (response) {
-		int offset;
+		int		offset;
+		rlm_rcode_t	rcode;
+		mschap_version = 1;
 
 		/*
 		 *	MS-CHAPv1 challenges are 8 octets.
@@ -1747,19 +1822,21 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		/*
 		 *	Do the MS-CHAP authentication.
 		 */
-		if (do_mschap(inst, request, password, challenge->vp_octets, response->vp_octets + offset, nthashhash,
-			      auth_method) < 0) {
-			REDEBUG("MS-CHAP-Response is incorrect");
-			goto do_error;
-		}
-
-		chap = 1;
-
+		mschap_result = do_mschap(inst, request, password, challenge->vp_octets,
+					  response->vp_octets + offset, nthashhash, auth_method);
+		/*
+		 *	Check for errors, and add MSCHAP-Error if necessary.
+		 */
+		rcode = mschap_error(inst, request, *response->vp_octets,
+				     mschap_result, mschap_version, smb_ctrl);
+		if (rcode != RLM_MODULE_OK) return rcode;
 	} else if ((response = fr_pair_find_by_num(request->packet->vps, PW_MSCHAP2_RESPONSE,
 						   VENDORPEC_MICROSOFT, TAG_ANY)) != NULL) {
-		int mschap_result;
-		uint8_t	mschapv1_challenge[16];
-		VALUE_PAIR *name_attr, *response_name;
+		uint8_t		mschapv1_challenge[16];
+		VALUE_PAIR	*name_attr, *response_name;
+		rlm_rcode_t	rcode;
+
+		mschap_version = 2;
 
 		/*
 		 *	MS-CHAPv2 challenges are 16 octets.
@@ -1853,59 +1930,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 				      mschapv1_challenge);	/* resulting challenge */
 
 		RDEBUG2("Client is using MS-CHAPv2");
-
 		mschap_result = do_mschap(inst, request, nt_password, mschapv1_challenge,
 					  response->vp_octets + 26, nthashhash, auth_method);
-		if (mschap_result == -648) goto password_expired;
-
-		if (mschap_result < 0) {
-			int		i;
-			char		buffer[128];
-			char		*p, *end;
-
-			REDEBUG("MS-CHAP2-Response is incorrect");
-
-		do_error:
-			p = buffer;
-			end = buffer + sizeof(buffer);
-
-			p += snprintf(buffer, sizeof(buffer), "E=691 R=%d C=", inst->allow_retry);
-			for (i = 0; (i < 16) && (p < end); i++) {
-				snprintf(p, end - p, "%02x", fr_rand() & 0xff);
-				p += 2;
-			}
-
-			/*
-			 *	We need at least the V field after the challenge, else some
-			 *	supplicants (wpa_supplicant) return parse errors.
-			 */
-			snprintf(p, end - p, " V=3 M=%s", inst->retry_msg ? inst->retry_msg : "Authentication failure");
-
-			mschap_add_reply(request, *response->vp_octets, "MS-CHAP-Error", buffer, strlen(buffer));
-			return RLM_MODULE_REJECT;
-		}
-
-		/*
-		 *	If the password is correct and it has expired
-		 *	we can permit password changes (only in MS-CHAPv2)
-		 */
-		if (smb_ctrl && smb_ctrl->vp_integer & ACB_PW_EXPIRED) {
-
-			char newchal[33], buffer[128];
-			int i;
-		password_expired:
-
-			for (i = 0; i < 16; i++) {
-				snprintf(newchal + (i * 2), 3, "%02x", fr_rand() & 0xff);
-			}
-
-			snprintf(buffer, sizeof(buffer), "E=648 R=%d C=%s V=3 M=Password Expired",
-				 inst->allow_retry, newchal);
-
-			RDEBUG("Password has expired.  The user should retry authentication");
-			mschap_add_reply(request, *response->vp_octets, "MS-CHAP-Error", buffer, strlen(buffer));
-			return RLM_MODULE_REJECT;
-		}
+		rcode = mschap_error(inst, request, *response->vp_octets,
+				     mschap_result, mschap_version, smb_ctrl);
+		if (rcode != RLM_MODULE_OK) return rcode;
 
 		mschap_auth_response(username_string,		/* without the domain */
 				     nthashhash,		/* nt-hash-hash */
@@ -1914,41 +1943,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 				     challenge->vp_octets,	/* our challenge */
 				     msch2resp);		/* calculated MPPE key */
 		mschap_add_reply(request, *response->vp_octets, "MS-CHAP2-Success", msch2resp, 42);
-		chap = 2;
 
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
 		REDEBUG("You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
 		return RLM_MODULE_INVALID;
-	}
-
-	/*
-	 *	We have a CHAP response, but the account may be
-	 *	disabled.  Reject the user with the same error code
-	 *	we use when their password is invalid.
-	 */
-	if (smb_ctrl) {
-		/*
-		 *	Account is disabled.
-		 *
-		 *	They're found, but they don't exist, so we
-		 *	return 'not found'.
-		 */
-		if (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
-		    ((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0)) {
-			REDEBUG("SMB-Account-Ctrl says that the account is disabled, or is not a normal "
-				"or workstation trust account");
-			mschap_add_reply(request, *response->vp_octets, "MS-CHAP-Error", "E=691 R=1", 9);
-			return RLM_MODULE_NOTFOUND;
-		}
-
-		/*
-		 *	User is locked out.
-		 */
-		if ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0) {
-			REDEBUG("SMB-Account-Ctrl says that the account is locked out");
-			mschap_add_reply(request, *response->vp_octets, "MS-CHAP-Error", "E=647 R=0", 9);
-			return RLM_MODULE_USERLOCK;
-		}
 	}
 
 	/* now create MPPE attributes */
