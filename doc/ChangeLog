@@ -90,6 +90,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Fix off by one error that caused some MSCHAP-Error messages to
 	  be sent without the password change version (V=3) and the textual
 	  message component (M=).
+	* Fix proxy to Packet-Dst-Port, so that it uses the correct
+	  destination port. Patch from Jorge Pereira
 
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
