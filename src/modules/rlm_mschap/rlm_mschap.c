@@ -1858,29 +1858,24 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		if (mschap_result == -648) goto password_expired;
 
 		if (mschap_result < 0) {
-			int		i;
-			char		buffer[128];
-			char		*p, *end;
+			int	i;
+			char	new_challenge[33], buffer[128];
+			char	*p;
 
 			REDEBUG("MS-CHAP2-Response is incorrect");
 
 		do_error:
-			p = buffer;
-			end = buffer + sizeof(buffer);
-
-			p += snprintf(buffer, sizeof(buffer), "E=691 R=%d C=", inst->allow_retry);
-			for (i = 0; (i < 16) && (p < end); i++) {
-				snprintf(p, end - p, "%02x", fr_rand() & 0xff);
-				p += 2;
-			}
+			for (p = new_challenge, i = 0; i < 4; i++) p += snprintf(p, 9, "%08x", fr_rand());
 
 			/*
 			 *	We need at least the V field after the challenge, else some
 			 *	supplicants (wpa_supplicant) return parse errors.
 			 */
-			snprintf(p, end - p, " V=3 M=%s", inst->retry_msg ? inst->retry_msg : "Authentication failure");
-
+			snprintf(buffer, sizeof(buffer), "E=691 R=%d C=%s V=3 M=%s",
+				 inst->allow_retry, new_challenge,
+				 inst->retry_msg ? inst->retry_msg : "Authentication failure");
 			mschap_add_reply(request, *response->vp_octets, "MS-CHAP-Error", buffer, strlen(buffer));
+
 			return RLM_MODULE_REJECT;
 		}
 
@@ -1889,20 +1884,19 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void * instance, REQUEST *r
 		 *	we can permit password changes (only in MS-CHAPv2)
 		 */
 		if (smb_ctrl && smb_ctrl->vp_integer & ACB_PW_EXPIRED) {
+			int	i;
+			char	new_challenge[33], buffer[128];
+			char	*p;
 
-			char newchal[33], buffer[128];
-			int i;
 		password_expired:
-
-			for (i = 0; i < 16; i++) {
-				snprintf(newchal + (i * 2), 3, "%02x", fr_rand() & 0xff);
-			}
+			for (p = new_challenge, i = 0; i < 4; i++) p += snprintf(p, 9, "%08x", fr_rand());
 
 			snprintf(buffer, sizeof(buffer), "E=648 R=%d C=%s V=3 M=Password Expired",
-				 inst->allow_retry, newchal);
+				 inst->allow_retry, new_challenge);
 
-			RDEBUG("Password has expired.  The user should retry authentication");
+			REDEBUG("Password has expired.  User should retry authentication");
 			mschap_add_reply(request, *response->vp_octets, "MS-CHAP-Error", buffer, strlen(buffer));
+
 			return RLM_MODULE_REJECT;
 		}
 
