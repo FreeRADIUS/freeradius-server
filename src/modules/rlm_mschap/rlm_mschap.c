@@ -1384,9 +1384,9 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 				int mschap_result, int mschap_version, VALUE_PAIR *smb_ctrl)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	int		error;
-	int		retry;
-	char const	*message;
+	int		error = 0;
+	int		retry = 0;
+	char const	*message = NULL;
 
 	int		i;
 	char		new_challenge[33], buffer[128];
@@ -1428,7 +1428,7 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 		retry = 0;
 		message = "Account locked out";
 		rcode = RLM_MODULE_USERLOCK;
-	};
+	}
 
 	if (rcode == RLM_MODULE_OK) return RLM_MODULE_OK;
 
