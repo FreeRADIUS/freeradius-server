@@ -1,4 +1,4 @@
-FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
+FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
 	* Do more optimization of unlang policies.  This makes
 	  run-time a bit faster.
@@ -29,6 +29,8 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* The dictionary parser now does more sanity checks, which
 	  prevents run-time problems with invalid attributes.
 	* Update debian packages.  Patches from Christopher Hoskin.
+	* Many other debian packaging fixes from Matthew Netwon
+	  and Herwin Weststrate.
 	* Add "session-state" to Perl.  Patch from Herwin Weststrate.
 
 	Bug fixes
@@ -94,7 +96,7 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	  that any of these fields are optional, and not including V= caused
 	  errors with wpa_supplicant.
 	* Do not include M= in MSCHAPv1 errors.  It's not supported.
-	
+
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Make "pool" configurations more consistent, and
