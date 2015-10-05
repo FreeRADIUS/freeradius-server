@@ -1954,7 +1954,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		uint8_t mppe_sendkey[34];
 		uint8_t mppe_recvkey[34];
 
-		if (chap == 1){
+		if (mschap_version == 1) {
 			RDEBUG2("adding MS-CHAPv1 MPPE keys");
 			memset(mppe_sendkey, 0, 32);
 			if (lm_password) {
@@ -1975,7 +1975,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 			 */
 			memcpy(mppe_sendkey + 8, nthashhash, NT_DIGEST_LENGTH);
 			mppe_add_reply(request, "MS-CHAP-MPPE-Keys", mppe_sendkey, 24);
-		} else if (chap == 2) {
+
+		} else if (mschap_version == 2) {
 			RDEBUG2("Adding MS-CHAPv2 MPPE keys");
 			mppe_chap2_gen_keys128(nthashhash, response->vp_octets + 26, mppe_sendkey, mppe_recvkey);
 
