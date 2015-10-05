@@ -90,7 +90,11 @@ FreeRADIUS 3.0.10 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	* Fix off by one error that caused some MSCHAP-Error messages to
 	  be sent without the password change version (V=3) and the textual
 	  message component (M=).
-
+	* Always include C= V= and M= in MSCHAPv2 errors.  RFC 2759 does not say
+	  that any of these fields are optional, and not including V= caused
+	  errors with wpa_supplicant.
+	* Do not include M= in MSCHAPv1 errors.  It's not supported.
+	
 FreeRADIUS 3.0.9 Wed 08 Jul 2015 12:00:00 EDT urgency=medium
 	Feature improvements
 	* Make "pool" configurations more consistent, and
