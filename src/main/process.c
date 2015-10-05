@@ -2178,6 +2178,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	int tries;
 	bool success = false;
 	void *proxy_listener;
+	VALUE_PAIR *vp;
 
 	VERIFY_REQUEST(request);
 
@@ -2190,6 +2191,14 @@ static int insert_into_proxy_hash(REQUEST *request)
 	proxy_listener = NULL;
 	request->num_proxied_requests = 1;
 	request->num_proxied_responses = 0;
+
+	vp = fr_pair_find_by_num(request->proxy->vps, PW_PACKET_DST_PORT, 0, TAG_ANY);
+	if (vp) {
+		RDEBUG3("proxy: Found 'Packet-Dst-Port', Overriding the destination port %d by %d",
+						request->proxy->dst_port,
+						vp->vp_integer);
+		request->proxy->dst_port = vp->vp_integer;
+	}
 
 	for (tries = 0; tries < 2; tries++) {
 		rad_listen_t *this;
