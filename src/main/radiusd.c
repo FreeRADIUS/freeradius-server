@@ -87,14 +87,14 @@ static void sig_hup (int);
  */
 int main(int argc, char *argv[])
 {
-	int rcode = EXIT_SUCCESS;
-	int status;
-	int argval;
-	bool spawn_flag = true;
-	bool display_version = false;
-	int flag = 0;
-	int from_child[2] = {-1, -1};
-	fr_state_t *state = NULL;
+	int		rcode = EXIT_SUCCESS;
+	int		status;
+	int		argval;
+	bool		spawn_flag = true;
+	bool		display_version = false;
+	int		flag = 0;
+	int		from_child[2] = {-1, -1};
+	fr_state_t	*state = NULL;
 
 	/*
 	 *  We probably don't want to free the talloc autofree context
