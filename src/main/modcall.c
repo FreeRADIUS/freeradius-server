@@ -3881,7 +3881,13 @@ bool modcall_pass2(modcallable *mc)
 				char const *name1 = cf_section_name1(g->cs);
 
 				if (strcmp(name1, unlang_keyword[c->type]) != 0) {
-					c->debug_name = talloc_asprintf(c, "%s %s", name1, cf_section_name2(g->cs));
+					name2 = cf_section_name2(g->cs);
+
+					if (!name2) {
+						c->debug_name = name1;
+					} else {
+						c->debug_name = talloc_asprintf(c, "%s %s", name1, name2);
+					}
 				}
 			}
 
