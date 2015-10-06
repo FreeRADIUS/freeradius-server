@@ -44,6 +44,15 @@ debug_session_state {
 }
 
 #
+#  Outputs the contents of the proxy-request state list in debugging (-X) mode
+#
+debug_proxy_request {
+	if("%{debug_attr:proxy-request:}" == '') {
+		noop
+	}
+}
+
+#
 #  Outputs the contents of the main lists in debugging (-X) mode
 #
 debug_all {
