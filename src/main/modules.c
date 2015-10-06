@@ -1462,25 +1462,14 @@ int virtual_servers_load(CONF_SECTION *config)
 	DEBUG2("%s: #### Loading Virtual Servers ####", main_config.name);
 
 	/*
-	 *	If we have "server { ...}", then there SHOULD NOT be
-	 *	bare "authorize", etc. sections.  if there is no such
-	 *	server, then try to load the old-style sections first.
-	 *
-	 *	In either case, load the "default" virtual server first.
-	 *	this matches better with users expectations.
+	 *	Search for server sections, if we don't find any, error out.
 	 */
-	cs = cf_section_find_name2(cf_subsection_find_next(config, NULL,
-							   "server"),
-				   "server", NULL);
-	if (cs) {
-		if (load_byserver(cs) < 0) {
-			return -1;
-		}
-	} else {
-		if (load_byserver(config) < 0) {
-			return -1;
-		}
+	cs = cf_section_find_name2(cf_subsection_find_next(config, NULL, "server"), "server", NULL);
+	if (!cs) {
+		ERROR("No server sections defined");
+		return -1;
 	}
+	if (load_byserver(cs) < 0) return -1;
 
 	/*
 	 *	Load all of the virtual servers.
