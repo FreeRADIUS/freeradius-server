@@ -47,7 +47,7 @@ RCSID("$Id$")
 extern pid_t radius_pid;
 extern fr_cond_t *debug_condition;
 
-static bool spawn_flag = false;
+static bool spawn_workers = false;
 static bool just_started = true;
 time_t fr_start_time = (time_t)-1;
 static rbtree_t *pl = NULL;
@@ -241,8 +241,8 @@ static pthread_mutex_t proxy_mutex;
 static bool proxy_no_new_sockets = false;
 #  endif
 
-#  define PTHREAD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
-#  define PTHREAD_MUTEX_UNLOCK if (spawn_flag) pthread_mutex_unlock
+#  define PTHREAD_MUTEX_LOCK if (spawn_workers) pthread_mutex_lock
+#  define PTHREAD_MUTEX_UNLOCK if (spawn_workers) pthread_mutex_unlock
 
 static pthread_t NO_SUCH_CHILD_PID;
 #  define NO_CHILD_THREAD request->child_pid = NO_SUCH_CHILD_PID
@@ -259,7 +259,7 @@ static pthread_t NO_SUCH_CHILD_PID;
 #ifdef HAVE_PTHREAD_H
 static bool we_are_master(void)
 {
-	if (spawn_flag &&
+	if (spawn_workers &&
 	    (pthread_equal(pthread_self(), NO_SUCH_CHILD_PID) == 0)) {
 		return false;
 	}
@@ -301,8 +301,8 @@ static int event_new_fd(rad_listen_t *this);
 static rad_listen_t *new_listeners = NULL;
 
 static pthread_mutex_t	fd_mutex;
-#  define FD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
-#  define FD_MUTEX_UNLOCK if (spawn_flag) pthread_mutex_unlock
+#  define FD_MUTEX_LOCK if (spawn_workers) pthread_mutex_lock
+#  define FD_MUTEX_UNLOCK if (spawn_workers) pthread_mutex_unlock
 
 void radius_update_listener(rad_listen_t *this)
 {
@@ -604,7 +604,7 @@ static void request_done(REQUEST *request, int action)
 		/*
 		 *	If the child is still running, leave it alone.
 		 */
-		if (spawn_flag && (request->child_state <= REQUEST_RUNNING)) {
+		if (spawn_workers && (request->child_state <= REQUEST_RUNNING)) {
 			break;
 		}
 #endif
@@ -690,7 +690,7 @@ static void request_done(REQUEST *request, int action)
 	/*
 	 *	If there's no children, we can mark the request as done.
 	 */
-	if (!spawn_flag) request->child_state = REQUEST_DONE;
+	if (!spawn_workers) request->child_state = REQUEST_DONE;
 #endif
 
 	/*
@@ -862,7 +862,7 @@ static bool request_max_time(REQUEST *request)
 		 *	If there's a child thread processing it,
 		 *	complain.
 		 */
-		if (spawn_flag &&
+		if (spawn_workers &&
 		    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
 			ERROR("Unresponsive child for request %u, in component %s module %s",
 			      request->number,
@@ -933,7 +933,7 @@ static void request_queue_or_run(REQUEST *request,
 		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 
 #ifdef HAVE_PTHREAD_H
-		if (spawn_flag) {
+		if (spawn_workers) {
 			/*
 			 *	A child thread will eventually pick it up.
 			 */
@@ -3070,7 +3070,7 @@ static int proxy_to_virtual_server(REQUEST *request)
 	 *	server is run ONLY if we have no child
 	 *	threads, or we're running in a child thread.
 	 */
-	rad_assert(!spawn_flag || !we_are_master());
+	rad_assert(!spawn_workers || !we_are_master());
 
 	fake = request_alloc_fake(request);
 
@@ -4983,7 +4983,7 @@ static int event_new_fd(rad_listen_t *this)
 		/*
 		 *	No child threads, clean it up now.
 		 */
-		if (!spawn_flag) {
+		if (!spawn_workers) {
 			ASSERT_MASTER;
 			if (sock->ev) fr_event_delete(el, &sock->ev);
 			listen_free(&this);
@@ -5354,7 +5354,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	 *
 	 *	It may be best for the mutexes to be in this file...
 	 */
-	spawn_flag = have_children;
+	spawn_workers = have_children;
 
 #ifdef HAVE_PTHREAD_H
 	NO_SUCH_CHILD_PID = pthread_self(); /* not a child thread */
@@ -5364,7 +5364,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	 *	we're running normally.
 	 */
 	if (have_children && !check_config &&
-	    (thread_pool_init(cs, &spawn_flag) < 0)) {
+	    (thread_pool_init(cs, &spawn_workers) < 0)) {
 		fr_exit(1);
 	}
 #endif
@@ -5372,7 +5372,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	if (check_config) {
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",
 		       main_config.name);
-		if (listen_init(cs, &head, spawn_flag) < 0) {
+		if (listen_init(cs, &head, spawn_workers) < 0) {
 			fflush(NULL);
 			fr_exit(1);
 		}
@@ -5417,7 +5417,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	 *	themselves around the functions that need a privileged
 	 *	uid.
 	 */
-	if (listen_init(cs, &head, spawn_flag) < 0) {
+	if (listen_init(cs, &head, spawn_workers) < 0) {
 		fr_exit_now(1);
 	}
 
@@ -5534,7 +5534,7 @@ void radius_event_free(void)
 
 	rbtree_walk(pl, RBTREE_DELETE_ORDER,  request_delete_cb, NULL);
 
-	if (spawn_flag) {
+	if (spawn_workers) {
 		/*
 		 *	Now that all requests have been marked "please stop",
 		 *	ensure that all of the threads have exited.

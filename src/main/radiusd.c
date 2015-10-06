@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 	int		rcode = EXIT_SUCCESS;
 	int		status;
 	int		argval;
-	bool		spawn_flag = true;
+	bool		spawn_workers = true;
 	bool		display_version = false;
 	int		flag = 0;
 	int		from_child[2] = {-1, -1};
@@ -148,7 +148,7 @@ int main(int argc, char *argv[])
 		switch (argval) {
 			case 'C':
 				check_config = true;
-				spawn_flag = false;
+				spawn_workers = false;
 				main_config.daemonize = false;
 				break;
 
@@ -225,12 +225,12 @@ int main(int argc, char *argv[])
 				break;
 
 			case 's':	/* Single process mode */
-				spawn_flag = false;
+				spawn_workers = false;
 				main_config.daemonize = false;
 				break;
 
 			case 't':	/* no child threads */
-				spawn_flag = false;
+				spawn_workers = false;
 				break;
 
 			case 'v':
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'X':
-				spawn_flag = false;
+				spawn_workers = false;
 				main_config.daemonize = false;
 				rad_debug_lvl += 2;
 				main_config.log_auth = true;
@@ -290,7 +290,7 @@ int main(int argc, char *argv[])
 	 *  So we can't run with a null context and threads.
 	 */
 	if (main_config.memory_report) {
-		if (spawn_flag) {
+		if (spawn_workers) {
 			fprintf(stderr, "radiusd: The server cannot produce memory reports (-M) in threaded mode\n");
 			exit(EXIT_FAILURE);
 		}
@@ -479,7 +479,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Start the event loop(s) and threads.
 	 */
-	radius_event_start(main_config.config, spawn_flag);
+	radius_event_start(main_config.config, spawn_workers);
 
 	/*
 	 *  Now that we've set everything up, we can install the signal
@@ -607,7 +607,7 @@ int main(int argc, char *argv[])
 	 *  (including us, which gets ignored.)
 	 */
 #ifndef __MINGW32__
-	if (spawn_flag) kill(-radius_pid, SIGTERM);
+	if (spawn_workers) kill(-radius_pid, SIGTERM);
 #endif
 
 	/*

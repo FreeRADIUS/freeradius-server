@@ -3279,7 +3279,7 @@ static void *recv_thread(void *arg)
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
  */
-int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_flag)
+int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
 {
 	bool		override = false;
 	CONF_SECTION	*cs = NULL;
@@ -3504,7 +3504,7 @@ add_sockets:
 	 */
 	for (this = *head; this != NULL; this = this->next) {
 #ifdef WITH_TLS
-		if (!check_config && !spawn_flag && this->tls) {
+		if (!check_config && !spawn_workers && this->tls) {
 			cf_log_err_cs(this->cs, "Threading must be enabled for TLS sockets to function properly");
 			cf_log_err_cs(this->cs, "You probably need to do '%s -fxx -l stdout' for debugging",
 				      progname);
@@ -3512,7 +3512,7 @@ add_sockets:
 		}
 #endif
 		if (!check_config) {
-			if (this->workers && !spawn_flag) {
+			if (this->workers && !spawn_workers) {
 				WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
 				this->workers = 0;
 			}

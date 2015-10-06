@@ -139,7 +139,7 @@ typedef struct THREAD_POOL {
 	uint32_t	cleanup_delay;
 	bool		stop_flag;
 #endif	/* WITH_GCD */
-	bool		spawn_flag;
+	bool		spawn_workers;
 
 #ifdef WNOHANG
 	pthread_mutex_t	wait_mutex;
@@ -882,7 +882,7 @@ static int pid_cmp(void const *one, void const *two)
  *
  *	FIXME: What to do on a SIGHUP???
  */
-int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
+int thread_pool_init(CONF_SECTION *cs, bool *spawn_workers)
 {
 #ifndef WITH_GCD
 	uint32_t	i;
@@ -893,15 +893,15 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 
 	now = time(NULL);
 
-	rad_assert(spawn_flag != NULL);
-	rad_assert(*spawn_flag == true);
+	rad_assert(spawn_workers != NULL);
+	rad_assert(*spawn_workers == true);
 	rad_assert(pool_initialized == false); /* not called on HUP */
 
 	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
 #ifdef WITH_GCD
 	if (pool_cf) WARN("Built with Grand Central Dispatch.  Ignoring 'thread' subsection");
 #else
-	if (!pool_cf) *spawn_flag = false;
+	if (!pool_cf) *spawn_workers = false;
 #endif
 
 	/*
@@ -916,13 +916,13 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_flag)
 	thread_pool.cleanup_delay = 5;
 	thread_pool.stop_flag = false;
 #endif
-	thread_pool.spawn_flag = *spawn_flag;
+	thread_pool.spawn_workers = *spawn_workers;
 
 	/*
 	 *	Don't bother initializing the mutexes or
 	 *	creating the hash tables.  They won't be used.
 	 */
-	if (!*spawn_flag) return 0;
+	if (!*spawn_workers) return 0;
 
 #ifdef WNOHANG
 	if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
