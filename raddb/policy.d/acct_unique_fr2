@@ -1,0 +1,29 @@
+#                                                                                                                                                                                         
+#       Old rlm_acct_unique style hashing                                                                                                                                                 
+#       This code does the same thing, as in FR 2.x                                                                                                                                       
+#                                                                                                                                                                                         
+
+acct_unique2 {                                                                                                                                                                            
+#                                                                                                                                                                                         
+#       The default settings in modules/acct_unique looks like:                                                                                                                           
+#                                                                                                                                                                                         
+#       acct_unique {                                                                                                                                                                     
+#           key = "User-Name, Acct-Session-Id, NAS-IP-Address, NAS-Port"                                                                                                                  
+#       }                                                                                                                                                                                 
+#                                                                                                                                                                                         
+#       We have to list values for the key in reverse order plus add the 0x00 in the end of string. Then calculate md5                                                                    
+#                                                                                                                                                                                         
+#                                                                                                                                                                                         
+    update request {                                                                                                                                                                      
+        &Tmp-Octets-0 := "NAS-Port = %{NAS-Port},NAS-IP-Address = %{NAS-IP-Address},Acct-Session-Id = \"%{Acct-Session-ID}\",User-Name = \"%{User-Name}\""                                
+        &Tmp-String-0 := "%{&Tmp-Octets-0}00"                                                                                                                                             
+        &Tmp-Octets-1 := "%{string:&Tmp-String-0}"                                                                                                                                        
+        &Tmp-String-1 := "%{md5:&Tmp-Octets-1}"                                                                                                                                           
+        }                                                                                                                                                                                 
+        if ( &Tmp-String-1 =~ /(.{1,16})/i ) {                                                                                                                                            
+            update request {                                                                                                                                                              
+                &Acct-Unique-Session-Id := "%{1}"                                                                                                                                         
+            }                                                                                                                                                                             
+        }                                                                                                                                                                                 
+}                                                                                                                                                                                         
+  
