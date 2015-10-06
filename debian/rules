@@ -107,14 +107,14 @@ endif
 	mv config.sub.dist config.sub
 
 #Architecture
-build: patch build-arch build-indep
+build: build-arch build-indep
 
-build-arch: build-arch-stamp patch
+build-arch: patch build-arch-stamp
 build-arch-stamp: config.status
 	$(MAKE)
 	touch $@
 
-build-indep: build-indep-stamp
+build-indep: patch build-indep-stamp
 build-indep-stamp: config.status
 	touch $@
 
