@@ -8,15 +8,11 @@ radiusd - Authentication, Authorization and Accounting server
 .IR config_directory ]
 .RB [ \-f ]
 .RB [ \-h ]
-.RB [ \-i
-.IR ip-address ]
 .RB [ \-l
 .IR log_file ]
 .RB [ \-m ]
 .RB [ \-n
 .IR name ]
-.RB [ \-p
-.IR port ]
 .RB [ \-s ]
 .RB [ \-t ]
 .RB [ \-v ]
@@ -48,7 +44,7 @@ checks are necessarily incomplete.  The server can return a zero
 status code when run with \-C, but may still exit with an error when
 run normally.
 
-See the output of 
+See the output of
 .B "radiusd \-XC"
 for an informative list of which modules are checked for correct
 configuration, and which modules are skipped, and therefore not checked.
@@ -59,14 +55,6 @@ files such as the \fIdictionary\fP and the \fIusers\fP files.
 Do not fork, stay running as a foreground process.
 .IP \-h
 Print usage help information.
-.IP "\-i \fIip-address\fP"
-Defines which IP address that the server uses for sending and
-receiving packets.
-
-If this command-line option is given, then the "bind_address" and all
-"listen{}" entries in \fIradiusd.conf\fP are ignored.
-
-This option MUST be used in conjunction with "-p".
 .IP "\-l \fIlog_file\fP"
 Defaults to \fI${logdir}/radius.log\fP. \fBRadiusd\fP writes it's logging
 information to this file. If log_file is the string "stdout" logging will
@@ -76,14 +64,6 @@ On SIGINT or SIGQUIT exit cleanly instead of immediately.
 This is most useful for when running the server with "valgrind".
 .IP "\-n \fIname\fP"
 Read \fIraddb/name.conf\fP instead of \fIraddb/radiusd.conf\fP.
-.IP "\-p \fIport\fP"
-Defines which port is used for receiving authentication packets.
-Accounting packets are received on "port + 1".
-
-When this command-line option is given, all "listen" sections in
-\fIradiusd.conf\fP are ignored.
-
-This option MUST be used in conjunction with "-i".
 .IP \-s
 Run in "single server" mode.  The server normally runs with multiple
 threads and/or processes, which can lower its response time to

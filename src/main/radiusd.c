@@ -129,8 +129,6 @@ int main(int argc, char *argv[])
 	 *	Ensure that the configuration is initialized.
 	 */
 	memset(&main_config, 0, sizeof(main_config));
-	main_config.myip.af = AF_UNSPEC;
-	main_config.port = 0;
 	main_config.name = "radiusd";
 	main_config.daemonize = true;
 
@@ -183,14 +181,6 @@ int main(int argc, char *argv[])
 				fr_log_fp = fdopen(default_log.fd, "a");
 				break;
 
-			case 'i':
-				if (fr_inet_hton(&main_config.myip, AF_UNSPEC, optarg, false) < 0) {
-					fprintf(stderr, "radiusd: Invalid IP Address or hostname \"%s\"\n", optarg);
-					exit(EXIT_FAILURE);
-				}
-				flag |= 1;
-				break;
-
 			case 'n':
 				main_config.name = optarg;
 				break;
@@ -202,21 +192,6 @@ int main(int argc, char *argv[])
 			case 'M':
 				main_config.memory_report = true;
 				main_config.debug_memory = true;
-				break;
-
-			case 'p':
-			{
-				unsigned long port;
-
-				port = strtoul(optarg, 0, 10);
-				if ((port == 0) || (port > UINT16_MAX)) {
-					fprintf(stderr, "radiusd: Invalid port number \"%s\"\n", optarg);
-					exit(EXIT_FAILURE);
-				}
-
-				main_config.port = (uint16_t) port;
-				flag |= 2;
-			}
 				break;
 
 			case 'P':
@@ -668,11 +643,9 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(stderr, "  -D <dictdir>  Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(output, "  -f            Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h            Print this help message.\n");
-	fprintf(output, "  -i <ipaddr>   Listen on ipaddr ONLY.\n");
 	fprintf(output, "  -l <log_file> Logging output will be written to this file.\n");
 	fprintf(output, "  -m            On SIGINT or SIGQUIT clean up all used memory instead of just exiting.\n");
 	fprintf(output, "  -n <name>     Read raddb/name.conf instead of raddb/radiusd.conf.\n");
-	fprintf(output, "  -p <port>     Listen on port ONLY.\n");
 	fprintf(output, "  -P            Always write out PID, even with -f.\n");
 	fprintf(output, "  -s            Do not spawn child processes to handle requests (same as -ft).\n");
 	fprintf(output, "  -t            Disable threads.\n");

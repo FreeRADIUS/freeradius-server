@@ -3281,190 +3281,19 @@ static void *recv_thread(void *arg)
  */
 int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
 {
-	bool		override = false;
 	CONF_SECTION	*cs = NULL;
 	rad_listen_t	**last;
 	rad_listen_t	*this;
-	fr_ipaddr_t	server_ipaddr;
-	uint16_t	auth_port = 0;
 
 	/*
 	 *	We shouldn't be called with a pre-existing list.
 	 */
 	rad_assert(head && (*head == NULL));
 
-	memset(&server_ipaddr, 0, sizeof(server_ipaddr));
-
 	last = head;
-	server_ipaddr.af = AF_UNSPEC;
 
 	/*
-	 *	If the port is specified on the command-line,
-	 *	it over-rides the configuration file.
-	 *
-	 *	FIXME: If argv[0] == "vmpsd", then don't listen on auth/acct!
-	 */
-	if (main_config.port > 0) {
-		auth_port = main_config.port;
-
-		/*
-		 *	-p X but no -i Y on the command-line.
-		 */
-		if (main_config.myip.af == AF_UNSPEC) {
-			ERROR("The command-line says \"-p %d\", but there is no associated IP address to use",
-			      main_config.port);
-			return -1;
-		}
-	}
-
-	/*
-	 *	If the IP address was configured on the command-line,
-	 *	use that as the "bind_address"
-	 */
-	if (main_config.myip.af != AF_UNSPEC) {
-		listen_socket_t *sock;
-
-		memcpy(&server_ipaddr, &main_config.myip,
-		       sizeof(server_ipaddr));
-		override = true;
-
-#ifdef WITH_VMPS
-		if (strcmp(progname, "vmpsd") == 0) {
-			this = listen_alloc(config, RAD_LISTEN_VQP);
-			if (!auth_port) auth_port = 1589;
-		} else
-#endif
-			this = listen_alloc(config, RAD_LISTEN_AUTH);
-
-		sock = this->data;
-
-		sock->my_ipaddr = server_ipaddr;
-		sock->my_port = auth_port;
-
-		sock->clients = client_list_parse_section(config, false);
-		if (!sock->clients) {
-			cf_log_err_cs(config,
-				   "Failed to find any clients for this listen section");
-			listen_free(&this);
-			return -1;
-		}
-
-		if (listen_bind(this) < 0) {
-			listen_free(head);
-			ERROR("There appears to be another RADIUS server running on the authentication port %d", sock->my_port);
-			listen_free(&this);
-			return -1;
-		}
-		auth_port = sock->my_port;	/* may have been updated in listen_bind */
-		if (override) {
-			cs = cf_section_sub_find_name2(config, "server",
-						       main_config.name);
-			if (cs) this->server = main_config.name;
-		}
-
-		*last = this;
-		last = &(this->next);
-
-#ifdef WITH_VMPS
-		/*
-		 *	No acct for vmpsd
-		 */
-		if (strcmp(progname, "vmpsd") == 0) goto add_sockets;
-#endif
-
-#ifdef WITH_ACCOUNTING
-		/*
-		 *	Open Accounting Socket.
-		 *
-		 *	If we haven't already gotten acct_port from
-		 *	/etc/services, then make it auth_port + 1.
-		 */
-		this = listen_alloc(config, RAD_LISTEN_ACCT);
-		sock = this->data;
-
-		/*
-		 *	Create the accounting socket.
-		 *
-		 *	The accounting port is always the
-		 *	authentication port + 1
-		 */
-		sock->my_ipaddr = server_ipaddr;
-		sock->my_port = auth_port + 1;
-
-		sock->clients = client_list_parse_section(config, false);
-		if (!sock->clients) {
-			cf_log_err_cs(config,
-				   "Failed to find any clients for this listen section");
-			return -1;
-		}
-
-		if (listen_bind(this) < 0) {
-			listen_free(&this);
-			listen_free(head);
-			ERROR("There appears to be another RADIUS server running on the accounting port %d", sock->my_port);
-			return -1;
-		}
-
-		if (override) {
-			cs = cf_section_sub_find_name2(config, "server",
-						       main_config.name);
-			if (cs) this->server = main_config.name;
-		}
-
-		*last = this;
-		last = &(this->next);
-#endif
-	}
-
-	/*
-	 *	They specified an IP on the command-line, ignore
-	 *	all listen sections except the one in '-n'.
-	 */
-	if (main_config.myip.af != AF_UNSPEC) {
-		CONF_SECTION *subcs;
-		char const *name2 = cf_section_name2(cs);
-
-		cs = cf_section_sub_find_name2(config, "server",
-					       main_config.name);
-		if (!cs) goto add_sockets;
-
-		/*
-		 *	Should really abstract this code...
-		 */
-		for (subcs = cf_subsection_find_next(cs, NULL, "listen");
-		     subcs != NULL;
-		     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
-			this = listen_parse(subcs, name2);
-			if (!this) {
-				listen_free(head);
-				return -1;
-			}
-
-			*last = this;
-			last = &(this->next);
-		} /* loop over "listen" directives in server <foo> */
-
-		goto add_sockets;
-	}
-
-	/*
-	 *	Walk through the "listen" sections, if they exist.
-	 */
-	for (cs = cf_subsection_find_next(config, NULL, "listen");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "listen")) {
-		this = listen_parse(cs, NULL);
-		if (!this) {
-			listen_free(head);
-			return -1;
-		}
-
-		*last = this;
-		last = &(this->next);
-	}
-
-	/*
-	 *	Check virtual servers for "listen" sections, too.
+	 *	Check virtual servers for "listen" sections
 	 *
 	 *	FIXME: Move to virtual server init?
 	 */
@@ -3474,6 +3303,9 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
 		CONF_SECTION *subcs;
 		char const *name2 = cf_section_name2(cs);
 
+ 		/*
+ 		 *	Loop over "listen" directives in virtual servers
+ 		 */
 		for (subcs = cf_subsection_find_next(cs, NULL, "listen");
 		     subcs != NULL;
 		     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
@@ -3485,12 +3317,11 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
 
 			*last = this;
 			last = &(this->next);
-		} /* loop over "listen" directives in virtual servers */
-	} /* loop over virtual servers */
+		}
+	}
 
-add_sockets:
 	/*
-	 *	No sockets to receive packets, this is an error.
+	 *	No sockets to receive packets, this is an error
 	 *	proxying is pointless.
 	 */
 	if (!*head) {

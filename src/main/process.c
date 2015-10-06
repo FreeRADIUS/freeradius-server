@@ -5247,15 +5247,6 @@ static void check_proxy(rad_listen_t *head)
 	if (!head) return;
 	if (!home_servers_udp) return;
 
-	/*
-	 *	We passed "-i" on the command line.  Use that address
-	 *	family for the proxy socket.
-	 */
-	if (main_config.myip.af != AF_UNSPEC) {
-		create_default_proxy_listener(main_config.myip.af);
-		return;
-	}
-
 	defined_proxy = has_v4 = has_v6 = false;
 
 	/*

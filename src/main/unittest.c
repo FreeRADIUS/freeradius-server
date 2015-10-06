@@ -681,8 +681,6 @@ int main(int argc, char *argv[])
 	 *	Ensure that the configuration is initialized.
 	 */
 	memset(&main_config, 0, sizeof(main_config));
-	main_config.myip.af = AF_UNSPEC;
-	main_config.port = 0;
 	main_config.name = "radiusd";
 
 	/*

@@ -112,9 +112,6 @@ typedef struct main_config {
 	char const	*name;				//!< Name of the daemon, usually 'radiusd'.
 	CONF_SECTION	*config;			//!< Root of the server config.
 
-	fr_ipaddr_t	myip;				//!< IP to bind to. Set on command line.
-	uint16_t	port;				//!< Port to bind to. Set on command line.
-
 	bool		log_auth;			//!< Log authentication attempts.
 	bool		log_auth_badpass;		//!< Log successful authentications.
 	bool		log_auth_goodpass;		//!< Log failed authentications.
