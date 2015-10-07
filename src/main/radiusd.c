@@ -92,7 +92,6 @@ int main(int argc, char *argv[])
 	int		argval;
 	bool		spawn_workers = true;
 	bool		display_version = false;
-	int		flag = 0;
 	int		from_child[2] = {-1, -1};
 	fr_state_t	*state = NULL;
 
@@ -252,11 +251,6 @@ int main(int argc, char *argv[])
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	if (ssl_check_consistency() < 0) exit(EXIT_FAILURE);
 #endif
-
-	if (flag && (flag != 0x03)) {
-		fprintf(stderr, "radiusd: The options -i and -p cannot be used individually.\n");
-		exit(EXIT_FAILURE);
-	}
 
 	/*
 	 *  According to the talloc peeps, no two threads may modify any part of
