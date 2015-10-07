@@ -30,6 +30,11 @@ RCSID("$Id$")
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/rad_assert.h>
 
+/** Path to search for modules in
+ *
+ */
+char const *radlib_dir = NULL;
+
 typedef struct indexed_modcallable {
 	rlm_components_t	comp;
 	int			idx;
@@ -156,11 +161,11 @@ static int check_module_magic(CONF_SECTION *cs, module_t const *module)
 
 lt_dlhandle lt_dlopenext(char const *name)
 {
-	int	flags = RTLD_NOW;
-	void	*handle;
-	char	buffer[2048];
-	char	*env;
-
+	int		flags = RTLD_NOW;
+	void		*handle;
+	char		buffer[2048];
+	char		*env;
+	char const	*search_path;
 #ifdef RTLD_GLOBAL
 	if (strcmp(name, "rlm_perl") == 0) {
 		flags |= RTLD_GLOBAL;
@@ -174,42 +179,53 @@ lt_dlhandle lt_dlopenext(char const *name)
 	 */
 	flags |= RTLD_NOW;
 #endif
+
+	/*
+	 *	Apple removed support for DYLD_LIBRARY_PATH in rootless mode.
+	 */
+	env = getenv("FR_LIBRARY_PATH");
+	if (env) {
+		DEBUG3("Ignoring libdir as FR_LIBRARY_PATH set.  Module search path will be: %s", env);
+		search_path = env;
+	} else {
+		search_path = radlib_dir;
+	}
+
 	/*
 	 *	Prefer loading our libraries by absolute path.
 	 */
-	if (radlib_dir) {
+	if (search_path) {
 		char *error;
+		char *ctx, *paths, *path;
+		char *p;
 
-		snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
+		fr_strerror();
 
-		DEBUG4("Loading library using absolute path \"%s\"", buffer);
+		ctx = paths = talloc_strdup(NULL, search_path);
+		while ((path = strsep(&paths, ":")) != NULL) {
+			/*
+			 *	Trim the trailing slash
+			 */
+			p = strrchr(path, '/');
+			if (p && ((p[1] == '\0') || (p[1] == ':'))) *p = '\0';
 
-		handle = dlopen(buffer, flags);
-		if (handle) return handle;
-		error = dlerror();
+			path = talloc_asprintf(ctx, "%s/%s%s", path, name, LT_SHREXT);
 
-		fr_strerror_printf("%s", error);
-		DEBUG4("Failed with error: %s", error);
+			DEBUG4("Loading %s with path: %s", name, path);
 
-		/*
-		 *	Because dlopen (on OSX at least) produces really
-		 *	shitty and inaccurate error messages
-		 */
-		if (access(buffer, R_OK) < 0) {
-			switch (errno) {
-			case EACCES:
-				WARN("Library file found, but we don't have permission to read it");
-				break;
-
-			case ENOENT:
-				DEBUG4("Library file not found");
-				break;
-
-			default:
-				DEBUG4("Issue accessing library file: %s", fr_syserror(errno));
-				break;
+			handle = dlopen(path, flags);
+			if (handle) {
+				talloc_free(ctx);
+				return handle;
 			}
+			error = dlerror();
+
+			fr_strerror_printf("%s%s\n", fr_strerror(), error);
+			DEBUG4("Loading %s failed: %s - %s", name, error,
+			       (access(buffer, R_OK) < 0) ? fr_syserror(errno) : "No access errors");
+			talloc_free(path);
 		}
+		talloc_free(ctx);
 	}
 
 	DEBUG4("Loading library using linker search path(s)");

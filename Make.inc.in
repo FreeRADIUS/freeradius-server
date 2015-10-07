@@ -163,7 +163,7 @@ ANALYZE.c       := @clang_path@
 #
 ifeq "$(USE_SHARED_LIBS)" "yes"
 	TESTBINDIR = ./$(BUILD_DIR)/bin/local
-	TESTBIN    = $(JLIBTOOL) --quiet --mode=execute $(TESTBINDIR)
+	TESTBIN    =  FR_LIBRARY_PATH=./build/lib/.libs $(JLIBTOOL) --quiet --mode=execute $(TESTBINDIR)
 else
 	TESTBINDIR = ./$(BUILD_DIR)/bin
 	TESTBIN    = ./$(BUILD_DIR)/bin
