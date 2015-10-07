@@ -1,8 +1,6 @@
-Index: freeradius-server/Make.inc.in
-===================================================================
---- freeradius-server.orig/Make.inc.in
-+++ freeradius-server/Make.inc.in
-@@ -95,7 +95,7 @@ LDFLAGS		= $(OPENSSL_LDFLAGS) $(TALLOC_L
+--- a/Make.inc.in
++++ b/Make.inc.in
+@@ -95,7 +95,7 @@
  
  LOGDIR		= ${logdir}
  RADDBDIR	= ${raddbdir}
@@ -11,11 +9,9 @@ Index: freeradius-server/Make.inc.in
  SBINDIR		= ${sbindir}
  RADIR		= ${radacctdir}
  LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la $(TALLOC_LIBS)
-Index: freeradius-server/raddb/radiusd.conf.in
-===================================================================
---- freeradius-server.orig/raddb/radiusd.conf.in
-+++ freeradius-server/raddb/radiusd.conf.in
-@@ -61,7 +61,7 @@ radacctdir = @radacctdir@
+--- a/raddb/radiusd.conf.in
++++ b/raddb/radiusd.conf.in
+@@ -61,7 +61,7 @@
  
  #
  #  name of the running server.  See also the "-n" command-line option.
@@ -24,7 +20,7 @@ Index: freeradius-server/raddb/radiusd.conf.in
  
  #  Location of config and logfiles.
  confdir = ${raddbdir}
-@@ -436,8 +436,8 @@ security {
+@@ -436,8 +436,8 @@
  	#  member.  This can allow for some finer-grained access
  	#  controls.
  	#
@@ -35,10 +31,8 @@ Index: freeradius-server/raddb/radiusd.conf.in
  
  	#  Core dumps are a bad thing.  This should only be set to
  	#  'yes' if you're debugging a problem with the server.
-Index: freeradius-server/scripts/monit/freeradius.monitrc
-===================================================================
---- freeradius-server.orig/scripts/monit/freeradius.monitrc
-+++ freeradius-server/scripts/monit/freeradius.monitrc
+--- a/scripts/monit/freeradius.monitrc
++++ b/scripts/monit/freeradius.monitrc
 @@ -8,9 +8,9 @@
  #  Totalmem limit should be lowered to 200.0 if none of the 
  #  interpreted language modules or rlm_cache are being used.
@@ -52,3 +46,20 @@ Index: freeradius-server/scripts/monit/freeradius.monitrc
     if failed host 127.0.0.1 port 1812 type udp protocol radius secret testing123 then alert
     if failed host 127.0.0.1 port 1813 type udp protocol radius secret testing123 then alert
     if cpu > 95% for 2 cycles then alert
+--- a/raddb/sites-available/control-socket
++++ b/raddb/sites-available/control-socket
+@@ -72,12 +72,12 @@
+ 	#
+ 	#  Name of user that is allowed to connect to the control socket.
+ 	#
+-#	uid = radius
++#	uid = freerad
+ 
+ 	#
+ 	#  Name of group that is allowed to connect to the control socket.
+ 	#
+-#	gid = radius
++#	gid = freerad
+ 
+ 	#
+ 	#  Access mode.
