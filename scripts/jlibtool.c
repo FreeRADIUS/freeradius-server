@@ -2228,21 +2228,22 @@ static int run_mode(command_t *cmd)
 
 		strcpy(libpath, cmd->arglist->vals[0]);
 		add_dotlibs(libpath);
-	l = strrchr(libpath, '/');
-	if (!l) l = strrchr(libpath, '\\');
-	if (l) {
-		*l = '\0';
-		l = libpath;
-	} else {
-		l = ".libs/";
-	}
+		l = strrchr(libpath, '/');
+		if (!l) l = strrchr(libpath, '\\');
+		if (l) {
+			*l = '\0';
+			l = libpath;
+		} else {
+			l = ".libs/";
+		}
 
-	l = "./build/lib/.libs";
-	setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
-	rv = run_command(cmd, cmd->arglist);
+		l = "./build/lib/.libs";
+		setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
+		setenv("DYLD_FALLBACK_LIBRARY_PATH", l, 1);
+		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
 	}
-	  break;
+		break;
 
 	default:
 		break;
