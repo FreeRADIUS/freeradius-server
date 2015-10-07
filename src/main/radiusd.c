@@ -57,7 +57,7 @@ RCSID("$Id$")
 char const	*progname = NULL;
 char const	*radacct_dir = NULL;
 char const	*radlog_dir = NULL;
-char const	*radlib_dir = NULL;
+
 bool		log_stripped_names;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING

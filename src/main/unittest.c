@@ -40,7 +40,6 @@ RCSID("$Id$")
 char const *progname = NULL;
 char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
-char const *radlib_dir = NULL;
 bool log_stripped_names = false;
 
 static bool memory_report = false;

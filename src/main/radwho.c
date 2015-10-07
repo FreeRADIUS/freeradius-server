@@ -53,7 +53,6 @@ static char const *raddb_dir = RADDBDIR;
 static char const *dict_dir = DICTDIR;
 
 char const *radacct_dir = NULL;
-char const *radlib_dir = NULL;
 
 bool log_stripped_names;
 
