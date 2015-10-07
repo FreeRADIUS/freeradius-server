@@ -33,6 +33,9 @@ ca: ca.der
 .PHONY: server
 server: server.pem server.vrfy
 
+.PHONY: verify
+verify: server.vrfy client.vrfy
+
 passwords.mk: server.cnf ca.cnf client.cnf
 	@echo "PASSWORD_SERVER	= '$(shell grep output_password server.cnf | sed 's/.*=//;s/^ *//')'"		> $@
 	@echo "PASSWORD_CA	= '$(shell grep output_password ca.cnf | sed 's/.*=//;s/^ *//')'"		>> $@
