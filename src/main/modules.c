@@ -218,7 +218,7 @@ lt_dlhandle lt_dlopenext(char const *name)
 
 			fr_strerror_printf("%s%s\n", fr_strerror(), error);
 			DEBUG4("Loading %s failed: %s - %s", name, error,
-			       (access(buffer, R_OK) < 0) ? fr_syserror(errno) : "No access errors");
+			       (access(path, R_OK) < 0) ? fr_syserror(errno) : "No access errors");
 			talloc_free(path);
 		}
 		talloc_free(ctx);
