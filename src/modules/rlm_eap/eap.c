@@ -356,10 +356,15 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	}
 
 	/*
-	 *	Multiple levels of nesting are invalid.
+	 *	Multiple levels of TLS nesting are invalid.  But if
+	 *	the parent has a home_server defined, then this
+	 *	request is being processed through a virtual
+	 *	server... so that's OK.
 	 */
-	if (handler->request->parent && handler->request->parent->parent) {
-		RDEBUG2("Multiple levels of TLS nesting is invalid");
+	if (handler->request->parent && 
+	    !handler->request->parent->home_server &&
+	    handler->request->parent->parent) {
+		RERROR("Multiple levels of TLS nesting are invalid");
 
 		return EAP_INVALID;
 	}
