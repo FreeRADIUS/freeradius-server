@@ -797,6 +797,11 @@ int main(int argc, char *argv[])
 	}
 
 	/*
+	 *	Setup dummy virtual server
+	 */
+	cf_section_add(main_config.config, cf_section_alloc(main_config.config, "server", NULL));
+
+	/*
 	 *  Load the modules
 	 */
 	if (modules_init(main_config.config) < 0) {
@@ -804,7 +809,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	state =fr_state_init(NULL, 0);
+	state = fr_state_init(NULL, 0);
 
 	/*
 	 *  Set the panic action (if required)
