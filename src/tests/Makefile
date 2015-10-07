@@ -51,14 +51,13 @@ dictionary:
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> dictionary
 
 test.conf: dictionary
-	@echo "# test configuration file.  Do not install.  Delete at any time." > test.conf
-	@echo "libdir =" $(LIB_PATH) >> test.conf
-	@echo "testdir =" $(TEST_PATH) >> test.conf
-	@echo 'logdir = $${testdir}' >> test.conf
-	@echo 'maindir = ${top_builddir}/raddb/' >> test.conf
-	@echo 'radacctdir = $${testdir}' >> test.conf
-	@echo 'pidfile = $${testdir}/radiusd.pid' >> test.conf
-	@echo 'panic_action = "gdb -batch -x ${testdir}/panic.gdb %e %p > ${testdir}/gdb.log 2>&1; cat ${testdir}/gdb.log"' >> test.conf
+	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
+	@echo "testdir =" $(TEST_PATH) >> $@
+	@echo 'logdir = $${testdir}' >> $@
+	@echo 'maindir = ${top_builddir}/raddb/' >> $@
+	@echo 'radacctdir = $${testdir}' >> $@
+	@echo 'pidfile = $${testdir}/radiusd.pid' >> $@
+	@echo 'panic_action = "gdb -batch -x ${testdir}/panic.gdb %e %p > ${testdir}/gdb.log 2>&1; cat ${testdir}/gdb.log"' >> $@
 	@echo 'security {' >> $@
 	@echo '        allow_vulnerable_openssl = yes' >> $@
 	@echo '}' >> $@
@@ -66,13 +65,13 @@ test.conf: dictionary
 	@echo 'modconfdir = $${maindir}mods-config' >> $@
 	@echo 'certdir = $${maindir}/certs' >> $@
 	@echo 'cadir   = $${maindir}/certs' >> $@
-	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
-	@echo '$$INCLUDE $${maindir}/radiusd.conf' >> test.conf
+	@echo '$$INCLUDE $${testdir}/config/' >> $@
+	@echo '$$INCLUDE $${maindir}/radiusd.conf' >> $@
 
 radiusd.pid: test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
 	@printf "Starting server... "
-	@if ! $(BIN_PATH)/radiusd -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p $(PORT) -D $(TEST_PATH); then\
+	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -D $(TEST_PATH); then\
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \

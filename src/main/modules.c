@@ -1477,15 +1477,10 @@ int virtual_servers_load(CONF_SECTION *config)
 
 	DEBUG2("%s: #### Loading Virtual Servers ####", main_config.name);
 
-	/*
-	 *	Search for server sections, if we don't find any, error out.
-	 */
-	cs = cf_section_find_name2(cf_subsection_find_next(config, NULL, "server"), "server", NULL);
-	if (!cs) {
-		ERROR("No server sections defined");
+	if (!cf_subsection_find_next(config, NULL, "server")) {
+		ERROR("No virtual servers found");
 		return -1;
 	}
-	if (load_byserver(cs) < 0) return -1;
 
 	/*
 	 *	Load all of the virtual servers.
@@ -1497,18 +1492,6 @@ int virtual_servers_load(CONF_SECTION *config)
 
 		name2 = cf_section_name2(cs);
 		if (!name2) continue; /* handled above */
-
-		server = virtual_server_find(name2);
-		if (server &&
-		    (cf_top_section(server->cs) == config)) {
-			ERROR("Duplicate virtual server \"%s\" in file %s:%d and file %s:%d",
-			       server->name,
-			       cf_section_filename(server->cs),
-			       cf_section_lineno(server->cs),
-			       cf_section_filename(cs),
-			       cf_section_lineno(cs));
-			return -1;
-		}
 
 		if (load_byserver(cs) < 0) {
 			/*
