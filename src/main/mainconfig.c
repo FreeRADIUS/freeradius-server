@@ -384,12 +384,15 @@ static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *
 
 	cp = cf_pair_find(request->client->cs, fmt);
 	if (!cp || !(value = cf_pair_value(cp))) {
-		if (strcmp(fmt, "shortname") == 0) {
-			strlcpy(out, request->client->shortname, outlen);
-			return strlen(out);
+		if (strcmp(fmt, "shortname") == 0 && request->client->shortname) {
+			value = request->client->shortname;
 		}
-		*out = '\0';
-		return 0;
+		else if (strcmp(fmt, "nas_type") == 0 && request->client->nas_type) {
+			value = request->client->nas_type;
+		} else {
+			*out = '\0';
+			return 0;
+		}
 	}
 
 	strlcpy(out, value, outlen);
