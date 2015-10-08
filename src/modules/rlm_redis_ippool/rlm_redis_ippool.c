@@ -243,7 +243,7 @@ static char lua_update_cmd[] =
 	"if ARGV[5] ~= found[3] then" EOL						/* 21 */
 	"  redis.call('HSET', address_key, 'gateway', ARGV[5])" EOL			/* 22 */
 	"end" EOL									/* 23 */
-	"return { " STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", found[1], found[3] }"EOL;	/* 24 */
+	"return { " STRINGIFY(_IPPOOL_RCODE_SUCCESS) ", found[1], found[4] }"EOL;	/* 24 */
 static char lua_update_digest[(SHA1_DIGEST_LENGTH * 2) + 1];
 
 /** Lua script for releasing leases
@@ -279,7 +279,7 @@ static char lua_release_cmd[] =
 	"  return { " STRINGIFY(_IPPOOL_RCODE_NOT_FOUND) "}" EOL			/* 9 */
 	"end" EOL									/* 11 */
 	"if found and found ~= ARGV[3] then" EOL					/* 12 */
-	"  return { " STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) ", found }" EOL		/* 13 */
+	"  return { " STRINGIFY(_IPPOOL_RCODE_DEVICE_MISMATCH) ", found[2] }" EOL	/* 13 */
 	"end" EOL									/* 14 */
 
 	/*
