@@ -2,6 +2,8 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
 
 	Bug fixes
+	* Fix issue where field nas_type would not be accessible via
+	  the %{client:} xlat, for clients loaded from SQL.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
