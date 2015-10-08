@@ -10,5 +10,8 @@ VENDOR		Arista				30065
 BEGIN-VENDOR	Arista
 
 ATTRIBUTE	Arista-AVPair			1	string
+ATTRIBUTE       Arista-User-Priv-Level          2       integer
+ATTRIBUTE       Arista-User-Role                3       string
+ATTRIBUTE       Arista-CVP-Role                 4       string
 
 END-VENDOR   Arista
