@@ -139,18 +139,6 @@ static int _sql_socket_destructor(rlm_sql_oracle_conn_t *conn)
 	return 0;
 }
 
-static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED rlm_sql_config_t *config)
-{
-	/*
-	 *	This stops oracle instaclient from registering its own
-	 *	signal handler for SIGINT, which stops people Cntrl-Cing
-	 *	to terminate the server.
-	 */
-	setenv("BEQUEATH_DETACH", "YES", 0);
-
-	return 0;
-}
-
 static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 				   UNUSED struct timeval const *timeout)
 {
@@ -508,7 +496,6 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 extern rlm_sql_module_t rlm_sql_oracle;
 rlm_sql_module_t rlm_sql_oracle = {
 	.name				= "rlm_sql_oracle",
-	.mod_instantiate		= mod_instantiate,
 	.sql_socket_init		= sql_socket_init,
 	.sql_query			= sql_query,
 	.sql_select_query		= sql_select_query,
