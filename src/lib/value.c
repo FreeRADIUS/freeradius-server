@@ -1514,7 +1514,7 @@ char *value_data_aprints(TALLOC_CTX *ctx,
 #ifdef WITH_ASCEND_BINARY
 		p = talloc_array(ctx, char, 128);
 		if (!p) return NULL;
-		print_abinary(p, 128, (uint8_t *) &data->filter, inlen, 0);
+		print_abinary(p, 128, (uint8_t const *) &data->filter, inlen, 0);
 		break;
 #else
 		  /* FALL THROUGH */
