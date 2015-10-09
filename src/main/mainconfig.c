@@ -391,7 +391,7 @@ static ssize_t xlat_client(char **out, size_t outlen,
 		else if (strcmp(fmt, "nas_type") == 0 && request->client->nas_type) {
 			value = request->client->nas_type;
 		} else {
-			*out = '\0';
+			**out = '\0';
 			return 0;
 		}
 	}
