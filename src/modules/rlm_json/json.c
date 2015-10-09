@@ -269,7 +269,7 @@ void fr_json_version_print(void)
 	if (!done_version) {
 		done_version = true;
 
-#ifndef HAVE_JSON_C_VERSION
+#ifdef HAVE_JSON_C_VERSION
 		INFO("libfreeradius-json: json-c version: %s", json_c_version());
 #else
 		INFO("libfreeradius-json: json-c version: Unknown (less than 0.10) - Please upgrade");
