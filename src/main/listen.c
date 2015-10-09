@@ -3279,7 +3279,10 @@ static void *recv_thread(void *arg)
  *
  * @param[in] config to search for listener sections in.
  * @param[out] head Where to write listener.  Must point to a NULL pointer.
- * @param[in] Whether we're spawning child threads.
+ * @param[in] spawn_workers Whether we're spawning child threads.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
  */
 int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
 {
