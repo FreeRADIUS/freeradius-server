@@ -28,12 +28,6 @@ RCSID("$Id$")
 #include <string.h>
 #include "json_missing.h"
 
-#ifndef HAVE_JSON_C_VERSION
-	const char *json_c_version(void) {
-		return "Unknown (less than 0.10) - Please upgrade";
-	}
-#endif
-
 #ifndef HAVE_JSON_OBJECT_GET_STRING_LEN
 int json_object_get_string_len(json_object *obj) {
 	if (fr_json_object_get_type(obj) != json_type_string)

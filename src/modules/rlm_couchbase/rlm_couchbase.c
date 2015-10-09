@@ -87,7 +87,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (!version_done) {
 		version_done = true;
-		INFO("rlm_couchbase: json-c version: %s", json_c_version());
+		fr_json_version_print();
 		INFO("rlm_couchbase: libcouchbase version: %s", lcb_get_version(NULL));
 	}
 

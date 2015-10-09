@@ -62,5 +62,7 @@ int		fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_objec
 					     PW_TYPE dst_type, DICT_ATTR const *dst_enumv);
 
 size_t    	fr_json_from_pair(char *out, size_t outlen, VALUE_PAIR const *vp);
+
+void		fr_json_version_print(void);
 #endif
 #endif /* _FR_JSON_H */

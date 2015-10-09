@@ -56,10 +56,6 @@ RCSIDH(jsonc_missing_h, "$Id$")
 #define fr_json_object_get_type(_obj) ((_obj) ? json_object_get_type(_obj) : json_type_null)
 #define fr_json_object_is_type(_obj, _type) ((_obj) ? json_object_is_type(_obj, _type) : (_type == json_type_null))
 
-#ifndef HAVE_JSON_C_VERSION
-const char *json_c_version(void);
-#endif
-
 #ifndef HAVE_JSON_OBJECT_OBJECT_GET_EX
 #  include <json/json_object_private.h>
 int json_object_object_get_ex(struct json_object* jso, const char *key, struct json_object **value);
