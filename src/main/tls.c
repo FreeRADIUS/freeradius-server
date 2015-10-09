@@ -672,12 +672,12 @@ static unsigned int record_plus(record_t *rec, void const *ptr,
 {
 	unsigned int added = MAX_RECORD_SIZE - rec->used;
 
-	if(added > size)
-		added = size;
-	if(added == 0)
-		return 0;
+	if (added > size) added = size;
+	if (added == 0) return 0;
+
 	memcpy(rec->data + rec->used, ptr, added);
 	rec->used += added;
+
 	return added;
 }
 
@@ -689,12 +689,10 @@ static unsigned int record_minus(record_t *rec, void *ptr,
 {
 	unsigned int taken = rec->used;
 
-	if(taken > size)
-		taken = size;
-	if(taken == 0)
-		return 0;
-	if(ptr)
-		memcpy(ptr, rec->data, taken);
+	if (taken > size) taken = size;
+	if (taken == 0) return 0;
+	if (ptr) memcpy(ptr, rec->data, taken);
+
 	rec->used -= taken;
 
 	/*
