@@ -855,9 +855,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialise REST libraries.
 	 */
-	if (rest_init(inst) < 0) {
-		return -1;
-	}
+	fr_json_version_print();
+	if (rest_init(inst) < 0) return -1;
 	inst->pool = module_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, NULL);
 	if (!inst->pool) return -1;
 
