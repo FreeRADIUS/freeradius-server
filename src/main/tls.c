@@ -713,7 +713,7 @@ void tls_session_information(tls_session_t *tls_session)
 	 */
 	if (rad_debug_lvl == 0) return;
 
-	str_write_p = tls_session->info.origin ? ">>>" : "<<<";
+	str_write_p = tls_session->info.origin ? ">>> send" : "<<< recv";
 
 	switch (tls_session->info.version) {
 	case SSL2_VERSION:
