@@ -3275,9 +3275,11 @@ static void *recv_thread(void *arg)
 #endif
 
 
-/*
- *	Generate a list of listeners.  Takes an input list of
- *	listeners, too, so we don't close sockets with waiting packets.
+/** Search for listeners in the server
+ *
+ * @param[in] config to search for listener sections in.
+ * @param[out] head Where to write listener.  Must point to a NULL pointer.
+ * @param[in] Whether we're spawning child threads.
  */
 int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
 {
@@ -3390,8 +3392,9 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
 	return 0;
 }
 
-/*
- *	Free a linked list of listeners;
+/** Free a linked list of listeners
+ *
+ * @param head of list to free.
  */
 void listen_free(rad_listen_t **head)
 {
@@ -3410,6 +3413,15 @@ void listen_free(rad_listen_t **head)
 }
 
 #ifdef WITH_STATS
+/** Find client list associated with a listener.
+ *
+ * @param[in] ipaddr listener is bound to.
+ * @param[in] port listener is bound to.
+ * @param[in] proto of listener, one of the IPPROTO_* macros.
+ * @return
+ *	- List of clients.
+ *	- NULL if no matching listeners found.
+ */
 RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr, uint16_t port, int proto)
 {
 	rad_listen_t *this;
@@ -3439,6 +3451,15 @@ RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr, uint16_t po
 }
 #endif
 
+/** Find a listener associated with an IP address/port/transport proto
+ *
+ * @param[in] ipaddr listener is bound to.
+ * @param[in] port listener is bound to.
+ * @param[in] proto of listener, one of the IPPROTO_* macros.
+ * @return
+ *	- Listener matching ipaddr/port/proto.
+ *	- NULL if no listeners match.
+ */
 rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, uint16_t port, int proto)
 {
 	rad_listen_t *this;
