@@ -4,6 +4,8 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Bug fixes
 	* Fix issue where field nas_type would not be accessible via
 	  the %{client:} xlat, for clients loaded from SQL.
+	* Fix compatiblity issues with OpenSSL 1.0.2.  Ignore
+	  calls to msg_callback with 'pseudo' content types.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
