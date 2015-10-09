@@ -541,13 +541,10 @@ void rlm_sql_query_log(rlm_sql_t const *inst, REQUEST *request,
 	size_t len;
 	bool failed = false;	/* Write the log message outside of the critical region */
 
-	if (section) {
-		filename = section->logfile;
-	} else {
-		filename = inst->config->logfile;
-	}
+	filename = inst->config->logfile;
+	if (section && section->logfile) filename = section->logfile;
 
-	if (!filename) {
+	if (!filename || !*filename) {
 		return;
 	}
 

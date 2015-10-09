@@ -100,7 +100,11 @@ sql {
 	delete_stale_sessions = yes
 
 	# Write SQL queries to a logfile. This is potentially useful for tracing
-	# issues with authorization queries.
+	# issues with authorization queries.  See also "logfile" directives in
+	# mods-config/sql/main/*/queries.conf.  You can enable per-section logging
+	# by enabling "logfile" there, or global logging by enabling "logfile" here.
+	#
+	# Per-section logging can be disabled by setting "logfile = ''"
 #	logfile = ${logdir}/sqllog.sql
 
 	#  Set the maximum query duration for rlm_sql_mysql and 
