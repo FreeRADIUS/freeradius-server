@@ -695,8 +695,8 @@ static unsigned int record_minus(record_t *rec, void *ptr,
 	/*
 	 *	This is pretty bad...
 	 */
-	if(rec->used > 0)
-		memmove(rec->data, rec->data + taken, rec->used);
+	if (rec->used > 0) memmove(rec->data, rec->data + taken, rec->used);
+
 	return taken;
 }
 
@@ -711,9 +711,7 @@ void tls_session_information(tls_session_t *tls_session)
 	 *	Don't print this out in the normal course of
 	 *	operations.
 	 */
-	if (rad_debug_lvl == 0) {
-		return;
-	}
+	if (rad_debug_lvl == 0) return;
 
 	str_write_p = tls_session->info.origin ? ">>>" : "<<<";
 
