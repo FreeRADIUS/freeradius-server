@@ -1109,7 +1109,7 @@ FreeRADIUS 3.0.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* Added EAP-PWD implementation from Dan Harkins
 	* Added connection pools for modules. This unifies connection
 	  management which was previously different for different modules.
-l	* SQL now uses the connection pool.  See mods-available/sql
+ 	* SQL now uses the connection pool.  See mods-available/sql
 	* SQL now supports arbitrary Acct-Status-Types.
 	  These changes are not compatible with 2.x.
 	* SQL now has full support for SQLite.  See raddb/sql/main/sqlite/
