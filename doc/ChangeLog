@@ -3,6 +3,8 @@ FreeRADIUS 2.2.10 Wednesday 30 Sep 2015 17:00:00 EDT, urgency=medium
 	* None.
 
 	Bug fixes
+	* Work around OpenSSL 1.0.2 problems, which cause failures
+	  in TLS-based EAP methods.
 
 FreeRADIUS 2.2.9 Wednesday 30 Sep 2015 17:00:00 EDT, urgency=medium
 	Feature improvements
