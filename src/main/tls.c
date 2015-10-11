@@ -576,6 +576,19 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	if (SSL_in_accept_init(ssn->ssl)) RDEBUG2("In SSL accept mode");
 	if (SSL_in_connect_init(ssn->ssl)) RDEBUG2("In SSL connect mode");
 
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+	/*
+	 *	Cache the SSL_SESSION pointer.
+	 */
+	if (!ssn->ssl_session && SSL_is_init_finished(ssn->ssl)) {
+		ssn->ssl_session = SSL_get_session(ssn->ssl);
+		if (!ssn->ssl_session) {
+			RDEBUG("Failed getting SSL session");
+			return 0;
+		}
+	}
+#endif
+
 	err = BIO_ctrl_pending(ssn->from_ssl);
 	if (err > 0) {
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
