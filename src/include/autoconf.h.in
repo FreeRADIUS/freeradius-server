@@ -371,6 +371,9 @@
 /* Define to 1 if you have the `snprintf' function. */
 #undef HAVE_SNPRINTF
 
+/* Define to 1 if you have the `SSL_get_client_random' function. */
+#undef HAVE_SSL_GET_CLIENT_RANDOM
+
 /* Define to 1 if you have the <stdbool.h> header file. */
 #undef HAVE_STDBOOL_H
 
