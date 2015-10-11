@@ -114,6 +114,11 @@ void cbtls_msg(int write_p, int msg_version, int content_type,
 		return;
 	}
 
+	if ((write_p != 0) && (write_p != 1)) {
+		DEBUG4("Ignoring cbtls_msg call with invalid write_p %d", write_p);
+		return;
+	}
+
 	/*
 	 *	Work around bug #298, where we may be called with a NULL
 	 *	argument.  We should really log a serious error
