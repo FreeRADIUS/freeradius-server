@@ -111,11 +111,6 @@ void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 	uint8_t *p;
 	size_t prf_size;
 
-	if (!s->s3) {
-		ERROR("No SSLv3 information");
-		return;
-	}
-
 	prf_size = strlen(prf_label);
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
@@ -165,21 +160,15 @@ void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
  */
 void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 {
-#if OPENSSL_VERSION_NUMBER < 0x10001000L
-	uint8_t out[32], buf[32];
-	uint8_t seed[sizeof(FR_TLS_PRF_CHALLENGE)-1 + 2*SSL3_RANDOM_SIZE];
-	uint8_t *p = seed;
-#endif
-
-	if (!s->s3) {
-		ERROR("No SSLv3 information");
-		return;
-	}
-
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	SSL_export_keying_material(s, buffer, size, FR_TLS_PRF_CHALLENGE,
 				   sizeof(FR_TLS_PRF_CHALLENGE) - 1, NULL, 0, 0);
+
 #else
+	uint8_t out[32], buf[32];
+	uint8_t seed[sizeof(FR_TLS_PRF_CHALLENGE)-1 + 2*SSL3_RANDOM_SIZE];
+	uint8_t *p = seed;
+
 	memcpy(p, FR_TLS_PRF_CHALLENGE, sizeof(FR_TLS_PRF_CHALLENGE)-1);
 	p += sizeof(FR_TLS_PRF_CHALLENGE)-1;
 	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
@@ -188,7 +177,6 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 
 	PRF(s->session->master_key, s->session->master_key_length,
 	    seed, sizeof(seed), out, buf, sizeof(out));
-
 	memcpy(buffer, out, size);
 #endif
 }
@@ -202,11 +190,6 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	VALUE_PAIR *vp;
 	uint8_t *p;
 
-	if (!s->s3) {
-		ERROR("No SSLv3 information");
-		return;
-	}
-
 	vp = fr_pair_afrom_num(packet, PW_EAP_SESSION_ID, 0);
 	if (!vp) return;
 
@@ -214,9 +197,15 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	p = talloc_array(vp, uint8_t, vp->vp_length);
 
 	p[0] = header & 0xff;
+
+#ifdef HAVE_SSL_GET_CLIENT_RANDOM
+	SSL_get_client_random(s, p + 1, SSL3_RANDOM_SIZE);
+	SSL_get_server_random(s, p + 1 + SSL3_RANDOM_SIZE, SSL3_RANDOM_SIZE);
+#else
 	memcpy(p + 1, s->s3->client_random, SSL3_RANDOM_SIZE);
 	memcpy(p + 1 + SSL3_RANDOM_SIZE,
 	       s->s3->server_random, SSL3_RANDOM_SIZE);
+#endif
 	vp->vp_octets = p;
 	fr_pair_add(&packet->vps, vp);
 }
