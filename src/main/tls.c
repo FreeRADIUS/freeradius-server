@@ -240,6 +240,32 @@ static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 
 #endif
 
+#define MAX_SESSION_SIZE (256)
+
+
+void tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize)
+{
+#if OPENSSL_VERSION_NUMBER < 0x10001000L
+	size_t size;
+
+	size = ssn->session_id_length;
+	if (size > bufsize) size = bufsize;
+
+	fr_bin2hex(buffer, ssn->session_id, size);
+#else
+	unsigned int size;
+	uint8_t const *p;
+
+	p = SSL_SESSION_get_id(ssn, &size);
+	if (size > bufsize) size = bufsize;
+
+	fr_bin2hex(buffer, p, size);
+
+#endif
+}
+
+
+
 static int _tls_session_free(tls_session_t *ssn)
 {
 	/*
@@ -546,6 +572,19 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	if (SSL_in_before(ssn->ssl)) RDEBUG2("Before SSL Handshake Phase");
 	if (SSL_in_accept_init(ssn->ssl)) RDEBUG2("In SSL Accept mode");
 	if (SSL_in_connect_init(ssn->ssl)) RDEBUG2("In SSL Connect mode");
+
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+	/*
+	 *	Cache the SSL_SESSION pointer.
+	 */
+	if (SSL_is_init_finished(ssn->ssl)) {
+		ssn->ssl_session = SSL_get_session(ssn->ssl);
+		if (!ssn->ssl_session) {
+			RDEBUG("Failed getting SSL session");
+			return 0;
+		}
+	}
+#endif
 
 	err = BIO_ctrl_pending(ssn->from_ssl);
 	if (err > 0) {
@@ -1114,18 +1153,12 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 /*
  *	Print debugging messages, and free data.
  */
-#define MAX_SESSION_SIZE (256)
-
 static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 {
-	size_t			size;
 	char			buffer[2 * MAX_SESSION_SIZE + 1];
 	fr_tls_server_conf_t	*conf;
 
-	size = sess->session_id_length;
-	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
-
-	fr_bin2hex(buffer, sess->session_id, size);
+	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
 
 	conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ctx);
 	if (!conf) {
@@ -1158,7 +1191,6 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 
 static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 {
-	size_t			size;
 	char			buffer[2 * MAX_SESSION_SIZE + 1];
 	fr_tls_server_conf_t	*conf;
 	unsigned char		*sess_blob = NULL;
@@ -1171,10 +1203,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		return 0;
 	}
 
-	size = sess->session_id_length;
-	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
-
-	fr_bin2hex(buffer, sess->session_id, size);
+	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
 
 	{
 		int fd, rv, todo, blob_len;
@@ -2894,7 +2923,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	    (((vp = fr_pair_find_by_num(request->config, PW_ALLOW_SESSION_RESUMPTION, 0, TAG_ANY)) != NULL) &&
 	     (vp->vp_integer == 0))) {
 		SSL_CTX_remove_session(ssn->ctx,
-				       ssn->ssl->session);
+				       ssn->ssl_session);
 		ssn->allow_session_resumption = false;
 
 		/*
@@ -2911,14 +2940,10 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	user data in the cache.
 	 */
 	} else if (!SSL_session_reused(ssn->ssl)) {
-		size_t size;
 		VALUE_PAIR **certs;
 		char buffer[2 * MAX_SESSION_SIZE + 1];
 
-		size = ssn->ssl->session->session_id_length;
-		if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
-
-		fr_bin2hex(buffer, ssn->ssl->session->session_id, size);
+		tls_session_id(ssn->ssl_session, buffer, MAX_SESSION_SIZE);
 
 		vp = fr_pair_list_copy_by_num(talloc_ctx, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (vp) fr_pair_add(&vps, vp);
@@ -2954,7 +2979,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		}
 
 		if (vps) {
-			SSL_SESSION_set_ex_data(ssn->ssl->session, fr_tls_ex_index_vps, vps);
+			SSL_SESSION_set_ex_data(ssn->ssl_session, fr_tls_ex_index_vps, vps);
 			rdebug_pair_list(L_DBG_LVL_2, request, vps, "  caching ");
 
 			if (conf->session_cache_path) {
@@ -3004,20 +3029,16 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			}
 		} else {
 			RDEBUG2("No information to cache: session caching will be disabled for session %s", buffer);
-			SSL_CTX_remove_session(ssn->ctx, ssn->ssl->session);
+			SSL_CTX_remove_session(ssn->ctx, ssn->ssl_session);
 		}
 
 	/*
 	 *	Else the session WAS allowed.  Copy the cached reply.
 	 */
 	} else {
-		size_t size;
 		char buffer[2 * MAX_SESSION_SIZE + 1];
 
-		size = ssn->ssl->session->session_id_length;
-		if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
-
-		fr_bin2hex(buffer, ssn->ssl->session->session_id, size);
+		tls_session_id(ssn->ssl_session, buffer, MAX_SESSION_SIZE);
 
 		/*
 		 *	The "restore VPs from OpenSSL cache" code is
@@ -3051,7 +3072,7 @@ void tls_fail(tls_session_t *ssn)
 	/*
 	 *	Force the session to NOT be cached.
 	 */
-	SSL_CTX_remove_session(ssn->ctx, ssn->ssl->session);
+	SSL_CTX_remove_session(ssn->ctx, ssn->ssl_session);
 }
 
 fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)

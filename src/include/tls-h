@@ -106,6 +106,12 @@ typedef struct _tls_info_t {
 	int		version;
 } tls_info_t;
 
+#if OPENSSL_VERSION_NUMBER < 0x10001000L
+#define ssl_session ssl->session
+#else
+#define ssl_session session
+#endif
+
 /** Contains EAP-REQUEST specific data (ie FR_TLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
  *
  * The tls_session_t Structure gets stored as opaque in eap_handler_t
@@ -113,6 +119,9 @@ typedef struct _tls_info_t {
 typedef struct _tls_session_t {
 	SSL_CTX		*ctx;
 	SSL 		*ssl;
+#if OPENSSL_VERSION_NUMBER >= 0x10001000L
+	SSL_SESSION	*session;
+#endif
 	tls_info_t	info;
 
 	BIO 		*into_ssl;
@@ -298,6 +307,7 @@ SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client);
 int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
 int 		tls_handshake_send(REQUEST *, tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *ssn);
+void		tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize);
 
 /*
  *	Low-level TLS stuff
