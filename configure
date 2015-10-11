@@ -8790,6 +8790,17 @@ fi
 
 
   export OPENSSL_LIBS OPENSSL_LDFLAGS OPENSSL_CPPFLAGS
+  for ac_func in SSL_get_client_random
+do :
+  ac_fn_c_check_func "$LINENO" "SSL_get_client_random" "ac_cv_func_SSL_get_client_random"
+if test "x$ac_cv_func_SSL_get_client_random" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_SSL_GET_CLIENT_RANDOM 1
+_ACEOF
+ SSL_get_server_random
+fi
+done
+
 fi
 
 if test "x$PCAP_LIBS" = x; then
