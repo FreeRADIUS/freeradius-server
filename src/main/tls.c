@@ -1339,7 +1339,7 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 
 	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
 
-	if (cache_key_add(request, buffer, strlen(buffer), CACHE_ACTION_SESSION_WRITE) < 0) {
+	if (cache_key_add(request, (uint8_t *) buffer, strlen(buffer), CACHE_ACTION_SESSION_WRITE) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 		return 0;
 	}
@@ -1493,7 +1493,7 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 
 	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
 
-	if (cache_key_add(request, buffer, strlen(buffer), CACHE_ACTION_SESSION_DELETE) < 0) {
+	if (cache_key_add(request, (uint8_t *) buffer, strlen(buffer), CACHE_ACTION_SESSION_DELETE) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 	error:
 		talloc_free(request);
