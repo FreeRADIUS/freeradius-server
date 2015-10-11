@@ -577,7 +577,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	/*
 	 *	Cache the SSL_SESSION pointer.
 	 */
-	if (!ssn->ssl_session && SL_is_init_finished(ssn->ssl)) {
+	if (!ssn->ssl_session && SSL_is_init_finished(ssn->ssl)) {
 		ssn->ssl_session = SSL_get_session(ssn->ssl);
 		if (!ssn->ssl_session) {
 			RDEBUG("Failed getting SSL session");
