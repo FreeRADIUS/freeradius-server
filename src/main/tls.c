@@ -243,6 +243,30 @@ static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 
 #endif
 
+#define MAX_SESSION_SIZE (256)
+
+void tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize)
+{
+#if OPENSSL_VERSION_NUMBER < 0x10001000L
+	size_t size;
+
+	size = ssn->session_id_length;
+	if (size > bufsize) size = bufsize;
+
+	fr_bin2hex(buffer, ssn->session_id, size);
+#else
+	unsigned int size;
+	uint8_t const *p;
+
+	p = SSL_SESSION_get_id(ssn, &size);
+	if (size > bufsize) size = bufsize;
+
+	fr_bin2hex(buffer, p, size);
+
+#endif
+}
+
+
 static int _tls_session_free(tls_session_t *ssn)
 {
 	/*
@@ -1308,11 +1332,14 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	size_t			len, rcode;
 	uint8_t			*p, *data = NULL;
 	VALUE_PAIR		*vp;
+	char			buffer[2 * MAX_SESSION_SIZE + 1];
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 
-	if (cache_key_add(request, sess->session_id, sess->session_id_length, CACHE_ACTION_SESSION_WRITE) < 0) {
+	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
+
+	if (cache_key_add(request, buffer, strlen(buffer), CACHE_ACTION_SESSION_WRITE) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 		return 0;
 	}
@@ -1451,6 +1478,7 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 {
 	fr_tls_server_conf_t	*conf;
 	REQUEST			*request;
+	char			buffer[2 * MAX_SESSION_SIZE + 1];
 
 	conf = SSL_CTX_get_app_data(ctx);
 
@@ -1463,7 +1491,9 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 	request->packet = rad_alloc(request, false);
 	request->reply = rad_alloc(request, false);
 
-	if (cache_key_add(request, sess->session_id, sess->session_id_length, CACHE_ACTION_SESSION_DELETE) < 0) {
+	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
+
+	if (cache_key_add(request, buffer, strlen(buffer), CACHE_ACTION_SESSION_DELETE) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 	error:
 		talloc_free(request);
@@ -1503,14 +1533,10 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
  */
 static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 {
-	size_t			size;
 	char			buffer[2 * MAX_SESSION_SIZE + 1];
 	fr_tls_server_conf_t	*conf;
 
-	size = sess->session_id_length;
-	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
-
-	fr_bin2hex(buffer, sess->session_id, size);
+	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
 
 	conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ctx);
 	if (!conf) {
@@ -1552,7 +1578,6 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 
 static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 {
-	size_t			size;
 	char			buffer[2 * MAX_SESSION_SIZE + 1];
 	fr_tls_server_conf_t	*conf;
 	unsigned char		*sess_blob = NULL;
@@ -1565,10 +1590,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		return 0;
 	}
 
-	size = sess->session_id_length;
-	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
-
-	fr_bin2hex(buffer, sess->session_id, size);
+	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
 
 	{
 		int fd, rv, todo, blob_len;
