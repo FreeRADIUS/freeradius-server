@@ -12,26 +12,18 @@ BUILD_PATH := $(top_builddir)/build
 TEST_PATH := $(top_builddir)/src/tests
 BIN_PATH := $(BUILD_PATH)/bin/local
 LIB_PATH := $(BUILD_PATH)/lib/.libs/
-DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(LIB_PATH)
+FR_LIBRARY_PATH := $(LIB_PATH)
 
-export DYLD_LIBRARY_PATH
+export FR_LIBRARY_PATH
 
 RADDB_PATH := $(top_builddir)/raddb
 
-TESTS	= mschapv1 digest-01/digest* \
-	test.example.com
+TESTS = mschapv1 digest-01/digest* test.example.com
 
-PORT	 = 12340
-#PORT	 = 1812
-ACCTPORT = $(shell expr $(PORT) + 1)
+PORT := 12340
 
 #	example.com stripped.example.com
-
-EAPOL_TEST = $(shell which eapol_test)
-
-EAP_TLS_TESTS = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
-
-SECRET	= testing123
+SECRET := testing123
 
 .PHONY: all eap dictionary clean
 
@@ -65,8 +57,9 @@ test.conf: dictionary
 	@echo 'modconfdir = $${maindir}mods-config' >> $@
 	@echo 'certdir = $${maindir}/certs' >> $@
 	@echo 'cadir   = $${maindir}/certs' >> $@
-	@echo '$$INCLUDE $${testdir}/config/' >> $@
 	@echo '$$INCLUDE $${maindir}/radiusd.conf' >> $@
+	@echo '$$INCLUDE $${testdir}/config/' >> $@
+
 
 radiusd.pid: test.conf
 	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
@@ -100,19 +93,6 @@ radiusd.kill:
 	fi
 	@rm -f radiusd.pid
 
-#
-#  Run eapol_test if it exists.  Otherwise do nothing
-#
-ifneq "$(EAPOL_TEST)" ""
-%.ok: %.conf
-	@echo EAPOL_TEST $(patsubst %.conf,%,$<)
-	@$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$<) 2>&1
-	@touch $@
-
-tests.eap: $(patsubst %.conf,%.ok, $(EAP_TLS_TESTS))
-
-endif
-
 # kill the server (if it's running)
 # start the server
 # run the tests (ignoring any failures)
@@ -121,7 +101,4 @@ endif
 tests: test.conf | radiusd.kill radiusd.pid
 	@chmod a+x runtests.sh
 	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
-ifneq "$(EAPOL_TEST)" ""
-	@$(MAKE) tests.eap
-endif
 	@$(MAKE) radiusd.kill
