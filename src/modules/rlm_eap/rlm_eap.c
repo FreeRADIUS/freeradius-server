@@ -100,12 +100,17 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		 *	etc. configurations from eap.conf in order to
 		 *	have EAP without the TLS types.
 		 */
-		if ((method == PW_EAP_TLS) ||
-		    (method == PW_EAP_TTLS) ||
-		    (method == PW_EAP_PEAP)) {
-			DEBUG2("rlm_eap (%s): Ignoring EAP method %s because we do not have OpenSSL support",
-			       inst->xlat_name, name);
+		switch (method) {
+		case PW_EAP_TLS:
+		case PW_EAP_TTLS:
+		case PW_EAP_PEAP:
+		case PW_EAP_PWD:
+			WARN("rlm_eap (%s): Ignoring EAP method %s because we don't have OpenSSL support",
+			     inst->xlat_name, name);
 			continue;
+
+		default:
+			break;
 		}
 #endif
 
