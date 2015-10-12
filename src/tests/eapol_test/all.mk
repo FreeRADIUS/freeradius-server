@@ -33,6 +33,14 @@ SECRET := testing123
 $(shell mkdir -p $(CONFIG_PATH)/methods-enabled/)
 $(shell rm -f $(CONFIG_PATH)/methods-enabled/*)
 
+ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_gtc*),)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-gtc*.conf)
+    $(shell ln -s $(CONFIG_PATH)/methods-available/gtc $(CONFIG_PATH)/methods-enabled/)
+endif
+ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_leap*),)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-leap*.conf)
+    $(shell ln -s $(CONFIG_PATH)/methods-available/leap $(CONFIG_PATH)/methods-enabled/)
+endif
 ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_md5*),)
     EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-md5*.conf)
     $(shell ln -s $(CONFIG_PATH)/methods-available/md5 $(CONFIG_PATH)/methods-enabled/)
