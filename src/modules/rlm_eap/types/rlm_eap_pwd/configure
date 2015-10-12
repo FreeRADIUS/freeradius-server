@@ -3121,6 +3121,21 @@ done
 	  if test "x$ac_cv_func_EC_GROUP_free" != "xyes"; then
 	    fail="EC_GROUP_free"
 	  fi
+
+	  for ac_func in EC_GROUP_get_cofactor
+do :
+  ac_fn_c_check_func "$LINENO" "EC_GROUP_get_cofactor" "ac_cv_func_EC_GROUP_get_cofactor"
+if test "x$ac_cv_func_EC_GROUP_get_cofactor" = xyes; then :
+  cat >>confdefs.h <<_ACEOF
+#define HAVE_EC_GROUP_GET_COFACTOR 1
+_ACEOF
+
+fi
+done
+
+	  if test "x$ac_cv_func_EC_GROUP_get_confactor" != "xyes"; then
+	    fail="EC_GROUP_get_confactor"
+	  fi
 	fi
 
 	targetname=rlm_eap_pwd

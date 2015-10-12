@@ -73,6 +73,11 @@ if test x$with_[]modname != xno; then
 	  if test "x$ac_cv_func_EC_GROUP_free" != "xyes"; then
 	    fail="EC_GROUP_free"
 	  fi
+
+	  AC_CHECK_FUNCS(EC_GROUP_get_cofactor)
+	  if test "x$ac_cv_func_EC_GROUP_get_confactor" != "xyes"; then
+	    fail="EC_GROUP_get_confactor"
+	  fi
 	fi
 
 	targetname=modname
