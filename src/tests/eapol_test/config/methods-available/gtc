@@ -1,0 +1,3 @@
+gtc {
+	auth_type = PAP
+}

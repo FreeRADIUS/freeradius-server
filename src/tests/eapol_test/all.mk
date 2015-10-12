@@ -8,6 +8,7 @@
 #
 BUILD_PATH := $(top_builddir)/build
 TEST_PATH := $(top_builddir)/src/tests/eapol_test
+CONFIG_PATH := $(TEST_PATH)/config
 RADIUS_LOG := $(TEST_PATH)/radius.log
 GDB_LOG := $(TEST_PATH)/gdb.log
 BIN_PATH := $(BUILD_PATH)/bin/local
@@ -27,11 +28,19 @@ PORT := 12350
 SECRET := testing123
 
 EAPOL_TEST_FILES := $(wildcard $(TEST_PATH)/*eap*.conf)
+
+#
+#   Link all the methods we have configuration files for
+#
+$(shell mkdir -p $(CONFIG_PATH)/methods-enabled/)
+$(shell ln -f -s $(CONFIG_PATH)/methods-available/* $(CONFIG_PATH)/methods-enabled/)
+
 #
 #   If we didn't build the rlm_eap_pwd module, don't perform the test
 #
 ifneq (,$(wildcard "$(FR_LIBRARY_PATH)/rlm_eap_pwd*"))
     EAPOL_TEST_FILES := $(subst eap-pwd.conf,,$(EAPOL_TEST_FILES))
+    $(shell rm $(CONFIG_PATH)/methods-enabled/pwd)
 endif
 
 .PHONY: eap dictionary clean tests.eap.clean
@@ -46,18 +55,21 @@ ifneq "$(EAPOL_TEST)" ""
 #	Build the directory for testing the server
 #
 tests.eap.clean:
-	@rm -f $(TEST_PATH)/test.conf $(TEST_PATH)/dictionary $(TEST_PATH)/*.ok $(TEST_PATH)/*.log
+	@rm -f "$(TEST_PATH)/"*.ok "$(TEST_PATH)/"*.log
+	@rm -f "$(CONFIG_PATH)/test.conf"
+	@rm -f "$(CONFIG_PATH)/dictionary"
+	@rm -rf "$(CONFIG_PATH)/methods-enabled"
 
-$(TEST_PATH)/dictionary:
+$(CONFIG_PATH)/dictionary:
 	@echo "# test dictionary not install.  Delete at any time." > $@
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> $@
 	@echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> $@
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcp >> $@
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary.vqp >> $@
 
-$(TEST_PATH)/test.conf: $(TEST_PATH)/dictionary
+$(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > $@
-	@echo "testdir =" $(TEST_PATH) >> $@
+	@echo "testdir =" $(CONFIG_PATH) >> $@
 	@echo 'logdir = $${testdir}' >> $@
 	@echo 'maindir = ${top_builddir}/raddb/' >> $@
 	@echo 'radacctdir = $${testdir}' >> $@
@@ -70,36 +82,36 @@ $(TEST_PATH)/test.conf: $(TEST_PATH)/dictionary
 	@echo 'modconfdir = $${maindir}mods-config' >> $@
 	@echo 'certdir = $${maindir}/certs' >> $@
 	@echo 'cadir   = $${maindir}/certs' >> $@
-	@echo '$$INCLUDE $${testdir}/virtual_servers.conf' >> $@
+	@echo '$$INCLUDE $${testdir}/servers.conf' >> $@
 
-radiusd.pid: $(TEST_PATH)/test.conf
+$(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf
 	@rm -f $(GDB_LOG) $(RADIUS_LOG)
 	@printf "Starting EAP test server... "
-	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxml $(RADIUS_LOG) -d $(TEST_PATH) -n test -D $(TEST_PATH); then\
+	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxml $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
 		echo "failed"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(RADIUS_LOG)"; \
 	else \
 		echo "ok"; \
-    fi
+	fi
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
 .PHONY: radiusd.kill
 radiusd.kill:
-	@if [ -f $(TEST_PATH)/radiusd.pid ]; then \
-	    ret=0; \
-	    if ! ps `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
-		rm -f $(TEST_PATH)/radiusd.pid; \
+	@if [ -f $(CONFIG_PATH)/radiusd.pid ]; then \
+		ret=0; \
+		if ! ps `cat $(CONFIG_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+		rm -f $(CONFIG_PATH)/radiusd.pid; \
 		echo "FreeRADIUS terminated during test"; \
 		echo "GDB output was:"; \
 		cat "$(GDB_LOG)"; \
 		echo "Last log entries were:"; \
 		tail -n 20 $(RADIUS_LOG); \
 		ret=1; \
-	    fi; \
-		if ! kill -TERM `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
-		    ret=1; \
+		fi; \
+		if ! kill -TERM `cat $(CONFIG_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+			ret=1; \
 		fi; \
 		exit $$ret; \
 	fi
@@ -107,16 +119,16 @@ radiusd.kill:
 #
 #  Run eapol_test if it exists.  Otherwise do nothing
 #
-%.ok: %.conf | radiusd.kill radiusd.pid
+$(TEST_PATH)/%.ok: $(TEST_PATH)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 	@echo EAPOL_TEST $(notdir $(patsubst %.conf,%,$<))
 	@if ( grep 'key_mgmt=NONE' '$<' > /dev/null && \
-        $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$<) 2>&1 ) || \
-        $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$<) 2>&1; then\
-        touch $@; \
-    else \
-        echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$<)):"; \
+		$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) -n > $(patsubst %.conf,%.log,$<) 2>&1 ) || \
+		$(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) > $(patsubst %.conf,%.log,$<) 2>&1; then\
+		touch $@; \
+	else \
+		echo "Last entries in supplicant log ($(patsubst %.conf,%.log,$<)):"; \
 		tail -n 40 "$(patsubst %.conf,%.log,$<)"; \
-        echo "Last entires in server log ($(RADIUS_LOG)):"; \
+		echo "Last entires in server log ($(RADIUS_LOG)):"; \
 		tail -n 40 "$(RADIUS_LOG)"; \
 		echo "$(EAPOL_TEST) -c \"$<\" -p $(PORT) -s $(SECRET)"; \
 		exit 1;\
