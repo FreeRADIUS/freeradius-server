@@ -380,11 +380,12 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			return FR_TLS_INVALID;
 		}
 
-		if (tls_session->tls_record_transfer_started) {
-			REDEBUG("TLS Length Included (L) flag set, which indicates a new fragment transfer, "
-				"but previous transfer was not complete");
-			return FR_TLS_INVALID;
-		}
+		/*
+		 *	wpa_supplicant's implementation of PEAPv0, and likely other
+		 *	implementations of PEAPv0 will always include a Length flag
+		 *	for every record fragment if performing mutual TLS auth.
+		 */
+		if (tls_session->tls_record_transfer_started) goto ignore_length;
 
 		/*
 		 *	This is the first fragment of a fragmented TLS record transfer.
@@ -436,6 +437,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		return FR_TLS_LENGTH_INCLUDED;
 	}
 
+ignore_length:
 	if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
 		/*
 		 *	If this is not an ongoing transfer, and we have the M flag
@@ -459,7 +461,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
 			return FR_TLS_INVALID;
 		}
-		return FR_TLS_MORE_FRAGMENTS;
+		return TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? FR_TLS_LENGTH_INCLUDED : FR_TLS_MORE_FRAGMENTS;
 	}
 
 	/*
@@ -481,7 +483,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
 			return FR_TLS_INVALID;
 		}
-		return FR_TLS_OK;
+		return TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? FR_TLS_LENGTH_INCLUDED : FR_TLS_OK;
 	}
 
 	/*
@@ -490,7 +492,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 */
 	RDEBUG2("Got complete TLS record (%zu bytes)", frag_len);
 
-	return FR_TLS_OK;
+	return TLS_LENGTH_INCLUDED(eaptls_packet->flags) ? FR_TLS_LENGTH_INCLUDED : FR_TLS_OK;
 }
 
 /*
