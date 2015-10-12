@@ -6,8 +6,6 @@
 ##	$Id$
 ##
 #
-include $(top_builddir)/Make.inc
-
 BUILD_PATH := $(top_builddir)/build
 TEST_PATH := $(top_builddir)/src/tests/eapol_test
 RADIUS_LOG := $(TEST_PATH)/radius.log
