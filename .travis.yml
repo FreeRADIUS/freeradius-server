@@ -62,6 +62,7 @@ addons:
       - libldap2-dev
       - libmemcached-dev
       - libmysqlclient-dev
+      - libnl-dev
       - libpam0g-dev
       - libpcap-dev
       - libpcre3-dev
