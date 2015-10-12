@@ -27,6 +27,12 @@ PORT := 12350
 SECRET := testing123
 
 EAPOL_TEST_FILES := $(wildcard $(TEST_PATH)/*eap*.conf)
+#
+#   If we didn't build the rlm_eap_pwd module, don't perform the test
+#
+ifneq (,$(wildcard "$(FR_LIBRARY_PATH)/rlm_eap_pwd*"))
+    EAPOL_TEST_FILES := $(subst eap-pwd.conf,,$(EAPOL_TEST_FILES))
+endif
 
 .PHONY: eap dictionary clean tests.eap.clean
 clean: tests.eap.clean
