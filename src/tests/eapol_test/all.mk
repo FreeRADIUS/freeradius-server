@@ -6,8 +6,6 @@
 ##	$Id$
 ##
 #
-
-
 include $(top_builddir)/Make.inc
 
 BUILD_PATH := $(top_builddir)/build
@@ -38,7 +36,7 @@ clean: tests.eap.clean
 #
 #   Only run EAP tests if we have eapol_test in our path
 #
-EAPOL_TEST = $(shell which eapol_test)
+EAPOL_TEST = $(shell $(top_builddir)/scripts/travis/eapol_test-build.sh)
 ifneq "$(EAPOL_TEST)" ""
 #
 #	Build the directory for testing the server
