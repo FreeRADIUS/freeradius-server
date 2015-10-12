@@ -55,7 +55,8 @@ addons:
       - libgdbm-dev
       - libhiredis-dev
       - libidn11-dev
-      - libiodbc2-dev libiodbc2
+      - libiodbc2-dev
+      - libiodbc2
       - libjson0
       - libjson0-dev
       - libkrb5-dev
