@@ -75,7 +75,7 @@ if test x$with_[]modname != xno; then
 	  fi
 
 	  AC_CHECK_FUNCS(EC_GROUP_get_cofactor)
-	  if test "x$ac_cv_func_EC_GROUP_get_confactor" != "xyes"; then
+	  if test "x$ac_cv_func_EC_GROUP_get_cofactor" != "xyes"; then
 	    fail="EC_GROUP_get_confactor"
 	  fi
 	fi
