@@ -84,7 +84,13 @@ $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary
 	@echo 'cadir   = $${maindir}/certs' >> $@
 	@echo '$$INCLUDE $${testdir}/servers.conf' >> $@
 
-$(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf
+#
+#  Build snakoil certs if they don't exit
+#
+$(RADDB_PATH)/certs/%:
+	@make -C $(shell dirname $@)
+
+$(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem
 	@rm -f $(GDB_LOG) $(RADIUS_LOG)
 	@printf "Starting EAP test server... "
 	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxml $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
