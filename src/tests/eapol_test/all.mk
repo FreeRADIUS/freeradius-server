@@ -27,20 +27,35 @@ RADDB_PATH := $(top_builddir)/raddb
 PORT := 12350
 SECRET := testing123
 
-EAPOL_TEST_FILES := $(wildcard $(TEST_PATH)/*eap*.conf)
-
 #
-#   Link all the methods we have configuration files for
+#   Only enable methods/tests if the relevant module was built
 #
 $(shell mkdir -p $(CONFIG_PATH)/methods-enabled/)
-$(shell ln -f -s $(CONFIG_PATH)/methods-available/* $(CONFIG_PATH)/methods-enabled/)
+$(shell rm -f $(CONFIG_PATH)/methods-enabled/*)
 
-#
-#   If we didn't build the rlm_eap_pwd module, don't perform the test
-#
-ifneq (,$(wildcard "$(FR_LIBRARY_PATH)/rlm_eap_pwd*"))
-    EAPOL_TEST_FILES := $(subst eap-pwd.conf,,$(EAPOL_TEST_FILES))
-    $(shell rm $(CONFIG_PATH)/methods-enabled/pwd)
+ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_md5*),)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-md5*.conf)
+    $(shell ln -s $(CONFIG_PATH)/methods-available/md5 $(CONFIG_PATH)/methods-enabled/)
+endif
+ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_pwd*),)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-pwd*.conf)
+    $(shell ln -s $(CONFIG_PATH)/methods-available/pwd $(CONFIG_PATH)/methods-enabled/)
+endif
+ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_mschapv2*),)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-mschapv2*.conf)
+    $(shell ln -s $(CONFIG_PATH)/methods-available/mschapv2 $(CONFIG_PATH)/methods-enabled/)
+endif
+ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_tls*),)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-tls*.conf)
+    $(shell ln -s $(CONFIG_PATH)/methods-available/tls $(CONFIG_PATH)/methods-enabled/)
+endif
+ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_ttls*),)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/eap-ttls*.conf)
+    $(shell ln -s $(CONFIG_PATH)/methods-available/ttls $(CONFIG_PATH)/methods-enabled/)
+endif
+ifneq ($(wildcard $(FR_LIBRARY_PATH)/rlm_eap_peap*),)
+    EAPOL_TEST_FILES += $(wildcard $(TEST_PATH)/peap-*.conf)
+    $(shell ln -s $(CONFIG_PATH)/methods-available/peap $(CONFIG_PATH)/methods-enabled/)
 endif
 
 .PHONY: eap dictionary clean tests.eap.clean
