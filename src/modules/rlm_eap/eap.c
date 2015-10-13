@@ -337,7 +337,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	request is being processed through a virtual
 	 *	server... so that's OK.
 	 */
-	if (handler->request->parent && 
+	if (handler->request->parent &&
 	    !handler->request->parent->home_server &&
 	    handler->request->parent->parent) {
 		RERROR("Multiple levels of TLS nesting are invalid");
@@ -700,11 +700,23 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	} /* end of handling EAP-Start */
 
 	/*
+	 *	Supplicants don't usually send EAP-Failures to the
+	 *	server, but they're not forbidden from doing so.
+	 *	This behaviour was observed with a Spirent Avalanche test server.
+	 */
+	if ((eap_msg->vp_length == EAP_HEADER_LEN) && (eap_msg->vp_octets[0] == PW_EAP_FAILURE)) {
+		REDEBUG("Peer sent EAP %s (code %i) ID %d length %zu",
+		        eap_codes[eap_msg->vp_octets[0]],
+		        eap_msg->vp_octets[0],
+		        eap_msg->vp_octets[1],
+		        eap_msg->vp_length);
+		return EAP_FAIL;
+	/*
 	 *	The EAP packet header is 4 bytes, plus one byte of
 	 *	EAP sub-type.  Short packets are discarded, unless
 	 *	we're proxying.
 	 */
-	if (eap_msg->vp_length < (EAP_HEADER_LEN + 1)) {
+	} else if (eap_msg->vp_length < (EAP_HEADER_LEN + 1)) {
 		if (proxy) goto do_proxy;
 
 		RDEBUG2("Ignoring EAP-Message which is too short to be meaningful");
