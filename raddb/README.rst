@@ -71,10 +71,15 @@ rlm_eap
 All certificate attributes are available in the ``&session-state:`` list,
 immediately after they're parsed from their ASN1 form.
 
-They will no longer be added to the ``&request:`` list.  You are advised to
-update any references during the upgrade to 3.1
-``s/TLS-Cert-/session-state:TLS-Cert-/``.
+The certificates are longer added to the ``&request:`` list.  You are
+advised to update any references during the upgrade to 3.1:
 
+    ``s/TLS-Cert-/session-state:TLS-Cert-/``.
+
+The ``rlm_eap_ikev2`` module was removed.  It does not follow RFC
+5106, and no one was maintaining it.
+
+The ``rlm_eap_tnc`` module was removed.  No one was using or maintaining it.
 
 rlm_rest
 ~~~~~~~~
