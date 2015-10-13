@@ -11,8 +11,8 @@ include ../../Make.inc
 BUILD_PATH := $(top_builddir)/build
 TEST_PATH := $(top_builddir)/src/tests
 BIN_PATH := $(BUILD_PATH)/bin/local
-LIB_PATH := $(BUILD_PATH)/lib/.libs/
-FR_LIBRARY_PATH := $(LIB_PATH)
+LIB_PATH := $(BUILD_PATH)/lib/local/.libs/
+FR_LIBRARY_PATH := $(BUILD_PATH)/lib/local/.libs/
 
 export FR_LIBRARY_PATH
 
