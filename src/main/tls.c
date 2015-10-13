@@ -1304,6 +1304,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int len, in
 		int		rv, fd, todo;
 		char		filename[256];
 		unsigned char	*p;
+		unsigned char const *q;
 		struct stat	st;
 		VALUE_PAIR	*vps = NULL;
 
@@ -1354,8 +1355,8 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int len, in
 		close(fd);
 
 		/* openssl mutates &p */
-		p = sess_data;
-		sess = d2i_SSL_SESSION(NULL, (unsigned char const **)(void **) &p, st.st_size);
+		q = sess_data;
+		sess = d2i_SSL_SESSION(NULL, &q, st.st_size);
 
 		if (!sess) {
 			RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
