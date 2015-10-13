@@ -67,9 +67,7 @@ static int mod_instantiate (CONF_SECTION *cs, void **instance)
 	*instance = inst = talloc_zero(cs, eap_pwd_t);
 	if (!inst) return -1;
 
-	if (cf_section_parse(cs, inst, pwd_module_config) < 0) {
-		return -1;
-	}
+	if (cf_section_parse(cs, inst, pwd_module_config) < 0) return -1;
 
 	if (inst->fragment_size < 100) {
 		cf_log_err_cs(cs, "Fragment size is too small");
@@ -131,12 +129,14 @@ static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 		ERROR("rlm_eap_pwd: PWD state is invalid.  Can't send request");
 		return 0;
 	}
+
 	/*
 	 * are we fragmenting?
 	 */
 	if (((session->out_len - session->out_pos) + sizeof(pwd_hdr)) > session->mtu) {
 		EAP_PWD_SET_MORE_BIT(hdr);
 		if (session->out_pos == 0) {
+
 			/*
 			 * the first fragment, add the total length
 			 */
@@ -183,8 +183,8 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	}
 
 	/*
-	* make sure the server's been configured properly
-	*/
+	 * make sure the server's been configured properly
+	 */
 	if (!inst->server_id) {
 		ERROR("rlm_eap_pwd: Server ID is not configured");
 		return 0;
@@ -198,7 +198,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 		break;
 
 	default:
-		ERROR("rlm_eap_pwd: Group is not supported");
+	ERROR("rlm_eap_pwd: Group is not supported");
 		return 0;
 	}
 
@@ -247,9 +247,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	 * construct an EAP-pwd-ID/Request
 	 */
 	session->out_len = sizeof(pwd_id_packet_t) + strlen(inst->server_id);
-	if ((session->out = talloc_zero_array(session, uint8_t, session->out_len)) == NULL) {
-		return 0;
-	}
+	if ((session->out = talloc_zero_array(session, uint8_t, session->out_len)) == NULL) return 0;
 
 	packet = (pwd_id_packet_t *)session->out;
 	packet->group_num = htons(session->group_num);
@@ -304,8 +302,8 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	in_len = response->type.length - sizeof(pwd_hdr);
 
 	/*
-	* see if we're fragmenting, if so continue until we're done
-	*/
+	 * see if we're fragmenting, if so continue until we're done
+	 */
 	if (session->out_pos) {
 		if (in_len) RDEBUG2("pwd got something more than an ACK for a fragment");
 
@@ -313,9 +311,9 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	}
 
 	/*
-	* the first fragment will have a total length, make a
-	* buffer to hold all the fragments
-	*/
+	 * the first fragment will have a total length, make a
+	 * buffer to hold all the fragments
+	 */
 	if (EAP_PWD_GET_LENGTH_BIT(hdr)) {
 		if (session->in) {
 			RDEBUG2("pwd already alloced buffer for fragments");
@@ -329,10 +327,10 @@ static int mod_process(void *arg, eap_handler_t *handler)
 
 		session->in_len = ntohs(in[0] * 256 | in[1]);
 		if ((session->in = talloc_zero_array(session, uint8_t, session->in_len)) == NULL) {
-			RDEBUG2("pwd cannot allocate %zd buffer to hold fragments",
-				session->in_len);
+			RDEBUG2("pwd cannot allocate %zd buffer to hold fragments", session->in_len);
 			return 0;
 		}
+
 		memset(session->in, 0, session->in_len);
 		session->in_pos = 0;
 		in += sizeof(uint16_t);
@@ -361,6 +359,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		eap_ds->request->code = PW_EAP_REQUEST;
 		eap_ds->request->type.num = PW_EAP_PWD;
 		eap_ds->request->type.length = sizeof(pwd_hdr);
+
 		if ((eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, sizeof(pwd_hdr))) == NULL) {
 			return 0;
 		}
@@ -480,14 +479,13 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		rdebug_pair_list(L_DBG_LVL_1, request, fake->reply->vps, NULL);
 
 		if ((pw = fr_pair_find_by_num(fake->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
-			DEBUG2("failed to find password for %s to do pwd authentication",
-			session->peer_id);
+			DEBUG2("failed to find password for %s to do pwd authentication", session->peer_id);
 			talloc_free(fake);
 			return 0;
 		}
 
 		if (compute_password_element(session, session->group_num,
-			     		     pw->data.strvalue, strlen(pw->data.strvalue),
+					     pw->data.strvalue, strlen(pw->data.strvalue),
 					     inst->server_id, strlen(inst->server_id),
 					     session->peer_id, strlen(session->peer_id),
 					     &session->token)) {
@@ -513,8 +511,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 * element is a point, get both coordinates: x and y
 		 */
-		if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y,
-							 inst->bnctx)) {
+		if (!EC_POINT_get_affine_coordinates_GFp(session->group, session->my_element, x, y, inst->bnctx)) {
 			DEBUG2("server point assignment failed");
 			BN_clear_free(x);
 			BN_clear_free(y);
@@ -546,7 +543,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		ret = send_pwd_request(session, eap_ds);
 		break;
 
-		case PWD_STATE_COMMIT:
+	case PWD_STATE_COMMIT:
 		if (EAP_PWD_GET_EXCHANGE(hdr) != EAP_PWD_EXCH_COMMIT) {
 			RDEBUG2("pwd exchange is incorrect: not commit!");
 			return 0;
@@ -572,9 +569,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 * construct a response...which is just our confirm blob
 		 */
 		session->out_len = SHA256_DIGEST_LENGTH;
-		if ((session->out = talloc_array(session, uint8_t, session->out_len)) == NULL) {
-			return 0;
-		}
+		if ((session->out = talloc_array(session, uint8_t, session->out_len)) == NULL) return 0;
 
 		memset(session->out, 0, session->out_len);
 		memcpy(session->out, session->my_confirm, SHA256_DIGEST_LENGTH);
@@ -585,8 +580,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 
 	case PWD_STATE_CONFIRM:
 		if (in_len < SHA256_DIGEST_LENGTH) {
-			RDEBUG("Peer confirm is too short (%zd < %d)",
-			       in_len, SHA256_DIGEST_LENGTH);
+			RDEBUG("Peer confirm is too short (%zd < %d)", in_len, SHA256_DIGEST_LENGTH);
 			return 0;
 		}
 
@@ -621,6 +615,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		return 0;
 	}
 
+
 	/*
 	 * we processed the buffered fragments, get rid of them
 	 */
@@ -636,7 +631,7 @@ extern rlm_eap_module_t rlm_eap_pwd;
 rlm_eap_module_t rlm_eap_pwd = {
 	.name		= "eap_pwd",
 	.instantiate	= mod_instantiate,	/* Create new submodule instance */
-	.session_init	= mod_session_init,		/* Create the initial request */
+	.session_init	= mod_session_init,	/* Create the initial request */
 	.process	= mod_process,		/* Process next round of EAP method */
 	.detach		= mod_detach		/* Destroy the submodule instance */
 };
