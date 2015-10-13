@@ -132,11 +132,11 @@ define ADD_RELINK_RULE.la
     ${1}: $${${1}_BUILD}/$${RELINK}${1}
 
     # used to fix up RPATH for ${1} on install.
-    $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PRLIBS}
+    $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_R_PRLIBS}
 	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
 	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${RELINK}${1} $${RELINK_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
-                $${${1}_PRLIBS}
+                $${${1}_R_PRLIBS}
 	    $(Q)$${${1}_POSTMAKE}
 
 endef
