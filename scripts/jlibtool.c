@@ -2237,7 +2237,7 @@ static int run_mode(command_t *cmd)
 			l = ".libs/";
 		}
 
-		l = "./build/lib/.libs";
+		l = "./build/lib/local/.libs";
 		setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
 		setenv("DYLD_FALLBACK_LIBRARY_PATH", l, 1);
 		rv = run_command(cmd, cmd->arglist);
