@@ -204,6 +204,7 @@ $INCLUDE dictionary.juniper
 $INCLUDE dictionary.karlnet
 $INCLUDE dictionary.kineto
 $INCLUDE dictionary.lancom
+$INCLUDE dictionary.lantronix
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.localweb
 $INCLUDE dictionary.lucent

@@ -1,0 +1,12 @@
+# dictionary.lantronix
+#
+# Lantronix SLC Secure Lantronix Console Manager
+# Provides SLC-specific user attributes
+#
+VENDOR Lantronix 244
+
+BEGIN-VENDOR Lantronix
+
+ATTRIBUTE	Lantronix-User-Attributes		1	string
+
+END-VENDOR Lantronix
