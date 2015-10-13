@@ -106,37 +106,37 @@ define ADD_TARGET_RULE.la
     endif
 endef
 
-# ADD_RELINK_RULE.exe - Parametric "function" that adds a rule to relink
-#   the target before installation, so that the paths are correct.
+# ADD_LOCAL_RULE.exe - Parametric "function" that adds a rule to build
+#   a local version of the target.
 #
 #   USE WITH EVAL
 #
-define ADD_RELINK_RULE.exe
-    ${1}: $${${1}_BUILD}/$${RELINK}${1}
+define ADD_LOCAL_RULE.exe
+    ${1}: $${${1}_BUILD}/$${LOCAL}${1}
 
     # used to fix up RPATH for ${1} on install.
-    $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PRBIN} $${${1}_R_PRLIBS}
-	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
-	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${RELINK}${1} $${RELINK_FLAGS} $${LDFLAGS} \
-                $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_R_PRLIBS} \
+    $${${1}_BUILD}/$${${1}_LOCAL}: $${${1}_OBJS} $${${1}_PRBIN} $${${1}_LOCAL_PRLIBS}
+	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${LOCAL}/)
+	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${LOCAL}${1} $${LOCAL_FLAGS} $${LDFLAGS} \
+                $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_LOCAL_PRLIBS} \
                 $${LDLIBS} $${${1}_LDLIBS}
 	    $(Q)$${${1}_POSTMAKE}
 endef
 
-# ADD_RELINK_RULE.la - Parametric "function" that adds a rule to relink
-#   the target before installation, so that the paths are correct.
+# ADD_LOCAL_RULE.la - Parametric "function" that adds a rule to build
+#   a local version of the target.
 #
 #   USE WITH EVAL
 #
-define ADD_RELINK_RULE.la
-    ${1}: $${${1}_BUILD}/$${RELINK}${1}
+define ADD_LOCAL_RULE.la
+    ${1}: $${${1}_BUILD}/$${LOCAL}${1}
 
     # used to fix up RPATH for ${1} on install.
-    $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_R_PRLIBS}
-	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
-	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${RELINK}${1} $${RELINK_FLAGS} $${LDFLAGS} \
+    $${${1}_BUILD}/$${${1}_LOCAL}: $${${1}_OBJS} $${${1}_LOCAL_PRLIBS}
+	    $(Q)$(strip mkdir -p $${${1}_BUILD}/${LOCAL}/)
+	    $(Q)$${${1}_LINKER} -o $${${1}_BUILD}/$${LOCAL}${1} $${LOCAL_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
-                $${${1}_R_PRLIBS}
+                $${${1}_LOCAL_PRLIBS}
 	    $(Q)$${${1}_POSTMAKE}
 
 endef
@@ -156,20 +156,20 @@ endif
 
 # Check if we build shared libraries.
 ifeq "${bm_shared_libs}" "yes"
-    RELINK := local/
+    LOCAL := local/
 
     # RPATH  : flags use to build executables that are installed,
     #          with no dependency on the source.
     # RELINL : flags use to build executables that can be run
     #          from the build directory / source tree.
     RPATH_FLAGS := -rpath ${libdir}
-    RELINK_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/${RELINK}/.libs
+    LOCAL_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/${LOCAL}/.libs
 
-    RELINK_FLAGS_MIN := -rpath ${libdir}
+    LOCAL_FLAGS_MIN := -rpath ${libdir}
 
     ifneq "${bm_static_libs}" "yes"
         RPATH_FLAGS += --shared
-        RELINK_FLAGS += --shared
+        LOCAL_FLAGS += --shared
     endif
 else
     ifneq "${bm_static_libs}" "yes"
@@ -194,8 +194,8 @@ define ADD_LIBTOOL_SUFFIX
         $${TGT}_NOLIBTOOL := $${TGT_NOLIBTOOL}
     endif
 
-    ifneq "$${RELINK_FLAGS}" ""
-        $${TGT}_RELINK := ${RELINK}$${TGT}
+    ifneq "$${LOCAL_FLAGS}" ""
+        $${TGT}_LOCAL := ${LOCAL}$${TGT}
     endif
 
     # re-write all of the dependencies to have the libtool endings.
@@ -218,14 +218,14 @@ define ADD_LIBTOOL_TARGET
     endif
 
     # If we need to relink, add the relink targets now.
-    ifneq "$${$${TGT}_RELINK}" ""
+    ifneq "$${$${TGT}_LOCAL}" ""
         # add rules to relink the target
 
-        $${TGT}_R_PRLIBS := $$(subst /lib/,/lib/${RELINK},$${$${TGT}_PRLIBS})
+        $${TGT}_LOCAL_PRLIBS := $$(subst /lib/,/lib/${LOCAL},$${$${TGT}_PRLIBS})
 
-        $$(eval $$(call ADD_RELINK_RULE$${$${TGT}_SUFFIX},$${TGT}))
+        $$(eval $$(call ADD_LOCAL_RULE$${$${TGT}_SUFFIX},$${TGT}))
 
-        $$(eval $$(call ADD_CLEAN_RULE,$${$${TGT}_RELINK}_libtool))
+        $$(eval $$(call ADD_CLEAN_RULE,$${$${TGT}_LOCAL}_libtool))
 
 	ifneq "$${$${TGT}_NOLIBTOOL}" ""
             $$(eval $$(call ADD_CLEAN_RULE,$${$${TGT}_NOLIBTOOL}_libtool))
