@@ -3134,7 +3134,7 @@ fi
 done
 
 	  if test "x$ac_cv_func_EC_GROUP_get_cofactor" != "xyes"; then
-	    fail="EC_GROUP_get_confactor"
+	    fail="EC_GROUP_get_cofactor"
 	  fi
 	fi
 
