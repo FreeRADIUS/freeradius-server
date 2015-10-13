@@ -551,7 +551,7 @@ static int request_dequeue(REQUEST **prequest)
 	rad_assert(request->magic == REQUEST_MAGIC);
 
 	request->component = "<core>";
-	request->module = "<running>";
+	request->module = "";
 	request->child_state = REQUEST_RUNNING;
 
 	/*
