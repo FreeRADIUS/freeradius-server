@@ -16,7 +16,7 @@ BIN_PATH := $(BUILD_PATH)/bin/local
 #
 #   This ensures that FreeRADIUS uses modules from the build directory
 #
-FR_LIBRARY_PATH := $(BUILD_PATH)/lib/.libs/
+FR_LIBRARY_PATH := $(BUILD_PATH)/lib/local/.libs/
 export FR_LIBRARY_PATH
 
 #
@@ -116,7 +116,7 @@ $(RADDB_PATH)/certs/%:
 $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.pem
 	@rm -f $(GDB_LOG) $(RADIUS_LOG)
 	@printf "Starting EAP test server... "
-	@if ! TEST_PORT=$(PORT) $(BIN_PATH)/radiusd -Pxxxxml $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
+	@if ! TEST_PORT=$(PORT) $(JLIBTOOL) --mode=execute $(BIN_PATH)/radiusd -Pxxxxml $(RADIUS_LOG) -d $(CONFIG_PATH) -n test -D $(CONFIG_PATH); then\
 		echo "FAILED STARTING RADIUSD"; \
 		echo "Last entries in server log ($(RADIUS_LOG)):"; \
 		tail -n 40 "$(RADIUS_LOG)"; \
