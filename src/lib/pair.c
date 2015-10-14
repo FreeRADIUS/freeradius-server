@@ -1453,14 +1453,44 @@ VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned
 	     vp = fr_cursor_next(&src)) {
 		VERIFY_VP(vp);
 
-		if ((vp->da->attr != attr) || (vp->da->vendor != vendor)) {
-			continue;
-		}
-
 		if (vp->da->flags.has_tag && !TAG_EQ(tag, vp->tag)) {
 			continue;
 		}
 
+		/*
+		 *	Attr/vendor of 0 means "move them all".
+		 *	It's better than "fr_pair_copy(foo,bar);bar=NULL"
+		 */
+		if ((attr == 0) && (vendor == 0)) {
+			goto do_copy;
+		}
+
+		/*
+		 *	vendor=0, attr = PW_VENDOR_SPECIFIC means
+		 *	"match any vendor attribute".
+		 */
+		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC)) {
+			/*
+			 *	It's a VSA: copy it over.
+			 */
+			if (vp->da->vendor != 0) goto do_copy;
+
+			/*
+			 *	It's Vendor-Specific: copy it over.
+			 */
+			if (vp->da->attr == attr) goto do_copy;
+
+			/*
+			 *	It's not a VSA: ignore it.
+			 */
+			continue;
+		}
+
+		if ((vp->da->attr != attr) || (vp->da->vendor != vendor)) {
+			continue;
+		}
+
+	do_copy:
 		vp = fr_pair_copy(ctx, vp);
 		if (!vp) {
 			fr_pair_list_free(&out);
