@@ -640,20 +640,7 @@ static eap_tls_packet_t *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls
 			talloc_free(eap_tls_packet);
 			return NULL;
 		}
-	}
 
-	switch (status) {
-	/*
-	 *	The TLS Message Length field is four octets, and
-	 *	provides the total length of the TLS message or set of
-	 *	messages that is being fragmented; this simplifies
-	 *	buffer allocation.
-	 *
-	 *	Dynamic allocation of buffers as & when we know the
-	 *	length should solve the problem.
-	 */
-	case FR_TLS_FIRST_FRAGMENT:
-	case FR_TLS_LENGTH_INCLUDED:
 		if (eap_tls_packet->length < 5) { /* flags + TLS message length */
 			REDEBUG("Invalid EAP-TLS packet received: Expected length, got none");
 			talloc_free(eap_tls_packet);
@@ -676,21 +663,9 @@ static eap_tls_packet_t *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls
 		if (data_len > len) {
 			data_len = len;
 		}
-		break;
-
-		/*
-		 *	Data length is implicit, from the EAP header.
-		 */
-	case FR_TLS_MORE_FRAGMENTS:
-	case FR_TLS_OK:
+	} else {
 		data_len = eap_ds->response->type.length - 1/*flags*/;
 		data = eap_ds->response->type.data + 1/*flags*/;
-		break;
-
-	default:
-		REDEBUG("Invalid EAP-TLS packet received");
-		talloc_free(eap_tls_packet);
-		return NULL;
 	}
 
 	eap_tls_packet->dlen = data_len;
