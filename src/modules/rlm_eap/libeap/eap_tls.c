@@ -288,14 +288,21 @@ static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
 	return 1;
 }
 
-/*
- *	The S flag is set only within the EAP-TLS start message sent
- *	from the EAP server to the peer.
+/** Check that this eaptls_packet and the progression of eaptls packets is sane
  *
- *	Similarly, when the EAP server receives an EAP-Response with
- *	the M bit set, it MUST respond with an EAP-Request with
- *	EAP-Type=EAP-TLS and no data. This serves as a fragment
- *	ACK. The EAP peer MUST wait.
+ * The S flag is set only within the EAP-TLS start message sent from the EAP
+ * server to the peer.
+ *
+ * Similarly, when the EAP server receives an EAP-Response with the M bit set,
+ * it MUST respond with an EAP-Request with EAP-Type=EAP-TLS and no data.
+ * This serves as a fragment ACK. The EAP peer MUST wait.
+ *
+ * @param[in] handler the current EAP session state.
+ * @return
+ *	- FR_TLS_INVALID if the TLS record or progression is invalid.
+ *	- FR_TLS_FIRST_FRAGMENT this is the start of a new sequence of record fragments.
+ *	- FR_TLS_MORE_FRAGMENTS this is a continuation of a sequence of fragments.
+ *	- FR_TLS_OK we received a completed record.
  */
 static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 {
@@ -495,39 +502,48 @@ ignore_length:
 	return TLS_LENGTH_INCLUDED(eap_tls_data->flags) ? FR_TLS_LENGTH_INCLUDED : FR_TLS_OK;
 }
 
-/*
- * eap_tls_packet_t
- * code    = EAP-code
- * id      = EAP-id
- * length  = code + id + length + flags + tlsdata
- *	   =  1   +  1 +   2    +  1    +  X
- * length  = EAP-length - 1(EAP-Type = 1 octet)
- * flags   = EAP-typedata[0] (1 octet)
- * dlen    = EAP-typedata[1-4] (4 octets), if L flag set
- *	   = length - 5(code+id+length+flags), otherwise
- * data    = EAP-typedata[5-n], if L flag set
- *	   = EAP-typedata[1-n], otherwise
- * packet  = EAP-typedata (complete typedata)
+/** Extract the fields of an EAP-TLS message
  *
- * Points to consider during EAP-TLS data extraction
- * 1. In the received packet, No data will be present incase of ACK-NAK
- * 2. Incase if more fragments need to be received then ACK after retreiving this fragment.
+ * @note In the received packet, No data will be present incase of ACK or NAK
+ *	in this case the packet->data pointer will be NULL.
  *
  *  RFC 2716 Section 4.2.  PPP EAP TLS Request Packet
+ @verbatim
+    0		   1		   2		   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Code      |   Identifier  |	    Length	     |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Type      |     Flags     |      TLS Message Length
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     TLS Message Length	|       TLS Data...
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ @endverbatim
  *
- *  0		   1		   2		   3
- *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
- *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *  |     Code      |   Identifier  |	    Length	     |
- *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *  |     Type      |     Flags     |      TLS Message Length
- *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *  |     TLS Message Length	|       TLS Data...
- *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *  Structure of an EAP-TLS packet
+ *
+ @verbatim
+   code    = EAP-code
+   id      = EAP-id
+   length  = code + id + length + flags + tlsdata
+  	   =  1   +  1 +   2    +  1    +  X
+   length  = EAP-length - 1(EAP-Type = 1 octet)
+   flags   = EAP-typedata[0] (1 octet)
+   dlen    = EAP-typedata[1-4] (4 octets), if L flag set
+  	   = length - 5(code+id+length+flags), otherwise
+   data    = EAP-typedata[5-n], if L flag set
+  	   = EAP-typedata[1-n], otherwise
+   packet  = EAP-typedata (complete typedata)
+ @endverbatim
  *
  *  The Length field is two octets and indicates the length of the EAP
- *  packet including the Code, Identifir, Length, Type, and TLS data
+ *  packet including the Code, Identifier, Length, Type, and TLS data
  *  fields.
+ *
+ *  The TLS Message Length field is four octets and indicates the
+ *  complete reassembled length of the TLS record fragment.
+ *
+ * @param eap_ds state handler.
  */
 static eap_tls_packet_t *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t status)
 {
