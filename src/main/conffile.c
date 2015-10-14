@@ -568,7 +568,7 @@ CONF_PAIR *cf_pair_dup(CONF_SECTION *parent, CONF_PAIR *cp)
 	/*
 	 *	Avoid mallocs if possible.
 	 */
-	if (!cp->item.filename || (strcmp(parent->item.filename, cp->item.filename) == 0)) {
+	if (!cp->item.filename || (parent->item.filename && !strcmp(parent->item.filename, cp->item.filename))) {
 		new->item.filename = parent->item.filename;
 	} else {
 		new->item.filename = talloc_strdup(new, cp->item.filename);
