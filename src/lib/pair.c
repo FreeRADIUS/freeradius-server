@@ -705,7 +705,10 @@ VALUE_PAIR *fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR *from)
  *
  * @param[in] ctx for talloc
  * @param[in] from whence to copy VALUE_PAIRs.
- * @param[in] attr to match, if 0 input list will not be filtered by attr.
+ * @param[in] attr to match. If attribute PW_VENDOR_SPECIFIC and vendor 0,
+ *	will match (and therefore copy) only VSAs.
+ *	If attribute 0 and vendor 0  will match (and therefore copy) all
+ *	attributes.
  * @param[in] vendor to match.
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  * @return the head of the new VALUE_PAIR list or NULL on error.
@@ -723,14 +726,44 @@ VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
 	     vp = fr_cursor_next(&src)) {
 		VERIFY_VP(vp);
 
-		if ((vp->da->attr != attr) || (vp->da->vendor != vendor)) {
-			continue;
-		}
-
 		if (vp->da->flags.has_tag && !TAG_EQ(tag, vp->tag)) {
 			continue;
 		}
 
+		/*
+		 *	Attr/vendor of 0 means "move them all".
+		 *	It's better than "fr_pair_copy(foo,bar);bar=NULL"
+		 */
+		if ((attr == 0) && (vendor == 0)) {
+			goto do_copy;
+		}
+
+		/*
+		 *	vendor=0, attr = PW_VENDOR_SPECIFIC means
+		 *	"match any vendor attribute".
+		 */
+		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC)) {
+			/*
+			 *	It's a VSA: copy it over.
+			 */
+			if (vp->da->vendor != 0) goto do_copy;
+
+			/*
+			 *	It's Vendor-Specific: copy it over.
+			 */
+			if (vp->da->attr == attr) goto do_copy;
+
+			/*
+			 *	It's not a VSA: ignore it.
+			 */
+			continue;
+		}
+
+		if ((vp->da->attr != attr) || (vp->da->vendor != vendor)) {
+			continue;
+		}
+
+	do_copy:
 		vp = fr_pair_copy(ctx, vp);
 		if (!vp) {
 			fr_pair_list_free(&out);
