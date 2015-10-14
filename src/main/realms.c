@@ -903,7 +903,7 @@ CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
 	if (cs) {
 		server = cf_section_dup(client, cs, "home_server", NULL, true);
 	} else {
-		server = cf_section_alloc(client, "home_server", NULL);
+		server = cf_section_alloc(client, "home_server", cf_section_name2(client));
 	}
 
 	if (!cs || (!cf_pair_find(cs, "ipaddr") && !cf_pair_find(cs, "ipv4addr") && !cf_pair_find(cs, "ipv6addr"))) {
