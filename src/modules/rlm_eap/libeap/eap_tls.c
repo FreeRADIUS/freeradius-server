@@ -572,14 +572,12 @@ ignore_length:
  *
  * @param eap_ds state handler.
  */
-static eap_tls_packet_t *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t status)
+static eap_tls_packet_t *eaptls_extract(EAP_DS *eap_ds)
 {
 	eap_tls_packet_t	*eap_tls_packet;
-	uint32_t	data_len = 0;
-	uint32_t	len = 0;
-	uint8_t		*data = NULL;
-
-	if (status == FR_TLS_INVALID) return NULL;
+	uint32_t		data_len = 0;
+	uint32_t		len = 0;
+	uint8_t			*data = NULL;
 
 	/*
 	 *	The main EAP code & eaptls_verify() take care of
@@ -594,11 +592,10 @@ static eap_tls_packet_t *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls
 	 *	MUST have TLS type octet, followed by flags, followed
 	 *	by data.
 	 */
-	assert(eap_ds->response->length > 2);
+	rad_assert(eap_ds->response->length > 2);
 
 	eap_tls_packet = talloc(eap_ds, eap_tls_packet_t);
 	if (!eap_tls_packet) return NULL;
-
 	/*
 	 *	Code & id for EAPTLS & EAP are same
 	 *	but eaptls_length = eap_length - 1(EAP-Type = 1 octet)
@@ -612,18 +609,6 @@ static eap_tls_packet_t *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls
 	eap_tls_packet->flags = eap_ds->response->type.data[0];
 
 	/*
-	 *	A quick sanity check of the flags.  If we've been told
-	 *	that there's a length, and there isn't one, then stop.
-	 */
-	if (TLS_LENGTH_INCLUDED(eap_tls_packet->flags) &&
-	    (eap_tls_packet->length < 5)) { /* flags + TLS message length */
-		REDEBUG("Invalid EAP-TLS packet received:  Length bit is set, "
-			"but packet too short to contain length field");
-		talloc_free(eap_tls_packet);
-		return NULL;
-	}
-
-	/*
 	 *	If the final TLS packet is larger than we can handle, die
 	 *	now.
 	 *
@@ -633,19 +618,6 @@ static eap_tls_packet_t *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls
 	if (TLS_LENGTH_INCLUDED(eap_tls_packet->flags)) {
 		memcpy(&data_len, &eap_ds->response->type.data[1], 4);
 		data_len = ntohl(data_len);
-		if (data_len > MAX_RECORD_SIZE) {
-			REDEBUG("Reassembled TLS record will be %u bytes, "
-				"greater than our maximum record size (" STRINGIFY(MAX_RECORD_SIZE) " bytes)",
-				data_len);
-			talloc_free(eap_tls_packet);
-			return NULL;
-		}
-
-		if (eap_tls_packet->length < 5) { /* flags + TLS message length */
-			REDEBUG("Invalid EAP-TLS packet received: Expected length, got none");
-			talloc_free(eap_tls_packet);
-			return NULL;
-		}
 
 		/*
 		 *	Extract all the TLS fragments from the
@@ -654,24 +626,18 @@ static eap_tls_packet_t *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls
 		 */
 		memcpy(&data_len, &eap_ds->response->type.data[1], sizeof(uint32_t));
 		data_len = ntohl(data_len);
-		data = (eap_ds->response->type.data + 5/*flags+TLS-Length*/);
-		len = eap_ds->response->type.length - 5/*flags+TLS-Length*/;
-
-		/*
-		 *	Hmm... this should be an error, too.
-		 */
-		if (data_len > len) {
-			data_len = len;
-		}
+		data = (eap_ds->response->type.data + 5);	/* flags + TLS-Length */
+		len = eap_ds->response->type.length - 5;	/* flags + TLS-Length */
+		if (data_len > len) data_len = len;
 	} else {
-		data_len = eap_ds->response->type.length - 1/*flags*/;
-		data = eap_ds->response->type.data + 1/*flags*/;
+		data_len = eap_ds->response->type.length - 1;	/* flags */
+		data = eap_ds->response->type.data + 1;		/* flags */
 	}
+
 
 	eap_tls_packet->dlen = data_len;
 	if (data_len) {
-		eap_tls_packet->data = talloc_array(eap_tls_packet, uint8_t,
-					       data_len);
+		eap_tls_packet->data = talloc_array(eap_tls_packet, uint8_t, data_len);
 		if (!eap_tls_packet->data) {
 			talloc_free(eap_tls_packet);
 			return NULL;
@@ -868,7 +834,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	/*
 	 *	Extract the TLS packet from the buffer.
 	 */
-	if ((eap_tls_packet = eaptls_extract(request, handler->eap_ds, status)) == NULL) {
+	if ((eap_tls_packet = eaptls_extract(handler->eap_ds)) == NULL) {
 		status = FR_TLS_FAIL;
 		goto done;
 	}
