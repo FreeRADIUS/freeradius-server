@@ -336,10 +336,14 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	the parent has a home_server defined, then this
 	 *	request is being processed through a virtual
 	 *	server... so that's OK.
+	 *
+	 *	i.e. we're inside an EAP tunnel, which means we have a
+	 *	parent.  If the outer session exists, and doesn't have
+	 *	a home server, then it's multiple layers of tunneling.
 	 */
-	if (handler->request->parent &&
-	    !handler->request->parent->home_server &&
-	    handler->request->parent->parent) {
+	if (handler->request->parent && 
+	    handler->request->parent->parent &&
+	    !handler->request->parent->parent->home_server) {
 		RERROR("Multiple levels of TLS nesting are invalid");
 
 		return EAP_INVALID;
