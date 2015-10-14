@@ -311,7 +311,16 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	EAP_DS			*prev_eap_ds = handler->prev_eap_ds;
 	eap_tls_data_t		*eap_tls_data;
 	REQUEST			*request = handler->request;
-	size_t			frag_len;
+	size_t			frag_len, header_len;
+
+	/*
+	 *	All EAP-TLS packets must contain type and flags fields.
+	 */
+	if (eap_ds->response->length < (EAP_HEADER_LEN + 2)) {
+		REDEBUG("Invalid EAP-TLS packet: Expected at least %zu bytes got %zu bytes",
+			(size_t)EAP_HEADER_LEN + 2, eap_ds->response->length);
+		return FR_TLS_INVALID;
+	}
 
 	/*
 	 *	We don't check ANY of the input parameters.  It's all
@@ -331,6 +340,17 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		TLS_START(eap_tls_data->flags) ? 'S' : '-',
 		TLS_MORE_FRAGMENTS(eap_tls_data->flags) ? 'M' : '-',
 		TLS_LENGTH_INCLUDED(eap_tls_data->flags) ? 'L' : '-');
+
+	/*
+	 *	This length includes the type and flags field and
+	 *	the message length field if the flags indicate it's present.
+	 */
+	header_len = EAP_HEADER_LEN + (TLS_LENGTH_INCLUDED(eap_tls_data->flags) ? 6 : 2);
+	if (eap_ds->response->length < header_len) {
+		REDEBUG("Invalid EAP-TLS packet: Expected at least %zu bytes got %zu bytes",
+			header_len, eap_ds->response->length);
+		return FR_TLS_INVALID;
+	}
 
 	/*
 	 *	check for ACK
@@ -362,8 +382,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	/*
 	 *	Calculate this fragment's length
 	 */
-	frag_len = eap_ds->response->length -
-		   (EAP_HEADER_LEN + (TLS_LENGTH_INCLUDED(eap_tls_data->flags) ? 6 : 2));
+	frag_len = eap_ds->response->length - header_len;
 
 	/*
 	 *	The L bit (length included) is set to indicate the
@@ -379,10 +398,18 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	from a fragment acknowledgement.
 	 */
 	if (TLS_LENGTH_INCLUDED(eap_tls_data->flags)) {
-		size_t total_len = eap_tls_data->data[2] * 256 | eap_tls_data->data[3];
+		size_t total_len;
 
+		total_len = eap_tls_data->data[2] * 256 | eap_tls_data->data[3];
 		if (frag_len > total_len) {
-			REDEBUG("TLS fragment length (%zu bytes) greater than TLS record length (%zu bytes)", frag_len,
+			REDEBUG("TLS fragment length (%zu bytes) greater than TLS record length (%zu bytes)",
+				frag_len, total_len);
+			return FR_TLS_INVALID;
+		}
+
+		if (total_len > MAX_RECORD_SIZE) {
+			REDEBUG("Reassembled TLS record will be %zu bytes, "
+				"greater than our maximum record size (" STRINGIFY(MAX_RECORD_SIZE) " bytes)",
 				total_len);
 			return FR_TLS_INVALID;
 		}
@@ -468,7 +495,7 @@ ignore_length:
 				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
 			return FR_TLS_INVALID;
 		}
-		return TLS_LENGTH_INCLUDED(eap_tls_data->flags) ? FR_TLS_LENGTH_INCLUDED : FR_TLS_MORE_FRAGMENTS;
+		return FR_TLS_MORE_FRAGMENTS;
 	}
 
 	/*
@@ -490,7 +517,7 @@ ignore_length:
 				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
 			return FR_TLS_INVALID;
 		}
-		return TLS_LENGTH_INCLUDED(eap_tls_data->flags) ? FR_TLS_LENGTH_INCLUDED : FR_TLS_OK;
+		return FR_TLS_OK;
 	}
 
 	/*
@@ -499,7 +526,7 @@ ignore_length:
 	 */
 	RDEBUG2("Got complete TLS record (%zu bytes)", frag_len);
 
-	return TLS_LENGTH_INCLUDED(eap_tls_data->flags) ? FR_TLS_LENGTH_INCLUDED : FR_TLS_OK;
+	return FR_TLS_OK;
 }
 
 /** Extract the fields of an EAP-TLS message
