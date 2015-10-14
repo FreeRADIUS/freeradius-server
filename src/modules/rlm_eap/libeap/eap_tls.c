@@ -106,7 +106,7 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 */
 int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 {
-	EAPTLS_PACKET 	reply;
+	eap_tls_packet_t 	reply;
 
 	reply.code = FR_TLS_START;
 	reply.length = TLS_HEADER_LEN + 1/*flags*/;
@@ -124,7 +124,7 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 
 int eaptls_success(eap_handler_t *handler, int peap_flag)
 {
-	EAPTLS_PACKET	reply;
+	eap_tls_packet_t	reply;
 	REQUEST *request = handler->request;
 	tls_session_t *tls_session = handler->opaque;
 
@@ -159,7 +159,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 
 int eaptls_fail(eap_handler_t *handler, int peap_flag)
 {
-	EAPTLS_PACKET	reply;
+	eap_tls_packet_t	reply;
 	tls_session_t *tls_session = handler->opaque;
 
 	handler->finished = true;
@@ -190,7 +190,7 @@ int eaptls_fail(eap_handler_t *handler, int peap_flag)
  */
 int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 {
-	EAPTLS_PACKET	reply;
+	eap_tls_packet_t	reply;
 	unsigned int	size;
 	unsigned int 	nlen;
 	unsigned int 	lbit = 0;
@@ -273,7 +273,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
  */
 static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
 {
-	EAPTLS_PACKET 	reply;
+	eap_tls_packet_t 	reply;
 	REQUEST		*request = handler->request;
 
 	RDEBUG2("ACKing Peer's TLS record fragment");
@@ -302,7 +302,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	EAP_DS			*eap_ds = handler->eap_ds;
 	tls_session_t		*tls_session = handler->opaque;
 	EAP_DS			*prev_eap_ds = handler->prev_eap_ds;
-	eaptls_packet_t		*eaptls_packet;
+	eap_tls_data_t		*eaptls_packet;
 	REQUEST			*request = handler->request;
 	size_t			frag_len;
 
@@ -315,7 +315,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *	NULL, of if it's NOT an EAP-Response, or if the packet
 	 *	is too short.  See eap_validation()., in ../../eap.c
 	 */
-	eaptls_packet = (eaptls_packet_t *)eap_ds->response->type.data;
+	eaptls_packet = (eap_tls_data_t *)eap_ds->response->type.data;
 
 	/*
 	 *	First output the flags (for debugging)
@@ -496,7 +496,7 @@ ignore_length:
 }
 
 /*
- * EAPTLS_PACKET
+ * eap_tls_packet_t
  * code    = EAP-code
  * id      = EAP-id
  * length  = code + id + length + flags + tlsdata
@@ -529,9 +529,9 @@ ignore_length:
  *  packet including the Code, Identifir, Length, Type, and TLS data
  *  fields.
  */
-static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t status)
+static eap_tls_packet_t *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t status)
 {
-	EAPTLS_PACKET	*tlspacket;
+	eap_tls_packet_t	*tlspacket;
 	uint32_t	data_len = 0;
 	uint32_t	len = 0;
 	uint8_t		*data = NULL;
@@ -553,7 +553,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	 */
 	assert(eap_ds->response->length > 2);
 
-	tlspacket = talloc(eap_ds, EAPTLS_PACKET);
+	tlspacket = talloc(eap_ds, eap_tls_packet_t);
 	if (!tlspacket) return NULL;
 
 	/*
@@ -784,7 +784,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 fr_tls_status_t eaptls_process(eap_handler_t *handler)
 {
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
-	EAPTLS_PACKET	*tlspacket;
+	eap_tls_packet_t	*tlspacket;
 	fr_tls_status_t	status;
 	REQUEST *request = handler->request;
 
@@ -973,7 +973,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 /*
  *	compose the TLS reply packet in the EAP reply typedata
  */
-int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
+int eaptls_compose(EAP_DS *eap_ds, eap_tls_packet_t *reply)
 {
 	uint8_t *ptr;
 

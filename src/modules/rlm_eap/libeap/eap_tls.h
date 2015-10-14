@@ -82,7 +82,7 @@ typedef enum tls_op {
 typedef struct tls_packet_t {
 	uint8_t		flags;
 	uint8_t		data[1];
-} eaptls_packet_t;
+} eap_tls_data_t;
 
 typedef struct tls_packet {
 	uint8_t		code;
@@ -93,15 +93,15 @@ typedef struct tls_packet {
 	uint32_t	dlen;
 
 	//uint8_t		*packet;  /* Wired EAP-TLS packet as found in typdedata of eap_packet_t */
-} EAPTLS_PACKET;
+} eap_tls_packet_t;
 
 
 /* EAP-TLS framework */
-EAPTLS_PACKET	*eaptls_alloc(void);
-void		eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr);
+eap_tls_packet_t	*eaptls_alloc(void);
+void		eaptls_free(eap_tls_packet_t **eaptls_packet_ptr);
 tls_session_t	*eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_conf, bool client_cert);
 int		eaptls_start(EAP_DS *eap_ds, int peap);
-int		eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply);
+int		eaptls_compose(EAP_DS *eap_ds, eap_tls_packet_t *reply);
 
 fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *key);
 
