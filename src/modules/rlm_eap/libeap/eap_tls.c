@@ -576,7 +576,6 @@ static eap_tls_packet_t *eaptls_extract(EAP_DS *eap_ds)
 {
 	eap_tls_packet_t	*eap_tls_packet;
 	uint32_t		data_len = 0;
-	uint32_t		len = 0;
 	uint8_t			*data = NULL;
 
 	/*
@@ -616,24 +615,12 @@ static eap_tls_packet_t *eaptls_extract(EAP_DS *eap_ds)
 	 *	packet says there's fewer bytes, it's a problem.
 	 */
 	if (TLS_LENGTH_INCLUDED(eap_tls_packet->flags)) {
-		memcpy(&data_len, &eap_ds->response->type.data[1], 4);
-		data_len = ntohl(data_len);
-
-		/*
-		 *	Extract all the TLS fragments from the
-		 *	previous eap_ds Start appending this
-		 *	fragment to the above ds
-		 */
-		memcpy(&data_len, &eap_ds->response->type.data[1], sizeof(uint32_t));
-		data_len = ntohl(data_len);
 		data = (eap_ds->response->type.data + 5);	/* flags + TLS-Length */
-		len = eap_ds->response->type.length - 5;	/* flags + TLS-Length */
-		if (data_len > len) data_len = len;
+		data_len = eap_ds->response->type.length - 5;	/* flags + TLS-Length */
 	} else {
-		data_len = eap_ds->response->type.length - 1;	/* flags */
 		data = eap_ds->response->type.data + 1;		/* flags */
+		data_len = eap_ds->response->type.length - 1;	/* flags */
 	}
-
 
 	eap_tls_packet->dlen = data_len;
 	if (data_len) {
