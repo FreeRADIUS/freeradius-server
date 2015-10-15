@@ -200,7 +200,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 		 *	Handshake is done, proceed with decoding tunneled
 		 *	data.
 		 */
-	case FR_TLS_OK:
+	case FR_TLS_RECORD_COMPLETE:
 		RDEBUG2("Received unexpected tunneled data after successful handshake");
 #ifndef NDEBUG
 		if ((rad_debug_lvl > 2) && fr_log_fp) {

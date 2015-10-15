@@ -280,7 +280,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	 *	Handshake is done, proceed with decoding tunneled
 	 *	data.
 	 */
-	case FR_TLS_OK:
+	case FR_TLS_RECORD_COMPLETE:
 		break;
 
 	/*

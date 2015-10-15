@@ -95,10 +95,10 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
 	{ "noop",			FR_TLS_NOOP },
 
 	{ "start",			FR_TLS_START },
-	{ "ok",				FR_TLS_OK },
+	{ "ok",				FR_TLS_RECORD_COMPLETE },
 	{ "ack",			FR_TLS_ACK },
-	{ "first fragment",		FR_TLS_FIRST_FRAGMENT },
-	{ "more fragments",		FR_TLS_MORE_FRAGMENTS },
+	{ "first fragment",		FR_TLS_RECORD_FRAGMENT_INIT },
+	{ "more fragments",		FR_TLS_RECORD_FRAGMENT_MORE },
 	{ "handled",			FR_TLS_HANDLED },
 	{  NULL , 			-1},
 };
@@ -3722,7 +3722,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
 			DEBUG("Error in fragmentation logic: SSL_WANT_READ");
-			return FR_TLS_MORE_FRAGMENTS;
+			return FR_TLS_RECORD_FRAGMENT_MORE;
 
 		case SSL_ERROR_WANT_WRITE:
 			DEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
@@ -3746,7 +3746,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 */
 	ssn->clean_out.used = err;
 
-	return FR_TLS_OK;
+	return FR_TLS_RECORD_COMPLETE;
 }
 
 

@@ -57,10 +57,10 @@ typedef enum {
 	FR_TLS_NOOP,       			//!< Noop, continue.
 
 	FR_TLS_START,       			//!< Start, ok to send, invalid to receive.
-	FR_TLS_OK, 		 		//!< Ok, continue.
+	FR_TLS_RECORD_COMPLETE, 		 		//!< Ok, continue.
 	FR_TLS_ACK,       			//!< Acknowledge, continue.
-	FR_TLS_FIRST_FRAGMENT,    		//!< First fragment.
-	FR_TLS_MORE_FRAGMENTS,    		//!< More fragments, to send/receive.
+	FR_TLS_RECORD_FRAGMENT_INIT,    		//!< First fragment.
+	FR_TLS_RECORD_FRAGMENT_MORE,    		//!< More fragments, to send/receive.
 	FR_TLS_LENGTH_INCLUDED,	  		//!< Length included.
 	FR_TLS_HANDLED	  			//!< TLS code has handled it.
 } fr_tls_status_t;
