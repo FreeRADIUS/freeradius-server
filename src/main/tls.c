@@ -147,12 +147,10 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 	fr_tls_server_conf_t *conf;
 	REQUEST *request;
 
-	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl,
-						       FR_TLS_EX_INDEX_CONF);
+	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (!conf) return 0;
 
-	request = (REQUEST *)SSL_get_ex_data(ssl,
-					     FR_TLS_EX_INDEX_REQUEST);
+	request = (REQUEST *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	if (request && conf->psk_query) {
 		size_t hex_len;
 		VALUE_PAIR *vp;
@@ -182,8 +180,7 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 		 *	the truncation, and complain about it.
 		 */
 		if (hex_len > (2 * max_psk_len)) {
-			RWDEBUG("Returned PSK is too long (%u > %u)",
-				(unsigned int) hex_len, 2 * max_psk_len);
+			RWDEBUG("Returned PSK is too long (%u > %u)", (unsigned int) hex_len, 2 * max_psk_len);
 			return 0;
 		}
 
@@ -367,14 +364,14 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 */
 	if (conf->session_cache_enable && !conf->session_cache_server &&
 	    ((conf->session_last_flushed + ((int)conf->session_timeout * 1800)) <= request->timestamp)){
-		RDEBUG2("Flushing SSL sessions (of #%ld)", SSL_CTX_sess_number(conf->ctx));
+		RDEBUG2("Flushing TLS sessions (of #%ld)", SSL_CTX_sess_number(conf->ctx));
 
 		SSL_CTX_flush_sessions(conf->ctx, request->timestamp);
 		conf->session_last_flushed = request->timestamp;
 	}
 
 	if ((new_tls = SSL_new(conf->ctx)) == NULL) {
-		RERROR("Error creating new SSL session: %s", ERR_error_string(ERR_get_error(), NULL));
+		RERROR("Error creating new TLS session: %s", ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
 	}
 
@@ -382,7 +379,7 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	SSL_set_app_data(new_tls, NULL);
 
 	if ((state = talloc_zero(ctx, tls_session_t)) == NULL) {
-		RERROR("Error allocating memory for SSL state");
+		RERROR("Error allocating memory for TLS state");
 		return NULL;
 	}
 	session_init(state);
@@ -475,7 +472,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 	if ((l = ERR_get_error()) != 0) {
 		char const *p = ERR_error_string(l, NULL);
 
-		if (p) ROPTIONAL(REDEBUG, ERROR, "SSL says: %s", p);
+		if (p) ROPTIONAL(REDEBUG, ERROR, "TLS says: %s", p);
 	}
 
 	e = SSL_get_error(s, ret);
@@ -519,7 +516,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 	 *	the code needs updating here.
 	 */
 	default:
-		ROPTIONAL(REDEBUG, ERROR, "FATAL SSL error: %d", e);
+		ROPTIONAL(REDEBUG, ERROR, "FATAL TLS error: %d", e);
 		return 0;
 	}
 
@@ -547,7 +544,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 
 	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
 	if (err != (int) ssn->dirty_in.used) {
-		REDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+		REDEBUG("Failed writing %zd bytes to TLS BIO: %d", ssn->dirty_in.used, err);
 		record_init(&ssn->dirty_in);
 		return 0;
 	}
@@ -560,14 +557,14 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 		return 1;
 	}
 
-	if (!int_ssl_check(request, ssn->ssl, err, "SSL_read")) return 0;
+	if (!int_ssl_check(request, ssn->ssl, err, "TLS_read")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
-	if (SSL_is_init_finished(ssn->ssl)) RDEBUG2("SSL connection established");
-	if (SSL_in_init(ssn->ssl)) RDEBUG2("In SSL handshake phase");
-	if (SSL_in_before(ssn->ssl)) RDEBUG2("Before SSL handshake phase");
-	if (SSL_in_accept_init(ssn->ssl)) RDEBUG2("In SSL accept mode");
-	if (SSL_in_connect_init(ssn->ssl)) RDEBUG2("In SSL connect mode");
+	if (SSL_is_init_finished(ssn->ssl)) RDEBUG2("TLS connection established");
+	if (SSL_in_init(ssn->ssl)) RDEBUG2("In TLS handshake phase");
+	if (SSL_in_before(ssn->ssl)) RDEBUG2("Before TLS handshake phase");
+	if (SSL_in_accept_init(ssn->ssl)) RDEBUG2("In TLS accept mode");
+	if (SSL_in_connect_init(ssn->ssl)) RDEBUG2("In TLS connect mode");
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	/*
@@ -576,7 +573,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 	if (!ssn->ssl_session && SSL_is_init_finished(ssn->ssl)) {
 		ssn->ssl_session = SSL_get_session(ssn->ssl);
 		if (!ssn->ssl_session) {
-			RDEBUG("Failed getting SSL session");
+			RDEBUG("Failed getting TLS session");
 			return 0;
 		}
 	}
@@ -600,7 +597,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 			return 0;
 		}
 	} else {
-		RDEBUG2("SSL Application Data");
+		RDEBUG2("TLS Application Data");
 		/* Its clean application data, do whatever we want */
 		record_init(&ssn->clean_out);
 	}
@@ -2238,7 +2235,7 @@ do { \
 
 	if (!my_ok) {
 		char const *p = X509_verify_cert_error_string(err);
-		RERROR("SSL says error %d : %s", err, p);
+		RERROR("TLS error: %s (%i)", p, err);
 		REXDENT();
 		fr_pair_list_free(&cert_vps);
 		return my_ok;
@@ -2631,7 +2628,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 	if (!ctx) {
 		int err;
 		while ((err = ERR_get_error())) {
-			ERROR(LOG_PREFIX ": Failed creating SSL context: %s", ERR_error_string(err, NULL));
+			ERROR(LOG_PREFIX ": Failed creating TLS context: %s", ERR_error_string(err, NULL));
 			return NULL;
 		}
 	}
@@ -2808,7 +2805,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 load_ca:
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
-			ERROR(LOG_PREFIX ": SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+			ERROR(LOG_PREFIX ": TLS error: %s", ERR_error_string(ERR_get_error(), NULL));
 			ERROR(LOG_PREFIX ": Error reading Trusted root CA list %s",conf->ca_file );
 			return NULL;
 		}
