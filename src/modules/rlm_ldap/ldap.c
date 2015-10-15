@@ -1211,10 +1211,9 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 		fr_pair_value_strcpy(vp, dn);
 		*rcode = RLM_MODULE_OK;
 	}
-
-finish:
 	ldap_memfree(dn);
 
+finish:
 	if ((freeit || (*rcode != RLM_MODULE_OK)) && *result) {
 		ldap_msgfree(*result);
 		*result = NULL;
