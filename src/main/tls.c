@@ -99,7 +99,6 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
 	{ "ack",			FR_TLS_ACK },
 	{ "first fragment",		FR_TLS_FIRST_FRAGMENT },
 	{ "more fragments",		FR_TLS_MORE_FRAGMENTS },
-	{ "length included",		FR_TLS_LENGTH_INCLUDED },
 	{ "handled",			FR_TLS_HANDLED },
 	{  NULL , 			-1},
 };

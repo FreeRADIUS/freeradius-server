@@ -471,7 +471,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		 *	We support both options for maximum compatibility.
 		 */
 		RDEBUG2("Got complete TLS record, with length (%zu bytes)", frag_len);
-		return FR_TLS_LENGTH_INCLUDED;
+		return FR_TLS_OK;
 	}
 
 ignore_length:
@@ -817,7 +817,6 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 */
 	case FR_TLS_FIRST_FRAGMENT:
 	case FR_TLS_MORE_FRAGMENTS:
-	case FR_TLS_LENGTH_INCLUDED:
 		break;
 	}
 
