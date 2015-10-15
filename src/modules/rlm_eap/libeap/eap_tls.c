@@ -777,24 +777,24 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 *
 	 *	The TLS data will be in the tls_session structure.
 	 */
-	if (SSL_is_init_finished(tls_session->ssl)) {
+	if (SSL_is_init_finished(tls_session->ssl)) switch (status) {
+	/*
+	 *	The initialization may be finished, but if
+	 *	there more fragments coming, then send ACK,
+	 *	and get the caller to continue the
+	 *	conversation.
+	 */
+	case FR_TLS_MORE_FRAGMENTS:
+	case FR_TLS_FIRST_FRAGMENT:
 		/*
-		 *	The initialization may be finished, but if
-		 *	there more fragments coming, then send ACK,
-		 *	and get the caller to continue the
-		 *	conversation.
+		 *	Send the ACK.
 		 */
-		if ((status == FR_TLS_MORE_FRAGMENTS) ||
-		    (status == FR_TLS_FIRST_FRAGMENT)) {
-			/*
-			 *	Send the ACK.
-			 */
-			eaptls_send_ack(handler, tls_session->peap_flag);
-			RDEBUG2("Init is done, but tunneled data is fragmented");
-			status = FR_TLS_HANDLED;
-			goto done;
-		}
+		eaptls_send_ack(handler, tls_session->peap_flag);
+		RDEBUG2("Init is done, but tunneled data is fragmented");
+		status = FR_TLS_HANDLED;
+		goto done;
 
+	default:
 		status = tls_application_data(tls_session, request);
 		goto done;
 	}
