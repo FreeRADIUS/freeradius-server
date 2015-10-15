@@ -418,6 +418,9 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		 *	wpa_supplicant's implementation of PEAPv0, and likely other
 		 *	implementations of PEAPv0 will always include a Length flag
 		 *	for every record fragment if performing mutual TLS auth.
+		 *
+		 *	If the handler says this is not the first fragment, then
+		 *	don't count this as a new record, and continue as normal.
 		 */
 		if (tls_session->tls_record_transfer_started) goto ignore_length;
 
