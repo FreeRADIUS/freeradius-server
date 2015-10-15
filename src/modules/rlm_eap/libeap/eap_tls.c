@@ -809,59 +809,6 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 *	Continue the handshake.
 	 */
 	status = eaptls_operation(status, handler);
-	if (status == FR_TLS_SUCCESS) {
-#define MAX_SESSION_SIZE (256)
-		VALUE_PAIR *vps;
-		char buffer[2 * MAX_SESSION_SIZE + 1];
-
-		/*
-		 *	Restore the cached VPs before processing the
-		 *	application data.
-		 */
-		tls_session_id(tls_session->ssl_session, buffer, MAX_SESSION_SIZE);
-
-		vps = SSL_SESSION_get_ex_data(tls_session->ssl_session, fr_tls_ex_index_vps);
-		if (!vps) {
-			RWDEBUG("No information in cached session %s", buffer);
-		} else {
-			vp_cursor_t cursor;
-			VALUE_PAIR *vp;
-
-			RDEBUG("Adding cached attributes from session %s", buffer);
-
-			/*
-			 *	The cbtls_get_session() function doesn't have
-			 *	access to sock->cert_vps or handler->cert_vps, which
-			 *	is where the certificates normally live.  So
-			 *	the cert_vps are all in the VPS list here, and
-			 *	have to be manually extracted.
-			 */
-			RINDENT();
-			for (vp = fr_cursor_init(&cursor, &vps);
-			     vp;
-			     vp = fr_cursor_next(&cursor)) {
-				/*
-				 *	TLS-* attrs get added back to
-				 *	the request list.
-				 */
-				if ((vp->da->vendor == 0) &&
-				    (vp->da->attr >= PW_TLS_CERT_SERIAL) &&
-				    (vp->da->attr <= PW_TLS_CLIENT_CERT_SUBJECT_ALT_NAME_UPN)) {
-					/*
-					 *	Certs already exist.  Don't re-add them.
-					 */
-					if (!handler->cert_vps) {
-						rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
-						fr_pair_add(&request->packet->vps, fr_pair_copy(request->packet, vp));
-					}
-				} else {
-					rdebug_pair(L_DBG_LVL_2, request, vp, "&reply:");
-					fr_pair_add(&request->reply->vps, fr_pair_copy(request->reply, vp));
-				}
-			}
-			REXDENT();
-		}
-	}
 
  done:
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);

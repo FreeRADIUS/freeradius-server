@@ -103,11 +103,6 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
 	{  NULL , 			-1},
 };
 
-/* index we use to store cached session VPs
- * needs to be dynamic so we can supply a "free" function
- */
-int fr_tls_ex_index_vps = -1;
-
 /* Session */
 static void 		session_close(tls_session_t *ssn);
 static void 		session_init(tls_session_t *ssn);
@@ -338,7 +333,6 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 
 	return ssn;
 }
-
 
 /** Create a new TLS session
  *
@@ -1069,9 +1063,9 @@ static CONF_PARSER cache_config[] = {
 
 	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_server) },
 
-	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, session_timeout), .dflt = "24" },
-	{ FR_CONF_OFFSET("max_entries", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, session_cache_size), .dflt = "255" },
-	{ FR_CONF_OFFSET("persist_dir", PW_TYPE_STRING | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, session_cache_path) },
+	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, fr_tls_server_conf_t, session_timeout), .dflt = "24" },
+	{ FR_CONF_OFFSET("max_entries", PW_TYPE_INTEGER, fr_tls_server_conf_t, session_cache_size), .dflt = "255" },
+	{ FR_CONF_DEPRECATED("persist_dir", PW_TYPE_STRING | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, NULL) },
 
 	CONF_PARSER_TERMINATOR
 };
@@ -1534,275 +1528,6 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 }
 
 #define MAX_SESSION_SIZE (256)
-
-/*
- *	Old session caching code
- */
-
-
-/*
- *	Print debugging messages, and free data.
- */
-static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
-{
-	char			buffer[2 * MAX_SESSION_SIZE + 1];
-	fr_tls_server_conf_t	*conf;
-
-	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
-
-	conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ctx);
-	if (!conf) {
-		DEBUG(LOG_PREFIX ": Failed to find TLS configuration in session");
-		return;
-	}
-
-	{
-		char filename[256];
-		size_t len;
-
-		DEBUG2(LOG_PREFIX ": Removing session %s from the cache", buffer);
-
-		/* remove session and any cached VPs */
-		len = snprintf(filename, sizeof(filename), "%s%c%s.asn1", conf->session_cache_path, FR_DIR_SEP, buffer);
-		if (is_truncated(len, sizeof(filename))) {
-		truncated:
-			ERROR(LOG_PREFIX ": Filename buffer too small to write out cache file path.  "
-			      "Use smaller session cache path, and remove stale cache files manually");
-			return;
-		}
-
-		if (unlink(filename) != 0) {
-		unlink_error:
-			ERROR(LOG_PREFIX ": Could not remove persisted session file %s: %s",
-			      filename, fr_syserror(errno));
-			return;
-		}
-
-		/* VPs might be absent; might not have been written to disk yet */
-		len = snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path, FR_DIR_SEP, buffer);
-		if (is_truncated(len, sizeof(filename))) goto truncated;
-
-		if (unlink(filename) != 0) goto unlink_error;
-	}
-
-	return;
-}
-
-static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
-{
-	char			buffer[2 * MAX_SESSION_SIZE + 1];
-	fr_tls_server_conf_t	*conf;
-	unsigned char		*sess_blob = NULL;
-
-	REQUEST			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
-
-	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
-	if (!conf) {
-		RWDEBUG("Failed to find TLS configuration in session");
-		return 0;
-	}
-
-	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
-
-	{
-		int fd, rv, todo, blob_len;
-		size_t len;
-		char filename[256];
-		unsigned char *p;
-
-		RDEBUG2("Serialising session %s, and storing in cache", buffer);
-
-		/* find out what length data we need */
-		blob_len = i2d_SSL_SESSION(sess, NULL);
-		if (blob_len < 1) {
-			/* something went wrong */
-			RWDEBUG("Session serialisation failed, couldn't determine required buffer length");
-			return 0;
-		}
-
-
-		/* Do not convert to TALLOC - Thread safety */
-		/* alloc and convert to ASN.1 */
-		sess_blob = malloc(blob_len);
-		if (!sess_blob) {
-			RWDEBUG("Session serialisation failed, couldn't allocate buffer (%d bytes)", blob_len);
-			return 0;
-		}
-		/* openssl mutates &p */
-		p = sess_blob;
-		rv = i2d_SSL_SESSION(sess, &p);
-		if (rv != blob_len) {
-			RWDEBUG("Session serialisation failed");
-			goto error;
-		}
-
-		/* open output file */
-		len = snprintf(filename, sizeof(filename), "%s%c%s.asn1", conf->session_cache_path, FR_DIR_SEP, buffer);
-		if (is_truncated(len, sizeof(filename))) {
-			ERROR("Filename buffer too small, reduce length of session cache path");
-			goto error;
-		}
-
-		fd = open(filename, O_RDWR | O_CREAT | O_EXCL, 0600);
-		if (fd < 0) {
-			RERROR("Session serialisation failed, failed opening session file %s: %s",
-			      filename, fr_syserror(errno));
-			goto error;
-		}
-
-		todo = blob_len;
-		p = sess_blob;
-		while (todo > 0) {
-			rv = write(fd, p, todo);
-			if (rv < 1) {
-				RWDEBUG("Failed writing session: %s", fr_syserror(errno));
-				close(fd);
-				goto error;
-			}
-			p += rv;
-			todo -= rv;
-		}
-		close(fd);
-		RWDEBUG("Wrote session %s to %s (%d bytes)", buffer, filename, blob_len);
-	}
-
-error:
-	free(sess_blob);
-
-	return 0;
-}
-
-static SSL_SESSION *cbtls_get_session(SSL *ssl, unsigned char *data, int inlen, int *copy)
-{
-	size_t			size;
-	char			buffer[2 * MAX_SESSION_SIZE + 1];
-	fr_tls_server_conf_t	*conf;
-	TALLOC_CTX		*talloc_ctx;
-
-	SSL_SESSION		*sess = NULL;
-	unsigned char		*sess_data = NULL;
-	PAIR_LIST		*pairlist = NULL;
-
-	REQUEST			*request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
-
-	rad_assert(request != NULL);
-
-	size = inlen;
-	if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
-
-	fr_bin2hex(buffer, data, size);
-
-	RDEBUG2("Peer requested cached session: %s", buffer);
-
-	*copy = 0;
-
-	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
-	if (!conf) {
-		RWDEBUG("Failed to find TLS configuration in session");
-		return NULL;
-	}
-
-	talloc_ctx = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_TALLOC);
-
-	{
-		int			rv, fd, todo;
-		size_t			len;
-		char			filename[256];
-
-		unsigned char const	**o;
-		unsigned char		**p;
-		uint8_t			*q;
-
-		struct			stat st;
-		VALUE_PAIR		*vps = NULL;
-
-		/* read in the cached VPs from the .vps file */
-		len = snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path, FR_DIR_SEP, buffer);
-		if (is_truncated(len, sizeof(filename))) {
-			RWDEBUG("Filename buffer too small, reduce length of session cache path");
-			goto error;
-		}
-
-		rv = pairlist_read(NULL, filename, &pairlist, 1);
-		if (rv < 0) {
-			/* not safe to un-persist a session w/o VPs */
-			RWDEBUG("Could not load persisted VPs for session %s", buffer);
-			goto error;
-		}
-
-		/* load the actual SSL session */
-		len = snprintf(filename, sizeof(filename), "%s%c%s.asn1", conf->session_cache_path, FR_DIR_SEP, buffer);
-		if (is_truncated(len, sizeof(filename))) {
-			RWDEBUG("Filename buffer too small, reduce length of session cache path");
-			goto error;
-		}
-
-		fd = open(filename, O_RDONLY);
-		if (fd == -1) {
-			RWDEBUG("Could not find persisted session file %s: %s", filename, fr_syserror(errno));
-			goto error;
-		}
-
-		rv = fstat(fd, &st);
-		if (rv == -1) {
-			RWDEBUG("Could not stat persisted session file %s: %s", filename, fr_syserror(errno));
-			close(fd);
-			goto error;
-		}
-
-		sess_data = talloc_array(NULL, unsigned char, st.st_size);
-		if (!sess_data) {
-			RWDEBUG("Could not alloc buffer for persisted session len=%d", (int) st.st_size);
-			close(fd);
-			goto error;
-		}
-
-		q = sess_data;
-		todo = st.st_size;
-		while (todo > 0) {
-			rv = read(fd, q, todo);
-			if (rv < 1) {
-				RWDEBUG("Could not read from persisted session: %s", fr_syserror(errno));
-				close(fd);
-				goto error;
-			}
-			todo -= rv;
-			q += rv;
-		}
-		close(fd);
-
-		/*
-		 *	OpenSSL mutates what's passed in, so we assign sess_data to q,
-		 *	so the value of q gets mutated, and not the value of sess_data.
-		 *
-		 *	We then need a pointer to hold &q, but it can't be const, because
-		 *	clang complains about lack of consting in nested pointer types.
-		 *
-		 *	So we memcpy the value of that pointer, to one that
-		 *	does have a const, which we then pass into d2i_SSL_SESSION *sigh*.
-		 */
-		q = sess_data;
-		p = &q;
-		memcpy(&o, &p, sizeof(o));
-		sess = d2i_SSL_SESSION(NULL, o, st.st_size);
-		if (!sess) {
-			RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
-			goto error;
-		}
-
-		/* move the cached VPs into the session */
-		fr_pair_list_move_by_num(talloc_ctx, &vps, &pairlist->reply, 0, 0, TAG_ANY);
-
-		SSL_SESSION_set_ex_data(sess, fr_tls_ex_index_vps, vps);
-		RWDEBUG("Successfully restored session %s", buffer);
-		rdebug_pair_list(L_DBG_LVL_2, request, vps, "reply:");
-	}
-error:
-	if (sess_data) talloc_free(sess_data);
-	if (pairlist) pairlist_free(&pairlist);
-
-	return sess;
-}
 
 #ifdef HAVE_OPENSSL_OCSP_H
 /** Convert OpenSSL's ASN1_TIME to an epoch time
@@ -2792,26 +2517,6 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve)
 #endif
 #endif
 
-/*
- * DIE OPENSSL DIE DIE DIE
- *
- * What a palaver, just to free some data attached the
- * session. We need to do this because the "remove" callback
- * is called when refcount > 0 sometimes, if another thread
- * is using the session
- */
-static void sess_free_vps(UNUSED void *parent, void *data_ptr,
-				UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
-				UNUSED long argl, UNUSED void *argp)
-{
-	VALUE_PAIR *vp = data_ptr;
-	if (!vp) return;
-
-	DEBUG2(LOG_PREFIX ": Freeing cached session VPs");
-
-	fr_pair_list_free(&vp);
-}
-
 /** Add all the default ciphers and message digests reate our context.
  *
  * This should be called exactly once from main, before reading the main config
@@ -3223,20 +2928,9 @@ post_ca:
 			SSL_CTX_sess_set_new_cb(ctx, cache_write_session);
 			SSL_CTX_sess_set_get_cb(ctx, cache_read_session);
 			SSL_CTX_sess_set_remove_cb(ctx, cache_delete_session);
-		} else
-
-		/*
-		 *	Cache sessions on disk if requested.
-		 */
-		if (conf->session_cache_path) {
-			SSL_CTX_sess_set_new_cb(ctx, cbtls_new_session);
-			SSL_CTX_sess_set_get_cb(ctx, cbtls_get_session);
-			SSL_CTX_sess_set_remove_cb(ctx, cbtls_remove_session);
 		}
 
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
-		if (fr_tls_ex_index_vps < 0)
-			fr_tls_ex_index_vps = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_vps);
 	}
 
 	/*
@@ -3301,8 +2995,7 @@ post_ca:
 		 */
 		if (conf->session_cache_server) {
 			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_NO_INTERNAL);
-
-		} else {	/* persist_dir, or in-memory cache. */
+		} else {	/* in-memory cache. */
 			/*
 			 *	Create a unique context Id per EAP-TLS configuration.
 			 */
@@ -3521,9 +3214,9 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 
 int tls_success(tls_session_t *ssn, REQUEST *request)
 {
-	VALUE_PAIR *vp, *vps = NULL;
-	fr_tls_server_conf_t *conf;
-	TALLOC_CTX *talloc_ctx;
+	VALUE_PAIR		*vp;
+	fr_tls_server_conf_t	*conf;
+	TALLOC_CTX		*talloc_ctx;
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF);
 	rad_assert(conf != NULL);
@@ -3559,113 +3252,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	Else resumption IS allowed, so we store the
 	 *	user data in the cache.
 	 */
-	} else if (!SSL_session_reused(ssn->ssl)) {
-		size_t size;
-		char buffer[2 * MAX_SESSION_SIZE + 1];
-
-		size = ssn->ssl->session->session_id_length;
-		if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
-
-		fr_bin2hex(buffer, ssn->ssl->session->session_id, size);
-
-		vp = fr_pair_list_copy_by_num(talloc_ctx, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
-		if (vp) fr_pair_add(&vps, vp);
-
-		vp = fr_pair_list_copy_by_num(talloc_ctx, request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
-		if (vp) fr_pair_add(&vps, vp);
-
-		vp = fr_pair_list_copy_by_num(talloc_ctx, request->packet->vps, PW_STRIPPED_USER_DOMAIN, 0, TAG_ANY);
-		if (vp) fr_pair_add(&vps, vp);
-
-		vp = fr_pair_list_copy_by_num(talloc_ctx, request->reply->vps, PW_CHARGEABLE_USER_IDENTITY, 0, TAG_ANY);
-		if (vp) fr_pair_add(&vps, vp);
-
-		vp = fr_pair_list_copy_by_num(talloc_ctx, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
-		if (vp) fr_pair_add(&vps, vp);
-
-		if (vps) {
-			SSL_SESSION_set_ex_data(ssn->ssl->session, fr_tls_ex_index_vps, vps);
-			rdebug_pair_list(L_DBG_LVL_2, request, vps, "  caching ");
-
-			if (conf->session_cache_path) {
-				/* write the VPs to the cache file */
-				char filename[256], buf[1024];
-				FILE *vp_file;
-
-				RDEBUG2("Saving session %s in the disk cache", buffer);
-
-				snprintf(filename, sizeof(filename), "%s%c%s.vps", conf->session_cache_path,
-					 FR_DIR_SEP, buffer);
-				vp_file = fopen(filename, "w");
-				if (vp_file == NULL) {
-					RWDEBUG("Could not write session VPs to persistent cache: %s",
-						fr_syserror(errno));
-				} else {
-					VALUE_PAIR *prev = NULL;
-					vp_cursor_t cursor;
-					/* generate a dummy user-style entry which is easy to read back */
-					fprintf(vp_file, "# SSL cached session\n");
-					fprintf(vp_file, "%s\n\t", buffer);
-
-					for (vp = fr_cursor_init(&cursor, &vps);
-					     vp;
-					     vp = fr_cursor_next(&cursor)) {
-						/*
-						 *	Terminate the previous line.
-						 */
-						if (prev) fprintf(vp_file, ",\n\t");
-
-						/*
-						 *	Write this one.
-						 */
-						fr_pair_snprint(buf, sizeof(buf), vp);
-						fputs(buf, vp_file);
-						prev = vp;
-					}
-
-					/*
-					 *	Terminate the final line.
-					 */
-					fprintf(vp_file, "\n");
-					fclose(vp_file);
-				}
-			} else {
-				RDEBUG("Failed to find 'persist_dir' in TLS configuration.  Session will not be cached on disk.");
-			}
-		} else {
-			RDEBUG2("No information to cache: session caching will be disabled for session %s", buffer);
-			SSL_CTX_remove_session(ssn->ctx, ssn->ssl->session);
-		}
-
-	/*
-	 *	Else the session WAS allowed.  Copy the cached reply.
-	 */
-	} else {
-		size_t size;
-		char buffer[2 * MAX_SESSION_SIZE + 1];
-
-		size = ssn->ssl->session->session_id_length;
-		if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
-
-		fr_bin2hex(buffer, ssn->ssl->session->session_id, size);
-
-		/*
-		 *	The "restore VPs from OpenSSL cache" code is
-		 *	now in eaptls_process()
-		 */
-
-		if (conf->session_cache_path) {
-			/* "touch" the cached session/vp file */
-			char filename[256];
-
-			snprintf(filename, sizeof(filename), "%s%c%s.asn1",
-				 conf->session_cache_path, FR_DIR_SEP, buffer);
-			utime(filename, NULL);
-			snprintf(filename, sizeof(filename), "%s%c%s.vps",
-				 conf->session_cache_path, FR_DIR_SEP, buffer);
-			utime(filename, NULL);
-		}
-
+	} else if (SSL_session_reused(ssn->ssl)) {
 		/*
 		 *	Mark the request as resumed.
 		 */

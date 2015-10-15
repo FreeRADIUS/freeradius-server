@@ -364,12 +364,13 @@ struct fr_tls_server_conf_t {
 	char const	*check_cert_issuer;
 
 	bool     	session_cache_enable;
-	uint32_t     	session_timeout;
-	uint32_t     	session_cache_size;
-	char const	*session_id_name;
-	char const	*session_cache_path;
-	char const	*session_cache_server;
+	uint32_t     	session_timeout;	//!< How long entries should persist in in-memory cache
+	uint32_t     	session_cache_size;	//!< Maximum number of entries in in-memory cache.
+	char const	*session_id_name;	//!< Context ID to allow multiple sessions stores to be defined.
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
+
+	char const	*session_cache_server;	//!< Virtual server to use as an alternative to the in-memory cache.
+
 	time_t		session_last_flushed;
 
 	char const	*verify_tmp_dir;
