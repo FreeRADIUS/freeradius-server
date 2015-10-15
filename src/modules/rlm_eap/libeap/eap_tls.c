@@ -290,12 +290,51 @@ static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
 
 /** Check that this eaptls_packet and the progression of eaptls packets is sane
  *
+ * @note In the received packet, No data will be present incase of ACK or NAK
+ *	in this case the packet->data pointer will be NULL.
+ *
+ *  RFC 2716 Section 4.2.  PPP EAP TLS Request Packet
+ @verbatim
+    0		   1		   2		   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Code      |   Identifier  |	    Length	     |
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     Type      |     Flags     |      TLS Message Length
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    |     TLS Message Length	|       TLS Data...
+    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ @endverbatim
+ *
+ *  Structure of an EAP-TLS packet
+ *
+ @verbatim
+   code    = EAP-code
+   id      = EAP-id
+   length  = code + id + length + flags + tlsdata
+  	   =  1   +  1 +   2    +  1    +  X
+   length  = EAP-length - 1(EAP-Type = 1 octet)
+   flags   = EAP-typedata[0] (1 octet)
+   dlen    = EAP-typedata[1-4] (4 octets), if L flag set
+  	   = length - 5(code+id+length+flags), otherwise
+   data    = EAP-typedata[5-n], if L flag set
+  	   = EAP-typedata[1-n], otherwise
+   packet  = EAP-typedata (complete typedata)
+ @endverbatim
+ *
  * The S flag is set only within the EAP-TLS start message sent from the EAP
  * server to the peer.
  *
  * Similarly, when the EAP server receives an EAP-Response with the M bit set,
  * it MUST respond with an EAP-Request with EAP-Type=EAP-TLS and no data.
  * This serves as a fragment ACK. The EAP peer MUST wait.
+ *
+ * The Length field is two octets and indicates the length of the EAP
+ * packet including the Code, Identifier, Length, Type, and TLS data
+ * fields.
+ *
+ * The TLS Message Length field is four octets and indicates the
+ * complete reassembled length of the TLS record fragment.
  *
  * @param[in] handler the current EAP session state.
  * @return
@@ -535,114 +574,6 @@ ignore_length:
 	return FR_TLS_OK;
 }
 
-/** Extract the fields of an EAP-TLS message
- *
- * @note In the received packet, No data will be present incase of ACK or NAK
- *	in this case the packet->data pointer will be NULL.
- *
- *  RFC 2716 Section 4.2.  PPP EAP TLS Request Packet
- @verbatim
-    0		   1		   2		   3
-    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |     Code      |   Identifier  |	    Length	     |
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |     Type      |     Flags     |      TLS Message Length
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-    |     TLS Message Length	|       TLS Data...
-    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- @endverbatim
- *
- *  Structure of an EAP-TLS packet
- *
- @verbatim
-   code    = EAP-code
-   id      = EAP-id
-   length  = code + id + length + flags + tlsdata
-  	   =  1   +  1 +   2    +  1    +  X
-   length  = EAP-length - 1(EAP-Type = 1 octet)
-   flags   = EAP-typedata[0] (1 octet)
-   dlen    = EAP-typedata[1-4] (4 octets), if L flag set
-  	   = length - 5(code+id+length+flags), otherwise
-   data    = EAP-typedata[5-n], if L flag set
-  	   = EAP-typedata[1-n], otherwise
-   packet  = EAP-typedata (complete typedata)
- @endverbatim
- *
- *  The Length field is two octets and indicates the length of the EAP
- *  packet including the Code, Identifier, Length, Type, and TLS data
- *  fields.
- *
- *  The TLS Message Length field is four octets and indicates the
- *  complete reassembled length of the TLS record fragment.
- *
- * @param eap_ds state handler.
- */
-static eap_tls_packet_t *eaptls_extract(EAP_DS *eap_ds)
-{
-	eap_tls_packet_t	*eap_tls_packet;
-	uint32_t		data_len = 0;
-	uint8_t			*data = NULL;
-
-	/*
-	 *	The main EAP code & eaptls_verify() take care of
-	 *	ensuring that the packet is OK, and that we can
-	 *	extract the various fields we want.
-	 *
-	 *	e.g. a TLS packet with zero data is allowed as an ACK,
-	 *	but we will never see it here, as we will simply
-	 *	send another fragment, instead of trying to extract
-	 *	the data.
-	 *
-	 *	MUST have TLS type octet, followed by flags, followed
-	 *	by data.
-	 */
-	rad_assert(eap_ds->response->length > 2);
-
-	eap_tls_packet = talloc(eap_ds, eap_tls_packet_t);
-	if (!eap_tls_packet) return NULL;
-	/*
-	 *	Code & id for EAPTLS & EAP are same
-	 *	but eaptls_length = eap_length - 1(EAP-Type = 1 octet)
-	 *
-	 *	length = code + id + length + type + tlsdata
-	 *	       =  1   +  1 +   2    +  1    +  X
-	 */
-	eap_tls_packet->code = eap_ds->response->code;
-	eap_tls_packet->id = eap_ds->response->id;
-	eap_tls_packet->length = eap_ds->response->length - 1; /* EAP type */
-	eap_tls_packet->flags = eap_ds->response->type.data[0];
-
-	/*
-	 *	If the final TLS packet is larger than we can handle, die
-	 *	now.
-	 *
-	 *	Likewise, if the EAP packet says N bytes, and the TLS
-	 *	packet says there's fewer bytes, it's a problem.
-	 */
-	if (TLS_LENGTH_INCLUDED(eap_tls_packet->flags)) {
-		data = (eap_ds->response->type.data + 5);	/* flags + TLS-Length */
-		data_len = eap_ds->response->type.length - 5;	/* flags + TLS-Length */
-	} else {
-		data = eap_ds->response->type.data + 1;		/* flags */
-		data_len = eap_ds->response->type.length - 1;	/* flags */
-	}
-
-	eap_tls_packet->dlen = data_len;
-	if (data_len) {
-		eap_tls_packet->data = talloc_array(eap_tls_packet, uint8_t, data_len);
-		if (!eap_tls_packet->data) {
-			talloc_free(eap_tls_packet);
-			return NULL;
-		}
-		memcpy(eap_tls_packet->data, data, data_len);
-	}
-
-	return eap_tls_packet;
-}
-
-
-
 /*
  * To process the TLS,
  *  INCOMING DATA:
@@ -730,11 +661,8 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	return FR_TLS_FAIL;
 }
 
-
-/*
- * In the actual authentication first verify the packet and then create the data structure
- */
-/*
+/** Process EAP TLS request
+ *
  * To process the TLS,
  *  INCOMING DATA:
  * 	1. EAP-TLS should get the compelete TLS data from the peer.
@@ -754,16 +682,16 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
  *	TLS module, then how to let SSL API know about these
  *	sessions.)
  */
-
-/*
- *	Process an EAP request
- */
 fr_tls_status_t eaptls_process(eap_handler_t *handler)
 {
-	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
-	eap_tls_packet_t	*eap_tls_packet;
-	fr_tls_status_t	status;
-	REQUEST *request = handler->request;
+	tls_session_t		*tls_session = (tls_session_t *) handler->opaque;
+	EAP_DS			*eap_ds = handler->eap_ds;
+	fr_tls_status_t		status;
+	REQUEST			*request = handler->request;
+
+	eap_tls_data_t		*eap_tls_data;
+	uint8_t			*data;
+	size_t			data_len;
 
 	if (!request) return FR_TLS_FAIL;
 
@@ -823,36 +751,26 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 		break;
 	}
 
-	/*
-	 *	Extract the TLS packet from the buffer.
-	 */
-	if ((eap_tls_packet = eaptls_extract(handler->eap_ds)) == NULL) {
-		status = FR_TLS_FAIL;
-		goto done;
+ 	eap_tls_data = (eap_tls_data_t *)eap_ds->response->type.data;
+	if (TLS_LENGTH_INCLUDED(eap_tls_data->flags)) {
+		data = (eap_ds->response->type.data + 5);	/* flags + TLS-Length */
+		data_len = eap_ds->response->type.length - 5;	/* flags + TLS-Length */
+	} else {
+		data = eap_ds->response->type.data + 1;		/* flags */
+		data_len = eap_ds->response->type.length - 1;	/* flags */
 	}
 
 	/*
-	 *	Get the session struct from the handler
-	 *
-	 *	update the dirty_in buffer
+	 *	Update the dirty_in buffer (data for reading by OpenSSL)
 	 *
 	 *	NOTE: This buffer will contain partial data when M bit is set.
-	 *
-	 * 	CAUTION while reinitializing this buffer, it should be
-	 * 	reinitialized only when this M bit is NOT set.
+	 * 	CAUTION Buffer should only be reinitialized when M but is not set.
 	 */
-	if (eap_tls_packet->dlen !=
-	    (tls_session->record_plus)(&tls_session->dirty_in, eap_tls_packet->data, eap_tls_packet->dlen)) {
-		talloc_free(eap_tls_packet);
+	if ((tls_session->record_plus)(&tls_session->dirty_in, data, data_len) != data_len) {
 		REDEBUG("Exceeded maximum record size");
 		status = FR_TLS_FAIL;
 		goto done;
 	}
-
-	/*
-	 *	No longer needed.
-	 */
-	talloc_free(eap_tls_packet);
 
 	/*
 	 *	SSL initalization is done.  Return.
