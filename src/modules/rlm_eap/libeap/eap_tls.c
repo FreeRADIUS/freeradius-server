@@ -95,7 +95,6 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
 #endif
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TALLOC, NULL);
 
 	return talloc_steal(handler, ssn); /* ssn */
 }

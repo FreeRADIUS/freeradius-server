@@ -3213,12 +3213,9 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 {
 	VALUE_PAIR		*vp;
 	fr_tls_server_conf_t	*conf;
-	TALLOC_CTX		*talloc_ctx;
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF);
 	rad_assert(conf != NULL);
-
-	talloc_ctx = SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TALLOC);
 
 	/*
 	 *	If there's no session resumption, delete the entry
