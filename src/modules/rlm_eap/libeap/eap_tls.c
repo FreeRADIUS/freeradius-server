@@ -300,9 +300,12 @@ static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
  * @param[in] handler the current EAP session state.
  * @return
  *	- FR_TLS_INVALID if the TLS record or progression is invalid.
+ *	- FR_TLS_FAIL handshake failed.
  *	- FR_TLS_FIRST_FRAGMENT this is the start of a new sequence of record fragments.
  *	- FR_TLS_MORE_FRAGMENTS this is a continuation of a sequence of fragments.
+ *	- FR_TLS_REQUEST send more data to peer.
  *	- FR_TLS_OK we received a completed record.
+ *	- FR_TLS_SUCCESS handshake is complete, TLS session has been established.
  */
 static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 {
@@ -363,12 +366,11 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	if ((!eap_tls_data) ||
 	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) &&
 	     ((eap_tls_data->flags & 0xc0) == 0x00))) {
-		if (prev_eap_ds && (prev_eap_ds->request->id == eap_ds->response->id)) {
-			return tls_ack_handler(handler->opaque, request);
-		} else {
+		if (!prev_eap_ds || (prev_eap_ds->request->id != eap_ds->response->id)) {
 			REDEBUG("Received Invalid TLS ACK");
 			return FR_TLS_INVALID;
 		}
+		return tls_ack_handler(handler->opaque, request);
 	}
 
 	/*
@@ -420,7 +422,8 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		 *	for every record fragment if performing mutual TLS auth.
 		 *
 		 *	If the handler says this is not the first fragment, then
-		 *	don't count this as a new record, and continue as normal.
+		 *	don't count this as a new record, and continue as if we
+		 *	hadn't seen the length flag.
 		 */
 		if (tls_session->tls_record_transfer_started) goto ignore_length;
 
