@@ -35,13 +35,16 @@ typedef struct rlm_eap_tls_t {
 	/*
 	 *	TLS configuration
 	 */
-	char const *tls_conf_name;
-	fr_tls_server_conf_t *tls_conf;
+	char const		*tls_conf_name;		//!< The name of the shared TLS configuration.
+	fr_tls_server_conf_t	*tls_conf;		//!< Shared TLS configuration structure.
 
-	/*
-	 *	Virtual server for checking certificates
-	 */
-	char const *virtual_server;
+	bool			req_client_cert;	//!< Whether we require the client to provide
+							//!< a certificate or not.  RFC 5216 says it's
+							//!< not mandatory,  and there are some situations
+							//!< where it's useful to allow client access without
+							//!< a certificate.
+
+	char const		*virtual_server;	//!< Virtual server used for validating certificates.
 } rlm_eap_tls_t;
 
 #endif /* _RLM_EAP_TLS_H */

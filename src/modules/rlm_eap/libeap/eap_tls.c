@@ -76,9 +76,7 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	 *	when we get the response
 	 */
 	ssn = tls_new_session(handler, tls_conf, request, client_cert);
-	if (!ssn) {
-		return NULL;
-	}
+	if (!ssn) return NULL;
 
 	/*
 	 *	Create a structure for all the items required to be

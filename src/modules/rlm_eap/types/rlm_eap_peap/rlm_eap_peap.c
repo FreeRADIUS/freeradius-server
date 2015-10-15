@@ -159,8 +159,8 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 */
 
 	/*
-	 * EAP-TLS-Require-Client-Cert attribute will override
-	 * the require_client_cert configuration option.
+	 *	EAP-TLS-Require-Client-Cert attribute will override
+	 *	the require_client_cert configuration option.
 	 */
 	vp = fr_pair_find_by_num(handler->request->config, PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0, TAG_ANY);
 	if (vp) {

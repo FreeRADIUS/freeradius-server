@@ -43,6 +43,8 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 static CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("tls", PW_TYPE_STRING, rlm_eap_tls_t, tls_conf_name) },
 
+	{ FR_CONF_OFFSET("require_client_cert", PW_TYPE_BOOLEAN, rlm_eap_tls_t, req_client_cert), .dflt = "yes" },
+
 	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, rlm_eap_tls_t, virtual_server) },
 	CONF_PARSER_TERMINATOR
 };
@@ -86,18 +88,29 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	tls_session_t	*ssn;
 	rlm_eap_tls_t	*inst;
 	REQUEST		*request = handler->request;
+	VALUE_PAIR	*vp;
+	bool		client_cert;
 
 	inst = type_arg;
 
 	handler->tls = true;
 
 	/*
+	 *	EAP-TLS-Require-Client-Cert attribute will override
+	 *	the require_client_cert configuration option.
+	 */
+	vp = fr_pair_find_by_num(handler->request->config, PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0, TAG_ANY);
+	if (vp) {
+		client_cert = vp->vp_integer ? true : false;
+	} else {
+		client_cert = inst->req_client_cert;
+	}
+
+	/*
 	 *	EAP-TLS always requires a client certificate.
 	 */
-	ssn = eaptls_session(handler, inst->tls_conf, true);
-	if (!ssn) {
-		return 0;
-	}
+	ssn = eaptls_session(handler, inst->tls_conf, client_cert);
+	if (!ssn) return 0;
 
 	handler->opaque = ((void *)ssn);
 

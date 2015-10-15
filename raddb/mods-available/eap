@@ -533,6 +533,19 @@ eap {
 		tls = tls-common
 
 		#
+		#  EAP-TLS can work without a client certificate,
+		#  but situations whether this is useful are quite
+		#  limited, and is probably only useful for testing.
+		#
+		#  You can override this option by setting:
+		#
+		#	EAP-TLS-Require-Client-Cert = Yes
+		#
+		#  in the control items for a request.
+		#
+	#	require_client_cert = yes
+
+		#
 		# As part of checking a client certificate, the EAP-TLS
 		# sets some attributes such as TLS-Client-Cert-CN. This
 		# virtual server has access to these attributes, and can
@@ -540,7 +553,6 @@ eap {
 		#
 	#	virtual_server = check-eap-tls
 	}
-
 
 	## EAP-TTLS
 	#
@@ -629,14 +641,14 @@ eap {
 	#	include_length = yes
 
 		#
-		# Unlike EAP-TLS, EAP-TTLS does not require a client
-		# certificate. However, you can require one by setting the
-		# following option. You can also override this option by
-		# setting
+		#  EAP-TTLS does not require a client certificate.
+		#  However, you can require one by setting the
+		#  following option. You can also override this option by
+		#  setting
 		#
 		#	EAP-TLS-Require-Client-Cert = Yes
 		#
-		# in the control items for a request.
+		#  in the control items for a request.
 		#
 	#	require_client_cert = yes
 	}
@@ -756,13 +768,13 @@ eap {
 	#	soh_virtual_server = "soh-server"
 
 		#
-		# Unlike EAP-TLS, PEAP does not require a client certificate.
-		# However, you can require one by setting the following
-		# option. You can also override this option by setting
+		#  Unlike EAP-TLS, PEAP does not require a client certificate.
+		#  However, you can require one by setting the following
+		#  option. You can also override this option by setting
 		#
 		#	EAP-TLS-Require-Client-Cert = Yes
 		#
-		# in the control items for a request.
+		#  in the control items for a request.
 		#
 	#	require_client_cert = yes
 	}
