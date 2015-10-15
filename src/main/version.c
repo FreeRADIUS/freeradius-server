@@ -62,7 +62,7 @@ const char *ssl_version()
  *
  * @return 0 if ok, else -1
  */
-#if defined(HAVE_OPENSSL_CRYPTO_H) && defined(ENABLE_OPENSSL_VERSION_CHECK)
+#ifdef HAVE_OPENSSL_CRYPTO_H
 int ssl_check_version(int allow_vulnerable)
 {
 	long ssl_linked;
@@ -94,6 +94,7 @@ int ssl_check_version(int allow_vulnerable)
 	 */
 	} else if ((ssl_built & 0xfffff000) != (ssl_linked & 0xfffff000)) goto mismatch;
 
+#  ifdef ENABLE_OPENSSL_VERSION_CHECK
 	if (!allow_vulnerable) {
 		/* Check for bad versions */
 		/* 1.0.1 - 1.0.1f CVE-2014-0160 http://heartbleed.com */
@@ -105,6 +106,7 @@ int ssl_check_version(int allow_vulnerable)
 			return -1;
 		}
 	}
+#  endif
 
 	return 0;
 }
