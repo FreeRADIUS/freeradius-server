@@ -575,7 +575,15 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *session)
 	if (!tls_error_log(request, session->ssl, err, "TLS_read")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
-	if (SSL_is_init_finished(session->ssl)) RDEBUG2("TLS connection established");
+	if (SSL_is_init_finished(session->ssl)) {
+		SSL_CIPHER const *cipher;
+		char buffer[256];
+
+		cipher = SSL_get_current_cipher(session->ssl);
+
+		RDEBUG2("TLS established with cipher suite: %s",
+			SSL_CIPHER_description(cipher, buffer, sizeof(buffer)));
+	}
 	if (SSL_in_init(session->ssl)) RDEBUG2("In TLS handshake phase");
 	if (SSL_in_before(session->ssl)) RDEBUG2("Before TLS handshake phase");
 	if (SSL_in_accept_init(session->ssl)) RDEBUG2("In TLS accept mode");
