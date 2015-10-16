@@ -132,8 +132,8 @@ typedef struct _tls_session_t {
 
 	void 		(*record_init)(record_t *buf);
 	void 		(*record_close)(record_t *buf);
-	unsigned int 	(*record_plus)(record_t *buf, void const *ptr, unsigned int size);
-	unsigned int 	(*record_minus)(record_t *buf, void *ptr, unsigned int size);
+	unsigned int 	(*record_from_buff)(record_t *buf, void const *ptr, unsigned int size);
+	unsigned int 	(*record_to_buff)(record_t *buf, void *ptr, unsigned int size);
 
 	bool		invalid_hb_used;		//!< Whether heartbleed attack was detected.
 
@@ -300,8 +300,8 @@ void		tls_global_init(void);
 int		tls_global_version_check(char const *acknowledged);
 #endif
 void		tls_global_cleanup(void);
-tls_session_t	*tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert);
-tls_session_t	*tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd);
+tls_session_t	*tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert);
+tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd);
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
 SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client);

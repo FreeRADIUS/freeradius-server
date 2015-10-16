@@ -75,7 +75,7 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	 *	in Opaque.  So that we can use these data structures
 	 *	when we get the response
 	 */
-	ssn = tls_new_session(handler, tls_conf, request, client_cert);
+	ssn = tls_session_init_server(handler, tls_conf, request, client_cert);
 	if (!ssn) return NULL;
 
 	/*

@@ -61,12 +61,12 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 typedef struct libssl_defect {
-	uint64_t	high;
-	uint64_t	low;
+	uint64_t	high;		//!< The last version number this defect affected.
+	uint64_t	low;		//!< The first version this defect affected.
 
-	char const	*id;
-	char const	*name;
-	char const	*comment;
+	char const	*id;		//!< CVE (or other ID)
+	char const	*name;		//!< As known in the media...
+	char const	*comment;	//!< Where to get more information.
 } libssl_defect_t;
 
 /* Record critical defects in libssl here (newest first)*/
@@ -104,17 +104,24 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
 };
 
 /* Session */
-static void 		session_close(tls_session_t *ssn);
-static void 		session_init(tls_session_t *ssn);
+static void 		session_close(tls_session_t *session);
+static void 		session_init(tls_session_t *session);
 
 /* record */
-static void 		record_init(record_t *buf);
-static void 		record_close(record_t *buf);
-static unsigned int 	record_from_buff(record_t *buf, void const *ptr, unsigned int size);
-static unsigned int 	record_to_buff(record_t *buf, void *ptr, unsigned int size);
+static void 		record_init(record_t *record);
+static void 		record_close(record_t *record);
+static unsigned int 	record_from_buff(record_t *record, void const *in, unsigned int inlen);
+static unsigned int 	record_to_buff(record_t *record, void *out, unsigned int outlen);
 
 #ifdef PSK_MAX_IDENTITY_LEN
-static bool identity_is_safe(const char *identity)
+/** Verify the PSK identity contains no reserved chars
+ *
+ * @param identity to check.
+ * @return
+ *	- true identity does not contain reserved chars.
+ *	- false identity contains reserved chars.
+ */
+static bool tls_psk_identity_is_safe(const char *identity)
 {
 	char c;
 
@@ -133,13 +140,13 @@ static bool identity_is_safe(const char *identity)
 }
 
 
-/*
- *	When a client uses TLS-PSK to talk to a server, this callback
- *	is used by the server to determine the PSK to use.
+/** Determine the PSK to use
+ *
+ *
  */
-static unsigned int psk_server_callback(SSL *ssl, const char *identity,
-					unsigned char *psk,
-					unsigned int max_psk_len)
+static unsigned int tls_psk_server_cb(SSL *ssl, const char *identity,
+				      unsigned char *psk,
+				      unsigned int max_psk_len)
 {
 	unsigned int psk_len = 0;
 	fr_tls_server_conf_t *conf;
@@ -157,7 +164,7 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 		/*
 		 *	The passed identity is weird.  Deny it.
 		 */
-		if (!identity_is_safe(identity)) {
+		if (!tls_psk_identity_is_safe(identity)) {
 			RWDEBUG("Invalid characters in PSK identity %s", identity);
 			return 0;
 		}
@@ -211,9 +218,9 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 	return fr_hex2bin(psk, max_psk_len, conf->psk_password, psk_len);
 }
 
-static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
-					char *identity, unsigned int max_identity_len,
-					unsigned char *psk, unsigned int max_psk_len)
+static unsigned int tls_psk_client_cb(SSL *ssl, UNUSED char const *hint,
+				      char *identity, unsigned int max_identity_len,
+				      unsigned char *psk, unsigned int max_psk_len)
 {
 	unsigned int psk_len;
 	fr_tls_server_conf_t *conf;
@@ -234,20 +241,20 @@ static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 
 #define MAX_SESSION_SIZE (256)
 
-void tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize)
+void tls_session_id(SSL_SESSION *session, char *buffer, size_t bufsize)
 {
 #if OPENSSL_VERSION_NUMBER < 0x10001000L
 	size_t size;
 
-	size = ssn->session_id_length;
+	size = session->session_id_length;
 	if (size > bufsize) size = bufsize;
 
-	fr_bin2hex(buffer, ssn->session_id, size);
+	fr_bin2hex(buffer, session->session_id, size);
 #else
 	unsigned int size;
 	uint8_t const *p;
 
-	p = SSL_SESSION_get_id(ssn, &size);
+	p = SSL_SESSION_get_id(session, &size);
 	if (size > bufsize) size = bufsize;
 
 	fr_bin2hex(buffer, p, size);
@@ -256,52 +263,64 @@ void tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize)
 }
 
 
-static int _tls_session_free(tls_session_t *ssn)
+static int _tls_session_free(tls_session_t *session)
 {
 	/*
 	 *	Free any opaque TTLS or PEAP data.
 	 */
-	if ((ssn->opaque) && (ssn->free_opaque)) {
-		ssn->free_opaque(ssn->opaque);
-		ssn->opaque = NULL;
+	if ((session->opaque) && (session->free_opaque)) {
+		session->free_opaque(session->opaque);
+		session->opaque = NULL;
 	}
 
-	session_close(ssn);
+	session_close(session);
 
 	return 0;
 }
 
-tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd)
+/** Create a new client TLS session
+ *
+ * Configures a new client TLS session, configuring options, setting callbacks etc...
+ *
+ * @param ctx to alloc session data in. Should usually be NULL unless the lifetime of the
+ *	session is tied to another talloc'd object.
+ * @param conf to use to configure the tls session.
+ * @param fd OpenSSL should read from/write to.
+ * @return
+ *	- A new session on success.
+ *	- NULL on error.
+ */
+tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd)
 {
-	int verify_mode;
-	tls_session_t *ssn = NULL;
-	REQUEST *request;
+	int		verify_mode;
+	tls_session_t	*session = NULL;
+	REQUEST		*request;
 
-	ssn = talloc_zero(ctx, tls_session_t);
-	if (!ssn) return NULL;
+	session = talloc_zero(ctx, tls_session_t);
+	if (!session) return NULL;
 
-	talloc_set_destructor(ssn, _tls_session_free);
+	talloc_set_destructor(session, _tls_session_free);
 
-	ssn->ctx = conf->ctx;
+	session->ctx = conf->ctx;
 
-	SSL_CTX_set_mode(ssn->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
+	SSL_CTX_set_mode(session->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
 
-	ssn->ssl = SSL_new(ssn->ctx);
-	if (!ssn->ssl) {
-		talloc_free(ssn);
+	session->ssl = SSL_new(session->ctx);
+	if (!session->ssl) {
+		talloc_free(session);
 		return NULL;
 	}
 
-	request = request_alloc(ssn);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
+	request = request_alloc(session);
+	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 
 	/*
 	 *	Add the message callback to identify what type of
 	 *	message/handshake is passed
 	 */
-	SSL_set_msg_callback(ssn->ssl, cbtls_msg);
-	SSL_set_msg_callback_arg(ssn->ssl, ssn);
-	SSL_set_info_callback(ssn->ssl, cbtls_info);
+	SSL_set_msg_callback(session->ssl, cbtls_msg);
+	SSL_set_msg_callback_arg(session->ssl, session);
+	SSL_set_info_callback(session->ssl, cbtls_info);
 
 	/*
 	 *	Always verify the peer certificate.
@@ -309,29 +328,27 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
 	DEBUG2("Requiring Server certificate");
 	verify_mode = SSL_VERIFY_PEER;
 	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-	SSL_set_verify(ssn->ssl, verify_mode, cbtls_verify);
+	SSL_set_verify(session->ssl, verify_mode, cbtls_verify);
 
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
-	SSL_set_fd(ssn->ssl, fd);
-	if (SSL_connect(ssn->ssl) <= 0) {
+	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
+	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_SSN, (void *)session);
+	SSL_set_fd(session->ssl, fd);
+	if (SSL_connect(session->ssl) <= 0) {
 		int err;
-		while ((err = ERR_get_error())) {
-			ERROR("tls: %s", ERR_error_string(err, NULL));
-		}
-		talloc_free(ssn);
+		while ((err = ERR_get_error())) ERROR("tls: %s", ERR_error_string(err, NULL));
+		talloc_free(session);
 
 		return NULL;
 	}
 
-	ssn->mtu = conf->fragment_size;
+	session->mtu = conf->fragment_size;
 
-	return ssn;
+	return session;
 }
 
-/** Create a new TLS session
+/** Create a new server TLS session
  *
- * Configures a new TLS session, configuring options, setting callbacks etc...
+ * Configures a new server TLS session, configuring options, setting callbacks etc...
  *
  * @param ctx to alloc session data in. Should usually be NULL unless the lifetime of the
  *	session is tied to another talloc'd object.
@@ -342,9 +359,9 @@ tls_session_t *tls_new_client_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *con
  *	- A new session on success.
  *	- NULL on error.
  */
-tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert)
+tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQUEST *request, bool client_cert)
 {
-	tls_session_t	*state = NULL;
+	tls_session_t	*session = NULL;
 	SSL		*new_tls = NULL;
 	int		verify_mode = 0;
 	VALUE_PAIR	*vp;
@@ -376,23 +393,23 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	/* We use the SSL's "app_data" to indicate a call-back */
 	SSL_set_app_data(new_tls, NULL);
 
-	if ((state = talloc_zero(ctx, tls_session_t)) == NULL) {
-		RERROR("Error allocating memory for TLS state");
+	if ((session = talloc_zero(ctx, tls_session_t)) == NULL) {
+		RERROR("Error allocating memory for TLS session");
 		return NULL;
 	}
-	session_init(state);
-	talloc_set_destructor(state, _tls_session_free);
+	session_init(session);
+	talloc_set_destructor(session, _tls_session_free);
 
-	state->ctx = conf->ctx;
-	state->ssl = new_tls;
+	session->ctx = conf->ctx;
+	session->ssl = new_tls;
 
 	/*
 	 *	Initialize callbacks
 	 */
-	state->record_init = record_init;
-	state->record_close = record_close;
-	state->record_from_buff = record_from_buff;
-	state->record_to_buff = record_to_buff;
+	session->record_init = record_init;
+	session->record_close = record_close;
+	session->record_from_buff = record_from_buff;
+	session->record_to_buff = record_to_buff;
 
 	/*
 	 *	Create & hook the BIOs to handle the dirty side of the
@@ -404,22 +421,22 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *	and we can update those BIOs from the packets we've
 	 *	received.
 	 */
-	state->into_ssl = BIO_new(BIO_s_mem());
-	state->from_ssl = BIO_new(BIO_s_mem());
-	SSL_set_bio(state->ssl, state->into_ssl, state->from_ssl);
+	session->into_ssl = BIO_new(BIO_s_mem());
+	session->from_ssl = BIO_new(BIO_s_mem());
+	SSL_set_bio(session->ssl, session->into_ssl, session->from_ssl);
 
 	/*
 	 *	Add the message callback to identify what type of
 	 *	message/handshake is passed
 	 */
 	SSL_set_msg_callback(new_tls, cbtls_msg);
-	SSL_set_msg_callback_arg(new_tls, state);
+	SSL_set_msg_callback_arg(new_tls, session);
 	SSL_set_info_callback(new_tls, cbtls_info);
 
 	/*
 	 *	In Server mode we only accept.
 	 */
-	SSL_set_accept_state(state->ssl);
+	SSL_set_accept_state(session->ssl);
 
 	/*
 	 *	Verify the peer certificate, if asked.
@@ -430,11 +447,11 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
 		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
 	}
-	SSL_set_verify(state->ssl, verify_mode, cbtls_verify);
+	SSL_set_verify(session->ssl, verify_mode, cbtls_verify);
 
-	SSL_set_ex_data(state->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
-	SSL_set_ex_data(state->ssl, FR_TLS_EX_INDEX_SSN, (void *)state);
-	state->length_flag = conf->include_length;
+	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
+	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_SSN, (void *)session);
+	session->length_flag = conf->include_length;
 
 	/*
 	 *	We use default fragment size, unless the Framed-MTU
@@ -448,21 +465,21 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 *	of EAP-TLS in order to calculate fragment sizes is
 	 *	just too much.
 	 */
-	state->mtu = conf->fragment_size;
+	session->mtu = conf->fragment_size;
 	vp = fr_pair_find_by_num(request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
-	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < state->mtu)) {
-		state->mtu = vp->vp_integer;
+	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < session->mtu)) {
+		session->mtu = vp->vp_integer;
 	}
 
-	if (conf->session_cache_enable) state->allow_session_resumption = true; /* otherwise it's false */
+	if (conf->session_cache_enable) session->allow_session_resumption = true; /* otherwise it's false */
 
-	return state;
+	return session;
 }
 
 /*
  *	Print out some text describing the error.
  */
-static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
+static int tls_error_log(REQUEST *request, SSL *s, int ret, char const *text)
 {
 	int e;
 	unsigned long l;
@@ -534,74 +551,74 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
  * Fill the Bio with the dirty data to clean it
  * Get the cleaned data from SSL, if it is not Handshake data
  */
-int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
+int tls_handshake_recv(REQUEST *request, tls_session_t *session)
 {
 	int err;
 
-	if (ssn->invalid_hb_used) return 0;
+	if (session->invalid_hb_used) return 0;
 
-	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
-	if (err != (int) ssn->dirty_in.used) {
-		REDEBUG("Failed writing %zd bytes to TLS BIO: %d", ssn->dirty_in.used, err);
-		record_init(&ssn->dirty_in);
+	err = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
+	if (err != (int) session->dirty_in.used) {
+		REDEBUG("Failed writing %zd bytes to TLS BIO: %d", session->dirty_in.used, err);
+		record_init(&session->dirty_in);
 		return 0;
 	}
-	record_init(&ssn->dirty_in);
+	record_init(&session->dirty_in);
 
-	err = SSL_read(ssn->ssl, ssn->clean_out.data + ssn->clean_out.used,
-		       sizeof(ssn->clean_out.data) - ssn->clean_out.used);
+	err = SSL_read(session->ssl, session->clean_out.data + session->clean_out.used,
+		       sizeof(session->clean_out.data) - session->clean_out.used);
 	if (err > 0) {
-		ssn->clean_out.used += err;
+		session->clean_out.used += err;
 		return 1;
 	}
 
-	if (!int_ssl_check(request, ssn->ssl, err, "TLS_read")) return 0;
+	if (!tls_error_log(request, session->ssl, err, "TLS_read")) return 0;
 
 	/* Some Extra STATE information for easy debugging */
-	if (SSL_is_init_finished(ssn->ssl)) RDEBUG2("TLS connection established");
-	if (SSL_in_init(ssn->ssl)) RDEBUG2("In TLS handshake phase");
-	if (SSL_in_before(ssn->ssl)) RDEBUG2("Before TLS handshake phase");
-	if (SSL_in_accept_init(ssn->ssl)) RDEBUG2("In TLS accept mode");
-	if (SSL_in_connect_init(ssn->ssl)) RDEBUG2("In TLS connect mode");
+	if (SSL_is_init_finished(session->ssl)) RDEBUG2("TLS connection established");
+	if (SSL_in_init(session->ssl)) RDEBUG2("In TLS handshake phase");
+	if (SSL_in_before(session->ssl)) RDEBUG2("Before TLS handshake phase");
+	if (SSL_in_accept_init(session->ssl)) RDEBUG2("In TLS accept mode");
+	if (SSL_in_connect_init(session->ssl)) RDEBUG2("In TLS connect mode");
 
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	/*
 	 *	Cache the SSL_SESSION pointer.
 	 */
-	if (!ssn->ssl_session && SSL_is_init_finished(ssn->ssl)) {
-		ssn->ssl_session = SSL_get_session(ssn->ssl);
-		if (!ssn->ssl_session) {
+	if (!session->ssl_session && SSL_is_init_finished(session->ssl)) {
+		session->ssl_session = SSL_get_session(session->ssl);
+		if (!session->ssl_session) {
 			RDEBUG("Failed getting TLS session");
 			return 0;
 		}
 	}
 #endif
 
-	err = BIO_ctrl_pending(ssn->from_ssl);
+	err = BIO_ctrl_pending(session->from_ssl);
 	if (err > 0) {
-		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
-			       sizeof(ssn->dirty_out.data));
+		err = BIO_read(session->from_ssl, session->dirty_out.data,
+			       sizeof(session->dirty_out.data));
 		if (err > 0) {
-			ssn->dirty_out.used = err;
+			session->dirty_out.used = err;
 
-		} else if (BIO_should_retry(ssn->from_ssl)) {
-			record_init(&ssn->dirty_in);
+		} else if (BIO_should_retry(session->from_ssl)) {
+			record_init(&session->dirty_in);
 			RDEBUG2("Asking for more data in tunnel");
 			return 1;
 
 		} else {
-			int_ssl_check(request, ssn->ssl, err, "BIO_read");
-			record_init(&ssn->dirty_in);
+			tls_error_log(request, session->ssl, err, "BIO_read");
+			record_init(&session->dirty_in);
 			return 0;
 		}
 	} else {
 		RDEBUG2("TLS Application Data");
 		/* Its clean application data, do whatever we want */
-		record_init(&ssn->clean_out);
+		record_init(&session->clean_out);
 	}
 
 	/* We are done with dirty_in, reinitialize it */
-	record_init(&ssn->dirty_in);
+	record_init(&session->dirty_in);
 	return 1;
 }
 
@@ -609,7 +626,7 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
  *	Take cleartext user data, and encrypt it into the output buffer,
  *	to send to the client at the other end of the SSL connection.
  */
-int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
+int tls_handshake_send(REQUEST *request, tls_session_t *session)
 {
 	int err;
 
@@ -622,59 +639,59 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 	 *	Based on Server's logic this clean_in is expected to
 	 *	contain the data to send to the client.
 	 */
-	if (ssn->clean_in.used > 0) {
+	if (session->clean_in.used > 0) {
 		int written;
 
-		written = SSL_write(ssn->ssl, ssn->clean_in.data, ssn->clean_in.used);
-		record_to_buff(&ssn->clean_in, NULL, written);
+		written = SSL_write(session->ssl, session->clean_in.data, session->clean_in.used);
+		record_to_buff(&session->clean_in, NULL, written);
 
 		/* Get the dirty data from Bio to send it */
-		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
-			       sizeof(ssn->dirty_out.data));
+		err = BIO_read(session->from_ssl, session->dirty_out.data,
+			       sizeof(session->dirty_out.data));
 		if (err > 0) {
-			ssn->dirty_out.used = err;
+			session->dirty_out.used = err;
 		} else {
-			int_ssl_check(request, ssn->ssl, err, "handshake_send");
+			tls_error_log(request, session->ssl, err, "handshake_send");
 		}
 	}
 
 	return 1;
 }
 
-static void session_init(tls_session_t *ssn)
+static void session_init(tls_session_t *session)
 {
-	ssn->ssl = NULL;
-	ssn->into_ssl = ssn->from_ssl = NULL;
-	record_init(&ssn->clean_in);
-	record_init(&ssn->clean_out);
-	record_init(&ssn->dirty_in);
-	record_init(&ssn->dirty_out);
+	session->ssl = NULL;
+	session->into_ssl = session->from_ssl = NULL;
+	record_init(&session->clean_in);
+	record_init(&session->clean_out);
+	record_init(&session->dirty_in);
+	record_init(&session->dirty_out);
 
-	memset(&ssn->info, 0, sizeof(ssn->info));
+	memset(&session->info, 0, sizeof(session->info));
 
-	ssn->mtu = 0;
-	ssn->fragment = false;
-	ssn->tls_msg_len = 0;
-	ssn->length_flag = false;
-	ssn->opaque = NULL;
-	ssn->free_opaque = NULL;
+	session->mtu = 0;
+	session->fragment = false;
+	session->tls_msg_len = 0;
+	session->length_flag = false;
+	session->opaque = NULL;
+	session->free_opaque = NULL;
 }
 
-static void session_close(tls_session_t *ssn)
+static void session_close(tls_session_t *session)
 {
-	SSL_set_quiet_shutdown(ssn->ssl, 1);
-	SSL_shutdown(ssn->ssl);
+	SSL_set_quiet_shutdown(session->ssl, 1);
+	SSL_shutdown(session->ssl);
 
-	if (ssn->ssl) {
-		SSL_free(ssn->ssl);
-		ssn->ssl = NULL;
+	if (session->ssl) {
+		SSL_free(session->ssl);
+		session->ssl = NULL;
 	}
 
-	record_close(&ssn->clean_in);
-	record_close(&ssn->clean_out);
-	record_close(&ssn->dirty_in);
-	record_close(&ssn->dirty_out);
-	session_init(ssn);
+	record_close(&session->clean_in);
+	record_close(&session->clean_out);
+	record_close(&session->dirty_in);
+	record_close(&session->dirty_out);
+	session_init(session);
 }
 
 static void record_init(record_t *rec)
@@ -691,15 +708,15 @@ static void record_close(record_t *rec)
 /** Copy data to the intermediate buffer, before we send it somewhere
  *
  */
-static unsigned int record_from_buff(record_t *rec, void const *ptr, unsigned int size)
+static unsigned int record_from_buff(record_t *record, void const *in, unsigned int inlen)
 {
-	unsigned int added = MAX_RECORD_SIZE - rec->used;
+	unsigned int added = MAX_RECORD_SIZE - record->used;
 
-	if (added > size) added = size;
+	if (added > inlen) added = inlen;
 	if (added == 0) return 0;
 
-	memcpy(rec->data + rec->used, ptr, added);
-	rec->used += added;
+	memcpy(record->data + record->used, in, added);
+	record->used += added;
 
 	return added;
 }
@@ -707,20 +724,20 @@ static unsigned int record_from_buff(record_t *rec, void const *ptr, unsigned in
 /** Take data from the buffer, and give it to the caller
  *
  */
-static unsigned int record_to_buff(record_t *rec, void *ptr, unsigned int size)
+static unsigned int record_to_buff(record_t *record, void *out, unsigned int outlen)
 {
-	unsigned int taken = rec->used;
+	unsigned int taken = record->used;
 
-	if (taken > size) taken = size;
+	if (taken > outlen) taken = outlen;
 	if (taken == 0) return 0;
-	if (ptr) memcpy(ptr, rec->data, taken);
+	if (out) memcpy(out, record->data, taken);
 
-	rec->used -= taken;
+	record->used -= taken;
 
 	/*
 	 *	This is pretty bad...
 	 */
-	if (rec->used > 0) memmove(rec->data, rec->data + taken, rec->used);
+	if (record->used > 0) memmove(record->data, record->data + taken, record->used);
 
 	return taken;
 }
@@ -2714,7 +2731,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 		 *	Set the callback only if we can check things.
 		 */
 		if (conf->psk_identity || conf->psk_query) {
-			SSL_CTX_set_psk_server_callback(ctx, psk_server_callback);
+			SSL_CTX_set_psk_server_callback(ctx, tls_psk_server_cb);
 		}
 
 	} else if (conf->psk_query) {
@@ -2745,8 +2762,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, int client)
 		}
 
 		if (client) {
-			SSL_CTX_set_psk_client_callback(ctx,
-							psk_client_callback);
+			SSL_CTX_set_psk_client_callback(ctx, tls_psk_client_cb);
 		}
 
 		psk_len = strlen(conf->psk_password);
@@ -3204,12 +3220,12 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	return conf;
 }
 
-int tls_success(tls_session_t *ssn, REQUEST *request)
+int tls_success(tls_session_t *session, REQUEST *request)
 {
 	VALUE_PAIR		*vp;
 	fr_tls_server_conf_t	*conf;
 
-	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF);
+	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF);
 	rad_assert(conf != NULL);
 
 	/*
@@ -3221,18 +3237,18 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	This also means you can't turn it on just for one
 	 *	user.
 	 */
-	if ((!ssn->allow_session_resumption) ||
+	if ((!session->allow_session_resumption) ||
 	    (((vp = fr_pair_find_by_num(request->config, PW_ALLOW_SESSION_RESUMPTION, 0, TAG_ANY)) != NULL) &&
 	     (vp->vp_integer == 0))) {
-		SSL_CTX_remove_session(ssn->ctx,
-				       ssn->ssl->session);
-		ssn->allow_session_resumption = false;
+		SSL_CTX_remove_session(session->ctx,
+				       session->ssl->session);
+		session->allow_session_resumption = false;
 
 		/*
 		 *	If we're in a resumed session and it's
 		 *	not allowed,
 		 */
-		if (SSL_session_reused(ssn->ssl)) {
+		if (SSL_session_reused(session->ssl)) {
 			RDEBUG("Forcibly stopping session resumption as it is not allowed");
 			return -1;
 		}
@@ -3241,7 +3257,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	Else resumption IS allowed, so we store the
 	 *	user data in the cache.
 	 */
-	} else if (SSL_session_reused(ssn->ssl)) {
+	} else if (SSL_session_reused(session->ssl)) {
 		/*
 		 *	Mark the request as resumed.
 		 */
@@ -3252,25 +3268,25 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 }
 
 
-void tls_fail(tls_session_t *ssn)
+void tls_fail(tls_session_t *session)
 {
 	/*
 	 *	Force the session to NOT be cached.
 	 */
-	SSL_CTX_remove_session(ssn->ctx, ssn->ssl->session);
+	SSL_CTX_remove_session(session->ctx, session->ssl->session);
 }
 
-fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
+fr_tls_status_t tls_application_data(tls_session_t *session, REQUEST *request)
 {
 	int err;
 
 	/*
 	 *	Decrypt the complete record.
 	 */
-	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
-	if (err != (int) ssn->dirty_in.used) {
-		record_init(&ssn->dirty_in);
-		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);
+	err = BIO_write(session->into_ssl, session->dirty_in.data, session->dirty_in.used);
+	if (err != (int) session->dirty_in.used) {
+		record_init(&session->dirty_in);
+		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", session->dirty_in.used, err);
 		return FR_TLS_FAIL;
 	}
 
@@ -3278,21 +3294,21 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	 *      Clear the dirty buffer now that we are done with it
 	 *      and init the clean_out buffer to store decrypted data
 	 */
-	record_init(&ssn->dirty_in);
-	record_init(&ssn->clean_out);
+	record_init(&session->dirty_in);
+	record_init(&session->clean_out);
 
 	/*
 	 *      Read (and decrypt) the tunneled data from the
 	 *      SSL session, and put it into the decrypted
 	 *      data buffer.
 	 */
-	err = SSL_read(ssn->ssl, ssn->clean_out.data, sizeof(ssn->clean_out.data));
+	err = SSL_read(session->ssl, session->clean_out.data, sizeof(session->clean_out.data));
 	if (err < 0) {
 		int code;
 
 		RDEBUG("SSL_read Error");
 
-		code = SSL_get_error(ssn->ssl, err);
+		code = SSL_get_error(session->ssl, err);
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
 			DEBUG("Error in fragmentation logic: SSL_WANT_READ");
@@ -3306,7 +3322,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 			DEBUG("Error in fragmentation logic: %s", ERR_error_string(code, NULL));
 
 			/*
-			 *	FIXME: Call int_ssl_check?
+			 *	FIXME: Call tls_error_log?
 			 */
 			break;
 		}
@@ -3318,7 +3334,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
 	/*
 	 *	Passed all checks, successfully decrypted data
 	 */
-	ssn->clean_out.used = err;
+	session->clean_out.used = err;
 
 	return FR_TLS_RECORD_COMPLETE;
 }
@@ -3330,29 +3346,29 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
  * 2. Alert Message, now send, EAP-Failure
  * 3. Fragment Message, now send, next Fragment
  */
-fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
+fr_tls_status_t tls_ack_handler(tls_session_t *session, REQUEST *request)
 {
-	if (ssn == NULL){
+	if (session == NULL){
 		REDEBUG("Unexpected ACK received:  No ongoing SSL session");
 		return FR_TLS_INVALID;
 	}
-	if (!ssn->info.initialized) {
+	if (!session->info.initialized) {
 		RDEBUG("No SSL info available.  Waiting for more SSL data");
 		return FR_TLS_REQUEST;
 	}
 
-	if ((ssn->info.content_type == handshake) && (ssn->info.origin == 0)) {
+	if ((session->info.content_type == handshake) && (session->info.origin == 0)) {
 		REDEBUG("Unexpected ACK received:  We sent no previous messages");
 		return FR_TLS_INVALID;
 	}
 
-	switch (ssn->info.content_type) {
+	switch (session->info.content_type) {
 	case alert:
 		RDEBUG2("Peer ACKed our alert");
 		return FR_TLS_FAIL;
 
 	case handshake:
-		if ((ssn->info.handshake_type == handshake_finished) && (ssn->dirty_out.used == 0)) {
+		if ((session->info.handshake_type == handshake_finished) && (session->dirty_out.used == 0)) {
 			RDEBUG2("Peer ACKed our handshake fragment.  handshake is finished");
 
 			/*
@@ -3360,7 +3376,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 			 *	application data set it here as nobody else
 			 *	sets it.
 			 */
-			ssn->info.content_type = application_data;
+			session->info.content_type = application_data;
 			return FR_TLS_SUCCESS;
 		} /* else more data to send */
 
@@ -3377,7 +3393,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		 *	to the default section below.
 		 */
 	default:
-		REDEBUG("Invalid ACK received: %d", ssn->info.content_type);
+		REDEBUG("Invalid ACK received: %d", session->info.content_type);
 		return FR_TLS_INVALID;
 	}
 }
