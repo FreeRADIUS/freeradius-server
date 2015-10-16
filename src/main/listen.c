@@ -1025,6 +1025,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
 	uint16_t	listen_port;
+	uint32_t	recv_buff;
 	fr_ipaddr_t	ipaddr;
 	listen_socket_t *sock = this->data;
 	char const	*section_name = NULL;
@@ -1060,6 +1061,11 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	rcode = cf_item_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &listen_port), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
+
+	rcode = cf_item_parse(cs, "recv_buff", FR_ITEM_POINTER(PW_TYPE_INTEGER, &recv_buff), "0", T_BARE_WORD);
+	if (rcode < 0) return -1;
+	FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, >=, 32);
+	FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, <=, INT_MAX);
 
 	sock->proto = IPPROTO_UDP;
 
@@ -1215,6 +1221,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock->my_ipaddr = ipaddr;
 	sock->my_port = listen_port;
+	sock->recv_buff = recv_buff;
 
 #ifdef WITH_PROXY
 	if (check_config) {
@@ -2549,6 +2556,19 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 #endif
+
+	/*
+	 *	Set the receive buffer size
+	 */
+	if (sock->recv_buff) {
+		DEBUG4("[FD %i] Setting recv_buff -- setsockopt(%i, SOL_SOCKET, SO_RCVBUF, %i, %zu)", this->fd,
+		       this->fd, sock->recv_buff, sizeof(int));
+		if (setsockopt(this->fd, SOL_SOCKET, SO_RCVBUF, (int *)&sock->recv_buff, sizeof(int)) < 0) {
+			close(this->fd);
+			ERROR("Failed setting receive buffer size: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
 
 	/*
 	 *	Bind to a device BEFORE touching IP addresses.

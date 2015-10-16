@@ -137,6 +137,12 @@ typedef struct listen_socket_t {
 
 	int			proto;
 
+
+	uint32_t		recv_buff;	//!< Socket receive buffer size we only allow
+						//!< configuration of SO_RCVBUF, as SO_SNDBUF
+						//!< controls the maximum datagram size.
+
+
 #ifdef WITH_TCP
 	/* for a proxy connecting to home servers */
 	time_t			last_packet;
