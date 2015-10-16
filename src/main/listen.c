@@ -1064,8 +1064,10 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	rcode = cf_item_parse(cs, "recv_buff", FR_ITEM_POINTER(PW_TYPE_INTEGER, &recv_buff), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
-	FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, >=, 32);
-	FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, <=, INT_MAX);
+	if (recv_buff) {
+		FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, >=, 32);
+		FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, <=, INT_MAX);
+	}
 
 	sock->proto = IPPROTO_UDP;
 
