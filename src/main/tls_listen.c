@@ -284,7 +284,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	packet = sock->packet;
 	packet->data = talloc_array(packet, uint8_t, sock->ssn->clean_out.used);
 	packet->data_len = sock->ssn->clean_out.used;
-	sock->ssn->record_minus(&sock->ssn->clean_out, packet->data, packet->data_len);
+	sock->ssn->record_to_buff(&sock->ssn->clean_out, packet->data, packet->data_len);
 	packet->vps = NULL;
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
@@ -453,7 +453,7 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	/*
 	 *	Write the packet to the SSL buffers.
 	 */
-	sock->ssn->record_plus(&sock->ssn->clean_in,
+	sock->ssn->record_from_buff(&sock->ssn->clean_in,
 			       request->reply->data, request->reply->data_len);
 
 	dump_hex("TUNNELED DATA < ", sock->ssn->clean_in.data, sock->ssn->clean_in.used);

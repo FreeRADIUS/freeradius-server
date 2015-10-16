@@ -110,10 +110,8 @@ static void 		session_init(tls_session_t *ssn);
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
-static unsigned int 	record_plus(record_t *buf, void const *ptr,
-				    unsigned int size);
-static unsigned int 	record_minus(record_t *buf, void *ptr,
-				     unsigned int size);
+static unsigned int 	record_from_buff(record_t *buf, void const *ptr, unsigned int size);
+static unsigned int 	record_to_buff(record_t *buf, void *ptr, unsigned int size);
 
 #ifdef PSK_MAX_IDENTITY_LEN
 static bool identity_is_safe(const char *identity)
@@ -393,8 +391,8 @@ tls_session_t *tls_new_session(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, REQU
 	 */
 	state->record_init = record_init;
 	state->record_close = record_close;
-	state->record_plus = record_plus;
-	state->record_minus = record_minus;
+	state->record_from_buff = record_from_buff;
+	state->record_to_buff = record_to_buff;
 
 	/*
 	 *	Create & hook the BIOs to handle the dirty side of the
@@ -628,7 +626,7 @@ int tls_handshake_send(REQUEST *request, tls_session_t *ssn)
 		int written;
 
 		written = SSL_write(ssn->ssl, ssn->clean_in.data, ssn->clean_in.used);
-		record_minus(&ssn->clean_in, NULL, written);
+		record_to_buff(&ssn->clean_in, NULL, written);
 
 		/* Get the dirty data from Bio to send it */
 		err = BIO_read(ssn->from_ssl, ssn->dirty_out.data,
@@ -690,12 +688,10 @@ static void record_close(record_t *rec)
 }
 
 
-/*
- *	Copy data to the intermediate buffer, before we send
- *	it somewhere.
+/** Copy data to the intermediate buffer, before we send it somewhere
+ *
  */
-static unsigned int record_plus(record_t *rec, void const *ptr,
-				unsigned int size)
+static unsigned int record_from_buff(record_t *rec, void const *ptr, unsigned int size)
 {
 	unsigned int added = MAX_RECORD_SIZE - rec->used;
 
@@ -708,11 +704,10 @@ static unsigned int record_plus(record_t *rec, void const *ptr,
 	return added;
 }
 
-/*
- *	Take data from the buffer, and give it to the caller.
+/** Take data from the buffer, and give it to the caller
+ *
  */
-static unsigned int record_minus(record_t *rec, void *ptr,
-				 unsigned int size)
+static unsigned int record_to_buff(record_t *rec, void *ptr, unsigned int size)
 {
 	unsigned int taken = rec->used;
 
@@ -3266,15 +3261,13 @@ void tls_fail(tls_session_t *ssn)
 }
 
 fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request)
-
 {
 	int err;
 
 	/*
 	 *	Decrypt the complete record.
 	 */
-	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data,
-			ssn->dirty_in.used);
+	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
 	if (err != (int) ssn->dirty_in.used) {
 		record_init(&ssn->dirty_in);
 		RDEBUG("Failed writing %zd bytes to SSL BIO: %d", ssn->dirty_in.used, err);

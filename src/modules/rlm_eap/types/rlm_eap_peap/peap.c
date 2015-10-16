@@ -52,7 +52,7 @@ static int eappeap_failure(eap_handler_t *handler, tls_session_t *tls_session)
 	tlv_packet[9] = 0;
 	tlv_packet[10] = EAP_TLV_FAILURE;
 
-	(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 11);
+	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 11);
 
 	/*
 	 *	FIXME: Check the return code.
@@ -87,7 +87,7 @@ static int eappeap_success(eap_handler_t *handler, tls_session_t *tls_session)
 	tlv_packet[9] = 0;
 	tlv_packet[10] = EAP_TLV_SUCCESS;
 
-	(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 11);
+	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 11);
 
 	/*
 	 *	FIXME: Check the return code.
@@ -108,7 +108,7 @@ static int eappeap_identity(eap_handler_t *handler, tls_session_t *tls_session)
 	eap_packet.length[1] = EAP_HEADER_LEN + 1;
 	eap_packet.data[0] = PW_EAP_IDENTITY;
 
-	(tls_session->record_plus)(&tls_session->clean_in,
+	(tls_session->record_from_buff)(&tls_session->clean_in,
 				  &eap_packet, sizeof(eap_packet));
 
 	tls_handshake_send(handler->request, tls_session);
@@ -151,7 +151,7 @@ static int eappeap_soh(eap_handler_t *handler, tls_session_t *tls_session)
 	tlv_packet[18] = 0;
 	tlv_packet[19] = 0;
 
-	(tls_session->record_plus)(&tls_session->clean_in, tlv_packet, 20);
+	(tls_session->record_from_buff)(&tls_session->clean_in, tlv_packet, 20);
 	tls_handshake_send(handler->request, tls_session);
 	return 1;
 }
@@ -358,7 +358,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	 *	Send the EAP data in the first attribute, WITHOUT the
 	 *	header.
 	 */
-	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_octets + EAP_HEADER_LEN, vp->vp_length - EAP_HEADER_LEN);
+	(tls_session->record_from_buff)(&tls_session->clean_in, vp->vp_octets + EAP_HEADER_LEN, vp->vp_length - EAP_HEADER_LEN);
 
 	/*
 	 *	Send the rest of the EAP data, but skipping the first VP.
@@ -367,7 +367,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	for (this = fr_cursor_next(&cursor);
 	     this;
 	     this = fr_cursor_next(&cursor)) {
-		(tls_session->record_plus)(&tls_session->clean_in, this->vp_octets, this->vp_length);
+		(tls_session->record_from_buff)(&tls_session->clean_in, this->vp_octets, this->vp_length);
 	}
 
 	tls_handshake_send(request, tls_session);
@@ -743,7 +743,7 @@ rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	/*
 	 *	Just look at the buffer directly, without doing
-	 *	record_minus.  This lets us avoid another data copy.
+	 *	record_to_buff.  This lets us avoid another data copy.
 	 */
 	data_len = tls_session->clean_out.used;
 	tls_session->clean_out.used = 0;

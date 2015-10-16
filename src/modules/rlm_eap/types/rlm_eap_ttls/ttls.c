@@ -588,7 +588,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		}
 #endif
 
-		(tls_session->record_plus)(&tls_session->clean_in, buffer, total);
+		(tls_session->record_from_buff)(&tls_session->clean_in, buffer, total);
 
 		/*
 		 *	FIXME: Check the return code.
@@ -942,7 +942,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	/*
 	 *	Just look at the buffer directly, without doing
-	 *	record_minus.
+	 *	record_to_buff.
 	 */
 	data_len = tls_session->clean_out.used;
 	tls_session->clean_out.used = 0;

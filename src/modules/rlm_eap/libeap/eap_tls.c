@@ -243,7 +243,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 		memcpy(reply.data, &nlen, lbit);
 		reply.flags = SET_LENGTH_INCLUDED(reply.flags);
 	}
-	(ssn->record_minus)(&ssn->dirty_out, reply.data + lbit, size);
+	(ssn->record_to_buff)(&ssn->dirty_out, reply.data + lbit, size);
 
 	eaptls_compose(eap_ds, &reply);
 	talloc_free(reply.data);
@@ -772,7 +772,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 *	This buffer will contain partial data when M bit is set, and should
 	 * 	should only be reinitialized when M but is not set.
 	 */
-	if ((tls_session->record_plus)(&tls_session->dirty_in, data, data_len) != data_len) {
+	if ((tls_session->record_from_buff)(&tls_session->dirty_in, data, data_len) != data_len) {
 		REDEBUG("Exceeded maximum record size");
 		status = FR_TLS_FAIL;
 		goto done;

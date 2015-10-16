@@ -221,7 +221,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_handler_t *handler)
 			unsigned int data_len;
 			unsigned char buffer[1024];
 
-			data_len = (tls_session->record_minus)(&tls_session->dirty_in,
+			data_len = (tls_session->record_to_buff)(&tls_session->dirty_in,
 						buffer, sizeof(buffer));
 			DEBUG("  Tunneled data (%u bytes)", data_len);
 			for (i = 0; i < data_len; i++) {
