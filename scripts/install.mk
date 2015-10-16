@@ -92,7 +92,7 @@ define ADD_INSTALL_RULE.la
     $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/${1}
 	@$(ECHO) INSTALL ${1}
 	$(Q)$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
-	$(Q)$${PROGRAM_INSTALL} -c -m 755 $${RELINK_FLAGS_MIN} $${BUILD_DIR}/lib/${1} $${${1}_INSTALLDIR}/
+	$(Q)$${PROGRAM_INSTALL} -c -m 755 $${LOCAL_FLAGS_MIN} $${BUILD_DIR}/lib/${1} $${${1}_INSTALLDIR}/
 	$(Q)$${${1}_POSTINSTALL}
 
 endef
