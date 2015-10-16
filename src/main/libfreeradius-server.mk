@@ -18,3 +18,5 @@ SOURCES	:=	conffile.c \
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS      := $(OPENSSL_LIBS)
+
+TGT_PREREQS	:= libfreeradius-radius.la
