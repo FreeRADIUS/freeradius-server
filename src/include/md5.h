@@ -71,14 +71,13 @@ void	fr_md5_transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
 #  define fr_md5_copy(_out, _in)	memcpy(_out, _in, sizeof(*_out))
 #else  /* HAVE_OPENSSL_EVP_H */
 USES_APPLE_DEPRECATED_API
-#  define FR_MD5_CTX			EVP_MD_CTX
-#  define fr_md5_init(_ctx) do { \
-	EVP_MD_CTX_init(_ctx);\
-	EVP_DigestInit(_ctx, EVP_md5());\
-} while (0)
-#  define fr_md5_update			EVP_DigestUpdate
-#  define fr_md5_final(_out, _ctx)	EVP_DigestFinal_ex(_ctx, _out, NULL)
-#  define fr_md5_copy			EVP_MD_CTX_copy
+#include <openssl/md5.h>
+#  define FR_MD5_CTX			MD5_CTX
+#  define fr_md5_init			MD5_Init
+#  define fr_md5_update			MD5_Update
+#  define fr_md5_final			MD5_Final
+#  define fr_md5_transform		MD5_Transform
+#  define fr_md5_copy(_out, _in)	memcpy(_out, _in, sizeof(*_out))
 #endif
 
 /* hmac.c */
