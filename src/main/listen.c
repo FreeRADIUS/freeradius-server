@@ -2408,16 +2408,16 @@ static int init_pcap(rad_listen_t *this)
  */
 static int listen_bind(rad_listen_t *this)
 {
-	int rcode;
-	struct sockaddr_storage salocal;
-	socklen_t	salen;
-	listen_socket_t *sock = this->data;
+	int			rcode;
+	struct sockaddr_storage	salocal;
+	socklen_t		salen;
+	listen_socket_t		*sock = this->data;
 #ifndef WITH_TCP
 #  define proto_for_port "udp"
 #  define sock_type SOCK_DGRAM
 #else
-	char const *proto_for_port = "udp";
-	int sock_type = SOCK_DGRAM;
+	char const		*proto_for_port = "udp";
+	int			sock_type = SOCK_DGRAM;
 
 	if (sock->proto == IPPROTO_TCP) {
 #  ifdef WITH_VMPS
