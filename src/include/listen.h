@@ -72,6 +72,7 @@ struct rad_listen {
 	int			fd;
 	char const		*server;
 	int			status;
+
 #ifdef WITH_TCP
 	int			count;
 	bool			dual;
@@ -112,55 +113,54 @@ typedef struct listen_socket_t {
 	/*
 	 *	For normal sockets.
 	 */
-	fr_ipaddr_t	my_ipaddr;
-	uint16_t	my_port;
+	fr_ipaddr_t		my_ipaddr;
+	uint16_t		my_port;
 
-	char const	*interface;
+	char const		*interface;
 
 #ifdef HAVE_LIBPCAP
-	fr_pcap_t	*pcap;
-	fr_pcap_type_t pcap_type;
-	rad_pcap_filter_builder pcap_filter_builder;
+	fr_pcap_t		*pcap;
+	fr_pcap_type_t		pcap_type;
+	rad_pcap_filter_builder	pcap_filter_builder;
 #endif
 
-	int		broadcast;
-	time_t		rate_time;
-	uint32_t	rate_pps_old;
-	uint32_t	rate_pps_now;
-	uint32_t	max_rate;
+	int			broadcast;
+	time_t			rate_time;
+	uint32_t		rate_pps_old;
+	uint32_t		rate_pps_now;
+	uint32_t		max_rate;
 
 	/* for outgoing sockets */
-	home_server_t	*home;
-	fr_ipaddr_t	other_ipaddr;
-	uint16_t	other_port;
+	home_server_t		*home;
+	fr_ipaddr_t		other_ipaddr;
+	uint16_t		other_port;
 
-	int		proto;
+	int			proto;
 
 #ifdef WITH_TCP
 	/* for a proxy connecting to home servers */
-	time_t		last_packet;
-	time_t		opened;
-	fr_event_t	*ev;
+	time_t			last_packet;
+	time_t			opened;
+	fr_event_t		*ev;
 
-	fr_socket_limit_t limit;
+	fr_socket_limit_t	limit;
+	struct listen_socket_t	*parent;
+	RADCLIENT		*client;
 
-	struct listen_socket_t *parent;
-	RADCLIENT	*client;
-
-	RADIUS_PACKET   *packet; /* for reading partial packets */
+	RADIUS_PACKET  	 	*packet; /* for reading partial packets */
 #endif
 
 #ifdef WITH_TLS
-	tls_session_t	*ssn;
-	REQUEST		*request; /* horrible hacks */
-	VALUE_PAIR	*cert_vps;
+	tls_session_t		*ssn;
+	REQUEST			*request; /* horrible hacks */
+	VALUE_PAIR		*cert_vps;
 #ifdef HAVE_PTHREAD_H
-	pthread_mutex_t mutex;
+	pthread_mutex_t		mutex;
 #endif
-	uint8_t		*data;
-	size_t		partial;
+	uint8_t			*data;
+	size_t			partial;
 #endif
 
-	RADCLIENT_LIST	*clients;
+	RADCLIENT_LIST		*clients;
 } listen_socket_t;
 #endif /* LISTEN_H */
