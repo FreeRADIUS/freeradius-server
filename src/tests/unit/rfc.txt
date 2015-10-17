@@ -28,7 +28,7 @@
 #
 #	Identifier = 1*DIGIT *( "." 1*DIGIT )
 #
-#	HEXCHAR = HEXDIG HEXDIG 
+#	HEXCHAR = HEXDIG HEXDIG
 #
 #	STRING = DQUOTE *CHAR DQUOTE
 #
@@ -158,10 +158,10 @@ attribute PMIP6-Home-IPv4-HoA = 127.63/16
 data PMIP6-Home-IPv4-HoA = 127.63.0.0/16
 
 attribute PMIP6-Home-IPv4-HoA = 127.999/16
-data Failed to parse IPv4 address string "127.999/16"
+data Failed to parse IPv4 prefix string "127.999/16"
 
 attribute PMIP6-Home-IPv4-HoA = 127.bob/16
-data Failed to parse IPv4 address string "127.bob/16"
+data Failed to parse IPv4 prefix string "127.bob/16"
 
 attribute PMIP6-Home-IPv4-HoA = 127.63/15
 data PMIP6-Home-IPv4-HoA = 127.62.0.0/15
@@ -173,10 +173,10 @@ attribute PMIP6-Home-IPv4-HoA = 127.63.1.6
 data PMIP6-Home-IPv4-HoA = 127.63.1.6/32
 
 attribute PMIP6-Home-IPv4-HoA = 256/8
-data Failed to parse IPv4 address string "256/8"
+data Failed to parse IPv4 prefix string "256/8"
 
 attribute PMIP6-Home-IPv4-HoA = bob/8
-data Failed to parse IPv4 address string "bob/8"
+data Failed to parse IPv4 prefix string "bob/8"
 
 $INCLUDE tunnel.txt
 $INCLUDE errors.txt

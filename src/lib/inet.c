@@ -249,17 +249,20 @@ char const *fr_inet_ntoh(fr_ipaddr_t const *src, char *out, size_t outlen)
 }
 
 
-/*
- *	Parse decimal digits until we run out of decimal digits.
+/** Parse a single octet of an IPv4 address string
+ *
+ * @param[out] out Where to write integer.
+ * @param[in] str to parse.
+ * @return
+ *	- >= 0 on success (number of bytes parsed of in).
+ *	- < 0 on error.
  */
-static int ip_octet_from_str(char const *str, uint32_t *poctet)
+static int ip_octet_from_str(uint32_t *out, char const *str)
 {
 	uint32_t octet;
 	char const *p = str;
 
-	if ((*p < '0') || (*p > '9')) {
-		return -1;
-	}
+	if ((*p < '0') || (*p > '9')) return -1;
 
 	octet = 0;
 
@@ -271,12 +274,33 @@ static int ip_octet_from_str(char const *str, uint32_t *poctet)
 		if (octet > 255) return -1;
 	}
 
-
-	*poctet = octet;
+	*out = octet;
 	return p - str;
 }
 
-static int ip_prefix_from_str(char const *str, uint32_t *paddr)
+/** Parses the network portion of an IPv4 prefix into an in_addr
+ *
+ * @note output is in network order.
+ *
+ * Parses address strings in dotted quad notation.
+ * Unlike inet_pton allows octets to be omitted, in which case their value is considered to be 0.
+ * Unlike inet_aton treats integers as representing the highest octet of an IPv4 address, and
+ * limits them to 255.
+ *
+ * Examples of acceptable strings:
+ * - 192.168.0.0
+ * - 192.168.0.0/24
+ * - 192.168/16
+ * - 192
+ * - 192/8
+ *
+ * @param[out] out Where to write parsed address.
+ * @param[in] str to parse.
+ * @return
+ *	- >= 0 on success (number of bytes parsed of in).
+ *	- < 0 on error.
+ */
+static int ip_prefix_addr_from_str(struct in_addr *out, char const *str)
 {
 	int shift, length;
 	uint32_t octet;
@@ -284,9 +308,10 @@ static int ip_prefix_from_str(char const *str, uint32_t *paddr)
 	char const *p = str;
 
 	addr = 0;
+	out->s_addr = 0;
 
 	for (shift = 24; shift >= 0; shift -= 8) {
-		length = ip_octet_from_str(p, &octet);
+		length = ip_octet_from_str(&octet, p);
 		if (length <= 0) return -1;
 
 		addr |= octet << shift;
@@ -304,7 +329,7 @@ static int ip_prefix_from_str(char const *str, uint32_t *paddr)
 		p++;
 	}
 
-	*paddr = htonl(addr);
+	out->s_addr = htonl(addr);
 	return p - str;
 }
 
@@ -317,7 +342,7 @@ static int ip_prefix_from_str(char const *str, uint32_t *paddr)
  * @param fallback to IPv6 resolution if no A records can be found.
  * @param mask_bits If true, set address bits to zero.
  * @return
- *	- 0 if ip address was parsed successfully
+ *	- 0 if ip address was parsed successfully.
  *	- -1 on failure.
  */
 int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask_bits)
@@ -390,8 +415,16 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	if (inlen < 0) memcpy(buffer, value, p - value);
 	buffer[p - value] = '\0';
 
-	if (ip_prefix_from_str(buffer, &out->ipaddr.ip4addr.s_addr) <= 0) {
-		fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
+	/*
+	 *	We need a special function here, as inet_pton doesn't like
+	 *	address strings with octets omitted, and inet_aton treats
+	 *	127 as an integer value, and sets the lowest octet of the
+	 *	prefix to 127 instead of the highest.
+	 *
+	 *	@todo we should allow hostnames to be parsed as prefixes.
+	 */
+	if (ip_prefix_addr_from_str(&out->ipaddr.ip4addr, buffer) <= 0) {
+		fr_strerror_printf("Failed to parse IPv4 prefix string \"%s\"", value);
 		return -1;
 	}
 
@@ -402,7 +435,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	}
 
 	if (eptr[0] != '\0') {
-		fr_strerror_printf("Failed to parse IPv4 address string \"%s\", "
+		fr_strerror_printf("Failed to parse IPv4 prefix string \"%s\", "
 				   "got garbage after mask length \"%s\"", value, eptr);
 		return -1;
 	}
