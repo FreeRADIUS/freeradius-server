@@ -31,17 +31,17 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct state_entry_t {
-	uint8_t		state[AUTH_VECTOR_LEN];
+	uint8_t			state[AUTH_VECTOR_LEN];
 
-	time_t		cleanup;
-	struct state_entry_t *prev;
-	struct state_entry_t *next;
+	time_t			cleanup;
+	struct state_entry_t	*prev;
+	struct state_entry_t	*next;
 
-	int		tries;
+	int			tries;
 
-	VALUE_PAIR	*vps;
+	VALUE_PAIR		*vps;
 
-	void 		*data;
+	void 			*data;
 } state_entry_t;
 
 struct fr_state_t {
