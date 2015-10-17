@@ -203,7 +203,7 @@ data <ipv4prefix>&Framed-IP-Address <= 192.168.0.0/16
 
 # All IP address literals should be parsed as prefixes
 condition Framed-IP-Address <= 192.168.0.0/16
-data &Framed-IP-Address <= 192.168.0.0/16
+data <ipv4prefix>&Framed-IP-Address <= 192.168.0.0/16
 
 # string attributes must be string
 condition User-Name == "bob"
@@ -621,10 +621,10 @@ condition &Attr-1 == 'bar'
 data &User-Name == 'bar'
 
 condition &Vendor-11344-Attr-1 == 127.0.0.1
-data &FreeRADIUS-Proxied-To == 127.0.0.1/32
+data &FreeRADIUS-Proxied-To == 127.0.0.1
 
 condition &FreeRADIUS-Attr-1 == 127.0.0.1
-data &FreeRADIUS-Proxied-To == 127.0.0.1/32
+data &FreeRADIUS-Proxied-To == 127.0.0.1
 
 #
 #  Escape the backslashes correctly
@@ -670,4 +670,4 @@ condition &NAS-IP-Address < &PMIP6-Home-IPv4-HoA
 data <ipv4prefix>&NAS-IP-Address < &PMIP6-Home-IPv4-HoA
 
 condition &NAS-IP-Address < 192.168/16
-data <ipv4prefix>&Framed-IP-Address <= 192.168.0.0/16
+data <ipv4prefix>&NAS-IP-Address < 192.168.0.0/16
