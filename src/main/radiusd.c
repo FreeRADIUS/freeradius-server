@@ -38,17 +38,21 @@ RCSID("$Id$")
 #include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
-#	include <getopt.h>
+#  include <getopt.h>
 #endif
 
 #ifdef HAVE_SYS_WAIT_H
-#	include <sys/wait.h>
+#  include <sys/wait.h>
 #endif
 #ifndef WEXITSTATUS
-#	define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
+#  define WEXITSTATUS(stat_val) ((unsigned)(stat_val) >> 8)
 #endif
 #ifndef WIFEXITED
-#	define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
+#  define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
+#endif
+
+#ifdef HAVE_GOOGLE_PROFILER_H
+#  include <google/profiler.h>
 #endif
 
 /*
@@ -90,7 +94,6 @@ int main(int argc, char *argv[])
 	int		rcode = EXIT_SUCCESS;
 	int		status;
 	int		argval;
-	bool		spawn_workers = true;
 	bool		display_version = false;
 	int		from_child[2] = {-1, -1};
 	fr_state_t	*state = NULL;
@@ -145,7 +148,7 @@ int main(int argc, char *argv[])
 		switch (argval) {
 			case 'C':
 				check_config = true;
-				spawn_workers = false;
+				main_config.spawn_workers = false;
 				main_config.daemonize = false;
 				break;
 
@@ -199,12 +202,12 @@ int main(int argc, char *argv[])
 				break;
 
 			case 's':	/* Single process mode */
-				spawn_workers = false;
+				main_config.spawn_workers = false;
 				main_config.daemonize = false;
 				break;
 
 			case 't':	/* no child threads */
-				spawn_workers = false;
+				main_config.spawn_workers = false;
 				break;
 
 			case 'v':
@@ -212,7 +215,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'X':
-				spawn_workers = false;
+				main_config.spawn_workers = false;
 				main_config.daemonize = false;
 				rad_debug_lvl += 2;
 				main_config.log_auth = true;
@@ -259,7 +262,7 @@ int main(int argc, char *argv[])
 	 *  So we can't run with a null context and threads.
 	 */
 	if (main_config.memory_report) {
-		if (spawn_workers) {
+		if (main_config.spawn_workers) {
 			fprintf(stderr, "radiusd: The server cannot produce memory reports (-M) in threaded mode\n");
 			exit(EXIT_FAILURE);
 		}
@@ -576,7 +579,7 @@ int main(int argc, char *argv[])
 	 *  (including us, which gets ignored.)
 	 */
 #ifndef __MINGW32__
-	if (spawn_workers) kill(-radius_pid, SIGTERM);
+	if (main_config.spawn_workers) kill(-radius_pid, SIGTERM);
 #endif
 
 	/*

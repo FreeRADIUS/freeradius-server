@@ -122,6 +122,7 @@ typedef struct main_config {
 							//!< in (simultaneous use check failed).
 
 	bool		daemonize;			//!< Should the server daemonize on startup.
+	bool		spawn_workers;			//!< Should the server spawn threads.
 	char const      *pid_file;			//!< Path to write out PID file.
 
 #ifdef WITH_PROXY

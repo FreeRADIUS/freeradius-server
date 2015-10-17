@@ -58,17 +58,14 @@ struct fr_state_t {
 static fr_state_t *global_state = NULL;
 
 #ifdef HAVE_PTHREAD_H
-
-#define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-
+#  define PTHREAD_MUTEX_LOCK if (main_config.spawn_workers) pthread_mutex_lock
+#  define PTHREAD_MUTEX_UNLOCK if (main_config.spawn_workers) pthread_mutex_unlock
 #else
 /*
  *	This is easier than ifdef's throughout the code.
  */
-#define PTHREAD_MUTEX_LOCK(_x)
-#define PTHREAD_MUTEX_UNLOCK(_x)
-
+#  define PTHREAD_MUTEX_LOCK(_x)
+#  define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
 /*
