@@ -1068,21 +1068,24 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
 				    ((c->data.map->rhs->type == TMPL_TYPE_UNPARSED) ||
 				     (c->data.map->rhs->type == TMPL_TYPE_DATA))) {
-					PW_TYPE type;
+					PW_TYPE type = c->data.map->lhs->tmpl_da->type;
 
 					switch (c->data.map->lhs->tmpl_da->type) {
 					case PW_TYPE_IPV4_ADDR:
-						type = PW_TYPE_IPV4_PREFIX;
-						c->cast = dict_attrbyvalue(PW_CAST_BASE + type, 0);
+						if (strchr(c->data.map->rhs->name, '/') != NULL) {
+							type = PW_TYPE_IPV4_PREFIX;
+							c->cast = dict_attrbyvalue(PW_CAST_BASE + type, 0);
+						}
 						break;
 
 					case PW_TYPE_IPV6_ADDR:
-						type = PW_TYPE_IPV6_PREFIX;
-						c->cast = dict_attrbyvalue(PW_CAST_BASE + type, 0);
+						if (strchr(c->data.map->rhs->name, '/') != NULL) {
+							type = PW_TYPE_IPV6_PREFIX;
+							c->cast = dict_attrbyvalue(PW_CAST_BASE + type, 0);
+						}
 						break;
 
 					default:
-						type = c->data.map->lhs->tmpl_da->type;
 						break;
 					}
 
