@@ -46,6 +46,10 @@
 #include <pwd.h>
 #include <grp.h>
 
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+#  include <gperftools/profiler.h>
+#endif
+
 typedef struct fr_command_table_t fr_command_table_t;
 
 typedef int (*fr_command_func_t)(rad_listen_t *, int, char *argv[]);
@@ -1376,6 +1380,141 @@ static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[
 	return CMD_OK;
 }
 
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+static char profiler_log_buffer[1024];
+/** Start the gperftools profiler
+ *
+ */
+static int command_profiler_cpu_start(rad_listen_t *listener, int argc, char *argv[])
+{
+	struct ProfilerState state;
+
+	ProfilerGetCurrentState(&state);
+
+	if (argc == 0) {
+		cprintf_error(listener, "Need filename for profiler to write to.\n");
+		return -1;
+	}
+
+	if ((argc > 0) && (strchr(argv[0], FR_DIR_SEP) != NULL)) {
+		cprintf_error(listener, "Profiler file must be a relative path.\n");
+		return -1;
+	}
+
+	/*
+	 *	We get an error if we don't stop the current
+	 *	profiler first.
+	 */
+	if (state.enabled) {
+		ProfilerFlush();
+		ProfilerStop();
+	}
+
+	/*
+	 *	Profiler files always go to the logging directory.
+	 */
+	snprintf(profiler_log_buffer, sizeof(profiler_log_buffer),
+		 "%s/%s", radlog_dir, argv[0]);
+
+	errno = 0;
+	if (ProfilerStart(profiler_log_buffer) == 0) {
+		cprintf_error(listener, "Failed enabling profiler: %s\n",
+			      errno ? fr_syserror(errno) : "unknown error");
+		return -1;
+	}
+
+	return CMD_OK;
+}
+
+/** Stop the gperftools cpu profiler
+ *
+ */
+static int command_profiler_cpu_stop(UNUSED rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	ProfilerFlush();
+	ProfilerStop();
+
+	return CMD_OK;
+}
+
+/** Show gperftools cpu profiler output file
+ *
+ */
+static int command_profiler_cpu_show_file(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	struct ProfilerState state;
+
+	ProfilerGetCurrentState(&state);
+
+	if (!state.enabled) {
+		cprintf_error(listener, "Profiler not enabled.\n");
+		return -1;
+	}
+
+	cprintf(listener, "%s\n", state.profile_name);
+
+	return CMD_OK;
+}
+
+/** Show gperftools cpu profiler samples collected
+ *
+ */
+static int command_profiler_cpu_show_samples(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	struct ProfilerState state;
+
+	ProfilerGetCurrentState(&state);
+
+	if (!state.enabled) {
+		cprintf_error(listener, "Profiler not enabled.\n");
+		return -1;
+	}
+
+	cprintf(listener, "%i\n", state.samples_gathered);
+
+	return CMD_OK;
+}
+
+/** Show gperftools cpu profiler start_time
+ *
+ */
+static int command_profiler_cpu_show_start_time(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	char buffer[128];
+	struct ProfilerState state;
+
+	ProfilerGetCurrentState(&state);
+
+	if (!state.enabled) {
+		cprintf_error(listener, "Profiler not enabled.\n");
+		return -1;
+	}
+
+	CTIME_R(&state.start_time, buffer, sizeof(buffer));
+	cprintf(listener, "%s", buffer);
+
+	return CMD_OK;
+}
+
+/** Show gperftools cpu profiler status
+ *
+ */
+static int command_profiler_cpu_show_status(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	struct ProfilerState state;
+
+	ProfilerGetCurrentState(&state);
+
+	if (state.enabled) {
+		cprintf(listener, "running\n");
+	} else {
+		cprintf(listener, "stopped\n");
+	}
+
+	return CMD_OK;
+}
+#endif
+
 static int command_show_debug_condition(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
@@ -1409,6 +1548,7 @@ static int command_show_debug_level(rad_listen_t *listener,
 	cprintf(listener, "%d\n", rad_debug_lvl);
 	return CMD_OK;
 }
+
 
 
 static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
@@ -1922,6 +2062,31 @@ static fr_command_table_t command_table_debug[] = {
 	{ NULL, 0, NULL, NULL, NULL }
 };
 
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+/** Commands to control the gperftools profiler
+ *
+ */
+static fr_command_table_t command_table_profiler_cpu[] = {
+	{ "start", FR_WRITE,
+	  "profiler cpu start <filename> - Start gperftools cpu profiler, writing output to filename",
+	  command_profiler_cpu_start, NULL },
+
+	{ "stop", FR_WRITE,
+	  "profiler cpu stop - Stop gperftools cpu profiler, and flush results to disk",
+	  command_profiler_cpu_stop, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
+static fr_command_table_t command_table_profiler[] = {
+	{ "cpu", FR_WRITE,
+	  "profiler cpu <command> do sub-command of cpu profiler",
+	  NULL, command_table_profiler_cpu },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+#endif
+
 static fr_command_table_t command_table_show_debug[] = {
 	{ "condition", FR_READ,
 	  "show debug condition - Shows current debugging condition.",
@@ -1979,6 +2144,35 @@ static fr_command_table_t command_table_show_home[] = {
 };
 #endif
 
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+static fr_command_table_t command_table_show_profiler_cpu[] = {
+	{ "file", FR_WRITE,
+	  "show profiler cpu file - show where profile data is being written",
+	  command_profiler_cpu_show_file, NULL },
+
+	{ "samples", FR_WRITE,
+	  "show profiler cpu samples - show how many profiler samples have been collected",
+	  command_profiler_cpu_show_samples, NULL },
+
+	{ "start_time", FR_WRITE,
+	  "show profiler cpu start_time - show when profiling last started",
+	  command_profiler_cpu_show_start_time, NULL },
+
+	{ "status", FR_WRITE,
+	  "show profiler cpu status - show the current profiler state (running or stopped)",
+	  command_profiler_cpu_show_status, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
+static fr_command_table_t command_table_show_profiler[] = {
+	{ "cpu", FR_WRITE,
+	  "show profiler cpu <command> do sub-command of cpu profiler",
+	  NULL, command_table_show_profiler_cpu },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+#endif
 
 static fr_command_table_t command_table_show[] = {
 	{ "client", FR_READ,
@@ -1998,6 +2192,13 @@ static fr_command_table_t command_table_show[] = {
 	{ "module", FR_READ,
 	  "show module <command> - do sub-command of module",
 	  NULL, command_table_show_module },
+
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+	{ "profiler", FR_READ,
+	  "show profiler <command> - do sub-command of profiler",
+	  NULL, command_table_show_profiler },
+#endif
+
 	{ "uptime", FR_READ,
 	  "show uptime - shows time at which server started",
 	  command_uptime, NULL },
@@ -2006,7 +2207,6 @@ static fr_command_table_t command_table_show[] = {
 	  command_show_version, NULL },
 	{ NULL, 0, NULL, NULL, NULL }
 };
-
 
 static int command_set_module_config(rad_listen_t *listener, int argc, char *argv[])
 {
@@ -2638,6 +2838,12 @@ static fr_command_table_t command_table[] = {
 	{ "inject", FR_WRITE,
 	  "inject <command> - commands to inject packets into a running server",
 	  NULL, command_table_inject },
+
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+	{ "profiler", FR_WRITE,
+	  "profiler <command> - commands to alter the state of the gperftools profiler",
+	  NULL, command_table_profiler },
+#endif
 	{ "reconnect", FR_READ,
 	  "reconnect - reconnect to a running server",
 	  NULL, NULL },		/* just here for "help" */
