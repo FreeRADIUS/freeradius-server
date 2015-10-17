@@ -3320,6 +3320,28 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
 	last = head;
 
 	/*
+         *      Walk through the "listen" sections, if they exist.
+         */
+	for (cs = cf_subsection_find_next(config, NULL, "listen");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "listen")) {
+		this = listen_parse(cs, NULL);
+		if (!this) {
+			listen_free(head);
+			return -1;
+		}
+		if (this->type != RAD_LISTEN_COMMAND) {
+			cf_log_err_cs(this->cs, "Only listen sections of type = command (command sockets)"
+				      "are allowed outside of server sections");
+			listen_free(head);
+			return -1;
+		}
+
+		*last = this;
+		last = &(this->next);
+	}
+
+	/*
 	 *	Check virtual servers for "listen" sections
 	 *
 	 *	FIXME: Move to virtual server init?
