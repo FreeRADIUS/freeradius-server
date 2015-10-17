@@ -120,6 +120,9 @@ data Framed-IP-Address = 0.0.0.0
 attribute Framed-IP-Address = 127
 data Framed-IP-Address = 0.0.0.127
 
+attribute Framed-IP-Address = 127.0
+data Framed-IP-Address = 127.0.0.0
+
 attribute Framed-IPv6-Prefix = ::1
 data Framed-IPv6-Prefix = ::1/128
 
@@ -134,6 +137,46 @@ data Framed-IPv6-Prefix = 11:22:33:44:55:66:77:88/128
 
 attribute Framed-IPv6-Prefix = *
 data Framed-IPv6-Prefix = ::/128
+
+attribute PMIP6-Home-IPv4-HoA = 127/8
+data PMIP6-Home-IPv4-HoA = 127.0.0.0/8
+
+attribute PMIP6-Home-IPv4-HoA = 127/8
+data PMIP6-Home-IPv4-HoA = 127.0.0.0/8
+
+#
+#  Octets outside of the mask are OK, but
+#  are mashed to zero.
+#
+attribute PMIP6-Home-IPv4-HoA = 127.63/8
+data PMIP6-Home-IPv4-HoA = 127.0.0.0/8
+
+#
+#  Unless you give a good mask.
+#
+attribute PMIP6-Home-IPv4-HoA = 127.63/16
+data PMIP6-Home-IPv4-HoA = 127.63.0.0/16
+
+attribute PMIP6-Home-IPv4-HoA = 127.999/16
+data Failed to parse IPv4 address string "127.999/16"
+
+attribute PMIP6-Home-IPv4-HoA = 127.bob/16
+data Failed to parse IPv4 address string "127.bob/16"
+
+attribute PMIP6-Home-IPv4-HoA = 127.63/15
+data PMIP6-Home-IPv4-HoA = 127.62.0.0/15
+
+attribute PMIP6-Home-IPv4-HoA = 127.63.1/24
+data PMIP6-Home-IPv4-HoA = 127.63.1.0/24
+
+attribute PMIP6-Home-IPv4-HoA = 127.63.1.6
+data PMIP6-Home-IPv4-HoA = 127.63.1.6/32
+
+attribute PMIP6-Home-IPv4-HoA = 256/8
+data Failed to parse IPv4 address string "256/8"
+
+attribute PMIP6-Home-IPv4-HoA = bob/8
+data Failed to parse IPv4 address string "bob/8"
 
 $INCLUDE tunnel.txt
 $INCLUDE errors.txt
