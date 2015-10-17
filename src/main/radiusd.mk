@@ -14,7 +14,7 @@ SRC_CFLAGS	+= -DBUILT_WITH_CPPFLAGS=\"$(CPPFLAGS)\" -DBUILT_WITH_CFLAGS=\"$(CFLA
 endif
 
 TGT_INSTALLDIR  := ${sbindir}
-TGT_LDLIBS	:= $(LIBS) $(LCRYPT) $(GPERFTOOLS_LDFLAGS) $(GPERFTOOLS_LIBS)
+TGT_LDLIBS	:= $(LIBS) $(LCRYPT)
 TGT_PREREQS	:= libfreeradius-server.a libfreeradius-radius.a
 
 # Libraries can't depend on libraries (oops), so make the binary
