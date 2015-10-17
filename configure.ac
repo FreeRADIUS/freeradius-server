@@ -969,6 +969,66 @@ else
   HAVE_LIBCAP=1
 fi
 
+
+dnl #
+dnl #  extra argument: --with-gperftools
+dnl #
+WITH_GPERFTOOLS=no
+AC_ARG_WITH(gperftools,
+[  --with-gperftools          use Google Perf Tools. (default=no)],
+[ case "$withval" in
+  no)
+    WITH_GPERFTOOLS=no
+    ;;
+  *)
+    WITH_GPERFTOOLS=yes
+    ;;
+  esac ]
+)
+
+dnl #
+dnl #  extra argument: --with-gperftools-lib-dir=dir
+dnl #
+gperftools_lib_dir=
+AC_ARG_WITH(gperftools-lib-dir,
+[AS_HELP_STRING([--with-gperftools-lib-dir=DIR],
+[directory to look for Google Perf Tools library files])],
+[ case "$withval" in
+  *) gperftools_lib_dir="$withval"
+    ;;
+  esac ]
+)
+
+dnl #
+dnl #  extra argument: --with-gperftools-includes=dir
+dnl #
+gperftools_include_dir=
+AC_ARG_WITH(gperftools-include-dir,
+[AS_HELP_STRING([--with-gperftools-include-dir=DIR],
+[directory to look for Google Perf Tools include files])],
+[ case "$withval" in
+  *) gperftools_include_dir="$withval"
+    ;;
+  esac ]
+)
+
+dnl #
+dnl #  Look for gperftools, we could just ldpreload it, but google recommends linking
+dnl #  it in properly.
+dnl #
+if test "x$WITH_GPERFTOOLS" = xyes; then
+  smart_try_dir="$gperftools_lib_dir"
+  FR_SMART_CHECK_LIB(profiler, ProfilerStart)
+  if test "x$ac_cv_lib_profiler_ProfilerStart" != "xyes"; then
+    AC_MSG_WARN([libprofiler (gperftools) library not found. Use --with-gperftools-lib-dir=<path>.])
+  else
+    GPERFTOOLS_LIBS="${smart_lib}"
+    GPERFTOOLS_LDFLAGS="${smart_ldflags}"
+  fi
+  dnl Set by FR_SMART_CHECKLIB
+  LIBS="${old_LIBS}"
+fi
+
 VL_LIB_READLINE
 
 dnl #############################################################
@@ -1252,6 +1312,23 @@ else
     AC_DEFINE(HAVE_CAPABILITY_H, 1, [Define to 1 if you have the <sys/capability.h> header file.])
   else
     AC_MSG_WARN([cap headers not found, will not perform debugger checks. Use --with-cap-include-dir=<path>.])
+  fi
+fi
+
+dnl #
+dnl #  Check for the gperftools headers too
+dnl #
+if test "x$WITH_GPERFTOOLS" != xyes || test "x$GPERFTOOLS_LIBS" = x; then
+  AC_MSG_NOTICE([skipping test for google/profiler.h.])
+else
+  smart_try_dir="$gperftools_include_dir"
+  FR_SMART_CHECK_INCLUDE([gperftools/profiler.h])
+  if test "x$ac_cv_header_gperftools_profiler_h" == "xyes"; then
+    AC_DEFINE(HAVE_GPERFTOOLS_PROFILER_H, 1, [Define to 1 if you have the <gperftools/profiler.h> header file.])
+    AC_SUBST(GPERFTOOLS_LIBS)
+    AC_SUBST(GPERFTOOLS_LDFLAGS)
+  else
+    AC_MSG_WARN([gperftools headers not found.  Use --with-gperftools-include-dir=<path>.])
   fi
 fi
 

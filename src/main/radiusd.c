@@ -51,8 +51,15 @@ RCSID("$Id$")
 #  define WIFEXITED(stat_val) (((stat_val) & 255) == 0)
 #endif
 
-#ifdef HAVE_GOOGLE_PROFILER_H
-#  include <google/profiler.h>
+/*
+ *  Gperftools can give us wall time, whereas callgrind
+ *  only gives us CPU time.  CPU time is fine when you're
+ *  developing complex algorithms,  but not so useful when
+ *  you're writing servers that may spend large amounts of
+ *  time in mutexes or waiting on network I/O.
+ */
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+#  include <gperftools/profiler.h>
 #endif
 
 /*
@@ -449,9 +456,21 @@ int main(int argc, char *argv[])
 	event_loop_started = true;
 
 	/*
+	 *  To actually activate the profiler CPUPROFILER must be set
+	 *  so under normal use these calls will do nothing.
+	 */
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+	ProfilerStart("radius_event_start");
+#endif
+	/*
 	 *  Start the event loop(s) and threads.
 	 */
-	radius_event_start(main_config.config, spawn_workers);
+	radius_event_start(main_config.config, main_config.spawn_workers);
+
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+	ProfilerStop();
+#endif
+
 
 	/*
 	 *  Now that we've set everything up, we can install the signal
