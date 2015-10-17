@@ -248,6 +248,66 @@ char const *fr_inet_ntoh(fr_ipaddr_t const *src, char *out, size_t outlen)
 	return out;
 }
 
+
+/*
+ *	Parse decimal digits until we run out of decimal digits.
+ */
+static int ip_octet_from_str(char const *str, uint32_t *poctet)
+{
+	uint32_t octet;
+	char const *p = str;
+
+	if ((*p < '0') || (*p > '9')) {
+		return -1;
+	}
+
+	octet = 0;
+
+	while ((*p >= '0') && (*p <= '9')) {
+		octet *= 10;
+		octet += *p - '0';
+		p++;
+
+		if (octet > 255) return -1;
+	}
+
+
+	*poctet = octet;
+	return p - str;
+}
+
+static int ip_prefix_from_str(char const *str, uint32_t *paddr)
+{
+	int shift, length;
+	uint32_t octet;
+	uint32_t addr;
+	char const *p = str;
+
+	addr = 0;
+
+	for (shift = 24; shift >= 0; shift -= 8) {
+		length = ip_octet_from_str(p, &octet);
+		if (length <= 0) return -1;
+
+		addr |= octet << shift;
+		p += length;
+
+		/*
+		 *	EOS or / means we're done.
+		 */
+		if (!*p || (*p == '/')) break;
+
+		/*
+		 *	We require dots between octets.
+		 */
+		if (*p != '.') return -1;
+		p++;
+	}
+
+	*paddr = htonl(addr);
+	return p - str;
+}
+
 /** Parse an IPv4 address or IPv4 prefix in presentation format (and others)
  *
  * @param out Where to write the ip address value.
@@ -255,15 +315,15 @@ char const *fr_inet_ntoh(fr_ipaddr_t const *src, char *out, size_t outlen)
  * @param inlen Length of value, if value is \0 terminated inlen may be -1.
  * @param resolve If true and value doesn't look like an IP address, try and resolve value as a hostname.
  * @param fallback to IPv6 resolution if no A records can be found.
- * @param mask If true, set address bits to zero.
+ * @param mask_bits If true, set address bits to zero.
  * @return
  *	- 0 if ip address was parsed successfully
  *	- -1 on failure.
  */
-int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask)
+int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resolve, bool fallback, bool mask_bits)
 {
 	char *p;
-	unsigned int prefix;
+	unsigned int mask;
 	char *eptr;
 
 	/* Dotted quad + / + [0-9]{1,2} */
@@ -283,6 +343,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	}
 
 	p = strchr(value, '/');
+
 	/*
 	 *	192.0.2.2 is parsed as if it was /32
 	 */
@@ -295,6 +356,7 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		 */
 		if ((value[0] == '*') && (value[1] == '\0')) {
 			out->ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
+
 		/*
 		 *	Convert things which are obviously integers to IP addresses
 		 *
@@ -303,9 +365,10 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 		 */
 		} else if (is_integer(value) || ((value[0] == '0') && (value[1] == 'x'))) {
 			out->ipaddr.ip4addr.s_addr = htonl(strtoul(value, NULL, 0));
+
 		} else if (!resolve) {
 			if (inet_pton(AF_INET, value, &out->ipaddr.ip4addr.s_addr) <= 0) {
-				fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
+				fr_strerror_printf("Failed to parse IPv4 addreess string \"%s\"", value);
 				return -1;
 			}
 		} else if (fr_inet_hton(out, AF_INET, value, fallback) < 0) return -1;
@@ -314,11 +377,11 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	}
 
 	/*
-	 *	Otherwise parse the prefix
+	 *     Otherwise parse the prefix
 	 */
 	if ((size_t)(p - value) >= INET_ADDRSTRLEN) {
-		fr_strerror_printf("Invalid IPv4 address string \"%s\"", value);
-		return -1;
+               fr_strerror_printf("Invalid IPv4 address string \"%s\"", value);
+               return -1;
 	}
 
 	/*
@@ -327,29 +390,28 @@ int fr_inet_pton4(fr_ipaddr_t *out, char const *value, ssize_t inlen, bool resol
 	if (inlen < 0) memcpy(buffer, value, p - value);
 	buffer[p - value] = '\0';
 
-	if (!resolve) {
-		if (inet_pton(AF_INET, buffer, &out->ipaddr.ip4addr.s_addr) <= 0) {
-			fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
-			return -1;
-		}
-	} else if (fr_inet_hton(out, AF_INET, buffer, fallback) < 0) return -1;
+	if (ip_prefix_from_str(buffer, &out->ipaddr.ip4addr.s_addr) <= 0) {
+		fr_strerror_printf("Failed to parse IPv4 address string \"%s\"", value);
+		return -1;
+	}
 
-	prefix = strtoul(p + 1, &eptr, 10);
-	if (prefix > 32) {
+	mask = strtoul(p + 1, &eptr, 10);
+	if (mask > 32) {
 		fr_strerror_printf("Invalid IPv4 mask length \"%s\".  Should be between 0-32", p);
 		return -1;
 	}
+
 	if (eptr[0] != '\0') {
 		fr_strerror_printf("Failed to parse IPv4 address string \"%s\", "
 				   "got garbage after mask length \"%s\"", value, eptr);
 		return -1;
 	}
 
-	if (mask && (prefix < 32)) {
-		out->ipaddr.ip4addr = fr_inaddr_mask(&out->ipaddr.ip4addr, prefix);
+	if (mask_bits && (mask < 32)) {
+		out->ipaddr.ip4addr = fr_inaddr_mask(&out->ipaddr.ip4addr, mask);
 	}
 
-	out->prefix = (uint8_t) prefix;
+	out->prefix = (uint8_t) mask;
 	out->af = AF_INET;
 
 	return 0;
