@@ -385,16 +385,21 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 		conf->session_last_flushed = request->timestamp;
 	}
 
-	if ((new_tls = SSL_new(conf->ctx)) == NULL) {
+	new_tls = SSL_new(conf->ctx);
+	if (new_tls == NULL) {
 		RERROR("Error creating new TLS session: %s", ERR_error_string(ERR_get_error(), NULL));
+
 		return NULL;
 	}
 
 	/* We use the SSL's "app_data" to indicate a call-back */
 	SSL_set_app_data(new_tls, NULL);
 
-	if ((session = talloc_zero(ctx, tls_session_t)) == NULL) {
+	session = talloc_zero(ctx, tls_session_t);
+	if (session == NULL) {
 		RERROR("Error allocating memory for TLS session");
+		SSL_free(new_tls);
+
 		return NULL;
 	}
 	session_init(session);
