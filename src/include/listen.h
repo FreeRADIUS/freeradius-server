@@ -157,7 +157,7 @@ typedef struct listen_socket_t {
 #endif
 
 #ifdef WITH_TLS
-	tls_session_t		*ssn;
+	tls_session_t		*tls_session;
 	REQUEST			*request; /* horrible hacks */
 	VALUE_PAIR		*cert_vps;
 #ifdef HAVE_PTHREAD_H

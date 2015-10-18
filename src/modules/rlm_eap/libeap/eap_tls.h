@@ -59,7 +59,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session);
 
 int	eap_tls_success(eap_session_t *eap_session, int peap_flag) CC_HINT(nonnull);
 int	eap_tls_fail(eap_session_t *eap_session, int peap_flag) CC_HINT(nonnull);
-int	eap_tls_request(eap_round_t *eap_round, tls_session_t *ssn) CC_HINT(nonnull);
+int	eap_tls_request(eap_round_t *eap_round, tls_session_t *tls_session) CC_HINT(nonnull);
 
 
 /* MPPE key generation */

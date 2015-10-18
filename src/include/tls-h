@@ -305,18 +305,18 @@ tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
 SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client);
-int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
-int 		tls_handshake_send(REQUEST *, tls_session_t *ssn);
-void 		tls_session_information(tls_session_t *ssn);
-void		tls_session_id(SSL_SESSION *ssn, char *buffer, size_t bufsize);
+int 		tls_handshake_recv(REQUEST *, tls_session_t *tls_session);
+int 		tls_handshake_send(REQUEST *, tls_session_t *tls_session);
+void 		tls_session_information(tls_session_t *tls_session);
+void		tls_session_id(SSL_SESSION *tls_session, char *buffer, size_t bufsize);
 
 /*
  *	Low-level TLS stuff
  */
-int tls_success(tls_session_t *ssn, REQUEST *request);
-void tls_fail(tls_session_t *ssn);
+int tls_success(tls_session_t *tls_session, REQUEST *request);
+void tls_fail(tls_session_t *tls_session);
 fr_tls_status_t tls_ack_handler(tls_session_t *tls_session, REQUEST *request);
-fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request);
+fr_tls_status_t tls_application_data(tls_session_t *tls_session, REQUEST *request);
 
 #define FR_TLS_EX_INDEX_EAP_SESSION  (10)
 #define FR_TLS_EX_INDEX_CONF	 (11)

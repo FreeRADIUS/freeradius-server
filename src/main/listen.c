@@ -2234,9 +2234,9 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	 *	how do we separate EAP-TLS parameters from RADIUS/TLS
 	 *	parameters?
 	 */
-	if (sock->ssn && sock->ssn->ssl) {
+	if (sock->tls_session && sock->tls_session->ssl) {
 #  ifdef PSK_MAX_IDENTITY_LEN
-		const char *identity = SSL_get_psk_identity(sock->ssn->ssl);
+		const char *identity = SSL_get_psk_identity(sock->tls_session->ssl);
 		if (identity) {
 			RDEBUG("Retrieved psk identity: %s", identity);
 			pair_make_request("TLS-PSK-Identity", identity, T_OP_SET);
@@ -2906,7 +2906,7 @@ static int _listener_free(rad_listen_t *this)
 		 *	may be used by multiple listeners.
 		 */
 		if (this->tls) {
-			rad_assert(!sock->ssn || (talloc_parent(sock->ssn) == sock));
+			rad_assert(!sock->tls_session || (talloc_parent(sock->tls_session) == sock));
 			rad_assert(!sock->request || (talloc_parent(sock->request) == sock));
 #ifdef HAVE_PTHREAD_H
 			pthread_mutex_destroy(&(sock->mutex));
@@ -3024,8 +3024,8 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 #if defined(WITH_TCP) && defined(WITH_TLS)
 	if ((home->proto == IPPROTO_TCP) && home->tls) {
 		DEBUG("Trying SSL to port %d\n", home->port);
-		sock->ssn = tls_session_init_client(sock, home->tls, this->fd);
-		if (!sock->ssn) {
+		sock->tls_session = tls_session_init_client(sock, home->tls, this->fd);
+		if (!sock->tls_session) {
 			ERROR("Failed starting SSL to new proxy socket '%s'", buffer);
 			home->last_failed_open = now;
 			listen_free(&this);

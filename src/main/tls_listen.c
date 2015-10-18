@@ -75,7 +75,7 @@ static void tls_socket_close(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;
 
-	SSL_shutdown(sock->ssn->ssl);
+	SSL_shutdown(sock->tls_session->ssl);
 
 	listener->status = RAD_LISTEN_STATUS_EOL;
 	listener->tls = NULL; /* parent owns this! */
@@ -101,12 +101,12 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *re
 	ssize_t rcode;
 	listen_socket_t *sock = listener->data;
 
-	p = sock->ssn->dirty_out.data;
+	p = sock->tls_session->dirty_out.data;
 
-	while (p < (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used)) {
+	while (p < (sock->tls_session->dirty_out.data + sock->tls_session->dirty_out.used)) {
 		RDEBUG3("Writing to socket %d", request->packet->sockfd);
 		rcode = write(request->packet->sockfd, p,
-			      (sock->ssn->dirty_out.data + sock->ssn->dirty_out.used) - p);
+			      (sock->tls_session->dirty_out.data + sock->tls_session->dirty_out.used) - p);
 		if (rcode <= 0) {
 			RDEBUG("Error writing to TLS socket: %s", fr_syserror(errno));
 
@@ -116,7 +116,7 @@ static int CC_HINT(nonnull) tls_socket_write(rad_listen_t *listener, REQUEST *re
 		p += rcode;
 	}
 
-	sock->ssn->dirty_out.used = 0;
+	sock->tls_session->dirty_out.used = 0;
 
 	return 1;
 }
@@ -165,17 +165,17 @@ static int tls_socket_recv(rad_listen_t *listener)
 		request->reply = rad_alloc(request, false);
 		if (!request->reply) return 0;
 
-		rad_assert(sock->ssn == NULL);
+		rad_assert(sock->tls_session == NULL);
 
-		sock->ssn = tls_session_init_server(sock, listener->tls, sock->request,
+		sock->tls_session = tls_session_init_server(sock, listener->tls, sock->request,
 					    listener->tls->require_client_cert);
-		if (!sock->ssn) {
+		if (!sock->tls_session) {
 			TALLOC_FREE(sock->request);
 			sock->packet = NULL;
 			return 0;
 		}
 
-		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
+		SSL_set_ex_data(sock->tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 
 		doing_init = true;
 	}
@@ -183,15 +183,15 @@ static int tls_socket_recv(rad_listen_t *listener)
 	rad_assert(sock->request != NULL);
 	rad_assert(sock->request->packet != NULL);
 	rad_assert(sock->packet != NULL);
-	rad_assert(sock->ssn != NULL);
+	rad_assert(sock->tls_session != NULL);
 
 	request = sock->request;
 
 	RDEBUG3("Reading from socket %d", request->packet->sockfd);
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
 	rcode = read(request->packet->sockfd,
-		     sock->ssn->dirty_in.data,
-		     sizeof(sock->ssn->dirty_in.data));
+		     sock->tls_session->dirty_in.data,
+		     sizeof(sock->tls_session->dirty_in.data));
 	if ((rcode < 0) && (errno == ECONNRESET)) {
 	do_close:
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
@@ -211,14 +211,14 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 */
 	if (rcode == 0) goto do_close;
 
-	sock->ssn->dirty_in.used = rcode;
+	sock->tls_session->dirty_in.used = rcode;
 
-	dump_hex("READ FROM SSL", sock->ssn->dirty_in.data, sock->ssn->dirty_in.used);
+	dump_hex("READ FROM SSL", sock->tls_session->dirty_in.data, sock->tls_session->dirty_in.used);
 
 	/*
 	 *	Catch attempts to use non-SSL.
 	 */
-	if (doing_init && (sock->ssn->dirty_in.data[0] != handshake)) {
+	if (doing_init && (sock->tls_session->dirty_in.data[0] != handshake)) {
 		RDEBUG("Non-TLS data sent to TLS socket: closing");
 		goto do_close;
 	}
@@ -226,8 +226,8 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	If we need to do more initialization, do that here.
 	 */
-	if (!SSL_is_init_finished(sock->ssn->ssl)) {
-		if (!tls_handshake_recv(request, sock->ssn)) {
+	if (!SSL_is_init_finished(sock->tls_session->ssl)) {
+		if (!tls_handshake_recv(request, sock->tls_session)) {
 			RDEBUG("FAILED in TLS handshake receive");
 			goto do_close;
 		}
@@ -235,7 +235,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		/*
 		 *	More ACK data to send.  Do so.
 		 */
-		if (sock->ssn->dirty_out.used > 0) {
+		if (sock->tls_session->dirty_out.used > 0) {
 			tls_socket_write(listener, request);
 			PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 			return 0;
@@ -251,7 +251,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	Try to get application data.
 	 */
-	status = tls_application_data(sock->ssn, request);
+	status = tls_application_data(sock->tls_session, request);
 	RDEBUG("Application data status %d", status);
 
 	if (status == FR_TLS_RECORD_FRAGMENT_MORE) {
@@ -259,7 +259,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	if (sock->ssn->clean_out.used == 0) {
+	if (sock->tls_session->clean_out.used == 0) {
 		PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 		return 0;
 	}
@@ -267,24 +267,24 @@ static int tls_socket_recv(rad_listen_t *listener)
 	/*
 	 *	We now have a bunch of application data.
 	 */
-	dump_hex("TUNNELED DATA > ", sock->ssn->clean_out.data, sock->ssn->clean_out.used);
+	dump_hex("TUNNELED DATA > ", sock->tls_session->clean_out.data, sock->tls_session->clean_out.used);
 
 	/*
 	 *	If the packet is a complete RADIUS packet, return it to
 	 *	the caller.  Otherwise...
 	 */
-	if ((sock->ssn->clean_out.used < 20) ||
-	    (((sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]) != (int) sock->ssn->clean_out.used)) {
+	if ((sock->tls_session->clean_out.used < 20) ||
+	    (((sock->tls_session->clean_out.data[2] << 8) | sock->tls_session->clean_out.data[3]) != (int) sock->tls_session->clean_out.used)) {
 		RDEBUG("Received bad packet: Length %zd contents %d",
-		       sock->ssn->clean_out.used,
-		       (sock->ssn->clean_out.data[2] << 8) | sock->ssn->clean_out.data[3]);
+		       sock->tls_session->clean_out.used,
+		       (sock->tls_session->clean_out.data[2] << 8) | sock->tls_session->clean_out.data[3]);
 		goto do_close;
 	}
 
 	packet = sock->packet;
-	packet->data = talloc_array(packet, uint8_t, sock->ssn->clean_out.used);
-	packet->data_len = sock->ssn->clean_out.used;
-	sock->ssn->record_to_buff(&sock->ssn->clean_out, packet->data, packet->data_len);
+	packet->data = talloc_array(packet, uint8_t, sock->tls_session->clean_out.used);
+	packet->data_len = sock->tls_session->clean_out.used;
+	sock->tls_session->record_to_buff(&sock->tls_session->clean_out, packet->data, packet->data_len);
 	packet->vps = NULL;
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
@@ -342,7 +342,7 @@ int dual_tls_recv(rad_listen_t *listener)
 	}
 
 	rad_assert(sock->packet != NULL);
-	rad_assert(sock->ssn != NULL);
+	rad_assert(sock->tls_session != NULL);
 	rad_assert(client != NULL);
 
 	packet = talloc_steal(NULL, sock->packet);
@@ -453,21 +453,21 @@ int dual_tls_send(rad_listen_t *listener, REQUEST *request)
 	/*
 	 *	Write the packet to the SSL buffers.
 	 */
-	sock->ssn->record_from_buff(&sock->ssn->clean_in,
+	sock->tls_session->record_from_buff(&sock->tls_session->clean_in,
 			       request->reply->data, request->reply->data_len);
 
-	dump_hex("TUNNELED DATA < ", sock->ssn->clean_in.data, sock->ssn->clean_in.used);
+	dump_hex("TUNNELED DATA < ", sock->tls_session->clean_in.data, sock->tls_session->clean_in.used);
 
 	/*
 	 *	Do SSL magic to get encrypted data.
 	 */
-	tls_handshake_send(request, sock->ssn);
+	tls_handshake_send(request, sock->tls_session);
 
 	/*
 	 *	And finally write the data to the socket.
 	 */
-	if (sock->ssn->dirty_out.used > 0) {
-		dump_hex("WRITE TO SSL", sock->ssn->dirty_out.data, sock->ssn->dirty_out.used);
+	if (sock->tls_session->dirty_out.used > 0) {
+		dump_hex("WRITE TO SSL", sock->tls_session->dirty_out.data, sock->tls_session->dirty_out.used);
 
 		tls_socket_write(listener, request);
 	}
@@ -501,15 +501,15 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	 *	Get the maximum size of data to receive.
 	 */
 	if (!sock->data) sock->data = talloc_array(sock, uint8_t,
-						   sock->ssn->mtu);
+						   sock->tls_session->mtu);
 
 	data = sock->data;
 
 	if (sock->partial < 4) {
-		rcode = SSL_read(sock->ssn->ssl, data + sock->partial,
+		rcode = SSL_read(sock->tls_session->ssl, data + sock->partial,
 				 4 - sock->partial);
 		if (rcode <= 0) {
-			int err = SSL_get_error(sock->ssn->ssl, rcode);
+			int err = SSL_get_error(sock->tls_session->ssl, rcode);
 			switch (err) {
 			case SSL_ERROR_WANT_READ:
 			case SSL_ERROR_WANT_WRITE:
@@ -517,7 +517,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 
 			case SSL_ERROR_ZERO_RETURN:
 				/* remote end sent close_notify, send one back */
-				SSL_shutdown(sock->ssn->ssl);
+				SSL_shutdown(sock->tls_session->ssl);
 
 			case SSL_ERROR_SYSCALL:
 			do_close:
@@ -551,7 +551,7 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 		 *	FIXME: allocate a RADIUS_PACKET, and set
 		 *	"data" to be as large as necessary.
 		 */
-		if (length > sock->ssn->mtu) {
+		if (length > sock->tls_session->mtu) {
 			INFO("Received packet will be too large! Set \"fragment_size = %u\"",
 			     (data[2] << 8) | data[3]);
 			goto do_close;
@@ -562,17 +562,17 @@ static ssize_t proxy_tls_read(rad_listen_t *listener)
 	 *	Try to read some more.
 	 */
 	if (sock->partial < length) {
-		rcode = SSL_read(sock->ssn->ssl, data + sock->partial,
+		rcode = SSL_read(sock->tls_session->ssl, data + sock->partial,
 				 length - sock->partial);
 		if (rcode <= 0) {
-			switch (SSL_get_error(sock->ssn->ssl, rcode)) {
+			switch (SSL_get_error(sock->tls_session->ssl, rcode)) {
 			case SSL_ERROR_WANT_READ:
 			case SSL_ERROR_WANT_WRITE:
 				return 0;
 
 			case SSL_ERROR_ZERO_RETURN:
 				/* remote end sent close_notify, send one back */
-				SSL_shutdown(sock->ssn->ssl);
+				SSL_shutdown(sock->tls_session->ssl);
 				goto do_close;
 			default:
 				goto do_close;
@@ -696,7 +696,7 @@ int proxy_tls_send(rad_listen_t *listener, REQUEST *request)
 	DEBUG3("Proxy is writing %u bytes to SSL",
 	       (unsigned int) request->proxy->data_len);
 	PTHREAD_MUTEX_LOCK(&sock->mutex);
-	rcode = SSL_write(sock->ssn->ssl, request->proxy->data,
+	rcode = SSL_write(sock->tls_session->ssl, request->proxy->data,
 			  request->proxy->data_len);
 	if (rcode < 0) {
 		int err;

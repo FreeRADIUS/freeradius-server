@@ -144,7 +144,7 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_sessi
 static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 {
 	int		status;
-	tls_session_t	*ssn;
+	tls_session_t	*tls_session;
 	rlm_eap_peap_t	*inst;
 	VALUE_PAIR	*vp;
 	bool		client_cert;
@@ -169,17 +169,17 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 		client_cert = inst->req_client_cert;
 	}
 
-	ssn = eap_tls_session(eap_session, inst->tls_conf, client_cert);
-	if (!ssn) {
+	tls_session = eap_tls_session(eap_session, inst->tls_conf, client_cert);
+	if (!tls_session) {
 		return 0;
 	}
 
-	eap_session->opaque = ((void *)ssn);
+	eap_session->opaque = ((void *)tls_session);
 
 	/*
 	 *	Set up type-specific information.
 	 */
-	ssn->prf_label = "client EAP encryption";
+	tls_session->prf_label = "client EAP encryption";
 
 	/*
 	 *	As it is a poorly designed protocol, PEAP uses
@@ -190,20 +190,20 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	we will need this flag to indicate which
 	 *	version we're currently dealing with.
 	 */
-	ssn->peap_flag = 0x00;
+	tls_session->peap_flag = 0x00;
 
 	/*
 	 *	PEAP version 0 requires 'include_length = no',
 	 *	so rather than hoping the user figures it out,
 	 *	we force it here.
 	 */
-	ssn->length_flag = false;
+	tls_session->length_flag = false;
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	status = eap_tls_start(eap_session->this_round, ssn->peap_flag);
+	status = eap_tls_start(eap_session->this_round, tls_session->peap_flag);
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eap-tls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {

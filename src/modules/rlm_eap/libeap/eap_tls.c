@@ -63,7 +63,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  */
 tls_session_t *eap_tls_session(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert)
 {
-	tls_session_t	*ssn;
+	tls_session_t	*tls_session;
 	REQUEST		*request = eap_session->request;
 
 	eap_session->tls = true;
@@ -75,8 +75,8 @@ tls_session_t *eap_tls_session(eap_session_t *eap_session, fr_tls_server_conf_t 
 	 *	in Opaque.  So that we can use these data structures
 	 *	when we get the response
 	 */
-	ssn = tls_session_init_server(eap_session, tls_conf, request, client_cert);
-	if (!ssn) return NULL;
+	tls_session = tls_session_init_server(eap_session, tls_conf, request, client_cert);
+	if (!tls_session) return NULL;
 
 	/*
 	 *	Create a structure for all the items required to be
@@ -86,15 +86,15 @@ tls_session_t *eap_tls_session(eap_session_t *eap_session, fr_tls_server_conf_t 
 	 *	NOTE: If we want to set each item sepearately then
 	 *	this index should be global.
 	 */
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_EAP_SESSION, (void *)eap_session);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)ssn);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(eap_session->identity));
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_EAP_SESSION, (void *)eap_session);
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)tls_session);
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(eap_session->identity));
 #ifdef HAVE_OPENSSL_OCSP_H
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
 #endif
 
-	return talloc_steal(eap_session, ssn); /* ssn */
+	return talloc_steal(eap_session, tls_session); /* tls_session */
 }
 
 /*
@@ -185,7 +185,7 @@ int eap_tls_fail(eap_session_t *eap_session, int peap_flag)
  *	packets that we send, for easy reference purpose.  Handle
  *	fragmentation and sending the next fragment etc.
  */
-int eap_tls_request(eap_round_t *eap_round, tls_session_t *ssn)
+int eap_tls_request(eap_round_t *eap_round, tls_session_t *tls_session)
 {
 	eap_tls_packet_t	reply;
 	unsigned int	size;
@@ -208,28 +208,28 @@ int eap_tls_request(eap_round_t *eap_round, tls_session_t *ssn)
 		Having L flag in every packet is prefered.
 
 	*/
-	if (ssn->length_flag) {
+	if (tls_session->length_flag) {
 		lbit = 4;
 	}
-	if (ssn->fragment == 0) {
-		ssn->tls_msg_len = ssn->dirty_out.used;
+	if (tls_session->fragment == 0) {
+		tls_session->tls_msg_len = tls_session->dirty_out.used;
 	}
 
 	reply.code = FR_TLS_REQUEST;
-	reply.flags = ssn->peap_flag;
+	reply.flags = tls_session->peap_flag;
 
 	/* Send data, NOT more than the FRAGMENT size */
-	if (ssn->dirty_out.used > ssn->mtu) {
-		size = ssn->mtu;
+	if (tls_session->dirty_out.used > tls_session->mtu) {
+		size = tls_session->mtu;
 		reply.flags = SET_MORE_FRAGMENTS(reply.flags);
 		/* Length MUST be included if it is the First Fragment */
-		if (ssn->fragment == 0) {
+		if (tls_session->fragment == 0) {
 			lbit = 4;
 		}
-		ssn->fragment = 1;
+		tls_session->fragment = 1;
 	} else {
-		size = ssn->dirty_out.used;
-		ssn->fragment = 0;
+		size = tls_session->dirty_out.used;
+		tls_session->fragment = 0;
 	}
 
 	reply.dlen = lbit + size;
@@ -239,11 +239,11 @@ int eap_tls_request(eap_round_t *eap_round, tls_session_t *ssn)
 	if (!reply.data) return 0;
 
 	if (lbit) {
-		nlen = htonl(ssn->tls_msg_len);
+		nlen = htonl(tls_session->tls_msg_len);
 		memcpy(reply.data, &nlen, lbit);
 		reply.flags = SET_LENGTH_INCLUDED(reply.flags);
 	}
-	(ssn->record_to_buff)(&ssn->dirty_out, reply.data + lbit, size);
+	(tls_session->record_to_buff)(&tls_session->dirty_out, reply.data + lbit, size);
 
 	eap_tls_compose(eap_round, &reply);
 	talloc_free(reply.data);
