@@ -864,14 +864,14 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	return status;
 }
 
-/** Create a new #tls_session associated with an #eap_session_t
+/** Create a new tls_session_t associated with an #eap_session_t
  *
- * Creates a new server #tls_session_t and associates it with an #eap_session_t
- * adding EAP specific opaque data to the SSL session created during #tls_session_t
+ * Creates a new server tls_session_t and associates it with an #eap_session_t
+ * adding EAP specific opaque data to the SSL session created during tls_session_t
  * initialisation.
  *
- * @param eap_session to use as a context for the #tls_session_t
- * @param tls_conf to use to configure the #tls_session_t.
+ * @param eap_session to use as a context for the tls_session_t
+ * @param tls_conf to use to configure the tls_session_t.
  * @param client_cert Whether we require the peer to prevent a certificate.
  * @return
  *	- A new tls_session on success.
