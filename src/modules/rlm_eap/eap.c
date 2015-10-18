@@ -1110,8 +1110,8 @@ eap_session_t *eap_eap_session(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			goto error;
 		}
 
-		eap_session->trips++;
-		if (eap_session->trips >= 50) {
+		eap_session->rounds++;
+		if (eap_session->rounds >= 50) {
 			RERROR("Failing EAP session due to too many round trips");
 			talloc_free(eap_session);
 			goto error;
@@ -1216,7 +1216,6 @@ eap_session_t *eap_eap_session(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		goto error2;
 	}
 
-	eap_session->timestamp = request->timestamp;
 	eap_session->request = request; /* LEAP needs this */
 	return eap_session;
 }

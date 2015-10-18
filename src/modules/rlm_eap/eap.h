@@ -40,8 +40,8 @@ RCSIDH(eap_h, "$Id$")
  * Helps with formulating/correlating requests to responses we've received.
  */
 typedef struct eap_round {
-	eap_packet_t	*response;		//!< Packet we received from the peer.
-	eap_packet_t	*request;		//!< Packet we will send to the peer.
+	eap_packet_t	*response;			//!< Packet we received from the peer.
+	eap_packet_t	*request;			//!< Packet we will send to the peer.
 	bool		set_request_id;
 } eap_round_t;
 
@@ -52,79 +52,52 @@ typedef struct _eap_session eap_session_t;
  */
 typedef int (*eap_process_t)(void *instance, eap_session_t *eap_session);
 
-/*
- * eap_session_t is the interface for any EAP-Type.
- * Each eap_session contains information for one specific EAP-Type.
- * This way we don't need to change any interfaces in future.
- * It is also a list of EAP-request eap_sessions waiting for EAP-response
- * eap_id = copy of the eap packet we sent to the
- *
- * next = pointer to next
- * state = state attribute from the reply we sent
- * state_len = length of data in the state attribute.
- * src_ipaddr = client which sent us the RADIUS request containing
- *	      this EAP conversation.
- * eap_id = copy of EAP id we sent to the client.
- * timestamp  = timestamp when this eap_session was last used.
- * identity = Identity, as obtained, from EAP-Identity response.
- * request = RADIUS request data structure
- * prev_eap_round = Previous EAP request, for which eap_round contains the response.
- * eap_round   = Current EAP response.
- * opaque   = EAP-Type holds some data that corresponds to the current
- *		EAP-request/response
- * free_opaque = To release memory held by opaque,
- * 		when this eap_session is timedout & needs to be deleted.
- * 		It is the responsibility of the specific EAP-TYPE
- * 		to avoid any memory leaks in opaque
- *		Hence this pointer should be provided by the EAP-Type
- *		if opaque is not NULL
- * status   = finished/onhold/..
- */
 #define EAP_STATE_LEN (AUTH_VECTOR_LEN)
+/** Tracks the progress of a single session of any EAP method
+ *
+ */
 struct _eap_session {
-	eap_session_t	*prev, *next;
-	uint8_t		state[EAP_STATE_LEN];
-	fr_ipaddr_t	src_ipaddr;
+	eap_session_t	*prev, *next;			//!< Next/previous eap session in this doubly linked list.
 
-	uint8_t		eap_id;		//!< EAP Identifier used to match
-					//!< requests and responses.
-	eap_type_t	type;		//!< EAP type number.
+	void		*inst;				//!< Instance of the eap module this session was created by.
+	uint8_t		state[EAP_STATE_LEN];		//!< State attribute value the last reply we sent.
+	fr_ipaddr_t	src_ipaddr;			//!< of client which sent us the RADIUS request for this
+							//!< session.
 
-	time_t		timestamp;
+	eap_type_t	type;				//!< EAP method number.
 
-	REQUEST		*request;
+	REQUEST		*request;			//!< Request that contains the response we're processing.
 
-	char		*identity;	//!< User name from EAP-Identity
+	char		*identity;			//!< NAI (User-Name) from EAP-Identity
 
-	eap_round_t 	*prev_round;
-	eap_round_t 	*this_round;
+	eap_round_t 	*prev_round;			//!< Previous response/request pair. #this_round should contain
+							//!< the response to the request in #prev_round.
+	eap_round_t 	*this_round;			//!< The EAP response we're processing, and the EAP request
+							//!< we're building.
 
-	void 		*opaque;
-	void 		(*free_opaque)(void *opaque);
-	void		*inst_holder;
+	void 		*opaque;			//!< Opaque data used by EAP methods.
+	void 		(*free_opaque)(void *opaque);	//!< Callback to free opaque data.
 
-	int		status;
+	eap_process_t	process;			//!< Callback that should be used to process the next round.
+							//!< Usually set to the process functino of an EAP submodule.
+	int		rounds;				//!< How many roundtrips have occurred this session.
 
-	eap_process_t	process;
-
-	int		trips;
-
-	bool		tls;
-	bool		finished;
-	VALUE_PAIR	*cert_vps;
+	bool		tls;				//!< Whether EAP method uses TLS.
+	bool		finished;			//!< Whether we consider this session complete.
 };
 
-/*
- * Interface to call EAP sub mdoules
+/** Interface to call EAP sub mdoules
+ *
  */
 typedef struct rlm_eap_module {
-	char const *name;						//!< The name of the sub-module
-									//!< (without rlm_ prefix).
-	int (*instantiate)(CONF_SECTION *conf, void **instance);	//!< Create a new submodule instance.
-	eap_process_t	session_init;					//!< Initialise a new EAP session.
-	eap_process_t	process;					//!< Continue an EAP session.
+	char const *name;				//!< The name of the sub-module
+							//!< (without rlm_ prefix).
+	int (*instantiate)(CONF_SECTION *conf, void **instance); //!< Create a new submodule instance.
+	eap_process_t	session_init;			//!< Callback for creating a new #eap_session_t.
+	eap_process_t	process;			//!< Callback for processing the next #eap_round_t of an
+							//!< #eap_session_t.
 
-	int (*detach)(void *instance);					//!< Destroy a submodule instance.
+	int (*detach)(void *instance);			//!< Destroy an EAP submodule instance.
 } rlm_eap_module_t;
 
 #define REQUEST_DATA_EAP_HANDLER	 (1)
@@ -138,8 +111,8 @@ typedef struct rlm_eap_module {
 typedef int (*eap_tunnel_callback_t)(eap_session_t *eap_session, void *tls_session);
 
 typedef struct eap_tunnel_data_t {
-  void			*tls_session;
-  eap_tunnel_callback_t callback;
+	void			*tls_session;
+	eap_tunnel_callback_t	callback;
 } eap_tunnel_data_t;
 
 #endif /*_EAP_H*/

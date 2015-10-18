@@ -232,7 +232,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	can retrieve it in the post-proxy stage, and
 		 *	send a response.
 		 */
-		eap_session->inst_holder = inst;
+		eap_session->inst = inst;
 		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, eap_session, true);
 
 		rad_assert(status == 0);
@@ -255,7 +255,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	can retrieve it in the post-proxy stage, and
 		 *	send a response.
 		 */
-		eap_session->inst_holder = inst;
+		eap_session->inst = inst;
 
 		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, eap_session, true);
 

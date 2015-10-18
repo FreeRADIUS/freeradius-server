@@ -83,8 +83,6 @@ static int _eap_eap_session_free(eap_session_t *eap_session)
 	eap_session->opaque = NULL;
 	eap_session->free_opaque = NULL;
 
-	if (eap_session->cert_vps) fr_pair_list_free(&eap_session->cert_vps);
-
 	/*
 	 *	Give helpful debug messages if:
 	 *
@@ -93,7 +91,7 @@ static int _eap_eap_session_free(eap_session_t *eap_session)
 	 *	retransmit which nukes our ID, and therefore our stare.
 	 */
 	if (fr_debug_lvl && eap_session->tls && !eap_session->finished &&
-	    (time(NULL) > (eap_session->timestamp + 3))) {
+	    (time(NULL) > (eap_session->request->timestamp + 3))) {
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!                  !!",
 		     eap_session->state[0], eap_session->state[1],
@@ -122,7 +120,7 @@ eap_session_t *eap_eap_session_alloc(rlm_eap_t *inst)
 		ERROR("Failed allocating eap_session");
 		return NULL;
 	}
-	eap_session->inst_holder = inst;
+	eap_session->inst = inst;
 
 	/* Doesn't need to be inside the critical region */
 	talloc_set_destructor(eap_session, _eap_eap_session_free);

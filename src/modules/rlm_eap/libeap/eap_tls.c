@@ -696,9 +696,6 @@ fr_tls_status_t eaptls_process(eap_session_t *eap_session)
 
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 
-	if (eap_session->cert_vps) fr_pair_add(&request->packet->vps,
-				    fr_pair_list_copy(request->packet, eap_session->cert_vps));
-
 	/*
 	 *	eaptls_verify sanity checks the incoming EAP data.
 	 */
