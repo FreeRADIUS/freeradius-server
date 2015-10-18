@@ -3,12 +3,13 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* "unlang" comparisons of IP addresses to IP prefixes
 	  are now detected, and types automatically cast.
 	* Allow shorthand form of ipv4prefix values e.g. 127/8.
-	
+
 	Bug fixes
 	* Fix issue where field nas_type would not be accessible via
 	  the %{client:} xlat, for clients loaded from SQL.
 	* Fix compatiblity issues with OpenSSL 1.0.2.  Ignore
 	  calls to msg_callback with 'pseudo' content types.
+	* Data type "ipv4prefix" are parsed correctly.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
