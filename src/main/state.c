@@ -140,7 +140,9 @@ void fr_state_free(fr_state_t *state)
 
 	rbtree_free(my_tree);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+#ifdef HAVE_PTHREAD_H
 	if (main_config.spawn_workers) pthread_mutex_destroy(&state->mutex);
+#endif
 
 	if (state == global_state) global_state = NULL;
 }
