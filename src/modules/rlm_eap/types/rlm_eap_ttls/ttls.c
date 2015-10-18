@@ -605,14 +605,14 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 /*
  *	Use a reply packet to determine what to do.
  */
-static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_session_t *tls_session,
+static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tls_session_t *tls_session,
 						  REQUEST *request, RADIUS_PACKET *reply)
 {
 	rlm_rcode_t rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR *vp;
 	ttls_tunnel_t *t = tls_session->opaque;
 
-	rad_assert(handler->request == request);
+	rad_assert(eap_session->request == request);
 
 	/*
 	 *	If the response packet was Access-Accept, then
@@ -804,11 +804,11 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_handler_t *handler, tls_se
 /*
  *	Do post-proxy processing,
  */
-static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data)
+static int CC_HINT(nonnull) eapttls_postproxy(eap_session_t *eap_session, void *data)
 {
 	int rcode;
 	tls_session_t *tls_session = (tls_session_t *) data;
-	REQUEST *fake, *request = handler->request;
+	REQUEST *fake, *request = eap_session->request;
 
 	RDEBUG("Passing reply from proxy back into the tunnel");
 
@@ -816,14 +816,14 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 	 *	If there was a fake request associated with the proxied
 	 *	request, do more processing of it.
 	 */
-	fake = (REQUEST *) request_data_get(handler->request,
-					    handler->request->proxy,
+	fake = (REQUEST *) request_data_get(eap_session->request,
+					    eap_session->request->proxy,
 					    REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK);
 
 	/*
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
-	if (fake && (handler->request->proxy_reply->code == PW_CODE_ACCESS_ACCEPT)) {
+	if (fake && (eap_session->request->proxy_reply->code == PW_CODE_ACCESS_ACCEPT)) {
 		/*
 		 *	Terrible hacks.
 		 */
@@ -872,7 +872,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
 			talloc_free(fake);
-			eaptls_fail(handler, 0);
+			eaptls_fail(eap_session, 0);
 			return 0;
 
 		default:  /* Don't Do Anything */
@@ -886,14 +886,14 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 	/*
 	 *	Process the reply from the home server.
 	 */
-	rcode = process_reply(handler, tls_session, handler->request, handler->request->proxy_reply);
+	rcode = process_reply(eap_session, tls_session, eap_session->request, eap_session->request->proxy_reply);
 
 	/*
 	 *	The proxy code uses the reply from the home server as
 	 *	the basis for the reply to the NAS.  We don't want that,
 	 *	so we toss it, after we've had our way with it.
 	 */
-	fr_pair_list_free(&handler->request->proxy_reply->vps);
+	fr_pair_list_free(&eap_session->request->proxy_reply->vps);
 
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
@@ -902,7 +902,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 
 	case RLM_MODULE_HANDLED:
 		RDEBUG("Reply was handled");
-		eaptls_request(handler->eap_ds, tls_session);
+		eaptls_request(eap_session->eap_ds, tls_session);
 		request->proxy_reply->code = PW_CODE_ACCESS_CHALLENGE;
 		return 1;
 
@@ -912,14 +912,14 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		return eaptls_success(handler, 0);
+		return eaptls_success(eap_session, 0);
 
 	default:
 		RDEBUG("Reply was unknown");
 		break;
 	}
 
-	eaptls_fail(handler, 0);
+	eaptls_fail(eap_session, 0);
 	return 0;
 }
 
@@ -928,7 +928,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_handler_t *handler, void *data
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
+PW_CODE eapttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	PW_CODE code = PW_CODE_ACCESS_REJECT;
 	rlm_rcode_t rcode;
@@ -937,7 +937,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	ttls_tunnel_t *t;
 	uint8_t const *data;
 	size_t data_len;
-	REQUEST *request = handler->request;
+	REQUEST *request = eap_session->request;
 	chbind_packet_t *chbind;
 
 	/*
@@ -1253,7 +1253,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 			/*
 			 *	rlm_eap.c has taken care of associating
-			 *	the handler with the fake request.
+			 *	the eap_session with the fake request.
 			 *
 			 *	So we associate the fake request with
 			 *	this request.
@@ -1282,7 +1282,7 @@ PW_CODE eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		/*
 		 *	Returns RLM_MODULE_FOO, and we want to return PW_FOO
 		 */
-		rcode = process_reply(handler, tls_session, request, fake->reply);
+		rcode = process_reply(eap_session, tls_session, request, fake->reply);
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
 			code = PW_CODE_ACCESS_REJECT;

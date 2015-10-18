@@ -173,10 +173,10 @@ open_self:
 /*
  * Call the appropriate handle with the right eap_method.
  */
-static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
+static int eap_module_call(eap_module_t *module, eap_session_t *eap_session)
 {
 	int rcode = 1;
-	REQUEST *request = handler->request;
+	REQUEST *request = eap_session->request;
 
 	char const *caller = request->module;
 
@@ -186,7 +186,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 
 	request->module = module->type->name;
 
-	rcode = handler->process(module->instance, handler);
+	rcode = eap_session->process(module->instance, eap_session);
 
 	request->module = caller;
 	return rcode;
@@ -311,13 +311,13 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
  * Default to the configured EAP-Type for all Unsupported EAP-Types.
  *
  * @param inst Configuration data for this instance of rlm_eap.
- * @param handler State data that persists over multiple rounds of EAP.
+ * @param eap_session State data that persists over multiple rounds of EAP.
  * @return a status code.
  */
-eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
+eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 {
-	eap_type_data_t		*type = &handler->eap_ds->response->type;
-	REQUEST			*request = handler->request;
+	eap_type_data_t		*type = &eap_session->eap_ds->response->type;
+	REQUEST			*request = eap_session->request;
 
 	eap_type_t		next = inst->default_method;
 	VALUE_PAIR		*vp;
@@ -341,9 +341,9 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	parent.  If the outer session exists, and doesn't have
 	 *	a home server, then it's multiple layers of tunneling.
 	 */
-	if (handler->request->parent && 
-	    handler->request->parent->parent &&
-	    !handler->request->parent->parent->home_server) {
+	if (eap_session->request->parent &&
+	    eap_session->request->parent->parent &&
+	    !eap_session->request->parent->parent->home_server) {
 		RERROR("Multiple levels of TLS nesting are invalid");
 
 		return EAP_INVALID;
@@ -359,7 +359,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = fr_pair_find_by_num(handler->request->config, PW_EAP_TYPE, 0,
+		vp = fr_pair_find_by_num(eap_session->request->config, PW_EAP_TYPE, 0,
 			      TAG_ANY);
 		if (vp) next = vp->vp_integer;
 
@@ -382,10 +382,10 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		rad_assert(next < PW_EAP_MAX_TYPES);
 		rad_assert(inst->methods[next]);
 
-		handler->process = inst->methods[next]->type->session_init;
-		handler->type = next;
+		eap_session->process = inst->methods[next]->type->session_init;
+		eap_session->type = next;
 
-		if (eap_module_call(inst->methods[next], handler) == 0) {
+		if (eap_module_call(inst->methods[next], eap_session) == 0) {
 			REDEBUG2("Failed starting EAP %s (%d) session.  EAP sub-module failed",
 				 eap_type2name(next), next);
 
@@ -397,14 +397,14 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		/*
 		 *	Delete old data, if necessary.
 		 */
-		if (handler->opaque && handler->free_opaque) {
-			handler->free_opaque(handler->opaque);
-			handler->free_opaque = NULL;
-			handler->opaque = NULL;
+		if (eap_session->opaque && eap_session->free_opaque) {
+			eap_session->free_opaque(eap_session->opaque);
+			eap_session->free_opaque = NULL;
+			eap_session->opaque = NULL;
 		}
 
-		next = eap_process_nak(inst, handler->request,
-				       handler->type, type);
+		next = eap_process_nak(inst, eap_session->request,
+				       eap_session->type, type);
 
 		/*
 		 *	We probably want to return 'fail' here...
@@ -430,8 +430,8 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			return EAP_INVALID;
 		}
 
-		handler->type = type->num;
-		if (eap_module_call(inst->methods[type->num], handler) == 0) {
+		eap_session->type = type->num;
+		if (eap_module_call(inst->methods[type->num], eap_session) == 0) {
 			REDEBUG2("Failed continuing EAP %s (%d) session.  EAP sub-module failed",
 				 eap_type2name(type->num),
 				 type->num);
@@ -451,7 +451,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
  *	Set the RADIUS reply codes based on EAP request codes.  Append
  *	any additonal VPs to RADIUS reply
  */
-rlm_rcode_t eap_compose(eap_handler_t *handler)
+rlm_rcode_t eap_compose(eap_session_t *eap_session)
 {
 	VALUE_PAIR *vp;
 	eap_packet_raw_t *eap_packet;
@@ -461,13 +461,13 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	int rcode;
 
 #ifndef NDEBUG
-	handler = talloc_get_type_abort(handler, eap_handler_t);
-	request = talloc_get_type_abort(handler->request, REQUEST);
-	eap_ds = talloc_get_type_abort(handler->eap_ds, EAP_DS);
+	eap_session = talloc_get_type_abort(eap_session, eap_session_t);
+	request = talloc_get_type_abort(eap_session->request, REQUEST);
+	eap_ds = talloc_get_type_abort(eap_session->eap_ds, EAP_DS);
 	reply = talloc_get_type_abort(eap_ds->request, eap_packet_t);
 #else
-	request = handler->request;
-	eap_ds = handler->eap_ds;
+	request = eap_session->request;
+	eap_ds = eap_session->eap_ds;
 	reply = eap_ds->request;
 #endif
 
@@ -491,7 +491,7 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 		 *	incremented, RFC2284 only makes the above-
 		 *	mentioned restriction.
 		 */
-		reply->id = handler->eap_ds->response->id;
+		reply->id = eap_session->eap_ds->response->id;
 
 		switch (reply->code) {
 			/*
@@ -529,10 +529,10 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	if (((eap_ds->request->code == PW_EAP_REQUEST) ||
 	     (eap_ds->request->code == PW_EAP_RESPONSE)) &&
 	    (eap_ds->request->type.num == 0)) {
-		rad_assert(handler->type >= PW_EAP_MD5);
-		rad_assert(handler->type < PW_EAP_MAX_TYPES);
+		rad_assert(eap_session->type >= PW_EAP_MD5);
+		rad_assert(eap_session->type < PW_EAP_MAX_TYPES);
 
-		eap_ds->request->type.num = handler->type;
+		eap_ds->request->type.num = eap_session->type;
 	}
 
 	if (eap_wireformat(reply) == EAP_INVALID) {
@@ -784,7 +784,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	mod_authorize() to return NOOP.
 	 *
 	 *	EAP-Identity, Notification, and NAK are all handled
-	 *	internally, so they never have handlers.
+	 *	internally, so they never have eap_sessions.
 	 */
 	if ((eap_msg->vp_octets[4] >= PW_EAP_MD5) &&
 	    inst->ignore_unknown_types &&
@@ -857,29 +857,29 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 /*
  *	compose EAP FAILURE packet in EAP-Message
  */
-void eap_fail(eap_handler_t *handler)
+void eap_fail(eap_session_t *eap_session)
 {
 	/*
 	 *	Delete any previous replies.
 	 */
-	fr_pair_delete_by_num(&handler->request->reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-	fr_pair_delete_by_num(&handler->request->reply->vps, PW_STATE, 0, TAG_ANY);
+	fr_pair_delete_by_num(&eap_session->request->reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+	fr_pair_delete_by_num(&eap_session->request->reply->vps, PW_STATE, 0, TAG_ANY);
 
-	talloc_free(handler->eap_ds->request);
-	handler->eap_ds->request = talloc_zero(handler->eap_ds, eap_packet_t);
-	handler->eap_ds->request->code = PW_EAP_FAILURE;
-	handler->finished = true;
-	eap_compose(handler);
+	talloc_free(eap_session->eap_ds->request);
+	eap_session->eap_ds->request = talloc_zero(eap_session->eap_ds, eap_packet_t);
+	eap_session->eap_ds->request->code = PW_EAP_FAILURE;
+	eap_session->finished = true;
+	eap_compose(eap_session);
 }
 
 /*
  *	compose EAP SUCCESS packet in EAP-Message
  */
-void eap_success(eap_handler_t *handler)
+void eap_success(eap_session_t *eap_session)
 {
-	handler->eap_ds->request->code = PW_EAP_SUCCESS;
-	handler->finished = true;
-	eap_compose(handler);
+	eap_session->eap_ds->request->code = PW_EAP_SUCCESS;
+	eap_session->finished = true;
+	eap_compose(eap_session);
 }
 
 /*
@@ -983,7 +983,7 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t **eap_packet_p)
 /*
  *  Get the user Identity only from EAP-Identity packets
  */
-static char *eap_identity(REQUEST *request, eap_handler_t *handler, eap_packet_raw_t *eap_packet)
+static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_packet_raw_t *eap_packet)
 {
 	int size;
 	uint16_t len;
@@ -1009,7 +1009,7 @@ static char *eap_identity(REQUEST *request, eap_handler_t *handler, eap_packet_r
 	}
 
 	size = len - 5;
-	identity = talloc_array(handler, char, size + 1);
+	identity = talloc_array(eap_session, char, size + 1);
 	memcpy(identity, &eap_packet->data[1], size);
 	identity[size] = '\0';
 
@@ -1020,7 +1020,7 @@ static char *eap_identity(REQUEST *request, eap_handler_t *handler, eap_packet_r
 /*
  *	Create our Request-Response data structure with the eap packet
  */
-static EAP_DS *eap_buildds(eap_handler_t *handler,
+static EAP_DS *eap_buildds(eap_session_t *eap_session,
 			   eap_packet_raw_t **eap_packet_p)
 {
 	EAP_DS		*eap_ds = NULL;
@@ -1028,7 +1028,7 @@ static EAP_DS *eap_buildds(eap_handler_t *handler,
 	int		typelen;
 	uint16_t	len;
 
-	if ((eap_ds = eap_ds_alloc(handler)) == NULL) {
+	if ((eap_ds = eap_ds_alloc(eap_session)) == NULL) {
 		return NULL;
 	}
 
@@ -1072,17 +1072,17 @@ static EAP_DS *eap_buildds(eap_handler_t *handler,
 
 
 /*
- * If identity response then create a fresh handler & fill the identity
- * else handler MUST be in our list, get that.
- * This handler creation cannot fail
+ * If identity response then create a fresh eap_session & fill the identity
+ * else eap_session MUST be in our list, get that.
+ * This eap_session creation cannot fail
  *
  * username contains REQUEST->username which might have been stripped.
  * identity contains the one sent in EAP-Identity response
  */
-eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
+eap_session_t *eap_eap_session(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			   REQUEST *request)
 {
-	eap_handler_t	*handler = NULL;
+	eap_session_t	*eap_session = NULL;
 	eap_packet_raw_t *eap_packet;
 	VALUE_PAIR	*vp;
 
@@ -1099,21 +1099,21 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	eap_packet = *eap_packet_p;
 
 	/*
-	 *	eap_handler_t MUST be found in the list if it is not
+	 *	eap_session_t MUST be found in the list if it is not
 	 *	EAP-Identity response
 	 */
 	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
-		handler = fr_state_get_data(inst->state, request->packet);
-		if (!handler) {
+		eap_session = fr_state_get_data(inst->state, request->packet);
+		if (!eap_session) {
 			/* Either send EAP_Identity or EAP-Fail */
 			RDEBUG("No EAP session matching state.");
 			goto error;
 		}
 
-		handler->trips++;
-		if (handler->trips >= 50) {
+		eap_session->trips++;
+		if (eap_session->trips >= 50) {
 			RERROR("Failing EAP session due to too many round trips");
-			talloc_free(handler);
+			talloc_free(eap_session);
 			goto error;
 		}
 
@@ -1126,10 +1126,10 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		 *	OK to blindly return data for another type.
 		 */
 		if ((eap_packet->data[0] != PW_EAP_NAK) &&
-		    (eap_packet->data[0] != handler->type)) {
+		    (eap_packet->data[0] != eap_session->type)) {
 			RERROR("Response appears to match a previous request, but the EAP type is wrong");
 			RERROR("We expected EAP type %s, but received type %s",
-			       eap_type2name(handler->type),
+			       eap_type2name(eap_session->type),
 			       eap_type2name(eap_packet->data[0]));
 			RERROR("Your Supplicant or NAS is probably broken");
 			goto error;
@@ -1145,7 +1145,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*	correctly
 			*/
 		       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
-		       vp = fr_pair_make(request->packet, &request->packet->vps, "User-Name", handler->identity, T_OP_EQ);
+		       vp = fr_pair_make(request->packet, &request->packet->vps, "User-Name", eap_session->identity, T_OP_EQ);
 		       if (!vp) {
 			       goto error;
 		       }
@@ -1159,26 +1159,26 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*      request as the NAS is doing something
 			*      funny.
 			*/
-		       if (strncmp(handler->identity, vp->vp_strvalue,
+		       if (strncmp(eap_session->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
 			       RDEBUG("Identity does not match User-Name.  Authentication failed");
 			       goto error;
 		       }
 	       }
 	} else {		/* packet was EAP identity */
-		handler = eap_handler_alloc(inst);
-		if (!handler) {
+		eap_session = eap_eap_session_alloc(inst);
+		if (!eap_session) {
 			goto error;
 		}
 
 		/*
-		 *	All fields in the handler are set to zero.
+		 *	All fields in the eap_session are set to zero.
 		 */
-		handler->identity = eap_identity(request, handler, eap_packet);
-		if (!handler->identity) {
+		eap_session->identity = eap_identity(request, eap_session, eap_packet);
+		if (!eap_session->identity) {
 			RDEBUG("Identity Unknown, authentication failed");
 		error2:
-			talloc_free(handler);
+			talloc_free(eap_session);
 			goto error;
 		}
 
@@ -1192,7 +1192,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*	correctly
 			*/
 		       RWDEBUG2("NAS did not set User-Name.  Setting it locally from EAP Identity");
-		       vp = fr_pair_make(request->packet, &request->packet->vps, "User-Name", handler->identity, T_OP_EQ);
+		       vp = fr_pair_make(request->packet, &request->packet->vps, "User-Name", eap_session->identity, T_OP_EQ);
 		       if (!vp) {
 			       goto error2;
 		       }
@@ -1203,7 +1203,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*      identity, the NAS is doing something
 			*      funny, so reject the request.
 			*/
-		       if (strncmp(handler->identity, vp->vp_strvalue,
+		       if (strncmp(eap_session->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
 			       RDEBUG("Identity does not match User-Name, setting from EAP Identity");
 			       goto error2;
@@ -1211,12 +1211,12 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	       }
 	}
 
-	handler->eap_ds = eap_buildds(handler, eap_packet_p);
-	if (!handler->eap_ds) {
+	eap_session->eap_ds = eap_buildds(eap_session, eap_packet_p);
+	if (!eap_session->eap_ds) {
 		goto error2;
 	}
 
-	handler->timestamp = request->timestamp;
-	handler->request = request; /* LEAP needs this */
-	return handler;
+	eap_session->timestamp = request->timestamp;
+	eap_session->request = request; /* LEAP needs this */
+	return eap_session;
 }

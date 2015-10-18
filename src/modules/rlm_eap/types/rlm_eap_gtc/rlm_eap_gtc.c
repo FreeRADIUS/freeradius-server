@@ -48,7 +48,7 @@ static CONF_PARSER module_config[] = {
 };
 
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  *	Attach the module.
@@ -86,14 +86,14 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 /*
  *	Initiate the EAP-GTC session by sending a challenge to the peer.
  */
-static int mod_session_init(void *instance, eap_handler_t *handler)
+static int mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	char challenge_str[1024];
 	int length;
-	EAP_DS *eap_ds = handler->eap_ds;
+	EAP_DS *eap_ds = eap_session->eap_ds;
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) instance;
 
-	if (radius_xlat(challenge_str, sizeof(challenge_str), handler->request, inst->challenge, NULL, NULL) < 0) {
+	if (radius_xlat(challenge_str, sizeof(challenge_str), eap_session->request, inst->challenge, NULL, NULL) < 0) {
 		return 0;
 	}
 
@@ -117,10 +117,10 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 	 *	We don't need to authorize the user at this point.
 	 *
 	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'handler->eap_ds', which will be given back
+	 *	stored in 'eap_session->eap_ds', which will be given back
 	 *	to us...
 	 */
-	handler->process = mod_process;
+	eap_session->process = mod_process;
 
 	return 1;
 }
@@ -129,12 +129,12 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int mod_process(void *instance, eap_handler_t *handler)
+static int mod_process(void *instance, eap_session_t *eap_session)
 {
 	VALUE_PAIR *vp;
-	EAP_DS *eap_ds = handler->eap_ds;
+	EAP_DS *eap_ds = eap_session->eap_ds;
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) instance;
-	REQUEST *request = handler->request;
+	REQUEST *request = eap_session->request;
 
 	/*
 	 *	Get the Cleartext-Password for this user.

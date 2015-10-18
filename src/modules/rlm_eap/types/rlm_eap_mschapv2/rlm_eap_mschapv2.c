@@ -44,12 +44,12 @@ static CONF_PARSER module_config[] = {
 };
 
 
-static void fix_mppe_keys(eap_handler_t *handler, mschapv2_opaque_t *data)
+static void fix_mppe_keys(eap_session_t *eap_session, mschapv2_opaque_t *data)
 {
-	fr_pair_list_move_by_num(data, &data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
-	fr_pair_list_move_by_num(data, &data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
-	fr_pair_list_move_by_num(data, &data->mppe_keys, &handler->request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
-	fr_pair_list_move_by_num(data, &data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_list_move_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_list_move_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_list_move_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_list_move_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 }
 
 /*
@@ -85,13 +85,13 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 /*
  *	Compose the response.
  */
-static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler, VALUE_PAIR *reply)
+static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_session, VALUE_PAIR *reply)
 {
 	uint8_t *ptr;
 	int16_t length;
 	mschapv2_header_t *hdr;
-	EAP_DS *eap_ds = handler->eap_ds;
-	REQUEST *request = handler->request;
+	EAP_DS *eap_ds = eap_session->eap_ds;
+	REQUEST *request = eap_session->request;
 
 	rad_assert(inst);
 
@@ -211,17 +211,17 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_handler_t *handler,
 }
 
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static int mod_session_init(void *instance, eap_handler_t *handler)
+static int mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	int		i;
 	VALUE_PAIR	*challenge;
 	mschapv2_opaque_t *data;
-	REQUEST		*request = handler->request;
+	REQUEST		*request = eap_session->request;
 	uint8_t 	*p;
 	bool		created_challenge = false;
 	rlm_eap_mschapv2_t *inst = instance;
@@ -234,7 +234,7 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 
 	if (!challenge) {
 		created_challenge = true;
-		challenge = fr_pair_make(handler, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
+		challenge = fr_pair_make(eap_session, NULL, "MS-CHAP-Challenge", NULL, T_OP_EQ);
 
 		/*
 		 *	Get a random challenge.
@@ -250,7 +250,7 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 	/*
 	 *	Keep track of the challenge.
 	 */
-	data = talloc_zero(handler, mschapv2_opaque_t);
+	data = talloc_zero(eap_session, mschapv2_opaque_t);
 	rad_assert(data != NULL);
 
 	/*
@@ -261,13 +261,13 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 	data->mppe_keys = NULL;
 	data->reply = NULL;
 
-	handler->opaque = data;
+	eap_session->opaque = data;
 
 	/*
 	 *	Compose the EAP-MSCHAPV2 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmschapv2_compose(inst, handler, challenge);
+	eapmschapv2_compose(inst, eap_session, challenge);
 	if (created_challenge) fr_pair_list_free(&challenge);
 
 #ifdef WITH_PROXY
@@ -275,17 +275,17 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
 	 *	The EAP session doesn't have enough information to
 	 *	proxy the "inside EAP" protocol.  Disable EAP proxying.
 	 */
-	handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+	eap_session->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
 
 	/*
 	 *	We don't need to authorize the user at this point.
 	 *
 	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'handler->eap_ds', which will be given back
+	 *	stored in 'eap_session->eap_ds', which will be given back
 	 *	to us...
 	 */
-	handler->process = mod_process;
+	eap_session->process = mod_process;
 
 	return 1;
 }
@@ -298,13 +298,13 @@ static int mod_session_init(void *instance, eap_handler_t *handler)
  *
  *	Called from rlm_eap.c, eap_postproxy().
  */
-static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
+static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED void *tunnel_data)
 {
 	VALUE_PAIR *response = NULL;
 	mschapv2_opaque_t *data;
-	REQUEST *request = handler->request;
+	REQUEST *request = eap_session->request;
 
-	data = (mschapv2_opaque_t *) handler->opaque;
+	data = (mschapv2_opaque_t *) eap_session->opaque;
 	rad_assert(request != NULL);
 
 	RDEBUG2("Passing reply from proxy back into the tunnel %d", request->reply->code);
@@ -341,7 +341,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	 *	Done doing EAP proxy stuff.
 	 */
 	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-	eapmschapv2_compose(NULL, handler, response);
+	eapmschapv2_compose(NULL, eap_session, response);
 	data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
 	/*
@@ -349,7 +349,7 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 	 *
 	 *	FIXME: Use intelligent names...
 	 */
-	fix_mppe_keys(handler, data);
+	fix_mppe_keys(eap_session, data);
 
 	/*
 	 *	Save any other attributes for re-use in the final
@@ -372,19 +372,19 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_handler_t *handler, UNUSED void
 /*
  *	Authenticate a previously sent challenge.
  */
-static int CC_HINT(nonnull) mod_process(void *arg, eap_handler_t *handler)
+static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 {
 	int rcode, ccode;
 	uint8_t *p;
 	size_t length;
 	char *q;
 	mschapv2_opaque_t *data;
-	EAP_DS *eap_ds = handler->eap_ds;
+	EAP_DS *eap_ds = eap_session->eap_ds;
 	VALUE_PAIR *challenge, *response, *name;
 	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
-	REQUEST *request = handler->request;
+	REQUEST *request = eap_session->request;
 
-	data = (mschapv2_opaque_t *) handler->opaque;
+	data = (mschapv2_opaque_t *) eap_session->opaque;
 
 	/*
 	 *	Sanity check the response.
@@ -630,7 +630,7 @@ packet_ready:
 		 *
 		 *	The PEAP module will take care of adding
 		 *	the State attribute back, before passing
-		 *	the handler & request back into the tunnel.
+		 *	the eap_session & request back into the tunnel.
 		 */
 		fr_pair_delete_by_num(&request->packet->vps, PW_STATE, 0, TAG_ANY);
 
@@ -670,7 +670,7 @@ packet_ready:
 	 *	Delete MPPE keys & encryption policy.  We don't
 	 *	want these here.
 	 */
-	fix_mppe_keys(handler, data);
+	fix_mppe_keys(eap_session, data);
 
 	/*
 	 *	Take the response from the mschap module, and
@@ -723,7 +723,7 @@ packet_ready:
 	 *	Compose the response (whatever it is),
 	 *	and return it to the over-lying EAP module.
 	 */
-	eapmschapv2_compose(inst, handler, response);
+	eapmschapv2_compose(inst, eap_session, response);
 	fr_pair_list_free(&response);
 
 	return 1;

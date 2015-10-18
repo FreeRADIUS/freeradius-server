@@ -61,12 +61,12 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *
  *	Fragment length is Framed-MTU - 4.
  */
-tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_conf, bool client_cert)
+tls_session_t *eaptls_session(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert)
 {
 	tls_session_t	*ssn;
-	REQUEST		*request = handler->request;
+	REQUEST		*request = eap_session->request;
 
-	handler->tls = true;
+	eap_session->tls = true;
 
 	/*
 	 *	Every new session is started only from EAP-TLS-START.
@@ -75,7 +75,7 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	 *	in Opaque.  So that we can use these data structures
 	 *	when we get the response
 	 */
-	ssn = tls_session_init_server(handler, tls_conf, request, client_cert);
+	ssn = tls_session_init_server(eap_session, tls_conf, request, client_cert);
 	if (!ssn) return NULL;
 
 	/*
@@ -86,15 +86,15 @@ tls_session_t *eaptls_session(eap_handler_t *handler, fr_tls_server_conf_t *tls_
 	 *	NOTE: If we want to set each item sepearately then
 	 *	this index should be global.
 	 */
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_EAP_SESSION, (void *)handler);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_EAP_SESSION, (void *)eap_session);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)ssn);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(handler->identity));
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(eap_session->identity));
 #ifdef HAVE_OPENSSL_OCSP_H
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
 #endif
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)ssn);
 
-	return talloc_steal(handler, ssn); /* ssn */
+	return talloc_steal(eap_session, ssn); /* ssn */
 }
 
 /*
@@ -119,13 +119,13 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 	return 1;
 }
 
-int eaptls_success(eap_handler_t *handler, int peap_flag)
+int eaptls_success(eap_session_t *eap_session, int peap_flag)
 {
 	eap_tls_packet_t	reply;
-	REQUEST *request = handler->request;
-	tls_session_t *tls_session = handler->opaque;
+	REQUEST *request = eap_session->request;
+	tls_session_t *tls_session = eap_session->opaque;
 
-	handler->finished = true;
+	eap_session->finished = true;
 	reply.code = FR_TLS_SUCCESS;
 	reply.length = TLS_HEADER_LEN;
 	reply.flags = peap_flag;
@@ -137,29 +137,29 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	/*
 	 *	Call compose AFTER checking for cached data.
 	 */
-	eaptls_compose(handler->eap_ds, &reply);
+	eaptls_compose(eap_session->eap_ds, &reply);
 
 	/*
 	 *	Automatically generate MPPE keying material.
 	 */
 	if (tls_session->prf_label) {
-		eaptls_gen_mppe_keys(handler->request,
+		eaptls_gen_mppe_keys(eap_session->request,
 				     tls_session->ssl, tls_session->prf_label);
 	} else {
 		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 
-	eaptls_gen_eap_key(handler->request->reply, tls_session->ssl,
-			   handler->type);
+	eaptls_gen_eap_key(eap_session->request->reply, tls_session->ssl,
+			   eap_session->type);
 	return 1;
 }
 
-int eaptls_fail(eap_handler_t *handler, int peap_flag)
+int eaptls_fail(eap_session_t *eap_session, int peap_flag)
 {
 	eap_tls_packet_t	reply;
-	tls_session_t *tls_session = handler->opaque;
+	tls_session_t *tls_session = eap_session->opaque;
 
-	handler->finished = true;
+	eap_session->finished = true;
 	reply.code = FR_TLS_FAIL;
 	reply.length = TLS_HEADER_LEN;
 	reply.flags = peap_flag;
@@ -168,7 +168,7 @@ int eaptls_fail(eap_handler_t *handler, int peap_flag)
 
 	tls_fail(tls_session);
 
-	eaptls_compose(handler->eap_ds, &reply);
+	eaptls_compose(eap_session->eap_ds, &reply);
 
 	return 1;
 }
@@ -268,10 +268,10 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
  *	fragments to receive to make the complete
  *	TLS-record/TLS-Message
  */
-static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
+static int eaptls_send_ack(eap_session_t *eap_session, int peap_flag)
 {
 	eap_tls_packet_t 	reply;
-	REQUEST		*request = handler->request;
+	REQUEST		*request = eap_session->request;
 
 	RDEBUG2("ACKing Peer's TLS record fragment");
 	reply.code = FR_TLS_ACK;
@@ -280,7 +280,7 @@ static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-	eaptls_compose(handler->eap_ds, &reply);
+	eaptls_compose(eap_session->eap_ds, &reply);
 
 	return 1;
 }
@@ -333,7 +333,7 @@ static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
  * The TLS Message Length field is four octets and indicates the
  * complete reassembled length of the TLS record fragment.
  *
- * @param[in] handler the current EAP session state.
+ * @param[in] eap_session the current EAP session state.
  * @return
  *	- FR_TLS_INVALID if the TLS record or progression is invalid.
  *	- FR_TLS_FAIL handshake failed.
@@ -343,13 +343,13 @@ static int eaptls_send_ack(eap_handler_t *handler, int peap_flag)
  *	- FR_TLS_RECORD_COMPLETE we received a completed record.
  *	- FR_TLS_SUCCESS handshake is complete, TLS session has been established.
  */
-static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
+static fr_tls_status_t eaptls_verify(eap_session_t *eap_session)
 {
-	EAP_DS			*eap_ds = handler->eap_ds;
-	tls_session_t		*tls_session = handler->opaque;
-	EAP_DS			*prev_eap_ds = handler->prev_eap_ds;
+	EAP_DS			*eap_ds = eap_session->eap_ds;
+	tls_session_t		*tls_session = eap_session->opaque;
+	EAP_DS			*prev_eap_ds = eap_session->prev_eap_ds;
 	eap_tls_data_t		*eap_tls_data;
-	REQUEST			*request = handler->request;
+	REQUEST			*request = eap_session->request;
 	size_t			frag_len, header_len;
 
 	/*
@@ -406,7 +406,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			REDEBUG("Received Invalid TLS ACK");
 			return FR_TLS_INVALID;
 		}
-		return tls_ack_handler(handler->opaque, request);
+		return tls_ack_handler(eap_session->opaque, request);
 	}
 
 	/*
@@ -457,7 +457,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 		 *	implementations of PEAPv0 will always include a Length flag
 		 *	for every record fragment if performing mutual TLS auth.
 		 *
-		 *	If the handler says this is not the first fragment, then
+		 *	If the eap_session says this is not the first fragment, then
 		 *	don't count this as a new record, and continue as if we
 		 *	hadn't seen the length flag.
 		 */
@@ -593,17 +593,17 @@ ignore_length:
  *	SSL_CTX (internally) or TLS module(explicitly). If TLS module,
  *	then how to let SSL API know about these sessions.)
  */
-static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *handler)
+static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_session_t *eap_session)
 {
-	REQUEST		*request = handler->request;
-	tls_session_t	*tls_session = handler->opaque;
+	REQUEST		*request = eap_session->request;
+	tls_session_t	*tls_session = eap_session->opaque;
 
 	if ((status == FR_TLS_RECORD_FRAGMENT_MORE) ||
 	    (status == FR_TLS_RECORD_FRAGMENT_INIT)) {
 		/*
 		 *	Send the ACK.
 		 */
-		eaptls_send_ack(handler, tls_session->peap_flag);
+		eaptls_send_ack(eap_session, tls_session->peap_flag);
 		return FR_TLS_HANDLED;
 
 	}
@@ -619,7 +619,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	If more info
 	 *	is required then send another request.
 	 */
-	if (!tls_handshake_recv(handler->request, tls_session)) {
+	if (!tls_handshake_recv(eap_session->request, tls_session)) {
 		REDEBUG("TLS receive handshake failed during operation");
 		tls_fail(tls_session);
 		return FR_TLS_FAIL;
@@ -631,7 +631,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
 	 *	TLS proper can decide what to do, then.
 	 */
 	if (tls_session->dirty_out.used > 0) {
-		eaptls_request(handler->eap_ds, tls_session);
+		eaptls_request(eap_session->eap_ds, tls_session);
 		return FR_TLS_HANDLED;
 	}
 
@@ -679,12 +679,12 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_handler_t *h
  *	TLS module, then how to let SSL API know about these
  *	sessions.)
  */
-fr_tls_status_t eaptls_process(eap_handler_t *handler)
+fr_tls_status_t eaptls_process(eap_session_t *eap_session)
 {
-	tls_session_t		*tls_session = (tls_session_t *) handler->opaque;
-	EAP_DS			*eap_ds = handler->eap_ds;
+	tls_session_t		*tls_session = (tls_session_t *) eap_session->opaque;
+	EAP_DS			*eap_ds = eap_session->eap_ds;
 	fr_tls_status_t		status;
-	REQUEST			*request = handler->request;
+	REQUEST			*request = eap_session->request;
 
 	eap_tls_data_t		*eap_tls_data;
 	uint8_t			*data;
@@ -696,13 +696,13 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 
-	if (handler->cert_vps) fr_pair_add(&request->packet->vps,
-				    fr_pair_list_copy(request->packet, handler->cert_vps));
+	if (eap_session->cert_vps) fr_pair_add(&request->packet->vps,
+				    fr_pair_list_copy(request->packet, eap_session->cert_vps));
 
 	/*
 	 *	eaptls_verify sanity checks the incoming EAP data.
 	 */
-	status = eaptls_verify(handler);
+	status = eaptls_verify(eap_session);
 	switch (status) {
 	case FR_TLS_INVALID:
 	case FR_TLS_FAIL:
@@ -733,7 +733,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 *	of fragments" phase.
 	 */
 	case FR_TLS_REQUEST:
-		eaptls_request(handler->eap_ds, tls_session);
+		eaptls_request(eap_session->eap_ds, tls_session);
 		status = FR_TLS_HANDLED;
 		goto done;
 
@@ -792,7 +792,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 */
 	case FR_TLS_RECORD_FRAGMENT_MORE:
 	case FR_TLS_RECORD_FRAGMENT_INIT:
-		eaptls_send_ack(handler, tls_session->peap_flag);
+		eaptls_send_ack(eap_session, tls_session->peap_flag);
 		RDEBUG2("Init is done, but tunneled data is fragmented");
 		status = FR_TLS_HANDLED;
 		goto done;
@@ -805,7 +805,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	/*
 	 *	Continue the handshake.
 	 */
-	status = eaptls_operation(status, handler);
+	status = eaptls_operation(status, eap_session);
 
  done:
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
@@ -823,7 +823,7 @@ int eaptls_compose(EAP_DS *eap_ds, eap_tls_packet_t *reply)
 
 	/*
 	 *	Don't set eap_ds->request->type.num, as the main EAP
-	 *	handler will do that for us.  This allows the TLS
+	 *	eap_session will do that for us.  This allows the TLS
 	 *	module to be called from TTLS & PEAP.
 	 */
 

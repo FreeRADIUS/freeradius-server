@@ -136,23 +136,23 @@ static peap_tunnel_t *peap_alloc(TALLOC_CTX *ctx, rlm_eap_peap_t *inst)
 	return t;
 }
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static int mod_session_init(void *type_arg, eap_handler_t *handler)
+static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 {
 	int		status;
 	tls_session_t	*ssn;
 	rlm_eap_peap_t	*inst;
 	VALUE_PAIR	*vp;
 	bool		client_cert;
-	REQUEST		*request = handler->request;
+	REQUEST		*request = eap_session->request;
 
 	inst = type_arg;
 
-	handler->tls = true;
+	eap_session->tls = true;
 
 	/*
 	 *	Check if we need a client certificate.
@@ -162,19 +162,19 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 *	EAP-TLS-Require-Client-Cert attribute will override
 	 *	the require_client_cert configuration option.
 	 */
-	vp = fr_pair_find_by_num(handler->request->config, PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(eap_session->request->config, PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_integer ? true : false;
 	} else {
 		client_cert = inst->req_client_cert;
 	}
 
-	ssn = eaptls_session(handler, inst->tls_conf, client_cert);
+	ssn = eaptls_session(eap_session, inst->tls_conf, client_cert);
 	if (!ssn) {
 		return 0;
 	}
 
-	handler->opaque = ((void *)ssn);
+	eap_session->opaque = ((void *)ssn);
 
 	/*
 	 *	Set up type-specific information.
@@ -203,7 +203,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	status = eaptls_start(handler->eap_ds, ssn->peap_flag);
+	status = eaptls_start(eap_session->eap_ds, ssn->peap_flag);
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
@@ -211,7 +211,7 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 	}
 	if (status == 0) return 0;
 
-	handler->process = mod_process;
+	eap_session->process = mod_process;
 
 	return 1;
 }
@@ -219,14 +219,14 @@ static int mod_session_init(void *type_arg, eap_handler_t *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int mod_process(void *arg, eap_handler_t *handler)
+static int mod_process(void *arg, eap_session_t *eap_session)
 {
 	int rcode;
 	fr_tls_status_t status;
 	rlm_eap_peap_t *inst = (rlm_eap_peap_t *) arg;
-	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
+	tls_session_t *tls_session = (tls_session_t *) eap_session->opaque;
 	peap_tunnel_t *peap = tls_session->opaque;
-	REQUEST *request = handler->request;
+	REQUEST *request = eap_session->request;
 
 	/*
 	 *	Session resumption requires the storage of data, so
@@ -236,7 +236,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		peap = tls_session->opaque = peap_alloc(tls_session, inst);
 	}
 
-	status = eaptls_process(handler);
+	status = eaptls_process(eap_session);
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
 		REDEBUG("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
@@ -299,14 +299,14 @@ static int mod_process(void *arg, eap_handler_t *handler)
 	/*
 	 *	Process the PEAP portion of the request.
 	 */
-	rcode = eappeap_process(handler, tls_session);
+	rcode = eappeap_process(eap_session, tls_session);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
-		eaptls_fail(handler, 0);
+		eaptls_fail(eap_session, 0);
 		return 0;
 
 	case RLM_MODULE_HANDLED:
-		eaptls_request(handler->eap_ds, tls_session);
+		eaptls_request(eap_session->eap_ds, tls_session);
 		return 1;
 
 	case RLM_MODULE_OK:
@@ -318,15 +318,15 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		if (peap->soh_reply_vps) {
 			RDEBUG2("Using saved attributes from the SoH reply");
 			rdebug_pair_list(L_DBG_LVL_2, request, peap->soh_reply_vps, NULL);
-			fr_pair_list_move_by_num(handler->request->reply,
-				  &handler->request->reply->vps,
+			fr_pair_list_move_by_num(eap_session->request->reply,
+				  &eap_session->request->reply->vps,
 				  &peap->soh_reply_vps, 0, 0, TAG_ANY);
 		}
 		if (peap->accept_vps) {
 			RDEBUG2("Using saved attributes from the original Access-Accept");
 			rdebug_pair_list(L_DBG_LVL_2, request, peap->accept_vps, NULL);
-			fr_pair_list_move_by_num(handler->request->reply,
-				  &handler->request->reply->vps,
+			fr_pair_list_move_by_num(eap_session->request->reply,
+				  &eap_session->request->reply->vps,
 				  &peap->accept_vps, 0, 0, TAG_ANY);
 		} else if (peap->use_tunneled_reply) {
 			RDEBUG2("No saved attributes in the original Access-Accept");
@@ -335,7 +335,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		return eaptls_success(handler, 0);
+		return eaptls_success(eap_session, 0);
 
 		/*
 		 *	No response packet, MUST be proxying it.
@@ -345,7 +345,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		 */
 	case RLM_MODULE_UPDATED:
 #ifdef WITH_PROXY
-		rad_assert(handler->request->proxy != NULL);
+		rad_assert(eap_session->request->proxy != NULL);
 #endif
 		return 1;
 
@@ -353,7 +353,7 @@ static int mod_process(void *arg, eap_handler_t *handler)
 		break;
 	}
 
-	eaptls_fail(handler, 0);
+	eaptls_fail(eap_session, 0);
 	return 0;
 }
 

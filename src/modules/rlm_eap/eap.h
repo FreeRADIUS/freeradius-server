@@ -51,18 +51,18 @@ typedef struct eap_ds {
 } EAP_DS;
 
 
-typedef struct _eap_handler eap_handler_t;
+typedef struct _eap_eap_session eap_session_t;
 
 /*
  *	Function to process EAP packets.
  */
-typedef int (*eap_process_t)(void *instance, eap_handler_t *handler);
+typedef int (*eap_process_t)(void *instance, eap_session_t *eap_session);
 
 /*
- * eap_handler_t is the interface for any EAP-Type.
- * Each handler contains information for one specific EAP-Type.
+ * eap_session_t is the interface for any EAP-Type.
+ * Each eap_session contains information for one specific EAP-Type.
  * This way we don't need to change any interfaces in future.
- * It is also a list of EAP-request handlers waiting for EAP-response
+ * It is also a list of EAP-request eap_sessions waiting for EAP-response
  * eap_id = copy of the eap packet we sent to the
  *
  * next = pointer to next
@@ -71,7 +71,7 @@ typedef int (*eap_process_t)(void *instance, eap_handler_t *handler);
  * src_ipaddr = client which sent us the RADIUS request containing
  *	      this EAP conversation.
  * eap_id = copy of EAP id we sent to the client.
- * timestamp  = timestamp when this handler was last used.
+ * timestamp  = timestamp when this eap_session was last used.
  * identity = Identity, as obtained, from EAP-Identity response.
  * request = RADIUS request data structure
  * prev_eap_ds = Previous EAP request, for which eap_ds contains the response.
@@ -79,7 +79,7 @@ typedef int (*eap_process_t)(void *instance, eap_handler_t *handler);
  * opaque   = EAP-Type holds some data that corresponds to the current
  *		EAP-request/response
  * free_opaque = To release memory held by opaque,
- * 		when this handler is timedout & needs to be deleted.
+ * 		when this eap_session is timedout & needs to be deleted.
  * 		It is the responsibility of the specific EAP-TYPE
  * 		to avoid any memory leaks in opaque
  *		Hence this pointer should be provided by the EAP-Type
@@ -87,8 +87,8 @@ typedef int (*eap_process_t)(void *instance, eap_handler_t *handler);
  * status   = finished/onhold/..
  */
 #define EAP_STATE_LEN (AUTH_VECTOR_LEN)
-struct _eap_handler {
-	struct _eap_handler *prev, *next;
+struct _eap_eap_session {
+	struct _eap_eap_session *prev, *next;
 	uint8_t		state[EAP_STATE_LEN];
 	fr_ipaddr_t	src_ipaddr;
 
@@ -141,7 +141,7 @@ typedef struct rlm_eap_module {
 /*
  *	This is for tunneled callbacks
  */
-typedef int (*eap_tunnel_callback_t)(eap_handler_t *handler, void *tls_session);
+typedef int (*eap_tunnel_callback_t)(eap_session_t *eap_session, void *tls_session);
 
 typedef struct eap_tunnel_data_t {
   void			*tls_session;

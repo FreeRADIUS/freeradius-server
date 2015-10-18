@@ -104,8 +104,8 @@ typedef enum eap_method {
 #define PW_EAP_EXPANDED_TYPE	(254)
 
 typedef enum eap_rcode {
-	EAP_NOTFOUND,    	//!< EAP handler data not found.
-	EAP_FOUND,       	//!< EAP handler data found, continue.
+	EAP_NOTFOUND,    	//!< EAP eap_session data not found.
+	EAP_FOUND,       	//!< EAP eap_session data found, continue.
 	EAP_OK,		 	//!< Ok, continue.
 	EAP_FAIL,		//!< Failed, don't reply.
 	EAP_NOOP,		//!< Succeeded without doing anything.

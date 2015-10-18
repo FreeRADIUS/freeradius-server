@@ -67,7 +67,7 @@ typedef struct rlm_eap {
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;
-	pthread_mutex_t	handler_mutex;
+	pthread_mutex_t	eap_session_mutex;
 #endif
 
 	char const	*xlat_name; /* no xlat's yet */
@@ -90,18 +90,18 @@ typedef struct rlm_eap {
 /* function definitions */
 /* EAP-Type */
 int      	eap_module_instantiate(rlm_eap_t *inst, eap_module_t **method, eap_type_t num, CONF_SECTION *cs);
-eap_rcode_t	eap_method_select(rlm_eap_t *inst, eap_handler_t *handler);
+eap_rcode_t	eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session);
 
 /* EAP */
 int  		eap_start(rlm_eap_t *inst, REQUEST *request) CC_HINT(nonnull);
-void 		eap_fail(eap_handler_t *handler) CC_HINT(nonnull);
-void 		eap_success(eap_handler_t *handler) CC_HINT(nonnull);
-rlm_rcode_t 	eap_compose(eap_handler_t *handler) CC_HINT(nonnull);
-eap_handler_t 	*eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_msg, REQUEST *request) CC_HINT(nonnull);
+void 		eap_fail(eap_session_t *eap_session) CC_HINT(nonnull);
+void 		eap_success(eap_session_t *eap_session) CC_HINT(nonnull);
+rlm_rcode_t 	eap_compose(eap_session_t *eap_session) CC_HINT(nonnull);
+eap_session_t 	*eap_eap_session(rlm_eap_t *inst, eap_packet_raw_t **eap_msg, REQUEST *request) CC_HINT(nonnull);
 
 /* Memory Management */
-EAP_DS      	*eap_ds_alloc(eap_handler_t *handler);
-eap_handler_t 	*eap_handler_alloc(rlm_eap_t *inst);
+EAP_DS      	*eap_ds_alloc(eap_session_t *eap_session);
+eap_session_t 	*eap_eap_session_alloc(rlm_eap_t *inst);
 void	    	eap_ds_free(EAP_DS **eap_ds);
 
 #endif /*_RLM_EAP_H*/

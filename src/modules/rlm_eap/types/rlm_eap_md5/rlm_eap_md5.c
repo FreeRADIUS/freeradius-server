@@ -31,21 +31,21 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/md5.h>
 
-static int mod_process(UNUSED void *arg, eap_handler_t *handler);
+static int mod_process(UNUSED void *arg, eap_session_t *eap_session);
 
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
-static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
+static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 {
 	int		i;
 	MD5_PACKET	*reply;
-	REQUEST		*request = handler->request;
+	REQUEST		*request = eap_session->request;
 
 	/*
 	 *	Allocate an EAP-MD5 packet.
 	 */
-	reply = talloc(handler, MD5_PACKET);
+	reply = talloc(eap_session, MD5_PACKET);
 	if (!reply)  {
 		return 0;
 	}
@@ -77,25 +77,25 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	/*
 	 *	Keep track of the challenge.
 	 */
-	handler->opaque = talloc_array(handler, uint8_t, reply->value_size);
-	rad_assert(handler->opaque != NULL);
-	memcpy(handler->opaque, reply->value, reply->value_size);
-	handler->free_opaque = NULL;
+	eap_session->opaque = talloc_array(eap_session, uint8_t, reply->value_size);
+	rad_assert(eap_session->opaque != NULL);
+	memcpy(eap_session->opaque, reply->value, reply->value_size);
+	eap_session->free_opaque = NULL;
 
 	/*
 	 *	Compose the EAP-MD5 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmd5_compose(handler->eap_ds, reply);
+	eapmd5_compose(eap_session->eap_ds, reply);
 
 	/*
 	 *	We don't need to authorize the user at this point.
 	 *
 	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'handler->eap_ds', which will be given back
+	 *	stored in 'eap_session->eap_ds', which will be given back
 	 *	to us...
 	 */
-	handler->process = mod_process;
+	eap_session->process = mod_process;
 
 	return 1;
 }
@@ -103,19 +103,19 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int mod_process(UNUSED void *arg, eap_handler_t *handler)
+static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 {
 	MD5_PACKET	*packet;
 	MD5_PACKET	*reply;
 	VALUE_PAIR	*password;
-	REQUEST		*request = handler->request;
+	REQUEST		*request = eap_session->request;
 
 	/*
 	 *	Get the Cleartext-Password for this user.
 	 */
-	rad_assert(handler->request != NULL);
+	rad_assert(eap_session->request != NULL);
 
-	password = fr_pair_find_by_num(handler->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	password = fr_pair_find_by_num(eap_session->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
 		RDEBUG2("Cleartext-Password is required for EAP-MD5 authentication");
 		return 0;
@@ -124,7 +124,7 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 	/*
 	 *	Extract the EAP-MD5 packet.
 	 */
-	if (!(packet = eapmd5_extract(handler->eap_ds)))
+	if (!(packet = eapmd5_extract(eap_session->eap_ds)))
 		return 0;
 
 	/*
@@ -135,14 +135,14 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 		talloc_free(packet);
 		return 0;
 	}
-	reply->id = handler->eap_ds->request->id;
+	reply->id = eap_session->eap_ds->request->id;
 	reply->length = 0;
 
 	/*
 	 *	Verify the received packet against the previous packet
 	 *	(i.e. challenge) which we sent out.
 	 */
-	if (eapmd5_verify(packet, password, handler->opaque)) {
+	if (eapmd5_verify(packet, password, eap_session->opaque)) {
 		reply->code = PW_MD5_SUCCESS;
 	} else {
 		reply->code = PW_MD5_FAILURE;
@@ -152,7 +152,7 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 	 *	Compose the EAP-MD5 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmd5_compose(handler->eap_ds, reply);
+	eapmd5_compose(eap_session->eap_ds, reply);
 	talloc_free(packet);
 	return 1;
 }

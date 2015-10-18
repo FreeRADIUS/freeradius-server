@@ -36,7 +36,7 @@ typedef enum {
 	PEAP_STATUS_INNER_IDENTITY_REQ_SENT,
 	PEAP_STATUS_PHASE2_INIT,
 	PEAP_STATUS_PHASE2,
-	PEAP_STATUS_WAIT_FOR_SOH_RESPONSE 
+	PEAP_STATUS_WAIT_FOR_SOH_RESPONSE
 } peap_status;
 
 typedef enum {
@@ -72,5 +72,5 @@ typedef struct peap_tunnel_t {
 /*
  *	Process the PEAP portion of an EAP-PEAP request.
  */
-rlm_rcode_t eappeap_process(eap_handler_t *handler, tls_session_t *tls_session) CC_HINT(nonnull);
+rlm_rcode_t eappeap_process(eap_session_t *eap_session, tls_session_t *tls_session) CC_HINT(nonnull);
 #endif /* _EAP_PEAP_H */

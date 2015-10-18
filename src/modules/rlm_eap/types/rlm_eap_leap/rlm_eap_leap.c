@@ -28,7 +28,7 @@ RCSID("$Id$")
 
 #include "eap_leap.h"
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  * send an initial eap-leap request
@@ -38,9 +38,9 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
  * len = header + type + leap_methoddata
  * leap_methoddata = value_size + value
  */
-static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_handler_t *handler)
+static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 {
-	REQUEST 	*request = handler->request;
+	REQUEST 	*request = eap_session->request;
 	leap_session_t	*session;
 	leap_packet_t	*reply;
 
@@ -49,20 +49,20 @@ static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_handler_
 	/*
 	 *	LEAP requires a User-Name attribute
 	 */
-	if (!handler->request->username) {
+	if (!eap_session->request->username) {
 		REDEBUG("User-Name is required for EAP-LEAP authentication");
 		return 0;
 	}
 
-	reply = eapleap_initiate(request, handler->eap_ds, handler->request->username);
+	reply = eapleap_initiate(request, eap_session->eap_ds, eap_session->request->username);
 	if (!reply) {
 		return 0;
 	}
 
-	eapleap_compose(request, handler->eap_ds, reply);
+	eapleap_compose(request, eap_session->eap_ds, reply);
 
-	handler->opaque = session = talloc(handler, leap_session_t);
-	if (!handler->opaque) {
+	eap_session->opaque = session = talloc(eap_session, leap_session_t);
+	if (!eap_session->opaque) {
 		talloc_free(reply);
 		return 0;
 	}
@@ -72,7 +72,7 @@ static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_handler_
 	 *	we sent to the AP.  The later stages will take care
 	 *	of filling in the peer response.
 	 */
-	handler->free_opaque = NULL;
+	eap_session->free_opaque = NULL;
 
 	session->stage = 4;	/* the next stage we're in */
 	memcpy(session->peer_challenge, reply->challenge, reply->count);
@@ -81,31 +81,31 @@ static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_handler_
 
 	talloc_free(reply);
 
-	handler->process = mod_process;
+	eap_session->process = mod_process;
 
 	return 1;
 }
 
-static int mod_process(UNUSED void *instance, eap_handler_t *handler)
+static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 {
 	int		rcode;
-	REQUEST 	*request = handler->request;
+	REQUEST 	*request = eap_session->request;
 	leap_session_t	*session;
 	leap_packet_t	*packet;
 	leap_packet_t	*reply;
 	VALUE_PAIR	*password;
 
-	if (!handler->opaque) {
+	if (!eap_session->opaque) {
 		REDEBUG("Cannot authenticate without LEAP history");
 		return 0;
 	}
-	session = talloc_get_type_abort(handler->opaque, leap_session_t);
+	session = talloc_get_type_abort(eap_session->opaque, leap_session_t);
 	reply = NULL;
 
 	/*
 	 *	Extract the LEAP packet.
 	 */
-	if (!(packet = eapleap_extract(request, handler->eap_ds))) {
+	if (!(packet = eapleap_extract(request, eap_session->eap_ds))) {
 		return 0;
 	}
 
@@ -113,9 +113,9 @@ static int mod_process(UNUSED void *instance, eap_handler_t *handler)
 	 *	The password is never sent over the wire.
 	 *	Always get the configured password, for each user.
 	 */
-	password = fr_pair_find_by_num(handler->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	password = fr_pair_find_by_num(eap_session->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
-		password = fr_pair_find_by_num(handler->request->config, PW_NT_PASSWORD, 0, TAG_ANY);
+		password = fr_pair_find_by_num(eap_session->request->config, PW_NT_PASSWORD, 0, TAG_ANY);
 	}
 
 	if (!password) {
@@ -139,18 +139,18 @@ static int mod_process(UNUSED void *instance, eap_handler_t *handler)
 		 *	any LEAP packet.  So we return here.
 		 */
 		if (!rcode) {
-			handler->eap_ds->request->code = PW_EAP_FAILURE;
+			eap_session->eap_ds->request->code = PW_EAP_FAILURE;
 			talloc_free(packet);
 			return 0;
 		}
 
-		handler->eap_ds->request->code = PW_EAP_SUCCESS;
+		eap_session->eap_ds->request->code = PW_EAP_SUCCESS;
 
 		/*
 		 *	Do this only for Success.
 		 */
-		handler->eap_ds->request->id = handler->eap_ds->response->id + 1;
-		handler->eap_ds->set_request_id = 1;
+		eap_session->eap_ds->request->id = eap_session->eap_ds->response->id + 1;
+		eap_session->eap_ds->set_request_id = 1;
 
 		/*
 		 *	LEAP requires a challenge in stage 4, not
@@ -158,13 +158,13 @@ static int mod_process(UNUSED void *instance, eap_handler_t *handler)
 		 *	by eap_compose() in eap.c, when the EAP reply code
 		 *	is EAP_SUCCESS.
 		 */
-		handler->request->reply->code = PW_CODE_ACCESS_CHALLENGE;
+		eap_session->request->reply->code = PW_CODE_ACCESS_CHALLENGE;
 		talloc_free(packet);
 		return 1;
 
 	case 6:			/* Issue session key */
 		RDEBUG2("Stage 6");
-		reply = eapleap_stage6(request, packet, handler->request->username, password, session);
+		reply = eapleap_stage6(request, packet, eap_session->request->username, password, session);
 		break;
 
 		/*
@@ -186,7 +186,7 @@ static int mod_process(UNUSED void *instance, eap_handler_t *handler)
 		return 0;
 	}
 
-	eapleap_compose(request, handler->eap_ds, reply);
+	eapleap_compose(request, eap_session->eap_ds, reply);
 	talloc_free(reply);
 	return 1;
 }

@@ -257,7 +257,7 @@ int compute_password_element (pwd_session_t *session, uint16_t grp_num,
 
 	session->group_num = grp_num;
 	if (0) {
-		fail:		/* DON'T free session, it's in handler->opaque */
+		fail:		/* DON'T free session, it's in eap_session->opaque */
 		ret = -1;
 	}
 
@@ -270,7 +270,8 @@ int compute_password_element (pwd_session_t *session, uint16_t grp_num,
 	return ret;
 }
 
-int compute_scalar_element (pwd_session_t *session, BN_CTX *bnctx) {
+int compute_scalar_element (pwd_session_t *session, BN_CTX *bnctx)
+{
 	BIGNUM *mask = NULL;
 	int ret = -1;
 

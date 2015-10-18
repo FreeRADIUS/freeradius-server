@@ -172,7 +172,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_eap_t		*inst;
-	eap_handler_t		*handler;
+	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
 	eap_rcode_t		status;
 	rlm_rcode_t		rcode;
@@ -195,13 +195,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	}
 
 	/*
-	 *	Create the eap handler.  The eap_packet will end up being
-	 *	"swallowed" into the handler, so we can't access it after
+	 *	Create the eap eap_session.  The eap_packet will end up being
+	 *	"swallowed" into the eap_session, so we can't access it after
 	 *	this call.
 	 */
-	handler = eap_handler(inst, &eap_packet, request);
-	if (!handler) {
-		RDEBUG2("Failed in handler");
+	eap_session = eap_eap_session(inst, &eap_packet, request);
+	if (!eap_session) {
+		RDEBUG2("Failed in eap_session");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -209,14 +209,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Select the appropriate method or default to the
 	 *	configured one
 	 */
-	status = eap_method_select(inst, handler);
+	status = eap_method_select(inst, eap_session);
 
 	/*
 	 *	If it failed, die.
 	 */
 	if (status == EAP_INVALID) {
-		eap_fail(handler);
-		talloc_free(handler);
+		eap_fail(eap_session);
+		talloc_free(eap_session);
 		RDEBUG2("Failed in EAP select");
 		return RLM_MODULE_INVALID;
 	}
@@ -232,8 +232,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	can retrieve it in the post-proxy stage, and
 		 *	send a response.
 		 */
-		handler->inst_holder = inst;
-		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, handler, true);
+		eap_session->inst_holder = inst;
+		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, eap_session, true);
 
 		rad_assert(status == 0);
 		return RLM_MODULE_HANDLED;
@@ -255,9 +255,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	can retrieve it in the post-proxy stage, and
 		 *	send a response.
 		 */
-		handler->inst_holder = inst;
+		eap_session->inst_holder = inst;
 
-		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, handler, true);
+		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, eap_session, true);
 
 		rad_assert(status == 0);
 
@@ -292,14 +292,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	We are done, wrap the EAP-request in RADIUS to send
 	 *	with all other required radius attributes
 	 */
-	rcode = eap_compose(handler);
+	rcode = eap_compose(eap_session);
 
 	/*
 	 *	Add to the list only if it is EAP-Request, OR if
 	 *	it's LEAP, and a response.
 	 */
-	if (((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
-	    (handler->eap_ds->request->type.num >= PW_EAP_MD5)) ||
+	if (((eap_session->eap_ds->request->code == PW_EAP_REQUEST) &&
+	    (eap_session->eap_ds->request->type.num >= PW_EAP_MD5)) ||
 
 		/*
 		 *	LEAP is a little different.  At Stage 4,
@@ -310,17 +310,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	At stage 6, LEAP sends an EAP-Response, which
 		 *	isn't put into the list.
 		 */
-	    ((handler->eap_ds->response->code == PW_EAP_RESPONSE) &&
-	     (handler->eap_ds->response->type.num == PW_EAP_LEAP) &&
-	     (handler->eap_ds->request->code == PW_EAP_SUCCESS) &&
-	     (handler->eap_ds->request->type.num == 0))) {
+	    ((eap_session->eap_ds->response->code == PW_EAP_RESPONSE) &&
+	     (eap_session->eap_ds->response->type.num == PW_EAP_LEAP) &&
+	     (eap_session->eap_ds->request->code == PW_EAP_SUCCESS) &&
+	     (eap_session->eap_ds->request->type.num == 0))) {
 
-		eap_ds_free(&(handler->prev_eap_ds));
-		handler->prev_eap_ds = handler->eap_ds;
-		handler->eap_ds = NULL;
+		eap_ds_free(&(eap_session->prev_eap_ds));
+		eap_session->prev_eap_ds = eap_session->eap_ds;
+		eap_session->eap_ds = NULL;
 
 		/*
-		 *	Return FAIL if we can't remember the handler.
+		 *	Return FAIL if we can't remember the eap_session.
 		 *	This is actually disallowed by the
 		 *	specification, as unexpected FAILs could have
 		 *	been forged.  However, we want to signal to
@@ -329,17 +329,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	to accidentally failing it.
 		 */
 		if (!fr_state_put_data(inst->state, request->packet, request->reply,
-				       handler)) {
-			RDEBUG("Failed adding handler to the list");
-			eap_fail(handler);
-			talloc_free(handler);
+				       eap_session)) {
+			RDEBUG("Failed adding eap_session to the list");
+			eap_fail(eap_session);
+			talloc_free(eap_session);
 			return RLM_MODULE_FAIL;
 		}
 
 	} else {
-		RDEBUG2("Freeing handler");
-		/* handler is not required any more, free it now */
-		talloc_free(handler);
+		RDEBUG2("Freeing eap_session");
+		/* eap_session is not required any more, free it now */
+		talloc_free(eap_session);
 	}
 
 	/*
@@ -430,7 +430,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	it MUST copy the identity into the User-Name attribute.
 	 *
 	 *	But we don't worry about that too much.  We depend on
-	 *	each EAP sub-module to look for handler->request->username,
+	 *	each EAP sub-module to look for eap_session->request->username,
 	 *	and to get excited if it doesn't appear.
 	 */
 	vp = fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
@@ -462,16 +462,16 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	size_t		len;
 	char		*p;
 	VALUE_PAIR	*vp;
-	eap_handler_t	*handler;
+	eap_session_t	*eap_session;
 	vp_cursor_t	cursor;
 	rlm_eap_t	*inst = instance;
 
 	/*
-	 *	If there was a handler associated with this request,
+	 *	If there was a eap_session associated with this request,
 	 *	then it's a tunneled request which was proxied...
 	 */
-	handler = request_data_get(request, inst, REQUEST_DATA_EAP_HANDLER);
-	if (handler != NULL) {
+	eap_session = request_data_get(request, inst, REQUEST_DATA_EAP_HANDLER);
+	if (eap_session != NULL) {
 		rlm_rcode_t rcode;
 		eap_tunnel_data_t *data;
 
@@ -483,7 +483,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 							      REQUEST_DATA_EAP_TUNNEL_CALLBACK);
 		if (!data) {
 			RERROR("Failed to retrieve callback for tunneled session!");
-			talloc_free(handler);
+			talloc_free(eap_session);
 			return RLM_MODULE_FAIL;
 		}
 
@@ -491,12 +491,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 *	Do the callback...
 		 */
 		RDEBUG2("Doing post-proxy callback");
-		rcode = data->callback(handler, data->tls_session);
+		rcode = data->callback(eap_session, data->tls_session);
 		talloc_free(data);
 		if (rcode == 0) {
 			RDEBUG2("Failed in post-proxy callback");
-			eap_fail(handler);
-			talloc_free(handler);
+			eap_fail(eap_session);
+			talloc_free(eap_session);
 			return RLM_MODULE_REJECT;
 		}
 
@@ -504,29 +504,29 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 *	We are done, wrap the EAP-request in RADIUS to send
 		 *	with all other required radius attributes
 		 */
-		eap_compose(handler);
+		eap_compose(eap_session);
 
 		/*
 		 *	Add to the list only if it is EAP-Request, OR if
 		 *	it's LEAP, and a response.
 		 */
-		if ((handler->eap_ds->request->code == PW_EAP_REQUEST) &&
-		    (handler->eap_ds->request->type.num >= PW_EAP_MD5)) {
-			eap_ds_free(&(handler->prev_eap_ds));
-			handler->prev_eap_ds = handler->eap_ds;
-			handler->eap_ds = NULL;
+		if ((eap_session->eap_ds->request->code == PW_EAP_REQUEST) &&
+		    (eap_session->eap_ds->request->type.num >= PW_EAP_MD5)) {
+			eap_ds_free(&(eap_session->prev_eap_ds));
+			eap_session->prev_eap_ds = eap_session->eap_ds;
+			eap_session->eap_ds = NULL;
 
 			if (!fr_state_put_data(inst->state, request->packet, request->reply,
-					       handler)) {
-				eap_fail(handler);
-				talloc_free(handler);
+					       eap_session)) {
+				eap_fail(eap_session);
+				talloc_free(eap_session);
 				return RLM_MODULE_FAIL;
 			}
 
 		} else {	/* couldn't have been LEAP, there's no tunnel */
-			RDEBUG2("Freeing handler");
-			/* handler is not required any more, free it now */
-			talloc_free(handler);
+			RDEBUG2("Freeing eap_session");
+			/* eap_session is not required any more, free it now */
+			talloc_free(eap_session);
 		}
 
 		/*
@@ -549,7 +549,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 
 		return RLM_MODULE_OK;
 	} else {
-		RDEBUG2("No pre-existing handler found");
+		RDEBUG2("No pre-existing eap_session found");
 	}
 
 	/*
@@ -628,9 +628,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 
 static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *request)
 {
-	rlm_eap_t	*inst = instance;
-	VALUE_PAIR	*vp;
-	eap_handler_t	*handler;
+	rlm_eap_t		*inst = instance;
+	VALUE_PAIR		*vp;
+	eap_session_t		*eap_session;
 	eap_packet_raw_t	*eap_packet;
 
 	/*
@@ -656,15 +656,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		return RLM_MODULE_FAIL;
 	}
 
-	handler = eap_handler(inst, &eap_packet, request);
-	if (!handler) {
-		RDEBUG2("Failed to get handler, probably already removed, not inserting EAP-Failure");
+	eap_session = eap_eap_session(inst, &eap_packet, request);
+	if (!eap_session) {
+		RDEBUG2("Failed to get eap_session, probably already removed, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}
 
 	RDEBUG2("Request was previously rejected, inserting EAP-Failure");
-	eap_fail(handler);
-	talloc_free(handler);
+	eap_fail(eap_session);
+	talloc_free(eap_session);
 
 	/*
 	 * Make sure there's a message authenticator attribute in the response

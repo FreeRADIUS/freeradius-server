@@ -168,9 +168,9 @@ static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 	return 1;
 }
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *handler);
 
-static int mod_session_init (void *instance, eap_handler_t *handler)
+static int mod_session_init (void *instance, eap_session_t *handler)
 {
 	pwd_session_t *session;
 	eap_pwd_t *inst = (eap_pwd_t *)instance;
@@ -265,7 +265,7 @@ static int mod_session_init (void *instance, eap_handler_t *handler)
 	return 1;
 }
 
-static int mod_process(void *arg, eap_handler_t *handler)
+static int mod_process(void *arg, eap_session_t *handler)
 {
 	pwd_session_t *session;
 	pwd_hdr *hdr;

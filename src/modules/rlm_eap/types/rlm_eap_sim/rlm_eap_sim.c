@@ -46,16 +46,16 @@ typedef struct eap_sim_server_state {
 /*
  *	build a reply to be sent.
  */
-static int eap_sim_compose(eap_handler_t *handler)
+static int eap_sim_compose(eap_session_t *eap_session)
 {
 	/* we will set the ID on requests, since we have to HMAC it */
-	handler->eap_ds->set_request_id = 1;
+	eap_session->eap_ds->set_request_id = 1;
 
-	return map_eapsim_basictypes(handler->request->reply,
-				     handler->eap_ds->request);
+	return map_eapsim_basictypes(eap_session->request->reply,
+				     eap_session->eap_ds->request);
 }
 
-static int eap_sim_sendstart(eap_handler_t *handler)
+static int eap_sim_sendstart(eap_session_t *eap_session)
 {
 	VALUE_PAIR **vps, *newvp;
 	uint16_t words[3];
@@ -63,13 +63,13 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	RADIUS_PACKET *packet;
 	uint8_t *p;
 
-	rad_assert(handler->request != NULL);
-	rad_assert(handler->request->reply);
+	rad_assert(eap_session->request != NULL);
+	rad_assert(eap_session->request->reply);
 
-	ess = (eap_sim_state_t *)handler->opaque;
+	ess = (eap_sim_state_t *)eap_session->opaque;
 
 	/* these are the outgoing attributes */
-	packet = handler->request->reply;
+	packet = eap_session->request->reply;
 	vps = &packet->vps;
 	rad_assert(vps != NULL);
 
@@ -114,9 +114,9 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	return 1;
 }
 
-static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
+static int eap_sim_get_challenge(eap_session_t *eap_session, VALUE_PAIR *vps, int idx, eap_sim_state_t *ess)
 {
-	REQUEST *request = handler->request;
+	REQUEST *request = eap_session->request;
 	VALUE_PAIR *vp, *ki, *algo_version;
 
 	rad_assert(idx >= 0 && idx < 3);
@@ -264,28 +264,28 @@ static int eap_sim_get_challenge(eap_handler_t *handler, VALUE_PAIR *vps, int id
  * module to generate/calculate things.
  *
  */
-static int eap_sim_sendchallenge(eap_handler_t *handler)
+static int eap_sim_sendchallenge(eap_session_t *eap_session)
 {
-	REQUEST *request = handler->request;
+	REQUEST *request = eap_session->request;
 	eap_sim_state_t *ess;
 	VALUE_PAIR **invps, **outvps, *newvp;
 	RADIUS_PACKET *packet;
 	uint8_t *p;
 
-	ess = (eap_sim_state_t *)handler->opaque;
-	rad_assert(handler->request != NULL);
-	rad_assert(handler->request->reply);
+	ess = (eap_sim_state_t *)eap_session->opaque;
+	rad_assert(eap_session->request != NULL);
+	rad_assert(eap_session->request->reply);
 
 	/*
 	 *	Invps is the data from the client but this is for non-protocol data here.
 	 *	We should already have consumed any client originated data.
 	 */
-	invps = &handler->request->packet->vps;
+	invps = &eap_session->request->packet->vps;
 
 	/*
 	 *	Outvps is the data to the client
 	 */
-	packet = handler->request->reply;
+	packet = eap_session->request->reply;
 	outvps = &packet->vps;
 
 	if (RDEBUG_ENABLED2) {
@@ -319,8 +319,8 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	/*
 	 *	Make a copy of the identity
 	 */
-	ess->keys.identitylen = strlen(handler->identity);
-	memcpy(ess->keys.identity, handler->identity, ess->keys.identitylen);
+	ess->keys.identitylen = strlen(eap_session->identity);
+	memcpy(ess->keys.identity, eap_session->identity, ess->keys.identitylen);
 
 	/*
 	 *	Use the SIM identity, if available
@@ -379,7 +379,7 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
  * radius attributes derived from the MSK.
  *
  */
-static int eap_sim_sendsuccess(eap_handler_t *handler)
+static int eap_sim_sendsuccess(eap_session_t *eap_session)
 {
 	unsigned char *p;
 	eap_sim_state_t *ess;
@@ -387,18 +387,18 @@ static int eap_sim_sendsuccess(eap_handler_t *handler)
 	RADIUS_PACKET *packet;
 
 	/* outvps is the data to the client. */
-	packet = handler->request->reply;
-	ess = (eap_sim_state_t *)handler->opaque;
+	packet = eap_session->request->reply;
+	ess = (eap_sim_state_t *)eap_session->opaque;
 
 	/* set the EAP_ID - new value */
 	vp = fr_pair_afrom_num(packet, PW_EAP_ID, 0);
 	vp->vp_integer = ess->sim_id++;
-	fr_pair_replace(&handler->request->reply->vps, vp);
+	fr_pair_replace(&eap_session->request->reply->vps, vp);
 
 	p = ess->keys.msk;
-	eap_add_reply(handler->request, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
+	eap_add_reply(eap_session->request, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
 	p += EAPTLS_MPPE_KEY_LEN;
-	eap_add_reply(handler->request, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
+	eap_add_reply(eap_session->request, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
 
 	return 1;
 }
@@ -407,7 +407,7 @@ static int eap_sim_sendsuccess(eap_handler_t *handler)
 /** Run the server state machine
  *
  */
-static void eap_sim_stateenter(eap_handler_t *handler,
+static void eap_sim_stateenter(eap_session_t *eap_session,
 			       eap_sim_state_t *ess,
 			       enum eapsim_serverstates newstate)
 {
@@ -416,21 +416,21 @@ static void eap_sim_stateenter(eap_handler_t *handler,
 	 * 	Send the EAP-SIM Start message, listing the versions that we support.
 	 */
 	case EAPSIM_SERVER_START:
-		eap_sim_sendstart(handler);
+		eap_sim_sendstart(eap_session);
 		break;
 	/*
 	 *	Send the EAP-SIM Challenge message.
 	 */
 	case EAPSIM_SERVER_CHALLENGE:
-		eap_sim_sendchallenge(handler);
+		eap_sim_sendchallenge(eap_session);
 		break;
 
 	/*
 	 * 	Send the EAP Success message
 	 */
 	case EAPSIM_SERVER_SUCCESS:
-		eap_sim_sendsuccess(handler);
-		handler->eap_ds->request->code = PW_EAP_SUCCESS;
+		eap_sim_sendsuccess(eap_session);
+		eap_session->eap_ds->request->code = PW_EAP_SUCCESS;
 		break;
 	/*
 	 *	Nothing to do for this transition.
@@ -443,36 +443,36 @@ static void eap_sim_stateenter(eap_handler_t *handler,
 	ess->state = newstate;
 
 	/* build the target packet */
-	eap_sim_compose(handler);
+	eap_sim_compose(eap_session);
 }
 
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_handler_t *handler);
+static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
 /*
  *	Initiate the EAP-SIM session by starting the state machine
  *      and initiating the state.
  */
-static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
+static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 {
-	REQUEST *request = handler->request;
+	REQUEST *request = eap_session->request;
 	eap_sim_state_t *ess;
 	time_t n;
 
-	ess = talloc_zero(handler, eap_sim_state_t);
+	ess = talloc_zero(eap_session, eap_sim_state_t);
 	if (!ess) {
 		RDEBUG2("No space for EAP-SIM state");
 		return 0;
 	}
 
-	handler->opaque = ess;
+	eap_session->opaque = ess;
 
 	/*
 	 *	Save the keying material, because it could change on a subsequent retrieval.
 	 */
-	if (!eap_sim_get_challenge(handler, request->config, 0, ess) ||
-	    !eap_sim_get_challenge(handler, request->config, 1, ess) ||
-	    !eap_sim_get_challenge(handler, request->config, 2, ess)) {
+	if (!eap_sim_get_challenge(eap_session, request->config, 0, ess) ||
+	    !eap_sim_get_challenge(eap_session, request->config, 1, ess) ||
+	    !eap_sim_get_challenge(eap_session, request->config, 2, ess)) {
 		return 0;
 	}
 
@@ -482,9 +482,9 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
 	time(&n);
 	ess->sim_id = (n & 0xff);
 
-	eap_sim_stateenter(handler, ess, EAPSIM_SERVER_START);
+	eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_START);
 
-	handler->process = mod_process;
+	eap_session->process = mod_process;
 
 	return 1;
 }
@@ -496,19 +496,19 @@ static int mod_session_init(UNUSED void *instance, eap_handler_t *handler)
  * and if so, then change states to challenge, and send the new
  * challenge, else, resend the Request/Start.
  */
-static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
+static int process_eap_sim_start(eap_session_t *eap_session, VALUE_PAIR *vps)
 {
-	REQUEST *request = handler->request;
+	REQUEST *request = eap_session->request;
 	VALUE_PAIR *nonce_vp, *selectedversion_vp;
 	eap_sim_state_t *ess;
 	uint16_t simversion;
-	ess = (eap_sim_state_t *)handler->opaque;
+	ess = (eap_sim_state_t *)eap_session->opaque;
 
 	nonce_vp = fr_pair_find_by_num(vps, PW_EAP_SIM_NONCE_MT, 0, TAG_ANY);
 	selectedversion_vp = fr_pair_find_by_num(vps, PW_EAP_SIM_SELECTED_VERSION, 0, TAG_ANY);
 	if (!nonce_vp || !selectedversion_vp) {
 		RDEBUG2("Client did not select a version and send a NONCE");
-		eap_sim_stateenter(handler, ess, EAPSIM_SERVER_START);
+		eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_START);
 
 		return 1;
 	}
@@ -544,7 +544,7 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	/*
 	 *	Everything looks good, change states
 	 */
-	eap_sim_stateenter(handler, ess, EAPSIM_SERVER_CHALLENGE);
+	eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_CHALLENGE);
 
 	return 1;
 }
@@ -556,10 +556,10 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
  * calculated from the packet with the SRESx appended.
  *
  */
-static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
+static int process_eap_sim_challenge(eap_session_t *eap_session, VALUE_PAIR *vps)
 {
-	REQUEST *request = handler->request;
-	eap_sim_state_t *ess = handler->opaque;
+	REQUEST *request = eap_session->request;
+	eap_sim_state_t *ess = eap_session->opaque;
 
 	uint8_t srescat[EAPSIM_SRES_SIZE * 3];
 	uint8_t *p = srescat;
@@ -575,7 +575,7 @@ static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
 	/*
 	 *	Verify the MAC, now that we have all the keys
 	 */
-	if (eapsim_checkmac(handler, vps, ess->keys.K_aut, srescat, sizeof(srescat), calcmac)) {
+	if (eapsim_checkmac(eap_session, vps, ess->keys.K_aut, srescat, sizeof(srescat), calcmac)) {
 		RDEBUG2("MAC check succeed");
 	} else {
 		int i, j;
@@ -598,7 +598,7 @@ static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
 	}
 
 	/* everything looks good, change states */
-	eap_sim_stateenter(handler, ess, EAPSIM_SERVER_SUCCESS);
+	eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_SUCCESS);
 	return 1;
 }
 
@@ -606,10 +606,10 @@ static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
 /** Authenticate a previously sent challenge
  *
  */
-static int mod_process(UNUSED void *arg, eap_handler_t *handler)
+static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 {
-	REQUEST *request = handler->request;
-	eap_sim_state_t *ess = handler->opaque;
+	REQUEST *request = eap_session->request;
+	eap_sim_state_t *ess = eap_session->opaque;
 
 	VALUE_PAIR *vp, *vps;
 
@@ -620,11 +620,11 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 	/*
 	 *	VPS is the data from the client
 	 */
-	vps = handler->request->packet->vps;
+	vps = eap_session->request->packet->vps;
 
-	success = unmap_eapsim_basictypes(handler->request->packet,
-					  handler->eap_ds->response->type.data,
-					  handler->eap_ds->response->type.length);
+	success = unmap_eapsim_basictypes(eap_session->request->packet,
+					  eap_session->eap_ds->response->type.data,
+					  eap_session->eap_ds->response->type.length);
 
 	if (!success) return 0;
 
@@ -653,13 +653,13 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 		 */
 		default:
 
-			eap_sim_stateenter(handler, ess, EAPSIM_SERVER_START);
+			eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_START);
 			return 1;
 		/*
 		 * 	A response to our EAP-Sim/Request/Start!
 		 */
 		case EAPSIM_START:
-			return process_eap_sim_start(handler, vps);
+			return process_eap_sim_start(eap_session, vps);
 		}
 
 	case EAPSIM_SERVER_CHALLENGE:
@@ -668,13 +668,13 @@ static int mod_process(UNUSED void *arg, eap_handler_t *handler)
 		 *	Pretty much anything else here is illegal, so we will retransmit the request.
 		 */
 		default:
-			eap_sim_stateenter(handler, ess, EAPSIM_SERVER_CHALLENGE);
+			eap_sim_stateenter(eap_session, ess, EAPSIM_SERVER_CHALLENGE);
 			return 1;
 		/*
 		 *	A response to our EAP-Sim/Request/Challenge!
 		 */
 		case EAPSIM_CHALLENGE:
-			return process_eap_sim_challenge(handler, vps);
+			return process_eap_sim_challenge(eap_session, vps);
 		}
 
 	default:

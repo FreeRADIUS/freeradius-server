@@ -29,11 +29,11 @@ RCSID("$Id$")
 /*
  * Allocate a new eap_packet_t
  */
-EAP_DS *eap_ds_alloc(eap_handler_t *handler)
+EAP_DS *eap_ds_alloc(eap_session_t *eap_session)
 {
 	EAP_DS	*eap_ds;
 
-	eap_ds = talloc_zero(handler, EAP_DS);
+	eap_ds = talloc_zero(eap_session, EAP_DS);
 	if (!eap_ds) return NULL;
 	eap_ds->response = talloc_zero(eap_ds, eap_packet_t);
 	if (!eap_ds->response) {
@@ -65,25 +65,25 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 	*eap_ds_p = NULL;
 }
 
-static int _eap_handler_free(eap_handler_t *handler)
+static int _eap_eap_session_free(eap_session_t *eap_session)
 {
-	if (handler->identity) {
-		talloc_free(handler->identity);
-		handler->identity = NULL;
+	if (eap_session->identity) {
+		talloc_free(eap_session->identity);
+		eap_session->identity = NULL;
 	}
 
-	if (handler->prev_eap_ds) eap_ds_free(&(handler->prev_eap_ds));
-	if (handler->eap_ds) eap_ds_free(&(handler->eap_ds));
+	if (eap_session->prev_eap_ds) eap_ds_free(&(eap_session->prev_eap_ds));
+	if (eap_session->eap_ds) eap_ds_free(&(eap_session->eap_ds));
 
-	if ((handler->opaque) && (handler->free_opaque)) {
-		handler->free_opaque(handler->opaque);
-		handler->opaque = NULL;
+	if ((eap_session->opaque) && (eap_session->free_opaque)) {
+		eap_session->free_opaque(eap_session->opaque);
+		eap_session->opaque = NULL;
 	}
 
-	handler->opaque = NULL;
-	handler->free_opaque = NULL;
+	eap_session->opaque = NULL;
+	eap_session->free_opaque = NULL;
 
-	if (handler->cert_vps) fr_pair_list_free(&handler->cert_vps);
+	if (eap_session->cert_vps) fr_pair_list_free(&eap_session->cert_vps);
 
 	/*
 	 *	Give helpful debug messages if:
@@ -92,40 +92,40 @@ static int _eap_handler_free(eap_handler_t *handler)
 	 *	and which aren't deleted early due to a likely RADIUS
 	 *	retransmit which nukes our ID, and therefore our stare.
 	 */
-	if (fr_debug_lvl && handler->tls && !handler->finished &&
-	    (time(NULL) > (handler->timestamp + 3))) {
+	if (fr_debug_lvl && eap_session->tls && !eap_session->finished &&
+	    (time(NULL) > (eap_session->timestamp + 3))) {
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!                  !!",
-		     handler->state[0], handler->state[1],
-		     handler->state[2], handler->state[3],
-		     handler->state[4], handler->state[5],
-		     handler->state[6], handler->state[7]);
+		     eap_session->state[0], eap_session->state[1],
+		     eap_session->state[2], eap_session->state[3],
+		     eap_session->state[4], eap_session->state[5],
+		     eap_session->state[6], eap_session->state[7]);
 
 		WARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
 
-	talloc_free(handler);
-	
+	talloc_free(eap_session);
+
 	return 0;
 }
 
 /*
- * Allocate a new eap_handler_t
+ * Allocate a new eap_session_t
  */
-eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
+eap_session_t *eap_eap_session_alloc(rlm_eap_t *inst)
 {
-	eap_handler_t	*handler;
+	eap_session_t	*eap_session;
 
-	handler = talloc_zero(NULL, eap_handler_t);
-	if (!handler) {
-		ERROR("Failed allocating handler");
+	eap_session = talloc_zero(NULL, eap_session_t);
+	if (!eap_session) {
+		ERROR("Failed allocating eap_session");
 		return NULL;
 	}
-	handler->inst_holder = inst;
+	eap_session->inst_holder = inst;
 
 	/* Doesn't need to be inside the critical region */
-	talloc_set_destructor(handler, _eap_handler_free);
+	talloc_set_destructor(eap_session, _eap_eap_session_free);
 
-	return handler;
+	return eap_session;
 }
