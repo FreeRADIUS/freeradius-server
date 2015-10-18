@@ -98,7 +98,7 @@ static int _free_pwd_session (pwd_session_t *session)
 	return 0;
 }
 
-static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
+static int send_pwd_request (pwd_session_t *session, eap_round_t *eap_round)
 {
 	size_t len;
 	uint16_t totlen;
@@ -106,11 +106,11 @@ static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 
 	len = (session->out_len - session->out_pos) + sizeof(pwd_hdr);
 	rad_assert(len > 0);
-	eap_ds->request->code = PW_EAP_REQUEST;
-	eap_ds->request->type.num = PW_EAP_PWD;
-	eap_ds->request->type.length = (len > session->mtu) ? session->mtu : len;
-	eap_ds->request->type.data = talloc_zero_array(eap_ds->request, uint8_t, eap_ds->request->type.length);
-	hdr = (pwd_hdr *)eap_ds->request->type.data;
+	eap_round->request->code = PW_EAP_REQUEST;
+	eap_round->request->type.num = PW_EAP_PWD;
+	eap_round->request->type.length = (len > session->mtu) ? session->mtu : len;
+	eap_round->request->type.data = talloc_zero_array(eap_round->request, uint8_t, eap_round->request->type.length);
+	hdr = (pwd_hdr *)eap_round->request->type.data;
 
 	switch (session->state) {
 	case PWD_STATE_ID_REQ:
@@ -168,16 +168,16 @@ static int send_pwd_request (pwd_session_t *session, EAP_DS *eap_ds)
 	return 1;
 }
 
-static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *handler);
+static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_session);
 
-static int mod_session_init (void *instance, eap_session_t *handler)
+static int mod_session_init (void *instance, eap_session_t *eap_session)
 {
 	pwd_session_t *session;
 	eap_pwd_t *inst = (eap_pwd_t *)instance;
 	VALUE_PAIR *vp;
 	pwd_id_packet_t *packet;
 
-	if (!inst || !handler) {
+	if (!inst || !eap_session) {
 		ERROR("rlm_eap_pwd: Initiate, NULL data provided");
 		return 0;
 	}
@@ -202,7 +202,7 @@ static int mod_session_init (void *instance, eap_session_t *handler)
 		return 0;
 	}
 
-	if ((session = talloc_zero(handler, pwd_session_t)) == NULL) return 0;
+	if ((session = talloc_zero(eap_session, pwd_session_t)) == NULL) return 0;
 	talloc_set_destructor(session, _free_pwd_session);
 	/*
 	 * set things up so they can be free'd reliably
@@ -223,7 +223,7 @@ static int mod_session_init (void *instance, eap_session_t *handler)
 	 *	The admin can dynamically change the MTU.
 	 */
 	session->mtu = inst->fragment_size;
-	vp = fr_pair_find_by_num(handler->request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(eap_session->request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
 
 	/*
 	 *	session->mtu is *our* MTU.  We need to subtract off the EAP
@@ -241,7 +241,7 @@ static int mod_session_init (void *instance, eap_session_t *handler)
 	session->state = PWD_STATE_ID_REQ;
 	session->in = NULL;
 	session->out_pos = 0;
-	handler->opaque = session;
+	eap_session->opaque = session;
 
 	/*
 	 * construct an EAP-pwd-ID/Request
@@ -258,14 +258,14 @@ static int mod_session_init (void *instance, eap_session_t *handler)
 	packet->prep = EAP_PWD_PREP_NONE;
 	memcpy(packet->identity, inst->server_id, session->out_len - sizeof(pwd_id_packet_t) );
 
-	if (!send_pwd_request(session, handler->eap_ds)) return 0;
+	if (!send_pwd_request(session, eap_session->this_round)) return 0;
 
-	handler->process = mod_process;
+	eap_session->process = mod_process;
 
 	return 1;
 }
 
-static int mod_process(void *arg, eap_session_t *handler)
+static int mod_process(void *arg, eap_session_t *eap_session)
 {
 	pwd_session_t *session;
 	pwd_hdr *hdr;
@@ -273,7 +273,7 @@ static int mod_process(void *arg, eap_session_t *handler)
 	eap_packet_t *response;
 	REQUEST *request, *fake;
 	VALUE_PAIR *pw, *vp;
-	EAP_DS *eap_ds;
+	eap_round_t *eap_round;
 	size_t in_len;
 	int ret = 0;
 	eap_pwd_t *inst = (eap_pwd_t *)arg;
@@ -283,11 +283,11 @@ static int mod_process(void *arg, eap_session_t *handler)
 	BIGNUM *x = NULL, *y = NULL;
 	char *p;
 
-	if (((eap_ds = handler->eap_ds) == NULL) || !inst) return 0;
+	if (((eap_round = eap_session->this_round) == NULL) || !inst) return 0;
 
-	session = (pwd_session_t *)handler->opaque;
-	request = handler->request;
-	response = handler->eap_ds->response;
+	session = (pwd_session_t *)eap_session->opaque;
+	request = eap_session->request;
+	response = eap_session->this_round->response;
 	hdr = (pwd_hdr *)response->type.data;
 
 	/*
@@ -307,7 +307,7 @@ static int mod_process(void *arg, eap_session_t *handler)
 	if (session->out_pos) {
 		if (in_len) RDEBUG2("pwd got something more than an ACK for a fragment");
 
-		return send_pwd_request(session, eap_ds);
+		return send_pwd_request(session, eap_round);
 	}
 
 	/*
@@ -356,14 +356,14 @@ static int mod_process(void *arg, eap_session_t *handler)
 		 * send back an ACK for this fragment
 		 */
 		exch = EAP_PWD_GET_EXCHANGE(hdr);
-		eap_ds->request->code = PW_EAP_REQUEST;
-		eap_ds->request->type.num = PW_EAP_PWD;
-		eap_ds->request->type.length = sizeof(pwd_hdr);
+		eap_round->request->code = PW_EAP_REQUEST;
+		eap_round->request->type.num = PW_EAP_PWD;
+		eap_round->request->type.length = sizeof(pwd_hdr);
 
-		if ((eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, sizeof(pwd_hdr))) == NULL) {
+		if ((eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, sizeof(pwd_hdr))) == NULL) {
 			return 0;
 		}
-		hdr = (pwd_hdr *)eap_ds->request->type.data;
+		hdr = (pwd_hdr *)eap_round->request->type.data;
 		EAP_PWD_SET_EXCHANGE(hdr, exch);
 		return 1;
 	}
@@ -425,7 +425,7 @@ static int mod_process(void *arg, eap_session_t *handler)
 		/*
 		 * make fake request to get the password for the usable ID
 		 */
-		if ((fake = request_alloc_fake(handler->request)) == NULL) {
+		if ((fake = request_alloc_fake(eap_session->request)) == NULL) {
 			RDEBUG("pwd unable to create fake request!");
 			return 0;
 		}
@@ -540,7 +540,7 @@ static int mod_process(void *arg, eap_session_t *handler)
 		BN_bn2bin(session->my_scalar, ptr + offset);
 
 		session->state = PWD_STATE_COMMIT;
-		ret = send_pwd_request(session, eap_ds);
+		ret = send_pwd_request(session, eap_round);
 		break;
 
 	case PWD_STATE_COMMIT:
@@ -575,7 +575,7 @@ static int mod_process(void *arg, eap_session_t *handler)
 		memcpy(session->out, session->my_confirm, SHA256_DIGEST_LENGTH);
 
 		session->state = PWD_STATE_CONFIRM;
-		ret = send_pwd_request(session, eap_ds);
+		ret = send_pwd_request(session, eap_round);
 		break;
 
 	case PWD_STATE_CONFIRM:
@@ -600,12 +600,12 @@ static int mod_process(void *arg, eap_session_t *handler)
 			RDEBUG2("pwd exchange cannot generate (E)MSK!");
 			return 0;
 		}
-		eap_ds->request->code = PW_EAP_SUCCESS;
+		eap_round->request->code = PW_EAP_SUCCESS;
 		/*
 		 * return the MSK (in halves)
 		 */
-		eap_add_reply(handler->request, "MS-MPPE-Recv-Key", msk, MPPE_KEY_LEN);
-		eap_add_reply(handler->request, "MS-MPPE-Send-Key", msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
+		eap_add_reply(eap_session->request, "MS-MPPE-Recv-Key", msk, MPPE_KEY_LEN);
+		eap_add_reply(eap_session->request, "MS-MPPE-Send-Key", msk + MPPE_KEY_LEN, MPPE_KEY_LEN);
 
 		ret = 1;
 		break;

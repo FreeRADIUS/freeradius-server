@@ -298,8 +298,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	Add to the list only if it is EAP-Request, OR if
 	 *	it's LEAP, and a response.
 	 */
-	if (((eap_session->eap_ds->request->code == PW_EAP_REQUEST) &&
-	    (eap_session->eap_ds->request->type.num >= PW_EAP_MD5)) ||
+	if (((eap_session->this_round->request->code == PW_EAP_REQUEST) &&
+	    (eap_session->this_round->request->type.num >= PW_EAP_MD5)) ||
 
 		/*
 		 *	LEAP is a little different.  At Stage 4,
@@ -310,14 +310,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	At stage 6, LEAP sends an EAP-Response, which
 		 *	isn't put into the list.
 		 */
-	    ((eap_session->eap_ds->response->code == PW_EAP_RESPONSE) &&
-	     (eap_session->eap_ds->response->type.num == PW_EAP_LEAP) &&
-	     (eap_session->eap_ds->request->code == PW_EAP_SUCCESS) &&
-	     (eap_session->eap_ds->request->type.num == 0))) {
+	    ((eap_session->this_round->response->code == PW_EAP_RESPONSE) &&
+	     (eap_session->this_round->response->type.num == PW_EAP_LEAP) &&
+	     (eap_session->this_round->request->code == PW_EAP_SUCCESS) &&
+	     (eap_session->this_round->request->type.num == 0))) {
 
-		eap_ds_free(&(eap_session->prev_eap_ds));
-		eap_session->prev_eap_ds = eap_session->eap_ds;
-		eap_session->eap_ds = NULL;
+		eap_round_free(&(eap_session->prev_round));
+		eap_session->prev_round = eap_session->this_round;
+		eap_session->this_round = NULL;
 
 		/*
 		 *	Return FAIL if we can't remember the eap_session.
@@ -510,11 +510,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 *	Add to the list only if it is EAP-Request, OR if
 		 *	it's LEAP, and a response.
 		 */
-		if ((eap_session->eap_ds->request->code == PW_EAP_REQUEST) &&
-		    (eap_session->eap_ds->request->type.num >= PW_EAP_MD5)) {
-			eap_ds_free(&(eap_session->prev_eap_ds));
-			eap_session->prev_eap_ds = eap_session->eap_ds;
-			eap_session->eap_ds = NULL;
+		if ((eap_session->this_round->request->code == PW_EAP_REQUEST) &&
+		    (eap_session->this_round->request->type.num >= PW_EAP_MD5)) {
+			eap_round_free(&(eap_session->prev_round));
+			eap_session->prev_round = eap_session->this_round;
+			eap_session->this_round = NULL;
 
 			if (!fr_state_put_data(inst->state, request->packet, request->reply,
 					       eap_session)) {

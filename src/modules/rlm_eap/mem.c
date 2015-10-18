@@ -29,40 +29,40 @@ RCSID("$Id$")
 /*
  * Allocate a new eap_packet_t
  */
-EAP_DS *eap_ds_alloc(eap_session_t *eap_session)
+eap_round_t *eap_round_alloc(eap_session_t *eap_session)
 {
-	EAP_DS	*eap_ds;
+	eap_round_t	*eap_round;
 
-	eap_ds = talloc_zero(eap_session, EAP_DS);
-	if (!eap_ds) return NULL;
-	eap_ds->response = talloc_zero(eap_ds, eap_packet_t);
-	if (!eap_ds->response) {
-		eap_ds_free(&eap_ds);
+	eap_round = talloc_zero(eap_session, eap_round_t);
+	if (!eap_round) return NULL;
+	eap_round->response = talloc_zero(eap_round, eap_packet_t);
+	if (!eap_round->response) {
+		eap_round_free(&eap_round);
 		return NULL;
 	}
-	eap_ds->request = talloc_zero(eap_ds, eap_packet_t);
-	if (!eap_ds->request) {
-		eap_ds_free(&eap_ds);
+	eap_round->request = talloc_zero(eap_round, eap_packet_t);
+	if (!eap_round->request) {
+		eap_round_free(&eap_round);
 		return NULL;
 	}
 
-	return eap_ds;
+	return eap_round;
 }
 
-void eap_ds_free(EAP_DS **eap_ds_p)
+void eap_round_free(eap_round_t **eap_round_p)
 {
-	EAP_DS *eap_ds;
+	eap_round_t *eap_round;
 
-	if (!eap_ds_p) return;
+	if (!eap_round_p) return;
 
-	eap_ds = *eap_ds_p;
-	if (!eap_ds) return;
+	eap_round = *eap_round_p;
+	if (!eap_round) return;
 
-	if (eap_ds->response) talloc_free(eap_ds->response);
-	if (eap_ds->request) talloc_free(eap_ds->request);
+	if (eap_round->response) talloc_free(eap_round->response);
+	if (eap_round->request) talloc_free(eap_round->request);
 
-	talloc_free(eap_ds);
-	*eap_ds_p = NULL;
+	talloc_free(eap_round);
+	*eap_round_p = NULL;
 }
 
 static int _eap_eap_session_free(eap_session_t *eap_session)
@@ -72,8 +72,8 @@ static int _eap_eap_session_free(eap_session_t *eap_session)
 		eap_session->identity = NULL;
 	}
 
-	if (eap_session->prev_eap_ds) eap_ds_free(&(eap_session->prev_eap_ds));
-	if (eap_session->eap_ds) eap_ds_free(&(eap_session->eap_ds));
+	if (eap_session->prev_round) eap_round_free(&(eap_session->prev_round));
+	if (eap_session->this_round) eap_round_free(&(eap_session->this_round));
 
 	if ((eap_session->opaque) && (eap_session->free_opaque)) {
 		eap_session->free_opaque(eap_session->opaque);

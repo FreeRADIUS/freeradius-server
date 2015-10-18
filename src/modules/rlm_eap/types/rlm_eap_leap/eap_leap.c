@@ -56,7 +56,7 @@ RCSID("$Id$")
 /*
  *   Extract the data from the LEAP packet.
  */
-leap_packet_t *eapleap_extract(REQUEST *request, EAP_DS *eap_ds)
+leap_packet_t *eapleap_extract(REQUEST *request, eap_round_t *eap_round)
 {
 	leap_packet_raw_t	*data;
 	leap_packet_t		*packet;
@@ -66,11 +66,11 @@ leap_packet_t *eapleap_extract(REQUEST *request, EAP_DS *eap_ds)
 	 *	LEAP can have EAP-Response or EAP-Request (step 5)
 	 *	messages sent to it.
 	 */
-	if (!eap_ds || !eap_ds->response ||
-	    ((eap_ds->response->code != PW_EAP_RESPONSE) && (eap_ds->response->code != PW_EAP_REQUEST)) ||
-	     (eap_ds->response->type.num != PW_EAP_LEAP) || !eap_ds->response->type.data ||
-	     (eap_ds->response->length < LEAP_HEADER_LEN) ||
-	     (eap_ds->response->type.data[0] != 0x01)) {	/* version 1 */
+	if (!eap_round || !eap_round->response ||
+	    ((eap_round->response->code != PW_EAP_RESPONSE) && (eap_round->response->code != PW_EAP_REQUEST)) ||
+	     (eap_round->response->type.num != PW_EAP_LEAP) || !eap_round->response->type.data ||
+	     (eap_round->response->length < LEAP_HEADER_LEN) ||
+	     (eap_round->response->type.data[0] != 0x01)) {	/* version 1 */
 		REDEBUG("Corrupted data");
 		return NULL;
 	}
@@ -78,7 +78,7 @@ leap_packet_t *eapleap_extract(REQUEST *request, EAP_DS *eap_ds)
 	/*
 	 *	Hmm... this cast isn't the best thing to do.
 	 */
-	data = (leap_packet_raw_t *)eap_ds->response->type.data;
+	data = (leap_packet_raw_t *)eap_round->response->type.data;
 
 	/*
 	 *	Some simple sanity checks on the incoming packet.
@@ -86,7 +86,7 @@ leap_packet_t *eapleap_extract(REQUEST *request, EAP_DS *eap_ds)
 	 *	See 'leap.txt' in this directory for a description
 	 *	of the stages.
 	 */
-	switch (eap_ds->response->code) {
+	switch (eap_round->response->code) {
 	case PW_EAP_RESPONSE:
 		if (data->count != 24) {
 			REDEBUG("Bad NTChallengeResponse in LEAP stage 3");
@@ -102,24 +102,24 @@ leap_packet_t *eapleap_extract(REQUEST *request, EAP_DS *eap_ds)
 		break;
 
 	default:
-		REDEBUG("Invalid EAP code %d", eap_ds->response->code);
+		REDEBUG("Invalid EAP code %d", eap_round->response->code);
 		return NULL;
 	}
 
-	packet = talloc(eap_ds, leap_packet_t);
+	packet = talloc(eap_round, leap_packet_t);
 	if (!packet) return NULL;
 
 	/*
 	 *	Remember code, length, and id.
 	 */
-	packet->code = eap_ds->response->code;
-	packet->id = eap_ds->response->id;
+	packet->code = eap_round->response->code;
+	packet->id = eap_round->response->id;
 
 	/*
 	 *	The size of the LEAP portion of the packet, not
 	 *	counting the EAP header and the type.
 	 */
-	packet->length = eap_ds->response->length - EAP_HEADER_LEN - 1;
+	packet->length = eap_round->response->length - EAP_HEADER_LEN - 1;
 
 	/*
 	 *	Remember the length of the challenge.
@@ -343,12 +343,12 @@ leap_packet_t *eapleap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAI
  *	If an EAP LEAP request needs to be initiated then
  *	create such a packet.
  */
-leap_packet_t *eapleap_initiate(REQUEST *request, EAP_DS *eap_ds, VALUE_PAIR *user_name)
+leap_packet_t *eapleap_initiate(REQUEST *request, eap_round_t *eap_round, VALUE_PAIR *user_name)
 {
 	int i;
 	leap_packet_t 	*reply;
 
-	reply = talloc(eap_ds, leap_packet_t);
+	reply = talloc(eap_round, leap_packet_t);
 	if (!reply)  {
 		return NULL;
 	}
@@ -393,11 +393,11 @@ leap_packet_t *eapleap_initiate(REQUEST *request, EAP_DS *eap_ds, VALUE_PAIR *us
 /*
  * compose the LEAP reply packet in the EAP reply typedata
  */
-int eapleap_compose(REQUEST *request, EAP_DS *eap_ds, leap_packet_t *reply)
+int eapleap_compose(REQUEST *request, eap_round_t *eap_round, leap_packet_t *reply)
 {
 	leap_packet_raw_t *data;
 
-	rad_assert(eap_ds->request);
+	rad_assert(eap_round->request);
 	rad_assert(reply);
 
 	/*
@@ -406,15 +406,15 @@ int eapleap_compose(REQUEST *request, EAP_DS *eap_ds, leap_packet_t *reply)
 	switch (reply->code) {
 	case PW_EAP_REQUEST:
 	case PW_EAP_RESPONSE:
-		eap_ds->request->type.num = PW_EAP_LEAP;
-		eap_ds->request->type.length = reply->length;
+		eap_round->request->type.num = PW_EAP_LEAP;
+		eap_round->request->type.length = reply->length;
 
-		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, reply->length);
-		if (!eap_ds->request->type.data) {
+		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, reply->length);
+		if (!eap_round->request->type.data) {
 			return 0;
 		}
 
-		data = (leap_packet_raw_t *) eap_ds->request->type.data;
+		data = (leap_packet_raw_t *) eap_round->request->type.data;
 		data->version = 0x01;
 		data->unused = 0;
 		data->count = reply->count;
@@ -431,7 +431,7 @@ int eapleap_compose(REQUEST *request, EAP_DS *eap_ds, leap_packet_t *reply)
 		 *	other than the header.
 		 */
 	case PW_EAP_SUCCESS:
-		eap_ds->request->type.length = 0;
+		eap_round->request->type.length = 0;
 		break;
 
 	default:
@@ -442,7 +442,7 @@ int eapleap_compose(REQUEST *request, EAP_DS *eap_ds, leap_packet_t *reply)
 	/*
 	 *	Set the EAP code.
 	 */
-	eap_ds->request->code = reply->code;
+	eap_round->request->code = reply->code;
 
 	return 1;
 }

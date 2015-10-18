@@ -101,7 +101,7 @@ tls_session_t *eaptls_session(eap_session_t *eap_session, fr_tls_server_conf_t *
    The S flag is set only within the EAP-TLS start message
    sent from the EAP server to the peer.
 */
-int eaptls_start(EAP_DS *eap_ds, int peap_flag)
+int eaptls_start(eap_round_t *eap_round, int peap_flag)
 {
 	eap_tls_packet_t 	reply;
 
@@ -114,7 +114,7 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-	eaptls_compose(eap_ds, &reply);
+	eaptls_compose(eap_round, &reply);
 
 	return 1;
 }
@@ -137,7 +137,7 @@ int eaptls_success(eap_session_t *eap_session, int peap_flag)
 	/*
 	 *	Call compose AFTER checking for cached data.
 	 */
-	eaptls_compose(eap_session->eap_ds, &reply);
+	eaptls_compose(eap_session->this_round, &reply);
 
 	/*
 	 *	Automatically generate MPPE keying material.
@@ -168,7 +168,7 @@ int eaptls_fail(eap_session_t *eap_session, int peap_flag)
 
 	tls_fail(tls_session);
 
-	eaptls_compose(eap_session->eap_ds, &reply);
+	eaptls_compose(eap_session->this_round, &reply);
 
 	return 1;
 }
@@ -185,7 +185,7 @@ int eaptls_fail(eap_session_t *eap_session, int peap_flag)
  *	packets that we send, for easy reference purpose.  Handle
  *	fragmentation and sending the next fragment etc.
  */
-int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
+int eaptls_request(eap_round_t *eap_round, tls_session_t *ssn)
 {
 	eap_tls_packet_t	reply;
 	unsigned int	size;
@@ -235,7 +235,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	reply.dlen = lbit + size;
 	reply.length = TLS_HEADER_LEN + 1/*flags*/ + reply.dlen;
 
-	reply.data = talloc_array(eap_ds, uint8_t, reply.length);
+	reply.data = talloc_array(eap_round, uint8_t, reply.length);
 	if (!reply.data) return 0;
 
 	if (lbit) {
@@ -245,7 +245,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	}
 	(ssn->record_to_buff)(&ssn->dirty_out, reply.data + lbit, size);
 
-	eaptls_compose(eap_ds, &reply);
+	eaptls_compose(eap_round, &reply);
 	talloc_free(reply.data);
 	reply.data = NULL;
 
@@ -280,7 +280,7 @@ static int eaptls_send_ack(eap_session_t *eap_session, int peap_flag)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-	eaptls_compose(eap_session->eap_ds, &reply);
+	eaptls_compose(eap_session->this_round, &reply);
 
 	return 1;
 }
@@ -345,9 +345,9 @@ static int eaptls_send_ack(eap_session_t *eap_session, int peap_flag)
  */
 static fr_tls_status_t eaptls_verify(eap_session_t *eap_session)
 {
-	EAP_DS			*eap_ds = eap_session->eap_ds;
+	eap_round_t			*eap_round = eap_session->this_round;
 	tls_session_t		*tls_session = eap_session->opaque;
-	EAP_DS			*prev_eap_ds = eap_session->prev_eap_ds;
+	eap_round_t			*prev_eap_round = eap_session->prev_round;
 	eap_tls_data_t		*eap_tls_data;
 	REQUEST			*request = eap_session->request;
 	size_t			frag_len, header_len;
@@ -355,9 +355,9 @@ static fr_tls_status_t eaptls_verify(eap_session_t *eap_session)
 	/*
 	 *	All EAP-TLS packets must contain type and flags fields.
 	 */
-	if (eap_ds->response->length < (EAP_HEADER_LEN + 2)) {
+	if (eap_round->response->length < (EAP_HEADER_LEN + 2)) {
 		REDEBUG("Invalid EAP-TLS packet: Expected at least %zu bytes got %zu bytes",
-			(size_t)EAP_HEADER_LEN + 2, eap_ds->response->length);
+			(size_t)EAP_HEADER_LEN + 2, eap_round->response->length);
 		return FR_TLS_INVALID;
 	}
 
@@ -366,11 +366,11 @@ static fr_tls_status_t eaptls_verify(eap_session_t *eap_session)
 	 *	code which works together, so if something is wrong,
 	 *	we SHOULD core dump.
 	 *
-	 *	e.g. if eap_ds is NULL, of if eap_ds->response is
+	 *	e.g. if eap_round is NULL, of if eap_round->response is
 	 *	NULL, of if it's NOT an EAP-Response, or if the packet
 	 *	is too short.  See eap_validation()., in ../../eap.c
 	 */
-	eap_tls_data = (eap_tls_data_t *)eap_ds->response->type.data;
+	eap_tls_data = (eap_tls_data_t *)eap_round->response->type.data;
 
 	/*
 	 *	First output the flags (for debugging)
@@ -385,9 +385,9 @@ static fr_tls_status_t eaptls_verify(eap_session_t *eap_session)
 	 *	the message length field if the flags indicate it's present.
 	 */
 	header_len = EAP_HEADER_LEN + (TLS_LENGTH_INCLUDED(eap_tls_data->flags) ? 6 : 2);
-	if (eap_ds->response->length < header_len) {
+	if (eap_round->response->length < header_len) {
 		REDEBUG("Invalid EAP-TLS packet: Expected at least %zu bytes got %zu bytes",
-			header_len, eap_ds->response->length);
+			header_len, eap_round->response->length);
 		return FR_TLS_INVALID;
 	}
 
@@ -400,9 +400,9 @@ static fr_tls_status_t eaptls_verify(eap_session_t *eap_session)
 	 *	Find if this is a reply to the previous request sent
 	 */
 	if ((!eap_tls_data) ||
-	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) &&
+	    ((eap_round->response->length == EAP_HEADER_LEN + 2) &&
 	     ((eap_tls_data->flags & 0xc0) == 0x00))) {
-		if (!prev_eap_ds || (prev_eap_ds->request->id != eap_ds->response->id)) {
+		if (!prev_eap_round || (prev_eap_round->request->id != eap_round->response->id)) {
 			REDEBUG("Received Invalid TLS ACK");
 			return FR_TLS_INVALID;
 		}
@@ -420,7 +420,7 @@ static fr_tls_status_t eaptls_verify(eap_session_t *eap_session)
 	/*
 	 *	Calculate this fragment's length
 	 */
-	frag_len = eap_ds->response->length - header_len;
+	frag_len = eap_round->response->length - header_len;
 
 	/*
 	 *	The L bit (length included) is set to indicate the
@@ -631,7 +631,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_session_t *e
 	 *	TLS proper can decide what to do, then.
 	 */
 	if (tls_session->dirty_out.used > 0) {
-		eaptls_request(eap_session->eap_ds, tls_session);
+		eaptls_request(eap_session->this_round, tls_session);
 		return FR_TLS_HANDLED;
 	}
 
@@ -682,7 +682,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status, eap_session_t *e
 fr_tls_status_t eaptls_process(eap_session_t *eap_session)
 {
 	tls_session_t		*tls_session = (tls_session_t *) eap_session->opaque;
-	EAP_DS			*eap_ds = eap_session->eap_ds;
+	eap_round_t			*eap_round = eap_session->this_round;
 	fr_tls_status_t		status;
 	REQUEST			*request = eap_session->request;
 
@@ -733,7 +733,7 @@ fr_tls_status_t eaptls_process(eap_session_t *eap_session)
 	 *	of fragments" phase.
 	 */
 	case FR_TLS_REQUEST:
-		eaptls_request(eap_session->eap_ds, tls_session);
+		eaptls_request(eap_session->this_round, tls_session);
 		status = FR_TLS_HANDLED;
 		goto done;
 
@@ -757,13 +757,13 @@ fr_tls_status_t eaptls_process(eap_session_t *eap_session)
 	 *	If the length included flag is set, we need
 	 *	to skip over the 4 bytes message length field.
 	 */
- 	eap_tls_data = (eap_tls_data_t *)eap_ds->response->type.data;
+ 	eap_tls_data = (eap_tls_data_t *)eap_round->response->type.data;
 	if (TLS_LENGTH_INCLUDED(eap_tls_data->flags)) {
-		data = (eap_ds->response->type.data + 5);	/* flags + TLS-Length */
-		data_len = eap_ds->response->type.length - 5;	/* flags + TLS-Length */
+		data = (eap_round->response->type.data + 5);	/* flags + TLS-Length */
+		data_len = eap_round->response->type.length - 5;	/* flags + TLS-Length */
 	} else {
-		data = eap_ds->response->type.data + 1;		/* flags */
-		data_len = eap_ds->response->type.length - 1;	/* flags */
+		data = eap_round->response->type.data + 1;		/* flags */
+		data_len = eap_round->response->type.length - 1;	/* flags */
 	}
 
 	/*
@@ -817,12 +817,12 @@ fr_tls_status_t eaptls_process(eap_session_t *eap_session)
 /*
  *	compose the TLS reply packet in the EAP reply typedata
  */
-int eaptls_compose(EAP_DS *eap_ds, eap_tls_packet_t *reply)
+int eaptls_compose(eap_round_t *eap_round, eap_tls_packet_t *reply)
 {
 	uint8_t *ptr;
 
 	/*
-	 *	Don't set eap_ds->request->type.num, as the main EAP
+	 *	Don't set eap_round->request->type.num, as the main EAP
 	 *	eap_session will do that for us.  This allows the TLS
 	 *	module to be called from TTLS & PEAP.
 	 */
@@ -841,14 +841,14 @@ int eaptls_compose(EAP_DS *eap_ds, eap_tls_packet_t *reply)
 	 *	Identifier value in the subsequent fragment contained
 	 *	within an EAP- Reponse.
 	 */
-	eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t,
+	eap_round->request->type.data = talloc_array(eap_round->request, uint8_t,
 						  reply->length - TLS_HEADER_LEN + 1);
-	if (!eap_ds->request->type.data) return 0;
+	if (!eap_round->request->type.data) return 0;
 
 	/* EAPTLS Header length is excluded while computing EAP typelen */
-	eap_ds->request->type.length = reply->length - TLS_HEADER_LEN;
+	eap_round->request->type.length = reply->length - TLS_HEADER_LEN;
 
-	ptr = eap_ds->request->type.data;
+	ptr = eap_round->request->type.data;
 	*ptr++ = (uint8_t)(reply->flags & 0xFF);
 
 	if (reply->dlen) memcpy(ptr, reply->data, reply->dlen);
@@ -857,15 +857,15 @@ int eaptls_compose(EAP_DS *eap_ds, eap_tls_packet_t *reply)
 	case FR_TLS_ACK:
 	case FR_TLS_START:
 	case FR_TLS_REQUEST:
-		eap_ds->request->code = PW_EAP_REQUEST;
+		eap_round->request->code = PW_EAP_REQUEST;
 		break;
 
 	case FR_TLS_SUCCESS:
-		eap_ds->request->code = PW_EAP_SUCCESS;
+		eap_round->request->code = PW_EAP_SUCCESS;
 		break;
 
 	case FR_TLS_FAIL:
-		eap_ds->request->code = PW_EAP_FAILURE;
+		eap_round->request->code = PW_EAP_FAILURE;
 		break;
 
 	default:

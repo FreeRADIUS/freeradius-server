@@ -49,10 +49,10 @@ typedef struct eap_sim_server_state {
 static int eap_sim_compose(eap_session_t *eap_session)
 {
 	/* we will set the ID on requests, since we have to HMAC it */
-	eap_session->eap_ds->set_request_id = true;
+	eap_session->this_round->set_request_id = true;
 
 	return map_eapsim_basictypes(eap_session->request->reply,
-				     eap_session->eap_ds->request);
+				     eap_session->this_round->request);
 }
 
 static int eap_sim_sendstart(eap_session_t *eap_session)
@@ -430,7 +430,7 @@ static void eap_sim_stateenter(eap_session_t *eap_session,
 	 */
 	case EAPSIM_SERVER_SUCCESS:
 		eap_sim_sendsuccess(eap_session);
-		eap_session->eap_ds->request->code = PW_EAP_SUCCESS;
+		eap_session->this_round->request->code = PW_EAP_SUCCESS;
 		break;
 	/*
 	 *	Nothing to do for this transition.
@@ -623,8 +623,8 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	vps = eap_session->request->packet->vps;
 
 	success = unmap_eapsim_basictypes(eap_session->request->packet,
-					  eap_session->eap_ds->response->type.data,
-					  eap_session->eap_ds->response->type.length);
+					  eap_session->this_round->response->type.data,
+					  eap_session->this_round->response->type.length);
 
 	if (!success) return 0;
 

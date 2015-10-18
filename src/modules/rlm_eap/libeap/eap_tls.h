@@ -59,7 +59,7 @@ fr_tls_status_t eaptls_process(eap_session_t *eap_session);
 
 int	eaptls_success(eap_session_t *eap_session, int peap_flag) CC_HINT(nonnull);
 int	eaptls_fail(eap_session_t *eap_session, int peap_flag) CC_HINT(nonnull);
-int	eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn) CC_HINT(nonnull);
+int	eaptls_request(eap_round_t *eap_round, tls_session_t *ssn) CC_HINT(nonnull);
 
 
 /* MPPE key generation */
@@ -100,8 +100,8 @@ typedef struct tls_packet {
 eap_tls_packet_t	*eaptls_alloc(void);
 void		eaptls_free(eap_tls_packet_t **eap_tls_data_ptr);
 tls_session_t	*eaptls_session(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert);
-int		eaptls_start(EAP_DS *eap_ds, int peap);
-int		eaptls_compose(EAP_DS *eap_ds, eap_tls_packet_t *reply);
+int		eaptls_start(eap_round_t *eap_round, int peap);
+int		eaptls_compose(eap_round_t *eap_round, eap_tls_packet_t *reply);
 
 fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *key);
 

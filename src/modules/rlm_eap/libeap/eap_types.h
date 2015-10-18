@@ -53,7 +53,7 @@ typedef enum eap_method {
 	PW_EAP_7,			/* 7  - unused */
 	PW_EAP_8,			/* 8  - unused */
 	PW_EAP_RSA_PUBLIC_KEY,		/* 9 */
-	PW_EAP_DSS_UNILATERAL,		/* 10 */
+	PW_eap_round_tS_UNILATERAL,		/* 10 */
 	PW_EAP_KEA,			/* 11 */
 	PW_EAP_KEA_VALIDATE,		/* 12 */
 	PW_EAP_TLS,			/* 13 */

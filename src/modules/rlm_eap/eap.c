@@ -316,7 +316,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
  */
 eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 {
-	eap_type_data_t		*type = &eap_session->eap_ds->response->type;
+	eap_type_data_t		*type = &eap_session->this_round->response->type;
 	REQUEST			*request = eap_session->request;
 
 	eap_type_t		next = inst->default_method;
@@ -456,19 +456,19 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	VALUE_PAIR *vp;
 	eap_packet_raw_t *eap_packet;
 	REQUEST *request;
-	EAP_DS *eap_ds;
+	eap_round_t *eap_round;
 	eap_packet_t *reply;
 	int rcode;
 
 #ifndef NDEBUG
 	eap_session = talloc_get_type_abort(eap_session, eap_session_t);
 	request = talloc_get_type_abort(eap_session->request, REQUEST);
-	eap_ds = talloc_get_type_abort(eap_session->eap_ds, EAP_DS);
-	reply = talloc_get_type_abort(eap_ds->request, eap_packet_t);
+	eap_round = talloc_get_type_abort(eap_session->this_round, eap_round_t);
+	reply = talloc_get_type_abort(eap_round->request, eap_packet_t);
 #else
 	request = eap_session->request;
-	eap_ds = eap_session->eap_ds;
-	reply = eap_ds->request;
+	eap_round = eap_session->this_round;
+	reply = eap_round->request;
 #endif
 
 	/*
@@ -480,7 +480,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 *	where the client asks us to authenticate ourselves
 	 *	in stage 5.
 	 */
-	if (!eap_ds->set_request_id) {
+	if (!eap_round->set_request_id) {
 		/*
 		 *	Id serves to suppport request/response
 		 *	retransmission in the EAP layer and as such
@@ -491,7 +491,7 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 		 *	incremented, RFC2284 only makes the above-
 		 *	mentioned restriction.
 		 */
-		reply->id = eap_session->eap_ds->response->id;
+		reply->id = eap_session->this_round->response->id;
 
 		switch (reply->code) {
 			/*
@@ -526,13 +526,13 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 *	that the TTLS and PEAP modules can call it to do most
 	 *	of their dirty work.
 	 */
-	if (((eap_ds->request->code == PW_EAP_REQUEST) ||
-	     (eap_ds->request->code == PW_EAP_RESPONSE)) &&
-	    (eap_ds->request->type.num == 0)) {
+	if (((eap_round->request->code == PW_EAP_REQUEST) ||
+	     (eap_round->request->code == PW_EAP_RESPONSE)) &&
+	    (eap_round->request->type.num == 0)) {
 		rad_assert(eap_session->type >= PW_EAP_MD5);
 		rad_assert(eap_session->type < PW_EAP_MAX_TYPES);
 
-		eap_ds->request->type.num = eap_session->type;
+		eap_round->request->type.num = eap_session->type;
 	}
 
 	if (eap_wireformat(reply) == EAP_INVALID) {
@@ -865,9 +865,9 @@ void eap_fail(eap_session_t *eap_session)
 	fr_pair_delete_by_num(&eap_session->request->reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	fr_pair_delete_by_num(&eap_session->request->reply->vps, PW_STATE, 0, TAG_ANY);
 
-	talloc_free(eap_session->eap_ds->request);
-	eap_session->eap_ds->request = talloc_zero(eap_session->eap_ds, eap_packet_t);
-	eap_session->eap_ds->request->code = PW_EAP_FAILURE;
+	talloc_free(eap_session->this_round->request);
+	eap_session->this_round->request = talloc_zero(eap_session->this_round, eap_packet_t);
+	eap_session->this_round->request->code = PW_EAP_FAILURE;
 	eap_session->finished = true;
 	eap_compose(eap_session);
 }
@@ -877,7 +877,7 @@ void eap_fail(eap_session_t *eap_session)
  */
 void eap_success(eap_session_t *eap_session)
 {
-	eap_session->eap_ds->request->code = PW_EAP_SUCCESS;
+	eap_session->this_round->request->code = PW_EAP_SUCCESS;
 	eap_session->finished = true;
 	eap_compose(eap_session);
 }
@@ -1020,30 +1020,30 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
 /*
  *	Create our Request-Response data structure with the eap packet
  */
-static EAP_DS *eap_buildds(eap_session_t *eap_session,
+static eap_round_t *eap_buildds(eap_session_t *eap_session,
 			   eap_packet_raw_t **eap_packet_p)
 {
-	EAP_DS		*eap_ds = NULL;
+	eap_round_t		*eap_round = NULL;
 	eap_packet_raw_t	*eap_packet = *eap_packet_p;
 	int		typelen;
 	uint16_t	len;
 
-	if ((eap_ds = eap_ds_alloc(eap_session)) == NULL) {
+	if ((eap_round = eap_round_alloc(eap_session)) == NULL) {
 		return NULL;
 	}
 
-	eap_ds->response->packet = (uint8_t *) eap_packet;
-	(void) talloc_steal(eap_ds, eap_packet);
-	eap_ds->response->code = eap_packet->code;
-	eap_ds->response->id = eap_packet->id;
-	eap_ds->response->type.num = eap_packet->data[0];
+	eap_round->response->packet = (uint8_t *) eap_packet;
+	(void) talloc_steal(eap_round, eap_packet);
+	eap_round->response->code = eap_packet->code;
+	eap_round->response->id = eap_packet->id;
+	eap_round->response->type.num = eap_packet->data[0];
 
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
-	eap_ds->response->length = len;
+	eap_round->response->length = len;
 
 	/*
-	 *	We've eaten the eap packet into the eap_ds.
+	 *	We've eaten the eap packet into the eap_round.
 	 */
 	*eap_packet_p = NULL;
 
@@ -1060,14 +1060,14 @@ static EAP_DS *eap_buildds(eap_session_t *eap_session,
 		 *	eap_packet, typedata will be a ptr in packet
 		 *	to its typedata
 		 */
-		eap_ds->response->type.data = eap_ds->response->packet + 5/*code+id+length+type*/;
-		eap_ds->response->type.length = typelen;
+		eap_round->response->type.data = eap_round->response->packet + 5/*code+id+length+type*/;
+		eap_round->response->type.length = typelen;
 	} else {
-		eap_ds->response->type.length = 0;
-		eap_ds->response->type.data = NULL;
+		eap_round->response->type.length = 0;
+		eap_round->response->type.data = NULL;
 	}
 
-	return eap_ds;
+	return eap_round;
 }
 
 
@@ -1211,8 +1211,8 @@ eap_session_t *eap_eap_session(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	       }
 	}
 
-	eap_session->eap_ds = eap_buildds(eap_session, eap_packet_p);
-	if (!eap_session->eap_ds) {
+	eap_session->this_round = eap_buildds(eap_session, eap_packet_p);
+	if (!eap_session->this_round) {
 		goto error2;
 	}
 

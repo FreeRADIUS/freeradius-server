@@ -86,13 +86,13 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	 *	Compose the EAP-MD5 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmd5_compose(eap_session->eap_ds, reply);
+	eapmd5_compose(eap_session->this_round, reply);
 
 	/*
 	 *	We don't need to authorize the user at this point.
 	 *
 	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'eap_session->eap_ds', which will be given back
+	 *	stored in 'eap_session->this_round', which will be given back
 	 *	to us...
 	 */
 	eap_session->process = mod_process;
@@ -124,7 +124,7 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	/*
 	 *	Extract the EAP-MD5 packet.
 	 */
-	if (!(packet = eapmd5_extract(eap_session->eap_ds)))
+	if (!(packet = eapmd5_extract(eap_session->this_round)))
 		return 0;
 
 	/*
@@ -135,7 +135,7 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 		talloc_free(packet);
 		return 0;
 	}
-	reply->id = eap_session->eap_ds->request->id;
+	reply->id = eap_session->this_round->request->id;
 	reply->length = 0;
 
 	/*
@@ -152,7 +152,7 @@ static int mod_process(UNUSED void *arg, eap_session_t *eap_session)
 	 *	Compose the EAP-MD5 packet out of the data structure,
 	 *	and free it.
 	 */
-	eapmd5_compose(eap_session->eap_ds, reply);
+	eapmd5_compose(eap_session->this_round, reply);
 	talloc_free(packet);
 	return 1;
 }

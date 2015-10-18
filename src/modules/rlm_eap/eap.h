@@ -35,23 +35,17 @@ RCSIDH(eap_h, "$Id$")
 /* TLS configuration name */
 #define TLS_CONFIG_SECTION "tls-config"
 
-/*
- * EAP_DS contains all the received/sending information
- * response = Received EAP packet
- * request = Sending EAP packet
+/** Contains a pair of request and response packets
  *
- * Note: We are authentication server,
- *  we get ONLY EAP-Responses and
- *  we send EAP-Request/EAP-success/EAP-failure
+ * Helps with formulating/correlating requests to responses we've received.
  */
-typedef struct eap_ds {
-	eap_packet_t	*response;
-	eap_packet_t	*request;
+typedef struct eap_round {
+	eap_packet_t	*response;		//!< Packet we received from the peer.
+	eap_packet_t	*request;		//!< Packet we will send to the peer.
 	bool		set_request_id;
-} EAP_DS;
+} eap_round_t;
 
-
-typedef struct _eap_eap_session eap_session_t;
+typedef struct _eap_session eap_session_t;
 
 /*
  *	Function to process EAP packets.
@@ -74,8 +68,8 @@ typedef int (*eap_process_t)(void *instance, eap_session_t *eap_session);
  * timestamp  = timestamp when this eap_session was last used.
  * identity = Identity, as obtained, from EAP-Identity response.
  * request = RADIUS request data structure
- * prev_eap_ds = Previous EAP request, for which eap_ds contains the response.
- * eap_ds   = Current EAP response.
+ * prev_eap_round = Previous EAP request, for which eap_round contains the response.
+ * eap_round   = Current EAP response.
  * opaque   = EAP-Type holds some data that corresponds to the current
  *		EAP-request/response
  * free_opaque = To release memory held by opaque,
@@ -87,8 +81,8 @@ typedef int (*eap_process_t)(void *instance, eap_session_t *eap_session);
  * status   = finished/onhold/..
  */
 #define EAP_STATE_LEN (AUTH_VECTOR_LEN)
-struct _eap_eap_session {
-	struct _eap_eap_session *prev, *next;
+struct _eap_session {
+	eap_session_t	*prev, *next;
 	uint8_t		state[EAP_STATE_LEN];
 	fr_ipaddr_t	src_ipaddr;
 
@@ -102,8 +96,8 @@ struct _eap_eap_session {
 
 	char		*identity;	//!< User name from EAP-Identity
 
-	EAP_DS 		*prev_eap_ds;
-	EAP_DS 		*eap_ds;
+	eap_round_t 	*prev_round;
+	eap_round_t 	*this_round;
 
 	void 		*opaque;
 	void 		(*free_opaque)(void *opaque);

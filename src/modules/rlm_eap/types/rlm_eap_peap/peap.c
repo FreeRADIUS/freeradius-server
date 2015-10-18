@@ -41,7 +41,7 @@ static int eappeap_failure(eap_session_t *eap_session, tls_session_t *tls_sessio
 	RDEBUG2("FAILURE");
 
 	tlv_packet[0] = PW_EAP_REQUEST;
-	tlv_packet[1] = eap_session->eap_ds->response->id +1;
+	tlv_packet[1] = eap_session->this_round->response->id +1;
 	tlv_packet[2] = 0;
 	tlv_packet[3] = 11;	/* length of this packet */
 	tlv_packet[4] = PW_EAP_TLV;
@@ -76,7 +76,7 @@ static int eappeap_success(eap_session_t *eap_session, tls_session_t *tls_sessio
 	RDEBUG2("SUCCESS");
 
 	tlv_packet[0] = PW_EAP_REQUEST;
-	tlv_packet[1] = eap_session->eap_ds->response->id +1;
+	tlv_packet[1] = eap_session->this_round->response->id +1;
 	tlv_packet[2] = 0;
 	tlv_packet[3] = 11;	/* length of this packet */
 	tlv_packet[4] = PW_EAP_TLV;
@@ -103,7 +103,7 @@ static int eappeap_identity(eap_session_t *eap_session, tls_session_t *tls_sessi
 	eap_packet_raw_t eap_packet;
 
 	eap_packet.code = PW_EAP_REQUEST;
-	eap_packet.id = eap_session->eap_ds->response->id + 1;
+	eap_packet.id = eap_session->this_round->response->id + 1;
 	eap_packet.length[0] = 0;
 	eap_packet.length[1] = EAP_HEADER_LEN + 1;
 	eap_packet.data[0] = PW_EAP_IDENTITY;
@@ -261,7 +261,7 @@ static int eapmessage_verify(REQUEST *request,
  *	Convert a pseudo-EAP packet to a list of VALUE_PAIR's.
  */
 static VALUE_PAIR *eap2vp(UNUSED REQUEST *request, RADIUS_PACKET *packet,
-			  EAP_DS *eap_ds,
+			  eap_round_t *eap_round,
 			  uint8_t const *data, size_t data_len)
 {
 	size_t total;
@@ -286,7 +286,7 @@ static VALUE_PAIR *eap2vp(UNUSED REQUEST *request, RADIUS_PACKET *packet,
 	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->vp_length);
 
 	p[0] = PW_EAP_RESPONSE;
-	p[1] = eap_ds->response->id;
+	p[1] = eap_round->response->id;
 	p[2] = (data_len + EAP_HEADER_LEN) >> 8;
 	p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
 
@@ -656,7 +656,7 @@ static int CC_HINT(nonnull) eappeap_postproxy(eap_session_t *eap_session, void *
 
 	case RLM_MODULE_HANDLED:
 		RDEBUG2("Reply was handled");
-		eaptls_request(eap_session->eap_ds, tls_session);
+		eaptls_request(eap_session->this_round, tls_session);
 		request->proxy_reply->code = PW_CODE_ACCESS_CHALLENGE;
 		return 1;
 
@@ -739,7 +739,7 @@ rlm_rcode_t eappeap_process(eap_session_t *eap_session, tls_session_t *tls_sessi
 	unsigned int	data_len;
 
 	REQUEST *request = eap_session->request;
-	EAP_DS *eap_ds = eap_session->eap_ds;
+	eap_round_t *eap_round = eap_session->this_round;
 
 	/*
 	 *	Just look at the buffer directly, without doing
@@ -924,7 +924,7 @@ rlm_rcode_t eappeap_process(eap_session_t *eap_session, tls_session_t *tls_sessi
 		vp->vp_octets = q = talloc_array(vp, uint8_t, vp->vp_length);
 
 		q[0] = PW_EAP_RESPONSE;
-		q[1] = eap_ds->response->id;
+		q[1] = eap_round->response->id;
 		q[2] = (len >> 8) & 0xff;
 		q[3] = len & 0xff;
 		q[4] = PW_EAP_IDENTITY;
@@ -943,7 +943,7 @@ rlm_rcode_t eappeap_process(eap_session_t *eap_session, tls_session_t *tls_sessi
 
 	case PEAP_STATUS_PHASE2:
 		fake->packet->vps = eap2vp(request, fake->packet,
-					   eap_ds, data, data_len);
+					   eap_round, data, data_len);
 		if (!fake->packet->vps) {
 			talloc_free(fake);
 			RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");

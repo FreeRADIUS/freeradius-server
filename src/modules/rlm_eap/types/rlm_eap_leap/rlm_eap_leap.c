@@ -54,12 +54,12 @@ static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_session_
 		return 0;
 	}
 
-	reply = eapleap_initiate(request, eap_session->eap_ds, eap_session->request->username);
+	reply = eapleap_initiate(request, eap_session->this_round, eap_session->request->username);
 	if (!reply) {
 		return 0;
 	}
 
-	eapleap_compose(request, eap_session->eap_ds, reply);
+	eapleap_compose(request, eap_session->this_round, reply);
 
 	eap_session->opaque = session = talloc(eap_session, leap_session_t);
 	if (!eap_session->opaque) {
@@ -105,7 +105,7 @@ static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 	/*
 	 *	Extract the LEAP packet.
 	 */
-	if (!(packet = eapleap_extract(request, eap_session->eap_ds))) {
+	if (!(packet = eapleap_extract(request, eap_session->this_round))) {
 		return 0;
 	}
 
@@ -139,18 +139,18 @@ static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 		 *	any LEAP packet.  So we return here.
 		 */
 		if (!rcode) {
-			eap_session->eap_ds->request->code = PW_EAP_FAILURE;
+			eap_session->this_round->request->code = PW_EAP_FAILURE;
 			talloc_free(packet);
 			return 0;
 		}
 
-		eap_session->eap_ds->request->code = PW_EAP_SUCCESS;
+		eap_session->this_round->request->code = PW_EAP_SUCCESS;
 
 		/*
 		 *	Do this only for Success.
 		 */
-		eap_session->eap_ds->request->id = eap_session->eap_ds->response->id + 1;
-		eap_session->eap_ds->set_request_id = true;
+		eap_session->this_round->request->id = eap_session->this_round->response->id + 1;
+		eap_session->this_round->set_request_id = true;
 
 		/*
 		 *	LEAP requires a challenge in stage 4, not
@@ -186,7 +186,7 @@ static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 		return 0;
 	}
 
-	eapleap_compose(request, eap_session->eap_ds, reply);
+	eapleap_compose(request, eap_session->this_round, reply);
 	talloc_free(reply);
 	return 1;
 }

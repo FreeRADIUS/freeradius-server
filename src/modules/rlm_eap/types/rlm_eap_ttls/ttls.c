@@ -902,7 +902,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_session_t *eap_session, void *
 
 	case RLM_MODULE_HANDLED:
 		RDEBUG("Reply was handled");
-		eaptls_request(eap_session->eap_ds, tls_session);
+		eaptls_request(eap_session->this_round, tls_session);
 		request->proxy_reply->code = PW_CODE_ACCESS_CHALLENGE;
 		return 1;
 

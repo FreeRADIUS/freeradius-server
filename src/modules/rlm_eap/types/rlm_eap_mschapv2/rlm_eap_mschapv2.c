@@ -90,13 +90,13 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_sess
 	uint8_t *ptr;
 	int16_t length;
 	mschapv2_header_t *hdr;
-	EAP_DS *eap_ds = eap_session->eap_ds;
+	eap_round_t *eap_round = eap_session->this_round;
 	REQUEST *request = eap_session->request;
 
 	rad_assert(inst);
 
-	eap_ds->request->code = PW_EAP_REQUEST;
-	eap_ds->request->type.num = PW_EAP_MSCHAPV2;
+	eap_round->request->code = PW_EAP_REQUEST;
+	eap_round->request->type.num = PW_EAP_MSCHAPV2;
 
 	/*
 	 *	Always called with vendor Microsoft
@@ -119,21 +119,21 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_sess
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
 		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(inst->identity);
-		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
+		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
 
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (!eap_ds->request->type.data) {
+		if (!eap_round->request->type.data) {
 			return 0;
 		}
-		eap_ds->request->type.length = length;
+		eap_round->request->type.length = length;
 
-		ptr = eap_ds->request->type.data;
+		ptr = eap_round->request->type.data;
 		hdr = (mschapv2_header_t *) ptr;
 
 		hdr->opcode = PW_EAP_MSCHAPV2_CHALLENGE;
-		hdr->mschapv2_id = eap_ds->response->id + 1;
+		hdr->mschapv2_id = eap_round->response->id + 1;
 		length = htons(length);
 		memcpy(hdr->ms_length, &length, sizeof(uint16_t));
 		hdr->value_size = MSCHAPV2_CHALLENGE_LEN;
@@ -162,43 +162,43 @@ static int eapmschapv2_compose(rlm_eap_mschapv2_t *inst, eap_session_t *eap_sess
 		 */
 		RDEBUG2("MSCHAP Success");
 		length = 46;
-		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
+		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (!eap_ds->request->type.data) {
+		if (!eap_round->request->type.data) {
 			return 0;
 		}
-		memset(eap_ds->request->type.data, 0, length);
-		eap_ds->request->type.length = length;
+		memset(eap_round->request->type.data, 0, length);
+		eap_round->request->type.length = length;
 
-		eap_ds->request->type.data[0] = PW_EAP_MSCHAPV2_SUCCESS;
-		eap_ds->request->type.data[1] = eap_ds->response->id;
+		eap_round->request->type.data[0] = PW_EAP_MSCHAPV2_SUCCESS;
+		eap_round->request->type.data[1] = eap_round->response->id;
 		length = htons(length);
-		memcpy((eap_ds->request->type.data + 2), &length, sizeof(uint16_t));
-		memcpy((eap_ds->request->type.data + 4), reply->vp_strvalue + 1, 42);
+		memcpy((eap_round->request->type.data + 2), &length, sizeof(uint16_t));
+		memcpy((eap_round->request->type.data + 4), reply->vp_strvalue + 1, 42);
 		break;
 
 	case PW_MSCHAP_ERROR:
 		REDEBUG("MSCHAP Failure");
 		length = 4 + reply->vp_length - 1;
-		eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t, length);
+		eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, length);
 
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (!eap_ds->request->type.data) return 0;
-		memset(eap_ds->request->type.data, 0, length);
-		eap_ds->request->type.length = length;
+		if (!eap_round->request->type.data) return 0;
+		memset(eap_round->request->type.data, 0, length);
+		eap_round->request->type.length = length;
 
-		eap_ds->request->type.data[0] = PW_EAP_MSCHAPV2_FAILURE;
-		eap_ds->request->type.data[1] = eap_ds->response->id;
+		eap_round->request->type.data[0] = PW_EAP_MSCHAPV2_FAILURE;
+		eap_round->request->type.data[1] = eap_round->response->id;
 		length = htons(length);
-		memcpy((eap_ds->request->type.data + 2), &length, sizeof(uint16_t));
+		memcpy((eap_round->request->type.data + 2), &length, sizeof(uint16_t));
 		/*
 		 *	Copy the entire failure message.
 		 */
-		memcpy((eap_ds->request->type.data + 4),
+		memcpy((eap_round->request->type.data + 4),
 		       reply->vp_strvalue + 1, reply->vp_length - 1);
 		break;
 
@@ -282,7 +282,7 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 	 *	We don't need to authorize the user at this point.
 	 *
 	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'eap_session->eap_ds', which will be given back
+	 *	stored in 'eap_session->this_round', which will be given back
 	 *	to us...
 	 */
 	eap_session->process = mod_process;
@@ -379,7 +379,7 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 	size_t length;
 	char *q;
 	mschapv2_opaque_t *data;
-	EAP_DS *eap_ds = eap_session->eap_ds;
+	eap_round_t *eap_round = eap_session->this_round;
 	VALUE_PAIR *challenge, *response, *name;
 	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
 	REQUEST *request = eap_session->request;
@@ -389,12 +389,12 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 	/*
 	 *	Sanity check the response.
 	 */
-	if (eap_ds->response->length <= 5) {
+	if (eap_round->response->length <= 5) {
 		REDEBUG("corrupted data");
 		return 0;
 	}
 
-	ccode = eap_ds->response->type.data[0];
+	ccode = eap_round->response->type.data[0];
 
 	switch (data->code) {
 	case PW_EAP_MSCHAPV2_FAILURE:
@@ -411,7 +411,7 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 		 */
 		if (ccode == PW_EAP_MSCHAPV2_CHGPASSWD) {
 			VALUE_PAIR *cpw;
-			int mschap_id = eap_ds->response->type.data[1];
+			int mschap_id = eap_round->response->type.data[1];
 			int copied = 0 ,seq = 1;
 
 			RDEBUG2("Password change packet received");
@@ -426,7 +426,7 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 			cpw->vp_octets = p = talloc_array(cpw, uint8_t, cpw->vp_length);
 			p[0] = 7;
 			p[1] = mschap_id;
-			memcpy(p + 2, eap_ds->response->type.data + 520, 66);
+			memcpy(p + 2, eap_round->response->type.data + 520, 66);
 
 			/*
 			 * break the encoded password into VPs (3 of them)
@@ -447,7 +447,7 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 				p[2] = 0;
 				p[3] = seq++;
 
-				memcpy(p + 4, eap_ds->response->type.data + 4 + copied, to_copy);
+				memcpy(p + 4, eap_round->response->type.data + 4 + copied, to_copy);
 				copied += to_copy;
 			}
 
@@ -470,7 +470,7 @@ static int CC_HINT(nonnull) mod_process(void *arg, eap_session_t *eap_session)
 
 failure:
 		request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-		eap_ds->request->code = PW_EAP_FAILURE;
+		eap_round->request->code = PW_EAP_FAILURE;
 		return 1;
 
 	case PW_EAP_MSCHAPV2_SUCCESS:
@@ -482,7 +482,7 @@ failure:
 
 		switch (ccode) {
 		case PW_EAP_MSCHAPV2_SUCCESS:
-			eap_ds->request->code = PW_EAP_SUCCESS;
+			eap_round->request->code = PW_EAP_SUCCESS;
 
 			fr_pair_list_move_by_num(request->reply, &request->reply->vps, &data->mppe_keys, 0, 0, TAG_ANY);
 			/* FALL-THROUGH */
@@ -528,7 +528,7 @@ failure:
 	 *	MS-CHAP ident, MS-CHAP data length (2),
 	 *	MS-CHAP value length.
 	 */
-	if (eap_ds->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
+	if (eap_round->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
 		REDEBUG("Response is too short");
 		return 0;
 	}
@@ -538,8 +538,8 @@ failure:
 	 *	which is supposed to be the response (48
 	 *	bytes) plus 1 byte of flags at the end.
 	 */
-	if (eap_ds->response->type.data[4] != 49) {
-		REDEBUG("Response is of incorrect length %d", eap_ds->response->type.data[4]);
+	if (eap_round->response->type.data[4] != 49) {
+		REDEBUG("Response is of incorrect length %d", eap_round->response->type.data[4]);
 		return 0;
 	}
 
@@ -547,7 +547,7 @@ failure:
 	 *	The MS-Length field is 5 + value_size + length
 	 *	of name, which is put after the response.
 	 */
-	length = (eap_ds->response->type.data[2] << 8) | eap_ds->response->type.data[3];
+	length = (eap_round->response->type.data[2] << 8) | eap_round->response->type.data[3];
 	if ((length < (5 + 49)) || (length > (256 + 5 + 49))) {
 		REDEBUG("Response contains contradictory length %zu %d", length, 5 + 49);
 		return 0;
@@ -571,9 +571,9 @@ failure:
 	response->vp_length = MSCHAPV2_RESPONSE_LEN;
 	response->vp_octets = p = talloc_array(response, uint8_t, response->vp_length);
 
-	p[0] = eap_ds->response->type.data[1];
-	p[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
-	memcpy(p + 2, &eap_ds->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
+	p[0] = eap_round->response->type.data[1];
+	p[1] = eap_round->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
+	memcpy(p + 2, &eap_round->response->type.data[5], MSCHAPV2_RESPONSE_LEN - 2);
 
 	name = pair_make_request("MS-CHAP-User-Name", NULL, T_OP_EQ);
 	if (!name) return 0;
@@ -583,7 +583,7 @@ failure:
 	 */
 	name->vp_length = length - 49 - 5;
 	name->vp_strvalue = q = talloc_array(name, char, name->vp_length + 1);
-	memcpy(q, &eap_ds->response->type.data[4 + MSCHAPV2_RESPONSE_LEN], name->vp_length);
+	memcpy(q, &eap_round->response->type.data[4 + MSCHAPV2_RESPONSE_LEN], name->vp_length);
 	q[name->vp_length] = '\0';
 
 packet_ready:
@@ -707,7 +707,7 @@ packet_ready:
 		}
 		data->code = PW_EAP_MSCHAPV2_FAILURE;
 	} else {
-		eap_ds->request->code = PW_EAP_FAILURE;
+		eap_round->request->code = PW_EAP_FAILURE;
 		return 1;
 	}
 

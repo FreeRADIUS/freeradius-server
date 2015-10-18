@@ -46,7 +46,7 @@ typedef struct md5_packet {
 
 /* function declarations here */
 
-int 		eapmd5_compose(EAP_DS *auth, MD5_PACKET *reply);
-MD5_PACKET 	*eapmd5_extract(EAP_DS *auth);
+int 		eapmd5_compose(eap_round_t *auth, MD5_PACKET *reply);
+MD5_PACKET 	*eapmd5_extract(eap_round_t *auth);
 int 		eapmd5_verify(MD5_PACKET *pkt, VALUE_PAIR* pwd, uint8_t *ch);
 #endif /*_EAP_MD5_H*/

@@ -90,7 +90,7 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 {
 	char challenge_str[1024];
 	int length;
-	EAP_DS *eap_ds = eap_session->eap_ds;
+	eap_round_t *eap_round = eap_session->this_round;
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) instance;
 
 	if (radius_xlat(challenge_str, sizeof(challenge_str), eap_session->request, inst->challenge, NULL, NULL) < 0) {
@@ -102,22 +102,22 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 	/*
 	 *	We're sending a request...
 	 */
-	eap_ds->request->code = PW_EAP_REQUEST;
+	eap_round->request->code = PW_EAP_REQUEST;
 
-	eap_ds->request->type.data = talloc_array(eap_ds->request,
+	eap_round->request->type.data = talloc_array(eap_round->request,
 						  uint8_t, length);
-	if (!eap_ds->request->type.data) {
+	if (!eap_round->request->type.data) {
 		return 0;
 	}
 
-	memcpy(eap_ds->request->type.data, challenge_str, length);
-	eap_ds->request->type.length = length;
+	memcpy(eap_round->request->type.data, challenge_str, length);
+	eap_round->request->type.length = length;
 
 	/*
 	 *	We don't need to authorize the user at this point.
 	 *
 	 *	We also don't need to keep the challenge, as it's
-	 *	stored in 'eap_session->eap_ds', which will be given back
+	 *	stored in 'eap_session->this_round', which will be given back
 	 *	to us...
 	 */
 	eap_session->process = mod_process;
@@ -132,7 +132,7 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 static int mod_process(void *instance, eap_session_t *eap_session)
 {
 	VALUE_PAIR *vp;
-	EAP_DS *eap_ds = eap_session->eap_ds;
+	eap_round_t *eap_round = eap_session->this_round;
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) instance;
 	REQUEST *request = eap_session->request;
 
@@ -144,9 +144,9 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 	 *	Sanity check the response.  We need at least one byte
 	 *	of data.
 	 */
-	if (eap_ds->response->length <= 4) {
+	if (eap_round->response->length <= 4) {
 		ERROR("rlm_eap_gtc: corrupted data");
-		eap_ds->request->code = PW_EAP_FAILURE;
+		eap_round->request->code = PW_EAP_FAILURE;
 		return 0;
 	}
 
@@ -154,10 +154,10 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 	if ((rad_debug_lvl > 2) && fr_log_fp) {
 		int i;
 
-		for (i = 0; i < eap_ds->response->length - 4; i++) {
+		for (i = 0; i < eap_round->response->length - 4; i++) {
 			if ((i & 0x0f) == 0) fprintf(fr_log_fp, "%d: ", i);
 
-			fprintf(fr_log_fp, "%02x ", eap_ds->response->type.data[i]);
+			fprintf(fr_log_fp, "%02x ", eap_round->response->type.data[i]);
 
 			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 		}
@@ -174,20 +174,20 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 		vp = fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 		if (!vp) {
 			REDEBUG2("Cleartext-Password is required for authentication");
-			eap_ds->request->code = PW_EAP_FAILURE;
+			eap_round->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
 
-		if (eap_ds->response->type.length != vp->vp_length) {
-			REDEBUG2("Passwords are of different length. %u %u", (unsigned) eap_ds->response->type.length, (unsigned) vp->vp_length);
-			eap_ds->request->code = PW_EAP_FAILURE;
+		if (eap_round->response->type.length != vp->vp_length) {
+			REDEBUG2("Passwords are of different length. %u %u", (unsigned) eap_round->response->type.length, (unsigned) vp->vp_length);
+			eap_round->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
 
-		if (memcmp(eap_ds->response->type.data,
+		if (memcmp(eap_round->response->type.data,
 			   vp->vp_strvalue, vp->vp_length) != 0) {
 			REDEBUG2("Passwords are different");
-			eap_ds->request->code = PW_EAP_FAILURE;
+			eap_round->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
 
@@ -195,7 +195,7 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 		 *	EAP packets can be ~64k long maximum, and
 		 *	we don't like that.
 		 */
-	} else if (eap_ds->response->type.length <= 128) {
+	} else if (eap_round->response->type.length <= 128) {
 		int rcode;
 		char *p;
 
@@ -209,10 +209,10 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 		if (!vp) {
 			return 0;
 		}
-		vp->vp_length = eap_ds->response->type.length;
+		vp->vp_length = eap_round->response->type.length;
 		vp->vp_strvalue = p = talloc_array(vp, char, vp->vp_length + 1);
 		vp->type = VT_DATA;
-		memcpy(p, eap_ds->response->type.data, vp->vp_length);
+		memcpy(p, eap_round->response->type.data, vp->vp_length);
 		p[vp->vp_length] = 0;
 
 		/*
@@ -226,18 +226,18 @@ static int mod_process(void *instance, eap_session_t *eap_session)
 		 */
 		rcode = process_authenticate(inst->auth_type, request);
 		if (rcode != RLM_MODULE_OK) {
-			eap_ds->request->code = PW_EAP_FAILURE;
+			eap_round->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
 
 	} else {
 		ERROR("rlm_eap_gtc: Response is too large to understand");
-		eap_ds->request->code = PW_EAP_FAILURE;
+		eap_round->request->code = PW_EAP_FAILURE;
 		return 0;
 
 	}
 
-	eap_ds->request->code = PW_EAP_SUCCESS;
+	eap_round->request->code = PW_EAP_SUCCESS;
 
 	return 1;
 }
