@@ -912,7 +912,8 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		return eap_tls_success(eap_session, 0);
+		if (eap_tls_success(eap_session, 0) < 0) return 0;
+		return 1;
 
 	default:
 		RDEBUG("Reply was unknown");

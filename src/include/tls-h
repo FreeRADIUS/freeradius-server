@@ -178,6 +178,11 @@ typedef struct _tls_session_t {
  *      S = EAP-TLS start
  *      R = Reserved
  */
+#define TLS_RESERVED4(x) 	(((x) & 0x01) != 0)
+#define TLS_RESERVED3(x) 	(((x) & 0x02) != 0)
+#define TLS_RESERVED2(x) 	(((x) & 0x04) != 0)
+#define TLS_RESERVED1(x) 	(((x) & 0x08) != 0)
+#define TLS_RESERVED0(x) 	(((x) & 0x10) != 0)
 #define TLS_START(x) 		(((x) & 0x20) != 0)
 #define TLS_MORE_FRAGMENTS(x) 	(((x) & 0x40) != 0)
 #define TLS_LENGTH_INCLUDED(x) 	(((x) & 0x80) != 0)

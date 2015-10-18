@@ -102,8 +102,8 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 
 #define EAPTLS_MPPE_KEY_LEN     32
 
-/*
- *	Generate keys according to RFC 2716 and add to reply
+/** Generate keys according to RFC 2716 and add to the reply
+ *
  */
 void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 {
@@ -183,7 +183,7 @@ void eap_ttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 
 /*
  *	Actually generates EAP-Session-Id, which is an internal server
- *	attribute.  Not all systems want to send EAP-Key-Nam
+ *	attribute.  Not all systems want to send EAP-Key-Name
  */
 void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 {

@@ -84,10 +84,8 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_sessi
  */
 static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 {
-	int		status;
 	tls_session_t	*tls_session;
 	rlm_eap_tls_t	*inst;
-	REQUEST		*request = eap_session->request;
 	VALUE_PAIR	*vp;
 	bool		client_cert;
 
@@ -123,13 +121,10 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	status = eap_tls_start(eap_session->this_round, tls_session->peap_flag);
-	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
-		REDEBUG("[eap-tls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
-	} else {
-		RDEBUG2("[eap-tls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	if (eap_tls_start(eap_session->this_round, tls_session->peap_flag) < 0) {
+		talloc_free(tls_session);
+		return 0;
 	}
-	if (status == 0) return 0;
 
 	eap_session->process = mod_process;
 
@@ -252,7 +247,8 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 	/*
 	 *	Success: Automatically return MPPE keys.
 	 */
-	return eap_tls_success(eap_session, 0);
+	if (eap_tls_success(eap_session, 0) < 0) return 0;
+	return 1;
 }
 
 /*

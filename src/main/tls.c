@@ -3233,6 +3233,9 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	return conf;
 }
 
+/** Sets up TLS session so that it can later be resumed
+ *
+ */
 int tls_success(tls_session_t *session, REQUEST *request)
 {
 	VALUE_PAIR		*vp;
@@ -3253,8 +3256,7 @@ int tls_success(tls_session_t *session, REQUEST *request)
 	if ((!session->allow_session_resumption) ||
 	    (((vp = fr_pair_find_by_num(request->config, PW_ALLOW_SESSION_RESUMPTION, 0, TAG_ANY)) != NULL) &&
 	     (vp->vp_integer == 0))) {
-		SSL_CTX_remove_session(session->ctx,
-				       session->ssl->session);
+		SSL_CTX_remove_session(session->ctx, session->ssl->session);
 		session->allow_session_resumption = false;
 
 		/*
@@ -3319,12 +3321,11 @@ fr_tls_status_t tls_application_data(tls_session_t *session, REQUEST *request)
 	if (err < 0) {
 		int code;
 
-		RDEBUG("SSL_read Error");
-
 		code = SSL_get_error(session->ssl, err);
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
-			DEBUG("Error in fragmentation logic: SSL_WANT_READ");
+			RWDEBUG("Peer indicated record was complete, but OpenSSL returned SSL_WANT_READ. "
+				"Attempting to continue");
 			return FR_TLS_RECORD_FRAGMENT_MORE;
 
 		case SSL_ERROR_WANT_WRITE:

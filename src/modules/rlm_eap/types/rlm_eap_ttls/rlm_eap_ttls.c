@@ -151,20 +151,14 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_sessi
  */
 static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 {
-	int		status;
 	tls_session_t	*tls_session;
 	rlm_eap_ttls_t	*inst;
 	VALUE_PAIR	*vp;
 	bool		client_cert;
-	REQUEST		*request = eap_session->request;
 
 	inst = type_arg;
 
 	eap_session->tls = true;
-
-	/*
-	 *	Check if we need a client certificate.
-	 */
 
 	/*
 	 *	EAP-TLS-Require-Client-Cert attribute will override
@@ -178,9 +172,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	}
 
 	tls_session = eap_tls_session(eap_session, inst->tls_conf, client_cert);
-	if (!tls_session) {
-		return 0;
-	}
+	if (!tls_session) return 0;
 
 	eap_session->opaque = ((void *)tls_session);
 
@@ -193,13 +185,10 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	status = eap_tls_start(eap_session->this_round, tls_session->peap_flag);
-	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
-		REDEBUG("[eap-tls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
-	} else {
-		RDEBUG2("[eap-tls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+	if (eap_tls_start(eap_session->this_round, tls_session->peap_flag) < 0) {
+		talloc_free(tls_session);
+		return 0;
 	}
-	if (status == 0) return 0;
 
 	eap_session->process = mod_process;
 
@@ -262,7 +251,8 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 			/*
 			 *	Success: Automatically return MPPE keys.
 			 */
-			return eap_tls_success(eap_session, 0);
+			if (eap_tls_success(eap_session, 0) < 0) return 0;
+			return 1;
 		} else {
 			eap_tls_request(eap_session->this_round, tls_session);
 		}
@@ -324,7 +314,8 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		 *	Success: Automatically return MPPE keys.
 		 */
 	case PW_CODE_ACCESS_ACCEPT:
-		return eap_tls_success(eap_session, 0);
+		if (eap_tls_success(eap_session, 0) < 0) return 0;
+		return 1;
 
 		/*
 		 *	No response packet, MUST be proxying it.
