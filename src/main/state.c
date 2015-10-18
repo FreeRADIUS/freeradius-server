@@ -123,6 +123,28 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 	talloc_free(entry);
 }
 
+void fr_state_free(fr_state_t *state)
+{
+	rbtree_t *my_tree;
+
+	if (!state) return;
+
+	PTHREAD_MUTEX_LOCK(&state->mutex);
+
+	/*
+	 *	Tell the talloc callback to NOT delete the entry from
+	 *	the tree.  We're deleting the entire tree.
+	 */
+	my_tree = state->tree;
+	state->tree = NULL;
+
+	rbtree_free(my_tree);
+	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+	if (main_config.spawn_workers) pthread_mutex_destroy(&state->mutex);
+
+	if (state == global_state) global_state = NULL;
+}
+
 fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions)
 {
 	fr_state_t *state;
@@ -143,9 +165,11 @@ fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions)
 	}
 
 #ifdef HAVE_PTHREAD_H
-	if (pthread_mutex_init(&state->mutex, NULL) != 0) {
-		talloc_free(state);
-		return NULL;
+	if (main_config.spawn_workers) {
+		if (pthread_mutex_init(&state->mutex, NULL) != 0) {
+			talloc_free(state);
+			return NULL;
+		}
 	}
 #endif
 
@@ -158,28 +182,7 @@ fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions)
 	return state;
 }
 
-void fr_state_delete(fr_state_t *state)
-{
-	rbtree_t *my_tree;
 
-	if (!state) return;
-
-	PTHREAD_MUTEX_LOCK(&state->mutex);
-
-	/*
-	 *	Tell the talloc callback to NOT delete the entry from
-	 *	the tree.  We're deleting the entire tree.
-	 */
-	my_tree = state->tree;
-	state->tree = NULL;
-
-	rbtree_free(my_tree);
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
-
-	if (state == global_state) global_state = NULL;
-
-	talloc_free(state);
-}
 
 /*
  *	Create a new entry.  Called with the mutex held.

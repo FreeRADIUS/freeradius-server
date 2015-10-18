@@ -952,7 +952,7 @@ finish:
 
 	xlat_free();		/* modules may have xlat's */
 
-	fr_state_delete(state);
+	fr_state_free(state);
 
 	/*
 	 *	Free the configuration items.
