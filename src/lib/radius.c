@@ -91,8 +91,9 @@ typedef struct radius_packet_t {
   uint8_t	data[1];
 } radius_packet_t;
 
-static fr_randctx fr_rand_pool;	/* across multiple calls */
-static int fr_rand_initialized = 0;
+static _fr_thread_local fr_randctx fr_rand_pool;		//!< A pool of pre-generated random integers
+static _fr_thread_local bool fr_rand_initialized = false;
+
 static unsigned int salt_offset = 0;
 static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
 
