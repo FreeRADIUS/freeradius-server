@@ -1133,6 +1133,23 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 				} /* attr to literal comparison */
 
 				/*
+				 *	The RHS will turn into... something.  Allow for prefixes
+				 *	there, too.
+				 */
+				if ((c->data.map->lhs->type == TMPL_TYPE_ATTR) &&
+				    ((c->data.map->rhs->type == TMPL_TYPE_XLAT) ||
+				     (c->data.map->rhs->type == TMPL_TYPE_XLAT_STRUCT) ||
+				     (c->data.map->rhs->type == TMPL_TYPE_EXEC))) {
+					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_IPV4_ADDR) {
+						c->cast = dict_attrbyvalue(PW_CAST_BASE + PW_TYPE_IPV4_PREFIX, 0);
+					}
+
+					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_IPV6_ADDR) {
+						c->cast = dict_attrbyvalue(PW_CAST_BASE + PW_TYPE_IPV6_PREFIX, 0);
+					}
+				}
+
+				/*
 				 *	If the LHS is a bare word, AND it looks like
 				 *	an attribute, try to parse it as such.
 				 *

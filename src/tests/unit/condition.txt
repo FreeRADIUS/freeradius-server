@@ -671,3 +671,9 @@ data <ipv4prefix>&NAS-IP-Address < &PMIP6-Home-IPv4-HoA
 
 condition &NAS-IP-Address < 192.168/16
 data <ipv4prefix>&NAS-IP-Address < 192.168.0.0/16
+
+condition &NAS-IP-Address < "%{echo: 192.168/16}"
+data <ipv4prefix>&NAS-IP-Address < "%{echo: 192.168/16}"
+
+condition &NAS-IP-Address < `/bin/echo 192.168/16`
+data <ipv4prefix>&NAS-IP-Address < `/bin/echo 192.168/16`
