@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/protocol.h>
 #include <freeradius-devel/modpriv.h>
+#include <freeradius-devel/net.h>
 
 #include <freeradius-devel/detail.h>
 
