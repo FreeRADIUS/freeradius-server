@@ -106,7 +106,7 @@ typedef void (*sig_t)(int);
 
 #ifndef NDEBUG
 #  define FREE_MAGIC (0xF4EEF4EE)
-#end
+#endif
 
 #ifdef WITH_VERIFY_PTR
 /*
