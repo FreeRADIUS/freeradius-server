@@ -65,7 +65,7 @@ void eap_round_free(eap_round_t **eap_round_p)
 	*eap_round_p = NULL;
 }
 
-static int _eap_eap_session_free(eap_session_t *eap_session)
+static int _eap_session_free(eap_session_t *eap_session)
 {
 	if (eap_session->identity) {
 		talloc_free(eap_session->identity);
@@ -111,7 +111,7 @@ static int _eap_eap_session_free(eap_session_t *eap_session)
 /*
  * Allocate a new eap_session_t
  */
-eap_session_t *eap_eap_session_alloc(rlm_eap_t *inst)
+eap_session_t *eap_session_alloc(rlm_eap_t *inst)
 {
 	eap_session_t	*eap_session;
 
@@ -123,7 +123,7 @@ eap_session_t *eap_eap_session_alloc(rlm_eap_t *inst)
 	eap_session->inst = inst;
 
 	/* Doesn't need to be inside the critical region */
-	talloc_set_destructor(eap_session, _eap_eap_session_free);
+	talloc_set_destructor(eap_session, _eap_session_free);
 
 	return eap_session;
 }

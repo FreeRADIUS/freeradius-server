@@ -199,7 +199,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	"swallowed" into the eap_session, so we can't access it after
 	 *	this call.
 	 */
-	eap_session = eap_eap_session(inst, &eap_packet, request);
+	eap_session = eap_session(inst, &eap_packet, request);
 	if (!eap_session) {
 		RDEBUG2("Failed in eap_session");
 		return RLM_MODULE_INVALID;
@@ -656,7 +656,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		return RLM_MODULE_FAIL;
 	}
 
-	eap_session = eap_eap_session(inst, &eap_packet, request);
+	eap_session = eap_session(inst, &eap_packet, request);
 	if (!eap_session) {
 		RDEBUG2("Failed to get eap_session, probably already removed, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
