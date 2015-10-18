@@ -1079,8 +1079,8 @@ static eap_round_t *eap_buildds(eap_session_t *eap_session,
  * username contains REQUEST->username which might have been stripped.
  * identity contains the one sent in EAP-Identity response
  */
-eap_session_t *eap_session(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
-			   REQUEST *request)
+eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
+			       REQUEST *request)
 {
 	eap_session_t	*eap_session = NULL;
 	eap_packet_raw_t *eap_packet;
