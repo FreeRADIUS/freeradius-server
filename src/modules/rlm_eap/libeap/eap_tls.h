@@ -94,7 +94,6 @@ typedef struct tls_packet {
 } eap_tls_packet_t;
 
 /* EAP-TLS framework */
-eap_tls_packet_t	*eap_tls_alloc(void);
 tls_session_t		*eap_tls_session(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert);
 int			eap_tls_start(eap_round_t *eap_round, int peap);
 int			eap_tls_compose(eap_round_t *eap_round, eap_tls_packet_t *reply);
