@@ -104,9 +104,11 @@ extern "C" {
 typedef void (*sig_t)(int);
 #endif
 
-#if defined(WITH_VERIFY_PTR)
+#ifndef NDEBUG
 #  define FREE_MAGIC (0xF4EEF4EE)
+#end
 
+#ifdef WITH_VERIFY_PTR
 /*
  * @FIXME
  *  Add if (_x->da) (void) talloc_get_type_abort(_x->da, DICT_ATTR);
