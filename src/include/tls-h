@@ -318,12 +318,12 @@ void tls_fail(tls_session_t *ssn);
 fr_tls_status_t tls_ack_handler(tls_session_t *tls_session, REQUEST *request);
 fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request);
 
-#define FR_TLS_EX_INDEX_HANDLER  (10)
+#define FR_TLS_EX_INDEX_EAP_SESSION  (10)
 #define FR_TLS_EX_INDEX_CONF	 (11)
 #define FR_TLS_EX_INDEX_REQUEST	 (12)
 #define FR_TLS_EX_INDEX_IDENTITY (13)
 #define FR_TLS_EX_INDEX_STORE	 (14)
-#define FR_TLS_EX_INDEX_SSN	 (15)
+#define FR_TLS_EX_INDEX_TLS_SESSION	 (15)
 #define FR_TLS_EX_INDEX_TALLOC	 (16)
 
 extern int fr_tls_ex_index_vps;

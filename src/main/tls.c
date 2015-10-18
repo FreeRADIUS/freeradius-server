@@ -331,7 +331,7 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	SSL_set_verify(session->ssl, verify_mode, cbtls_verify);
 
 	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
-	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_SSN, (void *)session);
+	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)session);
 	SSL_set_fd(session->ssl, fd);
 	if (SSL_connect(session->ssl) <= 0) {
 		int err;
@@ -455,7 +455,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	SSL_set_verify(session->ssl, verify_mode, cbtls_verify);
 
 	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
-	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_SSN, (void *)session);
+	SSL_set_ex_data(session->ssl, FR_TLS_EX_INDEX_TLS_SESSION, (void *)session);
 	session->length_flag = conf->include_length;
 
 	/*
