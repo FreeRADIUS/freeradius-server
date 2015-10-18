@@ -47,7 +47,7 @@ RCSIDH(eap_h, "$Id$")
 typedef struct eap_ds {
 	eap_packet_t	*response;
 	eap_packet_t	*request;
-	int		set_request_id;
+	bool		set_request_id;
 } EAP_DS;
 
 

@@ -49,7 +49,7 @@ typedef struct eap_sim_server_state {
 static int eap_sim_compose(eap_session_t *eap_session)
 {
 	/* we will set the ID on requests, since we have to HMAC it */
-	eap_session->eap_ds->set_request_id = 1;
+	eap_session->eap_ds->set_request_id = true;
 
 	return map_eapsim_basictypes(eap_session->request->reply,
 				     eap_session->eap_ds->request);

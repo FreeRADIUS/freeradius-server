@@ -150,7 +150,7 @@ static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 		 *	Do this only for Success.
 		 */
 		eap_session->eap_ds->request->id = eap_session->eap_ds->response->id + 1;
-		eap_session->eap_ds->set_request_id = 1;
+		eap_session->eap_ds->set_request_id = true;
 
 		/*
 		 *	LEAP requires a challenge in stage 4, not
