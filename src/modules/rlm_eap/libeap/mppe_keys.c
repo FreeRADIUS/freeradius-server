@@ -105,7 +105,7 @@ static void PRF(unsigned char const *secret, unsigned int secret_len,
 /*
  *	Generate keys according to RFC 2716 and add to reply
  */
-void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
+void eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
 {
 	uint8_t out[4 * EAPTLS_MPPE_KEY_LEN];
 	uint8_t *p;
@@ -158,7 +158,7 @@ void eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label)
  *	It's in the TLS module simply because it's only a few lines
  *	of code, and it needs access to the TLS PRF functions.
  */
-void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
+void eap_ttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 {
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
 	SSL_export_keying_material(s, buffer, size, FR_TLS_PRF_CHALLENGE,
@@ -185,7 +185,7 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
  *	Actually generates EAP-Session-Id, which is an internal server
  *	attribute.  Not all systems want to send EAP-Key-Nam
  */
-void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
+void eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 {
 	VALUE_PAIR *vp;
 	uint8_t *p;

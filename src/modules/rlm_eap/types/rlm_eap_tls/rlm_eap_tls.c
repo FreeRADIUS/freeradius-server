@@ -67,7 +67,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	inst->tls_conf = eaptls_conf_parse(cs, "tls");
+	inst->tls_conf = eap_tls_conf_parse(cs, "tls");
 
 	if (!inst->tls_conf) {
 		ERROR("rlm_eap_tls: Failed initializing SSL context");
@@ -109,7 +109,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	/*
 	 *	EAP-TLS always requires a client certificate.
 	 */
-	ssn = eaptls_session(eap_session, inst->tls_conf, client_cert);
+	ssn = eap_tls_session(eap_session, inst->tls_conf, client_cert);
 	if (!ssn) return 0;
 
 	eap_session->opaque = ((void *)ssn);
@@ -123,11 +123,11 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	status = eaptls_start(eap_session->this_round, ssn->peap_flag);
+	status = eap_tls_start(eap_session->this_round, ssn->peap_flag);
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
-		REDEBUG("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		REDEBUG("[eap-tls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eaptls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eap-tls start] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 	if (status == 0) return 0;
 
@@ -148,11 +148,11 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 
 	inst = type_arg;
 
-	status = eaptls_process(eap_session);
+	status = eap_tls_process(eap_session);
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {
-		REDEBUG("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		REDEBUG("[eap-tls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	} else {
-		RDEBUG2("[eaptls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
+		RDEBUG2("[eap-tls process] = %s", fr_int2str(fr_tls_status_table, status, "<INVALID>"));
 	}
 
 	switch (status) {
@@ -192,7 +192,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 			if (fake->reply->code != PW_CODE_ACCESS_ACCEPT) {
 				RDEBUG2("Certificate rejected by the virtual server");
 				talloc_free(fake);
-				eaptls_fail(eap_session, 0);
+				eap_tls_fail(eap_session, 0);
 				return 0;
 			}
 
@@ -234,7 +234,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 		}
 #endif
 
-		eaptls_fail(eap_session, 0);
+		eap_tls_fail(eap_session, 0);
 		return 0;
 
 		/*
@@ -252,7 +252,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 	/*
 	 *	Success: Automatically return MPPE keys.
 	 */
-	return eaptls_success(eap_session, 0);
+	return eap_tls_success(eap_session, 0);
 }
 
 /*

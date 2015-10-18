@@ -396,7 +396,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				return NULL;
 			}
 
-			eapttls_gen_challenge(ssl, challenge,
+			eap_ttls_gen_challenge(ssl, challenge,
 					      sizeof(challenge));
 
 			if (memcmp(challenge, vp->vp_octets,
@@ -804,7 +804,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 /*
  *	Do post-proxy processing,
  */
-static int CC_HINT(nonnull) eapttls_postproxy(eap_session_t *eap_session, void *data)
+static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void *data)
 {
 	int rcode;
 	tls_session_t *tls_session = (tls_session_t *) data;
@@ -872,7 +872,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_session_t *eap_session, void *
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
 			talloc_free(fake);
-			eaptls_fail(eap_session, 0);
+			eap_tls_fail(eap_session, 0);
 			return 0;
 
 		default:  /* Don't Do Anything */
@@ -902,7 +902,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_session_t *eap_session, void *
 
 	case RLM_MODULE_HANDLED:
 		RDEBUG("Reply was handled");
-		eaptls_request(eap_session->this_round, tls_session);
+		eap_tls_request(eap_session->this_round, tls_session);
 		request->proxy_reply->code = PW_CODE_ACCESS_CHALLENGE;
 		return 1;
 
@@ -912,14 +912,14 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_session_t *eap_session, void *
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		return eaptls_success(eap_session, 0);
+		return eap_tls_success(eap_session, 0);
 
 	default:
 		RDEBUG("Reply was unknown");
 		break;
 	}
 
-	eaptls_fail(eap_session, 0);
+	eap_tls_fail(eap_session, 0);
 	return 0;
 }
 
@@ -928,7 +928,7 @@ static int CC_HINT(nonnull) eapttls_postproxy(eap_session_t *eap_session, void *
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-PW_CODE eapttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
+PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 {
 	PW_CODE code = PW_CODE_ACCESS_REJECT;
 	rlm_rcode_t rcode;
@@ -1242,7 +1242,7 @@ PW_CODE eapttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 */
 			tunnel = talloc_zero(request, eap_tunnel_data_t);
 			tunnel->tls_session = tls_session;
-			tunnel->callback = eapttls_postproxy;
+			tunnel->callback = eap_ttls_postproxy;
 
 			/*
 			 *	Associate the callback with the request.

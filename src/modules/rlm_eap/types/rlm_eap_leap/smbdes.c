@@ -314,7 +314,7 @@ static void smbhash(unsigned char *out, unsigned char const *in, unsigned char *
  *
  *	The win_password MUST be exactly 16 bytes long.
  */
-void eapleap_mschap(unsigned char const *win_password, unsigned char const *challenge, unsigned char *response)
+void eap_leap_mschap(unsigned char const *win_password, unsigned char const *challenge, unsigned char *response)
 {
 	unsigned char p21[21];
 

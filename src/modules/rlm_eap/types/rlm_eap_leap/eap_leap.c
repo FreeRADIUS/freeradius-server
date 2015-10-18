@@ -56,7 +56,7 @@ RCSID("$Id$")
 /*
  *   Extract the data from the LEAP packet.
  */
-leap_packet_t *eapleap_extract(REQUEST *request, eap_round_t *eap_round)
+leap_packet_t *eap_leap_extract(REQUEST *request, eap_round_t *eap_round)
 {
 	leap_packet_raw_t	*data;
 	leap_packet_t		*packet;
@@ -158,7 +158,7 @@ leap_packet_t *eapleap_extract(REQUEST *request, eap_round_t *eap_round)
 /*
  *  Get the NT-Password hash.
  */
-static int eapleap_ntpwdhash(uint8_t *out, REQUEST *request, VALUE_PAIR *password)
+static int eap_leap_ntpwdhash(uint8_t *out, REQUEST *request, VALUE_PAIR *password)
 {
 	if ((password->da->attr == PW_USER_PASSWORD) ||
 	    (password->da->attr == PW_CLEARTEXT_PASSWORD)) {
@@ -204,7 +204,7 @@ static int eapleap_ntpwdhash(uint8_t *out, REQUEST *request, VALUE_PAIR *passwor
 /*
  *	Verify the MS-CHAP response from the user.
  */
-int eapleap_stage4(REQUEST *request, leap_packet_t *packet, VALUE_PAIR *password, leap_session_t *session)
+int eap_leap_stage4(REQUEST *request, leap_packet_t *packet, VALUE_PAIR *password, leap_session_t *session)
 {
 	uint8_t hash[16];
 	uint8_t response[24];
@@ -216,14 +216,14 @@ int eapleap_stage4(REQUEST *request, leap_packet_t *packet, VALUE_PAIR *password
 		return 0;
 	}
 
-	if (!eapleap_ntpwdhash(hash, request, password)) {
+	if (!eap_leap_ntpwdhash(hash, request, password)) {
 		return 0;
 	}
 
 	/*
 	 *	Calculate and verify the CHAP challenge.
 	 */
-	eapleap_mschap(hash, session->peer_challenge, response);
+	eap_leap_mschap(hash, session->peer_challenge, response);
 	if (memcmp(response, packet->challenge, 24) == 0) {
 		RDEBUG2("NTChallengeResponse from AP is valid");
 		memcpy(session->peer_response, response, sizeof(response));
@@ -237,7 +237,7 @@ int eapleap_stage4(REQUEST *request, leap_packet_t *packet, VALUE_PAIR *password
 /*
  *	Verify ourselves to the AP
  */
-leap_packet_t *eapleap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAIR *user_name, VALUE_PAIR *password,
+leap_packet_t *eap_leap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAIR *user_name, VALUE_PAIR *password,
 			      leap_session_t *session)
 {
 	size_t		i;
@@ -286,7 +286,7 @@ leap_packet_t *eapleap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAI
 	/*
 	 *  MPPE hash = ntpwdhash(ntpwdhash(unicode(pw)))
 	 */
-	if (!eapleap_ntpwdhash(hash, request, password)) {
+	if (!eap_leap_ntpwdhash(hash, request, password)) {
 		talloc_free(reply);
 		return NULL;
 	}
@@ -295,7 +295,7 @@ leap_packet_t *eapleap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAI
 	/*
 	 *	Calculate our response, to authenticate ourselves to the AP.
 	 */
-	eapleap_mschap(mppe, packet->challenge, reply->challenge);
+	eap_leap_mschap(mppe, packet->challenge, reply->challenge);
 
 	/*
 	 *	Calculate the leap:session-key attribute
@@ -343,7 +343,7 @@ leap_packet_t *eapleap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAI
  *	If an EAP LEAP request needs to be initiated then
  *	create such a packet.
  */
-leap_packet_t *eapleap_initiate(REQUEST *request, eap_round_t *eap_round, VALUE_PAIR *user_name)
+leap_packet_t *eap_leap_initiate(REQUEST *request, eap_round_t *eap_round, VALUE_PAIR *user_name)
 {
 	int i;
 	leap_packet_t 	*reply;
@@ -393,7 +393,7 @@ leap_packet_t *eapleap_initiate(REQUEST *request, eap_round_t *eap_round, VALUE_
 /*
  * compose the LEAP reply packet in the EAP reply typedata
  */
-int eapleap_compose(REQUEST *request, eap_round_t *eap_round, leap_packet_t *reply)
+int eap_leap_compose(REQUEST *request, eap_round_t *eap_round, leap_packet_t *reply)
 {
 	leap_packet_raw_t *data;
 

@@ -60,13 +60,13 @@ typedef struct leap_session_t {
 
 /* function declarations here */
 
-int 		eapleap_compose(REQUEST *request, eap_round_t *auth, leap_packet_t *reply);
-leap_packet_t 	*eapleap_extract(REQUEST *request, eap_round_t *eap_round);
-leap_packet_t 	*eapleap_initiate(REQUEST *request, eap_round_t *eap_round, VALUE_PAIR *user_name);
-int		eapleap_stage4(REQUEST *request, leap_packet_t *packet, VALUE_PAIR* password, leap_session_t *session);
-leap_packet_t	*eapleap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAIR *user_name, VALUE_PAIR* password,
+int 		eap_leap_compose(REQUEST *request, eap_round_t *auth, leap_packet_t *reply);
+leap_packet_t 	*eap_leap_extract(REQUEST *request, eap_round_t *eap_round);
+leap_packet_t 	*eap_leap_initiate(REQUEST *request, eap_round_t *eap_round, VALUE_PAIR *user_name);
+int		eap_leap_stage4(REQUEST *request, leap_packet_t *packet, VALUE_PAIR* password, leap_session_t *session);
+leap_packet_t	*eap_leap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PAIR *user_name, VALUE_PAIR* password,
 				leap_session_t *session);
 
-void eapleap_mschap(unsigned char const *win_password, unsigned char const *challenge, unsigned char *response);
+void eap_leap_mschap(unsigned char const *win_password, unsigned char const *challenge, unsigned char *response);
 
 #endif /*_EAP_LEAP_H*/

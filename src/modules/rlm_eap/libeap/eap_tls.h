@@ -55,17 +55,17 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /*
  *	Externally exported TLS functions.
  */
-fr_tls_status_t eaptls_process(eap_session_t *eap_session);
+fr_tls_status_t eap_tls_process(eap_session_t *eap_session);
 
-int	eaptls_success(eap_session_t *eap_session, int peap_flag) CC_HINT(nonnull);
-int	eaptls_fail(eap_session_t *eap_session, int peap_flag) CC_HINT(nonnull);
-int	eaptls_request(eap_round_t *eap_round, tls_session_t *ssn) CC_HINT(nonnull);
+int	eap_tls_success(eap_session_t *eap_session, int peap_flag) CC_HINT(nonnull);
+int	eap_tls_fail(eap_session_t *eap_session, int peap_flag) CC_HINT(nonnull);
+int	eap_tls_request(eap_round_t *eap_round, tls_session_t *ssn) CC_HINT(nonnull);
 
 
 /* MPPE key generation */
-void	eaptls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);
-void	eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
-void	eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
+void	eap_tls_gen_mppe_keys(REQUEST *request, SSL *s, char const *prf_label);
+void	eap_ttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
+void	eap_tls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
 
 #define BUFFER_SIZE 1024
 
@@ -97,12 +97,12 @@ typedef struct tls_packet {
 
 
 /* EAP-TLS framework */
-eap_tls_packet_t	*eaptls_alloc(void);
-void		eaptls_free(eap_tls_packet_t **eap_tls_data_ptr);
-tls_session_t	*eaptls_session(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert);
-int		eaptls_start(eap_round_t *eap_round, int peap);
-int		eaptls_compose(eap_round_t *eap_round, eap_tls_packet_t *reply);
+eap_tls_packet_t	*eap_tls_alloc(void);
+void		eap_tls_free(eap_tls_packet_t **eap_tls_data_ptr);
+tls_session_t	*eap_tls_session(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert);
+int		eap_tls_start(eap_round_t *eap_round, int peap);
+int		eap_tls_compose(eap_round_t *eap_round, eap_tls_packet_t *reply);
 
-fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *key);
+fr_tls_server_conf_t *eap_tls_conf_parse(CONF_SECTION *cs, char const *key);
 
 #endif /*_EAP_TLS_H*/

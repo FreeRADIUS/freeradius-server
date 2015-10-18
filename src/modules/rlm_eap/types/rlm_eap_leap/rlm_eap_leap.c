@@ -54,12 +54,12 @@ static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_session_
 		return 0;
 	}
 
-	reply = eapleap_initiate(request, eap_session->this_round, eap_session->request->username);
+	reply = eap_leap_initiate(request, eap_session->this_round, eap_session->request->username);
 	if (!reply) {
 		return 0;
 	}
 
-	eapleap_compose(request, eap_session->this_round, reply);
+	eap_leap_compose(request, eap_session->this_round, reply);
 
 	eap_session->opaque = session = talloc(eap_session, leap_session_t);
 	if (!eap_session->opaque) {
@@ -105,7 +105,7 @@ static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 	/*
 	 *	Extract the LEAP packet.
 	 */
-	if (!(packet = eapleap_extract(request, eap_session->this_round))) {
+	if (!(packet = eap_leap_extract(request, eap_session->this_round))) {
 		return 0;
 	}
 
@@ -131,7 +131,7 @@ static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 	switch (session->stage) {
 	case 4:			/* Verify NtChallengeResponse */
 		RDEBUG2("Stage 4");
-		rcode = eapleap_stage4(request, packet, password, session);
+		rcode = eap_leap_stage4(request, packet, password, session);
 		session->stage = 6;
 
 		/*
@@ -164,7 +164,7 @@ static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 
 	case 6:			/* Issue session key */
 		RDEBUG2("Stage 6");
-		reply = eapleap_stage6(request, packet, eap_session->request->username, password, session);
+		reply = eap_leap_stage6(request, packet, eap_session->request->username, password, session);
 		break;
 
 		/*
@@ -186,7 +186,7 @@ static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 		return 0;
 	}
 
-	eapleap_compose(request, eap_session->this_round, reply);
+	eap_leap_compose(request, eap_session->this_round, reply);
 	talloc_free(reply);
 	return 1;
 }

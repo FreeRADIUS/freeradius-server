@@ -126,7 +126,7 @@ uint32_t soh_pull_be_32(uint8_t const *p) {
 	return r;
 }
 
-static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) CC_HINT(nonnull);
+static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) CC_HINT(nonnull);
 
 /** Parses the MS-SOH type/value (note: NOT type/length/value) data and update the sohvp list
  *
@@ -142,7 +142,7 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
  *	- 0 on success.
  *	- -1 on failure.
  */
-static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len)
+static int eap_peap_soh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len)
 {
 	VALUE_PAIR *vp;
 	uint8_t c;
@@ -499,7 +499,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 			 */
 			if (curr_shid==0x137 && curr_shid_c==0) {
 				RDEBUG2("SoH MS type-value payload");
-				eapsoh_mstlv(request, data + 4, tlv.tlv_len - 4);
+				eap_peap_soh_mstlv(request, data + 4, tlv.tlv_len - 4);
 			} else {
 				RDEBUG2("SoH unhandled vendor-specific TLV %08x/component=%i %i bytes payload",
 					curr_shid, curr_shid_c, tlv.tlv_len);
