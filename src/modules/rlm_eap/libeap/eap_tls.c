@@ -97,7 +97,7 @@ int eap_tls_compose(eap_round_t *eap_round, eap_tls_packet_t *reply)
 	/*
 	 * 	When the EAP server receives an EAP-Response with the
 	 * 	M bit set, it MUST respond with an EAP-Request with
-	 * 	EAP-Type=EAP-TLS and no data. This serves as a
+	 * 	EAP-Type = EAP-TLS and no data. This serves as a
 	 * 	fragment ACK. The EAP peer MUST wait until it receives
 	 * 	the EAP-Request before sending another fragment.
 	 *
@@ -106,7 +106,7 @@ int eap_tls_compose(eap_round_t *eap_round, eap_tls_packet_t *reply)
 	 *	Identifier value for each fragment ACK contained
 	 *	within an EAP-Request, and the peer MUST include this
 	 *	Identifier value in the subsequent fragment contained
-	 *	within an EAP- Reponse.
+	 *	within an EAP-Reponse.
 	 */
 	eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, reply->length - TLS_HEADER_LEN + 1);
 	if (!eap_round->request->type.data) return -1;
