@@ -22,6 +22,26 @@
  *
  * @ingroup AVP
  *
+ * For each round of a multi-round authentication method such as EAP,
+ * or a 2FA method such as OTP, a state entry will be created.  The state
+ * entry holds data that should be available during the complete lifecycle
+ * of the authentication attempt.
+ *
+ * When a request is complete, #fr_state_put_vps is called to transfer
+ * ownership of the state VALUE_PAIRs and state_ctx (which the VALUE_PAIRs
+ * are allocated in) to a #state_entry_t.  This #state_entry_t holds the
+ * value of the State attribute, that will be send out in the response.
+ *
+ * When the next request is received, #fr_state_get_vps is called to transfer
+ * the VALUE_PAIRs and state ctx to the new request.
+ *
+ * The ownership of the state_ctx and state VALUE_PAIRs is transferred as below:
+ *
+ * @verbatim
+   request -> state_entry -> request -> state_entry -> request -> free()
+          \-> reply                 \-> reply                 \-> access-reject/access-accept
+ * @endverbatim
+ *
  * @copyright 2014 The FreeRADIUS server project
  */
 RCSID("$Id$")
@@ -30,12 +50,15 @@ RCSID("$Id$")
 #include <freeradius-devel/state.h>
 #include <freeradius-devel/rad_assert.h>
 
-typedef struct state_entry_t {
-	uint8_t			state[AUTH_VECTOR_LEN];
+/** Holds a state value, and associated VALUE_PAIRs and data
+ *
+ */
+typedef struct state_entry {
+	uint8_t			state[AUTH_VECTOR_LEN];		//!< State value in binary.
 
-	time_t			cleanup;
-	struct state_entry_t	*prev;
-	struct state_entry_t	*next;
+	time_t			cleanup;			//!< When this entry should be cleaned up.
+	struct state_entry	*prev;				//!< Previous entry in the cleanup list.
+	struct state_entry	*next;				//!< Next entry in the cleanup list.
 
 	int			tries;
 
@@ -69,8 +92,8 @@ static fr_state_t *global_state = NULL;
 #  define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
-/*
- *	rbtree callback.
+/** Compare two state_entry_t based on their state value i.e. the value of the attribute
+ *
  */
 static int state_entry_cmp(void const *one, void const *two)
 {
@@ -80,11 +103,8 @@ static int state_entry_cmp(void const *one, void const *two)
 	return memcmp(a->state, b->state, sizeof(a->state));
 }
 
-/*
- *	When an entry is free'd, it's removed from the linked list of
- *	cleanup times.
+/** Free a state entry, removing it from the linked lists of states to free
  *
- *	Note that
  */
 static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 {
@@ -127,6 +147,9 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 	talloc_free(entry);
 }
 
+/** Free the state tree
+ *
+ */
 void fr_state_free(fr_state_t *state)
 {
 	rbtree_t *my_tree;
@@ -151,6 +174,9 @@ void fr_state_free(fr_state_t *state)
 	if (state == global_state) global_state = NULL;
 }
 
+/** Initialise a new state tree
+ *
+ */
 fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions)
 {
 	fr_state_t *state;
@@ -188,18 +214,17 @@ fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions)
 	return state;
 }
 
-
-
-/*
- *	Create a new entry.  Called with the mutex held.
+/** Create a new state entry
+ *
+ * @note Called with the mutex held.
  */
 static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packet, state_entry_t *old)
 {
-	size_t i;
-	uint32_t x;
-	time_t now = time(NULL);
-	VALUE_PAIR *vp;
-	state_entry_t *entry, *next;
+	size_t		i;
+	uint32_t	x;
+	time_t		now = time(NULL);
+	VALUE_PAIR	*vp;
+	state_entry_t	*entry, *next;
 
 	/*
 	 *	Clean up old entries.
@@ -229,9 +254,7 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 		break;
 	}
 
-	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) {
-		return NULL;
-	}
+	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) return NULL;
 
 	/*
 	 *	Allocate a new one.
@@ -342,9 +365,8 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 	return entry;
 }
 
-
-/*
- *	Find the entry, based on the State attribute.
+/** Find the entry, based on the State attribute
+ *
  */
 static state_entry_t *state_entry_find(fr_state_t *state, RADIUS_PACKET *packet)
 {
@@ -361,15 +383,14 @@ static state_entry_t *state_entry_find(fr_state_t *state, RADIUS_PACKET *packet)
 	entry = rbtree_finddata(state->tree, &my_entry);
 
 #ifdef WITH_VERIFY_PTR
-	if (entry)  (void) talloc_get_type_abort(entry, state_entry_t);
+	if (entry) (void) talloc_get_type_abort(entry, state_entry_t);
 #endif
 
 	return entry;
 }
 
-/*
- *	Called when sending Access-Reject, so that all State is
- *	discarded.
+/** Called when sending an Access-Reject to discard state information
+ *
  */
 void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 {
@@ -391,8 +412,10 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 	return;
 }
 
-/*
- *	Get the VPS from the state.
+/** Copy a pointer to the head of the list of state VALUE_PAIRs (and their ctx) into the request
+ *
+ * @note Does not copy the actual VALUE_PAIRs.  The VALUE_PAIRs and their context
+ *	are transferred between state entries as the conversation progresses.
  */
 void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 {
@@ -446,10 +469,12 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 }
 
 
-/*
- *	Put request->state into the State attribute.  Put the State
- *	attribute into the vps list.  Delete the original entry, if it
- *	exists.
+/** Transfer ownership of the state VALUE_PAIRs and ctx, back to a state entry
+ *
+ * Put request->state into the State attribute.  Put the State attribute
+ * into the vps list.  Delete the original entry, if it exists
+ *
+ * Also creates a new state entry.
  */
 bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet)
 {
@@ -466,11 +491,8 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
-	if (original) {
-		old = state_entry_find(state, original);
-	} else {
-		old = NULL;
-	}
+	old = original ? state_entry_find(state, original) :
+			 NULL;
 
 	entry = state_entry_create(state, packet, old);
 	if (!entry) {
@@ -492,9 +514,9 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 	return true;
 }
 
-/*
- *	Find the opaque data associated with a State attribute.
- *	Leave the data in the entry.
+/** Find the opaque data associated with a State attribute
+ *
+ * Leave the data in the entry.
  */
 void *fr_state_find_data(fr_state_t *state, RADIUS_PACKET *packet)
 {
@@ -517,9 +539,9 @@ void *fr_state_find_data(fr_state_t *state, RADIUS_PACKET *packet)
 }
 
 
-/*
- *	Get the opaque data associated with a State attribute.
- *	and remove the data from the entry.
+/** Get the opaque data associated with a State attribute.
+ *
+ * Then remove the data from the entry.
  */
 void *fr_state_get_data(fr_state_t *state, RADIUS_PACKET *packet)
 {
@@ -543,12 +565,11 @@ void *fr_state_get_data(fr_state_t *state, RADIUS_PACKET *packet)
 }
 
 
-/*
- *	Get the opaque data associated with a State attribute.
- *	and remove the data from the entry.
+/** Get the opaque data associated with a State attribute.
+ *
+ * Remove the data from the entry.
  */
-bool fr_state_put_data(fr_state_t *state, RADIUS_PACKET *original, RADIUS_PACKET *packet,
-		       void *data)
+bool fr_state_put_data(fr_state_t *state, RADIUS_PACKET *original, RADIUS_PACKET *packet, void *data)
 {
 	state_entry_t *entry, *old;
 
@@ -556,11 +577,8 @@ bool fr_state_put_data(fr_state_t *state, RADIUS_PACKET *original, RADIUS_PACKET
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
-	if (original) {
-		old = state_entry_find(state, original);
-	} else {
-		old = NULL;
-	}
+	old = original ? state_entry_find(state, original) :
+			 NULL;
 
 	entry = state_entry_create(state, packet, old);
 	if (!entry) {
@@ -572,12 +590,11 @@ bool fr_state_put_data(fr_state_t *state, RADIUS_PACKET *original, RADIUS_PACKET
 	 *	If we're moving the data, ensure that we delete it
 	 *	from the old state.
 	 */
-	if (old && (old->data == data)) {
-		old->data = NULL;
-	}
+	if (old && (old->data == data)) old->data = NULL;
 
 	entry->data = data;
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
 	return true;
 }
