@@ -2063,43 +2063,6 @@ void fr_pair_value_snprintf(VALUE_PAIR *vp, char const *fmt, ...)
 	fr_pair_value_set_type(vp);
 }
 
-
-
-/** Escape string that may contain binary data, and write it to a new buffer
- *
- * This is useful in situations where we expect printable strings as input,
- * but under some conditions may get binary data. A good example is libldap
- * and the arrays of struct berval ldap_get_values_len returns.
- *
- * @param[in] ctx To allocate new buffer in.
- * @param[in] in String to escape.
- * @param[in] inlen Length of string. Should be >= 0 if the data may contain
- *	embedded \0s. Must be >= 0 if data may not be \0 terminated.
- *	If < 0 inlen will be calculated using strlen.
- * @param[in] quote the quotation character.
- * @return new buffer holding the escaped string.
- */
-char *fr_asprint(TALLOC_CTX *ctx, char const *in, ssize_t inlen, char quote)
-{
-	size_t len, ret;
-	char *out;
-
-	len = fr_snprint_len(in, inlen, quote);
-
-	out = talloc_array(ctx, char, len);
-	ret = fr_snprint(out, len, in, inlen, quote);
-	/*
-	 *	This is a fatal error, but fr_assert is the strongest
-	 *	assert we're allowed to use in library functions.
-	 */
-	if (!fr_assert(ret == (len - 1))) {
-		talloc_free(out);
-		return NULL;
-	}
-
-	return out;
-}
-
 /** Print the value of an attribute to a string
  *
  * @param[out] out Where to write the string.
