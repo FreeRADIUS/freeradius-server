@@ -226,6 +226,9 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 	VALUE_PAIR	*vp;
 	state_entry_t	*entry, *next;
 
+	uint8_t		old_state[AUTH_VECTOR_LEN];
+	int		old_tries = 0;
+
 	/*
 	 *	Clean up old entries.
 	 */
@@ -257,10 +260,36 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) return NULL;
 
 	/*
-	 *	Allocate a new one.
+	 *	Record the information from the old state, we may base the
+	 *	new state off the old one.
+	 *
+	 *	Once we release the mutex, the state of old becomes indeterminate
+	 *	so we have to grab the values now.
 	 */
-	entry = talloc_zero(state->tree, state_entry_t);
-	if (!entry) return NULL;
+	if (old) {
+		old_tries = old->tries;
+
+		memcpy(old_state, old->state, sizeof(old_state));
+
+		/*
+		 *	The old one isn't used any more, so we can free it.
+		 */
+		if (!old->data) state_entry_free(state, old);
+	}
+	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	/*
+	 *	Allocation doesn't need to occur inside the critical region
+	 *	and adds significantly to contention.
+	 *
+	 *	We reparent the talloc chunk later (when we hold the mutex again)
+	 *	we can't do it now due to thread safety issues with talloc.
+	 */
+	entry = talloc_zero(NULL, state_entry_t);
+	if (!entry) {
+		PTHREAD_MUTEX_LOCK(&state->mutex);	/* Caller expects this to be locked */
+		return NULL;
+	}
 
 	/*
 	 *	Limit the lifetime of this entry based on how long the
@@ -271,38 +300,33 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 	entry->cleanup = now + main_config.max_request_time * 10;
 
 	/*
-	 *	Hacks for EAP, until we convert EAP to using the state API.
-	 *
-	 *	The EAP module creates it's own State attribute, so we
-	 *	want to use that one in preference to one we create.
+	 *	Some modules like rlm_otp create their own magic
+	 *	state attributes.  If a state value already exists
+	 *	int the reply, we use that in preference to the
+	 *	old state.
 	 */
 	vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
-
-	/*
-	 *	If possible, base the new one off of the old one.
-	 */
-	if (old) {
-		entry->tries = old->tries + 1;
-
+	if (vp) {
+		if (DEBUG_ENABLED && (vp->vp_length > sizeof(entry->state))) {
+			WARN("State too long, will be truncated.  Expected <= %zd bytes, got %zu bytes",
+			     sizeof(entry->state), vp->vp_length);
+		}
+		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
+	} else {
 		/*
-		 *	Track State
+		 *	Base the new state on the old state if we had one.
 		 */
-		if (!vp) {
-			memcpy(entry->state, old->state, sizeof(entry->state));
-
-			entry->state[0] = entry->tries;
-			entry->state[1] = entry->state[0] ^ entry->tries;
-			entry->state[8] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
-			entry->state[10] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);
-			entry->state[12] = entry->state[2] ^ (((uint32_t) HEXIFY(RADIUSD_VERSION)) & 0xff);
+		if (old) {
+			memcpy(entry->state, old_state, sizeof(entry->state));
+			entry->tries = old_tries + 1;
 		}
 
-		/*
-		 *	The old one isn't used any more, so we can free it.
-		 */
-		if (!old->data) state_entry_free(state, old);
+		entry->state[0] = entry->tries;
+		entry->state[1] = entry->state[0] ^ entry->tries;
+		entry->state[8] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 16) & 0xff);
+		entry->state[10] = entry->state[2] ^ ((((uint32_t) HEXIFY(RADIUSD_VERSION)) >> 8) & 0xff);
+		entry->state[12] = entry->state[2] ^ (((uint32_t) HEXIFY(RADIUSD_VERSION)) & 0xff);
 
-	} else if (!vp) {
 		/*
 		 *	16 octets of randomness should be enough to
 		 *	have a globally unique state.
@@ -318,32 +342,32 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 		 *	This allows load-balancing proxies to be much
 		 *	less stateful.
 		 */
-		if (main_config.state_seed < 256) {
-			entry->state[3] = main_config.state_seed;
-		}
-	}
+		if (main_config.state_seed < 256) entry->state[3] = main_config.state_seed;
 
-	/*
-	 *	If EAP created a State, use that.  Otherwise, use the
-	 *	one we created above.
-	 */
-	if (vp) {
-		if (rad_debug_lvl && (vp->vp_length > sizeof(entry->state))) {
-			WARN("State should be %zd octets!",
-			     sizeof(entry->state));
-		}
-		memcpy(entry->state, vp->vp_octets, sizeof(entry->state));
-
-	} else {
 		vp = fr_pair_afrom_num(packet, PW_STATE, 0);
 		fr_pair_value_memcpy(vp, entry->state, sizeof(entry->state));
 		fr_pair_add(&packet->vps, vp);
+	}
+
+	PTHREAD_MUTEX_LOCK(&state->mutex);
+	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) {
+		talloc_free(entry);
+		return NULL;
 	}
 
 	if (!rbtree_insert(state->tree, entry)) {
 		talloc_free(entry);
 		return NULL;
 	}
+
+	/*
+	 *	Todo: Unsure how talloc adds children to contexts.
+	 *
+	 *	Having many thousands of children in a context may
+	 *	have a significant impact on performance.  We should
+	 *	do comparisons.
+	 */
+	talloc_steal(state->tree, entry);
 
 	/*
 	 *	Link it to the end of the list, which is implicitely
