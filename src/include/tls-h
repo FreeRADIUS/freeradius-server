@@ -57,10 +57,10 @@ typedef enum {
 	FR_TLS_NOOP,       			//!< Noop, continue.
 
 	FR_TLS_START,       			//!< Start, ok to send, invalid to receive.
-	FR_TLS_RECORD_COMPLETE, 		 		//!< Ok, continue.
+	FR_TLS_RECORD_COMPLETE, 		//!< Ok, continue.
 	FR_TLS_ACK,       			//!< Acknowledge, continue.
-	FR_TLS_RECORD_FRAGMENT_INIT,    		//!< First fragment.
-	FR_TLS_RECORD_FRAGMENT_MORE,    		//!< More fragments, to send/receive.
+	FR_TLS_RECORD_FRAGMENT_INIT,    	//!< First fragment.
+	FR_TLS_RECORD_FRAGMENT_MORE,    	//!< More fragments, to send/receive.
 	FR_TLS_LENGTH_INCLUDED,	  		//!< Length included.
 	FR_TLS_HANDLED	  			//!< TLS code has handled it.
 } fr_tls_status_t;
@@ -116,15 +116,15 @@ typedef struct _tls_info_t {
  * The tls_session_t Structure gets stored as opaque in eap_session_t
  */
 typedef struct _tls_session_t {
-	SSL_CTX		*ctx;
-	SSL 		*ssl;
+	SSL_CTX		*ctx;				//!< TLS configuration context.
+	SSL 		*ssl;				//!< This SSL session.
 #if OPENSSL_VERSION_NUMBER >= 0x10001000L
-	SSL_SESSION	*session;
+	SSL_SESSION	*session;			//!< Additional SSL session data.
 #endif
 	tls_info_t	info;
 
-	BIO 		*into_ssl;
-	BIO 		*from_ssl;
+	BIO 		*into_ssl;			//!< Basic I/O input to OpenSSL.
+	BIO 		*from_ssl;			//!< Basic I/O output from OpenSSL.
 	tls_record_t 	clean_in;			//!< Data that needs to be sent but only after it is soiled.
 	tls_record_t 	clean_out;			//!< Data that is cleaned after receiving.
 	tls_record_t 	dirty_in;			//!< Data EAP server receives.
@@ -133,27 +133,30 @@ typedef struct _tls_session_t {
 	void 		(*record_init)(tls_record_t *buf);
 	void 		(*record_close)(tls_record_t *buf);
 	unsigned int 	(*record_from_buff)(tls_record_t *buf, void const *ptr, unsigned int size);
-	unsigned int 	(*tls_record_to_buff)(tls_record_t *buf, void *ptr, unsigned int size);
+	unsigned int 	(*record_to_buff)(tls_record_t *buf, void *ptr, unsigned int size);
 
 	bool		invalid_hb_used;		//!< Whether heartbleed attack was detected.
 
 	/*
 	 *	Framed-MTU attribute in RADIUS, if present, can also be used to set this
 	 */
-	size_t 		mtu;				//!< Current fragment size transmitted.
-	size_t		tls_msg_len;			//!< Actual/Total TLS message length.
-	bool		fragmenting;			//!< Flag, In fragment mode or not.
 	bool		length_flag;			//!< A flag to include length in every TLS Data/Alert packet.
 							//!< If set to no then only the first fragment contains length.
 	int		base_flags;			//!< Some protocols use the reserved bits of the EAP-TLS
 							//!< flags (such as PEAP).  This allows the base flags to
 							//!< be set.
 
-	bool		tls_record_transfer_started;	//!< Whether a record transfer from the peer is currently
+	size_t 		mtu;				//!< Current fragment size transmitted.
+
+	bool		record_out_started;		//!< Whether a record transfer to the peer is currently
 							//!< in progress.
-	size_t		tls_record_in_total_len;	//!< How long the peer indicated the complete tls record
+	size_t		record_out_total_len;		//!< Actual/Total TLS message length we're sending.
+
+	bool		record_in_started;		//!< Whether a record transfer from the peer is currently
+							//!< in progress.
+	size_t		record_in_total_len;		//!< How long the peer indicated the complete tls record
 							//!< would be.
-	size_t		tls_record_in_recvd_len;	//!< How much of the record we've received so far.
+	size_t		record_in_recvd_len;		//!< How much of the record we've received so far.
 
 	/*
 	 *	Used by TTLS & PEAP to keep track of other per-session data.

@@ -314,7 +314,7 @@ int eap_tls_request(eap_session_t *eap_session)
 	 *	If this is the first fragment, record the complete
 	 *	TLS record length.
 	 */
-	if (tls_session->fragmenting == false) tls_session->tls_msg_len = tls_session->dirty_out.used;
+	if (tls_session->record_out_started == false) tls_session->record_out_total_len = tls_session->dirty_out.used;
 
 	/*
 	 *	If the data we're sending is greater than the MTU
@@ -325,18 +325,18 @@ int eap_tls_request(eap_session_t *eap_session)
 		flags = SET_MORE_FRAGMENTS(flags);
 
 		/*
-		 *	Length MUST be included if we're fragmenting
+		 *	Length MUST be included if we're record_out_started
 		 *	and this is the first fragment.
 		 */
-		if (tls_session->fragmenting == false) length_included = true;
-		tls_session->fragmenting = true;	/* Start a new series of fragments */
+		if (tls_session->record_out_started == false) length_included = true;
+		tls_session->record_out_started = true;	/* Start a new series of fragments */
 	/*
 	 *	Otherwise, we're either sending a record smaller
 	 *	than the MTU or this is the final fragment.
 	 */
 	} else {
 		frag_len = tls_session->dirty_out.used;	/* Remaining data to drain */
-		tls_session->fragmenting = false;
+		tls_session->record_out_started = false;
 	}
 
 	/*
@@ -346,7 +346,7 @@ int eap_tls_request(eap_session_t *eap_session)
 	if (length_included) flags = SET_LENGTH_INCLUDED(flags);
 
 	return eap_tls_compose(eap_session, FR_TLS_REQUEST, flags,
-			       &tls_session->dirty_out, tls_session->tls_msg_len, frag_len);
+			       &tls_session->dirty_out, tls_session->record_out_total_len, frag_len);
 }
 
 /** ACK a fragment of the TLS record from the peer
@@ -513,7 +513,7 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 		 *	don't count this as a new record, and continue as if we
 		 *	hadn't seen the length flag.
 		 */
-		if (tls_session->tls_record_transfer_started) goto ignore_length;
+		if (tls_session->record_in_started) goto ignore_length;
 
 		/*
 		 *	This is the first fragment of a fragmented TLS record transfer.
@@ -534,14 +534,14 @@ static fr_tls_status_t eap_tls_verify(eap_session_t *eap_session)
 			}
 
 			/*
-			 *	First fragment. tls_record_transfer_started bool was false,
+			 *	First fragment. record_in_started bool was false,
 			 *	and we received a length included + more fragments packet.
 			 */
 			RDEBUG2("Got first TLS record fragment (%zu bytes).  Peer indicated more fragments "
 				"to follow", frag_len);
-			tls_session->tls_record_in_total_len = total_len;
-			tls_session->tls_record_in_recvd_len = frag_len;
-			tls_session->tls_record_transfer_started = true;
+			tls_session->record_in_total_len = total_len;
+			tls_session->record_in_recvd_len = frag_len;
+			tls_session->record_in_started = true;
 
 			return FR_TLS_RECORD_FRAGMENT_INIT;
 		}
@@ -571,7 +571,7 @@ ignore_length:
 		 *	If this is not an ongoing transfer, and we have the M flag
 		 *	then this record transfer is invalid.
 		 */
-		if (!tls_session->tls_record_transfer_started) {
+		if (!tls_session->record_in_started) {
 			REDEBUG("TLS More (M) flag set, but no fragmented record transfer was in progress");
 			return FR_TLS_INVALID;
 		}
@@ -582,11 +582,11 @@ ignore_length:
 		 */
 		RDEBUG2("Got additional TLS record fragment (%zu bytes).  "
 			"Peer indicated more fragments to follow", frag_len);
-		tls_session->tls_record_in_recvd_len += frag_len;
-		if (tls_session->tls_record_in_recvd_len > tls_session->tls_record_in_total_len) {
+		tls_session->record_in_recvd_len += frag_len;
+		if (tls_session->record_in_recvd_len > tls_session->record_in_total_len) {
 			REDEBUG("Total received TLS record fragments (%zu bytes), exceeds "
 				"indicated TLS record length (%zu bytes)",
-				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
+				tls_session->record_in_recvd_len, tls_session->record_in_total_len);
 			return FR_TLS_INVALID;
 		}
 		return FR_TLS_RECORD_FRAGMENT_MORE;
@@ -600,15 +600,15 @@ ignore_length:
 	 *	If it's an in-progress record transfer, check we now have
 	 *	the complete record.
 	 */
-	if (tls_session->tls_record_transfer_started) {
-		tls_session->tls_record_transfer_started = false;
+	if (tls_session->record_in_started) {
+		tls_session->record_in_started = false;
 
 		RDEBUG2("Got final TLS record fragment (%zu bytes)", frag_len);
-		tls_session->tls_record_in_recvd_len += frag_len;
-		if (tls_session->tls_record_in_recvd_len != tls_session->tls_record_in_total_len) {
+		tls_session->record_in_recvd_len += frag_len;
+		if (tls_session->record_in_recvd_len != tls_session->record_in_total_len) {
 			REDEBUG("Total received TLS record fragments (%zu bytes), does not equal indicated "
 				"TLS record length (%zu bytes)",
-				tls_session->tls_record_in_recvd_len, tls_session->tls_record_in_total_len);
+				tls_session->record_in_recvd_len, tls_session->record_in_total_len);
 			return FR_TLS_INVALID;
 		}
 		return FR_TLS_RECORD_COMPLETE;

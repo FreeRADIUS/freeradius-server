@@ -683,8 +683,8 @@ static void session_init(tls_session_t *session)
 	memset(&session->info, 0, sizeof(session->info));
 
 	session->mtu = 0;
-	session->fragmenting = false;
-	session->tls_msg_len = 0;
+	session->record_out_started = false;
+	session->record_out_total_len = 0;
 	session->length_flag = false;
 	session->opaque = NULL;
 	session->free_opaque = NULL;
