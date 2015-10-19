@@ -87,10 +87,10 @@ extern FR_NAME_NUMBER const fr_tls_status_table[];
  * FIXME: Dynamic allocation of buffer to overcome MAX_RECORD_SIZE overflows.
  * 	or configure TLS not to exceed MAX_RECORD_SIZE.
  */
-typedef struct _record_t {
+typedef struct _tls_record_t {
 	uint8_t data[MAX_RECORD_SIZE];
 	size_t  used;
-} record_t;
+} tls_record_t;
 
 typedef struct _tls_info_t {
 	int		origin;
@@ -125,15 +125,15 @@ typedef struct _tls_session_t {
 
 	BIO 		*into_ssl;
 	BIO 		*from_ssl;
-	record_t 	clean_in;			//!< Data that needs to be sent but only after it is soiled.
-	record_t 	clean_out;			//!< Data that is cleaned after receiving.
-	record_t 	dirty_in;			//!< Data EAP server receives.
-	record_t 	dirty_out;			//!< Data EAP server sends.
+	tls_record_t 	clean_in;			//!< Data that needs to be sent but only after it is soiled.
+	tls_record_t 	clean_out;			//!< Data that is cleaned after receiving.
+	tls_record_t 	dirty_in;			//!< Data EAP server receives.
+	tls_record_t 	dirty_out;			//!< Data EAP server sends.
 
-	void 		(*record_init)(record_t *buf);
-	void 		(*record_close)(record_t *buf);
-	unsigned int 	(*record_from_buff)(record_t *buf, void const *ptr, unsigned int size);
-	unsigned int 	(*record_to_buff)(record_t *buf, void *ptr, unsigned int size);
+	void 		(*record_init)(tls_record_t *buf);
+	void 		(*record_close)(tls_record_t *buf);
+	unsigned int 	(*record_from_buff)(tls_record_t *buf, void const *ptr, unsigned int size);
+	unsigned int 	(*tls_record_to_buff)(tls_record_t *buf, void *ptr, unsigned int size);
 
 	bool		invalid_hb_used;		//!< Whether heartbleed attack was detected.
 

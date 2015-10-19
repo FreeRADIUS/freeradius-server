@@ -89,7 +89,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *	- -1 on failure.
  */
 static int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t flags,
-			   record_t *record, size_t record_len, size_t frag_len)
+			   tls_record_t *record, size_t record_len, size_t frag_len)
 {
 	eap_round_t	*eap_round = eap_session->this_round;
 	tls_session_t	*tls_session = eap_session->opaque;

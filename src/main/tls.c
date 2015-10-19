@@ -108,10 +108,10 @@ static void 		session_close(tls_session_t *session);
 static void 		session_init(tls_session_t *session);
 
 /* record */
-static void 		record_init(record_t *record);
-static void 		record_close(record_t *record);
-static unsigned int 	record_from_buff(record_t *record, void const *in, unsigned int inlen);
-static unsigned int 	record_to_buff(record_t *record, void *out, unsigned int outlen);
+static void 		record_init(tls_record_t *record);
+static void 		record_close(tls_record_t *record);
+static unsigned int 	record_from_buff(tls_record_t *record, void const *in, unsigned int inlen);
+static unsigned int 	record_to_buff(tls_record_t *record, void *out, unsigned int outlen);
 
 #ifdef PSK_MAX_IDENTITY_LEN
 /** Verify the PSK identity contains no reserved chars
@@ -707,12 +707,12 @@ static void session_close(tls_session_t *session)
 	session_init(session);
 }
 
-static void record_init(record_t *rec)
+static void record_init(tls_record_t *rec)
 {
 	rec->used = 0;
 }
 
-static void record_close(record_t *rec)
+static void record_close(tls_record_t *rec)
 {
 	rec->used = 0;
 }
@@ -721,7 +721,7 @@ static void record_close(record_t *rec)
 /** Copy data to the intermediate buffer, before we send it somewhere
  *
  */
-static unsigned int record_from_buff(record_t *record, void const *in, unsigned int inlen)
+static unsigned int record_from_buff(tls_record_t *record, void const *in, unsigned int inlen)
 {
 	unsigned int added = MAX_RECORD_SIZE - record->used;
 
@@ -737,7 +737,7 @@ static unsigned int record_from_buff(record_t *record, void const *in, unsigned 
 /** Take data from the buffer, and give it to the caller
  *
  */
-static unsigned int record_to_buff(record_t *record, void *out, unsigned int outlen)
+static unsigned int record_to_buff(tls_record_t *record, void *out, unsigned int outlen)
 {
 	unsigned int taken = record->used;
 
