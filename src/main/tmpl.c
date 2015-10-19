@@ -339,7 +339,7 @@ TALLOC_CTX *radius_list_ctx(REQUEST *request, pair_lists_t list)
 		return request;
 
 	case PAIR_LIST_STATE:
-		return request;
+		return request->state_ctx;
 
 #ifdef WITH_PROXY
 	case PAIR_LIST_PROXY_REQUEST:

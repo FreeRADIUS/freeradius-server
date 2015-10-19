@@ -580,6 +580,13 @@ static int _request_free(REQUEST *request)
 	request->home_server = NULL;
 #endif
 
+	/*
+	 *	This is parented separately.
+	 */
+	if (request->state_ctx) {
+		talloc_free(request->state_ctx);
+	}
+
 	return 0;
 }
 
@@ -612,6 +619,8 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->module = "";
 	request->component = "<core>";
 	request->log.func = vradlog_request;
+
+	request->state_ctx = talloc_init("session-state");
 
 	return request;
 }
@@ -1102,7 +1111,7 @@ void verify_request(char const *file, int line, REQUEST *request)
 
 #ifdef WITH_VERIFY_PTR
 	fr_pair_list_verify(file, line, request, request->config);
-	fr_pair_list_verify(file, line, request, request->state);
+	fr_pair_list_verify(file, line, request->state_ctx, request->state);
 #endif
 
 	if (request->packet) verify_packet(file, line, request, request->packet, "request");
