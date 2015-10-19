@@ -872,7 +872,7 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
 			talloc_free(fake);
-			eap_tls_fail(eap_session, 0);
+			eap_tls_fail(eap_session);
 			return 0;
 
 		default:  /* Don't Do Anything */
@@ -912,7 +912,7 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		if (eap_tls_success(eap_session, 0) < 0) return 0;
+		if (eap_tls_success(eap_session) < 0) return 0;
 		return 1;
 
 	default:
@@ -920,7 +920,7 @@ static int CC_HINT(nonnull) eap_ttls_postproxy(eap_session_t *eap_session, void 
 		break;
 	}
 
-	eap_tls_fail(eap_session, 0);
+	eap_tls_fail(eap_session);
 	return 0;
 }
 

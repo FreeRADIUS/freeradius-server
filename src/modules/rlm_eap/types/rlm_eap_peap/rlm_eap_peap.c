@@ -186,7 +186,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	we will need this flag to indicate which
 	 *	version we're currently dealing with.
 	 */
-	tls_session->peap_flag = 0x00;
+	tls_session->base_flags = 0x00;
 
 	/*
 	 *	PEAP version 0 requires 'include_length = no',
@@ -199,7 +199,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	if (eap_tls_start(eap_session, tls_session->peap_flag) < 0) {
+	if (eap_tls_start(eap_session) < 0) {
 		talloc_free(tls_session);
 		return 0;
 	}
@@ -295,7 +295,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	rcode = eap_peap_process(eap_session, tls_session);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
-		eap_tls_fail(eap_session, 0);
+		eap_tls_fail(eap_session);
 		return 0;
 
 	case RLM_MODULE_HANDLED:
@@ -328,7 +328,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		/*
 		 *	Success: Automatically return MPPE keys.
 		 */
-		if (eap_tls_success(eap_session, 0) < 0) return 0;
+		if (eap_tls_success(eap_session) < 0) return 0;
 		return 1;
 
 		/*
@@ -347,7 +347,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		break;
 	}
 
-	eap_tls_fail(eap_session, 0);
+	eap_tls_fail(eap_session);
 	return 0;
 }
 

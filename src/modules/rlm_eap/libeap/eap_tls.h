@@ -57,8 +57,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  */
 fr_tls_status_t eap_tls_process(eap_session_t *eap_session);
 
-int	eap_tls_success(eap_session_t *eap_session, int peap_flag) CC_HINT(nonnull);
-int	eap_tls_fail(eap_session_t *eap_session, int peap_flag) CC_HINT(nonnull);
+int	eap_tls_start(eap_session_t *eap_session) CC_HINT(nonnull);
+int	eap_tls_success(eap_session_t *eap_session) CC_HINT(nonnull);
+int	eap_tls_fail(eap_session_t *eap_session) CC_HINT(nonnull);
 int	eap_tls_request(eap_session_t *eap_session) CC_HINT(nonnull);
 
 
@@ -79,23 +80,14 @@ typedef enum tls_op {
 
 #define TLS_HEADER_LEN	  4
 
-typedef struct tls_packet_t {
+typedef struct tls_data_t {
 	uint8_t		flags;
 	uint8_t		data[1];
 } eap_tls_data_t;
 
-typedef struct tls_packet {
-	uint8_t		code;
-	uint8_t		id;
-	uint32_t	length;
-	uint8_t		flags;
-	uint8_t		*data;
-	uint32_t	data_len;
-} eap_tls_packet_t;
-
 /* EAP-TLS framework */
 tls_session_t		*eap_tls_session_init(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert);
-int			eap_tls_start(eap_session_t *eap_session, int peap);
+
 
 fr_tls_server_conf_t	*eap_tls_conf_parse(CONF_SECTION *cs, char const *key);
 

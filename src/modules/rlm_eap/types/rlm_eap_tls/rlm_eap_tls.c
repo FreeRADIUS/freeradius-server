@@ -121,7 +121,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	if (eap_tls_start(eap_session, tls_session->peap_flag) < 0) {
+	if (eap_tls_start(eap_session) < 0) {
 		talloc_free(tls_session);
 		return 0;
 	}
@@ -187,7 +187,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 			if (fake->reply->code != PW_CODE_ACCESS_ACCEPT) {
 				RDEBUG2("Certificate rejected by the virtual server");
 				talloc_free(fake);
-				eap_tls_fail(eap_session, 0);
+				eap_tls_fail(eap_session);
 				return 0;
 			}
 
@@ -229,7 +229,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 		}
 #endif
 
-		eap_tls_fail(eap_session, 0);
+		eap_tls_fail(eap_session);
 		return 0;
 
 		/*
@@ -247,7 +247,7 @@ static int CC_HINT(nonnull) mod_process(void *type_arg, eap_session_t *eap_sessi
 	/*
 	 *	Success: Automatically return MPPE keys.
 	 */
-	if (eap_tls_success(eap_session, 0) < 0) return 0;
+	if (eap_tls_success(eap_session) < 0) return 0;
 	return 1;
 }
 

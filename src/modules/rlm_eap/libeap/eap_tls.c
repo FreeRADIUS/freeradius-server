@@ -185,15 +185,14 @@ static int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, u
  * Fragment length is Framed-MTU - 4.
  *
  * @param eap_session to initiate.
- * @param peap_flag Sets bits that are reserved by EAP-TLS, but are co-opted by PEAP to
- *	indicate the version being used.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_start(eap_session_t *eap_session, int peap_flag)
+int eap_tls_start(eap_session_t *eap_session)
 {
-	return eap_tls_compose(eap_session, FR_TLS_START, SET_START(peap_flag), NULL, 0, 0);
+	return eap_tls_compose(eap_session, FR_TLS_START,
+			       SET_START(((tls_session_t *)eap_session->opaque)->base_flags), NULL, 0, 0);
 }
 
 /** Send an EAP-TLS success
@@ -205,13 +204,11 @@ int eap_tls_start(eap_session_t *eap_session, int peap_flag)
  * will derive the same keys separately.
  *
  * @param eap_session that completed successfully.
- * @param peap_flag Sets bits that are reserved by EAP-TLS, but are co-opted by PEAP to
- *	indicate the version being used.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_success(eap_session_t *eap_session, int peap_flag)
+int eap_tls_success(eap_session_t *eap_session)
 {
 	REQUEST			*request = eap_session->request;
 	tls_session_t		*tls_session = eap_session->opaque;
@@ -226,7 +223,7 @@ int eap_tls_success(eap_session_t *eap_session, int peap_flag)
 	/*
 	 *	Build the success packet
 	 */
-	if (eap_tls_compose(eap_session, FR_TLS_SUCCESS, peap_flag, NULL, 0, 0) < 0) return -1;
+	if (eap_tls_compose(eap_session, FR_TLS_SUCCESS, tls_session->base_flags, NULL, 0, 0) < 0) return -1;
 
 	/*
 	 *	Automatically generate MPPE keying material.
@@ -250,15 +247,13 @@ int eap_tls_success(eap_session_t *eap_session, int peap_flag)
  * In addition to sending the failure, will destroy any cached session data.
  *
  * @param eap_session that failed.
- * @param peap_flag Sets bits that are reserved by EAP-TLS, but are co-opted by PEAP to
- *	indicate the version being used.
  * @return
  *	- 0 on success.
  *	- -1 on failure (to compose a valid packet).
  */
-int eap_tls_fail(eap_session_t *eap_session, int peap_flag)
+int eap_tls_fail(eap_session_t *eap_session)
 {
-	tls_session_t		*tls_session = eap_session->opaque;
+	tls_session_t *tls_session = eap_session->opaque;
 
 	eap_session->finished = true;
 
@@ -267,7 +262,7 @@ int eap_tls_fail(eap_session_t *eap_session, int peap_flag)
 	 */
 	tls_fail(tls_session);
 
-	if (eap_tls_compose(eap_session, FR_TLS_START, SET_START(peap_flag), NULL, 0, 0) < 0) return -1;
+	if (eap_tls_compose(eap_session, FR_TLS_START, SET_START(tls_session->base_flags), NULL, 0, 0) < 0) return -1;
 	return 0;
 }
 
@@ -304,7 +299,7 @@ int eap_tls_fail(eap_session_t *eap_session, int peap_flag)
 int eap_tls_request(eap_session_t *eap_session)
 {
 	tls_session_t	*tls_session = eap_session->opaque;
-	uint8_t		flags = tls_session->peap_flag;	/* Set PEAP version (usually 0) */
+	uint8_t		flags = tls_session->base_flags;
 	size_t		frag_len;
 	bool		length_included = false;
 
@@ -369,18 +364,17 @@ int eap_tls_request(eap_session_t *eap_session)
  * the subsequent fragment contained within an EAP-Reponse.
  *
  * @param eap_session that we're acking the fragment for.
- * @param peap_flag Sets bits that are reserved by EAP-TLS, but are co-opted by PEAP to
- *	indicate the version being used.
  */
-static int eap_tls_send_ack(eap_session_t *eap_session, int peap_flag)
+static int eap_tls_send_ack(eap_session_t *eap_session)
 {
-	REQUEST			*request = eap_session->request;
+	REQUEST	*request = eap_session->request;
 
 	RDEBUG2("ACKing Peer's TLS record fragment");
-	return eap_tls_compose(eap_session, FR_TLS_ACK, peap_flag, NULL, 0, 0);
+	return eap_tls_compose(eap_session, FR_TLS_ACK,
+			       ((tls_session_t *)eap_session->opaque)->base_flags, NULL, 0, 0);
 }
 
-/** Check that this #eap_tls_packet_t is correct and the progression of eap_tls packets is sane
+/** Check that this EAP-TLS packet is correct and the progression of EAP-TLS packets is sane
  *
  * @note In the received packet, No data will be present incase of ACK or NAK
  *	in this case the packet->data pointer will be NULL.
@@ -792,7 +786,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 		 *	ACK fragments until we get a complete TLS record.
 		 */
 		if (status != FR_TLS_RECORD_COMPLETE) {
-			eap_tls_send_ack(eap_session, tls_session->peap_flag);
+			eap_tls_send_ack(eap_session);
 			status = FR_TLS_HANDLED;
 			goto done;
 		}
