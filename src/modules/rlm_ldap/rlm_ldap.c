@@ -865,7 +865,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 				return -1;
 			}
 
-			if (ldap_url->lud_dn) {
+			if (ldap_url->lud_dn && (ldap_url->lud_dn[0] != '\0')) {
 				cf_log_err_cs(conf, "Base DN cannot be specified via server URL");
 				goto ldap_url_error;
 			}
