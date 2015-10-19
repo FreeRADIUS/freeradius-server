@@ -171,7 +171,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 		client_cert = inst->req_client_cert;
 	}
 
-	tls_session = eap_tls_session(eap_session, inst->tls_conf, client_cert);
+	tls_session = eap_tls_session_init(eap_session, inst->tls_conf, client_cert);
 	if (!tls_session) return 0;
 
 	eap_session->opaque = ((void *)tls_session);
@@ -185,7 +185,7 @@ static int mod_session_init(void *type_arg, eap_session_t *eap_session)
 	 *	TLS session initialization is over.  Now handle TLS
 	 *	related handshaking or application data.
 	 */
-	if (eap_tls_start(eap_session->this_round, tls_session->peap_flag) < 0) {
+	if (eap_tls_start(eap_session, tls_session->peap_flag) < 0) {
 		talloc_free(tls_session);
 		return 0;
 	}
@@ -254,7 +254,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 			if (eap_tls_success(eap_session, 0) < 0) return 0;
 			return 1;
 		} else {
-			eap_tls_request(eap_session->this_round, tls_session);
+			eap_tls_request(eap_session);
 		}
 		return 1;
 
@@ -307,7 +307,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 		 *	Access-Challenge, continue tunneled conversation.
 		 */
 	case PW_CODE_ACCESS_CHALLENGE:
-		eap_tls_request(eap_session->this_round, tls_session);
+		eap_tls_request(eap_session);
 		return 1;
 
 		/*

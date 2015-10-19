@@ -78,21 +78,35 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  * The EAP packet will be written to eap_round->request, with the original reply
  * being untouched.
  *
- * @param[in,out] eap_round containing what we're responding to, and out response.
- * @param[in] reply The EAP-TLS packet we composed.
+ * @param eap_session to continue.
+ * @param status What type of packet we're sending.
+ * @param flags to set.  This is checked to determine if we need to include a length field.
+ * @param record The record buffer to read from.  This most only be set for FR_TLS_REQUEST packets.
+ * @param record_len the length of the record we're sending.
+ * @param frag_len the length of the fragment we're sending.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_compose(eap_round_t *eap_round, eap_tls_packet_t *reply)
+static int eap_tls_compose(eap_session_t *eap_session, fr_tls_status_t status, uint8_t flags,
+			   record_t *record, size_t record_len, size_t frag_len)
 {
-	uint8_t *ptr;
+	eap_round_t	*eap_round = eap_session->this_round;
+	tls_session_t	*tls_session = eap_session->opaque;
+	uint8_t		*p;
+	size_t		len = 1;	/* Flags */
+
+	rad_assert(!record || (status == FR_TLS_REQUEST));
 
 	/*
-	 *	Don't set eap_round->request->type.num, as the main EAP
-	 *	eap_session will do that for us.  This allows the TLS
-	 *	module to be called from TTLS & PEAP.
+	 *	Determine the length (sans header) of our EAP-TLS
+	 *	packet.  The reason for not including the length is
+	 *	that the fields are the same as normal EAP messages.
 	 */
+	if (status == FR_TLS_REQUEST) {
+		if (TLS_LENGTH_INCLUDED(flags)) len += 4;	/* TLS record length field */
+		if (record) len += frag_len;
+	}
 
 	/*
 	 * 	When the EAP server receives an EAP-Response with the
@@ -108,18 +122,29 @@ int eap_tls_compose(eap_round_t *eap_round, eap_tls_packet_t *reply)
 	 *	Identifier value in the subsequent fragment contained
 	 *	within an EAP-Reponse.
 	 */
-	eap_round->request->type.data = talloc_array(eap_round->request, uint8_t, reply->length - TLS_HEADER_LEN + 1);
-	if (!eap_round->request->type.data) return -1;
+	eap_round->request->type.data = p = talloc_array(eap_round->request, uint8_t, len);
+	if (!p) return -1;
+	eap_round->request->type.length = len;
 
-	/* EAPTLS Header length is excluded while computing EAP typelen */
-	eap_round->request->type.length = reply->length - TLS_HEADER_LEN;
+	*p++ = flags;
 
-	ptr = eap_round->request->type.data;
-	*ptr++ = (uint8_t)(reply->flags & 0xFF);
+	if (TLS_LENGTH_INCLUDED(flags)) {
+		uint32_t net_record_len;
 
-	if (reply->data_len) memcpy(ptr, reply->data, reply->data_len);
+		/*
+		 *	If we need to add the length field,
+		 *	convert the total record length to
+		 *	network byte order and copy it in at the
+		 *	start of the packet.
+		 */
+		net_record_len = htonl(record_len);
+		memcpy(p, &net_record_len, sizeof(net_record_len));
+		p += sizeof(net_record_len);
+	}
 
-	switch (reply->code) {
+	if (record) tls_session->record_to_buff(record, p, frag_len);
+
+	switch (status) {
 	case FR_TLS_ACK:
 	case FR_TLS_START:
 	case FR_TLS_REQUEST:
@@ -159,28 +184,16 @@ int eap_tls_compose(eap_round_t *eap_round, eap_tls_packet_t *reply)
  *
  * Fragment length is Framed-MTU - 4.
  *
- * @param eap_round containing the peer's identity response.
+ * @param eap_session to initiate.
  * @param peap_flag Sets bits that are reserved by EAP-TLS, but are co-opted by PEAP to
  *	indicate the version being used.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_start(eap_round_t *eap_round, int peap_flag)
+int eap_tls_start(eap_session_t *eap_session, int peap_flag)
 {
-	eap_tls_packet_t 	reply;
-
-	reply.code = FR_TLS_START;
-	reply.length = TLS_HEADER_LEN + 1/*flags*/;
-
-	reply.flags = peap_flag;
-	reply.flags = SET_START(reply.flags);
-
-	reply.data = NULL;
-	reply.data_len = 0;
-
-	if (eap_tls_compose(eap_round, &reply) < 0) return -1;
-	return 0;
+	return eap_tls_compose(eap_session, FR_TLS_START, SET_START(peap_flag), NULL, 0, 0);
 }
 
 /** Send an EAP-TLS success
@@ -200,16 +213,10 @@ int eap_tls_start(eap_round_t *eap_round, int peap_flag)
  */
 int eap_tls_success(eap_session_t *eap_session, int peap_flag)
 {
-	eap_tls_packet_t	reply;
 	REQUEST			*request = eap_session->request;
 	tls_session_t		*tls_session = eap_session->opaque;
 
 	eap_session->finished = true;
-	reply.code = FR_TLS_SUCCESS;
-	reply.length = TLS_HEADER_LEN;
-	reply.flags = peap_flag;
-	reply.data = NULL;
-	reply.data_len = 0;
 
 	/*
 	 *	Check session resumption is allowed (if we're in a resumed session)
@@ -219,7 +226,7 @@ int eap_tls_success(eap_session_t *eap_session, int peap_flag)
 	/*
 	 *	Build the success packet
 	 */
-	if (eap_tls_compose(eap_session->this_round, &reply) < 0) return -1;
+	if (eap_tls_compose(eap_session, FR_TLS_SUCCESS, peap_flag, NULL, 0, 0) < 0) return -1;
 
 	/*
 	 *	Automatically generate MPPE keying material.
@@ -251,22 +258,16 @@ int eap_tls_success(eap_session_t *eap_session, int peap_flag)
  */
 int eap_tls_fail(eap_session_t *eap_session, int peap_flag)
 {
-	eap_tls_packet_t	reply;
 	tls_session_t		*tls_session = eap_session->opaque;
 
 	eap_session->finished = true;
-	reply.code = FR_TLS_FAIL;
-	reply.length = TLS_HEADER_LEN;
-	reply.flags = peap_flag;
-	reply.data = NULL;
-	reply.data_len = 0;
 
 	/*
 	 *	Destroy any cached session data
 	 */
 	tls_fail(tls_session);
 
-	if (eap_tls_compose(eap_session->this_round, &reply) < 0) return -1;
+	if (eap_tls_compose(eap_session, FR_TLS_START, SET_START(peap_flag), NULL, 0, 0) < 0) return -1;
 	return 0;
 }
 
@@ -295,84 +296,62 @@ int eap_tls_fail(eap_session_t *eap_session, int peap_flag)
  * field **ONLY** in First packet of a fragment series. We do not use it anywhere
  * else.
  *
- * @param eap_round containing the previous response we're sending the request for.
- * @param tls_session that's continuing.
+ * @param eap_session that's continuing.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int eap_tls_request(eap_round_t *eap_round, tls_session_t *tls_session)
+int eap_tls_request(eap_session_t *eap_session)
 {
-	eap_tls_packet_t	reply;
-	unsigned int		size;
-	unsigned int 		len_field = 0;		/* TLS record length field len (0 or 4 bytes) */
+	tls_session_t	*tls_session = eap_session->opaque;
+	uint8_t		flags = tls_session->peap_flag;	/* Set PEAP version (usually 0) */
+	size_t		frag_len;
+	bool		length_included = false;
 
 	/*
 	 *	We don't need to always include the length
 	 *	(just in the first fragment) but it is
 	 *	configurable for compatibility.
 	 */
-	if (tls_session->length_flag) len_field = 4;
+	if (tls_session->length_flag) length_included = true;
 
 	/*
-	 *	If this is the first fragment, record the
-	 *	complete TLS record length.
+	 *	If this is the first fragment, record the complete
+	 *	TLS record length.
 	 */
-	if (tls_session->fragment == 0) tls_session->tls_msg_len = tls_session->dirty_out.used;
-
-	reply.code = FR_TLS_REQUEST;
-	reply.flags = tls_session->peap_flag;	/* Set PEAP version (usually 0) */
+	if (tls_session->fragmenting == false) tls_session->tls_msg_len = tls_session->dirty_out.used;
 
 	/*
 	 *	If the data we're sending is greater than the MTU
-	 *	we need to fragment it.
+	 *	then we need to fragment it.
 	 */
 	if (tls_session->dirty_out.used > tls_session->mtu) {
-		size = tls_session->mtu;
-		reply.flags = SET_MORE_FRAGMENTS(reply.flags);
+		frag_len = tls_session->mtu;		/* Data we're draining for this fragment */
+		flags = SET_MORE_FRAGMENTS(flags);
 
 		/*
 		 *	Length MUST be included if we're fragmenting
 		 *	and this is the first fragment.
 		 */
-		if (tls_session->fragment == 0) len_field = 4;
-		tls_session->fragment = 1;
+		if (tls_session->fragmenting == false) length_included = true;
+		tls_session->fragmenting = true;	/* Start a new series of fragments */
+	/*
+	 *	Otherwise, we're either sending a record smaller
+	 *	than the MTU or this is the final fragment.
+	 */
 	} else {
-		size = tls_session->dirty_out.used;
-		tls_session->fragment = 0;
+		frag_len = tls_session->dirty_out.used;	/* Remaining data to drain */
+		tls_session->fragmenting = false;
 	}
 
 	/*
-	 *	Start filling in the fields of our request packet
-	 *	this is a reply to the peer's previous response
-	 *	packet.
+	 *	Update the flags to say we're including the
+	 *	TLS record length.
 	 */
-	reply.data_len = len_field + size;
-	reply.length = TLS_HEADER_LEN + 1 + reply.data_len; /* +1 for flags */
+	if (length_included) flags = SET_LENGTH_INCLUDED(flags);
 
-	reply.data = talloc_array(eap_round, uint8_t, reply.length);
-	if (!reply.data) return -1;
-
-	if (len_field) {
-		unsigned int len;
-
-		/*
-		 *	If we need to add the length field,
-		 *	convert the total record length to
-		 *	network byte order and copy it in at the
-		 *	start of the packet.
-		 */
-		len = htonl(tls_session->tls_msg_len);
-		memcpy(reply.data, &len, len_field);
-		reply.flags = SET_LENGTH_INCLUDED(reply.flags);
-	}
-	(tls_session->record_to_buff)(&tls_session->dirty_out, reply.data + len_field, size);
-
-	eap_tls_compose(eap_round, &reply);
-	talloc_free(reply.data);
-	reply.data = NULL;
-
-	return 0;
+	return eap_tls_compose(eap_session, FR_TLS_REQUEST, flags,
+			       &tls_session->dirty_out, tls_session->tls_msg_len, frag_len);
 }
 
 /** ACK a fragment of the TLS record from the peer
@@ -395,19 +374,10 @@ int eap_tls_request(eap_round_t *eap_round, tls_session_t *tls_session)
  */
 static int eap_tls_send_ack(eap_session_t *eap_session, int peap_flag)
 {
-	eap_tls_packet_t 	reply;
 	REQUEST			*request = eap_session->request;
 
 	RDEBUG2("ACKing Peer's TLS record fragment");
-	reply.code = FR_TLS_ACK;
-	reply.length = TLS_HEADER_LEN + 1/*flags*/;
-	reply.flags = peap_flag;
-	reply.data = NULL;
-	reply.data_len = 0;
-
-	if (eap_tls_compose(eap_session->this_round, &reply) < 0) return -1;
-
-	return 0;
+	return eap_tls_compose(eap_session, FR_TLS_ACK, peap_flag, NULL, 0, 0);
 }
 
 /** Check that this #eap_tls_packet_t is correct and the progression of eap_tls packets is sane
@@ -694,7 +664,7 @@ static fr_tls_status_t eap_tls_handshake(eap_session_t *eap_session)
 	 *	TLS proper can decide what to do, then.
 	 */
 	if (tls_session->dirty_out.used > 0) {
-		eap_tls_request(eap_session->this_round, tls_session);
+		eap_tls_request(eap_session);
 		return FR_TLS_HANDLED;
 	}
 
@@ -839,7 +809,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
 	 *	We have fragments or records to send to the peer
 	 */
 	case FR_TLS_REQUEST:
-		eap_tls_request(eap_session->this_round, tls_session);
+		eap_tls_request(eap_session);
 		status = FR_TLS_HANDLED;
 		goto done;
 
@@ -877,7 +847,7 @@ fr_tls_status_t eap_tls_process(eap_session_t *eap_session)
  *	- A new tls_session on success.
  *	- NULL on error.
  */
-tls_session_t *eap_tls_session(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert)
+tls_session_t *eap_tls_session_init(eap_session_t *eap_session, fr_tls_server_conf_t *tls_conf, bool client_cert)
 {
 	tls_session_t	*tls_session;
 	REQUEST		*request = eap_session->request;
