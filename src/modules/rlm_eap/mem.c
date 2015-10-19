@@ -93,7 +93,7 @@ static int _eap_session_free(eap_session_t *eap_session)
 	if (fr_debug_lvl && eap_session->tls && !eap_session->finished &&
 	    (time(NULL) > (eap_session->request->timestamp + 3))) {
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!                  !!",
+		WARN("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!   !!",
 		     eap_session->state[0], eap_session->state[1],
 		     eap_session->state[2], eap_session->state[3],
 		     eap_session->state[4], eap_session->state[5],
@@ -102,8 +102,6 @@ static int _eap_session_free(eap_session_t *eap_session)
 		WARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
-
-	talloc_free(eap_session);
 
 	return 0;
 }
