@@ -2320,7 +2320,13 @@ do { \
 		 *	Print out all the pairs we have so far
 		 */
 		rdebug_pair_list(L_DBG_LVL_2, request, cert_vps, "&session-state:");
-		fr_pair_add(&request->state, cert_vps);
+
+		/*
+		 *	cert_vps have a different talloc parent, so we
+		 *	can't just reference them.
+		 */
+		fr_pair_list_mcopy_by_num(request->state_ctx, &request->state, &cert_vps, 0, 0, TAG_ANY);
+		fr_pair_list_free(&cert_vps);
 	}
 
 	switch (ctx->error) {

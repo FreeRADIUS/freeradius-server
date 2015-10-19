@@ -39,6 +39,7 @@ typedef struct state_entry_t {
 
 	int			tries;
 
+	TALLOC_CTX		*ctx;
 	VALUE_PAIR		*vps;
 
 	void 			*data;
@@ -120,6 +121,9 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 	(void) talloc_get_type_abort(entry, state_entry_t);
 #endif
 	rbtree_deletebydata(state->tree, entry);
+
+	if (entry->ctx) talloc_free(entry->ctx);
+
 	talloc_free(entry);
 }
 
@@ -217,7 +221,7 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 		 *	Unused.  We can delete it, even if now isn't
 		 *	the time to clean it up.
 		 */
-		if (!entry->vps && !entry->data) {
+		if (!entry->ctx && !entry->data) {
 			state_entry_free(state, entry);
 			continue;
 		}
@@ -256,8 +260,6 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 	 */
 	if (old) {
 		entry->tries = old->tries + 1;
-
-		rad_assert(old->vps == NULL);
 
 		/*
 		 *	Track State
@@ -396,6 +398,7 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 {
 	state_entry_t *entry;
 	fr_state_t *state = global_state;
+	TALLOC_CTX *old_ctx = NULL;
 
 	rad_assert(request->state == NULL);
 
@@ -416,7 +419,15 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	 */
 	if (entry) {
 		RDEBUG2("Restoring &session-state");
-		fr_pair_list_mcopy_by_num(request, &request->state, &entry->vps, 0, 0, TAG_ANY);
+
+		if (request->state_ctx) old_ctx = request->state_ctx;
+
+		request->state_ctx = entry->ctx;
+		request->state = entry->vps;
+
+		entry->ctx = NULL;
+		entry->vps = NULL;
+
 		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 
 	} else {
@@ -424,6 +435,11 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	/*
+	 *	Free this outside of the mutex for less contention.
+	 */
+	if (old_ctx) talloc_free(old_ctx);
 
 	VERIFY_REQUEST(request);
 	return;
@@ -462,11 +478,13 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
 		return false;
 	}
 
-	/*
-	 *	This has to be done in a mutex lock, because talloc
-	 *	isn't thread-safe.
-	 */
-	fr_pair_list_mcopy_by_num(entry, &entry->vps, &request->state, 0, 0, TAG_ANY);
+	rad_assert(entry->ctx == NULL);
+	entry->ctx = request->state_ctx;
+	entry->vps = request->state;
+
+	request->state_ctx = NULL;
+	request->state = NULL;
+
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
 	rad_assert(request->state == NULL);
