@@ -142,7 +142,7 @@ typedef struct _tls_session_t {
 	 */
 	size_t 		mtu;				//!< Current fragment size transmitted.
 	size_t		tls_msg_len;			//!< Actual/Total TLS message length.
-	bool		fragment;			//!< Flag, In fragment mode or not.
+	bool		fragmenting;			//!< Flag, In fragment mode or not.
 	bool		length_flag;			//!< A flag to include length in every TLS Data/Alert packet.
 							//!< If set to no then only the first fragment contains length.
 	int		peap_flag;
