@@ -72,8 +72,6 @@ static int CC_HINT(nonnull) mod_session_init(UNUSED void *instance, eap_session_
 	 *	we sent to the AP.  The later stages will take care
 	 *	of filling in the peer response.
 	 */
-	eap_session->free_opaque = NULL;
-
 	session->stage = 4;	/* the next stage we're in */
 	memcpy(session->peer_challenge, reply->challenge, reply->count);
 

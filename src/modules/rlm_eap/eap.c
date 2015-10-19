@@ -359,16 +359,13 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = fr_pair_find_by_num(eap_session->request->config, PW_EAP_TYPE, 0,
-			      TAG_ANY);
+		vp = fr_pair_find_by_num(eap_session->request->config, PW_EAP_TYPE, 0, TAG_ANY);
 		if (vp) next = vp->vp_integer;
 
 		/*
 		 *	Ensure it's valid.
 		 */
-		if ((next < PW_EAP_MD5) ||
-		    (next >= PW_EAP_MAX_TYPES) ||
-		    (!inst->methods[next])) {
+		if ((next < PW_EAP_MD5) || (next >= PW_EAP_MAX_TYPES) || (!inst->methods[next])) {
 			REDEBUG2("Tried to start unsupported method (%d)", next);
 
 			return EAP_INVALID;
@@ -395,23 +392,17 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 
 	case PW_EAP_NAK:
 		/*
-		 *	Delete old data, if necessary.
+		 *	Delete old data, if necessary.  If we called a method
+		 *	before, and it initialized itself, we need to free
+		 *	the memory it alloced.
 		 */
-		if (eap_session->opaque && eap_session->free_opaque) {
-			eap_session->free_opaque(eap_session->opaque);
-			eap_session->free_opaque = NULL;
-			eap_session->opaque = NULL;
-		}
-
-		next = eap_process_nak(inst, eap_session->request,
-				       eap_session->type, type);
+		TALLOC_FREE(eap_session->opaque);
+		next = eap_process_nak(inst, eap_session->request, eap_session->type, type);
 
 		/*
 		 *	We probably want to return 'fail' here...
 		 */
-		if (!next) {
-			return EAP_INVALID;
-		}
+		if (!next) return EAP_INVALID;
 
 		goto do_initiate;
 

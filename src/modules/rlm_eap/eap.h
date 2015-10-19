@@ -76,7 +76,6 @@ struct _eap_session {
 							//!< we're building.
 
 	void 		*opaque;			//!< Opaque data used by EAP methods.
-	void 		(*free_opaque)(void *opaque);	//!< Callback to free opaque data.
 
 	eap_process_t	process;			//!< Callback that should be used to process the next round.
 							//!< Usually set to the process functino of an EAP submodule.

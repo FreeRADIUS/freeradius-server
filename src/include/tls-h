@@ -162,7 +162,6 @@ typedef struct _tls_session_t {
 	 *	Used by TTLS & PEAP to keep track of other per-session data.
 	 */
 	void 		*opaque;
-	void 		(*free_opaque)(void *opaque);
 
 	char const	*prf_label;
 	bool		allow_session_resumption;	//!< Whether session resumption is allowed.

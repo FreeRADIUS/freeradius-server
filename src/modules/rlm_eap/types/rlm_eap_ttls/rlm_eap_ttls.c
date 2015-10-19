@@ -290,9 +290,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	We may need TTLS data associated with the session, so
 	 *	allocate it here, if it wasn't already alloacted.
 	 */
-	if (!tls_session->opaque) {
-		tls_session->opaque = ttls_alloc(tls_session, inst);
-	}
+	if (!tls_session->opaque) tls_session->opaque = ttls_alloc(tls_session, inst);
 
 	/*
 	 *	Process the TTLS portion of the request.

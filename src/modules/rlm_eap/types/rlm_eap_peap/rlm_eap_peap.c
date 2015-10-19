@@ -225,9 +225,7 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	 *	Session resumption requires the storage of data, so
 	 *	allocate it if it doesn't already exist.
 	 */
-	if (!tls_session->opaque) {
-		peap = tls_session->opaque = peap_alloc(tls_session, inst);
-	}
+	if (!tls_session->opaque) peap = tls_session->opaque = peap_alloc(tls_session, inst);
 
 	status = eap_tls_process(eap_session);
 	if ((status == FR_TLS_INVALID) || (status == FR_TLS_FAIL)) {

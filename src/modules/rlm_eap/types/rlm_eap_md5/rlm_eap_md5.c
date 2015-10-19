@@ -80,7 +80,6 @@ static int mod_session_init(UNUSED void *instance, eap_session_t *eap_session)
 	eap_session->opaque = talloc_array(eap_session, uint8_t, reply->value_size);
 	rad_assert(eap_session->opaque != NULL);
 	memcpy(eap_session->opaque, reply->value, reply->value_size);
-	eap_session->free_opaque = NULL;
 
 	/*
 	 *	Compose the EAP-MD5 packet out of the data structure,

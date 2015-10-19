@@ -75,14 +75,6 @@ static int _eap_session_free(eap_session_t *eap_session)
 	if (eap_session->prev_round) eap_round_free(&(eap_session->prev_round));
 	if (eap_session->this_round) eap_round_free(&(eap_session->this_round));
 
-	if ((eap_session->opaque) && (eap_session->free_opaque)) {
-		eap_session->free_opaque(eap_session->opaque);
-		eap_session->opaque = NULL;
-	}
-
-	eap_session->opaque = NULL;
-	eap_session->free_opaque = NULL;
-
 	/*
 	 *	Give helpful debug messages if:
 	 *

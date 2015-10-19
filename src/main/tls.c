@@ -265,14 +265,6 @@ void tls_session_id(SSL_SESSION *session, char *buffer, size_t bufsize)
 
 static int _tls_session_free(tls_session_t *session)
 {
-	/*
-	 *	Free any opaque TTLS or PEAP data.
-	 */
-	if ((session->opaque) && (session->free_opaque)) {
-		session->free_opaque(session->opaque);
-		session->opaque = NULL;
-	}
-
 	session_close(session);
 
 	return 0;
@@ -687,7 +679,6 @@ static void session_init(tls_session_t *session)
 	session->record_out_total_len = 0;
 	session->length_flag = false;
 	session->opaque = NULL;
-	session->free_opaque = NULL;
 }
 
 static void session_close(tls_session_t *session)
