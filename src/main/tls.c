@@ -1127,6 +1127,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_OFFSET("random_file", PW_TYPE_STRING, fr_tls_server_conf_t, random_file) },
 	{ FR_CONF_OFFSET("fragment_size", PW_TYPE_INTEGER, fr_tls_server_conf_t, fragment_size), .dflt = "1024" },
 	{ FR_CONF_OFFSET("include_length", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, include_length), .dflt = "yes" },
+	{ FR_CONF_OFFSET("auto_chain", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, auto_chain), .dflt = "yes" },
 	{ FR_CONF_OFFSET("check_crl", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_crl), .dflt = "no" },
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
 	{ FR_CONF_OFFSET("check_all_crl", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_all_crl), .dflt = "no" },
@@ -2934,6 +2935,16 @@ post_ca:
 	}
 #endif
 #endif
+
+	/*
+	 *	OpenSSL will automatically create certificate chains,
+	 *	unless we tell it to not do that.  The problem is that
+	 *	it sometimes gets the chains right from a certificate
+	 *	signature view, but wrong from the clients view.
+	 */
+	if (!conf->auto_chain) {
+		SSL_CTX_set_mode(ctx, SSL_MODE_NO_AUTO_CHAIN);
+	}
 
 	/* Set Info callback */
 	SSL_CTX_set_info_callback(ctx, cbtls_info);
