@@ -200,6 +200,15 @@ eap {
 		#
 		ca_file = ${cadir}/ca.pem
 
+	 	#  OpenSSL will automatically create certificate chains,
+	 	#  unless we tell it to not do that.  The problem is that
+	 	#  it sometimes gets the chains right from a certificate
+	 	#  signature view, but wrong from the clients view.
+		#
+		#  When setting "auto_chain = no", the server certificate
+		#  file MUST include the full certificate chain.
+	#	auto_chain = yes
+
 		#
 		#  If OpenSSL supports TLS-PSK, then we can use
 		#  a PSK identity and (hex) password.  When the
@@ -263,6 +272,7 @@ eap {
 		#  First packet of a fragment series.
 		#
 	#	include_length = yes
+
 
 		#  Check the Certificate Revocation List
 		#
