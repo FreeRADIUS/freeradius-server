@@ -2138,6 +2138,10 @@ int modules_init(CONF_SECTION *config)
 						 */
 						module = module_instantiate_method(modules, cf_pair_attr(cp), NULL);
 						if (!module) {
+							cf_log_err(subci, "Module instance \"%s\" referenced in "
+								   "%s block, does not exist",
+								   cf_pair_attr(cp),
+								   cf_section_name1(subcs));
 							return -1;
 						}
 
