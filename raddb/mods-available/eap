@@ -237,7 +237,7 @@ eap {
 		#  For DH cipher suites to work, you have to
 		#  run OpenSSL to create the DH file first:
 		#
-		#  	openssl dhparam -out certs/dh 1024
+		#  	openssl dhparam -out certs/dh 2048
 		#
 		dh_file = ${certdir}/dh
 
