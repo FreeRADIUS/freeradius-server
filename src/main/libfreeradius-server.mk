@@ -10,6 +10,7 @@ SOURCES	:=	conffile.c \
 		map_proc.c \
 		map.c \
 		regex.c \
+		request.c \
 		tmpl.c \
 		util.c \
 		version.c \
