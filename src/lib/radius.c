@@ -882,7 +882,12 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	case PW_TYPE_OCTETS:
 		data = vp->data.ptr;
 		if (!data) {
-			fr_strerror_printf("ERROR: Cannot encode NULL data");
+			if (vp->da->name) {
+				fr_strerror_printf("ERROR: Cannot encode NULL data for attr '%s'",
+						vp->da->name);
+			} else {
+				fr_strerror_printf("ERROR: Cannot encode NULL data");
+			}
 			return -1;
 		}
 		break;
