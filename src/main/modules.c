@@ -1491,34 +1491,18 @@ int virtual_servers_load(CONF_SECTION *config)
 		char const *name2;
 
 		name2 = cf_section_name2(cs);
-		if (!name2) continue; /* handled above */
-
-		if (load_byserver(cs) < 0) {
-			/*
-			 *	Once we successfully started once,
-			 *	continue loading the OTHER servers,
-			 *	even if one fails.
-			 */
-			if (!first_time) continue;
+		if (!name2) {
+			cf_log_err_cs(cs, "server sections must have a name");
 			return -1;
 		}
-	}
 
-	/*
-	 *	Try to compile the "authorize", etc. sections which
-	 *	aren't in a virtual server.
-	 */
-	server = virtual_server_find(NULL);
-	if (server) {
-		int i;
-
-		for (i = MOD_AUTHENTICATE; i < MOD_COUNT; i++) {
-			if (!modcall_pass2(server->mc[i])) return -1;
-		}
-
-		if (server->components &&
-		    (rbtree_walk(server->components, RBTREE_IN_ORDER,
-				 pass2_cb, NULL) != 0)) {
+		/*
+		 *	Once we successfully started once,
+		 *	continue loading the OTHER servers,
+		 *	even if one fails.
+		 */
+		if (load_byserver(cs) < 0) {
+			if (!first_time) continue;
 			return -1;
 		}
 	}
