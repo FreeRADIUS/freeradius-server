@@ -3,6 +3,9 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* "unlang" comparisons of IP addresses to IP prefixes
 	  are now detected, and types automatically cast.
 	* Allow shorthand form of ipv4prefix values e.g. 127/8.
+	* Add "auto_chain" to raddb/mods-available/eap, tls
+	  subsection.  This allows the disablign of OpenSSL
+	  auto-chaining of certificates.  Which it can get wrong.
 
 	Bug fixes
 	* Fix issue where field nas_type would not be accessible via
