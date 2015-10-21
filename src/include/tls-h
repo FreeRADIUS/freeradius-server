@@ -339,7 +339,12 @@ extern int fr_tls_ex_index_vps;
 
 /* configured values goes right here */
 struct fr_tls_server_conf_t {
-	SSL_CTX		*ctx;
+	SSL_CTX		**ctx;			//!< We use an array of contexts to reduce contention.
+						//!< Each context may only be used by a single thread
+						//!< concurrently.
+	uint32_t	ctx_count;		//!< Number of contexts we created.
+	uint32_t	ctx_next;		//!< Next context to use.
+
 	CONF_SECTION	*cs;
 
 	char const	*private_key_password;

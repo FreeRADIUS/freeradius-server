@@ -293,8 +293,7 @@ tls_session_t *tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 
 	talloc_set_destructor(session, _tls_session_free);
 
-	session->ctx = conf->ctx;
-
+	session->ctx = conf->ctx[(conf->ctx_count == 1) ? 1 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
 	SSL_CTX_set_mode(session->ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_AUTO_RETRY);
 
 	session->ssl = SSL_new(session->ctx);
@@ -357,10 +356,14 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	SSL		*new_tls = NULL;
 	int		verify_mode = 0;
 	VALUE_PAIR	*vp;
+	SSL_CTX		*ssl_ctx;
 
 	rad_assert(request != NULL);
+	rad_assert(conf->ctx_count > 0);
 
 	RDEBUG2("Initiating new EAP-TLS session");
+
+	ssl_ctx = conf->ctx[(conf->ctx_count == 1) ? 1 : conf->ctx_next++ % conf->ctx_count];	/* mutex not needed */
 
 	/*
 	 *	Manually flush the sessions every so often.  If HALF
@@ -371,13 +374,13 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	 */
 	if (conf->session_cache_enable && !conf->session_cache_server &&
 	    ((conf->session_last_flushed + ((int)conf->session_timeout * 1800)) <= request->timestamp)){
-		RDEBUG2("Flushing TLS sessions (of #%ld)", SSL_CTX_sess_number(conf->ctx));
+		RDEBUG2("Flushing TLS sessions (of #%ld)", SSL_CTX_sess_number(ssl_ctx));
 
-		SSL_CTX_flush_sessions(conf->ctx, request->timestamp);
+		SSL_CTX_flush_sessions(ssl_ctx, request->timestamp);
 		conf->session_last_flushed = request->timestamp;
 	}
 
-	new_tls = SSL_new(conf->ctx);
+	new_tls = SSL_new(ssl_ctx);
 	if (new_tls == NULL) {
 		RERROR("Error creating new TLS session: %s", ERR_error_string(ERR_get_error(), NULL));
 
@@ -397,7 +400,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	session_init(session);
 	talloc_set_destructor(session, _tls_session_free);
 
-	session->ctx = conf->ctx;
+	session->ctx = ssl_ctx;
 	session->ssl = new_tls;
 
 	/*
@@ -2627,6 +2630,63 @@ void tls_global_cleanup(void)
 	tls_done_init = false;
 }
 
+#ifdef __APPLE__
+/** Use certadmin to retrieve the password for the private key
+ *
+ */
+static int tls_certadmin_password(fr_tls_server_conf_t *conf)
+{
+	if (!conf->private_key_password) return 0;
+
+	/*
+	 * Set the password to load private key
+	 */
+
+	/*
+	 * We don't want to put the private key password in eap.conf, so  check
+	 * for our special string which indicates we should get the password
+	 * programmatically.
+	 */
+	char const* special_string = "Apple:UseCertAdmin";
+	if (strncmp(conf->private_key_password, special_string, strlen(special_string)) == 0) {
+		char cmd[256];
+		char *password;
+		long const max_password_len = 128;
+		snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
+			 conf->private_key_file);
+
+		DEBUG2(LOG_PREFIX ":  Getting private key passphrase using command \"%s\"", cmd);
+
+		FILE* cmd_pipe = popen(cmd, "r");
+		if (!cmd_pipe) {
+			ERROR(LOG_PREFIX ": %s command failed: Unable to get private_key_password", cmd);
+			ERROR(LOG_PREFIX ": Error reading private_key_file %s", conf->private_key_file);
+			return -1;
+		}
+
+		rad_const_free(conf->private_key_password);
+		password = talloc_array(conf, char, max_password_len);
+		if (!password) {
+			ERROR(LOG_PREFIX ": Can't allocate space for private_key_password");
+			ERROR(LOG_PREFIX ": Error reading private_key_file %s", conf->private_key_file);
+			pclose(cmd_pipe);
+			return -1;
+		}
+
+		fgets(password, max_password_len, cmd_pipe);
+		pclose(cmd_pipe);
+
+		/* Get rid of newline at end of password. */
+		password[strlen(password) - 1] = '\0';
+
+		DEBUG3(LOG_PREFIX ": Password from command = \"%s\"", password);
+		conf->private_key_password = password;
+	}
+
+	return 0;
+}
+#endif
+
 /** Create SSL context
  *
  * - Load the trusted CAs
@@ -2641,6 +2701,7 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 	int		ctx_options = 0;
 	int		ctx_tls_versions = 0;
 	int		type;
+	void		*app_data_index;
 
 	ctx = SSL_CTX_new(SSLv23_method()); /* which is really "all known SSL / TLS methods".  Idiots. */
 	if (!ctx) {
@@ -2655,7 +2716,8 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 	 * Save the config on the context so that callbacks which
 	 * only get SSL_CTX* e.g. session persistence, can get it
 	 */
-	SSL_CTX_set_app_data(ctx, conf);
+	memcpy(&app_data_index, &conf, sizeof(app_data_index));
+	SSL_CTX_set_app_data(ctx, app_data_index);
 
 	/*
 	 * Identify the type of certificates that needs to be loaded
@@ -2667,59 +2729,14 @@ SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 	}
 
 	/*
-	 * Set the password to load private key
+	 *	Set the private key password (this should have been retrieved earlier)
 	 */
-	if (conf->private_key_password) {
-#ifdef __APPLE__
-		/*
-		 * We don't want to put the private key password in eap.conf, so  check
-		 * for our special string which indicates we should get the password
-		 * programmatically.
-		 */
-		char const* special_string = "Apple:UseCertAdmin";
-		if (strncmp(conf->private_key_password, special_string, strlen(special_string)) == 0) {
-			char cmd[256];
-			char *password;
-			long const max_password_len = 128;
-			snprintf(cmd, sizeof(cmd) - 1, "/usr/sbin/certadmin --get-private-key-passphrase \"%s\"",
-				 conf->private_key_file);
+	{
+		char *password;
 
-			DEBUG2(LOG_PREFIX ":  Getting private key passphrase using command \"%s\"", cmd);
-
-			FILE* cmd_pipe = popen(cmd, "r");
-			if (!cmd_pipe) {
-				ERROR(LOG_PREFIX ": %s command failed: Unable to get private_key_password", cmd);
-				ERROR(LOG_PREFIX ": Error reading private_key_file %s", conf->private_key_file);
-				return NULL;
-			}
-
-			rad_const_free(conf->private_key_password);
-			password = talloc_array(conf, char, max_password_len);
-			if (!password) {
-				ERROR(LOG_PREFIX ": Can't allocate space for private_key_password");
-				ERROR(LOG_PREFIX ": Error reading private_key_file %s", conf->private_key_file);
-				pclose(cmd_pipe);
-				return NULL;
-			}
-
-			fgets(password, max_password_len, cmd_pipe);
-			pclose(cmd_pipe);
-
-			/* Get rid of newline at end of password. */
-			password[strlen(password) - 1] = '\0';
-
-			DEBUG3(LOG_PREFIX ": Password from command = \"%s\"", password);
-			conf->private_key_password = password;
-		}
-#endif
-
-		{
-			char *password;
-
-			memcpy(&password, &conf->private_key_password, sizeof(password));
-			SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
-			SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
-		}
+		memcpy(&password, &conf->private_key_password, sizeof(password));
+		SSL_CTX_set_default_passwd_cb_userdata(ctx, password);
+		SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
 	}
 
 #ifdef PSK_MAX_IDENTITY_LEN
@@ -3021,23 +3038,12 @@ post_ca:
 			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_NO_INTERNAL);
 		} else {	/* in-memory cache. */
 			/*
-			 *	Create a unique context Id per EAP-TLS configuration.
-			 */
-			if (conf->session_id_name) {
-				snprintf(conf->session_context_id, sizeof(conf->session_context_id),
-					 "FR eap %s", conf->session_id_name);
-			} else {
-				snprintf(conf->session_context_id, sizeof(conf->session_context_id),
-					 "FR eap %p", conf);
-			}
-
-			/*
 			 *	Cache it, and DON'T auto-clear it.
 			 */
 			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_AUTO_CLEAR);
 
 			SSL_CTX_set_session_id_context(ctx,
-						       (unsigned char *) conf->session_context_id,
+						       (unsigned char const *) conf->session_context_id,
 						       (unsigned int) strlen(conf->session_context_id));
 
 			/*
@@ -3055,6 +3061,16 @@ post_ca:
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 	}
 
+	/*
+	 *	Load dh params
+	 */
+	if (conf->dh_file) {
+		char *dh_file;
+
+		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
+		if (load_dh_params(ctx, dh_file) < 0) return NULL;
+	}
+
 	return ctx;
 }
 
@@ -3067,7 +3083,9 @@ post_ca:
  */
 static int _tls_server_conf_free(fr_tls_server_conf_t *conf)
 {
-	if (conf->ctx) SSL_CTX_free(conf->ctx);
+	uint32_t i;
+
+	for (i = 0; i < conf->ctx_count; i++) SSL_CTX_free(conf->ctx[i]);
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	if (conf->ocsp_store) X509_STORE_free(conf->ocsp_store);
@@ -3098,6 +3116,7 @@ static fr_tls_server_conf_t *tls_server_conf_alloc(TALLOC_CTX *ctx)
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 {
 	fr_tls_server_conf_t *conf;
+	uint32_t i;
 
 	/*
 	 *	If cs has already been parsed there should be a cached copy
@@ -3133,11 +3152,39 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	}
 
 	/*
+	 *	Setup session caching
+	 */
+	if (conf->session_cache_enable && conf->session_cache_server) {
+		/*
+		 *	Create a unique context Id per EAP-TLS configuration.
+		 */
+		if (conf->session_id_name) {
+			snprintf(conf->session_context_id, sizeof(conf->session_context_id),
+				 "FR eap %s", conf->session_id_name);
+		} else {
+			snprintf(conf->session_context_id, sizeof(conf->session_context_id),
+				 "FR eap %p", conf);
+		}
+	}
+
+#ifdef __APPLE__
+	if (tls_certadmin_password(conf) < 0) goto error;
+#endif
+
+	if (!main_config.spawn_workers) {
+		conf->ctx_count = 1;
+	} else {
+		conf->ctx_count = thread_pool_max_threads() * 2; /* Reduce contention */
+		rad_assert(conf->ctx_count);
+	}
+
+	/*
 	 *	Initialize TLS
 	 */
-	conf->ctx = tls_init_ctx(conf, false);
-	if (conf->ctx == NULL) {
-		goto error;
+	conf->ctx = talloc_array(conf, SSL_CTX *, conf->ctx_count);
+	for (i = 0; i < conf->ctx_count; i++) {
+		conf->ctx[i] = tls_init_ctx(conf, false);
+		if (conf->ctx == NULL) goto error;
 	}
 
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -3149,14 +3196,6 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		if (conf->ocsp_store == NULL) goto error;
 	}
 #endif /*HAVE_OPENSSL_OCSP_H*/
-	{
-		char *dh_file;
-
-		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
-		if (load_dh_params(conf->ctx, dh_file) < 0) {
-			goto error;
-		}
-	}
 
 	if (conf->verify_tmp_dir) {
 		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
@@ -3194,6 +3233,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 {
 	fr_tls_server_conf_t *conf;
+	uint32_t i;
 
 	conf = cf_data_find(cs, "tls-conf");
 	if (conf) {
@@ -3217,18 +3257,21 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
-	conf->ctx = tls_init_ctx(conf, true);
-	if (conf->ctx == NULL) {
-		goto error;
+	if (!main_config.spawn_workers) {
+		conf->ctx_count = 1;
+	} else {
+		conf->ctx_count = thread_pool_max_threads() * 2; /* Even one context per thread will lead to contention */
+		rad_assert(conf->ctx_count);
 	}
 
-	{
-		char *dh_file;
+#ifdef __APPLE__
+	if (tls_certadmin_password(conf) < 0) goto error;
+#endif
 
-		memcpy(&dh_file, &conf->dh_file, sizeof(dh_file));
-		if (load_dh_params(conf->ctx, dh_file) < 0) {
-			goto error;
-		}
+	conf->ctx = talloc_array(conf, SSL_CTX *, conf->ctx_count);
+	for (i = 0; i < conf->ctx_count; i++) {
+		conf->ctx[i] = tls_init_ctx(conf, true);
+		if (conf->ctx[i] == NULL) goto error;
 	}
 
 	cf_data_add(cs, "tls-conf", conf, NULL);
