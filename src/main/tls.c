@@ -2633,7 +2633,7 @@ void tls_global_cleanup(void)
  * - Load the Private key & the certificate
  * - Set the Context options & Verify options
  */
-SSL_CTX *tls_init_ctx(fr_tls_server_conf_t *conf, bool client)
+SSL_CTX *tls_init_ctx(fr_tls_server_conf_t const *conf, bool client)
 {
 	SSL_CTX		*ctx;
 	X509_STORE	*cert_vpstore;

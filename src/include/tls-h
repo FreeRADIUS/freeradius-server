@@ -313,7 +313,7 @@ tls_session_t	*tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 tls_session_t	*tls_session_init_client(TALLOC_CTX *ctx, fr_tls_server_conf_t *conf, int fd);
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
-SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t *conf, int client);
+SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t const *conf, bool client);
 int 		tls_handshake_recv(REQUEST *, tls_session_t *tls_session);
 int 		tls_handshake_send(REQUEST *, tls_session_t *tls_session);
 void 		tls_session_information(tls_session_t *tls_session);
