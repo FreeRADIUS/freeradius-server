@@ -5354,10 +5354,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	 *	Initialize the threads ONLY if we're spawning, AND
 	 *	we're running normally.
 	 */
-	if (have_children && !check_config &&
-	    (thread_pool_init(cs, &spawn_workers) < 0)) {
-		fr_exit(1);
-	}
+	if (have_children && !check_config && (thread_pool_init() < 0)) fr_exit(1);
 #endif
 
 	if (check_config) {

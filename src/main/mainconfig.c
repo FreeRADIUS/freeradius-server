@@ -931,6 +931,12 @@ do {\
 	 */
 	if (cf_section_parse(cs, NULL, server_config) < 0) return -1;
 
+
+	/*
+	 *	Configure the thread pool
+	 */
+	if (thread_pool_conf(cs, &main_config.spawn_workers) < 0) return -1;
+
 	/*
 	 *	We ignore colourization of output until after the
 	 *	configuration files have been parsed.

@@ -884,33 +884,15 @@ static int pid_cmp(void const *one, void const *two)
 }
 #endif
 
-/*
- *	Allocate the thread pool, and seed it with an initial number
- *	of threads.
+/** Parse the configuration for the thread pool
  *
- *	FIXME: What to do on a SIGHUP???
  */
-int thread_pool_init(CONF_SECTION *cs, bool *spawn_workers)
+int thread_pool_conf(CONF_SECTION *cs, bool *spawn_workers)
 {
-#ifndef WITH_GCD
-	uint32_t	i;
-	int		rcode;
-#endif
 	CONF_SECTION	*pool_cf;
-	time_t		now;
-
-	now = time(NULL);
 
 	rad_assert(spawn_workers != NULL);
-	rad_assert(*spawn_workers == true);
 	rad_assert(pool_initialized == false); /* not called on HUP */
-
-	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
-#ifdef WITH_GCD
-	if (pool_cf) WARN("Built with Grand Central Dispatch.  Ignoring 'thread' subsection");
-#else
-	if (!pool_cf) *spawn_workers = false;
-#endif
 
 	/*
 	 *	Initialize the thread pool to some reasonable values.
@@ -926,35 +908,18 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_workers)
 #endif
 	thread_pool.spawn_workers = *spawn_workers;
 
-	/*
-	 *	Don't bother initializing the mutexes or
-	 *	creating the hash tables.  They won't be used.
-	 */
-	if (!*spawn_workers) return 0;
-
-#ifdef WNOHANG
-	if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
-		ERROR("FATAL: Failed to initialize wait mutex: %s",
-		       fr_syserror(errno));
-		return -1;
-	}
-
-	/*
-	 *	Create the hash table of child PID's
-	 */
-	thread_pool.waiters = fr_hash_table_create(pid_hash,
-						   pid_cmp,
-						   free);
-	if (!thread_pool.waiters) {
-		ERROR("FATAL: Failed to set up wait hash");
-		return -1;
+	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
+#ifdef WITH_GCD
+	if (pool_cf) WARN("Built with Grand Central Dispatch.  Ignoring 'thread' subsection");
+#else
+	if (!pool_cf) {
+		*spawn_workers = false;
+		return 0;
 	}
 #endif
 
 #ifndef WITH_GCD
-	if (cf_section_parse(pool_cf, NULL, thread_config) < 0) {
-		return -1;
-	}
+	if (cf_section_parse(pool_cf, NULL, thread_config) < 0) return -1;
 
 	/*
 	 *	Catch corner cases.
@@ -978,14 +943,54 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_workers)
 		return -1;
 	}
 #endif	/* WITH_GCD */
+	return 0;
+}
+
+/*
+ *	Allocate the thread pool, and seed it with an initial number
+ *	of threads.
+ *
+ *	FIXME: What to do on a SIGHUP???
+ */
+int thread_pool_init(void)
+{
+#ifndef WITH_GCD
+	uint32_t	i;
+	int		rcode;
+#endif
+	time_t		now;
+
+	now = time(NULL);
+
+	/*
+	 *	Don't bother initializing the mutexes or
+	 *	creating the hash tables.  They won't be used.
+	 */
+	if (!thread_pool.spawn_workers) return 0;
 
 	/*
 	 *	The pool has already been initialized.  Don't spawn
 	 *	new threads, and don't forget about forked children.
 	 */
-	if (pool_initialized) {
-		return 0;
+	if (pool_initialized) return 0;
+
+#ifdef WNOHANG
+	if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
+		ERROR("FATAL: Failed to initialize wait mutex: %s",
+		       fr_syserror(errno));
+		return -1;
 	}
+
+	/*
+	 *	Create the hash table of child PID's
+	 */
+	thread_pool.waiters = fr_hash_table_create(pid_hash, pid_cmp, free);
+	if (!thread_pool.waiters) {
+		ERROR("FATAL: Failed to set up wait hash");
+		return -1;
+	}
+#endif
+
 
 #ifndef WITH_GCD
 	/*
@@ -1028,7 +1033,6 @@ int thread_pool_init(CONF_SECTION *cs, bool *spawn_workers)
 		return -1;
 	}
 #endif
-
 
 #ifndef WITH_GCD
 	/*
