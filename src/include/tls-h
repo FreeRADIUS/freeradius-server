@@ -349,6 +349,7 @@ struct fr_tls_server_conf_t {
 	bool		file_type;
 	bool		include_length;
 	bool		auto_chain;
+	bool		disable_single_dh_use;
 	bool		disable_tlsv1;
 	bool		disable_tlsv1_1;
 	bool		disable_tlsv1_2;
