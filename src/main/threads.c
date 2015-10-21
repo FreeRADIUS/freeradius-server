@@ -1405,4 +1405,12 @@ void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
 		pps[0] = pps[1] = 0;
 	}
 }
+
+/** Return the maximum number of threads that can run concurrently
+ *
+ */
+uint32_t thread_pool_max_threads(void)
+{
+	return thread_pool.max_threads;
+}
 #endif /* HAVE_PTHREAD_H */
