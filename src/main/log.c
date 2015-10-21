@@ -298,9 +298,13 @@ int radlog_init(fr_log_t *log, bool daemonize)
 
 		/*
 		 *	If we're debugging, allow STDERR to go to
-		 *	STDOUT too, for executed programs,
+		 *	STDOUT too, for executed programs.
+		 *
+		 *	Allow stdout when running in foreground mode
+		 *	as it's useful for some profiling tools,
+		 *	like mutrace.
 		 */
-		if (rad_debug_lvl) {
+		if (rad_debug_lvl || !daemonize) {
 			dup2(STDOUT_FILENO, STDERR_FILENO);
 		} else {
 			dup2(devnull, STDERR_FILENO);
@@ -312,9 +316,13 @@ int radlog_init(fr_log_t *log, bool daemonize)
 
 		/*
 		 *	If we're debugging, allow STDOUT to go to
-		 *	STDERR too, for executed programs,
+		 *	STDERR too, for executed programs.
+		 *
+		 *	Allow stdout when running in foreground mode
+		 *	as it's useful for some profiling tools,
+		 *	like mutrace.
 		 */
-		if (rad_debug_lvl) {
+		if (rad_debug_lvl || !daemonize) {
 			dup2(STDERR_FILENO, STDOUT_FILENO);
 		} else {
 			dup2(devnull, STDOUT_FILENO);
