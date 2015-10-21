@@ -606,6 +606,10 @@ static void *request_handler_thread(void *arg)
 	 *	Loop forever, until told to exit.
 	 */
 	do {
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+		ProfilerRegisterThread();
+#endif
+
 		/*
 		 *	Wait to be signalled.
 		 */

@@ -18,6 +18,6 @@ SOURCES	:=	conffile.c \
 		xlat.c
 
 # This lets the linker determine which version of the SSLeay functions to use.
-TGT_LDLIBS      := $(OPENSSL_LIBS)
+TGT_LDLIBS      := $(OPENSSL_LIBS) $(GPERFTOOLS_FLAGS) $(GPERFTOOLS_LIBS)
 
 TGT_PREREQS	:= libfreeradius-radius.la
