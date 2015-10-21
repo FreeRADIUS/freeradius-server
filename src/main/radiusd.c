@@ -129,6 +129,7 @@ int main(int argc, char *argv[])
 	memset(&main_config, 0, sizeof(main_config));
 	main_config.name = "radiusd";
 	main_config.daemonize = true;
+	main_config.spawn_workers = true;
 
 	/*
 	 *	Don't put output anywhere until we get told a little
