@@ -877,6 +877,7 @@ ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const 
 		if ((a_p + a_len) > q) {
 			fr_strerror_printf("Length field value of option %u is incorrect.  "
 					   "Got %u bytes, expected <= %zu bytes", p[0], p[1], q - a_p);
+			fr_pair_list_free(out);
 			return -1;
 		}
 
