@@ -111,7 +111,7 @@ typedef struct linelog_instance_t {
 	struct {
 		char const		*path;			//!< Where the UNIX socket lives.
 		struct timeval		timeout;		//!< How long to wait for read/write operations.
-	} unix;
+	} unix_sock;	// Lowercase unix is a macro on some systems?!
 
 	linelog_net_t		tcp;			//!< TCP server.
 	linelog_net_t		udp;			//!< UDP server.
@@ -139,7 +139,7 @@ static const CONF_PARSER syslog_config[] = {
 };
 
 static const CONF_PARSER unix_config[] = {
-	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT, linelog_instance_t, unix.path) },
+	{ FR_CONF_OFFSET("filename", PW_TYPE_FILE_INPUT, linelog_instance_t, unix_sock.path) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -211,8 +211,8 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 	switch (inst->log_dst) {
 	case LINELOG_DST_UNIX:
-		DEBUG2("rlm_linelog (%s): Opening UNIX socket at \"%s\"", inst->name, inst->unix.path);
-		sockfd = fr_socket_client_unix(inst->unix.path, true);
+		DEBUG2("rlm_linelog (%s): Opening UNIX socket at \"%s\"", inst->name, inst->unix_sock.path);
+		sockfd = fr_socket_client_unix(inst->unix_sock.path, true);
 		if (sockfd < 0) {
 			ERROR("rlm_linelog (%s): Failed opening UNIX socket: %s", inst->name, fr_strerror());
 			return NULL;
@@ -738,7 +738,9 @@ build_vector:
 		break;
 
 	case LINELOG_DST_UNIX:
-		if (inst->unix.timeout.tv_sec || inst->unix.timeout.tv_usec) timeout = &inst->unix.timeout;
+		if (inst->unix_sock.timeout.tv_sec || inst->unix_sock.timeout.tv_usec) {
+			timeout = &inst->unix_sock.timeout;
+		}
 		goto do_write;
 
 	case LINELOG_DST_UDP:
