@@ -331,7 +331,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	packet->id = ntohl(magic);
 
 	code = dhcp_get_option((dhcp_packet_t *) packet->data,
-			       packet->data_len, 53);
+			       packet->data_len, PW_DHCP_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		rad_free(&packet);
@@ -1150,12 +1150,12 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	/*
 	 *	DHCP-Message-Type is first, for simplicity.
 	 */
-	if ((my_a->da->attr == 53) && (my_b->da->attr != 53)) return -1;
+	if ((my_a->da->attr == PW_DHCP_MESSAGE_TYPE) && (my_b->da->attr != PW_DHCP_MESSAGE_TYPE)) return -1;
 
 	/*
 	 *	Relay-Agent is last
 	 */
-	if ((my_a->da->attr == 82) && (my_b->da->attr != 82)) return 1;
+	if ((my_a->da->attr == PW_DHCP_OPTION_82) && (my_b->da->attr != PW_DHCP_OPTION_82)) return 1;
 
 	if (my_a->da->attr < my_b->da->attr) return -1;
 	if (my_a->da->attr > my_b->da->attr) return 1;
@@ -1332,7 +1332,7 @@ ssize_t fr_dhcp_encode_option(UNUSED TALLOC_CTX *ctx, uint8_t *out, size_t outle
 	if (!vp) return -1;
 
 	if (vp->da->vendor != DHCP_MAGIC_VENDOR) goto next; /* not a DHCP option */
-	if (vp->da->attr == 53) goto next; /* already done */
+	if (vp->da->attr == PW_DHCP_MESSAGE_TYPE) goto next; /* already done */
 	if ((vp->da->attr > 255) && (DHCP_BASE_ATTR(vp->da->attr) != PW_DHCP_OPTION_82)) goto next;
 
 	if (vp->da->flags.extended) {
@@ -2056,7 +2056,7 @@ RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RAD
 	packet->id = xid;
 
 	code = dhcp_get_option((dhcp_packet_t *) packet->data,
-			       packet->data_len, 53);
+			       packet->data_len, PW_DHCP_MESSAGE_TYPE);
 	if (!code) {
 		fr_strerror_printf("No message-type option was found in the packet");
 		rad_free(&packet);
