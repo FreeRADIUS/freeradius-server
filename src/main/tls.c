@@ -1013,10 +1013,6 @@ static CONF_PARSER ocsp_config[] = {
 #endif
 
 static CONF_PARSER tls_server_config[] = {
-	{ "rsa_key_exchange", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, rsa_key), "no" },
-	{ "dh_key_exchange", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, dh_key), "yes" },
-	{ "rsa_key_length", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, rsa_key_length), "512" },
-	{ "dh_key_length", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, dh_key_length), "512" },
 	{ "verify_depth", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, verify_depth), "0" },
 	{ "CA_path", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, ca_path), NULL },
 	{ "ca_path", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_path), NULL },
@@ -1077,10 +1073,6 @@ static CONF_PARSER tls_server_config[] = {
 
 
 static CONF_PARSER tls_client_config[] = {
-	{ "rsa_key_exchange", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, rsa_key), "no" },
-	{ "dh_key_exchange", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, dh_key), "yes" },
-	{ "rsa_key_length", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, rsa_key_length), "512" },
-	{ "dh_key_length", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, dh_key_length), "512" },
 	{ "verify_depth", FR_CONF_OFFSET(PW_TYPE_INTEGER, fr_tls_server_conf_t, verify_depth), "0" },
 	{ "ca_path", FR_CONF_OFFSET(PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_path), NULL },
 	{ "pem_file_type", FR_CONF_OFFSET(PW_TYPE_BOOLEAN, fr_tls_server_conf_t, file_type), "yes" },
