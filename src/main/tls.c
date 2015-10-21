@@ -1128,6 +1128,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_OFFSET("fragment_size", PW_TYPE_INTEGER, fr_tls_server_conf_t, fragment_size), .dflt = "1024" },
 	{ FR_CONF_OFFSET("include_length", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, include_length), .dflt = "yes" },
 	{ FR_CONF_OFFSET("auto_chain", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, auto_chain), .dflt = "yes" },
+	{ FR_CONF_OFFSET("disable_single_dh_use", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, disable_single_dh_use) },
 	{ FR_CONF_OFFSET("check_crl", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_crl), .dflt = "no" },
 #ifdef X509_V_FLAG_CRL_CHECK_ALL
 	{ FR_CONF_OFFSET("check_all_crl", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, check_all_crl), .dflt = "no" },
@@ -2507,7 +2508,7 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
-static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve)
+static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_single_dh_use)
 {
 	int      nid;
 	EC_KEY  *ecdh;
@@ -2528,7 +2529,9 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve)
 
 	SSL_CTX_set_tmp_ecdh(ctx, ecdh);
 
-	SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
+	if (!disable_single_dh_use) {
+		SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
+	}
 
 	EC_KEY_free(ecdh);
 
@@ -2890,16 +2893,16 @@ post_ca:
 	ctx_options |= SSL_OP_NO_TICKET;
 #endif
 
-	/*
-	 *	SSL_OP_SINGLE_DH_USE must be used in order to prevent
-	 *	small subgroup attacks and forward secrecy. Always
-	 *	using
-	 *
-	 *	SSL_OP_SINGLE_DH_USE has an impact on the computer
-	 *	time needed during negotiation, but it is not very
-	 *	large.
-	 */
-	ctx_options |= SSL_OP_SINGLE_DH_USE;
+	if (!conf->disable_single_dh_use) {
+		/*
+		 *	SSL_OP_SINGLE_DH_USE must be used in order to prevent
+		 *	small subgroup attacks and forward secrecy. Always
+		 *	using SSL_OP_SINGLE_DH_USE has an impact on the
+		 *	computer time needed during negotiation, but it is not
+		 *	very large.
+		 */
+		ctx_options |= SSL_OP_SINGLE_DH_USE;
+	}
 
 	/*
 	 *	SSL_OP_DONT_INSERT_EMPTY_FRAGMENTS to work around issues
@@ -2930,7 +2933,7 @@ post_ca:
 	 */
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
-	if (set_ecdh_curve(ctx, conf->ecdh_curve) < 0) {
+	if (set_ecdh_curve(ctx, conf->ecdh_curve, conf->disable_single_dh_use) < 0) {
 		return NULL;
 	}
 #endif
