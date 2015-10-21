@@ -170,8 +170,7 @@ int main(int argc, char *argv[])
 				}
 				main_config.log_file = strdup(optarg);
 				default_log.dst = L_DST_FILES;
-				default_log.fd = open(main_config.log_file,
-							    O_WRONLY | O_APPEND | O_CREAT, 0640);
+				default_log.fd = open(main_config.log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
 				if (default_log.fd < 0) {
 					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", main_config.log_file, fr_syserror(errno));
 					exit(EXIT_FAILURE);
