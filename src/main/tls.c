@@ -1105,10 +1105,6 @@ static CONF_PARSER ocsp_config[] = {
 #endif
 
 static CONF_PARSER tls_server_config[] = {
-	{ FR_CONF_OFFSET("rsa_key_exchange", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, rsa_key), .dflt = "no" },
-	{ FR_CONF_OFFSET("dh_key_exchange", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, dh_key), .dflt = "yes" },
-	{ FR_CONF_OFFSET("rsa_key_length", PW_TYPE_INTEGER, fr_tls_server_conf_t, rsa_key_length), .dflt = "512" },
-	{ FR_CONF_OFFSET("dh_key_length", PW_TYPE_INTEGER, fr_tls_server_conf_t, dh_key_length), .dflt = "512" },
 	{ FR_CONF_OFFSET("verify_depth", PW_TYPE_INTEGER, fr_tls_server_conf_t, verify_depth), .dflt = "0" },
 	{ FR_CONF_OFFSET("CA_path", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, ca_path) },
 	{ FR_CONF_OFFSET("ca_path", PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_path) },
@@ -1169,10 +1165,6 @@ static CONF_PARSER tls_server_config[] = {
 
 
 static CONF_PARSER tls_client_config[] = {
-	{ FR_CONF_OFFSET("rsa_key_exchange", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, rsa_key), .dflt = "no" },
-	{ FR_CONF_OFFSET("dh_key_exchange", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, dh_key), .dflt = "yes" },
-	{ FR_CONF_OFFSET("rsa_key_length", PW_TYPE_INTEGER, fr_tls_server_conf_t, rsa_key_length), .dflt = "512" },
-	{ FR_CONF_OFFSET("dh_key_length", PW_TYPE_INTEGER, fr_tls_server_conf_t, dh_key_length), .dflt = "512" },
 	{ FR_CONF_OFFSET("verify_depth", PW_TYPE_INTEGER, fr_tls_server_conf_t, verify_depth), .dflt = "0" },
 	{ FR_CONF_OFFSET("ca_path", PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_path) },
 	{ FR_CONF_OFFSET("pem_file_type", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, file_type), .dflt = "yes" },
@@ -1229,7 +1221,7 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	BIO_free(bio);
 	if (!dh) {
 		WARN(LOG_PREFIX ": Unable to set DH parameters.  DH cipher suites may not work!");
-		WARN(LOG_PREFIX ": Fix this by running the OpenSSL command listed in eap.conf");
+		WARN(LOG_PREFIX ": Fix this by generating the DH parameter file");
 		return 0;
 	}
 
