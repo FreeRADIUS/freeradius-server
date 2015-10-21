@@ -71,6 +71,10 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #include <openssl/evp.h>
 #endif
 
+#ifdef HAVE_GPERFTOOLS_PROFILER_H
+#  include <gperftools/profiler.h>
+#endif
+
 #ifndef WITH_GCD
 #define SEMAPHORE_LOCKED	(0)
 
