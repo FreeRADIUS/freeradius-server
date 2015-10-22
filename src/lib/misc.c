@@ -102,7 +102,7 @@ static int _fr_disarm_talloc_ctx_free(bool **armed)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_link_talloc_ctx_free(TALLOC_CTX *parent, TALLOC_CTX *child)
+int fr_talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child)
 {
 	fr_talloc_link_t *trigger;
 	bool **disarm;

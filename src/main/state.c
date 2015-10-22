@@ -205,7 +205,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, int max_sessions)
 	 *	safe, and multiple threads could be using the
 	 *	tree.
 	 */
-	fr_link_talloc_ctx_free(ctx, state);
+	fr_talloc_link_ctx(ctx, state);
 
 #ifdef HAVE_PTHREAD_H
 	if (main_config.spawn_workers && (pthread_mutex_init(&state->mutex, NULL) != 0)) {

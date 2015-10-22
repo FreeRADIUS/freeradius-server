@@ -749,7 +749,7 @@ void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
  *	Several handy miscellaneous functions.
  */
 int		fr_set_signal(int sig, sig_t func);
-int		fr_link_talloc_ctx_free(TALLOC_CTX *parent, TALLOC_CTX *child);
+int		fr_talloc_link_ctx(TALLOC_CTX *parent, TALLOC_CTX *child);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);

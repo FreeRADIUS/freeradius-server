@@ -466,7 +466,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool, time_t n
 
 		return NULL;
 	}
-	fr_link_talloc_ctx_free(this, ctx);
+	fr_talloc_link_ctx(this, ctx);
 
 	this->created = now;
 	this->connection = conn;
@@ -925,7 +925,7 @@ fr_connection_pool_t *fr_connection_pool_init(TALLOC_CTX *ctx,
 	 *	Ensure the pool is freed at the same time
 	 *	as its parent.
 	 */
-	if (fr_link_talloc_ctx_free(ctx, pool) < 0) {
+	if (fr_talloc_link_ctx(ctx, pool) < 0) {
 		talloc_free(pool);
 
 		return NULL;

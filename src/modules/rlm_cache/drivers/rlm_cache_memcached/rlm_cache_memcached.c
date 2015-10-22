@@ -135,7 +135,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_cache_config_t const *config,
 	driver->pool = module_connection_pool_init(conf, driver, mod_conn_create, NULL, buffer);
 	if (!driver->pool) return -1;
 
-	fr_link_talloc_ctx_free(driver, driver->pool);	/* Ensure pool is freed */
+	fr_talloc_link_ctx(driver, driver->pool);	/* Ensure pool is freed */
 
 	if (config->max_entries > 0) {
 		ERROR("rlm_cache_memcached: max_entries is not supported by this driver");

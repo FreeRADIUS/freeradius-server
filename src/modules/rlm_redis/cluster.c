@@ -2121,7 +2121,7 @@ fr_redis_cluster_t *fr_redis_cluster_alloc(TALLOC_CTX *ctx, CONF_SECTION *module
 	 *	its parent context, as the two contexts may be
 	 *	modified by multiple threads.
 	 */
-	if (fr_link_talloc_ctx_free(ctx, cluster) < 0) {
+	if (fr_talloc_link_ctx(ctx, cluster) < 0) {
 	oom:
 		ERROR("%s: Out of memory", conf->prefix);
 
