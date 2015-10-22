@@ -2547,7 +2547,7 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 #endif
 #endif
 
-static unsigned long tls_thread_id_cb(void)
+static unsigned long _tls_thread_id(void)
 {
 	unsigned long ret;
 	pthread_t thread = pthread_self();
@@ -2561,7 +2561,7 @@ static unsigned long tls_thread_id_cb(void)
 	return ret;
 }
 
-static void tls_locking_cb(int mode, int n, UNUSED char const *file, UNUSED int line)
+static void _tls_lock(int mode, int n, UNUSED char const *file, UNUSED int line)
 {
 	if (mode & CRYPTO_LOCK) {
 		pthread_mutex_lock(&(tls_static_mutexes[n]));
@@ -2669,8 +2669,8 @@ static pthread_mutex_t *tls_mutexes_init(TALLOC_CTX *ctx)
 	 */
 	while (i < CRYPTO_num_locks()) SETUP_CRYPTO_LOCK;
 
-	CRYPTO_set_id_callback(tls_thread_id_cb);
-	CRYPTO_set_locking_callback(tls_locking_cb);
+	CRYPTO_set_id_callback(_tls_thread_id);
+	CRYPTO_set_locking_callback(_tls_lock);
 
 	return mutexes;
 }
