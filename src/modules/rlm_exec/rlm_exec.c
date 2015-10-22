@@ -290,6 +290,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 
 	VALUE_PAIR	**input_pairs = NULL, **output_pairs = NULL;
 	VALUE_PAIR	*answer = NULL;
+	TALLOC_CTX	*ctx = NULL;
 	char		out[1024];
 
 	/*
@@ -330,13 +331,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_exec_dispatch(void *instance, REQUEST *r
 		if (!output_pairs) {
 			return RLM_MODULE_INVALID;
 		}
+
+		ctx = radius_list_ctx(request, inst->output_list);
 	}
 
 	/*
 	 *	This function does it's own xlat of the input program
 	 *	to execute.
 	 */
-	status = radius_exec_program(request, out, sizeof(out), inst->output ? &answer : NULL, request,
+	status = radius_exec_program(ctx, out, sizeof(out), inst->output ? &answer : NULL, request,
 				     inst->program, inst->input ? *input_pairs : NULL,
 				     inst->wait, inst->shell_escape, inst->timeout);
 	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
