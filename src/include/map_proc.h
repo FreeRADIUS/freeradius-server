@@ -66,6 +66,7 @@ typedef int (*map_proc_instantiate_t)(void *proc_inst, void *mod_inst, vp_tmpl_t
 
 map_proc_t	*map_proc_find(char const *name);
 
+void		map_proc_free(void);
 int		map_proc_register(void *mod_inst, char const *name,
 				  map_proc_func_t evaluate,
 				  xlat_escape_t escape,

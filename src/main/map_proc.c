@@ -110,6 +110,11 @@ map_proc_t *map_proc_find(char const *name)
 	return rbtree_finddata(map_proc_root, &find);
 }
 
+void map_proc_free(void)
+{
+	TALLOC_FREE(map_proc_root);
+}
+
 /** Register a map processor
  *
  * This should be called by every module that provides a map processing function.

@@ -601,6 +601,11 @@ cleanup:
 	 */
 	main_config_free();
 
+	/*
+	 *  Free the map processor tree
+	 */
+	map_proc_free();
+
 #ifdef WIN32
 	WSACleanup();
 #endif
