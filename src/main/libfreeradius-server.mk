@@ -11,6 +11,7 @@ SOURCES	:=	conffile.c \
 		map.c \
 		regex.c \
 		request.c \
+		threads.c \
 		tmpl.c \
 		util.c \
 		version.c \
