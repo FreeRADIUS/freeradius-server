@@ -36,39 +36,39 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #endif
 
 #ifdef __APPLE__
-#ifdef WITH_GCD
-#include <dispatch/dispatch.h>
-#endif
-#include <mach/task.h>
-#include <mach/mach_init.h>
-#include <mach/semaphore.h>
+#  ifdef WITH_GCD
+#    include <dispatch/dispatch.h>
+#  endif
+#  include <mach/task.h>
+#  include <mach/mach_init.h>
+#  include <mach/semaphore.h>
 
-#ifndef WITH_GCD
-#undef sem_t
-#define sem_t semaphore_t
-#undef sem_init
-#define sem_init(s,p,c) semaphore_create(mach_task_self(),s,SYNC_POLICY_FIFO,c)
-#undef sem_wait
-#define sem_wait(s) semaphore_wait(*s)
-#undef sem_post
-#define sem_post(s) semaphore_signal(*s)
-#endif	/* WITH_GCD */
+#  ifndef WITH_GCD
+#    undef sem_t
+#    define sem_t semaphore_t
+#    undef sem_init
+#    define sem_init(s,p,c) semaphore_create(mach_task_self(),s,SYNC_POLICY_FIFO,c)
+#    undef sem_wait
+#    define sem_wait(s) semaphore_wait(*s)
+#    undef sem_post
+#    define sem_post(s) semaphore_signal(*s)
+#  endif	/* WITH_GCD */
 #endif	/* __APPLE__ */
 
 #ifdef HAVE_SYS_WAIT_H
-#include <sys/wait.h>
+#  include <sys/wait.h>
 #endif
 
 #ifdef HAVE_PTHREAD_H
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-#include <openssl/crypto.h>
+#  include <openssl/crypto.h>
 #endif
-#ifdef HAVE_OPENSSL_ERR_H
-#include <openssl/err.h>
-#endif
+#  ifdef HAVE_OPENSSL_ERR_H
+#    include <openssl/err.h>
+#  endif
 #ifdef HAVE_OPENSSL_EVP_H
-#include <openssl/evp.h>
+#  include <openssl/evp.h>
 #endif
 
 #ifdef HAVE_GPERFTOOLS_PROFILER_H
@@ -76,13 +76,13 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #endif
 
 #ifndef WITH_GCD
-#define SEMAPHORE_LOCKED	(0)
+#  define SEMAPHORE_LOCKED	(0)
 
-#define THREAD_RUNNING		(1)
-#define THREAD_CANCELLED	(2)
-#define THREAD_EXITED		(3)
+#  define THREAD_RUNNING	(1)
+#  define THREAD_CANCELLED	(2)
+#  define THREAD_EXITED		(3)
 
-#define NUM_FIFOS	       RAD_LISTEN_MAX
+#  define NUM_FIFOS	       RAD_LISTEN_MAX
 
 /*
  *  A data structure which contains the information about
@@ -154,12 +154,12 @@ typedef struct THREAD_POOL {
 	dispatch_queue_t	queue;
 #else
 
-#ifdef WITH_STATS
+#  ifdef WITH_STATS
 	fr_pps_t	pps_in, pps_out;
-#ifdef WITH_ACCOUNTING
+#    ifdef WITH_ACCOUNTING
 	bool		auto_limit_acct;
-#endif
-#endif
+#    endif
+#  endif
 
 	/*
 	 *	All threads wait on this semaphore, for requests
@@ -199,11 +199,11 @@ static const CONF_PARSER thread_config[] = {
 	{ FR_CONF_POINTER("max_requests_per_server", PW_TYPE_INTEGER, &thread_pool.max_requests_per_thread), .dflt = "0" },
 	{ FR_CONF_POINTER("cleanup_delay", PW_TYPE_INTEGER, &thread_pool.cleanup_delay), .dflt = "5" },
 	{ FR_CONF_POINTER("max_queue_size", PW_TYPE_INTEGER, &thread_pool.max_queue_size), .dflt = "65536" },
-#ifdef WITH_STATS
-#ifdef WITH_ACCOUNTING
+#  ifdef WITH_STATS
+#    ifdef WITH_ACCOUNTING
 	{ FR_CONF_POINTER("auto_limit_acct", PW_TYPE_BOOLEAN, &thread_pool.auto_limit_acct) },
-#endif
-#endif
+#    endif
+#  endif
 	CONF_PARSER_TERMINATOR
 };
 #endif
@@ -250,7 +250,7 @@ static void reap_children(void)
 	pthread_mutex_unlock(&thread_pool.wait_mutex);
 }
 #else
-#define reap_children()
+#  define reap_children()
 #endif /* WNOHANG */
 
 #ifndef WITH_GCD
@@ -276,8 +276,7 @@ int request_enqueue(REQUEST *request)
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
-#ifdef WITH_STATS
-#ifdef WITH_ACCOUNTING
+#  if defined(WITH_STATS) && defined(WITH_ACCOUNTING)
 	if (thread_pool.auto_limit_acct) {
 		struct timeval now;
 
@@ -352,8 +351,7 @@ int request_enqueue(REQUEST *request)
 
 		thread_pool.pps_in.pps_now++;
 	}
-#endif	/* WITH_ACCOUNTING */
-#endif
+#  endif
 
 	thread_pool.request_count++;
 
@@ -413,8 +411,7 @@ static int request_dequeue(REQUEST **prequest)
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
-#ifdef WITH_STATS
-#ifdef WITH_ACCOUNTING
+#  if defined(WITH_STATS) && defined(WITH_ACCOUNTING)
 	if (thread_pool.auto_limit_acct) {
 		struct timeval now;
 
@@ -430,8 +427,7 @@ static int request_dequeue(REQUEST **prequest)
 						   &now);
 		thread_pool.pps_out.pps_now++;
 	}
-#endif
-#endif
+#  endif
 
 	/*
 	 *	Clear old requests from all queues.
@@ -550,9 +546,9 @@ static void *request_handler_thread(void *arg)
 	 *	Loop forever, until told to exit.
 	 */
 	do {
-#ifdef HAVE_GPERFTOOLS_PROFILER_H
+#  ifdef HAVE_GPERFTOOLS_PROFILER_H
 		ProfilerRegisterThread();
-#endif
+#  endif
 
 		/*
 		 *	Wait to be signalled.
@@ -577,12 +573,12 @@ static void *request_handler_thread(void *arg)
 
 		DEBUG2("Thread %d got semaphore", self->thread_num);
 
-#ifdef HAVE_OPENSSL_ERR_H
+#  ifdef HAVE_OPENSSL_ERR_H
 		/*
 		 *	Clear the error queue for the current thread.
 		 */
 		ERR_clear_error();
-#endif
+#  endif
 
 		/*
 		 *	The server is exiting.  Don't dequeue any
@@ -605,7 +601,7 @@ static void *request_handler_thread(void *arg)
 		       self->thread_num, self->request->number,
 		       self->request_count);
 
-#ifdef WITH_ACCOUNTING
+#  ifdef WITH_ACCOUNTING
 		if ((self->request->packet->code == PW_CODE_ACCOUNTING_REQUEST) &&
 		    thread_pool.auto_limit_acct) {
 			VALUE_PAIR *vp;
@@ -627,7 +623,7 @@ static void *request_handler_thread(void *arg)
 				vp->vp_integer /= thread_pool.max_queue_size;
 			}
 		}
-#endif
+#  endif
 
 		self->request->process(self->request, FR_ACTION_RUN);
 		self->request = NULL;
@@ -654,14 +650,14 @@ static void *request_handler_thread(void *arg)
 
 	DEBUG2("Thread %d exiting...", self->thread_num);
 
-#ifdef HAVE_OPENSSL_ERR_H
+#  ifdef HAVE_OPENSSL_ERR_H
 	/*
 	 *	If we linked with OpenSSL, the application
 	 *	must remove the thread's error queue before
 	 *	exiting to prevent memory leaks.
 	 */
 	ERR_remove_state(0);
-#endif
+#  endif
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 	thread_pool.exited_threads++;
@@ -1028,19 +1024,9 @@ void thread_pool_stop(void)
 		fr_fifo_free(thread_pool.fifo[i]);
 	}
 
-#ifdef WNOHANG
+#  ifdef WNOHANG
 	fr_hash_table_free(thread_pool.waiters);
-#endif
-
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	/*
-	 *	We're no longer threaded.  Remove the mutexes and free
-	 *	the memory.
-	 */
-	CRYPTO_set_id_callback(NULL);
-	CRYPTO_set_locking_callback(NULL);
-#endif
-
+#  endif
 #endif
 }
 
