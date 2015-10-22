@@ -29,7 +29,7 @@
  *
  * When a request is complete, #fr_state_put_vps is called to transfer
  * ownership of the state VALUE_PAIRs and state_ctx (which the VALUE_PAIRs
- * are allocated in) to a #state_entry_t.  This #state_entry_t holds the
+ * are allocated in) to a #fr_state_entry_t.  This #fr_state_entry_t holds the
  * value of the State attribute, that will be send out in the response.
  *
  * When the next request is received, #fr_state_get_vps is called to transfer
@@ -66,20 +66,20 @@ typedef struct state_entry {
 	VALUE_PAIR		*vps;
 
 	void 			*data;
-} state_entry_t;
+} fr_state_entry_t;
 
-struct fr_state_t {
-	int max_sessions;
-	rbtree_t *tree;
+struct fr_state_tree_t {
+	int			max_sessions;			//!< Maximum number of sessions we track.
+	rbtree_t		*tree;				//!< rbtree used to lookup state value.
 
-	state_entry_t *head, *tail;
+	fr_state_entry_t	*head, *tail;			//!< Entries to expire.
 
 #ifdef HAVE_PTHREAD_H
-	pthread_mutex_t mutex;
+	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
 #endif
 };
 
-static fr_state_t *global_state = NULL;
+static fr_state_tree_t *global_state = NULL;
 
 #ifdef HAVE_PTHREAD_H
 #  define PTHREAD_MUTEX_LOCK if (main_config.spawn_workers) pthread_mutex_lock
@@ -92,13 +92,13 @@ static fr_state_t *global_state = NULL;
 #  define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
-/** Compare two state_entry_t based on their state value i.e. the value of the attribute
+/** Compare two fr_state_entry_t based on their state value i.e. the value of the attribute
  *
  */
 static int state_entry_cmp(void const *one, void const *two)
 {
-	state_entry_t const *a = one;
-	state_entry_t const *b = two;
+	fr_state_entry_t const *a = one;
+	fr_state_entry_t const *b = two;
 
 	return memcmp(a->state, b->state, sizeof(a->state));
 }
@@ -106,15 +106,9 @@ static int state_entry_cmp(void const *one, void const *two)
 /** Free a state entry, removing it from the linked lists of states to free
  *
  */
-static void state_entry_free(fr_state_t *state, state_entry_t *entry)
+static void state_entry_free(fr_state_tree_t *state, fr_state_entry_t *entry)
 {
-	state_entry_t *prev, *next;
-
-	/*
-	 *	If we're deleting the whole tree, don't bother doing
-	 *	all of the fixups.
-	 */
-	if (!state || !state->tree) return;
+	fr_state_entry_t *prev, *next;
 
 	prev = entry->prev;
 	next = entry->next;
@@ -138,78 +132,104 @@ static void state_entry_free(fr_state_t *state, state_entry_t *entry)
 	if (entry->data) talloc_free(entry->data);
 
 #ifdef WITH_VERIFY_PTR
-	(void) talloc_get_type_abort(entry, state_entry_t);
+	(void) talloc_get_type_abort(entry, fr_state_entry_t);
 #endif
 	rbtree_deletebydata(state->tree, entry);
 
-	if (entry->ctx) talloc_free(entry->ctx);
+	if (entry->ctx) talloc_free(entry->ctx);	/* Should free all VPs associated with the entry */
 
 	talloc_free(entry);
+}
+
+/** Walker callback to free all entries in the tree
+ *
+ */
+static int _state_tree_free_entry(void *ctx, void *data)
+{
+	fr_state_entry_t *entry = talloc_get_type_abort(data, fr_state_entry_t);
+	fr_state_tree_t *tree = talloc_get_type_abort(ctx, fr_state_tree_t);
+
+	state_entry_free(tree, entry);
+
+	return 0;
 }
 
 /** Free the state tree
  *
  */
-void fr_state_free(fr_state_t *state)
+static int _state_tree_free(fr_state_tree_t *state)
 {
-	rbtree_t *my_tree;
-
-	if (!state) return;
-
-	PTHREAD_MUTEX_LOCK(&state->mutex);
-
-	/*
-	 *	Tell the talloc callback to NOT delete the entry from
-	 *	the tree.  We're deleting the entire tree.
-	 */
-	my_tree = state->tree;
-	state->tree = NULL;
-
-	rbtree_free(my_tree);
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 #ifdef HAVE_PTHREAD_H
 	if (main_config.spawn_workers) pthread_mutex_destroy(&state->mutex);
 #endif
 
+	/*
+	 *	Delete all the entries in the tree
+	 */
+	rbtree_walk(state->tree, RBTREE_DELETE_ORDER, _state_tree_free_entry, state);
+
+	/*
+	 *	Ensure we got *all* the entries
+	 */
+	rad_assert(!state->head);
+
+	/*
+	 *	Free the rbtree
+	 */
+	rbtree_free(state->tree);
+
 	if (state == global_state) global_state = NULL;
+
+	return 0;
 }
 
 /** Initialise a new state tree
  *
+ * @param ctx to link the lifecycle of the state tree to.
+ * @param max_sessions we track state for.
+ * @return a new state tree or NULL on failure.
  */
-fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions)
+fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, int max_sessions)
 {
-	fr_state_t *state;
+	fr_state_tree_t *state;
 
-	if (!ctx) {
-		if (global_state) return global_state;
+	/*
+	 *	@fixme stupid globals
+	 */
+	global_state = state = talloc_zero(NULL, fr_state_tree_t);
+	if (!state) return 0;
 
-		state = global_state = talloc_zero(NULL, fr_state_t);
-		if (!state) return 0;
+	state->max_sessions = max_sessions;
 
-		state->max_sessions = main_config.max_requests * 2;
-	} else {
-		state = talloc_zero(NULL, fr_state_t);
-		if (!state) return 0;
-
-		state->max_sessions = max_sessions;
-		fr_link_talloc_ctx_free(ctx, state);
-	}
+	/*
+	 *	Create a break in the contexts.
+	 *	We still want this to be freed at the same time
+	 *	as the parent, but we also need it to be thread
+	 *	safe, and multiple threads could be using the
+	 *	tree.
+	 */
+	fr_link_talloc_ctx_free(ctx, state);
 
 #ifdef HAVE_PTHREAD_H
-	if (main_config.spawn_workers) {
-		if (pthread_mutex_init(&state->mutex, NULL) != 0) {
-			talloc_free(state);
-			return NULL;
-		}
+	if (main_config.spawn_workers && (pthread_mutex_init(&state->mutex, NULL) != 0)) {
+		talloc_free(state);
+		return NULL;
 	}
 #endif
 
-	state->tree = rbtree_create(state, state_entry_cmp, NULL, 0);
+	/*
+	 *	We need to do controlled freeing of the
+	 *	rbtree, so that all the state entries
+	 *	are freed before it's destroyed.  Hence
+	 *	it being parented from the NULL ctx.
+	 */
+
+	state->tree = rbtree_create(NULL, state_entry_cmp, NULL, 0);
 	if (!state->tree) {
 		talloc_free(state);
 		return NULL;
 	}
+	talloc_set_destructor(state, _state_tree_free);
 
 	return state;
 }
@@ -218,13 +238,13 @@ fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions)
  *
  * @note Called with the mutex held.
  */
-static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packet, state_entry_t *old)
+static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKET *packet, fr_state_entry_t *old)
 {
 	size_t		i;
 	uint32_t	x;
 	time_t		now = time(NULL);
 	VALUE_PAIR	*vp;
-	state_entry_t	*entry, *next;
+	fr_state_entry_t	*entry, *next;
 
 	uint8_t		old_state[AUTH_VECTOR_LEN];
 	int		old_tries = 0;
@@ -280,12 +300,12 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 
 	/*
 	 *	Allocation doesn't need to occur inside the critical region
-	 *	and adds significantly to contention.
+	 *	and would add significantly to contention.
 	 *
 	 *	We reparent the talloc chunk later (when we hold the mutex again)
 	 *	we can't do it now due to thread safety issues with talloc.
 	 */
-	entry = talloc_zero(NULL, state_entry_t);
+	entry = talloc_zero(NULL, fr_state_entry_t);
 	if (!entry) {
 		PTHREAD_MUTEX_LOCK(&state->mutex);	/* Caller expects this to be locked */
 		return NULL;
@@ -361,15 +381,6 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 	}
 
 	/*
-	 *	Todo: Unsure how talloc adds children to contexts.
-	 *
-	 *	Having many thousands of children in a context may
-	 *	have a significant impact on performance.  We should
-	 *	do comparisons.
-	 */
-	talloc_steal(state->tree, entry);
-
-	/*
 	 *	Link it to the end of the list, which is implicitely
 	 *	ordered by cleanup time.
 	 */
@@ -392,10 +403,10 @@ static state_entry_t *state_entry_create(fr_state_t *state, RADIUS_PACKET *packe
 /** Find the entry, based on the State attribute
  *
  */
-static state_entry_t *state_entry_find(fr_state_t *state, RADIUS_PACKET *packet)
+static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, RADIUS_PACKET *packet)
 {
 	VALUE_PAIR *vp;
-	state_entry_t *entry, my_entry;
+	fr_state_entry_t *entry, my_entry;
 
 	vp = fr_pair_find_by_num(packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!vp) return NULL;
@@ -407,7 +418,7 @@ static state_entry_t *state_entry_find(fr_state_t *state, RADIUS_PACKET *packet)
 	entry = rbtree_finddata(state->tree, &my_entry);
 
 #ifdef WITH_VERIFY_PTR
-	if (entry) (void) talloc_get_type_abort(entry, state_entry_t);
+	if (entry) (void) talloc_get_type_abort(entry, fr_state_entry_t);
 #endif
 
 	return entry;
@@ -418,8 +429,8 @@ static state_entry_t *state_entry_find(fr_state_t *state, RADIUS_PACKET *packet)
  */
 void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
 {
-	state_entry_t *entry;
-	fr_state_t *state = global_state;
+	fr_state_entry_t *entry;
+	fr_state_tree_t *state = global_state;
 
 	fr_pair_list_free(&request->state);
 	request->state = NULL;
@@ -443,8 +454,8 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
  */
 void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 {
-	state_entry_t *entry;
-	fr_state_t *state = global_state;
+	fr_state_entry_t *entry;
+	fr_state_tree_t *state = global_state;
 	TALLOC_CTX *old_ctx = NULL;
 
 	rad_assert(request->state == NULL);
@@ -465,8 +476,6 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 	 *	isn't thread-safe.
 	 */
 	if (entry) {
-		RDEBUG2("Restoring &session-state");
-
 		if (request->state_ctx) old_ctx = request->state_ctx;
 
 		request->state_ctx = entry->ctx;
@@ -474,14 +483,16 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
 
 		entry->ctx = NULL;
 		entry->vps = NULL;
-
-		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
-
-	} else {
-		RDEBUG3("No &session-state attributes to restore");
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	if (request->state) {
+		RDEBUG2("Restored &session-state");
+		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
+	} else {
+		RDEBUG3("No &session-state attributes to restore");
+	}
 
 	/*
 	 *	Free this outside of the mutex for less contention.
@@ -502,8 +513,8 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
  */
 bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet)
 {
-	state_entry_t *entry, *old;
-	fr_state_t *state = global_state;
+	fr_state_entry_t *entry, *old;
+	fr_state_tree_t *state = global_state;
 
 	if (!request->state) {
 		RDEBUG3("No &session-state attributes to store");
@@ -542,10 +553,10 @@ bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *
  *
  * Leave the data in the entry.
  */
-void *fr_state_find_data(fr_state_t *state, RADIUS_PACKET *packet)
+void *fr_state_find_data(fr_state_tree_t *state, RADIUS_PACKET *packet)
 {
 	void *data;
-	state_entry_t *entry;
+	fr_state_entry_t *entry;
 
 	if (!state) return false;
 
@@ -567,10 +578,10 @@ void *fr_state_find_data(fr_state_t *state, RADIUS_PACKET *packet)
  *
  * Then remove the data from the entry.
  */
-void *fr_state_get_data(fr_state_t *state, RADIUS_PACKET *packet)
+void *fr_state_get_data(fr_state_tree_t *state, RADIUS_PACKET *packet)
 {
 	void *data;
-	state_entry_t *entry;
+	fr_state_entry_t *entry;
 
 	if (!state) return NULL;
 
@@ -593,9 +604,9 @@ void *fr_state_get_data(fr_state_t *state, RADIUS_PACKET *packet)
  *
  * Remove the data from the entry.
  */
-bool fr_state_put_data(fr_state_t *state, RADIUS_PACKET *original, RADIUS_PACKET *packet, void *data)
+bool fr_state_put_data(fr_state_tree_t *state, RADIUS_PACKET *original, RADIUS_PACKET *packet, void *data)
 {
-	state_entry_t *entry, *old;
+	fr_state_entry_t *entry, *old;
 
 	if (!state) return false;
 

@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 	int		argval;
 	bool		display_version = false;
 	int		from_child[2] = {-1, -1};
-	fr_state_t	*state = NULL;
+	fr_state_tree_t	*state = NULL;
 
 	/*
 	 *  We probably don't want to free the talloc autofree context
@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Initialise the state rbtree (used to link multiple rounds of challenges).
 	 */
-	state = fr_state_init(NULL, 0);
+	state = fr_state_tree_init(autofree, main_config.max_requests * 2);
 
 	/*
 	 *  Process requests until HUP or exit.
@@ -594,8 +594,6 @@ cleanup:
 
 	xlat_free();		/* modules may have xlat's */
 
-	fr_state_free(state);
-
 	/*
 	 *  Free the configuration items.
 	 */
@@ -618,10 +616,7 @@ cleanup:
 	 */
 	talloc_free(autofree);
 
-	if (main_config.memory_report) {
-		INFO("Allocated memory at time of report:");
-		fr_log_talloc_report(NULL);
-	}
+	if (main_config.memory_report) fr_log_talloc_report(NULL);
 
 	return rcode;
 }

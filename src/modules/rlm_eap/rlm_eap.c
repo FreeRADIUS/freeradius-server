@@ -156,7 +156,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	 *	Lookup sessions in the tree.  We don't free them in
 	 *	the tree, as that's taken care of elsewhere...
 	 */
-	inst->state = fr_state_init(inst, inst->max_sessions);
+	inst->state = fr_state_tree_init(inst, inst->max_sessions);
 	if (!inst->state) {
 		ERROR("rlm_eap (%s): Cannot initialize session tracking structure", inst->xlat_name);
 		return -1;

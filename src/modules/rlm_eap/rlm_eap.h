@@ -49,7 +49,7 @@ typedef struct eap_module {
  * mutex = ensure only one thread is updating the sessions[] struct
  */
 typedef struct rlm_eap {
-	fr_state_t	*state;
+	fr_state_tree_t	*state;
 	eap_module_t 	*methods[PW_EAP_MAX_TYPES];
 
 	/*

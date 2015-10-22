@@ -30,19 +30,18 @@ RCSIDH(state_h, "$Id$")
 extern "C" {
 #endif
 
-typedef struct fr_state_t fr_state_t;
+typedef struct fr_state_tree_t fr_state_tree_t;
 
-fr_state_t *fr_state_init(TALLOC_CTX *ctx, int max_sessions);
-void fr_state_free(fr_state_t *state);
+fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, int max_sessions);
 
 void fr_state_discard(REQUEST *request, RADIUS_PACKET *original);
 
 void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet);
 bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet);
 
-void *fr_state_find_data(fr_state_t *state, RADIUS_PACKET *packet);
-void *fr_state_get_data(fr_state_t *state, RADIUS_PACKET *packet);
-bool fr_state_put_data(fr_state_t *state, RADIUS_PACKET *original, RADIUS_PACKET *packet,
+void *fr_state_find_data(fr_state_tree_t *state, RADIUS_PACKET *packet);
+void *fr_state_get_data(fr_state_tree_t *state, RADIUS_PACKET *packet);
+bool fr_state_put_data(fr_state_tree_t *state, RADIUS_PACKET *original, RADIUS_PACKET *packet,
 		       void *data);
 
 #ifdef __cplusplus
