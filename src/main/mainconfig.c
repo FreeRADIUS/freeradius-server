@@ -931,7 +931,7 @@ do {\
 	 */
 	if (cf_section_parse(cs, NULL, server_config) < 0) return -1;
 
-#ifndef WITH_THREADS
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Configure the thread pool
 	 */
