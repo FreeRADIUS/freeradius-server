@@ -100,7 +100,7 @@ void regex_sub_to_request(REQUEST *request, regex_t **preg, char const *value, s
 		new_sc->preg = *preg;
 	}
 
-	request_data_add(request, request, REQUEST_DATA_REGEX, new_sc, true);
+	request_data_add(request, request, REQUEST_DATA_REGEX, new_sc, true, false);
 }
 
 #  ifdef HAVE_PCRE

@@ -99,7 +99,7 @@ typedef struct rlm_eap_module {
 	int (*detach)(void *instance);			//!< Destroy an EAP submodule instance.
 } rlm_eap_module_t;
 
-#define REQUEST_DATA_EAP_HANDLER	 (1)
+#define REQUEST_DATA_EAP_SESSION	 (1)
 #define REQUEST_DATA_EAP_TUNNEL_CALLBACK PW_EAP_MESSAGE
 #define REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK ((PW_EAP_MESSAGE << 16) | PW_EAP_MSCHAPV2)
 #define RAD_REQUEST_OPTION_PROXY_EAP	(1 << 16)

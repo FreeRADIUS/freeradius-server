@@ -1249,7 +1249,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 *	Associate the callback with the request.
 			 */
 			code = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-						tunnel, false);
+						tunnel, false, false);
 			rad_assert(code == 0);
 
 			/*
@@ -1260,7 +1260,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 *	this request.
 			 */
 			code = request_data_add(request, request->proxy, REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
-						fake, true);
+						fake, true, false);
 			rad_assert(code == 0);
 			fake = NULL;
 

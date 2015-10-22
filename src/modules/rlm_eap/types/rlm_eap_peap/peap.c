@@ -1123,7 +1123,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			rcode = request_data_add(request,
 						 request->proxy,
 						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-						 tunnel, false);
+						 tunnel, false, false);
 			rad_assert(rcode == 0);
 
 			/*
@@ -1142,7 +1142,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				 */
 				rcode = request_data_add(request, request->proxy,
 							 REQUEST_DATA_EAP_MSCHAP_TUNNEL_CALLBACK,
-							 fake, true);
+							 fake, true, false);
 				rad_assert(rcode == 0);
 
 				/*

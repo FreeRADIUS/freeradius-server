@@ -236,9 +236,15 @@ REQUEST *request_alloc_coa(REQUEST *request)
  *	and the unique integer allows the caller to have multiple
  *	opaque data associated with a REQUEST.
  */
-int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *opaque, bool free_opaque)
+int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *opaque,
+		     bool free_opaque, bool persist)
 {
 	request_data_t *this, **last, *next;
+
+	/*
+	 *	Request must have a state ctx
+	 */
+	rad_assert(!persist || request->state_ctx);
 
 	/*
 	 *	Some simple sanity checks.
@@ -257,6 +263,12 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 			 */
 			if (this->opaque && this->free_opaque) talloc_free(this->opaque);
 
+			/*
+			 *	Need a new one, this one's parent is wrong.
+			 *	And no, we can't just steal.
+			 */
+			if (this->persist != persist) TALLOC_FREE(this);
+
 			break;	/* replace the existing entry */
 		}
 	}
@@ -264,8 +276,12 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	/*
 	 *	Only alloc new memory if we're not replacing
 	 *	an existing entry.
+	 *
+	 *	Tie the lifecycle of the data to either the state_ctx
+	 *	or the request, depending on whether it should
+	 *	persist or not.
 	 */
-	if (!this) this = talloc_zero(request, request_data_t);
+	if (!this) this = talloc_zero(persist ? request->state_ctx : request, request_data_t);
 	if (!this) return -1;
 
 	this->next = next;
@@ -273,14 +289,15 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	this->unique_int = unique_int;
 	this->opaque = opaque;
 	this->free_opaque = free_opaque;
+	this->persist = persist;
 
 	*last = this;
 
 	return 0;
 }
 
-/*
- *	Get opaque data from a request.
+/** Get opaque data from a request
+ *
  */
 void *request_data_get(REQUEST *request, void *unique_ptr, int unique_int)
 {
@@ -309,6 +326,53 @@ void *request_data_get(REQUEST *request, void *unique_ptr, int unique_int)
 	return NULL;		/* wasn't found, too bad... */
 }
 
+/** Loop over all the request data, pulling out ones matching persist
+ *
+ * @param[out] out Head of result list.
+ * @param[in] request The current request.
+ * @param[in] persist Whether to pull persistable or non-persistable data.
+ */
+void request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist)
+{
+	request_data_t **last, *head = NULL;
+
+	out = &head;
+
+	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
+		if ((*last)->persist == persist) {
+			request_data_t	*this;
+
+			/* Unlink it from the list */
+			this = *last;
+			*last = this->next;
+
+			/* Add it to our list of data to return */
+			this->next = NULL;
+			*out = this;
+			out = &this->next;
+		}
+	}
+}
+
+/** Add request data back to a request
+ *
+ * @note May add multiple entries (if they're linked).
+ * @note Will not check for duplicates.
+ *
+ * @param request to add data to.
+ * @param entry the data to add.
+ */
+void request_data_restore(REQUEST *request, request_data_t *entry)
+{
+	request_data_t **last;
+
+	/*
+	 *	Wind to the end of the current request data
+	 */
+	for (last = &(request->data); *last != NULL; last = &((*last)->next)) if (!(*last)->next) break;
+	*last = entry;
+}
+
 /*
  *	Get opaque data from a request without removing it.
  */
@@ -316,13 +380,9 @@ void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
 {
 	request_data_t **last;
 
-	for (last = &(request->data);
-	     *last != NULL;
-	     last = &((*last)->next)) {
+	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
 		if (((*last)->unique_ptr == unique_ptr) &&
-		    ((*last)->unique_int == unique_int)) {
-			return (*last)->opaque;
-		}
+		    ((*last)->unique_int == unique_int)) return (*last)->opaque;
 	}
 
 	return NULL;		/* wasn't found, too bad... */

@@ -720,7 +720,7 @@ redo:
 			 *	Add the vp to the request, so that
 			 *	xlat.c, xlat_foreach() can find it.
 			 */
-			request_data_add(request, (void *)radius_get_vp, foreach_depth, &vp, false);
+			request_data_add(request, (void *)radius_get_vp, foreach_depth, &vp, false, false);
 
 			/*
 			 *	Initialize the childs stack frame.

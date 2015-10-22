@@ -223,7 +223,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	send a response.
 		 */
 		eap_session->inst = inst;
-		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, eap_session, true);
+		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION, eap_session, true, true);
 
 		rad_assert(status == 0);
 		return RLM_MODULE_HANDLED;
@@ -247,7 +247,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 */
 		eap_session->inst = inst;
 
-		status = request_data_add(request, inst, REQUEST_DATA_EAP_HANDLER, eap_session, true);
+		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION, eap_session, true, true);
 
 		rad_assert(status == 0);
 
@@ -459,7 +459,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	 *	If there was a eap_session associated with this request,
 	 *	then it's a tunneled request which was proxied...
 	 */
-	eap_session = request_data_get(request, inst, REQUEST_DATA_EAP_HANDLER);
+	eap_session = request_data_get(request, inst, REQUEST_DATA_EAP_SESSION);
 	if (eap_session != NULL) {
 		rlm_rcode_t rcode;
 		eap_tunnel_data_t *data;
