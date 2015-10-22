@@ -208,120 +208,6 @@ static const CONF_PARSER thread_config[] = {
 };
 #endif
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
-
-/*
- *	If we're linking against OpenSSL, then it is the
- *	duty of the application, if it is multithreaded,
- *	to provide OpenSSL with appropriate thread id
- *	and mutex locking functions
- *
- *	Note: this only implements static callbacks.
- *	OpenSSL does not use dynamic locking callbacks
- *	right now, but may in the future, so we will have
- *	to add them at some point.
- */
-
-static pthread_mutex_t *ssl_mutexes = NULL;
-
-static unsigned long ssl_id_function(void)
-{
-	unsigned long ret;
-	pthread_t thread = pthread_self();
-
-	if (sizeof(ret) >= sizeof(thread)) {
-		memcpy(&ret, &thread, sizeof(thread));
-	} else {
-		memcpy(&ret, &thread, sizeof(ret));
-	}
-
-	return ret;
-}
-
-static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSED int line)
-{
-	if (mode & CRYPTO_LOCK) {
-		pthread_mutex_lock(&(ssl_mutexes[n]));
-	} else {
-		pthread_mutex_unlock(&(ssl_mutexes[n]));
-	}
-}
-
-static int setup_ssl_mutexes(void)
-{
-	int i = 0;
-
-#define SETUP_CRYPTO_LOCK(_i) if (_i < CRYPTO_num_locks()) pthread_mutex_init(&(ssl_mutexes[i]), NULL)
-
-	ssl_mutexes = rad_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
-	if (!ssl_mutexes) {
-		ERROR("Error allocating memory for SSL mutexes!");
-		return 0;
-	}
-
-	/*
-	 *	Some profiling tools only give us the line the mutex
-	 *	was initialised on.  In that case this allows us to
-	 *	see which of the mutexes in the profiling tool relates
-	 *	to which OpenSSL mutex.
-	 *
-	 *	OpenSSL locks are usually indexed from 1, but just to
-	 *	be sure we initialise index 0 too.
-	 */
-	SETUP_CRYPTO_LOCK(i++); /* UNUSED */
-	SETUP_CRYPTO_LOCK(i++); /* 1  - CRYPTO_LOCK_ERR */
-	SETUP_CRYPTO_LOCK(i++); /* 2  - CRYPTO_LOCK_EX_DATA */
-	SETUP_CRYPTO_LOCK(i++); /* 3  - CRYPTO_LOCK_X509 */
-	SETUP_CRYPTO_LOCK(i++); /* 4  - CRYPTO_LOCK_X509_INFO */
-	SETUP_CRYPTO_LOCK(i++); /* 5  - CRYPTO_LOCK_X509_PKEY */
-	SETUP_CRYPTO_LOCK(i++); /* 6  - CRYPTO_LOCK_X509_CRL */
-	SETUP_CRYPTO_LOCK(i++); /* 7  - CRYPTO_LOCK_X509_REQ */
-	SETUP_CRYPTO_LOCK(i++); /* 8  - CRYPTO_LOCK_DSA */
-	SETUP_CRYPTO_LOCK(i++); /* 9  - CRYPTO_LOCK_RSA */
-	SETUP_CRYPTO_LOCK(i++); /* 10 - CRYPTO_LOCK_EVP_PKEY */
-	SETUP_CRYPTO_LOCK(i++); /* 11 - CRYPTO_LOCK_X509_STORE */
-	SETUP_CRYPTO_LOCK(i++); /* 12 - CRYPTO_LOCK_SSL_CTX */
-	SETUP_CRYPTO_LOCK(i++); /* 13 - CRYPTO_LOCK_SSL_CERT */
-	SETUP_CRYPTO_LOCK(i++); /* 14 - CRYPTO_LOCK_SSL_SESSION */
-	SETUP_CRYPTO_LOCK(i++); /* 15 - CRYPTO_LOCK_SSL_SESS_CERT */
-	SETUP_CRYPTO_LOCK(i++); /* 16 - CRYPTO_LOCK_SSL */
-	SETUP_CRYPTO_LOCK(i++); /* 17 - CRYPTO_LOCK_SSL_METHOD */
-	SETUP_CRYPTO_LOCK(i++); /* 18 - CRYPTO_LOCK_RAND */
-	SETUP_CRYPTO_LOCK(i++); /* 19 - CRYPTO_LOCK_RAND2 */
-	SETUP_CRYPTO_LOCK(i++); /* 20 - CRYPTO_LOCK_MALLOC */
-	SETUP_CRYPTO_LOCK(i++); /* 21 - CRYPTO_LOCK_BIO  */
-	SETUP_CRYPTO_LOCK(i++); /* 22 - CRYPTO_LOCK_GETHOSTBYNAME */
-	SETUP_CRYPTO_LOCK(i++); /* 23 - CRYPTO_LOCK_GETSERVBYNAME */
-	SETUP_CRYPTO_LOCK(i++); /* 24 - CRYPTO_LOCK_READDIR */
-	SETUP_CRYPTO_LOCK(i++); /* 25 - CRYPTO_LOCRYPTO_LOCK_RSA_BLINDING */
-	SETUP_CRYPTO_LOCK(i++); /* 26 - CRYPTO_LOCK_DH */
-	SETUP_CRYPTO_LOCK(i++); /* 27 - CRYPTO_LOCK_MALLOC2  */
-	SETUP_CRYPTO_LOCK(i++); /* 28 - CRYPTO_LOCK_DSO */
-	SETUP_CRYPTO_LOCK(i++); /* 29 - CRYPTO_LOCK_DYNLOCK */
-	SETUP_CRYPTO_LOCK(i++); /* 30 - CRYPTO_LOCK_ENGINE */
-	SETUP_CRYPTO_LOCK(i++); /* 31 - CRYPTO_LOCK_UI */
-	SETUP_CRYPTO_LOCK(i++); /* 32 - CRYPTO_LOCK_ECDSA */
-	SETUP_CRYPTO_LOCK(i++); /* 33 - CRYPTO_LOCK_EC */
-	SETUP_CRYPTO_LOCK(i++); /* 34 - CRYPTO_LOCK_ECDH */
-	SETUP_CRYPTO_LOCK(i++); /* 35 - CRYPTO_LOCK_BN */
-	SETUP_CRYPTO_LOCK(i++); /* 36 - CRYPTO_LOCK_EC_PRE_COMP */
-	SETUP_CRYPTO_LOCK(i++); /* 37 - CRYPTO_LOCK_STORE */
-	SETUP_CRYPTO_LOCK(i++); /* 38 - CRYPTO_LOCK_COMP */
-	SETUP_CRYPTO_LOCK(i++); /* 39 - CRYPTO_LOCK_FIPS  */
-	SETUP_CRYPTO_LOCK(i++); /* 40 - CRYPTO_LOCK_FIPS2 */
-
-	/*
-	 *	Incase more are added *sigh*
-	 */
-	for (; i < CRYPTO_num_locks(); i++) SETUP_CRYPTO_LOCK(i);
-
-	CRYPTO_set_id_callback(ssl_id_function);
-	CRYPTO_set_locking_callback(ssl_locking_function);
-
-	return 1;
-}
-#endif
-
 #ifdef WNOHANG
 /*
  *	We don't want to catch SIGCHLD for a host of reasons.
@@ -1077,17 +963,6 @@ int thread_pool_init(void)
 	}
 #endif
 
-#ifdef HAVE_OPENSSL_CRYPTO_H
-	/*
-	 *	If we're linking with OpenSSL too, then we need
-	 *	to set up the mutexes and enable the thread callbacks.
-	 */
-	if (!setup_ssl_mutexes()) {
-		ERROR("FATAL: Failed to set up SSL mutexes");
-		return -1;
-	}
-#endif
-
 #ifndef WITH_GCD
 	/*
 	 *	Create a number of waiting threads.
@@ -1164,8 +1039,6 @@ void thread_pool_stop(void)
 	 */
 	CRYPTO_set_id_callback(NULL);
 	CRYPTO_set_locking_callback(NULL);
-
-	free(ssl_mutexes);
 #endif
 
 #endif

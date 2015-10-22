@@ -304,7 +304,7 @@ void 		cbtls_msg(int write_p, int msg_version, int content_type, void const *buf
 int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 
 /* TLS */
-void		tls_global_init(void);
+int		tls_global_init(void);
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
 int		tls_global_version_check(char const *acknowledged);
 #endif

@@ -113,6 +113,19 @@ static void 		record_close(tls_record_t *record);
 static unsigned int 	record_from_buff(tls_record_t *record, void const *in, unsigned int inlen);
 static unsigned int 	record_to_buff(tls_record_t *record, void *out, unsigned int outlen);
 
+/*
+ *	If we're linking against OpenSSL, then it is the
+ *	duty of the application, if it is multithreaded,
+ *	to provide OpenSSL with appropriate thread id
+ *	and mutex locking functions
+ *
+ *	Note: this only implements static callbacks.
+ *	OpenSSL does not use dynamic locking callbacks
+ *	right now, but may in the future, so we will have
+ *	to add them at some point.
+ */
+static pthread_mutex_t *tls_static_mutexes = NULL;
+
 #ifdef PSK_MAX_IDENTITY_LEN
 /** Verify the PSK identity contains no reserved chars
  *
@@ -145,8 +158,7 @@ static bool tls_psk_identity_is_safe(const char *identity)
  *
  */
 static unsigned int tls_psk_server_cb(SSL *ssl, const char *identity,
-				      unsigned char *psk,
-				      unsigned int max_psk_len)
+				      unsigned char *psk, unsigned int max_psk_len)
 {
 	unsigned int psk_len = 0;
 	fr_tls_server_conf_t *conf;
@@ -2535,16 +2547,144 @@ static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve, bool disable_sin
 #endif
 #endif
 
-/** Add all the default ciphers and message digests reate our context.
+static unsigned long tls_thread_id_cb(void)
+{
+	unsigned long ret;
+	pthread_t thread = pthread_self();
+
+	if (sizeof(ret) >= sizeof(thread)) {
+		memcpy(&ret, &thread, sizeof(thread));
+	} else {
+		memcpy(&ret, &thread, sizeof(ret));
+	}
+
+	return ret;
+}
+
+static void tls_locking_cb(int mode, int n, UNUSED char const *file, UNUSED int line)
+{
+	if (mode & CRYPTO_LOCK) {
+		pthread_mutex_lock(&(tls_static_mutexes[n]));
+	} else {
+		pthread_mutex_unlock(&(tls_static_mutexes[n]));
+	}
+}
+
+/** Free the static mutexes we allocated for OpenSSL
+ *
+ */
+static int _tls_static_mutexes_free(pthread_mutex_t *mutexes)
+{
+	size_t i;
+
+	/*
+	 *	Ensure OpenSSL doesn't use the locks
+	 */
+	CRYPTO_set_id_callback(NULL);
+	CRYPTO_set_locking_callback(NULL);
+
+	/*
+	 *	Destroy all the mutexes
+	 */
+	for (i = 0; i < talloc_array_length(mutexes); i++) pthread_mutex_destroy(&(mutexes[i]));
+
+	return 0;
+}
+
+/** OpenSSL uses static mutexes which we need to initialise
+ *
+ * @note Yes, these really are global.
+ *
+ * @param ctx to alloc mutexes/array in.
+ * @return array of mutexes.
+ */
+static pthread_mutex_t *tls_mutexes_init(TALLOC_CTX *ctx)
+{
+	int i = 0;
+	pthread_mutex_t *mutexes;
+
+#define SETUP_CRYPTO_LOCK if (i < CRYPTO_num_locks()) pthread_mutex_init(&(mutexes[i++]), NULL)
+
+	mutexes = talloc_array(ctx, pthread_mutex_t, CRYPTO_num_locks());
+	if (!mutexes) {
+		ERROR("Error allocating memory for OpenSSL mutexes!");
+		return NULL;
+	}
+
+	talloc_set_destructor(mutexes, _tls_static_mutexes_free);
+
+	/*
+	 *	Some profiling tools only give us the line the mutex
+	 *	was initialised on.  In that case this allows us to
+	 *	see which of the mutexes in the profiling tool relates
+	 *	to which OpenSSL mutex.
+	 *
+	 *	OpenSSL locks are usually indexed from 1, but just to
+	 *	be sure we initialise index 0 too.
+	 */
+	SETUP_CRYPTO_LOCK; /* UNUSED */
+	SETUP_CRYPTO_LOCK; /* 1  - CRYPTO_LOCK_ERR */
+	SETUP_CRYPTO_LOCK; /* 2  - CRYPTO_LOCK_EX_DATA */
+	SETUP_CRYPTO_LOCK; /* 3  - CRYPTO_LOCK_X509 */
+	SETUP_CRYPTO_LOCK; /* 4  - CRYPTO_LOCK_X509_INFO */
+	SETUP_CRYPTO_LOCK; /* 5  - CRYPTO_LOCK_X509_PKEY */
+	SETUP_CRYPTO_LOCK; /* 6  - CRYPTO_LOCK_X509_CRL */
+	SETUP_CRYPTO_LOCK; /* 7  - CRYPTO_LOCK_X509_REQ */
+	SETUP_CRYPTO_LOCK; /* 8  - CRYPTO_LOCK_DSA */
+	SETUP_CRYPTO_LOCK; /* 9  - CRYPTO_LOCK_RSA */
+	SETUP_CRYPTO_LOCK; /* 10 - CRYPTO_LOCK_EVP_PKEY */
+	SETUP_CRYPTO_LOCK; /* 11 - CRYPTO_LOCK_X509_STORE */
+	SETUP_CRYPTO_LOCK; /* 12 - CRYPTO_LOCK_SSL_CTX */
+	SETUP_CRYPTO_LOCK; /* 13 - CRYPTO_LOCK_SSL_CERT */
+	SETUP_CRYPTO_LOCK; /* 14 - CRYPTO_LOCK_SSL_SESSION */
+	SETUP_CRYPTO_LOCK; /* 15 - CRYPTO_LOCK_SSL_SESS_CERT */
+	SETUP_CRYPTO_LOCK; /* 16 - CRYPTO_LOCK_SSL */
+	SETUP_CRYPTO_LOCK; /* 17 - CRYPTO_LOCK_SSL_METHOD */
+	SETUP_CRYPTO_LOCK; /* 18 - CRYPTO_LOCK_RAND */
+	SETUP_CRYPTO_LOCK; /* 19 - CRYPTO_LOCK_RAND2 */
+	SETUP_CRYPTO_LOCK; /* 20 - CRYPTO_LOCK_MALLOC */
+	SETUP_CRYPTO_LOCK; /* 21 - CRYPTO_LOCK_BIO  */
+	SETUP_CRYPTO_LOCK; /* 22 - CRYPTO_LOCK_GETHOSTBYNAME */
+	SETUP_CRYPTO_LOCK; /* 23 - CRYPTO_LOCK_GETSERVBYNAME */
+	SETUP_CRYPTO_LOCK; /* 24 - CRYPTO_LOCK_READDIR */
+	SETUP_CRYPTO_LOCK; /* 25 - CRYPTO_LOCRYPTO_LOCK_RSA_BLINDING */
+	SETUP_CRYPTO_LOCK; /* 26 - CRYPTO_LOCK_DH */
+	SETUP_CRYPTO_LOCK; /* 27 - CRYPTO_LOCK_MALLOC2  */
+	SETUP_CRYPTO_LOCK; /* 28 - CRYPTO_LOCK_DSO */
+	SETUP_CRYPTO_LOCK; /* 29 - CRYPTO_LOCK_DYNLOCK */
+	SETUP_CRYPTO_LOCK; /* 30 - CRYPTO_LOCK_ENGINE */
+	SETUP_CRYPTO_LOCK; /* 31 - CRYPTO_LOCK_UI */
+	SETUP_CRYPTO_LOCK; /* 32 - CRYPTO_LOCK_ECDSA */
+	SETUP_CRYPTO_LOCK; /* 33 - CRYPTO_LOCK_EC */
+	SETUP_CRYPTO_LOCK; /* 34 - CRYPTO_LOCK_ECDH */
+	SETUP_CRYPTO_LOCK; /* 35 - CRYPTO_LOCK_BN */
+	SETUP_CRYPTO_LOCK; /* 36 - CRYPTO_LOCK_EC_PRE_COMP */
+	SETUP_CRYPTO_LOCK; /* 37 - CRYPTO_LOCK_STORE */
+	SETUP_CRYPTO_LOCK; /* 38 - CRYPTO_LOCK_COMP */
+	SETUP_CRYPTO_LOCK; /* 39 - CRYPTO_LOCK_FIPS  */
+	SETUP_CRYPTO_LOCK; /* 40 - CRYPTO_LOCK_FIPS2 */
+
+	/*
+	 *	Incase more are added *sigh*
+	 */
+	while (i < CRYPTO_num_locks()) SETUP_CRYPTO_LOCK;
+
+	CRYPTO_set_id_callback(tls_thread_id_cb);
+	CRYPTO_set_locking_callback(tls_locking_cb);
+
+	return mutexes;
+}
+
+/** Add all the default ciphers and message digests to our context.
  *
  * This should be called exactly once from main, before reading the main config
  * or initialising any modules.
  */
-void tls_global_init(void)
+int tls_global_init(void)
 {
 	ENGINE *rand_engine;
 
-	if (tls_done_init) return;
+	if (tls_done_init) return 0;
 
 	SSL_load_error_strings();	/* Readable error messages (examples show call before library_init) */
 	SSL_library_init();		/* Initialize library */
@@ -2570,7 +2710,36 @@ void tls_global_init(void)
 	if (rand_engine && (strcmp(ENGINE_get_id(rand_engine), "rdrand") == 0)) ENGINE_unregister_RAND(rand_engine);
 	ENGINE_register_all_complete();
 
+	/*
+	 *	If we're linking with OpenSSL too, then we need
+	 *	to set up the mutexes and enable the thread callbacks.
+	 */
+	tls_static_mutexes = tls_mutexes_init(NULL);
+	if (!tls_static_mutexes) {
+		ERROR("FATAL: Failed to set up SSL mutexes");
+		return -1;
+	}
+
 	tls_done_init = true;
+
+	return 0;
+}
+
+/** Free any memory alloced by libssl
+ *
+ */
+void tls_global_cleanup(void)
+{
+	ERR_remove_state(0);
+	ENGINE_cleanup();
+	CONF_modules_unload(1);
+	ERR_free_strings();
+	EVP_cleanup();
+	CRYPTO_cleanup_all_ex_data();
+
+	TALLOC_FREE(tls_static_mutexes);
+
+	tls_done_init = false;
 }
 
 #ifdef ENABLE_OPENSSL_VERSION_CHECK
@@ -2614,21 +2783,6 @@ int tls_global_version_check(char const *acknowledged)
 	return 0;
 }
 #endif
-
-/** Free any memory alloced by libssl
- *
- */
-void tls_global_cleanup(void)
-{
-	ERR_remove_state(0);
-	ENGINE_cleanup();
-	CONF_modules_unload(1);
-	ERR_free_strings();
-	EVP_cleanup();
-	CRYPTO_cleanup_all_ex_data();
-
-	tls_done_init = false;
-}
 
 #ifdef __APPLE__
 /** Use certadmin to retrieve the password for the private key
@@ -3175,7 +3329,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		conf->ctx_count = 1;
 	} else {
 		conf->ctx_count = thread_pool_max_threads() * 2; /* Reduce contention */
-		rad_assert(conf->ctx_count);
+		rad_assert(conf->ctx_count > 0);
 	}
 
 	/*
@@ -3261,7 +3415,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		conf->ctx_count = 1;
 	} else {
 		conf->ctx_count = thread_pool_max_threads() * 2; /* Even one context per thread will lead to contention */
-		rad_assert(conf->ctx_count);
+		rad_assert(conf->ctx_count > 0);
 	}
 
 #ifdef __APPLE__

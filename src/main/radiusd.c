@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
 	 *  Must be called before display_version to ensure relevant engines are loaded.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	tls_global_init();
+	if (tls_global_init() < 0) exit(EXIT_FAILURE);
 #endif
 
 	/*

@@ -776,7 +776,10 @@ int main(int argc, char *argv[])
 	 *  Initialising OpenSSL once, here, is safer than having individual modules do it.
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	tls_global_init();
+	if (tls_global_init() < 0) {
+		rcode = EXIT_FAILURE;
+		goto finish;
+	}
 #endif
 
 	if (xlat_register(NULL, "poke", xlat_poke, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN) < 0) {
