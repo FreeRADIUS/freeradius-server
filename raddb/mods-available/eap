@@ -58,13 +58,6 @@ eap {
 	# zero byte.
 	cisco_accounting_username_bug = no
 
-	#
-	#  Help prevent DoS attacks by limiting the number of
-	#  sessions that the server is tracking.  For simplicity,
-	#  this is taken from the "max_requests" directive in
-	#  radiusd.conf.
-	max_sessions = ${max_requests}
-
 	# Supported EAP-types
 
 	#

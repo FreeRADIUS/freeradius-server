@@ -1094,7 +1094,7 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	 *	EAP-Identity response
 	 */
 	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
-		eap_session = fr_state_get_data(inst->state, request->packet);
+		eap_session = fr_state_get_data(global_state, request->packet);
 		if (!eap_session) {
 			/* Either send EAP_Identity or EAP-Fail */
 			RDEBUG("No EAP session matching state.");

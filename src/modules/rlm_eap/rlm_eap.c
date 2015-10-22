@@ -35,7 +35,7 @@ static const CONF_PARSER module_config[] = {
 	{ FR_CONF_OFFSET("timer_expire", PW_TYPE_INTEGER, rlm_eap_t, timer_limit), .dflt = "60" },
 	{ FR_CONF_OFFSET("ignore_unknown_eap_types", PW_TYPE_BOOLEAN, rlm_eap_t, ignore_unknown_types), .dflt = "no" },
 	{ FR_CONF_OFFSET("cisco_accounting_username_bug", PW_TYPE_BOOLEAN, rlm_eap_t, mod_accounting_username_bug), .dflt = "no" },
-	{ FR_CONF_OFFSET("max_sessions", PW_TYPE_INTEGER, rlm_eap_t, max_sessions), .dflt = "2048" },
+	{ FR_CONF_DEPRECATED("max_sessions", PW_TYPE_INTEGER, rlm_eap_t, max_sessions), .dflt = "2048" },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -151,16 +151,6 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		return -1;
 	}
 	inst->default_method = method; /* save the numerical method */
-
-	/*
-	 *	Lookup sessions in the tree.  We don't free them in
-	 *	the tree, as that's taken care of elsewhere...
-	 */
-	inst->state = fr_state_tree_init(inst, inst->max_sessions);
-	if (!inst->state) {
-		ERROR("rlm_eap (%s): Cannot initialize session tracking structure", inst->xlat_name);
-		return -1;
-	}
 
 	return 0;
 }
@@ -328,8 +318,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	intentionally failing the session, as opposed
 		 *	to accidentally failing it.
 		 */
-		if (!fr_state_put_data(inst->state, request->packet, request->reply,
-				       eap_session)) {
+		if (!fr_state_put_data(global_state, request->packet, request->reply, eap_session)) {
 			RDEBUG("Failed adding eap_session to the list");
 			eap_fail(eap_session);
 			talloc_free(eap_session);
@@ -516,8 +505,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 			eap_session->prev_round = eap_session->this_round;
 			eap_session->this_round = NULL;
 
-			if (!fr_state_put_data(inst->state, request->packet, request->reply,
-					       eap_session)) {
+			if (!fr_state_put_data(global_state, request->packet, request->reply, eap_session)) {
 				eap_fail(eap_session);
 				talloc_free(eap_session);
 				return RLM_MODULE_FAIL;
