@@ -49,7 +49,6 @@ typedef struct eap_module {
  * mutex = ensure only one thread is updating the sessions[] struct
  */
 typedef struct rlm_eap {
-	fr_state_tree_t	*state;
 	eap_module_t 	*methods[PW_EAP_MAX_TYPES];
 
 	/*
@@ -63,11 +62,8 @@ typedef struct rlm_eap {
 	bool		ignore_unknown_types;
 	bool		mod_accounting_username_bug;
 
-	uint32_t	max_sessions;
-
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	session_mutex;
-	pthread_mutex_t	eap_session_mutex;
 #endif
 
 	char const	*xlat_name; /* no xlat's yet */
