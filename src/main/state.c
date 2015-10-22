@@ -466,12 +466,8 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	}
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, packet);
 
-	/*
-	 *	This has to be done in a mutex lock, because talloc
-	 *	isn't thread-safe.
-	 */
+	entry = state_entry_find(state, packet);
 	if (entry) {
 		if (request->state_ctx) old_ctx = request->state_ctx;
 
