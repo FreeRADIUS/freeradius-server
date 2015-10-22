@@ -93,7 +93,6 @@ int main(int argc, char *argv[])
 	int		argval;
 	bool		display_version = false;
 	int		from_child[2] = {-1, -1};
-	fr_state_tree_t	*state = NULL;
 
 	/*
 	 *  We probably don't want to free the talloc autofree context
@@ -541,7 +540,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Initialise the state rbtree (used to link multiple rounds of challenges).
 	 */
-	state = fr_state_tree_init(autofree, main_config.max_requests * 2);
+	fr_state_tree_init(autofree, main_config.max_requests * 2);
 
 	/*
 	 *  Process requests until HUP or exit.
