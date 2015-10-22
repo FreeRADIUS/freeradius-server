@@ -311,7 +311,7 @@ int rad_postauth(REQUEST *request)
 	case RLM_MODULE_USERLOCK:
 	default:
 		request->reply->code = PW_CODE_ACCESS_REJECT;
-		fr_state_discard(request, request->packet);
+		fr_state_discard(global_state, request, request->packet);
 		result = RLM_MODULE_REJECT;
 		break;
 	/*
@@ -330,10 +330,10 @@ int rad_postauth(REQUEST *request)
 		result = RLM_MODULE_OK;
 
 		if (request->reply->code == PW_CODE_ACCESS_CHALLENGE) {
-			fr_state_put_vps(request, request->packet, request->reply);
+			fr_request_to_state(global_state, request, request->packet, request->reply);
 
 		} else {
-			fr_state_discard(request, request->packet);
+			fr_state_discard(global_state, request, request->packet);
 		}
 		break;
 	}
@@ -389,7 +389,7 @@ int rad_authenticate(REQUEST *request)
 		 */
 		case PW_CODE_ACCESS_CHALLENGE:
 			request->reply->code = PW_CODE_ACCESS_CHALLENGE;
-			fr_state_put_vps(request, request->packet, request->reply);
+			fr_request_to_state(global_state, request, request->packet, request->reply);
 			return RLM_MODULE_OK;
 
 		/*
@@ -403,13 +403,13 @@ int rad_authenticate(REQUEST *request)
 			rad_authlog("Login incorrect (Home Server says so)",
 				    request, 0);
 			request->reply->code = PW_CODE_ACCESS_REJECT;
-			fr_state_discard(request, request->packet);
+			fr_state_discard(global_state, request, request->packet);
 			return RLM_MODULE_REJECT;
 
 		default:
 			rad_authlog("Login incorrect (Home Server failed to respond)",
 				    request, 0);
-			fr_state_discard(request, request->packet);
+			fr_state_discard(global_state, request, request->packet);
 			return RLM_MODULE_REJECT;
 		}
 	}
@@ -425,9 +425,9 @@ int rad_authenticate(REQUEST *request)
 	}
 
 	/*
-	 *	Grab the VPS associated with the State attribute.
+	 *	Grab the VPS and data associated with the State attribute.
 	 */
-	fr_state_get_vps(request, request->packet);
+	fr_state_to_request(global_state, request, request->packet);
 
 	/*
 	 *	Get the user's authorization information from the database

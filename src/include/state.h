@@ -31,13 +31,14 @@ extern "C" {
 #endif
 
 typedef struct fr_state_tree_t fr_state_tree_t;
+extern fr_state_tree_t *global_state;
 
 fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, int max_sessions);
 
-void fr_state_discard(REQUEST *request, RADIUS_PACKET *original);
+void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original);
 
-void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet);
-bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet);
+void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *packet);
+bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet);
 
 void *fr_state_find_data(fr_state_tree_t *state, RADIUS_PACKET *packet);
 void *fr_state_get_data(fr_state_tree_t *state, RADIUS_PACKET *packet);

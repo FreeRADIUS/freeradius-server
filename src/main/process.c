@@ -4163,7 +4163,7 @@ static void request_coa_originate(REQUEST *request)
 	 *	If requested, put a State attribute into the packet,
 	 *	and cache the VPS.
 	 */
-	fr_state_put_vps(coa, NULL, coa->packet);
+	fr_request_to_state(global_state, coa, NULL, coa->packet);
 
 	/*
 	 *	Encode the packet before we do anything else.

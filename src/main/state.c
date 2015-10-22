@@ -27,12 +27,12 @@
  * entry holds data that should be available during the complete lifecycle
  * of the authentication attempt.
  *
- * When a request is complete, #fr_state_put_vps is called to transfer
+ * When a request is complete, #fr_request_to_state is called to transfer
  * ownership of the state VALUE_PAIRs and state_ctx (which the VALUE_PAIRs
  * are allocated in) to a #fr_state_entry_t.  This #fr_state_entry_t holds the
  * value of the State attribute, that will be send out in the response.
  *
- * When the next request is received, #fr_state_get_vps is called to transfer
+ * When the next request is received, #fr_state_to_request is called to transfer
  * the VALUE_PAIRs and state ctx to the new request.
  *
  * The ownership of the state_ctx and state VALUE_PAIRs is transferred as below:
@@ -79,7 +79,7 @@ struct fr_state_tree_t {
 #endif
 };
 
-static fr_state_tree_t *global_state = NULL;
+fr_state_tree_t *global_state = NULL;
 
 #ifdef HAVE_PTHREAD_H
 #  define PTHREAD_MUTEX_LOCK if (main_config.spawn_workers) pthread_mutex_lock
@@ -193,10 +193,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, int max_sessions)
 {
 	fr_state_tree_t *state;
 
-	/*
-	 *	@fixme stupid globals
-	 */
-	global_state = state = talloc_zero(NULL, fr_state_tree_t);
+	state = talloc_zero(NULL, fr_state_tree_t);
 	if (!state) return 0;
 
 	state->max_sessions = max_sessions;
@@ -240,14 +237,14 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, int max_sessions)
  */
 static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKET *packet, fr_state_entry_t *old)
 {
-	size_t		i;
-	uint32_t	x;
-	time_t		now = time(NULL);
-	VALUE_PAIR	*vp;
+	size_t			i;
+	uint32_t		x;
+	time_t			now = time(NULL);
+	VALUE_PAIR		*vp;
 	fr_state_entry_t	*entry, *next;
 
-	uint8_t		old_state[AUTH_VECTOR_LEN];
-	int		old_tries = 0;
+	uint8_t			old_state[AUTH_VECTOR_LEN];
+	int			old_tries = 0;
 
 	/*
 	 *	Clean up old entries.
@@ -427,10 +424,9 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, RADIUS_PACKET 
 /** Called when sending an Access-Reject to discard state information
  *
  */
-void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
+void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original)
 {
 	fr_state_entry_t *entry;
-	fr_state_tree_t *state = global_state;
 
 	fr_pair_list_free(&request->state);
 	request->state = NULL;
@@ -451,11 +447,12 @@ void fr_state_discard(REQUEST *request, RADIUS_PACKET *original)
  *
  * @note Does not copy the actual VALUE_PAIRs.  The VALUE_PAIRs and their context
  *	are transferred between state entries as the conversation progresses.
+ *
+ * @note Called with the mutex free.
  */
-void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
+void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *packet)
 {
 	fr_state_entry_t *entry;
-	fr_state_tree_t *state = global_state;
 	TALLOC_CTX *old_ctx = NULL;
 
 	rad_assert(request->state == NULL);
@@ -511,10 +508,9 @@ void fr_state_get_vps(REQUEST *request, RADIUS_PACKET *packet)
  *
  * Also creates a new state entry.
  */
-bool fr_state_put_vps(REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet)
+bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet)
 {
 	fr_state_entry_t *entry, *old;
-	fr_state_tree_t *state = global_state;
 
 	if (!request->state) {
 		RDEBUG3("No &session-state attributes to store");
