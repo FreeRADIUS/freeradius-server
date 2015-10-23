@@ -1097,6 +1097,7 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			REDEBUG("No EAP session matching state");
 			goto error;
 		}
+		RDEBUG4("Got eap_session_t %p from request data", eap_session);
 #ifdef WITH_VERIFY_PTR
 		talloc_get_type_abort(eap_session, eap_session_t);
 #endif
@@ -1157,6 +1158,8 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	} else {		/* packet was EAP identity */
 		eap_session = eap_session_alloc(inst);
 		if (!eap_session) goto error;
+
+		RDEBUG4("New eap_session_t %p", eap_session);
 
 		/*
 		 *	All fields in the eap_session are set to zero.
