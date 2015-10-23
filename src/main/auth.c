@@ -327,13 +327,12 @@ int rad_postauth(REQUEST *request)
 		/*
 		 *	We WERE going to have a nice reply, but
 		 *	something went wrong.  So we've got to run
-		 *	Post-Auth-Type Reject, which is defined in the
-		 *	dictionaries as having value "1".
+		 *	Post-Auth-Type Reject.
 		 */
 		if (request->reply->code != PW_CODE_ACCESS_REJECT) {
 			RDEBUG("Using Post-Auth-Type Reject");
 
-			process_post_auth(1, request);
+			process_post_auth(PW_POST_AUTH_TYPE_REJECT, request);
 		}
 
 		fr_state_discard(request, request->packet);
