@@ -265,19 +265,19 @@ void request_stats_final(REQUEST *request)
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
-		proxy_acct_stats.total_requests++;
+		proxy_acct_stats.total_requests += request->num_proxied_requests;
 		request->home_server->stats.total_requests += request->num_proxied_requests;
 		break;
 #endif
 
 #ifdef WITH_COA
 	case PW_CODE_COA_REQUEST:
-		proxy_coa_stats.total_requests++;
+		proxy_coa_stats.total_requests += request->num_proxied_requests;
 		request->home_server->stats.total_requests += request->num_proxied_requests;
 		break;
 
 	case PW_CODE_DISCONNECT_REQUEST:
-		proxy_dsc_stats.total_requests++;
+		proxy_dsc_stats.total_requests += request->num_proxied_requests;
 		request->home_server->stats.total_requests += request->num_proxied_requests;
 		break;
 #endif
