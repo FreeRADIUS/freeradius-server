@@ -2532,6 +2532,8 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 #ifdef WITH_ACCOUNTING
 	case PW_CODE_ACCOUNTING_REQUEST:
+		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
+
 		request->proxy_listener->stats.total_responses++;
 		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
 		break;
@@ -3897,6 +3899,17 @@ static void proxy_wait_for_reply(REQUEST *request, int action)
 		else if (home->type == HOME_TYPE_ACCT) {
 			if (request->proxy_listener) FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
 			FR_STATS_TYPE_INC(proxy_acct_stats.total_timeouts);
+		}
+#endif
+#ifdef WITH_COA
+		else if (home->type == HOME_TYPE_COA) {
+			if (request->proxy_listener) FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
+
+			if (request->packet->code == PW_CODE_COA_REQUEST) {
+				FR_STATS_TYPE_INC(proxy_coa_stats.total_timeouts);
+			} else {
+				FR_STATS_TYPE_INC(proxy_dsc_stats.total_timeouts);
+			}
 		}
 #endif
 
