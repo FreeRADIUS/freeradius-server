@@ -1246,6 +1246,9 @@ if test "x$WITH_OPENSSL" = xyes; then
       [
         AC_MSG_RESULT(no)
         AC_MSG_FAILURE([OpenSSL library version does not match header version])
+      ],
+      [
+        AC_MSG_RESULT([cross-compiling (assuming yes)])
       ]
     )
     CPPFLAGS="$old_CPPFLAGS"
