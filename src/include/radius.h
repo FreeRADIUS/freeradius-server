@@ -181,11 +181,6 @@ typedef enum {
 #define VENDORPEC_UKERNA		25622
 
 /*
- * Vendor specific attributes
- */
-#define PW_FREERADIUS_PROXIED_TO	1
-
-/*
  *	Microsoft has vendor code 311.
  */
 #define PW_MSCHAP_RESPONSE		1
