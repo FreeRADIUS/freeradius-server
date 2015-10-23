@@ -237,10 +237,11 @@ REQUEST *request_alloc_coa(REQUEST *request)
  * @param[in] request to associate data with.
  * @param[in] unique_ptr Identifier for the data.
  * @param[in] unique_int Qualifier for the identifier.
+ * @param[in] opaque Data to associate with the request
  * @param[in] free_opaque If true and the opaque data is replaced via a subsequent call
  *	to #request_data_add, talloc_free will be called to free the opaque data pointer.
  * @param[in] persist If true, before the request is freed, the opaque data will be
- *	transferred to an #fr_state_entry, and restored to a subsequent linked request
+ *	transferred to an fr_state_entry, and restored to a subsequent linked request
  *	should we receive one.
  * @return
  *	- -2 on bad arguments.
