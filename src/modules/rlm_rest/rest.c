@@ -214,7 +214,9 @@ const FR_NAME_NUMBER http_content_type_table[] = {
  *	@todo split encoders/decoders into submodules.
  */
 typedef struct rest_custom_data {
-	char const *p;		//!< how much text we've sent so far.
+	char const	*start;	//!< Start of the buffer.
+	char const	*p;	//!< how much text we've sent so far.
+	size_t		len;	//!< Length of data
 } rest_custom_data_t;
 
 #ifdef HAVE_JSON
@@ -457,17 +459,29 @@ int mod_conn_alive(void *instance, void *handle)
  */
 static size_t rest_encode_custom(void *out, size_t size, size_t nmemb, void *userdata)
 {
-	rlm_rest_request_t *ctx = userdata;
-	rest_custom_data_t *data = ctx->encoder;
+	rlm_rest_request_t	*ctx = userdata;
+	rest_custom_data_t	*data = ctx->encoder;
 
-	size_t	freespace = (size * nmemb) - 1;
-	size_t	len;
+	size_t			freespace = (size * nmemb) - 1;
+	size_t			len;
+	size_t			to_copy;
 
-	len = strlcpy(out, data->p, freespace);
-	if (is_truncated(len, freespace)) {
-		data->p += (freespace - 1);
-		return freespace - 1;
-	}
+	/*
+	 *	Special case for empty body
+	 */
+	if (data->len == 0) return 0;
+
+	/*
+	 *	If len > 0 then we must have these set.
+	 */
+	rad_assert(data->start);
+	rad_assert(data->p);
+
+	to_copy = data->len - (data->p - data->start);
+	len = to_copy > freespace ? freespace : to_copy;
+	if (len == 0) return 0;
+
+	memcpy(out, data->p, to_copy);
 	data->p += len;
 
 	return len;
@@ -880,7 +894,7 @@ no_space:
  * This process continues until the stream function signals (by returning 0)
  * that it has no more data to write.
  *
- * @param[out] buffer where the pointer to the alloced buffer should
+ * @param[out] out where the pointer to the alloced buffer should
  *	be written.
  * @param[in] func Stream function.
  * @param[in] limit Maximum buffer size to alloc.
@@ -890,35 +904,31 @@ no_space:
  *	- Length of the data written to the buffer (excluding NULL).
  *	- -1 if alloc >= limit.
  */
-static ssize_t rest_request_encode_wrapper(char **buffer, rest_read_t func, size_t limit, void *userdata)
+static ssize_t rest_request_encode_wrapper(char **out, rest_read_t func, size_t limit, void *userdata)
 {
-	char *previous = NULL;
-	char *current = NULL;
+	char *buff = NULL;
 
 	size_t alloc = REST_BODY_INIT;	/* Size of buffer to alloc */
 	size_t used = 0;		/* Size of data written */
 	size_t len = 0;
 
-	while (alloc <= limit) {
-		current = rad_malloc(alloc);
-
-		if (previous) {
-			strlcpy(current, previous, used + 1);
-			free(previous);
-		}
-
-		len = func(current + used, alloc - used, 1, userdata);
+	buff = talloc_array(NULL, char, alloc);
+	for (;;) {
+		len = func(buff + used, alloc - used, 1, userdata);
 		used += len;
 		if (!len) {
-			*buffer = current;
+			*out = buff;
 			return used;
 		}
 
 		alloc = alloc * 2;
-		previous = current;
+		if (alloc > limit) break;
+
+		buff = talloc_realloc(NULL, buff, char, alloc);
+		if (!buff) return -1;
 	};
 
-	free(current);
+	talloc_free(buff);
 
 	return -1;
 }
@@ -1924,6 +1934,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t const *instance, rlm_rest_
 		REDEBUG("Failed creating HTTP body content");
 		return -1;
 	}
+	RDEBUG2("Content-Length will be %zu bytes", len);
 
 	SET_OPTION(CURLOPT_POSTFIELDS, ctx->body);
 	SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
@@ -2215,12 +2226,12 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 		rest_custom_data_t *data;
 		char *expanded = NULL;
 
-		if (radius_axlat(&expanded, request, section->data, NULL, NULL) < 0) {
-			return -1;
-		}
+		if (radius_axlat(&expanded, request, section->data, NULL, NULL) < 0) return -1;
 
 		data = talloc_zero(request, rest_custom_data_t);
 		data->p = expanded;
+		data->start = expanded;
+		data->len = strlen(expanded);	// Fix me when we do binary xlat
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
@@ -2239,6 +2250,8 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 
 		data = talloc_zero(request, rest_custom_data_t);
 		data->p = section->data;
+		data->start = section->data;
+		data->len = talloc_array_length(section->data) - 1;
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
@@ -2412,10 +2425,7 @@ void rest_request_cleanup(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_sec
 	/*
 	 *  Free body data (only used if chunking is disabled)
 	 */
-	if (ctx->body != NULL) {
-		free(ctx->body);
-		ctx->body = NULL;
-	}
+	if (ctx->body != NULL) TALLOC_FREE(ctx->body);
 
 	/*
 	 *  Free response data
