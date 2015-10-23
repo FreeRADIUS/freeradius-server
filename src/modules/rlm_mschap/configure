@@ -3047,7 +3047,7 @@ $as_echo "#define HAVE_MEMBERSHIP_H 1" >>confdefs.h
         mod_ldflags="-framework DirectoryService"
     fi
 
-    smart_try_dir="$winbind_include_dir"
+    smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
 
 
 ac_safe=`echo "wbclient.h" | sed 'y%./+-%__pm%'`
