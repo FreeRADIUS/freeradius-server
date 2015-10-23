@@ -62,8 +62,10 @@ src/include/autoconf.sed: src/include/autoconf.h
 #
 
 RFC_DICTS := $(filter-out %~,$(wildcard share/dictionary.rfc*))
-RFC_HEADERS := $(patsubst share/dictionary.%,src/include/%.h,$(RFC_DICTS))
-HEADERS	+= $(notdir ${RFC_HEADERS})
+HEADERS_RFC := $(patsubst share/dictionary.%,src/include/%.h,$(RFC_DICTS))
+HEADERS	+= $(notdir ${HEADERS_RFC})
+
+.PRECIOUS: $(HEADERS_RFC)
 
 src/include/attributes.h: share/dictionary.freeradius.internal
 	@$(ECHO) HEADER $@
@@ -114,7 +116,7 @@ src/freeradius-devel:
 #
 #  Ensure we set up the build environment
 #
-BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY))
+BOOTSTRAP_BUILD += src/freeradius-devel $(addprefix src/include/,$(HEADERS_DY)) $(HEADERS_RFC)
 
 ######################################################################
 #
