@@ -59,6 +59,8 @@ typedef int (*eap_process_t)(void *instance, eap_session_t *eap_session);
 struct _eap_session {
 	eap_session_t	*prev, *next;			//!< Next/previous eap session in this doubly linked list.
 
+	eap_session_t	*child;				//!< Session for tunnelled EAP method.
+
 	void		*inst;				//!< Instance of the eap module this session was created by.
 	uint8_t		state[EAP_STATE_LEN];		//!< State attribute value the last reply we sent.
 	fr_ipaddr_t	src_ipaddr;			//!< of client which sent us the RADIUS request for this
@@ -113,5 +115,8 @@ typedef struct eap_tunnel_data_t {
 	void			*tls_session;
 	eap_tunnel_callback_t	callback;
 } eap_tunnel_data_t;
+
+rlm_rcode_t	eap_virtual_server(REQUEST *request, REQUEST *fake,
+				   eap_session_t *eap_session, char const *virtual_server);
 
 #endif /*_EAP_H*/

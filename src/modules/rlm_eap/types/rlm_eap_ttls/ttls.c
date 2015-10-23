@@ -1150,19 +1150,6 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		}
 	}
 
-	if ((vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
-		fake->server = vp->vp_strvalue;
-
-	} else if (t->virtual_server) {
-		fake->server = t->virtual_server;
-
-	} /* else fake->server == request->server */
-
-
-	if ((rad_debug_lvl > 0) && fr_log_fp) {
-		RDEBUG("Sending tunneled request");
-	}
-
 	/*
 	 *	Process channel binding.
 	 */
@@ -1201,7 +1188,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	rad_virtual_server(fake);
+	eap_virtual_server(request, fake, eap_session, t->virtual_server);
 
 	/*
 	 *	Decide what to do with the reply.

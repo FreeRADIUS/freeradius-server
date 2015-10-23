@@ -304,31 +304,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	     (eap_session->this_round->response->type.num == PW_EAP_LEAP) &&
 	     (eap_session->this_round->request->code == PW_EAP_SUCCESS) &&
 	     (eap_session->this_round->request->type.num == 0))) {
-
 		eap_round_free(&(eap_session->prev_round));
 		eap_session->prev_round = eap_session->this_round;
 		eap_session->this_round = NULL;
-
-		/*
-		 *	Return FAIL if we can't remember the eap_session.
-		 *	This is actually disallowed by the
-		 *	specification, as unexpected FAILs could have
-		 *	been forged.  However, we want to signal to
-		 *	everyone else involved that we are
-		 *	intentionally failing the session, as opposed
-		 *	to accidentally failing it.
-		 */
-		if (!fr_state_put_data(global_state, request->packet, request->reply, eap_session)) {
-			RDEBUG("Failed adding eap_session to the list");
-			eap_fail(eap_session);
-			talloc_free(eap_session);
-			return RLM_MODULE_FAIL;
-		}
-
 	} else {
+		eap_session_t *state_session;
+
 		RDEBUG2("Freeing eap_session");
+
 		/* eap_session is not required any more, free it now */
-		talloc_free(eap_session);
+		state_session = request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
+		rad_assert(!state_session || (state_session == eap_session));
+
+		if (!state_session) state_session = eap_session;
+		talloc_free(state_session);
 	}
 
 	/*
@@ -459,7 +448,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	 *	If there was a eap_session associated with this request,
 	 *	then it's a tunneled request which was proxied...
 	 */
-	eap_session = request_data_get(request, inst, REQUEST_DATA_EAP_SESSION);
+	eap_session = request_data_reference(request, inst, REQUEST_DATA_EAP_SESSION);
 	if (eap_session != NULL) {
 		rlm_rcode_t rcode;
 		eap_tunnel_data_t *data;
@@ -504,17 +493,17 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 			eap_round_free(&(eap_session->prev_round));
 			eap_session->prev_round = eap_session->this_round;
 			eap_session->this_round = NULL;
-
-			if (!fr_state_put_data(global_state, request->packet, request->reply, eap_session)) {
-				eap_fail(eap_session);
-				talloc_free(eap_session);
-				return RLM_MODULE_FAIL;
-			}
-
 		} else {	/* couldn't have been LEAP, there's no tunnel */
+			eap_session_t *state_session;
+
 			RDEBUG2("Freeing eap_session");
+
 			/* eap_session is not required any more, free it now */
-			talloc_free(eap_session);
+			state_session = request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
+			rad_assert(!state_session || (state_session == eap_session));
+
+			if (!state_session) state_session = eap_session;
+			talloc_free(state_session);
 		}
 
 		/*

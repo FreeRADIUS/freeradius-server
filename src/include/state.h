@@ -39,12 +39,6 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *o
 
 void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *packet);
 bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet);
-
-void *fr_state_find_data(fr_state_tree_t *state, RADIUS_PACKET *packet);
-void *fr_state_get_data(fr_state_tree_t *state, RADIUS_PACKET *packet);
-bool fr_state_put_data(fr_state_tree_t *state, RADIUS_PACKET *original, RADIUS_PACKET *packet,
-		       void *data);
-
 #ifdef __cplusplus
 }
 #endif

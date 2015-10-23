@@ -62,6 +62,7 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/rad_assert.h>
 #include "eap_types.h"
+#include "../eap.h"
 
 const FR_NAME_NUMBER eap_rcode_table[] = {
 	{ "notfound",		EAP_NOTFOUND		},
@@ -400,3 +401,69 @@ void eap_add_reply(REQUEST *request,
 
 	fr_pair_value_memcpy(vp, value, len);
 }
+
+/** Send a fake request to a virtual server, managing the eap_session_t of the child
+ *
+ * If eap_session_t has a child, inject that into the fake request.
+ *
+ * If after the request has run, the child eap_session_t is no longer present,
+ * we assume it has been freed, and fixup the parent eap_session_t.
+ *
+ * If the eap_session_t pointer changes, this is considered a fatal error.
+ *
+ * @param request the current (real) request.
+ * @param eap_session representing the outer eap method.
+ * @param fake request we're going to send
+ */
+rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
+			       eap_session_t *eap_session, char const *virtual_server)
+{
+	eap_session_t	*inner_eap;
+	rlm_rcode_t	rcode;
+	VALUE_PAIR	*vp;
+
+	vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY);
+	fake->server = vp ? vp->vp_strvalue : virtual_server;
+
+	if (fake->server) {
+		RDEBUG2("Sending tunneled request to %s", fake->server);
+	} else {
+		RDEBUG2("Sending tunnelled request");
+	}
+
+	/*
+	 *	Add a previously recorded inner eap_session_t back
+	 *	to the request.  This in theory allows infinite
+	 *	nesting, but this is probably limited somewhere.
+	 */
+	if (eap_session->child) {
+		RDEBUG4("Adding eap_session_t %p to fake request", eap_session->child);
+		request_data_add(fake, NULL, REQUEST_DATA_EAP_SESSION, eap_session->child, true, true);
+	}
+	rcode = rad_virtual_server(fake);
+	inner_eap = request_data_get(fake, NULL, REQUEST_DATA_EAP_SESSION);
+	if (inner_eap) {
+		if (!eap_session->child || (eap_session->child != inner_eap)) {
+			RDEBUG4("Binding lifetime of child eap_session %p to parent eap_session %p",
+				inner_eap, eap_session->child);
+			fr_talloc_link_ctx(eap_session, inner_eap);
+			eap_session->child = inner_eap;
+		} else {
+			RDEBUG4("Got eap_session_t %p back unmolested", eap_session->child);
+		}
+	/*
+	 *	Assume the inner server freed the
+	 *	eap_session_t and remove our reference to it.
+	 *
+	 *	If it didn't actually free the child (due to error)
+	 *	the call to talloc_link_ctx (above) ensures it will
+	 *	be freed when the parent is.
+	 */
+	} else if (eap_session->child) {
+		RDEBUG4("Inner server freed eap_session %p", eap_session->child);
+		eap_session->child = NULL;
+	}
+
+	return rcode;
+}
+

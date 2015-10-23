@@ -67,6 +67,8 @@ void eap_round_free(eap_round_t **eap_round_p)
 
 static int _eap_session_free(eap_session_t *eap_session)
 {
+	REQUEST *request = eap_session->request;
+
 	if (eap_session->identity) {
 		talloc_free(eap_session->identity);
 		eap_session->identity = NULL;
@@ -94,6 +96,8 @@ static int _eap_session_free(eap_session_t *eap_session)
 		WARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
 		WARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
+
+	RDEBUG4("Freeing eap_session_t %p", eap_session);
 
 	return 0;
 }

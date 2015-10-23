@@ -474,9 +474,11 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 		request->state_ctx = entry->ctx;
 		request->state = entry->vps;
+		request_data_restore(request, entry->data);
 
 		entry->ctx = NULL;
 		entry->vps = NULL;
+		entry->data = NULL;
 	}
 
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
@@ -508,14 +510,16 @@ void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet)
 {
 	fr_state_entry_t *entry, *old;
+	request_data_t *data;
 
-	if (!request->state) {
-		RDEBUG3("No &session-state attributes to store");
-		return true;
+	request_data_by_persistance(&data, request, true);
+
+	if (request->state && !data) return true;
+
+	if (request->state) {
+		RDEBUG2("Saving &session-state");
+		rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 	}
-
-	RDEBUG2("Saving &session-state");
-	rdebug_pair_list(L_DBG_LVL_2, request, request->state, "&session-state:");
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 
@@ -531,6 +535,7 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	rad_assert(entry->ctx == NULL);
 	entry->ctx = request->state_ctx;
 	entry->vps = request->state;
+	entry->data = data;
 
 	request->state_ctx = NULL;
 	request->state = NULL;
@@ -539,90 +544,5 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 
 	rad_assert(request->state == NULL);
 	VERIFY_REQUEST(request);
-	return true;
-}
-
-/** Find the opaque data associated with a State attribute
- *
- * Leave the data in the entry.
- */
-void *fr_state_find_data(fr_state_tree_t *state, RADIUS_PACKET *packet)
-{
-	void *data;
-	fr_state_entry_t *entry;
-
-	if (!state) return false;
-
-	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, packet);
-	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		return NULL;
-	}
-
-	data = entry->data;
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
-
-	return data;
-}
-
-
-/** Get the opaque data associated with a State attribute.
- *
- * Then remove the data from the entry.
- */
-void *fr_state_get_data(fr_state_tree_t *state, RADIUS_PACKET *packet)
-{
-	void *data;
-	fr_state_entry_t *entry;
-
-	if (!state) return NULL;
-
-	PTHREAD_MUTEX_LOCK(&state->mutex);
-	entry = state_entry_find(state, packet);
-	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		return NULL;
-	}
-
-	data = entry->data;
-	entry->data = NULL;
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
-
-	return data;
-}
-
-
-/** Get the opaque data associated with a State attribute.
- *
- * Remove the data from the entry.
- */
-bool fr_state_put_data(fr_state_tree_t *state, RADIUS_PACKET *original, RADIUS_PACKET *packet, void *data)
-{
-	fr_state_entry_t *entry, *old;
-
-	if (!state) return false;
-
-	PTHREAD_MUTEX_LOCK(&state->mutex);
-
-	old = original ? state_entry_find(state, original) :
-			 NULL;
-
-	entry = state_entry_create(state, packet, old);
-	if (!entry) {
-		PTHREAD_MUTEX_UNLOCK(&state->mutex);
-		return false;
-	}
-
-	/*
-	 *	If we're moving the data, ensure that we delete it
-	 *	from the old state.
-	 */
-	if (old && (old->data == data)) old->data = NULL;
-
-	entry->data = data;
-
-	PTHREAD_MUTEX_UNLOCK(&state->mutex);
-
 	return true;
 }

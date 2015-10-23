@@ -903,7 +903,6 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	}
 
 	fake = request_alloc_fake(request);
-
 	rad_assert(!fake->packet->vps);
 
 	switch (t->status) {
@@ -990,26 +989,11 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 	setup_fake_request(request, fake, t);
 
-	if ((vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
-		fake->server = vp->vp_strvalue;
-
-	} else if (t->virtual_server) {
-		fake->server = t->virtual_server;
-
-	} /* else fake->server == request->server */
-
-	if (fake->server) {
-		RDEBUG2("Sending tunneled request to %s", fake->server);
-	} else {
-		RDEBUG2("Sending tunnelled request");
-	}
-	rdebug_pair_list(L_DBG_LVL_2, request, fake->packet->vps, NULL);
-
 	/*
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	rad_virtual_server(fake);
+	eap_virtual_server(request, fake, eap_session, t->virtual_server);
 
 	/*
 	 *	Decide what to do with the reply.

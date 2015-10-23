@@ -1091,7 +1091,7 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	 *	EAP-Identity response
 	 */
 	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
-		eap_session = fr_state_get_data(global_state, request->packet);
+		eap_session = request_data_reference(request, NULL, REQUEST_DATA_EAP_SESSION);
 		if (!eap_session) {
 			/* Either send EAP_Identity or EAP-Fail */
 			REDEBUG("No EAP session matching state");
@@ -1197,6 +1197,12 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			       goto error2;
 		       }
 	       }
+
+		/*
+		 *	Store the EAP session in the request, this will
+		 *	now be passed automatically between related requests.
+		 */
+		request_data_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session, true, true);
 	}
 
 	eap_session->this_round = eap_buildds(eap_session, eap_packet_p);
