@@ -413,7 +413,9 @@ void eap_add_reply(REQUEST *request,
  *
  * @param request the current (real) request.
  * @param eap_session representing the outer eap method.
- * @param fake request we're going to send
+ * @param fake request we're going to send.
+ * @param virtual_server The default virtual server to send the request to.
+ * @return the rcode of the last executed section in the virtual server.
  */
 rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 			       eap_session_t *eap_session, char const *virtual_server)
