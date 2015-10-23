@@ -116,6 +116,8 @@ src/include/radpaths.h: src/include/build-radpaths-h
 	@$(ECHO) HEADER $@
 	@cd src/include && /bin/sh build-radpaths-h
 
+headers: $(HEADERS_DY)
+
 ${BUILD_DIR}/make/jlibtool: $(HEADERS_DY)
 
 ######################################################################
