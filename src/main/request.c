@@ -254,7 +254,7 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	this = next = NULL;
 	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
 #ifdef WITH_VERIFY_PTR
-		talloc_get_type_abort(*last, request_data_t);
+		*last = talloc_get_type_abort(*last, request_data_t);
 #endif
 		if (((*last)->unique_ptr == unique_ptr) && ((*last)->unique_int == unique_int)) {
 			this = *last;
@@ -311,7 +311,7 @@ void *request_data_get(REQUEST *request, void *unique_ptr, int unique_int)
 
 	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
 #ifdef WITH_VERIFY_PTR
-		talloc_get_type_abort(*last, request_data_t);
+		*last = talloc_get_type_abort(*last, request_data_t);
 #endif
 		if (((*last)->unique_ptr == unique_ptr) && ((*last)->unique_int == unique_int)) {
 			request_data_t	*this;
@@ -348,7 +348,7 @@ void request_data_by_persistance(request_data_t **out, REQUEST *request, bool pe
 
 	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
 #ifdef WITH_VERIFY_PTR
-		talloc_get_type_abort(*last, request_data_t);
+		*last = talloc_get_type_abort(*last, request_data_t);
 #endif
 		if ((*last)->persist == persist) {
 			request_data_t	*this;
@@ -390,7 +390,7 @@ void request_data_restore(REQUEST *request, request_data_t *entry)
 	{
 		request_data_t *this;
 
-		for (this = request->data; this; this = this->next) talloc_get_type_abort(this, request_data_t);
+		for (this = request->data; this; this = this->next) this = talloc_get_type_abort(this, request_data_t);
 	}
 #endif
 }
