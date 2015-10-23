@@ -2267,7 +2267,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 		data = talloc_zero(request, rest_custom_data_t);
 		data->p = section->data;
 		data->start = section->data;
-		data->len = talloc_array_length(section->data) - 1;
+		data->len = strlen(section->data);
 
 		/* Use the encoder specific pointer to store the data we need to encode */
 		ctx->request.encoder = data;
