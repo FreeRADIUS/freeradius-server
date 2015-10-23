@@ -2015,8 +2015,8 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 		content_type = fr_int2str(http_content_type_table, type, section->body_str);
 		snprintf(buffer, sizeof(buffer), "Content-Type: %s", content_type);
 		ctx->headers = curl_slist_append(ctx->headers, buffer);
+		if (!ctx->headers) goto error_header;
 	}
-	if (!ctx->headers) goto error_header;
 
 	timeout = fr_connection_pool_timeout(instance->pool);
 	SET_OPTION(CURLOPT_CONNECTTIMEOUT_MS, FR_TIMEVAL_TO_MS(&timeout));
