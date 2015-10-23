@@ -62,7 +62,6 @@ struct _eap_session {
 	eap_session_t	*child;				//!< Session for tunnelled EAP method.
 
 	void		*inst;				//!< Instance of the eap module this session was created by.
-	uint8_t		state[EAP_STATE_LEN];		//!< State attribute value the last reply we sent.
 	fr_ipaddr_t	src_ipaddr;			//!< of client which sent us the RADIUS request for this
 							//!< session.
 
