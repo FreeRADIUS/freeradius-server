@@ -16,11 +16,6 @@ eap inner-eap {
 	# This is the best choice for PEAP.
 	default_eap_type = mschapv2
 
-	timer_expire     = 60
-
-	#  This should be the same as the outer eap "max sessions"
-	max_sessions = 2048
-
 	# Supported EAP-types
 	md5 {
 	}
