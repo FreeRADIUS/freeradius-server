@@ -51,11 +51,6 @@ typedef struct eap_module {
 typedef struct rlm_eap {
 	eap_module_t 	*methods[PW_EAP_MAX_TYPES];
 
-	/*
-	 *	Configuration items.
-	 */
-	uint32_t	timer_limit;
-
 	char const	*default_method_name;
 	eap_type_t	default_method;
 

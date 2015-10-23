@@ -29,13 +29,6 @@ eap {
 	#
 	default_eap_type = md5
 
-	#  A list is maintained to correlate EAP-Response
-	#  packets with EAP-Request packets.  After a
-	#  configurable length of time, entries in the list
-	#  expire, and are deleted.
-	#
-	timer_expire     = 60
-
 	#  There are many EAP types, but the server has support
 	#  for only a limited subset.  If the server receives
 	#  a request for an EAP type it does not support, then
