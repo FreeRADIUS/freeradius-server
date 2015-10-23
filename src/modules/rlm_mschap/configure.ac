@@ -72,7 +72,7 @@ if test x$with_[]modname != xno; then
         mod_ldflags="-framework DirectoryService"
     fi
 
-    smart_try_dir="$winbind_include_dir"
+    smart_try_dir="$winbind_include_dir /usr/include/samba-4.0"
     FR_SMART_CHECK_INCLUDE(wbclient.h, [#include <stdint.h>
 					#include <stdbool.h>])
     if test "x$ac_cv_header_wbclient_h" != "xyes"; then
