@@ -1011,19 +1011,17 @@ static char *eap_identity(REQUEST *request, eap_session_t *eap_session, eap_pack
 /*
  *	Create our Request-Response data structure with the eap packet
  */
-static eap_round_t *eap_buildds(eap_session_t *eap_session,
-			   eap_packet_raw_t **eap_packet_p)
+static eap_round_t *eap_buildds(eap_session_t *eap_session, eap_packet_raw_t **eap_packet_p)
 {
 	eap_round_t		*eap_round = NULL;
 	eap_packet_raw_t	*eap_packet = *eap_packet_p;
-	int		typelen;
-	uint16_t	len;
+	int			typelen;
+	uint16_t		len;
 
-	if ((eap_round = eap_round_alloc(eap_session)) == NULL) {
-		return NULL;
-	}
+	eap_round = eap_round_alloc(eap_session);
+	if (eap_round == NULL) return NULL;
 
-	eap_round->response->packet = (uint8_t *) eap_packet;
+	eap_round->response->packet = (uint8_t *)eap_packet;
 	(void) talloc_steal(eap_round, eap_packet);
 	eap_round->response->code = eap_packet->code;
 	eap_round->response->id = eap_packet->id;
@@ -1070,8 +1068,7 @@ static eap_round_t *eap_buildds(eap_session_t *eap_session,
  * username contains REQUEST->username which might have been stripped.
  * identity contains the one sent in EAP-Identity response
  */
-eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
-			       REQUEST *request)
+eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p, REQUEST *request)
 {
 	eap_session_t	*eap_session = NULL;
 	eap_packet_raw_t *eap_packet;
@@ -1097,10 +1094,12 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		eap_session = fr_state_get_data(global_state, request->packet);
 		if (!eap_session) {
 			/* Either send EAP_Identity or EAP-Fail */
-			RDEBUG("No EAP session matching state.");
+			REDEBUG("No EAP session matching state");
 			goto error;
 		}
-
+#ifdef WITH_VERIFY_PTR
+		talloc_get_type_abort(eap_session, eap_session_t);
+#endif
 		eap_session->rounds++;
 		if (eap_session->rounds >= 50) {
 			RERROR("Failing EAP session due to too many round trips");
@@ -1150,17 +1149,14 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*      request as the NAS is doing something
 			*      funny.
 			*/
-		       if (strncmp(eap_session->identity, vp->vp_strvalue,
-				   MAX_STRING_LEN) != 0) {
+		       if (strncmp(eap_session->identity, vp->vp_strvalue, MAX_STRING_LEN) != 0) {
 			       RDEBUG("Identity does not match User-Name.  Authentication failed");
 			       goto error;
 		       }
 	       }
 	} else {		/* packet was EAP identity */
 		eap_session = eap_session_alloc(inst);
-		if (!eap_session) {
-			goto error;
-		}
+		if (!eap_session) goto error;
 
 		/*
 		 *	All fields in the eap_session are set to zero.
@@ -1183,10 +1179,9 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*	correctly
 			*/
 		       RWDEBUG2("NAS did not set User-Name.  Setting it locally from EAP Identity");
-		       vp = fr_pair_make(request->packet, &request->packet->vps, "User-Name", eap_session->identity, T_OP_EQ);
-		       if (!vp) {
-			       goto error2;
-		       }
+		       vp = fr_pair_make(request->packet, &request->packet->vps,
+		       			 "User-Name", eap_session->identity, T_OP_EQ);
+		       if (!vp) goto error2;
 	       } else {
 		       /*
 			*      Paranoia.  If the NAS *did* set the
@@ -1194,8 +1189,7 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*      identity, the NAS is doing something
 			*      funny, so reject the request.
 			*/
-		       if (strncmp(eap_session->identity, vp->vp_strvalue,
-				   MAX_STRING_LEN) != 0) {
+		       if (strncmp(eap_session->identity, vp->vp_strvalue, MAX_STRING_LEN) != 0) {
 			       RDEBUG("Identity does not match User-Name, setting from EAP Identity");
 			       goto error2;
 		       }
@@ -1204,9 +1198,10 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 
 	eap_session->this_round = eap_buildds(eap_session, eap_packet_p);
 	if (!eap_session->this_round) {
+		REDEBUG("Failed allocating memory for round");
 		goto error2;
 	}
-
 	eap_session->request = request; /* LEAP needs this */
+
 	return eap_session;
 }

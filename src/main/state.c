@@ -62,10 +62,11 @@ typedef struct state_entry {
 
 	int			tries;
 
-	TALLOC_CTX		*ctx;
-	VALUE_PAIR		*vps;
+	TALLOC_CTX		*ctx;				//!< ctx to parent any data that needs to be
+								//!< tied to the lifetime of the request progression.
+	VALUE_PAIR		*vps;				//!< session-state VALUE_PAIRs, parented by ctx.
 
-	void 			*data;
+	request_data_t		*data;				//!< Persistable request data, also parented ctx.
 } fr_state_entry_t;
 
 struct fr_state_tree_t {

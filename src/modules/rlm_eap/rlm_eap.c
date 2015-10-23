@@ -522,16 +522,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 *	says that we MUST include a User-Name attribute in the
 		 *	Access-Accept.
 		 */
-		if ((request->reply->code == PW_CODE_ACCESS_ACCEPT) &&
-		    request->username) {
+		if ((request->reply->code == PW_CODE_ACCESS_ACCEPT) && request->username) {
 			/*
 			 *	Doesn't exist, add it in.
 			 */
 			vp = fr_pair_find_by_num(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 			if (!vp) {
-				pair_make_reply("User-Name",
-					       request->username->vp_strvalue,
-					       T_OP_EQ);
+				pair_make_reply("User-Name", request->username->vp_strvalue, T_OP_EQ);
 			}
 		}
 
