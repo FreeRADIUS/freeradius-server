@@ -128,7 +128,7 @@ endef
 #
 ifeq "${CPP_MAKEDEPEND}" "yes"
 define ADD_OBJECT_RULE
-$${BUILD_DIR}/objs/%.${OBJ_EXT} $${BUILD_DIR}/objs/%.d: ${1} ${JLIBTOOL}
+$${BUILD_DIR}/objs/%.${OBJ_EXT} $${BUILD_DIR}/objs/%.d: ${1} | ${BOOTSTRAP_BUILD}
 	${2}
 	$${CPP} $${CPPFLAGS} $$(addprefix -I,$${SRC_INCDIRS}) $${SRC_DEFS} $$< | sed \
 	  -n 's,^\# *[0-9][0-9]* *"\([^"]*\)".*,$$@: \1,p' > $${BUILD_DIR}/objs/$$*.d
@@ -137,14 +137,14 @@ endef
 
 else
 define ADD_OBJECT_RULE
-$${BUILD_DIR}/objs/%.${OBJ_EXT} $${BUILD_DIR}/objs/%.d: ${1} ${JLIBTOOL}
+$${BUILD_DIR}/objs/%.${OBJ_EXT} $${BUILD_DIR}/objs/%.d: ${1} | ${BOOTSTRAP_BUILD}
 	${2}
 ${FILTER_DEPENDS}
 endef
 endif
 
 define ADD_ANALYZE_RULE
-$${BUILD_DIR}/plist/%.plist: ${1} ${JLIBTOOL}
+$${BUILD_DIR}/plist/%.plist: ${1}
 	${2}
 endef
 
@@ -591,6 +591,7 @@ endif
 
 # Define compilers and linkers
 #
+BOOTSTRAP_BUILD = 
 COMPILE.c = ${CC}
 COMPILE.cxx = ${CXX}
 CPP = cc -E
