@@ -14,4 +14,12 @@ BEGIN-VENDOR	Wichorus
 ATTRIBUTE	Wichorus-Policy-Name			1	string
 ATTRIBUTE	Wichorus-User-Privilege			2	string
 
+#
+#  Some versions of the Wichorus equipment use the following attribute.
+#  instead of Wichorus-User-Privilege.  This is considered to be
+#  bad practice.
+#
+
+#ATTRIBUTE	Wichorus-Host-IP			2	ipaddr
+
 END-VENDOR 	Wichorus
