@@ -1936,6 +1936,7 @@ static int rest_request_config_body(UNUSED rlm_rest_t const *instance, rlm_rest_
 	}
 	RDEBUG2("Content-Length will be %zu bytes", len);
 
+	rad_assert((len == 0) || (talloc_array_length(ctx->body) >= (size_t)len));
 	SET_OPTION(CURLOPT_POSTFIELDS, ctx->body);
 	SET_OPTION(CURLOPT_POSTFIELDSIZE, len);
 
