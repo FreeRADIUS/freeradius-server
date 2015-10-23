@@ -2042,7 +2042,16 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 		break;
 
 	case HTTP_METHOD_PUT:
-		SET_OPTION(CURLOPT_PUT, 1L);
+		/*
+		 *	Do not set CURLOPT_PUT, this will cause libcurl
+		 *	to ignore CURLOPT_POSTFIELDs and attempt to read
+		 *	whatever was set with CURLOPT_READDATA, which by
+		 *	default is stdin.
+		 *
+		 *	This is many cases will cause the server to block,
+		 *	indefinitely.
+		 */
+		SET_OPTION(CURLOPT_CUSTOMREQUEST, "PUT");
 		break;
 
 	case HTTP_METHOD_PATCH:
