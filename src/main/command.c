@@ -2523,23 +2523,38 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 	home_server_t *home;
 
 	if (argc == 0) {
-		cprintf_error(listener, "Must specify [auth/acct] OR <ipaddr> <port>\n");
+		cprintf_error(listener, "Must specify [auth|acct|coa|disconnect] OR <ipaddr> <port>\n");
 		return 0;
 	}
 
 	if (argc == 1) {
+		if (strcmp(argv[0], "auth") == 0) {
+			return command_print_stats(listener,
+						   &proxy_auth_stats, 1, 1);
+		}
+
 #ifdef WITH_ACCOUNTING
 		if (strcmp(argv[0], "acct") == 0) {
 			return command_print_stats(listener,
 						   &proxy_acct_stats, 0, 1);
 		}
 #endif
-		if (strcmp(argv[0], "auth") == 0) {
-			return command_print_stats(listener,
-						   &proxy_auth_stats, 1, 1);
-		}
 
-		cprintf_error(listener, "Should specify [auth/acct]\n");
+#ifdef WITH_ACCOUNTING
+		if (strcmp(argv[0], "coa") == 0) {
+			return command_print_stats(listener,
+						   &proxy_coa_stats, 0, 1);
+		}
+#endif
+
+#ifdef WITH_ACCOUNTING
+		if (strcmp(argv[0], "disconnect") == 0) {
+			return command_print_stats(listener,
+						   &proxy_dsc_stats, 0, 1);
+		}
+#endif
+
+		cprintf_error(listener, "Should specify [auth|acct|coa|disconnect]\n");
 		return 0;
 	}
 
@@ -2797,7 +2812,7 @@ static fr_command_table_t command_table_stats[] = {
 
 #ifdef WITH_PROXY
 	{ "home_server", FR_READ,
-	  "stats home_server [<ipaddr>/auth/acct] <port> [udp|tcp] - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
+	  "stats home_server [<ipaddr>|auth|acct|coa|disconnect] <port> [udp|tcp] - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
 	  command_stats_home_server, NULL },
 #endif
 
