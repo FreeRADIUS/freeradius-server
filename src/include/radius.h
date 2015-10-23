@@ -135,6 +135,8 @@ typedef enum {
  */
 #include <freeradius-devel/attributes.h>
 
+#include <freeradius-devel/freeradius.h>
+
 #include <freeradius-devel/vqp.h>
 
 #define PW_DIGEST_RESPONSE		206
