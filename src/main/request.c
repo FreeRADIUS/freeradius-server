@@ -229,12 +229,23 @@ REQUEST *request_alloc_coa(REQUEST *request)
 }
 #endif
 
-/*
- *	Add opaque data (with a "free" function) to a REQUEST.
+/** Add opaque data to a REQUEST
  *
- *	The unique ptr is meant to be a module configuration,
- *	and the unique integer allows the caller to have multiple
- *	opaque data associated with a REQUEST.
+ * The unique ptr is meant to be a module configuration, and the unique
+ * integer allows the caller to have multiple opaque data associated with a REQUEST.
+ *
+ * @param[in] request to associate data with.
+ * @param[in] unique_ptr Identifier for the data.
+ * @param[in] unique_int Qualifier for the identifier.
+ * @param[in] free_opaque If true and the opaque data is replaced via a subsequent call
+ *	to #request_data_add, talloc_free will be called to free the opaque data pointer.
+ * @param[in] persist If true, before the request is freed, the opaque data will be
+ *	transferred to an #fr_state_entry, and restored to a subsequent linked request
+ *	should we receive one.
+ * @return
+ *	- -2 on bad arguments.
+ *	- -1 on memory allocation error.
+ *	- 0 on success.
  */
 int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *opaque,
 		     bool free_opaque, bool persist)
@@ -249,7 +260,7 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	/*
 	 *	Some simple sanity checks.
 	 */
-	if (!request || !opaque) return -1;
+	if (!request || !opaque) return -2;
 
 	this = next = NULL;
 	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
@@ -302,6 +313,16 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 
 /** Get opaque data from a request
  *
+ * @note The unique ptr is meant to be a module configuration, and the unique
+ *	integer allows the caller to have multiple opaque data associated with a REQUEST.
+ *
+ * @param[in] request to retrieve data from.
+ * @param[in] unique_ptr Identifier for the data.
+ * @param[in] unique_int Qualifier for the identifier.
+ * @return
+ *	- NULL if no opaque data could be found.
+ *	- the opaque data. The  entry holding the opaque data is also removed
+ *	  from the request data store.
  */
 void *request_data_get(REQUEST *request, void *unique_ptr, int unique_int)
 {
@@ -334,14 +355,17 @@ void *request_data_get(REQUEST *request, void *unique_ptr, int unique_int)
 	return NULL;		/* wasn't found, too bad... */
 }
 
-/** Loop over all the request data, pulling out ones matching persist
+/** Loop over all the request data, pulling out ones matching persist state
  *
  * @param[out] out Head of result list.
- * @param[in] request The current request.
+ * @param[in] request to search for request_data_t in.
  * @param[in] persist Whether to pull persistable or non-persistable data.
+ * @return number of request_data_t retrieved.
  */
-void request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist)
+int request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist)
 {
+	int count = 0;
+
 	request_data_t **last, *head = NULL, **next;
 
 	next = &head;
@@ -361,11 +385,14 @@ void request_data_by_persistance(request_data_t **out, REQUEST *request, bool pe
 			this->next = NULL;
 			*next = this;
 			next = &this->next;
+			count++;
 		}
 		if (!*last) break;
 	}
 
 	*out = head;
+
+	return count;
 }
 
 /** Add request data back to a request
@@ -395,8 +422,17 @@ void request_data_restore(REQUEST *request, request_data_t *entry)
 #endif
 }
 
-/*
- *	Get opaque data from a request without removing it.
+/** Get opaque data from a request without removing it
+ *
+ * @note The unique ptr is meant to be a module configuration, and the unique
+ * 	integer allows the caller to have multiple opaque data associated with a REQUEST.
+ *
+ * @param request to retrieve data from.
+ * @param unique_ptr Identifier for the data.
+ * @param unique_int Qualifier for the identifier.
+ * @return
+ *	- NULL if no opaque data could be found.
+ *	- the opaque data.
  */
 void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
 {

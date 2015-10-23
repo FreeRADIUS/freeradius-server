@@ -413,7 +413,7 @@ int		request_data_add(REQUEST *request,
 void		*request_data_get(REQUEST *request, void *unique_ptr, int unique_int);
 void		*request_data_reference(REQUEST *request, void *unique_ptr, int unique_int);
 
-void		request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist);
+int		request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist);
 void		request_data_restore(REQUEST *request, request_data_t *entry);
 
 int		rad_copy_string(char *dst, char const *src);
