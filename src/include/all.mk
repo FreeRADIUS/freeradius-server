@@ -12,7 +12,7 @@
 #  The rest of the headers are static.
 #
 
-HEADERS_DY = attributes.h features.h radpaths.h tls.h
+HEADERS_DY = attributes.h features.h missing.h radpaths.h tls.h
 
 HEADERS	= \
 	build.h \
