@@ -94,13 +94,29 @@ static int _eap_session_free(eap_session_t *eap_session)
 
 	RDEBUG4("Freeing eap_session_t %p", eap_session);
 
+	/*
+	 *	Remove it from request data
+	 */
+	request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
+
 	return 0;
 }
 
-/*
- * Allocate a new eap_session_t
+/** Allocate a new eap_session_t
+ *
+ * Allocates a new eap_session_t, and inserts it into the REQUEST_DATA_EAP_SESSION index
+ * of the request.
+ *
+ * @note The eap_session_t will remove itself from the #REQUEST_DATA_EAP_SESSION index
+ *	if it is freed.  This is to simplify management of the request data entry.
+ *
+ * @param inst This session belongs to.
+ * @param request That generated this eap_session_t.
+ * @return
+ *	- A new #eap_session_t on success.
+ *	- NULL on failure.
  */
-eap_session_t *eap_session_alloc(rlm_eap_t *inst)
+eap_session_t *eap_session_alloc(rlm_eap_t *inst, REQUEST *request)
 {
 	eap_session_t	*eap_session;
 
@@ -110,9 +126,22 @@ eap_session_t *eap_session_alloc(rlm_eap_t *inst)
 		return NULL;
 	}
 	eap_session->inst = inst;
+	eap_session->request = request;
 
-	/* Doesn't need to be inside the critical region */
 	talloc_set_destructor(eap_session, _eap_session_free);
+
+	/*
+	 *	If the index is removed by something else
+	 *	like the state being cleaned up, then we
+	 *	still want the eap_session to be freed, which
+	 *	is why we set free_opaque to true.
+	 *
+	 *	We must pass a NULL pointer to associate the
+	 *	the EAP_SESSION data with, else we'll break
+	 *	tunelled EAP, where the inner EAP module is
+	 *	a different instance to the outer one.
+	 */
+	request_data_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session, true, true);
 
 	return eap_session;
 }

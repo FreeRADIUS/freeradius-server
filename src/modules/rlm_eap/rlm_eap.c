@@ -308,16 +308,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		eap_session->prev_round = eap_session->this_round;
 		eap_session->this_round = NULL;
 	} else {
-		eap_session_t *state_session;
-
 		RDEBUG2("Freeing eap_session");
-
-		/* eap_session is not required any more, free it now */
-		state_session = request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
-		rad_assert(!state_session || (state_session == eap_session));
-
-		if (!state_session) state_session = eap_session;
-		talloc_free(state_session);
+		talloc_free(eap_session);
 	}
 
 	/*
@@ -325,8 +317,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *	says that we MUST include a User-Name attribute in the
 	 *	Access-Accept.
 	 */
-	if ((request->reply->code == PW_CODE_ACCESS_ACCEPT) &&
-	    request->username) {
+	if ((request->reply->code == PW_CODE_ACCESS_ACCEPT) && request->username) {
 		VALUE_PAIR *vp;
 
 		/*
@@ -494,16 +485,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 			eap_session->prev_round = eap_session->this_round;
 			eap_session->this_round = NULL;
 		} else {	/* couldn't have been LEAP, there's no tunnel */
-			eap_session_t *state_session;
-
 			RDEBUG2("Freeing eap_session");
-
-			/* eap_session is not required any more, free it now */
-			state_session = request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
-			rad_assert(!state_session || (state_session == eap_session));
-
-			if (!state_session) state_session = eap_session;
-			talloc_free(state_session);
+			talloc_free(eap_session);
 		}
 
 		/*

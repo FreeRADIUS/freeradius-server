@@ -1097,6 +1097,13 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			REDEBUG("No EAP session matching state");
 			goto error;
 		}
+		/*
+		 *	This *MUST* be kept up to date, so that
+		 *	request data is removed correctly when
+		 *	the eap_session_t is freed.
+		 */
+		eap_session->request = request;
+
 		RDEBUG4("Got eap_session_t %p from request data", eap_session);
 #ifdef WITH_VERIFY_PTR
 		eap_session = talloc_get_type_abort(eap_session, eap_session_t);
@@ -1155,8 +1162,12 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			       goto error;
 		       }
 	       }
-	} else {		/* packet was EAP identity */
-		eap_session = eap_session_alloc(inst);
+
+	/*
+	 *	Packet was EAP identity
+	 */
+	} else {
+		eap_session = eap_session_alloc(inst, request);
 		if (!eap_session) goto error;
 
 		RDEBUG4("New eap_session_t %p", eap_session);
@@ -1197,12 +1208,6 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			       goto error2;
 		       }
 	       }
-
-		/*
-		 *	Store the EAP session in the request, this will
-		 *	now be passed automatically between related requests.
-		 */
-		request_data_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session, true, true);
 	}
 
 	eap_session->this_round = eap_buildds(eap_session, eap_packet_p);
@@ -1210,7 +1215,6 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		REDEBUG("Failed allocating memory for round");
 		goto error2;
 	}
-	eap_session->request = request; /* LEAP needs this */
 
 	return eap_session;
 }
