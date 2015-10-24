@@ -440,14 +440,14 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	 */
 	if (eap_session->child) {
 		RDEBUG4("Adding eap_session_t %p to fake request", eap_session->child);
-		request_data_add(fake, NULL, REQUEST_DATA_EAP_SESSION, eap_session->child, false, false);
+		request_data_add(fake, NULL, REQUEST_DATA_EAP_SESSION, eap_session->child, false, false, false);
 	}
 	rcode = rad_virtual_server(fake);
 	inner_eap = request_data_get(fake, NULL, REQUEST_DATA_EAP_SESSION);
 	if (inner_eap) {
 		if (!eap_session->child || (eap_session->child != inner_eap)) {
 			RDEBUG4("Binding lifetime of child eap_session %p to parent eap_session %p",
-				inner_eap, eap_session->child);
+				inner_eap, eap_session);
 			fr_talloc_link_ctx(eap_session, inner_eap);
 			eap_session->child = inner_eap;
 		} else {

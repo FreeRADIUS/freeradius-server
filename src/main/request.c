@@ -31,14 +31,16 @@ RCSID("$Id$")
  *
  */
 struct request_data_t {
-	request_data_t	*next;		//!< Next opaque request data struct linked to this request.
+	request_data_t	*next;			//!< Next opaque request data struct linked to this request.
 
-	void		*unique_ptr;	//!< Key to lookup request data.
-	int		unique_int;	//!< Alternative key to lookup request data.
-	void		*opaque;	//!< Opaque data.
-	bool		free_opaque;	//!< Whether to talloc_free(opaque) when the request data is removed.
-	bool		persist;	//!< Whether this data should be transfered to a session_entry_t
-					//!< after we're done processing this request.
+	void		*unique_ptr;		//!< Key to lookup request data.
+	int		unique_int;		//!< Alternative key to lookup request data.
+	void		*opaque;		//!< Opaque data.
+	bool		free_on_replace;	//!< Whether to talloc_free(opaque) when the request data is removed.
+	bool		free_on_parent;		//!< Whether to talloc_free(opaque) when the parent of the request
+						//!< data is freed.
+	bool		persist;		//!< Whether this data should be transfered to a session_entry_t
+						//!< after we're done processing this request.
 };
 
 /** Callback for freeing a request struct
@@ -229,6 +231,19 @@ REQUEST *request_alloc_coa(REQUEST *request)
 }
 #endif
 
+/** Ensure opaque data is freed by binding its lifetime to the request_data_t
+ *
+ */
+static int _request_data_free(request_data_t *this)
+{
+	if (this->free_on_parent && this->opaque) {
+		DEBUG4("Freeing request data %p at %p:%i via destructor",
+		       this->opaque, this->unique_ptr, this->unique_int);
+		TALLOC_FREE(this->opaque);
+	}
+	return 0;
+}
+
 /** Add opaque data to a REQUEST
  *
  * The unique ptr is meant to be a module configuration, and the unique
@@ -238,8 +253,11 @@ REQUEST *request_alloc_coa(REQUEST *request)
  * @param[in] unique_ptr Identifier for the data.
  * @param[in] unique_int Qualifier for the identifier.
  * @param[in] opaque Data to associate with the request
- * @param[in] free_opaque If true and the opaque data is replaced via a subsequent call
+ * @param[in] free_on_replace If true and the opaque data is replaced via a subsequent call
  *	to #request_data_add, talloc_free will be called to free the opaque data pointer.
+ * @param[in] free_on_parent If True and the request data is still present in the request
+ *	or state when it is freed, free the opaque data too.  Must not be set if the opaque
+ *	data is also parented by the request or state.
  * @param[in] persist If true, before the request is freed, the opaque data will be
  *	transferred to an fr_state_entry, and restored to a subsequent linked request
  *	should we receive one.
@@ -249,7 +267,7 @@ REQUEST *request_alloc_coa(REQUEST *request)
  *	- 0 on success.
  */
 int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *opaque,
-		     bool free_opaque, bool persist)
+		     bool free_on_replace, bool free_on_parent, bool persist)
 {
 	request_data_t *this, **last, *next;
 
@@ -257,11 +275,7 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	 *	Request must have a state ctx
 	 */
 	rad_assert(!persist || request->state_ctx);
-
-	/*
-	 *	Some simple sanity checks.
-	 */
-	if (!request || !opaque) return -2;
+	rad_assert(request);
 
 	this = next = NULL;
 	for (last = &(request->data); *last != NULL; last = &((*last)->next)) {
@@ -276,13 +290,19 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 			 *	If caller requires custom behaviour on free
 			 *	they must set a destructor.
 			 */
-			if (this->opaque && this->free_opaque) talloc_free(this->opaque);
-
+			if (this->free_on_replace && this->opaque) {
+				RDEBUG4("Freeing request data %p at %p:%i via replacement",
+					this->opaque, this->unique_ptr, this->unique_int);
+				talloc_free(this->opaque);
+			}
 			/*
 			 *	Need a new one, this one's parent is wrong.
 			 *	And no, we can't just steal.
 			 */
-			if (this->persist != persist) TALLOC_FREE(this);
+			if (this->persist != persist) {
+				this->free_on_parent = false;
+				TALLOC_FREE(this);
+			}
 
 			break;	/* replace the existing entry */
 		}
@@ -304,6 +324,7 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 		} else {
 			this = talloc_zero(request, request_data_t);
 		}
+		talloc_set_destructor(this, _request_data_free);
 	}
 	if (!this) return -1;
 
@@ -311,10 +332,19 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	this->unique_ptr = unique_ptr;
 	this->unique_int = unique_int;
 	this->opaque = opaque;
-	this->free_opaque = free_opaque;
+	this->free_on_replace = free_on_replace;
+	this->free_on_parent = free_on_parent;
 	this->persist = persist;
 
+	/*
+	 *	Some basic protection against what might be a
+	 *	common pitfall.
+	 */
+	rad_assert(!free_on_parent || (talloc_parent(this) != talloc_parent(opaque)));
+
 	*last = this;
+
+	RDEBUG4("Added request data %p at %p:%i", this->opaque, this->unique_ptr, this->unique_int);
 
 	return 0;
 }
@@ -353,9 +383,10 @@ void *request_data_get(REQUEST *request, void *unique_ptr, int unique_int)
 			 *	Remove the entry from the list, and free it.
 			 */
 			*last = this->next;
+			this->free_on_parent = false;	/* Don't free opaque data we're handing back */
 			talloc_free(this);
 
-			return ptr; 		/* don't free it, the caller does that */
+			return ptr;
 		}
 		if (!*last) break;
 	}

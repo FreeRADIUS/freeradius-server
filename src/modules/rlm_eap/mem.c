@@ -141,7 +141,7 @@ eap_session_t *eap_session_alloc(rlm_eap_t *inst, REQUEST *request)
 	 *	tunelled EAP, where the inner EAP module is
 	 *	a different instance to the outer one.
 	 */
-	request_data_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session, true, true);
+	request_data_add(request, NULL, REQUEST_DATA_EAP_SESSION, eap_session, true, true, true);
 
 	return eap_session;
 }

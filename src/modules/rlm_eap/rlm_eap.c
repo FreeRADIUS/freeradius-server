@@ -223,7 +223,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 *	send a response.
 		 */
 		eap_session->inst = inst;
-		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, eap_session, false, false);
+		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, eap_session,
+					  false, false, false);
 
 		rad_assert(status == 0);
 		return RLM_MODULE_HANDLED;
@@ -247,7 +248,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		 */
 		eap_session->inst = inst;
 
-		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, eap_session, false, false);
+		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, eap_session,
+					  false, false, false);
 
 		rad_assert(status == 0);
 

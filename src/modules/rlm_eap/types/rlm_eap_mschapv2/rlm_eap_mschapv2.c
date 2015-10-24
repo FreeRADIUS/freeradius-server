@@ -616,10 +616,8 @@ packet_ready:
 		/*
 		 *	Associate the callback with the request.
 		 */
-		rcode = request_data_add(request,
-					 request->proxy,
-					 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-					 tunnel, false, false);
+		rcode = request_data_add(request, request->proxy, REQUEST_DATA_EAP_TUNNEL_CALLBACK,
+					 tunnel, false, false, false);
 		rad_assert(rcode == 0);
 
 		/*
