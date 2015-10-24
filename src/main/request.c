@@ -446,3 +446,18 @@ void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
 
 	return NULL;		/* wasn't found, too bad... */
 }
+
+#ifdef WITH_VERIFY_PTR
+/** Verify all request data is parented by the specified context
+ *
+ * @param parent that should hold the request data.
+ * @param entry to verify.
+ */
+bool request_data_verify_parent(TALLOC_CTX *parent, request_data_t *entry)
+{
+	request_data_t **last;
+
+	for (last = &entry; *last != NULL; last = &((*last)->next)) if (talloc_parent(entry) != parent) return false;
+	return true;
+}
+#endif

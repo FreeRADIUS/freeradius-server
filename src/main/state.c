@@ -54,6 +54,7 @@ RCSID("$Id$")
  *
  */
 typedef struct state_entry {
+	uint64_t		id;				//!< State ID for debugging
 	uint8_t			state[AUTH_VECTOR_LEN];		//!< State value in binary.
 
 	time_t			cleanup;			//!< When this entry should be cleaned up.
@@ -70,6 +71,7 @@ typedef struct state_entry {
 } fr_state_entry_t;
 
 struct fr_state_tree_t {
+	uint64_t		id;				//!< Next ID to assign.
 	int			max_sessions;			//!< Maximum number of sessions we track.
 	rbtree_t		*tree;				//!< rbtree used to lookup state value.
 
@@ -104,53 +106,18 @@ static int state_entry_cmp(void const *one, void const *two)
 	return memcmp(a->state, b->state, sizeof(a->state));
 }
 
-/** Free a state entry, removing it from the linked lists of states to free
- *
- */
-static void state_entry_free(fr_state_tree_t *state, fr_state_entry_t *entry)
-{
-	fr_state_entry_t *prev, *next;
-
-	prev = entry->prev;
-	next = entry->next;
-
-	if (prev) {
-		rad_assert(state->head != entry);
-		prev->next = next;
-	} else if (state->head) {
-		rad_assert(state->head == entry);
-		state->head = next;
-	}
-
-	if (next) {
-		rad_assert(state->tail != entry);
-		next->prev = prev;
-	} else if (state->tail) {
-		rad_assert(state->tail == entry);
-		state->tail = prev;
-	}
-
-	if (entry->data) talloc_free(entry->data);
-
-#ifdef WITH_VERIFY_PTR
-	(void) talloc_get_type_abort(entry, fr_state_entry_t);
-#endif
-	rbtree_deletebydata(state->tree, entry);
-
-	if (entry->ctx) talloc_free(entry->ctx);	/* Should free all VPs associated with the entry */
-
-	talloc_free(entry);
-}
-
 /** Walker callback to free all entries in the tree
  *
  */
-static int _state_tree_free_entry(void *ctx, void *data)
+static int _state_tree_free_entry(UNUSED void *ctx, void *data)
 {
 	fr_state_entry_t *entry = talloc_get_type_abort(data, fr_state_entry_t);
-	fr_state_tree_t *tree = talloc_get_type_abort(ctx, fr_state_tree_t);
 
-	state_entry_free(tree, entry);
+	/*
+	 *	No need to call state_entry_unlink
+	 *	everything is being freed anyway.
+	 */
+	talloc_free(entry);
 
 	return 0;
 }
@@ -163,6 +130,8 @@ static int _state_tree_free(fr_state_tree_t *state)
 #ifdef HAVE_PTHREAD_H
 	if (main_config.spawn_workers) pthread_mutex_destroy(&state->mutex);
 #endif
+
+	DEBUG4("Freeing state tree %p", state);
 
 	/*
 	 *	Delete all the entries in the tree
@@ -232,6 +201,76 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, int max_sessions)
 	return state;
 }
 
+/** Unlink an entry and remove if from the tree
+ *
+ */
+static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
+{
+	fr_state_entry_t *prev, *next;
+
+	prev = entry->prev;
+	next = entry->next;
+
+	if (prev) {
+		rad_assert(state->head != entry);
+		prev->next = next;
+	} else if (state->head) {
+		rad_assert(state->head == entry);
+		state->head = next;
+	}
+
+	if (next) {
+		rad_assert(state->tail != entry);
+		next->prev = prev;
+	} else if (state->tail) {
+		rad_assert(state->tail == entry);
+		state->tail = prev;
+	}
+	entry->next = NULL;
+
+	rbtree_deletebydata(state->tree, entry);
+
+	DEBUG4("State ID %" PRIu64 " unlinked", entry->id);
+}
+
+/** Frees any data associated with a state
+ *
+ */
+static int _state_entry_free(fr_state_entry_t *entry)
+{
+#ifdef WITH_VERIFY_PTR
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
+
+	/*
+	 *	Verify all state attributes are parented
+	 *	by the state context.
+	 */
+	if (entry->ctx) {
+		for (vp = fr_cursor_init(&cursor, &entry->vps);
+		     vp;
+		     vp = fr_cursor_next(&cursor)) {
+			rad_assert(entry->ctx == talloc_parent(vp));
+		}
+	}
+
+	/*
+	 *	Ensure any request data is parented by us
+	 *	so we know it'll be cleaned up.
+	 */
+	if (entry->data) rad_assert(request_data_verify_parent(entry, entry->data));
+#endif
+
+	/*
+	 *	Should also free any state attributes
+	 */
+	if (entry->ctx) TALLOC_FREE(entry->ctx);
+
+	DEBUG4("State ID %" PRIu64 " freed", entry->id);
+
+	return 0;
+}
+
 /** Create a new state entry
  *
  * @note Called with the mutex held.
@@ -243,6 +282,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 	time_t			now = time(NULL);
 	VALUE_PAIR		*vp;
 	fr_state_entry_t	*entry, *next;
+	fr_state_entry_t	*free_head = NULL, **free_next = &free_head;
 
 	uint8_t			old_state[AUTH_VECTOR_LEN];
 	int			old_tries = 0;
@@ -259,7 +299,9 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 		 *	Too old, we can delete it.
 		 */
 		if (entry->cleanup < now) {
-			state_entry_free(state, entry);
+			state_entry_unlink(state, entry);
+			*free_next = entry;
+			free_next = &(entry->next);
 			continue;
 		}
 
@@ -268,7 +310,9 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 		 *	the time to clean it up.
 		 */
 		if (!entry->ctx && !entry->data) {
-			state_entry_free(state, entry);
+			state_entry_unlink(state, entry);
+			*free_next = entry;
+			free_next = &(entry->next);
 			continue;
 		}
 
@@ -292,9 +336,29 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 		/*
 		 *	The old one isn't used any more, so we can free it.
 		 */
-		if (!old->data) state_entry_free(state, old);
+		if (!old->data) {
+			state_entry_unlink(state, old);
+			*free_next = old;
+			free_next = &(entry->next);
+		}
 	}
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	/*
+	 *	Now free the unlinked entries.
+	 *
+	 *	We do it here as freeing may involve significantly more
+	 *	work than just freeing the data.
+	 *
+	 *	If there's request data that was persisted it will now
+	 *	be freed also, and it may have complex destructors associated
+	 *	with it.
+	 */
+	for (next = free_head; next;) {
+		entry = next;
+		next = entry->next;
+		talloc_free(entry);
+	}
 
 	/*
 	 *	Allocation doesn't need to occur inside the critical region
@@ -308,6 +372,8 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 		PTHREAD_MUTEX_LOCK(&state->mutex);	/* Caller expects this to be locked */
 		return NULL;
 	}
+	talloc_set_destructor(entry, _state_entry_free);
+	entry->id = state->id++;
 
 	/*
 	 *	Limit the lifetime of this entry based on how long the
@@ -367,6 +433,15 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 		fr_pair_add(&packet->vps, vp);
 	}
 
+	if (DEBUG_ENABLED4) {
+		char hex[(sizeof(entry->state) * 2) + 1];
+
+		fr_bin2hex(hex, entry->state, sizeof(entry->state));
+
+		DEBUG4("State ID %" PRIu64 " created, value 0x%s, expires %" PRIu64 "s",
+		       entry->id, hex, (uint64_t)entry->cleanup - now);
+	}
+
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) {
 		talloc_free(entry);
@@ -422,15 +497,12 @@ static fr_state_entry_t *state_entry_find(fr_state_tree_t *state, RADIUS_PACKET 
 	return entry;
 }
 
-/** Called when sending an Access-Reject to discard state information
+/** Called when sending an Access-Accept/Access-Reject to discard state information
  *
  */
 void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original)
 {
 	fr_state_entry_t *entry;
-
-	fr_pair_list_free(&request->state);
-	request->state = NULL;
 
 	PTHREAD_MUTEX_LOCK(&state->mutex);
 	entry = state_entry_find(state, original);
@@ -438,9 +510,13 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *o
 		PTHREAD_MUTEX_UNLOCK(&state->mutex);
 		return;
 	}
-
-	state_entry_free(state, entry);
+	state_entry_unlink(state, entry);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
+
+	TALLOC_FREE(entry);
+	request->state = NULL;
+	request->state_ctx = NULL;
+
 	return;
 }
 
@@ -533,6 +609,8 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	}
 
 	rad_assert(entry->ctx == NULL);
+	rad_assert(request->state_ctx);
+
 	entry->ctx = request->state_ctx;
 	entry->vps = request->state;
 	entry->data = data;

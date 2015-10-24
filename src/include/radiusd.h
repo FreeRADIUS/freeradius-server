@@ -416,6 +416,10 @@ void		*request_data_reference(REQUEST *request, void *unique_ptr, int unique_int
 int		request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist);
 void		request_data_restore(REQUEST *request, request_data_t *entry);
 
+#ifdef WITH_VERIFY_PTR
+bool		request_data_verify_parent(TALLOC_CTX *parent, request_data_t *entry);
+#endif
+
 int		rad_copy_string(char *dst, char const *src);
 int		rad_copy_string_bare(char *dst, char const *src);
 int		rad_copy_variable(char *dst, char const *from);
