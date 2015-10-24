@@ -150,7 +150,7 @@ install: install.src.include
 #
 .PHONY: clean.src.include distclean.src.include
 clean.src.include:
-	@rm -f $(addprefix src/include/,$(HEADERS_DY))
+	@rm -f $(addprefix src/include/,$(HEADERS_DY)) $(HEADERS_RFC)
 
 clean: clean.src.include
 
