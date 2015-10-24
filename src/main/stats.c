@@ -58,7 +58,6 @@ fr_stats_t proxy_dsc_stats = FR_STATS_INIT;
 #endif
 #endif
 
-
 static void tv_sub(struct timeval *end, struct timeval *start,
 		   struct timeval *elapsed)
 {
@@ -490,7 +489,7 @@ void request_stats_reply(REQUEST *request)
 	rad_assert(request->packet->code == PW_CODE_STATUS_SERVER);
 	rad_assert(request->listener->type == RAD_LISTEN_NONE);
 
-	flag = fr_pair_find_by_num(request->packet->vps, 127, VENDORPEC_FREERADIUS, TAG_ANY);
+	flag = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATISTICS_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
 	if (!flag || (flag->vp_integer == 0)) return;
 
 	/*
@@ -536,10 +535,10 @@ void request_stats_reply(REQUEST *request)
 	 */
 	if ((flag->vp_integer & 0x10) != 0) {
 		vp = radius_pair_create(request->reply, &request->reply->vps,
-				       176, VENDORPEC_FREERADIUS);
+				       PW_FREERADIUS_STATS_START_TIME, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = start_time.tv_sec;
 		vp = radius_pair_create(request->reply, &request->reply->vps,
-				       177, VENDORPEC_FREERADIUS);
+				       PW_FREERADIUS_STATS_HUP_TIME, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = hup_time.tv_sec;
 
 #ifdef HAVE_PTHREAD_H
@@ -549,7 +548,7 @@ void request_stats_reply(REQUEST *request)
 
 		for (i = 0; i <= 4; i++) {
 			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       162 + i, VENDORPEC_FREERADIUS);
+					       PW_FREERADIUS_QUEUE_LEN_INTERNAL + i, VENDORPEC_FREERADIUS);
 
 			if (!vp) continue;
 			vp->vp_integer = array[i];
@@ -557,7 +556,7 @@ void request_stats_reply(REQUEST *request)
 
 		for (i = 0; i < 2; i++) {
 			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       181 + i, VENDORPEC_FREERADIUS);
+					       PW_FREERADIUS_QUEUE_PPS_IN + i, VENDORPEC_FREERADIUS);
 
 			if (!vp) continue;
 			vp->vp_integer = pps[i];
@@ -578,9 +577,9 @@ void request_stats_reply(REQUEST *request)
 		 *	See if we need to look up the client by server
 		 *	socket.
 		 */
-		server_ip = fr_pair_find_by_num(request->packet->vps, 170, VENDORPEC_FREERADIUS, TAG_ANY);
+		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (server_ip) {
-			server_port = fr_pair_find_by_num(request->packet->vps, 171, VENDORPEC_FREERADIUS, TAG_ANY);
+			server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
 
 			if (server_port) {
 				ipaddr.af = AF_INET;
@@ -595,7 +594,7 @@ void request_stats_reply(REQUEST *request)
 		}
 
 
-		vp = fr_pair_find_by_num(request->packet->vps, 167, VENDORPEC_FREERADIUS, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_CLIENT_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
 			memset(&ipaddr, 0, sizeof(ipaddr));
 			ipaddr.af = AF_INET;
@@ -610,7 +609,7 @@ void request_stats_reply(REQUEST *request)
 			/*
 			 *	Else look it up by number.
 			 */
-		} else if ((vp = fr_pair_find_by_num(request->packet->vps, 168, VENDORPEC_FREERADIUS, TAG_ANY)) != NULL) {
+		} else if ((vp = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_CLIENT_NUMBER, VENDORPEC_FREERADIUS, TAG_ANY)) != NULL) {
 			client = client_findbynumber(cl, vp->vp_integer);
 		}
 
@@ -629,7 +628,7 @@ void request_stats_reply(REQUEST *request)
 			    (client->ipaddr.af == AF_INET)) {
 				vp = radius_pair_create(request->reply,
 						       &request->reply->vps,
-						       167, VENDORPEC_FREERADIUS);
+						       PW_FREERADIUS_STATS_CLIENT_IP_ADDRESS, VENDORPEC_FREERADIUS);
 				if (vp) {
 					vp->vp_ipaddr = client->ipaddr.ipaddr.ip4addr.s_addr;
 				}
@@ -637,7 +636,7 @@ void request_stats_reply(REQUEST *request)
 				if (client->ipaddr.prefix != 32) {
 					vp = radius_pair_create(request->reply,
 							       &request->reply->vps,
-							       169, VENDORPEC_FREERADIUS);
+							       PW_FREERADIUS_STATS_CLIENT_NETMASK, VENDORPEC_FREERADIUS);
 					if (vp) {
 						vp->vp_integer = client->ipaddr.prefix;
 					}
@@ -679,10 +678,10 @@ void request_stats_reply(REQUEST *request)
 		 *	See if we need to look up the server by socket
 		 *	socket.
 		 */
-		server_ip = fr_pair_find_by_num(request->packet->vps, 170, VENDORPEC_FREERADIUS, TAG_ANY);
+		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_ip) return;
 
-		server_port = fr_pair_find_by_num(request->packet->vps, 171, VENDORPEC_FREERADIUS, TAG_ANY);
+		server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) return;
 
 		ipaddr.af = AF_INET;
@@ -730,10 +729,10 @@ void request_stats_reply(REQUEST *request)
 		 *	See if we need to look up the server by socket
 		 *	socket.
 		 */
-		server_ip = fr_pair_find_by_num(request->packet->vps, 170, VENDORPEC_FREERADIUS, TAG_ANY);
+		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_ip) return;
 
-		server_port = fr_pair_find_by_num(request->packet->vps, 171, VENDORPEC_FREERADIUS, TAG_ANY);
+		server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) return;
 
 #ifndef NDEBUG
@@ -755,17 +754,17 @@ void request_stats_reply(REQUEST *request)
 			fr_pair_copy(request->reply, server_port));
 
 		vp = radius_pair_create(request->reply, &request->reply->vps,
-				       172, VENDORPEC_FREERADIUS);
+				       PW_FREERADIUS_STATS_SERVER_OUTSTANDING_REQUESTS, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_integer = home->currently_outstanding;
 
 		vp = radius_pair_create(request->reply, &request->reply->vps,
-				       173, VENDORPEC_FREERADIUS);
+				       PW_FREERADIUS_STATS_SERVER_STATE, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_integer = home->state;
 
 		if ((home->state == HOME_STATE_ALIVE) &&
 		    (home->revive_time.tv_sec != 0)) {
 			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       175, VENDORPEC_FREERADIUS);
+					       PW_FREERADIUS_STATS_SERVER_TIME_OF_LIFE, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_date = home->revive_time.tv_sec;
 		}
 
@@ -773,22 +772,22 @@ void request_stats_reply(REQUEST *request)
 		    (home->ema.window > 0)) {
 				vp = radius_pair_create(request->reply,
 						       &request->reply->vps,
-						       178, VENDORPEC_FREERADIUS);
+						       PW_FREERADIUS_SERVER_EMA_WINDOW, VENDORPEC_FREERADIUS);
 				if (vp) vp->vp_integer = home->ema.window;
 				vp = radius_pair_create(request->reply,
 						       &request->reply->vps,
-						       179, VENDORPEC_FREERADIUS);
+						       PW_FREERADIUS_SERVER_EMA_USEC_WINDOW_1, VENDORPEC_FREERADIUS);
 				if (vp) vp->vp_integer = home->ema.ema1 / EMA_SCALE;
 				vp = radius_pair_create(request->reply,
 						       &request->reply->vps,
-						       180, VENDORPEC_FREERADIUS);
+						       PW_FREERADIUS_SERVER_EMA_USEC_WINDOW_10, VENDORPEC_FREERADIUS);
 				if (vp) vp->vp_integer = home->ema.ema10 / EMA_SCALE;
 
 		}
 
 		if (home->state == HOME_STATE_IS_DEAD) {
 			vp = radius_pair_create(request->reply, &request->reply->vps,
-					       174, VENDORPEC_FREERADIUS);
+					       PW_FREERADIUS_STATS_SERVER_TIME_OF_DEATH, VENDORPEC_FREERADIUS);
 			if (vp) vp->vp_date = home->zombie_period_start.tv_sec + home->zombie_period;
 		}
 
@@ -798,11 +797,11 @@ void request_stats_reply(REQUEST *request)
 		 *	FIXME: do this for clients, too!
 		 */
 		vp = radius_pair_create(request->reply, &request->reply->vps,
-				       184, VENDORPEC_FREERADIUS);
+				       PW_FREERADIUS_STATS_LAST_PACKET_RECV, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = home->last_packet_recv;
 
 		vp = radius_pair_create(request->reply, &request->reply->vps,
-				       185, VENDORPEC_FREERADIUS);
+				       PW_FREERADIUS_STATS_LAST_PACKET_SENT, VENDORPEC_FREERADIUS);
 		if (vp) vp->vp_date = home->last_packet_sent;
 
 		if (((flag->vp_integer & 0x01) != 0) &&
