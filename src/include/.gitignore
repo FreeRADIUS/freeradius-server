@@ -10,6 +10,7 @@ tls.h
 features.h
 radpaths.h
 vqp.h
+freeradius.h
 
 # Build scripts
 build-radpaths-h
