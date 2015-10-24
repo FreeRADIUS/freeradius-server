@@ -339,7 +339,6 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 		if (!old->data) {
 			state_entry_unlink(state, old);
 			*free_next = old;
-			free_next = &(entry->next);
 		}
 	}
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
