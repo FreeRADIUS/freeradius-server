@@ -440,7 +440,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	 */
 	if (eap_session->child) {
 		RDEBUG4("Adding eap_session_t %p to fake request", eap_session->child);
-		request_data_add(fake, NULL, REQUEST_DATA_EAP_SESSION, eap_session->child, true, true);
+		request_data_add(fake, NULL, REQUEST_DATA_EAP_SESSION, eap_session->child, false, false);
 	}
 	rcode = rad_virtual_server(fake);
 	inner_eap = request_data_get(fake, NULL, REQUEST_DATA_EAP_SESSION);
