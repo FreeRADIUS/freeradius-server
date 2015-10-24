@@ -297,7 +297,14 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
 	 *	or the request, depending on whether it should
 	 *	persist or not.
 	 */
-	if (!this) this = talloc_zero(persist ? request->state_ctx : request, request_data_t);
+	if (!this) {
+		if (persist) {
+			rad_assert(request->state_ctx);
+			this = talloc_zero(request->state_ctx, request_data_t);
+		} else {
+			this = talloc_zero(request, request_data_t);
+		}
+	}
 	if (!this) return -1;
 
 	this->next = next;
@@ -390,7 +397,6 @@ int request_data_by_persistance(request_data_t **out, REQUEST *request, bool per
 		}
 		if (!*last) break;
 	}
-
 	*out = head;
 
 	return count;
