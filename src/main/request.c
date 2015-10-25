@@ -237,8 +237,8 @@ REQUEST *request_alloc_coa(REQUEST *request)
 static int _request_data_free(request_data_t *this)
 {
 	if (this->free_on_parent && this->opaque) {
-		DEBUG4("Freeing request data %p at %p:%i via destructor",
-		       this->opaque, this->unique_ptr, this->unique_int);
+		DEBUG4("Freeing request data %p (%s) at %p:%i via destructor",
+		       this->opaque, talloc_get_name(this->opaque), this->unique_ptr, this->unique_int);
 		TALLOC_FREE(this->opaque);
 	}
 	return 0;

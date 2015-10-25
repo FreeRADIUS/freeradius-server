@@ -584,38 +584,40 @@ int main(int argc, char *argv[])
 	 */
 	if (main_config.daemonize) unlink(main_config.pid_file);
 
-	radius_event_free();
+	/*
+	 *	Free memory in an explicit and consistent order
+	 *
+	 *	We could let everything be freed by the autofree
+	 *	context, but in some cases there are odd interactions
+	 *	with destructors that may cause double frees and
+	 *	SEGVs.
+	 */
+	radius_event_free();		/* Free the requests */
+	talloc_free(global_state);	/* Free state entries */
 
 cleanup:
 	/*
 	 *  Detach any modules.
 	 */
-	modules_free();
+	modules_free();			/* Detach any modules (and their connection pools) */
+	xlat_free();			/* modules may have xlat's */
+	map_proc_free();		/* Free map processors */
+	main_config_free();		/* Free the main config */
 
-	xlat_free();		/* modules may have xlat's */
-
-	/*
-	 *  Free the configuration items.
-	 */
-	main_config_free();
-
-	/*
-	 *  Free the map processor tree
-	 */
-	map_proc_free();
 
 #ifdef WIN32
 	WSACleanup();
 #endif
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-	tls_global_cleanup();
+	tls_global_cleanup();		/* Cleanup any memory malloced by OpenSSL and placed into globals */
 #endif
-	/*
-	 *  So we don't see autofreed memory in the talloc report
-	 */
-	talloc_free(autofree);
+	talloc_free(autofree);		/* Cleanup everything else */
 
+	/*
+	 *  Anything not cleaned up by the above is allocated in the NULL
+	 *  top level context, and is likely leaked memory.
+	 */
 	if (main_config.memory_report) fr_log_talloc_report(NULL);
 
 	return rcode;
