@@ -219,6 +219,7 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 		state->tail = prev;
 	}
 	entry->next = NULL;
+	entry->prev = NULL;
 
 	rbtree_deletebydata(state->tree, entry);
 
