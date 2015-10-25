@@ -104,7 +104,6 @@ FR_NAME_NUMBER const fr_tls_status_table[] = {
 };
 
 /* Session */
-static void 		session_close(tls_session_t *session);
 static void 		session_init(tls_session_t *session);
 
 /* record */
@@ -275,9 +274,20 @@ void tls_session_id(SSL_SESSION *session, char *buffer, size_t bufsize)
 }
 
 
+/** Free a TLS session and any associated OpenSSL data
+ *
+ * @param session to free.
+ * @return 0.
+ */
 static int _tls_session_free(tls_session_t *session)
 {
-	session_close(session);
+	SSL_set_quiet_shutdown(session->ssl, 1);
+	SSL_shutdown(session->ssl);
+
+	if (session->ssl) {
+		SSL_free(session->ssl);
+		session->ssl = NULL;
+	}
 
 	return 0;
 }
@@ -694,23 +704,6 @@ static void session_init(tls_session_t *session)
 	session->record_out_total_len = 0;
 	session->length_flag = false;
 	session->opaque = NULL;
-}
-
-static void session_close(tls_session_t *session)
-{
-	SSL_set_quiet_shutdown(session->ssl, 1);
-	SSL_shutdown(session->ssl);
-
-	if (session->ssl) {
-		SSL_free(session->ssl);
-		session->ssl = NULL;
-	}
-
-	record_close(&session->clean_in);
-	record_close(&session->clean_out);
-	record_close(&session->dirty_in);
-	record_close(&session->dirty_out);
-	session_init(session);
 }
 
 static void record_init(tls_record_t *rec)
