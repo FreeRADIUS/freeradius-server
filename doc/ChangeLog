@@ -17,6 +17,7 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Use correct talloc context in rlm_exec.  Fixes #1338.
 	* Fixed bug with coa/acct stats value #1339. Based on patch from
 	  Jorge Pereira.
+	* Fix the default port in auto home_servers loaded from a client.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements

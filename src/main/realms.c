@@ -933,6 +933,28 @@ CONF_SECTION *home_server_cs_afrom_client(CONF_SECTION *client)
 		return NULL;
 	}
 
+	if (!cs || !cf_pair_find(cs, "port")) {
+		const char *type = cf_section_value_find(server, "type");
+		uint16_t port = 0;
+
+		if (type) {
+			if (!strcmp(type, "auth") || !strcmp(type, "auth+acct")) {
+				port = PW_AUTH_UDP_PORT;
+			} else if (!strcmp(type, "acct")) {
+				port = PW_ACCT_UDP_PORT;
+			} else if (!strcmp(type, "coa")) {
+				port = PW_COA_UDP_PORT;
+			}
+		}
+
+		if (port != 0) {
+			char buf[5+1];
+			snprintf(buf, sizeof(buf), "%d", port);
+			cp = cf_pair_alloc(server, "port", buf, T_OP_EQ, T_BARE_WORD, T_SINGLE_QUOTED_STRING);
+			if (cp) cf_pair_add(server, cf_pair_dup(server, cp));
+		}
+	}
+
 	return server;
 }
 
