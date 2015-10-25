@@ -1160,10 +1160,17 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 		} else continue;
 
-		cprintf(listener, "%s\t%d\t%s\t%s\t%s\t%d\n",
-			ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
-			home->port, proto, type, state,
-			home->currently_outstanding);
+		if (argc > 0 && !strcmp(argv[0], "full")) {
+			cprintf(listener, "%s\t(%s)\t%d\t%s\t%s\t%s\t%d\n",
+				ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
+				home->name, home->port, proto, type, state,
+				home->currently_outstanding);
+		} else {
+			cprintf(listener, "%s\t%d\t%s\t%s\t%s\t%d\n",
+				ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
+				home->port, proto, type, state,
+				home->currently_outstanding);
+		}
 	}
 
 	return CMD_OK;
@@ -1955,7 +1962,7 @@ static fr_command_table_t command_table_show_client[] = {
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_show_home[] = {
 	{ "list", FR_READ,
-	  "show home_server list - shows list of home servers",
+	  "show home_server list [full] - shows list of home servers",
 	  command_show_home_servers, NULL },
 	{ "state", FR_READ,
 	  "show home_server state <ipaddr> <port> [udp|tcp] - shows state of given home server",

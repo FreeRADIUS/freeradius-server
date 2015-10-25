@@ -7,6 +7,8 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	  subsection.  This allows the disablign of OpenSSL
 	  auto-chaining of certificates.  Which it can get wrong.
 	* Added printing of coa and disconnect stats (radmin).
+	* Added option "show home_server list full" in radmin. Now
+	  we can see also the name of home_server.
 
 	Bug fixes
 	* Fix issue where field nas_type would not be accessible via
