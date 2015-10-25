@@ -206,9 +206,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 */
 	if (status == EAP_INVALID) {
 		eap_fail(eap_session);
-		talloc_free(eap_session);
+		TALLOC_FREE(eap_session);
 		RDEBUG2("Failed in EAP select");
-		return RLM_MODULE_INVALID;
+		rcode = RLM_MODULE_INVALID;
+		goto finish;
 	}
 
 #ifdef WITH_PROXY
@@ -225,9 +226,10 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		eap_session->inst = inst;
 		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, eap_session,
 					  false, false, false);
-
 		rad_assert(status == 0);
-		return RLM_MODULE_HANDLED;
+
+		rcode = RLM_MODULE_HANDLED;
+		goto finish;
 	}
 #endif
 
@@ -250,7 +252,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 
 		status = request_data_add(request, inst, REQUEST_DATA_EAP_SESSION_PROXIED, eap_session,
 					  false, false, false);
-
 		rad_assert(status == 0);
 
 		/*
@@ -276,7 +277,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		fr_pair_delete_by_num(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO, VENDORPEC_FREERADIUS, TAG_ANY);
 
 		RDEBUG2("Tunneled session will be proxied.  Not doing EAP");
-		return RLM_MODULE_HANDLED;
+		rcode = RLM_MODULE_HANDLED;
+		goto finish;
 	}
 #endif
 
@@ -311,7 +313,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		eap_session->this_round = NULL;
 	} else {
 		RDEBUG2("Freeing eap_session");
-		talloc_free(eap_session);
+		TALLOC_FREE(eap_session);
 	}
 
 	/*
@@ -347,6 +349,14 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 		}
 	}
 
+finish:
+	/*
+	 *	Set the request pointer to NULL, so that if the EAP
+	 *	session gets cleaned up later as part of freeing a
+	 *	state entry, the destructor knows it's not associated
+	 *	with a request.
+	 */
+	if (eap_session) eap_session->request = NULL;
 	return rcode;
 }
 

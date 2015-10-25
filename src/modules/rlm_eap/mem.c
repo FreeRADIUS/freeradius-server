@@ -73,18 +73,19 @@ static int _eap_session_free(eap_session_t *eap_session)
 	 */
 	if (fr_debug_lvl && eap_session->tls && !eap_session->finished &&
 	    (time(NULL) > (eap_session->request->timestamp + 3))) {
-		RWARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		RWARN("!! EAP session %p did not finish!                                             !!", eap_session);
-		RWARN("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
-		RWARN("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		ROPTIONAL(RWARN, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		ROPTIONAL(RWARN, WARN, "!! EAP session %p did not finish!                                         !!",
+			  eap_session);
+		ROPTIONAL(RWARN, WARN, "!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility !!");
+		ROPTIONAL(RWARN, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
 
-	RDEBUG4("Freeing eap_session_t %p", eap_session);
+	ROPTIONAL(RDEBUG4, DEBUG4, "Freeing eap_session_t %p", eap_session);
 
 	/*
 	 *	Remove it from request data
 	 */
-	request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
+	if (request) request_data_get(request, NULL, REQUEST_DATA_EAP_SESSION);
 
 	return 0;
 }

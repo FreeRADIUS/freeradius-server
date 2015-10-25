@@ -1059,7 +1059,6 @@ static eap_round_t *eap_buildds(eap_session_t *eap_session, eap_packet_raw_t **e
 	return eap_round;
 }
 
-
 /*
  * If identity response then create a fresh eap_session & fill the identity
  * else eap_session MUST be in our list, get that.
