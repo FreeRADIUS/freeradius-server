@@ -91,8 +91,7 @@ rlm_rcode_t 	eap_compose(eap_session_t *eap_session) CC_HINT(nonnull);
 eap_session_t 	*eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_msg, REQUEST *request) CC_HINT(nonnull);
 
 /* Memory Management */
-eap_round_t      	*eap_round_alloc(eap_session_t *eap_session);
-eap_session_t 	*eap_session_alloc(rlm_eap_t *inst, REQUEST *request);
-void	    	eap_round_free(eap_round_t **eap_round);
+eap_round_t	*eap_round_alloc(eap_session_t *eap_session);
+eap_session_t	*eap_session_alloc(rlm_eap_t *inst, REQUEST *request);
 
 #endif /*_RLM_EAP_H*/

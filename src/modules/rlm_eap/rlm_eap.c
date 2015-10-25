@@ -306,7 +306,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	     (eap_session->this_round->response->type.num == PW_EAP_LEAP) &&
 	     (eap_session->this_round->request->code == PW_EAP_SUCCESS) &&
 	     (eap_session->this_round->request->type.num == 0))) {
-		eap_round_free(&(eap_session->prev_round));
+		talloc_free(eap_session->prev_round);
 		eap_session->prev_round = eap_session->this_round;
 		eap_session->this_round = NULL;
 	} else {
@@ -483,7 +483,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 */
 		if ((eap_session->this_round->request->code == PW_EAP_REQUEST) &&
 		    (eap_session->this_round->request->type.num >= PW_EAP_MD5)) {
-			eap_round_free(&(eap_session->prev_round));
+			talloc_free(eap_session->prev_round);
 			eap_session->prev_round = eap_session->this_round;
 			eap_session->this_round = NULL;
 		} else {	/* couldn't have been LEAP, there's no tunnel */

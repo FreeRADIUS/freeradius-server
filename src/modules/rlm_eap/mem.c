@@ -35,34 +35,19 @@ eap_round_t *eap_round_alloc(eap_session_t *eap_session)
 
 	eap_round = talloc_zero(eap_session, eap_round_t);
 	if (!eap_round) return NULL;
+
 	eap_round->response = talloc_zero(eap_round, eap_packet_t);
 	if (!eap_round->response) {
-		eap_round_free(&eap_round);
+		talloc_free(eap_round);
 		return NULL;
 	}
 	eap_round->request = talloc_zero(eap_round, eap_packet_t);
 	if (!eap_round->request) {
-		eap_round_free(&eap_round);
+		talloc_free(eap_round);
 		return NULL;
 	}
 
 	return eap_round;
-}
-
-void eap_round_free(eap_round_t **eap_round_p)
-{
-	eap_round_t *eap_round;
-
-	if (!eap_round_p) return;
-
-	eap_round = *eap_round_p;
-	if (!eap_round) return;
-
-	if (eap_round->response) talloc_free(eap_round->response);
-	if (eap_round->request) talloc_free(eap_round->request);
-
-	talloc_free(eap_round);
-	*eap_round_p = NULL;
 }
 
 static int _eap_session_free(eap_session_t *eap_session)
@@ -74,8 +59,10 @@ static int _eap_session_free(eap_session_t *eap_session)
 		eap_session->identity = NULL;
 	}
 
-	if (eap_session->prev_round) eap_round_free(&(eap_session->prev_round));
-	if (eap_session->this_round) eap_round_free(&(eap_session->this_round));
+#ifdef WITH_VERIFY_PTR
+	if (eap_session->prev_round) rad_assert(talloc_parent(eap_session->prev_round) == eap_session);
+	if (eap_session->this_round) rad_assert(talloc_parent(eap_session->this_round) == eap_session);
+#endif
 
 	/*
 	 *	Give helpful debug messages if:
