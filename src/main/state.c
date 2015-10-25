@@ -250,7 +250,7 @@ static int _state_entry_free(fr_state_entry_t *entry)
 	 *	Ensure any request data is parented by us
 	 *	so we know it'll be cleaned up.
 	 */
-	if (entry->data) rad_assert(request_data_verify_parent(entry, entry->data));
+	if (entry->data) rad_assert(request_data_verify_parent(entry->ctx, entry->data));
 #endif
 
 	/*
