@@ -219,7 +219,6 @@ static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry)
 		state->tail = prev;
 	}
 	entry->next = NULL;
-	entry->prev = NULL;
 
 	rbtree_deletebydata(state->tree, entry);
 
@@ -283,12 +282,33 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 	/*
 	 *	Clean up old entries.
 	 */
-	while (state->head && (state->head->cleanup < now)) {
-		entry = state->head;
+	for (entry = state->head; entry != NULL; entry = next) {
+		next = entry->next;
 
-		state_entry_unlink(state, entry);
-		*free_next = entry;
-		free_next = &(entry->next);
+		if (entry == old) continue;
+
+		/*
+		 *	Too old, we can delete it.
+		 */
+		if (entry->cleanup < now) {
+			state_entry_unlink(state, entry);
+			*free_next = entry;
+			free_next = &(entry->next);
+			continue;
+		}
+
+		/*
+		 *	Unused.  We can delete it, even if now isn't
+		 *	the time to clean it up.
+		 */
+		if (!entry->ctx && !entry->data) {
+			state_entry_unlink(state, entry);
+			*free_next = entry;
+			free_next = &(entry->next);
+			continue;
+		}
+
+		break;
 	}
 
 	if (rbtree_num_elements(state->tree) >= (uint32_t) state->max_sessions) return NULL;
