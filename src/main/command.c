@@ -26,6 +26,7 @@
 #include <freeradius-devel/parser.h>
 #include <freeradius-devel/md5.h>
 #include <freeradius-devel/channel.h>
+#include <freeradius-devel/state.h>
 
 #include <libgen.h>
 #ifdef HAVE_INTTYPES_H
@@ -2395,6 +2396,14 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 	return CMD_OK;
 }
 
+static int command_stats_state(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
+{
+	cprintf(listener, "states_created\t\t%" PRIu64 "\n", fr_state_entries_created(global_state));
+	cprintf(listener, "states_timeout\t\t%" PRIu64 "\n", fr_state_entries_timeout(global_state));
+	cprintf(listener, "states_tracked\t\t%" PRIu32 "\n", fr_state_entries_tracked(global_state));
+
+	return CMD_OK;
+}
 
 #ifdef HAVE_PTHREAD_H
 static int command_stats_queue(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
@@ -2821,6 +2830,10 @@ static fr_command_table_t command_table_stats[] = {
 	  "stats queue - show statistics for packet queues",
 	  command_stats_queue, NULL },
 #endif
+
+	{ "state", FR_READ,
+	  "stats state - show statistics for states",
+	  command_stats_state, NULL },
 
 	{ "socket", FR_READ,
 	  "stats socket <ipaddr> <port> [udp|tcp] "

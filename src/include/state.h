@@ -39,6 +39,13 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *o
 
 void fr_state_to_request(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *packet);
 bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original, RADIUS_PACKET *packet);
+
+/*
+ *	Stats
+ */
+uint64_t fr_state_entries_created(fr_state_tree_t *state);
+uint64_t fr_state_entries_timeout(fr_state_tree_t *state);
+uint32_t fr_state_entries_tracked(fr_state_tree_t *state);
 #ifdef __cplusplus
 }
 #endif

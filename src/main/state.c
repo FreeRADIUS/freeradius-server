@@ -72,6 +72,8 @@ typedef struct state_entry {
 
 struct fr_state_tree_t {
 	uint64_t		id;				//!< Next ID to assign.
+	uint64_t		timed_out;			//!< Number of states that were cleaned up due to
+								//!< timeout.
 	uint32_t		max_sessions;			//!< Maximum number of sessions we track.
 	rbtree_t		*tree;				//!< rbtree used to lookup state value.
 
@@ -295,17 +297,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 			state_entry_unlink(state, entry);
 			*free_next = entry;
 			free_next = &(entry->next);
-			continue;
-		}
-
-		/*
-		 *	Unused.  We can delete it, even if now isn't
-		 *	the time to clean it up.
-		 */
-		if (!entry->ctx && !entry->data) {
-			state_entry_unlink(state, entry);
-			*free_next = entry;
-			free_next = &(entry->next);
+			state->timed_out++;
 			continue;
 		}
 
@@ -624,4 +616,28 @@ bool fr_request_to_state(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET
 	rad_assert(request->state == NULL);
 	VERIFY_REQUEST(request);
 	return true;
+}
+
+/** Return number of entries created
+ *
+ */
+uint64_t fr_state_entries_created(fr_state_tree_t *state)
+{
+	return state->id;
+}
+
+/** Return number of entries that timed out
+ *
+ */
+uint64_t fr_state_entries_timeout(fr_state_tree_t *state)
+{
+	return state->timed_out;
+}
+
+/** Return number of entries we're currently tracking
+ *
+ */
+uint32_t fr_state_entries_tracked(fr_state_tree_t *state)
+{
+	return (uint32_t)rbtree_num_elements(state->tree);
 }
