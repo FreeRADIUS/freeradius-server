@@ -130,7 +130,6 @@ void request_stats_final(REQUEST *request)
 #undef INC_AUTH
 #define INC_AUTH(_x) radius_auth_stats._x++;request->listener->stats._x++;request->client->auth._x++;
 
-
 #undef INC_ACCT
 #ifdef WITH_ACCOUNTING
 #define INC_ACCT(_x) radius_acct_stats._x++;request->listener->stats._x++;request->client->acct._x++
@@ -371,16 +370,16 @@ typedef struct fr_stats2vp {
  *	Authentication
  */
 static fr_stats2vp authvp[] = {
-	{ 128, offsetof(fr_stats_t, total_requests) },
-	{ 129, offsetof(fr_stats_t, total_access_accepts) },
-	{ 130, offsetof(fr_stats_t, total_access_rejects) },
-	{ 131, offsetof(fr_stats_t, total_access_challenges) },
-	{ 132, offsetof(fr_stats_t, total_responses) },
-	{ 133, offsetof(fr_stats_t, total_dup_requests) },
-	{ 134, offsetof(fr_stats_t, total_malformed_requests) },
-	{ 135, offsetof(fr_stats_t, total_bad_authenticators) },
-	{ 136, offsetof(fr_stats_t, total_packets_dropped) },
-	{ 137, offsetof(fr_stats_t, total_unknown_types) },
+	{ PW_FREERADIUS_TOTAL_ACCESS_REQUESTS, offsetof(fr_stats_t, total_requests) },
+	{ PW_FREERADIUS_TOTAL_ACCESS_ACCEPTS, offsetof(fr_stats_t, total_access_accepts) },
+	{ PW_FREERADIUS_TOTAL_ACCESS_REJECTS, offsetof(fr_stats_t, total_access_rejects) },
+	{ PW_FREERADIUS_TOTAL_ACCESS_CHALLENGES, offsetof(fr_stats_t, total_access_challenges) },
+	{ PW_FREERADIUS_TOTAL_AUTH_RESPONSES, offsetof(fr_stats_t, total_responses) },
+	{ PW_FREERADIUS_TOTAL_AUTH_DUPLICATE_REQUESTS, offsetof(fr_stats_t, total_dup_requests) },
+	{ PW_FREERADIUS_TOTAL_AUTH_MALFORMED_REQUESTS, offsetof(fr_stats_t, total_malformed_requests) },
+	{ PW_FREERADIUS_TOTAL_AUTH_INVALID_REQUESTS, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ PW_FREERADIUS_TOTAL_AUTH_DROPPED_REQUESTS, offsetof(fr_stats_t, total_packets_dropped) },
+	{ PW_FREERADIUS_TOTAL_AUTH_UNKNOWN_TYPES, offsetof(fr_stats_t, total_unknown_types) },
 	{ 0, 0 }
 };
 
@@ -390,16 +389,16 @@ static fr_stats2vp authvp[] = {
  *	Proxied authentication requests.
  */
 static fr_stats2vp proxy_authvp[] = {
-	{ 138, offsetof(fr_stats_t, total_requests) },
-	{ 139, offsetof(fr_stats_t, total_access_accepts) },
-	{ 140, offsetof(fr_stats_t, total_access_rejects) },
-	{ 141, offsetof(fr_stats_t, total_access_challenges) },
-	{ 142, offsetof(fr_stats_t, total_responses) },
-	{ 143, offsetof(fr_stats_t, total_dup_requests) },
-	{ 144, offsetof(fr_stats_t, total_malformed_requests) },
-	{ 145, offsetof(fr_stats_t, total_bad_authenticators) },
-	{ 146, offsetof(fr_stats_t, total_packets_dropped) },
-	{ 147, offsetof(fr_stats_t, total_unknown_types) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCESS_REQUESTS, offsetof(fr_stats_t, total_requests) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCESS_ACCEPTS, offsetof(fr_stats_t, total_access_accepts) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCESS_REJECTS, offsetof(fr_stats_t, total_access_rejects) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCESS_CHALLENGES, offsetof(fr_stats_t, total_access_challenges) },
+	{ PW_FREERADIUS_TOTAL_PROXY_AUTH_RESPONSES, offsetof(fr_stats_t, total_responses) },
+	{ PW_FREERADIUS_TOTAL_PROXY_AUTH_DUPLICATE_REQUESTS, offsetof(fr_stats_t, total_dup_requests) },
+	{ PW_FREERADIUS_TOTAL_PROXY_AUTH_MALFORMED_REQUESTS, offsetof(fr_stats_t, total_malformed_requests) },
+	{ PW_FREERADIUS_TOTAL_PROXY_AUTH_INVALID_REQUESTS, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ PW_FREERADIUS_TOTAL_PROXY_AUTH_DROPPED_REQUESTS, offsetof(fr_stats_t, total_packets_dropped) },
+	{ PW_FREERADIUS_TOTAL_PROXY_AUTH_UNKNOWN_TYPES, offsetof(fr_stats_t, total_unknown_types) },
 	{ 0, 0 }
 };
 #endif
@@ -410,53 +409,53 @@ static fr_stats2vp proxy_authvp[] = {
  *	Accounting
  */
 static fr_stats2vp acctvp[] = {
-	{ 148, offsetof(fr_stats_t, total_requests) },
-	{ 149, offsetof(fr_stats_t, total_responses) },
-	{ 150, offsetof(fr_stats_t, total_dup_requests) },
-	{ 151, offsetof(fr_stats_t, total_malformed_requests) },
-	{ 152, offsetof(fr_stats_t, total_bad_authenticators) },
-	{ 153, offsetof(fr_stats_t, total_packets_dropped) },
-	{ 154, offsetof(fr_stats_t, total_unknown_types) },
+	{ PW_FREERADIUS_TOTAL_ACCOUNTING_REQUESTS, offsetof(fr_stats_t, total_requests) },
+	{ PW_FREERADIUS_TOTAL_ACCOUNTING_RESPONSES, offsetof(fr_stats_t, total_responses) },
+	{ PW_FREERADIUS_TOTAL_ACCT_DUPLICATE_REQUESTS, offsetof(fr_stats_t, total_dup_requests) },
+	{ PW_FREERADIUS_TOTAL_ACCT_MALFORMED_REQUESTS, offsetof(fr_stats_t, total_malformed_requests) },
+	{ PW_FREERADIUS_TOTAL_ACCT_INVALID_REQUESTS, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ PW_FREERADIUS_TOTAL_ACCT_DROPPED_REQUESTS, offsetof(fr_stats_t, total_packets_dropped) },
+	{ PW_FREERADIUS_TOTAL_ACCT_UNKNOWN_TYPES, offsetof(fr_stats_t, total_unknown_types) },
 	{ 0, 0 }
 };
 
 #ifdef WITH_PROXY
 static fr_stats2vp proxy_acctvp[] = {
-	{ 155, offsetof(fr_stats_t, total_requests) },
-	{ 156, offsetof(fr_stats_t, total_responses) },
-	{ 157, offsetof(fr_stats_t, total_dup_requests) },
-	{ 158, offsetof(fr_stats_t, total_malformed_requests) },
-	{ 159, offsetof(fr_stats_t, total_bad_authenticators) },
-	{ 160, offsetof(fr_stats_t, total_packets_dropped) },
-	{ 161, offsetof(fr_stats_t, total_unknown_types) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCOUNTING_REQUESTS, offsetof(fr_stats_t, total_requests) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCOUNTING_RESPONSES, offsetof(fr_stats_t, total_responses) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCT_DUPLICATE_REQUESTS, offsetof(fr_stats_t, total_dup_requests) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCT_MALFORMED_REQUESTS, offsetof(fr_stats_t, total_malformed_requests) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCT_INVALID_REQUESTS, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCT_DROPPED_REQUESTS, offsetof(fr_stats_t, total_packets_dropped) },
+	{ PW_FREERADIUS_TOTAL_PROXY_ACCT_UNKNOWN_TYPES, offsetof(fr_stats_t, total_unknown_types) },
 	{ 0, 0 }
 };
 #endif
 #endif
 
 static fr_stats2vp client_authvp[] = {
-	{ 128, offsetof(fr_stats_t, total_requests) },
-	{ 129, offsetof(fr_stats_t, total_access_accepts) },
-	{ 130, offsetof(fr_stats_t, total_access_rejects) },
-	{ 131, offsetof(fr_stats_t, total_access_challenges) },
-	{ 132, offsetof(fr_stats_t, total_responses) },
-	{ 133, offsetof(fr_stats_t, total_dup_requests) },
-	{ 134, offsetof(fr_stats_t, total_malformed_requests) },
-	{ 135, offsetof(fr_stats_t, total_bad_authenticators) },
-	{ 136, offsetof(fr_stats_t, total_packets_dropped) },
-	{ 137, offsetof(fr_stats_t, total_unknown_types) },
+	{ PW_FREERADIUS_TOTAL_ACCESS_REQUESTS, offsetof(fr_stats_t, total_requests) },
+	{ PW_FREERADIUS_TOTAL_ACCESS_ACCEPTS, offsetof(fr_stats_t, total_access_accepts) },
+	{ PW_FREERADIUS_TOTAL_ACCESS_REJECTS, offsetof(fr_stats_t, total_access_rejects) },
+	{ PW_FREERADIUS_TOTAL_ACCESS_CHALLENGES, offsetof(fr_stats_t, total_access_challenges) },
+	{ PW_FREERADIUS_TOTAL_AUTH_RESPONSES, offsetof(fr_stats_t, total_responses) },
+	{ PW_FREERADIUS_TOTAL_AUTH_DUPLICATE_REQUESTS, offsetof(fr_stats_t, total_dup_requests) },
+	{ PW_FREERADIUS_TOTAL_AUTH_MALFORMED_REQUESTS, offsetof(fr_stats_t, total_malformed_requests) },
+	{ PW_FREERADIUS_TOTAL_AUTH_INVALID_REQUESTS, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ PW_FREERADIUS_TOTAL_AUTH_DROPPED_REQUESTS, offsetof(fr_stats_t, total_packets_dropped) },
+	{ PW_FREERADIUS_TOTAL_AUTH_UNKNOWN_TYPES, offsetof(fr_stats_t, total_unknown_types) },
 	{ 0, 0 }
 };
 
 #ifdef WITH_ACCOUNTING
 static fr_stats2vp client_acctvp[] = {
-	{ 148, offsetof(fr_stats_t, total_requests) },
-	{ 149, offsetof(fr_stats_t, total_responses) },
-	{ 150, offsetof(fr_stats_t, total_dup_requests) },
-	{ 151, offsetof(fr_stats_t, total_malformed_requests) },
-	{ 152, offsetof(fr_stats_t, total_bad_authenticators) },
-	{ 153, offsetof(fr_stats_t, total_packets_dropped) },
-	{ 154, offsetof(fr_stats_t, total_unknown_types) },
+	{ PW_FREERADIUS_TOTAL_ACCOUNTING_REQUESTS, offsetof(fr_stats_t, total_requests) },
+	{ PW_FREERADIUS_TOTAL_ACCOUNTING_RESPONSES, offsetof(fr_stats_t, total_responses) },
+	{ PW_FREERADIUS_TOTAL_ACCT_DUPLICATE_REQUESTS, offsetof(fr_stats_t, total_dup_requests) },
+	{ PW_FREERADIUS_TOTAL_ACCT_MALFORMED_REQUESTS, offsetof(fr_stats_t, total_malformed_requests) },
+	{ PW_FREERADIUS_TOTAL_ACCT_INVALID_REQUESTS, offsetof(fr_stats_t, total_bad_authenticators) },
+	{ PW_FREERADIUS_TOTAL_ACCT_DROPPED_REQUESTS, offsetof(fr_stats_t, total_packets_dropped) },
+	{ PW_FREERADIUS_TOTAL_ACCT_UNKNOWN_TYPES, offsetof(fr_stats_t, total_unknown_types) },
 	{ 0, 0 }
 };
 #endif
