@@ -458,6 +458,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 		state->tail->next = entry;
 
 		entry->next = NULL;
+		entry->prev = NULL;
 		state->tail = entry;
 	}
 
