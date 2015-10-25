@@ -540,7 +540,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Initialise the state rbtree (used to link multiple rounds of challenges).
 	 */
-	global_state = fr_state_tree_init(autofree, main_config.max_requests * 2);
+	global_state = fr_state_tree_init(autofree, main_config.max_requests * 2, main_config.continuation_timeout);
 
 	/*
 	 *  Process requests until HUP or exit.

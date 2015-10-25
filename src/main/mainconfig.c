@@ -197,6 +197,7 @@ static const CONF_PARSER server_config[] = {
 	{ FR_CONF_POINTER("hostname_lookups", PW_TYPE_BOOLEAN, &fr_dns_lookups), .dflt = "no" },
 	{ FR_CONF_POINTER("max_request_time", PW_TYPE_INTEGER, &main_config.max_request_time), .dflt = STRINGIFY(MAX_REQUEST_TIME) },
 	{ FR_CONF_POINTER("cleanup_delay", PW_TYPE_INTEGER, &main_config.cleanup_delay), .dflt = STRINGIFY(CLEANUP_DELAY) },
+	{ FR_CONF_POINTER("continuation_timeout", PW_TYPE_INTEGER, &main_config.continuation_timeout), .dflt = "15" },
 	{ FR_CONF_POINTER("max_requests", PW_TYPE_INTEGER, &main_config.max_requests), .dflt = STRINGIFY(MAX_REQUESTS) },
 	{ FR_CONF_POINTER("pidfile", PW_TYPE_STRING, &main_config.pid_file), .dflt = "${run_dir}/radiusd.pid"},
 	{ FR_CONF_POINTER("checkrad", PW_TYPE_STRING, &main_config.checkrad), .dflt = "${sbindir}/checkrad" },

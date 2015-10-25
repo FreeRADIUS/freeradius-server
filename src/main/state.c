@@ -72,11 +72,11 @@ typedef struct state_entry {
 
 struct fr_state_tree_t {
 	uint64_t		id;				//!< Next ID to assign.
-	int			max_sessions;			//!< Maximum number of sessions we track.
+	uint32_t		max_sessions;			//!< Maximum number of sessions we track.
 	rbtree_t		*tree;				//!< rbtree used to lookup state value.
 
 	fr_state_entry_t	*head, *tail;			//!< Entries to expire.
-
+	uint32_t		timeout;			//!< How long to wait before cleaning up state entires.
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		mutex;				//!< Synchronisation mutex.
 #endif
@@ -157,9 +157,10 @@ static int _state_tree_free(fr_state_tree_t *state)
  *
  * @param ctx to link the lifecycle of the state tree to.
  * @param max_sessions we track state for.
+ * @param timeout How long to wait before cleaning up entries.
  * @return a new state tree or NULL on failure.
  */
-fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, int max_sessions)
+fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, uint32_t max_sessions, uint32_t timeout)
 {
 	fr_state_tree_t *state;
 
@@ -167,6 +168,7 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, int max_sessions)
 	if (!state) return 0;
 
 	state->max_sessions = max_sessions;
+	state->timeout = timeout;
 
 	/*
 	 *	Create a break in the contexts.
@@ -380,7 +382,7 @@ static fr_state_entry_t *state_entry_create(fr_state_tree_t *state, RADIUS_PACKE
 	 *	isn't perfect, but it's reasonable, and it's one less
 	 *	thing for an administrator to configure.
 	 */
-	entry->cleanup = now + main_config.max_request_time * 10;
+	entry->cleanup = now + state->timeout;
 
 	/*
 	 *	Some modules like rlm_otp create their own magic

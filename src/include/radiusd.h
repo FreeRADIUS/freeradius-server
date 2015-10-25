@@ -135,6 +135,7 @@ typedef struct main_config {
 	uint32_t	max_request_time;		//!< How long a request can be processed for before
 							//!< timing out.
 	uint32_t	cleanup_delay;			//!< How long before cleaning up cached responses.
+	uint32_t	continuation_timeout;		//!< How long to wait before cleaning up state entries.
 	uint32_t	max_requests;
 
 	uint32_t	debug_level;

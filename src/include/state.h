@@ -33,7 +33,7 @@ extern "C" {
 typedef struct fr_state_tree_t fr_state_tree_t;
 extern fr_state_tree_t *global_state;
 
-fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, int max_sessions);
+fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, uint32_t max_sessions, uint32_t timeout);
 
 void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *original);
 

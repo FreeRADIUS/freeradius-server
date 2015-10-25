@@ -812,7 +812,7 @@ int main(int argc, char *argv[])
 		goto finish;
 	}
 
-	state = fr_state_tree_init(NULL, main_config.max_requests * 2);
+	state = fr_state_tree_init(NULL, main_config.max_requests * 2, 10);
 
 	/*
 	 *  Set the panic action (if required)
