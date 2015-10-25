@@ -72,7 +72,7 @@ static int _eap_session_free(eap_session_t *eap_session)
 	 *	retransmit which nukes our ID, and therefore our stare.
 	 */
 	if (fr_debug_lvl && eap_session->tls && !eap_session->finished &&
-	    (time(NULL) > (eap_session->request->timestamp + 3))) {
+	    (time(NULL) > (eap_session->updated + 3))) {
 		ROPTIONAL(RWARN, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		ROPTIONAL(RWARN, WARN, "!! EAP session %p did not finish!                                         !!",
 			  eap_session);
@@ -115,6 +115,7 @@ eap_session_t *eap_session_alloc(rlm_eap_t *inst, REQUEST *request)
 	}
 	eap_session->inst = inst;
 	eap_session->request = request;
+	eap_session->updated = request->timestamp;
 
 	talloc_set_destructor(eap_session, _eap_session_free);
 

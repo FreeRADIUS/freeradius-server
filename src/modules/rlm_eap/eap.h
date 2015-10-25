@@ -83,6 +83,8 @@ struct _eap_session {
 							//!< Usually set to the process functino of an EAP submodule.
 	int		rounds;				//!< How many roundtrips have occurred this session.
 
+	time_t		updated;			//!< The last time we received a packet for this EAP session.
+
 	bool		tls;				//!< Whether EAP method uses TLS.
 	bool		finished;			//!< Whether we consider this session complete.
 };

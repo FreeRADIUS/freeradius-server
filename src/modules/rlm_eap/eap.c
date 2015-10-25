@@ -1102,6 +1102,7 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		 *	the eap_session_t is freed.
 		 */
 		eap_session->request = request;
+		eap_session->updated = request->timestamp;
 
 		RDEBUG4("Got eap_session_t %p from request data", eap_session);
 #ifdef WITH_VERIFY_PTR
