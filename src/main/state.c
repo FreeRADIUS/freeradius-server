@@ -95,6 +95,8 @@ fr_state_tree_t *global_state = NULL;
 #  define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
+static void state_entry_unlink(fr_state_tree_t *state, fr_state_entry_t *entry);
+
 /** Compare two fr_state_entry_t based on their state value i.e. the value of the attribute
  *
  */
@@ -106,37 +108,26 @@ static int state_entry_cmp(void const *one, void const *two)
 	return memcmp(a->state, b->state, sizeof(a->state));
 }
 
-/** Walker callback to free all entries in the tree
- *
- */
-static int _state_tree_free_entry(UNUSED void *ctx, void *data)
-{
-	fr_state_entry_t *entry = talloc_get_type_abort(data, fr_state_entry_t);
-
-	/*
-	 *	No need to call state_entry_unlink
-	 *	everything is being freed anyway.
-	 */
-	talloc_free(entry);
-
-	return 0;
-}
-
 /** Free the state tree
  *
  */
 static int _state_tree_free(fr_state_tree_t *state)
 {
+	fr_state_entry_t *this;
+
 #ifdef HAVE_PTHREAD_H
 	if (main_config.spawn_workers) pthread_mutex_destroy(&state->mutex);
 #endif
 
 	DEBUG4("Freeing state tree %p", state);
 
-	/*
-	 *	Delete all the entries in the tree
-	 */
-	rbtree_walk(state->tree, RBTREE_DELETE_ORDER, _state_tree_free_entry, state);
+	while (state->head) {
+		this = state->head;
+		state_entry_unlink(state, this);
+		talloc_free(this);
+	}
+
+	for (this = state->head; this; this = this->next) DEBUG4("State %" PRIu64 " needs freeing prev was %" PRIu64 "", this->id, this->prev ? this->prev->id : 100000);
 
 	/*
 	 *	Ensure we got *all* the entries
@@ -192,7 +183,6 @@ fr_state_tree_t *fr_state_tree_init(TALLOC_CTX *ctx, uint32_t max_sessions, uint
 	 *	are freed before it's destroyed.  Hence
 	 *	it being parented from the NULL ctx.
 	 */
-
 	state->tree = rbtree_create(NULL, state_entry_cmp, NULL, 0);
 	if (!state->tree) {
 		talloc_free(state);
