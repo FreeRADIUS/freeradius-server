@@ -320,6 +320,7 @@ static state_entry_t *fr_state_create(fr_state_t *state, RADIUS_PACKET *packet, 
 		state->tail->next = entry;
 
 		entry->next = NULL;
+		entry->prev = NULL;
 		state->tail = entry;
 	}
 
