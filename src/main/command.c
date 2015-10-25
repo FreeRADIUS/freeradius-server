@@ -1225,9 +1225,9 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 		} else continue;
 
-		cprintf(listener, "%s\t%d\t%s\t%s\t%s\t%d\n",
+		cprintf(listener, "%s\t%s\t%d\t%s\t%s\t%s\t%d\n",
 			fr_inet_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
-			home->port, proto, type, state,
+			home->name, home->port, proto, type, state,
 			home->currently_outstanding);
 	}
 
