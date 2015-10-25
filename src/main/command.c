@@ -1240,6 +1240,7 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	int i;
 	RADCLIENT *client;
 	char buffer[256];
+	char ipaddr[256];
 
 	for (i = 0; i < 256; i++) {
 		client = client_findbynumber(NULL, i);
@@ -1251,10 +1252,15 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		     (client->ipaddr.prefix != 32)) ||
 		    ((client->ipaddr.af == AF_INET6) &&
 		     (client->ipaddr.prefix != 128))) {
-			cprintf(listener, "%s/%d\n", buffer, client->ipaddr.prefix);
+			snprintf(ipaddr, sizeof(ipaddr), "%s/%d", buffer, client->ipaddr.prefix);
 		} else {
-			cprintf(listener, "%s\n", buffer);
+			snprintf(ipaddr, sizeof(ipaddr), "%s", buffer);
 		}
+
+		cprintf(listener, "%s\t%s\t%s\t%s\n", ipaddr,
+			client->shortname ? client->shortname : "\t",
+			client->nas_type ? client->nas_type : "\t",
+			client->server ? client->server : "\t");
 	}
 
 	return CMD_OK;
