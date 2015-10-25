@@ -505,9 +505,18 @@ void fr_state_discard(fr_state_tree_t *state, REQUEST *request, RADIUS_PACKET *o
 	state_entry_unlink(state, entry);
 	PTHREAD_MUTEX_UNLOCK(&state->mutex);
 
-	TALLOC_FREE(entry);
-	request->state = NULL;
+	/*
+	 *	The state and request must be in the same state
+	 *	as if we'd called fr_request_to_state, before
+	 *	we free the state entry, otherwise we leak memory.
+	 */
+	entry->ctx = request->state_ctx;
+	entry->vps = request->state;
+	request_data_by_persistance(&entry->data, request, true);
+
 	request->state_ctx = NULL;
+	request->state = NULL;
+	TALLOC_FREE(entry);
 
 	return;
 }
