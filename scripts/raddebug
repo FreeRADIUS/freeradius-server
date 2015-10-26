@@ -77,62 +77,9 @@ do
 done
 shift $(($OPTIND - 1))
 
-radmin="radmin $extra"
-
-#
-#  Start off by turning off debugging.
-#  If there's a problem, die.
-#
-$radmin -e "debug condition"
-if [ "$?" != "0" ]; then
-  exit 1
-fi
-
-#
-#  Debug to a file, and then tell us where the file is.
-#
-outfile=`$radmin -e "debug file radmin.debug.$$" -e "show debug file"`
-group=`$radmin -e "debug file radmin.debug.$$" -e "show config security.group"`
-
-#
-#  If there was an error setting the debug output, re-set the
-#  debug condition, echo the error, and exit.
-#
-echo $outfile | grep 'ERROR' >/dev/null 2>&1
-if [ "$?" = "0" ]; then
-  $radmin -e "debug condition"
-  echo $outfile
-  exit 1
-fi
-
-#
-#  Truncate the file, and ensure it's writable by radiusd
-#
-cp /dev/null $outfile
-[ "$group" != "" ] && chgrp $group $outfile
-chmod g+w $outfile
-
-TAILPID=$$
-
-#
-#  Set the trap to clean up on exit and any interrupts.
-#
-trap '$radmin -e "debug condition" -e "debug file"; rm -f $outfile;kill -TERM $TAILPID;exit 0' 1 2 15
-
-#
-#  Set the debug condition
-#
-$radmin -e "debug condition \"$condition\"" | grep -I 'error'
-if [ $? -eq 0 ]; then
-    exit 1
-fi
+radmin="./build/bin/local/radmin $extra"
 
 #
 #  Print the output, and wait for "timeout".  Then, stop printing.
 #
-tail -f $outfile &
-TAILPID=$!
-sleep $timeout
-kill -TERM $TAILPID
-$radmin -e "debug condition" -e "debug file"
-rm -f $outfile
+exec $radmin -e "debug condition $condition " -e "debug socket on"

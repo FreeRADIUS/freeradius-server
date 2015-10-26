@@ -81,6 +81,7 @@ main_config_t main_config;
 
 static bool echo = false;
 static char const *secret = "testing123";
+static bool unbuffered = false;
 
 #include <sys/wait.h>
 pid_t rad_fork(void)
@@ -183,24 +184,15 @@ static ssize_t do_challenge(int sockfd)
 /*
  *	Returns -1 on failure.  0 on connection failed.  +1 on OK.
  */
-static ssize_t run_command(int sockfd, char const *command,
-			   char *buffer, size_t bufsize)
+static ssize_t flush_channels(int sockfd, char *buffer, size_t bufsize)
 {
 	ssize_t r;
 	uint32_t status;
 	fr_channel_type_t channel;
 
-	if (echo) {
-		fprintf(stdout, "%s\n", command);
-	}
-
-	/*
-	 *	Write the text to the socket.
-	 */
-	r = fr_channel_write(sockfd, FR_CHANNEL_STDIN, command, strlen(command));
-	if (r <= 0) return r;
-
 	while (true) {
+		uint32_t notify;
+
 		r = fr_channel_read(sockfd, &channel, buffer, bufsize - 1);
 		if (r <= 0) return r;
 
@@ -222,6 +214,17 @@ static ssize_t run_command(int sockfd, char const *command,
 			status = ntohl(status);
 			return status;
 
+		case FR_CHANNEL_NOTIFY:
+			if (r < 4) return -1;
+
+			memcpy(&notify, buffer, sizeof(notify));
+			notify = ntohl(notify);
+
+			if (notify == FR_NOTIFY_UNBUFFERED) unbuffered = true;
+			if (notify == FR_NOTIFY_BUFFERED) unbuffered = false;
+
+			break;
+
 		default:
 			fprintf(stderr, "Unexpected response\n");
 			return -1;
@@ -229,6 +232,28 @@ static ssize_t run_command(int sockfd, char const *command,
 	}
 
 	/* never gets here */
+}
+
+
+/*
+ *	Returns -1 on failure.  0 on connection failed.  +1 on OK.
+ */
+static ssize_t run_command(int sockfd, char const *command,
+			   char *buffer, size_t bufsize)
+{
+	ssize_t r;
+
+	if (echo) {
+		fprintf(stdout, "%s\n", command);
+	}
+
+	/*
+	 *	Write the text to the socket.
+	 */
+	r = fr_channel_write(sockfd, FR_CHANNEL_STDIN, command, strlen(command));
+	if (r <= 0) return r;
+
+	return flush_channels(sockfd, buffer, bufsize);
 }
 
 static int do_connect(int *out, char const *file, char const *server)
@@ -590,7 +615,7 @@ int main(int argc, char **argv)
 	if (do_connect(&sockfd, file, server) < 0) exit(1);
 
 	/*
-	 *	Run one command.
+	 *	Run commans from the command-line.
 	 */
 	if (num_commands >= 0) {
 		int i;
@@ -601,6 +626,11 @@ int main(int argc, char **argv)
 
 			if (len == FR_CHANNEL_FAIL) exit_status = EXIT_FAILURE;
 		}
+
+		if (unbuffered) {
+			while (true) flush_channels(sockfd, buffer, sizeof(buffer));
+		}
+
 		exit(exit_status);
 	}
 

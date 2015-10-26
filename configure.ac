@@ -1564,6 +1564,8 @@ AC_CHECK_FUNCS( \
   mkdirat \
   unlinkat \
   bindat \
+  fopencookie \
+  funopen \
   dladdr
 )
 

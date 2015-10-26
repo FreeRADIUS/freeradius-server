@@ -90,7 +90,7 @@ typedef struct fr_command_socket_t {
 	char const	*gid_name;
 	char const	*mode_name;
 	bool		peercred;
-	char user[256];
+	char		user[256];
 
 	/*
 	 *	The next few entries handle fake packets injected by
@@ -702,6 +702,60 @@ static void command_close_socket(rad_listen_t *this)
 	radius_update_listener(this);
 }
 
+extern fr_log_t		debug_log;
+
+/*
+ *	Turn off all debugging.  But don't touch the debug condition.
+ */
+static void command_debug_off(void)
+{
+	debug_log.dst = L_DST_NULL;
+	debug_log.file = NULL;
+	debug_log.cookie = NULL;
+	debug_log.cookie_write = NULL;
+}
+
+#if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
+#ifdef HAVE_PTHREAD_H
+static pthread_mutex_t debug_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+
+/*
+ *	Callback from log.c, so that we can write debug output to the
+ *	radmin socket.
+ *
+ *	We only have one debug condition, so we only need one mutex.
+ */
+#ifdef HAVE_FOPENCOOKIE
+static ssize_t command_socket_write(void *cookie, char const *buffer, size_t len)
+#else
+static int command_socket_write(void *cookie, char const *buffer, int len)
+#endif
+{
+	ssize_t r;
+	rad_listen_t *listener = cookie;
+
+	if (listener->status == RAD_LISTEN_STATUS_EOL) return 0;
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_lock(&debug_mutex);
+#endif
+	r = fr_channel_write(listener->fd, FR_CHANNEL_STDOUT, buffer, len);
+
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_unlock(&debug_mutex);
+#endif
+
+	if (r <= 0) {
+		command_debug_off();
+		command_close_socket(listener);
+	}
+
+	return r;
+}
+#endif
+
 static ssize_t CC_HINT(format (printf, 2, 3)) cprintf(rad_listen_t *listener, char const *fmt, ...)
 {
 	ssize_t r, len;
@@ -1235,6 +1289,62 @@ static char debug_log_file_buffer[1024];
 extern fr_cond_t *debug_condition;
 extern fr_log_t debug_log;
 
+#if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
+static int command_debug_socket(rad_listen_t *listener, int argc, char *argv[])
+{
+	uint32_t notify;
+
+	if (rad_debug_lvl && default_log.dst == L_DST_STDOUT) {
+		cprintf_error(listener, "Cannot redirect debug logs to a socket when already in debugging mode.\n");
+		return -1;
+	}
+
+	if ((argc == 0) || (strcmp(argv[0], "off") == 0)) {
+		notify = htonl(FR_NOTIFY_BUFFERED);
+
+		/*
+		 *	Tell radmin to go into buffered mode.
+		 */
+		(void) fr_channel_write(listener->fd, FR_CHANNEL_NOTIFY, &notify, sizeof(notify));
+
+		command_debug_off();
+		return CMD_OK;
+	}
+
+	if (strcmp(argv[0], "on") != 0) {
+		cprintf_error(listener, "Syntax error: got '%s', expected [on|off]", argv[0]);
+		return -1;
+	}
+
+	/*
+	 *	Don't allow people to stomp on each other.
+	 */
+	if ((debug_log.cookie != NULL) &&
+	    (debug_log.cookie != listener)) {
+		cprintf_error(listener, "ERROR: Someone else is already using the debug socket");
+		return -1;
+	}
+
+	/*
+	 *	Disable logging while we're mucking with the buffer.
+	 */
+	command_debug_off();
+
+	debug_log.cookie = listener;
+	debug_log.cookie_write = command_socket_write;
+	debug_log.dst = L_DST_EXTRA;
+
+	notify = htonl(FR_NOTIFY_UNBUFFERED);
+
+	/*
+	 *	Tell radmin to go into unbuffered mode.
+	 */
+	(void) fr_channel_write(listener->fd, FR_CHANNEL_NOTIFY, &notify, sizeof(notify));
+
+	return CMD_OK;
+}
+#endif
+
 static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 {
 	if (rad_debug_lvl && default_log.dst == L_DST_STDOUT) {
@@ -1248,15 +1358,14 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 	}
 
 	if (argc == 0) {
-		debug_log.dst = L_DST_NULL;
-		debug_log.file = NULL;
+		command_debug_off();
 		return CMD_OK;
 	}
 
 	/*
 	 *	Disable logging while we're mucking with the buffer.
 	 */
-	debug_log.dst = L_DST_NULL;
+	command_debug_off();
 
 	/*
 	 *	This looks weird, but it's here to avoid locking
@@ -2059,6 +2168,12 @@ static fr_command_table_t command_table_debug[] = {
 	{ "file", FR_WRITE,
 	  "debug file [filename] - Send all debugging output to [filename]",
 	  command_debug_file, NULL },
+
+#if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
+	{ "socket", FR_WRITE,
+	  "debug socket [on|off] - Send all debugging output to radmin socket.",
+	  command_debug_socket, NULL },
+#endif
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
@@ -3175,7 +3290,8 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 	if (argc == 0) goto do_next; /* empty strings are OK */
 
 	if (argc < 0) {
-		cprintf_error(listener, "Failed parsing command.\n");
+		cprintf_error(listener, "Failed parsing command '%s'.\n",
+			command);
 		goto do_next;
 	}
 

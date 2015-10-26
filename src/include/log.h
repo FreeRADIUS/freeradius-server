@@ -59,9 +59,11 @@ typedef enum log_dst {
 	L_DST_FILES,		//!< Log to a file on disk.
 	L_DST_SYSLOG,		//!< Log to syslog.
 	L_DST_STDERR,		//!< Log to stderr.
+	L_DST_EXTRA,		//!< Send log messages to a FILE*, via fopencookie()
 	L_DST_NULL,		//!< Discard log messages.
 	L_DST_NUM_DEST
 } log_dst_t;
+
 
 typedef struct fr_log_t {
 	bool		colourise;	//!< Prefix log messages with VT100 escape codes to change text
@@ -69,6 +71,13 @@ typedef struct fr_log_t {
 	int		fd;		//!< File descriptor to write messages to.
 	log_dst_t	dst;		//!< Log destination.
 	char const	*file;		//!< Path to log file.
+
+	void		*cookie;	//!< for fopencookie()
+#ifdef HAVE_FOPENCOOKIE
+	ssize_t		(*cookie_write)(void *, char const *, size_t); //!< write function
+#else
+	int		(*cookie_write)(void *, char const *, int); //!< write function
+#endif
 } fr_log_t;
 
 typedef		void (*radlog_func_t)(log_type_t lvl, log_lvl_t priority, REQUEST *, char const *, va_list ap);

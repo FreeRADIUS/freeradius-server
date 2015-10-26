@@ -36,13 +36,21 @@ typedef enum fr_channel_type_t {
 	FR_CHANNEL_INIT_ACK,
 	FR_CHANNEL_AUTH_CHALLENGE,
 	FR_CHANNEL_AUTH_RESPONSE,
-	FR_CHANNEL_WANT_MORE
+	FR_CHANNEL_WANT_MORE,
+	FR_CHANNEL_NOTIFY
 } fr_channel_type_t;
 
 typedef enum fr_channel_result_t {
 	FR_CHANNEL_FAIL = 0,
 	FR_CHANNEL_SUCCESS
 } fr_channel_result_t;
+
+typedef enum fr_channel_notify_t {
+	FR_NOTIFY_NONE = 0,
+	FR_NOTIFY_BUFFERED,
+	FR_NOTIFY_UNBUFFERED
+} fr_channel_notify_t;
+
 
 ssize_t fr_channel_drain(int fd, fr_channel_type_t *pchannel, void *inbuf, size_t buflen, uint8_t **outbuf, size_t have_read);
 ssize_t fr_channel_read(int fd, fr_channel_type_t *pchannel, void *buffer, size_t buflen);
