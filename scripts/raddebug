@@ -45,16 +45,31 @@ do
 	;;
   D)    extra="$extra -D $OPTARG"
 	;;
-  i)	condition="(Packet-Src-IP-Address == $OPTARG)"
+  i)    x="(Packet-Src-IP-Address == $OPTARG)"
+	if [ "$condition" = "" ]; then
+	    condition="$x"
+	else
+	  condition="$condition && $x"
+	fi
 	;;
-  I)	condition="(Packet-Src-IPv6-Address == $OPTARG)"
+  I)	x="(Packet-Src-IPv6-Address == $OPTARG)"
+	if [ "$condition" = "" ]; then
+	    condition="$x"
+	else
+	  condition="$condition && $x"
+	fi
 	;;
   f)	extra="$extra -f $OPTARG"
 	;;
   t)	timeout="$OPTARG"
 	[ "$timeout" = "0" ] && timeout=1000000
 	;;
-  u)	condition="(User-Name == '$OPTARG')"
+  u)	x="(User-Name == '$OPTARG')"
+	if [ "$condition" = "" ]; then
+	    condition="$x"
+	else
+	  condition="$condition && $x"
+	fi
 	;;
   ?)	usage
 	;;
