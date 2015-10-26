@@ -193,11 +193,6 @@ int fr_pcap_open(fr_pcap_t *pcap)
 	case PCAP_INTERFACE_IN:
 	case PCAP_INTERFACE_IN_OUT:
 	{
-		if (fr_pcap_mac_addr((uint8_t *)&pcap->ether_addr, pcap->name) != 0) {
-			fr_strerror_printf("Couldn't get MAC address for interface %s", pcap->name);
-			return -1;
-		}
-
 #if defined(HAVE_PCAP_CREATE) && defined(HAVE_PCAP_ACTIVATE)
 		pcap->handle = pcap_create(pcap->name, pcap->errbuf);
 		if (!pcap->handle) {
@@ -236,6 +231,16 @@ int fr_pcap_open(fr_pcap_t *pcap)
 			return -1;
 		}
 #endif
+
+		/*
+		 *	Do this later so we get real errors.
+		 */
+		if (fr_pcap_mac_addr((uint8_t *)&pcap->ether_addr, pcap->name) != 0) {
+			fr_strerror_printf("Couldn't get MAC address for interface %s", pcap->name);
+			pcap_close(pcap->handle);
+			return -1;
+		}
+
 		/*
 		 *	Despite accepting an errbuff, pcap_setnonblock doesn't seem to write
 		 *	error message there in newer versions.
