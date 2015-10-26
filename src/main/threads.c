@@ -267,10 +267,10 @@ int request_enqueue(REQUEST *request)
 	 *	in a while, OR if the thread pool appears to be full,
 	 *	go manage it.
 	 */
-	if ((last_cleaned < request->timestamp) ||
+	if ((last_cleaned < request->timestamp.tv_sec) ||
 	    (thread_pool.active_threads == thread_pool.total_threads) ||
 	    (thread_pool.exited_threads > 0)) {
-		thread_pool_manage(request->timestamp);
+		thread_pool_manage(request->timestamp.tv_sec);
 	}
 
 
@@ -508,11 +508,11 @@ static int request_dequeue(REQUEST **prequest)
 	thread_pool.active_threads++;
 
 	blocked = time(NULL);
-	if (!request->proxy && (blocked - request->timestamp) > 5) {
+	if (!request->proxy && (blocked - request->timestamp.tv_sec) > 5) {
 		total_blocked++;
 		if (last_complained < blocked) {
 			last_complained = blocked;
-			blocked -= request->timestamp;
+			blocked -= request->timestamp.tv_sec;
 			num_blocked = total_blocked;
 		} else {
 			blocked = 0;

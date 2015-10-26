@@ -507,7 +507,8 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 #ifdef WITH_UDPFROMTO
 	data_len = recvfromto(sockfd, packet->data, len, flags,
 			      (struct sockaddr *)&src, &sizeof_src,
-			      (struct sockaddr *)&dst, &sizeof_dst, &packet->if_index);
+			      (struct sockaddr *)&dst, &sizeof_dst,
+			      &packet->if_index, &packet->timestamp);
 #else
 	data_len = recvfrom(sockfd, packet->data, len, flags,
 			    (struct sockaddr *)&src, &sizeof_src);
@@ -2640,16 +2641,13 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 	data_len = rad_recvfrom(fd, packet, sock_flags,
 				&packet->src_ipaddr, &packet->src_port,
 				&packet->dst_ipaddr, &packet->dst_port);
-
-	/*
-	 *	Check for socket errors.
-	 */
 	if (data_len < 0) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
 		/* packet->data is NULL */
 		rad_free(&packet);
 		return NULL;
 	}
+
 	packet->data_len = data_len; /* unsigned vs signed */
 
 	/*

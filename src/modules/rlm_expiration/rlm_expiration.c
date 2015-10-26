@@ -46,7 +46,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		*      and add our own Reply-Message, saying
 		*      why they're being rejected.
 		*/
-		if (((time_t) check_item->vp_date) <= request->timestamp) {
+		if (((time_t) check_item->vp_date) <= request->timestamp.tv_sec) {
 			fr_pair_value_snprint(date, sizeof(date), check_item, 0);
 			REDEBUG("Account expired at '%s'", date);
 
@@ -65,9 +65,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		vp = fr_pair_find_by_num(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
 		if (!vp) {
 			vp = radius_pair_create(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
-			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
-		} else if (vp->vp_date > ((uint32_t) (((time_t) check_item->vp_date) - request->timestamp))) {
-			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
+			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp.tv_sec);
+		} else if (vp->vp_date > ((uint32_t) (((time_t) check_item->vp_date) - request->timestamp.tv_sec))) {
+			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp.tv_sec);
 		}
 	} else {
 		return RLM_MODULE_NOOP;
@@ -84,7 +84,7 @@ static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *req
 {
 	time_t now = 0;
 
-	now = (req) ? req->timestamp : time(NULL);
+	now = (req) ? req->timestamp.tv_sec : time(NULL);
 
 	if (now <= ((time_t) check->vp_date))
 		return 0;

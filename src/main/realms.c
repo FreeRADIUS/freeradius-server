@@ -2584,8 +2584,8 @@ home_server_t *home_server_ldb(char const *realmname,
 		 *      Run the trigger once an hour saying that
 		 *      they're all dead.
 		 */
-		if ((pool->time_all_dead + 3600) < request->timestamp) {
-			pool->time_all_dead = request->timestamp;
+		if ((pool->time_all_dead + 3600) < request->timestamp.tv_sec) {
+			pool->time_all_dead = request->timestamp.tv_sec;
 			exec_trigger(request, pool->cs, "home_server_pool.fallback", false);
 		}
 	}

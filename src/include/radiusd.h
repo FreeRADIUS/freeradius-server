@@ -212,7 +212,7 @@ struct rad_request {
 						//!< or request structs that have not been properly initialised.
 #endif
 	unsigned int	       	number; 	//!< Monotonically increasing request number. Reset on server restart.
-	time_t			timestamp;	//!< When the request was received.
+	struct timeval		timestamp;	//!< When we started processing the request.
 
 	request_data_t		*data;		//!< Request metadata.
 

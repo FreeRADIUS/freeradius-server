@@ -254,7 +254,6 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		talloc_free(request);
 		goto unknown;
 	}
-	gettimeofday(&request->packet->timestamp, NULL);
 	request->number = 0;
 	request->priority = listener->type;
 	request->server = client->client_server;
@@ -2572,6 +2571,25 @@ static int listen_bind(rad_listen_t *this)
 			return -1;
 		}
 	}
+
+#ifdef SO_TIMESTAMP
+	{
+		int on = 1;
+
+		/*
+		 *	Enable receive timestamps, these should reflect
+		 *	when the packet was received, not when it was read
+		 *	from the socket.
+		 */
+		DEBUG4("[FD %i] Enabling packet timestamps -- setsockopt(%i, SOL_SOCKET, SO_TIMESTAMP, %i, %zu)",
+		       this->fd, this->fd, on, sizeof(on));
+		if (setsockopt(this->fd, SOL_SOCKET, SO_TIMESTAMP, &on, sizeof(int)) < 0) {
+			close(this->fd);
+			ERROR("Failed enabling socket timestamps: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
+#endif
 
 	/*
 	 *	Bind to a device BEFORE touching IP addresses.

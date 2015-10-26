@@ -395,11 +395,11 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	 *	FIXME: Also do it every N sessions?
 	 */
 	if (conf->session_cache_enable && !conf->session_cache_server &&
-	    ((conf->session_last_flushed + ((int)conf->session_timeout * 1800)) <= request->timestamp)){
+	    ((conf->session_last_flushed + ((int)conf->session_timeout * 1800)) <= request->timestamp.tv_sec)){
 		RDEBUG2("Flushing TLS sessions (of #%ld)", SSL_CTX_sess_number(ssl_ctx));
 
-		SSL_CTX_flush_sessions(ssl_ctx, request->timestamp);
-		conf->session_last_flushed = request->timestamp;
+		SSL_CTX_flush_sessions(ssl_ctx, request->timestamp.tv_sec);
+		conf->session_last_flushed = request->timestamp.tv_sec;
 	}
 
 	new_tls = SSL_new(ssl_ctx);

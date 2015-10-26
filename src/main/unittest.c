@@ -112,7 +112,7 @@ static REQUEST *request_setup(FILE *fp)
 	 */
 	request = request_alloc(NULL);
 	gettimeofday(&now, NULL);
-	request->timestamp = now.tv_sec;
+	request->timestamp = now;
 
 	request->packet = rad_alloc(request, false);
 	if (!request->packet) {
@@ -546,7 +546,7 @@ static bool do_xlats(char const *filename, FILE *fp)
 	 */
 	request = request_alloc(NULL);
 	gettimeofday(&now, NULL);
-	request->timestamp = now.tv_sec;
+	request->timestamp = now;
 
 	request->log.lvl = rad_debug_lvl;
 	request->log.func = vradlog_request;

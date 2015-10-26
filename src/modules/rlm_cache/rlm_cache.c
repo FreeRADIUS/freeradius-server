@@ -222,13 +222,13 @@ static rlm_rcode_t cache_find(rlm_cache_entry_t **out, rlm_cache_t const *inst, 
 	 *	Yes, but it expired, OR the "forget all" epoch has
 	 *	passed.  Delete it, and pretend it doesn't exist.
 	 */
-	if ((c->expires < request->timestamp) || (c->created < inst->config.epoch)) {
+	if ((c->expires < request->timestamp.tv_sec) || (c->created < inst->config.epoch)) {
 		if (RDEBUG_ENABLED2) {
 			char *p;
 
 			p = fr_asprint(request, (char const *)key, key_len, '"');
 			RDEBUG2("Found entry for \"%s\", but it expired %li seconds ago.  Removing it", p,
-				request->timestamp - c->expires);
+				request->timestamp.tv_sec - c->expires);
 			talloc_free(p);
 		}
 
@@ -310,7 +310,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 
 	c->key = talloc_memdup(c, key, key_len);
 	c->key_len = key_len;
-	c->created = c->expires = request->timestamp;
+	c->created = c->expires = request->timestamp.tv_sec;
 	c->expires += ttl;
 
 	last = &c->maps;
@@ -703,7 +703,7 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	if (set_ttl && (exists == 1)) {
 		rad_assert(c);
 
-		c->expires = request->timestamp + ttl;
+		c->expires = request->timestamp.tv_sec + ttl;
 
 		switch (cache_set_ttl(inst, request, &handle, c)) {
 		case RLM_MODULE_FAIL:

@@ -102,7 +102,7 @@ REQUEST *request_alloc(TALLOC_CTX *ctx)
 	request->config = NULL;
 	request->username = NULL;
 	request->password = NULL;
-	request->timestamp = time(NULL);
+	gettimeofday(&request->timestamp, NULL);
 	request->log.lvl = rad_debug_lvl; /* Default to global debug level */
 
 	request->module = "";

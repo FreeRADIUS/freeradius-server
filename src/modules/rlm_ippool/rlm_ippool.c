@@ -607,8 +607,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 				 * or an entry that has expired
 				 */
 				if (entry.active == 0 || (entry.timestamp && ((entry.timeout &&
-				request->timestamp >= (entry.timestamp + entry.timeout)) ||
-				(inst->max_timeout && request->timestamp >= (entry.timestamp + inst->max_timeout))))){
+				request->timestamp.tv_sec >= (entry.timestamp + entry.timeout)) ||
+				(inst->max_timeout && request->timestamp.tv_sec >= (entry.timestamp + inst->max_timeout))))){
 					datum tmp;
 
 					tmp.dptr = (char *) &entry.ipaddr;
@@ -713,7 +713,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 		}
 		free(key_datum.dptr);
 		entry.active = 1;
-		entry.timestamp = request->timestamp;
+		entry.timestamp = request->timestamp.tv_sec;
 		if ((vp = fr_pair_find_by_num(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY)) != NULL) {
 			entry.timeout = (time_t) vp->vp_integer;
 #ifdef WITH_DHCP

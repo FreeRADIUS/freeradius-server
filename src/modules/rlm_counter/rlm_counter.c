@@ -331,12 +331,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 *	Before doing anything else, see if we have to reset
 	 *	the counters.
 	 */
-	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
+	if (inst->reset_time && (inst->reset_time <= request->timestamp.tv_sec)) {
 		rlm_rcode_t rcode;
 
 		RDEBUG2("Time to reset the database");
 		inst->last_reset = inst->reset_time;
-		find_next_reset(inst, request->timestamp);
+		find_next_reset(inst, request->timestamp.tv_sec);
 
 		pthread_mutex_lock(&inst->mutex);
 		rcode = reset_db(inst);
@@ -346,12 +346,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	}
 
 	/*
-	 * Check if request->timestamp - {Acct-Delay-Time} < last_reset
+	 * Check if request->timestamp.tv_sec - {Acct-Delay-Time} < last_reset
 	 * If yes reject the packet since it is very old
 	 */
 	key_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 	if (key_vp != NULL) {
-		if ((key_vp->vp_integer != 0) && (request->timestamp - (time_t) key_vp->vp_integer) < inst->last_reset) {
+		if ((key_vp->vp_integer != 0) && (request->timestamp.tv_sec - (time_t) key_vp->vp_integer) < inst->last_reset) {
 			RDEBUG2("This packet is too old. Returning NOOP");
 			return RLM_MODULE_NOOP;
 		}
@@ -417,8 +417,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		 *	then we will only count one hour (the one in the new
 		 *	day). That is the right thing
 		 */
-		if (request->timestamp >= inst->last_reset) {
-			diff = request->timestamp - inst->last_reset;
+		if (request->timestamp.tv_sec >= inst->last_reset) {
+			diff = request->timestamp.tv_sec - inst->last_reset;
 			counter.user_counter += (limit->vp_integer64 < (uint64_t)diff) ?
 				limit->vp_integer64 : (uint64_t)diff;
 		}
@@ -468,9 +468,9 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	Before doing anything else, see if we have to reset
 	 *	the counters.
 	 */
-	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
+	if (inst->reset_time && (inst->reset_time <= request->timestamp.tv_sec)) {
 		inst->last_reset = inst->reset_time;
-		find_next_reset(inst,request->timestamp);
+		find_next_reset(inst,request->timestamp.tv_sec);
 
 		pthread_mutex_lock(&inst->mutex);
 		rcode = reset_db(inst);
@@ -554,8 +554,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 */
 		if (((inst->reply_attr->tmpl_da->vendor == 0) &&
 		     (inst->reply_attr->tmpl_da->attr == PW_SESSION_TIMEOUT)) &&
-		    inst->reset_time && (res >= (uint64_t)(inst->reset_time - request->timestamp))) {
-			uint64_t to_reset = inst->reset_time - request->timestamp;
+		    inst->reset_time && (res >= (uint64_t)(inst->reset_time - request->timestamp.tv_sec))) {
+			uint64_t to_reset = inst->reset_time - request->timestamp.tv_sec;
 
 			RDEBUG2("Time remaining (%" PRIu64 "s) is greater than time to reset (%" PRIu64 "s).  "
 				"Adding %" PRIu64 "s to reply value", to_reset, res, to_reset);

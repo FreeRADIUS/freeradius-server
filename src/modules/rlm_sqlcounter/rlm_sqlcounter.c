@@ -403,12 +403,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	 *	Before doing anything else, see if we have to reset
 	 *	the counters.
 	 */
-	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
+	if (inst->reset_time && (inst->reset_time <= request->timestamp.tv_sec)) {
 		/*
 		 *	Re-set the next time and prev_time for this counters range
 		 */
 		inst->last_reset = inst->reset_time;
-		find_next_reset(inst,request->timestamp);
+		find_next_reset(inst,request->timestamp.tv_sec);
 	}
 
 	/*
@@ -491,8 +491,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 */
 		if (((inst->reply_attr->tmpl_da->vendor == 0) &&
 		     (inst->reply_attr->tmpl_da->attr == PW_SESSION_TIMEOUT)) &&
-		    inst->reset_time && (res >= (uint64_t)(inst->reset_time - request->timestamp))) {
-			uint64_t to_reset = inst->reset_time - request->timestamp;
+		    inst->reset_time && (res >= (uint64_t)(inst->reset_time - request->timestamp.tv_sec))) {
+			uint64_t to_reset = inst->reset_time - request->timestamp.tv_sec;
 
 			RDEBUG2("Time remaining (%" PRIu64 "s) is greater than time to reset (%" PRIu64 "s).  "
 				"Adding %" PRIu64 "s to reply value", to_reset, res, to_reset);

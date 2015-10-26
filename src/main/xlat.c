@@ -2152,7 +2152,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		str = talloc_array(ctx, char, freespace); /* @todo do better allocation */
 		p = node->fmt;
 
-		when = request->timestamp;
+		when = request->timestamp.tv_sec;
 		if (request->packet) {
 			when = request->packet->timestamp.tv_sec;
 		}

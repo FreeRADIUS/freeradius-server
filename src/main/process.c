@@ -736,7 +736,7 @@ static void request_done(REQUEST *request, int action)
 	if (request->packet) {
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
-			(unsigned int) (request->timestamp - fr_start_time));
+			(unsigned int) (request->timestamp.tv_sec - fr_start_time));
 	} /* else don't print anything */
 
 	ASSERT_MASTER;
@@ -5501,7 +5501,7 @@ static int request_delete_cb(UNUSED void *ctx, void *data)
 	if (main_config.memory_report) {
 		RDEBUG2("Cleaning up request packet ID %u with timestamp +%d",
 			request->packet->id,
-			(unsigned int) (request->timestamp - fr_start_time));
+			(unsigned int) (request->timestamp.tv_sec - fr_start_time));
 	}
 
 #ifdef WITH_COA

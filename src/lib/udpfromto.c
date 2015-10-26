@@ -176,6 +176,8 @@ int udpfromto_init(int s)
  * @param[in] tolen Length of the structure pointed to by to.
  * @param[out] if_index The interface which received the datagram (may be NULL).  Will only be
  *	populated if to is not NULL.
+ * @param[out] when the packet was received (may be NULL).  If SO_TIMESTAMP is not available
+ *	or SO_TIMESTAMP Was not set on the socket, gettimeofday will be used instead.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -183,7 +185,7 @@ int udpfromto_init(int s)
 int recvfromto(int s, void *buf, size_t len, int flags,
 	       struct sockaddr *from, socklen_t *fromlen,
 	       struct sockaddr *to, socklen_t *tolen,
-	       int *if_index)
+	       int *if_index, struct timeval *when)
 {
 	struct msghdr msgh;
 	struct cmsghdr *cmsg;
@@ -204,7 +206,10 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	/*
 	 *	Catch the case where the caller passes invalid arguments.
 	 */
-	if (!to || !tolen) return recvfrom(s, buf, len, flags, from, fromlen);
+	if (!to || !tolen) {
+		if (when) gettimeofday(when, NULL);
+		return recvfrom(s, buf, len, flags, from, fromlen);
+	}
 
 	/*
 	 *	Clang analyzer doesn't see that getsockname initialises
@@ -288,6 +293,10 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 	if (fromlen) *fromlen = msgh.msg_namelen;
 
 	if (if_index) *if_index = 0;
+	if (when) {
+		when->tv_sec = 0;
+		when->tv_usec = 0;
+	}
 
 	/* Process auxiliary received data in msgh */
 	for (cmsg = CMSG_FIRSTHDR(&msgh);
@@ -326,7 +335,16 @@ int recvfromto(int s, void *buf, size_t len, int flags,
 			break;
 		}
 #endif
+
+#ifdef SO_TIMESTAMP
+		if (when && (cmsg->cmsg_level == SOL_IP) &&
+		    (cmsg->cmsg_type == SO_TIMESTAMP)) {
+			memcpy(when, CMSG_DATA(cmsg), sizeof(*when));
+		}
+#endif
 	}
+
+	if (when && !when->tv_sec) gettimeofday(when, NULL);
 
 	return err;
 }
@@ -521,6 +539,7 @@ int main(int argc, char **argv)
 	uint16_t port = DEF_PORT;
 	int n, server_socket, client_socket, fl, tl, pid;
 	int if_index;
+	struct timeval when;
 
 	if (argc > 1) destip = argv[1];
 	if (argc > 2) port = atoi(argv[2]);
@@ -559,7 +578,7 @@ int main(int argc, char **argv)
 	printf("server: waiting for packets on INADDR_ANY:%d\n", port);
 	if ((n = recvfromto(server_socket, buf, sizeof(buf), 0,
 	    (struct sockaddr *)&from, &fl,
-	    (struct sockaddr *)&to, &tl, &if_index)) < 0) {
+	    (struct sockaddr *)&to, &tl, &if_index, &when)) < 0) {
 		perror("server: recvfromto");
 		waitpid(pid, NULL, WNOHANG);
 		return 0;

@@ -473,6 +473,14 @@ void version_init_features(CONF_SECTION *cs)
 				false
 #endif
 				);
+
+	version_add_feature(cs, "socket-timestamps",
+#ifdef SO_TIMESTAMP
+				true
+#else
+				false
+#endif
+				);
 }
 
 /** Initialise core version flags
