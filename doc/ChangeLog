@@ -1,6 +1,18 @@
 FreeRADIUS 3.1.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	Feature improvements
-	*
+	* For upgrade instructions, see raddb/README.rst
+	* New "map" function in unlang.  See "man unlang".
+	* The EAP module tracks certificates in a different
+	  list.  See the upgrade instructions.
+	* The EAP module produces much better messages
+	  when using TLS.
+	* The MySQL and Postgresql modules now call the
+	  database string escape functions, instead of
+	  using "safe_characters".
+	* radmin / raddebug can now stream debug output
+	  directly to radmin, instead of using an intermediary
+	  file.
 
 	Bug fixes
-	*
+	* Attribute names in unlang MUST be prefixed with &
+	  This fixes a host of ambiguities when parsing.
