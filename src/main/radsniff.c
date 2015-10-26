@@ -676,6 +676,11 @@ static void rs_stats_process(void *ctx)
 
 	stats->intervals++;
 
+	/*
+	 *	Clear and reset the screen
+	 */
+	INFO("\x1b[0;0f");
+	INFO("\x1b[2J");
 	INFO("######### Stats Iteration %i #########", stats->intervals);
 
 	/*
@@ -722,7 +727,7 @@ static void rs_stats_process(void *ctx)
 	}
 #endif
 
-	clear:
+clear:
 	/*
 	 *	Rinse and repeat...
 	 */
