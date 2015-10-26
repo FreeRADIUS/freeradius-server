@@ -671,14 +671,15 @@ void vradlog_request(log_type_t type, log_lvl_t lvl, REQUEST *request, char cons
 #  ifdef HAVE_FOPENCOOKIE
 				cookie_io_functions_t io;
 
-				io.read = io.seek = io.close = NULL;
+				/*
+				 *	These must be set separately as they have different prototypes.
+				 */
+				io.read = NULL;
+				io.seek = NULL;
+				io.close = NULL;
 				io.write = request->log.output->cookie_write;
 
-				fp = FILE *fopencookie(void *cookie, const char *mode,
-						       cookie_io_functions_t io_funcs);
-
-				fp = funopen(request->log.output->cookie,
-					     NULL, request->log.output->cookie_write, NULL, NULL);
+				fp = fopencookie(request->log.output->cookie, "w", io);
 #  else
 				fp = funopen(request->log.output->cookie,
 					     NULL, request->log.output->cookie_write, NULL, NULL);
