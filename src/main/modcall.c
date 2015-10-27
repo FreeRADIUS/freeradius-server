@@ -2863,7 +2863,13 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 			rad_assert(parent != NULL);
 			p = mod_callabletogroup(parent);
 
-			rad_assert(p->tail != NULL);
+			rad_assert(p != NULL);
+
+			if (!p->tail) {
+				cf_log_err_cs(g->cs, "Invalid location for 'else'.  There is no preceding 'if' statement");
+				talloc_free(g);
+				return NULL;
+			}
 
 			f = mod_callabletogroup(p->tail);
 			if ((f->mc.type != MOD_IF) &&
