@@ -122,6 +122,10 @@ static FR_NAME_NUMBER mode_names[] = {
 	{ NULL, 0 }
 };
 
+static char debug_log_file_buffer[1024];
+extern fr_cond_t *debug_condition;
+extern fr_log_t debug_log;
+
 #ifndef HAVE_GETPEEREID
 static int getpeereid(int s, uid_t *euid, gid_t *egid)
 {
@@ -1282,10 +1286,6 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 
 	return CMD_OK;
 }
-
-static char debug_log_file_buffer[1024];
-extern fr_cond_t *debug_condition;
-extern fr_log_t debug_log;
 
 #if defined(HAVE_FOPENCOOKIE) || defined (HAVE_FUNOPEN)
 static int command_debug_socket(rad_listen_t *listener, int argc, char *argv[])
