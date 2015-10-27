@@ -702,8 +702,6 @@ static void command_close_socket(rad_listen_t *this)
 	radius_update_listener(this);
 }
 
-extern fr_log_t		debug_log;
-
 /*
  *	Turn off all debugging.  But don't touch the debug condition.
  */
