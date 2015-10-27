@@ -4547,11 +4547,11 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx)
  *	This function is called periodically to see if this detail
  *	file is available for reading.
  */
-static void event_poll_detail(void *ctx)
+static void event_poll_detail(void *ctx, struct timeval *now)
 {
 	int delay;
 	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
-	struct timeval when, now;
+	struct timeval when;
 	listen_detail_t *detail = this->data;
 
 	rad_assert(this->type == RAD_LISTEN_DETAIL);
@@ -4559,8 +4559,8 @@ static void event_poll_detail(void *ctx)
  redo:
 	event_socket_handler(el, this->fd, this);
 
-	fr_event_now(el, &now);
-	when = now;
+	fr_event_now(el, now);
+	when = *now;
 
 	/*
 	 *	Backdoor API to get the delay until the next poll
@@ -4742,11 +4742,16 @@ static int event_new_fd(rad_listen_t *this)
 			this->status = RAD_LISTEN_STATUS_KNOWN;
 
 #ifndef WITH_DETAIL_THREAD
-			/*
-			 *	Set up the first poll interval.
-			 */
-			event_poll_detail(this);
-			return 1;
+			{
+				struct timeval now;
+
+				gettimeofday(&now, NULL);
+				/*
+				 *	Set up the first poll interval.
+				 */
+				event_poll_detail(this, &now);
+				return 1;
+			}
 #else
 			break;	/* add the FD to the list */
 #endif
@@ -5075,6 +5080,8 @@ static void handle_signal_self(int flag)
 		for (this = main_config.listen;
 		     this != NULL;
 		     this = this->next) {
+		     	struct timeval now;
+
 			if (this->type != RAD_LISTEN_DETAIL) continue;
 
 			/*
@@ -5083,10 +5090,11 @@ static void handle_signal_self(int flag)
 			 */
 			if (!this->decode(this, NULL)) continue;
 
+			gettimeofday(&now, NULL);
 			/*
 			 *	Go service the interrupt.
 			 */
-			event_poll_detail(this);
+			event_poll_detail(this, &now);
 		}
 	}
 #endif
