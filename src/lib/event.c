@@ -302,7 +302,7 @@ int fr_event_run(fr_event_list_t *el, struct timeval *when)
 	 */
 	fr_event_delete(el, ev->parent);
 
-	callback(ctx);
+	callback(ctx, when);
 	return 1;
 }
 

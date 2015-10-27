@@ -602,7 +602,7 @@ int radius_event_start(CONF_SECTION *cs, bool spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);
 void radius_update_listener(rad_listen_t *listener);
-void revive_home_server(void *ctx);
+void revive_home_server(void *ctx, struct timeval *now);
 void mark_home_server_dead(home_server_t *home, struct timeval *when);
 
 /* evaluate.c */

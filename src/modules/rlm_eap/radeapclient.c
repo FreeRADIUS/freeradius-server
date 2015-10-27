@@ -1696,7 +1696,7 @@ packet_done:
 
 /** Event callback: packet timeout.
  */
-static void rc_evcb_packet_timeout(void *ctx)
+static void rc_evcb_packet_timeout(void *ctx, UNUSED struct timeval *now)
 {
 	rc_transaction_t *trans = ctx;
 	if (!trans || !trans->packet) return;
@@ -1732,7 +1732,7 @@ static void rc_evprep_packet_timeout(rc_transaction_t *trans)
 
 /** Event callback: report progress statistics.
  */
-static void rc_evcb_progress_stat(void UNUSED *ctx)
+static void rc_evcb_progress_stat(void UNUSED *ctx, UNUSED struct timeval *now)
 {
 	/* print the progress statistics */
 	rc_do_progress_stat();

@@ -118,7 +118,7 @@ static NEVER_RETURNS void _rad_panic(char const *file, unsigned int line, char c
  */
 #define STATE_MACHINE_DECL(_x) static void _x(REQUEST *request, int action)
 
-static void request_timer(void *ctx);
+static void request_timer(void *ctx, struct timeval *now);
 
 /** Insert #REQUEST back into the event heap, to continue executing at a future time
  *
@@ -460,7 +460,7 @@ static int request_init_delay(REQUEST *request)
 /*
  *	Callback for ALL timer events related to the request.
  */
-static void request_timer(void *ctx)
+static void request_timer(void *ctx, UNUSED struct timeval *now)
 {
 	REQUEST *request = talloc_get_type_abort(ctx, REQUEST);
 	int action;
@@ -1857,11 +1857,11 @@ static REQUEST *request_setup(TALLOC_CTX *ctx, rad_listen_t *listener, RADIUS_PA
 /*
  *	Timer function for all TCP sockets.
  */
-static void tcp_socket_timer(void *ctx)
+static void tcp_socket_timer(void *ctx, struct timeval *now)
 {
 	rad_listen_t *listener = talloc_get_type_abort(ctx, rad_listen_t);
 	listen_socket_t *sock = listener->data;
-	struct timeval end, now;
+	struct timeval end;
 	char buffer[256];
 	fr_socket_limit_t *limit;
 
@@ -1869,7 +1869,7 @@ static void tcp_socket_timer(void *ctx)
 
 	if (listener->status != RAD_LISTEN_STATUS_KNOWN) return;
 
-	fr_event_now(el, &now);
+	fr_event_now(el, now);
 
 	switch (listener->type) {
 #ifdef WITH_PROXY
@@ -1896,7 +1896,7 @@ static void tcp_socket_timer(void *ctx)
 		end.tv_sec = sock->opened + limit->lifetime;
 		end.tv_usec = 0;
 
-		if (timercmp(&end, &now, <=)) {
+		if (timercmp(&end, now, <=)) {
 			listener->print(listener, buffer, sizeof(buffer));
 			DEBUG("Reached maximum lifetime on socket %s", buffer);
 
@@ -1928,7 +1928,7 @@ static void tcp_socket_timer(void *ctx)
 			return;
 		}
 	} else {
-		end = now;
+		end = *now;
 		end.tv_sec += 3600;
 	}
 
@@ -1942,7 +1942,7 @@ static void tcp_socket_timer(void *ctx)
 		idle.tv_sec = sock->last_packet + limit->idle_timeout;
 		idle.tv_usec = 0;
 
-		if (timercmp(&idle, &now, <=)) {
+		if (timercmp(&idle, now, <=)) {
 			listener->print(listener, buffer, sizeof(buffer));
 			DEBUG("Reached idle timeout on socket %s", buffer);
 			goto do_close;
@@ -3381,12 +3381,12 @@ static void request_ping(REQUEST *request, int action)
  *	Called from start of zombie period, OR after control socket
  *	marks the home server dead.
  */
-static void ping_home_server(void *ctx)
+static void ping_home_server(void *ctx, struct timeval *now)
 {
 	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 	REQUEST *request;
 	VALUE_PAIR *vp;
-	struct timeval when, now;
+	struct timeval when;
 
 	if ((home->state == HOME_STATE_ALIVE) ||
 #ifdef WITH_TCP
@@ -3396,7 +3396,6 @@ static void ping_home_server(void *ctx)
 		return;
 	}
 
-	gettimeofday(&now, NULL);
 	ASSERT_MASTER;
 
 	/*
@@ -3406,9 +3405,9 @@ static void ping_home_server(void *ctx)
 		when = home->zombie_period_start;
 		when.tv_sec += home->zombie_period;
 
-		if (timercmp(&when, &now, <)) {
+		if (timercmp(&when, now, <)) {
 			DEBUG("PING: Zombie period is over for home server %s", home->log_name);
-			mark_home_server_dead(home, &now);
+			mark_home_server_dead(home, now);
 		}
 	}
 
@@ -3435,7 +3434,7 @@ static void ping_home_server(void *ctx)
 	 *	packets.  If it responds to one of the normal packets,
 	 *	it will be marked "alive".
 	 */
-	if ((home->last_packet_sent + home->ping_timeout) >= now.tv_sec) goto reset_timer;
+	if ((home->last_packet_sent + home->ping_timeout) >= now->tv_sec) goto reset_timer;
 
 	request = request_alloc(NULL);
 	if (!request) return;
@@ -3475,7 +3474,7 @@ static void ping_home_server(void *ctx)
 			 "Acct-Session-Id", "00000000", T_OP_SET);
 		vp = fr_pair_make(request->proxy, &request->proxy->vps,
 			      "Event-Timestamp", "0", T_OP_SET);
-		vp->vp_date = now.tv_sec;
+		vp->vp_date = now->tv_sec;
 #else
 		rad_assert("Internal sanity check failed");
 #endif
@@ -3523,7 +3522,7 @@ static void ping_home_server(void *ctx)
 	/*
 	 *	Set up the timer callback.
 	 */
-	when = now;
+	when = *now;
 	when.tv_sec += home->ping_timeout;
 
 	DEBUG("PING: Waiting %u seconds for response to ping",
@@ -3541,7 +3540,7 @@ reset_timer:
 	 *	Add +/- 2s of jitter, as suggested in RFC 3539
 	 *	and in the Issues and Fixes draft.
 	 */
-	home->when = now;
+	home->when = *now;
 	home->when.tv_sec += home->ping_interval;
 
 	add_jitter(&home->when);
@@ -3618,11 +3617,11 @@ static void mark_home_server_zombie(home_server_t *home, struct timeval *now, st
 			buffer, sizeof(buffer)),
 	      home->port, (int) response_window->tv_sec, (int) response_window->tv_usec);
 
-	ping_home_server(home);
+	ping_home_server(home, now);
 }
 
 
-void revive_home_server(void *ctx)
+void revive_home_server(void *ctx, UNUSED struct timeval *now)
 {
 	home_server_t *home = talloc_get_type_abort(ctx, home_server_t);
 	char buffer[INET6_ADDRSTRLEN];
@@ -3675,7 +3674,10 @@ void mark_home_server_dead(home_server_t *home, struct timeval *when)
 		 *	pinging when it was marked "zombie".
 		 */
 		if (previous_state == HOME_STATE_ALIVE) {
-			ping_home_server(home);
+			struct timeval now;
+
+			gettimeofday(&now, NULL);
+			ping_home_server(home, &now);
 		} else {
 			DEBUG("PING: Already pinging home server %s", home->log_name);
 		}
@@ -4623,7 +4625,7 @@ static void event_status(struct timeval *wake)
 }
 
 #ifdef WITH_TCP
-static void listener_free_cb(void *ctx)
+static void listener_free_cb(void *ctx, UNUSED struct timeval *now)
 {
 	rad_listen_t *this = talloc_get_type_abort(ctx, rad_listen_t);
 	char buffer[1024];

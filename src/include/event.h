@@ -33,7 +33,7 @@ extern "C" {
 typedef struct fr_event_list_t fr_event_list_t;
 typedef struct fr_event_t fr_event_t;
 
-typedef	void (*fr_event_callback_t)(void *);
+typedef	void (*fr_event_callback_t)(void *, struct timeval *now);
 typedef	void (*fr_event_status_t)(struct timeval *);
 typedef void (*fr_event_fd_handler_t)(fr_event_list_t *el, int sock, void *ctx);
 

@@ -230,7 +230,7 @@ typedef struct bfd_socket_t {
 static int bfd_start_packets(bfd_state_t *session);
 static int bfd_start_control(bfd_state_t *session);
 static int bfd_stop_control(bfd_state_t *session);
-static void bfd_detection_timeout(void *ctx);
+static void bfd_detection_timeout(void *ctx, struct timeval *now);
 static int bfd_process(bfd_state_t *session, bfd_packet_t *bfd);
 
 static fr_event_list_t *el = NULL; /* don't ask */
@@ -857,7 +857,7 @@ static void bfd_sign(bfd_state_t *session, bfd_packet_t *bfd)
 /*
  *	Send a packet.
  */
-static void bfd_send_packet(void *ctx)
+static void bfd_send_packet(void *ctx, UNUSED struct timeval *now)
 {
 	bfd_state_t *session = ctx;
 	bfd_packet_t bfd;
@@ -1087,10 +1087,9 @@ static void bfd_set_desired_min_tx_interval(bfd_state_t *session,
 }
 
 
-static void bfd_detection_timeout(void *ctx)
+static void bfd_detection_timeout(void *ctx, struct timeval *now)
 {
 	bfd_state_t *session = ctx;
-	struct timeval now;
 
 	DEBUG("BFD %d Timeout state %s ****** ", session->number,
 	      bfd_state[session->session_state]);
@@ -1123,9 +1122,7 @@ static void bfd_detection_timeout(void *ctx)
 
 	session->detection_timeouts++;
 
-	gettimeofday(&now, NULL);
-
-	bfd_set_timeout(session, &now);
+	bfd_set_timeout(session, now);
 }
 
 

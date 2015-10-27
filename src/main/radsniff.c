@@ -663,16 +663,13 @@ static void rs_stats_process_counters(rs_latency_t *stats)
 /** Process stats for a single interval
  *
  */
-static void rs_stats_process(void *ctx)
+static void rs_stats_process(void *ctx, struct timeval *now)
 {
 	size_t i;
 	size_t rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
 	fr_pcap_t		*in_p;
 	rs_update_t		*this = ctx;
 	rs_stats_t		*stats = this->stats;
-	struct timeval		now;
-
-	gettimeofday(&now, NULL);
 
 	stats->intervals++;
 
@@ -686,20 +683,20 @@ static void rs_stats_process(void *ctx)
 	/*
 	 *	Verify that none of the pcap handles have dropped packets.
 	 */
-	INFO("Interface capture rate:");
+	if (this->in) INFO("Interface capture rate:");
 	for (in_p = this->in;
 	     in_p;
 	     in_p = in_p->next) {
 		if (rs_check_pcap_drop(in_p, conf->stats.interval) < 0) {
 			ERROR("Muting stats for the next %i milliseconds", conf->stats.timeout);
 
-			rs_tv_add_ms(&now, conf->stats.timeout, &stats->quiet);
+			rs_tv_add_ms(now, conf->stats.timeout, &stats->quiet);
 			goto clear;
 		}
 	}
 
 	if ((stats->quiet.tv_sec + (stats->quiet.tv_usec / 1000000.0)) -
-	    (now.tv_sec + (now.tv_usec / 1000000.0)) > 0) {
+	    (now->tv_sec + (now->tv_usec / 1000000.0)) > 0) {
 		INFO("Stats muted because of warmup, or previous error");
 		goto clear;
 	}
@@ -723,7 +720,7 @@ static void rs_stats_process(void *ctx)
 	 *	initialised earlier.
 	 */
 	if ((conf->stats.out == RS_STATS_OUT_COLLECTD) && conf->stats.handle) {
-		rs_stats_collectd_do_stats(conf, conf->stats.tmpl, &now);
+		rs_stats_collectd_do_stats(conf, conf->stats.tmpl, now);
 	}
 #endif
 
@@ -739,10 +736,10 @@ clear:
 	{
 		static fr_event_t *event;
 
-		now.tv_sec += conf->stats.interval;
-		now.tv_usec = 0;
+		now->tv_sec += conf->stats.interval;
+		now->tv_usec = 0;
 
-		if (!fr_event_insert(this->list, rs_stats_process, ctx, &now, &event)) {
+		if (!fr_event_insert(this->list, rs_stats_process, ctx, now, &event)) {
 			ERROR("Failed inserting stats interval event");
 		}
 	}
@@ -767,6 +764,37 @@ static void rs_stats_update_latency(rs_latency_t *stats, struct timeval *latency
 	}
 	stats->interval.latency_total += lint;
 
+}
+
+static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
+				      fr_pcap_t *in, struct timeval *now, bool live)
+{
+	static fr_event_t	*event;
+	static rs_update_t	update;
+
+	memset(&update, 0, sizeof(update));
+
+	update.list = el;
+	update.stats = stats;
+	update.in = in;
+
+	/*
+	 *	Set the first time we print stats
+	 */
+	now->tv_sec += conf->stats.interval;
+	now->tv_usec = 0;
+
+	if (live) {
+		INFO("Muting stats for the next %i milliseconds (warmup)", conf->stats.timeout);
+		rs_tv_add_ms(now, conf->stats.timeout, &(stats->quiet));
+	}
+
+	if (!fr_event_insert(events, rs_stats_process, (void *) &update, now, &event)) {
+		ERROR("Failed inserting stats event");
+		return -1;
+	}
+
+	return 0;
 }
 
 /** Copy a subset of attributes from one list into the other
@@ -904,7 +932,7 @@ static void rs_packet_cleanup(rs_request_t *request)
 	talloc_free(request);
 }
 
-static void _rs_event(void *ctx)
+static void _rs_event(void *ctx, UNUSED struct timeval *now)
 {
 	rs_request_t *request = talloc_get_type_abort(ctx, rs_request_t);
 	request->event = NULL;
@@ -1593,6 +1621,8 @@ static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 	 *	Consume entire capture, interleaving not currently possible
 	 */
 	if ((event->in->type == PCAP_FILE_IN) || (event->in->type == PCAP_STDIO_IN)) {
+		bool stats_started = false;
+
 		while (!fr_event_loop_exiting(el)) {
 			struct timeval now;
 
@@ -1615,6 +1645,15 @@ static void rs_got_packet(fr_event_list_t *el, int fd, void *ctx)
 			if (ret < 0) {
 				ERROR("Error requesting next packet, got (%i): %s", ret, pcap_geterr(handle));
 				return;
+			}
+
+			/*
+			 *	Insert the stats processor with the timestamp
+			 *	of the first packet in the trace.
+			 */
+			if (conf->stats.interval && !stats_started) {
+				rs_install_stats_processor(event->stats, el, NULL, &header->ts, false);
+				stats_started = true;
 			}
 
 			do {
@@ -1805,11 +1844,11 @@ static void _unmark_link(void *request)
 /** Re-open the collectd socket
  *
  */
-static void rs_collectd_reopen(void *ctx)
+static void rs_collectd_reopen(void *ctx, struct timeval *now)
 {
 	fr_event_list_t *list = ctx;
 	static fr_event_t *event;
-	struct timeval now, when;
+	struct timeval when;
 
 	if (rs_stats_collectd_open(conf) == 0) {
 		DEBUG2("Stats output socket (re)opened");
@@ -1818,8 +1857,7 @@ static void rs_collectd_reopen(void *ctx)
 
 	ERROR("Will attempt to re-establish connection in %i ms", RS_SOCKET_REOPEN_DELAY);
 
-	gettimeofday(&now, NULL);
-	rs_tv_add_ms(&now, RS_SOCKET_REOPEN_DELAY, &when);
+	rs_tv_add_ms(now, RS_SOCKET_REOPEN_DELAY, &when);
 	if (!fr_event_insert(list, rs_collectd_reopen, list, &when, &event)) {
 		ERROR("Failed inserting re-open event");
 		RS_ASSERT(0);
@@ -1866,7 +1904,12 @@ fr_event_list_t *list, int fd, UNUSED void *ctx)
 	switch (sig) {
 #ifdef HAVE_COLLECTDC_H
 	case SIGPIPE:
-		rs_collectd_reopen(list);
+	{
+		struct timeval now;
+
+		gettimeofday(&now, NULL);
+		rs_collectd_reopen(list, &now);
+	}
 		break;
 #endif
 
@@ -1947,7 +1990,7 @@ int main(int argc, char *argv[])
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
 
-	rs_stats_t stats;
+	rs_stats_t *stats;
 
 	fr_debug_lvl = 1;
 	fr_log_fp = stdout;
@@ -1966,6 +2009,8 @@ int main(int argc, char *argv[])
 
 	conf = talloc_zero(NULL, rs_t);
 	RS_ASSERT(conf);
+
+	stats = talloc_zero(conf, rs_stats_t);
 
 	/*
 	 *  We don't really want probes taking down machines
@@ -2469,7 +2514,7 @@ int main(int argc, char *argv[])
 
 		for (i = 0; i < (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes)); i++) {
 			tmpl = rs_stats_collectd_init_latency(conf, next, conf, "exchanged",
-							      &stats.exchange[rs_useful_codes[i]],
+							      &(stats->exchange[rs_useful_codes[i]]),
 							      rs_useful_codes[i]);
 			if (!tmpl) {
 				ERROR("Error allocating memory for stats template");
@@ -2563,12 +2608,8 @@ int main(int argc, char *argv[])
 	 */
 	 {
 		struct timeval now;
-		rs_update_t update;
 
 		char *buff;
-
-		memset(&stats, 0, sizeof(stats));
-		memset(&update, 0, sizeof(update));
 
 		events = fr_event_list_create(conf, _rs_event_status);
 		if (!events) {
@@ -2601,7 +2642,7 @@ int main(int argc, char *argv[])
 			event->list = events;
 			event->in = in_p;
 			event->out = out;
-			event->stats = &stats;
+			event->stats = stats;
 
 			if (!fr_event_fd_insert(events, 0, in_p->fd, rs_got_packet, event)) {
 				ERROR("Failed inserting file descriptor");
@@ -2611,28 +2652,13 @@ int main(int argc, char *argv[])
 
 		buff = fr_pcap_device_names(conf, in, ' ');
 		DEBUG("Sniffing on (%s)", buff);
-		talloc_free(buff);
-
-		gettimeofday(&now, NULL);
 
 		/*
 		 *  Insert our stats processor
 		 */
-		if (conf->stats.interval) {
-			static fr_event_t *event;
-
-			update.list = events;
-			update.stats = &stats;
-			update.in = in;
-
-			now.tv_sec += conf->stats.interval;
-			now.tv_usec = 0;
-			if (!fr_event_insert(events, rs_stats_process, (void *) &update, &now, &event)) {
-				ERROR("Failed inserting stats event");
-			}
-
-			INFO("Muting stats for the next %i milliseconds (warmup)", conf->stats.timeout);
-			rs_tv_add_ms(&now, conf->stats.timeout, &stats.quiet);
+		if (conf->stats.interval && conf->from_dev) {
+			gettimeofday(&now, NULL);
+			rs_install_stats_processor(stats, events, in, &now, false);
 		}
 	}
 
