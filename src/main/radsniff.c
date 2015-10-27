@@ -923,10 +923,12 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 		update.body = rs_stats_print_csv;
 		break;
 
+#ifdef HAVE_COLLECTDC_H
 	case RS_STATS_OUT_COLLECTD:
 		update.head = NULL;
 		update.body = NULL;
 		break;
+#endif
 	}
 	/*
 	 *	Set the first time we print stats
