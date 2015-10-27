@@ -12,6 +12,12 @@ FreeRADIUS 3.1.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* radmin / raddebug can now stream debug output
 	  directly to radmin, instead of using an intermediary
 	  file.
+	* radsniff stats (-W) now operates on PCAP files too.
+	* radsniff stats can be printed in CSV format.
+	* Improved internal state API, to simplify multiround
+	  authentication.
+	* ipaddr = * 'just works' for most DHCP configurations.
+	* Redis cluster support for all Redis modules.
 
 	Bug fixes
 	* Attribute names in unlang MUST be prefixed with &
