@@ -12,6 +12,7 @@ FreeRADIUS 3.1.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	* radmin / raddebug can now stream debug output
 	  directly to radmin, instead of using an intermediary
 	  file.
+	* Dropped support for -i and -p flags in radiusd
 
 	Bug fixes
 	* Attribute names in unlang MUST be prefixed with &
