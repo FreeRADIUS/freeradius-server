@@ -79,7 +79,8 @@ typedef enum {
 #ifdef HAVE_COLLECTDC_H
 	RS_STATS_OUT_COLLECTD = 1,
 #endif
-	RS_STATS_OUT_STDIO
+	RS_STATS_OUT_STDIO_FANCY,
+	RS_STATS_OUT_STDIO_CSV
 } stats_out_t;
 
 typedef struct rs rs_t;
@@ -215,16 +216,31 @@ typedef struct rs_event {
 	rs_stats_t		*stats;			//!< Where to write stats.
 } rs_event_t;
 
+typedef struct rs_update rs_update_t;
+
+/** Callback for printing stats header.
+ *
+ */
+typedef void (*rs_stats_print_header_cb_t)(rs_update_t *this);
+
+/** Callback for printing stats values.
+ *
+ */
+typedef void (*rs_stats_print_cb_t)(rs_update_t *this, rs_stats_t *stats, struct timeval *now);
+
+
 /** FD data which gets passed to callbacks
  *
  */
-typedef struct rs_update {
-	fr_event_list_t		*list;			//!< List to insert new event into.
+struct rs_update {
+	bool				done_header;		//!< Have we printed the stats header?
+	fr_event_list_t			*list;			//!< List to insert new event into.
 
-	fr_pcap_t		*in;			//!< Linked list of PCAP handles to check for drops.
-	rs_stats_t		*stats;			//!< Stats to process.
-} rs_update_t;
-
+	fr_pcap_t			*in;			//!< Linked list of PCAP handles to check for drops.
+	rs_stats_t			*stats;			//!< Stats to process.
+	rs_stats_print_header_cb_t	head;			//!< Print header.
+	rs_stats_print_cb_t		body;			//!< Print body.
+};
 
 struct rs {
 	bool			from_file;		//!< Were reading pcap data from files.
@@ -289,6 +305,7 @@ struct rs {
  *
  */
 typedef void (*rs_stats_cb_t)(rs_t *conf, rs_stats_value_tmpl_t *tmpl);
+
 struct rs_stats_value_tmpl {
 	void			*src;			//!< Pointer to source field in struct. Must be set by
 							//!< stats_collectdc_init caller.

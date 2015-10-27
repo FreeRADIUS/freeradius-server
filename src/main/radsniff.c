@@ -684,14 +684,126 @@ static void rs_stats_print_fancy(rs_update_t *this, rs_stats_t *stats, struct ti
 	 *	No further work is required for codes.
 	 */
 	for (i = 0; i < rs_codes_len; i++) {
-		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]]);
-		rs_stats_process_counters(&stats->exchange[rs_useful_codes[i]]);
 		if (fr_debug_lvl > 0) {
 			rs_stats_print_code_fancy(&stats->exchange[rs_useful_codes[i]], rs_useful_codes[i]);
 		}
 	}
 }
 
+static void rs_stats_print_csv_header(rs_update_t *this)
+{
+	fr_pcap_t	*in_p;
+	size_t		rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
+	size_t		i;
+	int		j;
+
+	fprintf(stdout, "\"Iteration\"");
+
+	for (in_p = this->in; in_p; in_p = in_p->next) {
+		fprintf(stdout, ",\"%s PPS\"", in_p->name);
+	}
+
+	for (i = 0; i < rs_codes_len; i++) {
+		char const *name = fr_packet_codes[rs_useful_codes[i]];
+
+		fprintf(stdout,
+			",\"%s received/s\""
+			",\"%s linked/s\""
+			",\"%s unlinked/s\""
+			",\"%s lat high (ms)\""
+			",\"%s lat low (ms)\""
+			",\"%s lat avg (ms)\""
+			",\"%s lat ma (ms)\""
+			",\"%s lost/s\""
+			",\"%s reused/s\"",
+			name,
+			name,
+			name,
+			name,
+			name,
+			name,
+			name,
+			name,
+			name);
+
+		for (j = 0; j <= RS_RETRANSMIT_MAX; j++) {
+			if (j != RS_RETRANSMIT_MAX) {
+				fprintf(stdout, ",\"%s rtx (%i)\"", name, j);
+			} else {
+				fprintf(stdout, ",\"%s rtx (%i+)\"", name, j);
+			}
+		}
+	}
+
+	fprintf(stdout , "\n");
+}
+
+static ssize_t rs_stats_print_code_csv(char *out, size_t outlen, rs_latency_t *stats)
+{
+	size_t	i;
+	char	*p = out, *end = out + outlen;
+
+	p += snprintf(out, outlen, ",%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf,%.3lf",
+		      stats->interval.received,
+		      stats->interval.linked,
+		      stats->interval.unlinked,
+		      stats->interval.latency_high,
+		      stats->interval.latency_low,
+		      stats->interval.latency_average,
+		      stats->latency_smoothed,
+		      stats->interval.lost,
+		      stats->interval.reused);
+	if (p >= end) return -1;
+
+	for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
+		p += snprintf(p, outlen - (p - out), ",%.3lf", stats->interval.rt[i]);
+		if (p >= end) return -1;
+	}
+
+	return p - out;
+}
+
+static void rs_stats_print_csv(rs_update_t *this, rs_stats_t *stats, UNUSED struct timeval *now)
+{
+	char buffer[2048], *p = buffer, *end = buffer + sizeof(buffer);
+	fr_pcap_t	*in_p;
+	size_t		i;
+	size_t		rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
+
+	p += snprintf(buffer, sizeof(buffer) - (p - buffer), "%i", stats->intervals);
+	if (p >= end) {
+	oob:
+		ERROR("Exceeded line buffer size");
+		return;
+	}
+
+	for (in_p = this->in;
+	     in_p;
+	     in_p = in_p->next) {
+		struct pcap_stat pstats;
+
+		if (pcap_stats(in_p->handle, &pstats) != 0) {
+			ERROR("%s failed retrieving pcap stats: %s", in_p->name, pcap_geterr(in_p->handle));
+			return;
+		}
+
+		p += snprintf(p, sizeof(buffer) - (p - buffer), ",%.3lf",
+			      ((double) (pstats.ps_recv - in_p->pstats.ps_recv)) / conf->stats.interval);
+		if (p >= end) goto oob;
+	}
+
+	for (i = 0; i < rs_codes_len; i++) {
+		ssize_t slen;
+
+		slen = rs_stats_print_code_csv(p, sizeof(buffer) - (p - buffer), &stats->exchange[rs_useful_codes[i]]);
+		if (slen < 0) goto oob;
+
+		p += (size_t)slen;
+		if (p >= end) goto oob;
+	}
+
+	fprintf(stdout , "%s\n", buffer);
+}
 
 /** Process stats for a single interval
  *
@@ -703,6 +815,11 @@ static void rs_stats_process(void *ctx, struct timeval *now)
 	fr_pcap_t	*in_p;
 	rs_update_t	*this = ctx;
 	rs_stats_t	*stats = this->stats;
+
+	if (!this->done_header) {
+		if (this->head) this->head(this);
+		this->done_header = true;
+	}
 
 	stats->intervals++;
 
@@ -723,7 +840,12 @@ static void rs_stats_process(void *ctx, struct timeval *now)
 	if ((stats->quiet.tv_sec + (stats->quiet.tv_usec / 1000000.0)) -
 	    (now->tv_sec + (now->tv_usec / 1000000.0)) > 0) goto clear;
 
-	rs_stats_print_fancy(this, stats, now);
+	for (i = 0; i < rs_codes_len; i++) {
+		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]]);
+		rs_stats_process_counters(&stats->exchange[rs_useful_codes[i]]);
+	}
+
+	if (this->body) this->body(this, stats, now);
 
 #ifdef HAVE_COLLECTDC_H
 	/*
@@ -789,6 +911,23 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
 	update.stats = stats;
 	update.in = in;
 
+	switch (conf->stats.out) {
+	default:
+	case RS_STATS_OUT_STDIO_FANCY:
+		update.head = NULL;
+		update.body = rs_stats_print_fancy;
+		break;
+
+	case RS_STATS_OUT_STDIO_CSV:
+		update.head = rs_stats_print_csv_header;
+		update.body = rs_stats_print_csv;
+		break;
+
+	case RS_STATS_OUT_COLLECTD:
+		update.head = NULL;
+		update.body = NULL;
+		break;
+	}
 	/*
 	 *	Set the first time we print stats
 	 */
@@ -1975,6 +2114,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -x                    Print more debugging information.\n");
 	fprintf(output, "stats options:\n");
 	fprintf(output, "  -W <interval>         Periodically write out statistics every <interval> seconds.\n");
+	fprintf(output, "  -E                    Print stats in CSV format.\n");
 	fprintf(output, "  -T <timeout>          How many milliseconds before the request is counted as lost "
 		"(defaults to %i).\n", RS_DEFAULT_TIMEOUT);
 #ifdef HAVE_COLLECTDC_H
@@ -2052,7 +2192,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Get options
 	 */
-	while ((opt = getopt(argc, argv, "ab:c:Cd:D:e:Ff:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
+	while ((opt = getopt(argc, argv, "ab:c:Cd:D:e:EFf:hi:I:l:L:mp:P:qr:R:s:Svw:xXW:T:P:N:O:")) != EOF) {
 		switch (opt) {
 		case 'a':
 		{
@@ -2108,6 +2248,10 @@ int main(int argc, char *argv[])
 			if (rs_build_event_flags((int *) &conf->event_flags, rs_events, optarg) < 0) {
 				usage(64);
 			}
+			break;
+
+		case 'E':
+			conf->stats.out = RS_STATS_OUT_STDIO_CSV;
 			break;
 
 		case 'f':
@@ -2265,6 +2409,11 @@ int main(int argc, char *argv[])
 		usage(64);
 	}
 
+	/* Can't set stats export mode if we're not writing stats */
+	if ((conf->stats.out == RS_STATS_OUT_STDIO_CSV) && !conf->stats.interval) {
+		usage(64);
+	}
+
 	/* Reading from file overrides stdin */
 	if (conf->from_stdin && (conf->from_file || conf->from_dev)) {
 		conf->from_stdin = false;
@@ -2290,8 +2439,9 @@ int main(int argc, char *argv[])
 		in_head = &(*in_head)->next;
 	}
 
+	/* Set the default stats output */
 	if (conf->stats.interval && !conf->stats.out) {
-		conf->stats.out = RS_STATS_OUT_STDIO;
+		conf->stats.out = RS_STATS_OUT_STDIO_FANCY;
 	}
 
 	if (conf->stats.timeout == 0) {
@@ -2302,7 +2452,7 @@ int main(int argc, char *argv[])
 	 *	If were writing pcap data, or CSV to stdout we *really* don't want to send
 	 *	logging there as well.
 	 */
-	if (conf->to_stdout || conf->list_attributes) {
+	if (conf->to_stdout || conf->list_attributes || (conf->stats.out == RS_STATS_OUT_STDIO_CSV)) {
 		fr_log_fp = stderr;
 	}
 
