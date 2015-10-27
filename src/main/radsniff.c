@@ -504,77 +504,19 @@ static inline void rs_packet_print(rs_request_t *request, uint64_t count, rs_sta
 	conf->logger(count, status, handle, packet, elapsed, latency, response, body);
 }
 
-static void rs_stats_print(rs_latency_t *stats, PW_CODE code)
-{
-	int i;
-	bool have_rt = false;
-
-	for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
-		if (stats->interval.rt[i]) {
-			have_rt = true;
-		}
-	}
-
-	if (!stats->interval.received && !have_rt && !stats->interval.reused) {
-		return;
-	}
-
-	if (stats->interval.received || stats->interval.linked) {
-		INFO("%s counters:", fr_packet_codes[code]);
-		if (stats->interval.received > 0) {
-			INFO("\tTotal     : %.3lf/s" , stats->interval.received);
-		}
-	}
-
-	if (stats->interval.linked > 0) {
-		INFO("\tLinked    : %.3lf/s", stats->interval.linked);
-		INFO("\tUnlinked  : %.3lf/s", stats->interval.unlinked);
-		INFO("%s latency:", fr_packet_codes[code]);
-		INFO("\tHigh      : %.3lfms", stats->interval.latency_high);
-		INFO("\tLow       : %.3lfms", stats->interval.latency_low);
-		INFO("\tAverage   : %.3lfms", stats->interval.latency_average);
-		INFO("\tMA        : %.3lfms", stats->latency_smoothed);
-	}
-
-	if (have_rt || stats->interval.lost || stats->interval.reused) {
-		INFO("%s retransmits & loss:",  fr_packet_codes[code]);
-
-		if (stats->interval.lost) {
-			INFO("\tLost      : %.3lf/s", stats->interval.lost);
-		}
-
-		if (stats->interval.reused) {
-			INFO("\tID Reused : %.3lf/s", stats->interval.reused);
-		}
-
-		for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
-			if (!stats->interval.rt[i]) {
-				continue;
-			}
-
-			if (i != RS_RETRANSMIT_MAX) {
-				INFO("\tRT (%i)    : %.3lf/s", i, stats->interval.rt[i]);
-			} else {
-				INFO("\tRT (%i+)   : %.3lf/s", i, stats->interval.rt[i]);
-			}
-		}
-	}
-}
-
 /** Query libpcap to see if it dropped any packets
  *
  * We need to check to see if libpcap dropped any packets and if it did, we need to stop stats output for long
  * enough for inaccurate statistics to be cleared out.
  *
  * @param in pcap handle to check.
- * @param interval time between checks (used for debug output)
  * @return
  *	- 0 No drops.
  *	- -1 We couldn't check.
  *	- -2 Dropped because of buffer exhaustion.
  *	- -3 Dropped because of NIC.
  */
-static int rs_check_pcap_drop(fr_pcap_t *in, int interval)
+static int rs_check_pcap_drop(fr_pcap_t *in)
 {
 	int ret = 0;
 	struct pcap_stat pstats;
@@ -583,9 +525,6 @@ static int rs_check_pcap_drop(fr_pcap_t *in, int interval)
 		ERROR("%s failed retrieving pcap stats: %s", in->name, pcap_geterr(in->handle));
 		return -1;
 	}
-
-	INFO("\t%s%*s: %.3lf/s", in->name, (int) (10 - strlen(in->name)), "",
-	     ((double) (pstats.ps_recv - in->pstats.ps_recv)) / interval);
 
 	if (pstats.ps_drop - in->pstats.ps_drop > 0) {
 		ERROR("%s dropped %i packets: Buffer exhaustion", in->name, pstats.ps_drop - in->pstats.ps_drop);
@@ -660,45 +599,83 @@ static void rs_stats_process_counters(rs_latency_t *stats)
 	}
 }
 
-/** Process stats for a single interval
- *
- */
-static void rs_stats_process(void *ctx, struct timeval *now)
+static void rs_stats_print_code_fancy(rs_latency_t *stats, PW_CODE code)
 {
-	size_t i;
-	size_t rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
-	fr_pcap_t		*in_p;
-	rs_update_t		*this = ctx;
-	rs_stats_t		*stats = this->stats;
+	int i;
+	bool have_rt = false;
 
-	stats->intervals++;
+	for (i = 0; i <= RS_RETRANSMIT_MAX; i++) if (stats->interval.rt[i]) have_rt = true;
+
+	if (!stats->interval.received && !have_rt && !stats->interval.reused) return;
+
+	if (stats->interval.received || stats->interval.linked) {
+		INFO("%s counters:", fr_packet_codes[code]);
+		if (stats->interval.received > 0) {
+			INFO("\tTotal     : %.3lf/s" , stats->interval.received);
+		}
+	}
+
+	if (stats->interval.linked > 0) {
+		INFO("\tLinked    : %.3lf/s", stats->interval.linked);
+		INFO("\tUnlinked  : %.3lf/s", stats->interval.unlinked);
+		INFO("%s latency:", fr_packet_codes[code]);
+		INFO("\tHigh      : %.3lfms", stats->interval.latency_high);
+		INFO("\tLow       : %.3lfms", stats->interval.latency_low);
+		INFO("\tAverage   : %.3lfms", stats->interval.latency_average);
+		INFO("\tMA        : %.3lfms", stats->latency_smoothed);
+	}
+
+	if (have_rt || stats->interval.lost || stats->interval.reused) {
+		INFO("%s retransmits & loss:",  fr_packet_codes[code]);
+
+		if (stats->interval.lost)	INFO("\tLost      : %.3lf/s", stats->interval.lost);
+		if (stats->interval.reused)	INFO("\tID Reused : %.3lf/s", stats->interval.reused);
+
+		for (i = 0; i <= RS_RETRANSMIT_MAX; i++) {
+			if (!stats->interval.rt[i]) continue;
+
+			if (i != RS_RETRANSMIT_MAX) {
+				INFO("\tRT (%i)    : %.3lf/s", i, stats->interval.rt[i]);
+			} else {
+				INFO("\tRT (%i+)   : %.3lf/s", i, stats->interval.rt[i]);
+			}
+		}
+	}
+}
+
+static void rs_stats_print_fancy(rs_update_t *this, rs_stats_t *stats, struct timeval *now)
+{
+	fr_pcap_t		*in_p;
+	size_t			i;
+	size_t			rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
 
 	/*
 	 *	Clear and reset the screen
 	 */
 	INFO("\x1b[0;0f");
 	INFO("\x1b[2J");
-	INFO("######### Stats Iteration %i #########", stats->intervals);
-
-	/*
-	 *	Verify that none of the pcap handles have dropped packets.
-	 */
-	if (this->in) INFO("Interface capture rate:");
-	for (in_p = this->in;
-	     in_p;
-	     in_p = in_p->next) {
-		if (rs_check_pcap_drop(in_p, conf->stats.interval) < 0) {
-			ERROR("Muting stats for the next %i milliseconds", conf->stats.timeout);
-
-			rs_tv_add_ms(now, conf->stats.timeout, &stats->quiet);
-			goto clear;
-		}
-	}
 
 	if ((stats->quiet.tv_sec + (stats->quiet.tv_usec / 1000000.0)) -
 	    (now->tv_sec + (now->tv_usec / 1000000.0)) > 0) {
 		INFO("Stats muted because of warmup, or previous error");
-		goto clear;
+		return;
+	}
+
+	INFO("######### Stats Iteration %i #########", stats->intervals);
+
+	if (this->in) INFO("Interface capture rate:");
+	for (in_p = this->in;
+	     in_p;
+	     in_p = in_p->next) {
+		struct pcap_stat pstats;
+
+		if (pcap_stats(in_p->handle, &pstats) != 0) {
+			ERROR("%s failed retrieving pcap stats: %s", in_p->name, pcap_geterr(in_p->handle));
+			return;
+		}
+
+		INFO("\t%s%*s: %.3lf/s", in_p->name, (int) (10 - strlen(in_p->name)), "",
+		     ((double) (pstats.ps_recv - in_p->pstats.ps_recv)) / conf->stats.interval);
 	}
 
 	/*
@@ -710,9 +687,43 @@ static void rs_stats_process(void *ctx, struct timeval *now)
 		rs_stats_process_latency(&stats->exchange[rs_useful_codes[i]]);
 		rs_stats_process_counters(&stats->exchange[rs_useful_codes[i]]);
 		if (fr_debug_lvl > 0) {
-			rs_stats_print(&stats->exchange[rs_useful_codes[i]], rs_useful_codes[i]);
+			rs_stats_print_code_fancy(&stats->exchange[rs_useful_codes[i]], rs_useful_codes[i]);
 		}
 	}
+}
+
+
+/** Process stats for a single interval
+ *
+ */
+static void rs_stats_process(void *ctx, struct timeval *now)
+{
+	size_t		i;
+	size_t		rs_codes_len = (sizeof(rs_useful_codes) / sizeof(*rs_useful_codes));
+	fr_pcap_t	*in_p;
+	rs_update_t	*this = ctx;
+	rs_stats_t	*stats = this->stats;
+
+	stats->intervals++;
+
+	for (in_p = this->in;
+	     in_p;
+	     in_p = in_p->next) {
+		if (rs_check_pcap_drop(in_p) < 0) {
+			ERROR("Muting stats for the next %i milliseconds", conf->stats.timeout);
+
+			rs_tv_add_ms(now, conf->stats.timeout, &stats->quiet);
+			goto clear;
+		}
+	}
+
+	/*
+	 *	Stats temporarily muted
+	 */
+	if ((stats->quiet.tv_sec + (stats->quiet.tv_usec / 1000000.0)) -
+	    (now->tv_sec + (now->tv_usec / 1000000.0)) > 0) goto clear;
+
+	rs_stats_print_fancy(this, stats, now);
 
 #ifdef HAVE_COLLECTDC_H
 	/*
