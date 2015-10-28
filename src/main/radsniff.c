@@ -1094,12 +1094,22 @@ static void rs_packet_process(uint64_t count, rs_event_t *event, struct pcap_pkt
 				diff, udp_len);
 			return;
 		}
-		/* Trailing data */
+
+#if 0
+		/*
+		 *	It seems many probes add trailing garbage to the end
+		 *	of each capture frame.  This has been observed with
+		 *	the F5 and Netscout.
+		 *
+		 *	Leaving the code here in case it's ever needed for
+		 *	debugging.
+		 */
 		else if (diff < 0) {
 			REDEBUG("Packet too big by %zi bytes, UDP header + Payload should be %hu bytes",
 				diff * -1, udp_len);
 			return;
 		}
+#endif
 	}
 	if ((version == 4) && conf->verify_udp_checksum) {
 		uint16_t expected;
