@@ -281,7 +281,6 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 	uint8_t exch, *in, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
 	uint8_t peer_confirm[SHA256_DIGEST_LENGTH];
 	BIGNUM *x = NULL, *y = NULL;
-	char *p;
 
 	if (((eap_round = eap_session->this_round) == NULL) || !inst) return 0;
 
@@ -429,17 +428,13 @@ static int mod_process(void *arg, eap_session_t *eap_session)
 			RDEBUG("pwd unable to create fake request!");
 			return 0;
 		}
-		fake->username = pair_make_request("User-Name", NULL, T_OP_EQ);
+		fake->username = fr_pair_afrom_num(fake, PW_USER_NAME, 0);
 		if (!fake->username) {
-			RDEBUG("pwd unanable to create value pair for username!");
+			RDEBUG("Failed creating pair for peer id");
 			talloc_free(fake);
 			return 0;
 		}
-		fake->username->vp_length = session->peer_id_len;
-		fake->username->vp_strvalue = p = talloc_array(fake->username, char, fake->username->vp_length + 1);
-		memcpy(p, session->peer_id, session->peer_id_len);
-		p[fake->username->vp_length] = '\0';
-
+		fr_pair_value_bstrncpy(fake->username, session->peer_id, session->peer_id_len);
 		fr_pair_add(&fake->packet->vps, fake->username);
 
 		if ((vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
