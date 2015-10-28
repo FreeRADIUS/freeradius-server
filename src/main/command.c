@@ -1160,10 +1160,17 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 
 		} else continue;
 
-		cprintf(listener, "%s\t%d\t%s\t%s\t%s\t%d\n",
-			ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
-			home->port, proto, type, state,
-			home->currently_outstanding);
+		if (argc > 0 && !strcmp(argv[0], "full")) {
+			cprintf(listener, "%s\t(%s)\t%d\t%s\t%s\t%s\t%d\n",
+				ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
+				home->name, home->port, proto, type, state,
+				home->currently_outstanding);
+		} else {
+			cprintf(listener, "%s\t%d\t%s\t%s\t%s\t%d\n",
+				ip_ntoh(&home->ipaddr, buffer, sizeof(buffer)),
+				home->port, proto, type, state,
+				home->currently_outstanding);
+		}
 	}
 
 	return CMD_OK;
@@ -1175,6 +1182,7 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 	int i;
 	RADCLIENT *client;
 	char buffer[256];
+	char ipaddr[256];
 
 	for (i = 0; i < 256; i++) {
 		client = client_findbynumber(NULL, i);
@@ -1186,9 +1194,18 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 		     (client->ipaddr.prefix != 32)) ||
 		    ((client->ipaddr.af == AF_INET6) &&
 		     (client->ipaddr.prefix != 128))) {
-			cprintf(listener, "%s/%d\n", buffer, client->ipaddr.prefix);
+			snprintf(ipaddr, sizeof(ipaddr), "%s/%d", buffer, client->ipaddr.prefix);
 		} else {
-			cprintf(listener, "%s\n", buffer);
+			snprintf(ipaddr, sizeof(ipaddr), "%s", buffer);
+		}
+
+		if (argc && !strcmp(argv[0], "full")) {
+			cprintf(listener, "%s\t(%s)\t%s\t%s\n", ipaddr,
+				client->shortname ? client->shortname : "no_shortname",
+				client->nas_type  ? client->nas_type  : "no_type",
+				client->server    ? client->server    : "no_server");
+		} else {
+			cprintf(listener, "%s\n", ipaddr);
 		}
 	}
 
@@ -1946,7 +1963,7 @@ static fr_command_table_t command_table_show_module[] = {
 
 static fr_command_table_t command_table_show_client[] = {
 	{ "list", FR_READ,
-	  "show client list - shows list of global clients",
+	  "show client list [full] - shows list of global clients",
 	  command_show_clients, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
@@ -1955,7 +1972,7 @@ static fr_command_table_t command_table_show_client[] = {
 #ifdef WITH_PROXY
 static fr_command_table_t command_table_show_home[] = {
 	{ "list", FR_READ,
-	  "show home_server list - shows list of home servers",
+	  "show home_server list [full] - shows list of home servers",
 	  command_show_home_servers, NULL },
 	{ "state", FR_READ,
 	  "show home_server state <ipaddr> <port> [udp|tcp] - shows state of given home server",
