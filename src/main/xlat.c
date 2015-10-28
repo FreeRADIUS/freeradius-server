@@ -1940,9 +1940,16 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 		break;
 
 	case PW_PACKET_TYPE:
-		dv = dict_valbyattr(PW_PACKET_TYPE, 0, packet->code);
-		if (dv) return talloc_typed_strdup(ctx, dv->name);
-		return talloc_typed_asprintf(ctx, "%d", packet->code);
+		if (packet->code > 0) {
+			dv = dict_valbyattr(PW_PACKET_TYPE, 0, packet->code);
+			if (dv) return talloc_typed_strdup(ctx, dv->name);
+			return talloc_typed_asprintf(ctx, "%d", packet->code);
+		}
+
+		/*
+		 *	If there's no code set then we return an empty string (not zero).
+		 */
+		return talloc_strdup(ctx, "");
 
 	case PW_RESPONSE_PACKET_TYPE:
 	{
@@ -1953,11 +1960,16 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 			code = request->proxy_reply->code;
 		} else
 #endif
-			if (request->reply) {
-				code = request->reply->code;
-			}
+		if (request->reply) {
+			code = request->reply->code;
+		}
 
-		return talloc_typed_strdup(ctx, fr_packet_codes[code]);
+		if (code > 0) return talloc_typed_strdup(ctx, fr_packet_codes[code]);
+
+		/*
+		 *	If there's no code set then we return an empty string (not zero).
+		 */
+		return talloc_strdup(ctx, "");
 	}
 
 	/*
