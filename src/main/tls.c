@@ -3439,7 +3439,7 @@ int tls_success(tls_session_t *session, REQUEST *request)
 	rad_assert(conf != NULL);
 #else
 	if (!conf) {
-		REDEBUG("Failed retrieving TLS configuration from SSL session").
+		REDEBUG("Failed retrieving TLS configuration from SSL session");
 		return -1;
 	}
 #endif
