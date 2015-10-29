@@ -377,7 +377,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (strcmp(inst->trust_router, "none") != 0) {
 		if (!tr_init()) return -1;
 	} else {
-		rad_const_free(&inst->trust_router);
+		rad_const_free(inst->trust_router);
 	}
 #endif
 
