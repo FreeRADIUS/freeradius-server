@@ -3435,8 +3435,14 @@ int tls_success(tls_session_t *session, REQUEST *request)
 	fr_tls_server_conf_t	*conf;
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(session->ssl, FR_TLS_EX_INDEX_CONF);
+#ifndef NDEBUG
 	rad_assert(conf != NULL);
-
+#else
+	if (!conf) {
+		REDEBUG("Failed retrieving TLS configuration from SSL session").
+		return -1;
+	}
+#endif
 	/*
 	 *	If there's no session resumption, delete the entry
 	 *	from the cache.  This means either it's disabled
@@ -3457,7 +3463,7 @@ int tls_success(tls_session_t *session, REQUEST *request)
 		 *	not allowed,
 		 */
 		if (SSL_session_reused(session->ssl)) {
-			RDEBUG("Forcibly stopping session resumption as it is not allowed");
+			REDEBUG("Forcibly stopping session resumption as it is not allowed");
 			return -1;
 		}
 
