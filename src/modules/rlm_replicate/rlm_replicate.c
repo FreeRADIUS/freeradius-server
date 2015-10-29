@@ -116,9 +116,9 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pai
 	RADIUS_PACKET *packet = NULL;
 
 	rcode = rlm_replicate_alloc(&packet, request, list, code);
-	if (rcode != RLM_MODULE_OK) {
-		return rcode;
-	}
+	if (rcode != RLM_MODULE_OK) return rcode;
+
+	packet->sockfd = -1;
 
 	/*
 	 *	Send as many packets as necessary to different destinations.
@@ -223,9 +223,13 @@ static rlm_rcode_t replicate_packet(UNUSED void *instance, REQUEST *request, pai
 		rcode = RLM_MODULE_OK;
 	}
 
-	done:
-
-	talloc_free(packet);
+done:
+	if (packet) {
+		if ((packet->sockfd >= 0) && (close(packet->sockfd) < 0)) {
+			RWARN("Error closing socket (we may leak file descriptors): %s", fr_syserror(errno));
+		}
+		talloc_free(packet);
+	}
 	return rcode;
 }
 #else
