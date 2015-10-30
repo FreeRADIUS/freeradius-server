@@ -3481,7 +3481,8 @@ static void ping_home_server(void *ctx)
 		fr_pair_make(request->proxy, &request->proxy->vps,
 			 "Message-Authenticator", "0x00", T_OP_SET);
 
-	} else if (home->type == HOME_TYPE_AUTH) {
+	} else if ((home->type == HOME_TYPE_AUTH) ||
+		   (home->type == HOME_TYPE_AUTH_ACCT)) {
 		request->proxy->code = PW_CODE_ACCESS_REQUEST;
 
 		fr_pair_make(request->proxy, &request->proxy->vps,
@@ -3493,8 +3494,8 @@ static void ping_home_server(void *ctx)
 		fr_pair_make(request->proxy, &request->proxy->vps,
 			 "Message-Authenticator", "0x00", T_OP_SET);
 
-	} else {
 #ifdef WITH_ACCOUNTING
+	} else if (home->type == HOME_TYPE_ACCT) {
 		request->proxy->code = PW_CODE_ACCOUNTING_REQUEST;
 
 		fr_pair_make(request->proxy, &request->proxy->vps,
@@ -3506,9 +3507,14 @@ static void ping_home_server(void *ctx)
 		vp = fr_pair_make(request->proxy, &request->proxy->vps,
 			      "Event-Timestamp", "0", T_OP_SET);
 		vp->vp_date = now.tv_sec;
-#else
-		rad_assert("Internal sanity check failed");
 #endif
+
+	} else {
+		/*
+		 *	Unkown home server type.
+		 */
+		talloc_free(request);
+		return;
 	}
 
 	vp = fr_pair_make(request->proxy, &request->proxy->vps,
