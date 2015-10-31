@@ -1041,12 +1041,12 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 
-	rcode = cf_item_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_COMBO_IP_ADDR, &ipaddr), NULL, T_INVALID);
+	rcode = cf_pair_parse(cs, "ipaddr", FR_ITEM_POINTER(PW_TYPE_COMBO_IP_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
-	if (rcode != 0) rcode = cf_item_parse(cs, "ipv4addr",
+	if (rcode != 0) rcode = cf_pair_parse(cs, "ipv4addr",
 					      FR_ITEM_POINTER(PW_TYPE_IPV4_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
-	if (rcode != 0) rcode = cf_item_parse(cs, "ipv6addr",
+	if (rcode != 0) rcode = cf_pair_parse(cs, "ipv6addr",
 					      FR_ITEM_POINTER(PW_TYPE_IPV6_ADDR, &ipaddr), NULL, T_INVALID);
 	if (rcode < 0) return -1;
 	/*
@@ -1059,10 +1059,10 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_ANY);
 	}
 
-	rcode = cf_item_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &listen_port), "0", T_BARE_WORD);
+	rcode = cf_pair_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, &listen_port), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
 
-	rcode = cf_item_parse(cs, "recv_buff", FR_ITEM_POINTER(PW_TYPE_INTEGER, &recv_buff), "0", T_BARE_WORD);
+	rcode = cf_pair_parse(cs, "recv_buff", FR_ITEM_POINTER(PW_TYPE_INTEGER, &recv_buff), "0", T_BARE_WORD);
 	if (rcode < 0) return -1;
 	if (recv_buff) {
 		FR_INTEGER_BOUND_CHECK("recv_buff", recv_buff, >=, 32);
@@ -1082,7 +1082,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		CONF_SECTION *tls;
 #  endif
 
-		rcode = cf_item_parse(cs, "proto", FR_ITEM_POINTER(PW_TYPE_STRING, &proto),
+		rcode = cf_pair_parse(cs, "proto", FR_ITEM_POINTER(PW_TYPE_STRING, &proto),
 				      "udp", T_DOUBLE_QUOTED_STRING);
 		if (rcode < 0) return -1;
 
@@ -1335,7 +1335,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	client_cs = NULL;
 	parentcs = cf_top_section(cs);
-	rcode = cf_item_parse(cs, "clients", FR_ITEM_POINTER(PW_TYPE_STRING, &section_name), NULL, T_INVALID);
+	rcode = cf_pair_parse(cs, "clients", FR_ITEM_POINTER(PW_TYPE_STRING, &section_name), NULL, T_INVALID);
 	if (rcode < 0) return -1; /* bad string */
 	if (rcode == 0) {
 		/*
@@ -3193,7 +3193,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	cf_log_info(cs, "listen {");
 
 	listen_type = NULL;
-	rcode = cf_item_parse(cs, "type", FR_ITEM_POINTER(PW_TYPE_STRING, &listen_type), "", T_DOUBLE_QUOTED_STRING);
+	rcode = cf_pair_parse(cs, "type", FR_ITEM_POINTER(PW_TYPE_STRING, &listen_type), "", T_DOUBLE_QUOTED_STRING);
 	if (rcode < 0) return NULL;
 	if (rcode == 1) {
 		cf_log_err_cs(cs,
@@ -3242,7 +3242,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	 *	refer to a server.
 	 */
 	if (!server) {
-		rcode = cf_item_parse(cs, "virtual_server",
+		rcode = cf_pair_parse(cs, "virtual_server",
 				      FR_ITEM_POINTER(PW_TYPE_STRING, &server), NULL, T_DOUBLE_QUOTED_STRING);
 		if (rcode < 0) return NULL;
 	}

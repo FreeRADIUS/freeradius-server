@@ -1354,7 +1354,7 @@ static inline int fr_item_validate_ipaddr(CONF_SECTION *cs, char const *name, PW
 
 /** Fixup xlat expansions and attributes
  *
- * @note Despite the name, this is really the second phase of #cf_item_parse.
+ * @note Despite the name, this is really the second phase of #cf_pair_parse.
  *
  * @param cs CONF_SECTION to fixup.
  * @param base start of structure to write #vp_tmpl_t s to.
@@ -1610,7 +1610,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const varia
  *	- -1 on error.
  *	- -2 if deprecated.
  */
-int cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
+int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
 		  char const *dflt, FR_TOKEN dflt_quote)
 {
 	int		rcode = 0;
@@ -2134,7 +2134,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base, CONF_PARSER const *variables)
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		ret = cf_item_parse(cs, variables[i].name, variables[i].type, data,
+		ret = cf_pair_parse(cs, variables[i].name, variables[i].type, data,
 				    variables[i].dflt, variables[i].quote);
 		switch (ret) {
 		case 1:		/* Used default */

@@ -134,7 +134,7 @@ typedef struct timeval _timeval_t;
 /** @name #CONF_PARSER type flags
  *
  * These flags should be or'd with another PW_TYPE_* value to create validation
- * rules for the #cf_item_parse function.
+ * rules for the #cf_pair_parse function.
  *
  * @note File PW_TYPE_FILE_* types have a base type of string, so they're validated
  *	 correctly by the config parser.
@@ -206,12 +206,12 @@ extern bool check_config;
  * @see FR_CONF_OFFSET
  * @see FR_CONF_POINTER
  * @see cf_section_parse
- * @see cf_item_parse
+ * @see cf_pair_parse
  */
 typedef struct CONF_PARSER {
 	char const	*name;			//!< Name of the #CONF_ITEM to parse.
 	int		type;			//!< A #PW_TYPE value, may be or'd with one or more PW_TYPE_* flags.
-						//!< @see cf_item_parse.
+						//!< @see cf_pair_parse.
 
 	size_t		offset;			//!< Relative offset of field or structure to write the parsed value to.
 						//!< When #type is set to #PW_TYPE_SUBSECTION, may be used to specify
@@ -242,7 +242,7 @@ CONF_SECTION	*cf_section_dup(CONF_SECTION *parent, CONF_SECTION const *cs,
 				char const *name1, char const *name2, bool copy_meta);
 void		cf_section_add(CONF_SECTION *parent, CONF_SECTION *cs);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value);
-int		cf_item_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
+int		cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
 			      char const *dflt, FR_TOKEN dflt_quote);
 int		cf_section_parse(CONF_SECTION *, void *base, CONF_PARSER const *variables);
 int		cf_section_parse_pass2(CONF_SECTION *, void *base, CONF_PARSER const *variables);
