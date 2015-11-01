@@ -69,7 +69,7 @@ static int _eap_session_free(eap_session_t *eap_session)
 	 *
 	 *	we're debugging TLS sessions, which don't finish,
 	 *	and which aren't deleted early due to a likely RADIUS
-	 *	retransmit which nukes our ID, and therefore our stare.
+	 *	retransmit which nukes our ID, and therefore our state.
 	 */
 	if (((request && RDEBUG_ENABLED) || (!request && DEBUG_ENABLED)) &&
 	    (eap_session->tls && !eap_session->finished && (time(NULL) > (eap_session->updated + 3)))) {
