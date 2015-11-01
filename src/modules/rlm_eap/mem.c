@@ -71,13 +71,13 @@ static int _eap_session_free(eap_session_t *eap_session)
 	 *	and which aren't deleted early due to a likely RADIUS
 	 *	retransmit which nukes our ID, and therefore our stare.
 	 */
-	if (fr_debug_lvl && eap_session->tls && !eap_session->finished &&
-	    (time(NULL) > (eap_session->updated + 3))) {
-		ROPTIONAL(RWARN, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		ROPTIONAL(RWARN, WARN, "!! EAP session %p did not finish!                                         !!",
+	if (((request && RDEBUG_ENABLED) || (!request && DEBUG_ENABLED)) &&
+	    (eap_session->tls && !eap_session->finished && (time(NULL) > (eap_session->updated + 3)))) {
+		ROPTIONAL(RWDEBUG, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		ROPTIONAL(RWDEBUG, WARN, "!! EAP session %p did not finish!                                 !!",
 			  eap_session);
-		ROPTIONAL(RWARN, WARN, "!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility !!");
-		ROPTIONAL(RWARN, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		ROPTIONAL(RWDEBUG, WARN, "!! See http://wiki.freeradius.org/guide/Certificate_Compatibility !!");
+		ROPTIONAL(RWDEBUG, WARN, "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
 
 	ROPTIONAL(RDEBUG4, DEBUG4, "Freeing eap_session_t %p", eap_session);
