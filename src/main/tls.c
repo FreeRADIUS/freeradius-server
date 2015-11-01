@@ -1110,12 +1110,10 @@ static CONF_PARSER ocsp_config[] = {
 
 static CONF_PARSER tls_server_config[] = {
 	{ FR_CONF_OFFSET("verify_depth", PW_TYPE_INTEGER, fr_tls_server_conf_t, verify_depth), .dflt = "0" },
-	{ FR_CONF_OFFSET("CA_path", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, ca_path) },
 	{ FR_CONF_OFFSET("ca_path", PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_path) },
 	{ FR_CONF_OFFSET("pem_file_type", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, file_type), .dflt = "yes" },
 	{ FR_CONF_OFFSET("private_key_file", PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, private_key_file) },
 	{ FR_CONF_OFFSET("certificate_file", PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, certificate_file) },
-	{ FR_CONF_OFFSET("CA_file", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, ca_file) },
 	{ FR_CONF_OFFSET("ca_file", PW_TYPE_FILE_INPUT, fr_tls_server_conf_t, ca_file) },
 	{ FR_CONF_OFFSET("private_key_password", PW_TYPE_STRING | PW_TYPE_SECRET, fr_tls_server_conf_t, private_key_password) },
 #ifdef PSK_MAX_IDENTITY_LEN
