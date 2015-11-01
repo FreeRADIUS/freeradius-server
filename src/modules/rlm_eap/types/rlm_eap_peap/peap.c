@@ -879,19 +879,16 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 		return RLM_MODULE_REJECT;
 
 	/*
-	 *	Damned if I know why the clients continue sending EAP
-	 *	packets after we told them to f*ck off.
+	 *	Supplicant ACKs our failure.
 	 */
 	case PEAP_STATUS_SENT_TLV_FAILURE:
-		if (fr_debug_lvl) {
-			RINDENT();
-			RINFO("The users session was previously rejected: returning reject (again.)");
-			RINFO("This means you need to read the PREVIOUS messages in the debug output");
-			RINFO("to find out the reason why the user was rejected");
-			RINFO("Look for \"reject\" or \"fail\".  Those earlier messages will tell you");
-			RINFO("what went wrong, and how to fix the problem");
-			REXDENT();
-		}
+		RINDENT();
+		RIDEBUG("The users session was previously rejected: returning reject (again.)");
+		RIDEBUG("This means you need to read the PREVIOUS messages in the debug output");
+		RIDEBUG("to find out the reason why the user was rejected");
+		RIDEBUG("Look for \"reject\" or \"fail\".  Those earlier messages will tell you");
+		RIDEBUG("what went wrong, and how to fix the problem");
+		REXDENT();
 
 		return RLM_MODULE_REJECT;
 
