@@ -88,7 +88,7 @@ typedef struct redis_conn {
 typedef struct redis_common_conf {
 	char const		*prefix;	//!< Logging prefix for errors in #fr_redis_cluster_conn_create.
 
-	char const		*hostname;	//!< of Redis server.
+	char const		**hostname;	//!< of Redis server.
 	uint16_t		port;		//!< of Redis daemon.
 	uint32_t		database;	//!< number on Redis server.
 

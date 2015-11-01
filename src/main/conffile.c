@@ -1545,6 +1545,362 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const varia
 	return 0;
 }
 
+/** Parses a #CONF_PAIR into a C data type
+ *
+ * @copybrief cf_pair_value
+ * @see cf_pair_value
+ *
+ * @param[out] out Where to write the parsed value.
+ * @param[in] ctx to allocate any dynamic buffers in.
+ * @param[in] cs containing the cp.
+ * @param[in] cp to parse.
+ * @param[in] type to parse to.  May contain flags.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int cf_pair_parse_value(void *out, TALLOC_CTX *ctx, CONF_SECTION *cs, CONF_PAIR *cp, unsigned int type)
+{
+	int		rcode = 0;
+	bool		attribute, required, secret, file_input, cant_be_empty, tmpl;
+
+	fr_ipaddr_t	*ipaddr;
+	ssize_t		slen;
+
+	if (!cs) return -1;
+
+	attribute = (type & PW_TYPE_ATTRIBUTE);
+	required = (type & PW_TYPE_REQUIRED);
+	secret = (type & PW_TYPE_SECRET);
+	file_input = (type == PW_TYPE_FILE_INPUT);	/* check, not and */
+	cant_be_empty = (type & PW_TYPE_NOT_EMPTY);
+	tmpl = (type & PW_TYPE_TMPL);
+
+	rad_assert(cp);
+	rad_assert(!(type & PW_TYPE_ATTRIBUTE) || tmpl);	 /* Attribute flag only valid for templates */
+
+	if (required) cant_be_empty = true;		/* May want to review this in the future... */
+
+	type &= 0xff;					/* normal types are small */
+
+	/*
+	 *	Everything except templates must have a base type.
+	 */
+	if (!type && !tmpl) {
+		cf_log_err_cp(cp, "Configuration pair \"%s\" must have a data type", cf_pair_attr(cp));
+		return -1;
+	}
+
+	rad_assert(cp->value);
+
+	/*
+	 *	Check for zero length strings
+	 */
+	if ((cp->value[0] == '\0') && cant_be_empty) {
+		cf_log_err_cp(cp, "Configuration pair \"%s\" must not be empty (zero length)", cf_pair_attr(cp));
+		if (!required) cf_log_err_cp(cp, "Comment item to silence this message");
+		rcode = -1;
+
+	error:
+		return rcode;
+	}
+
+	if (tmpl) {
+		vp_tmpl_t *vpt;
+
+		/*
+		 *	This is so we produce TMPL_TYPE_ATTR_UNDEFINED template that
+		 *	the bootstrap functions can use to create an attribute.
+		 *
+		 *	For other types of template such as xlats, we don't bother.
+		 *	There's no reason bootstrap functions need access to the raw
+		 *	xlat strings.
+		 */
+		if (attribute) {
+			slen = tmpl_afrom_attr_str(cp, &vpt, cp->value, REQUEST_CURRENT, PAIR_LIST_REQUEST,
+						   true, true);
+			if (slen < 0) {
+				char *spaces, *text;
+
+				fr_canonicalize_error(ctx, &spaces, &text, slen, cp->value);
+
+				cf_log_err(&cp->item, "Failed parsing attribute reference:");
+				cf_log_err(&cp->item, "%s", text);
+				cf_log_err(&cp->item, "%s^ %s", spaces, fr_strerror());
+
+				talloc_free(spaces);
+				talloc_free(text);
+				goto error;
+			}
+			*(vp_tmpl_t **)out = vpt;
+		}
+		goto finish;
+	}
+
+	switch (type) {
+	case PW_TYPE_BOOLEAN:
+		/*
+		 *	Allow yes/no, true/false, and on/off
+		 */
+		if ((strcasecmp(cp->value, "yes") == 0) ||
+		    (strcasecmp(cp->value, "true") == 0) ||
+		    (strcasecmp(cp->value, "on") == 0)) {
+			*(bool *)out = true;
+		} else if ((strcasecmp(cp->value, "no") == 0) ||
+			   (strcasecmp(cp->value, "false") == 0) ||
+			   (strcasecmp(cp->value, "off") == 0)) {
+			*(bool *)out = false;
+		} else {
+			cf_log_err(&(cs->item), "Invalid value \"%s\" for boolean variable %s",
+				   cp->value, cf_pair_attr(cp));
+			rcode = -1;
+			goto error;
+		}
+		cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, cf_pair_attr(cp), cp->value);
+		break;
+
+	case PW_TYPE_INTEGER:
+	{
+		unsigned long v = strtoul(cp->value, 0, 0);
+
+		/*
+		 *	Restrict integer values to 0-INT32_MAX, this means
+		 *	it will always be safe to cast them to a signed type
+		 *	for comparisons, and imposes the same range limit as
+		 *	before we switched to using an unsigned type to
+		 *	represent config item integers.
+		 */
+		if (v > INT32_MAX) {
+			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
+				   cf_pair_attr(cp), INT32_MAX);
+			rcode = -1;
+			goto error;
+		}
+
+		*(uint32_t *)out = v;
+		cf_log_info(cs, "%.*s\t%s = %u", cs->depth, parse_spaces, cf_pair_attr(cp), *(uint32_t *)out);
+	}
+		break;
+
+	case PW_TYPE_BYTE:
+	{
+		unsigned long v = strtoul(cp->value, 0, 0);
+
+		if (v > UINT8_MAX) {
+			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
+				   cf_pair_attr(cp), UINT8_MAX);
+			rcode = -1;
+			goto error;
+		}
+		*(uint8_t *)out = (uint8_t) v;
+		cf_log_info(cs, "%.*s\t%s = %u", cs->depth, parse_spaces, cf_pair_attr(cp), *(uint8_t *)out);
+	}
+		break;
+
+	case PW_TYPE_SHORT:
+	{
+		unsigned long v = strtoul(cp->value, 0, 0);
+
+		if (v > UINT16_MAX) {
+			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
+				   cf_pair_attr(cp), UINT16_MAX);
+			rcode = -1;
+			goto error;
+		}
+		*(uint16_t *)out = (uint16_t) v;
+		cf_log_info(cs, "%.*s\t%s = %u", cs->depth, parse_spaces, cf_pair_attr(cp), *(uint16_t *)out);
+	}
+		break;
+
+	case PW_TYPE_INTEGER64:
+		*(uint64_t *)out = strtoull(cp->value, 0, 0);
+		cf_log_info(cs, "%.*s\t%s = %" PRIu64, cs->depth, parse_spaces, cf_pair_attr(cp), *(uint64_t *)out);
+		break;
+
+	case PW_TYPE_SIGNED:
+		*(int32_t *)out = strtol(cp->value, 0, 0);
+		cf_log_info(cs, "%.*s\t%s = %d", cs->depth, parse_spaces, cf_pair_attr(cp), *(int32_t *)out);
+		break;
+
+	case PW_TYPE_STRING:
+	{
+		char **str = out;
+
+		/*
+		 *	Hide secrets when using "radiusd -X".
+		 */
+		if (secret && (rad_debug_lvl < L_DBG_LVL_3)) {
+			cf_log_info(cs, "%.*s\t%s = <<< secret >>>", cs->depth, parse_spaces, cf_pair_attr(cp));
+		} else {
+			cf_log_info(cs, "%.*s\t%s = \"%s\"", cs->depth, parse_spaces, cf_pair_attr(cp), cp->value);
+		}
+
+		/*
+		 *	If there's out AND it's an input file, check
+		 *	that we can read it.  This check allows errors
+		 *	to be caught as early as possible, during
+		 *	server startup.
+		 */
+		if (file_input && !cf_file_input(cs, cp->value)) {
+			rcode = -1;
+			goto error;
+		}
+
+		/*
+		 *	Free any existing buffers
+		 */
+		talloc_free(*str);
+		*str = talloc_typed_strdup(cs, cp->value);
+	}
+		break;
+
+	case PW_TYPE_IPV4_ADDR:
+	case PW_TYPE_IPV4_PREFIX:
+		ipaddr = out;
+
+		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
+			cf_log_err(&(cp->item), "%s", fr_strerror());
+			rcode = -1;
+			goto error;
+		}
+		/* Also prints the IP to the log */
+		if (fr_item_validate_ipaddr(cs, cf_pair_attr(cp), type, cp->value, ipaddr) < 0) {
+			rcode = -1;
+			goto error;
+		}
+		break;
+
+	case PW_TYPE_IPV6_ADDR:
+	case PW_TYPE_IPV6_PREFIX:
+		ipaddr = out;
+
+		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
+			cf_log_err(&(cp->item), "%s", fr_strerror());
+			rcode = -1;
+			goto error;
+		}
+		/* Also prints the IP to the log */
+		if (fr_item_validate_ipaddr(cs, cf_pair_attr(cp), type, cp->value, ipaddr) < 0) {
+			rcode = -1;
+			goto error;
+		}
+		break;
+
+	case PW_TYPE_COMBO_IP_ADDR:
+	case PW_TYPE_COMBO_IP_PREFIX:
+		ipaddr = out;
+
+		if (fr_inet_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
+			cf_log_err(&(cp->item), "%s", fr_strerror());
+			rcode = -1;
+			goto error;
+		}
+		/* Also prints the IP to the log */
+		if (fr_item_validate_ipaddr(cs, cf_pair_attr(cp), type, cp->value, ipaddr) < 0) {
+			rcode = -1;
+			goto error;
+		}
+		break;
+
+	case PW_TYPE_TIMEVAL:
+	{
+		struct timeval tv;
+
+		if (fr_timeval_from_str(&tv, cp->value) < 0) {
+			cf_log_err(&(cp->item), "%s", fr_strerror());
+			rcode = -1;
+			goto error;
+		}
+		cf_log_info(cs, "%.*s\t%s = %d.%06d", cs->depth, parse_spaces, cf_pair_attr(cp),
+			    (int)tv.tv_sec, (int)tv.tv_usec);
+		memcpy(out, &tv, sizeof(tv));
+	}
+		break;
+
+	default:
+		/*
+		 *	If we get here, it's a sanity check error.
+		 *	It's not an error parsing the configuration
+		 *	file.
+		 */
+		rad_assert(type > PW_TYPE_INVALID);
+		rad_assert(type < PW_TYPE_MAX);
+
+		cf_log_err(&(cp->item), "type '%s' is not supported in the configuration files",
+			   fr_int2str(dict_attr_types, type, "?Unknown?"));
+		rcode = -1;
+		goto error;
+	}
+
+finish:
+	cp->parsed = true;
+
+	return rcode;
+}
+
+/** Allocate a pair using the dflt value and quotation
+ *
+ * The pair created by this function should fed to #cf_pair_parse for parsing.
+ *
+ * @param[out] out Where to write the CONF_PAIR we created with the default value.
+ * @param[in] cs to parent the CONF_PAIR from.
+ * @param[in] name of the CONF_PAIR to create.
+ * @param[in] type of conf item being parsed (determines default quoting).
+ * @param[in] dflt value to assign the CONF_PAIR.
+ * @param[in] dflt_quote surrounding the CONF_PAIR.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+static int cf_pair_default(CONF_PAIR **out, CONF_SECTION *cs, char const *name,
+			   int type, char const *dflt, FR_TOKEN dflt_quote)
+{
+	int		lineno = 0;
+	char const	*expanded;
+	CONF_PAIR	*cp;
+	char		buffer[8192];
+
+	type &= 0xff;
+
+	/*
+	 *	Defaults may need their values expanding
+	 */
+	expanded = cf_expand_variables("<internal>", &lineno, cs, buffer, sizeof(buffer), dflt, NULL);
+	if (!expanded) {
+		cf_log_err(&(cs->item), "Failed expanding variable %s", name);
+		return -1;
+	}
+
+	/*
+	 *	If no default quote was set, determine it from the type
+	 */
+	if (dflt_quote == T_INVALID) {
+		dflt_quote = T_BARE_WORD;
+
+		if (type == PW_TYPE_STRING) {
+			dflt_quote = T_DOUBLE_QUOTED_STRING;
+
+		} else if ((type == PW_TYPE_FILE_INPUT) || /* may have spaces */
+			   (type == PW_TYPE_FILE_OUTPUT)) {
+			dflt_quote = T_DOUBLE_QUOTED_STRING;
+		}
+	}
+
+	cp = cf_pair_alloc(cs, name, expanded, T_OP_EQ, T_BARE_WORD, dflt_quote);
+	if (!cp) return -1;
+
+	cp->parsed = true;
+	cp->item.filename = "<internal>";
+	cp->item.lineno = 0;
+
+	/*
+	 *	Set the rcode to indicate we used a default value
+	 */
+	*out = cp;
+
+	return 1;
+}
+
 /** Parses a #CONF_PAIR into a C data type, with a default value.
  *
  * Takes fields from a #CONF_PARSER struct and uses them to parse the string value
@@ -1601,6 +1957,7 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const varia
  *	- ``flag`` #PW_TYPE_SECRET		- @copybrief PW_TYPE_SECRET
  *	- ``flag`` #PW_TYPE_FILE_INPUT		- @copybrief PW_TYPE_FILE_INPUT
  *	- ``flag`` #PW_TYPE_NOT_EMPTY		- @copybrief PW_TYPE_NOT_EMPTY
+ *	- ``flag`` #PW_TYPE_MULTI		- @copybrief PW_TYPE_MULTI
  * @param data Pointer to a global variable, or pointer to a field in the struct being populated with values.
  * @param dflt value to use, if no #CONF_PAIR is found.
  * @param dflt_quote around the dflt value.
@@ -1613,377 +1970,174 @@ int cf_section_parse_pass2(CONF_SECTION *cs, void *base, CONF_PARSER const varia
 int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *data,
 		  char const *dflt, FR_TOKEN dflt_quote)
 {
-	int		rcode = 0;
-	bool		attribute, deprecated, required, secret, file_input, cant_be_empty, tmpl, multi;
+	bool		multi, required, deprecated;
+	size_t		count = 0;
+	CONF_PAIR	*cp, *dflt_cp = NULL;
 
-	CONF_PAIR	*cp = NULL;
-	CONF_PAIR	*dflt_cp = NULL;
-	fr_ipaddr_t	*ipaddr;
-	char		buffer[8192];
-	CONF_ITEM	*c_item = &cs->item;
-	ssize_t		slen;
+	rad_assert(!(type & PW_TYPE_TMPL) || !dflt || (dflt_quote != T_INVALID)); /* We ALWAYS need a quoting type for templates */
 
-	if (!cs) return -1;
-
-	attribute = (type & PW_TYPE_ATTRIBUTE);
-	deprecated = (type & PW_TYPE_DEPRECATED);
-	required = (type & PW_TYPE_REQUIRED);
-	secret = (type & PW_TYPE_SECRET);
-	file_input = (type == PW_TYPE_FILE_INPUT);	/* check, not and */
-	cant_be_empty = (type & PW_TYPE_NOT_EMPTY);
-	tmpl = (type & PW_TYPE_TMPL);
 	multi = (type & PW_TYPE_MULTI);
-
-	rad_assert(!tmpl || !dflt || (dflt_quote != T_INVALID));	/* We ALWAYS need a quoting type for templates */
-	rad_assert(!(type & PW_TYPE_ATTRIBUTE) || tmpl);		/* Attribute flag only valid for templates */
-
-	if (required) cant_be_empty = true;		/* May want to review this in the future... */
-
-	type &= 0xff;					/* normal types are small */
+	required = (type & PW_TYPE_REQUIRED);
+	deprecated = (type & PW_TYPE_DEPRECATED);
 
 	/*
-	 *	Everything except templates must have a base type.
+	 *	If the item is multi-valued we allocate an array
+	 *	to hold the multiple values.
 	 */
-	if (!type && !tmpl) {
-		cf_log_err(c_item, "Configuration item \"%s\" must have a data type", name);
-		return -1;
-	}
-
-
-	/*
-	 *	See if there's a pair in the config that matches
-	 *	the section name.
-	 */
-	cp = cf_pair_find(cs, name);
-	/*
-	 *	No pairs match the configuration item name in the current
-	 *	section, add a default pair from the default value.
-	 */
-	if (!cp) {
-		int lineno = 0;
-		char const *expanded;
-
-		if (deprecated) return 0;		/* Don't set the default value if this is deprecated */
+	if (multi) {
+		CONF_PAIR	*first;
+		void		**array;
+		size_t		i;
 
 		/*
-		 *	There's no CONF_PAIR and no default, and this pair
-		 *	must have a value.  Error out.
+		 *	Easier than re-allocing
 		 */
-		if (!dflt) {
-			if (required) {
-				cf_log_err(c_item, "Configuration item \"%s\" must have a value", name);
-				return -1;
+		for (cp = first = cf_pair_find(cs, name);
+		     cp;
+		     cp = cf_pair_find_next(cs, cp, name)) count++;
+
+		/*
+		 *	Multivalued, but there's no value, create a
+		 *	default pair.
+		 */
+		if (!count) {
+			if (deprecated) return 0;
+			if (!dflt) {
+				if (required) {
+			need_value:
+					cf_log_err_cs(cs, "Configuration item \"%s\" must have a value", name);
+					return -1;
+				}
+				return 1;
 			}
-			return 1;			/* We succeeded without setting a value */
+
+			if (cf_pair_default(&dflt_cp, cs, name, type, dflt, dflt_quote) < 0) return -1;
+			cp = dflt_cp;
+			count = 1;	/* Need one to hold the default */
+		} else {
+			cp = first;	/* reset */
+		}
+
+		if (deprecated) {
+		deprecated:
+			cf_log_err_cp(cp, "Configuration pair \"%s\" is deprecated", cf_pair_attr(cp));
+			return -2;
 		}
 
 		/*
-		 *	Defaults may need their values expanding
+		 *	Allocate an array of values.
+		 *
+		 *	We don't NULL terminate.  Consumer must use
+		 *	talloc_array_length().
 		 */
-		expanded = cf_expand_variables("<internal>", &lineno, cs, buffer, sizeof(buffer), dflt, NULL);
-		if (!expanded) {
-			cf_log_err(&(cs->item), "Failed expanding variable %s", name);
+		switch (type & 0xff) {
+		case PW_TYPE_TMPL:
+			array = (void **)talloc_zero_array(cs, vp_tmpl_t *, count);
+			break;
+
+		case PW_TYPE_BOOLEAN:
+			array = (void **)talloc_zero_array(cs, bool, count);
+			break;
+
+		case PW_TYPE_INTEGER:
+			array = (void **)talloc_zero_array(cs, uint32_t, count);
+			break;
+
+		case PW_TYPE_SHORT:
+			array = (void **)talloc_zero_array(cs, uint16_t, count);
+			break;
+
+		case PW_TYPE_INTEGER64:
+			array = (void **)talloc_zero_array(cs, uint64_t, count);
+			break;
+
+		case PW_TYPE_SIGNED:
+			array = (void **)talloc_zero_array(cs, int32_t, count);
+			break;
+
+		case PW_TYPE_STRING:
+			array = (void **)talloc_zero_array(cs, char *, count);
+			break;
+
+		case PW_TYPE_IPV4_ADDR:
+			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
+			break;
+
+		case PW_TYPE_IPV4_PREFIX:
+			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
+			break;
+
+		case PW_TYPE_IPV6_ADDR:
+			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
+			break;
+
+		case PW_TYPE_IPV6_PREFIX:
+			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
+			break;
+
+		case PW_TYPE_COMBO_IP_ADDR:
+			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
+			break;
+
+		case PW_TYPE_COMBO_IP_PREFIX:
+			array = (void **)talloc_zero_array(cs, fr_ipaddr_t, count);
+			break;
+
+		case PW_TYPE_TIMEVAL:
+			array = (void **)talloc_zero_array(cs, struct timeval, count);
+			break;
+
+		default:
+			rad_assert(0);	/* Unsupported type */
 			return -1;
 		}
 
-		/*
-		 *	If no default quote was set, determine it from the type
-		 */
-		if (dflt_quote == T_INVALID) {
-			dflt_quote = T_BARE_WORD;
-
-			if (type == PW_TYPE_STRING) {
-				dflt_quote = T_DOUBLE_QUOTED_STRING;
-
-			} else if ((type == PW_TYPE_FILE_INPUT) || /* may have spaces */
-				   (type == PW_TYPE_FILE_OUTPUT)) {
-				dflt_quote = T_DOUBLE_QUOTED_STRING;
+		for (i = 0; i < count; i++, cp = cf_pair_find_next(cs, cp, name)) {
+			if (cf_pair_parse_value(&array[i], array, cs, cp, type) < 0) {
+				talloc_free(array);
+				talloc_free(dflt_cp);
+				return -1;
 			}
 		}
 
-		dflt_cp = cf_pair_alloc(cs, name, expanded, T_OP_EQ, T_BARE_WORD, dflt_quote);
-		if (!dflt_cp) return -1;
-
-		dflt_cp->parsed = true;
-		dflt_cp->item.filename = "<internal>";
-		dflt_cp->item.lineno = 0;
-
-		/*
-		 *	Set the rcode to indicate we used a default value
-		 */
-		rcode = 1;
-		cp = dflt_cp;
+		*(void **)data = array;
 	/*
-	 *	Something matched, use the CONF_PAIR value.
+	 *	Single valued config item gets written to
+	 *	the data pointer directly.
 	 */
 	} else {
-		CONF_PAIR *next = cp;
-		cp->parsed = true;
-		c_item = &cp->item;
-
-		/*
-		 *	@fixme We should actually validate
-		 *	the value of the pairs too
-		 */
-		if (multi) while ((next = cf_pair_find_next(cs, next, name))) next->parsed = true;
-
-		if (deprecated) {
-			cf_log_err(c_item, "Configuration item \"%s\" is deprecated", name);
-			return -2;
-		}
-	}
-
-	rad_assert(cp->value);
-
-	/*
-	 *	Check for zero length strings
-	 */
-	if ((cp->value[0] == '\0') && cant_be_empty) {
-		cf_log_err(c_item, "Configuration item \"%s\" must not be empty (zero length)", name);
-		if (!required) cf_log_err(c_item, "Comment item to silence this message");
-		rcode = -1;
-
-	error:
-		talloc_free(dflt_cp);
-		return rcode;
-	}
-
-	if (tmpl) {
-		vp_tmpl_t *vpt;
-
-		/*
-		 *	This is so we produce TMPL_TYPE_ATTR_UNDEFINED template that
-		 *	the bootstrap functions can use to create an attribute.
-		 *
-		 *	For other types of template such as xlats, we don't bother.
-		 *	There's no reason bootstrap functions need access to the raw
-		 *	xlat strings.
-		 */
-		if (attribute) {
-			slen = tmpl_afrom_attr_str(cp, &vpt, cp->value, REQUEST_CURRENT, PAIR_LIST_REQUEST,
-						   true, true);
-			if (slen < 0) {
-				char *spaces, *text;
-
-				fr_canonicalize_error(cs, &spaces, &text, slen, cp->value);
-
-				cf_log_err(&cp->item, "Failed parsing attribute reference:");
-				cf_log_err(&cp->item, "%s", text);
-				cf_log_err(&cp->item, "%s^ %s", spaces, fr_strerror());
-
-				talloc_free(spaces);
-				talloc_free(text);
-				goto error;
+		cp = cf_pair_find(cs, name);
+		if (!cp) {
+			if (deprecated) return 0;
+			if (!dflt) {
+				if (required) goto need_value;
+				return 1;
 			}
-			*(vp_tmpl_t **)data = vpt;
+
+			if (cf_pair_default(&dflt_cp, cs, name, type, dflt, dflt_quote) < 0) return -1;
+			cp = dflt_cp;
 		}
-		goto finish;
+
+		if (deprecated) goto deprecated;
+
+		if (cf_pair_parse_value(data, cs, cs, cp, type) < 0) {
+			talloc_free(dflt_cp);
+			return -1;
+		}
 	}
 
-	switch (type) {
-	case PW_TYPE_BOOLEAN:
-		/*
-		 *	Allow yes/no, true/false, and on/off
-		 */
-		if ((strcasecmp(cp->value, "yes") == 0) ||
-		    (strcasecmp(cp->value, "true") == 0) ||
-		    (strcasecmp(cp->value, "on") == 0)) {
-			*(bool *)data = true;
-		} else if ((strcasecmp(cp->value, "no") == 0) ||
-			   (strcasecmp(cp->value, "false") == 0) ||
-			   (strcasecmp(cp->value, "off") == 0)) {
-			*(bool *)data = false;
-		} else {
-			cf_log_err(&(cs->item), "Invalid value \"%s\" for boolean variable %s", cp->value, name);
-			rcode = -1;
-			goto error;
-		}
-		cf_log_info(cs, "%.*s\t%s = %s", cs->depth, parse_spaces, name, cp->value);
-		break;
-
-	case PW_TYPE_INTEGER:
-	{
-		unsigned long v = strtoul(cp->value, 0, 0);
-
-		/*
-		 *	Restrict integer values to 0-INT32_MAX, this means
-		 *	it will always be safe to cast them to a signed type
-		 *	for comparisons, and imposes the same range limit as
-		 *	before we switched to using an unsigned type to
-		 *	represent config item integers.
-		 */
-		if (v > INT32_MAX) {
-			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   name, INT32_MAX);
-			rcode = -1;
-			goto error;
-		}
-
-		*(uint32_t *)data = v;
-		cf_log_info(cs, "%.*s\t%s = %u", cs->depth, parse_spaces, name, *(uint32_t *)data);
-	}
-		break;
-
-	case PW_TYPE_BYTE:
-	{
-		unsigned long v = strtoul(cp->value, 0, 0);
-
-		if (v > UINT8_MAX) {
-			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   name, UINT8_MAX);
-			rcode = -1;
-			goto error;
-		}
-		*(uint8_t *)data = (uint8_t) v;
-		cf_log_info(cs, "%.*s\t%s = %u", cs->depth, parse_spaces, name, *(uint8_t *)data);
-	}
-		break;
-
-	case PW_TYPE_SHORT:
-	{
-		unsigned long v = strtoul(cp->value, 0, 0);
-
-		if (v > UINT16_MAX) {
-			cf_log_err(&(cs->item), "Invalid value \"%s\" for variable %s, must be between 0-%u", cp->value,
-				   name, UINT16_MAX);
-			rcode = -1;
-			goto error;
-		}
-		*(uint16_t *)data = (uint16_t) v;
-		cf_log_info(cs, "%.*s\t%s = %u", cs->depth, parse_spaces, name, *(uint16_t *)data);
-	}
-		break;
-
-	case PW_TYPE_INTEGER64:
-		*(uint64_t *)data = strtoull(cp->value, 0, 0);
-		cf_log_info(cs, "%.*s\t%s = %" PRIu64, cs->depth, parse_spaces, name, *(uint64_t *)data);
-		break;
-
-	case PW_TYPE_SIGNED:
-		*(int32_t *)data = strtol(cp->value, 0, 0);
-		cf_log_info(cs, "%.*s\t%s = %d", cs->depth, parse_spaces, name, *(int32_t *)data);
-		break;
-
-	case PW_TYPE_STRING:
-	{
-		char **out = (char **)data;
-
-		/*
-		 *	Hide secrets when using "radiusd -X".
-		 */
-		if (secret && (rad_debug_lvl < L_DBG_LVL_3)) {
-			cf_log_info(cs, "%.*s\t%s = <<< secret >>>", cs->depth, parse_spaces, name);
-		} else {
-			cf_log_info(cs, "%.*s\t%s = \"%s\"", cs->depth, parse_spaces, name, cp->value);
-		}
-
-		/*
-		 *	If there's data AND it's an input file, check
-		 *	that we can read it.  This check allows errors
-		 *	to be caught as early as possible, during
-		 *	server startup.
-		 */
-		if (file_input && !cf_file_input(cs, cp->value)) {
-			rcode = -1;
-			goto error;
-		}
-
-		/*
-		 *	Free any existing buffers
-		 */
-		TALLOC_FREE(*out);
-		*out = talloc_typed_strdup(cs, cp->value);
-	}
-		break;
-
-	case PW_TYPE_IPV4_ADDR:
-	case PW_TYPE_IPV4_PREFIX:
-		ipaddr = data;
-
-		if (fr_inet_pton4(ipaddr, cp->value, -1, true, false, true) < 0) {
-			cf_log_err(&(cp->item), "%s", fr_strerror());
-			rcode = -1;
-			goto error;
-		}
-		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, name, type, cp->value, ipaddr) < 0) {
-			rcode = -1;
-			goto error;
-		}
-		break;
-
-	case PW_TYPE_IPV6_ADDR:
-	case PW_TYPE_IPV6_PREFIX:
-		ipaddr = data;
-
-		if (fr_inet_pton6(ipaddr, cp->value, -1, true, false, true) < 0) {
-			cf_log_err(&(cp->item), "%s", fr_strerror());
-			rcode = -1;
-			goto error;
-		}
-		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, name, type, cp->value, ipaddr) < 0) {
-			rcode = -1;
-			goto error;
-		}
-		break;
-
-	case PW_TYPE_COMBO_IP_ADDR:
-	case PW_TYPE_COMBO_IP_PREFIX:
-		ipaddr = data;
-
-		if (fr_inet_pton(ipaddr, cp->value, -1, AF_UNSPEC, true, true) < 0) {
-			cf_log_err(&(cp->item), "%s", fr_strerror());
-			rcode = -1;
-			goto error;
-		}
-		/* Also prints the IP to the log */
-		if (fr_item_validate_ipaddr(cs, name, type, cp->value, ipaddr) < 0) {
-			rcode = -1;
-			goto error;
-		}
-		break;
-
-	case PW_TYPE_TIMEVAL:
-	{
-		struct timeval tv;
-
-		if (fr_timeval_from_str(&tv, cp->value) < 0) {
-			cf_log_err(&(cp->item), "%s", fr_strerror());
-			rcode = -1;
-			goto error;
-		}
-		cf_log_info(cs, "%.*s\t%s = %d.%06d", cs->depth, parse_spaces, name, (int)tv.tv_sec, (int)tv.tv_usec);
-		memcpy(data, &tv, sizeof(tv));
-	}
-		break;
-
-	default:
-		/*
-		 *	If we get here, it's a sanity check error.
-		 *	It's not an error parsing the configuration
-		 *	file.
-		 */
-		rad_assert(type > PW_TYPE_INVALID);
-		rad_assert(type < PW_TYPE_MAX);
-
-		cf_log_err(&(cp->item), "type '%s' is not supported in the configuration files",
-			   fr_int2str(dict_attr_types, type, "?Unknown?"));
-		rcode = -1;
-		goto error;
-	}
-
-finish:
 	/*
 	 *	If we created a default cp and succeeded
 	 *	in parsing the dflt value, add the new
 	 *	cp to the enclosing section.
 	 */
-	if (dflt_cp) cf_item_add(cs, &(dflt_cp->item));
+	if (dflt_cp) {
+		cf_item_add(cs, &(dflt_cp->item));
+		return 1;
+	}
 
-	return rcode;
+	return 0;
 }
-
 
 /*
  *	A copy of cf_section_parse that initializes pointers before
