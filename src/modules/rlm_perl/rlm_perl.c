@@ -273,7 +273,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 /*
  *	This is wrapper for radlog
  *	Now users can call radiusd::radlog(level,msg) wich is the same
- *	calling radlog from C code.
+ *	as calling radlog from C code.
  */
 static XS(XS_radiusd_radlog)
 {
