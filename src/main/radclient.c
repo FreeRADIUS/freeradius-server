@@ -626,6 +626,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 			case PW_CODE_STATUS_SERVER:
 				switch (radclient_get_code(request->packet->dst_port)) {
+				default:
 				case PW_CODE_ACCESS_REQUEST:
 					request->filter_code = PW_CODE_ACCESS_ACCEPT;
 					break;
@@ -633,12 +634,6 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				case PW_CODE_ACCOUNTING_REQUEST:
 					request->filter_code = PW_CODE_ACCOUNTING_RESPONSE;
 					break;
-
-				default:
-					REDEBUG("Can't determine expected response to Status-Server request, specify "
-					        "a well known RADIUS port, or add a Response-Packet-Type attribute "
-					        "to the request of filter");
-					goto error;
 				}
 				break;
 
