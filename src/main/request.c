@@ -256,18 +256,21 @@ static int _request_data_free(request_data_t *this)
  * The unique ptr is meant to be a module configuration, and the unique
  * integer allows the caller to have multiple opaque data associated with a REQUEST.
  *
- * @param[in] request to associate data with.
- * @param[in] unique_ptr Identifier for the data.
- * @param[in] unique_int Qualifier for the identifier.
- * @param[in] opaque Data to associate with the request
- * @param[in] free_on_replace If true and the opaque data is replaced via a subsequent call
- *	to #request_data_add, talloc_free will be called to free the opaque data pointer.
- * @param[in] free_on_parent If True and the request data is still present in the request
- *	or state when it is freed, free the opaque data too.  Must not be set if the opaque
- *	data is also parented by the request or state.
- * @param[in] persist If true, before the request is freed, the opaque data will be
- *	transferred to an #fr_state_entry_t, and restored to a subsequent linked request
- *	should we receive one.
+ * @param[in] request		to associate data with.
+ * @param[in] unique_ptr	Identifier for the data.
+ * @param[in] unique_int	Qualifier for the identifier.
+ * @param[in] opaque		Data to associate with the request
+ * @param[in] free_on_replace	If true and the opaque data is replaced via a subsequent call
+ *				to #request_data_add, talloc_free will be called to free the
+ *				opaque data pointer.
+ * @param[in] free_on_parent	If True and the request data is present in the request
+ *				or state when it is freed, free the opaque data too.
+ *				Must not be set if the opaque
+ *				data is also parented by the request or state.
+ * @param[in] persist		If true, before the request is freed, the opaque data will be
+ *				transferred to an #fr_state_entry_t, and restored to a
+ *				subsequent linked request
+ *				should we receive one.
  * @return
  *	- -2 on bad arguments.
  *	- -1 on memory allocation error.
@@ -361,13 +364,12 @@ int request_data_add(REQUEST *request, void *unique_ptr, int unique_int, void *o
  * @note The unique ptr is meant to be a module configuration, and the unique
  *	integer allows the caller to have multiple opaque data associated with a REQUEST.
  *
- * @param[in] request to retrieve data from.
- * @param[in] unique_ptr Identifier for the data.
- * @param[in] unique_int Qualifier for the identifier.
+ * @param[in] request		to retrieve data from.
+ * @param[in] unique_ptr	Identifier for the data.
+ * @param[in] unique_int	Qualifier for the identifier.
  * @return
  *	- NULL if no opaque data could be found.
- *	- the opaque data. The  entry holding the opaque data is also removed
- *	  from the request data store.
+ *	- the opaque data. The entry holding the opaque data is removed from the request.
  */
 void *request_data_get(REQUEST *request, void *unique_ptr, int unique_int)
 {
@@ -403,9 +405,9 @@ void *request_data_get(REQUEST *request, void *unique_ptr, int unique_int)
 
 /** Loop over all the request data, pulling out ones matching persist state
  *
- * @param[out] out Head of result list.
- * @param[in] request to search for request_data_t in.
- * @param[in] persist Whether to pull persistable or non-persistable data.
+ * @param[out] out	Head of result list.
+ * @param[in] request	to search for request_data_t in.
+ * @param[in] persist	Whether to pull persistable or non-persistable data.
  * @return number of request_data_t retrieved.
  */
 int request_data_by_persistance(request_data_t **out, REQUEST *request, bool persist)
@@ -445,8 +447,8 @@ int request_data_by_persistance(request_data_t **out, REQUEST *request, bool per
  * @note May add multiple entries (if they're linked).
  * @note Will not check for duplicates.
  *
- * @param request to add data to.
- * @param entry the data to add.
+ * @param request	to add data to.
+ * @param entry		the data to add.
  */
 void request_data_restore(REQUEST *request, request_data_t *entry)
 {
@@ -472,9 +474,9 @@ void request_data_restore(REQUEST *request, request_data_t *entry)
  * @note The unique ptr is meant to be a module configuration, and the unique
  * 	integer allows the caller to have multiple opaque data associated with a REQUEST.
  *
- * @param request to retrieve data from.
- * @param unique_ptr Identifier for the data.
- * @param unique_int Qualifier for the identifier.
+ * @param request	to retrieve data from.
+ * @param unique_ptr	Identifier for the data.
+ * @param unique_int	Qualifier for the identifier.
  * @return
  *	- NULL if no opaque data could be found.
  *	- the opaque data.
@@ -494,8 +496,13 @@ void *request_data_reference(REQUEST *request, void *unique_ptr, int unique_int)
 #ifdef WITH_VERIFY_PTR
 /** Verify all request data is parented by the specified context
  *
- * @param parent that should hold the request data.
- * @param entry to verify.
+ * @note Only available if built with WITH_VERIFY_PTR
+ *
+ * @param parent	that should hold the request data.
+ * @param entry		to verify.
+ * @return
+ *	- true if chunk lineage is correct.
+ *	- false if one of the chunks is parented by something else.
  */
 bool request_data_verify_parent(TALLOC_CTX *parent, request_data_t *entry)
 {
