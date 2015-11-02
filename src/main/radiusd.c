@@ -105,13 +105,6 @@ int main(int argc, char *argv[])
 	set_auth_parameters(argc, argv);
 #endif
 
-	p = strrchr(argv[0], FR_DIR_SEP);
-	if (!p) {
-		main_config.name = argv[0];
-	} else {
-		main_config.name = p + 1;
-	}
-
 #ifdef WIN32
 	{
 		WSADATA wsaData;
@@ -132,6 +125,13 @@ int main(int argc, char *argv[])
 	memset(&main_config, 0, sizeof(main_config));
 	main_config.daemonize = true;
 	main_config.spawn_workers = true;
+
+	p = strrchr(argv[0], FR_DIR_SEP);
+	if (!p) {
+		main_config.name = argv[0];
+	} else {
+		main_config.name = p + 1;
+	}
 
 	/*
 	 *	Don't put output anywhere until we get told a little
