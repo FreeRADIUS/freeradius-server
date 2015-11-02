@@ -184,7 +184,7 @@ int rlm_ldap_control_add_session_tracking(ldap_handle_t *conn, REQUEST *request)
 	vp_cursor_t		cursor;
 	VALUE_PAIR const	*vp;
 
-	memcpy(&hostname, &progname, sizeof(hostname));
+	memcpy(&hostname, &main_config.name, sizeof(hostname)); /* const / non-const issues */
 
 	for (vp = fr_cursor_init(&cursor, &request->packet->vps);
 	     vp;
