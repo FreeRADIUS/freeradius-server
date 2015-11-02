@@ -2389,7 +2389,7 @@ do { \
 			FILE *fp;
 
 			snprintf(filename, sizeof(filename), "%s/%s.client.XXXXXXXX",
-				 conf->verify_tmp_dir, progname);
+				 conf->verify_tmp_dir, main_config.name);
 			fd = mkstemp(filename);
 			if (fd < 0) {
 				RDEBUG("Failed creating file in %s: %s",

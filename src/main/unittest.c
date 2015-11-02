@@ -38,7 +38,6 @@ RCSID("$Id$")
 /*
  *  Global variables.
  */
-char const *progname = NULL;
 char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 bool log_stripped_names = false;
@@ -653,6 +652,7 @@ int main(int argc, char *argv[])
 	VALUE_PAIR *vp;
 	VALUE_PAIR *filter_vps = NULL;
 	bool xlat_only = false;
+	char *p;
 	fr_state_tree_t *state = NULL;
 
 	fr_talloc_fault_setup();
@@ -668,10 +668,12 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
-		progname = argv[0];
-	else
-		progname++;
+	p = strrchr(argv[0], FR_DIR_SEP);
+	if (!p) {
+		main_config.name = argv[0];
+	} else {
+		main_config.name = p + 1;
+	}
 
 	rad_debug_lvl = 0;
 	set_radius_dir(NULL, RADIUS_DIR);
@@ -978,7 +980,7 @@ static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status?stderr:stdout;
 
-	fprintf(output, "Usage: %s [options]\n", progname);
+	fprintf(output, "Usage: %s [options]\n", main_config.name);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -d raddb_dir  Configuration files are in \"raddb_dir/*\".\n");
 	fprintf(output, "  -D dict_dir   Dictionary files are in \"dict_dir/*\".\n");

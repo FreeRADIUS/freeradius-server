@@ -350,7 +350,6 @@ typedef enum request_fail {
  *
  *	We really shouldn't have this many.
  */
-extern char const	*progname;
 extern log_lvl_t	rad_debug_lvl;
 extern char const	*radacct_dir;
 extern char const	*radlog_dir;

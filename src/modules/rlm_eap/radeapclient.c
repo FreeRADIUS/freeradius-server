@@ -51,7 +51,7 @@ extern int sha1_data_problems;
 /*
  *  Global variables.
  */
-char const *progname = "radeapclient";
+static char const *progname = "radeapclient";
 main_config_t main_config;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING

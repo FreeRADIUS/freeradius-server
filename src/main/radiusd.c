@@ -55,7 +55,6 @@ RCSID("$Id$")
 /*
  *  Global variables.
  */
-char const	*progname = NULL;
 char const	*radacct_dir = NULL;
 char const	*radlog_dir = NULL;
 
@@ -93,6 +92,7 @@ int main(int argc, char *argv[])
 	int		argval;
 	bool		display_version = false;
 	int		from_child[2] = {-1, -1};
+	char		*p;
 
 	/*
 	 *  We probably don't want to free the talloc autofree context
@@ -105,16 +105,19 @@ int main(int argc, char *argv[])
 	set_auth_parameters(argc, argv);
 #endif
 
-	if ((progname = strrchr(argv[0], FR_DIR_SEP)) == NULL)
-		progname = argv[0];
-	else
-		progname++;
+	p = strrchr(argv[0], FR_DIR_SEP);
+	if (!p) {
+		main_config.name = argv[0];
+	} else {
+		main_config.name = p + 1;
+	}
 
 #ifdef WIN32
 	{
 		WSADATA wsaData;
 		if (WSAStartup(MAKEWORD(2, 0), &wsaData)) {
-			fprintf(stderr, "%s: Unable to initialize socket library.\n", progname);
+			fprintf(stderr, "%s: Unable to initialize socket library.\n",
+				main_config.name);
 			exit(EXIT_FAILURE);
 		}
 	}
@@ -285,7 +288,7 @@ int main(int argc, char *argv[])
 		default_log.dst = L_DST_STDOUT;
 		default_log.fd = STDOUT_FILENO;
 
-		INFO("%s: %s", progname, radiusd_version);
+		INFO("%s: %s", main_config.name, radiusd_version);
 		version_print();
 		exit(EXIT_SUCCESS);
 	}
@@ -631,7 +634,7 @@ static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status?stderr:stdout;
 
-	fprintf(output, "Usage: %s [options]\n", progname);
+	fprintf(output, "Usage: %s [options]\n", main_config.name);
 	fprintf(output, "Options:\n");
 	fprintf(output, "  -C            Check configuration and exit.\n");
 	fprintf(stderr, "  -d <raddb>    Set configuration directory (defaults to " RADDBDIR ").\n");

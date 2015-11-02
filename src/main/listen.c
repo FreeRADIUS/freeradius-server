@@ -3406,7 +3406,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
 		if (!check_config && !spawn_workers && this->tls) {
 			cf_log_err_cs(this->cs, "Threading must be enabled for TLS sockets to function properly");
 			cf_log_err_cs(this->cs, "You probably need to do '%s -fxx -l stdout' for debugging",
-				      progname);
+				      main_config.name);
 			return -1;
 		}
 #endif
