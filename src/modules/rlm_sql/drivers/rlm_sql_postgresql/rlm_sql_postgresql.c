@@ -113,7 +113,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		if (!name) name = cf_section_name1(cs);
 
 		snprintf(application_name, sizeof(application_name),
-			 "FreeRADIUS " RADIUSD_VERSION_STRING " - %s (%s)", progname, name);
+			 "FreeRADIUS " RADIUSD_VERSION_STRING " - %s (%s)", main_config.name, name);
 	}
 
 	/*

@@ -55,7 +55,7 @@ static int totalapp = 0;
 static int totaldeny = 0;
 static char filesecret[256];
 static char const *radius_dir = NULL;
-char const *progname = "radeapclient";
+static char const *progname = "radeapclient";
 /* fr_randctx randctx; */
 
 main_config_t main_config;

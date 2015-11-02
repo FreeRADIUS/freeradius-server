@@ -64,7 +64,7 @@ RCSID("$Id$")
 /*
  *	For configuration file stuff.
  */
-char const *progname = "radmin";
+static char const *progname = "radmin";
 static char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" STRINGIFY(RADIUSD_VERSION_COMMIT) ")"

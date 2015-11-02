@@ -499,7 +499,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	initialized.
 	 */
 	if (fr_set_dumpable_init() < 0) {
-		fr_perror("radiusd");
+		fr_perror("%s", main_config.name);
 		return 0;
 	}
 
@@ -510,7 +510,8 @@ static int switch_users(CONF_SECTION *cs)
 	if (rad_debug_lvl && (getuid() != 0)) return 1;
 
 	if (cf_section_parse(cs, NULL, bootstrap_config) < 0) {
-		fprintf(stderr, "radiusd: Error: Failed to parse user/group information.\n");
+		fprintf(stderr, "%s: Error: Failed to parse user/group information.\n",
+			main_config.name);
 		return 0;
 	}
 
@@ -526,7 +527,7 @@ static int switch_users(CONF_SECTION *cs)
 		gr = getgrnam(gid_name);
 		if (!gr) {
 			fprintf(stderr, "%s: Cannot get ID for group %s: %s\n",
-				progname, gid_name, fr_syserror(errno));
+				main_config.name, gid_name, fr_syserror(errno));
 			return 0;
 		}
 
@@ -547,7 +548,7 @@ static int switch_users(CONF_SECTION *cs)
 
 		if (rad_getpwnam(cs, &user, uid_name) < 0) {
 			fprintf(stderr, "%s: Cannot get passwd entry for user %s: %s\n",
-				progname, uid_name, fr_strerror());
+				main_config.name, uid_name, fr_strerror());
 			return 0;
 		}
 
@@ -560,7 +561,7 @@ static int switch_users(CONF_SECTION *cs)
 #ifdef HAVE_INITGROUPS
 			if (initgroups(uid_name, server_gid) < 0) {
 				fprintf(stderr, "%s: Cannot initialize supplementary group list for user %s: %s\n",
-					progname, uid_name, fr_syserror(errno));
+					main_config.name, uid_name, fr_syserror(errno));
 				talloc_free(user);
 				return 0;
 			}
@@ -576,7 +577,7 @@ static int switch_users(CONF_SECTION *cs)
 	if (chroot_dir) {
 		if (chroot(chroot_dir) < 0) {
 			fprintf(stderr, "%s: Failed to perform chroot %s: %s",
-				progname, chroot_dir, fr_syserror(errno));
+				main_config.name, chroot_dir, fr_syserror(errno));
 			return 0;
 		}
 
@@ -604,7 +605,7 @@ static int switch_users(CONF_SECTION *cs)
 	if (do_sgid) {
 		if (setgid(server_gid) < 0){
 			fprintf(stderr, "%s: Failed setting group to %s: %s",
-				progname, gid_name, fr_syserror(errno));
+				main_config.name, gid_name, fr_syserror(errno));
 			return 0;
 		}
 	}
@@ -660,7 +661,8 @@ static int switch_users(CONF_SECTION *cs)
 		default_log.fd = open(main_config.log_file,
 				      O_WRONLY | O_APPEND | O_CREAT, 0640);
 		if (default_log.fd < 0) {
-			fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", main_config.log_file, fr_syserror(errno));
+			fprintf(stderr, "%s: Failed to open log file %s: %s\n",
+				main_config.name, main_config.log_file, fr_syserror(errno));
 			return 0;
 		}
 	}
@@ -677,7 +679,7 @@ static int switch_users(CONF_SECTION *cs)
 	    (default_log.dst == L_DST_FILES)) {
 		if (fchown(default_log.fd, server_uid, server_gid) < 0) {
 			fprintf(stderr, "%s: Cannot change ownership of log file %s: %s\n",
-				progname, main_config.log_file, fr_syserror(errno));
+				main_config.name, main_config.log_file, fr_syserror(errno));
 			return 0;
 		}
 	}
@@ -865,13 +867,15 @@ do {\
 	 */
 	if (default_log.dst == L_DST_NULL) {
 		if (cf_section_parse(cs, NULL, startup_server_config) < 0) {
-			fprintf(stderr, "radiusd: Error: Failed to parse log{} section.\n");
+			fprintf(stderr, "%s: Error: Failed to parse log{} section.\n",
+				main_config.name);
 			cf_file_free(cs);
 			return -1;
 		}
 
 		if (!radlog_dest) {
-			fprintf(stderr, "radiusd: Error: No log destination specified.\n");
+			fprintf(stderr, "%s: Error: No log destination specified.\n",
+				main_config.name);
 			cf_file_free(cs);
 			return -1;
 		}
@@ -879,8 +883,8 @@ do {\
 		default_log.dst = fr_str2int(log_str2dst, radlog_dest,
 					      L_DST_NUM_DEST);
 		if (default_log.dst == L_DST_NUM_DEST) {
-			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
-				radlog_dest);
+			fprintf(stderr, "%s: Error: Unknown log_destination %s\n",
+				main_config.name, radlog_dest);
 			cf_file_free(cs);
 			return -1;
 		}
@@ -891,14 +895,15 @@ do {\
 			 *	before using it
 			 */
 			if (!syslog_facility) {
-				fprintf(stderr, "radiusd: Error: Syslog chosen but no facility was specified\n");
+				fprintf(stderr, "%s: Error: Syslog chosen but no facility was specified\n",
+					main_config.name);
 				cf_file_free(cs);
 				return -1;
 			}
 			main_config.syslog_facility = fr_str2int(syslog_facility_table, syslog_facility, -1);
 			if (main_config.syslog_facility < 0) {
-				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
-					syslog_facility);
+				fprintf(stderr, "%s: Error: Unknown syslog_facility %s\n",
+					main_config.name, syslog_facility);
 				cf_file_free(cs);
 				return -1;
 			}
@@ -908,12 +913,13 @@ do {\
 			 *	Call openlog only once, when the
 			 *	program starts.
 			 */
-			openlog(progname, LOG_PID, main_config.syslog_facility);
+			openlog(main_config.name, LOG_PID, main_config.syslog_facility);
 #endif
 
 		} else if (default_log.dst == L_DST_FILES) {
 			if (!main_config.log_file) {
-				fprintf(stderr, "radiusd: Error: Specified \"files\" as a log destination, but no log filename was given!\n");
+				fprintf(stderr, "%s: Error: Specified \"files\" as a log destination, but no log filename was given!\n",
+					main_config.name);
 				cf_file_free(cs);
 				return -1;
 			}

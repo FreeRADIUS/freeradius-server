@@ -3127,7 +3127,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_flag)
 		override = true;
 
 #ifdef WITH_VMPS
-		if (strcmp(progname, "vmpsd") == 0) {
+		if (strcmp(main_config.name, "vmpsd") == 0) {
 			this = listen_alloc(config, RAD_LISTEN_VQP);
 			if (!auth_port) auth_port = 1589;
 		} else
@@ -3167,7 +3167,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_flag)
 		/*
 		 *	No acct for vmpsd
 		 */
-		if (strcmp(progname, "vmpsd") == 0) goto add_sockets;
+		if (strcmp(main_config.name, "vmpsd") == 0) goto add_sockets;
 #endif
 
 #ifdef WITH_ACCOUNTING
@@ -3305,7 +3305,7 @@ add_sockets:
 		if (!check_config && !spawn_flag && this->tls) {
 			cf_log_err_cs(this->cs, "Threading must be enabled for TLS sockets to function properly");
 			cf_log_err_cs(this->cs, "You probably need to do '%s -fxx -l stdout' for debugging",
-				      progname);
+				      main_config.name);
 			return -1;
 		}
 #endif
