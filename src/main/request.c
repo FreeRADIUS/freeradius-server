@@ -233,13 +233,20 @@ REQUEST *request_alloc_coa(REQUEST *request)
 
 /** Ensure opaque data is freed by binding its lifetime to the request_data_t
  *
+ * @param this Request data being freed.
+ * @return 0, or whatever the destructor for the opaque data returned.
  */
 static int _request_data_free(request_data_t *this)
 {
 	if (this->free_on_parent && this->opaque) {
+		int ret;
+
 		DEBUG4("Freeing request data %p (%s) at %p:%i via destructor",
 		       this->opaque, talloc_get_name(this->opaque), this->unique_ptr, this->unique_int);
-		TALLOC_FREE(this->opaque);
+		ret = talloc_free(this->opaque);
+		this->opaque = NULL;
+
+		return ret;
 	}
 	return 0;
 }
