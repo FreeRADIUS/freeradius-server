@@ -107,13 +107,6 @@ int main(int argc, char *argv[])
 	set_auth_parameters(argc, argv);
 #endif
 
-	p = strrchr(argv[0], FR_DIR_SEP);
-	if (!p) {
-		main_config.name = argv[0];
-	} else {
-		main_config.name = p + 1;
-	}
-
 #ifdef WIN32
 	{
 		WSADATA wsaData;
@@ -135,6 +128,13 @@ int main(int argc, char *argv[])
 	main_config.myip.af = AF_UNSPEC;
 	main_config.port = 0;
 	main_config.daemonize = true;
+
+	p = strrchr(argv[0], FR_DIR_SEP);
+	if (!p) {
+		main_config.name = argv[0];
+	} else {
+		main_config.name = p + 1;
+	}
 
 	/*
 	 *	Don't put output anywhere until we get told a little
