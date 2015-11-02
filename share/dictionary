@@ -192,6 +192,7 @@ $INCLUDE dictionary.foundry
 $INCLUDE dictionary.gandalf
 $INCLUDE dictionary.gemtek
 $INCLUDE dictionary.h3c
+$INCLUDE dictionary.hillstone
 $INCLUDE dictionary.hp
 $INCLUDE dictionary.huawei
 $INCLUDE dictionary.iea
