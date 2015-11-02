@@ -166,6 +166,7 @@ ssize_t fr_link_layer_offset(uint8_t const *data, size_t len, int link_layer)
 
 	default:
 		fr_strerror_printf("Unsupported link layer type %i", link_layer);
+		return -1;
 	}
 
 done:
