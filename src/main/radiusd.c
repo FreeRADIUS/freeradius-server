@@ -134,7 +134,6 @@ int main(int argc, char *argv[])
 	memset(&main_config, 0, sizeof(main_config));
 	main_config.myip.af = AF_UNSPEC;
 	main_config.port = 0;
-	main_config.name = "radiusd";
 	main_config.daemonize = true;
 
 	/*
@@ -180,7 +179,8 @@ int main(int argc, char *argv[])
 				default_log.fd = open(main_config.log_file,
 							    O_WRONLY | O_APPEND | O_CREAT, 0640);
 				if (default_log.fd < 0) {
-					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", main_config.log_file, fr_syserror(errno));
+					fprintf(stderr, "%s: Failed to open log file %s: %s\n",
+						main_config.name, main_config.log_file, fr_syserror(errno));
 					exit(EXIT_FAILURE);
 				}
 				fr_log_fp = fdopen(default_log.fd, "a");
@@ -188,7 +188,8 @@ int main(int argc, char *argv[])
 
 			case 'i':
 				if (ip_hton(&main_config.myip, AF_UNSPEC, optarg, false) < 0) {
-					fprintf(stderr, "radiusd: Invalid IP Address or hostname \"%s\"\n", optarg);
+					fprintf(stderr, "%s: Invalid IP Address or hostname \"%s\"\n",
+						main_config.name, optarg);
 					exit(EXIT_FAILURE);
 				}
 				flag |= 1;
@@ -213,7 +214,8 @@ int main(int argc, char *argv[])
 
 				port = strtoul(optarg, 0, 10);
 				if ((port == 0) || (port > UINT16_MAX)) {
-					fprintf(stderr, "radiusd: Invalid port number \"%s\"\n", optarg);
+					fprintf(stderr, "%s: Invalid port number \"%s\"\n",
+						main_config.name, optarg);
 					exit(EXIT_FAILURE);
 				}
 
@@ -267,7 +269,7 @@ int main(int argc, char *argv[])
 	 *  Mismatch between the binary and the libraries it depends on.
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("radiusd");
+		fr_perror("%s", main_config.name);
 		exit(EXIT_FAILURE);
 	}
 
@@ -282,7 +284,8 @@ int main(int argc, char *argv[])
 #endif
 
 	if (flag && (flag != 0x03)) {
-		fprintf(stderr, "radiusd: The options -i and -p cannot be used individually.\n");
+		fprintf(stderr, "%s: The options -i and -p cannot be used individually.\n",
+			main_config.name);
 		exit(EXIT_FAILURE);
 	}
 
@@ -294,7 +297,8 @@ int main(int argc, char *argv[])
 	 */
 	if (main_config.memory_report) {
 		if (spawn_flag) {
-			fprintf(stderr, "radiusd: The server cannot produce memory reports (-M) in threaded mode\n");
+			fprintf(stderr, "%s: The server cannot produce memory reports (-M) in threaded mode\n",
+				main_config.name);
 			exit(EXIT_FAILURE);
 		}
 		talloc_enable_null_tracking();
@@ -367,7 +371,7 @@ int main(int argc, char *argv[])
 		if (!panic_action) panic_action = main_config.panic_action;
 
 		if (panic_action && (fr_fault_setup(panic_action, argv[0]) < 0)) {
-			fr_perror("radiusd");
+			fr_perror("%s", main_config.name);
 			exit(EXIT_FAILURE);
 		}
 	}
