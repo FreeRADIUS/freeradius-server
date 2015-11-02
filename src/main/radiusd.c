@@ -130,7 +130,6 @@ int main(int argc, char *argv[])
 	 *	Ensure that the configuration is initialized.
 	 */
 	memset(&main_config, 0, sizeof(main_config));
-	main_config.name = "radiusd";
 	main_config.daemonize = true;
 	main_config.spawn_workers = true;
 
@@ -176,7 +175,8 @@ int main(int argc, char *argv[])
 				default_log.dst = L_DST_FILES;
 				default_log.fd = open(main_config.log_file, O_WRONLY | O_APPEND | O_CREAT, 0640);
 				if (default_log.fd < 0) {
-					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", main_config.log_file, fr_syserror(errno));
+					fprintf(stderr, "%s: Failed to open log file %s: %s\n",
+						main_config.name, main_config.log_file, fr_syserror(errno));
 					exit(EXIT_FAILURE);
 				}
 				fr_log_fp = fdopen(default_log.fd, "a");
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
 	 *  Mismatch between the binary and the libraries it depends on.
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("radiusd");
+		fr_perror("%s", main_config.name);
 		exit(EXIT_FAILURE);
 	}
 
@@ -262,7 +262,8 @@ int main(int argc, char *argv[])
 	 */
 	if (main_config.memory_report) {
 		if (main_config.spawn_workers) {
-			fprintf(stderr, "radiusd: The server cannot produce memory reports (-M) in threaded mode\n");
+			fprintf(stderr, "%s: The server cannot produce memory reports (-M) in threaded mode\n",
+				main_config.name);
 			exit(EXIT_FAILURE);
 		}
 		talloc_enable_null_tracking();
@@ -336,7 +337,7 @@ int main(int argc, char *argv[])
 		if (!panic_action) panic_action = main_config.panic_action;
 
 		if (panic_action && (fr_fault_setup(panic_action, argv[0]) < 0)) {
-			fr_perror("radiusd");
+			fr_perror("%s", main_config.name);
 			exit(EXIT_FAILURE);
 		}
 	}
