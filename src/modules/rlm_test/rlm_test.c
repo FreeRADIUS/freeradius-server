@@ -81,7 +81,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 
 	memset(&flags, 0, sizeof(flags));
 
-	if (dict_addattr("test-Paircmp", -1, 0, PW_TYPE_STRING, flags) < 0) {
+	if (dict_attr_add("test-Paircmp", -1, 0, PW_TYPE_STRING, flags) < 0) {
 		ERROR("Failed creating paircmp attribute: %s", fr_strerror());
 
 		return -1;

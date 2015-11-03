@@ -3484,7 +3484,7 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 	 *	Where "foo" is dynamically defined.
 	 */
 	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
-		if (!dict_val_by_name(map->lhs->tmpl_da->attr,
+		if (!dict_value_by_name(map->lhs->tmpl_da->attr,
 				    map->lhs->tmpl_da->vendor,
 				    map->rhs->name)) {
 			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",

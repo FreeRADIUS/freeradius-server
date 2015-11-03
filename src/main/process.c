@@ -2287,17 +2287,17 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 
 		switch (reply->code) {
 		case PW_CODE_ACCESS_REJECT:
-			dval = dict_val_by_name(PW_POST_PROXY_TYPE, 0, "Reject");
+			dval = dict_value_by_name(PW_POST_PROXY_TYPE, 0, "Reject");
 			if (dval) post_proxy_type = dval->value;
 			break;
 
 		case PW_CODE_DISCONNECT_NAK:
-			dval = dict_val_by_name(PW_POST_PROXY_TYPE, 0, fr_packet_codes[reply->code]);
+			dval = dict_value_by_name(PW_POST_PROXY_TYPE, 0, fr_packet_codes[reply->code]);
 			if (dval) post_proxy_type = dval->value;
 			break;
 
 		case PW_CODE_COA_NAK:
-			dval = dict_val_by_name(PW_POST_PROXY_TYPE, 0, fr_packet_codes[reply->code]);
+			dval = dict_value_by_name(PW_POST_PROXY_TYPE, 0, fr_packet_codes[reply->code]);
 			if (dval) post_proxy_type = dval->value;
 			break;
 
@@ -2315,7 +2315,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	}
 
 	if (post_proxy_type > 0) RDEBUG2("Found Post-Proxy-Type %s",
-					 dict_valname_by_attr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
+					 dict_value_name_by_attr(PW_POST_PROXY_TYPE, 0, post_proxy_type));
 
 	if (reply) {
 		VERIFY_PACKET(reply);
@@ -2586,24 +2586,24 @@ static int setup_post_proxy_fail(REQUEST *request)
 	VERIFY_REQUEST(request);
 
 	if (request->proxy->code == PW_CODE_ACCESS_REQUEST) {
-		dval = dict_val_by_name(PW_POST_PROXY_TYPE, 0,
+		dval = dict_value_by_name(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Authentication");
 	} else if (request->proxy->code == PW_CODE_ACCOUNTING_REQUEST) {
-		dval = dict_val_by_name(PW_POST_PROXY_TYPE, 0,
+		dval = dict_value_by_name(PW_POST_PROXY_TYPE, 0,
 				      "Fail-Accounting");
 #ifdef WITH_COA
 	} else if (request->proxy->code == PW_CODE_COA_REQUEST) {
-		dval = dict_val_by_name(PW_POST_PROXY_TYPE, 0, "Fail-CoA");
+		dval = dict_value_by_name(PW_POST_PROXY_TYPE, 0, "Fail-CoA");
 
 	} else if (request->proxy->code == PW_CODE_DISCONNECT_REQUEST) {
-		dval = dict_val_by_name(PW_POST_PROXY_TYPE, 0, "Fail-Disconnect");
+		dval = dict_value_by_name(PW_POST_PROXY_TYPE, 0, "Fail-Disconnect");
 #endif
 	} else {
 		WARN("Unknown packet type in Post-Proxy-Type Fail: ignoring");
 		return 0;
 	}
 
-	if (!dval) dval = dict_val_by_name(PW_POST_PROXY_TYPE, 0, "Fail");
+	if (!dval) dval = dict_value_by_name(PW_POST_PROXY_TYPE, 0, "Fail");
 
 	if (!dval) {
 		fr_pair_delete_by_num(&request->config, PW_POST_PROXY_TYPE, 0, TAG_ANY);
@@ -3004,7 +3004,7 @@ do_home:
 	 */
 	vp = fr_pair_find_by_num(request->config, PW_PRE_PROXY_TYPE, 0, TAG_ANY);
 	if (vp) {
-		DICT_VALUE const *dval = dict_val_by_attr(vp->da->attr, vp->da->vendor, vp->vp_integer);
+		DICT_VALUE const *dval = dict_value_by_attr(vp->da->attr, vp->da->vendor, vp->vp_integer);
 		/* Must be a validation issue */
 		rad_assert(dval);
 		RDEBUG2("Found Pre-Proxy-Type %s", dval->name);
@@ -4121,7 +4121,7 @@ static void request_coa_originate(REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(request->config, PW_PRE_PROXY_TYPE, 0, TAG_ANY);
 	if (vp) {
-		DICT_VALUE const *dval = dict_val_by_attr(vp->da->attr, vp->da->vendor, vp->vp_integer);
+		DICT_VALUE const *dval = dict_value_by_attr(vp->da->attr, vp->da->vendor, vp->vp_integer);
 		/* Must be a validation issue */
 		rad_assert(dval);
 		RDEBUG2("Found Pre-Proxy-Type %s", dval->name);

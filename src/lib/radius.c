@@ -1406,7 +1406,7 @@ static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
 	 *	Unknown vendor: RFC format.
 	 *	Known vendor and RFC format: go do that.
 	 */
-	dv = dict_vendorby_num(vendor);
+	dv = dict_vendor_by_num(vendor);
 	if (!dv ||
 	    (!vp->da->flags.is_tlv && (dv->type == 1) && (dv->length == 1))) {
 		return vp2attr_rfc(packet, original, secret, pvp,
@@ -2962,7 +2962,7 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 	while (data < (start + length)) {
 		ssize_t tlv_len;
 
-		child = dict_attr_byparent(da, data[0], da->vendor);
+		child = dict_attr_by_parent(da, data[0], da->vendor);
 		if (!child) {
 			unsigned int my_attr, my_vendor;
 
@@ -3295,7 +3295,7 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 
 	memcpy(&vendor, data, 4);
 	vendor = ntohl(vendor);
-	dv = dict_vendorby_num(vendor);
+	dv = dict_vendor_by_num(vendor);
 	if (!dv) {
 		/*
 		 *	RFC format is 1 octet type, 1 octet length
@@ -3647,7 +3647,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	case PW_TYPE_EXTENDED:
 		if (datalen < 2) goto raw; /* etype, value */
 
-		child = dict_attr_byparent(da, data[0], 0);
+		child = dict_attr_by_parent(da, data[0], 0);
 		if (!child) goto raw;
 
 		/*
@@ -3664,7 +3664,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	case PW_TYPE_LONG_EXTENDED:
 		if (datalen < 3) goto raw; /* etype, flags, value */
 
-		child = dict_attr_byparent(da, data[0], 0);
+		child = dict_attr_by_parent(da, data[0], 0);
 		if (!child) {
 			if ((data[0] != PW_VENDOR_SPECIFIC) ||
 			    (datalen < (3 + 4 + 1))) {

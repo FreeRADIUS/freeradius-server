@@ -3155,7 +3155,7 @@ static int command_socket_print(rad_listen_t const *this, char *buffer, size_t b
  *	String split routine.  Splits an input string IN PLACE
  *	into pieces, based on spaces.
  */
-static int str2argvX(char *str, char **argv, int max_argc)
+static int dict_str_to_argvX(char *str, char **argv, int max_argc)
 {
 	int argc = 0;
 
@@ -3290,7 +3290,7 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 	command[r] = '\0';
 	DEBUG("radmin> %s", command);
 
-	argc = str2argvX((char *) command, my_argv, MAX_ARGV);
+	argc = dict_str_to_argvX((char *) command, my_argv, MAX_ARGV);
 	if (argc == 0) goto do_next; /* empty strings are OK */
 
 	if (argc < 0) {

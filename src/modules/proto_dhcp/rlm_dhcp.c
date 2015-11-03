@@ -170,7 +170,7 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 			}
 
 			DEBUG3("Adding %s value %i %s", da->name, i, value->name);
-			if (dict_addvalue(value->name, da->name, i) < 0) {
+			if (dict_value_add(value->name, da->name, i) < 0) {
 				DEBUG3("Failed adding value: %s", fr_strerror());
 			}
 		}

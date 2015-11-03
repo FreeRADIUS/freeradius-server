@@ -1074,7 +1074,7 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = dict_val_by_name(da->attr, da->vendor, name2);
+	dval = dict_value_by_name(da->attr, da->vendor, name2);
 	if (!dval) {
 		talloc_free(ml);
 		cf_log_err_cs(cs,
@@ -1181,7 +1181,7 @@ static int load_component_section(CONF_SECTION *cs,
 				}
 			}
 
-			dval = dict_val_by_name(PW_AUTH_TYPE, 0, modrefname);
+			dval = dict_value_by_name(PW_AUTH_TYPE, 0, modrefname);
 			if (!dval) {
 				/*
 				 *	It's a section, but nothing we
@@ -1656,7 +1656,7 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
 	 *	If the value already exists, don't
 	 *	create it again.
 	 */
-	dval = dict_val_by_name(da->attr, da->vendor, name);
+	dval = dict_value_by_name(da->attr, da->vendor, name);
 	if (dval) {
 		if (dval->value == 0) {
 			ERROR("The dictionaries must not define VALUE %s %s 0",
@@ -1675,10 +1675,10 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
 	 */
 	do {
 		value = (fr_rand() & 0x00ffffff) + 1;
-	} while (dict_val_by_attr(da->attr, da->vendor, value));
+	} while (dict_value_by_attr(da->attr, da->vendor, value));
 
 	cf_log_module(cs, "Creating %s = %s", da->name, name);
-	if (dict_addvalue(name, da->name, value) < 0) {
+	if (dict_value_add(name, da->name, value) < 0) {
 		ERROR("%s", fr_strerror());
 		return 0;
 	}

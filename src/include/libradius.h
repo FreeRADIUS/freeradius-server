@@ -477,14 +477,15 @@ do { \
 
 extern const int dict_attr_allowed_chars[256];
 int		dict_valid_name(char const *name);
-int		str2argv(char *str, char **argv, int max_argc);
-int		dict_str2oid(char const *ptr, unsigned int *pattr,
-			     unsigned int *pvendor, int tlv_depth);
-int		dict_addvendor(char const *name, unsigned int value);
-int		dict_addattr(char const *name, int attr, unsigned int vendor, PW_TYPE type, ATTR_FLAGS flags);
-int		dict_addvalue(char const *namestr, char const *attrstr, int value);
+int		dict_str_to_argv(char *str, char **argv, int max_argc);
+int		dict_str_to_oid(char const *ptr, unsigned int *pattr,
+				unsigned int *pvendor, int tlv_depth);
+int		dict_vendor_add(char const *name, unsigned int value);
+int		dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type, ATTR_FLAGS flags);
+int		dict_value_add(char const *namestr, char const *attrstr, int value);
 int		dict_init(char const *dir, char const *fn);
 void		dict_free(void);
+
 int		dict_read(char const *dir, char const *filename);
 
 void 		dict_attr_free(DICT_ATTR const **da);
@@ -499,22 +500,13 @@ DICT_ATTR const	*dict_attr_by_num(unsigned int attr, unsigned int vendor);
 DICT_ATTR const	*dict_attr_by_name(char const *attr);
 DICT_ATTR const *dict_attr_by_name_substr(char const **name);
 DICT_ATTR const	*dict_attr_by_type(unsigned int attr, unsigned int vendor, PW_TYPE type);
-DICT_ATTR const	*dict_attr_byparent(DICT_ATTR const *parent, unsigned int attr,
-					   unsigned int vendor);
-int		dict_attr_child(DICT_ATTR const *parent,
-				unsigned int *pattr, unsigned int *pvendor);
-DICT_VALUE	*dict_val_by_attr(unsigned int attr, unsigned int vendor, int val);
-DICT_VALUE	*dict_val_by_name(unsigned int attr, unsigned int vendor, char const *val);
-char const	*dict_valname_by_attr(unsigned int attr, unsigned int vendor, int value);
+DICT_ATTR const	*dict_attr_by_parent(DICT_ATTR const *parent, unsigned int attr, unsigned int vendor);
+int		dict_attr_child(DICT_ATTR const *parent, unsigned int *pattr, unsigned int *pvendor);
+DICT_VALUE	*dict_value_by_attr(unsigned int attr, unsigned int vendor, int val);
+DICT_VALUE	*dict_value_by_name(unsigned int attr, unsigned int vendor, char const *val);
+char const	*dict_value_name_by_attr(unsigned int attr, unsigned int vendor, int value);
 int		dict_vendor_by_name(char const *name);
-DICT_VENDOR	*dict_vendorby_num(int vendor);
-
-#if 1 /* FIXME: compat */
-#define dict_attrget	dict_attr_by_num
-#define dict_attrfind	dict_attr_by_name
-#define dict_valfind	dict_val_by_name
-/*#define dict_valget	dict_val_by_attr almost but not quite*/
-#endif
+DICT_VENDOR	*dict_vendor_by_num(int vendor);
 
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);

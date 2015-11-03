@@ -1376,7 +1376,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 
 /** Add an undefined #DICT_ATTR specified by a #vp_tmpl_t to the main dictionary
  *
- * @note dict_addattr will not return an error if the attribute already exists
+ * @note dict_attr_add will not return an error if the attribute already exists
  *	meaning that multiple #vp_tmpl_t specifying the same attribute can be
  *	passed to this function to be fixed up, so long as the type and flags
  *	are identical.
@@ -1401,7 +1401,7 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *f
 
 	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
 
-	if (dict_addattr(vpt->tmpl_unknown_name, -1, 0, type, *flags) < 0) return -1;
+	if (dict_attr_add(vpt->tmpl_unknown_name, -1, 0, type, *flags) < 0) return -1;
 	da = dict_attr_by_name(vpt->tmpl_unknown_name);
 	if (!da) return -1;
 

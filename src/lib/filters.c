@@ -978,7 +978,7 @@ int ascend_parse_filter(value_data_t *out, char const *value, size_t len)
 	 */
 	fr_strerror_printf("Failed parsing \"%s\" as ascend filer", p);
 
-	argc = str2argv(p, argv, 32);
+	argc = dict_str_to_argv(p, argv, 32);
 	if (argc < 3) {
 		talloc_free(p);
 		return -1;
