@@ -376,16 +376,6 @@ eap {
 			enable = yes
 
 			#
-			#  Internal "name" of the session cache. Used to distinguish which
-			#  TLS context sessions belong to.
-			#
-			#  The server will generate a random value if unset. This will change
-			#  across server restart so you MUST set the "name" if you want to
-			#  persist sessions (see below).
-			#
-		#	name = "EAP module"
-
-			#
 			#  Lifetime of the cached entries, in hours. The sessions will be
 			#  deleted/invalidated after this time.
 			#
@@ -401,14 +391,13 @@ eap {
 			max_entries = 255
 
 			#
-			#  Internal "name" of the session cache.
-			#  Used to distinguish which TLS context
-			#  sessions belong to.
+			#  Internal "name" of the session cache. Used to
+			#  distinguish which TLS context sessions belong to.
 			#
-			#  The server will generate a random value
-			#  if unset. This will change across server
-			#  restart so you MUST set the "name" if you
-			#  want to persist sessions (see below).
+			#  The server will generate a random value if unset.
+			#  This will change across server restart so you MUST
+			#  set the "name" if you want to persist sessions (see
+			#  below).
 			#
 			#name = "EAP module"
 
