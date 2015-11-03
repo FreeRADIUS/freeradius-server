@@ -926,7 +926,7 @@ int fr_fault_setup(char const *cmd, char const *program)
 		env = getenv("DEBUG");
 		if (!env || (strcmp(env, "no") == 0)) {
 			debug_state = DEBUG_STATE_NOT_ATTACHED;
-		} else if (strcmp(env, "auto") == 0) {
+		} else if (!strcmp(env, "auto") || !strcmp(env, "yes")) {
 			/*
 			 *  Figure out if we were started under a debugger
 			 */
