@@ -505,7 +505,7 @@ void version_print(void)
 		MEM(versions = cf_section_alloc(NULL, "version", NULL));
 		version_init_numbers(versions);
 
-		DEBUG3("Server was built with: ");
+		DEBUG2("Server was built with: ");
 
 		for (ci = cf_item_find_next(features, NULL);
 		     ci;
@@ -530,13 +530,13 @@ void version_print(void)
 			cp = cf_item_to_pair(ci);
 			attr = cf_pair_attr(cp);
 
-			DEBUG3("  %s%.*s : %s", attr,
+			DEBUG2("  %s%.*s : %s", attr,
 			       (int)(max - talloc_array_length(attr)), spaces,  cf_pair_value(cp));
 		}
 
 		talloc_free(features);
 
-		DEBUG3("Server core libs:");
+		DEBUG2("Server core libs:");
 
 		for (ci = cf_item_find_next(versions, NULL);
 		     ci;
@@ -546,33 +546,33 @@ void version_print(void)
 			cp = cf_item_to_pair(ci);
 			attr = cf_pair_attr(cp);
 
-			DEBUG3("  %s%.*s : %s", attr,
+			DEBUG2("  %s%.*s : %s", attr,
 			       (int)(max - talloc_array_length(attr)), spaces,  cf_pair_value(cp));
 		}
 
 		talloc_free(versions);
 
-		DEBUG3("Endianness:");
+		DEBUG2("Endianness:");
 #if defined(FR_LITTLE_ENDIAN)
-		DEBUG3("  little");
+		DEBUG2("  little");
 #elif defined(FR_BIG_ENDIAN)
-		DEBUG3("  big");
+		DEBUG2("  big");
 #else
-		DEBUG3("  unknown");
+		DEBUG2("  unknown");
 #endif
 
-		DEBUG3("Compilation flags:");
+		DEBUG2("Compilation flags:");
 #ifdef BUILT_WITH_CPPFLAGS
-		DEBUG3("  cppflags : " BUILT_WITH_CPPFLAGS);
+		DEBUG2("  cppflags : " BUILT_WITH_CPPFLAGS);
 #endif
 #ifdef BUILT_WITH_CFLAGS
-		DEBUG3("  cflags   : " BUILT_WITH_CFLAGS);
+		DEBUG2("  cflags   : " BUILT_WITH_CFLAGS);
 #endif
 #ifdef BUILT_WITH_LDFLAGS
-		DEBUG3("  ldflags  : " BUILT_WITH_LDFLAGS);
+		DEBUG2("  ldflags  : " BUILT_WITH_LDFLAGS);
 #endif
 #ifdef BUILT_WITH_LIBS
-		DEBUG3("  libs     : " BUILT_WITH_LIBS);
+		DEBUG2("  libs     : " BUILT_WITH_LIBS);
 #endif
 	}
 	INFO("Copyright (C) 1999-2015 The FreeRADIUS server project and contributors");
