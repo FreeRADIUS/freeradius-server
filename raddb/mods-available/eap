@@ -363,6 +363,7 @@ eap {
 			#	persist_dir
 			#	lifetime
 			#	max_entries
+			#	name
 			#
 			#  You should use the "virtual_server" directive instead.
 			#  See raddb/sites-available/tls-cache for details.

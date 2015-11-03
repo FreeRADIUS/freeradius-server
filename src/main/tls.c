@@ -1076,12 +1076,12 @@ void tls_session_information(tls_session_t *tls_session)
 static CONF_PARSER cache_config[] = {
 	{ FR_CONF_OFFSET("enable", PW_TYPE_BOOLEAN, fr_tls_server_conf_t, session_cache_enable), .dflt = "no" },
 
-	{ FR_CONF_OFFSET("name", PW_TYPE_STRING, fr_tls_server_conf_t, session_id_name) },
+	{ FR_CONF_OFFSET("name", PW_TYPE_STRING | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, session_id_name) },
 
 	{ FR_CONF_OFFSET("virtual_server", PW_TYPE_STRING, fr_tls_server_conf_t, session_cache_server) },
 
-	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER, fr_tls_server_conf_t, session_timeout), .dflt = "24" },
-	{ FR_CONF_OFFSET("max_entries", PW_TYPE_INTEGER, fr_tls_server_conf_t, session_cache_size), .dflt = "255" },
+	{ FR_CONF_OFFSET("lifetime", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, session_timeout), .dflt = "24" },
+	{ FR_CONF_OFFSET("max_entries", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, session_cache_size), .dflt = "255" },
 	{ FR_CONF_DEPRECATED("persist_dir", PW_TYPE_STRING | PW_TYPE_DEPRECATED, fr_tls_server_conf_t, NULL) },
 
 	CONF_PARSER_TERMINATOR
