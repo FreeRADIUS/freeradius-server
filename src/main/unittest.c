@@ -682,7 +682,7 @@ int main(int argc, char *argv[])
 	 *	Ensure that the configuration is initialized.
 	 */
 	memset(&main_config, 0, sizeof(main_config));
-	main_config.name = "radiusd";
+	main_config.name = "unittest";
 
 	/*
 	 *	The tests should have only IPs, not host names.
@@ -770,7 +770,7 @@ int main(int argc, char *argv[])
 	 *	Mismatch between the binary and the libraries it depends on
 	 */
 	if (fr_check_lib_magic(RADIUSD_MAGIC_NUMBER) < 0) {
-		fr_perror("radiusd");
+		fr_perror("%s", main_config.name);
 		exit(EXIT_FAILURE);
 	}
 
@@ -826,7 +826,7 @@ int main(int argc, char *argv[])
 		if (!panic_action) panic_action = main_config.panic_action;
 
 		if (panic_action && (fr_fault_setup(panic_action, argv[0]) < 0)) {
-			fr_perror("radiusd");
+			fr_perror("%s", main_config.name);
 			exit(EXIT_FAILURE);
 		}
 	}

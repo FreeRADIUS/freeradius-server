@@ -354,7 +354,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	ruby_init();
 	ruby_init_loadpath();
-	ruby_script("radiusd");
+	ruby_script(main_config.name);
 
 	/* disabling GC, it will eat your memory, but at least it will be stable. */
 	rb_gc_disable();

@@ -166,7 +166,7 @@ static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
 	return Py_None;
 }
 
-static PyMethodDef radiusd_methods[] = {
+static PyMethodDef module_methods[] = {
 	{ "radlog", &mod_radlog, METH_VARARGS,
 	  "radiusd.radlog(level, msg)\n\n" \
 	  "Print a message using radiusd logging system. level should be one of the\n" \
@@ -202,7 +202,7 @@ failed:
 static int mod_init(rlm_python_t *inst)
 {
 	int i;
-	static char name[] = "radiusd";
+	char *name;
 
 	if (radiusd_module) return 0;
 
@@ -215,6 +215,7 @@ static int mod_init(rlm_python_t *inst)
 		WARN("Failed loading libpython symbols into global symbol table: %s", dlerror());
 	}
 
+	memcpy(&name, &main_config.name, sizeof(name));
 	Py_SetProgramName(name);
 #ifdef HAVE_PTHREAD_H
 	Py_InitializeEx(0);				/* Don't override signal handlers */
@@ -228,8 +229,7 @@ static int mod_init(rlm_python_t *inst)
 		PySys_SetPath(path);
 	}
 
-	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
-					     "FreeRADIUS Module")) == NULL)
+	if ((radiusd_module = Py_InitModule3(main_config.name, module_methods, "rlm_python module")) == NULL)
 		goto failed;
 
 	for (i = 0; radiusd_constants[i].name; i++) {

@@ -52,7 +52,7 @@ typedef struct rlm_pam_t {
 } rlm_pam_t;
 
 static const CONF_PARSER module_config[] = {
-	{ FR_CONF_OFFSET("pam_auth", PW_TYPE_STRING, rlm_pam_t, pam_auth_name), .dflt = "radiusd" },
+	{ FR_CONF_OFFSET("pam_auth", PW_TYPE_STRING, rlm_pam_t, pam_auth_name) },
 	CONF_PARSER_TERMINATOR
 };
 
@@ -62,6 +62,15 @@ typedef struct rlm_pam_data_t {
 	char const	*password;	//!< Password to provide to PAM when prompted.
 	bool		error;		//!< True if pam_conv failed.
 } rlm_pam_data_t;
+
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+{
+	rlm_pam_t *inst = instance;
+
+	if (!inst->pam_auth_name) inst->pam_auth_name = main_config.name;
+
+	return 0;
+}
 
 /** Dialogue between RADIUS and PAM modules
  *
@@ -239,6 +248,7 @@ module_t rlm_pam = {
 	.type		= RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
 	.inst_size	= sizeof(rlm_pam_t),
 	.config		= module_config,
+	.instantiate	= mod_instantiate,
 	.methods = {
 		[MOD_AUTHENTICATE]	= mod_authenticate
 	},
