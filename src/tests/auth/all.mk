@@ -62,7 +62,7 @@ $(BUILD_DIR)/tests/auth/%.attrs: $(DIR)/%.attrs | $(BUILD_DIR)/tests/auth
 #
 .PRECIOUS: $(BUILD_DIR)/tests/auth/%.attrs raddb/mods-enabled/wimax
 
-AUTH_MODULES	:= $(shell grep -- mods-enabled src/tests/auth/radiusd.conf  | sed 's,.*/,,')
+AUTH_MODULES	:= $(shell grep -- mods-enabled src/tests/auth/unittest.conf  | sed 's,.*/,,')
 AUTH_RADDB	:= $(addprefix raddb/mods-enabled/,$(AUTH_MODULES))
 AUTH_LIBS	:= $(addsuffix .la,$(addprefix rlm_,$(AUTH_MODULES)))
 
