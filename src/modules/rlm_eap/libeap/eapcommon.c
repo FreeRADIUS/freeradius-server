@@ -87,7 +87,7 @@ const FR_NAME_NUMBER eap_rcode_table[] = {
  */
 eap_type_t eap_name2type(char const *name)
 {
-	DICT_VALUE	*dv;
+	fr_dict_value_t	*dv;
 
 	dv = dict_value_by_name(PW_EAP_TYPE, 0, name);
 	if (!dv) return PW_EAP_INVALID;
@@ -103,7 +103,7 @@ eap_type_t eap_name2type(char const *name)
  */
 char const *eap_type2name(eap_type_t method)
 {
-	DICT_VALUE	*dv;
+	fr_dict_value_t	*dv;
 
 	dv = dict_value_by_attr(PW_EAP_TYPE, 0, method);
 	if (dv) {

@@ -564,7 +564,7 @@ vp_tmpl_t *tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name, ssize
  * @param request to operate on.
  * @param list to operate on.
  */
-void tmpl_from_da(vp_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
+void tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
 		  request_refs_t request, pair_lists_t list)
 {
 	static char const name[] = "internal";
@@ -593,7 +593,7 @@ void tmpl_from_da(vp_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
  *	- -1 on failure.
  */
 int tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
-			  PW_TYPE type, DICT_ATTR const *enumv, bool steal)
+			  PW_TYPE type, fr_dict_attr_t const *enumv, bool steal)
 {
 	char const *name;
 	vp_tmpl_t *vpt;
@@ -639,8 +639,8 @@ int tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
  *	#dict_unknown_from_substr will be allowed, even if they're not in the main
  *	dictionaries.
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
- *	produced with the unknown #DICT_ATTR stored in the ``unknown.da`` buffer.
- *	This #DICT_ATTR will have its ``flags.is_unknown`` field set to true.
+ *	produced with the unknown #fr_dict_attr_t stored in the ``unknown.da`` buffer.
+ *	This #fr_dict_attr_t will have its ``flags.is_unknown`` field set to true.
  *	If #tmpl_from_attr_substr is being called on startup, the #vp_tmpl_t may be
  *	passed to #tmpl_define_unknown_attr to add the unknown attribute to the main
  *	dictionary.
@@ -651,7 +651,7 @@ int tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
  *	will be produced.  A #vp_tmpl_t of this type can be passed to
  *	#tmpl_define_undefined_attr which will add the attribute to the global dictionary,
  *	and fixup the #vp_tmpl_t, changing it to a #TMPL_TYPE_ATTR with a pointer to the
- *	new #DICT_ATTR.
+ *	new #fr_dict_attr_t.
  * @return
  *	- <= 0 on error (parse failure offset as negative integer).
  *	- > 0 on success (number of bytes parsed).
@@ -727,7 +727,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
-		if (dict_unknown_from_substr((DICT_ATTR *)&attr.unknown.da, &p) == 0) {
+		if (dict_unknown_from_substr((fr_dict_attr_t *)&attr.unknown.da, &p) == 0) {
 			/*
 			 *	Check what we just parsed really hasn't been defined
 			 *	in the main dictionaries.
@@ -735,8 +735,8 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			 *	If it has, parsing is the same as if the attribute
 			 *	name had been used instead of its OID.
 			 */
-			attr.da = dict_attr_by_num(((DICT_ATTR *)&attr.unknown.da)->attr,
-						   ((DICT_ATTR *)&attr.unknown.da)->vendor);
+			attr.da = dict_attr_by_num(((fr_dict_attr_t *)&attr.unknown.da)->attr,
+						   ((fr_dict_attr_t *)&attr.unknown.da)->vendor);
 			if (attr.da) {
 				vpt->auto_converted = true;
 				goto do_num;
@@ -751,8 +751,8 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			 *	Unknown attributes can't be encoded, as we don't
 			 *	know how to encode them!
 			 */
-			((DICT_ATTR *)attr.unknown.da)->flags.internal = 1;
-			attr.da = (DICT_ATTR *)&attr.unknown.da;
+			((fr_dict_attr_t *)attr.unknown.da)->flags.internal = 1;
+			attr.da = (fr_dict_attr_t *)&attr.unknown.da;
 
 			goto do_num; /* unknown attributes can't have tags */
 		}
@@ -857,7 +857,7 @@ finish:
 	 */
 	memcpy(&vpt->data.attribute, &attr, sizeof(vpt->data.attribute));
 	if ((vpt->type == TMPL_TYPE_ATTR) && attr.da->flags.is_unknown) {
-		vpt->tmpl_da = (DICT_ATTR *)&vpt->data.attribute.unknown.da;
+		vpt->tmpl_da = (fr_dict_attr_t *)&vpt->data.attribute.unknown.da;
 	}
 
 	VERIFY_TMPL(vpt);	/* Because we want to ensure we produced something sane */
@@ -906,8 +906,8 @@ ssize_t tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
  *	#dict_unknown_from_substr will be allowed, even if they're not in the main
  *	dictionaries.
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
- *	produced with the unknown #DICT_ATTR stored in the ``unknown.da`` buffer.
- *	This #DICT_ATTR will have its ``flags.is_unknown`` field set to true.
+ *	produced with the unknown #fr_dict_attr_t stored in the ``unknown.da`` buffer.
+ *	This #fr_dict_attr_t will have its ``flags.is_unknown`` field set to true.
  *	If #tmpl_from_attr_substr is being called on startup, the #vp_tmpl_t may be
  *	passed to #tmpl_define_unknown_attr to add the unknown attribute to the main
  *	dictionary.
@@ -1187,8 +1187,8 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
  *
  * #tmpl_cast_to_vp does the same as #tmpl_cast_in_place, but outputs a #VALUE_PAIR.
  *
- * #tmpl_define_unknown_attr converts a #TMPL_TYPE_ATTR with an unknown #DICT_ATTR to a
- * #TMPL_TYPE_ATTR with a known #DICT_ATTR, by adding the unknown #DICT_ATTR to the main
+ * #tmpl_define_unknown_attr converts a #TMPL_TYPE_ATTR with an unknown #fr_dict_attr_t to a
+ * #TMPL_TYPE_ATTR with a known #fr_dict_attr_t, by adding the unknown #fr_dict_attr_t to the main
  * dictionary, and updating the ``tmpl_da`` pointer.
  * @{
  */
@@ -1202,12 +1202,12 @@ ssize_t tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *in, size_t 
  * @param[in,out] vpt The template to modify. Must be of type #TMPL_TYPE_UNPARSED
  *	or #TMPL_TYPE_DATA.
  * @param[in] type to cast to.
- * @param[in] enumv Enumerated dictionary values associated with a #DICT_ATTR.
+ * @param[in] enumv Enumerated dictionary values associated with a #fr_dict_attr_t.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv)
+int tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_t const *enumv)
 {
 	VERIFY_TMPL(vpt);
 
@@ -1300,7 +1300,7 @@ void tmpl_cast_in_place_str(vp_tmpl_t *vpt)
  *	- -1 on failure.
  */
 int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
-		    vp_tmpl_t const *vpt, DICT_ATTR const *cast)
+		    vp_tmpl_t const *vpt, fr_dict_attr_t const *cast)
 {
 	int rcode;
 	VALUE_PAIR *vp;
@@ -1346,10 +1346,10 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
 	return 0;
 }
 
-/** Add an unknown #DICT_ATTR specified by a #vp_tmpl_t to the main dictionary
+/** Add an unknown #fr_dict_attr_t specified by a #vp_tmpl_t to the main dictionary
  *
  * @param vpt to add. ``tmpl_da`` pointer will be updated to point to the
- *	#DICT_ATTR inserted into the dictionary.
+ *	#fr_dict_attr_t inserted into the dictionary.
  * @return
  *	- 1 noop (did nothing) - Not possible to convert tmpl.
  *	- 0 on success.
@@ -1357,7 +1357,7 @@ int tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
  */
 int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 {
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	if (!vpt) return 1;
 
@@ -1374,7 +1374,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 	return 0;
 }
 
-/** Add an undefined #DICT_ATTR specified by a #vp_tmpl_t to the main dictionary
+/** Add an undefined #fr_dict_attr_t specified by a #vp_tmpl_t to the main dictionary
  *
  * @note dict_attr_add will not return an error if the attribute already exists
  *	meaning that multiple #vp_tmpl_t specifying the same attribute can be
@@ -1382,7 +1382,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  *	are identical.
  *
  * @param vpt specifying undefined attribute to add. ``tmpl_da`` pointer will be
- *	updated to point to the #DICT_ATTR inserted into the dictionary.
+ *	updated to point to the #fr_dict_attr_t inserted into the dictionary.
  *	Lists and requests will be preserved.
  * @param type to define undefined attribute as.
  * @param flags to define undefined attribute with.
@@ -1393,7 +1393,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  */
 int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *flags)
 {
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	if (!vpt) return -1;
 
@@ -1807,13 +1807,13 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
  * @param[out] out Where to write the presentation format #vp_tmpl_t string.
  * @param[in] outlen Size of output buffer.
  * @param[in] vpt to print.
- * @param[in] values Used for integer attributes only. #DICT_ATTR to use when mapping integer
+ * @param[in] values Used for integer attributes only. #fr_dict_attr_t to use when mapping integer
  *	values to strings.
  * @return
  *	- The number of bytes written to the out buffer.
  *	- A number >= outlen if truncation has occurred.
  */
-size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt, DICT_ATTR const *values)
+size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt, fr_dict_attr_t const *values)
 {
 	size_t		len;
 	char const	*p;
@@ -2418,7 +2418,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 		}
 
 		if (vpt->tmpl_da->flags.is_unknown) {
-			if (vpt->tmpl_da != (DICT_ATTR const *)&vpt->data.attribute.unknown.da) {
+			if (vpt->tmpl_da != (fr_dict_attr_t const *)&vpt->data.attribute.unknown.da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "da is marked as unknown, but does not point to the template's "
 					     "unknown da buffer", file, line);
@@ -2427,7 +2427,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			}
 
 		} else {
-			DICT_ATTR const *da;
+			fr_dict_attr_t const *da;
 
 			/*
 			 *	Attribute may be present with multiple names

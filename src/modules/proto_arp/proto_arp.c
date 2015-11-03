@@ -208,7 +208,7 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	     header_names[i].name != NULL;
 	     p += header_names[i].len, i++) {
 		ssize_t len;
-		DICT_ATTR const *da;
+		fr_dict_attr_t const *da;
 		VALUE_PAIR *vp;
 
 		da = dict_attr_by_name(header_names[i].name);

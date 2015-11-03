@@ -280,7 +280,7 @@ static REQUEST *request_setup(FILE *fp)
 		case PW_DIGEST_USER_NAME:
 			/* overlapping! */
 		{
-			DICT_ATTR const *da;
+			fr_dict_attr_t const *da;
 			uint8_t *p, *q;
 
 			p = talloc_array(vp, uint8_t, vp->vp_length + 2);

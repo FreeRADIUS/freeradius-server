@@ -221,7 +221,7 @@ struct sql_inst {
 	rlm_sql_config_t	*config;
 	CONF_SECTION		*cs;
 
-	DICT_ATTR const		*sql_user;		//!< Cached pointer to SQL-User-Name
+	fr_dict_attr_t const		*sql_user;		//!< Cached pointer to SQL-User-Name
 							//!< dictionary attribute.
 	exfile_t		*ef;
 
@@ -235,7 +235,7 @@ struct sql_inst {
 	sql_rcode_t (*sql_fetch_row)(rlm_sql_row_t *out, rlm_sql_t const *inst, REQUEST *request, rlm_sql_handle_t **handle);
 
 	char const		*name;			//!< Module instance name.
-	DICT_ATTR const		*group_da;		//!< Group dictionary attribute.
+	fr_dict_attr_t const		*group_da;		//!< Group dictionary attribute.
 };
 
 typedef struct sql_grouplist {

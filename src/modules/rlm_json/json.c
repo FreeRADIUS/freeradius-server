@@ -40,7 +40,7 @@
  *	- -1 on failure.
  */
 int fr_json_object_to_value_data(TALLOC_CTX *ctx, value_data_t *out, json_object *object,
-				 PW_TYPE dst_type, DICT_ATTR const *dst_enumv)
+				 PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv)
 {
 	PW_TYPE src_type = PW_TYPE_INVALID;
 	value_data_t in;

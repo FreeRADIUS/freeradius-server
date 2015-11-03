@@ -55,7 +55,7 @@ static int _fr_pair_free(VALUE_PAIR *vp) {
  *	- A new #VALUE_PAIR.
  *	- NULL if an error occurred.
  */
-VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, DICT_ATTR const *da)
+VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
 {
 	VALUE_PAIR *vp;
 
@@ -87,13 +87,13 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, DICT_ATTR const *da)
 
 /** Create a new valuepair
  *
- * If attr and vendor match a dictionary entry then a VP with that #DICT_ATTR
+ * If attr and vendor match a dictionary entry then a VP with that #fr_dict_attr_t
  * will be returned.
  *
  * If attr or vendor are uknown will call dict_attruknown to create a dynamic
- * #DICT_ATTR of #PW_TYPE_OCTETS.
+ * #fr_dict_attr_t of #PW_TYPE_OCTETS.
  *
- * Which type of #DICT_ATTR the #VALUE_PAIR was created with can be determined by
+ * Which type of #fr_dict_attr_t the #VALUE_PAIR was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  *
  * @param[in] ctx for allocated memory, usually a pointer to a #RADIUS_PACKET.
@@ -105,7 +105,7 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, DICT_ATTR const *da)
  */
 VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 {
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	da = dict_attr_by_num(attr, vendor);
 	if (!da) {
@@ -198,21 +198,21 @@ void fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
 	 *	DA.  So we might as well tie it to this VP.
 	 */
 	if (vp->da->flags.is_unknown) {
-		DICT_ATTR *da;
+		fr_dict_attr_t *da;
 		char *p;
 		size_t size;
 
 		size = talloc_get_size(vp->da);
 
 		p = talloc_zero_array(vp, char, size);
-		da = (DICT_ATTR *) p;
-		talloc_set_type(p, DICT_ATTR);
+		da = (fr_dict_attr_t *) p;
+		talloc_set_type(p, fr_dict_attr_t);
 		memcpy(da, vp->da, size);
 		vp->da = da;
 	}
 }
 
-static VALUE_PAIR *fr_pair_from_unknown(VALUE_PAIR *vp, DICT_ATTR const *da)
+static VALUE_PAIR *fr_pair_from_unknown(VALUE_PAIR *vp, fr_dict_attr_t const *da)
 {
 	ssize_t len;
 	VALUE_PAIR *vp2;
@@ -263,7 +263,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 					FR_TOKEN op)
 {
 	VALUE_PAIR	*vp;
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	uint8_t 	*data;
 	size_t		size;
@@ -338,7 +338,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		     char const *attribute, char const *value, FR_TOKEN op)
 {
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 	VALUE_PAIR	*vp;
 	char		*tc, *ts;
 	int8_t		tag;
@@ -485,7 +485,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 */
 	if (vp->da->type == PW_TYPE_TLV) {
 		ssize_t len;
-		DICT_ATTR const *unknown;
+		fr_dict_attr_t const *unknown;
 		VALUE_PAIR *head = NULL;
 		VALUE_PAIR **tail = &head;
 
@@ -574,14 +574,14 @@ void fr_pair_list_free(VALUE_PAIR **vps)
 
 /** Mark malformed or unrecognised attributed as unknown
  *
- * @param vp to change DICT_ATTR of.
+ * @param vp to change fr_dict_attr_t of.
  * @return
  *	- 0 on success (or if already unknown).
  *	- -1 on failure.
  */
 int fr_pair_to_unknown(VALUE_PAIR *vp)
 {
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	VERIFY_VP(vp);
 	if (vp->da->flags.is_unknown) {
@@ -634,7 +634,7 @@ int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
 /** Find the pair with the matching DAs
  *
  */
-VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *vp, DICT_ATTR const *da, int8_t tag)
+VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *vp, fr_dict_attr_t const *da, int8_t tag)
 {
 	vp_cursor_t 	cursor;
 
@@ -1030,7 +1030,7 @@ static VALUE_PAIR *fr_pair_list_sort_merge(VALUE_PAIR *a, VALUE_PAIR *b, fr_cmp_
 	if (!b) return a;
 
 	/*
-	 *	Compare the DICT_ATTRs and tags
+	 *	Compare the fr_dict_attr_ts and tags
 	 */
 	if (cmp(a, b) <= 0) {
 		result = a;
@@ -1875,7 +1875,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	 *	the VALUE_PAIR we now need to fixup the DA.
 	 */
 	if (type != vp->da->type) {
-		DICT_ATTR const *da;
+		fr_dict_attr_t const *da;
 
 		da = dict_attr_by_type(vp->da->attr, vp->da->vendor, type);
 		if (!da) {
@@ -1892,7 +1892,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	return 0;
 }
 
-/** Set the type of the VALUE_PAIR value buffer to match it's DICT_ATTR
+/** Set the type of the VALUE_PAIR value buffer to match it's fr_dict_attr_t
  *
  * @param vp to fixup.
  */
@@ -2565,9 +2565,9 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 	}
 
 	if (vp->da->flags.is_unknown) {
-		(void) talloc_get_type_abort(vp->da, DICT_ATTR);
+		(void) talloc_get_type_abort(vp->da, fr_dict_attr_t);
 	} else {
-		DICT_ATTR const *da;
+		fr_dict_attr_t const *da;
 
 		/*
 		 *	Attribute may be present with multiple names

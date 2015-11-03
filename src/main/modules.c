@@ -1046,11 +1046,11 @@ rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request)
  */
 static int load_subcomponent_section(CONF_SECTION *cs,
 				     rbtree_t *components,
-				     DICT_ATTR const *da, rlm_components_t comp)
+				     fr_dict_attr_t const *da, rlm_components_t comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
-	DICT_VALUE *dval;
+	fr_dict_value_t *dval;
 	char const *name2 = cf_section_name2(cs);
 
 	/*
@@ -1108,7 +1108,7 @@ static int load_component_section(CONF_SECTION *cs,
 	int idx;
 	indexed_modcallable *subcomp;
 	char const *modname;
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	/*
 	 *	Find the attribute used to store VALUEs for this section.
@@ -1167,7 +1167,7 @@ static int load_component_section(CONF_SECTION *cs,
 		 *	subsection.
 		 */
 		if (comp == MOD_AUTHENTICATE) {
-			DICT_VALUE *dval;
+			fr_dict_value_t *dval;
 			char const *modrefname = NULL;
 			if (cp) {
 				modrefname = cf_pair_attr(cp);
@@ -1365,7 +1365,7 @@ static int load_byserver(CONF_SECTION *cs)
 		CONF_SECTION *subcs;
 #endif
 #ifdef WITH_DHCP
-		DICT_ATTR const *da;
+		fr_dict_attr_t const *da;
 #endif
 
 #ifdef WITH_VMPS
@@ -1647,10 +1647,10 @@ int modules_hup(CONF_SECTION *modules)
 }
 
 
-static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
+static int define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
 {
 	uint32_t value;
-	DICT_VALUE *dval;
+	fr_dict_value_t *dval;
 
 	/*
 	 *	If the value already exists, don't
@@ -1699,7 +1699,7 @@ static bool server_define_types(CONF_SECTION *cs)
 	for (comp = 0; comp < MOD_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 		CONF_ITEM *modref;
-		DICT_ATTR const *da;
+		fr_dict_attr_t const *da;
 
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
@@ -1934,7 +1934,7 @@ int modules_init(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
 		CONF_SECTION *subcs;
-		DICT_ATTR const *da;
+		fr_dict_attr_t const *da;
 
 #ifdef WITH_VMPS
 		/*

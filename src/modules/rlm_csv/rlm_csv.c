@@ -408,7 +408,7 @@ static int csv_map_getvalue(TALLOC_CTX *ctx, VALUE_PAIR **out, REQUEST *request,
 	char const *str = uctx;
 	VALUE_PAIR *head = NULL, *vp;
 	vp_cursor_t cursor;
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	rad_assert(ctx != NULL);
 	fr_cursor_init(&cursor, &head);

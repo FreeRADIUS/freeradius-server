@@ -47,7 +47,7 @@ static ssize_t unpack_xlat(char **out, size_t outlen,
 	size_t len, input_len;
 	int offset;
 	PW_TYPE type;
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 	VALUE_PAIR *vp, *cast;
 	uint8_t const *input;
 	char buffer[256];

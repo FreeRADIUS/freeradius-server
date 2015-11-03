@@ -143,7 +143,7 @@ size_t fr_jpath_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
  *	- -1 on error.
  */
 static int jpath_evaluate(TALLOC_CTX *ctx, value_data_t ***tail,
-			  PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
+			  PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
 			  json_object *object, fr_jpath_node_t const *jpath)
 {
 	value_data_t		*value;
@@ -377,7 +377,7 @@ static int jpath_evaluate(TALLOC_CTX *ctx, value_data_t ***tail,
  *	- -1 on error.
  */
 int fr_jpath_evaluate_leaf(TALLOC_CTX *ctx, value_data_t **out,
-			   PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
+			   PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
 			   json_object *root, fr_jpath_node_t const *jpath)
 {
 	value_data_t **tail = out;

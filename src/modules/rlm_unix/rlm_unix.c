@@ -127,7 +127,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_unix_t *inst = instance;
 
-	DICT_ATTR const *group_da, *user_name_da;
+	fr_dict_attr_t const *group_da, *user_name_da;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
@@ -152,7 +152,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 #ifdef PW_GROUP_NAME /* compat */
 	{
-		DICT_ATTR const *group_name_da;
+		fr_dict_attr_t const *group_name_da;
 
 		group_name_da = dict_attr_by_num(PW_GROUP_NAME, 0);
 		if (!group_name_da) {

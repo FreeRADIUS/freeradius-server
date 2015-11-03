@@ -56,7 +56,7 @@ static int CC_HINT(nonnull) mod_process(void *instance, eap_session_t *eap_sessi
 static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_gtc_t	*inst;
-	DICT_VALUE	*dval;
+	fr_dict_value_t	*dval;
 
 	*instance = inst = talloc_zero(cs, rlm_eap_gtc_t);
 	if (!inst) return -1;

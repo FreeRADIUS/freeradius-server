@@ -1029,7 +1029,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 
 	char *expanded = NULL;
 
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 	VALUE_PAIR *vp;
 
 	pair_lists_t list_name;
@@ -1187,7 +1187,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
  *	- NULL on error.
  */
 static VALUE_PAIR *json_pair_make_leaf(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_section_t *section,
-				      TALLOC_CTX *ctx, REQUEST *request, DICT_ATTR const *da,
+				      TALLOC_CTX *ctx, REQUEST *request, fr_dict_attr_t const *da,
 				      json_flags_t *flags, json_object *leaf)
 {
 	char const *value, *to_parse;

@@ -192,7 +192,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	rlm_rediswho_t 	*inst = instance;
 	rlm_rcode_t	rcode;
 	VALUE_PAIR	*vp;
-	DICT_VALUE	*dv;
+	fr_dict_value_t	*dv;
 	CONF_SECTION	*cs;
 	char const	*insert, *trim, *expire;
 

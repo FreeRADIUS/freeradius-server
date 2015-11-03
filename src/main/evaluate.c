@@ -365,18 +365,18 @@ finish:
  *	- 1 for "match".
  */
 static int cond_normalise_and_cmp(REQUEST *request, fr_cond_t const *c,
-				  PW_TYPE lhs_type, DICT_ATTR const *lhs_enumv,
+				  PW_TYPE lhs_type, fr_dict_attr_t const *lhs_enumv,
 				  value_data_t const *lhs)
 {
 	vp_map_t const *map = c->data.map;
 
-	DICT_ATTR const *cast = NULL;
+	fr_dict_attr_t const *cast = NULL;
 	PW_TYPE cast_type = PW_TYPE_INVALID;
 
 	int rcode;
 
 	PW_TYPE rhs_type = PW_TYPE_INVALID;
-	DICT_ATTR const *rhs_enumv = NULL;
+	fr_dict_attr_t const *rhs_enumv = NULL;
 	value_data_t *rhs = NULL;
 
 	value_data_t lhs_cast, rhs_cast;

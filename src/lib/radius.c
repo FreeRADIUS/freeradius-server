@@ -832,7 +832,7 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 
 #ifndef NDEBUG
 	if ((fr_debug_lvl > 3) && fr_log_fp) {
-		DICT_ATTR const *da;
+		fr_dict_attr_t const *da;
 
 		da = dict_attr_by_num(svp->da->attr & ((1 << fr_attr_shift[nest ]) - 1), svp->da->vendor);
 		if (da) fprintf(fr_log_fp, "\t%s = ...\n", da->name);
@@ -1398,7 +1398,7 @@ static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
 			   uint8_t *ptr, size_t room)
 {
 	ssize_t len;
-	DICT_VENDOR *dv;
+	fr_dict_vendor_t *dv;
 	VALUE_PAIR const *vp = *pvp;
 
 	VERIFY_VP(vp);
@@ -2885,7 +2885,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
  *
  */
 static ssize_t data2vp_concat(TALLOC_CTX *ctx,
-			      DICT_ATTR const *da, uint8_t const *start,
+			      fr_dict_attr_t const *da, uint8_t const *start,
 			      size_t const packetlen, VALUE_PAIR **pvp)
 {
 	size_t total;
@@ -2942,12 +2942,12 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
  */
 ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 			    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			    char const *secret, DICT_ATTR const *da,
+			    char const *secret, fr_dict_attr_t const *da,
 			    uint8_t const *start, size_t length,
 			    VALUE_PAIR **pvp)
 {
 	uint8_t const *data = start;
-	DICT_ATTR const *child;
+	fr_dict_attr_t const *child;
 	VALUE_PAIR *head, **tail;
 
 	if (length < 3) return -1; /* type, length, value */
@@ -3008,13 +3008,13 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
  */
 static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 			   RADIUS_PACKET const *original,
-			   char const *secret, DICT_VENDOR *dv,
+			   char const *secret, fr_dict_vendor_t *dv,
 			   uint8_t const *data, size_t length,
 			   VALUE_PAIR **pvp)
 {
 	unsigned int attribute;
 	ssize_t attrlen, my_len;
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	VP_TRACE("data2vp_vsa: length %u\n", (unsigned int) length);
 
@@ -3098,7 +3098,7 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
  */
 static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 				RADIUS_PACKET const *original,
-				char const *secret, DICT_ATTR const *da,
+				char const *secret, fr_dict_attr_t const *da,
 				uint8_t const *data,
 				size_t attrlen, size_t packetlen,
 				VALUE_PAIR **pvp)
@@ -3188,7 +3188,7 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 	bool last_frag;
 	uint8_t *head, *tail;
 	uint8_t const *frag, *end;
-	DICT_ATTR const *child;
+	fr_dict_attr_t const *child;
 
 	if (attrlen < 8) return -1;
 
@@ -3283,9 +3283,9 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	size_t total;
 	ssize_t rcode;
 	uint32_t vendor;
-	DICT_VENDOR *dv;
+	fr_dict_vendor_t *dv;
 	VALUE_PAIR *head, **tail;
-	DICT_VENDOR my_dv;
+	fr_dict_vendor_t my_dv;
 
 	if (attrlen > packetlen) return -1;
 	if (attrlen < 5) return -1; /* vid, value */
@@ -3391,7 +3391,7 @@ create_attrs:
 ssize_t data2vp(TALLOC_CTX *ctx,
 		RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		char const *secret,
-		DICT_ATTR const *da, uint8_t const *start,
+		fr_dict_attr_t const *da, uint8_t const *start,
 		size_t const attrlen, size_t const packetlen,
 		VALUE_PAIR **pvp)
 {
@@ -3399,7 +3399,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	size_t datalen;
 	ssize_t rcode;
 	uint32_t vendor;
-	DICT_ATTR const *child;
+	fr_dict_attr_t const *child;
 	VALUE_PAIR *vp;
 	uint8_t const *data = start;
 	char *p;
@@ -3910,7 +3910,7 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 {
 	ssize_t rcode;
 
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	if ((length < 2) || (data[1] < 2) || (data[1] > length)) {
 		fr_strerror_printf("rad_attr2vp: Insufficient data");

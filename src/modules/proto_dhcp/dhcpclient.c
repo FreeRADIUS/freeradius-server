@@ -589,7 +589,7 @@ int main(int argc, char **argv)
 	char const		*radius_dir = RADDBDIR;
 	char const		*dict_dir = DICTDIR;
 	char const		*filename = NULL;
-	DICT_ATTR const		*da;
+	fr_dict_attr_t const		*da;
 
 	RADIUS_PACKET		*request = NULL;
 	RADIUS_PACKET		*reply = NULL;

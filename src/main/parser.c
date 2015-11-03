@@ -281,7 +281,7 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 }
 
 
-static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda, char const **error)
+static ssize_t condition_tokenize_cast(char const *start, fr_dict_attr_t const **pda, char const **error)
 {
 	char const *p = start;
 	char const *q;
@@ -701,7 +701,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 			 *	But produce good errors, too.
 			 */
 			if (*p == '<') {
-				DICT_ATTR const *cast_da;
+				fr_dict_attr_t const *cast_da;
 
 				slen = condition_tokenize_cast(p, &cast_da, error);
 				if (slen < 0) {
@@ -1090,7 +1090,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					}
 
 					if (tmpl_cast_in_place(c->data.map->rhs, type, c->data.map->lhs->tmpl_da) < 0) {
-						DICT_ATTR const *da = c->data.map->lhs->tmpl_da;
+						fr_dict_attr_t const *da = c->data.map->lhs->tmpl_da;
 
 						if ((da->vendor == 0) &&
 						    ((da->attr == PW_AUTH_TYPE) ||
@@ -1120,7 +1120,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, CONF_ITEM *ci, char const *st
 					 *	type of the RHS.
 					 */
 					if (c->data.map->lhs->tmpl_da->type == PW_TYPE_COMBO_IP_ADDR) {
-						DICT_ATTR const *da;
+						fr_dict_attr_t const *da;
 
 						da = dict_attr_by_type(c->data.map->lhs->tmpl_da->attr,
 								     c->data.map->lhs->tmpl_da->vendor,

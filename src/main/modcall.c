@@ -1784,7 +1784,7 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		 *	of the RHS.
 		 */
 		if (map->lhs->tmpl_da->type != map->rhs->tmpl_data_type) {
-			DICT_ATTR const *da;
+			fr_dict_attr_t const *da;
 
 			da = dict_attr_by_type(map->lhs->tmpl_da->attr, map->lhs->tmpl_da->vendor,
 					     map->rhs->tmpl_data_type);
@@ -3273,7 +3273,7 @@ void add_to_modcallable(modcallable *parent, modcallable *this)
 
 #ifdef WITH_UNLANG
 static bool pass2_xlat_compile(CONF_ITEM const *ci, vp_tmpl_t **pvpt, bool convert,
-			       DICT_ATTR const *da)
+			       fr_dict_attr_t const *da)
 {
 	ssize_t slen;
 	char *fmt;
@@ -3407,7 +3407,7 @@ static bool pass2_regex_compile(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 
 static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 {
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	rad_assert(vpt->type == TMPL_TYPE_ATTR_UNDEFINED);
 
@@ -3620,7 +3620,7 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 		 *	forbids this.
 		 */
 		if (map->lhs->type == TMPL_TYPE_ATTR) {
-			DICT_ATTR const *da = c->cast;
+			fr_dict_attr_t const *da = c->cast;
 
 			if (!c->cast) da = map->lhs->tmpl_da;
 

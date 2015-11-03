@@ -111,7 +111,7 @@ static const FR_NAME_NUMBER header_names[] = {
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_pap_t *inst = instance;
-	DICT_VALUE *dval;
+	fr_dict_value_t *dval;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {

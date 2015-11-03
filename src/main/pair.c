@@ -35,8 +35,8 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 struct cmp {
-	DICT_ATTR const *attribute;
-	DICT_ATTR const *from;
+	fr_dict_attr_t const *attribute;
+	fr_dict_attr_t const *from;
 	bool	first_only;
 	void *instance; /* module instance */
 	RAD_COMPARE_FUNC compare;
@@ -300,7 +300,7 @@ int radius_callback_compare(REQUEST *request, VALUE_PAIR *req,
  *	- true if a comparison function was found
  *	- false.
  */
-int radius_find_compare(DICT_ATTR const *attribute)
+int radius_find_compare(fr_dict_attr_t const *attribute)
 {
 	struct cmp *c;
 
@@ -322,7 +322,7 @@ int radius_find_compare(DICT_ATTR const *attribute)
  *	- true if the comparison callback require a matching attribute in the request.
  *	- false.
  */
-static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
+static bool otherattr(fr_dict_attr_t const *attribute, fr_dict_attr_t const **from)
 {
 	struct cmp *c;
 
@@ -348,11 +348,11 @@ static bool otherattr(DICT_ATTR const *attribute, DICT_ATTR const **from)
  * @param instance argument to comparison function.
  * @return 0
  */
-int paircompare_register_byname(char const *name, DICT_ATTR const *from,
+int paircompare_register_byname(char const *name, fr_dict_attr_t const *from,
 				bool first_only, RAD_COMPARE_FUNC func, void *instance)
 {
 	ATTR_FLAGS flags;
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	memset(&flags, 0, sizeof(flags));
 	flags.compare = 1;
@@ -392,7 +392,7 @@ int paircompare_register_byname(char const *name, DICT_ATTR const *from,
  * @param instance argument to comparison function.
  * @return 0
  */
-int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
+int paircompare_register(fr_dict_attr_t const *attribute, fr_dict_attr_t const *from,
 			 bool first_only, RAD_COMPARE_FUNC func, void *instance)
 {
 	struct cmp *c;
@@ -419,7 +419,7 @@ int paircompare_register(DICT_ATTR const *attribute, DICT_ATTR const *from,
  * @param attribute dict reference to unregister for.
  * @param func comparison function to remove.
  */
-void paircompare_unregister(DICT_ATTR const *attribute, RAD_COMPARE_FUNC func)
+void paircompare_unregister(fr_dict_attr_t const *attribute, RAD_COMPARE_FUNC func)
 {
 	struct cmp *c, *last;
 
@@ -482,7 +482,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	vp_cursor_t cursor;
 	VALUE_PAIR *check_item;
 	VALUE_PAIR *auth_item;
-	DICT_ATTR const *from;
+	fr_dict_attr_t const *from;
 
 	int result = 0;
 	int compare;

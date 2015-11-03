@@ -150,10 +150,10 @@ typedef struct {
 	request_refs_t		request;		//!< Request to search or insert in.
 	pair_lists_t		list;			//!< List to search or insert in.
 
-	DICT_ATTR const		*da;			//!< Resolved dictionary attribute.
+	fr_dict_attr_t const		*da;			//!< Resolved dictionary attribute.
 	union {
-		uint8_t			da[DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
-		char			name[DICT_ATTR_SIZE];	//!< Raw unknown dictionary name.
+		uint8_t			da[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
+		char			name[FR_DICT_ATTR_SIZE];	//!< Raw unknown dictionary name.
 	} unknown;
 	int			num;			 //!< For array references.
 	int8_t			tag;			 //!< For tag references.
@@ -359,11 +359,11 @@ vp_tmpl_t		*tmpl_init(vp_tmpl_t *vpt, tmpl_type_t type,
 vp_tmpl_t		*tmpl_alloc(TALLOC_CTX *ctx, tmpl_type_t type, char const *name,
 				    ssize_t len, FR_TOKEN quote);
 
-void			tmpl_from_da(vp_tmpl_t *vpt, DICT_ATTR const *da, int8_t tag, int num,
+void			tmpl_from_da(vp_tmpl_t *vpt, fr_dict_attr_t const *da, int8_t tag, int num,
 				     request_refs_t request, pair_lists_t list);
 
 int			tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
-					      PW_TYPE type, DICT_ATTR const *enumv, bool steal);
+					      PW_TYPE type, fr_dict_attr_t const *enumv, bool steal);
 
 ssize_t			tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 					      request_refs_t request_def, pair_lists_t list_def,
@@ -386,15 +386,15 @@ ssize_t			tmpl_afrom_attr_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name
 ssize_t			tmpl_afrom_str(TALLOC_CTX *ctx, vp_tmpl_t **out, char const *name, size_t inlen,
 				       FR_TOKEN type, request_refs_t request_def, pair_lists_t list_def, bool do_escape);
 
-int			tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, DICT_ATTR const *enumv);
+int			tmpl_cast_in_place(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_t const *enumv);
 
 void			tmpl_cast_in_place_str(vp_tmpl_t *vpt);
 
 int			tmpl_cast_to_vp(VALUE_PAIR **out, REQUEST *request,
-					vp_tmpl_t const *vpt, DICT_ATTR const *cast);
+					vp_tmpl_t const *vpt, fr_dict_attr_t const *cast);
 
 size_t			tmpl_snprint(char *buffer, size_t bufsize, vp_tmpl_t const *vpt,
-				    DICT_ATTR const *values);
+				    fr_dict_attr_t const *values);
 
 ssize_t			tmpl_expand(char const **out, char *buff, size_t outlen, REQUEST *request,
 				    vp_tmpl_t const *vpt, xlat_escape_t escape, void *escape_ctx);

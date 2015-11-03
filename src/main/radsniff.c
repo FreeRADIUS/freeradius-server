@@ -953,7 +953,7 @@ static int rs_install_stats_processor(rs_stats_t *stats, fr_event_list_t *el,
  *
  * Should be O(n) if all the attributes exist.  List must be pre-sorted.
  */
-static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, DICT_ATTR const *da[], int num)
+static int rs_get_pairs(TALLOC_CTX *ctx, VALUE_PAIR **out, VALUE_PAIR *vps, fr_dict_attr_t const *da[], int num)
 {
 	vp_cursor_t list_cursor, out_cursor;
 	VALUE_PAIR *match, *last_match, *copy;
@@ -1884,14 +1884,14 @@ static int rs_rtx_cmp(rs_request_t const *a, rs_request_t const *b)
 	return fr_pair_list_cmp(a->link_vps, b->link_vps);
 }
 
-static int rs_build_dict_list(DICT_ATTR const **out, size_t len, char *list)
+static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list)
 {
 	size_t i = 0;
 	char *p, *tok;
 
 	p = list;
 	while ((tok = strsep(&p, "\t ,")) != NULL) {
-		DICT_ATTR const *da;
+		fr_dict_attr_t const *da;
 		if ((*tok == '\t') || (*tok == ' ') || (*tok == '\0')) {
 			continue;
 		}

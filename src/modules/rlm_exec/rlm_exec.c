@@ -246,7 +246,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	if (!inst->packet_type) {
 		inst->packet_code = 0;
 	} else {
-		DICT_VALUE	*dval;
+		fr_dict_value_t	*dval;
 
 		dval = dict_value_by_name(PW_PACKET_TYPE, 0, inst->packet_type);
 		if (!dval) {

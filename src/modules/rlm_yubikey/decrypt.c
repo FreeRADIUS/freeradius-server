@@ -22,7 +22,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	uint32_t counter, timestamp;
 	yubikey_token_st token;
 
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	char private_id[(YUBIKEY_UID_SIZE * 2) + 1];
 	VALUE_PAIR *key, *vp;

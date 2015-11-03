@@ -264,12 +264,12 @@ struct rs {
 	char			*pcap_filter;		//!< PCAP filter string applied to live capture devices.
 
 	char			*list_attributes;	//!< Raw attribute filter string.
-	DICT_ATTR const 	*list_da[RS_MAX_ATTRS]; //!< Output CSV with these attribute values.
+	fr_dict_attr_t const 	*list_da[RS_MAX_ATTRS]; //!< Output CSV with these attribute values.
 	int			list_da_num;
 
-	char			*link_attributes;	//!< Names of DICT_ATTRs to use for rtx.
-	DICT_ATTR const		*link_da[RS_MAX_ATTRS];	//!< DICT_ATTRs to link on.
-	int			link_da_num;		//!< Number of rtx DICT_ATTRs.
+	char			*link_attributes;	//!< Names of fr_dict_attr_ts to use for rtx.
+	fr_dict_attr_t const		*link_da[RS_MAX_ATTRS];	//!< fr_dict_attr_ts to link on.
+	int			link_da_num;		//!< Number of rtx fr_dict_attr_ts.
 
 	char const		*filter_request;	//!< Raw request filter string.
 	char const		*filter_response;	//!< Raw response filter string.

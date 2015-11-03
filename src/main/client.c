@@ -1202,7 +1202,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 	RDEBUG2("Converting control list to client fields");
 	RINDENT();
 	for (i = 0; dynamic_config[i].name != NULL; i++) {
-		DICT_ATTR const *da;
+		fr_dict_attr_t const *da;
 		char *strvalue = NULL;
 
 		da = dict_attr_by_name(dynamic_config[i].name);

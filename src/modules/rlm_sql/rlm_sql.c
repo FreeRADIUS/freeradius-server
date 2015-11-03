@@ -1118,7 +1118,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->config->postauth.reference_cp = (cf_pair_find(inst->config->postauth.cs, "reference") != NULL);
 
 	/*
-	 *	Cache the SQL-User-Name DICT_ATTR, so we can be slightly
+	 *	Cache the SQL-User-Name fr_dict_attr_t, so we can be slightly
 	 *	more efficient about creating SQL-User-Name attributes.
 	 */
 	inst->sql_user = dict_attr_by_name("SQL-User-Name");

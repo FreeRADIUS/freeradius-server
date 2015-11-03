@@ -382,7 +382,7 @@ typedef struct rlm_passwd_t {
 	uint32_t		nfields;
 	uint32_t		keyfield;
 	uint32_t		listable;
-	DICT_ATTR const		*keyattr;
+	fr_dict_attr_t const		*keyattr;
 	bool			ignore_empty;
 } rlm_passwd_t;
 
@@ -408,7 +408,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	char *lf=NULL; /* destination list flags temporary */
 	size_t len;
 	int i;
-	DICT_ATTR const * da;
+	fr_dict_attr_t const * da;
 	rlm_passwd_t *inst = instance;
 
 	rad_assert(inst->filename && *inst->filename);

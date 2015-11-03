@@ -443,7 +443,7 @@ static char const hextab[] = "0123456789abcdef";
  * @param[in] ctx to alloc strings in.
  * @param[out] dst where to write parsed value.
  * @param[in,out] src_type of value data to create/type of value created.
- * @param[in] src_enumv DICT_ATTR with string aliases for integer values.
+ * @param[in] src_enumv fr_dict_attr_t with string aliases for integer values.
  * @param[in] src String to convert. Binary safe for variable length values if len is provided.
  * @param[in] src_len may be < 0 in which case strlen(len) is used to determine length, else src_len
  *	  should be the length of the string or sub string to parse.
@@ -453,10 +453,10 @@ static char const hextab[] = "0123456789abcdef";
  *	- -1 on parse error.
  */
 int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
-			PW_TYPE *src_type, DICT_ATTR const *src_enumv,
+			PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
 			char const *src, ssize_t src_len, char quote)
 {
-	DICT_VALUE	*dval;
+	fr_dict_value_t	*dval;
 	size_t		len;
 	ssize_t		ret;
 	char		buffer[256];
@@ -1070,8 +1070,8 @@ static void value_data_hton(value_data_t *dst, PW_TYPE type, void const *src, si
  *	- -1 on failure.
  */
 int value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
-		    PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
-		    PW_TYPE src_type, DICT_ATTR const *src_enumv,
+		    PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
+		    PW_TYPE src_type, fr_dict_attr_t const *src_enumv,
 		    value_data_t const *src)
 {
 	if (!fr_assert(dst_type != src_type)) return -1;
@@ -1540,7 +1540,7 @@ int value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE src_type, const
  *
  */
 char *value_data_asprint(TALLOC_CTX *ctx,
-			 PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data, char quote)
+			 PW_TYPE type, fr_dict_attr_t const *enumv, value_data_t const *data, char quote)
 {
 	char *p = NULL;
 	unsigned int i;
@@ -1583,7 +1583,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 
 	print_int:
 	{
-		DICT_VALUE const *dv;
+		fr_dict_value_t const *dv;
 
 		if (enumv && (dv = dict_value_by_attr(enumv->attr, enumv->vendor, i))) {
 			p = talloc_typed_strdup(ctx, dv->name);
@@ -1723,9 +1723,9 @@ char *value_data_asprint(TALLOC_CTX *ctx,
  *	- A number >= outlen if truncation has occurred.
  */
 size_t value_data_snprint(char *out, size_t outlen,
-			 PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data, char quote)
+			 PW_TYPE type, fr_dict_attr_t const *enumv, value_data_t const *data, char quote)
 {
-	DICT_VALUE	*v;
+	fr_dict_value_t	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 	char const	*a = NULL;
 	char		*p = out;

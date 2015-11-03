@@ -62,7 +62,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	char const *p;
 	pair_lists_t list;
 
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 	VALUE_PAIR *vp;
 	vp_tmpl_t *vpt;
 
@@ -1491,7 +1491,7 @@ bool map_dst_valid(REQUEST *request, vp_map_t const *map)
 size_t map_snprint(char *out, size_t outlen, vp_map_t const *map)
 {
 	size_t		len;
-	DICT_ATTR const	*da = NULL;
+	fr_dict_attr_t const	*da = NULL;
 	char		*p = out;
 	char		*end = out + outlen;
 

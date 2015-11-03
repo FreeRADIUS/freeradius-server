@@ -338,7 +338,7 @@ static int init_pcap(rad_listen_t *this);
 int rad_status_server(REQUEST *request)
 {
 	int rcode = RLM_MODULE_OK;
-	DICT_VALUE *dval;
+	fr_dict_value_t *dval;
 
 	switch (request->listener->type) {
 #ifdef WITH_STATS
@@ -3106,7 +3106,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	CONF_PAIR	*cp;
 	char const	*value;
 	lt_dlhandle	handle;
-	DICT_VALUE	*dv;
+	fr_dict_value_t	*dv;
 	CONF_SECTION	*server_cs;
 	char		buffer[32];
 

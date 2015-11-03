@@ -80,7 +80,7 @@ struct fr_cond_t {
 	bool		negate;
 	fr_cond_pass2_t	pass2_fixup;
 
-	DICT_ATTR const *cast;
+	fr_dict_attr_t const *cast;
 
 	fr_cond_op_t	next_op;
 	fr_cond_t	*next;

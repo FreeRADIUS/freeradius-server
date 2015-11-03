@@ -45,14 +45,14 @@ USES_APPLE_DEPRECATED_API
 
 /* Attribute IDs for supported password encodings. */
 #define SIZEOF_PWATTR (4 * 2)
-DICT_ATTR const *pwattr[SIZEOF_PWATTR];
+fr_dict_attr_t const *pwattr[SIZEOF_PWATTR];
 
 
 /* Initialize the pwattr array for supported password encodings. */
 void
 otp_pwe_init(void)
 {
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	/*
 	 * Setup known password types.  These are pairs.

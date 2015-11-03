@@ -180,7 +180,7 @@ VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsign
  * fr_cursor_next_by_* functions will start the search from the previously
  * matched attribute.
  *
- * @note DICT_ATTR pointers are compared, not the attribute numbers and vendors.
+ * @note fr_dict_attr_t pointers are compared, not the attribute numbers and vendors.
  *
  * @param cursor to operate on.
  * @param da to match.
@@ -190,7 +190,7 @@ VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsign
  *	- Next matching #VALUE_PAIR.
  *	- NULL if no #VALUE_PAIR (s) match.
  */
-VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_t tag)
+VALUE_PAIR *fr_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da, int8_t tag)
 {
 	VALUE_PAIR *i;
 

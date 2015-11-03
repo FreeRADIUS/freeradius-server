@@ -290,7 +290,7 @@ static ssize_t xlat_vendor(char **out, size_t outlen,
 			   REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
-	DICT_VENDOR *vendor;
+	fr_dict_vendor_t *vendor;
 
 	while (isspace((int) *fmt)) fmt++;
 
@@ -409,7 +409,7 @@ static ssize_t xlat_debug_attr(UNUSED char **out, UNUSED size_t outlen,
 		if (!RDEBUG_ENABLED3) continue;
 
 		if (vp->da->vendor) {
-			DICT_VENDOR *dv;
+			fr_dict_vendor_t *dv;
 
 			dv = dict_vendor_by_num(vp->da->vendor);
 			RIDEBUG2("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
@@ -1851,7 +1851,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 {
 	VALUE_PAIR *vp = NULL, *virtual = NULL;
 	RADIUS_PACKET *packet = NULL;
-	DICT_VALUE *dv;
+	fr_dict_value_t *dv;
 	char *ret = NULL;
 
 	vp_cursor_t cursor;

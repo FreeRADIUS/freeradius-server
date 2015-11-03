@@ -218,7 +218,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 {
 	rlm_yubikey_t *inst = instance;
 
-	DICT_VALUE *dval;
+	fr_dict_value_t *dval;
 	char const *passcode;
 	size_t len;
 	VALUE_PAIR *vp;
@@ -343,7 +343,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
 	rlm_yubikey_t *inst = instance;
 	char const *passcode = NULL;
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 	VALUE_PAIR const *vp;
 	size_t len;
 	int ret;

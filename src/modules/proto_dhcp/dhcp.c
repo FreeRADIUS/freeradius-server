@@ -675,7 +675,7 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *p,
 /** Returns the number of array members for arrays with fixed element sizes
  *
  */
-static int fr_dhcp_array_members(size_t *len, DICT_ATTR const *da)
+static int fr_dhcp_array_members(size_t *len, fr_dict_attr_t const *da)
 {
 	int num_entries = 1;
 
@@ -804,7 +804,7 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 		size_t		a_len;
 		int		num_entries, i;
 
-		DICT_ATTR const	*da;
+		fr_dict_attr_t const	*da;
 		uint32_t	attr;
 
 		/*
@@ -983,7 +983,7 @@ static int fr_dhcp_attr2vp(TALLOC_CTX *ctx, VALUE_PAIR **vp_p, uint8_t const *da
 
 	/*
 	 *	Value doesn't match up with attribute type, overwrite the
-	 *	vp's original DICT_ATTR with an unknown one.
+	 *	vp's original fr_dict_attr_t with an unknown one.
 	 */
 	raw:
 		if (fr_pair_to_unknown(vp) < 0) return -1;
@@ -1035,7 +1035,7 @@ ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const 
 		size_t		a_len;
 		int		num_entries, i;
 
-		DICT_ATTR const	*da;
+		fr_dict_attr_t const	*da;
 
 		if (*p == 0) {		/* 0x00 - Padding option */
 			p++;
@@ -1155,7 +1155,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			if ((packet->data[1] == 0) || (packet->data[2] == 0)) continue;
 
 			if ((packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
-				DICT_ATTR const *da = dict_unknown_afrom_fields(packet, vp->da->attr, vp->da->vendor);
+				fr_dict_attr_t const *da = dict_unknown_afrom_fields(packet, vp->da->attr, vp->da->vendor);
 				if (!da) {
 					return -1;
 				}
@@ -1488,7 +1488,7 @@ static ssize_t fr_dhcp_vp2data_tlv(uint8_t *out, ssize_t outlen, vp_cursor_t *cu
 ssize_t fr_dhcp_encode_option(UNUSED TALLOC_CTX *ctx, uint8_t *out, size_t outlen, vp_cursor_t *cursor)
 {
 	VALUE_PAIR *vp;
-	DICT_ATTR const *previous;
+	fr_dict_attr_t const *previous;
 	uint8_t *opt_len, *p = out;
 	size_t freespace = outlen;
 	ssize_t len;

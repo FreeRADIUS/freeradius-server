@@ -147,7 +147,7 @@ static ssize_t dhcp_xlat(char **out, size_t outlen,
 static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_dhcp_t *inst = instance;
-	DICT_ATTR const *da;
+	fr_dict_attr_t const *da;
 
 	xlat_register(inst, "dhcp_options", dhcp_options_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 	xlat_register(inst, "dhcp", dhcp_xlat, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
@@ -157,7 +157,7 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	da = dict_attr_by_num(PW_DHCP_PARAMETER_REQUEST_LIST, DHCP_MAGIC_VENDOR);
 	if (da) {
-		DICT_ATTR const *value;
+		fr_dict_attr_t const *value;
 		int i;
 
 		/* No padding or termination options */

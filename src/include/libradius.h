@@ -111,7 +111,7 @@ typedef void (*sig_t)(int);
 #ifdef WITH_VERIFY_PTR
 /*
  * @FIXME
- *  Add if (_x->da) (void) talloc_get_type_abort(_x->da, DICT_ATTR);
+ *  Add if (_x->da) (void) talloc_get_type_abort(_x->da, fr_dict_attr_t);
  *  to the macro below when dictionaries are talloced.
  */
 #  define VERIFY_VP(_x)		fr_pair_verify(__FILE__,  __LINE__, _x)
@@ -221,7 +221,7 @@ typedef struct dict_attr {
 	unsigned int		vendor;
 	ATTR_FLAGS		flags;
 	char			name[1];
-} DICT_ATTR;
+} fr_dict_attr_t;
 
 /** value of an enumerated attribute
  *
@@ -231,7 +231,7 @@ typedef struct dict_value {
 	unsigned int		vendor;
 	int			value;
 	char			name[1];
-} DICT_VALUE;
+} fr_dict_value_t;
 
 /** dictionary vendor
  *
@@ -242,7 +242,7 @@ typedef struct dict_vendor {
 	size_t			length;				//!< Length of length data
 	size_t			flags;
 	char			name[1];
-} DICT_VENDOR;
+} fr_dict_vendor_t;
 
 /** Union containing all data types supported by the server
  *
@@ -308,7 +308,7 @@ typedef enum value_type {
  * They also specify what behaviour should be used when the attribute is merged into a new list/tree.
  */
 typedef struct value_pair {
-	DICT_ATTR const		*da;				//!< Dictionary attribute defines the attribute
+	fr_dict_attr_t const		*da;				//!< Dictionary attribute defines the attribute
 								//!< number, vendor and type of the attribute.
 
 	struct value_pair	*next;
@@ -469,44 +469,43 @@ do { \
 /*
  *	Dictionary functions.
  */
-#define DICT_VALUE_MAX_NAME_LEN (128)
-#define DICT_VENDOR_MAX_NAME_LEN (128)
-#define DICT_ATTR_MAX_NAME_LEN (128)
+#define FR_DICT_VALUE_MAX_NAME_LEN (128)
+#define FR_DICT_VENDOR_MAX_NAME_LEN (128)
+#define FR_DICT_ATTR_MAX_NAME_LEN (128)
 
-#define DICT_ATTR_SIZE sizeof(DICT_ATTR) + DICT_ATTR_MAX_NAME_LEN
+#define FR_DICT_ATTR_SIZE sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN
 
 extern const int dict_attr_allowed_chars[256];
-int		dict_valid_name(char const *name);
-int		dict_str_to_argv(char *str, char **argv, int max_argc);
-int		dict_str_to_oid(char const *ptr, unsigned int *pattr,
-				unsigned int *pvendor, int tlv_depth);
-int		dict_vendor_add(char const *name, unsigned int value);
-int		dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type, ATTR_FLAGS flags);
-int		dict_value_add(char const *namestr, char const *attrstr, int value);
-int		dict_init(char const *dir, char const *fn);
-void		dict_free(void);
+int			dict_valid_name(char const *name);
+int			dict_str_to_argv(char *str, char **argv, int max_argc);
+int			dict_str_to_oid(char const *ptr, unsigned int *pattr, unsigned int *pvendor, int tlv_depth);
+int			dict_vendor_add(char const *name, unsigned int value);
+int			dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type, ATTR_FLAGS flags);
+int			dict_value_add(char const *namestr, char const *attrstr, int value);
+int			dict_init(char const *dir, char const *fn);
+void			dict_free(void);
 
-int		dict_read(char const *dir, char const *filename);
+int			dict_read(char const *dir, char const *filename);
 
-void 		dict_attr_free(DICT_ATTR const **da);
-int		dict_unknown_from_fields(DICT_ATTR *da, unsigned int attr, unsigned int vendor);
-DICT_ATTR const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
-int		dict_unknown_from_str(DICT_ATTR *da, char const *name);
-int		dict_unknown_from_substr(DICT_ATTR *da, char const **name);
-DICT_ATTR const *dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name);
-DICT_ATTR const *dict_unknown_add(DICT_ATTR const *old);
+void 			dict_attr_free(fr_dict_attr_t const **da);
+int			dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int attr, unsigned int vendor);
+fr_dict_attr_t const	*dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
+int			dict_unknown_from_str(fr_dict_attr_t *da, char const *name);
+int			dict_unknown_from_substr(fr_dict_attr_t *da, char const **name);
+fr_dict_attr_t const	*dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name);
+fr_dict_attr_t const	*dict_unknown_add(fr_dict_attr_t const *old);
 
-DICT_ATTR const	*dict_attr_by_num(unsigned int attr, unsigned int vendor);
-DICT_ATTR const	*dict_attr_by_name(char const *attr);
-DICT_ATTR const *dict_attr_by_name_substr(char const **name);
-DICT_ATTR const	*dict_attr_by_type(unsigned int attr, unsigned int vendor, PW_TYPE type);
-DICT_ATTR const	*dict_attr_by_parent(DICT_ATTR const *parent, unsigned int attr, unsigned int vendor);
-int		dict_attr_child(DICT_ATTR const *parent, unsigned int *pattr, unsigned int *pvendor);
-DICT_VALUE	*dict_value_by_attr(unsigned int attr, unsigned int vendor, int val);
-DICT_VALUE	*dict_value_by_name(unsigned int attr, unsigned int vendor, char const *val);
-char const	*dict_value_name_by_attr(unsigned int attr, unsigned int vendor, int value);
-int		dict_vendor_by_name(char const *name);
-DICT_VENDOR	*dict_vendor_by_num(int vendor);
+fr_dict_attr_t const	*dict_attr_by_num(unsigned int attr, unsigned int vendor);
+fr_dict_attr_t const	*dict_attr_by_name(char const *attr);
+fr_dict_attr_t const	*dict_attr_by_name_substr(char const **name);
+fr_dict_attr_t const	*dict_attr_by_type(unsigned int attr, unsigned int vendor, PW_TYPE type);
+fr_dict_attr_t const	*dict_attr_by_parent(fr_dict_attr_t const *parent, unsigned int attr, unsigned int vendor);
+int			dict_attr_child(fr_dict_attr_t const *parent, unsigned int *pattr, unsigned int *pvendor);
+fr_dict_value_t		*dict_value_by_attr(unsigned int attr, unsigned int vendor, int val);
+fr_dict_value_t		*dict_value_by_name(unsigned int attr, unsigned int vendor, char const *val);
+char const		*dict_value_name_by_attr(unsigned int attr, unsigned int vendor, int value);
+int			dict_vendor_by_name(char const *name);
+fr_dict_vendor_t	*dict_vendor_by_num(int vendor);
 
 /* radius.c */
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
@@ -542,14 +541,14 @@ int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
 
 int		rad_attr_ok(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			    DICT_ATTR *da, uint8_t const *data, size_t length);
+			    fr_dict_attr_t *da, uint8_t const *data, size_t length);
 int		rad_tlv_ok(uint8_t const *data, size_t length,
 			   size_t dv_type, size_t dv_length);
 
 ssize_t		data2vp(TALLOC_CTX *ctx,
 			RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			char const *secret,
-			DICT_ATTR const *da, uint8_t const *start,
+			fr_dict_attr_t const *da, uint8_t const *start,
 			size_t const attrlen, size_t const packetlen,
 			VALUE_PAIR **pvp);
 
@@ -561,7 +560,7 @@ ssize_t		rad_attr2vp(TALLOC_CTX *ctx,
 
 ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 			 RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			 char const *secret, DICT_ATTR const *da,
+			 char const *secret, fr_dict_attr_t const *da,
 			 uint8_t const *start, size_t length,
 			 VALUE_PAIR **pvp);
 
@@ -598,7 +597,7 @@ VALUE_PAIR	*fr_cursor_first(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_last(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag);
 
-VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, DICT_ATTR const *da, int8_t tag) CC_HINT(nonnull);
+VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da, int8_t tag) CC_HINT(nonnull);
 
 VALUE_PAIR	*fr_cursor_next(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_next_peek(vp_cursor_t *cursor);
@@ -613,7 +612,7 @@ VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
  */
 
 /* Allocation and management */
-VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, DICT_ATTR const *da);
+VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
 VALUE_PAIR	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
 VALUE_PAIR	*fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 void		fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp);
@@ -623,7 +622,7 @@ int		fr_pair_to_unknown(VALUE_PAIR *vp);
 int 		fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value);
 
 /* Searching and list modification */
-VALUE_PAIR	*fr_pair_find_by_da(VALUE_PAIR *, DICT_ATTR const *da, int8_t tag);
+VALUE_PAIR	*fr_pair_find_by_da(VALUE_PAIR *, fr_dict_attr_t const *da, int8_t tag);
 VALUE_PAIR	*fr_pair_find_by_num(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
 void		fr_pair_add(VALUE_PAIR **, VALUE_PAIR *);
 void		fr_pair_replace(VALUE_PAIR **first, VALUE_PAIR *add);
@@ -696,24 +695,24 @@ int		value_data_cmp_op(FR_TOKEN op,
 				  PW_TYPE b_type, value_data_t const *b);
 
 int		value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
-				    PW_TYPE *src_type, DICT_ATTR const *src_enumv,
+				    PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
 				    char const *src, ssize_t src_len, char quote);
 
 int		value_data_cast(TALLOC_CTX *ctx, value_data_t *dst,
-				PW_TYPE dst_type, DICT_ATTR const *dst_enumv,
-				PW_TYPE src_type, DICT_ATTR const *src_enumv,
+				PW_TYPE dst_type, fr_dict_attr_t const *dst_enumv,
+				PW_TYPE src_type, fr_dict_attr_t const *src_enumv,
 				value_data_t const *src);
 
 int		value_data_copy(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type, const value_data_t *src);
 
 size_t		value_data_snprint(char *out, size_t outlen,
-				  PW_TYPE type, DICT_ATTR const *enumv,
+				  PW_TYPE type, fr_dict_attr_t const *enumv,
 				  value_data_t const *data, char quote);
 
 int		value_data_steal(TALLOC_CTX *ctx, value_data_t *dst, PW_TYPE type, value_data_t const *src);
 
 char		*value_data_asprint(TALLOC_CTX *ctx,
-				    PW_TYPE type, DICT_ATTR const *enumv, value_data_t const *data,
+				    PW_TYPE type, fr_dict_attr_t const *enumv, value_data_t const *data,
 				    char quote);
 
 /*

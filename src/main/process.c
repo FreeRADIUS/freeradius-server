@@ -2283,7 +2283,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	 *	section is ignored.
 	 */
 	} else if (reply) {
-		DICT_VALUE *dval = NULL;
+		fr_dict_value_t *dval = NULL;
 
 		switch (reply->code) {
 		case PW_CODE_ACCESS_REJECT:
@@ -2580,7 +2580,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 static int setup_post_proxy_fail(REQUEST *request)
 {
-	DICT_VALUE const *dval = NULL;
+	fr_dict_value_t const *dval = NULL;
 	VALUE_PAIR *vp;
 
 	VERIFY_REQUEST(request);
@@ -3004,7 +3004,7 @@ do_home:
 	 */
 	vp = fr_pair_find_by_num(request->config, PW_PRE_PROXY_TYPE, 0, TAG_ANY);
 	if (vp) {
-		DICT_VALUE const *dval = dict_value_by_attr(vp->da->attr, vp->da->vendor, vp->vp_integer);
+		fr_dict_value_t const *dval = dict_value_by_attr(vp->da->attr, vp->da->vendor, vp->vp_integer);
 		/* Must be a validation issue */
 		rad_assert(dval);
 		RDEBUG2("Found Pre-Proxy-Type %s", dval->name);
@@ -4121,7 +4121,7 @@ static void request_coa_originate(REQUEST *request)
 	 */
 	vp = fr_pair_find_by_num(request->config, PW_PRE_PROXY_TYPE, 0, TAG_ANY);
 	if (vp) {
-		DICT_VALUE const *dval = dict_value_by_attr(vp->da->attr, vp->da->vendor, vp->vp_integer);
+		fr_dict_value_t const *dval = dict_value_by_attr(vp->da->attr, vp->da->vendor, vp->vp_integer);
 		/* Must be a validation issue */
 		rad_assert(dval);
 		RDEBUG2("Found Pre-Proxy-Type %s", dval->name);
