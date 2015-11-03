@@ -644,13 +644,6 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	p = strrchr(argv[0], FR_DIR_SEP);
-	if (!p) {
-		main_config.name = argv[0];
-	} else {
-		main_config.name = p + 1;
-	}
-
 	rad_debug_lvl = 0;
 	set_radius_dir(NULL, RADIUS_DIR);
 
