@@ -16,3 +16,7 @@ SOURCES	:=	conffile.c \
 
 # This lets the linker determine which version of the SSLeay functions to use.
 TGT_LDLIBS      := $(OPENSSL_LIBS)
+
+ifneq ($(MAKECMDGOALS),scan)
+SRC_CFLAGS	+= -DBUILT_WITH_CPPFLAGS=\"$(CPPFLAGS)\" -DBUILT_WITH_CFLAGS=\"$(CFLAGS)\" -DBUILT_WITH_LDFLAGS=\"$(LDFLAGS)\" -DBUILT_WITH_LIBS=\"$(LIBS)\"
+endif

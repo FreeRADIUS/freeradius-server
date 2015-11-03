@@ -574,6 +574,7 @@ void version_print(void)
 #ifdef BUILT_WITH_LIBS
 		DEBUG2("  libs     : " BUILT_WITH_LIBS);
 #endif
+		DEBUG2("  ");
 	}
 	INFO("Copyright (C) 1999-2015 The FreeRADIUS server project and contributors");
 	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
