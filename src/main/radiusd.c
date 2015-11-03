@@ -283,8 +283,7 @@ int main(int argc, char *argv[])
 	 *  Better here, so it doesn't matter whether we get passed -xv or -vx.
 	 */
 	if (display_version) {
-		/* Don't print timestamps */
-		rad_debug_lvl += 2;
+		if (rad_debug_lvl == 0) rad_debug_lvl = 1;
 		fr_log_fp = stdout;
 		default_log.dst = L_DST_STDOUT;
 		default_log.fd = STDOUT_FILENO;
