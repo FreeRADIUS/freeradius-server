@@ -625,13 +625,16 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 
 			case PW_CODE_STATUS_SERVER:
 				switch (radclient_get_code(request->packet->dst_port)) {
-				default:
 				case PW_CODE_ACCESS_REQUEST:
 					request->filter_code = PW_CODE_ACCESS_ACCEPT;
 					break;
 
 				case PW_CODE_ACCOUNTING_REQUEST:
 					request->filter_code = PW_CODE_ACCOUNTING_RESPONSE;
+					break;
+
+				default:
+					request->filter_code = PW_CODE_MAX;
 					break;
 				}
 				break;
@@ -1107,8 +1110,12 @@ static int recv_one_packet(int wait_time)
 	/*
 	 *	If we had an expected response code, check to see if the
 	 *	packet matched that.
+	 *
+	 *	Except for Status-Server, where we don't care what the
+	 *	reply is.  Just that we GOT a reply.
 	 */
-	if (request->reply->code != request->filter_code) {
+	if ((request->packet->code != PW_CODE_STATUS_SERVER) &&
+	    (request->reply->code != request->filter_code)) {
 		if (is_radius_code(request->reply->code)) {
 			REDEBUG("%s: Expected %s got %s", request->name, fr_packet_codes[request->filter_code],
 				fr_packet_codes[request->reply->code]);
