@@ -79,7 +79,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	/*
 	 *	If the attribute is still unknown, go parse the RHS.
 	 */
-	da = dict_attrbyvalue(map->lhs->tmpl_da->attr, map->lhs->tmpl_da->vendor);
+	da = dict_attr_by_num(map->lhs->tmpl_da->attr, map->lhs->tmpl_da->vendor);
 	if (!da || da->flags.is_unknown) return false;
 
 	/*

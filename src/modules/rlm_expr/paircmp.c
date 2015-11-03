@@ -246,14 +246,14 @@ void pair_builtincompare_add(void *instance)
 {
 	int i;
 
-	paircompare_register(dict_attrbyvalue(PW_PREFIX, 0), dict_attrbyvalue(PW_USER_NAME, 0), false, presufcmp, instance);
-	paircompare_register(dict_attrbyvalue(PW_SUFFIX, 0), dict_attrbyvalue(PW_USER_NAME, 0), false, presufcmp, instance);
-	paircompare_register(dict_attrbyvalue(PW_CONNECT_RATE, 0), dict_attrbyvalue(PW_CONNECT_INFO, 0),
+	paircompare_register(dict_attr_by_num(PW_PREFIX, 0), dict_attr_by_num(PW_USER_NAME, 0), false, presufcmp, instance);
+	paircompare_register(dict_attr_by_num(PW_SUFFIX, 0), dict_attr_by_num(PW_USER_NAME, 0), false, presufcmp, instance);
+	paircompare_register(dict_attr_by_num(PW_CONNECT_RATE, 0), dict_attr_by_num(PW_CONNECT_INFO, 0),
 				false, connectcmp, instance);
-	paircompare_register(dict_attrbyvalue(PW_PACKET_TYPE, 0), NULL, true, packetcmp, instance);
-	paircompare_register(dict_attrbyvalue(PW_RESPONSE_PACKET_TYPE, 0), NULL, true, responsecmp, instance);
+	paircompare_register(dict_attr_by_num(PW_PACKET_TYPE, 0), NULL, true, packetcmp, instance);
+	paircompare_register(dict_attr_by_num(PW_RESPONSE_PACKET_TYPE, 0), NULL, true, responsecmp, instance);
 
 	for (i = 0; generic_attrs[i] != 0; i++) {
-		paircompare_register(dict_attrbyvalue(generic_attrs[i], 0), NULL, true, genericcmp, instance);
+		paircompare_register(dict_attr_by_num(generic_attrs[i], 0), NULL, true, genericcmp, instance);
 	}
 }

@@ -1074,7 +1074,7 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = dict_valbyname(da->attr, da->vendor, name2);
+	dval = dict_val_by_name(da->attr, da->vendor, name2);
 	if (!dval) {
 		talloc_free(ml);
 		cf_log_err_cs(cs,
@@ -1113,7 +1113,7 @@ static int load_component_section(CONF_SECTION *cs,
 	/*
 	 *	Find the attribute used to store VALUEs for this section.
 	 */
-	da = dict_attrbyvalue(section_type_value[comp].attr, 0);
+	da = dict_attr_by_num(section_type_value[comp].attr, 0);
 	if (!da) {
 		cf_log_err_cs(cs,
 			   "No such attribute %s",
@@ -1181,7 +1181,7 @@ static int load_component_section(CONF_SECTION *cs,
 				}
 			}
 
-			dval = dict_valbyname(PW_AUTH_TYPE, 0, modrefname);
+			dval = dict_val_by_name(PW_AUTH_TYPE, 0, modrefname);
 			if (!dval) {
 				/*
 				 *	It's a section, but nothing we
@@ -1390,7 +1390,7 @@ static int load_byserver(CONF_SECTION *cs)
 		subcs = cf_subsection_find_next(cs, NULL, "dhcp");
 		if (!subcs) break;
 
-		da = dict_attrbyname("DHCP-Message-Type");
+		da = dict_attr_by_name("DHCP-Message-Type");
 
 		/*
 		 *	Handle each DHCP Message type separately.
@@ -1656,7 +1656,7 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
 	 *	If the value already exists, don't
 	 *	create it again.
 	 */
-	dval = dict_valbyname(da->attr, da->vendor, name);
+	dval = dict_val_by_name(da->attr, da->vendor, name);
 	if (dval) {
 		if (dval->value == 0) {
 			ERROR("The dictionaries must not define VALUE %s %s 0",
@@ -1675,7 +1675,7 @@ static int define_type(CONF_SECTION *cs, DICT_ATTR const *da, char const *name)
 	 */
 	do {
 		value = (fr_rand() & 0x00ffffff) + 1;
-	} while (dict_valbyattr(da->attr, da->vendor, value));
+	} while (dict_val_by_attr(da->attr, da->vendor, value));
 
 	cf_log_module(cs, "Creating %s = %s", da->name, name);
 	if (dict_addvalue(name, da->name, value) < 0) {
@@ -1710,7 +1710,7 @@ static bool server_define_types(CONF_SECTION *cs)
 		/*
 		 *	Find the attribute used to store VALUEs for this section.
 		 */
-		da = dict_attrbyvalue(section_type_value[comp].attr, 0);
+		da = dict_attr_by_num(section_type_value[comp].attr, 0);
 		if (!da) {
 			cf_log_err_cs(subcs,
 				   "No such attribute %s",
@@ -1942,7 +1942,7 @@ int modules_init(CONF_SECTION *config)
 		 */
 		subcs = cf_section_sub_find(cs, "vmps");
 		if (subcs) {
-			da = dict_attrbyname("VQP-Packet-Type");
+			da = dict_attr_by_name("VQP-Packet-Type");
 			if (!da) {
 				if (dict_read(main_config.dictionary_dir, "dictionary.vqp") < 0) {
 					ERROR("Failed reading dictionary.vqp: %s",
@@ -1951,7 +1951,7 @@ int modules_init(CONF_SECTION *config)
 				}
 				cf_log_module(cs, "Loading dictionary.vqp");
 
-				da = dict_attrbyname("VQP-Packet-Type");
+				da = dict_attr_by_name("VQP-Packet-Type");
 				if (!da) {
 					ERROR("No VQP-Packet-Type in dictionary.vqp");
 					return -1;
@@ -1966,7 +1966,7 @@ int modules_init(CONF_SECTION *config)
 		 */
 		subcs = cf_subsection_find_next(cs, NULL, "dhcp");
 		if (subcs) {
-			da = dict_attrbyname("DHCP-Message-Type");
+			da = dict_attr_by_name("DHCP-Message-Type");
 			if (!da) {
 				cf_log_module(cs, "Loading dictionary.dhcp");
 				if (dict_read(main_config.dictionary_dir, "dictionary.dhcp") < 0) {
@@ -1975,7 +1975,7 @@ int modules_init(CONF_SECTION *config)
 					return -1;
 				}
 
-				da = dict_attrbyname("DHCP-Message-Type");
+				da = dict_attr_by_name("DHCP-Message-Type");
 				if (!da) {
 					ERROR("No DHCP-Message-Type in dictionary.dhcp");
 					return -1;

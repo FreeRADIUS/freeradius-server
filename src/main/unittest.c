@@ -290,7 +290,7 @@ static REQUEST *request_setup(FILE *fp)
 			vp->vp_length += 2;
 			p[1] = vp->vp_length;
 
-			da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
+			da = dict_attr_by_num(PW_DIGEST_ATTRIBUTES, 0);
 			rad_assert(da != NULL);
 			vp->da = da;
 

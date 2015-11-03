@@ -1040,13 +1040,13 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		/*
 		 *	Checks if attribute already exists.
 		 */
-		if (paircompare_register_byname(group_attribute, dict_attrbyvalue(PW_USER_NAME, 0),
+		if (paircompare_register_byname(group_attribute, dict_attr_by_num(PW_USER_NAME, 0),
 						false, sql_groupcmp, inst) < 0) {
 			ERROR("Failed registering group comparison: %s", fr_strerror());
 			return -1;
 		}
 
-		inst->group_da = dict_attrbyname(group_attribute);
+		inst->group_da = dict_attr_by_name(group_attribute);
 		if (!inst->group_da) {
 			ERROR("Failed resolving group attribute \"%s\"", group_attribute);
 			return -1;
@@ -1121,7 +1121,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Cache the SQL-User-Name DICT_ATTR, so we can be slightly
 	 *	more efficient about creating SQL-User-Name attributes.
 	 */
-	inst->sql_user = dict_attrbyname("SQL-User-Name");
+	inst->sql_user = dict_attr_by_name("SQL-User-Name");
 	if (!inst->sql_user) {
 		return -1;
 	}

@@ -1901,7 +1901,7 @@ static int rs_build_dict_list(DICT_ATTR const **out, size_t len, char *list)
 			return -1;
 		}
 
-		da = dict_attrbyname(tok);
+		da = dict_attr_by_name(tok);
 		if (!da) {
 			ERROR("Error parsing attribute name \"%s\"", tok);
 			return -1;

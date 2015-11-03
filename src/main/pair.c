@@ -357,7 +357,7 @@ int paircompare_register_byname(char const *name, DICT_ATTR const *from,
 	memset(&flags, 0, sizeof(flags));
 	flags.compare = 1;
 
-	da = dict_attrbyname(name);
+	da = dict_attr_by_name(name);
 	if (da) {
 		if (!da->flags.compare) {
 			fr_strerror_printf("Attribute '%s' already exists", name);
@@ -369,7 +369,7 @@ int paircompare_register_byname(char const *name, DICT_ATTR const *from,
 			return -1;
 		}
 
-		da = dict_attrbyname(name);
+		da = dict_attr_by_name(name);
 		if (!da) {
 			fr_strerror_printf("Failed finding attribute '%s'", name);
 			return -1;

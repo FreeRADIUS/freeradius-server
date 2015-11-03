@@ -144,7 +144,7 @@ static ssize_t unpack_xlat(char **out, size_t outlen,
 		goto nothing;
 	}
 
-	da = dict_attrbyvalue(PW_CAST_BASE + type, 0);
+	da = dict_attr_by_num(PW_CAST_BASE + type, 0);
 	if (!da) {
 		REDEBUG("Cannot decode type '%s'", data_type);
 		goto nothing;

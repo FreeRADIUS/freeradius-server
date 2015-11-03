@@ -663,7 +663,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Ensure that dictionary.dhcp is loaded.
 	 */
-	da = dict_attrbyname("DHCP-Message-Type");
+	da = dict_attr_by_name("DHCP-Message-Type");
 	if (!da) {
 		if (dict_read(dict_dir, "dictionary.dhcp") < 0) {
 			ERROR("Failed reading dictionary.dhcp");

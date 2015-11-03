@@ -829,7 +829,7 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 		 *	attributes then it's time to break out %{hex:} and regular
 		 *	expressions.
 		 */
-		da = dict_attrbyvalue(attr, (*tlv)->da->vendor);
+		da = dict_attr_by_num(attr, (*tlv)->da->vendor);
 		if (!da) {
 			da = dict_unknown_afrom_fields(ctx, attr, (*tlv)->da->vendor);
 			if (!da) {
@@ -1065,7 +1065,7 @@ ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const 
 		 *	Unknown attribute, create an octets type
 		 *	attribute with the contents of the sub-option.
 		 */
-		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
+		da = dict_attr_by_num(p[0], DHCP_MAGIC_VENDOR);
 		if (!da) {
 			da = dict_unknown_afrom_fields(ctx, p[0], DHCP_MAGIC_VENDOR);
 			if (!da) {

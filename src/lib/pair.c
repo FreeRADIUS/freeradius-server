@@ -107,7 +107,7 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int v
 {
 	DICT_ATTR const *da;
 
-	da = dict_attrbyvalue(attr, vendor);
+	da = dict_attr_by_num(attr, vendor);
 	if (!da) {
 		da = dict_unknown_afrom_fields(ctx, attr, vendor);
 		if (!da) {
@@ -313,7 +313,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	/*
 	 *	Convert unknowns to knowns
 	 */
-	da = dict_attrbyvalue(vp->da->attr, vp->da->vendor);
+	da = dict_attr_by_num(vp->da->attr, vp->da->vendor);
 	if (da) {
 		return fr_pair_from_unknown(vp, da);
 	}
@@ -386,7 +386,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 *	It's not found in the dictionary, so we use
 	 *	another method to create the attribute.
 	 */
-	da = dict_attrbyname(attrname);
+	da = dict_attr_by_name(attrname);
 	if (!da) {
 		vp = fr_pair_make_unknown(ctx, attrname, value, op);
 		if (vp && vps) fr_pair_add(vps, vp);
@@ -1877,7 +1877,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	if (type != vp->da->type) {
 		DICT_ATTR const *da;
 
-		da = dict_attrbytype(vp->da->attr, vp->da->vendor, type);
+		da = dict_attr_by_type(vp->da->attr, vp->da->vendor, type);
 		if (!da) {
 			fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
 					   fr_int2str(dict_attr_types, type, "<INVALID>"), vp->da->name);
@@ -2572,7 +2572,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		/*
 		 *	Attribute may be present with multiple names
 		 */
-		da = dict_attrbyname(vp->da->name);
+		da = dict_attr_by_name(vp->da->name);
 		if (!da) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" (%s) "
 				     "not found in global dictionary",
@@ -2583,7 +2583,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		}
 
 		if (da->type == PW_TYPE_COMBO_IP_ADDR) {
-			da = dict_attrbytype(vp->da->attr, vp->da->vendor, vp->da->type);
+			da = dict_attr_by_type(vp->da->attr, vp->da->vendor, vp->da->type);
 			if (!da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
 					     "variant (%s) not found in global dictionary",

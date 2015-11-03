@@ -325,7 +325,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		fr_pair_value_bstrncpy(vp, passcode, inst->id_len);
 	}
 
-	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->name);
+	dval = dict_val_by_name(PW_AUTH_TYPE, 0, inst->name);
 	if (dval) {
 		vp = radius_pair_create(request, &request->config, PW_AUTH_TYPE, 0);
 		vp->vp_integer = dval->value;
@@ -348,7 +348,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	size_t len;
 	int ret;
 
-	da = dict_attrbyname("Yubikey-OTP");
+	da = dict_attr_by_name("Yubikey-OTP");
 	if (!da) {
 		RDEBUG2("No Yubikey-OTP attribute defined, falling back to User-Password");
 		goto user_password;

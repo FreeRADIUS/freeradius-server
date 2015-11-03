@@ -90,7 +90,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	paircompare_register(dict_attrbyname("Example-Paircmp"), dict_attrbyvalue(PW_USER_NAME, 0), false,
+	paircompare_register(dict_attr_by_name("Example-Paircmp"), dict_attr_by_num(PW_USER_NAME, 0), false,
 			     rlm_example_cmp, inst);
 
 	return 0;

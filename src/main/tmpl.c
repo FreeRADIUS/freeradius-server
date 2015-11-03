@@ -105,7 +105,7 @@ const FR_NAME_NUMBER request_refs[] = {
  * return 0.
  *
  * @note #radius_list_name should be called before passing a name string that may
- *	contain qualifiers to #dict_attrbyname.
+ *	contain qualifiers to #dict_attr_by_name.
  *
  * @param[out] out Where to write the list qualifier.
  * @param[in] name String containing list qualifiers to parse.
@@ -713,7 +713,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		break;
 	}
 
-	attr.da = dict_attrbyname_substr(&p);
+	attr.da = dict_attr_by_name_substr(&p);
 	if (!attr.da) {
 		char const *a;
 
@@ -735,7 +735,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			 *	If it has, parsing is the same as if the attribute
 			 *	name had been used instead of its OID.
 			 */
-			attr.da = dict_attrbyvalue(((DICT_ATTR *)&attr.unknown.da)->attr,
+			attr.da = dict_attr_by_num(((DICT_ATTR *)&attr.unknown.da)->attr,
 						   ((DICT_ATTR *)&attr.unknown.da)->vendor);
 			if (attr.da) {
 				vpt->auto_converted = true;
@@ -1402,7 +1402,7 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *f
 	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
 
 	if (dict_addattr(vpt->tmpl_unknown_name, -1, 0, type, *flags) < 0) return -1;
-	da = dict_attrbyname(vpt->tmpl_unknown_name);
+	da = dict_attr_by_name(vpt->tmpl_unknown_name);
 	if (!da) return -1;
 
 	if (type != da->type) {
@@ -2432,7 +2432,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			/*
 			 *	Attribute may be present with multiple names
 			 */
-			da = dict_attrbyname(vpt->tmpl_da->name);
+			da = dict_attr_by_name(vpt->tmpl_da->name);
 			if (!da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "attribute \"%s\" (%s) not found in global dictionary",
@@ -2443,7 +2443,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			}
 
 			if ((da->type == PW_TYPE_COMBO_IP_ADDR) && (da->type != vpt->tmpl_da->type)) {
-				da = dict_attrbytype(vpt->tmpl_da->attr, vpt->tmpl_da->vendor, vpt->tmpl_da->type);
+				da = dict_attr_by_type(vpt->tmpl_da->attr, vpt->tmpl_da->vendor, vpt->tmpl_da->type);
 				if (!da) {
 					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" variant (%s) not found in global dictionary",

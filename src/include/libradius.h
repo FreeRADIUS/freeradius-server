@@ -495,26 +495,25 @@ int		dict_unknown_from_substr(DICT_ATTR *da, char const **name);
 DICT_ATTR const *dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name);
 DICT_ATTR const *dict_unknown_add(DICT_ATTR const *old);
 
-DICT_ATTR const	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
-DICT_ATTR const	*dict_attrbyname(char const *attr);
-DICT_ATTR const *dict_attrbyname_substr(char const **name);
-DICT_ATTR const	*dict_attrbytype(unsigned int attr, unsigned int vendor,
-				 PW_TYPE type);
-DICT_ATTR const	*dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr,
+DICT_ATTR const	*dict_attr_by_num(unsigned int attr, unsigned int vendor);
+DICT_ATTR const	*dict_attr_by_name(char const *attr);
+DICT_ATTR const *dict_attr_by_name_substr(char const **name);
+DICT_ATTR const	*dict_attr_by_type(unsigned int attr, unsigned int vendor, PW_TYPE type);
+DICT_ATTR const	*dict_attr_byparent(DICT_ATTR const *parent, unsigned int attr,
 					   unsigned int vendor);
 int		dict_attr_child(DICT_ATTR const *parent,
 				unsigned int *pattr, unsigned int *pvendor);
-DICT_VALUE	*dict_valbyattr(unsigned int attr, unsigned int vendor, int val);
-DICT_VALUE	*dict_valbyname(unsigned int attr, unsigned int vendor, char const *val);
-char const	*dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value);
-int		dict_vendorbyname(char const *name);
-DICT_VENDOR	*dict_vendorbyvalue(int vendor);
+DICT_VALUE	*dict_val_by_attr(unsigned int attr, unsigned int vendor, int val);
+DICT_VALUE	*dict_val_by_name(unsigned int attr, unsigned int vendor, char const *val);
+char const	*dict_valname_by_attr(unsigned int attr, unsigned int vendor, int value);
+int		dict_vendor_by_name(char const *name);
+DICT_VENDOR	*dict_vendorby_num(int vendor);
 
 #if 1 /* FIXME: compat */
-#define dict_attrget	dict_attrbyvalue
-#define dict_attrfind	dict_attrbyname
-#define dict_valfind	dict_valbyname
-/*#define dict_valget	dict_valbyattr almost but not quite*/
+#define dict_attrget	dict_attr_by_num
+#define dict_attrfind	dict_attr_by_name
+#define dict_valfind	dict_val_by_name
+/*#define dict_valget	dict_val_by_attr almost but not quite*/
 #endif
 
 /* radius.c */

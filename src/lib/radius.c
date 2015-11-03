@@ -834,7 +834,7 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 	if ((fr_debug_lvl > 3) && fr_log_fp) {
 		DICT_ATTR const *da;
 
-		da = dict_attrbyvalue(svp->da->attr & ((1 << fr_attr_shift[nest ]) - 1), svp->da->vendor);
+		da = dict_attr_by_num(svp->da->attr & ((1 << fr_attr_shift[nest ]) - 1), svp->da->vendor);
 		if (da) fprintf(fr_log_fp, "\t%s = ...\n", da->name);
 	}
 #endif
@@ -1406,7 +1406,7 @@ static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
 	 *	Unknown vendor: RFC format.
 	 *	Known vendor and RFC format: go do that.
 	 */
-	dv = dict_vendorbyvalue(vendor);
+	dv = dict_vendorby_num(vendor);
 	if (!dv ||
 	    (!vp->da->flags.is_tlv && (dv->type == 1) && (dv->length == 1))) {
 		return vp2attr_rfc(packet, original, secret, pvp,
@@ -2962,7 +2962,7 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 	while (data < (start + length)) {
 		ssize_t tlv_len;
 
-		child = dict_attrbyparent(da, data[0], da->vendor);
+		child = dict_attr_byparent(da, data[0], da->vendor);
 		if (!child) {
 			unsigned int my_attr, my_vendor;
 
@@ -3069,7 +3069,7 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	/*
 	 *	See if the VSA is known.
 	 */
-	da = dict_attrbyvalue(attribute, dv->vendorpec);
+	da = dict_attr_by_num(attribute, dv->vendorpec);
 	if (!da) da = dict_unknown_afrom_fields(ctx, attribute, dv->vendorpec);
 	if (!da) return -1;
 
@@ -3194,7 +3194,7 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 
 	if (((size_t) (data[5] + 4)) != attrlen) return -1;
 
-	child = dict_attrbyvalue(data[4], vendor);
+	child = dict_attr_by_num(data[4], vendor);
 	if (!child) return -1;
 
 	if ((data[6] & 0x80) == 0) {
@@ -3295,7 +3295,7 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 
 	memcpy(&vendor, data, 4);
 	vendor = ntohl(vendor);
-	dv = dict_vendorbyvalue(vendor);
+	dv = dict_vendorby_num(vendor);
 	if (!dv) {
 		/*
 		 *	RFC format is 1 octet type, 1 octet length
@@ -3622,10 +3622,10 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 
 	case PW_TYPE_COMBO_IP_ADDR:
 		if (datalen == 4) {
-			child = dict_attrbytype(da->attr, da->vendor,
+			child = dict_attr_by_type(da->attr, da->vendor,
 						PW_TYPE_IPV4_ADDR);
 		} else if (datalen == 16) {
-			child = dict_attrbytype(da->attr, da->vendor,
+			child = dict_attr_by_type(da->attr, da->vendor,
 					     PW_TYPE_IPV6_ADDR);
 		} else {
 			goto raw;
@@ -3647,7 +3647,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	case PW_TYPE_EXTENDED:
 		if (datalen < 2) goto raw; /* etype, value */
 
-		child = dict_attrbyparent(da, data[0], 0);
+		child = dict_attr_byparent(da, data[0], 0);
 		if (!child) goto raw;
 
 		/*
@@ -3664,7 +3664,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	case PW_TYPE_LONG_EXTENDED:
 		if (datalen < 3) goto raw; /* etype, flags, value */
 
-		child = dict_attrbyparent(da, data[0], 0);
+		child = dict_attr_byparent(da, data[0], 0);
 		if (!child) {
 			if ((data[0] != PW_VENDOR_SPECIFIC) ||
 			    (datalen < (3 + 4 + 1))) {
@@ -3716,7 +3716,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		vendor = ntohl(vendor);
 		vendor |= da->vendor;
 
-		child = dict_attrbyvalue(data[4], vendor);
+		child = dict_attr_by_num(data[4], vendor);
 		if (!child) {
 			/*
 			 *	Create a "raw" attribute from the
@@ -3917,7 +3917,7 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 		return -1;
 	}
 
-	da = dict_attrbyvalue(data[0], 0);
+	da = dict_attr_by_num(data[0], 0);
 	if (!da) {
 		VP_TRACE("attr2vp: unknown attribute %u\n", data[0]);
 		da = dict_unknown_afrom_fields(ctx, data[0], 0);
