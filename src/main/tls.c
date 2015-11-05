@@ -1289,7 +1289,7 @@ static int cache_key_add(REQUEST *request, uint8_t *key, size_t key_len, tls_cac
 	fr_pair_delete_by_num(&request->packet->vps, PW_TLS_SESSION_IDENTITY, 0, TAG_ANY);
 	fr_pair_delete_by_num(&request->config, PW_TLS_SESSION_CACHE_ACTION, 0, TAG_ANY);
 
-	vp = fr_pair_afrom_num(request, PW_TLS_SESSION_IDENTITY, 0);
+	vp = fr_pair_afrom_num(request->packet, PW_TLS_SESSION_IDENTITY, 0);
 	if (!vp) return -1;
 
 	fr_pair_value_memcpy(vp, key, key_len);
