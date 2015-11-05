@@ -1398,12 +1398,12 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	/*
 	 *	Put the SSL data into an attribute.
 	 */
-	vp = fr_pair_afrom_num(request->packet, PW_TLS_SESSION_DATA, 0);
+	vp = fr_pair_afrom_num(request->state, PW_TLS_SESSION_DATA, 0);
 	if (!vp) goto error;
 
 	fr_pair_value_memsteal(vp, data);
-	rdebug_pair(L_DBG_LVL_2, request, vp, "&request:");
-	fr_pair_add(&request->packet->vps, vp);
+	rdebug_pair(L_DBG_LVL_2, request, vp, "&session-state:");
+	fr_pair_add(&request->state, vp);
 	data = NULL;
 
 	/*
@@ -1422,7 +1422,7 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
-	fr_pair_delete_by_num(&request->config, PW_TLS_SESSION_DATA, 0, TAG_ANY);
+	fr_pair_delete_by_num(&request->state, PW_TLS_SESSION_DATA, 0, TAG_ANY);
 
 error:
 	if (data) talloc_free(data);
@@ -1474,7 +1474,7 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len
 		return NULL;
 	}
 
-	vp = fr_pair_find_by_num(request->config, PW_TLS_SESSION_DATA, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->state, PW_TLS_SESSION_DATA, 0, TAG_ANY);
 	if (!vp) {
 		RWDEBUG("No cached session found");
 		return NULL;
@@ -1493,7 +1493,7 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
-	fr_pair_delete_by_num(&request->config, PW_TLS_SESSION_DATA, 0, TAG_ANY);
+	fr_pair_delete_by_num(&request->state, PW_TLS_SESSION_DATA, 0, TAG_ANY);
 
 	return sess;
 }
