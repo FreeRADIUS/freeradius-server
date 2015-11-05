@@ -3196,15 +3196,12 @@ post_ca:
 		 */
 		if (conf->session_cache_server) {
 			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
+
 		} else {	/* in-memory cache. */
 			/*
 			 *	Cache it, and DON'T auto-clear it.
 			 */
 			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_AUTO_CLEAR);
-
-			SSL_CTX_set_session_id_context(ctx,
-						       (unsigned char const *) conf->session_context_id,
-						       (unsigned int) strlen(conf->session_context_id));
 
 			/*
 			 *	Our timeout is in hours, this is in seconds.
@@ -3217,6 +3214,20 @@ post_ca:
 			 */
 			SSL_CTX_sess_set_cache_size(ctx, conf->session_cache_size);
 		}
+
+		/*
+		 *	This sets the context sessions can be resumed in.
+		 *	This is to prevent sessions being created by one application
+		 *	and used by another.  In our case it prevents sessions being
+		 *	reused between modules, or TLS server components such as
+		 *	RADSEC.
+		 *
+		 *	A context must always be set when doing session resumption
+		 *	otherwise session resumption will fail.
+		 */
+		SSL_CTX_set_session_id_context(ctx,
+					       (unsigned char const *) conf->session_context_id,
+					       (unsigned int) strlen(conf->session_context_id));
 	} else {
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 	}
