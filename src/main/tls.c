@@ -1467,11 +1467,11 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len
 	switch (cache_process(request, conf->session_cache_server, CACHE_ACTION_SESSION_READ)) {
 	case RLM_MODULE_OK:
 	case RLM_MODULE_UPDATED:
-		return NULL;
+		break;
 
 	default:
 		RWDEBUG("Failed acquiring session data");
-		break;
+		return NULL;
 	}
 
 	vp = fr_pair_find_by_num(request->config, PW_TLS_SESSION_DATA, 0, TAG_ANY);
@@ -1488,6 +1488,7 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len
 		RWDEBUG("Failed loading persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
 	}
+	RDEBUG3("Read %zu bytes of session data.  Session deserialized successfully", vp->vp_length);
 
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
