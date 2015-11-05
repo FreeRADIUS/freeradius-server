@@ -3176,7 +3176,7 @@ post_ca:
 		 *	sessions, then don't use the internal cache.
 		 */
 		if (conf->session_cache_server) {
-			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_NO_INTERNAL);
+			SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_SERVER | SSL_SESS_CACHE_NO_INTERNAL);
 		} else {	/* in-memory cache. */
 			/*
 			 *	Cache it, and DON'T auto-clear it.
