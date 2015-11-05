@@ -252,27 +252,36 @@ static unsigned int tls_psk_client_cb(SSL *ssl, UNUSED char const *hint,
 
 #define MAX_SESSION_SIZE (256)
 
-void tls_session_id(SSL_SESSION *session, char *buffer, size_t bufsize)
+/** Retrieve session ID (in binary form) from the session
+ *
+ * @param[out] out Where to write the session id.
+ * @param[in] outlen length of output buffer.
+ * @param[in] tls_session to get Id for.
+ * @return
+ *	- -1 on failure (buffer too small).
+ *	- >0 on success, the number of bytes written.
+ */
+ssize_t tls_session_id(uint8_t *out, size_t outlen, SSL_SESSION *tls_session)
 {
 #if OPENSSL_VERSION_NUMBER < 0x10001000L
-	size_t size;
+	size_t len;
 
-	size = session->session_id_length;
-	if (size > bufsize) size = bufsize;
+	len = tls_session->session_id_length;
+	if (len > outlen) return -1;
+	memcpy(out, tls_session->session_id, len);
 
-	fr_bin2hex(buffer, session->session_id, size);
+	return (ssize_t)len;
 #else
-	unsigned int size;
+	unsigned int len;
 	uint8_t const *p;
 
-	p = SSL_SESSION_get_id(session, &size);
-	if (size > bufsize) size = bufsize;
+	p = SSL_SESSION_get_id(tls_session, &len);
+	if (len > outlen) return -1;
+	memcpy(out, p, len);
 
-	fr_bin2hex(buffer, p, size);
-
+	return (ssize_t)len;
 #endif
 }
-
 
 /** Free a TLS session and any associated OpenSSL data
  *
@@ -1345,16 +1354,20 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	fr_tls_server_conf_t	*conf;
 	REQUEST			*request;
 	size_t			len, rcode;
+	ssize_t			slen;
 	uint8_t			*p, *data = NULL;
 	VALUE_PAIR		*vp;
-	char			buffer[2 * MAX_SESSION_SIZE + 1];
+	uint8_t			buffer[MAX_SESSION_SIZE];
 
 	request = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_REQUEST);
 	conf = SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 
-	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
-
-	if (cache_key_add(request, (uint8_t *) buffer, strlen(buffer), CACHE_ACTION_SESSION_WRITE) < 0) {
+	slen = tls_session_id(buffer, sizeof(buffer), sess);
+	if (slen < 0) {
+		REDEBUG("Session ID buffer to small");
+		return 0;
+	}
+	if (cache_key_add(request, (uint8_t *) buffer, (size_t)slen, CACHE_ACTION_SESSION_WRITE) < 0) {
 		RWDEBUG("Failed adding session key to the request");
 		return 0;
 	}
@@ -1493,7 +1506,8 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 {
 	fr_tls_server_conf_t	*conf;
 	REQUEST			*request;
-	char			buffer[2 * MAX_SESSION_SIZE + 1];
+	uint8_t			buffer[MAX_SESSION_SIZE];
+	ssize_t			slen;
 
 	conf = SSL_CTX_get_app_data(ctx);
 
@@ -1506,13 +1520,17 @@ static void cache_delete_session(SSL_CTX *ctx, SSL_SESSION *sess)
 	request->packet = rad_alloc(request, false);
 	request->reply = rad_alloc(request, false);
 
-	tls_session_id(sess, buffer, MAX_SESSION_SIZE);
-
-	if (cache_key_add(request, (uint8_t *) buffer, strlen(buffer), CACHE_ACTION_SESSION_DELETE) < 0) {
-		RWDEBUG("Failed adding session key to the request");
+	slen = tls_session_id(buffer, sizeof(buffer), sess);
+	if (slen < 0) {
+		RWDEBUG("Session ID buffer too small");
 	error:
 		talloc_free(request);
 		return;
+	}
+
+	if (cache_key_add(request, buffer, (size_t)slen, CACHE_ACTION_SESSION_DELETE) < 0) {
+		RWDEBUG("Failed adding session key to the request");
+		goto error;
 	}
 
 	/*

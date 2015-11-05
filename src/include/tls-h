@@ -317,7 +317,7 @@ SSL_CTX		*tls_init_ctx(fr_tls_server_conf_t const *conf, bool client);
 int 		tls_handshake_recv(REQUEST *, tls_session_t *tls_session);
 int 		tls_handshake_send(REQUEST *, tls_session_t *tls_session);
 void 		tls_session_information(tls_session_t *tls_session);
-void		tls_session_id(SSL_SESSION *tls_session, char *buffer, size_t bufsize);
+ssize_t		tls_session_id(uint8_t *out, size_t outlen, SSL_SESSION *tls_session);
 
 /*
  *	Low-level TLS stuff
