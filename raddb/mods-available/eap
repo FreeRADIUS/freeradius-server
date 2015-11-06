@@ -358,12 +358,20 @@ eap {
 			#
 			enable = yes
 
+			#
+			#  Name of the context TLS sessions are created under.  If no value
+			#  is provided the context is set to the EAP module instance.
+			#
+			#  If you wish to share session resumption data between multiple EAP
+			#  modules they all must have the same name value set.
+			#
+#			name = 'shared_session_context'
+
 			#  As of 3.1, the following configuration options are deprecated:
 			#
 			#	persist_dir
 			#	lifetime
 			#	max_entries
-			#	name
 			#
 			#  You should use the "virtual_server" directive instead.
 			#  See raddb/sites-available/tls-cache for details.
