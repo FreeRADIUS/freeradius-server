@@ -324,7 +324,7 @@ static const CONF_PARSER module_config[] = {
 	{"groupname_attribute", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,groupname_attr), NULL, "cn"},
 	{"groupmembership_filter", PW_TYPE_STRING_PTR,
-	 offsetof(ldap_instance,groupmemb_filt), NULL, "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"},
+	 offsetof(ldap_instance,groupmemb_filt), NULL, "(|(&(objectClass=GroupOfNames)(member=%{control:Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{control:Ldap-UserDn})))"},
 	{"groupmembership_attribute", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,groupmemb_attr), NULL, NULL},
 
