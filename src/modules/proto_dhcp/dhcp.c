@@ -532,14 +532,14 @@ RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap)
 	dst_port = ntohs(udp->dst);
 	src_port = ntohs(udp->src);
 
-	src_ipaddr.af = AF_INET;
+	src_ipaddr.af             = AF_INET;
 	src_ipaddr.ipaddr.ip4addr = ip->ip_src;
-	src_ipaddr.prefix = 32;
-	src_ipaddr.scope = 0;
-	dst_ipaddr.af = AF_INET;
+	src_ipaddr.prefix         = 32;
+	src_ipaddr.scope_id       = 0;
+	dst_ipaddr.af             = AF_INET;
 	dst_ipaddr.ipaddr.ip4addr = ip->ip_dst;
-	dst_ipaddr.prefix = 32;
-	dst_ipaddr.scope = 0;
+	dst_ipaddr.prefix         = 32;
+	dst_ipaddr.scope_id       = 0;
 
 	packet = fr_dhcp_packet_ok(p, data_len, src_ipaddr, src_port, dst_ipaddr, dst_port);
 	if (packet) {

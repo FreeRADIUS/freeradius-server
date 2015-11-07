@@ -991,8 +991,8 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6:
-		if (a->scope < b->scope) return -1;
-		if (a->scope > b->scope) return +1;
+		if (a->scope_id < b->scope_id) return -1;
+		if (a->scope_id > b->scope_id) return +1;
 
 		return memcmp(&a->ipaddr.ip6addr,
 			      &b->ipaddr.ip6addr,
@@ -1033,7 +1033,7 @@ int fr_ipaddr_to_sockaddr(fr_ipaddr_t const *ipaddr, uint16_t port,
 		s6.sin6_family = AF_INET6;
 		s6.sin6_addr = ipaddr->ipaddr.ip6addr;
 		s6.sin6_port = htons(port);
-		s6.sin6_scope_id = ipaddr->scope;
+		s6.sin6_scope_id = ipaddr->scope_id;
 		memset(sa, 0, sizeof(*sa));
 		memcpy(sa, &s6, sizeof(s6));
 #endif
@@ -1077,7 +1077,7 @@ int fr_ipaddr_from_sockaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		ipaddr->prefix = 128;
 		ipaddr->ipaddr.ip6addr = s6.sin6_addr;
 		if (port) *port = ntohs(s6.sin6_port);
-		ipaddr->scope = s6.sin6_scope_id;
+		ipaddr->scope_id = s6.sin6_scope_id;
 #endif
 
 	} else {
