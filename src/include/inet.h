@@ -33,13 +33,17 @@
  * support address family agnostic functions.
  */
 typedef struct fr_ipaddr_t {
-	int		af;	        //!< Address family.
+	int		af;			//!< Address family.
 	union {
 		struct in_addr	ip4addr;	//!< IPv4 address.
 		struct in6_addr ip6addr;	//!< IPv6 address.
 	} ipaddr;
 	uint8_t		prefix;	        //!< Prefix length - Between 0-32 for IPv4 and 0-128 for IPv6.
-	uint32_t        scope_id;	//!< Scope for IPv6.
+	uint32_t	zone_id;	//!< A host may have multiple link-local interfaces
+					//!< the scope ID allows the application to specify which of
+					//!< those interfaces the IP applies to.  A special scope_id
+					//!< of zero means that any interface of a given scope can
+					//!< be used.
 } fr_ipaddr_t;
 
 #  if defined(SIOCGIFADDR) && (defined(SIOCGIFNAME) || defined(HAVE_IF_INDEXTONAME))

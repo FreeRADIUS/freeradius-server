@@ -2626,10 +2626,10 @@ static int listen_bind(rad_listen_t *this)
 		 *	the interface.
 		 */
 		if (sock->my_ipaddr.af == AF_INET6) {
-			if (sock->my_ipaddr.scope_id == 0) {
-				sock->my_ipaddr.scope_id = if_nametoindex(sock->interface);
-				DEBUG4("[FD %i] IPv6 scope resolves to %u", this->fd, sock->my_ipaddr.scope_id);
-				if (sock->my_ipaddr.scope_id == 0) {
+			if (sock->my_ipaddr.zone_id == 0) {
+				sock->my_ipaddr.zone_id = if_nametoindex(sock->interface);
+				DEBUG4("[FD %i] IPv6 scope resolves to %u", this->fd, sock->my_ipaddr.zone_id);
+				if (sock->my_ipaddr.zone_id == 0) {
 					close(this->fd);
 					ERROR("Failed finding interface %s: %s", sock->interface, fr_syserror(errno));
 					return -1;
