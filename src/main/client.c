@@ -41,9 +41,6 @@ RCSID("$Id$")
 #endif
 
 struct radclient_list {
-	/*
-	 *	FIXME: One set of trees for IPv4, and another for IPv6?
-	 */
 	rbtree_t	*trees[129]; /* for 0..128, inclusive. */
 	uint32_t       	min_prefix;
 };
@@ -433,7 +430,7 @@ RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int 
  */
 RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto)
 {
-  int32_t i, max_prefix;
+	int32_t i, max_prefix;
 	RADCLIENT myclient;
 
 	if (!clients) clients = root_clients;
@@ -456,11 +453,11 @@ RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr,
 	for (i = max_prefix; i >= (int32_t) clients->min_prefix; i--) {
 		void *data;
 
+		if (!clients->trees[i]) continue;
+
 		myclient.ipaddr = *ipaddr;
 		myclient.proto = proto;
 		fr_ipaddr_mask(&myclient.ipaddr, i);
-
-		if (!clients->trees[i]) continue;
 
 		data = rbtree_finddata(clients->trees[i], &myclient);
 		if (data) return data;
