@@ -596,7 +596,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		}
 
 		if (!home->log_name) {
-			char buffer[INET6_ADDRSTRLEN + 3];
+			char buffer[FR_IPADDR_PREFIX_STRLEN];
 
 			fr_inet_ntop_prefix(buffer, sizeof(buffer), &home->ipaddr);
 
@@ -790,7 +790,7 @@ home_server_t *home_server_afrom_cs(TALLOC_CTX *ctx, realm_config_t *rc, CONF_SE
 		 *	Set the default port if necessary.
 		 */
 		if (home->port == 0) {
-			char buffer[INET6_ADDRSTRLEN + 3];
+			char buffer[FR_IPADDR_PREFIX_STRLEN];
 
 			/*
 			 *	For RADSEC we use the special RADIUS over TCP/TLS port

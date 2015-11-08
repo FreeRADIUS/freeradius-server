@@ -25,8 +25,8 @@
 #include <freeradius-devel/libradius.h>
 #include <ctype.h>
 
-bool	fr_dns_lookups = false;	    //!< IP -> hostname lookups?
-bool    fr_hostname_lookups = true; //!< hostname -> IP lookups?
+bool		fr_dns_lookups = false;	    //!< IP -> hostname lookups?
+bool		fr_hostname_lookups = true; //!< hostname -> IP lookups?
 
 /** Mask off a portion of an IPv4 address
  *
@@ -700,16 +700,51 @@ do_port:
 
 /** Print the address portion of a #fr_ipaddr_t
  *
+ * @note Includes the textual zone_id name (eth0, en0 etc...) if supported.
+ *
  * @param[out] out Where to write the resulting IP string.
+ *	Should be at least FR_IPADDR_STRLEN bytes.
  * @param[in] outlen of output buffer.
  * @param[in] addr to convert to presentation format.
  * @return
  *	- NULL on error (use fr_syserror(errno)).
  *	- a pointer to out on success.
  */
-char *fr_inet_ntop(char *out, size_t outlen, fr_ipaddr_t *addr)
+char *fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t *addr)
 {
+	char	*p;
+	size_t	len;
+
 	if (inet_ntop(addr->af, &addr->ipaddr, out, outlen) == NULL) return NULL;
+
+	if ((addr->af == AF_INET) || (addr->zone_id == 0)) return out;
+
+	p = out + strlen(out);
+
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
+	{
+		char buffer[IFNAMSIZ];
+		char *ifname;
+
+		ifname = fr_ifname_from_ifindex(buffer, addr->zone_id);
+		if (ifname) {
+			len = snprintf(p, outlen - (p - out), "%%%s", ifname);
+			if (is_truncated(len + (p - out), outlen)) {
+				fr_strerror_printf("Address buffer too small, needed %zu bytes, have %zu bytes",
+						   (p - out) + len, outlen);
+				return NULL;
+			}
+		}
+		return out;
+	}
+#endif
+
+	len = snprintf(p, outlen - (p - out), "%%%i",  addr->zone_id);
+	if (is_truncated(len + (p - out), outlen)) {
+		fr_strerror_printf("Address buffer too small, needed %zu bytes, have %zu bytes",
+				   (p - out) + len, outlen);
+		return NULL;
+	}
 
 	return out;
 }
@@ -717,19 +752,28 @@ char *fr_inet_ntop(char *out, size_t outlen, fr_ipaddr_t *addr)
 /** Print a #fr_ipaddr_t as a CIDR style network prefix
  *
  * @param[out] out Where to write the resulting prefix string.
+ *	Should be at least FR_IPADDR_PREFIX_STRLEN bytes.
  * @param[in] outlen of output buffer.
  * @param[in] addr to convert to presentation format.
  * @return
  *	- NULL on error (use fr_syserror(errno)).
  *	- a pointer to out on success.
  */
-char *fr_inet_ntop_prefix(char *out, size_t outlen, fr_ipaddr_t *addr)
+char *fr_inet_ntop_prefix(char out[FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_ipaddr_t *addr)
 {
-	char buffer[INET6_ADDRSTRLEN];
+	char	*p;
+	size_t	len;
 
-	if (inet_ntop(addr->af, &(addr->ipaddr), buffer, sizeof(buffer)) == NULL) return NULL;
+	if (fr_inet_ntop(out, outlen, addr) == NULL) return NULL;
 
-	snprintf(out, outlen, "%s/%i", buffer, addr->prefix);
+	p = out + strlen(out);
+
+	len = snprintf(p, outlen - (p - out), "/%i", addr->prefix);
+	if (is_truncated(len + (p - out), outlen)) {
+		fr_strerror_printf("Address buffer too small, needed %zu bytes, have %zu bytes",
+				   (p - out) + len, outlen);
+		return NULL;
+	}
 
 	return out;
 }
@@ -857,7 +901,7 @@ int fr_ipaddr_from_ifname(UNUSED fr_ipaddr_t *out, UNUSED int af, char const *na
 }
 #endif
 
-#ifdef WITH_IFINDEX_RESOLUTION
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 /** Resolve if_index to interface name
  *
  * @param[out] out Buffer to use to store the name, must be at least IFNAMSIZ bytes.
@@ -903,7 +947,9 @@ char *fr_ifname_from_ifindex(char out[IFNAMSIZ], int if_index)
 #endif
 	return out;
 }
+#endif
 
+#ifdef WITH_IFINDEX_IPADDR_RESOLUTION
 /** Returns the primary IP address for a given interface index
  *
  * @note Intended to be used with udpfromto (recvfromto) to retrieve the
@@ -939,11 +985,13 @@ int fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index)
 		fr_strerror_printf("Failed resolving interface index %i to name: %s", if_index, fr_syserror(errno));
 		return -1;
 	}
-#else
+#elsif defined(HAVE_IF_INDEXTONAME)
 	if (!if_indextoname(if_index, if_req.ifr_name)) {
 		fr_strerror_printf("Failed resolving interface index %i to name", if_index);
 		return -1;
 	}
+#else
+#  error Need SIOCGIFNAME or if_indextoname
 #endif
 
 	/*

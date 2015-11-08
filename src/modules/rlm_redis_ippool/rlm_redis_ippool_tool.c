@@ -497,7 +497,7 @@ static int _driver_show_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis
 {
 	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t		*key_p = key;
-	char		ip_buff[INET6_ADDRSTRLEN + 4];
+	char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 	uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
 	uint8_t		*ip_key_p = ip_key;
@@ -552,7 +552,7 @@ static int _driver_release_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_re
 	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t		*key_p = key;
 
-	char		ip_buff[INET6_ADDRSTRLEN + 4];
+	char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 	IPPOOL_BUILD_KEY(key, key_p, key_prefix, key_prefix_len);
 	IPPOOL_SPRINT_IP(ip_buff, ipaddr, prefix);
@@ -604,7 +604,7 @@ static int _driver_remove_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_red
 {
 	uint8_t	key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t	*key_p = key;
-	char	ip_buff[INET6_ADDRSTRLEN + 4];
+	char	ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 	uint8_t	ip_key[IPPOOL_MAX_IP_KEY_SIZE];
 	uint8_t	*ip_key_p = ip_key;
@@ -661,7 +661,7 @@ static int _driver_add_lease_enqueue(UNUSED redis_driver_conf_t *inst, fr_redis_
 {
 	uint8_t		key[IPPOOL_MAX_POOL_KEY_SIZE];
 	uint8_t		*key_p = key;
-	char		ip_buff[INET6_ADDRSTRLEN + 4];
+	char		ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 	uint8_t		ip_key[IPPOOL_MAX_IP_KEY_SIZE];
 	uint8_t		*ip_key_p = ip_key;
@@ -1103,7 +1103,7 @@ do { \
 		len = talloc_array_length(leases);
 		INFO("Retrieved information for %zu addresses/prefixes", len - 1);
 		for (i = 0; i < (len - 1); i++) {
-			char	ip_buff[INET6_ADDRSTRLEN + 4];
+			char	ip_buff[FR_IPADDR_PREFIX_STRLEN];
 			char	time_buff[30];
 			struct	tm tm;
 			struct	timeval now;

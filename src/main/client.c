@@ -192,7 +192,7 @@ RADCLIENT_LIST *client_list_init(CONF_SECTION *cs)
 bool client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
 	RADCLIENT *old;
-	char buffer[INET6_ADDRSTRLEN + 3];
+	char buffer[FR_IPADDR_PREFIX_STRLEN];
 
 	if (!client) return false;
 

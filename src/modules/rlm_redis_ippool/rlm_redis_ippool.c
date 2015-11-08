@@ -804,7 +804,7 @@ static ippool_rcode_t redis_ippool_update(rlm_redis_ippool_t *inst, REQUEST *req
 				       device_id, device_id_len,
 				       gateway_id, gateway_id_len);
 	} else {
-		char ip_buff[INET6_ADDRSTRLEN + 4];
+		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
 		status = ippool_script(&reply, request, inst->cluster,
@@ -942,7 +942,7 @@ static ippool_rcode_t redis_ippool_release(rlm_redis_ippool_t *inst, REQUEST *re
 				       htonl(ip->ipaddr.ip4addr.s_addr),
 				       device_id, device_id_len);
 	} else {
-		char ip_buff[INET6_ADDRSTRLEN + 4];
+		char ip_buff[FR_IPADDR_PREFIX_STRLEN];
 
 		IPPOOL_SPRINT_IP(ip_buff, ip, ip->prefix);
 		status = ippool_script(&reply, request, inst->cluster,

@@ -484,7 +484,7 @@ static int dhcp_process(REQUEST *request)
 	 */
 	} else if (sock->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_ANY)) {
 		request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->src_ipaddr.ipaddr.ip4addr.s_addr;
-#ifdef WITH_IFINDEX_RESOLUTION
+#ifdef WITH_IFINDEX_IPADDR_RESOLUTION
 	/*
 	 *	We built with udpfromto and have the if_index of the receiving
 	 *	interface, which we can now resolve to an IP address.
@@ -901,7 +901,7 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 {
 	char src_ipaddr[INET6_ADDRSTRLEN];
 	char dst_ipaddr[INET6_ADDRSTRLEN];
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 	char if_name[IFNAMSIZ];
 #endif
 
@@ -916,7 +916,7 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 	 */
 	if ((packet->code > PW_DHCP_OFFSET) && (packet->code < PW_DHCP_MAX)) {
 		radlog_request(L_DBG, L_DBG_LVL_1, request, "%s %s Id %08x from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			       "%s%s%s"
 #endif
 			       "length %zu",
@@ -935,7 +935,7 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 					 dst_ipaddr, sizeof(dst_ipaddr)),
 			       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 			       packet->dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			       packet->if_index ? "via " : "",
 			       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
 			       packet->if_index ? " " : "",
@@ -943,7 +943,7 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 			       packet->data_len);
 	} else {
 		radlog_request(L_DBG, L_DBG_LVL_1, request, "%s code %u Id %08x from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			       "%s%s%s"
 #endif
 			       "length %zu",
@@ -962,7 +962,7 @@ static void dhcp_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool rece
 					 dst_ipaddr, sizeof(dst_ipaddr)),
 			       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 			       packet->dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			       packet->if_index ? "via " : "",
 			       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
 			       packet->if_index ? " " : "",

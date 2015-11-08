@@ -35,20 +35,34 @@
 typedef struct fr_ipaddr_t {
 	int		af;			//!< Address family.
 	union {
-		struct in_addr	ip4addr;	//!< IPv4 address.
-		struct in6_addr ip6addr;	//!< IPv6 address.
+		struct in_addr	ip4addr;		//!< IPv4 address.
+		struct in6_addr ip6addr;		//!< IPv6 address.
 	} ipaddr;
-	uint8_t		prefix;	        //!< Prefix length - Between 0-32 for IPv4 and 0-128 for IPv6.
-	uint32_t	zone_id;	//!< A host may have multiple link-local interfaces
-					//!< the scope ID allows the application to specify which of
-					//!< those interfaces the IP applies to.  A special scope_id
-					//!< of zero means that any interface of a given scope can
-					//!< be used.
+	uint8_t		prefix;	        	//!< Prefix length - Between 0-32 for IPv4 and 0-128 for IPv6.
+	uint32_t	zone_id;		//!< A host may have multiple link-local interfaces
+						//!< the scope ID allows the application to specify which of
+						//!< those interfaces the IP applies to.  A special scope_id
+						//!< of zero means that any interface of a given scope can
+						//!< be used.
 } fr_ipaddr_t;
 
 #  if defined(SIOCGIFADDR) && (defined(SIOCGIFNAME) || defined(HAVE_IF_INDEXTONAME))
-#    define WITH_IFINDEX_RESOLUTION
+#    define WITH_IFINDEX_RESOLUTION 1
 #  endif
+
+#  if defined(SIOCGIFNAME) || defined(HAVE_IF_INDEXTONAME)
+#    define WITH_IFINDEX_NAME_RESOLUTION 1
+#  endif
+
+extern struct in6_addr fr_inet_link_local6;
+
+/** Like INET6_ADDRSTRLEN but includes space for the textual Zone ID
+ */
+#define FR_IPADDR_STRLEN (INET6_ADDRSTRLEN + 1 + IFNAMSIZ)
+
+/** Like FR_IPADDR_STRLEN but with space for a prefix
+ */
+#define FR_IPADDR_PREFIX_STRLEN (FR_IPADDR_STRLEN + 1 + 3)
 
 /*
  *	IP address masking
@@ -71,9 +85,9 @@ int	fr_inet_pton(fr_ipaddr_t *out, char const *value, ssize_t inlen, int af, boo
 int	fr_inet_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value,
 			  ssize_t inlen, int af, bool resolve, bool mask);
 
-char	*fr_inet_ntop(char *out, size_t outlen, fr_ipaddr_t *addr);
+char	*fr_inet_ntop(char out[FR_IPADDR_STRLEN], size_t outlen, fr_ipaddr_t *addr);
 
-char	*fr_inet_ntop_prefix(char *out, size_t outlen, fr_ipaddr_t *addr);
+char	*fr_inet_ntop_prefix(char out[FR_IPADDR_PREFIX_STRLEN], size_t outlen, fr_ipaddr_t *addr);
 
 char	*fr_inet_ifid_ntop(char *out, size_t outlen, uint8_t const *ifid);
 
@@ -84,9 +98,11 @@ uint8_t	*fr_inet_ifid_pton(uint8_t out[8], char const *ifid_str);
  */
 int	fr_ipaddr_from_ifname(fr_ipaddr_t *out, int af, char const *name);
 
-#ifdef WITH_IFINDEX_RESOLUTION
+#ifdef WITH_IFINDEX_NAME_RESOLUTION
 char	*fr_ifname_from_ifindex(char out[IFNAMSIZ], int if_index);
+#endif
 
+#ifdef WITH_IFINDEX_IPADDR_RESOLUTION
 int	fr_ipaddr_from_ifindex(fr_ipaddr_t *out, int fd, int af, int if_index);
 #endif
 

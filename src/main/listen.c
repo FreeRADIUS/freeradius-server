@@ -894,9 +894,9 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
  */
 void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 {
-	char src_ipaddr[INET6_ADDRSTRLEN];
-	char dst_ipaddr[INET6_ADDRSTRLEN];
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+	char src_ipaddr[FR_IPADDR_STRLEN];
+	char dst_ipaddr[FR_IPADDR_STRLEN];
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 	char if_name[IFNAMSIZ];
 #endif
 
@@ -911,7 +911,7 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 	 */
 	if (is_radius_code(packet->code)) {
 		radlog_request(L_DBG, L_DBG_LVL_1, request, "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			       "%s%s%s"
 #endif
 			       "length %zu",
@@ -919,18 +919,14 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 			       fr_packet_codes[packet->code],
 			       packet->id,
 			       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-			       inet_ntop(packet->src_ipaddr.af,
-					 &packet->src_ipaddr.ipaddr,
-					 src_ipaddr, sizeof(src_ipaddr)),
+			       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
 			       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 			       packet->src_port,
 			       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-			       inet_ntop(packet->dst_ipaddr.af,
-					 &packet->dst_ipaddr.ipaddr,
-					 dst_ipaddr, sizeof(dst_ipaddr)),
+			       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
 			       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 			       packet->dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			       packet->if_index ? "via " : "",
 			       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
 			       packet->if_index ? " " : "",
@@ -938,7 +934,7 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 			       packet->data_len);
 	} else {
 		radlog_request(L_DBG, L_DBG_LVL_1, request, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			       "%s%s%s"
 #endif
 			       "length %zu",
@@ -946,18 +942,14 @@ void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received)
 			       packet->code,
 			       packet->id,
 			       packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-			       inet_ntop(packet->src_ipaddr.af,
-					 &packet->src_ipaddr.ipaddr,
-					 src_ipaddr, sizeof(src_ipaddr)),
+			       fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
 			       packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 			       packet->src_port,
 			       packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-			       inet_ntop(packet->dst_ipaddr.af,
-					 &packet->dst_ipaddr.ipaddr,
-					 dst_ipaddr, sizeof(dst_ipaddr)),
+			       fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
 			       packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 			       packet->dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			       packet->if_index ? "via " : "",
 			       packet->if_index ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
 			       packet->if_index ? " " : "",
@@ -2784,8 +2776,9 @@ static int listen_bind(rad_listen_t *this)
 				struct sockaddr_in6	*addr = (struct sockaddr_in6 *)&salocal;
 
 				inet_ntop(addr->sin6_family, &addr->sin6_addr, buffer, sizeof(buffer));
-				DEBUG4("[FD %i] Binding to address %s port %u -- bind(%i, %p, %u)",
-				       this->fd, buffer, ntohs(addr->sin6_port), this->fd, &salocal, salen);
+				DEBUG4("[FD %i] Binding to address %s port %u scope ID %i -- bind(%i, %p, %u)",
+				       this->fd, buffer, ntohs(addr->sin6_port), addr->sin6_scope_id,
+				       this->fd, &salocal, salen);
 			}
 		}
 		rad_suid_up();

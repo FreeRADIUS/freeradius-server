@@ -954,9 +954,9 @@ uint32_t fr_packet_list_num_outgoing(fr_packet_list_t *pl)
  */
 void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 {
-	char src_ipaddr[INET6_ADDRSTRLEN];
-	char dst_ipaddr[INET6_ADDRSTRLEN];
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+	char src_ipaddr[FR_IPADDR_STRLEN];
+	char dst_ipaddr[FR_IPADDR_STRLEN];
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 	char if_name[IFNAMSIZ];
 #endif
 
@@ -971,7 +971,7 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 	 */
 	if (is_radius_code(packet->code)) {
 		fprintf(fp, "%s %s Id %i from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 		       "%s%s%s"
 #endif
 		       "length %zu\n",
@@ -979,18 +979,14 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 		        fr_packet_codes[packet->code],
 		        packet->id,
 		        packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-		        inet_ntop(packet->src_ipaddr.af,
-				  &packet->src_ipaddr.ipaddr,
-				  src_ipaddr, sizeof(src_ipaddr)),
+			fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
 			packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->src_port,
 		        packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-		        inet_ntop(packet->dst_ipaddr.af,
-				  &packet->dst_ipaddr.ipaddr,
-				  dst_ipaddr, sizeof(dst_ipaddr)),
+			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
 		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			received ? "via " : "",
 			received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
 			received ? " " : "",
@@ -998,7 +994,7 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 			packet->data_len);
 	} else {
 		fprintf(fp, "%s code %u Id %i from %s%s%s:%i to %s%s%s:%i "
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 		       "%s%s%s"
 #endif
 		       "length %zu\n",
@@ -1006,18 +1002,14 @@ void fr_packet_header_print(FILE *fp, RADIUS_PACKET *packet, bool received)
 		        packet->code,
 		        packet->id,
 		        packet->src_ipaddr.af == AF_INET6 ? "[" : "",
-		        inet_ntop(packet->src_ipaddr.af,
-				  &packet->src_ipaddr.ipaddr,
-				  src_ipaddr, sizeof(src_ipaddr)),
+			fr_inet_ntop(src_ipaddr, sizeof(src_ipaddr), &packet->src_ipaddr),
 		        packet->src_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->src_port,
 		        packet->dst_ipaddr.af == AF_INET6 ? "[" : "",
-		        inet_ntop(packet->dst_ipaddr.af,
-				  &packet->dst_ipaddr.ipaddr,
-				  dst_ipaddr, sizeof(dst_ipaddr)),
+			fr_inet_ntop(dst_ipaddr, sizeof(dst_ipaddr), &packet->dst_ipaddr),
 		        packet->dst_ipaddr.af == AF_INET6 ? "]" : "",
 		        packet->dst_port,
-#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_RESOLUTION)
+#if defined(WITH_UDPFROMTO) && defined(WITH_IFINDEX_NAME_RESOLUTION)
 			received ? "via " : "",
 			received ? fr_ifname_from_ifindex(if_name, packet->if_index) : "",
 			received ? " " : "",

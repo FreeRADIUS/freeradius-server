@@ -221,7 +221,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 	case LINELOG_DST_TCP:
 		if (DEBUG_ENABLED2) {
-			char buff[INET6_ADDRSTRLEN + 4]; /* IPv6 + /<d><d><d> */
+			char buff[FR_IPADDR_PREFIX_STRLEN]; /* IPv6 + /<d><d><d> */
 
 			fr_inet_ntop_prefix(buff, sizeof(buff), &inst->tcp.dst_ipaddr);
 
@@ -237,7 +237,7 @@ static void *mod_conn_create(TALLOC_CTX *ctx, void *instance, struct timeval con
 
 	case LINELOG_DST_UDP:
 		if (DEBUG_ENABLED2) {
-			char buff[INET6_ADDRSTRLEN + 4]; /* IPv6 + /<d><d><d> */
+			char buff[FR_IPADDR_PREFIX_STRLEN]; /* IPv6 + /<d><d><d> */
 
 			fr_inet_ntop_prefix(buff, sizeof(buff), &inst->udp.dst_ipaddr);
 
