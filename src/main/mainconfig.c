@@ -1235,5 +1235,5 @@ void main_config_hup(void)
 	/*
 	 *	Load the new servers.
 	 */
-	virtual_servers_load(cs);
+	virtual_servers_init(cs);
 }

@@ -1387,7 +1387,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 /*
  *	Load all of the virtual servers.
  */
-int virtual_servers_load(CONF_SECTION *config)
+int virtual_servers_init(CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
 	virtual_server_t *server;

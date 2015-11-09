@@ -445,7 +445,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	And then load the virtual servers.
 	 */
-	if (virtual_servers_load(main_config.config) < 0) exit(EXIT_FAILURE);
+	if (virtual_servers_init(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *  Initialize any event loops just enough so module instantiations can
