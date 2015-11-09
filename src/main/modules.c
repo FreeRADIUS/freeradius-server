@@ -559,27 +559,25 @@ static int module_conf_parse(module_instance_t *node, void **handle)
  *  Load the module shared library, allocate instance memory for it,
  *  parse the module configuration, and call the modules "bootstrap" method.
  */
-static module_instance_t *module_bootstrap(CONF_SECTION *cs)
+static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *cs)
 {
-	char const *name1, *name2;
-	module_instance_t *node, myNode;
+	char const *name1, *instance_name;
+	module_instance_t *node;
 
 	/*
 	 *	Figure out which module we want to load.
 	 */
 	name1 = cf_section_name1(cs);
-	name2 = cf_section_name2(cs);
-	if (!name2) name2 = name1;
-
-	myNode.name = name2;
+	instance_name = cf_section_name2(cs);
+	if (!instance_name) instance_name = name1;
 
 	/*
 	 *	See if the module already exists.
 	 */
-	node = rbtree_finddata(instance_tree, &myNode);
+	node = module_find(modules, instance_name);
 	if (node) {
-		ERROR("Duplicate module \"%s %s\", in file %s:%d and file %s:%d",
-		      name1, name2,
+		ERROR("Duplicate module \"%s\", in file %s:%d and file %s:%d",
+		      instance_name,
 		      cf_section_filename(cs),
 		      cf_section_lineno(cs),
 		      cf_section_filename(node->cs),
@@ -594,7 +592,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 	 */
 	node = talloc_zero(cs, module_instance_t);
 	node->cs = cs;
-	node->name = name2;
+	node->name = instance_name;
 
 	/*
 	 *	Load the module shared library.
@@ -1544,8 +1542,7 @@ int modules_hup(CONF_SECTION *modules)
 	for (ci=cf_item_find_next(modules, NULL);
 	     ci != NULL;
 	     ci=cf_item_find_next(modules, ci)) {
-		char const *instname;
-		module_instance_t myNode;
+		char const *instance_name;
 
 		/*
 		 *	If it's not a section, ignore it.
@@ -1553,11 +1550,12 @@ int modules_hup(CONF_SECTION *modules)
 		if (!cf_item_is_section(ci)) continue;
 
 		cs = cf_item_to_section(ci);
-		instname = cf_section_name2(cs);
-		if (!instname) instname = cf_section_name1(cs);
 
-		myNode.name = instname;
-		node = rbtree_finddata(instance_tree, &myNode);
+		instance_name = cf_section_name2(cs);
+		if (!instance_name) instance_name = cf_section_name1(cs);
+
+		node = module_find(modules, instance_name);
+		if (!node) continue;
 
 		module_hup_module(cs, node, when);
 	}
@@ -1865,7 +1863,7 @@ int modules_init(CONF_SECTION *config)
 
 		subcs = cf_item_to_section(ci);
 
-		node = module_bootstrap(subcs);
+		node = module_bootstrap(modules, subcs);
 		if (!node) return -1;
 
 		if (!next || !cf_item_is_section(next)) continue;
