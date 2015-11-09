@@ -423,6 +423,13 @@ int main(int argc, char *argv[])
 	 */
 	radius_pid = getpid();
 
+#ifdef HAVE_PTHREAD_H
+	/*
+	 *	Start the thread pool in the forked child process.
+	 */
+	if (thread_pool_conf(main_config.config, &main_config.spawn_workers) < 0) exit(EXIT_FAILURE);
+#endif
+
 	/*
 	 *  Initialize any event loops just enough so module instantiations can
 	 *  add fd/event to them, but do not start them yet.
