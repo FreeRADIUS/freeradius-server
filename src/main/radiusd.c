@@ -423,6 +423,13 @@ int main(int argc, char *argv[])
 	 */
 	radius_pid = getpid();
 
+#ifdef HAVE_PTHREAD_H
+	/*
+	 *	Parse the thread pool configuration.
+	 */
+	if (thread_pool_bootstrap(main_config.config, &main_config.spawn_workers) < 0) exit(EXIT_FAILURE);
+#endif
+
 	/*
 	 *	Initialize Auth-Type, etc. in the virtual servers
 	 *	before loading the modules.  Some modules need those
@@ -439,13 +446,6 @@ int main(int argc, char *argv[])
 	 *	And then load the virtual servers.
 	 */
 	if (virtual_servers_load(main_config.config) < 0) exit(EXIT_FAILURE);
-
-#ifdef HAVE_PTHREAD_H
-	/*
-	 *	Start the thread pool in the forked child process.
-	 */
-	if (thread_pool_conf(main_config.config, &main_config.spawn_workers) < 0) exit(EXIT_FAILURE);
-#endif
 
 	/*
 	 *  Initialize any event loops just enough so module instantiations can

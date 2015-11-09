@@ -823,7 +823,7 @@ static int pid_cmp(void const *one, void const *two)
 /** Parse the configuration for the thread pool
  *
  */
-int thread_pool_conf(CONF_SECTION *cs, bool *spawn_workers)
+int thread_pool_bootstrap(CONF_SECTION *cs, bool *spawn_workers)
 {
 	CONF_SECTION	*pool_cf;
 
