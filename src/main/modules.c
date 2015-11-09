@@ -358,33 +358,36 @@ static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t 
  */
 static void module_instance_free(void *data)
 {
-	module_instance_t *module = talloc_get_type_abort(data, module_instance_t);
+	module_instance_t *node = talloc_get_type_abort(data, module_instance_t);
 
-	module_instance_free_old(module->cs, module, time(NULL) + 100);
+	module_instance_free_old(node->cs, node, time(NULL) + 100);
 
 #ifdef HAVE_PTHREAD_H
-	if (module->mutex) {
+	if (node->mutex) {
 		/*
 		 *	FIXME
 		 *	The mutex MIGHT be locked...
 		 *	we'll check for that later, I guess.
 		 */
-		pthread_mutex_destroy(module->mutex);
-		talloc_free(module->mutex);
+		pthread_mutex_destroy(node->mutex);
+		talloc_free(node->mutex);
 	}
 #endif
 
-	/*
-	 *	Remove any registered paircompares.
-	 */
-	paircompare_unregister_instance(module->insthandle);
+	xlat_unregister(node->insthandle, node->name, NULL);
 
-	xlat_unregister(module->insthandle, module->name, NULL);
 	/*
 	 *	Remove all xlat's registered to module instance.
 	 */
-	if (module->insthandle) xlat_unregister_module(module->insthandle);
-	talloc_free(module);
+	if (node->insthandle) {
+		/*
+		 *	Remove any registered paircompares.
+		 */
+		paircompare_unregister_instance(node->insthandle);
+
+		xlat_unregister_module(node->insthandle);
+	}
+	talloc_free(node);
 }
 
 
