@@ -292,7 +292,7 @@ static virtual_server_t *virtual_server_find(char const *name)
 	cs = cf_section_sub_find_name2(main_config.config, "server", name);
 	if (!cs) return NULL;
 
-	return (virtual_server_t *) cf_data_find(cs, "virtual_server_t");
+	return (virtual_server_t *) cf_data_find(cs, name);
 }
 
 static int _virtual_server_free(virtual_server_t *server)
@@ -1196,17 +1196,9 @@ static int load_byserver(CONF_SECTION *cs)
 	rbtree_t *components;
 	virtual_server_t *server = NULL;
 	indexed_modcallable *c;
-	bool is_bare;
 
-	if (name) {
-		cf_log_info(cs, "server %s { # from file %s",
-			    name, cf_section_filename(cs));
-	} else {
-		cf_log_info(cs, "server { # from file %s",
-			    cf_section_filename(cs));
-	}
-
-	is_bare = (cf_item_parent(cf_section_to_item(cs)) == NULL);
+	cf_log_info(cs, "server %s { # from file %s",
+		    name, cf_section_filename(cs));
 
 	server = talloc_zero(cs, virtual_server_t);
 	server->name = name;
@@ -1217,8 +1209,7 @@ static int load_byserver(CONF_SECTION *cs)
 
 	error:
 		if (rad_debug_lvl == 0) {
-			ERROR("Failed to load virtual server %s",
-			      (name != NULL) ? name : "<default>");
+			ERROR("Failed to load virtual server %s", name);
 		}
 		return -1;
 	}
@@ -1235,11 +1226,6 @@ static int load_byserver(CONF_SECTION *cs)
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
 		if (!subcs) continue;
-
-		if (is_bare) {
-			cf_log_err_cs(subcs, "The %s section should be inside of a 'server { ... }' block!",
-				      section_type_value[comp].section);
-		}
 
 		if (cf_item_find_next(subcs, NULL) == NULL) continue;
 
@@ -1355,21 +1341,16 @@ static int load_byserver(CONF_SECTION *cs)
 #endif
 	} while (0);
 
-	if (name) {
-		cf_log_info(cs, "} # server %s", name);
-	} else {
-		cf_log_info(cs, "} # server");
-	}
+	cf_log_info(cs, "} # server %s", name);
 
 	if (rad_debug_lvl == 0) {
-		INFO("Loaded virtual server %s",
-		       (name != NULL) ? name : "<default>");
+		INFO("Loaded virtual server %s", name);
 	}
 
 	/*
 	 *	Associate the virtual server with the configuration section.
 	 */
-	cf_data_add(cs, "virtual_server_t", server, NULL);
+	cf_data_add(cs, name, server, NULL);
 
 	return 0;
 }
