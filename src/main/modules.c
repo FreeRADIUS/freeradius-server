@@ -431,16 +431,19 @@ static void module_instance_free(void *data)
 	}
 #endif
 
-	/*
-	 *	Remove any registered paircompares.
-	 */
-	paircompare_unregister_instance(module->insthandle);
-
 	xlat_unregister(module->name, NULL, module->insthandle);
+
 	/*
 	 *	Remove all xlat's registered to module instance.
 	 */
-	if (module->insthandle) xlat_unregister_module(module->insthandle);
+	if (module->insthandle) {
+		/*
+		 *	Remove any registered paircompares.
+		 */
+		paircompare_unregister_instance(module->insthandle);
+
+		xlat_unregister_module(module->insthandle);
+	}
 	talloc_free(module);
 }
 
