@@ -464,6 +464,14 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+#ifdef HAVE_PTHREAD_H
+	/*
+	 *	Initialize the threads ONLY if we're spawning, AND
+	 *	we're running normally.
+	 */
+	if (main_config.spawn_workers && !check_config && (thread_pool_init() < 0)) fr_exit(1);
+#endif
+
 	event_loop_started = true;
 
 	/*

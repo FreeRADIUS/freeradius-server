@@ -5376,12 +5376,6 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 
 #ifdef HAVE_PTHREAD_H
 	NO_SUCH_CHILD_PID = pthread_self(); /* not a child thread */
-
-	/*
-	 *	Initialize the threads ONLY if we're spawning, AND
-	 *	we're running normally.
-	 */
-	if (have_children && !check_config && (thread_pool_init() < 0)) fr_exit(1);
 #endif
 
 	if (check_config) {
