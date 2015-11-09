@@ -478,7 +478,7 @@ static module_entry_t *module_dlopen(CONF_SECTION *cs)
 	}
 
 	/* make room for the module type */
-	node = talloc_zero(cs, module_entry_t);
+	node = talloc_zero(NULL, module_entry_t);
 	talloc_set_destructor(node, _module_entry_free);
 
 	node->module = module;
