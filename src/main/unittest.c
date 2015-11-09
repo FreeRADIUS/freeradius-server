@@ -950,6 +950,13 @@ int main(int argc, char *argv[])
 finish:
 	talloc_free(request);
 
+	talloc_free(state);
+
+	/*
+	 *	Free the configuration items.
+	 */
+	main_config_free();
+
 	/*
 	 *	Detach any modules.
 	 */
@@ -958,13 +965,6 @@ finish:
 	xlat_unregister(NULL, "poke", xlat_poke);
 
 	xlat_free();		/* modules may have xlat's */
-
-	talloc_free(state);
-
-	/*
-	 *	Free the configuration items.
-	 */
-	main_config_free();
 
 	if (memory_report) {
 		INFO("Allocated memory at time of report:");

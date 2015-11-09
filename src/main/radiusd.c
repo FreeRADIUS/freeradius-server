@@ -618,14 +618,11 @@ int main(int argc, char *argv[])
 	talloc_free(global_state);	/* Free state entries */
 
 cleanup:
-	/*
-	 *  Detach any modules.
-	 */
-	modules_free();			/* Detach any modules (and their connection pools) */
-	xlat_free();			/* modules may have xlat's */
 	map_proc_free();		/* Free map processors */
 	main_config_free();		/* Free the main config */
 
+	modules_free();			/* Detach any modules (and their connection pools) */
+	xlat_free();			/* modules may have xlat's */
 
 #ifdef WIN32
 	WSACleanup();

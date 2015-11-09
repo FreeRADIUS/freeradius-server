@@ -51,8 +51,6 @@ typedef struct virtual_server_t {
 
 static rbtree_t *module_tree = NULL;
 
-static rbtree_t *instance_tree = NULL;
-
 struct fr_module_hup_t {
 	module_instance_t	*mi;
 	time_t			when;
@@ -314,18 +312,6 @@ static int indexed_modcallable_cmp(void const *one, void const *two)
 }
 
 
-/*
- *	Compare two module entries
- */
-static int module_instance_cmp(void const *one, void const *two)
-{
-	module_instance_t const *a = one;
-	module_instance_t const *b = two;
-
-	return strcmp(a->name, b->name);
-}
-
-
 static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t *node, time_t when)
 {
 	fr_module_hup_t *mh, **last;
@@ -370,7 +356,6 @@ static void module_instance_free(void *data)
 		 *	we'll check for that later, I guess.
 		 */
 		pthread_mutex_destroy(node->mutex);
-		talloc_free(node->mutex);
 	}
 #endif
 
@@ -427,7 +412,6 @@ static int _module_entry_free(module_entry_t *this)
  */
 int modules_free(void)
 {
-	rbtree_free(instance_tree);
 	rbtree_free(module_tree);
 
 	return 0;
@@ -627,8 +611,8 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
 	/*
 	 *	Remember the module for later.
 	 */
-	rbtree_insert(instance_tree, node);
-
+	cf_data_add(modules, node->name, node, module_instance_free);
+	
 	return node;
 }
 
@@ -638,8 +622,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *modules, CONF_SECTION *
  */
 module_instance_t *module_find(CONF_SECTION *modules, char const *askedname)
 {
-	char const *instname;
-	module_instance_t myNode;
+	char const *instance_name;
 
 	if (!modules) return NULL;
 
@@ -648,12 +631,10 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *askedname)
 	 *	which tells the server "it's OK for this module to not
 	 *	exist."
 	 */
-	instname = askedname;
-	if (instname[0] == '-') instname++;
+	instance_name = askedname;
+	if (instance_name[0] == '-') instance_name++;
 
-	myNode.name = instname;
-
-	return rbtree_finddata(instance_tree, &myNode);
+	return (module_instance_t *) cf_data_find(modules, instance_name);
 }
 
 
@@ -1823,13 +1804,6 @@ int modules_init(CONF_SECTION *config)
 	 */
 	module_tree = rbtree_create(NULL, module_entry_cmp, NULL, 0);
 	if (!module_tree) {
-		ERROR("Failed to initialize modules\n");
-		return -1;
-	}
-
-	instance_tree = rbtree_create(NULL, module_instance_cmp,
-				      module_instance_free, 0);
-	if (!instance_tree) {
 		ERROR("Failed to initialize modules\n");
 		return -1;
 	}
