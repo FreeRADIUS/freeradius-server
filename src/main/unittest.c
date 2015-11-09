@@ -789,6 +789,7 @@ int main(int argc, char *argv[])
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (main_config_init() < 0) {
+	exit_failure:
 		rcode = EXIT_FAILURE;
 		goto finish;
 	}
@@ -799,12 +800,21 @@ int main(int argc, char *argv[])
 	cf_section_add(main_config.config, cf_section_alloc(main_config.config, "server", "unit_test"));
 
 	/*
-	 *  Load the modules
+	 *	Initialize Auth-Type, etc. in the virtual servers
+	 *	before loading the modules.  Some modules need those
+	 *	to be defined.
 	 */
-	if (modules_init(main_config.config) < 0) {
-		rcode = EXIT_FAILURE;
-		goto finish;
-	}
+	if (virtual_servers_bootstrap(main_config.config) < 0) goto exit_failure;
+
+	/*
+	 *	Load the modules
+	 */
+	if (modules_init(main_config.config) < 0) goto exit_failure;
+
+	/*
+	 *	And then load the virtual servers.
+	 */
+	if (virtual_servers_load(main_config.config) < 0) goto exit_failure;
 
 	state = fr_state_tree_init(NULL, main_config.max_requests * 2, 10);
 

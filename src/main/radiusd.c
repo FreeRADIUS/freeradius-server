@@ -424,9 +424,21 @@ int main(int argc, char *argv[])
 	radius_pid = getpid();
 
 	/*
+	 *	Initialize Auth-Type, etc. in the virtual servers
+	 *	before loading the modules.  Some modules need those
+	 *	to be defined.
+	 */
+	if (virtual_servers_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
+
+	/*
 	 *	Load the modules before starting up any threads.
 	 */
 	if (modules_init(main_config.config) < 0) exit(EXIT_FAILURE);
+
+	/*
+	 *	And then load the virtual servers.
+	 */
+	if (virtual_servers_load(main_config.config) < 0) exit(EXIT_FAILURE);
 
 #ifdef HAVE_PTHREAD_H
 	/*

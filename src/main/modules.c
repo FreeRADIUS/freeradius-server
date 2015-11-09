@@ -1384,26 +1384,20 @@ static int pass2_cb(UNUSED void *ctx, void *data)
 	return 0;
 }
 
+static bool server_define_types(CONF_SECTION *cs);
 
 /*
- *	Load all of the virtual servers.
+ *	Bootstrap Auth-Type, etc.
  */
-int virtual_servers_load(CONF_SECTION *config)
+int virtual_servers_bootstrap(CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
-	virtual_server_t *server;
-	static bool first_time = true;
-
-	DEBUG2("%s: #### Loading Virtual Servers ####", main_config.name);
 
 	if (!cf_subsection_find_next(config, NULL, "server")) {
 		ERROR("No virtual servers found");
 		return -1;
 	}
 
-	/*
-	 *	Load all of the virtual servers.
-	 */
 	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
@@ -1416,12 +1410,39 @@ int virtual_servers_load(CONF_SECTION *config)
 		}
 
 		/*
+		 *	Root through each virtual server, defining
+		 *	Autz-Type and Auth-Type.  This is so that the
+		 *	modules can reference a particular type.
+		 */
+		if (!server_define_types(cs)) return -1;
+	}
+
+	return 0;
+}
+
+
+/*
+ *	Load all of the virtual servers.
+ */
+int virtual_servers_load(CONF_SECTION *config)
+{
+	CONF_SECTION *cs;
+	virtual_server_t *server;
+
+	DEBUG2("%s: #### Loading Virtual Servers ####", main_config.name);
+
+	/*
+	 *	Load all of the virtual servers.
+	 */
+	for (cs = cf_subsection_find_next(config, NULL, "server");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "server")) {
+		/*
 		 *	Once we successfully started once,
 		 *	continue loading the OTHER servers,
 		 *	even if one fails.
 		 */
 		if (load_byserver(cs) < 0) {
-			if (!first_time) continue;
 			return -1;
 		}
 	}
@@ -1451,11 +1472,6 @@ int virtual_servers_load(CONF_SECTION *config)
 			return -1;
 		}
 	}
-
-	/*
-	 *	If we succeed the first time around, remember that.
-	 */
-	first_time = false;
 
 	return 0;
 }
@@ -1844,75 +1860,6 @@ int modules_init(CONF_SECTION *config)
 		WARN("Cannot find a \"modules\" section in the configuration file!");
 	}
 
-	/*
-	 *	Load dictionaries.
-	 */
-	for (cs = cf_subsection_find_next(config, NULL, "server");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "server")) {
-		CONF_SECTION *subcs;
-		fr_dict_attr_t const *da;
-
-#ifdef WITH_VMPS
-		/*
-		 *	Auto-load the VMPS/VQP dictionary.
-		 */
-		subcs = cf_section_sub_find(cs, "vmps");
-		if (subcs) {
-			da = dict_attr_by_name("VQP-Packet-Type");
-			if (!da) {
-				if (dict_read(main_config.dictionary_dir, "dictionary.vqp") < 0) {
-					ERROR("Failed reading dictionary.vqp: %s",
-					      fr_strerror());
-					return -1;
-				}
-				cf_log_module(cs, "Loading dictionary.vqp");
-
-				da = dict_attr_by_name("VQP-Packet-Type");
-				if (!da) {
-					ERROR("No VQP-Packet-Type in dictionary.vqp");
-					return -1;
-				}
-			}
-		}
-#endif
-
-#ifdef WITH_DHCP
-		/*
-		 *	Auto-load the DHCP dictionary.
-		 */
-		subcs = cf_subsection_find_next(cs, NULL, "dhcp");
-		if (subcs) {
-			da = dict_attr_by_name("DHCP-Message-Type");
-			if (!da) {
-				cf_log_module(cs, "Loading dictionary.dhcp");
-				if (dict_read(main_config.dictionary_dir, "dictionary.dhcp") < 0) {
-					ERROR("Failed reading dictionary.dhcp: %s",
-					      fr_strerror());
-					return -1;
-				}
-
-				da = dict_attr_by_name("DHCP-Message-Type");
-				if (!da) {
-					ERROR("No DHCP-Message-Type in dictionary.dhcp");
-					return -1;
-				}
-			}
-		}
-#endif
-		/*
-		 *	Else it's a RADIUS virtual server, and the
-		 *	dictionaries are already loaded.
-		 */
-
-		/*
-		 *	Root through each virtual server, defining
-		 *	Autz-Type and Auth-Type.  This is so that the
-		 *	modules can reference a particular type.
-		 */
-		if (!server_define_types(cs)) return -1;
-	}
-
 	DEBUG2("%s: #### Instantiating modules ####", main_config.name);
 
 	/*
@@ -2105,8 +2052,6 @@ int modules_init(CONF_SECTION *config)
 		if (!module) return -1;
 	}
 	cf_log_info(cs, " } # modules");
-
-	if (virtual_servers_load(config) < 0) return -1;
 
 	return 0;
 }
