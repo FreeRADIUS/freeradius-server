@@ -185,11 +185,7 @@ rlm_rcode_t	process_send_coa(int type, REQUEST *request);
 
 rlm_rcode_t indexed_modcall(rlm_components_t comp, int idx, REQUEST *request);
 
-/*
- *	For now, these are strongly tied together.
- */
 int virtual_servers_load(CONF_SECTION *config);
-void virtual_servers_free(time_t when);
 
 #ifdef __cplusplus
 }

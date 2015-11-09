@@ -43,20 +43,11 @@ typedef struct indexed_modcallable {
 
 typedef struct virtual_server_t {
 	char const	*name;
-	time_t		created;
-	int		can_free;
 	CONF_SECTION	*cs;
 	rbtree_t	*components;
 	modcallable	*mc[MOD_COUNT];
 	CONF_SECTION	*subcs[MOD_COUNT];
-	struct virtual_server_t *next;
 } virtual_server_t;
-
-/*
- *	Keep a hash of virtual servers, so that we can reload them.
- */
-#define VIRTUAL_SERVER_HASH_SIZE (256)
-static virtual_server_t *virtual_servers[VIRTUAL_SERVER_HASH_SIZE];
 
 static rbtree_t *module_tree = NULL;
 
@@ -294,33 +285,14 @@ char const *lt_dlerror(void)
 	return dlerror();
 }
 
-static int virtual_server_idx(char const *name)
-{
-	uint32_t hash;
-
-	if (!name) return 0;
-
-	hash = fr_hash_string(name);
-
-	return hash & (VIRTUAL_SERVER_HASH_SIZE - 1);
-}
-
 static virtual_server_t *virtual_server_find(char const *name)
 {
-	rlm_rcode_t rcode;
-	virtual_server_t *server;
+	CONF_SECTION *cs;
 
-	rcode = virtual_server_idx(name);
-	for (server = virtual_servers[rcode];
-	     server != NULL;
-	     server = server->next) {
-		if (!name && !server->name) break;
+	cs = cf_section_sub_find_name2(main_config.config, "server", name);
+	if (!cs) return NULL;
 
-		if ((name && server->name) &&
-		    (strcmp(name, server->name) == 0)) break;
-	}
-
-	return server;
+	return (virtual_server_t *) cf_data_find(cs, "virtual_server_t");
 }
 
 static int _virtual_server_free(virtual_server_t *server)
@@ -328,40 +300,6 @@ static int _virtual_server_free(virtual_server_t *server)
 	server = talloc_get_type_abort(server, virtual_server_t);
 	if (server->components) rbtree_free(server->components);
 	return 0;
-}
-
-void virtual_servers_free(time_t when)
-{
-	int i;
-	virtual_server_t **last;
-
-	for (i = 0; i < VIRTUAL_SERVER_HASH_SIZE; i++) {
-		virtual_server_t *server, *next;
-
-		last = &virtual_servers[i];
-		for (server = virtual_servers[i];
-		     server != NULL;
-		     server = next) {
-			next = server->next;
-
-			/*
-			 *	If we delete it, fix the links so that
-			 *	we don't orphan anything.  Also,
-			 *	delete it if it's old, AND a newer one
-			 *	was defined.
-			 *
-			 *	Otherwise, the last pointer gets set to
-			 *	the one we didn't delete.
-			 */
-			if ((when == 0) ||
-			    ((server->created < when) && server->can_free)) {
-				*last = server->next;
-				talloc_free(server);
-			} else {
-				last = &(server->next);
-			}
-		}
-	}
 }
 
 static int indexed_modcallable_cmp(void const *one, void const *two)
@@ -1272,7 +1210,6 @@ static int load_byserver(CONF_SECTION *cs)
 
 	server = talloc_zero(cs, virtual_server_t);
 	server->name = name;
-	server->created = time(NULL);
 	server->cs = cs;
 	server->components = components = rbtree_create(server, indexed_modcallable_cmp, NULL, 0);
 	if (!components) {
@@ -1430,27 +1367,9 @@ static int load_byserver(CONF_SECTION *cs)
 	}
 
 	/*
-	 *	Now that it is OK, insert it into the list.
-	 *
-	 *	This is thread-safe...
+	 *	Associate the virtual server with the configuration section.
 	 */
-	comp = virtual_server_idx(name);
-	server->next = virtual_servers[comp];
-	virtual_servers[comp] = server;
-
-	/*
-	 *	Mark OLDER ones of the same name as being unused.
-	 */
-	server = server->next;
-	while (server) {
-		if ((!name && !server->name) ||
-		    (name && server->name &&
-		     (strcmp(server->name, name) == 0))) {
-			server->can_free = true;
-			break;
-		}
-		server = server->next;
-	}
+	cf_data_add(cs, "virtual_server_t", server, NULL);
 
 	return 0;
 }
@@ -1916,8 +1835,6 @@ int modules_init(CONF_SECTION *config)
 		ERROR("Failed to initialize modules\n");
 		return -1;
 	}
-
-	memset(virtual_servers, 0, sizeof(virtual_servers));
 
 	/*
 	 *	Remember where the modules were stored.

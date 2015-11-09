@@ -1060,8 +1060,6 @@ do {\
  */
 int main_config_free(void)
 {
-	virtual_servers_free(0);
-
 	/*
 	 *	Clean up the configuration data
 	 *	structures.
@@ -1235,9 +1233,7 @@ void main_config_hup(void)
 	modules_hup(cf_section_sub_find(cs, "modules"));
 
 	/*
-	 *	Load new servers BEFORE freeing old ones.
+	 *	Load the new servers.
 	 */
 	virtual_servers_load(cs);
-
-	virtual_servers_free(cc->created - (main_config.max_request_time * 4));
 }
