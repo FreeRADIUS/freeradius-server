@@ -1816,7 +1816,9 @@ int modules_init(CONF_SECTION *config)
 		WARN("Cannot find a \"modules\" section in the configuration file!");
 	}
 
-	DEBUG2("%s: #### Instantiating modules ####", main_config.name);
+	DEBUG2("%s: #### Loading modules ####", main_config.name);
+
+	cf_log_info(modules, " modules {");
 
 	/*
 	 *	Loop over module definitions, looking for duplicates.
@@ -1862,7 +1864,7 @@ int modules_init(CONF_SECTION *config)
 		module_instance_t *module;
 		char const *name;
 
-		cf_log_info(cs, " instantiate {");
+		cf_log_info(cs, "  instantiate {");
 
 		/*
 		 *  Loop over the items in the 'instantiate' section.
@@ -1979,7 +1981,7 @@ int modules_init(CONF_SECTION *config)
 			}  /* handle subsections */
 		} /* loop over the "instantiate" section */
 
-		cf_log_info(cs, " }");
+		cf_log_info(cs, "  }");
 	} /* if there's an 'instantiate' section. */
 
 	/*
@@ -1988,7 +1990,6 @@ int modules_init(CONF_SECTION *config)
 	 *	because we've now split up the modules into
 	 *	mods-enabled.
 	 */
-	cf_log_info(cs, " modules {");
 	for (ci=cf_item_find_next(modules, NULL);
 	     ci != NULL;
 	     ci=next) {
