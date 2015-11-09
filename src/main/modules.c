@@ -434,14 +434,18 @@ int modules_free(void)
 /*
  *	dlopen() a module.
  */
-static module_entry_t *module_dlopen(CONF_SECTION *cs, char const *module_name)
+static module_entry_t *module_dlopen(CONF_SECTION *cs)
 {
 	module_entry_t myentry;
 	module_entry_t *node;
 	void *handle = NULL;
+	char const *name1;
 	module_t const *module;
+	char module_name[256];
 
-	strlcpy(myentry.name, module_name, sizeof(myentry.name));
+	name1 = cf_section_name1(cs);
+
+	myentry.name = name1;
 	node = rbtree_finddata(module_tree, &myentry);
 	if (node) return node;
 
@@ -449,6 +453,8 @@ static module_entry_t *module_dlopen(CONF_SECTION *cs, char const *module_name)
 	 *	Link to the module's rlm_FOO{} structure, the same as
 	 *	the module name.
 	 */
+	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
+
 
 #if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 	module = dlsym(RTLD_SELF, module_name);
@@ -487,9 +493,10 @@ static module_entry_t *module_dlopen(CONF_SECTION *cs, char const *module_name)
 	/* make room for the module type */
 	node = talloc_zero(cs, module_entry_t);
 	talloc_set_destructor(node, _module_entry_free);
-	strlcpy(node->name, module_name, sizeof(node->name));
+
 	node->module = module;
 	node->handle = handle;
+	node->name = cf_section_name1(cs);
 
 	cf_log_module(cs, "Loaded module %s", module_name);
 
@@ -553,7 +560,6 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 {
 	char const *name1, *name2;
 	module_instance_t *node, myNode;
-	char module_name[256];
 
 	/*
 	 *	Figure out which module we want to load.
@@ -562,7 +568,7 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 	name2 = cf_section_name2(cs);
 	if (!name2) name2 = name1;
 
-	strlcpy(myNode.name, name2, sizeof(myNode.name));
+	myNode.name = name2;
 
 	/*
 	 *	See if the module already exists.
@@ -585,18 +591,12 @@ static module_instance_t *module_bootstrap(CONF_SECTION *cs)
 	 */
 	node = talloc_zero(cs, module_instance_t);
 	node->cs = cs;
-	strlcpy(node->name, name2, sizeof(node->name));
-
-	/*
-	 *	Names in the "modules" section aren't prefixed
-	 *	with "rlm_", so we add it here.
-	 */
-	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
+	node->name = name2;
 
 	/*
 	 *	Load the module shared library.
 	 */
-	node->entry = module_dlopen(cs, module_name);
+	node->entry = module_dlopen(cs);
 	if (!node->entry) {
 		talloc_free(node);
 		return NULL;
@@ -650,7 +650,7 @@ module_instance_t *module_find(CONF_SECTION *modules, char const *askedname)
 	instname = askedname;
 	if (instname[0] == '-') instname++;
 
-	strlcpy(myNode.name, instname, sizeof(myNode.name));
+	myNode.name = instname;
 
 	return rbtree_finddata(instance_tree, &myNode);
 }
@@ -1553,7 +1553,7 @@ int modules_hup(CONF_SECTION *modules)
 		instname = cf_section_name2(cs);
 		if (!instname) instname = cf_section_name1(cs);
 
-		strlcpy(myNode.name, instname, sizeof(myNode.name));
+		myNode.name = instname;
 		node = rbtree_finddata(instance_tree, &myNode);
 
 		module_hup_module(cs, node, when);

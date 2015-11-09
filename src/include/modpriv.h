@@ -29,7 +29,7 @@ char const *lt_dlerror(void);
  *	Keep track of which modules we've loaded.
  */
 typedef struct module_entry_t {
-	char			name[MAX_STRING_LEN];
+	char const		*name;
 	module_t const		*module;
 	lt_dlhandle		handle;
 } module_entry_t;
@@ -42,7 +42,7 @@ typedef struct fr_module_hup_t fr_module_hup_t;
  *	and the per-instance data structures.
  */
 typedef struct module_instance_t {
-	char			name[MAX_STRING_LEN];
+	char const		*name;
 	module_entry_t		*entry;
 	void			*insthandle;
 #ifdef HAVE_PTHREAD_H
