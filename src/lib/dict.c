@@ -717,8 +717,7 @@ static fr_dict_attr_t const *dict_parent(unsigned int attr, unsigned int vendor)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
-		  ATTR_FLAGS flags)
+int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type, ATTR_FLAGS flags)
 {
 	size_t namelen;
 	fr_dict_attr_t const *parent;
@@ -727,7 +726,9 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 
 	namelen = strlen(name);
 	if (namelen >= FR_DICT_ATTR_MAX_NAME_LEN) {
-		fr_strerror_printf("dict_attr_add: attribute name too long");
+		fr_strerror_printf("Attribute name too long");
+	error:
+		fr_strerror_printf("dict_attr_add: Failed adding \"%s\": %s", name, fr_strerror());
 		return -1;
 	}
 
@@ -735,16 +736,16 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 
 	if (flags.has_tag &&
 	    !((type == PW_TYPE_INTEGER) || (type == PW_TYPE_STRING))) {
-		fr_strerror_printf("dict_attr_add: Only 'integer' and 'string' attributes can have tags");
-		return -1;
+		fr_strerror_printf("Only 'integer' and 'string' attributes can have tags");
+		goto error;
 	}
 
 	/*
 	 *	Disallow attributes of type zero.
 	 */
 	if (!attr && !vendor) {
-		fr_strerror_printf("dict_attr_add: Attribute 0 is invalid and cannot be used");
-		return -1;
+		fr_strerror_printf("Attribute 0 is invalid and cannot be used");
+		goto error;
 	}
 
 	/*
@@ -785,10 +786,8 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 *	a *the* Extended attribute, whish isn't what we want here.
 		 */
 		if (!flags.internal && (vendor == parent->vendor) && (parent->type != PW_TYPE_TLV)) {
-			fr_strerror_printf(
-				"dict_attr_add: Attribute %s has parent attribute %s which is not of type 'tlv'",
-				name, parent->name);
-			return -1;
+			fr_strerror_printf("Has parent attribute %s which is not of type 'tlv'", parent->name);
+			goto error;
 		}
 
 		flags.extended |= parent->flags.extended;
@@ -811,7 +810,7 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		da = dict_attr_by_num(vendor / FR_MAX_VENDOR, 0);
 		if (!da) {
 			fr_strerror_printf("Extended attributes must be defined from the extended space");
-			return -1;
+			goto error;
 		}
 
 		flags.extended |= da->flags.extended;
@@ -830,25 +829,23 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	 */
 	if (flags.extended || flags.long_extended || flags.evs) {
 		if (vendor && (vendor < FR_MAX_VENDOR)) {
-			fr_strerror_printf(
-				"dict_attr_add: VSAs cannot use the \"extended\" or \"evs\" attribute formats");
-			return -1;
+			fr_strerror_printf("VSAs cannot use the \"extended\" or \"evs\" attribute formats");
+			goto error;
 		}
 		if (flags.has_tag
 #ifdef WITH_DHCP
 		    || flags.array
 #endif
 		    || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
-			fr_strerror_printf("dict_attr_add: The \"extended\" attributes MUST NOT have any flags set");
-			return -1;
+			fr_strerror_printf("The \"extended\" attributes MUST NOT have any flags set");
+			goto error;
 		}
 	}
 
 	if (flags.evs) {
 		if (!(flags.extended || flags.long_extended)) {
-			fr_strerror_printf(
-				"dict_attr_add: Attributes of type \"evs\" MUST have a parent of type \"extended\"");
-			return -1;
+			fr_strerror_printf("Attributes of type \"evs\" MUST have a parent of type \"extended\"");
+			goto error;
 		}
 	}
 
@@ -856,42 +853,42 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	 *	Do various sanity checks.
 	 */
 	if (attr < 0) {
-		fr_strerror_printf("dict_attr_add: ATTRIBUTE has invalid number (less than zero)");
-		return -1;
+		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than or equal to zero", attr);
+		goto error;
 	}
 
 	if (flags.has_tlv && flags.length) {
 		fr_strerror_printf("TLVs cannot have a fixed length");
-		return -1;
+		goto error;
 	}
 
 	if (vendor && flags.concat) {
 		fr_strerror_printf("VSAs cannot have the \"concat\" flag set");
-		return -1;
+		goto error;
 	}
 
 	if (flags.concat && (type != PW_TYPE_OCTETS)) {
 		fr_strerror_printf("The \"concat\" flag can only be set for attributes of type \"octets\"");
-		return -1;
+		goto error;
 	}
 
 	if (flags.concat && (flags.has_tag || flags.array || flags.is_tlv || flags.has_tlv ||
 			     flags.length || flags.evs || flags.extended || flags.long_extended ||
 			     (flags.encrypt != FLAG_ENCRYPT_NONE))) {
 		fr_strerror_printf("The \"concat\" flag cannot be used with any other flag");
-		return -1;
+		goto error;
 	}
 
 	if (flags.length && (type != PW_TYPE_OCTETS)) {
 		fr_strerror_printf("The \"length\" flag can only be set for attributes of type \"octets\"");
-		return -1;
+		goto error;
 	}
 
 	if (flags.length && (flags.has_tag || flags.array || flags.is_tlv || flags.has_tlv ||
 			     flags.concat || flags.evs || flags.extended || flags.long_extended ||
 			     (flags.encrypt > FLAG_ENCRYPT_USER_PASSWORD))) {
 		fr_strerror_printf("The \"length\" flag cannot be used with any other flag");
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -932,8 +929,8 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	case PW_TYPE_EXTENDED:
 		if ((vendor != 0) || (attr < 241)) {
 			fr_strerror_printf("Attributes of type \"extended\" MUST be "
-						   "RFC attributes with value >= 241.");
-			return -1;
+					   "RFC attributes with value >= 241.");
+			goto error;
 		}
 
 		flags.length = 0;
@@ -943,8 +940,8 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	case PW_TYPE_LONG_EXTENDED:
 		if ((vendor != 0) || (attr < 241)) {
 			fr_strerror_printf("Attributes of type \"long-extended\" MUST "
-						   "be RFC attributes with value >= 241.");
-			return -1;
+					   "be RFC attributes with value >= 241.");
+			goto error;
 		}
 
 		flags.length = 0;
@@ -954,9 +951,8 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 
 	case PW_TYPE_EVS:
 		if (attr != PW_VENDOR_SPECIFIC) {
-			fr_strerror_printf("Attributes of type \"evs\" MUST have "
-						   "attribute code 26.");
-			return -1;
+			fr_strerror_printf("Attributes of type \"evs\" MUST have attribute code 26.");
+			goto error;
 		}
 
 		flags.length = 0;
@@ -985,13 +981,13 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	if ((flags.encrypt == FLAG_ENCRYPT_USER_PASSWORD) && (type != PW_TYPE_STRING)) {
 		if (type != PW_TYPE_OCTETS) {
 			fr_strerror_printf("The \"encrypt=1\" flag cannot be used with non-string data types");
-			return -1;
+			goto error;
 		}
 
 		if (flags.length == 0) {
-			fr_strerror_printf(
-				"The \"encrypt=1\" flag MUST be used with an explicit length for 'octets' data types");
-			return -1;
+			fr_strerror_printf("The \"encrypt=1\" flag MUST be used with an explicit length for "
+					   "'octets' data types");
+			goto error;
 		}
 	}
 
@@ -1002,17 +998,17 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 
 		if (flags.has_tlv && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("TLV's cannot be encrypted");
-			return -1;
+			goto error;
 		}
 
 		if (flags.is_tlv && flags.has_tag) {
 			fr_strerror_printf("Sub-TLV's cannot have a tag");
-			return -1;
+			goto error;
 		}
 
 		if (flags.has_tlv && flags.has_tag) {
 			fr_strerror_printf("TLV's cannot have a tag");
-			return -1;
+			goto error;
 		}
 
 		/*
@@ -1036,15 +1032,13 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 *	If the vendor isn't defined, die.
 		 */
 		if (!dv) {
-			fr_strerror_printf("dict_attr_add: Unknown vendor %u",
-					   vendor & (FR_MAX_VENDOR - 1));
-			return -1;
+			fr_strerror_printf("Unknown vendor %u", vendor & (FR_MAX_VENDOR - 1));
+			goto error;
 		}
 
 		if (!attr && dv->type != 1) {
-			fr_strerror_printf("dict_attr_add: Attribute %s cannot have value zero",
-					   name);
-			return -1;
+			fr_strerror_printf("Cannot have value zero", name);
+			goto error;
 		}
 
 		/*
@@ -1054,10 +1048,9 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		 */
 		vendor_max = ((uint64_t)1 << (dv->type << 3)) - 1;
 		if (((unsigned int)attr > vendor_max) && !flags.is_tlv && !flags.internal) {
-			fr_strerror_printf("dict_attr_add: ATTRIBUTE has invalid number %i "
-						   "(larger than vendor max %u)",
+			fr_strerror_printf("ATTRIBUTE has invalid number %i (larger than vendor max %u)",
 					   attr, vendor_max);
-			return -1;
+			goto error;
 		} /* else 256..65535 are allowed */
 
 		/*
@@ -1075,8 +1068,8 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	 */
 	if ((n = fr_pool_alloc(sizeof(*n) + namelen)) == NULL) {
 	oom:
-		fr_strerror_printf("dict_attr_add: out of memory");
-		return -1;
+		fr_strerror_printf("Out of memory");
+		goto error;
 	}
 
 	memcpy(n->name, name, namelen);
@@ -1099,9 +1092,9 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		a = fr_hash_table_finddata(fr_main_dict.attributes_by_name, n);
 		if (a && (strcasecmp(a->name, n->name) == 0)) {
 			if (a->attr != n->attr) {
-				fr_strerror_printf("dict_attr_add: Duplicate attribute name %s", name);
+				fr_strerror_printf("Duplicate attribute name %s", name);
 				fr_pool_free(n);
-				return -1;
+				goto error;
 			}
 
 			/*
@@ -1115,9 +1108,9 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		fr_hash_table_delete(fr_main_dict.attributes_by_num, a);
 
 		if (!fr_hash_table_replace(fr_main_dict.attributes_by_name, n)) {
-			fr_strerror_printf("dict_attr_add: Internal error storing attribute %s", name);
+			fr_strerror_printf("Internal error storing attribute %s", name);
 			fr_pool_free(n);
-			return -1;
+			goto error;
 		}
 	}
 
@@ -1131,8 +1124,8 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 	 *	by value) we want to use the NEW name.
 	 */
 	if (!fr_hash_table_replace(fr_main_dict.attributes_by_num, n)) {
-		fr_strerror_printf("dict_attr_add: Failed inserting attribute name %s", name);
-		return -1;
+		fr_strerror_printf("Failed inserting attribute name %s", name);
+		goto error;
 	}
 
 	/*
@@ -1153,13 +1146,13 @@ int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type,
 		memcpy(v6, n, sizeof(*v6) + namelen);
 		v6->type = PW_TYPE_IPV6_ADDR;
 		if (!fr_hash_table_replace(fr_main_dict.attributes_combo, v4)) {
-			fr_strerror_printf("dict_attr_add: Failed inserting attribute name %s - IPv4", name);
-			return -1;
+			fr_strerror_printf("Failed inserting attribute name %s - IPv4", name);
+			goto error;
 		}
 
 		if (!fr_hash_table_replace(fr_main_dict.attributes_combo, v6)) {
-			fr_strerror_printf("dict_attr_add: Failed inserting attribute name %s - IPv6", name);
-			return -1;
+			fr_strerror_printf("Failed inserting attribute name %s - IPv6", name);
+			goto error;
 		}
 	}
 
