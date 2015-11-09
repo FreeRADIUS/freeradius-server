@@ -423,6 +423,11 @@ int main(int argc, char *argv[])
 	 */
 	radius_pid = getpid();
 
+	/*
+	 *	Load the modules before starting up any threads.
+	 */
+	if (modules_init(main_config.config) < 0) exit(EXIT_FAILURE);
+
 #ifdef HAVE_PTHREAD_H
 	/*
 	 *	Start the thread pool in the forked child process.
@@ -438,11 +443,6 @@ int main(int argc, char *argv[])
 	 *  queue isn't inherited by the child process.
 	 */
 	if (!radius_event_init(autofree)) exit(EXIT_FAILURE);
-
-	/*
-	 *   Load the modules
-	 */
-	if (modules_init(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
 	 *  Redirect stderr/stdout as appropriate.
