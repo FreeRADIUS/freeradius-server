@@ -5545,14 +5545,6 @@ void radius_event_free(void)
 
 	if (spawn_workers) {
 		/*
-		 *	Now that all requests have been marked "please stop",
-		 *	ensure that all of the threads have exited.
-		 */
-#ifdef HAVE_PTHREAD_H
-		thread_pool_stop();
-#endif
-
-		/*
 		 *	Walk the lists again, ensuring that all
 		 *	requests are done.
 		 */

@@ -623,6 +623,11 @@ int main(int argc, char *argv[])
 	 *	SEGVs.
 	 */
 	radius_event_free();		/* Free the requests */
+
+#ifdef HAVE_PTHREAD_H
+	thread_pool_stop();		/* stop all the threads */
+#endif
+
 	talloc_free(global_state);	/* Free state entries */
 
 cleanup:
