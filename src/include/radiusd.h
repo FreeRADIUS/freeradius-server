@@ -107,8 +107,6 @@ extern const FR_NAME_NUMBER modreturn_table[];
  * The parsed version of the main server config.
  */
 typedef struct main_config {
-	struct main_config *next;			//!< Next version of the main_config.
-
 	char const	*name;				//!< Name of the daemon, usually 'radiusd'.
 	CONF_SECTION	*config;			//!< Root of the server config.
 
