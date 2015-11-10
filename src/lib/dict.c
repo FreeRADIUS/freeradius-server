@@ -58,6 +58,8 @@ struct fr_dict {
 	fr_hash_table_t		*values_by_name;	//!< Lookup an attribute enum by name.
 
 	fr_dict_attr_t		*base_attrs[256];	//!< Quick lookup for protocols with an 8bit attribute space.
+
+	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce mallocs.
 };
 
 static fr_dict_t *fr_main_dict;
@@ -429,113 +431,12 @@ static int dict_stat_check(char const *dir, char const *file)
 	return 0;
 }
 
-typedef struct fr_pool_t {
-	void	*page_end;
-	void	*free_ptr;
-	struct fr_pool_t *page_free;
-	struct fr_pool_t *page_next;
-} fr_pool_t;
-
-#define FR_POOL_SIZE (32768)
-#define FR_ALLOC_ALIGN (8)
-
-static fr_pool_t *dict_pool = NULL;
-
-static fr_pool_t *fr_pool_create(void)
-{
-	fr_pool_t *fp = malloc(FR_POOL_SIZE);
-
-	if (!fp) return NULL;
-
-	memset(fp, 0, FR_POOL_SIZE);
-
-	fp->page_end = ((uint8_t *)fp) + FR_POOL_SIZE;
-	fp->free_ptr = ((uint8_t *)fp) + sizeof(*fp);
-	fp->page_free = fp;
-	fp->page_next = NULL;
-	return fp;
-}
-
-static void fr_pool_delete(fr_pool_t **pfp)
-{
-	fr_pool_t *fp, *next;
-
-	if (!pfp || !*pfp) return;
-
-	for (fp = *pfp; fp != NULL; fp = next) {
-		next = fp->page_next;
-		fp->page_next = NULL;
-		free(fp);
-	}
-	*pfp = NULL;
-}
-
-static void *fr_pool_alloc(size_t size)
-{
-	void *ptr;
-
-	if (size == 0) return NULL;
-
-	if (size > 256) return NULL; /* shouldn't happen */
-
-	if (!dict_pool) {
-		dict_pool = fr_pool_create();
-		if (!dict_pool) return NULL;
-	}
-
-	if ((size & (FR_ALLOC_ALIGN - 1)) != 0) {
-		size += FR_ALLOC_ALIGN - (size & (FR_ALLOC_ALIGN - 1));
-	}
-
-	if ((((uint8_t *)dict_pool->page_free->free_ptr) + size) > (uint8_t *)dict_pool->page_free->page_end) {
-		dict_pool->page_free->page_next = fr_pool_create();
-		if (!dict_pool->page_free->page_next) return NULL;
-		dict_pool->page_free = dict_pool->page_free->page_next;
-	}
-
-	ptr = dict_pool->page_free->free_ptr;
-	dict_pool->page_free->free_ptr = ((uint8_t *)dict_pool->page_free->free_ptr) + size;
-
-	return ptr;
-}
-
-static void fr_pool_free(UNUSED void *ptr)
-{
-	/*
-	 *	Place-holder for later code.
-	 */
-}
-
 /*
  *	Free the dictionary_attributes and dictionary_values lists.
  */
-static int _fr_dict_free(fr_dict_t *dict)
+static int _fr_dict_free(UNUSED fr_dict_t *dict)
 {
-	/*
-	 *	Free the tables
-	 */
-	fr_hash_table_free(dict->vendors_by_name);
-	fr_hash_table_free(dict->vendors_by_num);
-	dict->vendors_by_name = NULL;
-	dict->vendors_by_num = NULL;
-
-	fr_hash_table_free(dict->attributes_by_name);
-	fr_hash_table_free(dict->attributes_by_num);
-	fr_hash_table_free(dict->attributes_combo);
-	dict->attributes_by_name = NULL;
-	dict->attributes_by_num = NULL;
-	dict->attributes_combo = NULL;
-
-	fr_hash_table_free(dict->values_by_name);
-	fr_hash_table_free(dict->values_by_num);
-	dict->values_by_name = NULL;
-	dict->values_by_num = NULL;
-
-	memset(dict->base_attrs, 0, sizeof(dict->base_attrs));
-
-	fr_pool_delete(&dict_pool);
-
-	dict_stat_free();
+	dict_stat_free();	/* Fixme - should be in the same struct as dict */
 
 	return 0;
 }
@@ -558,10 +459,12 @@ int fr_dict_vendor_add(char const *name, unsigned int num)
 		return -1;
 	}
 
-	if ((dv = fr_pool_alloc(sizeof(*dv) + length)) == NULL) {
+	dv = (fr_dict_vendor_t *)talloc_zero_array(fr_main_dict->pool, uint8_t, sizeof(*dv) + length);
+	if (dv == NULL) {
 		fr_strerror_printf("fr_dict_vendor_add: out of memory");
 		return -1;
 	}
+	talloc_set_type(dv, fr_dict_vendor_t);
 
 	strcpy(dv->name, name);
 	dv->vendorpec = num;
@@ -583,7 +486,7 @@ int fr_dict_vendor_add(char const *name, unsigned int num)
 		/*
 		 *	Already inserted.  Discard the duplicate entry.
 		 */
-		fr_pool_free(dv);
+		talloc_free(dv);
 		return 0;
 	}
 
@@ -999,11 +902,13 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 	/*
 	 *	Create a new attribute for the list
 	 */
-	if ((n = fr_pool_alloc(sizeof(*n) + namelen)) == NULL) {
+	n = (fr_dict_attr_t *)talloc_zero_array(fr_main_dict->pool, uint8_t, sizeof(*n) + namelen);
+	if (!n) {
 	oom:
 		fr_strerror_printf("Out of memory");
 		goto error;
 	}
+	talloc_set_type(n, fr_dict_attr_t);
 
 	memcpy(n->name, name, namelen);
 	n->name[namelen] = '\0';
@@ -1026,7 +931,7 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 		if (a && (strcasecmp(a->name, n->name) == 0)) {
 			if (a->attr != n->attr) {
 				fr_strerror_printf("Duplicate attribute name");
-				fr_pool_free(n);
+				talloc_free(n);
 				goto error;
 			}
 
@@ -1042,7 +947,7 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 
 		if (!fr_hash_table_replace(fr_main_dict->attributes_by_name, n)) {
 			fr_strerror_printf("Internal error storing attribute");
-			fr_pool_free(n);
+			talloc_free(n);
 			goto error;
 		}
 	}
@@ -1067,11 +972,13 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 	if (n->type == PW_TYPE_COMBO_IP_ADDR) {
 		fr_dict_attr_t *v4, *v6;
 
-		v4 = fr_pool_alloc(sizeof(*v4) + namelen);
+		v4 = (fr_dict_attr_t *)talloc_zero_array(fr_main_dict->pool, uint8_t, sizeof(*v4) + namelen);
 		if (!v4) goto oom;
+		talloc_set_type(v4, fr_dict_attr_t);
 
-		v6 = fr_pool_alloc(sizeof(*v6) + namelen);
+		v6 = (fr_dict_attr_t *)talloc_zero_array(fr_main_dict->pool, uint8_t, sizeof(*v6) + namelen);
 		if (!v6) goto oom;
+		talloc_set_type(v6, fr_dict_attr_t);
 
 		memcpy(v4, n, sizeof(*v4) + namelen);
 		v4->type = PW_TYPE_IPV4_ADDR;
@@ -1117,11 +1024,12 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 		return -1;
 	}
 
-	if ((dval = fr_pool_alloc(sizeof(*dval) + length)) == NULL) {
+	dval = (fr_dict_value_t *)talloc_zero_array(fr_main_dict->pool, uint8_t, sizeof(*dval) + length);
+	if (dval == NULL) {
 		fr_strerror_printf("fr_dict_value_add: out of memory");
 		return -1;
 	}
-	memset(dval, 0, sizeof(*dval));
+	talloc_set_type(dval, fr_dict_value_t);
 
 	strcpy(dval->name, alias);
 	dval->value = value;
@@ -1161,7 +1069,7 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 		switch (da->type) {
 		case PW_TYPE_BYTE:
 			if (value > 255) {
-				fr_pool_free(dval);
+				talloc_free(dval);
 				fr_strerror_printf(
 					"fr_dict_value_add: ATTRIBUTEs of type 'byte' cannot have VALUEs larger than 255");
 				return -1;
@@ -1169,7 +1077,7 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 			break;
 		case PW_TYPE_SHORT:
 			if (value > 65535) {
-				fr_pool_free(dval);
+				talloc_free(dval);
 				fr_strerror_printf(
 					"fr_dict_value_add: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535");
 				return -1;
@@ -1187,7 +1095,7 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 
 		case PW_TYPE_INTEGER64:
 		default:
-			fr_pool_free(dval);
+			talloc_free(dval);
 			fr_strerror_printf("fr_dict_value_add: VALUEs cannot be defined for attributes of type '%s'",
 					   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 			return -1;
@@ -1197,7 +1105,7 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 
 		fixup = (value_fixup_t *)malloc(sizeof(*fixup));
 		if (!fixup) {
-			fr_pool_free(dval);
+			talloc_free(dval);
 			fr_strerror_printf("fr_dict_value_add: out of memory");
 			return -1;
 		}
@@ -1233,12 +1141,12 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 				 */
 				old = fr_dict_value_by_name(da->vendor, da->attr, alias);
 				if (old && (old->value == dval->value)) {
-					fr_pool_free(dval);
+					talloc_free(dval);
 					return 0;
 				}
 			}
 
-			fr_pool_free(dval);
+			talloc_free(dval);
 			fr_strerror_printf("fr_dict_value_add: Duplicate value name %s for attribute %s", alias,
 					   attr);
 			return -1;
@@ -1834,7 +1742,8 @@ static int process_value_alias(char const *fn, int const line, char **argv, int 
 		return -1;
 	}
 
-	if ((dval = fr_pool_alloc(sizeof(*dval))) == NULL) {
+	dval = talloc_zero(fr_main_dict->pool, fr_dict_value_t);
+	if (dval == NULL) {
 		fr_strerror_printf("fr_dict_value_add: out of memory");
 		return -1;
 	}
@@ -1845,9 +1754,8 @@ static int process_value_alias(char const *fn, int const line, char **argv, int 
 	dval->value = da->attr;
 
 	if (!fr_hash_table_insert(fr_main_dict->values_by_name, dval)) {
-		fr_strerror_printf("fr_dict_init: %s[%d]: Error create alias",
-				   fn, line);
-		fr_pool_free(dval);
+		fr_strerror_printf("fr_dict_init: %s[%d]: Error create alias", fn, line);
+		talloc_free(dval);
 		return -1;
 	}
 
@@ -2456,6 +2364,11 @@ static int null_callback(UNUSED void *ctx, UNUSED void *data)
 	return 0;
 }
 
+static void fr_pool_free(void *to_free)
+{
+	talloc_free(to_free);
+}
+
 /** Initialize a protocol dictionary
  *
  * Initialize the directory, then fix the attr member of all attributes.
@@ -2482,6 +2395,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 
 	dict = talloc_zero(ctx, fr_dict_t);
 	talloc_set_destructor(dict, _fr_dict_free);
+	dict->pool = talloc_pool(dict, (1024 * 1024 * 5));	/* Pre-Allocate 5MB of pool memory for rapid startup */
 
 	/*
 	 *	Free the old dictionaries, and the stat cache.
