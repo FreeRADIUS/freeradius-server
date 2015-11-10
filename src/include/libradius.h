@@ -490,8 +490,8 @@ int			fr_dict_valid_name(char const *name);
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 int			fr_dict_str_to_oid(unsigned int *pvendor, unsigned int *pattr, char const *oid, int tlv_depth);
 int			fr_dict_vendor_add(char const *name, unsigned int value);
-int			fr_dict_attr_add(fr_dict_attr_t *parent, char const *name, unsigned int vendor, int attr, PW_TYPE type,
-				  ATTR_FLAGS flags);
+int			fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned int vendor, int attr,
+					 PW_TYPE type, ATTR_FLAGS flags);
 int			fr_dict_value_add(char const *attrstr, char const *namestr, int value);
 int			fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *fn);
 

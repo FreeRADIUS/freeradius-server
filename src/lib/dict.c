@@ -557,11 +557,10 @@ int fr_dict_valid_name(char const *name)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned int vendor, int attr, PW_TYPE type,
-		     ATTR_FLAGS flags)
+int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned int vendor, int attr,
+		     PW_TYPE type, ATTR_FLAGS flags)
 {
 	size_t namelen;
-	fr_dict_attr_t const *parent;
 	fr_dict_attr_t *n;
 	static int max_attr = 0;
 
@@ -607,13 +606,9 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 	}
 
 	/*
-	 *	Check the parent attribute, and set the various flags
-	 *	based on the parents values.  It's OK for the caller
-	 *	to not set them, as we'll set them.  But if the caller
-	 *	sets them when he's not supposed to set them, that's
-	 *	an error.
+	 *	Check the parent attribute, and flags that are only
+	 *	meant to be set internally.
 	 */
-	parent = fr_dict_parent_by_num(vendor, attr);
 	if (parent) {
 		/*
 		 *	We're still in the same space and the parent isn't a TLV.  That's an error.
@@ -1660,7 +1655,7 @@ static int process_attribute(char const *fn, int const line,
 	/*
 	 *	Add it in.
 	 */
-	if (fr_dict_attr_add(NULL, argv[0], vendor, value, type, flags) < 0) {
+	if (fr_dict_attr_add(block_tlv, argv[0], vendor, value, type, flags) < 0) {
 		fr_strerror_printf("fr_dict_init: %s[%d]: %s", fn, line, fr_strerror());
 		return -1;
 	}
@@ -3383,7 +3378,7 @@ fr_dict_vendor_t *fr_dict_vendor_by_num(int vendorpec)
  */
 fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_attr_t const *old)
 {
-	fr_dict_attr_t const *da, *parent;
+	fr_dict_attr_t const *da;
 	ATTR_FLAGS flags;
 
 	if (!old) return NULL;
@@ -3396,15 +3391,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_attr_t const *old)
 	memcpy(&flags, &old->flags, sizeof(flags));
 	flags.is_unknown = false;
 
-	parent = fr_dict_parent_by_num(old->vendor, old->attr);
-	if (parent) {
-		if (parent->flags.has_tlv) flags.is_tlv = true;
-		flags.evs = parent->flags.evs;
-		flags.extended = parent->flags.extended;
-		flags.long_extended = parent->flags.long_extended;
-	}
-
-	if (fr_dict_attr_add(NULL, old->name, old->vendor, old->attr, old->type, flags) < 0) {
+	if (fr_dict_attr_add(old->parent, old->name, old->vendor, old->attr, old->type, flags) < 0) {
 		return NULL;
 	}
 
