@@ -625,10 +625,6 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 			fr_strerror_printf("Has parent attribute %s which is not of type 'tlv'", parent->name);
 			goto error;
 		}
-
-		flags.extended |= parent->flags.extended;
-		flags.long_extended |= parent->flags.long_extended;
-		flags.evs |= parent->flags.evs;
 	}
 
 	/*
@@ -996,8 +992,29 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 		}
 	}
 
-	if (!vendor && (attr > 0) && (attr < 256)) {
-		fr_main_dict->base_attrs[attr] = n;
+	if (!vendor && (attr > 0) && (attr < 256)) fr_main_dict->base_attrs[attr] = n;
+
+	/*
+	 *	Setup parenting for the attribute
+	 */
+	if (parent) {
+		fr_dict_attr_t *mutable;
+
+		memcpy(&mutable, &parent, sizeof(mutable));
+
+		n->parent = mutable;
+		n->depth = mutable->depth + 1;
+		if (!n->parent->children) {
+			mutable->children = talloc_zero_array(mutable, fr_dict_attr_t const *, UINT8_MAX);
+		}
+		n->parent->children[n->attr & 0xff] = n;
+
+		/*
+		 *	Inherit parent's flags
+		 */
+		n->flags.extended |= parent->flags.extended;
+		n->flags.long_extended |= parent->flags.long_extended;
+		n->flags.evs |= parent->flags.evs;
 	}
 
 	return 0;

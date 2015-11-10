@@ -222,9 +222,9 @@ struct dict_attr {
 	unsigned int		attr;				//!< Attribute number.
 	PW_TYPE			type;				//!< Value type.
 
-	fr_dict_attr_t		*parent;			//!< Immediate parent of this attribute.
-	fr_dict_attr_t		**children;			//!< Children of this attribute.
-	unsigned int		nesting;			//!< Depth of nesting for this attribute.
+	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
+	fr_dict_attr_t const	**children;			//!< Children of this attribute.
+	unsigned int		depth;				//!< Depth of nesting for this attribute.
 
 	ATTR_FLAGS		flags;				//!< Flags.
 	char			name[1];			//!< Attribute name.
