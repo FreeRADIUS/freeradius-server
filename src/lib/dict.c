@@ -644,71 +644,6 @@ int fr_dict_valid_name(char const *name)
 	return 0;
 }
 
-/*
- *	Bamboo skewers under the fingernails in 5, 4, 3, 2, ...
- */
-static const fr_dict_attr_t *dict_parent(unsigned int vendor, unsigned int attr)
-{
-	int i;
-	unsigned int base_vendor;
-
-	/*
-	 *	RFC attributes can't be of type "tlv".
-	 */
-	if (!vendor) return NULL;
-
-	base_vendor = vendor & (FR_MAX_VENDOR - 1);
-
-	/*
-	 *	It's a real vendor.
-	 */
-	if (base_vendor != 0) {
-		fr_dict_vendor_t const *dv;
-
-		dv = fr_dict_vendor_by_num(base_vendor);
-		if (!dv) return NULL;
-
-		/*
-		 *	Only standard format attributes can be of type "tlv",
-		 *	Except for DHCP.  <sigh>
-		 */
-		if ((vendor != 54) && ((dv->type != 1) || (dv->length != 1))) return NULL;
-
-		for (i = MAX_TLV_NEST; i > 0; i--) {
-			unsigned int parent;
-
-			parent = attr & fr_attr_parent_mask[i];
-
-			if (parent != attr) return fr_dict_attr_by_num(vendor, parent); /* not base_vendor */
-		}
-
-		/*
-		 *	It was a top-level VSA.  There's no parent.
-		 *	We COULD return the appropriate enclosing VSA
-		 *	(26, or 241.26, etc.) but that's not what we
-		 *	want.
-		 */
-		return NULL;
-	}
-
-	/*
-	 *	It's an extended attribute.  Return the base Extended-Attr-X
-	 */
-	if (attr < 256) return fr_dict_attr_by_num(0, (vendor / FR_MAX_VENDOR) & 0xff);
-
-	/*
-	 *	Figure out which attribute it is.
-	 */
-	for (i = MAX_TLV_NEST; i > 0; i--) {
-		unsigned int parent;
-
-		parent = attr & fr_attr_parent_mask[i];
-		if (parent != attr) return fr_dict_attr_by_num(vendor, parent); /* not base_vendor */
-	}
-
-	return NULL;
-}
-
 /** Add an attribute to the dictionary
  *
  * @todo we need to check length of none vendor attributes.
@@ -773,12 +708,12 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 	 *	sets them when he's not supposed to set them, that's
 	 *	an error.
 	 */
-	parent = dict_parent(vendor, attr);
+	parent = fr_dict_parent_by_num(vendor, attr);
 	if (parent) {
 		/*
 		 *	We're still in the same space and the parent isn't a TLV.  That's an error.
 		 *
-		 *	Otherwise, dict_parent() has taken us from an Extended sub-attribute to
+		 *	Otherwise, fr_dict_parent_by_num() has taken us from an Extended sub-attribute to
 		 *	a *the* Extended attribute, whish isn't what we want here.
 		 */
 		if (!flags.internal && (vendor == parent->vendor) && (parent->type != PW_TYPE_TLV)) {
@@ -1544,7 +1479,7 @@ static int process_attribute(char const *fn, int const line,
 		/*
 		 *	Set the flags based on the parents flags.
 		 */
-		da = dict_parent(vendor, value);
+		da = fr_dict_parent_by_num(vendor, value);
 		if (!da) {
 			fr_strerror_printf("fr_dict_init: %s[%d]: Parent attribute is undefined.", fn, line);
 			return -1;
@@ -3145,6 +3080,71 @@ int fr_dict_unknown_from_substr(fr_dict_attr_t *da, char const **name)
 }
 
 /*
+ *	Bamboo skewers under the fingernails in 5, 4, 3, 2, ...
+ */
+const fr_dict_attr_t *fr_dict_parent_by_num(unsigned int vendor, unsigned int attr)
+{
+	int i;
+	unsigned int base_vendor;
+
+	/*
+	 *	RFC attributes can't be of type "tlv".
+	 */
+	if (!vendor) return NULL;
+
+	base_vendor = vendor & (FR_MAX_VENDOR - 1);
+
+	/*
+	 *	It's a real vendor.
+	 */
+	if (base_vendor != 0) {
+		fr_dict_vendor_t const *dv;
+
+		dv = fr_dict_vendor_by_num(base_vendor);
+		if (!dv) return NULL;
+
+		/*
+		 *	Only standard format attributes can be of type "tlv",
+		 *	Except for DHCP.  <sigh>
+		 */
+		if ((vendor != 54) && ((dv->type != 1) || (dv->length != 1))) return NULL;
+
+		for (i = MAX_TLV_NEST; i > 0; i--) {
+			unsigned int parent;
+
+			parent = attr & fr_attr_parent_mask[i];
+
+			if (parent != attr) return fr_dict_attr_by_num(vendor, parent); /* not base_vendor */
+		}
+
+		/*
+		 *	It was a top-level VSA.  There's no parent.
+		 *	We COULD return the appropriate enclosing VSA
+		 *	(26, or 241.26, etc.) but that's not what we
+		 *	want.
+		 */
+		return NULL;
+	}
+
+	/*
+	 *	It's an extended attribute.  Return the base Extended-Attr-X
+	 */
+	if (attr < 256) return fr_dict_attr_by_num(0, (vendor / FR_MAX_VENDOR) & 0xff);
+
+	/*
+	 *	Figure out which attribute it is.
+	 */
+	for (i = MAX_TLV_NEST; i > 0; i--) {
+		unsigned int parent;
+
+		parent = attr & fr_attr_parent_mask[i];
+		if (parent != attr) return fr_dict_attr_by_num(vendor, parent); /* not base_vendor */
+	}
+
+	return NULL;
+}
+
+/*
  *	Get an attribute by its numerical value.
  */
 fr_dict_attr_t const *fr_dict_attr_by_num(unsigned int vendor, unsigned int attr)
@@ -3473,7 +3473,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_attr_t const *old)
 	memcpy(&flags, &old->flags, sizeof(flags));
 	flags.is_unknown = false;
 
-	parent = dict_parent(old->vendor, old->attr);
+	parent = fr_dict_parent_by_num(old->vendor, old->attr);
 	if (parent) {
 		if (parent->flags.has_tlv) flags.is_tlv = true;
 		flags.evs = parent->flags.evs;

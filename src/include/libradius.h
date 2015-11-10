@@ -477,6 +477,7 @@ do { \
 
 extern const int fr_dict_attr_allowed_chars[256];
 int			fr_dict_valid_name(char const *name);
+
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 int			fr_dict_str_to_oid(unsigned int *pvendor, unsigned int *pattr, char const *oid, int tlv_depth);
 int			fr_dict_vendor_add(char const *name, unsigned int value);
@@ -496,6 +497,7 @@ int			fr_dict_unknown_from_substr(fr_dict_attr_t *da, char const **name);
 fr_dict_attr_t const	*fr_dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name);
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_attr_t const *old);
 
+fr_dict_attr_t const	*fr_dict_parent_by_num(unsigned int vendor, unsigned int attr);
 fr_dict_attr_t const	*fr_dict_attr_by_num(unsigned int vendor, unsigned int attr);
 fr_dict_attr_t const	*fr_dict_attr_by_name(char const *attr);
 fr_dict_attr_t const	*fr_dict_attr_by_name_substr(char const **name);
