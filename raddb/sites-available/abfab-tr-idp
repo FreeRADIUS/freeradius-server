@@ -112,9 +112,9 @@ post-auth {
 		# authentication failure And already has an EAP message
 		# For non-ABFAB, we insert the failure all the time, but for ABFAB
 		# It's more desirable to preserve reply-message when we can
-if &reply:Eap-Message {
+		if (&reply:Eap-Message) {
 			eap
-			}
+		}
 
 		#  Remove reply message if the response contains an EAP-Message
 		remove_reply_message_if_eap
