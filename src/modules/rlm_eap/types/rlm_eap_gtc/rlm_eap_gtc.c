@@ -69,7 +69,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	if (inst->auth_type_name && *inst->auth_type_name) {
-		dval = fr_dict_value_by_name(PW_AUTH_TYPE, 0, inst->auth_type_name);
+		dval = fr_dict_value_by_name(0, PW_AUTH_TYPE, inst->auth_type_name);
 		if (!dval) {
 			ERROR("rlm_eap_gtc: Unknown Auth-Type %s",
 			      inst->auth_type_name);
