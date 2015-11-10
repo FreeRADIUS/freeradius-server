@@ -248,23 +248,48 @@ static int list_delete(fr_hash_table_t *ht,
 }
 
 
+static int _fr_hash_table_free(fr_hash_table_t *ht)
+{
+	int i;
+	fr_hash_entry_t *node, *next;
+
+	/*
+	 *	Walk over the buckets, freeing them all.
+	 */
+	for (i = 0; i < ht->num_buckets; i++) {
+		if (ht->buckets[i]) for (node = ht->buckets[i];
+					 node != &ht->null;
+					 node = next) {
+			next = node->next;
+			if (!node->data) continue; /* dummy entry */
+
+			talloc_free(node);
+		}
+	}
+	talloc_free(ht->buckets);
+
+	return 0;
+}
+
 /*
  *	Create the table.
  *
  *	Memory usage in bytes is (20/3) * number of entries.
  */
-fr_hash_table_t *fr_hash_table_create(fr_hash_table_hash_t hashNode,
-					  fr_hash_table_cmp_t cmpNode,
-					  fr_hash_table_free_t freeNode)
+fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
+				      fr_hash_table_hash_t hashNode,
+				      fr_hash_table_cmp_t cmpNode,
+				      fr_hash_table_free_t freeNode)
 {
 	fr_hash_table_t *ht;
 
 	if (!hashNode) return NULL;
 
-	ht = malloc(sizeof(*ht));
+	ht = talloc_zero(NULL, fr_hash_table_t);
 	if (!ht) return NULL;
+	talloc_set_destructor(ht, _fr_hash_table_free);
+	fr_talloc_link_ctx(ctx, ht);
 
-	memset(ht, 0, sizeof(*ht));
 	ht->free = freeNode;
 	ht->hash = hashNode;
 	ht->cmp = cmpNode;
@@ -278,17 +303,15 @@ fr_hash_table_t *fr_hash_table_create(fr_hash_table_hash_t hashNode,
 	 */
 	ht->next_grow = (ht->num_buckets << 1) + (ht->num_buckets >> 1);
 
-	ht->buckets = malloc(sizeof(*ht->buckets) * ht->num_buckets);
+	ht->buckets = talloc_zero_array(NULL, fr_hash_entry_t *, ht->num_buckets);
 	if (!ht->buckets) {
-		free(ht);
+		talloc_free(ht);
 		return NULL;
 	}
-	memset(ht->buckets, 0, sizeof(*ht->buckets) * ht->num_buckets);
 
 	ht->null.reversed = ~0;
 	ht->null.key = ~0;
 	ht->null.next = &ht->null;
-
 	ht->buckets[0] = &ht->null;
 
 	return ht;
@@ -359,15 +382,12 @@ static void fr_hash_table_grow(fr_hash_table_t *ht)
 {
 	fr_hash_entry_t **buckets;
 
-	buckets = malloc(sizeof(*buckets) * GROW_FACTOR * ht->num_buckets);
+	buckets = talloc_zero_array(NULL, fr_hash_entry_t *, GROW_FACTOR * ht->num_buckets);
 	if (!buckets) return;
 
-	memcpy(buckets, ht->buckets,
-	       sizeof(*buckets) * ht->num_buckets);
-	memset(&buckets[ht->num_buckets], 0,
-	       sizeof(*buckets) * ht->num_buckets);
+	memcpy(buckets, ht->buckets, sizeof(*buckets) * ht->num_buckets);
+	talloc_free(ht->buckets); /* Free the old buckets */
 
-	free(ht->buckets);
 	ht->buckets = buckets;
 	ht->num_buckets *= GROW_FACTOR;
 	ht->next_grow *= GROW_FACTOR;
@@ -401,9 +421,8 @@ int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	 *	If we try to do our own memory allocation here, the
 	 *	speedup is only ~15% or so, which isn't worth it.
 	 */
-	node = malloc(sizeof(*node));
+	node = talloc_zero(NULL, fr_hash_entry_t);
 	if (!node) return 0;
-	memset(node, 0, sizeof(*node));
 
 	node->next = &ht->null;
 	node->reversed = reversed;
@@ -412,7 +431,7 @@ int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 
 	/* already in the table, can't insert it */
 	if (!list_insert(ht, &ht->buckets[entry], node)) {
-		free(node);
+		talloc_free(node);
 		return 0;
 	}
 
@@ -421,9 +440,7 @@ int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 	 *	necessary.
 	 */
 	ht->num_elements++;
-	if (ht->num_elements >= ht->next_grow) {
-		fr_hash_table_grow(ht);
-	}
+	if (ht->num_elements >= ht->next_grow) fr_hash_table_grow(ht);
 
 	return 1;
 }
@@ -461,9 +478,7 @@ int fr_hash_table_replace(fr_hash_table_t *ht, void const *data)
 	if (!ht || !data) return 0;
 
 	node = fr_hash_table_find(ht, data);
-	if (!node) {
-		return fr_hash_table_insert(ht, data);
-	}
+	if (!node) return fr_hash_table_insert(ht, data);
 
 	if (ht->free) {
 		memcpy(&tofree, &node->data, sizeof(tofree));
@@ -519,7 +534,7 @@ void *fr_hash_table_yank(fr_hash_table_t *ht, void const *data)
 	ht->num_elements--;
 
 	memcpy(&old, &node->data, sizeof(old));
-	free(node);
+	talloc_free(node);
 
 	return old;
 }
@@ -554,27 +569,26 @@ void fr_hash_table_free(fr_hash_table_t *ht)
 	/*
 	 *	Walk over the buckets, freeing them all.
 	 */
-	for (i = 0; i < ht->num_buckets; i++) {
-		if (ht->buckets[i]) for (node = ht->buckets[i];
-					 node != &ht->null;
-					 node = next) {
-			next = node->next;
-
-			if (!node->data) continue; /* dummy entry */
-
-
-			if (ht->free) {
+	if (ht->free) {
+		for (i = 0; i < ht->num_buckets; i++) {
+			if (ht->buckets[i]) for (node = ht->buckets[i];
+						 node != &ht->null;
+						 node = next) {
 				void *tofree;
+
+				next = node->next;
+				if (!node->data) continue; /* dummy entry */
+
 				memcpy(&tofree, &node->data, sizeof(tofree));
 				ht->free(tofree);
 			}
-
-			free(node);
 		}
 	}
 
-	free(ht->buckets);
-	free(ht);
+	/*
+	 *	Also frees nodes and buckets
+	 */
+	talloc_free(ht);
 }
 
 
@@ -792,13 +806,13 @@ int main(int argc, char **argv)
 	fr_hash_table_t *ht;
 	int *array;
 
-	ht = fr_hash_table_create(hash_int, NULL, NULL);
+	ht = fr_hash_table_create(NULL, hash_int, NULL, NULL);
 	if (!ht) {
 		fprintf(stderr, "Hash create failed\n");
 		fr_exit(1);
 	}
 
-	array = malloc(sizeof(int) * MAX);
+	array = talloc_zero_array(NULL, int, MAX);
 	if (!array) fr_exit(1);
 
 	for (i = 0; i < MAX; i++) {
@@ -849,7 +863,7 @@ int main(int argc, char **argv)
 	}
 
 	fr_hash_table_free(ht);
-	free(array);
+	talloc_free(array);
 
 	fr_exit(0);
 }

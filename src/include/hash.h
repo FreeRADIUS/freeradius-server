@@ -44,9 +44,10 @@ typedef uint32_t (*fr_hash_table_hash_t)(void const *);
 typedef int (*fr_hash_table_cmp_t)(void const *, void const *);
 typedef int (*fr_hash_table_walk_t)(void * /* ctx */, void * /* data */);
 
-fr_hash_table_t *fr_hash_table_create(fr_hash_table_hash_t hashNode,
-					  fr_hash_table_cmp_t cmpNode,
-					  fr_hash_table_free_t freeNode);
+fr_hash_table_t *fr_hash_table_create(TALLOC_CTX *ctx,
+				      fr_hash_table_hash_t hashNode,
+				      fr_hash_table_cmp_t cmpNode,
+				      fr_hash_table_free_t freeNode);
 void		fr_hash_table_free(fr_hash_table_t *ht);
 int		fr_hash_table_insert(fr_hash_table_t *ht, void const *data);
 int		fr_hash_table_delete(fr_hash_table_t *ht, void const *data);

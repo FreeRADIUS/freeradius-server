@@ -920,7 +920,7 @@ int thread_pool_init(void)
 	/*
 	 *	Create the hash table of child PID's
 	 */
-	thread_pool.waiters = fr_hash_table_create(pid_hash, pid_cmp, free);
+	thread_pool.waiters = fr_hash_table_create(NULL, pid_hash, pid_cmp, free);
 	if (!thread_pool.waiters) {
 		ERROR("FATAL: Failed to set up wait hash");
 		return -1;

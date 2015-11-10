@@ -2497,7 +2497,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	 *
 	 *	Each vendor is malloc'd, so the free function is free.
 	 */
-	dict->vendors_by_name = fr_hash_table_create(dict_vendor_name_hash, dict_vendor_name_cmp, fr_pool_free);
+	dict->vendors_by_name = fr_hash_table_create(dict, dict_vendor_name_hash, dict_vendor_name_cmp, fr_pool_free);
 	if (!dict->vendors_by_name) {
 	error:
 		talloc_free(dict);
@@ -2509,7 +2509,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	 *	be vendors of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
-	dict->vendors_by_num = fr_hash_table_create(dict_vendor_value_hash, dict_vendor_value_cmp, fr_pool_free);
+	dict->vendors_by_num = fr_hash_table_create(dict, dict_vendor_value_hash, dict_vendor_value_cmp, NULL);
 	if (!dict->vendors_by_num) goto error;
 
 	/*
@@ -2518,7 +2518,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	 *
 	 *	Each attribute is malloc'd, so the free function is free.
 	 */
-	dict->attributes_by_name = fr_hash_table_create(dict_attr_name_hash, dict_attr_name_cmp, fr_pool_free);
+	dict->attributes_by_name = fr_hash_table_create(dict, dict_attr_name_hash, dict_attr_name_cmp, fr_pool_free);
 	if (!dict->attributes_by_name) goto error;
 
 	/*
@@ -2526,19 +2526,19 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	 *	be attributes of the same value.  If there are, we
 	 *	pick the latest one.
 	 */
-	dict->attributes_by_num = fr_hash_table_create(dict_attr_value_hash, dict_attr_value_cmp, fr_pool_free);
+	dict->attributes_by_num = fr_hash_table_create(dict, dict_attr_value_hash, dict_attr_value_cmp, NULL);
 	if (!dict->attributes_by_num) goto error;
 
 	/*
 	 *	Horrible hacks for combo-IP.
 	 */
-	dict->attributes_combo = fr_hash_table_create(dict_attr_combo_hash, dict_attr_combo_cmp, fr_pool_free);
+	dict->attributes_combo = fr_hash_table_create(dict, dict_attr_combo_hash, dict_attr_combo_cmp, fr_pool_free);
 	if (!dict->attributes_combo) goto error;
 
-	dict->values_by_name = fr_hash_table_create(dict_value_name_hash, dict_value_name_cmp, fr_pool_free);
+	dict->values_by_name = fr_hash_table_create(dict, dict_value_name_hash, dict_value_name_cmp, fr_pool_free);
 	if (!dict->values_by_name) goto error;
 
-	dict->values_by_num = fr_hash_table_create(dict_value_value_hash, dict_value_value_cmp, fr_pool_free);
+	dict->values_by_num = fr_hash_table_create(dict, dict_value_value_hash, dict_value_value_cmp, fr_pool_free);
 	if (!dict->values_by_num) goto error;
 
 	value_fixup = NULL;        /* just to be safe. */
