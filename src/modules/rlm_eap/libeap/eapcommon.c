@@ -89,7 +89,7 @@ eap_type_t eap_name2type(char const *name)
 {
 	fr_dict_value_t	*dv;
 
-	dv = dict_value_by_name(0, PW_EAP_TYPE, name);
+	dv = fr_dict_value_by_name(0, PW_EAP_TYPE, name);
 	if (!dv) return PW_EAP_INVALID;
 
 	if (dv->value >= PW_EAP_MAX_TYPES) return PW_EAP_INVALID;
@@ -105,7 +105,7 @@ char const *eap_type2name(eap_type_t method)
 {
 	fr_dict_value_t	*dv;
 
-	dv = dict_value_by_attr(0, PW_EAP_TYPE, method);
+	dv = fr_dict_value_by_attr(0, PW_EAP_TYPE, method);
 	if (dv) {
 		return dv->name;
 	}

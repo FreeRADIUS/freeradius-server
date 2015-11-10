@@ -84,13 +84,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	if (dict_attr_add(NULL, "Example-Paircmp", 0, -1, PW_TYPE_STRING, flags) < 0) {
+	if (fr_dict_attr_add(NULL, "Example-Paircmp", 0, -1, PW_TYPE_STRING, flags) < 0) {
 		ERROR("Failed creating paircmp attribute: %s", fr_strerror());
 
 		return -1;
 	}
 
-	paircompare_register(dict_attr_by_name("Example-Paircmp"), dict_attr_by_num(0, PW_USER_NAME), false,
+	paircompare_register(fr_dict_attr_by_name("Example-Paircmp"), fr_dict_attr_by_num(0, PW_USER_NAME), false,
 			     rlm_example_cmp, inst);
 
 	return 0;

@@ -296,7 +296,7 @@ static ssize_t xlat_vendor(char **out, size_t outlen,
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	vendor = dict_vendor_by_num(vp->da->vendor);
+	vendor = fr_dict_vendor_by_num(vp->da->vendor);
 	if (!vendor) return 0;
 	strlcpy(*out, vendor->name, outlen);
 
@@ -411,7 +411,7 @@ static ssize_t xlat_debug_attr(UNUSED char **out, UNUSED size_t outlen,
 		if (vp->da->vendor) {
 			fr_dict_vendor_t *dv;
 
-			dv = dict_vendor_by_num(vp->da->vendor);
+			dv = fr_dict_vendor_by_num(vp->da->vendor);
 			RIDEBUG2("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");
 		}
 		RIDEBUG2("Type   : %s", fr_int2str(dict_attr_types, vp->da->type, "<INVALID>"));
@@ -1941,7 +1941,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 
 	case PW_PACKET_TYPE:
 		if (packet->code > 0) {
-			dv = dict_value_by_attr(0, PW_PACKET_TYPE, packet->code);
+			dv = fr_dict_value_by_attr(0, PW_PACKET_TYPE, packet->code);
 			if (dv) return talloc_typed_strdup(ctx, dv->name);
 			return talloc_typed_asprintf(ctx, "%d", packet->code);
 		}

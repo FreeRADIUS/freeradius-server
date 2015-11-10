@@ -357,19 +357,19 @@ int paircompare_register_byname(char const *name, fr_dict_attr_t const *from,
 	memset(&flags, 0, sizeof(flags));
 	flags.compare = 1;
 
-	da = dict_attr_by_name(name);
+	da = fr_dict_attr_by_name(name);
 	if (da) {
 		if (!da->flags.compare) {
 			fr_strerror_printf("Attribute '%s' already exists", name);
 			return -1;
 		}
 	} else if (from) {
-		if (dict_attr_add(NULL, name, 0, -1, from->type, flags) < 0) {
+		if (fr_dict_attr_add(NULL, name, 0, -1, from->type, flags) < 0) {
 			fr_strerror_printf("Failed creating attribute '%s'", name);
 			return -1;
 		}
 
-		da = dict_attr_by_name(name);
+		da = fr_dict_attr_by_name(name);
 		if (!da) {
 			fr_strerror_printf("Failed finding attribute '%s'", name);
 			return -1;

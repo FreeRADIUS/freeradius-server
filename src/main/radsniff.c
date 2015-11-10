@@ -1901,7 +1901,7 @@ static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list
 			return -1;
 		}
 
-		da = dict_attr_by_name(tok);
+		da = fr_dict_attr_by_name(tok);
 		if (!da) {
 			ERROR("Error parsing attribute name \"%s\"", tok);
 			return -1;
@@ -2487,13 +2487,13 @@ int main(int argc, char *argv[])
 		conf->pcap_filter = buffer;
 	}
 
-	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (fr_dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radsniff");
 		ret = 64;
 		goto finish;
 	}
 
-	if (dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("radsniff");
 		ret = 64;
 		goto finish;

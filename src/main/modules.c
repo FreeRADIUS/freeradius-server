@@ -994,7 +994,7 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = dict_value_by_name(da->vendor, da->attr, name2);
+	dval = fr_dict_value_by_name(da->vendor, da->attr, name2);
 	if (!dval) {
 		talloc_free(ml);
 		cf_log_err_cs(cs,
@@ -1033,7 +1033,7 @@ static int load_component_section(CONF_SECTION *cs,
 	/*
 	 *	Find the attribute used to store VALUEs for this section.
 	 */
-	da = dict_attr_by_num(0, section_type_value[comp].attr);
+	da = fr_dict_attr_by_num(0, section_type_value[comp].attr);
 	if (!da) {
 		cf_log_err_cs(cs,
 			   "No such attribute %s",
@@ -1101,7 +1101,7 @@ static int load_component_section(CONF_SECTION *cs,
 				}
 			}
 
-			dval = dict_value_by_name(0, PW_AUTH_TYPE, modrefname);
+			dval = fr_dict_value_by_name(0, PW_AUTH_TYPE, modrefname);
 			if (!dval) {
 				/*
 				 *	It's a section, but nothing we
@@ -1295,7 +1295,7 @@ static int load_byserver(CONF_SECTION *cs)
 		subcs = cf_subsection_find_next(cs, NULL, "dhcp");
 		if (!subcs) break;
 
-		da = dict_attr_by_name("DHCP-Message-Type");
+		da = fr_dict_attr_by_name("DHCP-Message-Type");
 
 		/*
 		 *	Handle each DHCP Message type separately.
@@ -1554,7 +1554,7 @@ static int define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *n
 	 *	If the value already exists, don't
 	 *	create it again.
 	 */
-	dval = dict_value_by_name(da->vendor, da->attr, name);
+	dval = fr_dict_value_by_name(da->vendor, da->attr, name);
 	if (dval) {
 		if (dval->value == 0) {
 			ERROR("The dictionaries must not define VALUE %s %s 0",
@@ -1573,10 +1573,10 @@ static int define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *n
 	 */
 	do {
 		value = (fr_rand() & 0x00ffffff) + 1;
-	} while (dict_value_by_attr(da->vendor, da->attr, value));
+	} while (fr_dict_value_by_attr(da->vendor, da->attr, value));
 
 	cf_log_module(cs, "Creating %s = %s", da->name, name);
-	if (dict_value_add(da->name, name, value) < 0) {
+	if (fr_dict_value_add(da->name, name, value) < 0) {
 		ERROR("%s", fr_strerror());
 		return 0;
 	}
@@ -1608,7 +1608,7 @@ static bool server_define_types(CONF_SECTION *cs)
 		/*
 		 *	Find the attribute used to store VALUEs for this section.
 		 */
-		da = dict_attr_by_num(0, section_type_value[comp].attr);
+		da = fr_dict_attr_by_num(0, section_type_value[comp].attr);
 		if (!da) {
 			cf_log_err_cs(subcs,
 				   "No such attribute %s",

@@ -591,7 +591,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	For backwards compatibility
 	 */
-	if (!dict_value_by_name(0, PW_AUTH_TYPE, inst->xlat_name)) {
+	if (!fr_dict_value_by_name(0, PW_AUTH_TYPE, inst->xlat_name)) {
 		inst->auth_type = "MS-CHAP";
 	} else {
 		inst->auth_type = inst->xlat_name;

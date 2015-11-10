@@ -27,7 +27,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, char cons
 	char private_id[(YUBIKEY_UID_SIZE * 2) + 1];
 	VALUE_PAIR *key, *vp;
 
-	da = dict_attr_by_name("Yubikey-Key");
+	da = fr_dict_attr_by_name("Yubikey-Key");
 	if (!da) {
 		REDEBUG("Dictionary missing entry for 'Yubikey-Key'");
 		return RLM_MODULE_FAIL;

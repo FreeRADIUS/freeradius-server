@@ -202,7 +202,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		return RLM_MODULE_NOOP;
 	}
 
-	dv = dict_value_by_attr(vp->da->vendor, vp->da->attr, vp->vp_integer);
+	dv = fr_dict_value_by_attr(vp->da->vendor, vp->da->attr, vp->vp_integer);
 	if (!dv) {
 		RDEBUG("Unknown Acct-Status-Type %u", vp->vp_integer);
 		return RLM_MODULE_NOOP;

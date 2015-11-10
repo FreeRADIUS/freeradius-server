@@ -345,7 +345,7 @@ int rad_status_server(REQUEST *request)
 	case RAD_LISTEN_NONE:
 #endif
 	case RAD_LISTEN_AUTH:
-		dval = dict_value_by_name(0, PW_AUTZ_TYPE, "Status-Server");
+		dval = fr_dict_value_by_name(0, PW_AUTZ_TYPE, "Status-Server");
 		if (dval) {
 			rcode = process_authorize(dval->value, request);
 		} else {
@@ -372,7 +372,7 @@ int rad_status_server(REQUEST *request)
 
 #ifdef WITH_ACCOUNTING
 	case RAD_LISTEN_ACCT:
-		dval = dict_value_by_name(0, PW_ACCT_TYPE, "Status-Server");
+		dval = fr_dict_value_by_name(0, PW_ACCT_TYPE, "Status-Server");
 		if (dval) {
 			rcode = process_accounting(dval->value, request);
 		} else {
@@ -399,7 +399,7 @@ int rad_status_server(REQUEST *request)
 		 *	the WG.  We like it, so it goes in here.
 		 */
 	case RAD_LISTEN_COA:
-		dval = dict_value_by_name(0, PW_RECV_COA_TYPE, "Status-Server");
+		dval = fr_dict_value_by_name(0, PW_RECV_COA_TYPE, "Status-Server");
 		if (dval) {
 			rcode = process_recv_coa(dval->value, request);
 		} else {
@@ -3135,9 +3135,9 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		/*
 		 *	We need numbers for internal use.
 		 */
-		dv = dict_value_by_name(0, 1147, value);
+		dv = fr_dict_value_by_name(0, 1147, value);
 		if (!dv) {
-			if (dict_value_add("Listen-Socket-Type", value, last_listener) < 0) {
+			if (fr_dict_value_add("Listen-Socket-Type", value, last_listener) < 0) {
 				cf_log_err_cs(cs,
 					      "Failed adding dictionary entry for protocol %s: %s",
 					      value, fr_strerror());
@@ -3145,7 +3145,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 				return NULL;
 			}
 
-			dv = dict_value_by_name(0, 1147, value);
+			dv = fr_dict_value_by_name(0, 1147, value);
 			if (!dv) {
 				cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s",
 					      value);
@@ -3197,7 +3197,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	 *	Couldn't link to it.  It MUST be defined in the
 	 *	dictionaries.
 	 */
-	dv = dict_value_by_name(0, 1147, value);
+	dv = fr_dict_value_by_name(0, 1147, value);
 	if (!dv) {
 		cf_log_err_cs(cs, "No dictionary entry for protocol %s",
 			      value);

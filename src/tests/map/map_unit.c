@@ -189,12 +189,12 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (fr_dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radattr");
 		return 1;
 	}
 
-	if (dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("radattr");
 		return 1;
 	}
@@ -207,7 +207,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (report) {
-		dict_free();
+		fr_dict_free();
 		fr_log_talloc_report(NULL);
 	}
 

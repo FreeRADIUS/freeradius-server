@@ -1786,8 +1786,8 @@ int modcall_fixup_update(vp_map_t *map, UNUSED void *ctx)
 		if (map->lhs->tmpl_da->type != map->rhs->tmpl_data_type) {
 			fr_dict_attr_t const *da;
 
-			da = dict_attr_by_type(map->lhs->tmpl_da->vendor, map->lhs->tmpl_da->attr,
-					       map->rhs->tmpl_data_type);
+			da = fr_dict_attr_by_type(map->lhs->tmpl_da->vendor, map->lhs->tmpl_da->attr,
+						  map->rhs->tmpl_data_type);
 			if (!da) {
 				fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
 						   fr_int2str(dict_attr_types, map->rhs->tmpl_data_type,
@@ -3411,7 +3411,7 @@ static bool pass2_fixup_undefined(CONF_ITEM const *ci, vp_tmpl_t *vpt)
 
 	rad_assert(vpt->type == TMPL_TYPE_ATTR_UNDEFINED);
 
-	da = dict_attr_by_name(vpt->tmpl_unknown_name);
+	da = fr_dict_attr_by_name(vpt->tmpl_unknown_name);
 	if (!da) {
 		cf_log_err(ci, "Unknown attribute '%s'", vpt->tmpl_unknown_name);
 		return false;
@@ -3484,7 +3484,7 @@ static bool pass2_callback(void *ctx, fr_cond_t *c)
 	 *	Where "foo" is dynamically defined.
 	 */
 	if (c->pass2_fixup == PASS2_FIXUP_TYPE) {
-		if (!dict_value_by_name(map->lhs->tmpl_da->vendor, map->lhs->tmpl_da->attr, map->rhs->name)) {
+		if (!fr_dict_value_by_name(map->lhs->tmpl_da->vendor, map->lhs->tmpl_da->attr, map->rhs->name)) {
 			cf_log_err(map->ci, "Invalid reference to non-existent %s %s { ... }",
 				   map->lhs->tmpl_da->name,
 				   map->rhs->name);

@@ -600,7 +600,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 			vp->vp_length += 2;
 			p[1] = vp->vp_length;
 
-			da = dict_attr_by_num(0, PW_DIGEST_ATTRIBUTES);
+			da = fr_dict_attr_by_num(0, PW_DIGEST_ATTRIBUTES);
 			if (!da) {
 				ERROR("Attribute 'Digest-Attributes' not found by value");
 				exit(1);
@@ -2331,7 +2331,7 @@ int main(int argc, char **argv)
 	 *	the ones in raddb.
 	 */
 	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, RADIUS_DICTIONARY);
-	if (dict_init(main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
+	if (fr_dict_init(main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
 		ERROR("Errors reading dictionary: %s", fr_strerror());
 		exit(1);
 	}
@@ -2339,7 +2339,7 @@ int main(int argc, char **argv)
 	/*
 	 *	It's OK if this one doesn't exist.
 	 */
-	int rcode = dict_read(radius_dir, RADIUS_DICTIONARY);
+	int rcode = fr_dict_read(radius_dir, RADIUS_DICTIONARY);
 	if (rcode == -1) {
 		ERROR("Errors reading %s/%s: %s", radius_dir, RADIUS_DICTIONARY, fr_strerror());
 		exit(1);

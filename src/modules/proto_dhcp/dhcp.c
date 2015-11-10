@@ -829,9 +829,9 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 		 *	attributes then it's time to break out %{hex:} and regular
 		 *	expressions.
 		 */
-		da = dict_attr_by_num((*tlv)->da->vendor, attr);
+		da = fr_dict_attr_by_num((*tlv)->da->vendor, attr);
 		if (!da) {
-			da = dict_unknown_afrom_fields(ctx, (*tlv)->da->vendor, attr);
+			da = fr_dict_unknown_afrom_fields(ctx, (*tlv)->da->vendor, attr);
 			if (!da) {
 				fr_pair_list_free(&head);
 				return -1;
@@ -851,7 +851,7 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 			fr_pair_steal(ctx, vp); /* for unknown attributes hack */
 
 			if (fr_dhcp_attr2vp(ctx, &vp, a_p, a_len) < 0) {
-				dict_attr_free(&da);
+				fr_dict_attr_free(&da);
 				fr_pair_list_free(&head);
 				goto malformed;
 			}
@@ -860,7 +860,7 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 			a_p += a_len;
 		}
 
-		dict_attr_free(&da); /* for unknown attributes hack */
+		fr_dict_attr_free(&da); /* for unknown attributes hack */
 
 		p += 2 + p[1];	/* code (1) + len (1) + suboption len (n)*/
 	}
@@ -1065,9 +1065,9 @@ ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const 
 		 *	Unknown attribute, create an octets type
 		 *	attribute with the contents of the sub-option.
 		 */
-		da = dict_attr_by_num(DHCP_MAGIC_VENDOR, p[0]);
+		da = fr_dict_attr_by_num(DHCP_MAGIC_VENDOR, p[0]);
 		if (!da) {
-			da = dict_unknown_afrom_fields(ctx, DHCP_MAGIC_VENDOR, p[0]);
+			da = fr_dict_unknown_afrom_fields(ctx, DHCP_MAGIC_VENDOR, p[0]);
 			if (!da) {
 				fr_pair_list_free(out);
 				return -1;
@@ -1155,8 +1155,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			if ((packet->data[1] == 0) || (packet->data[2] == 0)) continue;
 
 			if ((packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
-				fr_dict_attr_t const *da = dict_unknown_afrom_fields(packet, vp->da->vendor,
-										     vp->da->attr);
+				fr_dict_attr_t const *da = fr_dict_unknown_afrom_fields(packet, vp->da->vendor,
+											vp->da->attr);
 				if (!da) {
 					return -1;
 				}

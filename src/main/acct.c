@@ -88,7 +88,7 @@ int rad_accounting(REQUEST *request)
 		if (vp) {
 			acct_type = vp->vp_integer;
 			DEBUG2("  Found Acct-Type %s",
-			       dict_value_name_by_attr(0, PW_ACCT_TYPE, acct_type));
+			       fr_dict_value_name_by_attr(0, PW_ACCT_TYPE, acct_type));
 		}
 		result = process_accounting(acct_type, request);
 		switch (result) {

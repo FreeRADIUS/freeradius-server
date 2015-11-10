@@ -105,7 +105,7 @@ const FR_NAME_NUMBER request_refs[] = {
  * return 0.
  *
  * @note #radius_list_name should be called before passing a name string that may
- *	contain qualifiers to #dict_attr_by_name.
+ *	contain qualifiers to #fr_dict_attr_by_name.
  *
  * @param[out] out Where to write the list qualifier.
  * @param[in] name String containing list qualifiers to parse.
@@ -128,7 +128,7 @@ size_t radius_list_name(pair_lists_t *out, char const *name, pair_lists_t def)
 	/*
 	 *	Try and determine the end of the token
 	 */
-	for (q = p; dict_attr_allowed_chars[(uint8_t) *q]; q++);
+	for (q = p; fr_dict_attr_allowed_chars[(uint8_t) *q]; q++);
 
 	switch (*q) {
 	/*
@@ -161,7 +161,7 @@ size_t radius_list_name(pair_lists_t *out, char const *name, pair_lists_t def)
 			 *	was a token delimiter, so this is a
 			 *	tag, not a list qualifier.
 			 */
-			if (!dict_attr_allowed_chars[(uint8_t) *d]) {
+			if (!fr_dict_attr_allowed_chars[(uint8_t) *d]) {
 				*out = def;
 				return 0;
 			}
@@ -418,7 +418,7 @@ size_t radius_request_name(request_refs_t *out, char const *name, request_refs_t
 	/*
 	 *	Try and determine the end of the token
 	 */
-	for (q = p; dict_attr_allowed_chars[(uint8_t) *q] && (*q != '.') && (*q != '-'); q++);
+	for (q = p; fr_dict_attr_allowed_chars[(uint8_t) *q] && (*q != '.') && (*q != '-'); q++);
 
 	/*
 	 *	First token delimiter wasn't a '.'
@@ -636,7 +636,7 @@ int tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
  * @param[in] list_def The default list to set if no #pair_lists qualifiers are found in
  *	name.
  * @param[in] allow_unknown If true attributes in the format accepted by
- *	#dict_unknown_from_substr will be allowed, even if they're not in the main
+ *	#fr_dict_unknown_from_substr will be allowed, even if they're not in the main
  *	dictionaries.
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
  *	produced with the unknown #fr_dict_attr_t stored in the ``unknown.da`` buffer.
@@ -713,7 +713,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		break;
 	}
 
-	attr.da = dict_attr_by_name_substr(&p);
+	attr.da = fr_dict_attr_by_name_substr(&p);
 	if (!attr.da) {
 		char const *a;
 
@@ -727,7 +727,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
-		if (dict_unknown_from_substr((fr_dict_attr_t *)&attr.unknown.da, &p) == 0) {
+		if (fr_dict_unknown_from_substr((fr_dict_attr_t *)&attr.unknown.da, &p) == 0) {
 			/*
 			 *	Check what we just parsed really hasn't been defined
 			 *	in the main dictionaries.
@@ -735,8 +735,8 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			 *	If it has, parsing is the same as if the attribute
 			 *	name had been used instead of its OID.
 			 */
-			attr.da = dict_attr_by_num(((fr_dict_attr_t *)&attr.unknown.da)->vendor,
-						   ((fr_dict_attr_t *)&attr.unknown.da)->attr);
+			attr.da = fr_dict_attr_by_num(((fr_dict_attr_t *)&attr.unknown.da)->vendor,
+						      ((fr_dict_attr_t *)&attr.unknown.da)->attr);
 			if (attr.da) {
 				vpt->auto_converted = true;
 				goto do_num;
@@ -762,7 +762,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		 *	let the caller decide.
 		 *
 		 *	Don't alter the fr_strerror buffer, should contain the parse
-		 *	error from dict_unknown_from_substr.
+		 *	error from fr_dict_unknown_from_substr.
 		 */
 		if (!allow_undefined) return -(a - name);
 
@@ -770,7 +770,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		 *	Copy the name to a field for later resolution
 		 */
 		type = TMPL_TYPE_ATTR_UNDEFINED;
-		for (q = attr.unknown.name; dict_attr_allowed_chars[(int) *p]; *q++ = *p++) {
+		for (q = attr.unknown.name; fr_dict_attr_allowed_chars[(int) *p]; *q++ = *p++) {
 			if (q >= (attr.unknown.name + sizeof(attr.unknown.name) - 1)) {
 				fr_strerror_printf("Attribute name is too long");
 				return -(p - name);
@@ -903,7 +903,7 @@ ssize_t tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
  * @param[in] list_def The default list to set if no #pair_lists qualifiers are found in
  *	name.
  * @param[in] allow_unknown If true attributes in the format accepted by
- *	#dict_unknown_from_substr will be allowed, even if they're not in the main
+ *	#fr_dict_unknown_from_substr will be allowed, even if they're not in the main
  *	dictionaries.
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
  *	produced with the unknown #fr_dict_attr_t stored in the ``unknown.da`` buffer.
@@ -1367,7 +1367,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 
 	if (!vpt->tmpl_da->flags.is_unknown) return 1;
 
-	da = dict_unknown_add(vpt->tmpl_da);
+	da = fr_dict_unknown_add(vpt->tmpl_da);
 	if (!da) return -1;
 	vpt->tmpl_da = da;
 
@@ -1376,7 +1376,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 
 /** Add an undefined #fr_dict_attr_t specified by a #vp_tmpl_t to the main dictionary
  *
- * @note dict_attr_add will not return an error if the attribute already exists
+ * @note fr_dict_attr_add will not return an error if the attribute already exists
  *	meaning that multiple #vp_tmpl_t specifying the same attribute can be
  *	passed to this function to be fixed up, so long as the type and flags
  *	are identical.
@@ -1401,8 +1401,8 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *f
 
 	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
 
-	if (dict_attr_add(NULL, vpt->tmpl_unknown_name, 0, -1, type, *flags) < 0) return -1;
-	da = dict_attr_by_name(vpt->tmpl_unknown_name);
+	if (fr_dict_attr_add(NULL, vpt->tmpl_unknown_name, 0, -1, type, *flags) < 0) return -1;
+	da = fr_dict_attr_by_name(vpt->tmpl_unknown_name);
 	if (!da) return -1;
 
 	if (type != da->type) {
@@ -1937,7 +1937,7 @@ size_t tmpl_snprint(char *out, size_t outlen, vp_tmpl_t const *vpt, fr_dict_attr
 		for (p = vpt->name; *p != '\0'; p++) {
 			if (*p == ' ') break;
 			if (*p == '\'') break;
-			if (!dict_attr_allowed_chars[(int) *p]) break;
+			if (!fr_dict_attr_allowed_chars[(int) *p]) break;
 		}
 		c = *p ? '"' : '\0';
 
@@ -2432,7 +2432,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			/*
 			 *	Attribute may be present with multiple names
 			 */
-			da = dict_attr_by_name(vpt->tmpl_da->name);
+			da = fr_dict_attr_by_name(vpt->tmpl_da->name);
 			if (!da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "attribute \"%s\" (%s) not found in global dictionary",
@@ -2443,7 +2443,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			}
 
 			if ((da->type == PW_TYPE_COMBO_IP_ADDR) && (da->type != vpt->tmpl_da->type)) {
-				da = dict_attr_by_type(vpt->tmpl_da->attr, vpt->tmpl_da->vendor, vpt->tmpl_da->type);
+				da = fr_dict_attr_by_type(vpt->tmpl_da->attr, vpt->tmpl_da->vendor, vpt->tmpl_da->type);
 				if (!da) {
 					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" variant (%s) not found in global dictionary",

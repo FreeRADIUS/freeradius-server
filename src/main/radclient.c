@@ -528,7 +528,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				vp->vp_length += 2;
 				p[1] = vp->vp_length;
 
-				da = dict_attr_by_num(0, PW_DIGEST_ATTRIBUTES);
+				da = fr_dict_attr_by_num(0, PW_DIGEST_ATTRIBUTES);
 				if (!da) {
 					ERROR("Out of memory");
 					goto error;
@@ -1360,12 +1360,12 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (fr_dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radclient");
 		return 1;
 	}
 
-	if (dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("radclient");
 		return 1;
 	}
@@ -1617,7 +1617,7 @@ int main(int argc, char **argv)
 	rbtree_free(filename_tree);
 	fr_packet_list_free(pl);
 	while (request_head) TALLOC_FREE(request_head);
-	dict_free();
+	fr_dict_free();
 
 	if (do_summary) {
 		DEBUG("Packet summary:\n"

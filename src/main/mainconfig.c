@@ -781,7 +781,7 @@ int main_config_init(void)
 	 *	the ones in raddb.
 	 */
 	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, RADIUS_DICTIONARY);
-	if (dict_init(main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
+	if (fr_dict_init(main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
 		ERROR("Errors reading dictionary: %s",
 		      fr_strerror());
 		return -1;
@@ -789,7 +789,7 @@ int main_config_init(void)
 
 #define DICT_READ_OPTIONAL(_d, _n) \
 do {\
-	switch (dict_read(_d, _n)) {\
+	switch (fr_dict_read(_d, _n)) {\
 	case -1:\
 		ERROR("Errors reading %s/%s: %s", _d, _n, fr_strerror());\
 		return -1;\
@@ -1072,7 +1072,7 @@ int main_config_free(void)
 	 *	Frees current config and any previous configs.
 	 */
 	TALLOC_FREE(cs_cache);
-	dict_free();
+	fr_dict_free();
 
 	return 0;
 }

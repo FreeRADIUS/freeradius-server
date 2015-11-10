@@ -649,12 +649,12 @@ int main(int argc, char **argv)
 	tv_timeout.tv_sec = timeout;
 	tv_timeout.tv_usec = ((timeout - (float) tv_timeout.tv_sec) * USEC);
 
-	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (fr_dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("dhcpclient");
 		exit(1);
 	}
 
-	if (dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("dhcpclient");
 		exit(1);
 	}
@@ -663,9 +663,9 @@ int main(int argc, char **argv)
 	/*
 	 *	Ensure that dictionary.dhcp is loaded.
 	 */
-	da = dict_attr_by_name("DHCP-Message-Type");
+	da = fr_dict_attr_by_name("DHCP-Message-Type");
 	if (!da) {
-		if (dict_read(dict_dir, "dictionary.dhcp") < 0) {
+		if (fr_dict_read(dict_dir, "dictionary.dhcp") < 0) {
 			ERROR("Failed reading dictionary.dhcp");
 			exit(1);
 		}
@@ -780,7 +780,7 @@ int main(int argc, char **argv)
 		}
 		dhcp_packet_debug(reply, true);
 	}
-	dict_free();
+	fr_dict_free();
 
 	return ret < 0 ? 1 : 0;
 }

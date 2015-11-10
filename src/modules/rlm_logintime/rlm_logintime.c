@@ -230,8 +230,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 * Register a Current-Time comparison function
 	 */
-	paircompare_register(dict_attr_by_num(0, PW_CURRENT_TIME), NULL, true, timecmp, inst);
-	paircompare_register(dict_attr_by_num(0, PW_TIME_OF_DAY), NULL, true, time_of_day, inst);
+	paircompare_register(fr_dict_attr_by_num(0, PW_CURRENT_TIME), NULL, true, timecmp, inst);
+	paircompare_register(fr_dict_attr_by_num(0, PW_TIME_OF_DAY), NULL, true, time_of_day, inst);
 
 	return 0;
 }

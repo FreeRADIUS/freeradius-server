@@ -107,9 +107,9 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int v
 {
 	fr_dict_attr_t const *da;
 
-	da = dict_attr_by_num(vendor, attr);
+	da = fr_dict_attr_by_num(vendor, attr);
 	if (!da) {
-		da = dict_unknown_afrom_fields(ctx, vendor, attr);
+		da = fr_dict_unknown_afrom_fields(ctx, vendor, attr);
 		if (!da) {
 			return NULL;
 		}
@@ -268,7 +268,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	uint8_t 	*data;
 	size_t		size;
 
-	da = dict_unknown_afrom_str(ctx, attribute);
+	da = fr_dict_unknown_afrom_str(ctx, attribute);
 	if (!da) return NULL;
 
 	/*
@@ -278,7 +278,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
 				   "string, not \"%s\"", attribute, value);
 
-		dict_attr_free(&da);
+		fr_dict_attr_free(&da);
 		return NULL;
 	}
 
@@ -289,7 +289,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	 */
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
-		dict_attr_free(&da);
+		fr_dict_attr_free(&da);
 		return NULL;
 	}
 
@@ -313,7 +313,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	/*
 	 *	Convert unknowns to knowns
 	 */
-	da = dict_attr_by_num(vp->da->vendor, vp->da->attr);
+	da = fr_dict_attr_by_num(vp->da->vendor, vp->da->attr);
 	if (da) {
 		return fr_pair_from_unknown(vp, da);
 	}
@@ -386,7 +386,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 *	It's not found in the dictionary, so we use
 	 *	another method to create the attribute.
 	 */
-	da = dict_attr_by_name(attrname);
+	da = fr_dict_attr_by_name(attrname);
 	if (!da) {
 		vp = fr_pair_make_unknown(ctx, attrname, value, op);
 		if (vp && vps) fr_pair_add(vps, vp);
@@ -494,7 +494,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 			return NULL;
 		}
 
-		unknown = dict_unknown_afrom_fields(vp, vp->da->vendor, vp->da->attr);
+		unknown = fr_dict_unknown_afrom_fields(vp, vp->da->vendor, vp->da->attr);
 		if (!unknown) {
 			talloc_free(vp);
 			return NULL;
@@ -588,7 +588,7 @@ int fr_pair_to_unknown(VALUE_PAIR *vp)
 		return 0;
 	}
 
-	da = dict_unknown_afrom_fields(vp, vp->da->vendor, vp->da->attr);
+	da = fr_dict_unknown_afrom_fields(vp, vp->da->vendor, vp->da->attr);
 	if (!da) {
 		return -1;
 	}
@@ -1877,7 +1877,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	if (type != vp->da->type) {
 		fr_dict_attr_t const *da;
 
-		da = dict_attr_by_type(vp->da->vendor, vp->da->attr, type);
+		da = fr_dict_attr_by_type(vp->da->vendor, vp->da->attr, type);
 		if (!da) {
 			fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
 					   fr_int2str(dict_attr_types, type, "<INVALID>"), vp->da->name);
@@ -2349,7 +2349,7 @@ FR_TOKEN fr_pair_raw_from_str(char const **ptr, VALUE_PAIR_RAW *raw)
 		 *	out which operators come after the attribute
 		 *	name.  Yes, our "lexer" is bad.
 		 */
-		if (!dict_attr_allowed_chars[(unsigned int) *t]) {
+		if (!fr_dict_attr_allowed_chars[(unsigned int) *t]) {
 			break;
 		}
 
@@ -2572,7 +2572,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		/*
 		 *	Attribute may be present with multiple names
 		 */
-		da = dict_attr_by_name(vp->da->name);
+		da = fr_dict_attr_by_name(vp->da->name);
 		if (!da) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" (%s) "
 				     "not found in global dictionary",
@@ -2583,7 +2583,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		}
 
 		if (da->type == PW_TYPE_COMBO_IP_ADDR) {
-			da = dict_attr_by_type(vp->da->attr, vp->da->vendor, vp->da->type);
+			da = fr_dict_attr_by_type(vp->da->attr, vp->da->vendor, vp->da->type);
 			if (!da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
 					     "variant (%s) not found in global dictionary",

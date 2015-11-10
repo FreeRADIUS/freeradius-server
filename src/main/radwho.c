@@ -295,12 +295,12 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (fr_dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radwho");
 		return 1;
 	}
 
-	if (dict_read(raddb_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(raddb_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("radwho");
 		return 1;
 	}
