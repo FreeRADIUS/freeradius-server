@@ -74,6 +74,8 @@ module_instance_t *module_instantiate_method(UNUSED CONF_SECTION *modules, UNUSE
 	return NULL;
 }
 
+main_config_t		main_config;				//!< Main server configuration.
+
 /* Linker hacks */
 
 static void NEVER_RETURNS usage(void)
@@ -92,12 +94,14 @@ static int process_file(char const *filename)
 {
 	int rcode;
 	char const *name1, *name2;
-	CONF_SECTION *cs, *main_cs;
+	CONF_SECTION *cs;
 	vp_map_t *head, *map;
 	char buffer[8192];
 
-	main_cs = cf_section_alloc(NULL, "main", NULL);
-	if (cf_file_read(main_cs, filename) < 0) {
+	memset(&main_config, 0, sizeof(main_config));
+
+	main_config.config = cf_section_alloc(NULL, "main", NULL);
+	if (cf_file_read(main_config.config, filename) < 0) {
 		fprintf(stderr, "map_unit: Failed parsing %s\n",
 			filename);
 		exit(1);
@@ -106,9 +110,9 @@ static int process_file(char const *filename)
 	/*
 	 *	Always has to be an "update" section.
 	 */
-	cs = cf_section_sub_find(main_cs, "update");
+	cs = cf_section_sub_find(main_config.config, "update");
 	if (!cs) {
-		talloc_free(main_cs);
+		talloc_free(main_config.config);
 		return -1;
 	}
 
@@ -142,7 +146,7 @@ static int process_file(char const *filename)
 	}
 	printf("}\n");
 
-	talloc_free(main_cs);
+	talloc_free(main_config.config);
 	return 0;
 }
 

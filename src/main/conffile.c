@@ -156,8 +156,6 @@ typedef struct cf_file_t {
 	struct stat	buf;
 } cf_file_t;
 
-CONF_SECTION *root_config = NULL;
-
 
 static int		cf_data_add_internal(CONF_SECTION *cs, char const *name, void *data,
 					     void (*data_free)(void *), int flag);
@@ -3701,18 +3699,6 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION const *cs,
 	return cf_item_to_pair(ci);
 }
 
-/*
- * Find a CONF_SECTION, or return the root if name is NULL
- */
-
-CONF_SECTION *cf_section_find(char const *name)
-{
-	if (name)
-		return cf_section_sub_find(root_config, name);
-	else
-		return root_config;
-}
-
 /** Find a sub-section in a section
  *
  *	This finds ANY section having the same first name.
@@ -3743,7 +3729,6 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 {
 	CONF_ITEM    *ci;
 
-	if (!cs) cs = root_config;
 	if (!cs) return NULL;
 
 	if (name1) {

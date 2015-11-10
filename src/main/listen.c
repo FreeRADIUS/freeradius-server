@@ -1335,7 +1335,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 */
 		client_cs = cf_section_sub_find_name2(parentcs, "clients", section_name);
 		if (!client_cs) {
-			client_cs = cf_section_find(section_name);
+			client_cs = cf_section_sub_find(main_config.config, section_name);
 		}
 		if (!client_cs) {
 			cf_log_err_cs(cs,

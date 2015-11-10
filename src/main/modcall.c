@@ -1823,7 +1823,7 @@ static modcallable *do_compile_modmap(modcallable *parent, rlm_components_t comp
 	map_proc_t *proc;
 	map_proc_inst_t *proc_inst;
 
-	modules = cf_section_find("modules");
+	modules = cf_section_sub_find(main_config.config, "modules");
 	if (!modules) {
 		cf_log_err_cs(cs, "'map' sections require a 'modules' section");
 		return NULL;
@@ -2436,7 +2436,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *
 	 *	Return it to the caller, with the updated method.
 	 */
-	cs = cf_section_find("instantiate");
+	cs = cf_section_sub_find(main_config.config, "instantiate");
 	if (cs) {
 		/*
 		 *	Found "foo".  Load it as "foo", or "foo.method".
@@ -2453,7 +2453,7 @@ static CONF_SECTION *virtual_module_find_cs(rlm_components_t *pcomponent,
 	 *
 	 *	If there's no policy section, we can't do anything else.
 	 */
-	cs = cf_section_find("policy");
+	cs = cf_section_sub_find(main_config.config, "policy");
 	if (!cs) return NULL;
 
 	/*
@@ -2849,7 +2849,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	/*
 	 *	Not a virtual module.  It must be a real module.
 	 */
-	modules = cf_section_find("modules");
+	modules = cf_section_sub_find(main_config.config, "modules");
 	this = NULL;
 	realname = modrefname;
 

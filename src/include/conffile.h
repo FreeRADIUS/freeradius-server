@@ -292,7 +292,6 @@ void		cf_file_free(CONF_SECTION *cs);
 
 CONF_PAIR	*cf_pair_find(CONF_SECTION const *, char const *name);
 CONF_PAIR	*cf_pair_find_next(CONF_SECTION const *, CONF_PAIR const *, char const *name);
-CONF_SECTION	*cf_section_find(char const *name);
 CONF_SECTION	*cf_section_find_name2(CONF_SECTION const *section,
 				       char const *name1, char const *name2);
 CONF_SECTION	*cf_section_sub_find(CONF_SECTION const *, char const *name);
@@ -356,8 +355,6 @@ size_t cf_section_write(FILE *fp, CONF_SECTION *cs, int depth);
 #define CF_FILE_CONFIG (1 << 2)
 #define CF_FILE_MODULE (1 << 3)
 int cf_file_changed(CONF_SECTION *cs, rb_walker_t callback);
-
-extern CONF_SECTION *root_config;
 
 #ifdef __cplusplus
 }
