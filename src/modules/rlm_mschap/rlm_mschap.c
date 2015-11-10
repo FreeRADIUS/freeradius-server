@@ -1163,6 +1163,18 @@ static int CC_HINT(nonnull (1, 2, 4, 5 ,6)) do_mschap(rlm_mschap_t *inst, REQUES
 				return -648;
 			}
 
+			if (strcasestr(buffer, "Account locked out") ||
+			    strcasestr(buffer, "0xC0000234")) {
+				REDEBUG2("%s", buffer);
+				return -647;
+			}
+
+			if (strcasestr(buffer, "Account disabled") ||
+			    strcasestr(buffer, "0xC0000072")) {
+				REDEBUG2("%s", buffer);
+				return -691;
+			}
+
 			RDEBUG2("External script failed");
 			p = strchr(buffer, '\n');
 			if (p) *p = '\0';
@@ -1391,18 +1403,12 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	char		new_challenge[33], buffer[128];
 	char		*p;
 
-	if ((smb_ctrl && ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) != 0)) || (mschap_result == -648)) {
+	if ((mschap_result == -648) ||
+	    (smb_ctrl && ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) != 0))) {
 		REDEBUG("Password has expired.  User should retry authentication");
 		error = 648;
 		retry = inst->allow_retry ? 1 : 0;
 		message = "Password expired";
-		rcode = RLM_MODULE_REJECT;
-
-	} else if (mschap_result < 0) {
-		REDEBUG("MS-CHAP2-Response is incorrect");
-		error = 691;
-		retry = inst->allow_retry ? 1 : 0;
-		message = "Authentication failed";
 		rcode = RLM_MODULE_REJECT;
 	/*
 	 *	Account is disabled.
@@ -1410,10 +1416,12 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	 *	They're found, but they don't exist, so we
 	 *	return 'not found'.
 	 */
-	} else if (smb_ctrl && (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
-				((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0))) {
-		REDEBUG("SMB-Account-Ctrl says that the account is disabled, or is not a normal "
-			"or workstation trust account");
+	} else if ((mschap_result == -691) ||
+		   (smb_ctrl && (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
+				 ((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0)))) {
+		REDEBUG("SMB-Account-Ctrl (or ntlm_auth) "
+			"says that the account is disabled, "
+			"or is not a normal or workstation trust account");
 		error = 691;
 		retry = 1;
 		message = "Account disabled";
@@ -1421,12 +1429,20 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	/*
 	 *	User is locked out.
 	 */
-	} else if (smb_ctrl && ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0)) {
-		REDEBUG("SMB-Account-Ctrl says that the account is locked out");
+	} else if ((mschap_result == -647) ||
+		   (smb_ctrl && ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0))) {
+		REDEBUG("SMB-Account-Ctrl (or ntlm_auth) "
+			"says that the account is locked out");
 		error = 647;
 		retry = 0;
 		message = "Account locked out";
 		rcode = RLM_MODULE_USERLOCK;
+	} else if (mschap_result < 0) {
+		REDEBUG("MS-CHAP2-Response is incorrect");
+		error = 691;
+		retry = inst->allow_retry ? 1 : 0;
+		message = "Authentication failed";
+		rcode = RLM_MODULE_REJECT;
 	}
 
 	if (rcode == RLM_MODULE_OK) return RLM_MODULE_OK;
