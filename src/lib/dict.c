@@ -1038,7 +1038,7 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 		}
 
 		if (!attr && dv->type != 1) {
-			fr_strerror_printf("Cannot have value zero", name);
+			fr_strerror_printf("Cannot have value zero");
 			goto error;
 		}
 
@@ -1093,7 +1093,7 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 		a = fr_hash_table_finddata(fr_main_dict.attributes_by_name, n);
 		if (a && (strcasecmp(a->name, n->name) == 0)) {
 			if (a->attr != n->attr) {
-				fr_strerror_printf("Duplicate attribute name %s", name);
+				fr_strerror_printf("Duplicate attribute name");
 				fr_pool_free(n);
 				goto error;
 			}
@@ -1109,7 +1109,7 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 		fr_hash_table_delete(fr_main_dict.attributes_by_num, a);
 
 		if (!fr_hash_table_replace(fr_main_dict.attributes_by_name, n)) {
-			fr_strerror_printf("Internal error storing attribute %s", name);
+			fr_strerror_printf("Internal error storing attribute");
 			fr_pool_free(n);
 			goto error;
 		}
@@ -1125,7 +1125,7 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 	 *	by value) we want to use the NEW name.
 	 */
 	if (!fr_hash_table_replace(fr_main_dict.attributes_by_num, n)) {
-		fr_strerror_printf("Failed inserting attribute name %s", name);
+		fr_strerror_printf("Failed inserting attribute");
 		goto error;
 	}
 
@@ -1147,12 +1147,12 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 		memcpy(v6, n, sizeof(*v6) + namelen);
 		v6->type = PW_TYPE_IPV6_ADDR;
 		if (!fr_hash_table_replace(fr_main_dict.attributes_combo, v4)) {
-			fr_strerror_printf("Failed inserting attribute name %s - IPv4", name);
+			fr_strerror_printf("Failed inserting IPv4 version of combo attribute");
 			goto error;
 		}
 
 		if (!fr_hash_table_replace(fr_main_dict.attributes_combo, v6)) {
-			fr_strerror_printf("Failed inserting attribute name %s - IPv6", name);
+			fr_strerror_printf("Failed inserting IPv6 version of combo attribute");
 			goto error;
 		}
 	}
