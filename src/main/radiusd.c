@@ -87,7 +87,7 @@ static void sig_hup (int);
  */
 int main(int argc, char *argv[])
 {
-	int		rcode;
+	int		rcode = EXIT_SUCCESS;
 	int		status;
 	int		argval;
 	bool		display_version = false;
