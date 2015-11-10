@@ -717,7 +717,8 @@ static fr_dict_attr_t const *dict_parent(unsigned int attr, unsigned int vendor)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type, ATTR_FLAGS flags)
+int dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, int attr, unsigned int vendor,
+		  PW_TYPE type, ATTR_FLAGS flags)
 {
 	size_t namelen;
 	fr_dict_attr_t const *parent;
@@ -1803,7 +1804,7 @@ static int process_attribute(char const *fn, int const line,
 	/*
 	 *	Add it in.
 	 */
-	if (dict_attr_add(argv[0], value, vendor, type, flags) < 0) {
+	if (dict_attr_add(NULL, argv[0], value, vendor, type, flags) < 0) {
 		fr_strerror_printf("dict_init: %s[%d]: %s", fn, line, fr_strerror());
 		return -1;
 	}
@@ -3492,7 +3493,7 @@ fr_dict_attr_t const *dict_unknown_add(fr_dict_attr_t const *old)
 		flags.long_extended = parent->flags.long_extended;
 	}
 
-	if (dict_attr_add(old->name, old->attr, old->vendor, old->type, flags) < 0) {
+	if (dict_attr_add(NULL, old->name, old->attr, old->vendor, old->type, flags) < 0) {
 		return NULL;
 	}
 

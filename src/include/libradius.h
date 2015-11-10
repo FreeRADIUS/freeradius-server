@@ -212,16 +212,21 @@ extern const int fr_attr_max_tlv;
 extern const int fr_attr_shift[];
 extern const int fr_attr_mask[];
 
+typedef struct dict_attr fr_dict_attr_t;
+
 /** dictionary attribute
  *
  */
-typedef struct dict_attr {
+struct dict_attr {
+	fr_dict_attr_t		*parent;	//!< Parent of this attribute.
+	fr_dict_attr_t		**child;	//!< Children of this attribute.
+
 	unsigned int		attr;
 	PW_TYPE			type;
 	unsigned int		vendor;
 	ATTR_FLAGS		flags;
 	char			name[1];
-} fr_dict_attr_t;
+};
 
 /** value of an enumerated attribute
  *
@@ -476,14 +481,15 @@ do { \
 #define FR_DICT_ATTR_SIZE sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN
 
 extern const int dict_attr_allowed_chars[256];
-int			dict_valid_name(char const *name);
-int			dict_str_to_argv(char *str, char **argv, int max_argc);
-int			dict_str_to_oid(char const *ptr, unsigned int *pattr, unsigned int *pvendor, int tlv_depth);
-int			dict_vendor_add(char const *name, unsigned int value);
-int			dict_attr_add(char const *name, int attr, unsigned int vendor, PW_TYPE type, ATTR_FLAGS flags);
-int			dict_value_add(char const *namestr, char const *attrstr, int value);
-int			dict_init(char const *dir, char const *fn);
-void			dict_free(void);
+int              dict_valid_name(char const *name);
+int              dict_str_to_argv(char *str, char **argv, int max_argc);
+int              dict_str_to_oid(char const *ptr, unsigned int *pattr, unsigned int *pvendor, int tlv_depth);
+int              dict_vendor_add(char const *name, unsigned int value);
+int              dict_attr_add(fr_dict_attr_t *parent, char const *name, int attr, unsigned int vendor, PW_TYPE type,
+			       ATTR_FLAGS flags);
+int              dict_value_add(char const *namestr, char const *attrstr, int value);
+int              dict_init(char const *dir, char const *fn);
+void             dict_free(void);
 
 int			dict_read(char const *dir, char const *filename);
 
