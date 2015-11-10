@@ -480,21 +480,6 @@ int main(int argc, char *argv[])
 	radius_event_start(main_config.config, main_config.spawn_workers);
 
 	/*
-	 *  Now that we've set everything up, we can install the signal
-	 *  handlers.  Before this, if we get any signal, we don't know
-	 *  what to do, so we might as well do the default, and die.
-	 */
-#ifdef SIGPIPE
-	signal(SIGPIPE, SIG_IGN);
-#endif
-
-	if ((fr_set_signal(SIGHUP, sig_hup) < 0) ||
-	    (fr_set_signal(SIGTERM, sig_fatal) < 0)) {
-		ERROR("%s", fr_strerror());
-		exit(EXIT_FAILURE);
-	}
-
-	/*
 	 *  If we're debugging, then a CTRL-C will cause the server to die
 	 *  immediately.  Use SIGTERM to shut down the server cleanly in
 	 *  that case.
@@ -520,6 +505,21 @@ int main(int argc, char *argv[])
 		if (main_config.debug_memory) goto cleanup;
 
 		exit(EXIT_SUCCESS);
+	}
+
+	/*
+	 *  Now that we've set everything up, we can install the signal
+	 *  handlers.  Before this, if we get any signal, we don't know
+	 *  what to do, so we might as well do the default, and die.
+	 */
+#ifdef SIGPIPE
+	signal(SIGPIPE, SIG_IGN);
+#endif
+
+	if ((fr_set_signal(SIGHUP, sig_hup) < 0) ||
+	    (fr_set_signal(SIGTERM, sig_fatal) < 0)) {
+		ERROR("%s", fr_strerror());
+		exit(EXIT_FAILURE);
 	}
 
 #ifdef WITH_STATS
