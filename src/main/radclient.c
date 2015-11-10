@@ -528,7 +528,7 @@ static int radclient_init(TALLOC_CTX *ctx, rc_file_pair_t *files)
 				vp->vp_length += 2;
 				p[1] = vp->vp_length;
 
-				da = dict_attr_by_num(PW_DIGEST_ATTRIBUTES, 0);
+				da = dict_attr_by_num(0, PW_DIGEST_ATTRIBUTES);
 				if (!da) {
 					ERROR("Out of memory");
 					goto error;

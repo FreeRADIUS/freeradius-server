@@ -134,13 +134,13 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		inst->name = cf_section_name1(conf);
 	}
 
-	group_da = dict_attr_by_num(PW_GROUP, 0);
+	group_da = dict_attr_by_num(0, PW_GROUP);
 	if (!group_da) {
 		ERROR("rlm_unix (%s): 'Group' attribute not found in dictionary", inst->name);
 		return -1;
 	}
 
-	user_name_da = dict_attr_by_num(PW_USER_NAME, 0);
+	user_name_da = dict_attr_by_num(0, PW_USER_NAME);
 	if (!user_name_da) {
 		ERROR("rlm_unix (%s): 'User-Name' attribute not found in dictionary", inst->name);
 		return -1;
@@ -154,7 +154,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	{
 		fr_dict_attr_t const *group_name_da;
 
-		group_name_da = dict_attr_by_num(PW_GROUP_NAME, 0);
+		group_name_da = dict_attr_by_num(0, PW_GROUP_NAME);
 		if (!group_name_da) {
 			ERROR("rlm_unix (%s): 'Group-Name' attribute not found in dictionary", inst->name);
 			return -1;

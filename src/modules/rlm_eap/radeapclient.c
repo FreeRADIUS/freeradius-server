@@ -600,7 +600,7 @@ static int rc_init_packet(rc_transaction_t *trans)
 			vp->vp_length += 2;
 			p[1] = vp->vp_length;
 
-			da = dict_attr_by_num(PW_DIGEST_ATTRIBUTES, 0);
+			da = dict_attr_by_num(0, PW_DIGEST_ATTRIBUTES);
 			if (!da) {
 				ERROR("Attribute 'Digest-Attributes' not found by value");
 				exit(1);

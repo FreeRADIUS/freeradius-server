@@ -325,7 +325,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		fr_pair_value_bstrncpy(vp, passcode, inst->id_len);
 	}
 
-	dval = dict_value_by_name(PW_AUTH_TYPE, 0, inst->name);
+	dval = dict_value_by_name(0, PW_AUTH_TYPE, inst->name);
 	if (dval) {
 		vp = radius_pair_create(request, &request->config, PW_AUTH_TYPE, 0);
 		vp->vp_integer = dval->value;

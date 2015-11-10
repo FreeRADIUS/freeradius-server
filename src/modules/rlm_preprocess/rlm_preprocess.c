@@ -182,7 +182,7 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 			continue;
 		}
 
-		da = dict_attr_by_num(number, 12394);
+		da = dict_attr_by_num(12394, number);
 		if (!da) {
 			continue;
 		}

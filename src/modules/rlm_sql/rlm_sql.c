@@ -1040,7 +1040,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		/*
 		 *	Checks if attribute already exists.
 		 */
-		if (paircompare_register_byname(group_attribute, dict_attr_by_num(PW_USER_NAME, 0),
+		if (paircompare_register_byname(group_attribute, dict_attr_by_num(0, PW_USER_NAME),
 						false, sql_groupcmp, inst) < 0) {
 			ERROR("Failed registering group comparison: %s", fr_strerror());
 			return -1;

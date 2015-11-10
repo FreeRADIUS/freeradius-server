@@ -118,7 +118,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->name = cf_section_name1(conf);
 	}
 
-	dval = dict_value_by_name(PW_AUTH_TYPE, 0, inst->name);
+	dval = dict_value_by_name(0, PW_AUTH_TYPE, inst->name);
 	if (dval) {
 		inst->auth_type = dval->value;
 	} else {

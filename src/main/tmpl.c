@@ -735,8 +735,8 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 			 *	If it has, parsing is the same as if the attribute
 			 *	name had been used instead of its OID.
 			 */
-			attr.da = dict_attr_by_num(((fr_dict_attr_t *)&attr.unknown.da)->attr,
-						   ((fr_dict_attr_t *)&attr.unknown.da)->vendor);
+			attr.da = dict_attr_by_num(((fr_dict_attr_t *)&attr.unknown.da)->vendor,
+						   ((fr_dict_attr_t *)&attr.unknown.da)->attr);
 			if (attr.da) {
 				vpt->auto_converted = true;
 				goto do_num;
@@ -1401,7 +1401,7 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *f
 
 	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
 
-	if (dict_attr_add(NULL, vpt->tmpl_unknown_name, -1, 0, type, *flags) < 0) return -1;
+	if (dict_attr_add(NULL, vpt->tmpl_unknown_name, 0, -1, type, *flags) < 0) return -1;
 	da = dict_attr_by_name(vpt->tmpl_unknown_name);
 	if (!da) return -1;
 

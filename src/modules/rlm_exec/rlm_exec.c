@@ -248,7 +248,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	} else {
 		fr_dict_value_t	*dval;
 
-		dval = dict_value_by_name(PW_PACKET_TYPE, 0, inst->packet_type);
+		dval = dict_value_by_name(0, PW_PACKET_TYPE, inst->packet_type);
 		if (!dval) {
 			cf_log_err_cs(conf, "Unknown packet type %s: See list of VALUEs for Packet-Type in "
 				      "share/dictionary", inst->packet_type);

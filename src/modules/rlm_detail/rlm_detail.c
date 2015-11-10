@@ -258,18 +258,18 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
-			src_vp.da = dict_attr_by_num(PW_PACKET_SRC_IP_ADDRESS, 0);
+			src_vp.da = dict_attr_by_num(0, PW_PACKET_SRC_IP_ADDRESS);
 			src_vp.vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 
-			dst_vp.da = dict_attr_by_num(PW_PACKET_DST_IP_ADDRESS, 0);
+			dst_vp.da = dict_attr_by_num(0, PW_PACKET_DST_IP_ADDRESS);
 			dst_vp.vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 			break;
 
 		case AF_INET6:
-			src_vp.da = dict_attr_by_num(PW_PACKET_SRC_IPV6_ADDRESS, 0);
+			src_vp.da = dict_attr_by_num(0, PW_PACKET_SRC_IPV6_ADDRESS);
 			memcpy(&src_vp.vp_ipv6addr, &packet->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
-			dst_vp.da = dict_attr_by_num(PW_PACKET_DST_IPV6_ADDRESS, 0);
+			dst_vp.da = dict_attr_by_num(0, PW_PACKET_DST_IPV6_ADDRESS);
 			memcpy(&dst_vp.vp_ipv6addr, &packet->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
 			break;
@@ -281,9 +281,9 @@ static int detail_write(FILE *out, rlm_detail_t *inst, REQUEST *request, RADIUS_
 		detail_fr_pair_fprint(request, out, &src_vp);
 		detail_fr_pair_fprint(request, out, &dst_vp);
 
-		src_vp.da = dict_attr_by_num(PW_PACKET_SRC_PORT, 0);
+		src_vp.da = dict_attr_by_num(0, PW_PACKET_SRC_PORT);
 		src_vp.vp_integer = packet->src_port;
-		dst_vp.da = dict_attr_by_num(PW_PACKET_DST_PORT, 0);
+		dst_vp.da = dict_attr_by_num(0, PW_PACKET_DST_PORT);
 		dst_vp.vp_integer = packet->dst_port;
 
 		detail_fr_pair_fprint(request, out, &src_vp);

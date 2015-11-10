@@ -498,7 +498,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 			 *	unknown attr.
 			 */
 		unknown:
-			vp->da = dict_unknown_afrom_fields(vp, vp->da->attr, vp->da->vendor);
+			vp->da = dict_unknown_afrom_fields(vp, vp->da->vendor, vp->da->attr);
 			/* FALL-THROUGH */
 
 		default:

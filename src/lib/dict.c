@@ -541,12 +541,12 @@ void dict_free(void)
 /*
  *	Add vendor to the list.
  */
-int dict_vendor_add(char const *name, unsigned int value)
+int dict_vendor_add(char const *name, unsigned int num)
 {
 	size_t length;
 	fr_dict_vendor_t *dv;
 
-	if (value >= FR_MAX_VENDOR) {
+	if (num >= FR_MAX_VENDOR) {
 		fr_strerror_printf("dict_vendor_add: Cannot handle vendor ID larger than 2^24");
 		return -1;
 	}
@@ -562,7 +562,7 @@ int dict_vendor_add(char const *name, unsigned int value)
 	}
 
 	strcpy(dv->name, name);
-	dv->vendorpec = value;
+	dv->vendorpec = num;
 	dv->type = dv->length = 1; /* defaults */
 
 	if (!fr_hash_table_insert(fr_main_dict.vendors_by_name, dv)) {
@@ -647,7 +647,7 @@ int dict_valid_name(char const *name)
 /*
  *	Bamboo skewers under the fingernails in 5, 4, 3, 2, ...
  */
-static fr_dict_attr_t const *dict_parent(unsigned int attr, unsigned int vendor)
+static const fr_dict_attr_t *dict_parent(unsigned int vendor, unsigned int attr)
 {
 	int i;
 	unsigned int base_vendor;
@@ -679,7 +679,7 @@ static fr_dict_attr_t const *dict_parent(unsigned int attr, unsigned int vendor)
 
 			parent = attr & fr_attr_parent_mask[i];
 
-			if (parent != attr) return dict_attr_by_num(parent, vendor); /* not base_vendor */
+			if (parent != attr) return dict_attr_by_num(vendor, parent); /* not base_vendor */
 		}
 
 		/*
@@ -694,7 +694,7 @@ static fr_dict_attr_t const *dict_parent(unsigned int attr, unsigned int vendor)
 	/*
 	 *	It's an extended attribute.  Return the base Extended-Attr-X
 	 */
-	if (attr < 256) return dict_attr_by_num((vendor / FR_MAX_VENDOR) & 0xff, 0);
+	if (attr < 256) return dict_attr_by_num(0, (vendor / FR_MAX_VENDOR) & 0xff);
 
 	/*
 	 *	Figure out which attribute it is.
@@ -703,7 +703,7 @@ static fr_dict_attr_t const *dict_parent(unsigned int attr, unsigned int vendor)
 		unsigned int parent;
 
 		parent = attr & fr_attr_parent_mask[i];
-		if (parent != attr) return dict_attr_by_num(parent, vendor); /* not base_vendor */
+		if (parent != attr) return dict_attr_by_num(vendor, parent); /* not base_vendor */
 	}
 
 	return NULL;
@@ -717,8 +717,8 @@ static fr_dict_attr_t const *dict_parent(unsigned int attr, unsigned int vendor)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, int attr, unsigned int vendor,
-		  PW_TYPE type, ATTR_FLAGS flags)
+int dict_attr_add(fr_dict_attr_t *parent2, char const *name, unsigned int vendor, int attr, PW_TYPE type,
+		  ATTR_FLAGS flags)
 {
 	size_t namelen;
 	fr_dict_attr_t const *parent;
@@ -778,7 +778,7 @@ int dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, int attr, un
 	 *	sets them when he's not supposed to set them, that's
 	 *	an error.
 	 */
-	parent = dict_parent(attr, vendor);
+	parent = dict_parent(vendor, attr);
 	if (parent) {
 		/*
 		 *	We're still in the same space and the parent isn't a TLV.  That's an error.
@@ -808,7 +808,7 @@ int dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, int attr, un
 		 *	attribute, but the parent extended attribute
 		 *	doesn't exist?  That's an error.
 		 */
-		da = dict_attr_by_num(vendor / FR_MAX_VENDOR, 0);
+		da = dict_attr_by_num(0, vendor / FR_MAX_VENDOR);
 		if (!da) {
 			fr_strerror_printf("Extended attributes must be defined from the extended space");
 			goto error;
@@ -1167,7 +1167,7 @@ int dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, int attr, un
 /*
  *	Add a value for an attribute to the dictionary.
  */
-int dict_value_add(char const *namestr, char const *attrstr, int value)
+int dict_value_add(char const *attr, char const *alias, int value)
 {
 	size_t		length;
 	fr_dict_attr_t const	*da;
@@ -1175,12 +1175,12 @@ int dict_value_add(char const *namestr, char const *attrstr, int value)
 
 	static fr_dict_attr_t const *last_attr = NULL;
 
-	if (!*namestr) {
+	if (!*alias) {
 		fr_strerror_printf("dict_value_add: empty names are not permitted");
 		return -1;
 	}
 
-	if ((length = strlen(namestr)) >= FR_DICT_VALUE_MAX_NAME_LEN) {
+	if ((length = strlen(alias)) >= FR_DICT_VALUE_MAX_NAME_LEN) {
 		fr_strerror_printf("dict_value_add: value name too long");
 		return -1;
 	}
@@ -1191,7 +1191,7 @@ int dict_value_add(char const *namestr, char const *attrstr, int value)
 	}
 	memset(dval, 0, sizeof(*dval));
 
-	strcpy(dval->name, namestr);
+	strcpy(dval->name, alias);
 	dval->value = value;
 
 	/*
@@ -1199,10 +1199,10 @@ int dict_value_add(char const *namestr, char const *attrstr, int value)
 	 *	save a lot of lookups on dictionary initialization by
 	 *	caching the last attribute.
 	 */
-	if (last_attr && (strcasecmp(attrstr, last_attr->name) == 0)) {
+	if (last_attr && (strcasecmp(attr, last_attr->name) == 0)) {
 		da = last_attr;
 	} else {
-		da = dict_attr_by_name(attrstr);
+		da = dict_attr_by_name(attr);
 		last_attr = da;
 	}
 
@@ -1214,7 +1214,7 @@ int dict_value_add(char const *namestr, char const *attrstr, int value)
 		if (da->flags.has_value_alias) {
 			fr_strerror_printf(
 				"dict_value_add: Cannot add VALUE for ATTRIBUTE \"%s\": It already has a VALUE-ALIAS",
-				attrstr);
+				attr);
 			return -1;
 		}
 
@@ -1271,7 +1271,7 @@ int dict_value_add(char const *namestr, char const *attrstr, int value)
 		}
 		memset(fixup, 0, sizeof(*fixup));
 
-		strlcpy(fixup->attrstr, attrstr, sizeof(fixup->attrstr));
+		strlcpy(fixup->attrstr, attr, sizeof(fixup->attrstr));
 		fixup->dval = dval;
 
 		/*
@@ -1299,7 +1299,7 @@ int dict_value_add(char const *namestr, char const *attrstr, int value)
 				 *	name and value.  There are lots in
 				 *	dictionary.ascend.
 				 */
-				old = dict_value_by_name(da->attr, da->vendor, namestr);
+				old = dict_value_by_name(da->vendor, da->attr, alias);
 				if (old && (old->value == dval->value)) {
 					fr_pool_free(dval);
 					return 0;
@@ -1307,8 +1307,8 @@ int dict_value_add(char const *namestr, char const *attrstr, int value)
 			}
 
 			fr_pool_free(dval);
-			fr_strerror_printf("dict_value_add: Duplicate value name %s for attribute %s", namestr,
-					   attrstr);
+			fr_strerror_printf("dict_value_add: Duplicate value name %s for attribute %s", alias,
+					   attr);
 			return -1;
 		}
 	}
@@ -1319,7 +1319,7 @@ int dict_value_add(char const *namestr, char const *attrstr, int value)
 	 */
 	if (!fr_hash_table_replace(fr_main_dict.values_by_num, dval)) {
 		fr_strerror_printf("dict_value_add: Failed inserting value %s",
-				   namestr);
+				   alias);
 		return -1;
 	}
 
@@ -1387,7 +1387,7 @@ int dict_str_to_oid(unsigned int *p_vendor, unsigned int *p_attr, char const *oi
 	 *	Otherwise, check that the vendor exists.
 	 */
 	if (*p_attr) {
-		da = dict_attr_by_num(*p_attr, *p_vendor);
+		da = dict_attr_by_num(*p_vendor, *p_attr);
 		if (!da) {
 			fr_strerror_printf("Parent attribute is undefined");
 			return -1;
@@ -1549,7 +1549,7 @@ static int process_attribute(char const *fn, int const line,
 		/*
 		 *	Set the flags based on the parents flags.
 		 */
-		da = dict_parent(value, vendor);
+		da = dict_parent(vendor, value);
 		if (!da) {
 			fr_strerror_printf("dict_init: %s[%d]: Parent attribute is undefined.", fn, line);
 			return -1;
@@ -1803,7 +1803,7 @@ static int process_attribute(char const *fn, int const line,
 	/*
 	 *	Add it in.
 	 */
-	if (dict_attr_add(NULL, argv[0], value, vendor, type, flags) < 0) {
+	if (dict_attr_add(NULL, argv[0], vendor, value, type, flags) < 0) {
 		fr_strerror_printf("dict_init: %s[%d]: %s", fn, line, fr_strerror());
 		return -1;
 	}
@@ -1814,8 +1814,7 @@ static int process_attribute(char const *fn, int const line,
 /*
  *	Process the VALUE command
  */
-static int process_value(char const *fn, int const line, char **argv,
-			 int argc)
+static int process_value(char const *fn, int const line, char **argv, int argc)
 {
 	unsigned int value;
 
@@ -1839,7 +1838,7 @@ static int process_value(char const *fn, int const line, char **argv,
 		return -1;
 	}
 
-	if (dict_value_add(argv[1], argv[0], value) < 0) {
+	if (dict_value_add(argv[0], argv[1], value) < 0) {
 		char buffer[256];
 
 		strlcpy(buffer, fr_strerror(), sizeof(buffer));
@@ -1858,8 +1857,7 @@ static int process_value(char const *fn, int const line, char **argv,
  *	This allows VALUE mappings to be shared among multiple
  *	attributes.
  */
-static int process_value_alias(char const *fn, int const line, char **argv,
-			       int argc)
+static int process_value_alias(char const *fn, int const line, char **argv, int argc)
 {
 	fr_dict_attr_t const *my_da, *da;
 	fr_dict_value_t *dval;
@@ -1998,8 +1996,7 @@ static int parse_format(char const *fn, int line, char const *format, int *pvalu
 /*
  *	Process the VENDOR command
  */
-static int process_vendor(char const *fn, int const line, char **argv,
-			  int argc)
+static int process_vendor(char const *fn, int const line, char **argv, int argc)
 {
 	int value;
 	int type, length;
@@ -2688,8 +2685,7 @@ int dict_init(char const *dir, char const *fn)
 	return 0;
 }
 
-static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr,
-			     int dv_type)
+static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr, int dv_type)
 {
 	int nest;
 	size_t outlen;
@@ -2763,7 +2759,7 @@ void dict_attr_free(fr_dict_attr_t const **da)
  * @param[in] vendor number.
  * @return 0 on success.
  */
-int dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int attr, unsigned int vendor)
+int dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int vendor, unsigned int attr)
 {
 	char *p;
 	int dv_type = 1;
@@ -2832,7 +2828,7 @@ int dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int attr, unsigned int
  * @param[in] vendor number.
  * @return 0 on success.
  */
-fr_dict_attr_t const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
+fr_dict_attr_t const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr)
 {
 	uint8_t *p;
 	fr_dict_attr_t *da;
@@ -2845,7 +2841,7 @@ fr_dict_attr_t const *dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int at
 	da = (fr_dict_attr_t *)p;
 	talloc_set_type(da, fr_dict_attr_t);
 
-	if (dict_unknown_from_fields(da, attr, vendor) < 0) {
+	if (dict_unknown_from_fields(da, vendor, attr) < 0) {
 		talloc_free(p);
 		return NULL;
 	}
@@ -2986,7 +2982,7 @@ int dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 	 *	extended name of the "evs" foundta type.
 	 */
 	if (*p == '.') {
-		found = dict_attr_by_num(attr, 0);
+		found = dict_attr_by_num(0, attr);
 		if (!found) {
 			fr_strerror_printf("Cannot parse names without dictionaries");
 
@@ -3067,7 +3063,7 @@ int dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 		return -1;
 	}
 
-	return dict_unknown_from_fields(da, attr, vendor);
+	return dict_unknown_from_fields(da, vendor, attr);
 }
 
 /** Create a fr_dict_attr_t from an ASCII attribute and value
@@ -3156,7 +3152,7 @@ int dict_unknown_from_substr(fr_dict_attr_t *da, char const **name)
 /*
  *	Get an attribute by its numerical value.
  */
-fr_dict_attr_t const *dict_attr_by_num(unsigned int attr, unsigned int vendor)
+fr_dict_attr_t const *dict_attr_by_num(unsigned int vendor, unsigned int attr)
 {
 	fr_dict_attr_t da;
 
@@ -3174,8 +3170,7 @@ fr_dict_attr_t const *dict_attr_by_num(unsigned int attr, unsigned int vendor)
  *
  * @return The attribute, or NULL if not found.
  */
-fr_dict_attr_t const *dict_attr_by_type(unsigned int attr, unsigned int vendor,
-					PW_TYPE type)
+fr_dict_attr_t const *dict_attr_by_type(unsigned int vendor, unsigned int attr, PW_TYPE type)
 {
 	fr_dict_attr_t da;
 
@@ -3189,16 +3184,15 @@ fr_dict_attr_t const *dict_attr_by_type(unsigned int attr, unsigned int vendor,
 /** Using a parent and attr/vendor, find a child attr/vendor
  *
  */
-int dict_attr_child(fr_dict_attr_t const *parent,
-		    unsigned int *pattr, unsigned int *pvendor)
+int dict_attr_child(fr_dict_attr_t const *parent, unsigned int *p_vendor, unsigned int *p_attr)
 {
 	unsigned int attr, vendor;
 	fr_dict_attr_t da;
 
-	if (!parent || !pattr || !pvendor) return false;
+	if (!parent || !p_attr || !p_vendor) return false;
 
-	attr = *pattr;
-	vendor = *pvendor;
+	attr = *p_attr;
+	vendor = *p_vendor;
 
 	/*
 	 *	Only some types can have children
@@ -3265,15 +3259,15 @@ find:
 			da.vendor, da.attr);
 #endif
 
-	*pattr = da.attr;
-	*pvendor = da.vendor;
+	*p_attr   = da.attr;
+	*p_vendor = da.vendor;
 	return true;
 }
 
 /*
  *	Get an attribute by it's numerical value, and the parent
  */
-fr_dict_attr_t const *dict_attr_by_parent(fr_dict_attr_t const *parent, unsigned int attr, unsigned int vendor)
+fr_dict_attr_t const *dict_attr_by_parent(fr_dict_attr_t const *parent, unsigned int vendor, unsigned int attr)
 {
 	unsigned int my_attr, my_vendor;
 	fr_dict_attr_t da;
@@ -3281,7 +3275,7 @@ fr_dict_attr_t const *dict_attr_by_parent(fr_dict_attr_t const *parent, unsigned
 	my_attr = attr;
 	my_vendor = vendor;
 
-	if (!dict_attr_child(parent, &my_attr, &my_vendor)) return NULL;
+	if (!dict_attr_child(parent, &my_vendor, &my_attr)) return NULL;
 
 	da.attr = my_attr;
 	da.vendor = my_vendor;
@@ -3364,7 +3358,7 @@ fr_dict_attr_t const *dict_attr_by_name_substr(char const **name)
 /*
  *	Associate a value with an attribute and return it.
  */
-fr_dict_value_t *dict_value_by_attr(unsigned int attr, unsigned int vendor, int value)
+fr_dict_value_t *dict_value_by_attr(unsigned int vendor, unsigned int attr, int value)
 {
 	fr_dict_value_t dval, *dv;
 
@@ -3390,11 +3384,11 @@ fr_dict_value_t *dict_value_by_attr(unsigned int attr, unsigned int vendor, int 
 /*
  *	Associate a value with an attribute and return it.
  */
-char const *dict_value_name_by_attr(unsigned int attr, unsigned int vendor, int value)
+char const *dict_value_name_by_attr(unsigned int vendor, unsigned int attr, int value)
 {
 	fr_dict_value_t *dv;
 
-	dv = dict_value_by_attr(attr, vendor, value);
+	dv = dict_value_by_attr(vendor, attr, value);
 	if (!dv) return "";
 
 	return dv->name;
@@ -3403,7 +3397,7 @@ char const *dict_value_name_by_attr(unsigned int attr, unsigned int vendor, int 
 /*
  *	Get a value by its name, keyed off of an attribute.
  */
-fr_dict_value_t *dict_value_by_name(unsigned int attr, unsigned int vendor, char const *name)
+fr_dict_value_t *dict_value_by_name(unsigned int vendor, unsigned int attr, char const *name)
 {
 	fr_dict_value_t *my_dv, *dv;
 	uint32_t buffer[(sizeof(*my_dv) + FR_DICT_VALUE_MAX_NAME_LEN + 3) / 4];
@@ -3478,13 +3472,13 @@ fr_dict_attr_t const *dict_unknown_add(fr_dict_attr_t const *old)
 
 	if (!old->flags.is_unknown) return old;
 
-	da = dict_attr_by_num(old->attr, old->vendor);
+	da = dict_attr_by_num(old->vendor, old->attr);
 	if (da) return da;
 
 	memcpy(&flags, &old->flags, sizeof(flags));
 	flags.is_unknown = false;
 
-	parent = dict_parent(old->attr, old->vendor);
+	parent = dict_parent(old->vendor, old->attr);
 	if (parent) {
 		if (parent->flags.has_tlv) flags.is_tlv = true;
 		flags.evs = parent->flags.evs;
@@ -3492,10 +3486,10 @@ fr_dict_attr_t const *dict_unknown_add(fr_dict_attr_t const *old)
 		flags.long_extended = parent->flags.long_extended;
 	}
 
-	if (dict_attr_add(NULL, old->name, old->attr, old->vendor, old->type, flags) < 0) {
+	if (dict_attr_add(NULL, old->name, old->vendor, old->attr, old->type, flags) < 0) {
 		return NULL;
 	}
 
-	da = dict_attr_by_num(old->attr, old->vendor);
+	da = dict_attr_by_num(old->vendor, old->attr);
 	return da;
 }
