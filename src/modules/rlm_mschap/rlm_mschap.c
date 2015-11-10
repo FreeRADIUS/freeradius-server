@@ -1408,15 +1408,16 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 	    (smb_ctrl && ((smb_ctrl->vp_integer & ACB_PW_EXPIRED) != 0))) {
 		REDEBUG("Password has expired.  User should retry authentication");
 		error = 648;
-		retry = inst->allow_retry ? 1 : 0;
+		retry = inst->allow_retry;
 		message = "Password expired";
 		rcode = RLM_MODULE_REJECT;
-	/*
-	 *	Account is disabled.
-	 *
-	 *	They're found, but they don't exist, so we
-	 *	return 'not found'.
-	 */
+
+		/*
+		 *	Account is disabled.
+		 *
+		 *	They're found, but they don't exist, so we
+		 *	return 'not found'.
+		 */
 	} else if ((mschap_result == -691) ||
 		   (smb_ctrl && (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
 				 ((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0)))) {
@@ -1424,12 +1425,13 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 			"says that the account is disabled, "
 			"or is not a normal or workstation trust account");
 		error = 691;
-		retry = 1;
+		retry = 0;
 		message = "Account disabled";
 		rcode = RLM_MODULE_NOTFOUND;
-	/*
-	 *	User is locked out.
-	 */
+
+		/*
+		 *	User is locked out.
+		 */
 	} else if ((mschap_result == -647) ||
 		   (smb_ctrl && ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0))) {
 		REDEBUG("SMB-Account-Ctrl (or ntlm_auth) "
@@ -1438,10 +1440,11 @@ static rlm_rcode_t mschap_error(rlm_mschap_t *inst, REQUEST *request, unsigned c
 		retry = 0;
 		message = "Account locked out";
 		rcode = RLM_MODULE_USERLOCK;
+
 	} else if (mschap_result < 0) {
 		REDEBUG("MS-CHAP2-Response is incorrect");
 		error = 691;
-		retry = inst->allow_retry ? 1 : 0;
+		retry = inst->allow_retry;
 		message = "Authentication failed";
 		rcode = RLM_MODULE_REJECT;
 	}
