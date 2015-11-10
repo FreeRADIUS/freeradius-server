@@ -756,19 +756,14 @@ int fr_dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned 
 	 *	and use that.
 	 */
 	if (attr == -1) {
-		if (fr_dict_attr_by_name(name)) {
-			return 0; /* exists, don't add it again */
-		}
+		if (fr_dict_attr_by_name(name)) return 0; /* exists, don't add it again */
 
 		attr = ++max_attr;
-
 	} else if (vendor == 0) {
 		/*
 		 *  Update 'max_attr'
 		 */
-		if (attr > max_attr) {
-			max_attr = attr;
-		}
+		if (attr > max_attr) max_attr = attr;
 	}
 
 	/*
