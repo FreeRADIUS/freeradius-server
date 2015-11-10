@@ -469,7 +469,7 @@ int main(int argc, char *argv[])
 	 *	Initialize the threads ONLY if we're spawning, AND
 	 *	we're running normally.
 	 */
-	if (main_config.spawn_workers && !check_config && (thread_pool_init() < 0)) exit(EXIT_FAILURE);
+	if (main_config.spawn_workers && (thread_pool_init() < 0)) exit(EXIT_FAILURE);
 #endif
 
 	event_loop_started = true;
