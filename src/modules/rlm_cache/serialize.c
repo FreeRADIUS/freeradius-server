@@ -104,13 +104,14 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 {
 	vp_map_t	**last = &c->maps;
 	char		*p, *q;
+	vp_map_t	*map;
 
 	if (inlen < 0) inlen = strlen(in);
 
 	p = in;
 
 	while (((size_t)(p - in)) < (size_t)inlen) {
-		vp_map_t	*map = NULL;
+		map = NULL;
 
 		q = strchr(p, '\n');
 		if (!q) break;	/* List should also be terminated with a \n */
@@ -120,9 +121,7 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 				       REQUEST_CURRENT, PAIR_LIST_REQUEST,
 				       REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
 			fr_strerror_printf("Failed parsing pair: %s", p);
-		error:
-			talloc_free(map);
-			return -1;
+			goto error;
 		}
 
 		if (map->lhs->type != TMPL_TYPE_ATTR) {
@@ -151,12 +150,12 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 		if (map->lhs->tmpl_da->vendor == 0) switch (map->lhs->tmpl_da->attr) {
 		case PW_CACHE_CREATED:
 			c->created = map->rhs->tmpl_data_value.date;
-			talloc_free(map);
+			TALLOC_FREE(map);
 			goto next;
 
 		case PW_CACHE_EXPIRES:
 			c->expires = map->rhs->tmpl_data_value.date;
-			talloc_free(map);
+			TALLOC_FREE(map);
 			goto next;
 
 		default:
@@ -172,4 +171,8 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 	}
 
 	return 0;
+
+error:
+	TALLOC_FREE(map);
+	return -1;
 }
