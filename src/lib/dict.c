@@ -717,7 +717,7 @@ static const fr_dict_attr_t *dict_parent(unsigned int vendor, unsigned int attr)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int dict_attr_add(fr_dict_attr_t *parent2, char const *name, unsigned int vendor, int attr, PW_TYPE type,
+int dict_attr_add(UNUSED fr_dict_attr_t *parent2, char const *name, unsigned int vendor, int attr, PW_TYPE type,
 		  ATTR_FLAGS flags)
 {
 	size_t namelen;
