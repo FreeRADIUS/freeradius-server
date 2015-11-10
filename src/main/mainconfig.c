@@ -972,6 +972,8 @@ do {\
 
 	FR_INTEGER_BOUND_CHECK("cleanup_delay", main_config.cleanup_delay, <=, 10);
 
+	FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, <=, main_config.cleanup_delay, 0);
+
 	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, >=, 2 * 1024);
 	FR_INTEGER_BOUND_CHECK("resources.talloc_pool_size", main_config.talloc_pool_size, <=, 1024 * 1024);
 
@@ -1018,16 +1020,8 @@ do {\
 	xlat_register(NULL, "listen", xlat_listen, NULL, NULL, 0, XLAT_DEFAULT_BUF_LEN);
 
 	/*
-	 *  Go update our behaviour, based on the configuration
-	 *  changes.
+	 *	Ensure cwd is inside the chroot.
 	 */
-
-	/*
-	 *	Sanity check the configuration for internal
-	 *	consistency.
-	 */
-	FR_TIMEVAL_BOUND_CHECK("reject_delay", &main_config.reject_delay, <=, main_config.cleanup_delay, 0);
-
 	if (chroot_dir) {
 		if (chdir(radlog_dir) < 0) {
 			ERROR("Failed to 'chdir %s' after chroot: %s",
