@@ -122,6 +122,7 @@ int cache_deserialize(rlm_cache_entry_t *c, char *in, ssize_t inlen)
 			fr_strerror_printf("Failed parsing pair: %s", p);
 		error:
 			talloc_free(map);
+			return -1;
 		}
 
 		if (map->lhs->type != TMPL_TYPE_ATTR) {
