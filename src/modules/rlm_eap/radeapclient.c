@@ -2166,6 +2166,7 @@ int main(int argc, char **argv)
 	int c;
 	char *filename = NULL;
 	FILE *fp;
+	fr_dict_t *dict;
 
 	static fr_log_t radclient_log = {
 		.colourise = true,
@@ -2331,7 +2332,7 @@ int main(int argc, char **argv)
 	 *	the ones in raddb.
 	 */
 	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, RADIUS_DICTIONARY);
-	if (fr_dict_init(main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
+	if (fr_dict_init(autofree, &dict, main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
 		ERROR("Errors reading dictionary: %s", fr_strerror());
 		exit(1);
 	}
@@ -2339,7 +2340,7 @@ int main(int argc, char **argv)
 	/*
 	 *	It's OK if this one doesn't exist.
 	 */
-	int rcode = fr_dict_read(radius_dir, RADIUS_DICTIONARY);
+	int rcode = fr_dict_read(dict, radius_dir, RADIUS_DICTIONARY);
 	if (rcode == -1) {
 		ERROR("Errors reading %s/%s: %s", radius_dir, RADIUS_DICTIONARY, fr_strerror());
 		exit(1);

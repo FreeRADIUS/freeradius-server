@@ -949,7 +949,6 @@ int main(int argc, char *argv[])
 
 finish:
 	talloc_free(request);
-
 	talloc_free(state);
 
 	/*

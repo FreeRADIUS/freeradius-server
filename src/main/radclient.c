@@ -1162,6 +1162,7 @@ int main(int argc, char **argv)
 	int		parallel = 1;
 	rc_request_t	*this;
 	int		force_af = AF_UNSPEC;
+	fr_dict_t	*dict = NULL;
 
 	/*
 	 *	It's easier having two sets of flags to set the
@@ -1360,12 +1361,12 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fr_dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radclient");
 		return 1;
 	}
 
-	if (fr_dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(dict, radius_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("radclient");
 		return 1;
 	}
@@ -1617,7 +1618,7 @@ int main(int argc, char **argv)
 	rbtree_free(filename_tree);
 	fr_packet_list_free(pl);
 	while (request_head) TALLOC_FREE(request_head);
-	fr_dict_free();
+	talloc_free(dict);
 
 	if (do_summary) {
 		DEBUG("Packet summary:\n"

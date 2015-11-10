@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
 	bool report = false;
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
+	fr_dict_t *dict;
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -189,12 +190,12 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (fr_dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radattr");
 		return 1;
 	}
 
-	if (fr_dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(dict, radius_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("radattr");
 		return 1;
 	}
@@ -207,7 +208,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (report) {
-		fr_dict_free();
+		talloc_free(dict);
 		fr_log_talloc_report(NULL);
 	}
 

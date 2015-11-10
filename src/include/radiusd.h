@@ -176,6 +176,8 @@ typedef struct main_config {
 #ifdef WITH_CONF_WRITE
 	char const	*write_dir;			//!< where the normalized config is written
 #endif
+
+	fr_dict_t	*dict;				//!< Main dictionary.
 } main_config_t;
 
 #if defined(WITH_VERIFY_PTR)

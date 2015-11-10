@@ -589,7 +589,8 @@ int main(int argc, char **argv)
 	char const		*radius_dir = RADDBDIR;
 	char const		*dict_dir = DICTDIR;
 	char const		*filename = NULL;
-	fr_dict_attr_t const		*da;
+	fr_dict_attr_t const	*da;
+	fr_dict_t		*dict = NULL;
 
 	RADIUS_PACKET		*request = NULL;
 	RADIUS_PACKET		*reply = NULL;
@@ -649,12 +650,12 @@ int main(int argc, char **argv)
 	tv_timeout.tv_sec = timeout;
 	tv_timeout.tv_usec = ((timeout - (float) tv_timeout.tv_sec) * USEC);
 
-	if (fr_dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("dhcpclient");
 		exit(1);
 	}
 
-	if (fr_dict_read(radius_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(dict, radius_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("dhcpclient");
 		exit(1);
 	}
@@ -665,7 +666,7 @@ int main(int argc, char **argv)
 	 */
 	da = fr_dict_attr_by_name("DHCP-Message-Type");
 	if (!da) {
-		if (fr_dict_read(dict_dir, "dictionary.dhcp") < 0) {
+		if (fr_dict_read(dict, dict_dir, "dictionary.dhcp") < 0) {
 			ERROR("Failed reading dictionary.dhcp");
 			exit(1);
 		}
@@ -780,7 +781,7 @@ int main(int argc, char **argv)
 		}
 		dhcp_packet_debug(reply, true);
 	}
-	fr_dict_free();
+	talloc_free(dict);
 
 	return ret < 0 ? 1 : 0;
 }

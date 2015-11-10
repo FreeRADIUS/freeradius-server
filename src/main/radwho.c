@@ -212,6 +212,7 @@ int main(int argc, char **argv)
 	uint32_t nas_port = ~0;
 	uint32_t nas_ip_address = INADDR_NONE;
 	int zap = 0;
+	fr_dict_t *dict = NULL;
 
 	raddb_dir = RADIUS_DIR;
 
@@ -295,12 +296,12 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if (fr_dict_init(dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radwho");
 		return 1;
 	}
 
-	if (fr_dict_read(raddb_dir, RADIUS_DICTIONARY) == -1) {
+	if (fr_dict_read(dict, raddb_dir, RADIUS_DICTIONARY) == -1) {
 		fr_perror("radwho");
 		return 1;
 	}
@@ -547,6 +548,7 @@ int main(int argc, char **argv)
 		}
 	}
 	fclose(fp);
+	talloc_free(dict);
 
 	return 0;
 }

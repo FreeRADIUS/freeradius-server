@@ -482,6 +482,8 @@ do { \
 
 #define FR_DICT_ATTR_SIZE sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN
 
+typedef struct fr_dict fr_dict_t;
+
 extern const int fr_dict_attr_allowed_chars[256];
 int			fr_dict_valid_name(char const *name);
 
@@ -491,10 +493,9 @@ int			fr_dict_vendor_add(char const *name, unsigned int value);
 int			fr_dict_attr_add(fr_dict_attr_t *parent, char const *name, unsigned int vendor, int attr, PW_TYPE type,
 				  ATTR_FLAGS flags);
 int			fr_dict_value_add(char const *attrstr, char const *namestr, int value);
-int			fr_dict_init(char const *dir, char const *fn);
-void			fr_dict_free(void);
+int			fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *fn);
 
-int			fr_dict_read(char const *dir, char const *filename);
+int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
 
 void			fr_dict_attr_free(fr_dict_attr_t const **da);
 int			fr_dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int vendor, unsigned int attr);
