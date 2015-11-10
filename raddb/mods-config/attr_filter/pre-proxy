@@ -33,7 +33,7 @@
 #nochap
 #	User-Name =* ANY,
 #	User-Password =* ANY,
-#	NAS-Ip-Address =* ANY,
+#	NAS-IP-Address =* ANY,
 #	NAS-Identifier =* ANY
 
 # The entry for the 'brokenas' realm removes the attribute NAS-Port-Type
