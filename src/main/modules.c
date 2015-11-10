@@ -1347,7 +1347,109 @@ static int pass2_cb(UNUSED void *ctx, void *data)
 	return 0;
 }
 
-static bool server_define_types(CONF_SECTION *cs);
+
+static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
+{
+	uint32_t value;
+	fr_dict_value_t *dval;
+
+	/*
+	 *	If the value already exists, don't
+	 *	create it again.
+	 */
+	dval = fr_dict_value_by_name(da->vendor, da->attr, name);
+	if (dval) {
+		if (dval->value == 0) {
+			ERROR("The dictionaries must not define VALUE %s %s 0",
+			      da->name, name);
+			return false;
+		}
+		return true;
+	}
+
+	/*
+	 *	Create a new unique value with a
+	 *	meaningless number.  You can't look at
+	 *	it from outside of this code, so it
+	 *	doesn't matter.  The only requirement
+	 *	is that it's unique.
+	 */
+	do {
+		value = (fr_rand() & 0x00ffffff) + 1;
+	} while (fr_dict_value_by_attr(da->vendor, da->attr, value));
+
+	cf_log_module(cs, "Creating %s = %s", da->name, name);
+	if (fr_dict_value_add(da->name, name, value) < 0) {
+		ERROR("%s", fr_strerror());
+		return false;
+	}
+
+	return true;
+}
+
+
+static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
+{
+	fr_dict_attr_t const *da;
+	CONF_ITEM *ci;
+
+	/*
+	 *	Find the attribute used to store VALUEs for this section.
+	 */
+	da = fr_dict_attr_by_num(0, section_type_value[comp].attr);
+	if (!da) {
+		cf_log_err_cs(cs,
+			      "No such attribute %s",
+			      section_type_value[comp].typename);
+		return false;
+	}
+
+	/*
+	 *	Define dynamic types, so that others can reference
+	 *	them.
+	 */
+	for (ci = cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(cs, ci)) {
+		char const *name1;
+		CONF_SECTION *subcs;
+
+		/*
+		 *	Create types for simple references
+		 *	only when parsing the authenticate
+		 *	section.
+		 */
+		if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
+		    cf_item_is_pair(ci)) {
+			CONF_PAIR *cp = cf_item_to_pair(ci);
+			if (!define_type(cs, da, cf_pair_attr(cp))) {
+				return false;
+			}
+
+			continue;
+		}
+
+		if (!cf_item_is_section(ci)) continue;
+
+		subcs = cf_item_to_section(ci);
+		name1 = cf_section_name1(subcs);
+
+		/*
+		 *	Not Auth-Type, etc.
+		 */
+		if (strcmp(name1, section_type_value[comp].typename) != 0) continue;
+
+		/*
+		 *	And define it.
+		 */
+		if (!define_type(cs, da, cf_section_name2(subcs))) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
 
 /*
  *	Bootstrap Auth-Type, etc.
@@ -1364,21 +1466,78 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
-		char const *name2;
+		CONF_ITEM *ci;
 
-		name2 = cf_section_name2(cs);
-		if (!name2) {
+		if (!cf_section_name2(cs)) {
 			cf_log_err_cs(cs, "server sections must have a name");
 			return -1;
 		}
 
-		/*
-		 *	Root through each virtual server, defining
-		 *	Autz-Type and Auth-Type.  This is so that the
-		 *	modules can reference a particular type.
-		 */
-		if (!server_define_types(cs)) return -1;
-	}
+		for (ci = cf_item_find_next(cs, NULL);
+		     ci != NULL;
+		     ci = cf_item_find_next(cs, ci)) {
+			rlm_components_t comp;
+			char const *name1;
+			CONF_SECTION *subcs;
+
+			if (cf_item_is_pair(ci)) {
+				cf_log_err(ci, "Cannot set variables inside of a virtual server.");
+				return -1;
+			}
+
+			/*
+			 *	CONF_DATA, etc.
+			 */
+			if (!cf_item_is_section(ci)) continue;
+
+			subcs = cf_item_to_section(ci);
+			name1 = cf_section_name1(subcs);
+
+			/*
+			 *	No internal types or checking for VMPS
+			 *	and DHCP.
+			 */
+#ifdef WITH_VMPS
+			if (strcmp(name1, "vmps") == 0) continue;
+#endif
+
+#ifdef WITH_DHCP
+			if (strcmp(name1, "dhcp") == 0) continue;
+#endif
+
+			/*
+			 *	Ignore clients and listeners for now.
+			 */
+			if (strcmp(name1, "clients") == 0) continue;
+
+			if (strcmp(name1, "listen") == 0) continue;
+
+			/*
+			 *	See if it's a RADIUS section.
+			 */
+			for (comp = 0; comp < MOD_COUNT; ++comp) {
+				if (strcmp(name1, section_type_value[comp].section) == 0) break;
+			}
+
+			/*
+			 *	This will be changed into an error in
+			 *	a later release.
+			 */
+			if (comp == MOD_COUNT) {
+				WARN("%s[%d]: Ignoring unknown sub-section '%s'",
+				     cf_section_filename(subcs), cf_section_lineno(subcs),
+				     name1);
+				continue;
+			}
+
+			/*
+			 *	Define Auth-Type for "authenticate",
+			 *	Autz-Type for "authorize", etc.
+			 */
+			if (!virtual_server_define_types(subcs, comp)) return -1;
+
+		} /* loop over things inside of a virtual server */
+	} /* loop over virtual servers */
 
 	return 0;
 }
@@ -1544,119 +1703,6 @@ int modules_hup(CONF_SECTION *modules)
 	return 1;
 }
 
-
-static int define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
-{
-	uint32_t value;
-	fr_dict_value_t *dval;
-
-	/*
-	 *	If the value already exists, don't
-	 *	create it again.
-	 */
-	dval = fr_dict_value_by_name(da->vendor, da->attr, name);
-	if (dval) {
-		if (dval->value == 0) {
-			ERROR("The dictionaries must not define VALUE %s %s 0",
-			      da->name, name);
-			return 0;
-		}
-		return 1;
-	}
-
-	/*
-	 *	Create a new unique value with a
-	 *	meaningless number.  You can't look at
-	 *	it from outside of this code, so it
-	 *	doesn't matter.  The only requirement
-	 *	is that it's unique.
-	 */
-	do {
-		value = (fr_rand() & 0x00ffffff) + 1;
-	} while (fr_dict_value_by_attr(da->vendor, da->attr, value));
-
-	cf_log_module(cs, "Creating %s = %s", da->name, name);
-	if (fr_dict_value_add(da->name, name, value) < 0) {
-		ERROR("%s", fr_strerror());
-		return 0;
-	}
-
-	return 1;
-}
-
-/*
- *	Define Auth-Type, etc. in a server.
- */
-static bool server_define_types(CONF_SECTION *cs)
-{
-	rlm_components_t	comp;
-
-	/*
-	 *	Loop over all of the components
-	 */
-	for (comp = 0; comp < MOD_COUNT; ++comp) {
-		CONF_SECTION *subcs;
-		CONF_ITEM *modref;
-		fr_dict_attr_t const *da;
-
-		subcs = cf_section_sub_find(cs,
-					    section_type_value[comp].section);
-		if (!subcs) continue;
-
-		if (cf_item_find_next(subcs, NULL) == NULL) continue;
-
-		/*
-		 *	Find the attribute used to store VALUEs for this section.
-		 */
-		da = fr_dict_attr_by_num(0, section_type_value[comp].attr);
-		if (!da) {
-			cf_log_err_cs(subcs,
-				   "No such attribute %s",
-				   section_type_value[comp].typename);
-			return false;
-		}
-
-		/*
-		 *	Define dynamic types, so that others can reference
-		 *	them.
-		 */
-		for (modref = cf_item_find_next(subcs, NULL);
-		     modref != NULL;
-		     modref = cf_item_find_next(subcs, modref)) {
-			char const *name1;
-			CONF_SECTION *subsubcs;
-
-			/*
-			 *	Create types for simple references
-			 *	only when parsing the authenticate
-			 *	section.
-			 */
-			if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
-			    cf_item_is_pair(modref)) {
-				CONF_PAIR *cp = cf_item_to_pair(modref);
-				if (!define_type(cs, da, cf_pair_attr(cp))) {
-					return false;
-				}
-
-				continue;
-			}
-
-			if (!cf_item_is_section(modref)) continue;
-
-			subsubcs = cf_item_to_section(modref);
-			name1 = cf_section_name1(subsubcs);
-
-			if (strcmp(name1, section_type_value[comp].typename) == 0) {
-			  if (!define_type(cs, da,
-					   cf_section_name2(subsubcs))) {
-				  return false;
-			  }
-			}
-		}
-	} /* loop over components */
-
-	return true;
-}
 
 extern char const *unlang_keyword[];
 
