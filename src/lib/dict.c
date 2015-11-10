@@ -1804,12 +1804,7 @@ static int process_attribute(char const *fn, int const line,
 	 *	Add it in.
 	 */
 	if (dict_attr_add(argv[0], value, vendor, type, flags) < 0) {
-		char buffer[256];
-
-		strlcpy(buffer, fr_strerror(), sizeof(buffer));
-
-		fr_strerror_printf("dict_init: %s[%d]: %s",
-				   fn, line, buffer);
+		fr_strerror_printf("dict_init: %s[%d]: %s", fn, line, fr_strerror());
 		return -1;
 	}
 
