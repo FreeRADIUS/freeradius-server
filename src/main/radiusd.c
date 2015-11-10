@@ -87,7 +87,7 @@ static void sig_hup (int);
  */
 int main(int argc, char *argv[])
 {
-	int		rcode = EXIT_SUCCESS;
+	int		rcode;
 	int		status;
 	int		argval;
 	bool		display_version = false;
@@ -469,13 +469,13 @@ int main(int argc, char *argv[])
 	 *	Initialize the threads ONLY if we're spawning, AND
 	 *	we're running normally.
 	 */
-	if (main_config.spawn_workers && !check_config && (thread_pool_init() < 0)) fr_exit(1);
+	if (main_config.spawn_workers && !check_config && (thread_pool_init() < 0)) exit(EXIT_FAILURE);
 #endif
 
 	event_loop_started = true;
 
 	/*
-	 *  Start the event loop(s) and threads.
+	 *  Start the event loop.
 	 */
 	radius_event_start(main_config.config, main_config.spawn_workers);
 
@@ -581,11 +581,13 @@ int main(int argc, char *argv[])
 #endif
 		main_config_hup();
 	}
+
 	if (status < 0) {
 		ERROR("Exiting due to internal error: %s", fr_strerror());
 		rcode = EXIT_FAILURE;
 	} else {
 		INFO("Exiting normally");
+		rcode = EXIT_SUCCESS;
 	}
 
 	/*
