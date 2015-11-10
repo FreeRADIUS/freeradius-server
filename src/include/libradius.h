@@ -212,23 +212,30 @@ extern const int fr_attr_max_tlv;
 extern const int fr_attr_shift[];
 extern const int fr_attr_mask[];
 
-/** dictionary attribute
+typedef struct dict_attr fr_dict_attr_t;
+
+/** Dictionary attribute
  *
  */
-typedef struct dict_attr {
-	unsigned int		attr;
-	PW_TYPE			type;
-	unsigned int		vendor;
-	ATTR_FLAGS		flags;
-	char			name[1];
-} fr_dict_attr_t;
+struct dict_attr {
+	unsigned int		vendor;				//!< Vendor that defines this attribute.
+	unsigned int		attr;				//!< Attribute number.
+	PW_TYPE			type;				//!< Value type.
+
+	fr_dict_attr_t		*parent;			//!< Immediate parent of this attribute.
+	fr_dict_attr_t		**children;			//!< Children of this attribute.
+	unsigned int		nesting;			//!< Depth of nesting for this attribute.
+
+	ATTR_FLAGS		flags;				//!< Flags.
+	char			name[1];			//!< Attribute name.
+};
 
 /** value of an enumerated attribute
  *
  */
 typedef struct dict_value {
-	unsigned int		attr;
 	unsigned int		vendor;
+	unsigned int		attr;
 	int			value;
 	char			name[1];
 } fr_dict_value_t;
