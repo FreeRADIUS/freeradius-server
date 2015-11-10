@@ -541,8 +541,6 @@ int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
 int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
 
-int		rad_attr_ok(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			    fr_dict_attr_t *da, uint8_t const *data, size_t length);
 int		rad_tlv_ok(uint8_t const *data, size_t length,
 			   size_t dv_type, size_t dv_length);
 
