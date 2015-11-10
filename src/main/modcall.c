@@ -2713,7 +2713,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 		buffer[p - buffer] = '\0';
 
-		cs = cf_section_sub_find_name2(NULL, "server", buffer);
+		cs = cf_section_sub_find_name2(main_config.config, "server", buffer);
 		if (!cs) {
 			cf_log_err(ci, "No such server \"%s\".", buffer);
 			return NULL;
