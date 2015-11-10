@@ -1371,11 +1371,10 @@ static int sscanf_i(char const *str, unsigned int *pvalue)
  *
  *	<whew>!  Are we crazy, or what?
  */
-int dict_str_to_oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
-		    int tlv_depth)
+int dict_str_to_oid(unsigned int *p_vendor, unsigned int *p_attr, char const *oid, int tlv_depth)
 {
 	char const *p;
-	unsigned int value;
+	unsigned int attr;
 	fr_dict_attr_t const *da = NULL;
 
 	if (tlv_depth > fr_attr_max_tlv) {
@@ -1384,11 +1383,11 @@ int dict_str_to_oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor
 	}
 
 	/*
-	 *	If *pvalue is set, check if the attribute exists.
+	 *	If *p_attr is set, check if the attribute exists.
 	 *	Otherwise, check that the vendor exists.
 	 */
-	if (*pvalue) {
-		da = dict_attr_by_num(*pvalue, *pvendor);
+	if (*p_attr) {
+		da = dict_attr_by_num(*p_attr, *p_vendor);
 		if (!da) {
 			fr_strerror_printf("Parent attribute is undefined");
 			return -1;
@@ -1400,22 +1399,22 @@ int dict_str_to_oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor
 			return -1;
 		}
 
-	} else if ((*pvendor & (FR_MAX_VENDOR - 1)) != 0) {
-		if (!dict_vendor_by_num(*pvendor & (FR_MAX_VENDOR - 1))) {
+	} else if ((*p_vendor & (FR_MAX_VENDOR - 1)) != 0) {
+		if (!dict_vendor_by_num(*p_vendor & (FR_MAX_VENDOR - 1))) {
 			fr_strerror_printf("Unknown vendor %u",
-					   *pvendor & (FR_MAX_VENDOR - 1));
+					   *p_vendor & (FR_MAX_VENDOR - 1));
 			return -1;
 		}
 	}
 
-	p = strchr(ptr, '.');
+	p = strchr(oid, '.');
 
 	/*
 	 *	Look for 26.VID.x.y
 	 *
 	 *	If we find it, re-write the parameters, and recurse.
 	 */
-	if (!*pvendor && (tlv_depth == 0) && (*pvalue == PW_VENDOR_SPECIFIC)) {
+	if (!*p_vendor && (tlv_depth == 0) && (*p_attr == PW_VENDOR_SPECIFIC)) {
 		fr_dict_vendor_t const *dv;
 
 		if (!p) {
@@ -1423,21 +1422,21 @@ int dict_str_to_oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor
 			return -1;
 		}
 
-		if (!sscanf_i(ptr, pvendor)) {
+		if (!sscanf_i(oid, p_vendor)) {
 			fr_strerror_printf("Invalid number in attribute");
 			return -1;
 		}
 
-		if (*pvendor >= FR_MAX_VENDOR) {
+		if (*p_vendor >= FR_MAX_VENDOR) {
 			fr_strerror_printf("Cannot handle vendor ID larger than 2^24");
 
 			return -1;
 		}
 
-		dv = dict_vendor_by_num(*pvendor & (FR_MAX_VENDOR - 1));
+		dv = dict_vendor_by_num(*p_vendor & (FR_MAX_VENDOR - 1));
 		if (!dv) {
 			fr_strerror_printf("Unknown vendor \"%u\" ",
-					   *pvendor & (FR_MAX_VENDOR - 1));
+					   *p_vendor & (FR_MAX_VENDOR - 1));
 			return -1;
 		}
 
@@ -1446,37 +1445,37 @@ int dict_str_to_oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor
 		 *	recurse.  This causes the various checks above
 		 *	to be done.
 		 */
-		*pvalue = 0;
-		return dict_str_to_oid(p + 1, pvalue, pvendor, 0);
+		*p_attr = 0;
+		return dict_str_to_oid(p_vendor, p_attr, p + 1, 0);
 	}
 
-	if (!sscanf_i(ptr, &value)) {
+	if (!sscanf_i(oid, &attr)) {
 		fr_strerror_printf("Invalid number in attribute");
 		return -1;
 	}
 
-	if (!*pvendor && (tlv_depth == 1) && da &&
+	if (!*p_vendor && (tlv_depth == 1) && da &&
 	    (da->flags.has_tlv || da->flags.extended)) {
 
-		*pvendor = *pvalue * FR_MAX_VENDOR;
-		*pvalue = value;
+		*p_vendor = *p_attr * FR_MAX_VENDOR;
+		*p_attr = attr;
 
 		if (!p) return 0;
-		return dict_str_to_oid(p + 1, pvalue, pvendor, 1);
+		return dict_str_to_oid(p_vendor, p_attr, p + 1, 1);
 	}
 
 	/*
 	 *	And pack the data according to the scheme described in
 	 *	the comments at the start of this function.
 	 */
-	if (*pvalue) {
-		*pvalue |= (value & fr_attr_mask[tlv_depth]) << fr_attr_shift[tlv_depth];
+	if (*p_attr) {
+		*p_attr |= (attr & fr_attr_mask[tlv_depth]) << fr_attr_shift[tlv_depth];
 	} else {
-		*pvalue = value;
+		*p_attr = attr;
 	}
 
 	if (p) {
-		return dict_str_to_oid(p + 1, pvalue, pvendor, tlv_depth + 1);
+		return dict_str_to_oid(p_vendor, p_attr, p + 1, tlv_depth + 1);
 	}
 
 	return tlv_depth;
@@ -1537,7 +1536,7 @@ static int process_attribute(char const *fn, int const line,
 		/*
 		 *	Parse the rest of the OID.
 		 */
-		if (dict_str_to_oid(p + 1, &value, &vendor, tlv_depth + 1) < 0) {
+		if (dict_str_to_oid(&vendor, &value, p + 1, tlv_depth + 1) < 0) {
 			char buffer[256];
 
 			strlcpy(buffer, fr_strerror(), sizeof(buffer));
@@ -3054,7 +3053,7 @@ int dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 	}
 
 	if (*p == '.') {
-		if (dict_str_to_oid(p + 1, &attr, &vendor, 1) < 0) {
+		if (dict_str_to_oid(&vendor, &attr, p + 1, 1) < 0) {
 			return -1;
 		}
 	}

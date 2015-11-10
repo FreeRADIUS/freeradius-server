@@ -483,7 +483,7 @@ do { \
 extern const int dict_attr_allowed_chars[256];
 int              dict_valid_name(char const *name);
 int              dict_str_to_argv(char *str, char **argv, int max_argc);
-int              dict_str_to_oid(char const *ptr, unsigned int *pattr, unsigned int *pvendor, int tlv_depth);
+int              dict_str_to_oid(unsigned int *pvendor, unsigned int *pattr, char const *oid, int tlv_depth);
 int              dict_vendor_add(char const *name, unsigned int value);
 int              dict_attr_add(fr_dict_attr_t *parent, char const *name, int attr, unsigned int vendor, PW_TYPE type,
 			       ATTR_FLAGS flags);
