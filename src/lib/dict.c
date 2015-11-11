@@ -798,6 +798,30 @@ static inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t con
 	return NULL;
 }
 
+static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
+				   	  char const *name, unsigned int vendor, int attr,
+				   	  PW_TYPE type, ATTR_FLAGS flags)
+{
+	fr_dict_attr_t *da;
+	size_t namelen = strlen(name);
+
+	da = (fr_dict_attr_t *)talloc_zero_array(ctx, uint8_t, sizeof(*da) + namelen);
+	if (!da) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+	talloc_set_type(da, fr_dict_attr_t);
+
+	memcpy(da->name, name, namelen);
+	da->name[namelen] = '\0';
+	da->attr = attr;
+	da->vendor = vendor;
+	da->type = type;
+	da->flags = flags;
+
+	return da;
+}
+
 /** Add an attribute to the dictionary
  *
  * @todo we need to check length of none vendor attributes.
@@ -1141,23 +1165,12 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		flags.wimax = dv->flags;
 	} /* it's a VSA of some kind */
 
-	/*
-	 *	Create a new attribute for the list
-	 */
-	n = (fr_dict_attr_t *)talloc_zero_array(fr_main_dict->pool, uint8_t, sizeof(*n) + namelen);
+	n = fr_dict_attr_alloc(fr_main_dict->pool, name, vendor, attr, type, flags);
 	if (!n) {
 	oom:
 		fr_strerror_printf("Out of memory");
 		goto error;
 	}
-	talloc_set_type(n, fr_dict_attr_t);
-
-	memcpy(n->name, name, namelen);
-	n->name[namelen] = '\0';
-	n->attr = attr;
-	n->vendor = vendor;
-	n->type = type;
-	n->flags = flags;
 
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
