@@ -41,9 +41,7 @@ typedef struct fr_protocol_t {
 	CONF_PARSER		*proto_config;
 
 	uint32_t		transports;
-#ifdef WITH_TLS
 	bool			tls;
-#endif
 
 	rad_listen_parse_t	parse;
 	rad_listen_free_t	free;
