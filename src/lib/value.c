@@ -758,6 +758,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		break;
 
 	case PW_TYPE_STRUCTURAL_EXCEPT_VSA:
+	case PW_TYPE_VENDOR:
 	case PW_TYPE_BAD:
 		fr_strerror_printf("Invalid type %d", *src_type);
 		return -1;
@@ -1698,6 +1699,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 	case PW_TYPE_LONG_EXTENDED:
 	case PW_TYPE_EVS:
 	case PW_TYPE_VSA:
+	case PW_TYPE_VENDOR:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_MAX:
 		fr_assert(0);
@@ -1933,6 +1935,7 @@ print_int:
 	case PW_TYPE_LONG_EXTENDED:
 	case PW_TYPE_EVS:
 	case PW_TYPE_VSA:
+	case PW_TYPE_VENDOR:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_BOOLEAN:
 	case PW_TYPE_MAX:

@@ -116,6 +116,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "ipv4prefix",    PW_TYPE_IPV4_PREFIX },
 	{ "cidr",          PW_TYPE_IPV4_PREFIX },
 	{ "vsa",           PW_TYPE_VSA },
+	{ "vendor",        PW_TYPE_VENDOR },
 	{ NULL,            0 }
 };
 
@@ -606,11 +607,42 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 {
 	char buff[256];
 	unsigned int i;
+	char const *name;
 
 	fr_dict_snprint_flags(buff, sizeof(buff), da->flags);
 
-	printf("%.*sATTR \"%s\" vendor: %x (%i), num: %x (%i), type: %s, flags: %s\n", depth,
-	       "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t", da->name,
+	switch (da->type) {
+	case PW_TYPE_VSA:
+		name = "VSA";
+		break;
+
+	case PW_TYPE_EXTENDED:
+		name = "EXTENDED";
+		break;
+
+	case PW_TYPE_TLV:
+		name = "TLV";
+		break;
+
+	case PW_TYPE_EVS:
+		name = "EVS";
+		break;
+
+	case PW_TYPE_VENDOR:
+		name = "VENDOR";
+		break;
+
+	case PW_TYPE_LONG_EXTENDED:
+		name = "LONG EXTENDED";
+		break;
+
+	default:
+		name = "ATTR";
+		break;
+	}
+
+	printf("%.*s%s \"%s\" vendor: %x (%i), num: %x (%i), type: %s, flags: %s\n", depth,
+	       "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t", name, da->name,
 	       da->vendor, da->vendor, da->attr, da->attr,
 	       fr_int2str(dict_attr_types, da->type, "?Unknown?"), buff);
 
@@ -684,9 +716,6 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
 	 */
 	child->parent = parent;
 	child->depth = parent->depth + 1;
-	child->flags.extended |= parent->flags.extended;
-	child->flags.long_extended |= parent->flags.long_extended;
-	child->flags.evs |= parent->flags.evs;
 
 	/*
 	 *	We only allocate the pointer array *if* the parent has children.
@@ -774,6 +803,7 @@ static inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t con
 	default:
 		return NULL;
 
+	case PW_TYPE_VENDOR:
 	case PW_TYPE_VSA:
 	case PW_TYPE_TLV:
 	case PW_TYPE_EVS:
@@ -881,20 +911,46 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	}
 
 	/*
-	 *	Check the parent attribute, and flags that are only
-	 *	meant to be set internally.
+	 *	We're still in the same space and the parent isn't a TLV.  That's an error.
+	 *
+	 *	Otherwise, fr_dict_parent_by_num() has taken us from an Extended sub-attribute to
+	 *	a *the* Extended attribute, whish isn't what we want here.
 	 */
-	if (parent) {
-		/*
-		 *	We're still in the same space and the parent isn't a TLV.  That's an error.
-		 *
-		 *	Otherwise, fr_dict_parent_by_num() has taken us from an Extended sub-attribute to
-		 *	a *the* Extended attribute, whish isn't what we want here.
-		 */
-		if (!flags.internal && (vendor == parent->vendor) && (parent->type != PW_TYPE_TLV)) {
-			fr_strerror_printf("Has parent attribute %s which is not of type 'tlv'", parent->name);
-			goto error;
+	if (!flags.internal && (vendor == parent->vendor) && (parent->type != PW_TYPE_TLV)) {
+		fr_strerror_printf("Has parent attribute %s which is not of type 'tlv'", parent->name);
+		goto error;
+	}
+
+	/*
+	 *	Special case for VSAs - We need to pre-create the hierachy
+	 */
+	if ((vendor & (FR_MAX_VENDOR - 1)) && parent->flags.is_root) {
+		ATTR_FLAGS new_flags;
+
+		fr_dict_attr_t const *vsa_attr, *vendor_attr;
+		fr_dict_attr_t *new;
+		fr_dict_attr_t *mutable;
+
+		memset(&new_flags, 0, sizeof(new_flags));
+
+		vsa_attr = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
+		if (!vsa_attr) {
+			memcpy(&mutable, &parent, sizeof(mutable));
+			new = fr_dict_attr_alloc(mutable, "Vendor-Specific", 0,
+						 PW_VENDOR_SPECIFIC, PW_TYPE_VSA, new_flags);
+			fr_dict_attr_child_add(mutable, new);
+			vsa_attr = new;
 		}
+
+		vendor_attr = fr_dict_attr_child_by_num(vsa_attr, (vendor & (FR_MAX_VENDOR - 1)));
+		if (!vendor_attr) {
+			memcpy(&mutable, &vsa_attr, sizeof(mutable));
+			new = fr_dict_attr_alloc(mutable, "vendor", 0,
+						 (vendor & (FR_MAX_VENDOR - 1)), PW_TYPE_VENDOR, new_flags);
+			fr_dict_attr_child_add(mutable, new);
+			vendor_attr = new;
+		}
+		parent = vendor_attr;
 	}
 
 	/*
@@ -914,10 +970,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			fr_strerror_printf("Extended attributes must be defined from the extended space");
 			goto error;
 		}
-
-		flags.extended |= da->flags.extended;
-		flags.long_extended |= da->flags.long_extended;
-		flags.evs |= da->flags.evs;
 
 		/*
 		 *	There's still a real vendor.  Since it's an

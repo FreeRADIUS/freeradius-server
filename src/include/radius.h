@@ -31,6 +31,7 @@ typedef enum {
 	PW_TYPE_INTEGER64,			//!< 64 Bit unsigned integer.
 	PW_TYPE_IPV4_PREFIX,			//!< IPv4 Prefix.
 	PW_TYPE_VSA,				//!< Vendor-Specific, for RADIUS attribute 26.
+	PW_TYPE_VENDOR,				//!< Attribute that represents a vendor in the attribute tree.
 	PW_TYPE_TIMEVAL,			//!< Time value (struct timeval), only for config items.
 	PW_TYPE_BOOLEAN,			//!< A truth value.
 	PW_TYPE_COMBO_IP_PREFIX,		//!< WiMAX IPv4 or IPv6 address prefix depending on length.
@@ -60,7 +61,8 @@ typedef enum {
  */
 #define PW_TYPE_STRUCTURAL \
 	PW_TYPE_STRUCTURAL_EXCEPT_VSA: \
-     	case PW_TYPE_VSA
+     	case PW_TYPE_VSA: \
+     	case PW_TYPE_VENDOR
 
 /** RADIUS packet codes
  *
