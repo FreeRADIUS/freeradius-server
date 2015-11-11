@@ -67,8 +67,25 @@ static void print_packet(RADIUS_PACKET *packet)
 }
 #endif
 
+/*
+ *	This is a structure which holds all of the listeners.  The
+ *	listeners may appear in multiple places, so we want to be able
+ *	to know where they are, without trolling through all of the configuration.
+ */
+typedef struct listen_config_t {
+	struct listen_config_t *next;	//!< the next listener
+	CONF_SECTION	*server;	//!< encapsulating server configuratiuon
+	CONF_SECTION	*cs;		//!< configuration for this listener
+	char const	*server_name;	//!< name of the virtual server (if any)
+	lt_dlhandle	*handle;	//!< to dynamically loaded library (if any)
+	RAD_LISTEN_TYPE	type;		//! same as Listen-Socket-Type
+	fr_protocol_t	*proto;		//!< pointer to the protocol handler.
+} listen_config_t;
 
-static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type);
+static TALLOC_CTX *listen_ctx = NULL;
+static listen_config_t *listen_config = NULL;
+
+static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, fr_protocol_t *proto);
 
 #ifdef WITH_COMMAND_SOCKET
 static int command_tcp_recv(rad_listen_t *listener);
@@ -76,9 +93,158 @@ static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
 static int command_write_magic(int newfd, listen_socket_t *sock);
 #endif
 
-static int last_listener = RAD_LISTEN_MAX;
-#define MAX_LISTENER (256)
-static fr_protocol_t master_listen[MAX_LISTENER];
+static fr_protocol_t master_listen[];
+
+static int _listen_config_free(listen_config_t *lc)
+{
+	dlclose(lc->handle);
+	return 0;
+}
+
+/*
+ *	Bootstrap a listener.  Do basic sanity checking, load plugins,
+ *	define types.
+ */
+int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_name)
+{
+	listen_config_t **last = &listen_config;
+	listen_config_t	*lc;
+	CONF_PAIR	*cp;
+	char const	*value;
+	fr_dict_value_t const *dv;
+	lt_dlhandle	*handle = NULL;
+	fr_protocol_t	*proto = NULL;
+
+	if (!listen_ctx) listen_ctx = talloc_init("listen_config_t");
+
+	while (*last != NULL) last = &(*last)->next;
+
+	cp = cf_pair_find(cs, "type");
+	if (!cp) {
+		cf_log_err_cs(cs, "No 'type' specified in listen section");
+		return -1;
+	}
+
+	value = cf_pair_value(cp);
+	if (!value) {
+		cf_log_err_cs(cs, "Invalid 'type' specified in listen section");
+		return -1;
+	}
+
+#ifdef WITH_PROXY
+	/*
+	 *	Only control sockets and proxy sockets are global for now.
+	 */
+	if (!server_name) {
+		if ((strcmp(value, "control") != 0) &&
+		    (strcmp(value, "proxy") != 0)) {
+			cf_log_err_cs(cs, "Listeners of type '%s' MUST be defined in a server.", value);
+			return -1;
+		}
+
+	} else {
+		if ((strcmp(value, "control") == 0) ||
+		    (strcmp(value, "proxy") == 0)) {
+			cf_log_err_cs(cs, "Listeners of type '%s' MUST NOT be defined in a server.", value);
+			return -1;
+		}
+	}
+#endif
+
+	/*
+	 *	Anything NOT these types are plugins.
+	 *
+	 *	At some point, we'll move all of these to plugins.
+	 */
+	if (!((strcmp(value, "control") == 0) ||
+	      (strcmp(value, "status") == 0) ||
+	      (strcmp(value, "coa") == 0) ||
+	      (strcmp(value, "detail") == 0) ||
+	      (strcmp(value, "auth") == 0) ||
+	      (strcmp(value, "acct") == 0) ||
+	      (strcmp(value, "auth+acct") == 0))) {
+		char buffer[256];
+		static int max_listener = 256;
+
+		/*
+		 *	Load the library.
+		 */
+		snprintf(buffer, sizeof(buffer), "proto_%s", value);
+		handle = lt_dlopenext(buffer);
+		if (!handle) {
+			cf_log_err_cs(cs, "Failed loading dynamic protocol %s", value);
+			return -1;
+		}
+
+		/*
+		 *	Find the main symbol, which is the same as the
+		 *	library name.
+		 */
+		proto = dlsym(handle, buffer);
+		if (!proto) {
+			cf_log_err_cs(cs,
+				      "Failed linking to protocol %s : %s\n",
+				      value, dlerror());
+			dlclose(handle);
+			return -1;
+		}
+
+		if (proto->magic !=  RLM_MODULE_INIT) {
+			ERROR("Failed to load protocol '%s', it has the wrong version.", value);
+			dlclose(handle);
+			return -1;
+		}
+
+		/*
+		 *	We need numbers for internal use.
+		 */
+		dv = fr_dict_value_by_name(0, PW_LISTEN_SOCKET_TYPE, value);
+		if (!dv) {
+			if (fr_dict_value_add("Listen-Socket-Type", value, max_listener++) < 0) {
+				cf_log_err_cs(cs,
+					      "Failed adding dictionary entry for protocol %s: %s",
+					      value, fr_strerror());
+				dlclose(handle);
+				return -1;
+			}
+		}
+	}
+
+	/*
+	 *	The type MUST now be defined in the dictionaries.
+	 */
+	dv = fr_dict_value_by_name(0, PW_LISTEN_SOCKET_TYPE, value);
+	if (!dv) {
+		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s",
+			      value);
+		if (handle) lt_dlclose(handle);
+		return -1;
+	}
+
+	if (!proto) proto = &master_listen[dv->value];
+
+	/*
+	 *	We allocate listeners from a new context, so that we can
+	 *	re-use them on HUP.
+	 */
+	lc = talloc_zero(listen_ctx, listen_config_t);
+	if (!lc) return -1;
+
+	*last = lc;
+
+	lc->server = server;
+	lc->cs = cs;
+	lc->server_name = server_name;
+	lc->handle = handle;
+	lc->type = dv->value;
+	lc->proto = proto;
+
+	if (handle) talloc_set_destructor(lc, _listen_config_free);
+
+
+	return 0;
+}
+
 
 /*
  *	Find a per-socket client.
@@ -650,7 +816,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	 *	because the allocations for the packet, etc. in the
 	 *	child listener will be done in a child thread.
 	 */
-	this = listen_alloc(NULL, listener->type);
+	this = listen_alloc(NULL, listener->type, listener->proto);
 	if (!this) return -1;
 
 	/*
@@ -764,7 +930,7 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 {
 	size_t len;
 	listen_socket_t *sock = this->data;
-	char const *name = master_listen[this->type].name;
+	char const *name = this->proto->name;
 
 #define FORWARD len = strlen(buffer); if (len >= (bufsize + 1)) return 0;buffer += len;bufsize -= len
 #define ADDSTRING(_x) strlcpy(buffer, _x, bufsize);FORWARD
@@ -2278,7 +2444,7 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 /*
  *	Handle up to 256 different protocols.
  */
-static fr_protocol_t master_listen[MAX_LISTENER] = {
+static fr_protocol_t master_listen[] = {
 #ifdef WITH_STATS
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
@@ -2875,8 +3041,8 @@ static int _listener_free(rad_listen_t *this)
 	 */
 	if (this->fd >= 0) close(this->fd);
 
-	if (master_listen[this->type].free) {
-		master_listen[this->type].free(this);
+	if (this->proto->free) {
+		this->proto->free(this);
 	}
 
 #ifdef WITH_TCP
@@ -2935,23 +3101,24 @@ static int _listener_free(rad_listen_t *this)
 /*
  *	Allocate & initialize a new listener.
  */
-static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
+static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, fr_protocol_t *proto)
 {
 	rad_listen_t *this;
 
 	this = talloc_zero(ctx, rad_listen_t);
 
 	this->type = type;
-	this->recv = master_listen[this->type].recv;
-	this->send = master_listen[this->type].send;
-	this->print = master_listen[this->type].print;
-	this->debug = master_listen[this->type].debug;
-	this->encode = master_listen[this->type].encode;
-	this->decode = master_listen[this->type].decode;
+	this->proto = proto;
+	this->recv = proto->recv;
+	this->send = proto->send;
+	this->print = proto->print;
+	this->debug = proto->debug;
+	this->encode = proto->encode;
+	this->decode = proto->decode;
 
 	talloc_set_destructor(this, _listener_free);
 
-	this->data = talloc_zero_array(this, uint8_t, master_listen[this->type].inst_size);
+	this->data = talloc_zero_array(this, uint8_t, proto->inst_size);
 
 	return this;
 }
@@ -2987,7 +3154,7 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 		return NULL;
 	}
 
-	this = listen_alloc(ctx, RAD_LISTEN_PROXY);
+	this = listen_alloc(ctx, RAD_LISTEN_PROXY, &master_listen[RAD_LISTEN_PROXY]);
 
 	sock = this->data;
 	sock->other_ipaddr = home->ipaddr;
@@ -3085,177 +3252,27 @@ rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t 
 }
 #endif
 
-static int _free_proto_handle(lt_dlhandle *handle)
+/*
+ *	Parse the configuration for a listener.
+ */
+static rad_listen_t *listen_parse(listen_config_t *lc)
 {
-	dlclose(*handle);
-	return 0;
-}
-
-static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
-{
-	int		type, rcode;
+	int		rcode;
 	char const	*listen_type;
 	rad_listen_t	*this;
-	CONF_PAIR	*cp;
-	char const	*value;
-	lt_dlhandle	handle;
-	fr_dict_value_t	*dv;
-	CONF_SECTION	*server_cs;
-	char		buffer[32];
-
-	cp = cf_pair_find(cs, "type");
-	if (!cp) {
-		cf_log_err_cs(cs,
-			   "No type specified in listen section");
-		return NULL;
-	}
-
-	value = cf_pair_value(cp);
-	if (!value) {
-		cf_log_err_cp(cp,
-			      "Type cannot be empty");
-		return NULL;
-	}
-
-	snprintf(buffer, sizeof(buffer), "proto_%s", value);
-	handle = lt_dlopenext(buffer);
-	if (handle) {
-		fr_protocol_t	*proto;
-		lt_dlhandle	*marker;
-
-		proto = dlsym(handle, buffer);
-		if (!proto) {
-			cf_log_err_cs(cs,
-				      "Failed linking to protocol %s : %s\n",
-				      value, dlerror());
-			dlclose(handle);
-			return NULL;
-		}
-
-		/*
-		 *	We need numbers for internal use.
-		 */
-		dv = fr_dict_value_by_name(0, PW_LISTEN_SOCKET_TYPE, value);
-		if (!dv) {
-			if (fr_dict_value_add("Listen-Socket-Type", value, last_listener) < 0) {
-				cf_log_err_cs(cs,
-					      "Failed adding dictionary entry for protocol %s: %s",
-					      value, fr_strerror());
-				dlclose(handle);
-				return NULL;
-			}
-
-			dv = fr_dict_value_by_name(0, PW_LISTEN_SOCKET_TYPE, value);
-			if (!dv) {
-				cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s",
-					      value);
-				dlclose(handle);
-				return NULL;
-			}
-			last_listener++;
-			if (last_listener >= MAX_LISTENER) {
-				cf_log_err_cs(cs, "Too many listeners at protocol %s",
-					      value);
-				dlclose(handle);
-				return NULL;
-			}
-		}
-
-		type = dv->value;
-
-		/*
-		 *	FIXME: malloc this, or put it into a tree.
-		 */
-		memcpy(&master_listen[type], proto, sizeof(*proto));
-
-		/*
-		 *	Ensure handle gets closed if config section gets freed
-		 */
-		marker = talloc(cs, lt_dlhandle);
-		*marker = handle;
-		talloc_set_destructor(marker, _free_proto_handle);
-
-		if (master_listen[type].magic !=  RLM_MODULE_INIT) {
-			ERROR("Failed to load protocol '%s', it has the wrong version.",
-			       master_listen[type].name);
-			return NULL;
-		}
-	}
+	CONF_SECTION	*cs = lc->cs;
 
 	cf_log_info(cs, "listen {");
 
 	listen_type = NULL;
 	rcode = cf_pair_parse(cs, "type", FR_ITEM_POINTER(PW_TYPE_STRING, &listen_type), "", T_DOUBLE_QUOTED_STRING);
 	if (rcode < 0) return NULL;
-	if (rcode == 1) {
-		cf_log_err_cs(cs,
-			   "No type specified in listen section");
-		return NULL;
-	}
 
 	/*
-	 *	Couldn't link to it.  It MUST be defined in the
-	 *	dictionaries.
+	 *	Allocate a listener.
 	 */
-	dv = fr_dict_value_by_name(0, PW_LISTEN_SOCKET_TYPE, value);
-	if (!dv) {
-		cf_log_err_cs(cs, "No dictionary entry for protocol %s",
-			      value);
-		return NULL;
-	}
-
-	if ((dv->value >= MAX_LISTENER) ||
-	    (master_listen[dv->value].magic == 0)) {
-		cf_log_err_cs(cs, "Failed finding plugin for protocol %s",
-			      value);
-		return NULL;
-	}
-
-	type = dv->value;
-
-	if ((strcmp(master_listen[type].name, dv->name) != 0) &&
-	    !strchr(dv->name, '+')) {
-		cf_log_err_cs(cs, "Inconsistent dictionaries for protocol %s",
-			      value);
-		return NULL;
-	}
-
-	/*
-	 *	DHCP and VMPS *must* be loaded dynamically.
-	 */
-	if (master_listen[type].magic !=  RLM_MODULE_INIT) {
-		ERROR("Cannot load protocol '%s', as the required library does not exist",
-		      master_listen[type].name);
-		return NULL;
-	}
-
-	/*
-	 *	Allow listen sections in the default config to
-	 *	refer to a server.
-	 */
-	if (!server) {
-		rcode = cf_pair_parse(cs, "virtual_server",
-				      FR_ITEM_POINTER(PW_TYPE_STRING, &server), NULL, T_DOUBLE_QUOTED_STRING);
-		if (rcode < 0) return NULL;
-	}
-
-#ifdef WITH_PROXY
-	/*
-	 *	We were passed a virtual server, so the caller is
-	 *	defining a proxy listener inside of a virtual server.
-	 *	This isn't allowed right now.
-	 */
-	else if (type == RAD_LISTEN_PROXY) {
-		ERROR("Error: listen type \"proxy\" Cannot appear in a virtual server section");
-		return NULL;
-	}
-#endif
-
-	/*
-	 *	Set up cross-type data.
-	 */
-	this = listen_alloc(cs, type);
-	this->server = server;
+	this = listen_alloc(lc, lc->type, lc->proto);
+	this->server = lc->server_name;
 	this->fd = -1;
 
 #ifdef WITH_TCP
@@ -3268,17 +3285,9 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 #endif
 
 	/*
-	 *	Call per-type parser.
+	 *	Call the per-type parser.
 	 */
-	if (master_listen[type].parse(cs, this) < 0) {
-		listen_free(&this);
-		return NULL;
-	}
-
-	server_cs = cf_section_sub_find_name2(main_config.config, "server",
-					      this->server);
-	if (!server_cs && this->server) {
-		cf_log_err_cs(cs, "No such server \"%s\"", this->server);
+	if (lc->proto->parse(cs, this) < 0) {
 		listen_free(&this);
 		return NULL;
 	}
@@ -3310,18 +3319,17 @@ static void *recv_thread(void *arg)
 
 /** Search for listeners in the server
  *
- * @param[in] config to search for listener sections in.
  * @param[out] head Where to write listener.  Must point to a NULL pointer.
  * @param[in] spawn_workers Whether we're spawning child threads.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
+int listen_init(rad_listen_t **head, bool spawn_workers)
 {
-	CONF_SECTION	*cs = NULL;
 	rad_listen_t	**last;
 	rad_listen_t	*this;
+	listen_config_t	*lc;
 
 	/*
 	 *	We shouldn't be called with a pre-existing list.
@@ -3330,54 +3338,15 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, bool spawn_workers)
 
 	last = head;
 
-	/*
-         *      Walk through the "listen" sections, if they exist.
-         */
-	for (cs = cf_subsection_find_next(config, NULL, "listen");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "listen")) {
-		this = listen_parse(cs, NULL);
+	for (lc = listen_config; lc != NULL; lc = lc->next) {
+		this = listen_parse(lc);
 		if (!this) {
-			listen_free(head);
-			return -1;
-		}
-		if (this->type != RAD_LISTEN_COMMAND) {
-			cf_log_err_cs(this->cs, "Only listen sections of type = command (command sockets)"
-				      "are allowed outside of server sections");
 			listen_free(head);
 			return -1;
 		}
 
 		*last = this;
 		last = &(this->next);
-	}
-
-	/*
-	 *	Check virtual servers for "listen" sections
-	 *
-	 *	FIXME: Move to virtual server init?
-	 */
-	for (cs = cf_subsection_find_next(config, NULL, "server");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "server")) {
-		CONF_SECTION *subcs;
-		char const *name2 = cf_section_name2(cs);
-
- 		/*
- 		 *	Loop over "listen" directives in virtual servers
- 		 */
-		for (subcs = cf_subsection_find_next(cs, NULL, "listen");
-		     subcs != NULL;
-		     subcs = cf_subsection_find_next(cs, subcs, "listen")) {
-			this = listen_parse(subcs, name2);
-			if (!this) {
-				listen_free(head);
-				return -1;
-			}
-
-			*last = this;
-			last = &(this->next);
-		}
 	}
 
 	/*
@@ -3468,6 +3437,11 @@ void listen_free(rad_listen_t **head)
 	}
 
 	*head = NULL;
+
+	/*
+	 *	@fixme: Hack.
+	 */
+	if (head == &main_config.listen) TALLOC_FREE(listen_ctx);
 }
 
 #ifdef WITH_STATS

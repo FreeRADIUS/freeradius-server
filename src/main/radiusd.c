@@ -477,7 +477,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Start the event loop.
 	 */
-	radius_event_start(main_config.config, main_config.spawn_workers);
+	radius_event_start(main_config.spawn_workers);
 
 	/*
 	 *  If we're debugging, then a CTRL-C will cause the server to die

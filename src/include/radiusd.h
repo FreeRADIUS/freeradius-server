@@ -591,7 +591,7 @@ typedef enum event_corral_t {
 
 fr_event_list_t *radius_event_list_corral(event_corral_t hint);
 int radius_event_init(TALLOC_CTX *ctx);
-int radius_event_start(CONF_SECTION *cs, bool spawn_flag);
+int radius_event_start(bool spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);
 void radius_update_listener(rad_listen_t *listener);

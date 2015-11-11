@@ -3570,7 +3570,7 @@ static int command_domain_accept(rad_listen_t *listener)
 	/*
 	 *	Add the new listener.
 	 */
-	this = listen_alloc(listener, listener->type);
+	this = listen_alloc(listener, listener->type, listener->proto);
 	if (!this) return 0;
 
 	/*

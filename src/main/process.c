@@ -5316,7 +5316,7 @@ static void check_proxy(rad_listen_t *head)
 }
 #endif
 
-int radius_event_start(CONF_SECTION *cs, bool have_children)
+int radius_event_start(bool have_children)
 {
 	rad_listen_t *head = NULL;
 
@@ -5381,7 +5381,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	if (check_config) {
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",
 		       main_config.name);
-		if (listen_init(cs, &head, spawn_workers) < 0) {
+		if (listen_init(&head, spawn_workers) < 0) {
 			fflush(NULL);
 			fr_exit(1);
 		}
@@ -5426,7 +5426,7 @@ int radius_event_start(CONF_SECTION *cs, bool have_children)
 	 *	themselves around the functions that need a privileged
 	 *	uid.
 	 */
-	if (listen_init(cs, &head, spawn_workers) < 0) {
+	if (listen_init(&head, spawn_workers) < 0) {
 		fr_exit_now(1);
 	}
 

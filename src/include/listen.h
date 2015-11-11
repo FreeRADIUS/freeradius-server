@@ -54,6 +54,7 @@ typedef enum RAD_LISTEN_STATUS {
 } RAD_LISTEN_STATUS;
 
 typedef struct rad_listen rad_listen_t;
+typedef struct fr_protocol_t fr_protocol_t;
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
@@ -64,6 +65,7 @@ typedef int (*rad_listen_decode_t)(rad_listen_t *, REQUEST *);
 
 struct rad_listen {
 	rad_listen_t		*next; /* should be rbtree stuff */
+	fr_protocol_t		*proto;
 
 	/*
 	 *	For normal sockets.
@@ -170,8 +172,9 @@ typedef struct listen_socket_t {
 	RADCLIENT_LIST		*clients;
 } listen_socket_t;
 
+int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_name);
 void listen_free(rad_listen_t **head);
-int listen_init(CONF_SECTION *cs, rad_listen_t **head, bool spawn_flag);
+int listen_init(rad_listen_t **head, bool spawn_flag);
 rad_listen_t *proxy_new_listener(TALLOC_CTX *ctx, home_server_t *home, uint16_t src_port);
 RADCLIENT *client_listener_find(rad_listen_t *listener, fr_ipaddr_t const *ipaddr, uint16_t src_port);
 

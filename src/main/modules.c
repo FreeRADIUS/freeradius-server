@@ -1457,10 +1457,20 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
 int virtual_servers_bootstrap(CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
+	char const *server_name;
 
 	if (!cf_subsection_find_next(config, NULL, "server")) {
 		ERROR("No virtual servers found");
 		return -1;
+	}
+
+	/*
+	 *	Bootstrap global listeners.
+	 */
+	for (cs = cf_subsection_find_next(config, NULL, "listen");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "listen")) {
+		if (listen_bootstrap(config, cs, NULL) < 0) return -1;
 	}
 
 	for (cs = cf_subsection_find_next(config, NULL, "server");
@@ -1468,7 +1478,8 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	     cs = cf_subsection_find_next(config, cs, "server")) {
 		CONF_ITEM *ci;
 
-		if (!cf_section_name2(cs)) {
+		server_name = cf_section_name2(cs);
+		if (!server_name) {
 			cf_log_err_cs(cs, "server sections must have a name");
 			return -1;
 		}
@@ -1510,7 +1521,10 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 			 */
 			if (strcmp(name1, "clients") == 0) continue;
 
-			if (strcmp(name1, "listen") == 0) continue;
+			if (strcmp(name1, "listen") == 0) {
+				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
+				continue;
+			}
 
 			/*
 			 *	See if it's a RADIUS section.
