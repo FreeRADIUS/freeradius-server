@@ -171,6 +171,7 @@ typedef void (*sig_t)(int);
 #define BLANK_FORMAT		" "	/* GCC_LINT whines about empty formats */
 
 typedef struct attr_flags {
+	unsigned int	is_root : 1;				//!< Is root of a dictionary.
 	unsigned int 	is_unknown : 1;				//!< Attribute number or vendor is unknown.
 	unsigned int	is_tlv : 1;				//!< Is a sub attribute.
 
@@ -493,7 +494,8 @@ int			fr_dict_vendor_add(char const *name, unsigned int value);
 int			fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned int vendor, int attr,
 					 PW_TYPE type, ATTR_FLAGS flags);
 int			fr_dict_value_add(char const *attrstr, char const *namestr, int value);
-int			fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *fn);
+int			fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out,
+				     char const *dir, char const *fn, char const *name);
 
 int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
 

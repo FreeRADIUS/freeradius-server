@@ -59,6 +59,7 @@ struct fr_dict {
 
 	fr_dict_attr_t		*base_attrs[256];	//!< Quick lookup for protocols with an 8bit attribute space.
 
+	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce mallocs.
 };
 
@@ -1336,7 +1337,7 @@ int fr_dict_str_to_oid(unsigned int *p_vendor, unsigned int *p_attr, char const 
 /*
  *	Process the ATTRIBUTE command
  */
-static int process_attribute(char const *fn, int const line,
+static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
 			     unsigned int block_vendor,
 			     fr_dict_attr_t const *block_tlv, int tlv_depth,
 			     char **argv, int argc)
@@ -1350,11 +1351,18 @@ static int process_attribute(char const *fn, int const line,
 	unsigned int		length;
 	ATTR_FLAGS		flags;
 	char			*p;
+	fr_dict_attr_t const	*parent;
 
 	if ((argc < 3) || (argc > 4)) {
 		fr_strerror_printf("fr_dict_init: %s[%d]: invalid ATTRIBUTE line", fn, line);
 		return -1;
 	}
+
+	/*
+	 *	Parent is either the root of the dictionary or the TLV
+	 *	described by the TLV block.
+	 */
+	parent = block_tlv ? block_tlv : dict->root;
 
 	/*
 	 *	Dictionaries need to have real names, not shitty ones.
@@ -2137,7 +2145,7 @@ static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filenam
 		 *	Perhaps this is an attribute.
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-			if (process_attribute(fn, line, block_vendor,
+			if (process_attribute(dict, fn, line, block_vendor,
 					      block_tlv[which_block_tlv],
 					      which_block_tlv,
 					      argv + 1, argc - 1) == -1) {
@@ -2393,7 +2401,7 @@ static void fr_pool_free(void *to_free)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *fn)
+int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *fn, char const *name)
 {
 	fr_dict_t *dict;
 
@@ -2466,6 +2474,15 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 
 	dict->values_by_num = fr_hash_table_create(dict, dict_value_value_hash, dict_value_value_cmp, fr_pool_free);
 	if (!dict->values_by_num) goto error;
+
+	/*
+	 *	Magic dictionary root attribute
+	 */
+	dict->root = (fr_dict_attr_t *)talloc_zero_array(dict, uint8_t, sizeof(fr_dict_attr_t) + strlen(name));
+	strcpy(dict->root->name, name);
+	talloc_set_type(dict->root, fr_dict_attr_t);
+	dict->root->flags.is_root = 1;
+	dict->root->type = PW_TYPE_TLV;
 
 	value_fixup = NULL;        /* just to be safe. */
 

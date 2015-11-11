@@ -975,7 +975,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY) < 0) {
+	if (fr_dict_init(NULL, &dict, dict_dir, RADIUS_DICTIONARY, "radius") < 0) {
 		fr_perror("radattr");
 		return 1;
 	}

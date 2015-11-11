@@ -781,7 +781,7 @@ int main_config_init(void)
 	 *	the ones in raddb.
 	 */
 	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, RADIUS_DICTIONARY);
-	if (fr_dict_init(NULL, &main_config.dict, main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
+	if (fr_dict_init(NULL, &main_config.dict, main_config.dictionary_dir, RADIUS_DICTIONARY, "radius") != 0) {
 		ERROR("Errors reading dictionary: %s",
 		      fr_strerror());
 		return -1;

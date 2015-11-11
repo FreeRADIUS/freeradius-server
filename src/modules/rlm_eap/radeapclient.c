@@ -2332,7 +2332,7 @@ int main(int argc, char **argv)
 	 *	the ones in raddb.
 	 */
 	DEBUG2("including dictionary file %s/%s", main_config.dictionary_dir, RADIUS_DICTIONARY);
-	if (fr_dict_init(autofree, &dict, main_config.dictionary_dir, RADIUS_DICTIONARY) != 0) {
+	if (fr_dict_init(autofree, &dict, main_config.dictionary_dir, RADIUS_DICTIONARY, "radius") != 0) {
 		ERROR("Errors reading dictionary: %s", fr_strerror());
 		exit(1);
 	}
