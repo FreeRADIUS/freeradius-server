@@ -852,6 +852,158 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 	return da;
 }
 
+/** Process a single OID component
+ *
+ * @param[out] out Value of component.
+ * @param[in] oid string to parse.
+ * @return
+ *	- 0 on success.
+ *	- -1 on format error.
+ */
+static int fr_dict_oid_component(unsigned int *out, char const **oid)
+{
+	char const *p = *oid;
+	char *q;
+	unsigned long num;
+
+	*out = 0;
+
+	num = strtoul(p, &q, 10);
+	if (p == q) {
+		fr_strerror_printf("Invalid OID component", num);
+		return -1;
+	}
+
+
+	switch (*q) {
+	case '\0':
+	case '.':
+		*oid = q;
+		*out = (unsigned int)num;
+
+		return 0;
+
+	default:
+		fr_strerror_printf("Unexpected text after OID component");
+		*out = 0;
+		return -1;
+	}
+}
+
+/** Get the leaf attribute of an OID string
+ *
+ * @param[out] attr Number we parsed.
+ * @param[in,out] vendor number of attribute.
+ * @param[in,out] parent attribute (or root of dictionary).  Will be updated to the parent
+ *	directly beneath the leaf.
+ * @param[in] oid string to parse.
+ * @return
+ *	- > 0 on success (number of bytes parsed).
+ *	- <= 0 on parse error (negative offset of parse error).
+ */
+ssize_t fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor, fr_dict_attr_t const **parent, char const *oid)
+{
+	char const		*p = oid;
+	unsigned int		num = 0;
+	ssize_t			slen;
+
+	if (!fr_assert(parent)) return 0;
+
+	*attr = 0;
+
+	if (fr_dict_oid_component(&num, &p) < 0) return oid - p;
+
+	/*
+	 *	Look for 26.VID.x.y
+	 *
+	 *	This allows us to specify a VSA if our parent is the root
+	 *	of the dictionary, and we're operating outside of a vendor
+	 *	block.
+	 *
+	 *	The additional code is because we need at least three components
+	 *	the VSA attribute (26), the vendor ID, and actual attribute.
+	 */
+	if (((*parent)->flags.is_root) && !*vendor && (num == PW_VENDOR_SPECIFIC)) {
+		fr_dict_vendor_t const *dv;
+
+		if (p[0] == '\0') {
+			fr_strerror_printf("Vendor attribute must specify a VID");
+			return oid - p;
+		}
+		p++;
+
+		if (fr_dict_oid_component(&num, &p) < 0) return oid - p;
+		if (p[0] == '\0') {
+			fr_strerror_printf("Vendor attribute must specify a child");
+			return oid - p;
+		}
+		p++;
+
+		if (num >= FR_MAX_VENDOR) {
+			fr_strerror_printf("Cannot handle vendor ID larger than 2^24");
+			return oid - p;
+		}
+
+		dv = fr_dict_vendor_by_num(num);
+		if (!dv) {
+			fr_strerror_printf("Unknown vendor \"%u\" ", num);
+			return oid - p;
+		}
+
+		/*
+		 *	Recurse to get the attribute.
+		 */
+		slen = fr_dict_str_to_oid(attr, vendor, parent, p);
+		if (slen <= 0) return slen + (oid - p);
+
+		slen += p - oid;
+		if (slen > 0) *vendor = dv->vendorpec;	/* Record vendor number */
+
+		return slen;
+	}
+
+	if ((num == 0) || (num > UINT8_MAX)) {
+		fr_strerror_printf("TLV attributes must be between 1-255 inclusive");
+		return oid - p;
+	}
+
+	switch (p[0]) {
+	/*
+	 *	We've not hit the leaf yet, so the attribute must be
+	 *	defined already.
+	 */
+	case '.':
+	{
+		fr_dict_attr_t const *child;
+		p++;
+
+		child = fr_dict_attr_child_by_num(*parent, num);
+		if (!child) {
+			fr_strerror_printf("Parent attribute for %s not defined", oid);
+			return 0;
+		}
+		*parent = child;
+
+		slen = fr_dict_str_to_oid(attr, vendor, parent, p);
+		if (slen <= 0) return slen + (oid - p);
+
+		slen += p - oid;
+		return slen;
+	}
+
+	/*
+	 *	Hit the leaf, this is the attribute we need to define.
+	 */
+	case '\0':
+		*attr = num;
+		return p - oid;
+
+	default:
+		fr_strerror_printf("Malformed OID string, got trailing garbage \"%s\"", p);
+		return oid - p;
+	}
+}
+
 /** Add an attribute to the dictionary
  *
  * @todo we need to check length of none vendor attributes.
@@ -1514,130 +1666,6 @@ static int sscanf_i(char const *str, unsigned int *pvalue)
 }
 
 /*
- *	Get the OID based on various pieces of information.
- *
- *	Remember, the packing format is weird.
- *
- *	00VID	000000AA	normal VSA for vendor VID
- *	00VID	AABBCCDD	normal VSAs with TLVs
- *	EE000   000000AA	extended attr (241.1)
- *	EE000	AABBCCDD	extended attr with TLVs
- *	EEVID	000000AA	EVS with vendor VID, attr AAA
- *	EEVID	AABBCCDD	EVS with TLVs
- *
- *	<whew>!  Are we crazy, or what?
- */
-int fr_dict_str_to_oid(unsigned int *p_vendor, unsigned int *p_attr, char const *oid, int tlv_depth)
-{
-	char const *p;
-	unsigned int attr;
-	fr_dict_attr_t const *da = NULL;
-
-	if (tlv_depth > fr_attr_max_tlv) {
-		fr_strerror_printf("Too many sub-attributes");
-		return -1;
-	}
-
-	/*
-	 *	If *p_attr is set, check if the attribute exists.
-	 *	Otherwise, check that the vendor exists.
-	 */
-	if (*p_attr) {
-		da = fr_dict_attr_by_num(*p_vendor, *p_attr);
-		if (!da) {
-			fr_strerror_printf("Parent attribute is undefined");
-			return -1;
-		}
-
-		if (!da->flags.has_tlv && !da->flags.extended) {
-			fr_strerror_printf("Parent attribute %s cannot have sub-attributes",
-					   da->name);
-			return -1;
-		}
-
-	} else if ((*p_vendor & (FR_MAX_VENDOR - 1)) != 0) {
-		if (!fr_dict_vendor_by_num(*p_vendor & (FR_MAX_VENDOR - 1))) {
-			fr_strerror_printf("Unknown vendor %u",
-					   *p_vendor & (FR_MAX_VENDOR - 1));
-			return -1;
-		}
-	}
-
-	p = strchr(oid, '.');
-
-	/*
-	 *	Look for 26.VID.x.y
-	 *
-	 *	If we find it, re-write the parameters, and recurse.
-	 */
-	if (!*p_vendor && (tlv_depth == 0) && (*p_attr == PW_VENDOR_SPECIFIC)) {
-		fr_dict_vendor_t const *dv;
-
-		if (!p) {
-			fr_strerror_printf("VSA needs to have sub-attribute");
-			return -1;
-		}
-
-		if (!sscanf_i(oid, p_vendor)) {
-			fr_strerror_printf("Invalid number in attribute");
-			return -1;
-		}
-
-		if (*p_vendor >= FR_MAX_VENDOR) {
-			fr_strerror_printf("Cannot handle vendor ID larger than 2^24");
-
-			return -1;
-		}
-
-		dv = fr_dict_vendor_by_num(*p_vendor & (FR_MAX_VENDOR - 1));
-		if (!dv) {
-			fr_strerror_printf("Unknown vendor \"%u\" ",
-					   *p_vendor & (FR_MAX_VENDOR - 1));
-			return -1;
-		}
-
-		/*
-		 *	Start off with (attr=0, vendor=VID), and
-		 *	recurse.  This causes the various checks above
-		 *	to be done.
-		 */
-		*p_attr = 0;
-		return fr_dict_str_to_oid(p_vendor, p_attr, p + 1, 0);
-	}
-
-	if (!sscanf_i(oid, &attr)) {
-		fr_strerror_printf("Invalid number in attribute");
-		return -1;
-	}
-
-	if (!*p_vendor && (tlv_depth == 1) && da &&
-	    (da->flags.has_tlv || da->flags.extended)) {
-
-		*p_vendor = *p_attr * FR_MAX_VENDOR;
-		*p_attr = attr;
-
-		if (!p) return 0;
-		return fr_dict_str_to_oid(p_vendor, p_attr, p + 1, 1);
-	}
-
-	/*
-	 *	And pack the data according to the scheme described in
-	 *	the comments at the start of this function.
-	 */
-	if (*p_attr) {
-		*p_attr |= (attr & fr_attr_mask[tlv_depth]) << fr_attr_shift[tlv_depth];
-	} else {
-		*p_attr = attr;
-	}
-
-	if (p) {
-		return fr_dict_str_to_oid(p_vendor, p_attr, p + 1, tlv_depth + 1);
-	}
-
-	return tlv_depth;
-}
-
-/*
  *	Process the ATTRIBUTE command
  */
 static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
@@ -1680,48 +1708,33 @@ static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
 	/*
 	 *	Look for OIDs before doing anything else.
 	 */
-	p = strchr(argv[1], '.');
-	if (p) oid = 1;
-
+	if (!strchr(argv[1], '.')) {
+		/*
+		 *	Parse out the attribute number
+		 */
+		if (!sscanf_i(argv[1], &attr)) {
+			fr_strerror_printf("fr_dict_init: %s[%d]: Invalid attr", fn, line);
+			return -1;
+		}
 	/*
-	 *	Validate all entries
+	 *	Got an OID string.  Every attribute should exist other
+	 *	than the leaf, which is the attribute we're defining.
 	 */
-	if (!sscanf_i(argv[1], &attr)) {
-		fr_strerror_printf("fr_dict_init: %s[%d]: invalid attr", fn, line);
-		return -1;
-	}
-
-	if (oid) {
-		fr_dict_attr_t const *da;
+	} else {
+		ssize_t slen;
 
 		vendor = block_vendor;
 
-		/*
-		 *	Parse the rest of the OID.
-		 */
-		if (fr_dict_str_to_oid(&vendor, &attr, p + 1, tlv_depth + 1) < 0) {
-			char buffer[256];
+		/* Sanity check the block_tlv attr */
+		if (!fr_assert(!block_tlv || (block_tlv->type == PW_TYPE_TLV))) return -1;
 
-			strlcpy(buffer, fr_strerror(), sizeof(buffer));
-
-			fr_strerror_printf("fr_dict_init: %s[%d]: Invalid attribute identifier: %s", fn, line, buffer);
-			return -1;
-		}
-		block_vendor = vendor;
-
-		/*
-		 *	Set the flags based on the parents flags.
-		 */
-		da = fr_dict_parent_by_num(vendor, attr);
-		if (!da) {
-			fr_strerror_printf("fr_dict_init: %s[%d]: Parent attribute is undefined.", fn, line);
+		slen = fr_dict_str_to_oid(&attr, &vendor, &parent, argv[1]);
+		if (slen <= 0) {
+			fr_strerror_printf("fr_dict_init: %s[%d]: %s", fn, line, fr_strerror());
 			return -1;
 		}
 
-		flags.extended = da->flags.extended;
-		flags.long_extended = da->flags.long_extended;
-		flags.evs = da->flags.evs;
-		if (da->flags.has_tlv) flags.is_tlv = 1;
+		block_vendor = vendor; /* Weird case where we're processing 26.<vid>.<tlv> */
 	}
 
 	if (strncmp(argv[2], "octets[", 7) != 0) {
@@ -3225,9 +3238,9 @@ int fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 	}
 
 	if (*p == '.') {
-		if (fr_dict_str_to_oid(&vendor, &attr, p + 1, 1) < 0) {
-			return -1;
-		}
+		fr_dict_attr_t const *parent = fr_main_dict->root;
+
+		if (fr_dict_str_to_oid(&vendor, &attr, &parent, p + 1) < 0) return -1;
 	}
 
 	/*

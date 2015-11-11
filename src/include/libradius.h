@@ -492,7 +492,8 @@ extern const int fr_dict_attr_allowed_chars[256];
 int			fr_dict_valid_name(char const *name);
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
-int			fr_dict_str_to_oid(unsigned int *pvendor, unsigned int *pattr, char const *oid, int tlv_depth);
+ssize_t			fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor,
+					   fr_dict_attr_t const **parent, char const *oid);
 int			fr_dict_vendor_add(char const *name, unsigned int value);
 int			fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned int vendor, int attr,
 					 PW_TYPE type, ATTR_FLAGS flags);
