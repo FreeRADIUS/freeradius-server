@@ -1092,31 +1092,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	}
 
 	/*
-	 *	Manually extended flags for extended attributes.  We
-	 *	can't expect the caller to know all of the details of the flags.
-	 */
-	if (vendor >= FR_MAX_VENDOR) {
-		fr_dict_attr_t const *da;
-
-		/*
-		 *	Trying to manually create an extended
-		 *	attribute, but the parent extended attribute
-		 *	doesn't exist?  That's an error.
-		 */
-		da = fr_dict_attr_by_num(0, vendor / FR_MAX_VENDOR);
-		if (!da) {
-			fr_strerror_printf("Extended attributes must be defined from the extended space");
-			goto error;
-		}
-
-		/*
-		 *	There's still a real vendor.  Since it's an
-		 *	extended attribute, set the EVS flag.
-		 */
-		if ((vendor & (FR_MAX_VENDOR - 1)) != 0) flags.evs = 1;
-	}
-
-	/*
 	 *	Additional checks for extended attributes.
 	 */
 	switch (parent->type) {
@@ -1340,10 +1315,10 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		}
 	}
 
-	if ((vendor & (FR_MAX_VENDOR - 1)) != 0) {
-		fr_dict_vendor_t *dv;
-		static fr_dict_vendor_t *last_vendor = NULL;
-		unsigned int vendor_max;
+	if (vendor) {
+		fr_dict_vendor_t	*dv;
+		static			fr_dict_vendor_t *last_vendor = NULL;
+		unsigned int		vendor_max;
 
 		if ((type == PW_TYPE_TLV) && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("TLV's cannot be encrypted");
@@ -1712,8 +1687,7 @@ static int sscanf_i(char const *str, unsigned int *pvalue)
  */
 static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
 			     unsigned int block_vendor,
-			     fr_dict_attr_t const *block_tlv, int tlv_depth,
-			     char **argv, int argc)
+			     fr_dict_attr_t const *block_tlv, char **argv, int argc)
 {
 	int			oid = 0;
 
@@ -1974,7 +1948,7 @@ static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
 	}
 
 	if (type == PW_TYPE_TLV) {
-		if (vendor && (vendor < FR_MAX_VENDOR)
+		if (vendor
 #ifdef WITH_DHCP
 		    && (vendor != DHCP_MAGIC_VENDOR)
 #endif
@@ -1989,25 +1963,6 @@ static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
 			}
 
 		}
-		flags.has_tlv = 1;
-	}
-
-	if (block_tlv) {
-		/*
-		 *	TLV's can be only one octet.
-		 */
-		if ((attr == 0) || ((attr & ~fr_attr_mask[tlv_depth]) != 0)) {
-			fr_strerror_printf("fr_dict_init: %s[%d]: sub-tlv has invalid attribute number",
-					   fn, line);
-			return -1;
-		}
-
-		/*
-		 *	Shift the attr left.
-		 */
-		attr <<= fr_attr_shift[tlv_depth];
-		attr |= block_tlv->attr;
-		flags.is_tlv = 1;
 	}
 
 #ifdef WITH_DICTIONARY_WARNINGS
@@ -2509,7 +2464,6 @@ static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filenam
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
 			if (process_attribute(dict, fn, line, block_vendor,
 					      block_tlv[which_block_tlv],
-					      which_block_tlv,
 					      argv + 1, argc - 1) == -1) {
 				fclose(fp);
 				return -1;
@@ -2715,7 +2669,7 @@ static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filenam
 				return -1;
 			}
 
-			if (vendor != (block_vendor & (FR_MAX_VENDOR - 1))) {
+			if (vendor != block_vendor) {
 				fr_strerror_printf(
 					"fr_dict_init: %s[%d]: END-VENDOR %s does not match any previous BEGIN-VENDOR",
 					fn, line, argv[1]);
@@ -3023,13 +2977,6 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int vendor, unsigne
 	p += len;
 	bufsize -= len;
 
-	if (vendor > FR_MAX_VENDOR) {
-		len = snprintf(p, bufsize, "%u.", vendor / FR_MAX_VENDOR);
-		p += len;
-		bufsize -= len;
-		vendor &= (FR_MAX_VENDOR) - 1;
-	}
-
 	if (vendor) {
 		fr_dict_vendor_t *dv;
 
@@ -3244,7 +3191,6 @@ int fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 
 			p = q;
 
-			if (found->flags.evs) vendor |= attr * FR_MAX_VENDOR;
 			attr = 0;
 		} /* else the second number is a TLV number */
 	}
@@ -3253,7 +3199,7 @@ int fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 	 *	Get the expected maximum size of the name.
 	 */
 	if (vendor) {
-		dv = fr_dict_vendor_by_num(vendor & (FR_MAX_VENDOR - 1));
+		dv = fr_dict_vendor_by_num(vendor);
 		if (dv) {
 			dv_type = dv->type;
 			if (dv_type > 3) dv_type = 3; /* hack */
@@ -3398,7 +3344,7 @@ const fr_dict_attr_t *fr_dict_parent_by_num(unsigned int vendor, unsigned int at
 	 */
 	if (!vendor) return NULL;
 
-	base_vendor = vendor & (FR_MAX_VENDOR - 1);
+	base_vendor = vendor;
 
 	/*
 	 *	It's a real vendor.
@@ -3435,7 +3381,7 @@ const fr_dict_attr_t *fr_dict_parent_by_num(unsigned int vendor, unsigned int at
 	/*
 	 *	It's an extended attribute.  Return the base Extended-Attr-X
 	 */
-	if (attr < 256) return fr_dict_attr_by_num(0, (vendor / FR_MAX_VENDOR) & 0xff);
+	if (attr < 256) return fr_dict_attr_by_num(0, vendor);
 
 	/*
 	 *	Figure out which attribute it is.
@@ -3480,108 +3426,6 @@ fr_dict_attr_t const *fr_dict_attr_by_type(unsigned int vendor, unsigned int att
 	da.type = type;
 
 	return fr_hash_table_finddata(fr_main_dict->attributes_combo, &da);
-}
-
-/** Using a parent and attr/vendor, find a child attr/vendor
- *
- */
-int fr_dict_attr_child(fr_dict_attr_t const *parent, unsigned int *p_vendor, unsigned int *p_attr)
-{
-	unsigned int attr, vendor;
-	fr_dict_attr_t da;
-
-	if (!parent || !p_attr || !p_vendor) return false;
-
-	attr = *p_attr;
-	vendor = *p_vendor;
-
-	/*
-	 *	Only some types can have children
-	 */
-	switch (parent->type) {
-	default:
-		return false;
-
-	case PW_TYPE_VSA:
-	case PW_TYPE_TLV:
-	case PW_TYPE_EVS:
-	case PW_TYPE_EXTENDED:
-	case PW_TYPE_LONG_EXTENDED:
-		break;
-	}
-
-	if ((vendor == 0) && (parent->vendor != 0)) return false;
-
-	/*
-	 *	Bootstrap by starting off with the parents values.
-	 */
-	da.attr = parent->attr;
-	da.vendor = parent->vendor;
-
-	/*
-	 *	Do various butchery to insert the "attr" value.
-	 *
-	 *	00VID	000000AA	normal VSA for vendor VID
-	 *	00VID	DDCCBBAA	normal VSAs with TLVs
-	 *	EE000   000000AA	extended attr (241.1)
-	 *	EE000	DDCCBBAA	extended attr with TLVs
-	 *	EEVID	000000AA	EVS with vendor VID, attr AAA
-	 *	EEVID	DDCCBBAA	EVS with TLVs
-	 */
-	if (!da.vendor) {
-		da.vendor = parent->attr * FR_MAX_VENDOR;
-		da.vendor |= vendor;
-		da.attr = attr;
-
-	} else {
-		int i;
-
-		/*
-		 *	Trying to nest too deep.  It's an error
-		 */
-		if (parent->attr & (fr_attr_mask[MAX_TLV_NEST] << fr_attr_shift[MAX_TLV_NEST])) {
-			return false;
-		}
-
-		for (i = MAX_TLV_NEST - 1; i >= 0; i--) {
-			if ((parent->attr & (fr_attr_mask[i] << fr_attr_shift[i]))) {
-				da.attr |= (attr & fr_attr_mask[i + 1]) << fr_attr_shift[i + 1];
-				goto find;
-			}
-		}
-
-		return false;
-	}
-
-find:
-#if 0
-		fprintf(stderr, "LOOKING FOR %08x %08x + %08x %08x --> %08x %08x\n",
-			parent->vendor, parent->attr, attr, vendor,
-			da.vendor, da.attr);
-#endif
-
-	*p_attr   = da.attr;
-	*p_vendor = da.vendor;
-	return true;
-}
-
-/*
- *	Get an attribute by it's numerical value, and the parent
- */
-fr_dict_attr_t const *fr_dict_attr_by_parent(fr_dict_attr_t const *parent, unsigned int vendor, unsigned int attr)
-{
-	unsigned int my_attr, my_vendor;
-	fr_dict_attr_t da;
-
-	my_attr = attr;
-	my_vendor = vendor;
-
-	if (!fr_dict_attr_child(parent, &my_vendor, &my_attr)) return NULL;
-
-	da.attr = my_attr;
-	da.vendor = my_vendor;
-
-	return fr_hash_table_finddata(fr_main_dict->attributes_by_num, &da);
 }
 
 /*
