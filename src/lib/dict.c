@@ -1015,9 +1015,9 @@ ssize_t fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor, fr_dict_att
 int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned int vendor, int attr,
 		     PW_TYPE type, ATTR_FLAGS flags)
 {
-	size_t namelen;
-	fr_dict_attr_t *n;
-	static int max_attr = 0;
+	size_t			namelen;
+	fr_dict_attr_t		*n;
+	static int		max_attr = 0;
 
 	if (!fr_assert(parent)) return -1;
 
