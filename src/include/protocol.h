@@ -40,6 +40,11 @@ typedef struct fr_protocol_t {
 	size_t			inst_size;
 	CONF_PARSER		*proto_config;
 
+	uint32_t		transports;
+#ifdef WITH_TLS
+	bool			tls;
+#endif
+
 	rad_listen_parse_t	parse;
 	rad_listen_free_t	free;
 	rad_listen_recv_t	recv;
@@ -49,6 +54,10 @@ typedef struct fr_protocol_t {
 	rad_listen_encode_t	encode;
 	rad_listen_decode_t	decode;
 } fr_protocol_t;
+
+#define TRANSPORT_TCP (1 << IPPROTO_TCP)
+#define TRANSPORT_UDP (1 << IPPROTO_UDP)
+#define TRANSPORT_DUAL (TRANSPORT_UDP | TRANSPORT_TCP)
 
 /*
  *	@todo: fix for later

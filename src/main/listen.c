@@ -110,6 +110,8 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	listen_config_t **last = &listen_config;
 	listen_config_t	*lc;
 	CONF_PAIR	*cp;
+	CONF_SECTION	*tls;
+	int		transports;
 	char const	*value;
 	fr_dict_value_t const *dv;
 	lt_dlhandle	*handle = NULL;
@@ -222,6 +224,89 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	}
 
 	if (!proto) proto = &master_listen[dv->value];
+
+	/*
+	 *	Check the allowed transport protocols.  For most
+	 *	sockets, it's a UDP and/or TCP.
+	 */
+	transports = 0;
+
+	if (proto->transports != 0) {
+		cp = cf_pair_find(cs, "proto");
+		if (!cp) {
+			transports = TRANSPORT_UDP;
+			value = "udp";
+
+		} else {
+			value = cf_pair_value(cp);
+			if (!value) {
+				cf_log_err_cs(cs, "No value for 'proto'");
+				return -1;
+			}
+
+			if (strcmp(value, "udp") == 0) {
+				transports = TRANSPORT_UDP;
+
+			} else if (strcmp(value, "tcp") == 0) {
+				transports = TRANSPORT_TCP;
+
+			} else {
+				cf_log_err_cs(cs, "Unknown transport protocol 'proto = %s'", value);
+				return -1;
+			}
+		}
+
+		/*
+		 *	Asked for UDP and required TCP, or require UDP and asked for TCP.
+		 */
+		if ((transports & proto->transports) == 0) {
+			cf_log_err_cs(cs, "Invalid transport 'proto = %s' for listeners of 'type = %s'",
+				      value, proto->name);
+				return -1;
+		}
+
+#ifdef WITH_PROXY
+		/*
+		 *	We can open UDP sockets on particular IPs, as
+		 *	they're not connected to any destination.  We
+		 *	cannot open an outbound TCP socket on an IP
+		 *	address unless we know the destination.
+		 */
+		if ((strcmp(proto->name, "proxy") == 0) && (transports == TRANSPORT_TCP)) {
+			cf_log_err_cs(cs, "Invalid transport 'proto = %s' for listeners of 'type = %s'",
+				      value, proto->name);
+				return -1;
+		}
+#endif
+	} /* else we let the socket parse routine figure out what to do */
+
+	/*
+	 *	Check the TLS configuration.  For now, we only allow
+	 *	TLS over TCP.  And even then, only sometimes.
+	 *
+	 *	If there's no "tls" section, that's fine, too.
+	 */
+	tls = cf_section_sub_find(cs, "tls");
+#ifndef WITH_TCP
+	if (tls) {
+		cf_log_err_cs(cs, "TLS transport is not available in this executable");
+		return -1;
+	}
+
+#else
+	if (tls) {
+		if (!proto->tls) {
+			cf_log_err_cs(cs, "TLS transport is not available for listeners with 'type = %s",
+				      proto->name);
+			return -1;
+		}
+
+		if (transports == TRANSPORT_UDP) {
+			cf_log_err_cs(cs, "TLS transport is not available for listeners with 'proto = udp'");
+			return -1;
+		}
+	}
+#endif
 
 	/*
 	 *	We allocate listeners from a new context, so that we can
@@ -1249,34 +1334,15 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		} else if (strcmp(proto, "tcp") == 0) {
 			sock->proto = IPPROTO_TCP;
+
 		} else {
 			cf_log_err_cs(cs, "Unknown proto name \"%s\"", proto);
 			return -1;
 		}
 
-		/*
-		 *	TCP requires a destination IP for sockets.
-		 *	UDP doesn't, so it's allowed.
-		 */
-#  ifdef WITH_PROXY
-		if ((this->type == RAD_LISTEN_PROXY) &&
-		    (sock->proto != IPPROTO_UDP)) {
-			cf_log_err_cs(cs, "Proxy listeners can only listen on proto = udp");
-			return -1;
-		}
-#  endif	/* WITH_PROXY */
-
 #  ifdef WITH_TLS
 		tls = cf_section_sub_find(cs, "tls");
 		if (tls) {
-			/*
-			 *	Don't allow TLS configurations for UDP sockets.
-			 */
-			if (sock->proto != IPPROTO_TCP) {
-				cf_log_err_cs(cs, "TLS transport is not available for UDP sockets");
-				return -1;
-			}
-
 			/*
 			 *	If unset, set to default.
 			 */
@@ -1296,26 +1362,9 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 #    endif
 
 		}
-#  else   /* WITH_TLS */
-		/*
-		 *	Built without TLS.  Disallow it.
-		 */
-		if (cf_section_sub_find(cs, "tls")) {
-			cf_log_err_cs(cs,
-				   "TLS transport is not available in this executable");
-			return -1;
-		}
 #  endif  /* WITH_TLS */
 #endif    /* WITH_TCP */
-
-		/*
-		 *	No "proto" field.  Disallow TLS.
-		 */
-	} else if (cf_section_sub_find(cs, "tls")) {
-		cf_log_err_cs(cs,
-			   "TLS transport is not available in this \"listen\" section");
-		return -1;
-	}
+	} /* else there as no "proto" field. */
 
 	/*
 	 *	Magical tuning methods!
@@ -2447,6 +2496,7 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 static fr_protocol_t master_listen[] = {
 #ifdef WITH_STATS
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
+	  TRANSPORT_DUAL, true,
 	  common_socket_parse, NULL,
 	  stats_socket_recv, auth_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
@@ -2457,6 +2507,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_PROXY
 	/* proxying */
 	{ RLM_MODULE_INIT, "proxy", sizeof(listen_socket_t), NULL,
+	  TRANSPORT_DUAL, true,
 	  common_socket_parse, common_socket_free,
 	  proxy_socket_recv, proxy_socket_send,
 	  common_socket_print, common_packet_debug, proxy_socket_encode, proxy_socket_decode },
@@ -2466,6 +2517,7 @@ static fr_protocol_t master_listen[] = {
 
 	/* authentication */
 	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
+	  TRANSPORT_DUAL, true,
 	  common_socket_parse, common_socket_free,
 	  auth_socket_recv, auth_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
@@ -2473,6 +2525,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_ACCOUNTING
 	/* accounting */
 	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
+	  TRANSPORT_DUAL, true,
 	  common_socket_parse, common_socket_free,
 	  acct_socket_recv, acct_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode},
@@ -2483,6 +2536,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_DETAIL
 	/* detail */
 	{ RLM_MODULE_INIT, "detail", sizeof(listen_detail_t), NULL,
+	  0, false,
 	  detail_parse, detail_free,
 	  detail_recv, detail_send,
 	  detail_print, common_packet_debug, detail_encode, detail_decode },
@@ -2497,6 +2551,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_COMMAND_SOCKET
 	/* TCP command socket */
 	{ RLM_MODULE_INIT, "control", sizeof(fr_command_socket_t), NULL,
+	  0, false,
 	  command_socket_parse, command_socket_free,
 	  command_domain_accept, command_domain_send,
 	  command_socket_print, common_packet_debug, command_socket_encode, command_socket_decode },
@@ -2507,6 +2562,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_COA
 	/* Change of Authorization */
 	{ RLM_MODULE_INIT, "coa", sizeof(listen_socket_t), NULL,
+	  TRANSPORT_DUAL, true,
 	  common_socket_parse, NULL,
 	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
