@@ -228,6 +228,8 @@ struct dict_attr {
 
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
 	fr_dict_attr_t const	**children;			//!< Children of this attribute.
+	fr_dict_attr_t const	*next;				//!< Next child in bin.
+
 	unsigned int		depth;				//!< Depth of nesting for this attribute.
 
 	ATTR_FLAGS		flags;				//!< Flags.
@@ -505,6 +507,7 @@ int			fr_dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int vendor, unsig
 fr_dict_attr_t const	*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr);
 int			fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name);
 int			fr_dict_unknown_from_substr(fr_dict_attr_t *da, char const **name);
+fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b);
 fr_dict_attr_t const	*fr_dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name);
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_attr_t const *old);
 

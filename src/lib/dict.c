@@ -550,6 +550,181 @@ int fr_dict_valid_name(char const *name)
 	return 0;
 }
 
+/** Find a common ancestor that two TLV type attributes share
+ *
+ * @param a first TLV attribute.
+ * @param b second TLV attribute.
+ * @return
+ *	- Common ancestor if one exists.
+ *	- NULL if no common ancestor exists.
+ */
+fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
+{
+	unsigned int i;
+	fr_dict_attr_t const *p_a, *p_b;
+
+	if (!a || !b) return NULL;
+
+	if (!a->flags.is_tlv || !b->flags.is_tlv) return NULL;	/* If not TLVs then they can't have a parent */
+	if (!a->parent || !b->parent) return NULL;		/* Either are at the root */
+	if (!a->parent->flags.has_tlv || !b->parent->flags.has_tlv) return NULL;
+
+	/*
+	 *	Find a common depth to work back from
+	 */
+	if (a->depth > b->depth) {
+		p_b = b;
+		for (p_a = a, i = a->depth - b->depth; p_a && i; p_a = p_a->parent, i++);
+	} else if (a->depth < b->depth) {
+		p_a = a;
+		for (p_b = b, i = b->depth - a->depth; p_b && i; p_b = p_b->parent, i++);
+	} else {
+		p_a = a;
+		p_b = b;
+	}
+
+	while (p_a && p_b) {
+		if (p_a == p_b) return p_a;
+
+		p_a = p_a->parent;
+		p_b = p_b->parent;
+	}
+
+	return NULL;
+}
+
+/** Add a child to a parent.
+ *
+ * @param parent we're adding a child to.
+ * @param child to add to parent.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure (memory allocation error).
+ */
+static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t *child)
+{
+	fr_dict_attr_t const * const *bin;
+	fr_dict_attr_t **this;
+
+	/*
+	 *	Setup fields in the child
+	 */
+	child->parent = parent;
+	child->depth = parent->depth + 1;
+	child->flags.extended |= parent->flags.extended;
+	child->flags.long_extended |= parent->flags.long_extended;
+	child->flags.evs |= parent->flags.evs;
+
+	/*
+	 *	We only allocate the pointer array *if* the parent has children.
+	 */
+	if (!parent->children) parent->children = talloc_zero_array(parent, fr_dict_attr_t const *, UINT8_MAX + 1);
+	if (!parent->children) return -1;
+
+	/*
+	 *	Treat the array as a hash of 255 bins, with attributes
+	 *	sorted into bins using num % 255.
+	 *
+	 *	Although the various protocols may define numbers higher than 255:
+	 *
+	 *	RADIUS/DHCPv4     - 1-255
+	 *	Diameter/Internal - 1-4294967295
+	 *	DHCPv6            - 1-65535
+	 *
+	 *	In reality very few will ever use attribute numbers > 500, so for
+	 *	the majority of lookups we get O(1) performance.
+	 *
+	 *	Attributes are inserted into the bin in order of their attribute
+	 *	numbers to allow slightly more efficient lookups.
+	 */
+	bin = &parent->children[child->attr & 0xff];
+	for (;;) {
+		bool child_is_struct = false;
+		bool bin_is_struct = false;
+
+		if (!*bin) break;
+
+		/*
+		 *	Workaround for vendors that overload the RFC space.
+		 *	Structural attributes always take priority.
+		 */
+		switch (child->type) {
+		case PW_TYPE_STRUCTURAL:
+			child_is_struct = true;
+			break;
+
+		default:
+			break;
+		}
+
+		switch ((*bin)->type) {
+		case PW_TYPE_STRUCTURAL:
+			bin_is_struct = true;
+			break;
+
+		default:
+			break;
+		}
+
+		if (child_is_struct && !bin_is_struct) break;
+		else if (child->vendor < (*bin)->vendor) break;	/* Prioritise RFC attributes */
+		else if (child->attr < (*bin)->attr) break;
+
+		bin = &(*bin)->next;
+	}
+
+	memcpy(&this, &bin, sizeof(this));
+	child->next = *this;
+	*this = child;
+
+	return 0;
+}
+
+/** Check if a child attribute exists in a parent
+ *
+ * @param parent to check for child in.
+ * @param attr number to look for.
+ * @return
+ *	- The child attribute on success.
+ *	- NULL if the child attribute does not exist.
+ */
+static inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
+{
+	fr_dict_attr_t const *bin;
+
+	if (!parent->children) return NULL;
+
+	/*
+	 *	Only some types can have children
+	 */
+	switch (parent->type) {
+	default:
+		return NULL;
+
+	case PW_TYPE_VSA:
+	case PW_TYPE_TLV:
+	case PW_TYPE_EVS:
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+		break;
+	}
+
+	/*
+	 *	Child arrays may be trimmed back to save memory.
+	 *	Check that so we don't SEGV.
+	 */
+	if ((attr & 0xff) > talloc_array_length(parent->children)) return NULL;
+
+	bin = parent->children[attr & 0xff];
+	for (;;) {
+		if (!bin) return NULL;
+		if (bin->attr == attr) return bin;
+		bin = bin->next;
+	}
+
+	return NULL;
+}
+
 /** Add an attribute to the dictionary
  *
  * @todo we need to check length of none vendor attributes.
@@ -998,19 +1173,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 
 		memcpy(&mutable, &parent, sizeof(mutable));
 
-		n->parent = mutable;
-		n->depth = mutable->depth + 1;
-		if (!n->parent->children) {
-			mutable->children = talloc_zero_array(mutable, fr_dict_attr_t const *, UINT8_MAX);
-		}
-		n->parent->children[n->attr & 0xff] = n;
-
-		/*
-		 *	Inherit parent's flags
-		 */
-		n->flags.extended |= parent->flags.extended;
-		n->flags.long_extended |= parent->flags.long_extended;
-		n->flags.evs |= parent->flags.evs;
+		if (fr_dict_attr_child_add(mutable, n) < 0) return -1;
 	}
 
 	return 0;
