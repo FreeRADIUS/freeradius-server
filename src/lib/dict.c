@@ -1341,17 +1341,18 @@ static int process_attribute(char const *fn, int const line,
 			     fr_dict_attr_t const *block_tlv, int tlv_depth,
 			     char **argv, int argc)
 {
-	int oid = 0;
-	unsigned int vendor = 0;
-	unsigned int value;
-	int type;
-	unsigned int length;
-	ATTR_FLAGS flags;
-	char *p;
+	int			oid = 0;
+
+	unsigned int		vendor = 0;
+	unsigned int		attr;
+
+	int			type;
+	unsigned int		length;
+	ATTR_FLAGS		flags;
+	char			*p;
 
 	if ((argc < 3) || (argc > 4)) {
-		fr_strerror_printf("fr_dict_init: %s[%d]: invalid ATTRIBUTE line",
-				   fn, line);
+		fr_strerror_printf("fr_dict_init: %s[%d]: invalid ATTRIBUTE line", fn, line);
 		return -1;
 	}
 
@@ -1359,8 +1360,7 @@ static int process_attribute(char const *fn, int const line,
 	 *	Dictionaries need to have real names, not shitty ones.
 	 */
 	if (strncmp(argv[1], "Attr-", 5) == 0) {
-		fr_strerror_printf("fr_dict_init: %s[%d]: Invalid attribute name",
-				   fn, line);
+		fr_strerror_printf("fr_dict_init: %s[%d]: Invalid attribute name", fn, line);
 		return -1;
 	}
 
@@ -1375,8 +1375,8 @@ static int process_attribute(char const *fn, int const line,
 	/*
 	 *	Validate all entries
 	 */
-	if (!sscanf_i(argv[1], &value)) {
-		fr_strerror_printf("fr_dict_init: %s[%d]: invalid value", fn, line);
+	if (!sscanf_i(argv[1], &attr)) {
+		fr_strerror_printf("fr_dict_init: %s[%d]: invalid attr", fn, line);
 		return -1;
 	}
 
@@ -1388,7 +1388,7 @@ static int process_attribute(char const *fn, int const line,
 		/*
 		 *	Parse the rest of the OID.
 		 */
-		if (fr_dict_str_to_oid(&vendor, &value, p + 1, tlv_depth + 1) < 0) {
+		if (fr_dict_str_to_oid(&vendor, &attr, p + 1, tlv_depth + 1) < 0) {
 			char buffer[256];
 
 			strlcpy(buffer, fr_strerror(), sizeof(buffer));
@@ -1401,7 +1401,7 @@ static int process_attribute(char const *fn, int const line,
 		/*
 		 *	Set the flags based on the parents flags.
 		 */
-		da = fr_dict_parent_by_num(vendor, value);
+		da = fr_dict_parent_by_num(vendor, attr);
 		if (!da) {
 			fr_strerror_printf("fr_dict_init: %s[%d]: Parent attribute is undefined.", fn, line);
 			return -1;
@@ -1542,16 +1542,16 @@ static int process_attribute(char const *fn, int const line,
 					return -1;
 				}
 
-				if (value < 256) {
+				if (attr < 256) {
 					fr_strerror_printf("fr_dict_init: %s[%d] Standard attributes cannot "
 								   "have the \"virtual\" flag set", fn, line);
 					return -1;
 				}
 
-				/*
-				 *	The only thing is the vendor name,
-				 *	and it's a known name: allow it.
-				 */
+			/*
+			 *	The only thing is the vendor name,
+			 *	and it's a known name: allow it.
+			 */
 			} else if ((key == argv[3]) && !next) {
 				if (oid) {
 					fr_strerror_printf("fr_dict_init: %s[%d] New-style attributes cannot use "
@@ -1626,17 +1626,17 @@ static int process_attribute(char const *fn, int const line,
 		/*
 		 *	TLV's can be only one octet.
 		 */
-		if ((value == 0) || ((value & ~fr_attr_mask[tlv_depth]) != 0)) {
+		if ((attr == 0) || ((attr & ~fr_attr_mask[tlv_depth]) != 0)) {
 			fr_strerror_printf("fr_dict_init: %s[%d]: sub-tlv has invalid attribute number",
 					   fn, line);
 			return -1;
 		}
 
 		/*
-		 *	Shift the value left.
+		 *	Shift the attr left.
 		 */
-		value <<= fr_attr_shift[tlv_depth];
-		value |= block_tlv->attr;
+		attr <<= fr_attr_shift[tlv_depth];
+		attr |= block_tlv->attr;
 		flags.is_tlv = 1;
 	}
 
@@ -1645,7 +1645,7 @@ static int process_attribute(char const *fn, int const line,
 	 *	Hack to help us discover which vendors have illegal
 	 *	attributes.
 	 */
-	if (!vendor && (value < 256) &&
+	if (!vendor && (attr < 256) &&
 	    !strstr(fn, "rfc") && !strstr(fn, "illegal")) {
 		fprintf(stderr, "WARNING: Illegal Attribute %s in %s\n",
 			argv[0], fn);
@@ -1655,7 +1655,7 @@ static int process_attribute(char const *fn, int const line,
 	/*
 	 *	Add it in.
 	 */
-	if (fr_dict_attr_add(block_tlv, argv[0], vendor, value, type, flags) < 0) {
+	if (fr_dict_attr_add(block_tlv, argv[0], vendor, attr, type, flags) < 0) {
 		fr_strerror_printf("fr_dict_init: %s[%d]: %s", fn, line, fr_strerror());
 		return -1;
 	}
