@@ -3135,7 +3135,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 		/*
 		 *	We need numbers for internal use.
 		 */
-		dv = fr_dict_value_by_name(0, 1147, value);
+		dv = fr_dict_value_by_name(0, PW_LISTEN_SOCKET_TYPE, value);
 		if (!dv) {
 			if (fr_dict_value_add("Listen-Socket-Type", value, last_listener) < 0) {
 				cf_log_err_cs(cs,
@@ -3145,7 +3145,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 				return NULL;
 			}
 
-			dv = fr_dict_value_by_name(0, 1147, value);
+			dv = fr_dict_value_by_name(0, PW_LISTEN_SOCKET_TYPE, value);
 			if (!dv) {
 				cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s",
 					      value);
@@ -3197,7 +3197,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 	 *	Couldn't link to it.  It MUST be defined in the
 	 *	dictionaries.
 	 */
-	dv = fr_dict_value_by_name(0, 1147, value);
+	dv = fr_dict_value_by_name(0, PW_LISTEN_SOCKET_TYPE, value);
 	if (!dv) {
 		cf_log_err_cs(cs, "No dictionary entry for protocol %s",
 			      value);
