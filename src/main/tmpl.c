@@ -1401,7 +1401,9 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *f
 
 	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
 
-	if (fr_dict_attr_add(NULL, vpt->tmpl_unknown_name, 0, -1, type, *flags) < 0) return -1;
+	if (fr_dict_attr_add(fr_dict_root(fr_main_dict), vpt->tmpl_unknown_name, 0, -1, type, *flags) < 0) {
+		return -1;
+	}
 	da = fr_dict_attr_by_name(vpt->tmpl_unknown_name);
 	if (!da) return -1;
 

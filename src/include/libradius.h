@@ -215,6 +215,9 @@ extern const int fr_attr_mask[];
 
 typedef struct dict_attr fr_dict_attr_t;
 
+typedef struct fr_dict fr_dict_t;
+extern fr_dict_t *fr_main_dict;
+
 /** Dictionary attribute
  *
  */
@@ -482,8 +485,6 @@ do { \
 #define FR_DICT_ATTR_MAX_NAME_LEN (128)
 
 #define FR_DICT_ATTR_SIZE sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN
-
-typedef struct fr_dict fr_dict_t;
 
 extern const int fr_dict_attr_allowed_chars[256];
 int			fr_dict_valid_name(char const *name);

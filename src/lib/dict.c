@@ -63,7 +63,7 @@ struct fr_dict {
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce mallocs.
 };
 
-static fr_dict_t *fr_main_dict;
+fr_dict_t *fr_main_dict;
 
 /*
  *	For faster HUP's, we cache the stat information for
