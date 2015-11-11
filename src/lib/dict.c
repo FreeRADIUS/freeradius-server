@@ -550,6 +550,79 @@ int fr_dict_valid_name(char const *name)
 	return 0;
 }
 
+static void fr_dict_snprint_flags(char *out, size_t outlen, ATTR_FLAGS flags)
+{
+	char *p = out, *end = p + outlen;
+	size_t len;
+
+	out[0] = '\0';
+
+#define FLAG_SET(_flag) \
+do { \
+	if (flags._flag) {\
+		p += strlcpy(p, STRINGIFY(_flag)",", end - p);\
+		if (p >= end) return;\
+	}\
+} while (0)
+
+	FLAG_SET(is_root);
+	FLAG_SET(is_unknown);
+	FLAG_SET(is_tlv);
+	FLAG_SET(internal);
+	FLAG_SET(has_tag);
+	FLAG_SET(array);
+	FLAG_SET(has_value);
+	FLAG_SET(has_value_alias);
+	FLAG_SET(has_tlv);
+	FLAG_SET(extended);
+	FLAG_SET(long_extended);
+	FLAG_SET(evs);
+	FLAG_SET(wimax);
+	FLAG_SET(concat);
+	FLAG_SET(is_pointer);
+	FLAG_SET(virtual);
+	FLAG_SET(compare);
+
+	if (flags.encrypt) {
+		p += snprintf(p, end - p, "encrypt=%i,", flags.encrypt);
+		if (p >= end) return;
+	}
+
+	if (flags.length) {
+		p += snprintf(p, end - p, "length=%i,", flags.length);
+		if (p >= end) return;
+	}
+
+	if (!out[0]) return;
+
+	/*
+	 *	Trim the comma
+	 */
+	len = strlen(out);
+	if (out[len - 1] == ',') out[len - 1] = '\0';
+}
+
+void fr_dict_print(fr_dict_attr_t const *da, int depth)
+{
+	char buff[256];
+	unsigned int i;
+
+	fr_dict_snprint_flags(buff, sizeof(buff), da->flags);
+
+	printf("%.*sATTR \"%s\" vendor: %x (%i), num: %x (%i), type: %s, flags: %s\n", depth,
+	       "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t", da->name,
+	       da->vendor, da->vendor, da->attr, da->attr,
+	       fr_int2str(dict_attr_types, da->type, "?Unknown?"), buff);
+
+	if (da->children) for (i = 0; i < talloc_array_length(da->children); i++) {
+		if (da->children[i]) {
+			fr_dict_attr_t const *bin;
+
+			for (bin = da->children[i]; bin; bin = bin->next) fr_dict_print(bin, depth + 1);
+		}
+	}
+}
+
 /** Find a common ancestor that two TLV type attributes share
  *
  * @param a first TLV attribute.
@@ -739,6 +812,8 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	size_t namelen;
 	fr_dict_attr_t *n;
 	static int max_attr = 0;
+
+	if (!fr_assert(parent)) return -1;
 
 	namelen = strlen(name);
 	if (namelen >= FR_DICT_ATTR_MAX_NAME_LEN) {
@@ -1826,7 +1901,7 @@ static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
 	/*
 	 *	Add it in.
 	 */
-	if (fr_dict_attr_add(block_tlv, argv[0], vendor, attr, type, flags) < 0) {
+	if (fr_dict_attr_add(parent, argv[0], vendor, attr, type, flags) < 0) {
 		fr_strerror_printf("fr_dict_init: %s[%d]: %s", fn, line, fr_strerror());
 		return -1;
 	}
@@ -2550,6 +2625,14 @@ static int null_callback(UNUSED void *ctx, UNUSED void *data)
 static void fr_pool_free(void *to_free)
 {
 	talloc_free(to_free);
+}
+
+/** Return the root attribute of a dictionary
+ *
+ */
+fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
+{
+	return dict->root;
 }
 
 /** Initialize a protocol dictionary

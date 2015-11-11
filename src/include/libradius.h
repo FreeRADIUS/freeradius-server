@@ -497,6 +497,8 @@ int			fr_dict_vendor_add(char const *name, unsigned int value);
 int			fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned int vendor, int attr,
 					 PW_TYPE type, ATTR_FLAGS flags);
 int			fr_dict_value_add(char const *attrstr, char const *namestr, int value);
+
+fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
 int			fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out,
 				     char const *dir, char const *fn, char const *name);
 
@@ -507,6 +509,8 @@ int			fr_dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int vendor, unsig
 fr_dict_attr_t const	*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr);
 int			fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name);
 int			fr_dict_unknown_from_substr(fr_dict_attr_t *da, char const **name);
+
+void			fr_dict_print(fr_dict_attr_t const *da, int depth);
 fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b);
 fr_dict_attr_t const	*fr_dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name);
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_attr_t const *old);
