@@ -670,9 +670,7 @@ fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_att
 
 	if (!a || !b) return NULL;
 
-	if (!a->flags.is_tlv || !b->flags.is_tlv) return NULL;	/* If not TLVs then they can't have a parent */
 	if (!a->parent || !b->parent) return NULL;		/* Either are at the root */
-	if (!a->parent->flags.has_tlv || !b->parent->flags.has_tlv) return NULL;
 
 	/*
 	 *	Find a common depth to work back from
@@ -1031,8 +1029,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 
 	if (fr_dict_valid_name(name) < 0) return -1;
 
-	if (flags.has_tag &&
-	    !((type == PW_TYPE_INTEGER) || (type == PW_TYPE_STRING))) {
+	if (flags.has_tag && !((type == PW_TYPE_INTEGER) || (type == PW_TYPE_STRING))) {
 		fr_strerror_printf("Only 'integer' and 'string' attributes can have tags");
 		goto error;
 	}
@@ -1060,17 +1057,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		 *  Update 'max_attr'
 		 */
 		if (attr > max_attr) max_attr = attr;
-	}
-
-	/*
-	 *	We're still in the same space and the parent isn't a TLV.  That's an error.
-	 *
-	 *	Otherwise, fr_dict_parent_by_num() has taken us from an Extended sub-attribute to
-	 *	a *the* Extended attribute, whish isn't what we want here.
-	 */
-	if (!flags.internal && (vendor == parent->vendor) && (parent->type != PW_TYPE_TLV)) {
-		fr_strerror_printf("Has parent attribute %s which is not of type 'tlv'", parent->name);
-		goto error;
 	}
 
 	/*
@@ -1133,7 +1119,10 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	/*
 	 *	Additional checks for extended attributes.
 	 */
-	if (flags.extended || flags.long_extended || flags.evs) {
+	switch (parent->type) {
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_EVS:
 		if (vendor && (vendor < FR_MAX_VENDOR)) {
 			fr_strerror_printf("VSAs cannot use the \"extended\" or \"evs\" attribute formats");
 			goto error;
@@ -1146,13 +1135,40 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			fr_strerror_printf("The \"extended\" attributes MUST NOT have any flags set");
 			goto error;
 		}
+
+	default:
+		break;
 	}
 
-	if (flags.evs) {
-		if (!(flags.extended || flags.long_extended)) {
+	/*
+	 *	Check lineage
+	 */
+	switch (type) {
+	/*
+	 *	These types may only be parented from the root of the dictionary
+	 */
+	case PW_TYPE_VSA:
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("\"%s\" can only occur in RFC space",
+					   fr_int2str(dict_attr_types, type, "?Unknown?"));
+			goto error;
+		}
+		break;
+
+	/*
+	 *	EVS may only occur under extended and long extended.
+	 */
+	case PW_TYPE_EVS:
+		if ((parent->type != PW_TYPE_EXTENDED) && (parent->type != PW_TYPE_LONG_EXTENDED)) {
 			fr_strerror_printf("Attributes of type \"evs\" MUST have a parent of type \"extended\"");
 			goto error;
 		}
+		break;
+
+	default:
+		break;
 	}
 
 	/*
@@ -1163,38 +1179,71 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		goto error;
 	}
 
-	if (flags.has_tlv && flags.length) {
-		fr_strerror_printf("TLVs cannot have a fixed length");
-		goto error;
+	if (flags.concat) {
+		if (vendor) {
+			fr_strerror_printf("VSAs cannot have the \"concat\" flag set");
+			goto error;
+		}
+
+		if (type != PW_TYPE_OCTETS) {
+			fr_strerror_printf("The \"concat\" flag can only be set for attributes of type \"octets\"");
+			goto error;
+		}
+
+		if (flags.has_tag || flags.length || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
+			fr_strerror_printf("The \"concat\" flag cannot be used with any other flag");
+			goto error;
+		}
+
+		switch (type) {
+		case PW_TYPE_STRUCTURAL:
+			fr_strerror_printf("The \"concat\" flag can only be used with RFC attributes");
+			goto error;
+
+		default:
+			break;
+		}
+
+		if (!parent->flags.is_root) switch (parent->type) {
+		case PW_TYPE_STRUCTURAL:
+			fr_strerror_printf("The \"concat\" flag can only be used with RFC attributes");
+			goto error;
+
+		default:
+			break;
+		}
 	}
 
-	if (vendor && flags.concat) {
-		fr_strerror_printf("VSAs cannot have the \"concat\" flag set");
-		goto error;
-	}
+	if (flags.length) {
+		if (type != PW_TYPE_OCTETS) {
+			fr_strerror_printf("The \"length\" flag can only be set for attributes of type \"octets\"");
+			goto error;
+		}
 
-	if (flags.concat && (type != PW_TYPE_OCTETS)) {
-		fr_strerror_printf("The \"concat\" flag can only be set for attributes of type \"octets\"");
-		goto error;
-	}
+		if (flags.has_tag || flags.array || flags.concat || (flags.encrypt > FLAG_ENCRYPT_USER_PASSWORD)) {
+			fr_strerror_printf("The \"length\" flag cannot be used with any other flag");
+			goto error;
+		}
 
-	if (flags.concat && (flags.has_tag || flags.array || flags.is_tlv || flags.has_tlv ||
-			     flags.length || flags.evs || flags.extended || flags.long_extended ||
-			     (flags.encrypt != FLAG_ENCRYPT_NONE))) {
-		fr_strerror_printf("The \"concat\" flag cannot be used with any other flag");
-		goto error;
-	}
+		switch (type) {
+		case PW_TYPE_STRUCTURAL:
+			fr_strerror_printf("The \"length\" flag cannot be used with \"%s\" attributes",
+					   fr_int2str(dict_attr_types, type, "?Unknown?"));
+			goto error;
 
-	if (flags.length && (type != PW_TYPE_OCTETS)) {
-		fr_strerror_printf("The \"length\" flag can only be set for attributes of type \"octets\"");
-		goto error;
-	}
+		default:
+			break;
+		}
 
-	if (flags.length && (flags.has_tag || flags.array || flags.is_tlv || flags.has_tlv ||
-			     flags.concat || flags.evs || flags.extended || flags.long_extended ||
-			     (flags.encrypt > FLAG_ENCRYPT_USER_PASSWORD))) {
-		fr_strerror_printf("The \"length\" flag cannot be used with any other flag");
-		goto error;
+		if (!parent->flags.is_root) switch (parent->type) {
+		case PW_TYPE_STRUCTURAL_EXCEPT_VSA:
+			fr_strerror_printf("The \"length\" flag cannot be used with attributes parented by type \"%s\"",
+					   fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
+			goto error;
+
+		default:
+			break;
+		}
 	}
 
 	/*
@@ -1238,9 +1287,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 					   "RFC attributes with value >= 241.");
 			goto error;
 		}
-
 		flags.length = 0;
-		flags.extended = 1;
 		break;
 
 	case PW_TYPE_LONG_EXTENDED:
@@ -1251,19 +1298,15 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		}
 
 		flags.length = 0;
-		flags.extended = 1;
-		flags.long_extended = 1;
 		break;
 
 	case PW_TYPE_EVS:
 		if (attr != PW_VENDOR_SPECIFIC) {
-			fr_strerror_printf("Attributes of type \"evs\" MUST have attribute code 26.");
+			fr_strerror_printf("Attributes of type \"evs\" MUST have attribute code 26, got %i", attr);
 			goto error;
 		}
 
 		flags.length = 0;
-		flags.extended = 1;
-		flags.evs = 1;
 		break;
 
 	case PW_TYPE_STRING:
@@ -1302,17 +1345,17 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		static fr_dict_vendor_t *last_vendor = NULL;
 		unsigned int vendor_max;
 
-		if (flags.has_tlv && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
+		if ((type == PW_TYPE_TLV) && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("TLV's cannot be encrypted");
 			goto error;
 		}
 
-		if (flags.is_tlv && flags.has_tag) {
+		if ((parent->type == PW_TYPE_TLV) && flags.has_tag) {
 			fr_strerror_printf("Sub-TLV's cannot have a tag");
 			goto error;
 		}
 
-		if (flags.has_tlv && flags.has_tag) {
+		if ((type == PW_TYPE_TLV) && flags.has_tag) {
 			fr_strerror_printf("TLV's cannot have a tag");
 			goto error;
 		}
@@ -1323,8 +1366,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		 *	dictionary initialization by caching the last
 		 *	vendor.
 		 */
-		if (last_vendor &&
-		    ((vendor & (FR_MAX_VENDOR - 1)) == last_vendor->vendorpec)) {
+		if (last_vendor && ((vendor & (FR_MAX_VENDOR - 1)) == last_vendor->vendorpec)) {
 			dv = last_vendor;
 		} else {
 			/*
@@ -1781,9 +1823,13 @@ static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
 		/*
 		 *	Keep it real.
 		 */
-		if (flags.extended) {
-			fr_strerror_printf("fr_dict_init: %s[%d]: Extended attributes cannot use flags", fn, line);
+		switch (type) {
+		case PW_TYPE_STRUCTURAL:
+			fr_strerror_printf("fr_dict_init: %s[%d]: Structural attributes cannot use flags", fn, line);
 			return -1;
+
+		default:
+			break;
 		}
 
 		key = argv[3];
@@ -2632,7 +2678,7 @@ static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filenam
 					return -1;
 				}
 
-				if (!da->flags.evs) {
+				if (da->type != PW_TYPE_EVS) {
 					fr_strerror_printf(
 						"fr_dict_init: %s[%d]: Invalid format for BEGIN-VENDOR.  Attribute \"%s\" is not of \"evs\" data type",
 						fn, line, p);
@@ -3178,14 +3224,15 @@ int fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 			return -1;
 		}
 
-		if ((attr != PW_VENDOR_SPECIFIC) &&
-		    !(found->flags.extended || found->flags.long_extended)) {
-			fr_strerror_printf("Standard attributes cannot use OIDs");
+		switch (found->type) {
+		case PW_TYPE_STRUCTURAL:
+			break;
 
-			return -1;
+		default:
+			fr_strerror_printf("Standard attributes cannot use OIDs");
 		}
 
-		if ((attr == PW_VENDOR_SPECIFIC) || found->flags.evs) {
+		if ((attr == PW_VENDOR_SPECIFIC) || found->type == PW_TYPE_EVS) {
 			vendor = strtol(p + 1, &q, 10);
 			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
 				fr_strerror_printf("Invalid vendor");
