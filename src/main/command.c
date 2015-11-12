@@ -3032,8 +3032,6 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 {
 	fr_command_socket_t *sock;
 
-	if (check_config) return 0;
-
 	sock = this->data;
 
 	if (cf_section_parse(cs, sock, command_config) < 0) return -1;
@@ -3086,6 +3084,15 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	}
 
+	return 0;
+}
+
+static int command_socket_open_unix(UNUSED CONF_SECTION *cs, rad_listen_t *this)
+{
+	fr_command_socket_t *sock;
+
+	sock = this->data;
+
 	if (sock->peercred) {
 		this->fd = fr_server_domain_socket_peercred(sock->path, sock->uid, sock->gid);
 	} else {
@@ -3136,6 +3143,16 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	return 0;
+}
+
+static int command_socket_open(CONF_SECTION *cs, rad_listen_t *this)
+{
+	CONF_PAIR const *cp;
+
+	cp = cf_pair_find(cs, "socket");
+	if (cp) return command_socket_open_unix(cs, this);
+
+	return common_socket_open(cs, this);
 }
 
 static int command_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)

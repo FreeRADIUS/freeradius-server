@@ -275,8 +275,6 @@ static int arp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
-	if (check_config) return 0;
-
 	/*
 	 *	The server core is still RADIUS, and needs a client.
 	 *	So we fake one here.
@@ -310,6 +308,7 @@ fr_protocol_t proto_arp = {
 	.transports	= 0,
 	.tls		= false,
 	.parse		= arp_socket_parse,
+	.open		= common_socket_open,
 	.free		= arp_socket_free,
 	.recv		= arp_socket_recv,
 	.send		= arp_socket_send,

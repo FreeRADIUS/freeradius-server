@@ -1568,6 +1568,10 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, uint16_t *po
 	if (rcode < 0) return -1;
 	return 0;
 }
+
+/*
+ *	@fixme: move some of this to parse
+ */
 static int bfd_init_sessions(CONF_SECTION *cs, bfd_socket_t *sock, int sockfd)
 {
 	CONF_ITEM *ci;
@@ -1659,16 +1663,12 @@ static const FR_NAME_NUMBER auth_types[] = {
 
 static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
-	int rcode;
 	bfd_socket_t *sock = this->data;
 	char const *auth_type_str = NULL;
 	uint16_t listen_port;
 	fr_ipaddr_t ipaddr;
 
 	rad_assert(sock != NULL);
-
-	/* largely copied from common_socket_parse */
-	this->cs = cs;
 
 	if (bfd_parse_ip_port(cs, &ipaddr, &listen_port) < 0) {
 		return -1;
@@ -1677,16 +1677,67 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->my_ipaddr = ipaddr;
 	sock->my_port = listen_port;
 
-	/* end of code copied from common_socket_parse */
+	cf_pair_parse(cs, "min_transmit_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_tx_interval), "1000", T_BARE_WORD);
+	cf_pair_parse(cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_rx_interval), "1000", T_BARE_WORD);
+	cf_pair_parse(cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->max_timeouts), "3", T_BARE_WORD);
+	cf_pair_parse(cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &sock->demand), "no", T_DOUBLE_QUOTED_STRING);
+	cf_pair_parse(cs, "auth_type", FR_ITEM_POINTER(PW_TYPE_STRING, &auth_type_str), NULL, T_INVALID);
 
-	/* code copied from listen_init() <sigh> */
-	/*
-	 *	Don't open sockets if we're checking the config.
-	 */
-	if (check_config) {
-		this->fd = -1;
-		return 0;
+	if (!this->server) {
+		cf_pair_parse(cs, "server", FR_ITEM_POINTER(PW_TYPE_STRING, &sock->server), NULL, T_INVALID);
+	} else {
+		sock->server = this->server;
 	}
+
+	if (sock->min_tx_interval < 100) sock->min_tx_interval = 100;
+	if (sock->min_tx_interval > 10000) sock->min_tx_interval = 10000;
+
+	if (sock->min_rx_interval < 100) sock->min_rx_interval = 100;
+	if (sock->min_rx_interval > 10000) sock->min_rx_interval = 10000;
+
+	if (sock->max_timeouts == 0) sock->max_timeouts = 1;
+	if (sock->max_timeouts > 10) sock->max_timeouts = 10;
+
+	sock->auth_type = fr_str2int(auth_types, auth_type_str, BFD_AUTH_INVALID);
+	if (sock->auth_type == BFD_AUTH_INVALID) {
+		ERROR("Unknown auth_type '%s'", auth_type_str);
+		exit(1);
+	}
+
+	if (sock->auth_type == BFD_AUTH_SIMPLE) {
+		ERROR("'simple' authentication is insecure and is not supported");
+		exit(1);
+	}
+
+	if (sock->auth_type != BFD_AUTH_RESERVED) {
+		sock->secret_len = bfd_parse_secret(cs, sock->secret);
+
+		if (sock->secret_len == 0) {
+			ERROR("Cannot have empty secret");
+			exit(1);
+		}
+
+		if (((sock->auth_type == BFD_AUTH_KEYED_MD5) ||
+		     (sock->auth_type == BFD_AUTH_MET_KEYED_MD5)) &&
+		    (sock->secret_len > 16)) {
+			ERROR("Secret must be no more than 16 bytes when using MD5");
+			exit(1);
+		}
+	}
+
+	sock->session_tree = rbtree_create(sock, bfd_session_cmp, bfd_session_free, 0);
+	if (!sock->session_tree) {
+		ERROR("Failed creating session tree!");
+		exit(1);
+	}
+
+	return 0;
+}
+
+static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
+{
+	int rcode;
+	bfd_socket_t *sock = this->data;
 
 	/*
 	 *	Copy fr_socket() here, as we may need to bind to a device.
@@ -1805,63 +1856,6 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
-	/* end of code copied from listen_init() */
-
-	cf_pair_parse(cs, "min_transmit_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_tx_interval), "1000", T_BARE_WORD);
-	cf_pair_parse(cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_rx_interval), "1000", T_BARE_WORD);
-	cf_pair_parse(cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->max_timeouts), "3", T_BARE_WORD);
-	cf_pair_parse(cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &sock->demand), "no", T_DOUBLE_QUOTED_STRING);
-	cf_pair_parse(cs, "auth_type", FR_ITEM_POINTER(PW_TYPE_STRING, &auth_type_str), NULL, T_INVALID);
-
-	if (!this->server) {
-		cf_pair_parse(cs, "server", FR_ITEM_POINTER(PW_TYPE_STRING, &sock->server), NULL, T_INVALID);
-	} else {
-		sock->server = this->server;
-	}
-
-	if (sock->min_tx_interval < 100) sock->min_tx_interval = 100;
-	if (sock->min_tx_interval > 10000) sock->min_tx_interval = 10000;
-
-	if (sock->min_rx_interval < 100) sock->min_rx_interval = 100;
-	if (sock->min_rx_interval > 10000) sock->min_rx_interval = 10000;
-
-	if (sock->max_timeouts == 0) sock->max_timeouts = 1;
-	if (sock->max_timeouts > 10) sock->max_timeouts = 10;
-
-	sock->auth_type = fr_str2int(auth_types, auth_type_str, BFD_AUTH_INVALID);
-	if (sock->auth_type == BFD_AUTH_INVALID) {
-		ERROR("Unknown auth_type '%s'", auth_type_str);
-		exit(1);
-	}
-
-	if (sock->auth_type == BFD_AUTH_SIMPLE) {
-		ERROR("'simple' authentication is insecure and is not supported");
-		exit(1);
-	}
-
-	if (sock->auth_type != BFD_AUTH_RESERVED) {
-		sock->secret_len = bfd_parse_secret(cs, sock->secret);
-
-		if (sock->secret_len == 0) {
-			ERROR("Cannot have empty secret");
-			exit(1);
-		}
-
-		if (((sock->auth_type == BFD_AUTH_KEYED_MD5) ||
-		     (sock->auth_type == BFD_AUTH_MET_KEYED_MD5)) &&
-		    (sock->secret_len > 16)) {
-			ERROR("Secret must be no more than 16 bytes when using MD5");
-			exit(1);
-		}
-	}
-
-
-	sock->session_tree = rbtree_create(sock, bfd_session_cmp, bfd_session_free, 0);
-	if (!sock->session_tree) {
-		ERROR("Failed creating session tree!");
-		exit(1);
-	}
-
 	/*
 	 *	Bootstrap the initial set of connections.
 	 */
@@ -1907,6 +1901,7 @@ fr_protocol_t proto_bfd = {
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
 	.parse		= bfd_socket_parse,
+	.open		= bfd_socket_open,
 	.free		= bfd_socket_free,
 	.recv		= bfd_socket_recv,
 	.send		= bfd_socket_send,

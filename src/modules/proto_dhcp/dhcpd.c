@@ -713,8 +713,6 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	rcode = common_socket_parse(cs, this);
 	if (rcode != 0) return rcode;
 
-	if (check_config) return 0;
-
 	if (!sock->lsock.interface) WARN("No \"interface\" setting is defined.  Only unicast DHCP will work");
 
 	/*
@@ -997,6 +995,7 @@ fr_protocol_t proto_dhcp = {
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
 	.parse		= dhcp_socket_parse,
+	.open		= common_socket_open,
 	.recv		= dhcp_socket_recv,
 	.send		= dhcp_socket_send,
 	.print		= common_socket_print,

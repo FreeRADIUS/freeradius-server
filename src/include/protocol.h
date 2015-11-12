@@ -44,6 +44,7 @@ typedef struct fr_protocol_t {
 	bool			tls;
 
 	rad_listen_parse_t	parse;
+	rad_listen_parse_t	open;
 	rad_listen_free_t	free;
 	rad_listen_recv_t	recv;
 	rad_listen_send_t	send;
@@ -61,6 +62,7 @@ typedef struct fr_protocol_t {
  *	@todo: fix for later
  */
 int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this);
+int common_socket_open(CONF_SECTION *cs, rad_listen_t *this);
 int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize);
 void common_packet_debug(REQUEST *request, RADIUS_PACKET *packet, bool received);
 

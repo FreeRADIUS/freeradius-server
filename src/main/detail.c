@@ -1192,6 +1192,18 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	client->secret = client->shortname;
 	client->nas_type = talloc_strdup(data, "none");	/* Part of 'data' not dynamically allocated */
 
+	return 0;
+}
+
+/*
+ *	Open detail files
+ */
+int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
+{
+	listen_detail_t *data;
+
+	data = this->data;
+
 #ifdef WITH_DETAIL_THREAD
 	/*
 	 *	Create the communication pipes.

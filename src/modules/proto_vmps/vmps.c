@@ -117,6 +117,7 @@ fr_protocol_t proto_vmps = {
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
 	.parse		= common_socket_parse,
+	.open		= common_socket_open,
 	.recv		= vqp_socket_recv,
 	.send		= vqp_socket_send,
 	.print		= common_socket_print,

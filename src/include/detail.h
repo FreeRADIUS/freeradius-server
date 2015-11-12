@@ -87,6 +87,7 @@ int detail_print(rad_listen_t const *this, char *buffer, size_t bufsize);
 int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request);
 int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request);
 int detail_parse(CONF_SECTION *cs, rad_listen_t *this);
+int detail_socket_open(CONF_SECTION *cs, rad_listen_t *this);
 
 #ifdef __cplusplus
 }

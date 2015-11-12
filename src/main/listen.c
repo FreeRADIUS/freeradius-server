@@ -80,12 +80,15 @@ typedef struct listen_config_t {
 	lt_dlhandle	*handle;	//!< to dynamically loaded library (if any)
 	RAD_LISTEN_TYPE	type;		//! same as Listen-Socket-Type
 	fr_protocol_t	*proto;		//!< pointer to the protocol handler.
+
+	rad_listen_t	*listener;	//!< created from this configuration
 } listen_config_t;
 
 static TALLOC_CTX *listen_ctx = NULL;
 static listen_config_t *listen_config = NULL;
 
 static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type, fr_protocol_t *proto);
+static rad_listen_t *listen_parse(listen_config_t *lc);
 
 #ifdef WITH_COMMAND_SOCKET
 static int command_tcp_recv(rad_listen_t *listener);
@@ -323,6 +326,12 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	lc->handle = handle;
 	lc->type = dv->value;
 	lc->proto = proto;
+
+	lc->listener = listen_parse(lc);
+	if (!lc->listener) {
+		talloc_free(lc);
+		return -1;
+	}
 
 	if (handle) talloc_set_destructor(lc, _listen_config_free);
 
@@ -1276,8 +1285,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	CONF_SECTION	*subcs;
 	CONF_PAIR	*cp;
 
-	this->cs = cs;
-
 	/*
 	 *	Try IPv4 first
 	 */
@@ -1505,30 +1512,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 #endif
 
-
-#ifdef HAVE_LIBPCAP
-	/* Only use libpcap if pcap_type has a value. Otherwise, use socket with SO_BINDTODEVICE */
-	if (sock->interface && sock->pcap_type) {
-		if (init_pcap(this) < 0) {
-			cf_log_err_cs(cs,
-				   "Error initializing pcap.");
-			return -1;
-		}
-	} else
-#endif
-		/*
-		 *	And bind it to the port.
-		 */
-		if (listen_bind(this) < 0) {
-			char buffer[128];
-			cf_log_err_cs(cs,
-				   "Error binding to port for %s port %d",
-				   fr_inet_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
-				   sock->my_port);
-			return -1;
-		}
-
-
 #ifdef WITH_PROXY
 	/*
 	 *	Proxy sockets don't have clients.
@@ -1607,6 +1590,42 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	}
 #endif
+
+	return 0;
+}
+
+
+/*
+ *	Open a socket using a previously parsed listener.
+ */
+int common_socket_open(CONF_SECTION *cs, rad_listen_t *this)
+{
+	listen_socket_t *sock = this->data;
+
+#ifdef HAVE_LIBPCAP
+	/* Only use libpcap if pcap_type has a value. Otherwise, use socket with SO_BINDTODEVICE */
+	if (sock->interface && sock->pcap_type) {
+		if (init_pcap(this) < 0) {
+			cf_log_err_cs(cs,
+				   "Error initializing pcap.");
+			return -1;
+		}
+
+		return 0;
+	}
+#endif
+
+	/*
+	 *	Bind the socket to an IP / port / interface
+	 */
+	if (listen_bind(this) < 0) {
+		char buffer[128];
+		cf_log_err_cs(cs,
+			      "Error binding to port for %s port %d",
+			      fr_inet_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
+			      sock->my_port);
+		return -1;
+	}
 
 	return 0;
 }
@@ -2497,7 +2516,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_STATS
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
 	  TRANSPORT_DUAL, true,
-	  common_socket_parse, NULL,
+	  common_socket_parse, common_socket_open, NULL,
 	  stats_socket_recv, auth_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
 #else
@@ -2508,7 +2527,7 @@ static fr_protocol_t master_listen[] = {
 	/* proxying */
 	{ RLM_MODULE_INIT, "proxy", sizeof(listen_socket_t), NULL,
 	  TRANSPORT_DUAL, true,
-	  common_socket_parse, common_socket_free,
+	  common_socket_parse, common_socket_open, common_socket_free,
 	  proxy_socket_recv, proxy_socket_send,
 	  common_socket_print, common_packet_debug, proxy_socket_encode, proxy_socket_decode },
 #else
@@ -2518,7 +2537,7 @@ static fr_protocol_t master_listen[] = {
 	/* authentication */
 	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
 	  TRANSPORT_DUAL, true,
-	  common_socket_parse, common_socket_free,
+	  common_socket_parse, common_socket_open, common_socket_free,
 	  auth_socket_recv, auth_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
 
@@ -2526,7 +2545,7 @@ static fr_protocol_t master_listen[] = {
 	/* accounting */
 	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
 	  TRANSPORT_DUAL, true,
-	  common_socket_parse, common_socket_free,
+	  common_socket_parse, common_socket_open, common_socket_free,
 	  acct_socket_recv, acct_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode},
 #else
@@ -2537,7 +2556,7 @@ static fr_protocol_t master_listen[] = {
 	/* detail */
 	{ RLM_MODULE_INIT, "detail", sizeof(listen_detail_t), NULL,
 	  0, false,
-	  detail_parse, detail_free,
+	  detail_parse, detail_socket_open, detail_free,
 	  detail_recv, detail_send,
 	  detail_print, common_packet_debug, detail_encode, detail_decode },
 #else
@@ -2552,7 +2571,7 @@ static fr_protocol_t master_listen[] = {
 	/* TCP command socket */
 	{ RLM_MODULE_INIT, "control", sizeof(fr_command_socket_t), NULL,
 	  0, false,
-	  command_socket_parse, command_socket_free,
+	  command_socket_parse, command_socket_open, command_socket_free,
 	  command_domain_accept, command_domain_send,
 	  command_socket_print, common_packet_debug, command_socket_encode, command_socket_decode },
 #else
@@ -2563,7 +2582,7 @@ static fr_protocol_t master_listen[] = {
 	/* Change of Authorization */
 	{ RLM_MODULE_INIT, "coa", sizeof(listen_socket_t), NULL,
 	  TRANSPORT_DUAL, true,
-	  common_socket_parse, NULL,
+	  common_socket_parse, common_socket_open, NULL,
 	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
 #else
@@ -3330,6 +3349,7 @@ static rad_listen_t *listen_parse(listen_config_t *lc)
 	this = listen_alloc(lc, lc->type, lc->proto);
 	this->server = lc->server_name;
 	this->fd = -1;
+	this->cs = cs;
 
 #ifdef WITH_TCP
 	/*
@@ -3387,20 +3407,30 @@ int listen_init(rad_listen_t **head, bool spawn_workers)
 	rad_listen_t	*this;
 	listen_config_t	*lc;
 
+	if (!listen_config) {
+		ERROR("The server is not configured to listen on any ports.  Cannot start");
+		return -1;
+	}
+
 	/*
 	 *	We shouldn't be called with a pre-existing list.
 	 */
 	rad_assert(head && (*head == NULL));
 
+	/*
+	 *	Don't bother opening sockets if we're just checking the configuration.
+	 */
+	if (check_config) return 0;
+
 	last = head;
 
 	for (lc = listen_config; lc != NULL; lc = lc->next) {
-		this = listen_parse(lc);
-		if (!this) {
-			listen_free(head);
+		if (lc->proto->open(lc->cs, lc->listener) < 0) {
+			TALLOC_FREE(listen_ctx);
 			return -1;
 		}
 
+		this = lc->listener;
 		*last = this;
 		last = &(this->next);
 	}
@@ -3411,57 +3441,48 @@ int listen_init(rad_listen_t **head, bool spawn_workers)
 	 */
 	for (this = *head; this != NULL; this = this->next) {
 #ifdef WITH_TLS
-		if (!check_config && !spawn_workers && this->tls) {
+		if (!spawn_workers && this->tls) {
 			cf_log_err_cs(this->cs, "Threading must be enabled for TLS sockets to function properly");
 			cf_log_err_cs(this->cs, "You probably need to do '%s -fxx -l stdout' for debugging",
 				      main_config.name);
 			return -1;
 		}
 #endif
-		if (!check_config) {
-			if (this->workers && !spawn_workers) {
-				WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
-				this->workers = 0;
-			}
+		if (this->workers && !spawn_workers) {
+			WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
+			this->workers = 0;
+		}
 
-			if (this->workers) {
+		if (this->workers) {
 #ifdef HAVE_PTHREAD_H
-				int rcode;
-				uint32_t i;
-				char buffer[256];
+			int rcode;
+			uint32_t i;
+			char buffer[256];
 
-				this->print(this, buffer, sizeof(buffer));
+			this->print(this, buffer, sizeof(buffer));
 
-				for (i = 0; i < this->workers; i++) {
-					pthread_t id;
+			for (i = 0; i < this->workers; i++) {
+				pthread_t id;
 
-					/*
-					 *	FIXME: create detached?
-					 */
-					rcode = pthread_create(&id, 0, recv_thread, this);
-					if (rcode != 0) {
-						ERROR("Thread create failed: %s", fr_syserror(rcode));
-						fr_exit(1);
-					}
-
-					DEBUG("Thread %d for %s\n", i, buffer);
+				/*
+				 *	FIXME: create detached?
+				 */
+				rcode = pthread_create(&id, 0, recv_thread, this);
+				if (rcode != 0) {
+					ERROR("Thread create failed: %s", fr_syserror(rcode));
+					fr_exit(1);
 				}
-#else
-				WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
-				this->workers = 0;
-#endif
 
-			} else {
-				radius_update_listener(this);
+				DEBUG("Thread %d for %s\n", i, buffer);
 			}
-
+#else
+			WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
+			this->workers = 0;
+#endif
+		} else {
+			radius_update_listener(this);
 		}
 	}
-
-	/*
-	 *	Haven't defined any sockets.  Die.
-	 */
-	if (!*head) return -1;
 
 	return 0;
 }

@@ -1456,7 +1456,6 @@ static bool virtual_server_define_types(CONF_SECTION *cs, rlm_components_t comp)
  */
 int virtual_servers_bootstrap(CONF_SECTION *config)
 {
-	bool has_listener = false;
 	CONF_SECTION *cs;
 	char const *server_name;
 
@@ -1472,7 +1471,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "listen")) {
 		if (listen_bootstrap(config, cs, NULL) < 0) return -1;
-		has_listener = true;
 	}
 
 	for (cs = cf_subsection_find_next(config, NULL, "server");
@@ -1525,7 +1523,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 			if (strcmp(name1, "listen") == 0) {
 				if (listen_bootstrap(cs, subcs, server_name) < 0) return -1;
-				has_listener = true;
 				continue;
 			}
 
@@ -1555,11 +1552,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 
 		} /* loop over things inside of a virtual server */
 	} /* loop over virtual servers */
-
-	if (!has_listener) {
-		ERROR("The server is not configured to listen on any ports.  Cannot start");
-		return -1;
-	}
 
 	return 0;
 }
