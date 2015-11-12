@@ -3406,8 +3406,28 @@ int listen_init(rad_listen_t **head, bool spawn_workers)
 	rad_listen_t	**last;
 	rad_listen_t	*this;
 	listen_config_t	*lc;
+	bool		incoming_sockets = false;
 
 	if (!listen_config) {
+		ERROR("The server is not configured to listen on any ports.  Cannot start");
+		return -1;
+	}
+
+	for (lc = listen_config; lc != NULL; lc = lc->next) {
+		if (lc->type == RAD_LISTEN_COMMAND) continue;
+		if (lc->type == RAD_LISTEN_PROXY) continue;
+
+		incoming_sockets = true;
+		break;
+	}
+
+	/*
+	 *	@fixme: This check should arguably be in
+	 *	listen_bootstrap().  But that function bootstraps only
+	 *	one listener, because listeners can be located in
+	 *	multiple places.  So for now, we put it here.
+	 */
+	if (!incoming_sockets) {
 		ERROR("The server is not configured to listen on any ports.  Cannot start");
 		return -1;
 	}
