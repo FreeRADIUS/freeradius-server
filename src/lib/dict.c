@@ -1088,38 +1088,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	}
 
 	/*
-	 *	Special case for VSAs - We need to pre-create the hierachy
-	 */
-	if ((vendor & (FR_MAX_VENDOR - 1)) && parent->flags.is_root) {
-		ATTR_FLAGS new_flags;
-
-		fr_dict_attr_t const *vsa_attr, *vendor_attr;
-		fr_dict_attr_t *new;
-		fr_dict_attr_t *mutable;
-
-		memset(&new_flags, 0, sizeof(new_flags));
-
-		vsa_attr = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
-		if (!vsa_attr) {
-			memcpy(&mutable, &parent, sizeof(mutable));
-			new = fr_dict_attr_alloc(mutable, "Vendor-Specific", 0,
-						 PW_VENDOR_SPECIFIC, PW_TYPE_VSA, new_flags);
-			fr_dict_attr_child_add(mutable, new);
-			vsa_attr = new;
-		}
-
-		vendor_attr = fr_dict_attr_child_by_num(vsa_attr, (vendor & (FR_MAX_VENDOR - 1)));
-		if (!vendor_attr) {
-			memcpy(&mutable, &vsa_attr, sizeof(mutable));
-			new = fr_dict_attr_alloc(mutable, "vendor", 0,
-						 (vendor & (FR_MAX_VENDOR - 1)), PW_TYPE_VENDOR, new_flags);
-			fr_dict_attr_child_add(mutable, new);
-			vendor_attr = new;
-		}
-		parent = vendor_attr;
-	}
-
-	/*
 	 *	Additional checks for extended attributes.
 	 */
 	switch (parent->type) {
@@ -1715,7 +1683,7 @@ static int sscanf_i(char const *str, unsigned int *pvalue)
 /*
  *	Process the ATTRIBUTE command
  */
-static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
+static int process_attribute(fr_dict_attr_t const *parent, char const *fn, int const line,
 			     unsigned int block_vendor,
 			     fr_dict_attr_t const *block_tlv, char **argv, int argc)
 {
@@ -1728,18 +1696,11 @@ static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
 	unsigned int		length;
 	ATTR_FLAGS		flags;
 	char			*p;
-	fr_dict_attr_t const	*parent;
 
 	if ((argc < 3) || (argc > 4)) {
 		fr_strerror_printf("fr_dict_init: %s[%d]: invalid ATTRIBUTE line", fn, line);
 		return -1;
 	}
-
-	/*
-	 *	Parent is either the root of the dictionary or the TLV
-	 *	described by the TLV block.
-	 */
-	parent = block_tlv ? block_tlv : dict->root;
 
 	/*
 	 *	Dictionaries need to have real names, not shitty ones.
@@ -1779,6 +1740,8 @@ static int process_attribute(fr_dict_t *dict, char const *fn, int const line,
 			fr_strerror_printf("fr_dict_init: %s[%d]: %s", fn, line, fr_strerror());
 			return -1;
 		}
+
+		if (!fr_assert(parent)) return -1;	/* Should have provided us with a parent */
 
 		block_vendor = vendor; /* Weird case where we're processing 26.<vid>.<tlv> */
 	}
@@ -2330,7 +2293,7 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 /*
  *	Initialize the dictionary.
  */
-static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filename,
+static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filename,
 			char const *src_file, int src_line)
 {
 	FILE	*fp;
@@ -2345,13 +2308,14 @@ static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filenam
 	int	argc;
 	fr_dict_attr_t const *da, *block_tlv[MAX_TLV_NEST + 1];
 	int	which_block_tlv = 0;
+	fr_dict_attr_t const *parent = dict->root;
 
 	block_tlv[0] = NULL;
 	block_tlv[1] = NULL;
 	block_tlv[2] = NULL;
 	block_tlv[3] = NULL;
 
-	if ((strlen(parent) + 3 + strlen(filename)) > sizeof(dir)) {
+	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf("fr_dict_init: filename name too long");
 		return -1;
 	}
@@ -2374,7 +2338,7 @@ static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filenam
 
 		strlcpy(fn, filename, sizeof(fn));
 	} else {
-		strlcpy(dir, parent, sizeof(dir));
+		strlcpy(dir, dir_name, sizeof(dir));
 		p = strrchr(dir, FR_DIR_SEP);
 		if (p) {
 			if (p[1]) strlcat(dir, "/", sizeof(dir));
@@ -2492,7 +2456,7 @@ static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filenam
 		 *	Perhaps this is an attribute.
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-			if (process_attribute(dict, fn, line, block_vendor,
+			if (process_attribute(parent, fn, line, block_vendor,
 					      block_tlv[which_block_tlv],
 					      argv + 1, argc - 1) == -1) {
 				fclose(fp);
@@ -2636,6 +2600,15 @@ static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filenam
 				return -1;
 			}
 
+
+			/*
+			 *	When entering vendor blocks, navigate to the correct
+			 *	point in the tree.
+			 */
+			parent = fr_dict_attr_child_by_num(dict->root, PW_VENDOR_SPECIFIC);
+			if (!fr_assert(parent)) return -1;
+			parent = fr_dict_attr_child_by_num(parent, vendor);
+			if (!fr_assert(parent)) return -1;
 			block_vendor = vendor;
 
 			/*
@@ -2706,6 +2679,7 @@ static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filenam
 				fclose(fp);
 				return -1;
 			}
+			parent = dict->root;
 			block_vendor = 0;
 			continue;
 		} /* END-VENDOR */
