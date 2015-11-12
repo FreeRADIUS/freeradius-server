@@ -1692,8 +1692,7 @@ static int sscanf_i(char const *str, unsigned int *pvalue)
  *	Process the ATTRIBUTE command
  */
 static int process_attribute(fr_dict_attr_t const *parent, char const *fn, int const line,
-			     unsigned int block_vendor,
-			     fr_dict_attr_t const *block_tlv, char **argv, int argc)
+			     unsigned int block_vendor, char **argv, int argc)
 {
 	int			oid = 0;
 
@@ -1739,9 +1738,6 @@ static int process_attribute(fr_dict_attr_t const *parent, char const *fn, int c
 		ssize_t slen;
 
 		vendor = block_vendor;
-
-		/* Sanity check the block_tlv attr */
-		if (!fr_assert(!block_tlv || (block_tlv->type == PW_TYPE_TLV))) return -1;
 
 		slen = fr_dict_str_to_oid(&attr, &vendor, &parent, argv[1]);
 		if (slen <= 0) {
@@ -2314,14 +2310,9 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 	struct stat statbuf;
 	char	*argv[MAX_ARGV];
 	int	argc;
-	fr_dict_attr_t const *da, *block_tlv[MAX_TLV_NEST + 1];
-	int	which_block_tlv = 0;
+	fr_dict_attr_t const *da;
+	int	block_tlv_depth = 0;
 	fr_dict_attr_t const *parent = dict->root;
-
-	block_tlv[0] = NULL;
-	block_tlv[1] = NULL;
-	block_tlv[2] = NULL;
-	block_tlv[3] = NULL;
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf("fr_dict_init: filename name too long");
@@ -2467,9 +2458,7 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		 *	Perhaps this is an attribute.
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-			if (process_attribute(parent, fn, line, block_vendor,
-					      block_tlv[which_block_tlv],
-					      argv + 1, argc - 1) == -1) {
+			if (process_attribute(parent, fn, line, block_vendor, argv + 1, argc - 1) == -1) {
 				fclose(fp);
 				return -1;
 			}
@@ -2525,6 +2514,12 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		}
 
 		if (strcasecmp(argv[0], "BEGIN-TLV") == 0) {
+			if (++block_tlv_depth > MAX_TLV_NEST) {
+				fr_strerror_printf("fr_dict_init: %s[%d]: TLVs are nested too deep", fn, line);
+				fclose(fp);
+				return -1;
+			}
+
 			if (argc != 2) {
 				fr_strerror_printf("fr_dict_init: %s[%d] Invalid BEGIN-TLV entry", fn, line);
 				fclose(fp);
@@ -2545,37 +2540,39 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 				return -1;
 			}
 
-			if (which_block_tlv >= MAX_TLV_NEST) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: TLVs are nested too deep", fn, line);
-				fclose(fp);
-				return -1;
+			if (!fr_dict_attr_child_by_da(parent, da)) {
+				fr_strerror_printf("fr_dict_init: %s[%d]: attribute %s is not a child of %s",
+						   fn, line, argv[1], parent->name);
 			}
-
-			block_tlv[++which_block_tlv] = da;
+			parent = da;
 			continue;
 		} /* BEGIN-TLV */
 
 		if (strcasecmp(argv[0], "END-TLV") == 0) {
+			if (--block_tlv_depth < 0) {
+				fr_strerror_printf("fr_dict_init: %s[%d]: Too many END-TLV entries", fn, line, argv[1]);
+				fclose(fp);
+				return -1;
+			}
+
 			if (argc != 2) {
-				fr_strerror_printf("fr_dict_init: %s[%d] invalid END-TLV entry", fn, line);
+				fr_strerror_printf("fr_dict_init: %s[%d] Invalid END-TLV entry", fn, line);
 				fclose(fp);
 				return -1;
 			}
 
 			da = fr_dict_attr_by_name(argv[1]);
 			if (!da) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: unknown attribute %s", fn, line, argv[1]);
+				fr_strerror_printf("fr_dict_init: %s[%d]: Unknown attribute %s", fn, line, argv[1]);
 				fclose(fp);
 				return -1;
 			}
 
-			if (da != block_tlv[which_block_tlv]) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: END-TLV %s does not match any previous"
-						   "BEGIN-TLV", fn, line, argv[1]);
-				fclose(fp);
-				return -1;
+			if (da != parent) {
+				fr_strerror_printf("END-TLV %s does not match previous BEGIN-TLV", argv[1]);
+				goto error;
 			}
-			block_tlv[which_block_tlv--] = NULL;
+			parent = parent->parent;	/* It's a tree (not a graph) so this is fine */
 			continue;
 		} /* END-VENDOR */
 
