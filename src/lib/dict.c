@@ -713,7 +713,7 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
 	return 0;
 }
 
-/** Check if a child attribute exists in a parent
+/** Check if a child attribute exists in a parent using an attribute number
  *
  * @param parent to check for child in.
  * @param attr number to look for.
@@ -734,12 +734,7 @@ static inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t con
 	default:
 		return NULL;
 
-	case PW_TYPE_VENDOR:
-	case PW_TYPE_VSA:
-	case PW_TYPE_TLV:
-	case PW_TYPE_EVS:
-	case PW_TYPE_EXTENDED:
-	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_STRUCTURAL:
 		break;
 	}
 
@@ -753,6 +748,47 @@ static inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t con
 	for (;;) {
 		if (!bin) return NULL;
 		if (bin->attr == attr) return bin;
+		bin = bin->next;
+	}
+
+	return NULL;
+}
+
+/** Check if a child attribute exists in a parent using a pointer (da)
+ *
+ * @param parent to check for child in.
+ * @param child to look for.
+ * @return
+ *	- The child attribute on success.
+ *	- NULL if the child attribute does not exist.
+ */
+static inline fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child)
+{
+	fr_dict_attr_t const *bin;
+
+	if (!parent->children) return NULL;
+
+	/*
+	 *	Only some types can have children
+	 */
+	switch (parent->type) {
+	default:
+		return NULL;
+
+	case PW_TYPE_STRUCTURAL:
+		break;
+	}
+
+	/*
+	 *	Child arrays may be trimmed back to save memory.
+	 *	Check that so we don't SEGV.
+	 */
+	if ((child->attr & 0xff) > talloc_array_length(parent->children)) return NULL;
+
+	bin = parent->children[child->attr & 0xff];
+	for (;;) {
+		if (!bin) return NULL;
+		if (bin == child) return bin;
 		bin = bin->next;
 	}
 
