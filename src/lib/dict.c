@@ -940,8 +940,6 @@ ssize_t fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor, fr_dict_att
  */
 int fr_dict_vendor_add(char const *name, unsigned int num)
 {
-	fr_dict_attr_t const *parent = fr_main_dict->root;
-
 	size_t length;
 	fr_dict_vendor_t *dv;
 
@@ -999,32 +997,6 @@ int fr_dict_vendor_add(char const *name, unsigned int num)
 		fr_strerror_printf("fr_dict_vendor_add: Failed inserting vendor %s",
 				   name);
 		return -1;
-	}
-
-	/*
-	 *	Pre-Create the attribute hierachy for attribute 26
-	 */
-	{
-		ATTR_FLAGS new_flags;
-
-		fr_dict_attr_t const *vsa_attr;
-		fr_dict_attr_t *new;
-		fr_dict_attr_t *mutable;
-
-		memset(&new_flags, 0, sizeof(new_flags));
-
-		vsa_attr = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
-		if (!vsa_attr) {
-			memcpy(&mutable, &parent, sizeof(mutable));
-			new = fr_dict_attr_alloc(mutable, "Vendor-Specific", 0,
-						 PW_VENDOR_SPECIFIC, PW_TYPE_VSA, new_flags);
-			fr_dict_attr_child_add(mutable, new);
-			vsa_attr = new;
-		}
-
-		memcpy(&mutable, &vsa_attr, sizeof(mutable));
-		new = fr_dict_attr_alloc(mutable, name, 0, num, PW_TYPE_VENDOR, new_flags);
-		fr_dict_attr_child_add(mutable, new);
 	}
 
 	return 0;
@@ -2572,6 +2544,12 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		} /* END-VENDOR */
 
 		if (strcasecmp(argv[0], "BEGIN-VENDOR") == 0) {
+			ATTR_FLAGS new_flags;
+
+			fr_dict_attr_t const *vsa_attr;
+			fr_dict_attr_t *new;
+			fr_dict_attr_t *mutable;
+
 			if (argc < 2) {
 				fr_strerror_printf("fr_dict_init: %s[%d] invalid BEGIN-VENDOR entry", fn, line);
 				fclose(fp);
@@ -2584,17 +2562,6 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 				fclose(fp);
 				return -1;
 			}
-
-
-			/*
-			 *	When entering vendor blocks, navigate to the correct
-			 *	point in the tree.
-			 */
-			parent = fr_dict_attr_child_by_num(dict->root, PW_VENDOR_SPECIFIC);
-			if (!fr_assert(parent)) return -1;
-			parent = fr_dict_attr_child_by_num(parent, vendor);
-			if (!fr_assert(parent)) return -1;
-			block_vendor = vendor;
 
 			/*
 			 *	Check for extended attr VSAs
@@ -2625,7 +2592,40 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 					fclose(fp);
 					return -1;
 				}
+				vsa_attr = da;
+			} else {
+				/*
+				 *	Automagically create Attribute 26
+				 *
+				 *	This should exist, but in case we're starting without
+				 *	the RFC dictionaries we need to add it in the case
+				 *	it doesn't.
+				 */
+				vsa_attr = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
+				if (!vsa_attr) {
+					memset(&new_flags, 0, sizeof(new_flags));
+
+					memcpy(&mutable, &parent, sizeof(mutable));
+					new = fr_dict_attr_alloc(mutable, "Vendor-Specific", 0,
+								 PW_VENDOR_SPECIFIC, PW_TYPE_VSA, new_flags);
+					fr_dict_attr_child_add(mutable, new);
+					vsa_attr = new;
+				}
 			}
+
+			/*
+			 *	Create a VENDOR attribute on the fly, either in the context
+			 *	of the EVS attribute, or the VSA (26) attribute.
+			 */
+			parent = fr_dict_attr_child_by_num(vsa_attr, vendor);
+			if (!parent) {
+				memcpy(&mutable, &vsa_attr, sizeof(mutable));
+				new = fr_dict_attr_alloc(mutable, argv[1], 0, vendor, PW_TYPE_VENDOR, new_flags);
+				fr_dict_attr_child_add(mutable, new);
+
+				parent = new;
+			}
+			block_vendor = vendor;
 
 			continue;
 		} /* BEGIN-VENDOR */
