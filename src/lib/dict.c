@@ -1165,7 +1165,9 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	 */
 	case PW_TYPE_EVS:
 		if ((parent->type != PW_TYPE_EXTENDED) && (parent->type != PW_TYPE_LONG_EXTENDED)) {
-			fr_strerror_printf("Attributes of type \"evs\" MUST have a parent of type \"extended\"");
+			fr_strerror_printf("Attributes of type \"evs\" MUST have a parent of type \"extended\", got "
+					   "\"%s\"", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
+			fr_dict_print(fr_main_dict->root, 0);
 			goto error;
 		}
 		break;
