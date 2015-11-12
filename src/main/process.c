@@ -5381,10 +5381,6 @@ int radius_event_start(bool have_children)
 	if (check_config) {
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",
 		       main_config.name);
-		if (listen_init(&head, spawn_workers) < 0) {
-			fflush(NULL);
-			fr_exit(1);
-		}
 		return 1;
 	}
 
