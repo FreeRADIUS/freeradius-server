@@ -443,73 +443,6 @@ static int _fr_dict_free(UNUSED fr_dict_t *dict)
 	return 0;
 }
 
-/*
- *	Add vendor to the list.
- */
-int fr_dict_vendor_add(char const *name, unsigned int num)
-{
-	size_t length;
-	fr_dict_vendor_t *dv;
-
-	if (num >= FR_MAX_VENDOR) {
-		fr_strerror_printf("fr_dict_vendor_add: Cannot handle vendor ID larger than 2^24");
-		return -1;
-	}
-
-	if ((length = strlen(name)) >= FR_DICT_VENDOR_MAX_NAME_LEN) {
-		fr_strerror_printf("fr_dict_vendor_add: vendor name too long");
-		return -1;
-	}
-
-	dv = (fr_dict_vendor_t *)talloc_zero_array(fr_main_dict->pool, uint8_t, sizeof(*dv) + length);
-	if (dv == NULL) {
-		fr_strerror_printf("fr_dict_vendor_add: out of memory");
-		return -1;
-	}
-	talloc_set_type(dv, fr_dict_vendor_t);
-
-	strcpy(dv->name, name);
-	dv->vendorpec = num;
-	dv->type = dv->length = 1; /* defaults */
-
-	if (!fr_hash_table_insert(fr_main_dict->vendors_by_name, dv)) {
-		fr_dict_vendor_t *old_dv;
-
-		old_dv = fr_hash_table_finddata(fr_main_dict->vendors_by_name, dv);
-		if (!old_dv) {
-			fr_strerror_printf("fr_dict_vendor_add: Failed inserting vendor name %s", name);
-			return -1;
-		}
-		if (old_dv->vendorpec != dv->vendorpec) {
-			fr_strerror_printf("fr_dict_vendor_add: Duplicate vendor name %s", name);
-			return -1;
-		}
-
-		/*
-		 *	Already inserted.  Discard the duplicate entry.
-		 */
-		talloc_free(dv);
-		return 0;
-	}
-
-	/*
-	 *	Insert the SAME pointer (not free'd when this table is
-	 *	deleted), into another table.
-	 *
-	 *	We want this behaviour because we want OLD names for
-	 *	the attributes to be read from the configuration
-	 *	files, but when we're printing them, (and looking up
-	 *	by value) we want to use the NEW name.
-	 */
-	if (!fr_hash_table_replace(fr_main_dict->vendors_by_num, dv)) {
-		fr_strerror_printf("fr_dict_vendor_add: Failed inserting vendor %s",
-				   name);
-		return -1;
-	}
-
-	return 0;
-}
-
 const int fr_dict_attr_allowed_chars[256] = {
 /* 0x   0  1  2  3  4  5  6  7  8  9  a  b  c  d  e  f */
 /* 0 */ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -1000,6 +933,101 @@ ssize_t fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor, fr_dict_att
 		fr_strerror_printf("Malformed OID string, got trailing garbage \"%s\"", p);
 		return oid - p;
 	}
+}
+
+/*
+ *	Add vendor to the list.
+ */
+int fr_dict_vendor_add(char const *name, unsigned int num)
+{
+	fr_dict_attr_t const *parent = fr_main_dict->root;
+
+	size_t length;
+	fr_dict_vendor_t *dv;
+
+	if (num >= FR_MAX_VENDOR) {
+		fr_strerror_printf("fr_dict_vendor_add: Cannot handle vendor ID larger than 2^24");
+		return -1;
+	}
+
+	if ((length = strlen(name)) >= FR_DICT_VENDOR_MAX_NAME_LEN) {
+		fr_strerror_printf("fr_dict_vendor_add: vendor name too long");
+		return -1;
+	}
+
+	dv = (fr_dict_vendor_t *)talloc_zero_array(fr_main_dict->pool, uint8_t, sizeof(*dv) + length);
+	if (dv == NULL) {
+		fr_strerror_printf("fr_dict_vendor_add: out of memory");
+		return -1;
+	}
+	talloc_set_type(dv, fr_dict_vendor_t);
+
+	strcpy(dv->name, name);
+	dv->vendorpec = num;
+	dv->type = dv->length = 1; /* defaults */
+
+	if (!fr_hash_table_insert(fr_main_dict->vendors_by_name, dv)) {
+		fr_dict_vendor_t *old_dv;
+
+		old_dv = fr_hash_table_finddata(fr_main_dict->vendors_by_name, dv);
+		if (!old_dv) {
+			fr_strerror_printf("fr_dict_vendor_add: Failed inserting vendor name %s", name);
+			return -1;
+		}
+		if (old_dv->vendorpec != dv->vendorpec) {
+			fr_strerror_printf("fr_dict_vendor_add: Duplicate vendor name %s", name);
+			return -1;
+		}
+
+		/*
+		 *	Already inserted.  Discard the duplicate entry.
+		 */
+		talloc_free(dv);
+		return 0;
+	}
+
+	/*
+	 *	Insert the SAME pointer (not free'd when this table is
+	 *	deleted), into another table.
+	 *
+	 *	We want this behaviour because we want OLD names for
+	 *	the attributes to be read from the configuration
+	 *	files, but when we're printing them, (and looking up
+	 *	by value) we want to use the NEW name.
+	 */
+	if (!fr_hash_table_replace(fr_main_dict->vendors_by_num, dv)) {
+		fr_strerror_printf("fr_dict_vendor_add: Failed inserting vendor %s",
+				   name);
+		return -1;
+	}
+
+	/*
+	 *	Pre-Create the attribute hierachy for attribute 26
+	 */
+	{
+		ATTR_FLAGS new_flags;
+
+		fr_dict_attr_t const *vsa_attr;
+		fr_dict_attr_t *new;
+		fr_dict_attr_t *mutable;
+
+		memset(&new_flags, 0, sizeof(new_flags));
+
+		vsa_attr = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
+		if (!vsa_attr) {
+			memcpy(&mutable, &parent, sizeof(mutable));
+			new = fr_dict_attr_alloc(mutable, "Vendor-Specific", 0,
+						 PW_VENDOR_SPECIFIC, PW_TYPE_VSA, new_flags);
+			fr_dict_attr_child_add(mutable, new);
+			vsa_attr = new;
+		}
+
+		memcpy(&mutable, &vsa_attr, sizeof(mutable));
+		new = fr_dict_attr_alloc(mutable, name, 0, num, PW_TYPE_VENDOR, new_flags);
+		fr_dict_attr_child_add(mutable, new);
+	}
+
+	return 0;
 }
 
 /** Add an attribute to the dictionary
