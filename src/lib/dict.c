@@ -570,7 +570,7 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 		break;
 
 	default:
-		name = "ATTR";
+		name = "ATTRIBUTE";
 		break;
 	}
 
