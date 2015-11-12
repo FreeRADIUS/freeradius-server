@@ -3406,15 +3406,6 @@ int listen_init(rad_listen_t **head, bool spawn_workers)
 	}
 
 	/*
-	 *	No sockets to receive packets, this is an error
-	 *	proxying is pointless.
-	 */
-	if (!*head) {
-		ERROR("The server is not configured to listen on any ports.  Cannot start");
-		return -1;
-	}
-
-	/*
 	 *	Print out which sockets we're listening on, and
 	 *	add them to the event list.
 	 */
