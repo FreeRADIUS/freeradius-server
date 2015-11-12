@@ -2642,13 +2642,6 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 					fclose(fp);
 					return -1;
 				}
-
-				/*
-				 *	Pack the encapsulating
-				 *	attribute into the upper 8
-				 *	bits of the vendor ID
-				 */
-				block_vendor |= da->vendor;
 			}
 
 			continue;
