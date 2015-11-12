@@ -2300,19 +2300,19 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filename,
 			char const *src_file, int src_line)
 {
-	FILE	*fp;
-	char 	dir[256], fn[256];
-	char	buf[256];
-	char	*p;
-	int	line = 0;
-	unsigned int	vendor;
-	unsigned int	block_vendor;
-	struct stat statbuf;
-	char	*argv[MAX_ARGV];
-	int	argc;
-	fr_dict_attr_t const *da;
-	int	block_tlv_depth = 0;
-	fr_dict_attr_t const *parent = dict->root;
+	FILE			*fp;
+	char 			dir[256], fn[256];
+	char			buf[256];
+	char			*p;
+	int			line = 0;
+	unsigned int		vendor;
+	unsigned int		block_vendor;
+	struct stat		statbuf;
+	char			*argv[MAX_ARGV];
+	int			argc;
+	fr_dict_attr_t const	*da;
+	int			block_tlv_depth = 0;
+	fr_dict_attr_t const	*parent = dict->root;
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf("fr_dict_init: filename name too long");
@@ -2358,7 +2358,6 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		} else {
 			snprintf(fn, sizeof(fn), "%s%s", dir, filename);
 		}
-
 	}
 
 	/*
@@ -2388,8 +2387,7 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 	stat(fn, &statbuf); /* fopen() guarantees this will succeed */
 	if (!S_ISREG(statbuf.st_mode)) {
 		fclose(fp);
-		fr_strerror_printf("fr_dict_init: Dictionary \"%s\" is not a regular file",
-				   fn);
+		fr_strerror_printf("fr_dict_init: Dictionary \"%s\" is not a regular file", fn);
 		return -1;
 	}
 
@@ -2400,9 +2398,8 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 #ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
 		fclose(fp);
-		fr_strerror_printf(
-			"fr_dict_init: Dictionary \"%s\" is globally writable.  Refusing to start due to insecure configuration.",
-			fn);
+		fr_strerror_printf("fr_dict_init: Dictionary \"%s\" is globally writable.  Refusing to start "
+				   "due to insecure configuration", fn);
 		return -1;
 	}
 #endif
@@ -2438,7 +2435,9 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		if (argc == 0) continue;
 
 		if (argc == 1) {
-			fr_strerror_printf("fr_dict_init: %s[%d] invalid entry", fn, line);
+			fr_strerror_printf("Invalid entry");
+		error:
+			fr_strerror_printf("fr_dict_init: %s[%d]: %s", fn, line, fr_strerror());
 			fclose(fp);
 			return -1;
 		}
@@ -2447,10 +2446,7 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		 *	Process VALUE lines.
 		 */
 		if (strcasecmp(argv[0], "VALUE") == 0) {
-			if (process_value(fn, line, argv + 1, argc - 1) == -1) {
-				fclose(fp);
-				return -1;
-			}
+			if (process_value(fn, line, argv + 1, argc - 1) == -1) goto error;
 			continue;
 		}
 
@@ -2458,10 +2454,7 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		 *	Perhaps this is an attribute.
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-			if (process_attribute(parent, fn, line, block_vendor, argv + 1, argc - 1) == -1) {
-				fclose(fp);
-				return -1;
-			}
+			if (process_attribute(parent, fn, line, block_vendor, argv + 1, argc - 1) == -1) goto error;
 			continue;
 		}
 
@@ -2469,10 +2462,7 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		 *	See if we need to import another dictionary.
 		 */
 		if (strcasecmp(argv[0], "$INCLUDE") == 0) {
-			if (my_dict_init(dict, dir, argv[1], fn, line) < 0) {
-				fclose(fp);
-				return -1;
-			}
+			if (my_dict_init(dict, dir, argv[1], fn, line) < 0) goto error;
 			continue;
 		} /* $INCLUDE */
 
@@ -2487,18 +2477,12 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 				continue;
 			}
 
-			if (rcode < 0) {
-				fclose(fp);
-				return -1;
-			}
+			if (rcode < 0) goto error;
 			continue;
 		} /* $INCLUDE- */
 
 		if (strcasecmp(argv[0], "VALUE-ALIAS") == 0) {
-			if (process_value_alias(fn, line, argv + 1, argc - 1) == -1) {
-				fclose(fp);
-				return -1;
-			}
+			if (process_value_alias(fn, line, argv + 1, argc - 1) == -1) goto error;
 			continue;
 		}
 
@@ -2506,43 +2490,37 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		 *	Process VENDOR lines.
 		 */
 		if (strcasecmp(argv[0], "VENDOR") == 0) {
-			if (process_vendor(fn, line, argv + 1, argc - 1) == -1) {
-				fclose(fp);
-				return -1;
-			}
+			if (process_vendor(fn, line, argv + 1, argc - 1) == -1) goto error;
 			continue;
 		}
 
 		if (strcasecmp(argv[0], "BEGIN-TLV") == 0) {
 			if (++block_tlv_depth > MAX_TLV_NEST) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: TLVs are nested too deep", fn, line);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("TLVs are nested too deep");
+				goto error;
 			}
 
 			if (argc != 2) {
-				fr_strerror_printf("fr_dict_init: %s[%d] Invalid BEGIN-TLV entry", fn, line);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("Invalid BEGIN-TLV entry");
+				goto error;
 			}
 
 			da = fr_dict_attr_by_name(argv[1]);
 			if (!da) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: Unknown attribute %s", fn, line, argv[1]);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("Unknown attribute \"%s\"", argv[1]);
+				goto error;
 			}
 
 			if (da->type != PW_TYPE_TLV) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: attribute %s is not of type tlv",
-						   fn, line, argv[1]);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("Attribute \"%s\" should be a \"tlv\", but is a \"%s\"",
+						   argv[1],
+						   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+				goto error;
 			}
 
 			if (!fr_dict_attr_child_by_da(parent, da)) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: attribute %s is not a child of %s",
-						   fn, line, argv[1], parent->name);
+				fr_strerror_printf("Attribute \"%s\" is not a child of \"%s\"", argv[1], parent->name);
+				goto error;
 			}
 			parent = da;
 			continue;
@@ -2550,22 +2528,19 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 
 		if (strcasecmp(argv[0], "END-TLV") == 0) {
 			if (--block_tlv_depth < 0) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: Too many END-TLV entries", fn, line, argv[1]);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("Too many END-TLV entries", argv[1]);
+				goto error;
 			}
 
 			if (argc != 2) {
-				fr_strerror_printf("fr_dict_init: %s[%d] Invalid END-TLV entry", fn, line);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("Invalid END-TLV entry");
+				goto error;
 			}
 
 			da = fr_dict_attr_by_name(argv[1]);
 			if (!da) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: Unknown attribute %s", fn, line, argv[1]);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("Unknown attribute \"%s\"", argv[1]);
+				goto error;
 			}
 
 			if (da != parent) {
@@ -2584,16 +2559,14 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 			fr_dict_attr_t *mutable;
 
 			if (argc < 2) {
-				fr_strerror_printf("fr_dict_init: %s[%d] invalid BEGIN-VENDOR entry", fn, line);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("Invalid BEGIN-VENDOR entry", fn, line);
+				goto error;
 			}
 
 			vendor = fr_dict_vendor_by_name(argv[1]);
 			if (!vendor) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: unknown vendor %s", fn, line, argv[1]);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("Unknown vendor %s", fn, line, argv[1]);
+				goto error;
 			}
 
 			/*
@@ -2603,27 +2576,23 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 			 */
 			if (argc > 2) {
 				if (strncmp(argv[2], "format=", 7) != 0) {
-					fr_strerror_printf("fr_dict_init: %s[%d]: Invalid format %s",
-							   fn, line, argv[2]);
-					fclose(fp);
-					return -1;
+					fr_strerror_printf("Invalid format %s", argv[2]);
+					goto error;
 				}
 
 				p = argv[2] + 7;
 				da = fr_dict_attr_by_name(p);
 				if (!da) {
-					fr_strerror_printf("fr_dict_init: %s[%d]: Invalid format for BEGIN-VENDOR: "
-							   "unknown attribute \"%s\"", fn, line, p);
-					fclose(fp);
-					return -1;
+					fr_strerror_printf("Invalid format for BEGIN-VENDOR: Unknown attribute \"%s\"",
+							   p);
+					goto error;
 				}
 
 				if (da->type != PW_TYPE_EVS) {
-					fr_strerror_printf("fr_dict_init: %s[%d]: Invalid format for BEGIN-VENDOR.  "
-							   "Attribute \"%s\" is not of \"evs\" data type",
-							   fn, line, p);
-					fclose(fp);
-					return -1;
+					fr_strerror_printf("Invalid format for BEGIN-VENDOR.  Attribute \"%s\" should "
+							   "be \"evs\" but is \"%s\"", p,
+							   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+					goto error;
 				}
 				vsa_attr = da;
 			} else {
@@ -2652,6 +2621,8 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 			 */
 			parent = fr_dict_attr_child_by_num(vsa_attr, vendor);
 			if (!parent) {
+				memset(&new_flags, 0, sizeof(new_flags));
+
 				memcpy(&mutable, &vsa_attr, sizeof(mutable));
 				new = fr_dict_attr_alloc(mutable, argv[1], 0, vendor, PW_TYPE_VENDOR, new_flags);
 				fr_dict_attr_child_add(mutable, new);
@@ -2659,29 +2630,25 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 				parent = new;
 			}
 			block_vendor = vendor;
-
 			continue;
 		} /* BEGIN-VENDOR */
 
 		if (strcasecmp(argv[0], "END-VENDOR") == 0) {
 			if (argc != 2) {
-				fr_strerror_printf("fr_dict_init: %s[%d] invalid END-VENDOR entry", fn, line);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("Invalid END-VENDOR entry");
+				goto error;
 			}
 
 			vendor = fr_dict_vendor_by_name(argv[1]);
 			if (!vendor) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: unknown vendor %s", fn, line, argv[1]);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("Unknown vendor \"%s\"", argv[1]);
+				goto error;
 			}
 
 			if (vendor != block_vendor) {
-				fr_strerror_printf("fr_dict_init: %s[%d]: END-VENDOR %s does not match any "
-						   "previous BEGIN-VENDOR", fn, line, argv[1]);
-				fclose(fp);
-				return -1;
+				fr_strerror_printf("END-VENDOR \"%s\" does not match any previous BEGIN-VENDOR",
+						   argv[1]);
+				goto error;
 			}
 			parent = dict->root;
 			block_vendor = 0;
@@ -2691,9 +2658,8 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		/*
 		 *	Any other string: We don't recognize it.
 		 */
-		fr_strerror_printf("fr_dict_init: %s[%d] invalid keyword \"%s\"", fn, line, argv[0]);
-		fclose(fp);
-		return -1;
+		fr_strerror_printf("Invalid keyword \"%s\"", argv[0]);
+		goto error;
 	}
 	fclose(fp);
 	return 0;
