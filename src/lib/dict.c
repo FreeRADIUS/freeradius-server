@@ -1416,16 +1416,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 				talloc_free(n);
 				goto error;
 			}
-
-			/*
-			 *	Same name, same vendor, same attr,
-			 *	maybe the flags and/or type is
-			 *	different.  Let the new value
-			 *	over-ride the old one.
-			 */
 		}
-
-		fr_hash_table_delete(fr_main_dict->attributes_by_num, a);
 
 		if (!fr_hash_table_replace(fr_main_dict->attributes_by_name, n)) {
 			fr_strerror_printf("Internal error storing attribute");
@@ -1438,14 +1429,16 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	 *	Insert the SAME pointer (not free'd when this entry is
 	 *	deleted), into another table.
 	 *
-	 *	We want this behaviour because we want OLD names for
-	 *	the attributes to be read from the configuration
-	 *	files, but when we're printing them, (and looking up
-	 *	by value) we want to use the NEW name.
+	 *	Only insert attributes into the by_num table if they're
+	 *	standard VSAs, or are top level (RFC/Internal) attributes.
 	 */
-	if (!fr_hash_table_replace(fr_main_dict->attributes_by_num, n)) {
-		fr_strerror_printf("Failed inserting attribute");
-		goto error;
+	if (parent->flags.is_root || ((parent->type == PW_TYPE_VENDOR) && (parent->parent->type == PW_TYPE_VSA))) {
+		if (!fr_hash_table_replace(fr_main_dict->attributes_by_num, n)) {
+			fr_strerror_printf("Failed inserting attribute");
+			goto error;
+		}
+
+		if (!vendor && (attr > 0) && (attr < 256)) fr_main_dict->base_attrs[attr] = n;
 	}
 
 	/*
@@ -1478,12 +1471,10 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		}
 	}
 
-	if (!vendor && (attr > 0) && (attr < 256)) fr_main_dict->base_attrs[attr] = n;
-
 	/*
 	 *	Setup parenting for the attribute
 	 */
-	if (parent) {
+	{
 		fr_dict_attr_t *mutable;
 
 		memcpy(&mutable, &parent, sizeof(mutable));
@@ -2815,8 +2806,11 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 			 *	prefer the new name when printing
 			 *	values.
 			 */
-			if (!fr_hash_table_finddata(dict->values_by_num, this->dval)) {
-				fr_hash_table_replace(dict->values_by_num, this->dval);
+			if (a->parent->flags.is_root || ((a->parent->type == PW_TYPE_VENDOR) &&
+			    (a->parent->parent->type == PW_TYPE_VSA))) {
+				if (!fr_hash_table_finddata(dict->values_by_num, this->dval)) {
+					fr_hash_table_replace(dict->values_by_num, this->dval);
+				}
 			}
 			free(this);
 
