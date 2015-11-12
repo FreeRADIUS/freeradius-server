@@ -3134,7 +3134,6 @@ int fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 		found = fr_dict_attr_by_num(0, attr);
 		if (!found) {
 			fr_strerror_printf("Cannot parse names without dictionaries");
-
 			return -1;
 		}
 
@@ -3144,6 +3143,7 @@ int fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 
 		default:
 			fr_strerror_printf("Standard attributes cannot use OIDs");
+			return -1;
 		}
 
 		if ((attr == PW_VENDOR_SPECIFIC) || found->type == PW_TYPE_EVS) {
