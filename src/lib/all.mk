@@ -25,6 +25,8 @@ SOURCES		:= cbuff.c \
 		   pcap.c \
 		   print.c \
 		   radius.c \
+		   radius_encode.c \
+		   radius_decode.c \
 		   rbtree.c \
 		   regex.c \
 		   sha1.c \

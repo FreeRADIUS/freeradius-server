@@ -536,10 +536,15 @@ int			fr_dict_vendor_by_name(char const *name);
 fr_dict_vendor_t	*fr_dict_vendor_by_num(int vendor);
 
 /* radius.c */
+#define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
+#define MAX_PASS_LEN (128)
+
+void		fr_radius_make_secret(uint8_t *digest, uint8_t const *vector,
+			   	      char const *secret, uint8_t const *value);
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
 RADIUS_PACKET	*rad_recv(TALLOC_CTX *ctx, int fd, int flags);
-ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, int *code);
+ssize_t		rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, int *code);
 void		rad_recv_discard(int sockfd);
 int		rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			   char const *secret);
@@ -584,31 +589,13 @@ ssize_t		rad_attr2vp(TALLOC_CTX *ctx,
 			    fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
 			    VALUE_PAIR **pvp);
 
-ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
+ssize_t		rad_data2vp_tlvs(TALLOC_CTX *ctx,
 			 RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			 char const *secret, fr_dict_attr_t const *da,
 			 uint8_t const *start, size_t length,
 			 VALUE_PAIR **pvp);
 
 ssize_t		rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp);
-
-int		rad_vp2extended(RADIUS_PACKET const *packet,
-				RADIUS_PACKET const *original,
-				char const *secret, VALUE_PAIR const **pvp,
-				uint8_t *ptr, size_t room);
-int		rad_vp2wimax(RADIUS_PACKET const *packet,
-			     RADIUS_PACKET const *original,
-			     char const *secret, VALUE_PAIR const **pvp,
-			     uint8_t *ptr, size_t room);
-
-int		rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			   char const *secret, VALUE_PAIR const **pvp, uint8_t *start,
-			   size_t room);
-
-int		rad_vp2rfc(RADIUS_PACKET const *packet,
-			   RADIUS_PACKET const *original,
-			   char const *secret, VALUE_PAIR const **pvp,
-			   uint8_t *ptr, size_t room);
 
 int		rad_vp2attr(RADIUS_PACKET const *packet,
 			    RADIUS_PACKET const *original, char const *secret,
