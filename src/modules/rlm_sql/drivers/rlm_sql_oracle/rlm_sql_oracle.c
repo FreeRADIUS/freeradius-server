@@ -169,7 +169,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	 */
 	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->query, OCI_HTYPE_STMT, 0, NULL)) {
 		ERROR("rlm_sql_oracle: Couldn't init Oracle query handles: %s",
-		      sql_prints_error(errbuff, sizeof(errbuff), handle, config) ? errbuff : "unknown");
+		      (sql_prints_error(errbuff, sizeof(errbuff), handle, config) == 0) ? errbuff : "unknown");
 
 		return RLM_SQL_ERROR;
 	}
@@ -182,7 +182,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		     (OraText const *)config->sql_password, strlen(config->sql_password),
 		     (OraText const *)config->sql_db, strlen(config->sql_db))) {
 		ERROR("rlm_sql_oracle: Oracle logon failed: '%s'",
-		      sql_prints_error(errbuff, sizeof(errbuff), handle, config) ? errbuff : "unknown");
+		      (sql_prints_error(errbuff, sizeof(errbuff), handle, config) == 0) ? errbuff : "unknown");
 
 		return RLM_SQL_ERROR;
 	}
