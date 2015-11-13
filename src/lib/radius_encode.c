@@ -40,8 +40,7 @@ static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 	int i;
 
 	for (i = 0; i < attrlen; i++) {
-		if ((i > 0) && ((i & 0x0f) == 0x00))
-			fprintf(fr_log_fp, "%.*s", depth, tabs);
+		if ((i > 0) && ((i & 0x0f) == 0x00)) fprintf(fr_log_fp, "%.*s", depth, tabs);
 		fprintf(fr_log_fp, "%02x ", ptr[i]);
 		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 	}
@@ -146,7 +145,7 @@ int fr_radius_encode_tunnel_password(char *passwd, size_t *pwlen, char const *se
 	 *	So, we set the high bit, add in a counter, and then
 	 *	add in some CSPRNG data.  should be OK..
 	 */
-	salt[0] = (0x80 | ( ((salt_offset++) & 0x0f) << 3) | (fr_rand() & 0x07));
+	salt[0] = (0x80 | (((salt_offset++) & 0x0f) << 3) | (fr_rand() & 0x07));
 	salt[1] = fr_rand();
 
 	/*
@@ -166,7 +165,7 @@ int fr_radius_encode_tunnel_password(char *passwd, size_t *pwlen, char const *se
 	secretlen = strlen(secret);
 	memcpy(buffer, secret, secretlen);
 
-	for (n2 = 0; n2 < len; n2+=AUTH_PASS_LEN) {
+	for (n2 = 0; n2 < len; n2 +=AUTH_PASS_LEN) {
 		if (!n2) {
 			memcpy(buffer + secretlen, vector, AUTH_VECTOR_LEN);
 			memcpy(buffer + secretlen + AUTH_VECTOR_LEN, salt, 2);
@@ -175,7 +174,6 @@ int fr_radius_encode_tunnel_password(char *passwd, size_t *pwlen, char const *se
 			memcpy(buffer + secretlen, passwd + n2 - AUTH_PASS_LEN, AUTH_PASS_LEN);
 			fr_md5_calc(digest, buffer, secretlen + AUTH_PASS_LEN);
 		}
-
 		for (i = 0; i < AUTH_PASS_LEN; i++) passwd[i + n2] ^= digest[i];
 	}
 	passwd[n2] = 0;
@@ -291,9 +289,7 @@ static void encode_password(uint8_t *out, ssize_t *outlen, uint8_t const *input,
 		}
 
 		fr_md5_final(digest, &context);
-		for (i = 0; i < AUTH_PASS_LEN; i++) {
-			passwd[i + n] ^= digest[i];
-		}
+		for (i = 0; i < AUTH_PASS_LEN; i++) passwd[i + n] ^= digest[i];
 	}
 
 	memcpy(out, passwd, len);
@@ -375,11 +371,8 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 
 		if (n > 0) {
 			fr_md5_copy(&context, &old);
-			fr_md5_update(&context,
-				      out + 2 + n - AUTH_PASS_LEN,
-				       AUTH_PASS_LEN);
+			fr_md5_update(&context, out + 2 + n - AUTH_PASS_LEN, AUTH_PASS_LEN);
 		}
-
 		fr_md5_final(digest, &context);
 
 		if ((2 + n + AUTH_PASS_LEN) < freespace) {
@@ -388,9 +381,7 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 			block_len = freespace - 2 - n;
 		}
 
-		for (i = 0; i < block_len; i++) {
-			out[i + 2 + n] ^= digest[i];
-		}
+		for (i = 0; i < block_len; i++) out[i + 2 + n] ^= digest[i];
 	}
 }
 
@@ -665,8 +656,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *pa
 	 *
 	 *	If we cared about the stack, we could unroll the loop.
 	 */
-	if (vp->da->flags.is_tlv && (depth < fr_attr_max_tlv) &&
-	    ((vp->da->attr >> fr_attr_shift[depth + 1]) != 0)) {
+	if (vp->da->flags.is_tlv && (depth < fr_attr_max_tlv) && ((vp->da->attr >> fr_attr_shift[depth + 1]) != 0)) {
 		return encode_tlv(out, outlen, packet, original, secret, NULL, 0, pvp);
 	}
 
@@ -767,8 +757,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *pa
 	 */
 	switch (vp->da->flags.encrypt) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
-		encode_password(ptr, &len, data, len,
-			    secret, packet->vector);
+		encode_password(ptr, &len, data, len, secret, packet->vector);
 		break;
 
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
@@ -819,7 +808,6 @@ static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *pa
 		fr_radius_make_secret(ptr, packet->vector, secret, data);
 		len = AUTH_VECTOR_LEN;
 		break;
-
 
 	default:
 		if (vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
