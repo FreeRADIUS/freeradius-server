@@ -947,6 +947,7 @@ int main(int argc, char *argv[])
 	}
 #endif
 
+
 	while ((c = getopt(argc, argv, "d:D:xMh")) != EOF) switch (c) {
 		case 'd':
 			radius_dir = optarg;
@@ -957,6 +958,9 @@ int main(int argc, char *argv[])
 		case 'x':
 			fr_debug_lvl++;
 			rad_debug_lvl = fr_debug_lvl;
+			fr_log_fp = stdout;
+			default_log.dst = L_DST_STDOUT;
+			default_log.fd = STDOUT_FILENO;
 			break;
 		case 'M':
 			report = true;

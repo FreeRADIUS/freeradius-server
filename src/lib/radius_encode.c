@@ -30,22 +30,61 @@ static unsigned int salt_offset = 0;
 
 fr_thread_local_setup(uint8_t *, fr_radius_encode_value_hton_buff)
 
+static ssize_t encode_value(uint8_t *out, size_t outlen,
+			    RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+			    char const *secret,
+			    fr_dict_attr_t const **tlv_stack, int depth,
+			    VALUE_PAIR const **pvp);
 
-static char const tabs[] = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen, RADIUS_PACKET const *packet,
+				       RADIUS_PACKET const *original, char const *secret,
+				       fr_dict_attr_t const **tlv_stack, unsigned int depth,
+				       VALUE_PAIR const **pvp);
 
-#define MAX_TLV_STACK MAX_TLV_NEST + 5
+static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
+			      RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+			      char const *secret,
+			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			      VALUE_PAIR const **pvp);
 
-static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
+#ifndef NDEBUG
+static void print_hex_data(char const *func, int line, char const *msg, uint8_t const *data, size_t len)
+{
+	size_t i;
+
+	printf("%s[%i]: --- %s ---\n", func, line, msg);
+	for (i = 0; i < len; i++) {
+		if ((i & 0x0f) == 0) printf("%s[%i]: %04x: ", func, line, (unsigned int) i);
+		printf("%02x ", data[i]);
+		if ((i & 0x0f) == 0x0f) printf("\n");
+	}
+	if ((len == 0x0f) || ((len & 0x0f) != 0x0f)) printf("\n");
+	fflush(stdout);
+}
+#  define VP_HEX_DUMP(_x, _y, _z) print_hex_data(__FUNCTION__, __LINE__, _x, _y, _z)
+
+static void VP_STACK_PRINT(fr_dict_attr_t const **tlv_stack, unsigned int depth, char const *func)
 {
 	int i;
 
-	for (i = 0; i < attrlen; i++) {
-		if ((i > 0) && ((i & 0x0f) == 0x00)) fprintf(fr_log_fp, "%.*s", depth, tabs);
-		fprintf(fr_log_fp, "%02x ", ptr[i]);
-		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
+	for (i = 0; tlv_stack[i] && (i < MAX_TLV_STACK); i++);
+	if (!i) return;
+
+	fprintf(fr_log_fp, "-- %i\n", depth);
+	for (i--; i >= 0; i--) {
+		fprintf(fr_log_fp, "[%i] %s: %s, vendor: 0x%x (%i), attr: 0x%x (%i) %c %s\n", i,
+			fr_int2str(dict_attr_types, tlv_stack[i]->type, "?Unknown?"),
+			tlv_stack[i]->name, tlv_stack[i]->vendor, tlv_stack[i]->vendor,
+			tlv_stack[i]->attr, tlv_stack[i]->attr,
+			(i == (int)depth) ? '<' : ' ',
+			(i == (int)depth) ? func : "");
 	}
-	if ((i & 0x0f) != 0) fprintf(fr_log_fp, "\n");
 }
+#  define VP_STACK_PRINT(_tlv_stack, _depth) if (fr_log_fp) VP_STACK_PRINT(_tlv_stack, _depth, __FUNCTION__)
+#else
+#  define VP_STACK_PRINT(_tlv_stack, _depth)
+#  define VP_HEX_DUMP(_x, _y, _z)
+#endif
 
 
 /** Encode a CHAP password
@@ -385,123 +424,6 @@ static void encode_tunnel_password(uint8_t *out, ssize_t *outlen,
 	}
 }
 
-static int do_next_tlv(VALUE_PAIR const *vp, VALUE_PAIR const *next, int nest)
-{
-	unsigned int tlv1, tlv2;
-
-	if (nest > fr_attr_max_tlv) return 0;
-
-	if (!vp) return 0;
-
-	/*
-	 *	Keep encoding TLVs which have the same scope.
-	 *	e.g. two attributes of:
-	 *		ATTR.TLV1.TLV2.TLV3 = data1
-	 *		ATTR.TLV1.TLV2.TLV4 = data2
-	 *	both get put into a container of "ATTR.TLV1.TLV2"
-	 */
-
-	/*
-	 *	Nothing to follow, we're done.
-	 */
-	if (!next) return 0;
-
-	/*
-	 *	Not from the same vendor, skip it.
-	 */
-	if (vp->da->vendor != next->da->vendor) return 0;
-
-	/*
-	 *	In a different TLV space, skip it.
-	 */
-	tlv1 = vp->da->attr;
-	tlv2 = next->da->attr;
-
-	tlv1 &= ((1 << fr_attr_shift[nest]) - 1);
-	tlv2 &= ((1 << fr_attr_shift[nest]) - 1);
-
-	if (tlv1 != tlv2) return 0;
-
-	return 1;
-}
-
-
-static ssize_t encode_value(uint8_t *out, size_t outlen,
-			    RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			    char const *secret,
-			    fr_dict_attr_t **tlv_stack, int depth,
-			    VALUE_PAIR const **pvp);
-
-/** Encode the *data* portion of the TLV
- *
- * This is really a sub-function of encode_value().  It encodes the *data* portion
- * of the TLV, and assumes that the encapsulating attribute has already been encoded.
- */
-static ssize_t encode_tlv(uint8_t *out, size_t outlen,
-			  RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			  char const *secret,
-			  fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			  VALUE_PAIR const **pvp)
-{
-	ssize_t			len;
-	size_t			my_freespace;
-	uint8_t			*ptr = out;
-	VALUE_PAIR const	*vp = *pvp;
-	VALUE_PAIR const	*svp = vp;
-
-	if (!svp) return 0;
-
-#ifndef NDEBUG
-	if (nest > fr_attr_max_tlv) {
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": Attribute nesting overflow");
-		return -1;
-	}
-#endif
-
-	while (vp) {
-		VERIFY_VP(vp);
-
-		if (outlen <= 2) return ptr - out;
-
-		ptr[0] = (vp->da->attr >> fr_attr_shift[nest]) & fr_attr_mask[nest];
-		ptr[1] = 2;
-
-		my_freespace = outlen;
-		if (outlen > 255) my_freespace = 255;
-
-		len = encode_value(ptr + 2, my_freespace - 2, packet, original, secret, NULL, nest, &vp);
-		if (len < 0) return len;
-		if (len == 0) return ptr - out;
-		/* len can NEVER be more than 253 */
-
-		ptr[1] += len;
-
-#ifndef NDEBUG
-		if ((fr_debug_lvl > 3) && fr_log_fp) {
-			fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
-			print_hex_data(ptr + 2, len, 3);
-		}
-#endif
-
-		outlen -= ptr[1];
-		ptr += ptr[1];
-		*pvp = vp;
-
-		if (!do_next_tlv(svp, vp, nest)) break;
-	}
-
-#ifndef NDEBUG
-	if ((fr_debug_lvl > 3) && fr_log_fp) {
-		fr_dict_attr_t const *da;
-
-		da = fr_dict_attr_by_num(svp->da->vendor, svp->da->attr & ((1 << fr_attr_shift[nest]) - 1));
-		if (da) fprintf(fr_log_fp, "\t%s = ...\n", da->name);
-	}
-#endif
-
-	return ptr - out;
-}
-
 /** Converts vp_data to network byte order
  *
  * Provide a pointer to a buffer which contains the value of the VALUE_PAIR
@@ -629,14 +551,123 @@ ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
 	return vp->vp_length;
 }
 
+static void build_tlv_stack(fr_dict_attr_t const **tlv_stack, VALUE_PAIR const **pvp)
+{
+	int i;
+	fr_dict_attr_t const *da;
+
+	memset(tlv_stack, 0, sizeof(*tlv_stack) * (MAX_TLV_STACK + 1));
+
+	if (!*pvp) return;
+
+	/*
+	 *	We've finished encoding one nested structure
+	 *	now we need to rebuild the tlv_stack and determine
+	 *	where the common point is.
+	 */
+	for (i = (*pvp)->da->depth, da = (*pvp)->da;
+	     da->parent && (i >= 0);
+	     i--, da = da->parent) tlv_stack[i - 1] = da;
+}
+
+static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
+				       RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+				       char const *secret,
+				       fr_dict_attr_t const **tlv_stack, unsigned int depth,
+				       VALUE_PAIR const **pvp)
+{
+	ssize_t			len;
+	uint8_t			*p = out;
+	VALUE_PAIR const	*vp = *pvp;
+	fr_dict_attr_t const	*da = tlv_stack[depth];
+
+	while (outlen >= 5) {
+		VP_STACK_PRINT(tlv_stack, depth);
+
+		/*
+		 *	Determine the nested type and call the appropriate encoder
+		 */
+		if (tlv_stack[depth + 1]->type == PW_TYPE_TLV) {
+			len = encode_tlv_hdr(p, outlen, packet, original,
+					     secret, tlv_stack, depth + 1, pvp);
+		} else {
+			len = encode_rfc_hdr_internal(p, outlen, packet, original,
+						      secret, tlv_stack, depth + 1, pvp);
+		}
+
+		if (len < 0) return len;
+		if (len == 0) return out[1];		/* Insufficient space */
+
+		p += len;
+		outlen -= len;				/* Subtract from the buffer we have available */
+
+		if (!*pvp || (vp == *pvp)) break;	/* If nothing updated the attribute, stop */
+
+		/*
+	 	 *	We can encode multiple sub TLVs, if after
+	 	 *	rebuilding the TLV Stack, the attribute
+	 	 *	at this depth is the same.
+	 	 */
+		if (da != tlv_stack[depth]) break;
+		vp = *pvp;
+
+		VP_HEX_DUMP("Done TLV", out, p - out);
+	}
+
+	return p - out;
+}
+
+static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
+			      RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+			      char const *secret,
+			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			      VALUE_PAIR const **pvp)
+{
+	ssize_t			len;
+	VALUE_PAIR const	*vp = *pvp;
+
+	VERIFY_VP(vp);
+	VP_STACK_PRINT(tlv_stack, depth);
+
+	if (tlv_stack[depth]->type != PW_TYPE_TLV) {
+		fr_strerror_printf("%s: Expected type \"tlv\" got \"%s\"", __FUNCTION__,
+				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+		return -1;
+	}
+
+	if (!tlv_stack[depth + 1]) {
+		fr_strerror_printf("%s: Can't encode empty TLV", __FUNCTION__);
+		return -1;
+	}
+
+	if (outlen < 5) return 0;
+
+	/*
+	 *	Encode the first level of TLVs
+	 */
+	out[0] = tlv_stack[depth]->attr & 0xff;
+	out[1] = 2;	/* TLV header */
+
+	len = encode_tlv_hdr_internal(out + 2, outlen - 2, packet, original, secret, tlv_stack, depth, pvp);
+	if (len <= 0) return len;
+	if (len > 253) return 0;
+
+	out[1] += len;
+
+	return out[1];
+}
+
 /** Encodes the data portion of an attribute
  *
  * @return
  *	- Length of the data portion.
  *	- -1 on failure.
  */
-static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			    char const *secret, fr_dict_attr_t **tlv_stack, int depth, VALUE_PAIR const **pvp)
+static ssize_t encode_value(uint8_t *out, size_t outlen,
+			    RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+			    char const *secret,
+			    fr_dict_attr_t const **tlv_stack, int depth,
+			    VALUE_PAIR const **pvp)
 {
 	uint32_t		lvalue;
 	ssize_t			len;
@@ -645,19 +676,41 @@ static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *pa
 	uint8_t			array[4];
 	uint64_t		lvalue64;
 	VALUE_PAIR const	*vp = *pvp;
+	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	VERIFY_VP(vp);
+	VP_STACK_PRINT(tlv_stack, depth);
 
 	/*
-	 *	See if we need to encode a TLV.  The low portion of
-	 *	the attribute has already been placed into the packer.
-	 *	If there are still attribute bytes left, then go
-	 *	encode them as TLVs.
-	 *
-	 *	If we cared about the stack, we could unroll the loop.
+	 *	It's a little weird to consider a TLV as a value,
+	 *	but it seems to work OK.
 	 */
-	if (vp->da->flags.is_tlv && (depth < fr_attr_max_tlv) && ((vp->da->attr >> fr_attr_shift[depth + 1]) != 0)) {
-		return encode_tlv(out, outlen, packet, original, secret, NULL, 0, pvp);
+	if (da->type == PW_TYPE_TLV) {
+		return encode_tlv_hdr(out, outlen, packet, original, secret, tlv_stack, depth, pvp);
+	}
+
+	/*
+	 *	If it's not a TLV, it should be a value type RFC
+	 *	attribute make sure that it is.
+	 */
+	if (tlv_stack[depth + 1] != NULL) {
+		fr_strerror_printf("%s: Encoding value but not at top of stack", __FUNCTION__);
+		return -1;
+	}
+
+	if ((*pvp)->da != da) {
+		fr_strerror_printf("%s: Top of stack does not match vp->da", __FUNCTION__);
+		return -1;
+	}
+
+	switch (da->type) {
+	case PW_TYPE_STRUCTURAL:
+		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
+				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+		return -1;
+
+	default:
+		break;
 	}
 
 	/*
@@ -665,7 +718,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *pa
 	 */
 	len = vp->vp_length;
 
-	switch (vp->da->type) {
+	switch (da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 		data = vp->data.ptr;
@@ -732,7 +785,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *pa
 	}
 
 	default:		/* unknown type: ignore it */
-		fr_strerror_printf("ERROR: Unknown attribute type %d", vp->da->type);
+		fr_strerror_printf("ERROR: Unknown attribute type %d", da->type);
 		return -1;
 	}
 
@@ -741,6 +794,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *pa
 	 */
 	if (len == 0) {
 		*pvp = vp->next;
+		build_tlv_stack(tlv_stack, pvp);
 		return 0;
 	}
 
@@ -762,7 +816,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *pa
 
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 		lvalue = 0;
-		if (vp->da->flags.has_tag) lvalue = 1;
+		if (da->flags.has_tag) lvalue = 1;
 
 		/*
 		 *	Check if there's enough freespace.  If there isn't,
@@ -779,14 +833,14 @@ static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *pa
 		case PW_CODE_ACCESS_CHALLENGE:
 		default:
 			if (!original) {
-				fr_strerror_printf("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->da->name);
+				fr_strerror_printf("ERROR: No request packet, cannot encrypt %s attribute "
+						   "in the vp.", da->name);
 				return -1;
 			}
 
 			if (lvalue) ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
 			encode_tunnel_password(ptr + lvalue, &len, data, len,
-					       outlen - lvalue,
-					   secret, original->vector);
+					       outlen - lvalue, secret, original->vector);
 			len += lvalue;
 			break;
 		case PW_CODE_ACCOUNTING_REQUEST:
@@ -823,7 +877,12 @@ static ssize_t encode_value(uint8_t *out, size_t outlen, RADIUS_PACKET const *pa
 		break;
 	} /* switch over encryption flags */
 
-	*pvp = vp->next;
+	/*
+	 *	Rebuilds the TLV stack for encoding the next attribute
+	 */
+	*pvp = (*pvp)->next;
+	build_tlv_stack(tlv_stack, pvp);
+
 	return len + (ptr - out);
 }
 
@@ -890,7 +949,7 @@ static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
 static int encode_extended_hdr(uint8_t *out, size_t outlen,
 			       RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 			       char const *secret,
-			       fr_dict_attr_t **tlv_stack, unsigned int depth,
+			       fr_dict_attr_t const **tlv_stack, unsigned int depth,
 			       VALUE_PAIR const **pvp)
 {
 	int			len;
@@ -899,9 +958,11 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	VALUE_PAIR const	*vp = *pvp;
 
 	VERIFY_VP(vp);
+	VP_STACK_PRINT(tlv_stack, depth);
 
-	if (!vp->da->flags.extended) {
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": Called for non-extended attribute");
+	if ((tlv_stack[depth]->type != PW_TYPE_EXTENDED) && (tlv_stack[depth]->type != PW_TYPE_LONG_EXTENDED)) {
+		fr_strerror_printf("%s : Called for non-extended attribute type %s",
+				   __FUNCTION__, fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
 	}
 
@@ -953,7 +1014,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	}
 	hdr_len = out[1];
 
-	len = encode_value(out + out[1], outlen - hdr_len, packet, original, secret, NULL, 0, pvp);
+	len = encode_value(out + out[1], outlen - hdr_len, packet, original, secret, tlv_stack, depth, pvp);
 	if (len <= 0) return len;
 
 	/*
@@ -992,7 +1053,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 			jump += 5;
 		}
 
-		print_hex_data(out + jump, len, 3);
+		VP_HEX_DUMP("Done extended header", out + jump, len);
 	}
 #endif
 
@@ -1005,17 +1066,17 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
  * truncated to fit.
  */
 static ssize_t encode_concat(uint8_t *out, size_t outlen,
-			     RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			     char const *secret,
-			     fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			     VALUE_PAIR const **pvp, unsigned int attribute)
+			     UNUSED RADIUS_PACKET const *packet, UNUSED RADIUS_PACKET const *original,
+			     UNUSED char const *secret,
+			     fr_dict_attr_t const **tlv_stack, UNUSED unsigned int depth,
+			     VALUE_PAIR const **pvp)
 {
 	uint8_t			*ptr = out;
 	uint8_t			const *p;
 	size_t			len, left;
 	VALUE_PAIR const	*vp = *pvp;
 
-	VERIFY_VP(vp);
+	VP_STACK_PRINT(tlv_stack, depth);
 
 	p = vp->vp_octets;
 	len = vp->vp_length;
@@ -1023,7 +1084,7 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 	while (len > 0) {
 		if (outlen <= 2) break;
 
-		ptr[0] = attribute;
+		ptr[0] = tlv_stack[depth]->attr & 0xff;
 		ptr[1] = 2;
 
 		left = len;
@@ -1039,7 +1100,7 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 #ifndef NDEBUG
 		if ((fr_debug_lvl > 3) && fr_log_fp) {
 			fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
-			print_hex_data(ptr + 2, len, 3);
+			VP_HEX_DUMP("Done concat", ptr + 2, len);
 		}
 #endif
 		ptr[1] += left;
@@ -1050,6 +1111,8 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 	}
 
 	*pvp = vp->next;
+	build_tlv_stack(tlv_stack, pvp);
+
 	return ptr - out;
 }
 
@@ -1062,18 +1125,35 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen, RADIUS_PACKET const *packet,
 				       RADIUS_PACKET const *original, char const *secret,
 				       fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				       VALUE_PAIR const **pvp, unsigned int attribute)
+				       VALUE_PAIR const **pvp)
 {
 	ssize_t len;
 
+	VP_STACK_PRINT(tlv_stack, depth);
+
+	switch (tlv_stack[depth]->type) {
+	case PW_TYPE_STRUCTURAL:
+		fr_strerror_printf("%s: Called with structural type %s", __FUNCTION__,
+				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
+		return -1;
+
+	default:
+		if ((tlv_stack[depth]->attr == 0) || (tlv_stack[depth]->attr > 255)) {
+			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
+					   tlv_stack[depth]->attr);
+			return -1;
+		}
+		break;
+	}
+
 	if (outlen <= 2) return 0;
 
-	out[0] = attribute & 0xff;
+	out[0] = tlv_stack[depth]->attr & 0xff;
 	out[1] = 2;
 
 	if (outlen > ((unsigned) 255 - out[1])) outlen = 255 - out[1];
 
-	len = encode_value(out + out[1], outlen, packet, original, secret, tlv_stack, depth + 1, pvp);
+	len = encode_value(out + out[1], outlen, packet, original, secret, tlv_stack, depth, pvp);
 	if (len <= 0) return len;
 
 	out[1] += len;
@@ -1081,7 +1161,7 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen, RADIUS_PACKE
 #ifndef NDEBUG
 	if ((fr_debug_lvl > 3) && fr_log_fp) {
 		fprintf(fr_log_fp, "\t\t%02x %02x  ", out[0], out[1]);
-		print_hex_data(out + 2, len, 3);
+		VP_HEX_DUMP("Done RFC header", out + 2, len);
 	}
 #endif
 
@@ -1093,55 +1173,57 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen, RADIUS_PACKE
  *
  * If it's in the RFC format, call encode_rfc_hdr_internal.  Otherwise, encode it here.
  */
-static ssize_t encode_vendor_hdr(uint8_t *out, size_t outlen,
-				 RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-				 char const *secret,
-				 fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				 VALUE_PAIR const **pvp, unsigned int attribute,
-				 unsigned int vendor)
+static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
+				      RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+				      char const *secret,
+				      fr_dict_attr_t const **tlv_stack, unsigned int depth,
+				      VALUE_PAIR const **pvp)
 {
 	ssize_t			len;
 	fr_dict_vendor_t	*dv;
-	VALUE_PAIR const	*vp = *pvp;
+	fr_dict_attr_t const	*da = tlv_stack[depth];
 
-	VERIFY_VP(vp);
+	VP_STACK_PRINT(tlv_stack, depth);
+
 	/*
 	 *	Unknown vendor: RFC format.
 	 *	Known vendor and RFC format: go do that.
 	 */
-	dv = fr_dict_vendor_by_num(vendor);
-	if (!dv || (!vp->da->flags.is_tlv && (dv->type == 1) && (dv->length == 1))) {
+	dv = fr_dict_vendor_by_num(da->parent->attr);
+	if (!dv || ((da->type != PW_TYPE_TLV) && (dv->type == 1) && (dv->length == 1))) {
 		return encode_rfc_hdr_internal(out, outlen, packet, original, secret,
-					       tlv_stack, depth + 1, pvp, attribute);
+					       tlv_stack, depth, pvp);
 	}
 
+	/*
+	 *	Vendors use different widths for their
+	 *	attribute number fields.
+	 */
 	switch (dv->type) {
 	default:
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": "
-				   "Internal sanity check failed, type %u", (unsigned) dv->type);
+		fr_strerror_printf("%s: Internal sanity check failed, type %u", __FUNCTION__, (unsigned) dv->type);
 		return -1;
 
 	case 4:
 		out[0] = 0;	/* attr must be 24-bit */
-		out[1] = (attribute >> 16) & 0xff;
-		out[2] = (attribute >> 8) & 0xff;
-		out[3] = attribute & 0xff;
+		out[1] = (da->attr >> 16) & 0xff;
+		out[2] = (da->attr >> 8) & 0xff;
+		out[3] = da->attr & 0xff;
 		break;
 
 	case 2:
-		out[0] = (attribute >> 8) & 0xff;
-		out[1] = attribute & 0xff;
+		out[0] = (da->attr >> 8) & 0xff;
+		out[1] = da->attr & 0xff;
 		break;
 
 	case 1:
-		out[0] = attribute & 0xff;
+		out[0] = da->attr & 0xff;
 		break;
 	}
 
 	switch (dv->length) {
 	default:
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": Internal sanity check failed, length %u",
-				   (unsigned) dv->length);
+		fr_strerror_printf("%s: Internal sanity check failed, length %u", __FUNCTION__, (unsigned) dv->length);
 		return -1;
 
 	case 0:
@@ -1162,7 +1244,7 @@ static ssize_t encode_vendor_hdr(uint8_t *out, size_t outlen,
 		outlen = 255 - (dv->type + dv->length);
 	}
 
-	len = encode_value(out + dv->type + dv->length, outlen, packet, original, secret, tlv_stack, depth + 1, pvp);
+	len = encode_value(out + dv->type + dv->length, outlen, packet, original, secret, tlv_stack, depth, pvp);
 	if (len <= 0) return len;
 
 	if (dv->length) out[dv->type + dv->length - 1] += len;
@@ -1204,7 +1286,7 @@ static ssize_t encode_vendor_hdr(uint8_t *out, size_t outlen,
 			break;
 		}
 
-		print_hex_data(out + dv->type + dv->length, len, 3);
+		VP_HEX_DUMP("Done RFC header", out + dv->type + dv->length, len);
 	}
 #endif
 
@@ -1227,12 +1309,13 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	VALUE_PAIR const	*vp = *pvp;
 
 	VERIFY_VP(vp);
+	VP_STACK_PRINT(tlv_stack, depth);
 
 	/*
 	 *	Double-check for WiMAX format.
 	 */
 	if (!vp->da->flags.wimax) {
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": Called for non-WIMAX VSA");
+		fr_strerror_printf("%s: Called for non-WIMAX VSA", __FUNCTION__);
 		return -1;
 	}
 
@@ -1242,6 +1325,20 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	 */
 	if (outlen < 9) return 0;
 
+	if (tlv_stack[depth++]->attr != PW_VENDOR_SPECIFIC) {
+		fr_strerror_printf("%s: level[1] of tlv_stack is incorrect, must be Vendor-Specific (26)",
+				   __FUNCTION__);
+		return -1;
+	}
+	VP_STACK_PRINT(tlv_stack, depth);
+
+	if (tlv_stack[depth++]->attr != VENDORPEC_WIMAX) {
+		fr_strerror_printf("%s: level[2] of tlv_stack is incorrect, must be Wimax vendor %i", __FUNCTION__,
+				   VENDORPEC_WIMAX);
+		return -1;
+	}
+	VP_STACK_PRINT(tlv_stack, depth);
+
 	/*
 	 *	Build the Vendor-Specific header
 	 */
@@ -1250,14 +1347,23 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	out[1] = 9;
 	lvalue = htonl(vp->da->vendor);
 	memcpy(out + 2, &lvalue, 4);
-	out[6] = (vp->da->attr & fr_attr_mask[1]);
+
+	/*
+	 *	Encode the first attribute
+	 */
+	out[6] = tlv_stack[depth]->attr;
 	out[7] = 3;
 	out[8] = 0;		/* continuation byte */
-
 	hdr_len = 9;
 
-	len = encode_value(out + out[1], outlen - hdr_len, packet, original, secret, tlv_stack, depth + 1, pvp);
-	if (len <= 0) return len;
+	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
+		len = encode_tlv_hdr_internal(out + out[1], outlen - hdr_len, packet,
+					      original, secret, tlv_stack, depth, pvp);
+		if (len <= 0) return len;
+	} else {
+		len = encode_value(out + out[1], outlen - hdr_len, packet, original, secret, tlv_stack, depth, pvp);
+		if (len <= 0) return len;
+	}
 
 	/*
 	 *	There may be more than 252 octets of data encoded in
@@ -1279,7 +1385,7 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 			out[2], out[3], out[4], out[5],
 			(out[3] << 16) | (out[4] << 8) | out[5],
 			out[6], out[7], out[8]);
-		print_hex_data(out + 9, len, 3);
+		VP_HEX_DUMP("Done wimax header", out + 9, len);
 	}
 #endif
 
@@ -1297,30 +1403,25 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 {
 	ssize_t			len;
 	uint32_t		lvalue;
-	VALUE_PAIR const	*vp = *pvp;
+	fr_dict_attr_t const	*da = tlv_stack[depth];
 
-	VERIFY_VP(vp);
+	VP_STACK_PRINT(tlv_stack, depth);
 
-	if (vp->da->vendor == 0) {
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": Called with rfc attribute");
+	if (da->type != PW_TYPE_VSA) {
+		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
+				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 		return -1;
 	}
 
 	/*
 	 *	Double-check for WiMAX format.
 	 */
-	if (vp->da->flags.wimax) {
+	if (da->flags.wimax) {
 		return encode_wimax_hdr(out, outlen, packet, original, secret, tlv_stack, depth + 1, pvp);
 	}
 
-	if (vp->da->vendor > FR_MAX_VENDOR) {
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": Invalid arguments");
-		return -1;
-	}
-
 	/*
-	 *	Not enough freespace for:
-	 *		attr, len, vendor-id
+	 *	Not enough freespace for: attr, len, vendor-id
 	 */
 	if (outlen < 6) return 0;
 
@@ -1329,13 +1430,25 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	 */
 	out[0] = PW_VENDOR_SPECIFIC;
 	out[1] = 6;
-	lvalue = htonl(vp->da->vendor);
-	memcpy(out + 2, &lvalue, 4);
+
+	/*
+	 *	Now process the vendor ID part (which is one attribute deeper)
+	 */
+	da = tlv_stack[++depth];
+
+	if (da->type != PW_TYPE_VENDOR) {
+		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
+				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
+		return -1;
+	}
+	VP_STACK_PRINT(tlv_stack, depth);
+
+	lvalue = htonl(da->attr);
+	memcpy(out + 2, &lvalue, 4);	/* Copy in the 32bit vendor ID */
 
 	if (outlen > ((unsigned) 255 - out[1])) outlen = 255 - out[1];
 
-	len = encode_vendor_hdr(out + out[1], outlen, packet, original, secret, tlv_stack, depth + 1, pvp, vp->da->attr
-				 vp->da->vendor);
+	len = encode_vendor_attr_hdr(out + out[1], outlen, packet, original, secret, tlv_stack, depth + 1, pvp);
 	if (len < 0) return len;
 
 #ifndef NDEBUG
@@ -1344,10 +1457,9 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 			out[0], out[1],
 			out[2], out[3], out[4], out[5],
 			(out[3] << 16) | (out[4] << 8) | out[5]);
-		print_hex_data(out + 6, len, 3);
+		VP_HEX_DUMP("Done VSA header", out + 6, len);
 	}
 #endif
-
 	out[1] += len;
 
 	return out[1];
@@ -1364,28 +1476,36 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen,
 {
 	VALUE_PAIR const *vp = *pvp;
 
+	/*
+	 *	Sanity checks
+	 */
 	VERIFY_VP(vp);
+	VP_STACK_PRINT(tlv_stack, depth);
 
-	if (vp->da->vendor != 0) {
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": Called with VSA");
+	switch (tlv_stack[depth]->type) {
+	case PW_TYPE_STRUCTURAL:
+		fr_strerror_printf("%s: Expected leaf type got \"%s\"", __FUNCTION__,
+				   fr_int2str(dict_attr_types, tlv_stack[depth]->type, "?Unknown?"));
 		return -1;
-	}
 
-	if ((vp->da->attr == 0) || (vp->da->attr > 255)) {
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": Called with non-standard attribute %u", vp->da->attr);
-		return -1;
+	default:
+		if ((vp->da->attr == 0) || (vp->da->attr > 255)) {
+			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__, vp->da->attr);
+			return -1;
+		}
+		break;
 	}
 
 	/*
 	 *	Only CUI is allowed to have zero length.
 	 *	Thank you, WiMAX!
 	 */
-	if ((vp->vp_length == 0) &&
-	    (vp->da->attr == PW_CHARGEABLE_USER_IDENTITY)) {
+	if ((vp->vp_length == 0) &&  (vp->da->attr == PW_CHARGEABLE_USER_IDENTITY)) {
 		out[0] = PW_CHARGEABLE_USER_IDENTITY;
 		out[1] = 2;
 
 		*pvp = vp->next;
+		build_tlv_stack(tlv_stack, pvp);
 		return 2;
 	}
 
@@ -1404,6 +1524,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen,
 		}
 #endif
 		*pvp = (*pvp)->next;
+		build_tlv_stack(tlv_stack, pvp);
 		return 18;
 	}
 
@@ -1411,51 +1532,10 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen,
 	 *	EAP-Message is special.
 	 */
 	if (vp->da->flags.concat && (vp->vp_length > 253)) {
-		return encode_concat(out, outlen, packet, original, secret, tlv_stack, depth + 1, pvp, vp->da->attr);
+		return encode_concat(out, outlen, packet, original, secret, tlv_stack, depth, pvp);
 	}
 
-	return encode_rfc_hdr_internal(out, outlen, packet, original, secret, tlv_stack, depth + 1, pvp, vp->da->attr);
-}
-
-static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
-			      RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			      char const *secret,
-			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      VALUE_PAIR const **pvp)
-{
-	ssize_t			len;
-	VALUE_PAIR const	*vp = *pvp;
-
-	VERIFY_VP(vp);
-
-	if (!vp->da->flags.is_tlv) {
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": Attr is not a TLV");
-		return -1;
-	}
-
-	if ((vp->da->vendor & (FR_MAX_VENDOR - 1)) != 0) {
-		fr_strerror_printf(STRINGIFY(__FUNCTION__) ": Attr is not an RFC TLV");
-		return -1;
-	}
-
-	if (outlen < 5) return 0;
-
-	/*
-	 *	Encode the first level of TLVs
-	 */
-	out[0] = (vp->da->vendor / FR_MAX_VENDOR) & 0xff;
-	out[1] = 4;
-	out[2] = vp->da->attr & fr_attr_mask[0];
-	out[3] = 2;
-
-	len = encode_value(out + 4, outlen - 4, packet, original, secret, tlv_stack, depth + 1, pvp);
-	if (len <= 0) return len;
-	if (len > 253) return -1;
-
-	out[1] += len;
-	out[3] += len;
-
-	return out[1];
+	return encode_rfc_hdr_internal(out, outlen, packet, original, secret, tlv_stack, depth, pvp);
 }
 
 /** Parse a data structure into a RADIUS attribute
@@ -1469,42 +1549,95 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 			  char const *secret, VALUE_PAIR const **pvp)
 {
 	VALUE_PAIR const *vp;
+	int i;
+	int ret;
 
-	fr_dict_attr_t const *tlv_stack[MAX_TLV_STACK];
-	fr_dict_attr_t **tlv_p = &tlv_stack[0];
+	fr_dict_attr_t const *tlv_stack[MAX_TLV_STACK + 1];
+	fr_dict_attr_t const *da = NULL;
 
 	if (!pvp || !*pvp || !out || (outlen <= 2)) return -1;
 	vp = *pvp;
 
 	VERIFY_VP(vp);
 
-	for (
+	if ((*pvp)->da->depth > MAX_TLV_STACK) {
+		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",
+				   __FUNCTION__, da->depth, MAX_TLV_STACK);
+		return -1;
+	}
+
+	tlv_stack[0] = NULL;	/* memsets are surprisingly expensive */
 
 	/*
-	 *	RFC format attributes take the fast path.
+	 *	RADIUS has a fixed nesting structure, so we know where in
+	 *	the stack we need to start by the da->depth.
+	 *
+	 *	We couldn't do this for a protocol like diameter, because it
+	 *	allows arbitrary nesting.
+	 *
+	 *	Note: The stack is needed because for unknown attributes
+	 *	there's only a child->parent relationship, and we need to
+	 *	encode the top level (oldest ancestor) first.
+	 *
+	 *	Note: We don't add the protocol root to the stack, as it's
+	 *	not needed, so we start from RFC attributes and move down
+	 *	from there.
 	 */
-	if (!vp->da->vendor) {
-		if (vp->da->attr > 255) return 0;
-
-		return encode_rfc_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
-	}
-
-	if (vp->da->flags.extended) {
-		return encode_extended_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
-	}
+	for (i = (*pvp)->da->depth, da = (*pvp)->da;
+	     da->parent && (i >= 0);
+	     i--, da = da->parent) tlv_stack[i - 1] = da;
+	tlv_stack[(*pvp)->da->depth] = NULL;	/* Mark the top with a NULL */
 
 	/*
-	 *	The upper 8 bits of the vendor number are the standard
-	 *	space attribute which is a TLV.
+	 *	Sanity checks
 	 */
-	if ((vp->da->vendor & (FR_MAX_VENDOR - 1)) == 0) {
-		return encode_tlv_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
+	if (!fr_assert((i >= 0) && tlv_stack[0])) return -1;
+	VP_STACK_PRINT(tlv_stack, 0);
+
+	da = tlv_stack[0];
+	switch (da->type) {
+	default:
+		if (da->attr > 255) return 0;
+		ret = encode_rfc_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
+		break;
+
+	case PW_TYPE_VSA:
+		if ((*pvp)->da->flags.wimax) return encode_wimax_hdr(out, outlen, packet,
+								     original, secret, tlv_stack, 0, pvp);
+		ret = encode_vsa_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
+		break;
+
+	case PW_TYPE_TLV:
+	{
+		/*
+		 *	Nested structures of attributes can't be longer than
+		 *	255 bytes, so each call to an encode function can
+		 *	only use 255 bytes of buffer space at a time.
+		 */
+		size_t attr_len = (outlen > UINT8_MAX) ? UINT8_MAX : outlen;
+		ret = encode_tlv_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, pvp);
+	}
+		break;
+
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+		ret = encode_extended_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
+		break;
+
+	case PW_TYPE_EVS:
+		fr_strerror_printf("%s: Top level \"evs\" attribute is invalid", __FUNCTION__);
+		return -1;
 	}
 
-	if (vp->da->flags.wimax) {
-		return encode_wimax_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
-	}
+	if (ret < 0) return ret;
 
-	return encode_vsa_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
+	/*
+	 *
+	 */
+	if (*pvp == vp) {
+		fr_strerror_printf("%s: Nested attribute structure too large to encode", __FUNCTION__);
+		return -1;
+	}
+	return ret;
 }
 

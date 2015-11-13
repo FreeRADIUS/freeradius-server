@@ -484,7 +484,7 @@ do { \
 #define FR_DICT_VALUE_MAX_NAME_LEN (128)
 #define FR_DICT_VENDOR_MAX_NAME_LEN (128)
 #define FR_DICT_ATTR_MAX_NAME_LEN (128)
-
+#define MAX_TLV_NEST (4)
 #define FR_DICT_ATTR_SIZE sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN
 
 extern const int fr_dict_attr_allowed_chars[256];

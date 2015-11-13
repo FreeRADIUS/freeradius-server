@@ -164,7 +164,7 @@ const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
  *		241.26.9.1	1		(241 << 24) | (9)
  *		241.1.2		1 | (2 << 8)	(241 << 24)
  */
-#define MAX_TLV_NEST (4)
+
 /*
  *	Bit packing:
  *	8 bits of base attribute
@@ -567,7 +567,7 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 		break;
 	}
 
-	printf("%.*s%s \"%s\" vendor: %x (%i), num: %x (%i), type: %s, flags: %s\n", depth,
+	printf("%i%.*s%s \"%s\" vendor: %x (%i), num: %x (%i), type: %s, flags: %s\n", da->depth, depth,
 	       "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t", name, da->name,
 	       da->vendor, da->vendor, da->attr, da->attr,
 	       fr_int2str(dict_attr_types, da->type, "?Unknown?"), buff);
@@ -3343,6 +3343,7 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 		vendor_da->attr = vendor;
 		vendor_da->type = PW_TYPE_VENDOR;
 		vendor_da->parent = vsa_da;
+		vendor_da->depth = vsa_da->depth + 1;
 		vendor_da->flags.is_unknown = 1;
 
 		parent = vendor_da;

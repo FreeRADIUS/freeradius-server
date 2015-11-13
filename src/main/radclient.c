@@ -891,7 +891,7 @@ static int send_one_packet(rc_request_t *request)
 			} else if ((vp = fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
 				uint8_t buffer[17];
 
-				fr_radius_encode_chap_password(request->packet, buffer, fr_rand() & 0xff, request->password);
+				fr_radius_encode_chap_password(buffer, request->packet, fr_rand() & 0xff, request->password);
 				fr_pair_value_memcpy(vp, buffer, 17);
 
 			} else if (fr_pair_find_by_num(request->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY) != NULL) {
