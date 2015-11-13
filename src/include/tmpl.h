@@ -153,6 +153,7 @@ typedef struct {
 	fr_dict_attr_t const		*da;			//!< Resolved dictionary attribute.
 	union {
 		uint8_t			da[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
+		uint8_t			vendor[FR_DICT_ATTR_SIZE];	//!< Unknown dictionary attribute buffer.
 		char			name[FR_DICT_ATTR_SIZE];	//!< Raw unknown dictionary name.
 	} unknown;
 	int			num;			 //!< For array references.

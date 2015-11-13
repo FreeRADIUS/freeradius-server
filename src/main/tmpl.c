@@ -727,7 +727,9 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
-		if (fr_dict_unknown_from_substr((fr_dict_attr_t *)&attr.unknown.da, &p) == 0) {
+		if (fr_dict_unknown_from_suboid((fr_dict_attr_t *)&attr.unknown.vendor,
+						(fr_dict_attr_t *)&attr.unknown.da,
+						fr_dict_root(fr_main_dict), &p) == 0) {
 			/*
 			 *	Check what we just parsed really hasn't been defined
 			 *	in the main dictionaries.
@@ -762,7 +764,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		 *	let the caller decide.
 		 *
 		 *	Don't alter the fr_strerror buffer, should contain the parse
-		 *	error from fr_dict_unknown_from_substr.
+		 *	error from fr_dict_unknown_from_suboid.
 		 */
 		if (!allow_undefined) return -(a - name);
 
@@ -903,7 +905,7 @@ ssize_t tmpl_from_attr_str(vp_tmpl_t *vpt, char const *name,
  * @param[in] list_def The default list to set if no #pair_lists qualifiers are found in
  *	name.
  * @param[in] allow_unknown If true attributes in the format accepted by
- *	#fr_dict_unknown_from_substr will be allowed, even if they're not in the main
+ *	#fr_dict_unknown_from_suboid will be allowed, even if they're not in the main
  *	dictionaries.
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
  *	produced with the unknown #fr_dict_attr_t stored in the ``unknown.da`` buffer.

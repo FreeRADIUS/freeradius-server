@@ -492,6 +492,8 @@ extern const int fr_dict_attr_allowed_chars[256];
 int			fr_dict_valid_name(char const *name);
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
+fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
+fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child);
 ssize_t			fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor,
 					   fr_dict_attr_t const **parent, char const *oid);
 int			fr_dict_vendor_add(char const *name, unsigned int value);
@@ -506,14 +508,21 @@ int			fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out,
 int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
 
 void			fr_dict_attr_free(fr_dict_attr_t const **da);
-int			fr_dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int vendor, unsigned int attr);
-fr_dict_attr_t const	*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr);
-int			fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name);
-int			fr_dict_unknown_from_substr(fr_dict_attr_t *da, char const **name);
+
+int			fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out,
+							 fr_dict_attr_t const *parent, unsigned int vendor);
+int			fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent,
+						    unsigned int vendor, unsigned int attr);
+fr_dict_attr_t		*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
+						      unsigned int vendor, unsigned int attr);
+int			fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
+						 fr_dict_attr_t const *parent, char const *name);
+fr_dict_attr_t const	*fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *name);
+int			fr_dict_unknown_from_suboid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
+						    fr_dict_attr_t const *parent, char const **name);
 
 void			fr_dict_print(fr_dict_attr_t const *da, int depth);
 fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b);
-fr_dict_attr_t const	*fr_dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name);
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_attr_t const *old);
 
 fr_dict_attr_t const	*fr_dict_parent_by_num(unsigned int vendor, unsigned int attr);
@@ -521,8 +530,6 @@ fr_dict_attr_t const	*fr_dict_attr_by_num(unsigned int vendor, unsigned int attr
 fr_dict_attr_t const	*fr_dict_attr_by_name(char const *attr);
 fr_dict_attr_t const	*fr_dict_attr_by_name_substr(char const **name);
 fr_dict_attr_t const	*fr_dict_attr_by_type(unsigned int vendor, unsigned int attr, PW_TYPE type);
-fr_dict_attr_t const	*fr_dict_attr_by_parent(fr_dict_attr_t const *parent, unsigned int vendor, unsigned int attr);
-int			fr_dict_attr_child(fr_dict_attr_t const *parent, unsigned int *p_vendor, unsigned int *p_attr);
 fr_dict_value_t		*fr_dict_value_by_attr(unsigned int vendor, unsigned int attr, int val);
 fr_dict_value_t		*fr_dict_value_by_name(unsigned int vendor, unsigned int attr, char const *val);
 char const		*fr_dict_value_name_by_attr(unsigned int vendor, unsigned int attr, int value);
@@ -575,7 +582,7 @@ ssize_t		data2vp(TALLOC_CTX *ctx,
 ssize_t		rad_attr2vp(TALLOC_CTX *ctx,
 			    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			    char const *secret,
-			    uint8_t const *data, size_t length,
+			    fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
 			    VALUE_PAIR **pvp);
 
 ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,

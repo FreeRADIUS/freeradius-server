@@ -738,7 +738,8 @@ static void process_file(const char *root_dir, char const *filename)
 			my_len = 0;
 			while (len > 0) {
 				vp = NULL;
-				my_len = rad_attr2vp(NULL, &my_packet, &my_original, my_secret, attr, len, &vp);
+				my_len = rad_attr2vp(NULL, &my_packet, &my_original, my_secret,
+						     fr_dict_root(fr_main_dict), attr, len, &vp);
 				if (my_len < 0) {
 					fr_pair_list_free(&head);
 					break;

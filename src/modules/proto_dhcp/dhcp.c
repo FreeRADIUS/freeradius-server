@@ -831,7 +831,7 @@ static int fr_dhcp_decode_suboption(TALLOC_CTX *ctx, VALUE_PAIR **tlv, uint8_t c
 		 */
 		da = fr_dict_attr_by_num((*tlv)->da->vendor, attr);
 		if (!da) {
-			da = fr_dict_unknown_afrom_fields(ctx, (*tlv)->da->vendor, attr);
+			da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(fr_main_dict), (*tlv)->da->vendor, attr);
 			if (!da) {
 				fr_pair_list_free(&head);
 				return -1;
@@ -1067,7 +1067,7 @@ ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const 
 		 */
 		da = fr_dict_attr_by_num(DHCP_MAGIC_VENDOR, p[0]);
 		if (!da) {
-			da = fr_dict_unknown_afrom_fields(ctx, DHCP_MAGIC_VENDOR, p[0]);
+			da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(fr_main_dict), DHCP_MAGIC_VENDOR, p[0]);
 			if (!da) {
 				fr_pair_list_free(out);
 				return -1;
@@ -1155,8 +1155,11 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			if ((packet->data[1] == 0) || (packet->data[2] == 0)) continue;
 
 			if ((packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
-				fr_dict_attr_t const *da = fr_dict_unknown_afrom_fields(packet, vp->da->vendor,
-											vp->da->attr);
+				fr_dict_attr_t const *da;
+
+				da = fr_dict_unknown_afrom_fields(packet,
+								  fr_dict_root(fr_main_dict),
+								  vp->da->vendor, vp->da->attr);
 				if (!da) {
 					return -1;
 				}

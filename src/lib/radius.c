@@ -2962,30 +2962,22 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 	while (data < (start + length)) {
 		ssize_t tlv_len;
 
-		child = fr_dict_attr_by_parent(da, da->vendor, data[0]);
+		child = fr_dict_attr_child_by_num(da, data[0]);
 		if (!child) {
-			unsigned int my_attr, my_vendor;
+			fr_dict_attr_t *unknown_child;
 
-			VP_TRACE("Failed to find child %u of TLV %s\n",
-				 data[0], da->name);
+			VP_TRACE("Failed to find child %u of TLV %s\n", data[0], da->name);
 
 			/*
-			 *	Get child attr/vendor so that
-			 *	we can call unknown attr.
+			 *	Build an unknown attr
 			 */
-			my_attr = data[0];
-			my_vendor = da->vendor;
-
-			if (!fr_dict_attr_child(da, &my_vendor, &my_attr)) {
+			unknown_child = fr_dict_unknown_afrom_fields(ctx, da, da->vendor, data[0]);
+			if (!unknown_child) {
 				fr_pair_list_free(&head);
 				return -1;
 			}
-
-			child = fr_dict_unknown_afrom_fields(ctx, my_vendor, my_attr);
-			if (!child) {
-				fr_pair_list_free(&head);
-				return -1;
-			}
+			unknown_child->parent = da;	/* Needed for re-encoding */
+			child = unknown_child;
 		}
 
 		tlv_len = data2vp(ctx, packet, original, secret, child,
@@ -3009,12 +3001,20 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 			   RADIUS_PACKET const *original,
 			   char const *secret, fr_dict_vendor_t *dv,
-			   uint8_t const *data, size_t length,
+			   fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
 			   VALUE_PAIR **pvp)
 {
 	unsigned int attribute;
 	ssize_t attrlen, my_len;
 	fr_dict_attr_t const *da;
+
+	/*
+	 *	Parent must be a vendor
+	 */
+	if (!fr_assert(parent->type == PW_TYPE_VENDOR)) {
+		fr_strerror_printf("data2vp_vsa: Internal sanity check failed");
+		return -1;
+	}
 
 	VP_TRACE("data2vp_vsa: length %u\n", (unsigned int) length);
 
@@ -3069,8 +3069,8 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	/*
 	 *	See if the VSA is known.
 	 */
-	da = fr_dict_attr_by_num(dv->vendorpec, attribute);
-	if (!da) da = fr_dict_unknown_afrom_fields(ctx, dv->vendorpec, attribute);
+	da = fr_dict_attr_child_by_num(parent, attribute);
+	if (!da) da = fr_dict_unknown_afrom_fields(ctx, parent, dv->vendorpec, attribute);
 	if (!da) return -1;
 
 	my_len = data2vp(ctx, packet, original, secret, da,
@@ -3179,7 +3179,7 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 			     RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			     char const *secret, uint32_t vendor,
-			     uint8_t const *data,
+			     fr_dict_attr_t const *parent, uint8_t const *data,
 			     size_t attrlen, size_t packetlen,
 			     VALUE_PAIR **pvp)
 {
@@ -3188,17 +3188,18 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 	bool last_frag;
 	uint8_t *head, *tail;
 	uint8_t const *frag, *end;
-	fr_dict_attr_t const *child;
+	fr_dict_attr_t const *da;
 
 	if (attrlen < 8) return -1;
 
 	if (((size_t) (data[5] + 4)) != attrlen) return -1;
 
-	child = fr_dict_attr_by_num(vendor, data[4]);
-	if (!child) return -1;
+	da = fr_dict_attr_child_by_num(parent, data[4]);
+	if (!da) da = fr_dict_unknown_afrom_fields(ctx, parent, vendor, data[4]);
+	if (!da) return -1;
 
 	if ((data[6] & 0x80) == 0) {
-		rcode = data2vp(ctx, packet, original, secret, child,
+		rcode = data2vp(ctx, packet, original, secret, da,
 				data + 7, data[5] - 3, data[5] - 3,
 				pvp);
 		if (rcode < 0) return -1;
@@ -3262,8 +3263,7 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 
 	VP_HEXDUMP("wimax fragments", head, fraglen);
 
-	rcode = data2vp(ctx, packet, original, secret, child,
-			head, fraglen, fraglen, pvp);
+	rcode = data2vp(ctx, packet, original, secret, da, head, fraglen, fraglen, pvp);
 	free(head);
 	if (rcode < 0) return rcode;
 
@@ -3276,16 +3276,23 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
  */
 static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 			    RADIUS_PACKET const *original,
-			    char const *secret, uint8_t const *data,
+			    char const *secret,
+			    fr_dict_attr_t const *parent, uint8_t const *data,
 			    size_t attrlen, size_t packetlen,
 			    VALUE_PAIR **pvp)
 {
-	size_t total;
-	ssize_t rcode;
-	uint32_t vendor;
-	fr_dict_vendor_t *dv;
-	VALUE_PAIR *head, **tail;
-	fr_dict_vendor_t my_dv;
+	size_t			total;
+	ssize_t			rcode;
+	uint32_t		vendor;
+	fr_dict_vendor_t	*dv;
+	VALUE_PAIR		*head, **tail;
+	fr_dict_vendor_t	my_dv;
+	fr_dict_attr_t const	*vendor_da;
+
+	/*
+	 *	Container must be a VSA
+	 */
+	if (!fr_assert(parent->type == PW_TYPE_VSA)) return -1;
 
 	if (attrlen > packetlen) return -1;
 	if (attrlen < 5) return -1; /* vid, value */
@@ -3295,8 +3302,17 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 
 	memcpy(&vendor, data, 4);
 	vendor = ntohl(vendor);
-	dv = fr_dict_vendor_by_num(vendor);
-	if (!dv) {
+
+	/*
+	 *	Verify that the parent (which should be a VSA)
+	 *	contains a fake attribute representing the vendor.
+	 *
+	 *	If it doesn't then this vendor is unknown, but
+	 *	(unlike DHCP) we know vendor attributes have a
+	 *	standard format, so we can decode the data anyway.
+	 */
+	vendor_da = fr_dict_attr_child_by_num(parent, vendor);
+	if (!vendor_da) {
 		/*
 		 *	RFC format is 1 octet type, 1 octet length
 		 */
@@ -3305,20 +3321,25 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 			return -1;
 		}
 
+		if (fr_dict_unknown_vendor_afrom_num(ctx, &vendor_da, parent, vendor) < 0) return -1;
+
 		/*
-		 *	It's a known unknown.
+		 *	Create an unknown DV too...
 		 */
 		memset(&my_dv, 0, sizeof(my_dv));
 		dv = &my_dv;
-
-		/*
-		 *	Fill in the fields.  Note that the name is empty!
-		 */
 		dv->vendorpec = vendor;
 		dv->type = 1;
 		dv->length = 1;
 
 		goto create_attrs;
+	} else {
+		/*
+		 *	We found an attribute representing the vendor
+		 *	so it *MUST* exist in the vendor tree.
+		 */
+		dv = fr_dict_vendor_by_num(vendor);
+		if (!fr_assert(dv)) return -1;
 	}
 
 	/*
@@ -3326,15 +3347,14 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	 */
 	if ((vendor == VENDORPEC_WIMAX) && dv->flags) {
 		rcode = data2vp_wimax(ctx, packet, original, secret, vendor,
-				      data, attrlen, packetlen, pvp);
+				      vendor_da, data, attrlen, packetlen, pvp);
 		return rcode;
 	}
 
 	/*
 	 *	VSAs should normally be in TLV format.
 	 */
-	if (rad_tlv_ok(data + 4, attrlen - 4,
-		       dv->type, dv->length) < 0) {
+	if (rad_tlv_ok(data + 4, attrlen - 4, dv->type, dv->length) < 0) {
 		VP_TRACE("data2vp_vsas: tlvs not OK: %s\n", fr_strerror());
 		return -1;
 	}
@@ -3354,11 +3374,14 @@ create_attrs:
 	while (attrlen > 0) {
 		ssize_t vsa_len;
 
-		vsa_len = data2vp_vsa(ctx, packet, original, secret, dv,
-				      data, attrlen, tail);
+		/*
+		 *	Vendor attributes can have subattributes (if you hadn't guessed)
+		 */
+		vsa_len = data2vp_vsa(ctx, packet, original, secret, dv, vendor_da, data, attrlen, tail);
 		if (vsa_len < 0) {
-			fr_pair_list_free(&head);
 			fr_strerror_printf("Internal sanity check %d", __LINE__);
+			fr_pair_list_free(&head);
+			fr_dict_attr_free(&vendor_da);
 			return -1;
 		}
 
@@ -3374,6 +3397,15 @@ create_attrs:
 	}
 
 	*pvp = head;
+
+	/*
+	 *	When the unknown attributes were created by
+	 *	data2vp_vsa, the hierachy between that unknown
+	 *	attribute and first known attribute was cloned
+	 *	meaning we can now free the unknown vendor.
+	 */
+	fr_dict_attr_free(&vendor_da);	/* Only frees unknown vendors */
+
 	return total;
 }
 
@@ -3645,7 +3677,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	case PW_TYPE_EXTENDED:
 		if (datalen < 2) goto raw; /* etype, value */
 
-		child = fr_dict_attr_by_parent(da, 0, data[0]);
+		child = fr_dict_attr_child_by_num(da, data[0]);
 		if (!child) goto raw;
 
 		/*
@@ -3662,12 +3694,13 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	case PW_TYPE_LONG_EXTENDED:
 		if (datalen < 3) goto raw; /* etype, flags, value */
 
-		child = fr_dict_attr_by_parent(da, 0, data[0]);
+		child = fr_dict_attr_child_by_num(da, data[0]);
 		if (!child) {
-			if ((data[0] != PW_VENDOR_SPECIFIC) ||
-			    (datalen < (3 + 4 + 1))) {
+			fr_dict_attr_t *new;
+
+			if ((data[0] != PW_VENDOR_SPECIFIC) || (datalen < (3 + 4 + 1))) {
 				/* da->attr < 255, da->vendor == 0 */
-				child = fr_dict_unknown_afrom_fields(ctx, da->attr * FR_MAX_VENDOR, data[0]);
+				new = fr_dict_unknown_afrom_fields(ctx, da, 0, data[0]);
 			} else {
 				/*
 				 *	Try to find the VSA.
@@ -3677,8 +3710,9 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 
 				if (vendor == 0) goto raw;
 
-				child = fr_dict_unknown_afrom_fields(ctx, vendor | (da->attr * FR_MAX_VENDOR), data[7]);
+				new = fr_dict_unknown_afrom_fields(ctx, da, vendor, data[7]);
 			}
+			child = new;
 
 			if (!child) {
 				fr_strerror_printf("Internal sanity check %d", __LINE__);
@@ -3706,30 +3740,62 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 					start, attrlen, packetlen, pvp);
 
 	case PW_TYPE_EVS:
+	{
+		fr_dict_attr_t const *vendor_child;
+
 		if (datalen < 6) goto raw; /* vid, vtype, value */
 
 		if (data[0] != 0) goto raw; /* we require 24-bit VIDs */
 
 		memcpy(&vendor, data, 4);
 		vendor = ntohl(vendor);
-		vendor |= da->vendor;
 
-		child = fr_dict_attr_by_num(vendor, data[4]);
-		if (!child) {
+		/*
+		 *	For simplicity in our attribute tree, vendors are
+		 *	represented as a subtlv(ish) of an EVS or VSA
+		 *	attribute.
+		 */
+		vendor_child = fr_dict_attr_child_by_num(da, vendor);
+		if (!vendor_child) {
 			/*
-			 *	Create a "raw" attribute from the
-			 *	contents of the EVS VSA.
+			 *	If there's no child, it means the vendor is unknown
+			 *	which means the child attribute is unknown too.
+			 *
+			 *	fr_dict_unknown_afrom_fields will do the right thing
+			 *	and create both an unknown vendor and an unknown
+			 *	attr.
+			 *
+			 *	This can be used later by the encoder to rebuild
+			 *	the attribute header.
 			 */
-			da = fr_dict_unknown_afrom_fields(ctx, vendor, data[4]);
+			da = fr_dict_unknown_afrom_fields(ctx, da, vendor, data[4]);
 			data += 5;
 			datalen -= 5;
 			break;
 		}
 
+		child = fr_dict_attr_child_by_num(vendor_child, data[4]);
+		if (!child) {
+			/*
+			 *	Vendor exists but child didn't, again
+			 *	fr_dict_unknown_afrom_fields will do the right thing
+			 *	and only create the unknown attr.
+			 */
+			da = fr_dict_unknown_afrom_fields(ctx, da, vendor, data[4]);
+			data += 5;
+			datalen -= 5;
+			break;
+		}
+
+		/*
+		 *	Everything was found in the dictionary, we can
+		 *	now recurse to decode the value.
+		 */
 		rcode = data2vp(ctx, packet, original, secret, child,
 				data + 5, attrlen - 5, attrlen - 5, pvp);
 		if (rcode < 0) goto raw;
 		return 5 + rcode;
+	}
 
 	case PW_TYPE_TLV:
 		/*
@@ -3747,7 +3813,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	VSAs can be WiMAX, in which case they don't
 		 *	fit into one attribute.
 		 */
-		rcode = data2vp_vsas(ctx, packet, original, secret,
+		rcode = data2vp_vsas(ctx, packet, original, secret, da,
 				     data, attrlen, packetlen, pvp);
 		if (rcode < 0) goto raw;
 		return rcode;
@@ -3759,7 +3825,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	therefore of type "octets", and will be
 		 *	handled below.
 		 */
-		da = fr_dict_unknown_afrom_fields(ctx, da->vendor, da->attr);
+		da = fr_dict_unknown_afrom_fields(ctx, da->parent, da->vendor, da->attr);
 		if (!da) {
 			fr_strerror_printf("Internal sanity check %d", __LINE__);
 			return -1;
@@ -3903,7 +3969,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 		    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		    char const *secret,
-		    uint8_t const *data, size_t length,
+		    fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
 		    VALUE_PAIR **pvp)
 {
 	ssize_t rcode;
@@ -3915,10 +3981,10 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 		return -1;
 	}
 
-	da = fr_dict_attr_by_num(0, data[0]);
+	da = fr_dict_attr_child_by_num(parent, data[0]);
 	if (!da) {
 		VP_TRACE("attr2vp: unknown attribute %u\n", data[0]);
-		da = fr_dict_unknown_afrom_fields(ctx, 0, data[0]);
+		da = fr_dict_unknown_afrom_fields(ctx, parent, 0, data[0]);
 	}
 	if (!da) return -1;
 
@@ -4058,6 +4124,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
 	case PW_TYPE_LONG_EXTENDED:
 	case PW_TYPE_EVS:
 	case PW_TYPE_VSA:
+	case PW_TYPE_VENDOR:
 	case PW_TYPE_TLV:
 	case PW_TYPE_TIMEVAL:
 	case PW_TYPE_DECIMAL:
@@ -4077,8 +4144,7 @@ ssize_t rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp)
  *	- 0 on success
  *	- -1 on decoding error.
  */
-int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
-	       char const *secret)
+int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret)
 {
 	int			packet_length;
 	uint32_t		num_attributes;
@@ -4107,7 +4173,7 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		 *	This may return many VPs
 		 */
 		my_len = rad_attr2vp(packet, packet, original, secret,
-				     ptr, packet_length, &vp);
+				     fr_dict_root(fr_main_dict), ptr, packet_length, &vp);
 		if (my_len < 0) {
 			fr_pair_list_free(&head);
 			return -1;

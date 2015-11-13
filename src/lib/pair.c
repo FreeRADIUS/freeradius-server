@@ -109,10 +109,8 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int v
 
 	da = fr_dict_attr_by_num(vendor, attr);
 	if (!da) {
-		da = fr_dict_unknown_afrom_fields(ctx, vendor, attr);
-		if (!da) {
-			return NULL;
-		}
+		da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(fr_main_dict), vendor, attr);
+		if (!da) return NULL;
 	}
 
 	return fr_pair_afrom_da(ctx, da);
@@ -268,7 +266,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	uint8_t 	*data;
 	size_t		size;
 
-	da = fr_dict_unknown_afrom_str(ctx, attribute);
+	da = fr_dict_unknown_afrom_oid(ctx, fr_dict_root(fr_main_dict), attribute);
 	if (!da) return NULL;
 
 	/*
@@ -484,47 +482,35 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 *	We allow this for stupidity, but it's really a bad idea.
 	 */
 	if (vp->da->type == PW_TYPE_TLV) {
-		ssize_t len;
-		fr_dict_attr_t const *unknown;
-		VALUE_PAIR *head = NULL;
-		VALUE_PAIR **tail = &head;
+		ssize_t			len;
+		VALUE_PAIR		*head = NULL;
+		VALUE_PAIR		**tail = &head;
+		PW_TYPE			type = PW_TYPE_OCTETS;
 
 		if (!value) {
 			talloc_free(vp);
 			return NULL;
 		}
 
-		unknown = fr_dict_unknown_afrom_fields(vp, vp->da->vendor, vp->da->attr);
-		if (!unknown) {
-			talloc_free(vp);
-			return NULL;
-		}
-
-		vp->da = unknown;
-
-		/*
-		 *	Parse it as an unknown type, i.e. octets.
-		 */
-		if (fr_pair_value_from_str(vp, value, -1) < 0) {
+		if (value_data_from_str(vp, &vp->data, &type, NULL, value, -1, '\0') < 0) {
 			talloc_free(vp);
 			return NULL;
 		}
 
 		/*
-		 *	It's badly formatted.  Treat it as unknown.
+		 *	It's badly formatted, then we fail.
 		 */
 		if (rad_tlv_ok(vp->vp_octets, vp->vp_length, 1, 1) < 0) {
-			goto do_add;
+			talloc_free(vp);
+			return NULL;
 		}
 
 		/*
 		 *	Decode the TLVs
 		 */
-		len = rad_data2vp_tlvs(ctx, NULL, NULL, NULL, da, vp->vp_octets,
+		len = rad_data2vp_tlvs(ctx, NULL, NULL, NULL, vp->da, vp->vp_octets,
 				       vp->vp_length, tail);
-		if (len < 0) {
-			goto do_add;
-		}
+		if (len < 0) goto do_add;
 
 		talloc_free(vp);
 		vp = head;
@@ -588,10 +574,8 @@ int fr_pair_to_unknown(VALUE_PAIR *vp)
 		return 0;
 	}
 
-	da = fr_dict_unknown_afrom_fields(vp, vp->da->vendor, vp->da->attr);
-	if (!da) {
-		return -1;
-	}
+	da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, vp->da->vendor, vp->da->attr);
+	if (!da) return -1;
 
 	vp->da = da;
 

@@ -145,7 +145,8 @@ const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
 	[PW_TYPE_EVS]		= {6, ~0},
 	[PW_TYPE_INTEGER64]	= {8, 8},
 	[PW_TYPE_IPV4_PREFIX]	= {6, 6},
-	[PW_TYPE_VSA]		= {4, ~0}
+	[PW_TYPE_VSA]		= {4, ~0},
+	[PW_TYPE_VENDOR]	= {0, 0}
 };
 
 /*
@@ -721,7 +722,7 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
  *	- The child attribute on success.
  *	- NULL if the child attribute does not exist.
  */
-static inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
+fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const *bin;
 
@@ -762,7 +763,7 @@ static inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t con
  *	- The child attribute on success.
  *	- NULL if the child attribute does not exist.
  */
-static inline fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child)
+fr_dict_attr_t const *fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child)
 {
 	fr_dict_attr_t const *bin;
 
@@ -2545,7 +2546,7 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		if (strcasecmp(argv[0], "BEGIN-VENDOR") == 0) {
 			ATTR_FLAGS new_flags;
 
-			fr_dict_attr_t const *vsa_attr;
+			fr_dict_attr_t const *vsa_da;
 			fr_dict_attr_t *new;
 			fr_dict_attr_t *mutable;
 
@@ -2585,7 +2586,7 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 							   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 					goto error;
 				}
-				vsa_attr = da;
+				vsa_da = da;
 			} else {
 				/*
 				 *	Automagically create Attribute 26
@@ -2594,15 +2595,15 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 				 *	the RFC dictionaries we need to add it in the case
 				 *	it doesn't.
 				 */
-				vsa_attr = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
-				if (!vsa_attr) {
+				vsa_da = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
+				if (!vsa_da) {
 					memset(&new_flags, 0, sizeof(new_flags));
 
 					memcpy(&mutable, &parent, sizeof(mutable));
 					new = fr_dict_attr_alloc(mutable, "Vendor-Specific", 0,
 								 PW_VENDOR_SPECIFIC, PW_TYPE_VSA, new_flags);
 					fr_dict_attr_child_add(mutable, new);
-					vsa_attr = new;
+					vsa_da = new;
 				}
 			}
 
@@ -2610,11 +2611,11 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 			 *	Create a VENDOR attribute on the fly, either in the context
 			 *	of the EVS attribute, or the VSA (26) attribute.
 			 */
-			parent = fr_dict_attr_child_by_num(vsa_attr, vendor);
+			parent = fr_dict_attr_child_by_num(vsa_da, vendor);
 			if (!parent) {
 				memset(&new_flags, 0, sizeof(new_flags));
 
-				memcpy(&mutable, &vsa_attr, sizeof(mutable));
+				memcpy(&mutable, &vsa_da, sizeof(mutable));
 				new = fr_dict_attr_alloc(mutable, argv[1], 0, vendor, PW_TYPE_VENDOR, new_flags);
 				fr_dict_attr_child_add(mutable, new);
 
@@ -2905,6 +2906,100 @@ void fr_dict_attr_free(fr_dict_attr_t const **da)
 	*tmp = NULL;
 }
 
+/** Copy a known or unknown attribute to produce an unknown attribute
+ *
+ * Will copy the complete hierarchy down to the first known attribute.
+ */
+static fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
+{
+	fr_dict_attr_t *new, *new_parent = NULL;
+	fr_dict_attr_t const *parent;
+
+	if (da->parent->flags.is_unknown) {
+		new_parent = fr_dict_unknown_acopy(ctx, da->parent);
+		parent = new_parent;
+	} else {
+		parent = da->parent;
+	}
+
+	new = fr_dict_attr_alloc(ctx, da->name, da->vendor, da->attr, da->type, da->flags);
+	new->flags.is_unknown = 1;
+	new->parent = parent;
+	new->depth = da->depth;
+
+	/*
+	 *	Inverted tallloc hierarchy.
+	 */
+	if (new_parent) talloc_steal(new, parent);
+
+	return new;
+}
+
+/** Even if the attribute is unknown we need to build the complete tree to encode it correctly
+ *
+ * @note Will return known vendors attributes where possible.  Do not free directly.
+ *
+ * @param ctx to allocate the vendor attribute in.
+ * @param parent of the attribute.
+ * @param vendor id.
+ * @return
+ *	- 0 on success.
+ *	- -1 on failure.
+ */
+int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out,
+				     fr_dict_attr_t const *parent, unsigned int vendor)
+{
+	ATTR_FLAGS		new_flags;
+	fr_dict_attr_t const	*vendor_da;
+	fr_dict_attr_t		*new;
+
+	*out = NULL;
+
+	memset(&new_flags, 0, sizeof(new_flags));
+	new_flags.is_unknown = 1;
+
+	/*
+	 *	Vendor attributes can occur under VSA or EVS attributes.
+	 */
+	switch (parent->type) {
+	case PW_TYPE_VSA:
+	case PW_TYPE_EVS:
+		if (!fr_assert(!parent->flags.is_unknown)) return -1;
+
+		vendor_da = fr_dict_attr_child_by_num(parent, vendor);
+		if (vendor_da) {
+			if (!fr_assert(vendor_da->type == PW_TYPE_VENDOR)) return -1;
+			*out = vendor_da;
+			return 0;
+		}
+		break;
+
+	/*
+	 *	NOOP (maybe)
+	 */
+	case PW_TYPE_VENDOR:
+		if (!fr_assert(!parent->flags.is_unknown)) return -1;
+
+		if (parent->attr == vendor) {
+			*out = parent;
+			return 0;
+		}
+		fr_strerror_printf("Unknown vendor cannot be parented by another vendor");
+		return -1;
+
+	default:
+		fr_strerror_printf("Unknown vendors can only be parented by \"vsa\" or \"evs\" "
+				   "attributes, not \"%s\"", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
+		return -1;
+	}
+
+	new = fr_dict_attr_alloc(ctx, "unknown-vendor", 0, vendor, PW_TYPE_VENDOR, new_flags);
+	new->depth = parent->depth + 1;
+	*out = new;
+
+	return 0;
+}
+
 /** Initialises a dictionary attr for unknown attributes
  *
  * Initialises a dict attr for an unknown attribute/vendor/type without adding
@@ -2915,7 +3010,8 @@ void fr_dict_attr_free(fr_dict_attr_t const **da)
  * @param[in] vendor number.
  * @return 0 on success.
  */
-int fr_dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int vendor, unsigned int attr)
+int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent,
+				unsigned int vendor, unsigned int attr)
 {
 	char *p;
 	int dv_type = 1;
@@ -2929,14 +3025,14 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int vendor, unsigne
 	da->type = PW_TYPE_OCTETS;
 	da->flags.is_unknown = true;
 	da->flags.is_pointer = true;
+	da->parent = parent;
+	da->depth = parent->depth + 1;
 
 	/*
 	 *	Unknown attributes of the "WiMAX" vendor get marked up
 	 *	as being for WiMAX.
 	 */
-	if (vendor == VENDORPEC_WIMAX) {
-		da->flags.wimax = 1;
-	}
+	if (vendor == VENDORPEC_WIMAX) da->flags.wimax = 1;
 
 	p = da->name;
 
@@ -2944,23 +3040,6 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int vendor, unsigne
 	p += len;
 	bufsize -= len;
 
-	if (vendor) {
-		fr_dict_vendor_t *dv;
-
-		/*
-		 *	dv_type is the length of the vendor's type field
-		 *	RFC 2865 never defined a mandatory length, so
-		 *	different vendors have different length type fields.
-		 */
-		dv = fr_dict_vendor_by_num(vendor);
-		if (dv) {
-			dv_type = dv->type;
-		}
-		len = snprintf(p, bufsize, "26.%u.", vendor);
-
-		p += len;
-		bufsize -= len;
-	}
 
 	dict_print_attr_oid(p, bufsize, attr, dv_type);
 
@@ -2969,31 +3048,64 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, unsigned int vendor, unsigne
 
 /** Allocs a dictionary attr for unknown attributes
  *
- * Allocs a dict attr for an unknown attribute/vendor/type without adding
- * it to dictionary pools/hashes.
+ * Allocs a dict attr for an unknown attribute/vendor/type without adding it to dictionary pools/hashes.
+ *
+ * @note If vendor != 0, an unknown vendor (may) also be created, parented by
+ *	the correct EVS or VSA attribute. This is accessible via vp->parent,
+ *	and will be use the unknown da as its talloc parent.
  *
  * @param[in] ctx to allocate DA in.
  * @param[in] attr number.
  * @param[in] vendor number.
  * @return 0 on success.
  */
-fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr)
+fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
+					     unsigned int vendor, unsigned int attr)
 {
-	uint8_t *p;
-	fr_dict_attr_t *da;
+	uint8_t			*p;
+	fr_dict_attr_t		*da;
+	fr_dict_attr_t const	*new_parent = NULL;
+
+	/*
+	 *	Unknown attributes are always rooted in known
+	 *	attributes, so we don't need to clone anything
+	 *	here.
+	 */
+	if (vendor) {
+		if (fr_dict_unknown_vendor_afrom_num(ctx, &new_parent, parent, vendor) < 0) return NULL;
+		parent = new_parent;
+	/*
+	 *	Need to clone the unknown hierachy, as unknown
+	 *	attributes must parent the complete heirachy,
+	 *	and cannot share any parts with any other unknown
+	 *	attributes.
+	 */
+	} else if (parent->flags.is_unknown) {
+		new_parent = fr_dict_unknown_acopy(ctx, parent);
+		parent = new_parent;
+	}
 
 	p = talloc_zero_array(ctx, uint8_t, FR_DICT_ATTR_SIZE);
 	if (!p) {
 		fr_strerror_printf("Out of memory");
+		fr_dict_attr_free(&new_parent);
 		return NULL;
 	}
 	da = (fr_dict_attr_t *)p;
 	talloc_set_type(da, fr_dict_attr_t);
 
-	if (fr_dict_unknown_from_fields(da, vendor, attr) < 0) {
+	if (fr_dict_unknown_from_fields(da, parent, vendor, attr) < 0) {
 		talloc_free(p);
+		fr_dict_attr_free(&new_parent);
 		return NULL;
 	}
+
+	/*
+	 *	Ensure the parent is freed at the same time as the
+	 *	unknown DA.  This should be OK as we never parent
+	 *	multiple unknown attributes off the same parent.
+	 */
+	if (new_parent && new_parent->flags.is_unknown) talloc_steal(da, new_parent);
 
 	return da;
 }
@@ -3013,13 +3125,15 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, unsigned int
  *	 length of the vendor field is wrong. Attribute number
  *	 checks must be done by the caller.
  *
+ * @param[in] vendor_da to initialise.
  * @param[in] da to initialise.
  * @param[in] name of attribute.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
+int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
+			     fr_dict_attr_t const *parent, char const *name)
 {
 	unsigned int   	attr, vendor = 0;
 	unsigned int    dv_type = 1;	/* The type of vendor field */
@@ -3198,8 +3312,6 @@ int fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 	}
 
 	if (*p == '.') {
-		fr_dict_attr_t const *parent = fr_main_dict->root;
-
 		if (fr_dict_str_to_oid(&vendor, &attr, &parent, p + 1) < 0) return -1;
 	}
 
@@ -3207,12 +3319,46 @@ int fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
 	 *	If the caller doesn't provide a fr_dict_attr_t
 	 *	we can't call fr_dict_unknown_from_fields.
 	 */
-	if (!da) {
+	if (!attr) {
 		fr_strerror_printf("Unknown attributes disallowed");
 		return -1;
 	}
 
-	return fr_dict_unknown_from_fields(da, vendor, attr);
+	/*
+	 *	If the caller doesn't provide a vendor_da
+	 *	to write vendor data to, and we have an vendor
+	 *	we can't create the unknown vendor.
+	 */
+	if (!dv) {
+		fr_dict_attr_t const *vsa_da;
+
+		if (!vendor_da) {
+			fr_strerror_printf("Unknown vendors disallowed");
+			return -1;
+		}
+
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("Parent for unknown vendors must be the root attribute");
+			return -1;
+		}
+
+		vsa_da = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
+		if (!vsa_da) {
+			fr_strerror_printf("Vendor-Specific attribute (26) not defined in global dictionary");
+			return -1;
+		}
+
+		memset(vendor_da, 0, sizeof(*vendor_da));
+
+		vendor_da->attr = vendor;
+		vendor_da->type = PW_TYPE_VENDOR;
+		vendor_da->parent = vsa_da;
+		vendor_da->flags.is_unknown = 1;
+
+		parent = vendor_da;
+	}
+
+	return fr_dict_unknown_from_fields(da, parent, vendor, attr);
 }
 
 /** Create a fr_dict_attr_t from an ASCII attribute and value
@@ -3223,16 +3369,22 @@ int fr_dict_unknown_from_str(fr_dict_attr_t *da, char const *name)
  *  - Vendor-%d-Attr-%d
  *  - VendorName-Attr-%d
  *
+ * @note If vendor != 0, an unknown vendor (may) also be created, parented by
+ *	the correct EVS or VSA attribute. This is accessible via vp->parent,
+ *	and will be use the unknown da as its talloc parent.
+ *
  * @param[in] ctx to alloc new attribute in.
  * @param[in] name of attribute.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
  */
-fr_dict_attr_t const *fr_dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *name)
+fr_dict_attr_t const *fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *name)
 {
-	uint8_t *p;
-	fr_dict_attr_t *da;
+	uint8_t			*p;
+	fr_dict_attr_t		vendor;
+	fr_dict_attr_t		*da;
+	fr_dict_attr_t const	*new_parent = NULL;
 
 	p = talloc_zero_array(ctx, uint8_t, FR_DICT_ATTR_SIZE);
 	if (!p) {
@@ -3242,9 +3394,39 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *nam
 	da = (fr_dict_attr_t *)p;
 	talloc_set_type(da, fr_dict_attr_t);
 
-	if (fr_dict_unknown_from_str(da, name) < 0) {
+	if (fr_dict_unknown_from_oid(&vendor, da, parent, name) < 0) {
 		talloc_free(p);
 		return NULL;
+	}
+
+	/*
+	 *	Unknown attributes are always rooted in known
+	 *	attributes, so we don't need to clone anything
+	 *	here.
+	 */
+	if (da->vendor) {
+		new_parent = fr_dict_unknown_acopy(p, &vendor);
+		if (!new_parent) {
+			talloc_free(p);
+			return NULL;
+		}
+		da->parent = new_parent;
+	/*
+	 *	Need to clone the unknown hierachy, as unknown
+	 *	attributes must parent the complete heirachy,
+	 *	and cannot share any parts with any other unknown
+	 *	attributes.
+	 */
+ 	} else if (parent->flags.is_unknown) {
+		new_parent = fr_dict_unknown_acopy(ctx, parent);
+		da->parent = new_parent;
+
+		/*
+		 *	Ensure the parent is freed at the same time as the
+		 *	unknown DA.  This should be OK as we never parent
+		 *	multiple unknown attributes off the same parent.
+		 */
+		if (new_parent->flags.is_unknown) talloc_steal(da, new_parent);
 	}
 
 	return da;
@@ -3265,7 +3447,8 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_str(TALLOC_CTX *ctx, char const *nam
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_unknown_from_substr(fr_dict_attr_t *da, char const **name)
+int fr_dict_unknown_from_suboid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
+			        fr_dict_attr_t const *parent, char const **name)
 {
 	char const *p;
 	size_t len;
@@ -3282,7 +3465,6 @@ int fr_dict_unknown_from_substr(fr_dict_attr_t *da, char const **name)
 	len = p - *name;
 	if (len > FR_DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("Attribute name too long");
-
 		return -1;
 	}
 	if (len == 0) {
@@ -3291,7 +3473,7 @@ int fr_dict_unknown_from_substr(fr_dict_attr_t *da, char const **name)
 	}
 	strlcpy(buffer, *name, len + 1);
 
-	if (fr_dict_unknown_from_str(da, buffer) < 0) return -1;
+	if (fr_dict_unknown_from_oid(vendor_da, da, parent, buffer) < 0) return -1;
 
 	*name = p;
 
