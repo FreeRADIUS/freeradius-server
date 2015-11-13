@@ -1195,12 +1195,12 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	return 0;
 }
 
+#ifdef WITH_DETAIL_THREAD
 /*
  *	Open detail files
  */
 int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 {
-#ifdef WITH_DETAIL_THREAD
 	listen_detail_t *data;
 
 	data = this->data;
@@ -1221,8 +1221,13 @@ int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 	pthread_create(&data->pthread_id, NULL, detail_handler_thread, this);
 
 	this->fd = data->master_pipe[0];
-#endif
 
 	return 0;
 }
-#endif
+#else
+int detail_socket_open(UNUSED CONF_SECTION *cs, UNUSED rad_listen_t *this)
+{
+	return 0;
+}
+#endif	/* WITH_DETAIL_THREAD */
+#endif	/* WITH_DETAIL */
