@@ -586,7 +586,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	/*
 	 *	Encrypt the session key again, using the request data.
 	 */
-	rad_tunnel_pwencode(p + 17, &len,
+	fr_radius_encode_tunnel_password(p + 17, &len,
 			    request->client->secret,
 			    request->packet->vector);
 	fr_pair_value_strsteal(vp, p);

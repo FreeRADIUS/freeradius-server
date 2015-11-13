@@ -332,7 +332,7 @@ leap_packet_t *eap_leap_stage6(REQUEST *request, leap_packet_t *packet, VALUE_PA
 	memcpy(q + 17, hash, 16);
 
 	i = 16;
-	rad_tunnel_pwencode(q + 17, &i, request->client->secret, request->packet->vector);
+	fr_radius_encode_tunnel_password(q + 17, &i, request->client->secret, request->packet->vector);
 	fr_pair_value_strsteal(vp, q);
 	vp->vp_length = 17 + i;
 

@@ -1297,7 +1297,7 @@ static int rc_respond_eap_md5(rc_eap_context_t *eap_context,
 	}
 
 	/* now do the CHAP operation ourself, rather than build the
-	 * buffer. We could also call rad_chap_encode, but it wants
+	 * buffer. We could also call fr_radius_encode_chap_password, but it wants
 	 * a CHAP-Challenge, which we don't want to bother with.
 	 */
 	fr_md5_init(&context);

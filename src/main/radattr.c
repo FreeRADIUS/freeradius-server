@@ -703,8 +703,8 @@ static void process_file(const char *root_dir, char const *filename)
 
 				memcpy(&qvp, &pvp, sizeof(pvp));
 
-				len = rad_vp2attr(&my_packet, &my_original, my_secret, qvp,
-						  attr, data + sizeof(data) - attr);
+				len = fr_radius_encode_pair(attr, data + sizeof(data) - attr,
+							    &my_packet, &my_original, my_secret, qvp);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
 						vp->da->name, fr_strerror());

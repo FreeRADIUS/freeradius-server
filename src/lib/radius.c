@@ -1524,8 +1524,8 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		}
 		last_name = reply->da->name;
 
-		len = rad_vp2attr(packet, original, secret, &reply, ptr,
-				  ((uint8_t *) data) + sizeof(data) - ptr);
+		len = fr_radius_encode_pair(ptr, ((uint8_t *) data) + sizeof(data) - ptr,
+					    packet, original, secret, &reply);
 		if (len < 0) return -1;
 
 		/*

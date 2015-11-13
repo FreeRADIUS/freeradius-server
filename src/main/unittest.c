@@ -264,7 +264,7 @@ static REQUEST *request_setup(FILE *fp)
 
 				memcpy(p, vp->vp_strvalue, len);
 
-				rad_chap_encode(request->packet,
+				fr_radius_encode_chap_password(request->packet,
 						p,
 						fr_rand() & 0xff, vp);
 				vp->vp_octets = p;

@@ -97,7 +97,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance,
 		return RLM_MODULE_FAIL;
 	}
 
-	rad_chap_encode(request->packet, pass_str, chap->vp_octets[0], password);
+	fr_radius_encode_chap_password(request->packet, pass_str, chap->vp_octets[0], password);
 
 	if (RDEBUG_ENABLED3) {
 		uint8_t const *p;

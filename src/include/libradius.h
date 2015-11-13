@@ -535,12 +535,16 @@ char const		*fr_dict_value_name_by_attr(fr_dict_attr_t const *da, int value);
 int			fr_dict_vendor_by_name(char const *name);
 fr_dict_vendor_t	*fr_dict_vendor_by_num(int vendor);
 
-/* radius.c */
+/*
+ *	radius.c
+ */
 #define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
 #define MAX_PASS_LEN (128)
+#define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
 
-void		fr_radius_make_secret(uint8_t *digest, uint8_t const *vector,
-			   	      char const *secret, uint8_t const *value);
+
+void		fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value);
+
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
 RADIUS_PACKET	*rad_recv(TALLOC_CTX *ctx, int fd, int flags);
@@ -557,24 +561,32 @@ int		rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 int rad_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length);
 RADIUS_PACKET	*rad_alloc(TALLOC_CTX *ctx, bool new_vector);
 RADIUS_PACKET	*rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
-RADIUS_PACKET *rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in);
-
+RADIUS_PACKET	*rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in);
 void		rad_free(RADIUS_PACKET **);
-int		rad_pwencode(char *encpw, size_t *len, char const *secret,
-			     uint8_t const *vector);
-int		rad_pwdecode(char *encpw, size_t len, char const *secret,
-			     uint8_t const *vector);
 
-#define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
-int		rad_tunnel_pwencode(char *encpw, size_t *len, char const *secret,
-				    uint8_t const *vector);
-int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
-				    char const *secret, uint8_t const *vector);
-int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
-				int id, VALUE_PAIR *password);
+/*
+ *	radius_encode.c
+ */
+int		fr_radius_encode_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
 
-int		rad_tlv_ok(uint8_t const *data, size_t length,
-			   size_t dv_type, size_t dv_length);
+int		fr_radius_encode_tunnel_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
+
+int		fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int id, VALUE_PAIR *password);
+
+ssize_t		fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp);
+
+int		fr_radius_encode_pair(uint8_t *out, size_t outlen,
+				      RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+				      char const *secret, VALUE_PAIR const **pvp);
+
+/*
+ *	radius_decode.c
+ */
+int		rad_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, size_t dv_length);
+
+int		rad_pwdecode(char *encpw, size_t len, char const *secret, uint8_t const *vector);
+
+int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len, char const *secret, uint8_t const *vector);
 
 ssize_t		data2vp(TALLOC_CTX *ctx,
 			RADIUS_PACKET *packet, RADIUS_PACKET const *original,
@@ -595,11 +607,6 @@ ssize_t		rad_data2vp_tlvs(TALLOC_CTX *ctx,
 			 uint8_t const *start, size_t length,
 			 VALUE_PAIR **pvp);
 
-ssize_t		rad_vp2data(uint8_t const **out, VALUE_PAIR const *vp);
-
-int		rad_vp2attr(RADIUS_PACKET const *packet,
-			    RADIUS_PACKET const *original, char const *secret,
-			    VALUE_PAIR const **pvp, uint8_t *ptr, size_t room);
 
 /*
  *	cursor.c
