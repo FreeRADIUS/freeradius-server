@@ -21,5 +21,13 @@ ATTRIBUTE	LCS-WPA-Passphrase			6	string
 ATTRIBUTE	LCS-PbSpotUserName			7	string
 ATTRIBUTE	LCS-TxRateLimit				8	integer
 ATTRIBUTE	LCS-RxRateLimit				9	integer
+ATTRIBUTE	LCS-IKEv2-Local-Password		19	string	has_tag,encrypt=2
+ATTRIBUTE	LCS-IKEv2-Remote-Password		20	string	has_tag,encrypt=2
+ATTRIBUTE	LCS-DNS-Server-IPv4-Address		21	ipaddr
+ATTRIBUTE	LCS-VPN-IPv4-Rule			22	string
+ATTRIBUTE	LCS-VPN-IPv6-Rule			23	string
+ATTRIBUTE	LCS-Routing-Tag				24	integer
+ATTRIBUTE	LCS-IKEv2-IPv4-Route			25	string
+ATTRIBUTE	LCS-IKEv2-IPv6-Route			26	string
 
 END-VENDOR   Lancom
