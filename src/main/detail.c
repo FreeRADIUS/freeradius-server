@@ -1200,11 +1200,11 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
  */
 int detail_socket_open(UNUSED CONF_SECTION *cs, rad_listen_t *this)
 {
+#ifdef WITH_DETAIL_THREAD
 	listen_detail_t *data;
 
 	data = this->data;
 
-#ifdef WITH_DETAIL_THREAD
 	/*
 	 *	Create the communication pipes.
 	 */
