@@ -240,8 +240,7 @@ struct dict_attr {
  *
  */
 typedef struct dict_value {
-	unsigned int		vendor;
-	unsigned int		attr;
+	fr_dict_attr_t const	*da;
 	int			value;
 	char			name[1];
 } fr_dict_value_t;
@@ -530,9 +529,9 @@ fr_dict_attr_t const	*fr_dict_attr_by_num(unsigned int vendor, unsigned int attr
 fr_dict_attr_t const	*fr_dict_attr_by_name(char const *attr);
 fr_dict_attr_t const	*fr_dict_attr_by_name_substr(char const **name);
 fr_dict_attr_t const	*fr_dict_attr_by_type(unsigned int vendor, unsigned int attr, PW_TYPE type);
-fr_dict_value_t		*fr_dict_value_by_attr(unsigned int vendor, unsigned int attr, int val);
-fr_dict_value_t		*fr_dict_value_by_name(unsigned int vendor, unsigned int attr, char const *val);
-char const		*fr_dict_value_name_by_attr(unsigned int vendor, unsigned int attr, int value);
+fr_dict_value_t		*fr_dict_value_by_da(fr_dict_attr_t const *da, int value);
+fr_dict_value_t		*fr_dict_value_by_name(fr_dict_attr_t const *da, char const *val);
+char const		*fr_dict_value_name_by_attr(fr_dict_attr_t const *da, int value);
 int			fr_dict_vendor_by_name(char const *name);
 fr_dict_vendor_t	*fr_dict_vendor_by_num(int vendor);
 

@@ -203,7 +203,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 		/*
 		 *	We need numbers for internal use.
 		 */
-		dv = fr_dict_value_by_name(0, PW_LISTEN_SOCKET_TYPE, value);
+		dv = fr_dict_value_by_name(fr_dict_attr_by_num(0, PW_LISTEN_SOCKET_TYPE), value);
 		if (!dv) {
 			if (fr_dict_value_add("Listen-Socket-Type", value, max_listener++) < 0) {
 				cf_log_err_cs(cs,
@@ -218,7 +218,7 @@ int listen_bootstrap(CONF_SECTION *server, CONF_SECTION *cs, char const *server_
 	/*
 	 *	The type MUST now be defined in the dictionaries.
 	 */
-	dv = fr_dict_value_by_name(0, PW_LISTEN_SOCKET_TYPE, value);
+	dv = fr_dict_value_by_name(fr_dict_attr_by_num(0, PW_LISTEN_SOCKET_TYPE), value);
 	if (!dv) {
 		cf_log_err_cs(cs, "Failed finding dictionary entry for protocol %s",
 			      value);
@@ -605,7 +605,7 @@ int rad_status_server(REQUEST *request)
 	case RAD_LISTEN_NONE:
 #endif
 	case RAD_LISTEN_AUTH:
-		dval = fr_dict_value_by_name(0, PW_AUTZ_TYPE, "Status-Server");
+		dval = fr_dict_value_by_name(fr_dict_attr_by_num(0, PW_AUTZ_TYPE), "Status-Server");
 		if (dval) {
 			rcode = process_authorize(dval->value, request);
 		} else {
@@ -632,7 +632,7 @@ int rad_status_server(REQUEST *request)
 
 #ifdef WITH_ACCOUNTING
 	case RAD_LISTEN_ACCT:
-		dval = fr_dict_value_by_name(0, PW_ACCT_TYPE, "Status-Server");
+		dval = fr_dict_value_by_name(fr_dict_attr_by_num(0, PW_ACCT_TYPE), "Status-Server");
 		if (dval) {
 			rcode = process_accounting(dval->value, request);
 		} else {
@@ -659,7 +659,7 @@ int rad_status_server(REQUEST *request)
 		 *	the WG.  We like it, so it goes in here.
 		 */
 	case RAD_LISTEN_COA:
-		dval = fr_dict_value_by_name(0, PW_RECV_COA_TYPE, "Status-Server");
+		dval = fr_dict_value_by_name(fr_dict_attr_by_num(0, PW_RECV_COA_TYPE), "Status-Server");
 		if (dval) {
 			rcode = process_recv_coa(dval->value, request);
 		} else {

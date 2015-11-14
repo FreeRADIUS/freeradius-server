@@ -795,7 +795,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	attribute.
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_value_by_name(src_enumv->vendor, src_enumv->attr, src)) == NULL) {
+			if ((dval = fr_dict_value_by_name(src_enumv, src)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
 						   src, src_enumv->name);
 				return -1;
@@ -828,7 +828,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	attribute.
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_value_by_name(src_enumv->vendor, src_enumv->attr, src)) == NULL) {
+			if ((dval = fr_dict_value_by_name(src_enumv, src)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
 						   src, src_enumv->name);
 				return -1;
@@ -861,7 +861,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	attribute.
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_value_by_name(src_enumv->vendor, src_enumv->attr, src)) == NULL) {
+			if ((dval = fr_dict_value_by_name(src_enumv, src)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
 						   src, src_enumv->name);
 				return -1;
@@ -1586,7 +1586,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 	{
 		fr_dict_value_t const *dv;
 
-		if (enumv && (dv = fr_dict_value_by_attr(enumv->vendor, enumv->attr, i))) {
+		if (enumv && (dv = fr_dict_value_by_da(enumv, i))) {
 			p = talloc_typed_strdup(ctx, dv->name);
 		} else {
 			p = talloc_typed_asprintf(ctx, "%u", i);
@@ -1789,7 +1789,7 @@ size_t value_data_snprint(char *out, size_t outlen,
 
 print_int:
 		/* Normal, non-tagged attribute */
-		if (enumv && (v = fr_dict_value_by_attr(enumv->vendor, enumv->attr, i)) != NULL) {
+		if (enumv && (v = fr_dict_value_by_da(enumv, i)) != NULL) {
 			a = v->name;
 			len = strlen(a);
 		} else {

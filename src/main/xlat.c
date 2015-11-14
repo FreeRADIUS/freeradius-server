@@ -1941,7 +1941,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, vp_tmpl_t const *vpt,
 
 	case PW_PACKET_TYPE:
 		if (packet->code > 0) {
-			dv = fr_dict_value_by_attr(0, PW_PACKET_TYPE, packet->code);
+			dv = fr_dict_value_by_da(vpt->tmpl_da, packet->code);
 			if (dv) return talloc_typed_strdup(ctx, dv->name);
 			return talloc_typed_asprintf(ctx, "%d", packet->code);
 		}

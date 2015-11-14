@@ -54,7 +54,7 @@ struct fr_dict {
 
 	fr_hash_table_t		*attributes_combo;	//!< Attributes that can be multiple types.
 
-	fr_hash_table_t		*values_by_num;		//!< Lookup an attribute enum by integer value.
+	fr_hash_table_t		*values_by_da;		//!< Lookup an attribute enum by integer value.
 	fr_hash_table_t		*values_by_name;	//!< Lookup an attribute enum by name.
 
 	fr_dict_attr_t		*base_attrs[256];	//!< Quick lookup for protocols with an 8bit attribute space.
@@ -300,8 +300,7 @@ static uint32_t dict_value_name_hash(void const *data)
 	fr_dict_value_t const *dval = data;
 
 	hash = dict_hashname(dval->name);
-	hash = fr_hash_update(&dval->vendor, sizeof(dval->vendor), hash);
-	return fr_hash_update(&dval->attr, sizeof(dval->attr), hash);
+	return fr_hash_update(&dval->da, sizeof(dval->da), hash);
 }
 
 static int dict_value_name_cmp(void const *one, void const *two)
@@ -310,10 +309,7 @@ static int dict_value_name_cmp(void const *one, void const *two)
 	fr_dict_value_t const *a = one;
 	fr_dict_value_t const *b = two;
 
-	rcode = a->attr - b->attr;
-	if (rcode != 0) return rcode;
-
-	rcode = a->vendor - b->vendor;
+	rcode = a->da - b->da;
 	if (rcode != 0) return rcode;
 
 	return strcasecmp(a->name, b->name);
@@ -321,11 +317,10 @@ static int dict_value_name_cmp(void const *one, void const *two)
 
 static uint32_t dict_value_value_hash(void const *data)
 {
-	uint32_t hash;
+	uint32_t hash = 0;
 	fr_dict_value_t const *dval = data;
 
-	hash = fr_hash(&dval->attr, sizeof(dval->attr));
-	hash = fr_hash_update(&dval->vendor, sizeof(dval->vendor), hash);
+	hash = fr_hash_update(&dval->da, sizeof(dval->da), hash);
 	return fr_hash_update(&dval->value, sizeof(dval->value), hash);
 }
 
@@ -335,10 +330,7 @@ static int dict_value_value_cmp(void const *one, void const *two)
 	fr_dict_value_t const *a = one;
 	fr_dict_value_t const *b = two;
 
-	if (a->vendor < b->vendor) return -1;
-	if (a->vendor > b->vendor) return +1;
-
-	rcode = a->attr - b->attr;
+	rcode = a->da - b->da;
 	if (rcode != 0) return rcode;
 
 	return a->value - b->value;
@@ -1491,9 +1483,9 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
  */
 int fr_dict_value_add(char const *attr, char const *alias, int value)
 {
-	size_t		length;
+	size_t			length;
 	fr_dict_attr_t const	*da;
-	fr_dict_value_t	*dval;
+	fr_dict_value_t		*dval;
 
 	static fr_dict_attr_t const *last_attr = NULL;
 
@@ -1541,8 +1533,7 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 			return -1;
 		}
 
-		dval->attr = da->attr;
-		dval->vendor = da->vendor;
+		dval->da = da;
 
 		/*
 		 *	Enforce valid values
@@ -1622,7 +1613,7 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 				 *	name and value.  There are lots in
 				 *	dictionary.ascend.
 				 */
-				old = fr_dict_value_by_name(da->vendor, da->attr, alias);
+				old = fr_dict_value_by_name(da, alias);
 				if (old && (old->value == dval->value)) {
 					talloc_free(dval);
 					return 0;
@@ -1640,7 +1631,7 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 	 *	There are multiple VALUE's, keyed by attribute, so we
 	 *	take care of that here.
 	 */
-	if (!fr_hash_table_replace(fr_main_dict->values_by_num, dval)) {
+	if (!fr_hash_table_replace(fr_main_dict->values_by_da, dval)) {
 		fr_strerror_printf("fr_dict_value_add: Failed inserting value %s",
 				   alias);
 		return -1;
@@ -2075,8 +2066,7 @@ static int process_value_alias(char const *fn, int const line, char **argv, int 
 	}
 
 	dval->name[0] = '\0';        /* empty name */
-	dval->attr = my_da->attr;
-	dval->vendor = my_da->vendor;
+	dval->da = my_da;
 	dval->value = da->attr;
 
 	if (!fr_hash_table_insert(fr_main_dict->values_by_name, dval)) {
@@ -2761,8 +2751,8 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	dict->values_by_name = fr_hash_table_create(dict, dict_value_name_hash, dict_value_name_cmp, fr_pool_free);
 	if (!dict->values_by_name) goto error;
 
-	dict->values_by_num = fr_hash_table_create(dict, dict_value_value_hash, dict_value_value_cmp, fr_pool_free);
-	if (!dict->values_by_num) goto error;
+	dict->values_by_da = fr_hash_table_create(dict, dict_value_value_hash, dict_value_value_cmp, fr_pool_free);
+	if (!dict->values_by_da) goto error;
 
 	/*
 	 *	Magic dictionary root attribute
@@ -2791,7 +2781,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 				goto error; /* leak, but they should die... */
 			}
 
-			this->dval->attr = a->attr;
+			this->dval->da = a;
 
 			/*
 			 *	Add the value into the dictionary.
@@ -2809,8 +2799,8 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 			 */
 			if (a->parent->flags.is_root || ((a->parent->type == PW_TYPE_VENDOR) &&
 			    (a->parent->parent->type == PW_TYPE_VSA))) {
-				if (!fr_hash_table_finddata(dict->values_by_num, this->dval)) {
-					fr_hash_table_replace(dict->values_by_num, this->dval);
+				if (!fr_hash_table_finddata(dict->values_by_da, this->dval)) {
+					fr_hash_table_replace(dict->values_by_da, this->dval);
 				}
 			}
 			free(this);
@@ -2834,7 +2824,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	fr_hash_table_walk(dict->attributes_by_name, null_callback, NULL);
 	fr_hash_table_walk(dict->attributes_by_num, null_callback, NULL);
 
-	fr_hash_table_walk(dict->values_by_num, null_callback, NULL);
+	fr_hash_table_walk(dict->values_by_da, null_callback, NULL);
 	fr_hash_table_walk(dict->values_by_name, null_callback, NULL);
 
 	if (out) *out = dict;
@@ -3652,15 +3642,14 @@ fr_dict_attr_t const *fr_dict_attr_by_name_substr(char const **name)
 /*
  *	Associate a value with an attribute and return it.
  */
-fr_dict_value_t *fr_dict_value_by_attr(unsigned int vendor, unsigned int attr, int value)
+fr_dict_value_t *fr_dict_value_by_da(fr_dict_attr_t const *da, int value)
 {
 	fr_dict_value_t dval, *dv;
 
 	/*
 	 *	First, look up aliases.
 	 */
-	dval.attr = attr;
-	dval.vendor = vendor;
+	dval.da = da;
 	dval.name[0] = '\0';
 
 	/*
@@ -3668,21 +3657,21 @@ fr_dict_value_t *fr_dict_value_by_attr(unsigned int vendor, unsigned int attr, i
 	 *	the correct attribute number if found.
 	 */
 	dv = fr_hash_table_finddata(fr_main_dict->values_by_name, &dval);
-	if (dv) dval.attr = dv->value;
+	if (dv) dval.da = dv->da;
 
 	dval.value = value;
 
-	return fr_hash_table_finddata(fr_main_dict->values_by_num, &dval);
+	return fr_hash_table_finddata(fr_main_dict->values_by_da, &dval);
 }
 
 /*
  *	Associate a value with an attribute and return it.
  */
-char const *fr_dict_value_name_by_attr(unsigned int vendor, unsigned int attr, int value)
+char const *fr_dict_value_name_by_attr(fr_dict_attr_t const *da, int value)
 {
 	fr_dict_value_t *dv;
 
-	dv = fr_dict_value_by_attr(vendor, attr, value);
+	dv = fr_dict_value_by_da(da, value);
 	if (!dv) return "";
 
 	return dv->name;
@@ -3691,7 +3680,7 @@ char const *fr_dict_value_name_by_attr(unsigned int vendor, unsigned int attr, i
 /*
  *	Get a value by its name, keyed off of an attribute.
  */
-fr_dict_value_t *fr_dict_value_by_name(unsigned int vendor, unsigned int attr, char const *name)
+fr_dict_value_t *fr_dict_value_by_name(fr_dict_attr_t const *da, char const *name)
 {
 	fr_dict_value_t *my_dv, *dv;
 	uint32_t buffer[(sizeof(*my_dv) + FR_DICT_VALUE_MAX_NAME_LEN + 3) / 4];
@@ -3699,8 +3688,7 @@ fr_dict_value_t *fr_dict_value_by_name(unsigned int vendor, unsigned int attr, c
 	if (!name) return NULL;
 
 	my_dv = (fr_dict_value_t *)buffer;
-	my_dv->attr = attr;
-	my_dv->vendor = vendor;
+	my_dv->da = da;
 	my_dv->name[0] = '\0';
 
 	/*
@@ -3708,7 +3696,7 @@ fr_dict_value_t *fr_dict_value_by_name(unsigned int vendor, unsigned int attr, c
 	 *	the correct attribute number if found.
 	 */
 	dv = fr_hash_table_finddata(fr_main_dict->values_by_name, my_dv);
-	if (dv) my_dv->attr = dv->value;
+	if (dv) my_dv->da = dv->da;
 
 	strlcpy(my_dv->name, name, FR_DICT_VALUE_MAX_NAME_LEN + 1);
 

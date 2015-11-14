@@ -110,15 +110,15 @@ static const FR_NAME_NUMBER header_names[] = {
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_pap_t *inst = instance;
-	fr_dict_value_t *dval;
+	rlm_pap_t		*inst = instance;
+	fr_dict_value_t		*dval;
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
 		inst->name = cf_section_name1(conf);
 	}
 
-	dval = fr_dict_value_by_name(0, PW_AUTH_TYPE, inst->name);
+	dval = fr_dict_value_by_name(fr_dict_attr_by_num(0, PW_AUTH_TYPE), inst->name);
 	if (dval) {
 		inst->auth_type = dval->value;
 	} else {
