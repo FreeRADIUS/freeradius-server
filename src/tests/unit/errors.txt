@@ -2,10 +2,10 @@
 #  Bad attributes
 #
 decode 01 04 00
-data rad_attr2vp: Insufficient data
+data fr_radius_decode_pair: Insufficient data
 
 decode 01 01 00
-data rad_attr2vp: Insufficient data
+data fr_radius_decode_pair: Insufficient data
 
 encode Attr-240.1 = 0x01
 data Standard attributes cannot use OIDs
