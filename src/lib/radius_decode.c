@@ -383,7 +383,6 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx,
 				fr_pair_list_free(&head);
 				return -1;
 			}
-			unknown_child->parent = parent;	/* Needed for re-encoding */
 			child = unknown_child;
 		}
 		FR_PROTO_TRACE("Attr context changed %s -> %s", parent->name, child->name);
