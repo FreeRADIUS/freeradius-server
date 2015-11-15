@@ -114,6 +114,7 @@ typedef void (*sig_t)(int);
  *  Add if (_x->da) (void) talloc_get_type_abort(_x->da, fr_dict_attr_t);
  *  to the macro below when dictionaries are talloced.
  */
+#  define VERIFY_DA(_x)		fr_dict_verify(__FILE__,  __LINE__, _x)
 #  define VERIFY_VP(_x)		fr_pair_verify(__FILE__,  __LINE__, _x)
 #  define VERIFY_LIST(_x)	fr_pair_list_verify(__FILE__,  __LINE__, NULL, _x)
 #  define VERIFY_PACKET(_x)	(void) talloc_get_type_abort(_x, RADIUS_PACKET)
@@ -123,6 +124,7 @@ typedef void (*sig_t)(int);
  *  the pointer must not be NULL when these various macros are used
  *  so we can add some sneaky soft asserts.
  */
+#  define VERIFY_DA(_x)		fr_assert(_x)
 #  define VERIFY_VP(_x)		fr_assert(_x)
 #  define VERIFY_LIST(_x)	fr_assert(_x)
 #  define VERIFY_PACKET(_x)	fr_assert(_x)
@@ -534,7 +536,7 @@ fr_dict_value_t		*fr_dict_value_by_name(fr_dict_attr_t const *da, char const *va
 char const		*fr_dict_value_name_by_attr(fr_dict_attr_t const *da, int value);
 int			fr_dict_vendor_by_name(char const *name);
 fr_dict_vendor_t	*fr_dict_vendor_by_num(int vendor);
-
+void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da);
 /*
  *	radius.c
  */
