@@ -3760,22 +3760,34 @@ fr_dict_vendor_t *fr_dict_vendor_by_num(int vendorpec)
 fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_attr_t const *old)
 {
 	fr_dict_attr_t const *da;
+	fr_dict_attr_t const *parent;
 	ATTR_FLAGS flags;
 
 	if (!old) return NULL;
 
-	if (!old->flags.is_unknown) return old;
+	/*
+	 *	Define the complete unknown hierarchy
+	 */
+	if (old->parent->flags.is_unknown) {
+		parent = fr_dict_unknown_add(old->parent);
+	} else {
+		parent = old->parent;
+	}
 
-	da = fr_dict_attr_by_num(old->vendor, old->attr);
+	da = fr_dict_attr_child_by_num(parent, old->attr);
 	if (da) return da;
 
 	memcpy(&flags, &old->flags, sizeof(flags));
 	flags.is_unknown = false;
 
-	if (fr_dict_attr_add(old->parent, old->name, old->vendor, old->attr, old->type, flags) < 0) {
-		return NULL;
-	}
+	/*
+	 *	Ensure the vendor is present in the
+	 *	vendor hash.
+	 */
+	if (old->type == PW_TYPE_VENDOR) if (fr_dict_vendor_add(old->name, old->attr) < 0) return NULL;
 
-	da = fr_dict_attr_by_num(old->vendor, old->attr);
+	if (fr_dict_attr_add(old->parent, old->name, old->vendor, old->attr, old->type, flags) < 0) return NULL;
+
+	da = fr_dict_attr_child_by_num(parent, old->attr);
 	return da;
 }
