@@ -385,7 +385,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx,
 			}
 			child = unknown_child;
 		}
-		FR_PROTO_TRACE("Attr context changed %s -> %s", parent->name, child->name);
+		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
 
 		tlv_len = fr_radius_decode_pair_value(ctx, packet, original, secret, child,
 						      data + 2, data[1] - 2, data[1] - 2, tail);
@@ -479,7 +479,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	da = fr_dict_attr_child_by_num(parent, attribute);
 	if (!da) da = fr_dict_unknown_afrom_fields(ctx, parent, dv->vendorpec, attribute);
 	if (!da) return -1;
-	FR_PROTO_TRACE("Attr context changed %s -> %s", da->parent->name, da->name);
+	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
 	my_len = fr_radius_decode_pair_value(ctx, packet, original, secret, da,
 					     data + dv->type + dv->length,
@@ -605,7 +605,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx,
 	da = fr_dict_attr_child_by_num(parent, data[4]);
 	if (!da) da = fr_dict_unknown_afrom_fields(ctx, parent, vendor, data[4]);
 	if (!da) return -1;
-	FR_PROTO_TRACE("Attr context changed %s -> %s", da->parent->name, da->name);
+	FR_PROTO_TRACE("decode context changed %s -> %s", da->parent->name, da->name);
 
 	if ((data[6] & 0x80) == 0) {
 		rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, da,
@@ -750,7 +750,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		dv = fr_dict_vendor_by_num(vendor);
 		if (!fr_assert(dv)) return -1;
 	}
-	FR_PROTO_TRACE("Attr context %s -> %s", parent->name, vendor_da->name);
+	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor_da->name);
 
 	/*
 	 *	WiMAX craziness
@@ -1075,7 +1075,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 
 		child = fr_dict_attr_child_by_num(parent, data[0]);
 		if (!child) goto raw;
-		FR_PROTO_TRACE("Attr context changed %s->%s", child->name, parent->name);
+		FR_PROTO_TRACE("decode context changed %s->%s", child->name, parent->name);
 
 		/*
 		 *	Recurse to decode the contents, which could be
@@ -1116,7 +1116,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 				return -1;
 			}
 		}
-		FR_PROTO_TRACE("Attr context changed %s -> %s", parent->name, child->name);
+		FR_PROTO_TRACE("decode context changed %s -> %s", parent->name, child->name);
 
 		/*
 		 *	If there no more fragments, then the contents
@@ -1383,7 +1383,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx,
 		da = fr_dict_unknown_afrom_fields(ctx, parent, 0, data[0]);
 	}
 	if (!da) return -1;
-	FR_PROTO_TRACE("Attr context changed %s -> %s",da->parent->name, da->name);
+	FR_PROTO_TRACE("decode context changed %s -> %s",da->parent->name, da->name);
 
 	/*
 	 *	Pass the entire thing to the decoding function
