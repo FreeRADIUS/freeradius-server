@@ -39,23 +39,32 @@ int fr_dhcp_send_socket(RADIUS_PACKET *packet);
 
 #ifdef HAVE_PCAP_H
 typedef struct fr_pcap fr_pcap_t;
-RADIUS_PACKET *fr_dhcp_recv_pcap(fr_pcap_t *pcap);
-int fr_dhcp_send_pcap(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *packet);
+
+RADIUS_PACKET	*fr_dhcp_recv_pcap(fr_pcap_t *pcap);
+
+int		fr_dhcp_send_pcap(fr_pcap_t *pcap, uint8_t *dst_ether_addr, RADIUS_PACKET *packet);
 #endif
 
-int fr_dhcp_add_arp_entry(int fd, char const *interface, VALUE_PAIR *hwvp, VALUE_PAIR *clvp);
+int		fr_dhcp_add_arp_entry(int fd, char const *interface, VALUE_PAIR *hwvp, VALUE_PAIR *clvp);
 
-int8_t fr_dhcp_attr_cmp(void const *a, void const *b);
-ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor);
-int fr_dhcp_encode(RADIUS_PACKET *packet);
-ssize_t fr_dhcp_decode_options(TALLOC_CTX *ctx, VALUE_PAIR **out, uint8_t const *data, size_t len);
-int fr_dhcp_decode(RADIUS_PACKET *packet);
+int8_t		fr_dhcp_attr_cmp(void const *a, void const *b);
+
+ssize_t		fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor);
+
+int		fr_dhcp_encode(RADIUS_PACKET *packet);
+
+ssize_t		fr_dhcp_decode_option(TALLOC_CTX *ctx, VALUE_PAIR **out,
+				      fr_dict_attr_t const *parent, uint8_t const *data, size_t len);
+
+int		fr_dhcp_decode(RADIUS_PACKET *packet);
 
 #ifdef HAVE_LINUX_IF_PACKET_H
 #include <linux/if_packet.h>
-int fr_socket_packet(int iface_index, struct sockaddr_ll *p_ll);
-int fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *packet);
-RADIUS_PACKET *fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *request);
+int		fr_socket_packet(int iface_index, struct sockaddr_ll *p_ll);
+
+int		fr_dhcp_send_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *packet);
+
+RADIUS_PACKET	*fr_dhcp_recv_raw_packet(int sockfd, struct sockaddr_ll *p_ll, RADIUS_PACKET *request);
 #endif
 
 /*

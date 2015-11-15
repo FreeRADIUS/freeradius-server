@@ -78,30 +78,42 @@ static ssize_t dhcp_options_xlat(char **out, size_t outlen,
 		goto error;
 	}
 
+	fr_cursor_init(&cursor, &head);
+
 	for (vp = tmpl_cursor_init(NULL, &src_cursor, request, &src);
 	     vp;
 	     vp = tmpl_cursor_next(&src_cursor, &src)) {
+		uint8_t const	*p = vp->vp_octets, *end = p + vp->vp_length;
+		size_t		len;
+		VALUE_PAIR	*vps = NULL;
+
 		/*
-		 *	@fixme: we should pass in a cursor, then decoding multiple
-		 *	source attributes can be made atomic.
+		 *	Loop over all the options data
 		 */
-		if ((fr_dhcp_decode_options(request->packet, &head, vp->vp_octets, vp->vp_length) < 0) || (!head)) {
-			RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
-			goto error;
+		while (p < end) {
+			len = fr_dhcp_decode_option(request->packet, &vps,
+						    fr_dict_root(fr_main_dict), p, end - p);
+			if (len <= 0) {
+				RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
+				fr_pair_list_free(&head);
+				goto error;
+			}
+			p += len;
 		}
-
-		for (vp = fr_cursor_init(&cursor, &head);
-		     vp;
-		     vp = fr_cursor_next(&cursor)) {
-			rdebug_pair(L_DBG_LVL_2, request, vp, "dhcp_options: ");
-			decoded++;
-		}
-
-		fr_pair_list_move(request->packet, &(request->packet->vps), &head);
-
-		/* Free any unmoved pairs */
-		fr_pair_list_free(&head);
+		fr_cursor_merge(&cursor, vps);
 	}
+
+	for (vp = fr_cursor_first(&cursor);
+	     vp;
+	     vp = fr_cursor_next(&cursor)) {
+		rdebug_pair(L_DBG_LVL_2, request, vp, "dhcp_options: ");
+		decoded++;
+	}
+
+	fr_pair_list_move(request->packet, &(request->packet->vps), &head);
+
+	/* Free any unmoved pairs */
+	fr_pair_list_free(&head);
 
 	snprintf(*out, outlen, "%i", decoded);
 

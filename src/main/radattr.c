@@ -841,7 +841,33 @@ static void process_file(const char *root_dir, char const *filename)
 				}
 			}
 
-			my_len = fr_dhcp_decode_options(NULL, &head, attr, len);
+			{
+				uint8_t const *end, *option_p;
+
+				option_p = attr;
+				end = option_p + len;
+
+				/*
+				 *	Loop over all the options data
+				 */
+				while (option_p < end) {
+					vp = NULL;
+					my_len = fr_dhcp_decode_option(NULL, &vp,
+								       fr_dict_root(fr_main_dict), option_p,
+								       end - option_p);
+					if (my_len <= 0) {
+						fr_pair_list_free(&head);
+						break;
+					}
+					option_p += my_len;
+
+					*tail = vp;
+					while (vp) {
+						tail = &(vp->next);
+						vp = vp->next;
+					}
+				}
+			}
 
 			/*
 			 *	Output may be an error, and we ignore
