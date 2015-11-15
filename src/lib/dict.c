@@ -150,40 +150,6 @@ const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
 };
 
 /*
- *	For packing multiple TLV numbers into one 32-bit integer.  The
- *	first 3 bytes are just the 8-bit number.  The next two are
- *	more limited.  We only allow 31 attributes nested 3 layers
- *	deep, and only 7 nested 4 layers deep.  This should be
- *	sufficient for most purposes.
- *
- *	For TLVs and extended attributes, we packet the base attribute
- *	number into the upper 8 bits of the "vendor" field.
- *
- *	e.g.	OID		attribute	vendor
- *		241.1		1		(241 << 24)
- *		241.26.9.1	1		(241 << 24) | (9)
- *		241.1.2		1 | (2 << 8)	(241 << 24)
- */
-
-/*
- *	Bit packing:
- *	8 bits of base attribute
- *	8 bits for nested TLV 1
- *	8 bits for nested TLV 2
- *	5 bits for nested TLV 3
- *	3 bits for nested TLV 4
- */
-int const fr_attr_max_tlv = MAX_TLV_NEST;
-int const fr_attr_shift[MAX_TLV_NEST + 1] = { 0, 8, 16, 24, 29 };
-
-int const fr_attr_mask[MAX_TLV_NEST + 1] = { 0xff, 0xff, 0xff, 0x1f, 0x07 };
-
-/*
- *	attr & fr_attr_parent_mask[i] == Nth parent of attr
- */
-static unsigned int const fr_attr_parent_mask[MAX_TLV_NEST + 1] = { 0, 0x000000ff, 0x0000ffff, 0x00ffffff, 0x1fffffff };
-
-/*
  *	Create the hash of the name.
  *
  *	We copy the hash function here because it's substantially faster.
@@ -3461,71 +3427,6 @@ int fr_dict_unknown_from_suboid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 	*name = p;
 
 	return 0;
-}
-
-/*
- *	Bamboo skewers under the fingernails in 5, 4, 3, 2, ...
- */
-const fr_dict_attr_t *fr_dict_parent_by_num(unsigned int vendor, unsigned int attr)
-{
-	int i;
-	unsigned int base_vendor;
-
-	/*
-	 *	RFC attributes can't be of type "tlv".
-	 */
-	if (!vendor) return NULL;
-
-	base_vendor = vendor;
-
-	/*
-	 *	It's a real vendor.
-	 */
-	if (base_vendor != 0) {
-		fr_dict_vendor_t const *dv;
-
-		dv = fr_dict_vendor_by_num(base_vendor);
-		if (!dv) return NULL;
-
-		/*
-		 *	Only standard format attributes can be of type "tlv",
-		 *	Except for DHCP.  <sigh>
-		 */
-		if ((vendor != 54) && ((dv->type != 1) || (dv->length != 1))) return NULL;
-
-		for (i = MAX_TLV_NEST; i > 0; i--) {
-			unsigned int parent;
-
-			parent = attr & fr_attr_parent_mask[i];
-
-			if (parent != attr) return fr_dict_attr_by_num(vendor, parent); /* not base_vendor */
-		}
-
-		/*
-		 *	It was a top-level VSA.  There's no parent.
-		 *	We COULD return the appropriate enclosing VSA
-		 *	(26, or 241.26, etc.) but that's not what we
-		 *	want.
-		 */
-		return NULL;
-	}
-
-	/*
-	 *	It's an extended attribute.  Return the base Extended-Attr-X
-	 */
-	if (attr < 256) return fr_dict_attr_by_num(0, vendor);
-
-	/*
-	 *	Figure out which attribute it is.
-	 */
-	for (i = MAX_TLV_NEST; i > 0; i--) {
-		unsigned int parent;
-
-		parent = attr & fr_attr_parent_mask[i];
-		if (parent != attr) return fr_dict_attr_by_num(vendor, parent); /* not base_vendor */
-	}
-
-	return NULL;
 }
 
 /*

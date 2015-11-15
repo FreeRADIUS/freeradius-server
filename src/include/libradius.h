@@ -211,9 +211,6 @@ typedef struct attr_flags {
 
 extern const FR_NAME_NUMBER dict_attr_types[];
 extern const size_t dict_attr_sizes[PW_TYPE_MAX][2];
-extern const int fr_attr_max_tlv;
-extern const int fr_attr_shift[];
-extern const int fr_attr_mask[];
 
 typedef struct dict_attr fr_dict_attr_t;
 
@@ -527,7 +524,6 @@ void			fr_dict_print(fr_dict_attr_t const *da, int depth);
 fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b);
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_attr_t const *old);
 
-fr_dict_attr_t const	*fr_dict_parent_by_num(unsigned int vendor, unsigned int attr);
 fr_dict_attr_t const	*fr_dict_attr_by_num(unsigned int vendor, unsigned int attr);
 fr_dict_attr_t const	*fr_dict_attr_by_name(char const *attr);
 fr_dict_attr_t const	*fr_dict_attr_by_name_substr(char const **name);

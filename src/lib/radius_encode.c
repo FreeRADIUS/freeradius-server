@@ -976,13 +976,13 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 		if (outlen < 3) return 0;
 
 		out[1] = 3;
-		out[2] = vp->da->attr & fr_attr_mask[0];
+		out[2] = vp->da->attr & 0xff;
 
 	} else {
 		if (outlen < 4) return 0;
 
 		out[1] = 4;
-		out[2] = vp->da->attr & fr_attr_mask[0];
+		out[2] = vp->da->attr & 0xff;
 		out[3] = 0;
 	}
 
@@ -1008,7 +1008,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 		evs[1] = (vp->da->vendor >> 16) & 0xff;
 		evs[2] = (vp->da->vendor >> 8) & 0xff;
 		evs[3] = vp->da->vendor & 0xff;
-		evs[4] = vp->da->attr & fr_attr_mask[0];
+		evs[4] = vp->da->attr & 0xff;
 
 		out[1] += 5;
 	}
