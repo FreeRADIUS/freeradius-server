@@ -18,7 +18,7 @@
  * $Id$
  *
  * @file proto.c
- * @brief Functions common to protocol encoders/decoders.
+ * @brief filetions common to protocol encoders/decoders.
  *
  * @copyright 2015 The FreeRADIUS server project
  */
