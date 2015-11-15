@@ -496,7 +496,7 @@ int			fr_dict_valid_name(char const *name);
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child);
-ssize_t			fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor,
+ssize_t			fr_dict_str_to_oid(unsigned int *vendor, unsigned int *attr,
 					   fr_dict_attr_t const **parent, char const *oid);
 int			fr_dict_vendor_add(char const *name, unsigned int value);
 int			fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned int vendor, int attr,

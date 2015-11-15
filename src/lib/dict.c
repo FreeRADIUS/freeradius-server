@@ -861,7 +861,7 @@ static int fr_dict_oid_component(unsigned int *out, char const **oid)
  *	- > 0 on success (number of bytes parsed).
  *	- <= 0 on parse error (negative offset of parse error).
  */
-ssize_t fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor, fr_dict_attr_t const **parent, char const *oid)
+ssize_t fr_dict_str_to_oid(unsigned int *vendor, unsigned int *attr, fr_dict_attr_t const **parent, char const *oid)
 {
 	char const		*p = oid;
 	unsigned int		num = 0;
@@ -913,7 +913,7 @@ ssize_t fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor, fr_dict_att
 		/*
 		 *	Recurse to get the attribute.
 		 */
-		slen = fr_dict_str_to_oid(attr, vendor, parent, p);
+		slen = fr_dict_str_to_oid(vendor, attr, parent, p);
 		if (slen <= 0) return slen + (oid - p);
 
 		slen += p - oid;
@@ -922,7 +922,10 @@ ssize_t fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor, fr_dict_att
 		return slen;
 	}
 
-	if ((num == 0) || (num > UINT8_MAX)) {
+	/*
+	 *	If it's not a vendor type, it must be between 0-255
+	 */
+	if (((*parent)->type != PW_TYPE_VENDOR) && ((num == 0) || (num > UINT8_MAX))) {
 		fr_strerror_printf("TLV attributes must be between 1-255 inclusive");
 		return oid - p;
 	}
@@ -944,7 +947,7 @@ ssize_t fr_dict_str_to_oid(unsigned int *attr, unsigned int *vendor, fr_dict_att
 		}
 		*parent = child;
 
-		slen = fr_dict_str_to_oid(attr, vendor, parent, p);
+		slen = fr_dict_str_to_oid(vendor, attr, parent, p);
 		if (slen <= 0) return slen + (oid - p);
 
 		slen += p - oid;
@@ -1722,7 +1725,7 @@ static int process_attribute(fr_dict_attr_t const *parent, char const *fn, int c
 
 		vendor = block_vendor;
 
-		slen = fr_dict_str_to_oid(&attr, &vendor, &parent, argv[1]);
+		slen = fr_dict_str_to_oid(&vendor, &attr, &parent, argv[1]);
 		if (slen <= 0) {
 			fr_strerror_printf("fr_dict_init: %s[%d]: %s", fn, line, fr_strerror());
 			return -1;
@@ -2832,44 +2835,28 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	return 0;
 }
 
-static size_t dict_print_attr_oid(char *buffer, size_t size, unsigned int attr, int dv_type)
+static size_t dict_print_attr_oid(char *buffer, size_t outlen, fr_dict_attr_t const *da)
 {
-	int nest;
-	size_t outlen;
 	size_t len;
+	char *p = buffer, *end = p + outlen;
+	int i;
+	fr_dict_attr_t const *da_p;
+	fr_dict_attr_t const *tlv_stack[MAX_TLV_STACK + 1];
 
-	switch (dv_type) {
-	default:
-	case 1:
-		len = snprintf(buffer, size, "%u", attr & 0xff);
-		break;
+	for (i = da->depth, da_p = da; da_p->parent && (i >= 0); i--, da_p = da_p->parent) tlv_stack[i - 1] = da_p;
+	if (!fr_assert(da_p->flags.is_root)) return 0;
 
-	case 4:
-		return snprintf(buffer, size, "%u", attr);
+	len = snprintf(p, end - p, "%u", tlv_stack[0]->attr);
+	if ((p + len) >= end) return p - buffer;
+	p += len;
 
-	case 2:
-		return snprintf(buffer, size, "%u", attr & 0xffff);
-
+	for (i = 1; i < (int)da->depth; i++) {
+		len = snprintf(p, end - p, ".%u", tlv_stack[i]->attr);
+		if ((p + len) >= end) return p - buffer;
+		p += len;
 	}
 
-	if ((attr >> 8) == 0) return len;
-
-	outlen = len;
-	buffer += len;
-	size -= len;
-
-	for (nest = 1; nest <= fr_attr_max_tlv; nest++) {
-		if (((attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]) == 0) break;
-
-		len = snprintf(buffer, size, ".%u",
-			       (attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]);
-
-		outlen = len;
-		buffer += len;
-		size -= len;
-	}
-
-	return outlen;
+	return p - buffer;
 }
 
 /** Free dynamically allocated (unknown attributes)
@@ -2984,6 +2971,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out
 	}
 
 	new = fr_dict_attr_alloc(ctx, "unknown-vendor", 0, vendor, PW_TYPE_VENDOR, new_flags);
+	new->parent = parent;
 	new->depth = parent->depth + 1;
 	*out = new;
 
@@ -3004,7 +2992,6 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent
 				unsigned int vendor, unsigned int attr)
 {
 	char *p;
-	int dv_type = 1;
 	size_t len = 0;
 	size_t bufsize = FR_DICT_ATTR_MAX_NAME_LEN;
 
@@ -3030,8 +3017,7 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent
 	p += len;
 	bufsize -= len;
 
-
-	dict_print_attr_oid(p, bufsize, attr, dv_type);
+	dict_print_attr_oid(p, bufsize, da);
 
 	return 0;
 }
@@ -3057,12 +3043,21 @@ fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
 	fr_dict_attr_t const	*new_parent = NULL;
 
 	/*
-	 *	Unknown attributes are always rooted in known
-	 *	attributes, so we don't need to clone anything
-	 *	here.
+	 *	If there's a vendor specified, we check to see
+	 *	if the parent is a VSA or EVS, and if it is
+	 *	we either lookup the vendor to get the correct
+	 *	attribute, or bridge the gap in the tree, with an
+	 *	unknown vendor.
+	 *
+	 *	We need to do the check, as the parent could be
+	 *	a TLV, in which case the vendor should be known
+	 *	and we don't need to modify the parent.
 	 */
-	if (vendor) {
-		if (fr_dict_unknown_vendor_afrom_num(ctx, &new_parent, parent, vendor) < 0) return NULL;
+	if (vendor && ((parent->type == PW_TYPE_VSA) || (parent->type == PW_TYPE_EVS))) {
+		new_parent = fr_dict_attr_child_by_num(parent, vendor);
+		if (!new_parent && (fr_dict_unknown_vendor_afrom_num(ctx, &new_parent, parent, vendor) < 0)) {
+			return NULL;
+		}
 		parent = new_parent;
 	/*
 	 *	Need to clone the unknown hierachy, as unknown
@@ -3131,10 +3126,13 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 	char const	*p = name;
 	char		*q;
 
-	fr_dict_vendor_t	*dv;
-	fr_dict_attr_t const	*found;
+	fr_dict_vendor_t	*dv = NULL;
+	fr_dict_attr_t const	*child;
 
 	if (fr_dict_valid_name(name) < 0) return -1;
+
+	if (vendor_da) memset(vendor_da, 0, sizeof(*vendor_da));
+	if (da) memset(da, 0, sizeof(*da));
 
 	/*
 	 *	Pull off vendor prefix first.
@@ -3179,6 +3177,30 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 
 			p = q;
 		}
+
+		/*
+		 *	In both the above cases the context for the vendor
+		 *	attribute has been omitted, so we need to fixup
+		 *	the parent.
+		 */
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("Vendor specified without context, but parent is not root");
+			return -1;
+		}
+
+		/*
+		 *	Assume the context is VSA (26)
+		 */
+		child = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
+		if (!child) {
+			fr_strerror_printf("Missing definition for Vendor-Specific (26)");
+			return -1;
+		}
+		parent = child;
+
+		/*
+		 *	The code below should resolve the vendor.
+		 */
 
 		if (*p != '-') {
 			fr_strerror_printf("Invalid text following vendor definition in attribute name \"%s\"", name);
@@ -3235,13 +3257,13 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 	 *	extended name of the "evs" foundta type.
 	 */
 	if (*p == '.') {
-		found = fr_dict_attr_by_num(0, attr);
-		if (!found) {
+		child = fr_dict_attr_child_by_num(parent, attr);
+		if (!child) {
 			fr_strerror_printf("Cannot parse names without dictionaries");
 			return -1;
 		}
 
-		switch (found->type) {
+		switch (child->type) {
 		case PW_TYPE_STRUCTURAL:
 			break;
 
@@ -3250,7 +3272,7 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 			return -1;
 		}
 
-		if ((attr == PW_VENDOR_SPECIFIC) || found->type == PW_TYPE_EVS) {
+		if ((child->type == PW_TYPE_VSA) || (child->type == PW_TYPE_EVS)) {
 			vendor = strtol(p + 1, &q, 10);
 			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
 				fr_strerror_printf("Invalid vendor");
@@ -3262,8 +3284,9 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 
 			p = q;
 
-			attr = 0;
+			attr = 0;	/* Attr must exist beneath the vendor */
 		} /* else the second number is a TLV number */
+		parent = child;
 	}
 
 	/*
@@ -3274,36 +3297,37 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 		if (dv) {
 			dv_type = dv->type;
 			if (dv_type > 3) dv_type = 3; /* hack */
-		}
-	}
 
-	/*
-	 *	Parse the next number.  It could be a Vendor-Type
-	 *	of 1..2^24, or it could be a TLV.
-	 */
-	if (*p == '.') {
-		attr = strtol(p + 1, &q, 10);
-		if (attr == 0) {
-			fr_strerror_printf("Invalid name number");
-			return -1;
-		}
-
-		if (*q) {
-			if (*q != '.') {
-				goto invalid;
+			/*
+			 *	Parent needs to be EVS or VSA
+			 */
+			if ((parent->type != PW_TYPE_VSA) && (parent->type != PW_TYPE_EVS)) {
+				fr_strerror_printf("Vendor specified, but current parent is not \"evs\" or \"vsa\"");
+				return -1;
 			}
 
-			if (dv_type != 1) {
-				goto invalid;
+			child = fr_dict_attr_child_by_num(parent, vendor);
+			if (!child) {
+				fr_strerror_printf("Missing vendor attr for %i", vendor);
+				return -1;
 			}
+			parent = child;
+		/*
+		 *	Build the unknown vendor
+		 */
+		} else {
+			vendor_da->attr = vendor;
+			vendor_da->type = PW_TYPE_VENDOR;
+			vendor_da->parent = parent;
+			vendor_da->depth = parent->depth + 1;
+			vendor_da->flags.is_unknown = 1;
+			snprintf(vendor_da->name, FR_DICT_ATTR_MAX_NAME_LEN, "Vendor-%i", vendor);
+
+			parent = vendor_da;
 		}
-
-		p = q;
 	}
 
-	if (*p == '.') {
-		if (fr_dict_str_to_oid(&vendor, &attr, &parent, p + 1) < 0) return -1;
-	}
+	if (*p == '.') if (fr_dict_str_to_oid(&vendor, &attr, &parent, p + 1) < 0) return -1;
 
 	/*
 	 *	If the caller doesn't provide a fr_dict_attr_t
@@ -3312,41 +3336,6 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 	if (!attr) {
 		fr_strerror_printf("Unknown attributes disallowed");
 		return -1;
-	}
-
-	/*
-	 *	If the caller doesn't provide a vendor_da
-	 *	to write vendor data to, and we have an vendor
-	 *	we can't create the unknown vendor.
-	 */
-	if (!dv) {
-		fr_dict_attr_t const *vsa_da;
-
-		if (!vendor_da) {
-			fr_strerror_printf("Unknown vendors disallowed");
-			return -1;
-		}
-
-		if (!parent->flags.is_root) {
-			fr_strerror_printf("Parent for unknown vendors must be the root attribute");
-			return -1;
-		}
-
-		vsa_da = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
-		if (!vsa_da) {
-			fr_strerror_printf("Vendor-Specific attribute (26) not defined in global dictionary");
-			return -1;
-		}
-
-		memset(vendor_da, 0, sizeof(*vendor_da));
-
-		vendor_da->attr = vendor;
-		vendor_da->type = PW_TYPE_VENDOR;
-		vendor_da->parent = vsa_da;
-		vendor_da->depth = vsa_da->depth + 1;
-		vendor_da->flags.is_unknown = 1;
-
-		parent = vendor_da;
 	}
 
 	return fr_dict_unknown_from_fields(da, parent, vendor, attr);
@@ -3373,7 +3362,8 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 fr_dict_attr_t const *fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *name)
 {
 	uint8_t			*p;
-	fr_dict_attr_t		vendor;
+	uint8_t			vendor_buff[FR_DICT_ATTR_SIZE];
+	fr_dict_attr_t		*vendor = (fr_dict_attr_t *)&vendor_buff;
 	fr_dict_attr_t		*da;
 	fr_dict_attr_t const	*new_parent = NULL;
 
@@ -3385,7 +3375,7 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_attr_t 
 	da = (fr_dict_attr_t *)p;
 	talloc_set_type(da, fr_dict_attr_t);
 
-	if (fr_dict_unknown_from_oid(&vendor, da, parent, name) < 0) {
+	if (fr_dict_unknown_from_oid(vendor, da, parent, name) < 0) {
 		talloc_free(p);
 		return NULL;
 	}
@@ -3395,8 +3385,8 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_attr_t 
 	 *	attributes, so we don't need to clone anything
 	 *	here.
 	 */
-	if (da->vendor) {
-		new_parent = fr_dict_unknown_acopy(p, &vendor);
+	if (vendor->flags.is_unknown) {
+		new_parent = fr_dict_unknown_acopy(p, vendor);
 		if (!new_parent) {
 			talloc_free(p);
 			return NULL;
@@ -3419,6 +3409,8 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_attr_t 
 		 */
 		if (new_parent->flags.is_unknown) talloc_steal(da, new_parent);
 	}
+
+	VERIFY_DA(da);
 
 	return da;
 }
