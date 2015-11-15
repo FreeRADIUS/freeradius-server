@@ -577,6 +577,7 @@ int fr_pair_to_unknown(VALUE_PAIR *vp)
 	da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, vp->da->vendor, vp->da->attr);
 	if (!da) return -1;
 
+	fr_dict_attr_free(&vp->da);	/* Only frees unknown attributes */
 	vp->da = da;
 
 	return 0;
