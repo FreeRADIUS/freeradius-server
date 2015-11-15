@@ -273,23 +273,23 @@ int		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *s
 						    uint8_t const *vector);
 
 ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx,
-						   RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-						   char const *secret,
-						   fr_dict_attr_t const *parent, uint8_t const *start,
-						   size_t const attrlen, size_t const packetlen,
-						   VALUE_PAIR **pvp);
+					    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+					    char const *secret,
+					    fr_dict_attr_t const *parent, uint8_t const *start,
+					    size_t const attrlen, size_t const packetlen,
+					    VALUE_PAIR **pvp);
 
 ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx,
-					     RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-					     char const *secret,
-					     fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
-					     VALUE_PAIR **pvp);
+				      RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+				      char const *secret,
+				      fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
+				      VALUE_PAIR **pvp);
 
 ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx,
-					    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-					    char const *secret, fr_dict_attr_t const *parent,
-					    uint8_t const *start, size_t length,
-					    VALUE_PAIR **pvp);
+				     RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+				     char const *secret, fr_dict_attr_t const *parent,
+				     uint8_t const *start, size_t length,
+				     VALUE_PAIR **pvp);
 
 
 /*
