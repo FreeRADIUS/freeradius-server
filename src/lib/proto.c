@@ -24,19 +24,19 @@
  */
 #include <freeradius-devel/libradius.h>
 
-static unsigned int proto_log_indent = 40;
+static unsigned int proto_log_indent = 30;
 static char spaces[] = "                                                 ";
 
-void fr_proto_print(char const *func, int line, char const *fmt, ...)
+void fr_proto_print(char const *file, int line, char const *fmt, ...)
 {
 	va_list ap;
 	size_t		len;
 	char		prefix[256];
 
-	len = snprintf(prefix, sizeof(prefix), "%s[%i]", func, line);
+	len = snprintf(prefix, sizeof(prefix), "%s:%i", file, line);
 	if (len > proto_log_indent) proto_log_indent = len;
 
-	fprintf(fr_log_fp, "%s%.*s: ", prefix, (int)(proto_log_indent - len), spaces);
+	fprintf(fr_log_fp, "msg: %s%.*s: ", prefix, (int)(proto_log_indent - len), spaces);
 
 	va_start(ap, fmt);
 	vfprintf(fr_log_fp, fmt, ap);
@@ -46,48 +46,49 @@ void fr_proto_print(char const *func, int line, char const *fmt, ...)
 	fflush(fr_log_fp);
 }
 
-void fr_proto_print_hex_data(char const *func, int line, char const *msg, uint8_t const *data, size_t data_len)
+void fr_proto_print_hex_data(char const *file, int line, char const *msg, uint8_t const *data, size_t data_len)
 {
 	size_t		i;
 	size_t		len;
 	char		prefix[256];
 
-	len = snprintf(prefix, sizeof(prefix), "%s[%i]", func, line);
+	len = snprintf(prefix, sizeof(prefix), "%s:%i", file, line);
 	if (len > proto_log_indent) proto_log_indent = len;
 
-	fprintf(fr_log_fp, "%s%.*s: %s\n", prefix, (int)(proto_log_indent - len), spaces, msg);
+	fprintf(fr_log_fp, "hex: %s%.*s: -- %s --\n", prefix, (int)(proto_log_indent - len), spaces, msg);
 	for (i = 0; i < data_len; i++) {
-		if ((i & 0x0f) == 0) fprintf(fr_log_fp, "%s%.*s: %04x: ", prefix,
+		if ((i & 0x0f) == 0) fprintf(fr_log_fp, "hex: %s%.*s: %04x: ", prefix,
 					     (int)(proto_log_indent - len), spaces, (unsigned int) i);
 		fprintf(fr_log_fp, "%02x ", data[i]);
 		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 	}
 	if ((data_len == 0x0f) || ((data_len & 0x0f) != 0x0f)) fprintf(fr_log_fp, "\n");
+	fprintf(fr_log_fp, "\n");
 	fflush(fr_log_fp);
 }
 
-void fr_proto_tlv_stack_print(char const *func, int line, fr_dict_attr_t const **tlv_stack, unsigned int depth)
+void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_dict_attr_t const **tlv_stack, unsigned int depth)
 {
 	int		i;
 	char		prefix[256];
 	size_t		len;
 
-	len = snprintf(prefix, sizeof(prefix), "%s[%i]", func, line);
+	len = snprintf(prefix, sizeof(prefix), "%s:%i", file, line);
 	if (len > proto_log_indent) proto_log_indent = len;
 
 	for (i = 0; tlv_stack[i] && (i < MAX_TLV_STACK); i++);
 	if (!i) return;
 
-	fprintf(fr_log_fp, "%s%.*s: Encoder at depth %i\n", prefix, (int)(proto_log_indent - len), spaces, depth);
+	fprintf(fr_log_fp, "stk: %s%.*s: Encoder in %s\n",
+		prefix, (int)(proto_log_indent - len), spaces, func);
 	for (i--; i >= 0; i--) {
-		fprintf(fr_log_fp, "%s%.*s: [%i] %s: %s, vendor: 0x%x (%i), attr: 0x%x (%i) %c %s\n",
-			prefix, (int)(proto_log_indent - len), spaces, i,
+		fprintf(fr_log_fp, "stk: %s%.*s: %s [%i] %s: %s, vendor: 0x%x (%i), attr: 0x%x (%i)\n",
+			prefix, (int)(proto_log_indent - len), spaces, (i == (int)depth) ? ">" : " ", i,
 			fr_int2str(dict_attr_types, tlv_stack[i]->type, "?Unknown?"),
 			tlv_stack[i]->name, tlv_stack[i]->vendor, tlv_stack[i]->vendor,
-			tlv_stack[i]->attr, tlv_stack[i]->attr,
-			(i == (int)depth) ? '<' : ' ',
-			(i == (int)depth) ? func : "");
+			tlv_stack[i]->attr, tlv_stack[i]->attr);
 	}
+	fprintf(fr_log_fp, "\n");
 	fflush(fr_log_fp);
 }
 
