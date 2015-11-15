@@ -818,8 +818,6 @@ do {\
 	 */
 	DICT_READ_OPTIONAL(radius_dir, RADIUS_DICTIONARY);
 
-	fr_dict_print(fr_dict_root(main_config.dict), 0);
-
 	cs = cf_section_alloc(NULL, "main", NULL);
 	if (!cs) return -1;
 

@@ -26,27 +26,6 @@
 #include <freeradius-devel/md5.h>
 
 static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
-#if 1
-#define VP_TRACE(_x, ...) printf("%s[%i]: " _x "\n", __FUNCTION__, __LINE__, ## __VA_ARGS__)
-
-static void VP_HEX_DUMP(char const *msg, uint8_t const *data, size_t len)
-{
-	size_t i;
-
-	printf("--- %s ---\n", msg);
-	for (i = 0; i < len; i++) {
-		if ((i & 0x0f) == 0) printf("%04x: ", (unsigned int) i);
-		printf("%02x ", data[i]);
-		if ((i & 0x0f) == 0x0f) printf("\n");
-	}
-	if ((len == 0x0f) || ((len & 0x0f) != 0x0f)) printf("\n");
-	fflush(stdout);
-}
-
-#else
-#define VP_TRACE(_x, ...)
-#define VP_HEX_DUMP(_x, _y, _z)
-#endif
 
 /** Decode Tunnel-Password encrypted attributes
  *
@@ -224,9 +203,9 @@ int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, 
 {
 	uint8_t const *end = data + length;
 
-	VP_TRACE("Checking TLV %u/%u", (unsigned int) dv_type, (unsigned int) dv_length);
+	FR_PROTO_TRACE("Checking TLV %u/%u", (unsigned int) dv_type, (unsigned int) dv_length);
 
-	VP_HEX_DUMP("tlv_ok", data, length);
+	FR_PROTO_HEX_DUMP("tlv_ok", data, length);
 
 	if ((dv_length > 2) || (dv_type == 0) || (dv_type > 4)) {
 		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
@@ -380,7 +359,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx,
 
 	if (length < 3) return -1; /* type, length, value */
 
-	VP_HEX_DUMP("tlvs", data, length);
+	FR_PROTO_HEX_DUMP("tlvs", data, length);
 
 	if (fr_radius_decode_tlv_ok(data, length, 1, 1) < 0) return -1;
 
@@ -394,7 +373,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx,
 		if (!child) {
 			fr_dict_attr_t *unknown_child;
 
-			VP_TRACE("Failed to find child %u of TLV %s", data[0], parent->name);
+			FR_PROTO_TRACE("Failed to find child %u of TLV %s", data[0], parent->name);
 
 			/*
 			 *	Build an unknown attr
@@ -407,7 +386,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx,
 			unknown_child->parent = parent;	/* Needed for re-encoding */
 			child = unknown_child;
 		}
-		VP_TRACE("Attr context changed %s -> %s", parent->name, child->name);
+		FR_PROTO_TRACE("Attr context changed %s -> %s", parent->name, child->name);
 
 		tlv_len = fr_radius_decode_pair_value(ctx, packet, original, secret, child,
 						      data + 2, data[1] - 2, data[1] - 2, tail);
@@ -445,7 +424,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		return -1;
 	}
 
-	VP_TRACE("Length %u", (unsigned int) length);
+	FR_PROTO_TRACE("Length %u", (unsigned int) length);
 
 #ifndef NDEBUG
 	if (length <= (dv->type + dv->length)) {
@@ -501,7 +480,7 @@ static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	da = fr_dict_attr_child_by_num(parent, attribute);
 	if (!da) da = fr_dict_unknown_afrom_fields(ctx, parent, dv->vendorpec, attribute);
 	if (!da) return -1;
-	VP_TRACE("Attr context changed %s -> %s", da->parent->name, da->name);
+	FR_PROTO_TRACE("Attr context changed %s -> %s", da->parent->name, da->name);
 
 	my_len = fr_radius_decode_pair_value(ctx, packet, original, secret, da,
 					     data + dv->type + dv->length,
@@ -575,7 +554,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	head = tail = malloc(fraglen);
 	if (!head) return -1;
 
-	VP_TRACE("Fragments %d, total length %d", fragments, (int) fraglen);
+	FR_PROTO_TRACE("Fragments %d, total length %d", fragments, (int) fraglen);
 
 	/*
 	 *	And again, but faster and looser.
@@ -592,7 +571,7 @@ static ssize_t decode_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		fragments--;
 	}
 
-	VP_HEX_DUMP("long-extended fragments", head, fraglen);
+	FR_PROTO_HEX_DUMP("long-extended fragments", head, fraglen);
 
 	rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, parent,
 					    head, fraglen, fraglen, pvp);
@@ -627,7 +606,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx,
 	da = fr_dict_attr_child_by_num(parent, data[4]);
 	if (!da) da = fr_dict_unknown_afrom_fields(ctx, parent, vendor, data[4]);
 	if (!da) return -1;
-	VP_TRACE("Attr context changed %s -> %s", da->parent->name, da->name);
+	FR_PROTO_TRACE("Attr context changed %s -> %s", da->parent->name, da->name);
 
 	if ((data[6] & 0x80) == 0) {
 		rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, da,
@@ -692,7 +671,7 @@ static ssize_t decode_wimax(TALLOC_CTX *ctx,
 		frag += frag[1];
 	} while (frag < end);
 
-	VP_HEX_DUMP("Wimax fragments", head, fraglen);
+	FR_PROTO_HEX_DUMP("Wimax fragments", head, fraglen);
 
 	rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, da, head, fraglen, fraglen, pvp);
 	free(head);
@@ -729,7 +708,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	if (attrlen < 5) return -1; /* vid, value */
 	if (data[0] != 0) return -1; /* we require 24-bit VIDs */
 
-	VP_TRACE("Decoding VSA");
+	FR_PROTO_TRACE("Decoding VSA");
 
 	memcpy(&vendor, data, 4);
 	vendor = ntohl(vendor);
@@ -748,7 +727,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		 *	RFC format is 1 octet type, 1 octet length
 		 */
 		if (fr_radius_decode_tlv_ok(data + 4, attrlen - 4, 1, 1) < 0) {
-			VP_TRACE("Unknown TLVs not OK: %s", fr_strerror());
+			FR_PROTO_TRACE("Unknown TLVs not OK: %s", fr_strerror());
 			return -1;
 		}
 
@@ -772,7 +751,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		dv = fr_dict_vendor_by_num(vendor);
 		if (!fr_assert(dv)) return -1;
 	}
-	VP_TRACE("Attr context %s -> %s", parent->name, vendor_da->name);
+	FR_PROTO_TRACE("Attr context %s -> %s", parent->name, vendor_da->name);
 
 	/*
 	 *	WiMAX craziness
@@ -787,7 +766,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	 *	VSAs should normally be in TLV format.
 	 */
 	if (fr_radius_decode_tlv_ok(data + 4, attrlen - 4, dv->type, dv->length) < 0) {
-		VP_TRACE("TLVs not OK: %s", __FUNCTION__, fr_strerror());
+		FR_PROTO_TRACE("TLVs not OK: %s", __FUNCTION__, fr_strerror());
 		return -1;
 	}
 
@@ -879,9 +858,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 		return -1;
 	}
 
-	VP_HEX_DUMP(__FUNCTION__ , start, attrlen);
+	FR_PROTO_HEX_DUMP(__FUNCTION__ , start, attrlen);
 
-	VP_TRACE("Parent %s len %zu ... %zu", parent->name, attrlen, packetlen);
+	FR_PROTO_TRACE("Parent %s len %zu ... %zu", parent->name, attrlen, packetlen);
 
 	datalen = attrlen;
 
@@ -944,7 +923,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 	 *	Decrypt the attribute.
 	 */
 	if (secret && packet && (parent->flags.encrypt != FLAG_ENCRYPT_NONE)) {
-		VP_TRACE("Decrypting type %u", parent->flags.encrypt);
+		FR_PROTO_TRACE("Decrypting type %u", parent->flags.encrypt);
 		/*
 		 *	Encrypted attributes can only exist for the
 		 *	old-style format.  Extended attributes CANNOT
@@ -1027,7 +1006,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 	 *	Double-check the length after decrypting the
 	 *	attribute.
 	 */
-	VP_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
+	FR_PROTO_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
 	switch (parent->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
@@ -1097,7 +1076,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 
 		child = fr_dict_attr_child_by_num(parent, data[0]);
 		if (!child) goto raw;
-		VP_TRACE("Attr context changed %s->%s", child->name, parent->name);
+		FR_PROTO_TRACE("Attr context changed %s->%s", child->name, parent->name);
 
 		/*
 		 *	Recurse to decode the contents, which could be
@@ -1138,7 +1117,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 				return -1;
 			}
 		}
-		VP_TRACE("Attr context changed %s -> %s", parent->name, child->name);
+		FR_PROTO_TRACE("Attr context changed %s -> %s", parent->name, child->name);
 
 		/*
 		 *	If there no more fragments, then the contents
@@ -1401,17 +1380,17 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx,
 
 	da = fr_dict_attr_child_by_num(parent, data[0]);
 	if (!da) {
-		VP_TRACE("Unknown attribute %u", data[0]);
+		FR_PROTO_TRACE("Unknown attribute %u", data[0]);
 		da = fr_dict_unknown_afrom_fields(ctx, parent, 0, data[0]);
 	}
 	if (!da) return -1;
-	VP_TRACE("Attr context changed %s -> %s",da->parent->name, da->name);
+	FR_PROTO_TRACE("Attr context changed %s -> %s",da->parent->name, da->name);
 
 	/*
 	 *	Pass the entire thing to the decoding function
 	 */
 	if (da->flags.concat) {
-		VP_TRACE("Concat attribute", __FUNCTION__);
+		FR_PROTO_TRACE("Concat attribute", __FUNCTION__);
 		return decode_concat(ctx, da, data, length, pvp);
 	}
 

@@ -24,6 +24,7 @@ SOURCES		:= cbuff.c \
 		   pair.c \
 		   pcap.c \
 		   print.c \
+		   proto.c \
 		   radius.c \
 		   radius_encode.c \
 		   radius_decode.c \
