@@ -101,7 +101,7 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	 *	If we can't parse it, or if it's malformed,
 	 *	it's still unknown.
 	 */
-	rlen = data2vp(NULL, NULL, NULL, NULL, da, ptr, len, len, &vp);
+	rlen = fr_radius_decode_pair_value(NULL, NULL, NULL, NULL, da, ptr, len, len, &vp);
 	talloc_free(ptr);
 
 	if (rlen < 0) return false;

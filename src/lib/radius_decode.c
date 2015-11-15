@@ -26,10 +26,10 @@
 #include <freeradius-devel/md5.h>
 
 static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
-#if 0
-#define VP_TRACE printf
+#if 1
+#define VP_TRACE(_x, ...) printf("%s[%i]: " _x "\n", __FUNCTION__, __LINE__, ## __VA_ARGS__)
 
-static void VP_HEXDUMP(char const *msg, uint8_t const *data, size_t len)
+static void VP_HEX_DUMP(char const *msg, uint8_t const *data, size_t len)
 {
 	size_t i;
 
@@ -45,101 +45,8 @@ static void VP_HEXDUMP(char const *msg, uint8_t const *data, size_t len)
 
 #else
 #define VP_TRACE(_x, ...)
-#define VP_HEXDUMP(_x, _y, _z)
+#define VP_HEX_DUMP(_x, _y, _z)
 #endif
-
-/** Check if a set of RADIUS formatted TLVs are OK
- *
- */
-int rad_tlv_ok(uint8_t const *data, size_t length,
-	       size_t dv_type, size_t dv_length)
-{
-	uint8_t const *end = data + length;
-
-	VP_TRACE("checking TLV %u/%u\n", (unsigned int) dv_type, (unsigned int) dv_length);
-
-	VP_HEXDUMP("tlv_ok", data, length);
-
-	if ((dv_length > 2) || (dv_type == 0) || (dv_type > 4)) {
-		fr_strerror_printf("rad_tlv_ok: Invalid arguments");
-		return -1;
-	}
-
-	while (data < end) {
-		size_t attrlen;
-
-		if ((data + dv_type + dv_length) > end) {
-			fr_strerror_printf("Attribute header overflow");
-			return -1;
-		}
-
-		switch (dv_type) {
-		case 4:
-			if ((data[0] == 0) && (data[1] == 0) &&
-			    (data[2] == 0) && (data[3] == 0)) {
-			zero:
-				fr_strerror_printf("Invalid attribute 0");
-				return -1;
-			}
-
-			if (data[0] != 0) {
-				fr_strerror_printf("Invalid attribute > 2^24");
-				return -1;
-			}
-			break;
-
-		case 2:
-			if ((data[0] == 0) && (data[1] == 0)) goto zero;
-			break;
-
-		case 1:
-			/*
-			 *	Zero is allowed, because the Colubris
-			 *	people are dumb and use it.
-			 */
-			break;
-
-		default:
-			fr_strerror_printf("Internal sanity check failed");
-			return -1;
-		}
-
-		switch (dv_length) {
-		case 0:
-			return 0;
-
-		case 2:
-			if (data[dv_type] != 0) {
-				fr_strerror_printf("Attribute is longer than 256 octets");
-				return -1;
-			}
-			/* FALL-THROUGH */
-		case 1:
-			attrlen = data[dv_type + dv_length - 1];
-			break;
-
-
-		default:
-			fr_strerror_printf("Internal sanity check failed");
-			return -1;
-		}
-
-		if (attrlen < (dv_type + dv_length)) {
-			fr_strerror_printf("Attribute header has invalid length");
-			return -1;
-		}
-
-		if (attrlen > length) {
-			fr_strerror_printf("Attribute overflows container");
-			return -1;
-		}
-
-		data += attrlen;
-		length -= attrlen;
-	}
-
-	return 0;
-}
 
 /** Decode Tunnel-Password encrypted attributes
  *
@@ -147,8 +54,7 @@ int rad_tlv_ok(uint8_t const *data, size_t length,
  * initial intermediate value, to differentiate it from the
  * above.
  */
-int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret,
-			uint8_t const *vector)
+int fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
 {
 	FR_MD5_CTX	context, old;
 	uint8_t		digest[AUTH_VECTOR_LEN];
@@ -254,13 +160,12 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret,
 /** Decode password
  *
  */
-int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
-		 uint8_t const *vector)
+int fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret, uint8_t const *vector)
 {
-	FR_MD5_CTX context, old;
-	uint8_t	digest[AUTH_VECTOR_LEN];
-	int	i;
-	size_t	n, secretlen;
+	FR_MD5_CTX	context, old;
+	uint8_t		digest[AUTH_VECTOR_LEN];
+	int		i;
+	size_t		n, secretlen;
 
 	/*
 	 *	The RFC's say that the maximum is 128.
@@ -293,22 +198,18 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 
 			fr_md5_copy(&context, &old);
 			if (pwlen > AUTH_PASS_LEN) {
-				fr_md5_update(&context, (uint8_t *) passwd,
-					     AUTH_PASS_LEN);
+				fr_md5_update(&context, (uint8_t *) passwd, AUTH_PASS_LEN);
 			}
 		} else {
 			fr_md5_final(digest, &context);
 
 			fr_md5_copy(&context, &old);
 			if (pwlen > (n + AUTH_PASS_LEN)) {
-				fr_md5_update(&context, (uint8_t *) passwd + n,
-					     AUTH_PASS_LEN);
+				fr_md5_update(&context, (uint8_t *) passwd + n, AUTH_PASS_LEN);
 			}
 		}
 
-		for (i = 0; i < AUTH_PASS_LEN; i++) {
-			passwd[i + n] ^= digest[i];
-		}
+		for (i = 0; i < AUTH_PASS_LEN; i++) passwd[i + n] ^= digest[i];
 	}
 
  done:
@@ -316,20 +217,111 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
 	return strlen(passwd);
 }
 
+/** Check if a set of RADIUS formatted TLVs are OK
+ *
+ */
+int fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, size_t dv_length)
+{
+	uint8_t const *end = data + length;
+
+	VP_TRACE("Checking TLV %u/%u", (unsigned int) dv_type, (unsigned int) dv_length);
+
+	VP_HEX_DUMP("tlv_ok", data, length);
+
+	if ((dv_length > 2) || (dv_type == 0) || (dv_type > 4)) {
+		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
+		return -1;
+	}
+
+	while (data < end) {
+		size_t attrlen;
+
+		if ((data + dv_type + dv_length) > end) {
+			fr_strerror_printf("Attribute header overflow");
+			return -1;
+		}
+
+		switch (dv_type) {
+		case 4:
+			if ((data[0] == 0) && (data[1] == 0) &&
+			    (data[2] == 0) && (data[3] == 0)) {
+			zero:
+				fr_strerror_printf("Invalid attribute 0");
+				return -1;
+			}
+
+			if (data[0] != 0) {
+				fr_strerror_printf("Invalid attribute > 2^24");
+				return -1;
+			}
+			break;
+
+		case 2:
+			if ((data[0] == 0) && (data[1] == 0)) goto zero;
+			break;
+
+		case 1:
+			/*
+			 *	Zero is allowed, because the Colubris
+			 *	people are dumb and use it.
+			 */
+			break;
+
+		default:
+			fr_strerror_printf("Internal sanity check failed");
+			return -1;
+		}
+
+		switch (dv_length) {
+		case 0:
+			return 0;
+
+		case 2:
+			if (data[dv_type] != 0) {
+				fr_strerror_printf("Attribute is longer than 256 octets");
+				return -1;
+			}
+			/* FALL-THROUGH */
+		case 1:
+			attrlen = data[dv_type + dv_length - 1];
+			break;
+
+
+		default:
+			fr_strerror_printf("Internal sanity check failed");
+			return -1;
+		}
+
+		if (attrlen < (dv_type + dv_length)) {
+			fr_strerror_printf("Attribute header has invalid length");
+			return -1;
+		}
+
+		if (attrlen > length) {
+			fr_strerror_printf("Attribute overflows container");
+			return -1;
+		}
+
+		data += attrlen;
+		length -= attrlen;
+	}
+
+	return 0;
+}
 
 /** Convert a "concatenated" attribute to one long VP
  *
  */
-static ssize_t data2vp_concat(TALLOC_CTX *ctx,
-			      fr_dict_attr_t const *da, uint8_t const *start,
-			      size_t const packetlen, VALUE_PAIR **pvp)
+static ssize_t decode_concat(TALLOC_CTX *ctx,
+			     fr_dict_attr_t const *parent, uint8_t const *start,
+			     size_t const packetlen, VALUE_PAIR **pvp)
 {
-	size_t total;
-	uint8_t attr;
-	uint8_t const *ptr = start;
-	uint8_t const *end = start + packetlen;
-	uint8_t *p;
-	VALUE_PAIR *vp;
+	size_t		total;
+	uint8_t		attr;
+	uint8_t const	*ptr = start;
+	uint8_t const	*end = start + packetlen;
+	uint8_t		*p;
+	VALUE_PAIR	*vp;
 
 	total = 0;
 	attr = ptr[0];
@@ -349,7 +341,7 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 		if (ptr[0] != attr) break;
 	}
 
-	vp = fr_pair_afrom_da(ctx, da);
+	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
 
 	vp->vp_length = total;
@@ -376,21 +368,21 @@ static ssize_t data2vp_concat(TALLOC_CTX *ctx,
 /** Convert TLVs to one or more VPs
  *
  */
-ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
-			    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			    char const *secret, fr_dict_attr_t const *da,
-			    uint8_t const *start, size_t length,
-			    VALUE_PAIR **pvp)
+ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx,
+			     RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			     char const *secret, fr_dict_attr_t const *parent,
+			     uint8_t const *start, size_t length,
+			     VALUE_PAIR **pvp)
 {
-	uint8_t const *data = start;
-	fr_dict_attr_t const *child;
-	VALUE_PAIR *head, **tail;
+	uint8_t const		*data = start;
+	fr_dict_attr_t const	*child;
+	VALUE_PAIR		*head, **tail;
 
 	if (length < 3) return -1; /* type, length, value */
 
-	VP_HEXDUMP("tlvs", data, length);
+	VP_HEX_DUMP("tlvs", data, length);
 
-	if (rad_tlv_ok(data, length, 1, 1) < 0) return -1;
+	if (fr_radius_decode_tlv_ok(data, length, 1, 1) < 0) return -1;
 
 	head = NULL;
 	tail = &head;
@@ -398,26 +390,27 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
 	while (data < (start + length)) {
 		ssize_t tlv_len;
 
-		child = fr_dict_attr_child_by_num(da, data[0]);
+		child = fr_dict_attr_child_by_num(parent, data[0]);
 		if (!child) {
 			fr_dict_attr_t *unknown_child;
 
-			VP_TRACE("Failed to find child %u of TLV %s\n", data[0], da->name);
+			VP_TRACE("Failed to find child %u of TLV %s", data[0], parent->name);
 
 			/*
 			 *	Build an unknown attr
 			 */
-			unknown_child = fr_dict_unknown_afrom_fields(ctx, da, da->vendor, data[0]);
+			unknown_child = fr_dict_unknown_afrom_fields(ctx, parent, parent->vendor, data[0]);
 			if (!unknown_child) {
 				fr_pair_list_free(&head);
 				return -1;
 			}
-			unknown_child->parent = da;	/* Needed for re-encoding */
+			unknown_child->parent = parent;	/* Needed for re-encoding */
 			child = unknown_child;
 		}
+		VP_TRACE("Attr context changed %s -> %s", parent->name, child->name);
 
-		tlv_len = data2vp(ctx, packet, original, secret, child,
-				  data + 2, data[1] - 2, data[1] - 2, tail);
+		tlv_len = fr_radius_decode_pair_value(ctx, packet, original, secret, child,
+						      data + 2, data[1] - 2, data[1] - 2, tail);
 		if (tlv_len < 0) {
 			fr_pair_list_free(&head);
 			return -1;
@@ -434,29 +427,29 @@ ssize_t rad_data2vp_tlvs(TALLOC_CTX *ctx,
  *
  * "length" can be LONGER than just this sub-vsa.
  */
-static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
-			   RADIUS_PACKET const *original,
-			   char const *secret, fr_dict_vendor_t *dv,
-			   fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
-			   VALUE_PAIR **pvp)
+static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
+				   RADIUS_PACKET const *original,
+				   char const *secret, fr_dict_vendor_t *dv,
+				   fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
+				   VALUE_PAIR **pvp)
 {
-	unsigned int attribute;
-	ssize_t attrlen, my_len;
-	fr_dict_attr_t const *da;
+	unsigned int		attribute;
+	ssize_t			attrlen, my_len;
+	fr_dict_attr_t const	*da;
 
 	/*
 	 *	Parent must be a vendor
 	 */
 	if (!fr_assert(parent->type == PW_TYPE_VENDOR)) {
-		fr_strerror_printf("data2vp_vsa: Internal sanity check failed");
+		fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
 		return -1;
 	}
 
-	VP_TRACE("data2vp_vsa: length %u\n", (unsigned int) length);
+	VP_TRACE("Length %u", (unsigned int) length);
 
 #ifndef NDEBUG
 	if (length <= (dv->type + dv->length)) {
-		fr_strerror_printf("data2vp_vsa: Failure to call rad_tlv_ok");
+		fr_strerror_printf("%s: Failure to call fr_radius_decode_tlv_ok", __FUNCTION__);
 		return -1;
 	}
 #endif
@@ -479,13 +472,13 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		break;
 
 	default:
-		fr_strerror_printf("data2vp_vsa: Internal sanity check failed");
+		fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
 		return -1;
 	}
 
 	switch (dv->length) {
 	case 2:
-		/* data[dv->type] must be zero, from rad_tlv_ok() */
+		/* data[dv->type] must be zero, from fr_radius_decode_tlv_ok() */
 		attrlen = data[dv->type + 1];
 		break;
 
@@ -498,7 +491,7 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		break;
 
 	default:
-		fr_strerror_printf("data2vp_vsa: Internal sanity check failed");
+		fr_strerror_printf("%s: Internal sanity check failed", __FUNCTION__);
 		return -1;
 	}
 
@@ -508,12 +501,13 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	da = fr_dict_attr_child_by_num(parent, attribute);
 	if (!da) da = fr_dict_unknown_afrom_fields(ctx, parent, dv->vendorpec, attribute);
 	if (!da) return -1;
+	VP_TRACE("Attr context changed %s -> %s", da->parent->name, da->name);
 
-	my_len = data2vp(ctx, packet, original, secret, da,
-			 data + dv->type + dv->length,
-			 attrlen - (dv->type + dv->length),
-			 attrlen - (dv->type + dv->length),
-			 pvp);
+	my_len = fr_radius_decode_pair_value(ctx, packet, original, secret, da,
+					     data + dv->type + dv->length,
+					     attrlen - (dv->type + dv->length),
+					     attrlen - (dv->type + dv->length),
+					     pvp);
 	if (my_len < 0) return my_len;
 
 	return attrlen;
@@ -532,20 +526,20 @@ static ssize_t data2vp_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
  *
  * But for the first fragment, we get passed a pointer to the "extended-attr"
  */
-static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
-				RADIUS_PACKET const *original,
-				char const *secret, fr_dict_attr_t const *da,
-				uint8_t const *data,
-				size_t attrlen, size_t packetlen,
-				VALUE_PAIR **pvp)
+static ssize_t decode_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
+			       RADIUS_PACKET const *original,
+			       char const *secret, fr_dict_attr_t const *parent,
+			       uint8_t const *data,
+			       size_t attrlen, size_t packetlen,
+			       VALUE_PAIR **pvp)
 {
-	ssize_t rcode;
-	size_t fraglen;
-	uint8_t *head, *tail;
-	uint8_t const *frag, *end;
-	uint8_t const *attr;
-	int fragments;
-	bool last_frag;
+	ssize_t		rcode;
+	size_t		fraglen;
+	uint8_t		*head, *tail;
+	uint8_t const	*frag, *end;
+	uint8_t const	*attr;
+	int		fragments;
+	bool		last_frag;
 
 	if (attrlen < 3) return -1;
 
@@ -581,7 +575,7 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	head = tail = malloc(fraglen);
 	if (!head) return -1;
 
-	VP_TRACE("Fragments %d, total length %d\n", fragments, (int) fraglen);
+	VP_TRACE("Fragments %d, total length %d", fragments, (int) fraglen);
 
 	/*
 	 *	And again, but faster and looser.
@@ -598,10 +592,10 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		fragments--;
 	}
 
-	VP_HEXDUMP("long-extended fragments", head, fraglen);
+	VP_HEX_DUMP("long-extended fragments", head, fraglen);
 
-	rcode = data2vp(ctx, packet, original, secret, da,
-			head, fraglen, fraglen, pvp);
+	rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, parent,
+					    head, fraglen, fraglen, pvp);
 	free(head);
 	if (rcode < 0) return rcode;
 
@@ -612,19 +606,19 @@ static ssize_t data2vp_extended(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
  *
  * @note Called ONLY for Vendor-Specific
  */
-static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
-			     RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			     char const *secret, uint32_t vendor,
-			     fr_dict_attr_t const *parent, uint8_t const *data,
-			     size_t attrlen, size_t packetlen,
-			     VALUE_PAIR **pvp)
+static ssize_t decode_wimax(TALLOC_CTX *ctx,
+			    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			    char const *secret, uint32_t vendor,
+			    fr_dict_attr_t const *parent, uint8_t const *data,
+			    size_t attrlen, size_t packetlen,
+			    VALUE_PAIR **pvp)
 {
-	ssize_t rcode;
-	size_t fraglen;
-	bool last_frag;
-	uint8_t *head, *tail;
-	uint8_t const *frag, *end;
-	fr_dict_attr_t const *da;
+	ssize_t			rcode;
+	size_t			fraglen;
+	bool			last_frag;
+	uint8_t			*head, *tail;
+	uint8_t	const		*frag, *end;
+	fr_dict_attr_t const	*da;
 
 	if (attrlen < 8) return -1;
 
@@ -633,11 +627,12 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 	da = fr_dict_attr_child_by_num(parent, data[4]);
 	if (!da) da = fr_dict_unknown_afrom_fields(ctx, parent, vendor, data[4]);
 	if (!da) return -1;
+	VP_TRACE("Attr context changed %s -> %s", da->parent->name, da->name);
 
 	if ((data[6] & 0x80) == 0) {
-		rcode = data2vp(ctx, packet, original, secret, da,
-				data + 7, data[5] - 3, data[5] - 3,
-				pvp);
+		rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, da,
+						    data + 7, data[5] - 3, data[5] - 3,
+						    pvp);
 		if (rcode < 0) return -1;
 		return 7 + rcode;
 	}
@@ -697,9 +692,9 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 		frag += frag[1];
 	} while (frag < end);
 
-	VP_HEXDUMP("wimax fragments", head, fraglen);
+	VP_HEX_DUMP("Wimax fragments", head, fraglen);
 
-	rcode = data2vp(ctx, packet, original, secret, da, head, fraglen, fraglen, pvp);
+	rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, da, head, fraglen, fraglen, pvp);
 	free(head);
 	if (rcode < 0) return rcode;
 
@@ -710,12 +705,12 @@ static ssize_t data2vp_wimax(TALLOC_CTX *ctx,
 /** Convert a top-level VSA to one or more VPs
  *
  */
-static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
-			    RADIUS_PACKET const *original,
-			    char const *secret,
-			    fr_dict_attr_t const *parent, uint8_t const *data,
-			    size_t attrlen, size_t packetlen,
-			    VALUE_PAIR **pvp)
+static ssize_t decode_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
+			  RADIUS_PACKET const *original,
+			  char const *secret,
+			  fr_dict_attr_t const *parent, uint8_t const *data,
+			  size_t attrlen, size_t packetlen,
+			  VALUE_PAIR **pvp)
 {
 	size_t			total;
 	ssize_t			rcode;
@@ -734,7 +729,7 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	if (attrlen < 5) return -1; /* vid, value */
 	if (data[0] != 0) return -1; /* we require 24-bit VIDs */
 
-	VP_TRACE("data2vp_vsas\n");
+	VP_TRACE("Decoding VSA");
 
 	memcpy(&vendor, data, 4);
 	vendor = ntohl(vendor);
@@ -752,8 +747,8 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		/*
 		 *	RFC format is 1 octet type, 1 octet length
 		 */
-		if (rad_tlv_ok(data + 4, attrlen - 4, 1, 1) < 0) {
-			VP_TRACE("data2vp_vsas: unknown tlvs not OK: %s\n", fr_strerror());
+		if (fr_radius_decode_tlv_ok(data + 4, attrlen - 4, 1, 1) < 0) {
+			VP_TRACE("Unknown TLVs not OK: %s", fr_strerror());
 			return -1;
 		}
 
@@ -777,21 +772,22 @@ static ssize_t data2vp_vsas(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		dv = fr_dict_vendor_by_num(vendor);
 		if (!fr_assert(dv)) return -1;
 	}
+	VP_TRACE("Attr context %s -> %s", parent->name, vendor_da->name);
 
 	/*
 	 *	WiMAX craziness
 	 */
 	if ((vendor == VENDORPEC_WIMAX) && dv->flags) {
-		rcode = data2vp_wimax(ctx, packet, original, secret, vendor,
-				      vendor_da, data, attrlen, packetlen, pvp);
+		rcode = decode_wimax(ctx, packet, original, secret, vendor,
+				     vendor_da, data, attrlen, packetlen, pvp);
 		return rcode;
 	}
 
 	/*
 	 *	VSAs should normally be in TLV format.
 	 */
-	if (rad_tlv_ok(data + 4, attrlen - 4, dv->type, dv->length) < 0) {
-		VP_TRACE("data2vp_vsas: tlvs not OK: %s\n", fr_strerror());
+	if (fr_radius_decode_tlv_ok(data + 4, attrlen - 4, dv->type, dv->length) < 0) {
+		VP_TRACE("TLVs not OK: %s", __FUNCTION__, fr_strerror());
 		return -1;
 	}
 
@@ -813,9 +809,9 @@ create_attrs:
 		/*
 		 *	Vendor attributes can have subattributes (if you hadn't guessed)
 		 */
-		vsa_len = data2vp_vsa(ctx, packet, original, secret, dv, vendor_da, data, attrlen, tail);
+		vsa_len = decode_vsa_internal(ctx, packet, original, secret, dv, vendor_da, data, attrlen, tail);
 		if (vsa_len < 0) {
-			fr_strerror_printf("Internal sanity check %d", __LINE__);
+			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 			fr_pair_list_free(&head);
 			fr_dict_attr_free(&vendor_da);
 			return -1;
@@ -836,7 +832,7 @@ create_attrs:
 
 	/*
 	 *	When the unknown attributes were created by
-	 *	data2vp_vsa, the hierachy between that unknown
+	 *	decode_vsa_internal, the hierachy between that unknown
 	 *	attribute and first known attribute was cloned
 	 *	meaning we can now free the unknown vendor.
 	 */
@@ -856,36 +852,36 @@ create_attrs:
  *	- Length on success.
  *	- -1 on failure.
  */
-ssize_t data2vp(TALLOC_CTX *ctx,
-		RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-		char const *secret,
-		fr_dict_attr_t const *da, uint8_t const *start,
-		size_t const attrlen, size_t const packetlen,
-		VALUE_PAIR **pvp)
+ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
+				    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+				    char const *secret,
+				    fr_dict_attr_t const *parent, uint8_t const *start,
+				    size_t const attrlen, size_t const packetlen,
+				    VALUE_PAIR **pvp)
 {
-	int8_t tag = TAG_NONE;
-	size_t datalen;
-	ssize_t rcode;
-	uint32_t vendor;
-	fr_dict_attr_t const *child;
-	VALUE_PAIR *vp;
-	uint8_t const *data = start;
-	char *p;
-	uint8_t buffer[256];
+	int8_t			tag = TAG_NONE;
+	size_t			datalen;
+	ssize_t			rcode;
+	uint32_t		vendor;
+	fr_dict_attr_t const	*child;
+	VALUE_PAIR		*vp;
+	uint8_t const		*data = start;
+	char			*p;
+	uint8_t			buffer[256];
 
 	/*
 	 *	FIXME: Attrlen can be larger than 253 for extended attrs!
 	 */
-	if (!da || (attrlen > packetlen) ||
+	if (!parent || (attrlen > packetlen) ||
 	    ((attrlen > 253) && (attrlen != packetlen)) ||
 	    (attrlen > 128*1024)) {
-		fr_strerror_printf("data2vp: invalid arguments");
+		fr_strerror_printf("%s: Invalid arguments", __FUNCTION__);
 		return -1;
 	}
 
-	VP_HEXDUMP("data2vp", start, attrlen);
+	VP_HEX_DUMP(__FUNCTION__ , start, attrlen);
 
-	VP_TRACE("parent %s len %zu ... %zu\n", da->name, attrlen, packetlen);
+	VP_TRACE("Parent %s len %zu ... %zu", parent->name, attrlen, packetlen);
 
 	datalen = attrlen;
 
@@ -895,8 +891,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	RADIUS specs.  So... we make a special case for it.
 	 */
 	if (attrlen == 0) {
-		if (!((da->vendor == 0) &&
-		      (da->attr == PW_CHARGEABLE_USER_IDENTITY))) {
+		if (!((parent->vendor == 0) && (parent->attr == PW_CHARGEABLE_USER_IDENTITY))) {
 			*pvp = NULL;
 			return 0;
 		}
@@ -907,7 +902,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	will break assumptions about CUI.  We know
 		 *	this, but Coverity doesn't.
 		 */
-		if (da->type != PW_TYPE_OCTETS) return -1;
+		if (parent->type != PW_TYPE_OCTETS) return -1;
 #endif
 
 		data = NULL;
@@ -921,20 +916,19 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	there is a tag, or it's encrypted with Tunnel-Password,
 	 *	then decode the tag.
 	 */
-	if (da->flags.has_tag && (datalen > 1) &&
-	    ((data[0] < 0x20) ||
-	     (da->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
+	if (parent->flags.has_tag && (datalen > 1) && ((data[0] < 0x20) ||
+						       (parent->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
 		/*
 		 *	Only "short" attributes can be encrypted.
 		 */
 		if (datalen >= sizeof(buffer)) return -1;
 
-		if (da->type == PW_TYPE_STRING) {
+		if (parent->type == PW_TYPE_STRING) {
 			memcpy(buffer, data + 1, datalen - 1);
 			tag = data[0];
 			datalen -= 1;
 
-		} else if (da->type == PW_TYPE_INTEGER) {
+		} else if (parent->type == PW_TYPE_INTEGER) {
 			memcpy(buffer, data, attrlen);
 			tag = buffer[0];
 			buffer[0] = 0;
@@ -949,35 +943,27 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	/*
 	 *	Decrypt the attribute.
 	 */
-	if (secret && packet && (da->flags.encrypt != FLAG_ENCRYPT_NONE)) {
-		VP_TRACE("data2vp: decrypting type %u\n", da->flags.encrypt);
+	if (secret && packet && (parent->flags.encrypt != FLAG_ENCRYPT_NONE)) {
+		VP_TRACE("Decrypting type %u", parent->flags.encrypt);
 		/*
 		 *	Encrypted attributes can only exist for the
 		 *	old-style format.  Extended attributes CANNOT
 		 *	be encrypted.
 		 */
-		if (attrlen > 253) {
-			return -1;
-		}
+		if (attrlen > 253) return -1;
 
-		if (data == start) {
-			memcpy(buffer, data, attrlen);
-		}
+		if (data == start) memcpy(buffer, data, attrlen);
 		data = buffer;
 
-		switch (da->flags.encrypt) { /* can't be tagged */
+		switch (parent->flags.encrypt) { /* can't be tagged */
 		/*
 		 *  User-Password
 		 */
 		case FLAG_ENCRYPT_USER_PASSWORD:
 			if (original) {
-				rad_pwdecode((char *) buffer,
-					     attrlen, secret,
-					     original->vector);
+				fr_radius_decode_password((char *)buffer, attrlen, secret, original->vector);
 			} else {
-				rad_pwdecode((char *) buffer,
-					     attrlen, secret,
-					     packet->vector);
+				fr_radius_decode_password((char *)buffer, attrlen, secret, packet->vector);
 			}
 			buffer[253] = '\0';
 
@@ -986,9 +972,9 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 			 *	encrypted.  Since it's binary, we can't
 			 *	look for trailing zeros.
 			 */
-			if (da->flags.length) {
-				if (datalen > da->flags.length) {
-					datalen = da->flags.length;
+			if (parent->flags.length) {
+				if (datalen > parent->flags.length) {
+					datalen = parent->flags.length;
 				} /* else leave datalen alone */
 			} else {
 				/*
@@ -1011,8 +997,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	not the same as attrlen.
 		 */
 		case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-			if (rad_tunnel_pwdecode(buffer, &datalen, secret,
-						original ? original->vector : nullvector) < 0) {
+			if (fr_radius_decode_tunnel_password(buffer, &datalen, secret,
+							     original ? original->vector : nullvector) < 0) {
 				goto raw;
 			}
 			break;
@@ -1022,9 +1008,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *  Ascend-Receive-Secret
 		 */
 		case FLAG_ENCRYPT_ASCEND_SECRET:
-			if (!original) {
-				goto raw;
-			} else {
+			if (!original) goto raw;
+			else {
 				uint8_t my_digest[AUTH_VECTOR_LEN];
 				fr_radius_make_secret(my_digest, original->vector, secret, data);
 				memcpy(buffer, my_digest, AUTH_VECTOR_LEN );
@@ -1042,8 +1027,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	Double-check the length after decrypting the
 	 *	attribute.
 	 */
-	VP_TRACE("data2vp: type %u\n", da->type);
-	switch (da->type) {
+	VP_TRACE("Type \"%s\" (%u)", fr_int2str(dict_attr_types, parent->type, "?Unknown?"), parent->type);
+	switch (parent->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 		break;
@@ -1087,14 +1072,14 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 
 	case PW_TYPE_COMBO_IP_ADDR:
 		if (datalen == 4) {
-			child = fr_dict_attr_by_type(da->vendor, da->attr, PW_TYPE_IPV4_ADDR);
+			child = fr_dict_attr_by_type(parent->vendor, parent->attr, PW_TYPE_IPV4_ADDR);
 		} else if (datalen == 16) {
-			child = fr_dict_attr_by_type(da->vendor, da->attr, PW_TYPE_IPV6_ADDR);
+			child = fr_dict_attr_by_type(parent->vendor, parent->attr, PW_TYPE_IPV6_ADDR);
 		} else {
 			goto raw;
 		}
 		if (!child) goto raw;
-		da = child;	/* re-write it */
+		parent = child;	/* re-write it */
 		break;
 
 	case PW_TYPE_IPV4_PREFIX:
@@ -1110,8 +1095,9 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	case PW_TYPE_EXTENDED:
 		if (datalen < 2) goto raw; /* etype, value */
 
-		child = fr_dict_attr_child_by_num(da, data[0]);
+		child = fr_dict_attr_child_by_num(parent, data[0]);
 		if (!child) goto raw;
+		VP_TRACE("Attr context changed %s->%s", child->name, parent->name);
 
 		/*
 		 *	Recurse to decode the contents, which could be
@@ -1119,21 +1105,21 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	the current attribute, and we ignore any extra
 		 *	data after it.
 		 */
-		rcode = data2vp(ctx, packet, original, secret, child,
-				data + 1, attrlen - 1, attrlen - 1, pvp);
+		rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, child,
+						    data + 1, attrlen - 1, attrlen - 1, pvp);
 		if (rcode < 0) goto raw;
 		return 1 + rcode;
 
 	case PW_TYPE_LONG_EXTENDED:
 		if (datalen < 3) goto raw; /* etype, flags, value */
 
-		child = fr_dict_attr_child_by_num(da, data[0]);
+		child = fr_dict_attr_child_by_num(parent, data[0]);
 		if (!child) {
 			fr_dict_attr_t *new;
 
 			if ((data[0] != PW_VENDOR_SPECIFIC) || (datalen < (3 + 4 + 1))) {
 				/* da->attr < 255, da->vendor == 0 */
-				new = fr_dict_unknown_afrom_fields(ctx, da, 0, data[0]);
+				new = fr_dict_unknown_afrom_fields(ctx, parent, 0, data[0]);
 			} else {
 				/*
 				 *	Try to find the VSA.
@@ -1143,15 +1129,16 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 
 				if (vendor == 0) goto raw;
 
-				new = fr_dict_unknown_afrom_fields(ctx, da, vendor, data[7]);
+				new = fr_dict_unknown_afrom_fields(ctx, parent, vendor, data[7]);
 			}
 			child = new;
 
 			if (!child) {
-				fr_strerror_printf("Internal sanity check %d", __LINE__);
+				fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 				return -1;
 			}
 		}
+		VP_TRACE("Attr context changed %s -> %s", parent->name, child->name);
 
 		/*
 		 *	If there no more fragments, then the contents
@@ -1159,9 +1146,9 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *
 		 */
 		if ((data[1] & 0x80) == 0) {
-			rcode = data2vp(ctx, packet, original, secret, child,
-					data + 2, attrlen - 2, attrlen - 2,
-					pvp);
+			rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, child,
+							    data + 2, attrlen - 2, attrlen - 2,
+							    pvp);
 			if (rcode < 0) goto raw;
 			return 2 + rcode;
 		}
@@ -1169,8 +1156,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		/*
 		 *	This requires a whole lot more work.
 		 */
-		return data2vp_extended(ctx, packet, original, secret, child,
-					start, attrlen, packetlen, pvp);
+		return decode_extended(ctx, packet, original, secret, child,
+				       start, attrlen, packetlen, pvp);
 
 	case PW_TYPE_EVS:
 	{
@@ -1188,7 +1175,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	represented as a subtlv(ish) of an EVS or VSA
 		 *	attribute.
 		 */
-		vendor_child = fr_dict_attr_child_by_num(da, vendor);
+		vendor_child = fr_dict_attr_child_by_num(parent, vendor);
 		if (!vendor_child) {
 			/*
 			 *	If there's no child, it means the vendor is unknown
@@ -1201,7 +1188,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 			 *	This can be used later by the encoder to rebuild
 			 *	the attribute header.
 			 */
-			da = fr_dict_unknown_afrom_fields(ctx, da, vendor, data[4]);
+			parent = fr_dict_unknown_afrom_fields(ctx, parent, vendor, data[4]);
 			data += 5;
 			datalen -= 5;
 			break;
@@ -1214,7 +1201,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 			 *	fr_dict_unknown_afrom_fields will do the right thing
 			 *	and only create the unknown attr.
 			 */
-			da = fr_dict_unknown_afrom_fields(ctx, da, vendor, data[4]);
+			parent = fr_dict_unknown_afrom_fields(ctx, parent, vendor, data[4]);
 			data += 5;
 			datalen -= 5;
 			break;
@@ -1224,8 +1211,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	Everything was found in the dictionary, we can
 		 *	now recurse to decode the value.
 		 */
-		rcode = data2vp(ctx, packet, original, secret, child,
-				data + 5, attrlen - 5, attrlen - 5, pvp);
+		rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, child,
+						    data + 5, attrlen - 5, attrlen - 5, pvp);
 		if (rcode < 0) goto raw;
 		return 5 + rcode;
 	}
@@ -1236,8 +1223,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	attribute, OR they've already been grouped
 		 *	into a contiguous memory buffer.
 		 */
-		rcode = rad_data2vp_tlvs(ctx, packet, original, secret, da,
-					 data, attrlen, pvp);
+		rcode = fr_radius_decode_tlv(ctx, packet, original, secret, parent, data, attrlen, pvp);
 		if (rcode < 0) goto raw;
 		return rcode;
 
@@ -1246,8 +1232,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	VSAs can be WiMAX, in which case they don't
 		 *	fit into one attribute.
 		 */
-		rcode = data2vp_vsas(ctx, packet, original, secret, da,
-				     data, attrlen, packetlen, pvp);
+		rcode = decode_vsa(ctx, packet, original, secret, parent, data, attrlen, packetlen, pvp);
 		if (rcode < 0) goto raw;
 		return rcode;
 
@@ -1258,9 +1243,9 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		 *	therefore of type "octets", and will be
 		 *	handled below.
 		 */
-		da = fr_dict_unknown_afrom_fields(ctx, da->parent, da->vendor, da->attr);
-		if (!da) {
-			fr_strerror_printf("Internal sanity check %d", __LINE__);
+		parent = fr_dict_unknown_afrom_fields(ctx, parent->parent, parent->vendor, parent->attr);
+		if (!parent) {
+			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 			return -1;
 		}
 		tag = TAG_NONE;
@@ -1268,8 +1253,8 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 		/*
 		 *	Fix for Coverity.
 		 */
-		if (da->type != PW_TYPE_OCTETS) {
-			fr_dict_attr_free(&da);
+		if (parent->type != PW_TYPE_OCTETS) {
+			fr_dict_attr_free(&parent);
 			return -1;
 		}
 #endif
@@ -1281,13 +1266,13 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 	 *	information, decode the actual data.
 	 */
  alloc_cui:
-	vp = fr_pair_afrom_da(ctx, da);
+	vp = fr_pair_afrom_da(ctx, parent);
 	if (!vp) return -1;
 
 	vp->vp_length = datalen;
 	vp->tag = tag;
 
-	switch (da->type) {
+	switch (parent->type) {
 	case PW_TYPE_STRING:
 		p = talloc_array(vp, char, vp->vp_length + 1);
 		memcpy(p, data, vp->vp_length);
@@ -1386,7 +1371,7 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 
 	default:
 		fr_pair_list_free(&vp);
-		fr_strerror_printf("Internal sanity check %d", __LINE__);
+		fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 		return -1;
 	}
 	vp->type = VT_DATA;
@@ -1399,34 +1384,35 @@ ssize_t data2vp(TALLOC_CTX *ctx,
 /** Create a "normal" VALUE_PAIR from the given data
  *
  */
-ssize_t rad_attr2vp(TALLOC_CTX *ctx,
-		    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-		    char const *secret,
-		    fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
-		    VALUE_PAIR **pvp)
+ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx,
+			      RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			      char const *secret,
+			      fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
+			      VALUE_PAIR **pvp)
 {
 	ssize_t rcode;
 
 	fr_dict_attr_t const *da;
 
 	if ((length < 2) || (data[1] < 2) || (data[1] > length)) {
-		fr_strerror_printf("rad_attr2vp: Insufficient data");
+		fr_strerror_printf("%s: Insufficient data", __FUNCTION__);
 		return -1;
 	}
 
 	da = fr_dict_attr_child_by_num(parent, data[0]);
 	if (!da) {
-		VP_TRACE("attr2vp: unknown attribute %u\n", data[0]);
+		VP_TRACE("Unknown attribute %u", data[0]);
 		da = fr_dict_unknown_afrom_fields(ctx, parent, 0, data[0]);
 	}
 	if (!da) return -1;
+	VP_TRACE("Attr context changed %s -> %s",da->parent->name, da->name);
 
 	/*
 	 *	Pass the entire thing to the decoding function
 	 */
 	if (da->flags.concat) {
-		VP_TRACE("attr2vp: concat attribute\n");
-		return data2vp_concat(ctx, da, data, length, pvp);
+		VP_TRACE("Concat attribute", __FUNCTION__);
+		return decode_concat(ctx, da, data, length, pvp);
 	}
 
 	/*
@@ -1435,8 +1421,8 @@ ssize_t rad_attr2vp(TALLOC_CTX *ctx,
 	 *	attributes may have the "continuation" bit set, and
 	 *	will thus be more than one attribute in length.
 	 */
-	rcode = data2vp(ctx, packet, original, secret, da,
-			data + 2, data[1] - 2, length - 2, pvp);
+	rcode = fr_radius_decode_pair_value(ctx, packet, original, secret, da,
+					    data + 2, data[1] - 2, length - 2, pvp);
 	if (rcode < 0) return rcode;
 
 	return 2 + rcode;

@@ -215,9 +215,9 @@ static VALUE_PAIR *fr_pair_from_unknown(VALUE_PAIR *vp, fr_dict_attr_t const *da
 	ssize_t len;
 	VALUE_PAIR *vp2;
 
-	len = data2vp(NULL, NULL, NULL, NULL, da,
-		      vp->vp_octets, vp->vp_length, vp->vp_length,
-		      &vp2);
+	len = fr_radius_decode_pair_value(NULL, NULL, NULL, NULL, da,
+					  vp->vp_octets, vp->vp_length, vp->vp_length,
+					  &vp2);
 	if (len < 0) return vp; /* it's really unknown */
 
 	if (vp2->da->flags.is_unknown) {
@@ -500,7 +500,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		/*
 		 *	It's badly formatted, then we fail.
 		 */
-		if (rad_tlv_ok(vp->vp_octets, vp->vp_length, 1, 1) < 0) {
+		if (fr_radius_decode_tlv_ok(vp->vp_octets, vp->vp_length, 1, 1) < 0) {
 			talloc_free(vp);
 			return NULL;
 		}
@@ -508,8 +508,8 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		/*
 		 *	Decode the TLVs
 		 */
-		len = rad_data2vp_tlvs(ctx, NULL, NULL, NULL, vp->da, vp->vp_octets,
-				       vp->vp_length, tail);
+		len = fr_radius_decode_tlv(ctx, NULL, NULL, NULL, vp->da, vp->vp_octets,
+					   vp->vp_length, tail);
 		if (len < 0) goto do_add;
 
 		talloc_free(vp);
@@ -2473,6 +2473,8 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		fr_assert(0);
 		fr_exit_now(1);
 	}
+
+	fr_dict_verify(file, line, vp->da);
 
 	if (vp->data.ptr) switch (vp->da->type) {
 	case PW_TYPE_OCTETS:

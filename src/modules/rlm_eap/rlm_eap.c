@@ -577,7 +577,8 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	i = 34;
 	p = talloc_memdup(vp, vp->vp_strvalue, vp->vp_length + 1);
 	talloc_set_type(p, uint8_t);
-	len = rad_tunnel_pwdecode((uint8_t *)p + 17, &i, request->home_server->secret, request->proxy->vector);
+	len = fr_radius_decode_tunnel_password((uint8_t *)p + 17, &i, request->home_server->secret,
+					       request->proxy->vector);
 
 	/*
 	 *	FIXME: Assert that i == 16.

@@ -487,6 +487,7 @@ do { \
 #define FR_DICT_VENDOR_MAX_NAME_LEN (128)
 #define FR_DICT_ATTR_MAX_NAME_LEN (128)
 #define MAX_TLV_NEST (4)
+#define MAX_TLV_STACK MAX_TLV_NEST + 5
 #define FR_DICT_ATTR_SIZE sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN
 
 extern const int fr_dict_attr_allowed_chars[256];
@@ -584,30 +585,31 @@ int		fr_radius_encode_pair(uint8_t *out, size_t outlen,
 /*
  *	radius_decode.c
  */
-int		rad_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, size_t dv_length);
+int		fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type, size_t dv_length);
 
-int		rad_pwdecode(char *encpw, size_t len, char const *secret, uint8_t const *vector);
+int		fr_radius_decode_password(char *encpw, size_t len, char const *secret, uint8_t const *vector);
 
-int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len, char const *secret, uint8_t const *vector);
+int		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *secret,
+						    uint8_t const *vector);
 
-ssize_t		data2vp(TALLOC_CTX *ctx,
-			RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			char const *secret,
-			fr_dict_attr_t const *da, uint8_t const *start,
-			size_t const attrlen, size_t const packetlen,
-			VALUE_PAIR **pvp);
+ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx,
+						   RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+						   char const *secret,
+						   fr_dict_attr_t const *parent, uint8_t const *start,
+						   size_t const attrlen, size_t const packetlen,
+						   VALUE_PAIR **pvp);
 
-ssize_t		rad_attr2vp(TALLOC_CTX *ctx,
-			    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			    char const *secret,
-			    fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
-			    VALUE_PAIR **pvp);
+ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx,
+					     RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+					     char const *secret,
+					     fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
+					     VALUE_PAIR **pvp);
 
-ssize_t		rad_data2vp_tlvs(TALLOC_CTX *ctx,
-			 RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-			 char const *secret, fr_dict_attr_t const *da,
-			 uint8_t const *start, size_t length,
-			 VALUE_PAIR **pvp);
+ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx,
+					    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+					    char const *secret, fr_dict_attr_t const *parent,
+					    uint8_t const *start, size_t length,
+					    VALUE_PAIR **pvp);
 
 
 /*

@@ -215,9 +215,9 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 		if (!da) return 0;
 
 		vp = NULL;
-		len = data2vp(request->packet, request->packet, NULL, NULL, da, p,
-			      header_names[i].len, header_names[i].len,
-			      &vp);
+		len = fr_radius_decode_pair_value(request->packet, request->packet, NULL, NULL, da, p,
+						  header_names[i].len, header_names[i].len,
+						  &vp);
 		if (len <= 0) {
 			RDEBUG("Failed decoding %s: %s",
 			       header_names[i].name, fr_strerror());

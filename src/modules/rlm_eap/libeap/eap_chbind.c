@@ -185,8 +185,8 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 		rad_assert(data_len <= talloc_array_length(chbind->request));
 
 		while (data_len > 0) {
-			int attr_len = rad_attr2vp(fake->packet, NULL, NULL, NULL, fr_dict_root(fr_main_dict),
-						   attr_data, data_len, &vp);
+			int attr_len = fr_radius_decode_pair(fake->packet, NULL, NULL, NULL, fr_dict_root(fr_main_dict),
+							     attr_data, data_len, &vp);
 			if (attr_len <= 0) {
 				/* If radaddr2vp fails, return NULL string for
 				   channel binding response */
