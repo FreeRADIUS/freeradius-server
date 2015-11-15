@@ -55,7 +55,7 @@ void fr_proto_print_hex_data(char const *file, int line, char const *msg, uint8_
 	len = snprintf(prefix, sizeof(prefix), "%s:%i", file, line);
 	if (len > proto_log_indent) proto_log_indent = len;
 
-	fprintf(fr_log_fp, "hex: %s%.*s: -- %s --\n", prefix, (int)(proto_log_indent - len), spaces, msg);
+	if (msg) fprintf(fr_log_fp, "hex: %s%.*s: -- %s --\n", prefix, (int)(proto_log_indent - len), spaces, msg);
 	for (i = 0; i < data_len; i++) {
 		if ((i & 0x0f) == 0) fprintf(fr_log_fp, "hex: %s%.*s: %04x: ", prefix,
 					     (int)(proto_log_indent - len), spaces, (unsigned int) i);
@@ -63,7 +63,6 @@ void fr_proto_print_hex_data(char const *file, int line, char const *msg, uint8_
 		if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 	}
 	if ((data_len == 0x0f) || ((data_len & 0x0f) != 0x0f)) fprintf(fr_log_fp, "\n");
-	fprintf(fr_log_fp, "\n");
 	fflush(fr_log_fp);
 }
 
