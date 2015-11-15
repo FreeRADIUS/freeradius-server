@@ -812,7 +812,7 @@ static void process_file(const char *root_dir, char const *filename)
 			vp = head;
 
 			while ((vp = fr_cursor_current(&cursor))) {
-				len = fr_dhcp_encode_option(NULL, attr, data + sizeof(data) - attr, &cursor);
+				len = fr_dhcp_encode_option(attr, data + sizeof(data) - attr, &cursor);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
 						vp->da->name, fr_strerror());

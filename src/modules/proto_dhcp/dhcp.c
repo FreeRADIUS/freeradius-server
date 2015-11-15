@@ -1320,7 +1320,6 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
 	 *	Relay-Agent is last
 	 */
 	if ((my_a->da->attr == PW_DHCP_OPTION_82) && (my_b->da->attr != PW_DHCP_OPTION_82)) return 1;
-
 	if (my_a->da->attr < my_b->da->attr) return -1;
 	if (my_a->da->attr > my_b->da->attr) return 1;
 
@@ -1331,149 +1330,210 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
  *
  * Does not include DHCP option length or number.
  *
- * @param out where to write the DHCP option.
- * @param outlen length of output buffer.
- * @param vp option to encode.
+ * @param[in,out] out buffer to write the option to.
+ * @param[out] outlen length of the output buffer.
+ * @param[in] tlv_stack	Describing nesting of options.
+ * @param[in,out] cursor Current attribute we're encoding.
  * @return
  *	- The length of data writen.
  *	- -1 if out of buffer.
  *	- -2 if unsupported type.
  */
-static ssize_t dhcp_encode_value(uint8_t *out, size_t outlen, VALUE_PAIR *vp)
+static ssize_t encode_value(uint8_t *out, size_t outlen,
+			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			    vp_cursor_t *cursor)
 {
 	uint32_t lvalue;
+
+	VALUE_PAIR *vp = fr_cursor_current(cursor);
 	uint8_t *p = out;
 
-	if (outlen < vp->vp_length) {
-		return -1;
-	}
+	FR_PROTO_STACK_PRINT(tlv_stack, depth);
+	if (outlen < vp->vp_length) return -1;
 
-	switch (vp->da->type) {
+	switch (tlv_stack[depth]->type) {
 	case PW_TYPE_BYTE:
-		*p = vp->vp_byte;
+		p[0] = vp->vp_byte;
+		p ++;
 		break;
 
 	case PW_TYPE_SHORT:
 		p[0] = (vp->vp_short >> 8) & 0xff;
 		p[1] = vp->vp_short & 0xff;
+		p += 2;
 		break;
 
 	case PW_TYPE_INTEGER:
 		lvalue = htonl(vp->vp_integer);
 		memcpy(p, &lvalue, 4);
+		p += 4;
 		break;
 
 	case PW_TYPE_IPV4_ADDR:
 		memcpy(p, &vp->vp_ipaddr, 4);
+		p += 4;
 		break;
 
 	case PW_TYPE_ETHERNET:
 		memcpy(p, vp->vp_ether, 6);
+		p += 6;
 		break;
 
 	case PW_TYPE_STRING:
 		memcpy(p, vp->vp_strvalue, vp->vp_length);
+		p += vp->vp_length;
 		break;
 
 	case PW_TYPE_OCTETS:
 		memcpy(p, vp->vp_octets, vp->vp_length);
+		p += vp->vp_length;
 		break;
 
 	default:
 		fr_strerror_printf("Unsupported option type %d", vp->da->type);
+		vp = fr_cursor_next(cursor);
 		return -2;
 	}
+	vp = fr_cursor_next(cursor);	/* We encoded a leaf, advance the cursor */
+	fr_proto_tlv_stack_build(tlv_stack, vp ? vp->da : NULL);
 
-	return vp->vp_length;
+	FR_PROTO_STACK_PRINT(tlv_stack, depth);
+	FR_PROTO_HEX_DUMP("Value", out, (p - out));
+
+	return p - out;
 }
 
-/** Create a new TLV attribute from multiple sub options
+/** Write out an RFC option header and option data
  *
- * @param[in,out] out buffer to write the data
- * @param[out] outlen length of the output buffer
- * @param[in,out] cursor should be set to the start of the list of TLV attributes.
- *   Will be advanced to the first non-TLV attribute.
- * @return length of data encoded, or -1 on error
+ * @note May coalesce options with fixed width values
+ *
+ * @param[in,out] out buffer to write the TLV to.
+ * @param[out] outlen length of the output buffer.
+ * @param[in] tlv_stack	Describing nesting of options.
+ * @param[in,out] cursor Current attribute we're encoding.
+ * @return
+ *	- >0 length of data encoded.
+ *	- 0 if we ran out of space.
+ *	- < 0 on error.
  */
-static ssize_t dhcp_encode_tlv(uint8_t *out, ssize_t outlen, vp_cursor_t *cursor)
+static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
+			      fr_dict_attr_t const **tlv_stack, unsigned int depth, vp_cursor_t *cursor)
 {
-	ssize_t len;
-	unsigned int parent; 	/* Parent attribute of suboption */
-	uint8_t attr = 0;
-	uint8_t *p, *opt_len;
-	vp_cursor_t tlv_cursor;
-	VALUE_PAIR *vp;
+	ssize_t			len;
+	uint8_t			*p = out;
+	fr_dict_attr_t const	*da = tlv_stack[depth];
+	VALUE_PAIR		*vp = fr_cursor_current(cursor);
 
-#define SUBOPTION_PARENT(_x) (_x & 0xffff00ff)
-#define SUBOPTION_ATTR(_x) ((_x & 0xff00) >> 8)
+	if (outlen < 3) return 0;	/* No space */
 
-	vp = fr_cursor_current(cursor);
-	if (!vp) return -1;
-
-	parent = SUBOPTION_PARENT(vp->da->attr);
+	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	/*
-	 *	Remember where we started off.
+	 *	Write out the option number
 	 */
-	fr_cursor_copy(&tlv_cursor, cursor);
+	out[0] = da->attr & 0xff;
+	out[1] = 0;	/* Length of the value only (unlike RADIUS) */
+
+	outlen -= 2;
+	p += 2;
 
 	/*
-	 *	Loop over TLVs to determine how much memory we need to allocate
+	 *	DHCP options with the same number (and array flag set)
+	 *	get coalesced into a single option.
 	 *
-	 *	We advanced the tlv_cursor we were passed, so if we
-	 *	fail encoding, the tlv_cursor is at the right position
-	 *	for the next potentially encodable attr.
+	 *	Note: This only works with fixed length attributes,
+	 *	because there's no separate length fields.
 	 */
-	len = 0;
-	for (vp = fr_cursor_current(&tlv_cursor);
-	     vp && vp->da->flags.is_tlv && (SUBOPTION_PARENT(vp->da->attr) == parent);
-	     vp = fr_cursor_next(&tlv_cursor)) {
-		if (SUBOPTION_ATTR(vp->da->attr) == 0) {
-			fr_strerror_printf("Invalid attribute number 0");
-			return -1;
+	do {
+		VALUE_PAIR *next;
+
+		len = encode_value(p, outlen, tlv_stack, depth, cursor);
+
+		if (len < 0) return len;
+		if ((out[1] + len) >= UINT8_MAX) break; /* Packed as much as we can */
+
+		p += len;
+		out[1] += len;
+		outlen -= len;
+
+		FR_PROTO_STACK_PRINT(tlv_stack, depth);
+		FR_PROTO_HEX_DUMP("Option header and encoded value(s)", out, (p - out));
+
+		next = fr_cursor_current(cursor);
+		if (!next || (vp != next)) break;
+		vp = next;
+	} while (vp->da->flags.array);
+
+	return p - out;
+}
+
+/** Write out a TLV header (and any sub TLVs or values)
+ *
+ * @param[in,out] out buffer to write the TLV to.
+ * @param[out] outlen length of the output buffer.
+ * @param[in] tlv_stack Describing nesting of options.
+ * @param[in,out] cursor Current attribute we're encoding.
+ * @return
+ *	- >0 length of data encoded.
+ *	- 0 if we ran out of space.
+ *	- < 0 on error.
+ */
+static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
+			      fr_dict_attr_t const **tlv_stack, unsigned int depth, vp_cursor_t *cursor)
+{
+	ssize_t			len;
+	uint8_t			*p = out;
+	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
+	fr_dict_attr_t const	*da = tlv_stack[depth];
+
+	if (outlen < 5) return 0;	/* No space */
+
+	FR_PROTO_STACK_PRINT(tlv_stack, depth);
+
+	/*
+	 *	Write out the option number
+	 */
+	out[0] = da->attr & 0xff;
+	out[1] = 0;	/* Length of the value only (unlike RADIUS) */
+
+	outlen -= 2;
+	p += 2;
+
+	/*
+	 *	Encode any sub TLVs or values
+	 */
+	while (outlen >= 3) {
+		/*
+		 *	Determine the nested type and call the appropriate encoder
+		 */
+		if (tlv_stack[depth + 1]->type == PW_TYPE_TLV) {
+			len = encode_tlv_hdr(p, outlen, tlv_stack, depth + 1, cursor);
+		} else {
+			len = encode_rfc_hdr(p, outlen, tlv_stack, depth + 1, cursor);
 		}
+		if (len < 0) return len;
+		if (len == 0) return out[1];		/* Insufficient space */
+
+		p += len;
+		out[1] += len;
+		outlen -= len;				/* Subtract from the buffer we have available */
+
+		FR_PROTO_STACK_PRINT(tlv_stack, depth);
+		FR_PROTO_HEX_DUMP("TLV header and sub TLVs", out, (p - out));
 
 		/*
-		 *	If it's not an array type or is an array type,
-		 *	but is not the same as the previous attribute,
-		 *	we add 2 for the additional sub-option header
-		 *	bytes.
+		 *	If nothing updated the attribute, stop
 		 */
-		if (!vp->da->flags.array || (SUBOPTION_ATTR(vp->da->attr) != attr)) {
-			attr = SUBOPTION_ATTR(vp->da->attr);
-			len += 2;
-		}
-		len += vp->vp_length;
+		if (!fr_cursor_current(cursor) || (vp == fr_cursor_current(cursor))) break;
+
+		/*
+	 	 *	We can encode multiple sub TLVs, if after
+	 	 *	rebuilding the TLV Stack, the attribute
+	 	 *	at this depth is the same.
+	 	 */
+		if (da != tlv_stack[depth]) break;
+		vp = fr_cursor_current(cursor);
 	}
-
-	if (len > outlen) {
-		fr_strerror_printf("Insufficient room for suboption");
-		return -1;
-	}
-
-	attr = 0;
-	opt_len = NULL;
-	p = out;
-
-	for (vp = fr_cursor_current(cursor);
-	     vp && vp->da->flags.is_tlv && (SUBOPTION_PARENT(vp->da->attr) == parent);
-	     vp = fr_cursor_next(cursor)) {
-		/* Don't write out the header, were packing array options */
-		if (!opt_len || !vp->da->flags.array || (attr != SUBOPTION_ATTR(vp->da->attr))) {
-			attr = SUBOPTION_ATTR(vp->da->attr);
-			*p++ = attr;
-			opt_len = p++;
-			*opt_len = 0;
-		}
-
-		len = dhcp_encode_value(p, out + outlen - p, vp);
-		if ((len < 0) || (len > 255)) {
-			return -1;
-		}
-
-		*opt_len += len;
-		p += len;
-	};
 
 	return p - out;
 }
@@ -1482,20 +1542,17 @@ static ssize_t dhcp_encode_tlv(uint8_t *out, ssize_t outlen, vp_cursor_t *cursor
  *
  * @param out Where to write encoded DHCP attributes.
  * @param outlen Length of out buffer.
- * @param ctx to use for any allocated memory.
  * @param cursor with current VP set to the option to be encoded. Will be advanced to the next option to encode.
  * @return
  *	- > 0 length of data written.
  *	- < 0 error.
  *	- 0 not valid option (skipping).
  */
-ssize_t fr_dhcp_encode_option(UNUSED TALLOC_CTX *ctx, uint8_t *out, size_t outlen, vp_cursor_t *cursor)
+ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor)
 {
-	VALUE_PAIR *vp;
-	fr_dict_attr_t const *previous;
-	uint8_t *opt_len, *p = out;
-	size_t freespace = outlen;
-	ssize_t len;
+	VALUE_PAIR		*vp;
+	unsigned int		depth = 0;
+	fr_dict_attr_t const	*tlv_stack[MAX_TLV_STACK + 1];
 
 	vp = fr_cursor_current(cursor);
 	if (!vp) return -1;
@@ -1511,49 +1568,27 @@ ssize_t fr_dhcp_encode_option(UNUSED TALLOC_CTX *ctx, uint8_t *out, size_t outle
 		return 0;
 	}
 
-	/* Write out the option number */
-	*(p++) = vp->da->attr & 0xff;
+	fr_proto_tlv_stack_build(tlv_stack, vp->da);
 
-	/* Pointer to the length field of the option */
-	opt_len = p++;
+	/*
+	 *	Because of the stupid DHCP vendor hack we use,
+	 *	we've got to jump a few places up in the stack
+	 *	before starting.  Once we have protocol dictionaries
+	 *	this must be removed.
+	 */
+	depth += 2;
+	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	/* Zero out the option's length field */
-	*opt_len = 0;
+	/*
+	 *	We only have two types of options in DHCPv4
+	 */
+	switch (tlv_stack[depth]->type) {
+	case PW_TYPE_TLV:
+		return encode_tlv_hdr(out, outlen, tlv_stack, depth, cursor);
 
-	/* We just consumed two bytes for the header */
-	freespace -= 2;
-
-	/* DHCP options with the same number get coalesced into a single option */
-	do {
-		/*
-		 *	Sub-option encoder will encode the data and
-		 *	advance the cursor.
-		 */
-		if (vp->da->flags.is_tlv) {
-			len = dhcp_encode_tlv(p, freespace, cursor);
-			previous = NULL;
-
-		} else {
-			len = dhcp_encode_value(p, freespace, vp);
-			fr_cursor_next(cursor);
-			previous = vp->da;
-		}
-
-		if (len < 0) return len;
-
-		if ((*opt_len + len) > 255) {
-			fr_strerror_printf("Skipping \"%s\": Option splitting not supported "
-					   "(option > 255 bytes)", vp->da->name);
-			return 0;
-		}
-
-		p += len;
-		*opt_len += len;
-		freespace -= len;
-
-	} while ((vp = fr_cursor_current(cursor)) && previous && (previous == vp->da) && vp->da->flags.array);
-
-	return p - out;
+	default:
+		return encode_rfc_hdr(out, outlen, tlv_stack, depth, cursor);
+	}
 }
 
 int fr_dhcp_encode(RADIUS_PACKET *packet)
@@ -1754,7 +1789,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 *  and sub options.
 	 */
 	while ((vp = fr_cursor_current(&cursor))) {
-		len = fr_dhcp_encode_option(packet, p, packet->data_len - (p - packet->data), &cursor);
+		len = fr_dhcp_encode_option(p, packet->data_len - (p - packet->data), &cursor);
 		if (len < 0) break;
 		p += len;
 	};

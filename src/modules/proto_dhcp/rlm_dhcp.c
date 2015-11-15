@@ -122,7 +122,7 @@ static ssize_t dhcp_xlat(char **out, size_t outlen,
 	if ((radius_copy_vp(request, &vp, request, fmt) < 0) || !vp) return 0;
 	fr_cursor_init(&cursor, &vp);
 
-	len = fr_dhcp_encode_option(request, binbuf, sizeof(binbuf), &cursor);
+	len = fr_dhcp_encode_option(binbuf, sizeof(binbuf), &cursor);
 	talloc_free(vp);
 	if (len <= 0) {
 		REDEBUG("DHCP option encoding failed: %s", fr_strerror());
