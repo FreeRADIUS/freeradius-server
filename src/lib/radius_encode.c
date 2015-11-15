@@ -735,7 +735,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (len == 0) {
 		*pvp = vp->next;
-		fr_proto_build_tlv_stack(tlv_stack, pvp);
+		fr_proto_tlv_stack_build(tlv_stack, *pvp ? (*pvp)->da : NULL);
 		return 0;
 	}
 
@@ -822,7 +822,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	Rebuilds the TLV stack for encoding the next attribute
 	 */
 	*pvp = (*pvp)->next;
-	fr_proto_build_tlv_stack(tlv_stack, pvp);
+	fr_proto_tlv_stack_build(tlv_stack, *pvp ? (*pvp)->da : NULL);
 
 	return len + (ptr - out);
 }
@@ -1052,7 +1052,7 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 	}
 
 	*pvp = vp->next;
-	fr_proto_build_tlv_stack(tlv_stack, pvp);
+	fr_proto_tlv_stack_build(tlv_stack, *pvp ? (*pvp)->da : NULL);
 
 	return ptr - out;
 }
@@ -1446,7 +1446,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen,
 		out[1] = 2;
 
 		*pvp = vp->next;
-		fr_proto_build_tlv_stack(tlv_stack, pvp);
+		fr_proto_tlv_stack_build(tlv_stack, *pvp ? (*pvp)->da : NULL);
 		return 2;
 	}
 
@@ -1465,7 +1465,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen,
 		}
 #endif
 		*pvp = (*pvp)->next;
-		fr_proto_build_tlv_stack(tlv_stack, pvp);
+		fr_proto_tlv_stack_build(tlv_stack, *pvp ? (*pvp)->da : NULL);
 		return 18;
 	}
 

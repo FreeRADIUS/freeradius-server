@@ -41,5 +41,5 @@ void fr_proto_print_hex_data(char const *file, int line, char const *msg, uint8_
 
 void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_dict_attr_t const **tlv_stack, unsigned int depth);
 
-void fr_proto_build_tlv_stack(fr_dict_attr_t const **tlv_stack, VALUE_PAIR const **pvp);
+void fr_proto_tlv_stack_build(fr_dict_attr_t const **tlv_stack, fr_dict_attr_t const *da);
 #endif /* _PROTO_H */

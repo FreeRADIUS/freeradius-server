@@ -92,21 +92,21 @@ void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_d
 	fflush(fr_log_fp);
 }
 
-void fr_proto_build_tlv_stack(fr_dict_attr_t const **tlv_stack, VALUE_PAIR const **pvp)
+void fr_proto_tlv_stack_build(fr_dict_attr_t const **tlv_stack, fr_dict_attr_t const *da)
 {
 	int i;
-	fr_dict_attr_t const *da;
+	fr_dict_attr_t const *da_p;
 
 	memset(tlv_stack, 0, sizeof(*tlv_stack) * (MAX_TLV_STACK + 1));
 
-	if (!*pvp) return;
+	if (!da) return;
 
 	/*
 	 *	We've finished encoding one nested structure
 	 *	now we need to rebuild the tlv_stack and determine
 	 *	where the common point is.
 	 */
-	for (i = (*pvp)->da->depth, da = (*pvp)->da;
-	     da->parent && (i >= 0);
-	     i--, da = da->parent) tlv_stack[i - 1] = da;
+	for (i = da->depth, da_p = da;
+	     da_p->parent && (i >= 0);
+	     i--, da_p = da_p->parent) tlv_stack[i - 1] = da_p;
 }
