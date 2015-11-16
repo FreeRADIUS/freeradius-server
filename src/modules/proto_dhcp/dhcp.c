@@ -1535,6 +1535,11 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 	p += 2;
 
 	/*
+	 *	Check here so we get the full 255 bytes
+	 */
+	if (outlen > UINT8_MAX) outlen = UINT8_MAX;
+
+	/*
 	 *	Encode any sub TLVs or values
 	 */
 	while (outlen >= 3) {
@@ -1542,16 +1547,15 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (tlv_stack[depth + 1]->type == PW_TYPE_TLV) {
-			len = encode_tlv_hdr(p, outlen, tlv_stack, depth + 1, cursor);
+			len = encode_tlv_hdr(p, outlen - out[1], tlv_stack, depth + 1, cursor);
 		} else {
-			len = encode_rfc_hdr(p, outlen, tlv_stack, depth + 1, cursor);
+			len = encode_rfc_hdr(p, outlen - out[1], tlv_stack, depth + 1, cursor);
 		}
 		if (len < 0) return len;
-		if (len == 0) return out[1];		/* Insufficient space */
+		if (len == 0) break;		/* Insufficient space */
 
 		p += len;
 		out[1] += len;
-		outlen -= len;				/* Subtract from the buffer we have available */
 
 		FR_PROTO_STACK_PRINT(tlv_stack, depth);
 		FR_PROTO_HEX_DUMP("TLV header and sub TLVs", out, (p - out));
