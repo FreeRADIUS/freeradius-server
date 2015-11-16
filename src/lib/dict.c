@@ -1652,7 +1652,7 @@ static int sscanf_i(char const *str, unsigned int *pvalue)
 static int process_attribute(fr_dict_attr_t const *parent, char const *fn, int const line,
 			     unsigned int block_vendor, char **argv, int argc)
 {
-	int			oid = 0;
+	bool			oid = false;
 
 	unsigned int		vendor = 0;
 	unsigned int		attr;
@@ -1695,6 +1695,7 @@ static int process_attribute(fr_dict_attr_t const *parent, char const *fn, int c
 	} else {
 		ssize_t slen;
 
+		oid = true;
 		vendor = block_vendor;
 
 		slen = fr_dict_str_to_oid(&vendor, &attr, &parent, argv[1]);
