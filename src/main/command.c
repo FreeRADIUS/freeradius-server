@@ -406,8 +406,8 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		talloc_free(dir);
 		close(dir_fd);
 		close(path_fd);
-		close(sock_fd);
-		close(parent_fd);
+		if (sock_fd >= 0) close(sock_fd);
+		if (sock_fd >= 0) close(parent_fd);
 		return -1;
 	}
 
@@ -583,7 +583,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 	sock_error:
 		if (uid != (uid_t)-1) rad_seuid(euid);
 		if (gid != (gid_t)-1) rad_segid(egid);
-		close(sock_fd);
+		if (sock_fd >= 0) close(sock_fd);
 
 		goto error;
 	}
