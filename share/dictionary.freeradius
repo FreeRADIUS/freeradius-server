@@ -17,7 +17,31 @@ BEGIN-VENDOR	FreeRADIUS
 ATTRIBUTE	FreeRADIUS-Proxied-To			1	ipaddr
 ATTRIBUTE	FreeRADIUS-Acct-Session-Start-Time	2	date
 
-#
+# Maps to iso(1).org(3).dod(6).internet(1).mgmt(2).mib-2(1) in the MIB tree
+ATTRIBUTE	FreeRADIUS-Mib-2-Root			3		tlv
+ATTRIBUTE	Radius-Mib				3.67		tlv
+ATTRIBUTE	Radius-Authentication			3.67.1		tlv
+ATTRIBUTE	Radius-Auth-Serv-Mib			3.67.1.1	tlv
+ATTRIBUTE	Radius-Auth-Serv-Mib-Objects		3.67.1.1.1	tlv
+ATTRIBUTE	Radius-Auth-Serv			3.67.1.1.1.1	tlv
+
+BEGIN-TLV	Radius-Auth-Serv
+ATTRIBUTE	Radius-Auth-Server-Ident				1		string
+ATTRIBUTE	Radius-Auth-Server-Up-Time				2		date
+ATTRIBUTE	Radius-Auth-Server-Reset-Time				3		date
+ATTRIBUTE	Radius-Auth-Server-Config-Reset				4		date
+ATTRIBUTE	Radius-Auth-Server-Total-Access-Requests		5		integer
+ATTRIBUTE	Radius-Auth-Server-Total-Invalid-Requests		6		integer
+ATTRIBUTE	Radius-Auth-Server-Total-Dup-Access-Requests		7		integer
+ATTRIBUTE	Radius-Auth-Server-Total-Access-Accepts			8		integer
+ATTRIBUTE	Radius-Auth-Server-Total-Access-Rejects			9		integer
+ATTRIBUTE	Radius-Auth-Server-Total-Access-Challenges		10		integer
+ATTRIBUTE	Radius-Auth-Server-Total-Malformed-Access-Requests	11		integer
+ATTRIBUTE	Radius-Auth-Server-Total-Bad-Authenticators		12		integer
+ATTRIBUTE	Radius-Auth-Server-Total-Packets-Dropped		13		integer
+ATTRIBUTE	Radius-Auth-Server-Total-Unknown-Types			14		integer
+END-TLV		Radius-Auth-Serv	
+
 #  This attribute is really a bitmask.
 #
 ATTRIBUTE	FreeRADIUS-Statistics-Type		127	integer
