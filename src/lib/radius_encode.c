@@ -947,7 +947,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 
 		if (outlen < (size_t) (out[1] + 5)) return 0;
 
-		depth += 2;	/* skip EVS */
+		depth += 2;	/* skip EVS and Vendor */
 
 		out[2] = 26;
 
@@ -1522,6 +1522,11 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 		return -1;
 	}
 
+	/*
+	 *	Ignore attributes which can't go into a RADIUS packet.
+	 */
+	if (!vp->da->vendor && vp->da->attr > 255) return 0;
+
 	fr_proto_tlv_stack_build(tlv_stack, vp->da);
 	FR_PROTO_STACK_PRINT(tlv_stack, 0);
 
@@ -1535,11 +1540,6 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 	da = tlv_stack[0];
 	switch (da->type) {
 	default:
-		/*
-		 *	Ignore non-protocol attributes.
-		 */
-		if (da->attr > 255) return 0;
-
 		if (!da->flags.concat) {
 			ret = encode_rfc_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, pvp);
 
