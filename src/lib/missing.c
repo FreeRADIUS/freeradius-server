@@ -194,16 +194,11 @@ struct tm *gmtime_r(time_t const *l_clock, struct tm *result)
 #ifndef HAVE_VDPRINTF
 int vdprintf (int fd, const char *format, va_list args)
 {
-	int     ret;
-	FILE    *fp;
+	char buf[8192];
+	int len;
 
-	fp = fdopen(fd, "w");
-	if (!fp) return -1;
-
-	ret = vfprintf(fp, format, args);
-	fclose(fp);
-
-	return ret;
+	len = vsnprintf(buf, 8192, format, ap);
+	return write(d, buf, len);
 }
 #endif
 
