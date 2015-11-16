@@ -1052,6 +1052,11 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
 	}
 
 	*pvp = vp->next;
+
+	/*
+	 *	@fixme: attributes with 'concat' MUST of type
+	 *	'octets', and therefore CANNOT have any TLV data in them.
+	 */
 	fr_proto_tlv_stack_build(tlv_stack, *pvp ? (*pvp)->da : NULL);
 
 	return ptr - out;
@@ -1469,19 +1474,12 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen,
 		return 18;
 	}
 
-	/*
-	 *	EAP-Message is special.
-	 */
-	if (vp->da->flags.concat && (vp->vp_length > 253)) {
-		return encode_concat(out, outlen, packet, original, secret, tlv_stack, depth, pvp);
-	}
-
 	return encode_rfc_hdr_internal(out, outlen, packet, original, secret, tlv_stack, depth, pvp);
 }
 
-/** Parse a data structure into a RADIUS attribute
+/** Encode a data structure into a RADIUS attribute
  *
- * This is the main entry point into the decoder.  It sets up the encoder array
+ * This is the main entry point into the encoder.  It sets up the encoder array
  * we use for tracking our TLV/VSA/EVS nesting and then calls the appropriate
  * dispatch function.
  */
@@ -1492,6 +1490,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 	VALUE_PAIR const *vp;
 	int i;
 	int ret;
+	size_t attr_len;
 
 	fr_dict_attr_t const *tlv_stack[MAX_TLV_STACK + 1];
 	fr_dict_attr_t const *da = NULL;
@@ -1535,33 +1534,64 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 	if (!fr_assert((i >= 0) && tlv_stack[0])) return -1;
 	FR_PROTO_STACK_PRINT(tlv_stack, 0);
 
+	/*
+	 *	Nested structures of attributes can't be longer than
+	 *	255 bytes, so each call to an encode function can
+	 *	only use 255 bytes of buffer space at a time.
+	 */
+	attr_len = (outlen > UINT8_MAX) ? UINT8_MAX : outlen;
+
 	da = tlv_stack[0];
 	switch (da->type) {
 	default:
+		/*
+		 *	Ignore non-protocol attributes.
+		 */
 		if (da->attr > 255) return 0;
-		ret = encode_rfc_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
+
+		if (!da->flags.concat) {
+			ret = encode_rfc_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, pvp);
+
+		} else {
+			/*
+			 *	Attributes like EAP-Message are marked as
+			 *	"concat", which means that they are fragmented
+			 *	using a different scheme than the "long
+			 *	extended" one.
+			 */
+			ret = encode_concat(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
+		}
 		break;
 
 	case PW_TYPE_VSA:
-		if ((*pvp)->da->flags.wimax) return encode_wimax_hdr(out, outlen, packet,
-								     original, secret, tlv_stack, 0, pvp);
-		ret = encode_vsa_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
+		if (!(*pvp)->da->flags.wimax) {
+			ret = encode_vsa_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, pvp);
+
+		} else {			 
+			/*
+			 *	WiMAX has a non-standard format for
+			 *	its VSAs.  And, it can do "long"
+			 *	attributes by fragmenting them inside
+			 *	of the WiMAX VSA space.
+			 */
+			ret = encode_wimax_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
+		}
 		break;
 
 	case PW_TYPE_TLV:
-	{
-		/*
-		 *	Nested structures of attributes can't be longer than
-		 *	255 bytes, so each call to an encode function can
-		 *	only use 255 bytes of buffer space at a time.
-		 */
-		size_t attr_len = (outlen > UINT8_MAX) ? UINT8_MAX : outlen;
 		ret = encode_tlv_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, pvp);
-	}
 		break;
 
 	case PW_TYPE_EXTENDED:
+		ret = encode_extended_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, pvp);
+		break;
+
 	case PW_TYPE_LONG_EXTENDED:
+		/*
+		 *	These attributes can be longer than 253
+		 *	octets.  We therfore fragment the data across
+		 *	multiple attributes.
+		 */
 		ret = encode_extended_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
 		break;
 
@@ -1573,12 +1603,13 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 	if (ret < 0) return ret;
 
 	/*
-	 *
+	 *	We couldn't do it, so we didn't do anything.
 	 */
 	if (*pvp == vp) {
 		fr_strerror_printf("%s: Nested attribute structure too large to encode", __FUNCTION__);
 		return -1;
 	}
+
 	return ret;
 }
 
