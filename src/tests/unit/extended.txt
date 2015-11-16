@@ -115,6 +115,12 @@ decode -
 data Unit-Integer = 6809
 
 #
+#  Encoded as two different top-level attributes.
+#
+encode Unit-Integer = 6809, Unit-Integer = 2112
+data f1 07 f1 00 00 1a 99 f1 07 f1 00 00 08 40
+
+#
 #  EVS data types
 #
 encode Unit-EVS-Integer = 6809
@@ -122,3 +128,11 @@ data f1 0c 1a 00 00 2c 50 01 00 00 1a 99
 
 decode -
 data Unit-EVS-Integer = 6809
+
+#
+#  This is ambiguous, so we do something.  Anything...
+#  When we have nested VALUE_PAIRs, we can just follow
+#  that format instead of guessing.
+#
+encode Unit-TLV-Integer = 1, Unit-TLV-Integer = 2
+data f1 11 01 f3 0e 01 06 00 00 00 01 01 06 00 00 00 02
