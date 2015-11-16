@@ -356,7 +356,7 @@ static int dict_stat_check(char const *dir, char const *file)
 	/*
 	 *	Nothing cached, all files are new.
 	 */
-	if (!fr_main_dict->stat_head) return 0;
+	if (!fr_main_dict || !fr_main_dict->stat_head) return 0;
 
 	/*
 	 *	Stat the file.
