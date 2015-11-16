@@ -196,12 +196,19 @@ int vdprintf (int fd, const char *format, va_list args)
 {
 	int     ret;
 	FILE    *fp;
+	int	dup_fd;
+
+	dup_fd = dup(fd);
+	if (dup_fd < 0) return -1;
 
 	fp = fdopen(fd, "w");
-	if (!fp) return -1;
+	if (!fp) {
+		close(dup_fd);
+		return -1;
+	}
 
 	ret = vfprintf(fp, format, args);
-	fclose(fp);
+	fclose(fp);	/* Also closes dup_fd */
 
 	return ret;
 }
