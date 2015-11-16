@@ -3054,6 +3054,7 @@ fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
 	da = (fr_dict_attr_t *)p;
 	talloc_set_type(da, fr_dict_attr_t);
 
+	rad_assert(parent); /* coverity */
 	if (fr_dict_unknown_from_fields(da, parent, vendor, attr) < 0) {
 		talloc_free(p);
 		fr_dict_attr_free(&new_parent);
