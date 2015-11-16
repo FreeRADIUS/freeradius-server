@@ -659,8 +659,8 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
 		}
 
 		if (child_is_struct && !bin_is_struct) break;
-		else if (child->vendor < (*bin)->vendor) break;	/* Prioritise RFC attributes */
-		else if (child->attr < (*bin)->attr) break;
+		else if (child->vendor <= (*bin)->vendor) break;	/* Prioritise RFC attributes */
+		else if (child->attr <= (*bin)->attr) break;
 
 		bin = &(*bin)->next;
 	}
