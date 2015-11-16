@@ -1339,6 +1339,7 @@ int8_t fr_dhcp_attr_cmp(void const *a, void const *b)
  * @param[in,out] out buffer to write the option to.
  * @param[out] outlen length of the output buffer.
  * @param[in] tlv_stack	Describing nesting of options.
+ * @param[in] depth in tlv_stack.
  * @param[in,out] cursor Current attribute we're encoding.
  * @return
  *	- The length of data writen.

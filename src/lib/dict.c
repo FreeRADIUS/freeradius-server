@@ -796,7 +796,7 @@ static int fr_dict_oid_component(unsigned int *out, char const **oid)
 
 	num = strtoul(p, &q, 10);
 	if (p == q) {
-		fr_strerror_printf("Invalid OID component %i", num);
+		fr_strerror_printf("Invalid OID component %lu", num);
 		return -1;
 	}
 
@@ -1007,7 +1007,7 @@ int fr_dict_vendor_add(char const *name, unsigned int num)
  * @param parent to add attribute under.
  * @param name of the attribute.
  * @param vendor id (if the attribute is a VSA).
- * @param attribute number.
+ * @param attr number.
  * @param type of attribute.
  * @param flags to set in the attribute.
  * @return
