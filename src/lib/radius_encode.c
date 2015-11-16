@@ -943,22 +943,20 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 */
 	if (tlv_stack[depth]->type == PW_TYPE_EVS) {
 		uint8_t *evs = out + out[1];
+		uint32_t lvalue;
 
 		if (outlen < (size_t) (out[1] + 5)) return 0;
 
-		depth++;
+		depth += 2;	/* skip EVS */
 
 		out[2] = 26;
 
-		evs[0] = 0;	/* always zero */
-		evs[1] = (vp->da->vendor >> 16) & 0xff;
-		evs[2] = (vp->da->vendor >> 8) & 0xff;
-		evs[3] = vp->da->vendor & 0xff;
+		lvalue = htonl(vp->da->vendor);
+		memcpy(evs, &lvalue, 4);
+
 		evs[4] = vp->da->attr & 0xff;
 
 		out[1] += 5;
-
-		evs[5] = tlv_stack[depth++]->attr & 0xff;
 	}
 	hdr_len = out[1];
 
