@@ -1528,15 +1528,28 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 	 */
 	if (!vp->da->vendor && vp->da->attr > 255) return 0;
 
-	fr_proto_tlv_stack_build(tlv_stack, vp->da);
-	FR_PROTO_STACK_PRINT(tlv_stack, 0);
-
 	/*
 	 *	Nested structures of attributes can't be longer than
 	 *	255 bytes, so each call to an encode function can
 	 *	only use 255 bytes of buffer space at a time.
 	 */
 	attr_len = (outlen > UINT8_MAX) ? UINT8_MAX : outlen;
+
+	/*
+	 *	Fast path for the common case.
+	 */
+	if (vp->da->parent->flags.is_root && !vp->da->flags.concat &&
+	    (vp->da->type != PW_TYPE_TLV)) {
+		tlv_stack[0] = vp->da;
+		tlv_stack[1] = NULL;
+		return encode_rfc_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, pvp);
+	}
+
+	/*
+	 *	Do more work to set up the stack for the complex case.
+	 */
+	fr_proto_tlv_stack_build(tlv_stack, vp->da);
+	FR_PROTO_STACK_PRINT(tlv_stack, 0);
 
 	da = tlv_stack[0];
 	switch (da->type) {
