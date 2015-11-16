@@ -1488,7 +1488,6 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 			  char const *secret, VALUE_PAIR const **pvp)
 {
 	VALUE_PAIR const *vp;
-	int i;
 	int ret;
 	size_t attr_len;
 
@@ -1506,32 +1505,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 		return -1;
 	}
 
-	tlv_stack[0] = NULL;	/* memsets are surprisingly expensive */
-
-	/*
-	 *	RADIUS has a fixed nesting structure, so we know where in
-	 *	the stack we need to start by the da->depth.
-	 *
-	 *	We couldn't do this for a protocol like diameter, because it
-	 *	allows arbitrary nesting.
-	 *
-	 *	Note: The stack is needed because for unknown attributes
-	 *	there's only a child->parent relationship, and we need to
-	 *	encode the top level (oldest ancestor) first.
-	 *
-	 *	Note: We don't add the protocol root to the stack, as it's
-	 *	not needed, so we start from RFC attributes and move down
-	 *	from there.
-	 */
-	for (i = (*pvp)->da->depth, da = (*pvp)->da;
-	     da->parent && (i >= 0);
-	     i--, da = da->parent) tlv_stack[i - 1] = da;
-	tlv_stack[(*pvp)->da->depth] = NULL;	/* Mark the top with a NULL */
-
-	/*
-	 *	Sanity checks
-	 */
-	if (!fr_assert((i >= 0) && tlv_stack[0])) return -1;
+	fr_proto_tlv_stack_build(tlv_stack, vp->da);
 	FR_PROTO_STACK_PRINT(tlv_stack, 0);
 
 	/*
