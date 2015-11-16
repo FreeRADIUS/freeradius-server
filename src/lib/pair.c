@@ -2570,7 +2570,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		}
 
 		if (da->type == PW_TYPE_COMBO_IP_ADDR) {
-			da = fr_dict_attr_by_type(vp->da->attr, vp->da->vendor, vp->da->type);
+			da = fr_dict_attr_by_type(vp->da->vendor, vp->da->attr, vp->da->type);
 			if (!da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
 					     "variant (%s) not found in global dictionary",
