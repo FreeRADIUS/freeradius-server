@@ -1433,45 +1433,52 @@ dnl #  5. Checks for structures and functions
 dnl #
 dnl #############################################################
 AC_CHECK_FUNCS( \
-  getopt_long \
-  fcntl \
-  strsignal \
-  sigaction \
-  sigprocmask \
-  pthread_sigmask \
-  snprintf \
-  vsnprintf \
-  setsid \
-  strncasecmp \
-  strcasecmp \
-  localtime_r \
+  bindat \
+  clock_gettime \
+  closefrom \
   ctime_r \
-  gmtime_r \
-  strsep \
-  inet_aton \
-  inet_pton \
-  inet_ntop \
-  mallopt \
-  setlinebuf \
-  setvbuf \
-  getusershell \
-  initgroups \
+  dladdr \
+  fcntl \
+  fopencookie \
+  funopen \
   getaddrinfo \
   getnameinfo \
-  closefrom \
-  gettimeofday \
+  getopt_long \
   getpeereid \
-  setuid \
-  setresuid \
   getresuid \
+  gettimeofday \
+  getusershell \
+  gmtime_r \
+  if_indextoname \
+  inet_aton \
+  inet_ntop \
+  inet_pton \
+  initgroups \
+  kqueue \
+  localtime_r \
+  mallopt \
+  mkdirat \
+  openat \
+  pthread_sigmask \
+  setlinebuf \
+  setresuid \
+  setsid \
+  setuid \
+  setvbuf \
+  sigaction \
+  sigprocmask \
+  snprintf \
+  strcasecmp \
   strlcat \
   strlcpy \
-  kqueue \
-  openat \
-  mkdirat \
+  strncasecmp \
+  strsep \
+  strsignal \
   unlinkat \
   bindat \
   dladdr
+  vdprintf \
+  vsnprintf
 )
 
 AC_TYPE_SIGNAL
