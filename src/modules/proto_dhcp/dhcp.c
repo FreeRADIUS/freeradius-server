@@ -1396,7 +1396,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 
 	default:
 		fr_strerror_printf("Unsupported option type %d", vp->da->type);
-		vp = fr_cursor_next(cursor);
+		(void)fr_cursor_next(cursor);
 		return -2;
 	}
 	vp = fr_cursor_next(cursor);	/* We encoded a leaf, advance the cursor */

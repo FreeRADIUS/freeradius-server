@@ -141,9 +141,9 @@ void			fr_dict_attr_free(fr_dict_attr_t const **da);
 int			fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out,
 							 fr_dict_attr_t const *parent, unsigned int vendor);
 int			fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent,
-						    unsigned int vendor, unsigned int attr);
+						    unsigned int vendor, unsigned int attr) CC_HINT(nonnull);
 fr_dict_attr_t		*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
-						      unsigned int vendor, unsigned int attr);
+						      unsigned int vendor, unsigned int attr) CC_HINT(nonnull);
 int			fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 						 fr_dict_attr_t const *parent, char const *name);
 fr_dict_attr_t const	*fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *name);

@@ -827,7 +827,7 @@ static void process_file(const char *root_dir, char const *filename)
 		}
 
 		if (strncmp(p, "decode-dhcp ", 12) == 0) {
-			ssize_t my_len;
+			ssize_t my_len = 0;
 
 			if (strcmp(p + 12, "-") == 0) {
 				attr = data;

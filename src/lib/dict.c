@@ -2806,11 +2806,9 @@ static size_t dict_print_attr_oid(char *buffer, size_t outlen, fr_dict_attr_t co
 	size_t len;
 	char *p = buffer, *end = p + outlen;
 	int i;
-	fr_dict_attr_t const *da_p;
 	fr_dict_attr_t const *tlv_stack[MAX_TLV_STACK + 1];
 
-	for (i = da->depth, da_p = da; da_p->parent && (i >= 0); i--, da_p = da_p->parent) tlv_stack[i - 1] = da_p;
-	if (!fr_assert(da_p->flags.is_root)) return 0;
+	fr_proto_tlv_stack_build(tlv_stack, da);
 
 	len = snprintf(p, end - p, "%u", tlv_stack[0]->attr);
 	if ((p + len) >= end) return p - buffer;
@@ -3087,7 +3085,6 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 			     fr_dict_attr_t const *parent, char const *name)
 {
 	unsigned int   	attr, vendor = 0;
-	unsigned int    dv_type = 1;	/* The type of vendor field */
 
 	char const	*p = name;
 	char		*q;
@@ -3261,9 +3258,6 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 	if (vendor) {
 		dv = fr_dict_vendor_by_num(vendor);
 		if (dv) {
-			dv_type = dv->type;
-			if (dv_type > 3) dv_type = 3; /* hack */
-
 			/*
 			 *	Parent needs to be EVS or VSA
 			 */
@@ -3281,7 +3275,7 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 		/*
 		 *	Build the unknown vendor
 		 */
-		} else {
+		} else if (vendor_da) {
 			vendor_da->attr = vendor;
 			vendor_da->type = PW_TYPE_VENDOR;
 			vendor_da->parent = parent;
@@ -3290,6 +3284,9 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 			snprintf(vendor_da->name, FR_DICT_ATTR_MAX_NAME_LEN, "Vendor-%i", vendor);
 
 			parent = vendor_da;
+		} else {
+			fr_strerror_printf("Unknown vendor disallowed");
+			return -1;
 		}
 	}
 
@@ -3299,7 +3296,7 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 	 *	If the caller doesn't provide a fr_dict_attr_t
 	 *	we can't call fr_dict_unknown_from_fields.
 	 */
-	if (!attr) {
+	if (!da) {
 		fr_strerror_printf("Unknown attributes disallowed");
 		return -1;
 	}
