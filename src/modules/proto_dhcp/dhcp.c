@@ -773,6 +773,16 @@ static ssize_t decode_value_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_di
 		p += 4;
 		break;
 
+	case PW_TYPE_IPV6_ADDR:
+		if (data_len != 16) goto raw;
+		/*
+		 *	Keep value in Network Order!
+		 */
+		memcpy(&vp->vp_ipaddr, p, 16);
+		vp->vp_length = 16;
+		p += 16;
+		break;
+
 	/*
 	 *	In DHCPv4, string options which can also be arrays,
 	 *	have their values '\0' delimited.
