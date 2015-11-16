@@ -1,0 +1,30 @@
+#
+#  Stand-alone dictionaries to see if the dictionary parser works
+#
+
+ATTRIBUTE	Base-String				1	string
+ATTRIBUTE	Base-Integer				2	integer
+ATTRIBUTE	Base-IP-Address				3	ipaddr
+ATTRIBUTE	Base-Date				4	date
+ATTRIBUTE	Base-ABinary				5	abinary
+
+ATTRIBUTE	Base-Octets				6	octets
+ATTRIBUTE	Base-IF-ID				7	ifid
+ATTRIBUTE	Base-IPv6-Address			8	ipv6addr
+ATTRIBUTE	Base-IPv6-Prefix			9	ipv6prefix
+ATTRIBUTE	Base-Byte				10	byte
+
+ATTRIBUTE	Base-Short				11	short
+ATTRIBUTE	Base-Ether				12	ether
+ATTRIBUTE	Base-Signed				13	signed
+
+# Ignore comb-ipaddr for now.
+
+ATTRIBUTE	Base-TLV				15	tlv
+
+# Ignore extended,long-extended, and evs
+
+ATTRIBUTE	Base-Integer64				19	integer64
+ATTRIBUTE	Base-IPv4-Prefix			20	ipv4prefix
+
+# Ignore VSA, VENDOR, timeval, boolean, combo-ip-prefix, decimal... for now

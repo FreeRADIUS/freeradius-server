@@ -46,6 +46,8 @@ $(BUILD_DIR)/tests/unit/%: $(DIR)/% $(BUILD_DIR)/bin/radattr $(TESTBINDIR)/radat
 #
 TESTS.UNIT_FILES := $(addprefix $(BUILD_DIR)/tests/unit/,$(FILES))
 
+$(TESTS.UNIT_FILES): $(TESTS.DICT_FILES)
+
 #
 #  Depend on the output files, and create the directory first.
 #
