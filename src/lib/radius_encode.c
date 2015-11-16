@@ -1186,8 +1186,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 
 	}
 
-	if (outlen > ((unsigned) 255 - (dv->type + dv->length))) {
-		outlen = 255 - (dv->type + dv->length);
+	if (outlen > ((unsigned) 255 - (dv->type + dv->length))) outlen = 255 - (dv->type + dv->length);
 	}
 
 	len = encode_value(out + dv->type + dv->length, outlen, packet, original, secret, tlv_stack, depth, pvp);
@@ -1362,9 +1361,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	/*
 	 *	Double-check for WiMAX format.
 	 */
-	if (da->flags.wimax) {
-		return encode_wimax_hdr(out, outlen, packet, original, secret, tlv_stack, depth + 1, pvp);
-	}
+	if (da->flags.wimax) return encode_wimax_hdr(out, outlen, packet, original, secret, tlv_stack, depth + 1, pvp);
 
 	/*
 	 *	Not enough freespace for: attr, len, vendor-id
