@@ -1011,13 +1011,14 @@ static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 
 /** Decode DHCP option
  *
- * @param[in,out] out Where to write the decoded options.
  * @param[in] ctx context to alloc new attributes in.
+ * @param[in,out] out Where to write the decoded options.
+ * @param[in] parent The root of the protocol dictionary used to decode DHCP attributes.
  * @param[in] data to parse.
  * @param[in] data_len of data to parse.
  */
 ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, VALUE_PAIR **out,
-			     fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
+			      fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
 {
 	vp_cursor_t		cursor;
 	ssize_t			ret;
@@ -1415,6 +1416,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
  * @param[in,out] out buffer to write the TLV to.
  * @param[out] outlen length of the output buffer.
  * @param[in] tlv_stack	Describing nesting of options.
+ * @param[in] depth in the tlv_stack.
  * @param[in,out] cursor Current attribute we're encoding.
  * @return
  *	- >0 length of data encoded.
@@ -1477,6 +1479,7 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
  * @param[in,out] out buffer to write the TLV to.
  * @param[out] outlen length of the output buffer.
  * @param[in] tlv_stack Describing nesting of options.
+ * @param[in] depth in the tlv_stack.
  * @param[in,out] cursor Current attribute we're encoding.
  * @return
  *	- >0 length of data encoded.

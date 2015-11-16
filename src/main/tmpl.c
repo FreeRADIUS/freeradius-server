@@ -636,7 +636,7 @@ int tmpl_afrom_value_data(TALLOC_CTX *ctx, vp_tmpl_t **out, value_data_t *data,
  * @param[in] list_def The default list to set if no #pair_lists qualifiers are found in
  *	name.
  * @param[in] allow_unknown If true attributes in the format accepted by
- *	#fr_dict_unknown_from_substr will be allowed, even if they're not in the main
+ *	#fr_dict_unknown_from_suboid will be allowed, even if they're not in the main
  *	dictionaries.
  *	If an unknown attribute is found a #TMPL_TYPE_ATTR #vp_tmpl_t will be
  *	produced with the unknown #fr_dict_attr_t stored in the ``unknown.da`` buffer.

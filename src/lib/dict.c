@@ -1004,6 +1004,12 @@ int fr_dict_vendor_add(char const *name, unsigned int num)
  *
  * @todo we need to check length of none vendor attributes.
  *
+ * @param parent to add attribute under.
+ * @param name of the attribute.
+ * @param vendor id (if the attribute is a VSA).
+ * @param attribute number.
+ * @param type of attribute.
+ * @param flags to set in the attribute.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -2641,10 +2647,11 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
  *
  * Initialize the directory, then fix the attr member of all attributes.
  *
- * @param ctx to allocate the dictionary from.
- * @param out If not NULL, wehre to write a pointer to the new dictionary.
- * @param dir to read dictionary files from.
- * @param fn file name to read.
+ * @param[in] ctx to allocate the dictionary from.
+ * @param[out] out If not NULL, where to write a pointer to the new dictionary.
+ * @param[in] dir to read dictionary files from.
+ * @param[in] fn file name to read.
+ * @param[in] name to use for the root attributes.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -2878,11 +2885,13 @@ static fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t con
 
 /** Even if the attribute is unknown we need to build the complete tree to encode it correctly
  *
- * @note Will return known vendors attributes where possible.  Do not free directly.
+ * @note Will return known vendors attributes where possible.  Do not free directly,
+ *	use #fr_dict_attr_free.
  *
- * @param ctx to allocate the vendor attribute in.
- * @param parent of the attribute.
- * @param vendor id.
+ * @param[in] ctx to allocate the vendor attribute in.
+ * @param[out] out Where to write point to new unknown dict attr representing the unknown vendor.
+ * @param[in] parent of the vendor attribute, either an EVS or VSA attribute.
+ * @param[in] vendor id.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -2948,6 +2957,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out
  * it to dictionary pools/hashes.
  *
  * @param[in,out] da struct to initialise, must be at least FR_DICT_ATTR_SIZE bytes.
+ * @param[in] parent of the unknown attribute (may also be unknown).
  * @param[in] attr number.
  * @param[in] vendor number.
  * @return 0 on success.
@@ -2995,6 +3005,7 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent
  *	and will be use the unknown da as its talloc parent.
  *
  * @param[in] ctx to allocate DA in.
+ * @param[in] parent of the unknown attribute (may also be unknown).
  * @param[in] attr number.
  * @param[in] vendor number.
  * @return 0 on success.
@@ -3076,6 +3087,7 @@ fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
  *
  * @param[in] vendor_da to initialise.
  * @param[in] da to initialise.
+ * @param[in] parent of the unknown attribute (may also be unknown).
  * @param[in] name of attribute.
  * @return
  *	- 0 on success.
@@ -3317,6 +3329,8 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
  *	and will be use the unknown da as its talloc parent.
  *
  * @param[in] ctx to alloc new attribute in.
+ * @param[in] parent Attribute to use as the root for resolving OIDs in.  Usually
+ *	the root of a protocol dictionary.
  * @param[in] name of attribute.
  * @return
  *	- 0 on success.
@@ -3387,7 +3401,10 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_attr_t 
  * none dict_attr_allowed_char to a buffer and initialise da as an
  * unknown attribute.
  *
- * @param[out] da to initialise.
+ * @param[out] vendor_da will be filled in if a vendor is found.
+ * @param[out] da will be filled in with the da at the end of the OID chain.
+ * @param[in]  parent Attribute to use as the root for resolving OIDs in.  Usually
+ *	the root of a protocol dictionary.
  * @param[in,out] name string start.
  * @return
  *	- 0 on success.
