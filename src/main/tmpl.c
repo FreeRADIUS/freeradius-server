@@ -1704,6 +1704,8 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
 			rad_assert(!*out);
 			return slen;
 		}
+		rad_assert(*out);
+
 		slen = strlen(*out);
 		break;
 
