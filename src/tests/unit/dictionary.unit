@@ -1,0 +1,10 @@
+#
+#  Dictionary for the unit tests
+#
+#  We use 241-255 from the "reserved" space, which means that
+#  these tests won't affect real attributes
+#
+ATTRIBUTE	Unit-Integer	241.241	integer
+ATTRIBUTE	Unit-Octets	241.242 octets
+
+ATTRIBUTE	Unit-Long-Octets	246.241	octets
