@@ -1,4 +1,4 @@
-# Example attributes as used in the "extended attributes" draft.
+# Example attributes as used in RFC 6929
 raw 241.1 "bob"
 data f1 06 01 62 6f 62
 
@@ -101,3 +101,24 @@ data Attr-245.26.1.6 = 0x01
 
 decode f5 0a 1a 80 00 00 00 01 06 01 f5 05 1a 80 01
 data Attr-245.26.1.6 = 0x0101
+
+#
+#  And using the dictionaries
+#
+attribute Unit-Integer = 6809
+data Unit-Integer = 6809
+
+encode Unit-Integer = 6809
+data f1 07 f1 00 00 1a 99
+
+decode -
+data Unit-Integer = 6809
+
+#
+#  EVS data types
+#
+encode Unit-EVS-Integer = 6809
+data f1 0c 1a 00 00 2c 50 01 00 00 1a 99
+
+decode -
+data Unit-EVS-Integer = 6809

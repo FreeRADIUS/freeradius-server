@@ -908,11 +908,13 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	}
 
 	/*
-	 *	The attribute number is encoded into the upper 8 bits
-	 *	of the vendor ID.
+	 *	Encode which extended attribute it is.
 	 */
-	out[0] = (vp->da->vendor / FR_MAX_VENDOR) & 0xff;
+	out[0] = tlv_stack[depth++]->attr & 0xff;
 
+	/*
+	 *	Encode the header for "short" attributes
+	 */
 	if (!vp->da->flags.long_extended) {
 		if (outlen < 3) return 0;
 
@@ -924,24 +926,27 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 
 		out[1] = 4;
 		out[2] = vp->da->attr & 0xff;
-		out[3] = 0;
+		out[3] = 0;	/* flags start off at zero */
 	}
 
 	/*
 	 *	Only "flagged" attributes can be longer than one
-	 *	attribute.
+	 *	attribute.  The caller should really take care of
+	 *	this, too.
 	 */
 	if (!vp->da->flags.long_extended && (outlen > 255)) {
 		outlen = 255;
 	}
 
 	/*
-	 *	Handle EVS VSAs.
+	 *	Handle EVS
 	 */
-	if (vp->da->flags.evs) {
+	if (tlv_stack[depth]->type == PW_TYPE_EVS) {
 		uint8_t *evs = out + out[1];
 
 		if (outlen < (size_t) (out[1] + 5)) return 0;
+
+		depth++;
 
 		out[2] = 26;
 
@@ -952,6 +957,8 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 		evs[4] = vp->da->attr & 0xff;
 
 		out[1] += 5;
+
+		evs[5] = tlv_stack[depth++]->attr & 0xff;
 	}
 	hdr_len = out[1];
 
@@ -964,8 +971,12 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 *	and copy the existing header over.  Set the "M" flag ONLY
 	 *	after copying the rest of the data.
 	 */
-	if (vp->da->flags.long_extended && (len > (255 - out[1]))) {
-		return attr_shift(start, start + outlen, out, 4, len, 3, 0);
+	if (len > (255 - out[1])) {
+		if (vp->da->flags.long_extended) {
+			return attr_shift(start, start + outlen, out, 4, len, 3, 0);
+		}
+
+		len = (255 - out[1]); /* truncate to fit */
 	}
 
 	out[1] += len;

@@ -8,3 +8,9 @@ ATTRIBUTE	Unit-Integer	241.241	integer
 ATTRIBUTE	Unit-Octets	241.242 octets
 
 ATTRIBUTE	Unit-Long-Octets	246.241	octets
+
+BEGIN-Vendor FreeRADIUS format=Extended-Vendor-Specific-1
+
+ATTRIBUTE	Unit-EVS-Integer 1 integer
+ATTRIBUTE	Unit-EVS-Octets	 2 octets
+END-Vendor FreeRADIUS
