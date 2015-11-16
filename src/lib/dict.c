@@ -2660,7 +2660,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 {
 	fr_dict_t *dict;
 
-	*out = NULL;
+	if (out) *out = NULL;
 
 	/*
 	 *	Check if we need to change anything.  If not, don't do
