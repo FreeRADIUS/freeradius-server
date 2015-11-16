@@ -406,6 +406,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		talloc_free(dir);
 		close(dir_fd);
 		close(path_fd);
+		close(sock_fd);
 		return -1;
 	}
 
