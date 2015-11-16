@@ -135,4 +135,7 @@ data Unit-EVS-Integer = 6809
 #  that format instead of guessing.
 #
 encode Unit-TLV-Integer = 1, Unit-TLV-Integer = 2
-data f1 11 01 f3 0e 01 06 00 00 00 01 01 06 00 00 00 02
+data f1 0f f3 01 06 00 00 00 01 01 06 00 00 00 02
+
+decode -
+data Unit-TLV-Integer = 1, Unit-TLV-Integer = 2

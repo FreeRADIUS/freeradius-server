@@ -919,24 +919,18 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 		if (outlen < 3) return 0;
 
 		out[1] = 3;
-		out[2] = vp->da->attr & 0xff;
+		out[2] = tlv_stack[depth]->attr & 0xff;
 
 	} else {
 		if (outlen < 4) return 0;
 
 		out[1] = 4;
-		out[2] = vp->da->attr & 0xff;
+		out[2] = tlv_stack[depth]->attr & 0xff;
 		out[3] = 0;	/* flags start off at zero */
 	}
 
-	/*
-	 *	Only "flagged" attributes can be longer than one
-	 *	attribute.  The caller should really take care of
-	 *	this, too.
-	 */
-	if (!vp->da->flags.long_extended && (outlen > 255)) {
-		outlen = 255;
-	}
+	FR_PROTO_STACK_PRINT(tlv_stack, depth);
+	FR_PROTO_HEX_DUMP("Extended header", out, out[1]);
 
 	/*
 	 *	Handle EVS
@@ -947,20 +941,27 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 
 		if (outlen < (size_t) (out[1] + 5)) return 0;
 
-		depth += 2;	/* skip EVS and Vendor */
+		depth++;	/* skip EVS */
 
-		out[2] = 26;
-
-		lvalue = htonl(vp->da->vendor);
+		lvalue = htonl(tlv_stack[depth++]->attr);
 		memcpy(evs, &lvalue, 4);
 
-		evs[4] = vp->da->attr & 0xff;
+		evs[4] = tlv_stack[depth]->attr & 0xff;
 
 		out[1] += 5;
+
+		FR_PROTO_STACK_PRINT(tlv_stack, depth);
+		FR_PROTO_HEX_DUMP("EVS", out, out[1]);
+
 	}
 	hdr_len = out[1];
 
-	len = encode_value(out + out[1], outlen - hdr_len, packet, original, secret, tlv_stack, depth, pvp);
+	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
+		len = encode_tlv_hdr_internal(out + out[1], outlen - hdr_len, packet, original, secret, tlv_stack, depth, pvp);
+
+	} else {
+		len = encode_value(out + out[1], outlen - hdr_len, packet, original, secret, tlv_stack, depth, pvp);
+	}
 	if (len <= 0) return len;
 
 	/*
