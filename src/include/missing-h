@@ -351,6 +351,10 @@ size_t strlcat(char *dst, char const *src, size_t siz);
 struct tm *gmtime_r(time_t const *l_clock, struct tm *result);
 #endif
 
+#ifndef HAVE_VDPRINTF
+int vdprintf (int fd, const char format, va_list args);
+#endif
+
 #ifndef HAVE_GETTIMEOFDAY
 int gettimeofday (struct timeval *tv, void *tz);
 #endif

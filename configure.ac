@@ -1524,49 +1524,50 @@ dnl #  5. Checks for structures and functions
 dnl #
 dnl #############################################################
 AC_CHECK_FUNCS( \
-  clock_gettime \
-  getopt_long \
-  fcntl \
-  strsignal \
-  sigaction \
-  sigprocmask \
-  pthread_sigmask \
-  snprintf \
-  vsnprintf \
-  setsid \
-  strncasecmp \
-  strcasecmp \
-  localtime_r \
-  ctime_r \
-  gmtime_r \
-  strsep \
-  if_indextoname \
-  inet_aton \
-  inet_pton \
-  inet_ntop \
-  mallopt \
-  setlinebuf \
-  setvbuf \
-  getusershell \
-  initgroups \
-  getaddrinfo \
-  getnameinfo \
-  closefrom \
-  gettimeofday \
-  getpeereid \
-  setuid \
-  setresuid \
-  getresuid \
-  strlcat \
-  strlcpy \
-  kqueue \
-  openat \
-  mkdirat \
-  unlinkat \
   bindat \
+  clock_gettime \
+  closefrom \
+  ctime_r \
+  dladdr \
+  fcntl \
   fopencookie \
   funopen \
-  dladdr
+  getaddrinfo \
+  getnameinfo \
+  getopt_long \
+  getpeereid \
+  getresuid \
+  gettimeofday \
+  getusershell \
+  gmtime_r \
+  if_indextoname \
+  inet_aton \
+  inet_ntop \
+  inet_pton \
+  initgroups \
+  kqueue \
+  localtime_r \
+  mallopt \
+  mkdirat \
+  openat \
+  pthread_sigmask \
+  setlinebuf \
+  setresuid \
+  setsid \
+  setuid \
+  setvbuf \
+  sigaction \
+  sigprocmask \
+  snprintf \
+  strcasecmp \
+  strlcat \
+  strlcpy \
+  strncasecmp \
+  strsep \
+  strsignal \
+  unlinkat \
+  vdprintf \
+  vsnprintf
 )
 
 AC_TYPE_SIGNAL
