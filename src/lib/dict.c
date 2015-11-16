@@ -21,21 +21,36 @@
  */
 RCSID("$Id$")
 
-#include	<freeradius-devel/libradius.h>
+#include <freeradius-devel/libradius.h>
 
 #ifdef WITH_DHCP
-#include	<freeradius-devel/dhcp.h>
+#  include <freeradius-devel/dhcp.h>
 #endif
 
-#include	<ctype.h>
+#include <ctype.h>
 
 #ifdef HAVE_MALLOC_H
-#include	<malloc.h>
+# include <malloc.h>
 #endif
 
 #ifdef HAVE_SYS_STAT_H
-#include	<sys/stat.h>
+#  include <sys/stat.h>
 #endif
+
+/*
+ *	For faster HUP's, we cache the stat information for
+ *	files we've $INCLUDEd
+ */
+typedef struct dict_stat_t {
+	struct dict_stat_t *next;
+	struct stat stat_buf;
+} dict_stat_t;
+
+typedef struct value_fixup_t {
+	char			attrstr[FR_DICT_ATTR_MAX_NAME_LEN];
+	fr_dict_value_t		*dval;
+	struct value_fixup_t	*next;
+} value_fixup_t;
 
 /** Vendors and attribute names
  *
@@ -61,33 +76,18 @@ struct fr_dict {
 
 	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce mallocs.
+
+	value_fixup_t		*value_fixup;
+
+	dict_stat_t		*stat_head;
+	dict_stat_t		*stat_tail;
 };
 
 fr_dict_t *fr_main_dict;
 
 /*
- *	For faster HUP's, we cache the stat information for
- *	files we've $INCLUDEd
- */
-typedef struct dict_stat_t {
-	struct dict_stat_t *next;
-	struct stat stat_buf;
-} dict_stat_t;
-
-static dict_stat_t *stat_head = NULL;
-static dict_stat_t *stat_tail = NULL;
-
-typedef struct value_fixup_t {
-	char		attrstr[FR_DICT_ATTR_MAX_NAME_LEN];
-	fr_dict_value_t	*dval;
-	struct value_fixup_t *next;
-} value_fixup_t;
-
-/*
  *	So VALUEs in the dictionary can have forward references.
  */
-static value_fixup_t *value_fixup = NULL;
-
 const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "integer",       PW_TYPE_INTEGER },
 	{ "string",        PW_TYPE_STRING },
@@ -309,17 +309,17 @@ static void dict_stat_free(void)
 {
 	dict_stat_t *this, *next;
 
-	if (!stat_head) {
-		stat_tail = NULL;
+	if (!fr_main_dict->stat_head) {
+		fr_main_dict->stat_tail = NULL;
 		return;
 	}
 
-	for (this = stat_head; this != NULL; this = next) {
+	for (this = fr_main_dict->stat_head; this != NULL; this = next) {
 		next = this->next;
 		free(this);
 	}
 
-	stat_head = stat_tail = NULL;
+	fr_main_dict->stat_head = fr_main_dict->stat_tail = NULL;
 }
 
 /*
@@ -335,11 +335,11 @@ static void dict_stat_add(struct stat const *stat_buf)
 
 	memcpy(&(this->stat_buf), stat_buf, sizeof(this->stat_buf));
 
-	if (!stat_head) {
-		stat_head = stat_tail = this;
+	if (!fr_main_dict->stat_head) {
+		fr_main_dict->stat_head = fr_main_dict->stat_tail = this;
 	} else {
-		stat_tail->next = this;
-		stat_tail = this;
+		fr_main_dict->stat_tail->next = this;
+		fr_main_dict->stat_tail = this;
 	}
 }
 
@@ -356,7 +356,7 @@ static int dict_stat_check(char const *dir, char const *file)
 	/*
 	 *	Nothing cached, all files are new.
 	 */
-	if (!stat_head) return 0;
+	if (!fr_main_dict->stat_head) return 0;
 
 	/*
 	 *	Stat the file.
@@ -371,7 +371,7 @@ static int dict_stat_check(char const *dir, char const *file)
 	 *	       if A loads B and B changes, we probably want
 	 *	       to reload B at the minimum.
 	 */
-	for (this = stat_head; this != NULL; this = this->next) {
+	for (this = fr_main_dict->stat_head; this != NULL; this = this->next) {
 		if (this->stat_buf.st_dev != stat_buf.st_dev) continue;
 		if (this->stat_buf.st_ino != stat_buf.st_ino) continue;
 
@@ -1010,7 +1010,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 {
 	size_t			namelen;
 	fr_dict_attr_t		*n;
-	static int		max_attr = 0;
 
 	if (!fr_assert(parent)) return -1;
 
@@ -1044,14 +1043,19 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	 *	and use that.
 	 */
 	if (attr == -1) {
+		fr_dict_attr_t *muteable;
+
 		if (fr_dict_attr_by_name(name)) return 0; /* exists, don't add it again */
 
-		attr = ++max_attr;
+		memcpy(&muteable, &parent, sizeof(muteable));
+		attr = ++muteable->max_attr;
 	} else if (vendor == 0) {
+		fr_dict_attr_t *muteable;
 		/*
 		 *  Update 'max_attr'
 		 */
-		if (attr > max_attr) max_attr = attr;
+		memcpy(&muteable, &parent, sizeof(muteable));
+		if ((unsigned int)attr > muteable->max_attr) muteable->max_attr = attr;
 	}
 
 	/*
@@ -1557,8 +1561,8 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 		/*
 		 *	Insert to the head of the list.
 		 */
-		fixup->next = value_fixup;
-		value_fixup = fixup;
+		fixup->next = fr_main_dict->value_fixup;
+		fr_main_dict->value_fixup = fixup;
 
 		return 0;
 	}
@@ -2739,15 +2743,15 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	dict->root->flags.is_root = 1;
 	dict->root->type = PW_TYPE_TLV;
 
-	value_fixup = NULL;        /* just to be safe. */
+	dict->value_fixup = NULL;        /* just to be safe. */
 
 	if (my_dict_init(dict, dir, fn, NULL, 0) < 0) goto error;
 
-	if (value_fixup) {
+	if (dict->value_fixup) {
 		fr_dict_attr_t const *a;
 		value_fixup_t *this, *next;
 
-		for (this = value_fixup; this != NULL; this = next) {
+		for (this = dict->value_fixup; this != NULL; this = next) {
 			next = this->next;
 
 			a = fr_dict_attr_by_name(this->attrstr);
@@ -2784,7 +2788,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 			/*
 			 *	Just so we don't lose track of things.
 			 */
-			value_fixup = next;
+			dict->value_fixup = next;
 		}
 	}
 

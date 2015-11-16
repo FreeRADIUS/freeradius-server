@@ -73,6 +73,7 @@ extern fr_dict_t *fr_main_dict;
 struct dict_attr {
 	unsigned int		vendor;				//!< Vendor that defines this attribute.
 	unsigned int		attr;				//!< Attribute number.
+	unsigned int		max_attr;			//!< Maximum attribute number for this parent.
 	PW_TYPE			type;				//!< Value type.
 
 	fr_dict_attr_t const	*parent;			//!< Immediate parent of this attribute.
