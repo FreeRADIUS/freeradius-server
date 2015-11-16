@@ -149,7 +149,7 @@ int			fr_dict_unknown_from_suboid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 						    fr_dict_attr_t const *parent, char const **name);
 
 void			fr_dict_print(fr_dict_attr_t const *da, int depth);
-fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b);
+fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
 fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_attr_t const *old);
 
 fr_dict_attr_t const	*fr_dict_attr_by_num(unsigned int vendor, unsigned int attr);

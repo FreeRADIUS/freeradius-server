@@ -549,11 +549,12 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
  *
  * @param a first TLV attribute.
  * @param b second TLV attribute.
+ * @param is_ancestor Enforce a->b relationship (a is parent or ancestor of b).
  * @return
  *	- Common ancestor if one exists.
  *	- NULL if no common ancestor exists.
  */
-fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b)
+fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor)
 {
 	unsigned int i;
 	fr_dict_attr_t const *p_a, *p_b;
@@ -562,15 +563,17 @@ fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_att
 
 	if (!a->parent || !b->parent) return NULL;		/* Either are at the root */
 
+	if (is_ancestor && (b->depth <= a->depth)) return NULL;
+
 	/*
 	 *	Find a common depth to work back from
 	 */
 	if (a->depth > b->depth) {
 		p_b = b;
-		for (p_a = a, i = a->depth - b->depth; p_a && i; p_a = p_a->parent, i++);
+		for (p_a = a, i = a->depth - b->depth; p_a && (i > 0); p_a = p_a->parent, i--);
 	} else if (a->depth < b->depth) {
 		p_a = a;
-		for (p_b = b, i = b->depth - a->depth; p_b && i; p_b = p_b->parent, i++);
+		for (p_b = b, i = b->depth - a->depth; p_b && (i > 0); p_b = p_b->parent, i--);
 	} else {
 		p_a = a;
 		p_b = b;
@@ -2269,6 +2272,7 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 	fr_dict_attr_t const	*da;
 	int			block_tlv_depth = 0;
 	fr_dict_attr_t const	*parent = dict->root;
+	fr_dict_attr_t const	*block_tlv[MAX_TLV_NEST];
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf("fr_dict_init: filename name too long");
@@ -2451,7 +2455,9 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 		}
 
 		if (strcasecmp(argv[0], "BEGIN-TLV") == 0) {
-			if (++block_tlv_depth > MAX_TLV_NEST) {
+			fr_dict_attr_t const *common;
+
+			if ((block_tlv_depth + 1) > MAX_TLV_NEST) {
 				fr_strerror_printf("TLVs are nested too deep");
 				goto error;
 			}
@@ -2474,10 +2480,14 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 				goto error;
 			}
 
-			if (!fr_dict_attr_child_by_da(parent, da)) {
+			common = fr_dict_parent_common(parent, da, true);
+			if (!common || common->flags.is_root ||
+			    (common->type == PW_TYPE_VSA) ||
+			    (common->type == PW_TYPE_EVS)) {
 				fr_strerror_printf("Attribute \"%s\" is not a child of \"%s\"", argv[1], parent->name);
 				goto error;
 			}
+			block_tlv[block_tlv_depth++] = parent;
 			parent = da;
 			continue;
 		} /* BEGIN-TLV */
@@ -2500,10 +2510,11 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 			}
 
 			if (da != parent) {
-				fr_strerror_printf("END-TLV %s does not match previous BEGIN-TLV", argv[1]);
+				fr_strerror_printf("END-TLV %s does not match previous BEGIN-TLV %s", argv[1],
+						   parent->name);
 				goto error;
 			}
-			parent = parent->parent;	/* It's a tree (not a graph) so this is fine */
+			parent = block_tlv[block_tlv_depth];
 			continue;
 		} /* END-VENDOR */
 
