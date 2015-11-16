@@ -558,30 +558,20 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(UNUSED void *instance, REQU
 		return RLM_MODULE_INVALID;
 	}
 
-#ifndef NRDEBUG
-	if (rad_debug_lvl > 1) {
-		fr_printf_log("EXPECTED ");
-		for (i = 0; i < 16; i++) {
-			fr_printf_log("%02x", kd[i]);
-		}
-		fr_printf_log("\n");
+	if (RDEBUG_ENABLED3) {
+		char buffer[33];
 
-		fr_printf_log("RECEIVED ");
-		for (i = 0; i < 16; i++) {
-			fr_printf_log("%02x", hash[i]);
-		}
-		fr_printf_log("\n");
+		fr_bin2hex(buffer, kd, 16);
+
+		RDEBUG3("Comparing hashes, received: %s, calculated: %s", vp->vp_strvalue, buffer);
 	}
-#endif
 
 	/*
 	 *  And finally, compare the digest in the packet with KD.
 	 */
-	if (memcmp(&kd[0], &hash[0], 16) == 0) {
-		return RLM_MODULE_OK;
-	}
+	if (memcmp(&kd[0], &hash[0], 16) == 0) return RLM_MODULE_OK;
 
-	RDEBUG("FAILED authentication");
+	REDEBUG("FAILED authentication");
 	return RLM_MODULE_REJECT;
 }
 
