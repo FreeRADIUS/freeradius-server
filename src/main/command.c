@@ -407,7 +407,7 @@ static int fr_server_domain_socket_perm(char const *path, uid_t uid, gid_t gid)
 		close(dir_fd);
 		close(path_fd);
 		if (sock_fd >= 0) close(sock_fd);
-		if (sock_fd >= 0) close(parent_fd);
+		if (parent_fd >= 0) close(parent_fd);
 		return -1;
 	}
 
