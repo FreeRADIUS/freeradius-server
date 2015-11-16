@@ -18,6 +18,12 @@ decode-dhcp -
 data DHCP-Subnet-Mask = 255.255.0.0
 
 #
+#  Packing multiple fixed length attributes
+#
+encode-dhcp DHCP-CAPWAP-AC-IPv4-Address = 127.0.0.1, DHCP-CAPWAP-AC-IPv4-Address = 192.168.3.1
+data 8a 08 7f 00 00 01 c0 a8 03 01
+
+#
 #  A long one... with a weird DHCP-specific vendor ID.
 #
 decode-dhcp 3501013d0701001ceaadac1e37070103060f2c2e2f3c094d5346545f495054565232011c4c41424f4c54322065746820312f312f30312f30312f31302f312f3209120000197f0d050b4c4142373336304f4c5432

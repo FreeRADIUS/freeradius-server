@@ -1465,10 +1465,11 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 		outlen -= len;
 
 		FR_PROTO_STACK_PRINT(tlv_stack, depth);
-		FR_PROTO_HEX_DUMP("Option header and encoded value(s)", out, (p - out));
+		FR_PROTO_TRACE("Encoded value is %zu byte(s)", len);
+		FR_PROTO_HEX_DUMP(NULL, out, (p - out));
 
 		next = fr_cursor_current(cursor);
-		if (!next || (vp != next)) break;
+		if (!next || (vp->da != next->da)) break;
 		vp = next;
 	} while (vp->da->flags.array);
 
