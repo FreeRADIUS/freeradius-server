@@ -783,8 +783,8 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			inet_ntop(sock->src_ipaddr.af, &sock->src_ipaddr.ipaddr.ip4addr.s_addr, buffer, sizeof(buffer));
 			DEBUG2("\tsrc_ipaddr = \"%s\"", buffer);
 			cp = cf_pair_alloc(cs, "src_ipaddr", buffer, T_OP_SET, T_BARE_WORD, T_BARE_WORD);
+			if (!cp) return -1;
 			cf_pair_add(cs, cp);
-			if (rcode < 0) return -1;
 		}
 	}
 
