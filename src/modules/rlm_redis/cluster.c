@@ -1737,7 +1737,7 @@ fr_redis_rcode_t fr_redis_cluster_state_next(fr_redis_cluster_state_t *state, fr
 	 *	has set the remap_needed flag, do that now before
 	 *	releasing the connection.
 	 */
-	if (cluster->remap_needed) switch(status) {
+	if (cluster->remap_needed && *conn) switch(status) {
 	case REDIS_RCODE_MOVE:		/* We're going to remap anyway */
 	case REDIS_RCODE_RECONNECT:	/* The connection's dead */
 		break;
