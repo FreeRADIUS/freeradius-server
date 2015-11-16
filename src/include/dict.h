@@ -113,7 +113,7 @@ typedef struct dict_vendor {
 #define FR_DICT_VALUE_MAX_NAME_LEN (128)
 #define FR_DICT_VENDOR_MAX_NAME_LEN (128)
 #define FR_DICT_ATTR_MAX_NAME_LEN (128)
-#define MAX_TLV_NEST (4)
+#define MAX_TLV_NEST (24)
 #define MAX_TLV_STACK MAX_TLV_NEST + 5
 #define FR_DICT_ATTR_SIZE sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN
 
