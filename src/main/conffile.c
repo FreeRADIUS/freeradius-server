@@ -2023,16 +2023,17 @@ int cf_pair_parse(CONF_SECTION *cs, char const *name, unsigned int type, void *d
 		}
 
 		/*
+		 *	Tmpl is outside normal range
+		 */
+		if (type & PW_TYPE_TMPL) {
+			array = (void **)talloc_zero_array(cs, vp_tmpl_t *, count);
+		/*
 		 *	Allocate an array of values.
 		 *
 		 *	We don't NULL terminate.  Consumer must use
 		 *	talloc_array_length().
 		 */
-		switch (type & 0xff) {
-		case PW_TYPE_TMPL:
-			array = (void **)talloc_zero_array(cs, vp_tmpl_t *, count);
-			break;
-
+		} else switch (type & 0xff) {
 		case PW_TYPE_BOOLEAN:
 			array = (void **)talloc_zero_array(cs, bool, count);
 			break;
