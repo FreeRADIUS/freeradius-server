@@ -269,7 +269,7 @@ int		fr_radius_decode_tlv_ok(uint8_t const *data, size_t length, size_t dv_type,
 int		fr_radius_decode_password(char *encpw, size_t len, char const *secret, uint8_t const *vector);
 
 int		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *secret,
-						    uint8_t const *vector);
+						 uint8_t const *vector);
 
 ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 					    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
