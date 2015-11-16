@@ -765,7 +765,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 	 *	VSAs should normally be in TLV format.
 	 */
 	if (fr_radius_decode_tlv_ok(data + 4, attrlen - 4, dv->type, dv->length) < 0) {
-		FR_PROTO_TRACE("TLVs not OK: %s", __FUNCTION__, fr_strerror());
+		FR_PROTO_TRACE("TLVs not OK: %s", fr_strerror());
 		return -1;
 	}
 
@@ -1389,7 +1389,7 @@ ssize_t fr_radius_decode_pair(TALLOC_CTX *ctx,
 	 *	Pass the entire thing to the decoding function
 	 */
 	if (da->flags.concat) {
-		FR_PROTO_TRACE("Concat attribute", __FUNCTION__);
+		FR_PROTO_TRACE("Concat attribute");
 		return decode_concat(ctx, da, data, length, pvp);
 	}
 

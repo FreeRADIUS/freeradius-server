@@ -796,7 +796,7 @@ static int fr_dict_oid_component(unsigned int *out, char const **oid)
 
 	num = strtoul(p, &q, 10);
 	if (p == q) {
-		fr_strerror_printf("Invalid OID component", num);
+		fr_strerror_printf("Invalid OID component %i", num);
 		return -1;
 	}
 
@@ -2479,7 +2479,7 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 
 		if (strcasecmp(argv[0], "END-TLV") == 0) {
 			if (--block_tlv_depth < 0) {
-				fr_strerror_printf("Too many END-TLV entries", argv[1]);
+				fr_strerror_printf("Too many END-TLV entries.  Mismatch at END-TLV %s", argv[1]);
 				goto error;
 			}
 
@@ -2510,13 +2510,13 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 			fr_dict_attr_t *mutable;
 
 			if (argc < 2) {
-				fr_strerror_printf("Invalid BEGIN-VENDOR entry", fn, line);
+				fr_strerror_printf("Invalid BEGIN-VENDOR entry");
 				goto error;
 			}
 
 			vendor = fr_dict_vendor_by_name(argv[1]);
 			if (!vendor) {
-				fr_strerror_printf("Unknown vendor %s", fn, line, argv[1]);
+				fr_strerror_printf("Unknown vendor %s", argv[1]);
 				goto error;
 			}
 
