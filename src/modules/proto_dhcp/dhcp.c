@@ -1356,7 +1356,9 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	uint8_t *p = out;
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
-	if (outlen < vp->vp_length) return -1;
+	FR_PROTO_TRACE("%zu byte(s) available for value", outlen);
+
+	if (outlen < vp->vp_length) return 0;
 
 	switch (tlv_stack[depth]->type) {
 	case PW_TYPE_BYTE:
@@ -1379,6 +1381,11 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	case PW_TYPE_IPV4_ADDR:
 		memcpy(p, &vp->vp_ipaddr, 4);
 		p += 4;
+		break;
+
+	case PW_TYPE_IPV6_ADDR:
+		memcpy(p, &vp->vp_ipv6addr, 16);
+		p += 16;
 		break;
 
 	case PW_TYPE_ETHERNET:
@@ -1446,6 +1453,11 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 	p += 2;
 
 	/*
+	 *	Check here so we get the full 255 bytes
+	 */
+	if (outlen > UINT8_MAX) outlen = UINT8_MAX;
+
+	/*
 	 *	DHCP options with the same number (and array flag set)
 	 *	get coalesced into a single option.
 	 *
@@ -1455,18 +1467,21 @@ static ssize_t encode_rfc_hdr(uint8_t *out, ssize_t outlen,
 	do {
 		VALUE_PAIR *next;
 
-		len = encode_value(p, outlen, tlv_stack, depth, cursor);
-
+		len = encode_value(p, outlen - out[1], tlv_stack, depth, cursor);
 		if (len < 0) return len;
-		if ((out[1] + len) >= UINT8_MAX) break; /* Packed as much as we can */
-
-		p += len;
-		out[1] += len;
-		outlen -= len;
+		if (len == 0) {
+			FR_PROTO_TRACE("No more space in option");
+			break; /* Packed as much as we can */
+		}
 
 		FR_PROTO_STACK_PRINT(tlv_stack, depth);
 		FR_PROTO_TRACE("Encoded value is %zu byte(s)", len);
 		FR_PROTO_HEX_DUMP(NULL, out, (p - out));
+
+		p += len;
+		out[1] += len;
+
+		FR_PROTO_TRACE("%zu byte(s) available in option", outlen - out[1]);
 
 		next = fr_cursor_current(cursor);
 		if (!next || (vp->da != next->da)) break;
@@ -1563,6 +1578,7 @@ ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor)
 	VALUE_PAIR		*vp;
 	unsigned int		depth = 0;
 	fr_dict_attr_t const	*tlv_stack[MAX_TLV_STACK + 1];
+	ssize_t			len;
 
 	vp = fr_cursor_current(cursor);
 	if (!vp) return -1;
@@ -1594,11 +1610,20 @@ ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor)
 	 */
 	switch (tlv_stack[depth]->type) {
 	case PW_TYPE_TLV:
-		return encode_tlv_hdr(out, outlen, tlv_stack, depth, cursor);
+		len = encode_tlv_hdr(out, outlen, tlv_stack, depth, cursor);
+		break;
 
 	default:
-		return encode_rfc_hdr(out, outlen, tlv_stack, depth, cursor);
+		len = encode_rfc_hdr(out, outlen, tlv_stack, depth, cursor);
+		break;
 	}
+
+	if (len < 0) return len;
+
+	FR_PROTO_TRACE("Complete option is %zu byte(s)", len);
+	FR_PROTO_HEX_DUMP(NULL, out, len);
+
+	return len;
 }
 
 int fr_dhcp_encode(RADIUS_PACKET *packet)

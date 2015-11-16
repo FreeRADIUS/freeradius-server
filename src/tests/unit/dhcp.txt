@@ -17,11 +17,14 @@ data 01 04 ff ff 00 00
 decode-dhcp -
 data DHCP-Subnet-Mask = 255.255.0.0
 
-#
-#  Packing multiple fixed length attributes
-#
+# Packing multiple fixed length attributes
 encode-dhcp DHCP-CAPWAP-AC-IPv4-Address = 127.0.0.1, DHCP-CAPWAP-AC-IPv4-Address = 192.168.3.1
 data 8a 08 7f 00 00 01 c0 a8 03 01
+
+# Overflow with multiple fixed length attributes (16x16)
+encode-dhcp DHCP-ANDSF-IPv6-Address = fe80::01, DHCP-ANDSF-IPv6-Address = fe80::02, DHCP-ANDSF-IPv6-Address = fe80::03, DHCP-ANDSF-IPv6-Address = fe80::04, DHCP-ANDSF-IPv6-Address = fe80::05, DHCP-ANDSF-IPv6-Address = fe80::06, DHCP-ANDSF-IPv6-Address = fe80::07, DHCP-ANDSF-IPv6-Address = fe80::08, DHCP-ANDSF-IPv6-Address = fe80::09, DHCP-ANDSF-IPv6-Address = fe80::0a, DHCP-ANDSF-IPv6-Address = fe80::0b, DHCP-ANDSF-IPv6-Address = fe80::0c, DHCP-ANDSF-IPv6-Address = fe80::0d, DHCP-ANDSF-IPv6-Address = fe80::0e, DHCP-ANDSF-IPv6-Address = fe80::0f, DHCP-ANDSF-IPv6-Address = fe80::10
+
+data 8f f0 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 01 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 02 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 03 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 04 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 05 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 06 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 07 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 08 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 09 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0a fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0b fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0c fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0d fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0e fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 0f 8f 10 fe 80 00 00 00 00 00 00 00 00 00 00 00 00 00 10
 
 #
 #  A long one... with a weird DHCP-specific vendor ID.
