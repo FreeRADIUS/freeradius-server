@@ -1501,9 +1501,9 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 
 	VERIFY_VP(vp);
 
-	if ((*pvp)->da->depth > MAX_TLV_STACK) {
+	if (vp->da->depth > MAX_TLV_STACK) {
 		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",
-				   __FUNCTION__, da->depth, MAX_TLV_STACK);
+				   __FUNCTION__, vp->da->depth, MAX_TLV_STACK);
 		return -1;
 	}
 
