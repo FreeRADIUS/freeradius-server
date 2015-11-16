@@ -1586,8 +1586,13 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 		ret = encode_extended_hdr(out, outlen, packet, original, secret, tlv_stack, 0, pvp);
 		break;
 
+	case PW_TYPE_INVALID:
+	case PW_TYPE_VENDOR:
+	case PW_TYPE_TIMEVAL:
+	case PW_TYPE_DECIMAL:
+	case PW_TYPE_MAX:
 	case PW_TYPE_EVS:
-		fr_strerror_printf("%s: Top level \"evs\" attribute is invalid", __FUNCTION__);
+		fr_strerror_printf("%s: Cannot encode attribute %s", __FUNCTION__, vp->da->name);
 		return -1;
 	}
 
