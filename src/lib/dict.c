@@ -460,13 +460,11 @@ do { \
 
 	FLAG_SET(is_root);
 	FLAG_SET(is_unknown);
-	FLAG_SET(is_tlv);
 	FLAG_SET(internal);
 	FLAG_SET(has_tag);
 	FLAG_SET(array);
 	FLAG_SET(has_value);
 	FLAG_SET(has_value_alias);
-	FLAG_SET(has_tlv);
 	FLAG_SET(extended);
 	FLAG_SET(long_extended);
 	FLAG_SET(evs);
@@ -1344,7 +1342,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		 *	field.
 		 */
 		vendor_max = ((uint64_t)1 << (dv->type << 3)) - 1;
-		if (((unsigned int)attr > vendor_max) && !flags.is_tlv && !flags.internal) {
+		if (((unsigned int)attr > vendor_max) && !flags.internal) {
 			fr_strerror_printf("ATTRIBUTE has invalid number %i (larger than vendor max %u)",
 					   attr, vendor_max);
 			goto error;

@@ -27,7 +27,6 @@
 typedef struct attr_flags {
 	unsigned int	is_root : 1;				//!< Is root of a dictionary.
 	unsigned int 	is_unknown : 1;				//!< Attribute number or vendor is unknown.
-	unsigned int	is_tlv : 1;				//!< Is a sub attribute.
 
 	unsigned int	internal : 1;				//!< Internal attribute, should not be received
 								//!< in protocol packets, should not be encoded.
@@ -35,7 +34,6 @@ typedef struct attr_flags {
 	unsigned int	array : 1; 				//!< Pack multiples into 1 attr.
 	unsigned int	has_value : 1;				//!< Has a value.
 	unsigned int	has_value_alias : 1; 			//!< Has a value alias.
-	unsigned int	has_tlv : 1; 				//!< Has sub attributes.
 
 	unsigned int	extended : 1; 				//!< Extended attribute.
 	unsigned int	long_extended : 1; 			//!< Long format.
