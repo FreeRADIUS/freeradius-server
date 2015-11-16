@@ -114,7 +114,6 @@ typedef void (*sig_t)(int);
 #define AUTH_VECTOR_LEN		16
 #define CHAP_VALUE_LENGTH       16
 #define MAX_STRING_LEN		254	/* RFC2138: string 0-253 octets */
-#define FR_MAX_VENDOR		(1 << 24) /* RFC limitations */
 
 #ifdef _LIBRADIUS
 #  define RADIUS_HDR_LEN	20

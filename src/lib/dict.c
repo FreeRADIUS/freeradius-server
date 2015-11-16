@@ -796,7 +796,7 @@ static int fr_dict_oid_component(unsigned int *out, char const **oid)
 	*out = 0;
 
 	num = strtoul(p, &q, 10);
-	if (p == q) {
+	if ((p == q) || (!num || (num == ULONG_MAX))) {
 		fr_strerror_printf("Invalid OID component %lu", num);
 		return -1;
 	}
@@ -865,11 +865,6 @@ ssize_t fr_dict_str_to_oid(unsigned int *vendor, unsigned int *attr, fr_dict_att
 			return oid - p;
 		}
 		p++;
-
-		if (num >= FR_MAX_VENDOR) {
-			fr_strerror_printf("Cannot handle vendor ID larger than 2^24");
-			return oid - p;
-		}
 
 		dv = fr_dict_vendor_by_num(num);
 		if (!dv) {
@@ -941,11 +936,6 @@ int fr_dict_vendor_add(char const *name, unsigned int num)
 {
 	size_t length;
 	fr_dict_vendor_t *dv;
-
-	if (num >= FR_MAX_VENDOR) {
-		fr_strerror_printf("fr_dict_vendor_add: Cannot handle vendor ID larger than 2^24");
-		return -1;
-	}
 
 	if ((length = strlen(name)) >= FR_DICT_VENDOR_MAX_NAME_LEN) {
 		fr_strerror_printf("fr_dict_vendor_add: vendor name too long");
@@ -1071,7 +1061,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
 	case PW_TYPE_EVS:
-		if (vendor && (vendor < FR_MAX_VENDOR)) {
+		if (vendor) {
 			fr_strerror_printf("VSAs cannot use the \"extended\" or \"evs\" attribute formats");
 			goto error;
 		}
@@ -1316,13 +1306,13 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		 *	dictionary initialization by caching the last
 		 *	vendor.
 		 */
-		if (last_vendor && ((vendor & (FR_MAX_VENDOR - 1)) == last_vendor->vendorpec)) {
+		if (last_vendor && (vendor == last_vendor->vendorpec)) {
 			dv = last_vendor;
 		} else {
 			/*
 			 *	Ignore the high byte (sigh)
 			 */
-			dv = fr_dict_vendor_by_num(vendor & (FR_MAX_VENDOR - 1));
+			dv = fr_dict_vendor_by_num(vendor);
 			last_vendor = dv;
 		}
 
@@ -1330,7 +1320,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		 *	If the vendor isn't defined, die.
 		 */
 		if (!dv) {
-			fr_strerror_printf("Unknown vendor %u", vendor & (FR_MAX_VENDOR - 1));
+			fr_strerror_printf("Unknown vendor %u", vendor);
 			goto error;
 		}
 
@@ -3112,6 +3102,7 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 			     fr_dict_attr_t const *parent, char const *name)
 {
 	unsigned int   	attr, vendor = 0;
+	unsigned long	num;
 
 	char const	*p = name;
 	char		*q;
@@ -3129,12 +3120,13 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 	 */
 	if (strncasecmp(p, "Attr-", 5) != 0) {
 		if (strncasecmp(p, "Vendor-", 7) == 0) {
-			vendor = (int)strtol(p + 7, &q, 10);
-			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
+			num = strtoul(p + 7, &q, 10);
+			if (!num || (num >=  UINT_MAX)) {
 				fr_strerror_printf("Invalid vendor value in attribute name \"%s\"", name);
 
 				return -1;
 			}
+			vendor = num;
 
 			p = q;
 
@@ -3209,16 +3201,13 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 		return -1;
 	}
 
-	attr = strtol(p + 5, &q, 10);
-
-	/*
-	 *	Invalid name.
-	 */
-	if (attr == 0) {
+	num = strtoul(p + 5, &q, 10);
+	if (!num || (num >= UINT_MAX)) {
 		fr_strerror_printf("Invalid value in attribute name \"%s\"", name);
 
 		return -1;
 	}
+	attr = num;
 
 	p = q;
 
@@ -3263,12 +3252,13 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 		}
 
 		if ((child->type == PW_TYPE_VSA) || (child->type == PW_TYPE_EVS)) {
-			vendor = strtol(p + 1, &q, 10);
-			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
+			num = strtoul(p + 1, &q, 10);
+			if (!num || (num >=  UINT_MAX)) {
 				fr_strerror_printf("Invalid vendor");
 
 				return -1;
 			}
+			vendor = num;
 
 			if (*q != '.') goto invalid;
 

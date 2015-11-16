@@ -175,7 +175,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			offset += 4; /* offset to value field */
 
 			if (attr > 65535) goto next_attr;
-			if (vendor > FR_MAX_VENDOR) goto next_attr;
 		}
 
 		/*
