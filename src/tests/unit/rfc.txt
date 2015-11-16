@@ -178,6 +178,7 @@ data Failed to parse IPv4 prefix string "256/8"
 attribute PMIP6-Home-IPv4-HoA = bob/8
 data Failed to parse IPv4 prefix string "bob/8"
 
+$INCLUDE tlv.txt
 $INCLUDE tunnel.txt
 $INCLUDE errors.txt
 $INCLUDE extended.txt

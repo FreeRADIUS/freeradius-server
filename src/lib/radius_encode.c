@@ -1187,9 +1187,20 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	}
 
 	if (outlen > ((unsigned) 255 - (dv->type + dv->length))) outlen = 255 - (dv->type + dv->length);
+
+	/*
+	 *	Because we've now encoded the attribute header,
+	 *	if this is a TLV, we must process it via the
+	 *	internal tlv function, else we get a double TLV header.
+	 */
+	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
+		len = encode_tlv_hdr_internal(out + dv->type + dv->length, outlen, packet,
+					      original, secret, tlv_stack, depth, pvp);
+	} else {
+		len = encode_value(out + dv->type + dv->length, outlen, packet,
+				   original, secret, tlv_stack, depth, pvp);
 	}
 
-	len = encode_value(out + dv->type + dv->length, outlen, packet, original, secret, tlv_stack, depth, pvp);
 	if (len <= 0) return len;
 
 	if (dv->length) out[dv->type + dv->length - 1] += len;
@@ -1378,13 +1389,13 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	 *	Now process the vendor ID part (which is one attribute deeper)
 	 */
 	da = tlv_stack[++depth];
+	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	if (da->type != PW_TYPE_VENDOR) {
 		fr_strerror_printf("%s: Expected type \"vsa\" got \"%s\"", __FUNCTION__,
 				   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 		return -1;
 	}
-	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	lvalue = htonl(da->attr);
 	memcpy(out + 2, &lvalue, 4);	/* Copy in the 32bit vendor ID */
