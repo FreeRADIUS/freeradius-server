@@ -913,9 +913,9 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	out[0] = tlv_stack[depth++]->attr & 0xff;
 
 	/*
-	 *	Encode the header for "short" attributes
+	 *	Encode the header for "short" or "long" attributes
 	 */
-	if (!vp->da->flags.long_extended) {
+	if (tlv_stack[0]->type == PW_TYPE_EXTENDED) {
 		if (outlen < 3) return 0;
 
 		out[1] = 3;
@@ -971,7 +971,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	 *	after copying the rest of the data.
 	 */
 	if (len > (255 - out[1])) {
-		if (vp->da->flags.long_extended) {
+		if (tlv_stack[0]->type == PW_TYPE_LONG_EXTENDED) {
 			return attr_shift(start, start + outlen, out, 4, len, 3, 0);
 		}
 
@@ -985,7 +985,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 		int jump = 3;
 
 		fprintf(fr_log_fp, "\t\t%02x %02x  ", out[0], out[1]);
-		if (!vp->da->flags.long_extended) {
+		if (tlv_stack[0]->type == PW_TYPE_EXTENDED) {
 			fprintf(fr_log_fp, "%02x  ", out[2]);
 
 		} else {
@@ -993,7 +993,7 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 			jump = 4;
 		}
 
-		if (vp->da->flags.evs) {
+		if (tlv_stack[1]->type == PW_TYPE_EVS) {
 			fprintf(fr_log_fp, "%02x%02x%02x%02x (%u)  %02x  ",
 				out[jump], out[jump + 1],
 				out[jump + 2], out[jump + 3],

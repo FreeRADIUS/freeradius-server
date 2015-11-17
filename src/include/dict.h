@@ -35,9 +35,6 @@ typedef struct attr_flags {
 	unsigned int	has_value : 1;				//!< Has a value.
 	unsigned int	has_value_alias : 1; 			//!< Has a value alias.
 
-	unsigned int	extended : 1; 				//!< Extended attribute.
-	unsigned int	long_extended : 1; 			//!< Long format.
-	unsigned int	evs : 1;				//!< Extended VSA.
 	unsigned int	wimax: 1;				//!< WiMAX format=1,1,c.
 
 	unsigned int	concat : 1;				//!< concatenate multiple instances

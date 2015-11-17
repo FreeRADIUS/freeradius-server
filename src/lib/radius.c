@@ -1490,8 +1490,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 */
 		if (reply->da->flags.internal ||
 		    ((reply->da->vendor == 0) &&
-		    ((reply->da->attr & 0xFFFF) >= 256) &&
-		    !reply->da->flags.extended && !reply->da->flags.long_extended)) {
+		     ((reply->da->attr & 0xFFFF) >= 256))) {
 #ifndef NDEBUG
 			/*
 			 *	Permit the admin to send BADLY formatted

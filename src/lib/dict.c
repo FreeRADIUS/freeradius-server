@@ -465,9 +465,6 @@ do { \
 	FLAG_SET(array);
 	FLAG_SET(has_value);
 	FLAG_SET(has_value_alias);
-	FLAG_SET(extended);
-	FLAG_SET(long_extended);
-	FLAG_SET(evs);
 	FLAG_SET(wimax);
 	FLAG_SET(concat);
 	FLAG_SET(is_pointer);
@@ -1077,6 +1074,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			fr_strerror_printf("The 'extended' attributes MUST NOT have any flags set");
 			goto error;
 		}
+		break;
 
 	default:
 		break;
