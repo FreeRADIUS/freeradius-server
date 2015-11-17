@@ -132,6 +132,8 @@ int			fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out,
 
 int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
 
+int			fr_dict_parse_str(char *str, fr_dict_attr_t const *parent, unsigned int vendor);
+
 void			fr_dict_attr_free(fr_dict_attr_t const **da);
 
 int			fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out,

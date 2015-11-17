@@ -2202,6 +2202,39 @@ int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 #define MAX_ARGV (16)
 
 /*
+ *	External API for testing
+ */
+int fr_dict_parse_str(char *buf, fr_dict_attr_t const *parent, unsigned int vendor)
+{
+	int	argc;
+	char	*argv[MAX_ARGV];
+
+	argc = fr_dict_str_to_argv(buf, argv, MAX_ARGV);
+	if (argc == 0) return 0;
+
+	if (strcasecmp(argv[0], "VALUE") == 0) {
+		return process_value(argv + 1, argc - 1);
+	}
+
+	if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
+		if (!parent) parent = fr_main_dict->root;
+
+		return process_attribute(parent, vendor, argv + 1, argc - 1);
+	}
+
+	if (strcasecmp(argv[0], "VALUE-ALIAS") == 0) {
+		return process_value_alias(argv + 1, argc - 1);
+	}
+
+	if (strcasecmp(argv[0], "VENDOR") == 0) {
+		return process_vendor(argv + 1, argc - 1);
+	}
+
+	fr_strerror_printf("Invalid input '%s'", argv[0]);
+	return -1;
+}
+
+/*
  *	Initialize the dictionary.
  */
 static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filename,
