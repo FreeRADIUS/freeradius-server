@@ -1475,8 +1475,6 @@ AC_CHECK_FUNCS( \
   strsep \
   strsignal \
   unlinkat \
-  bindat \
-  dladdr \
   vdprintf \
   vsnprintf
 )

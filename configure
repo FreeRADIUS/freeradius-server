@@ -9979,8 +9979,6 @@ for ac_func in \
   strsep \
   strsignal \
   unlinkat \
-  bindat \
-  dladdr \
   vdprintf \
   vsnprintf
 
