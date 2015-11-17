@@ -1526,12 +1526,6 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 			}
 			break;
 
-			/*
-			 *	Allow octets for now, because
-			 *	of dictionary.cablelabs
-			 */
-		case PW_TYPE_OCTETS:
-
 		case PW_TYPE_INTEGER:
 			break;
 

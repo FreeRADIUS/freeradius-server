@@ -13,6 +13,10 @@ VENDOR		CableLabs			4491
 BEGIN-VENDOR	CableLabs
 
 ATTRIBUTE	CableLabs-Reserved			0	octets
+
+#
+#  http://www.cablelabs.com/wp-content/uploads/specdocs/PKT-SP-EM-C01-071129.pdf
+#
 ATTRIBUTE	CableLabs-Event-Message			1	octets
 ATTRIBUTE	CableLabs-MTA-Endpoint-Name		3	string
 ATTRIBUTE	CableLabs-Calling-Party-Number		4	string
@@ -87,29 +91,32 @@ ATTRIBUTE	CableLabs-Gate-Time-Info		73	integer
 ATTRIBUTE	CableLabs-Account-Code			80	string
 ATTRIBUTE	CableLabs-Authorization-Code		81	string
 
-VALUE	CableLabs-Event-Message		Reserved		0
-VALUE	CableLabs-Event-Message		Signaling-Start		1
-VALUE	CableLabs-Event-Message		Signaling-Stop		2
-VALUE	CableLabs-Event-Message		Database-Query		3
-VALUE	CableLabs-Event-Message		Intelligent-Peripheral-Usage-Start 4
-VALUE	CableLabs-Event-Message		Intelligent-Peripheral-Usage-Stop 5
-VALUE	CableLabs-Event-Message		Service-Instance	6
-VALUE	CableLabs-Event-Message		QoS-Reserve		7
-VALUE	CableLabs-Event-Message		QoS-Release		8
-VALUE	CableLabs-Event-Message		Service-Activation	9
-VALUE	CableLabs-Event-Message		Service-Deactivation	10
-VALUE	CableLabs-Event-Message		Media-Report		11
-VALUE	CableLabs-Event-Message		Signal-Instance		12
-VALUE	CableLabs-Event-Message		Interconnect-Signaling-Start 13
-VALUE	CableLabs-Event-Message		Interconnect-Signaling-Stop 14
-VALUE	CableLabs-Event-Message		Call-Answer		15
-VALUE	CableLabs-Event-Message		Call-Disconnect		16
-VALUE	CableLabs-Event-Message		Time-Change		17
-VALUE	CableLabs-Event-Message		QoS-Commit		19
-VALUE	CableLabs-Event-Message		Media-Alive		20
-VALUE	CableLabs-Event-Message		Policy-Request		31
-VALUE	CableLabs-Event-Message		Policy-Delete		32
-VALUE	CableLabs-Event-Message		Policy-Update		33
+#
+#  Commented out because they cannot be used.
+#
+#VALUE	CableLabs-Event-Message		Reserved		0
+#VALUE	CableLabs-Event-Message		Signaling-Start		1
+#VALUE	CableLabs-Event-Message		Signaling-Stop		2
+#VALUE	CableLabs-Event-Message		Database-Query		3
+#VALUE	CableLabs-Event-Message		Intelligent-Peripheral-Usage-Start 4
+#VALUE	CableLabs-Event-Message		Intelligent-Peripheral-Usage-Stop 5
+#VALUE	CableLabs-Event-Message		Service-Instance	6
+#VALUE	CableLabs-Event-Message		QoS-Reserve		7
+#VALUE	CableLabs-Event-Message		QoS-Release		8
+#VALUE	CableLabs-Event-Message		Service-Activation	9
+#VALUE	CableLabs-Event-Message		Service-Deactivation	10
+#VALUE	CableLabs-Event-Message		Media-Report		11
+#VALUE	CableLabs-Event-Message		Signal-Instance		12
+#VALUE	CableLabs-Event-Message		Interconnect-Signaling-Start 13
+#VALUE	CableLabs-Event-Message		Interconnect-Signaling-Stop 14
+#VALUE	CableLabs-Event-Message		Call-Answer		15
+#VALUE	CableLabs-Event-Message		Call-Disconnect		16
+#VALUE	CableLabs-Event-Message		Time-Change		17
+#VALUE	CableLabs-Event-Message		QoS-Commit		19
+#VALUE	CableLabs-Event-Message		Media-Alive		20
+#VALUE	CableLabs-Event-Message		Policy-Request		31
+#VALUE	CableLabs-Event-Message		Policy-Delete		32
+#VALUE	CableLabs-Event-Message		Policy-Update		33
 
 VALUE	CableLabs-Query-Type		Reserved		0
 VALUE	CableLabs-Query-Type		Toll-Free-Number-Looukp	1
