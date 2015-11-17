@@ -1143,8 +1143,6 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 
 		if (datalen < 6) goto raw; /* vid, vtype, value */
 
-		if (data[0] != 0) goto raw; /* we require 24-bit VIDs */
-
 		memcpy(&vendor, data, 4);
 		vendor = ntohl(vendor);
 
