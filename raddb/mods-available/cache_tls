@@ -3,7 +3,7 @@ cache cache_tls_session {
 
 	#  The key used to index the cache.  It is dynamically expanded
 	#  at run time.
-	key = &control:TLS-Session-Identity
+	key = &TLS-Session-Id
 
 	#  The TTL of cache entries, in seconds.  Entries older than this
 	#  will be expired.
@@ -12,16 +12,29 @@ cache cache_tls_session {
 	ttl = 3600	# 60 mins
 
 	update {
-		&control:TLS-Session-Data := &TLS-Session-Data
+		&session-state:TLS-Session-Data := &session-state:TLS-Session-Data
+
+		#
+		#  If you want to store authorization attributes too, consider
+		#  performing LDAP/SQL lookups in the tls-cache virtual server
+		#  and storing the results in &session-state:
+		#
+		#  The complete list can then be restored along with the
+		#  TLS-Session-Data using the entry below.
+		#
+		#  Policies run in Post-Auth then have access to the same data
+		#  irrespective of whether the session is being resumed.
+		#
+#		&session-state: += &session-state:
 	}
 }
 
-cache cache_ocsp {
+cache cache_ocsp_session {
 	driver = "rlm_cache_rbtree"
 
 	#  The key used to index the cache.  It is dynamically expanded
 	#  at run time.
-	key = &control:TLS-Client-Cert-Serial
+	key = &session-state:TLS-Client-Cert-Serial
 
 	update {
 		&control:TLS-OCSP-Cert-Valid := &TLS-OCSP-Cert-Valid
