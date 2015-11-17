@@ -648,6 +648,11 @@ ifneq "$(MAKECMDGOALS)" "clean"
       $(eval -include ${${TGT}_DEPS}))
 endif
 
+# Build rules for installation subdirectories
+$(foreach D,$(sort $(dir ${ALL_INSTALL})),\
+  $(eval $(call ADD_INSTALL_RULE.dir,${D})))
+
+
 scan: ${ALL_PLISTS}
 
 .PHONY: clean.scan
