@@ -1,3 +1,8 @@
+encode Unit-EVS-5-Integer = 1, Unit-EVS-5-Integer = 2
+data f5 0d 1a 00 00 00 2c 50 01 00 00 00 01 f5 0d 1a 00 00 00 2c 50 01 00 00 00 02
+
+
+
 # Example attributes as used in RFC 6929
 raw 241.1 "bob"
 data f1 06 01 62 6f 62
@@ -141,3 +146,12 @@ data f1 0f f3 01 06 00 00 00 01 01 06 00 00 00 02
 
 decode -
 data Unit-TLV-Integer = 1, Unit-TLV-Integer = 2
+
+#
+#  And "long extended" EVS
+#
+encode Unit-EVS-5-Integer = 1, Unit-EVS-5-Integer = 2
+data f5 0d 1a 00 00 00 2c 50 01 00 00 00 01 f5 0d 1a 00 00 00 2c 50 01 00 00 00 02
+
+decode -
+data Unit-EVS-5-Integer = 1, Unit-EVS-5-Integer = 2
