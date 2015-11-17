@@ -909,6 +909,18 @@ static void process_file(const char *root_dir, char const *filename)
 			continue;
 		}
 
+		if (strncmp(p, "dictionary ", 11) == 0) {
+			p += 11;
+
+			if (fr_dict_parse_str(p, fr_dict_root(fr_main_dict), 0) < 0) {
+				strlcpy(output, fr_strerror(), sizeof(output));
+				continue;
+			}
+
+			strlcpy(output, "ok", sizeof(output));
+			continue;
+		}
+
 		if (strncmp(p, "$INCLUDE ", 9) == 0) {
 			char *q;
 
