@@ -619,15 +619,13 @@ int fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value)
 /** Find the pair with the matching DAs
  *
  */
-VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *vp, fr_dict_attr_t const *da, int8_t tag)
+VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag)
 {
 	vp_cursor_t 	cursor;
 
-	if(!fr_assert(da)) {
-		 return NULL;
-	}
+	if(!fr_assert(da)) return NULL;
 
-	(void) fr_cursor_init(&cursor, &vp);
+	(void) fr_cursor_init(&cursor, &head);
 	return fr_cursor_next_by_da(&cursor, da, tag);
 }
 
@@ -636,27 +634,27 @@ VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *vp, fr_dict_attr_t const *da, int8_t 
  *
  * @todo should take DAs and do a pointer comparison.
  */
-VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag)
+VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *head, unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	vp_cursor_t 	cursor;
 
 	/* List head may be NULL if it contains no VPs */
-	if (!vp) return NULL;
+	if (!head) return NULL;
 
-	VERIFY_LIST(vp);
+	VERIFY_LIST(head);
 
-	(void) fr_cursor_init(&cursor, &vp);
+	(void) fr_cursor_init(&cursor, &head);
 	return fr_cursor_next_by_num(&cursor, attr, vendor, tag);
 }
 
 /** Add a VP to the end of the list.
  *
- * Locates the end of 'first', and links an additional VP 'add' at the end.
+ * Locates the end of 'head', and links an additional VP 'add' at the end.
  *
- * @param[in] first VP in linked list. Will add new VP to the end of this list.
+ * @param[in] head VP in linked list. Will add new VP to the end of this list.
  * @param[in] add VP to add to list.
  */
-void fr_pair_add(VALUE_PAIR **first, VALUE_PAIR *add)
+void fr_pair_add(VALUE_PAIR **head, VALUE_PAIR *add)
 {
 	VALUE_PAIR *i;
 
@@ -664,12 +662,12 @@ void fr_pair_add(VALUE_PAIR **first, VALUE_PAIR *add)
 
 	VERIFY_VP(add);
 
-	if (*first == NULL) {
-		*first = add;
+	if (*head == NULL) {
+		*head = add;
 		return;
 	}
 
-	for (i = *first; i->next; i = i->next) {
+	for (i = *head; i->next; i = i->next) {
 #ifdef WITH_VERIFY_PTR
 		VERIFY_VP(i);
 		/*
@@ -685,37 +683,37 @@ void fr_pair_add(VALUE_PAIR **first, VALUE_PAIR *add)
 
 /** Replace all matching VPs
  *
- * Walks over 'first', and replaces the first VP that matches 'replace'.
+ * Walks over 'head', and replaces the head VP that matches 'replace'.
  *
  * @note Memory used by the VP being replaced will be freed.
  * @note Will not work with unknown attributes.
  *
- * @param[in,out] first VP in linked list. Will search and replace in this list.
+ * @param[in,out] head VP in linked list. Will search and replace in this list.
  * @param[in] replace VP to replace.
  */
-void fr_pair_replace(VALUE_PAIR **first, VALUE_PAIR *replace)
+void fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *replace)
 {
 	VALUE_PAIR *i, *next;
-	VALUE_PAIR **prev = first;
+	VALUE_PAIR **prev = head;
 
 	VERIFY_VP(replace);
 
-	if (*first == NULL) {
-		*first = replace;
+	if (*head == NULL) {
+		*head = replace;
 		return;
 	}
 
 	/*
 	 *	Not an empty list, so find item if it is there, and
-	 *	replace it. Note, we always replace the first one, and
+	 *	replace it. Note, we always replace the head one, and
 	 *	we ignore any others that might exist.
 	 */
-	for(i = *first; i; i = next) {
+	for(i = *head; i; i = next) {
 		VERIFY_VP(i);
 		next = i->next;
 
 		/*
-		 *	Found the first attribute, replace it,
+		 *	Found the head attribute, replace it,
 		 *	and return.
 		 */
 		if ((i->da == replace->da) && (!i->da->flags.has_tag || TAG_EQ(replace->tag, i->tag))) {
@@ -742,7 +740,7 @@ void fr_pair_replace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	*prev = replace;
 }
 
-/** Create a new VALUE_PAIR or replace the value of the first pair in the specified list
+/** Create a new VALUE_PAIR or replace the value of the head pair in the specified list
  *
  * @note Any buffers associated with value, will be stolen to the context of the
  *	VALUE_PAIR we create, or find.
@@ -787,19 +785,19 @@ int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
  *
  * Delete matching pairs from the attribute list.
  *
- * @param[in,out] first VP in list.
+ * @param[in,out] head VP in list.
  * @param[in] attr to match.
  * @param[in] vendor to match.
  * @param[in] tag to match. TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  *
  * @todo should take DAs and do a point comparison.
  */
-void fr_pair_delete_by_num(VALUE_PAIR **first, unsigned int attr, unsigned int vendor, int8_t tag)
+void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	VALUE_PAIR *i, *next;
-	VALUE_PAIR **last = first;
+	VALUE_PAIR **last = head;
 
-	for(i = *first; i; i = next) {
+	for(i = *head; i; i = next) {
 		VERIFY_VP(i);
 		next = i->next;
 		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
@@ -840,7 +838,7 @@ int8_t fr_pair_cmp_by_da_tag(void const *a, void const *b)
  *
  *	e.g. "foo" != "bar"
  *
- * @param[in] a the first attribute
+ * @param[in] a the head attribute
  * @param[in] b the second attribute
  * @return
  *	- 1 if true.
@@ -916,7 +914,7 @@ int fr_pair_cmp(VALUE_PAIR *a, VALUE_PAIR *b)
  *
  * This is useful for comparing lists of attributes inserted into a binary tree.
  *
- * @param a first list of #VALUE_PAIR.
+ * @param a head list of #VALUE_PAIR.
  * @param b second list of #VALUE_PAIR.
  * @return
  *	- -1 if a < b.
@@ -1143,7 +1141,7 @@ bool fr_pair_validate(VALUE_PAIR const *failed[2], VALUE_PAIR *filter, VALUE_PAI
 		if (!match || !check) goto mismatch;
 
 		/*
-		 *	The lists are sorted, so if the first
+		 *	The lists are sorted, so if the head
 		 *	attributes aren't of the same type, then we're
 		 *	done.
 		 */

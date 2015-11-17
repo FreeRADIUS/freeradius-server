@@ -206,14 +206,14 @@ int		fr_pair_to_unknown(VALUE_PAIR *vp);
 int 		fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value);
 
 /* Searching and list modification */
-VALUE_PAIR	*fr_pair_find_by_da(VALUE_PAIR *, fr_dict_attr_t const *da, int8_t tag);
-VALUE_PAIR	*fr_pair_find_by_num(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
-void		fr_pair_add(VALUE_PAIR **, VALUE_PAIR *);
-void		fr_pair_replace(VALUE_PAIR **first, VALUE_PAIR *add);
+VALUE_PAIR	*fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag);
+VALUE_PAIR	*fr_pair_find_by_num(VALUE_PAIR *head, unsigned int attr, unsigned int vendor, int8_t tag);
+void		fr_pair_add(VALUE_PAIR **head, VALUE_PAIR *vp);
+void		fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *add);
 int		fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 			  	      unsigned int attr, unsigned int vendor, int8_t tag,
 				      PW_TYPE type, value_data_t *value);
-void		fr_pair_delete_by_num(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
+void		fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int attr, unsigned int vendor, int8_t tag);
 
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
