@@ -85,23 +85,6 @@ endif
 #
 export DESTDIR := $(R)
 
-.PHONY: install.bindir
-install.bindir:
-	@[ -d $(R)$(bindir) ] || $(INSTALL) -d -m 755 $(R)$(bindir)
-
-.PHONY: install.sbindir
-install.sbindir:
-	@[ -d $(R)$(sbindir) ] || $(INSTALL) -d -m 755 $(R)$(sbindir)
-
-.PHONY: install.dirs
-install.dirs: install.bindir install.sbindir
-	@$(INSTALL) -d -m 755	$(R)$(mandir)
-	@$(INSTALL) -d -m 755	$(R)$(RUNDIR)
-	@$(INSTALL) -d -m 700	$(R)$(logdir)
-	@$(INSTALL) -d -m 700	$(R)$(radacctdir)
-	@$(INSTALL) -d -m 755	$(R)$(datadir)
-	@$(INSTALL) -d -m 755	$(R)$(dictdir)
-
 DICTIONARIES := $(wildcard share/dictionary*)
 install.share: $(addprefix $(R)$(dictdir)/,$(notdir $(DICTIONARIES)))
 
@@ -121,7 +104,9 @@ $(R)$(mandir)/%: man/%
 #
 ALL_INSTALL := $(patsubst %rlm_test.la,,$(ALL_INSTALL))
 
-install: install.dirs install.share install.man
+install: install.share install.man
+	@$(INSTALL) -d -m 700	$(R)$(logdir)
+	@$(INSTALL) -d -m 700	$(R)$(radacctdir)
 
 ifneq ($(RADMIN),)
 ifneq ($(RGROUP),)
