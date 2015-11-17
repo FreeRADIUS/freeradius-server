@@ -1476,7 +1476,7 @@ AC_CHECK_FUNCS( \
   strsignal \
   unlinkat \
   bindat \
-  dladdr
+  dladdr \
   vdprintf \
   vsnprintf
 )
