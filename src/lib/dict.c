@@ -1529,7 +1529,6 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 		case PW_TYPE_INTEGER:
 			break;
 
-		case PW_TYPE_INTEGER64:
 		default:
 			talloc_free(dval);
 			fr_strerror_printf("fr_dict_value_add: VALUEs cannot be defined for attributes of type '%s'",
