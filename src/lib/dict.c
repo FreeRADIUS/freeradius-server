@@ -655,7 +655,7 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
  *	- The child attribute on success.
  *	- NULL if the child attribute does not exist.
  */
-fr_dict_attr_t inline const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
+inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const *bin;
 
