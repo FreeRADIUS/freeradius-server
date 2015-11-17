@@ -65,14 +65,11 @@ struct fr_dict {
 	fr_hash_table_t		*vendors_by_num;
 
 	fr_hash_table_t		*attributes_by_name;	//!< Lookup an attribute by its name.
-	fr_hash_table_t		*attributes_by_num;	//!< Lookup an attribute by its number.
 
 	fr_hash_table_t		*attributes_combo;	//!< Attributes that can be multiple types.
 
 	fr_hash_table_t		*values_by_da;		//!< Lookup an attribute enum by integer value.
 	fr_hash_table_t		*values_by_name;	//!< Lookup an attribute enum by name.
-
-	fr_dict_attr_t		*base_attrs[256];	//!< Quick lookup for protocols with an 8bit attribute space.
 
 	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce mallocs.
@@ -187,26 +184,6 @@ static int dict_attr_name_cmp(void const *one, void const *two)
 	fr_dict_attr_t const *b = two;
 
 	return strcasecmp(a->name, b->name);
-}
-
-static uint32_t dict_attr_value_hash(void const *data)
-{
-	uint32_t hash;
-	fr_dict_attr_t const *attr = data;
-
-	hash = fr_hash(&attr->vendor, sizeof(attr->vendor));
-	return fr_hash_update(&attr->attr, sizeof(attr->attr), hash);
-}
-
-static int dict_attr_value_cmp(void const *one, void const *two)
-{
-	fr_dict_attr_t const *a = one;
-	fr_dict_attr_t const *b = two;
-
-	if (a->vendor < b->vendor) return -1;
-	if (a->vendor > b->vendor) return +1;
-
-	return a->attr - b->attr;
 }
 
 static uint32_t dict_attr_combo_hash(void const *data)
@@ -678,7 +655,7 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
  *	- The child attribute on success.
  *	- NULL if the child attribute does not exist.
  */
-fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
+fr_dict_attr_t inline const *fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr)
 {
 	fr_dict_attr_t const *bin;
 
@@ -980,8 +957,7 @@ int fr_dict_vendor_add(char const *name, unsigned int num)
 	 *	by value) we want to use the NEW name.
 	 */
 	if (!fr_hash_table_replace(fr_main_dict->vendors_by_num, dv)) {
-		fr_strerror_printf("fr_dict_vendor_add: Failed inserting vendor %s",
-				   name);
+		fr_strerror_printf("fr_dict_vendor_add: Failed inserting vendor %s", name);
 		return -1;
 	}
 
@@ -1384,22 +1360,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			talloc_free(n);
 			goto error;
 		}
-	}
-
-	/*
-	 *	Insert the SAME pointer (not free'd when this entry is
-	 *	deleted), into another table.
-	 *
-	 *	Only insert attributes into the by_num table if they're
-	 *	standard VSAs, or are top level (RFC/Internal) attributes.
-	 */
-	if (parent->flags.is_root || ((parent->type == PW_TYPE_VENDOR) && (parent->parent->type == PW_TYPE_VSA))) {
-		if (!fr_hash_table_replace(fr_main_dict->attributes_by_num, n)) {
-			fr_strerror_printf("Failed inserting attribute");
-			goto error;
-		}
-
-		if (!vendor && (attr > 0) && (attr < 256)) fr_main_dict->base_attrs[attr] = n;
 	}
 
 	/*
@@ -2696,14 +2656,6 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	if (!dict->attributes_by_name) goto error;
 
 	/*
-	 *	Create the table of attributes by value.  There MAY
-	 *	be attributes of the same value.  If there are, we
-	 *	pick the latest one.
-	 */
-	dict->attributes_by_num = fr_hash_table_create(dict, dict_attr_value_hash, dict_attr_value_cmp, NULL);
-	if (!dict->attributes_by_num) goto error;
-
-	/*
 	 *	Horrible hacks for combo-IP.
 	 */
 	dict->attributes_combo = fr_hash_table_create(dict, dict_attr_combo_hash, dict_attr_combo_cmp, fr_pool_free);
@@ -2781,9 +2733,6 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	 */
 	fr_hash_table_walk(dict->vendors_by_name, null_callback, NULL);
 	fr_hash_table_walk(dict->vendors_by_num, null_callback, NULL);
-
-	fr_hash_table_walk(dict->attributes_by_name, null_callback, NULL);
-	fr_hash_table_walk(dict->attributes_by_num, null_callback, NULL);
 
 	fr_hash_table_walk(dict->values_by_da, null_callback, NULL);
 	fr_hash_table_walk(dict->values_by_name, null_callback, NULL);
@@ -3438,14 +3387,17 @@ int fr_dict_unknown_from_suboid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
  */
 fr_dict_attr_t const *fr_dict_attr_by_num(unsigned int vendor, unsigned int attr)
 {
-	fr_dict_attr_t da;
+	fr_dict_attr_t const *parent;
 
-	if ((attr > 0) && (attr < 256) && !vendor) return fr_main_dict->base_attrs[attr];
+	if (vendor == 0) return fr_dict_attr_child_by_num(fr_main_dict->root, attr);
 
-	da.attr = attr;
-	da.vendor = vendor;
+	parent = fr_dict_attr_child_by_num(fr_main_dict->root, PW_VENDOR_SPECIFIC);
+	if (!parent) return NULL;
 
-	return fr_hash_table_finddata(fr_main_dict->attributes_by_num, &da);
+	parent = fr_dict_attr_child_by_num(parent, vendor);
+	if (!parent) return NULL;
+
+	return fr_dict_attr_child_by_num(parent, attr);
 }
 
 /** Get an attribute by its numerical value and data type
