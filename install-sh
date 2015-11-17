@@ -192,7 +192,7 @@ fi
 
 if [ x"$dir_arg" != x ]
 then
-	$doit $instcmd $dst &&
+	([ -d $dst ] || $doit $instcmd $dst) &&
 
 	if [ x"$chowncmd" != x ]; then $doit $chowncmd $dst; else true ; fi &&
 	if [ x"$chgrpcmd" != x ]; then $doit $chgrpcmd $dst; else true ; fi &&
