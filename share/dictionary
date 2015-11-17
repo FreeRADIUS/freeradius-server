@@ -186,6 +186,7 @@ $INCLUDE dictionary.extreme
 $INCLUDE dictionary.f5
 $INCLUDE dictionary.fdxtended
 $INCLUDE dictionary.freeradius
+$INCLUDE dictionary.freeradius.snmp
 $INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.fortinet
 $INCLUDE dictionary.foundry

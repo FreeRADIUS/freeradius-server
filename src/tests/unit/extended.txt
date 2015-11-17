@@ -124,7 +124,7 @@ data f1 07 f1 00 00 1a 99 f1 07 f1 00 00 08 40
 #  EVS data types
 #
 encode Unit-EVS-Integer = 6809
-data f1 0c 1a 00 00 2c 50 01 00 00 1a 99
+data f2 0c 1a 00 00 2c 50 01 00 00 1a 99
 
 decode -
 data Unit-EVS-Integer = 6809
