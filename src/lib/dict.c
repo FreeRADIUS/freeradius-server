@@ -61,29 +61,28 @@ typedef struct value_fixup_t {
  * There would also be conflicts for DHCP(v6)/RADIUS attributes etc...
  */
 struct fr_dict {
-	fr_hash_table_t		*vendors_by_name;
-	fr_hash_table_t		*vendors_by_num;
-
-	fr_hash_table_t		*attributes_by_name;	//!< Lookup an attribute by its name.
-
-	fr_hash_table_t		*attributes_combo;	//!< Attributes that can be multiple types.
-
-	fr_hash_table_t		*values_by_da;		//!< Lookup an attribute enum by integer value.
-	fr_hash_table_t		*values_by_name;	//!< Lookup an attribute enum by name.
-
-	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
-	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce mallocs.
-
 	value_fixup_t		*value_fixup;
 
 	dict_stat_t		*stat_head;
 	dict_stat_t		*stat_tail;
+
+	fr_hash_table_t		*vendors_by_name;	//!< Lookup vendor by name.
+	fr_hash_table_t		*vendors_by_num;	//!< Lookup vendor by PEN.
+
+	fr_hash_table_t		*attributes_by_name;	//!< Allow attribute lookup by unique name.
+
+	fr_hash_table_t		*attributes_combo;	//!< Lookup variants of polymorphic attributes.
+
+	fr_hash_table_t		*values_by_da;		//!< Lookup an attribute enum value by integer value.
+	fr_hash_table_t		*values_by_name;	//!< Lookup an attribute enum value by name.
+
+	fr_dict_attr_t		*root;			//!< Root attribute of this dictionary.
+	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce mallocs.
 };
 
 fr_dict_t *fr_main_dict;
 
-/*
- *	So VALUEs in the dictionary can have forward references.
+/** Map data types to names representing those types
  */
 const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "integer",       PW_TYPE_INTEGER },
@@ -117,8 +116,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ NULL,            0 }
 };
 
-/*
- *	Map data types to min / max data sizes.
+/** Map data types to min / max data sizes
  */
 const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
 	[PW_TYPE_INVALID]	= {~0, 0},
@@ -901,8 +899,16 @@ ssize_t fr_dict_str_to_oid(unsigned int *vendor, unsigned int *attr, fr_dict_att
 	}
 }
 
-/*
- *	Add vendor to the list.
+/** Add a vendor to the dictionary
+ *
+ * Inserts a vendor entry into the vendor hash table.  This must be done before adding
+ * attributes under a VSA.
+ *
+ * @param[in] name of the vendor.
+ * @param[in] num Vendor's Private Enterprise Number.
+ * @return
+ * 	- 0 on success.
+ * 	- -1 on failure.
  */
 int fr_dict_vendor_add(char const *name, unsigned int num)
 {
@@ -2471,6 +2477,8 @@ static void fr_pool_free(void *to_free)
 
 /** Return the root attribute of a dictionary
  *
+ * @param dict to return root for.
+ * @return the root attribute of the dictionary.
  */
 fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
 {
@@ -2631,6 +2639,13 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	return 0;
 }
 
+/** Build the tlv_stack for the specified DA and encode the path in OID form
+ *
+ * @param[out] buffer Where to write the OID.
+ * @param[in] outlen Length of the output buffer.
+ * @param[in] da to print OID string for.
+ * @return the number of bytes written to the buffer.
+ * /
 static size_t dict_print_attr_oid(char *buffer, size_t outlen, fr_dict_attr_t const *da)
 {
 	size_t len;
@@ -2706,7 +2721,10 @@ static fr_dict_attr_t *fr_dict_unknown_acopy(TALLOC_CTX *ctx, fr_dict_attr_t con
 	return new;
 }
 
-/** Even if the attribute is unknown we need to build the complete tree to encode it correctly
+/** Build an unknown vendor, parented by a VSA or EVS attribute
+ *
+ * This allows us to complete the path back to the dictionary root in the case
+ * of unknown attributes with unknown vendors.
  *
  * @note Will return known vendors attributes where possible.  Do not free directly,
  *	use #fr_dict_attr_free.
@@ -2774,10 +2792,13 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out
 	return 0;
 }
 
-/** Initialises a dictionary attr for unknown attributes
+/** Initialises an unknown attribute
  *
  * Initialises a dict attr for an unknown attribute/vendor/type without adding
  * it to dictionary pools/hashes.
+ *
+ * Unknown attributes are used to transparently pass undecodeable attributes
+ * when we proxy requests.
  *
  * @param[in,out] da struct to initialise, must be at least FR_DICT_ATTR_SIZE bytes.
  * @param[in] parent of the unknown attribute (may also be unknown).
@@ -2813,9 +2834,9 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent
 	return 0;
 }
 
-/** Allocs a dictionary attr for unknown attributes
+/** Allocates an unknown attribute
  *
- * Allocs a dict attr for an unknown attribute/vendor/type without adding it to dictionary pools/hashes.
+ * @copybrief fr_dict_unknown_from_fields
  *
  * @note If vendor != 0, an unknown vendor (may) also be created, parented by
  *	the correct EVS or VSA attribute. This is accessible via vp->parent,
@@ -2892,13 +2913,15 @@ fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
 	return da;
 }
 
-/** Create a fr_dict_attr_t from an ASCII attribute and value
+/** Initialise a fr_dict_attr_t from an ASCII attribute and value
  *
  * Where the attribute name is in the form:
  *  - Attr-%d
  *  - Attr-%d.%d.%d...
  *  - Vendor-%d-Attr-%d
  *  - VendorName-Attr-%d
+ *
+ * @copybrief fr_dict_unknown_from_fields
  *
  * @note We can't validate attribute numbers here as a dictionary
  *	 lookup is required to determine if the attribute
@@ -3146,6 +3169,8 @@ int fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
  *  - Vendor-%d-Attr-%d
  *  - VendorName-Attr-%d
  *
+ * @copybrief fr_dict_unknown_from_fields
+ *
  * @note If vendor != 0, an unknown vendor (may) also be created, parented by
  *	the correct EVS or VSA attribute. This is accessible via vp->parent,
  *	and will be use the unknown da as its talloc parent.
@@ -3265,8 +3290,15 @@ int fr_dict_unknown_from_suboid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 	return 0;
 }
 
-/*
- *	Get an attribute by its numerical value.
+/** Lookup a #fr_dict_attr_t by its vendor and attribute numbers
+ *
+ * @note This is a deprecated function, new code should use #fr_dict_attr_child_by_num.
+ *
+ * @param vendor number of the attribute.
+ * @param attr number of the attribute.
+ * @return
+ * 	- Attribute matching vendor/attr.
+ * 	- NULL if no matching attribute could be found.
  */
 fr_dict_attr_t const *fr_dict_attr_by_num(unsigned int vendor, unsigned int attr)
 {
@@ -3283,11 +3315,15 @@ fr_dict_attr_t const *fr_dict_attr_by_num(unsigned int vendor, unsigned int attr
 	return fr_dict_attr_child_by_num(parent, attr);
 }
 
-/** Get an attribute by its numerical value and data type
+/** Lookup a attribute by its its vendor and attribute numbers and data type
  *
- * Used only for COMBO_IP
+ * @note Only works with PW_TYPE_COMBO_IP
  *
- * @return The attribute, or NULL if not found.
+ * @param vendor number of the attribute.
+ * @param attr number of the attribute.
+ * @return
+ * 	- Attribute matching vendor/attr/type.
+ * 	- NULL if no matching attribute could be found.
  */
 fr_dict_attr_t const *fr_dict_attr_by_type(unsigned int vendor, unsigned int attr, PW_TYPE type)
 {
@@ -3300,8 +3336,14 @@ fr_dict_attr_t const *fr_dict_attr_by_type(unsigned int vendor, unsigned int att
 	return fr_hash_table_finddata(fr_main_dict->attributes_combo, &da);
 }
 
-/*
- *	Get an attribute by its name.
+/** Locate a #fr_dict_attr_t by its name
+ *
+ * @note Unlike attribute numbers, attribute names are unique to the dictionary.
+ *
+ * @param name of the attribute to locate.
+ * @return
+ * 	- Attribute matching name.
+ * 	- NULL if no matching attribute could be found.
  */
 fr_dict_attr_t const *fr_dict_attr_by_name(char const *name)
 {
@@ -3316,7 +3358,7 @@ fr_dict_attr_t const *fr_dict_attr_by_name(char const *name)
 	return fr_hash_table_finddata(fr_main_dict->attributes_by_name, da);
 }
 
-/** Look up a dictionary attribute by name embedded in another string
+/** Look up a dictionary attribute by a name embedded in another string
  *
  * Find the first invalid attribute name char in the string pointed
  * to by name.
@@ -3333,8 +3375,8 @@ fr_dict_attr_t const *fr_dict_attr_by_name(char const *name)
  *
  * @param[in,out] name string start.
  * @return
- *	- NULL if no attributes matching the name could be found.
- *	- #fr_dict_attr_t found in the global dictionary.
+ * 	- Attribute matching name.
+ *  	- NULL if no matching attribute could be found.
  */
 fr_dict_attr_t const *fr_dict_attr_by_name_substr(char const **name)
 {
@@ -3372,8 +3414,13 @@ fr_dict_attr_t const *fr_dict_attr_by_name_substr(char const **name)
 	return da;
 }
 
-/*
- *	Associate a value with an attribute and return it.
+/** Lookup the structure representing an enum value in a #fr_dict_attr_t
+ *
+ * @param[in] da to search in.
+ * @param[in] value number to search for.
+ * @return
+ * 	- Matching #fr_dict_value_t.
+ * 	- NULL if no matching #fr_dict_value_t could be found.
  */
 fr_dict_value_t *fr_dict_value_by_da(fr_dict_attr_t const *da, int value)
 {
@@ -3397,8 +3444,13 @@ fr_dict_value_t *fr_dict_value_by_da(fr_dict_attr_t const *da, int value)
 	return fr_hash_table_finddata(fr_main_dict->values_by_da, &dval);
 }
 
-/*
- *	Associate a value with an attribute and return it.
+/** Lookup the name of an enum value in a #fr_dict_attr_t
+ *
+ * @param[in] da to search in.
+ * @param[in] value number to search for.
+ * @return
+ * 	- Name of value.
+ * 	- NULL if no matching value could be found.
  */
 char const *fr_dict_value_name_by_attr(fr_dict_attr_t const *da, int value)
 {
