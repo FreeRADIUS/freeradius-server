@@ -365,7 +365,7 @@ int paircompare_register_byname(char const *name, fr_dict_attr_t const *from,
 		}
 	} else if (from) {
 		if (fr_dict_attr_add(fr_dict_root(fr_main_dict), name, -1, from->type, flags) < 0) {
-			fr_strerror_printf("Failed creating attribute '%s'", name);
+			fr_strerror_printf("Failed creating attribute '%s': %s", name, fr_strerror());
 			return -1;
 		}
 
