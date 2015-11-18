@@ -1052,7 +1052,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, int attr,
 
 				dv = fr_dict_vendor_by_num(v->attr);
 				if (!dv) {
-					fr_strerror_printf("Unknown vendor %d", v->attr);
+					fr_strerror_printf("Unknown vendor '%u'", v->attr);
 					goto error;
 				}
 
@@ -2371,7 +2371,7 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 
 			vendor = fr_dict_vendor_by_name(argv[1]);
 			if (!vendor) {
-				fr_strerror_printf("Unknown vendor %s", argv[1]);
+				fr_strerror_printf("Unknown vendor '%s'", argv[1]);
 				goto error;
 			}
 
