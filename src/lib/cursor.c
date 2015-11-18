@@ -153,7 +153,7 @@ VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
  *	- The next matching #VALUE_PAIR.
  *	- NULL if no #VALUE_PAIR (s) match.
  */
-VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag)
+VALUE_PAIR *fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr, int8_t tag)
 {
 	VALUE_PAIR *i;
 

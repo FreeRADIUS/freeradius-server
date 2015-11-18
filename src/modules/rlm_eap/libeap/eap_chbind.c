@@ -252,7 +252,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	length = 0;
 	for (vp =fr_cursor_init(&cursor, &first);
 	     vp != NULL;
-	     vp = fr_cursor_next_by_num(&cursor, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY)) {
+	     vp = fr_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY)) {
 		length += vp->vp_length;
 	}
 
@@ -273,7 +273,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	packet = (chbind_packet_t *) ptr;
 	for (vp = fr_cursor_init(&cursor, &first);
 	     vp != NULL;
-	     vp = fr_cursor_next_by_num(&cursor, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY)) {
+	     vp = fr_cursor_next_by_num(&cursor, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY)) {
 		memcpy(ptr, vp->vp_octets, vp->vp_length);
 		ptr += vp->vp_length;
 	}

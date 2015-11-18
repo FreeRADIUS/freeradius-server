@@ -180,7 +180,7 @@ static int CC_HINT(nonnull) rad_check_password(REQUEST *request)
 	 *	PW_AUTH_TYPE_REJECT.
 	 */
 	fr_cursor_init(&cursor, &request->config);
-	while ((auth_type_pair = fr_cursor_next_by_num(&cursor, PW_AUTH_TYPE, 0, TAG_ANY))) {
+	while ((auth_type_pair = fr_cursor_next_by_num(&cursor, 0, PW_AUTH_TYPE, TAG_ANY))) {
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
 

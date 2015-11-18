@@ -644,7 +644,7 @@ VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned 
 	VERIFY_LIST(head);
 
 	(void) fr_cursor_init(&cursor, &head);
-	return fr_cursor_next_by_num(&cursor, attr, vendor, tag);
+	return fr_cursor_next_by_num(&cursor, vendor, attr, tag);
 }
 
 /** Add a VP to the end of the list.
@@ -764,7 +764,7 @@ int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 	VALUE_PAIR *vp;
 
 	(void)fr_cursor_init(&cursor, list);
-	vp = fr_cursor_next_by_num(&cursor, attr, vendor, tag);
+	vp = fr_cursor_next_by_num(&cursor, vendor, attr, tag);
 	if (vp) {
 		VERIFY_VP(vp);
 		if (value_data_steal(vp, &vp->data, type, value) < 0) return -1;

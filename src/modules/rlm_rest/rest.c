@@ -2042,7 +2042,7 @@ int rest_request_config(rlm_rest_t const *instance, rlm_rest_section_t *section,
 	if (!ctx->headers) goto error_header;
 
 	fr_cursor_init(&headers, &request->config);
-	while (fr_cursor_next_by_num(&headers, PW_REST_HTTP_HEADER, 0, TAG_ANY)) {
+	while (fr_cursor_next_by_num(&headers, 0, PW_REST_HTTP_HEADER, TAG_ANY)) {
 		header = fr_cursor_remove(&headers);
 		if (!strchr(header->vp_strvalue, ':')) {
 			RWDEBUG("Invalid HTTP header \"%s\" must be in format '<attribute>: <value>'.  Skipping...",

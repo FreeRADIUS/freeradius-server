@@ -821,11 +821,11 @@ rlm_rcode_t rlm_ldap_check_cached(rlm_ldap_t const *inst, REQUEST *request, VALU
 	 *	We return RLM_MODULE_INVALID here as an indication
 	 *	the caller should try a dynamic group lookup instead.
 	 */
-	vp = fr_cursor_next_by_num(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY);
+	vp = fr_cursor_next_by_num(&cursor, inst->cache_da->vendor, inst->cache_da->attr, TAG_ANY);
 	if (!vp) return RLM_MODULE_INVALID;
 	fr_cursor_first(&cursor);
 
-	while ((vp = fr_cursor_next_by_num(&cursor, inst->cache_da->attr, inst->cache_da->vendor, TAG_ANY))) {
+	while ((vp = fr_cursor_next_by_num(&cursor, inst->cache_da->vendor, inst->cache_da->attr, TAG_ANY))) {
 		ret = fr_pair_cmp_op(T_OP_CMP_EQ, vp, check);
 		if (ret == 1) {
 			RDEBUG2("User found. Matched cached membership");

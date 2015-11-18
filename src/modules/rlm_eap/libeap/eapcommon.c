@@ -340,7 +340,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 */
 	total_len = 0;
 	fr_cursor_init(&cursor, &first);
-	while ((i = fr_cursor_next_by_num(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY))) {
+	while ((i = fr_cursor_next_by_num(&cursor, 0, PW_EAP_MESSAGE, TAG_ANY))) {
 		total_len += i->vp_length;
 
 		if (total_len > len) {
@@ -374,7 +374,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
 	fr_cursor_first(&cursor);
-	while ((i = fr_cursor_next_by_num(&cursor, PW_EAP_MESSAGE, 0, TAG_ANY))) {
+	while ((i = fr_cursor_next_by_num(&cursor, 0, PW_EAP_MESSAGE, TAG_ANY))) {
 		memcpy(ptr, i->vp_strvalue, i->vp_length);
 		ptr += i->vp_length;
 	}

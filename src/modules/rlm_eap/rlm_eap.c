@@ -539,7 +539,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		 *	This is vendor Cisco (9), Cisco-AVPair
 		 *	attribute (1)
 		 */
-		vp = fr_cursor_next_by_num(&cursor, 1, 9, TAG_ANY);
+		vp = fr_cursor_next_by_num(&cursor, 9, 1, TAG_ANY);
 		if (!vp) {
 			return RLM_MODULE_NOOP;
 		}
