@@ -995,14 +995,17 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 
 	if (fr_dict_valid_name(name) < 0) return -1;
 
+	/*
+	 *	Tags can only be used in a few limited situations.
+	 */
 	if (flags.has_tag) {
-		if (!((type == PW_TYPE_INTEGER) || (type == PW_TYPE_STRING))) {
+		if ((type != PW_TYPE_INTEGER) && (type != PW_TYPE_STRING)) {
 			fr_strerror_printf("Only 'integer' and 'string' attributes can have tags");
 			goto error;
 		}
 
-		if (!vendor && !parent->flags.is_root) {
-			fr_strerror_printf("Only RFC attributes can have tags");
+		if (!(parent->flags.is_root || (parent->type == PW_TYPE_VENDOR))) {
+			fr_strerror_printf("Only RFC attributes or VSAs can have tags");
 			goto error;
 		}
 	}
@@ -1048,11 +1051,12 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			fr_strerror_printf("VSAs cannot use the 'extended' or 'evs' attribute formats");
 			goto error;
 		}
-		if (flags.has_tag
+
+		if ((flags.encrypt != FLAG_ENCRYPT_NONE)
 #ifdef WITH_DHCP
 		    || flags.array
 #endif
-		    || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
+			) {
 			fr_strerror_printf("The 'extended' attributes MUST NOT have any flags set");
 			goto error;
 		}
@@ -1114,7 +1118,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			goto error;
 		}
 
-		if (flags.has_tag || flags.length || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
+		if (flags.length || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("The 'concat' flag cannot be used with any other flag");
 			goto error;
 		}
@@ -1132,7 +1136,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			goto error;
 		}
 
-		if (flags.has_tag || flags.array || flags.concat || (flags.encrypt > FLAG_ENCRYPT_USER_PASSWORD)) {
+		if (flags.array || flags.concat || (flags.encrypt > FLAG_ENCRYPT_USER_PASSWORD)) {
 			fr_strerror_printf("The 'length' flag cannot be used with any other flag");
 			goto error;
 		}
@@ -1239,16 +1243,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 
 		if ((type == PW_TYPE_TLV) && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("TLV's cannot be encrypted");
-			goto error;
-		}
-
-		if ((parent->type == PW_TYPE_TLV) && flags.has_tag) {
-			fr_strerror_printf("Sub-TLV's cannot have a tag");
-			goto error;
-		}
-
-		if ((type == PW_TYPE_TLV) && flags.has_tag) {
-			fr_strerror_printf("TLV's cannot have a tag");
 			goto error;
 		}
 
@@ -1784,26 +1778,6 @@ static int process_attribute(fr_dict_attr_t const *parent,
 	}
 
 	if (block_vendor) vendor = block_vendor;
-
-	/*
-	 *	Special checks for tags, they make our life much more
-	 *	difficult.
-	 */
-	if (flags.has_tag) {
-		/*
-		 *	Only string, octets, and integer can be tagged.
-		 */
-		switch (type) {
-		case PW_TYPE_STRING:
-		case PW_TYPE_INTEGER:
-			break;
-
-		default:
-			fr_strerror_printf("ATTRIBUTEs of type %s cannot be tagged.",
-					   fr_int2str(dict_attr_types, type, "?Unknown?"));
-			return -1;
-		}
-	}
 
 	if (type == PW_TYPE_TLV) {
 		if (vendor
