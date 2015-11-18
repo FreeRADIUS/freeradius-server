@@ -1595,7 +1595,7 @@ static int process_attribute(fr_dict_attr_t const *parent,
 	/*
 	 *	Dictionaries need to have real names, not shitty ones.
 	 */
-	if (strncmp(argv[1], "Attr-", 5) == 0) {
+	if (strncmp(argv[0], "Attr-", 5) == 0) {
 		fr_strerror_printf("Invalid ATTRIBUTE name");
 		return -1;
 	}
