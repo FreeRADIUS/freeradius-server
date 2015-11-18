@@ -4295,8 +4295,7 @@ int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
  * This is per RFC-2868 which adds a two char SALT to the initial intermediate
  * value MD5 hash.
  */
-int rad_tunnel_pwencode(char *passwd, size_t *pwlen, char const *secret,
-			uint8_t const *vector)
+ssize_t rad_tunnel_pwencode(char *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
 	unsigned char	digest[AUTH_VECTOR_LEN];
@@ -4378,8 +4377,7 @@ int rad_tunnel_pwencode(char *passwd, size_t *pwlen, char const *secret,
  * initial intermediate value, to differentiate it from the
  * above.
  */
-int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret,
-			uint8_t const *vector)
+ssize_t rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
 {
 	FR_MD5_CTX  context, old;
 	uint8_t		digest[AUTH_VECTOR_LEN];

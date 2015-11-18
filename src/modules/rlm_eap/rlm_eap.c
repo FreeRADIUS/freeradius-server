@@ -523,6 +523,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 {
 	size_t		i;
 	size_t		len;
+	ssize_t		ret;
 	char		*p;
 	VALUE_PAIR	*vp;
 	eap_handler_t	*handler;
@@ -613,6 +614,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 	 *	This is allowed.
 	 */
 	if (!request->proxy_reply) return RLM_MODULE_NOOP;
+	if (handler->type != PW_EAP_LEAP) return RLM_MODULE_NOOP;
 
 	/*
 	 *	There may be more than one Cisco-AVPair.
@@ -665,18 +667,30 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 	i = 34;
 	p = talloc_memdup(vp, vp->vp_strvalue, vp->vp_length + 1);
 	talloc_set_type(p, uint8_t);
-	len = rad_tunnel_pwdecode((uint8_t *)p + 17, &i, request->home_server->secret, request->proxy->vector);
+	ret = rad_tunnel_pwdecode((uint8_t *)p + 17, &i, request->home_server->secret, request->proxy->vector);
+	if (ret < 0) {
+		REDEBUG("Decoding leap:session-key failed");
+		talloc_free(p);
+		return RLM_MODULE_FAIL;
+	}
+	len = i;
 
-	/*
-	 *	FIXME: Assert that i == 16.
-	 */
+	if (i != 16) {
+		REDEBUG("Decoded key length is incorrect, must be 16 bytes");
+		talloc_free(p);
+		return RLM_MODULE_FAIL;
+	}
 
 	/*
 	 *	Encrypt the session key again, using the request data.
 	 */
-	rad_tunnel_pwencode(p + 17, &len,
-			    request->client->secret,
-			    request->packet->vector);
+	ret = rad_tunnel_pwencode(p + 17, &len, request->client->secret, request->packet->vector);
+	if (ret < 0) {
+		REDEBUG("Decoding leap:session-key failed");
+		talloc_free(p);
+		return RLM_MODULE_FAIL;
+	}
+
 	fr_pair_value_strsteal(vp, p);
 
 	return RLM_MODULE_UPDATED;

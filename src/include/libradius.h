@@ -528,9 +528,9 @@ int		rad_pwdecode(char *encpw, size_t len, char const *secret,
 			     uint8_t const *vector);
 
 #define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
-int		rad_tunnel_pwencode(char *encpw, size_t *len, char const *secret,
+ssize_t		rad_tunnel_pwencode(char *encpw, size_t *len, char const *secret,
 				    uint8_t const *vector);
-int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
+ssize_t		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
 				    char const *secret, uint8_t const *vector);
 int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
