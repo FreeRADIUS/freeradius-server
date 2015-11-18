@@ -1068,7 +1068,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 				}
 
 				if ((dv->type == 2) && (attr > 65535)) {
-					fr_strerror_printf("Attributes must have value between 1..255");
+					fr_strerror_printf("Attributes must have value between 1..65535");
 					goto error;
 				}
 				break;
