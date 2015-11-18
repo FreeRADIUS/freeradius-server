@@ -1574,7 +1574,7 @@ static int process_attribute(char const* fn, int const line,
 
 		*p = 0;
 
-		if (!sscanf_i(argv[1], &length)) {
+		if (!sscanf_i(argv[2] + 7, &length)) {
 			fr_strerror_printf("dict_init: %s[%d]: invalid length", fn, line);
 			return -1;
 		}
