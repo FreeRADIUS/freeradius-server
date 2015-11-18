@@ -590,10 +590,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 		talloc_free(p);
 		return RLM_MODULE_FAIL;
 	}
-
-	if (i != 16) {
+	len = i;
+	if (len != 16) {
 		REDEBUG("Decoded key length is incorrect, must be 16 bytes");
 		talloc_free(p);
+		return RLM_MODULE_FAIL;
 	}
 
 	/*
