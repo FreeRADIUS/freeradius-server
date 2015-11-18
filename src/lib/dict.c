@@ -411,7 +411,7 @@ int fr_dict_valid_name(char const *name)
 			char buff[5];
 
 			fr_snprint(buff, sizeof(buff), (char const *)p, 1, '\'');
-			fr_strerror_printf("Invalid character '%s' in attribute", buff);
+			fr_strerror_printf("Invalid character '%s' in attribute name", buff);
 
 			return -(p - (uint8_t const *)name);
 		}
