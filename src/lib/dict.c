@@ -1113,15 +1113,9 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			goto error;
 		}
 
-		switch (type) {
-		case PW_TYPE_STRUCTURAL:
-			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
-			goto error;
-
-		default:
-			break;
-		}
-
+		/*
+		 *	We now know it's type octets, so we just need to check the parent.
+		 */
 		if (!parent->flags.is_root) switch (parent->type) {
 		case PW_TYPE_STRUCTURAL:
 			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
@@ -1143,16 +1137,9 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			goto error;
 		}
 
-		switch (type) {
-		case PW_TYPE_STRUCTURAL:
-			fr_strerror_printf("The 'length' flag cannot be used with '%s' attributes",
-					   fr_int2str(dict_attr_types, type, "?Unknown?"));
-			goto error;
-
-		default:
-			break;
-		}
-
+		/*
+		 *	We now know it's type octets, so we just need to check the parent.
+		 */
 		if (!parent->flags.is_root) switch (parent->type) {
 		case PW_TYPE_STRUCTURAL_EXCEPT_VSA:
 			fr_strerror_printf("The 'length' flag cannot be used with attributes parented by type '%s'",
