@@ -249,6 +249,13 @@ void		rad_free(RADIUS_PACKET **);
 /*
  *	radius_encode.c
  */
+
+typedef struct fr_radius_encode_ctx {
+	RADIUS_PACKET const	*packet;
+	RADIUS_PACKET const	*original;
+	char const		*secret;
+} fr_radius_encode_ctx_t;
+
 int		fr_radius_encode_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
 
 int		fr_radius_encode_tunnel_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
@@ -257,9 +264,7 @@ int		fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int 
 
 ssize_t		fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp);
 
-int		fr_radius_encode_pair(uint8_t *out, size_t outlen,
-				      RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-				      char const *secret, vp_cursor_t *cursor);
+int		fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx);
 
 /*
  *	radius_decode.c

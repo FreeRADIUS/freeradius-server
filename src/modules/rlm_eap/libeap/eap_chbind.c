@@ -95,7 +95,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 		}
 		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) goto next;
 
-		length = fr_radius_encode_pair(ptr, end - ptr, NULL, NULL, NULL, &cursor);
+		length = fr_radius_encode_pair(ptr, end - ptr, &cursor, NULL);
 		ptr += length;
 	}
 

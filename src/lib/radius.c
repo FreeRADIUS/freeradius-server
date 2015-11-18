@@ -1409,6 +1409,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	int			len;
 	VALUE_PAIR const	*vp;
 	vp_cursor_t		cursor;
+	fr_radius_encode_ctx_t	encoder_ctx = { .packet = packet, .original = original, .secret = secret };
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -1513,8 +1514,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		}
 		last_name = vp->da->name;
 
-		len = fr_radius_encode_pair(ptr, ((uint8_t *) data) + sizeof(data) - ptr,
-					    packet, original, secret, &cursor);
+		len = fr_radius_encode_pair(ptr, ((uint8_t *)data) + sizeof(data) - ptr, &cursor, &encoder_ctx);
 		if (len < 0) return -1;
 
 		/*

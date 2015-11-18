@@ -31,21 +31,16 @@ static unsigned int salt_offset = 0;
 fr_thread_local_setup(uint8_t *, fr_radius_encode_value_hton_buff)
 
 static ssize_t encode_value(uint8_t *out, size_t outlen,
-			    RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			    char const *secret,
 			    fr_dict_attr_t const **tlv_stack, int depth,
-			    vp_cursor_t *cursor);
+			    vp_cursor_t *cursor, void *encoder_ctx);
 
-static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen, RADIUS_PACKET const *packet,
-				       RADIUS_PACKET const *original, char const *secret,
+static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 				       fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				       vp_cursor_t *cursor);
+				       vp_cursor_t *cursor, void *encoder_ctx);
 
 static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
-			      RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			      char const *secret,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      vp_cursor_t *cursor);
+			      vp_cursor_t *cursor, void *encoder_ctx);
 
 /** Encode a CHAP password
  *
@@ -512,10 +507,8 @@ ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
 }
 
 static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
-				       RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-				       char const *secret,
 				       fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				       vp_cursor_t *cursor)
+				       vp_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
 	uint8_t			*p = out;
@@ -529,11 +522,9 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 		 *	Determine the nested type and call the appropriate encoder
 		 */
 		if (tlv_stack[depth + 1]->type == PW_TYPE_TLV) {
-			len = encode_tlv_hdr(p, outlen, packet, original,
-					     secret, tlv_stack, depth + 1, cursor);
+			len = encode_tlv_hdr(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
 		} else {
-			len = encode_rfc_hdr_internal(p, outlen, packet, original,
-						      secret, tlv_stack, depth + 1, cursor);
+			len = encode_rfc_hdr_internal(p, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
 		}
 
 		if (len < 0) return len;
@@ -562,10 +553,8 @@ static ssize_t encode_tlv_hdr_internal(uint8_t *out, size_t outlen,
 }
 
 static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
-			      RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			      char const *secret,
 			      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			      vp_cursor_t *cursor)
+			      vp_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
 
@@ -591,7 +580,7 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
 	out[0] = tlv_stack[depth]->attr & 0xff;
 	out[1] = 2;	/* TLV header */
 
-	len = encode_tlv_hdr_internal(out + 2, outlen - 2, packet, original, secret, tlv_stack, depth, cursor);
+	len = encode_tlv_hdr_internal(out + 2, outlen - 2, tlv_stack, depth, cursor, encoder_ctx);
 	if (len <= 0) return len;
 	if (len > 253) return 0;
 
@@ -607,10 +596,8 @@ static ssize_t encode_tlv_hdr(uint8_t *out, size_t outlen,
  *	- -1 on failure.
  */
 static ssize_t encode_value(uint8_t *out, size_t outlen,
-			    RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			    char const *secret,
 			    fr_dict_attr_t const **tlv_stack, int depth,
-			    vp_cursor_t *cursor)
+			    vp_cursor_t *cursor, void *encoder_ctx)
 {
 	uint32_t		lvalue;
 	ssize_t			len;
@@ -620,6 +607,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	uint64_t		lvalue64;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
+	fr_radius_encode_ctx_t	*ctx = encoder_ctx;
 
 	VERIFY_VP(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
@@ -629,7 +617,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 *	but it seems to work OK.
 	 */
 	if (da->type == PW_TYPE_TLV) {
-		return encode_tlv_hdr(out, outlen, packet, original, secret, tlv_stack, depth, cursor);
+		return encode_tlv_hdr(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}
 
 	/*
@@ -746,6 +734,11 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	if (len > (ssize_t)outlen) len = outlen;
 
+	if (vp->da->flags.encrypt && !ctx) {
+	no_ctx_error:
+		fr_strerror_printf("Asked to encrypt attribute, but no packet context provided");
+		return -1;
+	}
 	/*
 	 *	Encrypt the various password styles
 	 *
@@ -754,7 +747,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	 */
 	switch (vp->da->flags.encrypt) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
-		encode_password(ptr, &len, data, len, secret, packet->vector);
+		encode_password(ptr, &len, data, len, ctx->secret, ctx->packet->vector);
 		break;
 
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
@@ -770,27 +763,23 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 */
 		if (outlen < (18 + lvalue)) return 0;
 
-		switch (packet->code) {
+		switch (ctx->packet->code) {
 		case PW_CODE_ACCESS_ACCEPT:
 		case PW_CODE_ACCESS_REJECT:
 		case PW_CODE_ACCESS_CHALLENGE:
 		default:
-			if (!original) {
-				fr_strerror_printf("ERROR: No request packet, cannot encrypt %s attribute "
-						   "in the vp.", da->name);
-				return -1;
-			}
+			if (!ctx->original) goto no_ctx_error;
 
 			if (lvalue) ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
 			encode_tunnel_password(ptr + lvalue, &len, data, len,
-					       outlen - lvalue, secret, original->vector);
+					       outlen - lvalue, ctx->secret, ctx->original->vector);
 			len += lvalue;
 			break;
 		case PW_CODE_ACCOUNTING_REQUEST:
 		case PW_CODE_DISCONNECT_REQUEST:
 		case PW_CODE_COA_REQUEST:
 			ptr[0] = TAG_VALID(vp->tag) ? vp->tag : TAG_NONE;
-			encode_tunnel_password(ptr + 1, &len, data, len, outlen - 1, secret, packet->vector);
+			encode_tunnel_password(ptr + 1, &len, data, len, outlen - 1, ctx->secret, ctx->packet->vector);
 			len += lvalue;
 			break;
 		}
@@ -802,7 +791,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 		 */
 	case FLAG_ENCRYPT_ASCEND_SECRET:
 		if (len != 16) return 0;
-		fr_radius_make_secret(ptr, packet->vector, secret, data);
+		fr_radius_make_secret(ptr, ctx->packet->vector, ctx->secret, data);
 		len = AUTH_VECTOR_LEN;
 		break;
 
@@ -864,9 +853,7 @@ static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
 	while (1) {
 		int sublen = 255 - ptr[1];
 
-		if (len <= sublen) {
-			break;
-		}
+		if (len <= sublen) break;
 
 		len -= sublen;
 		memmove(ptr + 255 + hdr_len, ptr + 255, sublen);
@@ -890,10 +877,8 @@ static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
  *
  */
 static int encode_extended_hdr(uint8_t *out, size_t outlen,
-			       RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			       char const *secret,
 			       fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			       vp_cursor_t *cursor)
+			       vp_cursor_t *cursor, void *encoder_ctx)
 {
 	int			len;
 	int			hdr_len;
@@ -959,11 +944,10 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
 	hdr_len = out[1];
 
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
-		len = encode_tlv_hdr_internal(out + out[1], outlen - hdr_len, packet, original,
-					      secret, tlv_stack, depth, cursor);
+		len = encode_tlv_hdr_internal(out + out[1], outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
 
 	} else {
-		len = encode_value(out + out[1], outlen - hdr_len, packet, original, secret, tlv_stack, depth, cursor);
+		len = encode_value(out + out[1], outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
 	}
 	if (len <= 0) return len;
 
@@ -1020,10 +1004,8 @@ static int encode_extended_hdr(uint8_t *out, size_t outlen,
  * truncated to fit.
  */
 static ssize_t encode_concat(uint8_t *out, size_t outlen,
-			     UNUSED RADIUS_PACKET const *packet, UNUSED RADIUS_PACKET const *original,
-			     UNUSED char const *secret,
-			     fr_dict_attr_t const **tlv_stack, UNUSED unsigned int depth,
-			     vp_cursor_t *cursor)
+			     fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			     vp_cursor_t *cursor, UNUSED void *encoder_ctx)
 {
 	uint8_t			*ptr = out;
 	uint8_t			const *p;
@@ -1081,10 +1063,9 @@ static ssize_t encode_concat(uint8_t *out, size_t outlen,
  * If it's a standard attribute, then vp->da->attr == attribute.
  * Otherwise, attribute may be something else.
  */
-static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen, RADIUS_PACKET const *packet,
-				       RADIUS_PACKET const *original, char const *secret,
+static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 				       fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				       vp_cursor_t *cursor)
+				       vp_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t len;
 
@@ -1112,7 +1093,7 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen, RADIUS_PACKE
 
 	if (outlen > ((unsigned) 255 - out[1])) outlen = 255 - out[1];
 
-	len = encode_value(out + out[1], outlen, packet, original, secret, tlv_stack, depth, cursor);
+	len = encode_value(out + out[1], outlen, tlv_stack, depth, cursor, encoder_ctx);
 	if (len <= 0) return len;
 
 	out[1] += len;
@@ -1133,10 +1114,8 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen, RADIUS_PACKE
  * If it's in the RFC format, call encode_rfc_hdr_internal.  Otherwise, encode it here.
  */
 static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
-				      RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-				      char const *secret,
 				      fr_dict_attr_t const **tlv_stack, unsigned int depth,
-				      vp_cursor_t *cursor)
+				      vp_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
 	fr_dict_vendor_t	*dv;
@@ -1150,8 +1129,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	 */
 	dv = fr_dict_vendor_by_num(da->parent->attr);
 	if (!dv || ((da->type != PW_TYPE_TLV) && (dv->type == 1) && (dv->length == 1))) {
-		return encode_rfc_hdr_internal(out, outlen, packet, original, secret,
-					       tlv_stack, depth, cursor);
+		return encode_rfc_hdr_internal(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}
 
 	/*
@@ -1207,11 +1185,9 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	 *	internal tlv function, else we get a double TLV header.
 	 */
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
-		len = encode_tlv_hdr_internal(out + dv->type + dv->length, outlen, packet,
-					      original, secret, tlv_stack, depth, cursor);
+		len = encode_tlv_hdr_internal(out + dv->type + dv->length, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	} else {
-		len = encode_value(out + dv->type + dv->length, outlen, packet,
-				   original, secret, tlv_stack, depth, cursor);
+		len = encode_value(out + dv->type + dv->length, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}
 
 	if (len <= 0) return len;
@@ -1266,10 +1242,8 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
  *
  */
 static int encode_wimax_hdr(uint8_t *out, size_t outlen,
-			    RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			    char const *secret,
 			    fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			    vp_cursor_t *cursor)
+			    vp_cursor_t *cursor, void *encoder_ctx)
 {
 	int			len;
 	uint32_t		lvalue;
@@ -1326,11 +1300,10 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	hdr_len = 9;
 
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
-		len = encode_tlv_hdr_internal(out + out[1], outlen - hdr_len, packet,
-					      original, secret, tlv_stack, depth, cursor);
+		len = encode_tlv_hdr_internal(out + out[1], outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
 		if (len <= 0) return len;
 	} else {
-		len = encode_value(out + out[1], outlen - hdr_len, packet, original, secret, tlv_stack, depth, cursor);
+		len = encode_value(out + out[1], outlen - hdr_len, tlv_stack, depth, cursor, encoder_ctx);
 		if (len <= 0) return len;
 	}
 
@@ -1365,10 +1338,8 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
  *
  */
 static int encode_vsa_hdr(uint8_t *out, size_t outlen,
-			  RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			  char const *secret,
 			  fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			  vp_cursor_t *cursor)
+			  vp_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
 	uint32_t		lvalue;
@@ -1385,8 +1356,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	/*
 	 *	Double-check for WiMAX format.
 	 */
-	if (da->flags.wimax) return encode_wimax_hdr(out, outlen, packet, original, secret, tlv_stack, depth + 1,
-						     cursor);
+	if (da->flags.wimax) return encode_wimax_hdr(out, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
 
 	/*
 	 *	Not enough freespace for: attr, len, vendor-id
@@ -1416,7 +1386,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 
 	if (outlen > ((unsigned) 255 - out[1])) outlen = 255 - out[1];
 
-	len = encode_vendor_attr_hdr(out + out[1], outlen, packet, original, secret, tlv_stack, depth + 1, cursor);
+	len = encode_vendor_attr_hdr(out + out[1], outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
 	if (len < 0) return len;
 
 #ifndef NDEBUG
@@ -1436,11 +1406,8 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 /** Encode an RFC standard attribute 1..255
  *
  */
-static int encode_rfc_hdr(uint8_t *out, size_t outlen,
-			  RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			  char const *secret,
-			  fr_dict_attr_t const **tlv_stack, unsigned int depth,
-			  vp_cursor_t *cursor)
+static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tlv_stack, unsigned int depth,
+			  vp_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR const *vp = fr_cursor_current(cursor);
 
@@ -1496,7 +1463,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen,
 		return 18;
 	}
 
-	return encode_rfc_hdr_internal(out, outlen, packet, original, secret, tlv_stack, depth, cursor);
+	return encode_rfc_hdr_internal(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 }
 
 /** Encode a data structure into a RADIUS attribute
@@ -1505,9 +1472,7 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen,
  * we use for tracking our TLV/VSA/EVS nesting and then calls the appropriate
  * dispatch function.
  */
-int fr_radius_encode_pair(uint8_t *out, size_t outlen,
-			  RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-			  char const *secret, vp_cursor_t *cursor)
+int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx)
 {
 	VALUE_PAIR const *vp;
 	int ret;
@@ -1547,7 +1512,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 		tlv_stack[0] = vp->da;
 		tlv_stack[1] = NULL;
 		FR_PROTO_STACK_PRINT(tlv_stack, 0);
-		return encode_rfc_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, cursor);
+		return encode_rfc_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 	}
 
 	/*
@@ -1560,7 +1525,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 	switch (da->type) {
 	default:
 		if (!da->flags.concat) {
-			ret = encode_rfc_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, cursor);
+			ret = encode_rfc_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		} else {
 			/*
 			 *	Attributes like EAP-Message are marked as
@@ -1568,13 +1533,13 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 			 *	using a different scheme than the "long
 			 *	extended" one.
 			 */
-			ret = encode_concat(out, outlen, packet, original, secret, tlv_stack, 0, cursor);
+			ret = encode_concat(out, outlen, tlv_stack, 0, cursor, encoder_ctx);
 		}
 		break;
 
 	case PW_TYPE_VSA:
 		if (!vp->da->flags.wimax) {
-			ret = encode_vsa_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, cursor);
+			ret = encode_vsa_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		} else {
 			/*
 			 *	WiMAX has a non-standard format for
@@ -1582,16 +1547,16 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 			 *	attributes by fragmenting them inside
 			 *	of the WiMAX VSA space.
 			 */
-			ret = encode_wimax_hdr(out, outlen, packet, original, secret, tlv_stack, 0, cursor);
+			ret = encode_wimax_hdr(out, outlen, tlv_stack, 0, cursor, encoder_ctx);
 		}
 		break;
 
 	case PW_TYPE_TLV:
-		ret = encode_tlv_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, cursor);
+		ret = encode_tlv_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
 	case PW_TYPE_EXTENDED:
-		ret = encode_extended_hdr(out, attr_len, packet, original, secret, tlv_stack, 0, cursor);
+		ret = encode_extended_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
 	case PW_TYPE_LONG_EXTENDED:
@@ -1600,7 +1565,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen,
 		 *	octets.  We therefore fragment the data across
 		 *	multiple attributes.
 		 */
-		ret = encode_extended_hdr(out, outlen, packet, original, secret, tlv_stack, 0, cursor);
+		ret = encode_extended_hdr(out, outlen, tlv_stack, 0, cursor, encoder_ctx);
 		break;
 
 	case PW_TYPE_INVALID:
