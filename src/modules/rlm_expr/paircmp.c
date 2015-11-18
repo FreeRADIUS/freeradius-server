@@ -105,13 +105,13 @@ static int presufcmp(UNUSED void *instance,
 	/*
 	 *	If Strip-User-Name == No, then don't do any more.
 	 */
-	vp = fr_pair_find_by_num(check_pairs, PW_STRIP_USER_NAME, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(check_pairs, 0, PW_STRIP_USER_NAME, TAG_ANY);
 	if (vp && !vp->vp_integer) return ret;
 
 	/*
 	 *	See where to put the stripped user name.
 	 */
-	vp = fr_pair_find_by_num(check_pairs, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(check_pairs, 0, PW_STRIPPED_USER_NAME, TAG_ANY);
 	if (!vp) {
 		/*
 		 *	If "request" is NULL, then the memory will be

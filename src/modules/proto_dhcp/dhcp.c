@@ -1269,14 +1269,14 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		/*
 		 *	DHCP Opcode is request
 		 */
-		vp = fr_pair_find_by_num(head, 256, DHCP_MAGIC_VENDOR, TAG_ANY);
+		vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 256, TAG_ANY);
 		if (vp && vp->vp_integer == 3) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
-			vp = fr_pair_find_by_num(head, 63, DHCP_MAGIC_VENDOR, TAG_ANY);
+			vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 63, TAG_ANY);
 			if (vp && (strcmp(vp->vp_strvalue, "MSFT 98") == 0)) {
-				vp = fr_pair_find_by_num(head, 262, DHCP_MAGIC_VENDOR, TAG_ANY);
+				vp = fr_pair_find_by_num(head, DHCP_MAGIC_VENDOR, 262, TAG_ANY);
 
 				/*
 				 *	Reply should be broadcast.
@@ -1297,8 +1297,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 *	Client can request a LARGER size, but not a smaller
 	 *	one.  They also cannot request a size larger than MTU.
 	 */
-	maxms = fr_pair_find_by_num(packet->vps, 57, DHCP_MAGIC_VENDOR, TAG_ANY);
-	mtu = fr_pair_find_by_num(packet->vps, 26, DHCP_MAGIC_VENDOR, TAG_ANY);
+	maxms = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 57, TAG_ANY);
+	mtu = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 26, TAG_ANY);
 
 	if (mtu && (mtu->vp_integer < DEFAULT_PACKET_SIZE)) {
 		fr_strerror_printf("Client says MTU is smaller than minimum permitted by the specification");
@@ -1657,7 +1657,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	if (packet->code == 0) packet->code = PW_DHCP_NAK;
 
 	/* store xid */
-	if ((vp = fr_pair_find_by_num(packet->vps, 260, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 260, TAG_ANY))) {
 		packet->id = vp->vp_integer;
 	} else {
 		packet->id = fr_rand();
@@ -1686,7 +1686,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	}
 #endif
 
-	vp = fr_pair_find_by_num(packet->vps, 256, DHCP_MAGIC_VENDOR, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 256, TAG_ANY);
 	if (vp) {
 		*p++ = vp->vp_integer & 0xff;
 	} else {
@@ -1694,21 +1694,21 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	}
 
 	/* DHCP-Hardware-Type */
-	if ((vp = fr_pair_find_by_num(packet->vps, 257, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 257, TAG_ANY))) {
 		*p++ = vp->vp_byte;
 	} else {
 		*p++ = 1;		/* hardware type = ethernet */
 	}
 
 	/* DHCP-Hardware-Address-len */
-	if ((vp = fr_pair_find_by_num(packet->vps, 258, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 258, TAG_ANY))) {
 		*p++ = vp->vp_byte;
 	} else {
 		*p++ = 6;		/* 6 bytes of ethernet */
 	}
 
 	/* DHCP-Hop-Count */
-	if ((vp = fr_pair_find_by_num(packet->vps, 259, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 259, TAG_ANY))) {
 		*p = vp->vp_byte;
 	}
 	p++;
@@ -1719,27 +1719,27 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	p += 4;
 
 	/* DHCP-Number-of-Seconds */
-	if ((vp = fr_pair_find_by_num(packet->vps, 261, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 261, TAG_ANY))) {
 		svalue = htons(vp->vp_short);
 		memcpy(p, &svalue, 2);
 	}
 	p += 2;
 
 	/* DHCP-Flags */
-	if ((vp = fr_pair_find_by_num(packet->vps, 262, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 262, TAG_ANY))) {
 		svalue = htons(vp->vp_short);
 		memcpy(p, &svalue, 2);
 	}
 	p += 2;
 
 	/* DHCP-Client-IP-Address */
-	if ((vp = fr_pair_find_by_num(packet->vps, 263, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 263, TAG_ANY))) {
 		memcpy(p, &vp->vp_ipaddr, 4);
 	}
 	p += 4;
 
 	/* DHCP-Your-IP-address */
-	if ((vp = fr_pair_find_by_num(packet->vps, 264, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 264, TAG_ANY))) {
 		lvalue = vp->vp_ipaddr;
 	} else {
 		lvalue = htonl(INADDR_ANY);
@@ -1748,7 +1748,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	p += 4;
 
 	/* DHCP-Server-IP-Address */
-	vp = fr_pair_find_by_num(packet->vps, 265, DHCP_MAGIC_VENDOR, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 265, TAG_ANY);
 	if (vp) {
 		lvalue = vp->vp_ipaddr;
 	} else {
@@ -1760,7 +1760,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	/*
 	 *	DHCP-Gateway-IP-Address
 	 */
-	if ((vp = fr_pair_find_by_num(packet->vps, 266, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 266, TAG_ANY))) {
 		lvalue = vp->vp_ipaddr;
 	} else {
 		lvalue = htonl(INADDR_ANY);
@@ -1769,7 +1769,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	p += 4;
 
 	/* DHCP-Client-Hardware-Address */
-	if ((vp = fr_pair_find_by_num(packet->vps, 267, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 267, TAG_ANY))) {
 		if (vp->vp_length == sizeof(vp->vp_ether)) {
 			/*
 			 *	Ensure that we mark the packet as being Ethernet.
@@ -1784,7 +1784,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	p += DHCP_CHADDR_LEN;
 
 	/* DHCP-Server-Host-Name */
-	if ((vp = fr_pair_find_by_num(packet->vps, 268, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+	if ((vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 268, TAG_ANY))) {
 		if (vp->vp_length > DHCP_SNAME_LEN) {
 			memcpy(p, vp->vp_strvalue, DHCP_SNAME_LEN);
 		} else {
@@ -1804,7 +1804,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 */
 
 	/* DHCP-Boot-Filename */
-	vp = fr_pair_find_by_num(packet->vps, 269, DHCP_MAGIC_VENDOR, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, DHCP_MAGIC_VENDOR, 269, TAG_ANY);
 	if (vp) {
 		if (vp->vp_length > DHCP_FILE_LEN) {
 			memcpy(p, vp->vp_strvalue, DHCP_FILE_LEN);

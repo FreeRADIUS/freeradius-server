@@ -389,7 +389,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY))==NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY)) == NULL) {
 		RDEBUG("no Accounting-Status-Type attribute in request");
 		return RLM_MODULE_NOOP;
 	}
@@ -406,7 +406,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 *	We're only interested in accounting messages
 	 *	with a username in it.
 	 */
-	if (fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY) == NULL)
+	if (fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY) == NULL)
 		return RLM_MODULE_NOOP;
 
 	t = request->timestamp.tv_sec;

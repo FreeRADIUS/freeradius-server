@@ -46,10 +46,14 @@ static CONF_PARSER module_config[] = {
 
 static void fix_mppe_keys(eap_session_t *eap_session, mschapv2_opaque_t *data)
 {
-	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
-	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
-	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
-	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, VENDORPEC_MICROSOFT, 7,
+				  TAG_ANY);
+	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, VENDORPEC_MICROSOFT, 8,
+				  TAG_ANY);
+	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, VENDORPEC_MICROSOFT, 16,
+				  TAG_ANY);
+	fr_pair_list_mcopy_by_num(data, &data->mppe_keys, &eap_session->request->reply->vps, VENDORPEC_MICROSOFT, 17,
+				  TAG_ANY);
 }
 
 /*
@@ -226,7 +230,7 @@ static int mod_session_init(void *instance, eap_session_t *eap_session)
 	bool		created_challenge = false;
 	rlm_eap_mschapv2_t *inst = instance;
 
-	challenge = fr_pair_find_by_num(request->config, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
+	challenge = fr_pair_find_by_num(request->config, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
 	if (challenge && (challenge->vp_length != MSCHAPV2_CHALLENGE_LEN)) {
 		RWDEBUG("control:MS-CHAP-Challenge is incorrect length.  Ignoring it.");
 		challenge = NULL;
@@ -320,7 +324,8 @@ static int CC_HINT(nonnull) mschap_postproxy(eap_session_t *eap_session, UNUSED 
 		 *	Move the attribute, so it doesn't go into
 		 *	the reply.
 		 */
-		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, VENDORPEC_MICROSOFT,
+					  PW_MSCHAP2_SUCCESS, TAG_ANY);
 		break;
 
 	default:
@@ -630,7 +635,7 @@ packet_ready:
 		 *	the State attribute back, before passing
 		 *	the eap_session & request back into the tunnel.
 		 */
-		fr_pair_delete_by_num(&request->packet->vps, PW_STATE, 0, TAG_ANY);
+		fr_pair_delete_by_num(&request->packet->vps, 0, PW_STATE, TAG_ANY);
 
 		/*
 		 *	Fix the User-Name when proxying, to strip off
@@ -639,7 +644,7 @@ packet_ready:
 		 *	in the user name, THEN discard the user name.
 		 */
 		if (inst->with_ntdomain_hack &&
-		    ((challenge = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY)) != NULL) &&
+		    ((challenge = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY)) != NULL) &&
 		    ((username = strchr(challenge->vp_strvalue, '\\')) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
@@ -676,10 +681,12 @@ packet_ready:
 	 */
 	response = NULL;
 	if (rcode == RLM_MODULE_OK) {
-		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, VENDORPEC_MICROSOFT,
+					  PW_MSCHAP2_SUCCESS, TAG_ANY);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
 	} else if (inst->send_error) {
-		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_list_mcopy_by_num(data, &response, &request->reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_ERROR,
+					  TAG_ANY);
 		if (response) {
 			int n,err,retry;
 			char buf[34];

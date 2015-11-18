@@ -134,7 +134,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		VALUE_PAIR *vp;
 
 		auth_type_found = 0;
-		vp = fr_pair_find_by_num(request->config, PW_AUTH_TYPE, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->config, 0, PW_AUTH_TYPE, TAG_ANY);
 		if (vp) {
 			auth_type_found = 1;
 			if (strcmp(vp->vp_strvalue, inst->name)) {
@@ -144,7 +144,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	}
 
 	/* The State attribute will be present if this is a response. */
-	if (fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY) != NULL) {
 		DEBUG("rlm_otp: autz: Found response to Access-Challenge");
 
 		return RLM_MODULE_OK;
@@ -213,7 +213,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		len = otp_gen_state(gen_state, challenge, inst->challenge_len,
 				    0, now, inst->hmac_key);
 
-		vp = fr_pair_afrom_num(request->reply, PW_STATE, 0);
+		vp = fr_pair_afrom_num(request->reply, 0, PW_STATE);
 		if (!vp) {
 			return RLM_MODULE_FAIL;
 		}
@@ -235,7 +235,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 *	First add the internal OTP challenge attribute to
 		 *	the reply list.
 		 */
-		vp = fr_pair_afrom_num(request->reply, PW_OTP_CHALLENGE, 0);
+		vp = fr_pair_afrom_num(request->reply, 0, PW_OTP_CHALLENGE);
 		if (!vp) {
 			return RLM_MODULE_FAIL;
 		}
@@ -255,7 +255,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			return RLM_MODULE_FAIL;
 		}
 
-		vp = fr_pair_afrom_num(request->reply, PW_REPLY_MESSAGE, 0);
+		vp = fr_pair_afrom_num(request->reply, 0, PW_REPLY_MESSAGE);
 		if (!vp) {
 			talloc_free(expanded);
 			return RLM_MODULE_FAIL;
@@ -323,7 +323,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	/*
 	 *	Retrieve the challenge (from State attribute).
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY);
 	if (vp) {
 		char	gen_state[OTP_MAX_RADSTATE_LEN]; //!< State as hexits
 		uint8_t	bin_state[OTP_MAX_RADSTATE_LEN];

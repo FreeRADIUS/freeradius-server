@@ -496,7 +496,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	}
 
 	/* get current event timestamp */
-	if ((vp = fr_pair_find_by_num(vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(vps, 0, PW_EVENT_TIMESTAMP, TAG_ANY)) != NULL) {
 		/* get seconds value from attribute */
 		ts = vp->vp_date;
 	} else {
@@ -510,7 +510,7 @@ int mod_ensure_start_timestamp(json_object *json, VALUE_PAIR *vps)
 	memset(value, 0, sizeof(value));
 
 	/* get elapsed session time */
-	if ((vp = fr_pair_find_by_num(vps, PW_ACCT_SESSION_TIME, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(vps, 0, PW_ACCT_SESSION_TIME, TAG_ANY)) != NULL) {
 		/* calculate diff */
 		ts = (ts - vp->vp_integer);
 		/* calculate start time */

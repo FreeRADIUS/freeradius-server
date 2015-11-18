@@ -36,7 +36,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 {
 	VALUE_PAIR *vp, *check_item = NULL;
 
-	check_item = fr_pair_find_by_num(request->config, PW_EXPIRATION, 0, TAG_ANY);
+	check_item = fr_pair_find_by_num(request->config, 0, PW_EXPIRATION, TAG_ANY);
 	if (check_item != NULL) {
 		char date[50];
 		/*
@@ -62,7 +62,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(UNUSED void *instance, REQUEST
 		 *	Else the account hasn't expired, but it may do so
 		 *	in the future.  Set Session-Timeout.
 		 */
-		vp = fr_pair_find_by_num(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->reply->vps, 0, PW_SESSION_TIMEOUT, TAG_ANY);
 		if (!vp) {
 			vp = radius_pair_create(request->reply, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
 			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp.tv_sec);

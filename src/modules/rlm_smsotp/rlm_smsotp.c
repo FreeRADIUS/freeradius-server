@@ -200,7 +200,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authenticate(void *instance, REQUEST *re
 	 *  Look for the 'state' attribute.
 	 */
 #define WRITE_ALL(_a,_b,_c) if (write_all(_a,_b,_c) < 0) goto done;
-	state = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	state = fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY);
 	if (state) {
 		RDEBUG("Found reply to access challenge");
 
@@ -296,11 +296,11 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 	/*
 	 *  Look for the 'state' attribute.
 	 */
-	state = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	state = fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY);
 	if (state != NULL) {
 		DEBUG("rlm_smsotp: Found reply to access challenge (AUTZ), Adding Auth-Type '%s'",inst->authtype);
 
-		fr_pair_delete_by_num(&request->config, PW_AUTH_TYPE, 0, TAG_ANY); /* delete old auth-type */
+		fr_pair_delete_by_num(&request->config, 0, PW_AUTH_TYPE, TAG_ANY); /* delete old auth-type */
 		pair_make_config("Auth-Type", inst->authtype, T_OP_SET);
 	}
 

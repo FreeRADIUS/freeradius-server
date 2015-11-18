@@ -111,9 +111,9 @@ static int mod_process(UNUSED void *instance, eap_session_t *eap_session)
 	 *	The password is never sent over the wire.
 	 *	Always get the configured password, for each user.
 	 */
-	password = fr_pair_find_by_num(eap_session->request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	password = fr_pair_find_by_num(eap_session->request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY);
 	if (!password) {
-		password = fr_pair_find_by_num(eap_session->request->config, PW_NT_PASSWORD, 0, TAG_ANY);
+		password = fr_pair_find_by_num(eap_session->request->config, 0, PW_NT_PASSWORD, TAG_ANY);
 	}
 
 	if (!password) {

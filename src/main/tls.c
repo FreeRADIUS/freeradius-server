@@ -497,7 +497,7 @@ tls_session_t *tls_session_init_server(TALLOC_CTX *ctx, fr_tls_server_conf_t *co
 	 *	just too much.
 	 */
 	session->mtu = conf->fragment_size;
-	vp = fr_pair_find_by_num(request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FRAMED_MTU, TAG_ANY);
 	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < session->mtu)) {
 		session->mtu = vp->vp_integer;
 	}
@@ -1286,16 +1286,16 @@ static int cache_key_add(REQUEST *request, uint8_t *key, size_t key_len, tls_cac
 {
 	VALUE_PAIR *vp;
 
-	fr_pair_delete_by_num(&request->packet->vps, PW_TLS_SESSION_ID, 0, TAG_ANY);
-	fr_pair_delete_by_num(&request->config, PW_TLS_SESSION_CACHE_ACTION, 0, TAG_ANY);
+	fr_pair_delete_by_num(&request->packet->vps, 0, PW_TLS_SESSION_ID, TAG_ANY);
+	fr_pair_delete_by_num(&request->config, 0, PW_TLS_SESSION_CACHE_ACTION, TAG_ANY);
 
-	vp = fr_pair_afrom_num(request->packet, PW_TLS_SESSION_ID, 0);
+	vp = fr_pair_afrom_num(request->packet, 0, PW_TLS_SESSION_ID);
 	if (!vp) return -1;
 
 	fr_pair_value_memcpy(vp, key, key_len);
 	fr_pair_add(&request->packet->vps, vp);
 
-	vp = fr_pair_afrom_num(request, PW_TLS_SESSION_CACHE_ACTION, 0);
+	vp = fr_pair_afrom_num(request, 0, PW_TLS_SESSION_CACHE_ACTION);
 	if (!vp) return -1;
 
 	vp->vp_integer = action;
@@ -1337,7 +1337,7 @@ static rlm_rcode_t cache_process(REQUEST *request, char const *virtual_server, i
 	request->module = module;
 	request->component = component;
 
-	fr_pair_delete_by_num(&request->config, PW_TLS_SESSION_CACHE_ACTION, 0, TAG_ANY);
+	fr_pair_delete_by_num(&request->config, 0, PW_TLS_SESSION_CACHE_ACTION, TAG_ANY);
 
 	return rcode;
 }
@@ -1398,7 +1398,7 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	/*
 	 *	Put the SSL data into an attribute.
 	 */
-	vp = fr_pair_afrom_num(request->state, PW_TLS_SESSION_DATA, 0);
+	vp = fr_pair_afrom_num(request->state, 0, PW_TLS_SESSION_DATA);
 	if (!vp) goto error;
 
 	fr_pair_value_memsteal(vp, data);
@@ -1422,7 +1422,7 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
-	fr_pair_delete_by_num(&request->state, PW_TLS_SESSION_DATA, 0, TAG_ANY);
+	fr_pair_delete_by_num(&request->state, 0, PW_TLS_SESSION_DATA, TAG_ANY);
 
 error:
 	if (data) talloc_free(data);
@@ -1474,7 +1474,7 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len
 		return NULL;
 	}
 
-	vp = fr_pair_find_by_num(request->state, PW_TLS_SESSION_DATA, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->state, 0, PW_TLS_SESSION_DATA, TAG_ANY);
 	if (!vp) {
 		RWDEBUG("No cached session found");
 		return NULL;
@@ -1493,7 +1493,7 @@ static SSL_SESSION *cache_read_session(SSL *ssl, unsigned char *key, int key_len
 	/*
 	 *	Ensure that the session data can't be used by anyone else.
 	 */
-	fr_pair_delete_by_num(&request->state, PW_TLS_SESSION_DATA, 0, TAG_ANY);
+	fr_pair_delete_by_num(&request->state, 0, PW_TLS_SESSION_DATA, TAG_ANY);
 
 	return sess;
 }
@@ -1713,7 +1713,7 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	/*
 	 *	Allow us to cache the OCSP verified state externally
 	 */
-	vp = fr_pair_find_by_num(request->config, PW_TLS_OCSP_CERT_VALID, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_TLS_OCSP_CERT_VALID, TAG_ANY);
 	if (vp) switch (vp->vp_integer) {
 	case 0:	/* no */
 		RDEBUG2("Found &control:TLS-OCSP-Cert-Valid = no, forcing OCSP failure");
@@ -3477,7 +3477,7 @@ int tls_success(tls_session_t *session, REQUEST *request)
 	 *	user.
 	 */
 	if ((!session->allow_session_resumption) ||
-	    (((vp = fr_pair_find_by_num(request->config, PW_ALLOW_SESSION_RESUMPTION, 0, TAG_ANY)) != NULL) &&
+	    (((vp = fr_pair_find_by_num(request->config, 0, PW_ALLOW_SESSION_RESUMPTION, TAG_ANY)) != NULL) &&
 	     (vp->vp_integer == 0))) {
 		SSL_CTX_remove_session(session->ctx, session->ssl->session);
 		session->allow_session_resumption = false;

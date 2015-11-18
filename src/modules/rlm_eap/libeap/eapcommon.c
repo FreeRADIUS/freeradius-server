@@ -199,7 +199,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	}
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
-	fr_pair_delete_by_num(&(packet->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
+	fr_pair_delete_by_num(&(packet->vps), 0, PW_EAP_MESSAGE, TAG_ANY);
 
 	vp = eap_packet2vp(packet, eap_packet);
 	if (!vp) return RLM_MODULE_INVALID;
@@ -212,9 +212,9 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	 *	Don't add a Message-Authenticator if it's already
 	 *	there.
 	 */
-	vp = fr_pair_find_by_num(packet->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_afrom_num(packet, PW_MESSAGE_AUTHENTICATOR, 0);
+		vp = fr_pair_afrom_num(packet, 0, PW_MESSAGE_AUTHENTICATOR);
 		vp->vp_length = AUTH_VECTOR_LEN;
 		vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->vp_length);
 
@@ -270,7 +270,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 		size = total;
 		if (size > 253) size = 253;
 
-		vp = fr_pair_afrom_num(packet, PW_EAP_MESSAGE, 0);
+		vp = fr_pair_afrom_num(packet, 0, PW_EAP_MESSAGE);
 		if (!vp) {
 			fr_pair_list_free(&head);
 			return NULL;
@@ -306,7 +306,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	first = fr_pair_find_by_num(vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+	first = fr_pair_find_by_num(vps, 0, PW_EAP_MESSAGE, TAG_ANY);
 	if (!first) {
 		fr_strerror_printf("EAP-Message not found");
 		return NULL;
@@ -422,7 +422,7 @@ rlm_rcode_t eap_virtual_server(REQUEST *request, REQUEST *fake,
 	rlm_rcode_t	rcode;
 	VALUE_PAIR	*vp;
 
-	vp = fr_pair_find_by_num(request->config, PW_VIRTUAL_SERVER, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_VIRTUAL_SERVER, TAG_ANY);
 	fake->server = vp ? vp->vp_strvalue : virtual_server;
 
 	if (fake->server) {

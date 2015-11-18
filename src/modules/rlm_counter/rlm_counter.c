@@ -314,7 +314,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	int		acctstatustype = 0;
 	time_t		diff;
 
-	if ((key_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL)
+	if ((key_vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY)) != NULL)
 		acctstatustype = key_vp->vp_integer;
 	else {
 		RDEBUG2("Could not find account status type in packet");
@@ -324,7 +324,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 		RDEBUG2("We only run on Accounting-Stop packets");
 		return RLM_MODULE_NOOP;
 	}
-	uniqueid_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0, TAG_ANY);
+	uniqueid_vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_UNIQUE_SESSION_ID, TAG_ANY);
 	if (uniqueid_vp != NULL) RDEBUG2("Packet Unique ID = '%s'", uniqueid_vp->vp_strvalue);
 
 	/*
@@ -349,7 +349,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	 * Check if request->timestamp.tv_sec - {Acct-Delay-Time} < last_reset
 	 * If yes reject the packet since it is very old
 	 */
-	key_vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
+	key_vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_DELAY_TIME, TAG_ANY);
 	if (key_vp != NULL) {
 		if ((key_vp->vp_integer != 0) && (request->timestamp.tv_sec - (time_t) key_vp->vp_integer) < inst->last_reset) {
 			RDEBUG2("This packet is too old. Returning NOOP");

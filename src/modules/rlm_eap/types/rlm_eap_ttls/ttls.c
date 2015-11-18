@@ -256,7 +256,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		 *	Create it.  If this fails, it's because we're OOM.
 		 */
 	do_octets:
-		vp = fr_pair_afrom_num(packet, attr, vendor);
+		vp = fr_pair_afrom_num(packet, vendor, attr);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
 			fr_pair_list_free(&first);
@@ -645,10 +645,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		 *	from the tunneled reply.  These never get sent
 		 *	back to the user.
 		 */
-		fr_pair_delete_by_num(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
-		fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 7, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 8, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 16, TAG_ANY);
+		fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 17, TAG_ANY);
 
 		/*
 		 *	MS-CHAP2-Success means that we do NOT return
@@ -659,7 +659,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		 *	packet, and we will send EAP-Success.
 		 */
 		vp = NULL;
-		fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
+		fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, VENDORPEC_MICROSOFT, PW_MSCHAP2_SUCCESS,
+					  TAG_ANY);
 		if (vp) {
 			RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge");
 			rcode = RLM_MODULE_HANDLED;
@@ -670,8 +671,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 			 */
 			if (t->use_tunneled_reply) {
 				rad_assert(!t->accept_vps);
-				fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps,
-					  0, 0, TAG_ANY);
+				fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
 				rad_assert(!reply->vps);
 			}
 
@@ -685,21 +685,20 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 			 *	can figure it out, from the non-tunneled
 			 *	EAP-Success packet.
 			 */
-			fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+			fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
 			fr_pair_list_free(&vp);
 		}
 
 		/* move channel binding responses; we need to send them */
-		fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY);
-		if (fr_pair_find_by_num(vp, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY) != NULL) {
+		fr_pair_list_mcopy_by_num(tls_session, &vp, &reply->vps, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY);
+		if (fr_pair_find_by_num(vp, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY) != NULL) {
 			t->authenticated = true;
 			/*
 			 *	Use the tunneled reply, but not now.
 			 */
 			if (t->use_tunneled_reply) {
 				rad_assert(!t->accept_vps);
-				fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps,
-					  0, 0, TAG_ANY);
+				fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
 				rad_assert(!reply->vps);
 			}
 			rcode = RLM_MODULE_HANDLED;
@@ -725,9 +724,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
-			fr_pair_delete_by_num(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
-			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps,
-				  &reply->vps, 0, 0, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, 0, PW_PROXY_STATE, TAG_ANY);
+			fr_pair_list_mcopy_by_num(request->reply, &request->reply->vps, &reply->vps, 0, 0, TAG_ANY);
 		}
 		break;
 
@@ -752,7 +750,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		 *	Get rid of the old State, too.
 		 */
 		fr_pair_list_free(&t->state);
-		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, 0, PW_STATE, TAG_ANY);
 
 		/*
 		 *	We should really be a bit smarter about this,
@@ -762,7 +760,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		 *	method works in 99.9% of the situations.
 		 */
 		vp = NULL;
-		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
 
 		/*
 		 *	There MUST be a Reply-Message in the challenge,
@@ -772,11 +770,10 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		 *	we MUST create one, with an empty string as
 		 *	it's value.
 		 */
-		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, 0, PW_REPLY_MESSAGE, TAG_ANY);
 
 		/* also move chbind messages, if any */
-		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA,
-			  TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -1014,8 +1011,8 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	/*
 	 *	Update other items in the REQUEST data structure.
 	 */
-	fake->username = fr_pair_find_by_num(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-	fake->password = fr_pair_find_by_num(fake->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+	fake->username = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+	fake->password = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
 
 	/*
 	 *	No User-Name, try to create one from stored data.
@@ -1026,7 +1023,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		 *	an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = fr_pair_find_by_num(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+			vp = fr_pair_find_by_num(fake->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
 			if (vp &&
 			    (vp->vp_length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
@@ -1049,7 +1046,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 				 */
 				if (t->default_method != 0) {
 					RDEBUG("Setting default EAP type for tunneled EAP session");
-					vp = fr_pair_afrom_num(fake, PW_EAP_TYPE, 0);
+					vp = fr_pair_afrom_num(fake, 0, PW_EAP_TYPE);
 					rad_assert(vp != NULL);
 					vp->vp_integer = t->default_method;
 					fr_pair_add(&fake->config, vp);
@@ -1068,7 +1065,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 		if (t->username) {
 			vp = fr_pair_list_copy(fake->packet, t->username);
 			fr_pair_add(&fake->packet->vps, vp);
-			fake->username = fr_pair_find_by_num(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+			fake->username = fr_pair_find_by_num(fake->packet->vps, 0, PW_USER_NAME, TAG_ANY);
 		}
 	} /* else the request ALREADY had a User-Name */
 
@@ -1144,7 +1141,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = fr_pair_list_copy_by_num(fake->packet, vp, vp->da->attr, vp->da->vendor, TAG_ANY);
+			copy = fr_pair_list_copy_by_num(fake->packet, vp, vp->da->vendor, vp->da->attr, TAG_ANY);
 			fr_pair_add(&fake->packet->vps, copy);
 		}
 	}
@@ -1195,7 +1192,7 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(fake->config, 0, PW_PROXY_TO_REALM, TAG_ANY);
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
 			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);
@@ -1204,9 +1201,8 @@ PW_CODE eap_ttls_process(eap_session_t *eap_session, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			fr_pair_list_mcopy_by_num(request, &request->config,
-				  &fake->config,
-				  PW_PROXY_TO_REALM, 0, TAG_ANY);
+			fr_pair_list_mcopy_by_num(request, &request->config, &fake->config, 0, PW_PROXY_TO_REALM,
+						  TAG_ANY);
 
 			/*
 			 *	Seed the proxy packet with the

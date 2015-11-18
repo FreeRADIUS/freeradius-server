@@ -222,7 +222,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 	 *	Pick one type out of the one they asked for,
 	 *	as they may have asked for many.
 	 */
-	vp = fr_pair_find_by_num(request->config, PW_EAP_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_EAP_TYPE, TAG_ANY);
 	for (i = 0; i < nak->length; i++) {
 		/*
 		 *	Type 0 is valid, and means there are no
@@ -359,7 +359,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_session_t *eap_session)
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = fr_pair_find_by_num(eap_session->request->config, PW_EAP_TYPE, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(eap_session->request->config, 0, PW_EAP_TYPE, TAG_ANY);
 		if (vp) next = vp->vp_integer;
 
 		/*
@@ -545,9 +545,9 @@ rlm_rcode_t eap_compose(eap_session_t *eap_session)
 	 *	Don't add a Message-Authenticator if it's already
 	 *	there.
 	 */
-	vp = fr_pair_find_by_num(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
 	if (!vp) {
-		vp = fr_pair_afrom_num(request->reply, PW_MESSAGE_AUTHENTICATOR, 0);
+		vp = fr_pair_afrom_num(request->reply, 0, PW_MESSAGE_AUTHENTICATOR);
 		vp->vp_length = AUTH_VECTOR_LEN;
 		vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->vp_length);
 		fr_pair_add(&(request->reply->vps), vp);
@@ -610,7 +610,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	VALUE_PAIR *vp, *proxy;
 	VALUE_PAIR *eap_msg;
 
-	eap_msg = fr_pair_find_by_num(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+	eap_msg = fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
 	if (!eap_msg) {
 		RDEBUG2("No EAP-Message, not doing EAP");
 		return EAP_NOOP;
@@ -620,7 +620,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Look for EAP-Type = None (FreeRADIUS specific attribute)
 	 *	this allows you to NOT do EAP for some users.
 	 */
-	vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_TYPE, TAG_ANY);
 	if (vp && vp->vp_integer == 0) {
 		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP");
 		return EAP_NOOP;
@@ -636,7 +636,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Check for a Proxy-To-Realm.  Don't get excited over LOCAL
 	 *	realms (sigh).
 	 */
-	proxy = fr_pair_find_by_num(request->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
+	proxy = fr_pair_find_by_num(request->config, 0, PW_PROXY_TO_REALM, TAG_ANY);
 	if (proxy) {
 		REALM *realm;
 
@@ -675,7 +675,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		}
 
 		RDEBUG2("Got EAP_START message");
-		vp = fr_pair_afrom_num(request->reply, PW_EAP_MESSAGE, 0);
+		vp = fr_pair_afrom_num(request->reply, 0, PW_EAP_MESSAGE);
 		if (!vp) return EAP_FAIL;
 		fr_pair_add(&request->reply->vps, vp);
 
@@ -722,7 +722,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Create an EAP-Type containing the EAP-type
 	 *	from the packet.
 	 */
-	vp = fr_pair_afrom_num(request->packet, PW_EAP_TYPE, 0);
+	vp = fr_pair_afrom_num(request->packet, 0, PW_EAP_TYPE);
 	if (vp) {
 		vp->vp_integer = eap_msg->vp_octets[4];
 		fr_pair_add(&(request->packet->vps), vp);
@@ -853,8 +853,8 @@ void eap_fail(eap_session_t *eap_session)
 	/*
 	 *	Delete any previous replies.
 	 */
-	fr_pair_delete_by_num(&eap_session->request->reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-	fr_pair_delete_by_num(&eap_session->request->reply->vps, PW_STATE, 0, TAG_ANY);
+	fr_pair_delete_by_num(&eap_session->request->reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
+	fr_pair_delete_by_num(&eap_session->request->reply->vps, 0, PW_STATE, TAG_ANY);
 
 	talloc_free(eap_session->this_round->request);
 	eap_session->this_round->request = talloc_zero(eap_session->this_round, eap_packet_t);
@@ -1133,7 +1133,7 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			goto error;
 		}
 
-	       vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+	       vp = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
 	       if (!vp) {
 		       /*
 			*	NAS did not set the User-Name
@@ -1183,7 +1183,7 @@ eap_session_t *eap_session_get(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			goto error;
 		}
 
-	       vp = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+	       vp = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
 	       if (!vp) {
 		       /*
 			*	NAS did not set the User-Name

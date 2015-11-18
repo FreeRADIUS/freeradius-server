@@ -454,13 +454,13 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	/*
 	 *	If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if (fr_pair_find_by_num(request->reply->vps, inst->framed_ip_address, 0, TAG_ANY) != NULL) {
+	if (fr_pair_find_by_num(request->reply->vps, 0, inst->framed_ip_address, TAG_ANY) != NULL) {
 		RDEBUG("Framed-IP-Address already exists");
 
 		return do_logging(request, inst->log_exists, RLM_MODULE_NOOP);
 	}
 
-	if (fr_pair_find_by_num(request->config, PW_POOL_NAME, 0, TAG_ANY) == NULL) {
+	if (fr_pair_find_by_num(request->config, 0, PW_POOL_NAME, TAG_ANY) == NULL) {
 		RDEBUG("No Pool-Name defined");
 
 		return do_logging(request, inst->log_nopool, RLM_MODULE_NOOP);
@@ -555,7 +555,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_auth(void *instance, REQUEST *reque
 	 *	See if we can create the VP from the returned data.  If not,
 	 *	error out.  If so, add it to the list.
 	 */
-	vp = fr_pair_afrom_num(request->reply, inst->framed_ip_address, 0);
+	vp = fr_pair_afrom_num(request->reply, 0, inst->framed_ip_address);
 	if (fr_pair_value_from_str(vp, allocation, allocation_len) < 0) {
 		DO(allocate_commit);
 
@@ -642,7 +642,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	rlm_sqlippool_t *inst = (rlm_sqlippool_t *) instance;
 	rlm_sql_handle_t *handle;
 
-	vp = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY);
 	if (!vp) {
 		RDEBUG("Could not find account status type in packet");
 		return RLM_MODULE_NOOP;

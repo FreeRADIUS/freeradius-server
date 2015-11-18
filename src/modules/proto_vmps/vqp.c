@@ -423,7 +423,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	if (packet->data_len < VQP_HDR_LEN) return -1;
 
 	fr_cursor_init(&cursor, &packet->vps);
-	vp = fr_pair_afrom_num(packet, PW_VQP_PACKET_TYPE, 0);
+	vp = fr_pair_afrom_num(packet, 0, PW_VQP_PACKET_TYPE);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -432,7 +432,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	debug_pair(vp);
 	fr_cursor_insert(&cursor, vp);
 
-	vp = fr_pair_afrom_num(packet, PW_VQP_ERROR_CODE, 0);
+	vp = fr_pair_afrom_num(packet, 0, PW_VQP_ERROR_CODE);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -441,7 +441,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	debug_pair(vp);
 	fr_cursor_insert(&cursor, vp);
 
-	vp = fr_pair_afrom_num(packet, PW_VQP_SEQUENCE_NUMBER, 0);
+	vp = fr_pair_afrom_num(packet, 0, PW_VQP_SEQUENCE_NUMBER);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -469,7 +469,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		 *	Hack to get the dictionaries to work correctly.
 		 */
 		attribute |= 0x2000;
-		vp = fr_pair_afrom_num(packet, attribute, 0);
+		vp = fr_pair_afrom_num(packet, 0, attribute);
 		if (!vp) {
 			fr_pair_list_free(&packet->vps);
 
@@ -570,7 +570,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	if (packet->data) return 0;
 
-	vp = fr_pair_find_by_num(packet->vps, PW_VQP_PACKET_TYPE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, 0, PW_VQP_PACKET_TYPE, TAG_ANY);
 	if (!vp) {
 		fr_strerror_printf("Failed to find VQP-Packet-Type in response packet");
 		return -1;
@@ -585,7 +585,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	length = VQP_HDR_LEN;
 	memset(vps, 0, sizeof(vps));
 
-	vp = fr_pair_find_by_num(packet->vps, PW_VQP_ERROR_CODE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(packet->vps, 0, PW_VQP_ERROR_CODE, TAG_ANY);
 
 	/*
 	 *	FIXME: Map attributes from calling-station-Id, etc.
@@ -600,7 +600,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if (!vp) for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
 		if (!contents[code][i]) break;
 
-		vps[i] = fr_pair_find_by_num(packet->vps, contents[code][i] | 0x2000, 0, TAG_ANY);
+		vps[i] = fr_pair_find_by_num(packet->vps, 0, contents[code][i] | 0x2000, TAG_ANY);
 
 		/*
 		 *	FIXME: Print the name...

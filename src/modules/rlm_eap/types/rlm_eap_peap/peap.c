@@ -271,7 +271,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 
 	if (data_len > 65535) return NULL; /* paranoia */
 
-	vp = fr_pair_afrom_num(packet, PW_EAP_MESSAGE, 0);
+	vp = fr_pair_afrom_num(packet, 0, PW_EAP_MESSAGE);
 	if (!vp) {
 		return NULL;
 	}
@@ -295,7 +295,7 @@ static VALUE_PAIR *eap_peap_inner_to_pairs(UNUSED REQUEST *request, RADIUS_PACKE
 	fr_cursor_init(&cursor, &head);
 	fr_cursor_insert(&cursor, vp);
 	while (total < data_len) {
-		vp = fr_pair_afrom_num(packet, PW_EAP_MESSAGE, 0);
+		vp = fr_pair_afrom_num(packet, 0, PW_EAP_MESSAGE);
 		if (!vp) {
 			fr_pair_list_free(&head);
 			return NULL;
@@ -450,18 +450,18 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 			/*
 			 *	Clean up the tunneled reply.
 			 */
-			fr_pair_delete_by_num(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, 0, PW_PROXY_STATE, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
 
 			/*
 			 *	Delete MPPE keys & encryption policy.  We don't
 			 *	want these here.
 			 */
-			fr_pair_delete_by_num(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 7, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 8, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 16, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, VENDORPEC_MICROSOFT, 17, TAG_ANY);
 
 			fr_pair_list_free(&t->accept_vps); /* for proxying MS-CHAP2 */
 			fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
@@ -485,7 +485,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		 *	Get rid of the old State, too.
 		 */
 		fr_pair_list_free(&t->state);
-		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &t->state, &reply->vps, 0, PW_STATE, TAG_ANY);
 
 		/*
 		 *	PEAP takes only EAP-Message attributes inside
@@ -493,7 +493,7 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
-		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		fr_pair_list_mcopy_by_num(t, &vp, &reply->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
 
 		/*
 		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
@@ -508,8 +508,8 @@ static rlm_rcode_t CC_HINT(nonnull) process_reply(eap_session_t *eap_session, tl
 			/*
 			 *	Clean up the tunneled reply.
 			 */
-			fr_pair_delete_by_num(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
-			fr_pair_delete_by_num(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, 0, PW_PROXY_STATE, TAG_ANY);
+			fr_pair_delete_by_num(&reply->vps, 0, PW_MESSAGE_AUTHENTICATOR, TAG_ANY);
 
 			rad_assert(!t->accept_vps);
 			fr_pair_list_mcopy_by_num(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
@@ -919,7 +919,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 
 		t->status = PEAP_STATUS_PHASE2;
 
-		vp = fr_pair_afrom_num(fake->packet, PW_EAP_MESSAGE, 0);
+		vp = fr_pair_afrom_num(fake->packet, 0, PW_EAP_MESSAGE);
 		vp->vp_length = len;
 		vp->vp_octets = q = talloc_array(vp, uint8_t, vp->vp_length);
 
@@ -1002,7 +1002,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = fr_pair_find_by_num(fake->config, PW_PROXY_TO_REALM, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(fake->config, 0, PW_PROXY_TO_REALM, TAG_ANY);
 
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
@@ -1065,8 +1065,7 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 				 *	EAP-Message into another set
 				 *	of attributes.
 				 */
-				fr_pair_delete_by_num(&fake->packet->vps,
-					   PW_EAP_MESSAGE, 0, TAG_ANY);
+				fr_pair_delete_by_num(&fake->packet->vps, 0, PW_EAP_MESSAGE, TAG_ANY);
 			}
 
 			RDEBUG2("Tunnelled authentication will be proxied to %s", vp->vp_strvalue);
@@ -1075,9 +1074,8 @@ rlm_rcode_t eap_peap_process(eap_session_t *eap_session, tls_session_t *tls_sess
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			fr_pair_list_mcopy_by_num(request, &request->config,
-				   &fake->config,
-				   PW_PROXY_TO_REALM, 0, TAG_ANY);
+			fr_pair_list_mcopy_by_num(request, &request->config, &fake->config, 0, PW_PROXY_TO_REALM,
+						  TAG_ANY);
 
 			/*
 			 *	Seed the proxy packet with the
@@ -1257,7 +1255,7 @@ static int CC_HINT(nonnull) setup_fake_request(REQUEST *request, REQUEST *fake, 
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = fr_pair_list_copy_by_num(fake->packet, vp, vp->da->attr, vp->da->vendor, TAG_ANY);
+			copy = fr_pair_list_copy_by_num(fake->packet, vp, vp->da->vendor, vp->da->attr, TAG_ANY);
 			fr_pair_add(&fake->packet->vps, copy);
 		}
 	}

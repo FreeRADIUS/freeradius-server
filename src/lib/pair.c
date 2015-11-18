@@ -103,7 +103,7 @@ VALUE_PAIR *fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da)
  *	- A new #VALUE_PAIR.
  *	- NULL on error.
  */
-VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
+VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr)
 {
 	fr_dict_attr_t const *da;
 
@@ -634,7 +634,7 @@ VALUE_PAIR *fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_
  *
  * @todo should take DAs and do a pointer comparison.
  */
-VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *head, unsigned int attr, unsigned int vendor, int8_t tag)
+VALUE_PAIR *fr_pair_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned int attr, int8_t tag)
 {
 	vp_cursor_t 	cursor;
 
@@ -757,7 +757,7 @@ void fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *replace)
  *	- -1 on failure.
  */
 int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
-			  unsigned int attr, unsigned int vendor, int8_t tag,
+			  unsigned int vendor, unsigned int attr, int8_t tag,
 			  PW_TYPE type, value_data_t *value)
 {
 	vp_cursor_t cursor;
@@ -771,7 +771,7 @@ int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
 		return 0;
 	}
 
-	vp = fr_pair_afrom_num(ctx, attr, vendor);
+	vp = fr_pair_afrom_num(ctx, vendor, attr);
 	if (!vp) return -1;
 	vp->tag = tag;
 	if (value_data_steal(vp, &vp->data, type, value) < 0) return -1;
@@ -792,7 +792,7 @@ int fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
  *
  * @todo should take DAs and do a point comparison.
  */
-void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int attr, unsigned int vendor, int8_t tag)
+void fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int attr, int8_t tag)
 {
 	VALUE_PAIR *i, *next;
 	VALUE_PAIR **last = head;
@@ -1423,8 +1423,8 @@ VALUE_PAIR *fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR *from)
  * @param[in] tag to match, #TAG_ANY matches any tag, #TAG_NONE matches tagless VPs.
  * @return the head of the new #VALUE_PAIR list or NULL on error.
  */
-VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr,
-				     unsigned int vendor, int8_t tag)
+VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int vendor, unsigned int attr,
+				     int8_t tag)
 {
 	vp_cursor_t src, dst;
 
@@ -1607,9 +1607,7 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			 *	Delete *all* of the attributes
 			 *	of the same number.
 			 */
-			fr_pair_delete_by_num(&found->next,
-				   found->da->attr,
-				   found->da->vendor, TAG_ANY);
+			fr_pair_delete_by_num(&found->next, found->da->vendor, found->da->attr, TAG_ANY);
 
 			/*
 			 *	Remove this attribute from the
@@ -1660,9 +1658,8 @@ void fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  * @param[in] move if set to "true", VPs are moved.  If set to "false", VPs are copied, and the old one deleted.
  */
-static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-					      unsigned int attr, unsigned int vendor, int8_t tag,
-					      bool move)
+static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned int vendor,
+					      unsigned int attr, int8_t tag, bool move)
 {
 	VALUE_PAIR *to_tail, *i, *next, *this;
 	VALUE_PAIR *iprev = NULL;
@@ -1794,9 +1791,9 @@ static void fr_pair_list_move_by_num_internal(TALLOC_CTX *ctx, VALUE_PAIR **to, 
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  */
 void fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-			      unsigned int attr, unsigned int vendor, int8_t tag)
+			      unsigned int vendor, unsigned int attr, int8_t tag)
 {
-	fr_pair_list_move_by_num_internal(ctx, to, from, attr, vendor, tag, true);
+	fr_pair_list_move_by_num_internal(ctx, to, from, vendor, attr, tag, true);
 }
 
 
@@ -1822,9 +1819,9 @@ void fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **fro
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_NONE matches tagless VPs.
  */
 void fr_pair_list_mcopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-			      unsigned int attr, unsigned int vendor, int8_t tag)
+			       unsigned int vendor, unsigned int attr, int8_t tag)
 {
-	fr_pair_list_move_by_num_internal(ctx, to, from, attr, vendor, tag, false);
+	fr_pair_list_move_by_num_internal(ctx, to, from, vendor, attr, tag, false);
 }
 
 

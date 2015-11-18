@@ -1230,7 +1230,8 @@ int map_to_request(REQUEST *request, vp_map_t const *map, radius_map_getvalue_t 
 		 *	Wildcard: delete all of the matching ones, based on tag.
 		 */
 		if (map->lhs->tmpl_num == NUM_ANY) {
-			fr_pair_delete_by_num(list, map->lhs->tmpl_da->attr, map->lhs->tmpl_da->vendor, map->lhs->tmpl_tag);
+			fr_pair_delete_by_num(list, map->lhs->tmpl_da->vendor, map->lhs->tmpl_da->attr,
+					      map->lhs->tmpl_tag);
 			dst = NULL;
 		/*
 		 *	We've found the Nth one.  Delete it, and only it.

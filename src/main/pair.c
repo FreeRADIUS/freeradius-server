@@ -529,7 +529,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 				WARN("Are you sure you don't mean Cleartext-Password?");
 				WARN("See \"man rlm_pap\" for more information");
 			}
-			if (fr_pair_find_by_num(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
+			if (fr_pair_find_by_num(req_list, 0, PW_USER_PASSWORD, TAG_ANY) == NULL) {
 				continue;
 			}
 			break;
@@ -706,7 +706,7 @@ VALUE_PAIR *radius_pair_create(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 {
 	VALUE_PAIR *vp;
 
-	vp = fr_pair_afrom_num(ctx, attribute, vendor);
+	vp = fr_pair_afrom_num(ctx, vendor, attribute);
 	if (!vp) {
 		ERROR("No memory!");
 		rad_assert("No memory" == NULL);

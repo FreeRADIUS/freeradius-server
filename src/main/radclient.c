@@ -160,10 +160,10 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 	VALUE_PAIR *challenge, *reply;
 	uint8_t nthash[16];
 
-	fr_pair_delete_by_num(&packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
-	fr_pair_delete_by_num(&packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
+	fr_pair_delete_by_num(&packet->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE, TAG_ANY);
+	fr_pair_delete_by_num(&packet->vps, VENDORPEC_MICROSOFT, PW_MSCHAP_RESPONSE, TAG_ANY);
 
-	challenge = fr_pair_afrom_num(packet, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
+	challenge = fr_pair_afrom_num(packet, VENDORPEC_MICROSOFT, PW_MSCHAP_CHALLENGE);
 	if (!challenge) {
 		return 0;
 	}
@@ -175,7 +175,7 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 		p[i] = fr_rand();
 	}
 
-	reply = fr_pair_afrom_num(packet, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
+	reply = fr_pair_afrom_num(packet, VENDORPEC_MICROSOFT, PW_MSCHAP_RESPONSE);
 	if (!reply) {
 		return 0;
 	}
@@ -885,16 +885,16 @@ static int send_one_packet(rc_request_t *request)
 		if (request->password) {
 			VALUE_PAIR *vp;
 
-			if ((vp = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
+			if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY)) != NULL) {
 				fr_pair_value_strcpy(vp, request->password->vp_strvalue);
 
-			} else if ((vp = fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
+			} else if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD, TAG_ANY)) != NULL) {
 				uint8_t buffer[17];
 
 				fr_radius_encode_chap_password(buffer, request->packet, fr_rand() & 0xff, request->password);
 				fr_pair_value_memcpy(vp, buffer, 17);
 
-			} else if (fr_pair_find_by_num(request->packet->vps, PW_MS_CHAP_PASSWORD, 0, TAG_ANY) != NULL) {
+			} else if (fr_pair_find_by_num(request->packet->vps, 0, PW_MS_CHAP_PASSWORD, TAG_ANY) != NULL) {
 				mschapv1_encode(request->packet, &request->packet->vps, request->password->vp_strvalue);
 
 			} else {

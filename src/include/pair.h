@@ -197,7 +197,7 @@ typedef struct value_pair_raw {
 
 /* Allocation and management */
 VALUE_PAIR	*fr_pair_afrom_da(TALLOC_CTX *ctx, fr_dict_attr_t const *da);
-VALUE_PAIR	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
+VALUE_PAIR	*fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int attr);
 VALUE_PAIR	*fr_pair_copy(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 void		fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp);
 VALUE_PAIR	*fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, char const *value, FR_TOKEN op);
@@ -207,13 +207,13 @@ int 		fr_pair_mark_xlat(VALUE_PAIR *vp, char const *value);
 
 /* Searching and list modification */
 VALUE_PAIR	*fr_pair_find_by_da(VALUE_PAIR *head, fr_dict_attr_t const *da, int8_t tag);
-VALUE_PAIR	*fr_pair_find_by_num(VALUE_PAIR *head, unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR	*fr_pair_find_by_num(VALUE_PAIR *head, unsigned int vendor, unsigned int attr, int8_t tag);
 void		fr_pair_add(VALUE_PAIR **head, VALUE_PAIR *vp);
 void		fr_pair_replace(VALUE_PAIR **head, VALUE_PAIR *add);
 int		fr_pair_update_by_num(TALLOC_CTX *ctx, VALUE_PAIR **list,
-			  	      unsigned int attr, unsigned int vendor, int8_t tag,
-				      PW_TYPE type, value_data_t *value);
-void		fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int attr, unsigned int vendor, int8_t tag);
+				      unsigned int vendor, unsigned int attr, int8_t tag, PW_TYPE type,
+				      value_data_t *value);
+void		fr_pair_delete_by_num(VALUE_PAIR **head, unsigned int vendor, unsigned int attr, int8_t tag);
 
 /* Sorting */
 typedef		int8_t (*fr_cmp_t)(void const *a, void const *b);
@@ -240,12 +240,13 @@ bool 		fr_pair_validate_relaxed(VALUE_PAIR const *failed[2], VALUE_PAIR *filter,
 FR_TOKEN	fr_pair_list_afrom_str(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
 int		fr_pair_list_afrom_file(TALLOC_CTX *ctx, VALUE_PAIR **out, FILE *fp, bool *pfiledone);
 VALUE_PAIR	*fr_pair_list_copy(TALLOC_CTX *ctx, VALUE_PAIR *from);
-VALUE_PAIR	*fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from, unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR *fr_pair_list_copy_by_num(TALLOC_CTX *ctx, VALUE_PAIR *from,
+				     unsigned int vendor, unsigned int attr, int8_t tag);
 void		fr_pair_list_move(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		fr_pair_list_move_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-					 unsigned int attr, unsigned int vendor, int8_t tag);
+					 unsigned int vendor, unsigned int attr, int8_t tag);
 void		fr_pair_list_mcopy_by_num(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-					  unsigned int attr, unsigned int vendor, int8_t tag);
+					  unsigned int vendor, unsigned int attr, int8_t tag);
 
 /* Value manipulation */
 int		fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t len);

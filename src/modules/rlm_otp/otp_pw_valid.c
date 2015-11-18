@@ -99,11 +99,9 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 	 *	otp_pwe_present() (done by caller) guarantees that both of
 	 *	these exist
 	 */
-	cvp = fr_pair_find_by_num(request->packet->vps, pwattr[pwe - 1]->attr,
-		       pwattr[pwe - 1]->vendor, TAG_ANY);
+	cvp = fr_pair_find_by_num(request->packet->vps, pwattr[pwe - 1]->vendor, pwattr[pwe - 1]->attr, TAG_ANY);
 
-	rvp = fr_pair_find_by_num(request->packet->vps, pwattr[pwe]->attr,
-		       pwattr[pwe]->vendor, TAG_ANY);
+	rvp = fr_pair_find_by_num(request->packet->vps, pwattr[pwe]->vendor, pwattr[pwe]->attr, TAG_ANY);
 
 	/* this is just to quiet Coverity */
 	if (!rvp || !cvp) {

@@ -158,9 +158,9 @@ static rlm_rcode_t cache_merge(rlm_cache_t const *inst, REQUEST *request, rlm_ca
 
 	if (inst->config.stats) {
 		rad_assert(request->packet != NULL);
-		vp = fr_pair_find_by_num(request->packet->vps, PW_CACHE_ENTRY_HITS, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CACHE_ENTRY_HITS, TAG_ANY);
 		if (!vp) {
-			vp = fr_pair_afrom_num(request->packet, PW_CACHE_ENTRY_HITS, 0);
+			vp = fr_pair_afrom_num(request->packet, 0, PW_CACHE_ENTRY_HITS);
 			rad_assert(vp != NULL);
 			fr_pair_add(&request->packet->vps, vp);
 		}
@@ -436,7 +436,7 @@ static rlm_rcode_t cache_insert(rlm_cache_t const *inst, REQUEST *request, rlm_c
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = fr_pair_find_by_num(request->config, PW_CACHE_MERGE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_CACHE_MERGE, TAG_ANY);
 	if (vp && (vp->vp_integer > 0)) merge = true;
 
 	if (merge) cache_merge(inst, request, c);
@@ -574,7 +574,7 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	 *	If Cache-Status-Only == yes, only return whether we found a
 	 *	valid cache entry
 	 */
-	vp = fr_pair_find_by_num(request->config, PW_CACHE_STATUS_ONLY, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_CACHE_STATUS_ONLY, TAG_ANY);
 	if (vp && vp->vp_integer) {
 		if (cache_acquire(&handle, inst, request) < 0) return RLM_MODULE_FAIL;
 
@@ -590,13 +590,13 @@ static rlm_rcode_t mod_cache_it(void *instance, REQUEST *request)
 	/*
 	 *	Figure out what operation we're doing
 	 */
-	vp = fr_pair_find_by_num(request->config, PW_CACHE_ALLOW_MERGE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_CACHE_ALLOW_MERGE, TAG_ANY);
 	if (vp) merge = (bool)vp->vp_integer;
 
-	vp = fr_pair_find_by_num(request->config, PW_CACHE_ALLOW_INSERT, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_CACHE_ALLOW_INSERT, TAG_ANY);
 	if (vp) insert = (bool)vp->vp_integer;
 
-	vp = fr_pair_find_by_num(request->config, PW_CACHE_TTL, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_CACHE_TTL, TAG_ANY);
 	if (vp) {
 		if (vp->vp_signed == 0) {
 			expire = true;

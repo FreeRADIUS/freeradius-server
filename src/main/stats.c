@@ -488,7 +488,7 @@ void request_stats_reply(REQUEST *request)
 	rad_assert(request->packet->code == PW_CODE_STATUS_SERVER);
 	rad_assert(request->listener->type == RAD_LISTEN_NONE);
 
-	flag = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATISTICS_TYPE, VENDORPEC_FREERADIUS, TAG_ANY);
+	flag = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS, PW_FREERADIUS_STATISTICS_TYPE, TAG_ANY);
 	if (!flag || (flag->vp_integer == 0)) return;
 
 	/*
@@ -576,9 +576,11 @@ void request_stats_reply(REQUEST *request)
 		 *	See if we need to look up the client by server
 		 *	socket.
 		 */
-		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+		server_ip = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS,
+						PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, TAG_ANY);
 		if (server_ip) {
-			server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
+			server_port = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS,
+							  PW_FREERADIUS_STATS_SERVER_PORT, TAG_ANY);
 
 			if (server_port) {
 				ipaddr.af = AF_INET;
@@ -593,7 +595,8 @@ void request_stats_reply(REQUEST *request)
 		}
 
 
-		vp = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_CLIENT_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS,
+					 PW_FREERADIUS_STATS_CLIENT_IP_ADDRESS, TAG_ANY);
 		if (vp) {
 			memset(&ipaddr, 0, sizeof(ipaddr));
 			ipaddr.af = AF_INET;
@@ -608,7 +611,8 @@ void request_stats_reply(REQUEST *request)
 			/*
 			 *	Else look it up by number.
 			 */
-		} else if ((vp = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_CLIENT_NUMBER, VENDORPEC_FREERADIUS, TAG_ANY)) != NULL) {
+		} else if ((vp = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS,
+						     PW_FREERADIUS_STATS_CLIENT_NUMBER, TAG_ANY)) != NULL) {
 			client = client_findbynumber(cl, vp->vp_integer);
 		}
 
@@ -677,10 +681,12 @@ void request_stats_reply(REQUEST *request)
 		 *	See if we need to look up the server by socket
 		 *	socket.
 		 */
-		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+		server_ip = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS,
+						PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, TAG_ANY);
 		if (!server_ip) return;
 
-		server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
+		server_port = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS,
+						  PW_FREERADIUS_STATS_SERVER_PORT, TAG_ANY);
 		if (!server_port) return;
 
 		ipaddr.af = AF_INET;
@@ -728,10 +734,12 @@ void request_stats_reply(REQUEST *request)
 		 *	See if we need to look up the server by socket
 		 *	socket.
 		 */
-		server_ip = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, VENDORPEC_FREERADIUS, TAG_ANY);
+		server_ip = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS,
+						PW_FREERADIUS_STATS_SERVER_IP_ADDRESS, TAG_ANY);
 		if (!server_ip) return;
 
-		server_port = fr_pair_find_by_num(request->packet->vps, PW_FREERADIUS_STATS_SERVER_PORT, VENDORPEC_FREERADIUS, TAG_ANY);
+		server_port = fr_pair_find_by_num(request->packet->vps, VENDORPEC_FREERADIUS,
+						  PW_FREERADIUS_STATS_SERVER_PORT, TAG_ANY);
 		if (!server_port) return;
 
 #ifndef NDEBUG

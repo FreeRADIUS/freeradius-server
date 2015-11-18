@@ -899,10 +899,11 @@ static int do_perl(void *instance, REQUEST *request, char const *function_name)
 			/*
 			 *	Update cached copies
 			 */
-			request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-			request->password = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+			request->username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+			request->password = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
 			if (!request->password)
-				request->password = fr_pair_find_by_num(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
+				request->password = fr_pair_find_by_num(request->packet->vps, 0, PW_CHAP_PASSWORD,
+									TAG_ANY);
 		}
 
 		if ((get_hv_content(request->reply, request, rad_reply_hv, &vp, "RAD_REPLY", "reply")) == 0) {
@@ -977,7 +978,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_accounting(void *instance, REQUEST *requ
 	VALUE_PAIR	*pair;
 	int 		acctstatustype=0;
 
-	if ((pair = fr_pair_find_by_num(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL) {
+	if ((pair = fr_pair_find_by_num(request->packet->vps, 0, PW_ACCT_STATUS_TYPE, TAG_ANY)) != NULL) {
 		acctstatustype = pair->vp_integer;
 	} else {
 		RDEBUG("Invalid Accounting Packet");

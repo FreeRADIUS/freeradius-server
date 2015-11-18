@@ -1185,7 +1185,7 @@ char const *rlm_ldap_find_user(rlm_ldap_t const *inst, REQUEST *request, ldap_ha
 	 *	If the caller isn't looking for the result we can just return the current userdn value.
 	 */
 	if (!force) {
-		vp = fr_pair_find_by_num(request->config, PW_LDAP_USERDN, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->config, 0, PW_LDAP_USERDN, TAG_ANY);
 		if (vp) {
 			RDEBUG("Using user DN from request \"%s\"", vp->vp_strvalue);
 			*rcode = RLM_MODULE_OK;
@@ -1368,11 +1368,11 @@ void rlm_ldap_check_reply(rlm_ldap_t const *inst, REQUEST *request)
 	*	an LDAP attribute and a password reference attribute in the control list.
 	*/
 	if (inst->expect_password && (rad_debug_lvl > 1)) {
-		if (!fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) &&
-		    !fr_pair_find_by_num(request->config, PW_NT_PASSWORD, 0, TAG_ANY) &&
-		    !fr_pair_find_by_num(request->config, PW_USER_PASSWORD, 0, TAG_ANY) &&
-		    !fr_pair_find_by_num(request->config, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
-		    !fr_pair_find_by_num(request->config, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
+		if (!fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY) &&
+		    !fr_pair_find_by_num(request->config, 0, PW_NT_PASSWORD, TAG_ANY) &&
+		    !fr_pair_find_by_num(request->config, 0, PW_USER_PASSWORD, TAG_ANY) &&
+		    !fr_pair_find_by_num(request->config, 0, PW_PASSWORD_WITH_HEADER, TAG_ANY) &&
+		    !fr_pair_find_by_num(request->config, 0, PW_CRYPT_PASSWORD, TAG_ANY)) {
 			RWDEBUG("No \"known good\" password added. Ensure the admin user has permission to "
 				"read the password attribute");
 			RWDEBUG("PAP authentication will *NOT* work with Active Directory (if that is what you "

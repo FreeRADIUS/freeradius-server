@@ -2018,7 +2018,7 @@ static int do_proxy(REQUEST *request)
 		return 0;
 	}
 
-	vp = fr_pair_find_by_num(request->config, PW_HOME_SERVER_POOL, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_HOME_SERVER_POOL, TAG_ANY);
 
 	if (vp) {
 		if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
@@ -2033,8 +2033,8 @@ static int do_proxy(REQUEST *request)
 	/*
 	 *	We have a destination IP address.  It will (later) proxied.
 	 */
-	vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY);
-	if (!vp) vp = fr_pair_find_by_num(request->config, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_PACKET_DST_IP_ADDRESS, TAG_ANY);
+	if (!vp) vp = fr_pair_find_by_num(request->config, 0, PW_PACKET_DST_IPV6_ADDRESS, TAG_ANY);
 
 	if (!vp) return 0;
 
@@ -2081,10 +2081,10 @@ int rad_coa_recv(REQUEST *request)
 		 *	with Service-Type = Authorize-Only, it MUST
 		 *	have a State attribute in it.
 		 */
-		vp = fr_pair_find_by_num(request->packet->vps, PW_SERVICE_TYPE, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, 0, PW_SERVICE_TYPE, TAG_ANY);
 		if (request->packet->code == PW_CODE_COA_REQUEST) {
 			if (vp && (vp->vp_integer == PW_AUTHORIZE_ONLY)) {
-				vp = fr_pair_find_by_num(request->packet->vps, PW_STATE, 0, TAG_ANY);
+				vp = fr_pair_find_by_num(request->packet->vps, 0, PW_STATE, TAG_ANY);
 				if (!vp || (vp->vp_length == 0)) {
 					REDEBUG("CoA-Request with Service-Type = Authorize-Only MUST "
 						"contain a State attribute");
@@ -2145,7 +2145,7 @@ int rad_coa_recv(REQUEST *request)
 	 *	Copy State from the request to the reply.
 	 *	See RFC 5176 Section 3.3.
 	 */
-	vp = fr_pair_list_copy_by_num(request->reply, request->packet->vps, PW_STATE, 0, TAG_ANY);
+	vp = fr_pair_list_copy_by_num(request->reply, request->packet->vps, 0, PW_STATE, TAG_ANY);
 	if (vp) fr_pair_add(&request->reply->vps, vp);
 
 	/*

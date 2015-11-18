@@ -262,7 +262,7 @@ redo:
 		 *	memcpy.  BUT it might be a string (or used as one), so
 		 *	we ensure that there's a trailing zero, too.
 		 */
-		new = fr_pair_afrom_num(request, attr, 0);
+		new = fr_pair_afrom_num(request, 0, attr);
 		if (new->da->type == PW_TYPE_OCTETS) {
 			fr_pair_value_memcpy(new, (uint8_t const *) q + 1, (len - hlen) + 1);
 			new->vp_length = (len - hlen);	/* lie about the length */
@@ -314,7 +314,7 @@ redo:
 	}
 
 unknown_header:
-	new = fr_pair_afrom_num(request, PW_CLEARTEXT_PASSWORD, 0);
+	new = fr_pair_afrom_num(request, 0, PW_CLEARTEXT_PASSWORD);
 	fr_pair_value_strcpy(new, vp->vp_strvalue);
 
 	return new;
@@ -356,7 +356,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 			/*
 			 *	Password already exists: use that instead of this one.
 			 */
-			if (fr_pair_find_by_num(request->config, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
+			if (fr_pair_find_by_num(request->config, 0, PW_CLEARTEXT_PASSWORD, TAG_ANY)) {
 				RWDEBUG("Config already contains a \"known good\" password "
 					"(&control:Cleartext-Password).  Ignoring &config:Password-With-Header");
 				break;
@@ -477,15 +477,15 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		 *	Likely going to be proxied.  Avoid printing
 		 *	warning message.
 		 */
-		if (fr_pair_find_by_num(request->config, PW_REALM, 0, TAG_ANY) ||
-		    (fr_pair_find_by_num(request->config, PW_PROXY_TO_REALM, 0, TAG_ANY))) {
+		if (fr_pair_find_by_num(request->config, 0, PW_REALM, TAG_ANY) ||
+		    (fr_pair_find_by_num(request->config, 0, PW_PROXY_TO_REALM, TAG_ANY))) {
 			return RLM_MODULE_NOOP;
 		}
 
 		/*
 		 *	The TLS types don't need passwords.
 		 */
-		vp = fr_pair_find_by_num(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY);
+		vp = fr_pair_find_by_num(request->packet->vps, 0, PW_EAP_TYPE, TAG_ANY);
 		if (vp &&
 		    ((vp->vp_integer == 13) || /* EAP-TLS */
 		     (vp->vp_integer == 21) || /* EAP-TTLS */

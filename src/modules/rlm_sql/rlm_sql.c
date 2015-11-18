@@ -123,7 +123,7 @@ static const CONF_PARSER module_config[] = {
 static sql_fall_through_t fall_through(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = fr_pair_find_by_num(vp, PW_FALL_THROUGH, 0, TAG_ANY);
+	tmp = fr_pair_find_by_num(vp, 0, PW_FALL_THROUGH, TAG_ANY);
 
 	return tmp ? tmp->vp_integer : FALL_THROUGH_DEFAULT;
 }
@@ -958,7 +958,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 
 finish:
 	talloc_free(head);
-	fr_pair_delete_by_num(&request->packet->vps, inst->group_da->attr, 0, TAG_ANY);
+	fr_pair_delete_by_num(&request->packet->vps, 0, inst->group_da->attr, TAG_ANY);
 
 	return rcode;
 }
@@ -1376,7 +1376,7 @@ skipreply:
 		 *  Check for a default_profile or for a User-Profile.
 		 */
 		RDEBUG3("... falling-through to profile processing");
-		user_profile = fr_pair_find_by_num(request->config, PW_USER_PROFILE, 0, TAG_ANY);
+		user_profile = fr_pair_find_by_num(request->config, 0, PW_USER_PROFILE, TAG_ANY);
 
 		char const *profile = user_profile ?
 				      user_profile->vp_strvalue :
@@ -1735,11 +1735,11 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request)
 	 */
 	request->simul_count = 0;
 
-	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_FRAMED_IP_ADDRESS, TAG_ANY)) != NULL) {
 		ipno = vp->vp_ipaddr;
 	}
 
-	if ((vp = fr_pair_find_by_num(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL) {
+	if ((vp = fr_pair_find_by_num(request->packet->vps, 0, PW_CALLING_STATION_ID, TAG_ANY)) != NULL) {
 		call_num = vp->vp_strvalue;
 	}
 

@@ -85,7 +85,7 @@ int fr_radius_encode_chap_password(uint8_t *output, RADIUS_PACKET *packet, int i
 	 *	Use Chap-Challenge pair if present,
 	 *	Request Authenticator otherwise.
 	 */
-	challenge = fr_pair_find_by_num(packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
+	challenge = fr_pair_find_by_num(packet->vps, 0, PW_CHAP_CHALLENGE, TAG_ANY);
 	if (challenge) {
 		memcpy(ptr, challenge->vp_strvalue, challenge->vp_length);
 		i += challenge->vp_length;

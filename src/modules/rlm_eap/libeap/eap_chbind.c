@@ -62,7 +62,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	 *	Set the response code.  Default to "fail" if none was
 	 *	specified.
 	 */
-	vp = fr_pair_find_by_num(request->config, PW_CHBIND_RESPONSE_CODE, 0, TAG_ANY);
+	vp = fr_pair_find_by_num(request->config, 0, PW_CHBIND_RESPONSE_CODE, TAG_ANY);
 	if (vp) {
 		ptr[0] = vp->vp_integer;
 	} else {
@@ -243,7 +243,7 @@ chbind_packet_t *eap_chbind_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	chbind_packet_t *packet;
 	vp_cursor_t cursor;
 
-	first = fr_pair_find_by_num(vps, PW_UKERNA_CHBIND, VENDORPEC_UKERNA, TAG_ANY);
+	first = fr_pair_find_by_num(vps, VENDORPEC_UKERNA, PW_UKERNA_CHBIND, TAG_ANY);
 	if (!first) return NULL;
 
 	/*
@@ -287,7 +287,7 @@ VALUE_PAIR *eap_chbind_packet2vp(REQUEST *request, chbind_packet_t *packet)
 
 	if (!packet) return NULL; /* don't produce garbage */
 
-	vp = fr_pair_afrom_num(request->packet, PW_UKERNA_CHBIND, VENDORPEC_UKERNA);
+	vp = fr_pair_afrom_num(request->packet, VENDORPEC_UKERNA, PW_UKERNA_CHBIND);
 	if (!vp) return NULL;
 	fr_pair_value_memcpy(vp, (uint8_t *) packet, talloc_array_length((uint8_t *)packet));
 

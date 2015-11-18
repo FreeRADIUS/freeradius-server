@@ -374,8 +374,8 @@ static REQUEST *request_setup(FILE *fp)
 	request->log.lvl = rad_debug_lvl;
 	request->log.func = vradlog_request;
 
-	request->username = fr_pair_find_by_num(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-	request->password = fr_pair_find_by_num(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+	request->username = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_NAME, TAG_ANY);
+	request->password = fr_pair_find_by_num(request->packet->vps, 0, PW_USER_PASSWORD, TAG_ANY);
 
 	return request;
 }
