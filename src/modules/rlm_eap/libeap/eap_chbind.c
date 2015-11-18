@@ -84,7 +84,7 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	end = ptr + total;
 
 	fr_cursor_init(&cursor, &request->reply->vps);
-	while (fr_cursor_current(&cursor) && (ptr < end)) {
+	while ((vp = fr_cursor_current(&cursor)) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
 		 */

@@ -517,6 +517,12 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 			}
 		}
 
+		/*
+	 	 *	Don't do extra work unless we have to.
+		 *	All the code below is specific to LEAP.
+	 	 */
+		if (eap_session->type != PW_EAP_LEAP) return RLM_MODULE_NOOP;
+
 		return RLM_MODULE_OK;
 	} else {
 		RDEBUG2("No pre-existing eap_session found");
@@ -527,11 +533,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	 */
 	if (!request->proxy_reply) return RLM_MODULE_NOOP;
 
-	/*
-	 *	Don't do extra work unless we have to.
-	 *	All the code below is specific to LEAP.
-	 */
-	if (eap_session->type != PW_EAP_LEAP) return RLM_MODULE_NOOP;
+
 
 	/*
 	 *	Hmm... there's got to be a better way to
