@@ -34,3 +34,39 @@ data fr_dict_value_add: Duplicate value name Life for attribute Unit-Byte
 #
 #  ATTRIBUTEs
 #
+dictionary ATTRIBUTE	Foo
+data Invalid ATTRIBUTE syntax
+
+dictionary ATTRIBUTE	Attr-26		26		octets
+data Invalid ATTRIBUTE name
+
+dictionary ATTRIBUTE	My-Guy		bob		octets
+data Invalid ATTRIBUTE number
+
+dictionary ATTRIBUTE	Unit-Fail	241.243.bob	integer
+data Invalid OID component 0
+
+# 243.244 doesn't exist
+dictionary ATTRIBUTE	Unit-Fail	241.243.255.1	integer
+data Parent attribute for 255.1 not defined
+
+dictionary ATTRIBUTE	Unit-Array	255		octets[123458]
+data Invalid length for 'octets'
+
+dictionary ATTRIBUTE	Unit-$bad$stuff	255		integer
+data Invalid character '$' in attribute name
+
+#
+# flags
+#
+dictionary ATTRIBUTE	Unit-Array	241.254		octets[1234]
+data Invalid length for 'octets'
+
+dictionary ATTRIBUTE	Unit-Tag	241.255		integer has_tag
+data fr_dict_attr_add: Failed adding 'Unit-Tag': The 'has_tag' flag can only be used with RFC and VSA attributes
+
+dictionary ATTRIBUTE	Unit-Tag	255		date	has_tag
+data fr_dict_attr_add: Failed adding 'Unit-Tag': The 'has_tag' flag can only be used for attributes of type 'integer' or 'string'
+
+dictionary ATTRIBUTE	Unit-Tag	255		tlv	encrypt=1
+data fr_dict_attr_add: Failed adding 'Unit-Tag': The 'encrypt=1' flag can only be used with attributes of type 'string'

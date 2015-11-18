@@ -995,26 +995,13 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 
 	if (fr_dict_valid_name(name) < 0) return -1;
 
-	/*
-	 *	Tags can only be used in a few limited situations.
-	 */
-	if (flags.has_tag) {
-		if ((type != PW_TYPE_INTEGER) && (type != PW_TYPE_STRING)) {
-			fr_strerror_printf("Only 'integer' and 'string' attributes can have tags");
-			goto error;
-		}
-
-		if (!(parent->flags.is_root || (parent->type == PW_TYPE_VENDOR))) {
-			fr_strerror_printf("Only RFC attributes or VSAs can have tags");
-			goto error;
-		}
-	}
+	/******************** sanity check attribute number ********************/
 
 	/*
-	 *	Disallow attributes of type zero.
+	 *	Any other negative attribute number is wrong.
 	 */
-	if (!attr && !vendor) {
-		fr_strerror_printf("Attribute 0 is invalid and cannot be used");
+	if (attr < -1) {
+		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than or equal to zero", attr);
 		goto error;
 	}
 
@@ -1031,8 +1018,18 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 
 		memcpy(&muteable, &parent, sizeof(muteable));
 		attr = ++muteable->max_attr;
+
 	} else if (vendor == 0) {
 		fr_dict_attr_t *muteable;
+
+		/*
+		 *	Disallow attributes of type zero.
+		 */
+		if (!attr) {
+			fr_strerror_printf("Attribute 0 is invalid and cannot be used");
+			goto error;
+		}
+
 		/*
 		 *  Update 'max_attr'
 		 */
@@ -1041,43 +1038,264 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	}
 
 	/*
-	 *	Additional checks for extended attributes.
+	 *	If attributes have number greater than 255, do sanity checks.
 	 */
-	switch (parent->type) {
-	case PW_TYPE_EXTENDED:
-	case PW_TYPE_LONG_EXTENDED:
-	case PW_TYPE_EVS:
-		if (vendor) {
-			fr_strerror_printf("VSAs cannot use the 'extended' or 'evs' attribute formats");
+	if ((attr > 255) && !parent->flags.is_root) {
+		fr_dict_attr_t const *v;
+
+		for (v = parent; !v->flags.is_root; v = v->parent) {
+			if (v->type == PW_TYPE_TLV) {
+				fr_strerror_printf("Attributes of type 'tlv' must have value between 1..255");
+				goto error;
+			}
+
+			if (v->type == PW_TYPE_VENDOR) {
+				fr_dict_vendor_t *dv;
+
+				dv = fr_dict_vendor_by_num(vendor);
+				if (!dv) {
+					fr_strerror_printf("Unknown vendor %d", vendor);
+					goto error;
+				}
+
+				/*
+				 *		Dumb Broadsoft...
+				 */
+				if ((dv->type == 1) &&
+				    (vendor != 6431) && (vendor != DHCP_MAGIC_VENDOR)) {
+					fr_strerror_printf("Attributes must have value between 1..255");
+					goto error;
+				}
+
+				if ((dv->type == 2) && (attr > 65535)) {
+					fr_strerror_printf("Attributes must have value between 1..255");
+					goto error;
+				}
+				break;
+			}
+		}
+	}
+
+	/******************** sanity check vendor number ********************/
+
+	if (vendor) {
+		if (type == PW_TYPE_VENDOR) {
+			fr_strerror_printf("Adding 'vendor' to 'vendor' does not make sense");
 			goto error;
 		}
 
-		if ((flags.encrypt != FLAG_ENCRYPT_NONE)
-#ifdef WITH_DHCP
-		    || flags.array
-#endif
-			) {
-			fr_strerror_printf("The 'extended' attributes MUST NOT have any flags set");
+		if (parent->type != PW_TYPE_VENDOR) {
+			if (parent->vendor != vendor) {
+				fr_strerror_printf("Cannot change vendor inside of an attribute");
+				goto error;
+			}
+		} else {
+			if (parent->attr != vendor) {
+				fr_strerror_printf("Cannot change vendor inside of an attribute");
+				goto error;
+			}
+		}
+	}
+
+	/******************** sanity check flags ********************/
+
+	/*
+	 *	virtual attributes are special.
+	 */
+	if (flags.virtual) {
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("The 'virtual' flag can only be used for normal attributes");
 			goto error;
 		}
-		break;
 
-	default:
-		break;
+		if (attr < 256) {
+			fr_strerror_printf("The 'virtual' flag can only be used for non-protocol attributes");
+			goto error;
+		}
 	}
 
 	/*
-	 *	Check lineage
+	 *	Tags can only be used in a few limited situations.
+	 */
+	if (flags.has_tag) {
+		if ((type != PW_TYPE_INTEGER) && (type != PW_TYPE_STRING)) {
+			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' or 'string'");
+			goto error;
+		}
+
+		if (!(parent->flags.is_root || (parent->type == PW_TYPE_VENDOR))) {
+			fr_strerror_printf("The 'has_tag' flag can only be used with RFC and VSA attributes");
+			goto error;
+		}
+
+		if (flags.array || flags.has_value || flags.wimax || flags.concat || flags.virtual ||
+		    flags.length) {
+			fr_strerror_printf("The 'has_tag' flag cannot be used any other flag");
+			goto error;
+		}
+
+		if (flags.encrypt && (flags.encrypt != FLAG_ENCRYPT_TUNNEL_PASSWORD)) {
+			fr_strerror_printf("The 'has_tag' flag can only be used with 'encrypt=2'");
+			goto error;
+		}
+	}
+
+	/*
+	 *	'concat' can only be used in a few limited situations.
+	 */
+	if (flags.concat) {
+		if (type != PW_TYPE_OCTETS) {
+			fr_strerror_printf("The 'concat' flag can only be used for attributes of type 'octets'");
+			goto error;
+		}
+
+		if (!parent->flags.is_root) {
+			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
+			goto error;
+		}
+
+		if (flags.array || flags.internal || flags.has_value || flags.wimax || flags.virtual ||
+		    flags.encrypt || flags.length) {
+			fr_strerror_printf("The 'concat' flag cannot be used any other flag");
+			goto error;
+		}
+	}
+
+	/*
+	 *	'octets[n]' can only be used in a few limited situations.
+	 */
+	if (flags.length) {
+		if (type != PW_TYPE_OCTETS) {
+			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets'");
+			goto error;
+		}
+
+		if (flags.array || flags.internal || flags.has_value || flags.wimax || flags.virtual) {
+			fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
+			goto error;
+		}
+
+		if (flags.length > 253) {
+			fr_strerror_printf("Invalid length %d", flags.length);
+			return -1;
+		}
+	}
+
+	/*
+	 *	DHCP options allow for packing multiple values into one option.
+	 *
+	 *	We allow it for DHCP and FreeDHCP dictionaries.  Not anywhere else.
+	 */
+	if (flags.array) {
+		fr_dict_attr_t const *v;
+
+		for (v = parent; v->type == PW_TYPE_TLV; v = v->parent) {
+			/* nothing */
+		}
+
+		if ((v->type != PW_TYPE_VENDOR) ||
+		    ((v->attr != 34673) &&
+		     (v->attr != DHCP_MAGIC_VENDOR))) {
+			fr_strerror_printf("The 'array' flag can only be used with DHCP options");
+			goto error;
+		}
+
+		switch (type) {
+		default:
+			fr_strerror_printf("The 'array' flag cannot be used with attributes of type '%s'",
+					   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
+			goto error;
+
+		case PW_TYPE_IPV4_ADDR:
+		case PW_TYPE_IPV6_ADDR:
+		case PW_TYPE_BYTE:
+		case PW_TYPE_SHORT:
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_DATE:
+		case PW_TYPE_STRING:
+			break;
+		}
+
+		if (flags.internal || flags.has_value || flags.wimax || flags.encrypt || flags.virtual) {
+			fr_strerror_printf("The 'array' flag cannot be used any other flag");
+			goto error;
+		}
+	}
+
+	/*
+	 *	'has_value' should only be set internally.  If the
+	 *	caller sets it, we still sanity check it.
+	 */
+	if (flags.has_value) {
+		if (type != PW_TYPE_INTEGER) {
+			fr_strerror_printf("The 'has_value' flag can only be used with attributes of type 'integer'");
+			goto error;
+		}
+
+		if (flags.encrypt || flags.virtual) {
+			fr_strerror_printf("The 'has_value' flag cannot be used with any other flag");
+			goto error;
+		}
+	}
+
+	if (flags.encrypt) {
+		/*
+		 *	Stupid hacks for MS-CHAP-MPPE-Keys.  The User-Password
+		 *	encryption method has no provisions for encoding the
+		 *	length of the data.  For User-Password, the data is
+		 *	(presumably) all printable non-zero data.  For
+		 *	MS-CHAP-MPPE-Keys, the data is binary crap.  So... we
+		 *	MUST specify a length in the dictionary.
+		 */
+		if ((flags.encrypt == FLAG_ENCRYPT_USER_PASSWORD) && (type != PW_TYPE_STRING)) {
+			if (type != PW_TYPE_OCTETS) {
+				fr_strerror_printf("The 'encrypt=1' flag can only be used with attributes of type 'string'");
+				goto error;
+			}
+
+			if (flags.length == 0) {
+				fr_strerror_printf("The 'encrypt=1' flag MUST be used with an explicit length for "
+						   "'octets' data types");
+				goto error;
+			}
+		}
+
+		if (flags.encrypt > FLAG_ENCRYPT_ASCEND_SECRET) {
+			fr_strerror_printf("The 'encrypt' flag can only be 0..3");
+			goto error;
+		}
+
+		switch (type) {
+		default:
+		encrypt_fail:
+			fr_strerror_printf("The 'encrypt' flag cannot be used with attributes of type '%s'",
+					   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
+			goto error;
+
+		case PW_TYPE_IPV4_ADDR:
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_OCTETS:
+			if (flags.encrypt == FLAG_ENCRYPT_ASCEND_SECRET) goto encrypt_fail;
+
+		case PW_TYPE_STRING:
+			break;
+		}
+	}
+
+	/******************** sanity check data types and parents ********************/
+
+	/*
+	 *	Enforce restrictions on which data types can appear where.
 	 */
 	switch (type) {
 	/*
 	 *	These types may only be parented from the root of the dictionary
 	 */
-	case PW_TYPE_VSA:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_VSA:
 		if (!parent->flags.is_root) {
-			fr_strerror_printf("'%s' can only occur in RFC space",
+			fr_strerror_printf("Attributes of type '%s' can only be used in the RFC space",
 					   fr_int2str(dict_attr_types, type, "?Unknown?"));
 			goto error;
 		}
@@ -1088,58 +1306,34 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	 */
 	case PW_TYPE_EVS:
 		if ((parent->type != PW_TYPE_EXTENDED) && (parent->type != PW_TYPE_LONG_EXTENDED)) {
-			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', got "
+			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', instead of "
 					   "'%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
-			fr_dict_print(fr_main_dict->root, 0);
 			goto error;
+		}
+		break;
+
+	case PW_TYPE_VENDOR:
+		if ((parent->type != PW_TYPE_VSA) && (parent->type != PW_TYPE_EVS)) {
+			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' or 'evs', instead of "
+					   "'%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
+			goto error;
+		}
+		break;
+
+	case PW_TYPE_TLV:
+		if (vendor && (vendor != DHCP_MAGIC_VENDOR)) {
+			fr_dict_vendor_t *dv;
+
+			dv = fr_dict_vendor_by_num(vendor);
+			if (!dv || (dv->type != 1) || (dv->length != 1)) {
+				fr_strerror_printf("Attributes of type 'tlv' can only be for vendors with 'format=1,1'.");
+				goto error;
+			}
 		}
 		break;
 
 	default:
 		break;
-	}
-
-	/*
-	 *	Do various sanity checks.
-	 */
-	if (attr < 0) {
-		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than or equal to zero", attr);
-		goto error;
-	}
-
-	if (flags.concat) {
-		if (type != PW_TYPE_OCTETS) {
-			fr_strerror_printf("The 'concat' flag can only be set for attributes of type 'octets'");
-			goto error;
-		}
-
-		if (vendor || !parent->flags.is_root) {
-			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
-			goto error;
-		}
-
-		if (flags.length || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
-			fr_strerror_printf("The 'concat' flag cannot be used with any other flag");
-			goto error;
-		}
-	}
-
-	if (flags.length) {
-		if (type != PW_TYPE_OCTETS) {
-			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets'");
-			goto error;
-		}
-
-		if (!vendor && !parent->flags.is_root) {
-			fr_strerror_printf("The 'length' flag cannot be used with attributes parented by type '%s'",
-					   fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
-			goto error;
-		}
-
-		if (flags.array || flags.concat || (flags.encrypt > FLAG_ENCRYPT_USER_PASSWORD)) {
-			fr_strerror_printf("The 'length' flag cannot be used with any other flag");
-			goto error;
-		}
 	}
 
 	/*
@@ -1178,7 +1372,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		break;
 
 	case PW_TYPE_EXTENDED:
-		if ((vendor != 0) || (attr < 241)) {
+		if (!parent->flags.is_root || (attr < 241)) {
 			fr_strerror_printf("Attributes of type 'extended' MUST be "
 					   "RFC attributes with value >= 241.");
 			goto error;
@@ -1187,7 +1381,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		break;
 
 	case PW_TYPE_LONG_EXTENDED:
-		if ((vendor != 0) || (attr < 241)) {
+		if (!parent->flags.is_root || (attr < 241)) {
 			fr_strerror_printf("Attributes of type 'long-extended' MUST "
 					   "be RFC attributes with value >= 241.");
 			goto error;
@@ -1215,36 +1409,10 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		break;
 	}
 
-	/*
-	 *	Stupid hacks for MS-CHAP-MPPE-Keys.  The User-Password
-	 *	encryption method has no provisions for encoding the
-	 *	length of the data.  For User-Password, the data is
-	 *	(presumably) all printable non-zero data.  For
-	 *	MS-CHAP-MPPE-Keys, the data is binary crap.  So... we
-	 *	MUST specify a length in the dictionary.
-	 */
-	if ((flags.encrypt == FLAG_ENCRYPT_USER_PASSWORD) && (type != PW_TYPE_STRING)) {
-		if (type != PW_TYPE_OCTETS) {
-			fr_strerror_printf("The 'encrypt=1' flag cannot be used with non-string data types");
-			goto error;
-		}
-
-		if (flags.length == 0) {
-			fr_strerror_printf("The 'encrypt=1' flag MUST be used with an explicit length for "
-					   "'octets' data types");
-			goto error;
-		}
-	}
-
 	if (vendor) {
 		fr_dict_vendor_t	*dv;
 		static			fr_dict_vendor_t *last_vendor = NULL;
 		unsigned int		vendor_max;
-
-		if ((type == PW_TYPE_TLV) && (flags.encrypt != FLAG_ENCRYPT_NONE)) {
-			fr_strerror_printf("TLV's cannot be encrypted");
-			goto error;
-		}
 
 		/*
 		 *	Most ATTRIBUTEs are bunched together by
@@ -1637,7 +1805,7 @@ static int process_attribute(fr_dict_attr_t const *parent,
 
 		*p = 0;
 
-		if (!sscanf_i(argv[1], &length)) {
+		if (!sscanf_i(argv[2] + 7, &length)) {
 			fr_strerror_printf("Invalid length for 'octets'");
 			return -1;
 		}
@@ -1655,18 +1823,6 @@ static int process_attribute(fr_dict_attr_t const *parent,
 	 */
 	if (argc >= 4) {
 		char *key, *next, *last;
-
-		/*
-		 *	Keep it real.
-		 */
-		switch (type) {
-		case PW_TYPE_STRUCTURAL:
-			fr_strerror_printf("Structural attributes cannot use flags");
-			return -1;
-
-		default:
-			break;
-		}
 
 		key = argv[3];
 		do {
@@ -1693,11 +1849,6 @@ static int process_attribute(fr_dict_attr_t const *parent,
 					return -1;
 				}
 
-				if ((flags.encrypt == FLAG_ENCRYPT_ASCEND_SECRET) &&
-				    (type != PW_TYPE_STRING)) {
-					fr_strerror_printf("Only 'string' types can have the 'encrypt=3' flag set");
-					return -1;
-				}
 			/*
 			 *	Marks the attribute up as internal.
 			 *	This means it can use numbers outside of the allowed
@@ -1710,42 +1861,11 @@ static int process_attribute(fr_dict_attr_t const *parent,
 			} else if (strncmp(key, "array", 6) == 0) {
 				flags.array = 1;
 
-				switch (type) {
-				case PW_TYPE_IPV4_ADDR:
-				case PW_TYPE_IPV6_ADDR:
-				case PW_TYPE_BYTE:
-				case PW_TYPE_SHORT:
-				case PW_TYPE_INTEGER:
-				case PW_TYPE_DATE:
-				case PW_TYPE_STRING:
-					break;
-
-				default:
-					fr_strerror_printf("The '%s' type cannot have the 'array' flag set",
-							   fr_int2str(dict_attr_types, type, "<UNKNOWN>"));
-					return -1;
-				}
-
 			} else if (strncmp(key, "concat", 7) == 0) {
 				flags.concat = 1;
 
-				if (type != PW_TYPE_OCTETS) {
-					fr_strerror_printf("fOnly 'octets' type can have the 'concat' flag set");
-					return -1;
-				}
-
 			} else if (strncmp(key, "virtual", 8) == 0) {
 				flags.virtual = 1;
-
-				if (vendor != 0) {
-					fr_strerror_printf("VSAs cannot have the 'virtual' flag set");
-					return -1;
-				}
-
-				if (attr < 256) {
-					fr_strerror_printf("Standard attributes cannot have the 'virtual' flag set");
-					return -1;
-				}
 
 			/*
 			 *	The only thing is the vendor name,
@@ -1778,23 +1898,6 @@ static int process_attribute(fr_dict_attr_t const *parent,
 	}
 
 	if (block_vendor) vendor = block_vendor;
-
-	if (type == PW_TYPE_TLV) {
-		if (vendor
-#ifdef WITH_DHCP
-		    && (vendor != DHCP_MAGIC_VENDOR)
-#endif
-			) {
-			fr_dict_vendor_t *dv;
-
-			dv = fr_dict_vendor_by_num(vendor);
-			if (!dv || (dv->type != 1) || (dv->length != 1)) {
-				fr_strerror_printf("Type 'tlv' can only be for 'format=1,1'.");
-				return -1;
-			}
-
-		}
-	}
 
 #ifdef WITH_DICTIONARY_WARNINGS
 	/*
