@@ -77,18 +77,9 @@ static int rlm_test_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE_PA
 static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_test_t *inst = instance;
-	ATTR_FLAGS flags;
 
-	memset(&flags, 0, sizeof(flags));
-
-	if (fr_dict_attr_add(fr_dict_root(fr_main_dict), "test-Paircmp", 0, -1, PW_TYPE_STRING, flags) < 0) {
-		ERROR("Failed creating paircmp attribute: %s", fr_strerror());
-
-		return -1;
-	}
-
-	paircompare_register(fr_dict_attr_by_name("test-Paircmp"), fr_dict_attr_by_num(0, PW_USER_NAME), false,
-			     rlm_test_cmp, inst);
+	paircompare_register_byname("test-Paircmp", fr_dict_attr_by_num(0, PW_USER_NAME), false,
+				    rlm_test_cmp, inst);
 
 	/*
 	 *	Log some messages

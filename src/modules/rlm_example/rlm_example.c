@@ -73,9 +73,7 @@ static int rlm_example_cmp(UNUSED void *instance, REQUEST *request, UNUSED VALUE
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_example_t *inst = instance;
-	ATTR_FLAGS flags;
 
-	memset(&flags, 0, sizeof(flags));
 	/*
 	 *	Do more work here
 	 */
@@ -84,14 +82,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	if (fr_dict_attr_add(fr_dict_root(fr_main_dict), "Example-Paircmp", 0, -1, PW_TYPE_STRING, flags) < 0) {
-		ERROR("Failed creating paircmp attribute: %s", fr_strerror());
-
-		return -1;
-	}
-
-	paircompare_register(fr_dict_attr_by_name("Example-Paircmp"), fr_dict_attr_by_num(0, PW_USER_NAME), false,
-			     rlm_example_cmp, inst);
+	paircompare_register_byname("Example-Paircmp", fr_dict_attr_by_num(0, PW_USER_NAME), false,
+				    rlm_example_cmp, inst);
 
 	return 0;
 }
