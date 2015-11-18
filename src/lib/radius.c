@@ -1407,7 +1407,8 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	uint8_t			*ptr;
 	uint16_t		total_length;
 	int			len;
-	VALUE_PAIR const	*reply;
+	VALUE_PAIR const	*vp;
+	vp_cursor_t		cursor;
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -1463,23 +1464,14 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	packet->offset = 0;
 
 	/*
-	 *	FIXME: Loop twice over the reply list.  The first time,
-	 *	calculate the total length of data.  The second time,
-	 *	allocate the memory, and fill in the VP's.
-	 *
-	 *	Hmm... this may be slower than just doing a small
-	 *	memcpy.
-	 */
-
-	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	reply = packet->vps;
-	while (reply) {
-		size_t last_len;
-		char const *last_name = NULL;
+	fr_cursor_init(&cursor, &packet->vps);
+	while ((vp = fr_cursor_current(&cursor))) {
+		size_t		last_len;
+		char const	*last_name = NULL;
 
-		VERIFY_VP(reply);
+		VERIFY_VP(vp);
 
 		/*
 		 *	Ignore non-wire attributes, but allow extended
@@ -1488,22 +1480,20 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	@fixme We should be able to get rid of this check
 		 *	and just look at da->flags.internal
 		 */
-		if (reply->da->flags.internal ||
-		    ((reply->da->vendor == 0) &&
-		     ((reply->da->attr & 0xFFFF) >= 256))) {
+		if (vp->da->flags.internal || ((vp->da->vendor == 0) && (vp->da->attr >= 256))) {
 #ifndef NDEBUG
 			/*
 			 *	Permit the admin to send BADLY formatted
 			 *	attributes with a debug build.
 			 */
-			if (reply->da->attr == PW_RAW_ATTRIBUTE) {
-				memcpy(ptr, reply->vp_octets, reply->vp_length);
-				len = reply->vp_length;
-				reply = reply->next;
+			if (vp->da->attr == PW_RAW_ATTRIBUTE) {
+				memcpy(ptr, vp->vp_octets, vp->vp_length);
+				len = vp->vp_length;
+				fr_cursor_next(&cursor);
 				goto next;
 			}
 #endif
-			reply = reply->next;
+			fr_cursor_next(&cursor);
 			continue;
 		}
 
@@ -1511,7 +1501,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	Set the Message-Authenticator to the correct
 		 *	length and initial value.
 		 */
-		if (!reply->da->vendor && (reply->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
+		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) {
 			/*
 			 *	Cache the offset to the
 			 *	Message-Authenticator
@@ -1519,12 +1509,12 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 			packet->offset = total_length;
 			last_len = 16;
 		} else {
-			last_len = reply->vp_length;
+			last_len = vp->vp_length;
 		}
-		last_name = reply->da->name;
+		last_name = vp->da->name;
 
 		len = fr_radius_encode_pair(ptr, ((uint8_t *) data) + sizeof(data) - ptr,
-					    packet, original, secret, &reply);
+					    packet, original, secret, &cursor);
 		if (len < 0) return -1;
 
 		/*

@@ -82,18 +82,21 @@ static bool chbind_build_response(REQUEST *request, CHBIND_REQ *chbind)
 	/* Encode the chbind attributes into the response */
 	ptr += 4;
 	end = ptr + total;
-	for (vp = fr_cursor_init(&cursor, &request->reply->vps);
-	     vp != NULL;
-	     vp = fr_cursor_next(&cursor)) {
+
+	fr_cursor_init(&cursor, &request->reply->vps);
+	while (fr_cursor_current(&cursor) && (ptr < end)) {
 		/*
 		 *	Skip things which shouldn't be in channel bindings.
 		 */
-		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) continue;
-		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) continue;
-		if (ptr < end) {
-			length = fr_radius_encode_pair(ptr, end - ptr, NULL, NULL, NULL, &vp);
-			ptr += length;
+		if (vp->da->flags.encrypt != FLAG_ENCRYPT_NONE) {
+		next:
+			fr_cursor_next(&cursor);
+			continue;
 		}
+		if (!vp->da->vendor && (vp->da->attr == PW_MESSAGE_AUTHENTICATOR)) goto next;
+
+		length = fr_radius_encode_pair(ptr, end - ptr, NULL, NULL, NULL, &cursor);
+		ptr += length;
 	}
 
 	return true;

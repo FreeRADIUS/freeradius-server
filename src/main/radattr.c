@@ -684,6 +684,8 @@ static void process_file(const char *root_dir, char const *filename)
 		}
 
 		if (strncmp(p, "encode ", 7) == 0) {
+			vp_cursor_t cursor;
+
 			if (strcmp(p + 7, "-") == 0) {
 				p = output;
 			} else {
@@ -696,15 +698,10 @@ static void process_file(const char *root_dir, char const *filename)
 			}
 
 			attr = data;
-			vp = head;
-			while (vp) {
-				VALUE_PAIR **pvp = &vp;
-				VALUE_PAIR const **qvp;
-
-				memcpy(&qvp, &pvp, sizeof(pvp));
-
+			fr_cursor_init(&cursor, &head);
+			while ((vp = fr_cursor_current(&cursor))) {
 				len = fr_radius_encode_pair(attr, data + sizeof(data) - attr,
-							    &my_packet, &my_original, my_secret, qvp);
+							    &my_packet, &my_original, my_secret, &cursor);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
 						vp->da->name, fr_strerror());

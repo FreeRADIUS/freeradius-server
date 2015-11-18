@@ -259,7 +259,7 @@ ssize_t		fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp);
 
 int		fr_radius_encode_pair(uint8_t *out, size_t outlen,
 				      RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
-				      char const *secret, VALUE_PAIR const **pvp);
+				      char const *secret, vp_cursor_t *cursor);
 
 /*
  *	radius_decode.c
