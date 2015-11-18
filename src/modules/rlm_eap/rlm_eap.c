@@ -441,6 +441,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 {
 	size_t		i;
 	size_t		len;
+	ssize_t		ret;
 	char		*p;
 	VALUE_PAIR	*vp;
 	eap_session_t	*eap_session;
@@ -527,38 +528,43 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	if (!request->proxy_reply) return RLM_MODULE_NOOP;
 
 	/*
-	 *	There may be more than one Cisco-AVPair.
-	 *	Ensure we find the one with the LEAP attribute.
+	 *	Don't do extra work unless we have to.
+	 *	All the code below is specific to LEAP.
 	 */
-	fr_cursor_init(&cursor, &request->proxy_reply->vps);
-	for (;;) {
-		/*
-		 *	Hmm... there's got to be a better way to
-		 *	discover codes for vendor attributes.
-		 *
-		 *	This is vendor Cisco (9), Cisco-AVPair
-		 *	attribute (1)
-		 */
-		vp = fr_cursor_next_by_num(&cursor, 9, 1, TAG_ANY);
-		if (!vp) {
-			return RLM_MODULE_NOOP;
-		}
+	if (eap_session->type != PW_EAP_LEAP) return RLM_MODULE_NOOP;
 
+	/*
+	 *	Hmm... there's got to be a better way to
+	 *	discover codes for vendor attributes.
+	 *
+	 *	This is vendor Cisco (9), Cisco-AVPair
+	 *	attribute (1)
+	 */
+	for (vp = fr_cursor_init(&cursor, &request->proxy_reply->vps);
+	     vp;
+	     vp = fr_cursor_next_by_num(&cursor, 9, 1, TAG_ANY)) {
 		/*
 		 *	If it's "leap:session-key", then stop.
 		 *
 		 *	The format is VERY specific!
 		 */
-		if (strncasecmp(vp->vp_strvalue, "leap:session-key=", 17) == 0) {
-			break;
-		}
+		if (strncasecmp(vp->vp_strvalue, "leap:session-key=", 17) == 0) break;
 	}
 
 	/*
+	 *	Got to the end without finding "leap:session-key="
+	 */
+	if (!vp) return RLM_MODULE_NOOP;
+
+	/*
 	 *	The format is very specific.
+	 *
+	 *	- 17 bytes are "leap:session-key="
+	 *	- 32 are the hex encoded session key.
+	 *	- 2 bytes are the salt.
 	 */
 	if (vp->vp_length != (17 + 34)) {
-		RDEBUG2("Cisco-AVPair with leap:session-key has incorrect length %zu: Expected %d",
+		RDEBUG2("&Cisco-AVPair with leap:session-key has incorrect length. Got %zu, expected %d",
 		       vp->vp_length, 17 + 34);
 		return RLM_MODULE_NOOP;
 	}
@@ -577,19 +583,29 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	i = 34;
 	p = talloc_memdup(vp, vp->vp_strvalue, vp->vp_length + 1);
 	talloc_set_type(p, uint8_t);
-	len = fr_radius_decode_tunnel_password((uint8_t *)p + 17, &i, request->home_server->secret,
+	ret = fr_radius_decode_tunnel_password((uint8_t *)p + 17, &i, request->home_server->secret,
 					       request->proxy->vector);
+	if (ret < 0) {
+		REDEBUG("Decoding leap:session-key failed");
+		talloc_free(p);
+		return RLM_MODULE_FAIL;
+	}
 
-	/*
-	 *	FIXME: Assert that i == 16.
-	 */
+	if (i != 16) {
+		REDEBUG("Decoded key length is incorrect, must be 16 bytes");
+		talloc_free(p);
+	}
 
 	/*
 	 *	Encrypt the session key again, using the request data.
 	 */
-	fr_radius_encode_tunnel_password(p + 17, &len,
-			    request->client->secret,
-			    request->packet->vector);
+	ret = fr_radius_encode_tunnel_password(p + 17, &len, request->client->secret, request->packet->vector);
+	if (ret < 0) {
+		REDEBUG("Encoding leap:session-key failed");
+		talloc_free(p);
+		return RLM_MODULE_FAIL;
+	}
+
 	fr_pair_value_strsteal(vp, p);
 
 	return RLM_MODULE_UPDATED;

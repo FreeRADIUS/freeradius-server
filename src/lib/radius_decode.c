@@ -33,12 +33,12 @@ static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
  * initial intermediate value, to differentiate it from the
  * above.
  */
-int fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
+ssize_t fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char const *secret, uint8_t const *vector)
 {
 	FR_MD5_CTX	context, old;
 	uint8_t		digest[AUTH_VECTOR_LEN];
 	int		secretlen;
-	size_t		i, n, encrypted_len, reallen;
+	size_t		i, n, encrypted_len, embedded_len;
 
 	encrypted_len = *pwlen;
 
@@ -46,7 +46,7 @@ int fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char const 
 	 *	We need at least a salt.
 	 */
 	if (encrypted_len < 2) {
-		fr_strerror_printf("tunnel password is too short");
+		fr_strerror_printf("Tunnel password is too short");
 		return -1;
 	}
 
@@ -76,6 +76,7 @@ int fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char const 
 	fr_md5_init(&context);
 	fr_md5_update(&context, (uint8_t const *) secret, secretlen);
 	fr_md5_copy(&old, &context); /* save intermediate work */
+
 	/*
 	 *	Set up the initial key:
 	 *
@@ -84,7 +85,7 @@ int fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char const 
 	fr_md5_update(&context, vector, AUTH_VECTOR_LEN);
 	fr_md5_update(&context, passwd, 2);
 
-	reallen = 0;
+	embedded_len = 0;
 	for (n = 0; n < encrypted_len; n += AUTH_PASS_LEN) {
 		size_t base;
 		size_t block_len = AUTH_PASS_LEN;
@@ -100,7 +101,6 @@ int fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char const 
 			base = 1;
 
 			fr_md5_final(digest, &context);
-
 			fr_md5_copy(&context, &old);
 
 			/*
@@ -108,9 +108,9 @@ int fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char const 
 			 *	of the password, which is the
 			 *	'data_len' field.  Ensure it's sane.
 			 */
-			reallen = passwd[2] ^ digest[0];
-			if (reallen > encrypted_len) {
-				fr_strerror_printf("tunnel password is too long for the attribute");
+			embedded_len = passwd[2] ^ digest[0];
+			if (embedded_len > encrypted_len) {
+				fr_strerror_printf("Tunnel password is too long for the attribute");
 				return -1;
 			}
 
@@ -130,16 +130,16 @@ int fr_radius_decode_tunnel_password(uint8_t *passwd, size_t *pwlen, char const 
 		}
 	}
 
-	*pwlen = reallen;
-	passwd[reallen] = 0;
+	*pwlen = embedded_len;
+	passwd[embedded_len] = '\0';
 
-	return reallen;
+	return embedded_len;
 }
 
 /** Decode password
  *
  */
-int fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret, uint8_t const *vector)
+ssize_t fr_radius_decode_password(char *passwd, size_t pwlen, char const *secret, uint8_t const *vector)
 {
 	FR_MD5_CTX	context, old;
 	uint8_t		digest[AUTH_VECTOR_LEN];
