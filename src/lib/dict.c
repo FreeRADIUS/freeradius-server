@@ -1104,31 +1104,19 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	}
 
 	if (flags.concat) {
-		if (vendor) {
-			fr_strerror_printf("VSAs cannot have the 'concat' flag set");
+		if (type != PW_TYPE_OCTETS) {
+			fr_strerror_printf("The 'concat' flag can only be set for attributes of type 'octets'");
 			goto error;
 		}
 
-		if (type != PW_TYPE_OCTETS) {
-			fr_strerror_printf("The 'concat' flag can only be set for attributes of type 'octets'");
+		if (vendor || !parent->flags.is_root) {
+			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
 			goto error;
 		}
 
 		if (flags.has_tag || flags.length || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("The 'concat' flag cannot be used with any other flag");
 			goto error;
-		}
-
-		/*
-		 *	We now know it's type octets, so we just need to check the parent.
-		 */
-		if (!parent->flags.is_root) switch (parent->type) {
-		case PW_TYPE_STRUCTURAL:
-			fr_strerror_printf("The 'concat' flag can only be used with RFC attributes");
-			goto error;
-
-		default:
-			break;
 		}
 	}
 
@@ -1138,22 +1126,15 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			goto error;
 		}
 
-		if (flags.has_tag || flags.array || flags.concat || (flags.encrypt > FLAG_ENCRYPT_USER_PASSWORD)) {
-			fr_strerror_printf("The 'length' flag cannot be used with any other flag");
-			goto error;
-		}
-
-		/*
-		 *	We now know it's type octets, so we just need to check the parent.
-		 */
-		if (!parent->flags.is_root) switch (parent->type) {
-		case PW_TYPE_STRUCTURAL_EXCEPT_VSA:
+		if (!vendor && !parent->flags.is_root) {
 			fr_strerror_printf("The 'length' flag cannot be used with attributes parented by type '%s'",
 					   fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
 			goto error;
+		}
 
-		default:
-			break;
+		if (flags.has_tag || flags.array || flags.concat || (flags.encrypt > FLAG_ENCRYPT_USER_PASSWORD)) {
+			fr_strerror_printf("The 'length' flag cannot be used with any other flag");
+			goto error;
 		}
 	}
 
