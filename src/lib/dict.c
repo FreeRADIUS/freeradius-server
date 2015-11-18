@@ -441,7 +441,6 @@ do { \
 	FLAG_SET(has_tag);
 	FLAG_SET(array);
 	FLAG_SET(has_value);
-	FLAG_SET(has_value_alias);
 	FLAG_SET(wimax);
 	FLAG_SET(concat);
 	FLAG_SET(is_pointer);
@@ -1441,13 +1440,6 @@ int fr_dict_value_add(char const *attr, char const *alias, int value)
 	 *	value, if possible.
 	 */
 	if (da) {
-		if (da->flags.has_value_alias) {
-			fr_strerror_printf(
-				"fr_dict_value_add: Cannot add VALUE for ATTRIBUTE '%s': It already has a VALUE-ALIAS",
-				attr);
-			return -1;
-		}
-
 		dval->da = da;
 
 		/*
@@ -1890,70 +1882,6 @@ static int process_value(char **argv, int argc)
 	return 0;
 }
 
-/*
- *	Process the VALUE-ALIAS command
- *
- *	This allows VALUE mappings to be shared among multiple
- *	attributes.
- */
-static int process_value_alias(char **argv, int argc)
-{
-	fr_dict_attr_t const *my_da, *da;
-	fr_dict_value_t *dval;
-
-	if (argc != 2) {
-		fr_strerror_printf("Invalid VALUE-ALIAS syntax");
-		return -1;
-	}
-
-	my_da = fr_dict_attr_by_name(argv[0]);
-	if (!my_da) {
-		fr_strerror_printf("ATTRIBUTE '%s' does not exist", argv[1]);
-		return -1;
-	}
-
-	if (my_da->flags.has_value_alias) {
-		fr_strerror_printf("Cannot add VALUE-ALIAS to ATTRIBUTE '%s' with pre-existing VALUE-ALIAS",
-				   argv[0]);
-		return -1;
-	}
-
-	da = fr_dict_attr_by_name(argv[1]);
-	if (!da) {
-		fr_strerror_printf("Cannot find ATTRIBUTE '%s' for alias",
-				   argv[1]);
-		return -1;
-	}
-
-	if (da->flags.has_value_alias) {
-		fr_strerror_printf("Cannot add VALUE-ALIAS to ATTRIBUTE '%s' which itself has a VALUE-ALIAS",
-				   argv[1]);
-		return -1;
-	}
-
-	if (my_da->type != da->type) {
-		fr_strerror_printf("Cannot add VALUE-ALIAS between attributes of differing type");
-		return -1;
-	}
-
-	dval = talloc_zero(fr_main_dict->pool, fr_dict_value_t);
-	if (dval == NULL) {
-		fr_strerror_printf("fr_dict_value_add: out of memory");
-		return -1;
-	}
-
-	dval->name[0] = '\0';        /* empty name */
-	dval->da = my_da;
-	dval->value = da->attr;
-
-	if (!fr_hash_table_insert(fr_main_dict->values_by_name, dval)) {
-		fr_strerror_printf("Error create alias");
-		talloc_free(dval);
-		return -1;
-	}
-
-	return 0;
-}
 
 static int parse_format(char const *format, unsigned int *pvalue, int *ptype, int *plength,
 			bool *pcontinuation)
@@ -2162,10 +2090,6 @@ int fr_dict_parse_str(char *buf, fr_dict_attr_t const *parent, unsigned int vend
 		return process_attribute(parent, vendor, argv + 1, argc - 1);
 	}
 
-	if (strcasecmp(argv[0], "VALUE-ALIAS") == 0) {
-		return process_value_alias(argv + 1, argc - 1);
-	}
-
 	if (strcasecmp(argv[0], "VENDOR") == 0) {
 		return process_vendor(argv + 1, argc - 1);
 	}
@@ -2362,11 +2286,6 @@ static int my_dict_init(fr_dict_t *dict, char const *dir_name, char const *filen
 			if (rcode < 0) goto error;
 			continue;
 		} /* $INCLUDE- */
-
-		if (strcasecmp(argv[0], "VALUE-ALIAS") == 0) {
-			if (process_value_alias(argv + 1, argc - 1) == -1) goto error;
-			continue;
-		}
 
 		/*
 		 *	Process VENDOR lines.
