@@ -997,44 +997,29 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, int attr,
 
 	/******************** sanity check attribute number ********************/
 
-	/*
-	 *	Any other negative attribute number is wrong.
-	 */
-	if (attr < -1) {
-		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than or equal to zero", attr);
-		goto error;
+	if (parent->flags.is_root) {
+		static unsigned int	max_attr = 256;
+
+		if (attr == -1) {
+			if (fr_dict_attr_by_name(name)) return 0; /* exists, don't add it again */
+
+			attr = ++max_attr;
+
+		} else if (attr <= 0) {
+			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", attr);
+			goto error;
+
+		} else if ((unsigned int) attr > max_attr) {
+			max_attr = attr;
+		}
 	}
 
 	/*
-	 *	If the attr is '-1', that means use a pre-existing
-	 *	one (if it already exists).  If one does NOT already exist,
-	 *	then create a new attribute, with a non-conflicting value,
-	 *	and use that.
+	 *	Any other negative attribute number is wrong.
 	 */
-	if (attr == -1) {
-		fr_dict_attr_t *muteable;
-
-		if (fr_dict_attr_by_name(name)) return 0; /* exists, don't add it again */
-
-		memcpy(&muteable, &parent, sizeof(muteable));
-		attr = ++muteable->max_attr;
-
-	} else if (parent->flags.is_root) {
-		fr_dict_attr_t *muteable;
-
-		/*
-		 *	Disallow attributes of type zero.
-		 */
-		if (!attr) {
-			fr_strerror_printf("Attribute 0 is invalid and cannot be used");
-			goto error;
-		}
-
-		/*
-		 *  Update 'max_attr'
-		 */
-		memcpy(&muteable, &parent, sizeof(muteable));
-		if ((unsigned int)attr > muteable->max_attr) muteable->max_attr = attr;
+	if (attr < 0) {
+		fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", attr);
+		goto error;
 	}
 
 	/*
