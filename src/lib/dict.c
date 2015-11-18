@@ -995,9 +995,16 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 
 	if (fr_dict_valid_name(name) < 0) return -1;
 
-	if (flags.has_tag && !((type == PW_TYPE_INTEGER) || (type == PW_TYPE_STRING))) {
-		fr_strerror_printf("Only 'integer' and 'string' attributes can have tags");
-		goto error;
+	if (flags.has_tag) {
+		if (!((type == PW_TYPE_INTEGER) || (type == PW_TYPE_STRING))) {
+			fr_strerror_printf("Only 'integer' and 'string' attributes can have tags");
+			goto error;
+		}
+
+		if (!vendor && !parent->flags.is_root) {
+			fr_strerror_printf("Only RFC attributes can have tags");
+			goto error;
+		}
 	}
 
 	/*
@@ -1613,10 +1620,11 @@ static int process_attribute(fr_dict_attr_t const *parent,
 			fr_strerror_printf("Invalid ATTRIBUTE number");
 			return -1;
 		}
-	/*
-	 *	Got an OID string.  Every attribute should exist other
-	 *	than the leaf, which is the attribute we're defining.
-	 */
+
+		/*
+		 *	Got an OID string.  Every attribute should exist other
+		 *	than the leaf, which is the attribute we're defining.
+		 */
 	} else {
 		ssize_t slen;
 
