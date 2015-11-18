@@ -1497,7 +1497,7 @@ static int process_attribute(char const* fn, int const line,
 	/*
 	 *	Dictionaries need to have real names, not shitty ones.
 	 */
-	if (strncmp(argv[1], "Attr-", 5) == 0) {
+	if (strncmp(argv[0], "Attr-", 5) == 0) {
 		fr_strerror_printf("dict_init: %s[%d]: Invalid attribute name",
 				   fn, line);
 		return -1;
