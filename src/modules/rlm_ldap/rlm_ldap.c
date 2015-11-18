@@ -752,7 +752,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 
 		memset(&flags, 0, sizeof(flags));
 		if (fr_dict_attr_add(fr_dict_root(fr_main_dict), inst->cache_attribute,
-				     0, -1, PW_TYPE_STRING, flags) < 0) {
+				     -1, PW_TYPE_STRING, flags) < 0) {
 			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
 		error:
 			return -1;

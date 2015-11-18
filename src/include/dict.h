@@ -119,7 +119,7 @@ fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 ssize_t			fr_dict_str_to_oid(unsigned int *vendor, unsigned int *attr,
 					   fr_dict_attr_t const **parent, char const *oid);
 int			fr_dict_vendor_add(char const *name, unsigned int value);
-int			fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned int vendor, int attr,
+int			fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, int attr,
 					 PW_TYPE type, ATTR_FLAGS flags);
 int			fr_dict_value_add(char const *attrstr, char const *namestr, int value);
 

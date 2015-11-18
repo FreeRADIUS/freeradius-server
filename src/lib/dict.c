@@ -968,7 +968,6 @@ int fr_dict_vendor_add(char const *name, unsigned int num)
  *
  * @param parent to add attribute under.
  * @param name of the attribute.
- * @param vendor id (if the attribute is a VSA).
  * @param attr number.
  * @param type of attribute.
  * @param flags to set in the attribute.
@@ -976,11 +975,13 @@ int fr_dict_vendor_add(char const *name, unsigned int num)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned int vendor, int attr,
+int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, int attr,
 		     PW_TYPE type, ATTR_FLAGS flags)
 {
+	unsigned int		vendor;
 	size_t			namelen;
 	fr_dict_attr_t		*n;
+	fr_dict_attr_t const	*v;
 
 	if (!fr_assert(parent)) return -1;
 
@@ -1018,7 +1019,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		memcpy(&muteable, &parent, sizeof(muteable));
 		attr = ++muteable->max_attr;
 
-	} else if (vendor == 0) {
+	} else if (parent->flags.is_root) {
 		fr_dict_attr_t *muteable;
 
 		/*
@@ -1040,8 +1041,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	 *	If attributes have number greater than 255, do sanity checks.
 	 */
 	if ((attr > 255) && !parent->flags.is_root) {
-		fr_dict_attr_t const *v;
-
 		for (v = parent; !v->flags.is_root; v = v->parent) {
 			if (v->type == PW_TYPE_TLV) {
 				fr_strerror_printf("Attributes of type 'tlv' must have value between 1..255");
@@ -1051,9 +1050,9 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			if (v->type == PW_TYPE_VENDOR) {
 				fr_dict_vendor_t *dv;
 
-				dv = fr_dict_vendor_by_num(vendor);
+				dv = fr_dict_vendor_by_num(v->attr);
 				if (!dv) {
-					fr_strerror_printf("Unknown vendor %d", vendor);
+					fr_strerror_printf("Unknown vendor %d", v->attr);
 					goto error;
 				}
 
@@ -1061,7 +1060,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 				 *		Dumb Broadsoft...
 				 */
 				if ((dv->type == 1) &&
-				    (vendor != 6431) && (vendor != DHCP_MAGIC_VENDOR)) {
+				    (v->attr != 6431) && (v->attr != DHCP_MAGIC_VENDOR)) {
 					fr_strerror_printf("Attributes must have value between 1..255");
 					goto error;
 				}
@@ -1071,27 +1070,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 					goto error;
 				}
 				break;
-			}
-		}
-	}
-
-	/******************** sanity check vendor number ********************/
-
-	if (vendor) {
-		if (type == PW_TYPE_VENDOR) {
-			fr_strerror_printf("Adding 'vendor' to 'vendor' does not make sense");
-			goto error;
-		}
-
-		if (parent->type != PW_TYPE_VENDOR) {
-			if (parent->vendor != vendor) {
-				fr_strerror_printf("Cannot change vendor inside of an attribute");
-				goto error;
-			}
-		} else {
-			if (parent->attr != vendor) {
-				fr_strerror_printf("Cannot change vendor inside of an attribute");
-				goto error;
 			}
 		}
 	}
@@ -1186,8 +1164,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 	 *	We allow it for DHCP and FreeDHCP dictionaries.  Not anywhere else.
 	 */
 	if (flags.array) {
-		fr_dict_attr_t const *v;
-
 		for (v = parent; v->type == PW_TYPE_TLV; v = v->parent) {
 			/* nothing */
 		}
@@ -1320,13 +1296,17 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		break;
 
 	case PW_TYPE_TLV:
-		if (vendor && (vendor != DHCP_MAGIC_VENDOR)) {
-			fr_dict_vendor_t *dv;
+		for (v = parent; !v->flags.is_root; v = v->parent) {
+			if ((v->type == PW_TYPE_VENDOR) && (v->attr != DHCP_MAGIC_VENDOR)) {
+				fr_dict_vendor_t *dv;
 
-			dv = fr_dict_vendor_by_num(vendor);
-			if (!dv || (dv->type != 1) || (dv->length != 1)) {
-				fr_strerror_printf("Attributes of type 'tlv' can only be for vendors with 'format=1,1'.");
-				goto error;
+				dv = fr_dict_vendor_by_num(v->attr);
+
+				if (!dv || (dv->type != 1) || (dv->length != 1)) {
+					fr_strerror_printf("Attributes of type 'tlv' can only be used for vendors with 'format=1,1'.");
+					goto error;
+				}
+				break;
 			}
 		}
 		break;
@@ -1408,52 +1388,14 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 		break;
 	}
 
-	if (vendor) {
-		fr_dict_vendor_t	*dv;
-		static			fr_dict_vendor_t *last_vendor = NULL;
-		unsigned int		vendor_max;
-
-		/*
-		 *	Most ATTRIBUTEs are bunched together by
-		 *	VENDOR.  We can save a lot of lookups on
-		 *	dictionary initialization by caching the last
-		 *	vendor.
-		 */
-		if (last_vendor && (vendor == last_vendor->vendorpec)) {
-			dv = last_vendor;
-		} else {
-			/*
-			 *	Ignore the high byte (sigh)
-			 */
-			dv = fr_dict_vendor_by_num(vendor);
-			last_vendor = dv;
-		}
-
-		/*
-		 *	If the vendor isn't defined, die.
-		 */
-		if (!dv) {
-			fr_strerror_printf("Unknown vendor %u", vendor);
-			goto error;
-		}
-
-		if (!attr && dv->type != 1) {
-			fr_strerror_printf("Cannot have value zero");
-			goto error;
-		}
-
-		/*
-		 *	Maximum allow attribute based on
-		 *	the length of the vendor's type
-		 *	field.
-		 */
-		vendor_max = ((uint64_t)1 << (dv->type << 3)) - 1;
-		if (((unsigned int)attr > vendor_max) && !flags.internal) {
-			fr_strerror_printf("ATTRIBUTE has invalid number %i (larger than vendor max %u)",
-					   attr, vendor_max);
-			goto error;
-		} /* else 256..65535 are allowed */
-	} /* it's a VSA of some kind */
+	/*
+	 *	Propogate vendor down the attribute tree.
+	 */
+	if (parent->type == PW_TYPE_VENDOR) {
+		vendor = parent->attr;
+	} else {
+		vendor = parent->vendor;
+	}
 
 	n = fr_dict_attr_alloc(fr_main_dict->pool, name, vendor, attr, type, flags);
 	if (!n) {
@@ -1904,7 +1846,7 @@ static int process_attribute(fr_dict_attr_t const *parent,
 	/*
 	 *	Add it in.
 	 */
-	if (fr_dict_attr_add(parent, argv[0], vendor, attr, type, flags) < 0) {
+	if (fr_dict_attr_add(parent, argv[0], attr, type, flags) < 0) {
 		return -1;
 	}
 
@@ -3580,7 +3522,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_attr_t const *old)
 	 */
 	if (old->type == PW_TYPE_VENDOR) if (fr_dict_vendor_add(old->name, old->attr) < 0) return NULL;
 
-	if (fr_dict_attr_add(old->parent, old->name, old->vendor, old->attr, old->type, flags) < 0) return NULL;
+	if (fr_dict_attr_add(old->parent, old->name, old->attr, old->type, flags) < 0) return NULL;
 
 	da = fr_dict_attr_child_by_num(parent, old->attr);
 	return da;
