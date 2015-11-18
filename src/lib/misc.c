@@ -565,12 +565,13 @@ int fr_pton_port(fr_ipaddr_t *out, uint16_t *port_out, char const *value, ssize_
 	 *	Host, IPv4 or IPv6 with no port
 	 */
 	q = memchr(p, ':', len);
-	if (!q || !memchr(p, '.', len)) return fr_pton(out, p, len, af, resolve);
+	if (!q) return fr_pton(out, p, len, af, resolve);
 
 	/*
 	 *	IPv4 or host, with port
 	 */
 	if (fr_pton(out, p, (q - p), af, resolve) < 0) return -1;
+
 do_port:
 	/*
 	 *	Valid ports are a maximum of 5 digits, so if the
