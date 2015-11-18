@@ -441,7 +441,6 @@ do { \
 	FLAG_SET(has_tag);
 	FLAG_SET(array);
 	FLAG_SET(has_value);
-	FLAG_SET(wimax);
 	FLAG_SET(concat);
 	FLAG_SET(is_pointer);
 	FLAG_SET(virtual);
@@ -1128,7 +1127,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			goto error;
 		}
 
-		if (flags.array || flags.has_value || flags.wimax || flags.concat || flags.virtual ||
+		if (flags.array || flags.has_value || flags.concat || flags.virtual ||
 		    flags.length) {
 			fr_strerror_printf("The 'has_tag' flag cannot be used any other flag");
 			goto error;
@@ -1154,7 +1153,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			goto error;
 		}
 
-		if (flags.array || flags.internal || flags.has_value || flags.wimax || flags.virtual ||
+		if (flags.array || flags.internal || flags.has_value || flags.virtual ||
 		    flags.encrypt || flags.length) {
 			fr_strerror_printf("The 'concat' flag cannot be used any other flag");
 			goto error;
@@ -1170,7 +1169,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			goto error;
 		}
 
-		if (flags.array || flags.internal || flags.has_value || flags.wimax || flags.virtual) {
+		if (flags.array || flags.internal || flags.has_value || flags.virtual) {
 			fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
 			goto error;
 		}
@@ -1216,7 +1215,7 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 			break;
 		}
 
-		if (flags.internal || flags.has_value || flags.wimax || flags.encrypt || flags.virtual) {
+		if (flags.internal || flags.has_value || flags.encrypt || flags.virtual) {
 			fr_strerror_printf("The 'array' flag cannot be used any other flag");
 			goto error;
 		}
@@ -1454,15 +1453,6 @@ int fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, unsigned in
 					   attr, vendor_max);
 			goto error;
 		} /* else 256..65535 are allowed */
-
-		/*
-		 *	<sigh> Alvarion, being *again* a horribly
-		 *	broken vendor, has re-used the WiMAX format in
-		 *	their proprietary vendor space.  This re-use
-		 *	means that there are *multiple* conflicting
-		 *	Alvarion dictionaries.
-		 */
-		flags.wimax = dv->flags;
 	} /* it's a VSA of some kind */
 
 	n = fr_dict_attr_alloc(fr_main_dict->pool, name, vendor, attr, type, flags);
@@ -2884,12 +2874,6 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent
 	da->flags.is_pointer = true;
 	da->parent = parent;
 	da->depth = parent->depth + 1;
-
-	/*
-	 *	Unknown attributes of the "WiMAX" vendor get marked up
-	 *	as being for WiMAX.
-	 */
-	if (vendor == VENDORPEC_WIMAX) da->flags.wimax = 1;
 
 	p = da->name;
 

@@ -1255,14 +1255,6 @@ static int encode_wimax_hdr(uint8_t *out, size_t outlen,
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
 	/*
-	 *	Double-check for WiMAX format.
-	 */
-	if (!vp->da->flags.wimax) {
-		fr_strerror_printf("%s: Called for non-WIMAX VSA", __FUNCTION__);
-		return -1;
-	}
-
-	/*
 	 *	Not enough freespace for:
 	 *		attr, len, vendor-id, vsa, vsalen, continuation
 	 */
@@ -1356,7 +1348,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 	/*
 	 *	Double-check for WiMAX format.
 	 */
-	if (da->flags.wimax) return encode_wimax_hdr(out, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+	if (da->vendor == VENDORPEC_WIMAX) return encode_wimax_hdr(out, outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
 
 	/*
 	 *	Not enough freespace for: attr, len, vendor-id
@@ -1538,8 +1530,9 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 		break;
 
 	case PW_TYPE_VSA:
-		if (!vp->da->flags.wimax) {
+		if (vp->da->vendor != VENDORPEC_WIMAX) {
 			ret = encode_vsa_hdr(out, attr_len, tlv_stack, 0, cursor, encoder_ctx);
+
 		} else {
 			/*
 			 *	WiMAX has a non-standard format for

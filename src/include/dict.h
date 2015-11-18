@@ -34,8 +34,6 @@ typedef struct attr_flags {
 	unsigned int	array : 1; 				//!< Pack multiples into 1 attr.
 	unsigned int	has_value : 1;				//!< Has a value.
 
-	unsigned int	wimax: 1;				//!< WiMAX format=1,1,c.
-
 	unsigned int	concat : 1;				//!< concatenate multiple instances
 	unsigned int	is_pointer : 1;				//!< data is a pointer
 
