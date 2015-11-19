@@ -604,7 +604,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	/******************** sanity check attribute number ********************/
 
 	if (parent->flags.is_root) {
-		static unsigned int	max_attr = 256;
+		static unsigned int max_attr = UINT8_MAX + 1;
 
 		if (attr == -1) {
 			if (fr_dict_attr_by_name(dict, name)) return 0; /* exists, don't add it again */
@@ -631,7 +631,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	/*
 	 *	If attributes have number greater than 255, do sanity checks.
 	 */
-	if ((attr > 255) && !parent->flags.is_root) {
+	if ((attr > UINT8_MAX) && !parent->flags.is_root) {
 		for (v = parent; !v->flags.is_root; v = v->parent) {
 			if (v->type == PW_TYPE_TLV) {
 				fr_strerror_printf("Attributes of type 'tlv' must have value between 1..255");
@@ -656,7 +656,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					goto error;
 				}
 
-				if ((dv->type == 2) && (attr > 65535)) {
+				if ((dv->type == 2) && (attr > UINT16_MAX)) {
 					fr_strerror_printf("Attributes must have value between 1..65535");
 					goto error;
 				}
@@ -676,7 +676,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			goto error;
 		}
 
-		if (attr < 256) {
+		if (attr <= UINT8_MAX) {
 			fr_strerror_printf("The 'virtual' flag can only be used for non-protocol attributes");
 			goto error;
 		}
