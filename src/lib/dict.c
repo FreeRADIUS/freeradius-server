@@ -2041,12 +2041,8 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 		dict->pool = talloc_pool(dict, (1024 * 1024 * 5));	/* Pre-Allocate 5MB of pool memory for rapid startup */
 	} else {
 		dict = *out;
+		if (dict_stat_check(dict, dir, fn)) return 0;
 	}
-
-	/*
-	 *	Check if we need to change anything.  If not, don't do anything.
-	 */
-	if (dict_stat_check(dict, dir, fn)) return 0;
 
 	/*
 	 *	Free the old dictionaries
