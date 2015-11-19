@@ -755,6 +755,8 @@ static int fr_dict_oid_component(unsigned int *out, char const **oid)
 
 /** Get the leaf attribute of an OID string
  *
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
  * @param[out] attr Number we parsed.
  * @param[in,out] vendor number of attribute.
  * @param[in,out] parent attribute (or root of dictionary).  Will be updated to the parent
@@ -872,6 +874,8 @@ ssize_t fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
  * Inserts a vendor entry into the vendor hash table.  This must be done before adding
  * attributes under a VSA.
  *
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
  * @param[in] name of the vendor.
  * @param[in] num Vendor's Private Enterprise Number.
  * @return
@@ -942,11 +946,13 @@ int fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
  *
  * @todo we need to check length of none vendor attributes.
  *
- * @param parent to add attribute under.
- * @param name of the attribute.
- * @param attr number.
- * @param type of attribute.
- * @param flags to set in the attribute.
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
+ * @param[in] parent to add attribute under.
+ * @param[in] name of the attribute.
+ * @param[in] attr number.
+ * @param[in] type of attribute.
+ * @param[in] flags to set in the attribute.
  * @return
  *	- 0 on success.
  *	- -1 on failure.
@@ -2013,6 +2019,8 @@ static int my_dict_init(fr_dict_t *dict, char const *parent, char const *filenam
 
 int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 {
+	if (!dict) dict = fr_dict_internal;
+
 	if (!dict->attributes_by_name) {
 		fr_strerror_printf("Must call fr_dict_init() before fr_dict_read()");
 		return -1;
@@ -2456,8 +2464,11 @@ fr_dict_attr_t const *fr_dict_root(fr_dict_t const *dict)
  *
  * Initialize the directory, then fix the attr member of all attributes.
  *
+ * First dictionary initialised will be set as the default internal dictionary.
+ *
  * @param[in] ctx to allocate the dictionary from.
- * @param[out] out If not NULL, where to write a pointer to the new dictionary.
+ * @param[out] out Where to write a pointer to the new dictionary.  Will free existing
+ *	dictionary if files have changed and *out is not NULL.
  * @param[in] dir to read dictionary files from.
  * @param[in] fn file name to read.
  * @param[in] name to use for the root attributes.
@@ -2900,6 +2911,8 @@ fr_dict_attr_t *fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t con
  *	 length of the vendor field is wrong. Attribute number
  *	 checks must be done by the caller.
  *
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
  * @param[in] vendor_da to initialise.
  * @param[in] da to initialise.
  * @param[in] parent of the unknown attribute (may also be unknown).
@@ -3147,6 +3160,8 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
  *	the correct EVS or VSA attribute. This is accessible via vp->parent,
  *	and will be use the unknown da as its talloc parent.
  *
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
  * @param[in] ctx to alloc new attribute in.
  * @param[in] parent Attribute to use as the root for resolving OIDs in.  Usually
  *	the root of a protocol dictionary.
@@ -3221,6 +3236,8 @@ fr_dict_attr_t const *fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_t *dict
  * none dict_attr_allowed_char to a buffer and initialise da as an
  * unknown attribute.
  *
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
  * @param[out] vendor_da will be filled in if a vendor is found.
  * @param[out] da will be filled in with the da at the end of the OID chain.
  * @param[in]  parent Attribute to use as the root for resolving OIDs in.  Usually
@@ -3268,8 +3285,10 @@ int fr_dict_unknown_from_suboid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_d
  *
  * @note This is a deprecated function, new code should use #fr_dict_attr_child_by_num.
  *
- * @param vendor number of the attribute.
- * @param attr number of the attribute.
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
+ * @param[in] vendor number of the attribute.
+ * @param[in] attr number of the attribute.
  * @return
  * 	- Attribute matching vendor/attr.
  * 	- NULL if no matching attribute could be found.
@@ -3295,8 +3314,10 @@ fr_dict_attr_t const *fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, 
  *
  * @note Only works with PW_TYPE_COMBO_IP
  *
- * @param vendor number of the attribute.
- * @param attr number of the attribute.
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
+ * @param[in] vendor number of the attribute.
+ * @param[in] attr number of the attribute.
  * @return
  * 	- Attribute matching vendor/attr/type.
  * 	- NULL if no matching attribute could be found.
@@ -3318,7 +3339,9 @@ fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_t *dict, unsigned int vendor,
  *
  * @note Unlike attribute numbers, attribute names are unique to the dictionary.
  *
- * @param name of the attribute to locate.
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
+ * @param[in] name of the attribute to locate.
  * @return
  * 	- Attribute matching name.
  * 	- NULL if no matching attribute could be found.
@@ -3352,6 +3375,8 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t *dict, char const *name)
  * If the attribute does not exist, don't advance the pointer and return
  * NULL.
  *
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
  * @param[in,out] name string start.
  * @return
  * 	- Attribute matching name.
@@ -3396,6 +3421,8 @@ fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **
 
 /** Lookup the structure representing an enum value in a #fr_dict_attr_t
  *
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
  * @param[in] da to search in.
  * @param[in] value number to search for.
  * @return
@@ -3428,6 +3455,8 @@ fr_dict_value_t *fr_dict_value_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, 
 
 /** Lookup the name of an enum value in a #fr_dict_attr_t
  *
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
  * @param[in] da to search in.
  * @param[in] value number to search for.
  * @return
@@ -3513,7 +3542,9 @@ fr_dict_vendor_t *fr_dict_vendor_by_num(fr_dict_t *dict, int vendorpec)
  *
  * Does not free old #fr_dict_attr_t, that is left up to the caller.
  *
- * @param old unknown attribute to add.
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
+ * @param[in] old unknown attribute to add.
  * @return
  *	- Existing #fr_dict_attr_t if old was found in a dictionary.
  *	- A new entry representing old.
