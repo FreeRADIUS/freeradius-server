@@ -357,7 +357,7 @@ int main(int argc, char **argv)
 	char const	*input_file = NULL;
 	FILE		*inputfp = stdin;
 	char const	*server = NULL;
-	fr_dict_t	*dict;
+	fr_dict_t	*dict = NULL;
 
 	char const	*radius_dir = RADIUS_DIR;
 	char const	*dict_dir = DICTDIR;

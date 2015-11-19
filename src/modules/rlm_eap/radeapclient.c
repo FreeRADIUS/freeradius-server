@@ -2166,7 +2166,7 @@ int main(int argc, char **argv)
 	int c;
 	char *filename = NULL;
 	FILE *fp;
-	fr_dict_t *dict;
+	fr_dict_t *dict = NULL;
 
 	static fr_log_t radclient_log = {
 		.colourise = true,

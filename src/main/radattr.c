@@ -975,7 +975,7 @@ int main(int argc, char *argv[])
 	char const *radius_dir = RADDBDIR;
 	char const *dict_dir = DICTDIR;
 	int *inst = &c;
-	fr_dict_t *dict;
+	fr_dict_t *dict = NULL;
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
