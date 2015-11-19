@@ -29,10 +29,6 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#ifdef HAVE_MALLOC_H
-# include <malloc.h>
-#endif
-
 #ifdef HAVE_SYS_STAT_H
 #  include <sys/stat.h>
 #endif
@@ -82,7 +78,7 @@ struct fr_dict {
 	TALLOC_CTX		*pool;			//!< Talloc memory pool to reduce mallocs.
 };
 
-fr_dict_t *fr_dict_internal;
+fr_dict_t *fr_dict_internal = NULL;	//!< Internal server dictionary.
 
 /** Map data types to names representing those types
  */
@@ -688,7 +684,8 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (flags.has_tag) {
 		if ((type != PW_TYPE_INTEGER) && (type != PW_TYPE_STRING)) {
-			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' or 'string'");
+			fr_strerror_printf("The 'has_tag' flag can only be used for attributes of type 'integer' "
+					   "or 'string'");
 			goto error;
 		}
 
@@ -793,7 +790,8 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	if (flags.has_value) {
 		if (type != PW_TYPE_INTEGER) {
-			fr_strerror_printf("The 'has_value' flag can only be used with attributes of type 'integer'");
+			fr_strerror_printf("The 'has_value' flag can only be used with attributes "
+					   "of type 'integer'");
 			goto error;
 		}
 
@@ -814,7 +812,8 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		 */
 		if ((flags.encrypt == FLAG_ENCRYPT_USER_PASSWORD) && (type != PW_TYPE_STRING)) {
 			if (type != PW_TYPE_OCTETS) {
-				fr_strerror_printf("The 'encrypt=1' flag can only be used with attributes of type 'string'");
+				fr_strerror_printf("The 'encrypt=1' flag can only be used with "
+						   "attributes of type 'string'");
 				goto error;
 			}
 
@@ -871,16 +870,17 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 */
 	case PW_TYPE_EVS:
 		if ((parent->type != PW_TYPE_EXTENDED) && (parent->type != PW_TYPE_LONG_EXTENDED)) {
-			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', instead of "
-					   "'%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
+			fr_strerror_printf("Attributes of type 'evs' MUST have a parent of type 'extended', "
+					   "instead of '%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
 			goto error;
 		}
 		break;
 
 	case PW_TYPE_VENDOR:
 		if ((parent->type != PW_TYPE_VSA) && (parent->type != PW_TYPE_EVS)) {
-			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' or 'evs', instead of "
-					   "'%s'", fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
+			fr_strerror_printf("Attributes of type 'vendor' MUST have a parent of type 'vsa' or "
+					   "'evs', instead of '%s'",
+					   fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
 			goto error;
 		}
 		break;
@@ -893,7 +893,8 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 				dv = fr_dict_vendor_by_num(dict, v->attr);
 
 				if (!dv || (dv->type != 1) || (dv->length != 1)) {
-					fr_strerror_printf("Attributes of type 'tlv' can only be used for vendors with 'format=1,1'.");
+					fr_strerror_printf("Attributes of type 'tlv' can only be used for vendors "
+							   "with 'format=1,1'.");
 					goto error;
 				}
 				break;
@@ -1123,18 +1124,18 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 		 */
 		switch (da->type) {
 		case PW_TYPE_BYTE:
-			if (value > 255) {
+			if (value > UINT8_MAX) {
 				talloc_free(dval);
-				fr_strerror_printf(
-					"fr_dict_enum_add: ATTRIBUTEs of type 'byte' cannot have VALUEs larger than 255");
+				fr_strerror_printf("fr_dict_enum_add: ATTRIBUTEs of type 'byte' cannot have "
+						   "VALUEs larger than " STRINGIFY(UINT8_MAX));
 				return -1;
 			}
 			break;
 		case PW_TYPE_SHORT:
-			if (value > 65535) {
+			if (value > UINT16_MAX) {
 				talloc_free(dval);
-				fr_strerror_printf(
-					"fr_dict_enum_add: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535");
+				fr_strerror_printf("fr_dict_enum_add: ATTRIBUTEs of type 'short' cannot have "
+						   "VALUEs larger than " STRINGIFY(UINT16_MAX));
 				return -1;
 			}
 			break;
@@ -1803,7 +1804,8 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 		 *	Perhaps this is an attribute.
 		 */
 		if (strcasecmp(argv[0], "ATTRIBUTE") == 0) {
-			if (dict_read_process_attribute(dict, parent, block_vendor, argv + 1, argc - 1) == -1) goto error;
+			if (dict_read_process_attribute(dict, parent, block_vendor,
+							argv + 1, argc - 1) == -1) goto error;
 			continue;
 		}
 
@@ -2037,8 +2039,9 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	fr_dict_t *dict;
 
 	if (!*out) {
+		/* Pre-Allocate 5MB of pool memory for rapid startup */
 		dict = talloc_zero(ctx, fr_dict_t);
-		dict->pool = talloc_pool(dict, (1024 * 1024 * 5));	/* Pre-Allocate 5MB of pool memory for rapid startup */
+		dict->pool = talloc_pool(dict, (1024 * 1024 * 5));
 	} else {
 		dict = *out;
 		if (dict_stat_check(dict, dir, fn)) return 0;
