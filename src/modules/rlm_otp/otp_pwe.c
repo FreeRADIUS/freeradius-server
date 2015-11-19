@@ -63,18 +63,18 @@ otp_pwe_init(void)
 	(void) memset(pwattr, 0, sizeof(pwattr));
 
 	/* PAP */
-	da = fr_dict_attr_by_name("User-Password");
+	da = fr_dict_attr_by_name(NULL, "User-Password");
 	if (da) {
 		pwattr[0] = da;
 		pwattr[1] = da;
 	}
 
 	/* CHAP */
-	da = fr_dict_attr_by_name("CHAP-Challenge");
+	da = fr_dict_attr_by_name(NULL, "CHAP-Challenge");
 	if (da) {
 		pwattr[2] = da;
 
-		da = fr_dict_attr_by_name("CHAP-Password");
+		da = fr_dict_attr_by_name(NULL, "CHAP-Password");
 		if (da) {
 			pwattr[3] = da;
 		} else {
@@ -98,11 +98,11 @@ otp_pwe_init(void)
 #endif /* 0 */
 
 	/* MS-CHAPv2 */
-	da = fr_dict_attr_by_name("MS-CHAP-Challenge");
+	da = fr_dict_attr_by_name(NULL, "MS-CHAP-Challenge");
 	if (da) {
 		pwattr[6] = da;
 
-		da = fr_dict_attr_by_name("MS-CHAP2-Response");
+		da = fr_dict_attr_by_name(NULL, "MS-CHAP2-Response");
 		if (da) {
 			pwattr[7] = da;
 		} else {

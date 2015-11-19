@@ -485,7 +485,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->ht = NULL;
 		return -1;
 	}
-	if (! (da = fr_dict_attr_by_name(inst->pwdfmt->field[keyfield])) ) {
+	if (! (da = fr_dict_attr_by_name(NULL, inst->pwdfmt->field[keyfield])) ) {
 		ERROR("rlm_passwd: unable to resolve attribute: %s", inst->pwdfmt->field[keyfield]);
 		release_ht(inst->ht);
 		inst->ht = NULL;

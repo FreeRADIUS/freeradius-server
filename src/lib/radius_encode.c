@@ -1127,7 +1127,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	 *	Unknown vendor: RFC format.
 	 *	Known vendor and RFC format: go do that.
 	 */
-	dv = fr_dict_vendor_by_num(da->parent->attr);
+	dv = fr_dict_vendor_by_num(NULL, da->parent->attr);
 	if (!dv || ((da->type != PW_TYPE_TLV) && (dv->type == 1) && (dv->length == 1))) {
 		return encode_rfc_hdr_internal(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}

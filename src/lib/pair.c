@@ -107,9 +107,9 @@ VALUE_PAIR *fr_pair_afrom_num(TALLOC_CTX *ctx, unsigned int vendor, unsigned int
 {
 	fr_dict_attr_t const *da;
 
-	da = fr_dict_attr_by_num(vendor, attr);
+	da = fr_dict_attr_by_num(NULL, vendor, attr);
 	if (!da) {
-		da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(fr_main_dict), vendor, attr);
+		da = fr_dict_unknown_afrom_fields(ctx, fr_dict_root(fr_dict_internal), vendor, attr);
 		if (!da) return NULL;
 	}
 
@@ -266,7 +266,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	uint8_t 	*data;
 	size_t		size;
 
-	da = fr_dict_unknown_afrom_oid(ctx, fr_dict_root(fr_main_dict), attribute);
+	da = fr_dict_unknown_afrom_oid(ctx, NULL, fr_dict_root(fr_dict_internal), attribute);
 	if (!da) return NULL;
 
 	/*
@@ -311,7 +311,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	/*
 	 *	Convert unknowns to knowns
 	 */
-	da = fr_dict_attr_by_num(vp->da->vendor, vp->da->attr);
+	da = fr_dict_attr_by_num(NULL, vp->da->vendor, vp->da->attr);
 	if (da) {
 		return fr_pair_from_unknown(vp, da);
 	}
@@ -384,7 +384,7 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	 *	It's not found in the dictionary, so we use
 	 *	another method to create the attribute.
 	 */
-	da = fr_dict_attr_by_name(attrname);
+	da = fr_dict_attr_by_name(NULL, attrname);
 	if (!da) {
 		vp = fr_pair_make_unknown(ctx, attrname, value, op);
 		if (vp && vps) fr_pair_add(vps, vp);
@@ -1857,7 +1857,7 @@ int fr_pair_value_from_str(VALUE_PAIR *vp, char const *value, size_t inlen)
 	if (type != vp->da->type) {
 		fr_dict_attr_t const *da;
 
-		da = fr_dict_attr_by_type(vp->da->vendor, vp->da->attr, type);
+		da = fr_dict_attr_by_type(NULL, vp->da->vendor, vp->da->attr, type);
 		if (!da) {
 			fr_strerror_printf("Cannot find %s variant of attribute \"%s\"",
 					   fr_int2str(dict_attr_types, type, "<INVALID>"), vp->da->name);
@@ -2554,7 +2554,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		/*
 		 *	Attribute may be present with multiple names
 		 */
-		da = fr_dict_attr_by_name(vp->da->name);
+		da = fr_dict_attr_by_name(NULL, vp->da->name);
 		if (!da) {
 			FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" (%s) "
 				     "not found in global dictionary",
@@ -2565,7 +2565,7 @@ inline void fr_pair_verify(char const *file, int line, VALUE_PAIR const *vp)
 		}
 
 		if (da->type == PW_TYPE_COMBO_IP_ADDR) {
-			da = fr_dict_attr_by_type(vp->da->vendor, vp->da->attr, vp->da->type);
+			da = fr_dict_attr_by_type(NULL, vp->da->vendor, vp->da->attr, vp->da->type);
 			if (!da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: VALUE_PAIR attribute %p \"%s\" "
 					     "variant (%s) not found in global dictionary",

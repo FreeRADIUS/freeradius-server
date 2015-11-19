@@ -146,7 +146,7 @@ static void cisco_vsa_hack(REQUEST *request)
 			p = vp->vp_strvalue;
 			gettoken(&p, newattr, sizeof(newattr), false);
 
-			if (fr_dict_attr_by_name(newattr) != NULL) {
+			if (fr_dict_attr_by_name(NULL, newattr) != NULL) {
 				pair_make_request(newattr, ptr + 1, T_OP_EQ);
 			}
 		} else {	/* h322-foo-bar = "h323-foo-bar = baz" */
@@ -182,7 +182,7 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 			continue;
 		}
 
-		da = fr_dict_attr_by_num(12394, number);
+		da = fr_dict_attr_by_num(NULL, 12394, number);
 		if (!da) {
 			continue;
 		}

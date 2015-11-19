@@ -736,13 +736,13 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		group_attribute = "LDAP-Group";
 	}
 
-	if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(0, PW_USER_NAME),
+	if (paircompare_register_byname(group_attribute, fr_dict_attr_by_num(NULL, 0, PW_USER_NAME),
 					false, rlm_ldap_groupcmp, inst) < 0) {
 		LDAP_ERR("Error registering group comparison: %s", fr_strerror());
 		goto error;
 	}
 
-	inst->group_da = fr_dict_attr_by_name(group_attribute);
+	inst->group_da = fr_dict_attr_by_name(NULL, group_attribute);
 
 	/*
 	 *	Setup the cache attribute
@@ -751,14 +751,14 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 		ATTR_FLAGS flags;
 
 		memset(&flags, 0, sizeof(flags));
-		if (fr_dict_attr_add(fr_dict_root(fr_main_dict), inst->cache_attribute,
-				     -1, PW_TYPE_STRING, flags) < 0) {
+		if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), inst->cache_attribute, -1, PW_TYPE_STRING,
+				     flags) < 0) {
 			LDAP_ERR("Error creating cache attribute: %s", fr_strerror());
 		error:
 			return -1;
 
 		}
-		inst->cache_da = fr_dict_attr_by_name(inst->cache_attribute);
+		inst->cache_da = fr_dict_attr_by_name(NULL, inst->cache_attribute);
 	} else {
 		inst->cache_da = inst->group_da;	/* Default to the group_da */
 	}

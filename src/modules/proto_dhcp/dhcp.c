@@ -1158,8 +1158,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			if ((packet->data[1] == 1) && (packet->data[2] != sizeof(vp->vp_ether))) {
 				fr_dict_attr_t const *da;
 
-				da = fr_dict_unknown_afrom_fields(packet,
-								  fr_dict_root(fr_main_dict),
+				da = fr_dict_unknown_afrom_fields(packet, fr_dict_root(fr_dict_internal),
 								  vp->da->vendor, vp->da->attr);
 				if (!da) {
 					return -1;
@@ -1245,7 +1244,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		while (p < end) {
 			VALUE_PAIR *options = NULL;
 
-			len = fr_dhcp_decode_option(packet, &options, fr_dict_root(fr_main_dict),
+			len = fr_dhcp_decode_option(packet, &options, fr_dict_root(fr_dict_internal),
 						    p, ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p));
 			if (len <= 0) {
 				fr_pair_list_free(&options);

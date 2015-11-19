@@ -1202,7 +1202,7 @@ RADCLIENT *client_afrom_request(RADCLIENT_LIST *clients, REQUEST *request)
 		fr_dict_attr_t const *da;
 		char *strvalue = NULL;
 
-		da = fr_dict_attr_by_name(dynamic_config[i].name);
+		da = fr_dict_attr_by_name(NULL, dynamic_config[i].name);
 		if (!da) {
 			RERROR("Cannot add client %s: attribute \"%s\" is not in the dictionary",
 			       fr_inet_ntoh(&request->packet->src_ipaddr, buffer, sizeof(buffer)),

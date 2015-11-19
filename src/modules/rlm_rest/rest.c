@@ -1088,7 +1088,7 @@ static int rest_decode_post(UNUSED rlm_rest_t const *instance, UNUSED rlm_rest_s
 			continue;
 		}
 
-		da = fr_dict_attr_by_name(attribute);
+		da = fr_dict_attr_by_name(NULL, attribute);
 		if (!da) {
 			RWDEBUG("Attribute \"%s\" unknown, skipping", attribute);
 

@@ -747,7 +747,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, RADIUS_PACKET *packet,
 		 *	We found an attribute representing the vendor
 		 *	so it *MUST* exist in the vendor tree.
 		 */
-		dv = fr_dict_vendor_by_num(vendor);
+		dv = fr_dict_vendor_by_num(NULL, vendor);
 		if (!fr_assert(dv)) return -1;
 	}
 	FR_PROTO_TRACE("decode context %s -> %s", parent->name, vendor_da->name);
@@ -1050,9 +1050,9 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 
 	case PW_TYPE_COMBO_IP_ADDR:
 		if (datalen == 4) {
-			child = fr_dict_attr_by_type(parent->vendor, parent->attr, PW_TYPE_IPV4_ADDR);
+			child = fr_dict_attr_by_type(NULL, parent->vendor, parent->attr, PW_TYPE_IPV4_ADDR);
 		} else if (datalen == 16) {
-			child = fr_dict_attr_by_type(parent->vendor, parent->attr, PW_TYPE_IPV6_ADDR);
+			child = fr_dict_attr_by_type(NULL, parent->vendor, parent->attr, PW_TYPE_IPV6_ADDR);
 		} else {
 			goto raw;
 		}

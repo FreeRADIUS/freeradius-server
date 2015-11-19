@@ -713,7 +713,7 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		break;
 	}
 
-	attr.da = fr_dict_attr_by_name_substr(&p);
+	attr.da = fr_dict_attr_by_name_substr(NULL, &p);
 	if (!attr.da) {
 		char const *a;
 
@@ -727,9 +727,9 @@ ssize_t tmpl_from_attr_substr(vp_tmpl_t *vpt, char const *name,
 		/*
 		 *	Attr-1.2.3.4 is OK.
 		 */
-		if (fr_dict_unknown_from_suboid((fr_dict_attr_t *)&attr.unknown.vendor,
-						(fr_dict_attr_t *)&attr.unknown.da,
-						fr_dict_root(fr_main_dict), &p) == 0) {
+		if (fr_dict_unknown_from_suboid(NULL, (fr_dict_attr_t *)&attr.unknown.vendor,
+						(fr_dict_attr_t *)&attr.unknown.da, fr_dict_root(fr_dict_internal),
+						&p) == 0) {
 			/*
 			 *	Check what we just parsed really hasn't been defined
 			 *	in the main dictionaries.
@@ -1369,7 +1369,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
 
 	if (!vpt->tmpl_da->flags.is_unknown) return 1;
 
-	da = fr_dict_unknown_add(vpt->tmpl_da);
+	da = fr_dict_unknown_add(NULL, vpt->tmpl_da);
 	if (!da) return -1;
 	vpt->tmpl_da = da;
 
@@ -1403,10 +1403,10 @@ int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *f
 
 	if (vpt->type != TMPL_TYPE_ATTR_UNDEFINED) return 1;
 
-	if (fr_dict_attr_add(fr_dict_root(fr_main_dict), vpt->tmpl_unknown_name, -1, type, *flags) < 0) {
+	if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), vpt->tmpl_unknown_name, -1, type, *flags) < 0) {
 		return -1;
 	}
-	da = fr_dict_attr_by_name(vpt->tmpl_unknown_name);
+	da = fr_dict_attr_by_name(NULL, vpt->tmpl_unknown_name);
 	if (!da) return -1;
 
 	if (type != da->type) {
@@ -2438,7 +2438,7 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			/*
 			 *	Attribute may be present with multiple names
 			 */
-			da = fr_dict_attr_by_name(vpt->tmpl_da->name);
+			da = fr_dict_attr_by_name(NULL, vpt->tmpl_da->name);
 			if (!da) {
 				FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 					     "attribute \"%s\" (%s) not found in global dictionary",
@@ -2449,7 +2449,8 @@ void tmpl_verify(char const *file, int line, vp_tmpl_t const *vpt)
 			}
 
 			if ((da->type == PW_TYPE_COMBO_IP_ADDR) && (da->type != vpt->tmpl_da->type)) {
-				da = fr_dict_attr_by_type(vpt->tmpl_da->vendor, vpt->tmpl_da->attr, vpt->tmpl_da->type);
+				da = fr_dict_attr_by_type(NULL, vpt->tmpl_da->vendor,
+							  vpt->tmpl_da->attr, vpt->tmpl_da->type);
 				if (!da) {
 					FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: TMPL_TYPE_ATTR "
 						     "attribute \"%s\" variant (%s) not found in global dictionary",

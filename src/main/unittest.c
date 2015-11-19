@@ -293,7 +293,7 @@ static REQUEST *request_setup(FILE *fp)
 			vp->vp_length += 2;
 			p[1] = vp->vp_length;
 
-			da = fr_dict_attr_by_num(0, PW_DIGEST_ATTRIBUTES);
+			da = fr_dict_attr_by_num(NULL, 0, PW_DIGEST_ATTRIBUTES);
 			rad_assert(da != NULL);
 			vp->da = da;
 

@@ -1901,7 +1901,7 @@ static int rs_build_dict_list(fr_dict_attr_t const **out, size_t len, char *list
 			return -1;
 		}
 
-		da = fr_dict_attr_by_name(tok);
+		da = fr_dict_attr_by_name(NULL, tok);
 		if (!da) {
 			ERROR("Error parsing attribute name \"%s\"", tok);
 			return -1;

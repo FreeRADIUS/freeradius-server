@@ -574,7 +574,7 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 	talloc_free(fmt);
 }
 
-static void process_file(const char *root_dir, char const *filename)
+static void process_file(fr_dict_t *dict, const char *root_dir, char const *filename)
 {
 	int lineno;
 	size_t i, outlen;
@@ -738,7 +738,7 @@ static void process_file(const char *root_dir, char const *filename)
 			while (len > 0) {
 				vp = NULL;
 				my_len = fr_radius_decode_pair(NULL, &my_packet, &my_original, my_secret,
-							       fr_dict_root(fr_main_dict), attr, len, &vp);
+							       fr_dict_root(fr_dict_internal), attr, len, &vp);
 				if (my_len < 0) {
 					fr_pair_list_free(&head);
 					break;
@@ -852,7 +852,7 @@ static void process_file(const char *root_dir, char const *filename)
 				while (option_p < end) {
 					vp = NULL;
 					my_len = fr_dhcp_decode_option(NULL, &vp,
-								       fr_dict_root(fr_main_dict), option_p,
+								       fr_dict_root(fr_dict_internal), option_p,
 								       end - option_p);
 					if (my_len <= 0) {
 						fr_pair_list_free(&head);
@@ -911,7 +911,7 @@ static void process_file(const char *root_dir, char const *filename)
 		if (strncmp(p, "dictionary ", 11) == 0) {
 			p += 11;
 
-			if (fr_dict_parse_str(p, fr_dict_root(fr_main_dict), 0) < 0) {
+			if (fr_dict_parse_str(dict, p, fr_dict_root(dict), 0) < 0) {
 				strlcpy(output, fr_strerror(), sizeof(output));
 				continue;
 			}
@@ -929,10 +929,10 @@ static void process_file(const char *root_dir, char const *filename)
 			q = strrchr(directory, '/');
 			if (q) {
 				*q = '\0';
-				process_file(directory, p);
+				process_file(dict, directory, p);
 				*q = '/';
 			} else {
-				process_file(NULL, p);
+				process_file(dict, NULL, p);
 			}
 			continue;
 		}
@@ -1033,10 +1033,10 @@ int main(int argc, char *argv[])
 	}
 
 	if (argc < 2) {
-		process_file(NULL, "-");
+		process_file(dict, NULL, "-");
 
 	} else {
-		process_file(NULL, argv[1]);
+		process_file(dict, NULL, argv[1]);
 	}
 
 	if (report) {

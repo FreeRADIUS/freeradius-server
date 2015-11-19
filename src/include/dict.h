@@ -59,7 +59,7 @@ extern const size_t dict_attr_sizes[PW_TYPE_MAX][2];
 typedef struct dict_attr fr_dict_attr_t;
 
 typedef struct fr_dict fr_dict_t;
-extern fr_dict_t *fr_main_dict;
+extern fr_dict_t *fr_dict_internal;
 
 /** Dictionary attribute
  *
@@ -113,49 +113,75 @@ extern const int fr_dict_attr_allowed_chars[256];
 int			fr_dict_valid_name(char const *name);
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
+
 fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
+
 fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child);
-ssize_t			fr_dict_str_to_oid(unsigned int *vendor, unsigned int *attr,
-					   fr_dict_attr_t const **parent, char const *oid);
-int			fr_dict_vendor_add(char const *name, unsigned int value);
-int			fr_dict_attr_add(fr_dict_attr_t const *parent, char const *name, int attr,
+
+ssize_t			fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
+
+			   		   unsigned int *vendor, unsigned int *attr, char const *oid);
+
+int			fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int value);
+
+int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
 					 PW_TYPE type, ATTR_FLAGS flags);
-int			fr_dict_value_add(char const *attrstr, char const *namestr, int value);
+
+int			fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int value);
 
 fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
+
 int			fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out,
 				     char const *dir, char const *fn, char const *name);
 
 int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
 
-int			fr_dict_parse_str(char *str, fr_dict_attr_t const *parent, unsigned int vendor);
+int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
+					  fr_dict_attr_t const *parent, unsigned int vendor);
 
 void			fr_dict_attr_free(fr_dict_attr_t const **da);
 
 int			fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out,
 							 fr_dict_attr_t const *parent, unsigned int vendor);
+
 int			fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent,
 						    unsigned int vendor, unsigned int attr) CC_HINT(nonnull);
+
 fr_dict_attr_t		*fr_dict_unknown_afrom_fields(TALLOC_CTX *ctx, fr_dict_attr_t const *parent,
 						      unsigned int vendor, unsigned int attr) CC_HINT(nonnull);
-int			fr_dict_unknown_from_oid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
+
+int			fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 						 fr_dict_attr_t const *parent, char const *name);
-fr_dict_attr_t const	*fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_attr_t const *parent, char const *name);
-int			fr_dict_unknown_from_suboid(fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
+
+fr_dict_attr_t const	*fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_t *dict,
+						   fr_dict_attr_t const *parent, char const *name);
+
+int			fr_dict_unknown_from_suboid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 						    fr_dict_attr_t const *parent, char const **name);
 
 void			fr_dict_print(fr_dict_attr_t const *da, int depth);
-fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
-fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_attr_t const *old);
 
-fr_dict_attr_t const	*fr_dict_attr_by_num(unsigned int vendor, unsigned int attr);
-fr_dict_attr_t const	*fr_dict_attr_by_name(char const *attr);
-fr_dict_attr_t const	*fr_dict_attr_by_name_substr(char const **name);
-fr_dict_attr_t const	*fr_dict_attr_by_type(unsigned int vendor, unsigned int attr, PW_TYPE type);
-fr_dict_value_t		*fr_dict_value_by_da(fr_dict_attr_t const *da, int value);
-fr_dict_value_t		*fr_dict_value_by_name(fr_dict_attr_t const *da, char const *val);
-char const		*fr_dict_value_name_by_attr(fr_dict_attr_t const *da, int value);
-int			fr_dict_vendor_by_name(char const *name);
-fr_dict_vendor_t	*fr_dict_vendor_by_num(int vendor);
+fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
+
+fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old);
+
+fr_dict_attr_t const	*fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, unsigned int attr);
+
+fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t *dict, char const *attr);
+
+fr_dict_attr_t const	*fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **name);
+
+fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_t *dict, unsigned int vendor, unsigned int attr, PW_TYPE type);
+
+fr_dict_value_t		*fr_dict_value_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
+
+fr_dict_value_t		*fr_dict_value_by_name(fr_dict_t *dict, fr_dict_attr_t const *da, char const *val);
+
+char const		*fr_dict_value_name_by_attr(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
+
+int			fr_dict_vendor_by_name(fr_dict_t *dict, char const *name);
+
+fr_dict_vendor_t	*fr_dict_vendor_by_num(fr_dict_t *dict, int vendor);
+
 void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da);
 #endif /* _DICT_H */
