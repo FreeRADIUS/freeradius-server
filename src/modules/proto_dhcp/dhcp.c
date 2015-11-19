@@ -1571,12 +1571,13 @@ static ssize_t encode_tlv_hdr(uint8_t *out, ssize_t outlen,
  * @param out Where to write encoded DHCP attributes.
  * @param outlen Length of out buffer.
  * @param cursor with current VP set to the option to be encoded. Will be advanced to the next option to encode.
+ * @param encoder_ctx Unused.
  * @return
  *	- > 0 length of data written.
  *	- < 0 error.
  *	- 0 not valid option for DHCP (skipping).
  */
-ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor)
+ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor, UNUSED void *encoder_ctx)
 {
 	VALUE_PAIR		*vp;
 	unsigned int		depth = 0;
@@ -1825,7 +1826,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 *  and sub options.
 	 */
 	while ((vp = fr_cursor_current(&cursor))) {
-		len = fr_dhcp_encode_option(p, packet->data_len - (p - packet->data), &cursor);
+		len = fr_dhcp_encode_option(p, packet->data_len - (p - packet->data), &cursor, NULL);
 		if (len < 0) break;
 		p += len;
 	};

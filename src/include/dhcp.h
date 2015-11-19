@@ -49,7 +49,7 @@ int		fr_dhcp_add_arp_entry(int fd, char const *interface, VALUE_PAIR *hwvp, VALU
 
 int8_t		fr_dhcp_attr_cmp(void const *a, void const *b);
 
-ssize_t		fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor);
+ssize_t		fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void *encoder_ctx);
 
 int		fr_dhcp_encode(RADIUS_PACKET *packet);
 

@@ -805,7 +805,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			vp = head;
 
 			while ((vp = fr_cursor_current(&cursor))) {
-				len = fr_dhcp_encode_option(attr, sizeof(data) - (data -attr), &cursor);
+				len = fr_dhcp_encode_option(attr, sizeof(data) - (data -attr), &cursor, NULL);
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
 						vp->da->name, fr_strerror());
