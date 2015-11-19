@@ -609,9 +609,12 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (attr == -1) {
 			if (fr_dict_attr_by_name(dict, name)) return 0; /* exists, don't add it again */
 			attr = ++max_attr;
+			flags.internal = 1;
+
 		} else if (attr <= 0) {
 			fr_strerror_printf("ATTRIBUTE number %i is invalid, must be greater than zero", attr);
 			goto error;
+
 		} else if ((unsigned int) attr > max_attr) {
 			max_attr = attr;
 		}
