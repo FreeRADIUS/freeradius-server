@@ -1022,20 +1022,19 @@ static ssize_t decode_value(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 /** Decode DHCP option
  *
  * @param[in] ctx context to alloc new attributes in.
- * @param[in,out] out Where to write the decoded options.
+ * @param[in,out] cursor Where to write the decoded options.
  * @param[in] parent The root of the protocol dictionary used to decode DHCP attributes.
  * @param[in] data to parse.
  * @param[in] data_len of data to parse.
+ * @param[in] decoder_ctx Unused.
  */
-ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, VALUE_PAIR **out,
-			      fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len)
+ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, vp_cursor_t *cursor,
+			      fr_dict_attr_t const *parent, uint8_t const *data, size_t data_len,
+			      UNUSED void *decoder_ctx)
 {
-	vp_cursor_t		cursor;
 	ssize_t			ret;
 	uint8_t const		*p = data;
 	fr_dict_attr_t const	*child;
-
-	*out = NULL;
 
 	FR_PROTO_TRACE("%s called to parse %zu byte(s)", __FUNCTION__, data_len);
 
@@ -1078,13 +1077,6 @@ ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, VALUE_PAIR **out,
 		return -1;
 	}
 
-	/*
-	 *	We only decode one top level option,
-	 *	but this may result in multiple values
-	 *	or a TLV may contain multiple children.
-	 */
-	fr_cursor_init(&cursor, out);
-
 	child = fr_dict_attr_child_by_num(parent, p[0]);
 	if (!child) {
 		/*
@@ -1092,19 +1084,15 @@ ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, VALUE_PAIR **out,
 		 *	attribute with the contents of the sub-option.
 		 */
 		child = fr_dict_unknown_afrom_fields(ctx, parent, DHCP_MAGIC_VENDOR, p[0]);
-		if (!child) {
-			fr_pair_list_free(out);
-			return -1;
-		}
+		if (!child) return -1;
 	}
 	FR_PROTO_TRACE("decode context changed %s:%s -> %s:%s",
 		       fr_int2str(dict_attr_types, parent->type, "<invalid>"), parent->name,
 		       fr_int2str(dict_attr_types, child->type, "<invalid>"), child->name);
 
-	ret = decode_value(ctx, &cursor, child, data + 2, data[1]);
+	ret = decode_value(ctx, cursor, child, data + 2, data[1]);
 	if (ret < 0) {
 		fr_dict_unknown_free(&child);
-		fr_pair_list_free(out);
 		return ret;
 	}
 	ret += 2; /* For header */
@@ -1243,9 +1231,11 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		 */
 		while (p < end) {
 			VALUE_PAIR *options = NULL;
+			vp_cursor_t options_cursor;
 
-			len = fr_dhcp_decode_option(packet, &options, fr_dict_root(fr_dict_internal),
-						    p, ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p));
+			fr_cursor_init(&options_cursor, &options);
+			len = fr_dhcp_decode_option(packet, &options_cursor, fr_dict_root(fr_dict_internal),
+						    p, ((end - p) > UINT8_MAX) ? UINT8_MAX : (end - p), NULL);
 			if (len <= 0) {
 				fr_pair_list_free(&options);
 				return len;

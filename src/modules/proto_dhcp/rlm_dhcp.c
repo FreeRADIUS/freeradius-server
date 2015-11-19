@@ -86,13 +86,15 @@ static ssize_t dhcp_options_xlat(char **out, size_t outlen,
 		uint8_t const	*p = vp->vp_octets, *end = p + vp->vp_length;
 		size_t		len;
 		VALUE_PAIR	*vps = NULL;
+		vp_cursor_t	options_cursor;
 
+		fr_cursor_init(&options_cursor, &vps);
 		/*
 		 *	Loop over all the options data
 		 */
 		while (p < end) {
-			len = fr_dhcp_decode_option(request->packet, &vps,
-						    fr_dict_root(fr_dict_internal), p, end - p);
+			len = fr_dhcp_decode_option(request->packet, &options_cursor,
+						    fr_dict_root(fr_dict_internal), p, end - p, NULL);
 			if (len <= 0) {
 				RWDEBUG("DHCP option decoding failed: %s", fr_strerror());
 				fr_pair_list_free(&head);
