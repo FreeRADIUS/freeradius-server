@@ -533,8 +533,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *instance, REQUEST *requ
 	 */
 	if (!request->proxy_reply) return RLM_MODULE_NOOP;
 
-
-
 	/*
 	 *	Hmm... there's got to be a better way to
 	 *	discover codes for vendor attributes.
