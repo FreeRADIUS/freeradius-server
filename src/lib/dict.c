@@ -905,6 +905,28 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 		break;
 
+	case PW_TYPE_COMBO_IP_ADDR:
+	case PW_TYPE_COMBO_IP_PREFIX:
+		for (v = parent; !v->flags.is_root; v = v->parent) {
+			if (v->type == PW_TYPE_VENDOR) {
+				break;
+			}
+		}
+
+		if (v->flags.is_root || (v->parent->type != PW_TYPE_VSA)) {
+			fr_strerror_printf("Attributes of type '%s' can only be used in VSA dictionaries",
+					   fr_int2str(dict_attr_types, type, "?Unknown?"));
+		}
+		break;
+
+	case PW_TYPE_INVALID:
+	case PW_TYPE_TIMEVAL:
+	case PW_TYPE_BOOLEAN:
+	case PW_TYPE_DECIMAL:
+		fr_strerror_printf("Attributes of type '%s' cannot be used in dictionaries",
+				   fr_int2str(dict_attr_types, type, "?Unknown?"));
+		goto error;
+
 	default:
 		break;
 	}
