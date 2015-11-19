@@ -1477,10 +1477,20 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
 		CONF_ITEM *ci;
+		CONF_SECTION *subcs;
 
 		server_name = cf_section_name2(cs);
 		if (!server_name) {
 			cf_log_err_cs(cs, "server sections must have a name");
+			return -1;
+		}
+
+		/*
+		 *	Check for duplicates.
+		 */
+		subcs = cf_section_sub_find_name2(config, "server", server_name);
+		if (subcs != cs) {
+			cf_log_err_cs(cs, "Duplicate virtual servers are not allowed.");
 			return -1;
 		}
 
@@ -1489,7 +1499,6 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		     ci = cf_item_find_next(cs, ci)) {
 			rlm_components_t comp;
 			char const *name1;
-			CONF_SECTION *subcs;
 
 			if (cf_item_is_pair(ci)) {
 				cf_log_err(ci, "Cannot set variables inside of a virtual server.");
