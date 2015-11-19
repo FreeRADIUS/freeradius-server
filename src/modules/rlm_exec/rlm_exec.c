@@ -246,9 +246,9 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	if (!inst->packet_type) {
 		inst->packet_code = 0;
 	} else {
-		fr_dict_value_t	*dval;
+		fr_dict_enum_t	*dval;
 
-		dval = fr_dict_value_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE), inst->packet_type);
+		dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_PACKET_TYPE), inst->packet_type);
 		if (!dval) {
 			cf_log_err_cs(conf, "Unknown packet type %s: See list of VALUEs for Packet-Type in "
 				      "share/dictionary", inst->packet_type);

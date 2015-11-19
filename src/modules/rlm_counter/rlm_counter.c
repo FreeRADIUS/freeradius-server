@@ -717,7 +717,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 {
 	rlm_counter_t	*inst = instance;
-	ATTR_FLAGS	flags;
+	fr_dict_attr_flags_t	flags;
 
 	/*
 	 *	Create a new attribute for the counter.

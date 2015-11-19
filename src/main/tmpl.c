@@ -1393,7 +1393,7 @@ int tmpl_define_unknown_attr(vp_tmpl_t *vpt)
  *	- 0 on success.
  *	- -1 on failure.
  */
-int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, ATTR_FLAGS const *flags)
+int tmpl_define_undefined_attr(vp_tmpl_t *vpt, PW_TYPE type, fr_dict_attr_flags_t const *flags)
 {
 	fr_dict_attr_t const *da;
 

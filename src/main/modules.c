@@ -970,7 +970,7 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
-	fr_dict_value_t *dval;
+	fr_dict_enum_t *dval;
 	char const *name2 = cf_section_name2(cs);
 
 	/*
@@ -994,7 +994,7 @@ static int load_subcomponent_section(CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = fr_dict_value_by_name(NULL, da, name2);
+	dval = fr_dict_enum_by_name(NULL, da, name2);
 	if (!dval) {
 		talloc_free(ml);
 		cf_log_err_cs(cs,
@@ -1087,7 +1087,7 @@ static int load_component_section(CONF_SECTION *cs,
 		 *	subsection.
 		 */
 		if (comp == MOD_AUTHENTICATE) {
-			fr_dict_value_t *dval;
+			fr_dict_enum_t *dval;
 			char const *modrefname = NULL;
 			if (cp) {
 				modrefname = cf_pair_attr(cp);
@@ -1101,7 +1101,7 @@ static int load_component_section(CONF_SECTION *cs,
 				}
 			}
 
-			dval = fr_dict_value_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), modrefname);
+			dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), modrefname);
 			if (!dval) {
 				/*
 				 *	It's a section, but nothing we
@@ -1351,13 +1351,13 @@ static int pass2_cb(UNUSED void *ctx, void *data)
 static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *name)
 {
 	uint32_t value;
-	fr_dict_value_t *dval;
+	fr_dict_enum_t *dval;
 
 	/*
 	 *	If the value already exists, don't
 	 *	create it again.
 	 */
-	dval = fr_dict_value_by_name(NULL, da, name);
+	dval = fr_dict_enum_by_name(NULL, da, name);
 	if (dval) {
 		if (dval->value == 0) {
 			ERROR("The dictionaries must not define VALUE %s %s 0",
@@ -1376,10 +1376,10 @@ static bool define_type(CONF_SECTION *cs, fr_dict_attr_t const *da, char const *
 	 */
 	do {
 		value = (fr_rand() & 0x00ffffff) + 1;
-	} while (fr_dict_value_by_da(NULL, da, value));
+	} while (fr_dict_enum_by_da(NULL, da, value));
 
 	cf_log_module(cs, "Creating %s = %s", da->name, name);
-	if (fr_dict_value_add(NULL, da->name, name, value) < 0) {
+	if (fr_dict_enum_add(NULL, da->name, name, value) < 0) {
 		ERROR("%s", fr_strerror());
 		return false;
 	}

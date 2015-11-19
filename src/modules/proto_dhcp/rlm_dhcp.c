@@ -182,7 +182,7 @@ static int mod_bootstrap(UNUSED CONF_SECTION *conf, void *instance)
 			}
 
 			DEBUG3("Adding %s value %i %s", da->name, i, value->name);
-			if (fr_dict_value_add(NULL, da->name, value->name, i) < 0) {
+			if (fr_dict_enum_add(NULL, da->name, value->name, i) < 0) {
 				DEBUG3("Failed adding value: %s", fr_strerror());
 			}
 		}

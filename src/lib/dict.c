@@ -50,7 +50,7 @@ typedef struct dict_stat_t {
 
 typedef struct value_fixup_t {
 	char			attrstr[FR_DICT_ATTR_MAX_NAME_LEN];
-	fr_dict_value_t		*dval;
+	fr_dict_enum_t		*dval;
 	struct value_fixup_t	*next;
 } value_fixup_t;
 
@@ -270,20 +270,20 @@ static int dict_vendor_value_cmp(void const *one, void const *two)
 	return a->vendorpec - b->vendorpec;
 }
 
-static uint32_t dict_value_name_hash(void const *data)
+static uint32_t dict_enum_name_hash(void const *data)
 {
 	uint32_t hash;
-	fr_dict_value_t const *dval = data;
+	fr_dict_enum_t const *dval = data;
 
 	hash = dict_hash_name(dval->name);
 	return fr_hash_update(&dval->da, sizeof(dval->da), hash);
 }
 
-static int dict_value_name_cmp(void const *one, void const *two)
+static int dict_enum_name_cmp(void const *one, void const *two)
 {
 	int rcode;
-	fr_dict_value_t const *a = one;
-	fr_dict_value_t const *b = two;
+	fr_dict_enum_t const *a = one;
+	fr_dict_enum_t const *b = two;
 
 	rcode = a->da - b->da;
 	if (rcode != 0) return rcode;
@@ -291,20 +291,20 @@ static int dict_value_name_cmp(void const *one, void const *two)
 	return strcasecmp(a->name, b->name);
 }
 
-static uint32_t dict_value_value_hash(void const *data)
+static uint32_t dict_enum_value_hash(void const *data)
 {
 	uint32_t hash = 0;
-	fr_dict_value_t const *dval = data;
+	fr_dict_enum_t const *dval = data;
 
 	hash = fr_hash_update(&dval->da, sizeof(dval->da), hash);
 	return fr_hash_update(&dval->value, sizeof(dval->value), hash);
 }
 
-static int dict_value_value_cmp(void const *one, void const *two)
+static int dict_enum_value_cmp(void const *one, void const *two)
 {
 	int rcode;
-	fr_dict_value_t const *a = one;
-	fr_dict_value_t const *b = two;
+	fr_dict_enum_t const *a = one;
+	fr_dict_enum_t const *b = two;
 
 	rcode = a->da - b->da;
 	if (rcode != 0) return rcode;
@@ -537,7 +537,7 @@ static inline int fr_dict_attr_child_add(fr_dict_attr_t *parent, fr_dict_attr_t 
 
 static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
 				   	  char const *name, unsigned int vendor, int attr,
-				   	  PW_TYPE type, ATTR_FLAGS flags)
+				   	  PW_TYPE type, fr_dict_attr_flags_t flags)
 {
 	fr_dict_attr_t *da;
 	size_t namelen = strlen(name);
@@ -575,7 +575,7 @@ static fr_dict_attr_t *fr_dict_attr_alloc(TALLOC_CTX *ctx,
  *	- -1 on failure.
  */
 int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
-		     char const *name, int attr, PW_TYPE type, ATTR_FLAGS flags)
+		     char const *name, int attr, PW_TYPE type, fr_dict_attr_flags_t flags)
 {
 	unsigned int		vendor;
 	size_t			namelen;
@@ -1058,31 +1058,31 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 /*
  *	Add a value for an attribute to the dictionary.
  */
-int fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int value)
+int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int value)
 {
 	size_t			length;
 	fr_dict_attr_t const	*da;
-	fr_dict_value_t		*dval;
+	fr_dict_enum_t		*dval;
 
 	static fr_dict_attr_t const *last_attr = NULL;
 
 	if (!dict) dict = fr_dict_internal;
 	if (!*alias) {
-		fr_strerror_printf("fr_dict_value_add: empty names are not permitted");
+		fr_strerror_printf("fr_dict_enum_add: empty names are not permitted");
 		return -1;
 	}
 
-	if ((length = strlen(alias)) >= FR_DICT_VALUE_MAX_NAME_LEN) {
-		fr_strerror_printf("fr_dict_value_add: value name too long");
+	if ((length = strlen(alias)) >= FR_DICT_ENUM_MAX_NAME_LEN) {
+		fr_strerror_printf("fr_dict_enum_add: value name too long");
 		return -1;
 	}
 
-	dval = (fr_dict_value_t *)talloc_zero_array(dict->pool, uint8_t, sizeof(*dval) + length);
+	dval = (fr_dict_enum_t *)talloc_zero_array(dict->pool, uint8_t, sizeof(*dval) + length);
 	if (dval == NULL) {
-		fr_strerror_printf("fr_dict_value_add: out of memory");
+		fr_strerror_printf("fr_dict_enum_add: out of memory");
 		return -1;
 	}
-	talloc_set_type(dval, fr_dict_value_t);
+	talloc_set_type(dval, fr_dict_enum_t);
 
 	strcpy(dval->name, alias);
 	dval->value = value;
@@ -1116,7 +1116,7 @@ int fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int 
 			if (value > 255) {
 				talloc_free(dval);
 				fr_strerror_printf(
-					"fr_dict_value_add: ATTRIBUTEs of type 'byte' cannot have VALUEs larger than 255");
+					"fr_dict_enum_add: ATTRIBUTEs of type 'byte' cannot have VALUEs larger than 255");
 				return -1;
 			}
 			break;
@@ -1124,7 +1124,7 @@ int fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int 
 			if (value > 65535) {
 				talloc_free(dval);
 				fr_strerror_printf(
-					"fr_dict_value_add: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535");
+					"fr_dict_enum_add: ATTRIBUTEs of type 'short' cannot have VALUEs larger than 65535");
 				return -1;
 			}
 			break;
@@ -1134,7 +1134,7 @@ int fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int 
 
 		default:
 			talloc_free(dval);
-			fr_strerror_printf("fr_dict_value_add: VALUEs cannot be defined for attributes of type '%s'",
+			fr_strerror_printf("fr_dict_enum_add: VALUEs cannot be defined for attributes of type '%s'",
 					   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 			return -1;
 		}
@@ -1144,7 +1144,7 @@ int fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int 
 		fixup = (value_fixup_t *)malloc(sizeof(*fixup));
 		if (!fixup) {
 			talloc_free(dval);
-			fr_strerror_printf("fr_dict_value_add: out of memory");
+			fr_strerror_printf("fr_dict_enum_add: out of memory");
 			return -1;
 		}
 		memset(fixup, 0, sizeof(*fixup));
@@ -1170,14 +1170,14 @@ int fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int 
 
 		if (!fr_hash_table_insert(dict->values_by_name, tmp)) {
 			if (da) {
-				fr_dict_value_t *old;
+				fr_dict_enum_t *old;
 
 				/*
 				 *	Suppress duplicates with the same
 				 *	name and value.  There are lots in
 				 *	dictionary.ascend.
 				 */
-				old = fr_dict_value_by_name(dict, da, alias);
+				old = fr_dict_enum_by_name(dict, da, alias);
 				if (old && (old->value == dval->value)) {
 					talloc_free(dval);
 					return 0;
@@ -1185,7 +1185,7 @@ int fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int 
 			}
 
 			talloc_free(dval);
-			fr_strerror_printf("fr_dict_value_add: Duplicate value name %s for attribute %s", alias,
+			fr_strerror_printf("fr_dict_enum_add: Duplicate value name %s for attribute %s", alias,
 					   attr);
 			return -1;
 		}
@@ -1196,7 +1196,7 @@ int fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int 
 	 *	take care of that here.
 	 */
 	if (!fr_hash_table_replace(dict->values_by_da, dval)) {
-		fr_strerror_printf("fr_dict_value_add: Failed inserting value %s",
+		fr_strerror_printf("fr_dict_enum_add: Failed inserting value %s",
 				   alias);
 		return -1;
 	}
@@ -1289,7 +1289,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 
 	int		type;
 	unsigned int	length;
-	ATTR_FLAGS	flags;
+	fr_dict_attr_flags_t	flags;
 	char		*p;
 
 	if ((argc < 3) || (argc > 4)) {
@@ -1496,7 +1496,7 @@ static int dict_read_process_value(fr_dict_t *dict, char **argv, int argc)
 		return -1;
 	}
 
-	if (fr_dict_value_add(dict, argv[0], argv[1], value) < 0) return -1;
+	if (fr_dict_enum_add(dict, argv[0], argv[1], value) < 0) return -1;
 	return 0;
 }
 
@@ -1650,7 +1650,7 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 	fr_dict_attr_t const	*da;
 	int			block_tlv_depth = 0;
 	fr_dict_attr_t const	*parent = dict->root;
-	fr_dict_attr_t const	*block_tlv[MAX_TLV_NEST];
+	fr_dict_attr_t const	*block_tlv[FR_DICT_TLV_NEST_MAX];
 
 	if ((strlen(dir_name) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf("fr_dict_init: filename name too long");
@@ -1831,7 +1831,7 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 		if (strcasecmp(argv[0], "BEGIN-TLV") == 0) {
 			fr_dict_attr_t const *common;
 
-			if ((block_tlv_depth + 1) > MAX_TLV_NEST) {
+			if ((block_tlv_depth + 1) > FR_DICT_TLV_NEST_MAX) {
 				fr_strerror_printf("TLVs are nested too deep");
 				goto error;
 			}
@@ -1893,7 +1893,7 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 		} /* END-VENDOR */
 
 		if (strcasecmp(argv[0], "BEGIN-VENDOR") == 0) {
-			ATTR_FLAGS new_flags;
+			fr_dict_attr_flags_t new_flags;
 
 			fr_dict_attr_t const *vsa_da;
 			fr_dict_attr_t *new;
@@ -2085,10 +2085,10 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	dict->attributes_combo = fr_hash_table_create(dict, dict_attr_combo_hash, dict_attr_combo_cmp, hash_pool_free);
 	if (!dict->attributes_combo) goto error;
 
-	dict->values_by_name = fr_hash_table_create(dict, dict_value_name_hash, dict_value_name_cmp, hash_pool_free);
+	dict->values_by_name = fr_hash_table_create(dict, dict_enum_name_hash, dict_enum_name_cmp, hash_pool_free);
 	if (!dict->values_by_name) goto error;
 
-	dict->values_by_da = fr_hash_table_create(dict, dict_value_value_hash, dict_value_value_cmp, hash_pool_free);
+	dict->values_by_da = fr_hash_table_create(dict, dict_enum_value_hash, dict_enum_value_cmp, hash_pool_free);
 	if (!dict->values_by_da) goto error;
 
 	/*
@@ -2124,7 +2124,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 			 *	Add the value into the dictionary.
 			 */
 			if (!fr_hash_table_replace(dict->values_by_name, this->dval)) {
-				fr_strerror_printf("fr_dict_value_add: Duplicate value name %s for attribute %s",
+				fr_strerror_printf("fr_dict_enum_add: Duplicate value name %s for attribute %s",
 						   this->dval->name, a->name);
 				goto error;
 			}
@@ -2263,7 +2263,7 @@ fr_dict_attr_t const *fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const 
 {
 	fr_dict_attr_t const *da;
 	fr_dict_attr_t const *parent;
-	ATTR_FLAGS flags;
+	fr_dict_attr_flags_t flags;
 
 	if (!old) return NULL;
 
@@ -2337,7 +2337,7 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
 int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out,
 				     fr_dict_attr_t const *parent, unsigned int vendor)
 {
-	ATTR_FLAGS		new_flags;
+	fr_dict_attr_flags_t		new_flags;
 	fr_dict_attr_t const	*vendor_da;
 	fr_dict_attr_t		*new;
 
@@ -2401,7 +2401,7 @@ static size_t dict_print_attr_oid(char *buffer, size_t outlen, fr_dict_attr_t co
 	size_t len;
 	char *p = buffer, *end = p + outlen;
 	int i;
-	fr_dict_attr_t const *tlv_stack[MAX_TLV_STACK + 1];
+	fr_dict_attr_t const *tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 
 	fr_proto_tlv_stack_build(tlv_stack, da);
 
@@ -2927,7 +2927,7 @@ int fr_dict_unknown_from_suboid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_d
 }
 
 
-static void fr_dict_snprint_flags(char *out, size_t outlen, ATTR_FLAGS flags)
+static void fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t flags)
 {
 	char *p = out, *end = p + outlen;
 	size_t len;
@@ -3486,12 +3486,12 @@ inline fr_dict_attr_t const *fr_dict_attr_child_by_num(fr_dict_attr_t const *par
  * @param[in] da to search in.
  * @param[in] value number to search for.
  * @return
- * 	- Matching #fr_dict_value_t.
- * 	- NULL if no matching #fr_dict_value_t could be found.
+ * 	- Matching #fr_dict_enum_t.
+ * 	- NULL if no matching #fr_dict_enum_t could be found.
  */
-fr_dict_value_t *fr_dict_value_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value)
+fr_dict_enum_t *fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value)
 {
-	fr_dict_value_t dval, *dv;
+	fr_dict_enum_t dval, *dv;
 
 	if (!dict) dict = fr_dict_internal;
 
@@ -3523,13 +3523,13 @@ fr_dict_value_t *fr_dict_value_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, 
  * 	- Name of value.
  * 	- NULL if no matching value could be found.
  */
-char const *fr_dict_value_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value)
+char const *fr_dict_enum_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value)
 {
-	fr_dict_value_t *dv;
+	fr_dict_enum_t *dv;
 
 	if (!dict) dict = fr_dict_internal;
 
-	dv = fr_dict_value_by_da(dict, da, value);
+	dv = fr_dict_enum_by_da(dict, da, value);
 	if (!dv) return "";
 
 	return dv->name;
@@ -3538,15 +3538,15 @@ char const *fr_dict_value_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, 
 /*
  *	Get a value by its name, keyed off of an attribute.
  */
-fr_dict_value_t *fr_dict_value_by_name(fr_dict_t *dict, fr_dict_attr_t const *da, char const *name)
+fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_t *dict, fr_dict_attr_t const *da, char const *name)
 {
-	fr_dict_value_t *my_dv, *dv;
-	uint32_t buffer[(sizeof(*my_dv) + FR_DICT_VALUE_MAX_NAME_LEN + 3) / 4];
+	fr_dict_enum_t *my_dv, *dv;
+	uint32_t buffer[(sizeof(*my_dv) + FR_DICT_ENUM_MAX_NAME_LEN + 3) / 4];
 
 	if (!name) return NULL;
 	if (!dict) dict = fr_dict_internal;
 
-	my_dv = (fr_dict_value_t *)buffer;
+	my_dv = (fr_dict_enum_t *)buffer;
 	my_dv->da = da;
 	my_dv->name[0] = '\0';
 
@@ -3557,7 +3557,7 @@ fr_dict_value_t *fr_dict_value_by_name(fr_dict_t *dict, fr_dict_attr_t const *da
 	dv = fr_hash_table_finddata(dict->values_by_name, my_dv);
 	if (dv) my_dv->da = dv->da;
 
-	strlcpy(my_dv->name, name, FR_DICT_VALUE_MAX_NAME_LEN + 1);
+	strlcpy(my_dv->name, name, FR_DICT_ENUM_MAX_NAME_LEN + 1);
 
 	return fr_hash_table_finddata(dict->values_by_name, my_dv);
 }
@@ -3606,10 +3606,10 @@ void fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da)
 		fr_exit_now(1);
 	}
 
-	if (da->depth > MAX_TLV_STACK) {
+	if (da->depth > FR_DICT_MAX_TLV_STACK) {
 		FR_FAULT_LOG("CONSISTENCY CHECK FAILED %s[%u]: fr_dict_attr_t %s vendor: %i, attr %i: "
 			     "Indicated depth (%u) greater than TLV stack depth (%u)",
-			     file, line, da->name, da->vendor, da->attr, da->depth, MAX_TLV_STACK);
+			     file, line, da->name, da->vendor, da->attr, da->depth, FR_DICT_MAX_TLV_STACK);
 
 		fr_assert(0);
 		fr_exit_now(1);

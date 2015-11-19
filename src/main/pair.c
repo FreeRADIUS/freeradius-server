@@ -351,7 +351,7 @@ static bool otherattr(fr_dict_attr_t const *attribute, fr_dict_attr_t const **fr
 int paircompare_register_byname(char const *name, fr_dict_attr_t const *from,
 				bool first_only, RAD_COMPARE_FUNC func, void *instance)
 {
-	ATTR_FLAGS flags;
+	fr_dict_attr_flags_t flags;
 	fr_dict_attr_t const *da;
 
 	memset(&flags, 0, sizeof(flags));

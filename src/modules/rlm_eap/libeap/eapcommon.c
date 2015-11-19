@@ -87,9 +87,9 @@ const FR_NAME_NUMBER eap_rcode_table[] = {
  */
 eap_type_t eap_name2type(char const *name)
 {
-	fr_dict_value_t	*dv;
+	fr_dict_enum_t	*dv;
 
-	dv = fr_dict_value_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_EAP_TYPE), name);
+	dv = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_EAP_TYPE), name);
 	if (!dv) return PW_EAP_INVALID;
 
 	if (dv->value >= PW_EAP_MAX_TYPES) return PW_EAP_INVALID;
@@ -103,9 +103,9 @@ eap_type_t eap_name2type(char const *name)
  */
 char const *eap_type2name(eap_type_t method)
 {
-	fr_dict_value_t	*dv;
+	fr_dict_enum_t	*dv;
 
-	dv = fr_dict_value_by_da(NULL, fr_dict_attr_by_num(NULL, 0, PW_EAP_TYPE), method);
+	dv = fr_dict_enum_by_da(NULL, fr_dict_attr_by_num(NULL, 0, PW_EAP_TYPE), method);
 	if (dv) return dv->name;
 
 	return "unknown";

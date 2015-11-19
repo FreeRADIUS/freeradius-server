@@ -1590,7 +1590,7 @@ ssize_t fr_dhcp_encode_option(uint8_t *out, size_t outlen, vp_cursor_t *cursor)
 {
 	VALUE_PAIR		*vp;
 	unsigned int		depth = 0;
-	fr_dict_attr_t const	*tlv_stack[MAX_TLV_STACK + 1];
+	fr_dict_attr_t const	*tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 	ssize_t			len;
 
 	vp = fr_cursor_current(cursor);

@@ -218,7 +218,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 {
 	rlm_yubikey_t *inst = instance;
 
-	fr_dict_value_t *dval;
+	fr_dict_enum_t *dval;
 	char const *passcode;
 	size_t len;
 	VALUE_PAIR *vp;
@@ -325,7 +325,7 @@ static rlm_rcode_t CC_HINT(nonnull) mod_authorize(void *instance, REQUEST *reque
 		fr_pair_value_bstrncpy(vp, passcode, inst->id_len);
 	}
 
-	dval = fr_dict_value_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->name);
+	dval = fr_dict_enum_by_name(NULL, fr_dict_attr_by_num(NULL, 0, PW_AUTH_TYPE), inst->name);
 	if (dval) {
 		vp = radius_pair_create(request, &request->config, PW_AUTH_TYPE, 0);
 		vp->vp_integer = dval->value;

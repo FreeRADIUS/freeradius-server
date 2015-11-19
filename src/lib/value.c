@@ -456,7 +456,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 			PW_TYPE *src_type, fr_dict_attr_t const *src_enumv,
 			char const *src, ssize_t src_len, char quote)
 {
-	fr_dict_value_t	*dval;
+	fr_dict_enum_t	*dval;
 	size_t		len;
 	ssize_t		ret;
 	char		buffer[256];
@@ -795,7 +795,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	attribute.
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_value_by_name(NULL, src_enumv, src)) == NULL) {
+			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, src)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
 						   src, src_enumv->name);
 				return -1;
@@ -828,7 +828,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	attribute.
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_value_by_name(NULL, src_enumv, src)) == NULL) {
+			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, src)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
 						   src, src_enumv->name);
 				return -1;
@@ -861,7 +861,7 @@ int value_data_from_str(TALLOC_CTX *ctx, value_data_t *dst,
 		 *	attribute.
 		 */
 		if (src_enumv && *p && !is_whitespace(p)) {
-			if ((dval = fr_dict_value_by_name(NULL, src_enumv, src)) == NULL) {
+			if ((dval = fr_dict_enum_by_name(NULL, src_enumv, src)) == NULL) {
 				fr_strerror_printf("Unknown or invalid value \"%s\" for attribute %s",
 						   src, src_enumv->name);
 				return -1;
@@ -1584,9 +1584,9 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 
 	print_int:
 	{
-		fr_dict_value_t const *dv;
+		fr_dict_enum_t const *dv;
 
-		if (enumv && (dv = fr_dict_value_by_da(NULL, enumv, i))) {
+		if (enumv && (dv = fr_dict_enum_by_da(NULL, enumv, i))) {
 			p = talloc_typed_strdup(ctx, dv->name);
 		} else {
 			p = talloc_typed_asprintf(ctx, "%u", i);
@@ -1727,7 +1727,7 @@ char *value_data_asprint(TALLOC_CTX *ctx,
 size_t value_data_snprint(char *out, size_t outlen,
 			 PW_TYPE type, fr_dict_attr_t const *enumv, value_data_t const *data, char quote)
 {
-	fr_dict_value_t	*v;
+	fr_dict_enum_t	*v;
 	char		buf[1024];	/* Interim buffer to use with poorly behaved printing functions */
 	char const	*a = NULL;
 	char		*p = out;
@@ -1789,7 +1789,7 @@ size_t value_data_snprint(char *out, size_t outlen,
 
 print_int:
 		/* Normal, non-tagged attribute */
-		if (enumv && (v = fr_dict_value_by_da(NULL, enumv, i)) != NULL) {
+		if (enumv && (v = fr_dict_enum_by_da(NULL, enumv, i)) != NULL) {
 			a = v->name;
 			len = strlen(a);
 		} else {

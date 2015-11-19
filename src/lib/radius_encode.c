@@ -1470,7 +1470,7 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 	int ret;
 	size_t attr_len;
 
-	fr_dict_attr_t const *tlv_stack[MAX_TLV_STACK + 1];
+	fr_dict_attr_t const *tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 	fr_dict_attr_t const *da = NULL;
 
 	if (!cursor || !out || (outlen <= 2)) return -1;
@@ -1479,9 +1479,9 @@ int fr_radius_encode_pair(uint8_t *out, size_t outlen, vp_cursor_t *cursor, void
 
 	VERIFY_VP(vp);
 
-	if (vp->da->depth > MAX_TLV_STACK) {
+	if (vp->da->depth > FR_DICT_MAX_TLV_STACK) {
 		fr_strerror_printf("%s: Attribute depth %i exceeds maximum nesting depth %i",
-				   __FUNCTION__, vp->da->depth, MAX_TLV_STACK);
+				   __FUNCTION__, vp->da->depth, FR_DICT_MAX_TLV_STACK);
 		return -1;
 	}
 

@@ -24,45 +24,43 @@
 #  define VERIFY_DA(_x)		fr_assert(_x)
 #endif
 
-typedef struct attr_flags {
-	unsigned int	is_root : 1;				//!< Is root of a dictionary.
-	unsigned int 	is_unknown : 1;				//!< Attribute number or vendor is unknown.
-
-	unsigned int	internal : 1;				//!< Internal attribute, should not be received
-								//!< in protocol packets, should not be encoded.
-	unsigned int	has_tag : 1;				//!< Tagged attribute.
-	unsigned int	array : 1; 				//!< Pack multiples into 1 attr.
-	unsigned int	has_value : 1;				//!< Has a value.
-
-	unsigned int	concat : 1;				//!< concatenate multiple instances
-	unsigned int	is_pointer : 1;				//!< data is a pointer
-
-	unsigned int	virtual : 1;				//!< for dynamic expansion
-
-	unsigned int	compare : 1;				//!< has a paircompare registered
-
-	uint8_t		encrypt;      				//!< Ecryption method.
-	uint8_t		length;
-} ATTR_FLAGS;
-
-/*
- *  Values of the encryption flags.
+/** Values of the encryption flags
  */
-#define FLAG_ENCRYPT_NONE	    (0)
-#define FLAG_ENCRYPT_USER_PASSWORD   (1)
-#define FLAG_ENCRYPT_TUNNEL_PASSWORD (2)
-#define FLAG_ENCRYPT_ASCEND_SECRET   (3)
+typedef struct attr_flags {
+	unsigned int		is_root : 1;			//!< Is root of a dictionary.
+	unsigned int 		is_unknown : 1;			//!< Attribute number or vendor is unknown.
+
+	unsigned int		internal : 1;			//!< Internal attribute, should not be received
+								//!< in protocol packets, should not be encoded.
+	unsigned int		has_tag : 1;			//!< Tagged attribute.
+	unsigned int		array : 1; 			//!< Pack multiples into 1 attr.
+	unsigned int		has_value : 1;			//!< Has a value.
+
+	unsigned int		concat : 1;			//!< concatenate multiple instances
+	unsigned int		is_pointer : 1;			//!< data is a pointer
+
+	unsigned int		virtual : 1;			//!< for dynamic expansion
+
+	unsigned int		compare : 1;			//!< has a paircompare registered
+
+	enum {
+		FLAG_ENCRYPT_NONE = 0,				//!< Don't encrypt the attribute.
+		FLAG_ENCRYPT_USER_PASSWORD,			//!< Encrypt attribute RFC 2865 style.
+		FLAG_ENCRYPT_TUNNEL_PASSWORD,			//!< Encrypt attribute RFC 2868 style.
+		FLAG_ENCRYPT_ASCEND_SECRET			//!< Encrypt attribute ascend style.
+	} encrypt;
+
+	uint8_t			length;
+} fr_dict_attr_flags_t;
 
 extern const FR_NAME_NUMBER dict_attr_types[];
 extern const size_t dict_attr_sizes[PW_TYPE_MAX][2];
 
 typedef struct dict_attr fr_dict_attr_t;
-
 typedef struct fr_dict fr_dict_t;
 extern fr_dict_t *fr_dict_internal;
 
 /** Dictionary attribute
- *
  */
 struct dict_attr {
 	unsigned int		vendor;				//!< Vendor that defines this attribute.
@@ -75,50 +73,57 @@ struct dict_attr {
 
 	unsigned int		depth;				//!< Depth of nesting for this attribute.
 
-	ATTR_FLAGS		flags;				//!< Flags.
+	fr_dict_attr_flags_t		flags;				//!< Flags.
 	char			name[1];			//!< Attribute name.
 };
 
-/** value of an enumerated attribute
- *
+/** Value of an enumerated attribute
  */
-typedef struct dict_value {
-	fr_dict_attr_t const	*da;
-	int			value;
-	char			name[1];
-} fr_dict_value_t;
+typedef struct dict_enum {
+	fr_dict_attr_t const	*da;				//!< Dictionary attribute enum is associated with.
+	int			value;				//!< Enum value
+	char			name[1];			//!< Enum name.
+} fr_dict_enum_t;
 
-/** dictionary vendor
- *
+/** Private enterprise
  */
 typedef struct dict_vendor {
-	unsigned int		vendorpec;
+	unsigned int		vendorpec;			//!< Private enterprise number.
 	size_t			type; 				//!< Length of type data
 	size_t			length;				//!< Length of length data
-	size_t			flags;
-	char			name[1];
+	size_t			flags;				//!< Vendor flags.
+	char			name[1];			//!< Vendor name.
 } fr_dict_vendor_t;
 
 /*
- *	Dictionary functions.
+ *	Dictionary constants
  */
-#define FR_DICT_VALUE_MAX_NAME_LEN (128)
-#define FR_DICT_VENDOR_MAX_NAME_LEN (128)
-#define FR_DICT_ATTR_MAX_NAME_LEN (128)
-#define MAX_TLV_NEST (24)
-#define MAX_TLV_STACK MAX_TLV_NEST + 5
-#define FR_DICT_ATTR_SIZE sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN
+#define FR_DICT_ENUM_MAX_NAME_LEN	(128)
+#define FR_DICT_VENDOR_MAX_NAME_LEN	(128)
+#define FR_DICT_ATTR_MAX_NAME_LEN	(128)
 
-extern const int fr_dict_attr_allowed_chars[256];
+/** Maximum level of TLV nesting allowed
+ */
+#define FR_DICT_TLV_NEST_MAX		(24)
+
+/** Maximum TLV stack size
+ */
+#define FR_DICT_MAX_TLV_STACK		(FR_DICT_TLV_NEST_MAX + 5)
+
+/** Maximum dictionary attribute size
+ */
+#define FR_DICT_ATTR_SIZE		(sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN)
+
+extern const int	fr_dict_attr_allowed_chars[256];
 /*
  *	Dictionary population
  */
 int			fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int value);
 
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
-					 PW_TYPE type, ATTR_FLAGS flags);
+					 PW_TYPE type, fr_dict_attr_flags_t flags);
 
-int			fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int value);
+int			fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int value);
 
 int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 
@@ -187,11 +192,11 @@ fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_
 
 fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
 
-fr_dict_value_t		*fr_dict_value_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
+fr_dict_enum_t		*fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
 
-char const		*fr_dict_value_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
+char const		*fr_dict_enum_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
 
-fr_dict_value_t		*fr_dict_value_by_name(fr_dict_t *dict, fr_dict_attr_t const *da, char const *val);
+fr_dict_enum_t		*fr_dict_enum_by_name(fr_dict_t *dict, fr_dict_attr_t const *da, char const *val);
 
 /*
  *	Validation

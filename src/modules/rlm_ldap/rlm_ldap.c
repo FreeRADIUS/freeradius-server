@@ -748,7 +748,7 @@ static int mod_bootstrap(CONF_SECTION *conf, void *instance)
 	 *	Setup the cache attribute
 	 */
 	if (inst->cache_attribute) {
-		ATTR_FLAGS flags;
+		fr_dict_attr_flags_t flags;
 
 		memset(&flags, 0, sizeof(flags));
 		if (fr_dict_attr_add(NULL, fr_dict_root(fr_dict_internal), inst->cache_attribute, -1, PW_TYPE_STRING,

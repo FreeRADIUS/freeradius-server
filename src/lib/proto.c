@@ -75,7 +75,7 @@ void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_d
 	len = snprintf(prefix, sizeof(prefix), "%s:%i", file, line);
 	if (len > proto_log_indent) proto_log_indent = len;
 
-	for (i = 0; tlv_stack[i] && (i < MAX_TLV_STACK); i++);
+	for (i = 0; tlv_stack[i] && (i < FR_DICT_MAX_TLV_STACK); i++);
 	if (!i) return;
 
 	fprintf(fr_log_fp, "stk: %s%.*s: Encoder in %s\n",
@@ -96,7 +96,7 @@ void fr_proto_tlv_stack_build(fr_dict_attr_t const **tlv_stack, fr_dict_attr_t c
 	int i;
 	fr_dict_attr_t const *da_p;
 
-	memset(tlv_stack, 0, sizeof(*tlv_stack) * (MAX_TLV_STACK + 1));
+	memset(tlv_stack, 0, sizeof(*tlv_stack) * (FR_DICT_MAX_TLV_STACK + 1));
 
 	if (!da) return;
 

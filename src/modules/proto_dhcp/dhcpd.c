@@ -315,7 +315,7 @@ static int dhcp_process(REQUEST *request)
 
 	vp = fr_pair_find_by_num(request->packet->vps, DHCP_MAGIC_VENDOR, 53, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
-		fr_dict_value_t *dv = fr_dict_value_by_da(NULL, vp->da, vp->vp_integer);
+		fr_dict_enum_t *dv = fr_dict_enum_by_da(NULL, vp->da, vp->vp_integer);
 		RDEBUG("Trying sub-section dhcp %s {...}", dv ? dv->name : "<unknown>");
 		rcode = process_post_auth(vp->vp_integer, request);
 	} else {
