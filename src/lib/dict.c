@@ -1127,7 +1127,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 			if (value > UINT8_MAX) {
 				talloc_free(dval);
 				fr_strerror_printf("fr_dict_enum_add: ATTRIBUTEs of type 'byte' cannot have "
-						   "VALUEs larger than " STRINGIFY(UINT8_MAX));
+						   "VALUEs larger than %i", UINT8_MAX);
 				return -1;
 			}
 			break;
@@ -1135,7 +1135,7 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 			if (value > UINT16_MAX) {
 				talloc_free(dval);
 				fr_strerror_printf("fr_dict_enum_add: ATTRIBUTEs of type 'short' cannot have "
-						   "VALUEs larger than " STRINGIFY(UINT16_MAX));
+						   "VALUEs larger than %i", UINT16_MAX);
 				return -1;
 			}
 			break;
