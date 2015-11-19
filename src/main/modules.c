@@ -1490,7 +1490,12 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		 */
 		subcs = cf_section_sub_find_name2(config, "server", server_name);
 		if (subcs != cs) {
-			cf_log_err_cs(cs, "Duplicate virtual servers are not allowed.");
+			ERROR("Duplicate virtual server \"%s\", in file %s:%d and file %s:%d",
+			      server_name,
+			      cf_section_filename(cs),
+			      cf_section_lineno(cs),
+			      cf_section_filename(subcs),
+			      cf_section_lineno(subcs));
 			return -1;
 		}
 
