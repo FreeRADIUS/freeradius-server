@@ -438,7 +438,6 @@ ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_ETHERNET:
 	case PW_TYPE_COMBO_IP_ADDR:
-	case PW_TYPE_COMBO_IP_PREFIX:
 	{
 		void const *p = &vp->data;
 		memcpy(out, &p, sizeof(*out));
@@ -490,6 +489,7 @@ ssize_t fr_radius_encode_value_hton(uint8_t const **out, VALUE_PAIR const *vp)
 	case PW_TYPE_INVALID:
 	case PW_TYPE_EXTENDED:
 	case PW_TYPE_LONG_EXTENDED:
+	case PW_TYPE_COMBO_IP_PREFIX:
 	case PW_TYPE_EVS:
 	case PW_TYPE_VSA:
 	case PW_TYPE_VENDOR:
