@@ -802,8 +802,6 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 
 			attr = data;
-			vp = head;
-
 			while ((vp = fr_cursor_current(&cursor))) {
 				len = fr_dhcp_encode_option(attr, sizeof(data) - (data -attr), &cursor, NULL);
 				if (len < 0) {
