@@ -145,7 +145,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 	size_t		size;
 	size_t		data_left = data_len;
 	VALUE_PAIR	*first = NULL;
-	VALUE_PAIR	*vp;
+	VALUE_PAIR	*vp = NULL;
 	RADIUS_PACKET	*packet = fake->packet; /* FIXME: api issues */
 	vp_cursor_t	out;
 
@@ -225,16 +225,17 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		 *	EXCEPT for the MS-CHAP attributes.
 		 */
 		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC)) {
-			ssize_t decoded;
-			uint8_t buffer[256];
+			ssize_t		decoded;
+			uint8_t		buffer[256];
+			vp_cursor_t	cursor;
 
 			buffer[0] = PW_VENDOR_SPECIFIC;
 			buffer[1] = size + 2;
 			memcpy(buffer + 2, data, size);
 
-			vp = NULL;
-			decoded = fr_radius_decode_pair(packet, NULL, NULL, NULL,
-							fr_dict_root(fr_dict_internal), buffer, size + 2, &vp);
+			fr_cursor_init(&cursor, &vp);
+			decoded = fr_radius_decode_pair(packet, &cursor, fr_dict_root(fr_dict_internal),
+							buffer, size + 2, NULL);
 			if (decoded < 0) {
 				REDEBUG2("diameter2vp failed decoding attr: %s",
 					fr_strerror());

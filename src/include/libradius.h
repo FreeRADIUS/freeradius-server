@@ -224,7 +224,6 @@ do { \
 #define MAX_PASS_LEN (128)
 #define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
 
-
 void		fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value);
 
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
@@ -246,16 +245,15 @@ RADIUS_PACKET	*rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
 RADIUS_PACKET	*rad_copy_packet(TALLOC_CTX *ctx, RADIUS_PACKET const *in);
 void		rad_free(RADIUS_PACKET **);
 
-/*
- *	radius_encode.c
- */
-
-typedef struct fr_radius_encode_ctx {
+typedef struct fr_radius_ctx {
 	RADIUS_PACKET const	*packet;
 	RADIUS_PACKET const	*original;
 	char const		*secret;
-} fr_radius_encode_ctx_t;
+} fr_radius_ctx_t;
 
+/*
+ *	radius_encode.c
+ */
 int		fr_radius_encode_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
 
 int		fr_radius_encode_tunnel_password(char *encpw, size_t *len, char const *secret, uint8_t const *vector);
@@ -276,25 +274,17 @@ ssize_t		fr_radius_decode_password(char *encpw, size_t len, char const *secret, 
 ssize_t		fr_radius_decode_tunnel_password(uint8_t *encpw, size_t *len, char const *secret,
 						 uint8_t const *vector);
 
-ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx,
-					    RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-					    char const *secret,
-					    fr_dict_attr_t const *parent, uint8_t const *start,
-					    size_t const attrlen, size_t const packetlen,
-					    VALUE_PAIR **pvp);
+ssize_t		fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+					    uint8_t const *data, size_t const attr_len, size_t const packet_len,
+					    void *decoder_ctx);
 
-ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx,
-				      RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-				      char const *secret,
-				      fr_dict_attr_t const *parent, uint8_t const *data, size_t length,
-				      VALUE_PAIR **pvp);
+ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+				     uint8_t const *data, size_t data_len,
+				     void *decoder_ctx);
 
-ssize_t		fr_radius_decode_tlv(TALLOC_CTX *ctx,
-				     RADIUS_PACKET *packet, RADIUS_PACKET const *original,
-				     char const *secret, fr_dict_attr_t const *parent,
-				     uint8_t const *start, size_t length,
-				     VALUE_PAIR **pvp);
-
+ssize_t		fr_radius_decode_pair(TALLOC_CTX *ctx,  vp_cursor_t *cursor, fr_dict_attr_t const *parent,
+				      uint8_t const *data, size_t data_len,
+				      void *decoder_ctx);
 
 /*
  *	cursor.c

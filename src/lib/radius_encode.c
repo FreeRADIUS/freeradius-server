@@ -607,7 +607,7 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	uint64_t		lvalue64;
 	VALUE_PAIR const	*vp = fr_cursor_current(cursor);
 	fr_dict_attr_t const	*da = tlv_stack[depth];
-	fr_radius_encode_ctx_t	*ctx = encoder_ctx;
+	fr_radius_ctx_t *ctx = encoder_ctx;
 
 	VERIFY_VP(vp);
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);

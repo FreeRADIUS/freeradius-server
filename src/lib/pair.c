@@ -210,14 +210,16 @@ void fr_pair_steal(TALLOC_CTX *ctx, VALUE_PAIR *vp)
 	}
 }
 
-static VALUE_PAIR *fr_pair_from_unknown(VALUE_PAIR *vp, fr_dict_attr_t const *da)
+static VALUE_PAIR *fr_pair_from_unknown(TALLOC_CTX *ctx, VALUE_PAIR *vp, fr_dict_attr_t const *da)
 {
 	ssize_t len;
-	VALUE_PAIR *vp2;
+	VALUE_PAIR *vp2 = NULL;
 
-	len = fr_radius_decode_pair_value(NULL, NULL, NULL, NULL, da,
-					  vp->vp_octets, vp->vp_length, vp->vp_length,
-					  &vp2);
+	vp_cursor_t cursor;
+
+	fr_cursor_init(&cursor, &vp2);
+
+	len = fr_radius_decode_pair_value(ctx, &cursor, da, vp->vp_octets, vp->vp_length, vp->vp_length, NULL);
 	if (len < 0) return vp; /* it's really unknown */
 
 	if (vp2->da->flags.is_unknown) {
@@ -313,7 +315,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	 */
 	da = fr_dict_attr_by_num(NULL, vp->da->vendor, vp->da->attr);
 	if (da) {
-		return fr_pair_from_unknown(vp, da);
+		return fr_pair_from_unknown(ctx, vp, da);
 	}
 
 	return vp;
@@ -484,8 +486,8 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	if (vp->da->type == PW_TYPE_TLV) {
 		ssize_t			len;
 		VALUE_PAIR		*head = NULL;
-		VALUE_PAIR		**tail = &head;
 		PW_TYPE			type = PW_TYPE_OCTETS;
+		vp_cursor_t		cursor;
 
 		if (!value) {
 			talloc_free(vp);
@@ -505,11 +507,11 @@ VALUE_PAIR *fr_pair_make(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 			return NULL;
 		}
 
+		fr_cursor_init(&cursor, &head);
 		/*
 		 *	Decode the TLVs
 		 */
-		len = fr_radius_decode_tlv(ctx, NULL, NULL, NULL, vp->da, vp->vp_octets,
-					   vp->vp_length, tail);
+		len = fr_radius_decode_tlv(ctx, &cursor, vp->da, vp->vp_octets, vp->vp_length, NULL);
 		if (len < 0) goto do_add;
 
 		talloc_free(vp);

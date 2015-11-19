@@ -63,7 +63,8 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	pair_lists_t list;
 
 	fr_dict_attr_t const *da;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp = NULL;
+	vp_cursor_t cursor;
 	vp_tmpl_t *vpt;
 
 	rad_assert(map != NULL);
@@ -101,7 +102,8 @@ bool map_cast_from_hex(vp_map_t *map, FR_TOKEN rhs_type, char const *rhs)
 	 *	If we can't parse it, or if it's malformed,
 	 *	it's still unknown.
 	 */
-	rlen = fr_radius_decode_pair_value(NULL, NULL, NULL, NULL, da, ptr, len, len, &vp);
+	fr_cursor_init(&cursor, &vp);
+	rlen = fr_radius_decode_pair_value(map, &cursor, da, ptr, len, len, NULL);
 	talloc_free(ptr);
 
 	if (rlen < 0) return false;

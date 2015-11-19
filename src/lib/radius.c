@@ -1409,7 +1409,7 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	int			len;
 	VALUE_PAIR const	*vp;
 	vp_cursor_t		cursor;
-	fr_radius_encode_ctx_t	encoder_ctx = { .packet = packet, .original = original, .secret = secret };
+	fr_radius_ctx_t encoder_ctx = { .packet = packet, .original = original, .secret = secret };
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -1573,18 +1573,22 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 	uint32_t		num_attributes;
 	uint8_t			*ptr;
 	radius_packet_t		*hdr;
-	VALUE_PAIR *head, **tail, *vp;
-
+	VALUE_PAIR		*head = NULL;
+	vp_cursor_t		cursor, out;
+	fr_radius_ctx_t		decoder_ctx = {
+					.original = original,
+					.packet = packet,
+					.secret = secret
+				};
 	/*
 	 *	Extract attribute-value pairs
 	 */
 	hdr = (radius_packet_t *)packet->data;
 	ptr = hdr->data;
 	packet_length = packet->data_len - RADIUS_HDR_LEN;
-
-	head = NULL;
-	tail = &head;
 	num_attributes = 0;
+
+	fr_cursor_init(&cursor, &head);
 
 	/*
 	 *	Loop over the attributes, decoding them into VPs.
@@ -1595,19 +1599,17 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 		/*
 		 *	This may return many VPs
 		 */
-		my_len = fr_radius_decode_pair(packet, packet, original, secret,
-					       fr_dict_root(fr_dict_internal), ptr, packet_length, &vp);
+		my_len = fr_radius_decode_pair(packet, &cursor, fr_dict_root(fr_dict_internal), ptr, packet_length,
+					       &decoder_ctx);
 		if (my_len < 0) {
 			fr_pair_list_free(&head);
 			return -1;
 		}
 
-		*tail = vp;
-		while (vp) {
-			num_attributes++;
-			tail = &(vp->next);
-			vp = vp->next;
-		}
+		/*
+		 *	Count the ones which were just added
+		 */
+		while (fr_cursor_next(&cursor)) num_attributes++;
 
 		/*
 		 *	VSA's may not have been counted properly in
@@ -1615,16 +1617,16 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 		 *	then without using the dictionary.  We
 		 *	therefore enforce the limits here, too.
 		 */
-		if ((fr_max_attributes > 0) &&
-		    (num_attributes > fr_max_attributes)) {
+		if ((fr_max_attributes > 0) && (num_attributes > fr_max_attributes)) {
 			char host_ipaddr[INET6_ADDRSTRLEN];
 
 			fr_pair_list_free(&head);
-			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request (received %d, max %d are allowed).",
-				   inet_ntop(packet->src_ipaddr.af,
-					     &packet->src_ipaddr.ipaddr,
-					     host_ipaddr, sizeof(host_ipaddr)),
-				   num_attributes, fr_max_attributes);
+			fr_strerror_printf("Possible DoS attack from host %s: Too many attributes in request "
+					   "(received %d, max %d are allowed)",
+					   inet_ntop(packet->src_ipaddr.af,
+						     &packet->src_ipaddr.ipaddr,
+						     host_ipaddr, sizeof(host_ipaddr)),
+					   num_attributes, fr_max_attributes);
 			return -1;
 		}
 
@@ -1632,21 +1634,15 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secre
 		packet_length -= my_len;
 	}
 
+	fr_cursor_init(&out, &packet->vps);
+	fr_cursor_last(&out);		/* Move insertion point to the end of the list */
+	fr_cursor_merge(&out, head);
+
 	/*
 	 *	Merge information from the outside world into our
 	 *	random pool.
 	 */
 	fr_rand_seed(packet->data, RADIUS_HDR_LEN);
-
-	/*
-	 *	There may be VP's already in the packet.  Don't
-	 *	destroy them.  Instead, add the decoded attributes to
-	 *	the tail of the list.
-	 */
-	for (tail = &packet->vps; *tail != NULL; tail = &((*tail)->next)) {
-		/* nothing */
-	}
-	*tail = head;
 
 	return 0;
 }

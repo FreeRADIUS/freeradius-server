@@ -204,20 +204,22 @@ static int arp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 	 *	arp_socket_recv() takes care of validating it's really
 	 *	our kind of ARP.
 	 */
-	for (i = 0, p = (uint8_t const *) arp;
-	     header_names[i].name != NULL;
-	     p += header_names[i].len, i++) {
-		ssize_t len;
-		fr_dict_attr_t const *da;
-		VALUE_PAIR *vp;
+	for (i = 0, p = (uint8_t const *) arp; header_names[i].name != NULL; p += header_names[i].len, i++) {
+		ssize_t			len;
+		fr_dict_attr_t const	*da;
+		VALUE_PAIR		*vp = NULL;;
+		vp_cursor_t		cursor;
+		fr_radius_ctx_t		decoder_ctx = {
+						.packet = request->packet,
+						.original = request->packet
+					};
 
 		da = fr_dict_attr_by_name(NULL, header_names[i].name);
 		if (!da) return 0;
 
-		vp = NULL;
-		len = fr_radius_decode_pair_value(request->packet, request->packet, NULL, NULL, da, p,
-						  header_names[i].len, header_names[i].len,
-						  &vp);
+		fr_cursor_init(&cursor, &vp);
+		len = fr_radius_decode_pair_value(request->packet, &cursor, da, p, header_names[i].len,
+						  header_names[i].len, &decoder_ctx);
 		if (len <= 0) {
 			RDEBUG("Failed decoding %s: %s",
 			       header_names[i].name, fr_strerror());

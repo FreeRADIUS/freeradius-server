@@ -613,11 +613,10 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		char *p = strchr(buffer, '\n');
-		VALUE_PAIR *vp, *head;
+		VALUE_PAIR *vp, *head = NULL;
 		VALUE_PAIR **tail = &head;
 
 		lineno++;
-		head = NULL;
 
 		if (!p) {
 			if (!feof(fp)) {
@@ -685,7 +684,7 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 
 		if (strncmp(p, "encode ", 7) == 0) {
 			vp_cursor_t cursor;
-			fr_radius_encode_ctx_t	encoder_ctx = { .packet = &my_packet,
+			fr_radius_ctx_t encoder_ctx = { .packet = &my_packet,
 								.original = &my_original,
 								.secret = my_secret };
 
@@ -720,8 +719,11 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 		}
 
 		if (strncmp(p, "decode ", 7) == 0) {
-			ssize_t my_len;
-
+			ssize_t		my_len;
+			vp_cursor_t 	cursor;
+			fr_radius_ctx_t decoder_ctx = { .packet = &my_packet,
+							.original = &my_original,
+							.secret = my_secret };
 			if (strcmp(p + 7, "-") == 0) {
 				attr = data;
 				len = data_len;
@@ -734,11 +736,11 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				}
 			}
 
+			fr_cursor_init(&cursor, &head);
 			my_len = 0;
 			while (len > 0) {
-				vp = NULL;
-				my_len = fr_radius_decode_pair(NULL, &my_packet, &my_original, my_secret,
-							       fr_dict_root(fr_dict_internal), attr, len, &vp);
+				my_len = fr_radius_decode_pair(NULL, &cursor, fr_dict_root(fr_dict_internal), attr, len,
+							       &decoder_ctx);
 				if (my_len < 0) {
 					fr_pair_list_free(&head);
 					break;
@@ -747,12 +749,6 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 				if (my_len > len) {
 					fprintf(stderr, "Internal sanity check failed at %d\n", __LINE__);
 					exit(1);
-				}
-
-				*tail = vp;
-				while (vp) {
-					tail = &(vp->next);
-					vp = vp->next;
 				}
 
 				attr += my_len;
@@ -764,9 +760,8 @@ static void process_file(fr_dict_t *dict, const char *root_dir, char const *file
 			 *	it if so.
 			 */
 			if (head) {
-				vp_cursor_t cursor;
 				p = output;
-				for (vp = fr_cursor_init(&cursor, &head);
+				for (vp = fr_cursor_first(&cursor);
 				     vp;
 				     vp = fr_cursor_next(&cursor)) {
 					fr_pair_snprint(p, sizeof(output) - (p - output), vp);

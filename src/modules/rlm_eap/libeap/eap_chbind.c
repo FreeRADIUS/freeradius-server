@@ -185,11 +185,15 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 	/* Add the channel binding attributes to the fake packet */
 	data_len = chbind_get_data(chbind->request, CHBIND_NSID_RADIUS, &attr_data);
 	if (data_len) {
+		vp_cursor_t cursor;
 		rad_assert(data_len <= talloc_array_length(chbind->request));
 
+		fr_cursor_init(&cursor, &vp);
 		while (data_len > 0) {
-			int attr_len = fr_radius_decode_pair(fake->packet, NULL, NULL, NULL, fr_dict_root(fr_dict_internal),
-							     attr_data, data_len, &vp);
+			size_t attr_len;
+
+			attr_len = fr_radius_decode_pair(fake->packet, &cursor, fr_dict_root(fr_dict_internal),
+							 attr_data, data_len, NULL);
 			if (attr_len <= 0) {
 				/* If radaddr2vp fails, return NULL string for
 				   channel binding response */
