@@ -759,7 +759,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		for (v = parent; v->type == PW_TYPE_TLV; v = v->parent);
 
 		if ((v->type != PW_TYPE_VENDOR) ||
-		    ((v->attr != 34673) &&
+		    ((v->attr != 34673) && /* freedhcp */
 		     (v->attr != DHCP_MAGIC_VENDOR))) {
 			fr_strerror_printf("The 'array' flag can only be used with DHCP options");
 			goto error;
