@@ -110,18 +110,9 @@ typedef struct dict_vendor {
 #define FR_DICT_ATTR_SIZE sizeof(fr_dict_attr_t) + FR_DICT_ATTR_MAX_NAME_LEN
 
 extern const int fr_dict_attr_allowed_chars[256];
-int			fr_dict_valid_name(char const *name);
-
-int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
-
-fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
-
-fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child);
-
-ssize_t			fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
-
-			   		   unsigned int *vendor, unsigned int *attr, char const *oid);
-
+/*
+ *	Dictionary population
+ */
 int			fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int value);
 
 int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const *name, int attr,
@@ -129,7 +120,7 @@ int			fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent, char const
 
 int			fr_dict_value_add(fr_dict_t *dict, char const *attr, char const *alias, int value);
 
-fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
+int			fr_dict_str_to_argv(char *str, char **argv, int max_argc);
 
 int			fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out,
 				     char const *dir, char const *fn, char const *name);
@@ -139,7 +130,14 @@ int			fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename);
 int			fr_dict_parse_str(fr_dict_t *dict, char *buf,
 					  fr_dict_attr_t const *parent, unsigned int vendor);
 
-void			fr_dict_attr_free(fr_dict_attr_t const **da);
+fr_dict_attr_t const	*fr_dict_root(fr_dict_t const *dict);
+
+/*
+ *	Unknown ephemeral attributes
+ */
+fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old);
+
+void			fr_dict_unknown_free(fr_dict_attr_t const **da);
 
 int			fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out,
 							 fr_dict_attr_t const *parent, unsigned int vendor);
@@ -159,29 +157,46 @@ fr_dict_attr_t const	*fr_dict_unknown_afrom_oid(TALLOC_CTX *ctx, fr_dict_t *dict
 int			fr_dict_unknown_from_suboid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict_attr_t *da,
 						    fr_dict_attr_t const *parent, char const **name);
 
+
+/*
+ *	Lineage
+ */
 void			fr_dict_print(fr_dict_attr_t const *da, int depth);
 
 fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
 
-fr_dict_attr_t const	*fr_dict_unknown_add(fr_dict_t *dict, fr_dict_attr_t const *old);
+ssize_t			fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
+			   		   unsigned int *vendor, unsigned int *attr, char const *oid);
 
-fr_dict_attr_t const	*fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, unsigned int attr);
-
-fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t *dict, char const *attr);
-
-fr_dict_attr_t const	*fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **name);
-
-fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_t *dict, unsigned int vendor, unsigned int attr, PW_TYPE type);
-
-fr_dict_value_t		*fr_dict_value_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
-
-fr_dict_value_t		*fr_dict_value_by_name(fr_dict_t *dict, fr_dict_attr_t const *da, char const *val);
-
-char const		*fr_dict_value_name_by_attr(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
-
+/*
+ *	Lookup
+ */
 int			fr_dict_vendor_by_name(fr_dict_t *dict, char const *name);
 
 fr_dict_vendor_t	*fr_dict_vendor_by_num(fr_dict_t *dict, int vendor);
+
+fr_dict_attr_t const	*fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **name);
+
+fr_dict_attr_t const	*fr_dict_attr_by_name(fr_dict_t *dict, char const *attr);
+
+fr_dict_attr_t const	*fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, unsigned int attr);
+
+fr_dict_attr_t const 	*fr_dict_attr_by_type(fr_dict_t *dict, unsigned int vendor, unsigned int attr, PW_TYPE type);
+
+fr_dict_attr_t const	*fr_dict_attr_child_by_da(fr_dict_attr_t const *parent, fr_dict_attr_t const *child);
+
+fr_dict_attr_t const	*fr_dict_attr_child_by_num(fr_dict_attr_t const *parent, unsigned int attr);
+
+fr_dict_value_t		*fr_dict_value_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
+
+char const		*fr_dict_value_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, int value);
+
+fr_dict_value_t		*fr_dict_value_by_name(fr_dict_t *dict, fr_dict_attr_t const *da, char const *val);
+
+/*
+ *	Validation
+ */
+int			fr_dict_valid_name(char const *name);
 
 void			fr_dict_verify(char const *file, int line, fr_dict_attr_t const *da);
 #endif /* _DICT_H */

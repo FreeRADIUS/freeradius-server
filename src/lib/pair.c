@@ -276,7 +276,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
 				   "string, not \"%s\"", attribute, value);
 
-		fr_dict_attr_free(&da);
+		fr_dict_unknown_free(&da);
 		return NULL;
 	}
 
@@ -287,7 +287,7 @@ static VALUE_PAIR *fr_pair_make_unknown(TALLOC_CTX *ctx,
 	 */
 	vp = fr_pair_afrom_da(ctx, da);
 	if (!vp) {
-		fr_dict_attr_free(&da);
+		fr_dict_unknown_free(&da);
 		return NULL;
 	}
 
@@ -577,7 +577,7 @@ int fr_pair_to_unknown(VALUE_PAIR *vp)
 	da = fr_dict_unknown_afrom_fields(vp, vp->da->parent, vp->da->vendor, vp->da->attr);
 	if (!da) return -1;
 
-	fr_dict_attr_free(&vp->da);	/* Only frees unknown attributes */
+	fr_dict_unknown_free(&vp->da);	/* Only frees unknown attributes */
 	vp->da = da;
 
 	return 0;

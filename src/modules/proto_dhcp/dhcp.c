@@ -960,7 +960,7 @@ static ssize_t decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 
 		tlv_len = decode_value(ctx, cursor, child, p + 2, p[1]);
 		if (tlv_len <= 0) {
-			fr_dict_attr_free(&child);
+			fr_dict_unknown_free(&child);
 			return tlv_len;
 		}
 		p += tlv_len + 2;
@@ -1103,7 +1103,7 @@ ssize_t fr_dhcp_decode_option(TALLOC_CTX *ctx, VALUE_PAIR **out,
 
 	ret = decode_value(ctx, &cursor, child, data + 2, data[1]);
 	if (ret < 0) {
-		fr_dict_attr_free(&child);
+		fr_dict_unknown_free(&child);
 		fr_pair_list_free(out);
 		return ret;
 	}

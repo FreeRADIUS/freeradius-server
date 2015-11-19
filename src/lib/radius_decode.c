@@ -791,7 +791,7 @@ create_attrs:
 		if (vsa_len < 0) {
 			fr_strerror_printf("%s: Internal sanity check %d", __FUNCTION__, __LINE__);
 			fr_pair_list_free(&head);
-			fr_dict_attr_free(&vendor_da);
+			fr_dict_unknown_free(&vendor_da);
 			return -1;
 		}
 
@@ -814,7 +814,7 @@ create_attrs:
 	 *	attribute and first known attribute was cloned
 	 *	meaning we can now free the unknown vendor.
 	 */
-	fr_dict_attr_free(&vendor_da);	/* Only frees unknown vendors */
+	fr_dict_unknown_free(&vendor_da);	/* Only frees unknown vendors */
 
 	return total;
 }
@@ -1230,7 +1230,7 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx,
 		 *	Fix for Coverity.
 		 */
 		if (parent->type != PW_TYPE_OCTETS) {
-			fr_dict_attr_free(&parent);
+			fr_dict_unknown_free(&parent);
 			return -1;
 		}
 #endif

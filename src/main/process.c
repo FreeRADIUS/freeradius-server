@@ -2314,7 +2314,7 @@ static int process_proxy_reply(REQUEST *request, RADIUS_PACKET *reply)
 	}
 
 	if (post_proxy_type > 0) RDEBUG2("Found Post-Proxy-Type %s",
-					 fr_dict_value_name_by_attr(NULL, vp->da, post_proxy_type));
+					 fr_dict_value_name_by_da(NULL, vp->da, post_proxy_type));
 
 	if (reply) {
 		VERIFY_PACKET(reply);
