@@ -174,6 +174,15 @@ const int fr_dict_attr_allowed_chars[256] = {
 #define FNV_MAGIC_INIT (0x811c9dc5)
 #define FNV_MAGIC_PRIME (0x01000193)
 
+#ifdef __clang_analyzer__
+#  define INTERNAL_IF_NULL(_dict) do {\
+	if (!_dict) _dict = fr_dict_internal; \
+	if (!_dict) return NULL; \
+} while (0)
+#else
+#  define INTERNAL_IF_NULL(_dict) if (!_dict) _dict = fr_dict_internal
+#endif
+
 /*
  *	Empty callback for hash table initialization.
  */
@@ -396,7 +405,7 @@ int fr_dict_vendor_add(fr_dict_t *dict, char const *name, unsigned int num)
 	size_t length;
 	fr_dict_vendor_t *dv;
 
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	if ((length = strlen(name)) >= FR_DICT_VENDOR_MAX_NAME_LEN) {
 		fr_strerror_printf("fr_dict_vendor_add: vendor name too long");
@@ -582,7 +591,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	fr_dict_attr_t		*n;
 	fr_dict_attr_t const	*v;
 
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	if (!fr_assert(parent)) return -1;
 
@@ -1066,7 +1075,8 @@ int fr_dict_enum_add(fr_dict_t *dict, char const *attr, char const *alias, int v
 
 	static fr_dict_attr_t const *last_attr = NULL;
 
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
+
 	if (!*alias) {
 		fr_strerror_printf("fr_dict_enum_add: empty names are not permitted");
 		return -1;
@@ -2168,7 +2178,7 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 
 int fr_dict_read(fr_dict_t *dict, char const *dir, char const *filename)
 {
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	if (!dict->attributes_by_name) {
 		fr_strerror_printf("Must call fr_dict_init() before fr_dict_read()");
@@ -2186,7 +2196,7 @@ int fr_dict_parse_str(fr_dict_t *dict, char *buf, fr_dict_attr_t const *parent, 
 	int	argc;
 	char	*argv[MAX_ARGV];
 
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	argc = fr_dict_str_to_argv(buf, argv, MAX_ARGV);
 	if (argc == 0) return 0;
@@ -2578,7 +2588,7 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 	fr_dict_vendor_t	*dv = NULL;
 	fr_dict_attr_t const	*child;
 
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	if (fr_dict_valid_name(name) < 0) return -1;
 
@@ -2900,7 +2910,7 @@ int fr_dict_unknown_from_suboid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_d
 	char buffer[FR_DICT_ATTR_MAX_NAME_LEN + 1];
 
 	if (!name || !*name) return -1;
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	/*
 	 *	Advance p until we get something that's not part of
@@ -2925,7 +2935,6 @@ int fr_dict_unknown_from_suboid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_d
 
 	return 0;
 }
-
 
 static void fr_dict_snprint_flags(char *out, size_t outlen, fr_dict_attr_flags_t flags)
 {
@@ -3127,7 +3136,7 @@ ssize_t fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	ssize_t			slen;
 
 	if (!fr_assert(parent)) return 0;
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	*attr = 0;
 
@@ -3222,10 +3231,14 @@ ssize_t fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	}
 }
 
-/*
- *	Get the vendor PEC based on the vendor name
+/** Look up a vendor by its name
  *
- *	This is efficient only for small numbers of vendors.
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
+ * @param[in] name to search for.
+ * @return
+ *	- The vendor.
+ *	- NULL if no vendor with that name was regitered for this protocol.
  */
 int fr_dict_vendor_by_name(fr_dict_t *dict, char const *name)
 {
@@ -3233,7 +3246,7 @@ int fr_dict_vendor_by_name(fr_dict_t *dict, char const *name)
 	size_t buffer[(sizeof(*dv) + FR_DICT_VENDOR_MAX_NAME_LEN + sizeof(size_t) - 1) / sizeof(size_t)];
 
 	if (!name) return 0;
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	dv = (fr_dict_vendor_t *)buffer;
 	strlcpy(dv->name, name, FR_DICT_VENDOR_MAX_NAME_LEN + 1);
@@ -3244,14 +3257,20 @@ int fr_dict_vendor_by_name(fr_dict_t *dict, char const *name)
 	return dv->vendorpec;
 }
 
-/*
- *	Return the vendor struct based on the PEC.
+/** Look up a vendor by its PEN
+ *
+ * @param[in] dict of protocol context we're operating in.  If NULL the internal
+ *	dictionary will be used.
+ * @param[in] vendorpec to search for.
+ * @return
+ *	- The vendor.
+ *	- NULL if no vendor with that number was regitered for this protocol.
  */
 fr_dict_vendor_t *fr_dict_vendor_by_num(fr_dict_t *dict, int vendorpec)
 {
 	fr_dict_vendor_t dv;
 
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	dv.vendorpec = vendorpec;
 
@@ -3289,7 +3308,7 @@ fr_dict_attr_t const *fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **
 	uint32_t buffer[(sizeof(*find) + FR_DICT_ATTR_MAX_NAME_LEN + 3) / 4];
 
 	if (!name || !*name) return NULL;
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	find = (fr_dict_attr_t *)buffer;
 
@@ -3334,7 +3353,7 @@ fr_dict_attr_t const *fr_dict_attr_by_name(fr_dict_t *dict, char const *name)
 	uint32_t buffer[(sizeof(*da) + FR_DICT_ATTR_MAX_NAME_LEN + 3) / 4];
 
 	if (!name) return NULL;
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	da = (fr_dict_attr_t *)buffer;
 	strlcpy(da->name, name, FR_DICT_ATTR_MAX_NAME_LEN + 1);
@@ -3358,7 +3377,7 @@ fr_dict_attr_t const *fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, 
 {
 	fr_dict_attr_t const *parent;
 
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	if (vendor == 0) return fr_dict_attr_child_by_num(dict->root, attr);
 
@@ -3388,7 +3407,7 @@ fr_dict_attr_t const *fr_dict_attr_by_type(fr_dict_t *dict, unsigned int vendor,
 {
 	fr_dict_attr_t da;
 
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	da.attr = attr;
 	da.vendor = vendor;
@@ -3493,7 +3512,7 @@ fr_dict_enum_t *fr_dict_enum_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, in
 {
 	fr_dict_enum_t dval, *dv;
 
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	/*
 	 *	First, look up aliases.
@@ -3527,7 +3546,7 @@ char const *fr_dict_enum_name_by_da(fr_dict_t *dict, fr_dict_attr_t const *da, i
 {
 	fr_dict_enum_t *dv;
 
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	dv = fr_dict_enum_by_da(dict, da, value);
 	if (!dv) return "";
@@ -3544,7 +3563,7 @@ fr_dict_enum_t *fr_dict_enum_by_name(fr_dict_t *dict, fr_dict_attr_t const *da, 
 	uint32_t buffer[(sizeof(*my_dv) + FR_DICT_ENUM_MAX_NAME_LEN + 3) / 4];
 
 	if (!name) return NULL;
-	if (!dict) dict = fr_dict_internal;
+	INTERNAL_IF_NULL(dict);
 
 	my_dv = (fr_dict_enum_t *)buffer;
 	my_dv->da = da;
