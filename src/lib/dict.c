@@ -3318,6 +3318,7 @@ fr_dict_attr_t const *fr_dict_attr_by_num(fr_dict_t *dict, unsigned int vendor, 
  *	dictionary will be used.
  * @param[in] vendor number of the attribute.
  * @param[in] attr number of the attribute.
+ * @param[in] type Variant of attribute to lookup.
  * @return
  * 	- Attribute matching vendor/attr/type.
  * 	- NULL if no matching attribute could be found.
