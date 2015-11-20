@@ -614,7 +614,6 @@ static rlm_rcode_t CC_HINT(nonnull) mod_post_proxy(void *inst, REQUEST *request)
 	 *	This is allowed.
 	 */
 	if (!request->proxy_reply) return RLM_MODULE_NOOP;
-	if (handler->type != PW_EAP_LEAP) return RLM_MODULE_NOOP;
 
 	/*
 	 *	There may be more than one Cisco-AVPair.
