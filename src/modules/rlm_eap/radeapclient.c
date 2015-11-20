@@ -271,19 +271,6 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-static const FR_NAME_NUMBER rc_request_types[] = {
-	{ "auth",	PW_CODE_ACCESS_REQUEST },
-	{ "challenge",	PW_CODE_ACCESS_CHALLENGE },
-	{ "acct",	PW_CODE_ACCOUNTING_REQUEST },
-	{ "status",	PW_CODE_STATUS_SERVER },
-	{ "disconnect",	PW_CODE_DISCONNECT_REQUEST },
-	{ "coa",	PW_CODE_COA_REQUEST },
-	{ "auto",	PW_CODE_UNDEFINED },
-
-	{ NULL, 0}
-};
-
-
 /* This is not called, but is required by libfreeradius-eap.so */
 int rad_virtual_server(REQUEST UNUSED *request)
 {
@@ -2359,7 +2346,7 @@ int main(int argc, char **argv)
 	 *	Get the request type
 	 */
 	if (!isdigit((int) argv[2][0])) {
-		packet_code = fr_str2int(rc_request_types, argv[2], -2);
+		packet_code = fr_str2int(fr_request_types, argv[2], -2);
 		if (packet_code == -2) {
 			ERROR("Unrecognised request type \"%s\"", argv[2]);
 			usage();

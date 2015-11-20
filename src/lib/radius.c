@@ -48,6 +48,17 @@ typedef struct radius_packet_t {
  *	Some messages get printed out only in debugging mode.
  */
 #define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
+FR_NAME_NUMBER const fr_request_types[] = {
+	{ "auth",	PW_CODE_ACCESS_REQUEST },
+	{ "challenge",	PW_CODE_ACCESS_CHALLENGE },
+	{ "acct",	PW_CODE_ACCOUNTING_REQUEST },
+	{ "status",	PW_CODE_STATUS_SERVER },
+	{ "disconnect",	PW_CODE_DISCONNECT_REQUEST },
+	{ "coa",	PW_CODE_COA_REQUEST },
+	{ "auto",	PW_CODE_UNDEFINED },
+
+	{ NULL, 0}
+};
 
 /*
  *  The RFC says 4096 octets max, and most packets are less than 256.

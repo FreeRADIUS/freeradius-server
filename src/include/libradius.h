@@ -223,9 +223,10 @@ do { \
 #define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
 #define MAX_PASS_LEN (128)
 #define	FR_TUNNEL_PW_ENC_LENGTH(_x) (2 + 1 + _x + PAD(_x + 1, 16))
+extern FR_NAME_NUMBER const fr_request_types[];
 
 void		fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value);
-
+void		rad_print_hex(RADIUS_PACKET *packet);
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
 RADIUS_PACKET	*rad_recv(TALLOC_CTX *ctx, int fd, int flags);
@@ -351,7 +352,6 @@ extern uint32_t	fr_max_attributes; /* per incoming packet */
 extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
 #define is_radius_code(_x) ((_x > 0) && (_x < FR_MAX_PACKET_CODE))
 extern FILE	*fr_log_fp;
-void		rad_print_hex(RADIUS_PACKET *packet);
 void		fr_printf_log(char const *, ...) CC_HINT(format (printf, 1, 2));
 
 /*

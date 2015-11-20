@@ -110,18 +110,6 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-static const FR_NAME_NUMBER request_types[] = {
-	{ "auth",	PW_CODE_ACCESS_REQUEST },
-	{ "challenge",	PW_CODE_ACCESS_CHALLENGE },
-	{ "acct",	PW_CODE_ACCOUNTING_REQUEST },
-	{ "status",	PW_CODE_STATUS_SERVER },
-	{ "disconnect",	PW_CODE_DISCONNECT_REQUEST },
-	{ "coa",	PW_CODE_COA_REQUEST },
-	{ "auto",	PW_CODE_UNDEFINED },
-
-	{ NULL, 0}
-};
-
 /*
  *	Free a radclient struct, which may (or may not)
  *	already be in the list.
@@ -1376,7 +1364,7 @@ int main(int argc, char **argv)
 	 *	Get the request type
 	 */
 	if (!isdigit((int) argv[2][0])) {
-		packet_code = fr_str2int(request_types, argv[2], -2);
+		packet_code = fr_str2int(fr_request_types, argv[2], -2);
 		if (packet_code == -2) {
 			ERROR("Unrecognised request type \"%s\"", argv[2]);
 			usage();
