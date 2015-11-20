@@ -50,7 +50,8 @@ typedef struct attr_flags {
 		FLAG_ENCRYPT_ASCEND_SECRET			//!< Encrypt attribute ascend style.
 	} encrypt;
 
-	uint8_t			length;
+	uint8_t			length;				//!< length of the attribute
+	uint8_t			type_size;			//!< for TLV2, size of the type
 } fr_dict_attr_flags_t;
 
 extern const FR_NAME_NUMBER dict_attr_types[];

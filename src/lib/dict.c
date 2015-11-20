@@ -632,10 +632,15 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	If attributes have number greater than 255, do sanity checks.
 	 */
 	if ((attr > UINT8_MAX) && !parent->flags.is_root) {
-		for (v = parent; !v->flags.is_root; v = v->parent) {
+		for (v = parent; v != NULL; v = v->parent) {
 			if (v->type == PW_TYPE_TLV) {
-				fr_strerror_printf("Attributes of type 'tlv' must have value between 1..255");
-				goto error;
+				if (attr >= (1 << (8 * v->flags.type_size))) {
+					fr_strerror_printf("Attributes of type 'tlv' must have value between 1..%u",
+							   (1 << (8 * v->flags.type_size)) - 1);
+					goto error;
+				}
+
+				break;
 			}
 
 			if (v->type == PW_TYPE_VENDOR) {
@@ -676,7 +681,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			goto error;
 		}
 
-		if (attr <= UINT8_MAX) {
+		if (attr <= (1 << (8 * parent->flags.type_size))) {
 			fr_strerror_printf("The 'virtual' flag can only be used for non-protocol attributes");
 			goto error;
 		}
@@ -734,11 +739,6 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	'octets[n]' can only be used in a few limited situations.
 	 */
 	if (flags.length) {
-		if (type != PW_TYPE_OCTETS) {
-			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets'");
-			goto error;
-		}
-
 		if (flags.array || flags.internal || flags.has_value || flags.virtual) {
 			fr_strerror_printf("The 'octets[...]' syntax cannot be used any other flag");
 			goto error;
@@ -747,6 +747,19 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (flags.length > 253) {
 			fr_strerror_printf("Invalid length %d", flags.length);
 			return -1;
+		}
+
+		if (type == PW_TYPE_TLV) {
+			if ((flags.length != 1) &&
+			    (flags.length != 2) &&
+			    (flags.length != 4)) {
+				fr_strerror_printf("The 'length' flag can only be used with attributes of TLV lengths of 1,2 or 4");
+				goto error;
+			}
+
+		} else if (type != PW_TYPE_OCTETS) {
+			fr_strerror_printf("The 'length' flag can only be set for attributes of type 'octets'");
+			goto error;
 		}
 	}
 
@@ -849,6 +862,20 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 	}
 
+	if (flags.type_size) {
+		if (type != PW_TYPE_TLV) {
+			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
+			goto error;
+		}
+
+		if ((flags.type_size != 1) &&
+		    (flags.type_size != 2) &&
+		    (flags.type_size != 4)) {
+			fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
+			goto error;
+		}
+	}
+
 	/******************** sanity check data types and parents ********************/
 
 	/*
@@ -889,15 +916,21 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		break;
 
 	case PW_TYPE_TLV:
+		/*
+		 *	Set some defaults.
+		 */
+		if (flags.length == 0) flags.length = 1;
+		if (flags.type_size == 0) flags.type_size = 1;
+
 		for (v = parent; !v->flags.is_root; v = v->parent) {
 			if ((v->type == PW_TYPE_VENDOR) && (v->attr != DHCP_MAGIC_VENDOR)) {
 				fr_dict_vendor_t const *dv;
 
 				dv = fr_dict_vendor_by_num(dict, v->attr);
 
-				if (!dv || (dv->type != 1) || (dv->length != 1)) {
+				if (!dv || (dv->type != flags.type_size) || (dv->length != flags.length)) {
 					fr_strerror_printf("Attributes of type 'tlv' can only be used for vendors "
-							   "with 'format=1,1'.");
+							   "with matching format");
 					goto error;
 				}
 				break;
@@ -2136,6 +2169,8 @@ int fr_dict_init(TALLOC_CTX *ctx, fr_dict_t **out, char const *dir, char const *
 	talloc_set_type(dict->root, fr_dict_attr_t);
 	dict->root->flags.is_root = 1;
 	dict->root->type = PW_TYPE_TLV;
+	dict->root->flags.type_size = 1;
+	dict->root->flags.length = 1;
 
 	dict->value_fixup = NULL;        /* just to be safe. */
 
@@ -3215,7 +3250,9 @@ ssize_t fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	}
 
 	/*
-	 *	If it's not a vendor type, it must be between 0-255
+	 *	If it's not a vendor type, it must be between 0..8*type_size
+	 *
+	 *	@fixme: find the TLV parent, and check it's size
 	 */
 	if (((*parent)->type != PW_TYPE_VENDOR) && ((num == 0) || (num > UINT8_MAX))) {
 		fr_strerror_printf("TLV attributes must be between 1-255 inclusive");
