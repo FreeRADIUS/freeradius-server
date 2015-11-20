@@ -178,7 +178,7 @@ ssize_t			fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
  */
 int			fr_dict_vendor_by_name(fr_dict_t *dict, char const *name);
 
-fr_dict_vendor_t	*fr_dict_vendor_by_num(fr_dict_t *dict, int vendor);
+fr_dict_vendor_t const	*fr_dict_vendor_by_num(fr_dict_t *dict, int vendor);
 
 fr_dict_attr_t const	*fr_dict_attr_by_name_substr(fr_dict_t *dict, char const **name);
 

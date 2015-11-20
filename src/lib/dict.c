@@ -639,7 +639,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			}
 
 			if (v->type == PW_TYPE_VENDOR) {
-				fr_dict_vendor_t *dv;
+				fr_dict_vendor_t const *dv;
 
 				dv = fr_dict_vendor_by_num(dict, v->attr);
 				if (!dv) {
@@ -891,7 +891,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	case PW_TYPE_TLV:
 		for (v = parent; !v->flags.is_root; v = v->parent) {
 			if ((v->type == PW_TYPE_VENDOR) && (v->attr != DHCP_MAGIC_VENDOR)) {
-				fr_dict_vendor_t *dv;
+				fr_dict_vendor_t const *dv;
 
 				dv = fr_dict_vendor_by_num(dict, v->attr);
 
@@ -1610,7 +1610,8 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	unsigned int value;
 	int type, length;
 	bool continuation = false;
-	fr_dict_vendor_t *dv;
+	fr_dict_vendor_t const *dv;
+	fr_dict_vendor_t *muteable;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_printf("Invalid VENDOR syntax");
@@ -1660,9 +1661,11 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 		return -1;
 	}
 
-	dv->type = type;
-	dv->length = length;
-	dv->flags = continuation;
+	memcpy(&muteable, &dv, sizeof(muteable));
+
+	muteable->type = type;
+	muteable->length = length;
+	muteable->flags = continuation;
 
 	return 0;
 }
@@ -2418,6 +2421,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out
 	new = fr_dict_attr_alloc(ctx, "unknown-vendor", 0, vendor, PW_TYPE_VENDOR, new_flags);
 	new->parent = parent;
 	new->depth = parent->depth + 1;
+
 	*out = new;
 
 	return 0;
@@ -2609,7 +2613,7 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 	char const	*p = name;
 	char		*q;
 
-	fr_dict_vendor_t	*dv = NULL;
+	fr_dict_vendor_t const	*dv = NULL;
 	fr_dict_attr_t const	*child;
 
 	INTERNAL_IF_NULL(dict);
@@ -3290,7 +3294,7 @@ int fr_dict_vendor_by_name(fr_dict_t *dict, char const *name)
  *	- The vendor.
  *	- NULL if no vendor with that number was regitered for this protocol.
  */
-fr_dict_vendor_t *fr_dict_vendor_by_num(fr_dict_t *dict, int vendorpec)
+fr_dict_vendor_t const *fr_dict_vendor_by_num(fr_dict_t *dict, int vendorpec)
 {
 	fr_dict_vendor_t dv;
 

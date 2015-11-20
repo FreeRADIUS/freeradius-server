@@ -403,7 +403,7 @@ ssize_t fr_radius_decode_tlv(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 static ssize_t decode_vsa_internal(TALLOC_CTX *ctx, vp_cursor_t *cursor,
 				   fr_dict_attr_t const *parent,
 				   uint8_t const *data, size_t data_len,
-				   void *decoder_ctx, fr_dict_vendor_t *dv)
+				   void *decoder_ctx, fr_dict_vendor_t const *dv)
 {
 	unsigned int		attribute;
 	ssize_t			attrlen, my_len;
@@ -674,7 +674,7 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 	size_t			total;
 	ssize_t			rcode;
 	uint32_t		vendor;
-	fr_dict_vendor_t	*dv;
+	fr_dict_vendor_t const	*dv;
 	VALUE_PAIR		*head = NULL;
 	fr_dict_vendor_t	my_dv;
 	fr_dict_attr_t const	*vendor_da;
@@ -718,10 +718,12 @@ static ssize_t decode_vsa(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dict_attr_t c
 		 *	Create an unknown DV too...
 		 */
 		memset(&my_dv, 0, sizeof(my_dv));
+
+		my_dv.vendorpec = vendor;
+		my_dv.type = 1;
+		my_dv.length = 1;
+
 		dv = &my_dv;
-		dv->vendorpec = vendor;
-		dv->type = 1;
-		dv->length = 1;
 
 		goto create_attrs;
 	} else {

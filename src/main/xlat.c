@@ -290,17 +290,17 @@ static ssize_t xlat_vendor(char **out, size_t outlen,
 			   REQUEST *request, char const *fmt)
 {
 	VALUE_PAIR *vp;
-	fr_dict_vendor_t *vendor;
+	fr_dict_vendor_t const *dv;
 
 	while (isspace((int) *fmt)) fmt++;
 
 	if ((radius_get_vp(&vp, request, fmt) < 0) || !vp) return 0;
 
-	vendor = fr_dict_vendor_by_num(NULL, vp->da->vendor);
-	if (!vendor) return 0;
-	strlcpy(*out, vendor->name, outlen);
+	dv = fr_dict_vendor_by_num(NULL, vp->da->vendor);
+	if (!dv) return 0;
+	strlcpy(*out, dv->name, outlen);
 
-	return vendor->length;
+	return dv->length;
 }
 
 /** Return the vendor number of an attribute reference
@@ -409,7 +409,7 @@ static ssize_t xlat_debug_attr(UNUSED char **out, UNUSED size_t outlen,
 		if (!RDEBUG_ENABLED3) continue;
 
 		if (vp->da->vendor) {
-			fr_dict_vendor_t *dv;
+			fr_dict_vendor_t const *dv;
 
 			dv = fr_dict_vendor_by_num(NULL, vp->da->vendor);
 			RIDEBUG2("Vendor : %i (%s)", vp->da->vendor, dv ? dv->name : "unknown");

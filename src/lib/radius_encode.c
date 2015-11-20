@@ -1118,7 +1118,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 				      vp_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
-	fr_dict_vendor_t	*dv;
+	fr_dict_vendor_t const	*dv;
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
