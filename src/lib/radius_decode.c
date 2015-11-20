@@ -970,6 +970,13 @@ ssize_t fr_radius_decode_pair_value(TALLOC_CTX *ctx, vp_cursor_t *cursor, fr_dic
 			break;
 
 		default:
+			/*
+			 *	Chop the attribute to its maximum length.
+			 */
+			if ((parent->type == PW_TYPE_OCTETS) &&
+			    (parent->flags.length && (datalen > parent->flags.length))) {
+				    datalen = parent->flags.length;
+			    }
 			break;
 		} /* switch over encryption flags */
 	}

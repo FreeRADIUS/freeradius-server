@@ -650,8 +650,17 @@ static ssize_t encode_value(uint8_t *out, size_t outlen,
 	len = vp->vp_length;
 
 	switch (da->type) {
-	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
+		/*
+		 *	If asked to encode more data than allowed, we
+		 *	encode only the allowed data.
+		 */
+		if (da->flags.length && (len > da->flags.length)) {
+			len = da->flags.length;
+		}
+		/* FALL-THROUGH */
+
+	case PW_TYPE_STRING:
 		data = vp->data.ptr;
 		if (!data) {
 			fr_strerror_printf("ERROR: Cannot encode NULL data");
