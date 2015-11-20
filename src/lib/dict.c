@@ -601,6 +601,23 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	if (fr_dict_valid_name(name) < 0) return -1;
 
+	/*
+	 *	type_size is used to limit the maximum attribute number, so it's checked first.
+	 */
+	if (flags.type_size) {
+		if ((type != PW_TYPE_TLV) && (type != PW_TYPE_VENDOR)) {
+			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
+			goto error;
+		}
+
+		if ((flags.type_size != 1) &&
+		    (flags.type_size != 2) &&
+		    (flags.type_size != 4)) {
+			fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
+			goto error;
+		}
+	}
+
 	/******************** sanity check attribute number ********************/
 
 	if (parent->flags.is_root) {
@@ -630,39 +647,19 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 
 	/*
 	 *	If attributes have number greater than 255, do sanity checks.
+	 *
+	 *	We assume that the root attribute is of type TLV, with
+	 *	the appropriate flags set for attributes in this
+	 *	space.
 	 */
-	if ((attr > UINT8_MAX) && !parent->flags.is_root) {
+	if ((attr > UINT8_MAX) && !flags.internal) {
 		for (v = parent; v != NULL; v = v->parent) {
-			if (v->type == PW_TYPE_TLV) {
-				if (attr >= (1 << (8 * v->flags.type_size))) {
-					fr_strerror_printf("Attributes of type 'tlv' must have value between 1..%u",
+			if ((v->type == PW_TYPE_TLV) || (v->type == PW_TYPE_VENDOR)) {
+				if ((v->flags.type_size < 4) &&
+				    (attr < 0x2b00) && (attr >=0x2d00) && /* @fixme: VMPS */
+				    (attr >= (1 << (8 * v->flags.type_size)))) {
+					fr_strerror_printf("Attributes must have value between 1..%u",
 							   (1 << (8 * v->flags.type_size)) - 1);
-					goto error;
-				}
-
-				break;
-			}
-
-			if (v->type == PW_TYPE_VENDOR) {
-				fr_dict_vendor_t const *dv;
-
-				dv = fr_dict_vendor_by_num(dict, v->attr);
-				if (!dv) {
-					fr_strerror_printf("Unknown vendor '%u'", v->attr);
-					goto error;
-				}
-
-				/*
-				 *		Dumb Broadsoft...
-				 */
-				if ((dv->type == 1) &&
-				    (v->attr != 6431) && (v->attr != DHCP_MAGIC_VENDOR)) {
-					fr_strerror_printf("Attributes must have value between 1..255");
-					goto error;
-				}
-
-				if ((dv->type == 2) && (attr > UINT16_MAX)) {
-					fr_strerror_printf("Attributes must have value between 1..65535");
 					goto error;
 				}
 				break;
@@ -697,7 +694,9 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			goto error;
 		}
 
-		if (!(parent->flags.is_root || (parent->type == PW_TYPE_VENDOR))) {
+		if (!(parent->flags.is_root ||
+		      ((parent->type == PW_TYPE_VENDOR) &&
+		       (parent->parent && parent->parent->type == PW_TYPE_VSA)))) {
 			fr_strerror_printf("The 'has_tag' flag can only be used with RFC and VSA attributes");
 			goto error;
 		}
@@ -749,7 +748,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 			return -1;
 		}
 
-		if (type == PW_TYPE_TLV) {
+		if ((type == PW_TYPE_TLV) || (type == PW_TYPE_VENDOR)) {
 			if ((flags.length != 1) &&
 			    (flags.length != 2) &&
 			    (flags.length != 4)) {
@@ -769,13 +768,15 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	We allow it for DHCP and FreeDHCP dictionaries.  Not anywhere else.
 	 */
 	if (flags.array) {
-		for (v = parent; v->type == PW_TYPE_TLV; v = v->parent);
+		for (v = parent; v != NULL; v = v->parent) {
+			if (v->type != PW_TYPE_VENDOR) continue;
 
-		if ((v->type != PW_TYPE_VENDOR) ||
-		    ((v->attr != 34673) && /* freedhcp */
-		     (v->attr != DHCP_MAGIC_VENDOR))) {
-			fr_strerror_printf("The 'array' flag can only be used with DHCP options");
-			goto error;
+			if ((v->attr != 34673) && /* freedhcp */
+			    (v->attr != DHCP_MAGIC_VENDOR)) {
+				fr_strerror_printf("The 'array' flag can only be used with DHCP options");
+				goto error;
+			}
+			break;
 		}
 
 		switch (type) {
@@ -862,20 +863,6 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		}
 	}
 
-	if (flags.type_size) {
-		if (type != PW_TYPE_TLV) {
-			fr_strerror_printf("The 'format=' flag can only be used with attributes of type 'tlv'");
-			goto error;
-		}
-
-		if ((flags.type_size != 1) &&
-		    (flags.type_size != 2) &&
-		    (flags.type_size != 4)) {
-			fr_strerror_printf("The 'format=' flag can only be used with attributes of type size 1,2 or 4");
-			goto error;
-		}
-	}
-
 	/******************** sanity check data types and parents ********************/
 
 	/*
@@ -913,41 +900,65 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 					   fr_int2str(dict_attr_types, parent->type, "?Unknown?"));
 			goto error;
 		}
+
+		if (parent->type == PW_TYPE_VSA) {
+			fr_dict_vendor_t const *dv;
+
+			dv = fr_dict_vendor_by_num(dict, attr);
+			if (dv) {
+				flags.type_size = dv->type;
+				flags.length = dv->length;
+			} else {
+				flags.type_size = 1;
+				flags.length = 1;
+			}
+		} else {
+			flags.type_size = 1;
+			flags.length = 1;
+		}
 		break;
 
 	case PW_TYPE_TLV:
 		/*
-		 *	Set some defaults.
+		 *	Ensure that type_size and length are set.
 		 */
-		if (flags.length == 0) flags.length = 1;
-		if (flags.type_size == 0) flags.type_size = 1;
-
-		for (v = parent; v && !v->flags.is_root; v = v->parent) {
-			if ((v->type == PW_TYPE_VENDOR) && (v->attr != DHCP_MAGIC_VENDOR)) {
-				fr_dict_vendor_t const *dv;
-
-				dv = fr_dict_vendor_by_num(dict, v->attr);
-
-				if (!dv || (dv->type != flags.type_size) || (dv->length != flags.length)) {
-					fr_strerror_printf("Attributes of type 'tlv' can only be used for vendors "
-							   "with matching format");
-					goto error;
-				}
+		for (v = parent; v != NULL; v = v->parent) {
+			if ((v->type == PW_TYPE_TLV) || (v->type == PW_TYPE_VENDOR)) {
 				break;
 			}
 		}
+
+		/*
+		 *	root is always PW_TYPE_TLV, so we're OK.
+		 */
+		if (!v) {
+			fr_strerror_printf("Attributes of type '%s' require a parent attribute",
+					   fr_int2str(dict_attr_types, type, "?Unknown?"));
+			goto error;
+		}
+
+		/*
+		 *	Over-ride whatever was there before, so we
+		 *	don't have multiple formats of VSAs.
+		 */
+		flags.type_size = v->flags.type_size;
+		flags.length = v->flags.length;
 		break;
 
 	case PW_TYPE_COMBO_IP_ADDR:
-		for (v = parent; v && !v->flags.is_root; v = v->parent) {
-			if (v->type == PW_TYPE_VENDOR) {
+		/*
+		 *	RFC 6929 says that this is a terrible idea.
+		 */
+		for (v = parent; v != NULL; v = v->parent) {
+			if (v->type == PW_TYPE_VSA) {
 				break;
 			}
 		}
 
-		if (v->flags.is_root || (v->parent->type != PW_TYPE_VSA)) {
+		if (!v) {
 			fr_strerror_printf("Attributes of type '%s' can only be used in VSA dictionaries",
 					   fr_int2str(dict_attr_types, type, "?Unknown?"));
+			goto error;
 		}
 		break;
 
@@ -1644,7 +1655,7 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 	int type, length;
 	bool continuation = false;
 	fr_dict_vendor_t const *dv;
-	fr_dict_vendor_t *muteable;
+	fr_dict_vendor_t *mutable;
 
 	if ((argc < 2) || (argc > 3)) {
 		fr_strerror_printf("Invalid VENDOR syntax");
@@ -1694,11 +1705,11 @@ static int dict_read_process_vendor(fr_dict_t *dict, char **argv, int argc)
 		return -1;
 	}
 
-	memcpy(&muteable, &dv, sizeof(muteable));
+	memcpy(&mutable, &dv, sizeof(mutable));
 
-	muteable->type = type;
-	muteable->length = length;
-	muteable->flags = continuation;
+	mutable->type = type;
+	mutable->length = length;
+	mutable->flags = continuation;
 
 	return 0;
 }
@@ -1966,7 +1977,7 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 		} /* END-VENDOR */
 
 		if (strcasecmp(argv[0], "BEGIN-VENDOR") == 0) {
-			fr_dict_attr_flags_t new_flags;
+			fr_dict_attr_flags_t flags;
 
 			fr_dict_attr_t const *vsa_da;
 			fr_dict_attr_t *new;
@@ -2008,6 +2019,7 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 							   fr_int2str(dict_attr_types, da->type, "?Unknown?"));
 					goto error;
 				}
+
 				vsa_da = da;
 			} else {
 				/*
@@ -2019,11 +2031,11 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 				 */
 				vsa_da = fr_dict_attr_child_by_num(parent, PW_VENDOR_SPECIFIC);
 				if (!vsa_da) {
-					memset(&new_flags, 0, sizeof(new_flags));
+					memset(&flags, 0, sizeof(flags));
 
 					memcpy(&mutable, &parent, sizeof(mutable));
 					new = fr_dict_attr_alloc(mutable, "Vendor-Specific", 0,
-								 PW_VENDOR_SPECIFIC, PW_TYPE_VSA, new_flags);
+								 PW_VENDOR_SPECIFIC, PW_TYPE_VSA, flags);
 					fr_dict_attr_child_add(mutable, new);
 					vsa_da = new;
 				}
@@ -2035,10 +2047,28 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 			 */
 			parent = fr_dict_attr_child_by_num(vsa_da, vendor);
 			if (!parent) {
-				memset(&new_flags, 0, sizeof(new_flags));
+				memset(&flags, 0, sizeof(flags));
+
+				if (vsa_da->type == PW_TYPE_VSA) {
+					fr_dict_vendor_t const *dv;
+
+					dv = fr_dict_vendor_by_num(dict, vendor);
+					if (dv) {
+						flags.type_size = dv->type;
+						flags.length = dv->length;
+
+					} else { /* unknown vendor, shouldn't happen */
+						flags.type_size = 1;
+						flags.length = 1;
+					}
+
+				} else { /* EVS are always "format=1,1" */
+					flags.type_size = 1;
+					flags.length = 1;
+				}
 
 				memcpy(&mutable, &vsa_da, sizeof(mutable));
-				new = fr_dict_attr_alloc(mutable, argv[1], 0, vendor, PW_TYPE_VENDOR, new_flags);
+				new = fr_dict_attr_alloc(mutable, argv[1], 0, vendor, PW_TYPE_VENDOR, flags);
 				fr_dict_attr_child_add(mutable, new);
 
 				parent = new;
@@ -2409,14 +2439,16 @@ void fr_dict_unknown_free(fr_dict_attr_t const **da)
 int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out,
 				     fr_dict_attr_t const *parent, unsigned int vendor)
 {
-	fr_dict_attr_flags_t		new_flags;
+	fr_dict_attr_flags_t		flags;
 	fr_dict_attr_t const	*vendor_da;
 	fr_dict_attr_t		*new;
 
 	*out = NULL;
 
-	memset(&new_flags, 0, sizeof(new_flags));
-	new_flags.is_unknown = 1;
+	memset(&flags, 0, sizeof(flags));
+	flags.is_unknown = 1;
+	flags.type_size = 1;
+	flags.length = 1;
 
 	/*
 	 *	Vendor attributes can occur under VSA or EVS attributes.
@@ -2453,7 +2485,7 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out
 		return -1;
 	}
 
-	new = fr_dict_attr_alloc(ctx, "unknown-vendor", 0, vendor, PW_TYPE_VENDOR, new_flags);
+	new = fr_dict_attr_alloc(ctx, "unknown-vendor", 0, vendor, PW_TYPE_VENDOR, flags);
 	new->parent = parent;
 	new->depth = parent->depth + 1;
 
@@ -2832,15 +2864,18 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 				return -1;
 			}
 			parent = child;
-		/*
-		 *	Build the unknown vendor
-		 */
+
+			/*
+			 *	Build the unknown vendor, assuming it's a normal format.
+			 */
 		} else if (vendor_da) {
 			vendor_da->attr = vendor;
 			vendor_da->type = PW_TYPE_VENDOR;
 			vendor_da->parent = parent;
 			vendor_da->depth = parent->depth + 1;
 			vendor_da->flags.is_unknown = 1;
+			vendor_da->flags.type_size = 1;
+			vendor_da->flags.length = 1;
 			snprintf(vendor_da->name, FR_DICT_ATTR_MAX_NAME_LEN, "Vendor-%i", vendor);
 
 			parent = vendor_da;
