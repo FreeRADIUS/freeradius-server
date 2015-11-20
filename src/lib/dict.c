@@ -939,7 +939,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		break;
 
 	case PW_TYPE_COMBO_IP_ADDR:
-		for (v = parent; !v->flags.is_root; v = v->parent) {
+		for (v = parent; v && !v->flags.is_root; v = v->parent) {
 			if (v->type == PW_TYPE_VENDOR) {
 				break;
 			}
