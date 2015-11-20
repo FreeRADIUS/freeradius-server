@@ -922,7 +922,7 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		if (flags.length == 0) flags.length = 1;
 		if (flags.type_size == 0) flags.type_size = 1;
 
-		for (v = parent; !v->flags.is_root; v = v->parent) {
+		for (v = parent; v && !v->flags.is_root; v = v->parent) {
 			if ((v->type == PW_TYPE_VENDOR) && (v->attr != DHCP_MAGIC_VENDOR)) {
 				fr_dict_vendor_t const *dv;
 
