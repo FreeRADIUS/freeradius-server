@@ -28,11 +28,11 @@
 #	On top of that, a number of options are really TLV's.
 #	We need to be able to understand them, too.
 #
-VENDOR		DHCP				54	format=2,1
+VENDOR		DHCP				54
 
 BEGIN-VENDOR	DHCP
 
-ATTRIBUTE	DHCP-Opcode				256	byte
+ATTRIBUTE	DHCP-Opcode				256	byte	internal
 
 VALUE	DHCP-Opcode			Client-Message		1
 VALUE	DHCP-Opcode			Server-Message		2
