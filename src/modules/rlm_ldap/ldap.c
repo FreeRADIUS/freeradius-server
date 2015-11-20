@@ -1416,7 +1416,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 	 *	SASL mech is inherited from the module that defined the connection
 	 *	pool.
 	 */
-	if (!inst->use_referral_credentials) {
+	if (inst->use_referral_credentials) {
 		LDAPURLDesc	*ldap_url;
 		int		ret;
 		char		**ext;
