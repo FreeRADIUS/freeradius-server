@@ -1128,29 +1128,32 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 {
 	ssize_t			len;
 	size_t			hdr_len;
-	fr_dict_vendor_t const	*dv;
-	fr_dict_attr_t const	*da = tlv_stack[depth];
+	fr_dict_attr_t const	*da, *dv;
 
 	FR_PROTO_STACK_PRINT(tlv_stack, depth);
 
-	/*
-	 *	Unknown vendor: RFC format.
-	 *	Known vendor and RFC format: go do that.
-	 */
-	dv = fr_dict_vendor_by_num(NULL, da->parent->attr);
-	if (!dv || ((da->type != PW_TYPE_TLV) && (dv->type == 1) && (dv->length == 1))) {
+	dv = tlv_stack[depth++];
+
+	if (dv->type != PW_TYPE_VENDOR) {
+		fr_strerror_printf("Expected Vendor");
+		return -1;
+	}
+	
+	da = tlv_stack[depth];
+
+	if ((da->type != PW_TYPE_TLV) && (dv->flags.type_size == 1) && (dv->flags.length == 1)) {
 		return encode_rfc_hdr_internal(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}
 
-	hdr_len = dv->type + dv->length;
+	hdr_len = dv->flags.type_size + dv->flags.length;
 
 	/*
 	 *	Vendors use different widths for their
 	 *	attribute number fields.
 	 */
-	switch (dv->type) {
+	switch (dv->flags.type_size) {
 	default:
-		fr_strerror_printf("%s: Internal sanity check failed, type %u", __FUNCTION__, (unsigned) dv->type);
+		fr_strerror_printf("%s: Internal sanity check failed, type %u", __FUNCTION__, (unsigned) dv->flags.type_size);
 		return -1;
 
 	case 4:
@@ -1170,21 +1173,21 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 		break;
 	}
 
-	switch (dv->length) {
+	switch (dv->flags.length) {
 	default:
-		fr_strerror_printf("%s: Internal sanity check failed, length %u", __FUNCTION__, (unsigned) dv->length);
+		fr_strerror_printf("%s: Internal sanity check failed, length %u", __FUNCTION__, (unsigned) dv->flags.length);
 		return -1;
 
 	case 0:
 		break;
 
 	case 2:
-		out[dv->type] = 0;
-		out[dv->type + 1] = dv->type + 2;
+		out[dv->flags.type_size] = 0;
+		out[dv->flags.type_size + 1] = dv->flags.type_size + 2;
 		break;
 
 	case 1:
-		out[dv->type] = dv->type + 1;
+		out[dv->flags.type_size] = dv->flags.type_size + 1;
 		break;
 
 	}
@@ -1204,11 +1207,11 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 
 	if (len <= 0) return len;
 
-	if (dv->length) out[hdr_len - 1] += len;
+	if (dv->flags.length) out[hdr_len - 1] += len;
 
 #ifndef NDEBUG
 	if ((fr_debug_lvl > 3) && fr_log_fp) {
-		switch (dv->type) {
+		switch (dv->flags.type_size) {
 		default:
 			break;
 
@@ -1226,7 +1229,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 			break;
 		}
 
-		switch (dv->length) {
+		switch (dv->flags.length) {
 		default:
 			break;
 
@@ -1235,11 +1238,11 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 			break;
 
 		case 1:
-			fprintf(fr_log_fp, "%02x  ", out[dv->type]);
+			fprintf(fr_log_fp, "%02x  ", out[dv->flags.type_size]);
 			break;
 
 		case 2:
-			fprintf(fr_log_fp, "%02x%02x  ", out[dv->type], out[dv->type] + 1);
+			fprintf(fr_log_fp, "%02x%02x  ", out[dv->flags.type_size], out[dv->flags.type_size] + 1);
 			break;
 		}
 
@@ -1390,7 +1393,7 @@ static int encode_vsa_hdr(uint8_t *out, size_t outlen,
 
 	if (outlen > ((unsigned) 255 - out[1])) outlen = 255 - out[1];
 
-	len = encode_vendor_attr_hdr(out + out[1], outlen, tlv_stack, depth + 1, cursor, encoder_ctx);
+	len = encode_vendor_attr_hdr(out + out[1], outlen, tlv_stack, depth, cursor, encoder_ctx);
 	if (len < 0) return len;
 
 #ifndef NDEBUG
