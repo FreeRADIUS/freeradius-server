@@ -1428,7 +1428,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 			return -1;
 		}
 
-		for (ext = ldap_url->lud_exts; *ext; ext++) {
+		for (ext = ldap_url->lud_exts; ext && *ext; ext++) {
 			char const *p;
 			bool critical = false;
 
