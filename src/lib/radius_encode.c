@@ -1127,6 +1127,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 				      vp_cursor_t *cursor, void *encoder_ctx)
 {
 	ssize_t			len;
+	size_t			hdr_len;
 	fr_dict_vendor_t const	*dv;
 	fr_dict_attr_t const	*da = tlv_stack[depth];
 
@@ -1140,6 +1141,8 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	if (!dv || ((da->type != PW_TYPE_TLV) && (dv->type == 1) && (dv->length == 1))) {
 		return encode_rfc_hdr_internal(out, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}
+
+	hdr_len = dv->type + dv->length;
 
 	/*
 	 *	Vendors use different widths for their
@@ -1186,7 +1189,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 
 	}
 
-	if (outlen > ((unsigned) 255 - (dv->type + dv->length))) outlen = 255 - (dv->type + dv->length);
+	if (outlen > ((unsigned) 255 - hdr_len)) outlen = 255 - hdr_len;
 
 	/*
 	 *	Because we've now encoded the attribute header,
@@ -1194,14 +1197,14 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 	 *	internal tlv function, else we get a double TLV header.
 	 */
 	if (tlv_stack[depth]->type == PW_TYPE_TLV) {
-		len = encode_tlv_hdr_internal(out + dv->type + dv->length, outlen, tlv_stack, depth, cursor, encoder_ctx);
+		len = encode_tlv_hdr_internal(out + hdr_len, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	} else {
-		len = encode_value(out + dv->type + dv->length, outlen, tlv_stack, depth, cursor, encoder_ctx);
+		len = encode_value(out + hdr_len, outlen, tlv_stack, depth, cursor, encoder_ctx);
 	}
 
 	if (len <= 0) return len;
 
-	if (dv->length) out[dv->type + dv->length - 1] += len;
+	if (dv->length) out[hdr_len - 1] += len;
 
 #ifndef NDEBUG
 	if ((fr_debug_lvl > 3) && fr_log_fp) {
@@ -1240,11 +1243,11 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 			break;
 		}
 
-		FR_PROTO_HEX_DUMP("Done RFC header", out + dv->type + dv->length, len);
+		FR_PROTO_HEX_DUMP("Done RFC header", out + hdr_len, len);
 	}
 #endif
 
-	return dv->type + dv->length + len;
+	return hdr_len + len;
 }
 
 /** Encode a WiMAX attribute
