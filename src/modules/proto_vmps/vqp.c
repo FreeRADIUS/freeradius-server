@@ -23,7 +23,7 @@
 RCSID("$Id$")
 
 #include	<freeradius-devel/libradius.h>
-#include	<freeradius-devel/udpfromto.h>
+#include	<freeradius-devel/udp.h>
 
 #include	"vqp.h"
 
@@ -70,60 +70,6 @@ RCSID("$Id$")
 #define VQP_VERSION (1)
 #define VQP_MAX_ATTRIBUTES (12)
 
-
-/*
- *	Wrapper for sendto which handles sendfromto, IPv6, and all
- *	possible combinations.
- *
- *	FIXME:  This is just a copy of rad_sendto().
- *	Duplicate code is bad.
- */
-static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
-#ifdef WITH_UDPFROMTO
-		      fr_ipaddr_t *src_ipaddr,
-#else
-		      UNUSED fr_ipaddr_t *src_ipaddr,
-#endif
-		      fr_ipaddr_t *dst_ipaddr,
-		      uint16_t dst_port)
-{
-	struct sockaddr_storage	dst;
-	socklen_t		sizeof_dst;
-
-#ifdef WITH_UDPFROMTO
-	struct sockaddr_storage	src;
-	socklen_t		sizeof_src;
-
-	if (!fr_ipaddr_to_sockaddr(src_ipaddr, 0, &src, &sizeof_src)) {
-		return -1;   /* Unknown address family, Die Die Die! */
-	}
-#endif
-
-	if (!fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst)) {
-		return -1;   /* Unknown address family, Die Die Die! */
-	}
-
-#ifdef WITH_UDPFROMTO
-	/*
-	 *	Only IPv4 is supported for udpfromto.
-	 *
-	 *	And if they don't specify a source IP address, don't
-	 *	use udpfromto.
-	 */
-	if ((dst_ipaddr->af == AF_INET) &&
-	    (src_ipaddr->af != AF_UNSPEC)) {
-		return sendfromto(sockfd, data, data_len, flags,
-				  (struct sockaddr *)&src, sizeof_src,
-				  (struct sockaddr *)&dst, sizeof_dst, 0);
-	}
-#endif
-
-	/*
-	 *	No udpfromto, OR an IPv6 socket, fail gracefully.
-	 */
-	return sendto(sockfd, data, data_len, flags,
-		      (struct sockaddr *)&dst, sizeof_dst);
-}
 
 /*
  *	Wrapper for recvfrom, which handles recvfromto, IPv6, and all
@@ -405,9 +351,9 @@ int vqp_send(RADIUS_PACKET *packet)
 	/*
 	 *	And send it on it's way.
 	 */
-	return vqp_sendto(packet->sockfd, packet->data, packet->data_len, 0,
-			  &packet->src_ipaddr, &packet->dst_ipaddr,
-			  packet->dst_port);
+	return udp_send(packet->sockfd, packet->data, packet->data_len, 0,
+			&packet->src_ipaddr, packet->src_port, packet->if_index,
+			&packet->dst_ipaddr, packet->dst_port);
 }
 
 

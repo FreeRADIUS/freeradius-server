@@ -44,6 +44,7 @@ SOURCES		:= cbuff.c \
 		   getaddrinfo.c \
 		   heap.c \
 		   tcp.c \
+		   udp.c \
 		   base64.c \
 		   version.c
 

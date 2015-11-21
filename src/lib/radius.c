@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 
 #include <freeradius-devel/md5.h>
+#include <freeradius-devel/udp.h>
 
 #include <fcntl.h>
 #include <ctype.h>
@@ -260,61 +261,6 @@ void rad_print_hex(RADIUS_PACKET *packet)
 	fflush(stdout);
 }
 
-/** Wrapper for sendto which handles sendfromto, IPv6, and all possible combinations
- *
- */
-static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
-#ifdef WITH_UDPFROMTO
-		      fr_ipaddr_t *src_ipaddr, uint16_t src_port, int if_index,
-#else
-		      UNUSED fr_ipaddr_t *src_ipaddr, UNUSED uint16_t src_port, UNUSED int if_index,
-#endif
-		      fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
-{
-	int rcode;
-	struct sockaddr_storage	dst;
-	socklen_t		sizeof_dst;
-
-#ifdef WITH_UDPFROMTO
-	struct sockaddr_storage	src;
-	socklen_t		sizeof_src;
-
-	fr_ipaddr_to_sockaddr(src_ipaddr, src_port, &src, &sizeof_src);
-#endif
-
-	if (!fr_ipaddr_to_sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst)) {
-		return -1;
-	}
-
-#ifdef WITH_UDPFROMTO
-	/*
-	 *	And if they don't specify a source IP address, don't
-	 *	use udpfromto.
-	 */
-	if (((dst_ipaddr->af == AF_INET) || (dst_ipaddr->af == AF_INET6)) &&
-	    (src_ipaddr->af != AF_UNSPEC) &&
-	    !fr_is_inaddr_any(src_ipaddr)) {
-		rcode = sendfromto(sockfd, data, data_len, flags,
-				   (struct sockaddr *)&src, sizeof_src,
-				   (struct sockaddr *)&dst, sizeof_dst, if_index);
-		goto done;
-	}
-#endif
-
-	/*
-	 *	No udpfromto, fail gracefully.
-	 */
-	rcode = sendto(sockfd, data, data_len, flags,
-		       (struct sockaddr *) &dst, sizeof_dst);
-#ifdef WITH_UDPFROMTO
-done:
-#endif
-	if (rcode < 0) {
-		fr_strerror_printf("sendto failed: %s", fr_syserror(errno));
-	}
-
-	return rcode;
-}
 
 /** Build an encrypted secret value to return in a reply packet
  *
@@ -722,9 +668,9 @@ int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	/*
 	 *	And send it on it's way.
 	 */
-	return rad_sendto(packet->sockfd, packet->data, packet->data_len, 0,
-			  &packet->src_ipaddr, packet->src_port, packet->if_index,
-			  &packet->dst_ipaddr, packet->dst_port);
+	return udp_send(packet->sockfd, packet->data, packet->data_len, 0,
+			&packet->src_ipaddr, packet->src_port, packet->if_index,
+			&packet->dst_ipaddr, packet->dst_port);
 }
 
 /** Do a comparison of two authentication digests by comparing the FULL digest
