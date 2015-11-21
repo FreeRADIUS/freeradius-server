@@ -1409,7 +1409,7 @@ static int dict_read_process_attribute(fr_dict_t *dict, fr_dict_attr_t const *pa
 		oid = true;
 		vendor = block_vendor;
 
-		slen = fr_dict_str_to_oid(dict, &parent, &vendor, &attr, argv[1]);
+		slen = fr_dict_attr_by_oid(dict, &parent, &vendor, &attr, argv[1]);
 		if (slen <= 0) {
 			return -1;
 		}
@@ -2885,7 +2885,7 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 		}
 	}
 
-	if (*p == '.') if (fr_dict_str_to_oid(dict, &parent, &vendor, &attr, p + 1) < 0) return -1;
+	if (*p == '.') if (fr_dict_attr_by_oid(dict, &parent, &vendor, &attr, p + 1) < 0) return -1;
 
 	/*
 	 *	If the caller doesn't provide a fr_dict_attr_t
@@ -3183,7 +3183,7 @@ fr_dict_attr_t const *fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_att
  *	- 0 on success.
  *	- -1 on format error.
  */
-static int dict_oid_component(unsigned int *out, char const **oid)
+int fr_dict_oid_component(unsigned int *out, char const **oid)
 {
 	char const *p = *oid;
 	char *q;
@@ -3192,11 +3192,10 @@ static int dict_oid_component(unsigned int *out, char const **oid)
 	*out = 0;
 
 	num = strtoul(p, &q, 10);
-	if ((p == q) || (!num || (num == ULONG_MAX))) {
-		fr_strerror_printf("Invalid OID component %lu", num);
+	if ((p == q) || (num == ULONG_MAX)) {
+		fr_strerror_printf("Invalid OID component \"%s\" (%lu)", p, num);
 		return -1;
 	}
-
 
 	switch (*q) {
 	case '\0':
@@ -3215,6 +3214,10 @@ static int dict_oid_component(unsigned int *out, char const **oid)
 
 /** Get the leaf attribute of an OID string
  *
+ * @note On error, vendor will be set (if present), parent will be the
+ *	maximum depth we managed to resolve to, and attr will be the child
+ *	we failed to resolve.
+ *
  * @param[in] dict of protocol context we're operating in.  If NULL the internal
  *	dictionary will be used.
  * @param[out] attr Number we parsed.
@@ -3226,8 +3229,8 @@ static int dict_oid_component(unsigned int *out, char const **oid)
  *	- > 0 on success (number of bytes parsed).
  *	- <= 0 on parse error (negative offset of parse error).
  */
-ssize_t fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
-			   unsigned int *vendor, unsigned int *attr, char const *oid)
+ssize_t fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
+			    unsigned int *vendor, unsigned int *attr, char const *oid)
 {
 	char const		*p = oid;
 	unsigned int		num = 0;
@@ -3238,7 +3241,14 @@ ssize_t fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 
 	*attr = 0;
 
-	if (dict_oid_component(&num, &p) < 0) return oid - p;
+	if (fr_dict_oid_component(&num, &p) < 0) return oid - p;
+
+	/*
+	 *	Record progress even if we error out.
+	 *
+	 *	Don't change this, you will break things.
+	 */
+	*attr = num;
 
 	/*
 	 *	Look for 26.VID.x.y
@@ -3259,7 +3269,7 @@ ssize_t fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 		}
 		p++;
 
-		if (dict_oid_component(&num, &p) < 0) return oid - p;
+		if (fr_dict_oid_component(&num, &p) < 0) return oid - p;
 		if (p[0] == '\0') {
 			fr_strerror_printf("Vendor attribute must specify a child");
 			return oid - p;
@@ -3271,16 +3281,15 @@ ssize_t fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 			fr_strerror_printf("Unknown vendor '%u' ", num);
 			return oid - p;
 		}
+		*vendor = dv->vendorpec;	/* Record vendor number */
 
 		/*
 		 *	Recurse to get the attribute.
 		 */
-		slen = fr_dict_str_to_oid(dict, parent, vendor, attr, p);
-		if (slen <= 0) return slen + (oid - p);
+		slen = fr_dict_attr_by_oid(dict, parent, vendor, attr, p);
+		if (slen <= 0) return slen - (p - oid);
 
 		slen += p - oid;
-		if (slen > 0) *vendor = dv->vendorpec;	/* Record vendor number */
-
 		return slen;
 	}
 
@@ -3289,9 +3298,9 @@ ssize_t fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 	 *
 	 *	@fixme: find the TLV parent, and check it's size
 	 */
-	if (((*parent)->type != PW_TYPE_VENDOR) && ((num == 0) || (num > UINT8_MAX))) {
-		fr_strerror_printf("TLV attributes must be between 1-255 inclusive");
-		return oid - p;
+	if (((*parent)->type != PW_TYPE_VENDOR) && (num > UINT8_MAX)) {
+		fr_strerror_printf("TLV attributes must be between 0-255 inclusive");
+		return 0;
 	}
 
 	switch (p[0]) {
@@ -3306,16 +3315,19 @@ ssize_t fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 
 		child = fr_dict_attr_child_by_num(*parent, num);
 		if (!child) {
-			fr_strerror_printf("Parent attribute for %s not defined", oid);
-			return 0;
+			fr_strerror_printf("Unknown child attribute starting at \"%s\"", oid);
+			return 0;	/* We parsed nothing */
 		}
+		/*
+		 *	Record progress even if we error out.
+		 *
+		 *	Don't change this, you will break things.
+		 */
 		*parent = child;
 
-		slen = fr_dict_str_to_oid(dict, parent, vendor, attr, p);
-		if (slen <= 0) return slen + (oid - p);
-
-		slen += p - oid;
-		return slen;
+		slen = fr_dict_attr_by_oid(dict, parent, vendor, attr, p);
+		if (slen <= 0) return slen - (p - oid);
+		return slen + (p - oid);
 	}
 
 	/*

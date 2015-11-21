@@ -171,7 +171,9 @@ void			fr_dict_print(fr_dict_attr_t const *da, int depth);
 
 fr_dict_attr_t const	*fr_dict_parent_common(fr_dict_attr_t const *a, fr_dict_attr_t const *b, bool is_ancestor);
 
-ssize_t			fr_dict_str_to_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
+int			fr_dict_oid_component(unsigned int *out, char const **oid);
+
+ssize_t			fr_dict_attr_by_oid(fr_dict_t *dict, fr_dict_attr_t const **parent,
 			   		   unsigned int *vendor, unsigned int *attr, char const *oid);
 
 /*
