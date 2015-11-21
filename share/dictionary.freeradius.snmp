@@ -1,6 +1,11 @@
 BEGIN-VENDOR FreeRADIUS format=Extended-Vendor-Specific-1
 ATTRIBUTE	FreeRADIUS-SNMP-Operation		0		integer
 
+VALUE		FreeRADIUS-SNMP-Operation		ping		0
+VALUE		FreeRADIUS-SNMP-Operation		get		1
+VALUE		FreeRADIUS-SNMP-Operation		getnext		2
+VALUE		FreeRADIUS-SNMP-Operation		set		3
+
 # Creates iso(1).org(3).dod(6).internet(1).mgmt(2).mib-2(1)
 ATTRIBUTE	FreeRADIUS-Iso				1		tlv
 ATTRIBUTE	FreeRADIUS-Org				1.3		tlv
@@ -36,7 +41,7 @@ ATTRIBUTE	Radius-Auth-Serv-Total-Packets-Dropped			13		integer
 ATTRIBUTE	Radius-Auth-Serv-Total-Unknown-Types			14		integer
 
 ATTRIBUTE	Radius-Auth-Client-Table				15		tlv
-ATTRIBUTE	Radius-Auth-Serv-Index					15.0		integer
+ATTRIBUTE	Radius-Auth-Client-Table-Index				15.0		integer
 ATTRIBUTE	Radius-Auth-Client-Entry				15.1		tlv
 
 # Client statistics
@@ -56,6 +61,7 @@ ATTRIBUTE	Radius-Auth-Serv-Unknown-Types				12		integer
 END-TLV		Radius-Auth-Client-Entry
 
 ATTRIBUTE	Radius-Auth-Client-Ext-Table				16		tlv
+ATTRIBUTE	Radius-Auth-Client-Ext-Table-Index			16.0		integer
 ATTRIBUTE	Radius-Auth-Client-Ext-Entry				16.1		tlv
 
 BEGIN-TLV	Radius-Auth-Client-Ext-Entry
