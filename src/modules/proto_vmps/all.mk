@@ -4,5 +4,5 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= vmps.c vqp.c
+SOURCES		:= proto_vmps.c vqp.c
 

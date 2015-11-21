@@ -1,5 +1,5 @@
 /*
- * vmps.c	Handle VMPS traffic.
+ * proto_vmps.c	Handle VMPS traffic.
  *
  * Version:	$Id$
  *
