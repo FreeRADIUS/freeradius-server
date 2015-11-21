@@ -697,11 +697,13 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			memcpy(ptr, vp->vp_ether, vp->vp_length);
 			break;
 
-		default:
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
 			memcpy(ptr, vp->vp_octets, vp->vp_length);
 			break;
+
+		default:
+			return -1;
 		}
 		ptr += vp->vp_length;
 	}
