@@ -331,3 +331,73 @@ void fr_perror(char const *fmt, ...)
 
 	va_end(ap);
 }
+
+/** Canonicalize error strings, removing tabs, and generate spaces for error marker
+ *
+ * @note talloc_free must be called on the buffer returned in spaces and text
+ *
+ * Used to produce error messages such as this:
+ @verbatim
+  I'm a string with a parser # error
+                             ^ Unexpected character in string
+ @endverbatim
+ *
+ * With code resembling this:
+ @code{.c}
+   ERROR("%s", parsed_str);
+   ERROR("%s^ %s", space, text);
+ @endcode
+ *
+ * @todo merge with above function (radlog_request_marker)
+ *
+ * @param sp Where to write a dynamically allocated buffer of spaces used to indent the error text.
+ * @param text Where to write the canonicalized version of msg (the error text).
+ * @param ctx to allocate the spaces and text buffers in.
+ * @param slen of error marker. Expects negative integer value, as returned by parse functions.
+ * @param msg to canonicalize.
+ */
+void fr_canonicalize_error(TALLOC_CTX *ctx, char **sp, char **text, ssize_t slen, char const *msg)
+{
+	size_t offset, skip = 0;
+	char *spbuf, *p;
+	char *value;
+
+	offset = -slen;
+
+	/*
+	 *	Ensure that the error isn't indented
+	 *	too far.
+	 */
+	if (offset > 45) {
+		skip = offset - 40;
+		offset -= skip;
+		value = talloc_strdup(ctx, msg + skip);
+		memcpy(value, "...", 3);
+
+	} else {
+		value = talloc_strdup(ctx, msg);
+	}
+
+	spbuf = talloc_array(ctx, char, offset + 1);
+	memset(spbuf, ' ', offset);
+	spbuf[offset] = '\0';
+
+	/*
+	 *	Smash tabs to spaces for the input string.
+	 */
+	for (p = value; *p != '\0'; p++) {
+		if (*p == '\t') *p = ' ';
+	}
+
+
+	/*
+	 *	Ensure that there isn't too much text after the error.
+	 */
+	if (strlen(value) > 100) {
+		memcpy(value + 95, "... ", 5);
+	}
+
+	*sp = spbuf;
+	*text = value;
+}
+

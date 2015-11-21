@@ -114,8 +114,6 @@ void	radlog_request_marker(log_type_t type, log_lvl_t lvl, REQUEST *request,
 			      char const *fmt, size_t indent, char const *error)
 	CC_HINT(nonnull);
 
-void	fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *msg);
-
 /** @name Log global messages
  *
  * Write to the global log.

@@ -340,7 +340,7 @@ char		*value_data_asprint(TALLOC_CTX *ctx,
  */
 void		fr_strerror_printf(char const *, ...) CC_HINT(format (printf, 1, 2));
 void		fr_perror(char const *, ...) CC_HINT(format (printf, 1, 2));
-
+void		fr_canonicalize_error(TALLOC_CTX *ctx, char **spaces, char **text, ssize_t slen, char const *msg);
 
 char const	*fr_strerror(void);
 char const	*fr_syserror(int num);
