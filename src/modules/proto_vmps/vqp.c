@@ -558,9 +558,9 @@ static int contents[5][VQP_MAX_ATTRIBUTES] = {
 
 int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 {
-	int i, code, length;
-	VALUE_PAIR *vp;
-	uint8_t *ptr;
+	int		i, code, length;
+	VALUE_PAIR	*vp;
+	uint8_t		*out;
 	VALUE_PAIR	*vps[VQP_MAX_ATTRIBUTES];
 
 	if (!packet) {
@@ -622,15 +622,15 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	}
 	packet->data_len = length;
 
-	ptr = packet->data;
+	out = packet->data;
 
-	ptr[0] = VQP_VERSION;
-	ptr[1] = code;
+	out[0] = VQP_VERSION;
+	out[1] = code;
 
 	if (!vp) {
-		ptr[2] = 0;
+		out[2] = 0;
 	} else {
-		ptr[2] = vp->vp_integer & 0xff;
+		out[2] = vp->vp_integer & 0xff;
 		return 0;
 	}
 
@@ -640,10 +640,10 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if ((code == 1) || (code == 3)) {
 		uint32_t sequence;
 
-		ptr[3] = VQP_MAX_ATTRIBUTES;
+		out[3] = VQP_MAX_ATTRIBUTES;
 
 		sequence = htonl(packet->id);
-		memcpy(ptr + 4, &sequence, 4);
+		memcpy(out + 4, &sequence, 4);
 	} else {
 		if (!original) {
 			fr_strerror_printf("Cannot send VQP response without request");
@@ -653,19 +653,19 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		/*
 		 *	Packet Sequence Number
 		 */
-		memcpy(ptr + 4, original->data + 4, 4);
+		memcpy(out + 4, original->data + 4, 4);
 
-		ptr[3] = 2;
+		out[3] = 2;
 	}
 
-	ptr += 8;
+	out += 8;
 
 	/*
 	 *	Encode the VP's.
 	 */
 	for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
 		if (!vps[i]) break;
-		if (ptr >= (packet->data + packet->data_len)) break;
+		if (out >= (packet->data + packet->data_len)) break;
 
 		vp = vps[i];
 
@@ -676,36 +676,36 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		 *	bits, as the upper 8 bits have been hacked.
 		 *	See also dictionary.vqp
 		 */
-		ptr[0] = 0;
-		ptr[1] = 0;
-		ptr[2] = 0x0c;
-		ptr[3] = vp->da->attr & 0xff;
+		out[0] = 0;
+		out[1] = 0;
+		out[2] = 0x0c;
+		out[3] = vp->da->attr & 0xff;
 
 		/* Length */
-		ptr[4] = 0;
-		ptr[5] = vp->vp_length & 0xff;
+		out[4] = 0;
+		out[5] = vp->vp_length & 0xff;
 
-		ptr += 6;
+		out += 6;
 
 		/* Data */
 		switch (vp->da->type) {
 		case PW_TYPE_IPV4_ADDR:
-			memcpy(ptr, &vp->vp_ipaddr, 4);
+			memcpy(out, &vp->vp_ipaddr, 4);
 			break;
 
 		case PW_TYPE_ETHERNET:
-			memcpy(ptr, vp->vp_ether, vp->vp_length);
+			memcpy(out, vp->vp_ether, vp->vp_length);
 			break;
 
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
-			memcpy(ptr, vp->vp_octets, vp->vp_length);
+			memcpy(out, vp->vp_octets, vp->vp_length);
 			break;
 
 		default:
 			return -1;
 		}
-		ptr += vp->vp_length;
+		out += vp->vp_length;
 	}
 
 	return 0;
