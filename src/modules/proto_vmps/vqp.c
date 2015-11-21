@@ -583,9 +583,24 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	}
 
 	length = VQP_HDR_LEN;
-	memset(vps, 0, sizeof(vps));
 
 	vp = fr_pair_find_by_num(packet->vps, 0, PW_VQP_ERROR_CODE, TAG_ANY);
+	if (vp) {
+		packet->data = talloc_array(packet, uint8_t, length);
+		if (!packet->data) {
+			fr_strerror_printf("No memory");
+			return -1;
+		}
+		packet->data_len = length;
+
+		out = packet->data;
+
+		out[0] = VQP_VERSION;
+		out[1] = code;
+
+		out[2] = vp->vp_integer & 0xff;
+		return 0;
+	}
 
 	/*
 	 *	FIXME: Map attributes from calling-station-Id, etc.
@@ -594,10 +609,12 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	 *	best place to add the code...
 	 */
 
+	memset(vps, 0, sizeof(vps));
+
 	/*
-	 *	No error: encode attributes.
+	 *	Determine how long the packet is.
 	 */
-	if (!vp) for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
+	for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
 		if (!contents[code][i]) break;
 
 		vps[i] = fr_pair_find_by_num(packet->vps, 0, contents[code][i] | 0x2000, TAG_ANY);
@@ -607,11 +624,11 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		 */
 		if (!vps[i]) {
 			fr_strerror_printf("Failed to find VQP attribute %02x",
-				   contents[code][i]);
+					   contents[code][i]);
 			return -1;
 		}
 
-		length += 6;
+		length += 6;	/* header */
 		length += vps[i]->vp_length;
 	}
 
@@ -626,13 +643,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	out[0] = VQP_VERSION;
 	out[1] = code;
-
-	if (!vp) {
-		out[2] = 0;
-	} else {
-		out[2] = vp->vp_integer & 0xff;
-		return 0;
-	}
+	out[2] = 0;
 
 	/*
 	 *	The number of attributes is hard-coded.
