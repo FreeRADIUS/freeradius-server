@@ -4,4 +4,4 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= bfd.c
+SOURCES		:= proto_bfd.c

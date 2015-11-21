@@ -1,5 +1,5 @@
 /*
- * bfd.c	BFD processing.
+ * proto_bfd.c	BFD processing.
  *
  * Version:	$Id$
  *
