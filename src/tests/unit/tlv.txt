@@ -1,6 +1,6 @@
 # Encode deeply nested TLV under a vendor dictionary
 encode Radius-Auth-Serv-Total-Unknown-Types = 99999
-data f1 24 1a 00 00 2c 50 01 03 1c 06 1a 01 18 02 16 01 14 03 12 43 10 01 0e 01 0c 01 0a 01 08 0e 06 00 01 86 9f
+data f1 22 1a 00 00 2c 50 01 03 1a 06 18 01 16 02 14 01 12 43 10 01 0e 01 0c 01 0a 01 08 0e 06 00 01 86 9f
 
 decode -
 data Radius-Auth-Serv-Total-Unknown-Types = 99999
