@@ -788,7 +788,7 @@ static ssize_t cache_xlat(char **out, UNUSED size_t freespace,
 	rlm_cache_t const	*inst = mod_inst;
 	rlm_cache_handle_t	*handle = NULL;
 
-	size_t			slen;
+	ssize_t			slen;
 	ssize_t			ret = 0;
 
 	uint8_t			buffer[1024];
