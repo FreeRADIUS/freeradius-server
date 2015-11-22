@@ -40,7 +40,7 @@ RCSID("$Id$")
  *
  */
 ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
-#ifndef WITH_UDPFROMTO
+#ifdef WITH_UDPFROMTO
 		 fr_ipaddr_t *src_ipaddr, uint16_t src_port, int if_index,
 #else
 		 UNUSED fr_ipaddr_t *src_ipaddr, UNUSED uint16_t src_port, UNUSED int if_index,
