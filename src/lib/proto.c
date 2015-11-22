@@ -75,13 +75,13 @@ void fr_proto_tlv_stack_print(char const *file, int line, char const *func, fr_d
 	len = snprintf(prefix, sizeof(prefix), "%s:%i", file, line);
 	if (len > proto_log_indent) proto_log_indent = len;
 
-	for (i = 0; tlv_stack[i] && (i < FR_DICT_MAX_TLV_STACK); i++);
+	for (i = 0; (i < FR_DICT_MAX_TLV_STACK) && tlv_stack[i]; i++);
 	if (!i) return;
 
 	fprintf(fr_log_fp, "stk: %s%.*s: Encoder in %s\n",
 		prefix, (int)(proto_log_indent - len), spaces, func);
 	for (i--; i >= 0; i--) {
-		fprintf(fr_log_fp, "stk: %s%.*s: %s [%i] %s: %s, vendor: 0x%x (%i), attr: 0x%x (%i)\n",
+		fprintf(fr_log_fp, "stk: %s%.*s: %s [%i] %s: %s, vendor: 0x%x (%u), attr: 0x%x (%u)\n",
 			prefix, (int)(proto_log_indent - len), spaces, (i == (int)depth) ? ">" : " ", i,
 			fr_int2str(dict_attr_types, tlv_stack[i]->type, "?Unknown?"),
 			tlv_stack[i]->name, tlv_stack[i]->vendor, tlv_stack[i]->vendor,

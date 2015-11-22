@@ -2876,7 +2876,7 @@ int fr_dict_unknown_from_oid(fr_dict_t *dict, fr_dict_attr_t *vendor_da, fr_dict
 			vendor_da->flags.is_unknown = 1;
 			vendor_da->flags.type_size = 1;
 			vendor_da->flags.length = 1;
-			snprintf(vendor_da->name, FR_DICT_ATTR_MAX_NAME_LEN, "Vendor-%i", vendor);
+			snprintf(vendor_da->name, FR_DICT_ATTR_MAX_NAME_LEN, "Vendor-%u", vendor);
 
 			parent = vendor_da;
 		} else {
@@ -3117,7 +3117,7 @@ void fr_dict_print(fr_dict_attr_t const *da, int depth)
 		break;
 	}
 
-	printf("%i%.*s%s \"%s\" vendor: %x (%i), num: %x (%i), type: %s, flags: %s\n", da->depth, depth,
+	printf("%u%.*s%s \"%s\" vendor: %x (%u), num: %x (%u), type: %s, flags: %s\n", da->depth, depth,
 	       "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t", name, da->name,
 	       da->vendor, da->vendor, da->attr, da->attr,
 	       fr_int2str(dict_attr_types, da->type, "?Unknown?"), buff);
