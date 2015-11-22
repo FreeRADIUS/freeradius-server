@@ -653,10 +653,13 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 	 *	space.
 	 */
 	if ((attr > UINT8_MAX) && !flags.internal) {
+		if (parent->flags.is_root && ((attr >= 0x2b00) && (attr < 0x2d00))) { /* @fixme: VMPS */
+			/* ignore it */
+		} else
+
 		for (v = parent; v != NULL; v = v->parent) {
 			if ((v->type == PW_TYPE_TLV) || (v->type == PW_TYPE_VENDOR)) {
 				if ((v->flags.type_size < 4) &&
-				    (!((attr >= 0x2b00) && (attr < 0x2d00))) && /* @fixme: VMPS */
 				    (attr >= (1 << (8 * v->flags.type_size)))) {
 					fr_strerror_printf("Attributes must have value between 1..%u",
 							   (1 << (8 * v->flags.type_size)) - 1);
