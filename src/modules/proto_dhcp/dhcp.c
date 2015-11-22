@@ -1221,7 +1221,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 */
 	{
 		uint8_t const *end;
-		size_t len;
+		ssize_t len;
 
 		p = packet->data + 240;
 		end = p + (packet->data_len - 240);

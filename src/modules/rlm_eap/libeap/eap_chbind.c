@@ -190,7 +190,7 @@ PW_CODE chbind_process(REQUEST *request, CHBIND_REQ *chbind)
 
 		fr_cursor_init(&cursor, &vp);
 		while (data_len > 0) {
-			size_t attr_len;
+			ssize_t attr_len;
 
 			attr_len = fr_radius_decode_pair(fake->packet, &cursor, fr_dict_root(fr_dict_internal),
 							 attr_data, data_len, NULL);
