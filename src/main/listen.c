@@ -2649,8 +2649,6 @@ static int init_pcap(rad_listen_t *this)
 static int listen_bind(rad_listen_t *this)
 {
 	int			rcode, port;
-	struct sockaddr_storage	salocal;
-	socklen_t		salen;
 	listen_socket_t		*sock = this->data;
 	char const		*port_name = NULL;
 	bool			async = true;
@@ -2771,128 +2769,21 @@ static int listen_bind(rad_listen_t *this)
 	}
 
 	/*
-	 *	Bind to a device BEFORE touching IP addresses.
+	 *	Bind to the interface, IP address, and port.
 	 */
-	if (sock->interface) {
-#ifdef SO_BINDTODEVICE
-		struct ifreq ifreq;
+	port = sock->my_port;
+	rad_suid_up();
+	rcode = fr_socket_server_bind(this->fd, &sock->my_ipaddr, &port, sock->interface);
+	rad_suid_down();
+	sock->my_port = port;
 
-		memset(&ifreq, 0, sizeof(ifreq));
-		strlcpy(ifreq.ifr_name, sock->interface, sizeof(ifreq.ifr_name));
+	if (rcode < 0) {
+		char buffer[256];
 
-		DEBUG4("[FD %i] Binding to interface %s -- setsockopt(%i, SOL_SOCKET, SO_BINDTODEVICE, %p, %zu)",
-		       this->fd, sock->interface, this->fd, &ifreq, sizeof(ifreq));
-
-		rad_suid_up();
-		rcode = setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
-		rad_suid_down();
-		if (rcode < 0) {
-			close(this->fd);
-			ERROR("Failed binding to interface %s: %s", sock->interface, fr_syserror(errno));
-			return -1;
-		} /* else it worked. */
-#else
-#  ifdef HAVE_STRUCT_SOCKADDR_IN6
-#  ifdef HAVE_NET_IF_H
-		/*
-		 *	Odds are that any system supporting "bind to
-		 *	device" also supports IPv6, so this next bit
-		 *	isn't necessary.  But it's here for
-		 *	completeness.
-		 *
-		 *	If we're doing IPv6, and the scope hasn't yet
-		 *	been defined, set the scope to the scope of
-		 *	the interface.
-		 */
-		if (sock->my_ipaddr.af == AF_INET6) {
-			if (sock->my_ipaddr.zone_id == 0) {
-				sock->my_ipaddr.zone_id = if_nametoindex(sock->interface);
-				DEBUG4("[FD %i] IPv6 scope resolves to %u", this->fd, sock->my_ipaddr.zone_id);
-				if (sock->my_ipaddr.zone_id == 0) {
-					close(this->fd);
-					ERROR("Failed finding interface %s: %s", sock->interface, fr_syserror(errno));
-					return -1;
-				}
-			} /* else scope was defined: we're OK. */
-		} else
-#  endif
-#endif
-				/*
-				 *	IPv4: no link local addresses,
-				 *	and no bind to device.
-				 */
-		{
-			close(this->fd);
-			ERROR("Failed binding to interface %s: \"bind to device\" is unsupported", sock->interface);
-			return -1;
-		}
-#endif
-	}
-
-	/*
-	 *	Set up sockaddr stuff.
-	 */
-	if (!fr_ipaddr_to_sockaddr(&sock->my_ipaddr, sock->my_port, &salocal, &salen)) {
 		close(this->fd);
+		this->print(this, buffer, sizeof(buffer));
+		ERROR("Failed binding to %s: %s", buffer, fr_syserror(errno));
 		return -1;
-	}
-
-	/*
-	 *	May be binding to priviledged ports.
-	 */
-	if (sock->my_port != 0) {
-		if (DEBUG_ENABLED4) {
-			if (salocal.ss_family == AF_INET) {
-				char		   	buffer[INET_ADDRSTRLEN];
-				struct sockaddr_in	*addr = (struct sockaddr_in *)&salocal;
-
-				inet_ntop(addr->sin_family, &addr->sin_addr, buffer, sizeof(buffer));
-				DEBUG4("[FD %i] Binding to address %s port %u -- bind(%i, %p, %u)",
-				       this->fd, buffer, ntohs(addr->sin_port), this->fd, &salocal, salen);
-			} else if (salocal.ss_family == AF_INET6) {
-				char		   	buffer[INET6_ADDRSTRLEN];
-				struct sockaddr_in6	*addr = (struct sockaddr_in6 *)&salocal;
-
-				inet_ntop(addr->sin6_family, &addr->sin6_addr, buffer, sizeof(buffer));
-				DEBUG4("[FD %i] Binding to address %s port %u scope ID %i -- bind(%i, %p, %u)",
-				       this->fd, buffer, ntohs(addr->sin6_port), addr->sin6_scope_id,
-				       this->fd, &salocal, salen);
-			}
-		}
-		rad_suid_up();
-		rcode = bind(this->fd, (struct sockaddr *)&salocal, salen);
-		rad_suid_down();
-		if (rcode < 0) {
-			char buffer[256];
-
-			close(this->fd);
-
-			this->print(this, buffer, sizeof(buffer));
-			ERROR("Failed binding to %s: %s", buffer, fr_syserror(errno));
-			return -1;
-		}
-
-		/*
-		 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
-		 *	kernel instead binds us to a 1.2.3.4.  If this
-		 *	happens, notice, and remember our real IP.
-		 */
-		{
-			struct sockaddr_storage	src;
-			socklen_t		sizeof_src = sizeof(src);
-
-			memset(&src, 0, sizeof_src);
-			if (getsockname(this->fd, (struct sockaddr *) &src, &sizeof_src) < 0) {
-				ERROR("Failed getting socket name: %s", fr_syserror(errno));
-				return -1;
-			}
-
-			if (!fr_ipaddr_from_sockaddr(&src, sizeof_src,
-						&sock->my_ipaddr, &sock->my_port)) {
-				ERROR("Socket has unsupported address family");
-				return -1;
-			}
-		}
 	}
 
 #ifdef WITH_TCP
@@ -2912,13 +2803,6 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 #endif
-
-	{
-		char buffer[256];
-		this->print(this, buffer, sizeof(buffer));
-		fprintf(stderr, "BOUND TO %s\n", buffer);					
-	}
-
 
 	/*
 	 *	Mostly for proxy sockets.
