@@ -300,23 +300,11 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 {
 	ssize_t			data_len, packet_len;
 	uint8_t			header[4];
-	struct sockaddr_storage	src;
-	socklen_t		sizeof_src = sizeof(src);
 
-	data_len = recvfrom(sockfd, header, sizeof(header), MSG_PEEK, (struct sockaddr *)&src, &sizeof_src);
+	data_len = udp_recv_peek(sockfd, header, sizeof(header), UDP_FLAGS_PEEK, src_ipaddr, src_port);
 	if (data_len < 0) {
 		if ((errno == EAGAIN) || (errno == EINTR)) return 0;
 		return -1;
-	}
-
-	/*
-	 *	Convert AF.  If unknown, discard packet.
-	 */
-	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, src_port)) {
-		FR_DEBUG_STRERROR_PRINTF("Unknown address family");
-		udp_recv_discard(sockfd);
-
-		return 1;
 	}
 
 	/*
@@ -393,8 +381,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	 *	This lets us allocate the buffer to use for
 	 *	reading the rest of the packet.
 	 */
-	data_len = recvfrom(sockfd, header, sizeof(header), MSG_PEEK,
-			    (struct sockaddr *)&src, &sizeof_src);
+	data_len = udp_recv_peek(sockfd, header, sizeof(header), UDP_FLAGS_PEEK, src_ipaddr, src_port);
 	if (data_len < 0) {
 		if ((errno == EAGAIN) || (errno == EINTR)) return 0;
 		return -1;
@@ -419,8 +406,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 		 *	a RADIUS header length: discard it.
 		 */
 		if (len < RADIUS_HDR_LEN) {
-			recvfrom(sockfd, header, sizeof(header), flags,
-				 (struct sockaddr *)&src, &sizeof_src);
+			udp_recv_discard(sockfd);
 			return 0;
 
 			/*
@@ -428,8 +414,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 			 *	Anything after 4k will be discarded.
 			 */
 		} else if (len > MAX_PACKET_LEN) {
-			recvfrom(sockfd, header, sizeof(header), flags,
-				 (struct sockaddr *)&src, &sizeof_src);
+			udp_recv_discard(sockfd);
 			return len;
 		}
 	}

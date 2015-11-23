@@ -24,11 +24,14 @@
 
 #define UDP_FLAGS_NONE		(0)
 #define UDP_FLAGS_CONNECTED	(1 << 0)
+#define UDP_FLAGS_PEEK		(1 << 1)
 
 ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t src_port, int if_index,
 		 fr_ipaddr_t *dst_ipaddr, uint16_t dst_port);
 
 void udp_recv_discard(int sockfd);
+
+ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipaddr_t *src_ipaddr, uint16_t *src_port);
 
 #endif /* _FR_UDP_H */

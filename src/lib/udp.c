@@ -31,9 +31,12 @@ RCSID("$Id$")
  *	This is easier than ifdef's in the function definition.
  */
 #ifdef WITH_UDPFROMTO
-#undef UNUSED
-#define UNUSED
+#define UDP_UNUSED
+#else
+#define UDP_UNUSED UNUSED
 #endif
+
+#define FR_DEBUG_STRERROR_PRINTF if (fr_debug_lvl) fr_strerror_printf
 
 /** Send a packet via a UDP socket.
  *
@@ -50,7 +53,7 @@ RCSID("$Id$")
  *
  */
 ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
-		 UNUSED fr_ipaddr_t *src_ipaddr, UNUSED uint16_t src_port, UNUSED int if_index,
+		 UDP_UNUSED fr_ipaddr_t *src_ipaddr, UDP_UNUSED uint16_t src_port, UDP_UNUSED int if_index,
 		 fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
 {
 	int rcode;
@@ -109,4 +112,39 @@ void udp_recv_discard(int sockfd)
 
 	(void) recvfrom(sockfd, data, sizeof(data), 0,
 			(struct sockaddr *)&src, &sizeof_src);
+}
+
+
+/** Peek at the header of a UDP packet.
+ *
+ * @param[in] sockfd we're reading from.
+ * @param[out] data pointer where data will be written
+ * @param[in] data_len length of data to read
+ * @param[in] flags for things
+ * @param[out] src_ipaddr of the packet.
+ * @param[out] src_port of the packet.
+ */
+ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, UNUSED int flags, fr_ipaddr_t *src_ipaddr, uint16_t *src_port)
+{
+	ssize_t			peeked;
+	struct sockaddr_storage	src;
+	socklen_t		sizeof_src = sizeof(src);
+
+	peeked = recvfrom(sockfd, data, data_len, MSG_PEEK, (struct sockaddr *)&src, &sizeof_src);
+	if (peeked < 0) {
+		if ((errno == EAGAIN) || (errno == EINTR)) return 0;
+		return -1;
+	}
+
+	/*
+	 *	Convert AF.  If unknown, discard packet.
+	 */
+	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, src_port)) {
+		FR_DEBUG_STRERROR_PRINTF("Unknown address family");
+		udp_recv_discard(sockfd);
+
+		return 0;
+	}
+
+	return peeked;
 }
