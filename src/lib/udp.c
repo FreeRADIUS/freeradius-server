@@ -27,6 +27,14 @@ RCSID("$Id$")
 
 #include <freeradius-devel/udp.h>
 
+/*
+ *	This is easier than ifdef's in the function definition.
+ */
+#ifdef WITH_UDPFROMTO
+#undef UNUSED
+#define UNUSED
+#endif
+
 /** Send a packet via a UDP socket.
  *
  * @param[in] sockfd we're reading from.
@@ -42,11 +50,7 @@ RCSID("$Id$")
  *
  */
 ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
-#ifdef WITH_UDPFROMTO
-		 fr_ipaddr_t *src_ipaddr, uint16_t src_port, int if_index,
-#else
 		 UNUSED fr_ipaddr_t *src_ipaddr, UNUSED uint16_t src_port, UNUSED int if_index,
-#endif
 		 fr_ipaddr_t *dst_ipaddr, uint16_t dst_port)
 {
 	int rcode;
