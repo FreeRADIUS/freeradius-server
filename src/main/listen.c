@@ -500,7 +500,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 	request->listener = listener;
 	request->client = client;
-	request->packet = rad_recv(NULL, listener->fd, 0x02); /* MSG_PEEK */
+	request->packet = rad_recv(NULL, listener->fd, UDP_FLAGS_PEEK);
 	if (!request->packet) {				/* badly formed, etc */
 		talloc_free(request);
 		if (DEBUG_ENABLED) ERROR("Receive - %s", fr_strerror());
