@@ -313,13 +313,13 @@ int vqp_decode(RADIUS_PACKET *packet)
 			if (attr_len != 6) goto unknown;
 
 			memcpy(&vp->vp_ether, ptr, 6);
-			vp->vp_attr_len = 6;
+			vp->vp_length = 6;
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
 			if (attr_len == 4) {
 				memcpy(&vp->vp_ipaddr, ptr, 4);
-				vp->vp_attr_len = 4;
+				vp->vp_length = 4;
 				break;
 			}
 
