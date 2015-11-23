@@ -143,8 +143,79 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, UNUSED int flags,
 		FR_DEBUG_STRERROR_PRINTF("Unknown address family");
 		udp_recv_discard(sockfd);
 
-		return 0;
+		return -1;
 	}
 
 	return peeked;
+}
+
+
+/** Read a UDP packet
+ *
+ * @param[in] sockfd we're reading from.
+ * @param[out] data pointer where data will be written
+ * @param[in] data_len length of data to read
+ * @param[in] flags for things
+ * @param[out] src_ipaddr of the packet.
+ * @param[out] src_port of the packet.
+ * @param[out] dst_ipaddr of the packet.
+ * @param[out] dst_port of the packet.
+ */
+ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
+		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
+		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, UDP_UNUSED int *if_index)
+{
+	struct sockaddr_storage	src;
+	struct sockaddr_storage	dst;
+	socklen_t		sizeof_src = sizeof(src);
+	socklen_t		sizeof_dst = sizeof(dst);
+	ssize_t			received;
+	uint16_t		port;
+
+	/*
+	 *	Connected sockets already know src/dst IP/port
+	 */
+	if (flags & UDP_FLAGS_CONNECTED) {
+		return recv(sockfd, data, data_len, 0);
+	}
+
+	/*
+	 *	Receive the packet.  The OS will discard any data in the
+	 *	packet after "len" bytes.
+	 */
+#ifdef WITH_UDPFROMTO
+	received = recvfromto(sockfd, data, data_len, 0,
+			      (struct sockaddr *)&src, &sizeof_src,
+			      (struct sockaddr *)&dst, &sizeof_dst,
+			      if_index, NULL);
+#else
+	received = recvfrom(sockfd, data, data_len, 0,
+			    (struct sockaddr *)&src, &sizeof_src);
+
+	/*
+	 *	Get the destination address, if requested.
+	 */
+	if (dst_ipaddr) {
+		if (getsockname(sockfd, (struct sockaddr *)&dst,
+				&sizeof_dst) < 0) {
+			return -1;
+		}
+	}
+
+	if (if_index) *if_index = 0;
+#endif
+
+	if (received < 0) return received;
+
+	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port)) {
+		return -1;
+	}
+	*src_port = port;
+
+	if (dst_ipaddr) {
+		fr_ipaddr_from_sockaddr(&dst, sizeof_dst, dst_ipaddr, &port);
+		*dst_port = port;
+	}
+
+	return received;
 }

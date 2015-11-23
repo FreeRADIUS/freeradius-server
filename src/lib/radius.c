@@ -320,7 +320,7 @@ invalid:
 					 fr_strerror());
 		udp_recv_discard(sockfd);
 
-		return 1;
+		return 0;
 	}
 
 	/*
@@ -360,107 +360,27 @@ invalid:
 /** Wrapper for recvfrom, which handles recvfromto, IPv6, and all possible combinations
  *
  */
-static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
-			    fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
-			    fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
+static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags)
 {
-	struct sockaddr_storage	src;
-	struct sockaddr_storage	dst;
-	socklen_t		sizeof_src = sizeof(src);
-	socklen_t		sizeof_dst = sizeof(dst);
 	ssize_t			data_len;
-	uint8_t			header[4];
-	size_t			len;
-	uint16_t		port;
 
-	memset(&src, 0, sizeof_src);
-	memset(&dst, 0, sizeof_dst);
-
-	/*
-	 *	Read the length of the packet, from the packet.
-	 *	This lets us allocate the buffer to use for
-	 *	reading the rest of the packet.
-	 */
-	data_len = udp_recv_peek(sockfd, header, sizeof(header), UDP_FLAGS_PEEK, src_ipaddr, src_port);
+	data_len = rad_recv_header(sockfd, &packet->src_ipaddr, &packet->src_port, &packet->code);
 	if (data_len < 0) {
 		if ((errno == EAGAIN) || (errno == EINTR)) return 0;
 		return -1;
 	}
 
-	/*
-	 *	Too little data is available, discard the packet.
-	 */
-	if (data_len < 4) {
-		udp_recv_discard(sockfd);
+	if (data_len == 0) return -1; /* invalid packet */
 
-		return 0;
-
-	} else {		/* we got 4 bytes of data. */
-		/*
-		 *	See how long the packet says it is.
-		 */
-		len = (header[2] * 256) + header[3];
-
-		/*
-		 *	The length in the packet says it's less than
-		 *	a RADIUS header length: discard it.
-		 */
-		if (len < RADIUS_HDR_LEN) {
-			udp_recv_discard(sockfd);
-			return 0;
-
-			/*
-			 *	Enforce RFC requirements, for sanity.
-			 *	Anything after 4k will be discarded.
-			 */
-		} else if (len > MAX_PACKET_LEN) {
-			udp_recv_discard(sockfd);
-			return len;
-		}
-	}
-
-	packet->data = talloc_array(packet, uint8_t, len);
+	packet->data = talloc_array(packet, uint8_t, data_len);
 	if (!packet->data) return -1;
 
-	/*
-	 *	Receive the packet.  The OS will discard any data in the
-	 *	packet after "len" bytes.
-	 */
-#ifdef WITH_UDPFROMTO
-	data_len = recvfromto(sockfd, packet->data, len, flags,
-			      (struct sockaddr *)&src, &sizeof_src,
-			      (struct sockaddr *)&dst, &sizeof_dst,
-			      &packet->if_index, &packet->timestamp);
-#else
-	data_len = recvfrom(sockfd, packet->data, len, flags,
-			    (struct sockaddr *)&src, &sizeof_src);
+	packet->data_len = data_len;
 
-	/*
-	 *	Get the destination address, too.
-	 */
-	if (getsockname(sockfd, (struct sockaddr *)&dst,
-			&sizeof_dst) < 0) return -1;
-#endif
-	if (data_len < 0) {
-		return data_len;
-	}
-
-	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port)) {
-		return -1;	/* Unknown address family, Die Die Die! */
-	}
-	*src_port = port;
-
-	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, dst_ipaddr, &port);
-	*dst_port = port;
-
-	/*
-	 *	Different address families should never happen.
-	 */
-	if (src.ss_family != dst.ss_family) {
-		return -1;
-	}
-
-	return data_len;
+	return udp_recv(sockfd, packet->data, packet->data_len, flags,
+			&packet->src_ipaddr, &packet->src_port,
+			&packet->dst_ipaddr, &packet->dst_port,
+			&packet->if_index);
 }
 
 /** Sign a previously encoded packet
@@ -1070,7 +990,6 @@ bool rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason)
  */
 RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 {
-	int sock_flags = 0;
 	ssize_t data_len;
 	RADIUS_PACKET		*packet;
 
@@ -1083,14 +1002,7 @@ RADIUS_PACKET *rad_recv(TALLOC_CTX *ctx, int fd, int flags)
 		return NULL;
 	}
 
-	if (flags & 0x02) {
-		sock_flags = MSG_PEEK;
-		flags &= ~0x02;
-	}
-
-	data_len = rad_recvfrom(fd, packet, sock_flags,
-				&packet->src_ipaddr, &packet->src_port,
-				&packet->dst_ipaddr, &packet->dst_port);
+	data_len = rad_recvfrom(fd, packet, flags);
 	if (data_len < 0) {
 		FR_DEBUG_STRERROR_PRINTF("Error receiving packet: %s", fr_syserror(errno));
 		/* packet->data is NULL */
