@@ -71,155 +71,59 @@ RCSID("$Id$")
 #define VQP_MAX_ATTRIBUTES (12)
 
 
-/*
- *	Wrapper for recvfrom, which handles recvfromto, IPv6, and all
- *	possible combinations.
- *
- *	FIXME:  This is copied from rad_recvfrom, with minor edits.
- */
-static ssize_t vqp_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
-			    fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
-			    fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
+static ssize_t vqp_recv_header(int sockfd)
 {
-	struct sockaddr_storage	src;
-	struct sockaddr_storage	dst;
-	socklen_t		sizeof_src = sizeof(src);
-	socklen_t		sizeof_dst = sizeof(dst);
 	ssize_t			data_len;
-	uint8_t			header[4];
-	size_t			len;
-	uint16_t		port;
-
-	memset(&src, 0, sizeof_src);
-	memset(&dst, 0, sizeof_dst);
-
-	/*
-	 *	Get address family, etc. first, so we know if we
-	 *	need to do udpfromto.
-	 *
-	 *	FIXME: udpfromto also does this, but it's not
-	 *	a critical problem.
-	 */
-	if (getsockname(sockfd, (struct sockaddr *)&dst,
-			&sizeof_dst) < 0) return -1;
+	uint8_t			header[VQP_HDR_LEN];
 
 	/*
 	 *	Read the length of the packet, from the packet.
 	 *	This lets us allocate the buffer to use for
 	 *	reading the rest of the packet.
 	 */
-	data_len = recvfrom(sockfd, header, sizeof(header), MSG_PEEK,
-			    (struct sockaddr *)&src, &sizeof_src);
+	data_len = udp_recv_peek(sockfd, header, sizeof(header), UDP_FLAGS_PEEK, NULL, NULL);
 	if (data_len < 0) return -1;
 
 	/*
 	 *	Too little data is available, discard the packet.
 	 */
-	if (data_len < 4) {
-		rad_recv_discard(sockfd);
-
+	if (data_len < VQP_HDR_LEN) {
+		udp_recv_discard(sockfd);
 		return 0;
+	}
 
 	/*
 	 *	Invalid version, packet type, or too many
 	 *	attributes.  Die.
 	 */
-	} else if ((header[0] != VQP_VERSION) ||
-		   (header[1] < 1) ||
-		   (header[1] > 4) ||
-		   (header[3] > VQP_MAX_ATTRIBUTES)) {
-		rad_recv_discard(sockfd);
-
+	if ((header[0] != VQP_VERSION) ||
+	    (header[1] < 1) ||
+	    (header[1] > 4) ||
+	    (header[3] > VQP_MAX_ATTRIBUTES)) {
+		udp_recv_discard(sockfd);
 		return 0;
-
-	} else {		/* we got 4 bytes of data. */
-		/*
-		 *	We don't care about the contents for now...
-		 */
-#if 0
-		/*
-		 *	How many attributes are in the packet.
-		 */
-		len = header[3];
-
-		if ((header[1] == 1) || (header[1] == 3)) {
-			if (len != VQP_MAX_ATTRIBUTES) {
-				rad_recv_discard(sockfd);
-
-				return 0;
-			}
-			/*
-			 *	Maximum length we support.
-			 */
-			len = (12 * (4 + 4 + MAX_VMPS_LEN));
-
-		} else {
-			if (len != 2) {
-				rad_recv_discard(sockfd);
-
-				return 0;
-			}
-			/*
-			 *	Maximum length we support.
-			 */
-			len = (12 * (4 + 4 + MAX_VMPS_LEN));
-		}
-#endif
 	}
 
 	/*
-	 *	For now, be generous.
+	 *	Hard-coded maximum size.  Because the header doesn't
+	 *	have a packet length.
 	 */
-	len = (12 * (4 + 4 + MAX_VMPS_LEN));
-
-	packet->data = talloc_array(packet, uint8_t, len);
-	if (!packet->data) return -1;
-
-	/*
-	 *	Receive the packet.  The OS will discard any data in the
-	 *	packet after "len" bytes.
-	 */
-#ifdef WITH_UDPFROMTO
-	if (dst.ss_family == AF_INET) {
-		data_len = recvfromto(sockfd, packet->data, len, flags,
-				      (struct sockaddr *)&src, &sizeof_src,
-				      (struct sockaddr *)&dst, &sizeof_dst,
-				      &packet->if_index, &packet->timestamp);
-	} else
-#endif
-		/*
-		 *	No udpfromto, OR an IPv6 socket.  Fail gracefully.
-		 */
-		data_len = recvfrom(sockfd, packet->data, len, flags,
-				    (struct sockaddr *)&src, &sizeof_src);
-	if (data_len < 0) {
-		return data_len;
-	}
-
-	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, &port)) {
-		return -1;	/* Unknown address family, Die Die Die! */
-	}
-	*src_port = port;
-
-	fr_ipaddr_from_sockaddr(&dst, sizeof_dst, dst_ipaddr, &port);
-	*dst_port = port;
-
-	/*
-	 *	Different address families should never happen.
-	 */
-	if (src.ss_family != dst.ss_family) {
-		return -1;
-	}
-
-	return data_len;
+	return (12 * (4 + 4 + MAX_VMPS_LEN));
 }
 
 RADIUS_PACKET *vqp_recv(int sockfd)
 {
-	uint8_t *ptr;
-	ssize_t length;
-	uint32_t id;
-	RADIUS_PACKET *packet;
+	uint8_t		*ptr;
+	ssize_t		data_len;
+	uint32_t	id;
+	int		attrlen;
+	RADIUS_PACKET	*packet;
+
+	data_len = vqp_recv_header(sockfd);
+	if (data_len < 0) {
+		fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
+		return NULL;
+	}
 
 	/*
 	 *	Allocate the new request data structure
@@ -230,90 +134,30 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 		return NULL;
 	}
 
-	length = vqp_recvfrom(sockfd, packet, 0,
-			      &packet->src_ipaddr, &packet->src_port,
-			      &packet->dst_ipaddr, &packet->dst_port);
+	packet->data_len = data_len;
+	packet->data = talloc_array(packet, uint8_t, data_len);
+	if (!packet->data_len) {
+		rad_free(&packet);
+		return NULL;
+	}
+
+	data_len = udp_recv(sockfd, packet->data, packet->data_len, 0,
+			    &packet->src_ipaddr, &packet->src_port,
+			    &packet->dst_ipaddr, &packet->dst_port,
+			    &packet->if_index);
+	if (data_len <= 0) {
+		rad_free(&packet);
+		return NULL;
+	}
 
 	/*
-	 *	Check for socket errors.
+	 *	Save the real length of the packet.
 	 */
-	if (length < 0) {
-		fr_strerror_printf("Error receiving packet: %s", fr_syserror(errno));
-		/* packet->data is NULL */
-		rad_free(&packet);
-		return NULL;
-	}
-	packet->data_len = length; /* unsigned vs signed */
+	packet->data_len = data_len;
 
 	/*
-	 *	We can only receive packets formatted in a way we
-	 *	expect.  However, we accept MORE attributes in a
-	 *	packet than normal implementations may send.
+	 *	Set up the fields in the packet.
 	 */
-	if (packet->data_len < VQP_HDR_LEN) {
-		fr_strerror_printf("VQP packet is too short");
-		rad_free(&packet);
-		return NULL;
-	}
-
-	ptr = packet->data;
-
-	if (ptr[3] > VQP_MAX_ATTRIBUTES) {
-		fr_strerror_printf("Too many VQP attributes");
-		rad_free(&packet);
-		return NULL;
-	}
-
-	if (packet->data_len > VQP_HDR_LEN) {
-		int attrlen;
-
-		/*
-		 *	Skip the header.
-		 */
-		ptr += VQP_HDR_LEN;
-		length = packet->data_len - VQP_HDR_LEN;
-
-		while (length > 0) {
-			if (length < 7) {
-				fr_strerror_printf("Packet contains malformed attribute");
-				rad_free(&packet);
-				return NULL;
-			}
-
-			/*
-			 *	Attributes are 4 bytes
-			 *	0x00000c01 ... 0x00000c08
-			 */
-			if ((ptr[0] != 0) || (ptr[1] != 0) ||
-			    (ptr[2] != 0x0c) || (ptr[3] < 1) || (ptr[3] > 8)) {
-				fr_strerror_printf("Packet contains invalid attribute");
-				rad_free(&packet);
-				return NULL;
-			}
-
-			/*
-			 *	Length is 2 bytes
-			 *
-			 *	We support lengths 1..253, for internal
-			 *	server reasons.  Also, there's no reason
-			 *	for bigger lengths to exist... admins
-			 *	won't be typing in a 32K vlan name.
-			 *
-			 *	Except for received ethernet frames...
-			 *	they get chopped to 253 internally.
-			 */
-			if ((ptr[3] != 5) &&
-			    ((ptr[4] != 0) || (ptr[5] > MAX_VMPS_LEN))) {
-				fr_strerror_printf("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
-				rad_free(&packet);
-				return NULL;
-			}
-			attrlen = (ptr[4] << 8) | ptr[5];
-			ptr += 6 + attrlen;
-			length -= (6 + attrlen);
-		}
-	}
-
 	packet->sockfd = sockfd;
 	packet->vps = NULL;
 
@@ -325,11 +169,54 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	memcpy(&id, packet->data + 4, 4);
 	packet->id = ntohl(id);
 
+	if (packet->data_len == VQP_HDR_LEN) {
+		return packet;
+	}
+
 	/*
-	 *	FIXME: Create a fake "request authenticator", to
-	 *	avoid duplicates?  Or is the VQP sequence number
-	 *	adequate for this purpose?
+	 *	Skip the header.
 	 */
+	ptr = packet->data + VQP_HDR_LEN;
+	data_len = packet->data_len - VQP_HDR_LEN;
+
+	while (data_len > 0) {
+		if (data_len < 7) {
+			fr_strerror_printf("Packet contains malformed attribute");
+			rad_free(&packet);
+			return NULL;
+		}
+
+		/*
+		 *	Attributes are 4 bytes
+		 *	0x00000c01 ... 0x00000c08
+		 */
+		if ((ptr[0] != 0) || (ptr[1] != 0) ||
+		    (ptr[2] != 0x0c) || (ptr[3] < 1) || (ptr[3] > 8)) {
+			fr_strerror_printf("Packet contains invalid attribute");
+			rad_free(&packet);
+			return NULL;
+		}
+
+		/*
+		 *	Length is 2 bytes
+		 *
+		 *	We support short lengths, as there's no reason
+		 *	for bigger lengths to exist... admins won't be
+		 *	typing in a 32K vlan name.
+		 *
+		 *	It's OK for ethernet frames to be longer.
+		 */
+		if ((ptr[3] != 5) &&
+		    ((ptr[4] != 0) || (ptr[5] > MAX_VMPS_LEN))) {
+			fr_strerror_printf("Packet contains attribute with invalid length %02x %02x", ptr[4], ptr[5]);
+			rad_free(&packet);
+			return NULL;
+		}
+
+		attrlen = (ptr[4] << 8) | ptr[5];
+		ptr += 6 + attrlen;
+		data_len -= (6 + attrlen);
+	}
 
 	return packet;
 }
@@ -341,7 +228,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
  */
 int vqp_send(RADIUS_PACKET *packet)
 {
-	if (!packet || !packet->data || (packet->data_len < 8)) return -1;
+	if (!packet || !packet->data || (packet->data_len < VQP_HDR_LEN)) return -1;
 
 	/*
 	 *	Don't print out the attributes, they were printed out
