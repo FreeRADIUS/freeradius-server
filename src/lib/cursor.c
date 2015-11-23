@@ -469,3 +469,57 @@ VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 
 	return vp;
 }
+
+/** Free all pairs at and past this point in the cursor
+ *
+ * Will move the cursor back one, then free current, and all VPs after the current VP.
+ *
+ * @param cursor to free pairs in.
+ */
+void fr_cursor_free(vp_cursor_t *cursor)
+{
+	VALUE_PAIR *vp, *before;
+	bool found = false, last = false;
+
+	if (!*(cursor->first)) return;	/* noop */
+
+	/*
+	 *	Fast path if the cursor has been rewound to the start
+	 */
+	if (cursor->current == *(cursor->first)) {
+		cursor->current = NULL;
+		cursor->next = NULL;
+		cursor->found = NULL;
+		cursor->last = NULL;
+		fr_pair_list_free(cursor->first);
+	}
+
+	vp = cursor->current;
+	if (!vp) return;
+
+	/*
+	 *	Where VP is not head of the list
+	 */
+	before = *(cursor->first);
+	if (!before) return;
+
+	/*
+	 *	Find the VP immediately preceding the one being removed
+	 */
+	while (before->next != vp) {
+		if (before == cursor->found) found = true;
+		if (before == cursor->last) last = true;
+		before = before->next;
+	}
+
+	fr_pair_list_free(&before->next);
+
+	cursor->current = before;		/* current jumps back one, but this is usually desirable */
+	cursor->next = NULL;			/* we just truncated the list, there is no next... */
+
+	/*
+	 *	Fixup found and last pointers
+	 */
+	if (!found) cursor->found = cursor->current;
+	if (!last) cursor->last = cursor->current;
+}

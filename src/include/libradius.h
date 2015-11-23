@@ -305,6 +305,7 @@ void		fr_cursor_insert(vp_cursor_t *cursor, VALUE_PAIR *vp);
 void		fr_cursor_merge(vp_cursor_t *cursor, VALUE_PAIR *vp);
 VALUE_PAIR	*fr_cursor_remove(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new);
+void		fr_cursor_free(vp_cursor_t *cursor);
 
 /* value.c */
 int		value_data_cmp(PW_TYPE a_type, value_data_t const *a,
