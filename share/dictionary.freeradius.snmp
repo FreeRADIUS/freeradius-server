@@ -1,22 +1,32 @@
 BEGIN-VENDOR FreeRADIUS format=Extended-Vendor-Specific-1
-ATTRIBUTE	FreeRADIUS-SNMP-Operation		0		byte
+ATTRIBUTE	FreeRADIUS-SNMP-Operation		10		byte
 
 VALUE		FreeRADIUS-SNMP-Operation		ping		0
 VALUE		FreeRADIUS-SNMP-Operation		get		1
 VALUE		FreeRADIUS-SNMP-Operation		getnext		2
 VALUE		FreeRADIUS-SNMP-Operation		set		3
 
-ATTRIBUTE	FreeRADIUS-SNMP-Varbind-Type		2		byte
+ATTRIBUTE	FreeRADIUS-SNMP-Type			11		byte
 
-VALUE		FreeRADIUS-SNMP-Varbind-Type		guage32		1
-VALUE		FreeRADIUS-SNMP-Varbind-Type		guage64		2
-VALUE		FreeRADIUS-SNMP-Varbind-Type		integer32	3
-VALUE		FreeRADIUS-SNMP-Varbind-Type		integer64	4
-VALUE		FreeRADIUS-SNMP-Varbind-Type		timeticks	5
-VALUE		FreeRADIUS-SNMP-Varbind-Type		objectid	6
-VALUE		FreeRADIUS-SNMP-Varbind-Type		ipaddr		7
-VALUE		FreeRADIUS-SNMP-Varbind-Type		octetstr	8
-VALUE		FreeRADIUS-SNMP-Varbind-Type		string		9
+VALUE		FreeRADIUS-SNMP-Type			integer		1
+VALUE		FreeRADIUS-SNMP-Type			gauge		2
+VALUE		FreeRADIUS-SNMP-Type			counter		3
+VALUE		FreeRADIUS-SNMP-Type			timeticks	4
+VALUE		FreeRADIUS-SNMP-Type			ipaddress	5
+VALUE		FreeRADIUS-SNMP-Type			objectid	6
+VALUE		FreeRADIUS-SNMP-Type			string		7
+
+#
+#  Only used for SET operations, we just return "NONE" on failure
+#  for GET operations.
+#
+ATTRIBUTE	FreeRADIUS-SNMP-Failure			12		byte
+
+VALUE		FreeRADIUS-SNMP-Failure			not-writable		1
+VALUE		FreeRADIUS-SNMP-Failure			wrong-type		2
+VALUE		FreeRADIUS-SNMP-Failure			wrong-length		3
+VALUE		FreeRADIUS-SNMP-Failure			wrong-value		4
+VALUE		FreeRADIUS-SNMP-Failure			inconsistent-value	5
 
 # Creates iso(1).org(3).dod(6).internet(1).mgmt(2).mib-2(1)
 ATTRIBUTE	FreeRADIUS-Iso				1		tlv

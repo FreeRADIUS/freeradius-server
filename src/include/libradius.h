@@ -295,6 +295,7 @@ VALUE_PAIR	*fr_cursor_init(vp_cursor_t *cursor, VALUE_PAIR * const *node);
 void		fr_cursor_copy(vp_cursor_t *out, vp_cursor_t *in);
 VALUE_PAIR	*fr_cursor_first(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_last(vp_cursor_t *cursor);
+void		fr_cursor_end(vp_cursor_t *cursor);
 VALUE_PAIR	*fr_cursor_next_by_num(vp_cursor_t *cursor, unsigned int vendor, unsigned int attr, int8_t tag);
 
 VALUE_PAIR	*fr_cursor_next_by_da(vp_cursor_t *cursor, fr_dict_attr_t const *da, int8_t tag) CC_HINT(nonnull);

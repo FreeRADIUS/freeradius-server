@@ -136,6 +136,50 @@ VALUE_PAIR *fr_cursor_last(vp_cursor_t *cursor)
 	return cursor->current;
 }
 
+/** Moves cursor past the last attribute to the end
+ *
+ * Primarily useful for setting up the cursor for freeing attributes added
+ * during the execution of a function, which later errors out, requiring only
+ * the attribute(s) that it added to be freed, and the attributes already
+ * present in the list to remain untouched.
+ *
+ @code {.c}
+   int my_cursor_insert_func(vp_cursor_t *cursor)
+   {
+   	fr_cursor_end(cursor);
+
+   	fr_cursor_insert(cursor, fr_pair_alloc_by_num(NULL, 0, PW_MESSAGE_AUTHENTICATOR));
+
+   	if (bad_thing) {
+   		fr_cursor_free(cursor);
+   		return -1;
+   	}
+
+   	return 0;
+   }
+ @endcode
+ *
+ * @param cursor to operate on.
+ */
+void fr_cursor_end(vp_cursor_t *cursor)
+{
+	if (!cursor->first || !*cursor->first) return;
+
+	/* Already at the end */
+	if (!cursor->current && cursor->last && !cursor->last->next) return;
+
+	/* Need to start at the start */
+	if (!cursor->current) fr_cursor_first(cursor);
+
+	/* Wind to the end */
+	while (cursor->next) fr_cursor_next(cursor);
+
+	/* One more time to move us off the end*/
+	fr_cursor_next(cursor);
+
+	return;
+}
+
 /** Iterate over a collection of VALUE_PAIRs of a given type in the pairlist
  *
  * Find the next attribute of a given type. If no fr_cursor_next_by_* function
@@ -470,9 +514,14 @@ VALUE_PAIR *fr_cursor_replace(vp_cursor_t *cursor, VALUE_PAIR *new)
 	return vp;
 }
 
-/** Free all pairs at and past this point in the cursor
+/** Free the current pair and all pairs after it
  *
- * Will move the cursor back one, then free current, and all VPs after the current VP.
+ * @note Use fr_cursor_remove and talloc_free to free single pairs.
+ *
+ * Will move the cursor back one, then free the current pair and all
+ * VALUE_PAIRs after it.
+ *
+ * Usually used in conjunction with #fr_cursor_end and #fr_cursor_insert.
  *
  * @param cursor to free pairs in.
  */

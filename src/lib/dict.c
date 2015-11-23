@@ -2518,23 +2518,34 @@ int fr_dict_unknown_vendor_afrom_num(TALLOC_CTX *ctx, fr_dict_attr_t const **out
  *
  * @param[out] buffer Where to write the OID.
  * @param[in] outlen Length of the output buffer.
+ * @param[in] ancestor If not NULL, only print OID portion between ancestor and da.
  * @param[in] da to print OID string for.
  * @return the number of bytes written to the buffer.
  */
-static size_t dict_print_attr_oid(char *buffer, size_t outlen, fr_dict_attr_t const *da)
+size_t dict_print_attr_oid(char *buffer, size_t outlen,
+			   fr_dict_attr_t const *ancestor, fr_dict_attr_t const *da)
 {
 	size_t len;
 	char *p = buffer, *end = p + outlen;
 	int i;
+	int depth = 0;
 	fr_dict_attr_t const *tlv_stack[FR_DICT_MAX_TLV_STACK + 1];
 
 	fr_proto_tlv_stack_build(tlv_stack, da);
 
-	len = snprintf(p, end - p, "%u", tlv_stack[0]->attr);
+	if (ancestor) {
+		depth = ancestor->depth - 1;
+		if (tlv_stack[depth] != ancestor) {
+			fr_strerror_printf("Attribute \"%s\" is not a descendent of \"%s\"", da->name, ancestor->name);
+			return -1;
+		}
+	}
+
+	len = snprintf(p, end - p, "%u", tlv_stack[depth]->attr);
 	if ((p + len) >= end) return p - buffer;
 	p += len;
 
-	for (i = 1; i < (int)da->depth; i++) {
+	for (i = depth + 1; i < (int)da->depth; i++) {
 		len = snprintf(p, end - p, ".%u", tlv_stack[i]->attr);
 		if ((p + len) >= end) return p - buffer;
 		p += len;
@@ -2580,7 +2591,7 @@ int fr_dict_unknown_from_fields(fr_dict_attr_t *da, fr_dict_attr_t const *parent
 	p += len;
 	bufsize -= len;
 
-	dict_print_attr_oid(p, bufsize, da);
+	dict_print_attr_oid(p, bufsize, NULL, da);
 
 	return 0;
 }
