@@ -408,6 +408,17 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 	}
 }
 
+/** Open an IPv4 / IPv6, and UDP / TCP socket, server side.
+ *
+ * @param[in] proto IPPROTO_UDP or IPPROTO_TCP
+ * @param[in] ipaddr The IP address to listen on
+ * @param[in,out] port the port to listen on
+ * @param[in] port_name if port==0, the name of the port
+ * @param[in] async whether we block or not on reads and writes
+ * @return
+ *	- Socket FD on success.
+ *	- -1 on failure.
+ */
 int fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async)
 {
 #ifdef FD_CLOEXEC
