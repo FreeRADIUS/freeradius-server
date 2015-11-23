@@ -1737,12 +1737,12 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int rcode;
+	int port;
 	bfd_socket_t *sock = this->data;
 
-	/*
-	 *	Copy fr_socket() here, as we may need to bind to a device.
-	 */
-	this->fd = socket(sock->my_ipaddr.af, SOCK_DGRAM, 0);
+	port = sock->my_port;
+
+	this->fd = fr_socket_server_base(IPPROTO_UDP, &sock->my_ipaddr, &port, "bfd-control", true);
 	if (this->fd < 0) {
 		char buffer[256];
 
@@ -1752,107 +1752,17 @@ static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
-#ifdef FD_CLOEXEC
-	/*
-	 *	We don't want child processes inheriting these
-	 *	file descriptors.
-	 */
-	rcode = fcntl(this->fd, F_GETFD);
-	if (rcode >= 0) {
-		if (fcntl(this->fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
-			close(this->fd);
-			ERROR("Failed setting close on exec: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-#endif
+	rad_suid_up();
+	rcode = fr_socket_server_bind(this->fd, &sock->my_ipaddr, &port, NULL);
+	rad_suid_down();
+	sock->my_port = port;
 
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	if (sock->my_ipaddr.af == AF_INET6) {
-		/*
-		 *	Listening on '::' does NOT get you IPv4 to
-		 *	IPv6 mapping.  You've got to listen on an IPv4
-		 *	address, too.  This makes the rest of the server
-		 *	design a little simpler.
-		 */
-#ifdef IPV6_V6ONLY
-
-		if (IN6_IS_ADDR_UNSPECIFIED(&sock->my_ipaddr.ipaddr.ip6addr)) {
-			int on = 1;
-
-			if (setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
-				       (char *)&on, sizeof(on)) < 0) {
-				ERROR("Can't set v6 Only option: %s", fr_syserror(errno));
-			return -1;
-			}
-		}
-#endif /* IPV6_V6ONLY */
-	}
-#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
-
-	/*
-	 *	May be binding to priviledged ports.
-	 */
-	if (sock->my_port != 0) {
-		struct sockaddr_storage salocal;
-		socklen_t	salen;
-
-#ifdef SO_REUSEADDR
-		int on = 1;
-
-		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-			ERROR("Can't set re-use address option: %s", fr_syserror(errno));
-			return -1;
-		}
-#endif
-
-		/*
-		 *	Set up sockaddr stuff.
-		 */
-		if (!fr_ipaddr_to_sockaddr(&sock->my_ipaddr, sock->my_port, &salocal, &salen)) {
-			close(this->fd);
-			return -1;
-		}
-
-		rad_suid_up();
-		rcode = bind(this->fd, (struct sockaddr *) &salocal, salen);
-		rad_suid_down();
-		if (rcode < 0) {
-			char buffer[256];
-			close(this->fd);
-
-			this->print(this, buffer, sizeof(buffer));
-			ERROR("Failed binding to %s: %s", buffer, fr_syserror(errno));
-			return -1;
-		}
-
-		/*
-		 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
-		 *	kernel instead binds us to a 1.2.3.4.  If this
-		 *	happens, notice, and remember our real IP.
-		 */
-		{
-			struct sockaddr_storage	src;
-			socklen_t	        sizeof_src = sizeof(src);
-
-			memset(&src, 0, sizeof_src);
-			if (getsockname(this->fd, (struct sockaddr *) &src,
-					&sizeof_src) < 0) {
-				ERROR("Failed getting socket name: %s", fr_syserror(errno));
-				return -1;
-			}
-
-			if (!fr_ipaddr_from_sockaddr(&src, sizeof_src,
-						&sock->my_ipaddr, &sock->my_port)) {
-				ERROR("Socket has unsupported address family");
-				return -1;
-			}
-		}
-	}
-
-	if (fr_nonblock(this->fd) < 0) {
+	if (rcode < 0) {
+		char buffer[256];
 		close(this->fd);
-		ERROR("Failed setting non-blocking on socket: %s", fr_syserror(errno));
+
+		this->print(this, buffer, sizeof(buffer));
+		ERROR("Failed binding to %s: %s", buffer, fr_syserror(errno));
 		return -1;
 	}
 
