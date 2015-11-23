@@ -2911,14 +2911,6 @@ static int listen_bind(rad_listen_t *this)
 	}
 #endif
 
-	/*
-	 *	Set up sockaddr stuff.
-	 */
-	if (!fr_ipaddr_to_sockaddr(&sock->my_ipaddr, sock->my_port, &salocal, &salen)) {
-		close(this->fd);
-		return -1;
-	}
-
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	if (sock->my_ipaddr.af == AF_INET6) {
 		/*
@@ -2997,6 +2989,14 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 #endif
+
+	/*
+	 *	Set up sockaddr stuff.
+	 */
+	if (!fr_ipaddr_to_sockaddr(&sock->my_ipaddr, sock->my_port, &salocal, &salen)) {
+		close(this->fd);
+		return -1;
+	}
 
 	/*
 	 *	May be binding to priviledged ports.
