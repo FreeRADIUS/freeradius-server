@@ -24,7 +24,11 @@
  *
  * @copyright 2015 The FreeRADIUS project
  */
- #include <freeradius-devel/libradius.h>
+
+#include <freeradius-devel/libradius.h>
+#include <freeradius-devel/udpfromto.h>
+
+#include <fcntl.h>
 
 #ifdef HAVE_SYS_UN_H
 #  include <sys/un.h>
@@ -402,4 +406,187 @@ int fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout)
 		fr_assert(0);
 		return -1;
 	}
+}
+
+int fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async)
+{
+#ifdef FD_CLOEXEC
+	int rcode;
+#endif
+	int sockfd;
+	int sock_type;
+
+	if (!proto) proto = IPPROTO_UDP;
+
+	if ((proto != IPPROTO_UDP) && (proto != IPPROTO_TCP)) {
+		fr_strerror_printf("Unknown IP protocol %d", proto);
+		return -1;
+	}
+
+	if (!ipaddr || ((ipaddr->af != AF_INET) && (ipaddr->af != AF_INET6))) {
+		fr_strerror_printf("No address specified");
+		return -1;
+	}
+
+	if (!*port) {
+		struct servent	*svp;
+		char const *proto_name;
+
+		if (!port_name) {
+			fr_strerror_printf("No port specified");
+			return -1;
+		}
+
+		if (proto == IPPROTO_UDP) {
+			proto_name = "udp";
+		} else {
+			proto_name = "tcp";
+		}
+
+		svp = getservbyname(port_name, proto_name);
+		if (!svp) {
+			fr_strerror_printf("Unknown port %s", port_name);
+			return -1;
+		}
+
+
+		*port = ntohs(svp->s_port);
+	}
+
+	if (proto == IPPROTO_UDP) {
+		sock_type = SOCK_DGRAM;
+	} else {
+		sock_type = SOCK_STREAM;
+	}
+
+	sockfd = socket(ipaddr->af, sock_type, proto);
+	if (sockfd < 0) {
+		fr_strerror_printf("Failed creating UNIX socket: %s", fr_syserror(errno));
+		return -1;
+	}
+
+#ifdef FD_CLOEXEC
+	/*
+	 *	We don't want child processes inheriting these
+	 *	file descriptors.
+	 */
+	rcode = fcntl(sockfd, F_GETFD);
+	if (rcode >= 0) {
+		if (fcntl(sockfd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
+			close(sockfd);
+			fr_strerror_printf("Failed setting close on exec: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
+#endif
+
+	if (async && (fr_nonblock(sockfd) < 0)) {
+		close(sockfd);
+		return -1;
+	}
+
+#ifdef WITH_UDPFROMTO
+	/*
+	 *	Initialize udpfromto for UDP sockets.
+	 */
+	if ((proto == IPPROTO_UDP) && (udpfromto_init(sockfd) != 0)) {
+		fr_strerror_printf("Failed initializing udpfromto: %s", fr_syserror(errno));
+		close(sockfd);
+		return -1;
+	}
+#endif
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	/*
+	 *	Listening on '::' does NOT get you IPv4 to
+	 *	IPv6 mapping.  You've got to listen on an IPv4
+	 *	address, too.  This makes the rest of the server
+	 *	design a little simpler.
+	 */
+	if (ipaddr->af == AF_INET6) {
+#  ifdef IPV6_V6ONLY
+		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->ipaddr.ip6addr)) {
+			int on = 1;
+
+			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
+				       (char *)&on, sizeof(on)) < 0) {
+				fr_strerror_printf("Failed setting socket to IPv6 only: %s", fr_syserror(errno));
+				close(sockfd);
+				return -1;
+			}
+		}
+#  endif /* IPV6_V6ONLY */
+	}
+#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
+
+#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
+	/*
+	 *	Set the "don't fragment" flag on UDP sockets.  Most
+	 *	routers don't have good support for fragmented UDP
+	 *	packets.
+	 */
+	if ((proto == IPPROTO_UDP) && (ipaddr->af == AF_INET)) {
+		int flag;
+
+#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
+
+		/*
+		 *	Disable PMTU discovery.  On Linux, this
+		 *	also makes sure that the "don't fragment"
+		 *	flag is zero.
+		 */
+		flag = IP_PMTUDISC_DONT;
+
+		if (setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
+			fr_strerror_printf("Failed disabling PMTU discovery: %s", fr_syserror(errno));
+			close(sockfd);
+			return -1;
+		}
+#endif
+
+#if defined(IP_DONTFRAG)
+		/*
+		 *	Ensure that the "don't fragment" flag is zero.
+		 */
+		flag = 0;
+
+		if (setsockopt(sockfd, IPPROTO_IP, IP_DONTFRAG, &flag, sizeof(flag)) < 0) {
+			fr_strerror_printf("Failed setting don't fragment flag: %s", fr_syserror(errno));
+			close(sockfd);
+			return -1;
+		}
+#endif
+	}
+#endif	/* lots of things */
+
+#if defined(WITH_TCP)
+	if (proto == IPPROTO_TCP) {
+		int on = 1;
+
+		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
+			close(sockfd);
+			fr_strerror_printf("Failed to reuse address: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
+#endif
+
+#ifdef SO_TIMESTAMP
+	if (proto == IPPROTO_UDP) {
+		int on = 1;
+
+		/*
+		 *	Enable receive timestamps, these should reflect
+		 *	when the packet was received, not when it was read
+		 *	from the socket.
+		 */
+		if (setsockopt(sockfd, SOL_SOCKET, SO_TIMESTAMP, &on, sizeof(int)) < 0) {
+			close(sockfd);
+			fr_strerror_printf("Failed enabling socket timestamps: %s", fr_syserror(errno));
+			return -1;
+		}
+	}
+#endif
+
+	return sockfd;
 }

@@ -559,6 +559,7 @@ int		fr_socket_client_unix(char const *path, bool async);
 int		fr_socket_client_udp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async);
 int		fr_socket_client_tcp(fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr, uint16_t dst_port, bool async);
 int		fr_socket_wait_for_connect(int sockfd, struct timeval const *timeout);
+int		fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const *port_name, bool async);
 
 #ifdef __cplusplus
 }
