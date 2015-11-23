@@ -71,14 +71,6 @@ static const FR_NAME_NUMBER radsnmp_command_str[] = {
 	{  NULL , 	-1}
 };
 
-static const FR_NAME_NUMBER radsnmp_type[] = {
-	{ "integer32", 	PW_TYPE_SIGNED },		//
-	{ "counter32", 	PW_TYPE_INTEGER },
-	{ "guage32", 	PW_TYPE_INTEGER },
-	{ "counter64",	PW_TYPE_INTEGER64 },
-	{ "timeticks",	PW_TYPE_INTEGER },
-	{  NULL , 	-1}
-};
 typedef struct radsnmp_conf {
 	fr_dict_t		*dict;			//!< Radius protocol dictionary.
 	fr_dict_attr_t const	*snmp_root;		//!< SNMP protocol root in the FreeRADIUS dictionary.
