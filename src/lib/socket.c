@@ -627,11 +627,11 @@ int fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const
 		struct ifreq ifreq;
 
 		memset(&ifreq, 0, sizeof(ifreq));
-		strlcpy(ifreq.ifr_name, sock->interface, sizeof(ifreq.ifr_name));
+		strlcpy(ifreq.ifr_name, interface, sizeof(ifreq.ifr_name));
 
 		rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
 		if (rcode < 0) {
-			fr_strerror_printf("Failed binding to interface %s: %s", sock->interface, fr_syserror(errno));
+			fr_strerror_printf("Failed binding to interface %s: %s", interface, fr_syserror(errno));
 			return -1;
 		} /* else it worked. */
 #else
