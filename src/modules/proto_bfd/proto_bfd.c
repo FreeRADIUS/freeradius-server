@@ -212,6 +212,8 @@ typedef struct bfd_socket_t {
 	fr_ipaddr_t	my_ipaddr;
 	uint16_t	my_port;
 
+	char		const *interface;
+
 	int		number;
 	const char	*server;
 
@@ -1566,6 +1568,7 @@ static int bfd_parse_ip_port(CONF_SECTION *cs, fr_ipaddr_t *ipaddr, uint16_t *po
 
 	rcode = cf_pair_parse(cs, "port", FR_ITEM_POINTER(PW_TYPE_SHORT, port), "0", T_INVALID);
 	if (rcode < 0) return -1;
+
 	return 0;
 }
 
@@ -1677,7 +1680,8 @@ static int bfd_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->my_ipaddr = ipaddr;
 	sock->my_port = listen_port;
 
-	cf_pair_parse(cs, "min_transmit_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_tx_interval), "1000", T_BARE_WORD);
+	cf_pair_parse(cs, "interface", FR_ITEM_POINTER(PW_TYPE_STRING, &sock->interface), NULL, T_INVALID);
+
 	cf_pair_parse(cs, "min_receive_interval", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->min_rx_interval), "1000", T_BARE_WORD);
 	cf_pair_parse(cs, "max_timeouts", FR_ITEM_POINTER(PW_TYPE_INTEGER, &sock->max_timeouts), "3", T_BARE_WORD);
 	cf_pair_parse(cs, "demand", FR_ITEM_POINTER(PW_TYPE_BOOLEAN, &sock->demand), "no", T_DOUBLE_QUOTED_STRING);
@@ -1753,7 +1757,7 @@ static int bfd_socket_open(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	rad_suid_up();
-	rcode = fr_socket_server_bind(this->fd, &sock->my_ipaddr, &port, NULL);
+	rcode = fr_socket_server_bind(this->fd, &sock->my_ipaddr, &port, sock->interface);
 	rad_suid_down();
 	sock->my_port = port;
 
