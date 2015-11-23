@@ -130,7 +130,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipa
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src = sizeof(src);
 
-	if (!src_ipaddr || ((flags & UDP_FLAGS_PEEK) != 0)) {
+	if (!src_ipaddr || ((flags & UDP_FLAGS_CONNECTED) != 0)) {
 		peeked = recv(sockfd, data, data_len, MSG_PEEK);
 		if (peeked < 0) {
 			if ((errno == EAGAIN) || (errno == EINTR)) return 0;
