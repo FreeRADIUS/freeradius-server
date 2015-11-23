@@ -75,8 +75,7 @@ ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
 		 *	And if they don't specify a source IP address, don't
 		 *	use udpfromto.
 		 */
-		if (((dst_ipaddr->af == AF_INET) || (dst_ipaddr->af == AF_INET6)) &&
-		    (src_ipaddr->af != AF_UNSPEC) &&
+		if ((src_ipaddr->af != AF_UNSPEC) && (dst_ipaddr->af != AF_UNSPEC) &&
 		    !fr_is_inaddr_any(src_ipaddr)) {
 			struct sockaddr_storage	src;
 			socklen_t		sizeof_src;
