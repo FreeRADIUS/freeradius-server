@@ -247,7 +247,7 @@ int vqp_send(RADIUS_PACKET *packet)
 int vqp_decode(RADIUS_PACKET *packet)
 {
 	uint8_t *ptr, *end;
-	int attribute, length;
+	int attr, attr_len;
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 
@@ -292,17 +292,15 @@ int vqp_decode(RADIUS_PACKET *packet)
 	 *	be called before vqp_decode().
 	 */
 	while (ptr < end) {
-		char *p;
-
-		attribute = (ptr[2] << 8) | ptr[3];
-		length = (ptr[4] << 8) | ptr[5];
+		attr = (ptr[2] << 8) | ptr[3];
+		attr_len = (ptr[4] << 8) | ptr[5];
 		ptr += 6;
 
 		/*
 		 *	Hack to get the dictionaries to work correctly.
 		 */
-		attribute |= 0x2000;
-		vp = fr_pair_afrom_num(packet, 0, attribute);
+		attr |= 0x2000;
+		vp = fr_pair_afrom_num(packet, 0, attr);
 		if (!vp) {
 			fr_pair_list_free(&packet->vps);
 
@@ -312,16 +310,16 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 		switch (vp->da->type) {
 		case PW_TYPE_ETHERNET:
-			if (length != 6) goto unknown;
+			if (attr_len != 6) goto unknown;
 
 			memcpy(&vp->vp_ether, ptr, 6);
-			vp->vp_length = 6;
+			vp->vp_attr_len = 6;
 			break;
 
 		case PW_TYPE_IPV4_ADDR:
-			if (length == 4) {
+			if (attr_len == 4) {
 				memcpy(&vp->vp_ipaddr, ptr, 4);
-				vp->vp_length = 4;
+				vp->vp_attr_len = 4;
 				break;
 			}
 
@@ -337,30 +335,14 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 		default:
 		case PW_TYPE_OCTETS:
-			if (length < 1024) {
-				fr_pair_value_memcpy(vp, ptr, length);
-			} else {
-				fr_pair_value_memcpy(vp, ptr, 1024);
-			}
+			fr_pair_value_memcpy(vp, ptr, attr_len);
 			break;
 
 		case PW_TYPE_STRING:
-			if (length < 1024) {
-				vp->vp_length = length;
-				vp->vp_strvalue = p = talloc_array(vp, char, vp->vp_length + 1);
-				vp->type = VT_DATA;
-				memcpy(p, ptr, vp->vp_length);
-				p[vp->vp_length] = '\0';
-			} else {
-				vp->vp_length = 1024;
-				vp->vp_strvalue = p = talloc_array(vp, char, 1025);
-				vp->type = VT_DATA;
-				memcpy(p, ptr, vp->vp_length);
-				p[vp->vp_length] = '\0';
-			}
+			fr_pair_value_bstrncpy(vp, ptr, attr_len);
 			break;
 		}
-		ptr += length;
+		ptr += attr_len;
 		debug_pair(vp);
 		fr_cursor_insert(&cursor, vp);
 	}
