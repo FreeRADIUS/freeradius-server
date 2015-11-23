@@ -282,16 +282,6 @@ void fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *s
 	for (i = 0; i < AUTH_VECTOR_LEN; i++ ) digest[i] ^= value[i];
 }
 
-void rad_recv_discard(int sockfd)
-{
-	uint8_t			header[4];
-	struct sockaddr_storage	src;
-	socklen_t		sizeof_src = sizeof(src);
-
-	(void) recvfrom(sockfd, header, sizeof(header), 0,
-			(struct sockaddr *)&src, &sizeof_src);
-}
-
 /** Basic validation of RADIUS packet header
  *
  * @note fr_strerror errors are only available if fr_debug_lvl > 0. This is to reduce CPU time
@@ -324,7 +314,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 	 */
 	if (!fr_ipaddr_from_sockaddr(&src, sizeof_src, src_ipaddr, src_port)) {
 		FR_DEBUG_STRERROR_PRINTF("Unknown address family");
-		rad_recv_discard(sockfd);
+		udp_recv_discard(sockfd);
 
 		return 1;
 	}
@@ -340,7 +330,7 @@ invalid:
 		FR_DEBUG_STRERROR_PRINTF("Invalid data from %s: %s",
 					 inet_ntop(src_ipaddr->af, &src_ipaddr->ipaddr, buffer, sizeof(buffer)),
 					 fr_strerror());
-		rad_recv_discard(sockfd);
+		udp_recv_discard(sockfd);
 
 		return 1;
 	}
@@ -414,7 +404,7 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < 4) {
-		rad_recv_discard(sockfd);
+		udp_recv_discard(sockfd);
 
 		return 0;
 

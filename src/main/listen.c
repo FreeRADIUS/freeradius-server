@@ -33,9 +33,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/detail.h>
 
-#ifdef WITH_UDPFROMTO
-#  include <freeradius-devel/udpfromto.h>
-#endif
+#include <freeradius-devel/udp.h>
 
 #ifdef HAVE_SYS_RESOURCE_H
 #  include <sys/resource.h>
@@ -1754,7 +1752,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 
 	client = client_listener_find(listener, &src_ipaddr, src_port);
 	if (!client) {
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(auth, total_invalid_requests);
 		return 0;
 	}
@@ -1767,7 +1765,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	if (code != PW_CODE_STATUS_SERVER) {
 		DEBUG("Ignoring packet code %d sent to Status-Server port",
 		      code);
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(auth, total_unknown_types);
 		return 0;
 	}
@@ -1824,7 +1822,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 
 	client = client_listener_find(listener, &src_ipaddr, src_port);
 	if (!client) {
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(auth, total_invalid_requests);
 		return 0;
 	}
@@ -1841,7 +1839,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 
 	case PW_CODE_STATUS_SERVER:
 		if (!main_config.status_server) {
-			rad_recv_discard(listener->fd);
+			udp_recv_discard(listener->fd);
 			FR_STATS_INC(auth, total_unknown_types);
 			WARN("Ignoring Status-Server request due to security configuration");
 			return 0;
@@ -1850,7 +1848,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 		break;
 
 	default:
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(auth, total_unknown_types);
 
 		if (DEBUG_ENABLED) ERROR("Receive - Invalid packet code %d sent to authentication port from "
@@ -1860,7 +1858,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 
 	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
 	if (!ctx) {
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(auth, total_packets_dropped);
 		return 0;
 	}
@@ -1938,7 +1936,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr, src_port)) == NULL) {
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(acct, total_invalid_requests);
 		return 0;
 	}
@@ -1955,7 +1953,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 
 	case PW_CODE_STATUS_SERVER:
 		if (!main_config.status_server) {
-			rad_recv_discard(listener->fd);
+			udp_recv_discard(listener->fd);
 			FR_STATS_INC(acct, total_unknown_types);
 
 			WARN("Ignoring Status-Server request due to security configuration");
@@ -1965,7 +1963,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 		break;
 
 	default:
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(acct, total_unknown_types);
 
 		DEBUG("Invalid packet code %d sent to a accounting port from client %s port %d : IGNORED",
@@ -1975,7 +1973,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 
 	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
 	if (!ctx) {
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(acct, total_packets_dropped);
 		return 0;
 	}
@@ -2222,7 +2220,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr, src_port)) == NULL) {
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(coa, total_requests);
 		FR_STATS_INC(coa, total_invalid_requests);
 		return 0;
@@ -2243,7 +2241,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 		break;
 
 	default:
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(coa, total_unknown_types);
 		DEBUG("Invalid packet code %d sent to coa port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
@@ -2252,7 +2250,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 
 	ctx = talloc_pool(NULL, main_config.talloc_pool_size);
 	if (!ctx) {
-		rad_recv_discard(listener->fd);
+		udp_recv_discard(listener->fd);
 		FR_STATS_INC(coa, total_packets_dropped);
 		return 0;
 	}

@@ -29,4 +29,6 @@ ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t src_port, int if_index,
 		 fr_ipaddr_t *dst_ipaddr, uint16_t dst_port);
 
+void udp_recv_discard(int sockfd);
+
 #endif /* _FR_UDP_H */

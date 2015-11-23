@@ -95,3 +95,18 @@ ssize_t udp_send(int sockfd, void *data, size_t data_len, int flags,
 
 	return rcode;
 }
+
+
+/** Discard the next UDP packet
+ *
+ * @param[in] sockfd we're reading from.
+ */
+void udp_recv_discard(int sockfd)
+{
+	uint8_t			data[4];
+	struct sockaddr_storage	src;
+	socklen_t		sizeof_src = sizeof(src);
+
+	(void) recvfrom(sockfd, data, sizeof(data), 0,
+			(struct sockaddr *)&src, &sizeof_src);
+}
