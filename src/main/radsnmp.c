@@ -140,7 +140,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 	 */
 	while (!stop) {
 		radsnmp_command_t	command;
-		fr_dict_attr_t const	*da, *index, *parent = conf->snmp_root;
+		fr_dict_attr_t const	*da, *index_da, *parent = conf->snmp_root;
 		unsigned int		attr;
 		size_t			len;
 		VALUE_PAIR		*vp;
@@ -210,13 +210,13 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 				/*
 				 *	Check for an index attribute
 				 */
-				index = fr_dict_attr_child_by_num(parent, 0);
-				if (!index) {
+				index_da = fr_dict_attr_child_by_num(parent, 0);
+				if (!index_da) {
 					fr_strerror_printf("Unknown OID component: No index attribute at this level");
 					break;
 				}
 
-				if (index->type != PW_TYPE_INTEGER) {
+				if (index_da->type != PW_TYPE_INTEGER) {
 					fr_strerror_printf("Index is not a \"integer\"");
 					break;
 				}
@@ -242,7 +242,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 				 *	We've skipped over the index attribute, and
 				 *	the index number should be available in attr.
 				 */
-				vp = fr_pair_afrom_da(NULL, index);
+				vp = fr_pair_afrom_da(NULL, index_da);
 				vp->vp_integer = attr;
 
 				fr_cursor_insert(&cursor, vp);
