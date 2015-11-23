@@ -30,6 +30,8 @@ RCSID("$Id$")
 /** Send a packet via a UDP socket.
  *
  * @param[in] sockfd we're reading from.
+ * @param[in] data pointer to data to send
+ * @param[in] data_len length of data to send
  * @param[in] flags to pass to send(), or sendto()
  * @param[in] src_ipaddr of the packet.
  * @param[in] src_port of the packet.
