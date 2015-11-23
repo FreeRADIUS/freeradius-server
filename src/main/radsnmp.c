@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/libradius.h>
 #include <ctype.h>
+#include <fcntl.h>
 
 #ifdef HAVE_GETOPT_H
 #  include <getopt.h>
@@ -43,12 +44,14 @@ static char const *radsnmp_version = "radsnmp version " RADIUSD_VERSION_STRING
 #endif
 ", built on " __DATE__ " at " __TIME__;
 
-#undef DEBUG
-#define DEBUG(fmt, ...)		if (fr_debug_lvl > 0) fprintf(fr_log_fp, "radsnmp (stderr): " fmt "\n", ## __VA_ARGS__)
-#undef DEBUG2
-#define DEBUG2(fmt, ...)	if (fr_debug_lvl > 1) fprintf(fr_log_fp, "radsnmp (stderr): " fmt "\n", ## __VA_ARGS__)
+static bool stop;
 
-#define ERROR(fmt, ...)		fr_perror("radsnmp: " fmt, ## __VA_ARGS__)
+#undef DEBUG
+#define DEBUG(fmt, ...)		if (fr_debug_lvl > 0) fprintf(fr_log_fp, "radsnmp (debug): " fmt "\n", ## __VA_ARGS__)
+#undef DEBUG2
+#define DEBUG2(fmt, ...)	if (fr_debug_lvl > 1) fprintf(fr_log_fp, "radsnmp (debug): " fmt "\n", ## __VA_ARGS__)
+
+#define ERROR(fmt, ...)		fprintf(fr_log_fp, "radsnmp (error): " fmt "\n", ## __VA_ARGS__)
 
 typedef enum {
 	RADSNMP_UNKNOWN = -1,				//!< Unknown command.
@@ -67,22 +70,31 @@ static const FR_NAME_NUMBER radsnmp_command_str[] = {
 	{ "",		RADSNMP_EXIT },			//!< Terminate radsnmp.
 	{  NULL , 	-1}
 };
+
+static const FR_NAME_NUMBER radsnmp_type[] = {
+	{ "integer32", 	PW_TYPE_SIGNED },		//
+	{ "counter32", 	PW_TYPE_INTEGER },
+	{ "guage32", 	PW_TYPE_INTEGER },
+	{ "counter64",	PW_TYPE_INTEGER64 },
+	{ "timeticks",	PW_TYPE_INTEGER },
+	{  NULL , 	-1}
+};
 typedef struct radsnmp_conf {
 	fr_dict_t		*dict;			//!< Radius protocol dictionary.
 	fr_dict_attr_t const	*snmp_root;		//!< SNMP protocol root in the FreeRADIUS dictionary.
 	fr_dict_attr_t const	*snmp_op;		//!< SNMP operation.
 	char const		*radius_dir;		//!< Radius dictionary directory.
 	char const		*dict_dir;		//!< Dictionary director.
-	int			packet_code;		//!< Request type.
-	int			ipproto;		//!< Protocol TCP/UDP.
+	unsigned int		code;			//!< Request type.
+	int			proto;			//!< Protocol TCP/UDP.
 	char const		*proto_str;		//!< Protocol string.
 	uint8_t			last_used_id;		//!< ID of the last request we sent.
 
 	fr_ipaddr_t		server_ipaddr;		//!< Src IP address.
 	uint16_t		server_port;		//!< Port to send requests to.
 
-	int			retries;		//!< Number of retries.
-	float			timeout;		//!< Retransmission timeout.
+	unsigned int		retries;		//!< Number of retries.
+	struct timeval		timeout;
 	char const		*secret;		//!< Shared secret.
 } radsnmp_conf_t;
 
@@ -96,11 +108,13 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -d <raddb>             Set user dictionary directory (defaults to " RADDBDIR ").\n");
 	fprintf(stderr, "  -D <dictdir>           Set main dictionary directory (defaults to " DICTDIR ").\n");
 	fprintf(stderr, "  -h                     Print usage help information.\n");
+	fprintf(stderr, "  -l <file>              Log output to file.\n");
 	fprintf(stderr, "  -r <retries>           If timeout, retry sending the packet 'retries' times.\n");;
 	fprintf(stderr, "  -S <file>              read secret from file, not command line.\n");
 	fprintf(stderr, "  -t <timeout>           Wait 'timeout' seconds before retrying (may be a floating "
 		"point number).\n");
 	fprintf(stderr, "  -v                     Show program version information.\n");
+	fprintf(stderr, "  -x                     Increase debug level.\n");
 
 #ifdef WITH_TCP
 	fprintf(stderr, "  -P <proto>             Use proto (tcp or udp) for transport.\n");
@@ -109,9 +123,18 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-#define RESPOND_STATIC(_cmd) write(STDOUT_FILENO, _cmd "\n", sizeof(_cmd))
+#define RESPOND_STATIC(_cmd) \
+do {\
+	DEBUG2("send: %s", _cmd);\
+	write(STDOUT_FILENO, _cmd "\n", sizeof(_cmd));\
+} while (0)
 
-static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
+static void rs_signal_stop(UNUSED int sig)
+{
+	stop = true;
+}
+
+static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 {
 	char			buffer[1024];
 	char			*line;
@@ -120,24 +143,26 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
 
 	fr_strerror();
 
-
-	fr_dict_print(conf->snmp_root, 0);
-
 	/*
 	 *	Read commands from pass_persist
 	 */
-	while ((line = fgets(buffer, sizeof(buffer), stdin))) {
+	while (!stop) {
 		radsnmp_command_t	command;
 		fr_dict_attr_t const	*da, *index, *parent = conf->snmp_root;
 		unsigned int		attr;
 		size_t			len;
-		void			*request = NULL;
 		VALUE_PAIR		*vp;
 
+		head = NULL;
 		fr_cursor_init(&cursor, &head);
+
+		line = fgets(buffer, sizeof(buffer), stdin);
+		if (!line) continue;	/* Probably interrupted by signal */
 
 		len = strlen(line);
 		if ((len > 0) && (line[len - 1] == '\n')) line[len - 1] = '\0';
+
+		DEBUG2("recv: %s", line);
 
 		command = fr_str2int(radsnmp_command_str, line, RADSNMP_UNKNOWN);
 		switch (command) {
@@ -164,6 +189,8 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
 			len = strlen(line);
 			if ((len > 0) && (line[len - 1] == '\n')) line[len - 1] = '\0';
 
+			DEBUG2("recv: %s", line);
+
 			/*
 			 *	Trim first.
 			 */
@@ -180,16 +207,13 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
 			for (;;) {
 				unsigned int num = 0;
 
-				slen = fr_dict_str_to_oid(conf->dict, &parent, NULL, &attr, p);
+				slen = fr_dict_attr_by_oid(conf->dict, &parent, NULL, &attr, p);
 				if (slen > 0) break;
-
 				p += -(slen);
-				slen = start - p;	/* Gets us the right negative offset */
-				DEBUG("Offset %zu", -slen);
-
 
 				if (fr_dict_oid_component(&num, &p) < 0) break;	/* Just advances the pointer */
 				assert(attr == num);
+				p++;
 
 				/*
 				 *	Check for an index attribute
@@ -226,7 +250,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
 				 *	We've skipped over the index attribute, and
 				 *	the index number should be available in attr.
 				 */
-				vp = fr_pair_afrom_da(request, index);
+				vp = fr_pair_afrom_da(NULL, index);
 				vp->vp_integer = attr;
 
 				fr_cursor_insert(&cursor, vp);
@@ -238,13 +262,17 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
 			 */
 			if (slen <= 0) {
 				char *spaces, *text;
-				char const *error = fr_strerror();
-			parse_error:
-				fr_canonicalize_error(conf, &spaces, &text, slen, start);
+				char const *error;
+
+				error = fr_strerror();
+				fr_canonicalize_error(conf, &spaces, &text, start - p, start);
 
 				ERROR("Failed evaluating OID:");
 				ERROR("%s", text);
 				ERROR("%s^ %s", spaces, error);
+
+				talloc_free(spaces);
+				talloc_free(text);
 
 			error:
 				RESPOND_STATIC("NONE");
@@ -253,11 +281,20 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
 				continue;
 			}
 
-			da = fr_dict_attr_child_by_num(parent, attr);
-			if (!da) {
-				fr_strerror_printf("Unknown leaf attribute");
-				slen = slen * -1;
-				goto parse_error;
+			fr_strerror();	/* Clear pending errors */
+
+			/*
+			 *	SNMP requests the leaf under the OID
+			 *	with .0.
+			 */
+			if (attr != 0) {
+				da = fr_dict_attr_child_by_num(parent, attr);
+				if (!da) {
+					ERROR("Unknown leaf attribute %i", attr);
+					goto error;
+				}
+			} else {
+				da = parent;
 			}
 		}
 			break;
@@ -286,7 +323,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
 				goto error;
 			}
 
-			vp = fr_pair_afrom_da(request, da);
+			vp = fr_pair_afrom_da(NULL, da);
 			if (!vp) {
 				ERROR("Failed allocating OID attribute");
 				goto error;
@@ -311,7 +348,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
 			break;
 
 		case RADSNMP_SET:
-			vp = fr_pair_afrom_da(request, da);
+			vp = fr_pair_afrom_da(NULL, da);
 			if (!vp) {
 				ERROR("Failed allocating OID attribute");
 				goto error;
@@ -323,7 +360,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
 			exit(1);
 		}
 
-		vp = fr_pair_afrom_da(request, da);
+		vp = fr_pair_afrom_da(NULL, conf->snmp_op);
 		if (!vp) {
 			ERROR("Failed allocating SNMP operation attribute");
 			goto error;
@@ -331,12 +368,118 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, UNUSED int fd)
 		vp->vp_integer = (unsigned int)command;	/* Commands must match dictionary */
 		fr_cursor_insert(&cursor, vp);
 
-		/*
-		 *	Print the attributes we're about to send
-		 */
-		if (fr_debug_lvl > 0) fr_pair_list_fprint(stderr, head);
-
 		DEBUG("OID resolves to leaf \"%s\"", da->name);
+
+		vp = fr_pair_afrom_num(NULL, 0, PW_MESSAGE_AUTHENTICATOR);
+		if (!vp) {
+			ERROR("Failed allocating Message-Authenticator attribute");
+			goto error;
+		}
+		fr_pair_value_memcpy(vp, (uint8_t const *)"\0", 1);
+		fr_cursor_insert(&cursor, vp);
+
+		/*
+		 *	Send the packet
+		 */
+		{
+			RADIUS_PACKET	*request, *reply = NULL;
+			ssize_t		rcode;
+
+			fd_set		set;
+
+			unsigned int	i;
+
+			request = rad_alloc(conf, true);
+			request->vps = head;
+
+			for (vp = fr_cursor_first(&cursor);
+			     vp;
+			     vp = fr_cursor_next(&cursor)) fr_pair_steal(request, vp);
+
+			request->code = conf->code;
+
+			request->id = conf->last_used_id;
+			conf->last_used_id = (conf->last_used_id + 1) & UINT8_MAX;
+
+			memcpy(&request->dst_ipaddr, &conf->server_ipaddr, sizeof(request->dst_ipaddr));
+			request->dst_port = conf->server_port;
+			request->sockfd = fd;
+
+			if (rad_encode(request, NULL, conf->secret) < 0) {
+				ERROR("Failed encoding request: %s", fr_strerror());
+				RESPOND_STATIC("NONE");
+				return 1;
+			}
+			if (rad_sign(request, NULL, conf->secret) < 0) {
+				ERROR("Failed signing request: %s", fr_strerror());
+				RESPOND_STATIC("NONE");
+				return 1;
+			}
+
+			/*
+			 *	Print the attributes we're about to send
+			 */
+			if (fr_log_fp) fr_packet_header_print(fr_log_fp, request, false);
+			if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, head);
+#ifndef NDEBUG
+			if (fr_log_fp && (fr_debug_lvl > 3)) rad_print_hex(request);
+#endif
+
+			FD_ZERO(&set); /* clear the set */
+			FD_SET(fd, &set);
+
+			for (i = 0; i < conf->retries; i++) {
+				rcode = write(request->sockfd, request->data, request->data_len);
+				if (rcode < 0) {
+					ERROR("Failed sending: %s", fr_syserror(errno));
+					RESPOND_STATIC("NONE");
+					return 1;
+				}
+
+				rcode = select(fd + 1, &set, NULL, NULL, &conf->timeout);
+				switch (rcode) {
+				case -1:
+					ERROR("Select failed: %s", fr_syserror(errno));
+					RESPOND_STATIC("NONE");
+					return 1;
+
+				case 0:
+					DEBUG("Response timeout %i/%i", i + 1, conf->retries);
+					continue;	/* Timeout */
+
+				case 1:
+					reply = rad_recv(request, request->sockfd, 0);
+					if (!reply) {
+						ERROR("Failed decoding reply: %s", fr_strerror());
+						RESPOND_STATIC("NONE");
+						return 1;
+					}
+					break;
+
+				default:
+					DEBUG("Invalid select() return value %zi", rcode);
+					return 1;
+				}
+			}
+
+			if (!reply) {
+				ERROR("Server didn't respond");
+				RESPOND_STATIC("NONE");
+				return 1;
+			}
+
+
+			/*
+			 *	Print the attributes we're about to send
+			 */
+			if (fr_log_fp) fr_packet_header_print(fr_log_fp, reply, true);
+			if (fr_debug_lvl > 0) fr_pair_list_fprint(fr_log_fp, reply->vps);
+#ifndef NDEBUG
+			if (fr_log_fp && (fr_debug_lvl > 3)) rad_print_hex(reply);
+#endif
+
+			talloc_free(request);
+		}
 	}
 
 	return 0;
@@ -352,19 +495,15 @@ int main(int argc, char **argv)
 	int		ret;
 	int		sockfd;
 
+	fr_log_fp = stderr;
+
 	conf = talloc_zero(NULL, radsnmp_conf_t);
-	conf->ipproto = IPPROTO_UDP;
+	conf->proto = IPPROTO_UDP;
 	conf->dict_dir = DICTDIR;
 	conf->radius_dir = RADDBDIR;
 	conf->secret = "testing123";
-
-	/*
-	 *	It's easier having two sets of flags to set the
-	 *	verbosity of library calls and the verbosity of
-	 *	radsnmp.
-	 */
-	fr_debug_lvl	= 1;
-	fr_log_fp	= stderr;	/* stdout goes to netsnmp */
+	conf->timeout.tv_sec = 3;
+	conf->retries = 5;
 
 #ifndef NDEBUG
 	if (fr_fault_setup(getenv("PANIC_ACTION"), argv[0]) < 0) {
@@ -375,7 +514,7 @@ int main(int argc, char **argv)
 
 	talloc_set_log_stderr();
 
-	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:n:p:qr:sS:t:vx"
+	while ((c = getopt(argc, argv, "46c:d:D:f:Fhi:l:n:p:qr:sS:t:vx"
 #ifdef WITH_TCP
 		"P:"
 #endif
@@ -396,13 +535,32 @@ int main(int argc, char **argv)
 			conf->radius_dir = optarg;
 			break;
 
+		case 'l':
+		{
+			int log_fd;
+
+			if (strcmp(optarg, "stderr") == 0) {
+				fr_log_fp = stderr;	/* stdout goes to netsnmp */
+				break;
+			}
+
+			log_fd = open(optarg, O_WRONLY | O_APPEND | O_CREAT, 0640);
+			if (log_fd < 0) {
+				fprintf(stderr, "radsnmp: Failed to open log file %s: %s\n",
+					optarg, fr_syserror(errno));
+				exit(EXIT_FAILURE);
+			}
+			fr_log_fp = fdopen(log_fd, "a");
+		}
+			break;
+
 #ifdef WITH_TCP
 		case 'P':
 			conf->proto_str = optarg;
 			if (strcmp(conf->proto_str, "tcp") != 0) {
 				if (strcmp(conf->proto_str, "udp") != 0) usage();
 			} else {
-				conf->ipproto = IPPROTO_TCP;
+				conf->proto = IPPROTO_TCP;
 			}
 			break;
 
@@ -420,11 +578,11 @@ int main(int argc, char **argv)
 			fp = fopen(optarg, "r");
 			if (!fp) {
 			       ERROR("Error opening %s: %s", optarg, fr_syserror(errno));
-			       exit(1);
+			       exit(EXIT_FAILURE);
 			}
 			if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
 			       ERROR("Error reading %s: %s", optarg, fr_syserror(errno));
-			       exit(1);
+			       exit(EXIT_FAILURE);
 			}
 			fclose(fp);
 
@@ -438,20 +596,26 @@ int main(int argc, char **argv)
 
 			if (strlen(filesecret) < 2) {
 			       ERROR("Secret in %s is too short", optarg);
-			       exit(1);
+			       exit(EXIT_FAILURE);
 			}
 			conf->secret = filesecret;
 		}
 		       break;
 
 		case 't':
-			if (!isdigit((int) *optarg)) usage();
-			conf->timeout = atof(optarg);
+			if (fr_timeval_from_str(&conf->timeout, optarg) < 0) {
+				ERROR("Failed parsing timeout value: %s", fr_strerror());
+				exit(EXIT_FAILURE);
+			}
 			break;
 
 		case 'v':
-			fr_debug_lvl = 1;
 			DEBUG("%s", radsnmp_version);
+			exit(0);
+
+		case 'x':
+			fr_debug_lvl++;
+			break;
 
 		case 'h':
 		default:
@@ -483,17 +647,22 @@ int main(int argc, char **argv)
 	}
 	fr_strerror();	/* Clear the error buffer */
 
+	if (fr_log_fp) setvbuf(fr_log_fp, NULL, _IONBF, 0);
+
 	/*
 	 *	Get the request type
 	 */
 	if (!isdigit((int) argv[2][0])) {
-		conf->packet_code = fr_str2int(fr_request_types, argv[2], -2);
-		if (conf->packet_code == -2) {
+		int code;
+
+		code = fr_str2int(fr_request_types, argv[2], -1);
+		if (code < 0) {
 			ERROR("Unrecognised request type \"%s\"", argv[2]);
 			usage();
 		}
+		conf->code = (unsigned int)code;
 	} else {
-		conf->packet_code = atoi(argv[2]);
+		conf->code = atoi(argv[2]);
 	}
 
 	/*
@@ -542,7 +711,7 @@ int main(int argc, char **argv)
 		goto dict_error;
 	}
 
-	switch (conf->ipproto) {
+	switch (conf->proto) {
 #ifdef WITH_TCP
 	case IPPROTO_TCP:
 		sockfd = fr_socket_client_tcp(NULL, &conf->server_ipaddr, conf->server_port, true);
@@ -560,9 +729,20 @@ int main(int argc, char **argv)
 		goto finish;
 	}
 
+	fr_set_signal(SIGPIPE, rs_signal_stop);
+	fr_set_signal(SIGINT, rs_signal_stop);
+	fr_set_signal(SIGTERM, rs_signal_stop);
+#ifdef SIGQUIT
+	fr_set_signal(SIGQUIT, rs_signal_stop);
+#endif
+
+	DEBUG("%s - Starting pass_persist read loop", radsnmp_version);
 	ret = radsnmp_send_recv(conf, sockfd);
+	DEBUG("Read loop done");
 
 finish:
+	if (fr_log_fp) fflush(fr_log_fp);
+
 	/*
 	 *	Everything should be parented from conf
 	 */

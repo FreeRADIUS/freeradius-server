@@ -585,20 +585,20 @@ int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 *	authentication vector of the request.
 		 */
 	default:
-		{
-			uint8_t digest[16];
+	{
+		uint8_t digest[16];
 
-			FR_MD5_CTX	context;
-			fr_md5_init(&context);
-			fr_md5_update(&context, packet->data, packet->data_len);
-			fr_md5_update(&context, (uint8_t const *) secret,
-				     strlen(secret));
-			fr_md5_final(digest, &context);
+		FR_MD5_CTX	context;
+		fr_md5_init(&context);
+		fr_md5_update(&context, packet->data, packet->data_len);
+		fr_md5_update(&context, (uint8_t const *) secret,
+			     strlen(secret));
+		fr_md5_final(digest, &context);
 
-			memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
-			memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
-			break;
-		}
+		memcpy(hdr->vector, digest, AUTH_VECTOR_LEN);
+		memcpy(packet->vector, digest, AUTH_VECTOR_LEN);
+		break;
+	}
 	}/* switch over packet codes */
 
 	return 0;

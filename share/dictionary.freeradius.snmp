@@ -1,10 +1,22 @@
 BEGIN-VENDOR FreeRADIUS format=Extended-Vendor-Specific-1
-ATTRIBUTE	FreeRADIUS-SNMP-Operation		0		integer
+ATTRIBUTE	FreeRADIUS-SNMP-Operation		0		byte
 
 VALUE		FreeRADIUS-SNMP-Operation		ping		0
 VALUE		FreeRADIUS-SNMP-Operation		get		1
 VALUE		FreeRADIUS-SNMP-Operation		getnext		2
 VALUE		FreeRADIUS-SNMP-Operation		set		3
+
+ATTRIBUTE	FreeRADIUS-SNMP-Varbind-Type		2		byte
+
+VALUE		FreeRADIUS-SNMP-Varbind-Type		guage32		1
+VALUE		FreeRADIUS-SNMP-Varbind-Type		guage64		2
+VALUE		FreeRADIUS-SNMP-Varbind-Type		integer32	3
+VALUE		FreeRADIUS-SNMP-Varbind-Type		integer64	4
+VALUE		FreeRADIUS-SNMP-Varbind-Type		timeticks	5
+VALUE		FreeRADIUS-SNMP-Varbind-Type		objectid	6
+VALUE		FreeRADIUS-SNMP-Varbind-Type		ipaddr		7
+VALUE		FreeRADIUS-SNMP-Varbind-Type		octetstr	8
+VALUE		FreeRADIUS-SNMP-Varbind-Type		string		9
 
 # Creates iso(1).org(3).dod(6).internet(1).mgmt(2).mib-2(1)
 ATTRIBUTE	FreeRADIUS-Iso				1		tlv
