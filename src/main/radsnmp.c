@@ -118,7 +118,7 @@ static void NEVER_RETURNS usage(void)
 #define RESPOND_STATIC(_cmd) \
 do {\
 	DEBUG2("send: %s", _cmd);\
-	(void) write(STDOUT_FILENO, _cmd "\n", sizeof(_cmd));	\
+	if (write(STDOUT_FILENO, _cmd "\n", sizeof(_cmd)) < 0) return 1; \
 } while (0)
 
 static void rs_signal_stop(UNUSED int sig)
