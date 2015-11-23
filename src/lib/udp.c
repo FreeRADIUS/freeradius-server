@@ -200,10 +200,15 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	 *	packet after "len" bytes.
 	 */
 #ifdef WITH_UDPFROMTO
-	received = recvfromto(sockfd, data, data_len, sock_flags,
-			      (struct sockaddr *)&src, &sizeof_src,
-			      (struct sockaddr *)&dst, &sizeof_dst,
-			      if_index, NULL);
+	if (dst_ipaddr) {
+		received = recvfromto(sockfd, data, data_len, sock_flags,
+				      (struct sockaddr *)&src, &sizeof_src,
+				      (struct sockaddr *)&dst, &sizeof_dst,
+				      if_index, NULL);
+	} else {
+		received = recvfrom(sockfd, data, data_len, sock_flags,
+				    (struct sockaddr *)&src, &sizeof_src);
+	}
 #else
 	received = recvfrom(sockfd, data, data_len, sock_flags,
 			    (struct sockaddr *)&src, &sizeof_src);
