@@ -296,7 +296,7 @@ void fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *s
  *	- 1 on decode error.
  *	- >= RADIUS_HDR_LEN on success. This is the packet length as specified in the header.
  */
-ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, int *code)
+ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code)
 {
 	ssize_t			data_len, packet_len;
 	uint8_t			header[4];

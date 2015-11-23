@@ -1733,7 +1733,7 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 static int stats_socket_recv(rad_listen_t *listener)
 {
 	ssize_t		rcode;
-	int		code;
+	unsigned int	code;
 	uint16_t	src_port;
 	RADIUS_PACKET	*packet;
 	RADCLIENT	*client = NULL;
@@ -1801,7 +1801,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 static int auth_socket_recv(rad_listen_t *listener)
 {
 	ssize_t		rcode;
-	int		code;
+	unsigned int	code;
 	uint16_t	src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
@@ -1915,7 +1915,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 static int acct_socket_recv(rad_listen_t *listener)
 {
 	ssize_t		rcode;
-	int		code;
+	unsigned int	code;
 	uint16_t	src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
@@ -2201,7 +2201,7 @@ int rad_coa_recv(REQUEST *request)
 static int coa_socket_recv(rad_listen_t *listener)
 {
 	ssize_t		rcode;
-	int		code;
+	unsigned int	code;
 	uint16_t	src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
