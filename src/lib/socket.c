@@ -601,3 +601,105 @@ int fr_socket_server_base(int proto, fr_ipaddr_t *ipaddr, int *port, char const 
 
 	return sockfd;
 }
+
+/** Bind to an IPv4 / IPv6, and UDP / TCP socket, server side.
+ *
+ * @param[in] sockfd the socket which was opened via fr_socket_server_base()
+ * @param[in,out] ipaddr The IP address to bind to
+ * @param[in] port the port to bind to
+ * @param[in] interface the interface name to bind to
+ * @return
+ *	- 0 on success
+ *	- -1 on failure.
+ */
+int fr_socket_server_bind(int sockfd, fr_ipaddr_t *ipaddr, int *port, char const *interface)
+{
+	int			rcode;
+	uint16_t		my_port;
+	struct sockaddr_storage	salocal;
+	socklen_t		salen;
+
+	/*
+	 *	Bind to a device BEFORE touching IP addresses.
+	 */
+	if (interface) {
+#ifdef SO_BINDTODEVICE
+		struct ifreq ifreq;
+
+		memset(&ifreq, 0, sizeof(ifreq));
+		strlcpy(ifreq.ifr_name, sock->interface, sizeof(ifreq.ifr_name));
+
+		rcode = setsockopt(sockfd, SOL_SOCKET, SO_BINDTODEVICE, (char *)&ifreq, sizeof(ifreq));
+		if (rcode < 0) {
+			fr_strerror_printf("Failed binding to interface %s: %s", sock->interface, fr_syserror(errno));
+			return -1;
+		} /* else it worked. */
+#else
+
+#  ifdef HAVE_STRUCT_SOCKADDR_IN6
+#  ifdef HAVE_NET_IF_H
+		/*
+		 *	Odds are that any system supporting "bind to
+		 *	device" also supports IPv6, so this next bit
+		 *	isn't necessary.  But it's here for
+		 *	completeness.
+		 *
+		 *	If we're doing IPv6, and the scope hasn't yet
+		 *	been defined, set the scope to the scope of
+		 *	the interface.
+		 */
+		if (ipaddr->af == AF_INET6) {
+			if (ipaddr->zone_id == 0) {
+				ipaddr->zone_id = if_nametoindex(interface);
+				if (ipaddr->zone_id == 0) {
+					fr_strerror_printf("Failed finding interface %s: %s", interface, fr_syserror(errno));
+					return -1;
+				}
+			} /* else scope was defined: we're OK. */
+		} else
+#  endif
+#endif
+		{
+			/*
+			 *	IPv4: no link local addresses,
+			 *	and no bind to device.
+			 */
+			fr_strerror_printf("Failed binding to interface %s: \"bind to device\" is unsupported", interface);
+			return -1;
+		}
+#endif
+	} /* else no interface */
+
+	if (!port) return 0;
+
+	/*
+	 *	Set up sockaddr stuff.
+	 */
+	my_port = *port;
+	if (!fr_ipaddr_to_sockaddr(ipaddr, my_port, &salocal, &salen)) {
+		return -1;
+	}
+
+	rcode = bind(sockfd, (struct sockaddr *) &salocal, salen);
+	if (rcode < 0) return rcode;
+
+	/*
+	 *	FreeBSD jail issues.  We bind to 0.0.0.0, but the
+	 *	kernel instead binds us to a 1.2.3.4.  So once the
+	 *	socket is bound, ask it what it's IP address is.
+	 */
+	salen = sizeof(salocal);
+	memset(&salocal, 0, salen);
+	if (getsockname(sockfd, (struct sockaddr *) &salocal, &salen) < 0) {
+		fr_strerror_printf("Failed getting socket name: %s", fr_syserror(errno));
+		return -1;
+	}
+
+	if (!fr_ipaddr_from_sockaddr(&salocal, salen, ipaddr, &my_port)) {
+		return -1;
+	}
+
+	*port = my_port;
+
+	return 0;
+}
