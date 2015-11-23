@@ -2648,55 +2648,26 @@ static int init_pcap(rad_listen_t *this)
  */
 static int listen_bind(rad_listen_t *this)
 {
-	int			rcode;
+	int			rcode, port;
 	struct sockaddr_storage	salocal;
 	socklen_t		salen;
 	listen_socket_t		*sock = this->data;
-#ifndef WITH_TCP
-#  define proto_for_port "udp"
-#  define sock_type SOCK_DGRAM
-#else
-	char const		*proto_for_port = "udp";
-	int			sock_type = SOCK_DGRAM;
-
-	if (sock->proto == IPPROTO_TCP) {
-#  ifdef WITH_VMPS
-		if (this->type == RAD_LISTEN_VQP) {
-			ERROR("VQP does not support TCP transport");
-			return -1;
-		}
-#  endif
-
-		proto_for_port = "tcp";
-		sock_type = SOCK_STREAM;
-	}
-#endif
+	char const		*port_name = NULL;
+	bool			async = true;
 
 	/*
-	 *	If the port is zero, then it means the appropriate
-	 *	thing from /etc/services.
+	 *	If the configuration didn't specify a port, get one
+	 *	from /etc/services.
 	 */
 	if (sock->my_port == 0) {
-		struct servent	*svp;
-
 		switch (this->type) {
 		case RAD_LISTEN_AUTH:
-			svp = getservbyname("radius", proto_for_port);
-			if (svp != NULL) {
-				sock->my_port = ntohs(svp->s_port);
-			} else {
-				sock->my_port = PW_AUTH_UDP_PORT;
-			}
+			port_name = "radius";
 			break;
 
 #ifdef WITH_ACCOUNTING
 		case RAD_LISTEN_ACCT:
-			svp = getservbyname("radacct", proto_for_port);
-			if (svp != NULL) {
-				sock->my_port = ntohs(svp->s_port);
-			} else {
-				sock->my_port = PW_ACCT_UDP_PORT;
-			}
+			port_name = "radius-acct";
 			break;
 #endif
 
@@ -2720,23 +2691,13 @@ static int listen_bind(rad_listen_t *this)
 
 #ifdef WITH_COA
 		case RAD_LISTEN_COA:
-			svp = getservbyname("radius-dynauth", "udp");
-			if (svp != NULL) {
-				sock->my_port = ntohs(svp->s_port);
-			} else {
-				sock->my_port = PW_COA_UDP_PORT;
-			}
+			port_name = "radius-dynauth";
 			break;
 #endif
 
 #ifdef WITH_DHCP
 		case RAD_LISTEN_DHCP:
-			svp = getservbyname ("bootps", "udp");
-			if (svp != NULL) {
-				sock->my_port = ntohs(svp->s_port);
-			} else {
-				sock->my_port = 67;
-			}
+			port_name = "bootps";
 			break;
 #endif
 
@@ -2756,14 +2717,36 @@ static int listen_bind(rad_listen_t *this)
 
 	rad_assert(sock->my_ipaddr.af);
 
+#ifdef WITH_TCP
+	/*
+	 *	Check if we're async or not.
+	 */
+	if (sock->proto == IPPROTO_TCP) {
+		/*
+		 *	If there are hard-coded worker threads, OR
+		 *	it's a TLS connection, it's blocking.
+		 *
+		 *	Otherwise, they're non-blocking.
+		 */
+		if (this->workers
+#  if defined(WITH_PROXY) && defined(WITH_TLS)
+		    || ((this->type == RAD_LISTEN_PROXY) && this->tls)
+#  endif
+			) {
+			async = false;
+		}
+	}
+#endif
+
 	DEBUG4("[FD XX] Opening socket -- socket(%s, %s, 0)",
 	       fr_int2str(fr_net_af_table, sock->my_ipaddr.af, "<UNKNOWN>"),
-	       fr_int2str(fr_net_sock_type_table, sock_type, "<UNKNOWN>"));
+	       fr_int2str(fr_net_ip_proto_table, sock->proto, "<UNKNOWN>"));
 
 	/*
-	 *	Copy fr_socket() here, as we may need to bind to a device.
+	 *	Open the socket and set a whack of flags.
 	 */
-	this->fd = socket(sock->my_ipaddr.af, sock_type, sock->proto);
+	port = sock->my_port;
+	this->fd = fr_socket_server_base(sock->proto, &sock->my_ipaddr, &port, port_name, async);
 	if (this->fd < 0) {
 		char buffer[256];
 
@@ -2772,23 +2755,7 @@ static int listen_bind(rad_listen_t *this)
 		ERROR("Failed opening %s: %s", buffer, fr_syserror(errno));
 		return -1;
 	}
-
-#ifdef FD_CLOEXEC
-	/*
-	 *	We don't want child processes inheriting these
-	 *	file descriptors.
-	 */
-	rcode = fcntl(this->fd, F_GETFD);
-	if (rcode >= 0) {
-		DEBUG4("[FD %i] Preventing inheritance -- fcntl(%i, F_SETFD, %i | FD_CLOEXEC)",
-		       this->fd, this->fd, rcode);
-		if (fcntl(this->fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
-			close(this->fd);
-			ERROR("Failed setting close on exec: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-#endif
+	if (!sock->my_port) sock->my_port = port;
 
 	/*
 	 *	Set the receive buffer size
@@ -2802,25 +2769,6 @@ static int listen_bind(rad_listen_t *this)
 			return -1;
 		}
 	}
-
-#ifdef SO_TIMESTAMP
-	{
-		int on = 1;
-
-		/*
-		 *	Enable receive timestamps, these should reflect
-		 *	when the packet was received, not when it was read
-		 *	from the socket.
-		 */
-		DEBUG4("[FD %i] Enabling packet timestamps -- setsockopt(%i, SOL_SOCKET, SO_TIMESTAMP, %i, %zu)",
-		       this->fd, this->fd, on, sizeof(on));
-		if (setsockopt(this->fd, SOL_SOCKET, SO_TIMESTAMP, &on, sizeof(int)) < 0) {
-			close(this->fd);
-			ERROR("Failed enabling socket timestamps: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-#endif
 
 	/*
 	 *	Bind to a device BEFORE touching IP addresses.
@@ -2880,115 +2828,6 @@ static int listen_bind(rad_listen_t *this)
 		}
 #endif
 	}
-
-#if defined(WITH_TCP) || defined(WITH_DHCP)
-	if ((sock->proto == IPPROTO_TCP) || (this->type == RAD_LISTEN_DHCP)) {
-		int on = 1;
-
-		DEBUG4("[FD %i] Enabling SO_REUSEADDR -- setsockopt(%i, SOL_SOCKET, SO_REUSEADDR, %p (%i), %zu)",
-		       this->fd, this->fd, &on, on, sizeof(on));
-		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-			close(this->fd);
-			ERROR("Failed to reuse address: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-#endif
-
-#if defined(WITH_TCP) && defined(WITH_UDPFROMTO)
-	else			/* UDP sockets get UDPfromto */
-#endif
-
-#ifdef WITH_UDPFROMTO
-	DEBUG4("[FD %i] Enabling IPV6_RECVPKTINFO/IP_PKTINFO -- udpfromto_init(%i)", this->fd, this->fd);
-	/*
-	 *	Initialize udpfromto for all sockets.
-	 */
-	if (udpfromto_init(this->fd) != 0) {
-		ERROR("Failed initializing udpfromto: %s", fr_syserror(errno));
-		close(this->fd);
-		return -1;
-	}
-#endif
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-	if (sock->my_ipaddr.af == AF_INET6) {
-		/*
-		 *	Listening on '::' does NOT get you IPv4 to
-		 *	IPv6 mapping.  You've got to listen on an IPv4
-		 *	address, too.  This makes the rest of the server
-		 *	design a little simpler.
-		 */
-#  ifdef IPV6_V6ONLY
-
-		if (IN6_IS_ADDR_UNSPECIFIED(&sock->my_ipaddr.ipaddr.ip6addr)) {
-			int on = 1;
-
-			if (setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
-				       (char *)&on, sizeof(on)) < 0) {
-				ERROR("Failed setting socket to IPv6 only: %s", fr_syserror(errno));
-
-				close(this->fd);
-				return -1;
-			}
-		}
-#  endif /* IPV6_V6ONLY */
-	}
-#endif /* HAVE_STRUCT_SOCKADDR_IN6 */
-
-	if (sock->my_ipaddr.af == AF_INET) {
-#if (defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)) || defined(IP_DONTFRAG)
-		int flag;
-#endif
-
-#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DONT)
-
-		/*
-		 *	Disable PMTU discovery.  On Linux, this
-		 *	also makes sure that the "don't fragment"
-		 *	flag is zero.
-		 */
-		flag = IP_PMTUDISC_DONT;
-
-		DEBUG4("[FD %i] Disabling PMTU discovery -- setsockopt(%i, IPPROTO_IP, IP_MTU_DISCOVER, "
-		       "%p (IP_PMTUDISC_DONT), %zu)", this->fd, this->fd, &flag, sizeof(flag));
-		if (setsockopt(this->fd, IPPROTO_IP, IP_MTU_DISCOVER, &flag, sizeof(flag)) < 0) {
-			ERROR("Failed disabling PMTU discovery: %s", fr_syserror(errno));
-
-			close(this->fd);
-			return -1;
-		}
-#endif
-
-#if defined(IP_DONTFRAG)
-		/*
-		 *	Ensure that the "don't fragment" flag is zero.
-		 */
-		flag = 0;
-
-		DEBUG4("[FD %i] Allowing IP fragmentation -- setsockopt(%i, IPPROTO_IP, IP_DONTFRAG, "
-		       "%p (%u), %zu)", this->fd, this->fd, &flag, flag, sizeof(flag));
-		if (setsockopt(this->fd, IPPROTO_IP, IP_DONTFRAG, &flag, sizeof(flag)) < 0) {
-			ERROR("Failed setting don't fragment flag: %s", fr_syserror(errno));
-
-			close(this->fd);
-			return -1;
-		}
-#endif
-	}
-
-#if defined(WITH_DHCP) && defined(SO_BROADCAST)
-	if (sock->broadcast) {
-		int on = 1;
-
-		DEBUG4("[FD %i] Enabling SO_BROADCAST -- setsockopt(%i, IPPROTO_IP, SO_BROADCAST, "
-		       "%p (%u), %zu)", this->fd, this->fd, &on, on, sizeof(on));
-		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-			ERROR("Can't set broadcast option: %s", fr_syserror(errno));
-			return -1;
-		}
-	}
-#endif
 
 	/*
 	 *	Set up sockaddr stuff.
@@ -3057,32 +2896,14 @@ static int listen_bind(rad_listen_t *this)
 	}
 
 #ifdef WITH_TCP
-	if (sock->proto == IPPROTO_TCP) {
-		/*
-		 *	If there are hard-coded worker threads, OR
-		 *	it's a TLS connection, it's blocking.
-		 *
-		 *	Otherwise, they're non-blocking.
-		 */
-		if (!this->workers
-#  if defined(WITH_PROXY) && defined(WITH_TLS)
-		    && (this->type == RAD_LISTEN_PROXY) && !this->tls
-#  endif
-			) {
-			DEBUG4("[FD %i] Setting nonblock -- fr_nonblock(%i)", this->fd, this->fd);
-			if (fr_nonblock(this->fd) < 0) {
-				close(this->fd);
-				ERROR("Failed setting non-blocking on socket: %s", fr_syserror(errno));
-				return -1;
-			}
-		}
-
-		/*
-		 *	Allow a backlog of 8 listeners, but only for incoming interfaces.
-		 */
+	/*
+	 *	Allow a backlog of 8 listeners, but only for incoming interfaces.
+	 */
+	if ((sock->proto == IPPROTO_TCP)
 #  ifdef WITH_PROXY
-		if (this->type != RAD_LISTEN_PROXY)
+	    && (this->type != RAD_LISTEN_PROXY)
 #  endif
+		) {
 		DEBUG4("[FD %i] Listening -- listen(%i, 8)", this->fd, this->fd);
 		if (listen(this->fd, 8) < 0) {
 			close(this->fd);
@@ -3092,16 +2913,17 @@ static int listen_bind(rad_listen_t *this)
 	}
 #endif
 
+	{
+		char buffer[256];
+		this->print(this, buffer, sizeof(buffer));
+		fprintf(stderr, "BOUND TO %s\n", buffer);					
+	}
+
+
 	/*
 	 *	Mostly for proxy sockets.
 	 */
 	sock->other_ipaddr.af = sock->my_ipaddr.af;
-
-/*
- *	Don't screw up other people.
- */
-#undef proto_for_port
-#undef sock_type
 
 	return 0;
 }
