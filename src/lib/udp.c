@@ -166,6 +166,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 		 fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port, UDP_UNUSED int *if_index)
 {
+	int			sock_flags = 0;
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_src = sizeof(src);
@@ -173,11 +174,15 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	ssize_t			received;
 	uint16_t		port;
 
+	if ((flags & UDP_FLAGS_PEEK) != 0) {
+		sock_flags |= MSG_PEEK;
+	}
+
 	/*
 	 *	Connected sockets already know src/dst IP/port
 	 */
 	if (flags & UDP_FLAGS_CONNECTED) {
-		return recv(sockfd, data, data_len, 0);
+		return recv(sockfd, data, data_len, sock_flags);
 	}
 
 	/*
@@ -185,12 +190,12 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	 *	packet after "len" bytes.
 	 */
 #ifdef WITH_UDPFROMTO
-	received = recvfromto(sockfd, data, data_len, 0,
+	received = recvfromto(sockfd, data, data_len, sock_flags,
 			      (struct sockaddr *)&src, &sizeof_src,
 			      (struct sockaddr *)&dst, &sizeof_dst,
 			      if_index, NULL);
 #else
-	received = recvfrom(sockfd, data, data_len, 0,
+	received = recvfrom(sockfd, data, data_len, sock_flags,
 			    (struct sockaddr *)&src, &sizeof_src);
 
 	/*
