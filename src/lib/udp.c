@@ -124,11 +124,21 @@ void udp_recv_discard(int sockfd)
  * @param[out] src_ipaddr of the packet.
  * @param[out] src_port of the packet.
  */
-ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, UNUSED int flags, fr_ipaddr_t *src_ipaddr, uint16_t *src_port)
+ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, int flags, fr_ipaddr_t *src_ipaddr, uint16_t *src_port)
 {
 	ssize_t			peeked;
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src = sizeof(src);
+
+	if (!src_ipaddr || ((flags & UDP_FLAGS_PEEK) != 0)) {
+		peeked = recv(sockfd, data, data_len, MSG_PEEK);
+		if (peeked < 0) {
+			if ((errno == EAGAIN) || (errno == EINTR)) return 0;
+			return -1;
+		}
+
+		return peeked;
+	}
 
 	peeked = recvfrom(sockfd, data, data_len, MSG_PEEK, (struct sockaddr *)&src, &sizeof_src);
 	if (peeked < 0) {
