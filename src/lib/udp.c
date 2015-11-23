@@ -160,6 +160,7 @@ ssize_t udp_recv_peek(int sockfd, void *data, size_t data_len, UNUSED int flags,
  * @param[out] src_port of the packet.
  * @param[out] dst_ipaddr of the packet.
  * @param[out] dst_port of the packet.
+ * @param[out] if_index where the packet was received
  */
 ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 		 fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
