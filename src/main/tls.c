@@ -2070,7 +2070,12 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		}
 #endif
 
-		while (conf->verify_client_cert_cmd) {
+		/*
+		 *	If OCSP checks fail, don't run the verify
+		 *	command.  The user will be rejected no matter
+		 *	what, so we might as well do less work.
+		 */
+		if (my_ok) while (conf->verify_client_cert_cmd) {
 			char filename[256];
 			int fd;
 			FILE *fp;
