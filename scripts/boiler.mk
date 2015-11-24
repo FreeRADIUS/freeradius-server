@@ -589,6 +589,10 @@ else
     BUILD_DIR := $(call CANONICAL_PATH,${BUILD_DIR})
 endif
 
+.PHONY: $(BUILD_DIR)
+$(BUILD_DIR):
+	@mkdir -p $@
+
 # Define compilers and linkers
 #
 BOOTSTRAP_BUILD = 
