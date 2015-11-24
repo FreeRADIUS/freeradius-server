@@ -1489,7 +1489,7 @@ int virtual_servers_bootstrap(CONF_SECTION *config)
 		 *	Check for duplicates.
 		 */
 		subcs = cf_section_sub_find_name2(config, "server", server_name);
-		if (subcs != cs) {
+		if (subcs && (subcs != cs)) {
 			ERROR("Duplicate virtual server \"%s\", in file %s:%d and file %s:%d",
 			      server_name,
 			      cf_section_filename(cs),
