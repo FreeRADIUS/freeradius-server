@@ -2252,7 +2252,7 @@ static FR_NAME_NUMBER state_names[] = {
 static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 {
 	rad_listen_t *this;
-	listen_detail_t *data;
+	listen_detail_t *data, *needle;
 	struct stat buf;
 
 	if (argc == 0) {
@@ -2264,10 +2264,11 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 	for (this = main_config.listen; this != NULL; this = this->next) {
 		if (this->type != RAD_LISTEN_DETAIL) continue;
 
-		data = this->data;
-		if (strcmp(argv[1], data->filename) != 0) continue;
-
-		break;
+		needle = this->data;
+		if (!strcmp(argv[0], needle->filename)) {
+			data = needle;
+			break;
+		}
 	}
 
 	if (!data) {
