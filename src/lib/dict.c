@@ -1808,7 +1808,8 @@ static int dict_read_init(fr_dict_t *dict, char const *dir_name, char const *fil
 		return -2;
 	}
 
-	stat(fn, &statbuf); /* fopen() guarantees this will succeed */
+	if (stat(fn, &statbuf) < 0) return -1; /* if fopen works, this works. */
+
 	if (!S_ISREG(statbuf.st_mode)) {
 		fclose(fp);
 		fr_strerror_printf("fr_dict_init: Dictionary '%s' is not a regular file", fn);
