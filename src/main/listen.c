@@ -2705,27 +2705,20 @@ static int listen_bind(rad_listen_t *this)
 		}
 	}
 
-	/*
-	 *	You MUST have a port to listen on for inbound sockets.
-	 */
-	if (!sock->my_port) {
-		if (this->type != RAD_LISTEN_PROXY) {
-			cf_log_err_cs(this->cs, "You must specify a port");
-			return -1;
-		}
-	} else {
 #ifdef WITH_TCP
-		/*
-		 *	You CANNOT specify a source port for outbound proxy sockets
-		 *	over TCP.
-		 */
-		if ((sock->proto == IPPROTO_TCP) &&
-		    (this->type == RAD_LISTEN_PROXY)) {
-			cf_log_err_cs(this->cs, "You must not specify a port for proxy sockets over TCP");
-			return -1;
-		}
-#endif
+#ifdef WITH_PROXY
+	/*
+	 *	You CANNOT specify a source port for outbound proxy sockets
+	 *	over TCP.
+	 */
+	if (sock->my_port &&
+	    (sock->proto == IPPROTO_TCP) &&
+	    (this->type == RAD_LISTEN_PROXY)) {
+		cf_log_err_cs(this->cs, "You must not specify a port for proxy sockets over TCP");
+		return -1;
 	}
+#endif
+#endif
 
 	/*
 	 *	Don't open sockets if we're checking the config.
