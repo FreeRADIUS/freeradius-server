@@ -133,7 +133,7 @@ $(SRC_INCLUDE_DIR):
 #
 #  Make the installed headers depend on the dynamically generated ones
 #
-$(foreach x,$(HEADERS_DY),$(eval$(SRC_INCLUDE_DIR)/$x: src/include/$x))
+$(foreach x,$(HEADERS_DY) $(notdir $(HEADERS_RFC)),$(eval$(SRC_INCLUDE_DIR)/$x: src/include/$x))
 
 #
 #  install the headers by re-writing the local files
