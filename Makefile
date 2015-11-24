@@ -7,6 +7,11 @@
 # Version:	$Id$
 #
 
+#
+#  The default rule is "all".
+#
+all:
+
 $(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry))
 
 include Make.inc
