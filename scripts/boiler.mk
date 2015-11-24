@@ -653,7 +653,7 @@ ifneq "$(MAKECMDGOALS)" "clean"
 endif
 
 # Build rules for installation subdirectories
-$(foreach D,$(sort $(dir ${ALL_INSTALL})),\
+$(foreach D,$(patsubst %/,%,$(sort $(dir ${ALL_INSTALL}))),\
   $(eval $(call ADD_INSTALL_RULE.dir,${D})))
 
 
