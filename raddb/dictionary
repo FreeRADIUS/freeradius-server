@@ -44,6 +44,6 @@
 #
 #	These attributes are examples
 #
-#ATTRIBUTE	My-Local-String		3000	string internal
-#ATTRIBUTE	My-Local-IPAddr		3001	ipaddr internal
-#ATTRIBUTE	My-Local-Integer	3002	integer internal
+#ATTRIBUTE	My-Local-String		3000	string
+#ATTRIBUTE	My-Local-IPAddr		3001	ipaddr
+#ATTRIBUTE	My-Local-Integer	3002	integer

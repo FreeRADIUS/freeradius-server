@@ -635,6 +635,16 @@ int fr_dict_attr_add(fr_dict_t *dict, fr_dict_attr_t const *parent,
 		} else if ((unsigned int) attr > max_attr) {
 			max_attr = attr;
 		}
+
+		/*
+		 *	Auto-set internal flags for raddb/dictionary.
+		 *	So that the end user doesn't have to know
+		 *	about internal implementation of the server.
+		 */
+		if ((parent->flags.type_size == 1) &&
+		    (attr >= 3000) && (attr < 4000)) {
+			flags.internal = true;
+		}
 	}
 
 	/*
