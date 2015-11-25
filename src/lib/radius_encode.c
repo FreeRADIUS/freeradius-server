@@ -1087,7 +1087,8 @@ static ssize_t encode_rfc_hdr_internal(uint8_t *out, size_t outlen,
 		return -1;
 
 	default:
-		if ((tlv_stack[depth]->attr == 0) || (tlv_stack[depth]->attr > 255)) {
+		if (((tlv_stack[depth]->vendor == 0) && (tlv_stack[depth]->attr == 0)) ||
+		    (tlv_stack[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__,
 					   tlv_stack[depth]->attr);
 			return -1;
@@ -1138,7 +1139,7 @@ static ssize_t encode_vendor_attr_hdr(uint8_t *out, size_t outlen,
 		fr_strerror_printf("Expected Vendor");
 		return -1;
 	}
-	
+
 	da = tlv_stack[depth];
 
 	if ((da->type != PW_TYPE_TLV) && (dv->flags.type_size == 1) && (dv->flags.length == 1)) {
@@ -1431,7 +1432,12 @@ static int encode_rfc_hdr(uint8_t *out, size_t outlen, fr_dict_attr_t const **tl
 		return -1;
 
 	default:
-		if ((vp->da->attr == 0) || (vp->da->attr > 255)) {
+		/*
+		 *	Attribute 0 is fine as a TLV leaf, or VSA, but not
+		 *	in the original standards space.
+		 */
+		if (((tlv_stack[depth]->vendor == 0) && (tlv_stack[depth]->attr == 0)) ||
+		    (tlv_stack[depth]->attr > 255)) {
 			fr_strerror_printf("%s: Called with non-standard attribute %u", __FUNCTION__, vp->da->attr);
 			return -1;
 		}
