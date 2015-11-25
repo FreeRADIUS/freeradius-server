@@ -210,7 +210,7 @@ static int detail_open(rad_listen_t *this)
 	 */
 	if ((data->work_fd < 0) && (errno != ENOENT)) {
 		ERROR("Failed opening detail file %s: %s",
-		      data->filename_work, strerror(errno));
+		      data->filename_work, fr_syserror(errno));
 		return 0;
 	}
 
