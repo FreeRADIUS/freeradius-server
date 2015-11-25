@@ -681,7 +681,7 @@ ssize_t rad_packet_size(uint8_t const *data, size_t data_len)
 	/*
 	 *	Want at least this much before doing anything else
 	 */
-	if (data_len < RADIUS_HDR_LEN) return RADIUS_HDR_LEN;
+	if (!data || (data_len < RADIUS_HDR_LEN)) return RADIUS_HDR_LEN;
 
 	/*
 	 *	We want at least this much data for a real RADIUS packet/
