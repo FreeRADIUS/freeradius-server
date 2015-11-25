@@ -203,6 +203,20 @@ static int detail_open(rad_listen_t *this)
 	 */
 	data->fp = NULL;
 	data->work_fd = open(data->filename_work, O_RDWR);
+
+	/*
+	 *	Couldn't open it for a reason OTHER than "it doesn't
+	 *	exist".  Complain and tell the admin.
+	 */
+	if ((data->work_fd < 0) && (errno != ENOENT)) {
+		ERROR("Failed opening detail file %s: %s",
+		      data->filename_work, strerror(errno));
+		return 0;
+	}
+
+	/*
+	 *	The file doesn't exist.  Poll for it again.
+	 */
 	if (data->work_fd < 0) {
 #ifndef HAVE_GLOB_H
 		return 0;
