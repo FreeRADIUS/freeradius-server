@@ -29,7 +29,7 @@ cache cache_tls_session {
 	}
 }
 
-cache cache_ocsp_session {
+cache cache_ocsp {
 	driver = "rlm_cache_rbtree"
 
 	#  The key used to index the cache.  It is dynamically expanded
