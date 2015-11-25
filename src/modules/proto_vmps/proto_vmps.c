@@ -116,6 +116,7 @@ fr_protocol_t proto_vmps = {
 	.inst_size	= sizeof(listen_socket_t),
 	.transports	= TRANSPORT_UDP,
 	.tls		= false,
+	.size		= vqp_packet_size,
 	.parse		= common_socket_parse,
 	.open		= common_socket_open,
 	.recv		= vqp_socket_recv,

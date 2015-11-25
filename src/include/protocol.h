@@ -33,6 +33,7 @@ extern "C" {
  */
 typedef int (*rad_listen_parse_t)(CONF_SECTION *, rad_listen_t *);
 typedef void (*rad_listen_free_t)(rad_listen_t *);
+typedef ssize_t (*rad_listen_size_t)(uint8_t const *data, size_t data_len);
 
 typedef struct fr_protocol_t {
 	uint64_t 		magic;	//!< Used to validate loaded library
@@ -42,6 +43,8 @@ typedef struct fr_protocol_t {
 
 	uint32_t		transports;
 	bool			tls;
+
+	rad_listen_size_t	size;
 
 	rad_listen_parse_t	parse;
 	rad_listen_parse_t	open;

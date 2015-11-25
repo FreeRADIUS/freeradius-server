@@ -2513,7 +2513,7 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 static fr_protocol_t master_listen[] = {
 #ifdef WITH_STATS
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true,
+	  TRANSPORT_DUAL, true, NULL,
 	  common_socket_parse, common_socket_open, NULL,
 	  stats_socket_recv, auth_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
@@ -2524,7 +2524,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_PROXY
 	/* proxying */
 	{ RLM_MODULE_INIT, "proxy", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true,
+	  TRANSPORT_DUAL, true, rad_packet_size,
 	  common_socket_parse, common_socket_open, common_socket_free,
 	  proxy_socket_recv, proxy_socket_send,
 	  common_socket_print, common_packet_debug, proxy_socket_encode, proxy_socket_decode },
@@ -2534,7 +2534,7 @@ static fr_protocol_t master_listen[] = {
 
 	/* authentication */
 	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true,
+	  TRANSPORT_DUAL, true, rad_packet_size,
 	  common_socket_parse, common_socket_open, common_socket_free,
 	  auth_socket_recv, auth_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
@@ -2542,7 +2542,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_ACCOUNTING
 	/* accounting */
 	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true,
+	  TRANSPORT_DUAL, true, rad_packet_size,
 	  common_socket_parse, common_socket_open, common_socket_free,
 	  acct_socket_recv, acct_socket_send,
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode},
@@ -2553,7 +2553,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_DETAIL
 	/* detail */
 	{ RLM_MODULE_INIT, "detail", sizeof(listen_detail_t), NULL,
-	  0, false,
+	  0, false, NULL,
 	  detail_parse, detail_socket_open, detail_free,
 	  detail_recv, detail_send,
 	  detail_print, common_packet_debug, detail_encode, detail_decode },
@@ -2568,7 +2568,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_COMMAND_SOCKET
 	/* TCP command socket */
 	{ RLM_MODULE_INIT, "control", sizeof(fr_command_socket_t), NULL,
-	  0, false,
+	  0, false, NULL,
 	  command_socket_parse, command_socket_open, command_socket_free,
 	  command_domain_accept, command_domain_send,
 	  command_socket_print, common_packet_debug, command_socket_encode, command_socket_decode },
@@ -2579,7 +2579,7 @@ static fr_protocol_t master_listen[] = {
 #ifdef WITH_COA
 	/* Change of Authorization */
 	{ RLM_MODULE_INIT, "coa", sizeof(listen_socket_t), NULL,
-	  TRANSPORT_DUAL, true,
+	  TRANSPORT_DUAL, true, rad_packet_size,
 	  common_socket_parse, common_socket_open, NULL,
 	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
 	  common_socket_print, common_packet_debug, client_socket_encode, client_socket_decode },
