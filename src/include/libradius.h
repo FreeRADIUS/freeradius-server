@@ -228,6 +228,7 @@ extern FR_NAME_NUMBER const fr_request_types[];
 void		fr_radius_make_secret(uint8_t *digest, uint8_t const *vector, char const *secret, uint8_t const *value);
 void		rad_print_hex(RADIUS_PACKET *packet);
 int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
+ssize_t		rad_packet_size(uint8_t const *data, size_t data_len);
 bool		rad_packet_ok(RADIUS_PACKET *packet, int flags, decode_fail_t *reason);
 RADIUS_PACKET	*rad_recv(TALLOC_CTX *ctx, int fd, int flags);
 ssize_t		rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, uint16_t *src_port, unsigned int *code);
