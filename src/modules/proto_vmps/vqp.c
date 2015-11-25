@@ -551,7 +551,6 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 ssize_t vqp_packet_size(uint8_t const *data, size_t data_len)
 {
 	int attributes;
-	size_t totallen;
 	uint8_t const *ptr, *end;
 
 	if (data_len < VQP_HDR_LEN) return VQP_HDR_LEN;
@@ -571,7 +570,6 @@ ssize_t vqp_packet_size(uint8_t const *data, size_t data_len)
 	 *	Look for attributes.
 	 */
 	ptr = data + VQP_HDR_LEN;
-	totallen = data_len - VQP_HDR_LEN;
 	attributes = data[3];
 
 	end = data + data_len;
