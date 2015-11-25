@@ -536,3 +536,89 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	return 0;
 }
+
+/** See how big of a packet is in the buffer.
+ *
+ * Packet is not 'const * const' because we may update data_len, if there's more data
+ * in the UDP packet than in the VMPS packet.
+ *
+ * @param data pointer to the packet buffer
+ * @param data_len length of the packet buffer
+ * @return
+ *	<= 0 packet is bad.
+ *      >0 how much of the data is a packet (can be larger than data_len)
+ */
+ssize_t vqp_packet_size(uint8_t const *data, size_t data_len)
+{
+	int attributes;
+	size_t totallen;
+	uint8_t const *ptr, *end;
+
+	if (data_len < VQP_HDR_LEN) return VQP_HDR_LEN;
+
+	/*
+	 *	No attributes.
+	 */
+	if (data[3] == 0) return VQP_HDR_LEN;
+
+	/*
+	 *	Too many attributes.  Return an error indicating that
+	 *	there's a problem with octet 3.
+	 */
+	if (data[3] > VQP_MAX_ATTRIBUTES) return -3;
+
+	/*
+	 *	Look for attributes.
+	 */
+	ptr = data + VQP_HDR_LEN;
+	totallen = data_len - VQP_HDR_LEN;
+	attributes = data[3];
+
+	end = data + data_len;
+
+	while (attributes > 0) {
+		size_t attr_len;
+
+		/*
+		 *	Not enough room for an attribute header, we want at least that.
+		 */
+		if ((end - ptr) < 6) {
+			return (ptr + 6) - data;
+		}
+
+		/*
+		 *	Length of the data NOT including the header.
+		 */
+		attr_len = (ptr[4] << 8) | ptr[5];
+
+		ptr += 6 + attr_len;
+
+		/*
+		 *	We don't want to read infinite amounts of data.
+		 *
+		 *	Return an error indicating that there's a
+		 *	problem with the final octet
+		 */
+		if ((ptr - data) > 4096) {
+			return -(ptr - data);
+		}
+
+		/*
+		 *	The packet we want is larger than the input
+		 *	buffer, so we return the size we want the
+		 *	packet to be.
+		 */
+		if (ptr > end) return ptr - data;
+
+		/*
+		 *	This attribute is fully in the buffer, so we
+		 *	go look for another one.
+		 */
+		attributes--;
+	}
+
+	/*
+	 *	We've reached the end of the packet.
+	 */
+	return ptr - data;
+}
