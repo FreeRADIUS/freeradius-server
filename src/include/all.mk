@@ -131,18 +131,13 @@ $(SRC_INCLUDE_DIR):
 	@$(INSTALL) -d -m 755 ${SRC_INCLUDE_DIR}
 
 #
-#  Make the installed headers depend on the dynamically generated ones
-#
-$(foreach x,$(HEADERS_DY) $(notdir $(HEADERS_RFC)),$(eval$(SRC_INCLUDE_DIR)/$x: src/include/$x))
-
-#
 #  install the headers by re-writing the local files
 #
 #  install-sh function for creating directories gets confused
 #  if there's a trailing slash, tries to create a directory
 #  it already created, and fails...
 #
-${SRC_INCLUDE_DIR}/%.h: ${top_srcdir}/src/include/%.h | $(SRC_INCLUDE_DIR)
+${SRC_INCLUDE_DIR}/%.h: src/include/%.h | $(SRC_INCLUDE_DIR)
 	@echo INSTALL $(notdir $<)
 	@$(INSTALL) -d -m 755 `echo $(dir $@) | sed 's/\/$$//'`
 	@sed 's/^#include <freeradius-devel/#include <freeradius/' < $< > $@
