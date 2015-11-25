@@ -580,10 +580,11 @@ ssize_t vqp_packet_size(uint8_t const *data, size_t data_len)
 		size_t attr_len;
 
 		/*
-		 *	Not enough room for an attribute header, we want at least that.
+		 *	Not enough room for the attribute headers, we
+		 *	want at least those.
 		 */
 		if ((end - ptr) < 6) {
-			return (ptr + 6) - data;
+			return 6 * attributes;
 		}
 
 		/*
@@ -604,17 +605,17 @@ ssize_t vqp_packet_size(uint8_t const *data, size_t data_len)
 		}
 
 		/*
-		 *	The packet we want is larger than the input
-		 *	buffer, so we return the size we want the
-		 *	packet to be.
-		 */
-		if (ptr > end) return ptr - data;
-
-		/*
-		 *	This attribute is fully in the buffer, so we
-		 *	go look for another one.
+		 *	This attribute has been checked.
 		 */
 		attributes--;
+
+		/*
+		 *	The packet we want is larger than the input
+		 *	buffer, so we return the length of the current
+		 *	attribute, plus the length of the remaining
+		 *	headers.
+		 */
+		if (ptr > end) return (6 * attributes) + ptr - data;
 	}
 
 	/*
