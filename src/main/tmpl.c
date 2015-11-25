@@ -1813,7 +1813,7 @@ ssize_t tmpl_aexpand(TALLOC_CTX *ctx, char **out, REQUEST *request, vp_tmpl_t co
  * @param[out] out Where to write the presentation format #vp_tmpl_t string.
  * @param[in] outlen Size of output buffer.
  * @param[in] vpt to print.
- * @param[in] values Used for integer attributes only. #fr_dict_attr_t to use when mapping integer
+ * @param[in] values Used for #TMPL_TYPE_DATA only. #fr_dict_attr_t to use when mapping integer
  *	values to strings.
  * @return
  *	- The number of bytes written to the out buffer.
