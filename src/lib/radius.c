@@ -678,6 +678,9 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
  */
 ssize_t rad_packet_size(uint8_t const *data, size_t data_len)
 {
+	size_t totallen;
+	uint8_t const *attr, *end;
+
 	/*
 	 *	Want at least this much before doing anything else
 	 */
@@ -686,7 +689,30 @@ ssize_t rad_packet_size(uint8_t const *data, size_t data_len)
 	/*
 	 *	We want at least this much data for a real RADIUS packet/
 	 */
-	return (data[2] << 8) | data[3];
+	totallen = (data[2] << 8) | data[3];
+	if (data_len < totallen) return totallen;
+
+	if (totallen == RADIUS_HDR_LEN) return totallen;
+
+	attr = data + RADIUS_HDR_LEN;
+	end = data + totallen;
+
+	/*
+	 *	Do a quick pass to sanity check it.
+	 */
+	while (attr < end) {
+		if ((end - attr) < 2) return -(attr - data);
+
+		if (attr[0] == 0) return -(attr - data);
+
+		if (attr[1] < 2) return - (attr + 1 - data);
+
+		if ((attr + attr[1]) > end) return -(attr + 1 - data);
+
+		attr += attr[1];
+	}
+
+	return totallen;
 }
 
 
