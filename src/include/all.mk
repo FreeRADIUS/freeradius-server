@@ -137,7 +137,7 @@ $(SRC_INCLUDE_DIR):
 #  if there's a trailing slash, tries to create a directory
 #  it already created, and fails...
 #
-${SRC_INCLUDE_DIR}/%.h: ${top_srcdir}/src/include/%.h | $(SRC_INCLUDE_DIR)
+${SRC_INCLUDE_DIR}/%.h: src/include/%.h | $(SRC_INCLUDE_DIR)
 	@echo INSTALL $(notdir $<)
 	@$(INSTALL) -d -m 755 `echo $(dir $@) | sed 's/\/$$//'`
 	@sed 's/^#include <freeradius-devel/#include <freeradius/' < $< > $@
