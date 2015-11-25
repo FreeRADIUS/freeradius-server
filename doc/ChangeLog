@@ -7,6 +7,12 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	  subsection.  This allows the disablign of OpenSSL
 	  auto-chaining of certificates.  Which it can get wrong.
 	* Added printing of coa and disconnect stats (radmin).
+	* radclient defaults to expecting Access-Accept responses
+	  to Status-Server.
+	* Updated dictionary.lancom, dictionary.starent.
+	* Portability fixes for Solaris.
+	* More errors from ntlm_auth gets passed to MS-CHAP.
+	* Update abfab-tr-idp virtual server.
 
 	Bug fixes
 	* Fix issue where field nas_type would not be accessible via
@@ -15,9 +21,19 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	  calls to msg_callback with 'pseudo' content types.
 	* Data type "ipv4prefix" are parsed correctly.
 	* Use correct talloc context in rlm_exec.  Fixes #1338.
+	* Complain in unlang if "else" is used with no previous
+	  "if" or "elsif".
+	* Send accounting status packets to the accounting port.
+	  Fixes #1364.
+	* Print out CFLAGS when doing "radiusd -Xxv"
 	* Fixed bug with coa/acct stats value #1339. Based on patch from
 	  Jorge Pereira.
+	* Fixes for LEAP proxying.  Don't use LEAP!
+	* Fix issue with "directory already exists" seen when doing
+	  "make install".
 	* Fixed bug with radmin related to the option "stats detail <filename>"
+	* Complain if the detail file reader does not have permission
+	  to read the "detail.work" file.  Fixes #1398
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
