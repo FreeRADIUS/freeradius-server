@@ -536,8 +536,16 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 	 *	TCP sockets are always bound to the correct src/dst IP/port
 	 */
 	if (ps->proto == IPPROTO_TCP) {
-		my_request.src_ipaddr = reply->dst_ipaddr;
-		my_request.src_port = reply->dst_port;
+		reply->dst_ipaddr = ps->src_ipaddr;
+		reply->dst_port = ps->src_port;
+		reply->src_ipaddr = ps->dst_ipaddr;
+		reply->src_port = ps->dst_port;
+
+		my_request.src_ipaddr = ps->src_ipaddr;
+		my_request.src_port = ps->src_port;
+		my_request.dst_ipaddr = ps->dst_ipaddr;
+		my_request.dst_port = ps->dst_port;
+
 	} else
 #endif
 	{
@@ -547,10 +555,10 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 			my_request.src_ipaddr = reply->dst_ipaddr;
 		}
 		my_request.src_port = ps->src_port;
-	}
 
-	my_request.dst_ipaddr = reply->src_ipaddr;
-	my_request.dst_port = reply->src_port;
+		my_request.dst_ipaddr = reply->src_ipaddr;
+		my_request.dst_port = reply->src_port;
+	}
 
 #ifdef WITH_TCP
 	my_request.proto = reply->proto;
