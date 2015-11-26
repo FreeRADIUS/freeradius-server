@@ -19,7 +19,12 @@ FreeRADIUS 3.1.0 Mon  7 Oct 2013 15:48:14 EDT urgency=medium
 	  authentication.
 	* ipaddr = * 'just works' for most DHCP configurations.
 	* Redis cluster support for all Redis modules.
+	* TLV Attributes can now be nested to nearly any depth.
+	* radsnmp client which can listen on Net-SNMP "pass persist"
+	  and translate that into queries to the server.
 
 	Bug fixes
 	* Attribute names in unlang MUST be prefixed with &
 	  This fixes a host of ambiguities when parsing.
+	* Added unit tests for dictionary parsing and
+	  restrictions on which attributes can appear where.
