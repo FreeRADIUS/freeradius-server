@@ -35,6 +35,7 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Complain if the detail file reader does not have permission
 	  to read the "detail.work" file.  Fixes #1398
 	* Fixed SoH. Attributes were not being copied to the virtual server.
+	* Used a wrong list to global statistics in "stats".
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
