@@ -1145,8 +1145,7 @@ do { \
 						     leases[i]->gateway_len, '\0');
 			}
 			if (is_active) {
-				INFO("lease expires   : %s", time_buff);
-				if (*time_buff) INFO("lease expired   : %s", time_buff);
+				if (*time_buff) INFO("lease expires   : %s", time_buff);
 				if (device) INFO("device id       : %s", device);
 				if (gateway) INFO("gateway id      : %s", gateway);
 			} else {
