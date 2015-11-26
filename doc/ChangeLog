@@ -34,6 +34,7 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Fixed bug with radmin related to the option "stats detail <filename>"
 	* Complain if the detail file reader does not have permission
 	  to read the "detail.work" file.  Fixes #1398
+	* Fixed SoH. Attributes were not being copied to the virtual server.
 
 FreeRADIUS 3.0.10 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	Feature improvements
