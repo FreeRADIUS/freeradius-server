@@ -168,6 +168,19 @@ $(TEST_PATH)/%.ok: $(TEST_PATH)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 
 tests.eap: $(patsubst %.conf,%.ok, $(EAPOL_TEST_FILES))
 	@$(MAKE) radiusd.kill
-else
+
+.PHONY: build.eapol_test
+build.eapol_test:
+
+else		# no eapol_test.
+
+#
+#  A target to download and build eapol_testx
+#
+.PHONY: build.eapol_test
+build.eapol_test:
+	@$(top_builddir)/scripts/travis/eapol_test-build.sh
+
 tests.eap:
+
 endif
