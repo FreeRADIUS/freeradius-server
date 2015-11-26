@@ -73,7 +73,7 @@ clean: tests.eap.clean
 #   Only run EAP tests if we have built with OpenSSL, and eapol_test in our path
 #
 ifneq "$(OPENSSL_LIBS)" ""
-EAPOL_TEST = $(shell $(top_builddir)/scripts/travis/eapol_test-build.sh)
+EAPOL_TEST = $(shell which eapol_test)
 endif
 
 ifneq "$(EAPOL_TEST)" ""
