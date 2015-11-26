@@ -1,6 +1,6 @@
 # -*- makefile -*-
 ##
-## Makefile -- Build and run tests for the server.
+## tests for EAP
 ##
 ##	http://www.freeradius.org/
 ##	$Id$
@@ -70,9 +70,12 @@ endif
 clean: tests.eap.clean
 
 #
-#   Only run EAP tests if we have eapol_test in our path
+#   Only run EAP tests if we have built with OpenSSL, and eapol_test in our path
 #
+ifneq "$(OPENSSL_LIBS)" ""
 EAPOL_TEST = $(shell $(top_builddir)/scripts/travis/eapol_test-build.sh)
+endif
+
 ifneq "$(EAPOL_TEST)" ""
 #
 #	Build the directory for testing the server
