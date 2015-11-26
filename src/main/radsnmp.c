@@ -482,9 +482,9 @@ static int radsnmp_get_response(int fd,
 		io_vector[5].iov_base = newline;
 		io_vector[5].iov_len = 1;
 
-		DEBUG2("said: %s", io_vector[0].iov_base);
-		DEBUG2("said: %s", io_vector[2].iov_base);
-		DEBUG2("said: %s", io_vector[4].iov_base);
+		DEBUG2("said: %s", (char *)io_vector[0].iov_base);
+		DEBUG2("said: %s", (char *)io_vector[2].iov_base);
+		DEBUG2("said: %s", (char *)io_vector[4].iov_base);
 
 		if (writev(fd, io_vector, sizeof(io_vector) / sizeof(*io_vector)) < 0) {
 			fr_strerror_printf("Failed writing varbind result: %s", fr_syserror(errno));
