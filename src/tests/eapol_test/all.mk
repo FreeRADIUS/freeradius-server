@@ -70,10 +70,12 @@ endif
 clean: tests.eap.clean
 
 #
-#   Only run EAP tests if we have built with OpenSSL, and eapol_test in our path
+#   Only run EAP tests if we have built with OpenSSL, and a "test" target
 #
+ifneq "$(OPENSSL_LIBS)" ""
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
 EAPOL_TEST = $(shell $(top_builddir)/scripts/travis/eapol_test-build.sh)
+endif
 endif
 
 # This gets called recursively, so has to be outside of the condition below
