@@ -1,0 +1,10 @@
+#
+# Collectd type definitions for radsniff probes
+#
+# $Id$
+#
+# Copyright 2013 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+#
+radius_count            received:GAUGE:0:U, linked:GAUGE:0:U, unlinked:GAUGE:0:U, reused:GAUGE:0:U
+radius_latency          smoothed:GAUGE:0:U, avg:GAUGE:0:U, high:GAUGE:0:U, low:GAUGE:0:U
+radius_rtx              none:GAUGE:0:U, 1:GAUGE:0:U, 2:GAUGE:0:U, 3:GAUGE:0:U, 4:GAUGE:0:U, more:GAUGE:0:U, lost:GAUGE:0:U
