@@ -1,6 +1,6 @@
 # -*- makefile -*-
 ##
-## tests for EAP
+## Makefile -- Build and run tests for the server.
 ##
 ##	http://www.freeradius.org/
 ##	$Id$
@@ -72,20 +72,39 @@ clean: tests.eap.clean
 #
 #   Only run EAP tests if we have built with OpenSSL, and eapol_test in our path
 #
-ifneq "$(OPENSSL_LIBS)" ""
-EAPOL_TEST = $(shell which eapol_test)
+ifneq (,$(findstring test,$(MAKECMDGOALS)))
+EAPOL_TEST = $(shell $(top_builddir)/scripts/travis/eapol_test-build.sh)
 endif
 
-ifneq "$(EAPOL_TEST)" ""
-#
-#	Build the directory for testing the server
-#
+# This gets called recursively, so has to be outside of the condition below
+# We can't make this depend on radiusd.pid, because then make will create
+# radiusd.pid when we make radiusd.kill, which we don't want.
+.PHONY: radiusd.kill
+radiusd.kill:
+	@if [ -f $(CONFIG_PATH)/radiusd.pid ]; then \
+		ret=0; \
+		if ! ps `cat $(CONFIG_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+		    rm -f $(CONFIG_PATH)/radiusd.pid; \
+		    echo "FreeRADIUS terminated during test"; \
+		    echo "GDB output was:"; \
+		    cat "$(GDB_LOG)"; \
+		    echo "Last entries in server log ($(RADIUS_LOG)):"; \
+		    tail -n 40 "$(RADIUS_LOG)"; \
+		    ret=1; \
+		fi; \
+		if ! kill -TERM `cat $(CONFIG_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+			ret=1; \
+		fi; \
+		exit $$ret; \
+	fi
+
 tests.eap.clean:
 	@rm -f "$(TEST_PATH)/"*.ok "$(TEST_PATH)/"*.log
 	@rm -f "$(CONFIG_PATH)/test.conf"
 	@rm -f "$(CONFIG_PATH)/dictionary"
 	@rm -rf "$(CONFIG_PATH)/methods-enabled"
 
+ifneq "$(EAPOL_TEST)" ""
 $(CONFIG_PATH)/dictionary:
 	@echo "# test dictionary not install.  Delete at any time." > $@
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> $@
@@ -111,7 +130,7 @@ $(CONFIG_PATH)/test.conf: $(CONFIG_PATH)/dictionary
 	@echo '$$INCLUDE $${testdir}/servers.conf' >> $@
 
 #
-#  Build snakoil certs if they don't exit
+#  Build snakoil certs if they don't exist
 #
 $(RADDB_PATH)/certs/%:
 	@make -C $(shell dirname $@)
@@ -125,27 +144,6 @@ $(CONFIG_PATH)/radiusd.pid: $(CONFIG_PATH)/test.conf $(RADDB_PATH)/certs/server.
 		tail -n 40 "$(RADIUS_LOG)"; \
 	else \
 		echo "ok"; \
-	fi
-
-# We can't make this depend on radiusd.pid, because then make will create
-# radiusd.pid when we make radiusd.kill, which we don't want.
-.PHONY: radiusd.kill
-radiusd.kill:
-	@if [ -f $(CONFIG_PATH)/radiusd.pid ]; then \
-		ret=0; \
-		if ! ps `cat $(CONFIG_PATH)/radiusd.pid` >/dev/null 2>&1; then \
-		    rm -f $(CONFIG_PATH)/radiusd.pid; \
-		    echo "FreeRADIUS terminated during test"; \
-		    echo "GDB output was:"; \
-		    cat "$(GDB_LOG)"; \
-		    echo "Last entries in server log ($(RADIUS_LOG)):"; \
-		    tail -n 40 "$(RADIUS_LOG)"; \
-		    ret=1; \
-		fi; \
-		if ! kill -TERM `cat $(CONFIG_PATH)/radiusd.pid` >/dev/null 2>&1; then \
-			ret=1; \
-		fi; \
-		exit $$ret; \
 	fi
 
 #
@@ -168,19 +166,6 @@ $(TEST_PATH)/%.ok: $(TEST_PATH)/%.conf | radiusd.kill $(CONFIG_PATH)/radiusd.pid
 
 tests.eap: $(patsubst %.conf,%.ok, $(EAPOL_TEST_FILES))
 	@$(MAKE) radiusd.kill
-
-.PHONY: build.eapol_test
-build.eapol_test:
-
-else		# no eapol_test.
-
-#
-#  A target to download and build eapol_testx
-#
-.PHONY: build.eapol_test
-build.eapol_test:
-	@$(top_builddir)/scripts/travis/eapol_test-build.sh
-
+else
 tests.eap:
-
 endif

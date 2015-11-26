@@ -88,7 +88,7 @@ before_script:
 script:
 # If this is not a coverity scan, run the tests.  This is an optimisation to make sure we don't run tests
 # on the same build product multiple times.
-  - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make build.eapol_test travis-test; fi
+  - if [ "${DO_BUILD}" = 'yes' -a "${COVERITY_SCAN_BRANCH}" != 1 ]; then make travis-test; fi
 # Build the debian packages (disabled until we get the dependencies fixed)
 #  - if [ "${DO_BUILD}" = 'no' ]; then make deb; fi
 # Build the doxygen documentation
