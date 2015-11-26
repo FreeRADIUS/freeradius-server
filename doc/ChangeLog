@@ -13,6 +13,8 @@ FreeRADIUS 3.0.11 Mon 05 Oct 2015 15:00:00 EDT urgency=medium
 	* Portability fixes for Solaris.
 	* More errors from ntlm_auth gets passed to MS-CHAP.
 	* Update abfab-tr-idp virtual server.
+	* The field 'last_packet' in 'radmin> stats client' now is
+	  shown like a date.
 
 	Bug fixes
 	* Fix issue where field nas_type would not be accessible via

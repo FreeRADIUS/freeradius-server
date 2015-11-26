@@ -2172,7 +2172,18 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 		cprintf(listener, "timeouts\t" PU "\n", stats->total_timeouts);
 	}
 
-	cprintf(listener, "last_packet\t%" PRId64 "\n", (int64_t) stats->last_packet);
+	if (stats->last_packet > 0) {
+		char str_last_packet[64];
+		struct tm *pts;
+
+		pts = localtime((time_t *)&stats->last_packet);
+		strftime(str_last_packet, sizeof(str_last_packet), "%Y-%m-%d %H:%M:%S", pts);
+
+		cprintf(listener, "last_packet\t%" PRId64 "\t(%s)\n", (int64_t) stats->last_packet, str_last_packet);
+	} else {
+		cprintf(listener, "last_packet\t%" PRId64 "\n", (int64_t) stats->last_packet);
+	}
+
 	for (i = 0; i < 8; i++) {
 		cprintf(listener, "elapsed.%s\t%u\n",
 			elapsed_names[i], stats->elapsed[i]);
