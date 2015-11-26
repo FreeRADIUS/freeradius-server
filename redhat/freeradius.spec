@@ -554,7 +554,6 @@ fi
 /usr/sbin/raddebug
 /usr/sbin/radiusd
 /usr/sbin/radmin
-/usr/sbin/radsnmp
 # man-pages
 %doc %{_mandir}/man1/smbencrypt.1.gz
 %doc %{_mandir}/man5/checkrad.5.gz
