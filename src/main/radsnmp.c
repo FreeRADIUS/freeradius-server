@@ -658,13 +658,12 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 			RESPOND_STATIC("NONE");
 			continue;
 		}
-		break;
 
 		/*
 		 *	Now add an attribute indicating what the
 		 *	SNMP operation was
 		 */
-		vp = fr_pair_afrom_da(NULL, conf->snmp_op);
+		vp = fr_pair_afrom_da(request, conf->snmp_op);
 		if (!vp) {
 			ERROR("Failed allocating SNMP operation attribute");
 			return EXIT_FAILURE;
@@ -676,7 +675,7 @@ static int radsnmp_send_recv(radsnmp_conf_t *conf, int fd)
 		 *	Add message authenticator or the stats
 		 *	request will be rejected.
 		 */
-		vp = fr_pair_afrom_num(NULL, 0, PW_MESSAGE_AUTHENTICATOR);
+		vp = fr_pair_afrom_num(request, 0, PW_MESSAGE_AUTHENTICATOR);
 		if (!vp) {
 			ERROR("Failed allocating Message-Authenticator attribute");
 			return EXIT_FAILURE;
