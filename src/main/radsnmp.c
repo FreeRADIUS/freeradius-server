@@ -173,8 +173,10 @@ static RADIUS_PACKET *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
  *
  * @param ctx to allocate new pairs in.
  * @param cursor to add pairs to.
+ * @param dict for RADIUS protocol.
  * @param parent Where to start evaluating OID strings from.
  * @param oid string to evaluate.
+ * @param value to assign to OID attribute (SET operations only).
  * @return
  *	- >0 on success (how much of the OID string we parsed).
  *	- <=0 on failure (where format error occurred).
