@@ -43,12 +43,10 @@ $(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)
 clean: clean.tests.eap
 
 #
-#   Only run EAP tests if we have built with OpenSSL, and a "test" target
+#   Only run EAP tests if we have a "test" target
 #
-ifneq "$(OPENSSL_LIBS)" ""
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
 EAPOL_TEST = $(shell $(top_builddir)/scripts/travis/eapol_test-build.sh)
-endif
 endif
 
 # This gets called recursively, so has to be outside of the condition below
