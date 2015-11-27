@@ -161,15 +161,15 @@ static RADIUS_PACKET *radsnmp_alloc(radsnmp_conf_t *conf, int fd)
  * string, as evaluated from the specified parent.
  *
  * If an OID component does not match a child of a previous OID component, but a child
- * with attribute number 0 exists, and a child with attribute number 1 exists,
- * the child with attribute number 0 will be used as an 'index' attribute, and will be
+ * with attribute number 0 exists, and a child with attribute number 1 also exists,
+ * the child with attribute number 0 will be used as an 'index' pair, and will be
  * created with the value of the non matching OID component.
  *
  * Parsing will then resume using the child with attribute number 1.
  *
  * This allows traversals of SNMP tables to be represented by the sequence of pairs
- * created, and allows the full range of entry indexes which would not be possible if
- * we represented table index numbers as TLV attributes.
+ * and allows the full range of entry indexes which would not be possible if we represented
+ * table index numbers as TLV attributes.
  *
  * @param ctx to allocate new pairs in.
  * @param cursor to add pairs to.
