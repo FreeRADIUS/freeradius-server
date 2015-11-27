@@ -191,7 +191,7 @@ ssize_t udp_recv(int sockfd, void *data, size_t data_len, int flags,
 	/*
 	 *	Connected sockets already know src/dst IP/port
 	 */
-	if (flags & UDP_FLAGS_CONNECTED) {
+	if ((flags & UDP_FLAGS_CONNECTED) != 0) {
 		return recv(sockfd, data, data_len, sock_flags);
 	}
 
