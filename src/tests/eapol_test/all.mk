@@ -39,8 +39,8 @@ $(CONFIG_PATH)/methods-enabled:
 $(CONFIG_PATH)/methods-enabled/%: $(BUILD_DIR)/lib/rlm_eap_%.la | $(CONFIG_PATH)/methods-enabled
 	@ln -s $(CONFIG_PATH)/methods-available/$(notdir $@) $(CONFIG_PATH)/methods-enabled/
 
-.PHONY: eap dictionary clean tests.eap.clean
-clean: tests.eap.clean
+.PHONY: eap dictionary clean clean.tests.eap
+clean: clean.tests.eap
 
 #
 #   Only run EAP tests if we have built with OpenSSL, and a "test" target
