@@ -1294,13 +1294,18 @@ static int cache_key_add(REQUEST *request, uint8_t *key, size_t key_len, tls_cac
 
 	fr_pair_value_memcpy(vp, key, key_len);
 	fr_pair_add(&request->packet->vps, vp);
+	RINDENT();
+	rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
+	REXDENT();
 
 	vp = fr_pair_afrom_num(request, 0, PW_TLS_SESSION_CACHE_ACTION);
 	if (!vp) return -1;
 
 	vp->vp_integer = action;
 	fr_pair_add(&request->config, vp);
-
+	RINDENT();
+	rdebug_pair(L_DBG_LVL_2, request, vp, "&config:");
+	REXDENT();
 	return 0;
 }
 
