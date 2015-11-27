@@ -1407,7 +1407,9 @@ static int cache_write_session(SSL *ssl, SSL_SESSION *sess)
 	if (!vp) goto error;
 
 	fr_pair_value_memsteal(vp, data);
+	RINDENT();
 	rdebug_pair(L_DBG_LVL_2, request, vp, "&session-state:");
+	REXDENT();
 	fr_pair_add(&request->state, vp);
 	data = NULL;
 

@@ -744,7 +744,7 @@ void rdebug_pair(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char const *
 	if (!radlog_debug_enabled(L_DBG, level, request)) return;
 
 	fr_pair_snprint(buffer, sizeof(buffer), vp);
-	RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
+	RDEBUGX(level, "%s%s", prefix ? prefix : "&",  buffer);
 }
 
 /** Print a list of VALUE_PAIRs.
@@ -769,7 +769,7 @@ void rdebug_pair_list(log_lvl_t level, REQUEST *request, VALUE_PAIR *vp, char co
 		VERIFY_VP(vp);
 
 		fr_pair_snprint(buffer, sizeof(buffer), vp);
-		RDEBUGX(level, "%s%s", prefix ? prefix : "",  buffer);
+		RDEBUGX(level, "%s%s", prefix ? prefix : "&",  buffer);
 	}
 	REXDENT();
 }
