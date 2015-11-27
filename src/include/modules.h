@@ -159,6 +159,7 @@ fr_connection_pool_t	*module_connection_pool_init(CONF_SECTION *module,
 /*
  *	Create free and destroy module instances
  */
+int		modules_bootstrap(CONF_SECTION *);
 int		modules_init(CONF_SECTION *);
 int		modules_free(void);
 int		modules_hup(CONF_SECTION *modules);

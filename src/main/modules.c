@@ -1863,7 +1863,7 @@ fr_connection_pool_t *module_connection_pool_init(CONF_SECTION *module,
  *	Parse the module config sections, and load
  *	and call each module's init() function.
  */
-int modules_init(CONF_SECTION *config)
+int modules_bootstrap(CONF_SECTION *config)
 {
 	CONF_ITEM	*ci, *next;
 	CONF_SECTION	*cs, *modules;
@@ -2053,12 +2053,22 @@ int modules_init(CONF_SECTION *config)
 		cf_log_info(cs, "  }");
 	} /* if there's an 'instantiate' section. */
 
-	/*
-	 *	Now that we've loaded the explicitly ordered modules,
-	 *	load everything in the "modules" section.  This is
-	 *	because we've now split up the modules into
-	 *	mods-enabled.
-	 */
+	cf_log_info(modules, " } # modules");
+
+	return 0;
+}
+
+/** Instantiate the modules.
+ *
+ */
+int modules_init(CONF_SECTION *config)
+{
+	CONF_ITEM	*ci, *next;
+	CONF_SECTION	*modules;
+
+	modules = cf_section_sub_find(config, "modules");
+	rad_assert(modules != NULL);
+
 	for (ci=cf_item_find_next(modules, NULL);
 	     ci != NULL;
 	     ci=next) {
@@ -2077,7 +2087,6 @@ int modules_init(CONF_SECTION *config)
 		module = module_instantiate(modules, name);
 		if (!module) return -1;
 	}
-	cf_log_info(cs, " } # modules");
 
 	return 0;
 }

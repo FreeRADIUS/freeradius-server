@@ -438,6 +438,14 @@ int main(int argc, char *argv[])
 	if (virtual_servers_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
 
 	/*
+	 *	Bootstrap the modules.  This links to them, and runs
+	 *	their "bootstrap" routines.
+	 *
+	 *	After this step, all dynamic attributes, xlats, etc. are defined.
+	 */
+	if (modules_bootstrap(main_config.config) < 0) exit(EXIT_FAILURE);
+
+	/*
 	 *	Load the modules before starting up any threads.
 	 */
 	if (modules_init(main_config.config) < 0) exit(EXIT_FAILURE);
