@@ -1649,7 +1649,7 @@ do {\
 		_p = _q + 1; \
 	} \
 	if (_p != _end) _macro(_prefix "%.*s", (int) (_end - _p), _p); \
-	BIO_reset(_queue); \
+	(void) BIO_reset(_queue); \
 } while (0)
 
 /** Drain errors from an OpenSSL bio and print print them using the specified logging macro
@@ -1954,12 +1954,12 @@ static int ocsp_check(REQUEST *request, X509_STORE *store,
 	next = ocsp_asn1time_to_epoch(next_update);
 	if (now.tv_sec < next){
 		RINDENT();
-		vp = pair_make_reply("TLS-OCSP-Next-Update", NULL, T_OP_SET);
+		vp = pair_make_request("TLS-OCSP-Next-Update", NULL, T_OP_SET);
 		vp->vp_integer = next - now.tv_sec;
-		rdebug_pair(L_DBG_LVL_2, request, vp, "&reply:");
+		rdebug_pair(L_DBG_LVL_2, request, vp, NULL);
 		REXDENT();
 	} else {
-		RDEBUG2("ocsp: Update time is in the past.  Not adding &reply:TLS-OCSP-Next-Update");
+		RDEBUG2("ocsp: Update time is in the past.  Not adding &TLS-OCSP-Next-Update");
 	}
 
 	switch (status) {
